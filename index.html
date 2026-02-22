@@ -2800,11 +2800,11 @@ function compact(){
 }
 
 function replenish(){
-  // REDUCED REPLENISHMENT — the system reproduces itself now via BIRTH opcode.
-  // External input is the background trickle, not the main source of life.
-  // Only active at low populations. At healthy populations, the system sustains itself.
-  if(N>200)return; // system is self-sustaining above 200
-  const pressure=N<30?0.25:N<80?0.12:0.04;
+  // TAPERING REPLENISHMENT — external input fades as population grows.
+  // Full support below 80. Fades between 80-500. Gone above 500.
+  // The system must discover BIRTH to grow beyond 500.
+  if(N>500)return;
+  const pressure=N<50?0.25:N<100?0.15:N<200?0.06:N<500?0.01:0;
   if(Math.random()>pressure)return;
 
   // Check if there's viable habitat anywhere
