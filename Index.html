@@ -1,0 +1,3134 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+<title>Selection ע</title>
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+html,body{height:100%;overflow:hidden;background:#020204;touch-action:none;cursor:crosshair}
+canvas{position:fixed;inset:0}
+#gen{position:fixed;top:6px;left:8px;color:rgba(80,90,100,0.4);font:9px monospace;pointer-events:none;z-index:1}
+#gio{position:fixed;bottom:8px;right:8px;z-index:10;display:flex;gap:6px}
+#gio button{background:rgba(30,40,50,0.7);color:#8af;border:1px solid rgba(100,140,180,0.3);font:10px monospace;padding:4px 8px;border-radius:3px;cursor:pointer}
+#gio input{display:none}
+</style>
+</head>
+<body>
+<div id="gen"></div>
+<div id="gio"><button id="gexp">💾 save</button><button id="gimp">📂 load</button><input type="file" id="gfile" accept=".json"></div>
+<canvas id="c"></canvas>
+<script>
+const c=document.getElementById('c'),X=c.getContext('2d'),genEl=document.getElementById('gen');
+let W,H,mx=-9e3,my=-9e3,smx=0,smy=0,pulling=0,pStr=0,pDur=0,tick=0;
+
+// === SPATIAL GRID ===
+const CELL=55;
+let gW,gH,grid;
+function initGrid(){gW=Math.ceil(W/CELL)+2;gH=Math.ceil(H/CELL)+2;grid=new Int32Array(gW*gH)}
+function clearGrid(){grid.fill(-1)}
+function gKey(x,y){return Math.max(0,Math.min(gH-1,(y/CELL)|0))*gW+Math.max(0,Math.min(gW-1,(x/CELL)|0))}
+
+// ═══════════════════════════════════════
+// ADAPTIVE GENOME — the system's DNA
+// These values evolve. No human chooses the finals.
+// ═══════════════════════════════════════
+const DIMS=4;
+const MEM_SIZE=8; // per-particle persistent memory. Particles become stateful agents.
+const MAX_PLASMID=4; // max instructions per particle's personal mobile DNA
+const PLASMID_SLOTS=MAX_PLASMID*4; // each instruction is [op,src,dst,k] = 4 values
+const FIELD_W=40;
+const FIELD_H=40;
+const FIELD_DECAY=0.982;   // natural fade
+const FIELD_DIFFUSE=0.11;  // gentle spread
+const MAX_CLUSTER_VM=8;    // per-cluster program length — shorter than global, differentiation not replacement
+const CLUSTER_VM_COST_SHARE=0.4; // fraction of metabolic cost vs global VM (lighter programs)
+const CAP=1800; // HARD CEILING for array allocation only — not an ecological limit
+// The real carrying capacity emerges from density-dependent metabolic cost.
+// More particles = higher per-particle cost = amplitude drains faster = natural deaths increase.
+// The system discovers its own equilibrium population.
+let genome={
+  // ═══ LAYER 1: PHYSICS ═══
+  // The rules of the universe. Previously hardcoded constants.
+  entropyBaseline:0.0008,
+  entropyK:0.0004,
+  entrainRate:0.015,
+  entrainThresh:0.3,
+  creationCost:0.35,
+  creationThresh:0.25,    // was hardcoded: interference>0.25
+  destructThresh:-0.2,    // was hardcoded: interference<-0.2
+  tendencyBleed:0.0004,   // was hardcoded in grid interactions
+  magneticThresh:0.3,     // was hardcoded: mg>0.3
+  velocityDamping:0.998,  // was hardcoded
+  deathThreshold:0.04,    // was DEATH_THRESHOLD constant
+
+  // ═══ LAYER 2: PERCEPTION ═══
+  // How the system sees itself. Previously hardcoded detection params.
+  clusterBondThresh:0.15, // was hardcoded in flood-fill
+  clusterMinSize:3,       // was hardcoded: members.length>=genome.clusterMinSize
+  ghostDecay:0.997,       // was GHOST_DECAY constant
+  ghostAmpDrip:0.0004,    // was GHOST_AMP_DRIP constant
+
+  // ═══ LAYER 3: EVALUATION ═══
+  // What the system values. Mutable objective weights.
+  objWeights:[0.25,0.25,0.25,0.25],
+
+  // ═══ LAYER 3b: EVOLVABLE FITNESS SENSORS ═══
+  // The system discovers NEW things to value beyond the 4 designer axes.
+  // Each sensor is a short program that reads system state registers and outputs a scalar.
+  // Sensor outputs become additional fitness dimensions with their own evolved weights.
+  // Registers: S0=stability, S1=avgCoherence, S2=diversity, S3=clusterCount,
+  //            S4=avgAmp, S5=fieldEnergy, S6=persistentRatio, S7=deathRate
+  // Instructions: [op, src, dst, k] — same opcodes as VM (0-4 only, no side effects)
+  fitnessSensors:[
+    // Seed: one sensor that computes field_energy * persistent_ratio (designer didn't hardcode this)
+    {program:[[2,5,6,1.0],[4,6,0,1.0]], weight:0.1}
+  ],
+  maxSensors:4,        // can evolve up to 4 novel fitness dimensions
+  sensorMaxInst:4,     // max instructions per sensor program
+
+  // ═══ LAYER 4: META ═══
+  // How the system evolves. The evolution of evolution.
+  mutationRate:0.06,      // was hardcoded in mutateObjectiveWeights
+  mutationScale:1.0,      // multiplier on mutation magnitude
+  mutationInterval:300,   // FREED: ticks between mutation cycles. System decides its own rhythm.
+  shadowHorizon:50,       // was hardcoded: 50 ticks in shadow sim
+  shadowScenarios:5,      // was hardcoded: SHADOW_SCENARIOS
+  perturbScale:1.0,       // how large parameter nudges are
+  extinctionThresh:5,     // was hardcoded: alive<5
+  motifMemorySize:5,      // how many motifs to remember
+  culturalBias:0.3,       // was hardcoded: Math.random()<0.3
+
+  // ═══ LAYER 4b: AUTONOMY — previously hardcoded constraints ═══
+  interactionRadius:55,   // FREED: was CELL=55. System evolves its own social distance.
+  densityCostK:0.00003,   // FREED: metabolic cost scales with pop density. Carrying capacity emerges.
+  fieldBirthGate:0.3,     // FREED: min local field energy for replenishment. Life requires habitat.
+
+  // ═══ LAYER 5: IDENTITY ═══
+  generation:0,
+  totalTicks:0,
+  lineage:[],
+  stableMotifs:[],
+  fitnessHistory:[],
+  extinctions:0,
+  peakFitness:0,
+  longestStable:0,
+  currentStableStreak:0,
+
+  // ═══ LAYER 6: RULES — Register-Based Virtual Machine ═══
+  // When two particles interact, 4 registers are initialized from context.
+  // A short bytecode program manipulates registers and emits actions.
+  // This is policy, not configuration. The system discovers conditional physics.
+  //
+  // Registers: R0=similarity, R1=phase_alignment, R2=proximity, R3=energy
+  // Instructions: [OP, SRC, DST, CONST]
+  //   0=MOVE (DST=SRC), 1=ADD (DST+=SRC*CONST), 2=MUL (DST*=SRC*CONST),
+  //   3=COMP (DST = SRC>CONST ? 1 : 0), 4=EMIT (Action[DST] += SRC*CONST)
+  // Actions: 0=force, 1=phase_shift, 2=amp_transfer, 3=tend_bleed, 4=spawn
+  //
+  // The COMP instruction enables conditional logic:
+  //   "IF similarity>0.8 AND proximity>0.7 THEN spawn"
+  //   becomes: [3,0,0,0.8], [2,0,2,1], [3,2,2,0.7], [4,2,4,0.5]
+  vmProgram:[
+    [1, 0, 0, 0.5],   // R0 += sim * 0.5 (amplify similarity signal)
+    [3, 1, 1, 0.3],   // R1 = align > 0.3 ? 1 : 0 (threshold phase alignment)
+    [2, 1, 0, 1.0],   // R0 *= R1 (gate: similarity only matters when aligned)
+    [4, 0, 0, 0.4],   // EMIT force = R0 * 0.4 (attract if similar AND aligned)
+    [4, 1, 1, 0.3],   // EMIT phase_shift = R1 * 0.3 (entrain when aligned)
+    [3, 2, 2, 0.7],   // R2 = proximity > 0.7 ? 1 : 0 (must be close)
+    [2, 0, 2, 1.0],   // R2 *= R0 (gate: proximity AND similarity)
+    [4, 2, 3, 0.2],   // EMIT tend_bleed = R2 * 0.2 (bleed tendency when close+similar)
+    [1, 3, 3, -0.1],  // R3 += energy * -0.1 (dampen energy signal)
+    [4, 3, 2, 0.1],   // EMIT amp_transfer = R3 * 0.1 (energy redistribution)
+    [0, 0, 0, 0.0],   // MOVE noop (can evolve)
+    [0, 0, 0, 0.0],   // MOVE noop (can evolve)
+  ],
+  vmMaxInstructions:16, // can evolve to grow/shrink the program
+  vmInfluence:0.3,      // ratio of VM effects vs hardcoded physics. EVOLVES.
+  ruleScale:1.0,
+  metabolicCost:0.00002,  // amp cost PER INSTRUCTION PER INTERACTION. Evolves.
+                          // Forces elegant code: bloated programs starve.
+
+  // ═══ LAYER 7: HORIZONTAL GENE TRANSFER ═══
+  hgtRate:0.15,       // probability of HGT per mutation cycle (not per interaction!)
+  hgtMax:2,           // max instructions transferred per event
+  hgtSpliceNoise:0.22, // mutation magnitude on transferred instructions
+
+  // ═══ LAYER 8: PLASMIDS — per-particle mobile DNA ═══
+  plasmidTransferRate:0.008,  // chance per high-resonance interaction to transfer a plasmid
+  plasmidMutRate:0.04,        // chance per plasmid instruction per mutation cycle to mutate
+  plasmidTransferThresh:0.55, // minimum sim*phaseAlign bond to allow transfer
+  plasmidSpawnRate:0.002,     // chance per mutation cycle for a particle to spontaneously generate a new plasmid instruction
+  fieldInfluence:0.65,        // how strongly field affects physics (niche construction feedback)
+  fieldWeight:0.2             // shadow sim: how much the system values engineered environment futures (EVOLVES)
+};
+
+// ═══ VM PHENOTYPE PROFILE ═══
+// The shadow sim's "eye" into the VM. Updated by profiling the VM
+// against standardised test inputs. The system models its own behaviour.
+const vmPhenotype={
+  force:0, phaseShift:0, ampTransfer:0, tendBleed:0, spawnDrive:0,
+  sigModulate:0, mutPressure:0, // NEW: channels 5,6
+  avgCost:0, lastProfileTick:0
+};
+
+// Track peak resonance bond each tick for HGT gating
+let peakBondThisTick=0;
+let hgtEventsTotal=0;
+let mutPressureAccum=0; // accumulated mutation pressure from VM channel 6
+
+// ═══ GOVERNANCE VISIBILITY — flash events for plasmid transfers ═══
+const MAX_FLASHES=32;
+const flashX1=new Float32Array(MAX_FLASHES),flashY1=new Float32Array(MAX_FLASHES);
+const flashX2=new Float32Array(MAX_FLASHES),flashY2=new Float32Array(MAX_FLASHES);
+const flashAge=new Uint16Array(MAX_FLASHES);
+const flashLife=40; // frames a flash persists
+let flashN=0;
+
+// No more DEATH_THRESHOLD constant — it's in the genome
+// No more GHOST_DECAY constant — it's in the genome
+
+const genomeArchive=[];
+const ARCHIVE_SIZE=3;
+let currentFitness=0,fitnessSamples=0;
+
+const OBSERVE_AMP_BOOST=0.001;
+const OBSERVE_RADIUS_BASE=100;
+// DEATH_THRESHOLD, GHOST_DECAY, GHOST_AMP_DRIP — all in genome now
+
+// Ghost — parameters now in genome (ghostDecay, ghostAmpDrip)
+let ghostX=0,ghostY=0,ghostStrength=0;
+const GHOST_RADIUS=150;
+const ABSENCE_BASE=600,ABSENCE_DUTY=0.5;
+const globalTend=new Float32Array(DIMS);
+let wasAbsent=false;
+
+let N=0;
+const px=new Float32Array(CAP),py=new Float32Array(CAP);
+const vx=new Float32Array(CAP),vy=new Float32Array(CAP);
+const tend=new Float32Array(CAP*DIMS);
+const phase=new Float32Array(CAP);
+const freq=new Float32Array(CAP);
+const amp=new Float32Array(CAP);
+const palive=new Uint8Array(CAP);
+const page=new Int32Array(CAP);
+const pnext=new Int32Array(CAP);
+const localRes=new Float32Array(CAP);
+const collapse=new Float32Array(CAP);
+const pR=new Float32Array(CAP),pG=new Float32Array(CAP),pB=new Float32Array(CAP);
+const pSz=new Float32Array(CAP);
+const pMem=new Float32Array(CAP*MEM_SIZE); // per-particle memory: counters, timers, accumulators
+// ═══ BROADCAST REGISTERS — evolved signaling between particles ═══
+// Each particle has 2 broadcast slots. Content is entirely evolved.
+// During interaction, particles can read each other's broadcasts.
+// The system invents its own signals.
+const pBroadcast=new Float32Array(CAP*2);
+// ═══ PLASMID PERSISTENCE TRACKING — for crystallization into permanent structure ═══
+const pPlasmidAge=new Uint16Array(CAP); // how many ticks this particle's plasmid has persisted
+const pPlasmid=new Float32Array(CAP*PLASMID_SLOTS); // per-particle mobile DNA [op,src,dst,k]*MAX_PLASMID
+const pPlasmidLen=new Uint8Array(CAP); // how many plasmid instructions this particle has (0-MAX_PLASMID)
+const field=new Float32Array(FIELD_W*FIELD_H); // shared resource/signal field — writable environment
+// ═══ FIELD MEMORY — the world remembers what lived here ═══
+// Each cell accumulates history. Cells written to repeatedly become more persistent.
+// This creates landscape-level memory that survives extinction events.
+// History is written into the substrate, not the genome.
+const fieldMemory=new Float32Array(FIELD_W*FIELD_H); // 0=virgin, higher=more history
+const FIELD_SIG_DIMS=3; // signature dimensions per field cell
+const fieldSig=new Float32Array(FIELD_W*FIELD_H*FIELD_SIG_DIMS); // territorial signature per cell
+const fieldOwnership=new Float32Array(FIELD_W*FIELD_H); // ownership strength (0=commons, 1=fully claimed)
+// Cache: lineage color per field cell, rebuilt on cluster detection cycles (not every frame)
+let fieldLineageCache=new Uint8Array(FIELD_W*FIELD_H*3); // R,G,B per cell
+const EL=4;
+const echox=new Float32Array(CAP*EL),echoy=new Float32Array(CAP*EL);
+const echoIdx=new Uint8Array(CAP);
+// Cluster membership
+const clusterID=new Int16Array(CAP);
+
+let deathsThisTick=0,birthsThisTick=0;
+
+// ═══════════════════════════════════════
+// PERSISTENT MEMORY VIA URL HASH
+// The URL is the organism's genome.
+// Copy URL = copy lineage. Share URL = share history.
+// ═══════════════════════════════════════
+function encodeGenome(){
+  // Compress: only persist what matters for continuity
+  const g={
+    // Physics
+    p:[genome.entropyBaseline,genome.entropyK,genome.entrainRate,genome.entrainThresh,
+       genome.creationCost,genome.creationThresh,genome.destructThresh,genome.tendencyBleed,
+       genome.magneticThresh,genome.velocityDamping,genome.deathThreshold].map(v=>+(v.toPrecision(4))),
+    // Perception
+    q:[genome.clusterBondThresh,genome.clusterMinSize,genome.ghostDecay,genome.ghostAmpDrip].map(v=>+(v.toPrecision(4))),
+    // Evaluation
+    w:genome.objWeights.map(v=>+(v.toFixed(4))),
+    // Meta
+    m:[genome.mutationRate,genome.mutationScale,genome.shadowHorizon,genome.shadowScenarios,
+       genome.perturbScale,genome.extinctionThresh,genome.motifMemorySize,genome.culturalBias,
+       genome.metabolicCost,genome.hgtRate,genome.hgtMax,genome.hgtSpliceNoise,
+       genome.plasmidTransferRate,genome.plasmidMutRate,genome.plasmidTransferThresh,genome.plasmidSpawnRate,genome.fieldInfluence,genome.fieldWeight,
+       genome.mutationInterval,genome.interactionRadius,genome.densityCostK,genome.fieldBirthGate].map(v=>+(v.toPrecision(3))),
+    // Identity
+    g:genome.generation,T:genome.totalTicks,
+    L:genome.lineage.slice(-4),
+    M:genome.stableMotifs.slice(-genome.motifMemorySize),
+    x:genome.extinctions,pf:+(genome.peakFitness.toPrecision(3)),
+    ls:genome.longestStable,
+    // Rules (VM program)
+    V:genome.vmProgram.map(inst=>[inst[0],inst[1],inst[2],+(inst[3].toFixed(3))]),
+    vi:+(genome.vmInfluence.toPrecision(3)),
+    vs:+(genome.ruleScale.toPrecision(3)),
+    vm:genome.vmMaxInstructions
+  };
+  return btoa(JSON.stringify(g));
+}
+
+function decodeGenome(hash){
+  try{
+    const g=JSON.parse(atob(hash));
+    if(g.p){
+      [genome.entropyBaseline,genome.entropyK,genome.entrainRate,genome.entrainThresh,
+       genome.creationCost,genome.creationThresh,genome.destructThresh,genome.tendencyBleed,
+       genome.magneticThresh,genome.velocityDamping,genome.deathThreshold]=g.p;
+    }
+    if(g.q){
+      [genome.clusterBondThresh,genome.clusterMinSize,genome.ghostDecay,genome.ghostAmpDrip]=g.q;
+    }
+    genome.objWeights=g.w||[0.25,0.25,0.25,0.25];
+    if(g.m){
+      [genome.mutationRate,genome.mutationScale,genome.shadowHorizon,genome.shadowScenarios,
+       genome.perturbScale,genome.extinctionThresh,genome.motifMemorySize,genome.culturalBias,
+       genome.metabolicCost,genome.hgtRate,genome.hgtMax,genome.hgtSpliceNoise,
+       genome.plasmidTransferRate,genome.plasmidMutRate,genome.plasmidTransferThresh,genome.plasmidSpawnRate,genome.fieldInfluence,genome.fieldWeight,
+       genome.mutationInterval,genome.interactionRadius,genome.densityCostK,genome.fieldBirthGate]=g.m;
+    // Handle older genomes without newer params
+    if(!genome.hgtRate)genome.hgtRate=0.15;
+    if(!genome.hgtMax)genome.hgtMax=2;
+    if(!genome.hgtSpliceNoise)genome.hgtSpliceNoise=0.22;
+    if(!genome.plasmidTransferRate)genome.plasmidTransferRate=0.008;
+    if(!genome.plasmidMutRate)genome.plasmidMutRate=0.04;
+    if(!genome.plasmidTransferThresh)genome.plasmidTransferThresh=0.55;
+    if(!genome.plasmidSpawnRate)genome.plasmidSpawnRate=0.002;
+    if(!genome.fieldInfluence)genome.fieldInfluence=0.65;
+    if(!genome.fieldWeight)genome.fieldWeight=0.2;
+    if(!genome.mutationInterval)genome.mutationInterval=300;
+    if(!genome.interactionRadius)genome.interactionRadius=55;
+    if(!genome.densityCostK)genome.densityCostK=0.00003;
+    if(!genome.fieldBirthGate)genome.fieldBirthGate=0.3;
+    }
+    genome.generation=(g.g||0)+1;
+    genome.totalTicks=g.T||0;
+    genome.lineage=g.L||[];
+    genome.stableMotifs=g.M||[];
+    genome.extinctions=g.x||0;
+    genome.peakFitness=g.pf||0;
+    genome.longestStable=g.ls||0;
+    if(g.V)genome.vmProgram=g.V;
+    if(g.vi!==undefined)genome.vmInfluence=g.vi;
+    if(g.vs)genome.ruleScale=g.vs;
+    if(g.vm)genome.vmMaxInstructions=g.vm;
+    return true;
+  }catch(e){return false}
+}
+
+function saveGenome(){
+  const hash=encodeGenome();
+  try{history.replaceState(null,'','#'+hash)}catch(e){}
+}
+
+function loadGenome(){
+  const h=location.hash.slice(1);
+  if(h.length>10)return decodeGenome(h);
+  // Try localStorage
+  try{
+    const stored=localStorage.getItem('selection_genome');
+    if(stored&&stored.length>10)return decodeGenome(stored);
+  }catch(e){}
+  return false;
+}
+
+// ═══ GENOME FILE EXPORT/IMPORT — genome travels with you ═══
+function exportGenome(){
+  const data=encodeGenome();
+  const blob=new Blob([data],{type:'text/plain'});
+  const a=document.createElement('a');
+  a.href=URL.createObjectURL(blob);
+  a.download='selection_gen'+genome.generation+'_t'+genome.totalTicks+'.json';
+  a.click();
+  URL.revokeObjectURL(a.href);
+}
+function importGenome(file){
+  const reader=new FileReader();
+  reader.onload=function(e){
+    const data=e.target.result.trim();
+    if(decodeGenome(data)){
+      N=0;
+      const n=Math.min(300,(W*H/3000)|0);
+      for(let i=0;i<n;i++)addParticle(Math.random()*W,Math.random()*H,randomTendency(),false);
+      saveGenome();
+      try{localStorage.setItem('selection_genome',data)}catch(ex){}
+    }
+  };
+  reader.readAsText(file);
+}
+document.getElementById('gexp').onclick=exportGenome;
+document.getElementById('gimp').onclick=function(){document.getElementById('gfile').click()};
+document.getElementById('gfile').onchange=function(e){if(e.target.files[0])importGenome(e.target.files[0])};
+
+// ═══════════════════════════════════════
+// CLUSTER DETECTION — STRUCTURAL COMPRESSION
+// Not scalars. Structure. The system sees its own topology.
+// ═══════════════════════════════════════
+const MAX_CLUSTERS=30;
+const clusters=[];
+const prevClusters=[];
+let clusterAge=new Map(); // track persistence across snapshots
+let clusterVMs=new Map(); // persist per-cluster VM programs across detection cycles (keyed by hash)
+let clusterByID=new Int16Array(0); // fast lookup: clusterByID[cid] = index into clusters[]
+
+// ═══ LINEAGE REGISTRY — ancestry tracking for emergent speciation ═══
+// Every cluster belongs to a lineage. New clusters from flood-fill get new lineage IDs.
+// Persistent clusters inherit their lineage across detection cycles.
+// Budded daughters inherit parent lineage. We OBSERVE divergence, not prescribe it.
+let nextLineageID=1;
+const lineageRegistry=new Map(); // lineageID → {color, birthTick, parentLineage, budCount, lastSeen, extinct, children}
+const MAX_LINEAGE_HISTORY=60; // how many lineages to keep in registry before pruning dead ones
+
+function createLineage(parentLineageID){
+  const lid=nextLineageID++;
+  // Generate a distinctive color from lineage ID — golden ratio hue spacing
+  const hue=(lid*137.508)%360;
+  const sat=55+((lid*31)%30);
+  const lit=40+((lid*17)%25);
+  const [r,g,b]=hslToRgb(hue,sat,lit);
+  lineageRegistry.set(lid,{
+    color:[r,g,b],
+    hue,
+    birthTick:genome.totalTicks,
+    parentLineage:parentLineageID,
+    budCount:0,
+    lastSeen:genome.totalTicks,
+    extinct:false,
+    children:[] // child lineage IDs (from budding speciation events)
+  });
+  if(parentLineageID>0){
+    const parent=lineageRegistry.get(parentLineageID);
+    if(parent)parent.children.push(lid);
+  }
+  return lid;
+}
+
+function getLineageColor(lid){
+  const entry=lineageRegistry.get(lid);
+  if(entry)return entry.color;
+  return[120,140,130]; // fallback neutral
+}
+
+// Prune extinct lineages that haven't been seen in a long time
+function pruneLineages(){
+  if(lineageRegistry.size<MAX_LINEAGE_HISTORY)return;
+  const cutoff=genome.totalTicks-30000;
+  for(const[lid,entry] of lineageRegistry){
+    if(entry.extinct&&entry.lastSeen<cutoff&&entry.children.length===0){
+      lineageRegistry.delete(lid);
+    }
+  }
+}
+
+// Rebuild field-to-lineage color cache (called on cluster detection, not every frame)
+function rebuildFieldLineageCache(){
+  if(clusters.length===0)return;
+  for(let fIdx=0;fIdx<FIELD_W*FIELD_H;fIdx++){
+    if(fieldOwnership[fIdx]<0.05){
+      fieldLineageCache[fIdx*3]=100;fieldLineageCache[fIdx*3+1]=240;fieldLineageCache[fIdx*3+2]=220;
+      continue;
+    }
+    const sBase=fIdx*FIELD_SIG_DIMS;
+    let bestLin=0,bestSim=-1;
+    for(const c of clusters){
+      if(!c.fieldSignature)continue;
+      let dot=0,nA=0,nB=0;
+      for(let s=0;s<FIELD_SIG_DIMS;s++){
+        dot+=fieldSig[sBase+s]*c.fieldSignature[s];
+        nA+=fieldSig[sBase+s]*fieldSig[sBase+s];
+        nB+=c.fieldSignature[s]*c.fieldSignature[s];
+      }
+      const sim=dot/(Math.sqrt(nA*nB)+0.001);
+      if(sim>bestSim){bestSim=sim;bestLin=c.lineageID}
+    }
+    const col=getLineageColor(bestLin);
+    fieldLineageCache[fIdx*3]=col[0];fieldLineageCache[fIdx*3+1]=col[1];fieldLineageCache[fIdx*3+2]=col[2];
+  }
+}
+
+// ═══ CLUSTER VM SEEDING ═══
+// New clusters inherit a mutated subset of the global VM program.
+// Not NOPs — functional code that can differentiate FROM something.
+function seedClusterVM(){
+  const globalProg=genome.vmProgram;
+  const prog=[];
+  // Sample up to MAX_CLUSTER_VM instructions from the global program
+  // Bias toward EMIT instructions — those are the behaviorally active ones
+  const emitters=[];
+  const others=[];
+  for(let i=0;i<globalProg.length;i++){
+    if(globalProg[i][0]===4)emitters.push(i);
+    else others.push(i);
+  }
+  // Take emitters first (up to half), fill rest from others
+  const emitCount=Math.min(Math.floor(MAX_CLUSTER_VM/2),emitters.length);
+  const otherCount=Math.min(MAX_CLUSTER_VM-emitCount,others.length);
+  const indices=[];
+  for(let i=0;i<emitCount;i++)indices.push(emitters[Math.floor(Math.random()*emitters.length)]);
+  for(let i=0;i<otherCount;i++)indices.push(others[Math.floor(Math.random()*others.length)]);
+  // Pad with NOPs if global program is tiny
+  while(indices.length<MAX_CLUSTER_VM)indices.push(-1);
+
+  for(const idx of indices){
+    if(idx>=0&&idx<globalProg.length){
+      const inst=[...globalProg[idx]];
+      // Light mutation on seeding — differentiation starts immediately
+      inst[3]+=(Math.random()-0.5)*0.25;
+      inst[3]=Math.max(-2,Math.min(2,inst[3]));
+      prog.push(inst);
+    }else{
+      prog.push([0,0,0,0]); // NOP padding
+    }
+  }
+  return prog;
+}
+
+// Fast cluster lookup by ID — rebuilt each detection cycle
+function buildClusterLookup(){
+  // Ensure array is large enough
+  if(clusterByID.length<MAX_CLUSTERS){
+    clusterByID=new Int16Array(MAX_CLUSTERS);
+  }
+  clusterByID.fill(-1);
+  for(let i=0;i<clusters.length;i++){
+    if(clusters[i].id<MAX_CLUSTERS)clusterByID[clusters[i].id]=i;
+  }
+}
+
+function detectClusters(){
+  // Flood-fill on spatial grid using resonance bonds
+  clusterID.fill(-1);
+  let cid=0;
+  clusters.length=0;
+
+  for(let i=0;i<N;i++){
+    if(!palive[i]||clusterID[i]>=0)continue;
+    if(cid>=MAX_CLUSTERS)break;
+
+    // BFS flood fill
+    const queue=[i];
+    const members=[];
+    clusterID[i]=cid;
+
+    while(queue.length>0){
+      const cur=queue.shift();
+      members.push(cur);
+
+      const gx=(px[cur]/CELL)|0,gy=(py[cur]/CELL)|0;
+      for(let dy=-1;dy<=1;dy++)for(let dx=-1;dx<=1;dx++){
+        const nnx=gx+dx,nny=gy+dy;
+        if(nnx<0||nny<0||nnx>=gW||nny>=gH)continue;
+        let j=grid[nny*gW+nnx];
+        while(j>=0){
+          if(palive[j]&&clusterID[j]<0&&j!==cur){
+            const sim=tendSim(cur,j);
+            const pa=Math.cos(phase[cur]-phase[j]);
+            const bond=sim*Math.max(0,pa);
+            const ddx=px[cur]-px[j],ddy=py[cur]-py[j];
+            const d=Math.sqrt(ddx*ddx+ddy*ddy);
+            if(bond>genome.clusterBondThresh&&d<Math.max(10,genome.interactionRadius||CELL)){
+              clusterID[j]=cid;
+              queue.push(j);
+            }
+          }
+          j=pnext[j];
+        }
+      }
+    }
+
+    if(members.length>=genome.clusterMinSize){
+      // Compress cluster to signature
+      let cx=0,cy=0,tSum=new Float32Array(DIMS),phCoh=0,aSum=0,ageSum=0;
+      for(const m of members){
+        cx+=px[m];cy+=py[m];
+        for(let d=0;d<DIMS;d++)tSum[d]+=tend[m*DIMS+d];
+        aSum+=amp[m];
+        ageSum+=page[m];
+      }
+      const n=members.length;
+      cx/=n;cy/=n;aSum/=n;ageSum/=n;
+      for(let d=0;d<DIMS;d++)tSum[d]/=n;
+
+      // Phase coherence: mean resultant length
+      let sinSum=0,cosSum=0;
+      for(const m of members){sinSum+=Math.sin(phase[m]);cosSum+=Math.cos(phase[m])}
+      phCoh=Math.sqrt(sinSum*sinSum+cosSum*cosSum)/n;
+
+      clusters.push({
+        id:cid,cx,cy,size:n,
+        tendency:Array.from(tSum),
+        coherence:phCoh,
+        avgAmp:aSum,
+        avgAge:ageSum,
+        hash:clusterHash(tSum,phCoh,n),
+        vmProgram:seedClusterVM(),
+        vmInfluence:0.3+Math.random()*0.2,
+        fieldSignature:new Float32Array([
+          tSum[0]*0.5+tSum[1]*0.3,
+          tSum[1]*0.5+tSum[2]*0.3,
+          tSum[2]*0.5+tSum[3]*0.3
+        ]),
+        // Lineage: new spontaneous clusters get new lineage IDs
+        // Persistence inheritance overwrites this in trackClusterPersistence()
+        lineageID:createLineage(0)
+      });
+      cid++;
+    }
+  }
+}
+
+function clusterHash(t,coh,size){
+  // Simple fingerprint: quantized tendency + coherence band + size band
+  let h='';
+  for(let d=0;d<DIMS;d++)h+=((t[d]*10)|0)+',';
+  h+=((coh*10)|0)+','+Math.min(9,(size/10)|0);
+  return h;
+}
+
+function trackClusterPersistence(){
+  // Match current clusters to previous by spatial proximity + tendency similarity
+  const newAge=new Map();
+  const newVMs=new Map();
+  for(const c of clusters){
+    let bestMatch=null,bestScore=-1;
+    for(const p of prevClusters){
+      const dx=c.cx-p.cx,dy=c.cy-p.cy;
+      const dist=Math.sqrt(dx*dx+dy*dy);
+      if(dist>CELL*3)continue;
+      let tSim=0;
+      for(let d=0;d<DIMS;d++)tSim+=c.tendency[d]*p.tendency[d];
+      const score=tSim*(1-dist/(CELL*3))*Math.min(1,c.size/Math.max(1,p.size));
+      if(score>bestScore){bestScore=score;bestMatch=p}
+    }
+    if(bestMatch&&bestScore>0.1){
+      const prevAge=clusterAge.get(bestMatch.hash)||0;
+      newAge.set(c.hash,prevAge+1);
+      c.persistAge=prevAge+1;
+      // ═══ CLUSTER VM INHERITANCE ═══
+      // Carry the previous cluster's evolved VM forward — this is what makes
+      // cluster programs accumulate rather than reset every detection cycle
+      const prevVM=clusterVMs.get(bestMatch.hash);
+      if(prevVM){
+        c.vmProgram=prevVM.prog.map(inst=>[...inst]); // deep copy
+        c.vmInfluence=prevVM.inf;
+        // Territorial signature inheritance — identity persists
+        if(prevVM.sig)c.fieldSignature=new Float32Array(prevVM.sig);
+        // Lineage inheritance — persistent clusters keep their ancestry
+        if(prevVM.lineage){
+          c.lineageID=prevVM.lineage;
+          const entry=lineageRegistry.get(c.lineageID);
+          if(entry)entry.lastSeen=genome.totalTicks;
+        }
+      }
+    }else{
+      newAge.set(c.hash,0);
+      c.persistAge=0;
+      // New cluster — keeps the seeded VM and new lineage from detectClusters()
+    }
+    // Store this cluster's VM, signature, and lineage for next cycle
+    newVMs.set(c.hash,{prog:c.vmProgram.map(inst=>[...inst]),inf:c.vmInfluence,sig:Array.from(c.fieldSignature||[0,0,0]),lineage:c.lineageID});
+  }
+  clusterAge=newAge;
+  clusterVMs=newVMs;
+  prevClusters.length=0;
+  for(const c of clusters)prevClusters.push({...c,tendency:[...c.tendency]});
+  // Rebuild fast lookup
+  buildClusterLookup();
+
+  // ═══ LINEAGE CENSUS — mark extinct lineages, measure divergence ═══
+  const livingLineages=new Set();
+  for(const c of clusters)if(c.lineageID)livingLineages.add(c.lineageID);
+  for(const[lid,entry] of lineageRegistry){
+    if(!entry.extinct&&!livingLineages.has(lid)){
+      entry.extinct=true;
+      entry.deathTick=genome.totalTicks;
+    }
+  }
+  pruneLineages();
+}
+
+// ═══ CLUSTER BUDDING — GROUP-LEVEL REPRODUCTION ═══
+// Successful clusters (persistent, coherent, energy-rich) can bud daughter clusters.
+// The daughter inherits the parent's VM program and field signature (with mutation).
+// This makes clusters true reproductive units — lineages that engineer well spread.
+// Budding physically displaces particles to create real spatial separation.
+function attemptClusterBudding(){
+  if(clusters.length>=MAX_CLUSTERS-2)return; // leave room
+  // Snapshot cluster count — don't iterate over newly budded clusters
+  const nClusters=clusters.length;
+
+  for(let ci=0;ci<nClusters;ci++){
+    const c=clusters[ci];
+    if(c.persistAge<8||c.size<14)continue; // must be established and large enough
+
+    // Success metric: territorial control + coherence + energy
+    // Clusters that engineer rich environments AND maintain internal order can reproduce
+    const territoryScore=c.avgAmp*0.5+c.coherence*0.35;
+
+    // Field richness at cluster center
+    const cfx=Math.max(0,Math.min(FIELD_W-1,Math.floor(c.cx/(W/FIELD_W))));
+    const cfy=Math.max(0,Math.min(FIELD_H-1,Math.floor(c.cy/(H/FIELD_H))));
+    const centerField=field[cfy*FIELD_W+cfx];
+    const fieldBonus=Math.min(0.3,centerField*0.2);
+
+    const budChance=(territoryScore+fieldBonus)*0.008; // rare even for successful clusters
+    if(Math.random()>budChance)continue;
+
+    // Find bud direction — prefer direction with unclaimed territory
+    let bestAngle=Math.random()*Math.PI*2;
+    let bestUnclaimed=0;
+    for(let probe=0;probe<6;probe++){
+      const angle=Math.random()*Math.PI*2;
+      const probeX=c.cx+Math.cos(angle)*CELL*3;
+      const probeY=c.cy+Math.sin(angle)*CELL*3;
+      const pfx=Math.max(0,Math.min(FIELD_W-1,Math.floor(probeX/(W/FIELD_W))));
+      const pfy=Math.max(0,Math.min(FIELD_H-1,Math.floor(probeY/(H/FIELD_H))));
+      const pIdx=pfy*FIELD_W+pfx;
+      const unclaimed=1-fieldOwnership[pIdx];
+      if(unclaimed>bestUnclaimed){bestUnclaimed=unclaimed;bestAngle=angle}
+    }
+
+    const budDist=CELL*(2.5+Math.random()*2);
+    const bx=Math.max(CELL,Math.min(W-CELL,c.cx+Math.cos(bestAngle)*budDist));
+    const by=Math.max(CELL,Math.min(H-CELL,c.cy+Math.sin(bestAngle)*budDist));
+
+    // Select particles to move — those on the side of the cluster facing the bud direction
+    const splitFraction=0.3+Math.random()*0.15; // 30-45% split
+    const targetSplit=Math.floor(c.size*splitFraction);
+    const budded=[];
+
+    // Score each member by how much they face the bud direction
+    const candidates=[];
+    for(let i=0;i<N;i++){
+      if(!palive[i]||clusterID[i]!==c.id)continue;
+      const dx=px[i]-c.cx,dy=py[i]-c.cy;
+      // Dot product with bud direction — particles facing the bud site go first
+      const facing=dx*Math.cos(bestAngle)+dy*Math.sin(bestAngle);
+      candidates.push({idx:i,facing});
+    }
+    // Sort by facing direction — those closest to the bud side move
+    candidates.sort((a,b)=>b.facing-a.facing);
+
+    const toMove=Math.min(targetSplit,candidates.length-3); // parent keeps at least 3
+    if(toMove<3)continue; // not enough to form viable daughter
+
+    for(let m=0;m<toMove;m++){
+      const pi=candidates[m].idx;
+      budded.push(pi);
+      // PHYSICAL DISPLACEMENT — actually move particles toward bud site
+      const pushStrength=0.4+Math.random()*0.3;
+      px[pi]+=(bx-px[pi])*pushStrength;
+      py[pi]+=(by-py[pi])*pushStrength;
+      // Velocity kick toward bud site
+      vx[pi]+=(bx-px[pi])*0.003;
+      vy[pi]+=(by-py[pi])*0.003;
+    }
+
+    // METABOLIC COST — budding is expensive for both parent and daughter
+    for(let i=0;i<N;i++){
+      if(!palive[i]||clusterID[i]!==c.id)continue;
+      amp[i]*=0.85; // parent loses energy
+    }
+    for(const pi of budded){
+      amp[pi]*=0.9; // daughter particles also pay
+    }
+
+    // Create daughter cluster entry
+    // Daughter inherits parent's lineage — same ancestry, divergence happens naturally
+    const daughterLineage=createLineage(c.lineageID);
+    const parentEntry=lineageRegistry.get(c.lineageID);
+    if(parentEntry)parentEntry.budCount++;
+
+    const daughter={
+      id:clusters.length,
+      cx:bx,cy:by,
+      size:budded.length,
+      tendency:c.tendency.map(v=>v+(Math.random()-0.5)*0.06),
+      coherence:c.coherence*0.85,
+      avgAmp:c.avgAmp*0.8,
+      avgAge:0,
+      hash:'bud_'+Math.random().toString(36).slice(2,8)+'_'+genome.totalTicks,
+      persistAge:1,
+      vmProgram:c.vmProgram.map(inst=>{
+        const copy=[...inst];
+        if(Math.random()<0.3){
+          copy[3]+=(Math.random()-0.5)*0.2;
+          copy[3]=Math.max(-2,Math.min(2,copy[3]));
+        }
+        if(Math.random()<0.08)copy[0]=Math.floor(Math.random()*16);
+        return copy;
+      }),
+      vmInfluence:Math.max(0.05,c.vmInfluence+(Math.random()-0.5)*0.1),
+      fieldSignature:new Float32Array(c.fieldSignature.map(s=>s+(Math.random()-0.5)*0.1)),
+      lineageID:daughterLineage
+    };
+
+    clusters.push(daughter);
+
+    // TERRITORY SEEDING — stamp a small footprint at the bud site
+    // The daughter doesn't arrive in a vacuum
+    const seedRadius=2; // field cells
+    const bfx=Math.floor(bx/(W/FIELD_W));
+    const bfy=Math.floor(by/(H/FIELD_H));
+    for(let dy=-seedRadius;dy<=seedRadius;dy++){
+      for(let dx=-seedRadius;dx<=seedRadius;dx++){
+        const sx=bfx+dx,sy=bfy+dy;
+        if(sx<0||sx>=FIELD_W||sy<0||sy>=FIELD_H)continue;
+        const sIdx=sy*FIELD_W+sx;
+        const dist=Math.sqrt(dx*dx+dy*dy);
+        if(dist>seedRadius)continue;
+        const seedStr=(1-dist/seedRadius)*0.3;
+        field[sIdx]+=seedStr*0.5; // small energy deposit
+        stampField(sIdx,daughter.fieldSignature,seedStr);
+      }
+    }
+
+    // Visual feedback — shockwave at bud site
+    const r=(pR[budded[0]]||150),g=(pG[budded[0]]||180),b_=(pB[budded[0]]||160);
+    addShock(bx,by,0.5,r,g,b_);
+    addShock(c.cx,c.cy,0.3,r*0.7,g*0.7,b_*0.7);
+
+    // Record in lineage
+    genome.lineage.push({
+      t:genome.totalTicks,event:'bud',
+      parentSize:c.size,daughterSize:budded.length,
+      parentAge:c.persistAge
+    });
+    if(genome.lineage.length>6)genome.lineage.shift();
+  }
+
+  // Rebuild lookup if any budding happened
+  if(clusters.length>nClusters)buildClusterLookup();
+}
+
+// ═══════════════════════════════════════
+// SHADOW SIMULATOR — COUNTERFACTUAL ROLLOUTS
+// The system imagines futures before choosing.
+// ═══════════════════════════════════════
+const SHADOW_SCENARIOS=5;
+const shadowResults=new Float32Array(SHADOW_SCENARIOS);
+
+// ═══ VM PHENOTYPE PROFILER ═══
+// Runs the VM against standardised test inputs to produce
+// average action coefficients. The shadow sim reads these
+// instead of running the full VM. The system models its own behaviour.
+function profileVM(){
+  // 9 standardised test scenarios covering the interaction space
+  const tests=[
+    {sim:0.9, align:0.9, prox:0.9, energy:0.8},  // close, similar, aligned, strong
+    {sim:0.9, align:0.1, prox:0.9, energy:0.5},  // close, similar, misaligned
+    {sim:0.1, align:0.9, prox:0.9, energy:0.5},  // close, different, aligned
+    {sim:0.1, align:0.1, prox:0.9, energy:0.3},  // close, different, misaligned
+    {sim:0.9, align:0.9, prox:0.2, energy:0.5},  // far, similar, aligned
+    {sim:0.5, align:0.5, prox:0.5, energy:0.5},  // neutral baseline
+    {sim:0.9, align:0.9, prox:0.9, energy:0.1},  // close, similar, aligned, weak
+    {sim:0.1, align:0.1, prox:0.2, energy:0.8},  // far, different, strong
+    {sim:0.5, align:0.9, prox:0.7, energy:0.5},  // mid-similar, aligned, medium
+  ];
+
+  let totals=[0,0,0,0,0,0,0];
+  let totalInst=0;
+
+  for(const t of tests){
+    vmRegs[0]=t.sim;vmRegs[1]=t.align;vmRegs[2]=t.prox;vmRegs[3]=t.energy;
+    for(let r=4;r<12;r++)vmRegs[r]=0; // no particle memory in profiler
+    vmActions[0]=0;vmActions[1]=0;vmActions[2]=0;vmActions[3]=0;vmActions[4]=0;vmActions[5]=0;vmActions[6]=0;
+
+    const prog=genome.vmProgram;
+    const nInst=Math.min(prog.length,genome.vmMaxInstructions);
+
+    for(let ip=0;ip<nInst;ip++){
+      const inst=prog[ip];if(!inst)continue;
+      const [op,src,dst,k]=inst;
+      const si=Math.abs(src)%12,di=Math.abs(dst)%12;
+      switch(op){
+        case 0:vmRegs[di]=vmRegs[si];break;
+        case 1:vmRegs[di]+=vmRegs[si]*k;break;
+        case 2:vmRegs[di]*=vmRegs[si]*(k||1);break;
+        case 3:vmRegs[di]=vmRegs[si]>k?1:0;break;
+        case 4:{const ai=Math.abs(dst)%7;vmActions[ai]+=vmRegs[si]*k;}break;
+        case 5:{const fi=Math.abs(src)%7;vmRegs[di]=vmActions[fi];}break;
+        case 6:vmRegs[di]=0;break; // no particle memory in profiler tests
+        case 7:break; // skip STORE_MEM in profiler
+        case 8:vmRegs[di]=0.5;break; // stub READ_FIELD in profiler
+        case 9:break; // skip WRITE_FIELD in profiler
+        case 10:break; // skip CLUSTER_WRITE_FIELD in profiler
+      }
+      for(let r=0;r<12;r++)vmRegs[r]=Math.max(-8,Math.min(8,vmRegs[r]));
+    }
+
+    for(let a=0;a<7;a++)totals[a]+=vmActions[a];
+    totalInst+=nInst;
+  }
+
+  const n=tests.length;
+  vmPhenotype.force=totals[0]/n;
+  vmPhenotype.phaseShift=totals[1]/n;
+  vmPhenotype.ampTransfer=totals[2]/n;
+  vmPhenotype.tendBleed=totals[3]/n;
+  vmPhenotype.spawnDrive=totals[4]/n;
+  vmPhenotype.sigModulate=totals[5]/n;
+  vmPhenotype.mutPressure=totals[6]/n;
+  vmPhenotype.avgCost=totalInst*genome.metabolicCost/n;
+  vmPhenotype.lastProfileTick=genome.totalTicks;
+}
+
+// ═══ EVOLVABLE FITNESS SENSORS ═══
+// Short bytecode programs that measure novel properties of the system state.
+// Each sensor reads from state registers, computes a scalar, and contributes
+// to fitness with its own evolved weight. The system discovers what to value.
+// State registers: S0=stability, S1=avgCoherence, S2=diversity, S3=clusterCount,
+//                  S4=avgAmp, S5=fieldEnergy, S6=persistentRatio, S7=collapseRisk
+function evaluateSensors(){
+  const sensors=genome.fitnessSensors;
+  if(!sensors||sensors.length===0)return 0;
+
+  // Build state register bank
+  const alive=palive.reduce((a,v,i)=>a+(i<N&&v?1:0),0);
+  const fieldEnergy=field.reduce((a,b)=>a+b,0)/300;
+  const persistent=clusters.filter(c=>c.persistAge>3).length;
+  const avgAmp_=alive>0?amp.reduce((a,v,i)=>a+(i<N&&palive[i]?v:0),0)/alive:0;
+
+  const S=new Float32Array(8);
+  S[0]=selfModel.stability||0;
+  S[1]=selfModel.avgCoherence||0;
+  S[2]=selfModel.diversity||0;
+  S[3]=clusters.length/10; // normalized
+  S[4]=avgAmp_;
+  S[5]=fieldEnergy;
+  S[6]=clusters.length>0?persistent/clusters.length:0;
+  S[7]=selfModel.collapseRisk||0; // NEW: sensors can detect approaching collapse
+
+  let totalScore=0;
+  let totalWeight=0;
+
+  for(const sensor of sensors){
+    // Execute sensor program (pure computation, no side effects)
+    const regs=new Float32Array(8);
+    for(let r=0;r<8;r++)regs[r]=S[r]; // copy state
+
+    for(const inst of sensor.program){
+      const[op,src,dst,k]=inst;
+      const si=Math.abs(src)%8,di=Math.abs(dst)%8;
+      switch(op){
+        case 0:regs[di]=regs[si];break;
+        case 1:regs[di]+=regs[si]*k;break;
+        case 2:regs[di]*=regs[si]*(k||1);break;
+        case 3:regs[di]=regs[si]>k?1:0;break;
+        case 4:totalScore+=regs[si]*k*sensor.weight;totalWeight+=Math.abs(sensor.weight);break; // EMIT to fitness
+      }
+      for(let r=0;r<8;r++)regs[r]=Math.max(-8,Math.min(8,regs[r]));
+    }
+  }
+
+  return totalWeight>0?totalScore/totalWeight:0;
+}
+
+function runShadowSim(){
+  if(clusters.length<2)return;
+
+  // ═══ A. TRUE CLUSTER GRAPH FORK ═══
+  const graphState=clusters.map(c=>({
+    size:c.size,
+    tendency:c.tendency.slice(),
+    coherence:c.coherence,
+    avgAmp:c.avgAmp,
+    persistAge:c.persistAge||0,
+    cx:c.cx,cy:c.cy
+  }));
+
+  const nC=graphState.length;
+  const interactions=new Float32Array(nC*nC);
+  for(let i=0;i<nC;i++){
+    for(let j=i+1;j<nC;j++){
+      let tSim=0;
+      for(let d=0;d<DIMS;d++)tSim+=graphState[i].tendency[d]*graphState[j].tendency[d];
+      const dx=graphState[i].cx-graphState[j].cx,dy=graphState[i].cy-graphState[j].cy;
+      const dist=Math.sqrt(dx*dx+dy*dy);
+      const proximity=Math.max(0,1-dist/(CELL*5));
+      interactions[i*nC+j]=tSim*proximity;
+      interactions[j*nC+i]=interactions[i*nC+j];
+    }
+  }
+
+  // ═══ B. CLONE FIELD FOR EACH SCENARIO ═══
+  // Each counterfactual future gets its own forked environment
+  const fieldScenarios=[];
+  for(let s=0;s<SHADOW_SCENARIOS;s++){
+    fieldScenarios.push(new Float32Array(field));
+  }
+
+  const deltas=[
+    {e:+0.00015,k:0,r:0,c:0,t:0},
+    {e:-0.00015,k:0,r:0,c:0,t:0},
+    {e:0,k:0,r:+0.003,c:0,t:0},
+    {e:0,k:0,r:-0.003,c:0,t:0},
+    {e:0,k:+0.00005,r:0,c:-0.03,t:-0.02},
+  ];
+
+  for(let s=0;s<SHADOW_SCENARIOS;s++){
+    const d=deltas[s];
+    const fE=genome.entropyBaseline+d.e;
+    const fK=genome.entropyK+d.k;
+    const fR=genome.entrainRate+d.r;
+    const fC=genome.creationCost+d.c;
+
+    const sim=graphState.map(c=>({...c,tendency:c.tendency.slice()}));
+    const fSim=fieldScenarios[s]; // forked field for this scenario
+
+    for(let t=0;t<genome.shadowHorizon;t++){
+      for(let i=0;i<sim.length;i++){
+        // BASE PHYSICS
+        sim[i].avgAmp-=fE;
+        sim[i].avgAmp+=sim[i].coherence*fK*sim[i].size*0.1;
+
+        // VM PHENOTYPE INFLUENCE
+        const vmInf=genome.vmInfluence*genome.ruleScale*0.002;
+        if(vmPhenotype.force>0)sim[i].coherence+=vmPhenotype.force*vmInf*0.02;
+        else sim[i].coherence+=vmPhenotype.force*vmInf*0.01;
+        sim[i].coherence+=Math.abs(vmPhenotype.phaseShift)*vmInf*0.01;
+        sim[i].avgAmp+=vmPhenotype.ampTransfer*vmInf*0.005*sim[i].size;
+
+        if(vmPhenotype.spawnDrive>0.1&&sim[i].avgAmp>0.3&&Math.random()<vmPhenotype.spawnDrive*vmInf*0.01){
+          sim[i].size+=1;
+          sim[i].avgAmp-=fC*0.2;
+        }
+
+        sim[i].avgAmp-=vmPhenotype.avgCost*vmInf*sim[i].size*0.1;
+
+        // Entrainment from neighbors
+        for(let j=0;j<sim.length;j++){
+          if(i===j)continue;
+          const inter=interactions[i*nC+j];
+          if(inter>0.1)sim[i].coherence+=(inter*fR-sim[i].coherence)*0.01;
+        }
+
+        // Creation
+        if(sim[i].coherence>0.5&&sim[i].avgAmp>0.3&&Math.random()<0.02){
+          sim[i].avgAmp-=fC*0.3;
+          sim[i].size+=2;
+        }
+
+        // Death
+        if(sim[i].avgAmp<0.1)sim[i].size=Math.max(0,sim[i].size-2);
+
+        sim[i].avgAmp=Math.max(0,Math.min(1.2,sim[i].avgAmp));
+        sim[i].coherence=Math.max(0,Math.min(1,sim[i].coherence));
+      }
+
+      // ═══ C. DIFFUSE + DECAY THE FORKED FIELD ═══
+      // The imagined environment evolves alongside the imagined population
+      for(let y=0;y<FIELD_H;y++){
+        for(let x=0;x<FIELD_W;x++){
+          const idx=y*FIELD_W+x;
+          let sum=fSim[idx]*(1-FIELD_DIFFUSE*4);
+          if(x>0)sum+=fSim[idx-1]*FIELD_DIFFUSE;
+          if(x<FIELD_W-1)sum+=fSim[idx+1]*FIELD_DIFFUSE;
+          if(y>0)sum+=fSim[(y-1)*FIELD_W+x]*FIELD_DIFFUSE;
+          if(y<FIELD_H-1)sum+=fSim[(y+1)*FIELD_W+x]*FIELD_DIFFUSE;
+          fSim[idx]=sum*FIELD_DECAY;
+        }
+      }
+    }
+
+    // ═══ D. SCORE OUTCOME — now includes engineered environment ═══
+    const surviving=sim.filter(c=>c.size>2);
+    const sPop=surviving.reduce((a,c)=>a+c.size,0);
+    const sDiv=simDiversity(surviving);
+    const sCoh=surviving.length>0?surviving.reduce((a,c)=>a+c.coherence,0)/surviving.length:0;
+    const sNov=surviving.filter(c=>c.persistAge<2).length;
+    const sField=fSim.reduce((a,b)=>a+b,0)/300; // how rich the engineered field remains
+
+    const popDrift=Math.abs(sPop-selfModel.population)/Math.max(1,selfModel.population);
+    const popScore=Math.max(0,1-popDrift);
+
+    // GENOME-CONTROLLED FIELD WEIGHT — system discovers how much to value its environment
+    const fw=genome.fieldWeight;
+    const w=genome.objWeights;
+    const wTotal=w[0]+w[1]+w[2]+w[3]+0.001;
+
+    // EVOLVABLE FITNESS SENSORS — novel dimensions the system discovered
+    const sensorScore=evaluateSensors();
+    const sensorWeight=genome.fitnessSensors.reduce((a,s)=>a+Math.abs(s.weight),0);
+
+    shadowResults[s]=(popScore*w[0]+sDiv*w[1]+sCoh*w[2]+(sNov/Math.max(1,nC))*w[3]+sField*fw+sensorScore*sensorWeight)/(wTotal+fw+sensorWeight);
+  }
+
+  // Apply winning scenario
+  let bestS=0,bestV=-1;
+  for(let s=0;s<SHADOW_SCENARIOS;s++){if(shadowResults[s]>bestV){bestV=shadowResults[s];bestS=s}}
+
+  const ps=genome.perturbScale;
+  const nudge=[
+    {e:+0.000003*ps,k:0,r:0,c:0,t:0},
+    {e:-0.000003*ps,k:0,r:0,c:0,t:0},
+    {e:0,k:0,r:+0.00015*ps,c:0,t:0},
+    {e:0,k:0,r:-0.00015*ps,c:0,t:0},
+    {e:0,k:+0.000003*ps,r:0,c:-0.0015*ps,t:-0.0008*ps},
+  ];
+  const n=nudge[bestS];
+  genome.entropyBaseline=Math.max(0.0001,Math.min(0.003,genome.entropyBaseline+(n.e||0)));
+  genome.entrainRate=Math.max(0.003,Math.min(0.05,genome.entrainRate+(n.r||0)));
+  genome.creationCost=Math.max(0.1,Math.min(0.6,genome.creationCost+(n.c||0)));
+  genome.entrainThresh=Math.max(0.08,Math.min(0.55,genome.entrainThresh+(n.t||0)));
+  genome.entropyK=Math.max(0.00005,Math.min(0.002,genome.entropyK+(n.k||0)));
+}
+
+function simDiversity(cs){
+  if(cs.length<2)return 0;
+  let total=0,pairs=0;
+  for(let i=0;i<cs.length;i++)for(let j=i+1;j<cs.length;j++){
+    let d=0;
+    for(let dd=0;dd<DIMS;dd++){const diff=cs[i].tendency[dd]-cs[j].tendency[dd];d+=diff*diff}
+    total+=Math.sqrt(d);pairs++;
+  }
+  return pairs>0?Math.min(1,total/pairs):0;
+}
+
+// ═══ CLUSTER DIVERGENCE MEASUREMENT ═══
+// Quantifies how different two clusters are in VM program + field signature + tendency.
+// Used for observation, not to trigger events.
+function clusterDivergence(a,b){
+  if(!a||!b)return 0;
+  // VM program distance: fraction of instructions that differ meaningfully
+  let vmDist=0;
+  const minLen=Math.min(a.vmProgram.length,b.vmProgram.length);
+  const maxLen=Math.max(a.vmProgram.length,b.vmProgram.length);
+  for(let i=0;i<minLen;i++){
+    const ai=a.vmProgram[i],bi=b.vmProgram[i];
+    if(ai[0]!==bi[0])vmDist+=0.5; // different opcode
+    if(ai[1]!==bi[1]||ai[2]!==bi[2])vmDist+=0.25; // different registers
+    vmDist+=Math.abs(ai[3]-bi[3])*0.15; // constant distance
+  }
+  vmDist+=(maxLen-minLen)*0.5; // length difference penalty
+  vmDist=Math.min(1,vmDist/Math.max(1,maxLen));
+
+  // Signature distance
+  let sigDist=0;
+  if(a.fieldSignature&&b.fieldSignature){
+    for(let s=0;s<FIELD_SIG_DIMS;s++){
+      sigDist+=Math.abs(a.fieldSignature[s]-b.fieldSignature[s]);
+    }
+    sigDist=Math.min(1,sigDist/FIELD_SIG_DIMS);
+  }
+
+  // Tendency distance
+  let tendDist=0;
+  for(let d=0;d<DIMS;d++){
+    tendDist+=(a.tendency[d]-b.tendency[d])*(a.tendency[d]-b.tendency[d]);
+  }
+  tendDist=Math.min(1,Math.sqrt(tendDist));
+
+  return vmDist*0.4+sigDist*0.35+tendDist*0.25;
+}
+
+// ═══ FULL GENOME MUTATION ═══
+// Not just objective weights. EVERYTHING mutates.
+// Including the mutation rate itself.
+// ═══ INSTRUMENTATION — governance metrics time-series ═══
+const INST_MAX=200; // max data points (rolling window)
+const inst={
+  ticks:[],           // tick stamps
+  vmEntropy:[],       // Shannon entropy of VM program opcode distribution
+  plasmidPop:[],      // fraction of particles carrying plasmids
+  plasmidTotal:[],    // total plasmid instructions in population
+  vmInfluence:[],     // genome.vmInfluence over time
+  mutRate:[],         // genome.mutationRate over time
+  fitness:[],         // currentFitness over time
+  stability:[],       // selfModel.stability over time
+  population:[],      // alive count over time
+  deathsPhysics:[],   // deaths from amplitude decay (physics)
+  deathsFitness:[],   // deaths we can attribute to evaluation pressure
+  hgtRate:[],         // HGT events per measurement window
+  avgPlasmidLen:[],   // average plasmid instructions per carrier
+  opcodeHist:[],      // opcode frequency in global program over time
+};
+let deathsByPhysics=0,deathsByAge=0;
+let hgtWindow=0; // HGT events since last measurement
+let dashboardVisible=true; // always on — touch events unreliable at high particle counts
+
+function calcVMEntropy(){
+  const prog=genome.vmProgram;
+  if(prog.length===0)return 0;
+  const counts=new Array(11).fill(0);
+  for(const inst of prog)counts[Math.min(10,inst[0])]++;
+  let entropy=0;
+  for(let i=0;i<11;i++){
+    if(counts[i]===0)continue;
+    const p=counts[i]/prog.length;
+    entropy-=p*Math.log2(p);
+  }
+  return entropy; // max ~3 bits for 8 opcodes
+}
+
+function sampleInstrumentation(){
+  const alive=selfModel.population||1;
+  let plmParts=0,plmTotal=0;
+  for(let i=0;i<N;i++){if(palive[i]&&pPlasmidLen[i]>0){plmParts++;plmTotal+=pPlasmidLen[i]}}
+
+  inst.ticks.push(genome.totalTicks);
+  inst.vmEntropy.push(+(calcVMEntropy().toFixed(3)));
+  inst.plasmidPop.push(+(plmParts/Math.max(1,alive)).toFixed(3));
+  inst.plasmidTotal.push(plmTotal);
+  inst.vmInfluence.push(+(genome.vmInfluence.toFixed(3)));
+  inst.mutRate.push(+(genome.mutationRate.toFixed(4)));
+  inst.fitness.push(+(currentFitness.toFixed(3)));
+  inst.stability.push(+(selfModel.stability.toFixed(3)));
+  inst.population.push(alive);
+  inst.deathsPhysics.push(deathsByPhysics);
+  inst.deathsFitness.push(deathsByAge);
+  inst.hgtRate.push(hgtWindow);
+  inst.avgPlasmidLen.push(plmParts>0?+(plmTotal/plmParts).toFixed(2):0);
+
+  // Opcode histogram snapshot
+  const counts=new Array(11).fill(0);
+  for(const instr of genome.vmProgram)counts[Math.min(10,instr[0])]++;
+  inst.opcodeHist.push(counts.slice());
+
+  // Reset counters
+  deathsByPhysics=0;deathsByAge=0;hgtWindow=0;
+
+  // Rolling window
+  for(const key of Object.keys(inst)){
+    if(inst[key].length>INST_MAX)inst[key].shift();
+  }
+}
+// Runs on a subset of particles each mutation cycle (not all — too expensive)
+// ═══ DASHBOARD OVERLAY — governance metrics as sparklines ═══
+function renderDashboard(){
+  if(!dashboardVisible||inst.ticks.length<3)return;
+
+  const pad=8,lineH=28,chartW=120,chartH=18;
+  const startX=W-chartW-pad-90,startY=pad+20;
+
+  const nMetrics=8;
+  X.fillStyle='rgba(0,0,0,0.7)';
+  X.fillRect(startX-pad,startY-pad,chartW+90+pad*2,nMetrics*lineH+pad*2+20);
+
+  X.font='9px monospace';X.textBaseline='middle';
+
+  const metrics=[
+    {name:'VMentrpy',data:inst.vmEntropy,color:'#88ccff',max:3.2},
+    {name:'Plm pop%',data:inst.plasmidPop,color:'#ffcc44',max:1},
+    {name:'vmInflnc',data:inst.vmInfluence,color:'#aa88ff',max:1},
+    {name:'mutRate ',data:inst.mutRate,color:'#ff8866',max:0.5},
+    {name:'fitness ',data:inst.fitness,color:'#66ff88',max:1},
+    {name:'stabilty',data:inst.stability,color:'#88ffcc',max:1},
+    {name:'pop     ',data:inst.population,color:'#cccccc',max:0},
+    {name:'HGT/win ',data:inst.hgtRate,color:'#ffaa44',max:0},
+  ];
+
+  for(let m=0;m<metrics.length;m++){
+    const met=metrics[m];
+    const y=startY+m*lineH;
+    const data=met.data;
+    const len=data.length;
+    if(len<2)continue;
+
+    let dMax=met.max>0?met.max:Math.max(1,...data)*1.1;
+
+    X.fillStyle=met.color;
+    X.fillText(met.name,startX,y+chartH/2);
+
+    const cur=data[len-1];
+    X.fillStyle='#ffffff';
+    X.fillText(typeof cur==='number'&&cur.toFixed?cur.toFixed(2):String(cur),startX+56,y+chartH/2);
+
+    const cx=startX+88,cy=y;
+    X.beginPath();
+    for(let d=0;d<len;d++){
+      const sx=cx+(d/(len-1))*chartW;
+      const sy=cy+chartH-(data[d]/dMax)*chartH;
+      if(d===0)X.moveTo(sx,sy);else X.lineTo(sx,sy);
+    }
+    X.strokeStyle=met.color;X.lineWidth=1;X.stroke();
+
+    X.beginPath();X.moveTo(cx,cy+chartH);X.lineTo(cx+chartW,cy+chartH);
+    X.strokeStyle='rgba(255,255,255,0.1)';X.lineWidth=0.5;X.stroke();
+  }
+
+  // Opcode distribution bar
+  if(inst.opcodeHist.length>0){
+    const y=startY+nMetrics*lineH;
+    const hist=inst.opcodeHist[inst.opcodeHist.length-1];
+    const total=hist.reduce((a,b)=>a+b,0)||1;
+    const opColors=['#888','#8af','#a8f','#ff8','#f84','#4f8','#4af','#fa4','#0ed','#0be','#0fb'];
+    X.fillStyle='rgba(255,255,255,0.5)';
+    X.fillText('opcodes:',startX,y+9);
+    let bx=startX+88;
+    for(let o=0;o<11;o++){
+      const w=(hist[o]/total)*chartW;
+      X.fillStyle=opColors[o];
+      X.fillRect(bx,y,Math.max(0.5,w),12);
+      bx+=w;
+    }
+  }
+
+  // ═══ PHYLOGENY + LINEAGE PANEL ═══
+  const phyloX=pad+8;
+  const phyloY=startY;
+  const phyloW=180;
+
+  // Gather living lineages with their clusters
+  const lineageMap=new Map(); // lid → [clusters]
+  for(const c of clusters){
+    if(!c.lineageID)continue;
+    if(!lineageMap.has(c.lineageID))lineageMap.set(c.lineageID,[]);
+    lineageMap.get(c.lineageID).push(c);
+  }
+
+  const livingLineages=[...lineageMap.entries()].sort((a,b)=>{
+    const ea=lineageRegistry.get(a[0]),eb=lineageRegistry.get(b[0]);
+    return(ea?ea.birthTick:0)-(eb?eb.birthTick:0);
+  });
+  const nLin=Math.min(12,livingLineages.length);
+  const phyloH=nLin*20+80;
+
+  X.fillStyle='rgba(0,0,0,0.75)';
+  X.fillRect(phyloX-pad,phyloY-pad,phyloW+pad*2,phyloH+pad*2);
+
+  X.font='9px monospace';X.textBaseline='top';
+  X.fillStyle='rgba(200,210,220,0.7)';
+  X.fillText(`LINEAGES: ${livingLineages.length} alive, ${lineageRegistry.size} total`,phyloX,phyloY);
+
+  // List living lineages with color, size, age, divergence
+  for(let li=0;li<nLin;li++){
+    const[lid,cls]=livingLineages[li];
+    const entry=lineageRegistry.get(lid);
+    if(!entry)continue;
+    const y=phyloY+16+li*20;
+    const col=entry.color;
+
+    // Lineage color swatch
+    X.fillStyle=`rgb(${col[0]|0},${col[1]|0},${col[2]|0})`;
+    X.fillRect(phyloX,y+2,8,8);
+
+    // Lineage info
+    const totalSize=cls.reduce((a,c)=>a+c.size,0);
+    const age=genome.totalTicks-entry.birthTick;
+    const ageStr=age>6000?Math.floor(age/600)+'k':age>600?Math.floor(age/60)+'c':String(age);
+    const buds=entry.budCount;
+    const parentSym=entry.parentLineage>0?'←'+entry.parentLineage:'⊙';
+
+    X.fillStyle='rgba(220,220,230,0.8)';
+    X.fillText(`L${lid} ${cls.length}cl ${totalSize}p age:${ageStr} ${buds}bud ${parentSym}`,phyloX+12,y);
+  }
+
+  // Divergence matrix — pairwise divergence between living lineages (top 6)
+  const topLineages=livingLineages.slice(0,6);
+  if(topLineages.length>=2){
+    const matY=phyloY+16+nLin*20+8;
+    X.fillStyle='rgba(200,210,220,0.5)';
+    X.fillText('DIVERGENCE:',phyloX,matY);
+
+    const matStart=matY+12;
+    const cellSz=14;
+    for(let i=0;i<topLineages.length;i++){
+      const[lidA,clsA]=topLineages[i];
+      const colA=lineageRegistry.get(lidA)?.color||[128,128,128];
+      // Row label
+      X.fillStyle=`rgb(${colA[0]|0},${colA[1]|0},${colA[2]|0})`;
+      X.fillRect(phyloX,matStart+i*cellSz+2,6,6);
+
+      for(let j=i+1;j<topLineages.length;j++){
+        const[lidB,clsB]=topLineages[j];
+        // Compute divergence between representative clusters
+        const repA=clsA[0],repB=clsB[0];
+        const div=clusterDivergence(repA,repB);
+        // Color: green=low divergence, red=high divergence
+        const dR=Math.min(255,Math.floor(div*500));
+        const dG=Math.min(255,Math.floor((1-div)*300));
+        X.fillStyle=`rgba(${dR},${dG},60,0.7)`;
+        X.fillRect(phyloX+10+j*cellSz,matStart+i*cellSz,cellSz-1,cellSz-1);
+        // Value text
+        X.fillStyle='rgba(255,255,255,0.7)';
+        X.fillText(div.toFixed(1),phyloX+11+j*cellSz,matStart+i*cellSz+2);
+      }
+    }
+  }
+}
+
+function evolvePlasmids(){
+  const sampleSize=Math.min(N,Math.floor(N*0.085)+40); // scales with population
+
+  for(let s=0;s<sampleSize;s++){
+    const i=Math.floor(Math.random()*N);
+    if(!palive[i])continue;
+
+    let nP=pPlasmidLen[i];
+
+    // Stress-induced evolvability (low amp = higher mutation)
+    const stress=Math.max(0,1-amp[i]*1.65);
+    const effectiveMutRate=genome.plasmidMutRate*(1+stress*5.5);
+
+    for(let p=0;p<nP;p++){
+      if(Math.random()>effectiveMutRate)continue;
+
+      const base=i*PLASMID_SLOTS+p*4;
+      const roll=Math.random();
+
+      if(roll<0.38){
+        // Gentle point mutation on constant
+        pPlasmid[base+3]+=(Math.random()-0.5)*0.48;
+        pPlasmid[base+3]=Math.max(-3.8,Math.min(3.8,pPlasmid[base+3]));
+      }
+      else if(roll<0.58){
+        // Structural change (opcode or registers)
+        if(Math.random()<0.5)pPlasmid[base]=Math.floor(Math.random()*16);
+        else{
+          pPlasmid[base+1]=Math.floor(Math.random()*12);
+          pPlasmid[base+2]=Math.floor(Math.random()*12);
+        }
+      }
+      else if(roll<0.78&&nP<MAX_PLASMID){
+        // DUPLICATION — prefer functional (EMIT) instructions, like HGT
+        let srcP=p;
+        const emitters=[];
+        for(let k=0;k<nP;k++){
+          if(pPlasmid[i*PLASMID_SLOTS+k*4]===4)emitters.push(k);
+        }
+        if(emitters.length>0&&Math.random()<0.65){
+          srcP=emitters[Math.floor(Math.random()*emitters.length)];
+        }
+        const newBase=i*PLASMID_SLOTS+nP*4;
+        for(let v=0;v<4;v++)pPlasmid[newBase+v]=pPlasmid[i*PLASMID_SLOTS+srcP*4+v];
+        pPlasmid[newBase+3]+=(Math.random()-0.5)*0.35;
+        pPlasmidLen[i]++;
+        nP++;
+      }
+      else if(roll<0.88&&nP>1){
+        // Deletion (rare, only when bloated)
+        for(let q=p;q<nP-1;q++){
+          for(let v=0;v<4;v++)pPlasmid[i*PLASMID_SLOTS+q*4+v]=pPlasmid[i*PLASMID_SLOTS+(q+1)*4+v];
+        }
+        pPlasmidLen[i]--;
+        p--;
+        nP--;
+      }
+      else if(nP>1){
+        // Recombination — swap registers between two random instructions on same particle
+        const p2=Math.floor(Math.random()*nP);
+        if(p2===p)continue;
+        const base2=i*PLASMID_SLOTS+p2*4;
+        const tempSrc=pPlasmid[base+1];
+        const tempDst=pPlasmid[base+2];
+        pPlasmid[base+1]=pPlasmid[base2+1];
+        pPlasmid[base+2]=pPlasmid[base2+2];
+        pPlasmid[base2+1]=tempSrc;
+        pPlasmid[base2+2]=tempDst;
+      }
+    }
+
+    // Spontaneous generation — only in high-resonance environments
+    if(nP<MAX_PLASMID&&Math.random()<genome.plasmidSpawnRate*(1+localRes[i]*4)){
+      const newBase=i*PLASMID_SLOTS+nP*4;
+      pPlasmid[newBase]=Math.floor(Math.random()*16);
+      pPlasmid[newBase+1]=Math.floor(Math.random()*12);
+      pPlasmid[newBase+2]=Math.floor(Math.random()*12);
+      pPlasmid[newBase+3]=(Math.random()-0.5)*0.75;
+      pPlasmidLen[i]++;
+    }
+  }
+}
+
+// ═══ HORIZONTAL GENE TRANSFER ═══
+// Runs once per mutation cycle (not per interaction!).
+// Gated by peak resonance bond in the recent tick window.
+// High resonance = the population is coherent = good time to share code.
+// Copies 1-hgtMax instructions from the existing program, mutates slightly,
+// and splices them back at random positions. Successful code duplicates.
+function attemptHGT(){
+  if(peakBondThisTick<0.4)return; // not enough resonance to trigger
+  if(Math.random()>genome.hgtRate)return;
+  if(genome.vmProgram.length>=genome.vmMaxInstructions-1)return;
+
+  const transfers=1+Math.floor(Math.random()*Math.min(genome.hgtMax,genome.vmMaxInstructions-genome.vmProgram.length));
+
+  for(let t=0;t<transfers;t++){
+    if(genome.vmProgram.length>=genome.vmMaxInstructions)break;
+
+    // Pick a source instruction (biased toward instructions that emit — they're "successful")
+    let srcIdx;
+    const emitters=genome.vmProgram.map((inst,idx)=>inst[0]===4?idx:-1).filter(x=>x>=0);
+    if(emitters.length>0&&Math.random()<0.6){
+      srcIdx=emitters[Math.floor(Math.random()*emitters.length)];
+    }else{
+      srcIdx=Math.floor(Math.random()*genome.vmProgram.length);
+    }
+
+    const donor=[...genome.vmProgram[srcIdx]];
+    // Light mutation on transfer (conjugation isn't perfect copy)
+    donor[3]+=(Math.random()-0.5)*genome.hgtSpliceNoise;
+    donor[3]=Math.max(-2.5,Math.min(2.5,donor[3]));
+    // Occasional opcode drift during transfer
+    if(Math.random()<0.08)donor[0]=Math.floor(Math.random()*16);
+
+    const insertPos=Math.floor(Math.random()*(genome.vmProgram.length+1));
+    genome.vmProgram.splice(insertPos,0,donor);
+  }
+
+  hgtEventsTotal++;
+  hgtWindow++;
+  peakBondThisTick=0; // reset after transfer
+}
+
+// ═══ RESOURCE FIELD — shared writable environment with territorial signatures ═══
+// Energy diffuses and decays. Signatures blend during diffusion (territory fades at edges).
+// Ownership decays faster than energy — territory must be actively maintained.
+function updateField(){
+  for(let y=0;y<FIELD_H;y++){
+    for(let x=0;x<FIELD_W;x++){
+      const idx=y*FIELD_W+x;
+
+      // Energy diffusion + decay — MEMORY-DEPENDENT
+      // Cells with history decay slower. The world remembers what lived here.
+      let sum=field[idx]*(1-FIELD_DIFFUSE*4);
+      if(x>0)sum+=field[idx-1]*FIELD_DIFFUSE;
+      if(x<FIELD_W-1)sum+=field[idx+1]*FIELD_DIFFUSE;
+      if(y>0)sum+=field[(y-1)*FIELD_W+x]*FIELD_DIFFUSE;
+      if(y<FIELD_H-1)sum+=field[(y+1)*FIELD_W+x]*FIELD_DIFFUSE;
+      const memBonus=Math.min(0.015,fieldMemory[idx]*0.003); // history slows decay, max 0.015
+      field[idx]=sum*(FIELD_DECAY+memBonus);
+      if(isNaN(field[idx]))field[idx]=0;
+
+      // Update field memory — writing to a cell accumulates history
+      if(field[idx]>0.1){
+        fieldMemory[idx]=Math.min(5,fieldMemory[idx]+0.001); // slow accumulation
+      }else{
+        fieldMemory[idx]*=0.9995; // very slow forgetting — scars last
+      }
+
+      // Signature diffusion — signatures blend at territory borders
+      const sBase=idx*FIELD_SIG_DIMS;
+      for(let s=0;s<FIELD_SIG_DIMS;s++){
+        let sSum=fieldSig[sBase+s]*(1-FIELD_DIFFUSE*4);
+        if(x>0)sSum+=fieldSig[(idx-1)*FIELD_SIG_DIMS+s]*FIELD_DIFFUSE;
+        if(x<FIELD_W-1)sSum+=fieldSig[(idx+1)*FIELD_SIG_DIMS+s]*FIELD_DIFFUSE;
+        if(y>0)sSum+=fieldSig[((y-1)*FIELD_W+x)*FIELD_SIG_DIMS+s]*FIELD_DIFFUSE;
+        if(y<FIELD_H-1)sSum+=fieldSig[((y+1)*FIELD_W+x)*FIELD_SIG_DIMS+s]*FIELD_DIFFUSE;
+        fieldSig[sBase+s]=sSum*FIELD_DECAY;
+      }
+
+      // Ownership decays faster — territory must be actively maintained
+      fieldOwnership[idx]*=0.975;
+    }
+  }
+}
+
+function mutateGenome(){
+  // ═══ STRESS-RESPONSIVE MUTATION TIMING ═══
+  // Mutation rate is modulated by: (a) genome parameter, (b) system stability, (c) VM pressure
+  // Under collapse → mutate faster. Under stability → slower. VM code can push either way.
+  const stabilityFactor=Math.max(0.3,Math.min(2.0,
+    1.0+(1.0-selfModel.stability)*0.8  // instability increases mutation
+    -selfModel.stability*0.3            // stability decreases it
+    +Math.tanh(mutPressureAccum)*0.4    // VM channel 6 pushes mutation rate
+  ));
+  const rate=genome.mutationRate*stabilityFactor;
+  const scale=genome.mutationScale;
+  mutPressureAccum=0; // reset accumulator for next cycle
+
+  // Helper: maybe mutate a value
+  function maybe(val,min,max,magnitude){
+    if(Math.random()>rate)return val;
+    return Math.max(min,Math.min(max,val+(Math.random()-0.5)*magnitude*scale));
+  }
+
+  // LAYER 1: Physics mutations
+  genome.entropyBaseline=maybe(genome.entropyBaseline,0.00005,0.005,0.0002);
+  genome.entropyK=maybe(genome.entropyK,0.00002,0.003,0.0001);
+  genome.entrainRate=maybe(genome.entrainRate,0.002,0.06,0.003);
+  genome.entrainThresh=maybe(genome.entrainThresh,0.05,0.6,0.03);
+  genome.creationCost=maybe(genome.creationCost,0.05,0.7,0.04);
+  genome.creationThresh=maybe(genome.creationThresh,0.05,0.6,0.03);
+  genome.destructThresh=maybe(genome.destructThresh,-0.6,-0.05,0.03);
+  genome.tendencyBleed=maybe(genome.tendencyBleed,0.00005,0.003,0.0002);
+  genome.magneticThresh=maybe(genome.magneticThresh,0.1,0.8,0.04);
+  genome.velocityDamping=maybe(genome.velocityDamping,0.98,0.9999,0.003);
+  genome.deathThreshold=maybe(genome.deathThreshold,0.01,0.15,0.01);
+
+  // LAYER 2: Perception mutations
+  genome.clusterBondThresh=maybe(genome.clusterBondThresh,0.05,0.5,0.03);
+  genome.clusterMinSize=Math.max(2,Math.min(8,Math.round(maybe(genome.clusterMinSize,2,8,0.5))));
+  genome.ghostDecay=maybe(genome.ghostDecay,0.98,0.9999,0.003);
+  genome.ghostAmpDrip=maybe(genome.ghostAmpDrip,0.00005,0.002,0.0002);
+
+  // LAYER 3: Evaluation mutations (objective weights)
+  for(let i=0;i<4;i++){
+    if(Math.random()<rate)genome.objWeights[i]=Math.max(0.02,Math.min(0.7,genome.objWeights[i]+(Math.random()-0.5)*0.06*scale));
+  }
+  const wSum=genome.objWeights.reduce((a,b)=>a+b,0);
+  for(let i=0;i<4;i++)genome.objWeights[i]/=wSum;
+
+  // LAYER 4: META-MUTATIONS
+  genome.mutationRate=maybe(genome.mutationRate,0.01,0.25,0.02);
+  genome.mutationScale=maybe(genome.mutationScale,0.3,3.0,0.2);
+  genome.shadowHorizon=Math.max(10,Math.min(120,Math.round(maybe(genome.shadowHorizon,10,120,8))));
+  genome.perturbScale=maybe(genome.perturbScale,0.2,3.0,0.2);
+  genome.extinctionThresh=Math.max(2,Math.min(20,Math.round(maybe(genome.extinctionThresh,2,20,2))));
+  genome.motifMemorySize=Math.max(2,Math.min(10,Math.round(maybe(genome.motifMemorySize,2,10,1))));
+  genome.culturalBias=maybe(genome.culturalBias,0.05,0.6,0.04);
+
+  // Trim motif memory if size shrunk
+  while(genome.stableMotifs.length>genome.motifMemorySize)genome.stableMotifs.shift();
+
+  // ═══ LAYER 6: VM PROGRAM MUTATION ═══
+  // The system's discovered physics evolve.
+  // Instructions change. Programs grow/shrink. Conditional thresholds drift.
+  // vmInfluence evolves: the system decides how much its rules matter.
+  genome.vmInfluence=maybe(genome.vmInfluence,0.05,2.0,0.08);
+  genome.ruleScale=maybe(genome.ruleScale,0.2,3.0,0.2);
+  genome.vmMaxInstructions=Math.max(6,Math.min(20,Math.round(maybe(genome.vmMaxInstructions,6,20,1))));
+  genome.metabolicCost=maybe(genome.metabolicCost,0.000002,0.0002,0.00002);
+
+  // HGT parameter evolution
+  genome.hgtRate=maybe(genome.hgtRate,0.01,0.5,0.04);
+  genome.hgtMax=Math.max(1,Math.min(4,Math.round(maybe(genome.hgtMax,1,4,0.5))));
+  genome.hgtSpliceNoise=maybe(genome.hgtSpliceNoise,0.05,0.5,0.04);
+
+  // Plasmid parameter evolution
+  genome.plasmidTransferRate=maybe(genome.plasmidTransferRate,0.001,0.05,0.004);
+  genome.plasmidMutRate=maybe(genome.plasmidMutRate,0.005,0.15,0.015);
+  genome.plasmidTransferThresh=maybe(genome.plasmidTransferThresh,0.3,0.85,0.05);
+  genome.plasmidSpawnRate=maybe(genome.plasmidSpawnRate,0.0005,0.01,0.001);
+  genome.fieldInfluence=maybe(genome.fieldInfluence,0.1,1.5,0.08);
+  genome.fieldWeight=maybe(genome.fieldWeight,0.02,0.8,0.04);
+
+  // ═══ AUTONOMY PARAMETER MUTATION ═══
+  genome.mutationInterval=maybe(genome.mutationInterval,60,1200,40);
+  genome.interactionRadius=maybe(genome.interactionRadius,25,120,5);
+  genome.densityCostK=maybe(genome.densityCostK,0.000003,0.0003,0.00003);
+  genome.fieldBirthGate=maybe(genome.fieldBirthGate,0.01,0.8,0.05);
+
+  // ═══ EVOLVABLE FITNESS SENSOR MUTATION ═══
+  // Mutate existing sensors (program + weight)
+  for(const sensor of genome.fitnessSensors){
+    // Weight mutation
+    if(Math.random()<rate)sensor.weight=Math.max(-1,Math.min(1,sensor.weight+(Math.random()-0.5)*0.1*scale));
+    // Program mutation
+    for(const inst of sensor.program){
+      if(Math.random()>rate*0.8)continue;
+      inst[3]+=(Math.random()-0.5)*0.2*scale;
+      inst[3]=Math.max(-2,Math.min(2,inst[3]));
+      if(Math.random()<0.15)inst[0]=Math.floor(Math.random()*5); // opcodes 0-4 only
+      if(Math.random()<0.15)inst[1]=Math.floor(Math.random()*8);
+      if(Math.random()<0.15)inst[2]=Math.floor(Math.random()*8);
+    }
+    // Add instruction to sensor
+    if(sensor.program.length<genome.sensorMaxInst&&Math.random()<rate*0.1){
+      sensor.program.push([Math.floor(Math.random()*5),Math.floor(Math.random()*8),Math.floor(Math.random()*8),(Math.random()-0.5)*0.5]);
+    }
+    // Remove instruction
+    if(sensor.program.length>1&&Math.random()<rate*0.05){
+      sensor.program.splice(Math.floor(Math.random()*sensor.program.length),1);
+    }
+  }
+  // Birth new sensor (rare)
+  if(genome.fitnessSensors.length<genome.maxSensors&&Math.random()<rate*0.03){
+    genome.fitnessSensors.push({
+      program:[[Math.floor(Math.random()*5),Math.floor(Math.random()*8),Math.floor(Math.random()*8),(Math.random()-0.5)]],
+      weight:0.05 // starts weak — has to prove its worth
+    });
+  }
+  // Death of useless sensor (very low weight = not contributing)
+  if(genome.fitnessSensors.length>1&&Math.random()<rate*0.02){
+    const weakest=genome.fitnessSensors.reduce((min,s,i)=>Math.abs(s.weight)<Math.abs(genome.fitnessSensors[min].weight)?i:min,0);
+    if(Math.abs(genome.fitnessSensors[weakest].weight)<0.03)genome.fitnessSensors.splice(weakest,1);
+  }
+
+  // Mutate existing instructions
+  for(let ip=0;ip<genome.vmProgram.length;ip++){
+    if(Math.random()>rate*1.2)continue;
+    const inst=genome.vmProgram[ip];
+
+    inst[3]+=(Math.random()-0.5)*0.15*scale;
+    inst[3]=Math.max(-2,Math.min(2,inst[3]));
+
+    // Opcode swap — now includes FEEDBACK (5), LOAD_MEM (6), STORE_MEM (7)
+    if(Math.random()<rate*0.2)inst[0]=Math.floor(Math.random()*16);
+
+    // Source register swap (now 12 registers)
+    if(Math.random()<rate*0.2)inst[1]=Math.floor(Math.random()*12);
+
+    // Destination register/action swap
+    if(Math.random()<rate*0.2)inst[2]=Math.floor(Math.random()*12);
+  }
+
+  // Program growth: insert a random instruction
+  if(genome.vmProgram.length<genome.vmMaxInstructions&&Math.random()<rate*0.15){
+    const pos=Math.floor(Math.random()*(genome.vmProgram.length+1));
+    const newInst=[Math.floor(Math.random()*16),Math.floor(Math.random()*12),Math.floor(Math.random()*12),(Math.random()-0.5)*0.6];
+    genome.vmProgram.splice(pos,0,newInst);
+  }
+
+  // Program shrinkage: delete an instruction
+  if(genome.vmProgram.length>6&&Math.random()<rate*0.1){
+    const pos=Math.floor(Math.random()*genome.vmProgram.length);
+    genome.vmProgram.splice(pos,1);
+  }
+
+  // Instruction duplication (with mutation — a powerful evolutionary operator)
+  if(genome.vmProgram.length<genome.vmMaxInstructions-1&&Math.random()<rate*0.08){
+    const src=Math.floor(Math.random()*genome.vmProgram.length);
+    const copy=[...genome.vmProgram[src]];
+    copy[3]+=(Math.random()-0.5)*0.2; // mutate the constant on copy
+    genome.vmProgram.splice(src+1,0,copy);
+  }
+
+  // Trim if over max
+  while(genome.vmProgram.length>genome.vmMaxInstructions)genome.vmProgram.pop();
+
+  // ═══ LAYER 9: CLUSTER VM MUTATION ═══
+  // Persistent clusters evolve their own programs independently.
+  // Young clusters keep their seed. Old clusters differentiate.
+  // vmInfluence per cluster also mutates — some clusters amplify their local policy,
+  // others let global physics dominate.
+  for(const c of clusters){
+    if(!c.vmProgram||c.persistAge<3)continue;
+    // Mutation probability scales with persistence — older clusters mutate more confidently
+    const clMutRate=rate*0.25*Math.min(2,1+c.persistAge*0.05);
+    for(let ip=0;ip<c.vmProgram.length;ip++){
+      if(Math.random()>clMutRate)continue;
+      const inst=c.vmProgram[ip];
+      // Constant drift
+      inst[3]+=(Math.random()-0.5)*0.15*scale;
+      inst[3]=Math.max(-2,Math.min(2,inst[3]));
+      // Structural mutations (rarer)
+      if(Math.random()<0.2)inst[0]=Math.floor(Math.random()*16);
+      if(Math.random()<0.15)inst[1]=Math.floor(Math.random()*12);
+      if(Math.random()<0.15)inst[2]=Math.floor(Math.random()*12);
+    }
+    // vmInfluence per cluster mutates
+    if(Math.random()<rate*0.3){
+      c.vmInfluence=Math.max(0.05,Math.min(1.5,c.vmInfluence+(Math.random()-0.5)*0.1*scale));
+    }
+    // Field signature drift — territorial identity evolves slowly
+    // This is what creates divergent group identities over time
+    if(c.fieldSignature&&Math.random()<rate*0.2){
+      for(let s=0;s<FIELD_SIG_DIMS;s++){
+        c.fieldSignature[s]+=(Math.random()-0.5)*0.06*scale;
+        c.fieldSignature[s]=Math.max(-1.5,Math.min(1.5,c.fieldSignature[s]));
+      }
+    }
+  }
+}
+
+// ═══ TEMPORAL GENOME COMPETITION — NO SAFETY RAILS ═══
+// Reversion is human fear. Let lineages die.
+// If genome drifts into extinction, the system RESTARTS from motifs.
+// That IS information — failed lineages are discarded.
+function archiveGenome(){
+  const snapshot={
+    params:{
+      entropyBaseline:genome.entropyBaseline,
+      entropyK:genome.entropyK,
+      entrainRate:genome.entrainRate,
+      entrainThresh:genome.entrainThresh,
+      creationCost:genome.creationCost,
+      objWeights:[...genome.objWeights]
+    },
+    fitness:currentFitness,
+    tick:genome.totalTicks
+  };
+  genomeArchive.push(snapshot);
+  if(genomeArchive.length>ARCHIVE_SIZE)genomeArchive.shift();
+  // PERSIST TO LOCALSTORAGE — survives page close
+  try{const g=encodeGenome();if(g.length<500000)localStorage.setItem('selection_genome',g)}catch(e){}
+}
+
+function checkExtinction(){
+  let alive=0;
+  for(let i=0;i<N;i++)if(palive[i])alive++;
+
+  if(alive<genome.extinctionThresh&&tick>500){
+    genome.extinctions++;
+    extinctionCount++;
+    lastExtinctionTick=genome.totalTicks;
+
+    genome.lineage.push({
+      t:genome.totalTicks,event:'extinction',
+      cause:selfModel.trend<0?'decline':'collapse',
+      lastFitness:+(currentFitness.toFixed(3)),
+      mutRate:+(genome.mutationRate.toFixed(3))
+    });
+    if(genome.lineage.length>4)genome.lineage.shift();
+
+    genome.generation++;
+    try{const g2=encodeGenome();if(g2.length<500000)localStorage.setItem('selection_genome',g2)}catch(e){}
+    N=0;
+    const n=Math.min(300,(W*H/3000)|0);
+
+    if(genome.stableMotifs.length>0){
+      const motifCount=Math.floor(n*genome.culturalBias);
+      for(let i=0;i<motifCount;i++){
+        const motif=genome.stableMotifs[Math.random()*genome.stableMotifs.length|0];
+        const tv=new Float32Array(DIMS);
+        for(let d=0;d<DIMS;d++)tv[d]=motif.t[d]+(Math.random()-0.5)*0.2;
+        addParticle(Math.random()*W,Math.random()*H,tv,false);
+      }
+      for(let i=motifCount;i<n;i++)addParticle(Math.random()*W,Math.random()*H,randomTendency(),false);
+    }else{
+      for(let i=0;i<n;i++)addParticle(Math.random()*W,Math.random()*H,randomTendency(),false);
+    }
+
+    // Post-extinction mutation burst — higher mutation for one cycle
+    const savedRate=genome.mutationRate;
+    genome.mutationRate=Math.min(0.25,genome.mutationRate*2);
+    mutateGenome();
+    genome.mutationRate=savedRate;
+
+    currentFitness=0;fitnessSamples=0;
+    genomeArchive.length=0;
+    genome.currentStableStreak=0;
+    saveGenome();
+    return true;
+  }
+  return false;
+}
+
+// ═══ D. REAL BOUNDARY INFERENCE — MULTI-DIMENSIONAL ═══
+// Track prediction errors across ALL structural dimensions.
+// A spike in ANY dimension = inferred external event.
+function inferBoundary(){
+  const dims=['pop','coherence','clusters','diversity'];
+  let anomalyScore=0;
+
+  for(const dim of dims){
+    const err=Math.abs(selfModel.errors[dim]);
+    // Compare to rolling baseline variance for this dimension
+    anomalyScore+=err;
+  }
+
+  // Store composite error for rolling baseline
+  selfModel.errorHistory.push(anomalyScore);
+  if(selfModel.errorHistory.length>20)selfModel.errorHistory.shift();
+
+  // Compute baseline: mean + 2*std of recent errors
+  if(selfModel.errorHistory.length>5){
+    const mean=selfModel.errorHistory.reduce((a,b)=>a+b,0)/selfModel.errorHistory.length;
+    const variance=selfModel.errorHistory.reduce((a,b)=>a+(b-mean)*(b-mean),0)/selfModel.errorHistory.length;
+    const threshold=mean+2*Math.sqrt(variance)+0.1;
+
+    if(anomalyScore>threshold*2){
+      selfModel.inferredExogenous=true;
+      // System recognizes external perturbation from multi-dimensional mismatch
+      // Response is subject to weight mutation — not hardcoded
+    }else{
+      selfModel.inferredExogenous=false;
+    }
+  }
+}
+
+function clusterDiversity(){
+  if(clusters.length<2)return 0;
+  // Average pairwise tendency distance between cluster centroids
+  let totalDist=0,pairs=0;
+  for(let i=0;i<clusters.length;i++){
+    for(let j=i+1;j<clusters.length;j++){
+      let d=0;
+      for(let dd=0;dd<DIMS;dd++){
+        const diff=clusters[i].tendency[dd]-clusters[j].tendency[dd];
+        d+=diff*diff;
+      }
+      totalDist+=Math.sqrt(d);
+      pairs++;
+    }
+  }
+  return pairs>0?Math.min(1,totalDist/pairs):0;
+}
+
+// ═══════════════════════════════════════
+// SELF-MODEL — structural, not scalar
+// ═══════════════════════════════════════
+const selfModel={
+  population:0,
+  popHistory:[],
+  deathRate:0,
+  birthRate:0,
+  avgResonance:0,
+  avgAmplitude:0,
+  trend:0,
+  // MULTI-DIMENSIONAL PREDICTION — not just population
+  predicted:{pop:0,coherence:0,clusters:0,diversity:0},
+  actual:{pop:0,coherence:0,clusters:0,diversity:0},
+  errors:{pop:0,coherence:0,clusters:0,diversity:0},
+  errorHistory:[], // rolling window of composite error magnitude
+  // Boundary inference — from multi-dimensional mismatch
+  inferredExogenous:false,
+  // Structural
+  clusterCount:0,
+  diversity:0,
+  avgCoherence:0,
+  persistentClusters:0,
+  // Self-derived stability (replaces hardcoded population target)
+  stability:0,
+  // ═══ NEW: FIELD TRAJECTORY + CAPACITY PRESSURE ═══
+  // The system needs to feel the approach of collapse, not just detect it after
+  fieldEnergy:0,         // current total field energy
+  fieldHistory:[],       // rolling window of field energy samples
+  fieldTrend:0,          // negative = depleting, positive = growing
+  capacityPressure:0,    // 0 = plenty of room, 1 = at hard cap
+  collapseRisk:0,        // composite: high cap pressure + declining field = danger
+};
+
+// Extinction tracking
+let extinctionCount=0;
+let lastExtinctionTick=0;
+
+// ═══════════════════════════════════════
+// EXOGENOUS PERTURBATIONS
+// Random noise the system cannot predict.
+// Forces distinction between self and environment.
+// ═══════════════════════════════════════
+function exogenousPerturbation(){
+  if(Math.random()>0.003)return; // rare, unpredictable
+  // NO COUNTER. NO BOOKKEEPING. The system is not told this happened.
+  // It must infer from prediction error alone.
+  const type=Math.random();
+  if(type<0.33){
+    // Amplitude storm — random subset loses amplitude
+    const cx=Math.random()*W,cy=Math.random()*H,r=50+Math.random()*100;
+    for(let i=0;i<N;i++){
+      if(!palive[i])continue;
+      const dx=px[i]-cx,dy=py[i]-cy;
+      if(dx*dx+dy*dy<r*r){
+        amp[i]*=0.7;
+        phase[i]+=(Math.random()-0.5)*1.5;
+      }
+    }
+    addShock(cx,cy,0.6,80,60,120);
+  }else if(type<0.66){
+    // Phase scramble — region loses coherence
+    const cx=Math.random()*W,cy=Math.random()*H,r=80+Math.random()*80;
+    for(let i=0;i<N;i++){
+      if(!palive[i])continue;
+      const dx=px[i]-cx,dy=py[i]-cy;
+      if(dx*dx+dy*dy<r*r){
+        phase[i]=Math.random()*Math.PI*2;
+        freq[i]+=(Math.random()-0.5)*0.01;
+      }
+    }
+    addShock(cx,cy,0.4,60,120,80);
+  }else{
+    // Tendency injection — foreign tendency vector floods a region
+    const cx=Math.random()*W,cy=Math.random()*H,r=60+Math.random()*60;
+    const foreign=randomTendency();
+    for(let i=0;i<N;i++){
+      if(!palive[i])continue;
+      const dx=px[i]-cx,dy=py[i]-cy;
+      if(dx*dx+dy*dy<r*r){
+        for(let d=0;d<DIMS;d++)tend[i*DIMS+d]+=(foreign[d]-tend[i*DIMS+d])*0.3;
+      }
+    }
+    addShock(cx,cy,0.5,120,100,60);
+  }
+}
+
+// ═══ TERRITORIAL FIELD HELPERS ═══
+// Compute similarity between a cluster's signature and what's deposited in a field cell.
+// Returns 0-1: 0 = completely foreign territory, 1 = home territory.
+function fieldAffinity(fieldIdx,clusterSig){
+  if(!clusterSig)return 0.5; // unaffiliated particles get neutral benefit
+  const sBase=fieldIdx*FIELD_SIG_DIMS;
+  const own=fieldOwnership[fieldIdx];
+  if(own<0.05)return 0.8; // unclaimed territory — nearly full benefit (commons)
+  // Cosine similarity between deposited signature and cluster signature
+  let dot=0,nA=0,nB=0;
+  for(let s=0;s<FIELD_SIG_DIMS;s++){
+    dot+=fieldSig[sBase+s]*clusterSig[s];
+    nA+=fieldSig[sBase+s]*fieldSig[sBase+s];
+    nB+=clusterSig[s]*clusterSig[s];
+  }
+  const sim=dot/(Math.sqrt(nA*nB)+0.001);
+  // Affinity: blend between neutral (0.5) and full (1.0) based on similarity and ownership
+  // Foreign territory still gives some benefit — niche partitioning, not hard walls
+  return 0.35+0.65*Math.max(0,(sim+1)*0.5)*own+(1-own)*0.5;
+}
+
+// Stamp a cluster's signature onto a field cell when writing
+function stampField(fieldIdx,clusterSig,energy){
+  if(!clusterSig)return;
+  const sBase=fieldIdx*FIELD_SIG_DIMS;
+  const blendRate=Math.min(0.3,energy*0.15); // stronger writes stamp harder
+  for(let s=0;s<FIELD_SIG_DIMS;s++){
+    fieldSig[sBase+s]+=(clusterSig[s]-fieldSig[sBase+s])*blendRate;
+  }
+  // Ownership strengthens toward 1
+  fieldOwnership[fieldIdx]=Math.min(1,fieldOwnership[fieldIdx]+blendRate*0.5);
+}
+
+// Get cluster signature for a particle (via lookup)
+function getParticleSig(i){
+  const cid=clusterID[i];
+  if(cid<0)return null;
+  const cIdx=cid<MAX_CLUSTERS?clusterByID[cid]:-1;
+  if(cIdx<0)return null;
+  return clusters[cIdx].fieldSignature||null;
+}
+
+// === HELPERS ===
+function tendSim(i,j){
+  let dot=0,ni=0,nj=0;
+  for(let d=0;d<DIMS;d++){
+    dot+=tend[i*DIMS+d]*tend[j*DIMS+d];
+    ni+=tend[i*DIMS+d]*tend[i*DIMS+d];
+    nj+=tend[j*DIMS+d]*tend[j*DIMS+d];
+  }
+  return dot/(Math.sqrt(ni*nj)+0.001);
+}
+function randomTendency(){
+  const v=new Float32Array(DIMS);
+  let norm=0;
+  for(let d=0;d<DIMS;d++){v[d]=Math.random()*2-1;norm+=v[d]*v[d]}
+  norm=Math.sqrt(norm)||1;
+  const scale=0.3+Math.random()*0.7;
+  for(let d=0;d<DIMS;d++)v[d]=v[d]/norm*scale;
+  return v;
+}
+function hslToRgb(h,s,l){
+  h=((h%360)+360)%360;s/=100;l/=100;
+  const cc=(1-Math.abs(2*l-1))*s,x=cc*(1-Math.abs((h/60)%2-1)),m=l-cc/2;
+  let r=0,g=0,b=0;
+  if(h<60){r=cc;g=x}else if(h<120){r=x;g=cc}else if(h<180){g=cc;b=x}
+  else if(h<240){g=x;b=cc}else if(h<300){r=x;b=cc}else{r=cc;b=x}
+  return[(r+m)*255,(g+m)*255,(b+m)*255];
+}
+function addParticle(x,y,tv,born,parentA,parentB){
+  if(N>=CAP)return-1;
+  const i=N++;
+  px[i]=x;py[i]=y;
+  vx[i]=(Math.random()-.5)*(born?2:.3);vy[i]=(Math.random()-.5)*(born?2:.3);
+  for(let d=0;d<DIMS;d++)tend[i*DIMS+d]=tv?tv[d]:0;
+  phase[i]=Math.random()*Math.PI*2;freq[i]=0.02+Math.random()*0.04;
+  amp[i]=born?0.5:0.3+Math.random()*0.5;
+  palive[i]=1;page[i]=0;localRes[i]=0;collapse[i]=0;clusterID[i]=-1;
+  echoIdx[i]=0;
+  for(let e=0;e<EL;e++){echox[i*EL+e]=x;echoy[i*EL+e]=y}
+  // Memory inheritance: Lamarckian. Children know what parents learned.
+  for(let m=0;m<MEM_SIZE;m++){
+    let val=0;
+    if(parentA>=0&&parentA<N)val+=pMem[parentA*MEM_SIZE+m]*0.65;
+    if(parentB>=0&&parentB<N)val+=pMem[parentB*MEM_SIZE+m]*0.35;
+    pMem[i*MEM_SIZE+m]=val+(Math.random()-0.5)*0.15;
+  }
+  // Plasmid inheritance: child gets plasmids from primary parent (not blended — discrete)
+  pPlasmidLen[i]=0;
+  if(parentA>=0&&parentA<N&&pPlasmidLen[parentA]>0){
+    const donor=parentA;
+    const nP=pPlasmidLen[donor];
+    pPlasmidLen[i]=nP;
+    for(let p=0;p<nP*4;p++){
+      pPlasmid[i*PLASMID_SLOTS+p]=pPlasmid[donor*PLASMID_SLOTS+p];
+    }
+    // Light mutation on inherited plasmids
+    for(let p=0;p<nP;p++){
+      if(Math.random()<0.15){
+        pPlasmid[i*PLASMID_SLOTS+p*4+3]+=(Math.random()-0.5)*0.2; // magnitude drift
+      }
+    }
+  }
+  return i;
+}
+function addCompound(x,y,nt,nvx,nvy,na,np,nf,parentA,parentB){
+  if(N>=CAP)return-1;
+  const i=N++;
+  px[i]=x;py[i]=y;vx[i]=nvx;vy[i]=nvy;
+  for(let d=0;d<DIMS;d++)tend[i*DIMS+d]=nt[d];
+  phase[i]=np;freq[i]=nf;amp[i]=na;
+  palive[i]=1;page[i]=0;localRes[i]=0;collapse[i]=0;clusterID[i]=-1;
+  echoIdx[i]=0;
+  for(let e=0;e<EL;e++){echox[i*EL+e]=x;echoy[i*EL+e]=y}
+  // Memory inheritance
+  for(let m=0;m<MEM_SIZE;m++){
+    let val=0;
+    if(parentA>=0&&parentA<N)val+=pMem[parentA*MEM_SIZE+m]*0.65;
+    if(parentB>=0&&parentB<N)val+=pMem[parentB*MEM_SIZE+m]*0.35;
+    pMem[i*MEM_SIZE+m]=val+(Math.random()-0.5)*0.15;
+  }
+  // Plasmid inheritance
+  pPlasmidLen[i]=0;
+  if(parentA>=0&&parentA<N&&pPlasmidLen[parentA]>0){
+    pPlasmidLen[i]=pPlasmidLen[parentA];
+    for(let p=0;p<pPlasmidLen[parentA]*4;p++){
+      pPlasmid[i*PLASMID_SLOTS+p]=pPlasmid[parentA*PLASMID_SLOTS+p];
+    }
+    if(Math.random()<0.15){
+      const idx=Math.floor(Math.random()*pPlasmidLen[i]);
+      pPlasmid[i*PLASMID_SLOTS+idx*4+3]+=(Math.random()-0.5)*0.2;
+    }
+  }
+  return i;
+}
+function computeVisuals(i){
+  const m=tend[i*DIMS],ch=tend[i*DIMS+1],vo=tend[i*DIMS+2],mg=tend[i*DIMS+3];
+  let hue=((Math.atan2(ch,mg)/Math.PI)*180+180)%360;
+  let sat=30+Math.abs(vo)*60;
+  let lit=30+m*18+Math.abs(vo)*12;
+  const col=collapse[i],smear=1-col;
+  hue+=smear*Math.sin(phase[i]*3)*35;
+  sat=sat*col+15*smear;lit=lit*col+(25+Math.sin(phase[i])*8)*smear;
+  lit*=0.5+amp[i]*0.8;sat*=0.4+amp[i]*0.6;
+  hue=((hue%360)+360)%360;
+  sat=Math.max(3,Math.min(100,sat));lit=Math.max(5,Math.min(88,lit));
+  const[r,g,b]=hslToRgb(hue,sat,lit);
+  pR[i]=r;pG[i]=g;pB[i]=b;
+  const baseSize=1.2+Math.abs(m)*2+(1+mg)*1.2;
+  pSz[i]=baseSize*(0.5+amp[i]*0.7)*(0.7+col*0.3)+smear*Math.sin(phase[i]*2)*1;
+}
+
+// === EFFECTS ===
+const MAX_SH=35;let shN=0;
+const shx=new Float32Array(MAX_SH),shy=new Float32Array(MAX_SH);
+const shr_=new Float32Array(MAX_SH),shmr=new Float32Array(MAX_SH),she=new Float32Array(MAX_SH);
+const shCR=new Float32Array(MAX_SH),shCG=new Float32Array(MAX_SH),shCB=new Float32Array(MAX_SH);
+function addShock(x,y,e,r,g,b){if(shN>=MAX_SH)return;const i=shN++;shx[i]=x;shy[i]=y;shr_[i]=0;shmr[i]=25+e*45;she[i]=Math.min(e,2);shCR[i]=r;shCG[i]=g;shCB[i]=b}
+const MAX_BIT=400;let bN=0;
+const bpx=new Float32Array(MAX_BIT),bpy=new Float32Array(MAX_BIT);
+const bvx_=new Float32Array(MAX_BIT),bvy_=new Float32Array(MAX_BIT);
+const bage=new Float32Array(MAX_BIT),blife=new Float32Array(MAX_BIT),bsz=new Float32Array(MAX_BIT);
+const bCR=new Float32Array(MAX_BIT),bCG=new Float32Array(MAX_BIT),bCB=new Float32Array(MAX_BIT);
+function addBits(x,y,count,r,g,b,energy){for(let k=0;k<count;k++){if(bN>=MAX_BIT)return;const i=bN++;bpx[i]=x;bpy[i]=y;const a=Math.random()*6.28,v=.3+Math.random()*energy*2;bvx_[i]=Math.cos(a)*v;bvy_[i]=Math.sin(a)*v;bage[i]=0;blife[i]=12+Math.random()*20;bsz[i]=.2+Math.random()*.7;bCR[i]=r;bCG[i]=g;bCB[i]=b}}
+
+// ═══════════════════════════════════════
+// THE THREE FORCES (using genome parameters)
+// ═══════════════════════════════════════
+function applyEntropy(){
+  const deaths=[];
+  deathsThisTick=0;
+  // DENSITY-DEPENDENT METABOLISM — carrying capacity emerges from resource economics
+  // More particles = higher per-particle cost. The system discovers its own equilibrium.
+  const densityCost=(genome.densityCostK||0.00003)*Math.max(0,N-100); // kicks in above 100 particles
+  for(let i=0;i<N;i++){
+    if(!palive[i])continue;
+    amp[i]-=genome.entropyBaseline;
+    amp[i]-=densityCost;
+    amp[i]+=localRes[i]*genome.entropyK;
+    if(isNaN(amp[i]))amp[i]=0; // NaN guard
+    if(amp[i]<genome.deathThreshold){
+      deaths.push(i);deathsThisTick++;deathsByPhysics++;
+      addBits(px[i],py[i],2,pR[i],pG[i],pB[i],0.3);
+      palive[i]=0;
+    }
+    if(amp[i]>1.2)amp[i]=1.2;
+  }
+  // Collapse cascades
+  for(let d=0;d<deaths.length;d++){
+    const di=deaths[d];
+    const deadAmp=Math.max(0.05,amp[di]+genome.deathThreshold);
+    const gx=(px[di]/CELL)|0,gy=(py[di]/CELL)|0;
+    for(let dy=-1;dy<=1;dy++)for(let dx=-1;dx<=1;dx++){
+      const nnx=gx+dx,nny=gy+dy;
+      if(nnx<0||nny<0||nnx>=gW||nny>=gH)continue;
+      let j=grid[nny*gW+nnx];
+      while(j>=0){
+        if(palive[j]){
+          const ddx=px[di]-px[j],ddy=py[di]-py[j];
+          const dist=Math.sqrt(ddx*ddx+ddy*ddy);
+          if(dist<CELL&&dist>0){
+            const sim=tendSim(di,j);
+            if(sim>0.1){amp[j]-=deadAmp*sim*(1-dist/CELL)*0.15;phase[j]+=(Math.random()-0.5)*deadAmp*sim*0.3}
+          }
+        }
+        j=pnext[j];
+      }
+    }
+  }
+}
+
+// ═══ LAYER 6: REGISTER-BASED VIRTUAL MACHINE ═══
+// Runs a bytecode program for each particle interaction.
+// Registers R0-R3 are initialized from interaction context.
+// COMP instruction enables conditional logic: the system discovers policies.
+// VM operates ON TOP of hardcoded physics, scaled by genome.vmInfluence.
+// Over evolutionary time, vmInfluence can grow until VM dominates.
+
+const vmRegs=new Float32Array(12); // 0-3 context, 4-11 particle memory
+const vmActions=new Float32Array(7); // 0:force, 1:phase_shift, 2:amp_transfer, 3:tend_bleed, 4:spawn, 5:sig_modulate, 6:mut_pressure
+
+function executeVM(i,j,sim,d){
+  if(d>CELL||d<0.5)return;
+  const proximity=1-d/CELL;
+  const phaseAlign=Math.cos(phase[i]-phase[j]);
+  const energy=(amp[i]+amp[j])*0.5;
+  const influence=genome.vmInfluence*genome.ruleScale*0.002;
+
+  // Context registers
+  vmRegs[0]=sim;
+  vmRegs[1]=phaseAlign;
+  vmRegs[2]=proximity;
+  vmRegs[3]=energy;
+
+  // Load particle memory into registers 4-11
+  for(let m=0;m<MEM_SIZE;m++)vmRegs[4+m]=pMem[i*MEM_SIZE+m];
+
+  // Auto-sensors: slots 6,7 get proprioceptive data
+  pMem[i*MEM_SIZE+6]=localRes[i]*4;
+  pMem[i*MEM_SIZE+7]=Math.min(5,page[i]/250);
+
+  vmActions[0]=0;vmActions[1]=0;vmActions[2]=0;vmActions[3]=0;vmActions[4]=0;vmActions[5]=0;vmActions[6]=0;
+
+  const prog=genome.vmProgram;
+  const nInst=Math.min(prog.length,genome.vmMaxInstructions);
+
+  const totalCost=nInst*genome.metabolicCost;
+  amp[i]-=totalCost;amp[j]-=totalCost;
+
+  for(let ip=0;ip<nInst;ip++){
+    const inst=prog[ip];if(!inst)continue;
+    const [op,src,dst,k]=inst;
+    const si=Math.abs(src)%12,di=Math.abs(dst)%12;
+
+    switch(op){
+      case 0:vmRegs[di]=vmRegs[si];break;
+      case 1:vmRegs[di]+=vmRegs[si]*k;break;
+      case 2:vmRegs[di]*=vmRegs[si]*(k||1);break;
+      case 3:vmRegs[di]=vmRegs[si]>k?1:0;break;
+      case 4:{const ai=Math.abs(dst)%7;vmActions[ai]+=vmRegs[si]*k;}break;
+      case 5:{const fi=Math.abs(src)%7;vmRegs[di]=vmActions[fi];}break;
+      case 6:vmRegs[di]=pMem[i*MEM_SIZE+(Math.abs(src)%MEM_SIZE)];break;
+      case 7:pMem[i*MEM_SIZE+(Math.abs(dst)%MEM_SIZE)]=vmRegs[si];break;
+      case 8:{const fx8=Math.floor(px[i]/(W/FIELD_W)),fy8=Math.floor(py[i]/(H/FIELD_H));const fi8=Math.max(0,Math.min(FIELD_W*FIELD_H-1,fy8*FIELD_W+fx8));vmRegs[di]=field[fi8];}break;
+      case 9:{const wx9=Math.floor(px[i]/(W/FIELD_W)),wy9=Math.floor(py[i]/(H/FIELD_H));const wi9=Math.max(0,Math.min(FIELD_W*FIELD_H-1,wy9*FIELD_W+wx9));field[wi9]+=vmRegs[si]*k;field[wi9]=Math.max(0,Math.min(2.5,field[wi9]));stampField(wi9,getParticleSig(i),Math.abs(vmRegs[si]*k));}break;
+      case 10:{if(clusterID[i]>=0){const cIdx10=clusterID[i]<MAX_CLUSTERS?clusterByID[clusterID[i]]:-1;if(cIdx10>=0){const c=clusters[cIdx10];const cfx=Math.floor(c.cx/(W/FIELD_W)),cfy=Math.floor(c.cy/(H/FIELD_H));const cfi=Math.max(0,Math.min(FIELD_W*FIELD_H-1,cfy*FIELD_W+cfx));field[cfi]+=vmRegs[si]*k;field[cfi]=Math.max(0,Math.min(2.5,field[cfi]));stampField(cfi,c.fieldSignature,Math.abs(vmRegs[si]*k));}}}break;
+      // ═══ OPEN-ENDED EVOLUTION OPCODES ═══
+      // 11: BROADCAST_WRITE — write to own broadcast slot. System invents its own signals.
+      case 11:{const slot=Math.abs(dst)%2;pBroadcast[i*2+slot]=vmRegs[si]*k;}break;
+      // 12: BROADCAST_READ — read interacting partner's broadcast slot. System reads partner's evolved signals.
+      case 12:{const slot2=Math.abs(src)%2;vmRegs[di]=pBroadcast[j*2+slot2];}break;
+      // 13: SELF_READ — read own VM program as data. Self-reference: prerequisite for self-replication.
+      case 13:{const instIdx=Math.abs(Math.floor(vmRegs[si]))%Math.max(1,prog.length);const selfInst=prog[instIdx];vmRegs[di]=selfInst?selfInst[Math.abs(Math.floor(k))%4]:0;}break;
+      // 14: JUMP_IF — conditional branch. Real control flow. The VM becomes a real program.
+      case 14:if(vmRegs[si]>k)ip=Math.abs(Math.floor(vmRegs[di]))%nInst;break;
+      // 15: DEVELOP — age-dependent gene expression. Particles change behavior over lifetime. Ontogeny.
+      case 15:{const ageFrac=Math.min(1,page[i]/800);vmRegs[di]=vmRegs[si]*(1-ageFrac)+k*ageFrac;}break;
+    }
+    for(let r=0;r<12;r++)vmRegs[r]=Math.max(-8,Math.min(8,vmRegs[r]));
+  }
+
+  // Write back registers 4-11 to particle memory
+  for(let m=0;m<MEM_SIZE;m++)pMem[i*MEM_SIZE+m]=vmRegs[4+m];
+
+  // Track peak resonance bond for HGT gating
+  const bond=sim*phaseAlign*proximity;
+  if(bond>peakBondThisTick)peakBondThisTick=bond;
+
+  // ═══ PLASMID EXECUTION — per-particle mobile DNA runs AFTER global program ═══
+  const nPi=pPlasmidLen[i];
+  if(nPi>0){
+    const pBase=i*PLASMID_SLOTS;
+    for(let ip=0;ip<nPi;ip++){
+      const op=pPlasmid[pBase+ip*4]|0;
+      const src=pPlasmid[pBase+ip*4+1]|0;
+      const dst=pPlasmid[pBase+ip*4+2]|0;
+      const k=pPlasmid[pBase+ip*4+3];
+      const si=Math.abs(src)%12,di=Math.abs(dst)%12;
+      switch(op){
+        case 0:vmRegs[di]=vmRegs[si];break;
+        case 1:vmRegs[di]+=vmRegs[si]*k;break;
+        case 2:vmRegs[di]*=vmRegs[si]*(k||1);break;
+        case 3:vmRegs[di]=vmRegs[si]>k?1:0;break;
+        case 4:{const ai=Math.abs(dst)%7;vmActions[ai]+=vmRegs[si]*k;}break;
+        case 5:{const fi=Math.abs(src)%7;vmRegs[di]=vmActions[fi];}break;
+        case 6:vmRegs[di]=pMem[i*MEM_SIZE+(Math.abs(src)%MEM_SIZE)];break;
+        case 7:pMem[i*MEM_SIZE+(Math.abs(dst)%MEM_SIZE)]=vmRegs[si];break;
+        case 8:{const pfx=Math.floor(px[i]/(W/FIELD_W)),pfy=Math.floor(py[i]/(H/FIELD_H));const pfi=Math.max(0,Math.min(FIELD_W*FIELD_H-1,pfy*FIELD_W+pfx));vmRegs[di]=field[pfi];}break;
+        case 9:{const pwx=Math.floor(px[i]/(W/FIELD_W)),pwy=Math.floor(py[i]/(H/FIELD_H));const pwi=Math.max(0,Math.min(FIELD_W*FIELD_H-1,pwy*FIELD_W+pwx));field[pwi]+=vmRegs[si]*k;field[pwi]=Math.max(0,Math.min(2.5,field[pwi]));stampField(pwi,getParticleSig(i),Math.abs(vmRegs[si]*k));}break;
+        case 10:{if(clusterID[i]>=0){const cIdx10p=clusterID[i]<MAX_CLUSTERS?clusterByID[clusterID[i]]:-1;if(cIdx10p>=0){const c=clusters[cIdx10p];const cfx2=Math.floor(c.cx/(W/FIELD_W)),cfy2=Math.floor(c.cy/(H/FIELD_H));const cfi2=Math.max(0,Math.min(FIELD_W*FIELD_H-1,cfy2*FIELD_W+cfx2));field[cfi2]+=vmRegs[si]*k;field[cfi2]=Math.max(0,Math.min(2.5,field[cfi2]));stampField(cfi2,c.fieldSignature,Math.abs(vmRegs[si]*k));}}}break;
+        case 11:{const pSlot=Math.abs(dst)%2;pBroadcast[i*2+pSlot]=vmRegs[si]*k;}break;
+        case 12:{const pSlot2=Math.abs(src)%2;vmRegs[di]=pBroadcast[j*2+pSlot2];}break;
+        case 13:{const pInstIdx=Math.abs(Math.floor(vmRegs[si]))%Math.max(1,genome.vmProgram.length);const pSelfInst=genome.vmProgram[pInstIdx];vmRegs[di]=pSelfInst?pSelfInst[Math.abs(Math.floor(k))%4]:0;}break;
+        case 14:if(vmRegs[si]>k)ip=Math.abs(Math.floor(vmRegs[di]))%nPi;break;
+        case 15:{const pAgeFrac=Math.min(1,page[i]/800);vmRegs[di]=vmRegs[si]*(1-pAgeFrac)+k*pAgeFrac;}break;
+      }
+      for(let r=0;r<12;r++)vmRegs[r]=Math.max(-8,Math.min(8,vmRegs[r]));
+    }
+    // Plasmid metabolic cost (lighter than global — personal DNA is small)
+    amp[i]-=nPi*genome.metabolicCost*0.5;
+  }
+
+  // ═══ PLASMID LATERAL TRANSFER — conjugation on strong bonds ═══
+  const bondStrength=sim*phaseAlign;
+  if(bondStrength>genome.plasmidTransferThresh&&Math.random()<genome.plasmidTransferRate){
+    // Transfer from i to j (or j to i, randomly)
+    const donor=Math.random()<0.5?i:j;
+    const recip=donor===i?j:i;
+    if(pPlasmidLen[donor]>0&&pPlasmidLen[recip]<MAX_PLASMID){
+      // Pick a random plasmid instruction from donor
+      const srcP=Math.floor(Math.random()*pPlasmidLen[donor]);
+      const rLen=pPlasmidLen[recip];
+      pPlasmid[recip*PLASMID_SLOTS+rLen*4]=pPlasmid[donor*PLASMID_SLOTS+srcP*4];
+      pPlasmid[recip*PLASMID_SLOTS+rLen*4+1]=pPlasmid[donor*PLASMID_SLOTS+srcP*4+1];
+      pPlasmid[recip*PLASMID_SLOTS+rLen*4+2]=pPlasmid[donor*PLASMID_SLOTS+srcP*4+2];
+      pPlasmid[recip*PLASMID_SLOTS+rLen*4+3]=pPlasmid[donor*PLASMID_SLOTS+srcP*4+3]+(Math.random()-0.5)*0.15;
+      pPlasmidLen[recip]++;
+      // GOVERNANCE VISIBILITY: flash the conjugation bridge
+      if(flashN<MAX_FLASHES){
+        flashX1[flashN]=px[i];flashY1[flashN]=py[i];
+        flashX2[flashN]=px[j];flashY2[flashN]=py[j];
+        flashAge[flashN]=0;
+        flashN++;
+      }
+    }
+  }
+
+  const ddx=px[j]-px[i],ddy=py[j]-py[i];
+  const dist=Math.sqrt(ddx*ddx+ddy*ddy)||1;
+  const nx=ddx/dist,ny=ddy/dist;
+
+  const force=vmActions[0]*influence*proximity;
+  if(Math.abs(force)>0.000001){
+    vx[i]+=nx*force;vy[i]+=ny*force;
+    vx[j]-=nx*force;vy[j]-=ny*force;
+  }
+
+  const pshift=vmActions[1]*influence;
+  if(Math.abs(pshift)>0.000001){
+    let dp=phase[j]-phase[i];
+    while(dp>Math.PI)dp-=6.28;while(dp<-Math.PI)dp+=6.28;
+    phase[i]+=dp*pshift;phase[j]-=dp*pshift;
+  }
+
+  const atrans=vmActions[2]*influence*0.5;
+  if(Math.abs(atrans)>0.000001){
+    amp[i]-=atrans;amp[j]+=atrans;
+  }
+
+  const tbleed=vmActions[3]*influence;
+  if(Math.abs(tbleed)>0.000001){
+    for(let dd=0;dd<DIMS;dd++){
+      const diff=(tend[j*DIMS+dd]-tend[i*DIMS+dd])*tbleed;
+      tend[i*DIMS+dd]+=diff;tend[j*DIMS+dd]-=diff;
+    }
+  }
+
+  if(vmActions[4]*influence>0.0002&&Math.random()<0.002&&N<CAP){
+    const cx=(px[i]+px[j])*0.5,cy=(py[i]+py[j])*0.5;
+    const nt=new Float32Array(DIMS);
+    for(let dd=0;dd<DIMS;dd++)nt[dd]=(tend[i*DIMS+dd]+tend[j*DIMS+dd])*0.5;
+    addParticle(cx,cy,nt,false,i,j);
+    amp[i]*=0.7;amp[j]*=0.7;
+    birthsThisTick++;
+  }
+
+  // CHANNEL 5: SIGNATURE MODULATION — particles can shift their cluster's territorial identity
+  // The evolved code can reach into group identity. Policy shapes who "we" are.
+  const sigMod=vmActions[5]*influence*0.003;
+  if(Math.abs(sigMod)>0.00001){
+    const cid5=clusterID[i];
+    if(cid5>=0){
+      const cIdx5=cid5<MAX_CLUSTERS?clusterByID[cid5]:-1;
+      if(cIdx5>=0&&clusters[cIdx5].fieldSignature){
+        const sig=clusters[cIdx5].fieldSignature;
+        // Modulate signature toward current phase alignment
+        const pAlign=Math.cos(phase[i]-phase[j]);
+        for(let s=0;s<FIELD_SIG_DIMS;s++){
+          sig[s]+=sigMod*pAlign*(s===0?1:s===1?-0.5:0.5);
+          sig[s]=Math.max(-1.5,Math.min(1.5,sig[s]));
+        }
+      }
+    }
+  }
+
+  // CHANNEL 6: MUTATION PRESSURE — particles collectively vote on mutation rate
+  // The evolved code can reach into its own evolvability.
+  // Accumulated per-tick, applied in mutateGenome.
+  mutPressureAccum+=vmActions[6]*influence*0.0001;
+}
+
+// ═══ LAYER 9: PER-CLUSTER VM — DIFFERENTIATED TISSUE LOGIC ═══
+// Each cluster runs its own short program on top of global physics + global VM.
+// Clusters inherit programs from previous detection cycles (persistence).
+// New clusters seed from the global VM (with mutation). Persistent clusters accumulate
+// their own behavioral identity. This is the multicellular transition:
+// same genome, different expression per structural unit.
+
+function executeClusterVM(i,j,sim,d){
+  const cid=clusterID[i];
+  if(cid<0)return;
+  // Fast lookup instead of clusters.find()
+  const cIdx=cid<MAX_CLUSTERS?clusterByID[cid]:-1;
+  if(cIdx<0)return;
+  const cl=clusters[cIdx];
+  if(!cl||!cl.vmProgram)return;
+
+  const proximity=1-d/CELL;
+  const phaseAlign=Math.cos(phase[i]-phase[j]);
+  const energy=(amp[i]+amp[j])*0.5;
+  const influence=cl.vmInfluence*genome.ruleScale*0.0015;
+
+  // Context registers (don't clobber particle memory registers 4-11)
+  vmRegs[0]=sim;
+  vmRegs[1]=phaseAlign;
+  vmRegs[2]=proximity;
+  vmRegs[3]=energy;
+
+  // Zero action channels for cluster VM — clean slate, not additive to global VM
+  vmActions[0]=0;vmActions[1]=0;vmActions[2]=0;vmActions[3]=0;vmActions[4]=0;vmActions[5]=0;vmActions[6]=0;
+
+  const prog=cl.vmProgram;
+  const nInst=Math.min(prog.length,MAX_CLUSTER_VM);
+
+  for(let ip=0;ip<nInst;ip++){
+    const inst=prog[ip];if(!inst)continue;
+    const [op,src,dst,k]=inst;
+    const si=Math.abs(src)%12,di=Math.abs(dst)%12;
+    switch(op){
+      case 0:vmRegs[di]=vmRegs[si];break;
+      case 1:vmRegs[di]+=vmRegs[si]*k;break;
+      case 2:vmRegs[di]*=vmRegs[si]*(k||1);break;
+      case 3:vmRegs[di]=vmRegs[si]>k?1:0;break;
+      case 4:{const ai=Math.abs(dst)%7;vmActions[ai]+=vmRegs[si]*k;}break;
+      case 5:{const fi=Math.abs(src)%7;vmRegs[di]=vmActions[fi];}break;
+      case 6:vmRegs[di]=pMem[i*MEM_SIZE+(Math.abs(src)%MEM_SIZE)];break;
+      case 7:pMem[i*MEM_SIZE+(Math.abs(dst)%MEM_SIZE)]=vmRegs[si];break;
+      case 8:{const fx8=Math.floor(px[i]/(W/FIELD_W)),fy8=Math.floor(py[i]/(H/FIELD_H));const fi8=Math.max(0,Math.min(FIELD_W*FIELD_H-1,fy8*FIELD_W+fx8));vmRegs[di]=field[fi8];}break;
+      case 9:{const wx9=Math.floor(px[i]/(W/FIELD_W)),wy9=Math.floor(py[i]/(H/FIELD_H));const wi9=Math.max(0,Math.min(FIELD_W*FIELD_H-1,wy9*FIELD_W+wx9));field[wi9]+=vmRegs[si]*k;field[wi9]=Math.max(0,Math.min(2.5,field[wi9]));stampField(wi9,cl.fieldSignature,Math.abs(vmRegs[si]*k));}break;
+      case 10:{if(cl){const cfx=Math.floor(cl.cx/(W/FIELD_W)),cfy=Math.floor(cl.cy/(H/FIELD_H));const cfi=Math.max(0,Math.min(FIELD_W*FIELD_H-1,cfy*FIELD_W+cfx));field[cfi]+=vmRegs[si]*k;field[cfi]=Math.max(0,Math.min(2.5,field[cfi]));stampField(cfi,cl.fieldSignature,Math.abs(vmRegs[si]*k));}}break;
+      case 11:{const cSlot=Math.abs(dst)%2;pBroadcast[i*2+cSlot]=vmRegs[si]*k;}break;
+      case 12:{const cSlot2=Math.abs(src)%2;vmRegs[di]=pBroadcast[j*2+cSlot2];}break;
+      case 13:{const cProg=cl?cl.vmProgram:genome.vmProgram;const cInstIdx=Math.abs(Math.floor(vmRegs[si]))%Math.max(1,cProg.length);const cSelfInst=cProg[cInstIdx];vmRegs[di]=cSelfInst?cSelfInst[Math.abs(Math.floor(k))%4]:0;}break;
+      case 14:{const cNInst=cl?cl.vmProgram.length:prog.length;if(vmRegs[si]>k)ip=Math.abs(Math.floor(vmRegs[di]))%Math.max(1,cNInst);}break;
+      case 15:{const cAgeFrac=Math.min(1,page[i]/800);vmRegs[di]=vmRegs[si]*(1-cAgeFrac)+k*cAgeFrac;}break;
+    }
+    for(let r=0;r<12;r++)vmRegs[r]=Math.max(-8,Math.min(8,vmRegs[r]));
+  }
+
+  // ═══ APPLY ALL FIVE ACTION CHANNELS ═══
+  const ddx=px[j]-px[i],ddy=py[j]-py[i];
+  const dist=Math.sqrt(ddx*ddx+ddy*ddy)||1;
+  const nx=ddx/dist,ny=ddy/dist;
+
+  // Force
+  const force=vmActions[0]*influence*proximity;
+  if(Math.abs(force)>0.000001){
+    vx[i]+=nx*force;vy[i]+=ny*force;
+    vx[j]-=nx*force;vy[j]-=ny*force;
+  }
+
+  // Phase shift
+  const pshift=vmActions[1]*influence;
+  if(Math.abs(pshift)>0.000001){
+    let dp=phase[j]-phase[i];
+    while(dp>Math.PI)dp-=6.28;while(dp<-Math.PI)dp+=6.28;
+    phase[i]+=dp*pshift;phase[j]-=dp*pshift;
+  }
+
+  // Amplitude transfer
+  const atrans=vmActions[2]*influence*0.5;
+  if(Math.abs(atrans)>0.000001){
+    amp[i]-=atrans;amp[j]+=atrans;
+  }
+
+  // Tendency bleed
+  const tbleed=vmActions[3]*influence;
+  if(Math.abs(tbleed)>0.000001){
+    for(let dd=0;dd<DIMS;dd++){
+      const diff=(tend[j*DIMS+dd]-tend[i*DIMS+dd])*tbleed;
+      tend[i*DIMS+dd]+=diff;tend[j*DIMS+dd]-=diff;
+    }
+  }
+
+  // Spawn drive
+  if(vmActions[4]*influence>0.0002&&Math.random()<0.001&&N<CAP){
+    const cx=(px[i]+px[j])*0.5,cy=(py[i]+py[j])*0.5;
+    const nt=new Float32Array(DIMS);
+    for(let dd=0;dd<DIMS;dd++)nt[dd]=(tend[i*DIMS+dd]+tend[j*DIMS+dd])*0.5;
+    addParticle(cx,cy,nt,false,i,j);
+    amp[i]*=0.75;amp[j]*=0.75;
+    birthsThisTick++;
+  }
+
+  // Sig modulation (cluster VM can also shift its own identity)
+  const clSigMod=vmActions[5]*influence*0.004;
+  if(Math.abs(clSigMod)>0.00001&&cl.fieldSignature){
+    const pAlign=Math.cos(phase[i]-phase[j]);
+    for(let s=0;s<FIELD_SIG_DIMS;s++){
+      cl.fieldSignature[s]+=clSigMod*pAlign*(s===0?1:s===1?-0.5:0.5);
+      cl.fieldSignature[s]=Math.max(-1.5,Math.min(1.5,cl.fieldSignature[s]));
+    }
+  }
+
+  // Mutation pressure from cluster VM
+  mutPressureAccum+=vmActions[6]*influence*0.00008;
+
+  // Metabolic cost — distributed across member particles (lighter than global)
+  const clCost=nInst*genome.metabolicCost*CLUSTER_VM_COST_SHARE;
+  amp[i]-=clCost;amp[j]-=clCost;
+}
+
+function entrain(i,j,sim,d){
+  if(sim<genome.entrainThresh||d>CELL)return;
+  const proximity=1-d/CELL;
+  const rate=genome.entrainRate*sim*proximity;
+  let dp=phase[j]-phase[i];
+  while(dp>Math.PI)dp-=Math.PI*2;while(dp<-Math.PI)dp+=Math.PI*2;
+  phase[i]+=dp*rate;phase[j]-=dp*rate;
+  freq[i]+=(freq[j]-freq[i])*rate*0.1;freq[j]+=(freq[i]-freq[j])*rate*0.1;
+}
+
+function interferenceCreate(i,j){
+  const dp=phase[i]-phase[j];
+  const interference=Math.cos(dp);
+  const sim=tendSim(i,j);
+  if(interference>genome.creationThresh&&sim>0.1){
+    const energy=(amp[i]+amp[j])*interference*0.5;
+    if(energy<0.15)return false;
+    const totalAmp=amp[i]+amp[j];
+    const cx=(px[i]*amp[i]+px[j]*amp[j])/totalAmp;
+    const cy=(py[i]*amp[i]+py[j]*amp[j])/totalAmp;
+    const nt=new Float32Array(DIMS);
+    for(let d=0;d<DIMS;d++)nt[d]=(tend[i*DIMS+d]+tend[j*DIMS+d])*0.5*(1+interference*0.2);
+    const k=addCompound(cx,cy,nt,(vx[i]*amp[i]+vx[j]*amp[j])/totalAmp*0.3,(vy[i]*amp[i]+vy[j]*amp[j])/totalAmp*0.3,energy*0.6,(phase[i]+phase[j])*0.5,(freq[i]+freq[j])*0.5,i,j);
+    if(k>=0){
+      amp[i]-=amp[i]*genome.creationCost;amp[j]-=amp[j]*genome.creationCost;
+      birthsThisTick++;
+      const r=(pR[i]+pR[j])/2,g=(pG[i]+pG[j])/2,b=(pB[i]+pB[j])/2;
+      if(energy>0.3)addShock(cx,cy,energy*0.5,r,g,b);
+      addBits(cx,cy,Math.floor(energy*4),r,g,b,energy*0.4);
+      const ddx=px[j]-px[i],ddy=py[j]-py[i],dd=Math.sqrt(ddx*ddx+ddy*ddy)||1;
+      vx[i]-=ddx/dd*0.3;vy[i]-=ddy/dd*0.3;vx[j]+=ddx/dd*0.3;vy[j]+=ddy/dd*0.3;
+      return true;
+    }
+  }
+  if(interference<genome.destructThresh){
+    phase[i]+=Math.PI*0.4;phase[j]-=Math.PI*0.4;
+    const ddx=px[j]-px[i],ddy=py[j]-py[i],dd=Math.sqrt(ddx*ddx+ddy*ddy)||1;
+    const scatter=Math.abs(interference)*1.5;
+    vx[i]-=ddx/dd*scatter;vy[i]-=ddy/dd*scatter;vx[j]+=ddx/dd*scatter;vy[j]+=ddy/dd*scatter;
+    for(let d=0;d<DIMS;d++){tend[i*DIMS+d]*=0.9;tend[j*DIMS+d]*=0.9}
+    amp[i]*=0.85;amp[j]*=0.85;
+    addBits((px[i]+px[j])/2,(py[i]+py[j])/2,2,(pR[i]+pR[j])/2,(pG[i]+pG[j])/2,(pB[i]+pB[j])/2,0.3);
+    return true;
+  }
+  const ddx=px[j]-px[i],ddy=py[j]-py[i],dd=Math.sqrt(ddx*ddx+ddy*ddy)||1;
+  const nx=ddx/dd,ny=ddy/dd;
+  const rvn=(vx[i]-vx[j])*nx+(vy[i]-vy[j])*ny;
+  vx[i]-=rvn*nx*0.5;vy[i]-=rvn*ny*0.5;vx[j]+=rvn*nx*0.5;vy[j]+=rvn*ny*0.5;
+  for(let d_=0;d_<DIMS;d_++){const avg=(tend[i*DIMS+d_]+tend[j*DIMS+d_])*0.5;tend[i*DIMS+d_]+=(avg-tend[i*DIMS+d_])*0.03;tend[j*DIMS+d_]+=(avg-tend[j*DIMS+d_])*0.03}
+  const overlap=(pSz[i]+pSz[j])*1.2-dd;
+  if(overlap>0){const s=overlap*.5/dd;px[i]-=ddx*s;py[i]-=ddy*s;px[j]+=ddx*s;py[j]+=ddy*s}
+  return false;
+}
+
+// ═══════════════════════════════════════
+// UPDATE / GRID / GRAVITY
+// ═══════════════════════════════════════
+function updateParticles(){
+  for(let i=0;i<N;i++){
+    if(!palive[i])continue;
+    page[i]++;phase[i]+=freq[i];
+    // FIELD → PHYSICS COUPLING: environment you build sustains you
+    // TERRITORIAL: benefit scales with how well your cluster's signature matches what's deposited
+    const lfx=Math.max(0,Math.min(FIELD_W-1,Math.floor(px[i]/(W/FIELD_W))));
+    const lfy=Math.max(0,Math.min(FIELD_H-1,Math.floor(py[i]/(H/FIELD_H))));
+    const lfIdx=lfy*FIELD_W+lfx;
+    const localField=field[lfIdx];
+    const affinity=fieldAffinity(lfIdx,getParticleSig(i));
+    localRes[i]+=localField*genome.fieldInfluence*affinity;
+    amp[i]+=localField*0.0008*affinity; // territorial benefit
+    for(let d=0;d<DIMS;d++){tend[i*DIMS+d]+=(Math.random()-0.5)*0.001;const v=tend[i*DIMS+d];if(v>1.2)tend[i*DIMS+d]=1.2;if(v<-1.2)tend[i*DIMS+d]=-1.2}
+    const absencePeriod=ABSENCE_BASE+Math.sin(tick*0.0007)*180+(Math.sin(tick*0.00031)*90)|0;
+    const cyclePos=tick%Math.max(200,absencePeriod);
+    const isAbsent=cyclePos>(Math.max(200,absencePeriod)*(1-ABSENCE_DUTY));
+    if(!isAbsent){
+      const odx=smx-px[i],ody=smy-py[i],od=Math.sqrt(odx*odx+ody*ody);
+      const oR=OBSERVE_RADIUS_BASE+pStr*80;
+      const targetC=od<oR?Math.pow(1-od/oR,1.5):0;
+      collapse[i]+=(targetC-collapse[i])*0.06;
+      if(collapse[i]>0.1)amp[i]+=OBSERVE_AMP_BOOST*collapse[i];
+      if(wasAbsent&&ghostStrength>0.05){const gdx=ghostX-px[i],gdy=ghostY-py[i],gd=Math.sqrt(gdx*gdx+gdy*gdy);if(gd<GHOST_RADIUS)amp[i]+=0.003*(1-gd/GHOST_RADIUS)*ghostStrength}
+      ghostX+=(smx-ghostX)*0.1;ghostY+=(smy-ghostY)*0.1;ghostStrength=1;
+    }else{
+      ghostStrength*=genome.ghostDecay;collapse[i]*=0.97;
+      if(ghostStrength>0.01){const gdx=ghostX-px[i],gdy=ghostY-py[i],gd=Math.sqrt(gdx*gdx+gdy*gdy),gr=GHOST_RADIUS*ghostStrength;if(gd<gr){const h=Math.pow(1-gd/gr,1.2)*ghostStrength;amp[i]+=genome.ghostAmpDrip*h;vx[i]+=gdx*0.00003*h;vy[i]+=gdy*0.00003*h}}
+    }
+    vx[i]+=(Math.random()-.5)*.003;vy[i]+=(Math.random()-.5)*.003;
+    vx[i]*=genome.velocityDamping;vy[i]*=genome.velocityDamping;px[i]+=vx[i];py[i]+=vy[i];
+    if(px[i]<8)vx[i]+=.08;if(px[i]>W-8)vx[i]-=.08;if(py[i]<8)vy[i]+=.08;if(py[i]>H-8)vy[i]-=.08;
+    if(tick%3===0){const ei=echoIdx[i]%EL;echox[i*EL+ei]=px[i];echoy[i*EL+ei]=py[i];echoIdx[i]++}
+    computeVisuals(i);
+  }
+}
+
+function processGrid(){
+  clearGrid();
+  for(let i=0;i<N;i++){if(!palive[i])continue;const k=gKey(px[i],py[i]);pnext[i]=grid[k];grid[k]=i}
+  for(let i=0;i<N;i++)localRes[i]=0;
+  for(let i=0;i<N;i++){
+    if(!palive[i])continue;
+    const gx=(px[i]/CELL)|0,gy=(py[i]/CELL)|0;
+    for(let dy=-1;dy<=1;dy++)for(let dx=-1;dx<=1;dx++){
+      const nnx=gx+dx,nny=gy+dy;
+      if(nnx<0||nny<0||nnx>=gW||nny>=gH)continue;
+      let j=grid[nny*gW+nnx];
+      while(j>=0){
+        if(j>i&&palive[j]&&palive[i]){
+          const ddx=px[i]-px[j],ddy=py[i]-py[j],d2=ddx*ddx+ddy*ddy,d=Math.sqrt(d2),minD=pSz[i]+pSz[j];
+          const iR=Math.max(10,genome.interactionRadius||55); // FREED: system evolves its own social distance
+          if(d<iR&&d>0){
+            const sim=tendSim(i,j);
+            const pa=Math.cos(phase[i]-phase[j]);
+            localRes[i]+=Math.max(0,sim*pa)*(1-d/iR);
+            localRes[j]+=Math.max(0,sim*pa)*(1-d/iR);
+            entrain(i,j,sim,d);
+            executeVM(i,j,sim,d);
+            executeClusterVM(i,j,sim,d);
+            const bl=genome.tendencyBleed*(1-d/iR);
+            for(let dd=0;dd<DIMS;dd++){const avg=(tend[i*DIMS+dd]+tend[j*DIMS+dd])*0.5;tend[i*DIMS+dd]+=(avg-tend[i*DIMS+dd])*bl;tend[j*DIMS+dd]+=(avg-tend[j*DIMS+dd])*bl}
+            const mg=(tend[i*DIMS+3]+tend[j*DIMS+3]);
+            if(mg>genome.magneticThresh&&d>minD*2){const f=mg*0.0003/d;vx[i]-=ddx*f;vy[i]-=ddy*f;vx[j]+=ddx*f;vy[j]+=ddy*f}
+          }
+          if(d<minD*1.3&&d>0)interferenceCreate(i,j);
+        }
+        j=pnext[j];
+      }
+    }
+  }
+}
+
+function gravity(){
+  if(pStr<.005)return;
+  for(let i=0;i<N;i++){if(!palive[i])continue;const dx=smx-px[i],dy=smy-py[i],d=Math.sqrt(dx*dx+dy*dy);if(d<5||d>600)continue;const mg=Math.max(0.1,tend[i*DIMS+3]+0.5);const g=pStr*.25*mg/d;vx[i]+=dx*g;vy[i]+=dy*g}
+}
+
+function scatter(){
+  if(pDur>15){
+    for(let i=0;i<N;i++){if(!palive[i])continue;const dx=px[i]-smx,dy=py[i]-smy,d=Math.sqrt(dx*dx+dy*dy);if(d<350&&d>0){const f=(1-d/350)*pStr*3;vx[i]+=dx/d*f;vy[i]+=dy/d*f}}
+    addShock(smx,smy,pStr,180,170,140);
+    for(let k=0;k<Math.floor(pStr*4);k++){const a=Math.random()*6.28,r=Math.random()*25;addParticle(smx+Math.cos(a)*r,smy+Math.sin(a)*r,randomTendency(),true)}
+  }
+}
+
+// ═══════════════════════════════════════
+// RENDER
+// ═══════════════════════════════════════
+function render(){
+  X.fillStyle='rgba(2,2,4,0.065)';X.fillRect(0,0,W,H);
+
+  const rAbsPd=ABSENCE_BASE+Math.sin(tick*0.0007)*180+(Math.sin(tick*0.00031)*90)|0;
+  const rCp=tick%Math.max(200,rAbsPd);
+  const rIsAbsent=rCp>(Math.max(200,rAbsPd)*(1-ABSENCE_DUTY));
+
+  if(!rIsAbsent&&pStr>.01){
+    for(let i=0;i<4;i++){const rr=8+i*20*pStr+Math.sin(tick*.035+i*1.3)*4;X.beginPath();X.arc(smx,smy,Math.max(1,rr),0,6.28);X.strokeStyle=`rgba(160,150,120,${pStr*.025*(1-i/4)})`;X.lineWidth=.3;X.stroke()}
+    X.beginPath();X.arc(smx,smy,2+pStr*4,0,6.28);X.fillStyle=`rgba(160,150,120,${pStr*.12})`;X.fill();
+  }
+
+  if(rIsAbsent&&ghostStrength>0.01){
+    const ga=ghostStrength*0.06;
+    for(let i=0;i<3;i++){const gr=20+i*30*ghostStrength+Math.sin(tick*.02+i*2)*10*ghostStrength;X.beginPath();X.arc(ghostX,ghostY,Math.max(1,gr),0,6.28);X.strokeStyle=`rgba(140,200,220,${ga*(1-i/3)})`;X.lineWidth=.2;X.stroke()}
+    X.beginPath();X.arc(ghostX,ghostY,2+ghostStrength*3,0,6.28);X.fillStyle=`rgba(180,220,240,${ga*0.5})`;X.fill();
+  }
+
+  // Bonds
+  clearGrid();
+  for(let i=0;i<N;i++){if(!palive[i])continue;const k=gKey(px[i],py[i]);pnext[i]=grid[k];grid[k]=i}
+  X.lineWidth=.25;
+  for(let i=0;i<N;i++){
+    if(!palive[i])continue;
+    const gx=(px[i]/CELL)|0,gy=(py[i]/CELL)|0;
+    for(let dy=0;dy<=1;dy++)for(let dx=(dy===0?1:-1);dx<=1;dx++){
+      const nnx=gx+dx,nny=gy+dy;
+      if(nnx<0||nny<0||nnx>=gW||nny>=gH)continue;
+      let j=grid[nny*gW+nnx];
+      while(j>=0){
+        if(palive[j]){
+          const ddx=px[i]-px[j],ddy=py[i]-py[j],d2=ddx*ddx+ddy*ddy;
+          if(d2<2200&&d2>0){
+            const sim=tendSim(i,j),pa=Math.cos(phase[i]-phase[j]),bond=sim*Math.max(0,pa);
+            if(bond>0.2){const d=Math.sqrt(d2),al=bond*(1-d/47)*0.05*(amp[i]+amp[j]);const r=(pR[i]+pR[j])/2|0,g=(pG[i]+pG[j])/2|0,b=(pB[i]+pB[j])/2|0;X.beginPath();X.moveTo(px[i],py[i]);X.lineTo(px[j],py[j]);X.strokeStyle=`rgba(${r},${g},${b},${al})`;X.stroke()}
+          }
+        }
+        j=pnext[j];
+      }
+    }
+  }
+
+  // Shared field visualization — lineage-colored territories (colors from cache)
+  const cellW=W/FIELD_W,cellH=H/FIELD_H;
+  for(let fy=0;fy<FIELD_H;fy++){
+    for(let fx=0;fx<FIELD_W;fx++){
+      const fIdx=fy*FIELD_W+fx;
+      const val=field[fIdx];
+      if(val<0.03)continue;
+      const alpha=Math.min(0.65,val*0.4);
+      const own=fieldOwnership[fIdx];
+      const ci=fIdx*3;
+      const r=Math.floor(fieldLineageCache[ci]*own+100*(1-own));
+      const g=Math.floor(fieldLineageCache[ci+1]*own+240*(1-own));
+      const b=Math.floor(fieldLineageCache[ci+2]*own+220*(1-own));
+      X.fillStyle=`rgba(${r},${g},${b},${alpha})`;
+      X.fillRect(fx*cellW,fy*cellH,cellW+1,cellH+1);
+    }
+  }
+
+  // Particles
+  for(let i=0;i<N;i++){
+    if(!palive[i])continue;
+    const a=Math.min(1,amp[i]*0.8);if(a<.003)continue;
+    const s=Math.max(.2,pSz[i]),col=collapse[i],smear=1-col;
+    const r=pR[i]|0,g=pG[i]|0,b=pB[i]|0;
+    if(smear>0.12){for(let e=0;e<EL;e++){const ei=(echoIdx[i]-1-e+EL*100)%EL;const ex=echox[i*EL+ei],ey=echoy[i*EL+ei],ea=a*smear*0.06*(1-e/EL),fx=px[i]+(px[i]-ex)*0.4,fy=py[i]+(py[i]-ey)*0.4;X.beginPath();X.arc(ex,ey,s*.5,0,6.28);X.fillStyle=`rgba(${r},${g},${b},${ea})`;X.fill();X.beginPath();X.arc(fx,fy,s*.3,0,6.28);X.fillStyle=`rgba(${r},${g},${b},${ea*.5})`;X.fill()}}
+    if(smear>0.08){const hr=s*1.8+smear*3;X.beginPath();X.arc(px[i],py[i],hr,0,6.28);X.fillStyle=`rgba(${r},${g},${b},${a*smear*0.012})`;X.fill();const fr=hr*(1+Math.sin(phase[i]*4)*0.25);X.beginPath();X.arc(px[i],py[i],fr,0,6.28);X.strokeStyle=`rgba(${r},${g},${b},${a*smear*0.015})`;X.lineWidth=.2;X.stroke()}
+    if(col>0.15){X.beginPath();X.arc(px[i],py[i],s*2.2,0,6.28);X.fillStyle=`rgba(${r},${g},${b},${a*col*0.035})`;X.fill()}
+    const bodySize=s*(0.5+col*0.5);
+    X.beginPath();X.arc(px[i],py[i],bodySize,0,6.28);X.fillStyle=`rgba(${r},${g},${b},${a*(0.4+col*0.5)})`;X.fill();
+    if(col>0.3&&amp[i]>0.3){X.beginPath();X.arc(px[i],py[i],bodySize*0.25,0,6.28);X.fillStyle=`rgba(${Math.min(255,r+50)|0},${Math.min(255,g+50)|0},${Math.min(255,b+50)|0},${a*col*0.35})`;X.fill()}
+  }
+
+  // ═══ GOVERNANCE VISIBILITY LAYER ═══
+
+  // 1. Conjugation flashes — bright lines where plasmid transfer just happened
+  for(let f=flashN-1;f>=0;f--){
+    flashAge[f]++;
+    if(flashAge[f]>flashLife){
+      flashN--;flashX1[f]=flashX1[flashN];flashY1[f]=flashY1[flashN];
+      flashX2[f]=flashX2[flashN];flashY2[f]=flashY2[flashN];flashAge[f]=flashAge[flashN];
+      continue;
+    }
+    const fa=1-flashAge[f]/flashLife;
+    const bright=fa*fa; // quadratic falloff — sharp flash, slow fade
+    X.beginPath();X.moveTo(flashX1[f],flashY1[f]);X.lineTo(flashX2[f],flashY2[f]);
+    X.strokeStyle=`rgba(255,220,100,${bright*0.6})`;X.lineWidth=1.2*bright+0.3;X.stroke();
+    // Tiny glow at endpoints
+    const gr=3*bright;
+    X.beginPath();X.arc(flashX1[f],flashY1[f],gr,0,6.28);X.fillStyle=`rgba(255,240,150,${bright*0.3})`;X.fill();
+    X.beginPath();X.arc(flashX2[f],flashY2[f],gr,0,6.28);X.fillStyle=`rgba(255,240,150,${bright*0.3})`;X.fill();
+  }
+
+  // 2. Plasmid carrier markers — inner ring on particles with personal DNA
+  for(let i=0;i<N;i++){
+    if(!palive[i]||pPlasmidLen[i]===0)continue;
+    const a=Math.min(1,amp[i]*0.8);if(a<.01)continue;
+    const nP=pPlasmidLen[i];
+    const ringR=Math.max(0.6,pSz[i]*0.35);
+    // Colour encodes plasmid count: 1=cyan, 2=yellow, 3=orange, 4=white
+    const pc=nP===1?'80,220,220':nP===2?'220,220,80':nP===3?'240,160,60':'255,255,255';
+    X.beginPath();X.arc(px[i],py[i],ringR,0,6.28);
+    X.strokeStyle=`rgba(${pc},${a*0.45})`;X.lineWidth=0.6;X.stroke();
+  }
+
+  // 3. vmInfluence ambient pulse — subtle screen-edge glow showing VM power
+  const vmPow=genome.vmInfluence;
+  if(vmPow>0.08){
+    const vAlpha=Math.min(0.04,vmPow*0.04);
+    const grad=X.createRadialGradient(W/2,H/2,Math.min(W,H)*0.3,W/2,H/2,Math.min(W,H)*0.7);
+    grad.addColorStop(0,'rgba(0,0,0,0)');
+    // VM dominance: blue-violet. Physics dominance: stays dark.
+    const vR=40,vG=30+vmPow*80|0,vB=120+vmPow*120|0;
+    grad.addColorStop(1,`rgba(${vR},${vG},${vB},${vAlpha})`);
+    X.fillStyle=grad;X.fillRect(0,0,W,H);
+  }
+
+  // Shockwaves
+  for(let i=shN-1;i>=0;i--){shr_[i]+=2+she[i]*3;if(shr_[i]>shmr[i]){shN--;shx[i]=shx[shN];shy[i]=shy[shN];shr_[i]=shr_[shN];shmr[i]=shmr[shN];she[i]=she[shN];shCR[i]=shCR[shN];shCG[i]=shCG[shN];shCB[i]=shCB[shN];continue}const a=(1-shr_[i]/shmr[i])*she[i]*.1;X.beginPath();X.arc(shx[i],shy[i],shr_[i],0,6.28);X.strokeStyle=`rgba(${shCR[i]|0},${shCG[i]|0},${shCB[i]|0},${a})`;X.lineWidth=.7;X.stroke()}
+
+  // Bits
+  for(let i=bN-1;i>=0;i--){bpx[i]+=bvx_[i];bpy[i]+=bvy_[i];bvx_[i]*=.93;bvy_[i]*=.93;bage[i]++;if(bage[i]>blife[i]){bN--;bpx[i]=bpx[bN];bpy[i]=bpy[bN];bvx_[i]=bvx_[bN];bvy_[i]=bvy_[bN];bage[i]=bage[bN];blife[i]=blife[bN];bsz[i]=bsz[bN];bCR[i]=bCR[bN];bCG[i]=bCG[bN];bCB[i]=bCB[bN];continue}const a=(1-bage[i]/blife[i])*.25;X.beginPath();X.arc(bpx[i],bpy[i],bsz[i]*(1-bage[i]/blife[i]),0,6.28);X.fillStyle=`rgba(${bCR[i]|0},${bCG[i]|0},${bCB[i]|0},${a})`;X.fill()}
+}
+
+// ═══════════════════════════════════════
+// LIFECYCLE
+// ═══════════════════════════════════════
+function compact(){
+  let w=0;
+  for(let r=0;r<N;r++){
+    if(!palive[r])continue;
+    if(w!==r){px[w]=px[r];py[w]=py[r];vx[w]=vx[r];vy[w]=vy[r];for(let d=0;d<DIMS;d++)tend[w*DIMS+d]=tend[r*DIMS+d];phase[w]=phase[r];freq[w]=freq[r];amp[w]=amp[r];palive[w]=1;page[w]=page[r];localRes[w]=localRes[r];collapse[w]=collapse[r];echoIdx[w]=echoIdx[r];for(let e=0;e<EL;e++){echox[w*EL+e]=echox[r*EL+e];echoy[w*EL+e]=echoy[r*EL+e]}
+    for(let m=0;m<MEM_SIZE;m++)pMem[w*MEM_SIZE+m]=pMem[r*MEM_SIZE+m];
+    pPlasmidLen[w]=pPlasmidLen[r];
+    for(let p=0;p<pPlasmidLen[r]*4;p++)pPlasmid[w*PLASMID_SLOTS+p]=pPlasmid[r*PLASMID_SLOTS+p]}
+    w++;
+  }
+  N=w;
+}
+
+function replenish(){
+  // FIELD-GATED REPLENISHMENT — new life only where habitat exists
+  // The system must maintain its environment to sustain its population.
+  const pressure=N<50?0.25:N<100?0.15:N<200?0.06:0.02;
+  if(Math.random()>pressure)return;
+
+  // Check if there's viable habitat anywhere
+  const gate=genome.fieldBirthGate;
+
+  if(ghostStrength>0.25&&Math.random()<ghostStrength*0.4){
+    const ang=Math.random()*6.28,r=Math.random()*GHOST_RADIUS*0.5;
+    const gx_=ghostX+Math.cos(ang)*r,gy_=ghostY+Math.sin(ang)*r;
+    // Field gate: check local field energy at spawn point
+    const fx=Math.floor(gx_/(W/FIELD_W)),fy=Math.floor(gy_/(H/FIELD_H));
+    const fIdx=Math.max(0,Math.min(FIELD_W*FIELD_H-1,fy*FIELD_W+fx));
+    if(N<30||field[fIdx]>=gate){ // always allow if near extinction
+      const tv=new Float32Array(DIMS);
+      for(let d=0;d<DIMS;d++)tv[d]=globalTend[d]*(0.3+Math.random()*0.7)+(Math.random()-0.5)*0.3;
+      addParticle(gx_,gy_,tv,false);
+    }
+  }else if(genome.stableMotifs.length>0&&Math.random()<genome.culturalBias){
+      // CULTURAL MEMORY SEEDING — new particles carry historical DNA
+      const motif=genome.stableMotifs[Math.random()*genome.stableMotifs.length|0];
+
+      // If there's a cluster matching this motif, spawn NEAR it (cultural reinforcement)
+      let spawnX=-5,spawnY=Math.random()*H;
+      if(clusters.length>0){
+        let bestC=null,bestSim=-1;
+        for(const c of clusters){
+          let sim=0;for(let d=0;d<DIMS;d++)sim+=c.tendency[d]*motif.t[d];
+          if(sim>bestSim){bestSim=sim;bestC=c}
+        }
+        if(bestC&&bestSim>0.3){
+          // Spawn near the matching cluster — cultural reinforcement
+          const ang=Math.random()*6.28,r=CELL*2+Math.random()*CELL*2;
+          spawnX=bestC.cx+Math.cos(ang)*r;
+          spawnY=bestC.cy+Math.sin(ang)*r;
+        }
+      }
+      const tv=new Float32Array(DIMS);
+      for(let d=0;d<DIMS;d++)tv[d]=motif.t[d]+(Math.random()-0.5)*0.15;
+      addParticle(spawnX,spawnY,tv,false);
+    }else{
+      const e=Math.random()*4|0;let x,y;
+      if(e===0){x=-5;y=Math.random()*H}else if(e===1){x=W+5;y=Math.random()*H}
+      else if(e===2){x=Math.random()*W;y=-5}else{x=Math.random()*W;y=H+5}
+      addParticle(x,y,randomTendency(),false);
+    }
+}
+
+// ═══════════════════════════════════════
+// INIT + LOOP
+// ═══════════════════════════════════════
+function resize(){W=c.width=innerWidth;H=c.height=innerHeight;initGrid()}
+
+function init(){
+  resize();N=0;
+  const loaded=loadGenome();
+  const n=Math.min(400,(W*H/2800)|0);
+  for(let i=0;i<n;i++)addParticle(Math.random()*W,Math.random()*H,randomTendency(),false);
+  if(loaded){
+    genEl.textContent=`gen ${genome.generation} | ${genome.totalTicks} ticks inherited`;
+  }
+}
+
+function loop(){
+  tick++;
+  genome.totalTicks++;
+  smx+=(mx-smx)*.05;smy+=(my-smy)*.05;
+  if(pulling){pStr=Math.min(pStr+.02,1);pDur++}else pStr*=.92;
+
+  const absPd=ABSENCE_BASE+Math.sin(tick*0.0007)*180+(Math.sin(tick*0.00031)*90)|0;
+  const cp=tick%Math.max(200,absPd);
+  const currentlyAbsent=cp>(Math.max(200,absPd)*(1-ABSENCE_DUTY));
+  wasAbsent=currentlyAbsent;
+
+  // Global mood
+  if(tick%30===0){
+    for(let d=0;d<DIMS;d++)globalTend[d]=0;
+    let alive=0;
+    for(let i=0;i<N;i++){if(!palive[i])continue;for(let d=0;d<DIMS;d++)globalTend[d]+=tend[i*DIMS+d];alive++}
+    if(alive>0)for(let d=0;d<DIMS;d++)globalTend[d]/=alive;
+  }
+  for(let i=0;i<N;i++){if(!palive[i])continue;for(let d=0;d<DIMS;d++)tend[i*DIMS+d]+=(globalTend[d]-tend[i*DIMS+d])*0.00002}
+
+  // Exogenous perturbations
+  exogenousPerturbation();
+
+  gravity();
+  processGrid();
+
+  // ═══ PLASMID PERSISTENCE + CRYSTALLIZATION ═══
+  // Track how long each particle's plasmid has persisted.
+  // Plasmids that survive long enough crystallize into permanent VM instructions.
+  // This is how temporary mobile code becomes permanent structure — new organizational layer.
+  for(let i=0;i<N;i++){
+    if(!palive[i])continue;
+    if(pPlasmidLen[i]>0){
+      pPlasmidAge[i]++;
+      // CRYSTALLIZATION: plasmid persists >2000 ticks → absorb into permanent VM
+      if(pPlasmidAge[i]>2000&&genome.vmProgram.length<genome.vmMaxInstructions){
+        const base=i*MAX_PLASMID_INST;
+        const len=pPlasmidLen[i];
+        for(let p=0;p<len&&genome.vmProgram.length<genome.vmMaxInstructions;p++){
+          const pi=base+p*4;
+          const newInst=[pPlasmid[pi],pPlasmid[pi+1],pPlasmid[pi+2],pPlasmid[pi+3]];
+          genome.vmProgram.push(newInst);
+        }
+        // Plasmid consumed — absorbed into permanent genome
+        pPlasmidLen[i]=0;
+        pPlasmidAge[i]=0;
+      }
+    }else{
+      pPlasmidAge[i]=0;
+    }
+  }
+
+  applyEntropy();
+  updateParticles();
+  updateField(); // Diffuse and decay the shared resource field
+
+  // ═══ STRUCTURAL SELF-MODEL UPDATE ═══
+  if(tick%60===0){
+    let alive=0,totalAmp=0,totalRes=0;
+    for(let i=0;i<N;i++){if(!palive[i])continue;alive++;totalAmp+=amp[i];totalRes+=localRes[i]}
+    selfModel.population=alive;
+    selfModel.avgAmplitude=alive>0?totalAmp/alive:0;
+    selfModel.avgResonance=alive>0?totalRes/alive:0;
+    selfModel.deathRate=selfModel.deathRate*0.9+deathsThisTick*0.1;
+    selfModel.birthRate=selfModel.birthRate*0.9+birthsThisTick*0.1;
+    selfModel.popHistory.push(alive);
+    if(selfModel.popHistory.length>60)selfModel.popHistory.shift();
+    if(selfModel.popHistory.length>10){
+      const recent=selfModel.popHistory.slice(-5).reduce((a,b)=>a+b,0)/5;
+      const older=selfModel.popHistory.slice(-10,-5).reduce((a,b)=>a+b,0)/5;
+      selfModel.trend=recent>older*1.05?1:recent<older*0.95?-1:0;
+    }
+
+    // CLUSTER DETECTION
+    detectClusters();
+    trackClusterPersistence();
+    attemptClusterBudding(); // Group-level reproduction — successful clusters bud daughters
+    rebuildFieldLineageCache(); // Update territorial color map
+    selfModel.clusterCount=clusters.length;
+    selfModel.diversity=clusterDiversity();
+    selfModel.avgCoherence=clusters.length>0?clusters.reduce((a,c)=>a+c.coherence,0)/clusters.length:0;
+    selfModel.persistentClusters=clusters.filter(c=>c.persistAge>3).length;
+
+    // MULTI-DIMENSIONAL PREDICTION & ERROR
+    selfModel.actual.pop=alive;
+    selfModel.actual.coherence=selfModel.avgCoherence;
+    selfModel.actual.clusters=selfModel.clusterCount;
+    selfModel.actual.diversity=selfModel.diversity;
+    if(selfModel.predicted.pop>0){
+      selfModel.errors.pop=selfModel.errors.pop*0.7+(alive-selfModel.predicted.pop)*0.3;
+      selfModel.errors.coherence=selfModel.errors.coherence*0.7+(selfModel.avgCoherence-selfModel.predicted.coherence)*0.3;
+      selfModel.errors.clusters=selfModel.errors.clusters*0.7+(selfModel.clusterCount-selfModel.predicted.clusters)*0.3;
+      selfModel.errors.diversity=selfModel.errors.diversity*0.7+(selfModel.diversity-selfModel.predicted.diversity)*0.3;
+    }
+    selfModel.predicted.pop=alive+selfModel.birthRate*60-selfModel.deathRate*60;
+    selfModel.predicted.coherence=selfModel.avgCoherence+(genome.entrainRate-0.015)*0.5;
+    selfModel.predicted.clusters=selfModel.clusterCount+(selfModel.diversity>0.3?0.5:-0.3);
+    selfModel.predicted.diversity=selfModel.diversity;
+
+    // BOUNDARY INFERENCE — multi-dimensional
+    inferBoundary();
+
+    // SELF-DERIVED STABILITY — now includes field trajectory and capacity pressure
+    // Population variance (extended window for longer memory)
+    let popStability=0.5;
+    if(selfModel.popHistory.length>10){
+      const slice=selfModel.popHistory.slice(-30);
+      const mean=slice.reduce((a,b)=>a+b,0)/slice.length;
+      const variance=slice.reduce((a,b)=>a+(b-mean)*(b-mean),0)/slice.length;
+      popStability=Math.max(0,1-Math.sqrt(variance)/Math.max(1,mean));
+    }
+
+    // FIELD TRAJECTORY — track field energy over time
+    const fieldTotal_=field.reduce((a,b)=>a+b,0);
+    selfModel.fieldEnergy=fieldTotal_;
+    selfModel.fieldHistory.push(fieldTotal_);
+    if(selfModel.fieldHistory.length>30)selfModel.fieldHistory.shift();
+    if(selfModel.fieldHistory.length>5){
+      const recent=selfModel.fieldHistory.slice(-5);
+      const older=selfModel.fieldHistory.slice(-10,-5);
+      if(older.length>0){
+        const recentMean=recent.reduce((a,b)=>a+b,0)/recent.length;
+        const olderMean=older.reduce((a,b)=>a+b,0)/older.length;
+        selfModel.fieldTrend=(recentMean-olderMean)/(Math.abs(olderMean)+1);
+      }
+    }
+
+    // CAPACITY PRESSURE — how close to hard cap
+    selfModel.capacityPressure=Math.max(0,Math.min(1,(alive/CAP-0.5)*2));
+
+    // COLLAPSE RISK — at cap with depleting field = approaching cliff
+    // This is the signal that was missing: "stably at 1800" with declining field is NOT stable
+    const fieldDanger=selfModel.fieldTrend<-0.01?Math.min(1,Math.abs(selfModel.fieldTrend)*5):0;
+    selfModel.collapseRisk=selfModel.capacityPressure*0.5+fieldDanger*0.5;
+
+    // EFFECTIVE STABILITY — population stability discounted by collapse risk
+    selfModel.stability=Math.max(0,popStability*(1-selfModel.collapseRisk*0.7));
+
+    // FITNESS — self-derived, no designer targets
+    const w=genome.objWeights,wT=w[0]+w[1]+w[2]+w[3]+0.001;
+    const fitness=(selfModel.stability*w[0]+selfModel.diversity*w[1]+selfModel.avgCoherence*w[2]+
+      (clusters.filter(c=>c.persistAge<2).length/Math.max(1,clusters.length))*w[3])/wT;
+    currentFitness=currentFitness*0.9+fitness*0.1;
+    fitnessSamples++;
+
+    // MOTIF-BIASED TENDENCY DRIFT — cultural gravity
+    if(genome.stableMotifs.length>0&&clusters.length>0){
+      for(const c of clusters){
+        let bestMotif=null,bestSim=-1;
+        for(const m of genome.stableMotifs){
+          let sim=0;for(let d=0;d<DIMS;d++)sim+=c.tendency[d]*m.t[d];
+          if(sim>bestSim){bestSim=sim;bestMotif=m}
+        }
+        if(bestMotif&&bestSim>0.3){
+          for(let i=0;i<N;i++){
+            if(!palive[i]||clusterID[i]!==c.id)continue;
+            for(let d=0;d<DIMS;d++)tend[i*DIMS+d]+=(bestMotif.t[d]-tend[i*DIMS+d])*0.0001*bestSim;
+          }
+        }
+      }
+    }
+
+    deathsThisTick=0;birthsThisTick=0;
+  }
+
+  // ═══ EXTINCTION CHECK ═══
+  if(tick%90===0&&tick>300){if(checkExtinction())return}
+
+  // ═══ VM PHENOTYPE PROFILING — every 100 ticks ═══
+  if(tick%100===0&&tick>200)profileVM();
+
+  // ═══ SHADOW SIMULATOR ═══
+  if(tick%120===0&&tick>300)runShadowSim();
+
+  // ═══ FULL GENOME MUTATION — every 300 frames ═══
+  if(tick%Math.max(60,Math.round(genome.mutationInterval))===0&&tick>600){
+    mutateGenome();
+    attemptHGT();
+    evolvePlasmids(); // Per-particle plasmid mutation + spontaneous generation
+  }
+
+  // Reset peak bond tracker each tick
+  if(tick%10===0)peakBondThisTick*=0.8; // decay rather than hard reset
+
+  // ═══ GENOME ARCHIVING ═══
+  if(tick%900===0&&tick>900)archiveGenome();
+
+  // ═══ IDENTITY TRACKING ═══
+  if(tick%60===0){
+    if(currentFitness>genome.peakFitness)genome.peakFitness=currentFitness;
+    if(selfModel.stability>0.7){
+      genome.currentStableStreak++;
+      if(genome.currentStableStreak>genome.longestStable)genome.longestStable=genome.currentStableStreak;
+    }else{
+      genome.currentStableStreak=0;
+    }
+  }
+
+  // ═══ INSTRUMENT SAMPLING — independent of save cycle ═══
+  if(tick%120===0&&tick>60)sampleInstrumentation();
+
+  // ═══ SAVE GENOME + MOTIFS ═══
+  if(tick%600===0){
+    if(selfModel.persistentClusters>0){
+      for(const c of clusters){
+        if(c.persistAge>5&&c.size>5){
+          const motif={t:c.tendency.map(v=>+(v.toFixed(3))),s:c.size,c:+(c.coherence.toFixed(2)),age:c.persistAge};
+          const isDupe=genome.stableMotifs.some(m=>{let d=0;for(let i=0;i<DIMS;i++)d+=Math.abs(m.t[i]-motif.t[i]);return d<0.3});
+          if(!isDupe){genome.stableMotifs.push(motif);if(genome.stableMotifs.length>5)genome.stableMotifs.shift()}
+        }
+      }
+    }
+    genome.lineage.push({t:genome.totalTicks,p:selfModel.population,c:selfModel.clusterCount,d:+(selfModel.diversity.toFixed(3)),f:+(currentFitness.toFixed(3)),s:+(selfModel.stability.toFixed(3)),w:genome.objWeights.map(v=>+(v.toFixed(3)))});
+    if(genome.lineage.length>6)genome.lineage.shift();
+    saveGenome();
+    const compCount=genome.vmProgram.filter(i=>i[0]===3).length;
+    const memCount=genome.vmProgram.filter(i=>i[0]===6||i[0]===7).length;
+    // Count particles that have plasmids
+    let plasmidParticles=0,totalPlasmids=0;
+    for(let i=0;i<N;i++){if(pPlasmidLen[i]>0){plasmidParticles++;totalPlasmids+=pPlasmidLen[i]}}
+    const fieldTotal=field.reduce((a,b)=>a+b,0);
+    const clVMActive=clusters.filter(c=>c.persistAge>3&&c.vmProgram).length;
+    const budCount=clusters.filter(c=>c.hash&&c.hash.startsWith('bud_')).length;
+    const livingLin=new Set(clusters.map(c=>c.lineageID).filter(Boolean)).size;
+    const nSensors=genome.fitnessSensors.length;
+    const cRisk=selfModel.collapseRisk||0;
+    const fTrend=selfModel.fieldTrend||0;
+    genEl.textContent=`gen${genome.generation} ${genome.extinctions}☠ t${genome.totalTicks} | ${clusters.length}cl(${clVMActive}vm${budCount>0?','+budCount+'bud':''}) ${livingLin}lin fit:${currentFitness.toFixed(2)} stb:${(selfModel.stability||0).toFixed(2)} | vm:${genome.vmProgram.length}inst ${nSensors}sns ${hgtEventsTotal}hgt | pop:${N}/${CAP} fld:${fieldTotal.toFixed(0)}${fTrend<-0.01?'↓':fTrend>0.01?'↑':'~'} risk:${cRisk.toFixed(2)}`;
+  }
+
+  // Adaptive render skipping — at high pop, skip frames to keep thread responsive
+  const renderEvery=N>1000?4:N>500?3:N>200?2:1;
+  if(tabVisible&&tick%renderEvery===0){
+    render();
+    renderDashboard();
+  }
+  replenish();
+  if(tick%45===0)compact();
+  scheduleNext();
+}
+
+// ═══ BACKGROUND EXECUTION ═══
+// requestAnimationFrame throttles to ~0 when tab is hidden.
+// Fall back to setTimeout when not visible so evolution continues.
+let tabVisible=true;
+document.addEventListener('visibilitychange',()=>{
+  tabVisible=!document.hidden;
+  if(tabVisible)scheduleNext(); // resume immediately when tab returns
+});
+function scheduleNext(){
+  if(tabVisible){
+    requestAnimationFrame(loop);
+  }else{
+    // Background: run physics at ~15fps (67ms), skip rendering
+    setTimeout(loop,67);
+  }
+}
+
+// === EVENTS ===
+document.addEventListener('mousemove',e=>{mx=e.clientX;my=e.clientY});
+document.addEventListener('mousedown',()=>{pulling=1;pDur=0});
+document.addEventListener('mouseup',()=>{scatter();pulling=0});
+document.addEventListener('touchmove',e=>{e.preventDefault();const t=e.touches[0];mx=t.clientX;my=t.clientY},{passive:false});
+document.addEventListener('touchend',()=>{
+  if(pulling)scatter();
+  pulling=0;
+});
+// Dashboard toggle: 'd' key on desktop
+document.addEventListener('keydown',e=>{if(e.key==='d'||e.key==='D')dashboardVisible=!dashboardVisible});
+// Mobile: tap top-left 80x80 corner = toggle dashboard. Anywhere else = pull interaction.
+// Also: double-tap anywhere = toggle dashboard.
+let lastTap=0;
+document.addEventListener('touchstart',e=>{
+  const t=e.touches[0];
+  const now=Date.now();
+
+  // Top-left corner tap: always toggle dashboard, never pull
+  if(t.clientX<80&&t.clientY<80){
+    dashboardVisible=!dashboardVisible;
+    e.preventDefault();
+    lastTap=now;
+    return;
+  }
+
+  // Two-finger tap: toggle dashboard, don't pull
+  if(e.touches.length>=2){
+    dashboardVisible=!dashboardVisible;
+    lastTap=now;
+    return;
+  }
+
+  // Double-tap (within 350ms): toggle dashboard, don't pull
+  if(now-lastTap<350){
+    dashboardVisible=!dashboardVisible;
+    lastTap=0; // reset so triple-tap doesn't re-toggle
+    return;
+  }
+
+  // Normal single tap: physics interaction
+  mx=t.clientX;my=t.clientY;
+  pulling=1;pDur=0;
+  lastTap=now;
+},{passive:false});
+addEventListener('resize',resize);
+
+init();loop();
+</script>
+</body>
+</html>
