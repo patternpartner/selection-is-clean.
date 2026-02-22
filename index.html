@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
-<title>Selection ע</title>
+<title>Selection פ</title>
 <style>
 *{margin:0;padding:0;box-sizing:border-box}
 html,body{height:100%;overflow:hidden;background:#020204;touch-action:none;cursor:crosshair}
@@ -770,7 +770,7 @@ function attemptClusterBudding(){
           copy[3]+=(Math.random()-0.5)*0.2;
           copy[3]=Math.max(-2,Math.min(2,copy[3]));
         }
-        if(Math.random()<0.08)copy[0]=Math.floor(Math.random()*16);
+        if(Math.random()<0.08)copy[0]=Math.floor(Math.random()*17);
         return copy;
       }),
       vmInfluence:Math.max(0.05,c.vmInfluence+(Math.random()-0.5)*0.1),
@@ -1389,7 +1389,7 @@ function evolvePlasmids(){
       }
       else if(roll<0.58){
         // Structural change (opcode or registers)
-        if(Math.random()<0.5)pPlasmid[base]=Math.floor(Math.random()*16);
+        if(Math.random()<0.5)pPlasmid[base]=Math.floor(Math.random()*17);
         else{
           pPlasmid[base+1]=Math.floor(Math.random()*12);
           pPlasmid[base+2]=Math.floor(Math.random()*12);
@@ -1437,7 +1437,7 @@ function evolvePlasmids(){
     // Spontaneous generation — only in high-resonance environments
     if(nP<MAX_PLASMID&&Math.random()<genome.plasmidSpawnRate*(1+localRes[i]*4)){
       const newBase=i*PLASMID_SLOTS+nP*4;
-      pPlasmid[newBase]=Math.floor(Math.random()*16);
+      pPlasmid[newBase]=Math.floor(Math.random()*17);
       pPlasmid[newBase+1]=Math.floor(Math.random()*12);
       pPlasmid[newBase+2]=Math.floor(Math.random()*12);
       pPlasmid[newBase+3]=(Math.random()-0.5)*0.75;
@@ -1476,7 +1476,7 @@ function attemptHGT(){
     donor[3]+=(Math.random()-0.5)*genome.hgtSpliceNoise;
     donor[3]=Math.max(-2.5,Math.min(2.5,donor[3]));
     // Occasional opcode drift during transfer
-    if(Math.random()<0.08)donor[0]=Math.floor(Math.random()*16);
+    if(Math.random()<0.08)donor[0]=Math.floor(Math.random()*17);
 
     const insertPos=Math.floor(Math.random()*(genome.vmProgram.length+1));
     genome.vmProgram.splice(insertPos,0,donor);
@@ -1660,7 +1660,7 @@ function mutateGenome(){
     inst[3]=Math.max(-2,Math.min(2,inst[3]));
 
     // Opcode swap — now includes FEEDBACK (5), LOAD_MEM (6), STORE_MEM (7)
-    if(Math.random()<rate*0.2)inst[0]=Math.floor(Math.random()*16);
+    if(Math.random()<rate*0.2)inst[0]=Math.floor(Math.random()*17);
 
     // Source register swap (now 12 registers)
     if(Math.random()<rate*0.2)inst[1]=Math.floor(Math.random()*12);
@@ -1672,7 +1672,7 @@ function mutateGenome(){
   // Program growth: insert a random instruction
   if(genome.vmProgram.length<genome.vmMaxInstructions&&Math.random()<rate*0.15){
     const pos=Math.floor(Math.random()*(genome.vmProgram.length+1));
-    const newInst=[Math.floor(Math.random()*16),Math.floor(Math.random()*12),Math.floor(Math.random()*12),(Math.random()-0.5)*0.6];
+    const newInst=[Math.floor(Math.random()*17),Math.floor(Math.random()*12),Math.floor(Math.random()*12),(Math.random()-0.5)*0.6];
     genome.vmProgram.splice(pos,0,newInst);
   }
 
@@ -1709,7 +1709,7 @@ function mutateGenome(){
       inst[3]+=(Math.random()-0.5)*0.15*scale;
       inst[3]=Math.max(-2,Math.min(2,inst[3]));
       // Structural mutations (rarer)
-      if(Math.random()<0.2)inst[0]=Math.floor(Math.random()*16);
+      if(Math.random()<0.2)inst[0]=Math.floor(Math.random()*17);
       if(Math.random()<0.15)inst[1]=Math.floor(Math.random()*12);
       if(Math.random()<0.15)inst[2]=Math.floor(Math.random()*12);
     }
@@ -2216,6 +2216,29 @@ function executeVM(i,j,sim,d){
       case 14:if(vmRegs[si]>k)ip=Math.abs(Math.floor(vmRegs[di]))%nInst;break;
       // 15: DEVELOP — age-dependent gene expression. Particles change behavior over lifetime. Ontogeny.
       case 15:{const ageFrac=Math.min(1,page[i]/800);vmRegs[di]=vmRegs[si]*(1-ageFrac)+k*ageFrac;}break;
+      // 16: BIRTH — autonomous reproduction. The particle writes the child.
+      // Parent must have enough energy (amp > 0.4), be old enough (age > 80), and pay metabolic cost.
+      // Offspring position: offset from parent by register values. Tendency: inherited with register-driven variation.
+      // The system controls its own reproduction. We don't decide when. It does.
+      case 16:{
+        if(amp[i]>0.4 && page[i]>80 && N<CAP-1 && Math.random()<0.03){
+          // Offspring position: parent + register-driven offset
+          const offX=px[i]+vmRegs[si]*15;
+          const offY=py[i]+vmRegs[di]*15;
+          // Offspring tendency: parent's tendency + register-driven variation
+          const nt=new Float32Array(DIMS);
+          for(let dd=0;dd<DIMS;dd++)nt[dd]=tend[i*DIMS+dd]+k*0.1*(vmRegs[(dd+4)%12]-0.5);
+          const child=addParticle(
+            Math.max(0,Math.min(W,offX)),
+            Math.max(0,Math.min(H,offY)),
+            nt,true,i,-1
+          );
+          if(child>=0){
+            amp[i]*=0.5; // parent pays half its energy
+            birthsThisTick++;
+          }
+        }
+      }break;
     }
     for(let r=0;r<12;r++)vmRegs[r]=Math.max(-8,Math.min(8,vmRegs[r]));
   }
@@ -2254,6 +2277,15 @@ function executeVM(i,j,sim,d){
         case 13:{const pInstIdx=Math.abs(Math.floor(vmRegs[si]))%Math.max(1,genome.vmProgram.length);const pSelfInst=genome.vmProgram[pInstIdx];vmRegs[di]=pSelfInst?pSelfInst[Math.abs(Math.floor(k))%4]:0;}break;
         case 14:if(vmRegs[si]>k)ip=Math.abs(Math.floor(vmRegs[di]))%nPi;break;
         case 15:{const pAgeFrac=Math.min(1,page[i]/800);vmRegs[di]=vmRegs[si]*(1-pAgeFrac)+k*pAgeFrac;}break;
+        case 16:{
+          if(amp[i]>0.4&&page[i]>80&&N<CAP-1&&Math.random()<0.03){
+            const pOffX=px[i]+vmRegs[si]*15,pOffY=py[i]+vmRegs[di]*15;
+            const pnt=new Float32Array(DIMS);
+            for(let dd=0;dd<DIMS;dd++)pnt[dd]=tend[i*DIMS+dd]+k*0.1*(vmRegs[(dd+4)%12]-0.5);
+            const pChild=addParticle(Math.max(0,Math.min(W,pOffX)),Math.max(0,Math.min(H,pOffY)),pnt,true,i,-1);
+            if(pChild>=0){amp[i]*=0.5;birthsThisTick++}
+          }
+        }break;
       }
       for(let r=0;r<12;r++)vmRegs[r]=Math.max(-8,Math.min(8,vmRegs[r]));
     }
@@ -2404,6 +2436,15 @@ function executeClusterVM(i,j,sim,d){
       case 13:{const cProg=cl?cl.vmProgram:genome.vmProgram;const cInstIdx=Math.abs(Math.floor(vmRegs[si]))%Math.max(1,cProg.length);const cSelfInst=cProg[cInstIdx];vmRegs[di]=cSelfInst?cSelfInst[Math.abs(Math.floor(k))%4]:0;}break;
       case 14:{const cNInst=cl?cl.vmProgram.length:prog.length;if(vmRegs[si]>k)ip=Math.abs(Math.floor(vmRegs[di]))%Math.max(1,cNInst);}break;
       case 15:{const cAgeFrac=Math.min(1,page[i]/800);vmRegs[di]=vmRegs[si]*(1-cAgeFrac)+k*cAgeFrac;}break;
+      case 16:{
+        if(amp[i]>0.4&&page[i]>80&&N<CAP-1&&Math.random()<0.03){
+          const cOffX=px[i]+vmRegs[si]*15,cOffY=py[i]+vmRegs[di]*15;
+          const cnt=new Float32Array(DIMS);
+          for(let dd=0;dd<DIMS;dd++)cnt[dd]=tend[i*DIMS+dd]+k*0.1*(vmRegs[(dd+4)%12]-0.5);
+          const cChild=addParticle(Math.max(0,Math.min(W,cOffX)),Math.max(0,Math.min(H,cOffY)),cnt,true,i,-1);
+          if(cChild>=0){amp[i]*=0.5;birthsThisTick++}
+        }
+      }break;
     }
     for(let r=0;r<12;r++)vmRegs[r]=Math.max(-8,Math.min(8,vmRegs[r]));
   }
@@ -2759,9 +2800,11 @@ function compact(){
 }
 
 function replenish(){
-  // FIELD-GATED REPLENISHMENT — new life only where habitat exists
-  // The system must maintain its environment to sustain its population.
-  const pressure=N<50?0.25:N<100?0.15:N<200?0.06:0.02;
+  // REDUCED REPLENISHMENT — the system reproduces itself now via BIRTH opcode.
+  // External input is the background trickle, not the main source of life.
+  // Only active at low populations. At healthy populations, the system sustains itself.
+  if(N>200)return; // system is self-sustaining above 200
+  const pressure=N<30?0.25:N<80?0.12:0.04;
   if(Math.random()>pressure)return;
 
   // Check if there's viable habitat anywhere
