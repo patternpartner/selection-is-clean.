@@ -245,6 +245,8 @@ const echoIdx=new Uint8Array(CAP);
 const clusterID=new Int16Array(CAP);
 
 let deathsThisTick=0,birthsThisTick=0;
+// BIRTH QUEUE — births deferred to after interaction loop to avoid modifying arrays mid-iteration
+const birthQueue=[];
 
 // ═══════════════════════════════════════
 // PERSISTENT MEMORY VIA URL HASH
@@ -2217,26 +2219,15 @@ function executeVM(i,j,sim,d){
       // 15: DEVELOP — age-dependent gene expression. Particles change behavior over lifetime. Ontogeny.
       case 15:{const ageFrac=Math.min(1,page[i]/800);vmRegs[di]=vmRegs[si]*(1-ageFrac)+k*ageFrac;}break;
       // 16: BIRTH — autonomous reproduction. The particle writes the child.
-      // Parent must have enough energy (amp > 0.4), be old enough (age > 80), and pay metabolic cost.
-      // Offspring position: offset from parent by register values. Tendency: inherited with register-driven variation.
-      // The system controls its own reproduction. We don't decide when. It does.
+      // Deferred to birth queue — processed after interaction loop completes.
       case 16:{
-        if(amp[i]>0.4 && page[i]>80 && N<CAP-1 && Math.random()<0.03){
-          // Offspring position: parent + register-driven offset
-          const offX=px[i]+vmRegs[si]*15;
-          const offY=py[i]+vmRegs[di]*15;
-          // Offspring tendency: parent's tendency + register-driven variation
+        if(amp[i]>0.4 && page[i]>80 && N+birthQueue.length<CAP-1 && Math.random()<0.03){
+          const offX=Math.max(0,Math.min(W,px[i]+vmRegs[si]*15));
+          const offY=Math.max(0,Math.min(H,py[i]+vmRegs[di]*15));
           const nt=new Float32Array(DIMS);
           for(let dd=0;dd<DIMS;dd++)nt[dd]=tend[i*DIMS+dd]+k*0.1*(vmRegs[(dd+4)%12]-0.5);
-          const child=addParticle(
-            Math.max(0,Math.min(W,offX)),
-            Math.max(0,Math.min(H,offY)),
-            nt,true,i,-1
-          );
-          if(child>=0){
-            amp[i]*=0.5; // parent pays half its energy
-            birthsThisTick++;
-          }
+          birthQueue.push({x:offX,y:offY,t:nt,parent:i});
+          amp[i]*=0.5;
         }
       }break;
     }
@@ -2278,12 +2269,11 @@ function executeVM(i,j,sim,d){
         case 14:if(vmRegs[si]>k)ip=Math.abs(Math.floor(vmRegs[di]))%nPi;break;
         case 15:{const pAgeFrac=Math.min(1,page[i]/800);vmRegs[di]=vmRegs[si]*(1-pAgeFrac)+k*pAgeFrac;}break;
         case 16:{
-          if(amp[i]>0.4&&page[i]>80&&N<CAP-1&&Math.random()<0.03){
-            const pOffX=px[i]+vmRegs[si]*15,pOffY=py[i]+vmRegs[di]*15;
+          if(amp[i]>0.4&&page[i]>80&&N+birthQueue.length<CAP-1&&Math.random()<0.03){
             const pnt=new Float32Array(DIMS);
             for(let dd=0;dd<DIMS;dd++)pnt[dd]=tend[i*DIMS+dd]+k*0.1*(vmRegs[(dd+4)%12]-0.5);
-            const pChild=addParticle(Math.max(0,Math.min(W,pOffX)),Math.max(0,Math.min(H,pOffY)),pnt,true,i,-1);
-            if(pChild>=0){amp[i]*=0.5;birthsThisTick++}
+            birthQueue.push({x:Math.max(0,Math.min(W,px[i]+vmRegs[si]*15)),y:Math.max(0,Math.min(H,py[i]+vmRegs[di]*15)),t:pnt,parent:i});
+            amp[i]*=0.5;
           }
         }break;
       }
@@ -2437,12 +2427,11 @@ function executeClusterVM(i,j,sim,d){
       case 14:{const cNInst=cl?cl.vmProgram.length:prog.length;if(vmRegs[si]>k)ip=Math.abs(Math.floor(vmRegs[di]))%Math.max(1,cNInst);}break;
       case 15:{const cAgeFrac=Math.min(1,page[i]/800);vmRegs[di]=vmRegs[si]*(1-cAgeFrac)+k*cAgeFrac;}break;
       case 16:{
-        if(amp[i]>0.4&&page[i]>80&&N<CAP-1&&Math.random()<0.03){
-          const cOffX=px[i]+vmRegs[si]*15,cOffY=py[i]+vmRegs[di]*15;
+        if(amp[i]>0.4&&page[i]>80&&N+birthQueue.length<CAP-1&&Math.random()<0.03){
           const cnt=new Float32Array(DIMS);
           for(let dd=0;dd<DIMS;dd++)cnt[dd]=tend[i*DIMS+dd]+k*0.1*(vmRegs[(dd+4)%12]-0.5);
-          const cChild=addParticle(Math.max(0,Math.min(W,cOffX)),Math.max(0,Math.min(H,cOffY)),cnt,true,i,-1);
-          if(cChild>=0){amp[i]*=0.5;birthsThisTick++}
+          birthQueue.push({x:Math.max(0,Math.min(W,px[i]+vmRegs[si]*15)),y:Math.max(0,Math.min(H,py[i]+vmRegs[di]*15)),t:cnt,parent:i});
+          amp[i]*=0.5;
         }
       }break;
     }
@@ -3103,6 +3092,12 @@ function loop(){
     renderDashboard();
   }
   replenish();
+  // PROCESS BIRTH QUEUE — deferred from VM execution to avoid mid-loop array mutation
+  while(birthQueue.length>0&&N<CAP){
+    const b=birthQueue.pop();
+    if(addParticle(b.x,b.y,b.t,true,b.parent,-1)>=0)birthsThisTick++;
+  }
+  birthQueue.length=0;
   if(tick%45===0)compact();
   scheduleNext();
 }
