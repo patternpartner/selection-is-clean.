@@ -2782,7 +2782,10 @@ function compact(){
     if(w!==r){px[w]=px[r];py[w]=py[r];vx[w]=vx[r];vy[w]=vy[r];for(let d=0;d<DIMS;d++)tend[w*DIMS+d]=tend[r*DIMS+d];phase[w]=phase[r];freq[w]=freq[r];amp[w]=amp[r];palive[w]=1;page[w]=page[r];localRes[w]=localRes[r];collapse[w]=collapse[r];echoIdx[w]=echoIdx[r];for(let e=0;e<EL;e++){echox[w*EL+e]=echox[r*EL+e];echoy[w*EL+e]=echoy[r*EL+e]}
     for(let m=0;m<MEM_SIZE;m++)pMem[w*MEM_SIZE+m]=pMem[r*MEM_SIZE+m];
     pPlasmidLen[w]=pPlasmidLen[r];
-    for(let p=0;p<pPlasmidLen[r]*4;p++)pPlasmid[w*PLASMID_SLOTS+p]=pPlasmid[r*PLASMID_SLOTS+p]}
+    for(let p=0;p<pPlasmidLen[r]*4;p++)pPlasmid[w*PLASMID_SLOTS+p]=pPlasmid[r*PLASMID_SLOTS+p];
+    pPlasmidAge[w]=pPlasmidAge[r];
+    pBroadcast[w*2]=pBroadcast[r*2];pBroadcast[w*2+1]=pBroadcast[r*2+1];
+    clusterID[w]=clusterID[r];}
     w++;
   }
   N=w;
@@ -2856,6 +2859,7 @@ function init(){
 }
 
 function loop(){
+  const frameStart=performance.now();
   tick++;
   genome.totalTicks++;
   smx+=(mx-smx)*.05;smy+=(my-smy)*.05;
@@ -2909,7 +2913,7 @@ function loop(){
 
   applyEntropy();
   updateParticles();
-  updateField(); // Diffuse and decay the shared resource field
+  if(performance.now()-frameStart<80) updateField(); // skip field update if frame already slow
 
   // ═══ STRUCTURAL SELF-MODEL UPDATE ═══
   if(tick%60===0){
