@@ -3092,12 +3092,14 @@ function loop(){
     renderDashboard();
   }
   replenish();
-  // PROCESS BIRTH QUEUE — deferred from VM execution to avoid mid-loop array mutation
-  while(birthQueue.length>0&&N<CAP){
+  // PROCESS BIRTH QUEUE — capped at 5 per frame to prevent computation spikes
+  let birthsProcessed=0;
+  while(birthQueue.length>0&&N<CAP&&birthsProcessed<5){
     const b=birthQueue.pop();
     if(addParticle(b.x,b.y,b.t,true,b.parent,-1)>=0)birthsThisTick++;
+    birthsProcessed++;
   }
-  birthQueue.length=0;
+  if(birthQueue.length>20)birthQueue.length=0; // flush stale queue
   if(tick%45===0)compact();
   scheduleNext();
 }
