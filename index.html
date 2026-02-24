@@ -854,7 +854,7 @@ function profileVM(){
     const prog=genome.vmProgram;
     const nInst=Math.min(prog.length,genome.vmMaxInstructions);
 
-    for(let ip=0;ip<nInst;ip++){
+    for(let ip=0,_prs=0;ip<nInst&&_prs<nInst*2;ip++,_prs++){
       const inst=prog[ip];if(!inst)continue;
       const [op,src,dst,k]=inst;
       const si=Math.abs(src)%12,di=Math.abs(dst)%12;
@@ -2190,7 +2190,7 @@ function executeVM(i,j,sim,d){
   const totalCost=nInst*genome.metabolicCost;
   amp[i]-=totalCost;amp[j]-=totalCost;
 
-  for(let ip=0;ip<nInst;ip++){
+  for(let ip=0,_vs=0;ip<nInst&&_vs<nInst*2;ip++,_vs++){
     const inst=prog[ip];if(!inst)continue;
     const [op,src,dst,k]=inst;
     const si=Math.abs(src)%12,di=Math.abs(dst)%12;
@@ -2245,7 +2245,7 @@ function executeVM(i,j,sim,d){
   const nPi=pPlasmidLen[i];
   if(nPi>0){
     const pBase=i*PLASMID_SLOTS;
-    for(let ip=0;ip<nPi;ip++){
+    for(let ip=0,_ps=0;ip<nPi&&_ps<nPi*2;ip++,_ps++){
       const op=pPlasmid[pBase+ip*4]|0;
       const src=pPlasmid[pBase+ip*4+1]|0;
       const dst=pPlasmid[pBase+ip*4+2]|0;
@@ -2405,7 +2405,7 @@ function executeClusterVM(i,j,sim,d){
   const prog=cl.vmProgram;
   const nInst=Math.min(prog.length,MAX_CLUSTER_VM);
 
-  for(let ip=0;ip<nInst;ip++){
+  for(let ip=0,_cs=0;ip<nInst&&_cs<nInst*2;ip++,_cs++){
     const inst=prog[ip];if(!inst)continue;
     const [op,src,dst,k]=inst;
     const si=Math.abs(src)%12,di=Math.abs(dst)%12;
@@ -2859,8 +2859,9 @@ function init(){
 }
 
 function loop(){
+  lastLoopTime=performance.now();
   try{
-  const frameStart=performance.now();
+  const frameStart=lastLoopTime;
   tick++;
   genome.totalTicks++;
   smx+=(mx-smx)*.05;smy+=(my-smy)*.05;
@@ -3121,18 +3122,36 @@ function loop(){
 // requestAnimationFrame throttles to ~0 when tab is hidden.
 // Fall back to setTimeout when not visible so evolution continues.
 let tabVisible=true;
+let lastLoopTime=performance.now();
 document.addEventListener('visibilitychange',()=>{
   tabVisible=!document.hidden;
-  if(tabVisible)scheduleNext(); // resume immediately when tab returns
+  if(tabVisible){lastLoopTime=performance.now();scheduleNext();}
 });
 function scheduleNext(){
   if(tabVisible){
     requestAnimationFrame(loop);
   }else{
-    // Background: run physics at ~15fps (67ms), skip rendering
     setTimeout(loop,67);
   }
 }
+
+// WATCHDOG — if the loop hasn't run in 3 seconds, force restart
+setInterval(()=>{
+  if(performance.now()-lastLoopTime>3000){
+    console.warn('Watchdog: loop stalled, restarting');
+    // NaN cleanup
+    for(let i=0;i<N;i++){
+      if(isNaN(amp[i])){amp[i]=0.3}
+      if(isNaN(px[i])||isNaN(py[i])){px[i]=Math.random()*W;py[i]=Math.random()*H}
+      if(isNaN(vx[i]))vx[i]=0;
+      if(isNaN(vy[i]))vy[i]=0;
+      if(isNaN(phase[i]))phase[i]=Math.random()*6.28;
+    }
+    birthQueue.length=0;
+    lastLoopTime=performance.now();
+    scheduleNext();
+  }
+},2000);
 
 // === EVENTS ===
 document.addEventListener('mousemove',e=>{mx=e.clientX;my=e.clientY});
