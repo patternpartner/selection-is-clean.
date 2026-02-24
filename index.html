@@ -536,7 +536,7 @@ function detectClusters(){
         const nnx=gx+dx,nny=gy+dy;
         if(nnx<0||nny<0||nnx>=gW||nny>=gH)continue;
         let j=grid[nny*gW+nnx];
-        while(j>=0){
+        let _lc=0;while(j>=0&&j<CAP&&_lc++<CAP){
           if(palive[j]&&clusterID[j]<0&&j!==cur){
             const sim=tendSim(cur,j);
             const pa=Math.cos(phase[cur]-phase[j]);
@@ -2137,7 +2137,7 @@ function applyEntropy(){
       const nnx=gx+dx,nny=gy+dy;
       if(nnx<0||nny<0||nnx>=gW||nny>=gH)continue;
       let j=grid[nny*gW+nnx];
-      while(j>=0){
+      let _lc=0;while(j>=0&&j<CAP&&_lc++<CAP){
         if(palive[j]){
           const ddx=px[di]-px[j],ddy=py[di]-py[j];
           const dist=Math.sqrt(ddx*ddx+ddy*ddy);
@@ -2606,7 +2606,7 @@ function processGrid(){
       const nnx=gx+dx,nny=gy+dy;
       if(nnx<0||nny<0||nnx>=gW||nny>=gH)continue;
       let j=grid[nny*gW+nnx];
-      while(j>=0){
+      let _lc=0;while(j>=0&&j<CAP&&_lc++<CAP){
         if(j>i&&palive[j]&&palive[i]){
           const ddx=px[i]-px[j],ddy=py[i]-py[j],d2=ddx*ddx+ddy*ddy,d=Math.sqrt(d2),minD=pSz[i]+pSz[j];
           const iR=Math.max(10,genome.interactionRadius||55); // FREED: system evolves its own social distance
@@ -2676,7 +2676,7 @@ function render(){
       const nnx=gx+dx,nny=gy+dy;
       if(nnx<0||nny<0||nnx>=gW||nny>=gH)continue;
       let j=grid[nny*gW+nnx];
-      while(j>=0){
+      let _lc=0;while(j>=0&&j<CAP&&_lc++<CAP){
         if(palive[j]){
           const ddx=px[i]-px[j],ddy=py[i]-py[j],d2=ddx*ddx+ddy*ddy;
           if(d2<2200&&d2>0){
@@ -2859,6 +2859,7 @@ function init(){
 }
 
 function loop(){
+  try{
   const frameStart=performance.now();
   tick++;
   genome.totalTicks++;
@@ -3105,6 +3106,14 @@ function loop(){
   }
   if(birthQueue.length>20)birthQueue.length=0; // flush stale queue
   if(tick%45===0)compact();
+  }catch(e){
+    console.error('Loop error:',e.message,e.stack);
+    birthQueue.length=0;
+    for(let i=0;i<N;i++){
+      if(isNaN(amp[i]))amp[i]=0.3;
+      if(isNaN(px[i])||isNaN(py[i])){px[i]=Math.random()*W;py[i]=Math.random()*H}
+    }
+  }
   scheduleNext();
 }
 
