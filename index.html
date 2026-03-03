@@ -772,7 +772,7 @@ function attemptClusterBudding(){
           copy[3]+=(Math.random()-0.5)*0.2;
           copy[3]=Math.max(-2,Math.min(2,copy[3]));
         }
-        if(Math.random()<0.08)copy[0]=Math.floor(Math.random()*17);
+        if(Math.random()<0.08)copy[0]=Math.floor(Math.random()*19);
         return copy;
       }),
       vmInfluence:Math.max(0.05,c.vmInfluence+(Math.random()-0.5)*0.1),
@@ -1391,7 +1391,7 @@ function evolvePlasmids(){
       }
       else if(roll<0.58){
         // Structural change (opcode or registers)
-        if(Math.random()<0.5)pPlasmid[base]=Math.floor(Math.random()*17);
+        if(Math.random()<0.5)pPlasmid[base]=Math.floor(Math.random()*19);
         else{
           pPlasmid[base+1]=Math.floor(Math.random()*12);
           pPlasmid[base+2]=Math.floor(Math.random()*12);
@@ -1439,7 +1439,7 @@ function evolvePlasmids(){
     // Spontaneous generation — only in high-resonance environments
     if(nP<MAX_PLASMID&&Math.random()<genome.plasmidSpawnRate*(1+localRes[i]*4)){
       const newBase=i*PLASMID_SLOTS+nP*4;
-      pPlasmid[newBase]=Math.floor(Math.random()*17);
+      pPlasmid[newBase]=Math.floor(Math.random()*19);
       pPlasmid[newBase+1]=Math.floor(Math.random()*12);
       pPlasmid[newBase+2]=Math.floor(Math.random()*12);
       pPlasmid[newBase+3]=(Math.random()-0.5)*0.75;
@@ -1478,7 +1478,7 @@ function attemptHGT(){
     donor[3]+=(Math.random()-0.5)*genome.hgtSpliceNoise;
     donor[3]=Math.max(-2.5,Math.min(2.5,donor[3]));
     // Occasional opcode drift during transfer
-    if(Math.random()<0.08)donor[0]=Math.floor(Math.random()*17);
+    if(Math.random()<0.08)donor[0]=Math.floor(Math.random()*19);
 
     const insertPos=Math.floor(Math.random()*(genome.vmProgram.length+1));
     genome.vmProgram.splice(insertPos,0,donor);
@@ -1662,7 +1662,7 @@ function mutateGenome(){
     inst[3]=Math.max(-2,Math.min(2,inst[3]));
 
     // Opcode swap — now includes FEEDBACK (5), LOAD_MEM (6), STORE_MEM (7)
-    if(Math.random()<rate*0.2)inst[0]=Math.floor(Math.random()*17);
+    if(Math.random()<rate*0.2)inst[0]=Math.floor(Math.random()*19);
 
     // Source register swap (now 12 registers)
     if(Math.random()<rate*0.2)inst[1]=Math.floor(Math.random()*12);
@@ -1674,7 +1674,7 @@ function mutateGenome(){
   // Program growth: insert a random instruction
   if(genome.vmProgram.length<genome.vmMaxInstructions&&Math.random()<rate*0.15){
     const pos=Math.floor(Math.random()*(genome.vmProgram.length+1));
-    const newInst=[Math.floor(Math.random()*17),Math.floor(Math.random()*12),Math.floor(Math.random()*12),(Math.random()-0.5)*0.6];
+    const newInst=[Math.floor(Math.random()*19),Math.floor(Math.random()*12),Math.floor(Math.random()*12),(Math.random()-0.5)*0.6];
     genome.vmProgram.splice(pos,0,newInst);
   }
 
@@ -1711,7 +1711,7 @@ function mutateGenome(){
       inst[3]+=(Math.random()-0.5)*0.15*scale;
       inst[3]=Math.max(-2,Math.min(2,inst[3]));
       // Structural mutations (rarer)
-      if(Math.random()<0.2)inst[0]=Math.floor(Math.random()*17);
+      if(Math.random()<0.2)inst[0]=Math.floor(Math.random()*19);
       if(Math.random()<0.15)inst[1]=Math.floor(Math.random()*12);
       if(Math.random()<0.15)inst[2]=Math.floor(Math.random()*12);
     }
@@ -2230,6 +2230,24 @@ function executeVM(i,j,sim,d){
           amp[i]*=0.5;
         }
       }break;
+      // 17: GRADIENT — read field gradient at particle position. Pure directional information.
+      case 17:{
+        const gfx=Math.floor(px[i]/(W/FIELD_W)),gfy=Math.floor(py[i]/(H/FIELD_H));
+        const gfi=gfy*FIELD_W+gfx;
+        const gl=gfx>0?field[gfi-1]:field[gfi];
+        const gr=gfx<FIELD_W-1?field[gfi+1]:field[gfi];
+        const gu=gfy>0?field[gfi-FIELD_W]:field[gfi];
+        const gd=gfy<FIELD_H-1?field[gfi+FIELD_W]:field[gfi];
+        vmRegs[si]=(gr-gl)*0.5*k;
+        vmRegs[di]=(gd-gu)*0.5*k;
+      }break;
+      // 18: MEM_INJECT — write to interacting partner's memory directly.
+      case 18:{
+        const mSlot=Math.abs(Math.floor(vmRegs[si]))%MEM_SIZE;
+        const mVal=vmRegs[di]*k;
+        pMem[j*MEM_SIZE+mSlot]+=mVal;
+        pMem[j*MEM_SIZE+mSlot]=Math.max(-8,Math.min(8,pMem[j*MEM_SIZE+mSlot]));
+      }break;
     }
     for(let r=0;r<12;r++)vmRegs[r]=Math.max(-8,Math.min(8,vmRegs[r]));
   }
@@ -2275,6 +2293,22 @@ function executeVM(i,j,sim,d){
             birthQueue.push({x:Math.max(0,Math.min(W,px[i]+vmRegs[si]*15)),y:Math.max(0,Math.min(H,py[i]+vmRegs[di]*15)),t:pnt,parent:i});
             amp[i]*=0.5;
           }
+        }break;
+        case 17:{
+          const gfx=Math.floor(px[i]/(W/FIELD_W)),gfy=Math.floor(py[i]/(H/FIELD_H));
+          const gfi=gfy*FIELD_W+gfx;
+          const gl=gfx>0?field[gfi-1]:field[gfi];
+          const gr=gfx<FIELD_W-1?field[gfi+1]:field[gfi];
+          const gu=gfy>0?field[gfi-FIELD_W]:field[gfi];
+          const gd=gfy<FIELD_H-1?field[gfi+FIELD_W]:field[gfi];
+          vmRegs[si]=(gr-gl)*0.5*k;
+          vmRegs[di]=(gd-gu)*0.5*k;
+        }break;
+        case 18:{
+          const mS2=Math.abs(Math.floor(vmRegs[si]))%MEM_SIZE;
+          const mV2=vmRegs[di]*k;
+          pMem[j*MEM_SIZE+mS2]+=mV2;
+          pMem[j*MEM_SIZE+mS2]=Math.max(-8,Math.min(8,pMem[j*MEM_SIZE+mS2]));
         }break;
       }
       for(let r=0;r<12;r++)vmRegs[r]=Math.max(-8,Math.min(8,vmRegs[r]));
@@ -2433,6 +2467,22 @@ function executeClusterVM(i,j,sim,d){
           birthQueue.push({x:Math.max(0,Math.min(W,px[i]+vmRegs[si]*15)),y:Math.max(0,Math.min(H,py[i]+vmRegs[di]*15)),t:cnt,parent:i});
           amp[i]*=0.5;
         }
+      }break;
+      case 17:{
+        const gfx=Math.floor(px[i]/(W/FIELD_W)),gfy=Math.floor(py[i]/(H/FIELD_H));
+        const gfi=gfy*FIELD_W+gfx;
+        const gl=gfx>0?field[gfi-1]:field[gfi];
+        const gr=gfx<FIELD_W-1?field[gfi+1]:field[gfi];
+        const gu=gfy>0?field[gfi-FIELD_W]:field[gfi];
+        const gd=gfy<FIELD_H-1?field[gfi+FIELD_W]:field[gfi];
+        vmRegs[si]=(gr-gl)*0.5*k;
+        vmRegs[di]=(gd-gu)*0.5*k;
+      }break;
+      case 18:{
+        const mS3=Math.abs(Math.floor(vmRegs[si]))%MEM_SIZE;
+        const mV3=vmRegs[di]*k;
+        pMem[j*MEM_SIZE+mS3]+=mV3;
+        pMem[j*MEM_SIZE+mS3]=Math.max(-8,Math.min(8,pMem[j*MEM_SIZE+mS3]));
       }break;
     }
     for(let r=0;r<12;r++)vmRegs[r]=Math.max(-8,Math.min(8,vmRegs[r]));
