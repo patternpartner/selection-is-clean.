@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
-<title>Selection פ 19a — Reflexivity</title>
+<title>Selection פ 19b — Reflexivity</title>
 <style>
 *{margin:0;padding:0;box-sizing:border-box}
 html,body{height:100%;overflow:hidden;background:#020204;touch-action:none;cursor:crosshair}
@@ -1649,7 +1649,7 @@ function mutateGenome(){
   genome.mutationInterval=maybe(genome.mutationInterval,60,1200,40);
   genome.interactionRadius=maybe(genome.interactionRadius,25,120,5);
   genome.densityCostK=maybe(genome.densityCostK,0.000003,0.0003,0.00003);
-  genome.fieldBirthGate=maybe(genome.fieldBirthGate,0.01,0.8,0.05);
+  genome.fieldBirthGate=maybe(genome.fieldBirthGate,0.01,5.0,0.05);
 
   // ═══ LAYER 10: REFLEXIVITY PARAMETER MUTATION ═══
   // The system evolves whether self-modelling is useful.
@@ -2157,33 +2157,14 @@ function updateClusterReflex(){
     // Self-recognition grows with age — the cluster becomes more "aware" it IS a cluster
     r.selfRecognition=Math.min(1,c.persistAge/20);
 
-    // ═══ CLUSTER REFLEXIVE ACTION ═══
-    // If the cluster recognises it's threatened, it can bias its members' behaviour.
-    // This isn't hardcoded response — it modulates the EXISTING VM execution.
-    // The genome.clusterReflexWeight determines if this helps or hurts.
-    if(r.threatLevel>0.3&&r.selfRecognition>0.3){
-      const reflexStrength=r.threatLevel*r.selfRecognition*(genome.clusterReflexWeight||0.15);
-
-      for(let i=0;i<N;i++){
-        if(!palive[i]||clusterID[i]!==c.id)continue;
-
-        // Threatened cluster tightens: particles pulled toward centroid
-        const dx=c.cx-px[i],dy=c.cy-py[i];
-        const d=Math.sqrt(dx*dx+dy*dy);
-        if(d>1){
-          vx[i]+=dx/d*reflexStrength*0.003;
-          vy[i]+=dy/d*reflexStrength*0.003;
-        }
-
-        // Boost phase entrainment — coherence is survival
-        // Write into particle memory slot 5 (available to VM as register)
-        pMem[i*MEM_SIZE+5]+=reflexStrength*0.5;
-        pMem[i*MEM_SIZE+5]=Math.max(-8,Math.min(8,pMem[i*MEM_SIZE+5]));
-
-        // Metabolic cost of cluster-level reflexivity
-        amp[i]-=genome.metabolicCost*reflexStrength;
-      }
-    }
+    // ═══ CLUSTER REFLEXIVE SIGNAL ═══
+    // Cluster self-model signals are available to the cluster VM.
+    // What the cluster DOES with threat/recognition is up to evolution, not us.
+    // Signals stored on cluster object for cluster VM to read.
+    c.reflexTrend=r.trend;
+    c.reflexThreat=r.threatLevel;
+    c.reflexRecognition=r.selfRecognition;
+    c.reflexCohesion=r.cohesionTrend;
   }
 }
 
@@ -2649,6 +2630,15 @@ function executeClusterVM(i,j,sim,d){
   vmRegs[1]=phaseAlign;
   vmRegs[2]=proximity;
   vmRegs[3]=energy;
+
+  // Cluster reflex signals — available to cluster VM if cluster has self-model
+  // Overlaid onto registers 4-5 (normally particle memory slots 0-1)
+  // Evolution decides whether to use these or ignore them
+  const crw=genome.clusterReflexWeight||0;
+  if(crw>0.001&&cl.reflexThreat!==undefined){
+    vmRegs[4]+=cl.reflexThreat*crw;      // how threatened is this cluster
+    vmRegs[5]+=cl.reflexTrend*crw;        // growing or shrinking
+  }
 
   // Zero action channels for cluster VM — clean slate, not additive to global VM
   vmActions[0]=0;vmActions[1]=0;vmActions[2]=0;vmActions[3]=0;vmActions[4]=0;vmActions[5]=0;vmActions[6]=0;
