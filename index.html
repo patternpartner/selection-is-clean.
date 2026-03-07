@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
-<title>Selection פ</title>
+<title>Selection פ 19a — Reflexivity</title>
 <style>
 *{margin:0;padding:0;box-sizing:border-box}
 html,body{height:100%;overflow:hidden;background:#020204;touch-action:none;cursor:crosshair}
@@ -160,7 +160,18 @@ let genome={
   plasmidTransferThresh:0.55, // minimum sim*phaseAlign bond to allow transfer
   plasmidSpawnRate:0.002,     // chance per mutation cycle for a particle to spontaneously generate a new plasmid instruction
   fieldInfluence:0.65,        // how strongly field affects physics (niche construction feedback)
-  fieldWeight:0.2             // shadow sim: how much the system values engineered environment futures (EVOLVES)
+  fieldWeight:0.2,            // shadow sim: how much the system values engineered environment futures (EVOLVES)
+
+  // ═══ LAYER 10: REFLEXIVITY — the system models itself from inside ═══
+  // Particles track their own state trajectory and adjust behaviour.
+  // Clusters recognise themselves as clusters and optimise for group survival.
+  // This is not imposed — it's evolvable. The system discovers self-reference is adaptive (or not).
+  reflexSampleRate:0.15,      // fraction of particles that update self-model per tick (cost control)
+  reflexDepth:4,              // how many historical samples each particle keeps (memory cost)
+  reflexInfluence:0.1,        // how strongly self-model affects VM register initialisation (EVOLVES)
+  reflexDecay:0.95,           // how fast old self-model samples fade
+  clusterReflexAge:5,         // min persist age before cluster develops self-model
+  clusterReflexWeight:0.15    // how much cluster self-model influences cluster VM (EVOLVES)
 };
 
 // ═══ VM PHENOTYPE PROFILE ═══
@@ -236,6 +247,20 @@ const fieldMemory=new Float32Array(FIELD_W*FIELD_H); // 0=virgin, higher=more hi
 const FIELD_SIG_DIMS=3; // signature dimensions per field cell
 const fieldSig=new Float32Array(FIELD_W*FIELD_H*FIELD_SIG_DIMS); // territorial signature per cell
 const fieldOwnership=new Float32Array(FIELD_W*FIELD_H); // ownership strength (0=commons, 1=fully claimed)
+
+// ═══ LAYER 10: PER-PARTICLE SELF-MODEL ═══
+// Each particle maintains a compressed model of its own recent state.
+// ampHistory: rolling window of amplitude samples — the particle can detect its own trajectory
+// resHistory: rolling window of resonance — the particle knows if it's been connecting
+// reflexState: derived signals fed into the VM as additional registers
+//   [0]=ampTrend (-1 declining, +1 rising), [1]=resPeak (best recent resonance),
+//   [2]=isolation (inverse of interaction density), [3]=age_pressure (ontogenetic position)
+const REFLEX_DEPTH=4; // samples per particle (overridden by genome at runtime)
+const REFLEX_DIMS=4;  // derived signals
+const pReflexHist=new Float32Array(CAP*REFLEX_DEPTH*2); // interleaved [amp,res] per sample
+const pReflexState=new Float32Array(CAP*REFLEX_DIMS);   // derived self-model signals
+const pReflexIdx=new Uint8Array(CAP);                    // ring buffer index per particle
+const pInteractionDensity=new Float32Array(CAP);          // rolling interaction count
 // Cache: lineage color per field cell, rebuilt on cluster detection cycles (not every frame)
 let fieldLineageCache=new Uint8Array(FIELD_W*FIELD_H*3); // R,G,B per cell
 const EL=4;
@@ -269,7 +294,8 @@ function encodeGenome(){
        genome.perturbScale,genome.extinctionThresh,genome.motifMemorySize,genome.culturalBias,
        genome.metabolicCost,genome.hgtRate,genome.hgtMax,genome.hgtSpliceNoise,
        genome.plasmidTransferRate,genome.plasmidMutRate,genome.plasmidTransferThresh,genome.plasmidSpawnRate,genome.fieldInfluence,genome.fieldWeight,
-       genome.mutationInterval,genome.interactionRadius,genome.densityCostK,genome.fieldBirthGate].map(v=>+(v.toPrecision(3))),
+       genome.mutationInterval,genome.interactionRadius,genome.densityCostK,genome.fieldBirthGate,
+       genome.reflexSampleRate,genome.reflexDepth,genome.reflexInfluence,genome.reflexDecay,genome.clusterReflexAge,genome.clusterReflexWeight].map(v=>+(v.toPrecision(3))),
     // Identity
     g:genome.generation,T:genome.totalTicks,
     L:genome.lineage.slice(-4),
@@ -302,7 +328,8 @@ function decodeGenome(hash){
        genome.perturbScale,genome.extinctionThresh,genome.motifMemorySize,genome.culturalBias,
        genome.metabolicCost,genome.hgtRate,genome.hgtMax,genome.hgtSpliceNoise,
        genome.plasmidTransferRate,genome.plasmidMutRate,genome.plasmidTransferThresh,genome.plasmidSpawnRate,genome.fieldInfluence,genome.fieldWeight,
-       genome.mutationInterval,genome.interactionRadius,genome.densityCostK,genome.fieldBirthGate]=g.m;
+       genome.mutationInterval,genome.interactionRadius,genome.densityCostK,genome.fieldBirthGate,
+       genome.reflexSampleRate,genome.reflexDepth,genome.reflexInfluence,genome.reflexDecay,genome.clusterReflexAge,genome.clusterReflexWeight]=g.m;
     // Handle older genomes without newer params
     if(!genome.hgtRate)genome.hgtRate=0.15;
     if(!genome.hgtMax)genome.hgtMax=2;
@@ -317,6 +344,13 @@ function decodeGenome(hash){
     if(!genome.interactionRadius)genome.interactionRadius=55;
     if(!genome.densityCostK)genome.densityCostK=0.00003;
     if(!genome.fieldBirthGate)genome.fieldBirthGate=0.3;
+    // Layer 10 defaults for older genomes
+    if(!genome.reflexSampleRate)genome.reflexSampleRate=0.15;
+    if(!genome.reflexDepth)genome.reflexDepth=4;
+    if(genome.reflexInfluence===undefined)genome.reflexInfluence=0.1;
+    if(!genome.reflexDecay)genome.reflexDecay=0.95;
+    if(!genome.clusterReflexAge)genome.clusterReflexAge=5;
+    if(genome.clusterReflexWeight===undefined)genome.clusterReflexWeight=0.15;
     }
     genome.generation=(g.g||0)+1;
     genome.totalTicks=g.T||0;
@@ -1617,6 +1651,17 @@ function mutateGenome(){
   genome.densityCostK=maybe(genome.densityCostK,0.000003,0.0003,0.00003);
   genome.fieldBirthGate=maybe(genome.fieldBirthGate,0.01,0.8,0.05);
 
+  // ═══ LAYER 10: REFLEXIVITY PARAMETER MUTATION ═══
+  // The system evolves whether self-modelling is useful.
+  // reflexInfluence can go to 0 — killing the feedback loop — if it's not adaptive.
+  // Or it can grow — deepening self-reference — if the system benefits.
+  genome.reflexSampleRate=maybe(genome.reflexSampleRate,0.02,0.5,0.04);
+  genome.reflexDepth=Math.max(2,Math.min(8,Math.round(maybe(genome.reflexDepth,2,8,0.5))));
+  genome.reflexInfluence=maybe(genome.reflexInfluence,0,1.5,0.06);
+  genome.reflexDecay=maybe(genome.reflexDecay,0.7,0.99,0.03);
+  genome.clusterReflexAge=Math.max(2,Math.min(15,Math.round(maybe(genome.clusterReflexAge,2,15,1))));
+  genome.clusterReflexWeight=maybe(genome.clusterReflexWeight,0,0.8,0.05);
+
   // ═══ EVOLVABLE FITNESS SENSOR MUTATION ═══
   // Mutate existing sensors (program + weight)
   for(const sensor of genome.fitnessSensors){
@@ -1983,6 +2028,165 @@ function getParticleSig(i){
   return clusters[cIdx].fieldSignature||null;
 }
 
+// ═══ LAYER 10: PARTICLE REFLEXIVITY ENGINE ═══
+// Runs on a sample of particles each tick (not all — metabolic cost).
+// Each sampled particle:
+//   1. Records current amp and resonance into its history ring buffer
+//   2. Derives self-model signals from the history
+//   3. These signals become available as VM registers in the next interaction
+// The particle doesn't "decide" to self-model. The genome decides whether this runs.
+// If reflexInfluence evolves to 0, self-modelling costs energy for no benefit and gets selected out.
+function updateParticleReflex(){
+  const sampleRate=genome.reflexSampleRate||0.15;
+  const depth=Math.max(2,Math.min(REFLEX_DEPTH,Math.round(genome.reflexDepth||4)));
+  const decay=genome.reflexDecay||0.95;
+
+  for(let i=0;i<N;i++){
+    if(!palive[i])continue;
+    if(Math.random()>sampleRate)continue;
+
+    // METABOLIC COST — self-modelling isn't free
+    amp[i]-=genome.metabolicCost*2;
+
+    // Record current state into ring buffer
+    const ridx=pReflexIdx[i]%depth;
+    const base=i*REFLEX_DEPTH*2+ridx*2;
+    pReflexHist[base]=amp[i];
+    pReflexHist[base+1]=localRes[i];
+    pReflexIdx[i]++;
+
+    // Update interaction density (exponential moving average)
+    // Count is accumulated during processGrid — we read the memory slot used for it
+    const recentInteractions=pMem[i*MEM_SIZE+6]; // auto-sensor: localRes*4
+    pInteractionDensity[i]=pInteractionDensity[i]*0.8+recentInteractions*0.2;
+
+    // Derive self-model signals from history
+    const rBase=i*REFLEX_DIMS;
+    const nSamples=Math.min(pReflexIdx[i],depth);
+
+    if(nSamples>=2){
+      // AMP TREND: compare recent to older samples
+      let recentAmp=0,olderAmp=0,recentN=0,olderN=0;
+      let peakRes=0;
+      for(let s=0;s<nSamples;s++){
+        const sIdx=((pReflexIdx[i]-1-s)%depth+depth)%depth;
+        const sBase=i*REFLEX_DEPTH*2+sIdx*2;
+        const sAmp=pReflexHist[sBase];
+        const sRes=pReflexHist[sBase+1];
+        const weight=Math.pow(decay,s);
+        if(s<nSamples/2){recentAmp+=sAmp*weight;recentN+=weight}
+        else{olderAmp+=sAmp*weight;olderN+=weight}
+        if(sRes>peakRes)peakRes=sRes;
+      }
+      recentAmp=recentN>0?recentAmp/recentN:amp[i];
+      olderAmp=olderN>0?olderAmp/olderN:amp[i];
+
+      // [0] ampTrend: -1 to +1, negative means dying
+      pReflexState[rBase]=(recentAmp-olderAmp)*10; // scaled for VM register range
+      pReflexState[rBase]=Math.max(-2,Math.min(2,pReflexState[rBase]));
+
+      // [1] peakResonance: best connection quality in recent history
+      pReflexState[rBase+1]=peakRes;
+
+      // [2] isolation: inverse of interaction density, 0=crowded, 1=alone
+      pReflexState[rBase+2]=Math.max(0,Math.min(1,1-pInteractionDensity[i]*0.5));
+
+      // [3] age_pressure: ontogenetic position, 0=young, 1=old
+      pReflexState[rBase+3]=Math.min(2,page[i]/500);
+    }else{
+      // Not enough history yet — neutral signals
+      pReflexState[rBase]=0;
+      pReflexState[rBase+1]=0;
+      pReflexState[rBase+2]=0.5;
+      pReflexState[rBase+3]=0;
+    }
+  }
+}
+
+// ═══ LAYER 10b: CLUSTER SELF-MODEL ═══
+// Persistent clusters build a model of their own state and trajectory.
+// This feeds into the cluster VM as additional context.
+// Young clusters don't self-model — they're still forming identity.
+function updateClusterReflex(){
+  const minAge=genome.clusterReflexAge||5;
+
+  for(const c of clusters){
+    if(c.persistAge<minAge)continue;
+
+    // Initialize reflex state if not present
+    if(!c.reflex){
+      c.reflex={
+        ampHistory:[],
+        sizeHistory:[],
+        coherenceHistory:[],
+        trend:0,           // -1 shrinking, +1 growing
+        cohesionTrend:0,   // -1 fragmenting, +1 cohering
+        threatLevel:0,     // 0 safe, 1 imminent dissolution
+        selfRecognition:0  // how strongly the cluster models itself (grows with age)
+      };
+    }
+
+    const r=c.reflex;
+
+    // Record current state
+    r.ampHistory.push(c.avgAmp);
+    r.sizeHistory.push(c.size);
+    r.coherenceHistory.push(c.coherence);
+    if(r.ampHistory.length>8)r.ampHistory.shift();
+    if(r.sizeHistory.length>8)r.sizeHistory.shift();
+    if(r.coherenceHistory.length>8)r.coherenceHistory.shift();
+
+    // Derive trajectory
+    if(r.sizeHistory.length>=3){
+      const recent=r.sizeHistory.slice(-2).reduce((a,b)=>a+b,0)/2;
+      const older=r.sizeHistory.slice(0,2).reduce((a,b)=>a+b,0)/2;
+      r.trend=Math.max(-1,Math.min(1,(recent-older)/(Math.max(1,older))*5));
+    }
+
+    if(r.coherenceHistory.length>=3){
+      const recent=r.coherenceHistory.slice(-2).reduce((a,b)=>a+b,0)/2;
+      const older=r.coherenceHistory.slice(0,2).reduce((a,b)=>a+b,0)/2;
+      r.cohesionTrend=Math.max(-1,Math.min(1,(recent-older)*10));
+    }
+
+    // Threat assessment: declining size + declining coherence = dissolution approaching
+    r.threatLevel=Math.max(0,Math.min(1,
+      (-r.trend*0.5)+(-r.cohesionTrend*0.3)+(c.size<4?0.3:0)
+    ));
+
+    // Self-recognition grows with age — the cluster becomes more "aware" it IS a cluster
+    r.selfRecognition=Math.min(1,c.persistAge/20);
+
+    // ═══ CLUSTER REFLEXIVE ACTION ═══
+    // If the cluster recognises it's threatened, it can bias its members' behaviour.
+    // This isn't hardcoded response — it modulates the EXISTING VM execution.
+    // The genome.clusterReflexWeight determines if this helps or hurts.
+    if(r.threatLevel>0.3&&r.selfRecognition>0.3){
+      const reflexStrength=r.threatLevel*r.selfRecognition*(genome.clusterReflexWeight||0.15);
+
+      for(let i=0;i<N;i++){
+        if(!palive[i]||clusterID[i]!==c.id)continue;
+
+        // Threatened cluster tightens: particles pulled toward centroid
+        const dx=c.cx-px[i],dy=c.cy-py[i];
+        const d=Math.sqrt(dx*dx+dy*dy);
+        if(d>1){
+          vx[i]+=dx/d*reflexStrength*0.003;
+          vy[i]+=dy/d*reflexStrength*0.003;
+        }
+
+        // Boost phase entrainment — coherence is survival
+        // Write into particle memory slot 5 (available to VM as register)
+        pMem[i*MEM_SIZE+5]+=reflexStrength*0.5;
+        pMem[i*MEM_SIZE+5]=Math.max(-8,Math.min(8,pMem[i*MEM_SIZE+5]));
+
+        // Metabolic cost of cluster-level reflexivity
+        amp[i]-=genome.metabolicCost*reflexStrength;
+      }
+    }
+  }
+}
+
 // === HELPERS ===
 function tendSim(i,j){
   let dot=0,ni=0,nj=0;
@@ -2177,6 +2381,19 @@ function executeVM(i,j,sim,d){
 
   // Load particle memory into registers 4-11
   for(let m=0;m<MEM_SIZE;m++)vmRegs[4+m]=pMem[i*MEM_SIZE+m];
+
+  // ═══ LAYER 10: INJECT REFLEX STATE INTO VM CONTEXT ═══
+  // Reflex signals overlay onto memory registers (slots 2-5 of particle memory → regs 6-9)
+  // Scaled by genome.reflexInfluence — if evolution drives this to 0, self-model has no effect
+  const reflexInf=genome.reflexInfluence||0;
+  if(reflexInf>0.001){
+    const rBase=i*REFLEX_DIMS;
+    vmRegs[6]+=pReflexState[rBase]*reflexInf;     // ampTrend
+    vmRegs[7]+=pReflexState[rBase+1]*reflexInf;   // peakResonance
+    vmRegs[8]+=pReflexState[rBase+2]*reflexInf;   // isolation
+    vmRegs[9]+=pReflexState[rBase+3]*reflexInf;   // age_pressure
+    for(let r=6;r<=9;r++)vmRegs[r]=Math.max(-8,Math.min(8,vmRegs[r]));
+  }
 
   // Auto-sensors: slots 6,7 get proprioceptive data
   pMem[i*MEM_SIZE+6]=localRes[i]*4;
@@ -2835,7 +3052,12 @@ function compact(){
     for(let p=0;p<pPlasmidLen[r]*4;p++)pPlasmid[w*PLASMID_SLOTS+p]=pPlasmid[r*PLASMID_SLOTS+p];
     pPlasmidAge[w]=pPlasmidAge[r];
     pBroadcast[w*2]=pBroadcast[r*2];pBroadcast[w*2+1]=pBroadcast[r*2+1];
-    clusterID[w]=clusterID[r];}
+    clusterID[w]=clusterID[r];
+    // Layer 10: reflexivity state
+    for(let rx=0;rx<REFLEX_DEPTH*2;rx++)pReflexHist[w*REFLEX_DEPTH*2+rx]=pReflexHist[r*REFLEX_DEPTH*2+rx];
+    for(let rx=0;rx<REFLEX_DIMS;rx++)pReflexState[w*REFLEX_DIMS+rx]=pReflexState[r*REFLEX_DIMS+rx];
+    pReflexIdx[w]=pReflexIdx[r];
+    pInteractionDensity[w]=pInteractionDensity[r];}
     w++;
   }
   N=w;
@@ -2965,6 +3187,11 @@ function loop(){
 
   applyEntropy();
   updateParticles();
+
+  // ═══ LAYER 10: REFLEXIVITY UPDATE ═══
+  // Particle self-models update every tick (sampled).
+  // Cluster self-models update on cluster detection cycles (tick%60).
+  updateParticleReflex();
   if(performance.now()-frameStart<80) updateField(); // skip field update if frame already slow
 
   // ═══ STRUCTURAL SELF-MODEL UPDATE ═══
@@ -2993,6 +3220,9 @@ function loop(){
     selfModel.diversity=clusterDiversity();
     selfModel.avgCoherence=clusters.length>0?clusters.reduce((a,c)=>a+c.coherence,0)/clusters.length:0;
     selfModel.persistentClusters=clusters.filter(c=>c.persistAge>3).length;
+
+    // ═══ LAYER 10b: CLUSTER SELF-MODEL UPDATE ═══
+    updateClusterReflex();
 
     // MULTI-DIMENSIONAL PREDICTION & ERROR
     selfModel.actual.pop=alive;
@@ -3138,7 +3368,10 @@ function loop(){
     const nSensors=genome.fitnessSensors.length;
     const cRisk=selfModel.collapseRisk||0;
     const fTrend=selfModel.fieldTrend||0;
-    genEl.textContent=`gen${genome.generation} ${genome.extinctions}☠ t${genome.totalTicks} | ${clusters.length}cl(${clVMActive}vm${budCount>0?','+budCount+'bud':''}) ${livingLin}lin fit:${currentFitness.toFixed(2)} stb:${(selfModel.stability||0).toFixed(2)} | vm:${genome.vmProgram.length}inst ${nSensors}sns ${hgtEventsTotal}hgt | pop:${N}/${CAP} fld:${fieldTotal.toFixed(0)}${fTrend<-0.01?'↓':fTrend>0.01?'↑':'~'} risk:${cRisk.toFixed(2)}`;
+    const rInf=genome.reflexInfluence||0;
+    const crW=genome.clusterReflexWeight||0;
+    const reflexClusters=clusters.filter(c=>c.reflex&&c.reflex.selfRecognition>0.3).length;
+    genEl.textContent=`gen${genome.generation} ${genome.extinctions}☠ t${genome.totalTicks} | ${clusters.length}cl(${clVMActive}vm${budCount>0?','+budCount+'bud':''}) ${livingLin}lin fit:${currentFitness.toFixed(2)} stb:${(selfModel.stability||0).toFixed(2)} | vm:${genome.vmProgram.length}inst ${nSensors}sns ${hgtEventsTotal}hgt | pop:${N}/${CAP} fld:${fieldTotal.toFixed(0)}${fTrend<-0.01?'↓':fTrend>0.01?'↑':'~'} risk:${cRisk.toFixed(2)} | ⟲${rInf.toFixed(2)} ${reflexClusters}rc`;
   }
 
   // Adaptive render skipping — at high pop, skip frames to keep thread responsive
