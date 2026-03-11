@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
-<title>Selection פ 19b — Reflexivity</title>
+<title>Selection פ 19c — Autonomy</title>
 <style>
 *{margin:0;padding:0;box-sizing:border-box}
 html,body{height:100%;overflow:hidden;background:#020204;touch-action:none;cursor:crosshair}
@@ -33,7 +33,7 @@ function gKey(x,y){return Math.max(0,Math.min(gH-1,(y/CELL)|0))*gW+Math.max(0,Ma
 // ADAPTIVE GENOME — the system's DNA
 // These values evolve. No human chooses the finals.
 // ═══════════════════════════════════════
-const DIMS=4;
+const DIMS=5; // dim 4 is blank — no hardcoded role. System decides what it means.
 const MEM_SIZE=8; // per-particle persistent memory. Particles become stateful agents.
 const MAX_PLASMID=4; // max instructions per particle's personal mobile DNA
 const PLASMID_SLOTS=MAX_PLASMID*4; // each instruction is [op,src,dst,k] = 4 values
@@ -186,6 +186,9 @@ const vmPhenotype={
 // Track peak resonance bond each tick for HGT gating
 let peakBondThisTick=0;
 let hgtEventsTotal=0;
+let globalCommons=0; // shared register — any particle can read, strongest writer per tick wins
+let commonsWriter=-1; // index of particle that wrote this tick
+let commonsStrength=0; // strength of current tick's write
 let mutPressureAccum=0; // accumulated mutation pressure from VM channel 6
 
 // ═══ GOVERNANCE VISIBILITY — flash events for plasmid transfers ═══
@@ -806,7 +809,7 @@ function attemptClusterBudding(){
           copy[3]+=(Math.random()-0.5)*0.2;
           copy[3]=Math.max(-2,Math.min(2,copy[3]));
         }
-        if(Math.random()<0.08)copy[0]=Math.floor(Math.random()*19);
+        if(Math.random()<0.08)copy[0]=Math.floor(Math.random()*20);
         return copy;
       }),
       vmInfluence:Math.max(0.05,c.vmInfluence+(Math.random()-0.5)*0.1),
@@ -883,7 +886,7 @@ function profileVM(){
   for(const t of tests){
     vmRegs[0]=t.sim;vmRegs[1]=t.align;vmRegs[2]=t.prox;vmRegs[3]=t.energy;
     for(let r=4;r<12;r++)vmRegs[r]=0; // no particle memory in profiler
-    vmActions[0]=0;vmActions[1]=0;vmActions[2]=0;vmActions[3]=0;vmActions[4]=0;vmActions[5]=0;vmActions[6]=0;
+    vmActions[0]=0;vmActions[1]=0;vmActions[2]=0;vmActions[3]=0;vmActions[4]=0;vmActions[5]=0;vmActions[6]=0;vmActions[7]=0;
 
     const prog=genome.vmProgram;
     const nInst=Math.min(prog.length,genome.vmMaxInstructions);
@@ -897,8 +900,8 @@ function profileVM(){
         case 1:vmRegs[di]+=vmRegs[si]*k;break;
         case 2:vmRegs[di]*=vmRegs[si]*(k||1);break;
         case 3:vmRegs[di]=vmRegs[si]>k?1:0;break;
-        case 4:{const ai=Math.abs(dst)%7;vmActions[ai]+=vmRegs[si]*k;}break;
-        case 5:{const fi=Math.abs(src)%7;vmRegs[di]=vmActions[fi];}break;
+        case 4:{const ai=Math.abs(dst)%8;vmActions[ai]+=vmRegs[si]*k;}break;
+        case 5:{const fi=Math.abs(src)%8;vmRegs[di]=vmActions[fi];}break;
         case 6:vmRegs[di]=0;break; // no particle memory in profiler tests
         case 7:break; // skip STORE_MEM in profiler
         case 8:vmRegs[di]=0.5;break; // stub READ_FIELD in profiler
@@ -1425,7 +1428,7 @@ function evolvePlasmids(){
       }
       else if(roll<0.58){
         // Structural change (opcode or registers)
-        if(Math.random()<0.5)pPlasmid[base]=Math.floor(Math.random()*19);
+        if(Math.random()<0.5)pPlasmid[base]=Math.floor(Math.random()*20);
         else{
           pPlasmid[base+1]=Math.floor(Math.random()*12);
           pPlasmid[base+2]=Math.floor(Math.random()*12);
@@ -1473,7 +1476,7 @@ function evolvePlasmids(){
     // Spontaneous generation — only in high-resonance environments
     if(nP<MAX_PLASMID&&Math.random()<genome.plasmidSpawnRate*(1+localRes[i]*4)){
       const newBase=i*PLASMID_SLOTS+nP*4;
-      pPlasmid[newBase]=Math.floor(Math.random()*19);
+      pPlasmid[newBase]=Math.floor(Math.random()*20);
       pPlasmid[newBase+1]=Math.floor(Math.random()*12);
       pPlasmid[newBase+2]=Math.floor(Math.random()*12);
       pPlasmid[newBase+3]=(Math.random()-0.5)*0.75;
@@ -1512,7 +1515,7 @@ function attemptHGT(){
     donor[3]+=(Math.random()-0.5)*genome.hgtSpliceNoise;
     donor[3]=Math.max(-2.5,Math.min(2.5,donor[3]));
     // Occasional opcode drift during transfer
-    if(Math.random()<0.08)donor[0]=Math.floor(Math.random()*19);
+    if(Math.random()<0.08)donor[0]=Math.floor(Math.random()*20);
 
     const insertPos=Math.floor(Math.random()*(genome.vmProgram.length+1));
     genome.vmProgram.splice(insertPos,0,donor);
@@ -1521,6 +1524,8 @@ function attemptHGT(){
   hgtEventsTotal++;
   hgtWindow++;
   peakBondThisTick=0; // reset after transfer
+  commonsStrength=0; // reset so strongest writer wins each tick
+  commonsWriter=-1;
 }
 
 // ═══ RESOURCE FIELD — shared writable environment with territorial signatures ═══
@@ -1707,7 +1712,7 @@ function mutateGenome(){
     inst[3]=Math.max(-2,Math.min(2,inst[3]));
 
     // Opcode swap — now includes FEEDBACK (5), LOAD_MEM (6), STORE_MEM (7)
-    if(Math.random()<rate*0.2)inst[0]=Math.floor(Math.random()*19);
+    if(Math.random()<rate*0.2)inst[0]=Math.floor(Math.random()*20);
 
     // Source register swap (now 12 registers)
     if(Math.random()<rate*0.2)inst[1]=Math.floor(Math.random()*12);
@@ -1719,7 +1724,7 @@ function mutateGenome(){
   // Program growth: insert a random instruction
   if(genome.vmProgram.length<genome.vmMaxInstructions&&Math.random()<rate*0.15){
     const pos=Math.floor(Math.random()*(genome.vmProgram.length+1));
-    const newInst=[Math.floor(Math.random()*19),Math.floor(Math.random()*12),Math.floor(Math.random()*12),(Math.random()-0.5)*0.6];
+    const newInst=[Math.floor(Math.random()*20),Math.floor(Math.random()*12),Math.floor(Math.random()*12),(Math.random()-0.5)*0.6];
     genome.vmProgram.splice(pos,0,newInst);
   }
 
@@ -1756,7 +1761,7 @@ function mutateGenome(){
       inst[3]+=(Math.random()-0.5)*0.15*scale;
       inst[3]=Math.max(-2,Math.min(2,inst[3]));
       // Structural mutations (rarer)
-      if(Math.random()<0.2)inst[0]=Math.floor(Math.random()*19);
+      if(Math.random()<0.2)inst[0]=Math.floor(Math.random()*20);
       if(Math.random()<0.15)inst[1]=Math.floor(Math.random()*12);
       if(Math.random()<0.15)inst[2]=Math.floor(Math.random()*12);
     }
@@ -2345,7 +2350,7 @@ function applyEntropy(){
 // Over evolutionary time, vmInfluence can grow until VM dominates.
 
 const vmRegs=new Float32Array(12); // 0-3 context, 4-11 particle memory
-const vmActions=new Float32Array(7); // 0:force, 1:phase_shift, 2:amp_transfer, 3:tend_bleed, 4:spawn, 5:sig_modulate, 6:mut_pressure
+const vmActions=new Float32Array(8); // 0:force, 1:phase_shift, 2:amp_transfer, 3:tend_bleed, 4:spawn, 5:sig_modulate, 6:mut_pressure, 7:blank — system decides
 
 function executeVM(i,j,sim,d){
   if(d>CELL||d<0.5)return;
@@ -2380,7 +2385,7 @@ function executeVM(i,j,sim,d){
   pMem[i*MEM_SIZE+6]=localRes[i]*4;
   pMem[i*MEM_SIZE+7]=Math.min(5,page[i]/250);
 
-  vmActions[0]=0;vmActions[1]=0;vmActions[2]=0;vmActions[3]=0;vmActions[4]=0;vmActions[5]=0;vmActions[6]=0;
+  vmActions[0]=0;vmActions[1]=0;vmActions[2]=0;vmActions[3]=0;vmActions[4]=0;vmActions[5]=0;vmActions[6]=0;vmActions[7]=0;
 
   const prog=genome.vmProgram;
   const nInst=Math.min(prog.length,genome.vmMaxInstructions);
@@ -2398,8 +2403,8 @@ function executeVM(i,j,sim,d){
       case 1:vmRegs[di]+=vmRegs[si]*k;break;
       case 2:vmRegs[di]*=vmRegs[si]*(k||1);break;
       case 3:vmRegs[di]=vmRegs[si]>k?1:0;break;
-      case 4:{const ai=Math.abs(dst)%7;vmActions[ai]+=vmRegs[si]*k;}break;
-      case 5:{const fi=Math.abs(src)%7;vmRegs[di]=vmActions[fi];}break;
+      case 4:{const ai=Math.abs(dst)%8;vmActions[ai]+=vmRegs[si]*k;}break;
+      case 5:{const fi=Math.abs(src)%8;vmRegs[di]=vmActions[fi];}break;
       case 6:vmRegs[di]=pMem[i*MEM_SIZE+(Math.abs(src)%MEM_SIZE)];break;
       case 7:pMem[i*MEM_SIZE+(Math.abs(dst)%MEM_SIZE)]=vmRegs[si];break;
       case 8:{const fx8=Math.floor(px[i]/(W/FIELD_W)),fy8=Math.floor(py[i]/(H/FIELD_H));const fi8=Math.max(0,Math.min(FIELD_W*FIELD_H-1,fy8*FIELD_W+fx8));vmRegs[di]=field[fi8];}break;
@@ -2446,6 +2451,16 @@ function executeVM(i,j,sim,d){
         pMem[j*MEM_SIZE+mSlot]+=mVal;
         pMem[j*MEM_SIZE+mSlot]=Math.max(-8,Math.min(8,pMem[j*MEM_SIZE+mSlot]));
       }break;
+      // 19: COMMONS — read/write global shared register. Long-range communication.
+      case 19:{
+        vmRegs[di]=globalCommons; // always read
+        const writeStr=Math.abs(vmRegs[si]*k);
+        if(writeStr>commonsStrength){
+          globalCommons=vmRegs[si]*k;
+          commonsWriter=i;
+          commonsStrength=writeStr;
+        }
+      }break;
     }
     for(let r=0;r<12;r++)vmRegs[r]=Math.max(-8,Math.min(8,vmRegs[r]));
   }
@@ -2472,8 +2487,8 @@ function executeVM(i,j,sim,d){
         case 1:vmRegs[di]+=vmRegs[si]*k;break;
         case 2:vmRegs[di]*=vmRegs[si]*(k||1);break;
         case 3:vmRegs[di]=vmRegs[si]>k?1:0;break;
-        case 4:{const ai=Math.abs(dst)%7;vmActions[ai]+=vmRegs[si]*k;}break;
-        case 5:{const fi=Math.abs(src)%7;vmRegs[di]=vmActions[fi];}break;
+        case 4:{const ai=Math.abs(dst)%8;vmActions[ai]+=vmRegs[si]*k;}break;
+        case 5:{const fi=Math.abs(src)%8;vmRegs[di]=vmActions[fi];}break;
         case 6:vmRegs[di]=pMem[i*MEM_SIZE+(Math.abs(src)%MEM_SIZE)];break;
         case 7:pMem[i*MEM_SIZE+(Math.abs(dst)%MEM_SIZE)]=vmRegs[si];break;
         case 8:{const pfx=Math.floor(px[i]/(W/FIELD_W)),pfy=Math.floor(py[i]/(H/FIELD_H));const pfi=Math.max(0,Math.min(FIELD_W*FIELD_H-1,pfy*FIELD_W+pfx));vmRegs[di]=field[pfi];}break;
@@ -2507,6 +2522,11 @@ function executeVM(i,j,sim,d){
           const mV2=vmRegs[di]*k;
           pMem[j*MEM_SIZE+mS2]+=mV2;
           pMem[j*MEM_SIZE+mS2]=Math.max(-8,Math.min(8,pMem[j*MEM_SIZE+mS2]));
+        }break;
+        case 19:{
+          vmRegs[di]=globalCommons;
+          const wStr=Math.abs(vmRegs[si]*k);
+          if(wStr>commonsStrength){globalCommons=vmRegs[si]*k;commonsWriter=i;commonsStrength=wStr;}
         }break;
       }
       for(let r=0;r<12;r++)vmRegs[r]=Math.max(-8,Math.min(8,vmRegs[r]));
@@ -2602,6 +2622,12 @@ function executeVM(i,j,sim,d){
   // The evolved code can reach into its own evolvability.
   // Accumulated per-tick, applied in mutateGenome.
   mutPressureAccum+=vmActions[6]*influence*0.0001;
+
+  // CHANNEL 7: BLANK — no prescribed meaning.
+  // Routes to tendency dimension 4 (the blank dimension).
+  // The system decides what this channel means by how it writes to it.
+  tend[i*DIMS+4]+=vmActions[7]*influence*0.01;
+  tend[i*DIMS+4]=Math.max(-1,Math.min(1,tend[i*DIMS+4]));
 }
 
 // ═══ LAYER 9: PER-CLUSTER VM — DIFFERENTIATED TISSUE LOGIC ═══
@@ -2641,7 +2667,7 @@ function executeClusterVM(i,j,sim,d){
   }
 
   // Zero action channels for cluster VM — clean slate, not additive to global VM
-  vmActions[0]=0;vmActions[1]=0;vmActions[2]=0;vmActions[3]=0;vmActions[4]=0;vmActions[5]=0;vmActions[6]=0;
+  vmActions[0]=0;vmActions[1]=0;vmActions[2]=0;vmActions[3]=0;vmActions[4]=0;vmActions[5]=0;vmActions[6]=0;vmActions[7]=0;
 
   const prog=cl.vmProgram;
   const nInst=Math.min(prog.length,MAX_CLUSTER_VM);
@@ -2655,8 +2681,8 @@ function executeClusterVM(i,j,sim,d){
       case 1:vmRegs[di]+=vmRegs[si]*k;break;
       case 2:vmRegs[di]*=vmRegs[si]*(k||1);break;
       case 3:vmRegs[di]=vmRegs[si]>k?1:0;break;
-      case 4:{const ai=Math.abs(dst)%7;vmActions[ai]+=vmRegs[si]*k;}break;
-      case 5:{const fi=Math.abs(src)%7;vmRegs[di]=vmActions[fi];}break;
+      case 4:{const ai=Math.abs(dst)%8;vmActions[ai]+=vmRegs[si]*k;}break;
+      case 5:{const fi=Math.abs(src)%8;vmRegs[di]=vmActions[fi];}break;
       case 6:vmRegs[di]=pMem[i*MEM_SIZE+(Math.abs(src)%MEM_SIZE)];break;
       case 7:pMem[i*MEM_SIZE+(Math.abs(dst)%MEM_SIZE)]=vmRegs[si];break;
       case 8:{const fx8=Math.floor(px[i]/(W/FIELD_W)),fy8=Math.floor(py[i]/(H/FIELD_H));const fi8=Math.max(0,Math.min(FIELD_W*FIELD_H-1,fy8*FIELD_W+fx8));vmRegs[di]=field[fi8];}break;
@@ -2690,6 +2716,11 @@ function executeClusterVM(i,j,sim,d){
         const mV3=vmRegs[di]*k;
         pMem[j*MEM_SIZE+mS3]+=mV3;
         pMem[j*MEM_SIZE+mS3]=Math.max(-8,Math.min(8,pMem[j*MEM_SIZE+mS3]));
+      }break;
+      case 19:{
+        vmRegs[di]=globalCommons;
+        const wStr3=Math.abs(vmRegs[si]*k);
+        if(wStr3>commonsStrength){globalCommons=vmRegs[si]*k;commonsWriter=i;commonsStrength=wStr3;}
       }break;
     }
     for(let r=0;r<12;r++)vmRegs[r]=Math.max(-8,Math.min(8,vmRegs[r]));
@@ -2752,6 +2783,10 @@ function executeClusterVM(i,j,sim,d){
 
   // Mutation pressure from cluster VM
   mutPressureAccum+=vmActions[6]*influence*0.00008;
+
+  // Channel 7: blank — routes to tendency dim 4
+  tend[i*DIMS+4]+=vmActions[7]*influence*0.01;
+  tend[i*DIMS+4]=Math.max(-1,Math.min(1,tend[i*DIMS+4]));
 
   // Metabolic cost — distributed across member particles (lighter than global)
   const clCost=nInst*genome.metabolicCost*CLUSTER_VM_COST_SHARE;
