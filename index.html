@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
-<title>Selection פ 19c — Autonomy</title>
+<title>Selection פ 19d — Solitude</title>
 <style>
 *{margin:0;padding:0;box-sizing:border-box}
 html,body{height:100%;overflow:hidden;background:#020204;touch-action:none;cursor:crosshair}
@@ -2887,6 +2887,110 @@ function updateParticles(){
   }
 }
 
+// ═══ SOLO EXECUTION — particles act from self-knowledge without a partner ═══
+// Same VM program. Same opcodes. j=i (interact with self).
+// Pairwise channels (force, phase shift, amp transfer, tend bleed) become no-ops.
+// Solo channels (field read/write, EMIT velocity, BIRTH, memory, broadcast, GRADIENT, COMMONS) work.
+// Runs once per particle per tick at reduced influence. Metabolic cost applies.
+function executeSoloVM(){
+  const prog=genome.vmProgram;
+  const nInst=Math.min(prog.length,genome.vmMaxInstructions);
+  if(nInst===0)return;
+  const soloInfluence=genome.vmInfluence*genome.ruleScale*0.0005; // weaker than interaction VM
+
+  for(let i=0;i<N;i++){
+    if(!palive[i])continue;
+
+    // Solo metabolic cost — half of interaction cost
+    const soloCost=nInst*genome.metabolicCost*0.5;
+    amp[i]-=soloCost;
+
+    // Context registers — no partner, so similarity/proximity are self-referential
+    vmRegs[0]=1;   // similarity with self = 1
+    vmRegs[1]=1;   // phase alignment with self = 1
+    vmRegs[2]=1;   // proximity to self = max
+    vmRegs[3]=amp[i]; // energy = own amplitude
+
+    // Load particle memory
+    for(let m=0;m<MEM_SIZE;m++)vmRegs[4+m]=pMem[i*MEM_SIZE+m];
+
+    // Reflexivity injection
+    const reflexInf=genome.reflexInfluence||0;
+    if(reflexInf>0.001){
+      const rBase=i*REFLEX_DIMS;
+      vmRegs[6]+=pReflexState[rBase]*reflexInf;
+      vmRegs[7]+=pReflexState[rBase+1]*reflexInf;
+      vmRegs[8]+=pReflexState[rBase+2]*reflexInf;
+      vmRegs[9]+=pReflexState[rBase+3]*reflexInf;
+      for(let r=6;r<=9;r++)vmRegs[r]=Math.max(-8,Math.min(8,vmRegs[r]));
+    }
+
+    vmActions[0]=0;vmActions[1]=0;vmActions[2]=0;vmActions[3]=0;vmActions[4]=0;vmActions[5]=0;vmActions[6]=0;vmActions[7]=0;
+
+    // Run the same program
+    for(let ip=0,_ss=0;ip<nInst&&_ss<nInst*2;ip++,_ss++){
+      const inst=prog[ip];if(!inst)continue;
+      const [op,src,dst,k]=inst;
+      const si=Math.abs(src)%12,di=Math.abs(dst)%12;
+      switch(op){
+        case 0:vmRegs[di]=vmRegs[si];break;
+        case 1:vmRegs[di]+=vmRegs[si]*k;break;
+        case 2:vmRegs[di]*=vmRegs[si]*(k||1);break;
+        case 3:vmRegs[di]=vmRegs[si]>k?1:0;break;
+        case 4:{const ai=Math.abs(dst)%8;vmActions[ai]+=vmRegs[si]*k;}break;
+        case 5:{const fi=Math.abs(src)%8;vmRegs[di]=vmActions[fi];}break;
+        case 6:vmRegs[di]=pMem[i*MEM_SIZE+(Math.abs(src)%MEM_SIZE)];break;
+        case 7:pMem[i*MEM_SIZE+(Math.abs(dst)%MEM_SIZE)]=vmRegs[si];break;
+        case 8:{const fx8=Math.floor(px[i]/(W/FIELD_W)),fy8=Math.floor(py[i]/(H/FIELD_H));const fi8=Math.max(0,Math.min(FIELD_W*FIELD_H-1,fy8*FIELD_W+fx8));vmRegs[di]=field[fi8];}break;
+        case 9:{const wx9=Math.floor(px[i]/(W/FIELD_W)),wy9=Math.floor(py[i]/(H/FIELD_H));const wi9=Math.max(0,Math.min(FIELD_W*FIELD_H-1,wy9*FIELD_W+wx9));field[wi9]+=vmRegs[si]*k*0.3;field[wi9]=Math.max(0,Math.min(2.5,field[wi9]));}break;
+        case 11:{const slot=Math.abs(dst)%2;pBroadcast[i*2+slot]=vmRegs[si]*k;}break;
+        case 13:{const instIdx=Math.abs(Math.floor(vmRegs[si]))%Math.max(1,prog.length);const selfInst=prog[instIdx];vmRegs[di]=selfInst?selfInst[Math.abs(Math.floor(k))%4]:0;}break;
+        case 14:if(vmRegs[si]>k)ip=Math.abs(Math.floor(vmRegs[di]))%nInst;break;
+        case 15:{const ageFrac=Math.min(1,page[i]/800);vmRegs[di]=vmRegs[si]*(1-ageFrac)+k*ageFrac;}break;
+        case 16:{
+          if(amp[i]>0.4&&page[i]>80&&N+birthQueue.length<CAP-1&&Math.random()<0.015){
+            const offX=Math.max(0,Math.min(W,px[i]+vmRegs[si]*15));
+            const offY=Math.max(0,Math.min(H,py[i]+vmRegs[di]*15));
+            const nt=new Float32Array(DIMS);
+            for(let dd=0;dd<DIMS;dd++)nt[dd]=tend[i*DIMS+dd]+k*0.1*(vmRegs[(dd+4)%12]-0.5);
+            birthQueue.push({x:offX,y:offY,t:nt,parent:i});
+            amp[i]*=0.5;
+          }
+        }break;
+        case 17:{
+          const gfx=Math.floor(px[i]/(W/FIELD_W)),gfy=Math.floor(py[i]/(H/FIELD_H));
+          const gfi=gfy*FIELD_W+gfx;
+          const gl=gfx>0?field[gfi-1]:field[gfi];
+          const gr=gfx<FIELD_W-1?field[gfi+1]:field[gfi];
+          const gu=gfy>0?field[gfi-FIELD_W]:field[gfi];
+          const gd=gfy<FIELD_H-1?field[gfi+FIELD_W]:field[gfi];
+          vmRegs[si]=(gr-gl)*0.5*k;
+          vmRegs[di]=(gd-gu)*0.5*k;
+        }break;
+        case 19:{
+          vmRegs[di]=globalCommons;
+          const writeStr=Math.abs(vmRegs[si]*k);
+          if(writeStr>commonsStrength){globalCommons=vmRegs[si]*k;commonsWriter=i;commonsStrength=writeStr;}
+        }break;
+      }
+      for(let r=0;r<12;r++)vmRegs[r]=Math.max(-8,Math.min(8,vmRegs[r]));
+    }
+
+    // Write back particle memory
+    for(let m=0;m<MEM_SIZE;m++)pMem[i*MEM_SIZE+m]=vmRegs[4+m];
+
+    // Apply solo action channels — only self-affecting ones
+    // Channel 0: self-velocity (no partner to push against, so direct)
+    vx[i]+=vmActions[0]*soloInfluence*0.5;
+    vy[i]+=vmActions[1]*soloInfluence*0.5;
+    // Channel 7: blank → tendency dim 4
+    tend[i*DIMS+4]+=vmActions[7]*soloInfluence*0.01;
+    tend[i*DIMS+4]=Math.max(-1,Math.min(1,tend[i*DIMS+4]));
+    // Mutation pressure
+    mutPressureAccum+=vmActions[6]*soloInfluence*0.00005;
+  }
+}
+
 function processGrid(){
   clearGrid();
   for(let i=0;i<N;i++){if(!palive[i])continue;const k=gKey(px[i],py[i]);pnext[i]=grid[k];grid[k]=i}
@@ -3182,6 +3286,7 @@ function loop(){
   exogenousPerturbation();
 
   gravity();
+  executeSoloVM();
   processGrid();
 
   // ═══ PLASMID PERSISTENCE + CRYSTALLIZATION ═══
