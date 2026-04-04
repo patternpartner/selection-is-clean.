@@ -3271,10 +3271,10 @@ function generateVoice(){
   const errMag=Math.abs(selfModel.errors.pop||0);
 
   // Dominant VM action — what the system's evolved code is actually doing
-  let domAct='move',domVal=0;
+  let domAct='',domVal=0;
   const ph=vmPhenotype;
   const actMap={emit:ph.force,align:ph.phaseShift,flow:ph.ampTransfer,tend:ph.tendBleed,spawn:ph.spawnDrive};
-  for(const[k,v]of Object.entries(actMap)){if(v>domVal){domVal=v;domAct=k}}
+  for(const[k,v]of Object.entries(actMap)){if(Math.abs(v)>domVal){domVal=Math.abs(v);domAct=k}}
 
   // Word pool — atoms weighted by state
   // The system's own technical vocabulary + minimal connectives
@@ -3299,9 +3299,8 @@ function generateVoice(){
   if(tr===-1){pool.push('fewer')}
   if(tr===1){pool.push('more')}
 
-  // From dominant VM action — the system's own opcode as word
-  pool.push(domAct);
-  if(domVal>0.2){pool.push(domAct)}
+  // From dominant VM action — the system's own opcode as word (only when VM has run)
+  if(domAct&&domVal>0.05){pool.push(domAct);if(domVal>0.2)pool.push(domAct)}
 
   // From cluster structure
   if(nC===0&&N>20){pool.push('no form')}
