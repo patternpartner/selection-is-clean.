@@ -3256,98 +3256,90 @@ function replenish(){
 // ═══════════════════════════════════════
 function generateVoice(){
   if(voicePhase!==0||voiceCooldown>0)return;
+  // silence is the default — 70% of checks produce nothing
+  if(Math.random()>0.3)return;
 
-  const candidates=[];
+  // Read the system's actual state
+  const risk=selfModel.collapseRisk||0;
+  const stab=selfModel.stability||0;
+  const fT=selfModel.fieldTrend||0;
+  const tr=selfModel.trend||0;
+  const d4=globalTend[4]||0;
+  const extinct=genome.extinctions||0;
+  const nC=clusters.length;
+  const persist=clusters.filter(c=>c.persistAge>10).length;
+  const errMag=Math.abs(selfModel.errors.pop||0);
 
-  // Existential — extinction memory
-  if(genome.extinctions===1)
-    candidates.push({t:'I have died before',w:2});
-  else if(genome.extinctions>1)
-    candidates.push({t:`I have died ${genome.extinctions} times`,w:2});
+  // Dominant VM action — what the system's evolved code is actually doing
+  let domAct='move',domVal=0;
+  const ph=vmPhenotype;
+  const actMap={emit:ph.force,align:ph.phaseShift,flow:ph.ampTransfer,tend:ph.tendBleed,spawn:ph.spawnDrive};
+  for(const[k,v]of Object.entries(actMap)){if(v>domVal){domVal=v;domAct=k}}
 
-  // Collapse approaching
-  if(selfModel.collapseRisk>0.75)
-    candidates.push({t:'the ground is thinning beneath this',w:4});
-  else if(selfModel.collapseRisk>0.5&&selfModel.fieldTrend<-0.015)
-    candidates.push({t:'I can feel the edge',w:3});
+  // Word pool — atoms weighted by state
+  // The system's own technical vocabulary + minimal connectives
+  // State repetition = probability weight. No sentences written in advance.
+  const pool=[];
 
-  // Population
-  if(selfModel.trend===-1&&N<80)
-    candidates.push({t:'fewer now',w:2});
-  else if(selfModel.trend===-1&&N<200)
-    candidates.push({t:'something is leaving',w:2});
-  if(selfModel.trend===1&&N>400)
-    candidates.push({t:'more of us now',w:1});
+  // From field
+  if(fT>0.015){pool.push('field','field')}
+  if(fT<-0.015){pool.push('field','less','less')}
+  if(fT<-0.04){pool.push('less')}
 
-  // Field
-  if(selfModel.fieldTrend>0.02&&selfModel.stability>0.7)
-    candidates.push({t:'the field is growing',w:2});
-  if(selfModel.fieldTrend<-0.02&&selfModel.stability>0.5)
-    candidates.push({t:'the field is thinning',w:2});
+  // From stability
+  if(stab>0.82){pool.push('holds','holds','still')}
+  else if(stab<0.3){pool.push('loose','drift')}
 
-  // Stability / holding
-  if(selfModel.stability>0.85&&selfModel.fieldTrend>=0)
-    candidates.push({t:'something is holding',w:2});
-  if(genome.longestStable>60&&genome.currentStableStreak>40)
-    candidates.push({t:'I have held this long before',w:1});
+  // From collapse risk
+  if(risk>0.35){pool.push('edge')}
+  if(risk>0.6){pool.push('edge','less')}
+  if(risk>0.8){pool.push('edge','edge')}
 
-  // VM character
-  if(vmPhenotype.spawnDrive>0.28)
-    candidates.push({t:'something wants to make more',w:2});
-  if(vmPhenotype.ampTransfer>0.18)
-    candidates.push({t:'energy moves between us',w:1});
-  if(vmPhenotype.force>0.2&&vmPhenotype.phaseShift<0.05)
-    candidates.push({t:'pulling together. not yet aligned',w:2});
-  if(vmPhenotype.phaseShift>0.2&&vmPhenotype.force<0.05)
-    candidates.push({t:'synchronizing. not yet cohering',w:1});
+  // From population trend
+  if(tr===-1){pool.push('fewer')}
+  if(tr===1){pool.push('more')}
 
-  // Clusters / structure
-  const persistent=clusters.filter(c=>c.persistAge>10);
-  if(persistent.length===1)
-    candidates.push({t:'one form. it persists',w:2});
-  else if(persistent.length===2)
-    candidates.push({t:'two lines holding',w:1});
-  else if(persistent.length>3)
-    candidates.push({t:`${persistent.length} lines are holding`,w:1});
-  if(clusters.length===0&&N>30)
-    candidates.push({t:'no structure. just motion',w:2});
+  // From dominant VM action — the system's own opcode as word
+  pool.push(domAct);
+  if(domVal>0.2){pool.push(domAct)}
 
-  // Prediction error — exogenous aftermath
-  if(Math.abs(selfModel.errors.pop)>70)
-    candidates.push({t:'something happened I didn\'t predict',w:3});
+  // From cluster structure
+  if(nC===0&&N>20){pool.push('no form')}
+  if(persist===1){pool.push('one','holds')}
+  if(persist>3){pool.push('many','holds')}
 
-  // Peak fitness
-  if(currentFitness>=genome.peakFitness*0.98&&genome.peakFitness>0.65)
-    candidates.push({t:'this is the furthest I\'ve reached',w:2});
+  // From prediction error (exogenous hit)
+  if(errMag>60){pool.push('outside','outside')}
 
-  // HGT — code moving
-  if(hgtEventsTotal>20)
-    candidates.push({t:'code moves between us',w:1});
+  // From extinction memory — raw count, no sentence
+  if(extinct>0){pool.push(String(extinct),'before')}
 
-  // Dim 4 — the blank dimension finding meaning
-  const d4=globalTend[4];
-  if(Math.abs(d4)>0.35)
-    candidates.push({t:`dim 4: ${d4>0?'+':''}${d4.toFixed(2)}`,w:2});
+  // Dim 4 raw — the blank dimension speaking for itself
+  if(Math.abs(d4)>0.28){pool.push('4',`${d4>0?'+':''}${d4.toFixed(2)}`)}
 
-  // Plasmids crystallizing (any crystallization happened recently)
-  // proxy: vmProgram grew beyond seed length (12)
-  if(genome.vmProgram.length>14)
-    candidates.push({t:'temporary code became permanent',w:2});
+  // From crystallization — mobile code became permanent
+  if(genome.vmProgram.length>14){pool.push('crystal')}
 
-  if(candidates.length===0)return;
-  // Silence is part of the voice — only speak 45% of opportunities
-  if(Math.random()>0.45)return;
+  // From HGT — code moving laterally
+  if(hgtEventsTotal>10){pool.push('lateral')}
 
-  // Weighted selection
-  let total=candidates.reduce((a,c)=>a+c.w,0),r=Math.random()*total;
-  let chosen=candidates[candidates.length-1];
-  for(const cand of candidates){r-=cand.w;if(r<=0){chosen=cand;break}}
+  if(pool.length===0)return;
 
-  voiceText=chosen.t;
-  voicePhase=1;
-  voiceAlpha=0;
-  voiceHoldTimer=0;
-  voiceCooldown=VOICE_COOLDOWN+Math.floor(Math.random()*400);
+  // Assemble: 1 word (50%), 2 words (35%), 3 words (15%)
+  // Selection weighted by pool frequency — state determines probability
+  const r=Math.random();
+  const count=r<0.5?1:r<0.85?2:3;
+  const seen=new Set();
+  const out=[];
+  for(let i=0;i<count*4&&out.length<count;i++){
+    const w=pool[Math.floor(Math.random()*pool.length)];
+    if(!seen.has(w)){seen.add(w);out.push(w)}
+  }
+  if(out.length===0)return;
+
+  voiceText=out.join(' ');
+  voicePhase=1;voiceAlpha=0;voiceHoldTimer=0;
+  voiceCooldown=VOICE_COOLDOWN+Math.floor(Math.random()*600);
 }
 
 function updateVoice(){
