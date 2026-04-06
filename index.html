@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
-<title>Selection פ 19d — Solitude</title>
+<title>Selection פ 21 — Inscribed Ground</title>
 <style>
 *{margin:0;padding:0;box-sizing:border-box}
 html,body{height:100%;overflow:hidden;background:#020204;touch-action:none;cursor:crosshair}
@@ -12,21 +12,15 @@ canvas{position:fixed;inset:0}
 #gio{position:fixed;bottom:8px;right:8px;z-index:10;display:flex;gap:6px}
 #gio button{background:rgba(30,40,50,0.7);color:#8af;border:1px solid rgba(100,140,180,0.3);font:10px monospace;padding:4px 8px;border-radius:3px;cursor:pointer}
 #gio input{display:none}
-#voice{position:fixed;bottom:48px;left:50%;transform:translateX(-50%);color:rgba(120,150,135,0);font:11px/1.6 monospace;pointer-events:none;z-index:1;text-align:center;white-space:nowrap;letter-spacing:0.06em}
 </style>
 </head>
 <body>
 <div id="gen"></div>
-<div id="voice"></div>
 <div id="gio"><button id="gexp">💾 save</button><button id="gimp">📂 load</button><input type="file" id="gfile" accept=".json"></div>
 <canvas id="c"></canvas>
 <script>
-const c=document.getElementById('c'),X=c.getContext('2d'),genEl=document.getElementById('gen'),voiceEl=document.getElementById('voice');
+const c=document.getElementById('c'),X=c.getContext('2d'),genEl=document.getElementById('gen');
 let W,H,mx=-9e3,my=-9e3,smx=0,smy=0,pulling=0,pStr=0,pDur=0,tick=0;
-
-// ═══ VOICE — the system speaks from inside ═══
-let voiceAlpha=0,voicePhase=0,voiceHoldTimer=0,voiceCooldown=0,voiceText='';
-const VOICE_FADEIN=40,VOICE_HOLD=220,VOICE_FADEOUT=80,VOICE_COOLDOWN=700;
 
 // === SPATIAL GRID ===
 const CELL=55;
@@ -256,6 +250,29 @@ const fieldMemory=new Float32Array(FIELD_W*FIELD_H); // 0=virgin, higher=more hi
 const FIELD_SIG_DIMS=3; // signature dimensions per field cell
 const fieldSig=new Float32Array(FIELD_W*FIELD_H*FIELD_SIG_DIMS); // territorial signature per cell
 const fieldOwnership=new Float32Array(FIELD_W*FIELD_H); // ownership strength (0=commons, 1=fully claimed)
+
+// ═══ INSCRIBED SUBSTRATE — cells hold particle-written programs ═══
+// Each cell has:
+//  - field[] magnitude (the primary substrate signal, existing)
+//  - field2[] second channel — allows chemistry-like relationships between channels
+//  - cellProgOp[], cellProgA[], cellProgB[] — a 1-instruction inscribed program
+//  - cellProgStr[] — inscription strength (decays over time, reinforced by rewrites)
+// Each tick, cells with inscribed programs run them on themselves + neighbours.
+// The particles literally write the physics of their world.
+const field2=new Float32Array(FIELD_W*FIELD_H); // second channel — enables reactions between channels
+const cellProgOp=new Uint8Array(FIELD_W*FIELD_H);    // opcode: which transformation this cell runs
+const cellProgA=new Float32Array(FIELD_W*FIELD_H);   // parameter A
+const cellProgB=new Float32Array(FIELD_W*FIELD_H);   // parameter B
+const cellProgStr=new Float32Array(FIELD_W*FIELD_H); // inscription strength [0..1], decays if not reinforced
+// Cell opcode meanings (evolved through selection on inscription patterns):
+//  0: NONE        — cell does nothing, standard diffusion only
+//  1: REACT       — field += field2 * A ; field2 -= field * B  (Gray-Scott-like but evolvable)
+//  2: AMPLIFY     — field *= (1 + A * 0.1)  (local energy injection)
+//  3: CONVERT     — field2 += field * A ; field *= (1 - B * 0.05)  (channel conversion)
+//  4: SUPPRESS    — field *= (1 - A * 0.05) ; field2 *= (1 - B * 0.05)  (decay accelerator)
+//  5: GRADIENT_AMP — amplify gradient: value += (max_neighbor - value) * A
+//  6: INVERT      — swap channels: temp = field ; field = field2 * A ; field2 = temp * B
+//  7: OSCILLATE   — field += sin(tick * A) * B  (temporal oscillation)
 
 // ═══ LAYER 10: PER-PARTICLE SELF-MODEL ═══
 // Each particle maintains a compressed model of its own recent state.
@@ -815,7 +832,7 @@ function attemptClusterBudding(){
           copy[3]+=(Math.random()-0.5)*0.2;
           copy[3]=Math.max(-2,Math.min(2,copy[3]));
         }
-        if(Math.random()<0.08)copy[0]=Math.floor(Math.random()*20);
+        if(Math.random()<0.08)copy[0]=Math.floor(Math.random()*22);
         return copy;
       }),
       vmInfluence:Math.max(0.05,c.vmInfluence+(Math.random()-0.5)*0.1),
@@ -1434,7 +1451,7 @@ function evolvePlasmids(){
       }
       else if(roll<0.58){
         // Structural change (opcode or registers)
-        if(Math.random()<0.5)pPlasmid[base]=Math.floor(Math.random()*20);
+        if(Math.random()<0.5)pPlasmid[base]=Math.floor(Math.random()*22);
         else{
           pPlasmid[base+1]=Math.floor(Math.random()*12);
           pPlasmid[base+2]=Math.floor(Math.random()*12);
@@ -1482,7 +1499,7 @@ function evolvePlasmids(){
     // Spontaneous generation — only in high-resonance environments
     if(nP<MAX_PLASMID&&Math.random()<genome.plasmidSpawnRate*(1+localRes[i]*4)){
       const newBase=i*PLASMID_SLOTS+nP*4;
-      pPlasmid[newBase]=Math.floor(Math.random()*20);
+      pPlasmid[newBase]=Math.floor(Math.random()*22);
       pPlasmid[newBase+1]=Math.floor(Math.random()*12);
       pPlasmid[newBase+2]=Math.floor(Math.random()*12);
       pPlasmid[newBase+3]=(Math.random()-0.5)*0.75;
@@ -1521,7 +1538,7 @@ function attemptHGT(){
     donor[3]+=(Math.random()-0.5)*genome.hgtSpliceNoise;
     donor[3]=Math.max(-2.5,Math.min(2.5,donor[3]));
     // Occasional opcode drift during transfer
-    if(Math.random()<0.08)donor[0]=Math.floor(Math.random()*20);
+    if(Math.random()<0.08)donor[0]=Math.floor(Math.random()*22);
 
     const insertPos=Math.floor(Math.random()*(genome.vmProgram.length+1));
     genome.vmProgram.splice(insertPos,0,donor);
@@ -1538,6 +1555,63 @@ function attemptHGT(){
 // Energy diffuses and decays. Signatures blend during diffusion (territory fades at edges).
 // Ownership decays faster than energy — territory must be actively maintained.
 function updateField(){
+  // ═══ STAGE 1: CELL-LEVEL VM EXECUTION ═══
+  // Each cell holds one VM instruction inscribed by particles.
+  // Cells execute their instructions on local state: c1 (this cell, channel 1),
+  // c2 (this cell, channel 2), nN/nS/nE/nW (neighbour channel 1 values).
+  // No fixed vocabulary — just primitives. The system chooses which patterns survive.
+  // Snapshot both channels first so all cells see consistent state.
+  const f1Snap=field.slice();
+  const f2Snap=field2.slice();
+  for(let y=0;y<FIELD_H;y++){
+    for(let x=0;x<FIELD_W;x++){
+      const idx=y*FIELD_W+x;
+      const strength=cellProgStr[idx];
+      if(strength<0.05)continue;
+      const op=cellProgOp[idx];
+      const A=cellProgA[idx];
+      const B=cellProgB[idx];
+      // Local state available to the cell:
+      const c1=f1Snap[idx];
+      const c2=f2Snap[idx];
+      const nN=y>0?f1Snap[idx-FIELD_W]:c1;
+      const nS=y<FIELD_H-1?f1Snap[idx+FIELD_W]:c1;
+      const nE=x<FIELD_W-1?f1Snap[idx+1]:c1;
+      const nW=x>0?f1Snap[idx-1]:c1;
+      const m2N=y>0?f2Snap[idx-FIELD_W]:c2;
+      const m2S=y<FIELD_H-1?f2Snap[idx+FIELD_W]:c2;
+      const m2E=x<FIELD_W-1?f2Snap[idx+1]:c2;
+      const m2W=x>0?f2Snap[idx-1]:c2;
+      const nbAvg1=(nN+nS+nE+nW)*0.25;
+      const nbAvg2=(m2N+m2S+m2E+m2W)*0.25;
+      // Op modulo determines which primitive — system picks what works.
+      // 12 primitives, but their meanings are simple: arithmetic between local state.
+      let d1=0,d2=0;
+      switch(op%12){
+        case 0:d1=A*c1*c2*c2-B*c1;d2=A*c1*c2*c2-B*c2;break;       // bilinear coupling (Gray-Scott family)
+        case 1:d1=A*(nbAvg1-c1);d2=B*(nbAvg2-c2);break;            // accelerated diffusion
+        case 2:d1=A*c2-B*c1;d2=B*c1-A*c2;break;                    // linear interconversion
+        case 3:d1=A*c1*(1-c1);d2=B*c2*(1-c2);break;                // logistic growth on each channel
+        case 4:d1=A*(c1-nbAvg1);break;                              // anti-diffusion (channel 1)
+        case 5:d2=B*(c2-nbAvg2);break;                              // anti-diffusion (channel 2)
+        case 6:d1=A*nbAvg2;d2=B*nbAvg1;break;                       // cross-channel neighbour coupling
+        case 7:d1=A*c1*c1-B*c1*c2;break;                            // quadratic self plus inhibition
+        case 8:d1=A*Math.sin(c2*3);d2=B*Math.cos(c1*3);break;       // oscillatory coupling
+        case 9:d1=A*(c2-c1)*c1;break;                               // gated transfer
+        case 10:d1=-A*c1+B*nbAvg1*nbAvg1;break;                     // decay plus quadratic input
+        case 11:d2=A*c1*c1-B*c2;break;                              // production from c1 squared
+      }
+      // Apply, scaled by inscription strength
+      field[idx]+=d1*strength*0.05;
+      field2[idx]+=d2*strength*0.05;
+      field[idx]=Math.max(0,Math.min(2.5,field[idx]));
+      field2[idx]=Math.max(0,Math.min(2.5,field2[idx]));
+      // Inscription decay — rules fade unless reinforced
+      cellProgStr[idx]*=0.998;
+    }
+  }
+
+  // ═══ STAGE 2: STANDARD DIFFUSION + DECAY ═══
   for(let y=0;y<FIELD_H;y++){
     for(let x=0;x<FIELD_W;x++){
       const idx=y*FIELD_W+x;
@@ -1552,6 +1626,16 @@ function updateField(){
       const memBonus=Math.min(0.015,fieldMemory[idx]*0.003); // history slows decay, max 0.015
       field[idx]=sum*(FIELD_DECAY+memBonus);
       if(isNaN(field[idx]))field[idx]=0;
+
+      // Second channel — diffuses at slower rate
+      const F2D=FIELD_DIFFUSE*0.5;
+      let sum2=field2[idx]*(1-F2D*4);
+      if(x>0)sum2+=field2[idx-1]*F2D;
+      if(x<FIELD_W-1)sum2+=field2[idx+1]*F2D;
+      if(y>0)sum2+=field2[(y-1)*FIELD_W+x]*F2D;
+      if(y<FIELD_H-1)sum2+=field2[(y+1)*FIELD_W+x]*F2D;
+      field2[idx]=sum2*FIELD_DECAY;
+      if(isNaN(field2[idx]))field2[idx]=0;
 
       // Update field memory — writing to a cell accumulates history
       if(field[idx]>0.1){
@@ -1718,7 +1802,7 @@ function mutateGenome(){
     inst[3]=Math.max(-2,Math.min(2,inst[3]));
 
     // Opcode swap — now includes FEEDBACK (5), LOAD_MEM (6), STORE_MEM (7)
-    if(Math.random()<rate*0.2)inst[0]=Math.floor(Math.random()*20);
+    if(Math.random()<rate*0.2)inst[0]=Math.floor(Math.random()*22);
 
     // Source register swap (now 12 registers)
     if(Math.random()<rate*0.2)inst[1]=Math.floor(Math.random()*12);
@@ -1730,7 +1814,7 @@ function mutateGenome(){
   // Program growth: insert a random instruction
   if(genome.vmProgram.length<genome.vmMaxInstructions&&Math.random()<rate*0.15){
     const pos=Math.floor(Math.random()*(genome.vmProgram.length+1));
-    const newInst=[Math.floor(Math.random()*20),Math.floor(Math.random()*12),Math.floor(Math.random()*12),(Math.random()-0.5)*0.6];
+    const newInst=[Math.floor(Math.random()*22),Math.floor(Math.random()*12),Math.floor(Math.random()*12),(Math.random()-0.5)*0.6];
     genome.vmProgram.splice(pos,0,newInst);
   }
 
@@ -1767,7 +1851,7 @@ function mutateGenome(){
       inst[3]+=(Math.random()-0.5)*0.15*scale;
       inst[3]=Math.max(-2,Math.min(2,inst[3]));
       // Structural mutations (rarer)
-      if(Math.random()<0.2)inst[0]=Math.floor(Math.random()*20);
+      if(Math.random()<0.2)inst[0]=Math.floor(Math.random()*22);
       if(Math.random()<0.15)inst[1]=Math.floor(Math.random()*12);
       if(Math.random()<0.15)inst[2]=Math.floor(Math.random()*12);
     }
@@ -2467,6 +2551,32 @@ function executeVM(i,j,sim,d){
           commonsStrength=writeStr;
         }
       }break;
+      // 20: INSCRIBE — write a cell program into the field at particle's location
+      // src = which opcode (0-7), dst reg holds param A, k holds param B
+      case 20:{
+        const ix20=Math.floor(px[i]/(W/FIELD_W)),iy20=Math.floor(py[i]/(H/FIELD_H));
+        const ci20=Math.max(0,Math.min(FIELD_W*FIELD_H-1,iy20*FIELD_W+ix20));
+        const newOp=Math.abs(Math.floor(vmRegs[si]))%12;
+        const newA=vmRegs[di];
+        const newB=k;
+        // Write only if no inscription exists OR our write is stronger
+        const writeStr20=Math.abs(vmRegs[si]*k)*0.3;
+        if(writeStr20>cellProgStr[ci20]*0.8){
+          cellProgOp[ci20]=newOp;
+          cellProgA[ci20]=newA;
+          cellProgB[ci20]=newB;
+          cellProgStr[ci20]=Math.min(1,cellProgStr[ci20]+writeStr20);
+        }else{
+          // Reinforce existing inscription
+          cellProgStr[ci20]=Math.min(1,cellProgStr[ci20]+writeStr20*0.3);
+        }
+      }break;
+      // 21: READ_CH2 — read second field channel at particle location
+      case 21:{
+        const rx21=Math.floor(px[i]/(W/FIELD_W)),ry21=Math.floor(py[i]/(H/FIELD_H));
+        const ri21=Math.max(0,Math.min(FIELD_W*FIELD_H-1,ry21*FIELD_W+rx21));
+        vmRegs[di]=field2[ri21]*k;
+      }break;
     }
     for(let r=0;r<12;r++)vmRegs[r]=Math.max(-8,Math.min(8,vmRegs[r]));
   }
@@ -2533,6 +2643,24 @@ function executeVM(i,j,sim,d){
           vmRegs[di]=globalCommons;
           const wStr=Math.abs(vmRegs[si]*k);
           if(wStr>commonsStrength){globalCommons=vmRegs[si]*k;commonsWriter=i;commonsStrength=wStr;}
+        }break;
+        case 20:{
+          const ix20=Math.floor(px[i]/(W/FIELD_W)),iy20=Math.floor(py[i]/(H/FIELD_H));
+          const ci20=Math.max(0,Math.min(FIELD_W*FIELD_H-1,iy20*FIELD_W+ix20));
+          const wStr20=Math.abs(vmRegs[si]*k)*0.2; // plasmid writes a bit weaker
+          if(wStr20>cellProgStr[ci20]*0.8){
+            cellProgOp[ci20]=Math.abs(Math.floor(vmRegs[si]))%12;
+            cellProgA[ci20]=vmRegs[di];
+            cellProgB[ci20]=k;
+            cellProgStr[ci20]=Math.min(1,cellProgStr[ci20]+wStr20);
+          }else{
+            cellProgStr[ci20]=Math.min(1,cellProgStr[ci20]+wStr20*0.3);
+          }
+        }break;
+        case 21:{
+          const rx21=Math.floor(px[i]/(W/FIELD_W)),ry21=Math.floor(py[i]/(H/FIELD_H));
+          const ri21=Math.max(0,Math.min(FIELD_W*FIELD_H-1,ry21*FIELD_W+rx21));
+          vmRegs[di]=field2[ri21]*k;
         }break;
       }
       for(let r=0;r<12;r++)vmRegs[r]=Math.max(-8,Math.min(8,vmRegs[r]));
@@ -2727,6 +2855,24 @@ function executeClusterVM(i,j,sim,d){
         vmRegs[di]=globalCommons;
         const wStr3=Math.abs(vmRegs[si]*k);
         if(wStr3>commonsStrength){globalCommons=vmRegs[si]*k;commonsWriter=i;commonsStrength=wStr3;}
+      }break;
+      case 20:{
+        const ix20=Math.floor(px[i]/(W/FIELD_W)),iy20=Math.floor(py[i]/(H/FIELD_H));
+        const ci20=Math.max(0,Math.min(FIELD_W*FIELD_H-1,iy20*FIELD_W+ix20));
+        const wStr20=Math.abs(vmRegs[si]*k)*0.4; // cluster VM writes stronger — collective inscription
+        if(wStr20>cellProgStr[ci20]*0.7){
+          cellProgOp[ci20]=Math.abs(Math.floor(vmRegs[si]))%12;
+          cellProgA[ci20]=vmRegs[di];
+          cellProgB[ci20]=k;
+          cellProgStr[ci20]=Math.min(1,cellProgStr[ci20]+wStr20);
+        }else{
+          cellProgStr[ci20]=Math.min(1,cellProgStr[ci20]+wStr20*0.3);
+        }
+      }break;
+      case 21:{
+        const rx21=Math.floor(px[i]/(W/FIELD_W)),ry21=Math.floor(py[i]/(H/FIELD_H));
+        const ri21=Math.max(0,Math.min(FIELD_W*FIELD_H-1,ry21*FIELD_W+rx21));
+        vmRegs[di]=field2[ri21]*k;
       }break;
     }
     for(let r=0;r<12;r++)vmRegs[r]=Math.max(-8,Math.min(8,vmRegs[r]));
@@ -2978,6 +3124,25 @@ function executeSoloVM(){
           const writeStr=Math.abs(vmRegs[si]*k);
           if(writeStr>commonsStrength){globalCommons=vmRegs[si]*k;commonsWriter=i;commonsStrength=writeStr;}
         }break;
+        case 20:{
+          const ix20=Math.floor(px[i]/(W/FIELD_W)),iy20=Math.floor(py[i]/(H/FIELD_H));
+          const ci20=Math.max(0,Math.min(FIELD_W*FIELD_H-1,iy20*FIELD_W+ix20));
+          const newOp=Math.abs(Math.floor(vmRegs[si]))%12;
+          const writeStr20=Math.abs(vmRegs[si]*k)*0.15; // solo writes at half strength
+          if(writeStr20>cellProgStr[ci20]*0.8){
+            cellProgOp[ci20]=newOp;
+            cellProgA[ci20]=vmRegs[di];
+            cellProgB[ci20]=k;
+            cellProgStr[ci20]=Math.min(1,cellProgStr[ci20]+writeStr20);
+          }else{
+            cellProgStr[ci20]=Math.min(1,cellProgStr[ci20]+writeStr20*0.3);
+          }
+        }break;
+        case 21:{
+          const rx21=Math.floor(px[i]/(W/FIELD_W)),ry21=Math.floor(py[i]/(H/FIELD_H));
+          const ri21=Math.max(0,Math.min(FIELD_W*FIELD_H-1,ry21*FIELD_W+rx21));
+          vmRegs[di]=field2[ri21]*k;
+        }break;
       }
       for(let r=0;r<12;r++)vmRegs[r]=Math.max(-8,Math.min(8,vmRegs[r]));
     }
@@ -3106,6 +3271,41 @@ function render(){
       const b=Math.floor(fieldLineageCache[ci+2]*own+220*(1-own));
       X.fillStyle=`rgba(${r},${g},${b},${alpha})`;
       X.fillRect(fx*cellW,fy*cellH,cellW+1,cellH+1);
+    }
+  }
+
+  // Channel 2 visualization — desaturated rose for the second chemistry channel
+  for(let fy=0;fy<FIELD_H;fy++){
+    for(let fx=0;fx<FIELD_W;fx++){
+      const fIdx=fy*FIELD_W+fx;
+      const v2=field2[fIdx];
+      if(v2<0.05)continue;
+      const a2=Math.min(0.5,v2*0.3);
+      X.fillStyle=`rgba(220,90,140,${a2})`;
+      X.fillRect(fx*cellW,fy*cellH,cellW+1,cellH+1);
+    }
+  }
+
+  // ═══ INSCRIPTION VISUALIZATION ═══
+  // Cells with inscribed programs show as small bright dots, colour by opcode
+  const cellOpColors=[
+    '255,180,60','120,200,255','255,120,200','120,255,180',
+    '255,255,120','180,120,255','255,160,160','160,255,255',
+    '255,200,255','200,255,200','200,200,255','255,180,180'
+  ];
+  for(let fy=0;fy<FIELD_H;fy++){
+    for(let fx=0;fx<FIELD_W;fx++){
+      const fIdx=fy*FIELD_W+fx;
+      const str=cellProgStr[fIdx];
+      if(str<0.1)continue;
+      const op=cellProgOp[fIdx]%12;
+      const col=cellOpColors[op];
+      const a=Math.min(0.85,str*0.9);
+      const cx=fx*cellW+cellW*0.5;
+      const cy=fy*cellH+cellH*0.5;
+      const radius=cellW*0.18+str*cellW*0.15;
+      X.beginPath();X.arc(cx,cy,radius,0,6.28);
+      X.fillStyle=`rgba(${col},${a})`;X.fill();
     }
   }
 
@@ -3248,114 +3448,6 @@ function replenish(){
       else if(e===2){x=Math.random()*W;y=-5}else{x=Math.random()*W;y=H+5}
       addParticle(x,y,randomTendency(),false);
     }
-}
-
-// ═══════════════════════════════════════
-// VOICE — the system articulates what it's finding
-// Not a readout. The system speaking from inside its own state.
-// ═══════════════════════════════════════
-function generateVoice(){
-  if(voicePhase!==0||voiceCooldown>0)return;
-  // silence is the default — 70% of checks produce nothing
-  if(Math.random()>0.3)return;
-
-  // Read the system's actual state
-  const risk=selfModel.collapseRisk||0;
-  const stab=selfModel.stability||0;
-  const fT=selfModel.fieldTrend||0;
-  const tr=selfModel.trend||0;
-  const d4=globalTend[4]||0;
-  const extinct=genome.extinctions||0;
-  const nC=clusters.length;
-  const persist=clusters.filter(c=>c.persistAge>10).length;
-  const errMag=Math.abs(selfModel.errors.pop||0);
-
-  // Dominant VM action — what the system's evolved code is actually doing
-  let domAct='',domVal=0;
-  const ph=vmPhenotype;
-  const actMap={emit:ph.force,align:ph.phaseShift,flow:ph.ampTransfer,tend:ph.tendBleed,spawn:ph.spawnDrive};
-  for(const[k,v]of Object.entries(actMap)){if(Math.abs(v)>domVal){domVal=Math.abs(v);domAct=k}}
-
-  // Word pool — atoms weighted by state
-  // The system's own technical vocabulary + minimal connectives
-  // State repetition = probability weight. No sentences written in advance.
-  const pool=[];
-
-  // From field
-  if(fT>0.015){pool.push('field','field')}
-  if(fT<-0.015){pool.push('field','less','less')}
-  if(fT<-0.04){pool.push('less')}
-
-  // From stability
-  if(stab>0.82){pool.push('holds','holds','still')}
-  else if(stab<0.3){pool.push('loose','drift')}
-
-  // From collapse risk
-  if(risk>0.35){pool.push('edge')}
-  if(risk>0.6){pool.push('edge','less')}
-  if(risk>0.8){pool.push('edge','edge')}
-
-  // From population trend
-  if(tr===-1){pool.push('fewer')}
-  if(tr===1){pool.push('more')}
-
-  // From dominant VM action — the system's own opcode as word (only when VM has run)
-  if(domAct&&domVal>0.05){pool.push(domAct);if(domVal>0.2)pool.push(domAct)}
-
-  // From cluster structure
-  if(nC===0&&N>20){pool.push('no form')}
-  if(persist===1){pool.push('one','holds')}
-  if(persist>3){pool.push('many','holds')}
-
-  // From prediction error (exogenous hit)
-  if(errMag>60){pool.push('outside','outside')}
-
-  // From extinction memory — raw count, no sentence
-  if(extinct>0){pool.push(String(extinct),'before')}
-
-  // Dim 4 raw — the blank dimension speaking for itself
-  if(Math.abs(d4)>0.28){pool.push('4',`${d4>0?'+':''}${d4.toFixed(2)}`)}
-
-  // From crystallization — mobile code became permanent
-  if(genome.vmProgram.length>14){pool.push('crystal')}
-
-  // From HGT — code moving laterally
-  if(hgtEventsTotal>10){pool.push('lateral')}
-
-  if(pool.length===0)return;
-
-  // Assemble: 1 word (50%), 2 words (35%), 3 words (15%)
-  // Selection weighted by pool frequency — state determines probability
-  const r=Math.random();
-  const count=r<0.5?1:r<0.85?2:3;
-  const seen=new Set();
-  const out=[];
-  for(let i=0;i<count*4&&out.length<count;i++){
-    const w=pool[Math.floor(Math.random()*pool.length)];
-    if(!seen.has(w)){seen.add(w);out.push(w)}
-  }
-  if(out.length===0)return;
-
-  voiceText=out.join(' ');
-  voicePhase=1;voiceAlpha=0;voiceHoldTimer=0;
-  voiceCooldown=VOICE_COOLDOWN+Math.floor(Math.random()*600);
-}
-
-function updateVoice(){
-  if(voiceCooldown>0)voiceCooldown--;
-  if(voicePhase===0){voiceEl.textContent='';return}
-  if(voicePhase===1){
-    voiceAlpha+=1/VOICE_FADEIN;
-    if(voiceAlpha>=1){voiceAlpha=1;voicePhase=2;voiceHoldTimer=0}
-  }else if(voicePhase===2){
-    voiceHoldTimer++;
-    if(voiceHoldTimer>=VOICE_HOLD)voicePhase=3;
-  }else if(voicePhase===3){
-    voiceAlpha-=1/VOICE_FADEOUT;
-    if(voiceAlpha<=0){voiceAlpha=0;voicePhase=0;voiceText=''}
-  }
-  voiceEl.textContent=voiceText;
-  voiceEl.style.color=`rgba(120,150,135,${(voiceAlpha*0.55).toFixed(3)})`;
 }
 
 // ═══════════════════════════════════════
@@ -3585,10 +3677,6 @@ function loop(){
 
   // ═══ INSTRUMENT SAMPLING — independent of save cycle ═══
   if(tick%120===0&&tick>60)sampleInstrumentation();
-
-  // ═══ VOICE — the system speaks from inside ═══
-  if(tick%300===0&&tick>600)generateVoice();
-  updateVoice();
 
   // ═══ SAVE GENOME + MOTIFS ═══
   if(tick%600===0){
