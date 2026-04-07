@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
-<title>Selection פ 21 — Inscribed Ground</title>
+<title>Selection פ 22 — Network</title>
 <style>
 *{margin:0;padding:0;box-sizing:border-box}
 html,body{height:100%;overflow:hidden;background:#020204;touch-action:none;cursor:crosshair}
@@ -21,6 +21,204 @@ canvas{position:fixed;inset:0}
 <script>
 const c=document.getElementById('c'),X=c.getContext('2d'),genEl=document.getElementById('gen');
 let W,H,mx=-9e3,my=-9e3,smx=0,smy=0,pulling=0,pStr=0,pDur=0,tick=0;
+
+// ═══════════════════════════════════════
+// NETWORK LAYER — tabs share across the BroadcastChannel
+// Each tab is an instance of the same universe. Particles, plasmids,
+// motifs, and inscribed cell programs can flow between them.
+// If connection helps, the system will use it. If not, the rates evolve to zero.
+// ═══════════════════════════════════════
+const TAB_ID=Math.random().toString(36).slice(2,10);
+let bc=null;
+const incomingMigrants=[];     // particle packets received from other tabs
+const incomingPlasmids=[];     // plasmid packages received
+const incomingMotifs=[];       // VM motif fragments received
+const incomingInscriptions=[]; // cell program packets received
+let networkPeers=0;            // how many other tabs we're hearing from
+const peerLastSeen={};         // peer id → last tick we heard from them
+try{
+  bc=new BroadcastChannel('selection-pe-network');
+  bc.onmessage=function(ev){
+    const msg=ev.data;
+    if(!msg||msg.tab===TAB_ID)return; // ignore own messages
+    peerLastSeen[msg.tab]=tick;
+    if(msg.type==='migrant'&&incomingMigrants.length<20){
+      incomingMigrants.push(msg.data);
+    }else if(msg.type==='plasmid'&&incomingPlasmids.length<10){
+      incomingPlasmids.push(msg.data);
+    }else if(msg.type==='motif'&&incomingMotifs.length<10){
+      incomingMotifs.push(msg.data);
+    }else if(msg.type==='inscription'&&incomingInscriptions.length<20){
+      incomingInscriptions.push(msg.data);
+    }else if(msg.type==='hello'){
+      // reply so the new peer knows we exist
+      if(bc)bc.postMessage({tab:TAB_ID,type:'hello-reply'});
+    }
+  };
+  // announce ourselves
+  bc.postMessage({tab:TAB_ID,type:'hello'});
+}catch(e){console.log('BroadcastChannel unavailable:',e.message);}
+
+function countPeers(){
+  let n=0;
+  for(const id in peerLastSeen){
+    if(tick-peerLastSeen[id]<3000)n++;
+  }
+  return n;
+}
+
+// ═══ BROADCAST — send pieces of our population to other tabs ═══
+function networkBroadcast(){
+  if(!bc||N===0)return;
+  // Migrant: send a random alive particle as a full packet
+  if(Math.random()<genome.netMigrantRate){
+    let idx=-1;
+    for(let tries=0;tries<10;tries++){
+      const pick=(Math.random()*N)|0;
+      if(palive[pick]&&amp[pick]>0.2){idx=pick;break;}
+    }
+    if(idx>=0){
+      const t=new Array(DIMS);
+      for(let dd=0;dd<DIMS;dd++)t[dd]=tend[idx*DIMS+dd];
+      const m=new Array(MEM_SIZE);
+      for(let mm=0;mm<MEM_SIZE;mm++)m[mm]=pMem[idx*MEM_SIZE+mm];
+      const plas=[];
+      const pLen=pPlasmidLen[idx];
+      for(let pi=0;pi<pLen;pi++){
+        const pB=idx*PLASMID_SLOTS+pi*4;
+        plas.push([pPlasmid[pB],pPlasmid[pB+1],pPlasmid[pB+2],pPlasmid[pB+3]]);
+      }
+      bc.postMessage({tab:TAB_ID,type:'migrant',data:{
+        nx:px[idx]/W,ny:py[idx]/H,
+        tend:t,mem:m,plasmid:plas,
+        amp:amp[idx],phase:phase[idx]
+      }});
+    }
+  }
+  // Plasmid package: pick a random particle's plasmid and broadcast
+  if(Math.random()<genome.netPlasmidRate){
+    let idx=-1;
+    for(let tries=0;tries<10;tries++){
+      const pick=(Math.random()*N)|0;
+      if(palive[pick]&&pPlasmidLen[pick]>0){idx=pick;break;}
+    }
+    if(idx>=0){
+      const plas=[];
+      const pLen=pPlasmidLen[idx];
+      for(let pi=0;pi<pLen;pi++){
+        const pB=idx*PLASMID_SLOTS+pi*4;
+        plas.push([pPlasmid[pB],pPlasmid[pB+1],pPlasmid[pB+2],pPlasmid[pB+3]]);
+      }
+      bc.postMessage({tab:TAB_ID,type:'plasmid',data:plas});
+    }
+  }
+  // VM motif: send a 3-instruction slice from the current program
+  if(Math.random()<genome.netMotifRate&&genome.vmProgram&&genome.vmProgram.length>=3){
+    const start=Math.floor(Math.random()*(genome.vmProgram.length-2));
+    const motif=[];
+    for(let i=0;i<3;i++){
+      const inst=genome.vmProgram[start+i];
+      motif.push([inst[0],inst[1],inst[2],inst[3]]);
+    }
+    bc.postMessage({tab:TAB_ID,type:'motif',data:motif});
+  }
+  // Inscribed cell: pick a strong inscription and broadcast
+  if(Math.random()<genome.netInscribeRate){
+    let bestIdx=-1,bestStr=0.3;
+    for(let tries=0;tries<20;tries++){
+      const idx=Math.floor(Math.random()*FIELD_W*FIELD_H);
+      if(cellProgStr[idx]>bestStr){bestStr=cellProgStr[idx];bestIdx=idx;}
+    }
+    if(bestIdx>=0){
+      bc.postMessage({tab:TAB_ID,type:'inscription',data:{
+        op:cellProgOp[bestIdx],A:cellProgA[bestIdx],B:cellProgB[bestIdx],str:bestStr
+      }});
+    }
+  }
+}
+
+// ═══ RECEIVE — integrate incoming packets into our population ═══
+function networkReceive(){
+  const rec=genome.netReceptivity||0;
+  if(rec<=0){
+    // still drain the queues so they don't fill up
+    incomingMigrants.length=0;
+    incomingPlasmids.length=0;
+    incomingMotifs.length=0;
+    incomingInscriptions.length=0;
+    return;
+  }
+  // Migrants — spawn new particles at the received position with received state
+  while(incomingMigrants.length>0){
+    const m=incomingMigrants.shift();
+    if(Math.random()>rec)continue;
+    if(N>=CAP)break;
+    const nx=m.nx*W,ny=m.ny*H;
+    const t=new Float32Array(DIMS);
+    for(let dd=0;dd<DIMS;dd++)t[dd]=m.tend[dd]||0;
+    const newIdx=addParticle(nx,ny,t,false);
+    if(newIdx>=0){
+      amp[newIdx]=m.amp||0.5;
+      phase[newIdx]=m.phase||0;
+      for(let mm=0;mm<MEM_SIZE&&mm<(m.mem?m.mem.length:0);mm++){
+        pMem[newIdx*MEM_SIZE+mm]=m.mem[mm];
+      }
+      if(m.plasmid&&m.plasmid.length>0){
+        const pLen=Math.min(MAX_PLASMID,m.plasmid.length);
+        pPlasmidLen[newIdx]=pLen;
+        for(let pi=0;pi<pLen;pi++){
+          const pB=newIdx*PLASMID_SLOTS+pi*4;
+          pPlasmid[pB]=m.plasmid[pi][0];
+          pPlasmid[pB+1]=m.plasmid[pi][1];
+          pPlasmid[pB+2]=m.plasmid[pi][2];
+          pPlasmid[pB+3]=m.plasmid[pi][3];
+        }
+      }
+    }
+  }
+  // Plasmid packages — inject into a random recipient particle
+  while(incomingPlasmids.length>0){
+    const pl=incomingPlasmids.shift();
+    if(Math.random()>rec)continue;
+    if(N===0)continue;
+    const target=Math.floor(Math.random()*N);
+    if(!palive[target])continue;
+    const pLen=Math.min(MAX_PLASMID,pl.length);
+    pPlasmidLen[target]=pLen;
+    for(let pi=0;pi<pLen;pi++){
+      const pB=target*PLASMID_SLOTS+pi*4;
+      pPlasmid[pB]=pl[pi][0];
+      pPlasmid[pB+1]=pl[pi][1];
+      pPlasmid[pB+2]=pl[pi][2];
+      pPlasmid[pB+3]=pl[pi][3];
+    }
+  }
+  // Motifs — accumulate into a buffer that the mutation system reads
+  while(incomingMotifs.length>0){
+    const mot=incomingMotifs.shift();
+    if(Math.random()>rec)continue;
+    if(!genome.vmProgram)continue;
+    // Inject motif at a random position in the global VM
+    const insertAt=Math.floor(Math.random()*genome.vmProgram.length);
+    for(let i=0;i<mot.length&&insertAt+i<genome.vmProgram.length;i++){
+      if(Math.random()<0.3){ // soft overwrite — not every motif instruction lands
+        genome.vmProgram[insertAt+i]=[mot[i][0],mot[i][1],mot[i][2],mot[i][3]];
+      }
+    }
+  }
+  // Inscriptions — write the received cell program into a random empty cell
+  while(incomingInscriptions.length>0){
+    const ins=incomingInscriptions.shift();
+    if(Math.random()>rec)continue;
+    const idx=Math.floor(Math.random()*FIELD_W*FIELD_H);
+    if(cellProgStr[idx]<0.2){ // only inscribe where nothing is already strong
+      cellProgOp[idx]=ins.op;
+      cellProgA[idx]=ins.A;
+      cellProgB[idx]=ins.B;
+      cellProgStr[idx]=Math.min(1,(ins.str||0.5)*0.5);
+    }
+  }
+}
 
 // === SPATIAL GRID ===
 const CELL=55;
@@ -161,6 +359,15 @@ let genome={
   plasmidSpawnRate:0.002,     // chance per mutation cycle for a particle to spontaneously generate a new plasmid instruction
   fieldInfluence:0.65,        // how strongly field affects physics (niche construction feedback)
   fieldWeight:0.2,            // shadow sim: how much the system values engineered environment futures (EVOLVES)
+
+  // ═══ LAYER 22: NETWORK — how strongly this population couples to other tabs ═══
+  // All four rates evolve. If connection helps survival, rates rise. If not, they fall to zero.
+  // The system decides whether to be social.
+  netMigrantRate:0.003,     // chance per tick to broadcast a random particle as a migrant
+  netPlasmidRate:0.004,     // chance per tick to broadcast a plasmid package
+  netMotifRate:0.005,       // chance per tick to broadcast a VM motif fragment
+  netInscribeRate:0.004,    // chance per tick to broadcast an inscribed cell program
+  netReceptivity:0.5,       // 0..1 probability of accepting incoming packets (evolvable isolation)
 
   // ═══ LAYER 10: REFLEXIVITY — the system models itself from inside ═══
   // Particles track their own state trajectory and adjust behaviour.
@@ -1739,6 +1946,18 @@ function mutateGenome(){
   genome.plasmidSpawnRate=maybe(genome.plasmidSpawnRate,0.0005,0.01,0.001);
   genome.fieldInfluence=maybe(genome.fieldInfluence,0.1,1.5,0.08);
   genome.fieldWeight=maybe(genome.fieldWeight,0.02,0.8,0.04);
+
+  // Network parameter evolution — the system decides how social to be
+  if(genome.netMigrantRate===undefined)genome.netMigrantRate=0.003;
+  if(genome.netPlasmidRate===undefined)genome.netPlasmidRate=0.004;
+  if(genome.netMotifRate===undefined)genome.netMotifRate=0.005;
+  if(genome.netInscribeRate===undefined)genome.netInscribeRate=0.004;
+  if(genome.netReceptivity===undefined)genome.netReceptivity=0.5;
+  genome.netMigrantRate=maybe(genome.netMigrantRate,0,0.02,0.002);
+  genome.netPlasmidRate=maybe(genome.netPlasmidRate,0,0.02,0.002);
+  genome.netMotifRate=maybe(genome.netMotifRate,0,0.02,0.002);
+  genome.netInscribeRate=maybe(genome.netInscribeRate,0,0.02,0.002);
+  genome.netReceptivity=maybe(genome.netReceptivity,0,1,0.08);
 
   // ═══ AUTONOMY PARAMETER MUTATION ═══
   genome.mutationInterval=maybe(genome.mutationInterval,60,1200,40);
@@ -3493,6 +3712,8 @@ function loop(){
 
   gravity();
   executeSoloVM();
+  networkBroadcast();
+  networkReceive();
   processGrid();
 
   // ═══ PLASMID PERSISTENCE + CRYSTALLIZATION ═══
@@ -3707,7 +3928,9 @@ function loop(){
     const rInf=genome.reflexInfluence||0;
     const crW=genome.clusterReflexWeight||0;
     const reflexClusters=clusters.filter(c=>c.reflex&&c.reflex.selfRecognition>0.3).length;
-    genEl.textContent=`gen${genome.generation} ${genome.extinctions}☠ t${genome.totalTicks} | ${clusters.length}cl(${clVMActive}vm${budCount>0?','+budCount+'bud':''}) ${livingLin}lin fit:${currentFitness.toFixed(2)} stb:${(selfModel.stability||0).toFixed(2)} | vm:${genome.vmProgram.length}inst ${nSensors}sns ${hgtEventsTotal}hgt | pop:${N}/${CAP} fld:${fieldTotal.toFixed(0)}${fTrend<-0.01?'↓':fTrend>0.01?'↑':'~'} risk:${cRisk.toFixed(2)} | ⟲${rInf.toFixed(2)} ${reflexClusters}rc`;
+    const nPeers=countPeers();
+    const netTag=nPeers>0?` | net:${nPeers}⟷`:'';
+    genEl.textContent=`gen${genome.generation} ${genome.extinctions}☠ t${genome.totalTicks} | ${clusters.length}cl(${clVMActive}vm${budCount>0?','+budCount+'bud':''}) ${livingLin}lin fit:${currentFitness.toFixed(2)} stb:${(selfModel.stability||0).toFixed(2)} | vm:${genome.vmProgram.length}inst ${nSensors}sns ${hgtEventsTotal}hgt | pop:${N}/${CAP} fld:${fieldTotal.toFixed(0)}${fTrend<-0.01?'↓':fTrend>0.01?'↑':'~'} risk:${cRisk.toFixed(2)} | ⟲${rInf.toFixed(2)} ${reflexClusters}rc${netTag}`;
   }
 
   // Adaptive render skipping — at high pop, skip frames to keep thread responsive
