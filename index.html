@@ -237,8 +237,8 @@ const MAX_PLASMID=4; // max instructions per particle's personal mobile DNA
 const PLASMID_SLOTS=MAX_PLASMID*4; // each instruction is [op,src,dst,k] = 4 values
 const FIELD_W=40;
 const FIELD_H=40;
-const FIELD_DECAY=0.982;   // natural fade
-const FIELD_DIFFUSE=0.11;  // gentle spread
+let FIELD_DECAY=0.982;   // natural fade — Pe22b: now genome-driven, can evolve
+let FIELD_DIFFUSE=0.11;  // gentle spread — Pe22b: now genome-driven, can evolve
 const MAX_CLUSTER_VM=8;    // per-cluster program length — shorter than global, differentiation not replacement
 const CLUSTER_VM_COST_SHARE=0.4; // fraction of metabolic cost vs global VM (lighter programs)
 const CAP=1800; // HARD CEILING for array allocation only — not an ecological limit
@@ -358,6 +358,8 @@ let genome={
   plasmidTransferThresh:0.55, // minimum sim*phaseAlign bond to allow transfer
   plasmidSpawnRate:0.002,     // chance per mutation cycle for a particle to spontaneously generate a new plasmid instruction
   fieldInfluence:0.65,        // how strongly field affects physics (niche construction feedback)
+  fieldDecay:0.982,           // Pe22b: substrate fade rate — now evolvable
+  fieldDiffuse:0.11,          // Pe22b: substrate spread rate — now evolvable
   fieldWeight:0.2,            // shadow sim: how much the system values engineered environment futures (EVOLVES)
 
   // ═══ LAYER 22: NETWORK — how strongly this population couples to other tabs ═══
@@ -1811,8 +1813,8 @@ function updateField(){
       // Apply, scaled by inscription strength
       field[idx]+=d1*strength*0.05;
       field2[idx]+=d2*strength*0.05;
-      field[idx]=Math.max(0,Math.min(2.5,field[idx]));
-      field2[idx]=Math.max(0,Math.min(2.5,field2[idx]));
+      field[idx]=Math.max(0,Math.min(100,field[idx]));
+      field2[idx]=Math.max(0,Math.min(100,field2[idx]));
       // Inscription decay — rules fade unless reinforced
       cellProgStr[idx]*=0.998;
     }
@@ -1869,6 +1871,10 @@ function updateField(){
 }
 
 function mutateGenome(){
+  // Pe22b: substrate physics — defensive defaults for old genomes
+  // (the actual mutation happens further down, after `rate` and `maybe` exist)
+  if(genome.fieldDecay===undefined)genome.fieldDecay=0.982;
+  if(genome.fieldDiffuse===undefined)genome.fieldDiffuse=0.11;
   // ═══ STRESS-RESPONSIVE MUTATION TIMING ═══
   // Mutation rate is modulated by: (a) genome parameter, (b) system stability, (c) VM pressure
   // Under collapse → mutate faster. Under stability → slower. VM code can push either way.
@@ -1881,13 +1887,29 @@ function mutateGenome(){
   const scale=genome.mutationScale;
   mutPressureAccum=0; // reset accumulator for next cycle
 
-  // Helper: maybe mutate a value
+  // Helper: maybe mutate a value.
+  // Pe22b — GLOVES OFF (revised). No spring, no prior, no restoring force.
+  // The (min,max) arguments are historical — retained so callers don't break,
+  // but they do nothing. Mutation is pure random walk, modulated only by the
+  // stress-responsive rate/scale above. Skeleton-level sanity (NaN/Infinity) is
+  // the ONLY surviving check. If the system wants a value of -47 or 12000, it
+  // gets one. If that value produces crashes elsewhere, that's a finding, not
+  // a failure to guard.
   function maybe(val,min,max,magnitude){
     if(Math.random()>rate)return val;
-    return Math.max(min,Math.min(max,val+(Math.random()-0.5)*magnitude*scale));
+    const next=val+(Math.random()-0.5)*magnitude*scale;
+    if(!isFinite(next))return val;
+    return next;
   }
 
   // LAYER 1: Physics mutations
+  // Pe22b: substrate physics — the ground the particles live on now evolves
+  genome.fieldDecay=maybe(genome.fieldDecay,0.9,0.999,0.004);
+  genome.fieldDiffuse=maybe(genome.fieldDiffuse,0.02,0.25,0.01);
+  // Live kernel sync — clamped to the stable-kernel regime (skeleton, not cage:
+  // outside these bounds the diffusion equation produces NaN)
+  FIELD_DECAY=Math.max(0.5,Math.min(1.0,genome.fieldDecay));
+  FIELD_DIFFUSE=Math.max(0,Math.min(0.24,genome.fieldDiffuse));
   genome.entropyBaseline=maybe(genome.entropyBaseline,0.00005,0.005,0.0002);
   genome.entropyK=maybe(genome.entropyK,0.00002,0.003,0.0001);
   genome.entrainRate=maybe(genome.entrainRate,0.002,0.06,0.003);
@@ -1902,13 +1924,13 @@ function mutateGenome(){
 
   // LAYER 2: Perception mutations
   genome.clusterBondThresh=maybe(genome.clusterBondThresh,0.05,0.5,0.03);
-  genome.clusterMinSize=Math.max(2,Math.min(8,Math.round(maybe(genome.clusterMinSize,2,8,0.5))));
+  genome.clusterMinSize=Math.max(1,Math.round(maybe(genome.clusterMinSize,2,8,0.5)));
   genome.ghostDecay=maybe(genome.ghostDecay,0.98,0.9999,0.003);
   genome.ghostAmpDrip=maybe(genome.ghostAmpDrip,0.00005,0.002,0.0002);
 
   // LAYER 3: Evaluation mutations (objective weights)
   for(let i=0;i<4;i++){
-    if(Math.random()<rate)genome.objWeights[i]=Math.max(0.02,Math.min(0.7,genome.objWeights[i]+(Math.random()-0.5)*0.06*scale));
+    if(Math.random()<rate)genome.objWeights[i]=Math.max(0,genome.objWeights[i]+(Math.random()-0.5)*0.06*scale);
   }
   const wSum=genome.objWeights.reduce((a,b)=>a+b,0);
   for(let i=0;i<4;i++)genome.objWeights[i]/=wSum;
@@ -1916,10 +1938,10 @@ function mutateGenome(){
   // LAYER 4: META-MUTATIONS
   genome.mutationRate=maybe(genome.mutationRate,0.01,0.25,0.02);
   genome.mutationScale=maybe(genome.mutationScale,0.3,3.0,0.2);
-  genome.shadowHorizon=Math.max(10,Math.min(120,Math.round(maybe(genome.shadowHorizon,10,120,8))));
+  genome.shadowHorizon=Math.max(2,Math.min(500,Math.round(maybe(genome.shadowHorizon,10,120,8))));
   genome.perturbScale=maybe(genome.perturbScale,0.2,3.0,0.2);
-  genome.extinctionThresh=Math.max(2,Math.min(20,Math.round(maybe(genome.extinctionThresh,2,20,2))));
-  genome.motifMemorySize=Math.max(2,Math.min(10,Math.round(maybe(genome.motifMemorySize,2,10,1))));
+  genome.extinctionThresh=Math.max(1,Math.round(maybe(genome.extinctionThresh,2,20,2)));
+  genome.motifMemorySize=Math.max(1,Math.min(40,Math.round(maybe(genome.motifMemorySize,2,10,1))));
   genome.culturalBias=maybe(genome.culturalBias,0.05,0.6,0.04);
 
   // Trim motif memory if size shrunk
@@ -1931,12 +1953,12 @@ function mutateGenome(){
   // vmInfluence evolves: the system decides how much its rules matter.
   genome.vmInfluence=maybe(genome.vmInfluence,0.05,2.0,0.08);
   genome.ruleScale=maybe(genome.ruleScale,0.2,3.0,0.2);
-  genome.vmMaxInstructions=Math.max(6,Math.min(20,Math.round(maybe(genome.vmMaxInstructions,6,20,1))));
+  genome.vmMaxInstructions=Math.max(1,Math.min(48,Math.round(maybe(genome.vmMaxInstructions,6,20,1))));
   genome.metabolicCost=maybe(genome.metabolicCost,0.000002,0.0002,0.00002);
 
   // HGT parameter evolution
   genome.hgtRate=maybe(genome.hgtRate,0.01,0.5,0.04);
-  genome.hgtMax=Math.max(1,Math.min(4,Math.round(maybe(genome.hgtMax,1,4,0.5))));
+  genome.hgtMax=Math.max(1,Math.min(12,Math.round(maybe(genome.hgtMax,1,4,0.5))));
   genome.hgtSpliceNoise=maybe(genome.hgtSpliceNoise,0.05,0.5,0.04);
 
   // Plasmid parameter evolution
@@ -1970,10 +1992,10 @@ function mutateGenome(){
   // reflexInfluence can go to 0 — killing the feedback loop — if it's not adaptive.
   // Or it can grow — deepening self-reference — if the system benefits.
   genome.reflexSampleRate=maybe(genome.reflexSampleRate,0.02,0.5,0.04);
-  genome.reflexDepth=Math.max(2,Math.min(8,Math.round(maybe(genome.reflexDepth,2,8,0.5))));
+  genome.reflexDepth=Math.max(1,Math.min(REFLEX_DEPTH,Math.round(maybe(genome.reflexDepth,2,8,0.5))));
   genome.reflexInfluence=maybe(genome.reflexInfluence,0,1.5,0.06);
   genome.reflexDecay=maybe(genome.reflexDecay,0.7,0.99,0.03);
-  genome.clusterReflexAge=Math.max(2,Math.min(15,Math.round(maybe(genome.clusterReflexAge,2,15,1))));
+  genome.clusterReflexAge=Math.max(1,Math.round(maybe(genome.clusterReflexAge,2,15,1)));
   genome.clusterReflexWeight=maybe(genome.clusterReflexWeight,0,0.8,0.05);
 
   // ═══ EVOLVABLE FITNESS SENSOR MUTATION ═══
