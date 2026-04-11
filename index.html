@@ -360,6 +360,16 @@ let genome={
   fieldInfluence:0.65,        // how strongly field affects physics (niche construction feedback)
   fieldDecay:0.982,           // Pe22b: substrate fade rate — now evolvable
   fieldDiffuse:0.11,          // Pe22b: substrate spread rate — now evolvable
+  // Pe22c: evolvable chemistry table — 12 opcode slots, each a recipe of 4 monomials.
+  // Each monomial is [coefSource, termA, termB, target] where:
+  //   coefSource: 0=+A, 1=+B, 2=-A, 3=-B
+  //   termA, termB: indices 0-11 into local state [c1,c2,nN,nS,nE,nW,m2N,m2S,m2E,m2W,nbAvg1,nbAvg2]
+  //   target: 0=d1, 1=d2
+  // The original 12 fixed primitives are the starting seed — this is initialized to match
+  // their behavior, so existing evolved inscriptions are not invalidated. From there, the
+  // system is free to rewrite its own substrate chemistry, one monomial at a time.
+  chemistryTable:null,
+  chemistryMutRate:0.02,
   fieldWeight:0.2,            // shadow sim: how much the system values engineered environment futures (EVOLVES)
 
   // ═══ LAYER 22: NETWORK — how strongly this population couples to other tabs ═══
@@ -574,6 +584,8 @@ function decodeGenome(hash){
     if(!genome.plasmidTransferThresh)genome.plasmidTransferThresh=0.55;
     if(!genome.plasmidSpawnRate)genome.plasmidSpawnRate=0.002;
     if(!genome.fieldInfluence)genome.fieldInfluence=0.65;
+    if(!genome.chemistryTable)genome.chemistryTable=seedChemistryTable();
+    if(genome.chemistryMutRate===undefined)genome.chemistryMutRate=0.02;
     if(!genome.fieldWeight)genome.fieldWeight=0.2;
     if(!genome.mutationInterval)genome.mutationInterval=300;
     if(!genome.interactionRadius)genome.interactionRadius=55;
@@ -650,6 +662,42 @@ document.getElementById('gfile').onchange=function(e){if(e.target.files[0])impor
 // CLUSTER DETECTION — STRUCTURAL COMPRESSION
 // Not scalars. Structure. The system sees its own topology.
 // ═══════════════════════════════════════
+
+// Pe22c: seed the evolvable chemistry table with recipes that approximate
+// the original 12 fixed primitives. From this starting point, mutation is free.
+function seedChemistryTable(){
+  // Local state layout indices: 0=c1,1=c2,2=nN,3=nS,4=nE,5=nW,6=m2N,7=m2S,8=m2E,9=m2W,10=nbAvg1,11=nbAvg2
+  // Each recipe: 4 monomials, each [coefSource, termA, termB, target]
+  // coefSource: 0=+A, 1=+B, 2=-A, 3=-B   |   target: 0=d1, 1=d2
+  return [
+    // 0: bilinear coupling — d1=A*c1*c2*c2 - B*c1 ; d2=same - B*c2
+    [[0,0,1,0],[0,0,1,0],[3,0,0,0],[3,1,1,1]],
+    // 1: accelerated diffusion — d1=A*(nbAvg1-c1) ; d2=B*(nbAvg2-c2)
+    // approximated as A*nbAvg1 - A*c1 ; B*nbAvg2 - B*c2
+    [[0,10,10,0],[2,0,0,0],[1,11,11,1],[3,1,1,1]],
+    // 2: linear interconversion — d1=A*c2-B*c1 ; d2=B*c1-A*c2
+    [[0,1,1,0],[3,0,0,0],[1,0,0,1],[2,1,1,1]],
+    // 3: logistic growth — d1=A*c1-A*c1*c1 ; d2=B*c2-B*c2*c2
+    [[0,0,0,0],[2,0,0,0],[1,1,1,1],[3,1,1,1]],
+    // 4: anti-diffusion ch1 — d1=A*c1-A*nbAvg1
+    [[0,0,0,0],[2,10,10,0],[0,0,0,0],[2,10,10,0]],
+    // 5: anti-diffusion ch2 — d2=B*c2-B*nbAvg2
+    [[1,1,1,1],[3,11,11,1],[1,1,1,1],[3,11,11,1]],
+    // 6: cross-channel neighbour coupling — d1=A*nbAvg2 ; d2=B*nbAvg1
+    [[0,11,11,0],[0,11,11,0],[1,10,10,1],[1,10,10,1]],
+    // 7: quadratic self + inhibition — d1=A*c1*c1-B*c1*c2
+    [[0,0,0,0],[3,0,1,0],[0,0,0,0],[3,0,1,0]],
+    // 8: oscillatory-ish — approximated as d1=A*c2-A*c2*c2 ; d2=B*c1-B*c1*c1 (bounded nonlinearity)
+    [[0,1,1,0],[2,1,1,0],[1,0,0,1],[3,0,0,1]],
+    // 9: gated transfer — d1=A*c2*c1-A*c1*c1
+    [[0,1,0,0],[2,0,0,0],[0,1,0,0],[2,0,0,0]],
+    // 10: decay + quadratic input — d1=-A*c1+B*nbAvg1*nbAvg1
+    [[2,0,0,0],[1,10,10,0],[2,0,0,0],[1,10,10,0]],
+    // 11: production from c1 squared — d2=A*c1*c1-B*c2
+    [[0,0,0,1],[3,1,1,1],[0,0,0,1],[3,1,1,1]]
+  ];
+}
+
 const MAX_CLUSTERS=30;
 const clusters=[];
 const prevClusters=[];
@@ -1793,23 +1841,25 @@ function updateField(){
       const m2W=x>0?f2Snap[idx-1]:c2;
       const nbAvg1=(nN+nS+nE+nW)*0.25;
       const nbAvg2=(m2N+m2S+m2E+m2W)*0.25;
-      // Op modulo determines which primitive — system picks what works.
-      // 12 primitives, but their meanings are simple: arithmetic between local state.
+      // Pe22c: evolvable chemistry. Execute this opcode's recipe from genome.chemistryTable.
+      // Each monomial: [coefSource, termA, termB, target] → coef*stateA*stateB added to d1 or d2.
       let d1=0,d2=0;
-      switch(op%12){
-        case 0:d1=A*c1*c2*c2-B*c1;d2=A*c1*c2*c2-B*c2;break;       // bilinear coupling (Gray-Scott family)
-        case 1:d1=A*(nbAvg1-c1);d2=B*(nbAvg2-c2);break;            // accelerated diffusion
-        case 2:d1=A*c2-B*c1;d2=B*c1-A*c2;break;                    // linear interconversion
-        case 3:d1=A*c1*(1-c1);d2=B*c2*(1-c2);break;                // logistic growth on each channel
-        case 4:d1=A*(c1-nbAvg1);break;                              // anti-diffusion (channel 1)
-        case 5:d2=B*(c2-nbAvg2);break;                              // anti-diffusion (channel 2)
-        case 6:d1=A*nbAvg2;d2=B*nbAvg1;break;                       // cross-channel neighbour coupling
-        case 7:d1=A*c1*c1-B*c1*c2;break;                            // quadratic self plus inhibition
-        case 8:d1=A*Math.sin(c2*3);d2=B*Math.cos(c1*3);break;       // oscillatory coupling
-        case 9:d1=A*(c2-c1)*c1;break;                               // gated transfer
-        case 10:d1=-A*c1+B*nbAvg1*nbAvg1;break;                     // decay plus quadratic input
-        case 11:d2=A*c1*c1-B*c2;break;                              // production from c1 squared
+      const recipe=genome.chemistryTable[op%12];
+      if(recipe){
+        // local state lookup table — order matches seedChemistryTable comment
+        const ls0=c1,ls1=c2,ls2=nN,ls3=nS,ls4=nE,ls5=nW,ls6=m2N,ls7=m2S,ls8=m2E,ls9=m2W,ls10=nbAvg1,ls11=nbAvg2;
+        const lsArr=[ls0,ls1,ls2,ls3,ls4,ls5,ls6,ls7,ls8,ls9,ls10,ls11];
+        for(let mi=0;mi<recipe.length;mi++){
+          const mono=recipe[mi];
+          const cs=mono[0]&3, ta=mono[1]%12, tb=mono[2]%12, tgt=mono[3]&1;
+          const coef=cs===0?A:cs===1?B:cs===2?-A:-B;
+          const contrib=coef*lsArr[ta]*lsArr[tb];
+          if(tgt===0)d1+=contrib; else d2+=contrib;
+        }
       }
+      // Skeleton: if the recipe produced NaN/Infinity, zero the contribution for this cell
+      if(!isFinite(d1))d1=0;
+      if(!isFinite(d2))d2=0;
       // Apply, scaled by inscription strength
       field[idx]+=d1*strength*0.05;
       field2[idx]+=d2*strength*0.05;
@@ -1906,6 +1956,32 @@ function mutateGenome(){
   // Pe22b: substrate physics — the ground the particles live on now evolves
   genome.fieldDecay=maybe(genome.fieldDecay,0.9,0.999,0.004);
   genome.fieldDiffuse=maybe(genome.fieldDiffuse,0.02,0.25,0.01);
+  // Pe22c: evolvable chemistry table — mutate monomials in the opcode recipes.
+  // Defensive defaults for old genomes that don't have a table yet.
+  if(!genome.chemistryTable)genome.chemistryTable=seedChemistryTable();
+  if(genome.chemistryMutRate===undefined)genome.chemistryMutRate=0.02;
+  const chemRate=genome.chemistryMutRate*(1+Math.tanh(mutPressureAccum)*0.3);
+  for(let oi=0;oi<genome.chemistryTable.length;oi++){
+    const recipe=genome.chemistryTable[oi];
+    for(let mi=0;mi<recipe.length;mi++){
+      const mono=recipe[mi];
+      // Point mutations: flip coef source, swap a variable, or change target
+      if(Math.random()<chemRate)mono[0]=(mono[0]+1+((Math.random()*3)|0))&3;
+      if(Math.random()<chemRate)mono[1]=(Math.random()*12)|0;
+      if(Math.random()<chemRate)mono[2]=(Math.random()*12)|0;
+      if(Math.random()<chemRate*0.5)mono[3]=1-mono[3];
+    }
+    // Rare: add a new monomial (recipes can grow)
+    if(recipe.length<8&&Math.random()<chemRate*0.1){
+      recipe.push([(Math.random()*4)|0,(Math.random()*12)|0,(Math.random()*12)|0,(Math.random()*2)|0]);
+    }
+    // Rare: drop a monomial (recipes can shrink, but never below 1)
+    if(recipe.length>1&&Math.random()<chemRate*0.05){
+      recipe.splice((Math.random()*recipe.length)|0,1);
+    }
+  }
+  // Meta-mutation on the chemistry mutation rate itself
+  genome.chemistryMutRate=maybe(genome.chemistryMutRate,0.005,0.1,0.005);
   // Live kernel sync — clamped to the stable-kernel regime (skeleton, not cage:
   // outside these bounds the diffusion equation produces NaN)
   FIELD_DECAY=Math.max(0.5,Math.min(1.0,genome.fieldDecay));
