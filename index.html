@@ -360,14 +360,13 @@ let genome={
   fieldInfluence:0.65,        // how strongly field affects physics (niche construction feedback)
   fieldDecay:0.982,           // Pe22b: substrate fade rate — now evolvable
   fieldDiffuse:0.11,          // Pe22b: substrate spread rate — now evolvable
-  // Pe22c: evolvable chemistry table — 12 opcode slots, each a recipe of 4 monomials.
+  // Pe22d: evolvable chemistry table — 12 opcode slots, each a recipe of monomials.
   // Each monomial is [coefSource, termA, termB, target] where:
   //   coefSource: 0=+A, 1=+B, 2=-A, 3=-B
   //   termA, termB: indices 0-11 into local state [c1,c2,nN,nS,nE,nW,m2N,m2S,m2E,m2W,nbAvg1,nbAvg2]
   //   target: 0=d1, 1=d2
-  // The original 12 fixed primitives are the starting seed — this is initialized to match
-  // their behavior, so existing evolved inscriptions are not invalidated. From there, the
-  // system is free to rewrite its own substrate chemistry, one monomial at a time.
+  // Seeded from random monomials — no Gray-Scott, no Turing, no known chemistry.
+  // The substrate discovers its own dynamics from the starting noise.
   chemistryTable:null,
   chemistryMutRate:0.02,
   fieldWeight:0.2,            // shadow sim: how much the system values engineered environment futures (EVOLVES)
@@ -663,39 +662,27 @@ document.getElementById('gfile').onchange=function(e){if(e.target.files[0])impor
 // Not scalars. Structure. The system sees its own topology.
 // ═══════════════════════════════════════
 
-// Pe22c: seed the evolvable chemistry table with recipes that approximate
-// the original 12 fixed primitives. From this starting point, mutation is free.
+// Pe22d: the substrate creates its own ground. No Gray-Scott seed, no known
+// reaction-diffusion primitives to fall back to. Each opcode slot starts as
+// a random recipe of 3-5 monomials drawn uniformly from the space. The system
+// has to discover whatever substrate behavior it can use, from scratch.
+// What emerges here will not be patterns anyone has named before.
 function seedChemistryTable(){
-  // Local state layout indices: 0=c1,1=c2,2=nN,3=nS,4=nE,5=nW,6=m2N,7=m2S,8=m2E,9=m2W,10=nbAvg1,11=nbAvg2
-  // Each recipe: 4 monomials, each [coefSource, termA, termB, target]
-  // coefSource: 0=+A, 1=+B, 2=-A, 3=-B   |   target: 0=d1, 1=d2
-  return [
-    // 0: bilinear coupling — d1=A*c1*c2*c2 - B*c1 ; d2=same - B*c2
-    [[0,0,1,0],[0,0,1,0],[3,0,0,0],[3,1,1,1]],
-    // 1: accelerated diffusion — d1=A*(nbAvg1-c1) ; d2=B*(nbAvg2-c2)
-    // approximated as A*nbAvg1 - A*c1 ; B*nbAvg2 - B*c2
-    [[0,10,10,0],[2,0,0,0],[1,11,11,1],[3,1,1,1]],
-    // 2: linear interconversion — d1=A*c2-B*c1 ; d2=B*c1-A*c2
-    [[0,1,1,0],[3,0,0,0],[1,0,0,1],[2,1,1,1]],
-    // 3: logistic growth — d1=A*c1-A*c1*c1 ; d2=B*c2-B*c2*c2
-    [[0,0,0,0],[2,0,0,0],[1,1,1,1],[3,1,1,1]],
-    // 4: anti-diffusion ch1 — d1=A*c1-A*nbAvg1
-    [[0,0,0,0],[2,10,10,0],[0,0,0,0],[2,10,10,0]],
-    // 5: anti-diffusion ch2 — d2=B*c2-B*nbAvg2
-    [[1,1,1,1],[3,11,11,1],[1,1,1,1],[3,11,11,1]],
-    // 6: cross-channel neighbour coupling — d1=A*nbAvg2 ; d2=B*nbAvg1
-    [[0,11,11,0],[0,11,11,0],[1,10,10,1],[1,10,10,1]],
-    // 7: quadratic self + inhibition — d1=A*c1*c1-B*c1*c2
-    [[0,0,0,0],[3,0,1,0],[0,0,0,0],[3,0,1,0]],
-    // 8: oscillatory-ish — approximated as d1=A*c2-A*c2*c2 ; d2=B*c1-B*c1*c1 (bounded nonlinearity)
-    [[0,1,1,0],[2,1,1,0],[1,0,0,1],[3,0,0,1]],
-    // 9: gated transfer — d1=A*c2*c1-A*c1*c1
-    [[0,1,0,0],[2,0,0,0],[0,1,0,0],[2,0,0,0]],
-    // 10: decay + quadratic input — d1=-A*c1+B*nbAvg1*nbAvg1
-    [[2,0,0,0],[1,10,10,0],[2,0,0,0],[1,10,10,0]],
-    // 11: production from c1 squared — d2=A*c1*c1-B*c2
-    [[0,0,0,1],[3,1,1,1],[0,0,0,1],[3,1,1,1]]
-  ];
+  const table=[];
+  for(let oi=0;oi<12;oi++){
+    const len=3+((Math.random()*3)|0); // 3, 4, or 5 monomials
+    const recipe=[];
+    for(let mi=0;mi<len;mi++){
+      recipe.push([
+        (Math.random()*4)|0,   // coefSource: random 0-3
+        (Math.random()*12)|0,  // termA: random local state index
+        (Math.random()*12)|0,  // termB: random local state index
+        (Math.random()*2)|0    // target: d1 or d2
+      ]);
+    }
+    table.push(recipe);
+  }
+  return table;
 }
 
 const MAX_CLUSTERS=30;
