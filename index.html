@@ -662,21 +662,29 @@ document.getElementById('gfile').onchange=function(e){if(e.target.files[0])impor
 // Not scalars. Structure. The system sees its own topology.
 // ═══════════════════════════════════════
 
-// Pe22d: the substrate creates its own ground. No Gray-Scott seed, no known
-// reaction-diffusion primitives to fall back to. Each opcode slot starts as
-// a random recipe of 3-5 monomials drawn uniformly from the space. The system
-// has to discover whatever substrate behavior it can use, from scratch.
-// What emerges here will not be patterns anyone has named before.
+// Pe22e: the grammar itself is now open.
+//   - Coef inventory: {+A, +B, -A, -B, +1, -1}. The ±1 entries enable true
+//     constant rates — the Gray-Scott refill term the 22d grammar forbade.
+//   - Term inventory: 15 slots. 0..11 = local/neighbour states (as before),
+//     12 = the literal 1.0 (linear terms: stateX * 1 = stateX),
+//     13,14 = the accumulating d1, d2 (sequential feedback within a tick).
+//   - Execution: monomials are now a sequence, not a sum. Each monomial
+//     sees the d1/d2 built by the earlier ones. Single-tick expression space
+//     goes from bilinear → arbitrary polynomial.
+//   - Recipes can grow longer (up to 12) because they now do more work per
+//     monomial than they did when each one was an independent additive term.
+// Risks: intermediates can explode before the downstream clamp catches them.
+// isFinite skip keeps a blown monomial from poisoning the rest of the recipe.
 function seedChemistryTable(){
   const table=[];
   for(let oi=0;oi<12;oi++){
-    const len=3+((Math.random()*3)|0); // 3, 4, or 5 monomials
+    const len=3+((Math.random()*5)|0); // 3..7 monomials
     const recipe=[];
     for(let mi=0;mi<len;mi++){
       recipe.push([
-        (Math.random()*4)|0,   // coefSource: random 0-3
-        (Math.random()*12)|0,  // termA: random local state index
-        (Math.random()*12)|0,  // termB: random local state index
+        (Math.random()*6)|0,   // coefSource: 0..5 (A, B, -A, -B, +1, -1)
+        (Math.random()*15)|0,  // termA: 0..14 (12 states + 1.0 + d1 + d2)
+        (Math.random()*15)|0,  // termB: 0..14
         (Math.random()*2)|0    // target: d1 or d2
       ]);
     }
@@ -1828,20 +1836,23 @@ function updateField(){
       const m2W=x>0?f2Snap[idx-1]:c2;
       const nbAvg1=(nN+nS+nE+nW)*0.25;
       const nbAvg2=(m2N+m2S+m2E+m2W)*0.25;
-      // Pe22c: evolvable chemistry. Execute this opcode's recipe from genome.chemistryTable.
-      // Each monomial: [coefSource, termA, termB, target] → coef*stateA*stateB added to d1 or d2.
+      // Pe22e: recipes are programs, not sums. Each monomial can read the
+      // d1/d2 accumulated by earlier monomials, plus a literal 1.0 slot.
+      // Coefs include ±1 alongside ±A,±B. Expression space within a single
+      // tick is now arbitrary polynomial in local states, not just bilinear.
       let d1=0,d2=0;
       const recipe=genome.chemistryTable[op%12];
       if(recipe){
-        // local state lookup table — order matches seedChemistryTable comment
         const ls0=c1,ls1=c2,ls2=nN,ls3=nS,ls4=nE,ls5=nW,ls6=m2N,ls7=m2S,ls8=m2E,ls9=m2W,ls10=nbAvg1,ls11=nbAvg2;
-        const lsArr=[ls0,ls1,ls2,ls3,ls4,ls5,ls6,ls7,ls8,ls9,ls10,ls11];
+        const lsArr=[ls0,ls1,ls2,ls3,ls4,ls5,ls6,ls7,ls8,ls9,ls10,ls11,1.0,0,0]; // [12]=1, [13]=d1, [14]=d2
         for(let mi=0;mi<recipe.length;mi++){
           const mono=recipe[mi];
-          const cs=mono[0]&3, ta=mono[1]%12, tb=mono[2]%12, tgt=mono[3]&1;
-          const coef=cs===0?A:cs===1?B:cs===2?-A:-B;
+          const cs=mono[0]%6, ta=mono[1]%15, tb=mono[2]%15, tgt=mono[3]&1;
+          const coef=cs===0?A:cs===1?B:cs===2?-A:cs===3?-B:cs===4?1:-1;
           const contrib=coef*lsArr[ta]*lsArr[tb];
+          if(!isFinite(contrib))continue; // blown intermediate: skip, keep executing
           if(tgt===0)d1+=contrib; else d2+=contrib;
+          lsArr[13]=d1; lsArr[14]=d2; // feed accumulating outputs forward
         }
       }
       // Skeleton: if the recipe produced NaN/Infinity, zero the contribution for this cell
@@ -1952,15 +1963,15 @@ function mutateGenome(){
     const recipe=genome.chemistryTable[oi];
     for(let mi=0;mi<recipe.length;mi++){
       const mono=recipe[mi];
-      // Point mutations: flip coef source, swap a variable, or change target
-      if(Math.random()<chemRate)mono[0]=(mono[0]+1+((Math.random()*3)|0))&3;
-      if(Math.random()<chemRate)mono[1]=(Math.random()*12)|0;
-      if(Math.random()<chemRate)mono[2]=(Math.random()*12)|0;
+      // Point mutations: flip coef source (now 0..5), swap a variable (now 0..14), or change target
+      if(Math.random()<chemRate)mono[0]=(Math.random()*6)|0;
+      if(Math.random()<chemRate)mono[1]=(Math.random()*15)|0;
+      if(Math.random()<chemRate)mono[2]=(Math.random()*15)|0;
       if(Math.random()<chemRate*0.5)mono[3]=1-mono[3];
     }
-    // Rare: add a new monomial (recipes can grow)
-    if(recipe.length<8&&Math.random()<chemRate*0.1){
-      recipe.push([(Math.random()*4)|0,(Math.random()*12)|0,(Math.random()*12)|0,(Math.random()*2)|0]);
+    // Rare: add a new monomial (recipes can grow to 12)
+    if(recipe.length<12&&Math.random()<chemRate*0.1){
+      recipe.push([(Math.random()*6)|0,(Math.random()*15)|0,(Math.random()*15)|0,(Math.random()*2)|0]);
     }
     // Rare: drop a monomial (recipes can shrink, but never below 1)
     if(recipe.length>1&&Math.random()<chemRate*0.05){
