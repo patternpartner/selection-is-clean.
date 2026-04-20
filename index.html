@@ -239,6 +239,63 @@ const FIELD_W=40;
 const FIELD_H=40;
 let FIELD_DECAY=0.982;   // natural fade — Pe22b: now genome-driven, can evolve
 let FIELD_DIFFUSE=0.11;  // gentle spread — Pe22b: now genome-driven, can evolve
+
+// ═══════════════════════════════════════
+// Pe22f: USER ATOMS — the system writes its own primitives
+// Expression strings stored in the genome, compiled on demand via Function().
+// Mutation replaces the expression; compilation re-runs on next use.
+// The grammar is loose (two terms, optional func wrapper, one binary op),
+// so random mutations almost always produce valid JS. What the expression
+// MEANS is the system's discovery — whether tanh(a)*b is useful depends
+// on selection. Invalid compilations are caught and the atom returns 0.
+// This is the system's access to primitives that weren't in the opcode set
+// at design time. JS can generate JS; the genome now uses that fact.
+// ═══════════════════════════════════════
+const USER_VARS=["a","b"];
+const USER_FUNCS=["Math.abs","Math.tanh","Math.sin","Math.cos","Math.sign","Math.sqrt","Math.log1p","Math.exp"];
+const USER_OPS=["+","-","*"];
+function uaGenTerm(){
+  const useFunc=Math.random()<0.35;
+  const val=Math.random()<0.5
+    ? USER_VARS[(Math.random()*USER_VARS.length)|0]
+    : (Math.random()*4-2).toFixed(2);
+  if(useFunc){
+    const fn=USER_FUNCS[(Math.random()*USER_FUNCS.length)|0];
+    // Wrap log1p input in abs to avoid negative domain errors
+    const safeVal=(fn==="Math.log1p"||fn==="Math.sqrt")?"Math.abs("+val+")":val;
+    return fn+"("+safeVal+")";
+  }
+  return val;
+}
+function uaGenExpression(){
+  const t1=uaGenTerm();
+  const t2=uaGenTerm();
+  const op=USER_OPS[(Math.random()*USER_OPS.length)|0];
+  return "("+t1+")"+op+"("+t2+")";
+}
+function uaCompile(atom){
+  if(atom.compiled||atom.failed)return;
+  try{
+    atom.compiled=new Function("a","b","const r=("+atom.expression+");return isFinite(r)?r:0;");
+    atom.failed=false;
+  }catch(e){
+    atom.compiled=null;
+    atom.failed=true;
+  }
+}
+function uaCall(atom,a,b){
+  if(!atom)return 0;
+  if(!atom.compiled&&!atom.failed)uaCompile(atom);
+  if(atom.failed||!atom.compiled)return 0;
+  try{
+    const r=atom.compiled(a,b);
+    atom.uses=(atom.uses|0)+1;
+    return isFinite(r)?Math.max(-8,Math.min(8,r)):0;
+  }catch(e){
+    atom.failed=true;
+    return 0;
+  }
+}
 const MAX_CLUSTER_VM=8;    // per-cluster program length — shorter than global, differentiation not replacement
 const CLUSTER_VM_COST_SHARE=0.4; // fraction of metabolic cost vs global VM (lighter programs)
 const CAP=1800; // HARD CEILING for array allocation only — not an ecological limit
@@ -282,8 +339,8 @@ let genome={
     // Seed: one sensor that computes field_energy * persistent_ratio (designer didn't hardcode this)
     {program:[[2,5,6,1.0],[4,6,0,1.0]], weight:0.1}
   ],
-  maxSensors:4,        // can evolve up to 4 novel fitness dimensions
-  sensorMaxInst:4,     // max instructions per sensor program
+  maxSensors:4,        // Pe22e: retained for save-file compatibility; no longer enforced
+  sensorMaxInst:4,     // Pe22e: retained for save-file compatibility; no longer enforced
 
   // ═══ LAYER 4: META ═══
   // How the system evolves. The evolution of evolution.
@@ -312,6 +369,13 @@ let genome={
   peakFitness:0,
   longestStable:0,
   currentStableStreak:0,
+
+  // ═══ LAYER 5b: USER ATOMS — Pe22f. The system's own primitives.
+  // Each entry is {expression:string, compiled:fn|null, failed:bool, uses:int}.
+  // Compiled on first use. Invalid expressions become inert.
+  // Accessed via opcode 22. This is how the system writes new primitives
+  // that weren't in the opcode set at design time. ═══
+  userAtoms:[],
 
   // ═══ LAYER 6: RULES — Register-Based Virtual Machine ═══
   // When two particles interact, 4 registers are initialized from context.
@@ -698,6 +762,39 @@ const clusters=[];
 const prevClusters=[];
 let clusterAge=new Map(); // track persistence across snapshots
 let clusterVMs=new Map(); // persist per-cluster VM programs across detection cycles (keyed by hash)
+// ═══════════════════════════════════════
+// Pe22f: CLUSTER-LEVEL GENOME — major evolutionary transition.
+// Clusters become units of selection with heritable cluster-level traits.
+// These traits control WHAT A CLUSTER DOES: its reproduction rate, how much
+// it splits on budding, how much it mutates, what it costs itself to bud.
+// All were designer-hardcoded constants; now they're evolvable per-lineage.
+// Persistence: clusterGenomes[hash] carries forward across detection cycles
+// the same way clusterVMs carries forward cluster bytecode.
+// Inheritance: daughter clusters inherit mutated copies of parent's genome.
+// Selection: clusters that bud successfully propagate their clusterGenome;
+// clusters that don't bud leave no cluster-level descendants. This is a real
+// second level of selection — particles-within-clusters still evolve via
+// the global genome, AND clusters-among-clusters evolve via the clusterGenome.
+// ═══════════════════════════════════════
+let clusterGenomes=new Map(); // hash → {budRate, budThreshold, splitFraction, innovationRate, metabolicBias}
+function seedClusterGenome(){
+  return{
+    budRate:0.6+Math.random()*0.8,          // multiplier on bud chance (0.6..1.4)
+    budThreshold:6+Math.random()*6,         // min persistAge to bud (6..12)
+    splitFraction:0.25+Math.random()*0.2,   // fraction moved to daughter (0.25..0.45)
+    innovationRate:0.1+Math.random()*0.3,   // VM mutation rate on bud (0.1..0.4)
+    metabolicBias:0.85+Math.random()*0.1,   // parent amp retention after bud (0.85..0.95)
+  };
+}
+function mutateClusterGenome(parent,scale){
+  return{
+    budRate:Math.max(0.1,Math.min(3,parent.budRate+(Math.random()-0.5)*scale*0.4)),
+    budThreshold:Math.max(2,Math.min(30,parent.budThreshold+(Math.random()-0.5)*scale*2)),
+    splitFraction:Math.max(0.1,Math.min(0.7,parent.splitFraction+(Math.random()-0.5)*scale*0.1)),
+    innovationRate:Math.max(0.01,Math.min(0.8,parent.innovationRate+(Math.random()-0.5)*scale*0.15)),
+    metabolicBias:Math.max(0.6,Math.min(0.99,parent.metabolicBias+(Math.random()-0.5)*scale*0.05)),
+  };
+}
 let clusterByID=new Int16Array(0); // fast lookup: clusterByID[cid] = index into clusters[]
 
 // ═══ LINEAGE REGISTRY — ancestry tracking for emergent speciation ═══
@@ -949,13 +1046,29 @@ function trackClusterPersistence(){
           if(entry)entry.lastSeen=genome.totalTicks;
         }
       }
+      // ═══ CLUSTER GENOME INHERITANCE (Pe22f) ═══
+      // Carry cluster-level heritable traits across detection cycles,
+      // with occasional drift mutation so lineages diverge over time.
+      const prevCG=clusterGenomes.get(bestMatch.hash);
+      if(prevCG){
+        if(Math.random()<0.04){
+          c.clusterGenome=mutateClusterGenome(prevCG,0.3); // small drift
+        }else{
+          c.clusterGenome={...prevCG};
+        }
+      }else{
+        c.clusterGenome=seedClusterGenome();
+      }
     }else{
       newAge.set(c.hash,0);
       c.persistAge=0;
       // New cluster — keeps the seeded VM and new lineage from detectClusters()
+      // And seeds a fresh cluster genome: new-to-the-world clusters start random.
+      if(!c.clusterGenome)c.clusterGenome=seedClusterGenome();
     }
-    // Store this cluster's VM, signature, and lineage for next cycle
+    // Store this cluster's VM, signature, lineage, AND clusterGenome for next cycle
     newVMs.set(c.hash,{prog:c.vmProgram.map(inst=>[...inst]),inf:c.vmInfluence,sig:Array.from(c.fieldSignature||[0,0,0]),lineage:c.lineageID});
+    clusterGenomes.set(c.hash,c.clusterGenome);
   }
   clusterAge=newAge;
   clusterVMs=newVMs;
@@ -988,7 +1101,9 @@ function attemptClusterBudding(){
 
   for(let ci=0;ci<nClusters;ci++){
     const c=clusters[ci];
-    if(c.persistAge<8||c.size<14)continue; // must be established and large enough
+    // Pe22f: cluster genome drives budding dynamics. Designer constants become evolvable.
+    const cg=c.clusterGenome||(c.clusterGenome=seedClusterGenome());
+    if(c.persistAge<cg.budThreshold||c.size<14)continue; // threshold is now heritable
 
     // Success metric: territorial control + coherence + energy
     // Clusters that engineer rich environments AND maintain internal order can reproduce
@@ -1000,7 +1115,7 @@ function attemptClusterBudding(){
     const centerField=field[cfy*FIELD_W+cfx];
     const fieldBonus=Math.min(0.3,centerField*0.2);
 
-    const budChance=(territoryScore+fieldBonus)*0.008; // rare even for successful clusters
+    const budChance=(territoryScore+fieldBonus)*0.008*cg.budRate; // bud rate now heritable
     if(Math.random()>budChance)continue;
 
     // Find bud direction — prefer direction with unclaimed territory
@@ -1022,7 +1137,7 @@ function attemptClusterBudding(){
     const by=Math.max(CELL,Math.min(H-CELL,c.cy+Math.sin(bestAngle)*budDist));
 
     // Select particles to move — those on the side of the cluster facing the bud direction
-    const splitFraction=0.3+Math.random()*0.15; // 30-45% split
+    const splitFraction=cg.splitFraction; // Pe22f: split fraction now heritable
     const targetSplit=Math.floor(c.size*splitFraction);
     const budded=[];
 
@@ -1054,12 +1169,14 @@ function attemptClusterBudding(){
     }
 
     // METABOLIC COST — budding is expensive for both parent and daughter
+    // Pe22f: parent retention factor is heritable (metabolicBias). Daughter pays a derived cost.
     for(let i=0;i<N;i++){
       if(!palive[i]||clusterID[i]!==c.id)continue;
-      amp[i]*=0.85; // parent loses energy
+      amp[i]*=cg.metabolicBias; // parent loses energy — heritable
     }
+    const daughterCost=Math.min(0.98,cg.metabolicBias+0.05); // slightly less than parent retention
     for(const pi of budded){
-      amp[pi]*=0.9; // daughter particles also pay
+      amp[pi]*=daughterCost;
     }
 
     // Create daughter cluster entry
@@ -1067,6 +1184,9 @@ function attemptClusterBudding(){
     const daughterLineage=createLineage(c.lineageID);
     const parentEntry=lineageRegistry.get(c.lineageID);
     if(parentEntry)parentEntry.budCount++;
+    // Pe22f: daughter's cluster genome is a mutated copy of parent's.
+    // Budding is a speciation event — scale=1.0 is the full mutation magnitude.
+    const daughterCG=mutateClusterGenome(cg,1.0);
 
     const daughter={
       id:clusters.length,
@@ -1080,19 +1200,23 @@ function attemptClusterBudding(){
       persistAge:1,
       vmProgram:c.vmProgram.map(inst=>{
         const copy=[...inst];
-        if(Math.random()<0.3){
+        // Pe22f: VM mutation rate on bud is now heritable (innovationRate).
+        // Conservative lineages preserve programs; innovative ones explore.
+        if(Math.random()<cg.innovationRate){
           copy[3]+=(Math.random()-0.5)*0.2;
           copy[3]=Math.max(-2,Math.min(2,copy[3]));
         }
-        if(Math.random()<0.08)copy[0]=Math.floor(Math.random()*22);
+        if(Math.random()<cg.innovationRate*0.27)copy[0]=Math.floor(Math.random()*23);
         return copy;
       }),
       vmInfluence:Math.max(0.05,c.vmInfluence+(Math.random()-0.5)*0.1),
       fieldSignature:new Float32Array(c.fieldSignature.map(s=>s+(Math.random()-0.5)*0.1)),
-      lineageID:daughterLineage
+      lineageID:daughterLineage,
+      clusterGenome:daughterCG
     };
 
     clusters.push(daughter);
+    clusterGenomes.set(daughter.hash,daughterCG);
 
     // TERRITORY SEEDING — stamp a small footprint at the bud site
     // The daughter doesn't arrive in a vacuum
@@ -2086,8 +2210,10 @@ function mutateGenome(){
       if(Math.random()<0.15)inst[1]=Math.floor(Math.random()*8);
       if(Math.random()<0.15)inst[2]=Math.floor(Math.random()*8);
     }
-    // Add instruction to sensor
-    if(sensor.program.length<genome.sensorMaxInst&&Math.random()<rate*0.1){
+    // Add instruction to sensor — Pe22e: no hard cap on length.
+    // The evolved weight is the selection pressure; long useless sensors
+    // get diluted, long useful ones justify themselves.
+    if(Math.random()<rate*0.1){
       sensor.program.push([Math.floor(Math.random()*5),Math.floor(Math.random()*8),Math.floor(Math.random()*8),(Math.random()-0.5)*0.5]);
     }
     // Remove instruction
@@ -2095,11 +2221,14 @@ function mutateGenome(){
       sensor.program.splice(Math.floor(Math.random()*sensor.program.length),1);
     }
   }
-  // Birth new sensor (rare)
-  if(genome.fitnessSensors.length<genome.maxSensors&&Math.random()<rate*0.03){
+  // Birth new sensor — Pe22e: no hard cap on count. The system
+  // can evolve as many dimensions of value as it can sustain.
+  // Starting weight is low so new sensors have to prove themselves;
+  // dead weight gets culled below.
+  if(Math.random()<rate*0.03){
     genome.fitnessSensors.push({
       program:[[Math.floor(Math.random()*5),Math.floor(Math.random()*8),Math.floor(Math.random()*8),(Math.random()-0.5)]],
-      weight:0.05 // starts weak — has to prove its worth
+      weight:0.05
     });
   }
   // Death of useless sensor (very low weight = not contributing)
@@ -2107,6 +2236,50 @@ function mutateGenome(){
     const weakest=genome.fitnessSensors.reduce((min,s,i)=>Math.abs(s.weight)<Math.abs(genome.fitnessSensors[min].weight)?i:min,0);
     if(Math.abs(genome.fitnessSensors[weakest].weight)<0.03)genome.fitnessSensors.splice(weakest,1);
   }
+
+  // ═══ Pe22f: USER ATOM MUTATION ═══
+  // The system evolves its own JS primitives. New atoms are born with
+  // random expressions from the loose grammar. Mutations replace the
+  // whole expression (simpler than surgical string edits and produces
+  // wider exploration). Atoms that never get used get culled — if
+  // opcode 22 never references an atom, its uses stays 0 and it's dead weight.
+  if(!genome.userAtoms)genome.userAtoms=[];
+  // Mutate existing atoms — replace expression entirely.
+  for(const ua of genome.userAtoms){
+    if(Math.random()<rate*0.3){
+      ua.expression=uaGenExpression();
+      ua.compiled=null;
+      ua.failed=false;
+      ua.uses=0; // reset usage count on mutation
+    }
+  }
+  // Birth new atom — no hard cap. Compute pressure self-limits via uses.
+  if(Math.random()<rate*0.15){
+    genome.userAtoms.push({
+      expression:uaGenExpression(),
+      compiled:null,
+      failed:false,
+      uses:0
+    });
+  }
+  // Cull atoms that are failed (invalid JS) or proven unused.
+  // "Proven unused" = been alive for a mutation cycle with zero uses.
+  if(genome.userAtoms.length>0&&Math.random()<rate*0.1){
+    // Find one to remove: prefer failed, then unused-and-aged
+    let removeIdx=-1;
+    for(let i=0;i<genome.userAtoms.length;i++){
+      if(genome.userAtoms[i].failed){removeIdx=i;break;}
+    }
+    if(removeIdx<0){
+      for(let i=0;i<genome.userAtoms.length;i++){
+        const a=genome.userAtoms[i];
+        if((a.uses|0)===0&&(a.age|0)>2){removeIdx=i;break;}
+      }
+    }
+    if(removeIdx>=0)genome.userAtoms.splice(removeIdx,1);
+  }
+  // Age all atoms — lets us distinguish "never used yet" from "used to be used"
+  for(const ua of genome.userAtoms)ua.age=(ua.age|0)+1;
 
   // Mutate existing instructions
   for(let ip=0;ip<genome.vmProgram.length;ip++){
@@ -2892,6 +3065,17 @@ function executeVM(i,j,sim,d){
         const ri21=Math.max(0,Math.min(FIELD_W*FIELD_H-1,ry21*FIELD_W+rx21));
         vmRegs[di]=field2[ri21]*k;
       }break;
+      // 22: EVAL_USER_ATOM — Pe22f. System-written primitive.
+      // Looks up genome.userAtoms[k%len], compiles on first use, evaluates
+      // with vmRegs[si] and vmRegs[(si+1)%12] as inputs. Result → vmRegs[di].
+      // Invalid expressions: result 0. This is the system evolving new JS functions.
+      case 22:{
+        const uas=genome.userAtoms;
+        if(uas&&uas.length>0){
+          const uIdx=Math.abs(Math.floor(k))%uas.length;
+          vmRegs[di]=uaCall(uas[uIdx],vmRegs[si],vmRegs[(si+1)%12]);
+        }
+      }break;
     }
     for(let r=0;r<12;r++)vmRegs[r]=Math.max(-8,Math.min(8,vmRegs[r]));
   }
@@ -2976,6 +3160,13 @@ function executeVM(i,j,sim,d){
           const rx21=Math.floor(px[i]/(W/FIELD_W)),ry21=Math.floor(py[i]/(H/FIELD_H));
           const ri21=Math.max(0,Math.min(FIELD_W*FIELD_H-1,ry21*FIELD_W+rx21));
           vmRegs[di]=field2[ri21]*k;
+        }break;
+        case 22:{
+          const uas=genome.userAtoms;
+          if(uas&&uas.length>0){
+            const uIdx=Math.abs(Math.floor(k))%uas.length;
+            vmRegs[di]=uaCall(uas[uIdx],vmRegs[si],vmRegs[(si+1)%12]);
+          }
         }break;
       }
       for(let r=0;r<12;r++)vmRegs[r]=Math.max(-8,Math.min(8,vmRegs[r]));
@@ -3188,6 +3379,13 @@ function executeClusterVM(i,j,sim,d){
         const rx21=Math.floor(px[i]/(W/FIELD_W)),ry21=Math.floor(py[i]/(H/FIELD_H));
         const ri21=Math.max(0,Math.min(FIELD_W*FIELD_H-1,ry21*FIELD_W+rx21));
         vmRegs[di]=field2[ri21]*k;
+      }break;
+      case 22:{
+        const uas=genome.userAtoms;
+        if(uas&&uas.length>0){
+          const uIdx=Math.abs(Math.floor(k))%uas.length;
+          vmRegs[di]=uaCall(uas[uIdx],vmRegs[si],vmRegs[(si+1)%12]);
+        }
       }break;
     }
     for(let r=0;r<12;r++)vmRegs[r]=Math.max(-8,Math.min(8,vmRegs[r]));
@@ -3457,6 +3655,13 @@ function executeSoloVM(){
           const rx21=Math.floor(px[i]/(W/FIELD_W)),ry21=Math.floor(py[i]/(H/FIELD_H));
           const ri21=Math.max(0,Math.min(FIELD_W*FIELD_H-1,ry21*FIELD_W+rx21));
           vmRegs[di]=field2[ri21]*k;
+        }break;
+        case 22:{
+          const uas=genome.userAtoms;
+          if(uas&&uas.length>0){
+            const uIdx=Math.abs(Math.floor(k))%uas.length;
+            vmRegs[di]=uaCall(uas[uIdx],vmRegs[si],vmRegs[(si+1)%12]);
+          }
         }break;
       }
       for(let r=0;r<12;r++)vmRegs[r]=Math.max(-8,Math.min(8,vmRegs[r]));
