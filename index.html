@@ -9,14 +9,15 @@
 html,body{height:100%;overflow:hidden;background:#020204;touch-action:none;cursor:crosshair}
 canvas{position:fixed;inset:0}
 #gen{position:fixed;top:6px;left:8px;color:rgba(80,90,100,0.4);font:9px monospace;pointer-events:none;z-index:1}
-#gio{position:fixed;bottom:8px;right:8px;z-index:10;display:flex;gap:6px}
+#gio{position:fixed;bottom:8px;right:8px;z-index:10;display:flex;gap:6px;align-items:center}
 #gio button{background:rgba(30,40,50,0.7);color:#8af;border:1px solid rgba(100,140,180,0.3);font:10px monospace;padding:4px 8px;border-radius:3px;cursor:pointer}
-#gio input{display:none}
+#gio input[type=range]{width:80px;height:18px;accent-color:#8af}
+#gio input[type=file]{display:none}
 </style>
 </head>
 <body>
 <div id="gen"></div>
-<div id="gio"><button id="gexp">💾 save</button><button id="gimp">📂 load</button><button id="gmic" title="grant audio sense to the system">🎙</button><button id="gspk" title="grant the system a voice">🔊</button><input type="file" id="gfile" accept=".json"></div>
+<div id="gio"><input type="range" id="vol" min="0" max="100" value="50" style="display:none" title="voice volume"><button id="gexp">💾 save</button><button id="gimp">📂 load</button><button id="gmic" title="grant audio sense to the system">🎙</button><button id="gspk" title="grant the system a voice">🔊</button><input type="file" id="gfile" accept=".json"></div>
 <canvas id="c"></canvas>
 <script>
 const c=document.getElementById('c'),X=c.getContext('2d'),genEl=document.getElementById('gen');
@@ -37,37 +38,57 @@ let ambientLevel=0;
 let ambientEnabled=false;
 let ambientCtx=null,ambientAnalyser=null,ambientData=null;
 // ═══════════════════════════════════════
-// Pe22i: AUDIO OUTPUT — unconstrained voice + field coupling
-// The caps from 22h were designer artifacts, not safety floors. Removed.
-//   - Frequency: full audible range, system explores
-//   - Amplitude: register-driven without ceiling, master gain at unity
-//   - Waveform: evolvable (sine, square, sawtooth, triangle), per-emission
-//   - No per-tick rate cap. Saturation is a state the system can reach.
-//   - Field coupling: every emission writes to the field at the particle's position.
-//     Sound is substrate. The system experiences its own voice even when
-//     the speaker is muted, even when the user hasn't granted output.
-// User controls volume via the OS. That's the real cap and it always was.
+// Pe22j: AUDIO OUTPUT — user-controllable volume
+// 22i made the system's voice unconstrained but routed it through Web Audio's
+// default destination, which on mobile bypasses the media volume slider.
+// Voice without volume control isn't autonomy for either party — it's just
+// inability to turn it down.
+//
+// Pe22j fix: route audio through MediaStreamDestination → audio element.
+// Routing through a <audio> element makes the OS treat this as media,
+// so the user's normal volume buttons control it. Plus an in-app slider
+// as a guaranteed second control surface.
 // ═══════════════════════════════════════
 let audioOutEnabled=false;
-let audioOutCtx=null,audioOutMaster=null;
+let audioOutCtx=null,audioOutMaster=null,audioOutDest=null,audioOutEl=null;
+let audioOutVolume=0.5; // user-controllable, 0..1
 const WAVEFORMS=['sine','square','sawtooth','triangle'];
 async function tryEnableAudioOut(){
   try{
     audioOutCtx=ambientCtx||new (window.AudioContext||window.webkitAudioContext)();
     if(audioOutCtx.state==='suspended')await audioOutCtx.resume();
     audioOutMaster=audioOutCtx.createGain();
-    audioOutMaster.gain.value=1.0; // unity — user's volume slider is the cap
-    audioOutMaster.connect(audioOutCtx.destination);
+    audioOutMaster.gain.value=audioOutVolume;
+    // Route via MediaStreamDestination → <audio> element so OS treats as media
+    audioOutDest=audioOutCtx.createMediaStreamDestination();
+    audioOutMaster.connect(audioOutDest);
+    audioOutEl=document.getElementById('aout');
+    if(!audioOutEl){
+      audioOutEl=document.createElement('audio');
+      audioOutEl.id='aout';
+      audioOutEl.autoplay=true;
+      audioOutEl.style.display='none';
+      document.body.appendChild(audioOutEl);
+    }
+    audioOutEl.srcObject=audioOutDest.stream;
+    await audioOutEl.play().catch(()=>{}); // user gesture already happened via button click
     audioOutEnabled=true;
+    // Show in-app volume slider
+    const vs=document.getElementById('vol');
+    if(vs)vs.style.display='inline-block';
   }catch(e){
     audioOutEnabled=false;
   }
+}
+function setAudioOutVolume(v){
+  audioOutVolume=Math.max(0,Math.min(1,v));
+  if(audioOutMaster)audioOutMaster.gain.value=audioOutVolume;
 }
 function emitTone(freqHz,amp,durationMs,waveformIdx){
   // Field-coupling and audible emission are independent. Field-write happens
   // regardless of whether the user enabled audio output — the system experiences
   // its own voice internally. Audible playback is gated only on permission.
-  const f=Math.max(20,freqHz); // below 20Hz won't reach speakers anyway; let the value through
+  const f=Math.max(20,freqHz);
   const a=Math.max(0,amp);
   const d=Math.max(0.005,Math.min(2.0,durationMs/1000));
   if(!audioOutEnabled||!audioOutCtx)return false;
@@ -4567,6 +4588,10 @@ document.getElementById('gspk').addEventListener('click',async()=>{
   await tryEnableAudioOut();
   btn.style.color=audioOutEnabled?'#9f9':'#f99';
   btn.title=audioOutEnabled?'voice active':'audio output failed';
+});
+// Pe22j: volume slider — guaranteed user control over voice level
+document.getElementById('vol').addEventListener('input',e=>{
+  setAudioOutVolume(parseInt(e.target.value)/100);
 });
 
 init();loop();
