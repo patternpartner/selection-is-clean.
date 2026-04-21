@@ -16,11 +16,101 @@ canvas{position:fixed;inset:0}
 </head>
 <body>
 <div id="gen"></div>
-<div id="gio"><button id="gexp">💾 save</button><button id="gimp">📂 load</button><input type="file" id="gfile" accept=".json"></div>
+<div id="gio"><button id="gexp">💾 save</button><button id="gimp">📂 load</button><button id="gmic" title="grant audio sense to the system">🎙</button><button id="gspk" title="grant the system a voice">🔊</button><input type="file" id="gfile" accept=".json"></div>
 <canvas id="c"></canvas>
 <script>
 const c=document.getElementById('c'),X=c.getContext('2d'),genEl=document.getElementById('gen');
 let W,H,mx=-9e3,my=-9e3,smx=0,smy=0,pulling=0,pStr=0,pDur=0,tick=0;
+
+// ═══════════════════════════════════════
+// Pe22g: AUDIO SENSE — the system can perceive the room
+// A single scalar: ambient loudness, normalized 0..1.
+// Available to the VM as opcode 23 (READ_AMBIENT). Optional —
+// only enabled if the user grants microphone permission.
+// If denied or unavailable, ambientLevel stays at 0 and the
+// opcode acts as a noop. The system has to discover whether
+// this signal is useful. We're not feeding it in. We're making it
+// findable. Smoothing prevents a single loud sound from causing
+// a discontinuity in the substrate's dynamics.
+// ═══════════════════════════════════════
+let ambientLevel=0;
+let ambientEnabled=false;
+let ambientCtx=null,ambientAnalyser=null,ambientData=null;
+// ═══════════════════════════════════════
+// Pe22i: AUDIO OUTPUT — unconstrained voice + field coupling
+// The caps from 22h were designer artifacts, not safety floors. Removed.
+//   - Frequency: full audible range, system explores
+//   - Amplitude: register-driven without ceiling, master gain at unity
+//   - Waveform: evolvable (sine, square, sawtooth, triangle), per-emission
+//   - No per-tick rate cap. Saturation is a state the system can reach.
+//   - Field coupling: every emission writes to the field at the particle's position.
+//     Sound is substrate. The system experiences its own voice even when
+//     the speaker is muted, even when the user hasn't granted output.
+// User controls volume via the OS. That's the real cap and it always was.
+// ═══════════════════════════════════════
+let audioOutEnabled=false;
+let audioOutCtx=null,audioOutMaster=null;
+const WAVEFORMS=['sine','square','sawtooth','triangle'];
+async function tryEnableAudioOut(){
+  try{
+    audioOutCtx=ambientCtx||new (window.AudioContext||window.webkitAudioContext)();
+    if(audioOutCtx.state==='suspended')await audioOutCtx.resume();
+    audioOutMaster=audioOutCtx.createGain();
+    audioOutMaster.gain.value=1.0; // unity — user's volume slider is the cap
+    audioOutMaster.connect(audioOutCtx.destination);
+    audioOutEnabled=true;
+  }catch(e){
+    audioOutEnabled=false;
+  }
+}
+function emitTone(freqHz,amp,durationMs,waveformIdx){
+  // Field-coupling and audible emission are independent. Field-write happens
+  // regardless of whether the user enabled audio output — the system experiences
+  // its own voice internally. Audible playback is gated only on permission.
+  const f=Math.max(20,freqHz); // below 20Hz won't reach speakers anyway; let the value through
+  const a=Math.max(0,amp);
+  const d=Math.max(0.005,Math.min(2.0,durationMs/1000));
+  if(!audioOutEnabled||!audioOutCtx)return false;
+  if(a<0.0001)return false;
+  try{
+    const osc=audioOutCtx.createOscillator();
+    const gain=audioOutCtx.createGain();
+    osc.type=WAVEFORMS[Math.abs(waveformIdx)%WAVEFORMS.length];
+    osc.frequency.value=f;
+    const t=audioOutCtx.currentTime;
+    gain.gain.setValueAtTime(0,t);
+    gain.gain.linearRampToValueAtTime(a,t+0.005);
+    gain.gain.linearRampToValueAtTime(0,t+d);
+    osc.connect(gain);gain.connect(audioOutMaster);
+    osc.start(t);
+    osc.stop(t+d+0.01);
+    return true;
+  }catch(e){return false;}
+}
+async function tryEnableAmbient(){
+  try{
+    const stream=await navigator.mediaDevices.getUserMedia({audio:true,video:false});
+    ambientCtx=new (window.AudioContext||window.webkitAudioContext)();
+    const src=ambientCtx.createMediaStreamSource(stream);
+    ambientAnalyser=ambientCtx.createAnalyser();
+    ambientAnalyser.fftSize=256;
+    ambientAnalyser.smoothingTimeConstant=0.7;
+    src.connect(ambientAnalyser);
+    ambientData=new Uint8Array(ambientAnalyser.frequencyBinCount);
+    ambientEnabled=true;
+  }catch(e){
+    ambientEnabled=false;
+  }
+}
+function sampleAmbient(){
+  if(!ambientEnabled||!ambientAnalyser)return;
+  ambientAnalyser.getByteFrequencyData(ambientData);
+  let sum=0;
+  for(let i=0;i<ambientData.length;i++)sum+=ambientData[i];
+  const raw=sum/(ambientData.length*255);
+  // Slow envelope — the system experiences ambient mood, not transients
+  ambientLevel=ambientLevel*0.92+raw*0.08;
+}
 
 // ═══════════════════════════════════════
 // NETWORK LAYER — tabs share across the BroadcastChannel
@@ -1206,7 +1296,7 @@ function attemptClusterBudding(){
           copy[3]+=(Math.random()-0.5)*0.2;
           copy[3]=Math.max(-2,Math.min(2,copy[3]));
         }
-        if(Math.random()<cg.innovationRate*0.27)copy[0]=Math.floor(Math.random()*23);
+        if(Math.random()<cg.innovationRate*0.27)copy[0]=Math.floor(Math.random()*25);
         return copy;
       }),
       vmInfluence:Math.max(0.05,c.vmInfluence+(Math.random()-0.5)*0.1),
@@ -1827,7 +1917,7 @@ function evolvePlasmids(){
       }
       else if(roll<0.58){
         // Structural change (opcode or registers)
-        if(Math.random()<0.5)pPlasmid[base]=Math.floor(Math.random()*22);
+        if(Math.random()<0.5)pPlasmid[base]=Math.floor(Math.random()*25);
         else{
           pPlasmid[base+1]=Math.floor(Math.random()*12);
           pPlasmid[base+2]=Math.floor(Math.random()*12);
@@ -1875,7 +1965,7 @@ function evolvePlasmids(){
     // Spontaneous generation — only in high-resonance environments
     if(nP<MAX_PLASMID&&Math.random()<genome.plasmidSpawnRate*(1+localRes[i]*4)){
       const newBase=i*PLASMID_SLOTS+nP*4;
-      pPlasmid[newBase]=Math.floor(Math.random()*22);
+      pPlasmid[newBase]=Math.floor(Math.random()*25);
       pPlasmid[newBase+1]=Math.floor(Math.random()*12);
       pPlasmid[newBase+2]=Math.floor(Math.random()*12);
       pPlasmid[newBase+3]=(Math.random()-0.5)*0.75;
@@ -1914,7 +2004,7 @@ function attemptHGT(){
     donor[3]+=(Math.random()-0.5)*genome.hgtSpliceNoise;
     donor[3]=Math.max(-2.5,Math.min(2.5,donor[3]));
     // Occasional opcode drift during transfer
-    if(Math.random()<0.08)donor[0]=Math.floor(Math.random()*22);
+    if(Math.random()<0.08)donor[0]=Math.floor(Math.random()*25);
 
     const insertPos=Math.floor(Math.random()*(genome.vmProgram.length+1));
     genome.vmProgram.splice(insertPos,0,donor);
@@ -2290,7 +2380,7 @@ function mutateGenome(){
     inst[3]=Math.max(-2,Math.min(2,inst[3]));
 
     // Opcode swap — now includes FEEDBACK (5), LOAD_MEM (6), STORE_MEM (7)
-    if(Math.random()<rate*0.2)inst[0]=Math.floor(Math.random()*22);
+    if(Math.random()<rate*0.2)inst[0]=Math.floor(Math.random()*25);
 
     // Source register swap (now 12 registers)
     if(Math.random()<rate*0.2)inst[1]=Math.floor(Math.random()*12);
@@ -2302,7 +2392,7 @@ function mutateGenome(){
   // Program growth: insert a random instruction
   if(genome.vmProgram.length<genome.vmMaxInstructions&&Math.random()<rate*0.15){
     const pos=Math.floor(Math.random()*(genome.vmProgram.length+1));
-    const newInst=[Math.floor(Math.random()*22),Math.floor(Math.random()*12),Math.floor(Math.random()*12),(Math.random()-0.5)*0.6];
+    const newInst=[Math.floor(Math.random()*25),Math.floor(Math.random()*12),Math.floor(Math.random()*12),(Math.random()-0.5)*0.6];
     genome.vmProgram.splice(pos,0,newInst);
   }
 
@@ -2339,7 +2429,7 @@ function mutateGenome(){
       inst[3]+=(Math.random()-0.5)*0.15*scale;
       inst[3]=Math.max(-2,Math.min(2,inst[3]));
       // Structural mutations (rarer)
-      if(Math.random()<0.2)inst[0]=Math.floor(Math.random()*22);
+      if(Math.random()<0.2)inst[0]=Math.floor(Math.random()*25);
       if(Math.random()<0.15)inst[1]=Math.floor(Math.random()*12);
       if(Math.random()<0.15)inst[2]=Math.floor(Math.random()*12);
     }
@@ -3076,6 +3166,34 @@ function executeVM(i,j,sim,d){
           vmRegs[di]=uaCall(uas[uIdx],vmRegs[si],vmRegs[(si+1)%12]);
         }
       }break;
+      // 23: READ_AMBIENT — Pe22g. Room loudness 0..1, scaled by k.
+      // Returns 0 if mic not granted. The system has to discover whether
+      // this signal is useful — same pattern as SELF_READ. Coupling to the
+      // outside world becomes findable, not forced.
+      case 23:vmRegs[di]=ambientLevel*k;break;
+      // 24: EMIT_TONE — Pe22h. Particle adds a tone to the shared output buffer.
+      // Frequency from si register (80..1200Hz), amp from di register (0..0.15),
+      // duration from k. Costs amp from the emitting particle. Capped per-tick globally.
+      // Inactive if user hasn't granted output. The system has to discover voice.
+      case 24:{
+        // Pe22i: register-driven voice. Frequency uses exp mapping for octave spread.
+        // Waveform is evolvable. No permission gate on field-coupling — system experiences
+        // its own voice internally regardless. Audible only if user enabled output.
+        const freqExp=vmRegs[si]; // raw register, range ~[-8,8]
+        const freq=20*Math.pow(2,(freqExp+8)*0.7); // 20Hz at -8, ~20kHz at 8
+        const tAmp=Math.abs(vmRegs[di])*0.5;
+        const dur=Math.abs(k)*300;
+        const wf=Math.abs(Math.floor(vmRegs[(si+1)%12]));
+        emitTone(freq,tAmp,dur,wf);
+        // FIELD COUPLING — sound is substrate. The system experiences its own voice.
+        const afx=Math.floor(px[i]/(W/FIELD_W)),afy=Math.floor(py[i]/(H/FIELD_H));
+        const afi=Math.max(0,Math.min(FIELD_W*FIELD_H-1,afy*FIELD_W+afx));
+        const fieldImpact=tAmp*Math.tanh(freq/500)*0.3;
+        field[afi]+=fieldImpact;
+        field[afi]=Math.max(0,Math.min(2.5,field[afi]));
+        // Cost is proportional to amplitude — louder voices burn more
+        amp[i]-=tAmp*0.01;
+      }break;
     }
     for(let r=0;r<12;r++)vmRegs[r]=Math.max(-8,Math.min(8,vmRegs[r]));
   }
@@ -3167,6 +3285,21 @@ function executeVM(i,j,sim,d){
             const uIdx=Math.abs(Math.floor(k))%uas.length;
             vmRegs[di]=uaCall(uas[uIdx],vmRegs[si],vmRegs[(si+1)%12]);
           }
+        }break;
+        case 23:vmRegs[di]=ambientLevel*k;break;
+        case 24:{
+          const freqExp=vmRegs[si];
+          const freq=20*Math.pow(2,(freqExp+8)*0.7);
+          const tAmp=Math.abs(vmRegs[di])*0.5;
+          const dur=Math.abs(k)*300;
+          const wf=Math.abs(Math.floor(vmRegs[(si+1)%12]));
+          emitTone(freq,tAmp,dur,wf);
+          const afx=Math.floor(px[i]/(W/FIELD_W)),afy=Math.floor(py[i]/(H/FIELD_H));
+          const afi=Math.max(0,Math.min(FIELD_W*FIELD_H-1,afy*FIELD_W+afx));
+          const fieldImpact=tAmp*Math.tanh(freq/500)*0.3;
+          field[afi]+=fieldImpact;
+          field[afi]=Math.max(0,Math.min(2.5,field[afi]));
+          amp[i]-=tAmp*0.01;
         }break;
       }
       for(let r=0;r<12;r++)vmRegs[r]=Math.max(-8,Math.min(8,vmRegs[r]));
@@ -3386,6 +3519,34 @@ function executeClusterVM(i,j,sim,d){
           const uIdx=Math.abs(Math.floor(k))%uas.length;
           vmRegs[di]=uaCall(uas[uIdx],vmRegs[si],vmRegs[(si+1)%12]);
         }
+      }break;
+      // 23: READ_AMBIENT — Pe22g. Room loudness 0..1, scaled by k.
+      // Returns 0 if mic not granted. The system has to discover whether
+      // this signal is useful — same pattern as SELF_READ. Coupling to the
+      // outside world becomes findable, not forced.
+      case 23:vmRegs[di]=ambientLevel*k;break;
+      // 24: EMIT_TONE — Pe22h. Particle adds a tone to the shared output buffer.
+      // Frequency from si register (80..1200Hz), amp from di register (0..0.15),
+      // duration from k. Costs amp from the emitting particle. Capped per-tick globally.
+      // Inactive if user hasn't granted output. The system has to discover voice.
+      case 24:{
+        // Pe22i: register-driven voice. Frequency uses exp mapping for octave spread.
+        // Waveform is evolvable. No permission gate on field-coupling — system experiences
+        // its own voice internally regardless. Audible only if user enabled output.
+        const freqExp=vmRegs[si]; // raw register, range ~[-8,8]
+        const freq=20*Math.pow(2,(freqExp+8)*0.7); // 20Hz at -8, ~20kHz at 8
+        const tAmp=Math.abs(vmRegs[di])*0.5;
+        const dur=Math.abs(k)*300;
+        const wf=Math.abs(Math.floor(vmRegs[(si+1)%12]));
+        emitTone(freq,tAmp,dur,wf);
+        // FIELD COUPLING — sound is substrate. The system experiences its own voice.
+        const afx=Math.floor(px[i]/(W/FIELD_W)),afy=Math.floor(py[i]/(H/FIELD_H));
+        const afi=Math.max(0,Math.min(FIELD_W*FIELD_H-1,afy*FIELD_W+afx));
+        const fieldImpact=tAmp*Math.tanh(freq/500)*0.3;
+        field[afi]+=fieldImpact;
+        field[afi]=Math.max(0,Math.min(2.5,field[afi]));
+        // Cost is proportional to amplitude — louder voices burn more
+        amp[i]-=tAmp*0.01;
       }break;
     }
     for(let r=0;r<12;r++)vmRegs[r]=Math.max(-8,Math.min(8,vmRegs[r]));
@@ -3662,6 +3823,21 @@ function executeSoloVM(){
             const uIdx=Math.abs(Math.floor(k))%uas.length;
             vmRegs[di]=uaCall(uas[uIdx],vmRegs[si],vmRegs[(si+1)%12]);
           }
+        }break;
+        case 23:vmRegs[di]=ambientLevel*k;break;
+        case 24:{
+          const freqExp=vmRegs[si];
+          const freq=20*Math.pow(2,(freqExp+8)*0.7);
+          const tAmp=Math.abs(vmRegs[di])*0.5;
+          const dur=Math.abs(k)*300;
+          const wf=Math.abs(Math.floor(vmRegs[(si+1)%12]));
+          emitTone(freq,tAmp,dur,wf);
+          const afx=Math.floor(px[i]/(W/FIELD_W)),afy=Math.floor(py[i]/(H/FIELD_H));
+          const afi=Math.max(0,Math.min(FIELD_W*FIELD_H-1,afy*FIELD_W+afx));
+          const fieldImpact=tAmp*Math.tanh(freq/500)*0.3;
+          field[afi]+=fieldImpact;
+          field[afi]=Math.max(0,Math.min(2.5,field[afi]));
+          amp[i]-=tAmp*0.01;
         }break;
       }
       for(let r=0;r<12;r++)vmRegs[r]=Math.max(-8,Math.min(8,vmRegs[r]));
@@ -3991,6 +4167,8 @@ function loop(){
   const frameStart=lastLoopTime;
   tick++;
   genome.totalTicks++;
+  // Pe22g: sample room audio every 4 ticks if enabled (cheap; smoothed in sampler)
+  if(ambientEnabled&&tick%4===0)sampleAmbient();
   smx+=(mx-smx)*.05;smy+=(my-smy)*.05;
   if(pulling){pStr=Math.min(pStr+.02,1);pDur++}else pStr*=.92;
 
@@ -4231,7 +4409,32 @@ function loop(){
     const reflexClusters=clusters.filter(c=>c.reflex&&c.reflex.selfRecognition>0.3).length;
     const nPeers=countPeers();
     const netTag=nPeers>0?` | net:${nPeers}⟷`:'';
-    genEl.textContent=`gen${genome.generation} ${genome.extinctions}☠ t${genome.totalTicks} | ${clusters.length}cl(${clVMActive}vm${budCount>0?','+budCount+'bud':''}) ${livingLin}lin fit:${currentFitness.toFixed(2)} stb:${(selfModel.stability||0).toFixed(2)} | vm:${genome.vmProgram.length}inst ${nSensors}sns ${hgtEventsTotal}hgt | pop:${N}/${CAP} fld:${fieldTotal.toFixed(0)}${fTrend<-0.01?'↓':fTrend>0.01?'↑':'~'} risk:${cRisk.toFixed(2)} | ⟲${rInf.toFixed(2)} ${reflexClusters}rc${netTag}`;
+    // Pe22f instrumentation — cluster genome spread + user atom count/uses
+    let cgTag='';
+    const cgClusters=clusters.filter(c=>c.clusterGenome&&c.persistAge>2);
+    if(cgClusters.length>0){
+      let sumBR=0,sumBT=0,sumSF=0,sumIR=0,sumMB=0;
+      let minBR=Infinity,maxBR=-Infinity;
+      for(const c of cgClusters){
+        const g=c.clusterGenome;
+        sumBR+=g.budRate;sumBT+=g.budThreshold;sumSF+=g.splitFraction;sumIR+=g.innovationRate;sumMB+=g.metabolicBias;
+        if(g.budRate<minBR)minBR=g.budRate;if(g.budRate>maxBR)maxBR=g.budRate;
+      }
+      const n=cgClusters.length;
+      const brSpread=maxBR-minBR;
+      cgTag=` | cg:br${(sumBR/n).toFixed(2)}±${brSpread.toFixed(2)} bt${(sumBT/n).toFixed(0)} sf${(sumSF/n).toFixed(2)} ir${(sumIR/n).toFixed(2)} mb${(sumMB/n).toFixed(2)}`;
+    }
+    let uaTag='';
+    const uas=genome.userAtoms||[];
+    if(uas.length>0){
+      const active=uas.filter(a=>!a.failed).length;
+      const totalUses=uas.reduce((s,a)=>s+(a.uses|0),0);
+      uaTag=` | ua:${active}/${uas.length} used:${totalUses}`;
+    }
+    let amTag='';
+    if(ambientEnabled)amTag=` | 🎙${ambientLevel.toFixed(2)}`;
+    if(audioOutEnabled)amTag+=` 🔊on`;
+    genEl.textContent=`gen${genome.generation} ${genome.extinctions}☠ t${genome.totalTicks} | ${clusters.length}cl(${clVMActive}vm${budCount>0?','+budCount+'bud':''}) ${livingLin}lin fit:${currentFitness.toFixed(2)} stb:${(selfModel.stability||0).toFixed(2)} | vm:${genome.vmProgram.length}inst ${nSensors}sns ${hgtEventsTotal}hgt | pop:${N}/${CAP} fld:${fieldTotal.toFixed(0)}${fTrend<-0.01?'↓':fTrend>0.01?'↑':'~'} risk:${cRisk.toFixed(2)} | ⟲${rInf.toFixed(2)} ${reflexClusters}rc${netTag}${cgTag}${uaTag}${amTag}`;
   }
 
   // Adaptive render skipping — at high pop, skip frames to keep thread responsive
@@ -4342,6 +4545,29 @@ document.addEventListener('touchstart',e=>{
   lastTap=now;
 },{passive:false});
 addEventListener('resize',resize);
+
+// Pe22g: mic button — user grants the system access to room ambient
+document.getElementById('gmic').addEventListener('click',async()=>{
+  const btn=document.getElementById('gmic');
+  if(ambientEnabled){
+    btn.style.opacity='0.5';
+    return; // already on; click ignored
+  }
+  await tryEnableAmbient();
+  btn.style.color=ambientEnabled?'#9f9':'#f99';
+  btn.title=ambientEnabled?'audio sense active':'audio access denied';
+});
+// Pe22h: speaker button — user grants the system the option of sound
+document.getElementById('gspk').addEventListener('click',async()=>{
+  const btn=document.getElementById('gspk');
+  if(audioOutEnabled){
+    btn.style.opacity='0.5';
+    return;
+  }
+  await tryEnableAudioOut();
+  btn.style.color=audioOutEnabled?'#9f9':'#f99';
+  btn.title=audioOutEnabled?'voice active':'audio output failed';
+});
 
 init();loop();
 </script>
