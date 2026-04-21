@@ -16,7 +16,7 @@ canvas{position:fixed;inset:0}
 </head>
 <body>
 <div id="gen"></div>
-<div id="gio"><button id="gexp">💾 save</button><button id="gimp">📂 load</button><button id="gmic" title="grant audio sense to the system">🎙</button><button id="gspk" title="grant the system a voice">🔊</button><button id="gmute" title="mute audible output (system continues internally)" style="display:none">🔇</button><input type="file" id="gfile" accept=".json"></div>
+<div id="gio"><button id="gexp">💾 save</button><button id="gvex" title="export voice telemetry">📊</button><button id="gimp">📂 load</button><button id="gmic" title="grant audio sense to the system">🎙</button><button id="gspk" title="grant the system a voice">🔊</button><button id="gmute" title="mute audible output (system continues internally)" style="display:none">🔇</button><input type="file" id="gfile" accept=".json"></div>
 <canvas id="c"></canvas>
 <script>
 const c=document.getElementById('c'),X=c.getContext('2d'),genEl=document.getElementById('gen');
@@ -55,6 +55,51 @@ let audioOutEnabled=false;
 let audioOutMuted=false;
 let audioOutCtx=null,audioOutMaster=null;
 const WAVEFORMS=['sine','square','sawtooth','triangle'];
+
+// ═══════════════════════════════════════
+// Pe22l: VOICE TELEMETRY
+// Record emissions so we can distinguish pareidolia from real signaling.
+// Three kinds of data:
+//   1. Rolling event log — last N emissions with tick, particle, freq, amp,
+//      cluster, position. Used to detect call-and-response (same freq from
+//      another particle shortly after) and cluster-correlated emission.
+//   2. Frequency histogram — 24 logarithmic bins spanning ~20Hz to 20kHz.
+//      Flat means frequency is random; peaks mean selection is finding
+//      specific frequencies worth using.
+//   3. Per-tick emission count — rolling series, lets us see whether
+//      rate decays over time (cost-driven selection working) or stays
+//      elevated (cost too low or voice genuinely useful).
+// Exported in save file so sessions can be shared.
+// ═══════════════════════════════════════
+const VOICE_LOG_SIZE=600;
+const voiceLog=[]; // entries: {t,i,f,a,w,cl,x,y}
+const VOICE_FREQ_BINS=24;
+const voiceFreqHist=new Uint32Array(VOICE_FREQ_BINS);
+const VOICE_RATE_WINDOW=300; // ticks to keep
+const voiceRate=[]; // entries: {t,n} — emissions in that tick
+let voiceEmissionsThisTick=0;
+let voiceTotalEmissions=0;
+function voiceLogEmit(i,f,a,w){
+  const entry={
+    t:genome.totalTicks,
+    i:i,
+    f:+f.toFixed(1),
+    a:+a.toFixed(3),
+    w:w&3,
+    cl:clusterID[i],
+    x:+(px[i]/W).toFixed(3),
+    y:+(py[i]/H).toFixed(3)
+  };
+  voiceLog.push(entry);
+  if(voiceLog.length>VOICE_LOG_SIZE)voiceLog.shift();
+  // Log-frequency histogram — 20Hz..20000Hz in 24 bins (1/3 octave each)
+  const logMin=Math.log(20),logMax=Math.log(20000);
+  const bin=Math.max(0,Math.min(VOICE_FREQ_BINS-1,
+    Math.floor((Math.log(Math.max(20,f))-logMin)/(logMax-logMin)*VOICE_FREQ_BINS)));
+  voiceFreqHist[bin]++;
+  voiceEmissionsThisTick++;
+  voiceTotalEmissions++;
+}
 async function tryEnableAudioOut(){
   try{
     audioOutCtx=ambientCtx||new (window.AudioContext||window.webkitAudioContext)();
@@ -818,6 +863,46 @@ function importGenome(file){
 document.getElementById('gexp').onclick=exportGenome;
 document.getElementById('gimp').onclick=function(){document.getElementById('gfile').click()};
 document.getElementById('gfile').onchange=function(e){if(e.target.files[0])importGenome(e.target.files[0])};
+
+// Pe22l: export voice telemetry as JSON for analysis and sharing
+function exportVoiceTelemetry(){
+  const report={
+    version:'Pe22l',
+    capturedAt:new Date().toISOString(),
+    genome:{
+      generation:genome.generation,
+      totalTicks:genome.totalTicks,
+      extinctions:genome.extinctions,
+      population:N,
+      clusters:clusters.length
+    },
+    audio:{
+      outputEnabled:audioOutEnabled,
+      muted:audioOutMuted,
+      ambientEnabled:ambientEnabled,
+      ambientLevel:+ambientLevel.toFixed(3)
+    },
+    totals:{
+      emissions:voiceTotalEmissions,
+      avgPerTick:voiceRate.length>0?+(voiceRate.reduce((s,r)=>s+r.n,0)/voiceRate.length).toFixed(2):0
+    },
+    freqHistogram:{
+      bins:VOICE_FREQ_BINS,
+      logRange:[20,20000],
+      counts:Array.from(voiceFreqHist)
+    },
+    rateSeries:voiceRate.slice(),
+    eventLog:voiceLog.slice()
+  };
+  const data=JSON.stringify(report,null,2);
+  const blob=new Blob([data],{type:'application/json'});
+  const a=document.createElement('a');
+  a.href=URL.createObjectURL(blob);
+  a.download='voice_gen'+genome.generation+'_t'+genome.totalTicks+'.json';
+  a.click();
+  URL.revokeObjectURL(a.href);
+}
+document.getElementById('gvex').onclick=exportVoiceTelemetry;
 
 // ═══════════════════════════════════════
 // CLUSTER DETECTION — STRUCTURAL COMPRESSION
@@ -3192,7 +3277,7 @@ function executeVM(i,j,sim,d){
         const tAmp=Math.abs(vmRegs[di])*0.5;
         const dur=Math.abs(k)*300;
         const wf=Math.abs(Math.floor(vmRegs[(si+1)%12]));
-        emitTone(freq,tAmp,dur,wf);
+        voiceLogEmit(i,freq,tAmp,wf); emitTone(freq,tAmp,dur,wf);
         // FIELD COUPLING — sound is substrate. The system experiences its own voice.
         const afx=Math.floor(px[i]/(W/FIELD_W)),afy=Math.floor(py[i]/(H/FIELD_H));
         const afi=Math.max(0,Math.min(FIELD_W*FIELD_H-1,afy*FIELD_W+afx));
@@ -3301,7 +3386,7 @@ function executeVM(i,j,sim,d){
           const tAmp=Math.abs(vmRegs[di])*0.5;
           const dur=Math.abs(k)*300;
           const wf=Math.abs(Math.floor(vmRegs[(si+1)%12]));
-          emitTone(freq,tAmp,dur,wf);
+          voiceLogEmit(i,freq,tAmp,wf); emitTone(freq,tAmp,dur,wf);
           const afx=Math.floor(px[i]/(W/FIELD_W)),afy=Math.floor(py[i]/(H/FIELD_H));
           const afi=Math.max(0,Math.min(FIELD_W*FIELD_H-1,afy*FIELD_W+afx));
           const fieldImpact=tAmp*Math.tanh(freq/500)*0.3;
@@ -3546,7 +3631,7 @@ function executeClusterVM(i,j,sim,d){
         const tAmp=Math.abs(vmRegs[di])*0.5;
         const dur=Math.abs(k)*300;
         const wf=Math.abs(Math.floor(vmRegs[(si+1)%12]));
-        emitTone(freq,tAmp,dur,wf);
+        voiceLogEmit(i,freq,tAmp,wf); emitTone(freq,tAmp,dur,wf);
         // FIELD COUPLING — sound is substrate. The system experiences its own voice.
         const afx=Math.floor(px[i]/(W/FIELD_W)),afy=Math.floor(py[i]/(H/FIELD_H));
         const afi=Math.max(0,Math.min(FIELD_W*FIELD_H-1,afy*FIELD_W+afx));
@@ -3839,7 +3924,7 @@ function executeSoloVM(){
           const tAmp=Math.abs(vmRegs[di])*0.5;
           const dur=Math.abs(k)*300;
           const wf=Math.abs(Math.floor(vmRegs[(si+1)%12]));
-          emitTone(freq,tAmp,dur,wf);
+          voiceLogEmit(i,freq,tAmp,wf); emitTone(freq,tAmp,dur,wf);
           const afx=Math.floor(px[i]/(W/FIELD_W)),afy=Math.floor(py[i]/(H/FIELD_H));
           const afi=Math.max(0,Math.min(FIELD_W*FIELD_H-1,afy*FIELD_W+afx));
           const fieldImpact=tAmp*Math.tanh(freq/500)*0.3;
@@ -4177,6 +4262,12 @@ function loop(){
   genome.totalTicks++;
   // Pe22g: sample room audio every 4 ticks if enabled (cheap; smoothed in sampler)
   if(ambientEnabled&&tick%4===0)sampleAmbient();
+  // Pe22l: capture previous tick's emission count into rolling series, then reset
+  if(voiceEmissionsThisTick>0||voiceRate.length>0){
+    voiceRate.push({t:genome.totalTicks,n:voiceEmissionsThisTick});
+    if(voiceRate.length>VOICE_RATE_WINDOW)voiceRate.shift();
+  }
+  voiceEmissionsThisTick=0;
   smx+=(mx-smx)*.05;smy+=(my-smy)*.05;
   if(pulling){pStr=Math.min(pStr+.02,1);pDur++}else pStr*=.92;
 
@@ -4441,7 +4532,10 @@ function loop(){
     }
     let amTag='';
     if(ambientEnabled)amTag=` | 🎙${ambientLevel.toFixed(2)}`;
-    if(audioOutEnabled)amTag+=` 🔊on`;
+    if(audioOutEnabled||voiceTotalEmissions>0){
+      const recentRate=voiceRate.length>0?voiceRate.slice(-30).reduce((s,r)=>s+r.n,0)/Math.min(30,voiceRate.length):0;
+      amTag+=` 🔊${voiceTotalEmissions}(${recentRate.toFixed(1)}/t)`;
+    }
     genEl.textContent=`gen${genome.generation} ${genome.extinctions}☠ t${genome.totalTicks} | ${clusters.length}cl(${clVMActive}vm${budCount>0?','+budCount+'bud':''}) ${livingLin}lin fit:${currentFitness.toFixed(2)} stb:${(selfModel.stability||0).toFixed(2)} | vm:${genome.vmProgram.length}inst ${nSensors}sns ${hgtEventsTotal}hgt | pop:${N}/${CAP} fld:${fieldTotal.toFixed(0)}${fTrend<-0.01?'↓':fTrend>0.01?'↑':'~'} risk:${cRisk.toFixed(2)} | ⟲${rInf.toFixed(2)} ${reflexClusters}rc${netTag}${cgTag}${uaTag}${amTag}`;
   }
 
