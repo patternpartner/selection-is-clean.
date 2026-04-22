@@ -16,7 +16,7 @@ canvas{position:fixed;inset:0}
 </head>
 <body>
 <div id="gen"></div>
-<div id="gio"><button id="gexp">💾 save</button><button id="gvex" title="export voice telemetry">📊</button><button id="gimp">📂 load</button><button id="gmic" title="grant audio sense to the system">🎙</button><button id="gspk" title="grant the system a voice">🔊</button><button id="gmute" title="mute audible output (system continues internally)" style="display:none">🔇</button><input type="file" id="gfile" accept=".json"></div>
+<div id="gio"><button id="gexp">💾 save</button><button id="gvex" title="export voice telemetry">📊</button><button id="gimp">📂 load</button><button id="gwake" title="prevent screen sleep — keeps Pe running overnight">🌙</button><button id="gmic" title="grant audio sense to the system">🎙</button><button id="gspk" title="grant the system a voice">🔊</button><button id="gmute" title="mute audible output (system continues internally)" style="display:none">🔇</button><input type="file" id="gfile" accept=".json"></div>
 <canvas id="c"></canvas>
 <script>
 const c=document.getElementById('c'),X=c.getContext('2d'),genEl=document.getElementById('gen');
@@ -171,7 +171,76 @@ function sampleAmbient(){
 // motifs, and inscribed cell programs can flow between them.
 // If connection helps, the system will use it. If not, the rates evolve to zero.
 // ═══════════════════════════════════════
-// Pe22m: collective-state fields updated by the coordinator's broadcasts.
+// Pe22n: Wake Lock — keep screen on so phone doesn't sleep.
+// Wake Lock is released automatically when the tab is hidden, so this
+// works best when you want to leave one tab visible overnight.
+// If granted, the tab keeps running at full frame rate instead of
+// being paused by the phone going to sleep.
+let wakeLock=null;
+async function requestWakeLock(){
+  try{
+    if('wakeLock' in navigator){
+      wakeLock=await navigator.wakeLock.request('screen');
+      wakeLock.addEventListener('release',()=>{wakeLock=null;
+        const btn=document.getElementById('gwake');
+        if(btn){btn.style.color='#9bd';btn.title='screen lock released — tap to re-acquire';}
+      });
+      return true;
+    }
+  }catch(e){}
+  return false;
+}
+// Re-acquire wake lock when tab becomes visible again (browser releases on hide)
+document.addEventListener('visibilitychange',async()=>{
+  if(!document.hidden&&wakeLock===null){
+    const btn=document.getElementById('gwake');
+    if(btn&&btn.dataset.wanted==='1'){
+      await requestWakeLock();
+      if(wakeLock)btn.style.color='#9f9';
+    }
+  }
+});
+
+// Pe22n: Sync-save via coordinator broadcast.
+// Instead of each tab triggering a per-tab download (unreliable when tabs
+// are backgrounded), tabs broadcast their telemetry TO the coordinator,
+// which collects them and allows a single download from the active tab.
+// This replaces the per-tab download path on sync-save.
+function broadcastTelemetryForCoordinator(){
+  if(!bc)return;
+  try{
+    // Mirror the structure of exportVoiceTelemetry()
+    const report={
+      tab:TAB_ID,type:'sync-response',
+      capturedAt:new Date().toISOString(),
+      genome:{
+        generation:genome.generation,
+        totalTicks:genome.totalTicks,
+        extinctions:genome.extinctions,
+        population:N,
+        clusters:clusters.length
+      },
+      audio:{
+        outputEnabled:audioOutEnabled,
+        muted:audioOutMuted,
+        ambientEnabled:ambientEnabled,
+        ambientLevel:+ambientLevel.toFixed(3)
+      },
+      totals:{
+        emissions:voiceTotalEmissions,
+        avgPerTick:voiceRate.length>0?+(voiceRate.reduce((s,r)=>s+r.n,0)/voiceRate.length).toFixed(2):0
+      },
+      freqHistogram:{
+        bins:VOICE_FREQ_BINS,
+        logRange:[20,20000],
+        counts:Array.from(voiceFreqHist)
+      },
+      rateSeries:voiceRate.slice(),
+      eventLog:voiceLog.slice()
+    };
+    bc.postMessage(report);
+  }catch(e){}
+}
 // The tab reads these through new opcodes. If no coordinator is running,
 // these stay at 0 and the opcodes are noops — same pattern as ambient.
 let collectiveFreqDominant=0;    // network's dominant frequency (Hz), normalized 0..1
@@ -212,10 +281,10 @@ try{
       }
       if(typeof msg.peers==='number')collectivePeers=msg.peers;
     }else if(msg.type==='sync-save'){
-      // Pe22m: coordinator-triggered synchronized capture — save our state NOW
-      if(typeof exportVoiceTelemetry==='function'){
-        try{exportVoiceTelemetry();}catch(e){}
-      }
+      // Pe22n: coordinator-triggered sync-save — broadcast telemetry back to
+      // the coordinator rather than triggering a per-tab download.
+      // The coordinator archives all responses and the user downloads once.
+      broadcastTelemetryForCoordinator();
     }
   };
   // announce ourselves
@@ -4739,6 +4808,24 @@ document.getElementById('gmute').addEventListener('click',()=>{
   btn.textContent=audioOutMuted?'🔈':'🔇';
   btn.style.color=audioOutMuted?'#f99':'#8af';
   btn.title=audioOutMuted?'tap to unmute':'tap to mute';
+});
+// Pe22n: wake lock toggle — keeps the screen awake so the phone doesn't sleep
+document.getElementById('gwake').addEventListener('click',async()=>{
+  const btn=document.getElementById('gwake');
+  if(wakeLock){
+    try{await wakeLock.release();}catch(e){}
+    wakeLock=null;
+    btn.dataset.wanted='0';
+    btn.style.color='#9bd';
+    btn.title='screen sleep allowed — tap to keep awake';
+    btn.textContent='🌙';
+  }else{
+    const ok=await requestWakeLock();
+    btn.dataset.wanted='1';
+    btn.style.color=ok?'#9f9':'#f99';
+    btn.title=ok?'screen staying on':'wake lock unavailable on this browser';
+    btn.textContent=ok?'☀️':'🌙';
+  }
 });
 
 init();loop();
