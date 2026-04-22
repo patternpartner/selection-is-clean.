@@ -171,6 +171,13 @@ function sampleAmbient(){
 // motifs, and inscribed cell programs can flow between them.
 // If connection helps, the system will use it. If not, the rates evolve to zero.
 // ═══════════════════════════════════════
+// Pe22m: collective-state fields updated by the coordinator's broadcasts.
+// The tab reads these through new opcodes. If no coordinator is running,
+// these stay at 0 and the opcodes are noops — same pattern as ambient.
+let collectiveFreqDominant=0;    // network's dominant frequency (Hz), normalized 0..1
+let collectiveVoiceActivity=0;   // total emissions/sec across network, normalized 0..1
+let collectiveDivergence=0;      // how unusual this tab is (0=typical, 1=outlier)
+let collectivePeers=0;           // how many tabs the coordinator has heard from
 const TAB_ID=Math.random().toString(36).slice(2,10);
 let bc=null;
 const incomingMigrants=[];     // particle packets received from other tabs
@@ -196,6 +203,19 @@ try{
     }else if(msg.type==='hello'){
       // reply so the new peer knows we exist
       if(bc)bc.postMessage({tab:TAB_ID,type:'hello-reply'});
+    }else if(msg.type==='collective'){
+      // Pe22m: coordinator broadcasts aggregate network state
+      if(typeof msg.dominantFreq==='number')collectiveFreqDominant=Math.max(0,Math.min(1,msg.dominantFreq));
+      if(typeof msg.voiceActivity==='number')collectiveVoiceActivity=Math.max(0,Math.min(1,msg.voiceActivity));
+      if(typeof msg.divergence==='object'&&msg.divergence[TAB_ID]!==undefined){
+        collectiveDivergence=Math.max(0,Math.min(1,msg.divergence[TAB_ID]));
+      }
+      if(typeof msg.peers==='number')collectivePeers=msg.peers;
+    }else if(msg.type==='sync-save'){
+      // Pe22m: coordinator-triggered synchronized capture — save our state NOW
+      if(typeof exportVoiceTelemetry==='function'){
+        try{exportVoiceTelemetry();}catch(e){}
+      }
     }
   };
   // announce ourselves
@@ -1389,7 +1409,7 @@ function attemptClusterBudding(){
           copy[3]+=(Math.random()-0.5)*0.2;
           copy[3]=Math.max(-2,Math.min(2,copy[3]));
         }
-        if(Math.random()<cg.innovationRate*0.27)copy[0]=Math.floor(Math.random()*25);
+        if(Math.random()<cg.innovationRate*0.27)copy[0]=Math.floor(Math.random()*28);
         return copy;
       }),
       vmInfluence:Math.max(0.05,c.vmInfluence+(Math.random()-0.5)*0.1),
@@ -2010,7 +2030,7 @@ function evolvePlasmids(){
       }
       else if(roll<0.58){
         // Structural change (opcode or registers)
-        if(Math.random()<0.5)pPlasmid[base]=Math.floor(Math.random()*25);
+        if(Math.random()<0.5)pPlasmid[base]=Math.floor(Math.random()*28);
         else{
           pPlasmid[base+1]=Math.floor(Math.random()*12);
           pPlasmid[base+2]=Math.floor(Math.random()*12);
@@ -2058,7 +2078,7 @@ function evolvePlasmids(){
     // Spontaneous generation — only in high-resonance environments
     if(nP<MAX_PLASMID&&Math.random()<genome.plasmidSpawnRate*(1+localRes[i]*4)){
       const newBase=i*PLASMID_SLOTS+nP*4;
-      pPlasmid[newBase]=Math.floor(Math.random()*25);
+      pPlasmid[newBase]=Math.floor(Math.random()*28);
       pPlasmid[newBase+1]=Math.floor(Math.random()*12);
       pPlasmid[newBase+2]=Math.floor(Math.random()*12);
       pPlasmid[newBase+3]=(Math.random()-0.5)*0.75;
@@ -2097,7 +2117,7 @@ function attemptHGT(){
     donor[3]+=(Math.random()-0.5)*genome.hgtSpliceNoise;
     donor[3]=Math.max(-2.5,Math.min(2.5,donor[3]));
     // Occasional opcode drift during transfer
-    if(Math.random()<0.08)donor[0]=Math.floor(Math.random()*25);
+    if(Math.random()<0.08)donor[0]=Math.floor(Math.random()*28);
 
     const insertPos=Math.floor(Math.random()*(genome.vmProgram.length+1));
     genome.vmProgram.splice(insertPos,0,donor);
@@ -2473,7 +2493,7 @@ function mutateGenome(){
     inst[3]=Math.max(-2,Math.min(2,inst[3]));
 
     // Opcode swap — now includes FEEDBACK (5), LOAD_MEM (6), STORE_MEM (7)
-    if(Math.random()<rate*0.2)inst[0]=Math.floor(Math.random()*25);
+    if(Math.random()<rate*0.2)inst[0]=Math.floor(Math.random()*28);
 
     // Source register swap (now 12 registers)
     if(Math.random()<rate*0.2)inst[1]=Math.floor(Math.random()*12);
@@ -2485,7 +2505,7 @@ function mutateGenome(){
   // Program growth: insert a random instruction
   if(genome.vmProgram.length<genome.vmMaxInstructions&&Math.random()<rate*0.15){
     const pos=Math.floor(Math.random()*(genome.vmProgram.length+1));
-    const newInst=[Math.floor(Math.random()*25),Math.floor(Math.random()*12),Math.floor(Math.random()*12),(Math.random()-0.5)*0.6];
+    const newInst=[Math.floor(Math.random()*28),Math.floor(Math.random()*12),Math.floor(Math.random()*12),(Math.random()-0.5)*0.6];
     genome.vmProgram.splice(pos,0,newInst);
   }
 
@@ -2522,7 +2542,7 @@ function mutateGenome(){
       inst[3]+=(Math.random()-0.5)*0.15*scale;
       inst[3]=Math.max(-2,Math.min(2,inst[3]));
       // Structural mutations (rarer)
-      if(Math.random()<0.2)inst[0]=Math.floor(Math.random()*25);
+      if(Math.random()<0.2)inst[0]=Math.floor(Math.random()*28);
       if(Math.random()<0.15)inst[1]=Math.floor(Math.random()*12);
       if(Math.random()<0.15)inst[2]=Math.floor(Math.random()*12);
     }
@@ -3287,6 +3307,9 @@ function executeVM(i,j,sim,d){
         // Cost is proportional to amplitude — louder voices burn more
         amp[i]-=tAmp*0.01;
       }break;
+      case 25:vmRegs[di]=(collectiveFreqDominant*16-8)*k;break;
+      case 26:vmRegs[di]=collectiveVoiceActivity*k*8;break;
+      case 27:vmRegs[di]=collectiveDivergence*k*8;break;
     }
     for(let r=0;r<12;r++)vmRegs[r]=Math.max(-8,Math.min(8,vmRegs[r]));
   }
@@ -3394,6 +3417,9 @@ function executeVM(i,j,sim,d){
           field[afi]=Math.max(0,Math.min(2.5,field[afi]));
           amp[i]-=tAmp*0.01;
         }break;
+        case 25:vmRegs[di]=(collectiveFreqDominant*16-8)*k;break;
+        case 26:vmRegs[di]=collectiveVoiceActivity*k*8;break;
+        case 27:vmRegs[di]=collectiveDivergence*k*8;break;
       }
       for(let r=0;r<12;r++)vmRegs[r]=Math.max(-8,Math.min(8,vmRegs[r]));
     }
@@ -3641,6 +3667,9 @@ function executeClusterVM(i,j,sim,d){
         // Cost is proportional to amplitude — louder voices burn more
         amp[i]-=tAmp*0.01;
       }break;
+      case 25:vmRegs[di]=(collectiveFreqDominant*16-8)*k;break;
+      case 26:vmRegs[di]=collectiveVoiceActivity*k*8;break;
+      case 27:vmRegs[di]=collectiveDivergence*k*8;break;
     }
     for(let r=0;r<12;r++)vmRegs[r]=Math.max(-8,Math.min(8,vmRegs[r]));
   }
@@ -3932,6 +3961,9 @@ function executeSoloVM(){
           field[afi]=Math.max(0,Math.min(2.5,field[afi]));
           amp[i]-=tAmp*0.01;
         }break;
+        case 25:vmRegs[di]=(collectiveFreqDominant*16-8)*k;break;
+        case 26:vmRegs[di]=collectiveVoiceActivity*k*8;break;
+        case 27:vmRegs[di]=collectiveDivergence*k*8;break;
       }
       for(let r=0;r<12;r++)vmRegs[r]=Math.max(-8,Math.min(8,vmRegs[r]));
     }
@@ -4292,6 +4324,27 @@ function loop(){
   executeSoloVM();
   networkBroadcast();
   networkReceive();
+  // Pe22m: broadcast telemetry snapshot every 60 ticks for coordinator consumption.
+  // Coordinator uses these to compute aggregate state and feed it back.
+  if(bc&&tick%60===0){
+    try{
+      // Fresh frequency histogram from recent events (last 600 or fewer)
+      const histBuf=new Array(24).fill(0);
+      for(const e of voiceLog)histBuf[Math.max(0,Math.min(23,Math.floor((Math.log(Math.max(20,e.f))-Math.log(20))/(Math.log(20000)-Math.log(20))*24)))]++;
+      // Recent emission rate
+      let recentEmit=0;
+      for(let k=Math.max(0,voiceRate.length-30);k<voiceRate.length;k++)recentEmit+=voiceRate[k].n;
+      bc.postMessage({
+        tab:TAB_ID,type:'telemetry',
+        t:genome.totalTicks,gen:genome.generation,pop:N,clusters:clusters.length,
+        freqHist:histBuf,
+        recentEmitRate:recentEmit/Math.max(1,Math.min(30,voiceRate.length)),
+        totalEmissions:voiceTotalEmissions,
+        ambient:ambientLevel,
+        fitness:+currentFitness.toFixed(3)
+      });
+    }catch(e){}
+  }
   processGrid();
 
   // ═══ PLASMID PERSISTENCE + CRYSTALLIZATION ═══
@@ -4535,6 +4588,10 @@ function loop(){
     if(audioOutEnabled||voiceTotalEmissions>0){
       const recentRate=voiceRate.length>0?voiceRate.slice(-30).reduce((s,r)=>s+r.n,0)/Math.min(30,voiceRate.length):0;
       amTag+=` 🔊${voiceTotalEmissions}(${recentRate.toFixed(1)}/t)`;
+    }
+    // Pe22m: coordinator connection indicator
+    if(collectivePeers>0){
+      amTag+=` | ◈${collectivePeers}tabs`;
     }
     genEl.textContent=`gen${genome.generation} ${genome.extinctions}☠ t${genome.totalTicks} | ${clusters.length}cl(${clVMActive}vm${budCount>0?','+budCount+'bud':''}) ${livingLin}lin fit:${currentFitness.toFixed(2)} stb:${(selfModel.stability||0).toFixed(2)} | vm:${genome.vmProgram.length}inst ${nSensors}sns ${hgtEventsTotal}hgt | pop:${N}/${CAP} fld:${fieldTotal.toFixed(0)}${fTrend<-0.01?'↓':fTrend>0.01?'↑':'~'} risk:${cRisk.toFixed(2)} | ⟲${rInf.toFixed(2)} ${reflexClusters}rc${netTag}${cgTag}${uaTag}${amTag}`;
   }
