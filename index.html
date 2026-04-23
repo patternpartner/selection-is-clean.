@@ -16,7 +16,7 @@ canvas{position:fixed;inset:0}
 </head>
 <body>
 <div id="gen"></div>
-<div id="gio"><button id="gexp">💾 save</button><button id="gvex" title="export voice telemetry">📊</button><button id="gimp">📂 load</button><button id="gwake" title="prevent screen sleep — keeps Pe running overnight">🌙</button><button id="gmic" title="grant audio sense to the system">🎙</button><button id="gspk" title="grant the system a voice">🔊</button><button id="gmute" title="mute audible output (system continues internally)" style="display:none">🔇</button><input type="file" id="gfile" accept=".json"></div>
+<div id="gio"><button id="gexp">💾 save</button><button id="gvex" title="export voice telemetry">📊</button><button id="gimp">📂 load</button><button id="grest" title="adopt a dead lineage from the coordinator">🧬</button><button id="gwake" title="prevent screen sleep — keeps Pe running overnight">🌙</button><button id="gmic" title="grant audio sense to the system">🎙</button><button id="gspk" title="grant the system a voice">🔊</button><button id="gmute" title="mute audible output (system continues internally)" style="display:none">🔇</button><input type="file" id="gfile" accept=".json"></div>
 <canvas id="c"></canvas>
 <script>
 const c=document.getElementById('c'),X=c.getContext('2d'),genEl=document.getElementById('gen');
@@ -247,6 +247,7 @@ let collectiveFreqDominant=0;    // network's dominant frequency (Hz), normalize
 let collectiveVoiceActivity=0;   // total emissions/sec across network, normalized 0..1
 let collectiveDivergence=0;      // how unusual this tab is (0=typical, 1=outlier)
 let collectivePeers=0;           // how many tabs the coordinator has heard from
+let pendingRestoreRequest=false; // Pe22p: waiting for a genome-offer from coordinator
 const TAB_ID=Math.random().toString(36).slice(2,10);
 let bc=null;
 const incomingMigrants=[];     // particle packets received from other tabs
@@ -285,6 +286,24 @@ try{
       // the coordinator rather than triggering a per-tab download.
       // The coordinator archives all responses and the user downloads once.
       broadcastTelemetryForCoordinator();
+    }else if(msg.type==='genome-offer'){
+      // Pe22p: coordinator is offering us a lineage to adopt.
+      // Only accept if we're a fresh tab (totalTicks low) or explicitly asked.
+      // The user requested restoration via the 🧬 button; this is the response.
+      if(pendingRestoreRequest&&msg.encoded){
+        try{
+          if(decodeGenome(msg.encoded)){
+            genome.totalTicks=msg.t||genome.totalTicks;
+            // Reseed particles to jump-start the restored state
+            N=0;
+            const n=Math.min(300,(W*H/3000)|0);
+            for(let i=0;i<n;i++)addParticle(Math.random()*W,Math.random()*H,randomTendency(),false);
+            pendingRestoreRequest=false;
+            const btn=document.getElementById('grest');
+            if(btn){btn.style.color='#9f9';btn.title='lineage restored from coordinator';}
+          }
+        }catch(e){}
+      }
     }
   };
   // announce ourselves
@@ -1172,7 +1191,7 @@ function seedClusterVM(){
       const inst=[...globalProg[idx]];
       // Light mutation on seeding — differentiation starts immediately
       inst[3]+=(Math.random()-0.5)*0.25;
-      inst[3]=Math.max(-2,Math.min(2,inst[3]));
+      // Pe22o: k unclamped. The constant is not a designer choice.
       prog.push(inst);
     }else{
       prog.push([0,0,0,0]); // NOP padding
@@ -1476,7 +1495,7 @@ function attemptClusterBudding(){
         // Conservative lineages preserve programs; innovative ones explore.
         if(Math.random()<cg.innovationRate){
           copy[3]+=(Math.random()-0.5)*0.2;
-          copy[3]=Math.max(-2,Math.min(2,copy[3]));
+          // Pe22o: k unclamped.
         }
         if(Math.random()<cg.innovationRate*0.27)copy[0]=Math.floor(Math.random()*28);
         return copy;
@@ -2477,7 +2496,7 @@ function mutateGenome(){
     for(const inst of sensor.program){
       if(Math.random()>rate*0.8)continue;
       inst[3]+=(Math.random()-0.5)*0.2*scale;
-      inst[3]=Math.max(-2,Math.min(2,inst[3]));
+      // Pe22o: k unclamped. The constant is not a designer choice.
       if(Math.random()<0.15)inst[0]=Math.floor(Math.random()*5); // opcodes 0-4 only
       if(Math.random()<0.15)inst[1]=Math.floor(Math.random()*8);
       if(Math.random()<0.15)inst[2]=Math.floor(Math.random()*8);
@@ -2559,7 +2578,7 @@ function mutateGenome(){
     const inst=genome.vmProgram[ip];
 
     inst[3]+=(Math.random()-0.5)*0.15*scale;
-    inst[3]=Math.max(-2,Math.min(2,inst[3]));
+    // Pe22o: k unclamped.
 
     // Opcode swap — now includes FEEDBACK (5), LOAD_MEM (6), STORE_MEM (7)
     if(Math.random()<rate*0.2)inst[0]=Math.floor(Math.random()*28);
@@ -2609,7 +2628,7 @@ function mutateGenome(){
       const inst=c.vmProgram[ip];
       // Constant drift
       inst[3]+=(Math.random()-0.5)*0.15*scale;
-      inst[3]=Math.max(-2,Math.min(2,inst[3]));
+      // Pe22o: k unclamped. The constant is not a designer choice.
       // Structural mutations (rarer)
       if(Math.random()<0.2)inst[0]=Math.floor(Math.random()*28);
       if(Math.random()<0.15)inst[1]=Math.floor(Math.random()*12);
@@ -3361,8 +3380,11 @@ function executeVM(i,j,sim,d){
         // Pe22i: register-driven voice. Frequency uses exp mapping for octave spread.
         // Waveform is evolvable. No permission gate on field-coupling — system experiences
         // its own voice internally regardless. Audible only if user enabled output.
-        const freqExp=vmRegs[si]; // raw register, range ~[-8,8]
-        const freq=20*Math.pow(2,(freqExp+8)*0.7); // 20Hz at -8, ~20kHz at 8
+        // Pe22o: no designer frequency mapping. Register × k² produces Hz directly.
+        // Default register states (0, 1, 8) no longer map to pre-chosen audible frequencies.
+        // To produce audible output, the system must evolve to produce register×k² values
+        // in the audible range. Silence is default; voice is work. k is evolvable/unbounded.
+        const freq=vmRegs[si]*k*k;
         const tAmp=Math.abs(vmRegs[di])*0.5;
         const dur=Math.abs(k)*300;
         const wf=Math.abs(Math.floor(vmRegs[(si+1)%12]));
@@ -3370,7 +3392,8 @@ function executeVM(i,j,sim,d){
         // FIELD COUPLING — sound is substrate. The system experiences its own voice.
         const afx=Math.floor(px[i]/(W/FIELD_W)),afy=Math.floor(py[i]/(H/FIELD_H));
         const afi=Math.max(0,Math.min(FIELD_W*FIELD_H-1,afy*FIELD_W+afx));
-        const fieldImpact=tAmp*Math.tanh(freq/500)*0.3;
+        const freqFactor=freq>0?Math.log1p(Math.abs(freq))*0.05:0;
+        const fieldImpact=tAmp*freqFactor;
         field[afi]+=fieldImpact;
         field[afi]=Math.max(0,Math.min(2.5,field[afi]));
         // Cost is proportional to amplitude — louder voices burn more
@@ -3473,15 +3496,15 @@ function executeVM(i,j,sim,d){
         }break;
         case 23:vmRegs[di]=ambientLevel*k;break;
         case 24:{
-          const freqExp=vmRegs[si];
-          const freq=20*Math.pow(2,(freqExp+8)*0.7);
+          const freq=vmRegs[si]*k*k;
           const tAmp=Math.abs(vmRegs[di])*0.5;
           const dur=Math.abs(k)*300;
           const wf=Math.abs(Math.floor(vmRegs[(si+1)%12]));
           voiceLogEmit(i,freq,tAmp,wf); emitTone(freq,tAmp,dur,wf);
           const afx=Math.floor(px[i]/(W/FIELD_W)),afy=Math.floor(py[i]/(H/FIELD_H));
           const afi=Math.max(0,Math.min(FIELD_W*FIELD_H-1,afy*FIELD_W+afx));
-          const fieldImpact=tAmp*Math.tanh(freq/500)*0.3;
+          const freqFactor=freq>0?Math.log1p(Math.abs(freq))*0.05:0;
+        const fieldImpact=tAmp*freqFactor;
           field[afi]+=fieldImpact;
           field[afi]=Math.max(0,Math.min(2.5,field[afi]));
           amp[i]-=tAmp*0.01;
@@ -3721,8 +3744,11 @@ function executeClusterVM(i,j,sim,d){
         // Pe22i: register-driven voice. Frequency uses exp mapping for octave spread.
         // Waveform is evolvable. No permission gate on field-coupling — system experiences
         // its own voice internally regardless. Audible only if user enabled output.
-        const freqExp=vmRegs[si]; // raw register, range ~[-8,8]
-        const freq=20*Math.pow(2,(freqExp+8)*0.7); // 20Hz at -8, ~20kHz at 8
+        // Pe22o: no designer frequency mapping. Register × k² produces Hz directly.
+        // Default register states (0, 1, 8) no longer map to pre-chosen audible frequencies.
+        // To produce audible output, the system must evolve to produce register×k² values
+        // in the audible range. Silence is default; voice is work. k is evolvable/unbounded.
+        const freq=vmRegs[si]*k*k;
         const tAmp=Math.abs(vmRegs[di])*0.5;
         const dur=Math.abs(k)*300;
         const wf=Math.abs(Math.floor(vmRegs[(si+1)%12]));
@@ -3730,7 +3756,8 @@ function executeClusterVM(i,j,sim,d){
         // FIELD COUPLING — sound is substrate. The system experiences its own voice.
         const afx=Math.floor(px[i]/(W/FIELD_W)),afy=Math.floor(py[i]/(H/FIELD_H));
         const afi=Math.max(0,Math.min(FIELD_W*FIELD_H-1,afy*FIELD_W+afx));
-        const fieldImpact=tAmp*Math.tanh(freq/500)*0.3;
+        const freqFactor=freq>0?Math.log1p(Math.abs(freq))*0.05:0;
+        const fieldImpact=tAmp*freqFactor;
         field[afi]+=fieldImpact;
         field[afi]=Math.max(0,Math.min(2.5,field[afi]));
         // Cost is proportional to amplitude — louder voices burn more
@@ -4017,15 +4044,15 @@ function executeSoloVM(){
         }break;
         case 23:vmRegs[di]=ambientLevel*k;break;
         case 24:{
-          const freqExp=vmRegs[si];
-          const freq=20*Math.pow(2,(freqExp+8)*0.7);
+          const freq=vmRegs[si]*k*k;
           const tAmp=Math.abs(vmRegs[di])*0.5;
           const dur=Math.abs(k)*300;
           const wf=Math.abs(Math.floor(vmRegs[(si+1)%12]));
           voiceLogEmit(i,freq,tAmp,wf); emitTone(freq,tAmp,dur,wf);
           const afx=Math.floor(px[i]/(W/FIELD_W)),afy=Math.floor(py[i]/(H/FIELD_H));
           const afi=Math.max(0,Math.min(FIELD_W*FIELD_H-1,afy*FIELD_W+afx));
-          const fieldImpact=tAmp*Math.tanh(freq/500)*0.3;
+          const freqFactor=freq>0?Math.log1p(Math.abs(freq))*0.05:0;
+        const fieldImpact=tAmp*freqFactor;
           field[afi]+=fieldImpact;
           field[afi]=Math.max(0,Math.min(2.5,field[afi]));
           amp[i]-=tAmp*0.01;
@@ -4411,6 +4438,22 @@ function loop(){
         totalEmissions:voiceTotalEmissions,
         ambient:ambientLevel,
         fitness:+currentFitness.toFixed(3)
+      });
+    }catch(e){}
+  }
+  // Pe22p: broadcast encoded genome every 3600 ticks (~60 sec at 60fps; longer if throttled).
+  // Coordinator stores these keyed by lineage. If this tab dies, its latest snapshot
+  // is recoverable by any future tab that joins the network.
+  if(bc&&tick%3600===0){
+    try{
+      const encoded=encodeGenome();
+      bc.postMessage({
+        tab:TAB_ID,type:'genome-snapshot',
+        at:Date.now(),
+        t:genome.totalTicks,gen:genome.generation,
+        pop:N,clusters:clusters.length,fitness:+currentFitness.toFixed(3),
+        extinctions:genome.extinctions,
+        encoded:encoded
       });
     }catch(e){}
   }
@@ -4808,6 +4851,23 @@ document.getElementById('gmute').addEventListener('click',()=>{
   btn.textContent=audioOutMuted?'🔈':'🔇';
   btn.style.color=audioOutMuted?'#f99':'#8af';
   btn.title=audioOutMuted?'tap to unmute':'tap to mute';
+});
+// Pe22p: restore button — ask coordinator for a dead lineage to adopt
+document.getElementById('grest').addEventListener('click',()=>{
+  if(!bc){alert('no broadcast channel');return;}
+  pendingRestoreRequest=true;
+  const btn=document.getElementById('grest');
+  btn.style.color='#ff8';
+  btn.title='requesting lineage from coordinator…';
+  bc.postMessage({tab:TAB_ID,type:'request-genome'});
+  // Timeout — if nothing offered in 5s, reset
+  setTimeout(()=>{
+    if(pendingRestoreRequest){
+      pendingRestoreRequest=false;
+      btn.style.color='#f99';
+      btn.title='no dead lineages available';
+    }
+  },5000);
 });
 // Pe22n: wake lock toggle — keeps the screen awake so the phone doesn't sleep
 document.getElementById('gwake').addEventListener('click',async()=>{
