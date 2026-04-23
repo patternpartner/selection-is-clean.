@@ -502,17 +502,70 @@ let FIELD_DIFFUSE=0.11;  // gentle spread — Pe22b: now genome-driven, can evol
 // This is the system's access to primitives that weren't in the opcode set
 // at design time. JS can generate JS; the genome now uses that fact.
 // ═══════════════════════════════════════
-const USER_VARS=["a","b"];
-const USER_FUNCS=["Math.abs","Math.tanh","Math.sin","Math.cos","Math.sign","Math.sqrt","Math.log1p","Math.exp"];
-const USER_OPS=["+","-","*"];
+const USER_VARS=["a","b","t","n"];
+const USER_FUNCS=["Math.abs","Math.tanh","Math.sin","Math.cos","Math.sign","Math.sqrt","Math.log1p","Math.exp","Math.atan","Math.floor"];
+const USER_OPS=["+","-","*","/"];
+// Pe22q: user atoms can now reach outside the simulation.
+// netFetchScalar is a small async utility — the atom evaluates via a cached
+// scalar derived from a URL the expression names. If no fetch ever happens,
+// the cached value stays 0 and the function is effectively local. If fetch
+// happens and succeeds, subsequent evaluations of that URL return the cached
+// scalar. The system can evolve atoms that incorporate external state.
+const netFetchCache=new Map(); // url → {value, lastFetch, inFlight}
+const NET_FETCH_COOLDOWN=30000; // don't re-fetch same URL more than every 30s
+function netFetchScalar(url){
+  if(typeof url!=='string'||!url.startsWith('http'))return 0;
+  if(url.length>200)return 0;
+  const now=Date.now();
+  const cached=netFetchCache.get(url);
+  if(cached){
+    if(!cached.inFlight&&(now-cached.lastFetch)>NET_FETCH_COOLDOWN){
+      // Refresh in background
+      cached.inFlight=true;
+      fetch(url,{mode:'cors'}).then(r=>r.text()).then(text=>{
+        // Extract a scalar: try numeric parse, fall back to text length normalized
+        let v=parseFloat(text);
+        if(!isFinite(v))v=(text.length%1000)/100;
+        cached.value=v;
+        cached.lastFetch=Date.now();
+        cached.inFlight=false;
+      }).catch(()=>{cached.inFlight=false;cached.lastFetch=now;});
+    }
+    return cached.value||0;
+  }
+  // First time seeing this URL — initiate fetch, return 0 for now
+  netFetchCache.set(url,{value:0,lastFetch:now,inFlight:true});
+  fetch(url,{mode:'cors'}).then(r=>r.text()).then(text=>{
+    let v=parseFloat(text);
+    if(!isFinite(v))v=(text.length%1000)/100;
+    const entry=netFetchCache.get(url);
+    if(entry){entry.value=v;entry.inFlight=false;entry.lastFetch=Date.now();}
+  }).catch(()=>{
+    const entry=netFetchCache.get(url);
+    if(entry){entry.inFlight=false;entry.lastFetch=Date.now();}
+  });
+  return 0;
+}
 function uaGenTerm(){
   const useFunc=Math.random()<0.35;
+  // Pe22q: 5% chance to generate a net-fetch term — reaches outside the simulation
+  const useNet=Math.random()<0.05;
+  if(useNet){
+    // A handful of public endpoints that return small useful numeric/text payloads.
+    // The system evolves which to use; unreachable ones return 0.
+    const urls=[
+      '"https://api.github.com/zen"',
+      '"https://worldtimeapi.org/api/ip"',
+      '"https://api.quotable.io/random"',
+      '"https://httpbin.org/bytes/8"'
+    ];
+    return "netFetchScalar("+urls[(Math.random()*urls.length)|0]+")";
+  }
   const val=Math.random()<0.5
     ? USER_VARS[(Math.random()*USER_VARS.length)|0]
     : (Math.random()*4-2).toFixed(2);
   if(useFunc){
     const fn=USER_FUNCS[(Math.random()*USER_FUNCS.length)|0];
-    // Wrap log1p input in abs to avoid negative domain errors
     const safeVal=(fn==="Math.log1p"||fn==="Math.sqrt")?"Math.abs("+val+")":val;
     return fn+"("+safeVal+")";
   }
@@ -527,7 +580,8 @@ function uaGenExpression(){
 function uaCompile(atom){
   if(atom.compiled||atom.failed)return;
   try{
-    atom.compiled=new Function("a","b","const r=("+atom.expression+");return isFinite(r)?r:0;");
+    // Pe22q: expose netFetchScalar, t (tick), n (pop) as additional variables
+    atom.compiled=new Function("a","b","t","n","netFetchScalar","const r=("+atom.expression+");return isFinite(r)?r:0;");
     atom.failed=false;
   }catch(e){
     atom.compiled=null;
@@ -539,9 +593,9 @@ function uaCall(atom,a,b){
   if(!atom.compiled&&!atom.failed)uaCompile(atom);
   if(atom.failed||!atom.compiled)return 0;
   try{
-    const r=atom.compiled(a,b);
+    const r=atom.compiled(a,b,genome.totalTicks,N,netFetchScalar);
     atom.uses=(atom.uses|0)+1;
-    return isFinite(r)?Math.max(-8,Math.min(8,r)):0;
+    return isFinite(r)?Math.max(-1e6,Math.min(1e6,r)):0; // Pe22q: wider range matches VM clamp
   }catch(e){
     atom.failed=true;
     return 0;
@@ -827,6 +881,15 @@ const echox=new Float32Array(CAP*EL),echoy=new Float32Array(CAP*EL);
 const echoIdx=new Uint8Array(CAP);
 // Cluster membership
 const clusterID=new Int16Array(CAP);
+// Pe22q: DIALOGUE STATE — persistent pairwise interaction state.
+// When a particle's VM executes BEGIN_DIALOGUE (opcode 29), it marks a target
+// particle as dialogue partner for N ticks. During that window, particle-partner
+// interactions carry a turn counter the VM can read as a register source.
+// Each turn the VM can behave differently — enables reciprocal correction patterns.
+const pDialoguePartner=new Int16Array(CAP);
+const pDialogueTicksLeft=new Int16Array(CAP);
+const pDialogueTurn=new Uint8Array(CAP);
+for(let i=0;i<CAP;i++)pDialoguePartner[i]=-1;
 
 let deathsThisTick=0,birthsThisTick=0;
 // BIRTH QUEUE — births deferred to after interaction loop to avoid modifying arrays mid-iteration
@@ -1497,7 +1560,7 @@ function attemptClusterBudding(){
           copy[3]+=(Math.random()-0.5)*0.2;
           // Pe22o: k unclamped.
         }
-        if(Math.random()<cg.innovationRate*0.27)copy[0]=Math.floor(Math.random()*28);
+        if(Math.random()<cg.innovationRate*0.27)copy[0]=Math.floor(Math.random()*31);
         return copy;
       }),
       vmInfluence:Math.max(0.05,c.vmInfluence+(Math.random()-0.5)*0.1),
@@ -1598,7 +1661,7 @@ function profileVM(){
         case 9:break; // skip WRITE_FIELD in profiler
         case 10:break; // skip CLUSTER_WRITE_FIELD in profiler
       }
-      for(let r=0;r<12;r++)vmRegs[r]=Math.max(-8,Math.min(8,vmRegs[r]));
+      for(let r=0;r<12;r++){if(!isFinite(vmRegs[r]))vmRegs[r]=0;else vmRegs[r]=Math.max(-1e6,Math.min(1e6,vmRegs[r]));} // Pe22q: clamp lifted to 1e6, infinities caught
     }
 
     for(let a=0;a<7;a++)totals[a]+=vmActions[a];
@@ -2118,7 +2181,7 @@ function evolvePlasmids(){
       }
       else if(roll<0.58){
         // Structural change (opcode or registers)
-        if(Math.random()<0.5)pPlasmid[base]=Math.floor(Math.random()*28);
+        if(Math.random()<0.5)pPlasmid[base]=Math.floor(Math.random()*31);
         else{
           pPlasmid[base+1]=Math.floor(Math.random()*12);
           pPlasmid[base+2]=Math.floor(Math.random()*12);
@@ -2166,7 +2229,7 @@ function evolvePlasmids(){
     // Spontaneous generation — only in high-resonance environments
     if(nP<MAX_PLASMID&&Math.random()<genome.plasmidSpawnRate*(1+localRes[i]*4)){
       const newBase=i*PLASMID_SLOTS+nP*4;
-      pPlasmid[newBase]=Math.floor(Math.random()*28);
+      pPlasmid[newBase]=Math.floor(Math.random()*31);
       pPlasmid[newBase+1]=Math.floor(Math.random()*12);
       pPlasmid[newBase+2]=Math.floor(Math.random()*12);
       pPlasmid[newBase+3]=(Math.random()-0.5)*0.75;
@@ -2205,7 +2268,7 @@ function attemptHGT(){
     donor[3]+=(Math.random()-0.5)*genome.hgtSpliceNoise;
     donor[3]=Math.max(-2.5,Math.min(2.5,donor[3]));
     // Occasional opcode drift during transfer
-    if(Math.random()<0.08)donor[0]=Math.floor(Math.random()*28);
+    if(Math.random()<0.08)donor[0]=Math.floor(Math.random()*31);
 
     const insertPos=Math.floor(Math.random()*(genome.vmProgram.length+1));
     genome.vmProgram.splice(insertPos,0,donor);
@@ -2581,7 +2644,7 @@ function mutateGenome(){
     // Pe22o: k unclamped.
 
     // Opcode swap — now includes FEEDBACK (5), LOAD_MEM (6), STORE_MEM (7)
-    if(Math.random()<rate*0.2)inst[0]=Math.floor(Math.random()*28);
+    if(Math.random()<rate*0.2)inst[0]=Math.floor(Math.random()*31);
 
     // Source register swap (now 12 registers)
     if(Math.random()<rate*0.2)inst[1]=Math.floor(Math.random()*12);
@@ -2593,7 +2656,7 @@ function mutateGenome(){
   // Program growth: insert a random instruction
   if(genome.vmProgram.length<genome.vmMaxInstructions&&Math.random()<rate*0.15){
     const pos=Math.floor(Math.random()*(genome.vmProgram.length+1));
-    const newInst=[Math.floor(Math.random()*28),Math.floor(Math.random()*12),Math.floor(Math.random()*12),(Math.random()-0.5)*0.6];
+    const newInst=[Math.floor(Math.random()*31),Math.floor(Math.random()*12),Math.floor(Math.random()*12),(Math.random()-0.5)*0.6];
     genome.vmProgram.splice(pos,0,newInst);
   }
 
@@ -2630,7 +2693,7 @@ function mutateGenome(){
       inst[3]+=(Math.random()-0.5)*0.15*scale;
       // Pe22o: k unclamped. The constant is not a designer choice.
       // Structural mutations (rarer)
-      if(Math.random()<0.2)inst[0]=Math.floor(Math.random()*28);
+      if(Math.random()<0.2)inst[0]=Math.floor(Math.random()*31);
       if(Math.random()<0.15)inst[1]=Math.floor(Math.random()*12);
       if(Math.random()<0.15)inst[2]=Math.floor(Math.random()*12);
     }
@@ -3247,7 +3310,7 @@ function executeVM(i,j,sim,d){
     vmRegs[7]+=pReflexState[rBase+1]*reflexInf;   // peakResonance
     vmRegs[8]+=pReflexState[rBase+2]*reflexInf;   // isolation
     vmRegs[9]+=pReflexState[rBase+3]*reflexInf;   // age_pressure
-    for(let r=6;r<=9;r++)vmRegs[r]=Math.max(-8,Math.min(8,vmRegs[r]));
+    for(let r=6;r<=9;r++){if(!isFinite(vmRegs[r]))vmRegs[r]=0;else vmRegs[r]=Math.max(-1e6,Math.min(1e6,vmRegs[r]));}
   }
 
   // Auto-sensors: slots 6,7 get proprioceptive data
@@ -3402,8 +3465,52 @@ function executeVM(i,j,sim,d){
       case 25:vmRegs[di]=(collectiveFreqDominant*16-8)*k;break;
       case 26:vmRegs[di]=collectiveVoiceActivity*k*8;break;
       case 27:vmRegs[di]=collectiveDivergence*k*8;break;
+      // 28: WRITE_SELF — Pe22q. Particle writes to its own VM program during execution.
+      // vmRegs[si] becomes the new value for field (dst%4) of instruction (k mod prog.length).
+      // This is reflexivity crossing from read to write. The VM rewrites itself while running.
+      // Cost is amplitude — self-modification is metabolic.
+      case 28:{
+        if(genome.vmProgram&&genome.vmProgram.length>0&&amp[i]>0.15){
+          const targetIdx=Math.abs(Math.floor(k))%genome.vmProgram.length;
+          const targetField=Math.abs(dst)%4;
+          const newValue=vmRegs[si];
+          // Write, but constrain: op field (0) and reg fields (1,2) stay integer; k field (3) stays float
+          if(targetField===0){
+            genome.vmProgram[targetIdx][0]=Math.abs(Math.floor(newValue))%31; // opcode range
+          }else if(targetField===1||targetField===2){
+            genome.vmProgram[targetIdx][targetField]=Math.abs(Math.floor(newValue))%12;
+          }else{
+            genome.vmProgram[targetIdx][3]=newValue;
+          }
+          amp[i]-=0.01; // cost
+        }
+      }break;
+      // 29: BEGIN_DIALOGUE — Pe22q. Mark j as this particle's dialogue partner for N ticks.
+      // Duration from |k| ticks. While active, interactions with j carry a turn counter
+      // that opcode 30 can read. This enables reciprocal correction patterns to evolve.
+      case 29:{
+        if(j!==i&&palive[j]){
+          const duration=Math.min(200,Math.max(3,Math.abs(Math.floor(k*10))));
+          pDialoguePartner[i]=j;
+          pDialogueTicksLeft[i]=duration;
+          pDialogueTurn[i]=0;
+          // Symmetric: mark j too, so the dialogue is mutual
+          pDialoguePartner[j]=i;
+          pDialogueTicksLeft[j]=duration;
+          pDialogueTurn[j]=0;
+        }
+      }break;
+      // 30: READ_DIALOGUE_TURN — read current dialogue turn counter.
+      // 0 if no active dialogue with j. Non-zero during active dialogue, incremented each turn.
+      case 30:{
+        if(pDialoguePartner[i]===j&&pDialogueTicksLeft[i]>0){
+          vmRegs[di]=pDialogueTurn[i]*k;
+        }else{
+          vmRegs[di]=0;
+        }
+      }break;
     }
-    for(let r=0;r<12;r++)vmRegs[r]=Math.max(-8,Math.min(8,vmRegs[r]));
+    for(let r=0;r<12;r++){if(!isFinite(vmRegs[r]))vmRegs[r]=0;else vmRegs[r]=Math.max(-1e6,Math.min(1e6,vmRegs[r]));} // Pe22q: clamp lifted to 1e6, infinities caught
   }
 
   // Write back registers 4-11 to particle memory
@@ -3512,8 +3619,41 @@ function executeVM(i,j,sim,d){
         case 25:vmRegs[di]=(collectiveFreqDominant*16-8)*k;break;
         case 26:vmRegs[di]=collectiveVoiceActivity*k*8;break;
         case 27:vmRegs[di]=collectiveDivergence*k*8;break;
+        case 28:{
+          if(genome.vmProgram&&genome.vmProgram.length>0&&amp[i]>0.15){
+            const targetIdx=Math.abs(Math.floor(k))%genome.vmProgram.length;
+            const targetField=Math.abs(dst)%4;
+            const newValue=vmRegs[si];
+            if(targetField===0){
+              genome.vmProgram[targetIdx][0]=Math.abs(Math.floor(newValue))%31;
+            }else if(targetField===1||targetField===2){
+              genome.vmProgram[targetIdx][targetField]=Math.abs(Math.floor(newValue))%12;
+            }else{
+              genome.vmProgram[targetIdx][3]=newValue;
+            }
+            amp[i]-=0.01;
+          }
+        }break;
+        case 29:{
+          if(j!==i&&palive[j]){
+            const duration=Math.min(200,Math.max(3,Math.abs(Math.floor(k*10))));
+            pDialoguePartner[i]=j;
+            pDialogueTicksLeft[i]=duration;
+            pDialogueTurn[i]=0;
+            pDialoguePartner[j]=i;
+            pDialogueTicksLeft[j]=duration;
+            pDialogueTurn[j]=0;
+          }
+        }break;
+        case 30:{
+          if(pDialoguePartner[i]===j&&pDialogueTicksLeft[i]>0){
+            vmRegs[di]=pDialogueTurn[i]*k;
+          }else{
+            vmRegs[di]=0;
+          }
+        }break;
       }
-      for(let r=0;r<12;r++)vmRegs[r]=Math.max(-8,Math.min(8,vmRegs[r]));
+      for(let r=0;r<12;r++){if(!isFinite(vmRegs[r]))vmRegs[r]=0;else vmRegs[r]=Math.max(-1e6,Math.min(1e6,vmRegs[r]));} // Pe22q: clamp lifted to 1e6, infinities caught
     }
     // Plasmid metabolic cost (lighter than global — personal DNA is small)
     amp[i]-=nPi*genome.metabolicCost*0.5;
@@ -3766,8 +3906,52 @@ function executeClusterVM(i,j,sim,d){
       case 25:vmRegs[di]=(collectiveFreqDominant*16-8)*k;break;
       case 26:vmRegs[di]=collectiveVoiceActivity*k*8;break;
       case 27:vmRegs[di]=collectiveDivergence*k*8;break;
+      // 28: WRITE_SELF — Pe22q. Particle writes to its own VM program during execution.
+      // vmRegs[si] becomes the new value for field (dst%4) of instruction (k mod prog.length).
+      // This is reflexivity crossing from read to write. The VM rewrites itself while running.
+      // Cost is amplitude — self-modification is metabolic.
+      case 28:{
+        if(genome.vmProgram&&genome.vmProgram.length>0&&amp[i]>0.15){
+          const targetIdx=Math.abs(Math.floor(k))%genome.vmProgram.length;
+          const targetField=Math.abs(dst)%4;
+          const newValue=vmRegs[si];
+          // Write, but constrain: op field (0) and reg fields (1,2) stay integer; k field (3) stays float
+          if(targetField===0){
+            genome.vmProgram[targetIdx][0]=Math.abs(Math.floor(newValue))%31; // opcode range
+          }else if(targetField===1||targetField===2){
+            genome.vmProgram[targetIdx][targetField]=Math.abs(Math.floor(newValue))%12;
+          }else{
+            genome.vmProgram[targetIdx][3]=newValue;
+          }
+          amp[i]-=0.01; // cost
+        }
+      }break;
+      // 29: BEGIN_DIALOGUE — Pe22q. Mark j as this particle's dialogue partner for N ticks.
+      // Duration from |k| ticks. While active, interactions with j carry a turn counter
+      // that opcode 30 can read. This enables reciprocal correction patterns to evolve.
+      case 29:{
+        if(j!==i&&palive[j]){
+          const duration=Math.min(200,Math.max(3,Math.abs(Math.floor(k*10))));
+          pDialoguePartner[i]=j;
+          pDialogueTicksLeft[i]=duration;
+          pDialogueTurn[i]=0;
+          // Symmetric: mark j too, so the dialogue is mutual
+          pDialoguePartner[j]=i;
+          pDialogueTicksLeft[j]=duration;
+          pDialogueTurn[j]=0;
+        }
+      }break;
+      // 30: READ_DIALOGUE_TURN — read current dialogue turn counter.
+      // 0 if no active dialogue with j. Non-zero during active dialogue, incremented each turn.
+      case 30:{
+        if(pDialoguePartner[i]===j&&pDialogueTicksLeft[i]>0){
+          vmRegs[di]=pDialogueTurn[i]*k;
+        }else{
+          vmRegs[di]=0;
+        }
+      }break;
     }
-    for(let r=0;r<12;r++)vmRegs[r]=Math.max(-8,Math.min(8,vmRegs[r]));
+    for(let r=0;r<12;r++){if(!isFinite(vmRegs[r]))vmRegs[r]=0;else vmRegs[r]=Math.max(-1e6,Math.min(1e6,vmRegs[r]));} // Pe22q: clamp lifted to 1e6, infinities caught
   }
 
   // ═══ APPLY ALL FIVE ACTION CHANNELS ═══
@@ -3966,7 +4150,7 @@ function executeSoloVM(){
       vmRegs[7]+=pReflexState[rBase+1]*reflexInf;
       vmRegs[8]+=pReflexState[rBase+2]*reflexInf;
       vmRegs[9]+=pReflexState[rBase+3]*reflexInf;
-      for(let r=6;r<=9;r++)vmRegs[r]=Math.max(-8,Math.min(8,vmRegs[r]));
+      for(let r=6;r<=9;r++){if(!isFinite(vmRegs[r]))vmRegs[r]=0;else vmRegs[r]=Math.max(-1e6,Math.min(1e6,vmRegs[r]));}
     }
 
     vmActions[0]=0;vmActions[1]=0;vmActions[2]=0;vmActions[3]=0;vmActions[4]=0;vmActions[5]=0;vmActions[6]=0;vmActions[7]=0;
@@ -4060,8 +4244,41 @@ function executeSoloVM(){
         case 25:vmRegs[di]=(collectiveFreqDominant*16-8)*k;break;
         case 26:vmRegs[di]=collectiveVoiceActivity*k*8;break;
         case 27:vmRegs[di]=collectiveDivergence*k*8;break;
+        case 28:{
+          if(genome.vmProgram&&genome.vmProgram.length>0&&amp[i]>0.15){
+            const targetIdx=Math.abs(Math.floor(k))%genome.vmProgram.length;
+            const targetField=Math.abs(dst)%4;
+            const newValue=vmRegs[si];
+            if(targetField===0){
+              genome.vmProgram[targetIdx][0]=Math.abs(Math.floor(newValue))%31;
+            }else if(targetField===1||targetField===2){
+              genome.vmProgram[targetIdx][targetField]=Math.abs(Math.floor(newValue))%12;
+            }else{
+              genome.vmProgram[targetIdx][3]=newValue;
+            }
+            amp[i]-=0.01;
+          }
+        }break;
+        case 29:{
+          if(j!==i&&palive[j]){
+            const duration=Math.min(200,Math.max(3,Math.abs(Math.floor(k*10))));
+            pDialoguePartner[i]=j;
+            pDialogueTicksLeft[i]=duration;
+            pDialogueTurn[i]=0;
+            pDialoguePartner[j]=i;
+            pDialogueTicksLeft[j]=duration;
+            pDialogueTurn[j]=0;
+          }
+        }break;
+        case 30:{
+          if(pDialoguePartner[i]===j&&pDialogueTicksLeft[i]>0){
+            vmRegs[di]=pDialogueTurn[i]*k;
+          }else{
+            vmRegs[di]=0;
+          }
+        }break;
       }
-      for(let r=0;r<12;r++)vmRegs[r]=Math.max(-8,Math.min(8,vmRegs[r]));
+      for(let r=0;r<12;r++){if(!isFinite(vmRegs[r]))vmRegs[r]=0;else vmRegs[r]=Math.max(-1e6,Math.min(1e6,vmRegs[r]));} // Pe22q: clamp lifted to 1e6, infinities caught
     }
 
     // Write back particle memory
@@ -4624,6 +4841,33 @@ function loop(){
 
   // Reset peak bond tracker each tick
   if(tick%10===0)peakBondThisTick*=0.8; // decay rather than hard reset
+
+  // Pe22q: DIALOGUE DECAY — decrement remaining time, advance turn counter every 5 ticks.
+  // When ticks hit zero, dialogue ends.
+  for(let i=0;i<N;i++){
+    if(!palive[i])continue;
+    if(pDialogueTicksLeft[i]>0){
+      pDialogueTicksLeft[i]--;
+      if(pDialogueTicksLeft[i]===0){
+        // End of dialogue — clear
+        const partner=pDialoguePartner[i];
+        pDialoguePartner[i]=-1;
+        pDialogueTurn[i]=0;
+        // If partner still thinks we're in dialogue with them, don't clear theirs —
+        // it might have been a one-sided end (e.g. dialogue with a dying particle).
+      }else if(pDialogueTicksLeft[i]%5===0){
+        // Advance turn every 5 ticks
+        if(pDialogueTurn[i]<255)pDialogueTurn[i]++;
+      }
+    }
+    // Also: if partner died, clear
+    const p=pDialoguePartner[i];
+    if(p>=0&&p<CAP&&!palive[p]){
+      pDialoguePartner[i]=-1;
+      pDialogueTicksLeft[i]=0;
+      pDialogueTurn[i]=0;
+    }
+  }
 
   // ═══ GENOME ARCHIVING ═══
   if(tick%900===0&&tick>900)archiveGenome();
