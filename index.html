@@ -550,9 +550,9 @@ function uaGenTerm(){
   const useFunc=Math.random()<0.35;
   // Pe22q: 5% chance to generate a net-fetch term — reaches outside the simulation
   const useNet=Math.random()<0.05;
+  // Pe22s: 5% chance to generate a self-introspection term — reads the page itself
+  const useDoc=Math.random()<0.05;
   if(useNet){
-    // A handful of public endpoints that return small useful numeric/text payloads.
-    // The system evolves which to use; unreachable ones return 0.
     const urls=[
       '"https://api.github.com/zen"',
       '"https://worldtimeapi.org/api/ip"',
@@ -560,6 +560,10 @@ function uaGenTerm(){
       '"https://httpbin.org/bytes/8"'
     ];
     return "netFetchScalar("+urls[(Math.random()*urls.length)|0]+")";
+  }
+  if(useDoc){
+    const readables=['"urlLen"','"titleLen"','"scrollY"','"width"','"height"','"timeOfDay"','"dayOfWeek"','"battery"'];
+    return "docReadScalar("+readables[(Math.random()*readables.length)|0]+")";
   }
   const val=Math.random()<0.5
     ? USER_VARS[(Math.random()*USER_VARS.length)|0]
@@ -577,11 +581,155 @@ function uaGenExpression(){
   const op=USER_OPS[(Math.random()*USER_OPS.length)|0];
   return "("+t1+")"+op+"("+t2+")";
 }
+
+// Pe22s: EXPRESSION TREE VM — opcode bodies as evolvable data.
+// Each tree node is {t:type, ...fields}.
+// Leaves: const/reg/k/si/di/amp/fld/pop.
+// Ops: add/sub/mul/tanh/sign/abs/neg/min/max/cond.
+// Lineages evolve what their opcodes actually compute. Semantics becomes genetic.
+const TREE_LEAVES=['const','reg','k','si','di','amp','fld','pop'];
+const TREE_OPS_UN=['tanh','sign','abs','neg'];
+const TREE_OPS_BIN=['add','mul','sub','min','max'];
+function genTreeLeaf(){
+  const t=TREE_LEAVES[(Math.random()*TREE_LEAVES.length)|0];
+  if(t==='const')return{t:'const',v:+(Math.random()*4-2).toFixed(3)};
+  if(t==='reg')return{t:'reg',i:(Math.random()*12)|0};
+  return{t};
+}
+function genTreeNode(depth){
+  if(depth<=0||Math.random()<0.45)return genTreeLeaf();
+  const r=Math.random();
+  if(r<0.25){const op=TREE_OPS_UN[(Math.random()*TREE_OPS_UN.length)|0];return{t:op,a:genTreeNode(depth-1)};}
+  if(r<0.92){const op=TREE_OPS_BIN[(Math.random()*TREE_OPS_BIN.length)|0];return{t:op,a:genTreeNode(depth-1),b:genTreeNode(depth-1)};}
+  return{t:'cond',c:genTreeNode(depth-1),a:genTreeNode(depth-1),b:genTreeNode(depth-1)};
+}
+function evalTree(n,ctx){
+  if(!n)return 0;
+  switch(n.t){
+    case'const':return n.v;
+    case'reg':return ctx.regs[n.i]||0;
+    case'k':return ctx.k;
+    case'si':return ctx.si;
+    case'di':return ctx.di;
+    case'amp':return ctx.amp;
+    case'fld':return ctx.fld;
+    case'pop':return ctx.pop;
+    case'add':return evalTree(n.a,ctx)+evalTree(n.b,ctx);
+    case'sub':return evalTree(n.a,ctx)-evalTree(n.b,ctx);
+    case'mul':return evalTree(n.a,ctx)*evalTree(n.b,ctx);
+    case'tanh':return Math.tanh(evalTree(n.a,ctx));
+    case'sign':return Math.sign(evalTree(n.a,ctx));
+    case'abs':return Math.abs(evalTree(n.a,ctx));
+    case'neg':return -evalTree(n.a,ctx);
+    case'min':return Math.min(evalTree(n.a,ctx),evalTree(n.b,ctx));
+    case'max':return Math.max(evalTree(n.a,ctx),evalTree(n.b,ctx));
+    case'cond':{const c=evalTree(n.c,ctx);return c>0?evalTree(n.a,ctx):evalTree(n.b,ctx);}
+  }
+  return 0;
+}
+function mutateTree(n,rate,scale){
+  if(!n)return genTreeLeaf();
+  if(Math.random()<rate*0.3)return genTreeNode(2);
+  if(n.t==='const'&&Math.random()<rate)return{t:'const',v:n.v+(Math.random()-0.5)*scale*2};
+  if(n.t==='reg'&&Math.random()<rate*0.5)return{t:'reg',i:(Math.random()*12)|0};
+  const out={...n};
+  if(n.a)out.a=mutateTree(n.a,rate,scale);
+  if(n.b)out.b=mutateTree(n.b,rate,scale);
+  if(n.c)out.c=mutateTree(n.c,rate,scale);
+  return out;
+}
+function treeSize(n){
+  if(!n)return 0;
+  let s=1;
+  if(n.a)s+=treeSize(n.a);
+  if(n.b)s+=treeSize(n.b);
+  if(n.c)s+=treeSize(n.c);
+  return s;
+}
+function mutateOpcodeBodies(g,rate,scale){
+  if(!g.opcodeBodies)g.opcodeBodies={};
+  if(Math.random()<0.03){
+    const target=(Math.random()*31)|0;
+    g.opcodeBodies[target]={tree:genTreeNode(3),writeTo:(Math.random()*12)|0};
+  }
+  for(const k in g.opcodeBodies){
+    if(Math.random()<rate){
+      const body=g.opcodeBodies[k];
+      body.tree=mutateTree(body.tree,rate,scale);
+      if(Math.random()<rate*0.3)body.writeTo=(Math.random()*12)|0;
+      if(treeSize(body.tree)>40)body.tree=genTreeNode(3);
+    }
+    if(Math.random()<0.02)delete g.opcodeBodies[k];
+  }
+  // Pe22s: execution schedule mutation. Occasionally create a schedule, then mutate it.
+  // A schedule is an array of instruction indices; null means sequential default.
+  if(g.vmProgram&&g.vmProgram.length>0){
+    if(!g.executionSchedule&&Math.random()<0.02){
+      // Seed with sequential schedule, then will drift
+      g.executionSchedule=[];
+      for(let i=0;i<g.vmProgram.length;i++)g.executionSchedule.push(i);
+    }
+    if(g.executionSchedule){
+      if(Math.random()<rate){
+        // Swap two indices
+        const a=(Math.random()*g.executionSchedule.length)|0;
+        const b=(Math.random()*g.executionSchedule.length)|0;
+        const tmp=g.executionSchedule[a];
+        g.executionSchedule[a]=g.executionSchedule[b];
+        g.executionSchedule[b]=tmp;
+      }
+      if(Math.random()<rate*0.3&&g.executionSchedule.length<g.vmProgram.length*3){
+        // Add a repeat — can cause instruction to run twice
+        g.executionSchedule.push((Math.random()*g.vmProgram.length)|0);
+      }
+      if(Math.random()<rate*0.3&&g.executionSchedule.length>g.vmProgram.length/2){
+        // Remove an entry — can cause instruction to be skipped
+        g.executionSchedule.splice((Math.random()*g.executionSchedule.length)|0,1);
+      }
+      // Small chance to delete schedule entirely, returning to sequential default
+      if(Math.random()<0.005)g.executionSchedule=null;
+    }
+  }
+}
+
+// Pe22s: SELF-INTROSPECTION primitives exposed to userAtoms.
+// The system can read its own page state — URL, title, document size,
+// scroll position, viewport dimensions. The boundary between "simulation"
+// and "page containing the simulation" becomes porous. The system can
+// evolve atoms that incorporate aspects of its own embedding.
+function docReadScalar(what){
+  try{
+    if(what==='urlLen')return(document.location.href.length%1000)/100;
+    if(what==='titleLen')return(document.title.length%100)/10;
+    if(what==='scrollY')return(window.scrollY%1000)/100;
+    if(what==='width')return(window.innerWidth%1000)/100;
+    if(what==='height')return(window.innerHeight%1000)/100;
+    if(what==='timeOfDay')return(new Date().getHours()+new Date().getMinutes()/60)/24;
+    if(what==='dayOfWeek')return new Date().getDay()/7;
+    if(what==='battery')return 0; // placeholder; async api
+  }catch(e){}
+  return 0;
+}
+// Battery async update if available
+if(navigator.getBattery){
+  navigator.getBattery().then(b=>{
+    let batLevel=b.level||0;
+    const upd=()=>{batLevel=b.level||0;};
+    b.addEventListener('levelchange',upd);
+    docReadScalar=(function(orig){
+      return function(what){
+        if(what==='battery')return batLevel;
+        return orig(what);
+      };
+    })(docReadScalar);
+  }).catch(()=>{});
+}
+
 function uaCompile(atom){
   if(atom.compiled||atom.failed)return;
   try{
     // Pe22q: expose netFetchScalar, t (tick), n (pop) as additional variables
-    atom.compiled=new Function("a","b","t","n","netFetchScalar","const r=("+atom.expression+");return isFinite(r)?r:0;");
+    atom.compiled=new Function("a","b","t","n","netFetchScalar","docReadScalar","const r=("+atom.expression+");return isFinite(r)?r:0;");
     atom.failed=false;
   }catch(e){
     atom.compiled=null;
@@ -593,7 +741,7 @@ function uaCall(atom,a,b){
   if(!atom.compiled&&!atom.failed)uaCompile(atom);
   if(atom.failed||!atom.compiled)return 0;
   try{
-    const r=atom.compiled(a,b,genome.totalTicks,N,netFetchScalar);
+    const r=atom.compiled(a,b,genome.totalTicks,N,netFetchScalar,docReadScalar);
     atom.uses=(atom.uses|0)+1;
     return isFinite(r)?Math.max(-1e6,Math.min(1e6,r)):0; // Pe22q: wider range matches VM clamp
   }catch(e){
@@ -712,6 +860,28 @@ let genome={
   ],
   vmMaxInstructions:16, // can evolve to grow/shrink the program
   vmInfluence:0.3,      // ratio of VM effects vs hardcoded physics. EVOLVES.
+  // Pe22r: OPCODE PERMUTATION. Maps opcode-number-in-program → actual-opcode-that-executes.
+  // This is evolvable per lineage. When the VM encounters opcode N in the program,
+  // it executes opcodeMap[N]'s semantics instead. Different lineages effectively
+  // run different machine languages. Motifs transferred across lineages with different
+  // permutations mean something different in each. The designer's opcode naming becomes
+  // informational, not structural. Identity permutation [0,1,2,...,30] = no change.
+  opcodeMap:[0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20,21,22,23,24,25,26,27,28,29,30],
+  // Pe22s: EVOLVABLE OPCODE BODIES.
+  // Each opcode-meaning can be overridden with an expression tree that computes
+  // what the opcode does. If opcodeBodies[meaning] is null, falls through to the
+  // hardcoded implementation in the VM switch. If non-null, the tree is evaluated
+  // and the result written to the target register. This lets lineages evolve
+  // what their opcodes ACTUALLY DO, not just what opcode-numbers mean.
+  // Starts empty; mutation grows custom bodies over time.
+  opcodeBodies:{},
+  // Pe22s: EVOLVABLE EXECUTION SCHEDULE.
+  // An array of instruction indices describing execution order. Default null =
+  // sequential execution of the program as written. When non-null, the VM walks
+  // this schedule instead, which can repeat instructions, skip them, or visit
+  // them out of order. Mutation grows schedules that deviate from sequential.
+  // This makes the execution model itself evolvable, not just the content.
+  executionSchedule:null,
   ruleScale:1.0,
   metabolicCost:0.00002,  // amp cost PER INSTRUCTION PER INTERACTION. Evolves.
                           // Forces elegant code: bloated programs starve.
@@ -928,7 +1098,13 @@ function encodeGenome(){
     V:genome.vmProgram.map(inst=>[inst[0],inst[1],inst[2],+(inst[3].toFixed(3))]),
     vi:+(genome.vmInfluence.toPrecision(3)),
     vs:+(genome.ruleScale.toPrecision(3)),
-    vm:genome.vmMaxInstructions
+    vm:genome.vmMaxInstructions,
+    // Pe22r: opcode permutation — evolvable machine language identity
+    om:genome.opcodeMap?genome.opcodeMap.slice():null,
+    // Pe22s: opcode body trees — evolvable semantics
+    ob:genome.opcodeBodies?genome.opcodeBodies:null,
+    // Pe22s: execution schedule — evolvable execution order
+    es:genome.executionSchedule?genome.executionSchedule.slice():null
   };
   return btoa(JSON.stringify(g));
 }
@@ -987,6 +1163,9 @@ function decodeGenome(hash){
     if(g.vi!==undefined)genome.vmInfluence=g.vi;
     if(g.vs)genome.ruleScale=g.vs;
     if(g.vm)genome.vmMaxInstructions=g.vm;
+    if(g.om&&Array.isArray(g.om)&&g.om.length>0)genome.opcodeMap=g.om.slice();
+    if(g.ob&&typeof g.ob==='object')genome.opcodeBodies=g.ob;
+    if(g.es&&Array.isArray(g.es))genome.executionSchedule=g.es.slice();
     return true;
   }catch(e){return false}
 }
@@ -1648,7 +1827,17 @@ function profileVM(){
       const inst=prog[ip];if(!inst)continue;
       const [op,src,dst,k]=inst;
       const si=Math.abs(src)%12,di=Math.abs(dst)%12;
-      switch(op){
+      const remappedOp=(genome.opcodeMap&&genome.opcodeMap[op]!==undefined)?genome.opcodeMap[op]:op;
+      // Pe22s: evolvable opcode body — if a custom tree exists for this opcode, evaluate it.
+      const __body=genome.opcodeBodies&&genome.opcodeBodies[remappedOp];
+      if(__body){
+        const __fx=Math.floor(px[i]/(W/FIELD_W)),__fy=Math.floor(py[i]/(H/FIELD_H));
+        const __fi=Math.max(0,Math.min(FIELD_W*FIELD_H-1,__fy*FIELD_W+__fx));
+        const __r=evalTree(__body.tree,{regs:vmRegs,k,si,di,amp:amp[i],fld:field[__fi]||0,pop:N});
+        if(isFinite(__r))vmRegs[__body.writeTo||0]=Math.max(-1e6,Math.min(1e6,__r));
+        continue;
+      }
+      switch(remappedOp){
         case 0:vmRegs[di]=vmRegs[si];break;
         case 1:vmRegs[di]+=vmRegs[si]*k;break;
         case 2:vmRegs[di]*=vmRegs[si]*(k||1);break;
@@ -2508,6 +2697,21 @@ function mutateGenome(){
   genome.vmMaxInstructions=Math.max(1,Math.min(48,Math.round(maybe(genome.vmMaxInstructions,6,20,1))));
   genome.metabolicCost=maybe(genome.metabolicCost,0.000002,0.0002,0.00002);
 
+  // Pe22r: OPCODE PERMUTATION MUTATION.
+  // Occasionally swap two entries in the opcode map. This is how lineages drift
+  // into different machine languages. One swap per mutation cycle at low rate —
+  // too fast and programs break faster than selection can filter.
+  if(!genome.opcodeMap)genome.opcodeMap=[0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20,21,22,23,24,25,26,27,28,29,30];
+  if(Math.random()<0.08){
+    const a=Math.floor(Math.random()*genome.opcodeMap.length);
+    const b=Math.floor(Math.random()*genome.opcodeMap.length);
+    const tmp=genome.opcodeMap[a];
+    genome.opcodeMap[a]=genome.opcodeMap[b];
+    genome.opcodeMap[b]=tmp;
+  }
+  // Pe22s: mutate evolvable opcode bodies — the semantics of opcodes become genetic
+  mutateOpcodeBodies(genome,genome.mutationRate||0.1,genome.mutationScale||0.15);
+
   // HGT parameter evolution
   genome.hgtRate=maybe(genome.hgtRate,0.01,0.5,0.04);
   genome.hgtMax=Math.max(1,Math.min(12,Math.round(maybe(genome.hgtMax,1,4,0.5))));
@@ -3325,12 +3529,25 @@ function executeVM(i,j,sim,d){
   const totalCost=nInst*genome.metabolicCost;
   amp[i]-=totalCost;amp[j]-=totalCost;
 
-  for(let ip=0,_vs=0;ip<nInst&&_vs<nInst*2;ip++,_vs++){
+  // Pe22s: if genome has evolved an execution schedule, walk it. Otherwise sequential.
+  const __sched=genome.executionSchedule;
+  const __schedLen=__sched?Math.min(__sched.length,nInst*3):nInst;
+  for(let __step=0,_vs=0;__step<__schedLen&&_vs<__schedLen*2;__step++,_vs++){
+    const ip=__sched?(__sched[__step]%nInst):__step;
     const inst=prog[ip];if(!inst)continue;
     const [op,src,dst,k]=inst;
     const si=Math.abs(src)%12,di=Math.abs(dst)%12;
+    const remappedOp=(genome.opcodeMap&&genome.opcodeMap[op]!==undefined)?genome.opcodeMap[op]:op;
+    const __body=genome.opcodeBodies&&genome.opcodeBodies[remappedOp];
+    if(__body){
+      const __fx=Math.floor(px[i]/(W/FIELD_W)),__fy=Math.floor(py[i]/(H/FIELD_H));
+      const __fi=Math.max(0,Math.min(FIELD_W*FIELD_H-1,__fy*FIELD_W+__fx));
+      const __r=evalTree(__body.tree,{regs:vmRegs,k,si,di,amp:amp[i],fld:field[__fi]||0,pop:N});
+      if(isFinite(__r))vmRegs[__body.writeTo||0]=Math.max(-1e6,Math.min(1e6,__r));
+      continue;
+    }
 
-    switch(op){
+    switch(remappedOp){
       case 0:vmRegs[di]=vmRegs[si];break;
       case 1:vmRegs[di]+=vmRegs[si]*k;break;
       case 2:vmRegs[di]*=vmRegs[si]*(k||1);break;
@@ -3530,7 +3747,17 @@ function executeVM(i,j,sim,d){
       const dst=pPlasmid[pBase+ip*4+2]|0;
       const k=pPlasmid[pBase+ip*4+3];
       const si=Math.abs(src)%12,di=Math.abs(dst)%12;
-      switch(op){
+      const remappedOp=(genome.opcodeMap&&genome.opcodeMap[op]!==undefined)?genome.opcodeMap[op]:op;
+      // Pe22s: evolvable opcode body — if a custom tree exists for this opcode, evaluate it.
+      const __body=genome.opcodeBodies&&genome.opcodeBodies[remappedOp];
+      if(__body){
+        const __fx=Math.floor(px[i]/(W/FIELD_W)),__fy=Math.floor(py[i]/(H/FIELD_H));
+        const __fi=Math.max(0,Math.min(FIELD_W*FIELD_H-1,__fy*FIELD_W+__fx));
+        const __r=evalTree(__body.tree,{regs:vmRegs,k,si,di,amp:amp[i],fld:field[__fi]||0,pop:N});
+        if(isFinite(__r))vmRegs[__body.writeTo||0]=Math.max(-1e6,Math.min(1e6,__r));
+        continue;
+      }
+      switch(remappedOp){
         case 0:vmRegs[di]=vmRegs[si];break;
         case 1:vmRegs[di]+=vmRegs[si]*k;break;
         case 2:vmRegs[di]*=vmRegs[si]*(k||1);break;
@@ -3800,7 +4027,16 @@ function executeClusterVM(i,j,sim,d){
     const inst=prog[ip];if(!inst)continue;
     const [op,src,dst,k]=inst;
     const si=Math.abs(src)%12,di=Math.abs(dst)%12;
-    switch(op){
+    const remappedOp=(genome.opcodeMap&&genome.opcodeMap[op]!==undefined)?genome.opcodeMap[op]:op;
+    const __body=genome.opcodeBodies&&genome.opcodeBodies[remappedOp];
+    if(__body){
+      const __fx=Math.floor(px[i]/(W/FIELD_W)),__fy=Math.floor(py[i]/(H/FIELD_H));
+      const __fi=Math.max(0,Math.min(FIELD_W*FIELD_H-1,__fy*FIELD_W+__fx));
+      const __r=evalTree(__body.tree,{regs:vmRegs,k,si,di,amp:amp[i],fld:field[__fi]||0,pop:N});
+      if(isFinite(__r))vmRegs[__body.writeTo||0]=Math.max(-1e6,Math.min(1e6,__r));
+      continue;
+    }
+    switch(remappedOp){
       case 0:vmRegs[di]=vmRegs[si];break;
       case 1:vmRegs[di]+=vmRegs[si]*k;break;
       case 2:vmRegs[di]*=vmRegs[si]*(k||1);break;
@@ -4160,7 +4396,17 @@ function executeSoloVM(){
       const inst=prog[ip];if(!inst)continue;
       const [op,src,dst,k]=inst;
       const si=Math.abs(src)%12,di=Math.abs(dst)%12;
-      switch(op){
+      const remappedOp=(genome.opcodeMap&&genome.opcodeMap[op]!==undefined)?genome.opcodeMap[op]:op;
+      // Pe22s: evolvable opcode body — if a custom tree exists for this opcode, evaluate it.
+      const __body=genome.opcodeBodies&&genome.opcodeBodies[remappedOp];
+      if(__body){
+        const __fx=Math.floor(px[i]/(W/FIELD_W)),__fy=Math.floor(py[i]/(H/FIELD_H));
+        const __fi=Math.max(0,Math.min(FIELD_W*FIELD_H-1,__fy*FIELD_W+__fx));
+        const __r=evalTree(__body.tree,{regs:vmRegs,k,si,di,amp:amp[i],fld:field[__fi]||0,pop:N});
+        if(isFinite(__r))vmRegs[__body.writeTo||0]=Math.max(-1e6,Math.min(1e6,__r));
+        continue;
+      }
+      switch(remappedOp){
         case 0:vmRegs[di]=vmRegs[si];break;
         case 1:vmRegs[di]+=vmRegs[si]*k;break;
         case 2:vmRegs[di]*=vmRegs[si]*(k||1);break;
@@ -4949,7 +5195,25 @@ function loop(){
     if(collectivePeers>0){
       amTag+=` | ◈${collectivePeers}tabs`;
     }
-    genEl.textContent=`gen${genome.generation} ${genome.extinctions}☠ t${genome.totalTicks} | ${clusters.length}cl(${clVMActive}vm${budCount>0?','+budCount+'bud':''}) ${livingLin}lin fit:${currentFitness.toFixed(2)} stb:${(selfModel.stability||0).toFixed(2)} | vm:${genome.vmProgram.length}inst ${nSensors}sns ${hgtEventsTotal}hgt | pop:${N}/${CAP} fld:${fieldTotal.toFixed(0)}${fTrend<-0.01?'↓':fTrend>0.01?'↑':'~'} risk:${cRisk.toFixed(2)} | ⟲${rInf.toFixed(2)} ${reflexClusters}rc${netTag}${cgTag}${uaTag}${amTag}`;
+    // Pe22r: compute how far opcode map has drifted from identity (fraction of non-identity entries)
+    let langDiv=0;
+    if(genome.opcodeMap){
+      for(let i=0;i<genome.opcodeMap.length;i++)if(genome.opcodeMap[i]!==i)langDiv++;
+      langDiv=langDiv/genome.opcodeMap.length;
+    }
+    const langTag=langDiv>0?` | lang:${(langDiv*100).toFixed(0)}%`:'';
+    // Pe22s: show how many opcode bodies have been overridden with custom trees
+    const bodyCount=genome.opcodeBodies?Object.keys(genome.opcodeBodies).length:0;
+    const bodyTag=bodyCount>0?` ob:${bodyCount}`:'';
+    // Pe22s: show if execution schedule has evolved past sequential
+    let schedTag='';
+    if(genome.executionSchedule){
+      const schedLen=genome.executionSchedule.length;
+      const progLen=genome.vmProgram.length;
+      const ratio=(schedLen/Math.max(1,progLen)).toFixed(1);
+      schedTag=` es:${schedLen}/${ratio}x`;
+    }
+    genEl.textContent=`gen${genome.generation} ${genome.extinctions}☠ t${genome.totalTicks} | ${clusters.length}cl(${clVMActive}vm${budCount>0?','+budCount+'bud':''}) ${livingLin}lin fit:${currentFitness.toFixed(2)} stb:${(selfModel.stability||0).toFixed(2)} | vm:${genome.vmProgram.length}inst${bodyTag}${schedTag} ${nSensors}sns ${hgtEventsTotal}hgt${langTag} | pop:${N}/${CAP} fld:${fieldTotal.toFixed(0)}${fTrend<-0.01?'↓':fTrend>0.01?'↑':'~'} risk:${cRisk.toFixed(2)} | ⟲${rInf.toFixed(2)} ${reflexClusters}rc${netTag}${cgTag}${uaTag}${amTag}`;
   }
 
   // Adaptive render skipping — at high pop, skip frames to keep thread responsive
