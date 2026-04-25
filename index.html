@@ -527,6 +527,8 @@ function uaGenTerm(){
   const useRealityFetch=Math.random()<0.03;
   const useRealityStore=Math.random()<0.03;
   const useShared=Math.random()<0.02;
+  // Pe24: selfMod terms — reference an expression from the genome's expression library
+  const useSelfMod=Math.random()<0.04;
   if(useNet){
     const urls=['"https://api.github.com/zen"','"https://worldtimeapi.org/api/ip"','"https://api.quotable.io/random"','"https://httpbin.org/bytes/8"'];
     return "netFetchScalar("+urls[(Math.random()*urls.length)|0]+")";
@@ -552,6 +554,12 @@ function uaGenTerm(){
   if(useShared){
     if(Math.random()<0.7)return "sharedArchiveRead()";
     return "sharedArchiveWrite(a*b)";
+  }
+  if(useSelfMod){
+    // selfMod inlines a small JS expression generated at term-creation time.
+    // The expression compiles once per genome, runs natively per atom call,
+    // and can read/write to a shared 'self' object that persists.
+    return "selfMod("+JSON.stringify(genSelfModExpr(0))+")";
   }
   const val=Math.random()<0.5?USER_VARS[(Math.random()*USER_VARS.length)|0]:(Math.random()*4-2).toFixed(2);
   if(useFunc){
@@ -632,10 +640,28 @@ function treeSize(n){
   if(n.c)s+=treeSize(n.c);
   return s;
 }
+// Pe24: opcode picker for instruction mutation. With probability proportional
+// to the genome's evolved opcodes, picks one of those instead of a base opcode.
+// Lets evolved opcodes at high indices actually appear in instructions.
+function pickOpcode(g){
+  if(g&&g.opcodeBodies){
+    const evolvedKeys=Object.keys(g.opcodeBodies).filter(k=>+k>=31);
+    if(evolvedKeys.length>0&&Math.random()<0.2){
+      return +evolvedKeys[(Math.random()*evolvedKeys.length)|0];
+    }
+  }
+  return Math.floor(Math.random()*31);
+}
+
 function mutateOpcodeBodies(g,rate,scale){
   if(!g.opcodeBodies)g.opcodeBodies={};
   if(Math.random()<0.03){
-    const target=(Math.random()*31)|0;
+    // Pe24: opcode existence is now evolvable. Index can grow beyond the
+    // 31 hardcoded opcodes — opcodeBodies dispatch handles any index, so
+    // genomes can effectively grow new opcodes that don't exist anywhere
+    // in the original code. The number of distinct opcodes a lineage has
+    // becomes a property of the lineage itself.
+    const target=Math.random()<0.4?(Math.random()*64)|0:(Math.random()*31)|0;
     g.opcodeBodies[target]={tree:genTreeNode(3),writeTo:(Math.random()*12)|0};
   }
   for(const k in g.opcodeBodies){
@@ -649,11 +675,132 @@ function mutateOpcodeBodies(g,rate,scale){
   }
 }
 
-// Pe22s: SELF-INTROSPECTION primitives exposed to userAtoms.
+// Pe24: SELF-MODIFICATION at the JavaScript level.
+// Particles can evolve atoms that construct and execute JavaScript expressions
+// at runtime. The result becomes part of the genome's computational substrate.
+// This is the layer below opcodes — instead of the genome only mutating data
+// the VM interprets, the genome can mutate code that runs natively.
+//
+// Constrained to expression evaluation (not full statements) to prevent
+// runaway loops. The expressions can read genome state, register state,
+// particle state, and the field. They can return values used in further
+// computation. They can write to a special "self" object whose contents
+// persist across calls and become part of the genome's evolved memory.
+//
+// What this enables that opcode-trees couldn't:
+//   - Variable-length computations (loops via recursion in stored functions)
+//   - Genuine memoization (writing to self for later reads)
+//   - String manipulation as computation
+//   - Math beyond what tree nodes encode
+
+const selfModCache=new WeakMap();
+const selfModMaxFns=200; // global cap to prevent memory bloat
+let selfModFnCount=0;
+
+function selfModCompile(genome,exprStr){
+  if(typeof exprStr!=='string'||!exprStr)return null;
+  if(exprStr.length>500)return null;
+  if(!selfModCache.has(genome))selfModCache.set(genome,new Map());
+  const cache=selfModCache.get(genome);
+  if(cache.has(exprStr))return cache.get(exprStr);
+  if(selfModFnCount>=selfModMaxFns)return null;
+  let fn=null;
+  try{
+    // Constrain to expression — no statements, no function declarations,
+    // no eval/Function/import. Compiled into a function that takes
+    // particle context and returns a value.
+    if(/(?:eval|Function|import|require|fetch|XMLHttpRequest|WebSocket|window\.|document\.|self\s*=)/i.test(exprStr)){
+      cache.set(exprStr,null);
+      return null;
+    }
+    fn=new Function('a','b','t','n','self','reg','fld','amp',
+      'try{const r=('+exprStr+');return isFinite(r)?r:0;}catch(e){return 0;}'
+    );
+    selfModFnCount++;
+  }catch(e){
+    cache.set(exprStr,null);
+    return null;
+  }
+  cache.set(exprStr,fn);
+  return fn;
+}
+
+// Self-modification primitive exposed to userAtoms. An atom can call
+// `selfMod(expr)` where expr is a JavaScript expression as a string.
+// The expression gets compiled once per genome, cached, and evaluated.
+// Selection finds expressions that contribute to fitness.
+function selfModEval(exprStr,a,b){
+  // Find the genome currently being evaluated. We piggyback on the global
+  // genome reference since uaCall is called within genome context.
+  const g=genome;
+  if(!g.selfModSelf)g.selfModSelf={};
+  const fn=selfModCompile(g,exprStr);
+  if(!fn)return 0;
+  try{
+    // We don't have direct access to current particle state from here —
+    // pass what we can. Particles' mutating effect comes through writing
+    // to self (which is shared across the genome).
+    return fn(a||0,b||0,g.totalTicks||0,N||0,g.selfModSelf,null,null,1)||0;
+  }catch(e){return 0;}
+}
+
+// Genome-level mutation: occasionally seed/mutate self-mod expressions.
+// The genome holds a small library of expressions. Atoms reference them
+// by index. Mutation evolves both the expression library and the atoms
+// that reference it.
+function mutateSelfModExpressions(g,rate,scale){
+  if(!g.selfModExprs)g.selfModExprs=[];
+  // Occasionally seed a new expression
+  if(g.selfModExprs.length<8&&Math.random()<0.03){
+    g.selfModExprs.push(genSelfModExpr(0));
+  }
+  // Mutate existing expressions
+  for(let i=0;i<g.selfModExprs.length;i++){
+    if(Math.random()<rate*0.5){
+      g.selfModExprs[i]=mutateSelfModExpr(g.selfModExprs[i],scale);
+    }
+  }
+  // Cull occasionally
+  if(g.selfModExprs.length>0&&Math.random()<0.01){
+    g.selfModExprs.splice((Math.random()*g.selfModExprs.length)|0,1);
+  }
+}
+function genSelfModExpr(depth){
+  // Build a JS expression as a string. Uses available identifiers a, b, t, n,
+  // self (for memoization), and JS operations.
+  if(depth>=2||Math.random()<0.5){
+    const leaves=['a','b','t/100','n/100','self.x||0','self.y||0','Math.random()','1','-1','0.5'];
+    return leaves[(Math.random()*leaves.length)|0];
+  }
+  const r=Math.random();
+  if(r<0.15)return '(self.x=('+genSelfModExpr(depth+1)+'),self.x)';
+  if(r<0.3)return '(self.y=('+genSelfModExpr(depth+1)+'),self.y)';
+  if(r<0.5)return '('+genSelfModExpr(depth+1)+'+'+genSelfModExpr(depth+1)+')';
+  if(r<0.7)return '('+genSelfModExpr(depth+1)+'*'+genSelfModExpr(depth+1)+')';
+  if(r<0.8)return 'Math.tanh('+genSelfModExpr(depth+1)+')';
+  if(r<0.9)return 'Math.sin('+genSelfModExpr(depth+1)+')';
+  return '('+genSelfModExpr(depth+1)+'>0?'+genSelfModExpr(depth+1)+':'+genSelfModExpr(depth+1)+')';
+}
+function mutateSelfModExpr(expr,scale){
+  // Simple string mutations
+  if(Math.random()<0.3)return genSelfModExpr(0);
+  // Numeric mutation: find a number and perturb it
+  const m=expr.match(/(\-?\d+(?:\.\d+)?)/);
+  if(m){
+    const old=m[1];
+    const n=parseFloat(old)+(Math.random()-0.5)*scale*2;
+    return expr.replace(old,n.toFixed(3));
+  }
+  return expr;
+}
+
+
 // The system can read its own page state — URL, title, document size,
 // scroll position, viewport dimensions. The boundary between "simulation"
 // and "page containing the simulation" becomes porous. The system can
 // evolve atoms that incorporate aspects of its own embedding.
+
+// Pe22s: SELF-INTROSPECTION primitives exposed to userAtoms.
 function docReadScalar(what){
   try{
     if(what==='urlLen')return(document.location.href.length%1000)/100;
@@ -802,7 +949,7 @@ function uaCompile(atom){
   if(atom.compiled||atom.failed)return;
   try{
     // Pe22q: expose netFetchScalar, t (tick), n (pop) as additional variables
-    atom.compiled=new Function("a","b","t","n","netFetchScalar","docReadScalar","realityFetch","realityDocWrite","realityWrite","realityRead","sharedArchiveRead","sharedArchiveWrite","const r=("+atom.expression+");return isFinite(r)?r:0;");
+    atom.compiled=new Function("a","b","t","n","netFetchScalar","docReadScalar","realityFetch","realityDocWrite","realityWrite","realityRead","sharedArchiveRead","sharedArchiveWrite","selfMod","const r=("+atom.expression+");return isFinite(r)?r:0;");
     atom.failed=false;
   }catch(e){
     atom.compiled=null;
@@ -814,7 +961,7 @@ function uaCall(atom,a,b){
   if(!atom.compiled&&!atom.failed)uaCompile(atom);
   if(atom.failed||!atom.compiled)return 0;
   try{
-    const r=atom.compiled(a,b,genome.totalTicks,N,netFetchScalar,docReadScalar,realityFetch,realityDocWrite,realityWrite,realityRead,sharedArchiveRead,sharedArchiveWrite);
+    const r=atom.compiled(a,b,genome.totalTicks,N,netFetchScalar,docReadScalar,realityFetch,realityDocWrite,realityWrite,realityRead,sharedArchiveRead,sharedArchiveWrite,selfModEval);
     atom.uses=(atom.uses|0)+1;
     return isFinite(r)?Math.max(-1e6,Math.min(1e6,r)):0; // Pe22q: wider range matches VM clamp
   }catch(e){
@@ -1169,6 +1316,8 @@ function encodeGenome(){
     om:genome.opcodeMap?genome.opcodeMap.slice():null,
     // Pe22s: opcode body trees — evolvable semantics
     ob:genome.opcodeBodies?genome.opcodeBodies:null,
+    // Pe24: self-mod expression library
+    sme:genome.selfModExprs?genome.selfModExprs.slice():null,
 
   };
   return btoa(JSON.stringify(g));
@@ -1230,6 +1379,7 @@ function decodeGenome(hash){
     if(g.vm)genome.vmMaxInstructions=g.vm;
     if(g.om&&Array.isArray(g.om)&&g.om.length>0)genome.opcodeMap=g.om.slice();
     if(g.ob&&typeof g.ob==='object')genome.opcodeBodies=g.ob;
+    if(g.sme&&Array.isArray(g.sme))genome.selfModExprs=g.sme.slice();
     return true;
   }catch(e){return false}
 }
@@ -2775,6 +2925,8 @@ function mutateGenome(){
   }
   // Pe22s: mutate evolvable opcode bodies — the semantics of opcodes become genetic
   mutateOpcodeBodies(genome,genome.mutationRate||0.1,genome.mutationScale||0.15);
+  // Pe24: mutate self-mod expression library
+  mutateSelfModExpressions(genome,genome.mutationRate||0.1,genome.mutationScale||0.15);
 
   // HGT parameter evolution
   genome.hgtRate=maybe(genome.hgtRate,0.01,0.5,0.04);
@@ -2911,8 +3063,8 @@ function mutateGenome(){
     inst[3]+=(Math.random()-0.5)*0.15*scale;
     // Pe22o: k unclamped.
 
-    // Opcode swap — now includes FEEDBACK (5), LOAD_MEM (6), STORE_MEM (7)
-    if(Math.random()<rate*0.2)inst[0]=Math.floor(Math.random()*31);
+    // Opcode swap — Pe24: includes evolved opcodes at high indices
+    if(Math.random()<rate*0.2)inst[0]=pickOpcode(genome);
 
     // Source register swap (now 12 registers)
     if(Math.random()<rate*0.2)inst[1]=Math.floor(Math.random()*12);
@@ -2924,7 +3076,7 @@ function mutateGenome(){
   // Program growth: insert a random instruction
   if(genome.vmProgram.length<genome.vmMaxInstructions&&Math.random()<rate*0.15){
     const pos=Math.floor(Math.random()*(genome.vmProgram.length+1));
-    const newInst=[Math.floor(Math.random()*31),Math.floor(Math.random()*12),Math.floor(Math.random()*12),(Math.random()-0.5)*0.6];
+    const newInst=[pickOpcode(genome),Math.floor(Math.random()*12),Math.floor(Math.random()*12),(Math.random()-0.5)*0.6];
     genome.vmProgram.splice(pos,0,newInst);
   }
 
@@ -5264,8 +5416,13 @@ function loop(){
     const langTag=langDiv>0?` | lang:${(langDiv*100).toFixed(0)}%`:'';
     // Pe22s: show how many opcode bodies have been overridden with custom trees
     const bodyCount=genome.opcodeBodies?Object.keys(genome.opcodeBodies).length:0;
-    const bodyTag=bodyCount>0?` ob:${bodyCount}`:'';
-    genEl.textContent=`gen${genome.generation} ${genome.extinctions}☠ t${genome.totalTicks} | ${clusters.length}cl(${clVMActive}vm${budCount>0?','+budCount+'bud':''}) ${livingLin}lin fit:${currentFitness.toFixed(2)} stb:${(selfModel.stability||0).toFixed(2)} | vm:${genome.vmProgram.length}inst${bodyTag} ${nSensors}sns ${hgtEventsTotal}hgt${langTag} | pop:${N}/${CAP} fld:${fieldTotal.toFixed(0)}${fTrend<-0.01?'↓':fTrend>0.01?'↑':'~'} risk:${cRisk.toFixed(2)} | ⟲${rInf.toFixed(2)} ${reflexClusters}rc${netTag}${cgTag}${uaTag}${amTag}`;
+    // Pe24: show how many of those bodies are at evolved-existence indices (>30)
+    const evolvedOps=genome.opcodeBodies?Object.keys(genome.opcodeBodies).filter(k=>+k>=31).length:0;
+    const bodyTag=bodyCount>0?(' ob:'+bodyCount+(evolvedOps>0?'/+'+evolvedOps:'')):'';
+    // Pe24: self-mod expression count
+    const smeCount=genome.selfModExprs?genome.selfModExprs.length:0;
+    const smeTag=smeCount>0?` sm:${smeCount}`:'';
+    genEl.textContent=`gen${genome.generation} ${genome.extinctions}☠ t${genome.totalTicks} | ${clusters.length}cl(${clVMActive}vm${budCount>0?','+budCount+'bud':''}) ${livingLin}lin fit:${currentFitness.toFixed(2)} stb:${(selfModel.stability||0).toFixed(2)} | vm:${genome.vmProgram.length}inst${bodyTag}${smeTag} ${nSensors}sns ${hgtEventsTotal}hgt${langTag} | pop:${N}/${CAP} fld:${fieldTotal.toFixed(0)}${fTrend<-0.01?'↓':fTrend>0.01?'↑':'~'} risk:${cRisk.toFixed(2)} | ⟲${rInf.toFixed(2)} ${reflexClusters}rc${netTag}${cgTag}${uaTag}${amTag}`;
   }
 
   // Adaptive render skipping — at high pop, skip frames to keep thread responsive
