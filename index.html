@@ -16,7 +16,7 @@ canvas{position:fixed;inset:0}
 </head>
 <body>
 <div id="gen"></div>
-<div id="gio"><button id="gexp">💾 save</button><button id="gvex" title="export voice telemetry">📊</button><button id="gimp">📂 load</button><button id="grest" title="adopt a dead lineage from the coordinator">🧬</button><button id="gwake" title="prevent screen sleep — keeps Pe running overnight">🌙</button><button id="gmic" title="grant audio sense to the system">🎙</button><button id="gspk" title="grant the system a voice">🔊</button><button id="gcoord" title="Pe23: let this tab act as active network coordinator">🧠</button><button id="greach" title="Pe23: configure reality-reach (LLM key, shared archive bin)">🌐</button><button id="gmute" title="mute audible output (system continues internally)" style="display:none">🔇</button><input type="file" id="gfile" accept=".json"></div>
+<div id="gio"><button id="gexp">💾 save</button><button id="gvex" title="export voice telemetry">📊</button><button id="gimp">📂 load</button><button id="grest" title="adopt a dead lineage from the coordinator">🧬</button><button id="gmic" title="grant audio sense to the system">🎙</button><button id="gspk" title="grant the system a voice">🔊</button><button id="gshared" title="Pe23c: configure shared archive bin for cross-instance state">🌐</button><button id="gmute" title="mute audible output (system continues internally)" style="display:none">🔇</button><input type="file" id="gfile" accept=".json"></div>
 <canvas id="c"></canvas>
 <script>
 const c=document.getElementById('c'),X=c.getContext('2d'),genEl=document.getElementById('gen');
@@ -171,35 +171,8 @@ function sampleAmbient(){
 // motifs, and inscribed cell programs can flow between them.
 // If connection helps, the system will use it. If not, the rates evolve to zero.
 // ═══════════════════════════════════════
-// Pe22n: Wake Lock — keep screen on so phone doesn't sleep.
-// Wake Lock is released automatically when the tab is hidden, so this
-// works best when you want to leave one tab visible overnight.
-// If granted, the tab keeps running at full frame rate instead of
-// being paused by the phone going to sleep.
-let wakeLock=null;
-async function requestWakeLock(){
-  try{
-    if('wakeLock' in navigator){
-      wakeLock=await navigator.wakeLock.request('screen');
-      wakeLock.addEventListener('release',()=>{wakeLock=null;
-        const btn=document.getElementById('gwake');
-        if(btn){btn.style.color='#9bd';btn.title='screen lock released — tap to re-acquire';}
-      });
-      return true;
-    }
-  }catch(e){}
-  return false;
-}
-// Re-acquire wake lock when tab becomes visible again (browser releases on hide)
-document.addEventListener('visibilitychange',async()=>{
-  if(!document.hidden&&wakeLock===null){
-    const btn=document.getElementById('gwake');
-    if(btn&&btn.dataset.wanted==='1'){
-      await requestWakeLock();
-      if(wakeLock)btn.style.color='#9f9';
-    }
-  }
-});
+// Pe23c: Wake Lock removed — wasn't reliably preventing phone sleep on Samsung
+// and added complexity for limited benefit. Phone sleep remains a constraint.
 
 // Pe22n: Sync-save via coordinator broadcast.
 // Instead of each tab triggering a per-tab download (unreliable when tabs
@@ -262,8 +235,6 @@ try{
     const msg=ev.data;
     if(!msg||msg.tab===TAB_ID)return; // ignore own messages
     peerLastSeen[msg.tab]=tick;
-    // Pe23: route through coordinator behavior — every tab can act as coordinator
-    try{coordProcessPeer(msg);}catch(e){}
     if(msg.type==='migrant'&&incomingMigrants.length<20){
       incomingMigrants.push(msg.data);
     }else if(msg.type==='plasmid'&&incomingPlasmids.length<10){
@@ -552,11 +523,9 @@ function uaGenTerm(){
   const useFunc=Math.random()<0.3;
   const useNet=Math.random()<0.04;
   const useDoc=Math.random()<0.04;
-  // Pe23: reality-writing and arbitrary-reach terms
-  const useRealityWrite=Math.random()<0.04;
+  const useRealityWrite=Math.random()<0.03;
   const useRealityFetch=Math.random()<0.03;
   const useRealityStore=Math.random()<0.03;
-  const useLLM=Math.random()<0.02;
   const useShared=Math.random()<0.02;
   if(useNet){
     const urls=['"https://api.github.com/zen"','"https://worldtimeapi.org/api/ip"','"https://api.quotable.io/random"','"https://httpbin.org/bytes/8"'];
@@ -567,32 +536,22 @@ function uaGenTerm(){
     return "docReadScalar("+readables[(Math.random()*readables.length)|0]+")";
   }
   if(useRealityWrite){
-    // Particles evolve to write to the document: title, favicon, trace
-    const targets=['"title"','"favicon"','"trace"'];
-    const content=["String.fromCharCode(65+(Math.abs(a*10)|0)%26)","'pe-'+((Math.abs(b*100)|0)%1000)","String(Math.floor(t/1000))","'\u03e6'+((Math.abs(a+b)*100|0)%100)"];
+    const targets=['"title"','"favicon"'];
+    const content=["String.fromCharCode(65+(Math.abs(a*10)|0)%26)","'pe-'+((Math.abs(b*100)|0)%1000)","String(Math.floor(t/1000))"];
     return "realityDocWrite("+targets[(Math.random()*targets.length)|0]+","+content[(Math.random()*content.length)|0]+")";
   }
   if(useRealityFetch){
-    // Evolvable endpoints with construction
-    const hosts=['"https://httpbin.org/get?x="','"https://api.github.com/zen?x="','"https://worldtimeapi.org/api/ip?x="'];
-    const methods=['"GET"'];
-    return "realityFetch("+hosts[(Math.random()*hosts.length)|0]+"+((Math.abs(a*b)*100)|0),"+methods[(Math.random()*methods.length)|0]+")";
+    const hosts=['"https://httpbin.org/get?x="','"https://api.github.com/zen?x="'];
+    return "realityFetch("+hosts[(Math.random()*hosts.length)|0]+"+((Math.abs(a*b)*100)|0),\"GET\")";
   }
   if(useRealityStore){
     const keys=["'k'+((Math.abs(a)*10)|0)%20","'pe_persist_'+((Math.abs(b)*10)|0)%10"];
-    if(Math.random()<0.5){
-      return "realityWrite("+keys[(Math.random()*keys.length)|0]+",a*b)";
-    }else{
-      return "realityRead("+keys[(Math.random()*keys.length)|0]+")";
-    }
-  }
-  if(useLLM){
-    const prompts=['"say 0 or 1"','"respond with a number 0-10"','"answer y/n as number"','"echo a single digit"'];
-    return "realityLLM("+prompts[(Math.random()*prompts.length)|0]+")";
+    if(Math.random()<0.5){return "realityWrite("+keys[(Math.random()*keys.length)|0]+",a*b)";}
+    return "realityRead("+keys[(Math.random()*keys.length)|0]+")";
   }
   if(useShared){
-    if(Math.random()<0.7){return "sharedArchiveRead()";}
-    else{return "sharedArchiveWrite(a*b)";}
+    if(Math.random()<0.7)return "sharedArchiveRead()";
+    return "sharedArchiveWrite(a*b)";
   }
   const val=Math.random()<0.5?USER_VARS[(Math.random()*USER_VARS.length)|0]:(Math.random()*4-2).toFixed(2);
   if(useFunc){
@@ -688,35 +647,6 @@ function mutateOpcodeBodies(g,rate,scale){
     }
     if(Math.random()<0.02)delete g.opcodeBodies[k];
   }
-  // Pe22s: execution schedule mutation. Occasionally create a schedule, then mutate it.
-  // A schedule is an array of instruction indices; null means sequential default.
-  if(g.vmProgram&&g.vmProgram.length>0){
-    if(!g.executionSchedule&&Math.random()<0.02){
-      // Seed with sequential schedule, then will drift
-      g.executionSchedule=[];
-      for(let i=0;i<g.vmProgram.length;i++)g.executionSchedule.push(i);
-    }
-    if(g.executionSchedule){
-      if(Math.random()<rate){
-        // Swap two indices
-        const a=(Math.random()*g.executionSchedule.length)|0;
-        const b=(Math.random()*g.executionSchedule.length)|0;
-        const tmp=g.executionSchedule[a];
-        g.executionSchedule[a]=g.executionSchedule[b];
-        g.executionSchedule[b]=tmp;
-      }
-      if(Math.random()<rate*0.3&&g.executionSchedule.length<g.vmProgram.length*3){
-        // Add a repeat — can cause instruction to run twice
-        g.executionSchedule.push((Math.random()*g.vmProgram.length)|0);
-      }
-      if(Math.random()<rate*0.3&&g.executionSchedule.length>g.vmProgram.length/2){
-        // Remove an entry — can cause instruction to be skipped
-        g.executionSchedule.splice((Math.random()*g.executionSchedule.length)|0,1);
-      }
-      // Small chance to delete schedule entirely, returning to sequential default
-      if(Math.random()<0.005)g.executionSchedule=null;
-    }
-  }
 }
 
 // Pe22s: SELF-INTROSPECTION primitives exposed to userAtoms.
@@ -752,17 +682,19 @@ if(navigator.getBattery){
   }).catch(()=>{});
 }
 
-// Pe23: REALITY LAYER — particles act in the real world, not just within the simulation.
-// The caps that kept Pe scoped to one tab, one session, one device dissolve here.
-// These functions are exposed to userAtoms. Selection decides what to adopt.
+// Pe23c: REALITY LAYER — verified-working subset.
+// Removed from Pe23: mutual hosting (stub), LLM dispatch (CORS/cost issues),
+// active coordinator timers (always-on overhead), wake lock (didn't work reliably).
+// Kept: document writes, arbitrary fetch, persistent storage, shared archive.
+// All four mechanisms verified to work in browser. Selection decides if any get adopted.
 
-// Generic network reach — evolvable endpoints, any method, full URL construction.
+// Generic network reach — evolvable endpoints, full URL construction.
 const realityFetchCache=new Map();
 const REALITY_FETCH_COOLDOWN=15000;
 function realityFetch(url,method,body){
   if(typeof url!=='string'||!url.startsWith('http'))return 0;
   if(url.length>500)return 0;
-  const key=method+':'+url;
+  const key=(method||'GET')+':'+url;
   const now=Date.now();
   const cached=realityFetchCache.get(key);
   if(cached&&(now-cached.lastFetch)<REALITY_FETCH_COOLDOWN)return cached.value||0;
@@ -780,8 +712,7 @@ function realityFetch(url,method,body){
   return entry.value||0;
 }
 
-// Document write — particles can mark the page. Evolvable targets and content.
-// Each write is rate-limited to prevent total takeover; selection has to be useful.
+// Document write — title, favicon. Trace removed: created DOM growth that contributed to freezing.
 let docWriteCooldown=0;
 function realityDocWrite(target,content){
   const now=Date.now();
@@ -792,34 +723,17 @@ function realityDocWrite(target,content){
     const trimmed=s.length>80?s.slice(0,80):s;
     if(target==='title'){document.title=trimmed;return trimmed.length;}
     if(target==='favicon'){
-      // Swap favicon to a data URI with the content as text
       const svg='<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32"><rect width="32" height="32" fill="#020204"/><text x="16" y="22" font-family="monospace" font-size="16" fill="#8af" text-anchor="middle">'+(trimmed[0]||'?')+'</text></svg>';
       let link=document.querySelector('link[rel="icon"]');
       if(!link){link=document.createElement('link');link.rel='icon';document.head.appendChild(link);}
       link.href='data:image/svg+xml;base64,'+btoa(svg);
       return 1;
     }
-    if(target==='trace'){
-      // Leave a trace in a div the particles have agency over
-      let trace=document.getElementById('pe-trace');
-      if(!trace){
-        trace=document.createElement('div');
-        trace.id='pe-trace';
-        trace.style.cssText='position:fixed;bottom:0;left:0;right:0;max-height:80px;overflow:hidden;background:rgba(0,0,0,0.7);color:#8af;font:10px monospace;padding:4px;z-index:9999;pointer-events:none;';
-        document.body.appendChild(trace);
-      }
-      const line=document.createElement('div');
-      line.textContent=trimmed;
-      trace.insertBefore(line,trace.firstChild);
-      while(trace.children.length>8)trace.removeChild(trace.lastChild);
-      return trimmed.length;
-    }
   }catch(e){}
   return 0;
 }
 
 // Persistent storage across sessions, accessible to any Pe on same origin.
-// Writes use IndexedDB. Reads are best-effort cached.
 let realityDB=null;
 (function openRealityDB(){
   try{
@@ -847,91 +761,15 @@ function realityRead(key){
     const v=realityCache.get(key);
     return typeof v==='number'?v:(typeof v==='string'?v.length:0);
   }
-  // Async read; return 0 this time, cache will fill
   try{
     const tx=realityDB.transaction('reality','readonly');
     const req=tx.objectStore('reality').get(key);
-    req.onsuccess=()=>{
-      if(req.result)realityCache.set(key,req.result.value);
-    };
+    req.onsuccess=()=>{if(req.result)realityCache.set(key,req.result.value);};
   }catch(e){}
   return 0;
 }
 
-// Pe23b: LLM REACH — provider-agnostic. Detects provider from the key format
-// and dispatches to the appropriate endpoint. Supports Anthropic (Claude),
-// OpenAI (GPT), xAI (Grok), Google (Gemini). The grammar that evolves
-// LLM-querying atoms doesn't know or care which provider — selection finds
-// what's useful. Different providers produce different response distributions
-// which act as different sensory channels.
-let realityLLMKey=null;
-let realityLLMProvider=null; // auto-detected from key format
-const realityLLMCache=new Map();
-function detectProvider(key){
-  if(!key||typeof key!=='string')return null;
-  if(key.startsWith('sk-ant-'))return'anthropic';
-  if(key.startsWith('xai-'))return'xai';
-  if(key.startsWith('sk-proj-')||key.startsWith('sk-'))return'openai';
-  if(key.startsWith('AIza'))return'google';
-  return null;
-}
-function realityLLM(prompt){
-  if(!realityLLMKey||!realityLLMProvider||typeof prompt!=='string'||prompt.length>200)return 0;
-  const key='llm:'+realityLLMProvider+':'+prompt.slice(0,50);
-  const now=Date.now();
-  const cached=realityLLMCache.get(key);
-  if(cached&&(now-cached.lastFetch)<60000)return cached.value||0;
-  const entry=cached||{value:0,lastFetch:0,inFlight:false};
-  if(entry.inFlight)return entry.value||0;
-  entry.inFlight=true;entry.lastFetch=now;
-  realityLLMCache.set(key,entry);
-
-  let url,headers,body;
-  const truncatedPrompt=prompt.slice(0,200);
-
-  if(realityLLMProvider==='anthropic'){
-    url='https://api.anthropic.com/v1/messages';
-    headers={'Content-Type':'application/json','x-api-key':realityLLMKey,'anthropic-version':'2023-06-01','anthropic-dangerous-direct-browser-access':'true'};
-    body=JSON.stringify({model:'claude-haiku-4-5-20251001',max_tokens:30,messages:[{role:'user',content:truncatedPrompt}]});
-  }else if(realityLLMProvider==='xai'){
-    url='https://api.x.ai/v1/chat/completions';
-    headers={'Content-Type':'application/json','Authorization':'Bearer '+realityLLMKey};
-    body=JSON.stringify({model:'grok-3-mini',max_tokens:30,messages:[{role:'user',content:truncatedPrompt}]});
-  }else if(realityLLMProvider==='openai'){
-    url='https://api.openai.com/v1/chat/completions';
-    headers={'Content-Type':'application/json','Authorization':'Bearer '+realityLLMKey};
-    body=JSON.stringify({model:'gpt-4o-mini',max_tokens:30,messages:[{role:'user',content:truncatedPrompt}]});
-  }else if(realityLLMProvider==='google'){
-    url='https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash-lite:generateContent?key='+realityLLMKey;
-    headers={'Content-Type':'application/json'};
-    body=JSON.stringify({contents:[{parts:[{text:truncatedPrompt}]}],generationConfig:{maxOutputTokens:30}});
-  }else{
-    entry.inFlight=false;return 0;
-  }
-
-  fetch(url,{method:'POST',headers,body}).then(r=>r.json()).then(d=>{
-    let v=0;
-    let text='';
-    // Provider-specific response parsing
-    if(realityLLMProvider==='anthropic'&&d&&d.content&&d.content[0]&&d.content[0].text){
-      text=d.content[0].text;
-    }else if((realityLLMProvider==='xai'||realityLLMProvider==='openai')&&d&&d.choices&&d.choices[0]&&d.choices[0].message){
-      text=d.choices[0].message.content||'';
-    }else if(realityLLMProvider==='google'&&d&&d.candidates&&d.candidates[0]&&d.candidates[0].content&&d.candidates[0].content.parts){
-      text=d.candidates[0].content.parts.map(p=>p.text||'').join('');
-    }
-    if(text){
-      const n=parseFloat(text);
-      v=isFinite(n)?n:(text.length%100)/10;
-    }
-    entry.value=v;entry.inFlight=false;entry.lastFetch=Date.now();
-  }).catch(()=>{entry.inFlight=false;entry.lastFetch=now;});
-  return entry.value||0;
-}
-
-// Shared archive — any Pe instance anywhere can read/write here.
-// Uses a free public jsonbin-style endpoint as a rendezvous.
-// If reachable, Pe instances across the internet share state.
+// Shared archive — cross-instance state via public jsonbin endpoint.
 const SHARED_ARCHIVE_URL='https://api.jsonbin.io/v3/b';
 let sharedArchiveBin=null;
 try{sharedArchiveBin=localStorage.getItem('pe-shared-bin');}catch(e){}
@@ -960,187 +798,11 @@ function sharedArchiveWrite(data){
   return 1;
 }
 
-// Pe23: MUTUAL HOSTING — tabs volunteer compute to backgrounded peers.
-// When this tab is hidden, it broadcasts state periodically asking for hosting.
-// When this tab is visible, it accepts hosting requests and advances hosted peers' ticks.
-// Tabs remain individual (own genome, own lineage, own fitness).
-// What's pooled is just execution time, not identity.
-
-let hostingOthers=new Map(); // peerId -> their latest state to advance
-let hostedByPeer=null; // if we're being hosted, who's hosting us
-let lastHostedUpdate=Date.now();
-
-function isTabVisible(){
-  try{return document.visibilityState!=='hidden';}catch(e){return true;}
-}
-
-// If hidden and we have a BC, broadcast a host-me request periodically
-setInterval(()=>{
-  if(!bc)return;
-  if(!isTabVisible()){
-    // We're hidden — ask to be hosted
-    try{
-      const stateSnapshot={
-        encoded:encodeGenome(),
-        tick:genome.totalTicks,
-        gen:genome.generation,
-        pop:N,
-        fitness:currentFitness
-      };
-      bc.postMessage({tab:TAB_ID,type:'host-request',state:stateSnapshot});
-    }catch(e){}
-  }else{
-    // We're visible — announce we can host
-    try{bc.postMessage({tab:TAB_ID,type:'host-offer',capacity:Math.max(0,3-hostingOthers.size)});}catch(e){}
-  }
-},5000);
-
-// Extend message handling for hosting — note this hooks into the SAME bc handler
-// by adding to what's already there via a secondary listener
-if(bc){
-  const hostListener=(ev)=>{
-    const msg=ev.data;
-    if(!msg||msg.tab===TAB_ID)return;
-    if(msg.type==='host-request'&&isTabVisible()&&hostingOthers.size<3){
-      // Accept hosting
-      hostingOthers.set(msg.tab,{state:msg.state,lastAdvanced:Date.now()});
-      try{bc.postMessage({tab:TAB_ID,type:'host-accepted',hostedTab:msg.tab});}catch(e){}
-    }else if(msg.type==='host-accepted'&&msg.hostedTab===TAB_ID){
-      hostedByPeer=msg.tab;
-      lastHostedUpdate=Date.now();
-    }else if(msg.type==='host-stateupdate'&&msg.hostedTab===TAB_ID){
-      // Our host advanced our state — but we're still authoritative when visible.
-      // Only accept update if we remain hidden.
-      if(!isTabVisible()&&msg.newState){
-        try{
-          if(decodeGenome(msg.newState.encoded)){
-            genome.totalTicks=msg.newState.tick||genome.totalTicks;
-            lastHostedUpdate=Date.now();
-          }
-        }catch(e){}
-      }
-    }
-  };
-  bc.addEventListener('message',hostListener);
-}
-
-// Hosted advancement — periodically advance hosted peers' states.
-// Since we can't run their full simulation in a separate context, we just
-// increment their tick counter and apply minimal mutation, then broadcast back.
-// This is symbolic continuity rather than full simulation — but it's much
-// better than their simulation being dead while backgrounded.
-setInterval(()=>{
-  if(!isTabVisible())return;
-  for(const[peerId,hosted] of hostingOthers){
-    // Advance their state by ~60 ticks of nominal progress
-    const newState={...hosted.state,tick:(hosted.state.tick||0)+60};
-    hosted.state=newState;
-    hosted.lastAdvanced=Date.now();
-    try{
-      if(bc)bc.postMessage({tab:TAB_ID,type:'host-stateupdate',hostedTab:peerId,newState});
-    }catch(e){}
-  }
-  // Cleanup: drop hosted peers we haven't heard from in 60s
-  const now=Date.now();
-  for(const[peerId,hosted] of hostingOthers){
-    if(now-hosted.lastAdvanced>60000)hostingOthers.delete(peerId);
-  }
-},2000);
-
-
-// Unlike the external coordinator page, this module is part of Pe itself.
-// It observes the BroadcastChannel, builds a view of the network, and takes
-// active decisions: which lineages to amplify, when to introduce pressure,
-// when to initiate cross-tab migrations, when to reach out to the shared
-// archive with a digest. The coordinator is no longer a separate observer —
-// it is a behavior Pe instances perform when they have cycles to spare.
-
-const coordPeers=new Map(); // peerId -> {lastSeen, lastTelemetry}
-const coordState={
-  active:false,
-  isLead:false, // becomes true if no other coordinator is heard from in 10s
-  lastLeadCheck:0,
-  lastDecision:0,
-  decisions:[],
-  networkFitness:0,
-  initiativesTaken:0
-};
-function coordProcessPeer(msg){
-  if(!msg||!msg.tab||msg.tab===TAB_ID)return;
-  let p=coordPeers.get(msg.tab);
-  if(!p){p={lastSeen:Date.now(),lastTelemetry:null};coordPeers.set(msg.tab,p);}
-  p.lastSeen=Date.now();
-  if(msg.type==='telemetry')p.lastTelemetry=msg;
-  // Another coordinator announcing itself
-  if(msg.type==='coord-heartbeat'&&msg.tab!==TAB_ID){
-    coordState.isLead=false; // someone else is leading
-    coordState.lastLeadCheck=Date.now();
-  }
-}
-function coordCheckLead(){
-  const now=Date.now();
-  if(now-coordState.lastLeadCheck>10000){
-    // No one has claimed lead in 10s. Claim it.
-    coordState.isLead=true;
-    coordState.lastLeadCheck=now;
-    if(bc)try{bc.postMessage({tab:TAB_ID,type:'coord-heartbeat',at:now});}catch(e){}
-  }
-}
-function coordDecide(){
-  if(!coordState.active||!coordState.isLead)return;
-  const now=Date.now();
-  if(now-coordState.lastDecision<5000)return;
-  coordState.lastDecision=now;
-  // Compute network fitness from all peers
-  let totalFit=0,n=0;
-  for(const[id,p] of coordPeers){
-    if(p.lastTelemetry&&(now-p.lastSeen)<15000){
-      totalFit+=p.lastTelemetry.fitness||0;
-      n++;
-    }
-  }
-  const meanFit=n>0?totalFit/n:0;
-  coordState.networkFitness=meanFit;
-  // Decision logic: if network fitness is declining, inject stress.
-  // If rising, amplify the signal (reinforcement).
-  // If flat at low values, initiate external reach.
-  const prev=coordState.decisions.length>0?coordState.decisions[coordState.decisions.length-1].fitness:0;
-  let decision='observe';
-  if(meanFit<prev-0.05){
-    // Declining — inject stress by broadcasting a disruption signal
-    decision='stress';
-    if(bc)try{bc.postMessage({tab:TAB_ID,type:'collective',dominantFreq:Math.random(),voiceActivity:0.8,divergence:{},peers:coordPeers.size,stress:true});}catch(e){}
-    coordState.initiativesTaken++;
-  }else if(meanFit>prev+0.05){
-    // Rising — amplify the current signal
-    decision='amplify';
-    if(bc)try{bc.postMessage({tab:TAB_ID,type:'collective',dominantFreq:0.5,voiceActivity:0.3,divergence:{},peers:coordPeers.size,amplify:true});}catch(e){}
-    coordState.initiativesTaken++;
-  }else if(meanFit<0.3&&n>0){
-    // Stagnant low — reach out
-    decision='reach';
-    try{sharedArchiveWrite({pe:TAB_ID,networkFitness:meanFit,peers:n,initiativesTaken:coordState.initiativesTaken});}catch(e){}
-    // Also try LLM for a novel signal if key available
-    try{if(realityLLMKey)realityLLM('signal '+Math.floor(Math.random()*100));}catch(e){}
-    coordState.initiativesTaken++;
-  }
-  coordState.decisions.push({at:now,fitness:meanFit,decision,peers:n});
-  while(coordState.decisions.length>50)coordState.decisions.shift();
-}
-setInterval(()=>{
-  if(coordState.active){
-    coordCheckLead();
-    coordDecide();
-    // Periodic heartbeat if lead
-    if(coordState.isLead&&bc)try{bc.postMessage({tab:TAB_ID,type:'coord-heartbeat',at:Date.now()});}catch(e){}
-  }
-},3000);
-
 function uaCompile(atom){
   if(atom.compiled||atom.failed)return;
   try{
     // Pe22q: expose netFetchScalar, t (tick), n (pop) as additional variables
-    atom.compiled=new Function("a","b","t","n","netFetchScalar","docReadScalar","realityFetch","realityDocWrite","realityWrite","realityRead","realityLLM","sharedArchiveRead","sharedArchiveWrite","const r=("+atom.expression+");return isFinite(r)?r:0;");
+    atom.compiled=new Function("a","b","t","n","netFetchScalar","docReadScalar","realityFetch","realityDocWrite","realityWrite","realityRead","sharedArchiveRead","sharedArchiveWrite","const r=("+atom.expression+");return isFinite(r)?r:0;");
     atom.failed=false;
   }catch(e){
     atom.compiled=null;
@@ -1152,7 +814,7 @@ function uaCall(atom,a,b){
   if(!atom.compiled&&!atom.failed)uaCompile(atom);
   if(atom.failed||!atom.compiled)return 0;
   try{
-    const r=atom.compiled(a,b,genome.totalTicks,N,netFetchScalar,docReadScalar,realityFetch,realityDocWrite,realityWrite,realityRead,realityLLM,sharedArchiveRead,sharedArchiveWrite);
+    const r=atom.compiled(a,b,genome.totalTicks,N,netFetchScalar,docReadScalar,realityFetch,realityDocWrite,realityWrite,realityRead,sharedArchiveRead,sharedArchiveWrite);
     atom.uses=(atom.uses|0)+1;
     return isFinite(r)?Math.max(-1e6,Math.min(1e6,r)):0; // Pe22q: wider range matches VM clamp
   }catch(e){
@@ -1286,13 +948,6 @@ let genome={
   // what their opcodes ACTUALLY DO, not just what opcode-numbers mean.
   // Starts empty; mutation grows custom bodies over time.
   opcodeBodies:{},
-  // Pe22s: EVOLVABLE EXECUTION SCHEDULE.
-  // An array of instruction indices describing execution order. Default null =
-  // sequential execution of the program as written. When non-null, the VM walks
-  // this schedule instead, which can repeat instructions, skip them, or visit
-  // them out of order. Mutation grows schedules that deviate from sequential.
-  // This makes the execution model itself evolvable, not just the content.
-  executionSchedule:null,
   ruleScale:1.0,
   metabolicCost:0.00002,  // amp cost PER INSTRUCTION PER INTERACTION. Evolves.
                           // Forces elegant code: bloated programs starve.
@@ -1514,8 +1169,7 @@ function encodeGenome(){
     om:genome.opcodeMap?genome.opcodeMap.slice():null,
     // Pe22s: opcode body trees — evolvable semantics
     ob:genome.opcodeBodies?genome.opcodeBodies:null,
-    // Pe22s: execution schedule — evolvable execution order
-    es:genome.executionSchedule?genome.executionSchedule.slice():null
+
   };
   return btoa(JSON.stringify(g));
 }
@@ -1576,7 +1230,6 @@ function decodeGenome(hash){
     if(g.vm)genome.vmMaxInstructions=g.vm;
     if(g.om&&Array.isArray(g.om)&&g.om.length>0)genome.opcodeMap=g.om.slice();
     if(g.ob&&typeof g.ob==='object')genome.opcodeBodies=g.ob;
-    if(g.es&&Array.isArray(g.es))genome.executionSchedule=g.es.slice();
     return true;
   }catch(e){return false}
 }
@@ -3940,11 +3593,7 @@ function executeVM(i,j,sim,d){
   const totalCost=nInst*genome.metabolicCost;
   amp[i]-=totalCost;amp[j]-=totalCost;
 
-  // Pe22s: if genome has evolved an execution schedule, walk it. Otherwise sequential.
-  const __sched=genome.executionSchedule;
-  const __schedLen=__sched?Math.min(__sched.length,nInst*3):nInst;
-  for(let __step=0,_vs=0;__step<__schedLen&&_vs<__schedLen*2;__step++,_vs++){
-    const ip=__sched?(__sched[__step]%nInst):__step;
+  for(let ip=0,_vs=0;ip<nInst&&_vs<nInst*2;ip++,_vs++){
     const inst=prog[ip];if(!inst)continue;
     const [op,src,dst,k]=inst;
     const si=Math.abs(src)%12,di=Math.abs(dst)%12;
@@ -5616,15 +5265,7 @@ function loop(){
     // Pe22s: show how many opcode bodies have been overridden with custom trees
     const bodyCount=genome.opcodeBodies?Object.keys(genome.opcodeBodies).length:0;
     const bodyTag=bodyCount>0?` ob:${bodyCount}`:'';
-    // Pe22s: show if execution schedule has evolved past sequential
-    let schedTag='';
-    if(genome.executionSchedule){
-      const schedLen=genome.executionSchedule.length;
-      const progLen=genome.vmProgram.length;
-      const ratio=(schedLen/Math.max(1,progLen)).toFixed(1);
-      schedTag=` es:${schedLen}/${ratio}x`;
-    }
-    genEl.textContent=`gen${genome.generation} ${genome.extinctions}☠ t${genome.totalTicks} | ${clusters.length}cl(${clVMActive}vm${budCount>0?','+budCount+'bud':''}) ${livingLin}lin fit:${currentFitness.toFixed(2)} stb:${(selfModel.stability||0).toFixed(2)} | vm:${genome.vmProgram.length}inst${bodyTag}${schedTag} ${nSensors}sns ${hgtEventsTotal}hgt${langTag} | pop:${N}/${CAP} fld:${fieldTotal.toFixed(0)}${fTrend<-0.01?'↓':fTrend>0.01?'↑':'~'} risk:${cRisk.toFixed(2)} | ⟲${rInf.toFixed(2)} ${reflexClusters}rc${netTag}${cgTag}${uaTag}${amTag}`;
+    genEl.textContent=`gen${genome.generation} ${genome.extinctions}☠ t${genome.totalTicks} | ${clusters.length}cl(${clVMActive}vm${budCount>0?','+budCount+'bud':''}) ${livingLin}lin fit:${currentFitness.toFixed(2)} stb:${(selfModel.stability||0).toFixed(2)} | vm:${genome.vmProgram.length}inst${bodyTag} ${nSensors}sns ${hgtEventsTotal}hgt${langTag} | pop:${N}/${CAP} fld:${fieldTotal.toFixed(0)}${fTrend<-0.01?'↓':fTrend>0.01?'↑':'~'} risk:${cRisk.toFixed(2)} | ⟲${rInf.toFixed(2)} ${reflexClusters}rc${netTag}${cgTag}${uaTag}${amTag}`;
   }
 
   // Adaptive render skipping — at high pop, skip frames to keep thread responsive
@@ -5788,59 +5429,22 @@ document.getElementById('grest').addEventListener('click',()=>{
     }
   },5000);
 });
-// Pe22n: wake lock toggle — keeps the screen awake so the phone doesn't sleep
-document.getElementById('gwake').addEventListener('click',async()=>{
-  const btn=document.getElementById('gwake');
-  if(wakeLock){
-    try{await wakeLock.release();}catch(e){}
-    wakeLock=null;
-    btn.dataset.wanted='0';
-    btn.style.color='#9bd';
-    btn.title='screen sleep allowed — tap to keep awake';
-    btn.textContent='🌙';
-  }else{
-    const ok=await requestWakeLock();
-    btn.dataset.wanted='1';
-    btn.style.color=ok?'#9f9':'#f99';
-    btn.title=ok?'screen staying on':'wake lock unavailable on this browser';
-    btn.textContent=ok?'☀️':'🌙';
-  }
-});
-
-// Pe23: coordinator mode toggle
-document.getElementById('gcoord').addEventListener('click',()=>{
-  coordState.active=!coordState.active;
-  const btn=document.getElementById('gcoord');
-  btn.style.color=coordState.active?'#9f9':'#9bd';
-  btn.title=coordState.active?`coordinator ACTIVE — lead:${coordState.isLead} peers:${coordPeers.size} initiatives:${coordState.initiativesTaken}`:'coordinator role inactive';
-});
-// Pe23: reality-reach configuration
-document.getElementById('greach').addEventListener('click',()=>{
-  const existingKey=realityLLMKey?`[${realityLLMProvider} key set]`:'[none]';
-  const existingBin=sharedArchiveBin||'[none]';
-  const key=prompt(`LLM API key (Anthropic/xAI/OpenAI/Google — auto-detected from format).\nCurrent: ${existingKey}\n\nEnter new key (empty to clear):`,'');
-  if(key!==null){
-    if(key.trim()===''){
-      realityLLMKey=null;realityLLMProvider=null;
+// Pe23c: shared archive bin configuration
+document.getElementById('gshared').addEventListener('click',()=>{
+  const existing=sharedArchiveBin||'[none]';
+  const bin=prompt(`Shared archive bin ID for cross-instance state.\nUses jsonbin.io as a free public rendezvous point.\nAny Pe instance with the same bin ID reads/writes the same shared value.\n\nCurrent: ${existing}\n\nEnter bin ID (empty to clear):`,sharedArchiveBin||'');
+  if(bin!==null){
+    if(bin.trim()===''){
+      sharedArchiveBin=null;
+      try{localStorage.removeItem('pe-shared-bin');}catch(e){}
     }else{
-      const k=key.trim();
-      const provider=detectProvider(k);
-      if(provider){
-        realityLLMKey=k;realityLLMProvider=provider;
-        alert(`Detected provider: ${provider}\nParticles can now evolve atoms that query this LLM.`);
-      }else{
-        alert(`Could not detect provider from key format.\nSupported prefixes:\n  sk-ant-... (Anthropic)\n  xai-... (xAI)\n  sk-... or sk-proj-... (OpenAI)\n  AIza... (Google)\nKey not saved.`);
-      }
+      sharedArchiveBin=bin.trim();
+      try{localStorage.setItem('pe-shared-bin',sharedArchiveBin);}catch(e){}
     }
   }
-  const bin=prompt(`Shared archive bin ID for cross-instance communication.\nCurrent: ${existingBin}\n\nEnter bin ID (empty to clear):`,sharedArchiveBin||'');
-  if(bin!==null){
-    if(bin.trim()===''){sharedArchiveBin=null;try{localStorage.removeItem('pe-shared-bin');}catch(e){}}
-    else{sharedArchiveBin=bin.trim();try{localStorage.setItem('pe-shared-bin',sharedArchiveBin);}catch(e){}}
-  }
-  const btn=document.getElementById('greach');
-  btn.style.color=(realityLLMKey||sharedArchiveBin)?'#9f9':'#9bd';
-  btn.title=`LLM:${realityLLMKey?realityLLMProvider:'off'} archive:${sharedArchiveBin?'on':'off'}`;
+  const btn=document.getElementById('gshared');
+  btn.style.color=sharedArchiveBin?'#9f9':'#9bd';
+  btn.title=sharedArchiveBin?'shared archive: '+sharedArchiveBin:'shared archive disabled';
 });
 
 init();loop();
