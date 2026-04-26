@@ -18,7 +18,203 @@ canvas{position:fixed;inset:0}
 <div id="gen"></div>
 <div id="gio"><button id="gexp">💾 save</button><button id="gvex" title="export voice telemetry">📊</button><button id="gimp">📂 load</button><button id="grest" title="adopt a dead lineage from the coordinator">🧬</button><button id="gmic" title="grant audio sense to the system">🎙</button><button id="gspk" title="grant the system a voice">🔊</button><button id="gshared" title="Pe23c: configure shared archive bin for cross-instance state">🌐</button><button id="gmute" title="mute audible output (system continues internally)" style="display:none">🔇</button><input type="file" id="gfile" accept=".json"></div>
 <canvas id="c"></canvas>
-<script>
+<script type="text/worker-source" id="sim-source">
+// ═══════════════════════════════════════════════════════════════════════════
+// Pe26: WORKER MODE
+// This script tag's content is not executed by the browser directly (the
+// non-standard MIME type prevents that). The main-thread bootstrap below
+// extracts this code and instantiates it as a Web Worker. The simulation
+// runs there. Workers are not throttled the same way as the main thread in
+// background tabs — this is the architectural change that makes "open the
+// link and walk away" actually work as compute, not just as presence.
+//
+// DOM, canvas, AudioContext, navigator, localStorage are all stubbed below
+// so the existing code path can run unchanged in the worker. Specific cross-
+// boundary calls (audio in/out, document writes) are proxied to main via
+// postMessage. Everything else runs natively.
+// ═══════════════════════════════════════════════════════════════════════════
+
+// ─── DOM / window / canvas stubs ────────────────────────────────────────────
+const __noop=()=>{};
+// Worker canvas dimensions — default before main sends real values via init message
+self.innerWidth=800;
+self.innerHeight=600;
+self.devicePixelRatio=1;
+self.location=self.location||{href:'',hash:''};
+// Recursive stub: any property access returns the same stub, any call returns
+// it too, primitive coercion gives 0. Lets chains like X.createRadialGradient(...)
+// .addColorStop(...) and osc.frequency.value=440 work without throwing.
+function __makeRecursiveStub(){
+  const fn=function(){return __recStub;};
+  fn.value=0;
+  return fn;
+}
+const __recStub=new Proxy(__makeRecursiveStub(),{
+  get(t,k){
+    if(k===Symbol.toPrimitive)return ()=>0;
+    if(k==='valueOf')return ()=>0;
+    if(k==='toString')return ()=>'';
+    if(k==='length')return 0;
+    if(k===Symbol.iterator)return function*(){};
+    return __recStub;
+  },
+  set(t,k,v){t[k]=v;return true;},
+  apply(t,thisArg,args){return __recStub;},
+  has(){return true;}
+});
+const __stubCtx=__recStub;
+const __stubElem={
+  getContext:()=>__stubCtx,
+  addEventListener:__noop,removeEventListener:__noop,
+  textContent:'',innerHTML:'',style:{},
+  getBoundingClientRect:()=>({left:0,top:0,width:0,height:0,right:0,bottom:0}),
+  click:__noop,focus:__noop,blur:__noop,
+  classList:{add:__noop,remove:__noop,toggle:__noop,contains:()=>false},
+};
+const __makeStubElem=()=>{
+  const e=Object.create(__stubElem);
+  e.style={};
+  return e;
+};
+self.document={
+  getElementById:()=>__makeStubElem(),
+  querySelector:()=>__makeStubElem(),
+  querySelectorAll:()=>[],
+  createElement:()=>__makeStubElem(),
+  createElementNS:()=>__makeStubElem(),
+  addEventListener:__noop,removeEventListener:__noop,
+  body:__makeStubElem(),documentElement:__makeStubElem(),
+  hidden:false,visibilityState:'visible',
+  title:'',location:{href:''},
+};
+self.window=self;
+self.requestAnimationFrame=(cb)=>setTimeout(()=>cb(performance.now()),16);
+self.cancelAnimationFrame=(id)=>clearTimeout(id);
+// AudioContext stubs — actual audio runs on main and is proxied
+class __StubAudioNode{constructor(){this.gain={value:1};this.frequency={value:440};}connect(){return this;}disconnect(){}start(){}stop(){}}
+class __StubAudioContext{
+  constructor(){this.state='running';this.destination=new __StubAudioNode();this.currentTime=0;}
+  createGain(){return new __StubAudioNode();}
+  createOscillator(){return new __StubAudioNode();}
+  createAnalyser(){const n=new __StubAudioNode();n.frequencyBinCount=64;n.getByteFrequencyData=(a)=>{for(let i=0;i<a.length;i++)a[i]=0;};return n;}
+  createMediaStreamSource(){return new __StubAudioNode();}
+  resume(){return Promise.resolve();}
+  close(){return Promise.resolve();}
+}
+self.AudioContext=__StubAudioContext;
+self.webkitAudioContext=__StubAudioContext;
+self.navigator=self.navigator||{};
+self.navigator.mediaDevices=self.navigator.mediaDevices||{getUserMedia:()=>Promise.reject(new Error('mic on main only'))};
+self.navigator.getBattery=undefined;
+// localStorage stub backed by an in-memory map; persistence handled by main
+const __memStore={};
+self.localStorage={
+  getItem:(k)=>(k in __memStore)?__memStore[k]:null,
+  setItem:(k,v)=>{__memStore[k]=String(v);},
+  removeItem:(k)=>{delete __memStore[k];},
+  clear:()=>{for(const k in __memStore)delete __memStore[k];},
+};
+// History stub (used by saveGenome/replaceState)
+self.history={replaceState:__noop,pushState:__noop};
+// File / Blob / URL exist natively in workers — no stub needed
+
+// ─── Cross-boundary primitives ─────────────────────────────────────────────
+// Replace direct DOM / Audio writes with postMessage protocols so the system
+// experiences the world the same way it did on main thread, just routed.
+let __mainAmbientLevel=0; // updated by main-thread mic samples
+let __audioOutMuted=false;
+
+function __postEmit(freq,amp,durMs,wave){
+  try{self.postMessage({t:'emit',f:freq,a:amp,d:durMs,w:wave});}catch(e){}
+}
+function __postDocWrite(what,content){
+  try{self.postMessage({t:'docwrite',what:what,content:String(content).slice(0,400)});}catch(e){}
+}
+function __postSavePersist(hash){
+  try{self.postMessage({t:'persist',hash:hash});}catch(e){}
+}
+
+// ─── Worker message handler ────────────────────────────────────────────────
+// Commands from main: input, audio state, save/load requests.
+self.onmessage=function(e){
+  const m=e.data;
+  if(!m||!m.t)return;
+  switch(m.t){
+    case 'init':
+      if(m.W)self.__initW=m.W;
+      if(m.H)self.__initH=m.H;
+      if(m.savedHash)self.__savedHash=m.savedHash;
+      break;
+    case 'resize':
+      if(typeof W!=='undefined'){W=m.W;H=m.H;}
+      break;
+    case 'pull':
+      if(typeof mx!=='undefined'){mx=m.x;my=m.y;pulling=m.active?1:0;if(!m.active&&typeof scatter==='function')scatter();}
+      break;
+    case 'pullEnd':
+      if(typeof pulling!=='undefined'){if(pulling&&typeof scatter==='function')scatter();pulling=0;}
+      break;
+    case 'ambient':
+      __mainAmbientLevel=m.level||0;
+      if(typeof ambientLevel!=='undefined')ambientLevel=__mainAmbientLevel;
+      break;
+    case 'audioState':
+      if(typeof audioOutEnabled!=='undefined')audioOutEnabled=!!m.outputEnabled;
+      if(typeof ambientEnabled!=='undefined')ambientEnabled=!!m.inputEnabled;
+      __audioOutMuted=!!m.muted;
+      break;
+    case 'loadHash':
+      if(typeof decodeGenome==='function'&&m.hash)decodeGenome(m.hash);
+      break;
+    case 'requestSave':
+      if(typeof encodeGenome==='function'){
+        try{const hash=encodeGenome();self.postMessage({t:'saveResult',hash:hash,reqId:m.reqId});}catch(e){}
+      }
+      break;
+    case 'requestSnapshot':
+      __postSnapshotNow();
+      break;
+  }
+};
+
+// ─── Snapshot poster ───────────────────────────────────────────────────────
+// Periodic state snapshot for the render thread. Sent as plain object via
+// structured clone — small enough at typical CAP that copy cost is trivial.
+let __lastSnapTick=-1;
+let __simReady=false;
+function __postSnapshotNow(){
+  if(!__simReady)return;
+  try{
+    // Send only the alive subset to keep snapshot small. Render reads in order.
+    const aliveCount=N|0;
+    const snap={
+      t:'snap',
+      tick:tick,
+      totalTicks:genome?genome.totalTicks:0,
+      gen:genome?genome.generation:0,
+      N:aliveCount,
+      px:px.slice(0,aliveCount),
+      py:py.slice(0,aliveCount),
+      amp:amp.slice(0,aliveCount),
+      phase:phase.slice(0,aliveCount),
+      palive:palive.slice(0,aliveCount),
+      clusterID:clusterID.slice(0,aliveCount),
+      field:field?field.slice():null,
+      fieldW:typeof FIELD_W!=='undefined'?FIELD_W:0,
+      fieldH:typeof FIELD_H!=='undefined'?FIELD_H:0,
+      W:W,H:H,
+      clusters:clusters?clusters.map(c=>({cx:c.cx,cy:c.cy,size:c.size,lineageID:c.lineageID,persistAge:c.persistAge})):[],
+      pop:aliveCount,
+      currentFitness:typeof currentFitness!=='undefined'?currentFitness:0,
+    };
+    self.postMessage(snap);
+    __lastSnapTick=tick;
+  }catch(e){}
+}
+// Send snapshots at ~30Hz independent of the loop's actual tick rate.
+setInterval(__postSnapshotNow,33);
+
+<!-- WORKER_SIM_BODY_BEGIN -->
 const c=document.getElementById('c'),X=c.getContext('2d'),genEl=document.getElementById('gen');
 let W,H,mx=-9e3,my=-9e3,smx=0,smy=0,pulling=0,pStr=0,pDur=0,tick=0;
 
@@ -120,11 +316,17 @@ function emitTone(freqHz,amp,durationMs,waveformIdx){
   // Field-coupling and audible emission are independent. Field-write happens
   // regardless of whether the user enabled audio output — the system experiences
   // its own voice internally. Audible playback is gated only on permission.
-  const f=Math.max(20,freqHz); // below 20Hz won't reach speakers anyway; let the value through
+  const f=Math.max(20,freqHz);
   const a=Math.max(0,amp);
   const d=Math.max(0.005,Math.min(2.0,durationMs/1000));
-  if(!audioOutEnabled||!audioOutCtx)return false;
+  if(!audioOutEnabled)return false;
   if(a<0.0001)return false;
+  // Pe26: in Worker mode, AudioContext doesn't exist for real — proxy to main.
+  if(typeof importScripts==='function'){
+    __postEmit(f,a,d*1000,Math.abs(waveformIdx)%WAVEFORMS.length);
+    return true;
+  }
+  if(!audioOutCtx)return false;
   try{
     const osc=audioOutCtx.createOscillator();
     const gain=audioOutCtx.createGain();
@@ -926,9 +1128,14 @@ function realityDocWrite(target,content){
   const now=Date.now();
   if(now-docWriteCooldown<500)return 0;
   docWriteCooldown=now;
+  const s=typeof content==='string'?content:String(content);
+  const trimmed=s.length>80?s.slice(0,80):s;
+  // Pe26: in Worker, document is a stub — proxy to main thread
+  if(typeof importScripts==='function'){
+    __postDocWrite(target,trimmed);
+    return target==='title'?trimmed.length:1;
+  }
   try{
-    const s=typeof content==='string'?content:String(content);
-    const trimmed=s.length>80?s.slice(0,80):s;
     if(target==='title'){document.title=trimmed;return trimmed.length;}
     if(target==='favicon'){
       const svg='<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32"><rect width="32" height="32" fill="#020204"/><text x="16" y="22" font-family="monospace" font-size="16" fill="#8af" text-anchor="middle">'+(trimmed[0]||'?')+'</text></svg>';
@@ -2572,6 +2779,8 @@ function sampleInstrumentation(){
 // Runs on a subset of particles each mutation cycle (not all — too expensive)
 // ═══ DASHBOARD OVERLAY — governance metrics as sparklines ═══
 function renderDashboard(){
+  // Pe26: dashboard is main-thread only; worker has no canvas
+  if(typeof importScripts==='function')return;
   if(!dashboardVisible||inst.ticks.length<3)return;
 
   const pad=8,lineH=28,chartW=120,chartH=18;
@@ -5006,6 +5215,9 @@ function scatter(){
 // RENDER
 // ═══════════════════════════════════════
 function render(){
+  // Pe26: in Worker mode, the main thread renders from snapshots — skip the
+  // local render call entirely to avoid wasted CPU on stubbed canvas ops.
+  if(typeof importScripts==='function')return;
   X.fillStyle='rgba(2,2,4,0.065)';X.fillRect(0,0,W,H);
 
   const rAbsPd=ABSENCE_BASE+Math.sin(tick*0.0007)*180+(Math.sin(tick*0.00031)*90)|0;
@@ -5807,6 +6019,286 @@ document.getElementById('gshared').addEventListener('click',()=>{
 });
 
 init();loop();
+__simReady=true;
+</script>
+
+<script>
+// ═══════════════════════════════════════════════════════════════════════════
+// Pe26: MAIN-THREAD BOOTSTRAP
+// Extracts the worker source from the script tag above and instantiates the
+// simulation in a Web Worker. Main thread handles render, audio, input, and
+// proxies DOM-touching primitives. Persistence to localStorage so a closed
+// tab can resume on next open. Background tabs continue evolving — the whole
+// point of the architectural shift.
+// ═══════════════════════════════════════════════════════════════════════════
+(function(){
+  const c=document.getElementById('c');
+  const X=c.getContext('2d');
+  const genEl=document.getElementById('gen');
+  let W=c.width=window.innerWidth;
+  let H=c.height=window.innerHeight;
+  X.fillStyle='#020204';X.fillRect(0,0,W,H);
+
+  function resize(){
+    W=c.width=window.innerWidth;
+    H=c.height=window.innerHeight;
+    if(worker)worker.postMessage({t:'resize',W:W,H:H});
+  }
+  window.addEventListener('resize',resize);
+
+  // ─── Worker bootstrap ─────────────────────────────────
+  const simSource=document.getElementById('sim-source').textContent;
+  let savedHash=null;
+  try{
+    const h=location.hash.slice(1);
+    if(h.length>10)savedHash=h;
+    else{
+      const stored=localStorage.getItem('selection_genome');
+      if(stored&&stored.length>10)savedHash=stored;
+    }
+  }catch(e){}
+
+  let worker;
+  try{
+    const blob=new Blob([simSource],{type:'application/javascript'});
+    worker=new Worker(URL.createObjectURL(blob));
+  }catch(e){
+    document.body.innerHTML='<div style="color:#fff;padding:20px;font:14px monospace">Pe26 requires Web Worker support. Error: '+e.message+'</div>';
+    return;
+  }
+
+  // ─── State snapshot (for render) ──────────────────────
+  let latestSnap=null;
+
+  worker.onmessage=function(e){
+    const m=e.data;
+    if(!m||!m.t)return;
+    switch(m.t){
+      case 'snap':
+        latestSnap=m;
+        if(genEl)genEl.textContent='gen '+(m.gen|0)+' · pop '+(m.pop|0)+' · t '+(m.totalTicks|0);
+        break;
+      case 'emit':
+        scheduleAudioEmit(m.f,m.a,m.d,m.w);
+        break;
+      case 'docwrite':
+        applyDocWrite(m.what,m.content);
+        break;
+      case 'persist':
+      case 'saveResult':
+        if(m.hash){
+          try{localStorage.setItem('selection_genome',m.hash);}catch(e){}
+          try{history.replaceState(null,'','#'+m.hash);}catch(e){}
+        }
+        if(m.t==='saveResult'&&pendingDownload){
+          triggerDownload(m.hash);
+          pendingDownload=false;
+        }
+        break;
+    }
+  };
+  worker.onerror=function(e){
+    console.error('Pe26 worker error:',e.message,e.filename,e.lineno);
+  };
+
+  // Send init AFTER onmessage is set up
+  worker.postMessage({t:'init',W:W,H:H,savedHash:savedHash});
+  // Apply saved hash via the explicit load message too — gives the worker a
+  // chance to overwrite genome state once init() has run.
+  if(savedHash)setTimeout(()=>worker.postMessage({t:'loadHash',hash:savedHash}),200);
+
+  // Periodic auto-save: ask worker to encode genome, persist on receipt.
+  setInterval(()=>worker.postMessage({t:'requestSave'}),15000);
+
+  // ─── Render loop ──────────────────────────────────────
+  // Reads from the latest worker snapshot. Independent of worker tick rate.
+  function render(){
+    requestAnimationFrame(render);
+    if(!latestSnap){return;}
+    X.fillStyle='rgba(2,2,4,0.18)';
+    X.fillRect(0,0,W,H);
+    const s=latestSnap;
+    const px=s.px,py=s.py,palive=s.palive,amp=s.amp,clusterID=s.clusterID;
+    const N=s.N|0;
+    // Field tint underneath
+    if(s.field&&s.fieldW>0&&s.fieldH>0){
+      const fW=s.fieldW,fH=s.fieldH,cw=W/fW,ch=H/fH;
+      for(let fy=0;fy<fH;fy++){
+        for(let fx=0;fx<fW;fx++){
+          const v=Math.min(1,Math.max(0,s.field[fy*fW+fx]/2));
+          if(v<0.04)continue;
+          X.fillStyle='rgba(50,90,130,'+(v*0.3).toFixed(3)+')';
+          X.fillRect(fx*cw,fy*ch,cw+1,ch+1);
+        }
+      }
+    }
+    // Particles
+    for(let i=0;i<N;i++){
+      if(!palive[i])continue;
+      const a=Math.max(0,Math.min(1,amp[i]));
+      const cid=clusterID[i];
+      const hue=cid>=0?(cid*47+200)%360:200;
+      const lit=30+a*45;
+      X.fillStyle='hsl('+hue+','+(60+a*30)+'%,'+lit+'%)';
+      X.beginPath();
+      X.arc(px[i],py[i],1.2+a*2.2,0,6.283);
+      X.fill();
+    }
+  }
+  requestAnimationFrame(render);
+
+  // ─── Input ────────────────────────────────────────────
+  let mx=0,my=0,pulling=false;
+  function postPull(active){
+    pulling=active;
+    worker.postMessage({t:'pull',x:mx,y:my,active:active});
+  }
+  document.addEventListener('mousemove',e=>{mx=e.clientX;my=e.clientY;if(pulling)postPull(true);});
+  document.addEventListener('mousedown',e=>{mx=e.clientX;my=e.clientY;postPull(true);});
+  document.addEventListener('mouseup',()=>{worker.postMessage({t:'pullEnd'});pulling=false;});
+  document.addEventListener('touchstart',e=>{const t=e.touches[0];if(t){mx=t.clientX;my=t.clientY;postPull(true);}},{passive:true});
+  document.addEventListener('touchmove',e=>{e.preventDefault();const t=e.touches[0];if(t){mx=t.clientX;my=t.clientY;postPull(true);}},{passive:false});
+  document.addEventListener('touchend',()=>{worker.postMessage({t:'pullEnd'});pulling=false;});
+
+  // ─── Audio output: scheduled when worker emits ────────
+  let audioOutCtx=null,audioOutMaster=null,audioOutEnabled=false,audioOutMuted=false;
+  const WAVEFORMS=['sine','square','sawtooth','triangle'];
+  function scheduleAudioEmit(f,a,dMs,wIdx){
+    if(!audioOutEnabled||!audioOutCtx||audioOutMuted)return;
+    if(a<0.0001)return;
+    const d=Math.max(0.005,Math.min(2.0,dMs/1000));
+    try{
+      const osc=audioOutCtx.createOscillator();
+      const gain=audioOutCtx.createGain();
+      osc.type=WAVEFORMS[(wIdx|0)%WAVEFORMS.length];
+      osc.frequency.value=Math.max(20,f);
+      const t=audioOutCtx.currentTime;
+      gain.gain.setValueAtTime(0,t);
+      gain.gain.linearRampToValueAtTime(Math.min(0.3,a),t+0.005);
+      gain.gain.linearRampToValueAtTime(0,t+d);
+      osc.connect(gain);gain.connect(audioOutMaster);
+      osc.start(t);osc.stop(t+d+0.01);
+    }catch(e){}
+  }
+  function postAudioState(){
+    worker.postMessage({t:'audioState',outputEnabled:audioOutEnabled,inputEnabled:ambientEnabled,muted:audioOutMuted});
+  }
+  async function tryEnableAudioOut(){
+    try{
+      audioOutCtx=ambientCtx||new (window.AudioContext||window.webkitAudioContext)();
+      if(audioOutCtx.state==='suspended')await audioOutCtx.resume();
+      audioOutMaster=audioOutCtx.createGain();
+      audioOutMaster.gain.value=audioOutMuted?0:1.0;
+      audioOutMaster.connect(audioOutCtx.destination);
+      audioOutEnabled=true;
+      postAudioState();
+      const muteBtn=document.getElementById('gmute');
+      if(muteBtn)muteBtn.style.display='inline-block';
+    }catch(e){}
+  }
+  function setMute(m){
+    audioOutMuted=!!m;
+    if(audioOutMaster)audioOutMaster.gain.value=audioOutMuted?0:1.0;
+    postAudioState();
+  }
+
+  // ─── Audio input: mic → ambient level → worker ────────
+  let ambientCtx=null,ambientAnalyser=null,ambientData=null,ambientEnabled=false;
+  let ambientLevel=0;
+  async function tryEnableAmbient(){
+    try{
+      const stream=await navigator.mediaDevices.getUserMedia({audio:true,video:false});
+      ambientCtx=ambientCtx||new (window.AudioContext||window.webkitAudioContext)();
+      const src=ambientCtx.createMediaStreamSource(stream);
+      ambientAnalyser=ambientCtx.createAnalyser();
+      ambientAnalyser.fftSize=256;
+      ambientAnalyser.smoothingTimeConstant=0.7;
+      src.connect(ambientAnalyser);
+      ambientData=new Uint8Array(ambientAnalyser.frequencyBinCount);
+      ambientEnabled=true;
+      postAudioState();
+      setInterval(()=>{
+        if(!ambientEnabled||!ambientAnalyser)return;
+        ambientAnalyser.getByteFrequencyData(ambientData);
+        let sum=0;
+        for(let i=0;i<ambientData.length;i++)sum+=ambientData[i];
+        const raw=sum/(ambientData.length*255);
+        ambientLevel=ambientLevel*0.9+raw*0.1;
+        worker.postMessage({t:'ambient',level:ambientLevel});
+      },100);
+    }catch(e){}
+  }
+
+  // ─── Doc writes from worker (title/favicon) ───────────
+  let docWriteCooldown=0;
+  function applyDocWrite(target,content){
+    const now=Date.now();
+    if(now-docWriteCooldown<500)return;
+    docWriteCooldown=now;
+    try{
+      if(target==='title')document.title=content;
+      else if(target==='favicon'){
+        const svg='<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32"><rect width="32" height="32" fill="#020204"/><text x="16" y="22" font-family="monospace" font-size="16" fill="#8af" text-anchor="middle">'+(content[0]||'?')+'</text></svg>';
+        let link=document.querySelector('link[rel="icon"]');
+        if(!link){link=document.createElement('link');link.rel='icon';document.head.appendChild(link);}
+        link.href='data:image/svg+xml;base64,'+btoa(svg);
+      }
+    }catch(e){}
+  }
+
+  // ─── Save / load via download / file picker ───────────
+  let pendingDownload=false;
+  function triggerDownload(hash){
+    try{
+      const data={pe:'26',hash:hash,saved:new Date().toISOString()};
+      const blob=new Blob([JSON.stringify(data)],{type:'application/json'});
+      const url=URL.createObjectURL(blob);
+      const a=document.createElement('a');
+      a.href=url;a.download='selection_pe_'+Date.now()+'.json';
+      document.body.appendChild(a);a.click();
+      setTimeout(()=>{URL.revokeObjectURL(url);a.remove();},100);
+    }catch(e){}
+  }
+
+  // ─── UI buttons ───────────────────────────────────────
+  const bind=(id,fn)=>{const el=document.getElementById(id);if(el)el.addEventListener('click',fn);};
+  bind('gspk',tryEnableAudioOut);
+  bind('gmic',tryEnableAmbient);
+  bind('gmute',()=>setMute(!audioOutMuted));
+  bind('gexp',()=>{pendingDownload=true;worker.postMessage({t:'requestSave'});});
+  bind('gimp',()=>{const f=document.getElementById('gfile');if(f)f.click();});
+  const fileInput=document.getElementById('gfile');
+  if(fileInput){
+    fileInput.addEventListener('change',e=>{
+      const f=e.target.files[0];if(!f)return;
+      const r=new FileReader();
+      r.onload=ev=>{
+        try{
+          const obj=JSON.parse(ev.target.result);
+          if(obj&&obj.hash)worker.postMessage({t:'loadHash',hash:obj.hash});
+        }catch(e){}
+      };
+      r.readAsText(f);
+    });
+  }
+  bind('gshared',()=>{
+    const bin=prompt('Shared archive bin ID (leave blank to disable):');
+    if(bin!==null){
+      try{localStorage.setItem('pe-shared-bin',bin.trim());}catch(e){}
+      // Worker reads localStorage stub; relay it directly via a future message
+      // type if needed. For v1 the bin is read from URL hash on init only.
+      alert('Shared archive setting will apply on next page load.');
+    }
+  });
+
+  // ─── Persistence on close / hidden ────────────────────
+  window.addEventListener('beforeunload',()=>{
+    worker.postMessage({t:'requestSave'});
+  });
+  document.addEventListener('visibilitychange',()=>{
+    if(document.hidden)worker.postMessage({t:'requestSave'});
+  });
+})();
 </script>
 </body>
 </html>
