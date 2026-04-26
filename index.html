@@ -519,18 +519,37 @@ function netFetchScalar(url){
   });
   return 0;
 }
+// Pe25: default atom term distribution. The values that used to be hardcoded
+// constants in uaGenTerm. New genomes start here and drift via the mutation
+// cycle. Existing saves get this filled in at load time.
+function defaultAtomTermDist(){
+  return{
+    func:0.3,
+    net:0.04,
+    doc:0.04,
+    realityWrite:0.03,
+    realityFetch:0.03,
+    realityStore:0.03,
+    shared:0.02,
+    selfMod:0.04,
+  };
+}
+
 function uaGenTerm(){
-  const useFunc=Math.random()<0.3;
-  const useNet=Math.random()<0.04;
-  const useDoc=Math.random()<0.04;
-  const useRealityWrite=Math.random()<0.03;
-  const useRealityFetch=Math.random()<0.03;
-  const useRealityStore=Math.random()<0.03;
-  const useShared=Math.random()<0.02;
-  // Pe24b: selfMod by slot index. The slot's actual expression evolves at the
-  // genome level, not at the atom level. Atom mutation just references slots.
-  // No new Function compilations per atom — the compiled function is shared.
-  const useSelfMod=Math.random()<0.04;
+  // Pe25: probabilities now evolvable per-genome. Falls back to defaults if
+  // the field isn't present yet (old saves, fresh genomes pre-mutation).
+  const d=genome.atomTermDist||defaultAtomTermDist();
+  const useFunc=Math.random()<d.func;
+  const useNet=Math.random()<d.net;
+  const useDoc=Math.random()<d.doc;
+  const useRealityWrite=Math.random()<d.realityWrite;
+  const useRealityFetch=Math.random()<d.realityFetch;
+  const useRealityStore=Math.random()<d.realityStore;
+  const useShared=Math.random()<d.shared;
+  // Pe24b: selfMod by slot index. Pe25: slot count is now per-cluster, so the
+  // generator picks an index modulo SLOT_COUNT_MAX and selfModEval modulos
+  // again into whatever the actual cluster slot count is at call time.
+  const useSelfMod=Math.random()<d.selfMod;
   if(useNet){
     const urls=['"https://api.github.com/zen"','"https://worldtimeapi.org/api/ip"','"https://api.quotable.io/random"','"https://httpbin.org/bytes/8"'];
     return "netFetchScalar("+urls[(Math.random()*urls.length)|0]+")";
@@ -558,7 +577,7 @@ function uaGenTerm(){
     return "sharedArchiveWrite(a*b)";
   }
   if(useSelfMod){
-    const slot=(Math.random()*8)|0;
+    const slot=(Math.random()*SLOT_COUNT_MAX)|0;
     return "selfMod("+slot+",a,b)";
   }
   const val=Math.random()<0.5?USER_VARS[(Math.random()*USER_VARS.length)|0]:(Math.random()*4-2).toFixed(2);
@@ -645,7 +664,9 @@ function mutateOpcodeBodies(g,rate,scale){
   if(Math.random()<0.03){
     // Pe24b: opcode existence is evolvable. Index can grow up to 64 — opcode bodies
     // dispatch handles arbitrary indices, so genomes effectively grow new opcodes.
-    const target=Math.random()<0.4?(Math.random()*64)|0:(Math.random()*31)|0;
+    // Pe25: probability of seeding a high-index slot is now evolvable.
+    const seedHighProb=(g.opcodeSeedHighProb!==undefined)?g.opcodeSeedHighProb:0.4;
+    const target=Math.random()<seedHighProb?(Math.random()*64)|0:(Math.random()*31)|0;
     g.opcodeBodies[target]={tree:genTreeNode(3),writeTo:(Math.random()*12)|0};
   }
   for(const k in g.opcodeBodies){
@@ -666,20 +687,65 @@ function mutateOpcodeBodies(g,rate,scale){
 // index, not by embedding fresh expressions. This keeps total compiled-function
 // count bounded by (slots × active genomes), not (mutations × time).
 //
-// Limits: 8 slots per genome max. Expression length capped at 200 chars.
-// Mutations recompile the same slot rather than creating new ones.
+// Pe25: scope moved from species (global genome) to cluster (cluster genome).
+// Slot count is now per-cluster and evolvable. Each particle's selfMod calls
+// resolve through its own cluster's slot pool. Particles with no cluster fall
+// back to the global genome's pool for continuity. Structural ceilings stay:
+// expression length cap and the sandbox regex are real, not aesthetic.
+//
+// Limits: slot count between SLOT_COUNT_MIN..SLOT_COUNT_MAX, expression length
+// capped at 200 chars. Mutations recompile the same slot rather than creating
+// new ones.
 
-const SELF_MOD_SLOTS=8;
 const SELF_MOD_EXPR_MAX_LEN=200;
 
+// Pe25: the particle currently being evaluated. Set by uaCall before invoking
+// the compiled atom function, read by selfModEval to find the right cluster.
+// Reset to -1 between evaluations. -1 means "no current particle" → fall back
+// to global genome's slots (or, for orphan particles, also fall back).
+let currentParticle=-1;
+
+function getSelfModContext(){
+  // Returns the genome-shaped object holding selfModSlots/selfModSelf for the
+  // currently-evaluating particle. Cluster genome if particle is in a cluster,
+  // otherwise the global genome. Caller is responsible for null/undefined checks
+  // on slots; this just resolves scope.
+  if(currentParticle>=0&&currentParticle<clusterID.length){
+    const cid=clusterID[currentParticle];
+    if(cid>=0&&cid<MAX_CLUSTERS){
+      const cIdx=clusterByID[cid];
+      if(cIdx>=0&&cIdx<clusters.length){
+        const c=clusters[cIdx];
+        if(c&&c.clusterGenome){
+          if(!c.clusterGenome.selfModSelf)c.clusterGenome.selfModSelf={};
+          return c.clusterGenome;
+        }
+      }
+    }
+  }
+  if(!genome.selfModSelf)genome.selfModSelf={};
+  return genome;
+}
+
 function ensureSelfModSlots(g){
+  if(!g)return;
+  // Determine slot count: cluster genomes have explicit slotCount, global has fallback
+  const targetCount=Math.max(SLOT_COUNT_MIN,Math.min(SLOT_COUNT_MAX,g.slotCount|0||8));
   if(!g.selfModSlots){
-    g.selfModSlots=new Array(SELF_MOD_SLOTS).fill(null);
+    g.selfModSlots=new Array(targetCount).fill(null);
+  }else if(g.selfModSlots.length!==targetCount){
+    // Resize while preserving existing slots
+    const old=g.selfModSlots;
+    g.selfModSlots=new Array(targetCount).fill(null);
+    for(let i=0;i<Math.min(targetCount,old.length);i++){
+      g.selfModSlots[i]=old[i];
+    }
   }
   if(!g.selfModSelf)g.selfModSelf={};
 }
 
 function compileSelfModSlot(g,slotIdx){
+  if(!g||!g.selfModSlots)return;
   const slot=g.selfModSlots[slotIdx];
   if(!slot||!slot.expr)return;
   // Drop the old fn reference so it can be GC'd
@@ -695,13 +761,21 @@ function compileSelfModSlot(g,slotIdx){
 }
 
 // Atoms call selfMod(slotIdx). Returns the slot's evaluation, or 0 if empty.
+// Pe24c: increment slot.uses on every successful dispatch so the protection
+// gate in mutateSelfModSlots has real signal — slots actually being called
+// accumulate use-evidence and survive periodic clearing; unused slots stay at
+// 0 and remain eligible for clearing.
+// Pe25: resolves slot pool from the current particle's cluster genome.
 function selfModEval(slotIdx,a,b){
-  const g=genome;
+  const g=getSelfModContext();
   if(!g.selfModSlots)return 0;
-  const idx=Math.abs(slotIdx|0)%SELF_MOD_SLOTS;
+  const slotCount=g.selfModSlots.length;
+  if(slotCount<=0)return 0;
+  const idx=Math.abs(slotIdx|0)%slotCount;
   const slot=g.selfModSlots[idx];
   if(!slot||!slot.fn)return 0;
   if(!g.selfModSelf)g.selfModSelf={};
+  slot.uses=(slot.uses|0)+1;
   try{
     return slot.fn(a||0,b||0,g.totalTicks||0,N||0,g.selfModSelf)||0;
   }catch(e){return 0;}
@@ -722,11 +796,16 @@ function genSelfModExpr(depth){
 }
 
 function mutateSelfModSlots(g,rate,scale){
+  if(!g)return;
   ensureSelfModSlots(g);
+  const slotCount=g.selfModSlots.length;
+  if(slotCount<=0)return;
+  // Clearing rate is now evolvable per-context; default for global genome
+  const clearRate=(typeof g.selfModClearRate==='number')?g.selfModClearRate:0.005;
   // Occasionally seed an empty slot
   if(Math.random()<0.05){
     const empty=[];
-    for(let i=0;i<SELF_MOD_SLOTS;i++)if(!g.selfModSlots[i])empty.push(i);
+    for(let i=0;i<slotCount;i++)if(!g.selfModSlots[i])empty.push(i);
     if(empty.length>0){
       const idx=empty[(Math.random()*empty.length)|0];
       g.selfModSlots[idx]={expr:genSelfModExpr(0),fn:null,uses:0};
@@ -734,7 +813,7 @@ function mutateSelfModSlots(g,rate,scale){
     }
   }
   // Occasionally mutate or replace an existing slot
-  for(let i=0;i<SELF_MOD_SLOTS;i++){
+  for(let i=0;i<slotCount;i++){
     const slot=g.selfModSlots[i];
     if(!slot)continue;
     if(Math.random()<rate*0.3){
@@ -755,8 +834,8 @@ function mutateSelfModSlots(g,rate,scale){
       slot.uses=0;
       compileSelfModSlot(g,i);
     }
-    // Occasionally clear an unused slot
-    if((slot.uses|0)===0&&Math.random()<0.005){
+    // Clear unused slots — rate is now evolvable per-context (Pe25)
+    if((slot.uses|0)===0&&Math.random()<clearRate){
       g.selfModSlots[i]=null;
     }
   }
@@ -764,10 +843,13 @@ function mutateSelfModSlots(g,rate,scale){
 
 // Pe24b: opcode picker for instruction mutation. Includes evolved opcodes
 // at high indices when the genome has any.
+// Pe25: high-index probability is now evolvable. genome.opcodePickerHighProb
+// drifts in the mutation cycle. Falls back to 0.2 if the field isn't set yet.
 function pickOpcode(g){
   if(g&&g.opcodeBodies){
     const evolvedKeys=Object.keys(g.opcodeBodies).filter(k=>+k>=31);
-    if(evolvedKeys.length>0&&Math.random()<0.2){
+    const highProb=(g.opcodePickerHighProb!==undefined)?g.opcodePickerHighProb:0.2;
+    if(evolvedKeys.length>0&&Math.random()<highProb){
       return +evolvedKeys[(Math.random()*evolvedKeys.length)|0];
     }
   }
@@ -935,10 +1017,15 @@ function uaCompile(atom){
     atom.failed=true;
   }
 }
-function uaCall(atom,a,b){
+function uaCall(atom,a,b,particleIdx){
   if(!atom)return 0;
   if(!atom.compiled&&!atom.failed)uaCompile(atom);
   if(atom.failed||!atom.compiled)return 0;
+  // Pe25: set currentParticle so selfModEval (and any future cluster-aware
+  // primitives) resolve scope correctly. -1 means "no current particle" — the
+  // resolver falls back to the global genome's pool.
+  const prevParticle=currentParticle;
+  currentParticle=(typeof particleIdx==='number'&&particleIdx>=0)?particleIdx:-1;
   try{
     const r=atom.compiled(a,b,genome.totalTicks,N,netFetchScalar,docReadScalar,realityFetch,realityDocWrite,realityWrite,realityRead,sharedArchiveRead,sharedArchiveWrite,selfModEval);
     atom.uses=(atom.uses|0)+1;
@@ -946,6 +1033,8 @@ function uaCall(atom,a,b){
   }catch(e){
     atom.failed=true;
     return 0;
+  }finally{
+    currentParticle=prevParticle;
   }
 }
 const MAX_CLUSTER_VM=8;    // per-cluster program length — shorter than global, differentiation not replacement
@@ -1028,6 +1117,30 @@ let genome={
   // Accessed via opcode 22. This is how the system writes new primitives
   // that weren't in the opcode set at design time. ═══
   userAtoms:[],
+
+  // ═══ Pe25: EVOLVABLE EXPLORATION RATES ═══
+  // Probabilities that govern what kinds of primitives uaGenTerm samples and
+  // how often instruction mutation reaches for evolved opcodes. These were
+  // hardcoded constants and are now genome-level evolvable. Drift via the
+  // mutation cycle. Bounds are wide so the system can drive any rate to zero
+  // if it isn't useful.
+  atomTermDist:{
+    func:0.3,
+    net:0.04,
+    doc:0.04,
+    realityWrite:0.03,
+    realityFetch:0.03,
+    realityStore:0.03,
+    shared:0.02,
+    selfMod:0.04,
+  },
+  opcodePickerHighProb:0.2,
+  opcodeSeedHighProb:0.4,
+  // Pe25: global genome slot pool — fallback for orphan particles (no cluster).
+  // Cluster-bound particles use their cluster genome's slots instead. Slot
+  // count here is the structural default; cluster slot counts are evolvable
+  // per cluster in the SLOT_COUNT_MIN..SLOT_COUNT_MAX range.
+  slotCount:8,
 
   // ═══ LAYER 6: RULES — Register-Based Virtual Machine ═══
   // When two particles interact, 4 registers are initialized from context.
@@ -1297,6 +1410,10 @@ function encodeGenome(){
     ob:genome.opcodeBodies?genome.opcodeBodies:null,
     // Pe24b: self-mod slots (strings only — functions get recompiled on load)
     sms:genome.selfModSlots?genome.selfModSlots.map(s=>s?{expr:s.expr,uses:s.uses|0}:null):null,
+    // Pe25: evolvable atom term distribution and opcode picker bias
+    atd:genome.atomTermDist?{...genome.atomTermDist}:null,
+    ophp:genome.opcodePickerHighProb,
+    oshp:genome.opcodeSeedHighProb,
 
   };
   return btoa(JSON.stringify(g));
@@ -1359,14 +1476,23 @@ function decodeGenome(hash){
     if(g.om&&Array.isArray(g.om)&&g.om.length>0)genome.opcodeMap=g.om.slice();
     if(g.ob&&typeof g.ob==='object')genome.opcodeBodies=g.ob;
     if(g.sms&&Array.isArray(g.sms)){
-      genome.selfModSlots=new Array(SELF_MOD_SLOTS).fill(null);
-      for(let i=0;i<Math.min(SELF_MOD_SLOTS,g.sms.length);i++){
+      // Pe25: slot pool size is now per-genome (defaulted on global). Load
+      // whatever was saved; ensureSelfModSlots will normalize as needed.
+      const loadedCount=g.sms.length;
+      genome.selfModSlots=new Array(loadedCount).fill(null);
+      for(let i=0;i<loadedCount;i++){
         if(g.sms[i]&&g.sms[i].expr){
           genome.selfModSlots[i]={expr:g.sms[i].expr,fn:null,uses:g.sms[i].uses|0};
           compileSelfModSlot(genome,i);
         }
       }
     }
+    // Pe25: load evolvable atom term distribution and opcode bias
+    if(g.atd&&typeof g.atd==='object'){
+      genome.atomTermDist=Object.assign(defaultAtomTermDist(),g.atd);
+    }
+    if(typeof g.ophp==='number')genome.opcodePickerHighProb=g.ophp;
+    if(typeof g.oshp==='number')genome.opcodeSeedHighProb=g.oshp;
     return true;
   }catch(e){return false}
 }
@@ -1510,24 +1636,70 @@ let clusterVMs=new Map(); // persist per-cluster VM programs across detection cy
 // second level of selection — particles-within-clusters still evolve via
 // the global genome, AND clusters-among-clusters evolve via the clusterGenome.
 // ═══════════════════════════════════════
-let clusterGenomes=new Map(); // hash → {budRate, budThreshold, splitFraction, innovationRate, metabolicBias}
+let clusterGenomes=new Map(); // hash → cluster genome including selfMod state (Pe25)
+
+// Pe25: selfMod moves from species-level (global genome) to cluster-level.
+// Pe22f established cluster genome as a real evolutionary tier; selfMod
+// being global was an architectural leak. Each cluster now carries its own
+// slot pool, slot count, and clearing rate, and these traits are inherited
+// and mutated through budding alongside the existing cluster-genome traits.
+//
+// Structural ceilings (SLOT_COUNT_MAX, SELF_MOD_EXPR_MAX_LEN, the sandbox
+// regex) stay constant because they encode real memory and security bounds,
+// not designer aesthetics. Rates and counts are evolvable; ceilings aren't.
+const SLOT_COUNT_MIN=2;
+const SLOT_COUNT_MAX=16;
+
 function seedClusterGenome(){
+  const slotCount=SLOT_COUNT_MIN+((Math.random()*(SLOT_COUNT_MAX-SLOT_COUNT_MIN+1))|0);
   return{
     budRate:0.6+Math.random()*0.8,          // multiplier on bud chance (0.6..1.4)
     budThreshold:6+Math.random()*6,         // min persistAge to bud (6..12)
     splitFraction:0.25+Math.random()*0.2,   // fraction moved to daughter (0.25..0.45)
     innovationRate:0.1+Math.random()*0.3,   // VM mutation rate on bud (0.1..0.4)
     metabolicBias:0.85+Math.random()*0.1,   // parent amp retention after bud (0.85..0.95)
+    // ─── Pe25: cluster-local self-modification ──────────
+    slotCount:slotCount,
+    selfModSlots:new Array(slotCount).fill(null),
+    selfModSelf:{},
+    selfModClearRate:0.002+Math.random()*0.012, // 0.002..0.014
   };
 }
 function mutateClusterGenome(parent,scale){
-  return{
+  // Pe25: slot count drifts by ±1 occasionally, bounded by structural min/max
+  let newSlotCount=parent.slotCount|0;
+  if(!newSlotCount)newSlotCount=8;
+  if(Math.random()<0.05*scale*5){
+    newSlotCount+=Math.random()<0.5?-1:1;
+    newSlotCount=Math.max(SLOT_COUNT_MIN,Math.min(SLOT_COUNT_MAX,newSlotCount));
+  }
+  // Inherit slots, resize to new count
+  const parentSlots=parent.selfModSlots||[];
+  const newSlots=new Array(newSlotCount).fill(null);
+  for(let i=0;i<Math.min(newSlotCount,parentSlots.length);i++){
+    if(parentSlots[i]){
+      // Inherit slot — fn will be recompiled below so daughter clusters have
+      // working selfMod immediately on bud, not just after their first mutation.
+      newSlots[i]={expr:parentSlots[i].expr,fn:null,uses:0};
+    }
+  }
+  const child={
     budRate:Math.max(0.1,Math.min(3,parent.budRate+(Math.random()-0.5)*scale*0.4)),
     budThreshold:Math.max(2,Math.min(30,parent.budThreshold+(Math.random()-0.5)*scale*2)),
     splitFraction:Math.max(0.1,Math.min(0.7,parent.splitFraction+(Math.random()-0.5)*scale*0.1)),
     innovationRate:Math.max(0.01,Math.min(0.8,parent.innovationRate+(Math.random()-0.5)*scale*0.15)),
     metabolicBias:Math.max(0.6,Math.min(0.99,parent.metabolicBias+(Math.random()-0.5)*scale*0.05)),
+    // ─── Pe25: cluster-local self-modification ──────────
+    slotCount:newSlotCount,
+    selfModSlots:newSlots,
+    selfModSelf:{}, // fresh scratchpad — daughters develop their own state
+    selfModClearRate:Math.max(0.0005,Math.min(0.05,(parent.selfModClearRate||0.005)+(Math.random()-0.5)*scale*0.005)),
   };
+  // Compile inherited slots on the child's own genome reference
+  for(let i=0;i<newSlotCount;i++){
+    if(child.selfModSlots[i])compileSelfModSlot(child,i);
+  }
+  return child;
 }
 let clusterByID=new Int16Array(0); // fast lookup: clusterByID[cid] = index into clusters[]
 
@@ -1783,12 +1955,19 @@ function trackClusterPersistence(){
       // ═══ CLUSTER GENOME INHERITANCE (Pe22f) ═══
       // Carry cluster-level heritable traits across detection cycles,
       // with occasional drift mutation so lineages diverge over time.
+      // Pe25: slot arrays must be cloned, not shared by reference, so each
+      // cluster's selfMod evolution stays independent.
       const prevCG=clusterGenomes.get(bestMatch.hash);
       if(prevCG){
         if(Math.random()<0.04){
-          c.clusterGenome=mutateClusterGenome(prevCG,0.3); // small drift
+          c.clusterGenome=mutateClusterGenome(prevCG,0.3); // small drift, deep-copies slots
         }else{
           c.clusterGenome={...prevCG};
+          // Deep-copy slot array so mutations don't leak between siblings
+          if(prevCG.selfModSlots){
+            c.clusterGenome.selfModSlots=prevCG.selfModSlots.map(s=>s?{expr:s.expr,fn:s.fn,uses:s.uses|0}:null);
+          }
+          c.clusterGenome.selfModSelf={}; // fresh scratchpad per cluster instance
         }
       }else{
         c.clusterGenome=seedClusterGenome();
@@ -1940,7 +2119,7 @@ function attemptClusterBudding(){
           copy[3]+=(Math.random()-0.5)*0.2;
           // Pe22o: k unclamped.
         }
-        if(Math.random()<cg.innovationRate*0.27)copy[0]=Math.floor(Math.random()*31);
+        if(Math.random()<cg.innovationRate*0.27)copy[0]=pickOpcode(genome);
         return copy;
       }),
       vmInfluence:Math.max(0.05,c.vmInfluence+(Math.random()-0.5)*0.1),
@@ -2913,7 +3092,40 @@ function mutateGenome(){
   // Pe22s: mutate evolvable opcode bodies — the semantics of opcodes become genetic
   mutateOpcodeBodies(genome,genome.mutationRate||0.1,genome.mutationScale||0.15);
   // Pe24b: mutate self-mod expression slots — bounded pool, in-place updates
+  // Pe25: global pool is the fallback for orphan particles. Each live cluster
+  // also gets a somatic-drift mutation pass on its own slot pool. Hereditary
+  // changes happen at bud time via mutateClusterGenome; this is the within-
+  // lineage drift between speciation events.
   mutateSelfModSlots(genome,genome.mutationRate||0.1,genome.mutationScale||0.15);
+  for(const c of clusters){
+    if(c&&c.clusterGenome){
+      mutateSelfModSlots(c.clusterGenome,genome.mutationRate||0.1,genome.mutationScale||0.15);
+    }
+  }
+
+  // Pe25: atom term distribution — what KINDS of primitives uaGenTerm samples
+  // when generating new atom expressions. Was hardcoded; now evolvable. Bounds
+  // are wide so the system can drift toward whichever primitives it finds
+  // useful — including driving the rate of one toward zero.
+  if(!genome.atomTermDist)genome.atomTermDist=defaultAtomTermDist();
+  const atd=genome.atomTermDist;
+  atd.func        =maybe(atd.func,        0.05,0.6, 0.04);
+  atd.net         =maybe(atd.net,         0,   0.15,0.015);
+  atd.doc         =maybe(atd.doc,         0,   0.15,0.015);
+  atd.realityWrite=maybe(atd.realityWrite,0,   0.12,0.012);
+  atd.realityFetch=maybe(atd.realityFetch,0,   0.12,0.012);
+  atd.realityStore=maybe(atd.realityStore,0,   0.12,0.012);
+  atd.shared      =maybe(atd.shared,      0,   0.10,0.010);
+  atd.selfMod     =maybe(atd.selfMod,     0,   0.20,0.020);
+
+  // Pe25: opcode picker bias — controls how often instruction mutation reaches
+  // for a high-index (evolved) opcode vs the base 0..30 range, and how often
+  // mutateOpcodeBodies seeds new opcode bodies in the high-index region. Both
+  // were hardcoded; now drift like any other rate.
+  if(genome.opcodePickerHighProb===undefined)genome.opcodePickerHighProb=0.2;
+  if(genome.opcodeSeedHighProb===undefined)genome.opcodeSeedHighProb=0.4;
+  genome.opcodePickerHighProb=maybe(genome.opcodePickerHighProb,0,0.6,0.04);
+  genome.opcodeSeedHighProb=maybe(genome.opcodeSeedHighProb,0,0.8,0.06);
 
   // HGT parameter evolution
   genome.hgtRate=maybe(genome.hgtRate,0.01,0.5,0.04);
@@ -3843,7 +4055,7 @@ function executeVM(i,j,sim,d){
         const uas=genome.userAtoms;
         if(uas&&uas.length>0){
           const uIdx=Math.abs(Math.floor(k))%uas.length;
-          vmRegs[di]=uaCall(uas[uIdx],vmRegs[si],vmRegs[(si+1)%12]);
+          vmRegs[di]=uaCall(uas[uIdx],vmRegs[si],vmRegs[(si+1)%12],i);
         }
       }break;
       // 23: READ_AMBIENT — Pe22g. Room loudness 0..1, scaled by k.
@@ -4024,7 +4236,7 @@ function executeVM(i,j,sim,d){
           const uas=genome.userAtoms;
           if(uas&&uas.length>0){
             const uIdx=Math.abs(Math.floor(k))%uas.length;
-            vmRegs[di]=uaCall(uas[uIdx],vmRegs[si],vmRegs[(si+1)%12]);
+            vmRegs[di]=uaCall(uas[uIdx],vmRegs[si],vmRegs[(si+1)%12],i);
           }
         }break;
         case 23:vmRegs[di]=ambientLevel*k;break;
@@ -4303,7 +4515,7 @@ function executeClusterVM(i,j,sim,d){
         const uas=genome.userAtoms;
         if(uas&&uas.length>0){
           const uIdx=Math.abs(Math.floor(k))%uas.length;
-          vmRegs[di]=uaCall(uas[uIdx],vmRegs[si],vmRegs[(si+1)%12]);
+          vmRegs[di]=uaCall(uas[uIdx],vmRegs[si],vmRegs[(si+1)%12],i);
         }
       }break;
       // 23: READ_AMBIENT — Pe22g. Room loudness 0..1, scaled by k.
@@ -4668,7 +4880,7 @@ function executeSoloVM(){
           const uas=genome.userAtoms;
           if(uas&&uas.length>0){
             const uIdx=Math.abs(Math.floor(k))%uas.length;
-            vmRegs[di]=uaCall(uas[uIdx],vmRegs[si],vmRegs[(si+1)%12]);
+            vmRegs[di]=uaCall(uas[uIdx],vmRegs[si],vmRegs[(si+1)%12],i);
           }
         }break;
         case 23:vmRegs[di]=ambientLevel*k;break;
