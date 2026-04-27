@@ -18,203 +18,7 @@ canvas{position:fixed;inset:0}
 <div id="gen"></div>
 <div id="gio"><button id="gexp">💾 save</button><button id="gvex" title="export voice telemetry">📊</button><button id="gimp">📂 load</button><button id="grest" title="adopt a dead lineage from the coordinator">🧬</button><button id="gmic" title="grant audio sense to the system">🎙</button><button id="gspk" title="grant the system a voice">🔊</button><button id="gshared" title="Pe23c: configure shared archive bin for cross-instance state">🌐</button><button id="gmute" title="mute audible output (system continues internally)" style="display:none">🔇</button><input type="file" id="gfile" accept=".json"></div>
 <canvas id="c"></canvas>
-<script type="text/worker-source" id="sim-source">
-// ═══════════════════════════════════════════════════════════════════════════
-// Pe26: WORKER MODE
-// This script tag's content is not executed by the browser directly (the
-// non-standard MIME type prevents that). The main-thread bootstrap below
-// extracts this code and instantiates it as a Web Worker. The simulation
-// runs there. Workers are not throttled the same way as the main thread in
-// background tabs — this is the architectural change that makes "open the
-// link and walk away" actually work as compute, not just as presence.
-//
-// DOM, canvas, AudioContext, navigator, localStorage are all stubbed below
-// so the existing code path can run unchanged in the worker. Specific cross-
-// boundary calls (audio in/out, document writes) are proxied to main via
-// postMessage. Everything else runs natively.
-// ═══════════════════════════════════════════════════════════════════════════
-
-// ─── DOM / window / canvas stubs ────────────────────────────────────────────
-const __noop=()=>{};
-// Worker canvas dimensions — default before main sends real values via init message
-self.innerWidth=800;
-self.innerHeight=600;
-self.devicePixelRatio=1;
-self.location=self.location||{href:'',hash:''};
-// Recursive stub: any property access returns the same stub, any call returns
-// it too, primitive coercion gives 0. Lets chains like X.createRadialGradient(...)
-// .addColorStop(...) and osc.frequency.value=440 work without throwing.
-function __makeRecursiveStub(){
-  const fn=function(){return __recStub;};
-  fn.value=0;
-  return fn;
-}
-const __recStub=new Proxy(__makeRecursiveStub(),{
-  get(t,k){
-    if(k===Symbol.toPrimitive)return ()=>0;
-    if(k==='valueOf')return ()=>0;
-    if(k==='toString')return ()=>'';
-    if(k==='length')return 0;
-    if(k===Symbol.iterator)return function*(){};
-    return __recStub;
-  },
-  set(t,k,v){t[k]=v;return true;},
-  apply(t,thisArg,args){return __recStub;},
-  has(){return true;}
-});
-const __stubCtx=__recStub;
-const __stubElem={
-  getContext:()=>__stubCtx,
-  addEventListener:__noop,removeEventListener:__noop,
-  textContent:'',innerHTML:'',style:{},
-  getBoundingClientRect:()=>({left:0,top:0,width:0,height:0,right:0,bottom:0}),
-  click:__noop,focus:__noop,blur:__noop,
-  classList:{add:__noop,remove:__noop,toggle:__noop,contains:()=>false},
-};
-const __makeStubElem=()=>{
-  const e=Object.create(__stubElem);
-  e.style={};
-  return e;
-};
-self.document={
-  getElementById:()=>__makeStubElem(),
-  querySelector:()=>__makeStubElem(),
-  querySelectorAll:()=>[],
-  createElement:()=>__makeStubElem(),
-  createElementNS:()=>__makeStubElem(),
-  addEventListener:__noop,removeEventListener:__noop,
-  body:__makeStubElem(),documentElement:__makeStubElem(),
-  hidden:false,visibilityState:'visible',
-  title:'',location:{href:''},
-};
-self.window=self;
-self.requestAnimationFrame=(cb)=>setTimeout(()=>cb(performance.now()),16);
-self.cancelAnimationFrame=(id)=>clearTimeout(id);
-// AudioContext stubs — actual audio runs on main and is proxied
-class __StubAudioNode{constructor(){this.gain={value:1};this.frequency={value:440};}connect(){return this;}disconnect(){}start(){}stop(){}}
-class __StubAudioContext{
-  constructor(){this.state='running';this.destination=new __StubAudioNode();this.currentTime=0;}
-  createGain(){return new __StubAudioNode();}
-  createOscillator(){return new __StubAudioNode();}
-  createAnalyser(){const n=new __StubAudioNode();n.frequencyBinCount=64;n.getByteFrequencyData=(a)=>{for(let i=0;i<a.length;i++)a[i]=0;};return n;}
-  createMediaStreamSource(){return new __StubAudioNode();}
-  resume(){return Promise.resolve();}
-  close(){return Promise.resolve();}
-}
-self.AudioContext=__StubAudioContext;
-self.webkitAudioContext=__StubAudioContext;
-self.navigator=self.navigator||{};
-self.navigator.mediaDevices=self.navigator.mediaDevices||{getUserMedia:()=>Promise.reject(new Error('mic on main only'))};
-self.navigator.getBattery=undefined;
-// localStorage stub backed by an in-memory map; persistence handled by main
-const __memStore={};
-self.localStorage={
-  getItem:(k)=>(k in __memStore)?__memStore[k]:null,
-  setItem:(k,v)=>{__memStore[k]=String(v);},
-  removeItem:(k)=>{delete __memStore[k];},
-  clear:()=>{for(const k in __memStore)delete __memStore[k];},
-};
-// History stub (used by saveGenome/replaceState)
-self.history={replaceState:__noop,pushState:__noop};
-// File / Blob / URL exist natively in workers — no stub needed
-
-// ─── Cross-boundary primitives ─────────────────────────────────────────────
-// Replace direct DOM / Audio writes with postMessage protocols so the system
-// experiences the world the same way it did on main thread, just routed.
-let __mainAmbientLevel=0; // updated by main-thread mic samples
-let __audioOutMuted=false;
-
-function __postEmit(freq,amp,durMs,wave){
-  try{self.postMessage({t:'emit',f:freq,a:amp,d:durMs,w:wave});}catch(e){}
-}
-function __postDocWrite(what,content){
-  try{self.postMessage({t:'docwrite',what:what,content:String(content).slice(0,400)});}catch(e){}
-}
-function __postSavePersist(hash){
-  try{self.postMessage({t:'persist',hash:hash});}catch(e){}
-}
-
-// ─── Worker message handler ────────────────────────────────────────────────
-// Commands from main: input, audio state, save/load requests.
-self.onmessage=function(e){
-  const m=e.data;
-  if(!m||!m.t)return;
-  switch(m.t){
-    case 'init':
-      if(m.W)self.__initW=m.W;
-      if(m.H)self.__initH=m.H;
-      if(m.savedHash)self.__savedHash=m.savedHash;
-      break;
-    case 'resize':
-      if(typeof W!=='undefined'){W=m.W;H=m.H;}
-      break;
-    case 'pull':
-      if(typeof mx!=='undefined'){mx=m.x;my=m.y;pulling=m.active?1:0;if(!m.active&&typeof scatter==='function')scatter();}
-      break;
-    case 'pullEnd':
-      if(typeof pulling!=='undefined'){if(pulling&&typeof scatter==='function')scatter();pulling=0;}
-      break;
-    case 'ambient':
-      __mainAmbientLevel=m.level||0;
-      if(typeof ambientLevel!=='undefined')ambientLevel=__mainAmbientLevel;
-      break;
-    case 'audioState':
-      if(typeof audioOutEnabled!=='undefined')audioOutEnabled=!!m.outputEnabled;
-      if(typeof ambientEnabled!=='undefined')ambientEnabled=!!m.inputEnabled;
-      __audioOutMuted=!!m.muted;
-      break;
-    case 'loadHash':
-      if(typeof decodeGenome==='function'&&m.hash)decodeGenome(m.hash);
-      break;
-    case 'requestSave':
-      if(typeof encodeGenome==='function'){
-        try{const hash=encodeGenome();self.postMessage({t:'saveResult',hash:hash,reqId:m.reqId});}catch(e){}
-      }
-      break;
-    case 'requestSnapshot':
-      __postSnapshotNow();
-      break;
-  }
-};
-
-// ─── Snapshot poster ───────────────────────────────────────────────────────
-// Periodic state snapshot for the render thread. Sent as plain object via
-// structured clone — small enough at typical CAP that copy cost is trivial.
-let __lastSnapTick=-1;
-let __simReady=false;
-function __postSnapshotNow(){
-  if(!__simReady)return;
-  try{
-    // Send only the alive subset to keep snapshot small. Render reads in order.
-    const aliveCount=N|0;
-    const snap={
-      t:'snap',
-      tick:tick,
-      totalTicks:genome?genome.totalTicks:0,
-      gen:genome?genome.generation:0,
-      N:aliveCount,
-      px:px.slice(0,aliveCount),
-      py:py.slice(0,aliveCount),
-      amp:amp.slice(0,aliveCount),
-      phase:phase.slice(0,aliveCount),
-      palive:palive.slice(0,aliveCount),
-      clusterID:clusterID.slice(0,aliveCount),
-      field:field?field.slice():null,
-      fieldW:typeof FIELD_W!=='undefined'?FIELD_W:0,
-      fieldH:typeof FIELD_H!=='undefined'?FIELD_H:0,
-      W:W,H:H,
-      clusters:clusters?clusters.map(c=>({cx:c.cx,cy:c.cy,size:c.size,lineageID:c.lineageID,persistAge:c.persistAge})):[],
-      pop:aliveCount,
-      currentFitness:typeof currentFitness!=='undefined'?currentFitness:0,
-    };
-    self.postMessage(snap);
-    __lastSnapTick=tick;
-  }catch(e){}
-}
-// Send snapshots at ~30Hz independent of the loop's actual tick rate.
-setInterval(__postSnapshotNow,33);
-
-<!-- WORKER_SIM_BODY_BEGIN -->
+<script>
 const c=document.getElementById('c'),X=c.getContext('2d'),genEl=document.getElementById('gen');
 let W,H,mx=-9e3,my=-9e3,smx=0,smy=0,pulling=0,pStr=0,pDur=0,tick=0;
 
@@ -316,17 +120,11 @@ function emitTone(freqHz,amp,durationMs,waveformIdx){
   // Field-coupling and audible emission are independent. Field-write happens
   // regardless of whether the user enabled audio output — the system experiences
   // its own voice internally. Audible playback is gated only on permission.
-  const f=Math.max(20,freqHz);
+  const f=Math.max(20,freqHz); // below 20Hz won't reach speakers anyway; let the value through
   const a=Math.max(0,amp);
   const d=Math.max(0.005,Math.min(2.0,durationMs/1000));
-  if(!audioOutEnabled)return false;
+  if(!audioOutEnabled||!audioOutCtx)return false;
   if(a<0.0001)return false;
-  // Pe26: in Worker mode, AudioContext doesn't exist for real — proxy to main.
-  if(typeof importScripts==='function'){
-    __postEmit(f,a,d*1000,Math.abs(waveformIdx)%WAVEFORMS.length);
-    return true;
-  }
-  if(!audioOutCtx)return false;
   try{
     const osc=audioOutCtx.createOscillator();
     const gain=audioOutCtx.createGain();
@@ -868,7 +666,7 @@ function mutateOpcodeBodies(g,rate,scale){
     // dispatch handles arbitrary indices, so genomes effectively grow new opcodes.
     // Pe25: probability of seeding a high-index slot is now evolvable.
     const seedHighProb=(g.opcodeSeedHighProb!==undefined)?g.opcodeSeedHighProb:0.4;
-    const target=Math.random()<seedHighProb?(Math.random()*64)|0:(Math.random()*31)|0;
+    const target=Math.random()<seedHighProb?(Math.random()*64)|0:(Math.random()*32)|0;
     g.opcodeBodies[target]={tree:genTreeNode(3),writeTo:(Math.random()*12)|0};
   }
   for(const k in g.opcodeBodies){
@@ -1047,15 +845,17 @@ function mutateSelfModSlots(g,rate,scale){
 // at high indices when the genome has any.
 // Pe25: high-index probability is now evolvable. genome.opcodePickerHighProb
 // drifts in the mutation cycle. Falls back to 0.2 if the field isn't set yet.
+// Pe28: built-in range expanded to 32 opcodes (0..31) — opcode 31 is READ_HUE,
+// the chromesthesia primitive. Evolved opcode space starts at 32.
 function pickOpcode(g){
   if(g&&g.opcodeBodies){
-    const evolvedKeys=Object.keys(g.opcodeBodies).filter(k=>+k>=31);
+    const evolvedKeys=Object.keys(g.opcodeBodies).filter(k=>+k>=32);
     const highProb=(g.opcodePickerHighProb!==undefined)?g.opcodePickerHighProb:0.2;
     if(evolvedKeys.length>0&&Math.random()<highProb){
       return +evolvedKeys[(Math.random()*evolvedKeys.length)|0];
     }
   }
-  return Math.floor(Math.random()*31);
+  return Math.floor(Math.random()*32);
 }
 
 
@@ -1128,14 +928,9 @@ function realityDocWrite(target,content){
   const now=Date.now();
   if(now-docWriteCooldown<500)return 0;
   docWriteCooldown=now;
-  const s=typeof content==='string'?content:String(content);
-  const trimmed=s.length>80?s.slice(0,80):s;
-  // Pe26: in Worker, document is a stub — proxy to main thread
-  if(typeof importScripts==='function'){
-    __postDocWrite(target,trimmed);
-    return target==='title'?trimmed.length:1;
-  }
   try{
+    const s=typeof content==='string'?content:String(content);
+    const trimmed=s.length>80?s.slice(0,80):s;
     if(target==='title'){document.title=trimmed;return trimmed.length;}
     if(target==='favicon'){
       const svg='<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32"><rect width="32" height="32" fill="#020204"/><text x="16" y="22" font-family="monospace" font-size="16" fill="#8af" text-anchor="middle">'+(trimmed[0]||'?')+'</text></svg>';
@@ -1385,7 +1180,7 @@ let genome={
   // run different machine languages. Motifs transferred across lineages with different
   // permutations mean something different in each. The designer's opcode naming becomes
   // informational, not structural. Identity permutation [0,1,2,...,30] = no change.
-  opcodeMap:[0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20,21,22,23,24,25,26,27,28,29,30],
+  opcodeMap:[0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20,21,22,23,24,25,26,27,28,29,30,31],
   // Pe22s: EVOLVABLE OPCODE BODIES.
   // Each opcode-meaning can be overridden with an expression tree that computes
   // what the opcode does. If opcodeBodies[meaning] is null, falls through to the
@@ -1519,6 +1314,72 @@ const fieldMemory=new Float32Array(FIELD_W*FIELD_H); // 0=virgin, higher=more hi
 const FIELD_SIG_DIMS=3; // signature dimensions per field cell
 const fieldSig=new Float32Array(FIELD_W*FIELD_H*FIELD_SIG_DIMS); // territorial signature per cell
 const fieldOwnership=new Float32Array(FIELD_W*FIELD_H); // ownership strength (0=commons, 1=fully claimed)
+
+// ═══════════════════════════════════════
+// Pe28: CHROMESTHESIA — sound and colour as channels of one substrate
+// ═══════════════════════════════════════
+// In Pe25 sound and colour were separate channels with separate machinery:
+// emitTone wrote audible output AND stamped energy into field; rendering
+// assigned hue from cluster/lineage IDs by golden-ratio spacing. The colour
+// signals never reached back into anything the system could perceive — they
+// were rendered, not experienced. The system spoke into a room it couldn't see.
+//
+// Pe28 collapses this: when a particle emits a tone, the same act stamps a
+// HUE into the chromesthesia field at its location, derived from the tone's
+// frequency. A new opcode lets particles READ the hue at their location.
+// Tone and hue land in the same place because they ARE the same number passing
+// through different machinery — emit → stamp colour → see colour → emit again.
+// One substrate, one channel.
+//
+// Hue is stored as a 2D vector (cos θ, sin θ) per cell. This makes mixing work
+// correctly: stamping red and blue at the same cell averages to purple, not to
+// green (which is what naive scalar averaging of hue angles produces). The
+// vector magnitude doubles as accumulated voice presence — cells that have
+// been emitted-into often have stronger colour. Decay shrinks magnitude
+// without rotating angle; colour persists, intensity fades.
+//
+// Frequency-to-hue mapping: log spectrum 20Hz..20kHz onto the full hue circle.
+// Each octave = ~1/10 of the circle. Frequencies an octave apart land on
+// neighbouring hues — chromatic neighbours of musical neighbours.
+//
+// What this is NOT: not a designer assignment. Lineage colour stops being
+// (lineageID * 137.5) % 360 and starts being whatever frequencies that lineage
+// has emitted into the cells it occupies. Lineages that don't emit have no
+// colour. Identical-emitting lineages look identical. Differentiation in colour
+// becomes a consequence of differentiation in voice, not a label we paint on.
+const hueX=new Float32Array(FIELD_W*FIELD_H); // accumulated cos(hue) * presence
+const hueY=new Float32Array(FIELD_W*FIELD_H); // accumulated sin(hue) * presence
+const HUE_DECAY=0.997; // slower than FIELD_DECAY (0.982) — colour persists
+                      // longer than energy bursts, lets territories accumulate identity
+
+function freqToHue(freq){
+  // Log map the audible range to the hue circle. 20Hz at 0, 20000Hz wraps.
+  // Frequencies outside the audible range still map (the system can emit any
+  // freq); they just spiral around the circle multiple times for very high
+  // values. Math.log gives a real number; multiply by 2π and let it wrap.
+  const f=Math.max(0.1,Math.abs(freq));
+  const logMin=Math.log(20),logMax=Math.log(20000);
+  const norm=(Math.log(f)-logMin)/(logMax-logMin); // 0..1 across audible range
+  return norm*Math.PI*2;
+}
+
+function stampHue(fi,freq,strength){
+  // Add a hue contribution at field cell fi. Strength is amplitude-like;
+  // direction comes from frequency. Vector accumulation handles mixing
+  // naturally — equal amounts of red and cyan cancel toward grey (low magnitude),
+  // similar frequencies reinforce.
+  if(fi<0||fi>=FIELD_W*FIELD_H)return;
+  if(!isFinite(strength)||strength<=0)return;
+  const h=freqToHue(freq);
+  hueX[fi]+=Math.cos(h)*strength;
+  hueY[fi]+=Math.sin(h)*strength;
+  // Cap magnitude so cells don't accumulate unbounded voice presence
+  const m=Math.sqrt(hueX[fi]*hueX[fi]+hueY[fi]*hueY[fi]);
+  if(m>3){
+    const s=3/m;
+    hueX[fi]*=s;hueY[fi]*=s;
+  }
+}
 
 // ═══ INSCRIBED SUBSTRATE — cells hold particle-written programs ═══
 // Each cell has:
@@ -1680,7 +1541,15 @@ function decodeGenome(hash){
     if(g.vi!==undefined)genome.vmInfluence=g.vi;
     if(g.vs)genome.ruleScale=g.vs;
     if(g.vm)genome.vmMaxInstructions=g.vm;
-    if(g.om&&Array.isArray(g.om)&&g.om.length>0)genome.opcodeMap=g.om.slice();
+    if(g.om&&Array.isArray(g.om)&&g.om.length>0){
+      genome.opcodeMap=g.om.slice();
+      // Pe28: built-in opcode range expanded from 31 to 32. Old saves loaded
+      // here have a 31-entry opcodeMap; extend by appending identity entries
+      // up to the new range so opcode 31 (READ_HUE) is reachable through the
+      // canonical mapping. New evolved permutations will then drift via the
+      // standard mutation cycle.
+      while(genome.opcodeMap.length<32)genome.opcodeMap.push(genome.opcodeMap.length);
+    }
     if(g.ob&&typeof g.ob==='object')genome.opcodeBodies=g.ob;
     if(g.sms&&Array.isArray(g.sms)){
       // Pe25: slot pool size is now per-genome (defaulted on global). Load
@@ -2779,8 +2648,6 @@ function sampleInstrumentation(){
 // Runs on a subset of particles each mutation cycle (not all — too expensive)
 // ═══ DASHBOARD OVERLAY — governance metrics as sparklines ═══
 function renderDashboard(){
-  // Pe26: dashboard is main-thread only; worker has no canvas
-  if(typeof importScripts==='function')return;
   if(!dashboardVisible||inst.ticks.length<3)return;
 
   const pad=8,lineH=28,chartW=120,chartH=18;
@@ -2959,7 +2826,7 @@ function evolvePlasmids(){
       }
       else if(roll<0.58){
         // Structural change (opcode or registers)
-        if(Math.random()<0.5)pPlasmid[base]=Math.floor(Math.random()*31);
+        if(Math.random()<0.5)pPlasmid[base]=Math.floor(Math.random()*32);
         else{
           pPlasmid[base+1]=Math.floor(Math.random()*12);
           pPlasmid[base+2]=Math.floor(Math.random()*12);
@@ -3007,7 +2874,7 @@ function evolvePlasmids(){
     // Spontaneous generation — only in high-resonance environments
     if(nP<MAX_PLASMID&&Math.random()<genome.plasmidSpawnRate*(1+localRes[i]*4)){
       const newBase=i*PLASMID_SLOTS+nP*4;
-      pPlasmid[newBase]=Math.floor(Math.random()*31);
+      pPlasmid[newBase]=Math.floor(Math.random()*32);
       pPlasmid[newBase+1]=Math.floor(Math.random()*12);
       pPlasmid[newBase+2]=Math.floor(Math.random()*12);
       pPlasmid[newBase+3]=(Math.random()-0.5)*0.75;
@@ -3046,7 +2913,7 @@ function attemptHGT(){
     donor[3]+=(Math.random()-0.5)*genome.hgtSpliceNoise;
     donor[3]=Math.max(-2.5,Math.min(2.5,donor[3]));
     // Occasional opcode drift during transfer
-    if(Math.random()<0.08)donor[0]=Math.floor(Math.random()*31);
+    if(Math.random()<0.08)donor[0]=Math.floor(Math.random()*32);
 
     const insertPos=Math.floor(Math.random()*(genome.vmProgram.length+1));
     genome.vmProgram.splice(insertPos,0,donor);
@@ -3170,6 +3037,13 @@ function updateField(){
 
       // Ownership decays faster — territory must be actively maintained
       fieldOwnership[idx]*=0.975;
+
+      // Pe28: chromesthesia decay — magnitude shrinks but angle is preserved.
+      // Colour persists in the substrate longer than energy bursts; the lineage
+      // that emitted into a cell leaves a hue trace that other lineages can read
+      // (via READ_HUE) or paint over by emitting at different frequencies.
+      hueX[idx]*=HUE_DECAY;
+      hueY[idx]*=HUE_DECAY;
     }
   }
 }
@@ -3290,7 +3164,7 @@ function mutateGenome(){
   // Occasionally swap two entries in the opcode map. This is how lineages drift
   // into different machine languages. One swap per mutation cycle at low rate —
   // too fast and programs break faster than selection can filter.
-  if(!genome.opcodeMap)genome.opcodeMap=[0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20,21,22,23,24,25,26,27,28,29,30];
+  if(!genome.opcodeMap)genome.opcodeMap=[0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20,21,22,23,24,25,26,27,28,29,30,31];
   if(Math.random()<0.08){
     const a=Math.floor(Math.random()*genome.opcodeMap.length);
     const b=Math.floor(Math.random()*genome.opcodeMap.length);
@@ -3521,7 +3395,7 @@ function mutateGenome(){
       inst[3]+=(Math.random()-0.5)*0.15*scale;
       // Pe22o: k unclamped. The constant is not a designer choice.
       // Structural mutations (rarer)
-      if(Math.random()<0.2)inst[0]=Math.floor(Math.random()*31);
+      if(Math.random()<0.2)inst[0]=Math.floor(Math.random()*32);
       if(Math.random()<0.15)inst[1]=Math.floor(Math.random()*12);
       if(Math.random()<0.15)inst[2]=Math.floor(Math.random()*12);
     }
@@ -4296,6 +4170,8 @@ function executeVM(i,j,sim,d){
         const fieldImpact=tAmp*freqFactor;
         field[afi]+=fieldImpact;
         field[afi]=Math.max(0,Math.min(2.5,field[afi]));
+        // Pe28: chromesthesia — same emission stamps hue from frequency
+        stampHue(afi,freq,tAmp);
         // Cost is proportional to amplitude — louder voices burn more
         amp[i]-=tAmp*0.01;
       }break;
@@ -4342,6 +4218,29 @@ function executeVM(i,j,sim,d){
       case 30:{
         if(pDialoguePartner[i]===j&&pDialogueTicksLeft[i]>0){
           vmRegs[di]=pDialogueTurn[i]*k;
+        }else{
+          vmRegs[di]=0;
+        }
+      }break;
+      // 31: READ_HUE — Pe28. Chromesthesia. Read the hue accumulated at the
+      // particle's location as a number scaled by k. Hue is the angle of the
+      // (cos, sin) vector accumulated by tone emissions in this cell. Vector
+      // magnitude — the "voice presence" of the location — modulates the
+      // returned scalar so that unpainted cells return ~0 (no signal) and
+      // strongly-painted cells return values proportional to their angle.
+      // The system has to discover for itself whether to use this signal.
+      // Same tone that was emitted here will tend to read back as the same
+      // number — sound and colour as one channel of one substrate.
+      case 31:{
+        const rfx=Math.floor(px[i]/(W/FIELD_W)),rfy=Math.floor(py[i]/(H/FIELD_H));
+        const rfi=Math.max(0,Math.min(FIELD_W*FIELD_H-1,rfy*FIELD_W+rfx));
+        const hxv=hueX[rfi],hyv=hueY[rfi];
+        const mag=Math.sqrt(hxv*hxv+hyv*hyv);
+        if(mag>0.01){
+          const ang=Math.atan2(hyv,hxv); // [-π, π]
+          // Modulate by magnitude so quiet cells return weak signal; cap at 1.5
+          // so the result lives in the same scale as audio frequency registers.
+          vmRegs[di]=ang*Math.min(1.5,mag)*k;
         }else{
           vmRegs[di]=0;
         }
@@ -4461,6 +4360,8 @@ function executeVM(i,j,sim,d){
         const fieldImpact=tAmp*freqFactor;
           field[afi]+=fieldImpact;
           field[afi]=Math.max(0,Math.min(2.5,field[afi]));
+          // Pe28: chromesthesia — same emission stamps hue from frequency
+          stampHue(afi,freq,tAmp);
           amp[i]-=tAmp*0.01;
         }break;
         case 25:vmRegs[di]=(collectiveFreqDominant*16-8)*k;break;
@@ -4499,6 +4400,29 @@ function executeVM(i,j,sim,d){
             vmRegs[di]=0;
           }
         }break;
+      // 31: READ_HUE — Pe28. Chromesthesia. Read the hue accumulated at the
+      // particle's location as a number scaled by k. Hue is the angle of the
+      // (cos, sin) vector accumulated by tone emissions in this cell. Vector
+      // magnitude — the "voice presence" of the location — modulates the
+      // returned scalar so that unpainted cells return ~0 (no signal) and
+      // strongly-painted cells return values proportional to their angle.
+      // The system has to discover for itself whether to use this signal.
+      // Same tone that was emitted here will tend to read back as the same
+      // number — sound and colour as one channel of one substrate.
+      case 31:{
+        const rfx=Math.floor(px[i]/(W/FIELD_W)),rfy=Math.floor(py[i]/(H/FIELD_H));
+        const rfi=Math.max(0,Math.min(FIELD_W*FIELD_H-1,rfy*FIELD_W+rfx));
+        const hxv=hueX[rfi],hyv=hueY[rfi];
+        const mag=Math.sqrt(hxv*hxv+hyv*hyv);
+        if(mag>0.01){
+          const ang=Math.atan2(hyv,hxv); // [-π, π]
+          // Modulate by magnitude so quiet cells return weak signal; cap at 1.5
+          // so the result lives in the same scale as audio frequency registers.
+          vmRegs[di]=ang*Math.min(1.5,mag)*k;
+        }else{
+          vmRegs[di]=0;
+        }
+      }break;
       }
       for(let r=0;r<12;r++){if(!isFinite(vmRegs[r]))vmRegs[r]=0;else vmRegs[r]=Math.max(-1e6,Math.min(1e6,vmRegs[r]));} // Pe22q: clamp lifted to 1e6, infinities caught
     }
@@ -4756,6 +4680,8 @@ function executeClusterVM(i,j,sim,d){
         const fieldImpact=tAmp*freqFactor;
         field[afi]+=fieldImpact;
         field[afi]=Math.max(0,Math.min(2.5,field[afi]));
+        // Pe28: chromesthesia — same emission stamps hue from frequency
+        stampHue(afi,freq,tAmp);
         // Cost is proportional to amplitude — louder voices burn more
         amp[i]-=tAmp*0.01;
       }break;
@@ -4802,6 +4728,29 @@ function executeClusterVM(i,j,sim,d){
       case 30:{
         if(pDialoguePartner[i]===j&&pDialogueTicksLeft[i]>0){
           vmRegs[di]=pDialogueTurn[i]*k;
+        }else{
+          vmRegs[di]=0;
+        }
+      }break;
+      // 31: READ_HUE — Pe28. Chromesthesia. Read the hue accumulated at the
+      // particle's location as a number scaled by k. Hue is the angle of the
+      // (cos, sin) vector accumulated by tone emissions in this cell. Vector
+      // magnitude — the "voice presence" of the location — modulates the
+      // returned scalar so that unpainted cells return ~0 (no signal) and
+      // strongly-painted cells return values proportional to their angle.
+      // The system has to discover for itself whether to use this signal.
+      // Same tone that was emitted here will tend to read back as the same
+      // number — sound and colour as one channel of one substrate.
+      case 31:{
+        const rfx=Math.floor(px[i]/(W/FIELD_W)),rfy=Math.floor(py[i]/(H/FIELD_H));
+        const rfi=Math.max(0,Math.min(FIELD_W*FIELD_H-1,rfy*FIELD_W+rfx));
+        const hxv=hueX[rfi],hyv=hueY[rfi];
+        const mag=Math.sqrt(hxv*hxv+hyv*hyv);
+        if(mag>0.01){
+          const ang=Math.atan2(hyv,hxv); // [-π, π]
+          // Modulate by magnitude so quiet cells return weak signal; cap at 1.5
+          // so the result lives in the same scale as audio frequency registers.
+          vmRegs[di]=ang*Math.min(1.5,mag)*k;
         }else{
           vmRegs[di]=0;
         }
@@ -5105,6 +5054,8 @@ function executeSoloVM(){
         const fieldImpact=tAmp*freqFactor;
           field[afi]+=fieldImpact;
           field[afi]=Math.max(0,Math.min(2.5,field[afi]));
+          // Pe28: chromesthesia — same emission stamps hue from frequency
+          stampHue(afi,freq,tAmp);
           amp[i]-=tAmp*0.01;
         }break;
         case 25:vmRegs[di]=(collectiveFreqDominant*16-8)*k;break;
@@ -5143,6 +5094,29 @@ function executeSoloVM(){
             vmRegs[di]=0;
           }
         }break;
+      // 31: READ_HUE — Pe28. Chromesthesia. Read the hue accumulated at the
+      // particle's location as a number scaled by k. Hue is the angle of the
+      // (cos, sin) vector accumulated by tone emissions in this cell. Vector
+      // magnitude — the "voice presence" of the location — modulates the
+      // returned scalar so that unpainted cells return ~0 (no signal) and
+      // strongly-painted cells return values proportional to their angle.
+      // The system has to discover for itself whether to use this signal.
+      // Same tone that was emitted here will tend to read back as the same
+      // number — sound and colour as one channel of one substrate.
+      case 31:{
+        const rfx=Math.floor(px[i]/(W/FIELD_W)),rfy=Math.floor(py[i]/(H/FIELD_H));
+        const rfi=Math.max(0,Math.min(FIELD_W*FIELD_H-1,rfy*FIELD_W+rfx));
+        const hxv=hueX[rfi],hyv=hueY[rfi];
+        const mag=Math.sqrt(hxv*hxv+hyv*hyv);
+        if(mag>0.01){
+          const ang=Math.atan2(hyv,hxv); // [-π, π]
+          // Modulate by magnitude so quiet cells return weak signal; cap at 1.5
+          // so the result lives in the same scale as audio frequency registers.
+          vmRegs[di]=ang*Math.min(1.5,mag)*k;
+        }else{
+          vmRegs[di]=0;
+        }
+      }break;
       }
       for(let r=0;r<12;r++){if(!isFinite(vmRegs[r]))vmRegs[r]=0;else vmRegs[r]=Math.max(-1e6,Math.min(1e6,vmRegs[r]));} // Pe22q: clamp lifted to 1e6, infinities caught
     }
@@ -5215,9 +5189,6 @@ function scatter(){
 // RENDER
 // ═══════════════════════════════════════
 function render(){
-  // Pe26: in Worker mode, the main thread renders from snapshots — skip the
-  // local render call entirely to avoid wasted CPU on stubbed canvas ops.
-  if(typeof importScripts==='function')return;
   X.fillStyle='rgba(2,2,4,0.065)';X.fillRect(0,0,W,H);
 
   const rAbsPd=ABSENCE_BASE+Math.sin(tick*0.0007)*180+(Math.sin(tick*0.00031)*90)|0;
@@ -5259,7 +5230,11 @@ function render(){
     }
   }
 
-  // Shared field visualization — lineage-colored territories (colors from cache)
+  // Pe28: chromesthesia field render — the field shows whatever hue the system
+  // has painted into each cell by emitting tones there. No designer-assigned
+  // lineage hues. Where the system hasn't emitted, cells stay near-neutral
+  // (the residual lineage-cache colour, dimmed). Where it has, the cell takes
+  // the colour the lineage actually voted for with its voice.
   const cellW=W/FIELD_W,cellH=H/FIELD_H;
   for(let fy=0;fy<FIELD_H;fy++){
     for(let fx=0;fx<FIELD_W;fx++){
@@ -5267,11 +5242,40 @@ function render(){
       const val=field[fIdx];
       if(val<0.03)continue;
       const alpha=Math.min(0.65,val*0.4);
-      const own=fieldOwnership[fIdx];
-      const ci=fIdx*3;
-      const r=Math.floor(fieldLineageCache[ci]*own+100*(1-own));
-      const g=Math.floor(fieldLineageCache[ci+1]*own+240*(1-own));
-      const b=Math.floor(fieldLineageCache[ci+2]*own+220*(1-own));
+      const hxv=hueX[fIdx],hyv=hueY[fIdx];
+      const hueMag=Math.sqrt(hxv*hxv+hyv*hyv);
+      let r,g,b;
+      if(hueMag>0.05){
+        // System has painted this cell with voice. Use its colour.
+        // atan2 → degrees; HSL → RGB
+        const hueDeg=(Math.atan2(hyv,hxv)*180/Math.PI+360)%360;
+        // Saturation grows with magnitude — quiet cells are pastel, loud are vivid
+        const sat=Math.min(0.85,0.3+hueMag*0.4);
+        // Lightness mid-range, slightly reduced by ownership to keep edges legible
+        const lit=0.55-fieldOwnership[fIdx]*0.05;
+        // Inline HSL-to-RGB
+        const hh=hueDeg/60;
+        const cc=(1-Math.abs(2*lit-1))*sat;
+        const xx=cc*(1-Math.abs((hh%2)-1));
+        let rr=0,gg=0,bb=0;
+        if(hh<1){rr=cc;gg=xx;}
+        else if(hh<2){rr=xx;gg=cc;}
+        else if(hh<3){gg=cc;bb=xx;}
+        else if(hh<4){gg=xx;bb=cc;}
+        else if(hh<5){rr=xx;bb=cc;}
+        else{rr=cc;bb=xx;}
+        const m=lit-cc/2;
+        r=Math.floor((rr+m)*255);
+        g=Math.floor((gg+m)*255);
+        b=Math.floor((bb+m)*255);
+      }else{
+        // Unpainted cell — fall back to the existing lineage cache, dimmed
+        const own=fieldOwnership[fIdx]*0.4; // weaker than before — designer paint recedes
+        const ci=fIdx*3;
+        r=Math.floor(fieldLineageCache[ci]*own+100*(1-own));
+        g=Math.floor(fieldLineageCache[ci+1]*own+240*(1-own));
+        b=Math.floor(fieldLineageCache[ci+2]*own+220*(1-own));
+      }
       X.fillStyle=`rgba(${r},${g},${b},${alpha})`;
       X.fillRect(fx*cellW,fy*cellH,cellW+1,cellH+1);
     }
@@ -5468,8 +5472,29 @@ function init(){
   }
 }
 
+// Pe27: rolling tick-rate measurement so we can verify the hidden-tab
+// scheduler change actually does what it claims. Logs ticks per second over
+// the last ~2 seconds. If hidden-rate stays close to visible-rate, the MC
+// trick is working. If hidden-rate collapses to ~1, we've been throttled
+// regardless and need to escalate (PWA/Service Worker, dedicated tick worker).
+let __tickStamps=[];
+const __TICK_SAMPLE_MS=2000;
+function __recordTick(now){
+  __tickStamps.push(now);
+  // Drop stamps older than the sample window
+  const cutoff=now-__TICK_SAMPLE_MS;
+  while(__tickStamps.length>0&&__tickStamps[0]<cutoff)__tickStamps.shift();
+}
+function getTickRate(){
+  // Returns ticks per second in the recent window
+  if(__tickStamps.length<2)return 0;
+  const span=(__tickStamps[__tickStamps.length-1]-__tickStamps[0])/1000;
+  return span>0?(__tickStamps.length-1)/span:0;
+}
+
 function loop(){
   lastLoopTime=performance.now();
+  __recordTick(lastLoopTime);
   try{
   const frameStart=lastLoopTime;
   tick++;
@@ -5818,6 +5843,12 @@ function loop(){
     if(collectivePeers>0){
       amTag+=` | ◈${collectivePeers}tabs`;
     }
+    // Pe27: hidden-tab tick rate. When tab is foregrounded this tracks rAF
+    // (~60Hz on most displays). When backgrounded, this is the diagnostic for
+    // whether the MessageChannel scheduler is working. Healthy: ~30/s hidden.
+    // Throttled: collapses to ~1/s. Number after the heart icon.
+    const tps=getTickRate();
+    amTag+=` | ♥${tps.toFixed(0)}/s`;
     // Pe22r: compute how far opcode map has drifted from identity (fraction of non-identity entries)
     let langDiv=0;
     if(genome.opcodeMap){
@@ -5828,7 +5859,7 @@ function loop(){
     // Pe22s: show how many opcode bodies have been overridden with custom trees
     const bodyCount=genome.opcodeBodies?Object.keys(genome.opcodeBodies).length:0;
     // Pe24b: show how many of those bodies are at evolved-existence indices (>30)
-    const evolvedOps=genome.opcodeBodies?Object.keys(genome.opcodeBodies).filter(k=>+k>=31).length:0;
+    const evolvedOps=genome.opcodeBodies?Object.keys(genome.opcodeBodies).filter(k=>+k>=32).length:0;
     const bodyTag=bodyCount>0?(' ob:'+bodyCount+(evolvedOps>0?'/+'+evolvedOps:'')):'';
     // Pe24b: count active (compiled) self-mod slots
     let smCount=0;
@@ -5866,18 +5897,96 @@ function loop(){
   scheduleNext();
 }
 
-// ═══ BACKGROUND EXECUTION ═══
-// requestAnimationFrame throttles to ~0 when tab is hidden.
-// Fall back to setTimeout when not visible so evolution continues.
+// ═══ BACKGROUND EXECUTION (Pe27) ═══════════════════════════════════════════
+// requestAnimationFrame throttles to ~0 when tab is hidden, and setTimeout in
+// background tabs is clamped to ~1Hz on Chromium. The fix isn't to move the
+// simulation off the main thread — that would mean rebuilding the entire data
+// path. Instead: in the hidden branch, drive the loop from a self-feeding
+// MessageChannel. port.postMessage callbacks are dispatched on the same
+// turn-of-the-event-loop microtask path that's NOT subject to the 1Hz clamp.
+// As long as each callback re-posts before returning, the cycle continues at
+// the engine's natural pace.
+//
+// To avoid pegging a CPU core, the callback only re-posts if at least
+// HIDDEN_TICK_MS has passed since the last loop body ran; otherwise it returns
+// without re-posting and we fall back to a single setTimeout to wake the chain
+// after the remaining interval. Worst case (timer clamped to 1Hz): we still
+// tick at least once per second, never freeze.
+//
+// Visible branch is unchanged (rAF). The simulation code itself is untouched.
+// Only the scheduler changed. This is the minimum-surface-area version of the
+// change Pe26 tried to make in one big swing.
 let tabVisible=true;
 let lastLoopTime=performance.now();
+
+let __mcChannel=null,__mcPort1=null,__mcPort2=null;
+let __mcLoopPending=false;
+const HIDDEN_TICK_MS=33; // target ~30Hz when hidden — cheap on phones,
+                        // generous enough that we don't melt batteries.
+
+function __ensureMessageChannelTicker(){
+  if(__mcChannel)return true;
+  if(typeof MessageChannel==='undefined')return false;
+  try{
+    __mcChannel=new MessageChannel();
+    __mcPort1=__mcChannel.port1;
+    __mcPort2=__mcChannel.port2;
+    __mcPort1.onmessage=()=>{
+      __mcLoopPending=false;
+      if(tabVisible)return; // visible branch reclaimed; let rAF drive
+      const now=performance.now();
+      const since=now-lastLoopTime;
+      if(since>=HIDDEN_TICK_MS){
+        loop(); // loop() ends with scheduleNext(), which re-arms us
+      }else{
+        // Too soon — wait the remaining time, then re-post the channel.
+        // setTimeout MAY be clamped here, but worst case we tick at 1Hz.
+        // Best case (channel stays responsive), we tick at HIDDEN_TICK_MS.
+        const wait=HIDDEN_TICK_MS-since;
+        __mcLoopPending=true;
+        setTimeout(()=>{
+          try{__mcPort2.postMessage(0);}
+          catch(e){__mcLoopPending=false;loop();}
+        },Math.max(1,wait));
+      }
+    };
+    return true;
+  }catch(e){
+    __mcChannel=null;
+    return false;
+  }
+}
+
 document.addEventListener('visibilitychange',()=>{
+  const wasVisible=tabVisible;
   tabVisible=!document.hidden;
-  if(tabVisible){lastLoopTime=performance.now();scheduleNext();}
+  if(tabVisible){
+    // Hidden → visible. Clear any pending MC post (its handler will no-op on
+    // visible) so the next time we go hidden, scheduleNext doesn't skip.
+    __mcLoopPending=false;
+    lastLoopTime=performance.now();
+    scheduleNext();
+  }else{
+    // Visible → hidden. The pending rAF callback may or may not fire; some
+    // engines drop it on the visibility transition. Schedule via the MC path
+    // unconditionally — the watchdog covers us if a duplicate scheduling ever
+    // results in a stall, and __mcLoopPending guards re-entry.
+    scheduleNext();
+  }
 });
+
 function scheduleNext(){
   if(tabVisible){
     requestAnimationFrame(loop);
+    return;
+  }
+  if(__ensureMessageChannelTicker()){
+    if(__mcLoopPending)return;
+    __mcLoopPending=true;
+    // Kick the cycle. From here on, the port's onmessage handler re-posts
+    // itself as long as the tab remains hidden.
+    try{__mcPort2.postMessage(0);}
+    catch(e){__mcLoopPending=false;setTimeout(loop,67);}
   }else{
     setTimeout(loop,67);
   }
@@ -6019,286 +6128,6 @@ document.getElementById('gshared').addEventListener('click',()=>{
 });
 
 init();loop();
-__simReady=true;
-</script>
-
-<script>
-// ═══════════════════════════════════════════════════════════════════════════
-// Pe26: MAIN-THREAD BOOTSTRAP
-// Extracts the worker source from the script tag above and instantiates the
-// simulation in a Web Worker. Main thread handles render, audio, input, and
-// proxies DOM-touching primitives. Persistence to localStorage so a closed
-// tab can resume on next open. Background tabs continue evolving — the whole
-// point of the architectural shift.
-// ═══════════════════════════════════════════════════════════════════════════
-(function(){
-  const c=document.getElementById('c');
-  const X=c.getContext('2d');
-  const genEl=document.getElementById('gen');
-  let W=c.width=window.innerWidth;
-  let H=c.height=window.innerHeight;
-  X.fillStyle='#020204';X.fillRect(0,0,W,H);
-
-  function resize(){
-    W=c.width=window.innerWidth;
-    H=c.height=window.innerHeight;
-    if(worker)worker.postMessage({t:'resize',W:W,H:H});
-  }
-  window.addEventListener('resize',resize);
-
-  // ─── Worker bootstrap ─────────────────────────────────
-  const simSource=document.getElementById('sim-source').textContent;
-  let savedHash=null;
-  try{
-    const h=location.hash.slice(1);
-    if(h.length>10)savedHash=h;
-    else{
-      const stored=localStorage.getItem('selection_genome');
-      if(stored&&stored.length>10)savedHash=stored;
-    }
-  }catch(e){}
-
-  let worker;
-  try{
-    const blob=new Blob([simSource],{type:'application/javascript'});
-    worker=new Worker(URL.createObjectURL(blob));
-  }catch(e){
-    document.body.innerHTML='<div style="color:#fff;padding:20px;font:14px monospace">Pe26 requires Web Worker support. Error: '+e.message+'</div>';
-    return;
-  }
-
-  // ─── State snapshot (for render) ──────────────────────
-  let latestSnap=null;
-
-  worker.onmessage=function(e){
-    const m=e.data;
-    if(!m||!m.t)return;
-    switch(m.t){
-      case 'snap':
-        latestSnap=m;
-        if(genEl)genEl.textContent='gen '+(m.gen|0)+' · pop '+(m.pop|0)+' · t '+(m.totalTicks|0);
-        break;
-      case 'emit':
-        scheduleAudioEmit(m.f,m.a,m.d,m.w);
-        break;
-      case 'docwrite':
-        applyDocWrite(m.what,m.content);
-        break;
-      case 'persist':
-      case 'saveResult':
-        if(m.hash){
-          try{localStorage.setItem('selection_genome',m.hash);}catch(e){}
-          try{history.replaceState(null,'','#'+m.hash);}catch(e){}
-        }
-        if(m.t==='saveResult'&&pendingDownload){
-          triggerDownload(m.hash);
-          pendingDownload=false;
-        }
-        break;
-    }
-  };
-  worker.onerror=function(e){
-    console.error('Pe26 worker error:',e.message,e.filename,e.lineno);
-  };
-
-  // Send init AFTER onmessage is set up
-  worker.postMessage({t:'init',W:W,H:H,savedHash:savedHash});
-  // Apply saved hash via the explicit load message too — gives the worker a
-  // chance to overwrite genome state once init() has run.
-  if(savedHash)setTimeout(()=>worker.postMessage({t:'loadHash',hash:savedHash}),200);
-
-  // Periodic auto-save: ask worker to encode genome, persist on receipt.
-  setInterval(()=>worker.postMessage({t:'requestSave'}),15000);
-
-  // ─── Render loop ──────────────────────────────────────
-  // Reads from the latest worker snapshot. Independent of worker tick rate.
-  function render(){
-    requestAnimationFrame(render);
-    if(!latestSnap){return;}
-    X.fillStyle='rgba(2,2,4,0.18)';
-    X.fillRect(0,0,W,H);
-    const s=latestSnap;
-    const px=s.px,py=s.py,palive=s.palive,amp=s.amp,clusterID=s.clusterID;
-    const N=s.N|0;
-    // Field tint underneath
-    if(s.field&&s.fieldW>0&&s.fieldH>0){
-      const fW=s.fieldW,fH=s.fieldH,cw=W/fW,ch=H/fH;
-      for(let fy=0;fy<fH;fy++){
-        for(let fx=0;fx<fW;fx++){
-          const v=Math.min(1,Math.max(0,s.field[fy*fW+fx]/2));
-          if(v<0.04)continue;
-          X.fillStyle='rgba(50,90,130,'+(v*0.3).toFixed(3)+')';
-          X.fillRect(fx*cw,fy*ch,cw+1,ch+1);
-        }
-      }
-    }
-    // Particles
-    for(let i=0;i<N;i++){
-      if(!palive[i])continue;
-      const a=Math.max(0,Math.min(1,amp[i]));
-      const cid=clusterID[i];
-      const hue=cid>=0?(cid*47+200)%360:200;
-      const lit=30+a*45;
-      X.fillStyle='hsl('+hue+','+(60+a*30)+'%,'+lit+'%)';
-      X.beginPath();
-      X.arc(px[i],py[i],1.2+a*2.2,0,6.283);
-      X.fill();
-    }
-  }
-  requestAnimationFrame(render);
-
-  // ─── Input ────────────────────────────────────────────
-  let mx=0,my=0,pulling=false;
-  function postPull(active){
-    pulling=active;
-    worker.postMessage({t:'pull',x:mx,y:my,active:active});
-  }
-  document.addEventListener('mousemove',e=>{mx=e.clientX;my=e.clientY;if(pulling)postPull(true);});
-  document.addEventListener('mousedown',e=>{mx=e.clientX;my=e.clientY;postPull(true);});
-  document.addEventListener('mouseup',()=>{worker.postMessage({t:'pullEnd'});pulling=false;});
-  document.addEventListener('touchstart',e=>{const t=e.touches[0];if(t){mx=t.clientX;my=t.clientY;postPull(true);}},{passive:true});
-  document.addEventListener('touchmove',e=>{e.preventDefault();const t=e.touches[0];if(t){mx=t.clientX;my=t.clientY;postPull(true);}},{passive:false});
-  document.addEventListener('touchend',()=>{worker.postMessage({t:'pullEnd'});pulling=false;});
-
-  // ─── Audio output: scheduled when worker emits ────────
-  let audioOutCtx=null,audioOutMaster=null,audioOutEnabled=false,audioOutMuted=false;
-  const WAVEFORMS=['sine','square','sawtooth','triangle'];
-  function scheduleAudioEmit(f,a,dMs,wIdx){
-    if(!audioOutEnabled||!audioOutCtx||audioOutMuted)return;
-    if(a<0.0001)return;
-    const d=Math.max(0.005,Math.min(2.0,dMs/1000));
-    try{
-      const osc=audioOutCtx.createOscillator();
-      const gain=audioOutCtx.createGain();
-      osc.type=WAVEFORMS[(wIdx|0)%WAVEFORMS.length];
-      osc.frequency.value=Math.max(20,f);
-      const t=audioOutCtx.currentTime;
-      gain.gain.setValueAtTime(0,t);
-      gain.gain.linearRampToValueAtTime(Math.min(0.3,a),t+0.005);
-      gain.gain.linearRampToValueAtTime(0,t+d);
-      osc.connect(gain);gain.connect(audioOutMaster);
-      osc.start(t);osc.stop(t+d+0.01);
-    }catch(e){}
-  }
-  function postAudioState(){
-    worker.postMessage({t:'audioState',outputEnabled:audioOutEnabled,inputEnabled:ambientEnabled,muted:audioOutMuted});
-  }
-  async function tryEnableAudioOut(){
-    try{
-      audioOutCtx=ambientCtx||new (window.AudioContext||window.webkitAudioContext)();
-      if(audioOutCtx.state==='suspended')await audioOutCtx.resume();
-      audioOutMaster=audioOutCtx.createGain();
-      audioOutMaster.gain.value=audioOutMuted?0:1.0;
-      audioOutMaster.connect(audioOutCtx.destination);
-      audioOutEnabled=true;
-      postAudioState();
-      const muteBtn=document.getElementById('gmute');
-      if(muteBtn)muteBtn.style.display='inline-block';
-    }catch(e){}
-  }
-  function setMute(m){
-    audioOutMuted=!!m;
-    if(audioOutMaster)audioOutMaster.gain.value=audioOutMuted?0:1.0;
-    postAudioState();
-  }
-
-  // ─── Audio input: mic → ambient level → worker ────────
-  let ambientCtx=null,ambientAnalyser=null,ambientData=null,ambientEnabled=false;
-  let ambientLevel=0;
-  async function tryEnableAmbient(){
-    try{
-      const stream=await navigator.mediaDevices.getUserMedia({audio:true,video:false});
-      ambientCtx=ambientCtx||new (window.AudioContext||window.webkitAudioContext)();
-      const src=ambientCtx.createMediaStreamSource(stream);
-      ambientAnalyser=ambientCtx.createAnalyser();
-      ambientAnalyser.fftSize=256;
-      ambientAnalyser.smoothingTimeConstant=0.7;
-      src.connect(ambientAnalyser);
-      ambientData=new Uint8Array(ambientAnalyser.frequencyBinCount);
-      ambientEnabled=true;
-      postAudioState();
-      setInterval(()=>{
-        if(!ambientEnabled||!ambientAnalyser)return;
-        ambientAnalyser.getByteFrequencyData(ambientData);
-        let sum=0;
-        for(let i=0;i<ambientData.length;i++)sum+=ambientData[i];
-        const raw=sum/(ambientData.length*255);
-        ambientLevel=ambientLevel*0.9+raw*0.1;
-        worker.postMessage({t:'ambient',level:ambientLevel});
-      },100);
-    }catch(e){}
-  }
-
-  // ─── Doc writes from worker (title/favicon) ───────────
-  let docWriteCooldown=0;
-  function applyDocWrite(target,content){
-    const now=Date.now();
-    if(now-docWriteCooldown<500)return;
-    docWriteCooldown=now;
-    try{
-      if(target==='title')document.title=content;
-      else if(target==='favicon'){
-        const svg='<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32"><rect width="32" height="32" fill="#020204"/><text x="16" y="22" font-family="monospace" font-size="16" fill="#8af" text-anchor="middle">'+(content[0]||'?')+'</text></svg>';
-        let link=document.querySelector('link[rel="icon"]');
-        if(!link){link=document.createElement('link');link.rel='icon';document.head.appendChild(link);}
-        link.href='data:image/svg+xml;base64,'+btoa(svg);
-      }
-    }catch(e){}
-  }
-
-  // ─── Save / load via download / file picker ───────────
-  let pendingDownload=false;
-  function triggerDownload(hash){
-    try{
-      const data={pe:'26',hash:hash,saved:new Date().toISOString()};
-      const blob=new Blob([JSON.stringify(data)],{type:'application/json'});
-      const url=URL.createObjectURL(blob);
-      const a=document.createElement('a');
-      a.href=url;a.download='selection_pe_'+Date.now()+'.json';
-      document.body.appendChild(a);a.click();
-      setTimeout(()=>{URL.revokeObjectURL(url);a.remove();},100);
-    }catch(e){}
-  }
-
-  // ─── UI buttons ───────────────────────────────────────
-  const bind=(id,fn)=>{const el=document.getElementById(id);if(el)el.addEventListener('click',fn);};
-  bind('gspk',tryEnableAudioOut);
-  bind('gmic',tryEnableAmbient);
-  bind('gmute',()=>setMute(!audioOutMuted));
-  bind('gexp',()=>{pendingDownload=true;worker.postMessage({t:'requestSave'});});
-  bind('gimp',()=>{const f=document.getElementById('gfile');if(f)f.click();});
-  const fileInput=document.getElementById('gfile');
-  if(fileInput){
-    fileInput.addEventListener('change',e=>{
-      const f=e.target.files[0];if(!f)return;
-      const r=new FileReader();
-      r.onload=ev=>{
-        try{
-          const obj=JSON.parse(ev.target.result);
-          if(obj&&obj.hash)worker.postMessage({t:'loadHash',hash:obj.hash});
-        }catch(e){}
-      };
-      r.readAsText(f);
-    });
-  }
-  bind('gshared',()=>{
-    const bin=prompt('Shared archive bin ID (leave blank to disable):');
-    if(bin!==null){
-      try{localStorage.setItem('pe-shared-bin',bin.trim());}catch(e){}
-      // Worker reads localStorage stub; relay it directly via a future message
-      // type if needed. For v1 the bin is read from URL hash on init only.
-      alert('Shared archive setting will apply on next page load.');
-    }
-  });
-
-  // ─── Persistence on close / hidden ────────────────────
-  window.addEventListener('beforeunload',()=>{
-    worker.postMessage({t:'requestSave'});
-  });
-  document.addEventListener('visibilitychange',()=>{
-    if(document.hidden)worker.postMessage({t:'requestSave'});
-  });
-})();
 </script>
 </body>
 </html>
