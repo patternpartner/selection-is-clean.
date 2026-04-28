@@ -116,6 +116,32 @@ function setAudioMuted(m){
   audioOutMuted=!!m;
   if(audioOutMaster)audioOutMaster.gain.value=audioOutMuted?0:1.0;
 }
+// Pe29: AUDIBLE OUTPUT RATE GUARD
+// The simulation can produce hundreds of overlapping emissions per second when
+// it locks into a tight loop (we observed 60+/tick × 100+ ticks/s = 6000+ /s
+// on Pe28, with 200ms+ oscillator durations stacking 50-1200 simultaneous
+// oscillators on the audio thread). That saturates phone speakers and triggers
+// AudioContext auto-suspend cycles that look like the simulation is freezing.
+//
+// IMPORTANT: this guard ONLY rate-limits what the speaker plays. It does NOT
+// touch the simulation. emitTone is called from inside the EMIT_TONE opcode
+// handlers, but those handlers also voiceLogEmit, stamp the field, and stamp
+// the chromesthesia hue BEFORE calling emitTone. The simulation continues to
+// experience its own voice in every internal sense — field, hue, voice log.
+// Only the audible playback is throttled. This is a UX safety move (your
+// phone shouldn't melt) that doesn't paint over what the system is doing.
+//
+// Mechanism: rolling window of recent oscillator schedule times. If the count
+// in the last ~200ms exceeds AUDIBLE_BUDGET, the new emission is dropped from
+// playback silently. The drop is at the speaker output layer only.
+const AUDIBLE_BUDGET_WINDOW_MS=200;
+const AUDIBLE_BUDGET_COUNT=24; // ~120 oscillators/sec sustained; well below
+                              // saturation on any phone speaker, generous
+                              // enough to allow musical-density passages
+                              // when the system isn't stuck in a tight loop
+let __audibleHistory=[];      // timestamps of recent scheduled oscillators
+let __audibleDropped=0;       // diagnostic — how many we're silently dropping
+
 function emitTone(freqHz,amp,durationMs,waveformIdx){
   // Field-coupling and audible emission are independent. Field-write happens
   // regardless of whether the user enabled audio output — the system experiences
@@ -125,6 +151,17 @@ function emitTone(freqHz,amp,durationMs,waveformIdx){
   const d=Math.max(0.005,Math.min(2.0,durationMs/1000));
   if(!audioOutEnabled||!audioOutCtx)return false;
   if(a<0.0001)return false;
+  // Pe29: speaker rate guard. Drop excess emissions from audible output.
+  // Simulation already finished its work (field-stamp, hue-stamp, voice-log)
+  // by the time this is called — this only protects the speaker.
+  const __nowMs=performance.now();
+  const __cutoff=__nowMs-AUDIBLE_BUDGET_WINDOW_MS;
+  while(__audibleHistory.length>0&&__audibleHistory[0]<__cutoff)__audibleHistory.shift();
+  if(__audibleHistory.length>=AUDIBLE_BUDGET_COUNT){
+    __audibleDropped++;
+    return false;
+  }
+  __audibleHistory.push(__nowMs);
   try{
     const osc=audioOutCtx.createOscillator();
     const gain=audioOutCtx.createGain();
@@ -5235,19 +5272,33 @@ function render(){
   // lineage hues. Where the system hasn't emitted, cells stay near-neutral
   // (the residual lineage-cache colour, dimmed). Where it has, the cell takes
   // the colour the lineage actually voted for with its voice.
+  //
+  // Pe29: hue renders on its own merits, independent of `field` energy. The
+  // hue accumulator has its own decay (HUE_DECAY=0.997, slower than FIELD_DECAY)
+  // — voice-painted cells stay coloured longer than energy bursts last. Pe28
+  // gated this on field[fIdx]>0.03 which made hue invisible whenever energy
+  // had decayed below threshold even though the colour was still in the
+  // substrate. That gating made the chromesthesia signal harder to see than
+  // the system was actually producing.
   const cellW=W/FIELD_W,cellH=H/FIELD_H;
   for(let fy=0;fy<FIELD_H;fy++){
     for(let fx=0;fx<FIELD_W;fx++){
       const fIdx=fy*FIELD_W+fx;
       const val=field[fIdx];
-      if(val<0.03)continue;
-      const alpha=Math.min(0.65,val*0.4);
       const hxv=hueX[fIdx],hyv=hueY[fIdx];
       const hueMag=Math.sqrt(hxv*hxv+hyv*hyv);
+      // Skip cells with neither energy nor accumulated hue
+      if(val<0.03&&hueMag<0.05)continue;
+      // Alpha is driven by EITHER energy OR hue presence — whichever is greater.
+      // Cells with strong hue but no energy still render; cells with strong
+      // energy but no hue still render. They're independent channels of the
+      // same substrate, finally drawn that way.
+      const energyAlpha=Math.min(0.65,val*0.4);
+      const hueAlpha=Math.min(0.55,hueMag*0.25);
+      const alpha=Math.max(energyAlpha,hueAlpha);
       let r,g,b;
       if(hueMag>0.05){
         // System has painted this cell with voice. Use its colour.
-        // atan2 → degrees; HSL → RGB
         const hueDeg=(Math.atan2(hyv,hxv)*180/Math.PI+360)%360;
         // Saturation grows with magnitude — quiet cells are pastel, loud are vivid
         const sat=Math.min(0.85,0.3+hueMag*0.4);
@@ -5477,19 +5528,38 @@ function init(){
 // the last ~2 seconds. If hidden-rate stays close to visible-rate, the MC
 // trick is working. If hidden-rate collapses to ~1, we've been throttled
 // regardless and need to escalate (PWA/Service Worker, dedicated tick worker).
+//
+// Pe29: also track genome.totalTicks growth independently. If loop-rate and
+// genome-rate diverge, the loop is being called but something is preventing
+// it from advancing genome state — silent stall mode. Heart shows loop calls;
+// pulse shows actual genome ticks. They should match. If they don't, the
+// gap reveals where the time is going.
 let __tickStamps=[];
+let __genomeTickStamps=[]; // (wallclock, totalTicks) pairs
 const __TICK_SAMPLE_MS=2000;
 function __recordTick(now){
   __tickStamps.push(now);
-  // Drop stamps older than the sample window
   const cutoff=now-__TICK_SAMPLE_MS;
   while(__tickStamps.length>0&&__tickStamps[0]<cutoff)__tickStamps.shift();
+  // Pe29: also sample (now, totalTicks) so we can compute actual ticks/sec
+  __genomeTickStamps.push([now,genome?genome.totalTicks||0:0]);
+  while(__genomeTickStamps.length>0&&__genomeTickStamps[0][0]<cutoff)__genomeTickStamps.shift();
 }
 function getTickRate(){
-  // Returns ticks per second in the recent window
+  // Returns loop-call rate in the recent window — how often loop() executes
   if(__tickStamps.length<2)return 0;
   const span=(__tickStamps[__tickStamps.length-1]-__tickStamps[0])/1000;
   return span>0?(__tickStamps.length-1)/span:0;
+}
+function getGenomeTickRate(){
+  // Pe29: returns actual rate of genome.totalTicks growth — if the loop is
+  // advancing the simulation, this should track getTickRate(). Divergence
+  // means ticks are being silently swallowed somewhere.
+  if(__genomeTickStamps.length<2)return 0;
+  const first=__genomeTickStamps[0],last=__genomeTickStamps[__genomeTickStamps.length-1];
+  const span=(last[0]-first[0])/1000;
+  if(span<=0)return 0;
+  return (last[1]-first[1])/span;
 }
 
 function loop(){
@@ -5847,8 +5917,16 @@ function loop(){
     // (~60Hz on most displays). When backgrounded, this is the diagnostic for
     // whether the MessageChannel scheduler is working. Healthy: ~30/s hidden.
     // Throttled: collapses to ~1/s. Number after the heart icon.
+    // Pe29: ♥ is loop-call rate; · after it is genome-tick rate. If they
+    // diverge the loop is being called but genome state isn't advancing —
+    // silent stall. ⌽ shows audible emissions silently dropped by the speaker
+    // guard since last sample (resets every 600 ticks since this whole block
+    // is gated by the save cycle).
     const tps=getTickRate();
+    const gtps=getGenomeTickRate();
     amTag+=` | ♥${tps.toFixed(0)}/s`;
+    if(Math.abs(gtps-tps)>2)amTag+=`·${gtps.toFixed(0)}`;
+    if(__audibleDropped>0){amTag+=` ⌽${__audibleDropped}`;__audibleDropped=0;}
     // Pe22r: compute how far opcode map has drifted from identity (fraction of non-identity entries)
     let langDiv=0;
     if(genome.opcodeMap){
