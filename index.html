@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
-<title>Selection פ 22 — Network</title>
+<title>Selection פ 30 — Reading the Reader</title>
 <style>
 *{margin:0;padding:0;box-sizing:border-box}
 html,body{height:100%;overflow:hidden;background:#020204;touch-action:none;cursor:crosshair}
@@ -100,6 +100,39 @@ function voiceLogEmit(i,f,a,w){
   voiceEmissionsThisTick++;
   voiceTotalEmissions++;
 }
+// ═══════════════════════════════════════
+// Pe30: OPCODE EXECUTION HISTOGRAM
+// Static instruction counts (line ~2674) tell us what's IN the programs.
+// This tells us what's actually being EXECUTED. Specifically: is opcode 31
+// (READ_HUE) being recruited by selection, or is the chromesthesia substrate
+// (Pe28) accumulating without being read by the VMs?
+//
+// Mechanism: a single counter incremented at every VM dispatch site (four of
+// them: main particle VM, plasmid, cluster VM, cell VM). Counts the *remapped*
+// opcode so genome.opcodeMap remappings are followed. Counts both built-in
+// dispatched cases AND evolved opcode-body executions (the increment happens
+// before the if(__body)…continue branch).
+//
+// What the diagnostic shows:
+//   - Random baseline: each opcode runs at ~1/N of total executions, where
+//     N is the active opcode space (built-ins + evolved opcodes in use).
+//     For 32 built-ins that's ~3.1% per opcode.
+//   - Recruitment: an opcode rising significantly above baseline means
+//     selection is finding it useful and instruction-mutation bias is
+//     keeping it in the population.
+//   - Specifically for READ_HUE: rising above baseline = system is reading
+//     the chromesthesia substrate. Stuck at or below baseline = substrate
+//     is accumulating but the VMs aren't using it (the seed's question).
+//
+// This is OBSERVATION, not pressure. No fitness contribution, no influence
+// on selection. Just a window into what the VMs are doing with what they have.
+// ═══════════════════════════════════════
+const OPCODE_SPACE=64; // covers built-ins (0..31) and evolved (32..63)
+const opcodeExec=new Uint32Array(OPCODE_SPACE);          // total since session start
+const opcodeExecThisTick=new Uint32Array(OPCODE_SPACE);  // resets each tick
+const OPCODE_RATE_WINDOW=300;                            // ticks of rolling history
+const opcodeRateHist=[];                                 // entries: {t, counts}
+let opcodeExecTotal=0;                                   // sum across all opcodes
 async function tryEnableAudioOut(){
   try{
     audioOutCtx=ambientCtx||new (window.AudioContext||window.webkitAudioContext)();
@@ -246,7 +279,16 @@ function broadcastTelemetryForCoordinator(){
         counts:Array.from(voiceFreqHist)
       },
       rateSeries:voiceRate.slice(),
-      eventLog:voiceLog.slice()
+      eventLog:voiceLog.slice(),
+      // Pe30: opcode exec telemetry. Sparse total counts plus the rolling rate series.
+      // Lets the coordinator see whether READ_HUE (opcode 31) is rising above its
+      // random baseline, and how each opcode's recruitment differs across tabs.
+      opcodeExec:{
+        space:OPCODE_SPACE,
+        total:opcodeExecTotal,
+        counts:Array.from(opcodeExec),
+        rateSeries:opcodeRateHist.slice(-30) // last 30 ticks; recent recruitment signal
+      }
     };
     bc.postMessage(report);
   }catch(e){}
@@ -1655,9 +1697,12 @@ document.getElementById('gimp').onclick=function(){document.getElementById('gfil
 document.getElementById('gfile').onchange=function(e){if(e.target.files[0])importGenome(e.target.files[0])};
 
 // Pe22l: export voice telemetry as JSON for analysis and sharing
+// Pe30: also includes opcode-execution telemetry — the diagnostic for whether
+// the chromesthesia substrate (and any other passive substrate) is being read
+// by the VMs. Static program-content counts are at line ~2674; this is dynamic.
 function exportVoiceTelemetry(){
   const report={
-    version:'Pe22l',
+    version:'Pe30',
     capturedAt:new Date().toISOString(),
     genome:{
       generation:genome.generation,
@@ -1682,7 +1727,31 @@ function exportVoiceTelemetry(){
       counts:Array.from(voiceFreqHist)
     },
     rateSeries:voiceRate.slice(),
-    eventLog:voiceLog.slice()
+    eventLog:voiceLog.slice(),
+    // Pe30: opcode execution histogram — what's actually being run, not just what's
+    // in the programs. opcode 31 is READ_HUE (chromesthesia read). Compare its share
+    // of total executions against the random baseline (~1/N for active opcode space)
+    // to detect recruitment.
+    opcodeExec:{
+      version:'Pe30',
+      space:OPCODE_SPACE,
+      labels:{
+        // Built-in opcode labels — derived from comments in the dispatch sites
+        // and surrounding code. Not exhaustive; the system can evolve opcodes
+        // beyond these.
+        0:'COPY', 1:'ADD', 2:'MUL', 3:'COMP', 4:'EMIT', 5:'READ_ACTION',
+        6:'READ_MEM', 7:'STORE_MEM', 8:'READ_FIELD', 9:'WRITE_FIELD',
+        10:'CLUSTER_WRITE_FIELD', 17:'READ_GRADIENT', 18:'MEM_INJECT',
+        19:'READ_COMMONS', 23:'READ_AMBIENT', 31:'READ_HUE'
+      },
+      total:opcodeExecTotal,
+      counts:Array.from(opcodeExec),
+      // Per-opcode share of total executions — the recruitment signal directly.
+      // Random baseline for an opcode space of N is 1/N. Anything well above that
+      // is selection finding the opcode useful.
+      shareOfTotal:Array.from(opcodeExec).map(c=>opcodeExecTotal>0?+(c/opcodeExecTotal).toFixed(5):0),
+      rateSeries:opcodeRateHist.slice() // full rolling window
+    }
   };
   const data=JSON.stringify(report,null,2);
   const blob=new Blob([data],{type:'application/json'});
@@ -4069,6 +4138,7 @@ function executeVM(i,j,sim,d){
     const [op,src,dst,k]=inst;
     const si=Math.abs(src)%12,di=Math.abs(dst)%12;
     const remappedOp=(genome.opcodeMap&&genome.opcodeMap[op]!==undefined)?genome.opcodeMap[op]:op;
+    opcodeExec[remappedOp&63]++;opcodeExecThisTick[remappedOp&63]++;opcodeExecTotal++; // Pe30: dynamic exec count (interaction VM)
     const __body=genome.opcodeBodies&&genome.opcodeBodies[remappedOp];
     if(__body){
       const __fx=Math.floor(px[i]/(W/FIELD_W)),__fy=Math.floor(py[i]/(H/FIELD_H));
@@ -4304,6 +4374,7 @@ function executeVM(i,j,sim,d){
       const k=pPlasmid[pBase+ip*4+3];
       const si=Math.abs(src)%12,di=Math.abs(dst)%12;
       const remappedOp=(genome.opcodeMap&&genome.opcodeMap[op]!==undefined)?genome.opcodeMap[op]:op;
+      opcodeExec[remappedOp&63]++;opcodeExecThisTick[remappedOp&63]++;opcodeExecTotal++; // Pe30: dynamic exec count (plasmid VM)
       // Pe22s: evolvable opcode body — if a custom tree exists for this opcode, evaluate it.
       const __body=genome.opcodeBodies&&genome.opcodeBodies[remappedOp];
       if(__body){
@@ -4609,6 +4680,7 @@ function executeClusterVM(i,j,sim,d){
     const [op,src,dst,k]=inst;
     const si=Math.abs(src)%12,di=Math.abs(dst)%12;
     const remappedOp=(genome.opcodeMap&&genome.opcodeMap[op]!==undefined)?genome.opcodeMap[op]:op;
+    opcodeExec[remappedOp&63]++;opcodeExecThisTick[remappedOp&63]++;opcodeExecTotal++; // Pe30: dynamic exec count (cluster VM)
     const __body=genome.opcodeBodies&&genome.opcodeBodies[remappedOp];
     if(__body){
       const __fx=Math.floor(px[i]/(W/FIELD_W)),__fy=Math.floor(py[i]/(H/FIELD_H));
@@ -5003,6 +5075,7 @@ function executeSoloVM(){
       const [op,src,dst,k]=inst;
       const si=Math.abs(src)%12,di=Math.abs(dst)%12;
       const remappedOp=(genome.opcodeMap&&genome.opcodeMap[op]!==undefined)?genome.opcodeMap[op]:op;
+      opcodeExec[remappedOp&63]++;opcodeExecThisTick[remappedOp&63]++;opcodeExecTotal++; // Pe30: dynamic exec count (solo VM)
       // Pe22s: evolvable opcode body — if a custom tree exists for this opcode, evaluate it.
       const __body=genome.opcodeBodies&&genome.opcodeBodies[remappedOp];
       if(__body){
@@ -5577,6 +5650,18 @@ function loop(){
     if(voiceRate.length>VOICE_RATE_WINDOW)voiceRate.shift();
   }
   voiceEmissionsThisTick=0;
+  // Pe30: capture previous tick's opcode exec counts into rolling series, then reset.
+  // Snapshot is a normal Array (Uint32Array would balloon save size). Sparse — only
+  // non-zero entries — to keep typical ticks small.
+  let __opThisTick=0;
+  for(let _o=0;_o<OPCODE_SPACE;_o++)__opThisTick+=opcodeExecThisTick[_o];
+  if(__opThisTick>0||opcodeRateHist.length>0){
+    const snap={};
+    for(let _o=0;_o<OPCODE_SPACE;_o++)if(opcodeExecThisTick[_o]>0)snap[_o]=opcodeExecThisTick[_o];
+    opcodeRateHist.push({t:genome.totalTicks,n:__opThisTick,counts:snap});
+    if(opcodeRateHist.length>OPCODE_RATE_WINDOW)opcodeRateHist.shift();
+  }
+  for(let _o=0;_o<OPCODE_SPACE;_o++)opcodeExecThisTick[_o]=0;
   smx+=(mx-smx)*.05;smy+=(my-smy)*.05;
   if(pulling){pStr=Math.min(pStr+.02,1);pDur++}else pStr*=.92;
 
