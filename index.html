@@ -16,7 +16,7 @@ canvas{position:fixed;inset:0}
 </head>
 <body>
 <div id="gen"></div>
-<div id="gio"><button id="gexp">💾 save</button><button id="gvex" title="export voice telemetry">📊</button><button id="gimp">📂 load</button><button id="grest" title="adopt a dead lineage from the coordinator">🧬</button><button id="gmic" title="grant audio sense to the system">🎙</button><button id="gspk" title="grant the system a voice">🔊</button><button id="gshared" title="Pe23c: configure shared archive bin for cross-instance state">🌐</button><button id="gmute" title="mute audible output (system continues internally)" style="display:none">🔇</button><input type="file" id="gfile" accept=".json"></div>
+<div id="gio"><button id="gexp">💾 save</button><button id="gimp">📂 load</button><button id="grest" title="adopt a dead lineage from the coordinator">🧬</button><button id="gmic" title="grant audio sense to the system">🎙</button><button id="gspk" title="grant the system a voice">🔊</button><button id="gshared" title="Pe23c: configure shared archive bin for cross-instance state">🌐</button><button id="gmute" title="mute audible output (system continues internally)" style="display:none">🔇</button><input type="file" id="gfile" accept=".json"></div>
 <canvas id="c"></canvas>
 <script>
 const c=document.getElementById('c'),X=c.getContext('2d'),genEl=document.getElementById('gen');
@@ -127,7 +127,7 @@ function voiceLogEmit(i,f,a,w){
 // This is OBSERVATION, not pressure. No fitness contribution, no influence
 // on selection. Just a window into what the VMs are doing with what they have.
 // ═══════════════════════════════════════
-const OPCODE_SPACE=64; // covers built-ins (0..31) and evolved (32..63)
+const OPCODE_SPACE=64; // covers built-ins (0..32) and evolved (33..63)
 const opcodeExec=new Uint32Array(OPCODE_SPACE);          // total since session start
 const opcodeExecThisTick=new Uint32Array(OPCODE_SPACE);  // resets each tick
 const OPCODE_RATE_WINDOW=300;                            // ticks of rolling history
@@ -252,7 +252,10 @@ function sampleAmbient(){
 function broadcastTelemetryForCoordinator(){
   if(!bc)return;
   try{
-    // Mirror the structure of exportVoiceTelemetry()
+    // Mirror the telemetry shape carried in the unified 💾 save (buildFullSnapshot).
+    // This goes peer-to-peer over BroadcastChannel; the file path goes through
+    // exportGenome. Keep them aligned so the coordinator and a saved file
+    // describe the same lineage state in compatible ways.
     const report={
       tab:TAB_ID,type:'sync-response',
       capturedAt:new Date().toISOString(),
@@ -1561,7 +1564,14 @@ function encodeGenome(){
     atd:genome.atomTermDist?{...genome.atomTermDist}:null,
     ophp:genome.opcodePickerHighProb,
     oshp:genome.opcodeSeedHighProb,
-
+    // Pe30: opcode execution histogram. Carried in the save so a 💾 file is
+    // sufficient to read recruitment dynamics — caller doesn't need a separate
+    // 📊 export. `oxc` is a sparse map (only non-zero opcodes) to keep the
+    // compressed format small. `oxt` is the total. `oxr` is the recent rate
+    // series (last 30 ticks) for trend visibility within a single save.
+    oxc:(function(){const o={};for(let i=0;i<OPCODE_SPACE;i++)if(opcodeExec[i]>0)o[i]=opcodeExec[i];return o;})(),
+    oxt:opcodeExecTotal,
+    oxr:opcodeRateHist.slice(-30),
   };
   return btoa(JSON.stringify(g));
 }
@@ -1648,6 +1658,22 @@ function decodeGenome(hash){
     }
     if(typeof g.ophp==='number')genome.opcodePickerHighProb=g.ophp;
     if(typeof g.oshp==='number')genome.opcodeSeedHighProb=g.oshp;
+    // Pe30: restore opcode exec histogram if the save carries it. Older saves
+    // (and Pe30 saves made before this plumbing fix) won't have these fields;
+    // exec data simply starts fresh in that case. The counters are observation-
+    // only and do not affect the simulation, so absence is harmless.
+    if(g.oxc&&typeof g.oxc==='object'){
+      for(let i=0;i<OPCODE_SPACE;i++)opcodeExec[i]=0;
+      for(const k in g.oxc){
+        const idx=+k;
+        if(idx>=0&&idx<OPCODE_SPACE&&Number.isFinite(g.oxc[k]))opcodeExec[idx]=g.oxc[k]>>>0;
+      }
+    }
+    if(typeof g.oxt==='number')opcodeExecTotal=g.oxt>>>0;
+    if(Array.isArray(g.oxr)){
+      opcodeRateHist.length=0;
+      for(const r of g.oxr)if(r&&typeof r==='object')opcodeRateHist.push(r);
+    }
     return true;
   }catch(e){return false}
 }
@@ -1669,9 +1695,323 @@ function loadGenome(){
 }
 
 // ═══ GENOME FILE EXPORT/IMPORT — genome travels with you ═══
+//
+// Pe30: one button, one file, both consumers served.
+//
+// The compressed `genome` string (encodeGenome's output) is unchanged. URL
+// hash, localStorage, and tab-to-tab restart all continue to use it as-is —
+// loading a Pe30 save into another Pe tab works the same way it always did.
+//
+// The wrapper around it adds two things: telemetry (voice + opcodeExec) that
+// was previously on the separate 📊 button, and a `genomeReadable` section
+// that names every parameter and decodes the VM program through the opcode
+// map. The wrapper is purely additive — the loader pulls out `genome` and
+// ignores everything else, so restart compatibility is intact.
+//
+// Why two views of the same data: the compressed form is what Pe needs to
+// resume. The named form is what an external reader (you, me, any analyst)
+// needs to actually read the file without grep-ing source for what `m[17]`
+// means. Both serve different consumers; carrying both costs ~3KB extra.
+//
+// What the snapshot still does NOT carry: per-particle plasmid programs and
+// per-cluster VM programs. Those aren't in the original save format either —
+// the save was designed for lineage continuity, not full population state.
+// Whether to add them is a separate scope decision.
+
+// Pe30: opcode reference. Built-ins 0..31, drawn from the dispatch site
+// comments and case bodies. Saved with each snapshot so a reader doesn't
+// need source code to interpret a program. opcode 4 is ACTION_WRITE (not
+// EMIT — that's 24); opcode 31 is READ_HUE (chromesthesia).
+// Pe30: opcode reference. Built-ins 0..32, drawn from the dispatch site
+// comments and case bodies. Saved with each snapshot so a reader doesn't
+// need source code to interpret a program. opcode 4 is ACTION_WRITE (not
+// EMIT — that's 24); opcode 31 is READ_HUE (chromesthesia); opcode 32 is
+// READ_OWN_OPCODE_SHARE — the system reading its own execution history.
+const OPCODE_LABELS={
+  0:'COPY',1:'ADD',2:'MUL',3:'COMP',
+  4:'ACTION_WRITE',5:'ACTION_READ',6:'READ_MEM',7:'STORE_MEM',
+  8:'READ_FIELD',9:'WRITE_FIELD',10:'CLUSTER_WRITE_FIELD',
+  11:'BROADCAST_WRITE',12:'BROADCAST_READ',13:'SELF_READ',14:'JUMP_IF',
+  15:'DEVELOP',16:'BIRTH',17:'READ_GRADIENT',18:'MEM_INJECT',19:'COMMONS',
+  20:'INSCRIBE',21:'READ_CH2',22:'EVAL_USER_ATOM',23:'READ_AMBIENT',
+  24:'EMIT_TONE',25:'READ_COLLECTIVE_FREQ',26:'READ_COLLECTIVE_ACTIVITY',
+  27:'READ_COLLECTIVE_DIVERGENCE',28:'WRITE_SELF',29:'BEGIN_DIALOGUE',
+  30:'READ_DIALOGUE_TURN',31:'READ_HUE',32:'READ_OWN_OPCODE_SHARE'
+};
+function labelForOpcode(op){
+  if(OPCODE_LABELS[op]!==undefined)return OPCODE_LABELS[op];
+  if(op>=33)return 'EVOLVED_'+op;
+  return 'OP_'+op;
+}
+
+function buildFullSnapshot(){
+  const om=genome.opcodeMap;
+  // Decode a VM program: each instruction with raw op, remapped op, and label.
+  const decodeProgram=(prog)=>(prog||[]).map((inst,idx)=>{
+    const rawOp=inst[0];
+    const remapped=(om&&om[rawOp]!==undefined)?om[rawOp]:rawOp;
+    return {
+      idx:idx,
+      rawOp:rawOp,
+      remappedOp:remapped,
+      name:labelForOpcode(remapped),
+      hasEvolvedBody:!!(genome.opcodeBodies&&genome.opcodeBodies[remapped]),
+      src:inst[1],
+      dst:inst[2],
+      k:+(+inst[3]).toFixed(4)
+    };
+  });
+  // Decode opcode map: which raw index routes to which named opcode.
+  const decodeOpcodeMap=()=>{
+    if(!om)return null;
+    const out=[];
+    for(let raw=0;raw<om.length;raw++){
+      out.push({raw:raw,remapped:om[raw],name:labelForOpcode(om[raw])});
+    }
+    return out;
+  };
+  // Decode lineage entries: proper field names instead of t/p/c/d/f/s/w.
+  const decodeLineage=(L)=>(L||[]).map(e=>({
+    tick:e.t,population:e.p,clusterCount:e.c,
+    diversity:e.d,fitness:e.f,stability:e.s,objWeights:e.w
+  }));
+
+  return {
+    format:'pe-snapshot/2',
+    capturedAt:new Date().toISOString(),
+    pe_version:'Pe30',
+    // Compressed, hash-compatible. Same string the URL #hash carries.
+    // This is what the loader pulls out; everything else is for reading.
+    genome:encodeGenome(),
+    summary:{
+      generation:genome.generation,
+      totalTicks:genome.totalTicks,
+      extinctions:genome.extinctions,
+      population:N,
+      clusters:clusters.length,
+      peakFitness:+(genome.peakFitness.toPrecision(3)),
+      longestStable:genome.longestStable
+    },
+    // Same data as `genome` but readable without decoding. Live values from
+    // the running genome object — can't drift from what's actually loaded.
+    genomeReadable:{
+      physics:{
+        entropyBaseline:genome.entropyBaseline,
+        entropyK:genome.entropyK,
+        entrainRate:genome.entrainRate,
+        entrainThresh:genome.entrainThresh,
+        creationCost:genome.creationCost,
+        creationThresh:genome.creationThresh,
+        destructThresh:genome.destructThresh,
+        tendencyBleed:genome.tendencyBleed,
+        magneticThresh:genome.magneticThresh,
+        velocityDamping:genome.velocityDamping,
+        deathThreshold:genome.deathThreshold
+      },
+      perception:{
+        clusterBondThresh:genome.clusterBondThresh,
+        clusterMinSize:genome.clusterMinSize,
+        ghostDecay:genome.ghostDecay,
+        ghostAmpDrip:genome.ghostAmpDrip
+      },
+      objWeights:Array.from(genome.objWeights||[]),
+      meta:{
+        mutationRate:genome.mutationRate,
+        mutationScale:genome.mutationScale,
+        shadowHorizon:genome.shadowHorizon,
+        shadowScenarios:genome.shadowScenarios,
+        perturbScale:genome.perturbScale,
+        extinctionThresh:genome.extinctionThresh,
+        motifMemorySize:genome.motifMemorySize,
+        culturalBias:genome.culturalBias,
+        metabolicCost:genome.metabolicCost,
+        hgtRate:genome.hgtRate,
+        hgtMax:genome.hgtMax,
+        hgtSpliceNoise:genome.hgtSpliceNoise,
+        plasmidTransferRate:genome.plasmidTransferRate,
+        plasmidMutRate:genome.plasmidMutRate,
+        plasmidTransferThresh:genome.plasmidTransferThresh,
+        plasmidSpawnRate:genome.plasmidSpawnRate,
+        fieldInfluence:genome.fieldInfluence,
+        fieldWeight:genome.fieldWeight,
+        mutationInterval:genome.mutationInterval,
+        interactionRadius:genome.interactionRadius,
+        densityCostK:genome.densityCostK,
+        fieldBirthGate:genome.fieldBirthGate,
+        reflexSampleRate:genome.reflexSampleRate,
+        reflexDepth:genome.reflexDepth,
+        reflexInfluence:genome.reflexInfluence,
+        reflexDecay:genome.reflexDecay,
+        clusterReflexAge:genome.clusterReflexAge,
+        clusterReflexWeight:genome.clusterReflexWeight
+      },
+      vm:{
+        influence:genome.vmInfluence,
+        ruleScale:genome.ruleScale,
+        maxInstructions:genome.vmMaxInstructions,
+        program:decodeProgram(genome.vmProgram),
+        opcodeMap:decodeOpcodeMap(),
+        opcodeBodies:genome.opcodeBodies||null,
+        opcodePickerHighProb:genome.opcodePickerHighProb,
+        opcodeSeedHighProb:genome.opcodeSeedHighProb
+      },
+      selfModSlots:genome.selfModSlots?genome.selfModSlots.map(s=>s?{expr:s.expr,uses:s.uses|0}:null):null,
+      atomTermDist:genome.atomTermDist?{...genome.atomTermDist}:null,
+      lineage:decodeLineage((genome.lineage||[]).slice(-4)),
+      stableMotifs:(genome.stableMotifs||[]).slice(-genome.motifMemorySize)
+    },
+    // Pe30: population-state visibility. Plasmids and cluster VMs were excluded
+    // from earlier saves because the loader treats them as ephemeral — when you
+    // import into a new tab, particles start fresh and these reform from the
+    // global VM. That sorting is correct for restart, wrong for analysis: this
+    // is where most VM execution actually happens. EMIT_TONE absent from the
+    // global VM tells you nothing if it's sitting in a plasmid that's spreading
+    // through HGT, or in a persistent cluster's evolved program.
+    populationState:(function(){
+      // Plasmids: aggregate over all alive particles + a handful of samples.
+      // Per-particle full dump would be ~36KB at typical N; aggregate answers
+      // recruitment questions ("does any plasmid contain READ_HUE?") directly.
+      const plOpRaw=new Uint32Array(64);     // raw opcodes, before remap
+      const plOpRemapped=new Uint32Array(64); // after remap through om
+      const plLengths=[0,0,0,0,0];           // 0..MAX_PLASMID
+      let particlesAlive=0,particlesWithPlasmid=0,totalPlasmidInsts=0;
+      const sampleBudget=8;
+      const samples=[];
+      for(let i=0;i<N;i++){
+        if(!palive[i])continue;
+        particlesAlive++;
+        const pl=pPlasmidLen[i]|0;
+        plLengths[Math.min(MAX_PLASMID,pl)]++;
+        if(pl>0){
+          particlesWithPlasmid++;
+          totalPlasmidInsts+=pl;
+          const insts=[];
+          for(let pi=0;pi<pl;pi++){
+            const pB=i*PLASMID_SLOTS+pi*4;
+            const rawOp=pPlasmid[pB]|0;
+            const remapped=(om&&om[rawOp]!==undefined)?om[rawOp]:rawOp;
+            if(rawOp>=0&&rawOp<64)plOpRaw[rawOp]++;
+            if(remapped>=0&&remapped<64)plOpRemapped[remapped]++;
+            insts.push({
+              rawOp,remappedOp:remapped,name:labelForOpcode(remapped),
+              src:+pPlasmid[pB+1].toFixed(2),
+              dst:+pPlasmid[pB+2].toFixed(2),
+              k:+pPlasmid[pB+3].toFixed(4)
+            });
+          }
+          if(samples.length<sampleBudget)samples.push({particleIdx:i,length:pl,program:insts});
+        }
+      }
+      // Build named opcode distributions, skip zeros.
+      const plOpRemappedByName={};
+      for(let op=0;op<64;op++){
+        if(plOpRemapped[op]>0){
+          plOpRemappedByName[labelForOpcode(op)]={op,count:plOpRemapped[op]};
+        }
+      }
+      // Cluster VMs: small in number, include all of them with decoded programs.
+      const clusterDump=clusters.map(c=>({
+        id:c.id||null,
+        size:c.size,
+        persistAge:c.persistAge||0,
+        lineageID:c.lineageID||null,
+        vmInfluence:c.vmInfluence,
+        vmProgram:decodeProgram(c.vmProgram||[])
+      }));
+      // Cluster-VM aggregate opcode distribution (all clusters' programs combined).
+      const clOp=new Uint32Array(64);
+      for(const c of clusters){
+        for(const inst of (c.vmProgram||[])){
+          const remapped=(om&&om[inst[0]]!==undefined)?om[inst[0]]:inst[0];
+          if(remapped>=0&&remapped<64)clOp[remapped]++;
+        }
+      }
+      const clOpByName={};
+      for(let op=0;op<64;op++){
+        if(clOp[op]>0)clOpByName[labelForOpcode(op)]={op,count:clOp[op]};
+      }
+      return {
+        note:'These are not restored on tab-load (the loader treats them as ephemeral). They are included for analysis: this is where plasmid-borne and cluster-level evolved structure lives, including any EMIT_TONE/READ_HUE that the global VM does not contain.',
+        plasmids:{
+          particlesAlive,
+          particlesWithPlasmid,
+          totalInstructions:totalPlasmidInsts,
+          lengthHistogram:plLengths,
+          opcodeDistribution:{
+            note:'Counts of each remapped opcode across all alive particles\' plasmid instructions. Raw counts under rawCounts; named view under byName.',
+            rawCounts:Array.from(plOpRaw),
+            remappedCounts:Array.from(plOpRemapped),
+            byName:plOpRemappedByName
+          },
+          samples
+        },
+        clusterVMs:{
+          count:clusters.length,
+          opcodeDistribution:{
+            remappedCounts:Array.from(clOp),
+            byName:clOpByName
+          },
+          programs:clusterDump
+        }
+      };
+    })(),
+    // Reference table for an analyst: full built-in opcode labels.
+    opcodeReference:{
+      builtIns:Object.assign({},OPCODE_LABELS),
+      note:'Opcodes 32+ are evolved. Their semantics live in genomeReadable.vm.opcodeBodies as small expression trees with leaves like si, di, k, amp, fld and ops like add, sub, mul, div, tanh.'
+    },
+    // Voice telemetry — what was emitted and when.
+    voice:{
+      totals:{
+        emissions:voiceTotalEmissions,
+        avgPerTick:voiceRate.length>0?+(voiceRate.reduce((s,r)=>s+r.n,0)/voiceRate.length).toFixed(2):0
+      },
+      freqHistogram:{
+        bins:VOICE_FREQ_BINS,
+        logRange:[20,20000],
+        counts:Array.from(voiceFreqHist)
+      },
+      rateSeries:voiceRate.slice(),
+      eventLog:voiceLog.slice()
+    },
+    // Opcode execution — what's actually being run. Co-required with
+    // genomeReadable.vm.program and .opcodeMap to interpret recruitment.
+    opcodeExec:{
+      space:OPCODE_SPACE,
+      total:opcodeExecTotal,
+      counts:Array.from(opcodeExec),
+      shareOfTotal:Array.from(opcodeExec).map(c=>opcodeExecTotal>0?+(c/opcodeExecTotal).toFixed(5):0),
+      rateSeries:opcodeRateHist.slice(),
+      // Per-opcode named view: the same data as `counts`/`shareOfTotal` but
+      // keyed by opcode name. Skips opcodes with zero executions to keep it small.
+      byName:(function(){
+        const out={};
+        for(let i=0;i<OPCODE_SPACE;i++){
+          if(opcodeExec[i]>0){
+            out[labelForOpcode(i)]={
+              op:i,
+              count:opcodeExec[i],
+              shareOfTotal:opcodeExecTotal>0?+(opcodeExec[i]/opcodeExecTotal).toFixed(5):0
+            };
+          }
+        }
+        return out;
+      })()
+    },
+    // Audio context — whether voice is reaching the speaker.
+    audio:{
+      outputEnabled:audioOutEnabled,
+      muted:audioOutMuted,
+      ambientEnabled:ambientEnabled,
+      ambientLevel:+ambientLevel.toFixed(3)
+    }
+  };
+}
+
 function exportGenome(){
-  const data=encodeGenome();
-  const blob=new Blob([data],{type:'text/plain'});
+  const snapshot=buildFullSnapshot();
+  const data=JSON.stringify(snapshot,null,2);
+  const blob=new Blob([data],{type:'application/json'});
   const a=document.createElement('a');
   a.href=URL.createObjectURL(blob);
   a.download='selection_gen'+genome.generation+'_t'+genome.totalTicks+'.json';
@@ -1681,13 +2021,26 @@ function exportGenome(){
 function importGenome(file){
   const reader=new FileReader();
   reader.onload=function(e){
-    const data=e.target.result.trim();
-    if(decodeGenome(data)){
+    const raw=e.target.result.trim();
+    // Detect format. New wrapped snapshots are JSON starting with '{'.
+    // Legacy compressed genomes are base64 starting with a base64 char.
+    let genomeStr=null;
+    if(raw[0]==='{'){
+      try{
+        const snapshot=JSON.parse(raw);
+        if(snapshot&&snapshot.genome&&typeof snapshot.genome==='string'){
+          genomeStr=snapshot.genome;
+        }
+      }catch(ex){genomeStr=null;}
+    }
+    if(!genomeStr)genomeStr=raw; // legacy: the file IS the encoded genome
+    if(decodeGenome(genomeStr)){
       N=0;
       const n=Math.min(300,(W*H/3000)|0);
       for(let i=0;i<n;i++)addParticle(Math.random()*W,Math.random()*H,randomTendency(),false);
       saveGenome();
-      try{localStorage.setItem('selection_genome',data)}catch(ex){}
+      // localStorage keeps the compressed form so the hash/restore path is unchanged
+      try{localStorage.setItem('selection_genome',genomeStr)}catch(ex){}
     }
   };
   reader.readAsText(file);
@@ -1696,72 +2049,12 @@ document.getElementById('gexp').onclick=exportGenome;
 document.getElementById('gimp').onclick=function(){document.getElementById('gfile').click()};
 document.getElementById('gfile').onchange=function(e){if(e.target.files[0])importGenome(e.target.files[0])};
 
-// Pe22l: export voice telemetry as JSON for analysis and sharing
-// Pe30: also includes opcode-execution telemetry — the diagnostic for whether
-// the chromesthesia substrate (and any other passive substrate) is being read
-// by the VMs. Static program-content counts are at line ~2674; this is dynamic.
-function exportVoiceTelemetry(){
-  const report={
-    version:'Pe30',
-    capturedAt:new Date().toISOString(),
-    genome:{
-      generation:genome.generation,
-      totalTicks:genome.totalTicks,
-      extinctions:genome.extinctions,
-      population:N,
-      clusters:clusters.length
-    },
-    audio:{
-      outputEnabled:audioOutEnabled,
-      muted:audioOutMuted,
-      ambientEnabled:ambientEnabled,
-      ambientLevel:+ambientLevel.toFixed(3)
-    },
-    totals:{
-      emissions:voiceTotalEmissions,
-      avgPerTick:voiceRate.length>0?+(voiceRate.reduce((s,r)=>s+r.n,0)/voiceRate.length).toFixed(2):0
-    },
-    freqHistogram:{
-      bins:VOICE_FREQ_BINS,
-      logRange:[20,20000],
-      counts:Array.from(voiceFreqHist)
-    },
-    rateSeries:voiceRate.slice(),
-    eventLog:voiceLog.slice(),
-    // Pe30: opcode execution histogram — what's actually being run, not just what's
-    // in the programs. opcode 31 is READ_HUE (chromesthesia read). Compare its share
-    // of total executions against the random baseline (~1/N for active opcode space)
-    // to detect recruitment.
-    opcodeExec:{
-      version:'Pe30',
-      space:OPCODE_SPACE,
-      labels:{
-        // Built-in opcode labels — derived from comments in the dispatch sites
-        // and surrounding code. Not exhaustive; the system can evolve opcodes
-        // beyond these.
-        0:'COPY', 1:'ADD', 2:'MUL', 3:'COMP', 4:'EMIT', 5:'READ_ACTION',
-        6:'READ_MEM', 7:'STORE_MEM', 8:'READ_FIELD', 9:'WRITE_FIELD',
-        10:'CLUSTER_WRITE_FIELD', 17:'READ_GRADIENT', 18:'MEM_INJECT',
-        19:'READ_COMMONS', 23:'READ_AMBIENT', 31:'READ_HUE'
-      },
-      total:opcodeExecTotal,
-      counts:Array.from(opcodeExec),
-      // Per-opcode share of total executions — the recruitment signal directly.
-      // Random baseline for an opcode space of N is 1/N. Anything well above that
-      // is selection finding the opcode useful.
-      shareOfTotal:Array.from(opcodeExec).map(c=>opcodeExecTotal>0?+(c/opcodeExecTotal).toFixed(5):0),
-      rateSeries:opcodeRateHist.slice() // full rolling window
-    }
-  };
-  const data=JSON.stringify(report,null,2);
-  const blob=new Blob([data],{type:'application/json'});
-  const a=document.createElement('a');
-  a.href=URL.createObjectURL(blob);
-  a.download='voice_gen'+genome.generation+'_t'+genome.totalTicks+'.json';
-  a.click();
-  URL.revokeObjectURL(a.href);
-}
-document.getElementById('gvex').onclick=exportVoiceTelemetry;
+// Pe22l: voice telemetry was once on its own 📊 button.
+// Pe30: button and standalone function removed. Everything it produced is now
+// in the unified 💾 save (buildFullSnapshot above). One file, everything to
+// interpret it. The cross-tab broadcast path (broadcastTelemetryForCoordinator)
+// still exports the same fields directly to peer tabs — that's a different
+// channel and the coordinator is its consumer, so it stays.
 
 // ═══════════════════════════════════════
 // CLUSTER DETECTION — STRUCTURAL COMPRESSION
@@ -4352,6 +4645,20 @@ function executeVM(i,j,sim,d){
           vmRegs[di]=0;
         }
       }break;
+      // Pe30: READ_OWN_OPCODE_SHARE — the system reading its own execution history.
+      // src register supplies an opcode index (mod OPCODE_SPACE), result is the
+      // share of all-time executions for that opcode, scaled by k. Substrate not
+      // pressure: read-only, not wired into selection. The system has to discover
+      // whether self-history is useful — same shape as READ_HUE.
+      // The asymmetry this opcode addresses: every other read opcode lets the
+      // system read its environment. This one lets it read itself. The data
+      // already existed (Pe30 instrumented opcodeExec); now the system can see
+      // what an external analyst can see.
+      case 32:{
+        const queryOp=Math.abs(Math.floor(vmRegs[si]))%OPCODE_SPACE;
+        const tot=opcodeExecTotal||1;
+        vmRegs[di]=(opcodeExec[queryOp]/tot)*k;
+      }break;
     }
     for(let r=0;r<12;r++){if(!isFinite(vmRegs[r]))vmRegs[r]=0;else vmRegs[r]=Math.max(-1e6,Math.min(1e6,vmRegs[r]));} // Pe22q: clamp lifted to 1e6, infinities caught
   }
@@ -4530,6 +4837,12 @@ function executeVM(i,j,sim,d){
         }else{
           vmRegs[di]=0;
         }
+      }break;
+      // Pe30: READ_OWN_OPCODE_SHARE — see opcode-32 comment in interaction VM.
+      case 32:{
+        const queryOp=Math.abs(Math.floor(vmRegs[si]))%OPCODE_SPACE;
+        const tot=opcodeExecTotal||1;
+        vmRegs[di]=(opcodeExec[queryOp]/tot)*k;
       }break;
       }
       for(let r=0;r<12;r++){if(!isFinite(vmRegs[r]))vmRegs[r]=0;else vmRegs[r]=Math.max(-1e6,Math.min(1e6,vmRegs[r]));} // Pe22q: clamp lifted to 1e6, infinities caught
@@ -4863,6 +5176,12 @@ function executeClusterVM(i,j,sim,d){
         }else{
           vmRegs[di]=0;
         }
+      }break;
+      // Pe30: READ_OWN_OPCODE_SHARE — see opcode-32 comment in interaction VM.
+      case 32:{
+        const queryOp=Math.abs(Math.floor(vmRegs[si]))%OPCODE_SPACE;
+        const tot=opcodeExecTotal||1;
+        vmRegs[di]=(opcodeExec[queryOp]/tot)*k;
       }break;
     }
     for(let r=0;r<12;r++){if(!isFinite(vmRegs[r]))vmRegs[r]=0;else vmRegs[r]=Math.max(-1e6,Math.min(1e6,vmRegs[r]));} // Pe22q: clamp lifted to 1e6, infinities caught
@@ -5226,6 +5545,12 @@ function executeSoloVM(){
         }else{
           vmRegs[di]=0;
         }
+      }break;
+      // Pe30: READ_OWN_OPCODE_SHARE — see opcode-32 comment in interaction VM.
+      case 32:{
+        const queryOp=Math.abs(Math.floor(vmRegs[si]))%OPCODE_SPACE;
+        const tot=opcodeExecTotal||1;
+        vmRegs[di]=(opcodeExec[queryOp]/tot)*k;
       }break;
       }
       for(let r=0;r<12;r++){if(!isFinite(vmRegs[r]))vmRegs[r]=0;else vmRegs[r]=Math.max(-1e6,Math.min(1e6,vmRegs[r]));} // Pe22q: clamp lifted to 1e6, infinities caught
