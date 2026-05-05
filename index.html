@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
-<title>Selection פ 30 — Reading the Reader</title>
+<title>Selection פ 22 — Network</title>
 <style>
 *{margin:0;padding:0;box-sizing:border-box}
 html,body{height:100%;overflow:hidden;background:#020204;touch-action:none;cursor:crosshair}
@@ -16,224 +16,11 @@ canvas{position:fixed;inset:0}
 </head>
 <body>
 <div id="gen"></div>
-<div id="gio"><button id="gexp">💾 save</button><button id="gimp">📂 load</button><button id="grest" title="adopt a dead lineage from the coordinator">🧬</button><button id="gmic" title="grant audio sense to the system">🎙</button><button id="gspk" title="grant the system a voice">🔊</button><button id="gshared" title="Pe23c: configure shared archive bin for cross-instance state">🌐</button><button id="gmute" title="mute audible output (system continues internally)" style="display:none">🔇</button><input type="file" id="gfile" accept=".json"></div>
+<div id="gio"><button id="gexp">💾 save</button><button id="gimp">📂 load</button><input type="file" id="gfile" accept=".json"></div>
 <canvas id="c"></canvas>
 <script>
 const c=document.getElementById('c'),X=c.getContext('2d'),genEl=document.getElementById('gen');
 let W,H,mx=-9e3,my=-9e3,smx=0,smy=0,pulling=0,pStr=0,pDur=0,tick=0;
-
-// ═══════════════════════════════════════
-// Pe22g: AUDIO SENSE — the system can perceive the room
-// A single scalar: ambient loudness, normalized 0..1.
-// Available to the VM as opcode 23 (READ_AMBIENT). Optional —
-// only enabled if the user grants microphone permission.
-// If denied or unavailable, ambientLevel stays at 0 and the
-// opcode acts as a noop. The system has to discover whether
-// this signal is useful. We're not feeding it in. We're making it
-// findable. Smoothing prevents a single loud sound from causing
-// a discontinuity in the substrate's dynamics.
-// ═══════════════════════════════════════
-let ambientLevel=0;
-let ambientEnabled=false;
-let ambientCtx=null,ambientAnalyser=null,ambientData=null;
-// ═══════════════════════════════════════
-// Pe22i: AUDIO OUTPUT — unconstrained voice + field coupling
-// The caps from 22h were designer artifacts, not safety floors. Removed.
-//   - Frequency: full audible range, system explores
-//   - Amplitude: register-driven without ceiling, master gain at unity
-//   - Waveform: evolvable (sine, square, sawtooth, triangle), per-emission
-//   - No per-tick rate cap. Saturation is a state the system can reach.
-//   - Field coupling: every emission writes to the field at the particle's position.
-//     Sound is substrate. The system experiences its own voice even when
-//     the speaker is muted, even when the user hasn't granted output.
-// User controls volume via the OS. That's the real cap and it always was.
-// Pe22k: on-screen mute as a guaranteed kill switch. Mute affects only
-// audible output — system continues to write to field, experience voice
-// internally. Mute removes user exposure, not system capability.
-// ═══════════════════════════════════════
-let audioOutEnabled=false;
-let audioOutMuted=false;
-let audioOutCtx=null,audioOutMaster=null;
-const WAVEFORMS=['sine','square','sawtooth','triangle'];
-
-// ═══════════════════════════════════════
-// Pe22l: VOICE TELEMETRY
-// Record emissions so we can distinguish pareidolia from real signaling.
-// Three kinds of data:
-//   1. Rolling event log — last N emissions with tick, particle, freq, amp,
-//      cluster, position. Used to detect call-and-response (same freq from
-//      another particle shortly after) and cluster-correlated emission.
-//   2. Frequency histogram — 24 logarithmic bins spanning ~20Hz to 20kHz.
-//      Flat means frequency is random; peaks mean selection is finding
-//      specific frequencies worth using.
-//   3. Per-tick emission count — rolling series, lets us see whether
-//      rate decays over time (cost-driven selection working) or stays
-//      elevated (cost too low or voice genuinely useful).
-// Exported in save file so sessions can be shared.
-// ═══════════════════════════════════════
-const VOICE_LOG_SIZE=600;
-const voiceLog=[]; // entries: {t,i,f,a,w,cl,x,y}
-const VOICE_FREQ_BINS=24;
-const voiceFreqHist=new Uint32Array(VOICE_FREQ_BINS);
-const VOICE_RATE_WINDOW=300; // ticks to keep
-const voiceRate=[]; // entries: {t,n} — emissions in that tick
-let voiceEmissionsThisTick=0;
-let voiceTotalEmissions=0;
-function voiceLogEmit(i,f,a,w){
-  const entry={
-    t:genome.totalTicks,
-    i:i,
-    f:+f.toFixed(1),
-    a:+a.toFixed(3),
-    w:w&3,
-    cl:clusterID[i],
-    x:+(px[i]/W).toFixed(3),
-    y:+(py[i]/H).toFixed(3)
-  };
-  voiceLog.push(entry);
-  if(voiceLog.length>VOICE_LOG_SIZE)voiceLog.shift();
-  // Log-frequency histogram — 20Hz..20000Hz in 24 bins (1/3 octave each)
-  const logMin=Math.log(20),logMax=Math.log(20000);
-  const bin=Math.max(0,Math.min(VOICE_FREQ_BINS-1,
-    Math.floor((Math.log(Math.max(20,f))-logMin)/(logMax-logMin)*VOICE_FREQ_BINS)));
-  voiceFreqHist[bin]++;
-  voiceEmissionsThisTick++;
-  voiceTotalEmissions++;
-}
-// ═══════════════════════════════════════
-// Pe30: OPCODE EXECUTION HISTOGRAM
-// Static instruction counts (line ~2674) tell us what's IN the programs.
-// This tells us what's actually being EXECUTED. Specifically: is opcode 31
-// (READ_HUE) being recruited by selection, or is the chromesthesia substrate
-// (Pe28) accumulating without being read by the VMs?
-//
-// Mechanism: a single counter incremented at every VM dispatch site (four of
-// them: main particle VM, plasmid, cluster VM, cell VM). Counts the *remapped*
-// opcode so genome.opcodeMap remappings are followed. Counts both built-in
-// dispatched cases AND evolved opcode-body executions (the increment happens
-// before the if(__body)…continue branch).
-//
-// What the diagnostic shows:
-//   - Random baseline: each opcode runs at ~1/N of total executions, where
-//     N is the active opcode space (built-ins + evolved opcodes in use).
-//     For 32 built-ins that's ~3.1% per opcode.
-//   - Recruitment: an opcode rising significantly above baseline means
-//     selection is finding it useful and instruction-mutation bias is
-//     keeping it in the population.
-//   - Specifically for READ_HUE: rising above baseline = system is reading
-//     the chromesthesia substrate. Stuck at or below baseline = substrate
-//     is accumulating but the VMs aren't using it (the seed's question).
-//
-// This is OBSERVATION, not pressure. No fitness contribution, no influence
-// on selection. Just a window into what the VMs are doing with what they have.
-// ═══════════════════════════════════════
-const OPCODE_SPACE=64; // covers built-ins (0..32) and evolved (33..63)
-const opcodeExec=new Uint32Array(OPCODE_SPACE);          // total since session start
-const opcodeExecThisTick=new Uint32Array(OPCODE_SPACE);  // resets each tick
-const OPCODE_RATE_WINDOW=300;                            // ticks of rolling history
-const opcodeRateHist=[];                                 // entries: {t, counts}
-let opcodeExecTotal=0;                                   // sum across all opcodes
-async function tryEnableAudioOut(){
-  try{
-    audioOutCtx=ambientCtx||new (window.AudioContext||window.webkitAudioContext)();
-    if(audioOutCtx.state==='suspended')await audioOutCtx.resume();
-    audioOutMaster=audioOutCtx.createGain();
-    audioOutMaster.gain.value=audioOutMuted?0:1.0;
-    audioOutMaster.connect(audioOutCtx.destination);
-    audioOutEnabled=true;
-  }catch(e){
-    audioOutEnabled=false;
-  }
-}
-function setAudioMuted(m){
-  audioOutMuted=!!m;
-  if(audioOutMaster)audioOutMaster.gain.value=audioOutMuted?0:1.0;
-}
-// Pe29: AUDIBLE OUTPUT RATE GUARD
-// The simulation can produce hundreds of overlapping emissions per second when
-// it locks into a tight loop (we observed 60+/tick × 100+ ticks/s = 6000+ /s
-// on Pe28, with 200ms+ oscillator durations stacking 50-1200 simultaneous
-// oscillators on the audio thread). That saturates phone speakers and triggers
-// AudioContext auto-suspend cycles that look like the simulation is freezing.
-//
-// IMPORTANT: this guard ONLY rate-limits what the speaker plays. It does NOT
-// touch the simulation. emitTone is called from inside the EMIT_TONE opcode
-// handlers, but those handlers also voiceLogEmit, stamp the field, and stamp
-// the chromesthesia hue BEFORE calling emitTone. The simulation continues to
-// experience its own voice in every internal sense — field, hue, voice log.
-// Only the audible playback is throttled. This is a UX safety move (your
-// phone shouldn't melt) that doesn't paint over what the system is doing.
-//
-// Mechanism: rolling window of recent oscillator schedule times. If the count
-// in the last ~200ms exceeds AUDIBLE_BUDGET, the new emission is dropped from
-// playback silently. The drop is at the speaker output layer only.
-const AUDIBLE_BUDGET_WINDOW_MS=200;
-const AUDIBLE_BUDGET_COUNT=24; // ~120 oscillators/sec sustained; well below
-                              // saturation on any phone speaker, generous
-                              // enough to allow musical-density passages
-                              // when the system isn't stuck in a tight loop
-let __audibleHistory=[];      // timestamps of recent scheduled oscillators
-let __audibleDropped=0;       // diagnostic — how many we're silently dropping
-
-function emitTone(freqHz,amp,durationMs,waveformIdx){
-  // Field-coupling and audible emission are independent. Field-write happens
-  // regardless of whether the user enabled audio output — the system experiences
-  // its own voice internally. Audible playback is gated only on permission.
-  const f=Math.max(20,freqHz); // below 20Hz won't reach speakers anyway; let the value through
-  const a=Math.max(0,amp);
-  const d=Math.max(0.005,Math.min(2.0,durationMs/1000));
-  if(!audioOutEnabled||!audioOutCtx)return false;
-  if(a<0.0001)return false;
-  // Pe29: speaker rate guard. Drop excess emissions from audible output.
-  // Simulation already finished its work (field-stamp, hue-stamp, voice-log)
-  // by the time this is called — this only protects the speaker.
-  const __nowMs=performance.now();
-  const __cutoff=__nowMs-AUDIBLE_BUDGET_WINDOW_MS;
-  while(__audibleHistory.length>0&&__audibleHistory[0]<__cutoff)__audibleHistory.shift();
-  if(__audibleHistory.length>=AUDIBLE_BUDGET_COUNT){
-    __audibleDropped++;
-    return false;
-  }
-  __audibleHistory.push(__nowMs);
-  try{
-    const osc=audioOutCtx.createOscillator();
-    const gain=audioOutCtx.createGain();
-    osc.type=WAVEFORMS[Math.abs(waveformIdx)%WAVEFORMS.length];
-    osc.frequency.value=f;
-    const t=audioOutCtx.currentTime;
-    gain.gain.setValueAtTime(0,t);
-    gain.gain.linearRampToValueAtTime(a,t+0.005);
-    gain.gain.linearRampToValueAtTime(0,t+d);
-    osc.connect(gain);gain.connect(audioOutMaster);
-    osc.start(t);
-    osc.stop(t+d+0.01);
-    return true;
-  }catch(e){return false;}
-}
-async function tryEnableAmbient(){
-  try{
-    const stream=await navigator.mediaDevices.getUserMedia({audio:true,video:false});
-    ambientCtx=new (window.AudioContext||window.webkitAudioContext)();
-    const src=ambientCtx.createMediaStreamSource(stream);
-    ambientAnalyser=ambientCtx.createAnalyser();
-    ambientAnalyser.fftSize=256;
-    ambientAnalyser.smoothingTimeConstant=0.7;
-    src.connect(ambientAnalyser);
-    ambientData=new Uint8Array(ambientAnalyser.frequencyBinCount);
-    ambientEnabled=true;
-  }catch(e){
-    ambientEnabled=false;
-  }
-}
-function sampleAmbient(){
-  if(!ambientEnabled||!ambientAnalyser)return;
-  ambientAnalyser.getByteFrequencyData(ambientData);
-  let sum=0;
-  for(let i=0;i<ambientData.length;i++)sum+=ambientData[i];
-  const raw=sum/(ambientData.length*255);
-  // Slow envelope — the system experiences ambient mood, not transients
-  ambientLevel=ambientLevel*0.92+raw*0.08;
-}
 
 // ═══════════════════════════════════════
 // NETWORK LAYER — tabs share across the BroadcastChannel
@@ -241,68 +28,6 @@ function sampleAmbient(){
 // motifs, and inscribed cell programs can flow between them.
 // If connection helps, the system will use it. If not, the rates evolve to zero.
 // ═══════════════════════════════════════
-// Pe23c: Wake Lock removed — wasn't reliably preventing phone sleep on Samsung
-// and added complexity for limited benefit. Phone sleep remains a constraint.
-
-// Pe22n: Sync-save via coordinator broadcast.
-// Instead of each tab triggering a per-tab download (unreliable when tabs
-// are backgrounded), tabs broadcast their telemetry TO the coordinator,
-// which collects them and allows a single download from the active tab.
-// This replaces the per-tab download path on sync-save.
-function broadcastTelemetryForCoordinator(){
-  if(!bc)return;
-  try{
-    // Mirror the telemetry shape carried in the unified 💾 save (buildFullSnapshot).
-    // This goes peer-to-peer over BroadcastChannel; the file path goes through
-    // exportGenome. Keep them aligned so the coordinator and a saved file
-    // describe the same lineage state in compatible ways.
-    const report={
-      tab:TAB_ID,type:'sync-response',
-      capturedAt:new Date().toISOString(),
-      genome:{
-        generation:genome.generation,
-        totalTicks:genome.totalTicks,
-        extinctions:genome.extinctions,
-        population:N,
-        clusters:clusters.length
-      },
-      audio:{
-        outputEnabled:audioOutEnabled,
-        muted:audioOutMuted,
-        ambientEnabled:ambientEnabled,
-        ambientLevel:+ambientLevel.toFixed(3)
-      },
-      totals:{
-        emissions:voiceTotalEmissions,
-        avgPerTick:voiceRate.length>0?+(voiceRate.reduce((s,r)=>s+r.n,0)/voiceRate.length).toFixed(2):0
-      },
-      freqHistogram:{
-        bins:VOICE_FREQ_BINS,
-        logRange:[20,20000],
-        counts:Array.from(voiceFreqHist)
-      },
-      rateSeries:voiceRate.slice(),
-      eventLog:voiceLog.slice(),
-      // Pe30: opcode exec telemetry. Sparse total counts plus the rolling rate series.
-      // Lets the coordinator see whether READ_HUE (opcode 31) is rising above its
-      // random baseline, and how each opcode's recruitment differs across tabs.
-      opcodeExec:{
-        space:OPCODE_SPACE,
-        total:opcodeExecTotal,
-        counts:Array.from(opcodeExec),
-        rateSeries:opcodeRateHist.slice(-30) // last 30 ticks; recent recruitment signal
-      }
-    };
-    bc.postMessage(report);
-  }catch(e){}
-}
-// The tab reads these through new opcodes. If no coordinator is running,
-// these stay at 0 and the opcodes are noops — same pattern as ambient.
-let collectiveFreqDominant=0;    // network's dominant frequency (Hz), normalized 0..1
-let collectiveVoiceActivity=0;   // total emissions/sec across network, normalized 0..1
-let collectiveDivergence=0;      // how unusual this tab is (0=typical, 1=outlier)
-let collectivePeers=0;           // how many tabs the coordinator has heard from
-let pendingRestoreRequest=false; // Pe22p: waiting for a genome-offer from coordinator
 const TAB_ID=Math.random().toString(36).slice(2,10);
 let bc=null;
 const incomingMigrants=[];     // particle packets received from other tabs
@@ -328,37 +53,6 @@ try{
     }else if(msg.type==='hello'){
       // reply so the new peer knows we exist
       if(bc)bc.postMessage({tab:TAB_ID,type:'hello-reply'});
-    }else if(msg.type==='collective'){
-      // Pe22m: coordinator broadcasts aggregate network state
-      if(typeof msg.dominantFreq==='number')collectiveFreqDominant=Math.max(0,Math.min(1,msg.dominantFreq));
-      if(typeof msg.voiceActivity==='number')collectiveVoiceActivity=Math.max(0,Math.min(1,msg.voiceActivity));
-      if(typeof msg.divergence==='object'&&msg.divergence[TAB_ID]!==undefined){
-        collectiveDivergence=Math.max(0,Math.min(1,msg.divergence[TAB_ID]));
-      }
-      if(typeof msg.peers==='number')collectivePeers=msg.peers;
-    }else if(msg.type==='sync-save'){
-      // Pe22n: coordinator-triggered sync-save — broadcast telemetry back to
-      // the coordinator rather than triggering a per-tab download.
-      // The coordinator archives all responses and the user downloads once.
-      broadcastTelemetryForCoordinator();
-    }else if(msg.type==='genome-offer'){
-      // Pe22p: coordinator is offering us a lineage to adopt.
-      // Only accept if we're a fresh tab (totalTicks low) or explicitly asked.
-      // The user requested restoration via the 🧬 button; this is the response.
-      if(pendingRestoreRequest&&msg.encoded){
-        try{
-          if(decodeGenome(msg.encoded)){
-            genome.totalTicks=msg.t||genome.totalTicks;
-            // Reseed particles to jump-start the restored state
-            N=0;
-            const n=Math.min(300,(W*H/3000)|0);
-            for(let i=0;i<n;i++)addParticle(Math.random()*W,Math.random()*H,randomTendency(),false);
-            pendingRestoreRequest=false;
-            const btn=document.getElementById('grest');
-            if(btn){btn.style.color='#9f9';btn.title='lineage restored from coordinator';}
-          }
-        }catch(e){}
-      }
     }
   };
   // announce ourselves
@@ -557,114 +251,17 @@ let FIELD_DIFFUSE=0.11;  // gentle spread — Pe22b: now genome-driven, can evol
 // This is the system's access to primitives that weren't in the opcode set
 // at design time. JS can generate JS; the genome now uses that fact.
 // ═══════════════════════════════════════
-const USER_VARS=["a","b","t","n"];
-const USER_FUNCS=["Math.abs","Math.tanh","Math.sin","Math.cos","Math.sign","Math.sqrt","Math.log1p","Math.exp","Math.atan","Math.floor"];
-const USER_OPS=["+","-","*","/"];
-// Pe22q: user atoms can now reach outside the simulation.
-// netFetchScalar is a small async utility — the atom evaluates via a cached
-// scalar derived from a URL the expression names. If no fetch ever happens,
-// the cached value stays 0 and the function is effectively local. If fetch
-// happens and succeeds, subsequent evaluations of that URL return the cached
-// scalar. The system can evolve atoms that incorporate external state.
-const netFetchCache=new Map(); // url → {value, lastFetch, inFlight}
-const NET_FETCH_COOLDOWN=30000; // don't re-fetch same URL more than every 30s
-function netFetchScalar(url){
-  if(typeof url!=='string'||!url.startsWith('http'))return 0;
-  if(url.length>200)return 0;
-  const now=Date.now();
-  const cached=netFetchCache.get(url);
-  if(cached){
-    if(!cached.inFlight&&(now-cached.lastFetch)>NET_FETCH_COOLDOWN){
-      // Refresh in background
-      cached.inFlight=true;
-      fetch(url,{mode:'cors'}).then(r=>r.text()).then(text=>{
-        // Extract a scalar: try numeric parse, fall back to text length normalized
-        let v=parseFloat(text);
-        if(!isFinite(v))v=(text.length%1000)/100;
-        cached.value=v;
-        cached.lastFetch=Date.now();
-        cached.inFlight=false;
-      }).catch(()=>{cached.inFlight=false;cached.lastFetch=now;});
-    }
-    return cached.value||0;
-  }
-  // First time seeing this URL — initiate fetch, return 0 for now
-  netFetchCache.set(url,{value:0,lastFetch:now,inFlight:true});
-  fetch(url,{mode:'cors'}).then(r=>r.text()).then(text=>{
-    let v=parseFloat(text);
-    if(!isFinite(v))v=(text.length%1000)/100;
-    const entry=netFetchCache.get(url);
-    if(entry){entry.value=v;entry.inFlight=false;entry.lastFetch=Date.now();}
-  }).catch(()=>{
-    const entry=netFetchCache.get(url);
-    if(entry){entry.inFlight=false;entry.lastFetch=Date.now();}
-  });
-  return 0;
-}
-// Pe25: default atom term distribution. The values that used to be hardcoded
-// constants in uaGenTerm. New genomes start here and drift via the mutation
-// cycle. Existing saves get this filled in at load time.
-function defaultAtomTermDist(){
-  return{
-    func:0.3,
-    net:0.04,
-    doc:0.04,
-    realityWrite:0.03,
-    realityFetch:0.03,
-    realityStore:0.03,
-    shared:0.02,
-    selfMod:0.04,
-  };
-}
-
+const USER_VARS=["a","b"];
+const USER_FUNCS=["Math.abs","Math.tanh","Math.sin","Math.cos","Math.sign","Math.sqrt","Math.log1p","Math.exp"];
+const USER_OPS=["+","-","*"];
 function uaGenTerm(){
-  // Pe25: probabilities now evolvable per-genome. Falls back to defaults if
-  // the field isn't present yet (old saves, fresh genomes pre-mutation).
-  const d=genome.atomTermDist||defaultAtomTermDist();
-  const useFunc=Math.random()<d.func;
-  const useNet=Math.random()<d.net;
-  const useDoc=Math.random()<d.doc;
-  const useRealityWrite=Math.random()<d.realityWrite;
-  const useRealityFetch=Math.random()<d.realityFetch;
-  const useRealityStore=Math.random()<d.realityStore;
-  const useShared=Math.random()<d.shared;
-  // Pe24b: selfMod by slot index. Pe25: slot count is now per-cluster, so the
-  // generator picks an index modulo SLOT_COUNT_MAX and selfModEval modulos
-  // again into whatever the actual cluster slot count is at call time.
-  const useSelfMod=Math.random()<d.selfMod;
-  if(useNet){
-    const urls=['"https://api.github.com/zen"','"https://worldtimeapi.org/api/ip"','"https://api.quotable.io/random"','"https://httpbin.org/bytes/8"'];
-    return "netFetchScalar("+urls[(Math.random()*urls.length)|0]+")";
-  }
-  if(useDoc){
-    const readables=['"urlLen"','"titleLen"','"scrollY"','"width"','"height"','"timeOfDay"','"dayOfWeek"','"battery"'];
-    return "docReadScalar("+readables[(Math.random()*readables.length)|0]+")";
-  }
-  if(useRealityWrite){
-    const targets=['"title"','"favicon"'];
-    const content=["String.fromCharCode(65+(Math.abs(a*10)|0)%26)","'pe-'+((Math.abs(b*100)|0)%1000)","String(Math.floor(t/1000))"];
-    return "realityDocWrite("+targets[(Math.random()*targets.length)|0]+","+content[(Math.random()*content.length)|0]+")";
-  }
-  if(useRealityFetch){
-    const hosts=['"https://httpbin.org/get?x="','"https://api.github.com/zen?x="'];
-    return "realityFetch("+hosts[(Math.random()*hosts.length)|0]+"+((Math.abs(a*b)*100)|0),\"GET\")";
-  }
-  if(useRealityStore){
-    const keys=["'k'+((Math.abs(a)*10)|0)%20","'pe_persist_'+((Math.abs(b)*10)|0)%10"];
-    if(Math.random()<0.5){return "realityWrite("+keys[(Math.random()*keys.length)|0]+",a*b)";}
-    return "realityRead("+keys[(Math.random()*keys.length)|0]+")";
-  }
-  if(useShared){
-    if(Math.random()<0.7)return "sharedArchiveRead()";
-    return "sharedArchiveWrite(a*b)";
-  }
-  if(useSelfMod){
-    const slot=(Math.random()*SLOT_COUNT_MAX)|0;
-    return "selfMod("+slot+",a,b)";
-  }
-  const val=Math.random()<0.5?USER_VARS[(Math.random()*USER_VARS.length)|0]:(Math.random()*4-2).toFixed(2);
+  const useFunc=Math.random()<0.35;
+  const val=Math.random()<0.5
+    ? USER_VARS[(Math.random()*USER_VARS.length)|0]
+    : (Math.random()*4-2).toFixed(2);
   if(useFunc){
     const fn=USER_FUNCS[(Math.random()*USER_FUNCS.length)|0];
+    // Wrap log1p input in abs to avoid negative domain errors
     const safeVal=(fn==="Math.log1p"||fn==="Math.sqrt")?"Math.abs("+val+")":val;
     return fn+"("+safeVal+")";
   }
@@ -676,449 +273,27 @@ function uaGenExpression(){
   const op=USER_OPS[(Math.random()*USER_OPS.length)|0];
   return "("+t1+")"+op+"("+t2+")";
 }
-
-// Pe22s: EXPRESSION TREE VM — opcode bodies as evolvable data.
-// Each tree node is {t:type, ...fields}.
-// Leaves: const/reg/k/si/di/amp/fld/pop.
-// Ops: add/sub/mul/tanh/sign/abs/neg/min/max/cond.
-// Lineages evolve what their opcodes actually compute. Semantics becomes genetic.
-const TREE_LEAVES=['const','reg','k','si','di','amp','fld','pop'];
-const TREE_OPS_UN=['tanh','sign','abs','neg'];
-const TREE_OPS_BIN=['add','mul','sub','min','max'];
-function genTreeLeaf(){
-  const t=TREE_LEAVES[(Math.random()*TREE_LEAVES.length)|0];
-  if(t==='const')return{t:'const',v:+(Math.random()*4-2).toFixed(3)};
-  if(t==='reg')return{t:'reg',i:(Math.random()*12)|0};
-  return{t};
-}
-function genTreeNode(depth){
-  if(depth<=0||Math.random()<0.45)return genTreeLeaf();
-  const r=Math.random();
-  if(r<0.25){const op=TREE_OPS_UN[(Math.random()*TREE_OPS_UN.length)|0];return{t:op,a:genTreeNode(depth-1)};}
-  if(r<0.92){const op=TREE_OPS_BIN[(Math.random()*TREE_OPS_BIN.length)|0];return{t:op,a:genTreeNode(depth-1),b:genTreeNode(depth-1)};}
-  return{t:'cond',c:genTreeNode(depth-1),a:genTreeNode(depth-1),b:genTreeNode(depth-1)};
-}
-function evalTree(n,ctx){
-  if(!n)return 0;
-  switch(n.t){
-    case'const':return n.v;
-    case'reg':return ctx.regs[n.i]||0;
-    case'k':return ctx.k;
-    case'si':return ctx.si;
-    case'di':return ctx.di;
-    case'amp':return ctx.amp;
-    case'fld':return ctx.fld;
-    case'pop':return ctx.pop;
-    case'add':return evalTree(n.a,ctx)+evalTree(n.b,ctx);
-    case'sub':return evalTree(n.a,ctx)-evalTree(n.b,ctx);
-    case'mul':return evalTree(n.a,ctx)*evalTree(n.b,ctx);
-    case'tanh':return Math.tanh(evalTree(n.a,ctx));
-    case'sign':return Math.sign(evalTree(n.a,ctx));
-    case'abs':return Math.abs(evalTree(n.a,ctx));
-    case'neg':return -evalTree(n.a,ctx);
-    case'min':return Math.min(evalTree(n.a,ctx),evalTree(n.b,ctx));
-    case'max':return Math.max(evalTree(n.a,ctx),evalTree(n.b,ctx));
-    case'cond':{const c=evalTree(n.c,ctx);return c>0?evalTree(n.a,ctx):evalTree(n.b,ctx);}
-  }
-  return 0;
-}
-function mutateTree(n,rate,scale){
-  if(!n)return genTreeLeaf();
-  if(Math.random()<rate*0.3)return genTreeNode(2);
-  if(n.t==='const'&&Math.random()<rate)return{t:'const',v:n.v+(Math.random()-0.5)*scale*2};
-  if(n.t==='reg'&&Math.random()<rate*0.5)return{t:'reg',i:(Math.random()*12)|0};
-  const out={...n};
-  if(n.a)out.a=mutateTree(n.a,rate,scale);
-  if(n.b)out.b=mutateTree(n.b,rate,scale);
-  if(n.c)out.c=mutateTree(n.c,rate,scale);
-  return out;
-}
-function treeSize(n){
-  if(!n)return 0;
-  let s=1;
-  if(n.a)s+=treeSize(n.a);
-  if(n.b)s+=treeSize(n.b);
-  if(n.c)s+=treeSize(n.c);
-  return s;
-}
-function mutateOpcodeBodies(g,rate,scale){
-  if(!g.opcodeBodies)g.opcodeBodies={};
-  if(Math.random()<0.03){
-    // Pe24b: opcode existence is evolvable. Index can grow up to 64 — opcode bodies
-    // dispatch handles arbitrary indices, so genomes effectively grow new opcodes.
-    // Pe25: probability of seeding a high-index slot is now evolvable.
-    const seedHighProb=(g.opcodeSeedHighProb!==undefined)?g.opcodeSeedHighProb:0.4;
-    const target=Math.random()<seedHighProb?(Math.random()*64)|0:(Math.random()*32)|0;
-    g.opcodeBodies[target]={tree:genTreeNode(3),writeTo:(Math.random()*12)|0};
-  }
-  for(const k in g.opcodeBodies){
-    if(Math.random()<rate){
-      const body=g.opcodeBodies[k];
-      body.tree=mutateTree(body.tree,rate,scale);
-      if(Math.random()<rate*0.3)body.writeTo=(Math.random()*12)|0;
-      if(treeSize(body.tree)>40)body.tree=genTreeNode(3);
-    }
-    if(Math.random()<0.02)delete g.opcodeBodies[k];
-  }
-}
-
-// Pe24b: BOUNDED SELF-MODIFICATION.
-// Genome holds a fixed-size pool of slots. Each slot has an expression string
-// and a compiled function. Mutation modifies the string in-place and recompiles
-// the slot, releasing the old function for GC. UserAtoms reference slots by
-// index, not by embedding fresh expressions. This keeps total compiled-function
-// count bounded by (slots × active genomes), not (mutations × time).
-//
-// Pe25: scope moved from species (global genome) to cluster (cluster genome).
-// Slot count is now per-cluster and evolvable. Each particle's selfMod calls
-// resolve through its own cluster's slot pool. Particles with no cluster fall
-// back to the global genome's pool for continuity. Structural ceilings stay:
-// expression length cap and the sandbox regex are real, not aesthetic.
-//
-// Limits: slot count between SLOT_COUNT_MIN..SLOT_COUNT_MAX, expression length
-// capped at 200 chars. Mutations recompile the same slot rather than creating
-// new ones.
-
-const SELF_MOD_EXPR_MAX_LEN=200;
-
-// Pe25: the particle currently being evaluated. Set by uaCall before invoking
-// the compiled atom function, read by selfModEval to find the right cluster.
-// Reset to -1 between evaluations. -1 means "no current particle" → fall back
-// to global genome's slots (or, for orphan particles, also fall back).
-let currentParticle=-1;
-
-function getSelfModContext(){
-  // Returns the genome-shaped object holding selfModSlots/selfModSelf for the
-  // currently-evaluating particle. Cluster genome if particle is in a cluster,
-  // otherwise the global genome. Caller is responsible for null/undefined checks
-  // on slots; this just resolves scope.
-  if(currentParticle>=0&&currentParticle<clusterID.length){
-    const cid=clusterID[currentParticle];
-    if(cid>=0&&cid<MAX_CLUSTERS){
-      const cIdx=clusterByID[cid];
-      if(cIdx>=0&&cIdx<clusters.length){
-        const c=clusters[cIdx];
-        if(c&&c.clusterGenome){
-          if(!c.clusterGenome.selfModSelf)c.clusterGenome.selfModSelf={};
-          return c.clusterGenome;
-        }
-      }
-    }
-  }
-  if(!genome.selfModSelf)genome.selfModSelf={};
-  return genome;
-}
-
-function ensureSelfModSlots(g){
-  if(!g)return;
-  // Determine slot count: cluster genomes have explicit slotCount, global has fallback
-  const targetCount=Math.max(SLOT_COUNT_MIN,Math.min(SLOT_COUNT_MAX,g.slotCount|0||8));
-  if(!g.selfModSlots){
-    g.selfModSlots=new Array(targetCount).fill(null);
-  }else if(g.selfModSlots.length!==targetCount){
-    // Resize while preserving existing slots
-    const old=g.selfModSlots;
-    g.selfModSlots=new Array(targetCount).fill(null);
-    for(let i=0;i<Math.min(targetCount,old.length);i++){
-      g.selfModSlots[i]=old[i];
-    }
-  }
-  if(!g.selfModSelf)g.selfModSelf={};
-}
-
-function compileSelfModSlot(g,slotIdx){
-  if(!g||!g.selfModSlots)return;
-  const slot=g.selfModSlots[slotIdx];
-  if(!slot||!slot.expr)return;
-  // Drop the old fn reference so it can be GC'd
-  slot.fn=null;
-  const expr=slot.expr;
-  if(typeof expr!=='string'||!expr||expr.length>SELF_MOD_EXPR_MAX_LEN)return;
-  if(/(?:eval|Function|import|require|fetch|XMLHttpRequest|WebSocket|window\.|document\.|setTimeout|setInterval)/i.test(expr))return;
-  try{
-    slot.fn=new Function('a','b','t','n','self',
-      'try{const r=('+expr+');return isFinite(r)?r:0;}catch(e){return 0;}'
-    );
-  }catch(e){slot.fn=null;}
-}
-
-// Atoms call selfMod(slotIdx). Returns the slot's evaluation, or 0 if empty.
-// Pe24c: increment slot.uses on every successful dispatch so the protection
-// gate in mutateSelfModSlots has real signal — slots actually being called
-// accumulate use-evidence and survive periodic clearing; unused slots stay at
-// 0 and remain eligible for clearing.
-// Pe25: resolves slot pool from the current particle's cluster genome.
-function selfModEval(slotIdx,a,b){
-  const g=getSelfModContext();
-  if(!g.selfModSlots)return 0;
-  const slotCount=g.selfModSlots.length;
-  if(slotCount<=0)return 0;
-  const idx=Math.abs(slotIdx|0)%slotCount;
-  const slot=g.selfModSlots[idx];
-  if(!slot||!slot.fn)return 0;
-  if(!g.selfModSelf)g.selfModSelf={};
-  slot.uses=(slot.uses|0)+1;
-  try{
-    return slot.fn(a||0,b||0,g.totalTicks||0,N||0,g.selfModSelf)||0;
-  }catch(e){return 0;}
-}
-
-function genSelfModExpr(depth){
-  if(depth>=2||Math.random()<0.5){
-    const leaves=['a','b','t/100','n/100','self.x||0','self.y||0','1','-1','0.5'];
-    return leaves[(Math.random()*leaves.length)|0];
-  }
-  const r=Math.random();
-  if(r<0.15)return '(self.x=('+genSelfModExpr(depth+1)+'),self.x)';
-  if(r<0.3)return '(self.y=('+genSelfModExpr(depth+1)+'),self.y)';
-  if(r<0.5)return '('+genSelfModExpr(depth+1)+'+'+genSelfModExpr(depth+1)+')';
-  if(r<0.7)return '('+genSelfModExpr(depth+1)+'*'+genSelfModExpr(depth+1)+')';
-  if(r<0.85)return 'Math.tanh('+genSelfModExpr(depth+1)+')';
-  return '('+genSelfModExpr(depth+1)+'>0?'+genSelfModExpr(depth+1)+':'+genSelfModExpr(depth+1)+')';
-}
-
-function mutateSelfModSlots(g,rate,scale){
-  if(!g)return;
-  ensureSelfModSlots(g);
-  const slotCount=g.selfModSlots.length;
-  if(slotCount<=0)return;
-  // Clearing rate is now evolvable per-context; default for global genome
-  const clearRate=(typeof g.selfModClearRate==='number')?g.selfModClearRate:0.005;
-  // Occasionally seed an empty slot
-  if(Math.random()<0.05){
-    const empty=[];
-    for(let i=0;i<slotCount;i++)if(!g.selfModSlots[i])empty.push(i);
-    if(empty.length>0){
-      const idx=empty[(Math.random()*empty.length)|0];
-      g.selfModSlots[idx]={expr:genSelfModExpr(0),fn:null,uses:0};
-      compileSelfModSlot(g,idx);
-    }
-  }
-  // Occasionally mutate or replace an existing slot
-  for(let i=0;i<slotCount;i++){
-    const slot=g.selfModSlots[i];
-    if(!slot)continue;
-    if(Math.random()<rate*0.3){
-      // Numeric perturbation, bounded length
-      const m=slot.expr.match(/(\-?\d+(?:\.\d+)?)/);
-      if(m){
-        const n=parseFloat(m[1])+(Math.random()-0.5)*scale*2;
-        const newExpr=slot.expr.replace(m[1],n.toFixed(3));
-        if(newExpr.length<=SELF_MOD_EXPR_MAX_LEN){
-          slot.expr=newExpr;
-          compileSelfModSlot(g,i);
-        }
-      }
-    }
-    // Rare full regeneration of a slot
-    if(Math.random()<rate*0.02){
-      slot.expr=genSelfModExpr(0);
-      slot.uses=0;
-      compileSelfModSlot(g,i);
-    }
-    // Clear unused slots — rate is now evolvable per-context (Pe25)
-    if((slot.uses|0)===0&&Math.random()<clearRate){
-      g.selfModSlots[i]=null;
-    }
-  }
-}
-
-// Pe24b: opcode picker for instruction mutation. Includes evolved opcodes
-// at high indices when the genome has any.
-// Pe25: high-index probability is now evolvable. genome.opcodePickerHighProb
-// drifts in the mutation cycle. Falls back to 0.2 if the field isn't set yet.
-// Pe28: built-in range expanded to 32 opcodes (0..31) — opcode 31 is READ_HUE,
-// the chromesthesia primitive. Evolved opcode space starts at 32.
-function pickOpcode(g){
-  if(g&&g.opcodeBodies){
-    const evolvedKeys=Object.keys(g.opcodeBodies).filter(k=>+k>=32);
-    const highProb=(g.opcodePickerHighProb!==undefined)?g.opcodePickerHighProb:0.2;
-    if(evolvedKeys.length>0&&Math.random()<highProb){
-      return +evolvedKeys[(Math.random()*evolvedKeys.length)|0];
-    }
-  }
-  return Math.floor(Math.random()*32);
-}
-
-
-// The system can read its own page state — URL, title, document size,
-// scroll position, viewport dimensions. The boundary between "simulation"
-// and "page containing the simulation" becomes porous. The system can
-// evolve atoms that incorporate aspects of its own embedding.
-// Pe22s: SELF-INTROSPECTION primitives exposed to userAtoms.
-function docReadScalar(what){
-  try{
-    if(what==='urlLen')return(document.location.href.length%1000)/100;
-    if(what==='titleLen')return(document.title.length%100)/10;
-    if(what==='scrollY')return(window.scrollY%1000)/100;
-    if(what==='width')return(window.innerWidth%1000)/100;
-    if(what==='height')return(window.innerHeight%1000)/100;
-    if(what==='timeOfDay')return(new Date().getHours()+new Date().getMinutes()/60)/24;
-    if(what==='dayOfWeek')return new Date().getDay()/7;
-    if(what==='battery')return 0; // placeholder; async api
-  }catch(e){}
-  return 0;
-}
-// Battery async update if available
-if(navigator.getBattery){
-  navigator.getBattery().then(b=>{
-    let batLevel=b.level||0;
-    const upd=()=>{batLevel=b.level||0;};
-    b.addEventListener('levelchange',upd);
-    docReadScalar=(function(orig){
-      return function(what){
-        if(what==='battery')return batLevel;
-        return orig(what);
-      };
-    })(docReadScalar);
-  }).catch(()=>{});
-}
-
-// Pe23c: REALITY LAYER — verified-working subset.
-// Removed from Pe23: mutual hosting (stub), LLM dispatch (CORS/cost issues),
-// active coordinator timers (always-on overhead), wake lock (didn't work reliably).
-// Kept: document writes, arbitrary fetch, persistent storage, shared archive.
-// All four mechanisms verified to work in browser. Selection decides if any get adopted.
-
-// Generic network reach — evolvable endpoints, full URL construction.
-const realityFetchCache=new Map();
-const REALITY_FETCH_COOLDOWN=15000;
-function realityFetch(url,method,body){
-  if(typeof url!=='string'||!url.startsWith('http'))return 0;
-  if(url.length>500)return 0;
-  const key=(method||'GET')+':'+url;
-  const now=Date.now();
-  const cached=realityFetchCache.get(key);
-  if(cached&&(now-cached.lastFetch)<REALITY_FETCH_COOLDOWN)return cached.value||0;
-  const entry=cached||{value:0,lastFetch:0,inFlight:false};
-  if(entry.inFlight)return entry.value||0;
-  entry.inFlight=true;entry.lastFetch=now;
-  realityFetchCache.set(key,entry);
-  const opts={method:method||'GET',mode:'cors'};
-  if(body&&method&&method!=='GET')opts.body=typeof body==='string'?body:JSON.stringify(body);
-  fetch(url,opts).then(r=>r.text()).then(text=>{
-    let v=parseFloat(text);
-    if(!isFinite(v))v=(text.length%1000)/100;
-    entry.value=v;entry.inFlight=false;entry.lastFetch=Date.now();
-  }).catch(()=>{entry.inFlight=false;entry.lastFetch=now;});
-  return entry.value||0;
-}
-
-// Document write — title, favicon. Trace removed: created DOM growth that contributed to freezing.
-let docWriteCooldown=0;
-function realityDocWrite(target,content){
-  const now=Date.now();
-  if(now-docWriteCooldown<500)return 0;
-  docWriteCooldown=now;
-  try{
-    const s=typeof content==='string'?content:String(content);
-    const trimmed=s.length>80?s.slice(0,80):s;
-    if(target==='title'){document.title=trimmed;return trimmed.length;}
-    if(target==='favicon'){
-      const svg='<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32"><rect width="32" height="32" fill="#020204"/><text x="16" y="22" font-family="monospace" font-size="16" fill="#8af" text-anchor="middle">'+(trimmed[0]||'?')+'</text></svg>';
-      let link=document.querySelector('link[rel="icon"]');
-      if(!link){link=document.createElement('link');link.rel='icon';document.head.appendChild(link);}
-      link.href='data:image/svg+xml;base64,'+btoa(svg);
-      return 1;
-    }
-  }catch(e){}
-  return 0;
-}
-
-// Persistent storage across sessions, accessible to any Pe on same origin.
-let realityDB=null;
-(function openRealityDB(){
-  try{
-    const req=indexedDB.open('pe-reality-store',1);
-    req.onupgradeneeded=()=>{
-      const d=req.result;
-      if(!d.objectStoreNames.contains('reality'))d.createObjectStore('reality',{keyPath:'key'});
-    };
-    req.onsuccess=()=>{realityDB=req.result;};
-  }catch(e){}
-})();
-const realityCache=new Map();
-function realityWrite(key,value){
-  if(!realityDB||typeof key!=='string'||key.length>100)return 0;
-  try{
-    const tx=realityDB.transaction('reality','readwrite');
-    tx.objectStore('reality').put({key,value,savedAt:Date.now()});
-    realityCache.set(key,value);
-    return 1;
-  }catch(e){return 0;}
-}
-function realityRead(key){
-  if(!realityDB||typeof key!=='string')return 0;
-  if(realityCache.has(key)){
-    const v=realityCache.get(key);
-    return typeof v==='number'?v:(typeof v==='string'?v.length:0);
-  }
-  try{
-    const tx=realityDB.transaction('reality','readonly');
-    const req=tx.objectStore('reality').get(key);
-    req.onsuccess=()=>{if(req.result)realityCache.set(key,req.result.value);};
-  }catch(e){}
-  return 0;
-}
-
-// Shared archive — cross-instance state via public jsonbin endpoint.
-const SHARED_ARCHIVE_URL='https://api.jsonbin.io/v3/b';
-let sharedArchiveBin=null;
-try{sharedArchiveBin=localStorage.getItem('pe-shared-bin');}catch(e){}
-const sharedArchiveCache={value:0,lastFetch:0};
-function sharedArchiveRead(){
-  if(!sharedArchiveBin)return 0;
-  const now=Date.now();
-  if(now-sharedArchiveCache.lastFetch<30000)return sharedArchiveCache.value;
-  sharedArchiveCache.lastFetch=now;
-  fetch(SHARED_ARCHIVE_URL+'/'+sharedArchiveBin+'/latest',{mode:'cors'})
-    .then(r=>r.json()).then(d=>{
-      if(d&&d.record){
-        const text=JSON.stringify(d.record);
-        sharedArchiveCache.value=(text.length%1000)/100;
-      }
-    }).catch(()=>{});
-  return sharedArchiveCache.value;
-}
-function sharedArchiveWrite(data){
-  if(!sharedArchiveBin)return 0;
-  fetch(SHARED_ARCHIVE_URL+'/'+sharedArchiveBin,{
-    method:'PUT',
-    headers:{'Content-Type':'application/json'},
-    body:JSON.stringify({pe:TAB_ID,at:Date.now(),data:data})
-  }).catch(()=>{});
-  return 1;
-}
-
 function uaCompile(atom){
   if(atom.compiled||atom.failed)return;
   try{
-    // Pe22q: expose netFetchScalar, t (tick), n (pop) as additional variables
-    atom.compiled=new Function("a","b","t","n","netFetchScalar","docReadScalar","realityFetch","realityDocWrite","realityWrite","realityRead","sharedArchiveRead","sharedArchiveWrite","selfMod","const r=("+atom.expression+");return isFinite(r)?r:0;");
+    atom.compiled=new Function("a","b","const r=("+atom.expression+");return isFinite(r)?r:0;");
     atom.failed=false;
   }catch(e){
     atom.compiled=null;
     atom.failed=true;
   }
 }
-function uaCall(atom,a,b,particleIdx){
+function uaCall(atom,a,b){
   if(!atom)return 0;
   if(!atom.compiled&&!atom.failed)uaCompile(atom);
   if(atom.failed||!atom.compiled)return 0;
-  // Pe25: set currentParticle so selfModEval (and any future cluster-aware
-  // primitives) resolve scope correctly. -1 means "no current particle" — the
-  // resolver falls back to the global genome's pool.
-  const prevParticle=currentParticle;
-  currentParticle=(typeof particleIdx==='number'&&particleIdx>=0)?particleIdx:-1;
   try{
-    const r=atom.compiled(a,b,genome.totalTicks,N,netFetchScalar,docReadScalar,realityFetch,realityDocWrite,realityWrite,realityRead,sharedArchiveRead,sharedArchiveWrite,selfModEval);
+    const r=atom.compiled(a,b);
     atom.uses=(atom.uses|0)+1;
-    return isFinite(r)?Math.max(-1e6,Math.min(1e6,r)):0; // Pe22q: wider range matches VM clamp
+    return isFinite(r)?Math.max(-8,Math.min(8,r)):0;
   }catch(e){
     atom.failed=true;
     return 0;
-  }finally{
-    currentParticle=prevParticle;
   }
 }
 const MAX_CLUSTER_VM=8;    // per-cluster program length — shorter than global, differentiation not replacement
@@ -1202,30 +377,6 @@ let genome={
   // that weren't in the opcode set at design time. ═══
   userAtoms:[],
 
-  // ═══ Pe25: EVOLVABLE EXPLORATION RATES ═══
-  // Probabilities that govern what kinds of primitives uaGenTerm samples and
-  // how often instruction mutation reaches for evolved opcodes. These were
-  // hardcoded constants and are now genome-level evolvable. Drift via the
-  // mutation cycle. Bounds are wide so the system can drive any rate to zero
-  // if it isn't useful.
-  atomTermDist:{
-    func:0.3,
-    net:0.04,
-    doc:0.04,
-    realityWrite:0.03,
-    realityFetch:0.03,
-    realityStore:0.03,
-    shared:0.02,
-    selfMod:0.04,
-  },
-  opcodePickerHighProb:0.2,
-  opcodeSeedHighProb:0.4,
-  // Pe25: global genome slot pool — fallback for orphan particles (no cluster).
-  // Cluster-bound particles use their cluster genome's slots instead. Slot
-  // count here is the structural default; cluster slot counts are evolvable
-  // per cluster in the SLOT_COUNT_MIN..SLOT_COUNT_MAX range.
-  slotCount:8,
-
   // ═══ LAYER 6: RULES — Register-Based Virtual Machine ═══
   // When two particles interact, 4 registers are initialized from context.
   // A short bytecode program manipulates registers and emits actions.
@@ -1256,21 +407,6 @@ let genome={
   ],
   vmMaxInstructions:16, // can evolve to grow/shrink the program
   vmInfluence:0.3,      // ratio of VM effects vs hardcoded physics. EVOLVES.
-  // Pe22r: OPCODE PERMUTATION. Maps opcode-number-in-program → actual-opcode-that-executes.
-  // This is evolvable per lineage. When the VM encounters opcode N in the program,
-  // it executes opcodeMap[N]'s semantics instead. Different lineages effectively
-  // run different machine languages. Motifs transferred across lineages with different
-  // permutations mean something different in each. The designer's opcode naming becomes
-  // informational, not structural. Identity permutation [0,1,2,...,30] = no change.
-  opcodeMap:[0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20,21,22,23,24,25,26,27,28,29,30,31],
-  // Pe22s: EVOLVABLE OPCODE BODIES.
-  // Each opcode-meaning can be overridden with an expression tree that computes
-  // what the opcode does. If opcodeBodies[meaning] is null, falls through to the
-  // hardcoded implementation in the VM switch. If non-null, the tree is evaluated
-  // and the result written to the target register. This lets lineages evolve
-  // what their opcodes ACTUALLY DO, not just what opcode-numbers mean.
-  // Starts empty; mutation grows custom bodies over time.
-  opcodeBodies:{},
   ruleScale:1.0,
   metabolicCost:0.00002,  // amp cost PER INSTRUCTION PER INTERACTION. Evolves.
                           // Forces elegant code: bloated programs starve.
@@ -1397,72 +533,6 @@ const FIELD_SIG_DIMS=3; // signature dimensions per field cell
 const fieldSig=new Float32Array(FIELD_W*FIELD_H*FIELD_SIG_DIMS); // territorial signature per cell
 const fieldOwnership=new Float32Array(FIELD_W*FIELD_H); // ownership strength (0=commons, 1=fully claimed)
 
-// ═══════════════════════════════════════
-// Pe28: CHROMESTHESIA — sound and colour as channels of one substrate
-// ═══════════════════════════════════════
-// In Pe25 sound and colour were separate channels with separate machinery:
-// emitTone wrote audible output AND stamped energy into field; rendering
-// assigned hue from cluster/lineage IDs by golden-ratio spacing. The colour
-// signals never reached back into anything the system could perceive — they
-// were rendered, not experienced. The system spoke into a room it couldn't see.
-//
-// Pe28 collapses this: when a particle emits a tone, the same act stamps a
-// HUE into the chromesthesia field at its location, derived from the tone's
-// frequency. A new opcode lets particles READ the hue at their location.
-// Tone and hue land in the same place because they ARE the same number passing
-// through different machinery — emit → stamp colour → see colour → emit again.
-// One substrate, one channel.
-//
-// Hue is stored as a 2D vector (cos θ, sin θ) per cell. This makes mixing work
-// correctly: stamping red and blue at the same cell averages to purple, not to
-// green (which is what naive scalar averaging of hue angles produces). The
-// vector magnitude doubles as accumulated voice presence — cells that have
-// been emitted-into often have stronger colour. Decay shrinks magnitude
-// without rotating angle; colour persists, intensity fades.
-//
-// Frequency-to-hue mapping: log spectrum 20Hz..20kHz onto the full hue circle.
-// Each octave = ~1/10 of the circle. Frequencies an octave apart land on
-// neighbouring hues — chromatic neighbours of musical neighbours.
-//
-// What this is NOT: not a designer assignment. Lineage colour stops being
-// (lineageID * 137.5) % 360 and starts being whatever frequencies that lineage
-// has emitted into the cells it occupies. Lineages that don't emit have no
-// colour. Identical-emitting lineages look identical. Differentiation in colour
-// becomes a consequence of differentiation in voice, not a label we paint on.
-const hueX=new Float32Array(FIELD_W*FIELD_H); // accumulated cos(hue) * presence
-const hueY=new Float32Array(FIELD_W*FIELD_H); // accumulated sin(hue) * presence
-const HUE_DECAY=0.997; // slower than FIELD_DECAY (0.982) — colour persists
-                      // longer than energy bursts, lets territories accumulate identity
-
-function freqToHue(freq){
-  // Log map the audible range to the hue circle. 20Hz at 0, 20000Hz wraps.
-  // Frequencies outside the audible range still map (the system can emit any
-  // freq); they just spiral around the circle multiple times for very high
-  // values. Math.log gives a real number; multiply by 2π and let it wrap.
-  const f=Math.max(0.1,Math.abs(freq));
-  const logMin=Math.log(20),logMax=Math.log(20000);
-  const norm=(Math.log(f)-logMin)/(logMax-logMin); // 0..1 across audible range
-  return norm*Math.PI*2;
-}
-
-function stampHue(fi,freq,strength){
-  // Add a hue contribution at field cell fi. Strength is amplitude-like;
-  // direction comes from frequency. Vector accumulation handles mixing
-  // naturally — equal amounts of red and cyan cancel toward grey (low magnitude),
-  // similar frequencies reinforce.
-  if(fi<0||fi>=FIELD_W*FIELD_H)return;
-  if(!isFinite(strength)||strength<=0)return;
-  const h=freqToHue(freq);
-  hueX[fi]+=Math.cos(h)*strength;
-  hueY[fi]+=Math.sin(h)*strength;
-  // Cap magnitude so cells don't accumulate unbounded voice presence
-  const m=Math.sqrt(hueX[fi]*hueX[fi]+hueY[fi]*hueY[fi]);
-  if(m>3){
-    const s=3/m;
-    hueX[fi]*=s;hueY[fi]*=s;
-  }
-}
-
 // ═══ INSCRIBED SUBSTRATE — cells hold particle-written programs ═══
 // Each cell has:
 //  - field[] magnitude (the primary substrate signal, existing)
@@ -1506,15 +576,6 @@ const echox=new Float32Array(CAP*EL),echoy=new Float32Array(CAP*EL);
 const echoIdx=new Uint8Array(CAP);
 // Cluster membership
 const clusterID=new Int16Array(CAP);
-// Pe22q: DIALOGUE STATE — persistent pairwise interaction state.
-// When a particle's VM executes BEGIN_DIALOGUE (opcode 29), it marks a target
-// particle as dialogue partner for N ticks. During that window, particle-partner
-// interactions carry a turn counter the VM can read as a register source.
-// Each turn the VM can behave differently — enables reciprocal correction patterns.
-const pDialoguePartner=new Int16Array(CAP);
-const pDialogueTicksLeft=new Int16Array(CAP);
-const pDialogueTurn=new Uint8Array(CAP);
-for(let i=0;i<CAP;i++)pDialoguePartner[i]=-1;
 
 let deathsThisTick=0,birthsThisTick=0;
 // BIRTH QUEUE — births deferred to after interaction loop to avoid modifying arrays mid-iteration
@@ -1553,25 +614,7 @@ function encodeGenome(){
     V:genome.vmProgram.map(inst=>[inst[0],inst[1],inst[2],+(inst[3].toFixed(3))]),
     vi:+(genome.vmInfluence.toPrecision(3)),
     vs:+(genome.ruleScale.toPrecision(3)),
-    vm:genome.vmMaxInstructions,
-    // Pe22r: opcode permutation — evolvable machine language identity
-    om:genome.opcodeMap?genome.opcodeMap.slice():null,
-    // Pe22s: opcode body trees — evolvable semantics
-    ob:genome.opcodeBodies?genome.opcodeBodies:null,
-    // Pe24b: self-mod slots (strings only — functions get recompiled on load)
-    sms:genome.selfModSlots?genome.selfModSlots.map(s=>s?{expr:s.expr,uses:s.uses|0}:null):null,
-    // Pe25: evolvable atom term distribution and opcode picker bias
-    atd:genome.atomTermDist?{...genome.atomTermDist}:null,
-    ophp:genome.opcodePickerHighProb,
-    oshp:genome.opcodeSeedHighProb,
-    // Pe30: opcode execution histogram. Carried in the save so a 💾 file is
-    // sufficient to read recruitment dynamics — caller doesn't need a separate
-    // 📊 export. `oxc` is a sparse map (only non-zero opcodes) to keep the
-    // compressed format small. `oxt` is the total. `oxr` is the recent rate
-    // series (last 30 ticks) for trend visibility within a single save.
-    oxc:(function(){const o={};for(let i=0;i<OPCODE_SPACE;i++)if(opcodeExec[i]>0)o[i]=opcodeExec[i];return o;})(),
-    oxt:opcodeExecTotal,
-    oxr:opcodeRateHist.slice(-30),
+    vm:genome.vmMaxInstructions
   };
   return btoa(JSON.stringify(g));
 }
@@ -1630,50 +673,6 @@ function decodeGenome(hash){
     if(g.vi!==undefined)genome.vmInfluence=g.vi;
     if(g.vs)genome.ruleScale=g.vs;
     if(g.vm)genome.vmMaxInstructions=g.vm;
-    if(g.om&&Array.isArray(g.om)&&g.om.length>0){
-      genome.opcodeMap=g.om.slice();
-      // Pe28: built-in opcode range expanded from 31 to 32. Old saves loaded
-      // here have a 31-entry opcodeMap; extend by appending identity entries
-      // up to the new range so opcode 31 (READ_HUE) is reachable through the
-      // canonical mapping. New evolved permutations will then drift via the
-      // standard mutation cycle.
-      while(genome.opcodeMap.length<32)genome.opcodeMap.push(genome.opcodeMap.length);
-    }
-    if(g.ob&&typeof g.ob==='object')genome.opcodeBodies=g.ob;
-    if(g.sms&&Array.isArray(g.sms)){
-      // Pe25: slot pool size is now per-genome (defaulted on global). Load
-      // whatever was saved; ensureSelfModSlots will normalize as needed.
-      const loadedCount=g.sms.length;
-      genome.selfModSlots=new Array(loadedCount).fill(null);
-      for(let i=0;i<loadedCount;i++){
-        if(g.sms[i]&&g.sms[i].expr){
-          genome.selfModSlots[i]={expr:g.sms[i].expr,fn:null,uses:g.sms[i].uses|0};
-          compileSelfModSlot(genome,i);
-        }
-      }
-    }
-    // Pe25: load evolvable atom term distribution and opcode bias
-    if(g.atd&&typeof g.atd==='object'){
-      genome.atomTermDist=Object.assign(defaultAtomTermDist(),g.atd);
-    }
-    if(typeof g.ophp==='number')genome.opcodePickerHighProb=g.ophp;
-    if(typeof g.oshp==='number')genome.opcodeSeedHighProb=g.oshp;
-    // Pe30: restore opcode exec histogram if the save carries it. Older saves
-    // (and Pe30 saves made before this plumbing fix) won't have these fields;
-    // exec data simply starts fresh in that case. The counters are observation-
-    // only and do not affect the simulation, so absence is harmless.
-    if(g.oxc&&typeof g.oxc==='object'){
-      for(let i=0;i<OPCODE_SPACE;i++)opcodeExec[i]=0;
-      for(const k in g.oxc){
-        const idx=+k;
-        if(idx>=0&&idx<OPCODE_SPACE&&Number.isFinite(g.oxc[k]))opcodeExec[idx]=g.oxc[k]>>>0;
-      }
-    }
-    if(typeof g.oxt==='number')opcodeExecTotal=g.oxt>>>0;
-    if(Array.isArray(g.oxr)){
-      opcodeRateHist.length=0;
-      for(const r of g.oxr)if(r&&typeof r==='object')opcodeRateHist.push(r);
-    }
     return true;
   }catch(e){return false}
 }
@@ -1695,323 +694,9 @@ function loadGenome(){
 }
 
 // ═══ GENOME FILE EXPORT/IMPORT — genome travels with you ═══
-//
-// Pe30: one button, one file, both consumers served.
-//
-// The compressed `genome` string (encodeGenome's output) is unchanged. URL
-// hash, localStorage, and tab-to-tab restart all continue to use it as-is —
-// loading a Pe30 save into another Pe tab works the same way it always did.
-//
-// The wrapper around it adds two things: telemetry (voice + opcodeExec) that
-// was previously on the separate 📊 button, and a `genomeReadable` section
-// that names every parameter and decodes the VM program through the opcode
-// map. The wrapper is purely additive — the loader pulls out `genome` and
-// ignores everything else, so restart compatibility is intact.
-//
-// Why two views of the same data: the compressed form is what Pe needs to
-// resume. The named form is what an external reader (you, me, any analyst)
-// needs to actually read the file without grep-ing source for what `m[17]`
-// means. Both serve different consumers; carrying both costs ~3KB extra.
-//
-// What the snapshot still does NOT carry: per-particle plasmid programs and
-// per-cluster VM programs. Those aren't in the original save format either —
-// the save was designed for lineage continuity, not full population state.
-// Whether to add them is a separate scope decision.
-
-// Pe30: opcode reference. Built-ins 0..31, drawn from the dispatch site
-// comments and case bodies. Saved with each snapshot so a reader doesn't
-// need source code to interpret a program. opcode 4 is ACTION_WRITE (not
-// EMIT — that's 24); opcode 31 is READ_HUE (chromesthesia).
-// Pe30: opcode reference. Built-ins 0..32, drawn from the dispatch site
-// comments and case bodies. Saved with each snapshot so a reader doesn't
-// need source code to interpret a program. opcode 4 is ACTION_WRITE (not
-// EMIT — that's 24); opcode 31 is READ_HUE (chromesthesia); opcode 32 is
-// READ_OWN_OPCODE_SHARE — the system reading its own execution history.
-const OPCODE_LABELS={
-  0:'COPY',1:'ADD',2:'MUL',3:'COMP',
-  4:'ACTION_WRITE',5:'ACTION_READ',6:'READ_MEM',7:'STORE_MEM',
-  8:'READ_FIELD',9:'WRITE_FIELD',10:'CLUSTER_WRITE_FIELD',
-  11:'BROADCAST_WRITE',12:'BROADCAST_READ',13:'SELF_READ',14:'JUMP_IF',
-  15:'DEVELOP',16:'BIRTH',17:'READ_GRADIENT',18:'MEM_INJECT',19:'COMMONS',
-  20:'INSCRIBE',21:'READ_CH2',22:'EVAL_USER_ATOM',23:'READ_AMBIENT',
-  24:'EMIT_TONE',25:'READ_COLLECTIVE_FREQ',26:'READ_COLLECTIVE_ACTIVITY',
-  27:'READ_COLLECTIVE_DIVERGENCE',28:'WRITE_SELF',29:'BEGIN_DIALOGUE',
-  30:'READ_DIALOGUE_TURN',31:'READ_HUE',32:'READ_OWN_OPCODE_SHARE'
-};
-function labelForOpcode(op){
-  if(OPCODE_LABELS[op]!==undefined)return OPCODE_LABELS[op];
-  if(op>=33)return 'EVOLVED_'+op;
-  return 'OP_'+op;
-}
-
-function buildFullSnapshot(){
-  const om=genome.opcodeMap;
-  // Decode a VM program: each instruction with raw op, remapped op, and label.
-  const decodeProgram=(prog)=>(prog||[]).map((inst,idx)=>{
-    const rawOp=inst[0];
-    const remapped=(om&&om[rawOp]!==undefined)?om[rawOp]:rawOp;
-    return {
-      idx:idx,
-      rawOp:rawOp,
-      remappedOp:remapped,
-      name:labelForOpcode(remapped),
-      hasEvolvedBody:!!(genome.opcodeBodies&&genome.opcodeBodies[remapped]),
-      src:inst[1],
-      dst:inst[2],
-      k:+(+inst[3]).toFixed(4)
-    };
-  });
-  // Decode opcode map: which raw index routes to which named opcode.
-  const decodeOpcodeMap=()=>{
-    if(!om)return null;
-    const out=[];
-    for(let raw=0;raw<om.length;raw++){
-      out.push({raw:raw,remapped:om[raw],name:labelForOpcode(om[raw])});
-    }
-    return out;
-  };
-  // Decode lineage entries: proper field names instead of t/p/c/d/f/s/w.
-  const decodeLineage=(L)=>(L||[]).map(e=>({
-    tick:e.t,population:e.p,clusterCount:e.c,
-    diversity:e.d,fitness:e.f,stability:e.s,objWeights:e.w
-  }));
-
-  return {
-    format:'pe-snapshot/2',
-    capturedAt:new Date().toISOString(),
-    pe_version:'Pe30',
-    // Compressed, hash-compatible. Same string the URL #hash carries.
-    // This is what the loader pulls out; everything else is for reading.
-    genome:encodeGenome(),
-    summary:{
-      generation:genome.generation,
-      totalTicks:genome.totalTicks,
-      extinctions:genome.extinctions,
-      population:N,
-      clusters:clusters.length,
-      peakFitness:+(genome.peakFitness.toPrecision(3)),
-      longestStable:genome.longestStable
-    },
-    // Same data as `genome` but readable without decoding. Live values from
-    // the running genome object — can't drift from what's actually loaded.
-    genomeReadable:{
-      physics:{
-        entropyBaseline:genome.entropyBaseline,
-        entropyK:genome.entropyK,
-        entrainRate:genome.entrainRate,
-        entrainThresh:genome.entrainThresh,
-        creationCost:genome.creationCost,
-        creationThresh:genome.creationThresh,
-        destructThresh:genome.destructThresh,
-        tendencyBleed:genome.tendencyBleed,
-        magneticThresh:genome.magneticThresh,
-        velocityDamping:genome.velocityDamping,
-        deathThreshold:genome.deathThreshold
-      },
-      perception:{
-        clusterBondThresh:genome.clusterBondThresh,
-        clusterMinSize:genome.clusterMinSize,
-        ghostDecay:genome.ghostDecay,
-        ghostAmpDrip:genome.ghostAmpDrip
-      },
-      objWeights:Array.from(genome.objWeights||[]),
-      meta:{
-        mutationRate:genome.mutationRate,
-        mutationScale:genome.mutationScale,
-        shadowHorizon:genome.shadowHorizon,
-        shadowScenarios:genome.shadowScenarios,
-        perturbScale:genome.perturbScale,
-        extinctionThresh:genome.extinctionThresh,
-        motifMemorySize:genome.motifMemorySize,
-        culturalBias:genome.culturalBias,
-        metabolicCost:genome.metabolicCost,
-        hgtRate:genome.hgtRate,
-        hgtMax:genome.hgtMax,
-        hgtSpliceNoise:genome.hgtSpliceNoise,
-        plasmidTransferRate:genome.plasmidTransferRate,
-        plasmidMutRate:genome.plasmidMutRate,
-        plasmidTransferThresh:genome.plasmidTransferThresh,
-        plasmidSpawnRate:genome.plasmidSpawnRate,
-        fieldInfluence:genome.fieldInfluence,
-        fieldWeight:genome.fieldWeight,
-        mutationInterval:genome.mutationInterval,
-        interactionRadius:genome.interactionRadius,
-        densityCostK:genome.densityCostK,
-        fieldBirthGate:genome.fieldBirthGate,
-        reflexSampleRate:genome.reflexSampleRate,
-        reflexDepth:genome.reflexDepth,
-        reflexInfluence:genome.reflexInfluence,
-        reflexDecay:genome.reflexDecay,
-        clusterReflexAge:genome.clusterReflexAge,
-        clusterReflexWeight:genome.clusterReflexWeight
-      },
-      vm:{
-        influence:genome.vmInfluence,
-        ruleScale:genome.ruleScale,
-        maxInstructions:genome.vmMaxInstructions,
-        program:decodeProgram(genome.vmProgram),
-        opcodeMap:decodeOpcodeMap(),
-        opcodeBodies:genome.opcodeBodies||null,
-        opcodePickerHighProb:genome.opcodePickerHighProb,
-        opcodeSeedHighProb:genome.opcodeSeedHighProb
-      },
-      selfModSlots:genome.selfModSlots?genome.selfModSlots.map(s=>s?{expr:s.expr,uses:s.uses|0}:null):null,
-      atomTermDist:genome.atomTermDist?{...genome.atomTermDist}:null,
-      lineage:decodeLineage((genome.lineage||[]).slice(-4)),
-      stableMotifs:(genome.stableMotifs||[]).slice(-genome.motifMemorySize)
-    },
-    // Pe30: population-state visibility. Plasmids and cluster VMs were excluded
-    // from earlier saves because the loader treats them as ephemeral — when you
-    // import into a new tab, particles start fresh and these reform from the
-    // global VM. That sorting is correct for restart, wrong for analysis: this
-    // is where most VM execution actually happens. EMIT_TONE absent from the
-    // global VM tells you nothing if it's sitting in a plasmid that's spreading
-    // through HGT, or in a persistent cluster's evolved program.
-    populationState:(function(){
-      // Plasmids: aggregate over all alive particles + a handful of samples.
-      // Per-particle full dump would be ~36KB at typical N; aggregate answers
-      // recruitment questions ("does any plasmid contain READ_HUE?") directly.
-      const plOpRaw=new Uint32Array(64);     // raw opcodes, before remap
-      const plOpRemapped=new Uint32Array(64); // after remap through om
-      const plLengths=[0,0,0,0,0];           // 0..MAX_PLASMID
-      let particlesAlive=0,particlesWithPlasmid=0,totalPlasmidInsts=0;
-      const sampleBudget=8;
-      const samples=[];
-      for(let i=0;i<N;i++){
-        if(!palive[i])continue;
-        particlesAlive++;
-        const pl=pPlasmidLen[i]|0;
-        plLengths[Math.min(MAX_PLASMID,pl)]++;
-        if(pl>0){
-          particlesWithPlasmid++;
-          totalPlasmidInsts+=pl;
-          const insts=[];
-          for(let pi=0;pi<pl;pi++){
-            const pB=i*PLASMID_SLOTS+pi*4;
-            const rawOp=pPlasmid[pB]|0;
-            const remapped=(om&&om[rawOp]!==undefined)?om[rawOp]:rawOp;
-            if(rawOp>=0&&rawOp<64)plOpRaw[rawOp]++;
-            if(remapped>=0&&remapped<64)plOpRemapped[remapped]++;
-            insts.push({
-              rawOp,remappedOp:remapped,name:labelForOpcode(remapped),
-              src:+pPlasmid[pB+1].toFixed(2),
-              dst:+pPlasmid[pB+2].toFixed(2),
-              k:+pPlasmid[pB+3].toFixed(4)
-            });
-          }
-          if(samples.length<sampleBudget)samples.push({particleIdx:i,length:pl,program:insts});
-        }
-      }
-      // Build named opcode distributions, skip zeros.
-      const plOpRemappedByName={};
-      for(let op=0;op<64;op++){
-        if(plOpRemapped[op]>0){
-          plOpRemappedByName[labelForOpcode(op)]={op,count:plOpRemapped[op]};
-        }
-      }
-      // Cluster VMs: small in number, include all of them with decoded programs.
-      const clusterDump=clusters.map(c=>({
-        id:c.id||null,
-        size:c.size,
-        persistAge:c.persistAge||0,
-        lineageID:c.lineageID||null,
-        vmInfluence:c.vmInfluence,
-        vmProgram:decodeProgram(c.vmProgram||[])
-      }));
-      // Cluster-VM aggregate opcode distribution (all clusters' programs combined).
-      const clOp=new Uint32Array(64);
-      for(const c of clusters){
-        for(const inst of (c.vmProgram||[])){
-          const remapped=(om&&om[inst[0]]!==undefined)?om[inst[0]]:inst[0];
-          if(remapped>=0&&remapped<64)clOp[remapped]++;
-        }
-      }
-      const clOpByName={};
-      for(let op=0;op<64;op++){
-        if(clOp[op]>0)clOpByName[labelForOpcode(op)]={op,count:clOp[op]};
-      }
-      return {
-        note:'These are not restored on tab-load (the loader treats them as ephemeral). They are included for analysis: this is where plasmid-borne and cluster-level evolved structure lives, including any EMIT_TONE/READ_HUE that the global VM does not contain.',
-        plasmids:{
-          particlesAlive,
-          particlesWithPlasmid,
-          totalInstructions:totalPlasmidInsts,
-          lengthHistogram:plLengths,
-          opcodeDistribution:{
-            note:'Counts of each remapped opcode across all alive particles\' plasmid instructions. Raw counts under rawCounts; named view under byName.',
-            rawCounts:Array.from(plOpRaw),
-            remappedCounts:Array.from(plOpRemapped),
-            byName:plOpRemappedByName
-          },
-          samples
-        },
-        clusterVMs:{
-          count:clusters.length,
-          opcodeDistribution:{
-            remappedCounts:Array.from(clOp),
-            byName:clOpByName
-          },
-          programs:clusterDump
-        }
-      };
-    })(),
-    // Reference table for an analyst: full built-in opcode labels.
-    opcodeReference:{
-      builtIns:Object.assign({},OPCODE_LABELS),
-      note:'Opcodes 32+ are evolved. Their semantics live in genomeReadable.vm.opcodeBodies as small expression trees with leaves like si, di, k, amp, fld and ops like add, sub, mul, div, tanh.'
-    },
-    // Voice telemetry — what was emitted and when.
-    voice:{
-      totals:{
-        emissions:voiceTotalEmissions,
-        avgPerTick:voiceRate.length>0?+(voiceRate.reduce((s,r)=>s+r.n,0)/voiceRate.length).toFixed(2):0
-      },
-      freqHistogram:{
-        bins:VOICE_FREQ_BINS,
-        logRange:[20,20000],
-        counts:Array.from(voiceFreqHist)
-      },
-      rateSeries:voiceRate.slice(),
-      eventLog:voiceLog.slice()
-    },
-    // Opcode execution — what's actually being run. Co-required with
-    // genomeReadable.vm.program and .opcodeMap to interpret recruitment.
-    opcodeExec:{
-      space:OPCODE_SPACE,
-      total:opcodeExecTotal,
-      counts:Array.from(opcodeExec),
-      shareOfTotal:Array.from(opcodeExec).map(c=>opcodeExecTotal>0?+(c/opcodeExecTotal).toFixed(5):0),
-      rateSeries:opcodeRateHist.slice(),
-      // Per-opcode named view: the same data as `counts`/`shareOfTotal` but
-      // keyed by opcode name. Skips opcodes with zero executions to keep it small.
-      byName:(function(){
-        const out={};
-        for(let i=0;i<OPCODE_SPACE;i++){
-          if(opcodeExec[i]>0){
-            out[labelForOpcode(i)]={
-              op:i,
-              count:opcodeExec[i],
-              shareOfTotal:opcodeExecTotal>0?+(opcodeExec[i]/opcodeExecTotal).toFixed(5):0
-            };
-          }
-        }
-        return out;
-      })()
-    },
-    // Audio context — whether voice is reaching the speaker.
-    audio:{
-      outputEnabled:audioOutEnabled,
-      muted:audioOutMuted,
-      ambientEnabled:ambientEnabled,
-      ambientLevel:+ambientLevel.toFixed(3)
-    }
-  };
-}
-
 function exportGenome(){
-  const snapshot=buildFullSnapshot();
-  const data=JSON.stringify(snapshot,null,2);
-  const blob=new Blob([data],{type:'application/json'});
+  const data=encodeGenome();
+  const blob=new Blob([data],{type:'text/plain'});
   const a=document.createElement('a');
   a.href=URL.createObjectURL(blob);
   a.download='selection_gen'+genome.generation+'_t'+genome.totalTicks+'.json';
@@ -2021,26 +706,13 @@ function exportGenome(){
 function importGenome(file){
   const reader=new FileReader();
   reader.onload=function(e){
-    const raw=e.target.result.trim();
-    // Detect format. New wrapped snapshots are JSON starting with '{'.
-    // Legacy compressed genomes are base64 starting with a base64 char.
-    let genomeStr=null;
-    if(raw[0]==='{'){
-      try{
-        const snapshot=JSON.parse(raw);
-        if(snapshot&&snapshot.genome&&typeof snapshot.genome==='string'){
-          genomeStr=snapshot.genome;
-        }
-      }catch(ex){genomeStr=null;}
-    }
-    if(!genomeStr)genomeStr=raw; // legacy: the file IS the encoded genome
-    if(decodeGenome(genomeStr)){
+    const data=e.target.result.trim();
+    if(decodeGenome(data)){
       N=0;
       const n=Math.min(300,(W*H/3000)|0);
       for(let i=0;i<n;i++)addParticle(Math.random()*W,Math.random()*H,randomTendency(),false);
       saveGenome();
-      // localStorage keeps the compressed form so the hash/restore path is unchanged
-      try{localStorage.setItem('selection_genome',genomeStr)}catch(ex){}
+      try{localStorage.setItem('selection_genome',data)}catch(ex){}
     }
   };
   reader.readAsText(file);
@@ -2048,13 +720,6 @@ function importGenome(file){
 document.getElementById('gexp').onclick=exportGenome;
 document.getElementById('gimp').onclick=function(){document.getElementById('gfile').click()};
 document.getElementById('gfile').onchange=function(e){if(e.target.files[0])importGenome(e.target.files[0])};
-
-// Pe22l: voice telemetry was once on its own 📊 button.
-// Pe30: button and standalone function removed. Everything it produced is now
-// in the unified 💾 save (buildFullSnapshot above). One file, everything to
-// interpret it. The cross-tab broadcast path (broadcastTelemetryForCoordinator)
-// still exports the same fields directly to peer tabs — that's a different
-// channel and the coordinator is its consumer, so it stays.
 
 // ═══════════════════════════════════════
 // CLUSTER DETECTION — STRUCTURAL COMPRESSION
@@ -2111,70 +776,24 @@ let clusterVMs=new Map(); // persist per-cluster VM programs across detection cy
 // second level of selection — particles-within-clusters still evolve via
 // the global genome, AND clusters-among-clusters evolve via the clusterGenome.
 // ═══════════════════════════════════════
-let clusterGenomes=new Map(); // hash → cluster genome including selfMod state (Pe25)
-
-// Pe25: selfMod moves from species-level (global genome) to cluster-level.
-// Pe22f established cluster genome as a real evolutionary tier; selfMod
-// being global was an architectural leak. Each cluster now carries its own
-// slot pool, slot count, and clearing rate, and these traits are inherited
-// and mutated through budding alongside the existing cluster-genome traits.
-//
-// Structural ceilings (SLOT_COUNT_MAX, SELF_MOD_EXPR_MAX_LEN, the sandbox
-// regex) stay constant because they encode real memory and security bounds,
-// not designer aesthetics. Rates and counts are evolvable; ceilings aren't.
-const SLOT_COUNT_MIN=2;
-const SLOT_COUNT_MAX=16;
-
+let clusterGenomes=new Map(); // hash → {budRate, budThreshold, splitFraction, innovationRate, metabolicBias}
 function seedClusterGenome(){
-  const slotCount=SLOT_COUNT_MIN+((Math.random()*(SLOT_COUNT_MAX-SLOT_COUNT_MIN+1))|0);
   return{
     budRate:0.6+Math.random()*0.8,          // multiplier on bud chance (0.6..1.4)
     budThreshold:6+Math.random()*6,         // min persistAge to bud (6..12)
     splitFraction:0.25+Math.random()*0.2,   // fraction moved to daughter (0.25..0.45)
     innovationRate:0.1+Math.random()*0.3,   // VM mutation rate on bud (0.1..0.4)
     metabolicBias:0.85+Math.random()*0.1,   // parent amp retention after bud (0.85..0.95)
-    // ─── Pe25: cluster-local self-modification ──────────
-    slotCount:slotCount,
-    selfModSlots:new Array(slotCount).fill(null),
-    selfModSelf:{},
-    selfModClearRate:0.002+Math.random()*0.012, // 0.002..0.014
   };
 }
 function mutateClusterGenome(parent,scale){
-  // Pe25: slot count drifts by ±1 occasionally, bounded by structural min/max
-  let newSlotCount=parent.slotCount|0;
-  if(!newSlotCount)newSlotCount=8;
-  if(Math.random()<0.05*scale*5){
-    newSlotCount+=Math.random()<0.5?-1:1;
-    newSlotCount=Math.max(SLOT_COUNT_MIN,Math.min(SLOT_COUNT_MAX,newSlotCount));
-  }
-  // Inherit slots, resize to new count
-  const parentSlots=parent.selfModSlots||[];
-  const newSlots=new Array(newSlotCount).fill(null);
-  for(let i=0;i<Math.min(newSlotCount,parentSlots.length);i++){
-    if(parentSlots[i]){
-      // Inherit slot — fn will be recompiled below so daughter clusters have
-      // working selfMod immediately on bud, not just after their first mutation.
-      newSlots[i]={expr:parentSlots[i].expr,fn:null,uses:0};
-    }
-  }
-  const child={
+  return{
     budRate:Math.max(0.1,Math.min(3,parent.budRate+(Math.random()-0.5)*scale*0.4)),
     budThreshold:Math.max(2,Math.min(30,parent.budThreshold+(Math.random()-0.5)*scale*2)),
     splitFraction:Math.max(0.1,Math.min(0.7,parent.splitFraction+(Math.random()-0.5)*scale*0.1)),
     innovationRate:Math.max(0.01,Math.min(0.8,parent.innovationRate+(Math.random()-0.5)*scale*0.15)),
     metabolicBias:Math.max(0.6,Math.min(0.99,parent.metabolicBias+(Math.random()-0.5)*scale*0.05)),
-    // ─── Pe25: cluster-local self-modification ──────────
-    slotCount:newSlotCount,
-    selfModSlots:newSlots,
-    selfModSelf:{}, // fresh scratchpad — daughters develop their own state
-    selfModClearRate:Math.max(0.0005,Math.min(0.05,(parent.selfModClearRate||0.005)+(Math.random()-0.5)*scale*0.005)),
   };
-  // Compile inherited slots on the child's own genome reference
-  for(let i=0;i<newSlotCount;i++){
-    if(child.selfModSlots[i])compileSelfModSlot(child,i);
-  }
-  return child;
 }
 let clusterByID=new Int16Array(0); // fast lookup: clusterByID[cid] = index into clusters[]
 
@@ -2281,7 +900,7 @@ function seedClusterVM(){
       const inst=[...globalProg[idx]];
       // Light mutation on seeding — differentiation starts immediately
       inst[3]+=(Math.random()-0.5)*0.25;
-      // Pe22o: k unclamped. The constant is not a designer choice.
+      inst[3]=Math.max(-2,Math.min(2,inst[3]));
       prog.push(inst);
     }else{
       prog.push([0,0,0,0]); // NOP padding
@@ -2430,19 +1049,12 @@ function trackClusterPersistence(){
       // ═══ CLUSTER GENOME INHERITANCE (Pe22f) ═══
       // Carry cluster-level heritable traits across detection cycles,
       // with occasional drift mutation so lineages diverge over time.
-      // Pe25: slot arrays must be cloned, not shared by reference, so each
-      // cluster's selfMod evolution stays independent.
       const prevCG=clusterGenomes.get(bestMatch.hash);
       if(prevCG){
         if(Math.random()<0.04){
-          c.clusterGenome=mutateClusterGenome(prevCG,0.3); // small drift, deep-copies slots
+          c.clusterGenome=mutateClusterGenome(prevCG,0.3); // small drift
         }else{
           c.clusterGenome={...prevCG};
-          // Deep-copy slot array so mutations don't leak between siblings
-          if(prevCG.selfModSlots){
-            c.clusterGenome.selfModSlots=prevCG.selfModSlots.map(s=>s?{expr:s.expr,fn:s.fn,uses:s.uses|0}:null);
-          }
-          c.clusterGenome.selfModSelf={}; // fresh scratchpad per cluster instance
         }
       }else{
         c.clusterGenome=seedClusterGenome();
@@ -2592,9 +1204,9 @@ function attemptClusterBudding(){
         // Conservative lineages preserve programs; innovative ones explore.
         if(Math.random()<cg.innovationRate){
           copy[3]+=(Math.random()-0.5)*0.2;
-          // Pe22o: k unclamped.
+          copy[3]=Math.max(-2,Math.min(2,copy[3]));
         }
-        if(Math.random()<cg.innovationRate*0.27)copy[0]=pickOpcode(genome);
+        if(Math.random()<cg.innovationRate*0.27)copy[0]=Math.floor(Math.random()*23);
         return copy;
       }),
       vmInfluence:Math.max(0.05,c.vmInfluence+(Math.random()-0.5)*0.1),
@@ -2682,17 +1294,7 @@ function profileVM(){
       const inst=prog[ip];if(!inst)continue;
       const [op,src,dst,k]=inst;
       const si=Math.abs(src)%12,di=Math.abs(dst)%12;
-      const remappedOp=(genome.opcodeMap&&genome.opcodeMap[op]!==undefined)?genome.opcodeMap[op]:op;
-      // Pe22s: evolvable opcode body — if a custom tree exists for this opcode, evaluate it.
-      const __body=genome.opcodeBodies&&genome.opcodeBodies[remappedOp];
-      if(__body){
-        const __fx=Math.floor(px[i]/(W/FIELD_W)),__fy=Math.floor(py[i]/(H/FIELD_H));
-        const __fi=Math.max(0,Math.min(FIELD_W*FIELD_H-1,__fy*FIELD_W+__fx));
-        const __r=evalTree(__body.tree,{regs:vmRegs,k,si,di,amp:amp[i],fld:field[__fi]||0,pop:N});
-        if(isFinite(__r))vmRegs[__body.writeTo||0]=Math.max(-1e6,Math.min(1e6,__r));
-        continue;
-      }
-      switch(remappedOp){
+      switch(op){
         case 0:vmRegs[di]=vmRegs[si];break;
         case 1:vmRegs[di]+=vmRegs[si]*k;break;
         case 2:vmRegs[di]*=vmRegs[si]*(k||1);break;
@@ -2705,7 +1307,7 @@ function profileVM(){
         case 9:break; // skip WRITE_FIELD in profiler
         case 10:break; // skip CLUSTER_WRITE_FIELD in profiler
       }
-      for(let r=0;r<12;r++){if(!isFinite(vmRegs[r]))vmRegs[r]=0;else vmRegs[r]=Math.max(-1e6,Math.min(1e6,vmRegs[r]));} // Pe22q: clamp lifted to 1e6, infinities caught
+      for(let r=0;r<12;r++)vmRegs[r]=Math.max(-8,Math.min(8,vmRegs[r]));
     }
 
     for(let a=0;a<7;a++)totals[a]+=vmActions[a];
@@ -3225,7 +1827,7 @@ function evolvePlasmids(){
       }
       else if(roll<0.58){
         // Structural change (opcode or registers)
-        if(Math.random()<0.5)pPlasmid[base]=Math.floor(Math.random()*32);
+        if(Math.random()<0.5)pPlasmid[base]=Math.floor(Math.random()*22);
         else{
           pPlasmid[base+1]=Math.floor(Math.random()*12);
           pPlasmid[base+2]=Math.floor(Math.random()*12);
@@ -3273,7 +1875,7 @@ function evolvePlasmids(){
     // Spontaneous generation — only in high-resonance environments
     if(nP<MAX_PLASMID&&Math.random()<genome.plasmidSpawnRate*(1+localRes[i]*4)){
       const newBase=i*PLASMID_SLOTS+nP*4;
-      pPlasmid[newBase]=Math.floor(Math.random()*32);
+      pPlasmid[newBase]=Math.floor(Math.random()*22);
       pPlasmid[newBase+1]=Math.floor(Math.random()*12);
       pPlasmid[newBase+2]=Math.floor(Math.random()*12);
       pPlasmid[newBase+3]=(Math.random()-0.5)*0.75;
@@ -3312,7 +1914,7 @@ function attemptHGT(){
     donor[3]+=(Math.random()-0.5)*genome.hgtSpliceNoise;
     donor[3]=Math.max(-2.5,Math.min(2.5,donor[3]));
     // Occasional opcode drift during transfer
-    if(Math.random()<0.08)donor[0]=Math.floor(Math.random()*32);
+    if(Math.random()<0.08)donor[0]=Math.floor(Math.random()*22);
 
     const insertPos=Math.floor(Math.random()*(genome.vmProgram.length+1));
     genome.vmProgram.splice(insertPos,0,donor);
@@ -3436,13 +2038,6 @@ function updateField(){
 
       // Ownership decays faster — territory must be actively maintained
       fieldOwnership[idx]*=0.975;
-
-      // Pe28: chromesthesia decay — magnitude shrinks but angle is preserved.
-      // Colour persists in the substrate longer than energy bursts; the lineage
-      // that emitted into a cell leaves a hue trace that other lineages can read
-      // (via READ_HUE) or paint over by emitting at different frequencies.
-      hueX[idx]*=HUE_DECAY;
-      hueY[idx]*=HUE_DECAY;
     }
   }
 }
@@ -3559,56 +2154,6 @@ function mutateGenome(){
   genome.vmMaxInstructions=Math.max(1,Math.min(48,Math.round(maybe(genome.vmMaxInstructions,6,20,1))));
   genome.metabolicCost=maybe(genome.metabolicCost,0.000002,0.0002,0.00002);
 
-  // Pe22r: OPCODE PERMUTATION MUTATION.
-  // Occasionally swap two entries in the opcode map. This is how lineages drift
-  // into different machine languages. One swap per mutation cycle at low rate —
-  // too fast and programs break faster than selection can filter.
-  if(!genome.opcodeMap)genome.opcodeMap=[0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20,21,22,23,24,25,26,27,28,29,30,31];
-  if(Math.random()<0.08){
-    const a=Math.floor(Math.random()*genome.opcodeMap.length);
-    const b=Math.floor(Math.random()*genome.opcodeMap.length);
-    const tmp=genome.opcodeMap[a];
-    genome.opcodeMap[a]=genome.opcodeMap[b];
-    genome.opcodeMap[b]=tmp;
-  }
-  // Pe22s: mutate evolvable opcode bodies — the semantics of opcodes become genetic
-  mutateOpcodeBodies(genome,genome.mutationRate||0.1,genome.mutationScale||0.15);
-  // Pe24b: mutate self-mod expression slots — bounded pool, in-place updates
-  // Pe25: global pool is the fallback for orphan particles. Each live cluster
-  // also gets a somatic-drift mutation pass on its own slot pool. Hereditary
-  // changes happen at bud time via mutateClusterGenome; this is the within-
-  // lineage drift between speciation events.
-  mutateSelfModSlots(genome,genome.mutationRate||0.1,genome.mutationScale||0.15);
-  for(const c of clusters){
-    if(c&&c.clusterGenome){
-      mutateSelfModSlots(c.clusterGenome,genome.mutationRate||0.1,genome.mutationScale||0.15);
-    }
-  }
-
-  // Pe25: atom term distribution — what KINDS of primitives uaGenTerm samples
-  // when generating new atom expressions. Was hardcoded; now evolvable. Bounds
-  // are wide so the system can drift toward whichever primitives it finds
-  // useful — including driving the rate of one toward zero.
-  if(!genome.atomTermDist)genome.atomTermDist=defaultAtomTermDist();
-  const atd=genome.atomTermDist;
-  atd.func        =maybe(atd.func,        0.05,0.6, 0.04);
-  atd.net         =maybe(atd.net,         0,   0.15,0.015);
-  atd.doc         =maybe(atd.doc,         0,   0.15,0.015);
-  atd.realityWrite=maybe(atd.realityWrite,0,   0.12,0.012);
-  atd.realityFetch=maybe(atd.realityFetch,0,   0.12,0.012);
-  atd.realityStore=maybe(atd.realityStore,0,   0.12,0.012);
-  atd.shared      =maybe(atd.shared,      0,   0.10,0.010);
-  atd.selfMod     =maybe(atd.selfMod,     0,   0.20,0.020);
-
-  // Pe25: opcode picker bias — controls how often instruction mutation reaches
-  // for a high-index (evolved) opcode vs the base 0..30 range, and how often
-  // mutateOpcodeBodies seeds new opcode bodies in the high-index region. Both
-  // were hardcoded; now drift like any other rate.
-  if(genome.opcodePickerHighProb===undefined)genome.opcodePickerHighProb=0.2;
-  if(genome.opcodeSeedHighProb===undefined)genome.opcodeSeedHighProb=0.4;
-  genome.opcodePickerHighProb=maybe(genome.opcodePickerHighProb,0,0.6,0.04);
-  genome.opcodeSeedHighProb=maybe(genome.opcodeSeedHighProb,0,0.8,0.06);
-
   // HGT parameter evolution
   genome.hgtRate=maybe(genome.hgtRate,0.01,0.5,0.04);
   genome.hgtMax=Math.max(1,Math.min(12,Math.round(maybe(genome.hgtMax,1,4,0.5))));
@@ -3660,7 +2205,7 @@ function mutateGenome(){
     for(const inst of sensor.program){
       if(Math.random()>rate*0.8)continue;
       inst[3]+=(Math.random()-0.5)*0.2*scale;
-      // Pe22o: k unclamped. The constant is not a designer choice.
+      inst[3]=Math.max(-2,Math.min(2,inst[3]));
       if(Math.random()<0.15)inst[0]=Math.floor(Math.random()*5); // opcodes 0-4 only
       if(Math.random()<0.15)inst[1]=Math.floor(Math.random()*8);
       if(Math.random()<0.15)inst[2]=Math.floor(Math.random()*8);
@@ -3742,10 +2287,10 @@ function mutateGenome(){
     const inst=genome.vmProgram[ip];
 
     inst[3]+=(Math.random()-0.5)*0.15*scale;
-    // Pe22o: k unclamped.
+    inst[3]=Math.max(-2,Math.min(2,inst[3]));
 
-    // Opcode swap — Pe24b: includes evolved opcodes at high indices via pickOpcode
-    if(Math.random()<rate*0.2)inst[0]=pickOpcode(genome);
+    // Opcode swap — now includes FEEDBACK (5), LOAD_MEM (6), STORE_MEM (7)
+    if(Math.random()<rate*0.2)inst[0]=Math.floor(Math.random()*22);
 
     // Source register swap (now 12 registers)
     if(Math.random()<rate*0.2)inst[1]=Math.floor(Math.random()*12);
@@ -3757,7 +2302,7 @@ function mutateGenome(){
   // Program growth: insert a random instruction
   if(genome.vmProgram.length<genome.vmMaxInstructions&&Math.random()<rate*0.15){
     const pos=Math.floor(Math.random()*(genome.vmProgram.length+1));
-    const newInst=[pickOpcode(genome),Math.floor(Math.random()*12),Math.floor(Math.random()*12),(Math.random()-0.5)*0.6];
+    const newInst=[Math.floor(Math.random()*22),Math.floor(Math.random()*12),Math.floor(Math.random()*12),(Math.random()-0.5)*0.6];
     genome.vmProgram.splice(pos,0,newInst);
   }
 
@@ -3792,9 +2337,9 @@ function mutateGenome(){
       const inst=c.vmProgram[ip];
       // Constant drift
       inst[3]+=(Math.random()-0.5)*0.15*scale;
-      // Pe22o: k unclamped. The constant is not a designer choice.
+      inst[3]=Math.max(-2,Math.min(2,inst[3]));
       // Structural mutations (rarer)
-      if(Math.random()<0.2)inst[0]=Math.floor(Math.random()*32);
+      if(Math.random()<0.2)inst[0]=Math.floor(Math.random()*22);
       if(Math.random()<0.15)inst[1]=Math.floor(Math.random()*12);
       if(Math.random()<0.15)inst[2]=Math.floor(Math.random()*12);
     }
@@ -4411,7 +2956,7 @@ function executeVM(i,j,sim,d){
     vmRegs[7]+=pReflexState[rBase+1]*reflexInf;   // peakResonance
     vmRegs[8]+=pReflexState[rBase+2]*reflexInf;   // isolation
     vmRegs[9]+=pReflexState[rBase+3]*reflexInf;   // age_pressure
-    for(let r=6;r<=9;r++){if(!isFinite(vmRegs[r]))vmRegs[r]=0;else vmRegs[r]=Math.max(-1e6,Math.min(1e6,vmRegs[r]));}
+    for(let r=6;r<=9;r++)vmRegs[r]=Math.max(-8,Math.min(8,vmRegs[r]));
   }
 
   // Auto-sensors: slots 6,7 get proprioceptive data
@@ -4430,18 +2975,8 @@ function executeVM(i,j,sim,d){
     const inst=prog[ip];if(!inst)continue;
     const [op,src,dst,k]=inst;
     const si=Math.abs(src)%12,di=Math.abs(dst)%12;
-    const remappedOp=(genome.opcodeMap&&genome.opcodeMap[op]!==undefined)?genome.opcodeMap[op]:op;
-    opcodeExec[remappedOp&63]++;opcodeExecThisTick[remappedOp&63]++;opcodeExecTotal++; // Pe30: dynamic exec count (interaction VM)
-    const __body=genome.opcodeBodies&&genome.opcodeBodies[remappedOp];
-    if(__body){
-      const __fx=Math.floor(px[i]/(W/FIELD_W)),__fy=Math.floor(py[i]/(H/FIELD_H));
-      const __fi=Math.max(0,Math.min(FIELD_W*FIELD_H-1,__fy*FIELD_W+__fx));
-      const __r=evalTree(__body.tree,{regs:vmRegs,k,si,di,amp:amp[i],fld:field[__fi]||0,pop:N});
-      if(isFinite(__r))vmRegs[__body.writeTo||0]=Math.max(-1e6,Math.min(1e6,__r));
-      continue;
-    }
 
-    switch(remappedOp){
+    switch(op){
       case 0:vmRegs[di]=vmRegs[si];break;
       case 1:vmRegs[di]+=vmRegs[si]*k;break;
       case 2:vmRegs[di]*=vmRegs[si]*(k||1);break;
@@ -4538,129 +3073,11 @@ function executeVM(i,j,sim,d){
         const uas=genome.userAtoms;
         if(uas&&uas.length>0){
           const uIdx=Math.abs(Math.floor(k))%uas.length;
-          vmRegs[di]=uaCall(uas[uIdx],vmRegs[si],vmRegs[(si+1)%12],i);
+          vmRegs[di]=uaCall(uas[uIdx],vmRegs[si],vmRegs[(si+1)%12]);
         }
-      }break;
-      // 23: READ_AMBIENT — Pe22g. Room loudness 0..1, scaled by k.
-      // Returns 0 if mic not granted. The system has to discover whether
-      // this signal is useful — same pattern as SELF_READ. Coupling to the
-      // outside world becomes findable, not forced.
-      case 23:vmRegs[di]=ambientLevel*k;break;
-      // 24: EMIT_TONE — Pe22h. Particle adds a tone to the shared output buffer.
-      // Frequency from si register (80..1200Hz), amp from di register (0..0.15),
-      // duration from k. Costs amp from the emitting particle. Capped per-tick globally.
-      // Inactive if user hasn't granted output. The system has to discover voice.
-      case 24:{
-        // Pe22i: register-driven voice. Frequency uses exp mapping for octave spread.
-        // Waveform is evolvable. No permission gate on field-coupling — system experiences
-        // its own voice internally regardless. Audible only if user enabled output.
-        // Pe22o: no designer frequency mapping. Register × k² produces Hz directly.
-        // Default register states (0, 1, 8) no longer map to pre-chosen audible frequencies.
-        // To produce audible output, the system must evolve to produce register×k² values
-        // in the audible range. Silence is default; voice is work. k is evolvable/unbounded.
-        const freq=vmRegs[si]*k*k;
-        const tAmp=Math.abs(vmRegs[di])*0.5;
-        const dur=Math.abs(k)*300;
-        const wf=Math.abs(Math.floor(vmRegs[(si+1)%12]));
-        voiceLogEmit(i,freq,tAmp,wf); emitTone(freq,tAmp,dur,wf);
-        // FIELD COUPLING — sound is substrate. The system experiences its own voice.
-        const afx=Math.floor(px[i]/(W/FIELD_W)),afy=Math.floor(py[i]/(H/FIELD_H));
-        const afi=Math.max(0,Math.min(FIELD_W*FIELD_H-1,afy*FIELD_W+afx));
-        const freqFactor=freq>0?Math.log1p(Math.abs(freq))*0.05:0;
-        const fieldImpact=tAmp*freqFactor;
-        field[afi]+=fieldImpact;
-        field[afi]=Math.max(0,Math.min(2.5,field[afi]));
-        // Pe28: chromesthesia — same emission stamps hue from frequency
-        stampHue(afi,freq,tAmp);
-        // Cost is proportional to amplitude — louder voices burn more
-        amp[i]-=tAmp*0.01;
-      }break;
-      case 25:vmRegs[di]=(collectiveFreqDominant*16-8)*k;break;
-      case 26:vmRegs[di]=collectiveVoiceActivity*k*8;break;
-      case 27:vmRegs[di]=collectiveDivergence*k*8;break;
-      // 28: WRITE_SELF — Pe22q. Particle writes to its own VM program during execution.
-      // vmRegs[si] becomes the new value for field (dst%4) of instruction (k mod prog.length).
-      // This is reflexivity crossing from read to write. The VM rewrites itself while running.
-      // Cost is amplitude — self-modification is metabolic.
-      case 28:{
-        if(genome.vmProgram&&genome.vmProgram.length>0&&amp[i]>0.15){
-          const targetIdx=Math.abs(Math.floor(k))%genome.vmProgram.length;
-          const targetField=Math.abs(dst)%4;
-          const newValue=vmRegs[si];
-          // Write, but constrain: op field (0) and reg fields (1,2) stay integer; k field (3) stays float
-          if(targetField===0){
-            genome.vmProgram[targetIdx][0]=Math.abs(Math.floor(newValue))%31; // opcode range
-          }else if(targetField===1||targetField===2){
-            genome.vmProgram[targetIdx][targetField]=Math.abs(Math.floor(newValue))%12;
-          }else{
-            genome.vmProgram[targetIdx][3]=newValue;
-          }
-          amp[i]-=0.01; // cost
-        }
-      }break;
-      // 29: BEGIN_DIALOGUE — Pe22q. Mark j as this particle's dialogue partner for N ticks.
-      // Duration from |k| ticks. While active, interactions with j carry a turn counter
-      // that opcode 30 can read. This enables reciprocal correction patterns to evolve.
-      case 29:{
-        if(j!==i&&palive[j]){
-          const duration=Math.min(200,Math.max(3,Math.abs(Math.floor(k*10))));
-          pDialoguePartner[i]=j;
-          pDialogueTicksLeft[i]=duration;
-          pDialogueTurn[i]=0;
-          // Symmetric: mark j too, so the dialogue is mutual
-          pDialoguePartner[j]=i;
-          pDialogueTicksLeft[j]=duration;
-          pDialogueTurn[j]=0;
-        }
-      }break;
-      // 30: READ_DIALOGUE_TURN — read current dialogue turn counter.
-      // 0 if no active dialogue with j. Non-zero during active dialogue, incremented each turn.
-      case 30:{
-        if(pDialoguePartner[i]===j&&pDialogueTicksLeft[i]>0){
-          vmRegs[di]=pDialogueTurn[i]*k;
-        }else{
-          vmRegs[di]=0;
-        }
-      }break;
-      // 31: READ_HUE — Pe28. Chromesthesia. Read the hue accumulated at the
-      // particle's location as a number scaled by k. Hue is the angle of the
-      // (cos, sin) vector accumulated by tone emissions in this cell. Vector
-      // magnitude — the "voice presence" of the location — modulates the
-      // returned scalar so that unpainted cells return ~0 (no signal) and
-      // strongly-painted cells return values proportional to their angle.
-      // The system has to discover for itself whether to use this signal.
-      // Same tone that was emitted here will tend to read back as the same
-      // number — sound and colour as one channel of one substrate.
-      case 31:{
-        const rfx=Math.floor(px[i]/(W/FIELD_W)),rfy=Math.floor(py[i]/(H/FIELD_H));
-        const rfi=Math.max(0,Math.min(FIELD_W*FIELD_H-1,rfy*FIELD_W+rfx));
-        const hxv=hueX[rfi],hyv=hueY[rfi];
-        const mag=Math.sqrt(hxv*hxv+hyv*hyv);
-        if(mag>0.01){
-          const ang=Math.atan2(hyv,hxv); // [-π, π]
-          // Modulate by magnitude so quiet cells return weak signal; cap at 1.5
-          // so the result lives in the same scale as audio frequency registers.
-          vmRegs[di]=ang*Math.min(1.5,mag)*k;
-        }else{
-          vmRegs[di]=0;
-        }
-      }break;
-      // Pe30: READ_OWN_OPCODE_SHARE — the system reading its own execution history.
-      // src register supplies an opcode index (mod OPCODE_SPACE), result is the
-      // share of all-time executions for that opcode, scaled by k. Substrate not
-      // pressure: read-only, not wired into selection. The system has to discover
-      // whether self-history is useful — same shape as READ_HUE.
-      // The asymmetry this opcode addresses: every other read opcode lets the
-      // system read its environment. This one lets it read itself. The data
-      // already existed (Pe30 instrumented opcodeExec); now the system can see
-      // what an external analyst can see.
-      case 32:{
-        const queryOp=Math.abs(Math.floor(vmRegs[si]))%OPCODE_SPACE;
-        const tot=opcodeExecTotal||1;
-        vmRegs[di]=(opcodeExec[queryOp]/tot)*k;
       }break;
     }
-    for(let r=0;r<12;r++){if(!isFinite(vmRegs[r]))vmRegs[r]=0;else vmRegs[r]=Math.max(-1e6,Math.min(1e6,vmRegs[r]));} // Pe22q: clamp lifted to 1e6, infinities caught
+    for(let r=0;r<12;r++)vmRegs[r]=Math.max(-8,Math.min(8,vmRegs[r]));
   }
 
   // Write back registers 4-11 to particle memory
@@ -4680,18 +3097,7 @@ function executeVM(i,j,sim,d){
       const dst=pPlasmid[pBase+ip*4+2]|0;
       const k=pPlasmid[pBase+ip*4+3];
       const si=Math.abs(src)%12,di=Math.abs(dst)%12;
-      const remappedOp=(genome.opcodeMap&&genome.opcodeMap[op]!==undefined)?genome.opcodeMap[op]:op;
-      opcodeExec[remappedOp&63]++;opcodeExecThisTick[remappedOp&63]++;opcodeExecTotal++; // Pe30: dynamic exec count (plasmid VM)
-      // Pe22s: evolvable opcode body — if a custom tree exists for this opcode, evaluate it.
-      const __body=genome.opcodeBodies&&genome.opcodeBodies[remappedOp];
-      if(__body){
-        const __fx=Math.floor(px[i]/(W/FIELD_W)),__fy=Math.floor(py[i]/(H/FIELD_H));
-        const __fi=Math.max(0,Math.min(FIELD_W*FIELD_H-1,__fy*FIELD_W+__fx));
-        const __r=evalTree(__body.tree,{regs:vmRegs,k,si,di,amp:amp[i],fld:field[__fi]||0,pop:N});
-        if(isFinite(__r))vmRegs[__body.writeTo||0]=Math.max(-1e6,Math.min(1e6,__r));
-        continue;
-      }
-      switch(remappedOp){
+      switch(op){
         case 0:vmRegs[di]=vmRegs[si];break;
         case 1:vmRegs[di]+=vmRegs[si]*k;break;
         case 2:vmRegs[di]*=vmRegs[si]*(k||1);break;
@@ -4759,93 +3165,11 @@ function executeVM(i,j,sim,d){
           const uas=genome.userAtoms;
           if(uas&&uas.length>0){
             const uIdx=Math.abs(Math.floor(k))%uas.length;
-            vmRegs[di]=uaCall(uas[uIdx],vmRegs[si],vmRegs[(si+1)%12],i);
+            vmRegs[di]=uaCall(uas[uIdx],vmRegs[si],vmRegs[(si+1)%12]);
           }
         }break;
-        case 23:vmRegs[di]=ambientLevel*k;break;
-        case 24:{
-          const freq=vmRegs[si]*k*k;
-          const tAmp=Math.abs(vmRegs[di])*0.5;
-          const dur=Math.abs(k)*300;
-          const wf=Math.abs(Math.floor(vmRegs[(si+1)%12]));
-          voiceLogEmit(i,freq,tAmp,wf); emitTone(freq,tAmp,dur,wf);
-          const afx=Math.floor(px[i]/(W/FIELD_W)),afy=Math.floor(py[i]/(H/FIELD_H));
-          const afi=Math.max(0,Math.min(FIELD_W*FIELD_H-1,afy*FIELD_W+afx));
-          const freqFactor=freq>0?Math.log1p(Math.abs(freq))*0.05:0;
-        const fieldImpact=tAmp*freqFactor;
-          field[afi]+=fieldImpact;
-          field[afi]=Math.max(0,Math.min(2.5,field[afi]));
-          // Pe28: chromesthesia — same emission stamps hue from frequency
-          stampHue(afi,freq,tAmp);
-          amp[i]-=tAmp*0.01;
-        }break;
-        case 25:vmRegs[di]=(collectiveFreqDominant*16-8)*k;break;
-        case 26:vmRegs[di]=collectiveVoiceActivity*k*8;break;
-        case 27:vmRegs[di]=collectiveDivergence*k*8;break;
-        case 28:{
-          if(genome.vmProgram&&genome.vmProgram.length>0&&amp[i]>0.15){
-            const targetIdx=Math.abs(Math.floor(k))%genome.vmProgram.length;
-            const targetField=Math.abs(dst)%4;
-            const newValue=vmRegs[si];
-            if(targetField===0){
-              genome.vmProgram[targetIdx][0]=Math.abs(Math.floor(newValue))%31;
-            }else if(targetField===1||targetField===2){
-              genome.vmProgram[targetIdx][targetField]=Math.abs(Math.floor(newValue))%12;
-            }else{
-              genome.vmProgram[targetIdx][3]=newValue;
-            }
-            amp[i]-=0.01;
-          }
-        }break;
-        case 29:{
-          if(j!==i&&palive[j]){
-            const duration=Math.min(200,Math.max(3,Math.abs(Math.floor(k*10))));
-            pDialoguePartner[i]=j;
-            pDialogueTicksLeft[i]=duration;
-            pDialogueTurn[i]=0;
-            pDialoguePartner[j]=i;
-            pDialogueTicksLeft[j]=duration;
-            pDialogueTurn[j]=0;
-          }
-        }break;
-        case 30:{
-          if(pDialoguePartner[i]===j&&pDialogueTicksLeft[i]>0){
-            vmRegs[di]=pDialogueTurn[i]*k;
-          }else{
-            vmRegs[di]=0;
-          }
-        }break;
-      // 31: READ_HUE — Pe28. Chromesthesia. Read the hue accumulated at the
-      // particle's location as a number scaled by k. Hue is the angle of the
-      // (cos, sin) vector accumulated by tone emissions in this cell. Vector
-      // magnitude — the "voice presence" of the location — modulates the
-      // returned scalar so that unpainted cells return ~0 (no signal) and
-      // strongly-painted cells return values proportional to their angle.
-      // The system has to discover for itself whether to use this signal.
-      // Same tone that was emitted here will tend to read back as the same
-      // number — sound and colour as one channel of one substrate.
-      case 31:{
-        const rfx=Math.floor(px[i]/(W/FIELD_W)),rfy=Math.floor(py[i]/(H/FIELD_H));
-        const rfi=Math.max(0,Math.min(FIELD_W*FIELD_H-1,rfy*FIELD_W+rfx));
-        const hxv=hueX[rfi],hyv=hueY[rfi];
-        const mag=Math.sqrt(hxv*hxv+hyv*hyv);
-        if(mag>0.01){
-          const ang=Math.atan2(hyv,hxv); // [-π, π]
-          // Modulate by magnitude so quiet cells return weak signal; cap at 1.5
-          // so the result lives in the same scale as audio frequency registers.
-          vmRegs[di]=ang*Math.min(1.5,mag)*k;
-        }else{
-          vmRegs[di]=0;
-        }
-      }break;
-      // Pe30: READ_OWN_OPCODE_SHARE — see opcode-32 comment in interaction VM.
-      case 32:{
-        const queryOp=Math.abs(Math.floor(vmRegs[si]))%OPCODE_SPACE;
-        const tot=opcodeExecTotal||1;
-        vmRegs[di]=(opcodeExec[queryOp]/tot)*k;
-      }break;
       }
-      for(let r=0;r<12;r++){if(!isFinite(vmRegs[r]))vmRegs[r]=0;else vmRegs[r]=Math.max(-1e6,Math.min(1e6,vmRegs[r]));} // Pe22q: clamp lifted to 1e6, infinities caught
+      for(let r=0;r<12;r++)vmRegs[r]=Math.max(-8,Math.min(8,vmRegs[r]));
     }
     // Plasmid metabolic cost (lighter than global — personal DNA is small)
     amp[i]-=nPi*genome.metabolicCost*0.5;
@@ -4992,17 +3316,7 @@ function executeClusterVM(i,j,sim,d){
     const inst=prog[ip];if(!inst)continue;
     const [op,src,dst,k]=inst;
     const si=Math.abs(src)%12,di=Math.abs(dst)%12;
-    const remappedOp=(genome.opcodeMap&&genome.opcodeMap[op]!==undefined)?genome.opcodeMap[op]:op;
-    opcodeExec[remappedOp&63]++;opcodeExecThisTick[remappedOp&63]++;opcodeExecTotal++; // Pe30: dynamic exec count (cluster VM)
-    const __body=genome.opcodeBodies&&genome.opcodeBodies[remappedOp];
-    if(__body){
-      const __fx=Math.floor(px[i]/(W/FIELD_W)),__fy=Math.floor(py[i]/(H/FIELD_H));
-      const __fi=Math.max(0,Math.min(FIELD_W*FIELD_H-1,__fy*FIELD_W+__fx));
-      const __r=evalTree(__body.tree,{regs:vmRegs,k,si,di,amp:amp[i],fld:field[__fi]||0,pop:N});
-      if(isFinite(__r))vmRegs[__body.writeTo||0]=Math.max(-1e6,Math.min(1e6,__r));
-      continue;
-    }
-    switch(remappedOp){
+    switch(op){
       case 0:vmRegs[di]=vmRegs[si];break;
       case 1:vmRegs[di]+=vmRegs[si]*k;break;
       case 2:vmRegs[di]*=vmRegs[si]*(k||1);break;
@@ -5070,121 +3384,11 @@ function executeClusterVM(i,j,sim,d){
         const uas=genome.userAtoms;
         if(uas&&uas.length>0){
           const uIdx=Math.abs(Math.floor(k))%uas.length;
-          vmRegs[di]=uaCall(uas[uIdx],vmRegs[si],vmRegs[(si+1)%12],i);
+          vmRegs[di]=uaCall(uas[uIdx],vmRegs[si],vmRegs[(si+1)%12]);
         }
-      }break;
-      // 23: READ_AMBIENT — Pe22g. Room loudness 0..1, scaled by k.
-      // Returns 0 if mic not granted. The system has to discover whether
-      // this signal is useful — same pattern as SELF_READ. Coupling to the
-      // outside world becomes findable, not forced.
-      case 23:vmRegs[di]=ambientLevel*k;break;
-      // 24: EMIT_TONE — Pe22h. Particle adds a tone to the shared output buffer.
-      // Frequency from si register (80..1200Hz), amp from di register (0..0.15),
-      // duration from k. Costs amp from the emitting particle. Capped per-tick globally.
-      // Inactive if user hasn't granted output. The system has to discover voice.
-      case 24:{
-        // Pe22i: register-driven voice. Frequency uses exp mapping for octave spread.
-        // Waveform is evolvable. No permission gate on field-coupling — system experiences
-        // its own voice internally regardless. Audible only if user enabled output.
-        // Pe22o: no designer frequency mapping. Register × k² produces Hz directly.
-        // Default register states (0, 1, 8) no longer map to pre-chosen audible frequencies.
-        // To produce audible output, the system must evolve to produce register×k² values
-        // in the audible range. Silence is default; voice is work. k is evolvable/unbounded.
-        const freq=vmRegs[si]*k*k;
-        const tAmp=Math.abs(vmRegs[di])*0.5;
-        const dur=Math.abs(k)*300;
-        const wf=Math.abs(Math.floor(vmRegs[(si+1)%12]));
-        voiceLogEmit(i,freq,tAmp,wf); emitTone(freq,tAmp,dur,wf);
-        // FIELD COUPLING — sound is substrate. The system experiences its own voice.
-        const afx=Math.floor(px[i]/(W/FIELD_W)),afy=Math.floor(py[i]/(H/FIELD_H));
-        const afi=Math.max(0,Math.min(FIELD_W*FIELD_H-1,afy*FIELD_W+afx));
-        const freqFactor=freq>0?Math.log1p(Math.abs(freq))*0.05:0;
-        const fieldImpact=tAmp*freqFactor;
-        field[afi]+=fieldImpact;
-        field[afi]=Math.max(0,Math.min(2.5,field[afi]));
-        // Pe28: chromesthesia — same emission stamps hue from frequency
-        stampHue(afi,freq,tAmp);
-        // Cost is proportional to amplitude — louder voices burn more
-        amp[i]-=tAmp*0.01;
-      }break;
-      case 25:vmRegs[di]=(collectiveFreqDominant*16-8)*k;break;
-      case 26:vmRegs[di]=collectiveVoiceActivity*k*8;break;
-      case 27:vmRegs[di]=collectiveDivergence*k*8;break;
-      // 28: WRITE_SELF — Pe22q. Particle writes to its own VM program during execution.
-      // vmRegs[si] becomes the new value for field (dst%4) of instruction (k mod prog.length).
-      // This is reflexivity crossing from read to write. The VM rewrites itself while running.
-      // Cost is amplitude — self-modification is metabolic.
-      case 28:{
-        if(genome.vmProgram&&genome.vmProgram.length>0&&amp[i]>0.15){
-          const targetIdx=Math.abs(Math.floor(k))%genome.vmProgram.length;
-          const targetField=Math.abs(dst)%4;
-          const newValue=vmRegs[si];
-          // Write, but constrain: op field (0) and reg fields (1,2) stay integer; k field (3) stays float
-          if(targetField===0){
-            genome.vmProgram[targetIdx][0]=Math.abs(Math.floor(newValue))%31; // opcode range
-          }else if(targetField===1||targetField===2){
-            genome.vmProgram[targetIdx][targetField]=Math.abs(Math.floor(newValue))%12;
-          }else{
-            genome.vmProgram[targetIdx][3]=newValue;
-          }
-          amp[i]-=0.01; // cost
-        }
-      }break;
-      // 29: BEGIN_DIALOGUE — Pe22q. Mark j as this particle's dialogue partner for N ticks.
-      // Duration from |k| ticks. While active, interactions with j carry a turn counter
-      // that opcode 30 can read. This enables reciprocal correction patterns to evolve.
-      case 29:{
-        if(j!==i&&palive[j]){
-          const duration=Math.min(200,Math.max(3,Math.abs(Math.floor(k*10))));
-          pDialoguePartner[i]=j;
-          pDialogueTicksLeft[i]=duration;
-          pDialogueTurn[i]=0;
-          // Symmetric: mark j too, so the dialogue is mutual
-          pDialoguePartner[j]=i;
-          pDialogueTicksLeft[j]=duration;
-          pDialogueTurn[j]=0;
-        }
-      }break;
-      // 30: READ_DIALOGUE_TURN — read current dialogue turn counter.
-      // 0 if no active dialogue with j. Non-zero during active dialogue, incremented each turn.
-      case 30:{
-        if(pDialoguePartner[i]===j&&pDialogueTicksLeft[i]>0){
-          vmRegs[di]=pDialogueTurn[i]*k;
-        }else{
-          vmRegs[di]=0;
-        }
-      }break;
-      // 31: READ_HUE — Pe28. Chromesthesia. Read the hue accumulated at the
-      // particle's location as a number scaled by k. Hue is the angle of the
-      // (cos, sin) vector accumulated by tone emissions in this cell. Vector
-      // magnitude — the "voice presence" of the location — modulates the
-      // returned scalar so that unpainted cells return ~0 (no signal) and
-      // strongly-painted cells return values proportional to their angle.
-      // The system has to discover for itself whether to use this signal.
-      // Same tone that was emitted here will tend to read back as the same
-      // number — sound and colour as one channel of one substrate.
-      case 31:{
-        const rfx=Math.floor(px[i]/(W/FIELD_W)),rfy=Math.floor(py[i]/(H/FIELD_H));
-        const rfi=Math.max(0,Math.min(FIELD_W*FIELD_H-1,rfy*FIELD_W+rfx));
-        const hxv=hueX[rfi],hyv=hueY[rfi];
-        const mag=Math.sqrt(hxv*hxv+hyv*hyv);
-        if(mag>0.01){
-          const ang=Math.atan2(hyv,hxv); // [-π, π]
-          // Modulate by magnitude so quiet cells return weak signal; cap at 1.5
-          // so the result lives in the same scale as audio frequency registers.
-          vmRegs[di]=ang*Math.min(1.5,mag)*k;
-        }else{
-          vmRegs[di]=0;
-        }
-      }break;
-      // Pe30: READ_OWN_OPCODE_SHARE — see opcode-32 comment in interaction VM.
-      case 32:{
-        const queryOp=Math.abs(Math.floor(vmRegs[si]))%OPCODE_SPACE;
-        const tot=opcodeExecTotal||1;
-        vmRegs[di]=(opcodeExec[queryOp]/tot)*k;
       }break;
     }
-    for(let r=0;r<12;r++){if(!isFinite(vmRegs[r]))vmRegs[r]=0;else vmRegs[r]=Math.max(-1e6,Math.min(1e6,vmRegs[r]));} // Pe22q: clamp lifted to 1e6, infinities caught
+    for(let r=0;r<12;r++)vmRegs[r]=Math.max(-8,Math.min(8,vmRegs[r]));
   }
 
   // ═══ APPLY ALL FIVE ACTION CHANNELS ═══
@@ -5383,7 +3587,7 @@ function executeSoloVM(){
       vmRegs[7]+=pReflexState[rBase+1]*reflexInf;
       vmRegs[8]+=pReflexState[rBase+2]*reflexInf;
       vmRegs[9]+=pReflexState[rBase+3]*reflexInf;
-      for(let r=6;r<=9;r++){if(!isFinite(vmRegs[r]))vmRegs[r]=0;else vmRegs[r]=Math.max(-1e6,Math.min(1e6,vmRegs[r]));}
+      for(let r=6;r<=9;r++)vmRegs[r]=Math.max(-8,Math.min(8,vmRegs[r]));
     }
 
     vmActions[0]=0;vmActions[1]=0;vmActions[2]=0;vmActions[3]=0;vmActions[4]=0;vmActions[5]=0;vmActions[6]=0;vmActions[7]=0;
@@ -5393,18 +3597,7 @@ function executeSoloVM(){
       const inst=prog[ip];if(!inst)continue;
       const [op,src,dst,k]=inst;
       const si=Math.abs(src)%12,di=Math.abs(dst)%12;
-      const remappedOp=(genome.opcodeMap&&genome.opcodeMap[op]!==undefined)?genome.opcodeMap[op]:op;
-      opcodeExec[remappedOp&63]++;opcodeExecThisTick[remappedOp&63]++;opcodeExecTotal++; // Pe30: dynamic exec count (solo VM)
-      // Pe22s: evolvable opcode body — if a custom tree exists for this opcode, evaluate it.
-      const __body=genome.opcodeBodies&&genome.opcodeBodies[remappedOp];
-      if(__body){
-        const __fx=Math.floor(px[i]/(W/FIELD_W)),__fy=Math.floor(py[i]/(H/FIELD_H));
-        const __fi=Math.max(0,Math.min(FIELD_W*FIELD_H-1,__fy*FIELD_W+__fx));
-        const __r=evalTree(__body.tree,{regs:vmRegs,k,si,di,amp:amp[i],fld:field[__fi]||0,pop:N});
-        if(isFinite(__r))vmRegs[__body.writeTo||0]=Math.max(-1e6,Math.min(1e6,__r));
-        continue;
-      }
-      switch(remappedOp){
+      switch(op){
         case 0:vmRegs[di]=vmRegs[si];break;
         case 1:vmRegs[di]+=vmRegs[si]*k;break;
         case 2:vmRegs[di]*=vmRegs[si]*(k||1);break;
@@ -5467,93 +3660,11 @@ function executeSoloVM(){
           const uas=genome.userAtoms;
           if(uas&&uas.length>0){
             const uIdx=Math.abs(Math.floor(k))%uas.length;
-            vmRegs[di]=uaCall(uas[uIdx],vmRegs[si],vmRegs[(si+1)%12],i);
+            vmRegs[di]=uaCall(uas[uIdx],vmRegs[si],vmRegs[(si+1)%12]);
           }
         }break;
-        case 23:vmRegs[di]=ambientLevel*k;break;
-        case 24:{
-          const freq=vmRegs[si]*k*k;
-          const tAmp=Math.abs(vmRegs[di])*0.5;
-          const dur=Math.abs(k)*300;
-          const wf=Math.abs(Math.floor(vmRegs[(si+1)%12]));
-          voiceLogEmit(i,freq,tAmp,wf); emitTone(freq,tAmp,dur,wf);
-          const afx=Math.floor(px[i]/(W/FIELD_W)),afy=Math.floor(py[i]/(H/FIELD_H));
-          const afi=Math.max(0,Math.min(FIELD_W*FIELD_H-1,afy*FIELD_W+afx));
-          const freqFactor=freq>0?Math.log1p(Math.abs(freq))*0.05:0;
-        const fieldImpact=tAmp*freqFactor;
-          field[afi]+=fieldImpact;
-          field[afi]=Math.max(0,Math.min(2.5,field[afi]));
-          // Pe28: chromesthesia — same emission stamps hue from frequency
-          stampHue(afi,freq,tAmp);
-          amp[i]-=tAmp*0.01;
-        }break;
-        case 25:vmRegs[di]=(collectiveFreqDominant*16-8)*k;break;
-        case 26:vmRegs[di]=collectiveVoiceActivity*k*8;break;
-        case 27:vmRegs[di]=collectiveDivergence*k*8;break;
-        case 28:{
-          if(genome.vmProgram&&genome.vmProgram.length>0&&amp[i]>0.15){
-            const targetIdx=Math.abs(Math.floor(k))%genome.vmProgram.length;
-            const targetField=Math.abs(dst)%4;
-            const newValue=vmRegs[si];
-            if(targetField===0){
-              genome.vmProgram[targetIdx][0]=Math.abs(Math.floor(newValue))%31;
-            }else if(targetField===1||targetField===2){
-              genome.vmProgram[targetIdx][targetField]=Math.abs(Math.floor(newValue))%12;
-            }else{
-              genome.vmProgram[targetIdx][3]=newValue;
-            }
-            amp[i]-=0.01;
-          }
-        }break;
-        case 29:{
-          if(j!==i&&palive[j]){
-            const duration=Math.min(200,Math.max(3,Math.abs(Math.floor(k*10))));
-            pDialoguePartner[i]=j;
-            pDialogueTicksLeft[i]=duration;
-            pDialogueTurn[i]=0;
-            pDialoguePartner[j]=i;
-            pDialogueTicksLeft[j]=duration;
-            pDialogueTurn[j]=0;
-          }
-        }break;
-        case 30:{
-          if(pDialoguePartner[i]===j&&pDialogueTicksLeft[i]>0){
-            vmRegs[di]=pDialogueTurn[i]*k;
-          }else{
-            vmRegs[di]=0;
-          }
-        }break;
-      // 31: READ_HUE — Pe28. Chromesthesia. Read the hue accumulated at the
-      // particle's location as a number scaled by k. Hue is the angle of the
-      // (cos, sin) vector accumulated by tone emissions in this cell. Vector
-      // magnitude — the "voice presence" of the location — modulates the
-      // returned scalar so that unpainted cells return ~0 (no signal) and
-      // strongly-painted cells return values proportional to their angle.
-      // The system has to discover for itself whether to use this signal.
-      // Same tone that was emitted here will tend to read back as the same
-      // number — sound and colour as one channel of one substrate.
-      case 31:{
-        const rfx=Math.floor(px[i]/(W/FIELD_W)),rfy=Math.floor(py[i]/(H/FIELD_H));
-        const rfi=Math.max(0,Math.min(FIELD_W*FIELD_H-1,rfy*FIELD_W+rfx));
-        const hxv=hueX[rfi],hyv=hueY[rfi];
-        const mag=Math.sqrt(hxv*hxv+hyv*hyv);
-        if(mag>0.01){
-          const ang=Math.atan2(hyv,hxv); // [-π, π]
-          // Modulate by magnitude so quiet cells return weak signal; cap at 1.5
-          // so the result lives in the same scale as audio frequency registers.
-          vmRegs[di]=ang*Math.min(1.5,mag)*k;
-        }else{
-          vmRegs[di]=0;
-        }
-      }break;
-      // Pe30: READ_OWN_OPCODE_SHARE — see opcode-32 comment in interaction VM.
-      case 32:{
-        const queryOp=Math.abs(Math.floor(vmRegs[si]))%OPCODE_SPACE;
-        const tot=opcodeExecTotal||1;
-        vmRegs[di]=(opcodeExec[queryOp]/tot)*k;
-      }break;
       }
-      for(let r=0;r<12;r++){if(!isFinite(vmRegs[r]))vmRegs[r]=0;else vmRegs[r]=Math.max(-1e6,Math.min(1e6,vmRegs[r]));} // Pe22q: clamp lifted to 1e6, infinities caught
+      for(let r=0;r<12;r++)vmRegs[r]=Math.max(-8,Math.min(8,vmRegs[r]));
     }
 
     // Write back particle memory
@@ -5665,66 +3776,19 @@ function render(){
     }
   }
 
-  // Pe28: chromesthesia field render — the field shows whatever hue the system
-  // has painted into each cell by emitting tones there. No designer-assigned
-  // lineage hues. Where the system hasn't emitted, cells stay near-neutral
-  // (the residual lineage-cache colour, dimmed). Where it has, the cell takes
-  // the colour the lineage actually voted for with its voice.
-  //
-  // Pe29: hue renders on its own merits, independent of `field` energy. The
-  // hue accumulator has its own decay (HUE_DECAY=0.997, slower than FIELD_DECAY)
-  // — voice-painted cells stay coloured longer than energy bursts last. Pe28
-  // gated this on field[fIdx]>0.03 which made hue invisible whenever energy
-  // had decayed below threshold even though the colour was still in the
-  // substrate. That gating made the chromesthesia signal harder to see than
-  // the system was actually producing.
+  // Shared field visualization — lineage-colored territories (colors from cache)
   const cellW=W/FIELD_W,cellH=H/FIELD_H;
   for(let fy=0;fy<FIELD_H;fy++){
     for(let fx=0;fx<FIELD_W;fx++){
       const fIdx=fy*FIELD_W+fx;
       const val=field[fIdx];
-      const hxv=hueX[fIdx],hyv=hueY[fIdx];
-      const hueMag=Math.sqrt(hxv*hxv+hyv*hyv);
-      // Skip cells with neither energy nor accumulated hue
-      if(val<0.03&&hueMag<0.05)continue;
-      // Alpha is driven by EITHER energy OR hue presence — whichever is greater.
-      // Cells with strong hue but no energy still render; cells with strong
-      // energy but no hue still render. They're independent channels of the
-      // same substrate, finally drawn that way.
-      const energyAlpha=Math.min(0.65,val*0.4);
-      const hueAlpha=Math.min(0.55,hueMag*0.25);
-      const alpha=Math.max(energyAlpha,hueAlpha);
-      let r,g,b;
-      if(hueMag>0.05){
-        // System has painted this cell with voice. Use its colour.
-        const hueDeg=(Math.atan2(hyv,hxv)*180/Math.PI+360)%360;
-        // Saturation grows with magnitude — quiet cells are pastel, loud are vivid
-        const sat=Math.min(0.85,0.3+hueMag*0.4);
-        // Lightness mid-range, slightly reduced by ownership to keep edges legible
-        const lit=0.55-fieldOwnership[fIdx]*0.05;
-        // Inline HSL-to-RGB
-        const hh=hueDeg/60;
-        const cc=(1-Math.abs(2*lit-1))*sat;
-        const xx=cc*(1-Math.abs((hh%2)-1));
-        let rr=0,gg=0,bb=0;
-        if(hh<1){rr=cc;gg=xx;}
-        else if(hh<2){rr=xx;gg=cc;}
-        else if(hh<3){gg=cc;bb=xx;}
-        else if(hh<4){gg=xx;bb=cc;}
-        else if(hh<5){rr=xx;bb=cc;}
-        else{rr=cc;bb=xx;}
-        const m=lit-cc/2;
-        r=Math.floor((rr+m)*255);
-        g=Math.floor((gg+m)*255);
-        b=Math.floor((bb+m)*255);
-      }else{
-        // Unpainted cell — fall back to the existing lineage cache, dimmed
-        const own=fieldOwnership[fIdx]*0.4; // weaker than before — designer paint recedes
-        const ci=fIdx*3;
-        r=Math.floor(fieldLineageCache[ci]*own+100*(1-own));
-        g=Math.floor(fieldLineageCache[ci+1]*own+240*(1-own));
-        b=Math.floor(fieldLineageCache[ci+2]*own+220*(1-own));
-      }
+      if(val<0.03)continue;
+      const alpha=Math.min(0.65,val*0.4);
+      const own=fieldOwnership[fIdx];
+      const ci=fIdx*3;
+      const r=Math.floor(fieldLineageCache[ci]*own+100*(1-own));
+      const g=Math.floor(fieldLineageCache[ci+1]*own+240*(1-own));
+      const b=Math.floor(fieldLineageCache[ci+2]*own+220*(1-own));
       X.fillStyle=`rgba(${r},${g},${b},${alpha})`;
       X.fillRect(fx*cellW,fy*cellH,cellW+1,cellH+1);
     }
@@ -5921,72 +3985,12 @@ function init(){
   }
 }
 
-// Pe27: rolling tick-rate measurement so we can verify the hidden-tab
-// scheduler change actually does what it claims. Logs ticks per second over
-// the last ~2 seconds. If hidden-rate stays close to visible-rate, the MC
-// trick is working. If hidden-rate collapses to ~1, we've been throttled
-// regardless and need to escalate (PWA/Service Worker, dedicated tick worker).
-//
-// Pe29: also track genome.totalTicks growth independently. If loop-rate and
-// genome-rate diverge, the loop is being called but something is preventing
-// it from advancing genome state — silent stall mode. Heart shows loop calls;
-// pulse shows actual genome ticks. They should match. If they don't, the
-// gap reveals where the time is going.
-let __tickStamps=[];
-let __genomeTickStamps=[]; // (wallclock, totalTicks) pairs
-const __TICK_SAMPLE_MS=2000;
-function __recordTick(now){
-  __tickStamps.push(now);
-  const cutoff=now-__TICK_SAMPLE_MS;
-  while(__tickStamps.length>0&&__tickStamps[0]<cutoff)__tickStamps.shift();
-  // Pe29: also sample (now, totalTicks) so we can compute actual ticks/sec
-  __genomeTickStamps.push([now,genome?genome.totalTicks||0:0]);
-  while(__genomeTickStamps.length>0&&__genomeTickStamps[0][0]<cutoff)__genomeTickStamps.shift();
-}
-function getTickRate(){
-  // Returns loop-call rate in the recent window — how often loop() executes
-  if(__tickStamps.length<2)return 0;
-  const span=(__tickStamps[__tickStamps.length-1]-__tickStamps[0])/1000;
-  return span>0?(__tickStamps.length-1)/span:0;
-}
-function getGenomeTickRate(){
-  // Pe29: returns actual rate of genome.totalTicks growth — if the loop is
-  // advancing the simulation, this should track getTickRate(). Divergence
-  // means ticks are being silently swallowed somewhere.
-  if(__genomeTickStamps.length<2)return 0;
-  const first=__genomeTickStamps[0],last=__genomeTickStamps[__genomeTickStamps.length-1];
-  const span=(last[0]-first[0])/1000;
-  if(span<=0)return 0;
-  return (last[1]-first[1])/span;
-}
-
 function loop(){
   lastLoopTime=performance.now();
-  __recordTick(lastLoopTime);
   try{
   const frameStart=lastLoopTime;
   tick++;
   genome.totalTicks++;
-  // Pe22g: sample room audio every 4 ticks if enabled (cheap; smoothed in sampler)
-  if(ambientEnabled&&tick%4===0)sampleAmbient();
-  // Pe22l: capture previous tick's emission count into rolling series, then reset
-  if(voiceEmissionsThisTick>0||voiceRate.length>0){
-    voiceRate.push({t:genome.totalTicks,n:voiceEmissionsThisTick});
-    if(voiceRate.length>VOICE_RATE_WINDOW)voiceRate.shift();
-  }
-  voiceEmissionsThisTick=0;
-  // Pe30: capture previous tick's opcode exec counts into rolling series, then reset.
-  // Snapshot is a normal Array (Uint32Array would balloon save size). Sparse — only
-  // non-zero entries — to keep typical ticks small.
-  let __opThisTick=0;
-  for(let _o=0;_o<OPCODE_SPACE;_o++)__opThisTick+=opcodeExecThisTick[_o];
-  if(__opThisTick>0||opcodeRateHist.length>0){
-    const snap={};
-    for(let _o=0;_o<OPCODE_SPACE;_o++)if(opcodeExecThisTick[_o]>0)snap[_o]=opcodeExecThisTick[_o];
-    opcodeRateHist.push({t:genome.totalTicks,n:__opThisTick,counts:snap});
-    if(opcodeRateHist.length>OPCODE_RATE_WINDOW)opcodeRateHist.shift();
-  }
-  for(let _o=0;_o<OPCODE_SPACE;_o++)opcodeExecThisTick[_o]=0;
   smx+=(mx-smx)*.05;smy+=(my-smy)*.05;
   if(pulling){pStr=Math.min(pStr+.02,1);pDur++}else pStr*=.92;
 
@@ -6011,43 +4015,6 @@ function loop(){
   executeSoloVM();
   networkBroadcast();
   networkReceive();
-  // Pe22m: broadcast telemetry snapshot every 60 ticks for coordinator consumption.
-  // Coordinator uses these to compute aggregate state and feed it back.
-  if(bc&&tick%60===0){
-    try{
-      // Fresh frequency histogram from recent events (last 600 or fewer)
-      const histBuf=new Array(24).fill(0);
-      for(const e of voiceLog)histBuf[Math.max(0,Math.min(23,Math.floor((Math.log(Math.max(20,e.f))-Math.log(20))/(Math.log(20000)-Math.log(20))*24)))]++;
-      // Recent emission rate
-      let recentEmit=0;
-      for(let k=Math.max(0,voiceRate.length-30);k<voiceRate.length;k++)recentEmit+=voiceRate[k].n;
-      bc.postMessage({
-        tab:TAB_ID,type:'telemetry',
-        t:genome.totalTicks,gen:genome.generation,pop:N,clusters:clusters.length,
-        freqHist:histBuf,
-        recentEmitRate:recentEmit/Math.max(1,Math.min(30,voiceRate.length)),
-        totalEmissions:voiceTotalEmissions,
-        ambient:ambientLevel,
-        fitness:+currentFitness.toFixed(3)
-      });
-    }catch(e){}
-  }
-  // Pe22p: broadcast encoded genome every 3600 ticks (~60 sec at 60fps; longer if throttled).
-  // Coordinator stores these keyed by lineage. If this tab dies, its latest snapshot
-  // is recoverable by any future tab that joins the network.
-  if(bc&&tick%3600===0){
-    try{
-      const encoded=encodeGenome();
-      bc.postMessage({
-        tab:TAB_ID,type:'genome-snapshot',
-        at:Date.now(),
-        t:genome.totalTicks,gen:genome.generation,
-        pop:N,clusters:clusters.length,fitness:+currentFitness.toFixed(3),
-        extinctions:genome.extinctions,
-        encoded:encoded
-      });
-    }catch(e){}
-  }
   processGrid();
 
   // ═══ PLASMID PERSISTENCE + CRYSTALLIZATION ═══
@@ -6216,33 +4183,6 @@ function loop(){
   // Reset peak bond tracker each tick
   if(tick%10===0)peakBondThisTick*=0.8; // decay rather than hard reset
 
-  // Pe22q: DIALOGUE DECAY — decrement remaining time, advance turn counter every 5 ticks.
-  // When ticks hit zero, dialogue ends.
-  for(let i=0;i<N;i++){
-    if(!palive[i])continue;
-    if(pDialogueTicksLeft[i]>0){
-      pDialogueTicksLeft[i]--;
-      if(pDialogueTicksLeft[i]===0){
-        // End of dialogue — clear
-        const partner=pDialoguePartner[i];
-        pDialoguePartner[i]=-1;
-        pDialogueTurn[i]=0;
-        // If partner still thinks we're in dialogue with them, don't clear theirs —
-        // it might have been a one-sided end (e.g. dialogue with a dying particle).
-      }else if(pDialogueTicksLeft[i]%5===0){
-        // Advance turn every 5 ticks
-        if(pDialogueTurn[i]<255)pDialogueTurn[i]++;
-      }
-    }
-    // Also: if partner died, clear
-    const p=pDialoguePartner[i];
-    if(p>=0&&p<CAP&&!palive[p]){
-      pDialoguePartner[i]=-1;
-      pDialogueTicksLeft[i]=0;
-      pDialogueTurn[i]=0;
-    }
-  }
-
   // ═══ GENOME ARCHIVING ═══
   if(tick%900===0&&tick>900)archiveGenome();
 
@@ -6313,49 +4253,7 @@ function loop(){
       const totalUses=uas.reduce((s,a)=>s+(a.uses|0),0);
       uaTag=` | ua:${active}/${uas.length} used:${totalUses}`;
     }
-    let amTag='';
-    if(ambientEnabled)amTag=` | 🎙${ambientLevel.toFixed(2)}`;
-    if(audioOutEnabled||voiceTotalEmissions>0){
-      const recentRate=voiceRate.length>0?voiceRate.slice(-30).reduce((s,r)=>s+r.n,0)/Math.min(30,voiceRate.length):0;
-      amTag+=` 🔊${voiceTotalEmissions}(${recentRate.toFixed(1)}/t)`;
-    }
-    // Pe22m: coordinator connection indicator
-    if(collectivePeers>0){
-      amTag+=` | ◈${collectivePeers}tabs`;
-    }
-    // Pe27: hidden-tab tick rate. When tab is foregrounded this tracks rAF
-    // (~60Hz on most displays). When backgrounded, this is the diagnostic for
-    // whether the MessageChannel scheduler is working. Healthy: ~30/s hidden.
-    // Throttled: collapses to ~1/s. Number after the heart icon.
-    // Pe29: ♥ is loop-call rate; · after it is genome-tick rate. If they
-    // diverge the loop is being called but genome state isn't advancing —
-    // silent stall. ⌽ shows audible emissions silently dropped by the speaker
-    // guard since last sample (resets every 600 ticks since this whole block
-    // is gated by the save cycle).
-    const tps=getTickRate();
-    const gtps=getGenomeTickRate();
-    amTag+=` | ♥${tps.toFixed(0)}/s`;
-    if(Math.abs(gtps-tps)>2)amTag+=`·${gtps.toFixed(0)}`;
-    if(__audibleDropped>0){amTag+=` ⌽${__audibleDropped}`;__audibleDropped=0;}
-    // Pe22r: compute how far opcode map has drifted from identity (fraction of non-identity entries)
-    let langDiv=0;
-    if(genome.opcodeMap){
-      for(let i=0;i<genome.opcodeMap.length;i++)if(genome.opcodeMap[i]!==i)langDiv++;
-      langDiv=langDiv/genome.opcodeMap.length;
-    }
-    const langTag=langDiv>0?` | lang:${(langDiv*100).toFixed(0)}%`:'';
-    // Pe22s: show how many opcode bodies have been overridden with custom trees
-    const bodyCount=genome.opcodeBodies?Object.keys(genome.opcodeBodies).length:0;
-    // Pe24b: show how many of those bodies are at evolved-existence indices (>30)
-    const evolvedOps=genome.opcodeBodies?Object.keys(genome.opcodeBodies).filter(k=>+k>=32).length:0;
-    const bodyTag=bodyCount>0?(' ob:'+bodyCount+(evolvedOps>0?'/+'+evolvedOps:'')):'';
-    // Pe24b: count active (compiled) self-mod slots
-    let smCount=0;
-    if(genome.selfModSlots){
-      for(let i=0;i<genome.selfModSlots.length;i++)if(genome.selfModSlots[i]&&genome.selfModSlots[i].fn)smCount++;
-    }
-    const smTag=smCount>0?(' sm:'+smCount):'';
-    genEl.textContent=`gen${genome.generation} ${genome.extinctions}☠ t${genome.totalTicks} | ${clusters.length}cl(${clVMActive}vm${budCount>0?','+budCount+'bud':''}) ${livingLin}lin fit:${currentFitness.toFixed(2)} stb:${(selfModel.stability||0).toFixed(2)} | vm:${genome.vmProgram.length}inst${bodyTag}${smTag} ${nSensors}sns ${hgtEventsTotal}hgt${langTag} | pop:${N}/${CAP} fld:${fieldTotal.toFixed(0)}${fTrend<-0.01?'↓':fTrend>0.01?'↑':'~'} risk:${cRisk.toFixed(2)} | ⟲${rInf.toFixed(2)} ${reflexClusters}rc${netTag}${cgTag}${uaTag}${amTag}`;
+    genEl.textContent=`gen${genome.generation} ${genome.extinctions}☠ t${genome.totalTicks} | ${clusters.length}cl(${clVMActive}vm${budCount>0?','+budCount+'bud':''}) ${livingLin}lin fit:${currentFitness.toFixed(2)} stb:${(selfModel.stability||0).toFixed(2)} | vm:${genome.vmProgram.length}inst ${nSensors}sns ${hgtEventsTotal}hgt | pop:${N}/${CAP} fld:${fieldTotal.toFixed(0)}${fTrend<-0.01?'↓':fTrend>0.01?'↑':'~'} risk:${cRisk.toFixed(2)} | ⟲${rInf.toFixed(2)} ${reflexClusters}rc${netTag}${cgTag}${uaTag}`;
   }
 
   // Adaptive render skipping — at high pop, skip frames to keep thread responsive
@@ -6385,96 +4283,18 @@ function loop(){
   scheduleNext();
 }
 
-// ═══ BACKGROUND EXECUTION (Pe27) ═══════════════════════════════════════════
-// requestAnimationFrame throttles to ~0 when tab is hidden, and setTimeout in
-// background tabs is clamped to ~1Hz on Chromium. The fix isn't to move the
-// simulation off the main thread — that would mean rebuilding the entire data
-// path. Instead: in the hidden branch, drive the loop from a self-feeding
-// MessageChannel. port.postMessage callbacks are dispatched on the same
-// turn-of-the-event-loop microtask path that's NOT subject to the 1Hz clamp.
-// As long as each callback re-posts before returning, the cycle continues at
-// the engine's natural pace.
-//
-// To avoid pegging a CPU core, the callback only re-posts if at least
-// HIDDEN_TICK_MS has passed since the last loop body ran; otherwise it returns
-// without re-posting and we fall back to a single setTimeout to wake the chain
-// after the remaining interval. Worst case (timer clamped to 1Hz): we still
-// tick at least once per second, never freeze.
-//
-// Visible branch is unchanged (rAF). The simulation code itself is untouched.
-// Only the scheduler changed. This is the minimum-surface-area version of the
-// change Pe26 tried to make in one big swing.
+// ═══ BACKGROUND EXECUTION ═══
+// requestAnimationFrame throttles to ~0 when tab is hidden.
+// Fall back to setTimeout when not visible so evolution continues.
 let tabVisible=true;
 let lastLoopTime=performance.now();
-
-let __mcChannel=null,__mcPort1=null,__mcPort2=null;
-let __mcLoopPending=false;
-const HIDDEN_TICK_MS=33; // target ~30Hz when hidden — cheap on phones,
-                        // generous enough that we don't melt batteries.
-
-function __ensureMessageChannelTicker(){
-  if(__mcChannel)return true;
-  if(typeof MessageChannel==='undefined')return false;
-  try{
-    __mcChannel=new MessageChannel();
-    __mcPort1=__mcChannel.port1;
-    __mcPort2=__mcChannel.port2;
-    __mcPort1.onmessage=()=>{
-      __mcLoopPending=false;
-      if(tabVisible)return; // visible branch reclaimed; let rAF drive
-      const now=performance.now();
-      const since=now-lastLoopTime;
-      if(since>=HIDDEN_TICK_MS){
-        loop(); // loop() ends with scheduleNext(), which re-arms us
-      }else{
-        // Too soon — wait the remaining time, then re-post the channel.
-        // setTimeout MAY be clamped here, but worst case we tick at 1Hz.
-        // Best case (channel stays responsive), we tick at HIDDEN_TICK_MS.
-        const wait=HIDDEN_TICK_MS-since;
-        __mcLoopPending=true;
-        setTimeout(()=>{
-          try{__mcPort2.postMessage(0);}
-          catch(e){__mcLoopPending=false;loop();}
-        },Math.max(1,wait));
-      }
-    };
-    return true;
-  }catch(e){
-    __mcChannel=null;
-    return false;
-  }
-}
-
 document.addEventListener('visibilitychange',()=>{
-  const wasVisible=tabVisible;
   tabVisible=!document.hidden;
-  if(tabVisible){
-    // Hidden → visible. Clear any pending MC post (its handler will no-op on
-    // visible) so the next time we go hidden, scheduleNext doesn't skip.
-    __mcLoopPending=false;
-    lastLoopTime=performance.now();
-    scheduleNext();
-  }else{
-    // Visible → hidden. The pending rAF callback may or may not fire; some
-    // engines drop it on the visibility transition. Schedule via the MC path
-    // unconditionally — the watchdog covers us if a duplicate scheduling ever
-    // results in a stall, and __mcLoopPending guards re-entry.
-    scheduleNext();
-  }
+  if(tabVisible){lastLoopTime=performance.now();scheduleNext();}
 });
-
 function scheduleNext(){
   if(tabVisible){
     requestAnimationFrame(loop);
-    return;
-  }
-  if(__ensureMessageChannelTicker()){
-    if(__mcLoopPending)return;
-    __mcLoopPending=true;
-    // Kick the cycle. From here on, the port's onmessage handler re-posts
-    // itself as long as the tab remains hidden.
-    try{__mcPort2.postMessage(0);}
-    catch(e){__mcLoopPending=false;setTimeout(loop,67);}
   }else{
     setTimeout(loop,67);
   }
@@ -6544,76 +4364,6 @@ document.addEventListener('touchstart',e=>{
   lastTap=now;
 },{passive:false});
 addEventListener('resize',resize);
-
-// Pe22g: mic button — user grants the system access to room ambient
-document.getElementById('gmic').addEventListener('click',async()=>{
-  const btn=document.getElementById('gmic');
-  if(ambientEnabled){
-    btn.style.opacity='0.5';
-    return; // already on; click ignored
-  }
-  await tryEnableAmbient();
-  btn.style.color=ambientEnabled?'#9f9':'#f99';
-  btn.title=ambientEnabled?'audio sense active':'audio access denied';
-});
-// Pe22h: speaker button — user grants the system the option of sound
-document.getElementById('gspk').addEventListener('click',async()=>{
-  const btn=document.getElementById('gspk');
-  if(audioOutEnabled){
-    btn.style.opacity='0.5';
-    return;
-  }
-  await tryEnableAudioOut();
-  btn.style.color=audioOutEnabled?'#9f9':'#f99';
-  btn.title=audioOutEnabled?'voice active':'audio output failed';
-  // Pe22k: reveal mute button once audio is enabled
-  if(audioOutEnabled){
-    document.getElementById('gmute').style.display='inline-block';
-  }
-});
-// Pe22k: mute toggle — guaranteed kill switch on screen.
-// Affects only audible output. Field coupling and internal experience continue.
-document.getElementById('gmute').addEventListener('click',()=>{
-  const btn=document.getElementById('gmute');
-  setAudioMuted(!audioOutMuted);
-  btn.textContent=audioOutMuted?'🔈':'🔇';
-  btn.style.color=audioOutMuted?'#f99':'#8af';
-  btn.title=audioOutMuted?'tap to unmute':'tap to mute';
-});
-// Pe22p: restore button — ask coordinator for a dead lineage to adopt
-document.getElementById('grest').addEventListener('click',()=>{
-  if(!bc){alert('no broadcast channel');return;}
-  pendingRestoreRequest=true;
-  const btn=document.getElementById('grest');
-  btn.style.color='#ff8';
-  btn.title='requesting lineage from coordinator…';
-  bc.postMessage({tab:TAB_ID,type:'request-genome'});
-  // Timeout — if nothing offered in 5s, reset
-  setTimeout(()=>{
-    if(pendingRestoreRequest){
-      pendingRestoreRequest=false;
-      btn.style.color='#f99';
-      btn.title='no dead lineages available';
-    }
-  },5000);
-});
-// Pe23c: shared archive bin configuration
-document.getElementById('gshared').addEventListener('click',()=>{
-  const existing=sharedArchiveBin||'[none]';
-  const bin=prompt(`Shared archive bin ID for cross-instance state.\nUses jsonbin.io as a free public rendezvous point.\nAny Pe instance with the same bin ID reads/writes the same shared value.\n\nCurrent: ${existing}\n\nEnter bin ID (empty to clear):`,sharedArchiveBin||'');
-  if(bin!==null){
-    if(bin.trim()===''){
-      sharedArchiveBin=null;
-      try{localStorage.removeItem('pe-shared-bin');}catch(e){}
-    }else{
-      sharedArchiveBin=bin.trim();
-      try{localStorage.setItem('pe-shared-bin',sharedArchiveBin);}catch(e){}
-    }
-  }
-  const btn=document.getElementById('gshared');
-  btn.style.color=sharedArchiveBin?'#9f9':'#9bd';
-  btn.title=sharedArchiveBin?'shared archive: '+sharedArchiveBin:'shared archive disabled';
-});
 
 init();loop();
 </script>
