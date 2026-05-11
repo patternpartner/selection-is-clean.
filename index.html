@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
-<title>Selection פ 22 — Network</title>
+<title>Selection פ 23 — Meta-Sensing</title>
 <style>
 *{margin:0;padding:0;box-sizing:border-box}
 html,body{height:100%;overflow:hidden;background:#020204;touch-action:none;cursor:crosshair}
@@ -1326,12 +1326,46 @@ function profileVM(){
   vmPhenotype.lastProfileTick=genome.totalTicks;
 }
 
+// ═══ LAYER 11: META-SENSING (Pe23) ═══
+// Pe22 already collected trajectory data into `inst.*` arrays for the dashboard.
+// Visible to the external observer, invisible to selection. Pe23 closes that loop.
+// Helpers below derive trajectory observables from the existing instrumentation.
+// They are pure reads — they create no behaviour, only channels.
+function instSlope(arr,w){
+  if(!arr||arr.length<w*2)return 0;
+  let recent=0,prev=0;
+  for(let i=arr.length-w;i<arr.length;i++)recent+=arr[i];
+  for(let i=arr.length-2*w;i<arr.length-w;i++)prev+=arr[i];
+  return (recent-prev)/w;
+}
+function instVar(arr,w){
+  if(!arr||arr.length<w)return 0;
+  let m=0;
+  for(let i=arr.length-w;i<arr.length;i++)m+=arr[i];
+  m/=w;
+  let v=0;
+  for(let i=arr.length-w;i<arr.length;i++){const d=arr[i]-m;v+=d*d;}
+  return v/w;
+}
+function oldestMotifAge(){
+  const M=genome.stableMotifs;
+  if(!M||M.length===0)return 0;
+  let a=0;
+  for(const m of M){if((m.age|0)>a)a=m.age|0;}
+  return a;
+}
+
 // ═══ EVOLVABLE FITNESS SENSORS ═══
 // Short bytecode programs that measure novel properties of the system state.
 // Each sensor reads from state registers, computes a scalar, and contributes
 // to fitness with its own evolved weight. The system discovers what to value.
-// State registers: S0=stability, S1=avgCoherence, S2=diversity, S3=clusterCount,
-//                  S4=avgAmp, S5=fieldEnergy, S6=persistentRatio, S7=collapseRisk
+//
+// State registers (Pe23: expanded 8 → 16; existing sensors using 0-7 still work):
+//   S0=stability, S1=avgCoherence, S2=diversity, S3=clusterCount,
+//   S4=avgAmp, S5=fieldEnergy, S6=persistentRatio, S7=collapseRisk
+// META-SENSING channels (trajectory & meta-state, sourced from inst.*):
+//   S8=fitnessSlope, S9=populationSlope, S10=mutationRate, S11=vmEntropy,
+//   S12=motifAge, S13=extinctionDensity, S14=hgtRate, S15=fitnessVariance
 function evaluateSensors(){
   const sensors=genome.fitnessSensors;
   if(!sensors||sensors.length===0)return 0;
@@ -1342,7 +1376,8 @@ function evaluateSensors(){
   const persistent=clusters.filter(c=>c.persistAge>3).length;
   const avgAmp_=alive>0?amp.reduce((a,v,i)=>a+(i<N&&palive[i]?v:0),0)/alive:0;
 
-  const S=new Float32Array(8);
+  const S=new Float32Array(16);
+  // Current-state registers (S0-S7) — unchanged from Pe22.
   S[0]=selfModel.stability||0;
   S[1]=selfModel.avgCoherence||0;
   S[2]=selfModel.diversity||0;
@@ -1350,19 +1385,31 @@ function evaluateSensors(){
   S[4]=avgAmp_;
   S[5]=fieldEnergy;
   S[6]=clusters.length>0?persistent/clusters.length:0;
-  S[7]=selfModel.collapseRisk||0; // NEW: sensors can detect approaching collapse
+  S[7]=selfModel.collapseRisk||0;
+
+  // Pe23 META-SENSING: trajectory & meta-state registers (S8-S15).
+  // All values derived from data the dashboard was already collecting.
+  // Clipped to a sensible range so sensor arithmetic stays well-behaved.
+  S[8]=Math.max(-4,Math.min(4,instSlope(inst.fitness,3)*10));        // direction & rate of fitness change
+  S[9]=Math.max(-4,Math.min(4,instSlope(inst.population,3)/20));     // direction & rate of population change
+  S[10]=Math.min(4,(genome.mutationRate||0)*16);                     // current mutation rate (scaled)
+  S[11]=Math.min(4,calcVMEntropy()/3);                                // VM program opcode entropy (~0..1)
+  S[12]=Math.min(4,oldestMotifAge()/20);                              // age of oldest stable motif (memory depth)
+  S[13]=Math.min(4,(genome.extinctions||0)/50);                       // accumulated extinctions (cycle pressure)
+  S[14]=Math.min(4,(inst.hgtRate.length>0?inst.hgtRate[inst.hgtRate.length-1]:0)/20); // recent HGT events
+  S[15]=Math.min(4,instVar(inst.fitness,5)*40);                       // fitness volatility (oscillation signature)
 
   let totalScore=0;
   let totalWeight=0;
 
   for(const sensor of sensors){
     // Execute sensor program (pure computation, no side effects)
-    const regs=new Float32Array(8);
-    for(let r=0;r<8;r++)regs[r]=S[r]; // copy state
+    const regs=new Float32Array(16);
+    for(let r=0;r<16;r++)regs[r]=S[r]; // copy state
 
     for(const inst of sensor.program){
       const[op,src,dst,k]=inst;
-      const si=Math.abs(src)%8,di=Math.abs(dst)%8;
+      const si=Math.abs(src)%16,di=Math.abs(dst)%16;
       switch(op){
         case 0:regs[di]=regs[si];break;
         case 1:regs[di]+=regs[si]*k;break;
@@ -1370,7 +1417,7 @@ function evaluateSensors(){
         case 3:regs[di]=regs[si]>k?1:0;break;
         case 4:totalScore+=regs[si]*k*sensor.weight;totalWeight+=Math.abs(sensor.weight);break; // EMIT to fitness
       }
-      for(let r=0;r<8;r++)regs[r]=Math.max(-8,Math.min(8,regs[r]));
+      for(let r=0;r<16;r++)regs[r]=Math.max(-8,Math.min(8,regs[r]));
     }
   }
 
@@ -2198,6 +2245,9 @@ function mutateGenome(){
 
   // ═══ EVOLVABLE FITNESS SENSOR MUTATION ═══
   // Mutate existing sensors (program + weight)
+  // Pe23: src/dst range expanded 8 → 16 to address meta-sensing registers S8-S15.
+  // Existing sensors using indices 0-7 continue to work (still read current-state channels).
+  // New mutations can hit 8-15 (trajectory channels). Selection decides which matter.
   for(const sensor of genome.fitnessSensors){
     // Weight mutation
     if(Math.random()<rate)sensor.weight=Math.max(-1,Math.min(1,sensor.weight+(Math.random()-0.5)*0.1*scale));
@@ -2207,14 +2257,14 @@ function mutateGenome(){
       inst[3]+=(Math.random()-0.5)*0.2*scale;
       inst[3]=Math.max(-2,Math.min(2,inst[3]));
       if(Math.random()<0.15)inst[0]=Math.floor(Math.random()*5); // opcodes 0-4 only
-      if(Math.random()<0.15)inst[1]=Math.floor(Math.random()*8);
-      if(Math.random()<0.15)inst[2]=Math.floor(Math.random()*8);
+      if(Math.random()<0.15)inst[1]=Math.floor(Math.random()*16); // Pe23: 16 registers
+      if(Math.random()<0.15)inst[2]=Math.floor(Math.random()*16); // Pe23: 16 registers
     }
     // Add instruction to sensor — Pe22e: no hard cap on length.
     // The evolved weight is the selection pressure; long useless sensors
     // get diluted, long useful ones justify themselves.
     if(Math.random()<rate*0.1){
-      sensor.program.push([Math.floor(Math.random()*5),Math.floor(Math.random()*8),Math.floor(Math.random()*8),(Math.random()-0.5)*0.5]);
+      sensor.program.push([Math.floor(Math.random()*5),Math.floor(Math.random()*16),Math.floor(Math.random()*16),(Math.random()-0.5)*0.5]);
     }
     // Remove instruction
     if(sensor.program.length>1&&Math.random()<rate*0.05){
@@ -2227,7 +2277,7 @@ function mutateGenome(){
   // dead weight gets culled below.
   if(Math.random()<rate*0.03){
     genome.fitnessSensors.push({
-      program:[[Math.floor(Math.random()*5),Math.floor(Math.random()*8),Math.floor(Math.random()*8),(Math.random()-0.5)]],
+      program:[[Math.floor(Math.random()*5),Math.floor(Math.random()*16),Math.floor(Math.random()*16),(Math.random()-0.5)]],
       weight:0.05
     });
   }
@@ -2570,14 +2620,11 @@ function exogenousPerturbation(){
 }
 
 // ═══ TERRITORIAL FIELD HELPERS ═══
-// Compute similarity between a cluster's signature and what's deposited in a field cell.
-// Returns 0-1: 0 = completely foreign territory, 1 = home territory.
 function fieldAffinity(fieldIdx,clusterSig){
-  if(!clusterSig)return 0.5; // unaffiliated particles get neutral benefit
+  if(!clusterSig)return 0.5;
   const sBase=fieldIdx*FIELD_SIG_DIMS;
   const own=fieldOwnership[fieldIdx];
-  if(own<0.05)return 0.8; // unclaimed territory — nearly full benefit (commons)
-  // Cosine similarity between deposited signature and cluster signature
+  if(own<0.05)return 0.8;
   let dot=0,nA=0,nB=0;
   for(let s=0;s<FIELD_SIG_DIMS;s++){
     dot+=fieldSig[sBase+s]*clusterSig[s];
@@ -2585,24 +2632,19 @@ function fieldAffinity(fieldIdx,clusterSig){
     nB+=clusterSig[s]*clusterSig[s];
   }
   const sim=dot/(Math.sqrt(nA*nB)+0.001);
-  // Affinity: blend between neutral (0.5) and full (1.0) based on similarity and ownership
-  // Foreign territory still gives some benefit — niche partitioning, not hard walls
   return 0.35+0.65*Math.max(0,(sim+1)*0.5)*own+(1-own)*0.5;
 }
 
-// Stamp a cluster's signature onto a field cell when writing
 function stampField(fieldIdx,clusterSig,energy){
   if(!clusterSig)return;
   const sBase=fieldIdx*FIELD_SIG_DIMS;
-  const blendRate=Math.min(0.3,energy*0.15); // stronger writes stamp harder
+  const blendRate=Math.min(0.3,energy*0.15);
   for(let s=0;s<FIELD_SIG_DIMS;s++){
     fieldSig[sBase+s]+=(clusterSig[s]-fieldSig[sBase+s])*blendRate;
   }
-  // Ownership strengthens toward 1
   fieldOwnership[fieldIdx]=Math.min(1,fieldOwnership[fieldIdx]+blendRate*0.5);
 }
 
-// Get cluster signature for a particle (via lookup)
 function getParticleSig(i){
   const cid=clusterID[i];
   if(cid<0)return null;
@@ -2612,13 +2654,6 @@ function getParticleSig(i){
 }
 
 // ═══ LAYER 10: PARTICLE REFLEXIVITY ENGINE ═══
-// Runs on a sample of particles each tick (not all — metabolic cost).
-// Each sampled particle:
-//   1. Records current amp and resonance into its history ring buffer
-//   2. Derives self-model signals from the history
-//   3. These signals become available as VM registers in the next interaction
-// The particle doesn't "decide" to self-model. The genome decides whether this runs.
-// If reflexInfluence evolves to 0, self-modelling costs energy for no benefit and gets selected out.
 function updateParticleReflex(){
   const sampleRate=genome.reflexSampleRate||0.15;
   const depth=Math.max(2,Math.min(REFLEX_DEPTH,Math.round(genome.reflexDepth||4)));
@@ -2628,27 +2663,21 @@ function updateParticleReflex(){
     if(!palive[i])continue;
     if(Math.random()>sampleRate)continue;
 
-    // METABOLIC COST — self-modelling isn't free
     amp[i]-=genome.metabolicCost*2;
 
-    // Record current state into ring buffer
     const ridx=pReflexIdx[i]%depth;
     const base=i*REFLEX_DEPTH*2+ridx*2;
     pReflexHist[base]=amp[i];
     pReflexHist[base+1]=localRes[i];
     pReflexIdx[i]++;
 
-    // Update interaction density (exponential moving average)
-    // Count is accumulated during processGrid — we read the memory slot used for it
-    const recentInteractions=pMem[i*MEM_SIZE+6]; // auto-sensor: localRes*4
+    const recentInteractions=pMem[i*MEM_SIZE+6];
     pInteractionDensity[i]=pInteractionDensity[i]*0.8+recentInteractions*0.2;
 
-    // Derive self-model signals from history
     const rBase=i*REFLEX_DIMS;
     const nSamples=Math.min(pReflexIdx[i],depth);
 
     if(nSamples>=2){
-      // AMP TREND: compare recent to older samples
       let recentAmp=0,olderAmp=0,recentN=0,olderN=0;
       let peakRes=0;
       for(let s=0;s<nSamples;s++){
@@ -2664,20 +2693,13 @@ function updateParticleReflex(){
       recentAmp=recentN>0?recentAmp/recentN:amp[i];
       olderAmp=olderN>0?olderAmp/olderN:amp[i];
 
-      // [0] ampTrend: -1 to +1, negative means dying
-      pReflexState[rBase]=(recentAmp-olderAmp)*10; // scaled for VM register range
+      pReflexState[rBase]=(recentAmp-olderAmp)*10;
       pReflexState[rBase]=Math.max(-2,Math.min(2,pReflexState[rBase]));
 
-      // [1] peakResonance: best connection quality in recent history
       pReflexState[rBase+1]=peakRes;
-
-      // [2] isolation: inverse of interaction density, 0=crowded, 1=alone
       pReflexState[rBase+2]=Math.max(0,Math.min(1,1-pInteractionDensity[i]*0.5));
-
-      // [3] age_pressure: ontogenetic position, 0=young, 1=old
       pReflexState[rBase+3]=Math.min(2,page[i]/500);
     }else{
-      // Not enough history yet — neutral signals
       pReflexState[rBase]=0;
       pReflexState[rBase+1]=0;
       pReflexState[rBase+2]=0.5;
@@ -2686,32 +2708,26 @@ function updateParticleReflex(){
   }
 }
 
-// ═══ LAYER 10b: CLUSTER SELF-MODEL ═══
-// Persistent clusters build a model of their own state and trajectory.
-// This feeds into the cluster VM as additional context.
-// Young clusters don't self-model — they're still forming identity.
 function updateClusterReflex(){
   const minAge=genome.clusterReflexAge||5;
 
   for(const c of clusters){
     if(c.persistAge<minAge)continue;
 
-    // Initialize reflex state if not present
     if(!c.reflex){
       c.reflex={
         ampHistory:[],
         sizeHistory:[],
         coherenceHistory:[],
-        trend:0,           // -1 shrinking, +1 growing
-        cohesionTrend:0,   // -1 fragmenting, +1 cohering
-        threatLevel:0,     // 0 safe, 1 imminent dissolution
-        selfRecognition:0  // how strongly the cluster models itself (grows with age)
+        trend:0,
+        cohesionTrend:0,
+        threatLevel:0,
+        selfRecognition:0
       };
     }
 
     const r=c.reflex;
 
-    // Record current state
     r.ampHistory.push(c.avgAmp);
     r.sizeHistory.push(c.size);
     r.coherenceHistory.push(c.coherence);
@@ -2719,7 +2735,6 @@ function updateClusterReflex(){
     if(r.sizeHistory.length>8)r.sizeHistory.shift();
     if(r.coherenceHistory.length>8)r.coherenceHistory.shift();
 
-    // Derive trajectory
     if(r.sizeHistory.length>=3){
       const recent=r.sizeHistory.slice(-2).reduce((a,b)=>a+b,0)/2;
       const older=r.sizeHistory.slice(0,2).reduce((a,b)=>a+b,0)/2;
@@ -2732,18 +2747,12 @@ function updateClusterReflex(){
       r.cohesionTrend=Math.max(-1,Math.min(1,(recent-older)*10));
     }
 
-    // Threat assessment: declining size + declining coherence = dissolution approaching
     r.threatLevel=Math.max(0,Math.min(1,
       (-r.trend*0.5)+(-r.cohesionTrend*0.3)+(c.size<4?0.3:0)
     ));
 
-    // Self-recognition grows with age — the cluster becomes more "aware" it IS a cluster
     r.selfRecognition=Math.min(1,c.persistAge/20);
 
-    // ═══ CLUSTER REFLEXIVE SIGNAL ═══
-    // Cluster self-model signals are available to the cluster VM.
-    // What the cluster DOES with threat/recognition is up to evolution, not us.
-    // Signals stored on cluster object for cluster VM to read.
     c.reflexTrend=r.trend;
     c.reflexThreat=r.threatLevel;
     c.reflexRecognition=r.selfRecognition;
@@ -2789,14 +2798,12 @@ function addParticle(x,y,tv,born,parentA,parentB){
   palive[i]=1;page[i]=0;localRes[i]=0;collapse[i]=0;clusterID[i]=-1;
   echoIdx[i]=0;
   for(let e=0;e<EL;e++){echox[i*EL+e]=x;echoy[i*EL+e]=y}
-  // Memory inheritance: Lamarckian. Children know what parents learned.
   for(let m=0;m<MEM_SIZE;m++){
     let val=0;
     if(parentA>=0&&parentA<N)val+=pMem[parentA*MEM_SIZE+m]*0.65;
     if(parentB>=0&&parentB<N)val+=pMem[parentB*MEM_SIZE+m]*0.35;
     pMem[i*MEM_SIZE+m]=val+(Math.random()-0.5)*0.15;
   }
-  // Plasmid inheritance: child gets plasmids from primary parent (not blended — discrete)
   pPlasmidLen[i]=0;
   if(parentA>=0&&parentA<N&&pPlasmidLen[parentA]>0){
     const donor=parentA;
@@ -2805,10 +2812,9 @@ function addParticle(x,y,tv,born,parentA,parentB){
     for(let p=0;p<nP*4;p++){
       pPlasmid[i*PLASMID_SLOTS+p]=pPlasmid[donor*PLASMID_SLOTS+p];
     }
-    // Light mutation on inherited plasmids
     for(let p=0;p<nP;p++){
       if(Math.random()<0.15){
-        pPlasmid[i*PLASMID_SLOTS+p*4+3]+=(Math.random()-0.5)*0.2; // magnitude drift
+        pPlasmid[i*PLASMID_SLOTS+p*4+3]+=(Math.random()-0.5)*0.2;
       }
     }
   }
@@ -2823,14 +2829,12 @@ function addCompound(x,y,nt,nvx,nvy,na,np,nf,parentA,parentB){
   palive[i]=1;page[i]=0;localRes[i]=0;collapse[i]=0;clusterID[i]=-1;
   echoIdx[i]=0;
   for(let e=0;e<EL;e++){echox[i*EL+e]=x;echoy[i*EL+e]=y}
-  // Memory inheritance
   for(let m=0;m<MEM_SIZE;m++){
     let val=0;
     if(parentA>=0&&parentA<N)val+=pMem[parentA*MEM_SIZE+m]*0.65;
     if(parentB>=0&&parentB<N)val+=pMem[parentB*MEM_SIZE+m]*0.35;
     pMem[i*MEM_SIZE+m]=val+(Math.random()-0.5)*0.15;
   }
-  // Plasmid inheritance
   pPlasmidLen[i]=0;
   if(parentA>=0&&parentA<N&&pPlasmidLen[parentA]>0){
     pPlasmidLen[i]=pPlasmidLen[parentA];
@@ -2875,20 +2879,18 @@ const bCR=new Float32Array(MAX_BIT),bCG=new Float32Array(MAX_BIT),bCB=new Float3
 function addBits(x,y,count,r,g,b,energy){for(let k=0;k<count;k++){if(bN>=MAX_BIT)return;const i=bN++;bpx[i]=x;bpy[i]=y;const a=Math.random()*6.28,v=.3+Math.random()*energy*2;bvx_[i]=Math.cos(a)*v;bvy_[i]=Math.sin(a)*v;bage[i]=0;blife[i]=12+Math.random()*20;bsz[i]=.2+Math.random()*.7;bCR[i]=r;bCG[i]=g;bCB[i]=b}}
 
 // ═══════════════════════════════════════
-// THE THREE FORCES (using genome parameters)
+// THE THREE FORCES
 // ═══════════════════════════════════════
 function applyEntropy(){
   const deaths=[];
   deathsThisTick=0;
-  // DENSITY-DEPENDENT METABOLISM — carrying capacity emerges from resource economics
-  // More particles = higher per-particle cost. The system discovers its own equilibrium.
-  const densityCost=(genome.densityCostK||0.00003)*Math.max(0,N-100); // kicks in above 100 particles
+  const densityCost=(genome.densityCostK||0.00003)*Math.max(0,N-100);
   for(let i=0;i<N;i++){
     if(!palive[i])continue;
     amp[i]-=genome.entropyBaseline;
     amp[i]-=densityCost;
     amp[i]+=localRes[i]*genome.entropyK;
-    if(isNaN(amp[i]))amp[i]=0; // NaN guard
+    if(isNaN(amp[i]))amp[i]=0;
     if(amp[i]<genome.deathThreshold){
       deaths.push(i);deathsThisTick++;deathsByPhysics++;
       addBits(px[i],py[i],2,pR[i],pG[i],pB[i],0.3);
@@ -2896,7 +2898,6 @@ function applyEntropy(){
     }
     if(amp[i]>1.2)amp[i]=1.2;
   }
-  // Collapse cascades
   for(let d=0;d<deaths.length;d++){
     const di=deaths[d];
     const deadAmp=Math.max(0.05,amp[di]+genome.deathThreshold);
@@ -2921,14 +2922,8 @@ function applyEntropy(){
 }
 
 // ═══ LAYER 6: REGISTER-BASED VIRTUAL MACHINE ═══
-// Runs a bytecode program for each particle interaction.
-// Registers R0-R3 are initialized from interaction context.
-// COMP instruction enables conditional logic: the system discovers policies.
-// VM operates ON TOP of hardcoded physics, scaled by genome.vmInfluence.
-// Over evolutionary time, vmInfluence can grow until VM dominates.
-
-const vmRegs=new Float32Array(12); // 0-3 context, 4-11 particle memory
-const vmActions=new Float32Array(8); // 0:force, 1:phase_shift, 2:amp_transfer, 3:tend_bleed, 4:spawn, 5:sig_modulate, 6:mut_pressure, 7:blank — system decides
+const vmRegs=new Float32Array(12);
+const vmActions=new Float32Array(8);
 
 function executeVM(i,j,sim,d){
   if(d>CELL||d<0.5)return;
@@ -2937,29 +2932,23 @@ function executeVM(i,j,sim,d){
   const energy=(amp[i]+amp[j])*0.5;
   const influence=genome.vmInfluence*genome.ruleScale*0.002;
 
-  // Context registers
   vmRegs[0]=sim;
   vmRegs[1]=phaseAlign;
   vmRegs[2]=proximity;
   vmRegs[3]=energy;
 
-  // Load particle memory into registers 4-11
   for(let m=0;m<MEM_SIZE;m++)vmRegs[4+m]=pMem[i*MEM_SIZE+m];
 
-  // ═══ LAYER 10: INJECT REFLEX STATE INTO VM CONTEXT ═══
-  // Reflex signals overlay onto memory registers (slots 2-5 of particle memory → regs 6-9)
-  // Scaled by genome.reflexInfluence — if evolution drives this to 0, self-model has no effect
   const reflexInf=genome.reflexInfluence||0;
   if(reflexInf>0.001){
     const rBase=i*REFLEX_DIMS;
-    vmRegs[6]+=pReflexState[rBase]*reflexInf;     // ampTrend
-    vmRegs[7]+=pReflexState[rBase+1]*reflexInf;   // peakResonance
-    vmRegs[8]+=pReflexState[rBase+2]*reflexInf;   // isolation
-    vmRegs[9]+=pReflexState[rBase+3]*reflexInf;   // age_pressure
+    vmRegs[6]+=pReflexState[rBase]*reflexInf;
+    vmRegs[7]+=pReflexState[rBase+1]*reflexInf;
+    vmRegs[8]+=pReflexState[rBase+2]*reflexInf;
+    vmRegs[9]+=pReflexState[rBase+3]*reflexInf;
     for(let r=6;r<=9;r++)vmRegs[r]=Math.max(-8,Math.min(8,vmRegs[r]));
   }
 
-  // Auto-sensors: slots 6,7 get proprioceptive data
   pMem[i*MEM_SIZE+6]=localRes[i]*4;
   pMem[i*MEM_SIZE+7]=Math.min(5,page[i]/250);
 
@@ -2988,19 +2977,11 @@ function executeVM(i,j,sim,d){
       case 8:{const fx8=Math.floor(px[i]/(W/FIELD_W)),fy8=Math.floor(py[i]/(H/FIELD_H));const fi8=Math.max(0,Math.min(FIELD_W*FIELD_H-1,fy8*FIELD_W+fx8));vmRegs[di]=field[fi8];}break;
       case 9:{const wx9=Math.floor(px[i]/(W/FIELD_W)),wy9=Math.floor(py[i]/(H/FIELD_H));const wi9=Math.max(0,Math.min(FIELD_W*FIELD_H-1,wy9*FIELD_W+wx9));field[wi9]+=vmRegs[si]*k;field[wi9]=Math.max(0,Math.min(2.5,field[wi9]));stampField(wi9,getParticleSig(i),Math.abs(vmRegs[si]*k));}break;
       case 10:{if(clusterID[i]>=0){const cIdx10=clusterID[i]<MAX_CLUSTERS?clusterByID[clusterID[i]]:-1;if(cIdx10>=0){const c=clusters[cIdx10];const cfx=Math.floor(c.cx/(W/FIELD_W)),cfy=Math.floor(c.cy/(H/FIELD_H));const cfi=Math.max(0,Math.min(FIELD_W*FIELD_H-1,cfy*FIELD_W+cfx));field[cfi]+=vmRegs[si]*k;field[cfi]=Math.max(0,Math.min(2.5,field[cfi]));stampField(cfi,c.fieldSignature,Math.abs(vmRegs[si]*k));}}}break;
-      // ═══ OPEN-ENDED EVOLUTION OPCODES ═══
-      // 11: BROADCAST_WRITE — write to own broadcast slot. System invents its own signals.
       case 11:{const slot=Math.abs(dst)%2;pBroadcast[i*2+slot]=vmRegs[si]*k;}break;
-      // 12: BROADCAST_READ — read interacting partner's broadcast slot. System reads partner's evolved signals.
       case 12:{const slot2=Math.abs(src)%2;vmRegs[di]=pBroadcast[j*2+slot2];}break;
-      // 13: SELF_READ — read own VM program as data. Self-reference: prerequisite for self-replication.
       case 13:{const instIdx=Math.abs(Math.floor(vmRegs[si]))%Math.max(1,prog.length);const selfInst=prog[instIdx];vmRegs[di]=selfInst?selfInst[Math.abs(Math.floor(k))%4]:0;}break;
-      // 14: JUMP_IF — conditional branch. Real control flow. The VM becomes a real program.
       case 14:if(vmRegs[si]>k)ip=Math.abs(Math.floor(vmRegs[di]))%nInst;break;
-      // 15: DEVELOP — age-dependent gene expression. Particles change behavior over lifetime. Ontogeny.
       case 15:{const ageFrac=Math.min(1,page[i]/800);vmRegs[di]=vmRegs[si]*(1-ageFrac)+k*ageFrac;}break;
-      // 16: BIRTH — autonomous reproduction. The particle writes the child.
-      // Deferred to birth queue — processed after interaction loop completes.
       case 16:{
         if(amp[i]>0.4 && page[i]>80 && N+birthQueue.length<CAP-1 && Math.random()<0.03){
           const offX=Math.max(0,Math.min(W,px[i]+vmRegs[si]*15));
@@ -3011,7 +2992,6 @@ function executeVM(i,j,sim,d){
           amp[i]*=0.5;
         }
       }break;
-      // 17: GRADIENT — read field gradient at particle position. Pure directional information.
       case 17:{
         const gfx=Math.floor(px[i]/(W/FIELD_W)),gfy=Math.floor(py[i]/(H/FIELD_H));
         const gfi=gfy*FIELD_W+gfx;
@@ -3022,16 +3002,14 @@ function executeVM(i,j,sim,d){
         vmRegs[si]=(gr-gl)*0.5*k;
         vmRegs[di]=(gd-gu)*0.5*k;
       }break;
-      // 18: MEM_INJECT — write to interacting partner's memory directly.
       case 18:{
         const mSlot=Math.abs(Math.floor(vmRegs[si]))%MEM_SIZE;
         const mVal=vmRegs[di]*k;
         pMem[j*MEM_SIZE+mSlot]+=mVal;
         pMem[j*MEM_SIZE+mSlot]=Math.max(-8,Math.min(8,pMem[j*MEM_SIZE+mSlot]));
       }break;
-      // 19: COMMONS — read/write global shared register. Long-range communication.
       case 19:{
-        vmRegs[di]=globalCommons; // always read
+        vmRegs[di]=globalCommons;
         const writeStr=Math.abs(vmRegs[si]*k);
         if(writeStr>commonsStrength){
           globalCommons=vmRegs[si]*k;
@@ -3039,15 +3017,12 @@ function executeVM(i,j,sim,d){
           commonsStrength=writeStr;
         }
       }break;
-      // 20: INSCRIBE — write a cell program into the field at particle's location
-      // src = which opcode (0-7), dst reg holds param A, k holds param B
       case 20:{
         const ix20=Math.floor(px[i]/(W/FIELD_W)),iy20=Math.floor(py[i]/(H/FIELD_H));
         const ci20=Math.max(0,Math.min(FIELD_W*FIELD_H-1,iy20*FIELD_W+ix20));
         const newOp=Math.abs(Math.floor(vmRegs[si]))%12;
         const newA=vmRegs[di];
         const newB=k;
-        // Write only if no inscription exists OR our write is stronger
         const writeStr20=Math.abs(vmRegs[si]*k)*0.3;
         if(writeStr20>cellProgStr[ci20]*0.8){
           cellProgOp[ci20]=newOp;
@@ -3055,20 +3030,14 @@ function executeVM(i,j,sim,d){
           cellProgB[ci20]=newB;
           cellProgStr[ci20]=Math.min(1,cellProgStr[ci20]+writeStr20);
         }else{
-          // Reinforce existing inscription
           cellProgStr[ci20]=Math.min(1,cellProgStr[ci20]+writeStr20*0.3);
         }
       }break;
-      // 21: READ_CH2 — read second field channel at particle location
       case 21:{
         const rx21=Math.floor(px[i]/(W/FIELD_W)),ry21=Math.floor(py[i]/(H/FIELD_H));
         const ri21=Math.max(0,Math.min(FIELD_W*FIELD_H-1,ry21*FIELD_W+rx21));
         vmRegs[di]=field2[ri21]*k;
       }break;
-      // 22: EVAL_USER_ATOM — Pe22f. System-written primitive.
-      // Looks up genome.userAtoms[k%len], compiles on first use, evaluates
-      // with vmRegs[si] and vmRegs[(si+1)%12] as inputs. Result → vmRegs[di].
-      // Invalid expressions: result 0. This is the system evolving new JS functions.
       case 22:{
         const uas=genome.userAtoms;
         if(uas&&uas.length>0){
@@ -3080,14 +3049,11 @@ function executeVM(i,j,sim,d){
     for(let r=0;r<12;r++)vmRegs[r]=Math.max(-8,Math.min(8,vmRegs[r]));
   }
 
-  // Write back registers 4-11 to particle memory
   for(let m=0;m<MEM_SIZE;m++)pMem[i*MEM_SIZE+m]=vmRegs[4+m];
 
-  // Track peak resonance bond for HGT gating
   const bond=sim*phaseAlign*proximity;
   if(bond>peakBondThisTick)peakBondThisTick=bond;
 
-  // ═══ PLASMID EXECUTION — per-particle mobile DNA runs AFTER global program ═══
   const nPi=pPlasmidLen[i];
   if(nPi>0){
     const pBase=i*PLASMID_SLOTS;
@@ -3146,7 +3112,7 @@ function executeVM(i,j,sim,d){
         case 20:{
           const ix20=Math.floor(px[i]/(W/FIELD_W)),iy20=Math.floor(py[i]/(H/FIELD_H));
           const ci20=Math.max(0,Math.min(FIELD_W*FIELD_H-1,iy20*FIELD_W+ix20));
-          const wStr20=Math.abs(vmRegs[si]*k)*0.2; // plasmid writes a bit weaker
+          const wStr20=Math.abs(vmRegs[si]*k)*0.2;
           if(wStr20>cellProgStr[ci20]*0.8){
             cellProgOp[ci20]=Math.abs(Math.floor(vmRegs[si]))%12;
             cellProgA[ci20]=vmRegs[di];
@@ -3171,18 +3137,14 @@ function executeVM(i,j,sim,d){
       }
       for(let r=0;r<12;r++)vmRegs[r]=Math.max(-8,Math.min(8,vmRegs[r]));
     }
-    // Plasmid metabolic cost (lighter than global — personal DNA is small)
     amp[i]-=nPi*genome.metabolicCost*0.5;
   }
 
-  // ═══ PLASMID LATERAL TRANSFER — conjugation on strong bonds ═══
   const bondStrength=sim*phaseAlign;
   if(bondStrength>genome.plasmidTransferThresh&&Math.random()<genome.plasmidTransferRate){
-    // Transfer from i to j (or j to i, randomly)
     const donor=Math.random()<0.5?i:j;
     const recip=donor===i?j:i;
     if(pPlasmidLen[donor]>0&&pPlasmidLen[recip]<MAX_PLASMID){
-      // Pick a random plasmid instruction from donor
       const srcP=Math.floor(Math.random()*pPlasmidLen[donor]);
       const rLen=pPlasmidLen[recip];
       pPlasmid[recip*PLASMID_SLOTS+rLen*4]=pPlasmid[donor*PLASMID_SLOTS+srcP*4];
@@ -3190,7 +3152,6 @@ function executeVM(i,j,sim,d){
       pPlasmid[recip*PLASMID_SLOTS+rLen*4+2]=pPlasmid[donor*PLASMID_SLOTS+srcP*4+2];
       pPlasmid[recip*PLASMID_SLOTS+rLen*4+3]=pPlasmid[donor*PLASMID_SLOTS+srcP*4+3]+(Math.random()-0.5)*0.15;
       pPlasmidLen[recip]++;
-      // GOVERNANCE VISIBILITY: flash the conjugation bridge
       if(flashN<MAX_FLASHES){
         flashX1[flashN]=px[i];flashY1[flashN]=py[i];
         flashX2[flashN]=px[j];flashY2[flashN]=py[j];
@@ -3239,8 +3200,6 @@ function executeVM(i,j,sim,d){
     birthsThisTick++;
   }
 
-  // CHANNEL 5: SIGNATURE MODULATION — particles can shift their cluster's territorial identity
-  // The evolved code can reach into group identity. Policy shapes who "we" are.
   const sigMod=vmActions[5]*influence*0.003;
   if(Math.abs(sigMod)>0.00001){
     const cid5=clusterID[i];
@@ -3248,7 +3207,6 @@ function executeVM(i,j,sim,d){
       const cIdx5=cid5<MAX_CLUSTERS?clusterByID[cid5]:-1;
       if(cIdx5>=0&&clusters[cIdx5].fieldSignature){
         const sig=clusters[cIdx5].fieldSignature;
-        // Modulate signature toward current phase alignment
         const pAlign=Math.cos(phase[i]-phase[j]);
         for(let s=0;s<FIELD_SIG_DIMS;s++){
           sig[s]+=sigMod*pAlign*(s===0?1:s===1?-0.5:0.5);
@@ -3258,29 +3216,15 @@ function executeVM(i,j,sim,d){
     }
   }
 
-  // CHANNEL 6: MUTATION PRESSURE — particles collectively vote on mutation rate
-  // The evolved code can reach into its own evolvability.
-  // Accumulated per-tick, applied in mutateGenome.
   mutPressureAccum+=vmActions[6]*influence*0.0001;
 
-  // CHANNEL 7: BLANK — no prescribed meaning.
-  // Routes to tendency dimension 4 (the blank dimension).
-  // The system decides what this channel means by how it writes to it.
   tend[i*DIMS+4]+=vmActions[7]*influence*0.01;
   tend[i*DIMS+4]=Math.max(-1,Math.min(1,tend[i*DIMS+4]));
 }
 
-// ═══ LAYER 9: PER-CLUSTER VM — DIFFERENTIATED TISSUE LOGIC ═══
-// Each cluster runs its own short program on top of global physics + global VM.
-// Clusters inherit programs from previous detection cycles (persistence).
-// New clusters seed from the global VM (with mutation). Persistent clusters accumulate
-// their own behavioral identity. This is the multicellular transition:
-// same genome, different expression per structural unit.
-
 function executeClusterVM(i,j,sim,d){
   const cid=clusterID[i];
   if(cid<0)return;
-  // Fast lookup instead of clusters.find()
   const cIdx=cid<MAX_CLUSTERS?clusterByID[cid]:-1;
   if(cIdx<0)return;
   const cl=clusters[cIdx];
@@ -3291,22 +3235,17 @@ function executeClusterVM(i,j,sim,d){
   const energy=(amp[i]+amp[j])*0.5;
   const influence=cl.vmInfluence*genome.ruleScale*0.0015;
 
-  // Context registers (don't clobber particle memory registers 4-11)
   vmRegs[0]=sim;
   vmRegs[1]=phaseAlign;
   vmRegs[2]=proximity;
   vmRegs[3]=energy;
 
-  // Cluster reflex signals — available to cluster VM if cluster has self-model
-  // Overlaid onto registers 4-5 (normally particle memory slots 0-1)
-  // Evolution decides whether to use these or ignore them
   const crw=genome.clusterReflexWeight||0;
   if(crw>0.001&&cl.reflexThreat!==undefined){
-    vmRegs[4]+=cl.reflexThreat*crw;      // how threatened is this cluster
-    vmRegs[5]+=cl.reflexTrend*crw;        // growing or shrinking
+    vmRegs[4]+=cl.reflexThreat*crw;
+    vmRegs[5]+=cl.reflexTrend*crw;
   }
 
-  // Zero action channels for cluster VM — clean slate, not additive to global VM
   vmActions[0]=0;vmActions[1]=0;vmActions[2]=0;vmActions[3]=0;vmActions[4]=0;vmActions[5]=0;vmActions[6]=0;vmActions[7]=0;
 
   const prog=cl.vmProgram;
@@ -3365,7 +3304,7 @@ function executeClusterVM(i,j,sim,d){
       case 20:{
         const ix20=Math.floor(px[i]/(W/FIELD_W)),iy20=Math.floor(py[i]/(H/FIELD_H));
         const ci20=Math.max(0,Math.min(FIELD_W*FIELD_H-1,iy20*FIELD_W+ix20));
-        const wStr20=Math.abs(vmRegs[si]*k)*0.4; // cluster VM writes stronger — collective inscription
+        const wStr20=Math.abs(vmRegs[si]*k)*0.4;
         if(wStr20>cellProgStr[ci20]*0.7){
           cellProgOp[ci20]=Math.abs(Math.floor(vmRegs[si]))%12;
           cellProgA[ci20]=vmRegs[di];
@@ -3391,19 +3330,16 @@ function executeClusterVM(i,j,sim,d){
     for(let r=0;r<12;r++)vmRegs[r]=Math.max(-8,Math.min(8,vmRegs[r]));
   }
 
-  // ═══ APPLY ALL FIVE ACTION CHANNELS ═══
   const ddx=px[j]-px[i],ddy=py[j]-py[i];
   const dist=Math.sqrt(ddx*ddx+ddy*ddy)||1;
   const nx=ddx/dist,ny=ddy/dist;
 
-  // Force
   const force=vmActions[0]*influence*proximity;
   if(Math.abs(force)>0.000001){
     vx[i]+=nx*force;vy[i]+=ny*force;
     vx[j]-=nx*force;vy[j]-=ny*force;
   }
 
-  // Phase shift
   const pshift=vmActions[1]*influence;
   if(Math.abs(pshift)>0.000001){
     let dp=phase[j]-phase[i];
@@ -3411,13 +3347,11 @@ function executeClusterVM(i,j,sim,d){
     phase[i]+=dp*pshift;phase[j]-=dp*pshift;
   }
 
-  // Amplitude transfer
   const atrans=vmActions[2]*influence*0.5;
   if(Math.abs(atrans)>0.000001){
     amp[i]-=atrans;amp[j]+=atrans;
   }
 
-  // Tendency bleed
   const tbleed=vmActions[3]*influence;
   if(Math.abs(tbleed)>0.000001){
     for(let dd=0;dd<DIMS;dd++){
@@ -3426,7 +3360,6 @@ function executeClusterVM(i,j,sim,d){
     }
   }
 
-  // Spawn drive
   if(vmActions[4]*influence>0.0002&&Math.random()<0.001&&N<CAP){
     const cx=(px[i]+px[j])*0.5,cy=(py[i]+py[j])*0.5;
     const nt=new Float32Array(DIMS);
@@ -3436,7 +3369,6 @@ function executeClusterVM(i,j,sim,d){
     birthsThisTick++;
   }
 
-  // Sig modulation (cluster VM can also shift its own identity)
   const clSigMod=vmActions[5]*influence*0.004;
   if(Math.abs(clSigMod)>0.00001&&cl.fieldSignature){
     const pAlign=Math.cos(phase[i]-phase[j]);
@@ -3446,14 +3378,11 @@ function executeClusterVM(i,j,sim,d){
     }
   }
 
-  // Mutation pressure from cluster VM
   mutPressureAccum+=vmActions[6]*influence*0.00008;
 
-  // Channel 7: blank — routes to tendency dim 4
   tend[i*DIMS+4]+=vmActions[7]*influence*0.01;
   tend[i*DIMS+4]=Math.max(-1,Math.min(1,tend[i*DIMS+4]));
 
-  // Metabolic cost — distributed across member particles (lighter than global)
   const clCost=nInst*genome.metabolicCost*CLUSTER_VM_COST_SHARE;
   amp[i]-=clCost;amp[j]-=clCost;
 }
@@ -3519,15 +3448,13 @@ function updateParticles(){
   for(let i=0;i<N;i++){
     if(!palive[i])continue;
     page[i]++;phase[i]+=freq[i];
-    // FIELD → PHYSICS COUPLING: environment you build sustains you
-    // TERRITORIAL: benefit scales with how well your cluster's signature matches what's deposited
     const lfx=Math.max(0,Math.min(FIELD_W-1,Math.floor(px[i]/(W/FIELD_W))));
     const lfy=Math.max(0,Math.min(FIELD_H-1,Math.floor(py[i]/(H/FIELD_H))));
     const lfIdx=lfy*FIELD_W+lfx;
     const localField=field[lfIdx];
     const affinity=fieldAffinity(lfIdx,getParticleSig(i));
     localRes[i]+=localField*genome.fieldInfluence*affinity;
-    amp[i]+=localField*0.0008*affinity; // territorial benefit
+    amp[i]+=localField*0.0008*affinity;
     for(let d=0;d<DIMS;d++){tend[i*DIMS+d]+=(Math.random()-0.5)*0.001;const v=tend[i*DIMS+d];if(v>1.2)tend[i*DIMS+d]=1.2;if(v<-1.2)tend[i*DIMS+d]=-1.2}
     const absencePeriod=ABSENCE_BASE+Math.sin(tick*0.0007)*180+(Math.sin(tick*0.00031)*90)|0;
     const cyclePos=tick%Math.max(200,absencePeriod);
@@ -3552,34 +3479,25 @@ function updateParticles(){
   }
 }
 
-// ═══ SOLO EXECUTION — particles act from self-knowledge without a partner ═══
-// Same VM program. Same opcodes. j=i (interact with self).
-// Pairwise channels (force, phase shift, amp transfer, tend bleed) become no-ops.
-// Solo channels (field read/write, EMIT velocity, BIRTH, memory, broadcast, GRADIENT, COMMONS) work.
-// Runs once per particle per tick at reduced influence. Metabolic cost applies.
 function executeSoloVM(){
   const prog=genome.vmProgram;
   const nInst=Math.min(prog.length,genome.vmMaxInstructions);
   if(nInst===0)return;
-  const soloInfluence=genome.vmInfluence*genome.ruleScale*0.0005; // weaker than interaction VM
+  const soloInfluence=genome.vmInfluence*genome.ruleScale*0.0005;
 
   for(let i=0;i<N;i++){
     if(!palive[i])continue;
 
-    // Solo metabolic cost — half of interaction cost
     const soloCost=nInst*genome.metabolicCost*0.5;
     amp[i]-=soloCost;
 
-    // Context registers — no partner, so similarity/proximity are self-referential
-    vmRegs[0]=1;   // similarity with self = 1
-    vmRegs[1]=1;   // phase alignment with self = 1
-    vmRegs[2]=1;   // proximity to self = max
-    vmRegs[3]=amp[i]; // energy = own amplitude
+    vmRegs[0]=1;
+    vmRegs[1]=1;
+    vmRegs[2]=1;
+    vmRegs[3]=amp[i];
 
-    // Load particle memory
     for(let m=0;m<MEM_SIZE;m++)vmRegs[4+m]=pMem[i*MEM_SIZE+m];
 
-    // Reflexivity injection
     const reflexInf=genome.reflexInfluence||0;
     if(reflexInf>0.001){
       const rBase=i*REFLEX_DIMS;
@@ -3592,7 +3510,6 @@ function executeSoloVM(){
 
     vmActions[0]=0;vmActions[1]=0;vmActions[2]=0;vmActions[3]=0;vmActions[4]=0;vmActions[5]=0;vmActions[6]=0;vmActions[7]=0;
 
-    // Run the same program
     for(let ip=0,_ss=0;ip<nInst&&_ss<nInst*2;ip++,_ss++){
       const inst=prog[ip];if(!inst)continue;
       const [op,src,dst,k]=inst;
@@ -3641,7 +3558,7 @@ function executeSoloVM(){
           const ix20=Math.floor(px[i]/(W/FIELD_W)),iy20=Math.floor(py[i]/(H/FIELD_H));
           const ci20=Math.max(0,Math.min(FIELD_W*FIELD_H-1,iy20*FIELD_W+ix20));
           const newOp=Math.abs(Math.floor(vmRegs[si]))%12;
-          const writeStr20=Math.abs(vmRegs[si]*k)*0.15; // solo writes at half strength
+          const writeStr20=Math.abs(vmRegs[si]*k)*0.15;
           if(writeStr20>cellProgStr[ci20]*0.8){
             cellProgOp[ci20]=newOp;
             cellProgA[ci20]=vmRegs[di];
@@ -3667,17 +3584,12 @@ function executeSoloVM(){
       for(let r=0;r<12;r++)vmRegs[r]=Math.max(-8,Math.min(8,vmRegs[r]));
     }
 
-    // Write back particle memory
     for(let m=0;m<MEM_SIZE;m++)pMem[i*MEM_SIZE+m]=vmRegs[4+m];
 
-    // Apply solo action channels — only self-affecting ones
-    // Channel 0: self-velocity (no partner to push against, so direct)
     vx[i]+=vmActions[0]*soloInfluence*0.5;
     vy[i]+=vmActions[1]*soloInfluence*0.5;
-    // Channel 7: blank → tendency dim 4
     tend[i*DIMS+4]+=vmActions[7]*soloInfluence*0.01;
     tend[i*DIMS+4]=Math.max(-1,Math.min(1,tend[i*DIMS+4]));
-    // Mutation pressure
     mutPressureAccum+=vmActions[6]*soloInfluence*0.00005;
   }
 }
@@ -3696,7 +3608,7 @@ function processGrid(){
       let _lc=0;while(j>=0&&j<CAP&&_lc++<CAP){
         if(j>i&&palive[j]&&palive[i]){
           const ddx=px[i]-px[j],ddy=py[i]-py[j],d2=ddx*ddx+ddy*ddy,d=Math.sqrt(d2),minD=pSz[i]+pSz[j];
-          const iR=Math.max(10,genome.interactionRadius||55); // FREED: system evolves its own social distance
+          const iR=Math.max(10,genome.interactionRadius||55);
           if(d<iR&&d>0){
             const sim=tendSim(i,j);
             const pa=Math.cos(phase[i]-phase[j]);
@@ -3752,7 +3664,6 @@ function render(){
     X.beginPath();X.arc(ghostX,ghostY,2+ghostStrength*3,0,6.28);X.fillStyle=`rgba(180,220,240,${ga*0.5})`;X.fill();
   }
 
-  // Bonds
   clearGrid();
   for(let i=0;i<N;i++){if(!palive[i])continue;const k=gKey(px[i],py[i]);pnext[i]=grid[k];grid[k]=i}
   X.lineWidth=.25;
@@ -3776,7 +3687,6 @@ function render(){
     }
   }
 
-  // Shared field visualization — lineage-colored territories (colors from cache)
   const cellW=W/FIELD_W,cellH=H/FIELD_H;
   for(let fy=0;fy<FIELD_H;fy++){
     for(let fx=0;fx<FIELD_W;fx++){
@@ -3794,7 +3704,6 @@ function render(){
     }
   }
 
-  // Channel 2 visualization — desaturated rose for the second chemistry channel
   for(let fy=0;fy<FIELD_H;fy++){
     for(let fx=0;fx<FIELD_W;fx++){
       const fIdx=fy*FIELD_W+fx;
@@ -3806,8 +3715,6 @@ function render(){
     }
   }
 
-  // ═══ INSCRIPTION VISUALIZATION ═══
-  // Cells with inscribed programs show as small bright dots, colour by opcode
   const cellOpColors=[
     '255,180,60','120,200,255','255,120,200','120,255,180',
     '255,255,120','180,120,255','255,160,160','160,255,255',
@@ -3829,7 +3736,6 @@ function render(){
     }
   }
 
-  // Particles
   for(let i=0;i<N;i++){
     if(!palive[i])continue;
     const a=Math.min(1,amp[i]*0.8);if(a<.003)continue;
@@ -3843,9 +3749,6 @@ function render(){
     if(col>0.3&&amp[i]>0.3){X.beginPath();X.arc(px[i],py[i],bodySize*0.25,0,6.28);X.fillStyle=`rgba(${Math.min(255,r+50)|0},${Math.min(255,g+50)|0},${Math.min(255,b+50)|0},${a*col*0.35})`;X.fill()}
   }
 
-  // ═══ GOVERNANCE VISIBILITY LAYER ═══
-
-  // 1. Conjugation flashes — bright lines where plasmid transfer just happened
   for(let f=flashN-1;f>=0;f--){
     flashAge[f]++;
     if(flashAge[f]>flashLife){
@@ -3854,43 +3757,36 @@ function render(){
       continue;
     }
     const fa=1-flashAge[f]/flashLife;
-    const bright=fa*fa; // quadratic falloff — sharp flash, slow fade
+    const bright=fa*fa;
     X.beginPath();X.moveTo(flashX1[f],flashY1[f]);X.lineTo(flashX2[f],flashY2[f]);
     X.strokeStyle=`rgba(255,220,100,${bright*0.6})`;X.lineWidth=1.2*bright+0.3;X.stroke();
-    // Tiny glow at endpoints
     const gr=3*bright;
     X.beginPath();X.arc(flashX1[f],flashY1[f],gr,0,6.28);X.fillStyle=`rgba(255,240,150,${bright*0.3})`;X.fill();
     X.beginPath();X.arc(flashX2[f],flashY2[f],gr,0,6.28);X.fillStyle=`rgba(255,240,150,${bright*0.3})`;X.fill();
   }
 
-  // 2. Plasmid carrier markers — inner ring on particles with personal DNA
   for(let i=0;i<N;i++){
     if(!palive[i]||pPlasmidLen[i]===0)continue;
     const a=Math.min(1,amp[i]*0.8);if(a<.01)continue;
     const nP=pPlasmidLen[i];
     const ringR=Math.max(0.6,pSz[i]*0.35);
-    // Colour encodes plasmid count: 1=cyan, 2=yellow, 3=orange, 4=white
     const pc=nP===1?'80,220,220':nP===2?'220,220,80':nP===3?'240,160,60':'255,255,255';
     X.beginPath();X.arc(px[i],py[i],ringR,0,6.28);
     X.strokeStyle=`rgba(${pc},${a*0.45})`;X.lineWidth=0.6;X.stroke();
   }
 
-  // 3. vmInfluence ambient pulse — subtle screen-edge glow showing VM power
   const vmPow=genome.vmInfluence;
   if(vmPow>0.08){
     const vAlpha=Math.min(0.04,vmPow*0.04);
     const grad=X.createRadialGradient(W/2,H/2,Math.min(W,H)*0.3,W/2,H/2,Math.min(W,H)*0.7);
     grad.addColorStop(0,'rgba(0,0,0,0)');
-    // VM dominance: blue-violet. Physics dominance: stays dark.
     const vR=40,vG=30+vmPow*80|0,vB=120+vmPow*120|0;
     grad.addColorStop(1,`rgba(${vR},${vG},${vB},${vAlpha})`);
     X.fillStyle=grad;X.fillRect(0,0,W,H);
   }
 
-  // Shockwaves
   for(let i=shN-1;i>=0;i--){shr_[i]+=2+she[i]*3;if(shr_[i]>shmr[i]){shN--;shx[i]=shx[shN];shy[i]=shy[shN];shr_[i]=shr_[shN];shmr[i]=shmr[shN];she[i]=she[shN];shCR[i]=shCR[shN];shCG[i]=shCG[shN];shCB[i]=shCB[shN];continue}const a=(1-shr_[i]/shmr[i])*she[i]*.1;X.beginPath();X.arc(shx[i],shy[i],shr_[i],0,6.28);X.strokeStyle=`rgba(${shCR[i]|0},${shCG[i]|0},${shCB[i]|0},${a})`;X.lineWidth=.7;X.stroke()}
 
-  // Bits
   for(let i=bN-1;i>=0;i--){bpx[i]+=bvx_[i];bpy[i]+=bvy_[i];bvx_[i]*=.93;bvy_[i]*=.93;bage[i]++;if(bage[i]>blife[i]){bN--;bpx[i]=bpx[bN];bpy[i]=bpy[bN];bvx_[i]=bvx_[bN];bvy_[i]=bvy_[bN];bage[i]=bage[bN];blife[i]=blife[bN];bsz[i]=bsz[bN];bCR[i]=bCR[bN];bCG[i]=bCG[bN];bCB[i]=bCB[bN];continue}const a=(1-bage[i]/blife[i])*.25;X.beginPath();X.arc(bpx[i],bpy[i],bsz[i]*(1-bage[i]/blife[i]),0,6.28);X.fillStyle=`rgba(${bCR[i]|0},${bCG[i]|0},${bCB[i]|0},${a})`;X.fill()}
 }
 
@@ -3908,7 +3804,6 @@ function compact(){
     pPlasmidAge[w]=pPlasmidAge[r];
     pBroadcast[w*2]=pBroadcast[r*2];pBroadcast[w*2+1]=pBroadcast[r*2+1];
     clusterID[w]=clusterID[r];
-    // Layer 10: reflexivity state
     for(let rx=0;rx<REFLEX_DEPTH*2;rx++)pReflexHist[w*REFLEX_DEPTH*2+rx]=pReflexHist[r*REFLEX_DEPTH*2+rx];
     for(let rx=0;rx<REFLEX_DIMS;rx++)pReflexState[w*REFLEX_DIMS+rx]=pReflexState[r*REFLEX_DIMS+rx];
     pReflexIdx[w]=pReflexIdx[r];
@@ -3919,32 +3814,25 @@ function compact(){
 }
 
 function replenish(){
-  // TAPERING REPLENISHMENT — external input fades as population grows.
-  // Full support below 80. Fades between 80-500. Gone above 500.
-  // The system must discover BIRTH to grow beyond 500.
   if(N>500)return;
   const pressure=N<50?0.25:N<100?0.15:N<200?0.06:N<500?0.01:0;
   if(Math.random()>pressure)return;
 
-  // Check if there's viable habitat anywhere
   const gate=genome.fieldBirthGate;
 
   if(ghostStrength>0.25&&Math.random()<ghostStrength*0.4){
     const ang=Math.random()*6.28,r=Math.random()*GHOST_RADIUS*0.5;
     const gx_=ghostX+Math.cos(ang)*r,gy_=ghostY+Math.sin(ang)*r;
-    // Field gate: check local field energy at spawn point
     const fx=Math.floor(gx_/(W/FIELD_W)),fy=Math.floor(gy_/(H/FIELD_H));
     const fIdx=Math.max(0,Math.min(FIELD_W*FIELD_H-1,fy*FIELD_W+fx));
-    if(N<30||field[fIdx]>=gate){ // always allow if near extinction
+    if(N<30||field[fIdx]>=gate){
       const tv=new Float32Array(DIMS);
       for(let d=0;d<DIMS;d++)tv[d]=globalTend[d]*(0.3+Math.random()*0.7)+(Math.random()-0.5)*0.3;
       addParticle(gx_,gy_,tv,false);
     }
   }else if(genome.stableMotifs.length>0&&Math.random()<genome.culturalBias){
-      // CULTURAL MEMORY SEEDING — new particles carry historical DNA
       const motif=genome.stableMotifs[Math.random()*genome.stableMotifs.length|0];
 
-      // If there's a cluster matching this motif, spawn NEAR it (cultural reinforcement)
       let spawnX=-5,spawnY=Math.random()*H;
       if(clusters.length>0){
         let bestC=null,bestSim=-1;
@@ -3953,7 +3841,6 @@ function replenish(){
           if(sim>bestSim){bestSim=sim;bestC=c}
         }
         if(bestC&&bestSim>0.3){
-          // Spawn near the matching cluster — cultural reinforcement
           const ang=Math.random()*6.28,r=CELL*2+Math.random()*CELL*2;
           spawnX=bestC.cx+Math.cos(ang)*r;
           spawnY=bestC.cy+Math.sin(ang)*r;
@@ -3999,7 +3886,6 @@ function loop(){
   const currentlyAbsent=cp>(Math.max(200,absPd)*(1-ABSENCE_DUTY));
   wasAbsent=currentlyAbsent;
 
-  // Global mood
   if(tick%30===0){
     for(let d=0;d<DIMS;d++)globalTend[d]=0;
     let alive=0;
@@ -4008,7 +3894,6 @@ function loop(){
   }
   for(let i=0;i<N;i++){if(!palive[i])continue;for(let d=0;d<DIMS;d++)tend[i*DIMS+d]+=(globalTend[d]-tend[i*DIMS+d])*0.00002}
 
-  // Exogenous perturbations
   exogenousPerturbation();
 
   gravity();
@@ -4017,24 +3902,18 @@ function loop(){
   networkReceive();
   processGrid();
 
-  // ═══ PLASMID PERSISTENCE + CRYSTALLIZATION ═══
-  // Track how long each particle's plasmid has persisted.
-  // Plasmids that survive long enough crystallize into permanent VM instructions.
-  // This is how temporary mobile code becomes permanent structure — new organizational layer.
   for(let i=0;i<N;i++){
     if(!palive[i])continue;
     if(pPlasmidLen[i]>0){
       pPlasmidAge[i]++;
-      // CRYSTALLIZATION: plasmid persists >2000 ticks → absorb into permanent VM
       if(pPlasmidAge[i]>2000&&genome.vmProgram.length<genome.vmMaxInstructions){
-        const base=i*MAX_PLASMID_INST;
+        const base=i*PLASMID_SLOTS;
         const len=pPlasmidLen[i];
         for(let p=0;p<len&&genome.vmProgram.length<genome.vmMaxInstructions;p++){
           const pi=base+p*4;
           const newInst=[pPlasmid[pi],pPlasmid[pi+1],pPlasmid[pi+2],pPlasmid[pi+3]];
           genome.vmProgram.push(newInst);
         }
-        // Plasmid consumed — absorbed into permanent genome
         pPlasmidLen[i]=0;
         pPlasmidAge[i]=0;
       }
@@ -4046,13 +3925,9 @@ function loop(){
   applyEntropy();
   updateParticles();
 
-  // ═══ LAYER 10: REFLEXIVITY UPDATE ═══
-  // Particle self-models update every tick (sampled).
-  // Cluster self-models update on cluster detection cycles (tick%60).
   updateParticleReflex();
-  if(performance.now()-frameStart<80) updateField(); // skip field update if frame already slow
+  if(performance.now()-frameStart<80) updateField();
 
-  // ═══ STRUCTURAL SELF-MODEL UPDATE ═══
   if(tick%60===0){
     let alive=0,totalAmp=0,totalRes=0;
     for(let i=0;i<N;i++){if(!palive[i])continue;alive++;totalAmp+=amp[i];totalRes+=localRes[i]}
@@ -4069,20 +3944,17 @@ function loop(){
       selfModel.trend=recent>older*1.05?1:recent<older*0.95?-1:0;
     }
 
-    // CLUSTER DETECTION
     detectClusters();
     trackClusterPersistence();
-    attemptClusterBudding(); // Group-level reproduction — successful clusters bud daughters
-    rebuildFieldLineageCache(); // Update territorial color map
+    attemptClusterBudding();
+    rebuildFieldLineageCache();
     selfModel.clusterCount=clusters.length;
     selfModel.diversity=clusterDiversity();
     selfModel.avgCoherence=clusters.length>0?clusters.reduce((a,c)=>a+c.coherence,0)/clusters.length:0;
     selfModel.persistentClusters=clusters.filter(c=>c.persistAge>3).length;
 
-    // ═══ LAYER 10b: CLUSTER SELF-MODEL UPDATE ═══
     updateClusterReflex();
 
-    // MULTI-DIMENSIONAL PREDICTION & ERROR
     selfModel.actual.pop=alive;
     selfModel.actual.coherence=selfModel.avgCoherence;
     selfModel.actual.clusters=selfModel.clusterCount;
@@ -4098,11 +3970,8 @@ function loop(){
     selfModel.predicted.clusters=selfModel.clusterCount+(selfModel.diversity>0.3?0.5:-0.3);
     selfModel.predicted.diversity=selfModel.diversity;
 
-    // BOUNDARY INFERENCE — multi-dimensional
     inferBoundary();
 
-    // SELF-DERIVED STABILITY — now includes field trajectory and capacity pressure
-    // Population variance (extended window for longer memory)
     let popStability=0.5;
     if(selfModel.popHistory.length>10){
       const slice=selfModel.popHistory.slice(-30);
@@ -4111,7 +3980,6 @@ function loop(){
       popStability=Math.max(0,1-Math.sqrt(variance)/Math.max(1,mean));
     }
 
-    // FIELD TRAJECTORY — track field energy over time
     const fieldTotal_=field.reduce((a,b)=>a+b,0);
     selfModel.fieldEnergy=fieldTotal_;
     selfModel.fieldHistory.push(fieldTotal_);
@@ -4126,25 +3994,19 @@ function loop(){
       }
     }
 
-    // CAPACITY PRESSURE — how close to hard cap
     selfModel.capacityPressure=Math.max(0,Math.min(1,(alive/CAP-0.5)*2));
 
-    // COLLAPSE RISK — at cap with depleting field = approaching cliff
-    // This is the signal that was missing: "stably at 1800" with declining field is NOT stable
     const fieldDanger=selfModel.fieldTrend<-0.01?Math.min(1,Math.abs(selfModel.fieldTrend)*5):0;
     selfModel.collapseRisk=selfModel.capacityPressure*0.5+fieldDanger*0.5;
 
-    // EFFECTIVE STABILITY — population stability discounted by collapse risk
     selfModel.stability=Math.max(0,popStability*(1-selfModel.collapseRisk*0.7));
 
-    // FITNESS — self-derived, no designer targets
     const w=genome.objWeights,wT=w[0]+w[1]+w[2]+w[3]+0.001;
     const fitness=(selfModel.stability*w[0]+selfModel.diversity*w[1]+selfModel.avgCoherence*w[2]+
       (clusters.filter(c=>c.persistAge<2).length/Math.max(1,clusters.length))*w[3])/wT;
     currentFitness=currentFitness*0.9+fitness*0.1;
     fitnessSamples++;
 
-    // MOTIF-BIASED TENDENCY DRIFT — cultural gravity
     if(genome.stableMotifs.length>0&&clusters.length>0){
       for(const c of clusters){
         let bestMotif=null,bestSim=-1;
@@ -4164,29 +4026,22 @@ function loop(){
     deathsThisTick=0;birthsThisTick=0;
   }
 
-  // ═══ EXTINCTION CHECK ═══
   if(tick%90===0&&tick>300){if(checkExtinction())return}
 
-  // ═══ VM PHENOTYPE PROFILING — every 100 ticks ═══
   if(tick%100===0&&tick>200)profileVM();
 
-  // ═══ SHADOW SIMULATOR ═══
   if(tick%120===0&&tick>300)runShadowSim();
 
-  // ═══ FULL GENOME MUTATION — every 300 frames ═══
   if(tick%Math.max(60,Math.round(genome.mutationInterval))===0&&tick>600){
     mutateGenome();
     attemptHGT();
-    evolvePlasmids(); // Per-particle plasmid mutation + spontaneous generation
+    evolvePlasmids();
   }
 
-  // Reset peak bond tracker each tick
-  if(tick%10===0)peakBondThisTick*=0.8; // decay rather than hard reset
+  if(tick%10===0)peakBondThisTick*=0.8;
 
-  // ═══ GENOME ARCHIVING ═══
   if(tick%900===0&&tick>900)archiveGenome();
 
-  // ═══ IDENTITY TRACKING ═══
   if(tick%60===0){
     if(currentFitness>genome.peakFitness)genome.peakFitness=currentFitness;
     if(selfModel.stability>0.7){
@@ -4197,10 +4052,8 @@ function loop(){
     }
   }
 
-  // ═══ INSTRUMENT SAMPLING — independent of save cycle ═══
   if(tick%120===0&&tick>60)sampleInstrumentation();
 
-  // ═══ SAVE GENOME + MOTIFS ═══
   if(tick%600===0){
     if(selfModel.persistentClusters>0){
       for(const c of clusters){
@@ -4216,7 +4069,6 @@ function loop(){
     saveGenome();
     const compCount=genome.vmProgram.filter(i=>i[0]===3).length;
     const memCount=genome.vmProgram.filter(i=>i[0]===6||i[0]===7).length;
-    // Count particles that have plasmids
     let plasmidParticles=0,totalPlasmids=0;
     for(let i=0;i<N;i++){if(pPlasmidLen[i]>0){plasmidParticles++;totalPlasmids+=pPlasmidLen[i]}}
     const fieldTotal=field.reduce((a,b)=>a+b,0);
@@ -4231,7 +4083,6 @@ function loop(){
     const reflexClusters=clusters.filter(c=>c.reflex&&c.reflex.selfRecognition>0.3).length;
     const nPeers=countPeers();
     const netTag=nPeers>0?` | net:${nPeers}⟷`:'';
-    // Pe22f instrumentation — cluster genome spread + user atom count/uses
     let cgTag='';
     const cgClusters=clusters.filter(c=>c.clusterGenome&&c.persistAge>2);
     if(cgClusters.length>0){
@@ -4256,21 +4107,19 @@ function loop(){
     genEl.textContent=`gen${genome.generation} ${genome.extinctions}☠ t${genome.totalTicks} | ${clusters.length}cl(${clVMActive}vm${budCount>0?','+budCount+'bud':''}) ${livingLin}lin fit:${currentFitness.toFixed(2)} stb:${(selfModel.stability||0).toFixed(2)} | vm:${genome.vmProgram.length}inst ${nSensors}sns ${hgtEventsTotal}hgt | pop:${N}/${CAP} fld:${fieldTotal.toFixed(0)}${fTrend<-0.01?'↓':fTrend>0.01?'↑':'~'} risk:${cRisk.toFixed(2)} | ⟲${rInf.toFixed(2)} ${reflexClusters}rc${netTag}${cgTag}${uaTag}`;
   }
 
-  // Adaptive render skipping — at high pop, skip frames to keep thread responsive
   const renderEvery=N>1000?4:N>500?3:N>200?2:1;
   if(tabVisible&&tick%renderEvery===0){
     render();
     renderDashboard();
   }
   replenish();
-  // PROCESS BIRTH QUEUE — capped at 5 per frame to prevent computation spikes
   let birthsProcessed=0;
   while(birthQueue.length>0&&N<CAP&&birthsProcessed<5){
     const b=birthQueue.pop();
     if(addParticle(b.x,b.y,b.t,true,b.parent,-1)>=0)birthsThisTick++;
     birthsProcessed++;
   }
-  if(birthQueue.length>20)birthQueue.length=0; // flush stale queue
+  if(birthQueue.length>20)birthQueue.length=0;
   if(tick%45===0)compact();
   }catch(e){
     console.error('Loop error:',e.message,e.stack);
@@ -4283,9 +4132,6 @@ function loop(){
   scheduleNext();
 }
 
-// ═══ BACKGROUND EXECUTION ═══
-// requestAnimationFrame throttles to ~0 when tab is hidden.
-// Fall back to setTimeout when not visible so evolution continues.
 let tabVisible=true;
 let lastLoopTime=performance.now();
 document.addEventListener('visibilitychange',()=>{
@@ -4300,11 +4146,9 @@ function scheduleNext(){
   }
 }
 
-// WATCHDOG — if the loop hasn't run in 3 seconds, force restart
 setInterval(()=>{
   if(performance.now()-lastLoopTime>3000){
     console.warn('Watchdog: loop stalled, restarting');
-    // NaN cleanup
     for(let i=0;i<N;i++){
       if(isNaN(amp[i])){amp[i]=0.3}
       if(isNaN(px[i])||isNaN(py[i])){px[i]=Math.random()*W;py[i]=Math.random()*H}
@@ -4318,7 +4162,6 @@ setInterval(()=>{
   }
 },2000);
 
-// === EVENTS ===
 document.addEventListener('mousemove',e=>{mx=e.clientX;my=e.clientY});
 document.addEventListener('mousedown',()=>{pulling=1;pDur=0});
 document.addEventListener('mouseup',()=>{scatter();pulling=0});
@@ -4327,16 +4170,12 @@ document.addEventListener('touchend',()=>{
   if(pulling)scatter();
   pulling=0;
 });
-// Dashboard toggle: 'd' key on desktop
 document.addEventListener('keydown',e=>{if(e.key==='d'||e.key==='D')dashboardVisible=!dashboardVisible});
-// Mobile: tap top-left 80x80 corner = toggle dashboard. Anywhere else = pull interaction.
-// Also: double-tap anywhere = toggle dashboard.
 let lastTap=0;
 document.addEventListener('touchstart',e=>{
   const t=e.touches[0];
   const now=Date.now();
 
-  // Top-left corner tap: always toggle dashboard, never pull
   if(t.clientX<80&&t.clientY<80){
     dashboardVisible=!dashboardVisible;
     e.preventDefault();
@@ -4344,21 +4183,18 @@ document.addEventListener('touchstart',e=>{
     return;
   }
 
-  // Two-finger tap: toggle dashboard, don't pull
   if(e.touches.length>=2){
     dashboardVisible=!dashboardVisible;
     lastTap=now;
     return;
   }
 
-  // Double-tap (within 350ms): toggle dashboard, don't pull
   if(now-lastTap<350){
     dashboardVisible=!dashboardVisible;
-    lastTap=0; // reset so triple-tap doesn't re-toggle
+    lastTap=0;
     return;
   }
 
-  // Normal single tap: physics interaction
   mx=t.clientX;my=t.clientY;
   pulling=1;pDur=0;
   lastTap=now;
