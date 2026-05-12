@@ -78,6 +78,12 @@ function validNetworkPayload(type,data){
       finitePacketNumber(data.amp,-2,4)&&finitePacketNumber(data.phase,-64,64);
   }
   if(type==='plasmid')return Array.isArray(data)&&data.length<=NET_MAX_PLASMID&&data.every(validInstruction);
+      Array.isArray(data.tend)&&data.tend.length<=DIMS&&data.tend.every(v=>finitePacketNumber(v,-8,8))&&
+      (!data.mem||(Array.isArray(data.mem)&&data.mem.length<=MEM_SIZE&&data.mem.every(v=>finitePacketNumber(v,-16,16))))&&
+      (!data.plasmid||(Array.isArray(data.plasmid)&&data.plasmid.length<=MAX_PLASMID&&data.plasmid.every(validInstruction)))&&
+      finitePacketNumber(data.amp,-2,4)&&finitePacketNumber(data.phase,-64,64);
+  }
+  if(type==='plasmid')return Array.isArray(data)&&data.length<=MAX_PLASMID&&data.every(validInstruction);
   if(type==='motif')return Array.isArray(data)&&data.length<=8&&data.every(validInstruction);
   if(type==='inscription'){
     return data&&finitePacketNumber(data.op,-64,64)&&finitePacketNumber(data.A,-16,16)&&
@@ -90,6 +96,11 @@ function queueNetworkPacket(queue,data,limit,type){
   queue.push(data);
   netStats.accepted++;
   if(type&&netEventPending[type]!==undefined)netEventPending[type]++;
+  recordEvent('net_'+type,{q:queue.length,a:netStats.accepted},900);
+function queueNetworkPacket(queue,data,limit){
+  if(queue.length>=limit){netStats.dropped++;return}
+  queue.push(data);
+  netStats.accepted++;
 }
 function handleNetworkMessage(raw){
   const msg=raw&&typeof raw==='object'?raw:null;
@@ -104,6 +115,10 @@ function handleNetworkMessage(raw){
   else if(msg.type==='plasmid')queueNetworkPacket(incomingPlasmids,msg.data,NET_QUEUE_LIMITS.plasmid,'plasmid');
   else if(msg.type==='motif')queueNetworkPacket(incomingMotifs,msg.data,NET_QUEUE_LIMITS.motif,'motif');
   else if(msg.type==='inscription')queueNetworkPacket(incomingInscriptions,msg.data,NET_QUEUE_LIMITS.inscription,'inscription');
+  if(msg.type==='migrant')queueNetworkPacket(incomingMigrants,msg.data,NET_QUEUE_LIMITS.migrant);
+  else if(msg.type==='plasmid')queueNetworkPacket(incomingPlasmids,msg.data,NET_QUEUE_LIMITS.plasmid);
+  else if(msg.type==='motif')queueNetworkPacket(incomingMotifs,msg.data,NET_QUEUE_LIMITS.motif);
+  else if(msg.type==='inscription')queueNetworkPacket(incomingInscriptions,msg.data,NET_QUEUE_LIMITS.inscription);
   else if(msg.type==='hello')networkSend('hello-reply');
 }
 try{
