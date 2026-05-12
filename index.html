@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
-<title>Selection פ 23 — Meta-Sensing</title>
+<title>Selection פ 24 — Self-Read</title>
 <style>
 *{margin:0;padding:0;box-sizing:border-box}
 html,body{height:100%;overflow:hidden;background:#020204;touch-action:none;cursor:crosshair}
@@ -251,7 +251,7 @@ let FIELD_DIFFUSE=0.11;  // gentle spread — Pe22b: now genome-driven, can evol
 // This is the system's access to primitives that weren't in the opcode set
 // at design time. JS can generate JS; the genome now uses that fact.
 // ═══════════════════════════════════════
-const USER_VARS=["a","b"];
+const USER_VARS=["a","b","u"]; // Pe24: u = self-read of own use count (Layer 13)
 const USER_FUNCS=["Math.abs","Math.tanh","Math.sin","Math.cos","Math.sign","Math.sqrt","Math.log1p","Math.exp"];
 const USER_OPS=["+","-","*"];
 function uaGenTerm(){
@@ -276,7 +276,9 @@ function uaGenExpression(){
 function uaCompile(atom){
   if(atom.compiled||atom.failed)return;
   try{
-    atom.compiled=new Function("a","b","const r=("+atom.expression+");return isFinite(r)?r:0;");
+    // Pe24: compiled function takes (a,b,u) — u is normalized self-usage count.
+    // Old atoms with expressions only referencing a,b still compile fine; u is unused param.
+    atom.compiled=new Function("a","b","u","const r=("+atom.expression+");return isFinite(r)?r:0;");
     atom.failed=false;
   }catch(e){
     atom.compiled=null;
@@ -288,7 +290,11 @@ function uaCall(atom,a,b){
   if(!atom.compiled&&!atom.failed)uaCompile(atom);
   if(atom.failed||!atom.compiled)return 0;
   try{
-    const r=atom.compiled(a,b);
+    // Pe24 Layer 13: self-read. Atom can sense its own historical use count.
+    // Normalized so range stays in VM register territory. Capped so explosive use
+    // doesn't dominate downstream arithmetic.
+    const u=Math.min(4,(atom.uses|0)/100);
+    const r=atom.compiled(a,b,u);
     atom.uses=(atom.uses|0)+1;
     return isFinite(r)?Math.max(-8,Math.min(8,r)):0;
   }catch(e){
@@ -337,7 +343,8 @@ let genome={
   // Instructions: [op, src, dst, k] — same opcodes as VM (0-4 only, no side effects)
   fitnessSensors:[
     // Seed: one sensor that computes field_energy * persistent_ratio (designer didn't hardcode this)
-    {program:[[2,5,6,1.0],[4,6,0,1.0]], weight:0.1}
+    // Pe24: realWeight=0 means this sensor doesn't yet contribute to real fitness; mutation can raise it.
+    {program:[[2,5,6,1.0],[4,6,0,1.0]], weight:0.1, realWeight:0}
   ],
   maxSensors:4,        // Pe22e: retained for save-file compatibility; no longer enforced
   sensorMaxInst:4,     // Pe22e: retained for save-file compatibility; no longer enforced
@@ -453,7 +460,15 @@ let genome={
   reflexInfluence:0.1,        // how strongly self-model affects VM register initialisation (EVOLVES)
   reflexDecay:0.95,           // how fast old self-model samples fade
   clusterReflexAge:5,         // min persist age before cluster develops self-model
-  clusterReflexWeight:0.15    // how much cluster self-model influences cluster VM (EVOLVES)
+  clusterReflexWeight:0.15,    // how much cluster self-model influences cluster VM (EVOLVES)
+
+  // ═══ LAYER 12: CLUSTER SELF-READ (Pe24) ═══
+  // Cluster VMs can read their own clusterGenome values as VM registers.
+  // The cluster's own heritable traits (budRate, innovationRate, etc.) become
+  // legible to the cluster's own bytecode. Closes a meta-loop: clusters can
+  // evolve to mutate their own innovation rate based on what their VM is doing.
+  // If reading own genome helps, this strength grows; if not, it falls to 0.
+  clusterGenomeReadStrength:0.05
 };
 
 // ═══ VM PHENOTYPE PROFILE ═══
@@ -1366,7 +1381,13 @@ function oldestMotifAge(){
 // META-SENSING channels (trajectory & meta-state, sourced from inst.*):
 //   S8=fitnessSlope, S9=populationSlope, S10=mutationRate, S11=vmEntropy,
 //   S12=motifAge, S13=extinctionDensity, S14=hgtRate, S15=fitnessVariance
-function evaluateSensors(){
+//
+// Pe24 Layer 14: useRealWeight flag selects which weight contributes to EMIT.
+//   false (default) = sensor.weight       → drives shadow-scenario scoring (Pe22 path)
+//   true            = sensor.realWeight   → drives actual currentFitness (Pe24 new path)
+// Sensors that prove useful as real selection pressures evolve realWeight up.
+// If real-fitness participation doesn't help, realWeight drifts to zero.
+function evaluateSensors(useRealWeight){
   const sensors=genome.fitnessSensors;
   if(!sensors||sensors.length===0)return 0;
 
@@ -1403,6 +1424,10 @@ function evaluateSensors(){
   let totalWeight=0;
 
   for(const sensor of sensors){
+    // Pe24: pick which weight drives this sensor's contribution.
+    const w=useRealWeight?(sensor.realWeight||0):sensor.weight;
+    if(w===0&&useRealWeight)continue; // skip sensors with no real-fitness participation
+
     // Execute sensor program (pure computation, no side effects)
     const regs=new Float32Array(16);
     for(let r=0;r<16;r++)regs[r]=S[r]; // copy state
@@ -1415,7 +1440,7 @@ function evaluateSensors(){
         case 1:regs[di]+=regs[si]*k;break;
         case 2:regs[di]*=regs[si]*(k||1);break;
         case 3:regs[di]=regs[si]>k?1:0;break;
-        case 4:totalScore+=regs[si]*k*sensor.weight;totalWeight+=Math.abs(sensor.weight);break; // EMIT to fitness
+        case 4:totalScore+=regs[si]*k*w;totalWeight+=Math.abs(w);break; // EMIT to fitness (using selected weight)
       }
       for(let r=0;r<16;r++)regs[r]=Math.max(-8,Math.min(8,regs[r]));
     }
@@ -2242,15 +2267,24 @@ function mutateGenome(){
   genome.reflexDecay=maybe(genome.reflexDecay,0.7,0.99,0.03);
   genome.clusterReflexAge=Math.max(1,Math.round(maybe(genome.clusterReflexAge,2,15,1)));
   genome.clusterReflexWeight=maybe(genome.clusterReflexWeight,0,0.8,0.05);
+  // Pe24 Layer 12: cluster genome self-read strength evolves alongside other reflex params
+  if(genome.clusterGenomeReadStrength===undefined)genome.clusterGenomeReadStrength=0.05;
+  genome.clusterGenomeReadStrength=maybe(genome.clusterGenomeReadStrength,0,1.5,0.05);
 
   // ═══ EVOLVABLE FITNESS SENSOR MUTATION ═══
   // Mutate existing sensors (program + weight)
   // Pe23: src/dst range expanded 8 → 16 to address meta-sensing registers S8-S15.
   // Existing sensors using indices 0-7 continue to work (still read current-state channels).
   // New mutations can hit 8-15 (trajectory channels). Selection decides which matter.
+  // Pe24: each sensor also has realWeight — its contribution to ACTUAL fitness (not shadow).
+  // weight drives shadow-scenario nudges; realWeight drives currentFitness directly.
+  // Both evolve independently. A sensor can be useful in one role and not the other.
   for(const sensor of genome.fitnessSensors){
-    // Weight mutation
+    // Weight mutation (shadow-scoring weight, original behaviour)
     if(Math.random()<rate)sensor.weight=Math.max(-1,Math.min(1,sensor.weight+(Math.random()-0.5)*0.1*scale));
+    // Pe24: realWeight mutation. Defensive default so old saves load cleanly.
+    if(sensor.realWeight===undefined)sensor.realWeight=0;
+    if(Math.random()<rate)sensor.realWeight=Math.max(-1,Math.min(1,sensor.realWeight+(Math.random()-0.5)*0.08*scale));
     // Program mutation
     for(const inst of sensor.program){
       if(Math.random()>rate*0.8)continue;
@@ -2274,11 +2308,13 @@ function mutateGenome(){
   // Birth new sensor — Pe22e: no hard cap on count. The system
   // can evolve as many dimensions of value as it can sustain.
   // Starting weight is low so new sensors have to prove themselves;
-  // dead weight gets culled below.
+  // dead weight gets culled below. Pe24: realWeight starts at 0 — new sensors
+  // have to earn entry into real fitness through mutation, not by default.
   if(Math.random()<rate*0.03){
     genome.fitnessSensors.push({
       program:[[Math.floor(Math.random()*5),Math.floor(Math.random()*16),Math.floor(Math.random()*16),(Math.random()-0.5)]],
-      weight:0.05
+      weight:0.05,
+      realWeight:0
     });
   }
   // Death of useless sensor (very low weight = not contributing)
@@ -3246,6 +3282,18 @@ function executeClusterVM(i,j,sim,d){
     vmRegs[5]+=cl.reflexTrend*crw;
   }
 
+  // Pe24 Layer 12: cluster self-read. The cluster's own heritable genome values
+  // are overlaid onto registers 8-11. Scaled by clusterGenomeReadStrength which
+  // is itself evolvable — if reading own traits is useful, the strength grows.
+  const cgr=genome.clusterGenomeReadStrength||0;
+  if(cgr>0.001&&cl.clusterGenome){
+    vmRegs[8]+=cl.clusterGenome.budRate*cgr;
+    vmRegs[9]+=cl.clusterGenome.innovationRate*cgr;
+    vmRegs[10]+=cl.clusterGenome.metabolicBias*cgr;
+    vmRegs[11]+=cl.clusterGenome.splitFraction*cgr;
+    for(let r=8;r<=11;r++)vmRegs[r]=Math.max(-8,Math.min(8,vmRegs[r]));
+  }
+
   vmActions[0]=0;vmActions[1]=0;vmActions[2]=0;vmActions[3]=0;vmActions[4]=0;vmActions[5]=0;vmActions[6]=0;vmActions[7]=0;
 
   const prog=cl.vmProgram;
@@ -4001,9 +4049,16 @@ function loop(){
 
     selfModel.stability=Math.max(0,popStability*(1-selfModel.collapseRisk*0.7));
 
+    // FITNESS — self-derived, no designer targets.
+    // Pe24 Layer 14: sensors with non-zero realWeight contribute to real fitness here.
+    // In Pe22-23 sensors only nudged shadow-scenario scoring. Now they can become
+    // genuine selection pressure on the live system. realSensorWeight=0 → Pe23 behaviour.
     const w=genome.objWeights,wT=w[0]+w[1]+w[2]+w[3]+0.001;
+    const realSensorScore=evaluateSensors(true);
+    const realSensorWeight=genome.fitnessSensors.reduce((a,s)=>a+Math.abs(s.realWeight||0),0);
     const fitness=(selfModel.stability*w[0]+selfModel.diversity*w[1]+selfModel.avgCoherence*w[2]+
-      (clusters.filter(c=>c.persistAge<2).length/Math.max(1,clusters.length))*w[3])/wT;
+      (clusters.filter(c=>c.persistAge<2).length/Math.max(1,clusters.length))*w[3]+
+      realSensorScore*realSensorWeight)/(wT+realSensorWeight);
     currentFitness=currentFitness*0.9+fitness*0.1;
     fitnessSamples++;
 
