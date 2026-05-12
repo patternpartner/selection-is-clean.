@@ -27,8 +27,15 @@ let W,H,mx=-9e3,my=-9e3,smx=0,smy=0,pulling=0,pStr=0,pDur=0,tick=0;
 // Each tab is an instance of the same universe. Particles, plasmids,
 // motifs, and inscribed cell programs can flow between them.
 // If connection helps, the system will use it. If not, the rates evolve to zero.
+// Pe25: network traffic now has a tiny protocol envelope + immune boundary.
+// BroadcastChannel is still local-tab only, but the envelope/validation layer is
+// the same shape a future WebRTC/WebSocket bridge can carry across browsers.
 // ═══════════════════════════════════════
 const TAB_ID=Math.random().toString(36).slice(2,10);
+const NET_PROTOCOL_VERSION=1;
+const NETWORK_CHANNEL='selection-pe-network';
+const NET_QUEUE_LIMITS={migrant:20,plasmid:10,motif:10,inscription:20};
+const NET_DIMS=5,NET_MEM_SIZE=8,NET_MAX_PLASMID=4; // mirror core genome constants for early packet validation
 let bc=null;
 const incomingMigrants=[];     // particle packets received from other tabs
 const incomingPlasmids=[];     // plasmid packages received
@@ -36,27 +43,74 @@ const incomingMotifs=[];       // VM motif fragments received
 const incomingInscriptions=[]; // cell program packets received
 let networkPeers=0;            // how many other tabs we're hearing from
 const peerLastSeen={};         // peer id → last tick we heard from them
+const netStats={sent:0,received:0,accepted:0,dropped:0,bad:0,lastType:''};
+const netEventPending={migrant:0,plasmid:0,motif:0,inscription:0};
+
+function netPacket(type,data){
+  return {v:NET_PROTOCOL_VERSION,tab:TAB_ID,born:tick,type,data};
+}
+function networkSend(type,data){
+  if(!bc)return false;
+  try{
+    bc.postMessage(netPacket(type,data));
+    netStats.sent++;
+    return true;
+  }catch(e){
+    netStats.dropped++;
+    return false;
+  }
+}
+function finitePacketNumber(v,min,max){
+  return typeof v==='number'&&isFinite(v)&&v>=min&&v<=max;
+}
+function validInstruction(inst){
+  return Array.isArray(inst)&&inst.length>=4&&
+    finitePacketNumber(inst[0],-64,64)&&finitePacketNumber(inst[1],-64,64)&&
+    finitePacketNumber(inst[2],-64,64)&&finitePacketNumber(inst[3],-16,16);
+}
+function validNetworkPayload(type,data){
+  if(type==='hello'||type==='hello-reply')return true;
+  if(type==='migrant'){
+    return data&&finitePacketNumber(data.nx,-0.25,1.25)&&finitePacketNumber(data.ny,-0.25,1.25)&&
+      Array.isArray(data.tend)&&data.tend.length<=NET_DIMS&&data.tend.every(v=>finitePacketNumber(v,-8,8))&&
+      (!data.mem||(Array.isArray(data.mem)&&data.mem.length<=NET_MEM_SIZE&&data.mem.every(v=>finitePacketNumber(v,-16,16))))&&
+      (!data.plasmid||(Array.isArray(data.plasmid)&&data.plasmid.length<=NET_MAX_PLASMID&&data.plasmid.every(validInstruction)))&&
+      finitePacketNumber(data.amp,-2,4)&&finitePacketNumber(data.phase,-64,64);
+  }
+  if(type==='plasmid')return Array.isArray(data)&&data.length<=NET_MAX_PLASMID&&data.every(validInstruction);
+  if(type==='motif')return Array.isArray(data)&&data.length<=8&&data.every(validInstruction);
+  if(type==='inscription'){
+    return data&&finitePacketNumber(data.op,-64,64)&&finitePacketNumber(data.A,-16,16)&&
+      finitePacketNumber(data.B,-16,16)&&finitePacketNumber(data.str,0,2);
+  }
+  return false;
+}
+function queueNetworkPacket(queue,data,limit,type){
+  if(queue.length>=limit){netStats.dropped++;return}
+  queue.push(data);
+  netStats.accepted++;
+  if(type&&netEventPending[type]!==undefined)netEventPending[type]++;
+}
+function handleNetworkMessage(raw){
+  const msg=raw&&typeof raw==='object'?raw:null;
+  if(!msg||msg.tab===TAB_ID)return; // ignore own messages
+  if(msg.v!==undefined&&msg.v!==NET_PROTOCOL_VERSION){netStats.bad++;return}
+  const peer=msg.tab||'unknown';
+  peerLastSeen[peer]=tick;
+  netStats.received++;
+  netStats.lastType=msg.type||'';
+  if(!validNetworkPayload(msg.type,msg.data)){netStats.bad++;return}
+  if(msg.type==='migrant')queueNetworkPacket(incomingMigrants,msg.data,NET_QUEUE_LIMITS.migrant,'migrant');
+  else if(msg.type==='plasmid')queueNetworkPacket(incomingPlasmids,msg.data,NET_QUEUE_LIMITS.plasmid,'plasmid');
+  else if(msg.type==='motif')queueNetworkPacket(incomingMotifs,msg.data,NET_QUEUE_LIMITS.motif,'motif');
+  else if(msg.type==='inscription')queueNetworkPacket(incomingInscriptions,msg.data,NET_QUEUE_LIMITS.inscription,'inscription');
+  else if(msg.type==='hello')networkSend('hello-reply');
+}
 try{
-  bc=new BroadcastChannel('selection-pe-network');
-  bc.onmessage=function(ev){
-    const msg=ev.data;
-    if(!msg||msg.tab===TAB_ID)return; // ignore own messages
-    peerLastSeen[msg.tab]=tick;
-    if(msg.type==='migrant'&&incomingMigrants.length<20){
-      incomingMigrants.push(msg.data);
-    }else if(msg.type==='plasmid'&&incomingPlasmids.length<10){
-      incomingPlasmids.push(msg.data);
-    }else if(msg.type==='motif'&&incomingMotifs.length<10){
-      incomingMotifs.push(msg.data);
-    }else if(msg.type==='inscription'&&incomingInscriptions.length<20){
-      incomingInscriptions.push(msg.data);
-    }else if(msg.type==='hello'){
-      // reply so the new peer knows we exist
-      if(bc)bc.postMessage({tab:TAB_ID,type:'hello-reply'});
-    }
-  };
+  bc=new BroadcastChannel(NETWORK_CHANNEL);
+  bc.onmessage=function(ev){handleNetworkMessage(ev.data)};
   // announce ourselves
-  bc.postMessage({tab:TAB_ID,type:'hello'});
+  networkSend('hello');
 }catch(e){console.log('BroadcastChannel unavailable:',e.message);}
 
 function countPeers(){
@@ -64,6 +118,7 @@ function countPeers(){
   for(const id in peerLastSeen){
     if(tick-peerLastSeen[id]<3000)n++;
   }
+  networkPeers=n;
   return n;
 }
 
@@ -88,11 +143,11 @@ function networkBroadcast(){
         const pB=idx*PLASMID_SLOTS+pi*4;
         plas.push([pPlasmid[pB],pPlasmid[pB+1],pPlasmid[pB+2],pPlasmid[pB+3]]);
       }
-      bc.postMessage({tab:TAB_ID,type:'migrant',data:{
+      networkSend('migrant',{
         nx:px[idx]/W,ny:py[idx]/H,
         tend:t,mem:m,plasmid:plas,
         amp:amp[idx],phase:phase[idx]
-      }});
+      });
     }
   }
   // Plasmid package: pick a random particle's plasmid and broadcast
@@ -109,7 +164,7 @@ function networkBroadcast(){
         const pB=idx*PLASMID_SLOTS+pi*4;
         plas.push([pPlasmid[pB],pPlasmid[pB+1],pPlasmid[pB+2],pPlasmid[pB+3]]);
       }
-      bc.postMessage({tab:TAB_ID,type:'plasmid',data:plas});
+      networkSend('plasmid',plas);
     }
   }
   // VM motif: send a 3-instruction slice from the current program
@@ -120,7 +175,7 @@ function networkBroadcast(){
       const inst=genome.vmProgram[start+i];
       motif.push([inst[0],inst[1],inst[2],inst[3]]);
     }
-    bc.postMessage({tab:TAB_ID,type:'motif',data:motif});
+    networkSend('motif',motif);
   }
   // Inscribed cell: pick a strong inscription and broadcast
   if(Math.random()<genome.netInscribeRate){
@@ -130,9 +185,9 @@ function networkBroadcast(){
       if(cellProgStr[idx]>bestStr){bestStr=cellProgStr[idx];bestIdx=idx;}
     }
     if(bestIdx>=0){
-      bc.postMessage({tab:TAB_ID,type:'inscription',data:{
+      networkSend('inscription',{
         op:cellProgOp[bestIdx],A:cellProgA[bestIdx],B:cellProgB[bestIdx],str:bestStr
-      }});
+      });
     }
   }
 }
@@ -235,6 +290,7 @@ const DIMS=5; // dim 4 is blank — no hardcoded role. System decides what it me
 const MEM_SIZE=8; // per-particle persistent memory. Particles become stateful agents.
 const MAX_PLASMID=4; // max instructions per particle's personal mobile DNA
 const PLASMID_SLOTS=MAX_PLASMID*4; // each instruction is [op,src,dst,k] = 4 values
+const OPCODE_COUNT=23; // VM opcodes 0..22, including USER_ATOM at 22
 const FIELD_W=40;
 const FIELD_H=40;
 let FIELD_DECAY=0.982;   // natural fade — Pe22b: now genome-driven, can evolve
@@ -293,9 +349,11 @@ function uaCall(atom,a,b){
     // Pe24 Layer 13: self-read. Atom can sense its own historical use count.
     // Normalized so range stays in VM register territory. Capped so explosive use
     // doesn't dominate downstream arithmetic.
-    const u=Math.min(4,(atom.uses|0)/100);
+    const prevUses=atom.uses|0;
+    const u=Math.min(4,prevUses/100);
     const r=atom.compiled(a,b,u);
-    atom.uses=(atom.uses|0)+1;
+    atom.uses=prevUses+1;
+    if(prevUses===0)recordEvent('ua_first_use',{expr:(atom.expression||'').slice(0,48)},1200);
     return isFinite(r)?Math.max(-8,Math.min(8,r)):0;
   }catch(e){
     atom.failed=true;
@@ -370,6 +428,7 @@ let genome={
   generation:0,
   totalTicks:0,
   lineage:[],
+  eventLog:[],      // compact fossil record — rare events carried with exported lineages
   stableMotifs:[],
   fitnessHistory:[],
   extinctions:0,
@@ -470,6 +529,30 @@ let genome={
   // If reading own genome helps, this strength grows; if not, it falls to 0.
   clusterGenomeReadStrength:0.05
 };
+
+const EVENT_LOG_SIZE=36;
+const eventLastSeen={};
+function recordEvent(kind,data,minGap){
+  try{
+    if(!genome||!genome.eventLog)return;
+    const gap=minGap||0;
+    if(gap>0&&eventLastSeen[kind]!==undefined&&genome.totalTicks-eventLastSeen[kind]<gap)return;
+    eventLastSeen[kind]=genome.totalTicks;
+    const ev={t:genome.totalTicks||tick,k:kind};
+    if(data!==undefined)ev.d=data;
+    genome.eventLog.push(ev);
+    while(genome.eventLog.length>EVENT_LOG_SIZE)genome.eventLog.shift();
+  }catch(e){}
+}
+function flushNetworkEvents(){
+  for(const type in netEventPending){
+    const n=netEventPending[type];
+    if(n>0){
+      recordEvent('net_'+type,{n,a:netStats.accepted},900);
+      netEventPending[type]=0;
+    }
+  }
+}
 
 // ═══ VM PHENOTYPE PROFILE ═══
 // The shadow sim's "eye" into the VM. Updated by profiling the VM
@@ -602,8 +685,20 @@ const birthQueue=[];
 // Copy URL = copy lineage. Share URL = share history.
 // ═══════════════════════════════════════
 function encodeGenome(){
-  // Compress: only persist what matters for continuity
+  // Compress: persist evolvable genome state while omitting runtime-only compiled functions.
+  const cleanAtoms=(genome.userAtoms||[]).map(a=>({
+    expression:a.expression,
+    failed:!!a.failed,
+    uses:a.uses|0,
+    age:a.age|0
+  }));
+  const cleanSensors=(genome.fitnessSensors||[]).map(s=>({
+    program:(s.program||[]).map(inst=>[inst[0],inst[1],inst[2],+(inst[3].toFixed(3))]),
+    weight:+((s.weight||0).toFixed(4)),
+    realWeight:+((s.realWeight||0).toFixed(4))
+  }));
   const g={
+    z:2,
     // Physics
     p:[genome.entropyBaseline,genome.entropyK,genome.entrainRate,genome.entrainThresh,
        genome.creationCost,genome.creationThresh,genome.destructThresh,genome.tendencyBleed,
@@ -612,16 +707,24 @@ function encodeGenome(){
     q:[genome.clusterBondThresh,genome.clusterMinSize,genome.ghostDecay,genome.ghostAmpDrip].map(v=>+(v.toPrecision(4))),
     // Evaluation
     w:genome.objWeights.map(v=>+(v.toFixed(4))),
+    fs:cleanSensors,
     // Meta
     m:[genome.mutationRate,genome.mutationScale,genome.shadowHorizon,genome.shadowScenarios,
        genome.perturbScale,genome.extinctionThresh,genome.motifMemorySize,genome.culturalBias,
        genome.metabolicCost,genome.hgtRate,genome.hgtMax,genome.hgtSpliceNoise,
        genome.plasmidTransferRate,genome.plasmidMutRate,genome.plasmidTransferThresh,genome.plasmidSpawnRate,genome.fieldInfluence,genome.fieldWeight,
        genome.mutationInterval,genome.interactionRadius,genome.densityCostK,genome.fieldBirthGate,
-       genome.reflexSampleRate,genome.reflexDepth,genome.reflexInfluence,genome.reflexDecay,genome.clusterReflexAge,genome.clusterReflexWeight].map(v=>+(v.toPrecision(3))),
+       genome.reflexSampleRate,genome.reflexDepth,genome.reflexInfluence,genome.reflexDecay,genome.clusterReflexAge,genome.clusterReflexWeight,
+       genome.clusterGenomeReadStrength].map(v=>+(v.toPrecision(3))),
+    // Substrate chemistry
+    f:[genome.fieldDecay,genome.fieldDiffuse,genome.chemistryMutRate].map(v=>+(v.toPrecision(4))),
+    C:genome.chemistryTable,
+    // Network coupling
+    n:[genome.netMigrantRate,genome.netPlasmidRate,genome.netMotifRate,genome.netInscribeRate,genome.netReceptivity].map(v=>+(v.toPrecision(4))),
     // Identity
     g:genome.generation,T:genome.totalTicks,
     L:genome.lineage.slice(-4),
+    E:(genome.eventLog||[]).slice(-EVENT_LOG_SIZE),
     M:genome.stableMotifs.slice(-genome.motifMemorySize),
     x:genome.extinctions,pf:+(genome.peakFitness.toPrecision(3)),
     ls:genome.longestStable,
@@ -629,14 +732,20 @@ function encodeGenome(){
     V:genome.vmProgram.map(inst=>[inst[0],inst[1],inst[2],+(inst[3].toFixed(3))]),
     vi:+(genome.vmInfluence.toPrecision(3)),
     vs:+(genome.ruleScale.toPrecision(3)),
-    vm:genome.vmMaxInstructions
+    vm:genome.vmMaxInstructions,
+    ua:cleanAtoms
   };
   return btoa(JSON.stringify(g));
 }
 
-function decodeGenome(hash){
+function decodeGenome(data){
   try{
-    const g=JSON.parse(atob(hash));
+    data=(data||'').trim();
+    if(data[0]==='{'){
+      const wrapper=JSON.parse(data);
+      data=wrapper.genome||wrapper.data||'';
+    }
+    const g=JSON.parse(atob(data));
     if(g.p){
       [genome.entropyBaseline,genome.entropyK,genome.entrainRate,genome.entrainThresh,
        genome.creationCost,genome.creationThresh,genome.destructThresh,genome.tendencyBleed,
@@ -646,13 +755,25 @@ function decodeGenome(hash){
       [genome.clusterBondThresh,genome.clusterMinSize,genome.ghostDecay,genome.ghostAmpDrip]=g.q;
     }
     genome.objWeights=g.w||[0.25,0.25,0.25,0.25];
+    if(g.fs)genome.fitnessSensors=g.fs;
     if(g.m){
       [genome.mutationRate,genome.mutationScale,genome.shadowHorizon,genome.shadowScenarios,
        genome.perturbScale,genome.extinctionThresh,genome.motifMemorySize,genome.culturalBias,
        genome.metabolicCost,genome.hgtRate,genome.hgtMax,genome.hgtSpliceNoise,
        genome.plasmidTransferRate,genome.plasmidMutRate,genome.plasmidTransferThresh,genome.plasmidSpawnRate,genome.fieldInfluence,genome.fieldWeight,
        genome.mutationInterval,genome.interactionRadius,genome.densityCostK,genome.fieldBirthGate,
-       genome.reflexSampleRate,genome.reflexDepth,genome.reflexInfluence,genome.reflexDecay,genome.clusterReflexAge,genome.clusterReflexWeight]=g.m;
+       genome.reflexSampleRate,genome.reflexDepth,genome.reflexInfluence,genome.reflexDecay,genome.clusterReflexAge,genome.clusterReflexWeight,
+       genome.clusterGenomeReadStrength]=g.m;
+    }
+    if(g.f){
+      [genome.fieldDecay,genome.fieldDiffuse,genome.chemistryMutRate]=g.f;
+      FIELD_DECAY=Math.max(0.5,Math.min(1.0,genome.fieldDecay));
+      FIELD_DIFFUSE=Math.max(0,Math.min(0.24,genome.fieldDiffuse));
+    }
+    if(g.C)genome.chemistryTable=g.C;
+    if(g.n){
+      [genome.netMigrantRate,genome.netPlasmidRate,genome.netMotifRate,genome.netInscribeRate,genome.netReceptivity]=g.n;
+    }
     // Handle older genomes without newer params
     if(!genome.hgtRate)genome.hgtRate=0.15;
     if(!genome.hgtMax)genome.hgtMax=2;
@@ -662,6 +783,8 @@ function decodeGenome(hash){
     if(!genome.plasmidTransferThresh)genome.plasmidTransferThresh=0.55;
     if(!genome.plasmidSpawnRate)genome.plasmidSpawnRate=0.002;
     if(!genome.fieldInfluence)genome.fieldInfluence=0.65;
+    if(genome.fieldDecay===undefined)genome.fieldDecay=0.982;
+    if(genome.fieldDiffuse===undefined)genome.fieldDiffuse=0.11;
     if(!genome.chemistryTable)genome.chemistryTable=seedChemistryTable();
     if(genome.chemistryMutRate===undefined)genome.chemistryMutRate=0.02;
     if(!genome.fieldWeight)genome.fieldWeight=0.2;
@@ -669,17 +792,24 @@ function decodeGenome(hash){
     if(!genome.interactionRadius)genome.interactionRadius=55;
     if(!genome.densityCostK)genome.densityCostK=0.00003;
     if(!genome.fieldBirthGate)genome.fieldBirthGate=0.3;
-    // Layer 10 defaults for older genomes
     if(!genome.reflexSampleRate)genome.reflexSampleRate=0.15;
     if(!genome.reflexDepth)genome.reflexDepth=4;
     if(genome.reflexInfluence===undefined)genome.reflexInfluence=0.1;
     if(!genome.reflexDecay)genome.reflexDecay=0.95;
     if(!genome.clusterReflexAge)genome.clusterReflexAge=5;
     if(genome.clusterReflexWeight===undefined)genome.clusterReflexWeight=0.15;
-    }
+    if(genome.clusterGenomeReadStrength===undefined)genome.clusterGenomeReadStrength=0.05;
+    if(genome.netMigrantRate===undefined)genome.netMigrantRate=0.003;
+    if(genome.netPlasmidRate===undefined)genome.netPlasmidRate=0.004;
+    if(genome.netMotifRate===undefined)genome.netMotifRate=0.005;
+    if(genome.netInscribeRate===undefined)genome.netInscribeRate=0.004;
+    if(genome.netReceptivity===undefined)genome.netReceptivity=0.5;
+    FIELD_DECAY=Math.max(0.5,Math.min(1.0,genome.fieldDecay));
+    FIELD_DIFFUSE=Math.max(0,Math.min(0.24,genome.fieldDiffuse));
     genome.generation=(g.g||0)+1;
     genome.totalTicks=g.T||0;
     genome.lineage=g.L||[];
+    genome.eventLog=g.E||[];
     genome.stableMotifs=g.M||[];
     genome.extinctions=g.x||0;
     genome.peakFitness=g.pf||0;
@@ -688,6 +818,7 @@ function decodeGenome(hash){
     if(g.vi!==undefined)genome.vmInfluence=g.vi;
     if(g.vs)genome.ruleScale=g.vs;
     if(g.vm)genome.vmMaxInstructions=g.vm;
+    if(g.ua)genome.userAtoms=g.ua.map(a=>({expression:a.expression,compiled:null,failed:!!a.failed,uses:a.uses|0,age:a.age|0}));
     return true;
   }catch(e){return false}
 }
@@ -710,8 +841,13 @@ function loadGenome(){
 
 // ═══ GENOME FILE EXPORT/IMPORT — genome travels with you ═══
 function exportGenome(){
-  const data=encodeGenome();
-  const blob=new Blob([data],{type:'text/plain'});
+  const data=JSON.stringify({
+    type:'selection-genome',
+    version:2,
+    exportedAt:new Date().toISOString(),
+    genome:encodeGenome()
+  },null,2);
+  const blob=new Blob([data],{type:'application/json'});
   const a=document.createElement('a');
   a.href=URL.createObjectURL(blob);
   a.download='selection_gen'+genome.generation+'_t'+genome.totalTicks+'.json';
@@ -1263,6 +1399,7 @@ function attemptClusterBudding(){
       parentAge:c.persistAge
     });
     if(genome.lineage.length>6)genome.lineage.shift();
+    recordEvent('cluster_bud',{p:c.size,d:budded.length,a:c.persistAge},300);
   }
 
   // Rebuild lookup if any budding happened
@@ -1899,7 +2036,7 @@ function evolvePlasmids(){
       }
       else if(roll<0.58){
         // Structural change (opcode or registers)
-        if(Math.random()<0.5)pPlasmid[base]=Math.floor(Math.random()*22);
+        if(Math.random()<0.5)pPlasmid[base]=Math.floor(Math.random()*OPCODE_COUNT);
         else{
           pPlasmid[base+1]=Math.floor(Math.random()*12);
           pPlasmid[base+2]=Math.floor(Math.random()*12);
@@ -1947,7 +2084,7 @@ function evolvePlasmids(){
     // Spontaneous generation — only in high-resonance environments
     if(nP<MAX_PLASMID&&Math.random()<genome.plasmidSpawnRate*(1+localRes[i]*4)){
       const newBase=i*PLASMID_SLOTS+nP*4;
-      pPlasmid[newBase]=Math.floor(Math.random()*22);
+      pPlasmid[newBase]=Math.floor(Math.random()*OPCODE_COUNT);
       pPlasmid[newBase+1]=Math.floor(Math.random()*12);
       pPlasmid[newBase+2]=Math.floor(Math.random()*12);
       pPlasmid[newBase+3]=(Math.random()-0.5)*0.75;
@@ -1986,7 +2123,7 @@ function attemptHGT(){
     donor[3]+=(Math.random()-0.5)*genome.hgtSpliceNoise;
     donor[3]=Math.max(-2.5,Math.min(2.5,donor[3]));
     // Occasional opcode drift during transfer
-    if(Math.random()<0.08)donor[0]=Math.floor(Math.random()*22);
+    if(Math.random()<0.08)donor[0]=Math.floor(Math.random()*OPCODE_COUNT);
 
     const insertPos=Math.floor(Math.random()*(genome.vmProgram.length+1));
     genome.vmProgram.splice(insertPos,0,donor);
@@ -2122,14 +2259,15 @@ function mutateGenome(){
   // ═══ STRESS-RESPONSIVE MUTATION TIMING ═══
   // Mutation rate is modulated by: (a) genome parameter, (b) system stability, (c) VM pressure
   // Under collapse → mutate faster. Under stability → slower. VM code can push either way.
+  const mutationPressure=mutPressureAccum;
   const stabilityFactor=Math.max(0.3,Math.min(2.0,
     1.0+(1.0-selfModel.stability)*0.8  // instability increases mutation
     -selfModel.stability*0.3            // stability decreases it
-    +Math.tanh(mutPressureAccum)*0.4    // VM channel 6 pushes mutation rate
+    +Math.tanh(mutationPressure)*0.4    // VM channel 6 pushes mutation rate
   ));
   const rate=genome.mutationRate*stabilityFactor;
   const scale=genome.mutationScale;
-  mutPressureAccum=0; // reset accumulator for next cycle
+  mutPressureAccum=0; // reset accumulator for next cycle after snapshotting pressure
 
   // Helper: maybe mutate a value.
   // Pe22b — GLOVES OFF (revised). No spring, no prior, no restoring force.
@@ -2154,7 +2292,7 @@ function mutateGenome(){
   // Defensive defaults for old genomes that don't have a table yet.
   if(!genome.chemistryTable)genome.chemistryTable=seedChemistryTable();
   if(genome.chemistryMutRate===undefined)genome.chemistryMutRate=0.02;
-  const chemRate=genome.chemistryMutRate*(1+Math.tanh(mutPressureAccum)*0.3);
+  const chemRate=genome.chemistryMutRate*(1+Math.tanh(mutationPressure)*0.3);
   for(let oi=0;oi<genome.chemistryTable.length;oi++){
     const recipe=genome.chemistryTable[oi];
     for(let mi=0;mi<recipe.length;mi++){
@@ -2203,7 +2341,11 @@ function mutateGenome(){
     if(Math.random()<rate)genome.objWeights[i]=Math.max(0,genome.objWeights[i]+(Math.random()-0.5)*0.06*scale);
   }
   const wSum=genome.objWeights.reduce((a,b)=>a+b,0);
-  for(let i=0;i<4;i++)genome.objWeights[i]/=wSum;
+  if(wSum>0){
+    for(let i=0;i<4;i++)genome.objWeights[i]/=wSum;
+  }else{
+    genome.objWeights=[0.25,0.25,0.25,0.25];
+  }
 
   // LAYER 4: META-MUTATIONS
   genome.mutationRate=maybe(genome.mutationRate,0.01,0.25,0.02);
@@ -2341,12 +2483,14 @@ function mutateGenome(){
   }
   // Birth new atom — no hard cap. Compute pressure self-limits via uses.
   if(Math.random()<rate*0.15){
+    const expression=uaGenExpression();
     genome.userAtoms.push({
-      expression:uaGenExpression(),
+      expression,
       compiled:null,
       failed:false,
       uses:0
     });
+    recordEvent('ua_birth',{expr:expression.slice(0,48),n:genome.userAtoms.length},600);
   }
   // Cull atoms that are failed (invalid JS) or proven unused.
   // "Proven unused" = been alive for a mutation cycle with zero uses.
@@ -2362,7 +2506,11 @@ function mutateGenome(){
         if((a.uses|0)===0&&(a.age|0)>2){removeIdx=i;break;}
       }
     }
-    if(removeIdx>=0)genome.userAtoms.splice(removeIdx,1);
+    if(removeIdx>=0){
+      const removed=genome.userAtoms[removeIdx];
+      genome.userAtoms.splice(removeIdx,1);
+      recordEvent('ua_cull',{failed:!!removed.failed,n:genome.userAtoms.length},600);
+    }
   }
   // Age all atoms — lets us distinguish "never used yet" from "used to be used"
   for(const ua of genome.userAtoms)ua.age=(ua.age|0)+1;
@@ -2376,7 +2524,7 @@ function mutateGenome(){
     inst[3]=Math.max(-2,Math.min(2,inst[3]));
 
     // Opcode swap — now includes FEEDBACK (5), LOAD_MEM (6), STORE_MEM (7)
-    if(Math.random()<rate*0.2)inst[0]=Math.floor(Math.random()*22);
+    if(Math.random()<rate*0.2)inst[0]=Math.floor(Math.random()*OPCODE_COUNT);
 
     // Source register swap (now 12 registers)
     if(Math.random()<rate*0.2)inst[1]=Math.floor(Math.random()*12);
@@ -2388,7 +2536,7 @@ function mutateGenome(){
   // Program growth: insert a random instruction
   if(genome.vmProgram.length<genome.vmMaxInstructions&&Math.random()<rate*0.15){
     const pos=Math.floor(Math.random()*(genome.vmProgram.length+1));
-    const newInst=[Math.floor(Math.random()*22),Math.floor(Math.random()*12),Math.floor(Math.random()*12),(Math.random()-0.5)*0.6];
+    const newInst=[Math.floor(Math.random()*OPCODE_COUNT),Math.floor(Math.random()*12),Math.floor(Math.random()*12),(Math.random()-0.5)*0.6];
     genome.vmProgram.splice(pos,0,newInst);
   }
 
@@ -2425,7 +2573,7 @@ function mutateGenome(){
       inst[3]+=(Math.random()-0.5)*0.15*scale;
       inst[3]=Math.max(-2,Math.min(2,inst[3]));
       // Structural mutations (rarer)
-      if(Math.random()<0.2)inst[0]=Math.floor(Math.random()*22);
+      if(Math.random()<0.2)inst[0]=Math.floor(Math.random()*OPCODE_COUNT);
       if(Math.random()<0.15)inst[1]=Math.floor(Math.random()*12);
       if(Math.random()<0.15)inst[2]=Math.floor(Math.random()*12);
     }
@@ -2483,6 +2631,7 @@ function checkExtinction(){
       mutRate:+(genome.mutationRate.toFixed(3))
     });
     if(genome.lineage.length>4)genome.lineage.shift();
+    recordEvent('extinction',{alive,fit:+currentFitness.toFixed(3),mut:+genome.mutationRate.toFixed(3)});
 
     genome.generation++;
     try{const g2=encodeGenome();if(g2.length<500000)localStorage.setItem('selection_genome',g2)}catch(e){}
@@ -3926,6 +4075,7 @@ function loop(){
   const frameStart=lastLoopTime;
   tick++;
   genome.totalTicks++;
+  flushNetworkEvents();
   smx+=(mx-smx)*.05;smy+=(my-smy)*.05;
   if(pulling){pStr=Math.min(pStr+.02,1);pDur++}else pStr*=.92;
 
@@ -3957,11 +4107,14 @@ function loop(){
       if(pPlasmidAge[i]>2000&&genome.vmProgram.length<genome.vmMaxInstructions){
         const base=i*PLASMID_SLOTS;
         const len=pPlasmidLen[i];
+        let fixed=0;
         for(let p=0;p<len&&genome.vmProgram.length<genome.vmMaxInstructions;p++){
           const pi=base+p*4;
           const newInst=[pPlasmid[pi],pPlasmid[pi+1],pPlasmid[pi+2],pPlasmid[pi+3]];
           genome.vmProgram.push(newInst);
+          fixed++;
         }
+        if(fixed>0)recordEvent('plasmid_fix',{n:fixed,vm:genome.vmProgram.length},600);
         pPlasmidLen[i]=0;
         pPlasmidAge[i]=0;
       }
@@ -4115,12 +4268,13 @@ function loop(){
         if(c.persistAge>5&&c.size>5){
           const motif={t:c.tendency.map(v=>+(v.toFixed(3))),s:c.size,c:+(c.coherence.toFixed(2)),age:c.persistAge};
           const isDupe=genome.stableMotifs.some(m=>{let d=0;for(let i=0;i<DIMS;i++)d+=Math.abs(m.t[i]-motif.t[i]);return d<0.3});
-          if(!isDupe){genome.stableMotifs.push(motif);if(genome.stableMotifs.length>5)genome.stableMotifs.shift()}
+          if(!isDupe){genome.stableMotifs.push(motif);if(genome.stableMotifs.length>5)genome.stableMotifs.shift();recordEvent('motif_remembered',{s:motif.s,c:motif.c},900)}
         }
       }
     }
     genome.lineage.push({t:genome.totalTicks,p:selfModel.population,c:selfModel.clusterCount,d:+(selfModel.diversity.toFixed(3)),f:+(currentFitness.toFixed(3)),s:+(selfModel.stability.toFixed(3)),w:genome.objWeights.map(v=>+(v.toFixed(3)))});
     if(genome.lineage.length>6)genome.lineage.shift();
+    recordEvent('pulse',{p:selfModel.population,c:selfModel.clusterCount,f:+currentFitness.toFixed(2),s:+(selfModel.stability||0).toFixed(2)},1800);
     saveGenome();
     const compCount=genome.vmProgram.filter(i=>i[0]===3).length;
     const memCount=genome.vmProgram.filter(i=>i[0]===6||i[0]===7).length;
@@ -4137,7 +4291,7 @@ function loop(){
     const crW=genome.clusterReflexWeight||0;
     const reflexClusters=clusters.filter(c=>c.reflex&&c.reflex.selfRecognition>0.3).length;
     const nPeers=countPeers();
-    const netTag=nPeers>0?` | net:${nPeers}⟷`:'';
+    const netTag=nPeers>0?` | net:${nPeers}⟷ s${netStats.sent} a${netStats.accepted}${netStats.bad?' !'+netStats.bad:''}`:'';
     let cgTag='';
     const cgClusters=clusters.filter(c=>c.clusterGenome&&c.persistAge>2);
     if(cgClusters.length>0){
@@ -4159,7 +4313,7 @@ function loop(){
       const totalUses=uas.reduce((s,a)=>s+(a.uses|0),0);
       uaTag=` | ua:${active}/${uas.length} used:${totalUses}`;
     }
-    genEl.textContent=`gen${genome.generation} ${genome.extinctions}☠ t${genome.totalTicks} | ${clusters.length}cl(${clVMActive}vm${budCount>0?','+budCount+'bud':''}) ${livingLin}lin fit:${currentFitness.toFixed(2)} stb:${(selfModel.stability||0).toFixed(2)} | vm:${genome.vmProgram.length}inst ${nSensors}sns ${hgtEventsTotal}hgt | pop:${N}/${CAP} fld:${fieldTotal.toFixed(0)}${fTrend<-0.01?'↓':fTrend>0.01?'↑':'~'} risk:${cRisk.toFixed(2)} | ⟲${rInf.toFixed(2)} ${reflexClusters}rc${netTag}${cgTag}${uaTag}`;
+    genEl.textContent=`gen${genome.generation} ${genome.extinctions}☠ t${genome.totalTicks} | ${clusters.length}cl(${clVMActive}vm${budCount>0?','+budCount+'bud':''}) ${livingLin}lin fit:${currentFitness.toFixed(2)} stb:${(selfModel.stability||0).toFixed(2)} | vm:${genome.vmProgram.length}inst ${nSensors}sns ${hgtEventsTotal}hgt | pop:${N}/${CAP} fld:${fieldTotal.toFixed(0)}${fTrend<-0.01?'↓':fTrend>0.01?'↑':'~'} risk:${cRisk.toFixed(2)} | ⟲${rInf.toFixed(2)} ${reflexClusters}rc${netTag}${cgTag}${uaTag}${(genome.eventLog&&genome.eventLog.length)?' ev:'+genome.eventLog.length:''}`;
   }
 
   const renderEvery=N>1000?4:N>500?3:N>200?2:1;
