@@ -35,6 +35,7 @@ const TAB_ID=Math.random().toString(36).slice(2,10);
 const NET_PROTOCOL_VERSION=1;
 const NETWORK_CHANNEL='selection-pe-network';
 const NET_QUEUE_LIMITS={migrant:20,plasmid:10,motif:10,inscription:20};
+const NET_DIMS=5,NET_MEM_SIZE=8,NET_MAX_PLASMID=4; // mirror core genome constants for early packet validation
 let bc=null;
 const incomingMigrants=[];     // particle packets received from other tabs
 const incomingPlasmids=[];     // plasmid packages received
@@ -43,6 +44,7 @@ const incomingInscriptions=[]; // cell program packets received
 let networkPeers=0;            // how many other tabs we're hearing from
 const peerLastSeen={};         // peer id → last tick we heard from them
 const netStats={sent:0,received:0,accepted:0,dropped:0,bad:0,lastType:''};
+const netEventPending={migrant:0,plasmid:0,motif:0,inscription:0};
 
 function netPacket(type,data){
   return {v:NET_PROTOCOL_VERSION,tab:TAB_ID,born:tick,type,data};
@@ -70,6 +72,12 @@ function validNetworkPayload(type,data){
   if(type==='hello'||type==='hello-reply')return true;
   if(type==='migrant'){
     return data&&finitePacketNumber(data.nx,-0.25,1.25)&&finitePacketNumber(data.ny,-0.25,1.25)&&
+      Array.isArray(data.tend)&&data.tend.length<=NET_DIMS&&data.tend.every(v=>finitePacketNumber(v,-8,8))&&
+      (!data.mem||(Array.isArray(data.mem)&&data.mem.length<=NET_MEM_SIZE&&data.mem.every(v=>finitePacketNumber(v,-16,16))))&&
+      (!data.plasmid||(Array.isArray(data.plasmid)&&data.plasmid.length<=NET_MAX_PLASMID&&data.plasmid.every(validInstruction)))&&
+      finitePacketNumber(data.amp,-2,4)&&finitePacketNumber(data.phase,-64,64);
+  }
+  if(type==='plasmid')return Array.isArray(data)&&data.length<=NET_MAX_PLASMID&&data.every(validInstruction);
       Array.isArray(data.tend)&&data.tend.length<=DIMS&&data.tend.every(v=>finitePacketNumber(v,-8,8))&&
       (!data.mem||(Array.isArray(data.mem)&&data.mem.length<=MEM_SIZE&&data.mem.every(v=>finitePacketNumber(v,-16,16))))&&
       (!data.plasmid||(Array.isArray(data.plasmid)&&data.plasmid.length<=MAX_PLASMID&&data.plasmid.every(validInstruction)))&&
@@ -87,6 +95,7 @@ function queueNetworkPacket(queue,data,limit,type){
   if(queue.length>=limit){netStats.dropped++;return}
   queue.push(data);
   netStats.accepted++;
+  if(type&&netEventPending[type]!==undefined)netEventPending[type]++;
   recordEvent('net_'+type,{q:queue.length,a:netStats.accepted},900);
 function queueNetworkPacket(queue,data,limit){
   if(queue.length>=limit){netStats.dropped++;return}
@@ -549,6 +558,15 @@ function recordEvent(kind,data,minGap){
     genome.eventLog.push(ev);
     while(genome.eventLog.length>EVENT_LOG_SIZE)genome.eventLog.shift();
   }catch(e){}
+}
+function flushNetworkEvents(){
+  for(const type in netEventPending){
+    const n=netEventPending[type];
+    if(n>0){
+      recordEvent('net_'+type,{n,a:netStats.accepted},900);
+      netEventPending[type]=0;
+    }
+  }
 }
 
 // ═══ VM PHENOTYPE PROFILE ═══
@@ -4072,6 +4090,7 @@ function loop(){
   const frameStart=lastLoopTime;
   tick++;
   genome.totalTicks++;
+  flushNetworkEvents();
   smx+=(mx-smx)*.05;smy+=(my-smy)*.05;
   if(pulling){pStr=Math.min(pStr+.02,1);pDur++}else pStr*=.92;
 
