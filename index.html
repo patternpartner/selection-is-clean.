@@ -88,6 +88,10 @@ function queueNetworkPacket(queue,data,limit,type){
   queue.push(data);
   netStats.accepted++;
   recordEvent('net_'+type,{q:queue.length,a:netStats.accepted},900);
+function queueNetworkPacket(queue,data,limit){
+  if(queue.length>=limit){netStats.dropped++;return}
+  queue.push(data);
+  netStats.accepted++;
 }
 function handleNetworkMessage(raw){
   const msg=raw&&typeof raw==='object'?raw:null;
@@ -102,6 +106,10 @@ function handleNetworkMessage(raw){
   else if(msg.type==='plasmid')queueNetworkPacket(incomingPlasmids,msg.data,NET_QUEUE_LIMITS.plasmid,'plasmid');
   else if(msg.type==='motif')queueNetworkPacket(incomingMotifs,msg.data,NET_QUEUE_LIMITS.motif,'motif');
   else if(msg.type==='inscription')queueNetworkPacket(incomingInscriptions,msg.data,NET_QUEUE_LIMITS.inscription,'inscription');
+  if(msg.type==='migrant')queueNetworkPacket(incomingMigrants,msg.data,NET_QUEUE_LIMITS.migrant);
+  else if(msg.type==='plasmid')queueNetworkPacket(incomingPlasmids,msg.data,NET_QUEUE_LIMITS.plasmid);
+  else if(msg.type==='motif')queueNetworkPacket(incomingMotifs,msg.data,NET_QUEUE_LIMITS.motif);
+  else if(msg.type==='inscription')queueNetworkPacket(incomingInscriptions,msg.data,NET_QUEUE_LIMITS.inscription);
   else if(msg.type==='hello')networkSend('hello-reply');
 }
 try{
