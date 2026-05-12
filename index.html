@@ -20,6 +20,7 @@ canvas{position:fixed;inset:0}
 <canvas id="c"></canvas>
 <script>
 const c=document.getElementById('c'),X=c.getContext('2d'),genEl=document.getElementById('gen');
+genEl.textContent='booting…';
 let W,H,mx=-9e3,my=-9e3,smx=0,smy=0,pulling=0,pStr=0,pDur=0,tick=0;
 
 // ═══════════════════════════════════════
@@ -843,13 +844,34 @@ function saveGenome(){
   try{history.replaceState(null,'','#'+hash)}catch(e){}
 }
 
+const MAX_STORED_GENOME_BYTES=500000;
+function decodeGenomeSafe(data,source){
+  if(!data||data.length<=10)return false;
+  if(data.length>MAX_STORED_GENOME_BYTES){
+    console.warn('Ignoring oversized genome from '+source,data.length);
+    return false;
+  }
+  const ok=decodeGenome(data);
+  if(!ok)console.warn('Ignoring unreadable genome from '+source);
+  return ok;
+}
 function loadGenome(){
   const h=location.hash.slice(1);
-  if(h.length>10)return decodeGenome(h);
-  // Try localStorage
+  if(h==='reset'){
+    try{localStorage.removeItem('selection_genome')}catch(e){}
+    try{history.replaceState(null,'',location.pathname||' ')}catch(e){}
+    return false;
+  }
+  if(decodeGenomeSafe(h,'url'))return true;
+  // Try localStorage. Bad stored genomes are quarantined so one corrupt lineage
+  // cannot keep producing a black screen on every reload.
   try{
     const stored=localStorage.getItem('selection_genome');
-    if(stored&&stored.length>10)return decodeGenome(stored);
+    if(stored&&stored.length>10){
+      const ok=decodeGenomeSafe(stored,'localStorage');
+      if(!ok)try{localStorage.removeItem('selection_genome')}catch(e){}
+      return ok;
+    }
   }catch(e){}
   return false;
 }
@@ -4347,6 +4369,8 @@ function loop(){
   if(tick%45===0)compact();
   }catch(e){
     console.error('Loop error:',e.message,e.stack);
+    genEl.textContent='runtime recovered: '+(e&&e.message?e.message:'unknown');
+    genEl.style.color='rgba(255,120,120,0.75)';
     birthQueue.length=0;
     for(let i=0;i<N;i++){
       if(isNaN(amp[i]))amp[i]=0.3;
@@ -4425,7 +4449,18 @@ document.addEventListener('touchstart',e=>{
 },{passive:false});
 addEventListener('resize',resize);
 
-init();loop();
+function boot(){
+  try{
+    init();
+    genEl.style.color='rgba(80,90,100,0.4)';
+    loop();
+  }catch(e){
+    console.error('Boot error:',e.message,e.stack);
+    genEl.textContent='boot failed: '+(e&&e.message?e.message:'unknown')+' — add #reset to the URL to clear saved lineage';
+    genEl.style.color='rgba(255,120,120,0.85)';
+  }
+}
+boot();
 </script>
 </body>
 </html>
