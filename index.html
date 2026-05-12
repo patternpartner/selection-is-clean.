@@ -235,6 +235,7 @@ const DIMS=5; // dim 4 is blank — no hardcoded role. System decides what it me
 const MEM_SIZE=8; // per-particle persistent memory. Particles become stateful agents.
 const MAX_PLASMID=4; // max instructions per particle's personal mobile DNA
 const PLASMID_SLOTS=MAX_PLASMID*4; // each instruction is [op,src,dst,k] = 4 values
+const OPCODE_COUNT=23; // VM opcodes 0..22, including USER_ATOM at 22
 const FIELD_W=40;
 const FIELD_H=40;
 let FIELD_DECAY=0.982;   // natural fade — Pe22b: now genome-driven, can evolve
@@ -602,8 +603,20 @@ const birthQueue=[];
 // Copy URL = copy lineage. Share URL = share history.
 // ═══════════════════════════════════════
 function encodeGenome(){
-  // Compress: only persist what matters for continuity
+  // Compress: persist evolvable genome state while omitting runtime-only compiled functions.
+  const cleanAtoms=(genome.userAtoms||[]).map(a=>({
+    expression:a.expression,
+    failed:!!a.failed,
+    uses:a.uses|0,
+    age:a.age|0
+  }));
+  const cleanSensors=(genome.fitnessSensors||[]).map(s=>({
+    program:(s.program||[]).map(inst=>[inst[0],inst[1],inst[2],+(inst[3].toFixed(3))]),
+    weight:+((s.weight||0).toFixed(4)),
+    realWeight:+((s.realWeight||0).toFixed(4))
+  }));
   const g={
+    z:2,
     // Physics
     p:[genome.entropyBaseline,genome.entropyK,genome.entrainRate,genome.entrainThresh,
        genome.creationCost,genome.creationThresh,genome.destructThresh,genome.tendencyBleed,
@@ -612,13 +625,20 @@ function encodeGenome(){
     q:[genome.clusterBondThresh,genome.clusterMinSize,genome.ghostDecay,genome.ghostAmpDrip].map(v=>+(v.toPrecision(4))),
     // Evaluation
     w:genome.objWeights.map(v=>+(v.toFixed(4))),
+    fs:cleanSensors,
     // Meta
     m:[genome.mutationRate,genome.mutationScale,genome.shadowHorizon,genome.shadowScenarios,
        genome.perturbScale,genome.extinctionThresh,genome.motifMemorySize,genome.culturalBias,
        genome.metabolicCost,genome.hgtRate,genome.hgtMax,genome.hgtSpliceNoise,
        genome.plasmidTransferRate,genome.plasmidMutRate,genome.plasmidTransferThresh,genome.plasmidSpawnRate,genome.fieldInfluence,genome.fieldWeight,
        genome.mutationInterval,genome.interactionRadius,genome.densityCostK,genome.fieldBirthGate,
-       genome.reflexSampleRate,genome.reflexDepth,genome.reflexInfluence,genome.reflexDecay,genome.clusterReflexAge,genome.clusterReflexWeight].map(v=>+(v.toPrecision(3))),
+       genome.reflexSampleRate,genome.reflexDepth,genome.reflexInfluence,genome.reflexDecay,genome.clusterReflexAge,genome.clusterReflexWeight,
+       genome.clusterGenomeReadStrength].map(v=>+(v.toPrecision(3))),
+    // Substrate chemistry
+    f:[genome.fieldDecay,genome.fieldDiffuse,genome.chemistryMutRate].map(v=>+(v.toPrecision(4))),
+    C:genome.chemistryTable,
+    // Network coupling
+    n:[genome.netMigrantRate,genome.netPlasmidRate,genome.netMotifRate,genome.netInscribeRate,genome.netReceptivity].map(v=>+(v.toPrecision(4))),
     // Identity
     g:genome.generation,T:genome.totalTicks,
     L:genome.lineage.slice(-4),
@@ -629,14 +649,20 @@ function encodeGenome(){
     V:genome.vmProgram.map(inst=>[inst[0],inst[1],inst[2],+(inst[3].toFixed(3))]),
     vi:+(genome.vmInfluence.toPrecision(3)),
     vs:+(genome.ruleScale.toPrecision(3)),
-    vm:genome.vmMaxInstructions
+    vm:genome.vmMaxInstructions,
+    ua:cleanAtoms
   };
   return btoa(JSON.stringify(g));
 }
 
-function decodeGenome(hash){
+function decodeGenome(data){
   try{
-    const g=JSON.parse(atob(hash));
+    data=(data||'').trim();
+    if(data[0]==='{'){
+      const wrapper=JSON.parse(data);
+      data=wrapper.genome||wrapper.data||'';
+    }
+    const g=JSON.parse(atob(data));
     if(g.p){
       [genome.entropyBaseline,genome.entropyK,genome.entrainRate,genome.entrainThresh,
        genome.creationCost,genome.creationThresh,genome.destructThresh,genome.tendencyBleed,
@@ -646,13 +672,25 @@ function decodeGenome(hash){
       [genome.clusterBondThresh,genome.clusterMinSize,genome.ghostDecay,genome.ghostAmpDrip]=g.q;
     }
     genome.objWeights=g.w||[0.25,0.25,0.25,0.25];
+    if(g.fs)genome.fitnessSensors=g.fs;
     if(g.m){
       [genome.mutationRate,genome.mutationScale,genome.shadowHorizon,genome.shadowScenarios,
        genome.perturbScale,genome.extinctionThresh,genome.motifMemorySize,genome.culturalBias,
        genome.metabolicCost,genome.hgtRate,genome.hgtMax,genome.hgtSpliceNoise,
        genome.plasmidTransferRate,genome.plasmidMutRate,genome.plasmidTransferThresh,genome.plasmidSpawnRate,genome.fieldInfluence,genome.fieldWeight,
        genome.mutationInterval,genome.interactionRadius,genome.densityCostK,genome.fieldBirthGate,
-       genome.reflexSampleRate,genome.reflexDepth,genome.reflexInfluence,genome.reflexDecay,genome.clusterReflexAge,genome.clusterReflexWeight]=g.m;
+       genome.reflexSampleRate,genome.reflexDepth,genome.reflexInfluence,genome.reflexDecay,genome.clusterReflexAge,genome.clusterReflexWeight,
+       genome.clusterGenomeReadStrength]=g.m;
+    }
+    if(g.f){
+      [genome.fieldDecay,genome.fieldDiffuse,genome.chemistryMutRate]=g.f;
+      FIELD_DECAY=Math.max(0.5,Math.min(1.0,genome.fieldDecay));
+      FIELD_DIFFUSE=Math.max(0,Math.min(0.24,genome.fieldDiffuse));
+    }
+    if(g.C)genome.chemistryTable=g.C;
+    if(g.n){
+      [genome.netMigrantRate,genome.netPlasmidRate,genome.netMotifRate,genome.netInscribeRate,genome.netReceptivity]=g.n;
+    }
     // Handle older genomes without newer params
     if(!genome.hgtRate)genome.hgtRate=0.15;
     if(!genome.hgtMax)genome.hgtMax=2;
@@ -662,6 +700,8 @@ function decodeGenome(hash){
     if(!genome.plasmidTransferThresh)genome.plasmidTransferThresh=0.55;
     if(!genome.plasmidSpawnRate)genome.plasmidSpawnRate=0.002;
     if(!genome.fieldInfluence)genome.fieldInfluence=0.65;
+    if(genome.fieldDecay===undefined)genome.fieldDecay=0.982;
+    if(genome.fieldDiffuse===undefined)genome.fieldDiffuse=0.11;
     if(!genome.chemistryTable)genome.chemistryTable=seedChemistryTable();
     if(genome.chemistryMutRate===undefined)genome.chemistryMutRate=0.02;
     if(!genome.fieldWeight)genome.fieldWeight=0.2;
@@ -669,14 +709,20 @@ function decodeGenome(hash){
     if(!genome.interactionRadius)genome.interactionRadius=55;
     if(!genome.densityCostK)genome.densityCostK=0.00003;
     if(!genome.fieldBirthGate)genome.fieldBirthGate=0.3;
-    // Layer 10 defaults for older genomes
     if(!genome.reflexSampleRate)genome.reflexSampleRate=0.15;
     if(!genome.reflexDepth)genome.reflexDepth=4;
     if(genome.reflexInfluence===undefined)genome.reflexInfluence=0.1;
     if(!genome.reflexDecay)genome.reflexDecay=0.95;
     if(!genome.clusterReflexAge)genome.clusterReflexAge=5;
     if(genome.clusterReflexWeight===undefined)genome.clusterReflexWeight=0.15;
-    }
+    if(genome.clusterGenomeReadStrength===undefined)genome.clusterGenomeReadStrength=0.05;
+    if(genome.netMigrantRate===undefined)genome.netMigrantRate=0.003;
+    if(genome.netPlasmidRate===undefined)genome.netPlasmidRate=0.004;
+    if(genome.netMotifRate===undefined)genome.netMotifRate=0.005;
+    if(genome.netInscribeRate===undefined)genome.netInscribeRate=0.004;
+    if(genome.netReceptivity===undefined)genome.netReceptivity=0.5;
+    FIELD_DECAY=Math.max(0.5,Math.min(1.0,genome.fieldDecay));
+    FIELD_DIFFUSE=Math.max(0,Math.min(0.24,genome.fieldDiffuse));
     genome.generation=(g.g||0)+1;
     genome.totalTicks=g.T||0;
     genome.lineage=g.L||[];
@@ -688,6 +734,7 @@ function decodeGenome(hash){
     if(g.vi!==undefined)genome.vmInfluence=g.vi;
     if(g.vs)genome.ruleScale=g.vs;
     if(g.vm)genome.vmMaxInstructions=g.vm;
+    if(g.ua)genome.userAtoms=g.ua.map(a=>({expression:a.expression,compiled:null,failed:!!a.failed,uses:a.uses|0,age:a.age|0}));
     return true;
   }catch(e){return false}
 }
@@ -710,8 +757,13 @@ function loadGenome(){
 
 // ═══ GENOME FILE EXPORT/IMPORT — genome travels with you ═══
 function exportGenome(){
-  const data=encodeGenome();
-  const blob=new Blob([data],{type:'text/plain'});
+  const data=JSON.stringify({
+    type:'selection-genome',
+    version:2,
+    exportedAt:new Date().toISOString(),
+    genome:encodeGenome()
+  },null,2);
+  const blob=new Blob([data],{type:'application/json'});
   const a=document.createElement('a');
   a.href=URL.createObjectURL(blob);
   a.download='selection_gen'+genome.generation+'_t'+genome.totalTicks+'.json';
@@ -1899,7 +1951,7 @@ function evolvePlasmids(){
       }
       else if(roll<0.58){
         // Structural change (opcode or registers)
-        if(Math.random()<0.5)pPlasmid[base]=Math.floor(Math.random()*22);
+        if(Math.random()<0.5)pPlasmid[base]=Math.floor(Math.random()*OPCODE_COUNT);
         else{
           pPlasmid[base+1]=Math.floor(Math.random()*12);
           pPlasmid[base+2]=Math.floor(Math.random()*12);
@@ -1947,7 +1999,7 @@ function evolvePlasmids(){
     // Spontaneous generation — only in high-resonance environments
     if(nP<MAX_PLASMID&&Math.random()<genome.plasmidSpawnRate*(1+localRes[i]*4)){
       const newBase=i*PLASMID_SLOTS+nP*4;
-      pPlasmid[newBase]=Math.floor(Math.random()*22);
+      pPlasmid[newBase]=Math.floor(Math.random()*OPCODE_COUNT);
       pPlasmid[newBase+1]=Math.floor(Math.random()*12);
       pPlasmid[newBase+2]=Math.floor(Math.random()*12);
       pPlasmid[newBase+3]=(Math.random()-0.5)*0.75;
@@ -1986,7 +2038,7 @@ function attemptHGT(){
     donor[3]+=(Math.random()-0.5)*genome.hgtSpliceNoise;
     donor[3]=Math.max(-2.5,Math.min(2.5,donor[3]));
     // Occasional opcode drift during transfer
-    if(Math.random()<0.08)donor[0]=Math.floor(Math.random()*22);
+    if(Math.random()<0.08)donor[0]=Math.floor(Math.random()*OPCODE_COUNT);
 
     const insertPos=Math.floor(Math.random()*(genome.vmProgram.length+1));
     genome.vmProgram.splice(insertPos,0,donor);
@@ -2122,14 +2174,15 @@ function mutateGenome(){
   // ═══ STRESS-RESPONSIVE MUTATION TIMING ═══
   // Mutation rate is modulated by: (a) genome parameter, (b) system stability, (c) VM pressure
   // Under collapse → mutate faster. Under stability → slower. VM code can push either way.
+  const mutationPressure=mutPressureAccum;
   const stabilityFactor=Math.max(0.3,Math.min(2.0,
     1.0+(1.0-selfModel.stability)*0.8  // instability increases mutation
     -selfModel.stability*0.3            // stability decreases it
-    +Math.tanh(mutPressureAccum)*0.4    // VM channel 6 pushes mutation rate
+    +Math.tanh(mutationPressure)*0.4    // VM channel 6 pushes mutation rate
   ));
   const rate=genome.mutationRate*stabilityFactor;
   const scale=genome.mutationScale;
-  mutPressureAccum=0; // reset accumulator for next cycle
+  mutPressureAccum=0; // reset accumulator for next cycle after snapshotting pressure
 
   // Helper: maybe mutate a value.
   // Pe22b — GLOVES OFF (revised). No spring, no prior, no restoring force.
@@ -2154,7 +2207,7 @@ function mutateGenome(){
   // Defensive defaults for old genomes that don't have a table yet.
   if(!genome.chemistryTable)genome.chemistryTable=seedChemistryTable();
   if(genome.chemistryMutRate===undefined)genome.chemistryMutRate=0.02;
-  const chemRate=genome.chemistryMutRate*(1+Math.tanh(mutPressureAccum)*0.3);
+  const chemRate=genome.chemistryMutRate*(1+Math.tanh(mutationPressure)*0.3);
   for(let oi=0;oi<genome.chemistryTable.length;oi++){
     const recipe=genome.chemistryTable[oi];
     for(let mi=0;mi<recipe.length;mi++){
@@ -2203,7 +2256,11 @@ function mutateGenome(){
     if(Math.random()<rate)genome.objWeights[i]=Math.max(0,genome.objWeights[i]+(Math.random()-0.5)*0.06*scale);
   }
   const wSum=genome.objWeights.reduce((a,b)=>a+b,0);
-  for(let i=0;i<4;i++)genome.objWeights[i]/=wSum;
+  if(wSum>0){
+    for(let i=0;i<4;i++)genome.objWeights[i]/=wSum;
+  }else{
+    genome.objWeights=[0.25,0.25,0.25,0.25];
+  }
 
   // LAYER 4: META-MUTATIONS
   genome.mutationRate=maybe(genome.mutationRate,0.01,0.25,0.02);
@@ -2376,7 +2433,7 @@ function mutateGenome(){
     inst[3]=Math.max(-2,Math.min(2,inst[3]));
 
     // Opcode swap — now includes FEEDBACK (5), LOAD_MEM (6), STORE_MEM (7)
-    if(Math.random()<rate*0.2)inst[0]=Math.floor(Math.random()*22);
+    if(Math.random()<rate*0.2)inst[0]=Math.floor(Math.random()*OPCODE_COUNT);
 
     // Source register swap (now 12 registers)
     if(Math.random()<rate*0.2)inst[1]=Math.floor(Math.random()*12);
@@ -2388,7 +2445,7 @@ function mutateGenome(){
   // Program growth: insert a random instruction
   if(genome.vmProgram.length<genome.vmMaxInstructions&&Math.random()<rate*0.15){
     const pos=Math.floor(Math.random()*(genome.vmProgram.length+1));
-    const newInst=[Math.floor(Math.random()*22),Math.floor(Math.random()*12),Math.floor(Math.random()*12),(Math.random()-0.5)*0.6];
+    const newInst=[Math.floor(Math.random()*OPCODE_COUNT),Math.floor(Math.random()*12),Math.floor(Math.random()*12),(Math.random()-0.5)*0.6];
     genome.vmProgram.splice(pos,0,newInst);
   }
 
@@ -2425,7 +2482,7 @@ function mutateGenome(){
       inst[3]+=(Math.random()-0.5)*0.15*scale;
       inst[3]=Math.max(-2,Math.min(2,inst[3]));
       // Structural mutations (rarer)
-      if(Math.random()<0.2)inst[0]=Math.floor(Math.random()*22);
+      if(Math.random()<0.2)inst[0]=Math.floor(Math.random()*OPCODE_COUNT);
       if(Math.random()<0.15)inst[1]=Math.floor(Math.random()*12);
       if(Math.random()<0.15)inst[2]=Math.floor(Math.random()*12);
     }
