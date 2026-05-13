@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
-<title>Selection פ 25 — Credit</title>
+<title>Selection פ 29 — Reckoning</title>
 <style>
 *{margin:0;padding:0;box-sizing:border-box}
 html,body{height:100%;overflow:hidden;background:#020204;touch-action:none;cursor:crosshair}
@@ -399,13 +399,116 @@ let genome={
   prevObjValues:[0,0,0,0],    // stability, diversity, coherence, churn from prev tick
   prevSmoothedFitness:0,      // for fitnessDelta computation
 
+  // ═══ LAYER 16: GRADIENT — credit-guided mutation + cluster upward signal (Pe26) ═══
+  // Pe25 gave the system three timescales of adaptation but all three still operate on
+  // random perturbations. The credit traces accumulate knowledge about which axes matter
+  // but that knowledge doesn't direct exploration — it only nudges weights after random
+  // mutations happen to land. Pe26 closes this loop in two directions:
+  //
+  // 16a: GRADIENT-GUIDED PERTURBATION. When collapseRisk is elevated, mutation reads
+  //   objCreditTrace and blends random walk with a step toward the last shadow-winning
+  //   direction. gradientBias=0 recovers Pe25 exactly. Shadow sim still vets every candidate.
+  //
+  // 16b: PREDICTIVE SENSORS (in applyCreditAssignment). Credit now rewards sensors that
+  //   LEAD fitness change (prevEmit predicts df) not just co-move with it. The system
+  //   develops forward indicators, not just present-state mirrors.
+  //
+  // 16c: CLUSTER UPWARD SIGNAL. Successful persistent clusters sample their vmProgram
+  //   and clusterGenome upward into a buffer. On each mutation cycle, with probability
+  //   gradientUpstreamBias, a cluster motif is soft-injected into the global vm program.
+  //   The cluster becomes a teacher, not just an experiment. Gradient now flows both ways:
+  //   credit traces push mutation search downward from fitness signal; cluster successes
+  //   push discovery upward from local optima. gradientUpstreamBias=0 → Pe25 behavior.
+  gradientBias:0.3,           // 0=pure random walk, 1=fully gradient-guided. Evolvable.
+  gradientUpstreamBias:0.2,   // how strongly successful clusters bias global vm. Evolvable.
+
+  // ═══ LAYER 17: IMAGINATION — evolvable shadow scenarios (Pe27) ═══
+  // Pe26 stored the *direction* of the last winning shadow scenario and biased mutation
+  // toward it (16a). But the scenarios themselves — the perturbation vectors the shadow
+  // sim probes — were a hardcoded array of five. Every lineage imagined the same five
+  // counterfactual futures regardless of its actual problem.
+  //
+  // Pe27 lifts the bank into the genome. Each scenario is a vector of axis amplitudes
+  // [-2..+2] over the five tunable physics params (entropyBaseline, entropyK, entrainRate,
+  // creationCost, entrainThresh). The shadow sim iterates the bank; the winner increments
+  // its `wins` counter. Every mutation cycle:
+  //   - Scenarios age. Old scenarios with no wins are evicted.
+  //   - New scenarios spawn from two sources: child-of-winner (mutated clone of a high-wins
+  //     scenario) and pure random (sparse vectors that probe untested directions).
+  //   - One slot per bank is reserved against eviction so the random branch can't be
+  //     entirely starved out by winning children — insurance against premature convergence.
+  //
+  // The five Pe26 hardcoded scenarios are now the SEED bank. With no scenarios ever
+  // evicted and no new ones spawned, behavior is identical to Pe26. Evolution decides
+  // whether refining the imagination beats the static set.
+  //
+  // This is per-lineage imagination: two lineages with the same physics can be exploring
+  // different hypothesis spaces, not just different parameter values. The system evolves
+  // not only its parameters but its theory of which parameters are worth varying.
+  shadowScenarioBank:null,    // populated by seedShadowBank() in init/sanitize
+  shadowBankChurn:0.5,        // probability per mutation cycle of evict+spawn pass. Evolvable.
+
+  // ═══ LAYER 18: RATIFICATION — clusters carry scenarios upward (Pe28) ═══
+  // Pe27 made the imagination bank evolvable, but scenarios still live and die strictly
+  // within the global lineage's mutation cycle. A scenario that produced a great cluster
+  // 500 ticks ago — but then aged out — is gone. The bank has no memory of which
+  // scenarios its successful clusters were born under.
+  //
+  // Pe28 closes this through a single mechanism: when a cluster qualifies for upstream
+  // signal (existing 16c gate — persistAge>=6, coherence>=0.45, avgAmp>=0.38), it
+  // SNAPSHOTS the current top-winning scenario from the bank and carries it in the
+  // upstream package alongside the vmProgram motif.
+  //
+  // When mutateGenome drains the package, the fossil scenario is injected:
+  //   - If a structurally-similar scenario already exists in the bank, its age is
+  //     reduced by 30 (the eviction-threshold horizon). The cluster has re-ratified
+  //     this scenario; it gets ~30 more cycles of slot protection.
+  //   - If no similar scenario exists (was evicted earlier), the fossil is added as
+  //     a fresh entry with age=0, wins=0, src='fossil'. The recipe returns.
+  //
+  // The cluster doesn't *discover* scenarios — the global shadow sim does. The cluster
+  // *ratifies* them: existing in their environment is the endorsement. Scenarios that
+  // produce persistent clusters get tenure, even across eviction events. Gated by the
+  // existing gradientUpstreamBias — set to 0 and Pe27 behavior is recovered exactly.
+  //
+  // No new genome parameters. The mechanism reuses the upstream-bias channel that
+  // already governs cluster→global influence. If observation shows the system wants
+  // to separate motif transfer from scenario fossilization, Pe29 can split the gate.
+
+  // ═══ LAYER 19: RECKONING — scenarios held to fitness account (Pe29) ═══
+  // Pe27-28 let the shadow scenario bank evolve through wins (shadow-sim victories) and
+  // cluster ratification (persistence under that scenario's regime). Both signals are
+  // INDIRECT proxies for "did this scenario actually help." A scenario can win shadow
+  // sim repeatedly because of how the sim is parameterized, then move real fitness
+  // the wrong way when applied. The bank has no way to detect that mismatch.
+  //
+  // Pe29 closes the gap. Each scenario gets a creditTrace [-1..+1] — an EMA of
+  // (sign of fitness delta) sampled while this scenario is the current winner.
+  // The winner of the most recent shadow sim is tracked by fingerprint, and during
+  // every applyCreditAssignment pass, the winning scenario's creditTrace accumulates
+  // the local fitness signal. Positive credit = fitness rose during this scenario's
+  // tenure. Negative credit = fitness fell.
+  //
+  // The trace modulates eviction in evolveShadowBank:
+  //   age threshold:  30 - creditTrace * 15  (positive credit extends life)
+  //   win threshold:  age * 0.08 * (1 - creditTrace * 0.5)  (positive credit lowers bar)
+  //
+  // So a scenario with creditTrace=+1 needs ~45 ticks of age and ~half the wins to
+  // survive. A scenario with creditTrace=-1 gets evicted at age 15 with twice the
+  // win requirement. The bank now feels the consequences of its own choices.
+  //
+  // Gated by scenarioCreditWeight. Set to 0 and the modulation is disabled — Pe28
+  // behavior is recovered exactly. Default 0.5 means credit moves eviction thresholds
+  // by half their full range. Lineage selection decides whether reckoning helps.
+  scenarioCreditWeight:0.5,   // 0=Pe28 behavior, 1=full credit-driven eviction. Evolvable.
+
   // ═══ LAYER 4: META ═══
   // How the system evolves. The evolution of evolution.
   mutationRate:0.06,      // was hardcoded in mutateObjectiveWeights
   mutationScale:1.0,      // multiplier on mutation magnitude
   mutationInterval:300,   // FREED: ticks between mutation cycles. System decides its own rhythm.
   shadowHorizon:50,       // was hardcoded: 50 ticks in shadow sim
-  shadowScenarios:5,      // was hardcoded: SHADOW_SCENARIOS
+  shadowScenarios:5,      // Pe27: cap on shadowScenarioBank size (3..SHADOW_SCENARIOS_MAX)
   perturbScale:1.0,       // how large parameter nudges are
   extinctionThresh:5,     // was hardcoded: alive<5
   motifMemorySize:5,      // how many motifs to remember
@@ -559,6 +662,13 @@ let globalCommons=0; // shared register — any particle can read, strongest wri
 let commonsWriter=-1; // index of particle that wrote this tick
 let commonsStrength=0; // strength of current tick's write
 let mutPressureAccum=0; // accumulated mutation pressure from VM channel 6
+let lastShadowNudgeDir=[0,0,0,0,0]; // Pe26: [e,k,r,c,t] direction signs from last winning shadow scenario
+// Pe29 Layer 19: fingerprint of last shadow sim winner — used by applyCreditAssignment
+// to find the matching bank entry and update its creditTrace. Survives bank churn
+// because we match by amplitudes (Euclidean), not by index.
+let lastShadowWinnerFingerprint=null; // {e,k,r,c,t} or null when no winner yet
+const clusterUpstreamBuffer=[]; // Pe26: motifs and signals donated upward by successful clusters
+const MAX_UPSTREAM_BUFFER=8;
 
 // ═══ GOVERNANCE VISIBILITY — flash events for plasmid transfers ═══
 const MAX_FLASHES=32;
@@ -723,7 +833,20 @@ function encodeGenome(){
     vs:+(genome.ruleScale.toPrecision(3)),
     vm:genome.vmMaxInstructions,
     ua:cleanAtoms,
-    clr:+(genome.creditLearnRate||1).toFixed(4) // Pe25 Layer 15: evolvable learning rate
+    clr:+(genome.creditLearnRate||1).toFixed(4), // Pe25 Layer 15: evolvable learning rate
+    gb:+(genome.gradientBias||0.3).toFixed(4),   // Pe26 Layer 16a: gradient bias
+    gub:+(genome.gradientUpstreamBias||0.2).toFixed(4), // Pe26 Layer 16c: upstream bias
+    // Pe27 Layer 17: shadow scenario bank. Compact tuple per entry.
+    // [e,k,r,c,t, wins, age, srcIdx, creditTrace(Pe29)]
+    // srcIdx: 0=seed,1=child,2=random,3=fossil(Pe28)
+    sb:Array.isArray(genome.shadowScenarioBank)?genome.shadowScenarioBank.map(sc=>[
+      +sc.e.toFixed(3),+sc.k.toFixed(3),+sc.r.toFixed(3),+sc.c.toFixed(3),+sc.t.toFixed(3),
+      sc.wins|0,sc.age|0,
+      sc.src==='seed'?0:sc.src==='child'?1:sc.src==='fossil'?3:2,
+      +(sc.creditTrace||0).toFixed(3)
+    ]):null,
+    sbc:+(genome.shadowBankChurn||0.5).toFixed(3),
+    scw:+(genome.scenarioCreditWeight||0).toFixed(3) // Pe29 Layer 19
   };
   return btoa(JSON.stringify(g));
 }
@@ -806,6 +929,20 @@ function decodeGenome(data){
     if(g.vm)genome.vmMaxInstructions=g.vm;
     if(g.ua)genome.userAtoms=g.ua.map(a=>({expression:a.expression,compiled:null,failed:!!a.failed,uses:a.uses|0,age:a.age|0}));
     if(typeof g.clr==='number')genome.creditLearnRate=g.clr; // Pe25 Layer 15
+    if(typeof g.gb==='number')genome.gradientBias=g.gb;      // Pe26 Layer 16a
+    if(typeof g.gub==='number')genome.gradientUpstreamBias=g.gub; // Pe26 Layer 16c
+    // Pe27 Layer 17: shadow scenario bank
+    if(Array.isArray(g.sb)){
+      genome.shadowScenarioBank=g.sb.map(a=>({
+        e:finiteOr(a[0],0),k:finiteOr(a[1],0),r:finiteOr(a[2],0),
+        c:finiteOr(a[3],0),t:finiteOr(a[4],0),
+        wins:(a[5]|0),age:(a[6]|0),
+        src:['seed','child','random','fossil'][a[7]|0]||'random',
+        creditTrace:finiteOr(a[8],0) // Pe29 — defaults to 0 for legacy genomes
+      }));
+    }
+    if(typeof g.sbc==='number')genome.shadowBankChurn=g.sbc;
+    if(typeof g.scw==='number')genome.scenarioCreditWeight=g.scw; // Pe29 Layer 19
     sanitizeGenome();
     return true;
   }catch(e){return false}
@@ -831,6 +968,9 @@ function sanitizeGenome(){
   if(genome.fitnessSensors.length===0)genome.fitnessSensors=[{program:[[2,5,6,1.0],[4,6,0,1.0]],weight:0.1,realWeight:0,creditTrace:0,lastEmit:0,prevEmit:0}];
   // Pe25 Layer 15: credit-assignment defaults for old saves
   genome.creditLearnRate=Math.max(0,Math.min(3,finiteOr(genome.creditLearnRate,1.0)));
+  // Pe26 Layer 16: gradient defaults for old saves
+  genome.gradientBias=Math.max(0,Math.min(1,finiteOr(genome.gradientBias,0.3)));
+  genome.gradientUpstreamBias=Math.max(0,Math.min(1,finiteOr(genome.gradientUpstreamBias,0.2)));
   if(!Array.isArray(genome.objCreditTrace)||genome.objCreditTrace.length<4)genome.objCreditTrace=[0,0,0,0];
   genome.objCreditTrace=genome.objCreditTrace.slice(0,4).map(v=>Math.max(-1,Math.min(1,finiteOr(v,0))));
   if(!Array.isArray(genome.prevObjValues)||genome.prevObjValues.length<4)genome.prevObjValues=[0,0,0,0];
@@ -852,6 +992,26 @@ function sanitizeGenome(){
   genome.netMotifRate=finiteOr(genome.netMotifRate,0.005);
   genome.netInscribeRate=finiteOr(genome.netInscribeRate,0.004);
   genome.netReceptivity=Math.max(0,Math.min(1,finiteOr(genome.netReceptivity,0.5)));
+  // Pe27 Layer 17: shadow scenario bank — must exist, must have at least 3 valid entries.
+  if(!Array.isArray(genome.shadowScenarioBank)||genome.shadowScenarioBank.length<3){
+    genome.shadowScenarioBank=seedShadowBank();
+  }else{
+    genome.shadowScenarioBank=genome.shadowScenarioBank.map(sc=>({
+      e:Math.max(-2,Math.min(2,finiteOr(sc&&sc.e,0))),
+      k:Math.max(-2,Math.min(2,finiteOr(sc&&sc.k,0))),
+      r:Math.max(-2,Math.min(2,finiteOr(sc&&sc.r,0))),
+      c:Math.max(-2,Math.min(2,finiteOr(sc&&sc.c,0))),
+      t:Math.max(-2,Math.min(2,finiteOr(sc&&sc.t,0))),
+      wins:Math.max(0,(sc&&sc.wins|0)||0),
+      age:Math.max(0,(sc&&sc.age|0)||0),
+      src:sc&&typeof sc.src==='string'?sc.src:'random',
+      creditTrace:Math.max(-1,Math.min(1,finiteOr(sc&&sc.creditTrace,0))) // Pe29
+    })).slice(0,SHADOW_SCENARIOS_MAX);
+  }
+  genome.shadowScenarios=Math.max(3,Math.min(SHADOW_SCENARIOS_MAX,Math.round(finiteOr(genome.shadowScenarios,5))));
+  genome.shadowBankChurn=Math.max(0,Math.min(1,finiteOr(genome.shadowBankChurn,0.5)));
+  // Pe29 Layer 19: scenario credit weight default
+  genome.scenarioCreditWeight=Math.max(0,Math.min(1,finiteOr(genome.scenarioCreditWeight,0.5)));
 }
 
 function saveGenome(){
@@ -1456,9 +1616,117 @@ function attemptClusterBudding(){
 // ═══════════════════════════════════════
 // SHADOW SIMULATOR — COUNTERFACTUAL ROLLOUTS
 // The system imagines futures before choosing.
+// Pe27: scenarios live in the genome (shadowScenarioBank). The cap is shadowScenarios,
+// which itself can mutate. SHADOW_SCENARIOS_MAX bounds buffer allocation.
 // ═══════════════════════════════════════
-const SHADOW_SCENARIOS=5;
-const shadowResults=new Float32Array(SHADOW_SCENARIOS);
+const SHADOW_SCENARIOS_MAX=10;
+const shadowResults=new Float32Array(SHADOW_SCENARIOS_MAX);
+
+// Pe27: per-axis test/apply magnitudes. A scenario stores unit-scale amplitudes
+// (typically -2..+2). Multiplying by SCEN_TEST gives shadow-sim perturbation; multiplying
+// by SCEN_APPLY gives the actual genome mutation magnitude (small — applied each cycle).
+// Values chosen to reproduce Pe26's hardcoded deltas[] and nudge[] at amplitude=±1.
+const SCEN_TEST ={e:0.00015,k:0.00005,r:0.003,c:0.03,t:0.02};
+const SCEN_APPLY={e:0.000003,k:0.000003,r:0.00015,c:0.0015,t:0.0008};
+
+function seedShadowBank(){
+  // Five seed scenarios matching Pe26's hardcoded set exactly.
+  // Source tag 'seed' is a label; once age>0 they obey the same rules as everyone else
+  // except that the LAST surviving seed/random is protected (see evolveShadowBank).
+  // Pe29: creditTrace starts at 0 (neutral, no protection bonus, no penalty).
+  return [
+    {e:+1,k:0,r:0,c:0,t:0,wins:0,age:0,src:'seed',creditTrace:0},
+    {e:-1,k:0,r:0,c:0,t:0,wins:0,age:0,src:'seed',creditTrace:0},
+    {e:0,k:0,r:+1,c:0,t:0,wins:0,age:0,src:'seed',creditTrace:0},
+    {e:0,k:0,r:-1,c:0,t:0,wins:0,age:0,src:'seed',creditTrace:0},
+    {e:0,k:+1,r:0,c:-1,t:-1,wins:0,age:0,src:'seed',creditTrace:0},
+  ];
+}
+
+function randomScenario(){
+  // Sparse vectors — 1-2 non-zero axes, amplitudes in [0.5, 1.5].
+  // Sparsity matches the structure of the seed scenarios (mostly single-axis probes).
+  const sc={e:0,k:0,r:0,c:0,t:0,wins:0,age:0,src:'random',creditTrace:0};
+  const axes=['e','k','r','c','t'];
+  const nAxes=Math.random()<0.3?2:1;
+  const picked=new Set();
+  for(let i=0;i<nAxes;i++){
+    let a;do{a=axes[(Math.random()*5)|0]}while(picked.has(a));
+    picked.add(a);
+    sc[a]=(Math.random()<0.5?-1:1)*(0.5+Math.random());
+  }
+  return sc;
+}
+
+function childScenario(parent){
+  // Mutated clone — small Gaussian-ish noise on every axis, amplitudes clamped to ±2.
+  // Pe29: creditTrace inherits HALF of parent's — partial knowledge transfer of fitness
+  // history. A child of a known-good scenario starts with some credit-based protection,
+  // but has to earn the rest. Avoids dynasties of unchecked inherited credit.
+  const noise=0.35;
+  return {
+    e:Math.max(-2,Math.min(2,parent.e+(Math.random()-0.5)*noise)),
+    k:Math.max(-2,Math.min(2,parent.k+(Math.random()-0.5)*noise)),
+    r:Math.max(-2,Math.min(2,parent.r+(Math.random()-0.5)*noise)),
+    c:Math.max(-2,Math.min(2,parent.c+(Math.random()-0.5)*noise)),
+    t:Math.max(-2,Math.min(2,parent.t+(Math.random()-0.5)*noise)),
+    wins:0,age:0,src:'child',creditTrace:(parent.creditTrace||0)*0.5
+  };
+}
+
+function evolveShadowBank(){
+  if(!Array.isArray(genome.shadowScenarioBank)||genome.shadowScenarioBank.length===0){
+    genome.shadowScenarioBank=seedShadowBank();
+  }
+  const bank=genome.shadowScenarioBank;
+  for(const sc of bank)sc.age++;
+
+  // Eviction: scenarios must keep earning their slot. Threshold scales with age, so
+  // a one-time winner can't sit forever — to survive past age=60 it needs ~5 wins,
+  // past age=100 it needs ~8. Encourages bank refresh without churning fresh entrants.
+  // Pe29 Layer 19: creditTrace modulates both thresholds. scenarioCreditWeight=0
+  // disables this (Pe28 behavior). At weight=1, +1 creditTrace adds 15 age-grace and
+  // halves the win requirement; -1 creditTrace cuts age-grace and doubles the win bar.
+  // Floor: bank cannot drop below 3 — three is the minimum that lets the shadow sim
+  // make meaningful comparisons. Reserved slot: never evict the LAST random/seed entry,
+  // so the bank can't collapse to children-of-one-winner. This is the insurance.
+  const scw=Math.max(0,Math.min(1,genome.scenarioCreditWeight||0));
+  if(bank.length>3){
+    let reservedIdx=-1;
+    for(let i=0;i<bank.length;i++){
+      if(bank[i].src==='seed'||bank[i].src==='random'){reservedIdx=i;break}
+    }
+    for(let i=bank.length-1;i>=0;i--){
+      if(bank.length<=3)break;
+      if(i===reservedIdx)continue;
+      const sc=bank[i];
+      const ct=Math.max(-1,Math.min(1,sc.creditTrace||0));
+      const ageThresh=30-ct*15*scw;
+      const winThresh=Math.max(2,Math.floor(sc.age*0.08*(1-ct*0.5*scw)));
+      if(sc.age>ageThresh&&sc.wins<winThresh){
+        bank.splice(i,1);
+        if(i<reservedIdx)reservedIdx--;
+      }
+    }
+  }
+
+  // Refill toward cap.
+  const cap=Math.max(3,Math.min(SHADOW_SCENARIOS_MAX,(genome.shadowScenarios|0)||5));
+  let safety=20;
+  while(bank.length<cap&&safety-->0){
+    const winners=bank.filter(s=>s.wins>0);
+    if(winners.length>0&&Math.random()<0.5){
+      // Sample parent weighted by wins.
+      let totalW=0;for(const w of winners)totalW+=w.wins;
+      let pick=Math.random()*totalW;
+      let parent=winners[0];
+      for(const w of winners){pick-=w.wins;if(pick<=0){parent=w;break}}
+      bank.push(childScenario(parent));
+    }else{
+      bank.push(randomScenario());
+    }
+  }
+}
 
 // ═══ VM PHENOTYPE PROFILER ═══
 // Runs the VM against standardised test inputs to produce
@@ -1674,7 +1942,13 @@ function applyCreditAssignment(){
     s.prevEmit=cur;
     if(!fitnessActive||!isFinite(ds)||ds===0)continue;
     const sSign=ds>0?1:-1;
-    const contribution=sSign*fSign; // ±1
+    // Pe26 Layer 16b: predictive credit blend.
+    // Reactive: sign(ds) * sign(df) — sensor changed with fitness (existing Pe25 signal).
+    // Predictive: sign(prev) * sign(df) — previous emit level predicted direction of fitness.
+    // Blend rewards sensors that LEAD fitness, not just co-move. 60/40 split keeps
+    // reactive dominant (it's more reliable) while rewarding early indicators.
+    const prevSign=(prev>0.01?1:prev<-0.01?-1:0);
+    const contribution=sSign*fSign*0.6+prevSign*fSign*0.4;
     s.creditTrace=((s.creditTrace||0)*0.99)+contribution*0.01;
     if(s.creditTrace>1)s.creditTrace=1;else if(s.creditTrace<-1)s.creditTrace=-1;
     s.realWeight=Math.max(-1,Math.min(1,(s.realWeight||0)+s.creditTrace*lr*NUDGE));
@@ -1703,6 +1977,29 @@ function applyCreditAssignment(){
   const wSum=genome.objWeights.reduce((a,b)=>a+b,0);
   if(wSum>0){for(let i=0;i<4;i++)genome.objWeights[i]/=wSum;}
   else genome.objWeights=[0.25,0.25,0.25,0.25];
+
+  // ═══ Pe29 Layer 19: SCENARIO CREDIT ═══
+  // The currently-applied shadow scenario gets credited (or debited) based on whether
+  // fitness is moving up or down during its tenure. Find the bank entry that matches
+  // the last shadow winner's fingerprint and update its creditTrace.
+  // Skipped if no winner yet (cold start) or if the matching scenario was evicted.
+  if(lastShadowWinnerFingerprint&&fitnessActive&&Array.isArray(genome.shadowScenarioBank)){
+    const fp=lastShadowWinnerFingerprint;
+    let matchIdx=-1,bestDist=0.2; // tight match — same scenario, not just similar
+    const bank=genome.shadowScenarioBank;
+    for(let i=0;i<bank.length;i++){
+      const sc=bank[i];
+      const de=sc.e-fp.e,dk=sc.k-fp.k,dr=sc.r-fp.r,dc=sc.c-fp.c,dt=sc.t-fp.t;
+      const dist=Math.sqrt(de*de+dk*dk+dr*dr+dc*dc+dt*dt);
+      if(dist<bestDist){bestDist=dist;matchIdx=i}
+    }
+    if(matchIdx>=0){
+      const sc=bank[matchIdx];
+      // EMA update — same coefficients as objCreditTrace for consistency
+      const newTrace=((sc.creditTrace||0)*0.99)+fSign*0.01;
+      sc.creditTrace=Math.max(-1,Math.min(1,newTrace));
+    }
+  }
 }
 
 function runShadowSim(){
@@ -1733,21 +2030,32 @@ function runShadowSim(){
   }
 
   // ═══ B. CLONE FIELD FOR EACH SCENARIO ═══
-  // Each counterfactual future gets its own forked environment
+  // Each counterfactual future gets its own forked environment.
+  // Pe27: scenario count and content come from genome.shadowScenarioBank.
+  if(!Array.isArray(genome.shadowScenarioBank)||genome.shadowScenarioBank.length===0){
+    genome.shadowScenarioBank=seedShadowBank();
+  }
+  const bank=genome.shadowScenarioBank;
+  const nScen=Math.min(SHADOW_SCENARIOS_MAX,bank.length);
   const fieldScenarios=[];
-  for(let s=0;s<SHADOW_SCENARIOS;s++){
+  for(let s=0;s<nScen;s++){
     fieldScenarios.push(new Float32Array(field));
   }
 
-  const deltas=[
-    {e:+0.00015,k:0,r:0,c:0,t:0},
-    {e:-0.00015,k:0,r:0,c:0,t:0},
-    {e:0,k:0,r:+0.003,c:0,t:0},
-    {e:0,k:0,r:-0.003,c:0,t:0},
-    {e:0,k:+0.00005,r:0,c:-0.03,t:-0.02},
-  ];
+  // Derive test deltas from bank entries: amplitude * per-axis test scale.
+  const deltas=new Array(nScen);
+  for(let s=0;s<nScen;s++){
+    const sc=bank[s];
+    deltas[s]={
+      e:sc.e*SCEN_TEST.e,
+      k:sc.k*SCEN_TEST.k,
+      r:sc.r*SCEN_TEST.r,
+      c:sc.c*SCEN_TEST.c,
+      t:sc.t*SCEN_TEST.t,
+    };
+  }
 
-  for(let s=0;s<SHADOW_SCENARIOS;s++){
+  for(let s=0;s<nScen;s++){
     const d=deltas[s];
     const fE=genome.entropyBaseline+d.e;
     const fK=genome.entropyK+d.k;
@@ -1837,22 +2145,38 @@ function runShadowSim(){
 
   // Apply winning scenario
   let bestS=0,bestV=-1;
-  for(let s=0;s<SHADOW_SCENARIOS;s++){if(shadowResults[s]>bestV){bestV=shadowResults[s];bestS=s}}
+  for(let s=0;s<nScen;s++){if(shadowResults[s]>bestV){bestV=shadowResults[s];bestS=s}}
 
+  // Pe27: record the win on the actual bank entry. This is the credit signal that
+  // drives bank evolution — winning scenarios survive eviction and seed children.
+  bank[bestS].wins++;
+
+  // Pe29 Layer 19: record fingerprint of the winning scenario. applyCreditAssignment
+  // will use this to find the matching bank entry and update its creditTrace as
+  // fitness moves over the next ~120 ticks (until the next shadow sim runs).
+  {
+    const w=bank[bestS];
+    lastShadowWinnerFingerprint={e:w.e,k:w.k,r:w.r,c:w.c,t:w.t};
+  }
+
+  // Pe26 Layer 16a: store direction of winning nudge for gradient-guided mutation.
+  // Sign-only — magnitude comes from mutateGenome's perturbScale. Direction is the signal.
+  const _wd=deltas[bestS];
+  lastShadowNudgeDir[0]=_wd.e>0?1:_wd.e<0?-1:0; // entropyBaseline
+  lastShadowNudgeDir[1]=_wd.k>0?1:_wd.k<0?-1:0; // entropyK
+  lastShadowNudgeDir[2]=_wd.r>0?1:_wd.r<0?-1:0; // entrainRate
+  lastShadowNudgeDir[3]=_wd.c>0?1:_wd.c<0?-1:0; // creationCost
+  lastShadowNudgeDir[4]=_wd.t>0?1:_wd.t<0?-1:0; // entrainThresh
+
+  // Pe27: derive applied nudge from the winning bank entry. Same axis-specific scales
+  // as Pe26 at amplitude=±1, so Pe26-equivalent bank entries reproduce Pe26 behavior.
   const ps=genome.perturbScale;
-  const nudge=[
-    {e:+0.000003*ps,k:0,r:0,c:0,t:0},
-    {e:-0.000003*ps,k:0,r:0,c:0,t:0},
-    {e:0,k:0,r:+0.00015*ps,c:0,t:0},
-    {e:0,k:0,r:-0.00015*ps,c:0,t:0},
-    {e:0,k:+0.000003*ps,r:0,c:-0.0015*ps,t:-0.0008*ps},
-  ];
-  const n=nudge[bestS];
-  genome.entropyBaseline=Math.max(0.0001,Math.min(0.003,genome.entropyBaseline+(n.e||0)));
-  genome.entrainRate=Math.max(0.003,Math.min(0.05,genome.entrainRate+(n.r||0)));
-  genome.creationCost=Math.max(0.1,Math.min(0.6,genome.creationCost+(n.c||0)));
-  genome.entrainThresh=Math.max(0.08,Math.min(0.55,genome.entrainThresh+(n.t||0)));
-  genome.entropyK=Math.max(0.00005,Math.min(0.002,genome.entropyK+(n.k||0)));
+  const sc=bank[bestS];
+  genome.entropyBaseline=Math.max(0.0001,Math.min(0.003,genome.entropyBaseline+sc.e*SCEN_APPLY.e*ps));
+  genome.entropyK      =Math.max(0.00005,Math.min(0.002,genome.entropyK      +sc.k*SCEN_APPLY.k*ps));
+  genome.entrainRate   =Math.max(0.003,Math.min(0.05, genome.entrainRate     +sc.r*SCEN_APPLY.r*ps));
+  genome.creationCost  =Math.max(0.1, Math.min(0.6,   genome.creationCost    +sc.c*SCEN_APPLY.c*ps));
+  genome.entrainThresh =Math.max(0.08,Math.min(0.55,  genome.entrainThresh   +sc.t*SCEN_APPLY.t*ps));
 }
 
 function simDiversity(cs){
@@ -2370,6 +2694,58 @@ function updateField(){
   }
 }
 
+// ═══ Pe26 LAYER 16c: CLUSTER UPWARD SIGNAL ═══
+// Successful persistent clusters donate motifs and genome signals upward.
+// The buffer is consumed by mutateGenome. This closes the loop: particles → clusters
+// was already present (cluster VMs, cluster genomes); clusters → global was the missing path.
+// gradientUpstreamBias=0 makes this a no-op, recovering Pe25 behavior exactly.
+function collectClusterUpstream(){
+  const ub=genome.gradientUpstreamBias||0;
+  if(ub<=0.01)return;
+  // Pe28 Layer 18: snapshot the current top scenario from the bank.
+  // Top = highest wins, tiebreak by lowest age. Only snapshot if it has actually won.
+  // The snapshot is a clean copy with counters zeroed — it's a blueprint, not a live entry.
+  let topScenario=null;
+  if(Array.isArray(genome.shadowScenarioBank)&&genome.shadowScenarioBank.length>0){
+    let bestWins=-1,bestAge=1e9,bestIdx=-1;
+    for(let i=0;i<genome.shadowScenarioBank.length;i++){
+      const sc=genome.shadowScenarioBank[i];
+      if(sc.wins>bestWins||(sc.wins===bestWins&&sc.age<bestAge)){
+        bestWins=sc.wins;bestAge=sc.age;bestIdx=i;
+      }
+    }
+    if(bestIdx>=0&&bestWins>0){
+      const top=genome.shadowScenarioBank[bestIdx];
+      // Pe29: carry creditTrace forward through the fossil — if a cluster is ratifying
+      // this scenario, its real-world performance signal travels with the snapshot.
+      // A ratified scenario re-entering the bank arrives with its accumulated credit.
+      topScenario={e:top.e,k:top.k,r:top.r,c:top.c,t:top.t,wins:0,age:0,src:'fossil',creditTrace:top.creditTrace||0};
+    }
+  }
+  for(const c of clusters){
+    // Qualification: old enough, coherent enough, energetically viable
+    if(c.persistAge<6||c.coherence<0.45||c.avgAmp<0.38)continue;
+    if(!c.vmProgram||c.vmProgram.length<2)continue;
+    if(clusterUpstreamBuffer.length>=MAX_UPSTREAM_BUFFER)break;
+    // Sample a 1-2 instruction motif from the cluster's VM
+    const start=Math.floor(Math.random()*(c.vmProgram.length-1));
+    const len=1+(Math.random()<0.5?1:0);
+    const motif=[];
+    for(let i=0;i<len&&start+i<c.vmProgram.length;i++){
+      const inst=c.vmProgram[start+i];
+      motif.push([inst[0],inst[1],inst[2],inst[3]]);
+    }
+    if(motif.length>0){
+      clusterUpstreamBuffer.push({
+        motif,
+        clusterGenome:c.clusterGenome?{...c.clusterGenome}:null,
+        scenarioFossil:topScenario?{...topScenario}:null, // Pe28: ratified scenario
+        quality:c.coherence*c.avgAmp*(1+c.persistAge*0.02) // signal strength
+      });
+    }
+  }
+}
+
 function mutateGenome(){
   // Pe22b: substrate physics — defensive defaults for old genomes
   // (the actual mutation happens further down, after `rate` and `maybe` exist)
@@ -2388,6 +2764,15 @@ function mutateGenome(){
   const scale=genome.mutationScale;
   mutPressureAccum=0; // reset accumulator for next cycle after snapshotting pressure
 
+  // Pe26 Layer 16a: gradient-biased perturbation.
+  // When collapseRisk is elevated, blend random walk with the direction the shadow sim
+  // last found helpful. gradientBias=0 → pure random walk (Pe25 behavior).
+  // The gradient nudge is kept smaller than the random component so it's a lean, not a lock.
+  // Shadow sim still vets candidates after this step, so bad gradient directions get rejected.
+  const gBias=Math.max(0,Math.min(1,genome.gradientBias||0));
+  const risk=selfModel.collapseRisk||0;
+  const gradientActive=gBias>0.05&&risk>0.25&&(lastShadowNudgeDir[0]!==0||lastShadowNudgeDir[2]!==0||lastShadowNudgeDir[3]!==0);
+
   // Helper: maybe mutate a value.
   // Pe22b — GLOVES OFF (revised). No spring, no prior, no restoring force.
   // The (min,max) arguments are historical — retained so callers don't break,
@@ -2401,6 +2786,22 @@ function mutateGenome(){
     const next=val+(Math.random()-0.5)*magnitude*scale;
     if(!isFinite(next))return val;
     return next;
+  }
+  // Gradient-biased version for physics parameters with a known shadow-nudge direction.
+  // nudgeDir: ±1 direction from lastShadowNudgeDir, 0 = no prior signal.
+  function gradMaybe(val,min,max,magnitude,nudgeDir){
+    if(Math.random()>rate)return val;
+    const randomStep=(Math.random()-0.5)*magnitude*scale;
+    if(!gradientActive||nudgeDir===0){
+      const next=val+randomStep;
+      return isFinite(next)?next:val;
+    }
+    // Blend: random walk attenuated by gradient strength + directed step.
+    // Attenuation keeps randomness alive — gradient is a lean, not a command.
+    const gradientStrength=gBias*Math.min(1,risk*1.5);
+    const step=randomStep*(1-gradientStrength*0.5)+nudgeDir*magnitude*gradientStrength*0.4;
+    const next=val+step;
+    return isFinite(next)?next:val;
   }
 
   // LAYER 1: Physics mutations
@@ -2437,11 +2838,11 @@ function mutateGenome(){
   // outside these bounds the diffusion equation produces NaN)
   FIELD_DECAY=Math.max(0.5,Math.min(1.0,genome.fieldDecay));
   FIELD_DIFFUSE=Math.max(0,Math.min(0.24,genome.fieldDiffuse));
-  genome.entropyBaseline=maybe(genome.entropyBaseline,0.00005,0.005,0.0002);
-  genome.entropyK=maybe(genome.entropyK,0.00002,0.003,0.0001);
-  genome.entrainRate=maybe(genome.entrainRate,0.002,0.06,0.003);
-  genome.entrainThresh=maybe(genome.entrainThresh,0.05,0.6,0.03);
-  genome.creationCost=maybe(genome.creationCost,0.05,0.7,0.04);
+  genome.entropyBaseline=gradMaybe(genome.entropyBaseline,0.00005,0.005,0.0002,lastShadowNudgeDir[0]);
+  genome.entropyK=gradMaybe(genome.entropyK,0.00002,0.003,0.0001,lastShadowNudgeDir[1]);
+  genome.entrainRate=gradMaybe(genome.entrainRate,0.002,0.06,0.003,lastShadowNudgeDir[2]);
+  genome.entrainThresh=gradMaybe(genome.entrainThresh,0.05,0.6,0.03,lastShadowNudgeDir[4]);
+  genome.creationCost=gradMaybe(genome.creationCost,0.05,0.7,0.04,lastShadowNudgeDir[3]);
   genome.creationThresh=maybe(genome.creationThresh,0.05,0.6,0.03);
   genome.destructThresh=maybe(genome.destructThresh,-0.6,-0.05,0.03);
   genome.tendencyBleed=maybe(genome.tendencyBleed,0.00005,0.003,0.0002);
@@ -2465,11 +2866,76 @@ function mutateGenome(){
   }else{
     genome.objWeights=[0.25,0.25,0.25,0.25];
   }
-  // Pe25 Layer 15: credit-signal magnitude is itself evolvable.
-  // A lineage can mutate toward 0 to disable credit and rely on pure evolution,
-  // or up to ~3 to lean more heavily on within-lineage learning. Lineage
-  // selection decides whether learning helps.
+  // Pe25 Layer 15 credit rate
   genome.creditLearnRate=Math.max(0,Math.min(3,maybe(genome.creditLearnRate,0,3,0.15)));
+
+  // Pe26 Layer 16: gradient bias params — lineage selection decides whether learning helps
+  genome.gradientBias=Math.max(0,Math.min(1,maybe(genome.gradientBias,0,1,0.06)));
+  genome.gradientUpstreamBias=Math.max(0,Math.min(1,maybe(genome.gradientUpstreamBias,0,1,0.06)));
+
+  // ═══ Pe26 Layer 16c: CLUSTER UPWARD SIGNAL injection ═══
+  // Drain the upstream buffer — soft-inject successful cluster motifs into the global VM.
+  // This is the same mechanism as network motif injection: probabilistic overwrite, not replace.
+  // gradientUpstreamBias=0 → buffer is never populated, this is a no-op.
+  const ub=genome.gradientUpstreamBias||0;
+  if(ub>0.01&&clusterUpstreamBuffer.length>0&&Math.random()<ub){
+    // Pick the highest-quality upstream signal
+    clusterUpstreamBuffer.sort((a,b)=>b.quality-a.quality);
+    const upstream=clusterUpstreamBuffer.shift();
+    if(upstream&&upstream.motif&&genome.vmProgram.length>0){
+      const insertAt=Math.floor(Math.random()*genome.vmProgram.length);
+      for(let i=0;i<upstream.motif.length&&insertAt+i<genome.vmProgram.length;i++){
+        // Soft overwrite — not every cluster instruction lands, adds noise for diversity
+        if(Math.random()<0.35){
+          const src=upstream.motif[i];
+          genome.vmProgram[insertAt+i]=[src[0],src[1],src[2],src[3]+(Math.random()-0.5)*0.08];
+        }
+      }
+      recordEvent('cluster_upstream',{q:+(upstream.quality.toFixed(2)),vm:genome.vmProgram.length},600);
+    }
+    // Also: if the cluster had a clusterGenome, nudge the global mutation interval
+    // and interaction radius gently toward cluster-successful values.
+    // This is the weakest possible signal — a whisper, not a command.
+    if(upstream&&upstream.clusterGenome&&ub>0.15){
+      const cg=upstream.clusterGenome;
+      if(isFinite(cg.metabolicBias))genome.velocityDamping+=(cg.metabolicBias-genome.velocityDamping)*0.002*ub;
+      if(isFinite(cg.innovationRate))genome.mutationRate+=(cg.innovationRate*0.5-genome.mutationRate)*0.001*ub;
+    }
+    // ═══ Pe28 Layer 18: SCENARIO FOSSIL INJECTION ═══
+    // Cluster-carried scenario snapshot. If a structurally-similar scenario lives in
+    // the bank, refresh its age (re-ratification). If novel, inject it as a fresh entry.
+    // Similarity is Euclidean distance over 5 axes < 0.3 — meaningful match in a [-2..2]^5 space.
+    if(upstream&&upstream.scenarioFossil&&Array.isArray(genome.shadowScenarioBank)){
+      const fos=upstream.scenarioFossil;
+      const bank=genome.shadowScenarioBank;
+      let matchIdx=-1,bestDist=0.3; // similarity threshold
+      for(let i=0;i<bank.length;i++){
+        const sc=bank[i];
+        const de=sc.e-fos.e,dk=sc.k-fos.k,dr=sc.r-fos.r,dc=sc.c-fos.c,dt=sc.t-fos.t;
+        const dist=Math.sqrt(de*de+dk*dk+dr*dr+dc*dc+dt*dt);
+        if(dist<bestDist){bestDist=dist;matchIdx=i}
+      }
+      if(matchIdx>=0){
+        // Re-ratification: subtract 30 from age (the eviction-threshold horizon).
+        // A long-lived workhorse scenario gets ~30 cycles of fresh slot protection.
+        bank[matchIdx].age=Math.max(0,bank[matchIdx].age-30);
+        recordEvent('scenario_ratified',{i:matchIdx,w:bank[matchIdx].wins},600);
+      }else if(bank.length<SHADOW_SCENARIOS_MAX){
+        // Novel fossil — recipe absent from the current bank. Inject as a fresh entry.
+        // The next eviction cycle won't touch it (age=0, threshold age>30).
+        // Pe29: creditTrace carried from the fossil — the ratified scenario re-enters
+        // with whatever real-world credit it had accumulated before being evicted.
+        bank.push({e:fos.e,k:fos.k,r:fos.r,c:fos.c,t:fos.t,wins:0,age:0,src:'fossil',creditTrace:fos.creditTrace||0});
+        recordEvent('scenario_fossil',{e:+fos.e.toFixed(2),r:+fos.r.toFixed(2)},600);
+      }
+      // If bank is at SHADOW_SCENARIOS_MAX cap and fossil is novel, it's dropped here.
+      // The next evolveShadowBank pass may evict a low-performing entry, freeing space
+      // for the next fossil. We don't force-evict on fossil arrival — that would let
+      // fossils bypass the win-rate qualification that protects existing bank entries.
+    }
+  }
+  // Trim buffer if it fills faster than it drains
+  if(clusterUpstreamBuffer.length>MAX_UPSTREAM_BUFFER)clusterUpstreamBuffer.length=MAX_UPSTREAM_BUFFER;
 
   // LAYER 4: META-MUTATIONS
   genome.mutationRate=maybe(genome.mutationRate,0.01,0.25,0.02);
@@ -2479,6 +2945,15 @@ function mutateGenome(){
   genome.extinctionThresh=Math.max(1,Math.round(maybe(genome.extinctionThresh,2,20,2)));
   genome.motifMemorySize=Math.max(1,Math.min(40,Math.round(maybe(genome.motifMemorySize,2,10,1))));
   genome.culturalBias=maybe(genome.culturalBias,0.05,0.6,0.04);
+
+  // Pe27 Layer 17: imagination bank cap and churn rate. The system decides how many
+  // counterfactual futures to maintain and how aggressively to refresh them.
+  genome.shadowScenarios=Math.max(3,Math.min(SHADOW_SCENARIOS_MAX,Math.round(maybe(genome.shadowScenarios,3,SHADOW_SCENARIOS_MAX,0.8))));
+  genome.shadowBankChurn=Math.max(0,Math.min(1,maybe(genome.shadowBankChurn,0,1,0.06)));
+  // Pe29 Layer 19: how strongly real-fitness credit affects eviction. 0=Pe28 behavior.
+  genome.scenarioCreditWeight=Math.max(0,Math.min(1,maybe(genome.scenarioCreditWeight,0,1,0.06)));
+  // Evict-and-spawn pass: probabilistic, gated by the churn rate.
+  if(Math.random()<(genome.shadowBankChurn||0.5))evolveShadowBank();
 
   // Trim motif memory if size shrunk
   while(genome.stableMotifs.length>genome.motifMemorySize)genome.stableMotifs.shift();
@@ -4381,6 +4856,8 @@ function loop(){
     evolvePlasmids();
   }
 
+  if(tick%300===0&&tick>600)collectClusterUpstream(); // Pe26: drain cluster discoveries upward
+
   if(tick%10===0)peakBondThisTick*=0.8;
 
   if(tick%900===0&&tick>900)archiveGenome();
@@ -4427,6 +4904,10 @@ function loop(){
     const reflexClusters=clusters.filter(c=>c.reflex&&c.reflex.selfRecognition>0.3).length;
     const nPeers=countPeers();
     const netTag=nPeers>0?` | net:${nPeers}⟷ s${netStats.sent} a${netStats.accepted}${netStats.bad?' !'+netStats.bad:''}`:'';
+    const _gb=genome.gradientBias||0;
+    const _gub=genome.gradientUpstreamBias||0;
+    const _shadowLive=lastShadowNudgeDir.some(v=>v!==0);
+    const gradTag=(_gb>0.05||_gub>0.05)?' | grad:'+_gb.toFixed(2)+'↓'+_gub.toFixed(2)+'↑'+(_shadowLive?'⊕':'○')+(clusterUpstreamBuffer.length>0?'['+clusterUpstreamBuffer.length+']':''):'';
     let cgTag='';
     const cgClusters=clusters.filter(c=>c.clusterGenome&&c.persistAge>2);
     if(cgClusters.length>0){
@@ -4448,7 +4929,7 @@ function loop(){
       const totalUses=uas.reduce((s,a)=>s+(a.uses|0),0);
       uaTag=` | ua:${active}/${uas.length} used:${totalUses}`;
     }
-    genEl.textContent=`gen${genome.generation} ${genome.extinctions}☠ t${genome.totalTicks} | ${clusters.length}cl(${clVMActive}vm${budCount>0?','+budCount+'bud':''}) ${livingLin}lin fit:${currentFitness.toFixed(2)} stb:${(selfModel.stability||0).toFixed(2)} | vm:${genome.vmProgram.length}inst ${nSensors}sns ${hgtEventsTotal}hgt | pop:${N}/${CAP} fld:${fieldTotal.toFixed(0)}${fTrend<-0.01?'↓':fTrend>0.01?'↑':'~'} risk:${cRisk.toFixed(2)} | ⟲${rInf.toFixed(2)} ${reflexClusters}rc${netTag}${cgTag}${uaTag}${(genome.eventLog&&genome.eventLog.length)?' ev:'+genome.eventLog.length:''}`;
+    genEl.textContent=`gen${genome.generation} ${genome.extinctions}☠ t${genome.totalTicks} | ${clusters.length}cl(${clVMActive}vm${budCount>0?','+budCount+'bud':''}) ${livingLin}lin fit:${currentFitness.toFixed(2)} stb:${(selfModel.stability||0).toFixed(2)} | vm:${genome.vmProgram.length}inst ${nSensors}sns ${hgtEventsTotal}hgt | pop:${N}/${CAP} fld:${fieldTotal.toFixed(0)}${fTrend<-0.01?'↓':fTrend>0.01?'↑':'~'} risk:${cRisk.toFixed(2)} | ⟲${rInf.toFixed(2)} ${reflexClusters}rc${netTag}${cgTag}${uaTag}${(genome.eventLog&&genome.eventLog.length)?' ev:'+genome.eventLog.length:''}${gradTag}`;
   }
 
   const renderEvery=N>1000?4:N>500?3:N>200?2:1;
