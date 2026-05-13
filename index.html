@@ -2479,10 +2479,15 @@ function mutateGenome(){
       realWeight:0
     });
   }
-  // Death of useless sensor (very low weight = not contributing)
+  // Death of useless sensor — Pe24: post-bifurcation, a sensor's utility is
+  // max(|weight|,|realWeight|). A sensor with weight=0 but realWeight=0.5 is
+  // doing real-fitness work and must not be culled as "useless." The old rule
+  // looked only at shadow weight and would silently strangle real-role sensors
+  // before they could establish, undermining Layer 14's whole point.
   if(genome.fitnessSensors.length>1&&Math.random()<rate*0.02){
-    const weakest=genome.fitnessSensors.reduce((min,s,i)=>Math.abs(s.weight)<Math.abs(genome.fitnessSensors[min].weight)?i:min,0);
-    if(Math.abs(genome.fitnessSensors[weakest].weight)<0.03)genome.fitnessSensors.splice(weakest,1);
+    const sensorUtility=s=>Math.max(Math.abs(s.weight),Math.abs(s.realWeight||0));
+    const weakest=genome.fitnessSensors.reduce((min,s,i)=>sensorUtility(s)<sensorUtility(genome.fitnessSensors[min])?i:min,0);
+    if(sensorUtility(genome.fitnessSensors[weakest])<0.03)genome.fitnessSensors.splice(weakest,1);
   }
 
   // ═══ Pe22f: USER ATOM MUTATION ═══
