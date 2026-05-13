@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
-<title>Selection פ 24 — Self-Read</title>
+<title>Selection פ 25 — Credit</title>
 <style>
 *{margin:0;padding:0;box-sizing:border-box}
 html,body{height:100%;overflow:hidden;background:#020204;touch-action:none;cursor:crosshair}
@@ -376,10 +376,28 @@ let genome={
   fitnessSensors:[
     // Seed: one sensor that computes field_energy * persistent_ratio (designer didn't hardcode this)
     // Pe24: realWeight=0 means this sensor doesn't yet contribute to real fitness; mutation can raise it.
-    {program:[[2,5,6,1.0],[4,6,0,1.0]], weight:0.1, realWeight:0}
+    {program:[[2,5,6,1.0],[4,6,0,1.0]], weight:0.1, realWeight:0, creditTrace:0, lastEmit:0, prevEmit:0}
   ],
   maxSensors:4,        // Pe22e: retained for save-file compatibility; no longer enforced
   sensorMaxInst:4,     // Pe22e: retained for save-file compatibility; no longer enforced
+
+  // ═══ LAYER 15: LOCAL CREDIT ASSIGNMENT (Pe25) ═══
+  // Pure evolution gives realWeight and objWeights only one selection signal:
+  // lineage-level adjudication at mutation cadence. That's slow and lossy — a
+  // sensor that genuinely tracks fitness might never accumulate enough realWeight
+  // to prove its value before drift erases it. This layer adds a faster
+  // within-lineage signal: each tick, correlate each weight's component value-delta
+  // with the fitness delta, and nudge the weight toward accumulated correlation.
+  // The nudge is kept smaller than typical mutation movement so lineage selection
+  // still adjudicates the long-haul question (truly predictive vs. spuriously
+  // correlated). Three timescales now act on the same parameter family: shadow-
+  // scenario selection (per-scenario), credit assignment (per-tick), lineage
+  // selection (per-mutation/death). creditLearnRate=0 disables and recovers
+  // Pe24 behavior exactly.
+  creditLearnRate:1.0,        // mutable global multiplier on credit signal
+  objCreditTrace:[0,0,0,0],   // EMA of (axisDelta * fitnessDelta) per designer axis
+  prevObjValues:[0,0,0,0],    // stability, diversity, coherence, churn from prev tick
+  prevSmoothedFitness:0,      // for fitnessDelta computation
 
   // ═══ LAYER 4: META ═══
   // How the system evolves. The evolution of evolution.
@@ -704,7 +722,8 @@ function encodeGenome(){
     vi:+(genome.vmInfluence.toPrecision(3)),
     vs:+(genome.ruleScale.toPrecision(3)),
     vm:genome.vmMaxInstructions,
-    ua:cleanAtoms
+    ua:cleanAtoms,
+    clr:+(genome.creditLearnRate||1).toFixed(4) // Pe25 Layer 15: evolvable learning rate
   };
   return btoa(JSON.stringify(g));
 }
@@ -786,6 +805,7 @@ function decodeGenome(data){
     if(g.vs)genome.ruleScale=g.vs;
     if(g.vm)genome.vmMaxInstructions=g.vm;
     if(g.ua)genome.userAtoms=g.ua.map(a=>({expression:a.expression,compiled:null,failed:!!a.failed,uses:a.uses|0,age:a.age|0}));
+    if(typeof g.clr==='number')genome.creditLearnRate=g.clr; // Pe25 Layer 15
     sanitizeGenome();
     return true;
   }catch(e){return false}
@@ -807,8 +827,15 @@ function sanitizeGenome(){
   genome.vmProgram=Array.isArray(genome.vmProgram)?genome.vmProgram.map(cleanInstruction).slice(0,48):[[0,0,0,0]];
   if(genome.vmProgram.length===0)genome.vmProgram=[[0,0,0,0]];
   genome.vmMaxInstructions=Math.max(1,Math.min(48,Math.round(finiteOr(genome.vmMaxInstructions,16))));
-  genome.fitnessSensors=Array.isArray(genome.fitnessSensors)?genome.fitnessSensors.filter(s=>s&&Array.isArray(s.program)).map(s=>({program:s.program.map(cleanInstruction),weight:finiteOr(s.weight,0),realWeight:finiteOr(s.realWeight,0)})):[{program:[[2,5,6,1.0],[4,6,0,1.0]],weight:0.1,realWeight:0}];
-  if(genome.fitnessSensors.length===0)genome.fitnessSensors=[{program:[[2,5,6,1.0],[4,6,0,1.0]],weight:0.1,realWeight:0}];
+  genome.fitnessSensors=Array.isArray(genome.fitnessSensors)?genome.fitnessSensors.filter(s=>s&&Array.isArray(s.program)).map(s=>({program:s.program.map(cleanInstruction),weight:finiteOr(s.weight,0),realWeight:finiteOr(s.realWeight,0),creditTrace:finiteOr(s.creditTrace,0),lastEmit:finiteOr(s.lastEmit,0),prevEmit:finiteOr(s.prevEmit,0)})):[{program:[[2,5,6,1.0],[4,6,0,1.0]],weight:0.1,realWeight:0,creditTrace:0,lastEmit:0,prevEmit:0}];
+  if(genome.fitnessSensors.length===0)genome.fitnessSensors=[{program:[[2,5,6,1.0],[4,6,0,1.0]],weight:0.1,realWeight:0,creditTrace:0,lastEmit:0,prevEmit:0}];
+  // Pe25 Layer 15: credit-assignment defaults for old saves
+  genome.creditLearnRate=Math.max(0,Math.min(3,finiteOr(genome.creditLearnRate,1.0)));
+  if(!Array.isArray(genome.objCreditTrace)||genome.objCreditTrace.length<4)genome.objCreditTrace=[0,0,0,0];
+  genome.objCreditTrace=genome.objCreditTrace.slice(0,4).map(v=>Math.max(-1,Math.min(1,finiteOr(v,0))));
+  if(!Array.isArray(genome.prevObjValues)||genome.prevObjValues.length<4)genome.prevObjValues=[0,0,0,0];
+  genome.prevObjValues=genome.prevObjValues.slice(0,4).map(v=>finiteOr(v,0));
+  genome.prevSmoothedFitness=finiteOr(genome.prevSmoothedFitness,0);
   genome.userAtoms=Array.isArray(genome.userAtoms)?genome.userAtoms.filter(a=>a&&typeof a.expression==='string').map(a=>({expression:a.expression.slice(0,160),compiled:null,failed:!!a.failed,uses:a.uses|0,age:a.age|0})):[];
   genome.lineage=Array.isArray(genome.lineage)?genome.lineage.slice(-6):[];
   genome.eventLog=Array.isArray(genome.eventLog)?genome.eventLog.slice(-EVENT_LOG_SIZE):[];
@@ -1583,11 +1610,16 @@ function evaluateSensors(useRealWeight){
   for(const sensor of sensors){
     // Pe24: pick which weight drives this sensor's contribution.
     const w=useRealWeight?(sensor.realWeight||0):sensor.weight;
-    if(w===0&&useRealWeight)continue; // skip sensors with no real-fitness participation
+    // Pe25 Layer 15: during the real pass we always execute the sensor program
+    // even when realWeight=0, so its raw emit is tracked for credit assignment.
+    // Without this, a new sensor (realWeight=0 by default) could never be nudged
+    // toward real-fitness participation by the credit signal — chicken-and-egg.
+    if(w===0&&!useRealWeight)continue;
 
     // Execute sensor program (pure computation, no side effects)
     const regs=new Float32Array(16);
     for(let r=0;r<16;r++)regs[r]=S[r]; // copy state
+    let sensorEmit=0; // Pe25 Layer 15: raw (un-weighted) output for credit signal
 
     for(const inst of sensor.program){
       const[op,src,dst,k]=inst;
@@ -1597,13 +1629,80 @@ function evaluateSensors(useRealWeight){
         case 1:regs[di]+=regs[si]*k;break;
         case 2:regs[di]*=regs[si]*(k||1);break;
         case 3:regs[di]=regs[si]>k?1:0;break;
-        case 4:totalScore+=regs[si]*k*w;totalWeight+=Math.abs(w);break; // EMIT to fitness (using selected weight)
+        case 4:{ // EMIT — track raw output for credit, weighted output for fitness
+          const e=regs[si]*k;
+          sensorEmit+=e;
+          if(w!==0){totalScore+=e*w;totalWeight+=Math.abs(w);}
+          break;
+        }
       }
       for(let r=0;r<16;r++)regs[r]=Math.max(-8,Math.min(8,regs[r]));
     }
+    if(useRealWeight)sensor.lastEmit=sensorEmit; // Pe25 Layer 15
   }
 
   return totalWeight>0?totalScore/totalWeight:0;
+}
+
+// ═══ Pe25 LAYER 15: LOCAL CREDIT ASSIGNMENT ═══
+// Called once per tick after fitness has been computed and smoothed.
+// For each sensor and each designer axis, asks: did this component move in the
+// same direction as fitness this tick? Accumulates a sign-based correlation
+// (EMA, window ~100 ticks) and nudges the corresponding weight in the direction
+// of accumulated correlation. The nudge per tick is small enough that lineage
+// selection still adjudicates long-haul predictive vs. spuriously-correlated.
+// creditLearnRate=0 reduces this to a no-op (Pe24 behavior recovered exactly).
+function applyCreditAssignment(){
+  const lr=Math.max(0,Math.min(3,genome.creditLearnRate||0));
+  const df=currentFitness-(genome.prevSmoothedFitness||0);
+  genome.prevSmoothedFitness=currentFitness;
+  if(lr===0||!isFinite(df))return;
+  // Deadzone on fitness delta — tiny movements are noise, not signal.
+  // Without this, sensors get random updates during quiescent periods.
+  const fitnessActive=Math.abs(df)>1e-5;
+  const fSign=df>0?1:df<0?-1:0;
+
+  // --- Per-sensor credit on realWeight ---
+  // Sensors that move with fitness gain real-fitness participation; sensors
+  // that move against it lose participation. New sensors (realWeight=0) can
+  // bootstrap up from zero through this signal alone, no mutation required.
+  const NUDGE=8e-5; // ~comparable to one mutation step per ~1000 ticks at trace=1
+  for(const s of genome.fitnessSensors){
+    const cur=+(s.lastEmit||0);
+    const prev=+(s.prevEmit||0);
+    const ds=cur-prev;
+    s.prevEmit=cur;
+    if(!fitnessActive||!isFinite(ds)||ds===0)continue;
+    const sSign=ds>0?1:-1;
+    const contribution=sSign*fSign; // ±1
+    s.creditTrace=((s.creditTrace||0)*0.99)+contribution*0.01;
+    if(s.creditTrace>1)s.creditTrace=1;else if(s.creditTrace<-1)s.creditTrace=-1;
+    s.realWeight=Math.max(-1,Math.min(1,(s.realWeight||0)+s.creditTrace*lr*NUDGE));
+  }
+
+  // --- Per-axis credit on objWeights (the 4 designer dimensions) ---
+  // Lineages that benefit from valuing stability over diversity (or vice versa)
+  // can find their own balance within their lifespan rather than waiting for
+  // lineage selection to redistribute weight via random walk.
+  const churn=clusters.filter(c=>c.persistAge<2).length/Math.max(1,clusters.length);
+  const axes=[selfModel.stability||0,selfModel.diversity||0,selfModel.avgCoherence||0,churn];
+  const pv=genome.prevObjValues;
+  const trace=genome.objCreditTrace;
+  for(let i=0;i<4;i++){
+    const dv=axes[i]-pv[i];
+    if(fitnessActive&&isFinite(dv)&&dv!==0){
+      const vSign=dv>0?1:-1;
+      const contribution=vSign*fSign;
+      trace[i]=trace[i]*0.99+contribution*0.01;
+      if(trace[i]>1)trace[i]=1;else if(trace[i]<-1)trace[i]=-1;
+      genome.objWeights[i]=Math.max(0,genome.objWeights[i]+trace[i]*lr*NUDGE);
+    }
+    pv[i]=axes[i];
+  }
+  // Re-normalize objWeights to preserve the existing budget invariant (sum=1)
+  const wSum=genome.objWeights.reduce((a,b)=>a+b,0);
+  if(wSum>0){for(let i=0;i<4;i++)genome.objWeights[i]/=wSum;}
+  else genome.objWeights=[0.25,0.25,0.25,0.25];
 }
 
 function runShadowSim(){
@@ -2366,6 +2465,11 @@ function mutateGenome(){
   }else{
     genome.objWeights=[0.25,0.25,0.25,0.25];
   }
+  // Pe25 Layer 15: credit-signal magnitude is itself evolvable.
+  // A lineage can mutate toward 0 to disable credit and rely on pure evolution,
+  // or up to ~3 to lean more heavily on within-lineage learning. Lineage
+  // selection decides whether learning helps.
+  genome.creditLearnRate=Math.max(0,Math.min(3,maybe(genome.creditLearnRate,0,3,0.15)));
 
   // LAYER 4: META-MUTATIONS
   genome.mutationRate=maybe(genome.mutationRate,0.01,0.25,0.02);
@@ -2476,7 +2580,10 @@ function mutateGenome(){
     genome.fitnessSensors.push({
       program:[[Math.floor(Math.random()*5),Math.floor(Math.random()*16),Math.floor(Math.random()*16),(Math.random()-0.5)]],
       weight:0.05,
-      realWeight:0
+      realWeight:0,
+      creditTrace:0,  // Pe25 Layer 15
+      lastEmit:0,
+      prevEmit:0
     });
   }
   // Death of useless sensor — Pe24: post-bifurcation, a sensor's utility is
@@ -2678,6 +2785,12 @@ function checkExtinction(){
     genome.mutationRate=savedRate;
 
     currentFitness=0;fitnessSamples=0;
+    // Pe25 Layer 15: clear credit-trace state across extinction so the first
+    // post-extinction tick doesn't see a giant spurious fitness delta.
+    genome.prevSmoothedFitness=0;
+    genome.objCreditTrace=[0,0,0,0];
+    genome.prevObjValues=[0,0,0,0];
+    for(const s of genome.fitnessSensors){s.creditTrace=0;s.prevEmit=0;s.lastEmit=0;}
     genomeArchive.length=0;
     genome.currentStableStreak=0;
     saveGenome();
@@ -4235,6 +4348,7 @@ function loop(){
       realSensorScore*realSensorWeight)/(wT+realSensorWeight);
     currentFitness=currentFitness*0.9+fitness*0.1;
     fitnessSamples++;
+    applyCreditAssignment(); // Pe25 Layer 15: nudge weights toward predictive components
 
     if(genome.stableMotifs.length>0&&clusters.length>0){
       for(const c of clusters){
