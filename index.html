@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
-<title>Selection פ 30 — Inheritance</title>
+<title>Selection פ 30b — Inheritance (explore rate freed)</title>
 <style>
 *{margin:0;padding:0;box-sizing:border-box}
 html,body{height:100%;overflow:hidden;background:#020204;touch-action:none;cursor:crosshair}
@@ -447,6 +447,11 @@ let genome={
   // not only its parameters but its theory of which parameters are worth varying.
   shadowScenarioBank:null,    // populated by seedShadowBank() in init/sanitize
   shadowBankChurn:0.5,        // probability per mutation cycle of evict+spawn pass. Evolvable.
+  // Pe30b: explore/exploit split for bank refill. Was a hardcoded 0.5 in Pe30 — freed
+  // here because leaving it frozen contradicted the codebase's whole premise. Bounded
+  // [0.1,0.9] in evolveShadowBank (not [0,1]) because both extremes structurally kill
+  // architecture layers — see the long note at the refill loop. Default 0.5 = Pe30.
+  shadowExploreRate:0.5,      // P(refill slot is fresh random vs credit-weighted child). Evolvable.
 
   // ═══ LAYER 18: RATIFICATION — clusters carry scenarios upward (Pe28) ═══
   // Pe27 made the imagination bank evolvable, but scenarios still live and die strictly
@@ -874,7 +879,8 @@ function encodeGenome(){
       +(sc.creditTrace||0).toFixed(3)
     ]):null,
     sbc:+(genome.shadowBankChurn||0.5).toFixed(3),
-    scw:+(genome.scenarioCreditWeight||0).toFixed(3) // Pe29 Layer 19
+    scw:+(genome.scenarioCreditWeight||0).toFixed(3), // Pe29 Layer 19
+    ser:+(genome.shadowExploreRate||0.5).toFixed(3) // Pe30b: explore rate
   };
   return btoa(JSON.stringify(g));
 }
@@ -971,6 +977,7 @@ function decodeGenome(data){
     }
     if(typeof g.sbc==='number')genome.shadowBankChurn=g.sbc;
     if(typeof g.scw==='number')genome.scenarioCreditWeight=g.scw; // Pe29 Layer 19
+    if(typeof g.ser==='number')genome.shadowExploreRate=g.ser; // Pe30b: explore rate
     sanitizeGenome();
     return true;
   }catch(e){return false}
@@ -1038,6 +1045,7 @@ function sanitizeGenome(){
   }
   genome.shadowScenarios=Math.max(3,Math.min(SHADOW_SCENARIOS_MAX,Math.round(finiteOr(genome.shadowScenarios,5))));
   genome.shadowBankChurn=Math.max(0,Math.min(1,finiteOr(genome.shadowBankChurn,0.5)));
+  genome.shadowExploreRate=Math.max(0.1,Math.min(0.9,finiteOr(genome.shadowExploreRate,0.5))); // Pe30b
   // Pe29 Layer 19: scenario credit weight default
   genome.scenarioCreditWeight=Math.max(0,Math.min(1,finiteOr(genome.scenarioCreditWeight,0.4)));
 }
@@ -1766,12 +1774,27 @@ function evolveShadowBank(){
   // Pe30 Layer 20c: diversity pressure. A spawned child landing within similarity ε
   // of an existing bank entry is re-rolled with amplified noise (up to 3 attempts).
   // Keeps the bank's coverage broad — no two slots on near-duplicate scenarios.
+  //
+  // Pe30b: the explore/exploit split is genome.shadowExploreRate, not a hardcoded 0.5.
+  // It was hardcoded in Pe30 — an oversight, since freeing exactly this kind of constant
+  // is the codebase's whole through-line. With probability shadowExploreRate a refill
+  // slot gets a fresh random scenario (explore); otherwise a credit-weighted child of a
+  // winner (exploit). It is bounded [0.1, 0.9], UNLIKE gradientBias or scenarioCredit
+  // Weight which are free in [0,1]. The reason is asymmetric consequences: those params
+  // have valid behavior at their extremes (gradientBias=0 is just Pe25; scenarioCredit
+  // Weight=0 is just Pe28). shadowExploreRate does not — at 0 the bank can only ever
+  // spawn children of existing winners, collapsing toward a single dynasty plus one
+  // never-refreshed reserved-random slot; at 1 no children spawn at all, which kills
+  // Pe27's multi-axis discovery and Pe30's credit-weighted reproduction outright. Both
+  // extremes structurally disable architecture layers, so the bounds keep selection
+  // inside the range where the mechanism still exists. Default 0.5 = Pe30 behavior.
   const cap=Math.max(3,Math.min(SHADOW_SCENARIOS_MAX,(genome.shadowScenarios|0)||5));
+  const exploreRate=Math.max(0.1,Math.min(0.9,genome.shadowExploreRate||0.5));
   let safety=20;
   while(bank.length<cap&&safety-->0){
     const winners=bank.filter(s=>s.wins>0);
     let candidate;
-    if(winners.length>0&&Math.random()<0.5){
+    if(winners.length>0&&Math.random()>=exploreRate){
       // Credit-weighted parent sampling.
       let totalW=0;
       for(const w of winners){
@@ -3045,6 +3068,9 @@ function mutateGenome(){
   // counterfactual futures to maintain and how aggressively to refresh them.
   genome.shadowScenarios=Math.max(3,Math.min(SHADOW_SCENARIOS_MAX,Math.round(maybe(genome.shadowScenarios,3,SHADOW_SCENARIOS_MAX,0.8))));
   genome.shadowBankChurn=Math.max(0,Math.min(1,maybe(genome.shadowBankChurn,0,1,0.06)));
+  // Pe30b: explore rate evolvable, bounded [0.1,0.9] — see refill-loop note for why
+  // the bounds are tighter than the [0,1] of other freed params.
+  genome.shadowExploreRate=Math.max(0.1,Math.min(0.9,maybe(genome.shadowExploreRate,0.1,0.9,0.06)));
   // Pe29 Layer 19: how strongly real-fitness credit affects eviction. 0=Pe28 behavior.
   genome.scenarioCreditWeight=Math.max(0,Math.min(1,maybe(genome.scenarioCreditWeight,0,1,0.06)));
   // Evict-and-spawn pass: probabilistic, gated by the churn rate.
