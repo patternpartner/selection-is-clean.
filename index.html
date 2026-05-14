@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
-<title>Selection פ 29 — Reckoning</title>
+<title>Selection פ 30 — Inheritance</title>
 <style>
 *{margin:0;padding:0;box-sizing:border-box}
 html,body{height:100%;overflow:hidden;background:#020204;touch-action:none;cursor:crosshair}
@@ -498,9 +498,37 @@ let genome={
   // win requirement. The bank now feels the consequences of its own choices.
   //
   // Gated by scenarioCreditWeight. Set to 0 and the modulation is disabled — Pe28
-  // behavior is recovered exactly. Default 0.5 means credit moves eviction thresholds
-  // by half their full range. Lineage selection decides whether reckoning helps.
-  scenarioCreditWeight:0.5,   // 0=Pe28 behavior, 1=full credit-driven eviction. Evolvable.
+  // behavior is recovered exactly. Default 0.4: a gen-723 run drifted scenarioCreditWeight
+  // from 0.5 down to ~0.41 under selection, so 0.4 is where the system wanted to sit.
+  // Lineage selection still adjudicates from there.
+  scenarioCreditWeight:0.4,   // 0=Pe28 behavior, 1=full credit-driven eviction. Evolvable.
+
+  // ═══ LAYER 20: INHERITANCE — credit reaches reproduction (Pe30) ═══
+  // Pe29 made the scenario bank feel real-fitness consequences, but only at the
+  // eviction stage — credit decided who LIVED, never who REPRODUCED. And a gen-723
+  // run surfaced two more gaps. Pe30 closes all three at once; they cohere as one
+  // theme — the credit signal reaching every part of the scenario life cycle.
+  //
+  // (a) CREDIT-WEIGHTED REPRODUCTION. evolveShadowBank's parent selection was weighted
+  //     by raw shadow-sim wins alone. Now it's weighted by wins * (1 + creditTrace *
+  //     scenarioCreditWeight). A scenario with strong real-fitness credit spawns more
+  //     children; one with negative credit fades from the lineage even if its raw win
+  //     count is high. Credit shapes the gene pool, not just the survivor set.
+  //
+  // (b) BIRTH-TIME FOSSILS. Pe28's cluster fossil was snapshotted at signal time, so
+  //     it almost always still matched a live bank entry — the resurrection path
+  //     (inject a genuinely-absent scenario) almost never fired; the gen-723 bank had
+  //     zero 'fossil'-tagged entries. Pe30 moves the snapshot to cluster BIRTH. A
+  //     cluster carries "what was winning when I formed" for its whole life. A long-
+  //     lived cluster's snapshot is genuinely aged, so resurrection actually happens.
+  //
+  // (c) BANK DIVERSITY PRESSURE. The gen-723 bank spent two of five slots on near-
+  //     duplicate scenarios (same e-/k-/r+ family). Now a spawned child that lands
+  //     within similarity ε of an existing entry is re-rolled with amplified noise —
+  //     each slot has to earn its place by being distinct. Coverage stays broad.
+  //
+  // All three are gated by existing parameters (scenarioCreditWeight, gradientUpstream
+  // Bias). No new genome fields. Setting those to 0 recovers Pe28/Pe29 behavior.
 
   // ═══ LAYER 4: META ═══
   // How the system evolves. The evolution of evolution.
@@ -1011,7 +1039,7 @@ function sanitizeGenome(){
   genome.shadowScenarios=Math.max(3,Math.min(SHADOW_SCENARIOS_MAX,Math.round(finiteOr(genome.shadowScenarios,5))));
   genome.shadowBankChurn=Math.max(0,Math.min(1,finiteOr(genome.shadowBankChurn,0.5)));
   // Pe29 Layer 19: scenario credit weight default
-  genome.scenarioCreditWeight=Math.max(0,Math.min(1,finiteOr(genome.scenarioCreditWeight,0.5)));
+  genome.scenarioCreditWeight=Math.max(0,Math.min(1,finiteOr(genome.scenarioCreditWeight,0.4)));
 }
 
 function saveGenome(){
@@ -1120,6 +1148,11 @@ const clusters=[];
 const prevClusters=[];
 let clusterAge=new Map(); // track persistence across snapshots
 let clusterVMs=new Map(); // persist per-cluster VM programs across detection cycles (keyed by hash)
+// Pe30 Layer 20: per-cluster scenario fossil. A cluster snapshots the global bank's
+// top scenario AT BIRTH and carries it for its whole life. This is what makes Pe28's
+// resurrection pathway genuinely fire — a long-lived cluster's snapshot is genuinely
+// old, so by the time it signals upstream, the source scenario has often been evicted.
+let clusterFossils=new Map(); // hash → {e,k,r,c,t,creditTrace} birth-time scenario snapshot
 // ═══════════════════════════════════════
 // Pe22f: CLUSTER-LEVEL GENOME — major evolutionary transition.
 // Clusters become units of selection with heritable cluster-level traits.
@@ -1373,6 +1406,7 @@ function trackClusterPersistence(){
   // Match current clusters to previous by spatial proximity + tendency similarity
   const newAge=new Map();
   const newVMs=new Map();
+  const newFossils=new Map(); // Pe30 Layer 20b: carry birth-time scenario fossils forward
   for(const c of clusters){
     let bestMatch=null,bestScore=-1;
     for(const p of prevClusters){
@@ -1417,19 +1451,27 @@ function trackClusterPersistence(){
       }else{
         c.clusterGenome=seedClusterGenome();
       }
+      // Pe30 Layer 20b: scenario fossil inheritance — a persistent cluster keeps
+      // the snapshot it took at birth. The fossil ages with the cluster, unchanged.
+      c.scenarioFossil=clusterFossils.get(bestMatch.hash)||null;
     }else{
       newAge.set(c.hash,0);
       c.persistAge=0;
       // New cluster — keeps the seeded VM and new lineage from detectClusters()
       // And seeds a fresh cluster genome: new-to-the-world clusters start random.
       if(!c.clusterGenome)c.clusterGenome=seedClusterGenome();
+      // Pe30 Layer 20b: a newborn cluster snapshots the global bank's current top
+      // scenario. This is "what was winning when I formed" — carried for its whole life.
+      c.scenarioFossil=topScenarioSnapshot();
     }
     // Store this cluster's VM, signature, lineage, AND clusterGenome for next cycle
     newVMs.set(c.hash,{prog:c.vmProgram.map(inst=>[...inst]),inf:c.vmInfluence,sig:Array.from(c.fieldSignature||[0,0,0]),lineage:c.lineageID});
     clusterGenomes.set(c.hash,c.clusterGenome);
+    if(c.scenarioFossil)newFossils.set(c.hash,c.scenarioFossil);
   }
   clusterAge=newAge;
   clusterVMs=newVMs;
+  clusterFossils=newFossils; // Pe30: drop fossils of clusters that no longer exist
   prevClusters.length=0;
   for(const c of clusters)prevClusters.push({...c,tendency:[...c.tendency]});
   // Rebuild fast lookup
@@ -1570,11 +1612,17 @@ function attemptClusterBudding(){
       vmInfluence:Math.max(0.05,c.vmInfluence+(Math.random()-0.5)*0.1),
       fieldSignature:new Float32Array(c.fieldSignature.map(s=>s+(Math.random()-0.5)*0.1)),
       lineageID:daughterLineage,
-      clusterGenome:daughterCG
+      clusterGenome:daughterCG,
+      // Pe30 Layer 20b: daughter inherits parent's birth-time scenario fossil —
+      // ancestral memory passes down the bud line, joining vmProgram/clusterGenome/
+      // lineage as heritable cluster state. Falls back to a fresh snapshot if the
+      // parent somehow carried none.
+      scenarioFossil:c.scenarioFossil?{...c.scenarioFossil}:topScenarioSnapshot()
     };
 
     clusters.push(daughter);
     clusterGenomes.set(daughter.hash,daughterCG);
+    if(daughter.scenarioFossil)clusterFossils.set(daughter.hash,daughter.scenarioFossil);
 
     // TERRITORY SEEDING — stamp a small footprint at the bud site
     // The daughter doesn't arrive in a vacuum
@@ -1711,21 +1759,78 @@ function evolveShadowBank(){
   }
 
   // Refill toward cap.
+  // Pe30 Layer 20a: credit-weighted reproduction. Parent selection is weighted by
+  // wins * (1 + creditTrace * scenarioCreditWeight) rather than raw wins. A scenario
+  // with real-fitness credit reproduces more; one with negative credit fades from the
+  // lineage even with a high raw win count. scenarioCreditWeight=0 → pure-wins (Pe29).
+  // Pe30 Layer 20c: diversity pressure. A spawned child landing within similarity ε
+  // of an existing bank entry is re-rolled with amplified noise (up to 3 attempts).
+  // Keeps the bank's coverage broad — no two slots on near-duplicate scenarios.
   const cap=Math.max(3,Math.min(SHADOW_SCENARIOS_MAX,(genome.shadowScenarios|0)||5));
   let safety=20;
   while(bank.length<cap&&safety-->0){
     const winners=bank.filter(s=>s.wins>0);
+    let candidate;
     if(winners.length>0&&Math.random()<0.5){
-      // Sample parent weighted by wins.
-      let totalW=0;for(const w of winners)totalW+=w.wins;
-      let pick=Math.random()*totalW;
+      // Credit-weighted parent sampling.
+      let totalW=0;
+      for(const w of winners){
+        const ct=Math.max(-1,Math.min(1,w.creditTrace||0));
+        totalW+=w.wins*(1+ct*scw);
+      }
       let parent=winners[0];
-      for(const w of winners){pick-=w.wins;if(pick<=0){parent=w;break}}
-      bank.push(childScenario(parent));
+      if(totalW>0){
+        let pick=Math.random()*totalW;
+        for(const w of winners){
+          const ct=Math.max(-1,Math.min(1,w.creditTrace||0));
+          pick-=w.wins*(1+ct*scw);
+          if(pick<=0){parent=w;break}
+        }
+      }
+      candidate=childScenario(parent);
+      // Diversity pressure — re-roll a too-similar child with growing noise.
+      for(let attempt=0;attempt<3;attempt++){
+        let tooClose=false;
+        for(const sc of bank){
+          const de=sc.e-candidate.e,dk=sc.k-candidate.k,dr=sc.r-candidate.r,
+                dc=sc.c-candidate.c,dt=sc.t-candidate.t;
+          if(Math.sqrt(de*de+dk*dk+dr*dr+dc*dc+dt*dt)<0.35){tooClose=true;break}
+        }
+        if(!tooClose)break;
+        // Re-roll: child of same parent but with amplified noise each attempt.
+        const amp=0.6+attempt*0.6;
+        candidate={
+          e:Math.max(-2,Math.min(2,parent.e+(Math.random()-0.5)*amp)),
+          k:Math.max(-2,Math.min(2,parent.k+(Math.random()-0.5)*amp)),
+          r:Math.max(-2,Math.min(2,parent.r+(Math.random()-0.5)*amp)),
+          c:Math.max(-2,Math.min(2,parent.c+(Math.random()-0.5)*amp)),
+          t:Math.max(-2,Math.min(2,parent.t+(Math.random()-0.5)*amp)),
+          wins:0,age:0,src:'child',creditTrace:(parent.creditTrace||0)*0.5
+        };
+      }
     }else{
-      bank.push(randomScenario());
+      candidate=randomScenario();
+    }
+    bank.push(candidate);
+  }
+}
+
+// Pe30 Layer 20: snapshot the global bank's current top scenario as a clean copy.
+// Top = highest wins, tiebreak by lowest age. Returns null if no scenario has won yet.
+// Used at cluster birth — the cluster carries this for its whole life (Layer 20b).
+function topScenarioSnapshot(){
+  const bank=genome.shadowScenarioBank;
+  if(!Array.isArray(bank)||bank.length===0)return null;
+  let bestWins=-1,bestAge=1e9,bestIdx=-1;
+  for(let i=0;i<bank.length;i++){
+    const sc=bank[i];
+    if(sc.wins>bestWins||(sc.wins===bestWins&&sc.age<bestAge)){
+      bestWins=sc.wins;bestAge=sc.age;bestIdx=i;
     }
   }
+  if(bestIdx<0||bestWins<=0)return null;
+  const top=bank[bestIdx];
+  return {e:top.e,k:top.k,r:top.r,c:top.c,t:top.t,creditTrace:top.creditTrace||0};
 }
 
 // ═══ VM PHENOTYPE PROFILER ═══
@@ -2699,29 +2804,14 @@ function updateField(){
 // The buffer is consumed by mutateGenome. This closes the loop: particles → clusters
 // was already present (cluster VMs, cluster genomes); clusters → global was the missing path.
 // gradientUpstreamBias=0 makes this a no-op, recovering Pe25 behavior exactly.
+// Pe30 Layer 20b: the scenario fossil is now the cluster's BIRTH-TIME snapshot
+// (carried on c.scenarioFossil since trackClusterPersistence), not a fresh snapshot of
+// the current top. A long-lived cluster carries a genuinely aged fossil — so when it
+// drains into the bank, the source scenario is often already evicted and the
+// resurrection path actually fires.
 function collectClusterUpstream(){
   const ub=genome.gradientUpstreamBias||0;
   if(ub<=0.01)return;
-  // Pe28 Layer 18: snapshot the current top scenario from the bank.
-  // Top = highest wins, tiebreak by lowest age. Only snapshot if it has actually won.
-  // The snapshot is a clean copy with counters zeroed — it's a blueprint, not a live entry.
-  let topScenario=null;
-  if(Array.isArray(genome.shadowScenarioBank)&&genome.shadowScenarioBank.length>0){
-    let bestWins=-1,bestAge=1e9,bestIdx=-1;
-    for(let i=0;i<genome.shadowScenarioBank.length;i++){
-      const sc=genome.shadowScenarioBank[i];
-      if(sc.wins>bestWins||(sc.wins===bestWins&&sc.age<bestAge)){
-        bestWins=sc.wins;bestAge=sc.age;bestIdx=i;
-      }
-    }
-    if(bestIdx>=0&&bestWins>0){
-      const top=genome.shadowScenarioBank[bestIdx];
-      // Pe29: carry creditTrace forward through the fossil — if a cluster is ratifying
-      // this scenario, its real-world performance signal travels with the snapshot.
-      // A ratified scenario re-entering the bank arrives with its accumulated credit.
-      topScenario={e:top.e,k:top.k,r:top.r,c:top.c,t:top.t,wins:0,age:0,src:'fossil',creditTrace:top.creditTrace||0};
-    }
-  }
   for(const c of clusters){
     // Qualification: old enough, coherent enough, energetically viable
     if(c.persistAge<6||c.coherence<0.45||c.avgAmp<0.38)continue;
@@ -2736,10 +2826,15 @@ function collectClusterUpstream(){
       motif.push([inst[0],inst[1],inst[2],inst[3]]);
     }
     if(motif.length>0){
+      // Pe30: the cluster's birth-time scenario fossil, packaged as a bank-ready
+      // blueprint (counters zeroed, src tagged). Null if the cluster was born before
+      // any scenario had won.
+      const cf=c.scenarioFossil;
+      const fossil=cf?{e:cf.e,k:cf.k,r:cf.r,c:cf.c,t:cf.t,wins:0,age:0,src:'fossil',creditTrace:cf.creditTrace||0}:null;
       clusterUpstreamBuffer.push({
         motif,
         clusterGenome:c.clusterGenome?{...c.clusterGenome}:null,
-        scenarioFossil:topScenario?{...topScenario}:null, // Pe28: ratified scenario
+        scenarioFossil:fossil, // Pe30: birth-time fossil, carried for the cluster's life
         quality:c.coherence*c.avgAmp*(1+c.persistAge*0.02) // signal strength
       });
     }
