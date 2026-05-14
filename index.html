@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
-<title>Selection פ 30b — Inheritance (explore rate freed)</title>
+<title>Selection פ 31 — Mutual Recognition</title>
 <style>
 *{margin:0;padding:0;box-sizing:border-box}
 html,body{height:100%;overflow:hidden;background:#020204;touch-action:none;cursor:crosshair}
@@ -264,7 +264,7 @@ const DIMS=5; // dim 4 is blank — no hardcoded role. System decides what it me
 const MEM_SIZE=8; // per-particle persistent memory. Particles become stateful agents.
 const MAX_PLASMID=4; // max instructions per particle's personal mobile DNA
 const PLASMID_SLOTS=MAX_PLASMID*4; // each instruction is [op,src,dst,k] = 4 values
-const OPCODE_COUNT=23; // VM opcodes 0..22, including USER_ATOM at 22
+const OPCODE_COUNT=24; // VM opcodes 0..23, including USER_ATOM at 22, NEIGHBOR_PREDICT at 23 (Pe31)
 const FIELD_W=40;
 const FIELD_H=40;
 let FIELD_DECAY=0.982;   // natural fade — Pe22b: now genome-driven, can evolve
@@ -452,6 +452,34 @@ let genome={
   // [0.1,0.9] in evolveShadowBank (not [0,1]) because both extremes structurally kill
   // architecture layers — see the long note at the refill loop. Default 0.5 = Pe30.
   shadowExploreRate:0.5,      // P(refill slot is fresh random vs credit-weighted child). Evolvable.
+
+  // ═══ LAYER 21: MUTUAL RECOGNITION — particles model each other (Pe31) ═══
+  // Pe30b gave particles the ability to optimize everything about themselves.
+  // Pe31 adds one more degree of freedom: particles can now model *each other*.
+  //
+  // THREE PARAMETERS. All evolvable. All can evolve to zero (recovering Pe30b behavior).
+  //
+  // neighborModelUpdateRate: P(update a partner model on each interaction).
+  //   At 0: particles never build partner models — Pe30b exactly.
+  //   At 1: every interaction updates the partner model.
+  //   Default 0.3: build models selectively.
+  //
+  // neighborPredictionInfluence: how strongly the VM reads predictions (register scaling).
+  //   At 0: opcode 23 returns 0 — prediction channel is deaf.
+  //   At 0.5: predictions substantially shape VM computation.
+  //   Default 0.15: available but not dominant.
+  //
+  // mutualRecognitionThresh: minimum freshness [0..1] to trust a prediction.
+  //   Below threshold: prediction returns 0 (model too stale to trust).
+  //   Default 0.5: recent models trusted, old ones discarded.
+  //
+  // Opcode 23 (NEIGHBOR_PREDICT): vmRegs[di] = predicted partner response.
+  //   The VM explicitly requests neighbor predictions — not auto-injected.
+  //   This means existing programs (Pe30b genomes) are unaffected; new programs
+  //   can evolve to exploit the prediction channel if it proves useful.
+  neighborModelUpdateRate:0.3,      // P(model update per interaction). 0=Pe30b.
+  neighborPredictionInfluence:0.15, // prediction signal scale into VM. 0=Pe30b.
+  mutualRecognitionThresh:0.5,      // min freshness to trust prediction. Evolvable.
 
   // ═══ LAYER 18: RATIFICATION — clusters carry scenarios upward (Pe28) ═══
   // Pe27 made the imagination bank evolvable, but scenarios still live and die strictly
@@ -799,6 +827,19 @@ const pReflexHist=new Float32Array(CAP*REFLEX_DEPTH*2); // interleaved [amp,res]
 const pReflexState=new Float32Array(CAP*REFLEX_DIMS);   // derived self-model signals
 const pReflexIdx=new Uint8Array(CAP);                    // ring buffer index per particle
 const pInteractionDensity=new Float32Array(CAP);          // rolling interaction count
+
+// ═══ LAYER 21: MUTUAL RECOGNITION — particles model each other (Pe31) ═══
+// Each particle maintains compressed models of up to 3 recent interaction partners.
+// Model per partner: [tend0, tend1, phaseAlign, resonance] — 4 floats.
+// 3 partners × 4 floats = 12 floats per particle.
+// Freshness tracks how recently this partner was observed; decays naturally.
+// pNeighborIDs stores which particle occupies each slot (-1 = empty).
+// These three arrays are the only structural addition Pe31 makes.
+const NM_SLOTS=3;   // max partners tracked per particle
+const NM_DIMS=4;    // [tend0, tend1, phaseAlign, resonance] per partner
+const pNeighborModels=new Float32Array(CAP*NM_SLOTS*NM_DIMS); // compressed partner models
+const pNeighborIDs=new Int16Array(CAP*NM_SLOTS).fill(-1);     // which particle in each slot
+const pNeighborFresh=new Float32Array(CAP*NM_SLOTS);          // freshness (0=stale, 1=fresh)
 // Cache: lineage color per field cell, rebuilt on cluster detection cycles (not every frame)
 let fieldLineageCache=new Uint8Array(FIELD_W*FIELD_H*3); // R,G,B per cell
 const EL=4;
@@ -869,6 +910,10 @@ function encodeGenome(){
     clr:+(genome.creditLearnRate||1).toFixed(4), // Pe25 Layer 15: evolvable learning rate
     gb:+(genome.gradientBias||0.3).toFixed(4),   // Pe26 Layer 16a: gradient bias
     gub:+(genome.gradientUpstreamBias||0.2).toFixed(4), // Pe26 Layer 16c: upstream bias
+    // Pe31 Layer 21: mutual recognition
+    nmr:+(genome.neighborModelUpdateRate||0.3).toFixed(4),
+    npi:+(genome.neighborPredictionInfluence||0.15).toFixed(4),
+    mrt:+(genome.mutualRecognitionThresh||0.5).toFixed(4),
     // Pe27 Layer 17: shadow scenario bank. Compact tuple per entry.
     // [e,k,r,c,t, wins, age, srcIdx, creditTrace(Pe29)]
     // srcIdx: 0=seed,1=child,2=random,3=fossil(Pe28)
@@ -965,6 +1010,10 @@ function decodeGenome(data){
     if(typeof g.clr==='number')genome.creditLearnRate=g.clr; // Pe25 Layer 15
     if(typeof g.gb==='number')genome.gradientBias=g.gb;      // Pe26 Layer 16a
     if(typeof g.gub==='number')genome.gradientUpstreamBias=g.gub; // Pe26 Layer 16c
+    // Pe31 Layer 21: mutual recognition
+    if(typeof g.nmr==='number')genome.neighborModelUpdateRate=g.nmr;
+    if(typeof g.npi==='number')genome.neighborPredictionInfluence=g.npi;
+    if(typeof g.mrt==='number')genome.mutualRecognitionThresh=g.mrt;
     // Pe27 Layer 17: shadow scenario bank
     if(Array.isArray(g.sb)){
       genome.shadowScenarioBank=g.sb.map(a=>({
@@ -1006,6 +1055,10 @@ function sanitizeGenome(){
   // Pe26 Layer 16: gradient defaults for old saves
   genome.gradientBias=Math.max(0,Math.min(1,finiteOr(genome.gradientBias,0.3)));
   genome.gradientUpstreamBias=Math.max(0,Math.min(1,finiteOr(genome.gradientUpstreamBias,0.2)));
+  // Pe31 Layer 21: mutual recognition defaults for old saves
+  genome.neighborModelUpdateRate=Math.max(0,Math.min(1,finiteOr(genome.neighborModelUpdateRate,0.3)));
+  genome.neighborPredictionInfluence=Math.max(0,Math.min(0.5,finiteOr(genome.neighborPredictionInfluence,0.15)));
+  genome.mutualRecognitionThresh=Math.max(0,Math.min(1,finiteOr(genome.mutualRecognitionThresh,0.5)));
   if(!Array.isArray(genome.objCreditTrace)||genome.objCreditTrace.length<4)genome.objCreditTrace=[0,0,0,0];
   genome.objCreditTrace=genome.objCreditTrace.slice(0,4).map(v=>Math.max(-1,Math.min(1,finiteOr(v,0))));
   if(!Array.isArray(genome.prevObjValues)||genome.prevObjValues.length<4)genome.prevObjValues=[0,0,0,0];
@@ -2991,6 +3044,11 @@ function mutateGenome(){
   genome.gradientBias=Math.max(0,Math.min(1,maybe(genome.gradientBias,0,1,0.06)));
   genome.gradientUpstreamBias=Math.max(0,Math.min(1,maybe(genome.gradientUpstreamBias,0,1,0.06)));
 
+  // Pe31 Layer 21: mutual recognition — all three can evolve to 0 (recovering Pe30b behavior)
+  genome.neighborModelUpdateRate=Math.max(0,Math.min(1,maybe(genome.neighborModelUpdateRate,0,1,0.05)));
+  genome.neighborPredictionInfluence=Math.max(0,Math.min(0.5,maybe(genome.neighborPredictionInfluence,0,0.5,0.04)));
+  genome.mutualRecognitionThresh=Math.max(0,Math.min(1,maybe(genome.mutualRecognitionThresh,0,1,0.06)));
+
   // ═══ Pe26 Layer 16c: CLUSTER UPWARD SIGNAL injection ═══
   // Drain the upstream buffer — soft-inject successful cluster motifs into the global VM.
   // This is the same mechanism as network motif injection: probabilistic overwrite, not replace.
@@ -3959,6 +4017,16 @@ function executeVM(i,j,sim,d){
           vmRegs[di]=uaCall(uas[uIdx],vmRegs[si],vmRegs[(si+1)%12]);
         }
       }break;
+      case 23:{
+        // Pe31 Layer 21: NEIGHBOR_PREDICT.
+        // Reads the compressed model of partner j and returns a predicted response signal.
+        // Returns 0 if no model exists or freshness < mutualRecognitionThresh.
+        // Existing Pe30b programs never emit opcode 23 — the channel is silent until evolved.
+        const predInf=genome.neighborPredictionInfluence||0;
+        if(predInf>0.001){
+          vmRegs[di]=predictPartnerResponse(i,j,sim,phaseAlign,proximity)*predInf*(k||1);
+        }
+      }break;
     }
     for(let r=0;r<12;r++)vmRegs[r]=Math.max(-8,Math.min(8,vmRegs[r]));
   }
@@ -4313,6 +4381,79 @@ function executeClusterVM(i,j,sim,d){
   amp[i]-=clCost;amp[j]-=clCost;
 }
 
+// ═══ Pe31 LAYER 21: MUTUAL RECOGNITION ═══
+// Two functions. One updates the model; one reads it.
+// Both are O(1) — three-slot scan, constant work per interaction.
+
+function updateNeighborModel(i,j,sim,phaseAlign){
+  // Guard: genome controls whether modeling happens at all.
+  const rate=genome.neighborModelUpdateRate||0;
+  if(rate<=0.001||Math.random()>rate)return;
+
+  const base=i*NM_SLOTS;
+  // Find j in existing slots, or find space, or evict least fresh.
+  let targetSlot=-1;
+  let stalestSlot=0;
+  let stalestFresh=pNeighborFresh[base];
+  for(let s=0;s<NM_SLOTS;s++){
+    if(pNeighborIDs[base+s]===j){targetSlot=s;break}
+    if(pNeighborFresh[base+s]<stalestFresh){stalestFresh=pNeighborFresh[base+s];stalestSlot=s}
+    if(pNeighborIDs[base+s]===-1&&targetSlot===-1)targetSlot=s;
+  }
+  if(targetSlot===-1)targetSlot=stalestSlot; // evict least fresh
+
+  // EMA update — blend observed state into stored model (α=0.2)
+  const mBase=(i*NM_SLOTS+targetSlot)*NM_DIMS;
+  const alpha=0.2;
+  pNeighborIDs[base+targetSlot]=j;
+  pNeighborModels[mBase+0]+=alpha*(tend[j*DIMS+0]-pNeighborModels[mBase+0]);
+  pNeighborModels[mBase+1]+=alpha*(tend[j*DIMS+1]-pNeighborModels[mBase+1]);
+  pNeighborModels[mBase+2]+=alpha*(phaseAlign-pNeighborModels[mBase+2]);
+  pNeighborModels[mBase+3]+=alpha*(sim-pNeighborModels[mBase+3]);  // resonance proxy
+  // Freshness: sim partners write a fresher model; distant ones write staler.
+  pNeighborFresh[base+targetSlot]=Math.min(1,pNeighborFresh[base+targetSlot]+sim*0.3);
+}
+
+function predictPartnerResponse(i,j,sim,phaseAlign,proximity){
+  // Returns a signal in roughly [-1..1] the VM can use.
+  // Returns 0 if j has no model or model is too stale.
+  const thresh=genome.mutualRecognitionThresh||0.5;
+  const base=i*NM_SLOTS;
+  let slot=-1;
+  for(let s=0;s<NM_SLOTS;s++){
+    if(pNeighborIDs[base+s]===j){slot=s;break}
+  }
+  if(slot===-1)return 0; // no model of j
+  if(pNeighborFresh[base+slot]<thresh)return 0; // model too stale to trust
+
+  const mBase=(i*NM_SLOTS+slot)*NM_DIMS;
+  // Heuristic prediction: how much does observed j match the stored model?
+  // High alignment + similar tendency = likely cooperative response.
+  const storedPhase=pNeighborModels[mBase+2];
+  const storedSim=pNeighborModels[mBase+3];
+  const phaseCoherence=(phaseAlign+storedPhase)*0.5;  // agree on phase?
+  const simAlignment=(sim+storedSim)*0.5;              // agree on similarity?
+  const signal=phaseCoherence*simAlignment*proximity;
+  // Add calibrated noise — predictions are uncertain, not oracular.
+  const noise=(Math.random()-0.5)*0.15;
+  return Math.max(-1,Math.min(1,signal+noise));
+}
+
+// Natural decay of neighbor models — models fade if partners don't re-interact.
+// Called once per tick per particle (cheap: just multiply three floats by a constant).
+function decayNeighborModels(){
+  const decay=0.995; // very slow fade — models persist across many ticks
+  for(let i=0;i<N;i++){
+    if(!palive[i])continue;
+    const base=i*NM_SLOTS;
+    for(let s=0;s<NM_SLOTS;s++){
+      pNeighborFresh[base+s]*=decay;
+      // Clear very stale models to free slot for new partners
+      if(pNeighborFresh[base+s]<0.02)pNeighborIDs[base+s]=-1;
+    }
+  }
+}
+
 function entrain(i,j,sim,d){
   if(sim<genome.entrainThresh||d>CELL)return;
   const proximity=1-d/CELL;
@@ -4543,6 +4684,11 @@ function processGrid(){
             entrain(i,j,sim,d);
             executeVM(i,j,sim,d);
             executeClusterVM(i,j,sim,d);
+            // Pe31 Layer 21: update neighbor models during interaction.
+            // Both i models j, and j models i — recognition is mutual.
+            const pa31=Math.cos(phase[i]-phase[j]);
+            updateNeighborModel(i,j,sim,pa31);
+            updateNeighborModel(j,i,sim,pa31);
             const bl=genome.tendencyBleed*(1-d/iR);
             for(let dd=0;dd<DIMS;dd++){const avg=(tend[i*DIMS+dd]+tend[j*DIMS+dd])*0.5;tend[i*DIMS+dd]+=(avg-tend[i*DIMS+dd])*bl;tend[j*DIMS+dd]+=(avg-tend[j*DIMS+dd])*bl}
             const mg=(tend[i*DIMS+3]+tend[j*DIMS+3]);
@@ -4857,6 +5003,7 @@ function loop(){
   updateParticles();
 
   updateParticleReflex();
+  decayNeighborModels(); // Pe31: neighbor models fade if partners stop interacting
   if(performance.now()-frameStart<80) updateField();
 
   if(tick%60===0){
@@ -5029,6 +5176,10 @@ function loop(){
     const _gub=genome.gradientUpstreamBias||0;
     const _shadowLive=lastShadowNudgeDir.some(v=>v!==0);
     const gradTag=(_gb>0.05||_gub>0.05)?' | grad:'+_gb.toFixed(2)+'↓'+_gub.toFixed(2)+'↑'+(_shadowLive?'⊕':'○')+(clusterUpstreamBuffer.length>0?'['+clusterUpstreamBuffer.length+']':''):'';
+    // Pe31: mutual recognition state tag
+    const _nmr=genome.neighborModelUpdateRate||0;
+    const _npi=genome.neighborPredictionInfluence||0;
+    const mrTag=(_nmr>0.05||_npi>0.01)?' | mr:'+_nmr.toFixed(2)+'u'+_npi.toFixed(2)+'p':'';
     let cgTag='';
     const cgClusters=clusters.filter(c=>c.clusterGenome&&c.persistAge>2);
     if(cgClusters.length>0){
@@ -5050,7 +5201,7 @@ function loop(){
       const totalUses=uas.reduce((s,a)=>s+(a.uses|0),0);
       uaTag=` | ua:${active}/${uas.length} used:${totalUses}`;
     }
-    genEl.textContent=`gen${genome.generation} ${genome.extinctions}☠ t${genome.totalTicks} | ${clusters.length}cl(${clVMActive}vm${budCount>0?','+budCount+'bud':''}) ${livingLin}lin fit:${currentFitness.toFixed(2)} stb:${(selfModel.stability||0).toFixed(2)} | vm:${genome.vmProgram.length}inst ${nSensors}sns ${hgtEventsTotal}hgt | pop:${N}/${CAP} fld:${fieldTotal.toFixed(0)}${fTrend<-0.01?'↓':fTrend>0.01?'↑':'~'} risk:${cRisk.toFixed(2)} | ⟲${rInf.toFixed(2)} ${reflexClusters}rc${netTag}${cgTag}${uaTag}${(genome.eventLog&&genome.eventLog.length)?' ev:'+genome.eventLog.length:''}${gradTag}`;
+    genEl.textContent=`gen${genome.generation} ${genome.extinctions}☠ t${genome.totalTicks} | ${clusters.length}cl(${clVMActive}vm${budCount>0?','+budCount+'bud':''}) ${livingLin}lin fit:${currentFitness.toFixed(2)} stb:${(selfModel.stability||0).toFixed(2)} | vm:${genome.vmProgram.length}inst ${nSensors}sns ${hgtEventsTotal}hgt | pop:${N}/${CAP} fld:${fieldTotal.toFixed(0)}${fTrend<-0.01?'↓':fTrend>0.01?'↑':'~'} risk:${cRisk.toFixed(2)} | ⟲${rInf.toFixed(2)} ${reflexClusters}rc${netTag}${cgTag}${uaTag}${(genome.eventLog&&genome.eventLog.length)?' ev:'+genome.eventLog.length:''}${gradTag}${mrTag}`;
   }
 
   const renderEvery=N>1000?4:N>500?3:N>200?2:1;
