@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
-<title>Selection פ 31 — Mutual Recognition</title>
+<title>Selection פ 34 — Relational</title>
 <style>
 *{margin:0;padding:0;box-sizing:border-box}
 html,body{height:100%;overflow:hidden;background:#020204;touch-action:none;cursor:crosshair}
@@ -421,6 +421,14 @@ let genome={
   //   push discovery upward from local optima. gradientUpstreamBias=0 → Pe25 behavior.
   gradientBias:0.3,           // 0=pure random walk, 1=fully gradient-guided. Evolvable.
   gradientUpstreamBias:0.2,   // how strongly successful clusters bias global vm. Evolvable.
+  // ─── Pe33: BEHAVIORAL GRADIENT BIAS ───
+  // Pe32 used gradientBias for both physics and behavioral gradient, forcing them to
+  // track together. Pe33 separates them. The genome can now evolve "trust behavioral
+  // gradient, ignore physics gradient" or vice versa, or neither, or both.
+  // At 0: behavioral gradient is disabled — Pe32 behavior exactly (physics gradient only).
+  // At 1: behavioral gradient maximally biases instruction insertion and mutation.
+  // Default 0.2: available but not dominant. Shadow sim and lineage selection decide.
+  behaviorGradientBias:0.2,   // 0=Pe32 behavior, 1=full behavioral gradient. Evolvable.
 
   // ═══ LAYER 17: IMAGINATION — evolvable shadow scenarios (Pe27) ═══
   // Pe26 stored the *direction* of the last winning shadow scenario and biased mutation
@@ -480,6 +488,34 @@ let genome={
   neighborModelUpdateRate:0.3,      // P(model update per interaction). 0=Pe30b.
   neighborPredictionInfluence:0.15, // prediction signal scale into VM. 0=Pe30b.
   mutualRecognitionThresh:0.5,      // min freshness to trust prediction. Evolvable.
+
+  // ═══ LAYER 24: RELATIONAL FITNESS — neighbor models earn their keep (Pe34) ═══
+  // Pe31 gave particles the mechanism to model each other (pNeighborModels) and a
+  // dedicated opcode (23, NEIGHBOR_PREDICT) to read those models. But the comment in
+  // Pe33's opcode-23 handler is explicit: "Existing Pe30b programs never emit opcode 23
+  // — the channel is silent until evolved." There's a structural gap. Random mutation
+  // hits opcode 23 occasionally; when it does, the resulting prediction has no path to
+  // fitness, so selection prunes the mutation and moves on. Pe31's machinery is present
+  // in the genome but unreached by selection pressure — same dead-branch pattern as the
+  // user atoms in the gen890 save (7 atoms, all uses=0).
+  //
+  // Pe34 closes the path. Each time particle i re-encounters partner j (i.e., a model
+  // of j already exists in i's slots), we compute the L1 drift between i's stored model
+  // and the freshly observed values. Low drift means i's model accurately reflects this
+  // partner's current state. We accumulate this population-wide each tick and convert
+  // to a prediction-quality score in [0,1]. That score becomes a fifth real-fitness
+  // component, alongside stability/diversity/coherence/churn.
+  //
+  // The selection chain that opens: genomes whose VMs evolve to actually emit opcode 23
+  // and maintain useful models get a credit pathway → applyCreditAssignment notices
+  // prediction-quality movement correlating with fitness movement → the Pe33 behavioral
+  // gradient can then propagate the signal through scenario credit and EMIT generation.
+  //
+  // relationalWeight=0 recovers Pe33 behavior exactly. Default 0.15: available but not
+  // dominant. Shadow sim and lineage selection adjudicate. A lineage that finds neighbor
+  // models genuinely don't help can mutate this to zero. A lineage that finds them
+  // crucial can mutate it up to 1.0.
+  relationalWeight:0.15,            // 0=Pe33 behavior, 1=neighbor models fully real-fitness. Evolvable.
 
   // ═══ LAYER 18: RATIFICATION — clusters carry scenarios upward (Pe28) ═══
   // Pe27 made the imagination bank evolvable, but scenarios still live and die strictly
@@ -723,10 +759,6 @@ let globalCommons=0; // shared register — any particle can read, strongest wri
 let commonsWriter=-1; // index of particle that wrote this tick
 let commonsStrength=0; // strength of current tick's write
 let mutPressureAccum=0; // accumulated mutation pressure from VM channel 6
-let lastShadowNudgeDir=[0,0,0,0,0]; // Pe26: [e,k,r,c,t] direction signs from last winning shadow scenario
-// Pe29 Layer 19: fingerprint of last shadow sim winner — used by applyCreditAssignment
-// to find the matching bank entry and update its creditTrace. Survives bank churn
-// because we match by amplitudes (Euclidean), not by index.
 let lastShadowWinnerFingerprint=null; // {e,k,r,c,t} or null when no winner yet
 const clusterUpstreamBuffer=[]; // Pe26: motifs and signals donated upward by successful clusters
 const MAX_UPSTREAM_BUFFER=8;
@@ -840,6 +872,12 @@ const NM_DIMS=4;    // [tend0, tend1, phaseAlign, resonance] per partner
 const pNeighborModels=new Float32Array(CAP*NM_SLOTS*NM_DIMS); // compressed partner models
 const pNeighborIDs=new Int16Array(CAP*NM_SLOTS).fill(-1);     // which particle in each slot
 const pNeighborFresh=new Float32Array(CAP*NM_SLOTS);          // freshness (0=stale, 1=fresh)
+
+// ═══ Pe34 Layer 24: PREDICTION-ERROR ACCUMULATOR ═══
+// Filled by updateNeighborModel each time a re-encounter happens (slot already held j).
+// Drained and reset by the fitness compute each tick. Mean error → quality score.
+let predictionErrorAccum=0;
+let predictionUpdateCount=0;
 // Cache: lineage color per field cell, rebuilt on cluster detection cycles (not every frame)
 let fieldLineageCache=new Uint8Array(FIELD_W*FIELD_H*3); // R,G,B per cell
 const EL=4;
@@ -910,18 +948,22 @@ function encodeGenome(){
     clr:+(genome.creditLearnRate||1).toFixed(4), // Pe25 Layer 15: evolvable learning rate
     gb:+(genome.gradientBias||0.3).toFixed(4),   // Pe26 Layer 16a: gradient bias
     gub:+(genome.gradientUpstreamBias||0.2).toFixed(4), // Pe26 Layer 16c: upstream bias
+    bgb:+(genome.behaviorGradientBias||0.2).toFixed(4), // Pe33: behavioral gradient bias
     // Pe31 Layer 21: mutual recognition
     nmr:+(genome.neighborModelUpdateRate||0.3).toFixed(4),
     npi:+(genome.neighborPredictionInfluence||0.15).toFixed(4),
     mrt:+(genome.mutualRecognitionThresh||0.5).toFixed(4),
+    rw:+(genome.relationalWeight||0.15).toFixed(4), // Pe34 Layer 24: relational fitness weight
     // Pe27 Layer 17: shadow scenario bank. Compact tuple per entry.
-    // [e,k,r,c,t, wins, age, srcIdx, creditTrace(Pe29)]
+    // [e,k,r,c,t, wins, age, srcIdx, creditTrace(Pe29), f,p,a,tb,sp,sm,mp(Pe32)]
     // srcIdx: 0=seed,1=child,2=random,3=fossil(Pe28)
     sb:Array.isArray(genome.shadowScenarioBank)?genome.shadowScenarioBank.map(sc=>[
       +sc.e.toFixed(3),+sc.k.toFixed(3),+sc.r.toFixed(3),+sc.c.toFixed(3),+sc.t.toFixed(3),
       sc.wins|0,sc.age|0,
       sc.src==='seed'?0:sc.src==='child'?1:sc.src==='fossil'?3:2,
-      +(sc.creditTrace||0).toFixed(3)
+      +(sc.creditTrace||0).toFixed(3),
+      +(sc.f||0).toFixed(3),+(sc.p||0).toFixed(3),+(sc.a||0).toFixed(3),
+      +(sc.tb||0).toFixed(3),+(sc.sp||0).toFixed(3),+(sc.sm||0).toFixed(3),+(sc.mp||0).toFixed(3)
     ]):null,
     sbc:+(genome.shadowBankChurn||0.5).toFixed(3),
     scw:+(genome.scenarioCreditWeight||0).toFixed(3), // Pe29 Layer 19
@@ -1010,10 +1052,12 @@ function decodeGenome(data){
     if(typeof g.clr==='number')genome.creditLearnRate=g.clr; // Pe25 Layer 15
     if(typeof g.gb==='number')genome.gradientBias=g.gb;      // Pe26 Layer 16a
     if(typeof g.gub==='number')genome.gradientUpstreamBias=g.gub; // Pe26 Layer 16c
+    if(typeof g.bgb==='number')genome.behaviorGradientBias=g.bgb; // Pe33
     // Pe31 Layer 21: mutual recognition
     if(typeof g.nmr==='number')genome.neighborModelUpdateRate=g.nmr;
     if(typeof g.npi==='number')genome.neighborPredictionInfluence=g.npi;
     if(typeof g.mrt==='number')genome.mutualRecognitionThresh=g.mrt;
+    if(typeof g.rw==='number')genome.relationalWeight=g.rw; // Pe34 Layer 24
     // Pe27 Layer 17: shadow scenario bank
     if(Array.isArray(g.sb)){
       genome.shadowScenarioBank=g.sb.map(a=>({
@@ -1021,7 +1065,10 @@ function decodeGenome(data){
         c:finiteOr(a[3],0),t:finiteOr(a[4],0),
         wins:(a[5]|0),age:(a[6]|0),
         src:['seed','child','random','fossil'][a[7]|0]||'random',
-        creditTrace:finiteOr(a[8],0) // Pe29 — defaults to 0 for legacy genomes
+        creditTrace:finiteOr(a[8],0), // Pe29 — defaults to 0 for legacy genomes
+        // Pe32: behavioral axes — default to 0 for legacy genomes (Pe31 behavior)
+        f:finiteOr(a[9],0),p:finiteOr(a[10],0),a:finiteOr(a[11],0),
+        tb:finiteOr(a[12],0),sp:finiteOr(a[13],0),sm:finiteOr(a[14],0),mp:finiteOr(a[15],0)
       }));
     }
     if(typeof g.sbc==='number')genome.shadowBankChurn=g.sbc;
@@ -1055,10 +1102,12 @@ function sanitizeGenome(){
   // Pe26 Layer 16: gradient defaults for old saves
   genome.gradientBias=Math.max(0,Math.min(1,finiteOr(genome.gradientBias,0.3)));
   genome.gradientUpstreamBias=Math.max(0,Math.min(1,finiteOr(genome.gradientUpstreamBias,0.2)));
+  genome.behaviorGradientBias=Math.max(0,Math.min(1,finiteOr(genome.behaviorGradientBias,0.2))); // Pe33
   // Pe31 Layer 21: mutual recognition defaults for old saves
   genome.neighborModelUpdateRate=Math.max(0,Math.min(1,finiteOr(genome.neighborModelUpdateRate,0.3)));
   genome.neighborPredictionInfluence=Math.max(0,Math.min(0.5,finiteOr(genome.neighborPredictionInfluence,0.15)));
   genome.mutualRecognitionThresh=Math.max(0,Math.min(1,finiteOr(genome.mutualRecognitionThresh,0.5)));
+  genome.relationalWeight=Math.max(0,Math.min(1,finiteOr(genome.relationalWeight,0.15))); // Pe34 Layer 24
   if(!Array.isArray(genome.objCreditTrace)||genome.objCreditTrace.length<4)genome.objCreditTrace=[0,0,0,0];
   genome.objCreditTrace=genome.objCreditTrace.slice(0,4).map(v=>Math.max(-1,Math.min(1,finiteOr(v,0))));
   if(!Array.isArray(genome.prevObjValues)||genome.prevObjValues.length<4)genome.prevObjValues=[0,0,0,0];
@@ -1090,6 +1139,14 @@ function sanitizeGenome(){
       r:Math.max(-2,Math.min(2,finiteOr(sc&&sc.r,0))),
       c:Math.max(-2,Math.min(2,finiteOr(sc&&sc.c,0))),
       t:Math.max(-2,Math.min(2,finiteOr(sc&&sc.t,0))),
+      // Pe32: behavioral axes — clamped to ±2, default 0 for legacy genomes
+      f:Math.max(-2,Math.min(2,finiteOr(sc&&sc.f,0))),
+      p:Math.max(-2,Math.min(2,finiteOr(sc&&sc.p,0))),
+      a:Math.max(-2,Math.min(2,finiteOr(sc&&sc.a,0))),
+      tb:Math.max(-2,Math.min(2,finiteOr(sc&&sc.tb,0))),
+      sp:Math.max(-2,Math.min(2,finiteOr(sc&&sc.sp,0))),
+      sm:Math.max(-2,Math.min(2,finiteOr(sc&&sc.sm,0))),
+      mp:Math.max(-2,Math.min(2,finiteOr(sc&&sc.mp,0))),
       wins:Math.max(0,(sc&&sc.wins|0)||0),
       age:Math.max(0,(sc&&sc.age|0)||0),
       src:sc&&typeof sc.src==='string'?sc.src:'random',
@@ -1738,31 +1795,62 @@ const shadowResults=new Float32Array(SHADOW_SCENARIOS_MAX);
 const SCEN_TEST ={e:0.00015,k:0.00005,r:0.003,c:0.03,t:0.02};
 const SCEN_APPLY={e:0.000003,k:0.000003,r:0.00015,c:0.0015,t:0.0008};
 
+// ═══ Pe32: BEHAVIORAL SCENARIO AXES ═══
+// The shadow sim perturbs vmPhenotype channels alongside physics parameters.
+// Each scenario can now imagine "what if I were more attractive AND entropy was higher?"
+// Test magnitudes: how much the shadow sim's vmPhenotype is shifted per unit amplitude.
+// Apply magnitudes: how much the winning behavioral direction nudges mutateGenome.
+// All seven vmPhenotype channels mapped. Calibrated so amplitude=±1 produces
+// ~10% shift of typical observed phenotype values — large enough to measure,
+// small enough that the sim doesn't explode.
+const SCEN_TEST_VM ={f:0.08,p:0.06,a:0.04,tb:0.03,sp:0.04,sm:0.03,mp:0.02};
+const SCEN_APPLY_VM={f:0.002,p:0.002,a:0.001,tb:0.001,sp:0.001,sm:0.001,mp:0.0008};
+// Pe32: extended shadow nudge direction — 5 physics + 7 behavioral axes.
+// Indexed: [0]=e, [1]=k, [2]=r, [3]=c, [4]=t, [5]=f, [6]=p, [7]=a, [8]=tb, [9]=sp, [10]=sm, [11]=mp
+let lastShadowNudgeDir=[0,0,0,0,0,0,0,0,0,0,0,0];
+
+// Pe32: 12D Euclidean distance between two scenario entries.
+// Used for diversity pressure, fingerprint matching, and fossil matching.
+function scenarioDist(a,b){
+  const de=(a.e||0)-(b.e||0),dk=(a.k||0)-(b.k||0),dr=(a.r||0)-(b.r||0),
+        dc=(a.c||0)-(b.c||0),dt=(a.t||0)-(b.t||0);
+  const df=(a.f||0)-(b.f||0),dp=(a.p||0)-(b.p||0),da=(a.a||0)-(b.a||0),
+        dtb=(a.tb||0)-(b.tb||0),dsp=(a.sp||0)-(b.sp||0),dsm=(a.sm||0)-(b.sm||0),dmp=(a.mp||0)-(b.mp||0);
+  return Math.sqrt(de*de+dk*dk+dr*dr+dc*dc+dt*dt+df*df+dp*dp+da*da+dtb*dtb+dsp*dsp+dsm*dsm+dmp*dmp);
+}
+
 function seedShadowBank(){
   // Five seed scenarios matching Pe26's hardcoded set exactly.
   // Source tag 'seed' is a label; once age>0 they obey the same rules as everyone else
   // except that the LAST surviving seed/random is protected (see evolveShadowBank).
   // Pe29: creditTrace starts at 0 (neutral, no protection bonus, no penalty).
+  // Pe32: 7 behavioral axes (f,p,a,tb,sp,sm,mp) added — all zero in seeds.
+  // Seed scenarios probe physics only; evolution discovers behavioral probes.
   return [
-    {e:+1,k:0,r:0,c:0,t:0,wins:0,age:0,src:'seed',creditTrace:0},
-    {e:-1,k:0,r:0,c:0,t:0,wins:0,age:0,src:'seed',creditTrace:0},
-    {e:0,k:0,r:+1,c:0,t:0,wins:0,age:0,src:'seed',creditTrace:0},
-    {e:0,k:0,r:-1,c:0,t:0,wins:0,age:0,src:'seed',creditTrace:0},
-    {e:0,k:+1,r:0,c:-1,t:-1,wins:0,age:0,src:'seed',creditTrace:0},
+    {e:+1,k:0,r:0,c:0,t:0,f:0,p:0,a:0,tb:0,sp:0,sm:0,mp:0,wins:0,age:0,src:'seed',creditTrace:0},
+    {e:-1,k:0,r:0,c:0,t:0,f:0,p:0,a:0,tb:0,sp:0,sm:0,mp:0,wins:0,age:0,src:'seed',creditTrace:0},
+    {e:0,k:0,r:+1,c:0,t:0,f:0,p:0,a:0,tb:0,sp:0,sm:0,mp:0,wins:0,age:0,src:'seed',creditTrace:0},
+    {e:0,k:0,r:-1,c:0,t:0,f:0,p:0,a:0,tb:0,sp:0,sm:0,mp:0,wins:0,age:0,src:'seed',creditTrace:0},
+    {e:0,k:+1,r:0,c:-1,t:-1,f:0,p:0,a:0,tb:0,sp:0,sm:0,mp:0,wins:0,age:0,src:'seed',creditTrace:0},
   ];
 }
 
 function randomScenario(){
   // Sparse vectors — 1-2 non-zero axes, amplitudes in [0.5, 1.5].
-  // Sparsity matches the structure of the seed scenarios (mostly single-axis probes).
-  const sc={e:0,k:0,r:0,c:0,t:0,wins:0,age:0,src:'random',creditTrace:0};
-  const axes=['e','k','r','c','t'];
+  // Pe32: probes can now land on any of 12 axes (5 physics + 7 behavioral).
+  // The full axis set lets the system discover "try being more attractive"
+  // alongside "try increasing entropy." Physics axes have 60% weight to
+  // preserve the existing exploration budget; behavioral axes share 40%.
+  const sc={e:0,k:0,r:0,c:0,t:0,f:0,p:0,a:0,tb:0,sp:0,sm:0,mp:0,wins:0,age:0,src:'random',creditTrace:0};
+  const physAxes=['e','k','r','c','t'];
+  const vmAxes=['f','p','a','tb','sp','sm','mp'];
+  const allAxes=Math.random()<0.6?physAxes:(Math.random()<0.5?vmAxes:physAxes.concat(vmAxes));
   const nAxes=Math.random()<0.3?2:1;
   const picked=new Set();
   for(let i=0;i<nAxes;i++){
-    let a;do{a=axes[(Math.random()*5)|0]}while(picked.has(a));
-    picked.add(a);
-    sc[a]=(Math.random()<0.5?-1:1)*(0.5+Math.random());
+    let ax;do{ax=allAxes[(Math.random()*allAxes.length)|0]}while(picked.has(ax));
+    picked.add(ax);
+    sc[ax]=(Math.random()<0.5?-1:1)*(0.5+Math.random());
   }
   return sc;
 }
@@ -1770,8 +1858,7 @@ function randomScenario(){
 function childScenario(parent){
   // Mutated clone — small Gaussian-ish noise on every axis, amplitudes clamped to ±2.
   // Pe29: creditTrace inherits HALF of parent's — partial knowledge transfer of fitness
-  // history. A child of a known-good scenario starts with some credit-based protection,
-  // but has to earn the rest. Avoids dynasties of unchecked inherited credit.
+  // history. Pe32: behavioral axes included in mutation and inheritance.
   const noise=0.35;
   return {
     e:Math.max(-2,Math.min(2,parent.e+(Math.random()-0.5)*noise)),
@@ -1779,6 +1866,13 @@ function childScenario(parent){
     r:Math.max(-2,Math.min(2,parent.r+(Math.random()-0.5)*noise)),
     c:Math.max(-2,Math.min(2,parent.c+(Math.random()-0.5)*noise)),
     t:Math.max(-2,Math.min(2,parent.t+(Math.random()-0.5)*noise)),
+    f:Math.max(-2,Math.min(2,(parent.f||0)+(Math.random()-0.5)*noise)),
+    p:Math.max(-2,Math.min(2,(parent.p||0)+(Math.random()-0.5)*noise)),
+    a:Math.max(-2,Math.min(2,(parent.a||0)+(Math.random()-0.5)*noise)),
+    tb:Math.max(-2,Math.min(2,(parent.tb||0)+(Math.random()-0.5)*noise)),
+    sp:Math.max(-2,Math.min(2,(parent.sp||0)+(Math.random()-0.5)*noise)),
+    sm:Math.max(-2,Math.min(2,(parent.sm||0)+(Math.random()-0.5)*noise)),
+    mp:Math.max(-2,Math.min(2,(parent.mp||0)+(Math.random()-0.5)*noise)),
     wins:0,age:0,src:'child',creditTrace:(parent.creditTrace||0)*0.5
   };
 }
@@ -1865,12 +1959,11 @@ function evolveShadowBank(){
       }
       candidate=childScenario(parent);
       // Diversity pressure — re-roll a too-similar child with growing noise.
+      // Pe32: distance now measured over all 12 axes (physics + behavioral).
       for(let attempt=0;attempt<3;attempt++){
         let tooClose=false;
         for(const sc of bank){
-          const de=sc.e-candidate.e,dk=sc.k-candidate.k,dr=sc.r-candidate.r,
-                dc=sc.c-candidate.c,dt=sc.t-candidate.t;
-          if(Math.sqrt(de*de+dk*dk+dr*dr+dc*dc+dt*dt)<0.35){tooClose=true;break}
+          if(scenarioDist(sc,candidate)<0.35){tooClose=true;break}
         }
         if(!tooClose)break;
         // Re-roll: child of same parent but with amplified noise each attempt.
@@ -1881,6 +1974,13 @@ function evolveShadowBank(){
           r:Math.max(-2,Math.min(2,parent.r+(Math.random()-0.5)*amp)),
           c:Math.max(-2,Math.min(2,parent.c+(Math.random()-0.5)*amp)),
           t:Math.max(-2,Math.min(2,parent.t+(Math.random()-0.5)*amp)),
+          f:Math.max(-2,Math.min(2,(parent.f||0)+(Math.random()-0.5)*amp)),
+          p:Math.max(-2,Math.min(2,(parent.p||0)+(Math.random()-0.5)*amp)),
+          a:Math.max(-2,Math.min(2,(parent.a||0)+(Math.random()-0.5)*amp)),
+          tb:Math.max(-2,Math.min(2,(parent.tb||0)+(Math.random()-0.5)*amp)),
+          sp:Math.max(-2,Math.min(2,(parent.sp||0)+(Math.random()-0.5)*amp)),
+          sm:Math.max(-2,Math.min(2,(parent.sm||0)+(Math.random()-0.5)*amp)),
+          mp:Math.max(-2,Math.min(2,(parent.mp||0)+(Math.random()-0.5)*amp)),
           wins:0,age:0,src:'child',creditTrace:(parent.creditTrace||0)*0.5
         };
       }
@@ -1906,7 +2006,9 @@ function topScenarioSnapshot(){
   }
   if(bestIdx<0||bestWins<=0)return null;
   const top=bank[bestIdx];
-  return {e:top.e,k:top.k,r:top.r,c:top.c,t:top.t,creditTrace:top.creditTrace||0};
+  return {e:top.e,k:top.k,r:top.r,c:top.c,t:top.t,
+    f:top.f||0,p:top.p||0,a:top.a||0,tb:top.tb||0,sp:top.sp||0,sm:top.sm||0,mp:top.mp||0,
+    creditTrace:top.creditTrace||0};
 }
 
 // ═══ VM PHENOTYPE PROFILER ═══
@@ -1949,11 +2051,36 @@ function profileVM(){
         case 3:vmRegs[di]=vmRegs[si]>k?1:0;break;
         case 4:{const ai=Math.abs(dst)%8;vmActions[ai]+=vmRegs[si]*k;}break;
         case 5:{const fi=Math.abs(src)%8;vmRegs[di]=vmActions[fi];}break;
-        case 6:vmRegs[di]=0;break; // no particle memory in profiler tests
+        case 6:vmRegs[di]=0.3;break; // stub READ_MEM: return neutral value (not 0 — avoids systematic bias)
         case 7:break; // skip STORE_MEM in profiler
         case 8:vmRegs[di]=0.5;break; // stub READ_FIELD in profiler
         case 9:break; // skip WRITE_FIELD in profiler
         case 10:break; // skip CLUSTER_WRITE_FIELD in profiler
+        // Pe33: opcodes 11-23 stubbed in profiler so memory/broadcast/recognition strategies
+        // produce non-zero behavioral profiles. Previously all fell through to nothing.
+        // The profiler's self-portrait was blind to these — any strategy using these
+        // opcodes profiled as flat zero, making behavioral gradient useless for them.
+        case 11:{const sl11=Math.abs(dst)%2;vmActions[sl11%8]+=vmRegs[si]*k;}break; // BROADCAST_WRITE → treat as action emit
+        case 12:vmRegs[di]=0.3;break;  // BROADCAST_READ → neutral partner signal stub
+        case 13:vmRegs[di]=0.2;break;  // SELF_READ_PROGRAM → neutral constant stub
+        case 14:break;                  // BRANCH → skip (profiler runs all instructions)
+        case 15:{const af15=0.5;vmRegs[di]=vmRegs[si]*(1-af15)+k*af15;}break; // AGE_LERP → neutral age=0.5
+        case 16:break;                  // SPAWN_CHILD → skip in profiler
+        case 17:{vmRegs[si]=0.1*k;vmRegs[di]=0.1*k;}break; // GRAD_READ → weak neutral gradient
+        case 18:break;                  // WRITE_PARTNER_MEM → skip
+        case 19:vmRegs[di]=0.1;break;  // COMMONS_READ → low neutral commons value
+        case 20:break;                  // INSCRIBE → skip
+        case 21:vmRegs[di]=0.3;break;  // READ_FIELD2 → neutral stub
+        case 22:{                       // USER_ATOM → return 0 (can't call closures in profiler)
+          vmRegs[di]=0;
+        }break;
+        case 23:{                       // NEIGHBOR_PREDICT (Pe31) → neutral prediction stub
+          // Real call needs a live partner — profiler uses a calibrated mid-range stub.
+          // 0.3 represents a "somewhat familiar, somewhat cooperative" partner model.
+          // Not 0: that would make any genome using Pe31 strategies look non-cooperative.
+          const predInf33=genome.neighborPredictionInfluence||0;
+          vmRegs[di]=0.3*predInf33*(k||1);
+        }break;
       }
       for(let r=0;r<12;r++)vmRegs[r]=Math.max(-8,Math.min(8,vmRegs[r]));
     }
@@ -2169,9 +2296,7 @@ function applyCreditAssignment(){
     let matchIdx=-1,bestDist=0.2; // tight match — same scenario, not just similar
     const bank=genome.shadowScenarioBank;
     for(let i=0;i<bank.length;i++){
-      const sc=bank[i];
-      const de=sc.e-fp.e,dk=sc.k-fp.k,dr=sc.r-fp.r,dc=sc.c-fp.c,dt=sc.t-fp.t;
-      const dist=Math.sqrt(de*de+dk*dk+dr*dr+dc*dc+dt*dt);
+      const dist=scenarioDist(bank[i],fp);
       if(dist<bestDist){bestDist=dist;matchIdx=i}
     }
     if(matchIdx>=0){
@@ -2224,7 +2349,9 @@ function runShadowSim(){
   }
 
   // Derive test deltas from bank entries: amplitude * per-axis test scale.
+  // Pe32: physics AND behavioral deltas derived together.
   const deltas=new Array(nScen);
+  const vmDeltas=new Array(nScen); // Pe32: per-scenario vmPhenotype perturbations
   for(let s=0;s<nScen;s++){
     const sc=bank[s];
     deltas[s]={
@@ -2234,14 +2361,34 @@ function runShadowSim(){
       c:sc.c*SCEN_TEST.c,
       t:sc.t*SCEN_TEST.t,
     };
+    // Pe32: behavioral perturbation — each scenario imagines a different self.
+    // Defaults to zero for legacy/physics-only scenarios (vmPhenotype unchanged).
+    vmDeltas[s]={
+      force:   (sc.f||0)*SCEN_TEST_VM.f,
+      phaseShift:(sc.p||0)*SCEN_TEST_VM.p,
+      ampTransfer:(sc.a||0)*SCEN_TEST_VM.a,
+      tendBleed: (sc.tb||0)*SCEN_TEST_VM.tb,
+      spawnDrive:(sc.sp||0)*SCEN_TEST_VM.sp,
+      sigModulate:(sc.sm||0)*SCEN_TEST_VM.sm,
+      mutPressure:(sc.mp||0)*SCEN_TEST_VM.mp,
+    };
   }
 
   for(let s=0;s<nScen;s++){
     const d=deltas[s];
+    const vd=vmDeltas[s]; // Pe32: behavioral delta for this scenario
     const fE=genome.entropyBaseline+d.e;
     const fK=genome.entropyK+d.k;
     const fR=genome.entrainRate+d.r;
     const fC=genome.creationCost+d.c;
+
+    // Pe32: perturbed vmPhenotype for this counterfactual future.
+    // "What if I were more/less attractive, bleedy, spawny, etc.?"
+    const sForce=vmPhenotype.force+vd.force;
+    const sPhaseShift=vmPhenotype.phaseShift+vd.phaseShift;
+    const sAmpTransfer=vmPhenotype.ampTransfer+vd.ampTransfer;
+    const sSpawnDrive=vmPhenotype.spawnDrive+vd.spawnDrive;
+    const sCost=vmPhenotype.avgCost; // cost not perturbed — that's metabolic, not behavioral
 
     const sim=graphState.map(c=>({...c,tendency:c.tendency.slice()}));
     const fSim=fieldScenarios[s]; // forked field for this scenario
@@ -2252,19 +2399,19 @@ function runShadowSim(){
         sim[i].avgAmp-=fE;
         sim[i].avgAmp+=sim[i].coherence*fK*sim[i].size*0.1;
 
-        // VM PHENOTYPE INFLUENCE
+        // VM PHENOTYPE INFLUENCE — Pe32: uses perturbed phenotype per scenario
         const vmInf=genome.vmInfluence*genome.ruleScale*0.002;
-        if(vmPhenotype.force>0)sim[i].coherence+=vmPhenotype.force*vmInf*0.02;
-        else sim[i].coherence+=vmPhenotype.force*vmInf*0.01;
-        sim[i].coherence+=Math.abs(vmPhenotype.phaseShift)*vmInf*0.01;
-        sim[i].avgAmp+=vmPhenotype.ampTransfer*vmInf*0.005*sim[i].size;
+        if(sForce>0)sim[i].coherence+=sForce*vmInf*0.02;
+        else sim[i].coherence+=sForce*vmInf*0.01;
+        sim[i].coherence+=Math.abs(sPhaseShift)*vmInf*0.01;
+        sim[i].avgAmp+=sAmpTransfer*vmInf*0.005*sim[i].size;
 
-        if(vmPhenotype.spawnDrive>0.1&&sim[i].avgAmp>0.3&&Math.random()<vmPhenotype.spawnDrive*vmInf*0.01){
+        if(sSpawnDrive>0.1&&sim[i].avgAmp>0.3&&Math.random()<sSpawnDrive*vmInf*0.01){
           sim[i].size+=1;
           sim[i].avgAmp-=fC*0.2;
         }
 
-        sim[i].avgAmp-=vmPhenotype.avgCost*vmInf*sim[i].size*0.1;
+        sim[i].avgAmp-=sCost*vmInf*sim[i].size*0.1;
 
         // Entrainment from neighbors
         for(let j=0;j<sim.length;j++){
@@ -2335,19 +2482,30 @@ function runShadowSim(){
   // Pe29 Layer 19: record fingerprint of the winning scenario. applyCreditAssignment
   // will use this to find the matching bank entry and update its creditTrace as
   // fitness moves over the next ~120 ticks (until the next shadow sim runs).
+  // Pe32: fingerprint carries all 12 axes for matching.
   {
     const w=bank[bestS];
-    lastShadowWinnerFingerprint={e:w.e,k:w.k,r:w.r,c:w.c,t:w.t};
+    lastShadowWinnerFingerprint={e:w.e,k:w.k,r:w.r,c:w.c,t:w.t,
+      f:w.f||0,p:w.p||0,a:w.a||0,tb:w.tb||0,sp:w.sp||0,sm:w.sm||0,mp:w.mp||0};
   }
 
   // Pe26 Layer 16a: store direction of winning nudge for gradient-guided mutation.
   // Sign-only — magnitude comes from mutateGenome's perturbScale. Direction is the signal.
+  // Pe32: extended to 12 axes (5 physics + 7 behavioral).
   const _wd=deltas[bestS];
+  const _wv=vmDeltas[bestS]; // Pe32: behavioral delta directions
   lastShadowNudgeDir[0]=_wd.e>0?1:_wd.e<0?-1:0; // entropyBaseline
   lastShadowNudgeDir[1]=_wd.k>0?1:_wd.k<0?-1:0; // entropyK
   lastShadowNudgeDir[2]=_wd.r>0?1:_wd.r<0?-1:0; // entrainRate
   lastShadowNudgeDir[3]=_wd.c>0?1:_wd.c<0?-1:0; // creationCost
   lastShadowNudgeDir[4]=_wd.t>0?1:_wd.t<0?-1:0; // entrainThresh
+  lastShadowNudgeDir[5]=_wv.force>0?1:_wv.force<0?-1:0;        // Pe32: force direction
+  lastShadowNudgeDir[6]=_wv.phaseShift>0?1:_wv.phaseShift<0?-1:0; // Pe32: phase shift
+  lastShadowNudgeDir[7]=_wv.ampTransfer>0?1:_wv.ampTransfer<0?-1:0; // Pe32: amp transfer
+  lastShadowNudgeDir[8]=_wv.tendBleed>0?1:_wv.tendBleed<0?-1:0;    // Pe32: tend bleed
+  lastShadowNudgeDir[9]=_wv.spawnDrive>0?1:_wv.spawnDrive<0?-1:0;  // Pe32: spawn drive
+  lastShadowNudgeDir[10]=_wv.sigModulate>0?1:_wv.sigModulate<0?-1:0; // Pe32: sig modulate
+  lastShadowNudgeDir[11]=_wv.mutPressure>0?1:_wv.mutPressure<0?-1:0; // Pe32: mut pressure
 
   // Pe27: derive applied nudge from the winning bank entry. Same axis-specific scales
   // as Pe26 at amplitude=±1, so Pe26-equivalent bank entries reproduce Pe26 behavior.
@@ -2358,6 +2516,10 @@ function runShadowSim(){
   genome.entrainRate   =Math.max(0.003,Math.min(0.05, genome.entrainRate     +sc.r*SCEN_APPLY.r*ps));
   genome.creationCost  =Math.max(0.1, Math.min(0.6,   genome.creationCost    +sc.c*SCEN_APPLY.c*ps));
   genome.entrainThresh =Math.max(0.08,Math.min(0.55,  genome.entrainThresh   +sc.t*SCEN_APPLY.t*ps));
+  // Pe32: behavioral nudge is NOT applied directly to parameters (there's no "force"
+  // genome field). Instead, lastShadowNudgeDir[5..11] is read by mutateGenome to bias
+  // VM instruction mutations toward the winning behavioral direction. The translation
+  // from phenotype direction to instruction-level bias happens there.
 }
 
 function simDiversity(cs){
@@ -2906,7 +3068,9 @@ function collectClusterUpstream(){
       // blueprint (counters zeroed, src tagged). Null if the cluster was born before
       // any scenario had won.
       const cf=c.scenarioFossil;
-      const fossil=cf?{e:cf.e,k:cf.k,r:cf.r,c:cf.c,t:cf.t,wins:0,age:0,src:'fossil',creditTrace:cf.creditTrace||0}:null;
+      const fossil=cf?{e:cf.e,k:cf.k,r:cf.r,c:cf.c,t:cf.t,
+        f:cf.f||0,p:cf.p||0,a:cf.a||0,tb:cf.tb||0,sp:cf.sp||0,sm:cf.sm||0,mp:cf.mp||0,
+        wins:0,age:0,src:'fossil',creditTrace:cf.creditTrace||0}:null;
       clusterUpstreamBuffer.push({
         motif,
         clusterGenome:c.clusterGenome?{...c.clusterGenome}:null,
@@ -3043,11 +3207,13 @@ function mutateGenome(){
   // Pe26 Layer 16: gradient bias params — lineage selection decides whether learning helps
   genome.gradientBias=Math.max(0,Math.min(1,maybe(genome.gradientBias,0,1,0.06)));
   genome.gradientUpstreamBias=Math.max(0,Math.min(1,maybe(genome.gradientUpstreamBias,0,1,0.06)));
+  genome.behaviorGradientBias=Math.max(0,Math.min(1,maybe(genome.behaviorGradientBias,0,1,0.06))); // Pe33
 
   // Pe31 Layer 21: mutual recognition — all three can evolve to 0 (recovering Pe30b behavior)
   genome.neighborModelUpdateRate=Math.max(0,Math.min(1,maybe(genome.neighborModelUpdateRate,0,1,0.05)));
   genome.neighborPredictionInfluence=Math.max(0,Math.min(0.5,maybe(genome.neighborPredictionInfluence,0,0.5,0.04)));
   genome.mutualRecognitionThresh=Math.max(0,Math.min(1,maybe(genome.mutualRecognitionThresh,0,1,0.06)));
+  genome.relationalWeight=Math.max(0,Math.min(1,maybe(genome.relationalWeight,0,1,0.05))); // Pe34 Layer 24
 
   // ═══ Pe26 Layer 16c: CLUSTER UPWARD SIGNAL injection ═══
   // Drain the upstream buffer — soft-inject successful cluster motifs into the global VM.
@@ -3080,34 +3246,25 @@ function mutateGenome(){
     // ═══ Pe28 Layer 18: SCENARIO FOSSIL INJECTION ═══
     // Cluster-carried scenario snapshot. If a structurally-similar scenario lives in
     // the bank, refresh its age (re-ratification). If novel, inject it as a fresh entry.
-    // Similarity is Euclidean distance over 5 axes < 0.3 — meaningful match in a [-2..2]^5 space.
+    // Pe32: similarity measured over all 12 axes.
     if(upstream&&upstream.scenarioFossil&&Array.isArray(genome.shadowScenarioBank)){
       const fos=upstream.scenarioFossil;
       const bank=genome.shadowScenarioBank;
       let matchIdx=-1,bestDist=0.3; // similarity threshold
       for(let i=0;i<bank.length;i++){
-        const sc=bank[i];
-        const de=sc.e-fos.e,dk=sc.k-fos.k,dr=sc.r-fos.r,dc=sc.c-fos.c,dt=sc.t-fos.t;
-        const dist=Math.sqrt(de*de+dk*dk+dr*dr+dc*dc+dt*dt);
+        const dist=scenarioDist(bank[i],fos);
         if(dist<bestDist){bestDist=dist;matchIdx=i}
       }
       if(matchIdx>=0){
-        // Re-ratification: subtract 30 from age (the eviction-threshold horizon).
-        // A long-lived workhorse scenario gets ~30 cycles of fresh slot protection.
         bank[matchIdx].age=Math.max(0,bank[matchIdx].age-30);
         recordEvent('scenario_ratified',{i:matchIdx,w:bank[matchIdx].wins},600);
       }else if(bank.length<SHADOW_SCENARIOS_MAX){
-        // Novel fossil — recipe absent from the current bank. Inject as a fresh entry.
-        // The next eviction cycle won't touch it (age=0, threshold age>30).
-        // Pe29: creditTrace carried from the fossil — the ratified scenario re-enters
-        // with whatever real-world credit it had accumulated before being evicted.
-        bank.push({e:fos.e,k:fos.k,r:fos.r,c:fos.c,t:fos.t,wins:0,age:0,src:'fossil',creditTrace:fos.creditTrace||0});
+        // Pe32: fossil carries all 12 axes into the bank.
+        bank.push({e:fos.e,k:fos.k,r:fos.r,c:fos.c,t:fos.t,
+          f:fos.f||0,p:fos.p||0,a:fos.a||0,tb:fos.tb||0,sp:fos.sp||0,sm:fos.sm||0,mp:fos.mp||0,
+          wins:0,age:0,src:'fossil',creditTrace:fos.creditTrace||0});
         recordEvent('scenario_fossil',{e:+fos.e.toFixed(2),r:+fos.r.toFixed(2)},600);
       }
-      // If bank is at SHADOW_SCENARIOS_MAX cap and fossil is novel, it's dropped here.
-      // The next evolveShadowBank pass may evict a low-performing entry, freeing space
-      // for the next fossil. We don't force-evict on fossil arrival — that would let
-      // fossils bypass the win-rate qualification that protects existing bank entries.
     }
   }
   // Trim buffer if it fills faster than it drains
@@ -3296,6 +3453,29 @@ function mutateGenome(){
   // Age all atoms — lets us distinguish "never used yet" from "used to be used"
   for(const ua of genome.userAtoms)ua.age=(ua.age|0)+1;
 
+  // ═══ Pe32/Pe33 LAYER 23: BEHAVIORAL GRADIENT — shadow sim biases VM mutations ═══
+  // Pe32: k-value nudge on existing EMIT instructions toward winning behavioral axis.
+  // Pe33: uses behaviorGradientBias (separate from gradientBias) so physics and behavioral
+  // gradient can evolve independently. A genome can discover "ignore behavioral gradient"
+  // while still following physics gradient, or vice versa.
+  // Action channel mapping: 0=force, 1=phaseShift, 2=ampTransfer, 3=tendBleed,
+  //                          4=spawnDrive, 5=sigModulate, 6=mutPressure
+  const bgbActive=Math.max(0,Math.min(1,genome.behaviorGradientBias||0));
+  const vmGradActive=bgbActive>0.05&&risk>0.15;
+  if(vmGradActive){
+    const vmNudgeScale=genome.perturbScale*bgbActive*Math.min(1,risk*1.5)*0.08;
+    const vmNudgeDirs=lastShadowNudgeDir.slice(5,12); // [f,p,a,tb,sp,sm,mp]
+    for(let ip=0;ip<genome.vmProgram.length;ip++){
+      const inst=genome.vmProgram[ip];
+      if(inst[0]!==4)continue; // only EMIT instructions
+      const actionCh=Math.abs(inst[2])%8;
+      if(actionCh<7&&vmNudgeDirs[actionCh]!==0){
+        inst[3]+=vmNudgeDirs[actionCh]*vmNudgeScale;
+        inst[3]=Math.max(-2,Math.min(2,inst[3]));
+      }
+    }
+  }
+
   // Mutate existing instructions
   for(let ip=0;ip<genome.vmProgram.length;ip++){
     if(Math.random()>rate*1.2)continue;
@@ -3314,10 +3494,34 @@ function mutateGenome(){
     if(Math.random()<rate*0.2)inst[2]=Math.floor(Math.random()*12);
   }
 
-  // Program growth: insert a random instruction
+  // Program growth: insert a random instruction — Pe33: biased when behavioral gradient active
   if(genome.vmProgram.length<genome.vmMaxInstructions&&Math.random()<rate*0.15){
     const pos=Math.floor(Math.random()*(genome.vmProgram.length+1));
-    const newInst=[Math.floor(Math.random()*OPCODE_COUNT),Math.floor(Math.random()*12),Math.floor(Math.random()*12),(Math.random()-0.5)*0.6];
+    const bgb=Math.max(0,Math.min(1,genome.behaviorGradientBias||0));
+    const vmNudgeDirs33=lastShadowNudgeDir.slice(5,12); // [f,p,a,tb,sp,sm,mp]
+    const bestBehavAxis=vmNudgeDirs33.reduce((best,v,i)=>Math.abs(v)>Math.abs(vmNudgeDirs33[best])?i:best,0);
+    const bestBehavDir=vmNudgeDirs33[bestBehavAxis]; // ±1 or 0
+    const behavGradStrong=bgb>0.05&&risk>0.1&&bestBehavDir!==0;
+
+    let newInst;
+    if(behavGradStrong&&Math.random()<bgb){
+      // Pe33: targeted EMIT insertion. The gradient says "more of channel X" — insert
+      // an EMIT instruction that contributes to exactly that channel.
+      // k-value initialized in the gradient direction; magnitude proportional to bias strength.
+      const initK=bestBehavDir*(0.2+Math.random()*0.4)*bgb;
+      newInst=[4, Math.floor(Math.random()*12), bestBehavAxis, initK]; // opcode 4 = EMIT
+      recordEvent('directed_emit',{ch:bestBehavAxis,dir:bestBehavDir,bgb:+bgb.toFixed(2)},800);
+    } else {
+      newInst=[Math.floor(Math.random()*OPCODE_COUNT),Math.floor(Math.random()*12),Math.floor(Math.random()*12),(Math.random()-0.5)*0.6];
+      // Pe33: anti-gradient vetting — if inserting an EMIT that opposes a strong gradient,
+      // 60% chance to re-roll once. Not a lock: randomness is still alive.
+      if(behavGradStrong&&newInst[0]===4){
+        const ch=Math.abs(newInst[2])%8;
+        if(ch<7&&vmNudgeDirs33[ch]!==0&&Math.sign(newInst[3])!==bestBehavDir&&Math.random()<0.6){
+          newInst=[Math.floor(Math.random()*OPCODE_COUNT),Math.floor(Math.random()*12),Math.floor(Math.random()*12),(Math.random()-0.5)*0.6];
+        }
+      }
+    }
     genome.vmProgram.splice(pos,0,newInst);
   }
 
@@ -3445,6 +3649,10 @@ function checkExtinction(){
     genome.objCreditTrace=[0,0,0,0];
     genome.prevObjValues=[0,0,0,0];
     for(const s of genome.fitnessSensors){s.creditTrace=0;s.prevEmit=0;s.lastEmit=0;}
+    // Pe34 Layer 24: clear prediction-error accumulators; post-extinction the neighbor
+    // model arrays will be stale references to particles that may not exist anymore.
+    predictionErrorAccum=0;
+    predictionUpdateCount=0;
     genomeArchive.length=0;
     genome.currentStableStreak=0;
     saveGenome();
@@ -4405,6 +4613,18 @@ function updateNeighborModel(i,j,sim,phaseAlign){
   // EMA update — blend observed state into stored model (α=0.2)
   const mBase=(i*NM_SLOTS+targetSlot)*NM_DIMS;
   const alpha=0.2;
+  // ═══ Pe34 Layer 24: PREDICTION ERROR MEASUREMENT ═══
+  // Only count re-encounters (slot already held j and has non-trivial freshness). First
+  // contact and post-eviction overwrites would have garbage "predicted" values and
+  // would pollute the quality signal with new-acquaintance noise.
+  if(pNeighborIDs[base+targetSlot]===j && pNeighborFresh[base+targetSlot]>0.1){
+    const e0=Math.abs(tend[j*DIMS+0]-pNeighborModels[mBase+0]);
+    const e1=Math.abs(tend[j*DIMS+1]-pNeighborModels[mBase+1]);
+    const e2=Math.abs(phaseAlign-pNeighborModels[mBase+2]);
+    const e3=Math.abs(sim-pNeighborModels[mBase+3]);
+    predictionErrorAccum+=(e0+e1+e2+e3)*0.25; // mean error across 4 dims
+    predictionUpdateCount++;
+  }
   pNeighborIDs[base+targetSlot]=j;
   pNeighborModels[mBase+0]+=alpha*(tend[j*DIMS+0]-pNeighborModels[mBase+0]);
   pNeighborModels[mBase+1]+=alpha*(tend[j*DIMS+1]-pNeighborModels[mBase+1]);
@@ -5083,12 +5303,27 @@ function loop(){
     // Pe24 Layer 14: sensors with non-zero realWeight contribute to real fitness here.
     // In Pe22-23 sensors only nudged shadow-scenario scoring. Now they can become
     // genuine selection pressure on the live system. realSensorWeight=0 → Pe23 behaviour.
+    // Pe34 Layer 24: prediction quality (how well particles model their partners) is
+    // a fifth real-fitness component, gated by relationalWeight. =0 recovers Pe33.
     const w=genome.objWeights,wT=w[0]+w[1]+w[2]+w[3]+0.001;
     const realSensorScore=evaluateSensors(true);
     const realSensorWeight=genome.fitnessSensors.reduce((a,s)=>a+Math.abs(s.realWeight||0),0);
+    // Pe34: drain prediction-error accumulator into a quality score, then reset.
+    // errorScale=0.5 calibrated so typical steady-state recognition (~0.1-0.3 mean L1
+    // error per dim) yields quality ~0.4-0.8. Particles that never re-encounter
+    // partners contribute 0 to count → quality=0 (no recognition, no credit).
+    const relW=Math.max(0,Math.min(1,genome.relationalWeight||0));
+    let predictionQuality=0;
+    if(predictionUpdateCount>0){
+      const meanErr=predictionErrorAccum/predictionUpdateCount;
+      predictionQuality=Math.max(0,1-meanErr/0.5);
+    }
+    predictionErrorAccum=0;
+    predictionUpdateCount=0;
     const fitness=(selfModel.stability*w[0]+selfModel.diversity*w[1]+selfModel.avgCoherence*w[2]+
       (clusters.filter(c=>c.persistAge<2).length/Math.max(1,clusters.length))*w[3]+
-      realSensorScore*realSensorWeight)/(wT+realSensorWeight);
+      realSensorScore*realSensorWeight+
+      predictionQuality*relW)/(wT+realSensorWeight+relW);
     currentFitness=currentFitness*0.9+fitness*0.1;
     fitnessSamples++;
     applyCreditAssignment(); // Pe25 Layer 15: nudge weights toward predictive components
@@ -5174,8 +5409,9 @@ function loop(){
     const netTag=nPeers>0?` | net:${nPeers}⟷ s${netStats.sent} a${netStats.accepted}${netStats.bad?' !'+netStats.bad:''}`:'';
     const _gb=genome.gradientBias||0;
     const _gub=genome.gradientUpstreamBias||0;
+    const _bgb=genome.behaviorGradientBias||0;
     const _shadowLive=lastShadowNudgeDir.some(v=>v!==0);
-    const gradTag=(_gb>0.05||_gub>0.05)?' | grad:'+_gb.toFixed(2)+'↓'+_gub.toFixed(2)+'↑'+(_shadowLive?'⊕':'○')+(clusterUpstreamBuffer.length>0?'['+clusterUpstreamBuffer.length+']':''):'';
+    const gradTag=(_gb>0.05||_gub>0.05||_bgb>0.05)?' | grad:'+_gb.toFixed(2)+'↓'+_gub.toFixed(2)+'↑'+(_shadowLive?'⊕':'○')+(_bgb>0.05?'b'+_bgb.toFixed(2):'')+(clusterUpstreamBuffer.length>0?'['+clusterUpstreamBuffer.length+']':''):'';
     // Pe31: mutual recognition state tag
     const _nmr=genome.neighborModelUpdateRate||0;
     const _npi=genome.neighborPredictionInfluence||0;
