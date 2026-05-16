@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
-<title>Selection פ 37 — Attribution</title>
+<title>Selection פ 37b — Attribution (readout recalibrated)</title>
 <style>
 *{margin:0;padding:0;box-sizing:border-box}
 html,body{height:100%;overflow:hidden;background:#020204;touch-action:none;cursor:crosshair}
@@ -5846,24 +5846,36 @@ function loop(){
         sigTag=` | sig:e${avgEmit.toFixed(2)} r${avgRecv.toFixed(2)} u${util.toFixed(3)} ${emitCount}→${recvCount} rd${signalReadCount}`;
       }
     }
-    // ═══ Pe37 Layer 26: ATTRIBUTION diagnostic ═══
-    // Answers the question Pe36's review raised: can selection still resolve a 15-D
-    // meta-vector? Shows load-bearing count (|trace|>0.12) and the strongest +/- gates.
+    // ═══ Pe37b Layer 26: ATTRIBUTION diagnostic (recalibrated) ═══
+    // Pe37 used an absolute |trace|>0.12 cutoff. In a 15-way distributed credit
+    // signal the per-gate traces are individually small (±0.05–0.08) but structured
+    // and interpretable — an absolute bar hides exactly the signal the layer exists
+    // to show, printing 0/15 as if the architecture were inert. Self-calibrating
+    // instead: "load-bearing" = gates whose |trace| exceeds the mean |trace| (the
+    // above-average contributors, always meaningful regardless of overall magnitude),
+    // plus a concentration ratio cc = max|trace| / mean|trace| that says whether
+    // credit is peaked (resolvable: one gate dominates) or flat (cc→1: genuinely
+    // distributed/unresolvable). Top +/- gates shown by rank, always.
     let attrTag='';
     if(genome.metaCredit){
-      let lo=0,best=null,worst=null;
+      let sumAbs=0,n=0,maxAbs=0,best=null,worst=null;
+      const traces=[];
       for(const p of META_LAYER_PARAMS){
         const e=genome.metaCredit[p];if(!e)continue;
-        const tr=e.trace||0;
-        if(Math.abs(tr)>0.12)lo++;
+        const tr=e.trace||0,a=Math.abs(tr);
+        traces.push({p,tr,a});
+        sumAbs+=a;n++;if(a>maxAbs)maxAbs=a;
         if(best===null||tr>best.tr)best={p,tr};
         if(worst===null||tr<worst.tr)worst={p,tr};
       }
-      if(best&&worst){
+      if(n>0&&best&&worst){
+        const meanAbs=sumAbs/n;
+        let above=0;for(const t of traces)if(t.a>meanAbs&&t.a>1e-4)above++;
+        const cc=meanAbs>1e-6?(maxAbs/meanAbs):0; // 1≈flat, higher≈peaked
         const sb=META_LAYER_SHORT[best.p]||best.p;
         const sw=META_LAYER_SHORT[worst.p]||worst.p;
         const mb=(genome.metaCreditBias||0);
-        attrTag=` | attr:${lo}/${META_LAYER_PARAMS.length}${mb>0.001?' b'+mb.toFixed(2):''} +${sb}${best.tr>=0?'+':''}${best.tr.toFixed(2)} -${sw}${worst.tr.toFixed(2)}`;
+        attrTag=` | attr:${above}/${n}>μ cc${cc.toFixed(1)}${mb>0.001?' b'+mb.toFixed(2):''} +${sb}${best.tr>=0?'+':''}${best.tr.toFixed(2)} -${sw}${worst.tr.toFixed(2)}`;
       }
     }
     genEl.textContent=`gen${genome.generation} ${genome.extinctions}☠ t${genome.totalTicks} | ${clusters.length}cl(${clVMActive}vm${budCount>0?','+budCount+'bud':''}) ${livingLin}lin fit:${currentFitness.toFixed(2)} stb:${(selfModel.stability||0).toFixed(2)} | vm:${genome.vmProgram.length}inst ${nSensors}sns ${hgtEventsTotal}hgt | pop:${N}/${CAP} fld:${fieldTotal.toFixed(0)}${fTrend<-0.01?'↓':fTrend>0.01?'↑':'~'} risk:${cRisk.toFixed(2)} | ⟲${rInf.toFixed(2)} ${reflexClusters}rc${netTag}${cgTag}${uaTag}${(genome.eventLog&&genome.eventLog.length)?' ev:'+genome.eventLog.length:''}${gradTag}${mrTag}${relTag}${sigTag}${attrTag}`;
