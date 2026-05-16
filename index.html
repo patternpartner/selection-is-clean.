@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
-<title>Selection פ 35 — Relational (use-gated)</title>
+<title>Selection פ 37 — Attribution</title>
 <style>
 *{margin:0;padding:0;box-sizing:border-box}
 html,body{height:100%;overflow:hidden;background:#020204;touch-action:none;cursor:crosshair}
@@ -264,7 +264,7 @@ const DIMS=5; // dim 4 is blank — no hardcoded role. System decides what it me
 const MEM_SIZE=8; // per-particle persistent memory. Particles become stateful agents.
 const MAX_PLASMID=4; // max instructions per particle's personal mobile DNA
 const PLASMID_SLOTS=MAX_PLASMID*4; // each instruction is [op,src,dst,k] = 4 values
-const OPCODE_COUNT=24; // VM opcodes 0..23, including USER_ATOM at 22, NEIGHBOR_PREDICT at 23 (Pe31)
+const OPCODE_COUNT=26; // VM opcodes 0..25: adding SIGNAL_EMIT (24) and SIGNAL_READ (25) in Pe36
 const FIELD_W=40;
 const FIELD_H=40;
 let FIELD_DECAY=0.982;   // natural fade — Pe22b: now genome-driven, can evolve
@@ -560,6 +560,71 @@ let genome={
   // reporting passive accuracy was the better deal. Either outcome is informative —
   // the property a good Pe-layer must have.
   relationalUseBias:0.2,            // 0=Pe34 exactly, 1=only VM-consulted models score. Evolvable.
+
+  // ═══ LAYER 25: SIGNAL LAYER — explicit particle-to-particle communication (Pe36) ═══
+  // Pe31-35 gave particles IMPLICIT communication: neighbor models (mutual prediction),
+  // plasmids (genetic horizontal transfer), field deposition (environmental marking).
+  // All indirect. Pe36 adds EXPLICIT signaling: particles can emit and receive signals.
+  //
+  // Three evolvable genome parameters control the layer:
+  //
+  // signalEmitCost: metabolic cost per unit of signal emitted (drains amplitude).
+  //   At 0: signaling is free (particles can spam, but no selection against it).
+  //   At 0.01: strong emission (|signal|=2) costs 0.02 amplitude per tick.
+  //   Default 0.005: emitting has real cost, must earn its keep.
+  //
+  // signalInfluence: how strongly received signals affect the VM (register scaling).
+  //   At 0: opcode 25 returns 0 — signal channel is deaf, Pe35 exactly.
+  //   At 0.5: signals substantially shape VM computation.
+  //   Default 0.15: available but not dominant.
+  //
+  // signalDecay: per-tick fade rate for accumulated signals (prevents runaway).
+  //   At 0: signals never decay (accumulation could explode).
+  //   At 0.3: signal halves every ~2 ticks.
+  //   Default 0.2: moderate fade, recent signals matter most.
+  //
+  // VM OPCODES:
+  //   24: SIGNAL_EMIT — vmRegs[src] * k → pSignalEmit[i] (write outgoing signal)
+  //   25: SIGNAL_READ — pSignalReceive[i] * signalInfluence * k → vmRegs[dst] (read incoming)
+  //
+  // PROPAGATION: During particle interactions, each particle's emitted signal propagates
+  // to neighbors within interaction radius, weighted by proximity. The receiving particle
+  // accumulates all incoming signals in pSignalReceive. Per-tick decay prevents runaway.
+  //
+  // DIAGNOSTICS: The HUD sig tag shows:
+  //   - avgEmit: population-average |signal emitted| (shows layer is active)
+  //   - avgSens: population-average sensitivity (VM actually reads signals)
+  //   - utilization = avgEmit * avgSens (loop closure: emitting AND listening)
+  //
+  // Low utilization → signals evolved to silence, cheaper.
+  // High utilization → genuine explicit communication emerged.
+  //
+  // All parameters can evolve to zero. The system discovers whether explicit signaling
+  // helps or whether the existing implicit channels (models, plasmids, fields) suffice.
+  signalEmitCost:0.005,      // metabolic cost per unit signal. 0=free, higher=expensive. Evolvable.
+  signalInfluence:0.15,      // received signal scale into VM. 0=Pe35 exactly. Evolvable.
+  signalDecay:0.2,           // per-tick fade of received signals. 0=no decay. Evolvable.
+
+  // ═══ LAYER 26: ATTRIBUTION — the architecture measures its own layers (Pe37) ═══
+  // Every parameter in META_LAYER_PARAMS gets a creditTrace, accumulated each mutation
+  // cycle as EMA(sign(perturbation applied last cycle) * sign(fitness change since)).
+  // Causally ordered: a param is perturbed at cycle N, the system runs an interval with
+  // the new value, fitness moves, and cycle N+1 attributes that move to that perturbation.
+  // Params that don't move a given cycle get no signal and bleed slowly toward zero, so a
+  // gate frozen at 0 correctly reads as "not currently contributing" rather than retaining
+  // stale credit. metaCredit holds {trace, pendingDelta, fitAtApply} per tracked param.
+  //
+  // metaCreditBias gates the only behavioral change. At 0 (default-low, recoverable):
+  // mutation is pure random walk — Pe36 exactly, attribution is purely observational.
+  // Above 0: a tracked param's perturbation is gently biased toward its credited
+  // direction (same lean-not-lock structure as Pe26's gradMaybe). Bounded [0,0.5];
+  // the random component always dominates. Lineage selection decides if the architecture
+  // self-tuning beats pure drift. The HUD 'attr' tag exposes the load-bearing count and
+  // the strongest +/- params — the diagnostic that answers "can selection still resolve
+  // a 15-D meta-vector," which it couldn't before this layer existed.
+  metaCreditBias:0.1,        // 0=Pe36 (observational only). >0 biases meta-mutation by credit. Evolvable.
+  metaCredit:null,           // {param:{trace,pendingDelta,fitAtApply}} — built lazily in mutateGenome
+
 
   // ═══ LAYER 18: RATIFICATION — clusters carry scenarios upward (Pe28) ═══
   // Pe27 made the imagination bank evolvable, but scenarios still live and die strictly
@@ -925,6 +990,28 @@ const pNeighborFresh=new Float32Array(CAP*NM_SLOTS);          // freshness (0=st
 const pVmQueryPartner=new Int16Array(CAP).fill(-1); // partner index VM last queried
 const pVmQueryTick=new Int32Array(CAP).fill(-1);    // tick of that query
 
+// ═══ Pe36 LAYER 25: EXPLICIT SIGNAL CHANNEL ═══
+// Each particle can EMIT and RECEIVE explicit numeric signals.
+// pSignalEmit: what this particle broadcasts this tick (VM opcode 24 writes here)
+// pSignalReceive: accumulated signals from neighbors (VM opcode 25 reads here)
+// During interactions, emitted signals propagate to neighbors weighted by proximity.
+// Signals decay per tick (genome.signalDecay) to prevent runaway accumulation.
+// Emitting costs amplitude (genome.signalEmitCost * |signal|).
+// The genome evolves whether this channel helps or should atrophy to zero cost.
+const pSignalEmit=new Float32Array(CAP);     // signal this particle emits this tick
+const pSignalReceive=new Float32Array(CAP);  // accumulated incoming signals
+// Pe37: double-buffer the emission channel. Pe36 propagation read pSignalEmit[j]
+// mid-loop, so whether j had emitted yet this tick depended on grid iteration order
+// (some receives saw this tick's emission, some last tick's stale value). Reading the
+// PREVIOUS tick's fully-formed emission field makes the channel deterministic and gives
+// it a clean one-tick propagation delay — biologically sensible, order-independent.
+const pSignalEmitPrev=new Float32Array(CAP); // last tick's final emissions (read by propagation)
+// Pe37: honest loop-closure metric. Pe36's util was avgEmit * signalInfluence — emission
+// weighted by a genome knob, not a measurement of whether anything LISTENS. This counts
+// actual opcode-25 (SIGNAL_READ) executions, mirroring how Pe34/35 tracked opcode-23.
+let signalReadCount=0; // monotonic count of SIGNAL_READ executions across all VMs
+
+
 // ═══ Pe34 Layer 24: PREDICTION-ERROR ACCUMULATOR ═══
 // Filled by updateNeighborModel each time a re-encounter happens (slot already held j).
 // Drained and reset by the fitness compute each tick. Mean error → quality score.
@@ -1011,6 +1098,17 @@ function encodeGenome(){
     mrt:+(genome.mutualRecognitionThresh||0.5).toFixed(4),
     rw:+(genome.relationalWeight||0.15).toFixed(4), // Pe34 Layer 24: relational fitness weight
     rub:+((typeof genome.relationalUseBias==='number'?genome.relationalUseBias:0.2)).toFixed(4), // Pe35 Layer 24b: use-gate sharpening (0 is a valid evolved value — must not be ||-erased)
+    // Pe36 Layer 25: explicit signal channel
+    sec:+(genome.signalEmitCost||0.005).toFixed(4),      // signal emission metabolic cost
+    sinf:+(genome.signalInfluence||0.15).toFixed(4),     // signal influence into VM
+    sdec:+(genome.signalDecay||0.2).toFixed(4),          // signal decay rate per tick
+    // Pe37 Layer 26: attribution. mcb = feedback gate; mct = credit traces in
+    // META_LAYER_PARAMS order (compact array, traces only — deltas are transient).
+    mcb:+(genome.metaCreditBias||0).toFixed(4),
+    mct:META_LAYER_PARAMS.map(p=>{
+      const e=genome.metaCredit&&genome.metaCredit[p];
+      return +((e&&e.trace)||0).toFixed(3);
+    }),
     // Pe27 Layer 17: shadow scenario bank. Compact tuple per entry.
     // [e,k,r,c,t, wins, age, srcIdx, creditTrace(Pe29), f,p,a,tb,sp,sm,mp(Pe32)]
     // srcIdx: 0=seed,1=child,2=random,3=fossil(Pe28)
@@ -1116,6 +1214,19 @@ function decodeGenome(data){
     if(typeof g.mrt==='number')genome.mutualRecognitionThresh=g.mrt;
     if(typeof g.rw==='number')genome.relationalWeight=g.rw; // Pe34 Layer 24
     if(typeof g.rub==='number')genome.relationalUseBias=g.rub; // Pe35 Layer 24b
+    // Pe36 Layer 25: explicit signal channel
+    if(typeof g.sec==='number')genome.signalEmitCost=g.sec;
+    if(typeof g.sinf==='number')genome.signalInfluence=g.sinf;
+    if(typeof g.sdec==='number')genome.signalDecay=g.sdec;
+    // Pe37 Layer 26: attribution
+    if(typeof g.mcb==='number')genome.metaCreditBias=g.mcb;
+    if(Array.isArray(g.mct)){
+      const reg={};
+      META_LAYER_PARAMS.forEach((p,idx)=>{
+        reg[p]={trace:finiteOr(g.mct[idx],0),pendingDelta:0,fitAtApply:0};
+      });
+      genome.metaCredit=reg;
+    }
     // Pe27 Layer 17: shadow scenario bank
     if(Array.isArray(g.sb)){
       genome.shadowScenarioBank=g.sb.map(a=>({
@@ -1167,6 +1278,26 @@ function sanitizeGenome(){
   genome.mutualRecognitionThresh=Math.max(0,Math.min(1,finiteOr(genome.mutualRecognitionThresh,0.5)));
   genome.relationalWeight=Math.max(0,Math.min(1,finiteOr(genome.relationalWeight,0.15))); // Pe34 Layer 24
   genome.relationalUseBias=Math.max(0,Math.min(1,finiteOr(genome.relationalUseBias,0.2))); // Pe35 Layer 24b
+  // Pe36 Layer 25: explicit signal channel defaults and bounds
+  genome.signalEmitCost=Math.max(0,Math.min(0.05,finiteOr(genome.signalEmitCost,0.005)));
+  genome.signalInfluence=Math.max(0,Math.min(1,finiteOr(genome.signalInfluence,0.15)));
+  genome.signalDecay=Math.max(0,Math.min(0.5,finiteOr(genome.signalDecay,0.2)));
+  // Pe37 Layer 26: attribution defaults. metaCreditBias bounded [0,0.5]. metaCredit
+  // is rebuilt as a clean per-param registry; any persisted traces are preserved.
+  genome.metaCreditBias=Math.max(0,Math.min(0.5,finiteOr(genome.metaCreditBias,0.1)));
+  {
+    const src=(genome.metaCredit&&typeof genome.metaCredit==='object')?genome.metaCredit:{};
+    const fresh={};
+    for(const p of META_LAYER_PARAMS){
+      const e=src[p];
+      fresh[p]={
+        trace:Math.max(-1,Math.min(1,finiteOr(e&&e.trace,0))),
+        pendingDelta:finiteOr(e&&e.pendingDelta,0),
+        fitAtApply:finiteOr(e&&e.fitAtApply,0)
+      };
+    }
+    genome.metaCredit=fresh;
+  }
   if(!Array.isArray(genome.objCreditTrace)||genome.objCreditTrace.length<4)genome.objCreditTrace=[0,0,0,0];
   genome.objCreditTrace=genome.objCreditTrace.slice(0,4).map(v=>Math.max(-1,Math.min(1,finiteOr(v,0))));
   if(!Array.isArray(genome.prevObjValues)||genome.prevObjValues.length<4)genome.prevObjValues=[0,0,0,0];
@@ -1867,6 +1998,47 @@ const SCEN_APPLY_VM={f:0.002,p:0.002,a:0.001,tb:0.001,sp:0.001,sm:0.001,mp:0.000
 // Pe32: extended shadow nudge direction — 5 physics + 7 behavioral axes.
 // Indexed: [0]=e, [1]=k, [2]=r, [3]=c, [4]=t, [5]=f, [6]=p, [7]=a, [8]=tb, [9]=sp, [10]=sm, [11]=mp
 let lastShadowNudgeDir=[0,0,0,0,0,0,0,0,0,0,0,0];
+
+// ═══ Pe37 LAYER 26: ATTRIBUTION ═══
+// The genome now carries ~15 evolvable layer-gate parameters (Pe25–Pe36). Each was
+// individually justified and individually recoverable to zero. But lineage selection
+// sees ONE fitness number — it cannot tell which of the 15 a fitness change is due to.
+// A load-bearing param and an inert one drift together; the useful one is never
+// specifically rewarded. The marginal layer's signal is swamped.
+// Pe37 turns the codebase's own credit primitive on the architecture itself: every
+// listed param gets a creditTrace — an EMA of sign(its last perturbation) * sign(the
+// fitness change that followed). Params whose movements track fitness accumulate credit;
+// inert params decay toward zero. This is observational first (a real diagnostic of
+// which layers earn their keep) and, gated by metaCreditBias, gently accelerative.
+// The list is the layer GATES specifically — the knobs each Pe-layer added to enable
+// or atrophy itself. Not the core engine params (mutationRate etc.), which aren't
+// "layers" in this sense.
+const META_LAYER_PARAMS=[
+  'creditLearnRate',            // Pe25
+  'gradientBias',               // Pe26
+  'gradientUpstreamBias',       // Pe26
+  'shadowBankChurn',            // Pe27
+  'scenarioCreditWeight',       // Pe29
+  'shadowExploreRate',          // Pe30b
+  'behaviorGradientBias',       // Pe33
+  'neighborModelUpdateRate',    // Pe31
+  'neighborPredictionInfluence',// Pe31
+  'mutualRecognitionThresh',    // Pe31
+  'relationalWeight',           // Pe34
+  'relationalUseBias',          // Pe35
+  'signalEmitCost',             // Pe36
+  'signalInfluence',            // Pe36
+  'signalDecay'                 // Pe36
+];
+// Short HUD labels — keep the attribution tag compact.
+const META_LAYER_SHORT={
+  creditLearnRate:'clr',gradientBias:'gb',gradientUpstreamBias:'gub',
+  shadowBankChurn:'sbc',scenarioCreditWeight:'scw',shadowExploreRate:'ser',
+  behaviorGradientBias:'bgb',neighborModelUpdateRate:'nmu',
+  neighborPredictionInfluence:'npi',mutualRecognitionThresh:'mrt',
+  relationalWeight:'rw',relationalUseBias:'rub',signalEmitCost:'sec',
+  signalInfluence:'sinf',signalDecay:'sdec'
+};
 
 // Pe32: 12D Euclidean distance between two scenario entries.
 // Used for diversity pressure, fingerprint matching, and fossil matching.
@@ -3198,6 +3370,53 @@ function mutateGenome(){
     return isFinite(next)?next:val;
   }
 
+  // ═══ Pe37 Layer 26: ATTRIBUTION ═══
+  // Ensure the credit registry exists.
+  if(!genome.metaCredit||typeof genome.metaCredit!=='object')genome.metaCredit={};
+  const mc=genome.metaCredit;
+  for(const p of META_LAYER_PARAMS){
+    if(!mc[p]||typeof mc[p]!=='object')mc[p]={trace:0,pendingDelta:0,fitAtApply:currentFitness};
+  }
+  const mcBias=Math.max(0,Math.min(0.5,genome.metaCreditBias||0));
+
+  // Attribution phase: the perturbation captured LAST cycle has now run for an
+  // interval; attribute the fitness change since then. EMA, clamped [-1,1].
+  for(const p of META_LAYER_PARAMS){
+    const e=mc[p];
+    if(Math.abs(e.pendingDelta)>1e-6){
+      const dF=currentFitness-(e.fitAtApply||0);
+      if(isFinite(dF)&&dF!==0){
+        const attribution=(e.pendingDelta>0?1:-1)*(dF>0?1:-1);
+        e.trace=e.trace*0.97+attribution*0.03;
+        if(e.trace>1)e.trace=1;else if(e.trace<-1)e.trace=-1;
+      }
+      e.pendingDelta=0; // consumed
+    }else{
+      // No movement last cycle — bleed slowly so a frozen gate stops reading as
+      // load-bearing. Honest diagnostic over sticky history.
+      e.trace*=0.995;
+    }
+  }
+
+  // metaMaybe: like maybe(), but a tracked param's perturbation leans toward its
+  // credited direction when metaCreditBias>0. Same lean-not-lock shape as gradMaybe —
+  // the random component is only partially attenuated, never replaced. mcBias=0 → maybe().
+  function metaMaybe(val,magnitude,name){
+    if(Math.random()>rate)return val;
+    const randomStep=(Math.random()-0.5)*magnitude*scale;
+    const tr=mc[name]?mc[name].trace:0;
+    if(mcBias<=0.001||tr===0){
+      const n=val+randomStep;return isFinite(n)?n:val;
+    }
+    const lean=tr*mcBias; // tr in [-1,1], mcBias in [0,0.5] → lean in [-0.5,0.5]
+    const step=randomStep*(1-Math.abs(lean)*0.6)+Math.sign(tr)*magnitude*scale*Math.abs(lean)*0.5;
+    const n=val+step;return isFinite(n)?n:val;
+  }
+  // Snapshot tracked-param values BEFORE this cycle's mutations so the capture phase
+  // (end of mutateGenome) can compute exactly what perturbation was applied.
+  const _metaValBefore={};
+  for(const p of META_LAYER_PARAMS)_metaValBefore[p]=genome[p];
+
   // LAYER 1: Physics mutations
   // Pe22b: substrate physics — the ground the particles live on now evolves
   genome.fieldDecay=maybe(genome.fieldDecay,0.9,0.999,0.004);
@@ -3261,19 +3480,23 @@ function mutateGenome(){
     genome.objWeights=[0.25,0.25,0.25,0.25];
   }
   // Pe25 Layer 15 credit rate
-  genome.creditLearnRate=Math.max(0,Math.min(3,maybe(genome.creditLearnRate,0,3,0.15)));
+  genome.creditLearnRate=Math.max(0,Math.min(3,metaMaybe(genome.creditLearnRate,0.15,'creditLearnRate')));
 
   // Pe26 Layer 16: gradient bias params — lineage selection decides whether learning helps
-  genome.gradientBias=Math.max(0,Math.min(1,maybe(genome.gradientBias,0,1,0.06)));
-  genome.gradientUpstreamBias=Math.max(0,Math.min(1,maybe(genome.gradientUpstreamBias,0,1,0.06)));
-  genome.behaviorGradientBias=Math.max(0,Math.min(1,maybe(genome.behaviorGradientBias,0,1,0.06))); // Pe33
+  genome.gradientBias=Math.max(0,Math.min(1,metaMaybe(genome.gradientBias,0.06,'gradientBias')));
+  genome.gradientUpstreamBias=Math.max(0,Math.min(1,metaMaybe(genome.gradientUpstreamBias,0.06,'gradientUpstreamBias')));
+  genome.behaviorGradientBias=Math.max(0,Math.min(1,metaMaybe(genome.behaviorGradientBias,0.06,'behaviorGradientBias'))); // Pe33
 
   // Pe31 Layer 21: mutual recognition — all three can evolve to 0 (recovering Pe30b behavior)
-  genome.neighborModelUpdateRate=Math.max(0,Math.min(1,maybe(genome.neighborModelUpdateRate,0,1,0.05)));
-  genome.neighborPredictionInfluence=Math.max(0,Math.min(0.5,maybe(genome.neighborPredictionInfluence,0,0.5,0.04)));
-  genome.mutualRecognitionThresh=Math.max(0,Math.min(1,maybe(genome.mutualRecognitionThresh,0,1,0.06)));
-  genome.relationalWeight=Math.max(0,Math.min(1,maybe(genome.relationalWeight,0,1,0.05))); // Pe34 Layer 24
-  genome.relationalUseBias=Math.max(0,Math.min(1,maybe(genome.relationalUseBias,0,1,0.05))); // Pe35 Layer 24b
+  genome.neighborModelUpdateRate=Math.max(0,Math.min(1,metaMaybe(genome.neighborModelUpdateRate,0.05,'neighborModelUpdateRate')));
+  genome.neighborPredictionInfluence=Math.max(0,Math.min(0.5,metaMaybe(genome.neighborPredictionInfluence,0.04,'neighborPredictionInfluence')));
+  genome.mutualRecognitionThresh=Math.max(0,Math.min(1,metaMaybe(genome.mutualRecognitionThresh,0.06,'mutualRecognitionThresh')));
+  genome.relationalWeight=Math.max(0,Math.min(1,metaMaybe(genome.relationalWeight,0.05,'relationalWeight'))); // Pe34 Layer 24
+  genome.relationalUseBias=Math.max(0,Math.min(1,metaMaybe(genome.relationalUseBias,0.05,'relationalUseBias'))); // Pe35 Layer 24b
+  // Pe36 Layer 25: explicit signal channel — all three can evolve (including to 0 = Pe35 behavior)
+  genome.signalEmitCost=Math.max(0,Math.min(0.05,metaMaybe(genome.signalEmitCost,0.003,'signalEmitCost')));
+  genome.signalInfluence=Math.max(0,Math.min(1,metaMaybe(genome.signalInfluence,0.05,'signalInfluence')));
+  genome.signalDecay=Math.max(0,Math.min(0.5,metaMaybe(genome.signalDecay,0.04,'signalDecay')));
 
   // ═══ Pe26 Layer 16c: CLUSTER UPWARD SIGNAL injection ═══
   // Drain the upstream buffer — soft-inject successful cluster motifs into the global VM.
@@ -3342,12 +3565,12 @@ function mutateGenome(){
   // Pe27 Layer 17: imagination bank cap and churn rate. The system decides how many
   // counterfactual futures to maintain and how aggressively to refresh them.
   genome.shadowScenarios=Math.max(3,Math.min(SHADOW_SCENARIOS_MAX,Math.round(maybe(genome.shadowScenarios,3,SHADOW_SCENARIOS_MAX,0.8))));
-  genome.shadowBankChurn=Math.max(0,Math.min(1,maybe(genome.shadowBankChurn,0,1,0.06)));
+  genome.shadowBankChurn=Math.max(0,Math.min(1,metaMaybe(genome.shadowBankChurn,0.06,'shadowBankChurn')));
   // Pe30b: explore rate evolvable, bounded [0.1,0.9] — see refill-loop note for why
   // the bounds are tighter than the [0,1] of other freed params.
-  genome.shadowExploreRate=Math.max(0.1,Math.min(0.9,maybe(genome.shadowExploreRate,0.1,0.9,0.06)));
+  genome.shadowExploreRate=Math.max(0.1,Math.min(0.9,metaMaybe(genome.shadowExploreRate,0.06,'shadowExploreRate')));
   // Pe29 Layer 19: how strongly real-fitness credit affects eviction. 0=Pe28 behavior.
-  genome.scenarioCreditWeight=Math.max(0,Math.min(1,maybe(genome.scenarioCreditWeight,0,1,0.06)));
+  genome.scenarioCreditWeight=Math.max(0,Math.min(1,metaMaybe(genome.scenarioCreditWeight,0.06,'scenarioCreditWeight')));
   // Evict-and-spawn pass: probabilistic, gated by the churn rate.
   if(Math.random()<(genome.shadowBankChurn||0.5))evolveShadowBank();
 
@@ -3390,6 +3613,10 @@ function mutateGenome(){
 
   // ═══ AUTONOMY PARAMETER MUTATION ═══
   genome.mutationInterval=maybe(genome.mutationInterval,60,1200,40);
+  // Pe37 Layer 26: the attribution-feedback gate. Mutated by plain maybe(), never
+  // metaMaybe — a parameter that controls credit feedback must not bias its own
+  // perturbation by its own credit. Bounded [0,0.5]; 0 = observational-only (Pe36).
+  genome.metaCreditBias=Math.max(0,Math.min(0.5,maybe(genome.metaCreditBias,0,0.5,0.03)));
   genome.interactionRadius=maybe(genome.interactionRadius,25,120,5);
   genome.densityCostK=maybe(genome.densityCostK,0.000003,0.0003,0.00003);
   genome.fieldBirthGate=maybe(genome.fieldBirthGate,0.01,5.0,0.05);
@@ -3634,6 +3861,18 @@ function mutateGenome(){
         c.fieldSignature[s]=Math.max(-1.5,Math.min(1.5,c.fieldSignature[s]));
       }
     }
+  }
+
+  // ═══ Pe37 Layer 26: ATTRIBUTION — capture phase ═══
+  // Record exactly what perturbation this cycle applied to each tracked param, and the
+  // fitness at this moment (reflects the config that just ran). Next cycle's attribution
+  // phase compares post-interval fitness against this, closing the causal loop.
+  for(const p of META_LAYER_PARAMS){
+    const e=mc[p];if(!e)continue;
+    const before=_metaValBefore[p];
+    const delta=genome[p]-(before===undefined?genome[p]:before);
+    e.pendingDelta=isFinite(delta)?delta:0;
+    e.fitAtApply=currentFitness;
   }
 }
 
@@ -4303,6 +4542,29 @@ function executeVM(i,j,sim,d){
           op23EmitTotal++;
         }
       }break;
+      case 24:{
+        // Pe36 Layer 25: SIGNAL_EMIT.
+        // VM writes a signal value to pSignalEmit[i], which will propagate to neighbors
+        // during interaction. Emitting costs amplitude proportional to signal magnitude.
+        // signalInfluence=0 makes this opcode inert (Pe35 behavior exactly).
+        if(genome.signalInfluence>0.001){
+          const emitVal=vmRegs[si]*k;
+          pSignalEmit[i]=Math.max(-4,Math.min(4,emitVal)); // clamp signal magnitude
+          // Emit cost: drains amplitude proportional to |signal|
+          const emitCost=(genome.signalEmitCost||0)*Math.abs(emitVal);
+          amp[i]-=emitCost;
+        }
+      }break;
+      case 25:{
+        // Pe36 Layer 25: SIGNAL_READ.
+        // VM reads the accumulated received signal from pSignalReceive[i] into a register.
+        // The read value is scaled by signalInfluence and k.
+        // signalInfluence=0 → opcode returns 0 (Pe35 behavior exactly).
+        if(genome.signalInfluence>0.001){
+          vmRegs[di]=pSignalReceive[i]*(genome.signalInfluence||0)*(k||1);
+          signalReadCount++; // Pe37: honest loop-closure metric
+        }
+      }break;
     }
     for(let r=0;r<12;r++)vmRegs[r]=Math.max(-8,Math.min(8,vmRegs[r]));
   }
@@ -4390,6 +4652,22 @@ function executeVM(i,j,sim,d){
           if(uas&&uas.length>0){
             const uIdx=Math.abs(Math.floor(k))%uas.length;
             vmRegs[di]=uaCall(uas[uIdx],vmRegs[si],vmRegs[(si+1)%12]);
+          }
+        }break;
+        case 24:{
+          // Pe36 Layer 25: SIGNAL_EMIT (plasmid version)
+          if(genome.signalInfluence>0.001){
+            const emitVal=vmRegs[si]*k;
+            pSignalEmit[i]=Math.max(-4,Math.min(4,emitVal));
+            const emitCost=(genome.signalEmitCost||0)*Math.abs(emitVal);
+            amp[i]-=emitCost;
+          }
+        }break;
+        case 25:{
+          // Pe36 Layer 25: SIGNAL_READ (plasmid version)
+          if(genome.signalInfluence>0.001){
+            vmRegs[di]=pSignalReceive[i]*(genome.signalInfluence||0)*(k||1);
+            signalReadCount++; // Pe37: honest loop-closure metric
           }
         }break;
       }
@@ -4841,6 +5119,14 @@ function updateParticles(){
     vx[i]*=genome.velocityDamping;vy[i]*=genome.velocityDamping;px[i]+=vx[i];py[i]+=vy[i];
     if(px[i]<8)vx[i]+=.08;if(px[i]>W-8)vx[i]-=.08;if(py[i]<8)vy[i]+=.08;if(py[i]>H-8)vy[i]-=.08;
     if(tick%3===0){const ei=echoIdx[i]%EL;echox[i*EL+ei]=px[i];echoy[i*EL+ei]=py[i];echoIdx[i]++}
+    // Pe36 Layer 25: signal decay. Received signals fade each tick to prevent runaway.
+    // Decay rate is evolvable — lineages can tune how persistent vs transient signals are.
+    const sigDecay=Math.max(0,Math.min(1,genome.signalDecay||0));
+    pSignalReceive[i]*=(1-sigDecay);
+    // Pe37: snapshot this tick's final emission into the prev buffer for next tick's
+    // propagation to read, THEN reset. This is the double-buffer swap.
+    pSignalEmitPrev[i]=pSignalEmit[i];
+    pSignalEmit[i]=0;
     computeVisuals(i);
   }
 }
@@ -4988,6 +5274,14 @@ function processGrid(){
             const pa31=Math.cos(phase[i]-phase[j]);
             updateNeighborModel(i,j,sim,pa31);
             updateNeighborModel(j,i,sim,pa31);
+            // Pe36 Layer 25: explicit signal propagation.
+            // Pe37: read pSignalEmitPrev (last tick's complete emission field) instead of
+            // pSignalEmit — deterministic, order-independent, one-tick delay.
+            if(genome.signalInfluence>0.001){
+              const prox36=Math.max(0,1-d/iR); // proximity weight
+              pSignalReceive[i]+=pSignalEmitPrev[j]*prox36;
+              pSignalReceive[j]+=pSignalEmitPrev[i]*prox36;
+            }
             const bl=genome.tendencyBleed*(1-d/iR);
             for(let dd=0;dd<DIMS;dd++){const avg=(tend[i*DIMS+dd]+tend[j*DIMS+dd])*0.5;tend[i*DIMS+dd]+=(avg-tend[i*DIMS+dd])*bl;tend[j*DIMS+dd]+=(avg-tend[j*DIMS+dd])*bl}
             const mg=(tend[i*DIMS+3]+tend[j*DIMS+3]);
@@ -5527,7 +5821,52 @@ function loop(){
       const totalUses=uas.reduce((s,a)=>s+(a.uses|0),0);
       uaTag=` | ua:${active}/${uas.length} used:${totalUses}`;
     }
-    genEl.textContent=`gen${genome.generation} ${genome.extinctions}☠ t${genome.totalTicks} | ${clusters.length}cl(${clVMActive}vm${budCount>0?','+budCount+'bud':''}) ${livingLin}lin fit:${currentFitness.toFixed(2)} stb:${(selfModel.stability||0).toFixed(2)} | vm:${genome.vmProgram.length}inst ${nSensors}sns ${hgtEventsTotal}hgt | pop:${N}/${CAP} fld:${fieldTotal.toFixed(0)}${fTrend<-0.01?'↓':fTrend>0.01?'↑':'~'} risk:${cRisk.toFixed(2)} | ⟲${rInf.toFixed(2)} ${reflexClusters}rc${netTag}${cgTag}${uaTag}${(genome.eventLog&&genome.eventLog.length)?' ev:'+genome.eventLog.length:''}${gradTag}${mrTag}${relTag}`;
+    // Pe36 Layer 25: signal diagnostic. Gated so it only appears when layer is active.
+    // avgEmit: population average |signal emitted| (shows particles are emitting)
+    // avgSens: how strongly VMs read signals (shows particles are listening)
+    // util: utilization = avgEmit * avgSens (loop closure: both emitting AND reading)
+    // Low util → signals evolved to silence. High util → explicit communication emerged.
+    let sigTag='';
+    const _sigInf=genome.signalInfluence||0;
+    if(_sigInf>0.001){
+      let sumEmit=0,sumRecv=0,emitCount=0,recvCount=0;
+      for(let i=0;i<N;i++){
+        if(!palive[i])continue;
+        sumEmit+=Math.abs(pSignalEmit[i]);
+        sumRecv+=Math.abs(pSignalReceive[i]);
+        if(Math.abs(pSignalEmit[i])>0.01)emitCount++;
+        if(Math.abs(pSignalReceive[i])>0.01)recvCount++;
+      }
+      const avgEmit=N>0?sumEmit/N:0;
+      const avgRecv=N>0?sumRecv/N:0;
+      const util=avgEmit*_sigInf; // utilization: emission weighted by influence
+      if(util>0.001){
+        // Pe37: rd = cumulative real SIGNAL_READ executions (honest loop closure —
+        // emission AND listening, not emission weighted by a genome knob).
+        sigTag=` | sig:e${avgEmit.toFixed(2)} r${avgRecv.toFixed(2)} u${util.toFixed(3)} ${emitCount}→${recvCount} rd${signalReadCount}`;
+      }
+    }
+    // ═══ Pe37 Layer 26: ATTRIBUTION diagnostic ═══
+    // Answers the question Pe36's review raised: can selection still resolve a 15-D
+    // meta-vector? Shows load-bearing count (|trace|>0.12) and the strongest +/- gates.
+    let attrTag='';
+    if(genome.metaCredit){
+      let lo=0,best=null,worst=null;
+      for(const p of META_LAYER_PARAMS){
+        const e=genome.metaCredit[p];if(!e)continue;
+        const tr=e.trace||0;
+        if(Math.abs(tr)>0.12)lo++;
+        if(best===null||tr>best.tr)best={p,tr};
+        if(worst===null||tr<worst.tr)worst={p,tr};
+      }
+      if(best&&worst){
+        const sb=META_LAYER_SHORT[best.p]||best.p;
+        const sw=META_LAYER_SHORT[worst.p]||worst.p;
+        const mb=(genome.metaCreditBias||0);
+        attrTag=` | attr:${lo}/${META_LAYER_PARAMS.length}${mb>0.001?' b'+mb.toFixed(2):''} +${sb}${best.tr>=0?'+':''}${best.tr.toFixed(2)} -${sw}${worst.tr.toFixed(2)}`;
+      }
+    }
+    genEl.textContent=`gen${genome.generation} ${genome.extinctions}☠ t${genome.totalTicks} | ${clusters.length}cl(${clVMActive}vm${budCount>0?','+budCount+'bud':''}) ${livingLin}lin fit:${currentFitness.toFixed(2)} stb:${(selfModel.stability||0).toFixed(2)} | vm:${genome.vmProgram.length}inst ${nSensors}sns ${hgtEventsTotal}hgt | pop:${N}/${CAP} fld:${fieldTotal.toFixed(0)}${fTrend<-0.01?'↓':fTrend>0.01?'↑':'~'} risk:${cRisk.toFixed(2)} | ⟲${rInf.toFixed(2)} ${reflexClusters}rc${netTag}${cgTag}${uaTag}${(genome.eventLog&&genome.eventLog.length)?' ev:'+genome.eventLog.length:''}${gradTag}${mrTag}${relTag}${sigTag}${attrTag}`;
   }
 
   const renderEvery=N>1000?4:N>500?3:N>200?2:1;
