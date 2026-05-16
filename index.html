@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
-<title>Selection פ 34 — Relational</title>
+<title>Selection פ 35 — Relational (use-gated)</title>
 <style>
 *{margin:0;padding:0;box-sizing:border-box}
 html,body{height:100%;overflow:hidden;background:#020204;touch-action:none;cursor:crosshair}
@@ -517,6 +517,50 @@ let genome={
   // crucial can mutate it up to 1.0.
   relationalWeight:0.15,            // 0=Pe33 behavior, 1=neighbor models fully real-fitness. Evolvable.
 
+  // ═══ LAYER 24b: USE-GATED RELATIONAL FITNESS (Pe35) ═══
+  // Pe34's honest flaw: pNeighborModels are maintained PASSIVELY by updateNeighborModel
+  // every interaction, regardless of whether any VM ever emits opcode 23 to read them.
+  // So predictionQuality rewards model ACCURACY, not model USE. The dead branch Pe34
+  // set out to revive (opcode 23) can stay dead while relationalWeight climbs purely on
+  // passively-accurate models — and the cheapest source of passive accuracy is a
+  // homogeneous population (every partner looks alike → trivially low drift). Left
+  // unaddressed, relational fitness becomes a backdoor reward for monoculture, working
+  // directly against the diversity axis.
+  //
+  // Pe35 relocates the measurement so it follows the VM's own choices. Each tick, when
+  // a particle's VM emits opcode 23 against partner j (predInf active), we stamp
+  // (self→j, this tick). updateNeighborModel then weights each re-encounter's error
+  // contribution by whether the consulting VM actually reached for that partner:
+  //   w = queried ? 1 : (1 - relationalUseBias)
+  //   predictionErrorAccum += err * w ;  predictionUpdateCount += w
+  //
+  // The loop structure (j>i guard; executeVM always called lower-index-as-self) means
+  // the reverse-direction updateNeighborModel(j,i) is structurally passive — j's VM
+  // provably never consulted i in that loop. That leg is the purest form of the passive
+  // leak; under the blend it fades toward zero as the genome sharpens. The forward leg
+  // updateNeighborModel(i,j) runs five lines after executeVM(i,j) in the SAME iteration
+  // (executeClusterVM between them emits no opcode 23), so the stamp is maximally local
+  // and temporally exact.
+  //
+  // WHY A BLEND, NOT A GATE. A hard gate would worsen the very cold-start Pe34 tried to
+  // fix: until a random mutation produces a VM that emits opcode 23, the signal would be
+  // zero and relationalWeight would have nothing to act on — sharper signal, colder
+  // start, opposite of intent. So the sharpening is itself a genome parameter, defaulting
+  // low. relationalUseBias=0 → every re-encounter counts weight 1 → Pe34 EXACTLY (exact
+  // recovery, this is provable from w=1). =1 → only VM-consulted re-encounters score.
+  // Between → continuous, so selection sees a smooth landscape, not a cliff. Whether
+  // sharpening toward use is worth a colder start becomes a per-lineage question the
+  // shadow sim and lineage selection adjudicate — same idiom as behaviorGradientBias
+  // splitting from gradientBias (Pe33) and shadowExploreRate freed (Pe30b).
+  //
+  // WHAT TELLS US IT WORKED. The HUD rel tag exposes ub (this param), q (quality),
+  // qf (fraction of counted weight from VM-consulted re-encounters — THE diagnostic:
+  // qf→0 with ub high means the loop never closed; qf climbing means it did) and the
+  // monotonic opcode-23 emit total. ub pinning at 0 is a real answer too: the system
+  // reporting passive accuracy was the better deal. Either outcome is informative —
+  // the property a good Pe-layer must have.
+  relationalUseBias:0.2,            // 0=Pe34 exactly, 1=only VM-consulted models score. Evolvable.
+
   // ═══ LAYER 18: RATIFICATION — clusters carry scenarios upward (Pe28) ═══
   // Pe27 made the imagination bank evolvable, but scenarios still live and die strictly
   // within the global lineage's mutation cycle. A scenario that produced a great cluster
@@ -755,6 +799,7 @@ const vmPhenotype={
 // Track peak resonance bond each tick for HGT gating
 let peakBondThisTick=0;
 let hgtEventsTotal=0;
+let op23EmitTotal=0; // Pe35 Layer 24b: monotonic count of VM opcode-23 emissions (HUD diagnostic)
 let globalCommons=0; // shared register — any particle can read, strongest writer per tick wins
 let commonsWriter=-1; // index of particle that wrote this tick
 let commonsStrength=0; // strength of current tick's write
@@ -872,12 +917,23 @@ const NM_DIMS=4;    // [tend0, tend1, phaseAlign, resonance] per partner
 const pNeighborModels=new Float32Array(CAP*NM_SLOTS*NM_DIMS); // compressed partner models
 const pNeighborIDs=new Int16Array(CAP*NM_SLOTS).fill(-1);     // which particle in each slot
 const pNeighborFresh=new Float32Array(CAP*NM_SLOTS);          // freshness (0=stale, 1=fresh)
+// ═══ Pe35 Layer 24b: VM-QUERY STAMP ═══
+// Records, per particle, the last partner its VM consulted via opcode 23 and the tick
+// it did so. updateNeighborModel reads this to weight error contribution by actual use.
+// Tick-stamped, so stale entries auto-invalidate as tick advances — no reset needed
+// across extinction (tick is monotonic; exact-equality compare). Defensive -1 fill.
+const pVmQueryPartner=new Int16Array(CAP).fill(-1); // partner index VM last queried
+const pVmQueryTick=new Int32Array(CAP).fill(-1);    // tick of that query
 
 // ═══ Pe34 Layer 24: PREDICTION-ERROR ACCUMULATOR ═══
 // Filled by updateNeighborModel each time a re-encounter happens (slot already held j).
 // Drained and reset by the fitness compute each tick. Mean error → quality score.
 let predictionErrorAccum=0;
 let predictionUpdateCount=0;
+// Pe35 Layer 24b: weight that came specifically from VM-consulted re-encounters.
+// qf = predictionQueriedCount / predictionUpdateCount is THE loop-closure diagnostic.
+let predictionQueriedCount=0;
+let lastPredQuality=0,lastPredQF=0; // Pe35: most-recent drain snapshot for the HUD
 // Cache: lineage color per field cell, rebuilt on cluster detection cycles (not every frame)
 let fieldLineageCache=new Uint8Array(FIELD_W*FIELD_H*3); // R,G,B per cell
 const EL=4;
@@ -954,6 +1010,7 @@ function encodeGenome(){
     npi:+(genome.neighborPredictionInfluence||0.15).toFixed(4),
     mrt:+(genome.mutualRecognitionThresh||0.5).toFixed(4),
     rw:+(genome.relationalWeight||0.15).toFixed(4), // Pe34 Layer 24: relational fitness weight
+    rub:+((typeof genome.relationalUseBias==='number'?genome.relationalUseBias:0.2)).toFixed(4), // Pe35 Layer 24b: use-gate sharpening (0 is a valid evolved value — must not be ||-erased)
     // Pe27 Layer 17: shadow scenario bank. Compact tuple per entry.
     // [e,k,r,c,t, wins, age, srcIdx, creditTrace(Pe29), f,p,a,tb,sp,sm,mp(Pe32)]
     // srcIdx: 0=seed,1=child,2=random,3=fossil(Pe28)
@@ -1058,6 +1115,7 @@ function decodeGenome(data){
     if(typeof g.npi==='number')genome.neighborPredictionInfluence=g.npi;
     if(typeof g.mrt==='number')genome.mutualRecognitionThresh=g.mrt;
     if(typeof g.rw==='number')genome.relationalWeight=g.rw; // Pe34 Layer 24
+    if(typeof g.rub==='number')genome.relationalUseBias=g.rub; // Pe35 Layer 24b
     // Pe27 Layer 17: shadow scenario bank
     if(Array.isArray(g.sb)){
       genome.shadowScenarioBank=g.sb.map(a=>({
@@ -1108,6 +1166,7 @@ function sanitizeGenome(){
   genome.neighborPredictionInfluence=Math.max(0,Math.min(0.5,finiteOr(genome.neighborPredictionInfluence,0.15)));
   genome.mutualRecognitionThresh=Math.max(0,Math.min(1,finiteOr(genome.mutualRecognitionThresh,0.5)));
   genome.relationalWeight=Math.max(0,Math.min(1,finiteOr(genome.relationalWeight,0.15))); // Pe34 Layer 24
+  genome.relationalUseBias=Math.max(0,Math.min(1,finiteOr(genome.relationalUseBias,0.2))); // Pe35 Layer 24b
   if(!Array.isArray(genome.objCreditTrace)||genome.objCreditTrace.length<4)genome.objCreditTrace=[0,0,0,0];
   genome.objCreditTrace=genome.objCreditTrace.slice(0,4).map(v=>Math.max(-1,Math.min(1,finiteOr(v,0))));
   if(!Array.isArray(genome.prevObjValues)||genome.prevObjValues.length<4)genome.prevObjValues=[0,0,0,0];
@@ -3214,6 +3273,7 @@ function mutateGenome(){
   genome.neighborPredictionInfluence=Math.max(0,Math.min(0.5,maybe(genome.neighborPredictionInfluence,0,0.5,0.04)));
   genome.mutualRecognitionThresh=Math.max(0,Math.min(1,maybe(genome.mutualRecognitionThresh,0,1,0.06)));
   genome.relationalWeight=Math.max(0,Math.min(1,maybe(genome.relationalWeight,0,1,0.05))); // Pe34 Layer 24
+  genome.relationalUseBias=Math.max(0,Math.min(1,maybe(genome.relationalUseBias,0,1,0.05))); // Pe35 Layer 24b
 
   // ═══ Pe26 Layer 16c: CLUSTER UPWARD SIGNAL injection ═══
   // Drain the upstream buffer — soft-inject successful cluster motifs into the global VM.
@@ -3653,6 +3713,7 @@ function checkExtinction(){
     // model arrays will be stale references to particles that may not exist anymore.
     predictionErrorAccum=0;
     predictionUpdateCount=0;
+    predictionQueriedCount=0; // Pe35 Layer 24b
     genomeArchive.length=0;
     genome.currentStableStreak=0;
     saveGenome();
@@ -4233,6 +4294,13 @@ function executeVM(i,j,sim,d){
         const predInf=genome.neighborPredictionInfluence||0;
         if(predInf>0.001){
           vmRegs[di]=predictPartnerResponse(i,j,sim,phaseAlign,proximity)*predInf*(k||1);
+          // Pe35 Layer 24b: the VM reached for its model of j this tick. Stamp it so
+          // updateNeighborModel(i,j) — called five lines downstream in the same loop
+          // iteration — can weight j's error contribution by actual consultation.
+          // executeClusterVM runs between but emits no opcode 23, so the stamp is exact.
+          pVmQueryPartner[i]=j;
+          pVmQueryTick[i]=tick;
+          op23EmitTotal++;
         }
       }break;
     }
@@ -4613,7 +4681,7 @@ function updateNeighborModel(i,j,sim,phaseAlign){
   // EMA update — blend observed state into stored model (α=0.2)
   const mBase=(i*NM_SLOTS+targetSlot)*NM_DIMS;
   const alpha=0.2;
-  // ═══ Pe34 Layer 24: PREDICTION ERROR MEASUREMENT ═══
+  // ═══ Pe34 Layer 24 / Pe35 Layer 24b: USE-WEIGHTED PREDICTION ERROR ═══
   // Only count re-encounters (slot already held j and has non-trivial freshness). First
   // contact and post-eviction overwrites would have garbage "predicted" values and
   // would pollute the quality signal with new-acquaintance noise.
@@ -4622,8 +4690,19 @@ function updateNeighborModel(i,j,sim,phaseAlign){
     const e1=Math.abs(tend[j*DIMS+1]-pNeighborModels[mBase+1]);
     const e2=Math.abs(phaseAlign-pNeighborModels[mBase+2]);
     const e3=Math.abs(sim-pNeighborModels[mBase+3]);
-    predictionErrorAccum+=(e0+e1+e2+e3)*0.25; // mean error across 4 dims
-    predictionUpdateCount++;
+    const err=(e0+e1+e2+e3)*0.25; // mean error across 4 dims
+    // Pe35 Layer 24b: did i's VM actually consult its model of j this tick?
+    // Forward call (i,j) at the loop: executeVM(i,j) ran upstream this iteration —
+    // stamp is exact. Reverse call (j,i): j's VM never ran against i (j>i guard),
+    // so this is structurally false → reverse leg fades under sharpening. Intended.
+    const queried=(pVmQueryPartner[i]===j && pVmQueryTick[i]===tick);
+    // w=1 for consulted models; unconsulted decay by relationalUseBias.
+    // bias=0 → w=1 always → Pe34 exactly (provable). bias=1 → only consulted score.
+    const bias=Math.max(0,Math.min(1,genome.relationalUseBias||0));
+    const w=queried?1:(1-bias);
+    predictionErrorAccum+=err*w;
+    predictionUpdateCount+=w;
+    if(queried)predictionQueriedCount+=1;
   }
   pNeighborIDs[base+targetSlot]=j;
   pNeighborModels[mBase+0]+=alpha*(tend[j*DIMS+0]-pNeighborModels[mBase+0]);
@@ -5318,8 +5397,13 @@ function loop(){
       const meanErr=predictionErrorAccum/predictionUpdateCount;
       predictionQuality=Math.max(0,1-meanErr/0.5);
     }
+    // Pe35 Layer 24b: snapshot quality + queried-fraction for the HUD before reset.
+    // qf is the fraction of counted error-weight that came from VM-consulted models.
+    lastPredQuality=predictionQuality;
+    lastPredQF=predictionUpdateCount>0?predictionQueriedCount/predictionUpdateCount:0;
     predictionErrorAccum=0;
     predictionUpdateCount=0;
+    predictionQueriedCount=0; // Pe35 Layer 24b
     const fitness=(selfModel.stability*w[0]+selfModel.diversity*w[1]+selfModel.avgCoherence*w[2]+
       (clusters.filter(c=>c.persistAge<2).length/Math.max(1,clusters.length))*w[3]+
       realSensorScore*realSensorWeight+
@@ -5416,6 +5500,12 @@ function loop(){
     const _nmr=genome.neighborModelUpdateRate||0;
     const _npi=genome.neighborPredictionInfluence||0;
     const mrTag=(_nmr>0.05||_npi>0.01)?' | mr:'+_nmr.toFixed(2)+'u'+_npi.toFixed(2)+'p':'';
+    // Pe35 Layer 24b: relational diagnostic. Gated so it only appears when the layer is
+    // doing something. qf is the loop-closure read: near 0 with ub high = loop never
+    // closed (passive accuracy still paying); climbing = VM consultation is earning it.
+    const _relW=Math.max(0,Math.min(1,genome.relationalWeight||0));
+    const _relUB=Math.max(0,Math.min(1,genome.relationalUseBias||0));
+    const relTag=(_relW>0.001)?` | rel:w${_relW.toFixed(2)} ub${_relUB.toFixed(2)} q${lastPredQuality.toFixed(2)} qf${lastPredQF.toFixed(2)} o23:${op23EmitTotal}`:'';
     let cgTag='';
     const cgClusters=clusters.filter(c=>c.clusterGenome&&c.persistAge>2);
     if(cgClusters.length>0){
@@ -5437,7 +5527,7 @@ function loop(){
       const totalUses=uas.reduce((s,a)=>s+(a.uses|0),0);
       uaTag=` | ua:${active}/${uas.length} used:${totalUses}`;
     }
-    genEl.textContent=`gen${genome.generation} ${genome.extinctions}☠ t${genome.totalTicks} | ${clusters.length}cl(${clVMActive}vm${budCount>0?','+budCount+'bud':''}) ${livingLin}lin fit:${currentFitness.toFixed(2)} stb:${(selfModel.stability||0).toFixed(2)} | vm:${genome.vmProgram.length}inst ${nSensors}sns ${hgtEventsTotal}hgt | pop:${N}/${CAP} fld:${fieldTotal.toFixed(0)}${fTrend<-0.01?'↓':fTrend>0.01?'↑':'~'} risk:${cRisk.toFixed(2)} | ⟲${rInf.toFixed(2)} ${reflexClusters}rc${netTag}${cgTag}${uaTag}${(genome.eventLog&&genome.eventLog.length)?' ev:'+genome.eventLog.length:''}${gradTag}${mrTag}`;
+    genEl.textContent=`gen${genome.generation} ${genome.extinctions}☠ t${genome.totalTicks} | ${clusters.length}cl(${clVMActive}vm${budCount>0?','+budCount+'bud':''}) ${livingLin}lin fit:${currentFitness.toFixed(2)} stb:${(selfModel.stability||0).toFixed(2)} | vm:${genome.vmProgram.length}inst ${nSensors}sns ${hgtEventsTotal}hgt | pop:${N}/${CAP} fld:${fieldTotal.toFixed(0)}${fTrend<-0.01?'↓':fTrend>0.01?'↑':'~'} risk:${cRisk.toFixed(2)} | ⟲${rInf.toFixed(2)} ${reflexClusters}rc${netTag}${cgTag}${uaTag}${(genome.eventLog&&genome.eventLog.length)?' ev:'+genome.eventLog.length:''}${gradTag}${mrTag}${relTag}`;
   }
 
   const renderEvery=N>1000?4:N>500?3:N>200?2:1;
