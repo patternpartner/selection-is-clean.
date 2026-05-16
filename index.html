@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
-<title>Selection פ 37b — Attribution (readout recalibrated)</title>
+<title>Selection פ 38 — Attribution Depth</title>
 <style>
 *{margin:0;padding:0;box-sizing:border-box}
 html,body{height:100%;overflow:hidden;background:#020204;touch-action:none;cursor:crosshair}
@@ -1006,6 +1006,12 @@ const pSignalReceive=new Float32Array(CAP);  // accumulated incoming signals
 // PREVIOUS tick's fully-formed emission field makes the channel deterministic and gives
 // it a clean one-tick propagation delay — biologically sensible, order-independent.
 const pSignalEmitPrev=new Float32Array(CAP); // last tick's final emissions (read by propagation)
+// Pe38 Layer 27: per-particle net signal position. EMA of (|emit| - |receive|) each tick,
+// normalized to [-1,1]. Positive → net broadcaster; negative → net listener.
+// Feeds into VM via signalRoleInfluence genome param, allowing role-conditioned behavior
+// to emerge. The VM sees its own communication role as data — it can evolve to act
+// differently depending on whether it has been talking or listening recently.
+const pSignalNetPos=new Float32Array(CAP);
 // Pe37: honest loop-closure metric. Pe36's util was avgEmit * signalInfluence — emission
 // weighted by a genome knob, not a measurement of whether anything LISTENS. This counts
 // actual opcode-25 (SIGNAL_READ) executions, mirroring how Pe34/35 tracked opcode-23.
@@ -1105,6 +1111,8 @@ function encodeGenome(){
     // Pe37 Layer 26: attribution. mcb = feedback gate; mct = credit traces in
     // META_LAYER_PARAMS order (compact array, traces only — deltas are transient).
     mcb:+(genome.metaCreditBias||0).toFixed(4),
+    // Pe38 Layer 27: search width bias gate.
+    msb:+(genome.metaSearchBias||0).toFixed(4),
     mct:META_LAYER_PARAMS.map(p=>{
       const e=genome.metaCredit&&genome.metaCredit[p];
       return +((e&&e.trace)||0).toFixed(3);
@@ -1191,6 +1199,8 @@ function decodeGenome(data){
     if(genome.netMotifRate===undefined)genome.netMotifRate=0.005;
     if(genome.netInscribeRate===undefined)genome.netInscribeRate=0.004;
     if(genome.netReceptivity===undefined)genome.netReceptivity=0.5;
+    if(genome.metaSearchBias===undefined)genome.metaSearchBias=0.15;      // Pe38
+    if(genome.signalRoleInfluence===undefined)genome.signalRoleInfluence=0.1; // Pe38
     genome.generation=(g.g||0)+1;
     genome.totalTicks=g.T||0;
     genome.lineage=g.L||[];
@@ -1218,12 +1228,15 @@ function decodeGenome(data){
     if(typeof g.sec==='number')genome.signalEmitCost=g.sec;
     if(typeof g.sinf==='number')genome.signalInfluence=g.sinf;
     if(typeof g.sdec==='number')genome.signalDecay=g.sdec;
+    if(typeof g.sri==='number')genome.signalRoleInfluence=g.sri; // Pe38 Layer 27
     // Pe37 Layer 26: attribution
     if(typeof g.mcb==='number')genome.metaCreditBias=g.mcb;
+    if(typeof g.msb==='number')genome.metaSearchBias=g.msb; // Pe38 Layer 27: search width bias
     if(Array.isArray(g.mct)){
       const reg={};
       META_LAYER_PARAMS.forEach((p,idx)=>{
-        reg[p]={trace:finiteOr(g.mct[idx],0),pendingDelta:0,fitAtApply:0};
+        // Pe38: traceSlow and conf rebuild from zero — cheap to reconstruct, no need to save.
+        reg[p]={trace:finiteOr(g.mct[idx],0),traceSlow:0,conf:0,pendingDelta:0,fitAtApply:0};
       });
       genome.metaCredit=reg;
     }
@@ -1285,6 +1298,11 @@ function sanitizeGenome(){
   // Pe37 Layer 26: attribution defaults. metaCreditBias bounded [0,0.5]. metaCredit
   // is rebuilt as a clean per-param registry; any persisted traces are preserved.
   genome.metaCreditBias=Math.max(0,Math.min(0.5,finiteOr(genome.metaCreditBias,0.1)));
+  // Pe38 Layer 27: search width bias — controls how much confidence scales mutation width.
+  // Bounded [0,1]. Plain maybe() in mutation — must not self-bias via meta feedback.
+  genome.metaSearchBias=Math.max(0,Math.min(1,finiteOr(genome.metaSearchBias,0.15)));
+  // Pe38 Layer 27: signal role influence — how strongly net signal role feeds into VM.
+  genome.signalRoleInfluence=Math.max(0,Math.min(1,finiteOr(genome.signalRoleInfluence,0.1)));
   {
     const src=(genome.metaCredit&&typeof genome.metaCredit==='object')?genome.metaCredit:{};
     const fresh={};
@@ -1292,6 +1310,10 @@ function sanitizeGenome(){
       const e=src[p];
       fresh[p]={
         trace:Math.max(-1,Math.min(1,finiteOr(e&&e.trace,0))),
+        // Pe38: slow EMA and derived confidence. traceSlow rebuilds from zero on load —
+        // it will stabilize within a few hundred mutation cycles, cheap to reconstruct.
+        traceSlow:Math.max(-1,Math.min(1,finiteOr(e&&e.traceSlow,0))),
+        conf:Math.max(0,Math.min(1,finiteOr(e&&e.conf,0))),
         pendingDelta:finiteOr(e&&e.pendingDelta,0),
         fitAtApply:finiteOr(e&&e.fitAtApply,0)
       };
@@ -2005,14 +2027,33 @@ let lastShadowNudgeDir=[0,0,0,0,0,0,0,0,0,0,0,0];
 // sees ONE fitness number — it cannot tell which of the 15 a fitness change is due to.
 // A load-bearing param and an inert one drift together; the useful one is never
 // specifically rewarded. The marginal layer's signal is swamped.
-// Pe37 turns the codebase's own credit primitive on the architecture itself: every
-// listed param gets a creditTrace — an EMA of sign(its last perturbation) * sign(the
-// fitness change that followed). Params whose movements track fitness accumulate credit;
-// inert params decay toward zero. This is observational first (a real diagnostic of
-// which layers earn their keep) and, gated by metaCreditBias, gently accelerative.
-// The list is the layer GATES specifically — the knobs each Pe-layer added to enable
-// or atrophy itself. Not the core engine params (mutationRate etc.), which aren't
-// "layers" in this sense.
+// ═══ Pe38 LAYER 27: ATTRIBUTION DEPTH ═══
+// Pe37 built the attribution instrument: 15 layer-gate params, each with a credit trace
+// tracking sign(perturbation) × sign(fitness change). Three gaps remained:
+//
+// Gap 1 — CONCURRENT NOISE. Every mutation cycle perturbs many params simultaneously.
+// When 15 params all move at once, the fitness signal is attributable to none in particular.
+// Pe38 isolation-weights each param's attribution update by how many params were perturbed
+// concurrently — isolated perturbations carry much stronger signal than fully concurrent ones.
+// The credit traces become more trustworthy signals.
+//
+// Gap 2 — SINGLE TIMESCALE. Pe37's EMA (0.97 decay) can't distinguish "reliably positive
+// credit" from "recently lucky." Pe38 adds a slow EMA (0.993 decay, traceSlow) alongside
+// the fast one. Confidence = agreement between timescales. High confidence means the signal
+// has been consistent — not a recent artifact. metaMaybe uses confidence to scale mutation
+// width: confident positive credit → narrow search (exploit the optimum). Confident negative
+// credit → wide search (escape faster). Near-zero confidence → standard width regardless.
+// New evolvable genome param: metaSearchBias. Controls width adjustment depth.
+// Mutated by plain maybe() — same reason as metaCreditBias: must not self-bias.
+//
+// Gap 3 — SIGNAL ROLE BLINDNESS. The signal channel (Pe36) treats all particles the same:
+// any particle can emit or receive. But net emitters and net listeners occupy different
+// positions in the information network; their optimal behavioral strategies differ.
+// pSignalNetPos[i] tracks each particle's rolling net signal role — broadcaster (+1) vs
+// listener (-1). This feeds into the VM via signalRoleInfluence (an evolvable, meta-tracked
+// layer gate). The VM can evolve to condition behavior on role without the designer specifying
+// what that conditioning should look like. signalRoleInfluence is in META_LAYER_PARAMS —
+// the attribution system will tell us whether role-awareness earns its keep.
 const META_LAYER_PARAMS=[
   'creditLearnRate',            // Pe25
   'gradientBias',               // Pe26
@@ -2028,7 +2069,8 @@ const META_LAYER_PARAMS=[
   'relationalUseBias',          // Pe35
   'signalEmitCost',             // Pe36
   'signalInfluence',            // Pe36
-  'signalDecay'                 // Pe36
+  'signalDecay',                // Pe36
+  'signalRoleInfluence'         // Pe38
 ];
 // Short HUD labels — keep the attribution tag compact.
 const META_LAYER_SHORT={
@@ -2037,7 +2079,7 @@ const META_LAYER_SHORT={
   behaviorGradientBias:'bgb',neighborModelUpdateRate:'nmu',
   neighborPredictionInfluence:'npi',mutualRecognitionThresh:'mrt',
   relationalWeight:'rw',relationalUseBias:'rub',signalEmitCost:'sec',
-  signalInfluence:'sinf',signalDecay:'sdec'
+  signalInfluence:'sinf',signalDecay:'sdec',signalRoleInfluence:'sri'
 };
 
 // Pe32: 12D Euclidean distance between two scenario entries.
@@ -3381,35 +3423,69 @@ function mutateGenome(){
 
   // Attribution phase: the perturbation captured LAST cycle has now run for an
   // interval; attribute the fitness change since then. EMA, clamped [-1,1].
+  // Pe38: isolation-weight the attribution signal by concurrent perturbation count.
+  // When many params move simultaneously, each one's attribution is noisier —
+  // weight it down proportionally. Isolated perturbations carry the cleanest signal.
+  let _activePerturbCount=0;
+  for(const p of META_LAYER_PARAMS){
+    const _e=mc[p];
+    if(_e&&Math.abs(_e.pendingDelta||0)>1e-6)_activePerturbCount++;
+  }
+  // Scale: 1.0 when only one param perturbed, decays toward 0.2 as all 16 move together.
+  const _isoWeight=Math.max(0.2,1-(_activePerturbCount-1)*0.055);
+
   for(const p of META_LAYER_PARAMS){
     const e=mc[p];
+    if(!e)continue;
     if(Math.abs(e.pendingDelta)>1e-6){
       const dF=currentFitness-(e.fitAtApply||0);
       if(isFinite(dF)&&dF!==0){
-        const attribution=(e.pendingDelta>0?1:-1)*(dF>0?1:-1);
+        const attribution=(e.pendingDelta>0?1:-1)*(dF>0?1:-1)*_isoWeight;
         e.trace=e.trace*0.97+attribution*0.03;
         if(e.trace>1)e.trace=1;else if(e.trace<-1)e.trace=-1;
+        // Pe38: slow EMA tracks long-term credit direction. Divergence from fast
+        // EMA → low confidence (volatile signal). Agreement → high confidence.
+        if(e.traceSlow===undefined)e.traceSlow=0;
+        e.traceSlow=e.traceSlow*0.993+attribution*0.007;
+        if(e.traceSlow>1)e.traceSlow=1;else if(e.traceSlow<-1)e.traceSlow=-1;
       }
       e.pendingDelta=0; // consumed
     }else{
       // No movement last cycle — bleed slowly so a frozen gate stops reading as
       // load-bearing. Honest diagnostic over sticky history.
       e.trace*=0.995;
+      if(e.traceSlow!==undefined)e.traceSlow*=0.998;
     }
+    // Pe38: confidence — agreement between fast and slow EMA.
+    // 1.0 = both fully agree (reliable); 0.0 = opposite sign (volatile or transitioning).
+    const tS=e.traceSlow||0;
+    e.conf=1-Math.abs(e.trace-tS)/(Math.abs(e.trace)+Math.abs(tS)+0.05);
   }
 
   // metaMaybe: like maybe(), but a tracked param's perturbation leans toward its
   // credited direction when metaCreditBias>0. Same lean-not-lock shape as gradMaybe —
   // the random component is only partially attenuated, never replaced. mcBias=0 → maybe().
+  // Pe38: also scales mutation WIDTH by attribution confidence × metaSearchBias.
+  // Confident positive credit → narrower search (exploit the local optimum).
+  // Confident negative credit → wider search (escape current value faster).
+  // Low confidence → standard width regardless of trace sign (don't trust noisy readings).
   function metaMaybe(val,magnitude,name){
     if(Math.random()>rate)return val;
     const randomStep=(Math.random()-0.5)*magnitude*scale;
     const tr=mc[name]?mc[name].trace:0;
+    const conf=mc[name]?(mc[name].conf||0):0;
+    // Pe38: width scaling — only activates when we have confident attribution.
+    // tr positive + high conf → widthScale < 1 (narrow, exploit).
+    // tr negative + high conf → widthScale > 1 (wide, escape).
+    const sb=Math.max(0,Math.min(1,genome.metaSearchBias||0));
+    const widthScale=sb>0.001&&conf>0.15
+      ?Math.max(0.3,Math.min(2.5,1-tr*conf*sb*1.5))
+      :1.0;
     if(mcBias<=0.001||tr===0){
-      const n=val+randomStep;return isFinite(n)?n:val;
+      const n=val+randomStep*widthScale;return isFinite(n)?n:val;
     }
     const lean=tr*mcBias; // tr in [-1,1], mcBias in [0,0.5] → lean in [-0.5,0.5]
-    const step=randomStep*(1-Math.abs(lean)*0.6)+Math.sign(tr)*magnitude*scale*Math.abs(lean)*0.5;
+    const step=randomStep*widthScale*(1-Math.abs(lean)*0.6)+Math.sign(tr)*magnitude*scale*Math.abs(lean)*0.5;
     const n=val+step;return isFinite(n)?n:val;
   }
   // Snapshot tracked-param values BEFORE this cycle's mutations so the capture phase
@@ -3497,6 +3573,10 @@ function mutateGenome(){
   genome.signalEmitCost=Math.max(0,Math.min(0.05,metaMaybe(genome.signalEmitCost,0.003,'signalEmitCost')));
   genome.signalInfluence=Math.max(0,Math.min(1,metaMaybe(genome.signalInfluence,0.05,'signalInfluence')));
   genome.signalDecay=Math.max(0,Math.min(0.5,metaMaybe(genome.signalDecay,0.04,'signalDecay')));
+  // Pe38 Layer 27: signal role influence — how strongly net emitter/listener position
+  // feeds into VM registers. In META_LAYER_PARAMS, so attribution tracks whether
+  // role-awareness actually earns its keep. The system can evolve it to zero.
+  genome.signalRoleInfluence=Math.max(0,Math.min(1,metaMaybe(genome.signalRoleInfluence,0.05,'signalRoleInfluence')));
 
   // ═══ Pe26 Layer 16c: CLUSTER UPWARD SIGNAL injection ═══
   // Drain the upstream buffer — soft-inject successful cluster motifs into the global VM.
@@ -3617,6 +3697,10 @@ function mutateGenome(){
   // metaMaybe — a parameter that controls credit feedback must not bias its own
   // perturbation by its own credit. Bounded [0,0.5]; 0 = observational-only (Pe36).
   genome.metaCreditBias=Math.max(0,Math.min(0.5,maybe(genome.metaCreditBias,0,0.5,0.03)));
+  // Pe38 Layer 27: search width bias. Also plain maybe() for same reason — a param that
+  // controls how much attribution confidence shapes search width must not itself be shaped
+  // by that same confidence. Bounded [0,1]; 0 = direction-lean only (Pe37 exactly).
+  genome.metaSearchBias=Math.max(0,Math.min(1,maybe(genome.metaSearchBias,0,1,0.04)));
   genome.interactionRadius=maybe(genome.interactionRadius,25,120,5);
   genome.densityCostK=maybe(genome.densityCostK,0.000003,0.0003,0.00003);
   genome.fieldBirthGate=maybe(genome.fieldBirthGate,0.01,5.0,0.05);
@@ -4429,6 +4513,14 @@ function executeVM(i,j,sim,d){
     for(let r=6;r<=9;r++)vmRegs[r]=Math.max(-8,Math.min(8,vmRegs[r]));
   }
 
+  // Pe38 Layer 27: signal role register. Net emitter/listener position feeds into vmRegs[10]
+  // alongside the existing localRes signal. The VM can evolve to condition behavior on role
+  // without the designer specifying what that conditioning looks like.
+  const sRI=genome.signalRoleInfluence||0;
+  if(sRI>0.001){
+    vmRegs[10]=Math.max(-8,Math.min(8,vmRegs[10]+pSignalNetPos[i]*sRI));
+  }
+
   pMem[i*MEM_SIZE+6]=localRes[i]*4;
   pMem[i*MEM_SIZE+7]=Math.min(5,page[i]/250);
 
@@ -5127,6 +5219,12 @@ function updateParticles(){
     // propagation to read, THEN reset. This is the double-buffer swap.
     pSignalEmitPrev[i]=pSignalEmit[i];
     pSignalEmit[i]=0;
+    // Pe38 Layer 27: update net signal role position.
+    // EMA of (|emitted| - |received|) normalized to [-1,1].
+    // Positive → net broadcaster this tick; negative → net listener.
+    // pSignalEmitPrev holds this tick's final emission (already snapshotted above).
+    const rawNet=Math.max(-1,Math.min(1,(Math.abs(pSignalEmitPrev[i])-Math.abs(pSignalReceive[i]*(1/(1-sigDecay+1e-6))))*0.5));
+    pSignalNetPos[i]=pSignalNetPos[i]*0.95+rawNet*0.05;
     computeVisuals(i);
   }
 }
@@ -5829,53 +5927,48 @@ function loop(){
     let sigTag='';
     const _sigInf=genome.signalInfluence||0;
     if(_sigInf>0.001){
-      let sumEmit=0,sumRecv=0,emitCount=0,recvCount=0;
+      let sumEmit=0,sumRecv=0,sumNetPos=0,emitCount=0,recvCount=0;
       for(let i=0;i<N;i++){
         if(!palive[i])continue;
         sumEmit+=Math.abs(pSignalEmit[i]);
         sumRecv+=Math.abs(pSignalReceive[i]);
+        sumNetPos+=pSignalNetPos[i];
         if(Math.abs(pSignalEmit[i])>0.01)emitCount++;
         if(Math.abs(pSignalReceive[i])>0.01)recvCount++;
       }
       const avgEmit=N>0?sumEmit/N:0;
       const avgRecv=N>0?sumRecv/N:0;
+      const avgNetPos=N>0?sumNetPos/N:0;
       const util=avgEmit*_sigInf; // utilization: emission weighted by influence
       if(util>0.001){
         // Pe37: rd = cumulative real SIGNAL_READ executions (honest loop closure —
         // emission AND listening, not emission weighted by a genome knob).
-        sigTag=` | sig:e${avgEmit.toFixed(2)} r${avgRecv.toFixed(2)} u${util.toFixed(3)} ${emitCount}→${recvCount} rd${signalReadCount}`;
+        // Pe38: rol = population-avg net role (+1 all broadcasters, -1 all listeners).
+        sigTag=` | sig:e${avgEmit.toFixed(2)} r${avgRecv.toFixed(2)} u${util.toFixed(3)} ${emitCount}→${recvCount} rd${signalReadCount} rol${avgNetPos.toFixed(2)}`;
       }
     }
-    // ═══ Pe37b Layer 26: ATTRIBUTION diagnostic (recalibrated) ═══
-    // Pe37 used an absolute |trace|>0.12 cutoff. In a 15-way distributed credit
-    // signal the per-gate traces are individually small (±0.05–0.08) but structured
-    // and interpretable — an absolute bar hides exactly the signal the layer exists
-    // to show, printing 0/15 as if the architecture were inert. Self-calibrating
-    // instead: "load-bearing" = gates whose |trace| exceeds the mean |trace| (the
-    // above-average contributors, always meaningful regardless of overall magnitude),
-    // plus a concentration ratio cc = max|trace| / mean|trace| that says whether
-    // credit is peaked (resolvable: one gate dominates) or flat (cc→1: genuinely
-    // distributed/unresolvable). Top +/- gates shown by rank, always.
+    // ═══ Pe37 Layer 26 / Pe38 Layer 27: ATTRIBUTION diagnostic ═══
+    // Answers the question Pe36's review raised: can selection still resolve a meta-vector?
+    // Pe38 adds avg confidence (c) and search bias (w) to the display.
     let attrTag='';
     if(genome.metaCredit){
-      let sumAbs=0,n=0,maxAbs=0,best=null,worst=null;
-      const traces=[];
+      let lo=0,best=null,worst=null,avgConf=0,confCount=0;
       for(const p of META_LAYER_PARAMS){
         const e=genome.metaCredit[p];if(!e)continue;
-        const tr=e.trace||0,a=Math.abs(tr);
-        traces.push({p,tr,a});
-        sumAbs+=a;n++;if(a>maxAbs)maxAbs=a;
+        const tr=e.trace||0;
+        const co=e.conf||0;
+        if(Math.abs(tr)>0.12)lo++;
+        avgConf+=co;confCount++;
         if(best===null||tr>best.tr)best={p,tr};
         if(worst===null||tr<worst.tr)worst={p,tr};
       }
-      if(n>0&&best&&worst){
-        const meanAbs=sumAbs/n;
-        let above=0;for(const t of traces)if(t.a>meanAbs&&t.a>1e-4)above++;
-        const cc=meanAbs>1e-6?(maxAbs/meanAbs):0; // 1≈flat, higher≈peaked
+      if(best&&worst){
         const sb=META_LAYER_SHORT[best.p]||best.p;
         const sw=META_LAYER_SHORT[worst.p]||worst.p;
         const mb=(genome.metaCreditBias||0);
-        attrTag=` | attr:${above}/${n}>μ cc${cc.toFixed(1)}${mb>0.001?' b'+mb.toFixed(2):''} +${sb}${best.tr>=0?'+':''}${best.tr.toFixed(2)} -${sw}${worst.tr.toFixed(2)}`;
+        const msb=(genome.metaSearchBias||0);
+        const ac=confCount>0?(avgConf/confCount):0;
+        attrTag=` | attr:${lo}/${META_LAYER_PARAMS.length} c${ac.toFixed(2)}${mb>0.001?' b'+mb.toFixed(2):''}${msb>0.01?' w'+msb.toFixed(2):''} +${sb}${best.tr>=0?'+':''}${best.tr.toFixed(2)} -${sw}${worst.tr.toFixed(2)}`;
       }
     }
     genEl.textContent=`gen${genome.generation} ${genome.extinctions}☠ t${genome.totalTicks} | ${clusters.length}cl(${clVMActive}vm${budCount>0?','+budCount+'bud':''}) ${livingLin}lin fit:${currentFitness.toFixed(2)} stb:${(selfModel.stability||0).toFixed(2)} | vm:${genome.vmProgram.length}inst ${nSensors}sns ${hgtEventsTotal}hgt | pop:${N}/${CAP} fld:${fieldTotal.toFixed(0)}${fTrend<-0.01?'↓':fTrend>0.01?'↑':'~'} risk:${cRisk.toFixed(2)} | ⟲${rInf.toFixed(2)} ${reflexClusters}rc${netTag}${cgTag}${uaTag}${(genome.eventLog&&genome.eventLog.length)?' ev:'+genome.eventLog.length:''}${gradTag}${mrTag}${relTag}${sigTag}${attrTag}`;
