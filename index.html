@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
-<title>Selection פ 40 — Atrophy</title>
+<title>Selection פ 42 — The Mirror Speaks</title>
 <style>
 *{margin:0;padding:0;box-sizing:border-box}
 html,body{height:100%;overflow:hidden;background:#020204;touch-action:none;cursor:crosshair}
@@ -264,7 +264,7 @@ const DIMS=5; // dim 4 is blank — no hardcoded role. System decides what it me
 const MEM_SIZE=8; // per-particle persistent memory. Particles become stateful agents.
 const MAX_PLASMID=4; // max instructions per particle's personal mobile DNA
 const PLASMID_SLOTS=MAX_PLASMID*4; // each instruction is [op,src,dst,k] = 4 values
-const OPCODE_COUNT=26; // VM opcodes 0..25: adding SIGNAL_EMIT (24) and SIGNAL_READ (25) in Pe36
+const OPCODE_COUNT=27; // VM opcodes 0..26: adding META_READ (26) in Pe42 Layer 31
 const FIELD_W=40;
 const FIELD_H=40;
 let FIELD_DECAY=0.982;   // natural fade — Pe22b: now genome-driven, can evolve
@@ -666,6 +666,34 @@ let genome={
   // no special-case code — and is the strongest safety property available here.
   // atrophyRate=0 → Pe39 exactly (loop stays open, attribution observational only).
   atrophyRate:0.05,          // 0=Pe39 exactly. >0 closes the attribution loop. Evolvable.
+
+  // ═══ LAYER 31: META-SIGNAL — attribution state as VM-accessible data (Pe42) ═══
+  // Pe37–Pe41 built a reliable self-portrait at the meta level: which layers are
+  // load-bearing, which are silent-but-beneficial, which are harmful. That portrait
+  // had exactly one downward pathway — metaCreditBias leaning mutation direction.
+  // A thin wire for a lot of accumulated signal.
+  //
+  // Pe42 opens a second, direct pathway. A new opcode (26, META_READ) lets VM
+  // instructions read the current attribution health into a register. The health
+  // scalar is a confidence-weighted mean of positive attribution traces across all
+  // META_LAYER_PARAMS. Near 1: many layers confidently contributing — architecture
+  // running well. Near 0: layers are dormant, searching, or attribution uncertain.
+  //
+  // This number lands in a VM register. The genome decides what to do with it.
+  // Particles might evolve to behave more conservatively when the architecture is
+  // confident and more exploratorily when it's searching — or ignore it entirely.
+  // metaSignalInfluence=0 recovers Pe41 behavior exactly, making this opcode inert.
+  //
+  // Pe42 also improves the probe mechanism: instead of a fixed +0.07 stimulus,
+  // the probe aims toward the param's historical peak value (peakValue, tracked in
+  // metaCredit). A param at 0.01 whose best recorded value was 0.3 gets probed
+  // toward 0.3, not blindly to 0.08. This uses the attribution history the system
+  // already maintains. Falls back to +0.07 if no peak has been recorded.
+  //
+  // metaSignalInfluence is itself in META_LAYER_PARAMS and ATROPHY_SAFE — so the
+  // system can evolve it to zero if the mirror turns out not to be worth listening to.
+  metaSignalInfluence:0.1,   // 0=Pe41 exactly. Scales META_READ opcode output. Evolvable.
+  metaSignalValue:0,          // Cached attribution health [0..1]. Recomputed each mutation cycle.
 
   // ═══ LAYER 18: RATIFICATION — clusters carry scenarios upward (Pe28) ═══
   // Pe27 made the imagination bank evolvable, but scenarios still live and die strictly
@@ -1156,6 +1184,7 @@ function encodeGenome(){
     msb:+(genome.metaSearchBias||0).toFixed(4),
     dw39:+(genome.dissolutionWeight||0.2).toFixed(4), // Pe39 Layer 28
     ar40:+(genome.atrophyRate||0).toFixed(4), // Pe40 Layer 29
+    msi42:+(genome.metaSignalInfluence||0).toFixed(4), // Pe42 Layer 31
     mct:META_LAYER_PARAMS.map(p=>{
       const e=genome.metaCredit&&genome.metaCredit[p];
       return +((e&&e.trace)||0).toFixed(3);
@@ -1244,6 +1273,7 @@ function decodeGenome(data){
     if(genome.netReceptivity===undefined)genome.netReceptivity=0.5;
     if(genome.metaSearchBias===undefined)genome.metaSearchBias=0.15;      // Pe38
     if(genome.signalRoleInfluence===undefined)genome.signalRoleInfluence=0.1; // Pe38
+    if(genome.metaSignalInfluence===undefined)genome.metaSignalInfluence=0.1; // Pe42
     genome.generation=(g.g||0)+1;
     genome.totalTicks=g.T||0;
     genome.lineage=g.L||[];
@@ -1274,6 +1304,7 @@ function decodeGenome(data){
     if(typeof g.sri==='number')genome.signalRoleInfluence=g.sri; // Pe38 Layer 27
     if(typeof g.dw39==='number')genome.dissolutionWeight=g.dw39; // Pe39 Layer 28
     if(typeof g.ar40==='number')genome.atrophyRate=g.ar40; // Pe40 Layer 29
+    if(typeof g.msi42==='number')genome.metaSignalInfluence=g.msi42; // Pe42 Layer 31
     // Pe37 Layer 26: attribution
     if(typeof g.mcb==='number')genome.metaCreditBias=g.mcb;
     if(typeof g.msb==='number')genome.metaSearchBias=g.msb; // Pe38 Layer 27: search width bias
@@ -1350,6 +1381,8 @@ function sanitizeGenome(){
   genome.signalRoleInfluence=Math.max(0,Math.min(1,finiteOr(genome.signalRoleInfluence,0.1)));
   genome.dissolutionWeight=Math.max(0,Math.min(1,finiteOr(genome.dissolutionWeight,0.2))); // Pe39
   genome.atrophyRate=Math.max(0,Math.min(0.3,finiteOr(genome.atrophyRate,0.05))); // Pe40 Layer 29
+  genome.metaSignalInfluence=Math.max(0,Math.min(1,finiteOr(genome.metaSignalInfluence,0.1))); // Pe42 Layer 31
+  if(genome.metaSignalValue===undefined)genome.metaSignalValue=0;
   {
     const src=(genome.metaCredit&&typeof genome.metaCredit==='object')?genome.metaCredit:{};
     const fresh={};
@@ -2183,7 +2216,8 @@ const META_LAYER_PARAMS=[
   'signalDecay',                // Pe36
   'signalRoleInfluence',         // Pe38
   'dissolutionWeight',           // Pe39
-  'atrophyRate'                  // Pe40 — itself tracked: atrophy can atrophy itself
+  'atrophyRate',                 // Pe40 — itself tracked: atrophy can atrophy itself
+  'metaSignalInfluence'          // Pe42 — tracked so attribution decides if the mirror helps
 ];
 // Pe40 Layer 29: subset of META_LAYER_PARAMS whose value 0 is documented as
 // "[prior version] exactly" — i.e. zero provably means the layer is dormant and
@@ -2196,7 +2230,7 @@ const ATROPHY_SAFE=new Set([
   'creditLearnRate','gradientBias','gradientUpstreamBias','scenarioCreditWeight',
   'behaviorGradientBias','neighborModelUpdateRate','neighborPredictionInfluence',
   'relationalWeight','signalInfluence','signalRoleInfluence','dissolutionWeight',
-  'atrophyRate'
+  'atrophyRate','metaSignalInfluence'
 ]);
 // Short HUD labels — keep the attribution tag compact.
 const META_LAYER_SHORT={
@@ -2206,7 +2240,7 @@ const META_LAYER_SHORT={
   neighborPredictionInfluence:'npi',mutualRecognitionThresh:'mrt',
   relationalWeight:'rw',relationalUseBias:'rub',signalEmitCost:'sec',
   signalInfluence:'sinf',signalDecay:'sdec',signalRoleInfluence:'sri',
-  dissolutionWeight:'dw'
+  dissolutionWeight:'dw',metaSignalInfluence:'msi'
 };
 
 // Pe32: 12D Euclidean distance between two scenario entries.
@@ -2502,6 +2536,12 @@ function profileVM(){
           // Not 0: that would make any genome using Pe31 strategies look non-cooperative.
           const predInf33=genome.neighborPredictionInfluence||0;
           vmRegs[di]=0.3*predInf33*(k||1);
+        }break;
+        case 26:{                       // META_READ (Pe42) → use current metaSignalValue
+          // Profiler runs outside the mutation cycle, so metaSignalValue is whatever was
+          // last computed. Non-zero so genomes reading meta health get a meaningful profile.
+          const msiProf=genome.metaSignalInfluence||0;
+          vmRegs[di]=(genome.metaSignalValue||0.3)*msiProf*(k||1);
         }break;
       }
       for(let r=0;r<12;r++)vmRegs[r]=Math.max(-8,Math.min(8,vmRegs[r]));
@@ -3597,6 +3637,12 @@ function mutateGenome(){
         if(e.traceSlow===undefined)e.traceSlow=0;
         e.traceSlow=e.traceSlow*0.993+attribution*0.007;
         if(e.traceSlow>1)e.traceSlow=1;else if(e.traceSlow<-1)e.traceSlow=-1;
+        // Pe42: track peak value — the param's value when it last correlated with a fitness
+        // high. The directional probe uses this to aim toward "what worked" rather than +0.07.
+        if(attribution>0&&currentFitness>(e.peakFitness||0)){
+          e.peakValue=genome[p];
+          e.peakFitness=currentFitness;
+        }
       }
       e.pendingDelta=0; // consumed
     }else{
@@ -3611,13 +3657,26 @@ function mutateGenome(){
     e.conf=1-Math.abs(e.trace-tS)/(Math.abs(e.trace)+Math.abs(tS)+0.05);
   }
 
-  // ═══ Pe40 Layer 29: ATROPHY — the loop closes ═══
-  // Consume the long-term attribution signal Pe38 built and currently only leans
-  // mutation with. A provably-dormant-at-zero param (ATROPHY_SAFE) whose slow EMA
-  // is confidently negative (consistently harms) or confidently dead (contributes
-  // nothing) has its live value decayed toward zero. Reversible: decay only applies
-  // while the condition holds; surviving random mutation regrows a param whose
-  // attribution later recovers. atrophyRate=0 → this whole block is inert (Pe39).
+  // ═══ Pe40 Layer 29: ATROPHY / Pe41 amendment: PROBE BEFORE PRUNE ═══
+  // Pe40 had two atrophy conditions: `harmful` (confidently-negative long-term
+  // attribution) and `dead` (confidently-flat attribution). The gen2768 run proved
+  // `harmful` correct — it retired relationalWeight and signalRoleInfluence on real
+  // negative evidence. But `dead` was wrong by construction: it inferred worthlessness
+  // from SILENCE, and silence has two causes — "contributes nothing" and "quietly
+  // holding a correct, perturbation-insensitive contribution." gen2768 caught
+  // gradientUpstreamBias dormant at 0.0096 while its attribution was +0.067 POSITIVE:
+  // a beneficial layer suppressed because it was quiet, with the promised reversibility
+  // too slow to rescue it.
+  //
+  // Pe41 fixes only the `dead` path. `harmful` is unchanged. Silence is no longer
+  // sufficient to prune — it now only marks a SUSPECT. Before decaying a suspect, the
+  // mechanism injects a deliberate, definite stimulus (+0.07) into the param and waits
+  // for the existing attribution interval to elapse. If smoothed fitness moves in
+  // response, the param was quietly contributing — atrophy aborts and the param is
+  // LEFT at its probed value (the probe doubles as the rescue: gradientUpstreamBias
+  // would have been lifted back to 0.07 instead of decayed). If fitness does not
+  // respond to a deliberate kick, the param is genuinely inert and decay is licensed.
+  // "Test dormancy by probing, not by absence of signal." atrophyRate=0 → inert (Pe39).
   const aRate=Math.max(0,Math.min(0.3,genome.atrophyRate||0));
   if(aRate>0.001){
     for(const p of META_LAYER_PARAMS){
@@ -3626,16 +3685,74 @@ function mutateGenome(){
       if(!e||e.traceSlow===undefined)continue;
       const conf=e.conf||0;
       const tSlow=e.traceSlow;
-      // High confidence required (fast/slow agree) — never atrophy a volatile signal.
+      // High confidence required (fast/slow agree) — never act on a volatile signal.
       const harmful = conf>0.5 && tSlow<-0.15;
-      const dead    = conf>0.5 && Math.abs(tSlow)<0.03 && Math.abs(e.trace)<0.05;
-      if(harmful||dead){
-        // Harmful decays faster than merely-dead, and faster the worse it is.
-        const strength=aRate*(harmful?(0.5+Math.abs(tSlow)):0.5);
+      const quiet   = conf>0.5 && Math.abs(tSlow)<0.03 && Math.abs(e.trace)<0.05;
+      if(harmful){
+        // Unchanged from Pe40 — this path was correct. Worse trace decays faster.
+        const strength=aRate*(0.5+Math.abs(tSlow));
         const factor=Math.max(0,Math.min(1,1-strength));
         if(isFinite(genome[p]))genome[p]*=factor;
+        e.probeState=0; // a param that turned harmful abandons any in-flight probe
+      }else if(quiet){
+        if(!e.probeState){
+          // Enter probe: inject a deliberate definite stimulus, defer decay.
+          // _metaValBefore was snapshotted before this block, so this kick is
+          // recorded as this cycle's perturbation and rides the existing
+          // attribution rails — no parallel measurement needed.
+          //
+          // Pe42: DIRECTIONAL PROBE. Instead of a fixed +0.07 kick, aim toward
+          // the param's historical peak value (peakValue, tracked above). A param
+          // at 0.01 whose best recorded value was 0.3 gets probed toward 0.3:
+          // "try going back to what worked." Falls back to +0.07 if no peak is
+          // recorded yet (new param, or param that has never been in positive credit).
+          if(isFinite(genome[p])){
+            const pv=e.peakValue;
+            const cur=genome[p];
+            const probeStep=(pv!==undefined&&isFinite(pv)&&pv>cur+0.01)
+              ?Math.max(0.03,Math.min(0.3,(pv-cur)*0.5))
+              :0.07;
+            genome[p]=cur+probeStep;
+          }
+          e.probeState=1; e.probeWait=0; e.probeFitness=currentFitness;
+        }else if(e.probeState===1){
+          e.probeWait=(e.probeWait||0)+1;
+          if(e.probeWait>=2){
+            // The perturbed config has now run ≥2 mutation intervals.
+            const moved=Math.abs(currentFitness-(e.probeFitness||0))>0.015;
+            e.probeState=0; e.probeWait=0;
+            if(!moved){
+              // Inert under a deliberate stimulus → genuinely dead. Decay licensed.
+              const factor=Math.max(0,Math.min(1,1-aRate*0.5));
+              if(isFinite(genome[p]))genome[p]*=factor;
+            }
+            // moved → it was quietly contributing. Leave it at the probed value;
+            // the probe was also the rescue.
+          }
+        }
+      }else if(e.probeState){
+        // Signal became volatile/uncertain mid-probe — abandon, don't guess.
+        e.probeState=0; e.probeWait=0;
       }
     }
+  }
+
+  // ═══ Pe42 Layer 31: COMPUTE META-SIGNAL VALUE ═══
+  // Confidence-weighted mean of positive attribution traces across META_LAYER_PARAMS.
+  // Near 1: many layers confidently contributing. Near 0: architecture searching.
+  // Recomputed once per mutation cycle. Read by particles via opcode 26 (META_READ).
+  // genome.metaSignalValue is the number that the mirror shows.
+  {
+    let msSum=0,msWeight=0;
+    for(const p of META_LAYER_PARAMS){
+      const e=mc[p];if(!e)continue;
+      const conf=e.conf||0;
+      if(conf>0.1){
+        msSum+=Math.max(0,e.trace||0)*conf;
+        msWeight+=conf;
+      }
+    }
+    genome.metaSignalValue=msWeight>0?Math.min(1,msSum/msWeight):0;
   }
 
   // metaMaybe: like maybe(), but a tracked param's perturbation leans toward its
@@ -3756,6 +3873,7 @@ function mutateGenome(){
   // Pe39 Layer 28: dissolutionWeight — in META_LAYER_PARAMS so attribution tracks it
   genome.dissolutionWeight=Math.max(0,Math.min(1,metaMaybe(genome.dissolutionWeight,0.05,'dissolutionWeight')));
   genome.atrophyRate=Math.max(0,Math.min(0.3,metaMaybe(genome.atrophyRate,0.04,'atrophyRate'))); // Pe40 Layer 29
+  genome.metaSignalInfluence=Math.max(0,Math.min(1,metaMaybe(genome.metaSignalInfluence,0.04,'metaSignalInfluence'))); // Pe42 Layer 31
 
   // ═══ Pe26 Layer 16c: CLUSTER UPWARD SIGNAL injection ═══
   // Drain the upstream buffer — soft-inject successful cluster motifs into the global VM.
@@ -4852,6 +4970,17 @@ function executeVM(i,j,sim,d){
           signalReadCount++; // Pe37: honest loop-closure metric
         }
       }break;
+      case 26:{
+        // Pe42 Layer 31: META_READ.
+        // VM reads the attribution health scalar (genome.metaSignalValue) into a register.
+        // Health near 1: architecture layers confidently contributing — system well-calibrated.
+        // Health near 0: layers dormant/searching, or attribution uncertain.
+        // metaSignalInfluence=0 → returns 0 (Pe41 behavior exactly).
+        const msi=genome.metaSignalInfluence||0;
+        if(msi>0.001){
+          vmRegs[di]=(genome.metaSignalValue||0)*msi*(k||1);
+        }
+      }break;
     }
     for(let r=0;r<12;r++)vmRegs[r]=Math.max(-8,Math.min(8,vmRegs[r]));
   }
@@ -4955,6 +5084,13 @@ function executeVM(i,j,sim,d){
           if(genome.signalInfluence>0.001){
             vmRegs[di]=pSignalReceive[i]*(genome.signalInfluence||0)*(k||1);
             signalReadCount++; // Pe37: honest loop-closure metric
+          }
+        }break;
+        case 26:{
+          // Pe42 Layer 31: META_READ (plasmid version)
+          const msiP=genome.metaSignalInfluence||0;
+          if(msiP>0.001){
+            vmRegs[di]=(genome.metaSignalValue||0)*msiP*(k||1);
           }
         }break;
       }
@@ -6166,7 +6302,8 @@ function loop(){
         const mb=(genome.metaCreditBias||0);
         const msb=(genome.metaSearchBias||0);
         const ac=confCount>0?(avgConf/confCount):0;
-        attrTag=` | attr:${lo}/${META_LAYER_PARAMS.length} c${ac.toFixed(2)}${mb>0.001?' b'+mb.toFixed(2):''}${msb>0.01?' w'+msb.toFixed(2):''} +${sb}${best.tr>=0?'+':''}${best.tr.toFixed(2)} -${sw}${worst.tr.toFixed(2)}`;
+        const msiTag=(genome.metaSignalInfluence||0)>0.001?` ms${(genome.metaSignalValue||0).toFixed(2)}`:'';
+        attrTag=` | attr:${lo}/${META_LAYER_PARAMS.length} c${ac.toFixed(2)}${mb>0.001?' b'+mb.toFixed(2):''}${msb>0.01?' w'+msb.toFixed(2):''}${msiTag} +${sb}${best.tr>=0?'+':''}${best.tr.toFixed(2)} -${sw}${worst.tr.toFixed(2)}`;
       }
     }
     genEl.textContent=`gen${genome.generation} ${genome.extinctions}☠ t${genome.totalTicks} | ${clusters.length}cl(${clVMActive}vm${budCount>0?','+budCount+'bud':''}) ${livingLin}lin fit:${currentFitness.toFixed(2)} stb:${(selfModel.stability||0).toFixed(2)} | vm:${genome.vmProgram.length}inst ${nSensors}sns ${hgtEventsTotal}hgt | pop:${N}/${CAP} fld:${fieldTotal.toFixed(0)}${fTrend<-0.01?'↓':fTrend>0.01?'↑':'~'} risk:${cRisk.toFixed(2)} | ⟲${rInf.toFixed(2)} ${reflexClusters}rc${netTag}${cgTag}${uaTag}${(genome.eventLog&&genome.eventLog.length)?' ev:'+genome.eventLog.length:''}${gradTag}${mrTag}${relTag}${sigTag}${attrTag}${dissTag}`;
