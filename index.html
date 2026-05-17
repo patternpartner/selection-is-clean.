@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
-<title>Selection פ 42 — The Mirror Speaks</title>
+<title>Selection פ 47 — The Second Ink</title>
 <style>
 *{margin:0;padding:0;box-sizing:border-box}
 html,body{height:100%;overflow:hidden;background:#020204;touch-action:none;cursor:crosshair}
@@ -264,7 +264,7 @@ const DIMS=5; // dim 4 is blank — no hardcoded role. System decides what it me
 const MEM_SIZE=8; // per-particle persistent memory. Particles become stateful agents.
 const MAX_PLASMID=4; // max instructions per particle's personal mobile DNA
 const PLASMID_SLOTS=MAX_PLASMID*4; // each instruction is [op,src,dst,k] = 4 values
-const OPCODE_COUNT=27; // VM opcodes 0..26: adding META_READ (26) in Pe42 Layer 31
+const OPCODE_COUNT=32; // VM opcodes 0..31: adding FIELD2_WRITE (31) in Pe47 Layer 36
 const FIELD_W=40;
 const FIELD_H=40;
 let FIELD_DECAY=0.982;   // natural fade — Pe22b: now genome-driven, can evolve
@@ -694,6 +694,144 @@ let genome={
   // system can evolve it to zero if the mirror turns out not to be worth listening to.
   metaSignalInfluence:0.1,   // 0=Pe41 exactly. Scales META_READ opcode output. Evolvable.
   metaSignalValue:0,          // Cached attribution health [0..1]. Recomputed each mutation cycle.
+
+  // ═══ LAYER 32: ATTRIBUTION MOMENTUM — the VM reads which way the mirror leans (Pe43) ═══
+  // Pe42 opened opcode 26 (META_READ): particles can read the current attribution health
+  // as a scalar in [0,1]. One number. Near 1 = many layers confidently contributing.
+  // Near 0 = architecture searching, dormant, or uncertain.
+  //
+  // The gap: that number has no sign. A particle reading metaSignalValue=0.4 cannot
+  // tell if it's recovering from near-zero (architecture stabilizing) or sliding from
+  // near-one (architecture destabilizing). The same absolute value means opposite
+  // things depending on trajectory. Pe43 gives the VM that direction.
+  //
+  // Each mutation cycle, after metaSignalValue is recomputed, Pe43 computes:
+  //   rawGrad = metaSignalValue - metaSignalPrev
+  //   metaSignalGrad  ← EMA(prev_grad * 0.7 + rawGrad * 0.3) , clamped [-1,1]
+  //   metaSignalPrev  ← metaSignalValue  (for next cycle)
+  //
+  // New opcode 27, META_GRAD_READ: vmRegs[di] = metaSignalGrad * metaSignalGradInfluence * k
+  // This is structurally parallel to opcode 26: same one-cycle resolution, same genome
+  // gate idiom, same ATROPHY_SAFE status.
+  //
+  // WHAT THE SIGNAL ENABLES:
+  //   metaSignalGrad > 0 → attribution health rising (recovery, stabilization)
+  //   metaSignalGrad < 0 → attribution health falling (destabilization, collapse approach)
+  //   metaSignalGrad ≈ 0 → plateau (either stable or drifting slowly)
+  //
+  // A genome that evolves to use opcode 27 can condition behavior on trajectory:
+  // "be more exploratory while the architecture is destabilizing, more conservative
+  // while it's stabilizing." Whether that strategy actually helps is for selection
+  // to find — the gradient is a signal, not a command.
+  //
+  // metaSignalGradInfluence=0 → opcode 27 returns 0 → Pe42 behavior exactly.
+  // metaSignalGradInfluence is in META_LAYER_PARAMS and ATROPHY_SAFE so the attribution
+  // system can measure whether gradient-awareness earns its keep, and retire it if not.
+  //
+  // HUD: the attr tag gains 'g' showing the current gradient (e.g. g+0.12 = rising).
+  metaSignalGrad:0,           // Cached attribution momentum [-1..1]. Pe43 Layer 32.
+  metaSignalPrev:0,           // Previous cycle's metaSignalValue. Infrastructure, not evolved.
+  metaSignalGradInfluence:0.05, // 0=Pe42 exactly. Scales META_GRAD_READ opcode. Evolvable.
+
+  // ═══ LAYER 33: ATTRIBUTION VOLATILITY — the VM reads how steady the mirror's lean is (Pe44) ═══
+  // Pe42 opened opcode 26 (META_READ): attribution health as a scalar.
+  // Pe43 opened opcode 27 (META_GRAD_READ): direction of health change.
+  // But direction alone is ambiguous: gradient=+0.2 could be sustained recovery
+  // (gradient near +0.2 for many cycles) or a momentary bounce inside noisy descent
+  // (gradient was -0.3 last cycle). The same number means different things.
+  //
+  // Pe44 adds the third axis. Each mutation cycle, the squared gradient is EMA-smoothed
+  // into metaSignalVol — a volatility scalar in [0,1]:
+  //   Near 0: gradient has been small and consistent — architecture on steady trajectory
+  //   Near 1: gradient swinging hard — architecture oscillating, direction unreliable
+  //
+  // New opcode 28, META_VOL_READ: vmRegs[di] = metaSignalVol * metaSignalVolInfluence * k
+  //
+  // WHAT THE SIGNAL ENABLES:
+  //   health=0.7, grad=+0.2, vol=0.05 → steadily recovering — trustworthy direction
+  //   health=0.7, grad=+0.2, vol=0.8  → noisy fluctuation — low-confidence direction
+  //   health=0.3, grad=-0.1, vol=0.9  → chaotic destabilization — extreme uncertainty
+  //
+  // Three signals complete the first-order meta-state description:
+  //   26: Where are we?        (health level)
+  //   27: Which way moving?    (gradient direction)
+  //   28: Can we trust it?     (gradient volatility)
+  //
+  // A genome evolving to combine all three can condition behavior on certainty itself:
+  // "explore when vol is high; commit when vol is low." Whether that emerges is
+  // selection's business. The signal is the mechanism.
+  //
+  // metaSignalVolInfluence=0 → opcode 28 returns 0 → Pe43 behavior exactly.
+  // metaSignalVolInfluence is in META_LAYER_PARAMS and ATROPHY_SAFE so attribution
+  // can measure whether volatility-awareness earns its keep, and retire it if not.
+  metaSignalVol:0,             // Cached attribution volatility [0..1]. Pe44 Layer 33.
+  metaSignalVolInfluence:0.05, // 0=Pe43 exactly. Scales META_VOL_READ opcode. Evolvable.
+
+  // ═══ LAYER 34: DIFFERENTIAL MUTATION — attribution shapes what changes (Pe45) ═══
+  // Pe42–Pe44 built a complete first-order meta-state read path: health (26), gradient (27),
+  // volatility (28). All three were read-only — the meta-state was legible to VMs but
+  // didn't shape how the system EVOLVED. metaMaybe already leaned mutation direction
+  // (metaCreditBias) and width (metaSearchBias), but every parameter mutated at the
+  // SAME RATE regardless of how clearly it was contributing or harming.
+  //
+  // Pe45 closes this loop. metaMutationBias gates a per-parameter effective mutation rate:
+  //   trust      = max(0, 1 − metaSignalVol × 2)   (Pe44 volatility gates trust)
+  //   rateMult   = max(0.2, min(2.5, 1 − trace × bias × trust))
+  //   effectiveRate = baseRate × rateMult
+  //
+  // Positive trace + low volatility → rate shrinks toward 0.2× base.
+  //   The parameter is working AND the direction is trustworthy → conserve it.
+  // Negative trace + low volatility → rate grows toward 2.5× base.
+  //   The parameter is harmful AND the direction is trustworthy → explore away faster.
+  // High volatility → trust → 0 → rateMult → 1 → base rate → Pe44 exactly.
+  // metaMutationBias=0 → rateMult=1 for all params → Pe44 behavior exactly.
+  //
+  // New opcode 29, ATTR_QUERY: reads the attribution trace of a specific tracked parameter
+  // (indexed by floor(|k|) mod META_LAYER_PARAMS.length) into a VM register, scaled by
+  // metaMutationBias. First opcode to directly expose the meta-attribution layer to VMs.
+  // Allows behavior conditioned on "is parameter X helping?" — closes a conceptual gap
+  // that has been open since Pe37 built the attribution system.
+  //
+  // Pe45 ALSO fixes a Pe43/Pe44 structural gap: opcodes 27 (META_GRAD_READ) and 28
+  // (META_VOL_READ) were added to cluster and plasmid VMs but never to the MAIN particle
+  // VM. All three VMs now have full parity through opcode 29.
+  //
+  // metaMutationBias is in META_LAYER_PARAMS and ATROPHY_SAFE — the attribution system
+  // measures whether differential mutation earns its keep and can retire it if not.
+  // Plain maybe() in mutation — must not be shaped by the very credit it controls.
+  metaMutationBias:0.2,   // 0=Pe44 exactly. Differential rate scale. Evolvable.
+
+  // ═══ LAYER 35: INSCRIPTION ECHO — substrate programs feed back into particle VMs (Pe46) ═══
+  // Particles write inscribed programs to field cells via opcode 20 (INSCRIBE).
+  // Those programs run autonomously on cells every tick, shaping field energy.
+  // The feedback path from substrate to particle was indirect: particles read field
+  // energy (opcode 8) — the EFFECT of inscriptions — but not the inscription PROGRAMS
+  // themselves. A region running AMPLIFY (op=2, A≈+1) looks identical to a region
+  // running SUPPRESS (op=4, A≈-1) when only field magnitude is read.
+  //
+  // Pe46 closes the write/read gap. When a particle is at a cell with inscription
+  // strength > 0.1, the inscription's A parameter is blended into vmRegs[11]:
+  //   vmRegs[11] += cellProgA[cell] * cellProgStr[cell] * inscriptionInfluence
+  //
+  // This gives the VM access to the PROGRAM COEFFICIENTS written in its territory,
+  // not just the downstream field effects. A region where particles have inscribed
+  // positive-A rules produces a different R11 than one inscribed with negative-A.
+  // Whether the VM evolves to USE this distinction is selection's business.
+  //
+  // New opcode 30 (READ_INSCRIPTION): reads cellProgOp[current_cell] as a normalized
+  // float [0..1] into vmRegs[di] (op/11, scaled by k). The op code (0-11) encodes
+  // which cell transformation is running here. A particle can evolve to detect which
+  // chemical environment it's in without reading the full A/B parameter values.
+  //
+  // COLD START: inscriptions must exist before the echo carries signal. Opcode 20
+  // (INSCRIBE) has been in the set since Pe22f — lineages using it already have warm
+  // substrate. Lineages that never discovered inscription start cold; inscriptionInfluence
+  // atrophies safely in that case (no signal → no credit → atrophy removes it).
+  //
+  // inscriptionInfluence=0 → vmRegs[11] unchanged → Pe45 exactly.
+  // In META_LAYER_PARAMS and ATROPHY_SAFE so attribution measures whether
+  // substrate-reading earns its keep, and can retire it if not.
+  inscriptionInfluence:0.1,   // 0=Pe45 exactly. Scales inscription→VM feedback. Evolvable.
 
   // ═══ LAYER 18: RATIFICATION — clusters carry scenarios upward (Pe28) ═══
   // Pe27 made the imagination bank evolvable, but scenarios still live and die strictly
@@ -1185,6 +1323,11 @@ function encodeGenome(){
     dw39:+(genome.dissolutionWeight||0.2).toFixed(4), // Pe39 Layer 28
     ar40:+(genome.atrophyRate||0).toFixed(4), // Pe40 Layer 29
     msi42:+(genome.metaSignalInfluence||0).toFixed(4), // Pe42 Layer 31
+    msgi43:+(genome.metaSignalGradInfluence||0).toFixed(4), // Pe43 Layer 32
+    msvi44:+(genome.metaSignalVolInfluence||0).toFixed(4), // Pe44 Layer 33
+    mmb45:+(genome.metaMutationBias||0.2).toFixed(4),      // Pe45 Layer 34 (was missing — bug fix)
+    ini46:+(genome.inscriptionInfluence||0).toFixed(4),    // Pe46 Layer 35
+    fw47:+(genome.field2WriteInfluence||0).toFixed(4),       // Pe47 Layer 36
     mct:META_LAYER_PARAMS.map(p=>{
       const e=genome.metaCredit&&genome.metaCredit[p];
       return +((e&&e.trace)||0).toFixed(3);
@@ -1274,6 +1417,8 @@ function decodeGenome(data){
     if(genome.metaSearchBias===undefined)genome.metaSearchBias=0.15;      // Pe38
     if(genome.signalRoleInfluence===undefined)genome.signalRoleInfluence=0.1; // Pe38
     if(genome.metaSignalInfluence===undefined)genome.metaSignalInfluence=0.1; // Pe42
+    if(genome.metaSignalGradInfluence===undefined)genome.metaSignalGradInfluence=0.05; // Pe43
+    if(genome.metaSignalVolInfluence===undefined)genome.metaSignalVolInfluence=0.05; // Pe44
     genome.generation=(g.g||0)+1;
     genome.totalTicks=g.T||0;
     genome.lineage=g.L||[];
@@ -1305,6 +1450,11 @@ function decodeGenome(data){
     if(typeof g.dw39==='number')genome.dissolutionWeight=g.dw39; // Pe39 Layer 28
     if(typeof g.ar40==='number')genome.atrophyRate=g.ar40; // Pe40 Layer 29
     if(typeof g.msi42==='number')genome.metaSignalInfluence=g.msi42; // Pe42 Layer 31
+    if(typeof g.msgi43==='number')genome.metaSignalGradInfluence=g.msgi43; // Pe43 Layer 32
+    if(typeof g.msvi44==='number')genome.metaSignalVolInfluence=g.msvi44; // Pe44 Layer 33
+    if(typeof g.mmb45==='number')genome.metaMutationBias=g.mmb45;          // Pe45 Layer 34 bug fix
+    if(typeof g.ini46==='number')genome.inscriptionInfluence=g.ini46;      // Pe46 Layer 35
+    if(typeof g.fw47==='number')genome.field2WriteInfluence=g.fw47;          // Pe47 Layer 36
     // Pe37 Layer 26: attribution
     if(typeof g.mcb==='number')genome.metaCreditBias=g.mcb;
     if(typeof g.msb==='number')genome.metaSearchBias=g.msb; // Pe38 Layer 27: search width bias
@@ -1383,6 +1533,18 @@ function sanitizeGenome(){
   genome.atrophyRate=Math.max(0,Math.min(0.3,finiteOr(genome.atrophyRate,0.05))); // Pe40 Layer 29
   genome.metaSignalInfluence=Math.max(0,Math.min(1,finiteOr(genome.metaSignalInfluence,0.1))); // Pe42 Layer 31
   if(genome.metaSignalValue===undefined)genome.metaSignalValue=0;
+  if(genome.metaSignalGrad===undefined)genome.metaSignalGrad=0;
+  if(genome.metaSignalGradInfluence===undefined)genome.metaSignalGradInfluence=0.05;
+  genome.metaSignalGradInfluence=Math.max(0,Math.min(1,finiteOr(genome.metaSignalGradInfluence,0.05)));
+  if(genome.metaSignalVol===undefined)genome.metaSignalVol=0;
+  if(genome.metaSignalVolInfluence===undefined)genome.metaSignalVolInfluence=0.05;
+  genome.metaSignalVolInfluence=Math.max(0,Math.min(1,finiteOr(genome.metaSignalVolInfluence,0.05))); // Pe44 Layer 33
+  if(genome.metaMutationBias===undefined)genome.metaMutationBias=0.2;
+  genome.metaMutationBias=Math.max(0,Math.min(1,finiteOr(genome.metaMutationBias,0.2))); // Pe45 Layer 34
+  if(genome.inscriptionInfluence===undefined)genome.inscriptionInfluence=0.1;
+  genome.inscriptionInfluence=Math.max(0,Math.min(1,finiteOr(genome.inscriptionInfluence,0.1))); // Pe46 Layer 35
+  if(genome.field2WriteInfluence===undefined)genome.field2WriteInfluence=0.1;
+  genome.field2WriteInfluence=Math.max(0,Math.min(1,finiteOr(genome.field2WriteInfluence,0.1))); // Pe47 Layer 36
   {
     const src=(genome.metaCredit&&typeof genome.metaCredit==='object')?genome.metaCredit:{};
     const fresh={};
@@ -2218,6 +2380,11 @@ const META_LAYER_PARAMS=[
   'dissolutionWeight',           // Pe39
   'atrophyRate',                 // Pe40 — itself tracked: atrophy can atrophy itself
   'metaSignalInfluence'          // Pe42 — tracked so attribution decides if the mirror helps
+  ,'metaSignalGradInfluence'     // Pe43 — tracked so attribution decides if gradient helps
+  ,'metaSignalVolInfluence'      // Pe44 — tracked so attribution decides if volatility helps
+  ,'metaMutationBias'            // Pe45 — tracked so attribution can atrophy differential mutation itself
+  ,'inscriptionInfluence'        // Pe46 — tracked so attribution decides if substrate-reading helps
+  ,'field2WriteInfluence'         // Pe47 — tracked so attribution decides if direct field2 write earns its keep
 ];
 // Pe40 Layer 29: subset of META_LAYER_PARAMS whose value 0 is documented as
 // "[prior version] exactly" — i.e. zero provably means the layer is dormant and
@@ -2230,7 +2397,8 @@ const ATROPHY_SAFE=new Set([
   'creditLearnRate','gradientBias','gradientUpstreamBias','scenarioCreditWeight',
   'behaviorGradientBias','neighborModelUpdateRate','neighborPredictionInfluence',
   'relationalWeight','signalInfluence','signalRoleInfluence','dissolutionWeight',
-  'atrophyRate','metaSignalInfluence'
+  'atrophyRate','metaSignalInfluence','metaSignalGradInfluence','metaSignalVolInfluence',
+  'metaMutationBias','inscriptionInfluence','field2WriteInfluence'
 ]);
 // Short HUD labels — keep the attribution tag compact.
 const META_LAYER_SHORT={
@@ -2240,7 +2408,8 @@ const META_LAYER_SHORT={
   neighborPredictionInfluence:'npi',mutualRecognitionThresh:'mrt',
   relationalWeight:'rw',relationalUseBias:'rub',signalEmitCost:'sec',
   signalInfluence:'sinf',signalDecay:'sdec',signalRoleInfluence:'sri',
-  dissolutionWeight:'dw',metaSignalInfluence:'msi'
+  dissolutionWeight:'dw',metaSignalInfluence:'msi',metaSignalGradInfluence:'msgi',metaSignalVolInfluence:'msvi',
+  metaMutationBias:'mmb',inscriptionInfluence:'ini',field2WriteInfluence:'f2w'
 };
 
 // Pe32: 12D Euclidean distance between two scenario entries.
@@ -2542,6 +2711,29 @@ function profileVM(){
           // last computed. Non-zero so genomes reading meta health get a meaningful profile.
           const msiProf=genome.metaSignalInfluence||0;
           vmRegs[di]=(genome.metaSignalValue||0.3)*msiProf*(k||1);
+        }break;
+        case 27:{                       // META_GRAD_READ (Pe43) → use cached gradient
+          const msgiProf=genome.metaSignalGradInfluence||0;
+          vmRegs[di]=(genome.metaSignalGrad||0)*msgiProf*(k||1);
+        }break;
+        case 28:{                       // META_VOL_READ (Pe44) → use cached volatility
+          const msviProf=genome.metaSignalVolInfluence||0;
+          vmRegs[di]=(genome.metaSignalVol||0.1)*msviProf*(k||1);
+        }break;
+        case 29:{                       // ATTR_QUERY (Pe45) → trace of indexed meta-param
+          const mmbProf=genome.metaMutationBias||0;
+          if(mmbProf>0.001&&genome.metaCredit){
+            const aqIdx=Math.abs(Math.floor(k||0))%META_LAYER_PARAMS.length;
+            const aqParam=META_LAYER_PARAMS[aqIdx];
+            const aqE=genome.metaCredit[aqParam];
+            vmRegs[di]=(aqE?(aqE.trace||0):0)*mmbProf*(k>=0?1:-1);
+          }
+        }break;
+        case 30:{                       // READ_INSCRIPTION (Pe46) → normalized op-type stub
+          // Profiler has no live particle positions. Return a mid-range stub.
+          // 0.45 ≈ op 5/11, roughly the middle of the cell-op range.
+          // Not 0: that would bias any genome using inscription reads toward zero profiles.
+          vmRegs[di]=0.45*(k||1);
         }break;
       }
       for(let r=0;r<12;r++)vmRegs[r]=Math.max(-8,Math.min(8,vmRegs[r]));
@@ -3755,18 +3947,59 @@ function mutateGenome(){
     genome.metaSignalValue=msWeight>0?Math.min(1,msSum/msWeight):0;
   }
 
+  // ═══ Pe43 Layer 32: COMPUTE META-SIGNAL GRADIENT ═══
+  // Direction the attribution health is moving, EMA-smoothed across mutation cycles.
+  // rawGrad = current health - previous health. EMA smooths out single-cycle noise.
+  // clamped [-1,1]: sign = direction (positive=improving, negative=declining).
+  // metaSignalPrev carries forward without being in META_LAYER_PARAMS — it's
+  // infrastructure (a lag register), not a behavioral gate. Same pattern as
+  // the traceSlow/trace split in the attribution core.
+  {
+    const prev=genome.metaSignalPrev||0;
+    const cur=genome.metaSignalValue||0;
+    const rawGrad=cur-prev;
+    // EMA with short window — gradient should be responsive, not sluggish
+    genome.metaSignalGrad=((genome.metaSignalGrad||0)*0.7+rawGrad*0.3);
+    if(genome.metaSignalGrad>1)genome.metaSignalGrad=1;
+    else if(genome.metaSignalGrad<-1)genome.metaSignalGrad=-1;
+    genome.metaSignalPrev=cur;
+  }
+
+  // ═══ Pe44 Layer 33: COMPUTE META-SIGNAL VOLATILITY ═══
+  // How much is the gradient swinging? EMA of squared gradient value.
+  // Near 0: gradient has been consistently small — direction is trustworthy.
+  // Near 1: gradient swinging large — direction is noisy.
+  // Slightly slower EMA than gradient (0.8 vs 0.7) — volatility should lag behind
+  // momentary spikes, settling only when the gradient genuinely stabilises.
+  {
+    const g2=(genome.metaSignalGrad||0)*(genome.metaSignalGrad||0); // squared gradient
+    genome.metaSignalVol=(genome.metaSignalVol||0)*0.8+g2*0.2;
+    if(genome.metaSignalVol>1)genome.metaSignalVol=1;
+    else if(genome.metaSignalVol<0)genome.metaSignalVol=0;
+  }
+
   // metaMaybe: like maybe(), but a tracked param's perturbation leans toward its
   // credited direction when metaCreditBias>0. Same lean-not-lock shape as gradMaybe —
   // the random component is only partially attenuated, never replaced. mcBias=0 → maybe().
   // Pe38: also scales mutation WIDTH by attribution confidence × metaSearchBias.
-  // Confident positive credit → narrower search (exploit the local optimum).
-  // Confident negative credit → wider search (escape current value faster).
-  // Low confidence → standard width regardless of trace sign (don't trust noisy readings).
+  // Pe45: also scales mutation RATE per parameter by attribution trace × volatility gate.
+  // Parameters with positive traces (working) mutate less; negative (harmful) mutate more.
+  // High volatility gates the trust so uncertain signals don't drive differential rates.
   function metaMaybe(val,magnitude,name){
-    if(Math.random()>rate)return val;
+    const _e=mc[name];
+    const tr=_e?(_e.trace||0):0;
+    const conf=_e?(_e.conf||0):0;
+    // Pe45 Layer 34: differential rate — positive trace → protect, negative → explore.
+    // trust decays as volatility rises; at vol≥0.5 trust=0 → base rate (Pe44 exactly).
+    const mmb=Math.max(0,Math.min(1,genome.metaMutationBias||0));
+    let effectiveRate=rate;
+    if(mmb>0.001&&_e){
+      const vol=genome.metaSignalVol||0;
+      const trust=Math.max(0,1-vol*2);
+      effectiveRate=rate*Math.max(0.2,Math.min(2.5,1-tr*mmb*trust));
+    }
+    if(Math.random()>effectiveRate)return val;
     const randomStep=(Math.random()-0.5)*magnitude*scale;
-    const tr=mc[name]?mc[name].trace:0;
-    const conf=mc[name]?(mc[name].conf||0):0;
     // Pe38: width scaling — only activates when we have confident attribution.
     // tr positive + high conf → widthScale < 1 (narrow, exploit).
     // tr negative + high conf → widthScale > 1 (wide, escape).
@@ -3874,6 +4107,18 @@ function mutateGenome(){
   genome.dissolutionWeight=Math.max(0,Math.min(1,metaMaybe(genome.dissolutionWeight,0.05,'dissolutionWeight')));
   genome.atrophyRate=Math.max(0,Math.min(0.3,metaMaybe(genome.atrophyRate,0.04,'atrophyRate'))); // Pe40 Layer 29
   genome.metaSignalInfluence=Math.max(0,Math.min(1,metaMaybe(genome.metaSignalInfluence,0.04,'metaSignalInfluence'))); // Pe42 Layer 31
+  genome.metaSignalGradInfluence=Math.max(0,Math.min(1,metaMaybe(genome.metaSignalGradInfluence||0,0.04,'metaSignalGradInfluence'))); // Pe43 Layer 32
+  genome.metaSignalVolInfluence=Math.max(0,Math.min(1,metaMaybe(genome.metaSignalVolInfluence||0,0.04,'metaSignalVolInfluence'))); // Pe44 Layer 33
+  // Pe45 Layer 34: metaMutationBias uses plain maybe() — must not self-bias via the credit
+  // it controls. Same idiom as metaCreditBias and metaSearchBias.
+  genome.metaMutationBias=Math.max(0,Math.min(1,maybe(genome.metaMutationBias||0,0,1,0.04))); // Pe45 Layer 34
+  // Pe46 Layer 35: inscriptionInfluence — can evolve to 0 (Pe45 exactly) if substrate-reading
+  // earns no credit. metaMaybe is appropriate here; unlike metaMutationBias, it doesn't
+  // control the very credit system that would bias it.
+  genome.inscriptionInfluence=Math.max(0,Math.min(1,metaMaybe(genome.inscriptionInfluence||0,0.04,'inscriptionInfluence'))); // Pe46 Layer 35
+  // Pe47 Layer 36: field2WriteInfluence uses metaMaybe — unlike metaMutationBias/metaCreditBias,
+  // it does not control the credit system, so self-bias via meta feedback is not a concern.
+  genome.field2WriteInfluence=Math.max(0,Math.min(1,metaMaybe(genome.field2WriteInfluence||0,0.04,'field2WriteInfluence'))); // Pe47 Layer 36
 
   // ═══ Pe26 Layer 16c: CLUSTER UPWARD SIGNAL injection ═══
   // Drain the upstream buffer — soft-inject successful cluster motifs into the global VM.
@@ -4834,6 +5079,21 @@ function executeVM(i,j,sim,d){
     vmRegs[10]=Math.max(-8,Math.min(8,vmRegs[10]+pSignalNetPos[i]*sRI));
   }
 
+  // Pe46 Layer 35: INSCRIPTION ECHO — substrate program coefficients blend into vmRegs[11].
+  // When the cell under this particle has a strong inscription, its A parameter (the
+  // primary evolution coefficient in the inscribed program) is blended into register 11.
+  // The VM receives the PROGRAM content of the substrate, not just the downstream field value.
+  // inscriptionInfluence=0 → no change to vmRegs[11] → Pe45 exactly.
+  const inscInf=genome.inscriptionInfluence||0;
+  if(inscInf>0.001){
+    const inscX=Math.floor(px[i]/(W/FIELD_W)),inscY=Math.floor(py[i]/(H/FIELD_H));
+    const inscIdx=Math.max(0,Math.min(FIELD_W*FIELD_H-1,inscY*FIELD_W+inscX));
+    const inscStr=cellProgStr[inscIdx];
+    if(inscStr>0.1){
+      vmRegs[11]=Math.max(-8,Math.min(8,vmRegs[11]+cellProgA[inscIdx]*inscStr*inscInf));
+    }
+  }
+
   pMem[i*MEM_SIZE+6]=localRes[i]*4;
   pMem[i*MEM_SIZE+7]=Math.min(5,page[i]/250);
 
@@ -4981,6 +5241,68 @@ function executeVM(i,j,sim,d){
           vmRegs[di]=(genome.metaSignalValue||0)*msi*(k||1);
         }
       }break;
+      case 27:{
+        // Pe43 Layer 32: META_GRAD_READ — previously missing from main particle VM.
+        // Pe45 closes the gap (cluster and plasmid VMs had this; particle VM did not).
+        // metaSignalGrad > 0 = attribution health rising; < 0 = declining.
+        const msgi=genome.metaSignalGradInfluence||0;
+        if(msgi>0.001){
+          vmRegs[di]=(genome.metaSignalGrad||0)*msgi*(k||1);
+        }
+      }break;
+      case 28:{
+        // Pe44 Layer 33: META_VOL_READ — previously missing from main particle VM.
+        // Pe45 closes the gap. metaSignalVol near 0 = gradient trustworthy; near 1 = noisy.
+        const msvi=genome.metaSignalVolInfluence||0;
+        if(msvi>0.001){
+          vmRegs[di]=(genome.metaSignalVol||0)*msvi*(k||1);
+        }
+      }break;
+      case 29:{
+        // Pe45 Layer 34: ATTR_QUERY — VM reads attribution trace of a specific meta-parameter.
+        // Which parameter: floor(|k|) mod META_LAYER_PARAMS.length (k is the instruction constant).
+        // Output: trace × metaMutationBias × sign(k) — in [-1,1] × bias scale.
+        // This is the first opcode to expose meta-attribution directly to VM programs.
+        // VMs can evolve to condition behavior on "is layer X currently helping?"
+        // metaMutationBias=0 → returns 0 (Pe44 behavior exactly, layer inert).
+        const mmb=genome.metaMutationBias||0;
+        if(mmb>0.001&&genome.metaCredit){
+          const aqIdx=Math.abs(Math.floor(k||0))%META_LAYER_PARAMS.length;
+          const aqParam=META_LAYER_PARAMS[aqIdx];
+          const aqE=genome.metaCredit[aqParam];
+          vmRegs[di]=(aqE?(aqE.trace||0):0)*mmb*(k>=0?1:-1);
+        }
+      }break;
+      case 30:{
+        // Pe46 Layer 35: READ_INSCRIPTION — reads cellProgOp at the current particle's cell.
+        // The op code (0-11) is normalized to [0..1] by dividing by 11, then scaled by k.
+        // Returns 0 if inscription strength < 0.1 (cell is unengraved or inscription too faint).
+        // Complement to the vmRegs[11] blend: that gives continuous A-parameter values;
+        // this gives the discrete op-type — which chemical rule is running in this territory.
+        // inscriptionInfluence=0 does NOT gate this opcode — they're independent channels.
+        // inscriptionInfluence gates the register blend; this opcode is always available.
+        const ri30x=Math.floor(px[i]/(W/FIELD_W)),ri30y=Math.floor(py[i]/(H/FIELD_H));
+        const ri30idx=Math.max(0,Math.min(FIELD_W*FIELD_H-1,ri30y*FIELD_W+ri30x));
+        if(cellProgStr[ri30idx]>0.1){
+          vmRegs[di]=(cellProgOp[ri30idx]/11)*k;
+        }else{
+          vmRegs[di]=0;
+        }
+      }break;
+      case 31:{
+        // Pe47 Layer 36: FIELD2_WRITE — deposit directly into field2 at the current cell.
+        // Symmetric to opcode 9 (FIELD_WRITE for channel 1).
+        // field2WriteInfluence gates the write magnitude.
+        // field2WriteInfluence=0 → this opcode is inert → Pe46 exactly.
+        // Whether VMs evolve to use field2 as a distinct channel from field1 is
+        // selection's business — the VM just gets access to the write path.
+        const fw47=genome.field2WriteInfluence||0;
+        if(fw47>0.001){
+          const fx31=Math.floor(px[i]/(W/FIELD_W)),fy31=Math.floor(py[i]/(H/FIELD_H));
+          const fi31=Math.max(0,Math.min(FIELD_W*FIELD_H-1,fy31*FIELD_W+fx31));
+          field2[fi31]=Math.max(0,Math.min(100,field2[fi31]+vmRegs[si]*k*fw47));
+        }
+      }break;
     }
     for(let r=0;r<12;r++)vmRegs[r]=Math.max(-8,Math.min(8,vmRegs[r]));
   }
@@ -5091,6 +5413,55 @@ function executeVM(i,j,sim,d){
           const msiP=genome.metaSignalInfluence||0;
           if(msiP>0.001){
             vmRegs[di]=(genome.metaSignalValue||0)*msiP*(k||1);
+          }
+        }break;
+        case 27:{
+          // Pe43 Layer 32: META_GRAD_READ — read attribution momentum into register.
+          // metaSignalGrad is positive when attribution health is rising (recovery /
+          // stabilization), negative when falling (destabilization / collapse approach).
+          // metaSignalGradInfluence=0 returns 0 → Pe42 behavior exactly.
+          const msgiP=genome.metaSignalGradInfluence||0;
+          if(msgiP>0.001){
+            vmRegs[di]=(genome.metaSignalGrad||0)*msgiP*(k||1);
+          }
+        }break;
+        case 28:{
+          // Pe44 Layer 33: META_VOL_READ — read attribution volatility into register.
+          // metaSignalVol near 0: gradient has been stable — direction trustworthy.
+          // metaSignalVol near 1: gradient swinging — direction unreliable.
+          // metaSignalVolInfluence=0 returns 0 → Pe43 behavior exactly.
+          const msviP=genome.metaSignalVolInfluence||0;
+          if(msviP>0.001){
+            vmRegs[di]=(genome.metaSignalVol||0)*msviP*(k||1);
+          }
+        }break;
+        case 29:{
+          // Pe45 Layer 34: ATTR_QUERY — read attribution trace of a specific meta-parameter.
+          const mmbP=genome.metaMutationBias||0;
+          if(mmbP>0.001&&genome.metaCredit){
+            const aqIdx=Math.abs(Math.floor(k||0))%META_LAYER_PARAMS.length;
+            const aqParam=META_LAYER_PARAMS[aqIdx];
+            const aqE=genome.metaCredit[aqParam];
+            vmRegs[di]=(aqE?(aqE.trace||0):0)*mmbP*(k>=0?1:-1);
+          }
+        }break;
+        case 30:{
+          // Pe47: READ_INSCRIPTION parity for plasmid VM (was missing from Pe46).
+          const ri30x=Math.floor(px[i]/(W/FIELD_W)),ri30y=Math.floor(py[i]/(H/FIELD_H));
+          const ri30idx=Math.max(0,Math.min(FIELD_W*FIELD_H-1,ri30y*FIELD_W+ri30x));
+          if(cellProgStr[ri30idx]>0.1){
+            vmRegs[di]=(cellProgOp[ri30idx]/11)*k;
+          }else{
+            vmRegs[di]=0;
+          }
+        }break;
+        case 31:{
+          // Pe47 Layer 36: FIELD2_WRITE in plasmid VM.
+          const fw47p=genome.field2WriteInfluence||0;
+          if(fw47p>0.001){
+            const fx31=Math.floor(px[i]/(W/FIELD_W)),fy31=Math.floor(py[i]/(H/FIELD_H));
+            const fi31=Math.max(0,Math.min(FIELD_W*FIELD_H-1,fy31*FIELD_W+fx31));
+            field2[fi31]=Math.max(0,Math.min(100,field2[fi31]+vmRegs[si]*k*fw47p));
           }
         }break;
       }
@@ -5295,6 +5666,78 @@ function executeClusterVM(i,j,sim,d){
         if(uas&&uas.length>0){
           const uIdx=Math.abs(Math.floor(k))%uas.length;
           vmRegs[di]=uaCall(uas[uIdx],vmRegs[si],vmRegs[(si+1)%12]);
+        }
+      }break;
+      case 24:{
+        // Pe43: SIGNAL_EMIT in cluster VM — previously absent. Closes structural
+        // gap: cluster VMs were capped at Pe35 capability while particle VMs
+        // advanced through Pe42. Pe43 brings both to parity.
+        if(genome.signalInfluence>0.001){
+          const emitVal=vmRegs[si]*k;
+          pSignalEmit[i]=Math.max(-4,Math.min(4,emitVal));
+          const emitCost=(genome.signalEmitCost||0)*Math.abs(emitVal);
+          amp[i]-=emitCost;
+        }
+      }break;
+      case 25:{
+        // Pe43: SIGNAL_READ in cluster VM — previously absent.
+        if(genome.signalInfluence>0.001){
+          vmRegs[di]=pSignalReceive[i]*(genome.signalInfluence||0)*(k||1);
+          signalReadCount++;
+        }
+      }break;
+      case 26:{
+        // Pe43: META_READ in cluster VM — previously absent.
+        const msiC=genome.metaSignalInfluence||0;
+        if(msiC>0.001){
+          vmRegs[di]=(genome.metaSignalValue||0)*msiC*(k||1);
+        }
+      }break;
+      case 27:{
+        // Pe44: META_GRAD_READ in cluster VM — previously absent.
+        // Cluster VMs now have full parity with particle VMs through Pe44.
+        const msgiC=genome.metaSignalGradInfluence||0;
+        if(msgiC>0.001){
+          vmRegs[di]=(genome.metaSignalGrad||0)*msgiC*(k||1);
+        }
+      }break;
+      case 28:{
+        // Pe44 Layer 33: META_VOL_READ in cluster VM — parity with particle VM.
+        const msviC=genome.metaSignalVolInfluence||0;
+        if(msviC>0.001){
+          vmRegs[di]=(genome.metaSignalVol||0)*msviC*(k||1);
+        }
+      }break;
+      case 29:{
+        // Pe45 Layer 34: ATTR_QUERY in cluster VM — full parity through opcode 29.
+        const mmbC=genome.metaMutationBias||0;
+        if(mmbC>0.001&&genome.metaCredit){
+          const aqIdx=Math.abs(Math.floor(k||0))%META_LAYER_PARAMS.length;
+          const aqParam=META_LAYER_PARAMS[aqIdx];
+          const aqE=genome.metaCredit[aqParam];
+          vmRegs[di]=(aqE?(aqE.trace||0):0)*mmbC*(k>=0?1:-1);
+        }
+      }break;
+      case 30:{
+        // Pe47: READ_INSCRIPTION parity for cluster VM (was missing from Pe46).
+        // All three VMs now have full parity through opcode 31.
+        const ri30x=Math.floor(px[i]/(W/FIELD_W)),ri30y=Math.floor(py[i]/(H/FIELD_H));
+        const ri30idx=Math.max(0,Math.min(FIELD_W*FIELD_H-1,ri30y*FIELD_W+ri30x));
+        if(cellProgStr[ri30idx]>0.1){
+          vmRegs[di]=(cellProgOp[ri30idx]/11)*k;
+        }else{
+          vmRegs[di]=0;
+        }
+      }break;
+      case 31:{
+        // Pe47 Layer 36: FIELD2_WRITE in cluster VM.
+        // Cluster members can directly deposit into field2 at their cell position.
+        // field2WriteInfluence=0 → inert → Pe46 exactly.
+        const fw47c=genome.field2WriteInfluence||0;
+        if(fw47c>0.001){
+          const fx31=Math.floor(px[i]/(W/FIELD_W)),fy31=Math.floor(py[i]/(H/FIELD_H));
+          const fi31=Math.max(0,Math.min(FIELD_W*FIELD_H-1,fy31*FIELD_W+fx31));
+          field2[fi31]=Math.max(0,Math.min(100,field2[fi31]+vmRegs[si]*k*fw47c));
         }
       }break;
     }
@@ -6303,10 +6746,74 @@ function loop(){
         const msb=(genome.metaSearchBias||0);
         const ac=confCount>0?(avgConf/confCount):0;
         const msiTag=(genome.metaSignalInfluence||0)>0.001?` ms${(genome.metaSignalValue||0).toFixed(2)}`:'';
-        attrTag=` | attr:${lo}/${META_LAYER_PARAMS.length} c${ac.toFixed(2)}${mb>0.001?' b'+mb.toFixed(2):''}${msb>0.01?' w'+msb.toFixed(2):''}${msiTag} +${sb}${best.tr>=0?'+':''}${best.tr.toFixed(2)} -${sw}${worst.tr.toFixed(2)}`;
+        // Pe43: show gradient direction in attr tag. g+0.12 = health rising, g-0.05 = declining
+        const msgiTag=(genome.metaSignalGradInfluence||0)>0.001?` g${(genome.metaSignalGrad||0)>=0?'+':''}${(genome.metaSignalGrad||0).toFixed(2)}`:'';
+        // Pe44: show volatility in attr tag. v0.03 = stable lean, v0.78 = noisy/oscillating
+        const msviTag=(genome.metaSignalVolInfluence||0)>0.001?` v${(genome.metaSignalVol||0).toFixed(2)}`:'';
+        // Pe45: show differential mutation state. mmb = bias level, p = protected params, x = explored
+        let mmbTag='';
+        const mmb45=genome.metaMutationBias||0;
+        if(mmb45>0.01&&genome.metaCredit){
+          const vol45=genome.metaSignalVol||0;
+          const trust45=Math.max(0,1-vol45*2);
+          if(trust45>0.05){
+            let protected45=0,explored45=0;
+            for(const p of META_LAYER_PARAMS){
+              const e=genome.metaCredit[p];if(!e)continue;
+              const tr=e.trace||0;
+              if(tr>0.1)protected45++;
+              else if(tr<-0.1)explored45++;
+            }
+            mmbTag=` mmb:${mmb45.toFixed(2)} ${protected45}↓${explored45}↑`;
+          }
+        }
+        attrTag=` | attr:${lo}/${META_LAYER_PARAMS.length} c${ac.toFixed(2)}${mb>0.001?' b'+mb.toFixed(2):''}${msb>0.01?' w'+msb.toFixed(2):''}${msiTag}${msgiTag}${msviTag}${mmbTag} +${sb}${best.tr>=0?'+':''}${best.tr.toFixed(2)} -${sw}${worst.tr.toFixed(2)}`;
       }
     }
-    genEl.textContent=`gen${genome.generation} ${genome.extinctions}☠ t${genome.totalTicks} | ${clusters.length}cl(${clVMActive}vm${budCount>0?','+budCount+'bud':''}) ${livingLin}lin fit:${currentFitness.toFixed(2)} stb:${(selfModel.stability||0).toFixed(2)} | vm:${genome.vmProgram.length}inst ${nSensors}sns ${hgtEventsTotal}hgt | pop:${N}/${CAP} fld:${fieldTotal.toFixed(0)}${fTrend<-0.01?'↓':fTrend>0.01?'↑':'~'} risk:${cRisk.toFixed(2)} | ⟲${rInf.toFixed(2)} ${reflexClusters}rc${netTag}${cgTag}${uaTag}${(genome.eventLog&&genome.eventLog.length)?' ev:'+genome.eventLog.length:''}${gradTag}${mrTag}${relTag}${sigTag}${attrTag}${dissTag}`;
+    // ═══ Pe46 Layer 35: INSCRIPTION ECHO diagnostic ═══
+    // inscTag shows: avg inscription strength at live particle positions × influence gate.
+    // s = substrate coverage (0=no inscriptions under particles, 1=all cells inscribed+strong)
+    // x = inscriptionInfluence genome value (how strongly the channel is open)
+    // If x>0 but s≈0, particles haven't discovered opcode 20 or inscriptions have decayed.
+    // If s>0 but x→0, system found inscription-reading not worth the noise — a valid answer.
+    let inscTag='';
+    const _inscInf=genome.inscriptionInfluence||0;
+    if(_inscInf>0.001){
+      let inscSumStr=0,inscCount=0;
+      for(let i=0;i<N;i++){
+        if(!palive[i])continue;
+        const inscHX=Math.floor(px[i]/(W/FIELD_W)),inscHY=Math.floor(py[i]/(H/FIELD_H));
+        const inscHIdx=Math.max(0,Math.min(FIELD_W*FIELD_H-1,inscHY*FIELD_W+inscHX));
+        inscSumStr+=cellProgStr[inscHIdx];
+        inscCount++;
+      }
+      const inscAvgStr=inscCount>0?inscSumStr/inscCount:0;
+      if(inscAvgStr>0.005||_inscInf>0.02){
+        inscTag=` | insc:s${inscAvgStr.toFixed(2)} x${_inscInf.toFixed(2)}`;
+      }
+    }
+    // ═══ Pe47 Layer 36: SECOND INK diagnostic ═══
+    // f2Tag shows: avg field2 energy at live particle positions and the write-influence gate.
+    // e = avg field2 value under particles (0=channel empty, >0=second ink accumulating)
+    // x = field2WriteInfluence genome value (how strongly the write path is open)
+    // If x>0 but e≈0, VMs haven't discovered opcode 31 or writes are too small.
+    // If e>0 but x→0, field2 is chemistry-maintained without direct VM writes — valid answer.
+    let f2Tag='';
+    const _f2wi=genome.field2WriteInfluence||0;
+    if(_f2wi>0.001){
+      let f2Sum=0,f2Count=0;
+      for(let i=0;i<N;i++){
+        if(!palive[i])continue;
+        const f2x=Math.floor(px[i]/(W/FIELD_W)),f2y=Math.floor(py[i]/(H/FIELD_H));
+        const f2idx=Math.max(0,Math.min(FIELD_W*FIELD_H-1,f2y*FIELD_W+f2x));
+        f2Sum+=field2[f2idx];f2Count++;
+      }
+      const f2Avg=f2Count>0?f2Sum/f2Count:0;
+      if(f2Avg>0.005||_f2wi>0.02){
+        f2Tag=` | f2:e${f2Avg.toFixed(2)} x${_f2wi.toFixed(2)}`;
+      }
+    }
+    genEl.textContent=`gen${genome.generation} ${genome.extinctions}☠ t${genome.totalTicks} | ${clusters.length}cl(${clVMActive}vm${budCount>0?','+budCount+'bud':''}) ${livingLin}lin fit:${currentFitness.toFixed(2)} stb:${(selfModel.stability||0).toFixed(2)} | vm:${genome.vmProgram.length}inst ${nSensors}sns ${hgtEventsTotal}hgt | pop:${N}/${CAP} fld:${fieldTotal.toFixed(0)}${fTrend<-0.01?'↓':fTrend>0.01?'↑':'~'} risk:${cRisk.toFixed(2)} | ⟲${rInf.toFixed(2)} ${reflexClusters}rc${netTag}${cgTag}${uaTag}${(genome.eventLog&&genome.eventLog.length)?' ev:'+genome.eventLog.length:''}${gradTag}${mrTag}${relTag}${sigTag}${attrTag}${inscTag}${f2Tag}${dissTag}`;
   }
 
   const renderEvery=N>1000?4:N>500?3:N>200?2:1;
