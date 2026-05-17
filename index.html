@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
-<title>Selection פ 38 — Attribution Depth</title>
+<title>Selection פ 40 — Atrophy</title>
 <style>
 *{margin:0;padding:0;box-sizing:border-box}
 html,body{height:100%;overflow:hidden;background:#020204;touch-action:none;cursor:crosshair}
@@ -625,6 +625,47 @@ let genome={
   metaCreditBias:0.1,        // 0=Pe36 (observational only). >0 biases meta-mutation by credit. Evolvable.
   metaCredit:null,           // {param:{trace,pendingDelta,fitAtApply}} — built lazily in mutateGenome
 
+  // ═══ LAYER 28: DISSOLUTION LEARNING — what clusters teach when they die (Pe39) ═══
+  // Pe26's cluster upward signal fires during persistence. Nothing captures dissolution.
+  // When a cluster with persistAge≥DISSOLUTION_MIN_AGE collapses, its behavioral fingerprint
+  // is the most informative cluster-timescale data the system has — and leaves no trace.
+  // Pe39 maintains a capped dissolution fossil pool (max 6, quality-ordered by
+  // persistAge×coherence×avgAmp). Two consequences, both gated by dissolutionWeight:
+  //   A: SCENARIO SEEDING — fossil state seeds a behavioral scenario probe in evolveShadowBank.
+  //      coherence→force/entrainRate, avgAmp→spawnDrive. Shadow sim vets; weak probes age out.
+  //   B: MOTIF INJECTION — under collapseRisk, 1 fossil vmProgram instruction soft-injected
+  //      into global vmProgram. Same mechanism as Pe26 cluster upward signal.
+  // dissolutionWeight=0 → pool never queried → Pe38 exactly.
+  // In META_LAYER_PARAMS so attribution reports whether cluster death teaches the genome.
+  dissolutionWeight:0.2,     // 0=Pe38 exactly. >0 enables dissolution learning. Evolvable.
+
+  // ═══ LAYER 29: ATROPHY — the architecture sheds what it can prove it doesn't need (Pe40) ═══
+  // Pe37 built the mirror (trace). Pe38 built the memory (traceSlow) and the
+  // confidence (conf = fast/slow agreement). Pe39 kept adding. Across 28 layers the
+  // architecture could finally SEE which of its own layers earned their place — and
+  // did nothing decisive with that knowledge. metaCreditBias only leaned mutation.
+  // No version Pe24→Pe39 ever let the system get simpler.
+  //
+  // Pe40 closes the loop. Each mutation cycle, any provably-dormant-at-zero tracked
+  // param whose LONG-TERM attribution is confidently negative (consistently harms
+  // fitness) or confidently dead (contributes nothing) has its live value decayed
+  // toward zero. The layer goes dormant: code intact, saves intact, compute dropped,
+  // parameter off the active fitness/mutation surface. Reversible by the codebase's
+  // own lean-not-lock idiom — the surviving random mutation component can regrow a
+  // dormant param if conditions change and its attribution recovers. Atrophy is a
+  // pressure, not a latch.
+  //
+  // Scoped deliberately: only params documented "0 = [prior version] exactly" are
+  // eligible (ATROPHY_SAFE). For thresholds/costs/decay-rates, zero is a degenerate
+  // extreme, not dormancy — atrophying those would corrupt the layer, not retire it.
+  // Better to retire 11 layers correctly than 17 with 6 pushed into degenerate states.
+  //
+  // atrophyRate is itself in META_LAYER_PARAMS and itself in ATROPHY_SAFE: if
+  // self-pruning is confidently harmful, the system prunes its own pruning. The
+  // mechanism can disprove itself. That recursive self-disproof falls out for free —
+  // no special-case code — and is the strongest safety property available here.
+  // atrophyRate=0 → Pe39 exactly (loop stays open, attribution observational only).
+  atrophyRate:0.05,          // 0=Pe39 exactly. >0 closes the attribution loop. Evolvable.
 
   // ═══ LAYER 18: RATIFICATION — clusters carry scenarios upward (Pe28) ═══
   // Pe27 made the imagination bank evolvable, but scenarios still live and die strictly
@@ -1113,6 +1154,8 @@ function encodeGenome(){
     mcb:+(genome.metaCreditBias||0).toFixed(4),
     // Pe38 Layer 27: search width bias gate.
     msb:+(genome.metaSearchBias||0).toFixed(4),
+    dw39:+(genome.dissolutionWeight||0.2).toFixed(4), // Pe39 Layer 28
+    ar40:+(genome.atrophyRate||0).toFixed(4), // Pe40 Layer 29
     mct:META_LAYER_PARAMS.map(p=>{
       const e=genome.metaCredit&&genome.metaCredit[p];
       return +((e&&e.trace)||0).toFixed(3);
@@ -1229,6 +1272,8 @@ function decodeGenome(data){
     if(typeof g.sinf==='number')genome.signalInfluence=g.sinf;
     if(typeof g.sdec==='number')genome.signalDecay=g.sdec;
     if(typeof g.sri==='number')genome.signalRoleInfluence=g.sri; // Pe38 Layer 27
+    if(typeof g.dw39==='number')genome.dissolutionWeight=g.dw39; // Pe39 Layer 28
+    if(typeof g.ar40==='number')genome.atrophyRate=g.ar40; // Pe40 Layer 29
     // Pe37 Layer 26: attribution
     if(typeof g.mcb==='number')genome.metaCreditBias=g.mcb;
     if(typeof g.msb==='number')genome.metaSearchBias=g.msb; // Pe38 Layer 27: search width bias
@@ -1303,6 +1348,8 @@ function sanitizeGenome(){
   genome.metaSearchBias=Math.max(0,Math.min(1,finiteOr(genome.metaSearchBias,0.15)));
   // Pe38 Layer 27: signal role influence — how strongly net signal role feeds into VM.
   genome.signalRoleInfluence=Math.max(0,Math.min(1,finiteOr(genome.signalRoleInfluence,0.1)));
+  genome.dissolutionWeight=Math.max(0,Math.min(1,finiteOr(genome.dissolutionWeight,0.2))); // Pe39
+  genome.atrophyRate=Math.max(0,Math.min(0.3,finiteOr(genome.atrophyRate,0.05))); // Pe40 Layer 29
   {
     const src=(genome.metaCredit&&typeof genome.metaCredit==='object')?genome.metaCredit:{};
     const fresh={};
@@ -1476,6 +1523,47 @@ function seedChemistryTable(){
 const MAX_CLUSTERS=30;
 const clusters=[];
 const prevClusters=[];
+
+// ═══ Pe39 LAYER 28: DISSOLUTION FOSSIL POOL ═══
+// Capped pool of behavioral fingerprints from dissolved long-lived clusters.
+// Quality-ordered: lower-quality fossils are evicted when pool is full.
+// Each fossil carries: persistAge, coherence, avgAmp, derived scenario axes,
+// and up to 4 raw instructions from the cluster's vmProgram for motif injection.
+const DISSOLUTION_MIN_AGE=8;    // cluster must have survived ≥8 detection cycles
+const MAX_DISSOLUTION_FOSSILS=6;
+const dissolutionFossils=[];    // [{quality,persistAge,coherence,avgAmp,scenarioAxes,physicsAxes,vmProgram}]
+
+function recordDissolutionFossil(c,quality){
+  // Evict lowest-quality fossil if pool is full
+  if(dissolutionFossils.length>=MAX_DISSOLUTION_FOSSILS){
+    let minIdx=0;
+    for(let i=1;i<dissolutionFossils.length;i++){
+      if(dissolutionFossils[i].quality<dissolutionFossils[minIdx].quality)minIdx=i;
+    }
+    if(dissolutionFossils[minIdx].quality>=quality)return; // incoming not better, skip
+    dissolutionFossils.splice(minIdx,1);
+  }
+  // Derive behavioral scenario axes from observable cluster state.
+  // These are heuristic probes — the shadow sim validates them, weak ones age out.
+  // High coherence → cluster thrived on phase alignment → probe force + entrainRate.
+  // High avgAmp   → cluster was energetically rich → probe spawnDrive.
+  const f=Math.max(-1.5,Math.min(1.5,(c.coherence-0.4)*3));
+  const sp=Math.max(-1.5,Math.min(1.5,(c.avgAmp-0.4)*3));
+  const r=Math.max(-1.5,Math.min(1.5,c.coherence-0.5));
+  dissolutionFossils.push({
+    quality,
+    persistAge:c.persistAge,
+    coherence:c.coherence,
+    avgAmp:c.avgAmp,
+    // Behavioral axes derived from cluster observable state
+    scenarioAxes:{f,p:0,a:0,tb:0,sp,sm:0,mp:0},
+    // Physics axes: entrainRate nudge from coherence
+    physicsAxes:{e:0,k:0,r,c:0,t:0},
+    // Raw cluster vmProgram motifs for direct injection (up to 4 instructions)
+    vmProgram:c.vmProgram?c.vmProgram.slice(0,4).map(inst=>[...inst]):[]
+  });
+  recordEvent('dissolution_fossil',{age:c.persistAge,q:+quality.toFixed(2),n:dissolutionFossils.length},600);
+}
 let clusterAge=new Map(); // track persistence across snapshots
 let clusterVMs=new Map(); // persist per-cluster VM programs across detection cycles (keyed by hash)
 // Pe30 Layer 20: per-cluster scenario fossil. A cluster snapshots the global bank's
@@ -1737,18 +1825,23 @@ function trackClusterPersistence(){
   const newAge=new Map();
   const newVMs=new Map();
   const newFossils=new Map(); // Pe30 Layer 20b: carry birth-time scenario fossils forward
+  // Pe39: snapshot prevClusters and track which indices get matched, for dissolution detection
+  const prevClusters_snapshot=prevClusters.map(p=>({...p,tendency:[...p.tendency],vmProgram:p.vmProgram?p.vmProgram.slice(0,4).map(i=>[...i]):[]}));
+  const matchedPrevIdxSet=new Set();
   for(const c of clusters){
-    let bestMatch=null,bestScore=-1;
-    for(const p of prevClusters){
+    let bestMatch=null,bestScore=-1,bestMatchIdx=-1;
+    for(let pi=0;pi<prevClusters.length;pi++){
+      const p=prevClusters[pi];
       const dx=c.cx-p.cx,dy=c.cy-p.cy;
       const dist=Math.sqrt(dx*dx+dy*dy);
       if(dist>CELL*3)continue;
       let tSim=0;
       for(let d=0;d<DIMS;d++)tSim+=c.tendency[d]*p.tendency[d];
       const score=tSim*(1-dist/(CELL*3))*Math.min(1,c.size/Math.max(1,p.size));
-      if(score>bestScore){bestScore=score;bestMatch=p}
+      if(score>bestScore){bestScore=score;bestMatch=p;bestMatchIdx=pi;}
     }
     if(bestMatch&&bestScore>0.1){
+      matchedPrevIdxSet.add(bestMatchIdx); // Pe39: mark as survived
       const prevAge=clusterAge.get(bestMatch.hash)||0;
       newAge.set(c.hash,prevAge+1);
       c.persistAge=prevAge+1;
@@ -1803,6 +1896,24 @@ function trackClusterPersistence(){
   clusterVMs=newVMs;
   clusterFossils=newFossils; // Pe30: drop fossils of clusters that no longer exist
   prevClusters.length=0;
+
+  // Pe39 Layer 28: detect dissolved clusters.
+  // Any prevCluster that found no match in current clusters has dissolved.
+  // If it was old enough (persistAge ≥ DISSOLUTION_MIN_AGE), record its terminal
+  // behavioral state as a dissolution fossil. The identification mirrors the matching
+  // logic above — same spatial + tendency threshold, so "no match" means exactly what
+  // the persistence tracker means by "this cluster ceased to exist."
+  const dw=genome.dissolutionWeight||0;
+  if(dw>0.01&&prevClusters_snapshot.length>0){
+    for(let pi=0;pi<prevClusters_snapshot.length;pi++){
+      if(matchedPrevIdxSet.has(pi))continue; // survived
+      const p=prevClusters_snapshot[pi];
+      if((p.persistAge||0)<DISSOLUTION_MIN_AGE)continue;
+      const quality=(p.persistAge||1)*(p.coherence||0.3)*(p.avgAmp||0.3);
+      if(isFinite(quality)&&quality>0)recordDissolutionFossil(p,quality);
+    }
+  }
+
   for(const c of clusters)prevClusters.push({...c,tendency:[...c.tendency]});
   // Rebuild fast lookup
   buildClusterLookup();
@@ -2070,8 +2181,23 @@ const META_LAYER_PARAMS=[
   'signalEmitCost',             // Pe36
   'signalInfluence',            // Pe36
   'signalDecay',                // Pe36
-  'signalRoleInfluence'         // Pe38
+  'signalRoleInfluence',         // Pe38
+  'dissolutionWeight',           // Pe39
+  'atrophyRate'                  // Pe40 — itself tracked: atrophy can atrophy itself
 ];
+// Pe40 Layer 29: subset of META_LAYER_PARAMS whose value 0 is documented as
+// "[prior version] exactly" — i.e. zero provably means the layer is dormant and
+// prior behavior is recovered. Only these are atrophy-eligible. Threshold / cost /
+// decay-rate params (mutualRecognitionThresh, signalDecay, signalEmitCost,
+// shadowExploreRate, shadowBankChurn, relationalUseBias) are excluded: for them
+// zero is a degenerate extreme, not dormancy, and decaying them would corrupt the
+// layer rather than retire it.
+const ATROPHY_SAFE=new Set([
+  'creditLearnRate','gradientBias','gradientUpstreamBias','scenarioCreditWeight',
+  'behaviorGradientBias','neighborModelUpdateRate','neighborPredictionInfluence',
+  'relationalWeight','signalInfluence','signalRoleInfluence','dissolutionWeight',
+  'atrophyRate'
+]);
 // Short HUD labels — keep the attribution tag compact.
 const META_LAYER_SHORT={
   creditLearnRate:'clr',gradientBias:'gb',gradientUpstreamBias:'gub',
@@ -2079,7 +2205,8 @@ const META_LAYER_SHORT={
   behaviorGradientBias:'bgb',neighborModelUpdateRate:'nmu',
   neighborPredictionInfluence:'npi',mutualRecognitionThresh:'mrt',
   relationalWeight:'rw',relationalUseBias:'rub',signalEmitCost:'sec',
-  signalInfluence:'sinf',signalDecay:'sdec',signalRoleInfluence:'sri'
+  signalInfluence:'sinf',signalDecay:'sdec',signalRoleInfluence:'sri',
+  dissolutionWeight:'dw'
 };
 
 // Pe32: 12D Euclidean distance between two scenario entries.
@@ -2259,6 +2386,28 @@ function evolveShadowBank(){
       }
     }else{
       candidate=randomScenario();
+    }
+    // Pe39 Layer 28: dissolution fossil scenario override.
+    // With probability dissolutionWeight, replace the candidate with a probe derived
+    // from the highest-quality dissolution fossil. Shadow sim vets it — weak probes
+    // age out normally. At dissolutionWeight=0 this never fires (Pe38 exactly).
+    const _dw=genome.dissolutionWeight||0;
+    if(_dw>0.01&&dissolutionFossils.length>0&&Math.random()<_dw){
+      const best=dissolutionFossils.reduce((b,f)=>f.quality>b.quality?f:b,dissolutionFossils[0]);
+      const ax=best.scenarioAxes,px39=best.physicsAxes;
+      const noise=0.35;
+      candidate={
+        e:Math.max(-2,Math.min(2,(px39.e||0)+(Math.random()-0.5)*noise)),
+        k:Math.max(-2,Math.min(2,(px39.k||0)+(Math.random()-0.5)*noise)),
+        r:Math.max(-2,Math.min(2,(px39.r||0)+(Math.random()-0.5)*noise)),
+        c:Math.max(-2,Math.min(2,(px39.c||0)+(Math.random()-0.5)*noise)),
+        t:Math.max(-2,Math.min(2,(px39.t||0)+(Math.random()-0.5)*noise)),
+        f:Math.max(-2,Math.min(2,(ax.f||0)+(Math.random()-0.5)*noise)),
+        p:0,a:0,tb:0,
+        sp:Math.max(-2,Math.min(2,(ax.sp||0)+(Math.random()-0.5)*noise)),
+        sm:0,mp:0,
+        wins:0,age:0,src:'dissolution',creditTrace:0
+      };
     }
     bank.push(candidate);
   }
@@ -3462,6 +3611,33 @@ function mutateGenome(){
     e.conf=1-Math.abs(e.trace-tS)/(Math.abs(e.trace)+Math.abs(tS)+0.05);
   }
 
+  // ═══ Pe40 Layer 29: ATROPHY — the loop closes ═══
+  // Consume the long-term attribution signal Pe38 built and currently only leans
+  // mutation with. A provably-dormant-at-zero param (ATROPHY_SAFE) whose slow EMA
+  // is confidently negative (consistently harms) or confidently dead (contributes
+  // nothing) has its live value decayed toward zero. Reversible: decay only applies
+  // while the condition holds; surviving random mutation regrows a param whose
+  // attribution later recovers. atrophyRate=0 → this whole block is inert (Pe39).
+  const aRate=Math.max(0,Math.min(0.3,genome.atrophyRate||0));
+  if(aRate>0.001){
+    for(const p of META_LAYER_PARAMS){
+      if(!ATROPHY_SAFE.has(p))continue;
+      const e=mc[p];
+      if(!e||e.traceSlow===undefined)continue;
+      const conf=e.conf||0;
+      const tSlow=e.traceSlow;
+      // High confidence required (fast/slow agree) — never atrophy a volatile signal.
+      const harmful = conf>0.5 && tSlow<-0.15;
+      const dead    = conf>0.5 && Math.abs(tSlow)<0.03 && Math.abs(e.trace)<0.05;
+      if(harmful||dead){
+        // Harmful decays faster than merely-dead, and faster the worse it is.
+        const strength=aRate*(harmful?(0.5+Math.abs(tSlow)):0.5);
+        const factor=Math.max(0,Math.min(1,1-strength));
+        if(isFinite(genome[p]))genome[p]*=factor;
+      }
+    }
+  }
+
   // metaMaybe: like maybe(), but a tracked param's perturbation leans toward its
   // credited direction when metaCreditBias>0. Same lean-not-lock shape as gradMaybe —
   // the random component is only partially attenuated, never replaced. mcBias=0 → maybe().
@@ -3577,6 +3753,9 @@ function mutateGenome(){
   // feeds into VM registers. In META_LAYER_PARAMS, so attribution tracks whether
   // role-awareness actually earns its keep. The system can evolve it to zero.
   genome.signalRoleInfluence=Math.max(0,Math.min(1,metaMaybe(genome.signalRoleInfluence,0.05,'signalRoleInfluence')));
+  // Pe39 Layer 28: dissolutionWeight — in META_LAYER_PARAMS so attribution tracks it
+  genome.dissolutionWeight=Math.max(0,Math.min(1,metaMaybe(genome.dissolutionWeight,0.05,'dissolutionWeight')));
+  genome.atrophyRate=Math.max(0,Math.min(0.3,metaMaybe(genome.atrophyRate,0.04,'atrophyRate'))); // Pe40 Layer 29
 
   // ═══ Pe26 Layer 16c: CLUSTER UPWARD SIGNAL injection ═══
   // Drain the upstream buffer — soft-inject successful cluster motifs into the global VM.
@@ -3632,6 +3811,22 @@ function mutateGenome(){
   }
   // Trim buffer if it fills faster than it drains
   if(clusterUpstreamBuffer.length>MAX_UPSTREAM_BUFFER)clusterUpstreamBuffer.length=MAX_UPSTREAM_BUFFER;
+
+  // ═══ Pe39 Layer 28: DISSOLUTION MOTIF INJECTION ═══
+  // Under collapseRisk, pull a raw instruction from the highest-quality dissolution fossil
+  // and soft-inject it into the global vmProgram. Same caution level as cluster upward:
+  // probabilistic, noisy, one instruction at a time. dissolutionWeight=0 → never fires.
+  const _dwMut=genome.dissolutionWeight||0;
+  if(_dwMut>0.01&&dissolutionFossils.length>0&&risk>0.25&&Math.random()<_dwMut*Math.min(1,risk*1.5)*0.35){
+    const best=dissolutionFossils.reduce((b,f)=>f.quality>b.quality?f:b,dissolutionFossils[0]);
+    if(best.vmProgram&&best.vmProgram.length>0&&genome.vmProgram.length<genome.vmMaxInstructions){
+      const srcInst=best.vmProgram[Math.floor(Math.random()*best.vmProgram.length)];
+      const noisy=[srcInst[0],srcInst[1],srcInst[2],srcInst[3]+(Math.random()-0.5)*0.2];
+      const insertAt=Math.floor(Math.random()*(genome.vmProgram.length+1));
+      genome.vmProgram.splice(insertAt,0,noisy);
+      recordEvent('dissolution_inject',{q:+best.quality.toFixed(2),age:best.persistAge,vm:genome.vmProgram.length},800);
+    }
+  }
 
   // LAYER 4: META-MUTATIONS
   genome.mutationRate=maybe(genome.mutationRate,0.01,0.25,0.02);
@@ -5888,6 +6083,9 @@ function loop(){
     const _bgb=genome.behaviorGradientBias||0;
     const _shadowLive=lastShadowNudgeDir.some(v=>v!==0);
     const gradTag=(_gb>0.05||_gub>0.05||_bgb>0.05)?' | grad:'+_gb.toFixed(2)+'↓'+_gub.toFixed(2)+'↑'+(_shadowLive?'⊕':'○')+(_bgb>0.05?'b'+_bgb.toFixed(2):'')+(clusterUpstreamBuffer.length>0?'['+clusterUpstreamBuffer.length+']':''):'';
+    // Pe39: dissolution fossil tag
+    const _dw39=genome.dissolutionWeight||0;
+    const dissTag=dissolutionFossils.length>0?' | diss:'+dissolutionFossils.length+(_dw39>0.05?'('+_dw39.toFixed(2)+')':''):'';
     // Pe31: mutual recognition state tag
     const _nmr=genome.neighborModelUpdateRate||0;
     const _npi=genome.neighborPredictionInfluence||0;
@@ -5971,7 +6169,7 @@ function loop(){
         attrTag=` | attr:${lo}/${META_LAYER_PARAMS.length} c${ac.toFixed(2)}${mb>0.001?' b'+mb.toFixed(2):''}${msb>0.01?' w'+msb.toFixed(2):''} +${sb}${best.tr>=0?'+':''}${best.tr.toFixed(2)} -${sw}${worst.tr.toFixed(2)}`;
       }
     }
-    genEl.textContent=`gen${genome.generation} ${genome.extinctions}☠ t${genome.totalTicks} | ${clusters.length}cl(${clVMActive}vm${budCount>0?','+budCount+'bud':''}) ${livingLin}lin fit:${currentFitness.toFixed(2)} stb:${(selfModel.stability||0).toFixed(2)} | vm:${genome.vmProgram.length}inst ${nSensors}sns ${hgtEventsTotal}hgt | pop:${N}/${CAP} fld:${fieldTotal.toFixed(0)}${fTrend<-0.01?'↓':fTrend>0.01?'↑':'~'} risk:${cRisk.toFixed(2)} | ⟲${rInf.toFixed(2)} ${reflexClusters}rc${netTag}${cgTag}${uaTag}${(genome.eventLog&&genome.eventLog.length)?' ev:'+genome.eventLog.length:''}${gradTag}${mrTag}${relTag}${sigTag}${attrTag}`;
+    genEl.textContent=`gen${genome.generation} ${genome.extinctions}☠ t${genome.totalTicks} | ${clusters.length}cl(${clVMActive}vm${budCount>0?','+budCount+'bud':''}) ${livingLin}lin fit:${currentFitness.toFixed(2)} stb:${(selfModel.stability||0).toFixed(2)} | vm:${genome.vmProgram.length}inst ${nSensors}sns ${hgtEventsTotal}hgt | pop:${N}/${CAP} fld:${fieldTotal.toFixed(0)}${fTrend<-0.01?'↓':fTrend>0.01?'↑':'~'} risk:${cRisk.toFixed(2)} | ⟲${rInf.toFixed(2)} ${reflexClusters}rc${netTag}${cgTag}${uaTag}${(genome.eventLog&&genome.eventLog.length)?' ev:'+genome.eventLog.length:''}${gradTag}${mrTag}${relTag}${sigTag}${attrTag}${dissTag}`;
   }
 
   const renderEvery=N>1000?4:N>500?3:N>200?2:1;
