@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
-<title>Selection פ 55 — The Lifespan Mirror</title>
+<title>Selection פ 58 — The Speed Mirror (Complete)</title>
 <style>
 *{margin:0;padding:0;box-sizing:border-box}
 html,body{height:100%;overflow:hidden;background:#020204;touch-action:none;cursor:crosshair}
@@ -264,7 +264,7 @@ const DIMS=5; // dim 4 is blank — no hardcoded role. System decides what it me
 const MEM_SIZE=8; // per-particle persistent memory. Particles become stateful agents.
 const MAX_PLASMID=4; // max instructions per particle's personal mobile DNA
 const PLASMID_SLOTS=MAX_PLASMID*4; // each instruction is [op,src,dst,k] = 4 values
-const OPCODE_COUNT=40; // VM opcodes 0..39: adding SELF_AGE (39) in Pe55 Layer 44
+const OPCODE_COUNT=43; // VM opcodes 0..42: adding PARTNER_SPEED (42) in Pe58 Layer 47
 const FIELD_W=40;
 const FIELD_H=40;
 let FIELD_DECAY=0.982;   // natural fade — Pe22b: now genome-driven, can evolve
@@ -1075,13 +1075,134 @@ let genome={
   // No new data is computed — this is pure signal exposure, same architectural move
   // as Pe54. selfAgeInfluence=0 → opcode 39 returns 0 → Pe54 exactly.
   //
-  // Pe56 can complete the age mirror by adding PARTNER_AGE (opcode 40, reading
+  // Pe56 completes the age mirror by adding PARTNER_AGE (opcode 40, reading
   // page[j]) — the same pairing pattern as density (opcodes 35+38) and vigor (36+37).
   //
   // selfAgeInfluence=0 → opcode 39 returns 0 → Pe54 exactly.
   // In META_LAYER_PARAMS and ATROPHY_SAFE so attribution tracks whether age
   // self-sensing earns its keep and can retire it if not.
   selfAgeInfluence:0.15,   // 0=Pe54 exactly. Scales own age → VM. Evolvable.
+
+  // ═══ LAYER 45: PARTNER_AGE — particles read their interaction partner's age (Pe56) ═══
+  // Pe55 gave particles opcode 39 (SELF_AGE): how long have I been alive?
+  // That closed one half of the temporal picture. The other half was missing:
+  // a particle knows its own age, but not its partner's.
+  //
+  // page[j] has always been available — Pe56 merely exposes it. Opcode 40 (PARTNER_AGE)
+  // deposits page[j] into a VM register, normalized and gated by partnerAgeInfluence:
+  //   vmRegs[di] = Math.min(3, page[j] / 800) * partnerAgeInfluence * k
+  //
+  // The key emergent quantity: opcode-39 output MINUS opcode-40 output gives the
+  // relative age differential — without any additional opcode. A particle can evolve
+  // to compute (own_age - partner_age) and condition behavior on the sign.
+  //
+  // New behavioral categories with no prior path:
+  //   - Elder-juvenile dynamics: elders transfer plasmids/signals to young partners
+  //   - Age-matched cooperation: particles prefer interacting with age-similar partners
+  //   - Apprenticeship: young particles (low self_age) seek old partners (high partner_age)
+  //   - Senescent parasitism: aged particles drain younger, stronger ones
+  //   - Age-sorted clusters: young at the frontier, elders in the core
+  //   - Temporal complementarity: large age gaps drive role differentiation
+  //   - Lifecycle niche: partners sorted by age bracket occupy distinct interaction roles
+  //
+  // Together, opcodes 39 and 40 form a complete two-particle temporal picture:
+  //   opcode 39: own age (Pe55)
+  //   opcode 40: partner age (Pe56)
+  //   op39 - op40: relative age differential (implicit, no extra opcode)
+  //
+  // Pe56 also restores VM parity: opcode 39 (SELF_AGE) was added to the particle VM
+  // in Pe55 but not to the plasmid or cluster VMs. This version adds it to all three,
+  // alongside opcode 40 (PARTNER_AGE) — all three VMs now have full parity through 40.
+  //
+  // partnerAgeInfluence=0 → opcode 40 returns 0 → Pe55 exactly.
+  // In META_LAYER_PARAMS and ATROPHY_SAFE so attribution tracks whether partner-age
+  // sensing earns its keep and can retire it if not.
+  partnerAgeInfluence:0.15,   // 0=Pe55 exactly. Scales partner age → VM. Evolvable.
+
+  // ═══ LAYER 46: SELF_SPEED — particles read their own kinetic velocity (Pe57) ═══
+  // Pe55–56 completed the temporal sensing picture: particles can read own age and
+  // partner age. Three sensing dimensions now have full self+partner mirrors:
+  //   density (opcodes 35+38), vigor/amplitude (opcodes 36+37), age (opcodes 39+40).
+  //
+  // Pe57 opens a FOURTH sensing dimension: kinetic state. How fast am I moving?
+  //
+  // `vx[i]` and `vy[i]` are per-particle velocity components, updated every tick
+  // by entrainment forces, VM-driven forces, and field interactions. Speed is
+  // their magnitude: sqrt(vx²+vy²). It has never been accessible to the VM as a
+  // first-class signal — particles can influence velocity (opcode 0/force) but
+  // cannot READ it back. Pe57 closes this gap.
+  //
+  // Opcode 41 (SELF_SPEED) deposits the particle's own speed into a VM register:
+  //   speed = sqrt(vx[i]² + vy[i]²)
+  //   vmRegs[di] = Math.min(3, speed / 2) * selfSpeedInfluence * k
+  //
+  // Normalization: speed 2 px/tick → 1.0 (typical active particle).
+  //               speed 4 px/tick → 2.0 (fast, post-interaction).
+  //               Capped at 3.0 for extreme velocities (scatter events).
+  //               0.0: settled, not moving.
+  // Scale chosen to sit in the same register range as density/vigor/age.
+  //
+  // NEW BEHAVIORAL CATEGORIES WITH NO PRIOR PATH:
+  //   - Settled vs. roaming: slow particles defend territory; fast particles explore
+  //   - Brake-before-spawn: evolve to suppress spawning when speed > threshold
+  //   - Momentum-conditioned signaling: announce arrival by emitting when speed is high
+  //   - Kinetic triage: prefer interactions when nearly stopped (more "available")
+  //   - Speed-sorted clusters: fast particles form the frontier; slow ones hold the core
+  //   - Velocity-matched cooperation: seek partners with similar kinetic state
+  //   - Energy conservation: high speed drains amp faster through evolved VM logic
+  //   - Flight response: detect own acceleration out of a zone and amplify it
+  //
+  // COLD START: vx/vy are always available — set to 0 at birth, updated every tick.
+  // Zero new data is computed; this is pure signal exposure.
+  //
+  // Pe58 will complete the speed mirror by adding PARTNER_SPEED (opcode 42, reading
+  // sqrt(vx[j]²+vy[j]²)) — the same pairing pattern as all prior dimensions.
+  //
+  // selfSpeedInfluence=0 → opcode 41 returns 0 → Pe56 exactly.
+  // In META_LAYER_PARAMS and ATROPHY_SAFE so attribution tracks whether speed
+  // self-sensing earns its keep and can retire it if not.
+  selfSpeedInfluence:0.15,   // 0=Pe56 exactly. Scales own speed → VM. Evolvable.
+
+  // ═══ LAYER 47: PARTNER_SPEED — particles read their interaction partner's kinetic velocity (Pe58) ═══
+  // Pe57 gave particles opcode 41 (SELF_SPEED): how fast am I moving?
+  // That closed one half of the kinetic picture. The other half was missing:
+  // a particle knows its own speed, but not its partner's.
+  //
+  // vx[j] and vy[j] are always available — Pe58 merely exposes their magnitude.
+  // Opcode 42 (PARTNER_SPEED) deposits sqrt(vx[j]²+vy[j]²) into a VM register,
+  // normalized and gated by partnerSpeedInfluence:
+  //   vmRegs[di] = Math.min(3, sqrt(vx[j]²+vy[j]²) / 2) * partnerSpeedInfluence * k
+  //
+  // The key emergent quantity: opcode-41 output MINUS opcode-42 output gives the
+  // relative speed differential — without any additional opcode. A particle can evolve
+  // to compute (own_speed - partner_speed) and condition behavior on the sign.
+  //
+  // New behavioral categories with no prior path:
+  //   - Interceptor logic: "if partner is faster, don't try to follow"
+  //   - Momentum matching: "sync speed with partner to maintain interaction"
+  //   - Predator-prey kinematics: "pursue slow partners; flee fast ones"
+  //   - Collision avoidance: "emit repulsive force when both fast and converging"
+  //   - Speed-differential signaling: "announce speed mismatch via signal"
+  //   - Kinetic complementarity: "settle particles pair with fast scouts"
+  //   - Overtaking detection: "partner faster than me → yield territory"
+  //
+  // Together, opcodes 41 and 42 complete the kinetic sensing dimension:
+  //   opcode 41: own speed (Pe57)
+  //   opcode 42: partner speed (Pe58)
+  //   op41 - op42: relative speed differential (implicit, no extra opcode)
+  //
+  // This also completes the four-dimension self+partner sensing matrix:
+  //   density   (opcodes 35+38), vigor/amplitude (opcodes 36+37),
+  //   age       (opcodes 39+40), kinetic speed    (opcodes 41+42).
+  // All four dimensions now have full self+partner mirrors.
+  //
+  // Pe58 also adds SELF_SPEED (opcode 41) to the plasmid VM — parity fix,
+  // as Pe57 added it to particle and cluster VMs but missed the plasmid VM.
+  //
+  // partnerSpeedInfluence=0 → opcode 42 returns 0 → Pe57 exactly.
+  // In META_LAYER_PARAMS and ATROPHY_SAFE so attribution tracks whether partner-speed
+  // sensing earns its keep and can retire it if not.
+  partnerSpeedInfluence:0.15,   // 0=Pe57 exactly. Scales partner speed → VM. Evolvable.
 
   // ═══ LAYER 18: RATIFICATION — clusters carry scenarios upward (Pe28) ═══
   // Pe27 made the imagination bank evolvable, but scenarios still live and die strictly
@@ -1592,6 +1713,9 @@ function encodeGenome(){
     pai53:+(genome.partnerAmpInfluence||0).toFixed(4),        // Pe53 Layer 42
     pdi54:+(genome.partnerDensityInfluence||0).toFixed(4),    // Pe54 Layer 43
     sagi55:+(genome.selfAgeInfluence||0).toFixed(4),           // Pe55 Layer 44
+    pagei56:+(genome.partnerAgeInfluence||0).toFixed(4),        // Pe56 Layer 45
+    sspi57:+(genome.selfSpeedInfluence||0).toFixed(4),           // Pe57 Layer 46
+    pspdi58:+(genome.partnerSpeedInfluence||0).toFixed(4),          // Pe58 Layer 47
     mct:META_LAYER_PARAMS.map(p=>{
       const e=genome.metaCredit&&genome.metaCredit[p];
       return +((e&&e.trace)||0).toFixed(3);
@@ -1727,6 +1851,9 @@ function decodeGenome(data){
     if(typeof g.pai53==='number')genome.partnerAmpInfluence=g.pai53;           // Pe53 Layer 42
     if(typeof g.pdi54==='number')genome.partnerDensityInfluence=g.pdi54;       // Pe54 Layer 43
     if(typeof g.sagi55==='number')genome.selfAgeInfluence=g.sagi55;             // Pe55 Layer 44
+    if(typeof g.pagei56==='number')genome.partnerAgeInfluence=g.pagei56;         // Pe56 Layer 45
+    if(typeof g.sspi57==='number')genome.selfSpeedInfluence=g.sspi57;             // Pe57 Layer 46
+    if(typeof g.pspdi58==='number')genome.partnerSpeedInfluence=g.pspdi58;          // Pe58 Layer 47
     // Pe37 Layer 26: attribution
     if(typeof g.mcb==='number')genome.metaCreditBias=g.mcb;
     if(typeof g.msb==='number')genome.metaSearchBias=g.msb; // Pe38 Layer 27: search width bias
@@ -1833,6 +1960,12 @@ function sanitizeGenome(){
   genome.partnerDensityInfluence=Math.max(0,Math.min(1,finiteOr(genome.partnerDensityInfluence,0.15)));   // Pe54 Layer 43
   if(genome.selfAgeInfluence===undefined)genome.selfAgeInfluence=0.15;
   genome.selfAgeInfluence=Math.max(0,Math.min(1,finiteOr(genome.selfAgeInfluence,0.15)));                 // Pe55 Layer 44
+  if(genome.partnerAgeInfluence===undefined)genome.partnerAgeInfluence=0.15;
+  genome.partnerAgeInfluence=Math.max(0,Math.min(1,finiteOr(genome.partnerAgeInfluence,0.15)));           // Pe56 Layer 45
+  if(genome.selfSpeedInfluence===undefined)genome.selfSpeedInfluence=0.15;
+  genome.selfSpeedInfluence=Math.max(0,Math.min(1,finiteOr(genome.selfSpeedInfluence,0.15)));               // Pe57 Layer 46
+  if(genome.partnerSpeedInfluence===undefined)genome.partnerSpeedInfluence=0.15;
+  genome.partnerSpeedInfluence=Math.max(0,Math.min(1,finiteOr(genome.partnerSpeedInfluence,0.15)));           // Pe58 Layer 47
   {
     const src=(genome.metaCredit&&typeof genome.metaCredit==='object')?genome.metaCredit:{};
     const fresh={};
@@ -2681,6 +2814,9 @@ const META_LAYER_PARAMS=[
   ,'partnerAmpInfluence'          // Pe53 — tracked so attribution decides if partner-vigor sensing earns its keep
   ,'partnerDensityInfluence'      // Pe54 — tracked so attribution decides if partner-density sensing earns its keep
   ,'selfAgeInfluence'              // Pe55 — tracked so attribution decides if age self-sensing earns its keep
+  ,'partnerAgeInfluence'            // Pe56 — tracked so attribution decides if partner-age sensing earns its keep
+  ,'selfSpeedInfluence'             // Pe57 — tracked so attribution decides if speed self-sensing earns its keep
+  ,'partnerSpeedInfluence'            // Pe58 — tracked so attribution decides if partner-speed sensing earns its keep
 ];
 // Pe40 Layer 29: subset of META_LAYER_PARAMS whose value 0 is documented as
 // "[prior version] exactly" — i.e. zero provably means the layer is dormant and
@@ -2696,7 +2832,10 @@ const ATROPHY_SAFE=new Set([
   'atrophyRate','metaSignalInfluence','metaSignalGradInfluence','metaSignalVolInfluence',
   'metaMutationBias','inscriptionInfluence','field2WriteInfluence','field2GradInfluence',
   'field2TemporalInfluence','fieldCrossInfluence','neighborDensityInfluence','selfAmpInfluence',
-  'partnerAmpInfluence','partnerDensityInfluence','selfAgeInfluence'
+  'partnerAmpInfluence','partnerDensityInfluence','selfAgeInfluence',
+  'partnerAgeInfluence',
+  'selfSpeedInfluence',          // Pe57
+  'partnerSpeedInfluence'        // Pe58
 ]);
 // Short HUD labels — keep the attribution tag compact.
 const META_LAYER_SHORT={
@@ -2709,7 +2848,10 @@ const META_LAYER_SHORT={
   dissolutionWeight:'dw',metaSignalInfluence:'msi',metaSignalGradInfluence:'msgi',metaSignalVolInfluence:'msvi',
   metaMutationBias:'mmb',inscriptionInfluence:'ini',field2WriteInfluence:'f2w',field2GradInfluence:'f2gi',
   field2TemporalInfluence:'f2t',fieldCrossInfluence:'f2x',neighborDensityInfluence:'ndi',selfAmpInfluence:'sai',
-  partnerAmpInfluence:'pai',partnerDensityInfluence:'pdi',selfAgeInfluence:'sagi'
+  partnerAmpInfluence:'pai',partnerDensityInfluence:'pdi',selfAgeInfluence:'sagi',
+  partnerAgeInfluence:'pagei',
+  selfSpeedInfluence:'sspi',
+  partnerSpeedInfluence:'pspdi'
 };
 
 // Pe32: 12D Euclidean distance between two scenario entries.
@@ -4489,6 +4631,12 @@ function mutateGenome(){
   genome.partnerDensityInfluence=Math.max(0,Math.min(1,metaMaybe(genome.partnerDensityInfluence||0,0.03,'partnerDensityInfluence'))); // Pe54 Layer 43
   // Pe55 Layer 44: selfAgeInfluence uses metaMaybe — does not control the credit system.
   genome.selfAgeInfluence=Math.max(0,Math.min(1,metaMaybe(genome.selfAgeInfluence||0,0.03,'selfAgeInfluence'))); // Pe55 Layer 44
+  // Pe56 Layer 45: partnerAgeInfluence uses metaMaybe — does not control the credit system.
+  genome.partnerAgeInfluence=Math.max(0,Math.min(1,metaMaybe(genome.partnerAgeInfluence||0,0.03,'partnerAgeInfluence'))); // Pe56 Layer 45
+  // Pe57 Layer 46: selfSpeedInfluence uses metaMaybe — does not control the credit system.
+  genome.selfSpeedInfluence=Math.max(0,Math.min(1,metaMaybe(genome.selfSpeedInfluence||0,0.03,'selfSpeedInfluence'))); // Pe57 Layer 46
+  // Pe58 Layer 47: partnerSpeedInfluence uses metaMaybe — does not control the credit system.
+  genome.partnerSpeedInfluence=Math.max(0,Math.min(1,metaMaybe(genome.partnerSpeedInfluence||0,0.03,'partnerSpeedInfluence'))); // Pe58 Layer 47
 
   // ═══ Pe26 Layer 16c: CLUSTER UPWARD SIGNAL injection ═══
   // Drain the upstream buffer — soft-inject successful cluster motifs into the global VM.
@@ -5791,6 +5939,82 @@ function executeVM(i,j,sim,d){
           vmRegs[di]=Math.min(3,page[i]/800)*sagai55*k;
         }
       }break;
+      case 40:{
+        // Pe56 Layer 45: PARTNER_AGE — reads interaction partner's age into a VM register.
+        // page[j] is the partner's age in simulation ticks since birth. Normalized by 800:
+        //   page[j]=0   → 0.0  : just born
+        //   page[j]=400 → 0.5  : moderate age
+        //   page[j]=800 → 1.0  : mature particle
+        // Capped at 3.0 so very old partners don't dominate downstream arithmetic.
+        // Scaled by partnerAgeInfluence × k — genome gate, can evolve to zero (Pe55 exactly).
+        //
+        // Complement to opcode 39 (SELF_AGE): together they enable relative-age detection.
+        //   opcode-39 output − opcode-40 output = own − partner = relative age differential
+        // partnerAgeInfluence=0 → returns 0 → Pe55 exactly.
+        const pagei56=genome.partnerAgeInfluence||0;
+        if(pagei56>0.001){
+          vmRegs[di]=Math.min(3,page[j]/800)*pagei56*k;
+        }
+      }break;
+      case 41:{
+        // Pe57 Layer 46: SELF_SPEED — reads this particle's own velocity magnitude into a VM register.
+        // speed = sqrt(vx[i]² + vy[i]²): kinetic state of this particle.
+        // Normalization:
+        //   speed ≈ 0.0  : settled — not moving (resting in territory or just spawned)
+        //   speed ≈ 2.0  : typical active motion → normalized to 1.0
+        //   speed ≈ 4.0  : fast motion (post-interaction acceleration) → 2.0
+        //   capped at 3.0 for scatter/extreme events
+        // Scaled by selfSpeedInfluence × k — genome gate, can evolve to zero (Pe56 exactly).
+        //
+        // First-class kinetic read: prior to Pe57, particles could influence velocity
+        // (opcode 0/force via vmActions[0]) but had no read path for their own speed.
+        // This closes that loop — force output can now be conditioned on current speed.
+        //
+        // NEW BEHAVIORS WITH NO PRIOR PATH:
+        //   - Brake-before-spawn: suppress reproduction when speed > threshold
+        //   - Settled vs roaming: defend territory when slow, explore when fast
+        //   - Kinetic signaling: emit signals conditioned on own motion state
+        //   - Speed-sorted clusters: fast frontier particles, slow core particles
+        //   - Momentum conservation: avoid force emission when already fast
+        //   - Velocity-matched cooperation: prefer slow-moving partners when slow oneself
+        //
+        // Pe58 completes the speed mirror by adding PARTNER_SPEED (opcode 42).
+        // selfSpeedInfluence=0 → returns 0 → Pe56 exactly.
+        const sspi57=genome.selfSpeedInfluence||0;
+        if(sspi57>0.001){
+          const sp57=Math.sqrt(vx[i]*vx[i]+vy[i]*vy[i]);
+          vmRegs[di]=Math.min(3,sp57/2)*sspi57*k;
+        }
+      }break;
+      case 42:{
+        // Pe58 Layer 47: PARTNER_SPEED — reads interaction partner's velocity magnitude into a VM register.
+        // speed = sqrt(vx[j]² + vy[j]²): kinetic state of the partner.
+        // Normalization mirrors opcode 41 (SELF_SPEED):
+        //   speed ≈ 0.0  : partner settled — not moving
+        //   speed ≈ 2.0  : partner in typical active motion → normalized to 1.0
+        //   speed ≈ 4.0  : partner moving fast → 2.0
+        //   capped at 3.0 for extreme velocities
+        // Scaled by partnerSpeedInfluence × k — genome gate, can evolve to zero (Pe57 exactly).
+        //
+        // Complement to opcode 41 (SELF_SPEED): together they enable relative-speed detection.
+        //   opcode-41 output − opcode-42 output = own − partner = relative speed differential
+        //
+        // NEW BEHAVIORS WITH NO PRIOR PATH:
+        //   - Interceptor logic: flee or track based on partner speed
+        //   - Momentum matching: synchronize velocity with interaction partner
+        //   - Predator-prey kinematics: pursue slow partners; disengage from fast ones
+        //   - Collision avoidance: apply repulsive force when partner is fast and near
+        //   - Kinetic complementarity: settled particles pair with scouts for stable clusters
+        //   - Overtaking detection: partner faster → yield, cede territory
+        //   - Speed-differential signaling: announce relative motion mismatch
+        //
+        // partnerSpeedInfluence=0 → returns 0 → Pe57 exactly.
+        const pspdi58=genome.partnerSpeedInfluence||0;
+        if(pspdi58>0.001){
+          const psp58=Math.sqrt(vx[j]*vx[j]+vy[j]*vy[j]);
+          vmRegs[di]=Math.min(3,psp58/2)*pspdi58*k;
+        }
+      }break;
     }
     for(let r=0;r<12;r++)vmRegs[r]=Math.max(-8,Math.min(8,vmRegs[r]));
   }
@@ -6014,6 +6238,40 @@ function executeVM(i,j,sim,d){
           const pdi54p=genome.partnerDensityInfluence||0;
           if(pdi54p>0.001){
             vmRegs[di]=Math.min(3,pNeighborCount[j]/10)*pdi54p*k;
+          }
+        }break;
+        case 39:{
+          // Pe56: SELF_AGE in plasmid VM — parity fix (Pe55 added this to particle VM only).
+          // Reads page[i]/800 into vmRegs[di], scaled by selfAgeInfluence × k.
+          const sagai55p=genome.selfAgeInfluence||0;
+          if(sagai55p>0.001){
+            vmRegs[di]=Math.min(3,page[i]/800)*sagai55p*k;
+          }
+        }break;
+        case 40:{
+          // Pe56 Layer 45: PARTNER_AGE in plasmid VM — full parity with particle VM.
+          // Reads page[j]/800 into vmRegs[di], scaled by partnerAgeInfluence × k.
+          const pagei56p=genome.partnerAgeInfluence||0;
+          if(pagei56p>0.001){
+            vmRegs[di]=Math.min(3,page[j]/800)*pagei56p*k;
+          }
+        }break;
+        case 41:{
+          // Pe58 parity fix: SELF_SPEED in plasmid VM — Pe57 added this to particle+cluster VMs only.
+          // Reads sqrt(vx[i]²+vy[i]²)/2 into vmRegs[di], scaled by selfSpeedInfluence × k.
+          const sspi57p=genome.selfSpeedInfluence||0;
+          if(sspi57p>0.001){
+            const sp57p=Math.sqrt(vx[i]*vx[i]+vy[i]*vy[i]);
+            vmRegs[di]=Math.min(3,sp57p/2)*sspi57p*k;
+          }
+        }break;
+        case 42:{
+          // Pe58 Layer 47: PARTNER_SPEED in plasmid VM — full parity with particle VM.
+          // Reads sqrt(vx[j]²+vy[j]²)/2 into vmRegs[di], scaled by partnerSpeedInfluence × k.
+          const pspdi58p=genome.partnerSpeedInfluence||0;
+          if(pspdi58p>0.001){
+            const psp58p=Math.sqrt(vx[j]*vx[j]+vy[j]*vy[j]);
+            vmRegs[di]=Math.min(3,psp58p/2)*pspdi58p*k;
           }
         }break;
       }
@@ -6353,6 +6611,40 @@ function executeClusterVM(i,j,sim,d){
         const pdi54c=genome.partnerDensityInfluence||0;
         if(pdi54c>0.001){
           vmRegs[di]=Math.min(3,pNeighborCount[j]/10)*pdi54c*k;
+        }
+      }break;
+      case 39:{
+        // Pe56: SELF_AGE in cluster VM — parity fix (Pe55 added this to particle VM only).
+        // Reads page[i]/800 into vmRegs[di], scaled by selfAgeInfluence × k.
+        const sagai55c=genome.selfAgeInfluence||0;
+        if(sagai55c>0.001){
+          vmRegs[di]=Math.min(3,page[i]/800)*sagai55c*k;
+        }
+      }break;
+      case 40:{
+        // Pe56 Layer 45: PARTNER_AGE in cluster VM — full parity with particle VM through opcode 40.
+        // Reads page[j]/800 into vmRegs[di], scaled by partnerAgeInfluence × k.
+        const pagei56c=genome.partnerAgeInfluence||0;
+        if(pagei56c>0.001){
+          vmRegs[di]=Math.min(3,page[j]/800)*pagei56c*k;
+        }
+      }break;
+      case 41:{
+        // Pe57 Layer 46: SELF_SPEED in cluster VM — parity with particle VM.
+        // Reads sqrt(vx[i]²+vy[i]²)/2 into vmRegs[di], scaled by selfSpeedInfluence × k.
+        const sspi57c=genome.selfSpeedInfluence||0;
+        if(sspi57c>0.001){
+          const sp57c=Math.sqrt(vx[i]*vx[i]+vy[i]*vy[i]);
+          vmRegs[di]=Math.min(3,sp57c/2)*sspi57c*k;
+        }
+      }break;
+      case 42:{
+        // Pe58 Layer 47: PARTNER_SPEED in cluster VM — full parity with particle VM.
+        // Reads sqrt(vx[j]²+vy[j]²)/2 into vmRegs[di], scaled by partnerSpeedInfluence × k.
+        const pspdi58c=genome.partnerSpeedInfluence||0;
+        if(pspdi58c>0.001){
+          const psp58c=Math.sqrt(vx[j]*vx[j]+vy[j]*vy[j]);
+          vmRegs[di]=Math.min(3,psp58c/2)*pspdi58c*k;
         }
       }break;
     }
@@ -7538,7 +7830,78 @@ function loop(){
         ageTag=` | age:avg${(ageSum/ageCnt).toFixed(2)} i${_sagi55.toFixed(2)}`;
       }
     }
-    genEl.textContent=`gen${genome.generation} ${genome.extinctions}☠ t${genome.totalTicks} | ${clusters.length}cl(${clVMActive}vm${budCount>0?','+budCount+'bud':''}) ${livingLin}lin fit:${currentFitness.toFixed(2)} stb:${(selfModel.stability||0).toFixed(2)} | vm:${genome.vmProgram.length}inst ${nSensors}sns ${hgtEventsTotal}hgt | pop:${N}/${CAP} fld:${fieldTotal.toFixed(0)}${fTrend<-0.01?'↓':fTrend>0.01?'↑':'~'} risk:${cRisk.toFixed(2)} | ⟲${rInf.toFixed(2)} ${reflexClusters}rc${netTag}${cgTag}${uaTag}${(genome.eventLog&&genome.eventLog.length)?' ev:'+genome.eventLog.length:''}${gradTag}${mrTag}${relTag}${sigTag}${attrTag}${inscTag}${f2Tag}${ndcTag}${saiTag}${paiTag}${pdcTag}${ageTag}${dissTag}`;
+    // ═══ Pe56 Layer 45: PARTNER_AGE diagnostic ═══
+    // pageTag shows: population-average age (proxy for partner age seen on average,
+    //               since partners are a random sample) + partnerAgeInfluence gate.
+    // avg = mean (page[i]/800) across alive particles — same age distribution as partners.
+    // i   = partnerAgeInfluence (how open the partner-age channel is)
+    // avg near 0: mostly young population — partner-age sense sees low signal.
+    // avg near 1: mature population — age-differential behaviors can differentiate.
+    // avg > 1: population with many elders — elder-juvenile dynamics possible.
+    // Contrast with ageTag (own age, sagi): if avg values diverge, age distribution
+    //   is heterogeneous — old and young particles coexisting, the richest case for
+    //   age-differential behavior to express.
+    // i→0: selection found partner-age sensing not worth the opcode slot.
+    let pageTag='';
+    const _pagei56=genome.partnerAgeInfluence||0;
+    if(_pagei56>0.001){
+      let pageSum=0,pageCnt=0;
+      for(let i=0;i<N;i++){
+        if(!palive[i])continue;
+        pageCnt++;
+        pageSum+=Math.min(3,page[i]/800);
+      }
+      if(pageCnt>0&&(_pagei56>0.02||pageSum/pageCnt>0.1)){
+        pageTag=` | page:avg${(pageSum/pageCnt).toFixed(2)} i${_pagei56.toFixed(2)}`;
+      }
+    }
+    // ═══ Pe57 Layer 46: SELF_SPEED diagnostic ═══
+    // spdTag shows: population average speed (normalized: 2px/tick → 1.0)
+    //              + selfSpeedInfluence gate.
+    // avg = mean (sqrt(vx²+vy²)/2) across alive particles, capped at 3.0.
+    // i   = selfSpeedInfluence (how open the kinetic channel is)
+    // avg near 0: population mostly settled — territory-holding phase.
+    // avg near 1: active motion (~2px/tick), interaction/exploration phase.
+    // avg near 2+: fast motion — post-scatter, entrainment surge, or high VM force.
+    // Contrast with density (ndc): crowded+fast = competitive interaction zone;
+    //   sparse+fast = dispersal event; crowded+slow = stable cluster core.
+    // i→0: selection found speed self-sensing not worth the opcode slot.
+    let spdTag='';
+    const _sspi57=genome.selfSpeedInfluence||0;
+    if(_sspi57>0.001){
+      let spdSum=0,spdCnt=0;
+      for(let i=0;i<N;i++){
+        if(!palive[i])continue;
+        spdCnt++;
+        spdSum+=Math.min(3,Math.sqrt(vx[i]*vx[i]+vy[i]*vy[i])/2);
+      }
+      if(spdCnt>0&&(_sspi57>0.02||spdSum/spdCnt>0.05)){
+        spdTag=` | spd:avg${(spdSum/spdCnt).toFixed(2)} i${_sspi57.toFixed(2)}`;
+      }
+    }
+    // ═══ Pe58 Layer 47: PARTNER_SPEED diagnostic ═══
+    // pspdTag shows: population average speed (same distribution as partners, a random sample)
+    //               + partnerSpeedInfluence gate.
+    // avg = mean (sqrt(vx²+vy²)/2) across alive particles — same kinetic distribution.
+    // i   = partnerSpeedInfluence (how open the partner-kinetic channel is)
+    // Contrast with spdTag (own speed, sspi): if both are similar, the population is
+    //   kinetically homogeneous. If they diverge, some particles are faster/slower on
+    //   average — the richest case for relative-speed behavior to differentiate.
+    // i→0: selection found partner-speed sensing not worth the opcode slot.
+    let pspdTag='';
+    const _pspdi58=genome.partnerSpeedInfluence||0;
+    if(_pspdi58>0.001){
+      let pspdSum=0,pspdCnt=0;
+      for(let i=0;i<N;i++){
+        if(!palive[i])continue;
+        pspdCnt++;
+        pspdSum+=Math.min(3,Math.sqrt(vx[i]*vx[i]+vy[i]*vy[i])/2);
+      }
+      if(pspdCnt>0&&(_pspdi58>0.02||pspdSum/pspdCnt>0.05)){
+        pspdTag=` | pspd:avg${(pspdSum/pspdCnt).toFixed(2)} i${_pspdi58.toFixed(2)}`;
+      }
+    }
+    genEl.textContent=`gen${genome.generation} ${genome.extinctions}☠ t${genome.totalTicks} | ${clusters.length}cl(${clVMActive}vm${budCount>0?','+budCount+'bud':''}) ${livingLin}lin fit:${currentFitness.toFixed(2)} stb:${(selfModel.stability||0).toFixed(2)} | vm:${genome.vmProgram.length}inst ${nSensors}sns ${hgtEventsTotal}hgt | pop:${N}/${CAP} fld:${fieldTotal.toFixed(0)}${fTrend<-0.01?'↓':fTrend>0.01?'↑':'~'} risk:${cRisk.toFixed(2)} | ⟲${rInf.toFixed(2)} ${reflexClusters}rc${netTag}${cgTag}${uaTag}${(genome.eventLog&&genome.eventLog.length)?' ev:'+genome.eventLog.length:''}${gradTag}${mrTag}${relTag}${sigTag}${attrTag}${inscTag}${f2Tag}${ndcTag}${saiTag}${paiTag}${pdcTag}${ageTag}${pageTag}${spdTag}${pspdTag}${dissTag}`;
   }
 
   const renderEvery=N>1000?4:N>500?3:N>200?2:1;
