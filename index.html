@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
-<title>Selection פ 47 — The Second Ink</title>
+<title>Selection פ 55 — The Lifespan Mirror</title>
 <style>
 *{margin:0;padding:0;box-sizing:border-box}
 html,body{height:100%;overflow:hidden;background:#020204;touch-action:none;cursor:crosshair}
@@ -264,7 +264,7 @@ const DIMS=5; // dim 4 is blank — no hardcoded role. System decides what it me
 const MEM_SIZE=8; // per-particle persistent memory. Particles become stateful agents.
 const MAX_PLASMID=4; // max instructions per particle's personal mobile DNA
 const PLASMID_SLOTS=MAX_PLASMID*4; // each instruction is [op,src,dst,k] = 4 values
-const OPCODE_COUNT=32; // VM opcodes 0..31: adding FIELD2_WRITE (31) in Pe47 Layer 36
+const OPCODE_COUNT=40; // VM opcodes 0..39: adding SELF_AGE (39) in Pe55 Layer 44
 const FIELD_W=40;
 const FIELD_H=40;
 let FIELD_DECAY=0.982;   // natural fade — Pe22b: now genome-driven, can evolve
@@ -833,6 +833,256 @@ let genome={
   // substrate-reading earns its keep, and can retire it if not.
   inscriptionInfluence:0.1,   // 0=Pe45 exactly. Scales inscription→VM feedback. Evolvable.
 
+  // ═══ LAYER 36: SECOND INK WRITE — VM deposits into the second field channel (Pe47) ═══
+  // field2WriteInfluence gates opcode 31 (FIELD2_WRITE). 0=Pe46 exactly.
+  // Layer value lives in sanitizeGenome/mutateGenome — see opcode 31 case for full commentary.
+
+  // ═══ LAYER 37: SECOND INK GRADIENT — VMs sense field2 slope for chemotaxis (Pe48) ═══
+  // field2GradInfluence gates opcode 32 (FIELD2_GRAD). 0=Pe47 exactly.
+  // Layer value lives in sanitizeGenome/mutateGenome — see opcode 32 case for full commentary.
+
+  // ═══ LAYER 38: SECOND INK TEMPORAL — VMs sense the rate of change of field2 (Pe49) ═══
+  // Pe47 gave write access. Pe48 gave spatial gradient (which way field2 flows).
+  // Pe49 gives the orthogonal signal: how fast field2 is changing at this location.
+  //
+  // Each tick, field2Prev is snapped at the START of updateField's diffusion pass.
+  // Opcode 33 (FIELD2_TEMPORAL) then reads:
+  //   vmRegs[di] = (field2[cell] - field2Prev[cell]) * field2TemporalInfluence * k
+  //
+  // Signal interpretation:
+  //   > 0  →  field2 rising here: deposition > decay, territory actively building
+  //   < 0  →  field2 falling here: decay > deposition, territory eroding or abandoned
+  //   ≈ 0  →  field2 steady: equilibrium, or particle is in an inert region
+  //
+  // This is distinct from both opcode 21 (raw scalar: how much is here?) and
+  // opcode 32 (spatial gradient: which direction?). A particle at a field2 peak
+  // sees zero gradient but may see strong positive temporal signal (if that peak is
+  // growing) or negative temporal signal (if it's decaying). Same spatial position,
+  // different ecological situation, now distinguishable in the VM register.
+  //
+  // field2TemporalInfluence=0 → opcode 33 returns 0 → Pe48 exactly.
+  // In META_LAYER_PARAMS and ATROPHY_SAFE so attribution tracks whether temporal
+  // substrate sensing earns its keep and can retire it if not.
+  // Layer default lives in sanitizeGenome/mutateGenome.
+
+  // ═══ LAYER 39: FIELD CROSS — VMs sense channel balance between field1 and field2 (Pe50) ═══
+  // Pe47-49 gave particles write, gradient, and temporal sensing of field2.
+  // Particles can now read each channel's scalar (opcodes 8, 21), direction (32), and
+  // rate-of-change (33). But each channel is read in isolation. What's still missing:
+  // *which channel dominates at this location?*
+  //
+  // Opcode 34 (FIELD_CROSS) fills that gap with a scale-invariant ratio:
+  //   balance = (field[cell] - field2[cell]) / (field[cell] + field2[cell] + 0.01)
+  //   vmRegs[di] = balance * fieldCrossInfluence * k
+  //
+  // Signal interpretation:
+  //   +1  →  pure field1 territory: field2 is negligible here
+  //   -1  →  pure field2 territory: field1 is negligible here
+  //    0  →  equal channels: contested or inert (both zero → both zero → balance=0)
+  //
+  // This is orthogonal to all existing field signals:
+  //   opcode 8  → field1 magnitude (how much primary energy?)
+  //   opcode 21 → field2 magnitude (how much second ink?)
+  //   opcode 32 → field2 spatial gradient (which direction does field2 flow?)
+  //   opcode 33 → field2 temporal rate (is field2 rising or falling?)
+  //   opcode 34 → cross-channel balance (which channel owns this territory?)
+  //
+  // Scale invariance is the key property: a particle in a region where both channels
+  // carry 0.1 and a particle where both carry 10.0 get the same balance=0 reading,
+  // but both are distinct from a region where field1=5.0 and field2=0.5 (balance=+0.82).
+  // Ecological niche type is now distinguishable from absolute energy level.
+  //
+  // A contested zone (balance≈0) is very different from an inert zone (balance≈0 but
+  // both channels near zero) — the particle can distinguish these by also reading
+  // opcode 8 or 21 alongside opcode 34. Together they form a complete substrate read.
+  //
+  // fieldCrossInfluence=0 → opcode 34 returns 0 → Pe49 exactly.
+  // In META_LAYER_PARAMS and ATROPHY_SAFE so attribution tracks whether cross-channel
+  // niche detection earns its keep and can retire it if not.
+  // Layer default lives in sanitizeGenome/mutateGenome.
+
+  // ═══ LAYER 40: NEIGHBOR DENSITY — particles sense local crowding (Pe51) ═══
+  // Pe1-50 gave particles rich awareness of their chemical environment (field1, field2,
+  // inscriptions) and of each other (models, signals, broadcast, commons). But one
+  // fundamental ecological signal was missing: direct pressure sensing — how crowded
+  // is my immediate neighborhood RIGHT NOW?
+  //
+  // Currently, carrying capacity operates as a COST: densityCostK drains amplitude
+  // when population exceeds 100. Particles FEEL crowding only as faster dying —
+  // a delayed, blurry, global signal. They cannot read it, condition on it, or use
+  // it to make spatially-informed decisions.
+  //
+  // Pe51 adds the READ path. Each tick, during the interaction sweep, every particle's
+  // neighbor count within interactionRadius is tallied into pNeighborCount[i].
+  //
+  // Opcode 35 (NEIGHBOR_DENSITY): reads pNeighborCount[i] / 10 * neighborDensityInfluence * k
+  //   → 0.0  : isolated — no neighbors within interaction radius
+  //   → 0.5  : moderate local density (~5 neighbors)
+  //   → 1.0+ : crowded (~10+ neighbors in range)
+  //
+  // This opens behaviors with no prior path:
+  //   - density-conditional spawning: "if crowded, don't spawn; if sparse, do"
+  //   - diffusion pressure: "move away when crowded, toward others when alone"
+  //   - niche saturation: "this cluster is full; colonize elsewhere"
+  //   - predator-prey: dense areas attract some particles, repel others
+  //
+  // Counts computed during processGrid's existing pair scan — zero added loops.
+  // neighborDensityInfluence=0 → opcode 35 returns 0 → Pe50 exactly.
+  // In META_LAYER_PARAMS and ATROPHY_SAFE so attribution tracks whether density
+  // sensing earns its keep and can retire it if not.
+  neighborDensityInfluence:0.15,   // 0=Pe50 exactly. Scales density→VM. Evolvable.
+
+  // ═══ LAYER 41: VIGOR SENSING — particles read their own amplitude (Pe52) ═══
+  // Pe1-51 gave particles detailed awareness of their chemical environment, their
+  // neighbors, and their neighborhood topology. But one fundamental self-datum has
+  // always been opaque to the VM: own amplitude — the particle's health and vigor.
+  //
+  // Currently, vmRegs[3] carries energy=(amp[i]+amp[j])*0.5 — the AVERAGE vigor
+  // of both interaction partners. The VM cannot isolate its own contribution.
+  // A dying particle (amp=0.1) and a thriving one (amp=1.0) produce identical
+  // vmRegs[3]=0.55 if they interact with the same partner. The VM cannot
+  // distinguish these situations.
+  //
+  // Pe52 opens the direct read path. Opcode 36 (SELF_AMP) deposits amp[i] into
+  // a VM register, scaled by selfAmpInfluence × k:
+  //   → amp[i] ≈ 1.0 : particle is near peak vigor
+  //   → amp[i] ≈ 0.5 : moderate health
+  //   → amp[i] ≈ 0.1 : weakened, near death threshold
+  //
+  // The DIFFERENCE between vmRegs[3] (average vigor) and opcode-36 output (own
+  // vigor) is implicitly the partner's relative strength — relative power detection
+  // without any additional opcode. The VM can evolve to compare them directly.
+  //
+  // New behavioral categories with no prior path:
+  //   - Vigor-conditional spawning: "only reproduce when amp > threshold"
+  //   - Emergency broadcast: "when weakened, emit signal/plasmid urgently"
+  //   - Relative strength: "transfer amplitude to partner when I'm stronger"
+  //   - Quiescence: "suppress forces when amp is low, conserve energy"
+  //   - Predator-prey dynamics: "pursue weak neighbors, retreat from strong ones"
+  //   - Lifecycle differentiation: old+strong vs young+weak → different strategies
+  //
+  // selfAmpInfluence=0 → opcode 36 returns 0 → Pe51 exactly.
+  // In META_LAYER_PARAMS and ATROPHY_SAFE so attribution tracks whether vigor
+  // self-sensing earns its keep and can retire it if not.
+  selfAmpInfluence:0.15,   // 0=Pe51 exactly. Scales own amp → VM. Evolvable.
+
+  // ═══ LAYER 42: PARTNER VIGOR — particles read their interaction partner's amplitude (Pe53) ═══
+  // Pe52 gave particles access to their own amplitude via opcode 36 (SELF_AMP).
+  // That closed one half of the vigor picture. The other half was missing:
+  // a particle knows its own health, but not its partner's.
+  //
+  // Currently, vmRegs[3] carries energy=(amp[i]+amp[j])*0.5 — the average of
+  // both. A strong particle (amp=1.0) interacting with a weak one (amp=0.1)
+  // reads vmRegs[3]=0.55, identical to two moderate particles (amp=0.55 each).
+  // The VM cannot distinguish these situations.
+  //
+  // Pe53 opens the direct partner read path. Opcode 37 (PARTNER_AMP) deposits
+  // amp[j] into a VM register, scaled by partnerAmpInfluence × k:
+  //   → amp[j] ≈ 1.0 : partner near peak vigor
+  //   → amp[j] ≈ 0.5 : partner moderate health
+  //   → amp[j] ≈ 0.1 : partner weakened, near death
+  //
+  // The key emergent quantity: opcode-36 output MINUS opcode-37 output gives the
+  // relative strength differential — without any additional opcode. A particle
+  // can evolve to compute (own_amp - partner_amp) and condition behavior on the sign.
+  //
+  // New behavioral categories with no prior path:
+  //   - Selective resource transfer: "give amplitude when I'm stronger than you"
+  //   - Predation / parasite: "drain amplitude from weaker partners"
+  //   - Predator avoidance: "flee if partner amp >> my amp"
+  //   - Coalition selectivity: "only spawn with vigor-matched partners"
+  //   - Weak-partner signaling: "emit distress signal when partner is dying"
+  //   - Triage logic: "prioritize interactions with partners near threshold"
+  //
+  // Together, opcodes 36 and 37 form a complete two-particle vigor picture:
+  //   vmRegs[3]: average vigor (existing)
+  //   opcode 36: own vigor (Pe52)
+  //   opcode 37: partner vigor (Pe53)
+  //   op36 - op37: relative advantage (implicit, no extra opcode)
+  //
+  // partnerAmpInfluence=0 → opcode 37 returns 0 → Pe52 exactly.
+  // In META_LAYER_PARAMS and ATROPHY_SAFE so attribution tracks whether partner-vigor
+  // sensing earns its keep and can retire it if not.
+  partnerAmpInfluence:0.15,   // 0=Pe52 exactly. Scales partner amp → VM. Evolvable.
+
+  // ═══ LAYER 43: PARTNER DENSITY — particles read their interaction partner's local crowding (Pe54) ═══
+  // Pe51 gave particles opcode 35 (NEIGHBOR_DENSITY): how crowded is MY immediate neighborhood?
+  // That closed one half of the density picture. The other half was missing:
+  // a particle knows its own crowding, but not its partner's.
+  //
+  // Currently, pNeighborCount[i]/10 is already computed every tick by the processGrid pair
+  // sweep — Pe51 added the counter, Pe54 merely exposes the PARTNER's value.
+  // Zero new data is computed; this is pure signal exposure.
+  //
+  // Pe54 opens the direct partner read path. Opcode 38 (PARTNER_DENSITY) deposits
+  // pNeighborCount[j]/10 into a VM register, scaled by partnerDensityInfluence × k:
+  //   → pNeighborCount[j] ≈ 0  : partner is isolated — no neighbors within its radius
+  //   → pNeighborCount[j]/10 ≈ 0.5 : partner has moderate local density (~5 neighbors)
+  //   → pNeighborCount[j]/10 ≈ 1.0+: partner is crowded (~10+ neighbors nearby)
+  //
+  // The key emergent quantity: opcode-35 output MINUS opcode-38 output gives the
+  // relative density differential — without any additional opcode. A particle can evolve
+  // to compute (own_density - partner_density) and condition behavior on the sign.
+  //
+  // New behavioral categories with no prior path:
+  //   - Density-seeking: "migrate toward partners in uncrowded areas"
+  //   - Density-fleeing: "avoid partners already in crowded clusters"
+  //   - Parasite logic: "exploit crowded partners who can't escape"
+  //   - Scout detection: "partner is isolated — is this a frontier worth following?"
+  //   - Asymmetric interaction: "treat crowded partners differently than sparse ones"
+  //   - Triage: "help isolated partners more than crowded ones"
+  //
+  // Together, opcodes 35 and 38 form a complete two-particle density picture:
+  //   opcode 35: own density (Pe51)
+  //   opcode 38: partner density (Pe54)
+  //   op35 - op38: relative crowding differential (implicit, no extra opcode)
+  //
+  // partnerDensityInfluence=0 → opcode 38 returns 0 → Pe53 exactly.
+  // In META_LAYER_PARAMS and ATROPHY_SAFE so attribution tracks whether partner-density
+  // sensing earns its keep and can retire it if not.
+  partnerDensityInfluence:0.15,   // 0=Pe53 exactly. Scales partner density → VM. Evolvable.
+
+  // ═══ LAYER 44: SELF_AGE — particles read their own age directly (Pe55) ═══
+  // Pe51-54 completed the density/vigor sensing picture: four opcodes giving particles
+  // self+partner readings for both crowding and amplitude. Two sensing dimensions,
+  // both now fully mirrored. Pe55 opens a third dimension: time.
+  //
+  // `page[i]` has been tracked since the simulation began — every particle carries
+  // its age in ticks. It surfaces indirectly in two places:
+  //   Opcode 15 (LERP_AGE): lerps between two values based on age fraction.
+  //     That's a USE of age (blend two scalars), not a read of age as a signal.
+  //   pMem[i*MEM_SIZE+7]: Math.min(5, page[i]/250) — age folded into a memory slot,
+  //     accessible via opcode 6 (MEM_READ) only if the VM happens to read slot 7.
+  //
+  // Neither is a first-class read. Pe55 adds one. Opcode 39 (SELF_AGE) deposits
+  // page[i] as a VM register signal, normalized and gated by selfAgeInfluence:
+  //   vmRegs[di] = Math.min(3, page[i] / 800) * selfAgeInfluence * k
+  //
+  // Normalization: page[i]=800 → 1.0 (a moderately mature particle). Capped at 3.0
+  // for very old particles. Scale chosen to sit in the same register range as the
+  // density and vigor opcodes — allowing arithmetic combinations without rescaling.
+  //
+  // NEW BEHAVIORAL CATEGORIES WITH NO PRIOR PATH:
+  //   - Juvenile vs adult strategies: young particles explore/migrate; mature settle
+  //   - Age-conditional reproduction: spawn only when page[i] exceeds a threshold
+  //   - Senescent broadcasting: old particles emit signals encoding accumulated state
+  //   - Elder altruism: highly aged particles transfer amp to younger partners
+  //   - Lifecycle niche: age-sorted spatial organization (young at frontiers, old in cores)
+  //   - Age-matched cooperation: prefer interacting with age-similar partners
+  //   - Demographic differentiation: young→growth behavior, old→conservation
+  //
+  // COLD START: page[i] is always available (set to 0 at birth, incremented each tick).
+  // No new data is computed — this is pure signal exposure, same architectural move
+  // as Pe54. selfAgeInfluence=0 → opcode 39 returns 0 → Pe54 exactly.
+  //
+  // Pe56 can complete the age mirror by adding PARTNER_AGE (opcode 40, reading
+  // page[j]) — the same pairing pattern as density (opcodes 35+38) and vigor (36+37).
+  //
+  // selfAgeInfluence=0 → opcode 39 returns 0 → Pe54 exactly.
+  // In META_LAYER_PARAMS and ATROPHY_SAFE so attribution tracks whether age
+  // self-sensing earns its keep and can retire it if not.
+  selfAgeInfluence:0.15,   // 0=Pe54 exactly. Scales own age → VM. Evolvable.
+
   // ═══ LAYER 18: RATIFICATION — clusters carry scenarios upward (Pe28) ═══
   // Pe27 made the imagination bank evolvable, but scenarios still live and die strictly
   // within the global lineage's mutation cycle. A scenario that produced a great cluster
@@ -1149,6 +1399,7 @@ const fieldOwnership=new Float32Array(FIELD_W*FIELD_H); // ownership strength (0
 // Each tick, cells with inscribed programs run them on themselves + neighbours.
 // The particles literally write the physics of their world.
 const field2=new Float32Array(FIELD_W*FIELD_H); // second channel — enables reactions between channels
+const field2Prev=new Float32Array(FIELD_W*FIELD_H); // Pe49: snapshot of field2 before each tick's diffusion — enables temporal derivative
 const cellProgOp=new Uint8Array(FIELD_W*FIELD_H);    // opcode: which transformation this cell runs
 const cellProgA=new Float32Array(FIELD_W*FIELD_H);   // parameter A
 const cellProgB=new Float32Array(FIELD_W*FIELD_H);   // parameter B
@@ -1219,6 +1470,11 @@ const pSignalEmitPrev=new Float32Array(CAP); // last tick's final emissions (rea
 // to emerge. The VM sees its own communication role as data — it can evolve to act
 // differently depending on whether it has been talking or listening recently.
 const pSignalNetPos=new Float32Array(CAP);
+// ═══ Pe51 LAYER 40: PER-PARTICLE NEIGHBOR COUNT ═══
+// Counts living particles within interactionRadius of each particle, updated each tick
+// during the processGrid pair sweep. Reset to 0 at the start of processGrid.
+// Opcode 35 (NEIGHBOR_DENSITY) reads this as a VM-accessible pressure signal.
+const pNeighborCount=new Int16Array(CAP);
 // Pe37: honest loop-closure metric. Pe36's util was avgEmit * signalInfluence — emission
 // weighted by a genome knob, not a measurement of whether anything LISTENS. This counts
 // actual opcode-25 (SIGNAL_READ) executions, mirroring how Pe34/35 tracked opcode-23.
@@ -1328,6 +1584,14 @@ function encodeGenome(){
     mmb45:+(genome.metaMutationBias||0.2).toFixed(4),      // Pe45 Layer 34 (was missing — bug fix)
     ini46:+(genome.inscriptionInfluence||0).toFixed(4),    // Pe46 Layer 35
     fw47:+(genome.field2WriteInfluence||0).toFixed(4),       // Pe47 Layer 36
+    f2gi48:+(genome.field2GradInfluence||0).toFixed(4),      // Pe48 Layer 37
+    f2ti49:+(genome.field2TemporalInfluence||0).toFixed(4),  // Pe49 Layer 38
+    f2xi50:+(genome.fieldCrossInfluence||0).toFixed(4),      // Pe50 Layer 39
+    ndi51:+(genome.neighborDensityInfluence||0).toFixed(4),  // Pe51 Layer 40
+    sai52:+(genome.selfAmpInfluence||0).toFixed(4),           // Pe52 Layer 41
+    pai53:+(genome.partnerAmpInfluence||0).toFixed(4),        // Pe53 Layer 42
+    pdi54:+(genome.partnerDensityInfluence||0).toFixed(4),    // Pe54 Layer 43
+    sagi55:+(genome.selfAgeInfluence||0).toFixed(4),           // Pe55 Layer 44
     mct:META_LAYER_PARAMS.map(p=>{
       const e=genome.metaCredit&&genome.metaCredit[p];
       return +((e&&e.trace)||0).toFixed(3);
@@ -1455,6 +1719,14 @@ function decodeGenome(data){
     if(typeof g.mmb45==='number')genome.metaMutationBias=g.mmb45;          // Pe45 Layer 34 bug fix
     if(typeof g.ini46==='number')genome.inscriptionInfluence=g.ini46;      // Pe46 Layer 35
     if(typeof g.fw47==='number')genome.field2WriteInfluence=g.fw47;          // Pe47 Layer 36
+    if(typeof g.f2gi48==='number')genome.field2GradInfluence=g.f2gi48;      // Pe48 Layer 37
+    if(typeof g.f2ti49==='number')genome.field2TemporalInfluence=g.f2ti49;  // Pe49 Layer 38
+    if(typeof g.f2xi50==='number')genome.fieldCrossInfluence=g.f2xi50;      // Pe50 Layer 39
+    if(typeof g.ndi51==='number')genome.neighborDensityInfluence=g.ndi51;   // Pe51 Layer 40
+    if(typeof g.sai52==='number')genome.selfAmpInfluence=g.sai52;             // Pe52 Layer 41
+    if(typeof g.pai53==='number')genome.partnerAmpInfluence=g.pai53;           // Pe53 Layer 42
+    if(typeof g.pdi54==='number')genome.partnerDensityInfluence=g.pdi54;       // Pe54 Layer 43
+    if(typeof g.sagi55==='number')genome.selfAgeInfluence=g.sagi55;             // Pe55 Layer 44
     // Pe37 Layer 26: attribution
     if(typeof g.mcb==='number')genome.metaCreditBias=g.mcb;
     if(typeof g.msb==='number')genome.metaSearchBias=g.msb; // Pe38 Layer 27: search width bias
@@ -1545,6 +1817,22 @@ function sanitizeGenome(){
   genome.inscriptionInfluence=Math.max(0,Math.min(1,finiteOr(genome.inscriptionInfluence,0.1))); // Pe46 Layer 35
   if(genome.field2WriteInfluence===undefined)genome.field2WriteInfluence=0.1;
   genome.field2WriteInfluence=Math.max(0,Math.min(1,finiteOr(genome.field2WriteInfluence,0.1))); // Pe47 Layer 36
+  if(genome.field2GradInfluence===undefined)genome.field2GradInfluence=0.05;
+  genome.field2GradInfluence=Math.max(0,Math.min(1,finiteOr(genome.field2GradInfluence,0.05)));  // Pe48 Layer 37
+  if(genome.field2TemporalInfluence===undefined)genome.field2TemporalInfluence=0.05;
+  genome.field2TemporalInfluence=Math.max(0,Math.min(1,finiteOr(genome.field2TemporalInfluence,0.05))); // Pe49 Layer 38
+  if(genome.fieldCrossInfluence===undefined)genome.fieldCrossInfluence=0.05;
+  genome.fieldCrossInfluence=Math.max(0,Math.min(1,finiteOr(genome.fieldCrossInfluence,0.05)));         // Pe50 Layer 39
+  if(genome.neighborDensityInfluence===undefined)genome.neighborDensityInfluence=0.15;
+  genome.neighborDensityInfluence=Math.max(0,Math.min(1,finiteOr(genome.neighborDensityInfluence,0.15))); // Pe51 Layer 40
+  if(genome.selfAmpInfluence===undefined)genome.selfAmpInfluence=0.15;
+  genome.selfAmpInfluence=Math.max(0,Math.min(1,finiteOr(genome.selfAmpInfluence,0.15)));                 // Pe52 Layer 41
+  if(genome.partnerAmpInfluence===undefined)genome.partnerAmpInfluence=0.15;
+  genome.partnerAmpInfluence=Math.max(0,Math.min(1,finiteOr(genome.partnerAmpInfluence,0.15)));           // Pe53 Layer 42
+  if(genome.partnerDensityInfluence===undefined)genome.partnerDensityInfluence=0.15;
+  genome.partnerDensityInfluence=Math.max(0,Math.min(1,finiteOr(genome.partnerDensityInfluence,0.15)));   // Pe54 Layer 43
+  if(genome.selfAgeInfluence===undefined)genome.selfAgeInfluence=0.15;
+  genome.selfAgeInfluence=Math.max(0,Math.min(1,finiteOr(genome.selfAgeInfluence,0.15)));                 // Pe55 Layer 44
   {
     const src=(genome.metaCredit&&typeof genome.metaCredit==='object')?genome.metaCredit:{};
     const fresh={};
@@ -2385,6 +2673,14 @@ const META_LAYER_PARAMS=[
   ,'metaMutationBias'            // Pe45 — tracked so attribution can atrophy differential mutation itself
   ,'inscriptionInfluence'        // Pe46 — tracked so attribution decides if substrate-reading helps
   ,'field2WriteInfluence'         // Pe47 — tracked so attribution decides if direct field2 write earns its keep
+  ,'field2GradInfluence'          // Pe48 — tracked so attribution decides if second-channel gradient sensing earns its keep
+  ,'field2TemporalInfluence'      // Pe49 — tracked so attribution decides if temporal field2 sensing earns its keep
+  ,'fieldCrossInfluence'          // Pe50 — tracked so attribution decides if cross-channel balance sensing earns its keep
+  ,'neighborDensityInfluence'     // Pe51 — tracked so attribution decides if crowding pressure sensing earns its keep
+  ,'selfAmpInfluence'             // Pe52 — tracked so attribution decides if vigor self-sensing earns its keep
+  ,'partnerAmpInfluence'          // Pe53 — tracked so attribution decides if partner-vigor sensing earns its keep
+  ,'partnerDensityInfluence'      // Pe54 — tracked so attribution decides if partner-density sensing earns its keep
+  ,'selfAgeInfluence'              // Pe55 — tracked so attribution decides if age self-sensing earns its keep
 ];
 // Pe40 Layer 29: subset of META_LAYER_PARAMS whose value 0 is documented as
 // "[prior version] exactly" — i.e. zero provably means the layer is dormant and
@@ -2398,7 +2694,9 @@ const ATROPHY_SAFE=new Set([
   'behaviorGradientBias','neighborModelUpdateRate','neighborPredictionInfluence',
   'relationalWeight','signalInfluence','signalRoleInfluence','dissolutionWeight',
   'atrophyRate','metaSignalInfluence','metaSignalGradInfluence','metaSignalVolInfluence',
-  'metaMutationBias','inscriptionInfluence','field2WriteInfluence'
+  'metaMutationBias','inscriptionInfluence','field2WriteInfluence','field2GradInfluence',
+  'field2TemporalInfluence','fieldCrossInfluence','neighborDensityInfluence','selfAmpInfluence',
+  'partnerAmpInfluence','partnerDensityInfluence','selfAgeInfluence'
 ]);
 // Short HUD labels — keep the attribution tag compact.
 const META_LAYER_SHORT={
@@ -2409,7 +2707,9 @@ const META_LAYER_SHORT={
   relationalWeight:'rw',relationalUseBias:'rub',signalEmitCost:'sec',
   signalInfluence:'sinf',signalDecay:'sdec',signalRoleInfluence:'sri',
   dissolutionWeight:'dw',metaSignalInfluence:'msi',metaSignalGradInfluence:'msgi',metaSignalVolInfluence:'msvi',
-  metaMutationBias:'mmb',inscriptionInfluence:'ini',field2WriteInfluence:'f2w'
+  metaMutationBias:'mmb',inscriptionInfluence:'ini',field2WriteInfluence:'f2w',field2GradInfluence:'f2gi',
+  field2TemporalInfluence:'f2t',fieldCrossInfluence:'f2x',neighborDensityInfluence:'ndi',selfAmpInfluence:'sai',
+  partnerAmpInfluence:'pai',partnerDensityInfluence:'pdi',selfAgeInfluence:'sagi'
 };
 
 // Pe32: 12D Euclidean distance between two scenario entries.
@@ -2734,6 +3034,57 @@ function profileVM(){
           // 0.45 ≈ op 5/11, roughly the middle of the cell-op range.
           // Not 0: that would bias any genome using inscription reads toward zero profiles.
           vmRegs[di]=0.45*(k||1);
+        }break;
+        case 32:{                       // FIELD2_GRAD (Pe48) → calibrated mid-range stub
+          // Profiler has no live field2 state. Return a small non-zero gradient stub so
+          // genomes that use opcode 32 still produce a non-trivial phenotype profile.
+          // Magnitude 0.1 represents a gentle gradient — plausible but not dominant.
+          const f2giProf=genome.field2GradInfluence||0;
+          vmRegs[si]= 0.1*f2giProf*(k||1);
+          vmRegs[di]=-0.1*f2giProf*(k||1);
+        }break;
+        case 33:{                       // FIELD2_TEMPORAL (Pe49) → small positive rate stub
+          // Profiler has no live field2Prev state. Return a small positive delta stub so
+          // genomes using opcode 33 produce a plausible non-trivial phenotype profile.
+          // 0.03 represents a gentle rising rate — low but nonzero.
+          const f2tiProf=genome.field2TemporalInfluence||0;
+          vmRegs[di]=0.03*f2tiProf*(k||1);
+        }break;
+        case 34:{                       // FIELD_CROSS (Pe50) → neutral balance stub
+          // Profiler has no live field/field2 state. Return a near-zero balance stub so
+          // genomes using opcode 34 produce a plausible contested-zone phenotype profile.
+          // 0.05 represents slight field1 dominance — a mildly biased contested region.
+          const fxiProf=genome.fieldCrossInfluence||0;
+          vmRegs[di]=0.05*fxiProf*(k||1);
+        }break;
+        case 35:{                       // NEIGHBOR_DENSITY (Pe51) → mid-density stub
+          // Profiler has no live neighbor count. Return a moderate density stub so
+          // genomes using opcode 35 produce a plausible phenotype profile.
+          // 0.3 represents ~3 neighbors — below average but not isolated.
+          const ndiProf=genome.neighborDensityInfluence||0;
+          vmRegs[di]=0.3*ndiProf*(k||1);
+        }break;
+        case 36:{                       // SELF_AMP (Pe52) → mid-vigor stub
+          // Profiler has no live amp[i]. Return a moderate vigor stub so
+          // genomes using opcode 36 produce a plausible phenotype profile.
+          // 0.6 represents healthy-but-not-peak amplitude.
+          const saiProf=genome.selfAmpInfluence||0;
+          vmRegs[di]=0.6*saiProf*(k||1);
+        }break;
+        case 37:{                       // PARTNER_AMP (Pe53) → mid-vigor partner stub
+          // Profiler has no live amp[j]. Return a moderate vigor stub so
+          // genomes using opcode 37 produce a plausible phenotype profile.
+          // 0.5 represents a partner at moderate health — slightly below own stub (0.6),
+          // which biases the profiler toward mild "I am stronger" scenarios.
+          const paiProf=genome.partnerAmpInfluence||0;
+          vmRegs[di]=0.5*paiProf*(k||1);
+        }break;
+        case 38:{                       // PARTNER_DENSITY (Pe54) → mid-density partner stub
+          // Profiler has no live pNeighborCount[j]. Return a moderate density stub (0.3)
+          // so genomes using opcode 38 produce a plausible phenotype profile.
+          // 0.3 represents ~3 neighbors — a lightly-populated neighborhood.
+          const pdiProf=genome.partnerDensityInfluence||0;
+          vmRegs[di]=0.3*pdiProf*(k||1);
         }break;
       }
       for(let r=0;r<12;r++)vmRegs[r]=Math.max(-8,Math.min(8,vmRegs[r]));
@@ -3642,6 +3993,9 @@ function updateField(){
   }
 
   // ═══ STAGE 2: STANDARD DIFFUSION + DECAY ═══
+  // Pe49: snapshot field2 before diffusion so the temporal derivative (field2 - field2Prev)
+  // is available to VMs via opcode 33 this tick. Copying 1600 floats is negligible cost.
+  field2Prev.set(field2);
   for(let y=0;y<FIELD_H;y++){
     for(let x=0;x<FIELD_W;x++){
       const idx=y*FIELD_W+x;
@@ -4119,6 +4473,22 @@ function mutateGenome(){
   // Pe47 Layer 36: field2WriteInfluence uses metaMaybe — unlike metaMutationBias/metaCreditBias,
   // it does not control the credit system, so self-bias via meta feedback is not a concern.
   genome.field2WriteInfluence=Math.max(0,Math.min(1,metaMaybe(genome.field2WriteInfluence||0,0.04,'field2WriteInfluence'))); // Pe47 Layer 36
+  // Pe48 Layer 37: field2GradInfluence uses metaMaybe — does not control the credit system.
+  genome.field2GradInfluence=Math.max(0,Math.min(1,metaMaybe(genome.field2GradInfluence||0,0.04,'field2GradInfluence'))); // Pe48 Layer 37
+  // Pe49 Layer 38: field2TemporalInfluence uses metaMaybe — does not control the credit system.
+  genome.field2TemporalInfluence=Math.max(0,Math.min(1,metaMaybe(genome.field2TemporalInfluence||0,0.04,'field2TemporalInfluence'))); // Pe49 Layer 38
+  // Pe50 Layer 39: fieldCrossInfluence uses metaMaybe — does not control the credit system.
+  genome.fieldCrossInfluence=Math.max(0,Math.min(1,metaMaybe(genome.fieldCrossInfluence||0,0.04,'fieldCrossInfluence'))); // Pe50 Layer 39
+  // Pe51 Layer 40: neighborDensityInfluence uses metaMaybe — does not control the credit system.
+  genome.neighborDensityInfluence=Math.max(0,Math.min(1,metaMaybe(genome.neighborDensityInfluence||0,0.04,'neighborDensityInfluence'))); // Pe51 Layer 40
+  // Pe52 Layer 41: selfAmpInfluence uses metaMaybe — does not control the credit system.
+  genome.selfAmpInfluence=Math.max(0,Math.min(1,metaMaybe(genome.selfAmpInfluence||0,0.03,'selfAmpInfluence'))); // Pe52 Layer 41
+  // Pe53 Layer 42: partnerAmpInfluence uses metaMaybe — does not control the credit system.
+  genome.partnerAmpInfluence=Math.max(0,Math.min(1,metaMaybe(genome.partnerAmpInfluence||0,0.03,'partnerAmpInfluence'))); // Pe53 Layer 42
+  // Pe54 Layer 43: partnerDensityInfluence uses metaMaybe — does not control the credit system.
+  genome.partnerDensityInfluence=Math.max(0,Math.min(1,metaMaybe(genome.partnerDensityInfluence||0,0.03,'partnerDensityInfluence'))); // Pe54 Layer 43
+  // Pe55 Layer 44: selfAgeInfluence uses metaMaybe — does not control the credit system.
+  genome.selfAgeInfluence=Math.max(0,Math.min(1,metaMaybe(genome.selfAgeInfluence||0,0.03,'selfAgeInfluence'))); // Pe55 Layer 44
 
   // ═══ Pe26 Layer 16c: CLUSTER UPWARD SIGNAL injection ═══
   // Drain the upstream buffer — soft-inject successful cluster motifs into the global VM.
@@ -5303,6 +5673,124 @@ function executeVM(i,j,sim,d){
           field2[fi31]=Math.max(0,Math.min(100,field2[fi31]+vmRegs[si]*k*fw47));
         }
       }break;
+      case 32:{
+        // Pe48 Layer 37: FIELD2_GRAD — gradient of the second channel at this particle's cell.
+        // Symmetric to opcode 17 (FIELD_GRAD for channel 1): central-difference stencil,
+        // x-gradient into vmRegs[si], y-gradient into vmRegs[di], scaled by k × influence.
+        // field2GradInfluence=0 → returns 0 (no register change) → Pe47 exactly.
+        // Opens second-channel chemotaxis, cross-channel navigation, gradient-guided behavior.
+        const f2gi=genome.field2GradInfluence||0;
+        if(f2gi>0.001){
+          const gfx2=Math.floor(px[i]/(W/FIELD_W)),gfy2=Math.floor(py[i]/(H/FIELD_H));
+          const gfi2=gfy2*FIELD_W+gfx2;
+          const gl2=gfx2>0?field2[gfi2-1]:field2[gfi2];
+          const gr2=gfx2<FIELD_W-1?field2[gfi2+1]:field2[gfi2];
+          const gu2=gfy2>0?field2[gfi2-FIELD_W]:field2[gfi2];
+          const gd2=gfy2<FIELD_H-1?field2[gfi2+FIELD_W]:field2[gfi2];
+          vmRegs[si]=(gr2-gl2)*0.5*k*f2gi;
+          vmRegs[di]=(gd2-gu2)*0.5*k*f2gi;
+        }
+      }break;
+      case 33:{
+        // Pe49 Layer 38: FIELD2_TEMPORAL — time derivative of the second channel.
+        // Reads (field2[cell] - field2Prev[cell]): the change at this particle's cell
+        // since the last updateField diffusion pass, scaled by field2TemporalInfluence × k.
+        // field2TemporalInfluence=0 → returns 0 → Pe48 exactly.
+        // Positive: field2 rising here (deposition > decay — territory building).
+        // Negative: field2 falling here (decay > deposition — territory eroding).
+        // Orthogonal to opcode 32 (spatial gradient): a flat-gradient region may still have
+        // strong temporal signal if the entire field2 layer is rising or falling uniformly.
+        const f2ti=genome.field2TemporalInfluence||0;
+        if(f2ti>0.001){
+          const tfx=Math.floor(px[i]/(W/FIELD_W)),tfy=Math.floor(py[i]/(H/FIELD_H));
+          const tfi=Math.max(0,Math.min(FIELD_W*FIELD_H-1,tfy*FIELD_W+tfx));
+          vmRegs[di]=(field2[tfi]-field2Prev[tfi])*f2ti*k;
+        }
+      }break;
+      case 34:{
+        // Pe50 Layer 39: FIELD_CROSS — cross-channel balance between field1 and field2.
+        // Reads the normalized dominance ratio at this particle's cell:
+        //   balance = (field[cell] - field2[cell]) / (field[cell] + field2[cell] + 0.01)
+        //   vmRegs[di] = balance * fieldCrossInfluence * k
+        // +1: pure field1 territory. -1: pure field2 territory. 0: equal channels or inert.
+        // Scale-invariant: reports niche type regardless of absolute energy level.
+        // fieldCrossInfluence=0 → returns 0 → Pe49 exactly.
+        const fxi50=genome.fieldCrossInfluence||0;
+        if(fxi50>0.001){
+          const cx50=Math.floor(px[i]/(W/FIELD_W)),cy50=Math.floor(py[i]/(H/FIELD_H));
+          const ci50=Math.max(0,Math.min(FIELD_W*FIELD_H-1,cy50*FIELD_W+cx50));
+          const f1v=field[ci50],f2v=field2[ci50];
+          vmRegs[di]=(f1v-f2v)/(f1v+f2v+0.01)*fxi50*k;
+        }
+      }break;
+      case 35:{
+        // Pe51 Layer 40: NEIGHBOR_DENSITY — reads local crowding pressure into a VM register.
+        // pNeighborCount[i] is tallied during processGrid's pair sweep each tick — the count
+        // of living particles within interactionRadius. Normalized by 10: ~10 neighbors → 1.0.
+        // neighborDensityInfluence=0 → returns 0 → Pe50 exactly.
+        // Positive: crowded. Near 0: isolated. VMs evolve density-conditional behavior.
+        const ndi51=genome.neighborDensityInfluence||0;
+        if(ndi51>0.001){
+          vmRegs[di]=Math.min(3,pNeighborCount[i]/10)*ndi51*k;
+        }
+      }break;
+      case 36:{
+        // Pe52 Layer 41: SELF_AMP — reads this particle's own amplitude into a VM register.
+        // amp[i] is the particle's current vigor [0..1.2]. Scaled by selfAmpInfluence × k.
+        // Distinct from vmRegs[3] (energy = avg of both partners): SELF_AMP isolates own
+        // health, enabling vigor-conditional behavior and relative-strength detection.
+        // selfAmpInfluence=0 → returns 0 → Pe51 exactly.
+        const sai52=genome.selfAmpInfluence||0;
+        if(sai52>0.001){
+          vmRegs[di]=Math.max(0,Math.min(1.2,amp[i]))*sai52*k;
+        }
+      }break;
+      case 37:{
+        // Pe53 Layer 42: PARTNER_AMP — reads interaction partner's amplitude into a VM register.
+        // amp[j] is the partner's current vigor [0..1.2]. Scaled by partnerAmpInfluence × k.
+        // Complement to opcode 36 (SELF_AMP): together they enable relative-vigor detection.
+        //   opcode-36 output − opcode-37 output = own − partner = relative strength differential
+        // partnerAmpInfluence=0 → returns 0 → Pe52 exactly.
+        const pai53=genome.partnerAmpInfluence||0;
+        if(pai53>0.001){
+          vmRegs[di]=Math.max(0,Math.min(1.2,amp[j]))*pai53*k;
+        }
+      }break;
+      case 38:{
+        // Pe54 Layer 43: PARTNER_DENSITY — reads interaction partner's neighbor count into a VM register.
+        // pNeighborCount[j]/10 is the partner's local crowding [0..1+]. Scaled by partnerDensityInfluence × k.
+        // Complement to opcode 35 (NEIGHBOR_DENSITY): together they enable relative-crowding detection.
+        //   opcode-35 output − opcode-38 output = own − partner = relative density differential
+        // partnerDensityInfluence=0 → returns 0 → Pe53 exactly.
+        const pdi54=genome.partnerDensityInfluence||0;
+        if(pdi54>0.001){
+          vmRegs[di]=Math.min(3,pNeighborCount[j]/10)*pdi54*k;
+        }
+      }break;
+      case 39:{
+        // Pe55 Layer 44: SELF_AGE — reads this particle's own age (lifetime in ticks) into a VM register.
+        // page[i] is the particle's age in simulation ticks since birth. Normalized by 800:
+        //   page[i]=0   → 0.0  : just born
+        //   page[i]=400 → 0.5  : moderate age
+        //   page[i]=800 → 1.0  : mature particle (if lived this long)
+        // Capped at 3.0 so very old particles don't dominate downstream arithmetic.
+        // Scaled by selfAgeInfluence × k — genome gate, can evolve to zero (Pe54 exactly).
+        //
+        // This is the first temporal self-sense: particles can now condition behavior on
+        // how long they've been alive, not just on their current vigor or neighborhood.
+        // Distinct from opcode 15 (LERP_AGE), which uses age as a blend weight between two
+        // OTHER values. This opcode deposits age ITSELF as a register datum.
+        //
+        // Behavioral territory opened:
+        //   - Juvenile particle reads low age → explores, spreads, trades amp freely
+        //   - Mature particle reads mid age → defends territory, gates reproduction
+        //   - Elder particle reads high age → senescent signaling, altruistic amp transfer
+        // selfAgeInfluence=0 → returns 0 → Pe54 exactly.
+        const sagai55=genome.selfAgeInfluence||0;
+        if(sagai55>0.001){
+          vmRegs[di]=Math.min(3,page[i]/800)*sagai55*k;
+        }
+      }break;
     }
     for(let r=0;r<12;r++)vmRegs[r]=Math.max(-8,Math.min(8,vmRegs[r]));
   }
@@ -5462,6 +5950,70 @@ function executeVM(i,j,sim,d){
             const fx31=Math.floor(px[i]/(W/FIELD_W)),fy31=Math.floor(py[i]/(H/FIELD_H));
             const fi31=Math.max(0,Math.min(FIELD_W*FIELD_H-1,fy31*FIELD_W+fx31));
             field2[fi31]=Math.max(0,Math.min(100,field2[fi31]+vmRegs[si]*k*fw47p));
+          }
+        }break;
+        case 32:{
+          // Pe48 Layer 37: FIELD2_GRAD in plasmid VM — parity with particle VM.
+          const f2gip=genome.field2GradInfluence||0;
+          if(f2gip>0.001){
+            const gfx2p=Math.floor(px[i]/(W/FIELD_W)),gfy2p=Math.floor(py[i]/(H/FIELD_H));
+            const gfi2p=gfy2p*FIELD_W+gfx2p;
+            const gl2p=gfx2p>0?field2[gfi2p-1]:field2[gfi2p];
+            const gr2p=gfx2p<FIELD_W-1?field2[gfi2p+1]:field2[gfi2p];
+            const gu2p=gfy2p>0?field2[gfi2p-FIELD_W]:field2[gfi2p];
+            const gd2p=gfy2p<FIELD_H-1?field2[gfi2p+FIELD_W]:field2[gfi2p];
+            vmRegs[si]=(gr2p-gl2p)*0.5*k*f2gip;
+            vmRegs[di]=(gd2p-gu2p)*0.5*k*f2gip;
+          }
+        }break;
+        case 33:{
+          // Pe49 Layer 38: FIELD2_TEMPORAL in plasmid VM — parity with particle VM.
+          const f2tip=genome.field2TemporalInfluence||0;
+          if(f2tip>0.001){
+            const tfxp=Math.floor(px[i]/(W/FIELD_W)),tfyp=Math.floor(py[i]/(H/FIELD_H));
+            const tfip=Math.max(0,Math.min(FIELD_W*FIELD_H-1,tfyp*FIELD_W+tfxp));
+            vmRegs[di]=(field2[tfip]-field2Prev[tfip])*f2tip*k;
+          }
+        }break;
+        case 34:{
+          // Pe50 Layer 39: FIELD_CROSS in plasmid VM — parity with particle VM.
+          const fxip=genome.fieldCrossInfluence||0;
+          if(fxip>0.001){
+            const cx50p=Math.floor(px[i]/(W/FIELD_W)),cy50p=Math.floor(py[i]/(H/FIELD_H));
+            const ci50p=Math.max(0,Math.min(FIELD_W*FIELD_H-1,cy50p*FIELD_W+cx50p));
+            const f1vp=field[ci50p],f2vp=field2[ci50p];
+            vmRegs[di]=(f1vp-f2vp)/(f1vp+f2vp+0.01)*fxip*k;
+          }
+        }break;
+        case 35:{
+          // Pe51 Layer 40: NEIGHBOR_DENSITY in plasmid VM — parity with particle VM.
+          const ndi51p=genome.neighborDensityInfluence||0;
+          if(ndi51p>0.001){
+            vmRegs[di]=Math.min(3,pNeighborCount[i]/10)*ndi51p*k;
+          }
+        }break;
+        case 36:{
+          // Pe52 Layer 41: SELF_AMP in plasmid VM — parity with particle VM.
+          // Reads amp[i] into vmRegs[di], scaled by selfAmpInfluence × k.
+          const sai52p=genome.selfAmpInfluence||0;
+          if(sai52p>0.001){
+            vmRegs[di]=Math.max(0,Math.min(1.2,amp[i]))*sai52p*k;
+          }
+        }break;
+        case 37:{
+          // Pe53 Layer 42: PARTNER_AMP in plasmid VM — parity with particle VM.
+          // Reads amp[j] into vmRegs[di], scaled by partnerAmpInfluence × k.
+          const pai53p=genome.partnerAmpInfluence||0;
+          if(pai53p>0.001){
+            vmRegs[di]=Math.max(0,Math.min(1.2,amp[j]))*pai53p*k;
+          }
+        }break;
+        case 38:{
+          // Pe54 Layer 43: PARTNER_DENSITY in plasmid VM — parity with particle VM.
+          // Reads pNeighborCount[j]/10 into vmRegs[di], scaled by partnerDensityInfluence × k.
+          const pdi54p=genome.partnerDensityInfluence||0;
+          if(pdi54p>0.001){
+            vmRegs[di]=Math.min(3,pNeighborCount[j]/10)*pdi54p*k;
           }
         }break;
       }
@@ -5738,6 +6290,69 @@ function executeClusterVM(i,j,sim,d){
           const fx31=Math.floor(px[i]/(W/FIELD_W)),fy31=Math.floor(py[i]/(H/FIELD_H));
           const fi31=Math.max(0,Math.min(FIELD_W*FIELD_H-1,fy31*FIELD_W+fx31));
           field2[fi31]=Math.max(0,Math.min(100,field2[fi31]+vmRegs[si]*k*fw47c));
+        }
+      }break;
+      case 32:{
+        // Pe48 Layer 37: FIELD2_GRAD in cluster VM — full parity with particle VM through opcode 32.
+        const f2gic=genome.field2GradInfluence||0;
+        if(f2gic>0.001){
+          const gfx2c=Math.floor(px[i]/(W/FIELD_W)),gfy2c=Math.floor(py[i]/(H/FIELD_H));
+          const gfi2c=gfy2c*FIELD_W+gfx2c;
+          const gl2c=gfx2c>0?field2[gfi2c-1]:field2[gfi2c];
+          const gr2c=gfx2c<FIELD_W-1?field2[gfi2c+1]:field2[gfi2c];
+          const gu2c=gfy2c>0?field2[gfi2c-FIELD_W]:field2[gfi2c];
+          const gd2c=gfy2c<FIELD_H-1?field2[gfi2c+FIELD_W]:field2[gfi2c];
+          vmRegs[si]=(gr2c-gl2c)*0.5*k*f2gic;
+          vmRegs[di]=(gd2c-gu2c)*0.5*k*f2gic;
+        }
+      }break;
+      case 33:{
+        // Pe49 Layer 38: FIELD2_TEMPORAL in cluster VM — full parity with particle VM through opcode 33.
+        const f2tic=genome.field2TemporalInfluence||0;
+        if(f2tic>0.001){
+          const tfxc=Math.floor(px[i]/(W/FIELD_W)),tfyc=Math.floor(py[i]/(H/FIELD_H));
+          const tfic=Math.max(0,Math.min(FIELD_W*FIELD_H-1,tfyc*FIELD_W+tfxc));
+          vmRegs[di]=(field2[tfic]-field2Prev[tfic])*f2tic*k;
+        }
+      }break;
+      case 34:{
+        // Pe50 Layer 39: FIELD_CROSS in cluster VM — full parity with particle VM through opcode 34.
+        const fxic=genome.fieldCrossInfluence||0;
+        if(fxic>0.001){
+          const cx50c=Math.floor(px[i]/(W/FIELD_W)),cy50c=Math.floor(py[i]/(H/FIELD_H));
+          const ci50c=Math.max(0,Math.min(FIELD_W*FIELD_H-1,cy50c*FIELD_W+cx50c));
+          const f1vc=field[ci50c],f2vc=field2[ci50c];
+          vmRegs[di]=(f1vc-f2vc)/(f1vc+f2vc+0.01)*fxic*k;
+        }
+      }break;
+      case 35:{
+        // Pe51 Layer 40: NEIGHBOR_DENSITY in cluster VM — full parity with particle VM.
+        const ndi51c=genome.neighborDensityInfluence||0;
+        if(ndi51c>0.001){
+          vmRegs[di]=Math.min(3,pNeighborCount[i]/10)*ndi51c*k;
+        }
+      }break;
+      case 36:{
+        // Pe52 Layer 41: SELF_AMP in cluster VM — full parity with particle VM.
+        const sai52c=genome.selfAmpInfluence||0;
+        if(sai52c>0.001){
+          vmRegs[di]=Math.max(0,Math.min(1.2,amp[i]))*sai52c*k;
+        }
+      }break;
+      case 37:{
+        // Pe53 Layer 42: PARTNER_AMP in cluster VM — parity with particle VM (was missing in Pe53, fixed in Pe54).
+        // Reads amp[j] into vmRegs[di], scaled by partnerAmpInfluence × k.
+        const pai53c=genome.partnerAmpInfluence||0;
+        if(pai53c>0.001){
+          vmRegs[di]=Math.max(0,Math.min(1.2,amp[j]))*pai53c*k;
+        }
+      }break;
+      case 38:{
+        // Pe54 Layer 43: PARTNER_DENSITY in cluster VM — parity with particle VM.
+        // Reads pNeighborCount[j]/10 into vmRegs[di], scaled by partnerDensityInfluence × k.
+        const pdi54c=genome.partnerDensityInfluence||0;
+        if(pdi54c>0.001){
+          vmRegs[di]=Math.min(3,pNeighborCount[j]/10)*pdi54c*k;
         }
       }break;
     }
@@ -6121,7 +6736,7 @@ function executeSoloVM(){
 function processGrid(){
   clearGrid();
   for(let i=0;i<N;i++){if(!palive[i])continue;const k=gKey(px[i],py[i]);pnext[i]=grid[k];grid[k]=i}
-  for(let i=0;i<N;i++)localRes[i]=0;
+  for(let i=0;i<N;i++){localRes[i]=0;pNeighborCount[i]=0;} // Pe51: reset density counter each tick
   for(let i=0;i<N;i++){
     if(!palive[i])continue;
     const gx=(px[i]/CELL)|0,gy=(py[i]/CELL)|0;
@@ -6138,6 +6753,9 @@ function processGrid(){
             const pa=Math.cos(phase[i]-phase[j]);
             localRes[i]+=Math.max(0,sim*pa)*(1-d/iR);
             localRes[j]+=Math.max(0,sim*pa)*(1-d/iR);
+            // Pe51 Layer 40: count neighbors within interaction radius for density sensing
+            if(pNeighborCount[i]<127)pNeighborCount[i]++;
+            if(pNeighborCount[j]<127)pNeighborCount[j]++;
             entrain(i,j,sim,d);
             executeVM(i,j,sim,d);
             executeClusterVM(i,j,sim,d);
@@ -6792,15 +7410,24 @@ function loop(){
         inscTag=` | insc:s${inscAvgStr.toFixed(2)} x${_inscInf.toFixed(2)}`;
       }
     }
-    // ═══ Pe47 Layer 36: SECOND INK diagnostic ═══
-    // f2Tag shows: avg field2 energy at live particle positions and the write-influence gate.
+    // ═══ Pe47 Layer 36 / Pe48 Layer 37 / Pe49 Layer 38 / Pe50 Layer 39: SECOND INK + GRADIENT + TEMPORAL + CROSS diagnostic ═══
+    // f2Tag shows: avg field2 energy at live particle positions, write-influence gate, grad-influence gate, temporal-influence gate, cross-influence gate.
     // e = avg field2 value under particles (0=channel empty, >0=second ink accumulating)
-    // x = field2WriteInfluence genome value (how strongly the write path is open)
-    // If x>0 but e≈0, VMs haven't discovered opcode 31 or writes are too small.
-    // If e>0 but x→0, field2 is chemistry-maintained without direct VM writes — valid answer.
+    // w = field2WriteInfluence genome value (how strongly the write path is open)
+    // g = field2GradInfluence genome value (how strongly gradient sensing is open)
+    // t = field2TemporalInfluence genome value (how strongly temporal derivative sensing is open)
+    // x = fieldCrossInfluence genome value (how strongly cross-channel balance sensing is open)
+    // If w>0 but e≈0, VMs haven't discovered opcode 31 or writes are too small.
+    // If e>0 but w→0, field2 is chemistry-maintained without direct VM writes — valid answer.
+    // If g>0, VMs have access to x/y gradient of field2 for chemotaxis (opcode 32).
+    // If t>0, VMs have access to time derivative of field2 — rising vs eroding substrate (opcode 33).
+    // If x>0, VMs have access to cross-channel balance — niche-type detection (opcode 34).
     let f2Tag='';
     const _f2wi=genome.field2WriteInfluence||0;
-    if(_f2wi>0.001){
+    const _f2gi48=genome.field2GradInfluence||0;
+    const _f2ti49=genome.field2TemporalInfluence||0;
+    const _fxi50=genome.fieldCrossInfluence||0;
+    if(_f2wi>0.001||_f2gi48>0.001||_f2ti49>0.001||_fxi50>0.001){
       let f2Sum=0,f2Count=0;
       for(let i=0;i<N;i++){
         if(!palive[i])continue;
@@ -6809,11 +7436,109 @@ function loop(){
         f2Sum+=field2[f2idx];f2Count++;
       }
       const f2Avg=f2Count>0?f2Sum/f2Count:0;
-      if(f2Avg>0.005||_f2wi>0.02){
-        f2Tag=` | f2:e${f2Avg.toFixed(2)} x${_f2wi.toFixed(2)}`;
+      if(f2Avg>0.005||_f2wi>0.02||_f2gi48>0.02||_f2ti49>0.02||_fxi50>0.02){
+        f2Tag=` | f2:e${f2Avg.toFixed(2)}${_f2wi>0.001?' w'+_f2wi.toFixed(2):''}${_f2gi48>0.001?' g'+_f2gi48.toFixed(2):''}${_f2ti49>0.001?' t'+_f2ti49.toFixed(2):''}${_fxi50>0.001?' x'+_fxi50.toFixed(2):''}`;
       }
     }
-    genEl.textContent=`gen${genome.generation} ${genome.extinctions}☠ t${genome.totalTicks} | ${clusters.length}cl(${clVMActive}vm${budCount>0?','+budCount+'bud':''}) ${livingLin}lin fit:${currentFitness.toFixed(2)} stb:${(selfModel.stability||0).toFixed(2)} | vm:${genome.vmProgram.length}inst ${nSensors}sns ${hgtEventsTotal}hgt | pop:${N}/${CAP} fld:${fieldTotal.toFixed(0)}${fTrend<-0.01?'↓':fTrend>0.01?'↑':'~'} risk:${cRisk.toFixed(2)} | ⟲${rInf.toFixed(2)} ${reflexClusters}rc${netTag}${cgTag}${uaTag}${(genome.eventLog&&genome.eventLog.length)?' ev:'+genome.eventLog.length:''}${gradTag}${mrTag}${relTag}${sigTag}${attrTag}${inscTag}${f2Tag}${dissTag}`;
+    // ═══ Pe51 Layer 40: NEIGHBOR DENSITY diagnostic ═══
+    // ndcTag shows: avg neighbor count per live particle + influence gate.
+    // n = avg pNeighborCount value across alive particles (crowding signal magnitude)
+    // i = neighborDensityInfluence (how open the VM channel is)
+    // n≈0 with i>0 means particles are sparse — density signal exists but carries low information.
+    // n rising means population is clustering or cap is being approached.
+    // i→0 means selection found density sensing not worth the opcode slot.
+    let ndcTag='';
+    const _ndi51=genome.neighborDensityInfluence||0;
+    if(_ndi51>0.001){
+      let ndcSum=0,ndcCnt=0;
+      for(let i=0;i<N;i++){if(palive[i]){ndcSum+=pNeighborCount[i];ndcCnt++;}}
+      const ndcAvg=ndcCnt>0?ndcSum/ndcCnt:0;
+      if(ndcAvg>0.1||_ndi51>0.02){
+        ndcTag=` | ndc:n${ndcAvg.toFixed(1)} i${_ndi51.toFixed(2)}`;
+      }
+    }
+    // ═══ Pe52 Layer 41: VIGOR SENSING diagnostic ═══
+    // saiTag shows: population amplitude distribution + influence gate.
+    // lo = fraction of alive particles with amp < 0.35 (weakened)
+    // hi = fraction of alive particles with amp > 0.70 (thriving)
+    // i  = selfAmpInfluence (how open the VM channel is)
+    // When hi dominates: population is healthy, vigor-conditional behaviors may stratify upward.
+    // When lo rises: stress condition — dying particles can now signal their state.
+    // i→0: selection found self-vigor sensing not worth the opcode slot.
+    let saiTag='';
+    const _sai52=genome.selfAmpInfluence||0;
+    if(_sai52>0.001){
+      let saiLo=0,saiHi=0,saiCnt=0;
+      for(let i=0;i<N;i++){
+        if(!palive[i])continue;
+        saiCnt++;
+        if(amp[i]<0.35)saiLo++;
+        else if(amp[i]>0.70)saiHi++;
+      }
+      if(saiCnt>0&&(_sai52>0.02||saiLo/saiCnt>0.1||saiHi/saiCnt>0.3)){
+        saiTag=` | sai:lo${(saiLo/saiCnt).toFixed(2)} hi${(saiHi/saiCnt).toFixed(2)} i${_sai52.toFixed(2)}`;
+      }
+    }
+    // ═══ Pe53 Layer 42: PARTNER VIGOR diagnostic ═══
+    // paiTag shows: population-average partner amplitude encountered + influence gate.
+    // avg = mean amp[j] seen across all live interactions this HUD window (what vigor partners show)
+    // i   = partnerAmpInfluence (how open the VM channel is)
+    // avg ≈ population avgAmp: partners are random sample — low avg means weak population.
+    // avg diverging from sai's own-vigor picture → heterogeneous population (strong and weak coexist).
+    // i→0: selection found partner-vigor sensing not worth the opcode slot.
+    let paiTag='';
+    const _pai53=genome.partnerAmpInfluence||0;
+    if(_pai53>0.001){
+      // Compute mean amp across alive particles as a proxy for "partner amp seen on average"
+      let paiSum=0,paiCnt=0;
+      for(let i=0;i<N;i++){if(palive[i]){paiSum+=amp[i];paiCnt++;}}
+      const paiAvg=paiCnt>0?paiSum/paiCnt:0;
+      if(_pai53>0.02||paiAvg<0.45||paiAvg>0.75){
+        paiTag=` | pai:avg${paiAvg.toFixed(2)} i${_pai53.toFixed(2)}`;
+      }
+    }
+    // ═══ Pe54 Layer 43: PARTNER DENSITY diagnostic ═══
+    // pdcTag shows: population-average neighbor count of interaction partners + influence gate.
+    // avg = mean pNeighborCount across alive particles as proxy for partner density
+    //       (partners are random sample from the same population, so this is a fair estimate)
+    // i   = partnerDensityInfluence (how open the VM channel is)
+    // avg ≈ ndc avg: partners are random sample — same population density picture.
+    // avg diverging from ndc's own-density picture → heterogeneous spatial distribution
+    //   (some particles are in dense clusters, others isolated; partners sample both).
+    // i→0: selection found partner-density sensing not worth the opcode slot.
+    let pdcTag='';
+    const _pdi54=genome.partnerDensityInfluence||0;
+    if(_pdi54>0.001){
+      let pdcSum=0,pdcCnt=0;
+      for(let i=0;i<N;i++){if(palive[i]){pdcSum+=pNeighborCount[i];pdcCnt++;}}
+      const pdcAvg=pdcCnt>0?pdcSum/pdcCnt:0;
+      if(_pdi54>0.02||pdcAvg>0.5){
+        pdcTag=` | pdc:n${pdcAvg.toFixed(1)} i${_pdi54.toFixed(2)}`;
+      }
+    }
+    // ═══ Pe55 Layer 44: SELF_AGE diagnostic ═══
+    // ageTag shows: population average age (normalized to the same 800-tick scale as the opcode)
+    //              + selfAgeInfluence gate.
+    // avg = mean (page[i]/800) across alive particles, capped at 3.0 — the VM-register value.
+    // i   = selfAgeInfluence (how open the age channel is)
+    // avg near 0: mostly young particles (recent extinction or fast-reproducing lineage).
+    // avg near 1: mature population, lifecycle-aware behaviors can differentiate.
+    // avg > 1: population with many long-lived elders — senescent strategies possible.
+    // i→0: selection found age self-sensing not worth the opcode slot.
+    let ageTag='';
+    const _sagi55=genome.selfAgeInfluence||0;
+    if(_sagi55>0.001){
+      let ageSum=0,ageCnt=0;
+      for(let i=0;i<N;i++){
+        if(!palive[i])continue;
+        ageCnt++;
+        ageSum+=Math.min(3,page[i]/800);
+      }
+      if(ageCnt>0&&(_sagi55>0.02||ageSum/ageCnt>0.1)){
+        ageTag=` | age:avg${(ageSum/ageCnt).toFixed(2)} i${_sagi55.toFixed(2)}`;
+      }
+    }
+    genEl.textContent=`gen${genome.generation} ${genome.extinctions}☠ t${genome.totalTicks} | ${clusters.length}cl(${clVMActive}vm${budCount>0?','+budCount+'bud':''}) ${livingLin}lin fit:${currentFitness.toFixed(2)} stb:${(selfModel.stability||0).toFixed(2)} | vm:${genome.vmProgram.length}inst ${nSensors}sns ${hgtEventsTotal}hgt | pop:${N}/${CAP} fld:${fieldTotal.toFixed(0)}${fTrend<-0.01?'↓':fTrend>0.01?'↑':'~'} risk:${cRisk.toFixed(2)} | ⟲${rInf.toFixed(2)} ${reflexClusters}rc${netTag}${cgTag}${uaTag}${(genome.eventLog&&genome.eventLog.length)?' ev:'+genome.eventLog.length:''}${gradTag}${mrTag}${relTag}${sigTag}${attrTag}${inscTag}${f2Tag}${ndcTag}${saiTag}${paiTag}${pdcTag}${ageTag}${dissTag}`;
   }
 
   const renderEvery=N>1000?4:N>500?3:N>200?2:1;
