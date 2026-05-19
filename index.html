@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
-<title>Selection פ 58 — The Speed Mirror (Complete)</title>
+<title>Selection פ 68 — The Partner Wave</title>
 <style>
 *{margin:0;padding:0;box-sizing:border-box}
 html,body{height:100%;overflow:hidden;background:#020204;touch-action:none;cursor:crosshair}
@@ -264,7 +264,7 @@ const DIMS=5; // dim 4 is blank — no hardcoded role. System decides what it me
 const MEM_SIZE=8; // per-particle persistent memory. Particles become stateful agents.
 const MAX_PLASMID=4; // max instructions per particle's personal mobile DNA
 const PLASMID_SLOTS=MAX_PLASMID*4; // each instruction is [op,src,dst,k] = 4 values
-const OPCODE_COUNT=43; // VM opcodes 0..42: adding PARTNER_SPEED (42) in Pe58 Layer 47
+const OPCODE_COUNT=53; // VM opcodes 0..52: Pe61 adds ORBIT_RATE (45); Pe62 adds SELF_FREQ (46); Pe63 adds PARTNER_FREQ (47); Pe64 adds PARTNER_MEM_READ (48); Pe65 adds PARTNER_TEND_READ (49); Pe66 adds SELF_TEND_READ (50); Pe67 adds SELF_PHASE (51); Pe68 adds PARTNER_PHASE (52)
 const FIELD_W=40;
 const FIELD_H=40;
 let FIELD_DECAY=0.982;   // natural fade — Pe22b: now genome-driven, can evolve
@@ -1204,7 +1204,485 @@ let genome={
   // sensing earns its keep and can retire it if not.
   partnerSpeedInfluence:0.15,   // 0=Pe57 exactly. Scales partner speed → VM. Evolvable.
 
-  // ═══ LAYER 18: RATIFICATION — clusters carry scenarios upward (Pe28) ═══
+  // ═══ LAYER 48: HEADING ALIGNMENT — directional relationship between self and partner (Pe59) ═══
+  // Pe57+Pe58 gave particles kinetic self-awareness: SELF_SPEED (opcode 41) and
+  // PARTNER_SPEED (opcode 42). Together they reveal the MAGNITUDE of motion.
+  // But velocity is a vector — magnitude without direction is half a picture.
+  //
+  // Pe59 adds the missing dimension: HEADING_ALIGN (opcode 43). Instead of exposing
+  // raw heading angles (which are frame-dependent and need two registers to encode
+  // faithfully), Pe59 exposes the RELATIONSHIP between headings — the dot product
+  // of the two normalized velocity vectors:
+  //
+  //   dot = (vx[i]*vx[j] + vy[i]*vy[j]) / (|vi| * |vj|)
+  //
+  //   dot ≈ +1.0 : co-moving  — same direction (schooling, drafting, co-migration)
+  //   dot ≈  0.0 : orthogonal — crossing paths (glancing encounter, patrol boundary)
+  //   dot ≈ -1.0 : counter    — head-on approach (collision, confrontation, guard behavior)
+  //
+  // When either particle is nearly stationary (speed < 0.1 px/tick) the heading is
+  // numerically unstable — opcode 43 returns 0 in that case. Stationary particles
+  // still interact via the other kinetic channels (amplitude, field, phase).
+  //
+  // WHY A RELATIONSHIP RATHER THAN AN ANGLE:
+  //   The dot product is rotation-invariant and naturally maps to [-1,1] without
+  //   mod-2π wrapping. It is also symmetric (i sees j as +0.8; j sees i as +0.8),
+  //   which means signals can propagate coherently through a population without
+  //   sign-flip artifacts from interaction ordering.
+  //
+  // NEW BEHAVIORS WITH NO PRIOR PATH:
+  //   - Alignment-gated bonding: form clusters only with co-moving particles
+  //   - Head-on repulsion: force emission conditioned on counter-approach (dot < -0.5)
+  //   - Schooling emergence: amplify force toward partners with dot ≈ +1
+  //   - Boundary roles: orthogonal-encounter particles become inter-cluster ambassadors
+  //   - Directional signal propagation: emit signals only to co-movers
+  //   - Speed×alignment compound: fast AND co-moving → strong interaction; fast but
+  //     counter-moving → avoidance — the full kinetic relationship space is now open
+  //
+  // headingAlignInfluence=0 → opcode 43 returns 0 → Pe58 exactly.
+  // In META_LAYER_PARAMS and ATROPHY_SAFE so attribution tracks whether directional
+  // sensing earns its keep and can retire it if the population finds it not useful.
+  headingAlignInfluence:0.15,   // 0=Pe58 exactly. Scales heading dot-product → VM. Evolvable.
+
+  // ═══ LAYER 49: APPROACH_RATE — radial velocity between self and partner (Pe60) ═══
+  // Pe57+Pe58 gave speed magnitude (self + partner).
+  // Pe59 gave heading alignment (dot product of velocity vectors).
+  // Together they say: HOW FAST and ARE WE POINTED THE SAME WAY.
+  //
+  // But one kinematic question is still unanswered: ARE WE GETTING CLOSER OR FARTHER?
+  //
+  // Heading alignment and approach rate are orthogonal signals:
+  //   - Two particles moving identically (dot=+1) but i behind j → converging if i is faster,
+  //     diverging if j is faster. Heading tells direction; approach tells the gap trajectory.
+  //   - Two particles on orthogonal paths (dot=0): could be passing with no gap change (pure
+  //     tangential crossing) or spiraling inward. Only approach rate distinguishes them.
+  //   - Head-on approach (dot=-1): converging fast. Head-on recession: diverging fast.
+  //     Both look identical to heading alignment; only approach rate separates them.
+  //
+  // The signal is d(dist)/dt — the rate of change of inter-particle distance:
+  //
+  //   dx = px[i] - px[j],  dy = py[i] - py[j]
+  //   dist = sqrt(dx² + dy²)
+  //   radial = (dx*(vx[i]-vx[j]) + dy*(vy[i]-vy[j])) / dist
+  //
+  //   radial > 0 : separating  — gap growing (particles diverging, post-collision scatter)
+  //   radial ≈ 0 : tangential  — gap steady (orbiting, parallel paths, passing perpendicularly)
+  //   radial < 0 : converging  — gap shrinking (approaching, head-on collision course)
+  //
+  // Normalization: |radial| ≤ |Δv| ≤ |vi| + |vj|.
+  // Typical fast relative velocity ≈ 4–6 px/tick → radial ∈ [-6, +6].
+  // Mapped to [-1.5, +1.5] by dividing by 4 — same register range as speed opcodes.
+  // Clamped at ±3 for extreme events.
+  //
+  // GUARD: when dist < 0.5, radial is numerically unstable (particles nearly coincident).
+  // Returns 0 in that case — the signal collapses gracefully rather than blowing up.
+  //
+  // NEW BEHAVIORS WITH NO PRIOR PATH:
+  //   - Collision prediction: "radial < -threshold → apply repulsive force NOW"
+  //   - Pursuit / chase: "radial < 0 → partner is approaching me" vs "radial > 0 → fleeing"
+  //   - Orbit detection: "radial ≈ 0 AND speed > 0 → we're circling, not converging"
+  //   - Post-scatter brake: "radial > 2 → just separated hard → cool down emission"
+  //   - Attraction selectivity: "attract only when converging, not when diverging"
+  //   - Cluster entry: "slow convergence → stable bond; fast convergence → collision"
+  //   - Zone boundary: radial sign flips at nearest-approach → detect the turn-point
+  //   - Speed×approach compound: "fast AND converging → alarm; fast AND diverging → safe"
+  //
+  // OPCODE_COUNT BUG FIX (Pe59→Pe60):
+  // Pe59 added opcode 43 (HEADING_ALIGN) but left OPCODE_COUNT=43, so random instruction
+  // generation produced opcodes 0..42 only and opcode 43 was unreachable by mutation.
+  // Pe60 corrects this: OPCODE_COUNT=45 covers opcodes 0..44, making both opcode 43
+  // (HEADING_ALIGN) and opcode 44 (APPROACH_RATE) accessible to evolved programs.
+  //
+  // approachRateInfluence=0 → opcode 44 returns 0 → Pe59 exactly.
+  // In META_LAYER_PARAMS and ATROPHY_SAFE so attribution tracks whether convergence
+  // sensing earns its keep and can retire it if the population finds it not useful.
+  approachRateInfluence:0.15,   // 0=Pe59 exactly. Scales approach rate → VM. Evolvable.
+
+  // ═══ LAYER 50: ORBIT_RATE — tangential velocity between self and partner (Pe61) ═══
+  // Pe60 gave the radial component of relative velocity: APPROACH_RATE (opcode 44).
+  //   radial = (dx*(vx[i]-vx[j]) + dy*(vy[i]-vy[j])) / dist
+  //   Answers: "is the gap between us shrinking or growing?"
+  //
+  // Pe61 gives the orthogonal component: ORBIT_RATE (opcode 45).
+  //   tangential = (dx*(vy[i]-vy[j]) - dy*(vx[i]-vx[j])) / dist
+  //   Answers: "are we rotating around each other?"
+  //
+  // This is the 2D cross product of the displacement vector and relative velocity,
+  // normalized by distance. Together, opcode 44 (radial) and opcode 45 (tangential)
+  // form a complete polar decomposition of relative velocity:
+  //
+  //   |Δv|² = radial² + tangential²    (Pythagorean identity — no information lost)
+  //
+  // Signal interpretation:
+  //   tangential > 0 : counter-clockwise orbit (i moving CCW around j's reference frame)
+  //   tangential ≈ 0 : purely radial motion — direct approach, recession, or coplanar
+  //   tangential < 0 : clockwise orbit (i moving CW around j)
+  //
+  // Key distinguishable states — now that both axes are visible:
+  //   radial<0, tangential≈0 → direct inward collision approach
+  //   radial≈0, tangential≠0 → circular orbit — neither closing nor opening
+  //   radial<0, tangential≠0 → inward spiral — converging AND rotating (cluster formation?)
+  //   radial>0, tangential≠0 → outward spiral — departing AND rotating (post-scatter?)
+  //   radial≈0, tangential≈0, speed>0 → parallel tracking (same velocity, no gap change)
+  //
+  // Normalization: divide by 4, clamp to ±3 (mirrors opcode 44).
+  // Guard: returns 0 when dist < 0.5 (numerically unstable, nearly coincident).
+  //
+  // NEW BEHAVIORS WITH NO PRIOR PATH:
+  //   - Orbit detection: "tangential≠0 AND radial≈0 → orbiting, maintain distance"
+  //   - Spiral recognition: "radial<0 AND |tangential|>threshold → spiraling in → bond?"
+  //   - Stable orbit enforcement: "emit repulsion when tangential falls toward 0 during orbit"
+  //   - Tangential signal gating: "only emit signals when orbiting (tangential nonzero)"
+  //   - Kinetic complementarity: tangential-heavy partners preferred for stable clusters
+  //   - Capture detection: "was diverging, now orbiting — gravitational capture event"
+  //   - Choreography: synchronized counter-rotating pairs with emergent symmetry
+  //   - Orbit-conditional gene transfer: exchange plasmids only while circling
+  //
+  // COMPLETENESS NOTE:
+  //   Opcode 43 (HEADING_ALIGN) tells us if we're pointed the same WAY.
+  //   Opcode 44 (APPROACH_RATE) tells us if the GAP is changing.
+  //   Opcode 45 (ORBIT_RATE)    tells us if the ANGLE is changing.
+  //   With all three, the VM has a complete first-order kinematic description
+  //   of the two-particle relative state — nothing fundamental is hidden.
+  //
+  // orbitRateInfluence=0 → opcode 45 returns 0 → Pe60 exactly.
+  // In META_LAYER_PARAMS and ATROPHY_SAFE so attribution tracks whether tangential
+  // sensing earns its keep and can retire it if the population finds it not useful.
+  orbitRateInfluence:0.15,   // 0=Pe60 exactly. Scales orbit (tangential) rate → VM. Evolvable.
+
+  // ═══ LAYER 51: SELF_FREQ — particles read their own oscillation frequency (Pe62) ═══
+  // Pe59-61 completed the kinematic sensing picture for particle-pair relative motion:
+  //   Opcode 43 (HEADING_ALIGN): are we pointed the same way?
+  //   Opcode 44 (APPROACH_RATE): is the gap between us changing?
+  //   Opcode 45 (ORBIT_RATE):    are we rotating around each other?
+  // Together, opcodes 43+44+45 give a complete first-order kinematic description.
+  //
+  // Pe62 opens a different sensing dimension entirely: OSCILLATION.
+  //
+  // Each particle carries freq[i] — the per-tick phase increment, set at birth
+  // (0.02 + random*0.04) and drifted by genome mutation over time. It is the
+  // particle's intrinsic oscillation rate: higher freq → faster phase cycling.
+  //
+  // The existing phaseAlign (R1 register, core context) tells the VM:
+  //   "are we in phase RIGHT NOW?" — a snapshot of current alignment state.
+  //
+  // SELF_FREQ (opcode 46) tells the VM: "how fast am I oscillating?"
+  // Combined with the forthcoming PARTNER_FREQ (opcode 47, Pe63), a particle
+  // can compute the beat frequency — the rate at which their phase gap opens
+  // and closes. This is a STRUCTURAL property, not a current-state property:
+  //
+  //   |freq[i] - freq[j]| ≈ 0   → resonant pair: alignment will persist
+  //   |freq[i] - freq[j]| large  → beating pair: alignment is fleeting
+  //
+  // phaseAlign says "are we aligned now?"
+  // freq differential says "will we tend to stay aligned?"
+  // Neither subsumes the other; they are orthogonal sensing channels.
+  //
+  // Normalization: baseline freq ≈ 0.02–0.06 px/tick.
+  //   freq[i] / 0.02 → 1.0 at baseline minimum, 2.0 at typical peak.
+  //   Capped at 3.0 for high-frequency particles. Same register range
+  //   as density/vigor/age/speed opcodes — arithmetic combinations natural.
+  //
+  // NEW BEHAVIORAL CATEGORIES WITH NO PRIOR PATH:
+  //   - Resonance niche: fast-freq and slow-freq particles as distinct ecological roles
+  //   - Frequency-matched pairing: seek partners with similar freq for persistent bonding
+  //   - Beat detection: differentiate fleeting vs. persistent resonance from freq differential
+  //   - Metabolic-oscillation coupling: high freq → emit signals or spawn at higher rate
+  //   - Frequency migration: evolve to lower freq to match a desirable partner's rhythm
+  //   - Speciation seed: freq divergence creates a structural barrier to lasting bonds
+  //   - Resonance fitness landscape: populations self-sort by oscillation niche width
+  //
+  // COLD START: freq[i] has been tracked since the simulation began.
+  // Zero new data is computed; this is pure signal exposure — same idiom as Pe54 and Pe58.
+  //
+  // selfFreqInfluence=0 → opcode 46 returns 0 → Pe61 exactly.
+  // In META_LAYER_PARAMS and ATROPHY_SAFE so attribution tracks whether oscillation
+  // frequency sensing earns its keep and can retire it if the population finds it not useful.
+  selfFreqInfluence:0.15,   // 0=Pe61 exactly. Scales own freq → VM. Evolvable.
+
+  // ═══ LAYER 52: PARTNER_FREQ — particles read their interaction partner's oscillation frequency (Pe63) ═══
+  // Pe62 gave particles opcode 46 (SELF_FREQ): how fast am I oscillating?
+  // That closed one half of the oscillation sensing picture. The other half was missing:
+  // a particle knows its own frequency, but not its partner's.
+  //
+  // freq[j] has always been available — Pe63 merely exposes it. Opcode 47 (PARTNER_FREQ)
+  // deposits freq[j] into a VM register, normalized and gated by partnerFreqInfluence:
+  //   vmRegs[di] = Math.min(3, freq[j] / 0.02) * partnerFreqInfluence * k
+  //
+  // The key emergent quantity: opcode-46 output MINUS opcode-47 output gives the
+  // beat frequency — the rate at which this pair's phase gap opens and closes.
+  // Without any additional opcode:
+  //   |self_freq - partner_freq| ≈ 0   → resonant pair: alignment will persist
+  //   |self_freq - partner_freq| large  → beating pair: alignment is fleeting
+  //
+  // phaseAlign (vmRegs[1]) says "are we in phase right now?" — a snapshot.
+  // op46 − op47 says "will we tend to STAY in phase?" — a structural prediction.
+  // These are orthogonal channels; neither subsumes the other.
+  //
+  // New behavioral categories with no prior path:
+  //   - Beat detection: "our freq difference predicts how long resonance lasts"
+  //   - Resonance selectivity: "form bonds only with freq-matched partners"
+  //   - Frequency predation: "exploit out-of-sync partners who can't sustain interaction"
+  //   - Sync-seeking migration: "move toward partners whose freq matches mine"
+  //   - Niche partitioning: "avoid competing with partners at same frequency"
+  //   - Speciation barrier: "freq differential creates a persistent structural gap"
+  //   - Temporal complementarity: "pair high-freq with low-freq for phase diversity"
+  //   - Entrapment detection: "if partner freq drifting toward mine → bond deepening"
+  //
+  // Together, opcodes 46 and 47 complete the oscillation sensing dimension:
+  //   opcode 46: own freq (Pe62)
+  //   opcode 47: partner freq (Pe63)
+  //   op46 - op47: beat frequency / resonance stability (implicit, no extra opcode)
+  //
+  // Pe63 also adds PARTNER_FREQ to the cluster VM and plasmid VM for full parity
+  // across all three VMs — the same pattern as all prior sensing pairs.
+  //
+  // This completes the fifth sensing dimension. The full self+partner matrix is now:
+  //   density     (opcodes 35+38), vigor/amplitude (opcodes 36+37),
+  //   age         (opcodes 39+40), kinetic speed   (opcodes 41+42),
+  //   oscillation (opcodes 46+47).
+  //
+  // partnerFreqInfluence=0 → opcode 47 returns 0 → Pe62 exactly.
+  // In META_LAYER_PARAMS and ATROPHY_SAFE so attribution tracks whether partner-freq
+  // sensing earns its keep and can retire it if the population finds it not useful.
+  partnerFreqInfluence:0.15,   // 0=Pe62 exactly. Scales partner freq → VM. Evolvable.
+
+  // ═══ LAYER 53: PARTNER_MEM_READ — particles read their interaction partner's memory (Pe64) ═══
+  // Pe36 added opcode 18 (PARTNER_MEM_WRITE): during an interaction, particle i can
+  // write a value into particle j's memory slot. Pe63 gave particles SELF_FREQ (46)
+  // and PARTNER_FREQ (47), completing the fifth sensing dimension. But one structural
+  // asymmetry has gone unaddressed since Pe36:
+  //
+  //   Opcode 6  (MEM_READ):          reads pMem[i][slot]  — own memory ✓
+  //   Opcode 7  (MEM_WRITE):         writes pMem[i][slot] — own memory ✓
+  //   Opcode 18 (PARTNER_MEM_WRITE): writes pMem[j][slot] — partner memory write ✓
+  //   Opcode 48 (PARTNER_MEM_READ):  reads  pMem[j][slot] — partner memory read ✗ MISSING
+  //
+  // Pe64 closes this gap. Opcode 48 (PARTNER_MEM_READ):
+  //   vmRegs[di] = pMem[j * MEM_SIZE + (si % MEM_SIZE)] * partnerMemReadInfluence * k
+  // The slot index uses si%MEM_SIZE — same indexing as opcode 6 (MEM_READ for own memory).
+  //
+  // WHY THIS IS A NEW CATEGORY:
+  // All existing communication channels between particles are:
+  //   - Signal channel (opcodes 24/25): broadcast, proximity-weighted, decaying per tick
+  //   - Broadcast slots (opcodes 11/12): ephemeral, available only during interaction
+  //   - Commons (opcode 19): global, strongest writer wins
+  //   - Field (opcodes 8-17): spatial, diffusing, shared environment
+  //
+  // Memory as a channel is fundamentally different:
+  //   PERSISTENT   — pMem slots persist between interactions (no per-tick decay)
+  //   DIRECTIONAL  — only particles that directly interact with j can read j's memory
+  //   ACCUMULATIVE — multiple partners' writes accumulate in the same slot
+  //   PRIVATE      — inaccessible to particles outside j's interaction range
+  //
+  // WHAT EMERGES WITH NO PRIOR PATH:
+  //   - Stigmergy via memory: particle j uses mem[0] as "current strategy index";
+  //     i reads it before deciding how to interact with j. The note persists across
+  //     multiple interaction rounds until j overwrites it.
+  //   - Reciprocal handshake: i writes "1" to j's slot 2 via opcode 18; j reads
+  //     its own slot 2 via opcode 6 and writes "2" to i's slot 2; i reads j's slot 2
+  //     via opcode 48 to confirm the exchange. A private mutual recognition protocol.
+  //   - Accumulated census: many particles write their own amp to j's slot 1; j reads
+  //     the sum as a social signal of its neighborhood's recent health.
+  //   - Memory-broadcast niche: particles that use memory as their primary channel
+  //     form a distinct ecological niche from signal-channel or commons users.
+  //   - Elder-to-young knowledge: old particles accumulate learned values in memory;
+  //     young partners read those values to bootstrap their own strategies.
+  //   - Adaptive identification: j's memory serves as j's identity card — what i has
+  //     written there reflects j's recent interaction history, readable by any new partner.
+  //
+  // COLD START: pMem has always been allocated and partially populated (slots 6/7 get
+  // localRes and age each tick; birth initializes from parents). The channel carries
+  // real signal from tick 1. No new per-particle state is allocated.
+  //
+  // NOTE ON OPCODE 18 (PARTNER_MEM_WRITE): Pe64 doesn't change its semantics.
+  // Opcode 18 remains the write path. Opcode 48 is purely the read path. The two
+  // together complete the memory communication triad:
+  //   opcode 6:  read own memory
+  //   opcode 7:  write own memory
+  //   opcode 18: write partner's memory  (Pe36, already present)
+  //   opcode 48: read partner's memory   (Pe64, this layer)
+  //
+  // partnerMemReadInfluence=0 → opcode 48 returns 0 → Pe63 exactly.
+  // In META_LAYER_PARAMS and ATROPHY_SAFE so attribution tracks whether partner-memory
+  // reading earns its keep and can retire it if the population finds it not useful.
+  partnerMemReadInfluence:0.15,   // 0=Pe63 exactly. Scales partner mem → VM. Evolvable.
+
+  // ═══ LAYER 54: PARTNER_TEND_READ — particles read their interaction partner's identity vector (Pe65) ═══
+  // Pe64 completed the memory communication triad: particles can read and write each other's
+  // persistent memory slots. The tendency vector — tend[i*DIMS+d], the particle's core
+  // identity — has never been directly readable from a partner.
+  //
+  // The EXISTING channel for tendency is the similarity register R0 = sim:
+  //   sim = dot(tend[i], tend[j]) / (|tend[i]| * |tend[j]|)   (cosine similarity)
+  //
+  // R0 is ONE SCALAR. It tells the VM "how similar are we overall?" It collapses all
+  // DIMS=5 dimensions into a single number. The identity vector's COMPOSITION is invisible:
+  //   Two partners with sim=0.9 might both be dim-0 specialists, or one dim-0 and one dim-1,
+  //   or spread across all five dimensions identically. R0 cannot distinguish these cases.
+  //
+  // Pe65 adds opcode 49 (PARTNER_TEND_READ). The `si` field (Math.abs(src)%12) selects
+  // which dimension to read (si % DIMS), mirroring how opcode 48 used si%MEM_SIZE to
+  // select a memory slot:
+  //
+  //   vmRegs[di] = tend[j * DIMS + (si % DIMS)] * partnerTendInfluence * k
+  //
+  // This exposes the raw component of the partner's tendency vector at a chosen dimension.
+  // tend[j][0] = primary morphogen-like axis
+  // tend[j][1] = charge-like axis
+  // tend[j][2] = valence-like axis
+  // tend[j][3] = magnetism-like axis
+  // tend[j][4] = blank — the system has discovered what this means (no hardcoded role)
+  //
+  // WHY THIS IS A NEW CATEGORY:
+  // All previous communication channels summarize partner state as scalars (amp, age, speed,
+  // freq, memory values). PARTNER_TEND_READ exposes the partner's PHENOTYPIC IDENTITY at
+  // the component level. A particle can now ask: "does this partner specialize in dimension 2?",
+  // "are our identity vectors complementary or competing?", "is this partner in my niche?"
+  //
+  // NEW BEHAVIORS WITH NO PRIOR PATH:
+  //   - Type-specific cooperation: "if tend[j][2] > 0.5 → amp transfer; else → repel"
+  //   - Complementarity pairing: "pair with partners where my low dim equals their high dim"
+  //   - Niche detection: identify partner's ecological role from component profile
+  //   - Phenotypic mimicry: copy partner's dominant dimension (assimilation pressure)
+  //   - Type-sorted clusters: particles detect and self-select into homotypic groups
+  //   - Exploitation specificity: parasites target partners with particular tend[j][d] > threshold
+  //   - Dimension-conditional spawning: reproduce only when partner's dim-0 is high
+  //   - Adaptive specialization: shift toward the dimension where partners are weakest
+  //   - Structural niche partitioning: populations sort by tendency dimension without field
+  //
+  // RELATIONSHIP WITH SIM (R0):
+  //   R0 = Σ (tend[i][d] * tend[j][d]) / (|ti| * |tj|) — normalized, collapsed
+  //   op49 = tend[j][d] — raw, per-dimension, NOT normalized by either vector's magnitude
+  //   These are orthogonal signals: high sim is consistent with any combination of per-dimension
+  //   values; the dimensions that drive the similarity are invisible in R0 alone.
+  //
+  // COLD START: tend[] has been allocated and populated since generation 1. No new per-particle
+  // state is introduced. This is pure signal exposure — same idiom as the speed, frequency,
+  // and memory read layers.
+  //
+  // Pe66 adds SELF_TEND_READ (opcode 50) for full self+partner identity parity.
+  //
+  // partnerTendInfluence=0 → opcode 49 returns 0 → Pe64 exactly.
+  // In META_LAYER_PARAMS and ATROPHY_SAFE so attribution tracks whether identity-component
+  // sensing earns its keep and can retire it if the population finds it not useful.
+  partnerTendInfluence:0.15,   // 0=Pe64 exactly. Scales partner tend component → VM. Evolvable.
+
+  // ═══ LAYER 55: SELF_TEND_READ — particles read their own identity vector (Pe66) ═══
+  // Pe65 opened identity-vector sensing for PARTNERS (opcode 49, PARTNER_TEND_READ).
+  // A particle can now ask: "does this partner specialize in dimension 2?"
+  //
+  // But the same question about SELF was unanswerable:
+  //   "What dimension do I specialize in?"
+  //
+  // The EXISTING channels for own identity are:
+  //   R0 (sim): measures similarity TO the partner — not own identity in isolation.
+  //   The tendency vector tend[i] shapes all interactions but was never read directly.
+  //
+  // Pe66 adds opcode 50 (SELF_TEND_READ). The `si` field selects the dimension (si%DIMS),
+  // mirroring opcode 49:
+  //
+  //   vmRegs[di] = tend[i * DIMS + (si % DIMS)] * selfTendInfluence * k
+  //
+  // This is the minimal self-knowledge completion. With op49 and op50 together:
+  //   - A particle knows its own identity component at any dimension
+  //   - A particle knows its partner's identity component at any dimension
+  //   - The differential (op50 − op49) reveals component-level divergence, not just overall sim
+  //   - The product (op50 × op49) reveals whether both particles push in the same direction
+  //
+  // NEW BEHAVIORS WITH NO PRIOR PATH:
+  //   - Self-awareness: "my dim-0 is high → I am a dim-0 specialist → seek dim-1 partners"
+  //   - Identity-conditional behavior: "if my dim-2 > 0.5 → activate different rule set"
+  //   - Niche recognition without mirror: detect own role without partner feedback
+  //   - Self-monitoring: track if own tend components shift over particle lifetime
+  //   - Component dominance: "I am strongest in dim-3 → coordinate with dim-3 clusters"
+  //   - Hetero-assembly: combine op50 and op49 to detect complementary pairs, not just similar
+  //   - Speciation: particles with different dominant dimensions develop different behaviors
+  //   - Introspective gating: emit signals only when own dim-X exceeds threshold
+  //
+  // COMPLETENESS WITH Pe65:
+  //   Opcode 49 reads tend[j][d] — partner identity component
+  //   Opcode 50 reads tend[i][d] — own identity component
+  //   R0 reads dot(ti,tj)/|ti||tj| — aggregate similarity (unchanged)
+  //   Together: full identity-vector arithmetic is now available to the VM.
+  //   A particle can compute its own dominant dimension, compare against a partner's,
+  //   detect convergence or divergence across the identity space — all without a designer
+  //   specifying which dimensions matter or what comparisons are meaningful.
+  //
+  // COLD START: tend[] has been allocated since generation 1. No new per-particle state.
+  // This is pure signal exposure — same idiom as speed, frequency, and memory-read layers.
+  //
+  // selfTendInfluence=0 → opcode 50 returns 0 → Pe65 exactly.
+  // In META_LAYER_PARAMS and ATROPHY_SAFE so attribution tracks whether self-identity
+  // sensing earns its keep and can retire it if the population finds it not useful.
+  selfTendInfluence:0.15,   // 0=Pe65 exactly. Scales own tend component → VM. Evolvable.
+
+  // ═══ LAYER 56: SELF_PHASE — particles read their own oscillation phase state (Pe67) ═══
+  // Pe62+Pe63 gave particles oscillation frequency sensing: SELF_FREQ (opcode 46) and
+  // PARTNER_FREQ (opcode 47) — how fast each particle oscillates. Pe66+Pe65 gave full
+  // identity-vector reading: own and partner tendency components.
+  //
+  // One oscillation channel remains opaque to the VM: the absolute phase state.
+  //
+  // WHAT EXISTS:
+  //   R1 = cos(phase[i] - phase[j]) — PHASE RELATIONSHIP: are we in sync right now?
+  //   op46 = freq[i] / 0.02          — SELF_FREQ:        how fast am I oscillating?
+  //   op47 = freq[j] / 0.02          — PARTNER_FREQ:     how fast is my partner?
+  //
+  // WHAT'S MISSING:
+  //   cos(phase[i])                  — SELF_PHASE: WHERE in my cycle am I right now?
+  //
+  // Phase[i] is updated every tick (phase[i] += freq[i]) and tracked continuously.
+  // It has never been directly readable by the VM. A particle knows how fast it cycles
+  // (op46) and whether it's aligned with its partner (R1), but not WHERE in its own
+  // cycle it currently sits.
+  //
+  // Pe67 adds opcode 51 (SELF_PHASE):
+  //   vmRegs[di] = Math.cos(phase[i]) * selfPhaseInfluence * k
+  //
+  // WHY COSINE, NOT RAW PHASE:
+  //   phase[i] is unbounded — it wraps mod 2π but the raw value grows without bound.
+  //   Cosine maps phase to [-1, +1] continuously, with no discontinuity at the wrap.
+  //   It sits naturally in the VM register range alongside all other sensing opcodes.
+  //   cos(phase=0) = +1 (oscillation peak), cos(phase=π) = -1 (trough), 0 at crossings.
+  //
+  // THE CARRIER WAVE:
+  //   With SELF_PHASE readable, the particle's oscillation becomes a carrier wave — a
+  //   periodic signal that the VM can use to MODULATE all other behaviors in time:
+  //   "apply force only when I'm near oscillation peak", "spawn when cos(phase) crosses 0",
+  //   "emit signal whose amplitude rides my own wave". This is inaccessible without op51.
+  //
+  // NEW BEHAVIORAL CATEGORIES WITH NO PRIOR PATH:
+  //   - Oscillation-gated spawning: "reproduce only when cos(phase[i]) > threshold"
+  //   - Phase-timed signaling: emit signals precisely at phase peak vs trough
+  //   - Population synchronization: particles evolve to recognize when cos(phase) is near +1
+  //     and preferentially interact then — emergent population-level clocking
+  //   - Phase-locked forces: apply attraction or repulsion only at specific cycle moments
+  //   - Carrier-modulated memory writes: write to own or partner memory when phase peaks
+  //   - Rhythm detection: op51 combined with R1 distinguishes "aligned now" (R1≈1) from
+  //     "at my personal peak" (op51≈1) — orthogonal conditions, both now readable
+  //   - Lifecycle phasing: old particles (op39) whose phase is late in cycle → senescence
+  //   - Burst behaviors: emit energy only when own phase is rising (op51 increasing tick-to-tick)
+  //
+  // RELATIONSHIP WITH EXISTING OSCILLATION SIGNALS:
+  //   R1 = cos(phase[i]-phase[j]):  RELATIVE — are we synchronized?
+  //   op46 = freq[i]/0.02:          RATE    — how fast does my phase advance?
+  //   op47 = freq[j]/0.02:          PARTNER RATE — how fast does partner's advance?
+  //   op51 = cos(phase[i]):         ABSOLUTE — where am I in my cycle right now?
+  //
+  //   From op51 alone + arithmetic: cos(A)cos(B) + sin(A)sin(B) = cos(A-B), but sin
+  //   requires a second opcode. Pe68 adds PARTNER_PHASE (opcode 52, cos(phase[j])) —
+  //   the same self→partner pairing as every prior sensing dimension. With both opcodes:
+  //   op51 × op52 is the cosine product term that, combined with R1, gives the full
+  //   phase relationship without needing raw angles.
+  //
+  // COLD START: phase[i] has been tracked since generation 1. Zero new per-particle state.
+  // This is pure signal exposure — same idiom as speed, frequency, and memory-read layers.
+  //
+  // selfPhaseInfluence=0 → opcode 51 returns 0 → Pe66 exactly.
+  // In META_LAYER_PARAMS and ATROPHY_SAFE so attribution tracks whether phase
+  // self-sensing earns its keep and can retire it if the population finds it not useful.
+  selfPhaseInfluence:0.15,   // 0=Pe66 exactly. Scales cos(own phase) → VM. Evolvable.
   // Pe27 made the imagination bank evolvable, but scenarios still live and die strictly
   // within the global lineage's mutation cycle. A scenario that produced a great cluster
   // 500 ticks ago — but then aged out — is gone. The bank has no memory of which
@@ -1716,6 +2194,15 @@ function encodeGenome(){
     pagei56:+(genome.partnerAgeInfluence||0).toFixed(4),        // Pe56 Layer 45
     sspi57:+(genome.selfSpeedInfluence||0).toFixed(4),           // Pe57 Layer 46
     pspdi58:+(genome.partnerSpeedInfluence||0).toFixed(4),          // Pe58 Layer 47
+    hai59:+(genome.headingAlignInfluence||0).toFixed(4),             // Pe59 Layer 48
+    ari60:+(genome.approachRateInfluence||0).toFixed(4),              // Pe60 Layer 49
+    ori61:+(genome.orbitRateInfluence||0).toFixed(4),                  // Pe61 Layer 50
+    sfi62:+(genome.selfFreqInfluence||0).toFixed(4),                    // Pe62 Layer 51
+    pfsi63:+(genome.partnerFreqInfluence||0).toFixed(4),                 // Pe63 Layer 52 (was missing — bug fix)
+    pmri64:+(genome.partnerMemReadInfluence||0).toFixed(4),              // Pe64 Layer 53
+    ptri65:+(genome.partnerTendInfluence||0).toFixed(4),                  // Pe65 Layer 54
+    stri66:+(genome.selfTendInfluence||0).toFixed(4),                      // Pe66 Layer 55
+    sphi67:+(genome.selfPhaseInfluence||0).toFixed(4),                      // Pe67 Layer 56
     mct:META_LAYER_PARAMS.map(p=>{
       const e=genome.metaCredit&&genome.metaCredit[p];
       return +((e&&e.trace)||0).toFixed(3);
@@ -1854,6 +2341,15 @@ function decodeGenome(data){
     if(typeof g.pagei56==='number')genome.partnerAgeInfluence=g.pagei56;         // Pe56 Layer 45
     if(typeof g.sspi57==='number')genome.selfSpeedInfluence=g.sspi57;             // Pe57 Layer 46
     if(typeof g.pspdi58==='number')genome.partnerSpeedInfluence=g.pspdi58;          // Pe58 Layer 47
+    if(typeof g.hai59==='number')genome.headingAlignInfluence=g.hai59;               // Pe59 Layer 48
+    if(typeof g.ari60==='number')genome.approachRateInfluence=g.ari60;                // Pe60 Layer 49
+    if(typeof g.ori61==='number')genome.orbitRateInfluence=g.ori61;                  // Pe61 Layer 50
+    if(typeof g.sfi62==='number')genome.selfFreqInfluence=g.sfi62;                    // Pe62 Layer 51
+    if(typeof g.pfsi63==='number')genome.partnerFreqInfluence=g.pfsi63;               // Pe63 Layer 52 (was missing — bug fix)
+    if(typeof g.pmri64==='number')genome.partnerMemReadInfluence=g.pmri64;            // Pe64 Layer 53
+    if(typeof g.ptri65==='number')genome.partnerTendInfluence=g.ptri65;                // Pe65 Layer 54
+    if(typeof g.stri66==='number')genome.selfTendInfluence=g.stri66;                    // Pe66 Layer 55
+    if(typeof g.sphi67==='number')genome.selfPhaseInfluence=g.sphi67;                    // Pe67 Layer 56
     // Pe37 Layer 26: attribution
     if(typeof g.mcb==='number')genome.metaCreditBias=g.mcb;
     if(typeof g.msb==='number')genome.metaSearchBias=g.msb; // Pe38 Layer 27: search width bias
@@ -1966,6 +2462,22 @@ function sanitizeGenome(){
   genome.selfSpeedInfluence=Math.max(0,Math.min(1,finiteOr(genome.selfSpeedInfluence,0.15)));               // Pe57 Layer 46
   if(genome.partnerSpeedInfluence===undefined)genome.partnerSpeedInfluence=0.15;
   genome.partnerSpeedInfluence=Math.max(0,Math.min(1,finiteOr(genome.partnerSpeedInfluence,0.15)));           // Pe58 Layer 47
+  if(genome.headingAlignInfluence===undefined)genome.headingAlignInfluence=0.15;
+  genome.headingAlignInfluence=Math.max(0,Math.min(1,finiteOr(genome.headingAlignInfluence,0.15)));           // Pe59 Layer 48
+  if(genome.approachRateInfluence===undefined)genome.approachRateInfluence=0.15;
+  genome.approachRateInfluence=Math.max(0,Math.min(1,finiteOr(genome.approachRateInfluence,0.15)));           // Pe60 Layer 49
+  if(genome.orbitRateInfluence===undefined)genome.orbitRateInfluence=0.15;
+  genome.orbitRateInfluence=Math.max(0,Math.min(1,finiteOr(genome.orbitRateInfluence,0.15)));                 // Pe61 Layer 50
+  if(genome.selfFreqInfluence===undefined)genome.selfFreqInfluence=0.15;
+  genome.selfFreqInfluence=Math.max(0,Math.min(1,finiteOr(genome.selfFreqInfluence,0.15)));                   // Pe62 Layer 51
+  if(genome.partnerFreqInfluence===undefined)genome.partnerFreqInfluence=0.15;
+  genome.partnerFreqInfluence=Math.max(0,Math.min(1,finiteOr(genome.partnerFreqInfluence,0.15)));             // Pe63 Layer 52
+  if(genome.partnerMemReadInfluence===undefined)genome.partnerMemReadInfluence=0.15;
+  genome.partnerMemReadInfluence=Math.max(0,Math.min(1,finiteOr(genome.partnerMemReadInfluence,0.15)));       // Pe64 Layer 53
+  if(genome.partnerTendInfluence===undefined)genome.partnerTendInfluence=0.15;
+  genome.partnerTendInfluence=Math.max(0,Math.min(1,finiteOr(genome.partnerTendInfluence,0.15)));             // Pe65 Layer 54
+  if(genome.selfPhaseInfluence===undefined)genome.selfPhaseInfluence=0.15;
+  genome.selfPhaseInfluence=Math.max(0,Math.min(1,finiteOr(genome.selfPhaseInfluence,0.15)));                  // Pe67 Layer 56
   {
     const src=(genome.metaCredit&&typeof genome.metaCredit==='object')?genome.metaCredit:{};
     const fresh={};
@@ -2817,6 +3329,15 @@ const META_LAYER_PARAMS=[
   ,'partnerAgeInfluence'            // Pe56 — tracked so attribution decides if partner-age sensing earns its keep
   ,'selfSpeedInfluence'             // Pe57 — tracked so attribution decides if speed self-sensing earns its keep
   ,'partnerSpeedInfluence'            // Pe58 — tracked so attribution decides if partner-speed sensing earns its keep
+  ,'headingAlignInfluence'            // Pe59 — tracked so attribution decides if heading alignment earns its keep
+  ,'approachRateInfluence'            // Pe60 — tracked so attribution decides if convergence sensing earns its keep
+  ,'orbitRateInfluence'               // Pe61 — tracked so attribution decides if orbit sensing earns its keep
+  ,'selfFreqInfluence'                // Pe62 — tracked so attribution decides if oscillation freq sensing earns its keep
+  ,'partnerFreqInfluence'             // Pe63 — tracked so attribution decides if partner-freq sensing earns its keep
+  ,'partnerMemReadInfluence'            // Pe64 — tracked so attribution decides if partner-memory reading earns its keep
+  ,'partnerTendInfluence'               // Pe65 — tracked so attribution decides if identity-component sensing earns its keep
+  ,'selfTendInfluence'                   // Pe66 — tracked so attribution decides if self-identity sensing earns its keep
+  ,'selfPhaseInfluence'                   // Pe67 — tracked so attribution decides if phase self-sensing earns its keep
 ];
 // Pe40 Layer 29: subset of META_LAYER_PARAMS whose value 0 is documented as
 // "[prior version] exactly" — i.e. zero provably means the layer is dormant and
@@ -2835,7 +3356,16 @@ const ATROPHY_SAFE=new Set([
   'partnerAmpInfluence','partnerDensityInfluence','selfAgeInfluence',
   'partnerAgeInfluence',
   'selfSpeedInfluence',          // Pe57
-  'partnerSpeedInfluence'        // Pe58
+  'partnerSpeedInfluence',       // Pe58
+  'headingAlignInfluence',       // Pe59
+  'approachRateInfluence',       // Pe60
+  'orbitRateInfluence',          // Pe61
+  'selfFreqInfluence'            // Pe62
+  ,'partnerFreqInfluence'        // Pe63
+  ,'partnerMemReadInfluence'      // Pe64
+  ,'partnerTendInfluence'         // Pe65
+  ,'selfTendInfluence'            // Pe66
+  ,'selfPhaseInfluence'           // Pe67
 ]);
 // Short HUD labels — keep the attribution tag compact.
 const META_LAYER_SHORT={
@@ -2851,7 +3381,16 @@ const META_LAYER_SHORT={
   partnerAmpInfluence:'pai',partnerDensityInfluence:'pdi',selfAgeInfluence:'sagi',
   partnerAgeInfluence:'pagei',
   selfSpeedInfluence:'sspi',
-  partnerSpeedInfluence:'pspdi'
+  partnerSpeedInfluence:'pspdi',
+  headingAlignInfluence:'hai',
+  approachRateInfluence:'ari',
+  orbitRateInfluence:'ori',
+  selfFreqInfluence:'sfi',
+  partnerFreqInfluence:'pfsi',
+  partnerMemReadInfluence:'pmri'
+  ,partnerTendInfluence:'ptri'
+  ,selfTendInfluence:'stri'
+  ,selfPhaseInfluence:'sphi'
 };
 
 // Pe32: 12D Euclidean distance between two scenario entries.
@@ -3227,6 +3766,46 @@ function profileVM(){
           // 0.3 represents ~3 neighbors — a lightly-populated neighborhood.
           const pdiProf=genome.partnerDensityInfluence||0;
           vmRegs[di]=0.3*pdiProf*(k||1);
+        }break;
+        case 48:{                       // PARTNER_MEM_READ (Pe64) → neutral partner memory stub
+          // Profiler has no live pMem[j]. Return a small neutral stub (0.2) so
+          // genomes using opcode 48 produce a plausible phenotype profile.
+          // 0.2 represents a lightly-written memory slot — common after early interactions.
+          const pmriProf=genome.partnerMemReadInfluence||0;
+          vmRegs[di]=0.2*pmriProf*(k||1);
+        }break;
+        case 49:{                       // PARTNER_TEND_READ (Pe65) → neutral tend component stub
+          // Profiler has no live tend[j]. Return a small neutral stub (0.15) so
+          // genomes using opcode 49 produce a plausible phenotype profile.
+          // 0.15 represents a moderately-loaded tendency dimension — neither peak nor zero.
+          const ptriProf=genome.partnerTendInfluence||0;
+          vmRegs[di]=0.15*ptriProf*(k||1);
+        }break;
+        case 50:{                       // SELF_TEND_READ (Pe66) → moderate own identity stub
+          // Profiler has no live tend[i]. Return a moderate positive stub (0.25) so
+          // genomes using opcode 50 produce a plausible phenotype profile.
+          // 0.25 represents a meaningful own identity component — slightly above partner stub
+          // (0.15) to bias the profiler toward mild "I am more specialized than my partner"
+          // scenarios, which is the most common real condition.
+          const striProf=genome.selfTendInfluence||0;
+          vmRegs[di]=0.25*striProf*(k||1);
+        }break;
+        case 51:{                       // SELF_PHASE (Pe67) → neutral phase stub
+          // Profiler has no live phase[i]. cos(phase) averages to 0 over a uniform
+          // distribution of phase angles, so 0 is the least-biased stub.
+          // Genomes using opcode 51 produce a near-zero phenotype contribution at the
+          // profiler stage — correct, since phase behavior only emerges in live simulation.
+          const sphiProf=genome.selfPhaseInfluence||0;
+          vmRegs[di]=0.0*sphiProf*(k||1);
+        }break;
+        case 52:{                       // PARTNER_PHASE (Pe68) → neutral partner phase stub
+          // Profiler has no live phase[j]. cos(phase) averages to 0 over a uniform
+          // distribution — identical reasoning to SELF_PHASE (case 51).
+          // Both self and partner phase stubs are 0, so their arithmetic difference
+          // also stubs at 0. Correct: phase-differential strategies only reveal
+          // themselves in live simulation where phases are actually diverse.
+          const pphiProf=genome.partnerPhaseInfluence||0;
+          vmRegs[di]=0.0*pphiProf*(k||1);
         }break;
       }
       for(let r=0;r<12;r++)vmRegs[r]=Math.max(-8,Math.min(8,vmRegs[r]));
@@ -4637,6 +5216,26 @@ function mutateGenome(){
   genome.selfSpeedInfluence=Math.max(0,Math.min(1,metaMaybe(genome.selfSpeedInfluence||0,0.03,'selfSpeedInfluence'))); // Pe57 Layer 46
   // Pe58 Layer 47: partnerSpeedInfluence uses metaMaybe — does not control the credit system.
   genome.partnerSpeedInfluence=Math.max(0,Math.min(1,metaMaybe(genome.partnerSpeedInfluence||0,0.03,'partnerSpeedInfluence'))); // Pe58 Layer 47
+  // Pe59 Layer 48: headingAlignInfluence uses metaMaybe — does not control the credit system.
+  genome.headingAlignInfluence=Math.max(0,Math.min(1,metaMaybe(genome.headingAlignInfluence||0,0.03,'headingAlignInfluence'))); // Pe59 Layer 48
+  // Pe60 Layer 49: approachRateInfluence uses metaMaybe — does not control the credit system.
+  genome.approachRateInfluence=Math.max(0,Math.min(1,metaMaybe(genome.approachRateInfluence||0,0.03,'approachRateInfluence'))); // Pe60 Layer 49
+  // Pe61 Layer 50: orbitRateInfluence uses metaMaybe — does not control the credit system.
+  genome.orbitRateInfluence=Math.max(0,Math.min(1,metaMaybe(genome.orbitRateInfluence||0,0.03,'orbitRateInfluence'))); // Pe61 Layer 50
+  // Pe62 Layer 51: selfFreqInfluence uses metaMaybe — does not control the credit system.
+  genome.selfFreqInfluence=Math.max(0,Math.min(1,metaMaybe(genome.selfFreqInfluence||0,0.03,'selfFreqInfluence'))); // Pe62 Layer 51
+  // Pe63 Layer 52: partnerFreqInfluence uses metaMaybe — does not control the credit system.
+  genome.partnerFreqInfluence=Math.max(0,Math.min(1,metaMaybe(genome.partnerFreqInfluence||0,0.03,'partnerFreqInfluence'))); // Pe63 Layer 52
+  // Pe64 Layer 53: partnerMemReadInfluence uses metaMaybe — does not control the credit system.
+  genome.partnerMemReadInfluence=Math.max(0,Math.min(1,metaMaybe(genome.partnerMemReadInfluence||0,0.03,'partnerMemReadInfluence'))); // Pe64 Layer 53
+  // Pe65 Layer 54: partnerTendInfluence uses metaMaybe — does not control the credit system.
+  genome.partnerTendInfluence=Math.max(0,Math.min(1,metaMaybe(genome.partnerTendInfluence||0,0.03,'partnerTendInfluence'))); // Pe65 Layer 54
+  // Pe66 Layer 55: selfTendInfluence uses metaMaybe — does not control the credit system.
+  genome.selfTendInfluence=Math.max(0,Math.min(1,metaMaybe(genome.selfTendInfluence||0,0.03,'selfTendInfluence'))); // Pe66 Layer 55
+  // Pe67 Layer 56: selfPhaseInfluence uses metaMaybe — does not control the credit system.
+  genome.selfPhaseInfluence=Math.max(0,Math.min(1,metaMaybe(genome.selfPhaseInfluence||0,0.03,'selfPhaseInfluence'))); // Pe67 Layer 56
+  // Pe68 Layer 57: partnerPhaseInfluence uses metaMaybe — does not control the credit system.
+  genome.partnerPhaseInfluence=Math.max(0,Math.min(1,metaMaybe(genome.partnerPhaseInfluence||0,0.03,'partnerPhaseInfluence'))); // Pe68 Layer 57
 
   // ═══ Pe26 Layer 16c: CLUSTER UPWARD SIGNAL injection ═══
   // Drain the upstream buffer — soft-inject successful cluster motifs into the global VM.
@@ -6015,11 +6614,306 @@ function executeVM(i,j,sim,d){
           vmRegs[di]=Math.min(3,psp58/2)*pspdi58*k;
         }
       }break;
+      case 43:{
+        // Pe59 Layer 48: HEADING_ALIGN — dot product of self and partner normalized velocity vectors.
+        // Measures directional alignment in [-1, +1]:
+        //   +1.0 : co-moving  (same direction — schooling, drafting)
+        //    0.0 : orthogonal (crossing paths — glancing encounter)
+        //   -1.0 : counter    (head-on approach — collision/confrontation)
+        // Returns 0 when either particle's speed < 0.1 (heading numerically unstable).
+        // Scaled by headingAlignInfluence × k — genome gate, can evolve to zero (Pe58 exactly).
+        //
+        // Complement to opcodes 41+42 (speed magnitudes): together they describe the
+        // full kinetic relationship. Speed tells HOW FAST; heading tells WHAT DIRECTION.
+        //
+        // headingAlignInfluence=0 → returns 0 → Pe58 exactly.
+        const hai59=genome.headingAlignInfluence||0;
+        if(hai59>0.001){
+          const si59=Math.sqrt(vx[i]*vx[i]+vy[i]*vy[i]);
+          const sj59=Math.sqrt(vx[j]*vx[j]+vy[j]*vy[j]);
+          if(si59>0.1&&sj59>0.1){
+            const dot59=(vx[i]*vx[j]+vy[i]*vy[j])/(si59*sj59);
+            vmRegs[di]=dot59*hai59*k;
+          }
+        }
+      }break;
+      case 44:{
+        // Pe60 Layer 49: APPROACH_RATE — radial velocity between self and partner.
+        // Measures how fast the inter-particle distance is changing (d(dist)/dt):
+        //
+        //   dx = px[i] - px[j],  dy = py[i] - py[j]
+        //   dist = sqrt(dx² + dy²)
+        //   radial = (dx*(vx[i]-vx[j]) + dy*(vy[i]-vy[j])) / dist
+        //
+        //   radial > 0 : separating  — gap growing (diverging, post-scatter)
+        //   radial ≈ 0 : tangential  — gap steady (orbiting, parallel paths)
+        //   radial < 0 : converging  — gap shrinking (approaching, collision course)
+        //
+        // Normalization: divide by 4 → ±1 per ~4 px/tick relative speed.
+        // Clamped to [-3, +3] for extreme events.
+        // Guard: returns 0 when dist < 0.5 (numerically unstable, nearly coincident).
+        //
+        // Orthogonal to opcode 43 (HEADING_ALIGN):
+        //   - Heading asks "are our velocities pointing the same way?"
+        //   - Approach asks "is the gap between us shrinking or growing?"
+        //   Two particles with dot=+1 can still diverge if one is faster.
+        //   Two particles with dot=-1 can be receding rather than colliding.
+        //
+        // approachRateInfluence=0 → returns 0 → Pe59 exactly.
+        const ari60=genome.approachRateInfluence||0;
+        if(ari60>0.001){
+          const dxr60=px[i]-px[j], dyr60=py[i]-py[j];
+          const dist60=Math.sqrt(dxr60*dxr60+dyr60*dyr60);
+          if(dist60>0.5){
+            const dvx60=vx[i]-vx[j], dvy60=vy[i]-vy[j];
+            const radial60=(dxr60*dvx60+dyr60*dvy60)/dist60;
+            vmRegs[di]=Math.max(-3,Math.min(3,radial60/4))*ari60*k;
+          }
+        }
+      }break;
+      case 45:{
+        // Pe61 Layer 50: ORBIT_RATE — tangential velocity between self and partner.
+        // Measures the angular rate of change of inter-particle orientation (d(angle)/dt × dist):
+        //
+        //   dx = px[i] - px[j],  dy = py[i] - py[j]
+        //   dist = sqrt(dx² + dy²)
+        //   tangential = (dx*(vy[i]-vy[j]) - dy*(vx[i]-vx[j])) / dist
+        //
+        //   tangential > 0 : CCW orbit (i sweeping counter-clockwise around j)
+        //   tangential ≈ 0 : purely radial motion (approach, recession, parallel)
+        //   tangential < 0 : CW orbit  (i sweeping clockwise around j)
+        //
+        // This is the 2D cross product of displacement and relative velocity, normalized
+        // by distance. Together with opcode 44 (radial/approach rate), it forms the complete
+        // polar decomposition of 2D relative velocity:
+        //   |Δv|² = radial² + tangential²   (Pythagorean identity, no information lost)
+        //
+        // Normalization: divide by 4, clamp to [-3, +3] (mirrors opcode 44).
+        // Guard: returns 0 when dist < 0.5 (numerically unstable, nearly coincident).
+        //
+        // orbitRateInfluence=0 → returns 0 → Pe60 exactly.
+        const ori61=genome.orbitRateInfluence||0;
+        if(ori61>0.001){
+          const dxo61=px[i]-px[j], dyo61=py[i]-py[j];
+          const disto61=Math.sqrt(dxo61*dxo61+dyo61*dyo61);
+          if(disto61>0.5){
+            const dvx61=vx[i]-vx[j], dvy61=vy[i]-vy[j];
+            const tangential61=(dxo61*dvy61-dyo61*dvx61)/disto61;
+            vmRegs[di]=Math.max(-3,Math.min(3,tangential61/4))*ori61*k;
+          }
+        }
+      }break;
+      case 46:{
+        // Pe62 Layer 51: SELF_FREQ — particle reads its own intrinsic oscillation frequency.
+        // freq[i] is the per-tick phase increment: the particle's structural oscillation rate.
+        //
+        // This is distinct from phaseAlign (R1): phaseAlign is a CURRENT STATE measure —
+        // "are we in phase right now?" SELF_FREQ is a STRUCTURAL measure — "how fast am I
+        // cycling?" Together with Pe63's PARTNER_FREQ (opcode 47), a VM can compute the
+        // beat frequency |freq[i]-freq[j]| and distinguish resonant pairs from beating pairs.
+        //
+        // Normalization: freq[i]=0.02 → 1.0 (baseline), freq[i]=0.04 → 2.0, cap at 3.0.
+        // Guard: none needed — freq[i] is always finite and positive.
+        //
+        // selfFreqInfluence=0 → returns 0 → Pe61 exactly.
+        const sfi62=genome.selfFreqInfluence||0;
+        if(sfi62>0.001){
+          vmRegs[di]=Math.min(3,freq[i]/0.02)*sfi62*k;
+        }
+      }break;
+      case 47:{
+        // Pe63 Layer 52: PARTNER_FREQ — interaction partner's intrinsic oscillation frequency.
+        // freq[j] is the partner's per-tick phase increment: its structural oscillation rate.
+        //
+        // Complement to opcode 46 (SELF_FREQ): together they expose the beat frequency.
+        //   op46 output − op47 output = (freq[i] - freq[j]) / 0.02 (normalized differential)
+        //   differential ≈ 0   → resonant pair: phase alignment will persist
+        //   differential large  → beating pair: phase alignment is transient
+        //
+        // This is the structural prediction channel — orthogonal to phaseAlign (R1),
+        // which reports current phase state, not future alignment tendency.
+        //
+        // Normalization: freq[j]=0.02 → 1.0 (baseline), cap at 3.0. Mirrors opcode 46.
+        // Guard: none needed — freq[j] is always finite and positive.
+        //
+        // partnerFreqInfluence=0 → returns 0 → Pe62 exactly.
+        const pfi63=genome.partnerFreqInfluence||0;
+        if(pfi63>0.001){
+          vmRegs[di]=Math.min(3,freq[j]/0.02)*pfi63*k;
+        }
+      }break;
+      case 48:{
+        // Pe64 Layer 53: PARTNER_MEM_READ — reads partner j's memory slot during interaction.
+        // The slot index is si%MEM_SIZE — same indexing as opcode 6 (MEM_READ for own memory).
+        //
+        // Closes the write/read asymmetry: opcode 18 (PARTNER_MEM_WRITE) lets i write to j's
+        // memory; opcode 48 lets i read what j (or other interaction partners) has written there.
+        //
+        // Together with opcode 18, the memory triad is complete:
+        //   opcode 6:  read own memory slot
+        //   opcode 7:  write own memory slot
+        //   opcode 18: write partner's memory slot  (Pe36)
+        //   opcode 48: read partner's memory slot   (Pe64)
+        //
+        // partnerMemReadInfluence=0 → returns 0 → Pe63 exactly.
+        const pmri64=genome.partnerMemReadInfluence||0;
+        if(pmri64>0.001){
+          vmRegs[di]=pMem[j*MEM_SIZE+(si%MEM_SIZE)]*pmri64*(k||1);
+        }
+      }break;
+      case 49:{
+        // Pe65 Layer 54: PARTNER_TEND_READ — reads a specific dimension of partner j's tendency vector.
+        // The dimension index is si%DIMS — mirroring how opcode 48 uses si%MEM_SIZE for memory slots.
+        //
+        // tend[j][d] is the raw component of the partner's identity/phenotype vector at dimension d.
+        // This complements the existing sim register (R0), which is the cosine similarity —
+        // a collapsed scalar. PARTNER_TEND_READ exposes the COMPONENTS that produce that scalar:
+        //
+        //   si%DIMS = 0: tend[j][0] — primary morphogen-like axis
+        //   si%DIMS = 1: tend[j][1] — charge-like axis
+        //   si%DIMS = 2: tend[j][2] — valence-like axis
+        //   si%DIMS = 3: tend[j][3] — magnetism-like axis
+        //   si%DIMS = 4: tend[j][4] — blank (system-discovered role)
+        //
+        // vmRegs[di] = tend[j*DIMS + (si%DIMS)] * partnerTendInfluence * k
+        // Clamped at ±8 by the standard register clamp downstream.
+        //
+        // Pe66 adds SELF_TEND_READ (opcode 50) for full self+partner parity.
+        //
+        // partnerTendInfluence=0 → returns 0 → Pe64 exactly.
+        const ptri65=genome.partnerTendInfluence||0;
+        if(ptri65>0.001){
+          vmRegs[di]=tend[j*DIMS+(si%DIMS)]*ptri65*(k||1);
+        }
+      }break;
+      case 50:{
+        // Pe66 Layer 55: SELF_TEND_READ — reads a specific dimension of this particle's own tendency vector.
+        // Completes the identity-sensing picture opened by Pe65's PARTNER_TEND_READ (opcode 49).
+        //
+        // tend[i][d] is the raw component of the particle's own identity/phenotype vector at dimension d.
+        // The `si` field selects the dimension (si%DIMS) — mirroring opcode 49:
+        //
+        //   si%DIMS = 0: tend[i][0] — primary morphogen-like axis
+        //   si%DIMS = 1: tend[i][1] — charge-like axis
+        //   si%DIMS = 2: tend[i][2] — valence-like axis
+        //   si%DIMS = 3: tend[i][3] — magnetism-like axis
+        //   si%DIMS = 4: tend[i][4] — blank (system-discovered role)
+        //
+        // vmRegs[di] = tend[i*DIMS + (si%DIMS)] * selfTendInfluence * k
+        //
+        // WHAT THIS CLOSES:
+        //   Before Pe66, a particle's own identity (tend[i]) shaped ALL its interactions
+        //   but could NEVER be directly read by its own VM. A particle knew its partner's
+        //   overall similarity (R0), could read its partner's components (op49), but had no
+        //   direct path to its own components. It could only infer its own identity indirectly,
+        //   through differential responses from partners.
+        //
+        //   Pe66 closes this: op50 gives the VM direct self-read access to identity.
+        //   A particle now knows what it IS, not just how similar it is to others.
+        //
+        // COMPOUND OPERATIONS NOW POSSIBLE:
+        //   op50(d) − op49(d) : own component minus partner's — same specialization?
+        //   op50(d) × op49(d) : component product — reinforcement or cancellation?
+        //   op50(d) > threshold : introspective gate — activate when own dim-d is strong
+        //
+        // selfTendInfluence=0 → returns 0 → Pe65 exactly.
+        const stri66=genome.selfTendInfluence||0;
+        if(stri66>0.001){
+          vmRegs[di]=tend[i*DIMS+(si%DIMS)]*stri66*(k||1);
+        }
+      }break;
+      case 51:{
+        // Pe67 Layer 56: SELF_PHASE — reads cosine of own oscillation phase into a register.
+        //
+        // phase[i] is updated every tick (phase[i] += freq[i]) and has always been tracked.
+        // It has never been directly readable by the VM — a particle knew how fast it cycles
+        // (SELF_FREQ, op46) and whether it's aligned with its partner (R1), but not WHERE
+        // in its own cycle it currently sits. Pe67 closes this gap.
+        //
+        //   vmRegs[di] = Math.cos(phase[i]) * selfPhaseInfluence * k
+        //
+        // Signal interpretation:
+        //   cos(phase[i]) ≈ +1.0 : oscillation peak — maximum energy/output moment
+        //   cos(phase[i]) ≈  0.0 : zero crossing — rising or falling through midpoint
+        //   cos(phase[i]) ≈ -1.0 : oscillation trough — minimum energy/output moment
+        //
+        // WHY COSINE:
+        //   Cosine maps the circular phase to [-1,+1] without wrapping discontinuity.
+        //   It is the standard representation of oscillation state in the same register range
+        //   as all other sensing opcodes — allowing arithmetic combinations without rescaling.
+        //
+        // THE CARRIER WAVE EFFECT:
+        //   The VM can evolve to condition ANY action (force, spawn, signal, memory write)
+        //   on whether cos(phase[i]) exceeds a threshold — embedding a periodic carrier into
+        //   the particle's behavior. This is not possible without op51.
+        //
+        //   Example behavioral circuit:
+        //     [3, 51_src, tmp, 0.7]  — threshold: "is phase near peak?"
+        //     [2, tmp, force_src, 1] — gate: apply force only near peak
+        //   Entirely evolvable from mutation. Designer cannot predict which behaviors emerge.
+        //
+        // RELATIONSHIP WITH EXISTING OSCILLATION SIGNALS:
+        //   R1 = cos(phase[i]-phase[j]) — PHASE DIFFERENCE (relationship to partner)
+        //   op46 = freq[i]/0.02         — SELF_FREQ (rate of own phase advance)
+        //   op47 = freq[j]/0.02         — PARTNER_FREQ (rate of partner's advance)
+        //   op51 = cos(phase[i])        — SELF_PHASE (absolute own phase position) ← Pe67
+        //   op52 = cos(phase[j])        — PARTNER_PHASE (absolute partner phase) ← Pe68
+        //
+        // selfPhaseInfluence=0 → returns 0 → Pe66 exactly.
+        const sphi67=genome.selfPhaseInfluence||0;
+        if(sphi67>0.001){
+          vmRegs[di]=Math.cos(phase[i])*sphi67*(k||1);
+        }
+      }break;
+      case 52:{
+        // Pe68 Layer 57: PARTNER_PHASE — reads cosine of partner j's oscillation phase.
+        //
+        // Completes the phase-sensing tetrad opened by Pe67's SELF_PHASE (opcode 51):
+        //   R1    = cos(phase[i]-phase[j]) — PHASE DIFFERENCE   (relationship signal)
+        //   op46  = freq[i]/0.02           — SELF_FREQ           (rate of own advance)
+        //   op47  = freq[j]/0.02           — PARTNER_FREQ        (rate of partner's advance)
+        //   op51  = cos(phase[i])          — SELF_PHASE          (own absolute position, Pe67)
+        //   op52  = cos(phase[j])          — PARTNER_PHASE       (partner absolute position, Pe68)
+        //
+        //   vmRegs[di] = Math.cos(phase[j]) * partnerPhaseInfluence * k
+        //
+        // WHAT THIS ENABLES BEYOND op51:
+        //   With op51 alone, the VM knows "I am at phase X." It can synchronize its OWN
+        //   output to its own cycle. With op52 added, the VM knows "my partner is at phase Y."
+        //   The gap between op51 and op52 is R1 (already known), but R1 is a collapsed scalar.
+        //   Op51 + op52 give the COMPONENTS that produce R1 — enabling conditional asymmetric
+        //   strategies that R1 alone cannot express:
+        //
+        //   PEAK-TO-TROUGH EXPLOITATION:
+        //     op51 > 0.7 AND op52 < -0.5 : "I am at peak, partner is at trough."
+        //     A VM can emit force or spawn only in this window — acting when strong against
+        //     a momentarily weak partner. Not expressible from R1 (which ignores which particle
+        //     is at which extreme).
+        //
+        //   PHASE-LOCKED COOPERATION:
+        //     op51 * op52 > 0.7 : "We are phase-aligned AND both near peak or both near trough."
+        //     Richer than R1 ≈ 1 (which fires whether both are at peak or both at trough).
+        //
+        //   HALF-CYCLE COORDINATION:
+        //     op52 > 0.5 : "Partner is near peak." Emit signal only when partner can receive
+        //     it at full amplitude — a sending strategy conditioned on receiver state.
+        //
+        // CARRIER WAVE PAIRING (the Pe68 namesake):
+        //   Pe67 gave each particle a carrier wave it can read in its OWN cycle.
+        //   Pe68 gives each particle the carrier wave of its PARTNER — so the VM can
+        //   lock its output to the partner's rhythm, not just its own. Two-carrier
+        //   entrainment becomes representable. Whether it evolves depends on whether
+        //   it earns fitness — the mechanism is open, the outcome is not designed.
+        //
+        // partnerPhaseInfluence=0 → returns 0 → Pe67 exactly.
+        const pphi68=genome.partnerPhaseInfluence||0;
+        if(pphi68>0.001){
+          vmRegs[di]=Math.cos(phase[j])*pphi68*(k||1);
+        }
+      }break;
     }
     for(let r=0;r<12;r++)vmRegs[r]=Math.max(-8,Math.min(8,vmRegs[r]));
   }
-
-  for(let m=0;m<MEM_SIZE;m++)pMem[i*MEM_SIZE+m]=vmRegs[4+m];
 
   const bond=sim*phaseAlign*proximity;
   if(bond>peakBondThisTick)peakBondThisTick=bond;
@@ -6272,6 +7166,103 @@ function executeVM(i,j,sim,d){
           if(pspdi58p>0.001){
             const psp58p=Math.sqrt(vx[j]*vx[j]+vy[j]*vy[j]);
             vmRegs[di]=Math.min(3,psp58p/2)*pspdi58p*k;
+          }
+        }break;
+        case 43:{
+          // Pe59 Layer 48: HEADING_ALIGN in plasmid VM — full parity with particle VM.
+          // Dot product of normalized velocity vectors → directional alignment in [-1, +1].
+          const hai59p=genome.headingAlignInfluence||0;
+          if(hai59p>0.001){
+            const si59p=Math.sqrt(vx[i]*vx[i]+vy[i]*vy[i]);
+            const sj59p=Math.sqrt(vx[j]*vx[j]+vy[j]*vy[j]);
+            if(si59p>0.1&&sj59p>0.1){
+              const dot59p=(vx[i]*vx[j]+vy[i]*vy[j])/(si59p*sj59p);
+              vmRegs[di]=dot59p*hai59p*k;
+            }
+          }
+        }break;
+        case 44:{
+          // Pe60 Layer 49: APPROACH_RATE in plasmid VM — full parity with particle VM.
+          // Radial velocity: positive=separating, negative=converging.
+          const ari60p=genome.approachRateInfluence||0;
+          if(ari60p>0.001){
+            const dxr60p=px[i]-px[j], dyr60p=py[i]-py[j];
+            const dist60p=Math.sqrt(dxr60p*dxr60p+dyr60p*dyr60p);
+            if(dist60p>0.5){
+              const dvx60p=vx[i]-vx[j], dvy60p=vy[i]-vy[j];
+              const radial60p=(dxr60p*dvx60p+dyr60p*dvy60p)/dist60p;
+              vmRegs[di]=Math.max(-3,Math.min(3,radial60p/4))*ari60p*k;
+            }
+          }
+        }break;
+        case 45:{
+          // Pe61 Layer 50: ORBIT_RATE in plasmid VM — full parity with particle VM.
+          // Tangential velocity: positive=CCW orbit, negative=CW orbit, ~0=radial motion.
+          const ori61p=genome.orbitRateInfluence||0;
+          if(ori61p>0.001){
+            const dxo61p=px[i]-px[j], dyo61p=py[i]-py[j];
+            const disto61p=Math.sqrt(dxo61p*dxo61p+dyo61p*dyo61p);
+            if(disto61p>0.5){
+              const dvx61p=vx[i]-vx[j], dvy61p=vy[i]-vy[j];
+              const tang61p=(dxo61p*dvy61p-dyo61p*dvx61p)/disto61p;
+              vmRegs[di]=Math.max(-3,Math.min(3,tang61p/4))*ori61p*k;
+            }
+          }
+        }break;
+        case 46:{
+          // Pe62 Layer 51: SELF_FREQ in plasmid VM — full parity with particle VM.
+          // Reads freq[i] (own oscillation rate) into vmRegs[di], scaled by selfFreqInfluence × k.
+          const sfi62p=genome.selfFreqInfluence||0;
+          if(sfi62p>0.001){
+            vmRegs[di]=Math.min(3,freq[i]/0.02)*sfi62p*k;
+          }
+        }break;
+        case 47:{
+          // Pe63 Layer 52: PARTNER_FREQ in plasmid VM — full parity with particle VM.
+          // Reads freq[j] (partner oscillation rate) into vmRegs[di], scaled by partnerFreqInfluence × k.
+          const pfi63p=genome.partnerFreqInfluence||0;
+          if(pfi63p>0.001){
+            vmRegs[di]=Math.min(3,freq[j]/0.02)*pfi63p*k;
+          }
+        }break;
+        case 48:{
+          // Pe64 Layer 53: PARTNER_MEM_READ in plasmid VM — full parity with particle VM.
+          // Reads pMem[j][si%MEM_SIZE] into vmRegs[di], scaled by partnerMemReadInfluence × k.
+          const pmri64p=genome.partnerMemReadInfluence||0;
+          if(pmri64p>0.001){
+            vmRegs[di]=pMem[j*MEM_SIZE+(si%MEM_SIZE)]*pmri64p*(k||1);
+          }
+        }break;
+        case 49:{
+          // Pe65 Layer 54: PARTNER_TEND_READ in plasmid VM — full parity with particle VM.
+          // Reads tend[j][si%DIMS] into vmRegs[di], scaled by partnerTendInfluence × k.
+          const ptri65p=genome.partnerTendInfluence||0;
+          if(ptri65p>0.001){
+            vmRegs[di]=tend[j*DIMS+(si%DIMS)]*ptri65p*(k||1);
+          }
+        }break;
+        case 50:{
+          // Pe66 Layer 55: SELF_TEND_READ in plasmid VM — full parity with particle VM.
+          // Reads tend[i][si%DIMS] into vmRegs[di], scaled by selfTendInfluence × k.
+          const stri66p=genome.selfTendInfluence||0;
+          if(stri66p>0.001){
+            vmRegs[di]=tend[i*DIMS+(si%DIMS)]*stri66p*(k||1);
+          }
+        }break;
+        case 51:{
+          // Pe67 Layer 56: SELF_PHASE in plasmid VM — full parity with particle VM.
+          // Reads cos(phase[i]) into vmRegs[di], scaled by selfPhaseInfluence × k.
+          const sphi67p=genome.selfPhaseInfluence||0;
+          if(sphi67p>0.001){
+            vmRegs[di]=Math.cos(phase[i])*sphi67p*(k||1);
+          }
+        }break;
+        case 52:{
+          // Pe68 Layer 57: PARTNER_PHASE in plasmid VM — full parity with particle VM.
+          // Reads cos(phase[j]) into vmRegs[di], scaled by partnerPhaseInfluence × k.
+          const pphi68p=genome.partnerPhaseInfluence||0;
+          if(pphi68p>0.001){
+            vmRegs[di]=Math.cos(phase[j])*pphi68p*(k||1);
           }
         }break;
       }
@@ -6647,6 +7638,103 @@ function executeClusterVM(i,j,sim,d){
           vmRegs[di]=Math.min(3,psp58c/2)*pspdi58c*k;
         }
       }break;
+      case 43:{
+        // Pe59 Layer 48: HEADING_ALIGN in cluster VM — full parity with particle VM.
+        // Dot product of normalized velocity vectors → directional alignment in [-1, +1].
+        const hai59c=genome.headingAlignInfluence||0;
+        if(hai59c>0.001){
+          const si59c=Math.sqrt(vx[i]*vx[i]+vy[i]*vy[i]);
+          const sj59c=Math.sqrt(vx[j]*vx[j]+vy[j]*vy[j]);
+          if(si59c>0.1&&sj59c>0.1){
+            const dot59c=(vx[i]*vx[j]+vy[i]*vy[j])/(si59c*sj59c);
+            vmRegs[di]=dot59c*hai59c*k;
+          }
+        }
+      }break;
+      case 44:{
+        // Pe60 Layer 49: APPROACH_RATE in cluster VM — full parity with particle VM.
+        // Radial velocity: positive=separating, negative=converging.
+        const ari60c=genome.approachRateInfluence||0;
+        if(ari60c>0.001){
+          const dxr60c=px[i]-px[j], dyr60c=py[i]-py[j];
+          const dist60c=Math.sqrt(dxr60c*dxr60c+dyr60c*dyr60c);
+          if(dist60c>0.5){
+            const dvx60c=vx[i]-vx[j], dvy60c=vy[i]-vy[j];
+            const radial60c=(dxr60c*dvx60c+dyr60c*dvy60c)/dist60c;
+            vmRegs[di]=Math.max(-3,Math.min(3,radial60c/4))*ari60c*k;
+          }
+        }
+      }break;
+      case 45:{
+        // Pe61 Layer 50: ORBIT_RATE in cluster VM — full parity with particle VM.
+        // Tangential velocity: positive=CCW orbit, negative=CW orbit, ~0=radial motion.
+        const ori61c=genome.orbitRateInfluence||0;
+        if(ori61c>0.001){
+          const dxo61c=px[i]-px[j], dyo61c=py[i]-py[j];
+          const disto61c=Math.sqrt(dxo61c*dxo61c+dyo61c*dyo61c);
+          if(disto61c>0.5){
+            const dvx61c=vx[i]-vx[j], dvy61c=vy[i]-vy[j];
+            const tang61c=(dxo61c*dvy61c-dyo61c*dvx61c)/disto61c;
+            vmRegs[di]=Math.max(-3,Math.min(3,tang61c/4))*ori61c*k;
+          }
+        }
+      }break;
+      case 46:{
+        // Pe62 Layer 51: SELF_FREQ in cluster VM — full parity with particle VM.
+        // Reads freq[i] (own oscillation rate) into vmRegs[di], scaled by selfFreqInfluence × k.
+        const sfi62c=genome.selfFreqInfluence||0;
+        if(sfi62c>0.001){
+          vmRegs[di]=Math.min(3,freq[i]/0.02)*sfi62c*k;
+        }
+      }break;
+      case 47:{
+        // Pe63 Layer 52: PARTNER_FREQ in cluster VM — full parity with particle VM.
+        // Reads freq[j] (partner oscillation rate) into vmRegs[di], scaled by partnerFreqInfluence × k.
+        const pfi63c=genome.partnerFreqInfluence||0;
+        if(pfi63c>0.001){
+          vmRegs[di]=Math.min(3,freq[j]/0.02)*pfi63c*k;
+        }
+      }break;
+      case 48:{
+        // Pe64 Layer 53: PARTNER_MEM_READ in cluster VM — full parity with particle VM.
+        // Reads pMem[j][si%MEM_SIZE] into vmRegs[di], scaled by partnerMemReadInfluence × k.
+        const pmri64c=genome.partnerMemReadInfluence||0;
+        if(pmri64c>0.001){
+          vmRegs[di]=pMem[j*MEM_SIZE+(si%MEM_SIZE)]*pmri64c*(k||1);
+        }
+      }break;
+      case 49:{
+        // Pe65 Layer 54: PARTNER_TEND_READ in cluster VM — full parity with particle VM.
+        // Reads tend[j][si%DIMS] into vmRegs[di], scaled by partnerTendInfluence × k.
+        const ptri65c=genome.partnerTendInfluence||0;
+        if(ptri65c>0.001){
+          vmRegs[di]=tend[j*DIMS+(si%DIMS)]*ptri65c*(k||1);
+        }
+      }break;
+      case 50:{
+        // Pe66 Layer 55: SELF_TEND_READ in cluster VM — full parity with particle VM.
+        // Reads tend[i][si%DIMS] into vmRegs[di], scaled by selfTendInfluence × k.
+        const stri66c=genome.selfTendInfluence||0;
+        if(stri66c>0.001){
+          vmRegs[di]=tend[i*DIMS+(si%DIMS)]*stri66c*(k||1);
+        }
+      }break;
+      case 51:{
+        // Pe67 Layer 56: SELF_PHASE in cluster VM — full parity with particle VM.
+        // Reads cos(phase[i]) into vmRegs[di], scaled by selfPhaseInfluence × k.
+        const sphi67c=genome.selfPhaseInfluence||0;
+        if(sphi67c>0.001){
+          vmRegs[di]=Math.cos(phase[i])*sphi67c*(k||1);
+        }
+      }break;
+      case 52:{
+        // Pe68 Layer 57: PARTNER_PHASE in cluster VM — full parity with particle VM.
+        // Reads cos(phase[j]) into vmRegs[di], scaled by partnerPhaseInfluence × k.
+        const pphi68c=genome.partnerPhaseInfluence||0;
+        if(pphi68c>0.001){
+          vmRegs[di]=Math.cos(phase[j])*pphi68c*(k||1);
+        }
+      }break;
     }
     for(let r=0;r<12;r++)vmRegs[r]=Math.max(-8,Math.min(8,vmRegs[r]));
   }
@@ -7010,6 +8098,29 @@ function executeSoloVM(){
             const uIdx=Math.abs(Math.floor(k))%uas.length;
             vmRegs[di]=uaCall(uas[uIdx],vmRegs[si],vmRegs[(si+1)%12]);
           }
+        }break;
+        case 46:{
+          // Pe62 Layer 51: SELF_FREQ in solo VM — particle reads own oscillation frequency.
+          // freq[i]/0.02 → 1.0 at baseline; cap at 3.0. No partner needed.
+          const sfi62s=genome.selfFreqInfluence||0;
+          if(sfi62s>0.001){
+            vmRegs[di]=Math.min(3,freq[i]/0.02)*sfi62s*k;
+          }
+        }break;
+        case 47:{
+          // Pe63 Layer 52: PARTNER_FREQ in solo VM — no-op (no interaction partner in solo context).
+          // Returns 0. Only meaningful in pair VMs where freq[j] is available.
+          // Opcode registered here to prevent default-case fallthrough noise.
+        }break;
+        case 48:{
+          // Pe64 Layer 53: PARTNER_MEM_READ in solo VM — no-op (no interaction partner in solo context).
+          // Returns 0. pMem[j] is not available when running without a pair partner.
+          // Opcode registered here to prevent default-case fallthrough noise.
+        }break;
+        case 52:{
+          // Pe68 Layer 57: PARTNER_PHASE in solo VM — no-op (no interaction partner in solo context).
+          // Returns 0. phase[j] is not available when running without a pair partner.
+          // Opcode registered here to prevent default-case fallthrough noise.
         }break;
       }
       for(let r=0;r<12;r++)vmRegs[r]=Math.max(-8,Math.min(8,vmRegs[r]));
@@ -7901,7 +9012,268 @@ function loop(){
         pspdTag=` | pspd:avg${(pspdSum/pspdCnt).toFixed(2)} i${_pspdi58.toFixed(2)}`;
       }
     }
-    genEl.textContent=`gen${genome.generation} ${genome.extinctions}☠ t${genome.totalTicks} | ${clusters.length}cl(${clVMActive}vm${budCount>0?','+budCount+'bud':''}) ${livingLin}lin fit:${currentFitness.toFixed(2)} stb:${(selfModel.stability||0).toFixed(2)} | vm:${genome.vmProgram.length}inst ${nSensors}sns ${hgtEventsTotal}hgt | pop:${N}/${CAP} fld:${fieldTotal.toFixed(0)}${fTrend<-0.01?'↓':fTrend>0.01?'↑':'~'} risk:${cRisk.toFixed(2)} | ⟲${rInf.toFixed(2)} ${reflexClusters}rc${netTag}${cgTag}${uaTag}${(genome.eventLog&&genome.eventLog.length)?' ev:'+genome.eventLog.length:''}${gradTag}${mrTag}${relTag}${sigTag}${attrTag}${inscTag}${f2Tag}${ndcTag}${saiTag}${paiTag}${pdcTag}${ageTag}${pageTag}${spdTag}${pspdTag}${dissTag}`;
+    // ═══ Pe59 Layer 48: HEADING_ALIGN diagnostic ═══
+    // haiTag shows: population-average heading alignment (sampled from alive pairs)
+    //               + headingAlignInfluence gate.
+    // avg = mean dot product of normalized velocity pairs, sampled up to 40 random pairs.
+    //   avg near +1.0: population moving cohesively in similar directions (schooling phase)
+    //   avg near  0.0: population moving in random/mixed directions (dispersed/turbulent)
+    //   avg near -1.0: population has counter-moving subgroups (head-on collision regime)
+    // Only particles with speed > 0.1 contribute — stationary particles have no heading.
+    // i→0: selection found heading-alignment sensing not worth the opcode slot.
+    let haiTag='';
+    const _hai59=genome.headingAlignInfluence||0;
+    if(_hai59>0.001){
+      let haiSum=0,haiCnt=0;
+      // Sample up to 40 random pairs for efficiency
+      const haiSamples=Math.min(40,Math.floor(N*(N-1)/2));
+      for(let s=0;s<haiSamples;s++){
+        const ii=(Math.random()*N)|0;
+        const jj=(Math.random()*N)|0;
+        if(ii===jj||!palive[ii]||!palive[jj])continue;
+        const si=Math.sqrt(vx[ii]*vx[ii]+vy[ii]*vy[ii]);
+        const sj=Math.sqrt(vx[jj]*vx[jj]+vy[jj]*vy[jj]);
+        if(si>0.1&&sj>0.1){
+          haiSum+=(vx[ii]*vx[jj]+vy[ii]*vy[jj])/(si*sj);
+          haiCnt++;
+        }
+      }
+      if(haiCnt>2&&(_hai59>0.02||Math.abs(haiSum/haiCnt)>0.05)){
+        haiTag=` | hai:avg${(haiSum/haiCnt).toFixed(2)} i${_hai59.toFixed(2)}`;
+      }
+    }
+    // ═══ Pe60 Layer 49: APPROACH_RATE diagnostic ═══
+    // arTag shows: population-average approach rate (sampled from alive pairs)
+    //              + approachRateInfluence gate.
+    // avg = mean radial velocity across sampled pairs, normalized by /4.
+    //   avg > 0 : population mostly separating — post-scatter, dispersal, or territorial spacing
+    //   avg ≈ 0 : population kinetically neutral — orbiting, tangential crossings, or mixed
+    //   avg < 0 : population mostly converging — active attraction, clustering, or collision course
+    // Only pairs with dist > 0.5 contribute — coincident particles have no stable radial direction.
+    // i→0: selection found convergence sensing not worth the opcode slot.
+    let arTag='';
+    const _ari60=genome.approachRateInfluence||0;
+    if(_ari60>0.001){
+      let arSum=0,arCnt=0;
+      // Sample up to 40 random pairs for efficiency
+      const arSamples=Math.min(40,Math.floor(N*(N-1)/2));
+      for(let s=0;s<arSamples;s++){
+        const ii=(Math.random()*N)|0;
+        const jj=(Math.random()*N)|0;
+        if(ii===jj||!palive[ii]||!palive[jj])continue;
+        const dxar=px[ii]-px[jj], dyar=py[ii]-py[jj];
+        const distar=Math.sqrt(dxar*dxar+dyar*dyar);
+        if(distar>0.5){
+          const dvxar=vx[ii]-vx[jj], dvyar=vy[ii]-vy[jj];
+          arSum+=(dxar*dvxar+dyar*dvyar)/distar/4;
+          arCnt++;
+        }
+      }
+      if(arCnt>2&&(_ari60>0.02||Math.abs(arSum/arCnt)>0.02)){
+        arTag=` | ar:avg${(arSum/arCnt).toFixed(2)} i${_ari60.toFixed(2)}`;
+      }
+    }
+    // ═══ Pe61 Layer 50: ORBIT_RATE diagnostic ═══
+    // oriTag shows: population-average tangential (orbital) velocity (sampled from alive pairs)
+    //               + orbitRateInfluence gate.
+    // avg > 0 : population trending CCW orbital motion
+    // avg ≈ 0 : population mostly radial (approaching/receding), little rotation
+    // avg < 0 : population trending CW orbital motion
+    // Note: |avg| near 0 can mean either no orbiting OR symmetric CW+CCW cancellation.
+    // Only pairs with dist > 0.5 contribute. i→0: orbit sensing not worth opcode slot.
+    let oriTag='';
+    const _ori61=genome.orbitRateInfluence||0;
+    if(_ori61>0.001){
+      let oriSum=0,oriCnt=0;
+      const oriSamples=Math.min(40,Math.floor(N*(N-1)/2));
+      for(let s=0;s<oriSamples;s++){
+        const ii=(Math.random()*N)|0;
+        const jj=(Math.random()*N)|0;
+        if(ii===jj||!palive[ii]||!palive[jj])continue;
+        const dxori=px[ii]-px[jj], dyori=py[ii]-py[jj];
+        const distori=Math.sqrt(dxori*dxori+dyori*dyori);
+        if(distori>0.5){
+          const dvxori=vx[ii]-vx[jj], dvyori=vy[ii]-vy[jj];
+          oriSum+=(dxori*dvyori-dyori*dvxori)/distori/4;
+          oriCnt++;
+        }
+      }
+      if(oriCnt>2&&(_ori61>0.02||Math.abs(oriSum/oriCnt)>0.02)){
+        oriTag=` | ori:avg${(oriSum/oriCnt).toFixed(2)} i${_ori61.toFixed(2)}`;
+      }
+    }
+    // ═══ Pe62 Layer 51: SELF_FREQ diagnostic ═══
+    // freqTag shows: population-average oscillation frequency (normalized: 0.02 → 1.0)
+    //                + selfFreqInfluence gate.
+    // avg > 1.5 : population trending high-frequency (fast oscillators dominating)
+    // avg ≈ 1.0 : population near baseline oscillation rate
+    // avg < 1.0 : population trending low-frequency (slow oscillators or freq decay)
+    // spread shows standard deviation — high spread = freq niche differentiation emerging.
+    // i→0: selection found freq self-sensing not worth the opcode slot.
+    let freqTag='';
+    const _sfi62=genome.selfFreqInfluence||0;
+    if(_sfi62>0.001){
+      let freqSum=0,freqSum2=0,freqCnt=0;
+      for(let i=0;i<N;i++){
+        if(!palive[i])continue;
+        const fn=freq[i]/0.02;
+        freqSum+=fn;freqSum2+=fn*fn;freqCnt++;
+      }
+      if(freqCnt>2){
+        const favg=freqSum/freqCnt;
+        const fvar=Math.max(0,freqSum2/freqCnt-favg*favg);
+        if(_sfi62>0.02||favg>1.05||favg<0.95){
+          freqTag=` | freq:avg${favg.toFixed(2)}±${Math.sqrt(fvar).toFixed(2)} i${_sfi62.toFixed(2)}`;
+        }
+      }
+    }
+    // ═══ Pe63 Layer 52: PARTNER_FREQ diagnostic ═══
+    // pfTag shows: population-average beat frequency spread (|freq[i]-freq[j]| sampled from pairs)
+    //              + partnerFreqInfluence gate.
+    // avgBeat ≈ 0   : population is frequency-matched — pairs tend toward resonance
+    // avgBeat > 0.5 : significant beat frequency — most pairs are transient resonators
+    // spread shows std dev of beat — high spread = freq-differentiated ecology emerging.
+    // i→0: selection found partner-freq sensing not worth the opcode slot.
+    let pfTag='';
+    const _pfi63=genome.partnerFreqInfluence||0;
+    if(_pfi63>0.001){
+      let beatSum=0,beatSum2=0,beatCnt=0;
+      const pfSamples=Math.min(60,Math.floor(N*(N-1)/2));
+      for(let s=0;s<pfSamples;s++){
+        const ii=(Math.random()*N)|0;
+        const jj=(Math.random()*N)|0;
+        if(ii===jj||!palive[ii]||!palive[jj])continue;
+        const beat=Math.abs(freq[ii]-freq[jj])/0.02;
+        beatSum+=beat;beatSum2+=beat*beat;beatCnt++;
+      }
+      if(beatCnt>2){
+        const bavg=beatSum/beatCnt;
+        const bvar=Math.max(0,beatSum2/beatCnt-bavg*bavg);
+        if(_pfi63>0.02||bavg>0.1){
+          pfTag=` | beat:avg${bavg.toFixed(2)}±${Math.sqrt(bvar).toFixed(2)} i${_pfi63.toFixed(2)}`;
+        }
+      }
+    }
+    // ═══ Pe64 Layer 53: PARTNER_MEM_READ diagnostic ═══
+    // pmrTag shows: count of opcode-48 appearances in the evolved VM program
+    //               + partnerMemReadInfluence gate.
+    // inst>0: the genome has evolved to use partner memory reads — the channel is live.
+    // inst=0: opcode 48 has not yet been recruited; influence gate still evolving.
+    // i→0: selection found partner-memory reading not worth the opcode slot.
+    let pmrTag='';
+    const _pmri64=genome.partnerMemReadInfluence||0;
+    if(_pmri64>0.001){
+      let pmrInProg=0;
+      const vmProg=genome.vmProgram||[];
+      for(let _pi=0;_pi<vmProg.length;_pi++){if(vmProg[_pi]&&vmProg[_pi][0]===48)pmrInProg++;}
+      if(pmrInProg>0||_pmri64>0.02){
+        pmrTag=` | pmr:${pmrInProg}inst i${_pmri64.toFixed(2)}`;
+      }
+    }
+    // ═══ Pe65 Layer 54: PARTNER_TEND_READ diagnostic ═══
+    // ptrTag shows: count of opcode-49 appearances in the evolved VM program
+    //               + partnerTendInfluence gate.
+    // inst>0: the genome has evolved to read partner identity components — the channel is live.
+    // dim distribution: which tendency dimensions are the VMs actually indexing?
+    //   (si%DIMS determines the dimension; distribution across 0-4 reveals which axes matter)
+    // i→0: selection found identity-component sensing not worth the opcode slot.
+    let ptrTag='';
+    const _ptri65=genome.partnerTendInfluence||0;
+    if(_ptri65>0.001){
+      let ptrInProg=0;
+      const _vmProg65=genome.vmProgram||[];
+      const dimCounts=[0,0,0,0,0];
+      for(let _pi=0;_pi<_vmProg65.length;_pi++){
+        const _inst=_vmProg65[_pi];
+        if(_inst&&_inst[0]===49){
+          ptrInProg++;
+          const _si65=Math.abs(_inst[1])%12;
+          dimCounts[_si65%DIMS]++;
+        }
+      }
+      if(ptrInProg>0||_ptri65>0.02){
+        const _dimStr=ptrInProg>0?'d['+dimCounts.map((c,d)=>c>0?d:'').filter(s=>s!=='').join('')+']':'';
+        ptrTag=` | ptr:${ptrInProg}inst${_dimStr} i${_ptri65.toFixed(2)}`;
+      }
+    }
+    // ═══ Pe66 Layer 55: SELF_TEND_READ diagnostic ═══
+    // strTag shows: count of opcode-50 appearances in the evolved VM program
+    //               + selfTendInfluence gate.
+    // inst>0: the genome has evolved to read own identity components — the channel is live.
+    // dim distribution: which own tendency dimensions are the VMs actually indexing?
+    //   (si%DIMS determines the dimension; distribution across 0-4 reveals self-specialization)
+    // Complementary to ptrTag: strTag tells us which SELF dimensions matter to the evolved VM,
+    //   ptrTag tells us which PARTNER dimensions it reads. Together they reveal whether the VM
+    //   treats self and partner identity symmetrically or asymmetrically.
+    // i→0: selection found self-identity sensing not worth the opcode slot.
+    let strTag='';
+    const _stri66=genome.selfTendInfluence||0;
+    if(_stri66>0.001){
+      let strInProg=0;
+      const _vmProg66=genome.vmProgram||[];
+      const _dimCounts66=[0,0,0,0,0];
+      for(let _pi=0;_pi<_vmProg66.length;_pi++){
+        const _inst=_vmProg66[_pi];
+        if(_inst&&_inst[0]===50){
+          strInProg++;
+          const _si66=Math.abs(_inst[1])%12;
+          _dimCounts66[_si66%DIMS]++;
+        }
+      }
+      if(strInProg>0||_stri66>0.02){
+        const _dimStr66=strInProg>0?'d['+_dimCounts66.map((c,d)=>c>0?d:'').filter(s=>s!=='').join('')+']':'';
+        strTag=` | str:${strInProg}inst${_dimStr66} i${_stri66.toFixed(2)}`;
+      }
+    }
+    // ═══ Pe67 Layer 56: SELF_PHASE diagnostic ═══
+    // sphTag shows: count of opcode-51 appearances in the evolved VM program
+    //               + selfPhaseInfluence gate.
+    // inst>0: the genome has evolved to use own-phase reading — the carrier wave is live.
+    // inst=0: opcode 51 has not yet been recruited; influence gate still evolving.
+    // i→0: selection found phase self-sensing not worth the opcode slot.
+    // When live, also shows population-average |cos(phase)| — near 0.64 (π/4 theoretical mean)
+    // is a baseline; sustained deviation indicates clustering toward phase peak or trough.
+    let sphTag='';
+    const _sphi67=genome.selfPhaseInfluence||0;
+    if(_sphi67>0.001){
+      let sphInProg=0;
+      const _vmProg67=genome.vmProgram||[];
+      for(let _pi=0;_pi<_vmProg67.length;_pi++){if(_vmProg67[_pi]&&_vmProg67[_pi][0]===51)sphInProg++;}
+      if(sphInProg>0||_sphi67>0.02){
+        let phaseAbsSum=0,phaseAliveN=0;
+        for(let _pi=0;_pi<N;_pi++){if(palive[_pi]){phaseAbsSum+=Math.abs(Math.cos(phase[_pi]));phaseAliveN++;}}
+        const _avgAbsPhase=phaseAliveN>0?phaseAbsSum/phaseAliveN:0;
+        sphTag=` | sph:${sphInProg}inst avg|cos|${_avgAbsPhase.toFixed(2)} i${_sphi67.toFixed(2)}`;
+      }
+    }
+    // ═══ Pe68 Layer 57: PARTNER_PHASE diagnostic ═══
+    // pphTag shows: count of opcode-52 appearances in the evolved VM program
+    //               + partnerPhaseInfluence gate.
+    // inst>0: the genome has evolved to use partner-phase reading — the partner wave is live.
+    // inst=0: opcode 52 has not yet been recruited; influence gate still evolving.
+    // i→0: selection found partner-phase sensing not worth the opcode slot.
+    // When live, also shows population-average signed cos(phase) — near 0 is uniform
+    // distribution (random phase); sustained positive/negative bias indicates population-wide
+    // phase preference, which can only emerge if partner-reading strategies create
+    // correlated selection pressure on phase values.
+    // Complement to sphTag: sphTag shows own-phase usage; pphTag shows partner-phase usage.
+    // Together they reveal whether the VM treats self and partner phases symmetrically or
+    // asymmetrically (e.g. reading own phase but not partner's = pure self-gating;
+    // reading partner's but not own = receiver-conditioned strategy).
+    let pphTag='';
+    const _pphi68=genome.partnerPhaseInfluence||0;
+    if(_pphi68>0.001){
+      let pphInProg=0;
+      const _vmProg68=genome.vmProgram||[];
+      for(let _pi=0;_pi<_vmProg68.length;_pi++){if(_vmProg68[_pi]&&_vmProg68[_pi][0]===52)pphInProg++;}
+      if(pphInProg>0||_pphi68>0.02){
+        let phaseSignedSum=0,phaseAliveN68=0;
+        for(let _pi=0;_pi<N;_pi++){if(palive[_pi]){phaseSignedSum+=Math.cos(phase[_pi]);phaseAliveN68++;}}
+        const _avgSignedPhase=phaseAliveN68>0?phaseSignedSum/phaseAliveN68:0;
+        pphTag=` | pph:${pphInProg}inst cos̄${_avgSignedPhase.toFixed(2)} i${_pphi68.toFixed(2)}`;
+      }
+    }
+    genEl.textContent=`gen${genome.generation} ${genome.extinctions}☠ t${genome.totalTicks} | ${clusters.length}cl(${clVMActive}vm${budCount>0?','+budCount+'bud':''}) ${livingLin}lin fit:${currentFitness.toFixed(2)} stb:${(selfModel.stability||0).toFixed(2)} | vm:${genome.vmProgram.length}inst ${nSensors}sns ${hgtEventsTotal}hgt | pop:${N}/${CAP} fld:${fieldTotal.toFixed(0)}${fTrend<-0.01?'↓':fTrend>0.01?'↑':'~'} risk:${cRisk.toFixed(2)} | ⟲${rInf.toFixed(2)} ${reflexClusters}rc${netTag}${cgTag}${uaTag}${(genome.eventLog&&genome.eventLog.length)?' ev:'+genome.eventLog.length:''}${gradTag}${mrTag}${relTag}${sigTag}${attrTag}${inscTag}${f2Tag}${ndcTag}${saiTag}${paiTag}${pdcTag}${ageTag}${pageTag}${spdTag}${pspdTag}${haiTag}${arTag}${oriTag}${freqTag}${pfTag}${pmrTag}${ptrTag}${strTag}${sphTag}${pphTag}${dissTag}`;
   }
 
   const renderEvery=N>1000?4:N>500?3:N>200?2:1;
