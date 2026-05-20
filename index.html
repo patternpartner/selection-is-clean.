@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
-<title>Selection פ 68 — The Partner Wave</title>
+<title>Selection פ 70 — The Field Pulse</title>
 <style>
 *{margin:0;padding:0;box-sizing:border-box}
 html,body{height:100%;overflow:hidden;background:#020204;touch-action:none;cursor:crosshair}
@@ -264,7 +264,7 @@ const DIMS=5; // dim 4 is blank — no hardcoded role. System decides what it me
 const MEM_SIZE=8; // per-particle persistent memory. Particles become stateful agents.
 const MAX_PLASMID=4; // max instructions per particle's personal mobile DNA
 const PLASMID_SLOTS=MAX_PLASMID*4; // each instruction is [op,src,dst,k] = 4 values
-const OPCODE_COUNT=53; // VM opcodes 0..52: Pe61 adds ORBIT_RATE (45); Pe62 adds SELF_FREQ (46); Pe63 adds PARTNER_FREQ (47); Pe64 adds PARTNER_MEM_READ (48); Pe65 adds PARTNER_TEND_READ (49); Pe66 adds SELF_TEND_READ (50); Pe67 adds SELF_PHASE (51); Pe68 adds PARTNER_PHASE (52)
+const OPCODE_COUNT=55; // VM opcodes 0..54: Pe61 adds ORBIT_RATE (45); Pe62 adds SELF_FREQ (46); Pe63 adds PARTNER_FREQ (47); Pe64 adds PARTNER_MEM_READ (48); Pe65 adds PARTNER_TEND_READ (49); Pe66 adds SELF_TEND_READ (50); Pe67 adds SELF_PHASE (51); Pe68 adds PARTNER_PHASE (52); Pe69 adds INTERACTION_DIST (53); Pe70 adds FIELD1_TEMPORAL (54)
 const FIELD_W=40;
 const FIELD_H=40;
 let FIELD_DECAY=0.982;   // natural fade — Pe22b: now genome-driven, can evolve
@@ -1683,6 +1683,153 @@ let genome={
   // In META_LAYER_PARAMS and ATROPHY_SAFE so attribution tracks whether phase
   // self-sensing earns its keep and can retire it if the population finds it not useful.
   selfPhaseInfluence:0.15,   // 0=Pe66 exactly. Scales cos(own phase) → VM. Evolvable.
+
+  // ═══ LAYER 57: PARTNER_PHASE — particles read their partner's oscillation phase state (Pe68) ═══
+  // Pe67 gave SELF_PHASE (opcode 51, cos(phase[i])). Pe68 completes the phase-sensing tetrad
+  // by adding PARTNER_PHASE (opcode 52, cos(phase[j])).
+  // partnerPhaseInfluence=0 → opcode 52 returns 0 → Pe67 exactly.
+  // In META_LAYER_PARAMS and ATROPHY_SAFE so attribution tracks whether partner-phase
+  // sensing earns its keep and can retire it if the population finds it not useful.
+  partnerPhaseInfluence:0.15,   // 0=Pe67 exactly. Scales cos(partner phase) → VM. Evolvable.
+
+  // ═══ LAYER 58: INTERACTION_DIST — particles read the raw distance to their partner (Pe69) ═══
+  // Pe57+Pe58 gave kinetic speed (self + partner).
+  // Pe59 gave heading alignment (directional relationship).
+  // Pe60 gave approach rate (radial velocity — is the gap shrinking?).
+  // Pe61 gave orbit rate (tangential velocity — are we rotating around each other?).
+  //
+  // Together, approach rate and orbit rate form the POLAR VELOCITY DECOMPOSITION:
+  //   Δv = radial component + tangential component (Pythagorean identity — no info lost)
+  //
+  // But the POSITION has always been missing. The radial velocity tells whether the gap
+  // is shrinking, but not what the gap actually IS. A particle closing at radial=-2 when
+  // dist=0.8 is in a very different situation than when dist=0.05 — same rate, opposite
+  // danger. The velocity picture is complete; the position picture has always been partial.
+  //
+  // What already exists:
+  //   R2 = proximity = 1 - d/CELL — POSITION COMPLEMENT: set as initial vmRegs[2] value.
+  //   But R2 is overwritten immediately by memory loads and other VM operations.
+  //   The VM cannot re-read proximity mid-program; it is only accessible at start.
+  //
+  // Pe69 closes this gap. Opcode 53 (INTERACTION_DIST) explicitly returns the normalized
+  // distance d/CELL at any point in VM program execution:
+  //
+  //   vmRegs[di] = Math.min(1, d / CELL) * interactionDistInfluence * k
+  //
+  // Signal interpretation:
+  //   0.0 : coincident — particles at the same position (degenerate, guarded against)
+  //   0.1 : very close — intimate contact, within 10% of interaction radius
+  //   0.5 : mid-range  — halfway through interaction zone
+  //   1.0 : far edge   — barely within interaction radius; encounter is marginal
+  //
+  // RELATIONSHIP TO EXISTING POSITION SIGNALS:
+  //   R2  = proximity = 1 - d/CELL   — CLOSENESS (high = near, low = far; may be overwritten)
+  //   op53 = d/CELL                   — SEPARATION (high = far, low = near; re-readable)
+  //   proximity + dist = 1.0          — complementary; together they span [0,1] cleanly
+  //
+  // WHY SEPARATION RATHER THAN PROXIMITY (AGAIN):
+  //   With op53, the VM can compute (1 - op53) to recover proximity, but also use dist
+  //   directly in non-linear functions (e.g., "strong bond only if dist² < 0.04") without
+  //   requiring arithmetic on a possibly-stale R2. The key property is MID-PROGRAM
+  //   RE-READABILITY: any instruction in the evolved sequence can reload the exact
+  //   current distance without depending on how R2 was handled earlier.
+  //
+  // COMPLETING THE POLAR ENCOUNTER PICTURE:
+  //   op44: approach rate  — d(dist)/dt, the velocity of gap change
+  //   op45: orbit rate     — tangential velocity (how fast rotating?)
+  //   op53: interaction dist — dist itself (where are we in the encounter zone?)
+  //   Together: (WHERE, CLOSING-RATE, ROTATION-RATE) — full polar state of the encounter.
+  //   A particle can now differentiate:
+  //     "close AND closing fast"     → head-on collision (dist=0.1, approach<0)
+  //     "close AND stable"           → settled bond (dist=0.1, approach≈0, orbit≈0)
+  //     "close AND orbiting"         → stable orbit (dist=0.2, approach≈0, orbit≠0)
+  //     "far AND closing"            → incoming contact (dist=0.8, approach<0)
+  //     "far AND opening"            → post-scatter (dist=0.7, approach>0)
+  //   All five previously indistinguishable without the absolute distance.
+  //
+  // NEW BEHAVIORAL CATEGORIES WITH NO PRIOR PATH:
+  //   - Contact-zone differentiation: "tight contact" (dist<0.1) vs "grazing encounter" (dist>0.8)
+  //   - Threshold bonding: apply force only when dist < 0.2 — precise proximity gate
+  //   - Distance-scaled transfers: amplitude transfer magnitude proportional to gap size
+  //   - Outer-zone behavior: different rules for particles barely within radius (dist>0.7)
+  //   - Dynamic encounter staging: behavior shifts as dist crosses 0.3, 0.5 thresholds
+  //   - Collision anticipation: dist≈0.05 AND approach<0 → brace for collision
+  //   - Orbit stability: dist≈0.2 AND approach≈0 → stable orbit → reinforce
+  //   - Escape window: dist>0.6 AND approach>0 → fully escaped → consolidate
+  //
+  // COLD START: d is always computed in processGrid before executeVM is called.
+  // Zero new per-particle state. Pure signal exposure.
+  //
+  // interactionDistInfluence=0 → opcode 53 returns 0 → Pe68 exactly.
+  // In META_LAYER_PARAMS and ATROPHY_SAFE so attribution tracks whether absolute distance
+  // sensing earns its keep and can retire it if not.
+  interactionDistInfluence:0.15,   // 0=Pe68 exactly. Scales d/CELL → VM. Evolvable.
+
+  // ═══ LAYER 59: FIELD1_TEMPORAL — VMs sense the rate of change of the primary field (Pe70) ═══
+  // Pe47-Pe50 gave particles full access to field2: write (31), spatial gradient (32),
+  // temporal derivative (33), and cross-channel balance (34).
+  // Field1 has had write (9/10) since the beginning, spatial gradient (17) since Layer 9.
+  // Pe70 closes the asymmetry: field1 now has its temporal derivative too.
+  //
+  // Opcode 54 (FIELD1_TEMPORAL) reads:
+  //   vmRegs[di] = (field[cell] - field1Prev[cell]) * fieldTemporalInfluence * k
+  //
+  // field1Prev is snapshot at the start of updateField's diffusion pass each tick —
+  // exactly as field2Prev was added in Pe49. Zero extra per-tick cost beyond the copy.
+  //
+  // Signal interpretation:
+  //   > 0  →  field1 rising here: deposition > decay, territory actively building
+  //   < 0  →  field1 falling here: decay > deposition, territory eroding or abandoned
+  //   ≈ 0  →  field1 steady: equilibrium, or particle is in a field-inert region
+  //
+  // THE ORTHOGONALITY:
+  //   opcode 8  → field1 LEVEL   : how much primary energy is here right now?
+  //   opcode 17 → field1 GRADIENT: which direction does field1 flow spatially?
+  //   opcode 54 → field1 TEMPORAL: is field1 growing or shrinking at this moment?
+  //
+  // These three are genuinely independent axes of the same signal. A particle at a
+  // field1 peak sees zero gradient but may see strong positive temporal (the peak is
+  // still growing) or negative temporal (the peak has crested and is decaying). Same
+  // spatial position; very different ecological situation — now distinguishable.
+  //
+  // NEW BEHAVIORAL CATEGORIES WITH NO PRIOR PATH:
+  //   - Territory pulse: "field here is rising fast → reinforce with my own write"
+  //     (cooperative building: particles compound each other's deposits)
+  //   - Decay detection: "field falling → flee before resource depletes"
+  //     (predictive emigration: leaving before the crash, not after)
+  //   - Deposit feedback: "I just wrote; temporal now positive → my inscription is landing"
+  //     (closed-loop field manipulation — first time particles can verify their own writes)
+  //   - Niche defense: "field rising AND I'm here → I am the source → guard this cell"
+  //     (territorial behavior with cause-and-effect awareness, not just level-checking)
+  //   - Pulse riding: "field temporal peaked positive → opportunity window open"
+  //     (time-conditional resource exploitation, impossible from level alone)
+  //   - Abandonment logic: "field falling → yield territory → stop writing"
+  //     (graceful niche exit, prevents wasteful maintenance of dying territory)
+  //   - Cross-channel temporal balance: compare opcode 54 (field1 rate) vs opcode 33
+  //     (field2 rate) — which channel is currently winning? Dynamic niche competition.
+  //   - Cycle-aware inscription: write when field is falling to sustain the cycle;
+  //     stop when rising to avoid overload (homeostatic inscription strategy).
+  //
+  // RELATIONSHIP TO EXISTING FIELD SIGNALS:
+  //   op8  = field[cell]                     — current level (may be very high or very low)
+  //   op17 = grad(field)                     — spatial direction
+  //   op33 = field2[cell] - field2Prev[cell] — field2 rate of change (since Pe49)
+  //   op34 = (field-field2)/(field+field2)   — cross-channel balance
+  //   op54 = field[cell] - field1Prev[cell]  — field1 rate of change (Pe70)
+  //
+  // Together, op8 + op54 give the particle a (level, velocity) pair for field1 — the
+  // same informational completeness that physics gives to a moving object via (position,
+  // velocity). A particle that previously only knew WHERE the field was can now also
+  // know WHICH WAY it is moving in time.
+  //
+  // COLD START: field[] has been tracked since generation 1. field1Prev is filled to
+  // match field[] before the first diffusion pass — zero-derivative initialization, same
+  // as field2Prev was initialized for Pe49. No per-particle state added.
+  //
+  // fieldTemporalInfluence=0 → opcode 54 returns 0 → Pe69 exactly.
+  // In META_LAYER_PARAMS and ATROPHY_SAFE so attribution tracks whether field1 temporal
+  // sensing earns its keep and can retire it if the population finds it not useful.
+  fieldTemporalInfluence:0.1,   // 0=Pe69 exactly. Scales (field1−field1Prev) → VM. Evolvable.
   // Pe27 made the imagination bank evolvable, but scenarios still live and die strictly
   // within the global lineage's mutation cycle. A scenario that produced a great cluster
   // 500 ticks ago — but then aged out — is gone. The bank has no memory of which
@@ -1999,6 +2146,7 @@ const fieldOwnership=new Float32Array(FIELD_W*FIELD_H); // ownership strength (0
 // The particles literally write the physics of their world.
 const field2=new Float32Array(FIELD_W*FIELD_H); // second channel — enables reactions between channels
 const field2Prev=new Float32Array(FIELD_W*FIELD_H); // Pe49: snapshot of field2 before each tick's diffusion — enables temporal derivative
+const field1Prev=new Float32Array(FIELD_W*FIELD_H); // Pe70: snapshot of field1 before each tick's diffusion — enables temporal derivative (Layer 59)
 const cellProgOp=new Uint8Array(FIELD_W*FIELD_H);    // opcode: which transformation this cell runs
 const cellProgA=new Float32Array(FIELD_W*FIELD_H);   // parameter A
 const cellProgB=new Float32Array(FIELD_W*FIELD_H);   // parameter B
@@ -2203,6 +2351,9 @@ function encodeGenome(){
     ptri65:+(genome.partnerTendInfluence||0).toFixed(4),                  // Pe65 Layer 54
     stri66:+(genome.selfTendInfluence||0).toFixed(4),                      // Pe66 Layer 55
     sphi67:+(genome.selfPhaseInfluence||0).toFixed(4),                      // Pe67 Layer 56
+    pphi68:+(genome.partnerPhaseInfluence||0).toFixed(4),                   // Pe68 Layer 57 (bug fix — was missing)
+    idi69:+(genome.interactionDistInfluence||0).toFixed(4),                  // Pe69 Layer 58
+    f1ti70:+(genome.fieldTemporalInfluence||0).toFixed(4),                    // Pe70 Layer 59
     mct:META_LAYER_PARAMS.map(p=>{
       const e=genome.metaCredit&&genome.metaCredit[p];
       return +((e&&e.trace)||0).toFixed(3);
@@ -2350,6 +2501,9 @@ function decodeGenome(data){
     if(typeof g.ptri65==='number')genome.partnerTendInfluence=g.ptri65;                // Pe65 Layer 54
     if(typeof g.stri66==='number')genome.selfTendInfluence=g.stri66;                    // Pe66 Layer 55
     if(typeof g.sphi67==='number')genome.selfPhaseInfluence=g.sphi67;                    // Pe67 Layer 56
+    if(typeof g.pphi68==='number')genome.partnerPhaseInfluence=g.pphi68;                 // Pe68 Layer 57 (bug fix)
+    if(typeof g.idi69==='number')genome.interactionDistInfluence=g.idi69;                // Pe69 Layer 58
+    if(typeof g.f1ti70==='number')genome.fieldTemporalInfluence=g.f1ti70;              // Pe70 Layer 59
     // Pe37 Layer 26: attribution
     if(typeof g.mcb==='number')genome.metaCreditBias=g.mcb;
     if(typeof g.msb==='number')genome.metaSearchBias=g.msb; // Pe38 Layer 27: search width bias
@@ -2478,6 +2632,12 @@ function sanitizeGenome(){
   genome.partnerTendInfluence=Math.max(0,Math.min(1,finiteOr(genome.partnerTendInfluence,0.15)));             // Pe65 Layer 54
   if(genome.selfPhaseInfluence===undefined)genome.selfPhaseInfluence=0.15;
   genome.selfPhaseInfluence=Math.max(0,Math.min(1,finiteOr(genome.selfPhaseInfluence,0.15)));                  // Pe67 Layer 56
+  if(genome.partnerPhaseInfluence===undefined)genome.partnerPhaseInfluence=0.15;
+  genome.partnerPhaseInfluence=Math.max(0,Math.min(1,finiteOr(genome.partnerPhaseInfluence,0.15)));            // Pe68 Layer 57 (bug fix — was missing from sanitize)
+  if(genome.interactionDistInfluence===undefined)genome.interactionDistInfluence=0.15;
+  genome.interactionDistInfluence=Math.max(0,Math.min(1,finiteOr(genome.interactionDistInfluence,0.15)));      // Pe69 Layer 58
+  if(genome.fieldTemporalInfluence===undefined)genome.fieldTemporalInfluence=0.1;
+  genome.fieldTemporalInfluence=Math.max(0,Math.min(1,finiteOr(genome.fieldTemporalInfluence,0.1)));          // Pe70 Layer 59
   {
     const src=(genome.metaCredit&&typeof genome.metaCredit==='object')?genome.metaCredit:{};
     const fresh={};
@@ -3338,6 +3498,9 @@ const META_LAYER_PARAMS=[
   ,'partnerTendInfluence'               // Pe65 — tracked so attribution decides if identity-component sensing earns its keep
   ,'selfTendInfluence'                   // Pe66 — tracked so attribution decides if self-identity sensing earns its keep
   ,'selfPhaseInfluence'                   // Pe67 — tracked so attribution decides if phase self-sensing earns its keep
+  ,'partnerPhaseInfluence'                // Pe68 — tracked so attribution decides if partner-phase sensing earns its keep
+  ,'interactionDistInfluence'             // Pe69 — tracked so attribution decides if absolute distance sensing earns its keep
+  ,'fieldTemporalInfluence'               // Pe70 — tracked so attribution decides if field1 temporal sensing earns its keep
 ];
 // Pe40 Layer 29: subset of META_LAYER_PARAMS whose value 0 is documented as
 // "[prior version] exactly" — i.e. zero provably means the layer is dormant and
@@ -3366,6 +3529,9 @@ const ATROPHY_SAFE=new Set([
   ,'partnerTendInfluence'         // Pe65
   ,'selfTendInfluence'            // Pe66
   ,'selfPhaseInfluence'           // Pe67
+  ,'partnerPhaseInfluence'        // Pe68
+  ,'interactionDistInfluence'     // Pe69
+  ,'fieldTemporalInfluence'       // Pe70
 ]);
 // Short HUD labels — keep the attribution tag compact.
 const META_LAYER_SHORT={
@@ -3391,6 +3557,9 @@ const META_LAYER_SHORT={
   ,partnerTendInfluence:'ptri'
   ,selfTendInfluence:'stri'
   ,selfPhaseInfluence:'sphi'
+  ,partnerPhaseInfluence:'pphi'
+  ,interactionDistInfluence:'idi'
+  ,fieldTemporalInfluence:'f1ti'
 };
 
 // Pe32: 12D Euclidean distance between two scenario entries.
@@ -3806,6 +3975,21 @@ function profileVM(){
           // themselves in live simulation where phases are actually diverse.
           const pphiProf=genome.partnerPhaseInfluence||0;
           vmRegs[di]=0.0*pphiProf*(k||1);
+        }break;
+        case 53:{                       // INTERACTION_DIST (Pe69) → neutral mid-range stub
+          // Profiler has no live particle pair distance. Use 0.5 (mid-range) as a
+          // neutral stub — same reasoning as proximity (R2=0.5) for profiling.
+          // Distance-conditional strategies will only differentiate in live simulation
+          // where actual distances vary.
+          const idiProf=genome.interactionDistInfluence||0;
+          vmRegs[di]=0.5*idiProf*(k||1);
+        }break;
+        case 54:{                       // FIELD1_TEMPORAL (Pe70) → small positive rate stub
+          // Profiler has no live field1Prev state. Return a small positive delta stub so
+          // genomes using opcode 54 produce a plausible non-trivial phenotype profile.
+          // 0.03 represents a gentle rising rate — same stub value as opcode 33 (FIELD2_TEMPORAL).
+          const f1tiProf=genome.fieldTemporalInfluence||0;
+          vmRegs[di]=0.03*f1tiProf*(k||1);
         }break;
       }
       for(let r=0;r<12;r++)vmRegs[r]=Math.max(-8,Math.min(8,vmRegs[r]));
@@ -4716,7 +4900,9 @@ function updateField(){
   // ═══ STAGE 2: STANDARD DIFFUSION + DECAY ═══
   // Pe49: snapshot field2 before diffusion so the temporal derivative (field2 - field2Prev)
   // is available to VMs via opcode 33 this tick. Copying 1600 floats is negligible cost.
+  // Pe70: snapshot field1 before diffusion for the same reason — opcode 54 (FIELD1_TEMPORAL).
   field2Prev.set(field2);
+  field1Prev.set(field);
   for(let y=0;y<FIELD_H;y++){
     for(let x=0;x<FIELD_W;x++){
       const idx=y*FIELD_W+x;
@@ -5236,6 +5422,10 @@ function mutateGenome(){
   genome.selfPhaseInfluence=Math.max(0,Math.min(1,metaMaybe(genome.selfPhaseInfluence||0,0.03,'selfPhaseInfluence'))); // Pe67 Layer 56
   // Pe68 Layer 57: partnerPhaseInfluence uses metaMaybe — does not control the credit system.
   genome.partnerPhaseInfluence=Math.max(0,Math.min(1,metaMaybe(genome.partnerPhaseInfluence||0,0.03,'partnerPhaseInfluence'))); // Pe68 Layer 57
+  // Pe69 Layer 58: interactionDistInfluence uses metaMaybe — does not control the credit system.
+  genome.interactionDistInfluence=Math.max(0,Math.min(1,metaMaybe(genome.interactionDistInfluence||0,0.03,'interactionDistInfluence'))); // Pe69 Layer 58
+  // Pe70 Layer 59: fieldTemporalInfluence uses metaMaybe — does not control the credit system.
+  genome.fieldTemporalInfluence=Math.max(0,Math.min(1,metaMaybe(genome.fieldTemporalInfluence||0,0.03,'fieldTemporalInfluence'))); // Pe70 Layer 59
 
   // ═══ Pe26 Layer 16c: CLUSTER UPWARD SIGNAL injection ═══
   // Drain the upstream buffer — soft-inject successful cluster motifs into the global VM.
@@ -6911,6 +7101,65 @@ function executeVM(i,j,sim,d){
           vmRegs[di]=Math.cos(phase[j])*pphi68*(k||1);
         }
       }break;
+      case 53:{
+        // Pe69 Layer 58: INTERACTION_DIST — reads the normalized Euclidean distance between
+        // particle i and particle j at the moment of interaction into a VM register.
+        //
+        // d is the 4th argument to executeVM(i,j,sim,d) — it's already computed by
+        // processGrid before the VM runs. Zero new computation: pure signal exposure.
+        //
+        //   vmRegs[di] = Math.min(1, d / CELL) * interactionDistInfluence * k
+        //
+        // Signal interpretation:
+        //   0.0  : coincident (degenerate — guarded; executeVM returns early if d<0.5)
+        //   0.1  : very close (within 10% of interaction radius — tight contact)
+        //   0.5  : mid-range  (halfway through interaction zone)
+        //   1.0  : far edge   (barely within radius — marginal encounter)
+        //
+        // COMPLEMENT TO PROXIMITY (R2):
+        //   R2 at VM start = proximity = 1 - d/CELL. But R2 may be overwritten by earlier
+        //   instructions in the evolved program. Opcode 53 lets any instruction reload the
+        //   exact current distance regardless of R2's current state — mid-program re-readability
+        //   is the key property. A VM instruction can use `1 - op53_value` to recover proximity
+        //   at any point, or use dist directly in nonlinear gate computations.
+        //
+        // COMPLETING THE POLAR ENCOUNTER GEOMETRY:
+        //   op44 (approach rate): d(dist)/dt — is the gap shrinking or growing?
+        //   op45 (orbit rate):    tangential component — are we rotating around each other?
+        //   op53 (interaction dist): dist itself — WHERE in the encounter zone are we?
+        //   Together: (WHERE, CLOSING-RATE, ROTATION-RATE) — full polar state of the encounter.
+        //
+        // interactionDistInfluence=0 → returns 0 → Pe68 exactly.
+        const idi69=genome.interactionDistInfluence||0;
+        if(idi69>0.001){
+          vmRegs[di]=Math.min(1,d/CELL)*idi69*(k||1);
+        }
+      }break;
+      case 54:{
+        // Pe70 Layer 59: FIELD1_TEMPORAL — time derivative of the primary field at this particle's cell.
+        // Reads (field[cell] - field1Prev[cell]) into a VM register, scaled by fieldTemporalInfluence × k.
+        //
+        // field1Prev is snapped at the start of updateField's diffusion pass (same pattern as
+        // field2Prev for opcode 33). Zero new per-particle state — one 1600-float array copy per tick.
+        //
+        // Signal interpretation:
+        //   > 0 : field1 rising here — deposition exceeding decay, territory building
+        //   < 0 : field1 falling here — decay exceeding deposition, territory eroding
+        //   ≈ 0 : field1 steady — equilibrium or particle is in a field-inert region
+        //
+        // ORTHOGONAL TO op8 (level) AND op17 (spatial gradient):
+        //   A particle at a field1 peak sees zero gradient but may see strong positive temporal
+        //   (the peak is still growing) or negative temporal (the peak has crested and decays).
+        //   Same spatial position; different ecological situation; now distinguishable.
+        //
+        // fieldTemporalInfluence=0 → returns 0 → Pe69 exactly.
+        const f1ti70=genome.fieldTemporalInfluence||0;
+        if(f1ti70>0.001){
+          const tfx70=Math.floor(px[i]/(W/FIELD_W)),tfy70=Math.floor(py[i]/(H/FIELD_H));
+          const tfi70=Math.max(0,Math.min(FIELD_W*FIELD_H-1,tfy70*FIELD_W+tfx70));
+          vmRegs[di]=(field[tfi70]-field1Prev[tfi70])*f1ti70*(k||1);
+        }
+      }break;
     }
     for(let r=0;r<12;r++)vmRegs[r]=Math.max(-8,Math.min(8,vmRegs[r]));
   }
@@ -7263,6 +7512,27 @@ function executeVM(i,j,sim,d){
           const pphi68p=genome.partnerPhaseInfluence||0;
           if(pphi68p>0.001){
             vmRegs[di]=Math.cos(phase[j])*pphi68p*(k||1);
+          }
+        }break;
+        case 53:{
+          // Pe69 Layer 58: INTERACTION_DIST in plasmid VM — full parity with particle VM.
+          // Reads d/CELL (normalized interaction distance) into vmRegs[di].
+          // `d` is the 4th argument to executeVM(i,j,sim,d) — plasmid VM runs inside
+          // executeVM so `d` is in scope for the full function body.
+          const idi69p=genome.interactionDistInfluence||0;
+          if(idi69p>0.001){
+            vmRegs[di]=Math.min(1,d/CELL)*idi69p*(k||1);
+          }
+        }break;
+        case 54:{
+          // Pe70 Layer 59: FIELD1_TEMPORAL in plasmid VM — full parity with particle VM.
+          // Reads (field[cell] - field1Prev[cell]) at particle i's current position.
+          // fieldTemporalInfluence=0 → returns 0 → Pe69 exactly.
+          const f1ti70p=genome.fieldTemporalInfluence||0;
+          if(f1ti70p>0.001){
+            const tfx70p=Math.floor(px[i]/(W/FIELD_W)),tfy70p=Math.floor(py[i]/(H/FIELD_H));
+            const tfi70p=Math.max(0,Math.min(FIELD_W*FIELD_H-1,tfy70p*FIELD_W+tfx70p));
+            vmRegs[di]=(field[tfi70p]-field1Prev[tfi70p])*f1ti70p*(k||1);
           }
         }break;
       }
@@ -7735,6 +8005,29 @@ function executeClusterVM(i,j,sim,d){
           vmRegs[di]=Math.cos(phase[j])*pphi68c*(k||1);
         }
       }break;
+      case 53:{
+        // Pe69 Layer 58: INTERACTION_DIST in cluster VM — full parity with particle VM.
+        // Cluster VM runs per pair (i,j) within the cluster interaction sweep.
+        // `d` here is the inter-particle distance for this pair.
+        // Returns 0 if interactionDistInfluence is gate-closed → Pe68 exactly.
+        const idi69c=genome.interactionDistInfluence||0;
+        if(idi69c>0.001){
+          const dxc69=px[i]-px[j],dyc69=py[i]-py[j];
+          const dc69=Math.sqrt(dxc69*dxc69+dyc69*dyc69);
+          vmRegs[di]=Math.min(1,dc69/CELL)*idi69c*(k||1);
+        }
+      }break;
+      case 54:{
+        // Pe70 Layer 59: FIELD1_TEMPORAL in cluster VM — full parity with particle VM.
+        // Reads (field[cell] - field1Prev[cell]) at particle i's position.
+        // Returns 0 if fieldTemporalInfluence is gate-closed → Pe69 exactly.
+        const f1ti70c=genome.fieldTemporalInfluence||0;
+        if(f1ti70c>0.001){
+          const tfx70c=Math.floor(px[i]/(W/FIELD_W)),tfy70c=Math.floor(py[i]/(H/FIELD_H));
+          const tfi70c=Math.max(0,Math.min(FIELD_W*FIELD_H-1,tfy70c*FIELD_W+tfx70c));
+          vmRegs[di]=(field[tfi70c]-field1Prev[tfi70c])*f1ti70c*(k||1);
+        }
+      }break;
     }
     for(let r=0;r<12;r++)vmRegs[r]=Math.max(-8,Math.min(8,vmRegs[r]));
   }
@@ -8121,6 +8414,17 @@ function executeSoloVM(){
           // Pe68 Layer 57: PARTNER_PHASE in solo VM — no-op (no interaction partner in solo context).
           // Returns 0. phase[j] is not available when running without a pair partner.
           // Opcode registered here to prevent default-case fallthrough noise.
+        }break;
+        case 54:{
+          // Pe70 Layer 59: FIELD1_TEMPORAL in solo VM — reads (field[cell] - field1Prev[cell])
+          // at this particle's location. Meaningful in solo context — field1 change is a
+          // position-based signal, no interaction partner needed.
+          const f1ti70s=genome.fieldTemporalInfluence||0;
+          if(f1ti70s>0.001){
+            const tfx70s=Math.floor(px[i]/(W/FIELD_W)),tfy70s=Math.floor(py[i]/(H/FIELD_H));
+            const tfi70s=Math.max(0,Math.min(FIELD_W*FIELD_H-1,tfy70s*FIELD_W+tfx70s));
+            vmRegs[di]=(field[tfi70s]-field1Prev[tfi70s])*f1ti70s*(k||1);
+          }
         }break;
       }
       for(let r=0;r<12;r++)vmRegs[r]=Math.max(-8,Math.min(8,vmRegs[r]));
@@ -9273,7 +9577,53 @@ function loop(){
         pphTag=` | pph:${pphInProg}inst cos̄${_avgSignedPhase.toFixed(2)} i${_pphi68.toFixed(2)}`;
       }
     }
-    genEl.textContent=`gen${genome.generation} ${genome.extinctions}☠ t${genome.totalTicks} | ${clusters.length}cl(${clVMActive}vm${budCount>0?','+budCount+'bud':''}) ${livingLin}lin fit:${currentFitness.toFixed(2)} stb:${(selfModel.stability||0).toFixed(2)} | vm:${genome.vmProgram.length}inst ${nSensors}sns ${hgtEventsTotal}hgt | pop:${N}/${CAP} fld:${fieldTotal.toFixed(0)}${fTrend<-0.01?'↓':fTrend>0.01?'↑':'~'} risk:${cRisk.toFixed(2)} | ⟲${rInf.toFixed(2)} ${reflexClusters}rc${netTag}${cgTag}${uaTag}${(genome.eventLog&&genome.eventLog.length)?' ev:'+genome.eventLog.length:''}${gradTag}${mrTag}${relTag}${sigTag}${attrTag}${inscTag}${f2Tag}${ndcTag}${saiTag}${paiTag}${pdcTag}${ageTag}${pageTag}${spdTag}${pspdTag}${haiTag}${arTag}${oriTag}${freqTag}${pfTag}${pmrTag}${ptrTag}${strTag}${sphTag}${pphTag}${dissTag}`;
+    // ═══ Pe69 Layer 58: INTERACTION_DIST diagnostic ═══
+    // idiTag shows: count of opcode-53 appearances in the evolved VM program
+    //               + interactionDistInfluence gate.
+    // inst>0: the genome has evolved to use raw interaction distance — zone detection is live.
+    // inst=0: opcode 53 not yet recruited; influence gate still evolving.
+    // i→0: selection found distance self-sensing not worth the opcode slot.
+    // When live, shows the population-average interaction distance from the most recent
+    // processGrid pass — near 0.5 is uniform zone coverage; sustained low value means
+    // particles are clustering in tight-contact range; high value means marginal encounters
+    // dominate (sparse population or repulsion strategies).
+    let idiTag='';
+    const _idi69=genome.interactionDistInfluence||0;
+    if(_idi69>0.001){
+      let idiInProg=0;
+      const _vmProg69=genome.vmProgram||[];
+      for(let _pi=0;_pi<_vmProg69.length;_pi++){if(_vmProg69[_pi]&&_vmProg69[_pi][0]===53)idiInProg++;}
+      if(idiInProg>0||_idi69>0.02){
+        idiTag=` | idi:${idiInProg}inst i${_idi69.toFixed(2)}`;
+      }
+    }
+    // ═══ Pe70 Layer 59: FIELD1_TEMPORAL diagnostic ═══
+    // f1tiTag shows: count of opcode-54 appearances in the evolved VM program
+    //                + fieldTemporalInfluence gate + population-average field1 temporal signal.
+    // inst>0: the genome has evolved to use field1 rate-of-change sensing — territory pulse is live.
+    // inst=0: opcode 54 not yet recruited; influence gate still evolving.
+    // i→0: selection found field1 temporal sensing not worth the opcode slot.
+    // When live, shows the population-average |field1-field1Prev| as a measure of field activity —
+    //   near 0: field is in steady state (decay ≈ deposition) — quiet substrate
+    //   positive: field is actively churning (territory battles, deposition surges, decay fronts)
+    // Complement to the existing field level (fld:) in the main HUD line.
+    let f1tiTag='';
+    const _f1ti70=genome.fieldTemporalInfluence||0;
+    if(_f1ti70>0.001){
+      let f1tiInProg=0;
+      const _vmProg70=genome.vmProgram||[];
+      for(let _pi=0;_pi<_vmProg70.length;_pi++){if(_vmProg70[_pi]&&_vmProg70[_pi][0]===54)f1tiInProg++;}
+      if(f1tiInProg>0||_f1ti70>0.02){
+        let f1tiAbsSum=0,f1tiN=0;
+        for(let _fi=0;_fi<FIELD_W*FIELD_H;_fi++){
+          const _delta=Math.abs(field[_fi]-field1Prev[_fi]);
+          if(_delta>0.0001){f1tiAbsSum+=_delta;f1tiN++;}
+        }
+        const _avgF1Ti=f1tiN>0?f1tiAbsSum/f1tiN:0;
+        f1tiTag=` | f1ti:${f1tiInProg}inst Δ${_avgF1Ti.toFixed(3)} i${_f1ti70.toFixed(2)}`;
+      }
+    }
+    genEl.textContent=`gen${genome.generation} ${genome.extinctions}☠ t${genome.totalTicks} | ${clusters.length}cl(${clVMActive}vm${budCount>0?','+budCount+'bud':''}) ${livingLin}lin fit:${currentFitness.toFixed(2)} stb:${(selfModel.stability||0).toFixed(2)} | vm:${genome.vmProgram.length}inst ${nSensors}sns ${hgtEventsTotal}hgt | pop:${N}/${CAP} fld:${fieldTotal.toFixed(0)}${fTrend<-0.01?'↓':fTrend>0.01?'↑':'~'} risk:${cRisk.toFixed(2)} | ⟲${rInf.toFixed(2)} ${reflexClusters}rc${netTag}${cgTag}${uaTag}${(genome.eventLog&&genome.eventLog.length)?' ev:'+genome.eventLog.length:''}${gradTag}${mrTag}${relTag}${sigTag}${attrTag}${inscTag}${f2Tag}${ndcTag}${saiTag}${paiTag}${pdcTag}${ageTag}${pageTag}${spdTag}${pspdTag}${haiTag}${arTag}${oriTag}${freqTag}${pfTag}${pmrTag}${ptrTag}${strTag}${sphTag}${pphTag}${idiTag}${f1tiTag}${dissTag}`;
   }
 
   const renderEvery=N>1000?4:N>500?3:N>200?2:1;
