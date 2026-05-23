@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
-<title>Selection פ 70 — The Field Pulse</title>
+<title>Selection פ 71 — The Problem Field</title>
 <style>
 *{margin:0;padding:0;box-sizing:border-box}
 html,body{height:100%;overflow:hidden;background:#020204;touch-action:none;cursor:crosshair}
@@ -2135,6 +2135,28 @@ const fieldMemory=new Float32Array(FIELD_W*FIELD_H); // 0=virgin, higher=more hi
 const FIELD_SIG_DIMS=3; // signature dimensions per field cell
 const fieldSig=new Float32Array(FIELD_W*FIELD_H*FIELD_SIG_DIMS); // territorial signature per cell
 const fieldOwnership=new Float32Array(FIELD_W*FIELD_H); // ownership strength (0=commons, 1=fully claimed)
+// ═══ PROBLEM TOPOLOGY — each cell encodes a deterministic compute challenge ═══
+// Cells expose two integer-like parameters in [-7,7] and a target bit pattern [0..15].
+// Particles harvest additional amplitude when local VM memory reproduces the target.
+const problemA=new Int8Array(FIELD_W*FIELD_H);
+const problemB=new Int8Array(FIELD_W*FIELD_H);
+const problemTarget=new Uint8Array(FIELD_W*FIELD_H);
+
+function seedProblemTopology(){
+  for(let y=0;y<FIELD_H;y++){
+    for(let x=0;x<FIELD_W;x++){
+      const idx=y*FIELD_W+x;
+      const a=((x*3+y*5+11)%15)-7;
+      const b=((x*7+y*2+3)%15)-7;
+      problemA[idx]=a;
+      problemB[idx]=b;
+      // target is a tiny logic puzzle: rotate/xor-like mix reduced to nibble.
+      const mix=((a&15)^((b&15)<<1)^((x+y)&15)^((x*3)&15))&15;
+      problemTarget[idx]=mix;
+    }
+  }
+}
+seedProblemTopology();
 
 // ═══ INSCRIBED SUBSTRATE — cells hold particle-written programs ═══
 // Each cell has:
@@ -8250,9 +8272,20 @@ function updateParticles(){
     const lfy=Math.max(0,Math.min(FIELD_H-1,Math.floor(py[i]/(H/FIELD_H))));
     const lfIdx=lfy*FIELD_W+lfx;
     const localField=field[lfIdx];
+    const localTarget=problemTarget[lfIdx];
+    const localA=problemA[lfIdx],localB=problemB[lfIdx];
     const affinity=fieldAffinity(lfIdx,getParticleSig(i));
     localRes[i]+=localField*genome.fieldInfluence*affinity;
     amp[i]+=localField*0.0008*affinity;
+    // Problem-field reward: survival is coupled to computational correctness.
+    // pMem[0] acts as a tiny local output register; exact hit gets strongest reward.
+    const mem0=Math.floor(Math.abs(pMem[i*MEM_SIZE]))&15;
+    const err=Math.abs(mem0-localTarget);
+    const logicScore=1-Math.min(1,err/8);
+    amp[i]+=logicScore*0.0009;
+    // local parameter signal nudges tendency dimensions toward routing patterns.
+    tend[i*DIMS]+=localA*0.00002;
+    if(DIMS>1)tend[i*DIMS+1]+=localB*0.00002;
     for(let d=0;d<DIMS;d++){tend[i*DIMS+d]+=(Math.random()-0.5)*0.001;const v=tend[i*DIMS+d];if(v>1.2)tend[i*DIMS+d]=1.2;if(v<-1.2)tend[i*DIMS+d]=-1.2}
     const absencePeriod=ABSENCE_BASE+Math.sin(tick*0.0007)*180+(Math.sin(tick*0.00031)*90)|0;
     const cyclePos=tick%Math.max(200,absencePeriod);
