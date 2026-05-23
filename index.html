@@ -2182,6 +2182,8 @@ function applyProblemReward(i,lfIdx,localField){
 }
 
 window.addEventListener('keydown',e=>{
+  const tag=(e.target&&e.target.tagName)||'';
+  if(tag==='INPUT'||tag==='TEXTAREA')return;
   if(e.key==='p'||e.key==='P')problemFieldEnabled=problemFieldEnabled?0:1;
 });
 
@@ -9679,8 +9681,8 @@ function loop(){
         f1tiTag=` | f1ti:${f1tiInProg}inst Δ${_avgF1Ti.toFixed(3)} i${_f1ti70.toFixed(2)}`;
       }
     }
-    const pfieldTag=problemFieldEnabled?' pf:on':' pf:off';
-    genEl.textContent=`gen${genome.generation} ${genome.extinctions}☠ t${genome.totalTicks} | ${clusters.length}cl(${clVMActive}vm${budCount>0?','+budCount+'bud':''}) ${livingLin}lin fit:${currentFitness.toFixed(2)} stb:${(selfModel.stability||0).toFixed(2)} | vm:${genome.vmProgram.length}inst ${nSensors}sns ${hgtEventsTotal}hgt | pop:${N}/${CAP} fld:${fieldTotal.toFixed(0)}${fTrend<-0.01?'↓':fTrend>0.01?'↑':'~'} risk:${cRisk.toFixed(2)} | ⟲${rInf.toFixed(2)} ${reflexClusters}rc${netTag}${cgTag}${uaTag}${(genome.eventLog&&genome.eventLog.length)?' ev:'+genome.eventLog.length:''}${gradTag}${mrTag}${relTag}${sigTag}${attrTag}${inscTag}${f2Tag}${ndcTag}${saiTag}${paiTag}${pdcTag}${ageTag}${pageTag}${spdTag}${pspdTag}${haiTag}${arTag}${oriTag}${freqTag}${pfieldTag}${pfTag}${pmrTag}${ptrTag}${strTag}${sphTag}${pphTag}${idiTag}${f1tiTag}${dissTag}`;
+    const prbTag=problemFieldEnabled?' prb:on':' prb:off';
+    genEl.textContent=`gen${genome.generation} ${genome.extinctions}☠ t${genome.totalTicks} | ${clusters.length}cl(${clVMActive}vm${budCount>0?','+budCount+'bud':''}) ${livingLin}lin fit:${currentFitness.toFixed(2)} stb:${(selfModel.stability||0).toFixed(2)} | vm:${genome.vmProgram.length}inst ${nSensors}sns ${hgtEventsTotal}hgt | pop:${N}/${CAP} fld:${fieldTotal.toFixed(0)}${fTrend<-0.01?'↓':fTrend>0.01?'↑':'~'} risk:${cRisk.toFixed(2)} | ⟲${rInf.toFixed(2)} ${reflexClusters}rc${netTag}${cgTag}${uaTag}${(genome.eventLog&&genome.eventLog.length)?' ev:'+genome.eventLog.length:''}${gradTag}${mrTag}${relTag}${sigTag}${attrTag}${inscTag}${f2Tag}${ndcTag}${saiTag}${paiTag}${pdcTag}${ageTag}${pageTag}${spdTag}${pspdTag}${haiTag}${arTag}${oriTag}${freqTag}${prbTag}${pfTag}${pmrTag}${ptrTag}${strTag}${sphTag}${pphTag}${idiTag}${f1tiTag}${dissTag}`;
   }
 
   const renderEvery=N>1000?4:N>500?3:N>200?2:1;
