@@ -2143,6 +2143,7 @@ const fieldOwnership=new Float32Array(FIELD_W*FIELD_H); // ownership strength (0
 const problemA=new Int8Array(FIELD_W*FIELD_H);
 const problemB=new Int8Array(FIELD_W*FIELD_H);
 const problemTarget=new Uint8Array(FIELD_W*FIELD_H);
+let problemFieldEnabled=1; // user-facing safety switch (1=on, 0=off)
 const PROBLEM_REWARD_SCALE=0.00035; // amp/tick at perfect match
 const PROBLEM_MISMATCH_PENALTY=0.0002; // amp/tick at maximal mismatch
 const PROBLEM_FIELD_GATE=0.25; // local field required before problem rewards/penalties apply
@@ -2164,11 +2165,13 @@ function seedProblemTopology(){
 seedProblemTopology();
 
 function applyProblemHints(i,lfIdx){
+  if(!problemFieldEnabled)return;
   const localA=problemA[lfIdx],localB=problemB[lfIdx];
   pProblemHintA[i]=pProblemHintA[i]*0.96+localA*0.04;
   pProblemHintB[i]=pProblemHintB[i]*0.96+localB*0.04;
 }
 function applyProblemReward(i,lfIdx,localField){
+  if(!problemFieldEnabled)return;
   if(localField<=PROBLEM_FIELD_GATE)return;
   const localTarget=problemTarget[lfIdx];
   const mem0=(Math.round(pMem[i*MEM_SIZE])&15);
@@ -2177,6 +2180,10 @@ function applyProblemReward(i,lfIdx,localField){
   const logicScore=1-(nibbleErr/8);
   amp[i]+=logicScore*PROBLEM_REWARD_SCALE-(1-logicScore)*PROBLEM_MISMATCH_PENALTY;
 }
+
+window.addEventListener('keydown',e=>{
+  if(e.key==='p'||e.key==='P')problemFieldEnabled=problemFieldEnabled?0:1;
+});
 
 // ═══ INSCRIBED SUBSTRATE — cells hold particle-written programs ═══
 // Each cell has:
@@ -9672,7 +9679,8 @@ function loop(){
         f1tiTag=` | f1ti:${f1tiInProg}inst Δ${_avgF1Ti.toFixed(3)} i${_f1ti70.toFixed(2)}`;
       }
     }
-    genEl.textContent=`gen${genome.generation} ${genome.extinctions}☠ t${genome.totalTicks} | ${clusters.length}cl(${clVMActive}vm${budCount>0?','+budCount+'bud':''}) ${livingLin}lin fit:${currentFitness.toFixed(2)} stb:${(selfModel.stability||0).toFixed(2)} | vm:${genome.vmProgram.length}inst ${nSensors}sns ${hgtEventsTotal}hgt | pop:${N}/${CAP} fld:${fieldTotal.toFixed(0)}${fTrend<-0.01?'↓':fTrend>0.01?'↑':'~'} risk:${cRisk.toFixed(2)} | ⟲${rInf.toFixed(2)} ${reflexClusters}rc${netTag}${cgTag}${uaTag}${(genome.eventLog&&genome.eventLog.length)?' ev:'+genome.eventLog.length:''}${gradTag}${mrTag}${relTag}${sigTag}${attrTag}${inscTag}${f2Tag}${ndcTag}${saiTag}${paiTag}${pdcTag}${ageTag}${pageTag}${spdTag}${pspdTag}${haiTag}${arTag}${oriTag}${freqTag}${pfTag}${pmrTag}${ptrTag}${strTag}${sphTag}${pphTag}${idiTag}${f1tiTag}${dissTag}`;
+    const pfieldTag=problemFieldEnabled?' pf:on':' pf:off';
+    genEl.textContent=`gen${genome.generation} ${genome.extinctions}☠ t${genome.totalTicks} | ${clusters.length}cl(${clVMActive}vm${budCount>0?','+budCount+'bud':''}) ${livingLin}lin fit:${currentFitness.toFixed(2)} stb:${(selfModel.stability||0).toFixed(2)} | vm:${genome.vmProgram.length}inst ${nSensors}sns ${hgtEventsTotal}hgt | pop:${N}/${CAP} fld:${fieldTotal.toFixed(0)}${fTrend<-0.01?'↓':fTrend>0.01?'↑':'~'} risk:${cRisk.toFixed(2)} | ⟲${rInf.toFixed(2)} ${reflexClusters}rc${netTag}${cgTag}${uaTag}${(genome.eventLog&&genome.eventLog.length)?' ev:'+genome.eventLog.length:''}${gradTag}${mrTag}${relTag}${sigTag}${attrTag}${inscTag}${f2Tag}${ndcTag}${saiTag}${paiTag}${pdcTag}${ageTag}${pageTag}${spdTag}${pspdTag}${haiTag}${arTag}${oriTag}${freqTag}${pfieldTag}${pfTag}${pmrTag}${ptrTag}${strTag}${sphTag}${pphTag}${idiTag}${f1tiTag}${dissTag}`;
   }
 
   const renderEvery=N>1000?4:N>500?3:N>200?2:1;
