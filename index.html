@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
-<title>Selection פ 70 — The Field Pulse</title>
+<title>Selection פ 71 — The Problem Field</title>
 <style>
 *{margin:0;padding:0;box-sizing:border-box}
 html,body{height:100%;overflow:hidden;background:#020204;touch-action:none;cursor:crosshair}
@@ -264,7 +264,7 @@ const DIMS=5; // dim 4 is blank — no hardcoded role. System decides what it me
 const MEM_SIZE=8; // per-particle persistent memory. Particles become stateful agents.
 const MAX_PLASMID=4; // max instructions per particle's personal mobile DNA
 const PLASMID_SLOTS=MAX_PLASMID*4; // each instruction is [op,src,dst,k] = 4 values
-const OPCODE_COUNT=55; // VM opcodes 0..54: Pe61 adds ORBIT_RATE (45); Pe62 adds SELF_FREQ (46); Pe63 adds PARTNER_FREQ (47); Pe64 adds PARTNER_MEM_READ (48); Pe65 adds PARTNER_TEND_READ (49); Pe66 adds SELF_TEND_READ (50); Pe67 adds SELF_PHASE (51); Pe68 adds PARTNER_PHASE (52); Pe69 adds INTERACTION_DIST (53); Pe70 adds FIELD1_TEMPORAL (54)
+const OPCODE_COUNT=57; // VM opcodes 0..56 (Pe71): +55 READ_PROBLEM_TARGET, +56 READ_PROBLEM_HINT_DELTA
 const FIELD_W=40;
 const FIELD_H=40;
 let FIELD_DECAY=0.982;   // natural fade — Pe22b: now genome-driven, can evolve
@@ -2117,6 +2117,8 @@ const collapse=new Float32Array(CAP);
 const pR=new Float32Array(CAP),pG=new Float32Array(CAP),pB=new Float32Array(CAP);
 const pSz=new Float32Array(CAP);
 const pMem=new Float32Array(CAP*MEM_SIZE); // per-particle memory: counters, timers, accumulators
+const pProblemHintA=new Float32Array(CAP); // staged local problem topology hint A
+const pProblemHintB=new Float32Array(CAP); // staged local problem topology hint B
 // ═══ BROADCAST REGISTERS — evolved signaling between particles ═══
 // Each particle has 2 broadcast slots. Content is entirely evolved.
 // During interaction, particles can read each other's broadcasts.
@@ -2135,6 +2137,55 @@ const fieldMemory=new Float32Array(FIELD_W*FIELD_H); // 0=virgin, higher=more hi
 const FIELD_SIG_DIMS=3; // signature dimensions per field cell
 const fieldSig=new Float32Array(FIELD_W*FIELD_H*FIELD_SIG_DIMS); // territorial signature per cell
 const fieldOwnership=new Float32Array(FIELD_W*FIELD_H); // ownership strength (0=commons, 1=fully claimed)
+// ═══ PROBLEM TOPOLOGY — each cell encodes a deterministic compute challenge ═══
+// Cells expose two integer-like parameters in [-7,7] and a target bit pattern [0..15].
+// Particles harvest additional amplitude when local VM memory reproduces the target.
+const problemA=new Int8Array(FIELD_W*FIELD_H);
+const problemB=new Int8Array(FIELD_W*FIELD_H);
+const problemTarget=new Uint8Array(FIELD_W*FIELD_H);
+let problemFieldEnabled=1; // user-facing safety switch (1=on, 0=off)
+const PROBLEM_REWARD_SCALE=0.00035; // amp/tick at perfect match
+const PROBLEM_MISMATCH_PENALTY=0.0002; // amp/tick at maximal mismatch
+const PROBLEM_FIELD_GATE=0.25; // local field required before problem rewards/penalties apply
+
+function seedProblemTopology(){
+  for(let y=0;y<FIELD_H;y++){
+    for(let x=0;x<FIELD_W;x++){
+      const idx=y*FIELD_W+x;
+      const a=((x*3+y*5+11)%15)-7;
+      const b=((x*7+y*2+3)%15)-7;
+      problemA[idx]=a;
+      problemB[idx]=b;
+      // target is a tiny logic puzzle: rotate/xor-like mix reduced to nibble.
+      const mix=((a&15)^((b&15)<<1)^((x+y)&15)^((x*3)&15))&15;
+      problemTarget[idx]=mix;
+    }
+  }
+}
+seedProblemTopology();
+
+function applyProblemHints(i,lfIdx){
+  if(!problemFieldEnabled)return;
+  const localA=problemA[lfIdx],localB=problemB[lfIdx];
+  pProblemHintA[i]=pProblemHintA[i]*0.96+localA*0.04;
+  pProblemHintB[i]=pProblemHintB[i]*0.96+localB*0.04;
+}
+function applyProblemReward(i,lfIdx,localField){
+  if(!problemFieldEnabled)return;
+  if(localField<=PROBLEM_FIELD_GATE)return;
+  const localTarget=problemTarget[lfIdx];
+  const mem0=(Math.round(pMem[i*MEM_SIZE])&15);
+  const directErr=Math.abs(mem0-localTarget);
+  const nibbleErr=Math.min(directErr,16-directErr);
+  const logicScore=1-(nibbleErr/8);
+  amp[i]+=logicScore*PROBLEM_REWARD_SCALE-(1-logicScore)*PROBLEM_MISMATCH_PENALTY;
+}
+
+window.addEventListener('keydown',e=>{
+  const tag=(e.target&&e.target.tagName)||'';
+  if(tag==='INPUT'||tag==='TEXTAREA')return;
+  if(e.key==='p'||e.key==='P')problemFieldEnabled=problemFieldEnabled?0:1;
+});
 
 // ═══ INSCRIBED SUBSTRATE — cells hold particle-written programs ═══
 // Each cell has:
@@ -2371,7 +2422,8 @@ function encodeGenome(){
     ]):null,
     sbc:+(genome.shadowBankChurn||0.5).toFixed(3),
     scw:+(genome.scenarioCreditWeight||0).toFixed(3), // Pe29 Layer 19
-    ser:+(genome.shadowExploreRate||0.5).toFixed(3) // Pe30b: explore rate
+    ser:+(genome.shadowExploreRate||0.5).toFixed(3), // Pe30b: explore rate
+    pf:problemFieldEnabled?1:0 // Pe71: persist operator problem-field toggle state
   };
   return btoa(JSON.stringify(g));
 }
@@ -2531,6 +2583,7 @@ function decodeGenome(data){
     if(typeof g.sbc==='number')genome.shadowBankChurn=g.sbc;
     if(typeof g.scw==='number')genome.scenarioCreditWeight=g.scw; // Pe29 Layer 19
     if(typeof g.ser==='number')genome.shadowExploreRate=g.ser; // Pe30b: explore rate
+    if(typeof g.pf==='number')problemFieldEnabled=g.pf?1:0; // Pe71: restore toggle state
     sanitizeGenome();
     return true;
   }catch(e){return false}
@@ -3991,6 +4044,8 @@ function profileVM(){
           const f1tiProf=genome.fieldTemporalInfluence||0;
           vmRegs[di]=0.03*f1tiProf*(k||1);
         }break;
+        case 55:vmRegs[di]=0.5*(k||1);break; // READ_PROBLEM_TARGET (Pe71) stub
+        case 56:vmRegs[di]=0;break;          // READ_PROBLEM_HINT_DELTA (Pe71) stub
       }
       for(let r=0;r<12;r++)vmRegs[r]=Math.max(-8,Math.min(8,vmRegs[r]));
     }
@@ -6367,6 +6422,9 @@ function executeVM(i,j,sim,d){
   vmRegs[3]=energy;
 
   for(let m=0;m<MEM_SIZE;m++)vmRegs[4+m]=pMem[i*MEM_SIZE+m];
+  // Problem-field topology hints are injected out-of-band to avoid hard memory coupling.
+  vmRegs[10]=Math.max(-8,Math.min(8,vmRegs[10]+pProblemHintA[i]*0.2));
+  vmRegs[11]=Math.max(-8,Math.min(8,vmRegs[11]+pProblemHintB[i]*0.2));
 
   const reflexInf=genome.reflexInfluence||0;
   if(reflexInf>0.001){
@@ -7160,6 +7218,14 @@ function executeVM(i,j,sim,d){
           vmRegs[di]=(field[tfi70]-field1Prev[tfi70])*f1ti70*(k||1);
         }
       }break;
+      case 55:{
+        const tfx71=Math.floor(px[i]/(W/FIELD_W)),tfy71=Math.floor(py[i]/(H/FIELD_H));
+        const tfi71=Math.max(0,Math.min(FIELD_W*FIELD_H-1,tfy71*FIELD_W+tfx71));
+        vmRegs[di]=(problemTarget[tfi71]/15)*(k||1);
+      }break;
+      case 56:{
+        vmRegs[di]=(pProblemHintA[i]-pProblemHintB[i])*0.25*(k||1);
+      }break;
     }
     for(let r=0;r<12;r++)vmRegs[r]=Math.max(-8,Math.min(8,vmRegs[r]));
   }
@@ -7535,6 +7601,12 @@ function executeVM(i,j,sim,d){
             vmRegs[di]=(field[tfi70p]-field1Prev[tfi70p])*f1ti70p*(k||1);
           }
         }break;
+        case 55:{
+          const tfx71p=Math.floor(px[i]/(W/FIELD_W)),tfy71p=Math.floor(py[i]/(H/FIELD_H));
+          const tfi71p=Math.max(0,Math.min(FIELD_W*FIELD_H-1,tfy71p*FIELD_W+tfx71p));
+          vmRegs[di]=(problemTarget[tfi71p]/15)*(k||1);
+        }break;
+        case 56:vmRegs[di]=(pProblemHintA[i]-pProblemHintB[i])*0.25*(k||1);break;
       }
       for(let r=0;r<12;r++)vmRegs[r]=Math.max(-8,Math.min(8,vmRegs[r]));
     }
@@ -8028,6 +8100,12 @@ function executeClusterVM(i,j,sim,d){
           vmRegs[di]=(field[tfi70c]-field1Prev[tfi70c])*f1ti70c*(k||1);
         }
       }break;
+      case 55:{
+        const tfx71c=Math.floor(px[i]/(W/FIELD_W)),tfy71c=Math.floor(py[i]/(H/FIELD_H));
+        const tfi71c=Math.max(0,Math.min(FIELD_W*FIELD_H-1,tfy71c*FIELD_W+tfx71c));
+        vmRegs[di]=(problemTarget[tfi71c]/15)*(k||1);
+      }break;
+      case 56:vmRegs[di]=(pProblemHintA[i]-pProblemHintB[i])*0.25*(k||1);break;
     }
     for(let r=0;r<12;r++)vmRegs[r]=Math.max(-8,Math.min(8,vmRegs[r]));
   }
@@ -8253,6 +8331,8 @@ function updateParticles(){
     const affinity=fieldAffinity(lfIdx,getParticleSig(i));
     localRes[i]+=localField*genome.fieldInfluence*affinity;
     amp[i]+=localField*0.0008*affinity;
+    applyProblemReward(i,lfIdx,localField);
+    applyProblemHints(i,lfIdx);
     for(let d=0;d<DIMS;d++){tend[i*DIMS+d]+=(Math.random()-0.5)*0.001;const v=tend[i*DIMS+d];if(v>1.2)tend[i*DIMS+d]=1.2;if(v<-1.2)tend[i*DIMS+d]=-1.2}
     const absencePeriod=ABSENCE_BASE+Math.sin(tick*0.0007)*180+(Math.sin(tick*0.00031)*90)|0;
     const cyclePos=tick%Math.max(200,absencePeriod);
@@ -8309,6 +8389,8 @@ function executeSoloVM(){
     vmRegs[3]=amp[i];
 
     for(let m=0;m<MEM_SIZE;m++)vmRegs[4+m]=pMem[i*MEM_SIZE+m];
+    vmRegs[10]=Math.max(-8,Math.min(8,vmRegs[10]+pProblemHintA[i]*0.2));
+    vmRegs[11]=Math.max(-8,Math.min(8,vmRegs[11]+pProblemHintB[i]*0.2));
 
     const reflexInf=genome.reflexInfluence||0;
     if(reflexInf>0.001){
@@ -8426,6 +8508,12 @@ function executeSoloVM(){
             vmRegs[di]=(field[tfi70s]-field1Prev[tfi70s])*f1ti70s*(k||1);
           }
         }break;
+        case 55:{
+          const tfx71s=Math.floor(px[i]/(W/FIELD_W)),tfy71s=Math.floor(py[i]/(H/FIELD_H));
+          const tfi71s=Math.max(0,Math.min(FIELD_W*FIELD_H-1,tfy71s*FIELD_W+tfx71s));
+          vmRegs[di]=(problemTarget[tfi71s]/15)*(k||1);
+        }break;
+        case 56:vmRegs[di]=(pProblemHintA[i]-pProblemHintB[i])*0.25*(k||1);break;
       }
       for(let r=0;r<12;r++)vmRegs[r]=Math.max(-8,Math.min(8,vmRegs[r]));
     }
@@ -9623,7 +9711,8 @@ function loop(){
         f1tiTag=` | f1ti:${f1tiInProg}inst Δ${_avgF1Ti.toFixed(3)} i${_f1ti70.toFixed(2)}`;
       }
     }
-    genEl.textContent=`gen${genome.generation} ${genome.extinctions}☠ t${genome.totalTicks} | ${clusters.length}cl(${clVMActive}vm${budCount>0?','+budCount+'bud':''}) ${livingLin}lin fit:${currentFitness.toFixed(2)} stb:${(selfModel.stability||0).toFixed(2)} | vm:${genome.vmProgram.length}inst ${nSensors}sns ${hgtEventsTotal}hgt | pop:${N}/${CAP} fld:${fieldTotal.toFixed(0)}${fTrend<-0.01?'↓':fTrend>0.01?'↑':'~'} risk:${cRisk.toFixed(2)} | ⟲${rInf.toFixed(2)} ${reflexClusters}rc${netTag}${cgTag}${uaTag}${(genome.eventLog&&genome.eventLog.length)?' ev:'+genome.eventLog.length:''}${gradTag}${mrTag}${relTag}${sigTag}${attrTag}${inscTag}${f2Tag}${ndcTag}${saiTag}${paiTag}${pdcTag}${ageTag}${pageTag}${spdTag}${pspdTag}${haiTag}${arTag}${oriTag}${freqTag}${pfTag}${pmrTag}${ptrTag}${strTag}${sphTag}${pphTag}${idiTag}${f1tiTag}${dissTag}`;
+    const prbTag=problemFieldEnabled?' prb:on':' prb:off';
+    genEl.textContent=`gen${genome.generation} ${genome.extinctions}☠ t${genome.totalTicks} | ${clusters.length}cl(${clVMActive}vm${budCount>0?','+budCount+'bud':''}) ${livingLin}lin fit:${currentFitness.toFixed(2)} stb:${(selfModel.stability||0).toFixed(2)} | vm:${genome.vmProgram.length}inst ${nSensors}sns ${hgtEventsTotal}hgt | pop:${N}/${CAP} fld:${fieldTotal.toFixed(0)}${fTrend<-0.01?'↓':fTrend>0.01?'↑':'~'} risk:${cRisk.toFixed(2)} | ⟲${rInf.toFixed(2)} ${reflexClusters}rc${netTag}${cgTag}${uaTag}${(genome.eventLog&&genome.eventLog.length)?' ev:'+genome.eventLog.length:''}${gradTag}${mrTag}${relTag}${sigTag}${attrTag}${inscTag}${f2Tag}${ndcTag}${saiTag}${paiTag}${pdcTag}${ageTag}${pageTag}${spdTag}${pspdTag}${haiTag}${arTag}${oriTag}${freqTag}${prbTag}${pfTag}${pmrTag}${ptrTag}${strTag}${sphTag}${pphTag}${idiTag}${f1tiTag}${dissTag}`;
   }
 
   const renderEvery=N>1000?4:N>500?3:N>200?2:1;
