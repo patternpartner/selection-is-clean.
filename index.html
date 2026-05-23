@@ -2141,6 +2141,8 @@ const fieldOwnership=new Float32Array(FIELD_W*FIELD_H); // ownership strength (0
 const problemA=new Int8Array(FIELD_W*FIELD_H);
 const problemB=new Int8Array(FIELD_W*FIELD_H);
 const problemTarget=new Uint8Array(FIELD_W*FIELD_H);
+const PROBLEM_REWARD_SCALE=0.00045; // amp/tick at perfect match
+const PROBLEM_MISMATCH_PENALTY=0.00015; // amp/tick at maximal mismatch
 
 function seedProblemTopology(){
   for(let y=0;y<FIELD_H;y++){
@@ -8280,12 +8282,15 @@ function updateParticles(){
     // Problem-field reward: survival is coupled to computational correctness.
     // pMem[0] acts as a tiny local output register; exact hit gets strongest reward.
     const mem0=Math.floor(Math.abs(pMem[i*MEM_SIZE]))&15;
-    const err=Math.abs(mem0-localTarget);
-    const logicScore=1-Math.min(1,err/8);
-    amp[i]+=logicScore*0.0009;
-    // local parameter signal nudges tendency dimensions toward routing patterns.
-    tend[i*DIMS]+=localA*0.00002;
-    if(DIMS>1)tend[i*DIMS+1]+=localB*0.00002;
+    // Ring distance in 4-bit space: 15 and 0 are close, not far.
+    const directErr=Math.abs(mem0-localTarget);
+    const nibbleErr=Math.min(directErr,16-directErr);
+    const logicScore=1-(nibbleErr/8); // 1=exact hit, 0=opposite nibble
+    amp[i]+=logicScore*PROBLEM_REWARD_SCALE-(1-logicScore)*PROBLEM_MISMATCH_PENALTY;
+    // Problem parameters become read-only topology hints, not direct drift forces.
+    // They are exposed to VM logic through memory staging to avoid hard-coded steering.
+    pMem[i*MEM_SIZE+1]=localA;
+    if(MEM_SIZE>2)pMem[i*MEM_SIZE+2]=localB;
     for(let d=0;d<DIMS;d++){tend[i*DIMS+d]+=(Math.random()-0.5)*0.001;const v=tend[i*DIMS+d];if(v>1.2)tend[i*DIMS+d]=1.2;if(v<-1.2)tend[i*DIMS+d]=-1.2}
     const absencePeriod=ABSENCE_BASE+Math.sin(tick*0.0007)*180+(Math.sin(tick*0.00031)*90)|0;
     const cyclePos=tick%Math.max(200,absencePeriod);
