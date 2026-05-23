@@ -2163,6 +2163,21 @@ function seedProblemTopology(){
 }
 seedProblemTopology();
 
+function applyProblemHints(i,lfIdx){
+  const localA=problemA[lfIdx],localB=problemB[lfIdx];
+  pProblemHintA[i]=pProblemHintA[i]*0.96+localA*0.04;
+  pProblemHintB[i]=pProblemHintB[i]*0.96+localB*0.04;
+}
+function applyProblemReward(i,lfIdx,localField){
+  if(localField<=PROBLEM_FIELD_GATE)return;
+  const localTarget=problemTarget[lfIdx];
+  const mem0=(Math.round(pMem[i*MEM_SIZE])&15);
+  const directErr=Math.abs(mem0-localTarget);
+  const nibbleErr=Math.min(directErr,16-directErr);
+  const logicScore=1-(nibbleErr/8);
+  amp[i]+=logicScore*PROBLEM_REWARD_SCALE-(1-logicScore)*PROBLEM_MISMATCH_PENALTY;
+}
+
 // ═══ INSCRIBED SUBSTRATE — cells hold particle-written programs ═══
 // Each cell has:
 //  - field[] magnitude (the primary substrate signal, existing)
@@ -8280,25 +8295,11 @@ function updateParticles(){
     const lfy=Math.max(0,Math.min(FIELD_H-1,Math.floor(py[i]/(H/FIELD_H))));
     const lfIdx=lfy*FIELD_W+lfx;
     const localField=field[lfIdx];
-    const localTarget=problemTarget[lfIdx];
-    const localA=problemA[lfIdx],localB=problemB[lfIdx];
     const affinity=fieldAffinity(lfIdx,getParticleSig(i));
     localRes[i]+=localField*genome.fieldInfluence*affinity;
     amp[i]+=localField*0.0008*affinity;
-    // Problem-field reward: survival is coupled to computational correctness,
-    // but only in sufficiently "active" substrate so cold zones cannot mint free amp.
-    if(localField>PROBLEM_FIELD_GATE){
-      // pMem[0] acts as a tiny local output register; signed values fold into nibble.
-      const mem0=(Math.round(pMem[i*MEM_SIZE])&15);
-      // Ring distance in 4-bit space: 15 and 0 are close, not far.
-      const directErr=Math.abs(mem0-localTarget);
-      const nibbleErr=Math.min(directErr,16-directErr);
-      const logicScore=1-(nibbleErr/8); // 1=exact hit, 0=opposite nibble
-      amp[i]+=logicScore*PROBLEM_REWARD_SCALE-(1-logicScore)*PROBLEM_MISMATCH_PENALTY;
-    }
-    // Problem parameters are staged out-of-band to avoid clobbering VM working memory.
-    pProblemHintA[i]=pProblemHintA[i]*0.96+localA*0.04;
-    pProblemHintB[i]=pProblemHintB[i]*0.96+localB*0.04;
+    applyProblemReward(i,lfIdx,localField);
+    applyProblemHints(i,lfIdx);
     for(let d=0;d<DIMS;d++){tend[i*DIMS+d]+=(Math.random()-0.5)*0.001;const v=tend[i*DIMS+d];if(v>1.2)tend[i*DIMS+d]=1.2;if(v<-1.2)tend[i*DIMS+d]=-1.2}
     const absencePeriod=ABSENCE_BASE+Math.sin(tick*0.0007)*180+(Math.sin(tick*0.00031)*90)|0;
     const cyclePos=tick%Math.max(200,absencePeriod);
