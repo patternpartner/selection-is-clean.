@@ -6229,7 +6229,7 @@ function sanitizeGenome(){
   if(genome.fitnessMirrorBias===undefined)genome.fitnessMirrorBias=0.05;
   genome.fitnessMirrorBias=Math.max(0,Math.min(1,finiteOr(genome.fitnessMirrorBias,0.05)));                       // Pe130 Layer 119
   if(genome.constraintWeight===undefined)genome.constraintWeight=0.3;
-  genome.constraintWeight=Math.max(0,Math.min(2,finiteOr(genome.constraintWeight,0.3)));                           // Pe144 Layer 133
+  genome.constraintWeight=Math.max(0,Math.min(4,finiteOr(genome.constraintWeight,0.3)));                           // Pe144 Layer 133 (ceiling raised 2→4)
   {
     const src=(genome.metaCredit&&typeof genome.metaCredit==='object')?genome.metaCredit:{};
     const fresh={};
@@ -9815,7 +9815,7 @@ function mutateGenome(){
   // the integration's intensity. atrophyRate (Pe40) is allowed to decay this toward 0
   // since it's in ATROPHY_SAFE — if integration proves harmful, the gate retires itself.
   genome.fitnessMirrorBias=Math.max(0,Math.min(1,metaMaybe(genome.fitnessMirrorBias||0,0.02,'fitnessMirrorBias'))); // Pe130 Layer 119
-  genome.constraintWeight=Math.max(0,Math.min(2,metaMaybe(genome.constraintWeight||0.3,0.05,'constraintWeight'))); // Pe144 Layer 133
+  genome.constraintWeight=Math.max(0,Math.min(4,metaMaybe(genome.constraintWeight||0.3,0.05,'constraintWeight'))); // Pe144 Layer 133 (ceiling raised 2→4)
 
   // ═══ Pe26 Layer 16c: CLUSTER UPWARD SIGNAL injection ═══
   // Drain the upstream buffer — soft-inject successful cluster motifs into the global VM.
