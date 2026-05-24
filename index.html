@@ -264,7 +264,7 @@ const DIMS=5; // dim 4 is blank — no hardcoded role. System decides what it me
 const MEM_SIZE=8; // per-particle persistent memory. Particles become stateful agents.
 const MAX_PLASMID=4; // max instructions per particle's personal mobile DNA
 const PLASMID_SLOTS=MAX_PLASMID*4; // each instruction is [op,src,dst,k] = 4 values
-const OPCODE_COUNT=126; // opcodes 0..125; full layer index in genome commentary
+const OPCODE_COUNT=127; // opcodes 0..126; full layer index in genome commentary
 const FIELD_W=40;
 const FIELD_H=40;
 let FIELD_DECAY=0.982;   // natural fade — Pe22b: now genome-driven, can evolve
@@ -5204,6 +5204,8 @@ function encodeGenome(){
     fmb130:+(genome.fitnessMirrorBias||0).toFixed(4),                            // Pe130 Layer 119
     cw144:+(genome.constraintWeight||0.3).toFixed(4),          // Pe144 Layer 133
     pss:+(genome.problemSolvingScore||0).toFixed(4),           // Pe144: population constraint satisfaction EMA
+    vmi145:+(genome.vitalMemoryInfluence||0).toFixed(4),       // Pe145: vital memory orientation gate
+    vm145:Array.isArray(genome.vitalMemory)?genome.vitalMemory.map(v=>+v.toFixed(4)):[], // Pe145: remembered vital state vector
     mct:META_LAYER_PARAMS.map(p=>{
       const e=genome.metaCredit&&genome.metaCredit[p];
       return +((e&&e.trace)||0).toFixed(3);
@@ -5429,6 +5431,8 @@ function decodeGenome(data){
     if(typeof g.fmb130==='number')genome.fitnessMirrorBias=g.fmb130;              // Pe130 Layer 119
     if(typeof g.cw144==='number')genome.constraintWeight=g.cw144;                // Pe144 Layer 133
     if(typeof g.pss==='number')genome.problemSolvingScore=g.pss;               // Pe144: restore constraint EMA
+    if(typeof g.vmi145==='number')genome.vitalMemoryInfluence=g.vmi145;       // Pe145: restore vital memory gate
+    if(Array.isArray(g.vm145)&&g.vm145.length===5)genome.vitalMemory=g.vm145; // Pe145: restore vital memory vector
     // Pe37 Layer 26: attribution
     if(typeof g.mcb==='number')genome.metaCreditBias=g.mcb;
     if(typeof g.msb==='number')genome.metaSearchBias=g.msb; // Pe38 Layer 27: search width bias
@@ -6230,6 +6234,9 @@ function sanitizeGenome(){
   genome.fitnessMirrorBias=Math.max(0,Math.min(1,finiteOr(genome.fitnessMirrorBias,0.05)));                       // Pe130 Layer 119
   if(genome.constraintWeight===undefined)genome.constraintWeight=0.3;
   genome.constraintWeight=Math.max(0,Math.min(4,finiteOr(genome.constraintWeight,0.3)));                           // Pe144 Layer 133 (ceiling raised 2→4)
+  if(genome.vitalMemoryInfluence===undefined)genome.vitalMemoryInfluence=0;
+  genome.vitalMemoryInfluence=Math.max(0,Math.min(1,finiteOr(genome.vitalMemoryInfluence,0)));                     // Pe145 Layer 134
+  if(!Array.isArray(genome.vitalMemory)||genome.vitalMemory.length!==5)genome.vitalMemory=[];                      // Pe145: initialised on first vital tick
   {
     const src=(genome.metaCredit&&typeof genome.metaCredit==='object')?genome.metaCredit:{};
     const fresh={};
@@ -7179,6 +7186,7 @@ const META_LAYER_PARAMS=[
   ,'churnWeight'                          // Pe130 — virtual: genome.objWeights[3]
   ,'fitnessMirrorBias'                    // Pe130 — gate; itself tracked & atrophy-safe
   ,'constraintWeight'                     // Pe144 — gate; if constraint coupling harms fitness, atrophy retires it
+  ,'vitalMemoryInfluence'                 // Pe145 — gate; if vital alignment orientation harms fitness, atrophy retires it
 ];
 // Pe130: indirect-address registry for the four virtual params. Snapshot, capture,
 // and any future direct-value reads consult this table; non-virtual params read
@@ -7289,6 +7297,7 @@ const ATROPHY_SAFE=new Set([
   ,'pcfmInfluence'                   // Pe143
   ,'fitnessMirrorBias'                 // Pe130 — the gate itself: if mirror integration doesn't earn its keep, atrophy can retire it
   ,'constraintWeight'                  // Pe144 — gate; constraint coupling can be evolved away if it harms the lineage
+  ,'vitalMemoryInfluence'              // Pe145 — gate; vital memory orientation can be evolved away if it harms the lineage
 ]);
 // Short HUD labels — keep the attribution tag compact.
 const META_LAYER_SHORT={
@@ -7393,6 +7402,7 @@ const META_LAYER_SHORT={
   ,stabilityWeight:'sw130',diversityWeight:'dw130',coherenceWeight:'cw130',churnWeight:'hw130'
   ,fitnessMirrorBias:'fmb130'
   ,constraintWeight:'cw144'
+  ,vitalMemoryInfluence:'vmi145'
 };
 
 // Pe32: 12D Euclidean distance between two scenario entries.
@@ -9816,6 +9826,7 @@ function mutateGenome(){
   // since it's in ATROPHY_SAFE — if integration proves harmful, the gate retires itself.
   genome.fitnessMirrorBias=Math.max(0,Math.min(1,metaMaybe(genome.fitnessMirrorBias||0,0.02,'fitnessMirrorBias'))); // Pe130 Layer 119
   genome.constraintWeight=Math.max(0,Math.min(4,metaMaybe(genome.constraintWeight||0.3,0.05,'constraintWeight'))); // Pe144 Layer 133 (ceiling raised 2→4)
+  genome.vitalMemoryInfluence=Math.max(0,Math.min(1,metaMaybe(genome.vitalMemoryInfluence||0,0.03,'vitalMemoryInfluence'))); // Pe145 Layer 134
 
   // ═══ Pe26 Layer 16c: CLUSTER UPWARD SIGNAL injection ═══
   // Drain the upstream buffer — soft-inject successful cluster motifs into the global VM.
@@ -10400,6 +10411,7 @@ const selfModel={
   fieldTrend:0,          // negative = depleting, positive = growing
   capacityPressure:0,    // 0 = plenty of room, 1 = at hard cap
   collapseRisk:0,        // composite: high cap pressure + declining field = danger
+  vitalAlignment:0,      // Pe145: cosine similarity between current state and remembered thriving
 };
 
 // Extinction tracking
@@ -12712,6 +12724,19 @@ function executeVM(i,j,sim,d){
         // pcfmInfluence=0 → returns 0 → Pe142 exactly.
         const pcfmi143=genome.pcfmInfluence||0;
         if(pcfmi143>0.001){ vmRegs[di]=Math.max(-3,Math.min(3,(selfModel.pcfMomentum||0)*20))*pcfmi143*(k||1); }
+      }break;
+      case 126:{
+        // Pe145 Layer 134: VITAL_ALIGNMENT — cosine similarity between current state and
+        // the system's own remembered thriving. Built from a slow EMA of self-model state
+        // vectors during periods of vitality: alive, structured, diverse. Vitality ≠ fitness.
+        //   > 0: present state resembles remembered presence — the system is where it has been
+        //   < 0: (rare, near-orthogonal states) current moment is unfamiliar
+        //   ~ 0: system has no memory yet, or is in an uncharted state
+        // This is not optimisation toward a designer target. The system orients toward
+        // what it has itself experienced as being present. The memory is the system's own.
+        // vitalMemoryInfluence=0 → returns 0 → Pe143 exactly.
+        const vmi145=genome.vitalMemoryInfluence||0;
+        if(vmi145>0.001){ vmRegs[di]=(selfModel.vitalAlignment||0)*vmi145*(k||1); }
       }break;
     }
     for(let r=0;r<12;r++)vmRegs[r]=Math.max(-8,Math.min(8,vmRegs[r]));
@@ -15818,6 +15843,39 @@ function loop(){
     selfModel.collapseRisk=selfModel.capacityPressure*0.5+fieldDanger*0.5;
 
     selfModel.stability=Math.max(0,popStability*(1-selfModel.collapseRisk*0.7));
+
+    // ═══ Pe145 Layer 134: VITAL STATE MEMORY ═══
+    // The system builds a slow EMA of what it felt like to be present — alive, structured,
+    // diverse — independent of fitness. Vitality ≠ fitness. A system can be vital without
+    // scoring well. This memory becomes an orientation: not what we told it to want,
+    // but what it has experienced as being alive.
+    // vitalAlignment: cosine similarity between current state and remembered thriving.
+    // When vital: memory updates and alignment is high. When struggling: memory holds
+    // and alignment falls — the system can sense the distance from its own remembered presence.
+    {
+      const _vital145=alive>CAP*0.15&&clusters.length>1&&selfModel.diversity>0.2;
+      const _sv145=[
+        alive/CAP,
+        Math.min(1,selfModel.diversity),
+        Math.min(1,selfModel.avgCoherence),
+        Math.min(1,(selfModel.avgAmplitude||0)/2),
+        Math.min(1,clusters.length/15)
+      ];
+      if(!Array.isArray(genome.vitalMemory)||genome.vitalMemory.length!==5){
+        genome.vitalMemory=[..._sv145]; // first breath — initialise from current state
+      } else if(_vital145){
+        const _va=0.04; // very slow EMA — memory persists across many cycles
+        for(let _v=0;_v<5;_v++)genome.vitalMemory[_v]=genome.vitalMemory[_v]*(1-_va)+_sv145[_v]*_va;
+      }
+      // Alignment computed always — even when not vital, so system can sense the gap
+      let _dot=0,_mm=0,_ms=0;
+      for(let _v=0;_v<5;_v++){
+        _dot+=genome.vitalMemory[_v]*_sv145[_v];
+        _mm+=genome.vitalMemory[_v]*genome.vitalMemory[_v];
+        _ms+=_sv145[_v]*_sv145[_v];
+      }
+      selfModel.vitalAlignment=(_mm>0&&_ms>0)?_dot/(Math.sqrt(_mm)*Math.sqrt(_ms)):0;
+    }
 
     // FITNESS — self-derived, no designer targets.
     // Pe24 Layer 14: sensors with non-zero realWeight contribute to real fitness here.
