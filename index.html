@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
-<title>Selection פ 112 — The Population Flow</title>
+<title>Selection פ 113 — The Constraint Field</title>
 <style>
 *{margin:0;padding:0;box-sizing:border-box}
 html,body{height:100%;overflow:hidden;background:#020204;touch-action:none;cursor:crosshair}
@@ -4755,6 +4755,18 @@ let genome={
   // evolve to mutate their own innovation rate based on what their VM is doing.
   // If reading own genome helps, this strength grows; if not, it falls to 0.
   clusterGenomeReadStrength:0.05
+,
+  // ═══ LAYER 133: CONSTRAINT-TOPOLOGY SELECTION (Pe144) ═══
+  // constraintWeight gates how strongly the constraint topology influences particle
+  // survival. At 0 the system is Pe143 exactly. Higher values create selection
+  // pressure for VMs whose output (pMem[0]) satisfies the local linear threshold.
+  // In META_LAYER_PARAMS and ATROPHY_SAFE — if constraint coupling hurts lineage
+  // fitness, the architecture can evolve it toward zero. If it helps, it grows.
+  //
+  // problemSolvingScore: rolling EMA of population-average logicScore.
+  // Not serialized — rebuilds from live particle state each run.
+  constraintWeight:0.3,      // 0=Pe143 exactly. Gates constraint pressure. Evolvable.
+  problemSolvingScore:0      // EMA of mean pLogicScore[i] across alive particles.
 };
 
 const EVENT_LOG_SIZE=36;
@@ -4862,6 +4874,40 @@ const fieldMemory=new Float32Array(FIELD_W*FIELD_H); // 0=virgin, higher=more hi
 const FIELD_SIG_DIMS=3; // signature dimensions per field cell
 const fieldSig=new Float32Array(FIELD_W*FIELD_H*FIELD_SIG_DIMS); // territorial signature per cell
 const fieldOwnership=new Float32Array(FIELD_W*FIELD_H); // ownership strength (0=commons, 1=fully claimed)
+
+// ═══ CONSTRAINT TOPOLOGY — Pe144 Layer 133 ═══
+// Each field cell encodes a linear threshold constraint on the VM's output.
+// The constraint class: sign(a * pMem[0] + b * pMem[1]) == (2*target-1)
+// This maps naturally onto opcode 1 (SCALE-ADD) + opcode 3 (THRESH): VMs that
+// evolve to use these opcodes with the staged inputs in pMem[1,2] satisfy their
+// local constraint and earn a survival advantage. The selection pressure is on
+// which VM architectures persist — not just which particles survive.
+//
+// pLogicScore[i]: per-particle constraint satisfaction [0,1], updated each tick
+// after executeSoloVM writes to pMem[0], before processGrid runs. This creates
+// clean attribution: solo VM output is evaluated before pair interactions modify pMem.
+const problemA=new Int8Array(FIELD_W*FIELD_H);
+const problemB=new Int8Array(FIELD_W*FIELD_H);
+const problemTarget=new Uint8Array(FIELD_W*FIELD_H);  // 1 if a+b>0, else 0
+const pLogicScore=new Float32Array(CAP);              // per-particle [0,1]
+
+function seedProblemTopology(){
+  // Spatial sine/cosine variation at cluster scale (~4-cell wavelength).
+  // Creates coherent zones: clusters occupying a zone face a structurally
+  // similar subproblem, making cluster-level logicScore a meaningful signal.
+  // The target is deterministic from geometry — no random seed required.
+  for(let y=0;y<FIELD_H;y++){
+    for(let x=0;x<FIELD_W;x++){
+      const idx=y*FIELD_W+x;
+      const a=Math.round(2.5*Math.sin((x/FIELD_W)*4*Math.PI)*Math.cos((y/FIELD_H)*2*Math.PI));
+      const b=Math.round(2.5*Math.cos((x/FIELD_W)*2*Math.PI+(y/FIELD_H)*3*Math.PI));
+      problemA[idx]=(a===0)?1:a;
+      problemB[idx]=(b===0)?-1:b;
+      problemTarget[idx]=(problemA[idx]+problemB[idx]>0)?1:0;
+    }
+  }
+}
+seedProblemTopology();
 
 // ═══ INSCRIBED SUBSTRATE — cells hold particle-written programs ═══
 // Each cell has:
@@ -5156,6 +5202,7 @@ function encodeGenome(){
     f2pmi142:+(genome.f2pmInfluence||0).toFixed(4),                             // Pe142 Layer 131
     pcfmi143:+(genome.pcfmInfluence||0).toFixed(4),                             // Pe143 Layer 132
     fmb130:+(genome.fitnessMirrorBias||0).toFixed(4),                            // Pe130 Layer 119
+    cw144:+(genome.constraintWeight||0.3).toFixed(4),          // Pe144 Layer 133
     mct:META_LAYER_PARAMS.map(p=>{
       const e=genome.metaCredit&&genome.metaCredit[p];
       return +((e&&e.trace)||0).toFixed(3);
@@ -5379,6 +5426,7 @@ function decodeGenome(data){
     if(typeof g.f2pmi142==='number')genome.f2pmInfluence=g.f2pmi142;             // Pe142 Layer 131
     if(typeof g.pcfmi143==='number')genome.pcfmInfluence=g.pcfmi143;             // Pe143 Layer 132
     if(typeof g.fmb130==='number')genome.fitnessMirrorBias=g.fmb130;              // Pe130 Layer 119
+    if(typeof g.cw144==='number')genome.constraintWeight=g.cw144;                // Pe144 Layer 133
     // Pe37 Layer 26: attribution
     if(typeof g.mcb==='number')genome.metaCreditBias=g.mcb;
     if(typeof g.msb==='number')genome.metaSearchBias=g.msb; // Pe38 Layer 27: search width bias
@@ -6178,6 +6226,8 @@ function sanitizeGenome(){
   // pcfmInfluence=0 → opcode 125 returns 0 → Pe142 exactly.
   if(genome.fitnessMirrorBias===undefined)genome.fitnessMirrorBias=0.05;
   genome.fitnessMirrorBias=Math.max(0,Math.min(1,finiteOr(genome.fitnessMirrorBias,0.05)));                       // Pe130 Layer 119
+  if(genome.constraintWeight===undefined)genome.constraintWeight=0.3;
+  genome.constraintWeight=Math.max(0,Math.min(2,finiteOr(genome.constraintWeight,0.3)));                           // Pe144 Layer 133
   {
     const src=(genome.metaCredit&&typeof genome.metaCredit==='object')?genome.metaCredit:{};
     const fresh={};
@@ -6613,9 +6663,10 @@ function detectClusters(){
       for(let d=0;d<DIMS;d++)tSum[d]/=n;
 
       // Phase coherence: mean resultant length
-      let sinSum=0,cosSum=0;
-      for(const m of members){sinSum+=Math.sin(phase[m]);cosSum+=Math.cos(phase[m])}
+      let sinSum=0,cosSum=0,lsSum=0;
+      for(const m of members){sinSum+=Math.sin(phase[m]);cosSum+=Math.cos(phase[m]);lsSum+=pLogicScore[m];}
       phCoh=Math.sqrt(sinSum*sinSum+cosSum*cosSum)/n;
+      const avgLogicScore=lsSum/n; // Pe144: mean constraint satisfaction across cluster members
 
       clusters.push({
         id:cid,cx,cy,size:n,
@@ -6633,7 +6684,8 @@ function detectClusters(){
         ]),
         // Lineage: new spontaneous clusters get new lineage IDs
         // Persistence inheritance overwrites this in trackClusterPersistence()
-        lineageID:createLineage(0)
+        lineageID:createLineage(0),
+        avgLogicScore  // Pe144: constraint satisfaction of cluster members
       });
       cid++;
     }
@@ -7124,6 +7176,7 @@ const META_LAYER_PARAMS=[
   ,'coherenceWeight'                      // Pe130 — virtual: genome.objWeights[2]
   ,'churnWeight'                          // Pe130 — virtual: genome.objWeights[3]
   ,'fitnessMirrorBias'                    // Pe130 — gate; itself tracked & atrophy-safe
+  ,'constraintWeight'                     // Pe144 — gate; if constraint coupling harms fitness, atrophy retires it
 ];
 // Pe130: indirect-address registry for the four virtual params. Snapshot, capture,
 // and any future direct-value reads consult this table; non-virtual params read
@@ -7233,6 +7286,7 @@ const ATROPHY_SAFE=new Set([
   ,'f2pmInfluence'                   // Pe142
   ,'pcfmInfluence'                   // Pe143
   ,'fitnessMirrorBias'                 // Pe130 — the gate itself: if mirror integration doesn't earn its keep, atrophy can retire it
+  ,'constraintWeight'                  // Pe144 — gate; constraint coupling can be evolved away if it harms the lineage
 ]);
 // Short HUD labels — keep the attribution tag compact.
 const META_LAYER_SHORT={
@@ -7336,6 +7390,7 @@ const META_LAYER_SHORT={
   // Pe130 virtuals and gate. sw/dw/cw/hw match the fitw tag's s/d/c/h.
   ,stabilityWeight:'sw130',diversityWeight:'dw130',coherenceWeight:'cw130',churnWeight:'hw130'
   ,fitnessMirrorBias:'fmb130'
+  ,constraintWeight:'cw144'
 };
 
 // Pe32: 12D Euclidean distance between two scenario entries.
@@ -9212,7 +9267,7 @@ function collectClusterUpstream(){
         motif,
         clusterGenome:c.clusterGenome?{...c.clusterGenome}:null,
         scenarioFossil:fossil, // Pe30: birth-time fossil, carried for the cluster's life
-        quality:c.coherence*c.avgAmp*(1+c.persistAge*0.02) // signal strength
+        quality:c.coherence*c.avgAmp*(1+c.persistAge*0.02)*(1+(c.avgLogicScore||0)*1.5) // Pe144: logic-solving clusters inject more strongly
       });
     }
   }
@@ -9758,6 +9813,7 @@ function mutateGenome(){
   // the integration's intensity. atrophyRate (Pe40) is allowed to decay this toward 0
   // since it's in ATROPHY_SAFE — if integration proves harmful, the gate retires itself.
   genome.fitnessMirrorBias=Math.max(0,Math.min(1,metaMaybe(genome.fitnessMirrorBias||0,0.02,'fitnessMirrorBias'))); // Pe130 Layer 119
+  genome.constraintWeight=Math.max(0,Math.min(2,metaMaybe(genome.constraintWeight||0.3,0.05,'constraintWeight'))); // Pe144 Layer 133
 
   // ═══ Pe26 Layer 16c: CLUSTER UPWARD SIGNAL injection ═══
   // Drain the upstream buffer — soft-inject successful cluster motifs into the global VM.
@@ -13650,7 +13706,10 @@ function executeVM(i,j,sim,d){
 
   const bondStrength=sim*phaseAlign;
   if(bondStrength>genome.plasmidTransferThresh&&Math.random()<genome.plasmidTransferRate){
-    const donor=Math.random()<0.5?i:j;
+    // Pe144: bias plasmid donor toward better constraint-solver — spreads problem-solving architectures
+    const _li144=pLogicScore[i]||0,_lj144=pLogicScore[j]||0;
+    const _iProb144=(_li144>_lj144)?0.7:(_lj144>_li144)?0.3:0.5;
+    const donor=Math.random()<_iProb144?i:j;
     const recip=donor===i?j:i;
     if(pPlasmidLen[donor]>0&&pPlasmidLen[recip]<MAX_PLASMID){
       const srcP=Math.floor(Math.random()*pPlasmidLen[donor]);
@@ -15020,6 +15079,21 @@ function updateParticles(){
     // pSignalEmitPrev holds this tick's final emission (already snapshotted above).
     const rawNet=Math.max(-1,Math.min(1,(Math.abs(pSignalEmitPrev[i])-Math.abs(pSignalReceive[i]*(1/(1-sigDecay+1e-6))))*0.5));
     pSignalNetPos[i]=pSignalNetPos[i]*0.95+rawNet*0.05;
+    // Pe144: stage constraint parameters for NEXT tick's executeSoloVM.
+    // pMem[1] = a/4.0, pMem[2] = b/4.0 — VM reads these via opcode 6 (MEM_READ).
+    // A VM using opcode 1 (SCALE-ADD) on vmRegs[5,6] and opcode 3 (THRESH) on the
+    // result can satisfy the local constraint: sign(a*pMem[0]+b*pMem[1])=target.
+    const _cx144=Math.max(0,Math.min(FIELD_W-1,Math.floor(px[i]/(W/FIELD_W))));
+    const _cy144=Math.max(0,Math.min(FIELD_H-1,Math.floor(py[i]/(H/FIELD_H))));
+    const _ci144b=_cy144*FIELD_W+_cx144;
+    pMem[i*MEM_SIZE+1]=problemA[_ci144b]/4.0;
+    if(MEM_SIZE>2)pMem[i*MEM_SIZE+2]=problemB[_ci144b]/4.0;
+    // Constraint fitness: survival coupled to computational correctness.
+    // constraintWeight=0 → no effect → Pe143 exactly.
+    const _cw144=genome.constraintWeight||0;
+    if(_cw144>0.001&&N>20){
+      amp[i]+=pLogicScore[i]*0.00055*_cw144-(1-pLogicScore[i])*0.00018*_cw144;
+    }
     computeVisuals(i);
   }
 }
@@ -15525,6 +15599,18 @@ function loop(){
 
   gravity();
   executeSoloVM();
+  // ═══ Pe144: CONSTRAINT EVALUATION ═══
+  // Evaluate solo VM output against local constraint BEFORE processGrid/executeVM
+  // modifies pMem. This ensures pLogicScore reflects the solo VM's computation,
+  // not pair interaction side effects.
+  for(let _ci144=0;_ci144<N;_ci144++){
+    if(!palive[_ci144])continue;
+    const _lfx144=Math.max(0,Math.min(FIELD_W-1,Math.floor(px[_ci144]/(W/FIELD_W))));
+    const _lfy144=Math.max(0,Math.min(FIELD_H-1,Math.floor(py[_ci144]/(H/FIELD_H))));
+    const _lfi144=_lfy144*FIELD_W+_lfx144;
+    const _tgt144=problemTarget[_lfi144];
+    pLogicScore[_ci144]=(pMem[_ci144*MEM_SIZE]>0?1:0)===_tgt144?1:0;
+  }
   networkBroadcast();
   networkReceive();
   processGrid();
@@ -15533,7 +15619,8 @@ function loop(){
     if(!palive[i])continue;
     if(pPlasmidLen[i]>0){
       pPlasmidAge[i]++;
-      if(pPlasmidAge[i]>2000&&genome.vmProgram.length<genome.vmMaxInstructions){
+      const _fixThresh144=Math.round(2000-(pLogicScore[i]||0)*500); // Pe144: high logic → faster fixation
+      if(pPlasmidAge[i]>_fixThresh144&&genome.vmProgram.length<genome.vmMaxInstructions){
         const base=i*PLASMID_SLOTS;
         const len=pPlasmidLen[i];
         let fixed=0;
@@ -15577,6 +15664,12 @@ function loop(){
     selfModel.generationRate=Math.max(0,(selfModel.generationRate||0)*0.8+(genome.generation-_prevGen136)*0.2);
     selfModel.prevGeneration=genome.generation;
     selfModel.population=alive;
+    // Pe144: rolling EMA of population constraint satisfaction
+    if(alive>0){
+      let _lsTotal144=0;
+      for(let _li144=0;_li144<N;_li144++){if(palive[_li144])_lsTotal144+=pLogicScore[_li144];}
+      genome.problemSolvingScore=genome.problemSolvingScore*0.85+(_lsTotal144/alive)*0.15;
+    }
     selfModel.avgAmplitude=alive>0?totalAmp/alive:0;
     selfModel.avgResonance=alive>0?totalRes/alive:0;
     // Pe128 Layer 117: spatial spread — 2D std dev of particle positions, normalized.
@@ -17621,6 +17714,10 @@ function loop(){
     _hud+=`${f2pi127Tag}${ssi128Tag}${ssmi131Tag}${mfupi132Tag}${mf2upi133Tag}${fupmomi134Tag}`;
     _hud+=`${f2upmomi135Tag}${gri136Tag}${chmi137Tag}${aimi138Tag}${fcmi139Tag}${f2cmi140Tag}`;
     _hud+=`${fpmi141Tag}${f2pmi142Tag}${pcfmi143Tag}${dissTag}`;
+    // Pe144: constraint satisfaction HUD tag
+    const _ps144=genome.problemSolvingScore||0;
+    const _cw144hud=genome.constraintWeight||0;
+    if(_cw144hud>0.05||_ps144>0.1){_hud+=` | lgc:${_ps144.toFixed(2)}(cw${_cw144hud.toFixed(2)})`;}
     genEl.textContent=_hud;
   }
 
