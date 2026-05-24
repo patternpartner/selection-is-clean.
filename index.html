@@ -5203,6 +5203,7 @@ function encodeGenome(){
     pcfmi143:+(genome.pcfmInfluence||0).toFixed(4),                             // Pe143 Layer 132
     fmb130:+(genome.fitnessMirrorBias||0).toFixed(4),                            // Pe130 Layer 119
     cw144:+(genome.constraintWeight||0.3).toFixed(4),          // Pe144 Layer 133
+    pss:+(genome.problemSolvingScore||0).toFixed(4),           // Pe144: population constraint satisfaction EMA
     mct:META_LAYER_PARAMS.map(p=>{
       const e=genome.metaCredit&&genome.metaCredit[p];
       return +((e&&e.trace)||0).toFixed(3);
@@ -5427,6 +5428,7 @@ function decodeGenome(data){
     if(typeof g.pcfmi143==='number')genome.pcfmInfluence=g.pcfmi143;             // Pe143 Layer 132
     if(typeof g.fmb130==='number')genome.fitnessMirrorBias=g.fmb130;              // Pe130 Layer 119
     if(typeof g.cw144==='number')genome.constraintWeight=g.cw144;                // Pe144 Layer 133
+    if(typeof g.pss==='number')genome.problemSolvingScore=g.pss;               // Pe144: restore constraint EMA
     // Pe37 Layer 26: attribution
     if(typeof g.mcb==='number')genome.metaCreditBias=g.mcb;
     if(typeof g.msb==='number')genome.metaSearchBias=g.msb; // Pe38 Layer 27: search width bias
@@ -6227,7 +6229,7 @@ function sanitizeGenome(){
   if(genome.fitnessMirrorBias===undefined)genome.fitnessMirrorBias=0.05;
   genome.fitnessMirrorBias=Math.max(0,Math.min(1,finiteOr(genome.fitnessMirrorBias,0.05)));                       // Pe130 Layer 119
   if(genome.constraintWeight===undefined)genome.constraintWeight=0.3;
-  genome.constraintWeight=Math.max(0,Math.min(2,finiteOr(genome.constraintWeight,0.3)));                           // Pe144 Layer 133
+  genome.constraintWeight=Math.max(0,Math.min(4,finiteOr(genome.constraintWeight,0.3)));                           // Pe144 Layer 133 (ceiling raised 2→4)
   {
     const src=(genome.metaCredit&&typeof genome.metaCredit==='object')?genome.metaCredit:{};
     const fresh={};
@@ -9813,7 +9815,7 @@ function mutateGenome(){
   // the integration's intensity. atrophyRate (Pe40) is allowed to decay this toward 0
   // since it's in ATROPHY_SAFE — if integration proves harmful, the gate retires itself.
   genome.fitnessMirrorBias=Math.max(0,Math.min(1,metaMaybe(genome.fitnessMirrorBias||0,0.02,'fitnessMirrorBias'))); // Pe130 Layer 119
-  genome.constraintWeight=Math.max(0,Math.min(2,metaMaybe(genome.constraintWeight||0.3,0.05,'constraintWeight'))); // Pe144 Layer 133
+  genome.constraintWeight=Math.max(0,Math.min(4,metaMaybe(genome.constraintWeight||0.3,0.05,'constraintWeight'))); // Pe144 Layer 133 (ceiling raised 2→4)
 
   // ═══ Pe26 Layer 16c: CLUSTER UPWARD SIGNAL injection ═══
   // Drain the upstream buffer — soft-inject successful cluster motifs into the global VM.
@@ -15918,12 +15920,15 @@ function loop(){
         }
       }
     }
-    genome.lineage.push({t:genome.totalTicks,p:selfModel.population,c:selfModel.clusterCount,d:+(selfModel.diversity.toFixed(3)),f:+(currentFitness.toFixed(3)),s:+(selfModel.stability.toFixed(3)),w:genome.objWeights.map(v=>+(v.toFixed(3)))});
-    if(genome.lineage.length>6)genome.lineage.shift();
-    recordEvent('pulse',{p:selfModel.population,c:selfModel.clusterCount,f:+currentFitness.toFixed(2),s:+(selfModel.stability||0).toFixed(2)},1800);
-    saveGenome();
+    // Pe144: compute opcode frequencies before lineage push so they can be snapshotted
     const compCount=genome.vmProgram.filter(i=>i[0]===3).length;
     const memCount=genome.vmProgram.filter(i=>i[0]===6||i[0]===7).length;
+    const op1Count=genome.vmProgram.filter(i=>i[0]===1).length;
+    const _pss144snap=+(genome.problemSolvingScore||0).toFixed(3);
+    genome.lineage.push({t:genome.totalTicks,p:selfModel.population,c:selfModel.clusterCount,d:+(selfModel.diversity.toFixed(3)),f:+(currentFitness.toFixed(3)),s:+(selfModel.stability.toFixed(3)),w:genome.objWeights.map(v=>+(v.toFixed(3))),lgc:_pss144snap,op3:compCount,op1:op1Count});  // Pe144: lgc=problemSolvingScore, op3/op1=vmProgram architecture snapshot
+    if(genome.lineage.length>6)genome.lineage.shift();
+    recordEvent('pulse',{p:selfModel.population,c:selfModel.clusterCount,f:+currentFitness.toFixed(2),s:+(selfModel.stability||0).toFixed(2),lgc:_pss144snap},1800);  // Pe144: lgc in event log
+    saveGenome();
     let plasmidParticles=0,totalPlasmids=0;
     for(let i=0;i<N;i++){if(pPlasmidLen[i]>0){plasmidParticles++;totalPlasmids+=pPlasmidLen[i]}}
     const fieldTotal=selfModel.fieldEnergy||0;  // Pe88/Pe100: use cached value from 30-tick self-model update
