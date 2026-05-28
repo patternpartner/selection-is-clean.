@@ -4903,7 +4903,7 @@ function seedProblemTopology(){
       const b=Math.round(2.5*Math.cos((x/FIELD_W)*2*Math.PI+(y/FIELD_H)*3*Math.PI));
       problemA[idx]=(a===0)?1:a;
       problemB[idx]=(b===0)?-1:b;
-      problemTarget[idx]=(problemA[idx]+problemB[idx]>0)?1:0;
+      problemTarget[idx]=((problemA[idx]>0)!==(problemB[idx]>0))?1:0;
     }
   }
 }
@@ -10122,7 +10122,7 @@ function mutateGenome(){
     inst[3]=Math.max(-2,Math.min(2,inst[3]));
 
     // Opcode swap — now includes FEEDBACK (5), LOAD_MEM (6), STORE_MEM (7)
-    const _opMutMult=(genome.problemSolvingScore||0)<0.52?2.0:0.2;
+    const _opMutMult=(genome.problemSolvingScore||0)<0.70?2.0:0.2;
     if(Math.random()<rate*_opMutMult)inst[0]=Math.floor(Math.random()*OPCODE_COUNT);
 
     // Source register swap (now 12 registers)
@@ -15120,7 +15120,7 @@ function updateParticles(){
     // constraintWeight=0 → no effect → Pe143 exactly.
     const _cw144=genome.constraintWeight||0;
     if(_cw144>0.001&&N>20){
-      amp[i]+=pLogicScore[i]*0.00055*_cw144-(1-pLogicScore[i])*0.0006*_cw144;
+      amp[i]+=pLogicScore[i]*0.00055*_cw144-(1-pLogicScore[i])*0.002*_cw144;
     }
     computeVisuals(i);
   }
