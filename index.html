@@ -10122,7 +10122,8 @@ function mutateGenome(){
     inst[3]=Math.max(-2,Math.min(2,inst[3]));
 
     // Opcode swap — now includes FEEDBACK (5), LOAD_MEM (6), STORE_MEM (7)
-    if(Math.random()<rate*0.2)inst[0]=Math.floor(Math.random()*OPCODE_COUNT);
+    const _opMutMult=(genome.problemSolvingScore||0)<0.52?2.0:0.2;
+    if(Math.random()<rate*_opMutMult)inst[0]=Math.floor(Math.random()*OPCODE_COUNT);
 
     // Source register swap (now 12 registers)
     if(Math.random()<rate*0.2)inst[1]=Math.floor(Math.random()*12);
@@ -15119,7 +15120,7 @@ function updateParticles(){
     // constraintWeight=0 → no effect → Pe143 exactly.
     const _cw144=genome.constraintWeight||0;
     if(_cw144>0.001&&N>20){
-      amp[i]+=pLogicScore[i]*0.00055*_cw144-(1-pLogicScore[i])*0.00018*_cw144;
+      amp[i]+=pLogicScore[i]*0.00055*_cw144-(1-pLogicScore[i])*0.0006*_cw144;
     }
     computeVisuals(i);
   }
