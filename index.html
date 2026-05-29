@@ -5052,6 +5052,7 @@ function encodeGenome(){
     q:[genome.clusterBondThresh,genome.clusterMinSize,genome.ghostDecay,genome.ghostAmpDrip].map(v=>+(v.toPrecision(4))),
     // Evaluation
     w:genome.objWeights.map(v=>+(v.toFixed(4))),
+    oct:Array.isArray(genome.objCreditTrace)?genome.objCreditTrace.map(v=>+v.toFixed(4)):[0,0,0,0],
     fs:cleanSensors,
     // Meta
     m:[genome.mutationRate,genome.mutationScale,genome.shadowHorizon,genome.shadowScenarios,
@@ -5245,6 +5246,7 @@ function decodeGenome(data){
       [genome.clusterBondThresh,genome.clusterMinSize,genome.ghostDecay,genome.ghostAmpDrip]=g.q;
     }
     genome.objWeights=g.w||[0.25,0.25,0.25,0.25];
+    if(Array.isArray(g.oct)&&g.oct.length>=4)genome.objCreditTrace=g.oct.slice(0,4);
     if(g.fs)genome.fitnessSensors=g.fs;
     if(g.m){
       [genome.mutationRate,genome.mutationScale,genome.shadowHorizon,genome.shadowScenarios,
