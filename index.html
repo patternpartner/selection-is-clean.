@@ -8274,9 +8274,9 @@ function profileVM(){
           if(pcfmi143Prof>0.001){ vmRegs[di]=Math.max(-3,Math.min(3,(selfModel.pcfMomentum||0)*20))*pcfmi143Prof*(k||1); }
         }break;
       }
-      if(op>=126&&op<126+MAX_BOUND_OPCODES){
+      if(op>=127&&op<127+MAX_BOUND_OPCODES){
         const _bos=genome.boundOpcodes;
-        const _boi=op-126;
+        const _boi=op-127;
         if(_bos&&_boi<_bos.length){
           const _bua=genome.userAtoms&&genome.userAtoms[_bos[_boi]];
           if(_bua) vmRegs[di]=uaCall(_bua,vmRegs[si],vmRegs[(si+1)%12]);
@@ -12770,9 +12770,18 @@ function executeVM(i,j,sim,d){
         if(vmi145>0.001){ vmRegs[di]=(selfModel.vitalAlignment||0)*vmi145*(k||1); }
       }break;
     }
-    if(op>=126&&op<126+MAX_BOUND_OPCODES){
+    // BOUND-OPCODE BOUNDARY FIX (Pe60-class): OPCODE_COUNT=127+MAX_BOUND_OPCODES encodes
+    // the partition core[0..126] + bound[127..142]. The bound guard previously read
+    // op>=126 (boi=op-126), which (a) collided with core op126 VITAL_ALIGNMENT in this VM —
+    // case 126 ran, then boundOpcodes[0] clobbered vmRegs[di] — and (b) excluded op142
+    // (126+16=142, op<142), so mutation emitted op142 into a dead path the VM never executed.
+    // Neither fault is visible to selection: the organism thrives missing a vote it never
+    // got and corrupting one it can't see. Corrected to op>=127 (boi=op-127): op126 now
+    // sets VITAL_ALIGNMENT cleanly, op142 binds boundOpcodes[15], 0..142 fully covered.
+    // This restores a capacity a typo removed; it does not steer what the system does with it.
+    if(op>=127&&op<127+MAX_BOUND_OPCODES){
       const _bos=genome.boundOpcodes;
-      const _boi=op-126;
+      const _boi=op-127;
       if(_bos&&_boi<_bos.length){
         const _bua=genome.userAtoms&&genome.userAtoms[_bos[_boi]];
         if(_bua) vmRegs[di]=uaCall(_bua,vmRegs[si],vmRegs[(si+1)%12]);
@@ -13765,9 +13774,9 @@ function executeVM(i,j,sim,d){
           if(pcfmi143p>0.001){ vmRegs[di]=Math.max(-3,Math.min(3,(selfModel.pcfMomentum||0)*20))*pcfmi143p*(k||1); }
         }break;
       }
-      if(op>=126&&op<126+MAX_BOUND_OPCODES){
+      if(op>=127&&op<127+MAX_BOUND_OPCODES){
         const _bos=genome.boundOpcodes;
-        const _boi=op-126;
+        const _boi=op-127;
         if(_bos&&_boi<_bos.length){
           const _bua=genome.userAtoms&&genome.userAtoms[_bos[_boi]];
           if(_bua) vmRegs[di]=uaCall(_bua,vmRegs[si],vmRegs[(si+1)%12]);
@@ -14891,9 +14900,9 @@ function executeClusterVM(i,j,sim,d){
         if(pcfmi143c>0.001){ vmRegs[di]=Math.max(-3,Math.min(3,(selfModel.pcfMomentum||0)*20))*pcfmi143c*(k||1); }
       }break;
     }
-    if(op>=126&&op<126+MAX_BOUND_OPCODES){
+    if(op>=127&&op<127+MAX_BOUND_OPCODES){
       const _bos=genome.boundOpcodes;
-      const _boi=op-126;
+      const _boi=op-127;
       if(_bos&&_boi<_bos.length){
         const _bua=genome.userAtoms&&genome.userAtoms[_bos[_boi]];
         if(_bua) vmRegs[di]=uaCall(_bua,vmRegs[si],vmRegs[(si+1)%12]);
@@ -15328,9 +15337,9 @@ function executeSoloVM(){
           // partnerField1TemporalInfluence=0 → returns 0 → Pe73 exactly (layer inert in solo mode).
         }break;
       }
-      if(op>=126&&op<126+MAX_BOUND_OPCODES){
+      if(op>=127&&op<127+MAX_BOUND_OPCODES){
         const _bos=genome.boundOpcodes;
-        const _boi=op-126;
+        const _boi=op-127;
         if(_bos&&_boi<_bos.length){
           const _bua=genome.userAtoms&&genome.userAtoms[_bos[_boi]];
           if(_bua) vmRegs[di]=uaCall(_bua,vmRegs[si],vmRegs[(si+1)%12]);
