@@ -260,11 +260,13 @@ function gKey(x,y){return Math.max(0,Math.min(gH-1,(y/CELL)|0))*gW+Math.max(0,Ma
 // ADAPTIVE GENOME — the system's DNA
 // These values evolve. No human chooses the finals.
 // ═══════════════════════════════════════
-const DIMS=5; // dim 4 is blank — no hardcoded role. System decides what it means.
+const DIMS_MAX=8;
+let DIMS=5;
 const MEM_SIZE=8; // per-particle persistent memory. Particles become stateful agents.
 const MAX_PLASMID=4; // max instructions per particle's personal mobile DNA
 const PLASMID_SLOTS=MAX_PLASMID*4; // each instruction is [op,src,dst,k] = 4 values
-const OPCODE_COUNT=127; // opcodes 0..126; full layer index in genome commentary
+const MAX_BOUND_OPCODES=16;
+const OPCODE_COUNT=127+MAX_BOUND_OPCODES;
 const FIELD_W=40;
 const FIELD_H=40;
 let FIELD_DECAY=0.982;   // natural fade — Pe22b: now genome-driven, can evolve
@@ -314,6 +316,26 @@ function uaCompile(atom){
     atom.compiled=null;
     atom.failed=true;
   }
+}
+const REND_DEFAULTS=[
+  "(Math.atan2(t1,t3)/Math.PI*180+180)",
+  "(30+Math.abs(t2)*60)",
+  "(30+t0*18+Math.abs(t2)*12)",
+  "(1.2+Math.abs(t0)*2+(1+t3)*1.2)"
+];
+function defaultRend(){
+  return REND_DEFAULTS.map(e=>({expression:e,compiled:null,failed:false}));
+}
+function rendCompile(atom){
+  if(atom.compiled||atom.failed)return;
+  try{atom.compiled=new Function('t0','t1','t2','t3','amp','phase','col','return '+atom.expression);}
+  catch(e){atom.failed=true;}
+}
+function rendCall(atom,t0,t1,t2,t3,amp,phase,col){
+  rendCompile(atom);
+  if(atom.failed)return 0;
+  try{const v=atom.compiled(t0,t1,t2,t3,amp,phase,col);return(typeof v==='number'&&isFinite(v))?v:0;}
+  catch(e){atom.failed=true;return 0;}
 }
 function uaCall(atom,a,b){
   if(!atom)return 0;
@@ -4756,17 +4778,9 @@ let genome={
   // If reading own genome helps, this strength grows; if not, it falls to 0.
   clusterGenomeReadStrength:0.05
 ,
-  // ═══ LAYER 133: CONSTRAINT-TOPOLOGY SELECTION (Pe144) ═══
-  // constraintWeight gates how strongly the constraint topology influences particle
-  // survival. At 0 the system is Pe143 exactly. Higher values create selection
-  // pressure for VMs whose output (pMem[0]) satisfies the local linear threshold.
-  // In META_LAYER_PARAMS and ATROPHY_SAFE — if constraint coupling hurts lineage
-  // fitness, the architecture can evolve it toward zero. If it helps, it grows.
-  //
-  // problemSolvingScore: rolling EMA of population-average logicScore.
-  // Not serialized — rebuilds from live particle state each run.
-  constraintWeight:0.3,      // 0=Pe143 exactly. Gates constraint pressure. Evolvable.
-  problemSolvingScore:0      // EMA of mean pLogicScore[i] across alive particles.
+  tendDims: 5,
+  rend: null,
+  boundOpcodes: []
 };
 
 const EVENT_LOG_SIZE=36;
@@ -4838,13 +4852,13 @@ const OBSERVE_RADIUS_BASE=100;
 let ghostX=0,ghostY=0,ghostStrength=0;
 const GHOST_RADIUS=150;
 const ABSENCE_BASE=600,ABSENCE_DUTY=0.5;
-const globalTend=new Float32Array(DIMS);
+const globalTend=new Float32Array(DIMS_MAX);
 let wasAbsent=false;
 
 let N=0;
 const px=new Float32Array(CAP),py=new Float32Array(CAP);
 const vx=new Float32Array(CAP),vy=new Float32Array(CAP);
-const tend=new Float32Array(CAP*DIMS);
+const tend=new Float32Array(CAP*DIMS_MAX);
 const phase=new Float32Array(CAP);
 const freq=new Float32Array(CAP);
 const amp=new Float32Array(CAP);
@@ -4883,31 +4897,7 @@ const fieldOwnership=new Float32Array(FIELD_W*FIELD_H); // ownership strength (0
 // local constraint and earn a survival advantage. The selection pressure is on
 // which VM architectures persist — not just which particles survive.
 //
-// pLogicScore[i]: per-particle constraint satisfaction [0,1], updated each tick
-// after executeSoloVM writes to pMem[0], before processGrid runs. This creates
-// clean attribution: solo VM output is evaluated before pair interactions modify pMem.
-const problemA=new Int8Array(FIELD_W*FIELD_H);
-const problemB=new Int8Array(FIELD_W*FIELD_H);
-const problemTarget=new Uint8Array(FIELD_W*FIELD_H);  // 1 if a+b>0, else 0
-const pLogicScore=new Float32Array(CAP);              // per-particle [0,1]
 
-function seedProblemTopology(){
-  // Spatial sine/cosine variation at cluster scale (~4-cell wavelength).
-  // Creates coherent zones: clusters occupying a zone face a structurally
-  // similar subproblem, making cluster-level logicScore a meaningful signal.
-  // The target is deterministic from geometry — no random seed required.
-  for(let y=0;y<FIELD_H;y++){
-    for(let x=0;x<FIELD_W;x++){
-      const idx=y*FIELD_W+x;
-      const a=Math.round(2.5*Math.sin((x/FIELD_W)*4*Math.PI)*Math.cos((y/FIELD_H)*2*Math.PI));
-      const b=Math.round(2.5*Math.cos((x/FIELD_W)*2*Math.PI+(y/FIELD_H)*3*Math.PI));
-      problemA[idx]=(a===0)?1:a;
-      problemB[idx]=(b===0)?-1:b;
-      problemTarget[idx]=((problemA[idx]>0)!==(problemB[idx]>0))?1:0;
-    }
-  }
-}
-seedProblemTopology();
 
 // ═══ INSCRIBED SUBSTRATE — cells hold particle-written programs ═══
 // Each cell has:
@@ -5079,6 +5069,9 @@ function encodeGenome(){
     vi:+(genome.vmInfluence.toPrecision(3)),
     vs:+(genome.ruleScale.toPrecision(3)),
     vm:genome.vmMaxInstructions,
+    td: genome.tendDims|0,
+    rn: Array.isArray(genome.rend)?genome.rend.map(a=>({e:a.expression,f:!!a.failed})):null,
+    bo: Array.isArray(genome.boundOpcodes)?genome.boundOpcodes.map(b=>b|0):[],
     ua:cleanAtoms,
     clr:+(genome.creditLearnRate||1).toFixed(4), // Pe25 Layer 15: evolvable learning rate
     gb:+(genome.gradientBias||0.3).toFixed(4),   // Pe26 Layer 16a: gradient bias
@@ -5203,8 +5196,6 @@ function encodeGenome(){
     f2pmi142:+(genome.f2pmInfluence||0).toFixed(4),                             // Pe142 Layer 131
     pcfmi143:+(genome.pcfmInfluence||0).toFixed(4),                             // Pe143 Layer 132
     fmb130:+(genome.fitnessMirrorBias||0).toFixed(4),                            // Pe130 Layer 119
-    cw144:+(genome.constraintWeight||0.3).toFixed(4),          // Pe144 Layer 133
-    pss:+(genome.problemSolvingScore||0).toFixed(4),           // Pe144: population constraint satisfaction EMA
     vmi145:+(genome.vitalMemoryInfluence||0).toFixed(4),       // Pe145: vital memory orientation gate
     vm145:Array.isArray(genome.vitalMemory)?genome.vitalMemory.map(v=>+v.toFixed(4)):[], // Pe145: remembered vital state vector
     mct:META_LAYER_PARAMS.map(p=>{
@@ -5312,6 +5303,9 @@ function decodeGenome(data){
     if(g.vs)genome.ruleScale=g.vs;
     if(g.vm)genome.vmMaxInstructions=g.vm;
     if(g.ua)genome.userAtoms=g.ua.map(a=>({expression:a.expression,compiled:null,failed:!!a.failed,uses:a.uses|0,age:a.age|0}));
+    if(typeof g.td==='number') genome.tendDims=Math.max(2,Math.min(DIMS_MAX,g.td|0));
+    if(Array.isArray(g.rn)&&g.rn.length===4) genome.rend=g.rn.map(a=>({expression:a.e||'0',compiled:null,failed:!!a.f}));
+    if(Array.isArray(g.bo)) genome.boundOpcodes=g.bo.map(n=>Math.max(0,n|0));
     if(typeof g.clr==='number')genome.creditLearnRate=g.clr; // Pe25 Layer 15
     if(typeof g.gb==='number')genome.gradientBias=g.gb;      // Pe26 Layer 16a
     if(typeof g.gub==='number')genome.gradientUpstreamBias=g.gub; // Pe26 Layer 16c
@@ -5431,8 +5425,6 @@ function decodeGenome(data){
     if(typeof g.f2pmi142==='number')genome.f2pmInfluence=g.f2pmi142;             // Pe142 Layer 131
     if(typeof g.pcfmi143==='number')genome.pcfmInfluence=g.pcfmi143;             // Pe143 Layer 132
     if(typeof g.fmb130==='number')genome.fitnessMirrorBias=g.fmb130;              // Pe130 Layer 119
-    if(typeof g.cw144==='number')genome.constraintWeight=g.cw144;                // Pe144 Layer 133
-    if(typeof g.pss==='number')genome.problemSolvingScore=g.pss;               // Pe144: restore constraint EMA
     if(typeof g.vmi145==='number')genome.vitalMemoryInfluence=g.vmi145;       // Pe145: restore vital memory gate
     if(Array.isArray(g.vm145)&&g.vm145.length===5)genome.vitalMemory=g.vm145; // Pe145: restore vital memory vector
     // Pe37 Layer 26: attribution
@@ -5476,6 +5468,8 @@ function validChemistryTable(table){
   return Array.isArray(table)&&table.length>=12&&table.every(recipe=>Array.isArray(recipe)&&recipe.length>0&&recipe.every(mono=>Array.isArray(mono)&&mono.length>=4&&mono.every(v=>typeof v==='number'&&isFinite(v))));
 }
 function sanitizeGenome(){
+  genome.tendDims = Math.max(2, Math.min(DIMS_MAX, Math.round(genome.tendDims||5)));
+  DIMS = genome.tendDims;
   if(!Array.isArray(genome.objWeights)||genome.objWeights.length<4)genome.objWeights=[0.25,0.25,0.25,0.25];
   genome.objWeights=genome.objWeights.slice(0,4).map(v=>Math.max(0,finiteOr(v,0)));
   const wSum=genome.objWeights.reduce((a,b)=>a+b,0);
@@ -6234,8 +6228,6 @@ function sanitizeGenome(){
   // pcfmInfluence=0 → opcode 125 returns 0 → Pe142 exactly.
   if(genome.fitnessMirrorBias===undefined)genome.fitnessMirrorBias=0.05;
   genome.fitnessMirrorBias=Math.max(0,Math.min(1,finiteOr(genome.fitnessMirrorBias,0.05)));                       // Pe130 Layer 119
-  if(genome.constraintWeight===undefined)genome.constraintWeight=0.3;
-  genome.constraintWeight=Math.max(0,Math.min(4,finiteOr(genome.constraintWeight,0.3)));                           // Pe144 Layer 133 (ceiling raised 2→4)
   if(genome.vitalMemoryInfluence===undefined)genome.vitalMemoryInfluence=0;
   genome.vitalMemoryInfluence=Math.max(0,Math.min(1,finiteOr(genome.vitalMemoryInfluence,0)));                     // Pe145 Layer 134
   if(!Array.isArray(genome.vitalMemory)||genome.vitalMemory.length!==5)genome.vitalMemory=[];                      // Pe145: initialised on first vital tick
@@ -6262,6 +6254,10 @@ function sanitizeGenome(){
   genome.prevObjValues=genome.prevObjValues.slice(0,4).map(v=>finiteOr(v,0));
   genome.prevSmoothedFitness=finiteOr(genome.prevSmoothedFitness,0);
   genome.userAtoms=Array.isArray(genome.userAtoms)?genome.userAtoms.filter(a=>a&&typeof a.expression==='string').map(a=>({expression:a.expression.slice(0,160),compiled:null,failed:!!a.failed,uses:a.uses|0,age:a.age|0})):[];
+  if(!Array.isArray(genome.rend)||genome.rend.length!==4) genome.rend=defaultRend();
+  genome.rend=genome.rend.map(a=>({expression:typeof a.expression==='string'?a.expression.slice(0,200):'0',compiled:null,failed:!!a.failed}));
+  if(!Array.isArray(genome.boundOpcodes)) genome.boundOpcodes=[];
+  genome.boundOpcodes=genome.boundOpcodes.filter(n=>typeof n==='number'&&n>=0).slice(0,MAX_BOUND_OPCODES);
   genome.lineage=Array.isArray(genome.lineage)?genome.lineage.slice(-6):[];
   genome.eventLog=Array.isArray(genome.eventLog)?genome.eventLog.slice(-EVENT_LOG_SIZE):[];
   genome.stableMotifs=Array.isArray(genome.stableMotifs)?genome.stableMotifs.filter(m=>m&&Array.isArray(m.t)&&m.t.length>=DIMS).slice(-Math.max(1,genome.motifMemorySize||5)):[];
@@ -6674,10 +6670,9 @@ function detectClusters(){
       for(let d=0;d<DIMS;d++)tSum[d]/=n;
 
       // Phase coherence: mean resultant length
-      let sinSum=0,cosSum=0,lsSum=0;
-      for(const m of members){sinSum+=Math.sin(phase[m]);cosSum+=Math.cos(phase[m]);lsSum+=pLogicScore[m];}
+      let sinSum=0,cosSum=0;
+      for(const m of members){sinSum+=Math.sin(phase[m]);cosSum+=Math.cos(phase[m]);}
       phCoh=Math.sqrt(sinSum*sinSum+cosSum*cosSum)/n;
-      const avgLogicScore=lsSum/n; // Pe144: mean constraint satisfaction across cluster members
 
       clusters.push({
         id:cid,cx,cy,size:n,
@@ -6696,7 +6691,6 @@ function detectClusters(){
         // Lineage: new spontaneous clusters get new lineage IDs
         // Persistence inheritance overwrites this in trackClusterPersistence()
         lineageID:createLineage(0),
-        avgLogicScore  // Pe144: constraint satisfaction of cluster members
       });
       cid++;
     }
@@ -7187,7 +7181,6 @@ const META_LAYER_PARAMS=[
   ,'coherenceWeight'                      // Pe130 — virtual: genome.objWeights[2]
   ,'churnWeight'                          // Pe130 — virtual: genome.objWeights[3]
   ,'fitnessMirrorBias'                    // Pe130 — gate; itself tracked & atrophy-safe
-  ,'constraintWeight'                     // Pe144 — gate; if constraint coupling harms fitness, atrophy retires it
   ,'vitalMemoryInfluence'                 // Pe145 — gate; if vital alignment orientation harms fitness, atrophy retires it
 ];
 // Pe130: indirect-address registry for the four virtual params. Snapshot, capture,
@@ -7298,7 +7291,6 @@ const ATROPHY_SAFE=new Set([
   ,'f2pmInfluence'                   // Pe142
   ,'pcfmInfluence'                   // Pe143
   ,'fitnessMirrorBias'                 // Pe130 — the gate itself: if mirror integration doesn't earn its keep, atrophy can retire it
-  ,'constraintWeight'                  // Pe144 — gate; constraint coupling can be evolved away if it harms the lineage
   ,'vitalMemoryInfluence'              // Pe145 — gate; vital memory orientation can be evolved away if it harms the lineage
 ]);
 // Short HUD labels — keep the attribution tag compact.
@@ -7403,7 +7395,6 @@ const META_LAYER_SHORT={
   // Pe130 virtuals and gate. sw/dw/cw/hw match the fitw tag's s/d/c/h.
   ,stabilityWeight:'sw130',diversityWeight:'dw130',coherenceWeight:'cw130',churnWeight:'hw130'
   ,fitnessMirrorBias:'fmb130'
-  ,constraintWeight:'cw144'
   ,vitalMemoryInfluence:'vmi145'
 };
 
@@ -8282,6 +8273,14 @@ function profileVM(){
           const pcfmi143Prof=genome.pcfmInfluence||0;
           if(pcfmi143Prof>0.001){ vmRegs[di]=Math.max(-3,Math.min(3,(selfModel.pcfMomentum||0)*20))*pcfmi143Prof*(k||1); }
         }break;
+      }
+      if(op>=126&&op<126+MAX_BOUND_OPCODES){
+        const _bos=genome.boundOpcodes;
+        const _boi=op-126;
+        if(_bos&&_boi<_bos.length){
+          const _bua=genome.userAtoms&&genome.userAtoms[_bos[_boi]];
+          if(_bua) vmRegs[di]=uaCall(_bua,vmRegs[si],vmRegs[(si+1)%12]);
+        }
       }
       for(let r=0;r<12;r++)vmRegs[r]=Math.max(-8,Math.min(8,vmRegs[r]));
     }
@@ -9827,7 +9826,6 @@ function mutateGenome(){
   // the integration's intensity. atrophyRate (Pe40) is allowed to decay this toward 0
   // since it's in ATROPHY_SAFE — if integration proves harmful, the gate retires itself.
   genome.fitnessMirrorBias=Math.max(0,Math.min(1,metaMaybe(genome.fitnessMirrorBias||0,0.02,'fitnessMirrorBias'))); // Pe130 Layer 119
-  genome.constraintWeight=Math.max(0,Math.min(4,metaMaybe(genome.constraintWeight||0.3,0.05,'constraintWeight'))); // Pe144 Layer 133 (ceiling raised 2→4)
   genome.vitalMemoryInfluence=Math.max(0,Math.min(1,metaMaybe(genome.vitalMemoryInfluence||0,0.03,'vitalMemoryInfluence'))); // Pe145 Layer 134
 
   // ═══ Pe26 Layer 16c: CLUSTER UPWARD SIGNAL injection ═══
@@ -10124,8 +10122,7 @@ function mutateGenome(){
     inst[3]=Math.max(-2,Math.min(2,inst[3]));
 
     // Opcode swap — now includes FEEDBACK (5), LOAD_MEM (6), STORE_MEM (7)
-    const _opMutMult=(genome.problemSolvingScore||0)<0.70?2.0:0.2;
-    if(Math.random()<rate*_opMutMult)inst[0]=Math.floor(Math.random()*OPCODE_COUNT);
+    if(Math.random()<rate)inst[0]=Math.floor(Math.random()*OPCODE_COUNT);
 
     // Source register swap (now 12 registers)
     if(Math.random()<rate*0.2)inst[1]=Math.floor(Math.random()*12);
@@ -10241,6 +10238,25 @@ function mutateGenome(){
     }
     e.pendingDelta=delta;
     e.fitAtApply=currentFitness;
+  }
+  if(Math.random()<0.005){
+    genome.tendDims=Math.max(2,Math.min(DIMS_MAX,(genome.tendDims||5)+(Math.random()<0.5?1:-1)));
+  }
+  if(Math.random()<0.003){
+    const ri=Math.floor(Math.random()*4);
+    genome.rend[ri]={expression:uaGenExpression(),compiled:null,failed:false};
+  }
+  if(Math.random()<0.01){
+    const uas=genome.userAtoms||[];
+    const bos=genome.boundOpcodes||(genome.boundOpcodes=[]);
+    const roll=Math.random();
+    if(roll<0.4&&bos.length<MAX_BOUND_OPCODES&&uas.length>0){
+      bos.push(Math.floor(Math.random()*uas.length));
+    } else if(roll<0.7&&bos.length>0){
+      bos[Math.floor(Math.random()*bos.length)]=uas.length>0?Math.floor(Math.random()*uas.length):0;
+    } else if(bos.length>0){
+      bos.splice(Math.floor(Math.random()*bos.length),1);
+    }
   }
 }
 
@@ -10700,20 +10716,32 @@ function addCompound(x,y,nt,nvx,nvy,na,np,nf,parentA,parentB){
   return i;
 }
 function computeVisuals(i){
-  const m=tend[i*DIMS],ch=tend[i*DIMS+1],vo=tend[i*DIMS+2],mg=tend[i*DIMS+3];
-  let hue=((Math.atan2(ch,mg)/Math.PI)*180+180)%360;
-  let sat=30+Math.abs(vo)*60;
-  let lit=30+m*18+Math.abs(vo)*12;
-  const col=collapse[i],smear=1-col;
-  hue+=smear*Math.sin(phase[i]*3)*35;
-  sat=sat*col+15*smear;lit=lit*col+(25+Math.sin(phase[i])*8)*smear;
-  lit*=0.5+amp[i]*0.8;sat*=0.4+amp[i]*0.6;
-  hue=((hue%360)+360)%360;
-  sat=Math.max(3,Math.min(100,sat));lit=Math.max(5,Math.min(88,lit));
-  const[r,g,b]=hslToRgb(hue,sat,lit);
-  pR[i]=r;pG[i]=g;pB[i]=b;
-  const baseSize=1.2+Math.abs(m)*2+(1+mg)*1.2;
-  pSz[i]=baseSize*(0.5+amp[i]*0.7)*(0.7+col*0.3)+smear*Math.sin(phase[i]*2)*1;
+  const DMAX=Math.min(DIMS,4);
+  const t0=tend[i*DIMS],t1=DMAX>1?tend[i*DIMS+1]:0,
+        t2=DMAX>2?tend[i*DIMS+2]:0,t3=DMAX>3?tend[i*DIMS+3]:0;
+  const col=collapse[i];
+  const rn=genome.rend;
+  if(rn&&rn.length===4&&!rn[0].failed&&!rn[1].failed&&!rn[2].failed&&!rn[3].failed){
+    pR[i]=Math.max(0,Math.min(255,rendCall(rn[0],t0,t1,t2,t3,amp[i],phase[i],col)));
+    pG[i]=Math.max(0,Math.min(255,rendCall(rn[1],t0,t1,t2,t3,amp[i],phase[i],col)));
+    pB[i]=Math.max(0,Math.min(255,rendCall(rn[2],t0,t1,t2,t3,amp[i],phase[i],col)));
+    pSz[i]=Math.max(0.5,Math.min(8,rendCall(rn[3],t0,t1,t2,t3,amp[i],phase[i],col)));
+  } else {
+    const m=t0,ch=t1,vo=t2,mg=t3;
+    let hue=((Math.atan2(ch,mg)/Math.PI)*180+180)%360;
+    let sat=30+Math.abs(vo)*60;
+    let lit=30+m*18+Math.abs(vo)*12;
+    const smear=1-col;
+    hue+=smear*Math.sin(phase[i]*3)*35;
+    sat=sat*col+15*smear;lit=lit*col+(25+Math.sin(phase[i])*8)*smear;
+    lit*=0.5+amp[i]*0.8;sat*=0.4+amp[i]*0.6;
+    hue=((hue%360)+360)%360;
+    sat=Math.max(3,Math.min(100,sat));lit=Math.max(5,Math.min(88,lit));
+    const[r,g,b]=hslToRgb(hue,sat,lit);
+    pR[i]=r;pG[i]=g;pB[i]=b;
+    const baseSize=1.2+Math.abs(m)*2+(1+mg)*1.2;
+    pSz[i]=baseSize*(0.5+amp[i]*0.7)*(0.7+col*0.3)+smear*Math.sin(phase[i]*2)*1;
+  }
 }
 
 // === EFFECTS ===
@@ -12742,6 +12770,14 @@ function executeVM(i,j,sim,d){
         if(vmi145>0.001){ vmRegs[di]=(selfModel.vitalAlignment||0)*vmi145*(k||1); }
       }break;
     }
+    if(op>=126&&op<126+MAX_BOUND_OPCODES){
+      const _bos=genome.boundOpcodes;
+      const _boi=op-126;
+      if(_bos&&_boi<_bos.length){
+        const _bua=genome.userAtoms&&genome.userAtoms[_bos[_boi]];
+        if(_bua) vmRegs[di]=uaCall(_bua,vmRegs[si],vmRegs[(si+1)%12]);
+      }
+    }
     for(let r=0;r<12;r++)vmRegs[r]=Math.max(-8,Math.min(8,vmRegs[r]));
   }
 
@@ -13729,6 +13765,14 @@ function executeVM(i,j,sim,d){
           if(pcfmi143p>0.001){ vmRegs[di]=Math.max(-3,Math.min(3,(selfModel.pcfMomentum||0)*20))*pcfmi143p*(k||1); }
         }break;
       }
+      if(op>=126&&op<126+MAX_BOUND_OPCODES){
+        const _bos=genome.boundOpcodes;
+        const _boi=op-126;
+        if(_bos&&_boi<_bos.length){
+          const _bua=genome.userAtoms&&genome.userAtoms[_bos[_boi]];
+          if(_bua) vmRegs[di]=uaCall(_bua,vmRegs[si],vmRegs[(si+1)%12]);
+        }
+      }
       for(let r=0;r<12;r++)vmRegs[r]=Math.max(-8,Math.min(8,vmRegs[r]));
     }
     amp[i]-=nPi*genome.metabolicCost*0.5;
@@ -13736,10 +13780,7 @@ function executeVM(i,j,sim,d){
 
   const bondStrength=sim*phaseAlign;
   if(bondStrength>genome.plasmidTransferThresh&&Math.random()<genome.plasmidTransferRate){
-    // Pe144: bias plasmid donor toward better constraint-solver — spreads problem-solving architectures
-    const _li144=pLogicScore[i]||0,_lj144=pLogicScore[j]||0;
-    const _iProb144=(_li144>_lj144)?0.7:(_lj144>_li144)?0.3:0.5;
-    const donor=Math.random()<_iProb144?i:j;
+    const donor=Math.random()<0.5?i:j;
     const recip=donor===i?j:i;
     if(pPlasmidLen[donor]>0&&pPlasmidLen[recip]<MAX_PLASMID){
       const srcP=Math.floor(Math.random()*pPlasmidLen[donor]);
@@ -13815,8 +13856,7 @@ function executeVM(i,j,sim,d){
 
   mutPressureAccum+=vmActions[6]*influence*0.0001;
 
-  tend[i*DIMS+4]+=vmActions[7]*influence*0.01;
-  tend[i*DIMS+4]=Math.max(-1,Math.min(1,tend[i*DIMS+4]));
+  if(DIMS>4){ tend[i*DIMS+4]+=vmActions[7]*influence*0.01; tend[i*DIMS+4]=Math.max(-1,Math.min(1,tend[i*DIMS+4])); }
 }
 
 function executeClusterVM(i,j,sim,d){
@@ -14851,6 +14891,14 @@ function executeClusterVM(i,j,sim,d){
         if(pcfmi143c>0.001){ vmRegs[di]=Math.max(-3,Math.min(3,(selfModel.pcfMomentum||0)*20))*pcfmi143c*(k||1); }
       }break;
     }
+    if(op>=126&&op<126+MAX_BOUND_OPCODES){
+      const _bos=genome.boundOpcodes;
+      const _boi=op-126;
+      if(_bos&&_boi<_bos.length){
+        const _bua=genome.userAtoms&&genome.userAtoms[_bos[_boi]];
+        if(_bua) vmRegs[di]=uaCall(_bua,vmRegs[si],vmRegs[(si+1)%12]);
+      }
+    }
     for(let r=0;r<12;r++)vmRegs[r]=Math.max(-8,Math.min(8,vmRegs[r]));
   }
 
@@ -14904,8 +14952,7 @@ function executeClusterVM(i,j,sim,d){
 
   mutPressureAccum+=vmActions[6]*influence*0.00008;
 
-  tend[i*DIMS+4]+=vmActions[7]*influence*0.01;
-  tend[i*DIMS+4]=Math.max(-1,Math.min(1,tend[i*DIMS+4]));
+  if(DIMS>4){ tend[i*DIMS+4]+=vmActions[7]*influence*0.01; tend[i*DIMS+4]=Math.max(-1,Math.min(1,tend[i*DIMS+4])); }
 
   const clCost=nInst*genome.metabolicCost*CLUSTER_VM_COST_SHARE;
   amp[i]-=clCost;amp[j]-=clCost;
@@ -15109,21 +15156,8 @@ function updateParticles(){
     // pSignalEmitPrev holds this tick's final emission (already snapshotted above).
     const rawNet=Math.max(-1,Math.min(1,(Math.abs(pSignalEmitPrev[i])-Math.abs(pSignalReceive[i]*(1/(1-sigDecay+1e-6))))*0.5));
     pSignalNetPos[i]=pSignalNetPos[i]*0.95+rawNet*0.05;
-    // Pe144: stage constraint parameters for NEXT tick's executeSoloVM.
-    // pMem[1] = a/4.0, pMem[2] = b/4.0 — VM reads these via opcode 6 (MEM_READ).
-    // A VM using opcode 1 (SCALE-ADD) on vmRegs[5,6] and opcode 3 (THRESH) on the
-    // result can satisfy the local constraint: sign(a*pMem[0]+b*pMem[1])=target.
-    const _cx144=Math.max(0,Math.min(FIELD_W-1,Math.floor(px[i]/(W/FIELD_W))));
-    const _cy144=Math.max(0,Math.min(FIELD_H-1,Math.floor(py[i]/(H/FIELD_H))));
-    const _ci144b=_cy144*FIELD_W+_cx144;
-    pMem[i*MEM_SIZE+1]=problemA[_ci144b]/4.0;
-    if(MEM_SIZE>2)pMem[i*MEM_SIZE+2]=problemB[_ci144b]/4.0;
+
     // Constraint fitness: survival coupled to computational correctness.
-    // constraintWeight=0 → no effect → Pe143 exactly.
-    const _cw144=genome.constraintWeight||0;
-    if(_cw144>0.001&&N>20){
-      amp[i]+=pLogicScore[i]*0.00055*_cw144-(1-pLogicScore[i])*0.002*_cw144;
-    }
     computeVisuals(i);
   }
 }
@@ -15294,6 +15328,14 @@ function executeSoloVM(){
           // partnerField1TemporalInfluence=0 → returns 0 → Pe73 exactly (layer inert in solo mode).
         }break;
       }
+      if(op>=126&&op<126+MAX_BOUND_OPCODES){
+        const _bos=genome.boundOpcodes;
+        const _boi=op-126;
+        if(_bos&&_boi<_bos.length){
+          const _bua=genome.userAtoms&&genome.userAtoms[_bos[_boi]];
+          if(_bua) vmRegs[di]=uaCall(_bua,vmRegs[si],vmRegs[(si+1)%12]);
+        }
+      }
       for(let r=0;r<12;r++)vmRegs[r]=Math.max(-8,Math.min(8,vmRegs[r]));
     }
 
@@ -15301,8 +15343,7 @@ function executeSoloVM(){
 
     vx[i]+=vmActions[0]*soloInfluence*0.5;
     vy[i]+=vmActions[1]*soloInfluence*0.5;
-    tend[i*DIMS+4]+=vmActions[7]*soloInfluence*0.01;
-    tend[i*DIMS+4]=Math.max(-1,Math.min(1,tend[i*DIMS+4]));
+    if(DIMS>4){ tend[i*DIMS+4]+=vmActions[7]*soloInfluence*0.01; tend[i*DIMS+4]=Math.max(-1,Math.min(1,tend[i*DIMS+4])); }
     mutPressureAccum+=vmActions[6]*soloInfluence*0.00005;
   }
 }
@@ -15629,18 +15670,7 @@ function loop(){
 
   gravity();
   executeSoloVM();
-  // ═══ Pe144: CONSTRAINT EVALUATION ═══
-  // Evaluate solo VM output against local constraint BEFORE processGrid/executeVM
-  // modifies pMem. This ensures pLogicScore reflects the solo VM's computation,
-  // not pair interaction side effects.
-  for(let _ci144=0;_ci144<N;_ci144++){
-    if(!palive[_ci144])continue;
-    const _lfx144=Math.max(0,Math.min(FIELD_W-1,Math.floor(px[_ci144]/(W/FIELD_W))));
-    const _lfy144=Math.max(0,Math.min(FIELD_H-1,Math.floor(py[_ci144]/(H/FIELD_H))));
-    const _lfi144=_lfy144*FIELD_W+_lfx144;
-    const _tgt144=problemTarget[_lfi144];
-    pLogicScore[_ci144]=(pMem[_ci144*MEM_SIZE]>0?1:0)===_tgt144?1:0;
-  }
+
   networkBroadcast();
   networkReceive();
   processGrid();
@@ -15649,7 +15679,7 @@ function loop(){
     if(!palive[i])continue;
     if(pPlasmidLen[i]>0){
       pPlasmidAge[i]++;
-      const _fixThresh144=Math.round(2000-(pLogicScore[i]||0)*500); // Pe144: high logic → faster fixation
+      const _fixThresh144=2000;
       if(pPlasmidAge[i]>_fixThresh144&&genome.vmProgram.length<genome.vmMaxInstructions){
         const base=i*PLASMID_SLOTS;
         const len=pPlasmidLen[i];
@@ -15694,12 +15724,7 @@ function loop(){
     selfModel.generationRate=Math.max(0,(selfModel.generationRate||0)*0.8+(genome.generation-_prevGen136)*0.2);
     selfModel.prevGeneration=genome.generation;
     selfModel.population=alive;
-    // Pe144: rolling EMA of population constraint satisfaction
-    if(alive>0){
-      let _lsTotal144=0;
-      for(let _li144=0;_li144<N;_li144++){if(palive[_li144])_lsTotal144+=pLogicScore[_li144];}
-      genome.problemSolvingScore=genome.problemSolvingScore*0.85+(_lsTotal144/alive)*0.15;
-    }
+
     selfModel.avgAmplitude=alive>0?totalAmp/alive:0;
     selfModel.avgResonance=alive>0?totalRes/alive:0;
     // Pe128 Layer 117: spatial spread — 2D std dev of particle positions, normalized.
@@ -17781,9 +17806,7 @@ function loop(){
     _hud+=`${f2upmomi135Tag}${gri136Tag}${chmi137Tag}${aimi138Tag}${fcmi139Tag}${f2cmi140Tag}`;
     _hud+=`${fpmi141Tag}${f2pmi142Tag}${pcfmi143Tag}${dissTag}`;
     // Pe144: constraint satisfaction HUD tag
-    const _ps144=genome.problemSolvingScore||0;
-    const _cw144hud=genome.constraintWeight||0;
-    if(_cw144hud>0.05||_ps144>0.1){_hud+=` | lgc:${_ps144.toFixed(2)}(cw${_cw144hud.toFixed(2)})`;}
+
     genEl.textContent=_hud;
   }
 
