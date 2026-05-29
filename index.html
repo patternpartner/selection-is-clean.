@@ -266,7 +266,13 @@ const MEM_SIZE=8; // per-particle persistent memory. Particles become stateful a
 const MAX_PLASMID=4; // max instructions per particle's personal mobile DNA
 const PLASMID_SLOTS=MAX_PLASMID*4; // each instruction is [op,src,dst,k] = 4 values
 const MAX_BOUND_OPCODES=16;
-const OPCODE_COUNT=127+MAX_BOUND_OPCODES;
+// CORE_OPCODES single-sources the franchise boundary: opcodes 0..CORE_OPCODES-1 are core
+// (implemented in the main VM switch); CORE_OPCODES..OPCODE_COUNT-1 are evolvable bound slots.
+// Bumping CORE_OPCODES is the ONLY edit needed to add a core opcode — the bound guards
+// (op>=CORE_OPCODES) and OPCODE_COUNT derive from it, so a boundary typo can no longer
+// orphan an opcode or collide a core op with a bound slot (the Pe60 / op142-class bug).
+const CORE_OPCODES=128; // 0..127 core — Pe146 added op127 REPERTOIRE_DORMANCY
+const OPCODE_COUNT=CORE_OPCODES+MAX_BOUND_OPCODES;
 const FIELD_W=40;
 const FIELD_H=40;
 let FIELD_DECAY=0.982;   // natural fade — Pe22b: now genome-driven, can evolve
@@ -5197,6 +5203,7 @@ function encodeGenome(){
     pcfmi143:+(genome.pcfmInfluence||0).toFixed(4),                             // Pe143 Layer 132
     fmb130:+(genome.fitnessMirrorBias||0).toFixed(4),                            // Pe130 Layer 119
     vmi145:+(genome.vitalMemoryInfluence||0).toFixed(4),       // Pe145: vital memory orientation gate
+    rdi146:+(genome.repertoireDormancyInfluence||0).toFixed(4),  // Pe146: repertoire-dormancy sense gate
     vm145:Array.isArray(genome.vitalMemory)?genome.vitalMemory.map(v=>+v.toFixed(4)):[], // Pe145: remembered vital state vector
     mct:META_LAYER_PARAMS.map(p=>{
       const e=genome.metaCredit&&genome.metaCredit[p];
@@ -5426,6 +5433,7 @@ function decodeGenome(data){
     if(typeof g.pcfmi143==='number')genome.pcfmInfluence=g.pcfmi143;             // Pe143 Layer 132
     if(typeof g.fmb130==='number')genome.fitnessMirrorBias=g.fmb130;              // Pe130 Layer 119
     if(typeof g.vmi145==='number')genome.vitalMemoryInfluence=g.vmi145;       // Pe145: restore vital memory gate
+    if(typeof g.rdi146==='number')genome.repertoireDormancyInfluence=g.rdi146; // Pe146: restore repertoire-dormancy gate
     if(Array.isArray(g.vm145)&&g.vm145.length===5)genome.vitalMemory=g.vm145; // Pe145: restore vital memory vector
     // Pe37 Layer 26: attribution
     if(typeof g.mcb==='number')genome.metaCreditBias=g.mcb;
@@ -6230,6 +6238,8 @@ function sanitizeGenome(){
   genome.fitnessMirrorBias=Math.max(0,Math.min(1,finiteOr(genome.fitnessMirrorBias,0.05)));                       // Pe130 Layer 119
   if(genome.vitalMemoryInfluence===undefined)genome.vitalMemoryInfluence=0;
   genome.vitalMemoryInfluence=Math.max(0,Math.min(1,finiteOr(genome.vitalMemoryInfluence,0)));                     // Pe145 Layer 134
+  if(genome.repertoireDormancyInfluence===undefined)genome.repertoireDormancyInfluence=0;
+  genome.repertoireDormancyInfluence=Math.max(0,Math.min(1,finiteOr(genome.repertoireDormancyInfluence,0)));       // Pe146 Layer 135
   if(!Array.isArray(genome.vitalMemory)||genome.vitalMemory.length!==5)genome.vitalMemory=[];                      // Pe145: initialised on first vital tick
   {
     const src=(genome.metaCredit&&typeof genome.metaCredit==='object')?genome.metaCredit:{};
@@ -7182,6 +7192,7 @@ const META_LAYER_PARAMS=[
   ,'churnWeight'                          // Pe130 — virtual: genome.objWeights[3]
   ,'fitnessMirrorBias'                    // Pe130 — gate; itself tracked & atrophy-safe
   ,'vitalMemoryInfluence'                 // Pe145 — gate; if vital alignment orientation harms fitness, atrophy retires it
+  ,'repertoireDormancyInfluence'          // Pe146 — gate; the dormancy sense earns its keep or atrophy retires it
 ];
 // Pe130: indirect-address registry for the four virtual params. Snapshot, capture,
 // and any future direct-value reads consult this table; non-virtual params read
@@ -7292,6 +7303,7 @@ const ATROPHY_SAFE=new Set([
   ,'pcfmInfluence'                   // Pe143
   ,'fitnessMirrorBias'                 // Pe130 — the gate itself: if mirror integration doesn't earn its keep, atrophy can retire it
   ,'vitalMemoryInfluence'              // Pe145 — gate; vital memory orientation can be evolved away if it harms the lineage
+  ,'repertoireDormancyInfluence'       // Pe146 — gate; if reading its own negative space doesn't help, atrophy retires it
 ]);
 // Short HUD labels — keep the attribution tag compact.
 const META_LAYER_SHORT={
@@ -7396,6 +7408,7 @@ const META_LAYER_SHORT={
   ,stabilityWeight:'sw130',diversityWeight:'dw130',coherenceWeight:'cw130',churnWeight:'hw130'
   ,fitnessMirrorBias:'fmb130'
   ,vitalMemoryInfluence:'vmi145'
+  ,repertoireDormancyInfluence:'rdi146'
 };
 
 // Pe32: 12D Euclidean distance between two scenario entries.
@@ -8274,9 +8287,9 @@ function profileVM(){
           if(pcfmi143Prof>0.001){ vmRegs[di]=Math.max(-3,Math.min(3,(selfModel.pcfMomentum||0)*20))*pcfmi143Prof*(k||1); }
         }break;
       }
-      if(op>=127&&op<127+MAX_BOUND_OPCODES){
+      if(op>=CORE_OPCODES&&op<CORE_OPCODES+MAX_BOUND_OPCODES){
         const _bos=genome.boundOpcodes;
-        const _boi=op-127;
+        const _boi=op-CORE_OPCODES;
         if(_bos&&_boi<_bos.length){
           const _bua=genome.userAtoms&&genome.userAtoms[_bos[_boi]];
           if(_bua) vmRegs[di]=uaCall(_bua,vmRegs[si],vmRegs[(si+1)%12]);
@@ -8789,6 +8802,7 @@ const inst={
   deathsFitness:[],   // deaths we can attribute to evaluation pressure
   hgtRate:[],         // HGT events per measurement window
   avgPlasmidLen:[],   // average plasmid instructions per carrier
+  repertoireDormancy:[], // Pe146: negative-space mirror — fraction of reachable repertoire dormant (read-only, for us)
   opcodeHist:[],      // opcode frequency in global program over time
 };
 let deathsByPhysics=0,deathsByAge=0;
@@ -8827,6 +8841,7 @@ function sampleInstrumentation(){
   inst.deathsFitness.push(deathsByAge);
   inst.hgtRate.push(hgtWindow);
   inst.avgPlasmidLen.push(plmParts>0?+(plmTotal/plmParts).toFixed(2):0);
+  inst.repertoireDormancy.push(+(selfModel.repertoireDormancy||0).toFixed(3)); // Pe146: negative-space mirror
 
   // Opcode histogram snapshot
   const counts=new Array(11).fill(0);
@@ -8849,7 +8864,7 @@ function renderDashboard(){
   const pad=8,lineH=28,chartW=120,chartH=18;
   const startX=W-chartW-pad-90,startY=pad+20;
 
-  const nMetrics=8;
+  const nMetrics=9;
   X.fillStyle='rgba(0,0,0,0.7)';
   X.fillRect(startX-pad,startY-pad,chartW+90+pad*2,nMetrics*lineH+pad*2+20);
 
@@ -8864,6 +8879,7 @@ function renderDashboard(){
     {name:'stabilty',data:inst.stability,color:'#88ffcc',max:1},
     {name:'pop     ',data:inst.population,color:'#cccccc',max:0},
     {name:'HGT/win ',data:inst.hgtRate,color:'#ffaa44',max:0},
+    {name:'dormancy',data:inst.repertoireDormancy,color:'#cc88ff',max:1},
   ];
 
   for(let m=0;m<metrics.length;m++){
@@ -9827,6 +9843,7 @@ function mutateGenome(){
   // since it's in ATROPHY_SAFE — if integration proves harmful, the gate retires itself.
   genome.fitnessMirrorBias=Math.max(0,Math.min(1,metaMaybe(genome.fitnessMirrorBias||0,0.02,'fitnessMirrorBias'))); // Pe130 Layer 119
   genome.vitalMemoryInfluence=Math.max(0,Math.min(1,metaMaybe(genome.vitalMemoryInfluence||0,0.03,'vitalMemoryInfluence'))); // Pe145 Layer 134
+  genome.repertoireDormancyInfluence=Math.max(0,Math.min(1,metaMaybe(genome.repertoireDormancyInfluence||0,0.03,'repertoireDormancyInfluence'))); // Pe146 Layer 135
 
   // ═══ Pe26 Layer 16c: CLUSTER UPWARD SIGNAL injection ═══
   // Drain the upstream buffer — soft-inject successful cluster motifs into the global VM.
@@ -10431,6 +10448,7 @@ const selfModel={
   capacityPressure:0,    // 0 = plenty of room, 1 = at hard cap
   collapseRisk:0,        // composite: high cap pressure + declining field = danger
   vitalAlignment:0,      // Pe145: cosine similarity between current state and remembered thriving
+  repertoireDormancy:0,  // Pe146: fraction of the reachable opcode repertoire absent from the live genome (0..1)
 };
 
 // Extinction tracking
@@ -12769,19 +12787,33 @@ function executeVM(i,j,sim,d){
         const vmi145=genome.vitalMemoryInfluence||0;
         if(vmi145>0.001){ vmRegs[di]=(selfModel.vitalAlignment||0)*vmi145*(k||1); }
       }break;
+      case 127:{
+        // Pe146 Layer 135: REPERTOIRE_DORMANCY — the system senses how much of its own
+        // instruction repertoire currently lies unused in the live genome. This is the
+        // negative space: not what the system does, but the breadth of what it is NOT
+        // doing. ~1 = most of the repertoire is latent/untried; ~0 = broadly exercised.
+        // A particle can evolve to read its own unexplored self — to feel the gap between
+        // what it can express and what it does — and condition behavior on it (explore,
+        // diversify, ignore). What it does with the gap is left entirely to selection.
+        // This is the sense the op142 orphan proved was missing: the ground can finally
+        // feel an untrodden region of itself. It does NOT repair dead opcodes (the VM
+        // cannot rewrite its own switch); it only makes their dormancy perceptible.
+        // repertoireDormancyInfluence=0 → returns 0 → Pe145 exactly, until selection raises it.
+        const rdi146=genome.repertoireDormancyInfluence||0;
+        if(rdi146>0.001){ vmRegs[di]=(selfModel.repertoireDormancy||0)*rdi146*(k||1); }
+      }break;
     }
-    // BOUND-OPCODE BOUNDARY FIX (Pe60-class): OPCODE_COUNT=127+MAX_BOUND_OPCODES encodes
-    // the partition core[0..126] + bound[127..142]. The bound guard previously read
-    // op>=126 (boi=op-126), which (a) collided with core op126 VITAL_ALIGNMENT in this VM —
-    // case 126 ran, then boundOpcodes[0] clobbered vmRegs[di] — and (b) excluded op142
-    // (126+16=142, op<142), so mutation emitted op142 into a dead path the VM never executed.
+    // BOUND-OPCODE BOUNDARY (Pe60-class fix, now single-sourced via CORE_OPCODES).
+    // History: the guard once read op>=126 (boi=op-126), which (a) collided with core
+    // op126 VITAL_ALIGNMENT — case 126 ran, then boundOpcodes[0] clobbered vmRegs[di] —
+    // and (b) excluded the top opcode, so mutation emitted a dead op the VM never ran.
     // Neither fault is visible to selection: the organism thrives missing a vote it never
-    // got and corrupting one it can't see. Corrected to op>=127 (boi=op-127): op126 now
-    // sets VITAL_ALIGNMENT cleanly, op142 binds boundOpcodes[15], 0..142 fully covered.
+    // got and corrupting one it can't see. The boundary now derives from CORE_OPCODES, so
+    // core ops never reach this guard and every bound slot 0..MAX_BOUND_OPCODES-1 is covered.
     // This restores a capacity a typo removed; it does not steer what the system does with it.
-    if(op>=127&&op<127+MAX_BOUND_OPCODES){
+    if(op>=CORE_OPCODES&&op<CORE_OPCODES+MAX_BOUND_OPCODES){
       const _bos=genome.boundOpcodes;
-      const _boi=op-127;
+      const _boi=op-CORE_OPCODES;
       if(_bos&&_boi<_bos.length){
         const _bua=genome.userAtoms&&genome.userAtoms[_bos[_boi]];
         if(_bua) vmRegs[di]=uaCall(_bua,vmRegs[si],vmRegs[(si+1)%12]);
@@ -13774,9 +13806,9 @@ function executeVM(i,j,sim,d){
           if(pcfmi143p>0.001){ vmRegs[di]=Math.max(-3,Math.min(3,(selfModel.pcfMomentum||0)*20))*pcfmi143p*(k||1); }
         }break;
       }
-      if(op>=127&&op<127+MAX_BOUND_OPCODES){
+      if(op>=CORE_OPCODES&&op<CORE_OPCODES+MAX_BOUND_OPCODES){
         const _bos=genome.boundOpcodes;
-        const _boi=op-127;
+        const _boi=op-CORE_OPCODES;
         if(_bos&&_boi<_bos.length){
           const _bua=genome.userAtoms&&genome.userAtoms[_bos[_boi]];
           if(_bua) vmRegs[di]=uaCall(_bua,vmRegs[si],vmRegs[(si+1)%12]);
@@ -14900,9 +14932,9 @@ function executeClusterVM(i,j,sim,d){
         if(pcfmi143c>0.001){ vmRegs[di]=Math.max(-3,Math.min(3,(selfModel.pcfMomentum||0)*20))*pcfmi143c*(k||1); }
       }break;
     }
-    if(op>=127&&op<127+MAX_BOUND_OPCODES){
+    if(op>=CORE_OPCODES&&op<CORE_OPCODES+MAX_BOUND_OPCODES){
       const _bos=genome.boundOpcodes;
-      const _boi=op-127;
+      const _boi=op-CORE_OPCODES;
       if(_bos&&_boi<_bos.length){
         const _bua=genome.userAtoms&&genome.userAtoms[_bos[_boi]];
         if(_bua) vmRegs[di]=uaCall(_bua,vmRegs[si],vmRegs[(si+1)%12]);
@@ -15337,9 +15369,9 @@ function executeSoloVM(){
           // partnerField1TemporalInfluence=0 → returns 0 → Pe73 exactly (layer inert in solo mode).
         }break;
       }
-      if(op>=127&&op<127+MAX_BOUND_OPCODES){
+      if(op>=CORE_OPCODES&&op<CORE_OPCODES+MAX_BOUND_OPCODES){
         const _bos=genome.boundOpcodes;
-        const _boi=op-127;
+        const _boi=op-CORE_OPCODES;
         if(_bos&&_boi<_bos.length){
           const _bua=genome.userAtoms&&genome.userAtoms[_bos[_boi]];
           if(_bua) vmRegs[di]=uaCall(_bua,vmRegs[si],vmRegs[(si+1)%12]);
@@ -15912,6 +15944,28 @@ function loop(){
         _ms+=_sv145[_v]*_sv145[_v];
       }
       selfModel.vitalAlignment=(_mm>0&&_ms>0)?_dot/(Math.sqrt(_mm)*Math.sqrt(_ms)):0;
+    }
+
+    // ═══ Pe146 Layer 135: REPERTOIRE DORMANCY ═══
+    // Fraction of the reachable opcode repertoire absent from the live genome program.
+    // Core opcodes 0..CORE_OPCODES-1 are always reachable; a bound slot becomes reachable
+    // once a userAtom is bound to it. This is the system's own negative space — the breadth
+    // of instructions it currently leaves untried — exposed to the VM via opcode 127.
+    // We measure and expose it; we never act on it. Selection decides whether feeling its
+    // own unused repertoire is worth anything.
+    {
+      const _seen146=new Uint8Array(OPCODE_COUNT);
+      const _prog146=genome.vmProgram;
+      for(let _p=0;_p<_prog146.length;_p++){const _o=_prog146[_p][0]|0;if(_o>=0&&_o<OPCODE_COUNT)_seen146[_o]=1;}
+      const _bound146=Array.isArray(genome.boundOpcodes)?genome.boundOpcodes.length:0;
+      let _reach146=0,_used146=0;
+      for(let _o=0;_o<OPCODE_COUNT;_o++){
+        const _isReach=_o<CORE_OPCODES||(_o-CORE_OPCODES)<_bound146;
+        if(!_isReach)continue;
+        _reach146++;
+        if(_seen146[_o])_used146++;
+      }
+      selfModel.repertoireDormancy=_reach146>0?1-(_used146/_reach146):0;
     }
 
     // FITNESS — self-derived, no designer targets.
