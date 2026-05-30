@@ -4810,8 +4810,12 @@ function recordEvent(kind,data,minGap){
 // The epoch arc is the complement: a compact, bounded summary that spans the ENTIRE
 // run so the genome carries its whole biography — for resume continuity in a new tab
 // and for reading the full shape of a life from a static export.
-// Each bucket is a flat numeric array (cheap to encode):
-//   [tEnd, meanPop, peakPop, extinctions, meanFit, peakClusters, atomsTotal, atomsAdopted, mutationRate]
+// Each bucket is a flat numeric array (append-only schema; cols 0-8 are stable so
+// older exports still read):
+//   [tEnd, meanPop, peakPop, extinctions, meanFit, peakClusters, atomsTotal,
+//    atomsAdopted, mutationRate, minPop, meanDiversity, metabolicCost]
+// minPop catches near-death dips that mean/peak hide; meanDiversity exposes
+// diversity collapse; metabolicCost tracks the cost-of-living lever over the arc.
 // When the arc exceeds MAX_EPOCHS, adjacent pairs are merged (oldest coarsens first),
 // so it keeps spanning the whole run forever within a fixed size.
 const EPOCH_TICKS=5000;
@@ -4823,15 +4827,18 @@ function downsampleEpochs(){
     const a=e[i],b=e[i+1];
     if(!b){out.push(a);break;}
     out.push([
-      b[0],                              // tEnd  → later edge
-      Math.round((a[1]+b[1])/2),         // meanPop → average
-      Math.max(a[2],b[2]),               // peakPop → max
-      (a[3]|0)+(b[3]|0),                 // extinctions → sum
-      +(((a[4]+b[4])/2).toFixed(3)),     // meanFit → average
-      Math.max(a[5],b[5]),               // peakClusters → max
-      Math.max(a[6],b[6]),               // atomsTotal → max
-      Math.max(a[7],b[7]),               // atomsAdopted → max
-      b[8]                               // mutationRate → later
+      b[0],                              // tEnd          → later edge
+      Math.round((a[1]+b[1])/2),         // meanPop       → average
+      Math.max(a[2],b[2]),               // peakPop       → max
+      (a[3]|0)+(b[3]|0),                 // extinctions   → sum
+      +(((a[4]+b[4])/2).toFixed(3)),     // meanFit       → average
+      Math.max(a[5],b[5]),               // peakClusters  → max
+      Math.max(a[6],b[6]),               // atomsTotal    → max
+      Math.max(a[7],b[7]),               // atomsAdopted  → max
+      b[8],                              // mutationRate  → later
+      Math.min(a[9],b[9]),               // minPop        → min
+      +(((a[10]+b[10])/2).toFixed(3)),   // meanDiversity → average
+      b[11]                              // metabolicCost → later
     ]);
   }
   genome.epochs=out;
@@ -4850,21 +4857,26 @@ function flushEpoch(acc){
     acc.clPeak|0,
     atoms.length,
     adopted,
-    +(+acc.mut).toFixed(4)
+    +(+acc.mut).toFixed(4),
+    acc.popMin===Infinity?0:(acc.popMin|0),
+    +((acc.divSum/acc.n).toFixed(3)),
+    Number((+genome.metabolicCost||0).toPrecision(3))
   ]);
   while(genome.epochs.length>MAX_EPOCHS)downsampleEpochs();
 }
 // Called from the periodic (tick%600) block; samples are cheap and aggregate into
 // the current epoch, flushing the previous one when the epoch index advances.
-function epochSample(pop,fit,clusters){
+function epochSample(pop,fit,clusters,div){
   const idx=(genome.totalTicks/EPOCH_TICKS)|0;
   if(!_epochAcc||_epochAcc.idx!==idx){
     if(_epochAcc)flushEpoch(_epochAcc);
-    _epochAcc={idx,n:0,popSum:0,popPeak:0,fitSum:0,clPeak:0,
+    _epochAcc={idx,n:0,popSum:0,popPeak:0,popMin:Infinity,fitSum:0,divSum:0,clPeak:0,
                extStart:genome.extinctions|0,mut:genome.mutationRate};
   }
   const a=_epochAcc;
   a.n++;
+  if(pop<a.popMin)a.popMin=pop;
+  a.divSum+=(+div||0);
   a.popSum+=pop;
   if(pop>a.popPeak)a.popPeak=pop;
   a.fitSum+=fit;
@@ -6342,6 +6354,14 @@ function sanitizeGenome(){
   genome.lineage=Array.isArray(genome.lineage)?genome.lineage.slice(-6):[];
   genome.eventLog=Array.isArray(genome.eventLog)?genome.eventLog.slice(-EVENT_LOG_SIZE):[];
   if(!Array.isArray(genome.epochs))genome.epochs=[];
+  genome.epochs=genome.epochs.map(e=>{ // normalize legacy 9-field buckets to current 12-field schema
+    if(!Array.isArray(e))return null;
+    const b=e.slice(0,12);
+    if(b[9]===undefined)b[9]=b[1];   // minPop ← meanPop fallback
+    if(b[10]===undefined)b[10]=0;    // meanDiversity (unknown for legacy)
+    if(b[11]===undefined)b[11]=0;    // metabolicCost (unknown for legacy)
+    return b;
+  }).filter(Boolean);
   while(genome.epochs.length>MAX_EPOCHS)downsampleEpochs(); // keep full span, never slice oldest
   genome.stableMotifs=Array.isArray(genome.stableMotifs)?genome.stableMotifs.filter(m=>m&&Array.isArray(m.t)&&m.t.length>=DIMS).slice(-Math.max(1,genome.motifMemorySize||5)):[];
   if(!validChemistryTable(genome.chemistryTable))genome.chemistryTable=seedChemistryTable();
@@ -16150,7 +16170,7 @@ function loop(){
     genome.lineage.push({t:genome.totalTicks,p:selfModel.population,c:selfModel.clusterCount,d:+(selfModel.diversity.toFixed(3)),f:+(currentFitness.toFixed(3)),s:+(selfModel.stability.toFixed(3)),w:genome.objWeights.map(v=>+(v.toFixed(3))),lgc:_pss144snap,op3:compCount,op1:op1Count});  // Pe144: lgc=problemSolvingScore, op3/op1=vmProgram architecture snapshot
     if(genome.lineage.length>6)genome.lineage.shift();
     recordEvent('pulse',{p:selfModel.population,c:selfModel.clusterCount,f:+currentFitness.toFixed(2),s:+(selfModel.stability||0).toFixed(2),lgc:_pss144snap},1800);  // Pe144: lgc in event log
-    epochSample(selfModel.population,currentFitness,selfModel.clusterCount); // full-arc summary accrues here
+    epochSample(selfModel.population,currentFitness,selfModel.clusterCount,selfModel.diversity); // full-arc summary accrues here
     saveGenome();
     let plasmidParticles=0,totalPlasmids=0;
     for(let i=0;i<N;i++){if(pPlasmidLen[i]>0){plasmidParticles++;totalPlasmids+=pPlasmidLen[i]}}
