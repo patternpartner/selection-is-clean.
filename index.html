@@ -4684,6 +4684,7 @@ let genome={
   totalTicks:0,
   lineage:[],
   eventLog:[],      // compact fossil record carried with exported lineages
+  epochs:[],        // FULL-ARC summary: one bounded bucket per EPOCH_TICKS, spans the entire run
   stableMotifs:[],
   fitnessHistory:[],
   extinctions:0,
@@ -4803,6 +4804,74 @@ function recordEvent(kind,data,minGap){
     while(genome.eventLog.length>EVENT_LOG_SIZE)genome.eventLog.shift();
   }catch(e){}
 }
+
+// ═══ FULL-ARC EPOCH HISTORY ═══
+// The eventLog/lineage are fine-grained but rolling (only the tail survives a save).
+// The epoch arc is the complement: a compact, bounded summary that spans the ENTIRE
+// run so the genome carries its whole biography — for resume continuity in a new tab
+// and for reading the full shape of a life from a static export.
+// Each bucket is a flat numeric array (cheap to encode):
+//   [tEnd, meanPop, peakPop, extinctions, meanFit, peakClusters, atomsTotal, atomsAdopted, mutationRate]
+// When the arc exceeds MAX_EPOCHS, adjacent pairs are merged (oldest coarsens first),
+// so it keeps spanning the whole run forever within a fixed size.
+const EPOCH_TICKS=5000;
+const MAX_EPOCHS=200;
+let _epochAcc=null; // transient accumulator for the in-progress epoch (rebuilt on load)
+function downsampleEpochs(){
+  const e=genome.epochs,out=[];
+  for(let i=0;i<e.length;i+=2){
+    const a=e[i],b=e[i+1];
+    if(!b){out.push(a);break;}
+    out.push([
+      b[0],                              // tEnd  → later edge
+      Math.round((a[1]+b[1])/2),         // meanPop → average
+      Math.max(a[2],b[2]),               // peakPop → max
+      (a[3]|0)+(b[3]|0),                 // extinctions → sum
+      +(((a[4]+b[4])/2).toFixed(3)),     // meanFit → average
+      Math.max(a[5],b[5]),               // peakClusters → max
+      Math.max(a[6],b[6]),               // atomsTotal → max
+      Math.max(a[7],b[7]),               // atomsAdopted → max
+      b[8]                               // mutationRate → later
+    ]);
+  }
+  genome.epochs=out;
+}
+function flushEpoch(acc){
+  if(!acc||acc.n<=0)return;
+  if(!Array.isArray(genome.epochs))genome.epochs=[];
+  const atoms=(genome.userAtoms||[]);
+  const adopted=atoms.filter(a=>(a.uses|0)>0).length;
+  genome.epochs.push([
+    (acc.idx+1)*EPOCH_TICKS,
+    Math.round(acc.popSum/acc.n),
+    acc.popPeak|0,
+    (genome.extinctions|0)-acc.extStart,
+    +((acc.fitSum/acc.n).toFixed(3)),
+    acc.clPeak|0,
+    atoms.length,
+    adopted,
+    +(+acc.mut).toFixed(4)
+  ]);
+  while(genome.epochs.length>MAX_EPOCHS)downsampleEpochs();
+}
+// Called from the periodic (tick%600) block; samples are cheap and aggregate into
+// the current epoch, flushing the previous one when the epoch index advances.
+function epochSample(pop,fit,clusters){
+  const idx=(genome.totalTicks/EPOCH_TICKS)|0;
+  if(!_epochAcc||_epochAcc.idx!==idx){
+    if(_epochAcc)flushEpoch(_epochAcc);
+    _epochAcc={idx,n:0,popSum:0,popPeak:0,fitSum:0,clPeak:0,
+               extStart:genome.extinctions|0,mut:genome.mutationRate};
+  }
+  const a=_epochAcc;
+  a.n++;
+  a.popSum+=pop;
+  if(pop>a.popPeak)a.popPeak=pop;
+  a.fitSum+=fit;
+  if(clusters>a.clPeak)a.clPeak=clusters;
+  a.mut=genome.mutationRate;
+}
+
 function flushNetworkEvents(){
   for(const type in netEventPending){
     const n=netEventPending[type];
@@ -5067,6 +5136,7 @@ function encodeGenome(){
     g:genome.generation,T:genome.totalTicks,
     L:genome.lineage.slice(-4),
     E:(genome.eventLog||[]).slice(-EVENT_LOG_SIZE),
+    EP:(genome.epochs||[]).slice(-MAX_EPOCHS),  // full-arc summary — spans the entire run
     M:genome.stableMotifs.slice(-genome.motifMemorySize),
     x:genome.extinctions,pf:+(genome.peakFitness.toPrecision(3)),
     ls:genome.longestStable,
@@ -5301,6 +5371,7 @@ function decodeGenome(data){
     genome.totalTicks=g.T||0;
     genome.lineage=g.L||[];
     genome.eventLog=g.E||[];
+    genome.epochs=Array.isArray(g.EP)?g.EP:[];
     genome.stableMotifs=g.M||[];
     genome.extinctions=g.x||0;
     genome.peakFitness=g.pf||0;
@@ -6270,6 +6341,8 @@ function sanitizeGenome(){
   genome.boundOpcodes=genome.boundOpcodes.filter(n=>typeof n==='number'&&n>=0).slice(0,MAX_BOUND_OPCODES);
   genome.lineage=Array.isArray(genome.lineage)?genome.lineage.slice(-6):[];
   genome.eventLog=Array.isArray(genome.eventLog)?genome.eventLog.slice(-EVENT_LOG_SIZE):[];
+  if(!Array.isArray(genome.epochs))genome.epochs=[];
+  while(genome.epochs.length>MAX_EPOCHS)downsampleEpochs(); // keep full span, never slice oldest
   genome.stableMotifs=Array.isArray(genome.stableMotifs)?genome.stableMotifs.filter(m=>m&&Array.isArray(m.t)&&m.t.length>=DIMS).slice(-Math.max(1,genome.motifMemorySize||5)):[];
   if(!validChemistryTable(genome.chemistryTable))genome.chemistryTable=seedChemistryTable();
   genome.fieldDecay=finiteOr(genome.fieldDecay,0.982);
@@ -16077,6 +16150,7 @@ function loop(){
     genome.lineage.push({t:genome.totalTicks,p:selfModel.population,c:selfModel.clusterCount,d:+(selfModel.diversity.toFixed(3)),f:+(currentFitness.toFixed(3)),s:+(selfModel.stability.toFixed(3)),w:genome.objWeights.map(v=>+(v.toFixed(3))),lgc:_pss144snap,op3:compCount,op1:op1Count});  // Pe144: lgc=problemSolvingScore, op3/op1=vmProgram architecture snapshot
     if(genome.lineage.length>6)genome.lineage.shift();
     recordEvent('pulse',{p:selfModel.population,c:selfModel.clusterCount,f:+currentFitness.toFixed(2),s:+(selfModel.stability||0).toFixed(2),lgc:_pss144snap},1800);  // Pe144: lgc in event log
+    epochSample(selfModel.population,currentFitness,selfModel.clusterCount); // full-arc summary accrues here
     saveGenome();
     let plasmidParticles=0,totalPlasmids=0;
     for(let i=0;i<N;i++){if(pPlasmidLen[i]>0){plasmidParticles++;totalPlasmids+=pPlasmidLen[i]}}
