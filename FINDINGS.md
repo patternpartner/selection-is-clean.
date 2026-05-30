@@ -52,23 +52,31 @@ clamp, clusters vanish, and lineages freeze (no turnover). Diversity collapses.
 Onset is stochastic (observed at ticks 48k, 56k, and 205k across runs; one 250k
 run never tipped) — the signature of a **bistable system tipped by drift**.
 
-### Root cause (isolated by 24 replicated ablations, 2 independent lineages)
+### Root cause (isolated by replicated ablation, 2 independent lineages)
 
 The bloom is caused by **one evolved parameter: `metabolicCost`** — the per-tick
 amplitude drain, i.e. the cost of being alive.
 
-| Reset to cold default | bloom fraction (c1 / c2) |
-|---|---|
-| none (control)        | 6/6 · 6/6 |
-| objWeights            | 6/6 · 6/6 |
-| fitnessSensors        | 6/6 · 6/6 |
-| vmProgram             | 6/6 · 6/6 |
-| **metabolicCost**     | **0/6 · 0/6** |
-| physics (incl. above) | 0/6 · 0/6 |
+Each evolved component was reset to its cold default and the genome replayed with
+evolution frozen; bloom = peak N > 800 within 7,000 ticks; 6 replicates per cell
+(independent RNG). The bloom is **stochastic** (it does not always tip inside the
+window), so the control is ~half, not all — the signal is the contrast against it:
 
-Restoring `metabolicCost` alone to its cold default (0.00002) **abolishes the
-bloom in 12/12 runs**; the evaluation layer, behavior, and perception are
-irrelevant. Confirmations:
+| reset → cold default | lineage c1 | lineage c2 |
+|---|---|---|
+| none (control)        | 3/6 | 4/6 |
+| objWeights            | 4/6 | 2/6 |
+| fitnessSensors        | 2/6 | 5/6 |
+| vmProgram             | 3/6 | 3/6 |
+| **metabolicCost**     | **0/6** | **0/6** |
+| physics (incl. metabolicCost) | **0/6** | **0/6** |
+
+`metabolicCost` reset gives **0/12 blooms** across both lineages, while the
+evaluation layer (objWeights, fitnessSensors), behavior (vmProgram), and the
+perception gains all stay in the stochastic control band (2–5/6) — i.e. no
+protective effect. `physics` abolishes the bloom only because it *contains*
+`metabolicCost`. Restoring `metabolicCost` to its cold default (0.00002) is
+necessary and sufficient to prevent the bloom. Supporting controls:
 - Cold genome cannot be *perturbed* into a bloom — injecting 250 particles and
   forcing all amplitudes to the 1.2 clamp both **recover** to baseline. The
   bloom requires the evolved genome, not just a state kick.
@@ -103,6 +111,6 @@ downward pressure and no floor, guarantees this outcome given enough time.
 Put a **floor** on `metabolicCost` (e.g. clamp ≥ 0.00002 in `sanitizeGenome` /
 mutation), or make it non-evolvable, or couple it to density so it cannot be
 evolved away. The metabolicCost ablation *is* this fix and demonstrates it
-prevents the bloom (0/6 vs 6/6) while leaving open-ended evolution otherwise
-intact. The N<100 dead-zone in `densityCost` is a contributing weakness worth
-removing as well.
+prevents the bloom (0/12 vs 7/12 control) while leaving open-ended evolution
+otherwise intact. The N<100 dead-zone in `densityCost` is a contributing
+weakness worth removing as well.

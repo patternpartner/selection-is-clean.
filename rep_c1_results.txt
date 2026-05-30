@@ -1,0 +1,2 @@
+none             blooms 4/6  peaks=[364,1800,1800,1800,351,1800]
+metabolicCost    blooms 0/6  peaks=[351,351,342,341,359,340]
