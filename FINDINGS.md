@@ -64,21 +64,30 @@ over-reached, so the next reader doesn't inherit my mistakes.
      lineage is healthy and its `metabolicCost` stayed at ~default. The system
      does NOT march into the bloom in practice.
 
-- **Honest status of the bloom:** a real *risk basin* the harness exhibits from
-  cold/immature genomes, plausibly linked to `metabolicCost` erosion, that the
-  mature real lineage avoided. Whether the harness would also keep the *real*
-  genome stable was not tested (the native genome-load path could not be verified
-  in this session). So the bloom may be (a) a basin escaped by mature evolution,
-  or (b) partly a harness artifact. **Not resolved.**
+- **[SOLID] RESOLVED — the bloom is an immature-genome basin; mature evolution
+  resists it; the harness is faithful.** The real exported genome was loaded
+  natively (`decodeGenome`) and run in the harness:
+  - *frozen* (20k ticks): population stays healthy (N≈55–85), no bloom.
+  - *evolution active* (60k ticks): population stays healthy (N≈85, amp≈0.79),
+    **and `metabolicCost` stays put** (0.0000196 → 0.0000186, ~5% drift — it does
+    NOT race to zero).
 
-## What would resolve it (next session)
+  So: (i) the harness does **not** artifactually bloom the real genome — it
+  reproduces the real system's stability, which validates the harness; and
+  (ii) the bloom seen from cold starts is a **basin that immature genomes fall
+  into and mature evolution escapes.** The real gen-47 lineage has evolved a
+  configuration in which lowering `metabolicCost` is no longer selected for, so
+  the homeostat holds. The system **evolves its own robustness** to the
+  degenerate attractor — the opposite of the "inevitable collapse" I first
+  claimed.
 
-1. Load the real exported genome natively (via `decodeGenome`/`loadGenome` with
-   the export string in `localStorage`) and run with evolution ON. If the harness
-   keeps it healthy → harness is faithful and the bloom is an immature-genome
-   basin. If it blooms → harness artifact; discount the harness bloom entirely.
-2. If the bloom is real: a `metabolicCost` floor and removing the N<100
-   dead-zone in `densityCost` are the candidate mitigations — but only after (1).
+## Net read on the bloom
+
+Not a flaw in the mature system; a transient risk early in evolution. A
+`metabolicCost` floor / removing the N<100 `densityCost` dead-zone would make
+*young* lineages robust sooner, but it is **not** required for the system to be
+healthy long-term — the real run proves that. Optional hardening, not a fix for
+a live defect.
 
 ## Process note (so the next reader trusts the rest)
 

@@ -1,0 +1,7 @@
+applied=true gen=48 metabolicCost=0.0000196 objW=[0.1403,0.186,0.362,0.3117] boundOps=0 userAtoms=6
+  t2 N=329 amp=0.509 mc=0.0000196
+  t4002 N=84 amp=0.428 mc=0.0000196
+  t8002 N=63 amp=0.721 mc=0.0000196
+  t12002 N=75 amp=0.557 mc=0.0000196
+  t16002 N=83 amp=1.097 mc=0.0000196
+RESULT peakN=329 finalN=55 finalAmp=1.744 finalMetabolicCost=0.0000196 verdict=healthy

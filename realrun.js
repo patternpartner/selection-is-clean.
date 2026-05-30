@@ -35,9 +35,9 @@ globalThis.localStorage={getItem:k=>k==='selection_genome'?B64:null,setItem(){},
 const code=fs.readFileSync(__dirname+'/index.html','utf8').match(/<script>([\s\S]*)<\/script>/)[1];
 const driver=`
 ;(function(){
-  // Force-apply via the system's own decoder to be certain the real genome is loaded.
+  // Apply via the system's OWN decoder (decodeGenome handles base64 + key mapping).
   var applied=false;
-  try{ applied=applyGenome(${JSON.stringify(B64)}); }catch(e){ applied='ERR:'+e.message; }
+  try{ applied=decodeGenome(${JSON.stringify(B64)}); }catch(e){ applied='ERR:'+e.message; }
   // re-init particle field under the loaded genome
   try{ init(); }catch(e){}
   var FREEZE=${FREEZE};
