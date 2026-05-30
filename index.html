@@ -260,7 +260,7 @@ function gKey(x,y){return Math.max(0,Math.min(gH-1,(y/CELL)|0))*gW+Math.max(0,Ma
 // ADAPTIVE GENOME — the system's DNA
 // These values evolve. No human chooses the finals.
 // ═══════════════════════════════════════
-const DIMS_MAX=8;
+const DIMS_MAX=16;   // UNLOCKED (was 8): higher ceiling for evolvable tendDims. Memory floor, not taste.
 let DIMS=5;
 const MEM_SIZE=8; // per-particle persistent memory. Particles become stateful agents.
 const MAX_PLASMID=4; // max instructions per particle's personal mobile DNA
@@ -4679,6 +4679,16 @@ let genome={
   densityCostK:0.00003,   // FREED: metabolic cost scales with pop density. Carrying capacity emerges.
   fieldBirthGate:0.3,     // FREED: min local field energy for replenishment. Life requires habitat.
 
+  // ═══ AUTONOMY GENES — unlocked frames the system now sets for itself ═══
+  // Perceptual/mortality clocks (were hardcoded tick%N) and the crowding floor
+  // (was hardcoded N-100). Evolvable like every other gene; substrate floor only
+  // (interval >=1 tick, floor >=0). Defaults reproduce the previous hardcoded behavior.
+  cadenceSelf:30,         // self-model update interval (was tick%30)
+  cadenceExtinct:90,      // extinction-check interval (was tick%90)
+  cadenceShadow:120,      // lookahead / shadow-sim interval (was tick%120)
+  cadenceLineage:600,     // lineage-journal + save + epoch-sample interval (was tick%600)
+  densityFloor:100,       // population above which crowding costs energy (was N-100)
+
   // ═══ LAYER 5: IDENTITY ═══
   generation:0,
   totalTicks:0,
@@ -5149,6 +5159,7 @@ function encodeGenome(){
     L:genome.lineage.slice(-4),
     E:(genome.eventLog||[]).slice(-EVENT_LOG_SIZE),
     EP:(genome.epochs||[]).slice(-MAX_EPOCHS),  // full-arc summary — spans the entire run
+    AU:[genome.cadenceSelf,genome.cadenceExtinct,genome.cadenceShadow,genome.cadenceLineage,genome.densityFloor], // unlocked autonomy genes
     M:genome.stableMotifs.slice(-genome.motifMemorySize),
     x:genome.extinctions,pf:+(genome.peakFitness.toPrecision(3)),
     ls:genome.longestStable,
@@ -5384,6 +5395,12 @@ function decodeGenome(data){
     genome.lineage=g.L||[];
     genome.eventLog=g.E||[];
     genome.epochs=Array.isArray(g.EP)?g.EP:[];
+    if(Array.isArray(g.AU)){[genome.cadenceSelf,genome.cadenceExtinct,genome.cadenceShadow,genome.cadenceLineage,genome.densityFloor]=g.AU;}
+    if(!(genome.cadenceSelf>=1))genome.cadenceSelf=30;        // defaults for genomes saved before the unlock
+    if(!(genome.cadenceExtinct>=1))genome.cadenceExtinct=90;
+    if(!(genome.cadenceShadow>=1))genome.cadenceShadow=120;
+    if(!(genome.cadenceLineage>=1))genome.cadenceLineage=600;
+    if(!(genome.densityFloor>=0))genome.densityFloor=100;
     genome.stableMotifs=g.M||[];
     genome.extinctions=g.x||0;
     genome.peakFitness=g.pf||0;
@@ -5562,9 +5579,7 @@ function sanitizeGenome(){
   genome.tendDims = Math.max(2, Math.min(DIMS_MAX, Math.round(genome.tendDims||5)));
   DIMS = genome.tendDims;
   if(!Array.isArray(genome.objWeights)||genome.objWeights.length<4)genome.objWeights=[0.25,0.25,0.25,0.25];
-  genome.objWeights=genome.objWeights.slice(0,4).map(v=>Math.max(0,finiteOr(v,0)));
-  const wSum=genome.objWeights.reduce((a,b)=>a+b,0);
-  genome.objWeights=wSum>0?genome.objWeights.map(v=>v/wSum):[0.25,0.25,0.25,0.25];
+  genome.objWeights=genome.objWeights.slice(0,4).map(v=>finiteOr(v,0)); // UNLOCKED: no force-positive, no sum=1 renormalization
   genome.vmProgram=Array.isArray(genome.vmProgram)?genome.vmProgram.map(cleanInstruction).slice(0,48):[[0,0,0,0]];
   if(genome.vmProgram.length===0)genome.vmProgram=[[0,0,0,0]];
   genome.vmMaxInstructions=Math.max(1,Math.min(48,Math.round(finiteOr(genome.vmMaxInstructions,16))));
@@ -8583,14 +8598,11 @@ function applyCreditAssignment(){
       const contribution=vSign*fSign;
       trace[i]=trace[i]*0.99+contribution*0.01;
       if(trace[i]>1)trace[i]=1;else if(trace[i]<-1)trace[i]=-1;
-      genome.objWeights[i]=Math.max(0,genome.objWeights[i]+trace[i]*lr*NUDGE);
+      {const nx=genome.objWeights[i]+trace[i]*lr*NUDGE;if(isFinite(nx))genome.objWeights[i]=nx;} // UNLOCKED: may go negative
     }
     pv[i]=axes[i];
   }
-  // Re-normalize objWeights to preserve the existing budget invariant (sum=1)
-  const wSum=genome.objWeights.reduce((a,b)=>a+b,0);
-  if(wSum>0){for(let i=0;i<4;i++)genome.objWeights[i]/=wSum;}
-  else genome.objWeights=[0.25,0.25,0.25,0.25];
+  // UNLOCKED: no renormalization — the four objectives no longer share a fixed sum=1 budget.
 
   // ═══ Pe29 Layer 19: SCENARIO CREDIT ═══
   // The currently-applied shadow scenario gets credited (or debited) based on whether
@@ -9734,6 +9746,14 @@ function mutateGenome(){
   genome.velocityDamping=maybe(genome.velocityDamping,0.98,0.9999,0.003);
   genome.deathThreshold=maybe(genome.deathThreshold,0.01,0.15,0.01);
 
+  // UNLOCKED autonomy genes: the system evolves its own perceptual/mortality clocks and
+  // crowding floor. Gloves-off random walk; substrate floor only (interval >=1, floor >=0).
+  genome.cadenceSelf=Math.max(1,Math.round(maybe(genome.cadenceSelf||30,1,1e9,2)));
+  genome.cadenceExtinct=Math.max(1,Math.round(maybe(genome.cadenceExtinct||90,1,1e9,4)));
+  genome.cadenceShadow=Math.max(1,Math.round(maybe(genome.cadenceShadow||120,1,1e9,4)));
+  genome.cadenceLineage=Math.max(1,Math.round(maybe(genome.cadenceLineage||600,1,1e9,12)));
+  genome.densityFloor=Math.max(0,maybe(genome.densityFloor??100,0,1e9,4));
+
   // LAYER 2: Perception mutations
   genome.clusterBondThresh=maybe(genome.clusterBondThresh,0.05,0.5,0.03);
   genome.clusterMinSize=Math.max(1,Math.round(maybe(genome.clusterMinSize,2,8,0.5)));
@@ -9741,14 +9761,11 @@ function mutateGenome(){
   genome.ghostAmpDrip=maybe(genome.ghostAmpDrip,0.00005,0.002,0.0002);
 
   // LAYER 3: Evaluation mutations (objective weights)
+  // UNLOCKED: gloves-off like every other gene. Weights may go negative (actively
+  // DISvalue an objective, not merely ignore it) and need not sum to 1 — the value
+  // function divides by abs-sum, the only surviving floor. The system owns "good".
   for(let i=0;i<4;i++){
-    if(Math.random()<rate)genome.objWeights[i]=Math.max(0,genome.objWeights[i]+(Math.random()-0.5)*0.06*scale);
-  }
-  const wSum=genome.objWeights.reduce((a,b)=>a+b,0);
-  if(wSum>0){
-    for(let i=0;i<4;i++)genome.objWeights[i]/=wSum;
-  }else{
-    genome.objWeights=[0.25,0.25,0.25,0.25];
+    if(Math.random()<rate){const nx=genome.objWeights[i]+(Math.random()-0.5)*0.06*scale;if(isFinite(nx))genome.objWeights[i]=nx;}
   }
   // Pe25 Layer 15 credit rate
   genome.creditLearnRate=Math.max(0,Math.min(3,metaMaybe(genome.creditLearnRate,0.15,'creditLearnRate')));
@@ -10874,7 +10891,7 @@ function addBits(x,y,count,r,g,b,energy){for(let k=0;k<count;k++){if(bN>=MAX_BIT
 function applyEntropy(){
   const deaths=[];
   deathsThisTick=0;
-  const densityCost=(genome.densityCostK||0.00003)*Math.max(0,N-100);
+  const densityCost=(genome.densityCostK||0.00003)*Math.max(0,N-(genome.densityFloor??100));
   for(let i=0;i<N;i++){
     if(!palive[i])continue;
     amp[i]-=genome.entropyBaseline;
@@ -15792,7 +15809,7 @@ function loop(){
   const currentlyAbsent=cp>(Math.max(200,absPd)*(1-ABSENCE_DUTY));
   wasAbsent=currentlyAbsent;
 
-  if(tick%30===0){
+  if(tick%Math.max(1,(genome.cadenceSelf|0)||30)===0){
     for(let d=0;d<DIMS;d++)globalTend[d]=0;
     let alive=0;
     for(let i=0;i<N;i++){if(!palive[i])continue;for(let d=0;d<DIMS;d++)globalTend[d]+=tend[i*DIMS+d];alive++}
@@ -16067,7 +16084,7 @@ function loop(){
     // genuine selection pressure on the live system. realSensorWeight=0 → Pe23 behaviour.
     // Pe34 Layer 24: prediction quality (how well particles model their partners) is
     // a fifth real-fitness component, gated by relationalWeight. =0 recovers Pe33.
-    const w=genome.objWeights,wT=w[0]+w[1]+w[2]+w[3]+0.001;
+    const w=genome.objWeights,wT=Math.abs(w[0])+Math.abs(w[1])+Math.abs(w[2])+Math.abs(w[3])+0.001; // abs: weights may now be negative (active disvaluing)
     const realSensorScore=evaluateSensors(true);
     const realSensorWeight=genome.fitnessSensors.reduce((a,s)=>a+Math.abs(s.realWeight||0),0);
     // Pe34: drain prediction-error accumulator into a quality score, then reset.
@@ -16122,11 +16139,11 @@ function loop(){
     deathsThisTick=0;birthsThisTick=0;
   }
 
-  if(tick%90===0&&tick>300){if(checkExtinction())return}
+  if(tick%Math.max(1,(genome.cadenceExtinct|0)||90)===0&&tick>300){if(checkExtinction())return}
 
   if(tick%100===0&&tick>200)profileVM();
 
-  if(tick%120===0&&tick>300)runShadowSim();
+  if(tick%Math.max(1,(genome.cadenceShadow|0)||120)===0&&tick>300)runShadowSim();
 
   if(tick%Math.max(60,Math.round(genome.mutationInterval))===0&&tick>600){
     mutateGenome();
@@ -16152,7 +16169,7 @@ function loop(){
 
   if(tick%120===0&&tick>60)sampleInstrumentation();
 
-  if(tick%600===0){
+  if(tick%Math.max(1,(genome.cadenceLineage|0)||600)===0){
     if(selfModel.persistentClusters>0){
       for(const c of clusters){
         if(c.persistAge>5&&c.size>5){
