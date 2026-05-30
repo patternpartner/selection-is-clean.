@@ -1,4 +1,0 @@
-none             blooms 3/6  peaks=[1614,1428,1559,365,378,611]
-metabolicCost    blooms 0/6  peaks=[370,347,341,357,356,334]
-objWeights       blooms 5/6  peaks=[368,1266,1636,1443,1662,1216]
-fitnessSensors   blooms 4/6  peaks=[1242,1655,789,1321,1410,352]

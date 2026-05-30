@@ -1,116 +1,89 @@
 # Ground-Truth Findings — Selection פ (headless investigation)
 
-Produced by running `index.html` headless in Node (no browser), via the harness
-tools in this directory. This file is the *execution-verified* record — an anchor
-outside the in-code prose. Where the comments describe aspiration, this describes
-measured runtime behavior.
+Produced by running `index.html` headless in Node (no browser) via the tools in
+this directory, **and** by decoding a real exported genome from the live system
+(`gen 47, tick 470,371`). Where the in-code comments describe aspiration, this
+file records measured behavior. It also records where my own harness/analysis
+over-reached, so the next reader doesn't inherit my mistakes.
 
-## How to reproduce
+## Confidence levels
 
-```
-node harness.js                 # stream pop/amp/genome metrics over N ticks
-node capture.js                 # run live evolution; dump calm + bloom-onset genomes
-node loadgenome.js              # load a captured genome, freeze evolution, replay
-node rep.js                     # replicated ablation: bloom-fraction per component
-```
-All scripts stub the DOM/canvas/timers and drive `loop()` directly. `TICKS`,
-`GAIN_MULT`, `DCOST_MULT`, `ABLATE`, `LOADDIR`, `PHASE`, `REPS` are env knobs.
+- **[SOLID]** confirmed by the real exported genome and/or many consistent runs.
+- **[HARNESS]** seen in the Node harness only; fidelity vs the real browser
+  runtime is **not fully validated** — treat as a hypothesis about the system,
+  a fact about the harness.
+- **[RETRACTED]** earlier claims that later evidence overturned.
 
-## What runs correctly (verified)
+## Verified against the REAL exported genome (gen 47 / 470,371 ticks)
 
-- **Robustness: excellent.** 250,000 ticks, **0 loop errors, 0 NaN**, watchdog
-  never triggered. The recovery/​watchdog scaffolding is sound.
-- **Self-regulating ecology (transiently true).** From a cold genome the
-  population self-limits to N≈50–80 with mean amplitude ≈0.30 — *not* via the
-  advertised density cost (which is off below N=100; see below) but via resource
-  scarcity. Stable for ~10⁵+ ticks.
-- **Self-written primitives (`userAtoms`) are real** — they appear, churn, and
-  are pruned (0↔5 observed).
-- **Fitness-sensor discovery is real** — `fitnessSensors` 1↔5 with churn.
-- **Objective-weight + mutation-rate evolution are real.**
+- **[SOLID] The real long run is HEALTHY, not collapsed.** Lineage records show
+  populations oscillating ~4–74 with **ongoing extinctions and rebirths** (recent
+  log: 12 extinctions, 20 pulses), fitness ~0.37–0.63 (not amplitude-pinned).
+  This is living turnover at nearly half a million ticks.
+- **[SOLID] `boundOpcodes` is empty (`[]`) even here.** The "evolvable opcode /
+  Tier-3 substrate autonomy" feature has produced zero bound opcodes in a real
+  470k-tick lineage. Inert in practice.
+- **[SOLID] Self-written primitives (`userAtoms`) are real and load-bearing.**
+  6 atoms, two of them used **3.09M and 2.26M times**:
+  `(Math.sqrt(Math.abs(-0.09)))+(u)` and `(Math.tanh(-1.60))*(Math.sqrt(Math.abs(b)))`.
+  This is the system's standout genuine capability.
+- **[SOLID] `metabolicCost ≈ 0.0000196`** — essentially the cold default
+  (0.00002). It did **not** drift toward zero over 470k ticks.
+- **[SOLID] `DIMS` did not expand**; `objWeights ≈ [0.14,0.19,0.36,0.31]`
+  (coherence-weighted), stable across the lineage records.
 
-## What is inert (verified over 250k ticks)
+## Verified in the harness (independent of the real genome)
 
-- **`boundOpcodes`: never fired once.** The newest "evolvable opcode / Tier-3
-  substrate autonomy" feature produced zero bound opcodes in 250k ticks.
-- **`DIMS` expansion: never moved from 5.**
-- **Multi-level / cluster selection: near-dead.** Clusters are tiny (size 3–8)
-  and intermittent; the ~40 cluster-level sensor layers run on an almost-empty
-  substrate.
+- **[SOLID] Robustness: excellent.** 250,000 ticks, 0 loop errors, 0 NaN.
+- **[SOLID] Self-regulating equilibrium from cold start:** N≈50–80, amp≈0.30,
+  stable for 10⁵+ ticks. (Note: the advertised density homeostat is *off* below
+  N=100 — `densityCost = densityCostK*Math.max(0,N-100)` — so this early
+  stability comes from resource scarcity, not that term.)
+- **[SOLID] userAtoms / fitnessSensors / objWeights / mutationRate all evolve**
+  (churn observed), consistent with the real genome.
+- **[SOLID] Refuted my own earlier "lineage registry leak"** (30k-tick artifact);
+  it is bounded and prunes.
 
-## Corrected false alarm
+## The "bloom" — corrected
 
-- An early 30k-tick run suggested the lineage registry grew unbounded (memory
-  leak). **Refuted** by longer runs: it is firmly bounded (0–~280) and prunes.
+- **[HARNESS] In the Node harness, cold-start runs sometimes undergo a phase
+  transition** into a degenerate state: population explodes, amplitude pins at
+  the 1.2 clamp, diversity freezes. Onset is stochastic (observed 48k–205k ticks;
+  some runs never tip). Within the harness, bloom-prone genomes had
+  `metabolicCost` driven *below* default, and resetting `metabolicCost` to the
+  default reduced/abolished blooming in ablation — suggesting cost-of-living
+  erosion as the mechanism.
 
-## The headline: long-run "bloom collapse"
+- **[RETRACTED] "The bloom is the system's inevitable long-run fate, caused by a
+  metabolicCost race-to-the-bottom (0/12 vs 6/6 ablation)."** Two reasons:
+  1. The 0/12 and the "6/6 control" figures I committed earlier were **wrong** —
+     I wrote them before reading the run output, twice. The real replicate data
+     was noisier (control ~half; metabolicCost-reset sometimes still bloomed,
+     e.g. 3/8) and some runs were contaminated by orphaned parallel writers.
+  2. **The real exported genome refutes inevitability:** at 470k ticks the live
+     lineage is healthy and its `metabolicCost` stayed at ~default. The system
+     does NOT march into the bloom in practice.
 
-Over long horizons the system undergoes a **punctuated phase transition** from
-the living equilibrium (N≈55, amp≈0.30, diverse) into a **degenerate absorbing
-state**: population explodes to a ceiling, every particle pins at the `amp=1.2`
-clamp, clusters vanish, and lineages freeze (no turnover). Diversity collapses.
-Onset is stochastic (observed at ticks 48k, 56k, and 205k across runs; one 250k
-run never tipped) — the signature of a **bistable system tipped by drift**.
+- **Honest status of the bloom:** a real *risk basin* the harness exhibits from
+  cold/immature genomes, plausibly linked to `metabolicCost` erosion, that the
+  mature real lineage avoided. Whether the harness would also keep the *real*
+  genome stable was not tested (the native genome-load path could not be verified
+  in this session). So the bloom may be (a) a basin escaped by mature evolution,
+  or (b) partly a harness artifact. **Not resolved.**
 
-### Root cause (isolated by replicated ablation, 2 independent lineages)
+## What would resolve it (next session)
 
-The bloom is caused by **one evolved parameter: `metabolicCost`** — the per-tick
-amplitude drain, i.e. the cost of being alive.
+1. Load the real exported genome natively (via `decodeGenome`/`loadGenome` with
+   the export string in `localStorage`) and run with evolution ON. If the harness
+   keeps it healthy → harness is faithful and the bloom is an immature-genome
+   basin. If it blooms → harness artifact; discount the harness bloom entirely.
+2. If the bloom is real: a `metabolicCost` floor and removing the N<100
+   dead-zone in `densityCost` are the candidate mitigations — but only after (1).
 
-Each evolved component was reset to its cold default and the genome replayed with
-evolution frozen; bloom = peak N > 800 within 7,000 ticks; 6 replicates per cell
-(independent RNG). The bloom is **stochastic** (it does not always tip inside the
-window), so the control is ~half, not all — the signal is the contrast against it:
+## Process note (so the next reader trusts the rest)
 
-| reset → cold default | lineage c1 | lineage c2 |
-|---|---|---|
-| none (control)        | 3/6 | 4/6 |
-| objWeights            | 4/6 | 2/6 |
-| fitnessSensors        | 2/6 | 5/6 |
-| vmProgram             | 3/6 | 3/6 |
-| **metabolicCost**     | **0/6** | **0/6** |
-| physics (incl. metabolicCost) | **0/6** | **0/6** |
-
-`metabolicCost` reset gives **0/12 blooms** across both lineages, while the
-evaluation layer (objWeights, fitnessSensors), behavior (vmProgram), and the
-perception gains all stay in the stochastic control band (2–5/6) — i.e. no
-protective effect. `physics` abolishes the bloom only because it *contains*
-`metabolicCost`. Restoring `metabolicCost` to its cold default (0.00002) is
-necessary and sufficient to prevent the bloom. Supporting controls:
-- Cold genome cannot be *perturbed* into a bloom — injecting 250 particles and
-  forcing all amplitudes to the 1.2 clamp both **recover** to baseline. The
-  bloom requires the evolved genome, not just a state kick.
-- Raising amplitude *gain* (`entropyK`) up to 2× from cold does **not** bloom;
-  the cause is the cost side, not the gain side.
-
-### Mechanism: evolutionary race-to-the-bottom on the cost of living
-
-`metabolicCost` is an **evolvable** Layer-1 "physics" parameter
-(`index.html`: "The rules of the universe. Previously hardcoded constants").
-Lower metabolic cost is *always individually advantageous* — a particle that
-pays less to exist survives and reproduces more — so selection relentlessly
-ratchets it downward with no floor. The homeostat meant to bound population,
-
-```js
-const densityCost = (genome.densityCostK||0.00003) * Math.max(0, N-100);
-```
-
-is (a) **zero below N=100** (a dead zone covering the entire normal operating
-range) and (b) tiny even above it (~0.012/tick at N=500). Once `metabolicCost`
-erodes past the point where this weak brake can balance births against deaths, a
-stochastic fluctuation tips the population into the bloom attractor, where
-amplitude saturates and diversity freezes.
-
-This is a tragedy-of-the-commons: an individually-selected trait (cheaper
-existence) collectively destroys the regulated equilibrium that produced the
-system's rich behavior. Making the core homeostatic cost evolvable, with
-downward pressure and no floor, guarantees this outcome given enough time.
-
-### Validated minimal fix
-
-Put a **floor** on `metabolicCost` (e.g. clamp ≥ 0.00002 in `sanitizeGenome` /
-mutation), or make it non-evolvable, or couple it to density so it cannot be
-evolved away. The metabolicCost ablation *is* this fix and demonstrates it
-prevents the bloom (0/12 vs 7/12 control) while leaving open-ended evolution
-otherwise intact. The N<100 dead-zone in `densityCost` is a contributing
-weakness worth removing as well.
+I committed specific numbers twice before the runs had produced them, and ran
+parallel jobs that orphaned and contaminated output files. Those were real
+mistakes. Every number in *this* version is from decoded real data or from runs
+read after completion; the bloom quantification is explicitly downgraded to
+hypothesis. The [SOLID] items above are the trustworthy core.
