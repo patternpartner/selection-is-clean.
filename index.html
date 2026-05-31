@@ -291,7 +291,10 @@ let FIELD_DIFFUSE=0.11;  // gentle spread — Pe22b: now genome-driven, can evol
 // This is the system's access to primitives that weren't in the opcode set
 // at design time. JS can generate JS; the genome now uses that fact.
 // ═══════════════════════════════════════
-const USER_VARS=["a","b","u"]; // Pe24: u = self-read of own use count (Layer 13)
+const USER_VARS=["a","b","u","c","d","m"]; // UNLOCKED #7b: a,b=source regs; u=own use count;
+                                           // c=proximity, d=energy, m=caste-match (#7a). The system
+                                           // can now author primitives that sense more of the world.
+const USER_CMP=["<",">","<=",">="]; // UNLOCKED #7b: comparisons — used ONLY as ternary conditions
 const USER_FUNCS=["Math.abs","Math.tanh","Math.sin","Math.cos","Math.sign","Math.sqrt","Math.log1p","Math.exp"];
 const USER_OPS=["+","-","*","/"]; // UNLOCKED #7b: division added; the final isFinite guard in uaCompile neutralizes /0 → ±Inf/NaN
 const UA_DEPTH_CAP=4; // substrate ceiling on authored-expression nesting — bounds compile cost / string length, NOT meaning
@@ -302,10 +305,24 @@ const UA_DEPTH_CAP=4; // substrate ceiling on authored-expression nesting — bo
 // genome (uaMaxDepth), so HOW deep the system thinks is itself something it evolves.
 function uaGenTerm(depth){
   depth=depth|0;
-  if(depth>0&&Math.random()<0.6){
-    const a=uaGenTerm(depth-1),b=uaGenTerm(depth-1);
-    const op=USER_OPS[(Math.random()*USER_OPS.length)|0];
-    return "("+a+")"+op+"("+b+")";
+  if(depth>0){
+    const roll=Math.random();
+    if(roll<0.45){
+      // binary sub-expression (compositional growth)
+      const a=uaGenTerm(depth-1),b=uaGenTerm(depth-1);
+      const op=USER_OPS[(Math.random()*USER_OPS.length)|0];
+      return "("+a+")"+op+"("+b+")";
+    }
+    if(roll<0.62){
+      // UNLOCKED #7b — CONTROL FLOW. A comparison gates which sub-expression is evaluated, so
+      // authored code can BRANCH (decide), not only compute. It stays a pure expression (a
+      // ternary — no loops), so the per-tick instruction budget is untouched and the isFinite
+      // guard at compile still holds. This is the system authoring conditional logic for itself.
+      const cmp=USER_CMP[(Math.random()*USER_CMP.length)|0];
+      const c1=uaGenTerm(depth-1),c2=uaGenTerm(depth-1);
+      const yes=uaGenTerm(depth-1),no=uaGenTerm(depth-1);
+      return "((("+c1+")"+cmp+"("+c2+"))?("+yes+"):("+no+"))";
+    }
   }
   const useFunc=Math.random()<0.35;
   const val=Math.random()<0.5
@@ -335,7 +352,7 @@ function uaCompile(atom){
   try{
     // Pe24: compiled function takes (a,b,u) — u is normalized self-usage count.
     // Old atoms with expressions only referencing a,b still compile fine; u is unused param.
-    atom.compiled=new Function("a","b","u","const r=("+atom.expression+");return isFinite(r)?r:0;");
+    atom.compiled=new Function("a","b","u","c","d","m","const r=("+atom.expression+");return isFinite(r)?r:0;");
     atom.failed=false;
   }catch(e){
     atom.compiled=null;
@@ -362,6 +379,9 @@ function rendCall(atom,t0,t1,t2,t3,amp,phase,col){
   try{const v=atom.compiled(t0,t1,t2,t3,amp,phase,col);return(typeof v==='number'&&isFinite(v))?v:0;}
   catch(e){atom.failed=true;return 0;}
 }
+// UNLOCKED #7a/#7b — context fed to system-authored atoms (set per-VM-tick; finite & bounded).
+// c=proximity, d=energy, m=caste-match. Read by uaCall below so the 9 call sites stay untouched.
+let uaCtxC=0,uaCtxD=0,uaCtxM=0;
 function uaCall(atom,a,b){
   if(!atom)return 0;
   if(!atom.compiled&&!atom.failed)uaCompile(atom);
@@ -372,7 +392,7 @@ function uaCall(atom,a,b){
     // doesn't dominate downstream arithmetic.
     const prevUses=atom.uses|0;
     const u=Math.min(4,prevUses/100);
-    const r=atom.compiled(a,b,u);
+    const r=atom.compiled(a,b,u,uaCtxC,uaCtxD,uaCtxM);
     atom.uses=prevUses+1;
     if(prevUses===0)recordEvent('ua_first_use',{expr:(atom.expression||'').slice(0,48)},1200);
     return isFinite(r)?Math.max(-8,Math.min(8,r)):0;
@@ -4685,6 +4705,8 @@ let genome={
   // How the system evolves. The evolution of evolution.
   mutationRate:0.06,      // was hardcoded in mutateObjectiveWeights
   mutationScale:1.0,      // multiplier on mutation magnitude
+  typeMutRate:0.02,       // UNLOCKED #7a: per-birth chance a child founds a new caste (else inherits
+                          // the parent's). The system owns how fast it innovates discrete kinds.
   mutationTail:0,         // UNLOCKED #6: search-distribution SHAPE. 0 = uniform random walk (prior
                           // behavior exactly). →1 mixes in a heavy (Cauchy) tail, so the system can
                           // take rare large leaps to escape local optima instead of only creeping.
@@ -5003,6 +5025,13 @@ const pBroadcast=new Float32Array(CAP*2);
 const pPlasmidAge=new Uint16Array(CAP); // how many ticks this particle's plasmid has persisted
 const pPlasmid=new Float32Array(CAP*PLASMID_SLOTS); // per-particle mobile DNA [op,src,dst,k]*MAX_PLASMID
 const pPlasmidLen=new Uint8Array(CAP); // how many plasmid instructions this particle has (0-MAX_PLASMID)
+// UNLOCKED #7a — HERITABLE CASTE. A discrete type tag, inherited at birth and occasionally
+// mutated into a new caste (rate = genome.typeMutRate). Distinct from the continuous tendency
+// vector: it's a categorical kind. Deliberately NOT given a hardcoded meaning — it is heritable
+// and perceivable (fed to authored atoms as `m`), and selection/evolved code decide what a caste
+// is FOR. The substrate provides the degree of freedom; the system authors its significance.
+const NUM_TYPES=8;                     // substrate cap on simultaneous castes (fits Uint8 with room)
+const pType=new Uint8Array(CAP);
 const field=new Float32Array(FIELD_W*FIELD_H); // shared resource/signal field — writable environment
 // ═══ FIELD MEMORY — the world remembers what lived here ═══
 // Each cell accumulates history. Cells written to repeatedly become more persistent.
@@ -5197,6 +5226,7 @@ function encodeGenome(){
     vm:genome.vmMaxInstructions,
     mtl:+(genome.mutationTail||0).toFixed(4), // UNLOCKED #6 search-distribution shape
     uad:genome.uaMaxDepth|0,                  // UNLOCKED #7b atom recursion depth
+    tmr:+(genome.typeMutRate||0.02).toFixed(4), // UNLOCKED #7a caste-innovation rate
     td: genome.tendDims|0,
     rn: Array.isArray(genome.rend)?genome.rend.map(a=>({e:a.expression,f:!!a.failed})):null,
     bo: Array.isArray(genome.boundOpcodes)?genome.boundOpcodes.map(b=>b|0):[],
@@ -5440,6 +5470,7 @@ function decodeGenome(data){
     if(g.vm)genome.vmMaxInstructions=g.vm;
     if(typeof g.mtl==='number')genome.mutationTail=g.mtl;  // UNLOCKED #6 (absent in pre-unlock saves → sanitize defaults to 0)
     if(typeof g.uad==='number')genome.uaMaxDepth=g.uad|0;  // UNLOCKED #7b
+    if(typeof g.tmr==='number')genome.typeMutRate=g.tmr;   // UNLOCKED #7a
     if(g.ua)genome.userAtoms=g.ua.map(a=>({expression:a.expression,compiled:null,failed:!!a.failed,uses:a.uses|0,age:a.age|0}));
     if(typeof g.td==='number') genome.tendDims=Math.max(2,Math.min(DIMS_MAX,g.td|0));
     if(Array.isArray(g.rn)&&g.rn.length===4) genome.rend=g.rn.map(a=>({expression:a.e||'0',compiled:null,failed:!!a.f}));
@@ -5611,11 +5642,12 @@ function sanitizeGenome(){
   DIMS = genome.tendDims;
   if(!Array.isArray(genome.objWeights)||genome.objWeights.length<4)genome.objWeights=[0.25,0.25,0.25,0.25];
   genome.objWeights=genome.objWeights.slice(0,4).map(v=>finiteOr(v,0)); // UNLOCKED: no force-positive, no sum=1 renormalization
-  genome.vmProgram=Array.isArray(genome.vmProgram)?genome.vmProgram.map(cleanInstruction).slice(0,48):[[0,0,0,0]];
+  genome.vmProgram=Array.isArray(genome.vmProgram)?genome.vmProgram.map(cleanInstruction).slice(0,96):[[0,0,0,0]]; // UNLOCKED #7b: matches the raised vmMaxInstructions ceiling
   if(genome.vmProgram.length===0)genome.vmProgram=[[0,0,0,0]];
-  genome.vmMaxInstructions=Math.max(1,Math.min(48,Math.round(finiteOr(genome.vmMaxInstructions,16))));
+  genome.vmMaxInstructions=Math.max(1,Math.min(96,Math.round(finiteOr(genome.vmMaxInstructions,16)))); // UNLOCKED #7b: ceiling 48→96 (metabolic cost + nInst*2 budget keep length self-regulating)
   genome.mutationTail=Math.max(0,Math.min(1,finiteOr(genome.mutationTail,0)));                          // UNLOCKED #6 (pre-unlock saves → 0 = old behavior)
   genome.uaMaxDepth=Math.max(1,Math.min(UA_DEPTH_CAP,Math.round(finiteOr(genome.uaMaxDepth,1))));        // UNLOCKED #7b
+  genome.typeMutRate=Math.max(0,Math.min(1,finiteOr(genome.typeMutRate,0.02)));                          // UNLOCKED #7a
   genome.fitnessSensors=Array.isArray(genome.fitnessSensors)?genome.fitnessSensors.filter(s=>s&&Array.isArray(s.program)).map(s=>({program:s.program.map(cleanInstruction),weight:finiteOr(s.weight,0),realWeight:finiteOr(s.realWeight,0),creditTrace:finiteOr(s.creditTrace,0),lastEmit:finiteOr(s.lastEmit,0),prevEmit:finiteOr(s.prevEmit,0)})):[{program:[[2,5,6,1.0],[4,6,0,1.0]],weight:0.1,realWeight:0,creditTrace:0,lastEmit:0,prevEmit:0}];
   if(genome.fitnessSensors.length===0)genome.fitnessSensors=[{program:[[2,5,6,1.0],[4,6,0,1.0]],weight:0.1,realWeight:0,creditTrace:0,lastEmit:0,prevEmit:0}];
   // Pe25 Layer 15: credit-assignment defaults for old saves
@@ -10076,6 +10108,7 @@ function mutateGenome(){
   genome.mutationRate=maybe(genome.mutationRate,0.01,0.25,0.02);
   genome.mutationScale=maybe(genome.mutationScale,0.3,3.0,0.2);
   genome.mutationTail=Math.max(0,Math.min(1,maybe(genome.mutationTail||0,0,1,0.05))); // UNLOCKED #6: the system evolves its own search-distribution shape
+  genome.typeMutRate=Math.max(0,Math.min(1,maybe(genome.typeMutRate||0.02,0,1,0.02))); // UNLOCKED #7a: the system evolves how fast it founds new castes
   genome.shadowHorizon=Math.max(2,Math.min(500,Math.round(maybe(genome.shadowHorizon,10,120,8))));
   genome.perturbScale=maybe(genome.perturbScale,0.2,3.0,0.2);
   genome.extinctionThresh=Math.max(1,Math.round(maybe(genome.extinctionThresh,2,20,2)));
@@ -10103,7 +10136,7 @@ function mutateGenome(){
   // vmInfluence evolves: the system decides how much its rules matter.
   genome.vmInfluence=maybe(genome.vmInfluence,0.05,2.0,0.08);
   genome.ruleScale=maybe(genome.ruleScale,0.2,3.0,0.2);
-  genome.vmMaxInstructions=Math.max(1,Math.min(48,Math.round(maybe(genome.vmMaxInstructions,6,20,1))));
+  genome.vmMaxInstructions=Math.max(1,Math.min(96,Math.round(maybe(genome.vmMaxInstructions,6,20,1)))); // UNLOCKED #7b: ceiling 48→96
   genome.uaMaxDepth=Math.max(1,Math.min(UA_DEPTH_CAP,Math.round(maybe(genome.uaMaxDepth||1,1,UA_DEPTH_CAP,0.6)))); // UNLOCKED #7b: the system evolves how deeply it composes its own primitives
   genome.metabolicCost=maybe(genome.metabolicCost,0.000002,0.0002,0.00002);
 
@@ -10861,6 +10894,11 @@ function addParticle(x,y,tv,born,parentA,parentB){
       }
     }
   }
+  // UNLOCKED #7a: inherit parent's caste, or found a new one (rate genome.typeMutRate). Seeded
+  // particles (no parent) get a random caste so the axis has variation to select on from tick 0.
+  pType[i]=(parentA>=0&&parentA<N)
+    ? ((Math.random()<(genome.typeMutRate||0))?((Math.random()*NUM_TYPES)|0):pType[parentA])
+    : ((Math.random()*NUM_TYPES)|0);
   return i;
 }
 function addCompound(x,y,nt,nvx,nvy,na,np,nf,parentA,parentB){
@@ -10889,6 +10927,10 @@ function addCompound(x,y,nt,nvx,nvy,na,np,nf,parentA,parentB){
       pPlasmid[i*PLASMID_SLOTS+idx*4+3]+=(Math.random()-0.5)*0.2;
     }
   }
+  // UNLOCKED #7a: compound inherits parentA's caste (like its plasmid), or founds a new one.
+  pType[i]=(parentA>=0&&parentA<N)
+    ? ((Math.random()<(genome.typeMutRate||0))?((Math.random()*NUM_TYPES)|0):pType[parentA])
+    : ((Math.random()*NUM_TYPES)|0);
   return i;
 }
 function computeVisuals(i){
@@ -10986,6 +11028,10 @@ function executeVM(i,j,sim,d){
   const phaseAlign=Math.cos(phase[i]-phase[j]);
   const energy=(amp[i]+amp[j])*0.5;
   const influence=genome.vmInfluence*genome.ruleScale*0.002;
+
+  // UNLOCKED #7a/#7b: feed this interaction's context to system-authored atoms (c,d,m inputs).
+  // caste-match: +1 if the pair shares a caste, -1 otherwise. Evolved code decides its meaning.
+  uaCtxC=proximity;uaCtxD=energy;uaCtxM=(pType[i]===pType[j])?1:-1;
 
   vmRegs[0]=sim;
   vmRegs[1]=phaseAlign;
@@ -14070,6 +14116,8 @@ function executeClusterVM(i,j,sim,d){
   const phaseAlign=Math.cos(phase[i]-phase[j]);
   const energy=(amp[i]+amp[j])*0.5;
   const influence=cl.vmInfluence*genome.ruleScale*0.0015;
+
+  uaCtxC=proximity;uaCtxD=energy;uaCtxM=(pType[i]===pType[j])?1:-1; // UNLOCKED #7a/#7b: atom context
 
   vmRegs[0]=sim;
   vmRegs[1]=phaseAlign;
