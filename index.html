@@ -291,9 +291,10 @@ let FIELD_DIFFUSE=0.11;  // gentle spread — Pe22b: now genome-driven, can evol
 // This is the system's access to primitives that weren't in the opcode set
 // at design time. JS can generate JS; the genome now uses that fact.
 // ═══════════════════════════════════════
-const USER_VARS=["a","b","u","c","d","m"]; // UNLOCKED #7b: a,b=source regs; u=own use count;
-                                           // c=proximity, d=energy, m=caste-match (#7a). The system
-                                           // can now author primitives that sense more of the world.
+const USER_VARS=["a","b","u","c","d","m","s"]; // a,b=source regs; u=own use count; c=proximity,
+                                           // d=energy, m=caste-match (#7a); s=own previous output
+                                           // (#10 recurrent state). The system authors primitives
+                                           // that sense the world AND remember.
 const USER_CMP=["<",">","<=",">="]; // UNLOCKED #7b: comparisons — used ONLY as ternary conditions
 const USER_FUNCS=["Math.abs","Math.tanh","Math.sin","Math.cos","Math.sign","Math.sqrt","Math.log1p","Math.exp"];
 const USER_OPS=["+","-","*","/"]; // UNLOCKED #7b: division added; the final isFinite guard in uaCompile neutralizes /0 → ±Inf/NaN
@@ -322,6 +323,12 @@ function uaGenTerm(depth){
       const c1=uaGenTerm(depth-1),c2=uaGenTerm(depth-1);
       const yes=uaGenTerm(depth-1),no=uaGenTerm(depth-1);
       return "((("+c1+")"+cmp+"("+c2+"))?("+yes+"):("+no+"))";
+    }
+    if(roll<0.72){
+      // UNLOCKED #10 — COMPOSITION. Call ANOTHER authored atom by index: f(idx,a,b). Primitives
+      // build on primitives (subroutines / a self-grown function library). Recursion is bounded by
+      // uaFuel in uaCall, so a cycle of atoms calling each other can't freeze the tab.
+      return "f("+uaGenTerm(depth-1)+","+uaGenTerm(depth-1)+","+uaGenTerm(depth-1)+")";
     }
   }
   const useFunc=Math.random()<0.35;
@@ -352,7 +359,7 @@ function uaCompile(atom){
   try{
     // Pe24: compiled function takes (a,b,u) — u is normalized self-usage count.
     // Old atoms with expressions only referencing a,b still compile fine; u is unused param.
-    atom.compiled=new Function("a","b","u","c","d","m","const r=("+atom.expression+");return isFinite(r)?r:0;");
+    atom.compiled=new Function("a","b","u","c","d","m","s","f","const r=("+atom.expression+");return isFinite(r)?r:0;");
     atom.failed=false;
   }catch(e){
     atom.compiled=null;
@@ -382,23 +389,43 @@ function rendCall(atom,t0,t1,t2,t3,amp,phase,col){
 // UNLOCKED #7a/#7b — context fed to system-authored atoms (set per-VM-tick; finite & bounded).
 // c=proximity, d=energy, m=caste-match. Read by uaCall below so the 9 call sites stay untouched.
 let uaCtxC=0,uaCtxD=0,uaCtxM=0;
+// UNLOCKED #10 — atoms are now STATEFUL, RECURRENT, COMPOSABLE programs, not stateless arithmetic:
+//   • s : the atom's own previous output, fed back in → persistent memory across ticks. Temporal
+//         dynamics (integrators, leaky filters, oscillators, counters) become expressible.
+//   • f : f(idx,a,b) calls ANOTHER atom → composition / a self-grown subroutine library.
+// uaFuel caps TOTAL atom-invocations per top-level call; uaDepth detects the top-level entry to
+// refill it. That fuel bound is the halting floor that lets recursion exist at all without
+// freezing the tab — substrate, not preference. Output is clamped finite, so state can't diverge.
+const UA_FUEL=64;
+let uaFuel=0,uaDepth=0;
+function uaCallF(idx,a,b){             // exposed to authored atoms as f(idx,a,b)
+  const list=genome.userAtoms;
+  if(!list||!list.length||uaFuel<=0)return 0;
+  const n=list.length,k=(((idx|0)%n)+n)%n;
+  return uaCall(list[k],+a||0,+b||0);
+}
 function uaCall(atom,a,b){
   if(!atom)return 0;
-  if(!atom.compiled&&!atom.failed)uaCompile(atom);
-  if(atom.failed||!atom.compiled)return 0;
+  if(uaDepth===0)uaFuel=UA_FUEL;       // top-level entry refills the recursion budget
+  if(uaFuel<=0)return 0;
+  uaFuel--;uaDepth++;
   try{
-    // Pe24 Layer 13: self-read. Atom can sense its own historical use count.
-    // Normalized so range stays in VM register territory. Capped so explosive use
-    // doesn't dominate downstream arithmetic.
+    if(!atom.compiled&&!atom.failed)uaCompile(atom);
+    if(atom.failed||!atom.compiled)return 0;
     const prevUses=atom.uses|0;
     const u=Math.min(4,prevUses/100);
-    const r=atom.compiled(a,b,u,uaCtxC,uaCtxD,uaCtxM);
+    const s=isFinite(atom.state)?atom.state:0;   // recurrent state = previous output
+    const r=atom.compiled(a,b,u,uaCtxC,uaCtxD,uaCtxM,s,uaCallF);
     atom.uses=prevUses+1;
+    const out=isFinite(r)?Math.max(-8,Math.min(8,r)):0;
+    atom.state=out;                              // persist for next tick → recurrence
     if(prevUses===0)recordEvent('ua_first_use',{expr:(atom.expression||'').slice(0,48)},1200);
-    return isFinite(r)?Math.max(-8,Math.min(8,r)):0;
+    return out;
   }catch(e){
     atom.failed=true;
     return 0;
+  }finally{
+    uaDepth--;
   }
 }
 const MAX_CLUSTER_VM=8;    // per-cluster program length — shorter than global, differentiation not replacement
