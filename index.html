@@ -8563,6 +8563,11 @@ function profileVM(){
           const pcfmi143Prof=genome.pcfmInfluence||0;
           if(pcfmi143Prof>0.001){ vmRegs[di]=Math.max(-3,Math.min(3,(selfModel.pcfMomentum||0)*20))*pcfmi143Prof*(k||1); }
         }break;
+        // Pre-existing gap (same class as the op128-130 one): 126/127 were absent from the profiler
+        // switch, so these self-model reads left the register stale. They read from selfModel, which
+        // IS available at profile time — so mirror the live VM exactly (as cases 121-125 already do).
+        case 126:{ const vmi145Prof=genome.vitalMemoryInfluence||0; if(vmi145Prof>0.001){ vmRegs[di]=(selfModel.vitalAlignment||0)*vmi145Prof*(k||1); } }break; // VITAL_ALIGNMENT
+        case 127:{ const rdiProf=genome.repertoireDormancyInfluence||0; if(rdiProf>0.001){ vmRegs[di]=(selfModel.repertoireDormancy||0)*rdiProf*(k||1); } }break; // REPERTOIRE_DORMANCY
         // OPENED-SWITCH opcodes (op128-130) need profiler stubs too — without them the profiler
         // treats a caste read as leaving the register stale, so any lineage that reads caste and
         // emits an action gets an inaccurate vmPhenotype (flagged by review). Caste is 0..NUM_TYPES-1,
