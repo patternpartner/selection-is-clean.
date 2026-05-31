@@ -5059,6 +5059,42 @@ const pPlasmidLen=new Uint8Array(CAP); // how many plasmid instructions this par
 // is FOR. The substrate provides the degree of freedom; the system authors its significance.
 const NUM_TYPES=8;                     // substrate cap on simultaneous castes (fits Uint8 with room)
 const pType=new Uint8Array(CAP);
+// UNLOCKED #9 — PER-PARTICLE BEHAVIORAL GENOME (the meta-population). Each particle runs its OWN VM
+// program (its behavioral genotype), inherited at birth and mutated, so lineages diverge and compete
+// under selection. The global genome stays the shared, self-modeling "self": it owns physics + the
+// reflective apparatus (self-model / attribution / shadow-sim) and evolves its own baseline program —
+// which seeds new particles and which the self periodically RE-ADOPTS from its most successful lineage
+// (selfLearnFromBest). Dual-process: a Darwinian population beneath a reflective self.
+// SCOPE, stated plainly: the PROGRAM (behavior) is per-particle; physics/meta params remain shared.
+const pProg=new Array(CAP).fill(null);
+function cloneProg(p){
+  if(!Array.isArray(p)||!p.length)return [[0,0,0,0]];
+  const out=new Array(p.length);
+  for(let i=0;i<p.length;i++){const ins=p[i]||[0,0,0,0];out[i]=[ins[0]|0,ins[1]|0,ins[2]|0,+ins[3]||0];}
+  return out;
+}
+function inheritProg(parentProg){ // child = copy of parent's program + birth mutation (rate from the self's genes)
+  const p=cloneProg((Array.isArray(parentProg)&&parentProg.length)?parentProg:genome.vmProgram);
+  const rate=genome.mutationRate||0.06,scale=genome.mutationScale||1,cap=genome.vmMaxInstructions||16;
+  for(let i=0;i<p.length;i++){
+    if(Math.random()<rate*1.2){
+      p[i][3]+=(Math.random()-0.5)*0.15*scale;p[i][3]=Math.max(-2,Math.min(2,p[i][3]));
+      if(Math.random()<rate)p[i][0]=Math.floor(Math.random()*OPCODE_COUNT);
+      if(Math.random()<rate*0.2)p[i][1]=Math.floor(Math.random()*12);
+      if(Math.random()<rate*0.2)p[i][2]=Math.floor(Math.random()*12);
+    }
+  }
+  if(p.length<cap&&Math.random()<rate*0.15)p.splice(Math.floor(Math.random()*(p.length+1)),0,[Math.floor(Math.random()*OPCODE_COUNT),Math.floor(Math.random()*12),Math.floor(Math.random()*12),(Math.random()-0.5)*0.6]);
+  if(p.length>1&&Math.random()<rate*0.08)p.splice(Math.floor(Math.random()*p.length),1);
+  while(p.length>cap)p.pop();
+  if(!p.length)p.push([0,0,0,0]);
+  return p;
+}
+function selfLearnFromBest(){ // the population's best discovery flows back into the reflective baseline
+  let best=-1,bestAmp=-1e9;
+  for(let i=0;i<N;i++){if(palive[i]&&pProg[i]&&amp[i]>bestAmp){bestAmp=amp[i];best=i;}}
+  if(best>=0&&pProg[best]&&pProg[best].length)genome.vmProgram=cloneProg(pProg[best]);
+}
 const field=new Float32Array(FIELD_W*FIELD_H); // shared resource/signal field — writable environment
 // ═══ FIELD MEMORY — the world remembers what lived here ═══
 // Each cell accumulates history. Cells written to repeatedly become more persistent.
@@ -10926,6 +10962,9 @@ function addParticle(x,y,tv,born,parentA,parentB){
   pType[i]=(parentA>=0&&parentA<N)
     ? ((Math.random()<(genome.typeMutRate||0))?((Math.random()*NUM_TYPES)|0):pType[parentA])
     : ((Math.random()*NUM_TYPES)|0);
+  // UNLOCKED #9: this lineage's behavioral genome — parent's program inherited+mutated, or a fresh
+  // clone of the self's baseline for seeds. This is what makes the population genuinely compete.
+  pProg[i]=(parentA>=0&&parentA<N&&pProg[parentA])?inheritProg(pProg[parentA]):cloneProg(genome.vmProgram);
   return i;
 }
 function addCompound(x,y,nt,nvx,nvy,na,np,nf,parentA,parentB){
@@ -10958,6 +10997,9 @@ function addCompound(x,y,nt,nvx,nvy,na,np,nf,parentA,parentB){
   pType[i]=(parentA>=0&&parentA<N)
     ? ((Math.random()<(genome.typeMutRate||0))?((Math.random()*NUM_TYPES)|0):pType[parentA])
     : ((Math.random()*NUM_TYPES)|0);
+  // UNLOCKED #9: this lineage's behavioral genome — parent's program inherited+mutated, or a fresh
+  // clone of the self's baseline for seeds. This is what makes the population genuinely compete.
+  pProg[i]=(parentA>=0&&parentA<N&&pProg[parentA])?inheritProg(pProg[parentA]):cloneProg(genome.vmProgram);
   return i;
 }
 function computeVisuals(i){
@@ -11105,7 +11147,7 @@ function executeVM(i,j,sim,d){
 
   vmActions[0]=0;vmActions[1]=0;vmActions[2]=0;vmActions[3]=0;vmActions[4]=0;vmActions[5]=0;vmActions[6]=0;vmActions[7]=0;
 
-  const prog=genome.vmProgram;
+  const prog=pProg[i]||genome.vmProgram;  // UNLOCKED #9: this particle runs ITS lineage's program
   const nInst=Math.min(prog.length,genome.vmMaxInstructions);
 
   const totalCost=nInst*genome.metabolicCost;
@@ -15437,13 +15479,13 @@ function updateParticles(){
 }
 
 function executeSoloVM(){
-  const prog=genome.vmProgram;
-  const nInst=Math.min(prog.length,genome.vmMaxInstructions);
-  if(nInst===0)return;
   const soloInfluence=genome.vmInfluence*genome.ruleScale*0.0005;
 
   for(let i=0;i<N;i++){
     if(!palive[i])continue;
+    const prog=pProg[i]||genome.vmProgram;  // UNLOCKED #9: isolated particle runs its own program too
+    const nInst=Math.min(prog.length,genome.vmMaxInstructions);
+    if(nInst===0)continue;
 
     const soloCost=nInst*genome.metabolicCost*0.5;
     amp[i]-=soloCost;
@@ -15848,6 +15890,7 @@ function compact(){
     pPlasmidAge[w]=pPlasmidAge[r];
     pBroadcast[w*2]=pBroadcast[r*2];pBroadcast[w*2+1]=pBroadcast[r*2+1];
     clusterID[w]=clusterID[r];
+    pType[w]=pType[r];pProg[w]=pProg[r]; // UNLOCKED #7a/#9: caste + behavioral genome must relocate with the particle (fixes a caste-scramble bug too)
     for(let rx=0;rx<REFLEX_DEPTH*2;rx++)pReflexHist[w*REFLEX_DEPTH*2+rx]=pReflexHist[r*REFLEX_DEPTH*2+rx];
     for(let rx=0;rx<REFLEX_DIMS;rx++)pReflexState[w*REFLEX_DIMS+rx]=pReflexState[r*REFLEX_DIMS+rx];
     pReflexIdx[w]=pReflexIdx[r];
@@ -16293,6 +16336,7 @@ function loop(){
   if(tick%120===0&&tick>60)sampleInstrumentation();
 
   if(tick%Math.max(1,(genome.cadenceLineage|0)||600)===0){
+    selfLearnFromBest(); // UNLOCKED #9: the self re-adopts its most successful lineage's program
     if(selfModel.persistentClusters>0){
       for(const c of clusters){
         if(c.persistAge>5&&c.size>5){
