@@ -15763,10 +15763,11 @@ function processGrid(){
             // Pe51 Layer 40: count neighbors within interaction radius for density sensing
             if(pNeighborCount[i]<127)pNeighborCount[i]++;
             if(pNeighborCount[j]<127)pNeighborCount[j]++;
-            {const _g=genome;genome=pGenome[i]||genome;try{ // UNLOCKED #9 FULL: this interaction runs on particle i's OWN complete genome
-              entrain(i,j,sim,d);
-              executeVM(i,j,sim,d);
-              executeClusterVM(i,j,sim,d);
+            {const _drv=Math.random()<0.5?i:j,_oth=_drv===i?j:i; // FIX (review): which genome GOVERNS this pairwise interaction is now an unbiased coin, not the lower array index. executeVM models a single mutual exchange (action-reaction force/phase, conservative amp & tend transfers, midpoint spawn), so one program must govern it by design — but over time each particle's genome drives ~half its encounters, removing the artifact where only pGenome[lower-index] ever ran and behavior tracked array order.
+             const _g=genome;genome=pGenome[_drv]||genome;try{
+              entrain(_drv,_oth,sim,d);
+              executeVM(_drv,_oth,sim,d);
+              executeClusterVM(_drv,_oth,sim,d);
             }finally{genome=_g;}}
             // Pe31 Layer 21: update neighbor models during interaction.
             // Both i models j, and j models i — recognition is mutual.
