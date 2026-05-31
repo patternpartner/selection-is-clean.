@@ -291,9 +291,10 @@ let FIELD_DIFFUSE=0.11;  // gentle spread — Pe22b: now genome-driven, can evol
 // This is the system's access to primitives that weren't in the opcode set
 // at design time. JS can generate JS; the genome now uses that fact.
 // ═══════════════════════════════════════
-const USER_VARS=["a","b","u","c","d","m"]; // UNLOCKED #7b: a,b=source regs; u=own use count;
-                                           // c=proximity, d=energy, m=caste-match (#7a). The system
-                                           // can now author primitives that sense more of the world.
+const USER_VARS=["a","b","u","c","d","m","s"]; // a,b=source regs; u=own use count; c=proximity,
+                                           // d=energy, m=caste-match (#7a); s=own previous output
+                                           // (#10 recurrent state). The system authors primitives
+                                           // that sense the world AND remember.
 const USER_CMP=["<",">","<=",">="]; // UNLOCKED #7b: comparisons — used ONLY as ternary conditions
 const USER_FUNCS=["Math.abs","Math.tanh","Math.sin","Math.cos","Math.sign","Math.sqrt","Math.log1p","Math.exp"];
 const USER_OPS=["+","-","*","/"]; // UNLOCKED #7b: division added; the final isFinite guard in uaCompile neutralizes /0 → ±Inf/NaN
@@ -322,6 +323,12 @@ function uaGenTerm(depth){
       const c1=uaGenTerm(depth-1),c2=uaGenTerm(depth-1);
       const yes=uaGenTerm(depth-1),no=uaGenTerm(depth-1);
       return "((("+c1+")"+cmp+"("+c2+"))?("+yes+"):("+no+"))";
+    }
+    if(roll<0.72){
+      // UNLOCKED #10 — COMPOSITION. Call ANOTHER authored atom by index: f(idx,a,b). Primitives
+      // build on primitives (subroutines / a self-grown function library). Recursion is bounded by
+      // uaFuel in uaCall, so a cycle of atoms calling each other can't freeze the tab.
+      return "f("+uaGenTerm(depth-1)+","+uaGenTerm(depth-1)+","+uaGenTerm(depth-1)+")";
     }
   }
   const useFunc=Math.random()<0.35;
@@ -352,7 +359,7 @@ function uaCompile(atom){
   try{
     // Pe24: compiled function takes (a,b,u) — u is normalized self-usage count.
     // Old atoms with expressions only referencing a,b still compile fine; u is unused param.
-    atom.compiled=new Function("a","b","u","c","d","m","const r=("+atom.expression+");return isFinite(r)?r:0;");
+    atom.compiled=new Function("a","b","u","c","d","m","s","f","const r=("+atom.expression+");return isFinite(r)?r:0;");
     atom.failed=false;
   }catch(e){
     atom.compiled=null;
@@ -382,23 +389,43 @@ function rendCall(atom,t0,t1,t2,t3,amp,phase,col){
 // UNLOCKED #7a/#7b — context fed to system-authored atoms (set per-VM-tick; finite & bounded).
 // c=proximity, d=energy, m=caste-match. Read by uaCall below so the 9 call sites stay untouched.
 let uaCtxC=0,uaCtxD=0,uaCtxM=0;
+// UNLOCKED #10 — atoms are now STATEFUL, RECURRENT, COMPOSABLE programs, not stateless arithmetic:
+//   • s : the atom's own previous output, fed back in → persistent memory across ticks. Temporal
+//         dynamics (integrators, leaky filters, oscillators, counters) become expressible.
+//   • f : f(idx,a,b) calls ANOTHER atom → composition / a self-grown subroutine library.
+// uaFuel caps TOTAL atom-invocations per top-level call; uaDepth detects the top-level entry to
+// refill it. That fuel bound is the halting floor that lets recursion exist at all without
+// freezing the tab — substrate, not preference. Output is clamped finite, so state can't diverge.
+const UA_FUEL=64;
+let uaFuel=0,uaDepth=0;
+function uaCallF(idx,a,b){             // exposed to authored atoms as f(idx,a,b)
+  const list=genome.userAtoms;
+  if(!list||!list.length||uaFuel<=0)return 0;
+  const n=list.length,k=(((idx|0)%n)+n)%n;
+  return uaCall(list[k],+a||0,+b||0);
+}
 function uaCall(atom,a,b){
   if(!atom)return 0;
-  if(!atom.compiled&&!atom.failed)uaCompile(atom);
-  if(atom.failed||!atom.compiled)return 0;
+  if(uaDepth===0)uaFuel=UA_FUEL;       // top-level entry refills the recursion budget
+  if(uaFuel<=0)return 0;
+  uaFuel--;uaDepth++;
   try{
-    // Pe24 Layer 13: self-read. Atom can sense its own historical use count.
-    // Normalized so range stays in VM register territory. Capped so explosive use
-    // doesn't dominate downstream arithmetic.
+    if(!atom.compiled&&!atom.failed)uaCompile(atom);
+    if(atom.failed||!atom.compiled)return 0;
     const prevUses=atom.uses|0;
     const u=Math.min(4,prevUses/100);
-    const r=atom.compiled(a,b,u,uaCtxC,uaCtxD,uaCtxM);
+    const s=isFinite(atom.state)?atom.state:0;   // recurrent state = previous output
+    const r=atom.compiled(a,b,u,uaCtxC,uaCtxD,uaCtxM,s,uaCallF);
     atom.uses=prevUses+1;
+    const out=isFinite(r)?Math.max(-8,Math.min(8,r)):0;
+    atom.state=out;                              // persist for next tick → recurrence
     if(prevUses===0)recordEvent('ua_first_use',{expr:(atom.expression||'').slice(0,48)},1200);
-    return isFinite(r)?Math.max(-8,Math.min(8,r)):0;
+    return out;
   }catch(e){
     atom.failed=true;
     return 0;
+  }finally{
+    uaDepth--;
   }
 }
 const MAX_CLUSTER_VM=8;    // per-cluster program length — shorter than global, differentiation not replacement
@@ -5032,6 +5059,79 @@ const pPlasmidLen=new Uint8Array(CAP); // how many plasmid instructions this par
 // is FOR. The substrate provides the degree of freedom; the system authors its significance.
 const NUM_TYPES=8;                     // substrate cap on simultaneous castes (fits Uint8 with room)
 const pType=new Uint8Array(CAP);
+// UNLOCKED #9 — PER-PARTICLE BEHAVIORAL GENOME (the meta-population). Each particle runs its OWN VM
+// program (its behavioral genotype), inherited at birth and mutated, so lineages diverge and compete
+// under selection. The global genome stays the shared, self-modeling "self": it owns physics + the
+// reflective apparatus (self-model / attribution / shadow-sim) and evolves its own baseline program —
+// which seeds new particles and which the self periodically RE-ADOPTS from its most successful lineage
+// (selfLearnFromBest). Dual-process: a Darwinian population beneath a reflective self.
+// SCOPE, stated plainly: the PROGRAM (behavior) is per-particle; physics/meta params remain shared.
+const pProg=new Array(CAP).fill(null);
+function cloneProg(p){
+  if(!Array.isArray(p)||!p.length)return [[0,0,0,0]];
+  const out=new Array(p.length);
+  for(let i=0;i<p.length;i++){const ins=p[i]||[0,0,0,0];out[i]=[ins[0]|0,ins[1]|0,ins[2]|0,+ins[3]||0];}
+  return out;
+}
+function inheritProg(parentProg){ // child = copy of parent's program + birth mutation (rate from the self's genes)
+  const p=cloneProg((Array.isArray(parentProg)&&parentProg.length)?parentProg:genome.vmProgram);
+  const rate=genome.mutationRate||0.06,scale=genome.mutationScale||1,cap=genome.vmMaxInstructions||16;
+  for(let i=0;i<p.length;i++){
+    if(Math.random()<rate*1.2){
+      p[i][3]+=(Math.random()-0.5)*0.15*scale;p[i][3]=Math.max(-2,Math.min(2,p[i][3]));
+      if(Math.random()<rate)p[i][0]=Math.floor(Math.random()*OPCODE_COUNT);
+      if(Math.random()<rate*0.2)p[i][1]=Math.floor(Math.random()*12);
+      if(Math.random()<rate*0.2)p[i][2]=Math.floor(Math.random()*12);
+    }
+  }
+  if(p.length<cap&&Math.random()<rate*0.15)p.splice(Math.floor(Math.random()*(p.length+1)),0,[Math.floor(Math.random()*OPCODE_COUNT),Math.floor(Math.random()*12),Math.floor(Math.random()*12),(Math.random()-0.5)*0.6]);
+  if(p.length>1&&Math.random()<rate*0.08)p.splice(Math.floor(Math.random()*p.length),1);
+  while(p.length>cap)p.pop();
+  if(!p.length)p.push([0,0,0,0]);
+  return p;
+}
+function selfLearnFromBest(){ // the population's best discovery flows back into the reflective baseline
+  let best=-1,bestAmp=-1e9;
+  for(let i=0;i<N;i++){if(palive[i]&&pProg[i]&&amp[i]>bestAmp){bestAmp=amp[i];best=i;}}
+  if(best>=0&&pProg[best]&&pProg[best].length)genome.vmProgram=cloneProg(pProg[best]);
+}
+// UNLOCKED #9 FULL — EVERY PARTICLE CARRIES ITS OWN COMPLETE GENOME (not just its program).
+// pGenome[i] is a full clone of the parent's genome with EVERY heritable gene mutated, so lineages
+// diverge in physics AND behavior and compete. The engine runs on it via the repoint: during a
+// particle's processing, the global `genome` is pointed at pGenome[i], so the entire existing code
+// transparently uses that lineage's parameters, then restored to the SELF (the reflective baseline
+// that mutateGenome / self-model / attribution / shadow-sim still own).
+const pGenome=new Array(CAP).fill(null);
+function cloneGenome(src){
+  const g={...src}; // scalars copied by value → each lineage OWNS its physics; objects shared by ref
+  // deep-copy the structured heritable genotype so lineages diverge it independently:
+  g.objWeights=Array.isArray(src.objWeights)?src.objWeights.slice():[0.25,0.25,0.25,0.25];
+  g.objCreditTrace=Array.isArray(src.objCreditTrace)?src.objCreditTrace.slice():[0,0,0,0];
+  g.prevObjValues=Array.isArray(src.prevObjValues)?src.prevObjValues.slice():[0,0,0,0];
+  g.boundOpcodes=Array.isArray(src.boundOpcodes)?src.boundOpcodes.slice():[];
+  g.vmProgram=cloneProg(src.vmProgram);
+  g.userAtoms=Array.isArray(src.userAtoms)?src.userAtoms.map(a=>({expression:a.expression,compiled:null,failed:!!a.failed,uses:0,state:0})):[];
+  g.fitnessSensors=Array.isArray(src.fitnessSensors)?src.fitnessSensors.map(s=>({...s,program:cloneProg(s.program)})):src.fitnessSensors;
+  g.rend=Array.isArray(src.rend)?src.rend.map(a=>({expression:a.expression,compiled:null,failed:!!a.failed})):src.rend;
+  // reflective journals (lineage, epochs, metaCredit, shadowScenarioBank, ...) stay SHARED refs —
+  // they are the self's bookkeeping, read-only in the per-particle hot path, never cloned per birth.
+  return g;
+}
+function mutateChildGenome(g){
+  const rate=genome.mutationRate||0.06,scale=genome.mutationScale||1;
+  // FULL divergence — gloves-off random walk on EVERY heritable scalar gene (relative step). Only
+  // the crash floors (isFinite + the VM's own per-op clamps) remain; range is the system's to find.
+  for(const k in g){
+    const v=g[k];
+    if(typeof v==='number'&&isFinite(v)&&Math.random()<rate){
+      const nx=v+(Math.random()-0.5)*(Math.abs(v)*0.12+0.02)*scale;
+      if(isFinite(nx))g[k]=nx;
+    }
+  }
+  g.vmProgram=inheritProg(g.vmProgram);
+  if(Array.isArray(g.objWeights))for(let i=0;i<4;i++)if(Math.random()<rate){const nx=g.objWeights[i]+(Math.random()-0.5)*0.06*scale;if(isFinite(nx))g.objWeights[i]=nx;}
+  return g;
+}
 const field=new Float32Array(FIELD_W*FIELD_H); // shared resource/signal field — writable environment
 // ═══ FIELD MEMORY — the world remembers what lived here ═══
 // Each cell accumulates history. Cells written to repeatedly become more persistent.
@@ -10899,6 +10999,11 @@ function addParticle(x,y,tv,born,parentA,parentB){
   pType[i]=(parentA>=0&&parentA<N)
     ? ((Math.random()<(genome.typeMutRate||0))?((Math.random()*NUM_TYPES)|0):pType[parentA])
     : ((Math.random()*NUM_TYPES)|0);
+  // UNLOCKED #9 FULL: this lineage's COMPLETE genome — parent's whole genome cloned + every gene
+  // mutated (physics AND behavior diverge), or a fresh clone of the self for seeds. pProg aliases the
+  // program so the existing VM read paths keep working unchanged.
+  pGenome[i]=(parentA>=0&&parentA<N&&pGenome[parentA])?mutateChildGenome(cloneGenome(pGenome[parentA])):cloneGenome(genome);
+  pProg[i]=pGenome[i].vmProgram;
   return i;
 }
 function addCompound(x,y,nt,nvx,nvy,na,np,nf,parentA,parentB){
@@ -10931,6 +11036,11 @@ function addCompound(x,y,nt,nvx,nvy,na,np,nf,parentA,parentB){
   pType[i]=(parentA>=0&&parentA<N)
     ? ((Math.random()<(genome.typeMutRate||0))?((Math.random()*NUM_TYPES)|0):pType[parentA])
     : ((Math.random()*NUM_TYPES)|0);
+  // UNLOCKED #9 FULL: this lineage's COMPLETE genome — parent's whole genome cloned + every gene
+  // mutated (physics AND behavior diverge), or a fresh clone of the self for seeds. pProg aliases the
+  // program so the existing VM read paths keep working unchanged.
+  pGenome[i]=(parentA>=0&&parentA<N&&pGenome[parentA])?mutateChildGenome(cloneGenome(pGenome[parentA])):cloneGenome(genome);
+  pProg[i]=pGenome[i].vmProgram;
   return i;
 }
 function computeVisuals(i){
@@ -10984,16 +11094,19 @@ function applyEntropy(){
   const densityCost=(genome.densityCostK||0.00003)*Math.max(0,N-(genome.densityFloor??100));
   for(let i=0;i<N;i++){
     if(!palive[i])continue;
-    amp[i]-=genome.entropyBaseline;
-    amp[i]-=densityCost;
-    amp[i]+=localRes[i]*genome.entropyK;
-    if(isNaN(amp[i]))amp[i]=0;
-    if(amp[i]<genome.deathThreshold){
-      deaths.push(i);deathsThisTick++;deathsByPhysics++;
-      addBits(px[i],py[i],2,pR[i],pG[i],pB[i],0.3);
-      palive[i]=0;
-    }
-    if(amp[i]>1.2)amp[i]=1.2;
+    const _g=genome;genome=pGenome[i]||genome; // UNLOCKED #9 FULL: per-lineage metabolism & death threshold
+    try{
+      amp[i]-=genome.entropyBaseline;
+      amp[i]-=densityCost;
+      amp[i]+=localRes[i]*genome.entropyK;
+      if(isNaN(amp[i]))amp[i]=0;
+      if(amp[i]<genome.deathThreshold){
+        deaths.push(i);deathsThisTick++;deathsByPhysics++;
+        addBits(px[i],py[i],2,pR[i],pG[i],pB[i],0.3);
+        palive[i]=0;
+      }
+      if(amp[i]>1.2)amp[i]=1.2;
+    }finally{genome=_g;}
   }
   for(let d=0;d<deaths.length;d++){
     const di=deaths[d];
@@ -11078,7 +11191,7 @@ function executeVM(i,j,sim,d){
 
   vmActions[0]=0;vmActions[1]=0;vmActions[2]=0;vmActions[3]=0;vmActions[4]=0;vmActions[5]=0;vmActions[6]=0;vmActions[7]=0;
 
-  const prog=genome.vmProgram;
+  const prog=pProg[i]||genome.vmProgram;  // UNLOCKED #9: this particle runs ITS lineage's program
   const nInst=Math.min(prog.length,genome.vmMaxInstructions);
 
   const totalCost=nInst*genome.metabolicCost;
@@ -15410,13 +15523,15 @@ function updateParticles(){
 }
 
 function executeSoloVM(){
-  const prog=genome.vmProgram;
-  const nInst=Math.min(prog.length,genome.vmMaxInstructions);
-  if(nInst===0)return;
   const soloInfluence=genome.vmInfluence*genome.ruleScale*0.0005;
 
   for(let i=0;i<N;i++){
     if(!palive[i])continue;
+    const prog=pProg[i]||genome.vmProgram;  // UNLOCKED #9: isolated particle runs its own program too
+    const nInst=Math.min(prog.length,genome.vmMaxInstructions);
+    if(nInst===0)continue;
+    const _selfG=genome;genome=pGenome[i]||genome; try{ // UNLOCKED #9 FULL: solo particle on its OWN complete genome
+    uaCtxC=0;uaCtxD=amp[i];uaCtxM=0; // solo atom context (no partner → caste-match 0)
 
     const soloCost=nInst*genome.metabolicCost*0.5;
     amp[i]-=soloCost;
@@ -15592,6 +15707,7 @@ function executeSoloVM(){
     vy[i]+=vmActions[1]*soloInfluence*0.5;
     if(DIMS>4){ tend[i*DIMS+4]+=vmActions[7]*soloInfluence*0.01; tend[i*DIMS+4]=Math.max(-1,Math.min(1,tend[i*DIMS+4])); }
     mutPressureAccum+=vmActions[6]*soloInfluence*0.00005;
+    }finally{genome=_selfG;}
   }
 }
 
@@ -15618,9 +15734,11 @@ function processGrid(){
             // Pe51 Layer 40: count neighbors within interaction radius for density sensing
             if(pNeighborCount[i]<127)pNeighborCount[i]++;
             if(pNeighborCount[j]<127)pNeighborCount[j]++;
-            entrain(i,j,sim,d);
-            executeVM(i,j,sim,d);
-            executeClusterVM(i,j,sim,d);
+            {const _g=genome;genome=pGenome[i]||genome;try{ // UNLOCKED #9 FULL: this interaction runs on particle i's OWN complete genome
+              entrain(i,j,sim,d);
+              executeVM(i,j,sim,d);
+              executeClusterVM(i,j,sim,d);
+            }finally{genome=_g;}}
             // Pe31 Layer 21: update neighbor models during interaction.
             // Both i models j, and j models i — recognition is mutual.
             const pa31=Math.cos(phase[i]-phase[j]);
@@ -15821,6 +15939,7 @@ function compact(){
     pPlasmidAge[w]=pPlasmidAge[r];
     pBroadcast[w*2]=pBroadcast[r*2];pBroadcast[w*2+1]=pBroadcast[r*2+1];
     clusterID[w]=clusterID[r];
+    pType[w]=pType[r];pProg[w]=pProg[r];pGenome[w]=pGenome[r]; // UNLOCKED #7a/#9: caste + full per-particle genome relocate with the particle (also fixes a caste-scramble bug)
     for(let rx=0;rx<REFLEX_DEPTH*2;rx++)pReflexHist[w*REFLEX_DEPTH*2+rx]=pReflexHist[r*REFLEX_DEPTH*2+rx];
     for(let rx=0;rx<REFLEX_DIMS;rx++)pReflexState[w*REFLEX_DIMS+rx]=pReflexState[r*REFLEX_DIMS+rx];
     pReflexIdx[w]=pReflexIdx[r];
@@ -16266,6 +16385,7 @@ function loop(){
   if(tick%120===0&&tick>60)sampleInstrumentation();
 
   if(tick%Math.max(1,(genome.cadenceLineage|0)||600)===0){
+    selfLearnFromBest(); // UNLOCKED #9: the self re-adopts its most successful lineage's program
     if(selfModel.persistentClusters>0){
       for(const c of clusters){
         if(c.persistAge>5&&c.size>5){
