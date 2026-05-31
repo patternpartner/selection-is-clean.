@@ -5334,6 +5334,7 @@ function encodeGenome(){
     td: genome.tendDims|0,
     rn: Array.isArray(genome.rend)?genome.rend.map(a=>({e:a.expression,f:!!a.failed})):null,
     bo: Array.isArray(genome.boundOpcodes)?genome.boundOpcodes.map(b=>b|0):[],
+    co: CORE_OPCODES, // MIGRATION (review): stamp the opcode-boundary this save was written under, so a later CORE_OPCODES shift can remap saved bound-opcode programs on load
     ua:cleanAtoms,
     clr:+(genome.creditLearnRate||1).toFixed(4), // Pe25 Layer 15: evolvable learning rate
     gb:+(genome.gradientBias||0.3).toFixed(4),   // Pe26 Layer 16a: gradient bias
@@ -5501,6 +5502,20 @@ function decodeGenome(data){
     }
     genome.objWeights=g.w||[0.25,0.25,0.25,0.25];
     if(Array.isArray(g.oct)&&g.oct.length>=4)genome.objCreditTrace=g.oct.slice(0,4);
+    // MIGRATION (review): a CORE_OPCODES boundary shift remaps the meaning of saved bound-opcode
+    // instructions, which encode op = core + slot. The 'co' stamp records the boundary a save was
+    // written under; saves without it predate the stamp AND the 128→131 caste-opcode shift, so assume
+    // the old boundary (128). Shift every program opcode in the bound region (op>=savedCore) by the
+    // delta so a saved bound slot keeps pointing at the same slot — and old ops 128–130 (formerly
+    // bound slots) are NOT silently reinterpreted as the new core caste opcodes. Applies to the VM
+    // program (g.V) and every fitness-sensor program (g.fs[].program).
+    const _savedCore=(typeof g.co==='number'&&g.co>0)?(g.co|0):128;
+    const _coDelta=CORE_OPCODES-_savedCore;
+    if(_coDelta!==0){
+      const _remapProg=p=>{ if(Array.isArray(p)) for(const ins of p){ if(Array.isArray(ins)&&typeof ins[0]==='number'&&ins[0]>=_savedCore){ ins[0]=Math.max(0,Math.min(OPCODE_COUNT-1,(ins[0]|0)+_coDelta)); } } };
+      if(Array.isArray(g.V)) _remapProg(g.V);
+      if(Array.isArray(g.fs)) for(const _s of g.fs){ if(_s&&Array.isArray(_s.program)) _remapProg(_s.program); }
+    }
     if(g.fs)genome.fitnessSensors=g.fs;
     if(g.m){
       [genome.mutationRate,genome.mutationScale,genome.shadowHorizon,genome.shadowScenarios,
@@ -15549,14 +15564,13 @@ function updateParticles(){
 }
 
 function executeSoloVM(){
-  const soloInfluence=genome.vmInfluence*genome.ruleScale*0.0005;
-
   for(let i=0;i<N;i++){
     if(!palive[i])continue;
+    const _selfG=genome;genome=pGenome[i]||genome; try{ // UNLOCKED #9 FULL + FIX (review): install the lineage's FULL genome BEFORE sizing the solo VM — otherwise nInst/soloInfluence used the global baseline, so a lineage that evolved its own vmMaxInstructions / vmInfluence / ruleScale never ran solo under its own parameters
     const prog=pProg[i]||genome.vmProgram;  // UNLOCKED #9: isolated particle runs its own program too
     const nInst=Math.min(prog.length,genome.vmMaxInstructions);
     if(nInst===0)continue;
-    const _selfG=genome;genome=pGenome[i]||genome; try{ // UNLOCKED #9 FULL: solo particle on its OWN complete genome
+    const soloInfluence=genome.vmInfluence*genome.ruleScale*0.0005; // per-particle now (was hoisted out of the loop on the global genome — review)
     uaCtxC=0;uaCtxD=amp[i];uaCtxM=0; // solo atom context (no partner → caste-match 0)
 
     const soloCost=nInst*genome.metabolicCost*0.5;
