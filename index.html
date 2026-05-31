@@ -15486,6 +15486,7 @@ function executeSoloVM(){
     const prog=pProg[i]||genome.vmProgram;  // UNLOCKED #9: isolated particle runs its own program too
     const nInst=Math.min(prog.length,genome.vmMaxInstructions);
     if(nInst===0)continue;
+    uaCtxC=0;uaCtxD=amp[i];uaCtxM=0; // FIX: solo VM now sets atom context (no partner → caste-match 0) instead of leaking stale pairwise values
 
     const soloCost=nInst*genome.metabolicCost*0.5;
     amp[i]-=soloCost;
