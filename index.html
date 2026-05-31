@@ -265,7 +265,9 @@ let DIMS=5;
 const MEM_SIZE=8; // per-particle persistent memory. Particles become stateful agents.
 const MAX_PLASMID=4; // max instructions per particle's personal mobile DNA
 const PLASMID_SLOTS=MAX_PLASMID*4; // each instruction is [op,src,dst,k] = 4 values
-const MAX_BOUND_OPCODES=16;
+const MAX_BOUND_OPCODES=32; // UNLOCKED #7b: was 16. Wider namespace for system-authored operations
+                            // (bound opcodes 128..159 now). Dispatch is index-guarded and OPCODE_COUNT
+                            // derives from this, so the boundary stays consistent everywhere.
 // CORE_OPCODES single-sources the franchise boundary: opcodes 0..CORE_OPCODES-1 are core
 // (implemented in the main VM switch); CORE_OPCODES..OPCODE_COUNT-1 are evolvable bound slots.
 // Bumping CORE_OPCODES is the ONLY edit needed to add a core opcode — the bound guards
@@ -291,23 +293,40 @@ let FIELD_DIFFUSE=0.11;  // gentle spread — Pe22b: now genome-driven, can evol
 // ═══════════════════════════════════════
 const USER_VARS=["a","b","u"]; // Pe24: u = self-read of own use count (Layer 13)
 const USER_FUNCS=["Math.abs","Math.tanh","Math.sin","Math.cos","Math.sign","Math.sqrt","Math.log1p","Math.exp"];
-const USER_OPS=["+","-","*"];
-function uaGenTerm(){
+const USER_OPS=["+","-","*","/"]; // UNLOCKED #7b: division added; the final isFinite guard in uaCompile neutralizes /0 → ±Inf/NaN
+const UA_DEPTH_CAP=4; // substrate ceiling on authored-expression nesting — bounds compile cost / string length, NOT meaning
+// UNLOCKED #7b — RECURSIVE GRAMMAR. Was depth-1 ("two terms, one binary op"). Now the system
+// can compose structurally richer primitives it invents. depth<=0 → a leaf (var/constant,
+// optional func wrapper) — byte-for-byte the original term. depth>0 → may instead branch into a
+// parenthesised binary sub-expression, recursing with a smaller budget. The budget comes from the
+// genome (uaMaxDepth), so HOW deep the system thinks is itself something it evolves.
+function uaGenTerm(depth){
+  depth=depth|0;
+  if(depth>0&&Math.random()<0.6){
+    const a=uaGenTerm(depth-1),b=uaGenTerm(depth-1);
+    const op=USER_OPS[(Math.random()*USER_OPS.length)|0];
+    return "("+a+")"+op+"("+b+")";
+  }
   const useFunc=Math.random()<0.35;
   const val=Math.random()<0.5
     ? USER_VARS[(Math.random()*USER_VARS.length)|0]
     : (Math.random()*4-2).toFixed(2);
   if(useFunc){
     const fn=USER_FUNCS[(Math.random()*USER_FUNCS.length)|0];
-    // Wrap log1p input in abs to avoid negative domain errors
+    // Wrap log1p/sqrt input in abs to avoid negative domain errors
     const safeVal=(fn==="Math.log1p"||fn==="Math.sqrt")?"Math.abs("+val+")":val;
     return fn+"("+safeVal+")";
   }
   return val;
 }
 function uaGenExpression(){
-  const t1=uaGenTerm();
-  const t2=uaGenTerm();
+  // Depth budget from the genome (UNLOCKED #7b). uaMaxDepth=1 (default) → uaGenTerm(0) twice →
+  // exactly the original single-binary-op grammar. Clamped to UA_DEPTH_CAP so a runaway gene
+  // can't author a megabyte expression — substrate floor, not a ceiling on what it can mean.
+  const ud=(typeof genome!=='undefined'&&genome&&genome.uaMaxDepth>=1)?(genome.uaMaxDepth|0):1;
+  const d=Math.max(1,Math.min(UA_DEPTH_CAP,ud));
+  const t1=uaGenTerm(d-1);
+  const t2=uaGenTerm(d-1);
   const op=USER_OPS[(Math.random()*USER_OPS.length)|0];
   return "("+t1+")"+op+"("+t2+")";
 }
@@ -4666,6 +4685,11 @@ let genome={
   // How the system evolves. The evolution of evolution.
   mutationRate:0.06,      // was hardcoded in mutateObjectiveWeights
   mutationScale:1.0,      // multiplier on mutation magnitude
+  mutationTail:0,         // UNLOCKED #6: search-distribution SHAPE. 0 = uniform random walk (prior
+                          // behavior exactly). →1 mixes in a heavy (Cauchy) tail, so the system can
+                          // take rare large leaps to escape local optima instead of only creeping.
+                          // It owns its exploration strategy now, not just its rate (mutationRate)
+                          // and overall scale (mutationScale).
   mutationInterval:300,   // FREED: ticks between mutation cycles. System decides its own rhythm.
   shadowHorizon:50,       // was hardcoded: 50 ticks in shadow sim
   shadowScenarios:5,      // Pe27: cap on shadowScenarioBank size (3..SHADOW_SCENARIOS_MAX)
@@ -4738,6 +4762,9 @@ let genome={
     [0, 0, 0, 0.0],   // MOVE noop (can evolve)
   ],
   vmMaxInstructions:16, // can evolve to grow/shrink the program
+  uaMaxDepth:1,         // UNLOCKED #7b: nesting depth of self-authored atom expressions. 1 = the
+                        // original grammar exactly (two terms, one binary op). Higher lets the
+                        // system compose structurally richer primitives. Bounded by UA_DEPTH_CAP.
   vmInfluence:0.3,      // ratio of VM effects vs hardcoded physics. EVOLVES.
   ruleScale:1.0,
   metabolicCost:0.00002,  // amp cost PER INSTRUCTION PER INTERACTION. Evolves.
@@ -5168,6 +5195,8 @@ function encodeGenome(){
     vi:+(genome.vmInfluence.toPrecision(3)),
     vs:+(genome.ruleScale.toPrecision(3)),
     vm:genome.vmMaxInstructions,
+    mtl:+(genome.mutationTail||0).toFixed(4), // UNLOCKED #6 search-distribution shape
+    uad:genome.uaMaxDepth|0,                  // UNLOCKED #7b atom recursion depth
     td: genome.tendDims|0,
     rn: Array.isArray(genome.rend)?genome.rend.map(a=>({e:a.expression,f:!!a.failed})):null,
     bo: Array.isArray(genome.boundOpcodes)?genome.boundOpcodes.map(b=>b|0):[],
@@ -5409,6 +5438,8 @@ function decodeGenome(data){
     if(g.vi!==undefined)genome.vmInfluence=g.vi;
     if(g.vs)genome.ruleScale=g.vs;
     if(g.vm)genome.vmMaxInstructions=g.vm;
+    if(typeof g.mtl==='number')genome.mutationTail=g.mtl;  // UNLOCKED #6 (absent in pre-unlock saves → sanitize defaults to 0)
+    if(typeof g.uad==='number')genome.uaMaxDepth=g.uad|0;  // UNLOCKED #7b
     if(g.ua)genome.userAtoms=g.ua.map(a=>({expression:a.expression,compiled:null,failed:!!a.failed,uses:a.uses|0,age:a.age|0}));
     if(typeof g.td==='number') genome.tendDims=Math.max(2,Math.min(DIMS_MAX,g.td|0));
     if(Array.isArray(g.rn)&&g.rn.length===4) genome.rend=g.rn.map(a=>({expression:a.e||'0',compiled:null,failed:!!a.f}));
@@ -5583,6 +5614,8 @@ function sanitizeGenome(){
   genome.vmProgram=Array.isArray(genome.vmProgram)?genome.vmProgram.map(cleanInstruction).slice(0,48):[[0,0,0,0]];
   if(genome.vmProgram.length===0)genome.vmProgram=[[0,0,0,0]];
   genome.vmMaxInstructions=Math.max(1,Math.min(48,Math.round(finiteOr(genome.vmMaxInstructions,16))));
+  genome.mutationTail=Math.max(0,Math.min(1,finiteOr(genome.mutationTail,0)));                          // UNLOCKED #6 (pre-unlock saves → 0 = old behavior)
+  genome.uaMaxDepth=Math.max(1,Math.min(UA_DEPTH_CAP,Math.round(finiteOr(genome.uaMaxDepth,1))));        // UNLOCKED #7b
   genome.fitnessSensors=Array.isArray(genome.fitnessSensors)?genome.fitnessSensors.filter(s=>s&&Array.isArray(s.program)).map(s=>({program:s.program.map(cleanInstruction),weight:finiteOr(s.weight,0),realWeight:finiteOr(s.realWeight,0),creditTrace:finiteOr(s.creditTrace,0),lastEmit:finiteOr(s.lastEmit,0),prevEmit:finiteOr(s.prevEmit,0)})):[{program:[[2,5,6,1.0],[4,6,0,1.0]],weight:0.1,realWeight:0,creditTrace:0,lastEmit:0,prevEmit:0}];
   if(genome.fitnessSensors.length===0)genome.fitnessSensors=[{program:[[2,5,6,1.0],[4,6,0,1.0]],weight:0.1,realWeight:0,creditTrace:0,lastEmit:0,prevEmit:0}];
   // Pe25 Layer 15: credit-assignment defaults for old saves
@@ -9423,6 +9456,19 @@ function mutateGenome(){
   ));
   const rate=genome.mutationRate*stabilityFactor;
   const scale=genome.mutationScale;
+  // UNLOCKED #6 — search-distribution shape. tail=0 → uniform (exact prior behavior).
+  const tail=Math.max(0,Math.min(1,genome.mutationTail||0));
+  // Zero-centered step, normally uniform in [-0.5,0.5]. With probability `tail` it is instead drawn
+  // from a (scaled) Cauchy distribution — heavy-tailed, so most draws stay small but rare ones are
+  // large enough to jump across a basin. A single excursion is bounded (substrate floor); isFinite
+  // still guards every downstream write.
+  function tailDraw(){
+    if(tail>0&&Math.random()<tail){
+      const c=Math.tan(Math.PI*(Math.random()-0.5))*0.5;
+      return isFinite(c)?Math.max(-25,Math.min(25,c)):0;
+    }
+    return Math.random()-0.5;
+  }
   mutPressureAccum=0; // reset accumulator for next cycle after snapshotting pressure
 
   // Pe26 Layer 16a: gradient-biased perturbation.
@@ -9444,7 +9490,7 @@ function mutateGenome(){
   // a failure to guard.
   function maybe(val,min,max,magnitude){
     if(Math.random()>rate)return val;
-    const next=val+(Math.random()-0.5)*magnitude*scale;
+    const next=val+tailDraw()*magnitude*scale;
     if(!isFinite(next))return val;
     return next;
   }
@@ -9452,7 +9498,7 @@ function mutateGenome(){
   // nudgeDir: ±1 direction from lastShadowNudgeDir, 0 = no prior signal.
   function gradMaybe(val,min,max,magnitude,nudgeDir){
     if(Math.random()>rate)return val;
-    const randomStep=(Math.random()-0.5)*magnitude*scale;
+    const randomStep=tailDraw()*magnitude*scale;
     if(!gradientActive||nudgeDir===0){
       const next=val+randomStep;
       return isFinite(next)?next:val;
@@ -9671,7 +9717,7 @@ function mutateGenome(){
       effectiveRate=rate*Math.max(0.2,Math.min(2.5,1-tr*mmb*trust));
     }
     if(Math.random()>effectiveRate)return val;
-    const randomStep=(Math.random()-0.5)*magnitude*scale;
+    const randomStep=tailDraw()*magnitude*scale;
     // Pe38: width scaling — only activates when we have confident attribution.
     // tr positive + high conf → widthScale < 1 (narrow, exploit).
     // tr negative + high conf → widthScale > 1 (wide, escape).
@@ -10029,6 +10075,7 @@ function mutateGenome(){
   // LAYER 4: META-MUTATIONS
   genome.mutationRate=maybe(genome.mutationRate,0.01,0.25,0.02);
   genome.mutationScale=maybe(genome.mutationScale,0.3,3.0,0.2);
+  genome.mutationTail=Math.max(0,Math.min(1,maybe(genome.mutationTail||0,0,1,0.05))); // UNLOCKED #6: the system evolves its own search-distribution shape
   genome.shadowHorizon=Math.max(2,Math.min(500,Math.round(maybe(genome.shadowHorizon,10,120,8))));
   genome.perturbScale=maybe(genome.perturbScale,0.2,3.0,0.2);
   genome.extinctionThresh=Math.max(1,Math.round(maybe(genome.extinctionThresh,2,20,2)));
@@ -10057,6 +10104,7 @@ function mutateGenome(){
   genome.vmInfluence=maybe(genome.vmInfluence,0.05,2.0,0.08);
   genome.ruleScale=maybe(genome.ruleScale,0.2,3.0,0.2);
   genome.vmMaxInstructions=Math.max(1,Math.min(48,Math.round(maybe(genome.vmMaxInstructions,6,20,1))));
+  genome.uaMaxDepth=Math.max(1,Math.min(UA_DEPTH_CAP,Math.round(maybe(genome.uaMaxDepth||1,1,UA_DEPTH_CAP,0.6)))); // UNLOCKED #7b: the system evolves how deeply it composes its own primitives
   genome.metabolicCost=maybe(genome.metabolicCost,0.000002,0.0002,0.00002);
 
   // HGT parameter evolution
