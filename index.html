@@ -273,7 +273,8 @@ const MAX_BOUND_OPCODES=32; // UNLOCKED #7b: was 16. Wider namespace for system-
 // Bumping CORE_OPCODES is the ONLY edit needed to add a core opcode — the bound guards
 // (op>=CORE_OPCODES) and OPCODE_COUNT derive from it, so a boundary typo can no longer
 // orphan an opcode or collide a core op with a bound slot (the Pe60 / op142-class bug).
-const CORE_OPCODES=131; // 0..130 core — OPENED THE SWITCH: op128 READ_OWN_CASTE, op129 READ_PARTNER_CASTE,
+const CORE_OPCODES=132; // 0..131 core — op131 ENERGY_STRESS: the system perceives conserved-budget scarcity (see executeVM)
+                        // 0..130 core — OPENED THE SWITCH: op128 READ_OWN_CASTE, op129 READ_PARTNER_CASTE,
                         // op130 SET_CASTE. Caste was heritable but inert — readable only as the atom input `m`
                         // (caste-match). Now it enters the core VM as a value AND an action: a particle can
                         // read its own and its partner's caste, and DIFFERENTIATE (change its own caste) based
@@ -435,6 +436,35 @@ function uaCall(atom,a,b){
 const MAX_CLUSTER_VM=8;    // per-cluster program length — shorter than global, differentiation not replacement
 const CLUSTER_VM_COST_SHARE=0.4; // fraction of metabolic cost vs global VM (lighter programs)
 const CAP=1800; // HARD CEILING for array allocation only — not an ecological limit
+// ═══════════════════════════════════════
+// CONSERVED ENERGY BUDGET — carrying capacity from a finite resource, not the wall.
+// Reproduction used to be free, so the population only ever stopped at CAP (the array
+// ceiling), the boom paid no fitness cost, and selection never learned restraint. This
+// is a finite, slowly-replenishing world-energy pool that every REPRODUCTIVE birth (one
+// with a parent) must draw from; a fraction returns on death. Seeds/reseeds are exempt so
+// the world can start and recover. Equilibrium population now emerges from a fixed influx
+// ("sunlight"), exactly as a real biosphere does — and CAP becomes the safety net it was
+// always documented to be. No genome can mint energy, so the brake cannot be wireheaded.
+const BIRTH_ENERGY_COST=1;      // energy a reproductive birth draws from the world
+const WORLD_ENERGY_MAX=80;      // pool ceiling → bounds any single-tick birth burst
+const WORLD_ENERGY_REGEN=0.2;   // per-tick influx; sets the sustainable birth flux (→ carrying capacity well below CAP)
+const DEATH_ENERGY_RETURN=0.5;  // fraction of a birth's cost recovered when a particle dies
+// Metabolism gives the budget teeth on the DEATH side too: each living particle draws a
+// tiny upkeep from the pool every tick, with first claim on the influx (reproduction lives
+// on the surplus). When the population outgrows the influx the pool can't feed everyone,
+// adequacy<1, and the shortfall is paid as amplitude loss → starvation deaths. This is what
+// pins a real carrying capacity (≈ REGEN/METABOLIC_ENERGY_DRAW) well below CAP; birth-gating
+// alone only slowed the climb, because well-fed sparse particles almost never died.
+const METABOLIC_ENERGY_DRAW=0.0004; // per-living-particle per-tick upkeep; carrying capacity ≈ REGEN/this
+const STARVE_DRAIN=0.04;            // max amplitude lost per tick when the world cannot feed the population
+// Seasons: a constant influx produces a perfectly smooth equilibrium with NO scarcity, so a
+// scarcity-sensor has nothing to sense and resource-aware restraint can never be selected.
+// Real restraint evolves against droughts. The influx now cycles between feast and famine;
+// lean years dip it below metabolic demand, producing recurring scarcity the system can adapt to.
+const SEASON_PERIOD=2500;           // ticks per "year"
+const SEASON_AMPLITUDE=0.45;        // +/- swing in sunlight; lean season drives adequacy below 1
+let worldEnergy=WORLD_ENERGY_MAX;
+let energyAdequacy=1;               // fraction of this tick's metabolic demand the pool could meet
 // The real carrying capacity emerges from density-dependent metabolic cost.
 // More particles = higher per-particle cost = amplitude drains faster = natural deaths increase.
 // The system discovers its own equilibrium population.
@@ -10996,6 +11026,9 @@ function hslToRgb(h,s,l){
 }
 function addParticle(x,y,tv,born,parentA,parentB){
   if(N>=CAP)return-1;
+  // Conserved budget: a birth WITH a parent is reproduction → it must buy its energy.
+  // Parentless calls are seeds/reseeds/migrants and are exempt (the world must be able to start).
+  if(parentA>=0){ if(worldEnergy<BIRTH_ENERGY_COST)return-1; worldEnergy-=BIRTH_ENERGY_COST; }
   const i=N++;
   px[i]=x;py[i]=y;
   vx[i]=(Math.random()-.5)*(born?2:.3);vy[i]=(Math.random()-.5)*(born?2:.3);
@@ -11039,6 +11072,8 @@ function addParticle(x,y,tv,born,parentA,parentB){
 }
 function addCompound(x,y,nt,nvx,nvy,na,np,nf,parentA,parentB){
   if(N>=CAP)return-1;
+  // Conserved budget: compounds are always two-parent reproduction → they buy their energy too.
+  if(parentA>=0){ if(worldEnergy<BIRTH_ENERGY_COST)return-1; worldEnergy-=BIRTH_ENERGY_COST; }
   const i=N++;
   px[i]=x;py[i]=y;vx[i]=nvx;vy[i]=nvy;
   for(let d=0;d<DIMS;d++)tend[i*DIMS+d]=nt[d];
@@ -11130,11 +11165,13 @@ function applyEntropy(){
       amp[i]-=genome.entropyBaseline;
       amp[i]-=densityCost;
       amp[i]+=localRes[i]*genome.entropyK;
+      if(energyAdequacy<1)amp[i]-=(1-energyAdequacy)*STARVE_DRAIN; // starvation: the world couldn't feed everyone this tick
       if(isNaN(amp[i]))amp[i]=0;
       if(amp[i]<genome.deathThreshold){
         deaths.push(i);deathsThisTick++;deathsByPhysics++;
         addBits(px[i],py[i],2,pR[i],pG[i],pB[i],0.3);
         palive[i]=0;
+        worldEnergy=Math.min(WORLD_ENERGY_MAX,worldEnergy+BIRTH_ENERGY_COST*DEATH_ENERGY_RETURN); // death returns resource to the world
       }
       if(amp[i]>1.2)amp[i]=1.2;
     }finally{genome=_g;}
@@ -13154,6 +13191,7 @@ function executeVM(i,j,sim,d){
       case 128:vmRegs[di]=pType[i];break;                 // READ_OWN_CASTE — own caste as a value
       case 129:vmRegs[di]=pType[j];break;                 // READ_PARTNER_CASTE — read who you face
       case 130:if(vmRegs[si]>k)pType[i]=Math.abs(Math.floor(vmRegs[di]))%NUM_TYPES;break; // SET_CASTE — differentiate when the signal clears threshold k; caste becomes an ACTION, not just inheritance
+      case 131:vmRegs[di]=Math.min(3,(1-energyAdequacy)*3)*k;break; // ENERGY_STRESS — perceive global resource scarcity (0=world feeds everyone, →3=starving). The missing half of the conserved-budget loop: now the VM can SENSE the famine its breeding causes, so selection can in principle wire it to reproduction (vmActions[4]). Read-only; k gates it; evolution chooses whether to use it.
     }
     // BOUND-OPCODE BOUNDARY (Pe60-class fix, now single-sourced via CORE_OPCODES).
     // History: the guard once read op>=126 (boi=op-126), which (a) collided with core
@@ -16059,6 +16097,9 @@ function loop(){
   const frameStart=lastLoopTime;
   tick++;
   genome.totalTicks++;
+  const _season=1+SEASON_AMPLITUDE*Math.sin(2*Math.PI*tick/SEASON_PERIOD); // feast/famine cycle
+  worldEnergy=Math.min(WORLD_ENERGY_MAX,worldEnergy+WORLD_ENERGY_REGEN*_season); // conserved-budget influx ("sunlight"), now seasonal
+  { const _md=N*METABOLIC_ENERGY_DRAW; energyAdequacy=_md>0?Math.min(1,worldEnergy/_md):1; worldEnergy=Math.max(0,worldEnergy-_md); } // metabolism takes first claim; reproduction gets the surplus
   flushNetworkEvents();
   smx+=(mx-smx)*.05;smy+=(my-smy)*.05;
   if(pulling){pStr=Math.min(pStr+.02,1);pDur++}else pStr*=.92;
