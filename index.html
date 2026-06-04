@@ -435,6 +435,20 @@ function uaCall(atom,a,b){
 const MAX_CLUSTER_VM=8;    // per-cluster program length — shorter than global, differentiation not replacement
 const CLUSTER_VM_COST_SHARE=0.4; // fraction of metabolic cost vs global VM (lighter programs)
 const CAP=1800; // HARD CEILING for array allocation only — not an ecological limit
+// ═══════════════════════════════════════
+// CONSERVED ENERGY BUDGET — carrying capacity from a finite resource, not the wall.
+// Reproduction used to be free, so the population only ever stopped at CAP (the array
+// ceiling), the boom paid no fitness cost, and selection never learned restraint. This
+// is a finite, slowly-replenishing world-energy pool that every REPRODUCTIVE birth (one
+// with a parent) must draw from; a fraction returns on death. Seeds/reseeds are exempt so
+// the world can start and recover. Equilibrium population now emerges from a fixed influx
+// ("sunlight"), exactly as a real biosphere does — and CAP becomes the safety net it was
+// always documented to be. No genome can mint energy, so the brake cannot be wireheaded.
+const BIRTH_ENERGY_COST=1;      // energy a reproductive birth draws from the world
+const WORLD_ENERGY_MAX=80;      // pool ceiling → bounds any single-tick birth burst
+const WORLD_ENERGY_REGEN=0.2;   // per-tick influx; sets the sustainable birth flux (→ carrying capacity well below CAP)
+const DEATH_ENERGY_RETURN=0.5;  // fraction of a birth's cost recovered when a particle dies
+let worldEnergy=WORLD_ENERGY_MAX;
 // The real carrying capacity emerges from density-dependent metabolic cost.
 // More particles = higher per-particle cost = amplitude drains faster = natural deaths increase.
 // The system discovers its own equilibrium population.
@@ -10996,6 +11010,9 @@ function hslToRgb(h,s,l){
 }
 function addParticle(x,y,tv,born,parentA,parentB){
   if(N>=CAP)return-1;
+  // Conserved budget: a birth WITH a parent is reproduction → it must buy its energy.
+  // Parentless calls are seeds/reseeds/migrants and are exempt (the world must be able to start).
+  if(parentA>=0){ if(worldEnergy<BIRTH_ENERGY_COST)return-1; worldEnergy-=BIRTH_ENERGY_COST; }
   const i=N++;
   px[i]=x;py[i]=y;
   vx[i]=(Math.random()-.5)*(born?2:.3);vy[i]=(Math.random()-.5)*(born?2:.3);
@@ -11039,6 +11056,8 @@ function addParticle(x,y,tv,born,parentA,parentB){
 }
 function addCompound(x,y,nt,nvx,nvy,na,np,nf,parentA,parentB){
   if(N>=CAP)return-1;
+  // Conserved budget: compounds are always two-parent reproduction → they buy their energy too.
+  if(parentA>=0){ if(worldEnergy<BIRTH_ENERGY_COST)return-1; worldEnergy-=BIRTH_ENERGY_COST; }
   const i=N++;
   px[i]=x;py[i]=y;vx[i]=nvx;vy[i]=nvy;
   for(let d=0;d<DIMS;d++)tend[i*DIMS+d]=nt[d];
@@ -11135,6 +11154,7 @@ function applyEntropy(){
         deaths.push(i);deathsThisTick++;deathsByPhysics++;
         addBits(px[i],py[i],2,pR[i],pG[i],pB[i],0.3);
         palive[i]=0;
+        worldEnergy=Math.min(WORLD_ENERGY_MAX,worldEnergy+BIRTH_ENERGY_COST*DEATH_ENERGY_RETURN); // death returns resource to the world
       }
       if(amp[i]>1.2)amp[i]=1.2;
     }finally{genome=_g;}
@@ -16059,6 +16079,7 @@ function loop(){
   const frameStart=lastLoopTime;
   tick++;
   genome.totalTicks++;
+  worldEnergy=Math.min(WORLD_ENERGY_MAX,worldEnergy+WORLD_ENERGY_REGEN); // conserved-budget influx ("sunlight")
   flushNetworkEvents();
   smx+=(mx-smx)*.05;smy+=(my-smy)*.05;
   if(pulling){pStr=Math.min(pStr+.02,1);pDur++}else pStr*=.92;
