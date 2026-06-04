@@ -448,7 +448,16 @@ const BIRTH_ENERGY_COST=1;      // energy a reproductive birth draws from the wo
 const WORLD_ENERGY_MAX=80;      // pool ceiling → bounds any single-tick birth burst
 const WORLD_ENERGY_REGEN=0.2;   // per-tick influx; sets the sustainable birth flux (→ carrying capacity well below CAP)
 const DEATH_ENERGY_RETURN=0.5;  // fraction of a birth's cost recovered when a particle dies
+// Metabolism gives the budget teeth on the DEATH side too: each living particle draws a
+// tiny upkeep from the pool every tick, with first claim on the influx (reproduction lives
+// on the surplus). When the population outgrows the influx the pool can't feed everyone,
+// adequacy<1, and the shortfall is paid as amplitude loss → starvation deaths. This is what
+// pins a real carrying capacity (≈ REGEN/METABOLIC_ENERGY_DRAW) well below CAP; birth-gating
+// alone only slowed the climb, because well-fed sparse particles almost never died.
+const METABOLIC_ENERGY_DRAW=0.0004; // per-living-particle per-tick upkeep; carrying capacity ≈ REGEN/this
+const STARVE_DRAIN=0.04;            // max amplitude lost per tick when the world cannot feed the population
 let worldEnergy=WORLD_ENERGY_MAX;
+let energyAdequacy=1;               // fraction of this tick's metabolic demand the pool could meet
 // The real carrying capacity emerges from density-dependent metabolic cost.
 // More particles = higher per-particle cost = amplitude drains faster = natural deaths increase.
 // The system discovers its own equilibrium population.
@@ -11149,6 +11158,7 @@ function applyEntropy(){
       amp[i]-=genome.entropyBaseline;
       amp[i]-=densityCost;
       amp[i]+=localRes[i]*genome.entropyK;
+      if(energyAdequacy<1)amp[i]-=(1-energyAdequacy)*STARVE_DRAIN; // starvation: the world couldn't feed everyone this tick
       if(isNaN(amp[i]))amp[i]=0;
       if(amp[i]<genome.deathThreshold){
         deaths.push(i);deathsThisTick++;deathsByPhysics++;
@@ -16080,6 +16090,7 @@ function loop(){
   tick++;
   genome.totalTicks++;
   worldEnergy=Math.min(WORLD_ENERGY_MAX,worldEnergy+WORLD_ENERGY_REGEN); // conserved-budget influx ("sunlight")
+  { const _md=N*METABOLIC_ENERGY_DRAW; energyAdequacy=_md>0?Math.min(1,worldEnergy/_md):1; worldEnergy=Math.max(0,worldEnergy-_md); } // metabolism takes first claim; reproduction gets the surplus
   flushNetworkEvents();
   smx+=(mx-smx)*.05;smy+=(my-smy)*.05;
   if(pulling){pStr=Math.min(pStr+.02,1);pDur++}else pStr*=.92;
