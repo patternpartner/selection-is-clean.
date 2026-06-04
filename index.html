@@ -273,7 +273,8 @@ const MAX_BOUND_OPCODES=32; // UNLOCKED #7b: was 16. Wider namespace for system-
 // Bumping CORE_OPCODES is the ONLY edit needed to add a core opcode — the bound guards
 // (op>=CORE_OPCODES) and OPCODE_COUNT derive from it, so a boundary typo can no longer
 // orphan an opcode or collide a core op with a bound slot (the Pe60 / op142-class bug).
-const CORE_OPCODES=131; // 0..130 core — OPENED THE SWITCH: op128 READ_OWN_CASTE, op129 READ_PARTNER_CASTE,
+const CORE_OPCODES=132; // 0..131 core — op131 ENERGY_STRESS: the system perceives conserved-budget scarcity (see executeVM)
+                        // 0..130 core — OPENED THE SWITCH: op128 READ_OWN_CASTE, op129 READ_PARTNER_CASTE,
                         // op130 SET_CASTE. Caste was heritable but inert — readable only as the atom input `m`
                         // (caste-match). Now it enters the core VM as a value AND an action: a particle can
                         // read its own and its partner's caste, and DIFFERENTIATE (change its own caste) based
@@ -13184,6 +13185,7 @@ function executeVM(i,j,sim,d){
       case 128:vmRegs[di]=pType[i];break;                 // READ_OWN_CASTE — own caste as a value
       case 129:vmRegs[di]=pType[j];break;                 // READ_PARTNER_CASTE — read who you face
       case 130:if(vmRegs[si]>k)pType[i]=Math.abs(Math.floor(vmRegs[di]))%NUM_TYPES;break; // SET_CASTE — differentiate when the signal clears threshold k; caste becomes an ACTION, not just inheritance
+      case 131:vmRegs[di]=Math.min(3,(1-energyAdequacy)*3)*k;break; // ENERGY_STRESS — perceive global resource scarcity (0=world feeds everyone, →3=starving). The missing half of the conserved-budget loop: now the VM can SENSE the famine its breeding causes, so selection can in principle wire it to reproduction (vmActions[4]). Read-only; k gates it; evolution chooses whether to use it.
     }
     // BOUND-OPCODE BOUNDARY (Pe60-class fix, now single-sourced via CORE_OPCODES).
     // History: the guard once read op>=126 (boi=op-126), which (a) collided with core
