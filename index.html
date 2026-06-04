@@ -457,6 +457,12 @@ const DEATH_ENERGY_RETURN=0.5;  // fraction of a birth's cost recovered when a p
 // alone only slowed the climb, because well-fed sparse particles almost never died.
 const METABOLIC_ENERGY_DRAW=0.0004; // per-living-particle per-tick upkeep; carrying capacity ≈ REGEN/this
 const STARVE_DRAIN=0.04;            // max amplitude lost per tick when the world cannot feed the population
+// Seasons: a constant influx produces a perfectly smooth equilibrium with NO scarcity, so a
+// scarcity-sensor has nothing to sense and resource-aware restraint can never be selected.
+// Real restraint evolves against droughts. The influx now cycles between feast and famine;
+// lean years dip it below metabolic demand, producing recurring scarcity the system can adapt to.
+const SEASON_PERIOD=2500;           // ticks per "year"
+const SEASON_AMPLITUDE=0.45;        // +/- swing in sunlight; lean season drives adequacy below 1
 let worldEnergy=WORLD_ENERGY_MAX;
 let energyAdequacy=1;               // fraction of this tick's metabolic demand the pool could meet
 // The real carrying capacity emerges from density-dependent metabolic cost.
@@ -16091,7 +16097,8 @@ function loop(){
   const frameStart=lastLoopTime;
   tick++;
   genome.totalTicks++;
-  worldEnergy=Math.min(WORLD_ENERGY_MAX,worldEnergy+WORLD_ENERGY_REGEN); // conserved-budget influx ("sunlight")
+  const _season=1+SEASON_AMPLITUDE*Math.sin(2*Math.PI*tick/SEASON_PERIOD); // feast/famine cycle
+  worldEnergy=Math.min(WORLD_ENERGY_MAX,worldEnergy+WORLD_ENERGY_REGEN*_season); // conserved-budget influx ("sunlight"), now seasonal
   { const _md=N*METABOLIC_ENERGY_DRAW; energyAdequacy=_md>0?Math.min(1,worldEnergy/_md):1; worldEnergy=Math.max(0,worldEnergy-_md); } // metabolism takes first claim; reproduction gets the surplus
   flushNetworkEvents();
   smx+=(mx-smx)*.05;smy+=(my-smy)*.05;
