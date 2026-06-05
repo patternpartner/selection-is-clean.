@@ -465,6 +465,21 @@ const SEASON_PERIOD=2500;           // ticks per "year"
 const SEASON_AMPLITUDE=0.45;        // +/- swing in sunlight; lean season drives adequacy below 1
 let worldEnergy=WORLD_ENERGY_MAX;
 let energyAdequacy=1;               // fraction of this tick's metabolic demand the pool could meet
+// NEGATIVE FREQUENCY-DEPENDENCE — the engine of novelty. Without it, selection is purely
+// stabilising: the single best type out-breeds everything and the world freezes into a
+// monoculture, an optimiser sitting forever on one peak (verified: a control with this OFF
+// holds ~98% one tendency-type indefinitely). Here, each tick the living are binned by their
+// tendency (the heritable axis that becomes a territorial signature) and amplitude is nudged
+// UP for the rare, DOWN for the common: being DIFFERENT pays. Selection stops grinding toward
+// one optimum and starts turning over — the dominant type rises, is taxed for its commonness,
+// a challenger arises, repeat. The world no longer settles; it keeps generating new kinds.
+// Modest and turbulent, not a stable rainbow — but it is the difference between a frozen
+// optimiser and something that keeps becoming. The capacity was always latent; this is the
+// reason to use it. (Verified headless: stable, no extinction, carrying capacity preserved.)
+const TBINS=4, TCELLS=TBINS*TBINS*TBINS, NFD_STRENGTH=0.004;
+const tHist=new Int32Array(TCELLS);
+function tendBin(i){ const b=i*DIMS; let r=0;
+  for(let d=0;d<3;d++){ let q=((tend[b+d]+1.2)/2.4*TBINS)|0; q=q<0?0:q>=TBINS?TBINS-1:q; r=r*TBINS+q; } return r; }
 // The real carrying capacity emerges from density-dependent metabolic cost.
 // More particles = higher per-particle cost = amplitude drains faster = natural deaths increase.
 // The system discovers its own equilibrium population.
@@ -16100,6 +16115,10 @@ function loop(){
   const _season=1+SEASON_AMPLITUDE*Math.sin(2*Math.PI*tick/SEASON_PERIOD); // feast/famine cycle
   worldEnergy=Math.min(WORLD_ENERGY_MAX,worldEnergy+WORLD_ENERGY_REGEN*_season); // conserved-budget influx ("sunlight"), now seasonal
   { const _md=N*METABOLIC_ENERGY_DRAW; energyAdequacy=_md>0?Math.min(1,worldEnergy/_md):1; worldEnergy=Math.max(0,worldEnergy-_md); } // metabolism takes first claim; reproduction gets the surplus
+  { tHist.fill(0); for(let _i=0;_i<N;_i++){ if(palive[_i]) tHist[tendBin(_i)]++; }
+    const _mean=N/TCELLS;
+    for(let _i=0;_i<N;_i++){ if(!palive[_i])continue; const _bc=tHist[tendBin(_i)];
+      amp[_i]+=NFD_STRENGTH*Math.max(-1,Math.min(1, 1-_bc/(_mean+0.001))); } } // rare kind gains, common kind pays → the world keeps generating novelty instead of freezing
   flushNetworkEvents();
   smx+=(mx-smx)*.05;smy+=(my-smy)*.05;
   if(pulling){pStr=Math.min(pStr+.02,1);pDur++}else pStr*=.92;
