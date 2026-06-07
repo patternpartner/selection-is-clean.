@@ -266,14 +266,15 @@ const MEM_SIZE=8; // per-particle persistent memory. Particles become stateful a
 const MAX_PLASMID=4; // max instructions per particle's personal mobile DNA
 const PLASMID_SLOTS=MAX_PLASMID*4; // each instruction is [op,src,dst,k] = 4 values
 const MAX_BOUND_OPCODES=32; // UNLOCKED #7b: was 16. Wider namespace for system-authored operations
-                            // (bound opcodes 128..159 now). Dispatch is index-guarded and OPCODE_COUNT
+                            // (bound opcodes 133..164 now). Dispatch is index-guarded and OPCODE_COUNT
                             // derives from this, so the boundary stays consistent everywhere.
 // CORE_OPCODES single-sources the franchise boundary: opcodes 0..CORE_OPCODES-1 are core
 // (implemented in the main VM switch); CORE_OPCODES..OPCODE_COUNT-1 are evolvable bound slots.
 // Bumping CORE_OPCODES is the ONLY edit needed to add a core opcode — the bound guards
 // (op>=CORE_OPCODES) and OPCODE_COUNT derive from it, so a boundary typo can no longer
 // orphan an opcode or collide a core op with a bound slot (the Pe60 / op142-class bug).
-const CORE_OPCODES=132; // 0..131 core — op131 ENERGY_STRESS: the system perceives conserved-budget scarcity (see executeVM)
+const CORE_OPCODES=133; // 0..132 core — op132 SEASON_PHASE: perceive the current feast/famine cycle position (see executeVM)
+                        // 0..131 core — op131 ENERGY_STRESS: the system perceives conserved-budget scarcity
                         // 0..130 core — OPENED THE SWITCH: op128 READ_OWN_CASTE, op129 READ_PARTNER_CASTE,
                         // op130 SET_CASTE. Caste was heritable but inert — readable only as the atom input `m`
                         // (caste-match). Now it enters the core VM as a value AND an action: a particle can
@@ -8635,6 +8636,8 @@ function profileVM(){
         case 128:vmRegs[di]=(NUM_TYPES-1)*0.5;break; // READ_OWN_CASTE → representative mid caste (~3.5)
         case 129:vmRegs[di]=(NUM_TYPES-1)*(t.sim>0.5?0.5:0.15);break; // READ_PARTNER_CASTE → near own when the test pair is similar, distinct when not, so caste-difference strategies profile non-flat
         case 130:break; // SET_CASTE → differentiation emits no action; correctly neutral in the action phenotype
+        case 131:vmRegs[di]=Math.min(3,(1-energyAdequacy)*3)*(k||1);break; // ENERGY_STRESS profiler stub — uses live energyAdequacy; correctly reflects scarcity at profile time
+        case 132:break; // SEASON_PHASE profiler stub — cycle mean is 0; profiling at the mean avoids biasing toward feast or famine
       }
       if(op>=CORE_OPCODES&&op<CORE_OPCODES+MAX_BOUND_OPCODES){
         const _bos=genome.boundOpcodes;
@@ -13207,6 +13210,7 @@ function executeVM(i,j,sim,d){
       case 129:vmRegs[di]=pType[j];break;                 // READ_PARTNER_CASTE — read who you face
       case 130:if(vmRegs[si]>k)pType[i]=Math.abs(Math.floor(vmRegs[di]))%NUM_TYPES;break; // SET_CASTE — differentiate when the signal clears threshold k; caste becomes an ACTION, not just inheritance
       case 131:vmRegs[di]=Math.min(3,(1-energyAdequacy)*3)*k;break; // ENERGY_STRESS — perceive global resource scarcity (0=world feeds everyone, →3=starving). The missing half of the conserved-budget loop: now the VM can SENSE the famine its breeding causes, so selection can in principle wire it to reproduction (vmActions[4]). Read-only; k gates it; evolution chooses whether to use it.
+      case 132:vmRegs[di]=Math.sin(2*Math.PI*tick/SEASON_PERIOD)*k;break; // SEASON_PHASE — perceive where in the feast/famine cycle the world is right now (+k=feast peak, −k=famine peak, 0=transition). ENERGY_STRESS is reactive (you're already starving); this is prospective (winter is approaching). A lineage wired to this signal can anticipate the lean season and respond before the famine hits — timing reproduction to feast, switching caste at the turn, reducing output before the crunch. Phenotypic plasticity from the inside. Read-only; k gates magnitude; evolution chooses whether and how to use it.
     }
     // BOUND-OPCODE BOUNDARY (Pe60-class fix, now single-sourced via CORE_OPCODES).
     // History: the guard once read op>=126 (boi=op-126), which (a) collided with core
@@ -14213,6 +14217,8 @@ function executeVM(i,j,sim,d){
         case 128:vmRegs[di]=pType[i];break;                 // OPENED THE SWITCH (#1) — caste in the plasmid VM too
         case 129:vmRegs[di]=pType[j];break;
         case 130:if(vmRegs[si]>k)pType[i]=Math.abs(Math.floor(vmRegs[di]))%NUM_TYPES;break;
+        case 131:vmRegs[di]=Math.min(3,(1-energyAdequacy)*3)*k;break; // ENERGY_STRESS — full parity
+        case 132:vmRegs[di]=Math.sin(2*Math.PI*tick/SEASON_PERIOD)*k;break; // SEASON_PHASE — full parity
       }
       if(op>=CORE_OPCODES&&op<CORE_OPCODES+MAX_BOUND_OPCODES){
         const _bos=genome.boundOpcodes;
@@ -15344,6 +15350,8 @@ function executeClusterVM(i,j,sim,d){
       case 128:vmRegs[di]=pType[i];break;                 // OPENED THE SWITCH (#1) — caste in the cluster VM
       case 129:vmRegs[di]=pType[j];break;
       case 130:if(vmRegs[si]>k)pType[i]=Math.abs(Math.floor(vmRegs[di]))%NUM_TYPES;break;
+      case 131:vmRegs[di]=Math.min(3,(1-energyAdequacy)*3)*k;break; // ENERGY_STRESS — full parity
+      case 132:vmRegs[di]=Math.sin(2*Math.PI*tick/SEASON_PERIOD)*k;break; // SEASON_PHASE — full parity
     }
     if(op>=CORE_OPCODES&&op<CORE_OPCODES+MAX_BOUND_OPCODES){
       const _bos=genome.boundOpcodes;
@@ -15578,6 +15586,7 @@ function interferenceCreate(i,j){
 // endogenous (self-built); HIER_MAX_LEVELS is a safety bound, not a design ceiling.
 let hierTower=[];
 const _hierReg=new Map();
+const _hierAge=new Map(); // last tick each key was active — drives age-out eviction
 const HIER_MAX_LEVELS=12;
 function _cos3(a,b){let d=0,na=0,nb=0;for(let i=0;i<3;i++){d+=a[i]*b[i];na+=a[i]*a[i];nb+=b[i]*b[i];}return d/(Math.sqrt(na*nb)+1e-4);}
 function updateHomeostatStack(){
@@ -15606,12 +15615,12 @@ function updateHomeostatStack(){
       const key=level+'|'+Math.round(cx/CELL)+'|'+Math.round(cy/CELL);
       let reg=_hierReg.has(key)?_hierReg.get(key):0.4;
       reg += (coh-reg)*(0.06/level);
-      reg=reg<0?0:reg>1?1:reg; _hierReg.set(key,reg);
+      reg=reg<0?0:reg>1?1:reg; _hierReg.set(key,reg); _hierAge.set(key,tick);
       units.push({cx,cy,sig:[s0/m,s1/m,s2/m],leaves,reg,level});
     }
     hierTower.push(units); below=units; level++;
   }
-  if(_hierReg.size>4000)_hierReg.clear();
+  if(_hierReg.size>2000){const _cutoff=tick-600;for(const k of [..._hierAge.keys()]){if((_hierAge.get(k)||0)<_cutoff){_hierReg.delete(k);_hierAge.delete(k);}}} // evict stale positional keys (not seen in 10 cycles) — active floors keep their accumulated reg; dissolved/drifted units are quietly retired
   const pull=new Map();
   for(const units of hierTower) for(const u of units){ const s=0.00010*u.reg*u.level; for(const cid of u.leaves) pull.set(cid,{x:u.cx,y:u.cy,s}); }
   if(pull.size) for(let i=0;i<N;i++){ if(!palive[i])continue; const cid=clusterID[i]; if(cid<0)continue; const p=pull.get(cid); if(p){ vx[i]+=(p.x-px[i])*p.s; vy[i]+=(p.y-py[i])*p.s; } }
@@ -15836,6 +15845,8 @@ function executeSoloVM(){
         case 128:vmRegs[di]=pType[i];break;                 // OPENED THE SWITCH (#1) — caste in the solo VM
         case 129:vmRegs[di]=pType[i];break;                 // solo: no partner → reads own caste
         case 130:if(vmRegs[si]>k)pType[i]=Math.abs(Math.floor(vmRegs[di]))%NUM_TYPES;break;
+        case 131:vmRegs[di]=Math.min(3,(1-energyAdequacy)*3)*k;break; // ENERGY_STRESS — full parity
+        case 132:vmRegs[di]=Math.sin(2*Math.PI*tick/SEASON_PERIOD)*k;break; // SEASON_PHASE — full parity
       }
       if(op>=CORE_OPCODES&&op<CORE_OPCODES+MAX_BOUND_OPCODES){
         const _bos=genome.boundOpcodes;
