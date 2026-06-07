@@ -15586,6 +15586,7 @@ function interferenceCreate(i,j){
 // endogenous (self-built); HIER_MAX_LEVELS is a safety bound, not a design ceiling.
 let hierTower=[];
 const _hierReg=new Map();
+const _hierAge=new Map(); // last tick each key was active — drives age-out eviction
 const HIER_MAX_LEVELS=12;
 function _cos3(a,b){let d=0,na=0,nb=0;for(let i=0;i<3;i++){d+=a[i]*b[i];na+=a[i]*a[i];nb+=b[i]*b[i];}return d/(Math.sqrt(na*nb)+1e-4);}
 function updateHomeostatStack(){
@@ -15614,12 +15615,12 @@ function updateHomeostatStack(){
       const key=level+'|'+Math.round(cx/CELL)+'|'+Math.round(cy/CELL);
       let reg=_hierReg.has(key)?_hierReg.get(key):0.4;
       reg += (coh-reg)*(0.06/level);
-      reg=reg<0?0:reg>1?1:reg; _hierReg.set(key,reg);
+      reg=reg<0?0:reg>1?1:reg; _hierReg.set(key,reg); _hierAge.set(key,tick);
       units.push({cx,cy,sig:[s0/m,s1/m,s2/m],leaves,reg,level});
     }
     hierTower.push(units); below=units; level++;
   }
-  if(_hierReg.size>4000)_hierReg.clear();
+  if(_hierReg.size>2000){const _cutoff=tick-600;for(const k of [..._hierAge.keys()]){if((_hierAge.get(k)||0)<_cutoff){_hierReg.delete(k);_hierAge.delete(k);}}} // evict stale positional keys (not seen in 10 cycles) — active floors keep their accumulated reg; dissolved/drifted units are quietly retired
   const pull=new Map();
   for(const units of hierTower) for(const u of units){ const s=0.00010*u.reg*u.level; for(const cid of u.leaves) pull.set(cid,{x:u.cx,y:u.cy,s}); }
   if(pull.size) for(let i=0;i<N;i++){ if(!palive[i])continue; const cid=clusterID[i]; if(cid<0)continue; const p=pull.get(cid); if(p){ vx[i]+=(p.x-px[i])*p.s; vy[i]+=(p.y-py[i])*p.s; } }
