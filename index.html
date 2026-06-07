@@ -11203,6 +11203,7 @@ function applyEntropy(){
         deaths.push(i);deathsThisTick++;deathsByPhysics++;
         addBits(px[i],py[i],2,pR[i],pG[i],pB[i],0.3);
         palive[i]=0;
+        {const _drx=Math.max(0,Math.min(FIELD_W-1,Math.floor(px[i]/(W/FIELD_W)))),_dry=Math.max(0,Math.min(FIELD_H-1,Math.floor(py[i]/(H/FIELD_H))));rootField[_dry*FIELD_W+_drx]=Math.min(5,rootField[_dry*FIELD_W+_drx]+0.18);} // death deposits into substrate — the organism's body becomes soil, deepening the root network where life was
         worldEnergy=Math.min(WORLD_ENERGY_MAX,worldEnergy+BIRTH_ENERGY_COST*DEATH_ENERGY_RETURN); // death returns resource to the world
       }
       if(amp[i]>1.2)amp[i]=1.2;
@@ -16436,6 +16437,7 @@ function loop(){
     updateHomeostatStack(); // RECURSIVE TOWER: clusters bind into super-units into higher units, each a slower homeostat regulating the floor below — open stack, no coded ceiling
     updateBridges(); // BRIDGE LAYER: lateral connections between separate sub-tower tops — material accumulates at bridge midpoints, seeding new towers from the bridge rather than from initialisation
     { const _rW=W/FIELD_W,_rH=H/FIELD_H; for(const c of clusters){ if(!c||c.size<2||c.persistAge<3)continue; const rcx=Math.max(0,Math.min(FIELD_W-1,Math.floor(c.cx/_rW))),rcy=Math.max(0,Math.min(FIELD_H-1,Math.floor(c.cy/_rH))); rootField[rcy*FIELD_W+rcx]=Math.min(5,rootField[rcy*FIELD_W+rcx]+0.45*c.coherence); } } // ROOT DEPOSITION: anchors stamp the substrate — coherent persistent clusters write deeper roots
+    {let _tb=0;const _tW=W/FIELD_W,_tH=H/FIELD_H;for(const _tf of hierTower){for(const _tu of _tf){if(_tu.reg<0.5)continue;const _tx=Math.max(0,Math.min(FIELD_W-1,Math.floor(_tu.cx/_tW))),_ty=Math.max(0,Math.min(FIELD_H-1,Math.floor(_tu.cy/_tH)));rootField[_ty*FIELD_W+_tx]=Math.min(5,rootField[_ty*FIELD_W+_tx]+0.06*_tu.reg*_tu.level);_tb+=_tu.reg*_tu.level*0.0002;}}mutPressureAccum+=_tb;} // TOWER DOWNWARD SIGNAL: stable high floors fertilise their root footprint and raise evolutionary pressure — complex structure breeds the variation that may eventually unsettle it
     rebuildFieldLineageCache();
     selfModel.clusterCount=clusters.length;
     // Pe125 Layer 114: cluster momentum — smoothed rate of change of cluster count.
