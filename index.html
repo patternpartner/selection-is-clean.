@@ -15565,6 +15565,57 @@ function interferenceCreate(i,j){
 // ═══════════════════════════════════════
 // UPDATE / GRID / GRAVITY
 // ═══════════════════════════════════════
+// ════════════════════════════════════════════════════════════════════════════
+// RECURSIVE HOMEOSTAT TOWER — an open stack with no hardcoded roof.
+// Particles already self-bind into clusters (level 1). Here clusters bind into super-units (level 2),
+// super-units into higher units (level 3+) — the SAME move, recursively, climbing as high as the
+// binding can carry it. Each level is a homeostat on a SLOWER clock: its integration-state (reg)
+// rises when its members hold together, decays when they scatter, relaxing more slowly the higher you
+// climb. Each level pulls its members toward its centroid in proportion to reg — it REGULATES the
+// floor beneath as that floor's slow environment, while presenting upward as one unit for the next
+// floor to bind. Because every floor breathes on its own clock, the whole tower never rests: it
+// builds, tightens, crowds, destabilises, loosens, and reforms at every scale at once. Floors are
+// endogenous (self-built); HIER_MAX_LEVELS is a safety bound, not a design ceiling.
+let hierTower=[];
+const _hierReg=new Map();
+const HIER_MAX_LEVELS=12;
+function _cos3(a,b){let d=0,na=0,nb=0;for(let i=0;i<3;i++){d+=a[i]*b[i];na+=a[i]*a[i];nb+=b[i]*b[i];}return d/(Math.sqrt(na*nb)+1e-4);}
+function updateHomeostatStack(){
+  hierTower=[];
+  const L1=[]; for(const c of clusters) if(c&&c.size>0) L1.push(c);
+  if(L1.length<2) return;
+  let below=L1.map(c=>({cx:c.cx,cy:c.cy,sig:(c.fieldSignature&&c.fieldSignature.length>=3)?[c.fieldSignature[0],c.fieldSignature[1],c.fieldSignature[2]]:[0,0,0],leaves:[c.id]}));
+  let level=2;
+  while(below.length>=2 && level<=HIER_MAX_LEVELS+1){
+    const range=CELL*4*(level-1), r2=range*range, kin=Math.max(-0.2,0.45-0.07*level);
+    const n=below.length, par=new Int32Array(n); for(let i=0;i<n;i++)par[i]=i;
+    const find=x=>{while(par[x]!==x){par[x]=par[par[x]];x=par[x];}return x;};
+    for(let i=0;i<n;i++)for(let j=i+1;j<n;j++){
+      const dx=below[i].cx-below[j].cx,dy=below[i].cy-below[j].cy;
+      if(dx*dx+dy*dy<r2 && _cos3(below[i].sig,below[j].sig)>kin){const a=find(i),b=find(j);if(a!==b)par[a]=b;}
+    }
+    const groups=new Map();
+    for(let i=0;i<n;i++){const r=find(i);if(!groups.has(r))groups.set(r,[]);groups.get(r).push(i);}
+    if(groups.size>=n) break;
+    const units=[];
+    for(const idxs of groups.values()){
+      let cx=0,cy=0,s0=0,s1=0,s2=0; const leaves=[];
+      for(const ix of idxs){const u=below[ix];cx+=u.cx;cy+=u.cy;s0+=u.sig[0];s1+=u.sig[1];s2+=u.sig[2];for(const lf of u.leaves)leaves.push(lf);}
+      const m=idxs.length; cx/=m;cy/=m;
+      let coh=0; for(const ix of idxs){const dx=below[ix].cx-cx,dy=below[ix].cy-cy;coh+=1/(1+Math.sqrt(dx*dx+dy*dy)/(CELL*level));} coh/=m;
+      const key=level+'|'+Math.round(cx/CELL)+'|'+Math.round(cy/CELL);
+      let reg=_hierReg.has(key)?_hierReg.get(key):0.4;
+      reg += (coh-reg)*(0.06/level);
+      reg=reg<0?0:reg>1?1:reg; _hierReg.set(key,reg);
+      units.push({cx,cy,sig:[s0/m,s1/m,s2/m],leaves,reg,level});
+    }
+    hierTower.push(units); below=units; level++;
+  }
+  if(_hierReg.size>4000)_hierReg.clear();
+  const pull=new Map();
+  for(const units of hierTower) for(const u of units){ const s=0.00010*u.reg*u.level; for(const cid of u.leaves) pull.set(cid,{x:u.cx,y:u.cy,s}); }
+  if(pull.size) for(let i=0;i<N;i++){ if(!palive[i])continue; const cid=clusterID[i]; if(cid<0)continue; const p=pull.get(cid); if(p){ vx[i]+=(p.x-px[i])*p.s; vy[i]+=(p.y-py[i])*p.s; } }
+}
 function updateParticles(){
   for(let i=0;i<N;i++){
     if(!palive[i])continue;
@@ -16267,6 +16318,7 @@ function loop(){
     detectClusters();
     trackClusterPersistence();
     attemptClusterBudding();
+    updateHomeostatStack(); // RECURSIVE TOWER: clusters bind into super-units into higher units, each a slower homeostat regulating the floor below — open stack, no coded ceiling
     rebuildFieldLineageCache();
     selfModel.clusterCount=clusters.length;
     // Pe125 Layer 114: cluster momentum — smoothed rate of change of cluster count.
