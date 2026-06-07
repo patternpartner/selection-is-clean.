@@ -5213,6 +5213,7 @@ const fieldOwnership=new Float32Array(FIELD_W*FIELD_H); // ownership strength (0
 const field2=new Float32Array(FIELD_W*FIELD_H); // second channel — enables reactions between channels
 const field2Prev=new Float32Array(FIELD_W*FIELD_H); // Pe49: snapshot of field2 before each tick's diffusion — enables temporal derivative
 const field1Prev=new Float32Array(FIELD_W*FIELD_H); // Pe70: snapshot of field1 before each tick's diffusion — enables temporal derivative (Layer 59)
+const rootField=new Float32Array(FIELD_W*FIELD_H); // root network substrate — persistent clusters deposit here; very slow diffusion and decay create a mycelial field between anchors that unclustered particles tunnel along
 const cellProgOp=new Uint8Array(FIELD_W*FIELD_H);    // opcode: which transformation this cell runs
 const cellProgA=new Float32Array(FIELD_W*FIELD_H);   // parameter A
 const cellProgB=new Float32Array(FIELD_W*FIELD_H);   // parameter B
@@ -9603,6 +9604,16 @@ function updateField(){
 
       // Ownership decays faster — territory must be actively maintained
       fieldOwnership[idx]*=0.975;
+
+      // Root network diffusion — very slow spread, very slow decay; the substrate remembers its anchors
+      const _RD=0.038,_idx=idx;
+      let rs=rootField[_idx]*(1-_RD*4);
+      if(x>0)rs+=rootField[_idx-1]*_RD;
+      if(x<FIELD_W-1)rs+=rootField[_idx+1]*_RD;
+      if(y>0)rs+=rootField[(_idx-FIELD_W)]*_RD;
+      if(y<FIELD_H-1)rs+=rootField[(_idx+FIELD_W)]*_RD;
+      rootField[_idx]=rs*0.991;
+      if(isNaN(rootField[_idx]))rootField[_idx]=0;
     }
   }
 }
@@ -15669,6 +15680,34 @@ function updateBridges(){
   if(bPull.size)for(let i=0;i<N;i++){if(!palive[i])continue;const cid=clusterID[i];if(cid<0)continue;const p=bPull.get(cid);if(p){vx[i]+=(p.x-px[i])*p.s;vy[i]+=(p.y-py[i])*p.s;}}
   if(_bridgeReg.size>500){const _cut=tick-600;for(const k of [..._bridgeAge.keys()]){if((_bridgeAge.get(k)||0)<_cut){_bridgeReg.delete(k);_bridgeAge.delete(k);}}}
 }
+// ════════════════════════════════════════════════════════════════════════════
+// ROOT NETWORK & TUNNELING — the underground layer.
+// Persistent clusters are anchors. Every 60 ticks each anchor deposits into
+// rootField at its centroid. rootField diffuses far more slowly than the surface
+// fields (0.038 vs field's 0.11) and decays more slowly (0.991 vs 0.982), so it
+// builds up a persistent mycelial substrate between cluster positions. When two
+// anchor deposits spread toward each other the gradient between them becomes a
+// path. Unclustered particles — the mobile ones between structures — feel that
+// gradient and follow it, tunneling through the substrate from one anchor to
+// another. Over time material accumulates at the midpoints of these paths,
+// seeding new clusters and feeding the tower above. The visual: dim amber glows
+// beneath cluster positions, spreading into filaments; particles threading along
+// the filaments between structures. Roots go down, tunnels go through.
+function applyRootForces(){
+  if(!N)return;
+  const _rcW=W/FIELD_W,_rcH=H/FIELD_H;
+  for(let i=0;i<N;i++){
+    if(!palive[i])continue;
+    if(clusterID[i]>=0&&amp[i]>0.65)continue; // only free or low-amp particles tunnel
+    const fcx=Math.max(1,Math.min(FIELD_W-2,Math.floor(px[i]/_rcW)));
+    const fcy=Math.max(1,Math.min(FIELD_H-2,Math.floor(py[i]/_rcH)));
+    const v=rootField[fcy*FIELD_W+fcx];
+    if(v<0.06)continue; // only follow where roots are meaningful
+    const gx=rootField[fcy*FIELD_W+fcx+1]-rootField[fcy*FIELD_W+fcx-1];
+    const gy=rootField[(fcy+1)*FIELD_W+fcx]-rootField[(fcy-1)*FIELD_W+fcx];
+    vx[i]+=gx*0.00022; vy[i]+=gy*0.00022; // gentle — draws, does not command
+  }
+}
 function updateParticles(){
   for(let i=0;i<N;i++){
     if(!palive[i])continue;
@@ -16029,6 +16068,15 @@ function render(){
   for(let fy=0;fy<FIELD_H;fy++){
     for(let fx=0;fx<FIELD_W;fx++){
       const fIdx=fy*FIELD_W+fx;
+      const rv=rootField[fIdx];
+      if(rv<0.04)continue;
+      X.fillStyle=`rgba(160,85,20,${Math.min(0.55,rv*0.28)})`;
+      X.fillRect(fx*cellW,fy*cellH,cellW+1,cellH+1);
+    }
+  }
+  for(let fy=0;fy<FIELD_H;fy++){
+    for(let fx=0;fx<FIELD_W;fx++){
+      const fIdx=fy*FIELD_W+fx;
       const val=field[fIdx];
       if(val<0.03)continue;
       const alpha=Math.min(0.65,val*0.4);
@@ -16276,6 +16324,7 @@ function loop(){
   }
 
   applyEntropy();
+  applyRootForces(); // ROOT TUNNELING: unclustered particles follow rootField gradient between anchor deposits
   updateParticles();
 
   updateParticleReflex();
@@ -16375,6 +16424,7 @@ function loop(){
     attemptClusterBudding();
     updateHomeostatStack(); // RECURSIVE TOWER: clusters bind into super-units into higher units, each a slower homeostat regulating the floor below — open stack, no coded ceiling
     updateBridges(); // BRIDGE LAYER: lateral connections between separate sub-tower tops — material accumulates at bridge midpoints, seeding new towers from the bridge rather than from initialisation
+    { const _rW=W/FIELD_W,_rH=H/FIELD_H; for(const c of clusters){ if(!c||c.size<2||c.persistAge<3)continue; const rcx=Math.max(0,Math.min(FIELD_W-1,Math.floor(c.cx/_rW))),rcy=Math.max(0,Math.min(FIELD_H-1,Math.floor(c.cy/_rH))); rootField[rcy*FIELD_W+rcx]=Math.min(5,rootField[rcy*FIELD_W+rcx]+0.45*c.coherence); } } // ROOT DEPOSITION: anchors stamp the substrate — coherent persistent clusters write deeper roots
     rebuildFieldLineageCache();
     selfModel.clusterCount=clusters.length;
     // Pe125 Layer 114: cluster momentum — smoothed rate of change of cluster count.
