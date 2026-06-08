@@ -7283,7 +7283,7 @@ function attemptClusterBudding(){
         const copy=[...inst];
         // Pe22f: VM mutation rate on bud is now heritable (innovationRate).
         // Conservative lineages preserve programs; innovative ones explore.
-        const _effInnov=cg.innovationRate*(1+_rqStress*1.5); // Red Queen: high field depletion (parasite pressure) boosts exploration up to 2.5× base rate
+        const _effInnov=cg.innovationRate*(1+_rqStress*1.5+(c.rivalDissim||0)*0.8); // Red Queen: field depletion + arms-race rival divergence both boost exploration
         if(Math.random()<_effInnov){
           copy[3]+=(Math.random()-0.5)*0.2;
           copy[3]=Math.max(-2,Math.min(2,copy[3]));
@@ -16047,8 +16047,12 @@ function processGrid(){
             if(pNeighborCount[i]<127)pNeighborCount[i]++;
             if(pNeighborCount[j]<127)pNeighborCount[j]++;
             {const _drv=Math.random()<0.5?i:j,_oth=_drv===i?j:i; // FIX (review): which genome GOVERNS this pairwise interaction is now an unbiased coin, not the lower array index. executeVM models a single mutual exchange (action-reaction force/phase, conservative amp & tend transfers, midpoint spawn), so one program must govern it by design — but over time each particle's genome drives ~half its encounters, removing the artifact where only pGenome[lower-index] ever ran and behavior tracked array order.
+             const _sppA=pProg[_drv],_sppB=pProg[_oth];
+             const _sppN=Math.min(6,Math.min(_sppA?_sppA.length:0,_sppB?_sppB.length:0));
+             let _sppD=0;for(let _spk=0;_spk<_sppN;_spk++)if(_sppA[_spk]&&_sppB[_spk]&&_sppA[_spk][0]!==_sppB[_spk][0])_sppD++;
+             const _spGate=_sppN===0||_sppD<_sppN*0.75; // speciation gate: ≥75% opcode mismatch in first 6 instructions = behavioral isolation, entrain suppressed
              const _g=genome;genome=pGenome[_drv]||genome;try{
-              entrain(_drv,_oth,sim,d);
+              if(_spGate)entrain(_drv,_oth,sim,d); // suppressed between behaviorally isolated lineages
               executeVM(_drv,_oth,sim,d);
               executeClusterVM(_drv,_oth,sim,d);
             }finally{genome=_g;}}
@@ -16492,6 +16496,11 @@ function loop(){
 
     detectClusters();
     trackClusterPersistence();
+    {// ARMS RACE: Jaccard opcode dissimilarity between co-located rival lineages — stored on each cluster before budding so _effInnov can use it
+    for(const _rca of clusters)if(_rca)_rca.rivalDissim=0;
+    const _rcN=clusters.length;
+    for(let _ri=0;_ri<_rcN;_ri++){const _rca=clusters[_ri];if(!_rca||_rca.size<1)continue;for(let _rj=_ri+1;_rj<_rcN;_rj++){const _rcb=clusters[_rj];if(!_rcb||_rcb.size<1)continue;if(_rca.lineageID===_rcb.lineageID)continue;const _rdx=_rca.cx-_rcb.cx,_rdy=_rca.cy-_rcb.cy;if(_rdx*_rdx+_rdy*_rdy>CELL*CELL*36)continue;const _rpA=new Set((_rca.vmProgram||[]).map(x=>x[0]));const _rpB=new Set((_rcb.vmProgram||[]).map(x=>x[0]));let _rint=0;for(const _rop of _rpA)if(_rpB.has(_rop))_rint++;const _run=_rpA.size+_rpB.size-_rint;const _rd=_run>0?1-_rint/_run:0;if(_rd>(_rca.rivalDissim||0))_rca.rivalDissim=_rd;if(_rd>(_rcb.rivalDissim||0))_rcb.rivalDissim=_rd;}}
+    }
     attemptClusterBudding();
     updateHomeostatStack(); // RECURSIVE TOWER: clusters bind into super-units into higher units, each a slower homeostat regulating the floor below — open stack, no coded ceiling
     updateBridges(); // BRIDGE LAYER: lateral connections between separate sub-tower tops — material accumulates at bridge midpoints, seeding new towers from the bridge rather than from initialisation
@@ -16505,6 +16514,7 @@ function loop(){
     {densityField.fill(0);for(let _di=0;_di<N;_di++){if(!palive[_di])continue;const _ddfx=Math.max(0,Math.min(FIELD_W-1,Math.floor(px[_di]/(W/FIELD_W)))),_ddfy=Math.max(0,Math.min(FIELD_H-1,Math.floor(py[_di]/(H/FIELD_H))));if(densityField[_ddfy*FIELD_W+_ddfx]<250)densityField[_ddfy*FIELD_W+_ddfx]++;}} // DENSITY MAP: particle count per field cell — LOCAL_DENSITY (op141) reads this in O(1); cost is one O(N) scan per 60 ticks
     {const _nfdMap=new Map();for(let _ni=0;_ni<N;_ni++){if(!palive[_ni])continue;const _np=pProg[_ni];if(!_np||_np.length<1)continue;const _nk=(_np[0][0]||0)*1000+(_np[1]?(_np[1][0]||0):0);_nfdMap.set(_nk,(_nfdMap.get(_nk)||0)+1);}let _nfdTotal=0;for(const v of _nfdMap.values())_nfdTotal+=v;if(_nfdTotal>0){for(let _ni=0;_ni<N;_ni++){if(!palive[_ni])continue;const _np=pProg[_ni];if(!_np||_np.length<1)continue;const _nk=(_np[0][0]||0)*1000+(_np[1]?(_np[1][0]||0):0);const _freq=(_nfdMap.get(_nk)||0)/_nfdTotal;if(_freq>0.15)localRes[_ni]=Math.max(0,localRes[_ni]*Math.max(0.75,1-_freq*0.35));}}} // NFD (negative frequency dependence): common behavioral phenotypes (first-2-opcode signature) are penalized — rare strategies gain advantage, preventing monoculture fixation and sustaining behavioral diversity
     {forestField.fill(0);if(hierTower.length>=1){const _ftop=hierTower[hierTower.length-1];const _fn=_ftop.length;if(_fn>=2){const _fpar=new Int32Array(_fn);for(let i=0;i<_fn;i++)_fpar[i]=i;const _ffind=x=>{while(_fpar[x]!==x){_fpar[x]=_fpar[_fpar[x]];x=_fpar[x];}return x;};const _fW=W/FIELD_W,_fH=H/FIELD_H;for(let i=0;i<_fn;i++){for(let j=i+1;j<_fn;j++){const _fxi=Math.max(0,Math.min(FIELD_W-1,Math.floor(_ftop[i].cx/_fW))),_fyi=Math.max(0,Math.min(FIELD_H-1,Math.floor(_ftop[i].cy/_fH)));const _fxj=Math.max(0,Math.min(FIELD_W-1,Math.floor(_ftop[j].cx/_fW))),_fyj=Math.max(0,Math.min(FIELD_H-1,Math.floor(_ftop[j].cy/_fH)));const _fmx=Math.max(0,Math.min(FIELD_W-1,Math.round((_fxi+_fxj)/2))),_fmy=Math.max(0,Math.min(FIELD_H-1,Math.round((_fyi+_fyj)/2)));if(bridgeField[_fmy*FIELD_W+_fmx]>0.3){const _fa=_ffind(i),_fb=_ffind(j);if(_fa!==_fb)_fpar[_fa]=_fb;}}}const _fgroups=new Map();for(let i=0;i<_fn;i++){const r=_ffind(i);if(!_fgroups.has(r))_fgroups.set(r,[]);_fgroups.get(r).push(i);}for(const _fidxs of _fgroups.values()){if(_fidxs.length<2)continue;let _fcx=0,_fcy=0;for(const idx of _fidxs){_fcx+=_ftop[idx].cx;_fcy+=_ftop[idx].cy;}_fcx/=_fidxs.length;_fcy/=_fidxs.length;const _ffkey=Math.round(_fcx/CELL)+'|'+Math.round(_fcy/CELL);if(!_forestBirth.has(_ffkey))_forestBirth.set(_ffkey,tick);const _ffold=_forestReg.has(_ffkey)?_forestReg.get(_ffkey):0.3;const _ffnew=Math.min(1,_ffold+(_fidxs.length/Math.max(1,_fn))*0.04);_forestReg.set(_ffkey,_ffnew);_forestAge.set(_ffkey,tick);const _fW2=W/FIELD_W,_fH2=H/FIELD_H;for(const idx of _fidxs){const _fsx=Math.max(0,Math.min(FIELD_W-1,Math.floor(_ftop[idx].cx/_fW2))),_fsy=Math.max(0,Math.min(FIELD_H-1,Math.floor(_ftop[idx].cy/_fH2)));forestField[_fsy*FIELD_W+_fsx]=Math.min(1,forestField[_fsy*FIELD_W+_fsx]+_ffnew);}}if(_forestReg.size>500){const _fcut=tick-300;for(const k of [..._forestAge.keys()]){if((_forestAge.get(k)||0)<_fcut){_forestReg.delete(k);_forestAge.delete(k);_forestBirth.delete(k);}}}}}}  // FOREST META-LEVEL: bridge-connected tower tops (bridgeField>0.3 at midpoint) form forest groups via union-find; forest cohesion integrates slowly (0.04/60-tick rate); forestField substrate stamped for FOREST_SENSE (op142) — a 4th organizational level above cluster→tower→forest
+    {const _ffbW=W/FIELD_W,_ffbH=H/FIELD_H;for(let _ffbi=0;_ffbi<N;_ffbi++){if(!palive[_ffbi])continue;const _ffbx=Math.max(0,Math.min(FIELD_W-1,Math.floor(px[_ffbi]/_ffbW))),_ffby=Math.max(0,Math.min(FIELD_H-1,Math.floor(py[_ffbi]/_ffbH)));const _ffbv=forestField[_ffby*FIELD_W+_ffbx];if(_ffbv>0.2)localRes[_ffbi]=Math.min(2,localRes[_ffbi]+_ffbv*0.07);}} // FOREST FITNESS: particles in dense forest alliances gain localRes — 4th-tier structure is selectively advantageous, not just perceivable; selection now drives forest formation directly
     rebuildFieldLineageCache();
     selfModel.clusterCount=clusters.length;
     // Pe125 Layer 114: cluster momentum — smoothed rate of change of cluster count.
