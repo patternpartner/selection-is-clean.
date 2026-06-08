@@ -273,7 +273,7 @@ const MAX_BOUND_OPCODES=32; // UNLOCKED #7b: was 16. Wider namespace for system-
 // Bumping CORE_OPCODES is the ONLY edit needed to add a core opcode — the bound guards
 // (op>=CORE_OPCODES) and OPCODE_COUNT derive from it, so a boundary typo can no longer
 // orphan an opcode or collide a core op with a bound slot (the Pe60 / op142-class bug).
-const CORE_OPCODES=137; // 0..136 core — op136 SPORE_SPEED: dispersal flight self-sensing (see executeVM)
+const CORE_OPCODES=138; // 0..137 core — op137 FLOOR_LEVEL: vertical tower position sensing (see executeVM)
                         // 0..132 core — op132 SEASON_PHASE: perceive the current feast/famine cycle position
                         // 0..131 core — op131 ENERGY_STRESS: the system perceives conserved-budget scarcity
                         // 0..130 core — OPENED THE SWITCH: op128 READ_OWN_CASTE, op129 READ_PARTNER_CASTE,
@@ -8645,6 +8645,7 @@ function profileVM(){
         case 134:vmRegs[di]=0.5*(k||1);break; // LOCAL_ROOT profiler stub — representative mid-value; profiler has no fixed particle position to sample rootField at
         case 135:vmRegs[di]=0.5*(k||1);break; // BRIDGE_SENSE profiler stub — representative mid-value; profiler has no fixed particle position to sample bridgeField at
         case 136:vmRegs[di]=0*(k||1);break; // SPORE_SPEED profiler stub — representative zero (most particles are settled; profiler cannot read live vx/vy)
+        case 137:vmRegs[di]=1*(k||1);break; // FLOOR_LEVEL profiler stub — representative floor-1 (most particles in the tower are near the ground)
       }
       if(op>=CORE_OPCODES&&op<CORE_OPCODES+MAX_BOUND_OPCODES){
         const _bos=genome.boundOpcodes;
@@ -13234,6 +13235,7 @@ function executeVM(i,j,sim,d){
       case 134:{const _rfx134=Math.max(0,Math.min(FIELD_W-1,Math.floor(px[i]/(W/FIELD_W)))),_rfy134=Math.max(0,Math.min(FIELD_H-1,Math.floor(py[i]/(H/FIELD_H))));vmRegs[di]=Math.min(3,rootField[_rfy134*FIELD_W+_rfx134])*k;}break; // LOCAL_ROOT — perceive the root-network density at this particle's own position
       case 135:{const _bfx135=Math.max(0,Math.min(FIELD_W-1,Math.floor(px[i]/(W/FIELD_W)))),_bfy135=Math.max(0,Math.min(FIELD_H-1,Math.floor(py[i]/(H/FIELD_H))));vmRegs[di]=Math.min(2,bridgeField[_bfy135*FIELD_W+_bfx135])*k;}break; // BRIDGE_SENSE — perceive bridge corridor intensity at this particle's position (0=open unconnected space, →2=active bridge midpoint). Bridge midpoints are where two tower tops have exchanged material long enough to mature; they are the most likely sites for new tower nucleation. A lineage wired to this signal can move toward or anchor at bridge crossings — evolving as a coloniser of the corridors that complex structure spontaneously generates.
       case 136:{const _spv136=Math.sqrt(vx[i]*vx[i]+vy[i]*vy[i]);vmRegs[di]=Math.min(2,_spv136*4)*k;}break; // SPORE_SPEED — perceive own velocity magnitude (0=settled, →2=in dispersal flight). Seeds cast from canopy tops can use this signal to suppress cluster-seeking during flight and activate landing behaviour when they decelerate. The dispersal→settlement transition becomes an evolvable life-stage switch.
+      case 137:{const _cid137=clusterID[i];vmRegs[di]=(_cid137>=0&&_cid137<MAX_CLUSTERS?clusterFloorLevel[_cid137]:0)*k;}break; // FLOOR_LEVEL — perceive which tower floor this particle's cluster inhabits (0=unclustered or below tower, 1=ground floor, 2=second floor, …). Enables vertical caste differentiation: ground clusters can evolve substrate-building behaviour; canopy clusters can evolve dispersal; mid-tower clusters can evolve regulation. The tower is spatially stratified — selection can now wire behaviour to altitude.
     }
     // BOUND-OPCODE BOUNDARY (Pe60-class fix, now single-sourced via CORE_OPCODES).
     // History: the guard once read op>=126 (boi=op-126), which (a) collided with core
@@ -14246,6 +14248,7 @@ function executeVM(i,j,sim,d){
         case 134:{const _rfx134p=Math.max(0,Math.min(FIELD_W-1,Math.floor(px[i]/(W/FIELD_W)))),_rfy134p=Math.max(0,Math.min(FIELD_H-1,Math.floor(py[i]/(H/FIELD_H))));vmRegs[di]=Math.min(3,rootField[_rfy134p*FIELD_W+_rfx134p])*k;}break; // LOCAL_ROOT — full parity
         case 135:{const _bfx135p=Math.max(0,Math.min(FIELD_W-1,Math.floor(px[i]/(W/FIELD_W)))),_bfy135p=Math.max(0,Math.min(FIELD_H-1,Math.floor(py[i]/(H/FIELD_H))));vmRegs[di]=Math.min(2,bridgeField[_bfy135p*FIELD_W+_bfx135p])*k;}break; // BRIDGE_SENSE — full parity
         case 136:{const _spv136p=Math.sqrt(vx[i]*vx[i]+vy[i]*vy[i]);vmRegs[di]=Math.min(2,_spv136p*4)*k;}break; // SPORE_SPEED — full parity
+        case 137:{const _cid137p=clusterID[i];vmRegs[di]=(_cid137p>=0&&_cid137p<MAX_CLUSTERS?clusterFloorLevel[_cid137p]:0)*k;}break; // FLOOR_LEVEL — full parity
       }
       if(op>=CORE_OPCODES&&op<CORE_OPCODES+MAX_BOUND_OPCODES){
         const _bos=genome.boundOpcodes;
@@ -15383,6 +15386,7 @@ function executeClusterVM(i,j,sim,d){
       case 134:{const _rfx134c=Math.max(0,Math.min(FIELD_W-1,Math.floor(px[i]/(W/FIELD_W)))),_rfy134c=Math.max(0,Math.min(FIELD_H-1,Math.floor(py[i]/(H/FIELD_H))));vmRegs[di]=Math.min(3,rootField[_rfy134c*FIELD_W+_rfx134c])*k;}break; // LOCAL_ROOT — full parity
       case 135:{const _bfx135c=Math.max(0,Math.min(FIELD_W-1,Math.floor(px[i]/(W/FIELD_W)))),_bfy135c=Math.max(0,Math.min(FIELD_H-1,Math.floor(py[i]/(H/FIELD_H))));vmRegs[di]=Math.min(2,bridgeField[_bfy135c*FIELD_W+_bfx135c])*k;}break; // BRIDGE_SENSE — full parity
       case 136:{const _spv136c=Math.sqrt(vx[i]*vx[i]+vy[i]*vy[i]);vmRegs[di]=Math.min(2,_spv136c*4)*k;}break; // SPORE_SPEED — full parity
+      case 137:{const _cid137c=clusterID[i];vmRegs[di]=(_cid137c>=0&&_cid137c<MAX_CLUSTERS?clusterFloorLevel[_cid137c]:0)*k;}break; // FLOOR_LEVEL — full parity
     }
     if(op>=CORE_OPCODES&&op<CORE_OPCODES+MAX_BOUND_OPCODES){
       const _bos=genome.boundOpcodes;
@@ -15618,6 +15622,8 @@ function interferenceCreate(i,j){
 let hierTower=[];
 const _hierReg=new Map();
 const _hierAge=new Map(); // last tick each key was active — drives age-out eviction
+const _hierBirth=new Map(); // tick each key was first created — enables senescence and FLOOR_LEVEL age sensing
+const clusterFloorLevel=new Uint8Array(MAX_CLUSTERS); // precomputed each 60 ticks: cluster ID → tower floor index (0=unclustered, 1=floor1, …)
 const HIER_MAX_LEVELS=12;
 function _cos3(a,b){let d=0,na=0,nb=0;for(let i=0;i<3;i++){d+=a[i]*b[i];na+=a[i]*a[i];nb+=b[i]*b[i];}return d/(Math.sqrt(na*nb)+1e-4);}
 function updateHomeostatStack(){
@@ -15644,14 +15650,17 @@ function updateHomeostatStack(){
       const m=idxs.length; cx/=m;cy/=m;
       let coh=0; for(const ix of idxs){const dx=below[ix].cx-cx,dy=below[ix].cy-cy;coh+=1/(1+Math.sqrt(dx*dx+dy*dy)/(CELL*level));} coh/=m;
       const key=level+'|'+Math.round(cx/CELL)+'|'+Math.round(cy/CELL);
+      if(!_hierReg.has(key))_hierBirth.set(key,tick); // stamp creation tick on first appearance
       let reg=_hierReg.has(key)?_hierReg.get(key):0.4;
       reg += (coh-reg)*(0.06/level);
+      const _flrAge=tick-(_hierBirth.get(key)||tick);
+      if(_flrAge>2400){reg*=(1-0.0005*Math.min(1,(_flrAge-2400)/8000));} // SENESCENCE: floors older than 2400 ticks slowly weaken — tall stable towers eventually yield; the landscape pulses rather than petrifying
       reg=reg<0?0:reg>1?1:reg; _hierReg.set(key,reg); _hierAge.set(key,tick);
       units.push({cx,cy,sig:[s0/m,s1/m,s2/m],leaves,reg,level});
     }
     hierTower.push(units); below=units; level++;
   }
-  if(_hierReg.size>2000){const _cutoff=tick-600;for(const k of [..._hierAge.keys()]){if((_hierAge.get(k)||0)<_cutoff){_hierReg.delete(k);_hierAge.delete(k);}}} // evict stale positional keys (not seen in 10 cycles) — active floors keep their accumulated reg; dissolved/drifted units are quietly retired
+  if(_hierReg.size>2000){const _cutoff=tick-600;for(const k of [..._hierAge.keys()]){if((_hierAge.get(k)||0)<_cutoff){_hierReg.delete(k);_hierAge.delete(k);_hierBirth.delete(k);}}} // evict stale positional keys (not seen in 10 cycles) — active floors keep their accumulated reg; dissolved/drifted units are quietly retired
   const pull=new Map();
   for(const units of hierTower) for(const u of units){ const s=0.00010*u.reg*u.level; for(const cid of u.leaves) pull.set(cid,{x:u.cx,y:u.cy,s}); }
   if(pull.size) for(let i=0;i<N;i++){ if(!palive[i])continue; const cid=clusterID[i]; if(cid<0)continue; const p=pull.get(cid); if(p){ vx[i]+=(p.x-px[i])*p.s; vy[i]+=(p.y-py[i])*p.s; } }
@@ -15956,6 +15965,7 @@ function executeSoloVM(){
         case 134:{const _rfx134s=Math.max(0,Math.min(FIELD_W-1,Math.floor(px[i]/(W/FIELD_W)))),_rfy134s=Math.max(0,Math.min(FIELD_H-1,Math.floor(py[i]/(H/FIELD_H))));vmRegs[di]=Math.min(3,rootField[_rfy134s*FIELD_W+_rfx134s])*k;}break; // LOCAL_ROOT — full parity
         case 135:{const _bfx135s=Math.max(0,Math.min(FIELD_W-1,Math.floor(px[i]/(W/FIELD_W)))),_bfy135s=Math.max(0,Math.min(FIELD_H-1,Math.floor(py[i]/(H/FIELD_H))));vmRegs[di]=Math.min(2,bridgeField[_bfy135s*FIELD_W+_bfx135s])*k;}break; // BRIDGE_SENSE — full parity
         case 136:{const _spv136s=Math.sqrt(vx[i]*vx[i]+vy[i]*vy[i]);vmRegs[di]=Math.min(2,_spv136s*4)*k;}break; // SPORE_SPEED — full parity
+        case 137:{const _cid137s=clusterID[i];vmRegs[di]=(_cid137s>=0&&_cid137s<MAX_CLUSTERS?clusterFloorLevel[_cid137s]:0)*k;}break; // FLOOR_LEVEL — full parity
       }
       if(op>=CORE_OPCODES&&op<CORE_OPCODES+MAX_BOUND_OPCODES){
         const _bos=genome.boundOpcodes;
@@ -16453,6 +16463,8 @@ function loop(){
     { const _rW=W/FIELD_W,_rH=H/FIELD_H; for(const c of clusters){ if(!c||c.size<2||c.persistAge<3)continue; const rcx=Math.max(0,Math.min(FIELD_W-1,Math.floor(c.cx/_rW))),rcy=Math.max(0,Math.min(FIELD_H-1,Math.floor(c.cy/_rH))); rootField[rcy*FIELD_W+rcx]=Math.min(5,rootField[rcy*FIELD_W+rcx]+0.45*c.coherence); } } // ROOT DEPOSITION: anchors stamp the substrate — coherent persistent clusters write deeper roots
     {let _tb=0;const _tW=W/FIELD_W,_tH=H/FIELD_H;for(const _tf of hierTower){for(const _tu of _tf){if(_tu.reg<0.5)continue;const _tx=Math.max(0,Math.min(FIELD_W-1,Math.floor(_tu.cx/_tW))),_ty=Math.max(0,Math.min(FIELD_H-1,Math.floor(_tu.cy/_tH)));rootField[_ty*FIELD_W+_tx]=Math.min(5,rootField[_ty*FIELD_W+_tx]+0.06*_tu.reg*_tu.level);_tb+=_tu.reg*_tu.level*0.0002;}}mutPressureAccum+=_tb;} // TOWER DOWNWARD SIGNAL: stable high floors fertilise their root footprint and raise evolutionary pressure — complex structure breeds the variation that may eventually unsettle it
     if(hierTower.length>=2){const _topFl=hierTower[hierTower.length-1];const _cdW=W/FIELD_W,_cdH=H/FIELD_H;const _excR2d=CELL*CELL*16;for(const _tud of _topFl){if(_tud.reg<0.72||Math.random()>0.12)continue;let _bvd=0,_bxd=-1,_byd=-1;for(let _fyd=0;_fyd<FIELD_H;_fyd++){for(let _fxd=0;_fxd<FIELD_W;_fxd++){const _rvd=rootField[_fyd*FIELD_W+_fxd];if(_rvd<0.4||_rvd<=_bvd)continue;const _wxd=(_fxd+0.5)*_cdW,_wyd=(_fyd+0.5)*_cdH,_ddd=(_wxd-_tud.cx)*(_wxd-_tud.cx)+(_wyd-_tud.cy)*(_wyd-_tud.cy);if(_ddd<_excR2d)continue;_bvd=_rvd;_bxd=_wxd;_byd=_wyd;}}if(_bxd<0)continue;const _leavd=[..._tud.leaves];if(!_leavd.length)continue;const _sidd=_leavd[Math.floor(Math.random()*_leavd.length)];if(_sidd===undefined||!palive[_sidd])continue;const _dkd=Math.sqrt((_bxd-px[_sidd])*(_bxd-px[_sidd])+(_byd-py[_sidd])*(_byd-py[_sidd]))||1;vx[_sidd]+=(_bxd-px[_sidd])/_dkd*3.5;vy[_sidd]+=(_byd-py[_sidd])/_dkd*3.5;}} // CANOPY DISPERSAL: mature tower tops (reg>0.72, ≥2 floors) cast seeds toward rootField hotspots beyond bridge range — seeds carry the lineage's genome to distant soil, nucleating new clusters and towers. Life propagates beyond bridge reach. The arc closes: roots → tunneling → clusters → bridges → towers → seeds → new towers → new roots.
+    {const _spW=W/FIELD_W,_spH=H/FIELD_H;for(const [_spk,_spreg] of _hierReg){if(_spreg>0.08)continue;const _spAge=tick-(_hierBirth.get(_spk)||tick);if(_spAge<300)continue;const _spParts=_spk.split('|');if(_spParts.length<3)continue;const _spfx=Math.max(0,Math.min(FIELD_W-1,Math.floor(parseInt(_spParts[1])*CELL/_spW))),_spfy=Math.max(0,Math.min(FIELD_H-1,Math.floor(parseInt(_spParts[2])*CELL/_spH)));rootField[_spfy*FIELD_W+_spfx]=Math.min(5,rootField[_spfy*FIELD_W+_spfx]+0.65);}} // SUCCESSION PULSE: when an old floor (≥300 tick life) collapses, it dumps nutrients back into the substrate — the fallen tower fertilises the next generation growing in its place
+    clusterFloorLevel.fill(0);for(let _fl=0;_fl<hierTower.length;_fl++){for(const _fu of hierTower[_fl]){for(const _fcid of _fu.leaves){if(_fcid>=0&&_fcid<MAX_CLUSTERS)clusterFloorLevel[_fcid]=_fl+1;}}} // FLOOR MAP: precompute cluster→floor index for FLOOR_LEVEL opcode — O(nClusters) per 60 ticks
     rebuildFieldLineageCache();
     selfModel.clusterCount=clusters.length;
     // Pe125 Layer 114: cluster momentum — smoothed rate of change of cluster count.
