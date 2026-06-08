@@ -273,7 +273,7 @@ const MAX_BOUND_OPCODES=32; // UNLOCKED #7b: was 16. Wider namespace for system-
 // Bumping CORE_OPCODES is the ONLY edit needed to add a core opcode — the bound guards
 // (op>=CORE_OPCODES) and OPCODE_COUNT derive from it, so a boundary typo can no longer
 // orphan an opcode or collide a core op with a bound slot (the Pe60 / op142-class bug).
-const CORE_OPCODES=135; // 0..134 core — op133 TOWER_DEPTH, op134 LOCAL_ROOT: structural self-sensing (see executeVM)
+const CORE_OPCODES=136; // 0..135 core — op135 BRIDGE_SENSE: bridge corridor self-sensing (see executeVM)
                         // 0..132 core — op132 SEASON_PHASE: perceive the current feast/famine cycle position
                         // 0..131 core — op131 ENERGY_STRESS: the system perceives conserved-budget scarcity
                         // 0..130 core — OPENED THE SWITCH: op128 READ_OWN_CASTE, op129 READ_PARTNER_CASTE,
@@ -5215,6 +5215,7 @@ const field2=new Float32Array(FIELD_W*FIELD_H); // second channel — enables re
 const field2Prev=new Float32Array(FIELD_W*FIELD_H); // Pe49: snapshot of field2 before each tick's diffusion — enables temporal derivative
 const field1Prev=new Float32Array(FIELD_W*FIELD_H); // Pe70: snapshot of field1 before each tick's diffusion — enables temporal derivative (Layer 59)
 const rootField=new Float32Array(FIELD_W*FIELD_H); // root network substrate — persistent clusters deposit here; very slow diffusion and decay create a mycelial field between anchors that unclustered particles tunnel along
+const bridgeField=new Float32Array(FIELD_W*FIELD_H); // bridge corridor substrate — mature bridge midpoints deposit here; faster decay than rootField so corridors dissolve when towers drift apart; read by BRIDGE_SENSE (op135)
 const cellProgOp=new Uint8Array(FIELD_W*FIELD_H);    // opcode: which transformation this cell runs
 const cellProgA=new Float32Array(FIELD_W*FIELD_H);   // parameter A
 const cellProgB=new Float32Array(FIELD_W*FIELD_H);   // parameter B
@@ -8642,6 +8643,7 @@ function profileVM(){
         case 132:break; // SEASON_PHASE profiler stub — cycle mean is 0; profiling at the mean avoids biasing toward feast or famine
         case 133:vmRegs[di]=Math.min(8,hierTower.length)*(k||1);break; // TOWER_DEPTH profiler stub — uses live tower state; correctly reflects current structural depth
         case 134:vmRegs[di]=0.5*(k||1);break; // LOCAL_ROOT profiler stub — representative mid-value; profiler has no fixed particle position to sample rootField at
+        case 135:vmRegs[di]=0.5*(k||1);break; // BRIDGE_SENSE profiler stub — representative mid-value; profiler has no fixed particle position to sample bridgeField at
       }
       if(op>=CORE_OPCODES&&op<CORE_OPCODES+MAX_BOUND_OPCODES){
         const _bos=genome.boundOpcodes;
@@ -9617,6 +9619,7 @@ function updateField(){
       if(y<FIELD_H-1)rs+=rootField[(_idx+FIELD_W)]*_RD;
       rootField[_idx]=rs*0.991;
       if(isNaN(rootField[_idx]))rootField[_idx]=0;
+      bridgeField[_idx]*=0.970; // bridge corridors decay faster than roots — dissolve when the towers that made them drift apart
     }
   }
 }
@@ -13228,6 +13231,7 @@ function executeVM(i,j,sim,d){
       case 132:vmRegs[di]=Math.sin(2*Math.PI*tick/SEASON_PERIOD)*k;break; // SEASON_PHASE — perceive where in the feast/famine cycle the world is right now (+k=feast peak, −k=famine peak, 0=transition). ENERGY_STRESS is reactive (you're already starving); this is prospective (winter is approaching). A lineage wired to this signal can anticipate the lean season and respond before the famine hits — timing reproduction to feast, switching caste at the turn, reducing output before the crunch. Phenotypic plasticity from the inside. Read-only; k gates magnitude; evolution chooses whether and how to use it.
       case 133:vmRegs[di]=Math.min(8,hierTower.length)*k;break; // TOWER_DEPTH — perceive how many floors the collective hierarchical structure currently reaches (0=no super-structure, →8=deep hierarchy). Organisms build the tower but couldn't read it; now selection can wire this signal to behaviour — consolidate when tall, explore when shallow, switch caste when the structure changes. The world's architectural state becomes part of the organism's sensory environment.
       case 134:{const _rfx134=Math.max(0,Math.min(FIELD_W-1,Math.floor(px[i]/(W/FIELD_W)))),_rfy134=Math.max(0,Math.min(FIELD_H-1,Math.floor(py[i]/(H/FIELD_H))));vmRegs[di]=Math.min(3,rootField[_rfy134*FIELD_W+_rfx134])*k;}break; // LOCAL_ROOT — perceive the root-network density at this particle's own position (0=bare substrate, →3=deeply rooted zone). Organisms can now sense the substrate they stand on — whether they are in an anchored, established zone or in open uncharted ground. Selection can evolve root-seeking (anchor into rich substrate) or root-avoiding (colonise bare ground).
+      case 135:{const _bfx135=Math.max(0,Math.min(FIELD_W-1,Math.floor(px[i]/(W/FIELD_W)))),_bfy135=Math.max(0,Math.min(FIELD_H-1,Math.floor(py[i]/(H/FIELD_H))));vmRegs[di]=Math.min(2,bridgeField[_bfy135*FIELD_W+_bfx135])*k;}break; // BRIDGE_SENSE — perceive bridge corridor intensity at this particle's position (0=open unconnected space, →2=active bridge midpoint). Bridge midpoints are where two tower tops have exchanged material long enough to mature; they are the most likely sites for new tower nucleation. A lineage wired to this signal can move toward or anchor at bridge crossings — evolving as a coloniser of the corridors that complex structure spontaneously generates.
     }
     // BOUND-OPCODE BOUNDARY (Pe60-class fix, now single-sourced via CORE_OPCODES).
     // History: the guard once read op>=126 (boi=op-126), which (a) collided with core
@@ -14238,6 +14242,7 @@ function executeVM(i,j,sim,d){
         case 132:vmRegs[di]=Math.sin(2*Math.PI*tick/SEASON_PERIOD)*k;break; // SEASON_PHASE — full parity
         case 133:vmRegs[di]=Math.min(8,hierTower.length)*k;break; // TOWER_DEPTH — full parity
         case 134:{const _rfx134p=Math.max(0,Math.min(FIELD_W-1,Math.floor(px[i]/(W/FIELD_W)))),_rfy134p=Math.max(0,Math.min(FIELD_H-1,Math.floor(py[i]/(H/FIELD_H))));vmRegs[di]=Math.min(3,rootField[_rfy134p*FIELD_W+_rfx134p])*k;}break; // LOCAL_ROOT — full parity
+        case 135:{const _bfx135p=Math.max(0,Math.min(FIELD_W-1,Math.floor(px[i]/(W/FIELD_W)))),_bfy135p=Math.max(0,Math.min(FIELD_H-1,Math.floor(py[i]/(H/FIELD_H))));vmRegs[di]=Math.min(2,bridgeField[_bfy135p*FIELD_W+_bfx135p])*k;}break; // BRIDGE_SENSE — full parity
       }
       if(op>=CORE_OPCODES&&op<CORE_OPCODES+MAX_BOUND_OPCODES){
         const _bos=genome.boundOpcodes;
@@ -15373,6 +15378,7 @@ function executeClusterVM(i,j,sim,d){
       case 132:vmRegs[di]=Math.sin(2*Math.PI*tick/SEASON_PERIOD)*k;break; // SEASON_PHASE — full parity
       case 133:vmRegs[di]=Math.min(8,hierTower.length)*k;break; // TOWER_DEPTH — full parity
       case 134:{const _rfx134c=Math.max(0,Math.min(FIELD_W-1,Math.floor(px[i]/(W/FIELD_W)))),_rfy134c=Math.max(0,Math.min(FIELD_H-1,Math.floor(py[i]/(H/FIELD_H))));vmRegs[di]=Math.min(3,rootField[_rfy134c*FIELD_W+_rfx134c])*k;}break; // LOCAL_ROOT — full parity
+      case 135:{const _bfx135c=Math.max(0,Math.min(FIELD_W-1,Math.floor(px[i]/(W/FIELD_W)))),_bfy135c=Math.max(0,Math.min(FIELD_H-1,Math.floor(py[i]/(H/FIELD_H))));vmRegs[di]=Math.min(2,bridgeField[_bfy135c*FIELD_W+_bfx135c])*k;}break; // BRIDGE_SENSE — full parity
     }
     if(op>=CORE_OPCODES&&op<CORE_OPCODES+MAX_BOUND_OPCODES){
       const _bos=genome.boundOpcodes;
@@ -15680,6 +15686,7 @@ function updateBridges(){
       reg+=(prox-reg)*(0.02/topLevel); // slower than any tower floor — bridges mature deliberately
       reg=reg<0?0:reg>1?1:reg;
       _bridgeReg.set(key,reg); _bridgeAge.set(key,tick);
+      if(reg>0.20){const _bmfx=Math.max(0,Math.min(FIELD_W-1,Math.floor(mx/(W/FIELD_W)))),_bmfy=Math.max(0,Math.min(FIELD_H-1,Math.floor(my/(H/FIELD_H))));bridgeField[_bmfy*FIELD_W+_bmfx]=Math.min(3,bridgeField[_bmfy*FIELD_W+_bmfx]+0.28*reg);rootField[_bmfy*FIELD_W+_bmfx]=Math.min(5,rootField[_bmfy*FIELD_W+_bmfx]+0.08*reg);} // CORRIDOR FERTILISATION: mature bridges enrich their midpoint — bridgeField marks the crossing, rootField makes it fertile ground for new tower nucleation
       if(reg>0.08){
         const s=0.000055*reg; // gentler than tower pull — bridges draw, not command
         for(const cid of tops[a].leaves){const e=bPull.get(cid);if(!e||e.s<s)bPull.set(cid,{x:mx,y:my,s});}
@@ -15716,6 +15723,7 @@ function applyRootForces(){
     const gx=rootField[fcy*FIELD_W+fcx+1]-rootField[fcy*FIELD_W+fcx-1];
     const gy=rootField[(fcy+1)*FIELD_W+fcx]-rootField[(fcy-1)*FIELD_W+fcx];
     vx[i]+=gx*0.00022; vy[i]+=gy*0.00022; // gentle — draws, does not command
+    const _rdamp=v*0.000065; vx[i]*=(1-_rdamp); vy[i]*=(1-_rdamp); // ROOT VISCOSITY: dense substrate resists motion — particles in established root zones settle, cohere, and nucleate; bridge midpoints (enriched by corridor fertilisation) become the stickiest sites
   }
 }
 function updateParticles(){
@@ -15942,6 +15950,7 @@ function executeSoloVM(){
         case 132:vmRegs[di]=Math.sin(2*Math.PI*tick/SEASON_PERIOD)*k;break; // SEASON_PHASE — full parity
         case 133:vmRegs[di]=Math.min(8,hierTower.length)*k;break; // TOWER_DEPTH — full parity
         case 134:{const _rfx134s=Math.max(0,Math.min(FIELD_W-1,Math.floor(px[i]/(W/FIELD_W)))),_rfy134s=Math.max(0,Math.min(FIELD_H-1,Math.floor(py[i]/(H/FIELD_H))));vmRegs[di]=Math.min(3,rootField[_rfy134s*FIELD_W+_rfx134s])*k;}break; // LOCAL_ROOT — full parity
+        case 135:{const _bfx135s=Math.max(0,Math.min(FIELD_W-1,Math.floor(px[i]/(W/FIELD_W)))),_bfy135s=Math.max(0,Math.min(FIELD_H-1,Math.floor(py[i]/(H/FIELD_H))));vmRegs[di]=Math.min(2,bridgeField[_bfy135s*FIELD_W+_bfx135s])*k;}break; // BRIDGE_SENSE — full parity
       }
       if(op>=CORE_OPCODES&&op<CORE_OPCODES+MAX_BOUND_OPCODES){
         const _bos=genome.boundOpcodes;
