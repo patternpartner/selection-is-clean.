@@ -273,7 +273,7 @@ const MAX_BOUND_OPCODES=32; // UNLOCKED #7b: was 16. Wider namespace for system-
 // Bumping CORE_OPCODES is the ONLY edit needed to add a core opcode — the bound guards
 // (op>=CORE_OPCODES) and OPCODE_COUNT derive from it, so a boundary typo can no longer
 // orphan an opcode or collide a core op with a bound slot (the Pe60 / op142-class bug).
-const CORE_OPCODES=140; // 0..139 core — op138 COMMONS_DRAIN (parasitism), op139 TERRITORY_SIGNAL (competitive exclusion) (see executeVM)
+const CORE_OPCODES=142; // 0..141 core — op140 COMMONS_RESTORE (altruism), op141 LOCAL_DENSITY (density sensing) (see executeVM)
                         // 0..132 core — op132 SEASON_PHASE: perceive the current feast/famine cycle position
                         // 0..131 core — op131 ENERGY_STRESS: the system perceives conserved-budget scarcity
                         // 0..130 core — OPENED THE SWITCH: op128 READ_OWN_CASTE, op129 READ_PARTNER_CASTE,
@@ -5217,6 +5217,7 @@ const field1Prev=new Float32Array(FIELD_W*FIELD_H); // Pe70: snapshot of field1 
 const rootField=new Float32Array(FIELD_W*FIELD_H); // root network substrate — persistent clusters deposit here; very slow diffusion and decay create a mycelial field between anchors that unclustered particles tunnel along
 const bridgeField=new Float32Array(FIELD_W*FIELD_H); // bridge corridor substrate — mature bridge midpoints deposit here; faster decay than rootField so corridors dissolve when towers drift apart; read by BRIDGE_SENSE (op135)
 const towerTerritoryField=new Float32Array(FIELD_W*FIELD_H); // lineage territory: tower floors stamp their sig[0] here; read by TERRITORY_SIGNAL (op139) — enables evolved competitive exclusion
+const densityField=new Uint8Array(FIELD_W*FIELD_H); // particle count per field cell, recomputed each 60 ticks; read by LOCAL_DENSITY (op141)
 const cellProgOp=new Uint8Array(FIELD_W*FIELD_H);    // opcode: which transformation this cell runs
 const cellProgA=new Float32Array(FIELD_W*FIELD_H);   // parameter A
 const cellProgB=new Float32Array(FIELD_W*FIELD_H);   // parameter B
@@ -7284,7 +7285,7 @@ function attemptClusterBudding(){
           copy[3]+=(Math.random()-0.5)*0.2;
           copy[3]=Math.max(-2,Math.min(2,copy[3]));
         }
-        if(Math.random()<cg.innovationRate*0.27)copy[0]=Math.floor(Math.random()*23);
+        if(Math.random()<cg.innovationRate*0.27)copy[0]=Math.floor(Math.random()*CORE_OPCODES); // was *23 — opened to full opcode space so lineages can discover COMMONS_DRAIN, TERRITORY_SIGNAL, FLOOR_LEVEL, SEASON_PHASE, LOCAL_ROOT, etc.
         return copy;
       }),
       vmInfluence:Math.max(0.05,c.vmInfluence+(Math.random()-0.5)*0.1),
@@ -8649,6 +8650,8 @@ function profileVM(){
         case 137:vmRegs[di]=1*(k||1);break; // FLOOR_LEVEL profiler stub — representative floor-1 (most particles in the tower are near the ground)
         case 138:vmRegs[di]=0*(k||1);break; // COMMONS_DRAIN profiler stub — zero (profiler cannot drain live field)
         case 139:vmRegs[di]=0*(k||1);break; // TERRITORY_SIGNAL profiler stub — neutral territory
+        case 140:vmRegs[di]=0*(k||1);break; // COMMONS_RESTORE profiler stub — zero (profiler cannot donate to live field)
+        case 141:vmRegs[di]=1*(k||1);break; // LOCAL_DENSITY profiler stub — representative low density
       }
       if(op>=CORE_OPCODES&&op<CORE_OPCODES+MAX_BOUND_OPCODES){
         const _bos=genome.boundOpcodes;
@@ -13242,6 +13245,8 @@ function executeVM(i,j,sim,d){
       case 137:{const _cid137=clusterID[i];vmRegs[di]=(_cid137>=0&&_cid137<MAX_CLUSTERS?clusterFloorLevel[_cid137]:0)*k;}break; // FLOOR_LEVEL — perceive which tower floor this particle's cluster inhabits
       case 138:{const _cdx138=Math.max(0,Math.min(FIELD_W-1,Math.floor(px[i]/(W/FIELD_W)))),_cdy138=Math.max(0,Math.min(FIELD_H-1,Math.floor(py[i]/(H/FIELD_H)))),_cdi138=_cdy138*FIELD_W+_cdx138;const _ca138=Math.min(field[_cdi138],Math.abs(k)*0.10);field[_cdi138]-=_ca138;localRes[i]=Math.min(2,localRes[i]+_ca138);vmRegs[di]=_ca138;}break; // COMMONS_DRAIN — extract resource from the local field cell into own reserves (|k| scales rate). Defectors drain the commons; cooperators build it. In mixed populations defectors win short-term; in all-defector populations the commons collapse. The prisoner's dilemma plays out locally, spatially, evolutionarily — arms races emerge without being scripted.
       case 139:{const _tfx139=Math.max(0,Math.min(FIELD_W-1,Math.floor(px[i]/(W/FIELD_W)))),_tfy139=Math.max(0,Math.min(FIELD_H-1,Math.floor(py[i]/(H/FIELD_H))));vmRegs[di]=towerTerritoryField[_tfy139*FIELD_W+_tfx139]*k;}break; // TERRITORY_SIGNAL — perceive the dominant lineage signature at this cell (positive=sig>0 lineage, negative=sig<0 lineage, ~0=neutral). Allows evolution of geographic partitioning: flee enemy territory, consolidate own, contest neutral ground. Competitive exclusion and allopatric divergence emerge from evolved response, not hard-coded rules.
+      case 140:{const _rfx140=Math.max(0,Math.min(FIELD_W-1,Math.floor(px[i]/(W/FIELD_W)))),_rfy140=Math.max(0,Math.min(FIELD_H-1,Math.floor(py[i]/(H/FIELD_H)))),_rfi140=_rfy140*FIELD_W+_rfx140;const _ra140=Math.min(localRes[i],Math.abs(k)*0.08);localRes[i]-=_ra140;field[_rfi140]=Math.min(field[_rfi140]+_ra140,3.0);vmRegs[di]=_ra140;}break; // COMMONS_RESTORE — donate own resource to the local field cell (symmetric to COMMONS_DRAIN). Cooperators build the commons; defectors drain it. Conditional strategies can now evolve: restore in own territory (TERRITORY_SIGNAL positive), drain in enemy territory — spatial arms races from behaviour alone.
+      case 141:{const _dfx141=Math.max(0,Math.min(FIELD_W-1,Math.floor(px[i]/(W/FIELD_W)))),_dfy141=Math.max(0,Math.min(FIELD_H-1,Math.floor(py[i]/(H/FIELD_H))));vmRegs[di]=Math.min(5,densityField[_dfy141*FIELD_W+_dfx141]/3)*k;}break; // LOCAL_DENSITY — perceive particle crowding at this cell (0=empty, →5=dense, 3 particles/cell=1.0). Enables density-dependent strategies: r-strategists disperse from crowded zones; K-strategists consolidate; parasites seek crowded hosts. Density dependence is the regulatory foundation of ecological stability.
     }
     // BOUND-OPCODE BOUNDARY (Pe60-class fix, now single-sourced via CORE_OPCODES).
     // History: the guard once read op>=126 (boi=op-126), which (a) collided with core
@@ -14257,6 +14262,8 @@ function executeVM(i,j,sim,d){
         case 137:{const _cid137p=clusterID[i];vmRegs[di]=(_cid137p>=0&&_cid137p<MAX_CLUSTERS?clusterFloorLevel[_cid137p]:0)*k;}break; // FLOOR_LEVEL — full parity
         case 138:{const _cdx138p=Math.max(0,Math.min(FIELD_W-1,Math.floor(px[i]/(W/FIELD_W)))),_cdy138p=Math.max(0,Math.min(FIELD_H-1,Math.floor(py[i]/(H/FIELD_H)))),_cdi138p=_cdy138p*FIELD_W+_cdx138p;const _ca138p=Math.min(field[_cdi138p],Math.abs(k)*0.10);field[_cdi138p]-=_ca138p;localRes[i]=Math.min(2,localRes[i]+_ca138p);vmRegs[di]=_ca138p;}break; // COMMONS_DRAIN — full parity
         case 139:{const _tfx139p=Math.max(0,Math.min(FIELD_W-1,Math.floor(px[i]/(W/FIELD_W)))),_tfy139p=Math.max(0,Math.min(FIELD_H-1,Math.floor(py[i]/(H/FIELD_H))));vmRegs[di]=towerTerritoryField[_tfy139p*FIELD_W+_tfx139p]*k;}break; // TERRITORY_SIGNAL — full parity
+        case 140:{const _rfx140p=Math.max(0,Math.min(FIELD_W-1,Math.floor(px[i]/(W/FIELD_W)))),_rfy140p=Math.max(0,Math.min(FIELD_H-1,Math.floor(py[i]/(H/FIELD_H)))),_rfi140p=_rfy140p*FIELD_W+_rfx140p;const _ra140p=Math.min(localRes[i],Math.abs(k)*0.08);localRes[i]-=_ra140p;field[_rfi140p]=Math.min(field[_rfi140p]+_ra140p,3.0);vmRegs[di]=_ra140p;}break; // COMMONS_RESTORE — full parity
+        case 141:{const _dfx141p=Math.max(0,Math.min(FIELD_W-1,Math.floor(px[i]/(W/FIELD_W)))),_dfy141p=Math.max(0,Math.min(FIELD_H-1,Math.floor(py[i]/(H/FIELD_H))));vmRegs[di]=Math.min(5,densityField[_dfy141p*FIELD_W+_dfx141p]/3)*k;}break; // LOCAL_DENSITY — full parity
       }
       if(op>=CORE_OPCODES&&op<CORE_OPCODES+MAX_BOUND_OPCODES){
         const _bos=genome.boundOpcodes;
@@ -15397,6 +15404,8 @@ function executeClusterVM(i,j,sim,d){
       case 137:{const _cid137c=clusterID[i];vmRegs[di]=(_cid137c>=0&&_cid137c<MAX_CLUSTERS?clusterFloorLevel[_cid137c]:0)*k;}break; // FLOOR_LEVEL — full parity
       case 138:{const _cdx138c=Math.max(0,Math.min(FIELD_W-1,Math.floor(px[i]/(W/FIELD_W)))),_cdy138c=Math.max(0,Math.min(FIELD_H-1,Math.floor(py[i]/(H/FIELD_H)))),_cdi138c=_cdy138c*FIELD_W+_cdx138c;const _ca138c=Math.min(field[_cdi138c],Math.abs(k)*0.10);field[_cdi138c]-=_ca138c;localRes[i]=Math.min(2,localRes[i]+_ca138c);vmRegs[di]=_ca138c;}break; // COMMONS_DRAIN — full parity
       case 139:{const _tfx139c=Math.max(0,Math.min(FIELD_W-1,Math.floor(px[i]/(W/FIELD_W)))),_tfy139c=Math.max(0,Math.min(FIELD_H-1,Math.floor(py[i]/(H/FIELD_H))));vmRegs[di]=towerTerritoryField[_tfy139c*FIELD_W+_tfx139c]*k;}break; // TERRITORY_SIGNAL — full parity
+      case 140:{const _rfx140c=Math.max(0,Math.min(FIELD_W-1,Math.floor(px[i]/(W/FIELD_W)))),_rfy140c=Math.max(0,Math.min(FIELD_H-1,Math.floor(py[i]/(H/FIELD_H)))),_rfi140c=_rfy140c*FIELD_W+_rfx140c;const _ra140c=Math.min(localRes[i],Math.abs(k)*0.08);localRes[i]-=_ra140c;field[_rfi140c]=Math.min(field[_rfi140c]+_ra140c,3.0);vmRegs[di]=_ra140c;}break; // COMMONS_RESTORE — full parity
+      case 141:{const _dfx141c=Math.max(0,Math.min(FIELD_W-1,Math.floor(px[i]/(W/FIELD_W)))),_dfy141c=Math.max(0,Math.min(FIELD_H-1,Math.floor(py[i]/(H/FIELD_H))));vmRegs[di]=Math.min(5,densityField[_dfy141c*FIELD_W+_dfx141c]/3)*k;}break; // LOCAL_DENSITY — full parity
     }
     if(op>=CORE_OPCODES&&op<CORE_OPCODES+MAX_BOUND_OPCODES){
       const _bos=genome.boundOpcodes;
@@ -15979,6 +15988,8 @@ function executeSoloVM(){
         case 137:{const _cid137s=clusterID[i];vmRegs[di]=(_cid137s>=0&&_cid137s<MAX_CLUSTERS?clusterFloorLevel[_cid137s]:0)*k;}break; // FLOOR_LEVEL — full parity
         case 138:{const _cdx138s=Math.max(0,Math.min(FIELD_W-1,Math.floor(px[i]/(W/FIELD_W)))),_cdy138s=Math.max(0,Math.min(FIELD_H-1,Math.floor(py[i]/(H/FIELD_H)))),_cdi138s=_cdy138s*FIELD_W+_cdx138s;const _ca138s=Math.min(field[_cdi138s],Math.abs(k)*0.10);field[_cdi138s]-=_ca138s;localRes[i]=Math.min(2,localRes[i]+_ca138s);vmRegs[di]=_ca138s;}break; // COMMONS_DRAIN — full parity
         case 139:{const _tfx139s=Math.max(0,Math.min(FIELD_W-1,Math.floor(px[i]/(W/FIELD_W)))),_tfy139s=Math.max(0,Math.min(FIELD_H-1,Math.floor(py[i]/(H/FIELD_H))));vmRegs[di]=towerTerritoryField[_tfy139s*FIELD_W+_tfx139s]*k;}break; // TERRITORY_SIGNAL — full parity
+        case 140:{const _rfx140s=Math.max(0,Math.min(FIELD_W-1,Math.floor(px[i]/(W/FIELD_W)))),_rfy140s=Math.max(0,Math.min(FIELD_H-1,Math.floor(py[i]/(H/FIELD_H)))),_rfi140s=_rfy140s*FIELD_W+_rfx140s;const _ra140s=Math.min(localRes[i],Math.abs(k)*0.08);localRes[i]-=_ra140s;field[_rfi140s]=Math.min(field[_rfi140s]+_ra140s,3.0);vmRegs[di]=_ra140s;}break; // COMMONS_RESTORE — full parity
+        case 141:{const _dfx141s=Math.max(0,Math.min(FIELD_W-1,Math.floor(px[i]/(W/FIELD_W)))),_dfy141s=Math.max(0,Math.min(FIELD_H-1,Math.floor(py[i]/(H/FIELD_H))));vmRegs[di]=Math.min(5,densityField[_dfy141s*FIELD_W+_dfx141s]/3)*k;}break; // LOCAL_DENSITY — full parity
       }
       if(op>=CORE_OPCODES&&op<CORE_OPCODES+MAX_BOUND_OPCODES){
         const _bos=genome.boundOpcodes;
@@ -16480,6 +16491,7 @@ function loop(){
     clusterFloorLevel.fill(0);for(let _fl=0;_fl<hierTower.length;_fl++){for(const _fu of hierTower[_fl]){for(const _fcid of _fu.leaves){if(_fcid>=0&&_fcid<MAX_CLUSTERS)clusterFloorLevel[_fcid]=_fl+1;}}} // FLOOR MAP: precompute cluster→floor index for FLOOR_LEVEL opcode — O(nClusters) per 60 ticks
     {const _ttW=W/FIELD_W,_ttH=H/FIELD_H;for(const _ttf of hierTower){for(const _ttu of _ttf){if(_ttu.reg<0.4)continue;const _ttx=Math.max(0,Math.min(FIELD_W-1,Math.floor(_ttu.cx/_ttW))),_tty=Math.max(0,Math.min(FIELD_H-1,Math.floor(_ttu.cy/_ttH)));towerTerritoryField[_tty*FIELD_W+_ttx]+=((_ttu.sig[0]||0)-towerTerritoryField[_tty*FIELD_W+_ttx])*0.08;}}} // TERRITORY MARKING: tower floors stamp their lineage sig[0] into the territory field — slowly converges to the dominant lineage at each location
     {for(let _ri=0;_ri<N;_ri++){if(!palive[_ri])continue;const _rcid=clusterID[_ri];if(_rcid<0||_rcid>=MAX_CLUSTERS)continue;if(clusterFloorLevel[_rcid]>prevClusterFloorLevel[_rcid]&&clusterFloorLevel[_rcid]>0){localRes[_ri]=Math.min(2,localRes[_ri]+0.12*clusterFloorLevel[_rcid]);}}}prevClusterFloorLevel.set(clusterFloorLevel); // COMPLEXITY RATCHET: particles whose cluster rose to a higher tower floor this cycle gain an integration energy bonus — building complexity is selectively rewarded, making regression costly at the population level
+    {densityField.fill(0);for(let _di=0;_di<N;_di++){if(!palive[_di])continue;const _ddfx=Math.max(0,Math.min(FIELD_W-1,Math.floor(px[_di]/(W/FIELD_W)))),_ddfy=Math.max(0,Math.min(FIELD_H-1,Math.floor(py[_di]/(H/FIELD_H))));if(densityField[_ddfy*FIELD_W+_ddfx]<250)densityField[_ddfy*FIELD_W+_ddfx]++;}} // DENSITY MAP: particle count per field cell — LOCAL_DENSITY (op141) reads this in O(1); cost is one O(N) scan per 60 ticks
     rebuildFieldLineageCache();
     selfModel.clusterCount=clusters.length;
     // Pe125 Layer 114: cluster momentum — smoothed rate of change of cluster count.
