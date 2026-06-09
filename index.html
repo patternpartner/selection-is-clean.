@@ -273,7 +273,7 @@ const MAX_BOUND_OPCODES=32; // UNLOCKED #7b: was 16. Wider namespace for system-
 // Bumping CORE_OPCODES is the ONLY edit needed to add a core opcode — the bound guards
 // (op>=CORE_OPCODES) and OPCODE_COUNT derive from it, so a boundary typo can no longer
 // orphan an opcode or collide a core op with a bound slot (the Pe60 / op142-class bug).
-const CORE_OPCODES=145; // 0..144 core — op142 FOREST_SENSE, op143 CRYSTAL_SENSE (material phase transition), op144 PROG_GROW (self-extending programs) (see executeVM)
+const CORE_OPCODES=147; // 0..146 core — op143 CRYSTAL_SENSE, op144 PROG_GROW, op145 DETRITAL_SENSE, op146 DETRITAL_HARVEST (decomposer niche / trophic cascade) (see executeVM)
                         // 0..132 core — op132 SEASON_PHASE: perceive the current feast/famine cycle position
                         // 0..131 core — op131 ENERGY_STRESS: the system perceives conserved-budget scarcity
                         // 0..130 core — OPENED THE SWITCH: op128 READ_OWN_CASTE, op129 READ_PARTNER_CASTE,
@@ -5220,6 +5220,7 @@ const towerTerritoryField=new Float32Array(FIELD_W*FIELD_H); // lineage territor
 const densityField=new Uint8Array(FIELD_W*FIELD_H); // particle count per field cell, recomputed each 60 ticks; read by LOCAL_DENSITY (op141)
 const forestField=new Float32Array(FIELD_W*FIELD_H); // meta-org field: bridge-connected tower tops form forests; recomputed each 60 ticks; read by FOREST_SENSE (op142)
 const crystalField=new Float32Array(FIELD_W*FIELD_H); // crystal phase: precipitates at persistent high-coherence cluster sites; changes local physics; read by CRYSTAL_SENSE (op143)
+const detritalField=new Float32Array(FIELD_W*FIELD_H); // dead-matter nutrient pool: biomass deposited on particle death; read by DETRITAL_SENSE (op145), harvested by DETRITAL_HARVEST (op146); trophic cascade substrate
 const cellProgOp=new Uint8Array(FIELD_W*FIELD_H);    // opcode: which transformation this cell runs
 const cellProgA=new Float32Array(FIELD_W*FIELD_H);   // parameter A
 const cellProgB=new Float32Array(FIELD_W*FIELD_H);   // parameter B
@@ -8659,6 +8660,8 @@ function profileVM(){
         case 142:vmRegs[di]=0*(k||1);break; // FOREST_SENSE profiler stub — zero (no forest during profiling)
         case 143:vmRegs[di]=0*(k||1);break; // CRYSTAL_SENSE profiler stub — zero (no crystal state during profiling)
         case 144:vmRegs[di]=0*(k||1);break; // PROG_GROW profiler stub — zero (profiler does not modify programs)
+        case 145:vmRegs[di]=0*(k||1);break; // DETRITAL_SENSE profiler stub — zero (no detrital field during profiling)
+        case 146:vmRegs[di]=0*(k||1);break; // DETRITAL_HARVEST profiler stub — zero (profiler cannot harvest live field)
       }
       if(op>=CORE_OPCODES&&op<CORE_OPCODES+MAX_BOUND_OPCODES){
         const _bos=genome.boundOpcodes;
@@ -11223,6 +11226,7 @@ function applyEntropy(){
         addBits(px[i],py[i],2,pR[i],pG[i],pB[i],0.3);
         palive[i]=0;
         {const _drx=Math.max(0,Math.min(FIELD_W-1,Math.floor(px[i]/(W/FIELD_W)))),_dry=Math.max(0,Math.min(FIELD_H-1,Math.floor(py[i]/(H/FIELD_H))));rootField[_dry*FIELD_W+_drx]=Math.min(5,rootField[_dry*FIELD_W+_drx]+0.18);} // death deposits into substrate — the organism's body becomes soil, deepening the root network where life was
+        {const _dtx=Math.max(0,Math.min(FIELD_W-1,Math.floor(px[i]/(W/FIELD_W)))),_dty=Math.max(0,Math.min(FIELD_H-1,Math.floor(py[i]/(H/FIELD_H))));detritalField[_dty*FIELD_W+_dtx]=Math.min(3,detritalField[_dty*FIELD_W+_dtx]+Math.max(0,amp[i])*0.22+Math.max(0,localRes[i])*0.12);} // DETRITAL DEPOSIT: dead particle's biomass (amplitude + reserves) persists in place as a harvestable nutrient pool — decomposer lineages mining DETRITAL_HARVEST can build an entire metabolism on death; trophic cascade foundation
         worldEnergy=Math.min(WORLD_ENERGY_MAX,worldEnergy+BIRTH_ENERGY_COST*DEATH_ENERGY_RETURN); // death returns resource to the world
       }
       if(amp[i]>1.2)amp[i]=1.2;
@@ -13257,6 +13261,8 @@ function executeVM(i,j,sim,d){
       case 142:{const _ffx142=Math.max(0,Math.min(FIELD_W-1,Math.floor(px[i]/(W/FIELD_W)))),_ffy142=Math.max(0,Math.min(FIELD_H-1,Math.floor(py[i]/(H/FIELD_H))));vmRegs[di]=Math.min(2,forestField[_ffy142*FIELD_W+_ffx142])*k;}break; // FOREST_SENSE — perceive meta-organizational density at this position (0=isolated tower top, →2=dense forest of connected tops). Enables evolved responses to 4th-level organization: disperse from saturated forests, colonise sparse regions, caste-switch when forest structure changes.
       case 143:{const _crfx143=Math.max(0,Math.min(FIELD_W-1,Math.floor(px[i]/(W/FIELD_W)))),_crfy143=Math.max(0,Math.min(FIELD_H-1,Math.floor(py[i]/(H/FIELD_H))));vmRegs[di]=Math.min(2,crystalField[_crfy143*FIELD_W+_crfx143]*2)*k;}break; // CRYSTAL_SENSE — perceive crystal density at own position (0=liquid/amorphous, →2=dense crystal). Crystal forms at persistent high-coherence cluster sites; sensing it enables evolved responses to material phase: settle in crystal (resource-rich, viscous) or escape it (preserve mobility). First emergent material phase transition in the system.
       case 144:{if(pProg[i]&&localRes[i]>0.3&&pProg[i].length<Math.min(genome.vmMaxInstructions||16,24)){const _pgSrc144=Math.floor(Math.random()*pProg[i].length);const _pgNew144=[...pProg[i][_pgSrc144]];_pgNew144[3]+=(Math.random()-0.5)*0.1;_pgNew144[3]=Math.max(-2,Math.min(2,_pgNew144[3]));pProg[i].push(_pgNew144);localRes[i]-=0.08;vmRegs[di]=pProg[i].length;}else{vmRegs[di]=0;}}break; // PROG_GROW — self-extend program by duplicating a random existing instruction with small parameter drift. Costs localRes. Programs now grow during lifetime, not just at reproduction: acquired behavioral complexity, indefinitely extensible programs.
+      case 145:{const _dtfx145=Math.max(0,Math.min(FIELD_W-1,Math.floor(px[i]/(W/FIELD_W)))),_dtfy145=Math.max(0,Math.min(FIELD_H-1,Math.floor(py[i]/(H/FIELD_H))));vmRegs[di]=Math.min(3,detritalField[_dtfy145*FIELD_W+_dtfx145])*k;}break; // DETRITAL_SENSE — perceive local dead-matter density (0=no detritus, →3=rich death zone). Decomposer lineages sense where mortality concentrates. Enables evolved scavenger strategy: move toward death zones, feed on fallen biomass. Trophic cascade perception.
+      case 146:{const _dhx146=Math.max(0,Math.min(FIELD_W-1,Math.floor(px[i]/(W/FIELD_W)))),_dhy146=Math.max(0,Math.min(FIELD_H-1,Math.floor(py[i]/(H/FIELD_H)))),_dhi146=_dhy146*FIELD_W+_dhx146;const _dha146=Math.min(detritalField[_dhi146],Math.abs(k)*0.12);detritalField[_dhi146]-=_dha146;localRes[i]=Math.min(2,localRes[i]+_dha146);vmRegs[di]=_dha146;}break; // DETRITAL_HARVEST — extract biomass from local detrital pool into own reserves. Decomposer niche: specialized lineages mine death zones, recycling dead matter into metabolic energy. One lineage's mortality becomes another lineage's food source — trophic cascade, second energy pathway distinct from field harvest.
     }
     // BOUND-OPCODE BOUNDARY (Pe60-class fix, now single-sourced via CORE_OPCODES).
     // History: the guard once read op>=126 (boi=op-126), which (a) collided with core
@@ -14277,6 +14283,8 @@ function executeVM(i,j,sim,d){
         case 142:{const _ffx142p=Math.max(0,Math.min(FIELD_W-1,Math.floor(px[i]/(W/FIELD_W)))),_ffy142p=Math.max(0,Math.min(FIELD_H-1,Math.floor(py[i]/(H/FIELD_H))));vmRegs[di]=Math.min(2,forestField[_ffy142p*FIELD_W+_ffx142p])*k;}break; // FOREST_SENSE — full parity
         case 143:{const _crfx143p=Math.max(0,Math.min(FIELD_W-1,Math.floor(px[i]/(W/FIELD_W)))),_crfy143p=Math.max(0,Math.min(FIELD_H-1,Math.floor(py[i]/(H/FIELD_H))));vmRegs[di]=Math.min(2,crystalField[_crfy143p*FIELD_W+_crfx143p]*2)*k;}break; // CRYSTAL_SENSE — full parity
         case 144:{if(pProg[i]&&localRes[i]>0.3&&pProg[i].length<Math.min(genome.vmMaxInstructions||16,24)){const _pgSrc144p=Math.floor(Math.random()*pProg[i].length);const _pgNew144p=[...pProg[i][_pgSrc144p]];_pgNew144p[3]+=(Math.random()-0.5)*0.1;_pgNew144p[3]=Math.max(-2,Math.min(2,_pgNew144p[3]));pProg[i].push(_pgNew144p);localRes[i]-=0.08;vmRegs[di]=pProg[i].length;}else{vmRegs[di]=0;}}break; // PROG_GROW — full parity
+        case 145:{const _dtfx145p=Math.max(0,Math.min(FIELD_W-1,Math.floor(px[i]/(W/FIELD_W)))),_dtfy145p=Math.max(0,Math.min(FIELD_H-1,Math.floor(py[i]/(H/FIELD_H))));vmRegs[di]=Math.min(3,detritalField[_dtfy145p*FIELD_W+_dtfx145p])*k;}break; // DETRITAL_SENSE — full parity
+        case 146:{const _dhx146p=Math.max(0,Math.min(FIELD_W-1,Math.floor(px[i]/(W/FIELD_W)))),_dhy146p=Math.max(0,Math.min(FIELD_H-1,Math.floor(py[i]/(H/FIELD_H)))),_dhi146p=_dhy146p*FIELD_W+_dhx146p;const _dha146p=Math.min(detritalField[_dhi146p],Math.abs(k)*0.12);detritalField[_dhi146p]-=_dha146p;localRes[i]=Math.min(2,localRes[i]+_dha146p);vmRegs[di]=_dha146p;}break; // DETRITAL_HARVEST — full parity
       }
       if(op>=CORE_OPCODES&&op<CORE_OPCODES+MAX_BOUND_OPCODES){
         const _bos=genome.boundOpcodes;
@@ -15422,6 +15430,8 @@ function executeClusterVM(i,j,sim,d){
       case 142:{const _ffx142c=Math.max(0,Math.min(FIELD_W-1,Math.floor(px[i]/(W/FIELD_W)))),_ffy142c=Math.max(0,Math.min(FIELD_H-1,Math.floor(py[i]/(H/FIELD_H))));vmRegs[di]=Math.min(2,forestField[_ffy142c*FIELD_W+_ffx142c])*k;}break; // FOREST_SENSE — full parity
       case 143:{const _crfx143c=Math.max(0,Math.min(FIELD_W-1,Math.floor(px[i]/(W/FIELD_W)))),_crfy143c=Math.max(0,Math.min(FIELD_H-1,Math.floor(py[i]/(H/FIELD_H))));vmRegs[di]=Math.min(2,crystalField[_crfy143c*FIELD_W+_crfx143c]*2)*k;}break; // CRYSTAL_SENSE — full parity
       case 144:{if(pProg[i]&&localRes[i]>0.3&&pProg[i].length<Math.min(genome.vmMaxInstructions||16,24)){const _pgSrc144c=Math.floor(Math.random()*pProg[i].length);const _pgNew144c=[...pProg[i][_pgSrc144c]];_pgNew144c[3]+=(Math.random()-0.5)*0.1;_pgNew144c[3]=Math.max(-2,Math.min(2,_pgNew144c[3]));pProg[i].push(_pgNew144c);localRes[i]-=0.08;vmRegs[di]=pProg[i].length;}else{vmRegs[di]=0;}}break; // PROG_GROW — full parity
+      case 145:{const _dtfx145c=Math.max(0,Math.min(FIELD_W-1,Math.floor(px[i]/(W/FIELD_W)))),_dtfy145c=Math.max(0,Math.min(FIELD_H-1,Math.floor(py[i]/(H/FIELD_H))));vmRegs[di]=Math.min(3,detritalField[_dtfy145c*FIELD_W+_dtfx145c])*k;}break; // DETRITAL_SENSE — full parity
+      case 146:{const _dhx146c=Math.max(0,Math.min(FIELD_W-1,Math.floor(px[i]/(W/FIELD_W)))),_dhy146c=Math.max(0,Math.min(FIELD_H-1,Math.floor(py[i]/(H/FIELD_H)))),_dhi146c=_dhy146c*FIELD_W+_dhx146c;const _dha146c=Math.min(detritalField[_dhi146c],Math.abs(k)*0.12);detritalField[_dhi146c]-=_dha146c;localRes[i]=Math.min(2,localRes[i]+_dha146c);vmRegs[di]=_dha146c;}break; // DETRITAL_HARVEST — full parity
     }
     if(op>=CORE_OPCODES&&op<CORE_OPCODES+MAX_BOUND_OPCODES){
       const _bos=genome.boundOpcodes;
@@ -16012,6 +16022,8 @@ function executeSoloVM(){
         case 142:{const _ffx142s=Math.max(0,Math.min(FIELD_W-1,Math.floor(px[i]/(W/FIELD_W)))),_ffy142s=Math.max(0,Math.min(FIELD_H-1,Math.floor(py[i]/(H/FIELD_H))));vmRegs[di]=Math.min(2,forestField[_ffy142s*FIELD_W+_ffx142s])*k;}break; // FOREST_SENSE — full parity
         case 143:{const _crfx143s=Math.max(0,Math.min(FIELD_W-1,Math.floor(px[i]/(W/FIELD_W)))),_crfy143s=Math.max(0,Math.min(FIELD_H-1,Math.floor(py[i]/(H/FIELD_H))));vmRegs[di]=Math.min(2,crystalField[_crfy143s*FIELD_W+_crfx143s]*2)*k;}break; // CRYSTAL_SENSE — full parity
         case 144:{if(pProg[i]&&localRes[i]>0.3&&pProg[i].length<Math.min(genome.vmMaxInstructions||16,24)){const _pgSrc144s=Math.floor(Math.random()*pProg[i].length);const _pgNew144s=[...pProg[i][_pgSrc144s]];_pgNew144s[3]+=(Math.random()-0.5)*0.1;_pgNew144s[3]=Math.max(-2,Math.min(2,_pgNew144s[3]));pProg[i].push(_pgNew144s);localRes[i]-=0.08;vmRegs[di]=pProg[i].length;}else{vmRegs[di]=0;}}break; // PROG_GROW — full parity
+        case 145:{const _dtfx145s=Math.max(0,Math.min(FIELD_W-1,Math.floor(px[i]/(W/FIELD_W)))),_dtfy145s=Math.max(0,Math.min(FIELD_H-1,Math.floor(py[i]/(H/FIELD_H))));vmRegs[di]=Math.min(3,detritalField[_dtfy145s*FIELD_W+_dtfx145s])*k;}break; // DETRITAL_SENSE — full parity
+        case 146:{const _dhx146s=Math.max(0,Math.min(FIELD_W-1,Math.floor(px[i]/(W/FIELD_W)))),_dhy146s=Math.max(0,Math.min(FIELD_H-1,Math.floor(py[i]/(H/FIELD_H)))),_dhi146s=_dhy146s*FIELD_W+_dhx146s;const _dha146s=Math.min(detritalField[_dhi146s],Math.abs(k)*0.12);detritalField[_dhi146s]-=_dha146s;localRes[i]=Math.min(2,localRes[i]+_dha146s);vmRegs[di]=_dha146s;}break; // DETRITAL_HARVEST — full parity
       }
       if(op>=CORE_OPCODES&&op<CORE_OPCODES+MAX_BOUND_OPCODES){
         const _bos=genome.boundOpcodes;
@@ -16393,16 +16405,22 @@ function loop(){
       if(pPlasmidAge[i]>_fixThresh144&&genome.vmProgram.length<genome.vmMaxInstructions){
         const base=i*PLASMID_SLOTS;
         const len=pPlasmidLen[i];
-        let fixed=0;
-        for(let p=0;p<len&&genome.vmProgram.length<genome.vmMaxInstructions;p++){
-          const pi=base+p*4;
-          const newInst=[pPlasmid[pi],pPlasmid[pi+1],pPlasmid[pi+2],pPlasmid[pi+3]];
-          genome.vmProgram.push(newInst);
-          fixed++;
+        // RESTRICTION-MODIFICATION: reject plasmid if its opcode profile is too foreign — hard speciation barrier; lineages with <25% opcode overlap block gene flow mechanically
+        const _selfOps=new Set((pProg[i]||[]).map(x=>x[0]));
+        let _plMatch=0;for(let p=0;p<len;p++){if(_selfOps.has(Math.round(pPlasmid[base+p*4])))_plMatch++;}
+        if(len>0&&_plMatch/len<0.25){pPlasmidLen[i]=0;pPlasmidAge[i]=0;} // restricted — foreign DNA rejected; lineages past behavioral speciation threshold no longer exchange heritable material
+        else{
+          let fixed=0;
+          for(let p=0;p<len&&genome.vmProgram.length<genome.vmMaxInstructions;p++){
+            const pi=base+p*4;
+            const newInst=[pPlasmid[pi],pPlasmid[pi+1],pPlasmid[pi+2],pPlasmid[pi+3]];
+            genome.vmProgram.push(newInst);
+            fixed++;
+          }
+          if(fixed>0)recordEvent('plasmid_fix',{n:fixed,vm:genome.vmProgram.length},600);
+          pPlasmidLen[i]=0;
+          pPlasmidAge[i]=0;
         }
-        if(fixed>0)recordEvent('plasmid_fix',{n:fixed,vm:genome.vmProgram.length},600);
-        pPlasmidLen[i]=0;
-        pPlasmidAge[i]=0;
       }
     }else{
       pPlasmidAge[i]=0;
@@ -16517,7 +16535,7 @@ function loop(){
     updateBridges(); // BRIDGE LAYER: lateral connections between separate sub-tower tops — material accumulates at bridge midpoints, seeding new towers from the bridge rather than from initialisation
     { const _rW=W/FIELD_W,_rH=H/FIELD_H; for(const c of clusters){ if(!c||c.size<2||c.persistAge<3)continue; const rcx=Math.max(0,Math.min(FIELD_W-1,Math.floor(c.cx/_rW))),rcy=Math.max(0,Math.min(FIELD_H-1,Math.floor(c.cy/_rH))); rootField[rcy*FIELD_W+rcx]=Math.min(5,rootField[rcy*FIELD_W+rcx]+0.45*c.coherence); } } // ROOT DEPOSITION: anchors stamp the substrate — coherent persistent clusters write deeper roots
     {let _tb=0;const _tW=W/FIELD_W,_tH=H/FIELD_H;for(const _tf of hierTower){for(const _tu of _tf){if(_tu.reg<0.5)continue;const _tx=Math.max(0,Math.min(FIELD_W-1,Math.floor(_tu.cx/_tW))),_ty=Math.max(0,Math.min(FIELD_H-1,Math.floor(_tu.cy/_tH)));rootField[_ty*FIELD_W+_tx]=Math.min(5,rootField[_ty*FIELD_W+_tx]+0.06*_tu.reg*_tu.level);_tb+=_tu.reg*_tu.level*0.0002;}}mutPressureAccum+=_tb;} // TOWER DOWNWARD SIGNAL: stable high floors fertilise their root footprint and raise evolutionary pressure — complex structure breeds the variation that may eventually unsettle it
-    {const _crW=W/FIELD_W,_crH=H/FIELD_H;for(let _cri=0;_cri<FIELD_W*FIELD_H;_cri++)crystalField[_cri]*=0.93;for(const _crc of clusters){if(!_crc||_crc.persistAge<200||_crc.coherence<0.8)continue;const _crx=Math.max(0,Math.min(FIELD_W-1,Math.floor(_crc.cx/_crW))),_cry=Math.max(0,Math.min(FIELD_H-1,Math.floor(_crc.cy/_crH)));crystalField[_cry*FIELD_W+_crx]=Math.min(1,crystalField[_cry*FIELD_W+_crx]+_crc.coherence*0.15);}} // CRYSTAL PHASE: high-coherence clusters (persistAge≥200, coherence≥0.8) precipitate a crystal substrate; 0.93 decay per 60-tick cycle (~900-tick lifetime after cluster dissolves); crystal is a memory of organizational history — new material phase that concentrates resources and resists particle motion
+    {const _crW=W/FIELD_W,_crH=H/FIELD_H;for(let _cri=0;_cri<FIELD_W*FIELD_H;_cri++){crystalField[_cri]*=0.93;detritalField[_cri]*=0.95;}for(const _crc of clusters){if(!_crc||_crc.persistAge<200||_crc.coherence<0.8)continue;const _crx=Math.max(0,Math.min(FIELD_W-1,Math.floor(_crc.cx/_crW))),_cry=Math.max(0,Math.min(FIELD_H-1,Math.floor(_crc.cy/_crH)));crystalField[_cry*FIELD_W+_crx]=Math.min(1,crystalField[_cry*FIELD_W+_crx]+_crc.coherence*0.15);}} // CRYSTAL PHASE + DETRITAL DECAY: crystal ×0.93/60tick (~900-tick lifetime); detrital ×0.95/60tick (~780-tick half-life — persistent dead-matter patches outlast their creators, giving decomposers time to find them
     if(hierTower.length>=2){const _topFl=hierTower[hierTower.length-1];const _cdW=W/FIELD_W,_cdH=H/FIELD_H;const _excR2d=CELL*CELL*16;for(const _tud of _topFl){if(_tud.reg<0.72||Math.random()>0.12)continue;let _bvd=0,_bxd=-1,_byd=-1;for(let _fyd=0;_fyd<FIELD_H;_fyd++){for(let _fxd=0;_fxd<FIELD_W;_fxd++){const _rvd=rootField[_fyd*FIELD_W+_fxd];if(_rvd<0.4||_rvd<=_bvd)continue;const _wxd=(_fxd+0.5)*_cdW,_wyd=(_fyd+0.5)*_cdH,_ddd=(_wxd-_tud.cx)*(_wxd-_tud.cx)+(_wyd-_tud.cy)*(_wyd-_tud.cy);if(_ddd<_excR2d)continue;_bvd=_rvd;_bxd=_wxd;_byd=_wyd;}}if(_bxd<0)continue;const _leavd=[..._tud.leaves];if(!_leavd.length)continue;const _sidd=_leavd[Math.floor(Math.random()*_leavd.length)];if(_sidd===undefined||!palive[_sidd])continue;const _dkd=Math.sqrt((_bxd-px[_sidd])*(_bxd-px[_sidd])+(_byd-py[_sidd])*(_byd-py[_sidd]))||1;vx[_sidd]+=(_bxd-px[_sidd])/_dkd*3.5;vy[_sidd]+=(_byd-py[_sidd])/_dkd*3.5;}} // CANOPY DISPERSAL: mature tower tops (reg>0.72, ≥2 floors) cast seeds toward rootField hotspots beyond bridge range — seeds carry the lineage's genome to distant soil, nucleating new clusters and towers. Life propagates beyond bridge reach. The arc closes: roots → tunneling → clusters → bridges → towers → seeds → new towers → new roots.
     {const _spW=W/FIELD_W,_spH=H/FIELD_H;for(const [_spk,_spreg] of _hierReg){if(_spreg>0.08)continue;const _spAge=tick-(_hierBirth.get(_spk)||tick);if(_spAge<300)continue;const _spParts=_spk.split('|');if(_spParts.length<3)continue;const _spfx=Math.max(0,Math.min(FIELD_W-1,Math.floor(parseInt(_spParts[1])*CELL/_spW))),_spfy=Math.max(0,Math.min(FIELD_H-1,Math.floor(parseInt(_spParts[2])*CELL/_spH)));rootField[_spfy*FIELD_W+_spfx]=Math.min(5,rootField[_spfy*FIELD_W+_spfx]+0.65);}} // SUCCESSION PULSE: when an old floor (≥300 tick life) collapses, it dumps nutrients back into the substrate — the fallen tower fertilises the next generation growing in its place
     clusterFloorLevel.fill(0);for(let _fl=0;_fl<hierTower.length;_fl++){for(const _fu of hierTower[_fl]){for(const _fcid of _fu.leaves){if(_fcid>=0&&_fcid<MAX_CLUSTERS)clusterFloorLevel[_fcid]=_fl+1;}}} // FLOOR MAP: precompute cluster→floor index for FLOOR_LEVEL opcode — O(nClusters) per 60 ticks
