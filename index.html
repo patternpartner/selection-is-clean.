@@ -273,7 +273,7 @@ const MAX_BOUND_OPCODES=32; // UNLOCKED #7b: was 16. Wider namespace for system-
 // Bumping CORE_OPCODES is the ONLY edit needed to add a core opcode — the bound guards
 // (op>=CORE_OPCODES) and OPCODE_COUNT derive from it, so a boundary typo can no longer
 // orphan an opcode or collide a core op with a bound slot (the Pe60 / op142-class bug).
-const CORE_OPCODES=172; // 0..171 core — op169 ROOT_SENSE, op170 CASTE_MEM_READ, op171 CASTE_MEM_WRITE
+const CORE_OPCODES=175; // 0..174 core — op172 GENOME_LENGTH, op173 PARTNER_GENOME_LENGTH, op174 INJECT_SIGNAL
                         // 0..132 core — op132 SEASON_PHASE: perceive the current feast/famine cycle position
                         // 0..131 core — op131 ENERGY_STRESS: the system perceives conserved-budget scarcity
                         // 0..130 core — OPENED THE SWITCH: op128 READ_OWN_CASTE, op129 READ_PARTNER_CASTE,
@@ -8698,6 +8698,9 @@ function profileVM(){
         case 169:vmRegs[di]=0*(k||1);break; // ROOT_SENSE profiler stub — zero (no root field during profiling)
         case 170:vmRegs[di]=0*(k||1);break; // CASTE_MEM_READ profiler stub — zero (no partner caste during profiling)
         case 171:vmRegs[di]=0*(k||1);break; // CASTE_MEM_WRITE profiler stub — NOP during profiling
+        case 172:vmRegs[di]=(genome.program?genome.program.length:0)*(k||1);break; // GENOME_LENGTH profiler stub — use profile genome length
+        case 173:vmRegs[di]=(genome.program?genome.program.length:0)*(k||1);break; // PARTNER_GENOME_LENGTH profiler stub — self length as proxy
+        case 174:vmRegs[di]=0*(k||1);break; // INJECT_SIGNAL profiler stub — NOP during profiling (no partner position)
       }
       if(op>=CORE_OPCODES&&op<CORE_OPCODES+MAX_BOUND_OPCODES){
         const _bos=genome.boundOpcodes;
@@ -13329,6 +13332,9 @@ function executeVM(i,j,sim,d){
       case 169:{const _rx169=Math.max(0,Math.min(FIELD_W-1,Math.floor(px[i]/(W/FIELD_W)))),_ry169=Math.max(0,Math.min(FIELD_H-1,Math.floor(py[i]/(H/FIELD_H))));vmRegs[di]=rootField[_ry169*FIELD_W+_rx169]*k;}break; // ROOT_SENSE — read rootField level at own position (0..5). Closes the ROOT_WRITE (op162) loop: niche construction becomes a sensed resource. Enables: invest-and-sense cycles (build root until threshold, then harvest its benefit via better foraging); landmark navigation (migrate toward root-rich areas built by ancestors); kin-niche detection (high root at empty cell = kin territory, colonise preferentially). Without ROOT_SENSE, ROOT_WRITE is write-only — particles can build infrastructure but cannot condition behaviour on what was built.
       case 170:{vmRegs[di]=pMem[i*MEM_SIZE+(pType[j]&7)]*k;}break; // CASTE_MEM_READ — read the pMem slot indexed by partner's caste type (pType[j]&7, so 8 slots for 8 possible castes). Enables caste-keyed interaction history: "how have I fared against green particles?" Combined with CASTE_MEM_WRITE (op171), ENERGY_DRAIN (op155), and ENERGY_DONATE (op156) gated on the retrieved value, lineages can evolve caste-conditional tit-for-tat: the first reciprocal-altruism strategy not relying on lineage-specific memory.
       case 171:{pMem[i*MEM_SIZE+(pType[j]&7)]=Math.max(-8,Math.min(8,vmRegs[si]));vmRegs[di]=vmRegs[si];}break; // CASTE_MEM_WRITE — write to the pMem slot indexed by partner's caste type. After each interaction with a caste-j particle, record the outcome (positive=cooperated, negative=defected). Next encounter reads it with CASTE_MEM_READ to decide whether to cooperate or defect. Together these opcodes close the reciprocal altruism loop: tit-for-tat by caste. Selection pressure: defectors exploit naive cooperators, then face retaliation across all future encounters with that caste.
+      case 172:{vmRegs[di]=(pProg[i]?pProg[i].length:0)*k;}break; // GENOME_LENGTH — return own program instruction count scaled by k. Closes the genome-complexity selection loop: without this sensor, genome length has no direct fitness signal — it can only affect fitness indirectly via what instructions do. With GENOME_LENGTH, lineages can evolve complexity-conditional strategies: invest metabolically in complex partners (high length → richer behavioral repertoire → better mutualist), exploit simple ones; limit own reproduction when genome length exceeds a threshold (complexity cost model); sense whether gene expression increases complexity vs. stays flat. Creates selection pressure for genome-length optima rather than monotonic growth.
+      case 173:{vmRegs[di]=(pProg[j]?pProg[j].length:0)*k;}break; // PARTNER_GENOME_LENGTH — return partner's instruction count. Enables complexity-based discrimination: predators (op155) preferentially target simple genomes that cannot defend themselves; mutualists (op156) prefer complex partners with larger behavioral repertoires; with KIN_SENSE (op167) and CASTE_MEM_READ (op170), lineages evolve complexity-aware social contracts. Arms race dynamic: parasites evolve simplified genomes to appear simple while maintaining hidden complexity in bound opcodes; hosts evolve PARTNER_GENOME_LENGTH thresholds as parasite detection heuristics.
+      case 174:{const _ix174=Math.max(0,Math.min(FIELD_W-1,Math.floor(px[j]/(W/FIELD_W)))),_iy174=Math.max(0,Math.min(FIELD_H-1,Math.floor(py[j]/(H/FIELD_H)))),_ii174=_iy174*FIELD_W+_ix174;const _ia174=Math.abs(vmRegs[si]*k)*0.3;signalField[_ii174]=Math.min(3,signalField[_ii174]+_ia174);vmRegs[di]=_ia174;}break; // INJECT_SIGNAL — deposit pheromone at PARTNER'S position (not own position like SIGNAL_EMIT op157). The first opcode enabling directed marking: leave a chemical trail on partners you interact with. Enables: mark exploiters so others avoid them (reputation via signal, readable by SIGNAL_SENSE op158); mark cooperators so kin seek them out; create pheromone exclusion zones around dangerous partners; implement distributed chemical communication without centralised signalling. With SIGNAL_GRAD_X/Y (ops 159-160) and INJECT_SIGNAL, lineages build social reputation landscapes.
     }
     // BOUND-OPCODE BOUNDARY (Pe60-class fix, now single-sourced via CORE_OPCODES).
     // History: the guard once read op>=126 (boi=op-126), which (a) collided with core
@@ -14376,6 +14382,9 @@ function executeVM(i,j,sim,d){
         case 169:{const _rx169p=Math.max(0,Math.min(FIELD_W-1,Math.floor(px[i]/(W/FIELD_W)))),_ry169p=Math.max(0,Math.min(FIELD_H-1,Math.floor(py[i]/(H/FIELD_H))));vmRegs[di]=rootField[_ry169p*FIELD_W+_rx169p]*k;}break; // ROOT_SENSE — full parity
         case 170:{vmRegs[di]=pMem[i*MEM_SIZE+(pType[j]&7)]*k;}break; // CASTE_MEM_READ — full parity
         case 171:{pMem[i*MEM_SIZE+(pType[j]&7)]=Math.max(-8,Math.min(8,vmRegs[si]));vmRegs[di]=vmRegs[si];}break; // CASTE_MEM_WRITE — full parity
+        case 172:{vmRegs[di]=(pProg[i]?pProg[i].length:0)*k;}break; // GENOME_LENGTH — full parity
+        case 173:{vmRegs[di]=(pProg[j]?pProg[j].length:0)*k;}break; // PARTNER_GENOME_LENGTH — full parity
+        case 174:{const _ix174p=Math.max(0,Math.min(FIELD_W-1,Math.floor(px[j]/(W/FIELD_W)))),_iy174p=Math.max(0,Math.min(FIELD_H-1,Math.floor(py[j]/(H/FIELD_H)))),_ii174p=_iy174p*FIELD_W+_ix174p;const _ia174p=Math.abs(vmRegs[si]*k)*0.3;signalField[_ii174p]=Math.min(3,signalField[_ii174p]+_ia174p);vmRegs[di]=_ia174p;}break; // INJECT_SIGNAL — full parity
       }
       if(op>=CORE_OPCODES&&op<CORE_OPCODES+MAX_BOUND_OPCODES){
         const _bos=genome.boundOpcodes;
@@ -15548,6 +15557,9 @@ function executeClusterVM(i,j,sim,d){
       case 169:{const _rx169c=Math.max(0,Math.min(FIELD_W-1,Math.floor(px[i]/(W/FIELD_W)))),_ry169c=Math.max(0,Math.min(FIELD_H-1,Math.floor(py[i]/(H/FIELD_H))));vmRegs[di]=rootField[_ry169c*FIELD_W+_rx169c]*k;}break; // ROOT_SENSE — full parity
       case 170:{vmRegs[di]=pMem[i*MEM_SIZE+(pType[j]&7)]*k;}break; // CASTE_MEM_READ — full parity
       case 171:{pMem[i*MEM_SIZE+(pType[j]&7)]=Math.max(-8,Math.min(8,vmRegs[si]));vmRegs[di]=vmRegs[si];}break; // CASTE_MEM_WRITE — full parity
+      case 172:{vmRegs[di]=(pProg[i]?pProg[i].length:0)*k;}break; // GENOME_LENGTH — full parity
+      case 173:{vmRegs[di]=(pProg[j]?pProg[j].length:0)*k;}break; // PARTNER_GENOME_LENGTH — full parity
+      case 174:{const _ix174c=Math.max(0,Math.min(FIELD_W-1,Math.floor(px[j]/(W/FIELD_W)))),_iy174c=Math.max(0,Math.min(FIELD_H-1,Math.floor(py[j]/(H/FIELD_H)))),_ii174c=_iy174c*FIELD_W+_ix174c;const _ia174c=Math.abs(vmRegs[si]*k)*0.3;signalField[_ii174c]=Math.min(3,signalField[_ii174c]+_ia174c);vmRegs[di]=_ia174c;}break; // INJECT_SIGNAL — full parity
     }
     if(op>=CORE_OPCODES&&op<CORE_OPCODES+MAX_BOUND_OPCODES){
       const _bos=genome.boundOpcodes;
@@ -16165,6 +16177,9 @@ function executeSoloVM(){
         case 169:{const _rx169s=Math.max(0,Math.min(FIELD_W-1,Math.floor(px[i]/(W/FIELD_W)))),_ry169s=Math.max(0,Math.min(FIELD_H-1,Math.floor(py[i]/(H/FIELD_H))));vmRegs[di]=rootField[_ry169s*FIELD_W+_rx169s]*k;}break; // ROOT_SENSE — full parity (solo particles benefit equally from sensing built infrastructure)
         case 170:{vmRegs[di]=0;}break; // CASTE_MEM_READ — NOP in solo context (no partner caste to index)
         case 171:{vmRegs[di]=0;}break; // CASTE_MEM_WRITE — NOP in solo context (no partner caste to index)
+        case 172:{vmRegs[di]=(pProg[i]?pProg[i].length:0)*k;}break; // GENOME_LENGTH — full parity (solo particles also benefit from complexity self-sensing)
+        case 173:{vmRegs[di]=0;}break; // PARTNER_GENOME_LENGTH — NOP in solo context (no partner)
+        case 174:{vmRegs[di]=0;}break; // INJECT_SIGNAL — NOP in solo context (no partner position)
       }
       if(op>=CORE_OPCODES&&op<CORE_OPCODES+MAX_BOUND_OPCODES){
         const _bos=genome.boundOpcodes;
