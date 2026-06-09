@@ -273,7 +273,7 @@ const MAX_BOUND_OPCODES=32; // UNLOCKED #7b: was 16. Wider namespace for system-
 // Bumping CORE_OPCODES is the ONLY edit needed to add a core opcode — the bound guards
 // (op>=CORE_OPCODES) and OPCODE_COUNT derive from it, so a boundary typo can no longer
 // orphan an opcode or collide a core op with a bound slot (the Pe60 / op142-class bug).
-const CORE_OPCODES=163; // 0..162 core — op147-160 (chemotaxis/signaling stack), op161 TERRITORY_VACANCY (open-patch sensing for succession), op162 ROOT_WRITE (niche construction: build shared substrate)
+const CORE_OPCODES=165; // 0..164 core — op147-162 (chemotaxis/signaling/succession stack), op163 RANDOM_NOISE (evolved stochasticity/bet-hedging), op164 PARTNER_RES_SENSE (optimal foraging / partner energy perception)
                         // 0..132 core — op132 SEASON_PHASE: perceive the current feast/famine cycle position
                         // 0..131 core — op131 ENERGY_STRESS: the system perceives conserved-budget scarcity
                         // 0..130 core — OPENED THE SWITCH: op128 READ_OWN_CASTE, op129 READ_PARTNER_CASTE,
@@ -8689,6 +8689,8 @@ function profileVM(){
         case 160:vmRegs[di]=0*(k||1);break; // SIGNAL_GRAD_Y profiler stub — flat signal field during profiling
         case 161:vmRegs[di]=1*(k||1);break; // TERRITORY_VACANCY profiler stub — return 1 (all territory vacant during profiling)
         case 162:vmRegs[di]=0*(k||1);break; // ROOT_WRITE profiler stub — no substrate modification during profiling
+        case 163:vmRegs[di]=0*(k||1);break; // RANDOM_NOISE profiler stub — zero (deterministic profiler)
+        case 164:vmRegs[di]=0*(k||1);break; // PARTNER_RES_SENSE profiler stub — zero (no partner during profiling)
       }
       if(op>=CORE_OPCODES&&op<CORE_OPCODES+MAX_BOUND_OPCODES){
         const _bos=genome.boundOpcodes;
@@ -13311,6 +13313,8 @@ function executeVM(i,j,sim,d){
       case 160:{const _sgx160=Math.max(1,Math.min(FIELD_W-2,Math.floor(px[i]/(W/FIELD_W)))),_sgy160=Math.max(1,Math.min(FIELD_H-2,Math.floor(py[i]/(H/FIELD_H))));vmRegs[di]=(signalField[(_sgy160+1)*FIELD_W+_sgx160]-signalField[(_sgy160-1)*FIELD_W+_sgx160])*0.5*k;}break; // SIGNAL_GRAD_Y — pheromone gradient in Y. With SIGNAL_GRAD_X enables full 2D chemical navigation: trail following, alarm dispersal, resource broadcast tracking. The full chemical ecology stack is now: emit(157) → diffuse(updateField) → sense(158) → navigate(159,160).
       case 161:{const _tvx161=Math.max(0,Math.min(FIELD_W-1,Math.floor(px[i]/(W/FIELD_W)))),_tvy161=Math.max(0,Math.min(FIELD_H-1,Math.floor(py[i]/(H/FIELD_H))));vmRegs[di]=Math.max(0,1-Math.abs(towerTerritoryField[_tvy161*FIELD_W+_tvx161]))*k;}break; // TERRITORY_VACANCY — perceive how unclaimed this cell is (1=fully open, 0=fully contested). Enables ecological succession: when dominant lineages go extinct, territory becomes vacant; coloniser lineages sense the opening and migrate in. Pioneer vs. climax community strategies emerge: pioneers sense vacancy and rush in, climax species wait until structure is established.
       case 162:{const _rwx162=Math.max(0,Math.min(FIELD_W-1,Math.floor(px[i]/(W/FIELD_W)))),_rwy162=Math.max(0,Math.min(FIELD_H-1,Math.floor(py[i]/(H/FIELD_H)))),_rwi162=_rwy162*FIELD_W+_rwx162;const _rwa162=Math.min(localRes[i],Math.abs(vmRegs[si]*k)*0.05);rootField[_rwi162]=Math.min(5,rootField[_rwi162]+_rwa162);localRes[i]-=_rwa162;vmRegs[di]=rootField[_rwi162];}break; // ROOT_WRITE — invest own energy into the local root network (niche construction). Costs localRes; builds shared substrate that benefits kin and descendants. Selects for ecosystem engineers: lineages that build lasting infrastructure gain inclusive fitness, even at individual cost. Root investment → denser root network → better offspring survival → root-writing gene spreads.
+      case 163:{vmRegs[di]=(Math.random()-0.5)*2*k;}break; // RANDOM_NOISE — inject pure stochasticity into vmRegs[di]. The first opcode that makes the VM itself non-deterministic. Enables: evolved bet-hedging (programs that add noise to their outputs hedge against unpredictable environments), mixed strategies (Nash equilibrium strategies in repeated games require randomisation — previously unachievable with deterministic programs), stochastic gene expression (lineages can evolve probabilistic phenotype switching). Stochastic programs can OUTPERFORM deterministic ones when the environment is unpredictable or when opponents model your behavior.
+      case 164:{vmRegs[di]=Math.min(2,localRes[j])*k;}break; // PARTNER_RES_SENSE — perceive the interaction partner's resource level (0=depleted, →2=rich). Enables optimal foraging decisions: predators (op155) target rich prey; mutualists (op156) preferentially aid resource-poor kin; defectors exploit resource-rich partners who can afford the loss. Creates frequency-dependent fitness dynamics: rich particles become preferred targets, driving cycling between resource-accumulation and depletion strategies.
     }
     // BOUND-OPCODE BOUNDARY (Pe60-class fix, now single-sourced via CORE_OPCODES).
     // History: the guard once read op>=126 (boi=op-126), which (a) collided with core
@@ -14349,6 +14353,8 @@ function executeVM(i,j,sim,d){
         case 160:{const _sgx160p=Math.max(1,Math.min(FIELD_W-2,Math.floor(px[i]/(W/FIELD_W)))),_sgy160p=Math.max(1,Math.min(FIELD_H-2,Math.floor(py[i]/(H/FIELD_H))));vmRegs[di]=(signalField[(_sgy160p+1)*FIELD_W+_sgx160p]-signalField[(_sgy160p-1)*FIELD_W+_sgx160p])*0.5*k;}break; // SIGNAL_GRAD_Y — full parity
         case 161:{const _tvx161p=Math.max(0,Math.min(FIELD_W-1,Math.floor(px[i]/(W/FIELD_W)))),_tvy161p=Math.max(0,Math.min(FIELD_H-1,Math.floor(py[i]/(H/FIELD_H))));vmRegs[di]=Math.max(0,1-Math.abs(towerTerritoryField[_tvy161p*FIELD_W+_tvx161p]))*k;}break; // TERRITORY_VACANCY — full parity
         case 162:{const _rwx162p=Math.max(0,Math.min(FIELD_W-1,Math.floor(px[i]/(W/FIELD_W)))),_rwy162p=Math.max(0,Math.min(FIELD_H-1,Math.floor(py[i]/(H/FIELD_H)))),_rwi162p=_rwy162p*FIELD_W+_rwx162p;const _rwa162p=Math.min(localRes[i],Math.abs(vmRegs[si]*k)*0.05);rootField[_rwi162p]=Math.min(5,rootField[_rwi162p]+_rwa162p);localRes[i]-=_rwa162p;vmRegs[di]=rootField[_rwi162p];}break; // ROOT_WRITE — full parity
+        case 163:{vmRegs[di]=(Math.random()-0.5)*2*k;}break; // RANDOM_NOISE — full parity
+        case 164:{vmRegs[di]=Math.min(2,localRes[j])*k;}break; // PARTNER_RES_SENSE — full parity
       }
       if(op>=CORE_OPCODES&&op<CORE_OPCODES+MAX_BOUND_OPCODES){
         const _bos=genome.boundOpcodes;
@@ -15512,6 +15518,8 @@ function executeClusterVM(i,j,sim,d){
       case 160:{const _sgx160c=Math.max(1,Math.min(FIELD_W-2,Math.floor(px[i]/(W/FIELD_W)))),_sgy160c=Math.max(1,Math.min(FIELD_H-2,Math.floor(py[i]/(H/FIELD_H))));vmRegs[di]=(signalField[(_sgy160c+1)*FIELD_W+_sgx160c]-signalField[(_sgy160c-1)*FIELD_W+_sgx160c])*0.5*k;}break; // SIGNAL_GRAD_Y — full parity
       case 161:{const _tvx161c=Math.max(0,Math.min(FIELD_W-1,Math.floor(px[i]/(W/FIELD_W)))),_tvy161c=Math.max(0,Math.min(FIELD_H-1,Math.floor(py[i]/(H/FIELD_H))));vmRegs[di]=Math.max(0,1-Math.abs(towerTerritoryField[_tvy161c*FIELD_W+_tvx161c]))*k;}break; // TERRITORY_VACANCY — full parity
       case 162:{const _rwx162c=Math.max(0,Math.min(FIELD_W-1,Math.floor(px[i]/(W/FIELD_W)))),_rwy162c=Math.max(0,Math.min(FIELD_H-1,Math.floor(py[i]/(H/FIELD_H)))),_rwi162c=_rwy162c*FIELD_W+_rwx162c;const _rwa162c=Math.min(localRes[i],Math.abs(vmRegs[si]*k)*0.05);rootField[_rwi162c]=Math.min(5,rootField[_rwi162c]+_rwa162c);localRes[i]-=_rwa162c;vmRegs[di]=rootField[_rwi162c];}break; // ROOT_WRITE — full parity
+      case 163:{vmRegs[di]=(Math.random()-0.5)*2*k;}break; // RANDOM_NOISE — full parity
+      case 164:{vmRegs[di]=Math.min(2,localRes[j])*k;}break; // PARTNER_RES_SENSE — full parity
     }
     if(op>=CORE_OPCODES&&op<CORE_OPCODES+MAX_BOUND_OPCODES){
       const _bos=genome.boundOpcodes;
@@ -16120,6 +16128,8 @@ function executeSoloVM(){
         case 160:{const _sgx160s=Math.max(1,Math.min(FIELD_W-2,Math.floor(px[i]/(W/FIELD_W)))),_sgy160s=Math.max(1,Math.min(FIELD_H-2,Math.floor(py[i]/(H/FIELD_H))));vmRegs[di]=(signalField[(_sgy160s+1)*FIELD_W+_sgx160s]-signalField[(_sgy160s-1)*FIELD_W+_sgx160s])*0.5*k;}break; // SIGNAL_GRAD_Y — full parity
         case 161:{const _tvx161s=Math.max(0,Math.min(FIELD_W-1,Math.floor(px[i]/(W/FIELD_W)))),_tvy161s=Math.max(0,Math.min(FIELD_H-1,Math.floor(py[i]/(H/FIELD_H))));vmRegs[di]=Math.max(0,1-Math.abs(towerTerritoryField[_tvy161s*FIELD_W+_tvx161s]))*k;}break; // TERRITORY_VACANCY — full parity
         case 162:{const _rwx162s=Math.max(0,Math.min(FIELD_W-1,Math.floor(px[i]/(W/FIELD_W)))),_rwy162s=Math.max(0,Math.min(FIELD_H-1,Math.floor(py[i]/(H/FIELD_H)))),_rwi162s=_rwy162s*FIELD_W+_rwx162s;const _rwa162s=Math.min(localRes[i],Math.abs(vmRegs[si]*k)*0.05);rootField[_rwi162s]=Math.min(5,rootField[_rwi162s]+_rwa162s);localRes[i]-=_rwa162s;vmRegs[di]=rootField[_rwi162s];}break; // ROOT_WRITE — full parity
+        case 163:{vmRegs[di]=(Math.random()-0.5)*2*k;}break; // RANDOM_NOISE — full parity (solo particles also benefit from stochastic strategies)
+        case 164:{vmRegs[di]=0;}break; // PARTNER_RES_SENSE — NOP in solo context (no partner)
       }
       if(op>=CORE_OPCODES&&op<CORE_OPCODES+MAX_BOUND_OPCODES){
         const _bos=genome.boundOpcodes;
