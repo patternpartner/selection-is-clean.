@@ -273,7 +273,7 @@ const MAX_BOUND_OPCODES=32; // UNLOCKED #7b: was 16. Wider namespace for system-
 // Bumping CORE_OPCODES is the ONLY edit needed to add a core opcode — the bound guards
 // (op>=CORE_OPCODES) and OPCODE_COUNT derive from it, so a boundary typo can no longer
 // orphan an opcode or collide a core op with a bound slot (the Pe60 / op142-class bug).
-const CORE_OPCODES=155; // 0..154 core — op147-148 FIELD_GRAD_X/Y (chemotaxis), op149-150 DETRITAL_GRAD_X/Y (decomposer navigation), op151 PROG_LENGTH_SENSE, op152 RECOMBINE (horizontal gene transfer), op153 PROG_TRIM (genome economy), op154 MUT_RATE_SET (evolvable evolvability / SOS response)
+const CORE_OPCODES=157; // 0..156 core — op147-148 FIELD_GRAD_X/Y, op149-150 DETRITAL_GRAD_X/Y, op151 PROG_LENGTH_SENSE, op152 RECOMBINE, op153 PROG_TRIM, op154 MUT_RATE_SET, op155 ENERGY_DRAIN (predation), op156 ENERGY_DONATE (mutualism)
                         // 0..132 core — op132 SEASON_PHASE: perceive the current feast/famine cycle position
                         // 0..131 core — op131 ENERGY_STRESS: the system perceives conserved-budget scarcity
                         // 0..130 core — OPENED THE SWITCH: op128 READ_OWN_CASTE, op129 READ_PARTNER_CASTE,
@@ -8670,6 +8670,8 @@ function profileVM(){
         case 152:vmRegs[di]=0*(k||1);break; // RECOMBINE profiler stub — no partner during profiling
         case 153:vmRegs[di]=0*(k||1);break; // PROG_TRIM profiler stub — profiler does not modify programs
         case 154:vmRegs[di]=0*(k||1);break; // MUT_RATE_SET profiler stub — no mutation during profiling
+        case 155:vmRegs[di]=0*(k||1);break; // ENERGY_DRAIN profiler stub — no live partners during profiling
+        case 156:vmRegs[di]=0*(k||1);break; // ENERGY_DONATE profiler stub — no live partners during profiling
       }
       if(op>=CORE_OPCODES&&op<CORE_OPCODES+MAX_BOUND_OPCODES){
         const _bos=genome.boundOpcodes;
@@ -13279,6 +13281,8 @@ function executeVM(i,j,sim,d){
       case 152:{if(pProg[i]&&pProg[j]&&pProg[j].length>0&&localRes[i]>0.15){const _segLen152=Math.min(2,Math.floor(Math.random()*3)+1);const _segSrc152=Math.floor(Math.random()*pProg[j].length);const _seg152=pProg[j].slice(_segSrc152,_segSrc152+_segLen152);const _dstPos152=Math.floor(Math.random()*(pProg[i].length+1));pProg[i].splice(_dstPos152,0,..._seg152);const _maxLen152=Math.min(genome.vmMaxInstructions||16,24);while(pProg[i].length>_maxLen152)pProg[i].pop();localRes[i]-=0.15;vmRegs[di]=pProg[i].length;}else{vmRegs[di]=0;}}break; // RECOMBINE — splice a segment from partner's program into own; evolves de-novo horizontal gene transfer of proven sub-routines. Combinatorial novelty explodes relative to point mutation alone: entire functional modules can propagate laterally through a population in a single interaction.
       case 153:{if(pProg[i]&&pProg[i].length>1){pProg[i].pop();localRes[i]=Math.min(2,localRes[i]+0.02);vmRegs[di]=pProg[i].length;}else{vmRegs[di]=0;}}break; // PROG_TRIM — remove last instruction from own program; counter-force to PROG_GROW; enables genome economy via selection (shorter programs pay less metabolic cost per tick). PROG_GROW and PROG_TRIM together create genome-length homeostasis as an evolved property.
       case 154:{if(pGenome[i])pGenome[i].innovationRate=Math.max(0,Math.min(0.06,Math.abs(vmRegs[si]*k)));vmRegs[di]=pGenome[i]?pGenome[i].innovationRate:0;}break; // MUT_RATE_SET — self-modify own innovation rate bounded [0..0.06]. Particles under resource stress can evolve hypermutation (SOS response); stable well-fed particles can evolve near-zero rate (error minimisation). Evolvability itself becomes a heritable, selectable trait — second-order evolution.
+      case 155:{if(vmRegs[si]>k&&localRes[j]>0.1){const _dr155=Math.min(Math.abs(vmRegs[si])*0.1,localRes[j]*0.2);localRes[j]-=_dr155;localRes[i]=Math.min(2,localRes[i]+_dr155*0.8);vmRegs[di]=_dr155;}else{vmRegs[di]=0;}}break; // ENERGY_DRAIN — steal energy from interaction partner (predation). Capped at 20% of partner's reserves per interaction; 20% metabolic tax on transfer. Creates genuine Lotka-Volterra predator-prey dynamics: prey evolve evasion/defence; predators evolve efficient drain timing. Third trophic level in the food web.
+      case 156:{if(vmRegs[si]>k&&localRes[i]>0.2){const _gf156=Math.min(Math.abs(vmRegs[si])*0.08,localRes[i]*0.15);localRes[i]-=_gf156;localRes[j]=Math.min(2,localRes[j]+_gf156);vmRegs[di]=_gf156;}else{vmRegs[di]=0;}}break; // ENERGY_DONATE — gift energy to interaction partner (mutualism/cooperation). Capped at 15% of own reserves. Closes the ecological interaction spectrum from pure predation (op155) through neutrality to pure mutualism. Kin-selection and reciprocal altruism become evolvable without hard-coding: a lineage that donates to kin (same caste/territory) while draining non-kin evolves inclusive-fitness optima on its own.
     }
     // BOUND-OPCODE BOUNDARY (Pe60-class fix, now single-sourced via CORE_OPCODES).
     // History: the guard once read op>=126 (boi=op-126), which (a) collided with core
@@ -14309,6 +14313,8 @@ function executeVM(i,j,sim,d){
         case 152:{if(pProg[i]&&pProg[j]&&pProg[j].length>0&&localRes[i]>0.15){const _segLen152p=Math.min(2,Math.floor(Math.random()*3)+1);const _segSrc152p=Math.floor(Math.random()*pProg[j].length);const _seg152p=pProg[j].slice(_segSrc152p,_segSrc152p+_segLen152p);const _dstPos152p=Math.floor(Math.random()*(pProg[i].length+1));pProg[i].splice(_dstPos152p,0,..._seg152p);const _maxLen152p=Math.min(genome.vmMaxInstructions||16,24);while(pProg[i].length>_maxLen152p)pProg[i].pop();localRes[i]-=0.15;vmRegs[di]=pProg[i].length;}else{vmRegs[di]=0;}}break; // RECOMBINE — full parity
         case 153:{if(pProg[i]&&pProg[i].length>1){pProg[i].pop();localRes[i]=Math.min(2,localRes[i]+0.02);vmRegs[di]=pProg[i].length;}else{vmRegs[di]=0;}}break; // PROG_TRIM — full parity
         case 154:{if(pGenome[i])pGenome[i].innovationRate=Math.max(0,Math.min(0.06,Math.abs(vmRegs[si]*k)));vmRegs[di]=pGenome[i]?pGenome[i].innovationRate:0;}break; // MUT_RATE_SET — full parity
+        case 155:{if(vmRegs[si]>k&&localRes[j]>0.1){const _dr155p=Math.min(Math.abs(vmRegs[si])*0.1,localRes[j]*0.2);localRes[j]-=_dr155p;localRes[i]=Math.min(2,localRes[i]+_dr155p*0.8);vmRegs[di]=_dr155p;}else{vmRegs[di]=0;}}break; // ENERGY_DRAIN — full parity
+        case 156:{if(vmRegs[si]>k&&localRes[i]>0.2){const _gf156p=Math.min(Math.abs(vmRegs[si])*0.08,localRes[i]*0.15);localRes[i]-=_gf156p;localRes[j]=Math.min(2,localRes[j]+_gf156p);vmRegs[di]=_gf156p;}else{vmRegs[di]=0;}}break; // ENERGY_DONATE — full parity
       }
       if(op>=CORE_OPCODES&&op<CORE_OPCODES+MAX_BOUND_OPCODES){
         const _bos=genome.boundOpcodes;
@@ -15464,6 +15470,8 @@ function executeClusterVM(i,j,sim,d){
       case 152:{if(pProg[i]&&pProg[j]&&pProg[j].length>0&&localRes[i]>0.15){const _segLen152c=Math.min(2,Math.floor(Math.random()*3)+1);const _segSrc152c=Math.floor(Math.random()*pProg[j].length);const _seg152c=pProg[j].slice(_segSrc152c,_segSrc152c+_segLen152c);const _dstPos152c=Math.floor(Math.random()*(pProg[i].length+1));pProg[i].splice(_dstPos152c,0,..._seg152c);const _maxLen152c=Math.min(genome.vmMaxInstructions||16,24);while(pProg[i].length>_maxLen152c)pProg[i].pop();localRes[i]-=0.15;vmRegs[di]=pProg[i].length;}else{vmRegs[di]=0;}}break; // RECOMBINE — full parity
       case 153:{if(pProg[i]&&pProg[i].length>1){pProg[i].pop();localRes[i]=Math.min(2,localRes[i]+0.02);vmRegs[di]=pProg[i].length;}else{vmRegs[di]=0;}}break; // PROG_TRIM — full parity
       case 154:{if(pGenome[i])pGenome[i].innovationRate=Math.max(0,Math.min(0.06,Math.abs(vmRegs[si]*k)));vmRegs[di]=pGenome[i]?pGenome[i].innovationRate:0;}break; // MUT_RATE_SET — full parity
+      case 155:{if(vmRegs[si]>k&&localRes[j]>0.1){const _dr155c=Math.min(Math.abs(vmRegs[si])*0.1,localRes[j]*0.2);localRes[j]-=_dr155c;localRes[i]=Math.min(2,localRes[i]+_dr155c*0.8);vmRegs[di]=_dr155c;}else{vmRegs[di]=0;}}break; // ENERGY_DRAIN — full parity
+      case 156:{if(vmRegs[si]>k&&localRes[i]>0.2){const _gf156c=Math.min(Math.abs(vmRegs[si])*0.08,localRes[i]*0.15);localRes[i]-=_gf156c;localRes[j]=Math.min(2,localRes[j]+_gf156c);vmRegs[di]=_gf156c;}else{vmRegs[di]=0;}}break; // ENERGY_DONATE — full parity
     }
     if(op>=CORE_OPCODES&&op<CORE_OPCODES+MAX_BOUND_OPCODES){
       const _bos=genome.boundOpcodes;
@@ -16064,6 +16072,8 @@ function executeSoloVM(){
         case 152:{vmRegs[di]=0;}break; // RECOMBINE — NOP in solo context (no interaction partner)
         case 153:{if(pProg[i]&&pProg[i].length>1){pProg[i].pop();localRes[i]=Math.min(2,localRes[i]+0.02);vmRegs[di]=pProg[i].length;}else{vmRegs[di]=0;}}break; // PROG_TRIM — full parity
         case 154:{if(pGenome[i])pGenome[i].innovationRate=Math.max(0,Math.min(0.06,Math.abs(vmRegs[si]*k)));vmRegs[di]=pGenome[i]?pGenome[i].innovationRate:0;}break; // MUT_RATE_SET — full parity
+        case 155:{vmRegs[di]=0;}break; // ENERGY_DRAIN — NOP in solo context (no interaction partner)
+        case 156:{vmRegs[di]=0;}break; // ENERGY_DONATE — NOP in solo context (no interaction partner)
       }
       if(op>=CORE_OPCODES&&op<CORE_OPCODES+MAX_BOUND_OPCODES){
         const _bos=genome.boundOpcodes;
