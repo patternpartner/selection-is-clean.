@@ -273,7 +273,7 @@ const MAX_BOUND_OPCODES=32; // UNLOCKED #7b: was 16. Wider namespace for system-
 // Bumping CORE_OPCODES is the ONLY edit needed to add a core opcode — the bound guards
 // (op>=CORE_OPCODES) and OPCODE_COUNT derive from it, so a boundary typo can no longer
 // orphan an opcode or collide a core op with a bound slot (the Pe60 / op142-class bug).
-const CORE_OPCODES=161; // 0..160 core — op147-150 chemotaxis/detrital gradients, op151 PROG_LENGTH_SENSE, op152 RECOMBINE, op153 PROG_TRIM, op154 MUT_RATE_SET, op155 ENERGY_DRAIN, op156 ENERGY_DONATE, op157 SIGNAL_EMIT, op158 SIGNAL_SENSE, op159 SIGNAL_GRAD_X, op160 SIGNAL_GRAD_Y
+const CORE_OPCODES=163; // 0..162 core — op147-160 (chemotaxis/signaling stack), op161 TERRITORY_VACANCY (open-patch sensing for succession), op162 ROOT_WRITE (niche construction: build shared substrate)
                         // 0..132 core — op132 SEASON_PHASE: perceive the current feast/famine cycle position
                         // 0..131 core — op131 ENERGY_STRESS: the system perceives conserved-budget scarcity
                         // 0..130 core — OPENED THE SWITCH: op128 READ_OWN_CASTE, op129 READ_PARTNER_CASTE,
@@ -8677,6 +8677,8 @@ function profileVM(){
         case 158:vmRegs[di]=0*(k||1);break; // SIGNAL_SENSE profiler stub — zero (no signals during profiling)
         case 159:vmRegs[di]=0*(k||1);break; // SIGNAL_GRAD_X profiler stub — flat signal field during profiling
         case 160:vmRegs[di]=0*(k||1);break; // SIGNAL_GRAD_Y profiler stub — flat signal field during profiling
+        case 161:vmRegs[di]=1*(k||1);break; // TERRITORY_VACANCY profiler stub — return 1 (all territory vacant during profiling)
+        case 162:vmRegs[di]=0*(k||1);break; // ROOT_WRITE profiler stub — no substrate modification during profiling
       }
       if(op>=CORE_OPCODES&&op<CORE_OPCODES+MAX_BOUND_OPCODES){
         const _bos=genome.boundOpcodes;
@@ -13293,6 +13295,8 @@ function executeVM(i,j,sim,d){
       case 158:{const _sfx158=Math.max(0,Math.min(FIELD_W-1,Math.floor(px[i]/(W/FIELD_W)))),_sfy158=Math.max(0,Math.min(FIELD_H-1,Math.floor(py[i]/(H/FIELD_H))));vmRegs[di]=Math.min(3,signalField[_sfy158*FIELD_W+_sfx158])*k;}break; // SIGNAL_SENSE — read local pheromone signal. Paired with SIGNAL_EMIT: evolved lineages can author communication protocols — the signal meaning is not pre-assigned; whatever coding convention is evolutionarily stable becomes the de-facto language of the population.
       case 159:{const _sgx159=Math.max(1,Math.min(FIELD_W-2,Math.floor(px[i]/(W/FIELD_W)))),_sgy159=Math.max(1,Math.min(FIELD_H-2,Math.floor(py[i]/(H/FIELD_H))));vmRegs[di]=(signalField[_sgy159*FIELD_W+_sgx159+1]-signalField[_sgy159*FIELD_W+_sgx159-1])*0.5*k;}break; // SIGNAL_GRAD_X — pheromone gradient in X; enables navigation toward signal sources (forager trails, alarm sources, territorial markers). Completes the chemical communication navigation pair.
       case 160:{const _sgx160=Math.max(1,Math.min(FIELD_W-2,Math.floor(px[i]/(W/FIELD_W)))),_sgy160=Math.max(1,Math.min(FIELD_H-2,Math.floor(py[i]/(H/FIELD_H))));vmRegs[di]=(signalField[(_sgy160+1)*FIELD_W+_sgx160]-signalField[(_sgy160-1)*FIELD_W+_sgx160])*0.5*k;}break; // SIGNAL_GRAD_Y — pheromone gradient in Y. With SIGNAL_GRAD_X enables full 2D chemical navigation: trail following, alarm dispersal, resource broadcast tracking. The full chemical ecology stack is now: emit(157) → diffuse(updateField) → sense(158) → navigate(159,160).
+      case 161:{const _tvx161=Math.max(0,Math.min(FIELD_W-1,Math.floor(px[i]/(W/FIELD_W)))),_tvy161=Math.max(0,Math.min(FIELD_H-1,Math.floor(py[i]/(H/FIELD_H))));vmRegs[di]=Math.max(0,1-Math.abs(towerTerritoryField[_tvy161*FIELD_W+_tvx161]))*k;}break; // TERRITORY_VACANCY — perceive how unclaimed this cell is (1=fully open, 0=fully contested). Enables ecological succession: when dominant lineages go extinct, territory becomes vacant; coloniser lineages sense the opening and migrate in. Pioneer vs. climax community strategies emerge: pioneers sense vacancy and rush in, climax species wait until structure is established.
+      case 162:{const _rwx162=Math.max(0,Math.min(FIELD_W-1,Math.floor(px[i]/(W/FIELD_W)))),_rwy162=Math.max(0,Math.min(FIELD_H-1,Math.floor(py[i]/(H/FIELD_H)))),_rwi162=_rwy162*FIELD_W+_rwx162;const _rwa162=Math.min(localRes[i],Math.abs(vmRegs[si]*k)*0.05);rootField[_rwi162]=Math.min(5,rootField[_rwi162]+_rwa162);localRes[i]-=_rwa162;vmRegs[di]=rootField[_rwi162];}break; // ROOT_WRITE — invest own energy into the local root network (niche construction). Costs localRes; builds shared substrate that benefits kin and descendants. Selects for ecosystem engineers: lineages that build lasting infrastructure gain inclusive fitness, even at individual cost. Root investment → denser root network → better offspring survival → root-writing gene spreads.
     }
     // BOUND-OPCODE BOUNDARY (Pe60-class fix, now single-sourced via CORE_OPCODES).
     // History: the guard once read op>=126 (boi=op-126), which (a) collided with core
@@ -14329,6 +14333,8 @@ function executeVM(i,j,sim,d){
         case 158:{const _sfx158p=Math.max(0,Math.min(FIELD_W-1,Math.floor(px[i]/(W/FIELD_W)))),_sfy158p=Math.max(0,Math.min(FIELD_H-1,Math.floor(py[i]/(H/FIELD_H))));vmRegs[di]=Math.min(3,signalField[_sfy158p*FIELD_W+_sfx158p])*k;}break; // SIGNAL_SENSE — full parity
         case 159:{const _sgx159p=Math.max(1,Math.min(FIELD_W-2,Math.floor(px[i]/(W/FIELD_W)))),_sgy159p=Math.max(1,Math.min(FIELD_H-2,Math.floor(py[i]/(H/FIELD_H))));vmRegs[di]=(signalField[_sgy159p*FIELD_W+_sgx159p+1]-signalField[_sgy159p*FIELD_W+_sgx159p-1])*0.5*k;}break; // SIGNAL_GRAD_X — full parity
         case 160:{const _sgx160p=Math.max(1,Math.min(FIELD_W-2,Math.floor(px[i]/(W/FIELD_W)))),_sgy160p=Math.max(1,Math.min(FIELD_H-2,Math.floor(py[i]/(H/FIELD_H))));vmRegs[di]=(signalField[(_sgy160p+1)*FIELD_W+_sgx160p]-signalField[(_sgy160p-1)*FIELD_W+_sgx160p])*0.5*k;}break; // SIGNAL_GRAD_Y — full parity
+        case 161:{const _tvx161p=Math.max(0,Math.min(FIELD_W-1,Math.floor(px[i]/(W/FIELD_W)))),_tvy161p=Math.max(0,Math.min(FIELD_H-1,Math.floor(py[i]/(H/FIELD_H))));vmRegs[di]=Math.max(0,1-Math.abs(towerTerritoryField[_tvy161p*FIELD_W+_tvx161p]))*k;}break; // TERRITORY_VACANCY — full parity
+        case 162:{const _rwx162p=Math.max(0,Math.min(FIELD_W-1,Math.floor(px[i]/(W/FIELD_W)))),_rwy162p=Math.max(0,Math.min(FIELD_H-1,Math.floor(py[i]/(H/FIELD_H)))),_rwi162p=_rwy162p*FIELD_W+_rwx162p;const _rwa162p=Math.min(localRes[i],Math.abs(vmRegs[si]*k)*0.05);rootField[_rwi162p]=Math.min(5,rootField[_rwi162p]+_rwa162p);localRes[i]-=_rwa162p;vmRegs[di]=rootField[_rwi162p];}break; // ROOT_WRITE — full parity
       }
       if(op>=CORE_OPCODES&&op<CORE_OPCODES+MAX_BOUND_OPCODES){
         const _bos=genome.boundOpcodes;
@@ -15490,6 +15496,8 @@ function executeClusterVM(i,j,sim,d){
       case 158:{const _sfx158c=Math.max(0,Math.min(FIELD_W-1,Math.floor(px[i]/(W/FIELD_W)))),_sfy158c=Math.max(0,Math.min(FIELD_H-1,Math.floor(py[i]/(H/FIELD_H))));vmRegs[di]=Math.min(3,signalField[_sfy158c*FIELD_W+_sfx158c])*k;}break; // SIGNAL_SENSE — full parity
       case 159:{const _sgx159c=Math.max(1,Math.min(FIELD_W-2,Math.floor(px[i]/(W/FIELD_W)))),_sgy159c=Math.max(1,Math.min(FIELD_H-2,Math.floor(py[i]/(H/FIELD_H))));vmRegs[di]=(signalField[_sgy159c*FIELD_W+_sgx159c+1]-signalField[_sgy159c*FIELD_W+_sgx159c-1])*0.5*k;}break; // SIGNAL_GRAD_X — full parity
       case 160:{const _sgx160c=Math.max(1,Math.min(FIELD_W-2,Math.floor(px[i]/(W/FIELD_W)))),_sgy160c=Math.max(1,Math.min(FIELD_H-2,Math.floor(py[i]/(H/FIELD_H))));vmRegs[di]=(signalField[(_sgy160c+1)*FIELD_W+_sgx160c]-signalField[(_sgy160c-1)*FIELD_W+_sgx160c])*0.5*k;}break; // SIGNAL_GRAD_Y — full parity
+      case 161:{const _tvx161c=Math.max(0,Math.min(FIELD_W-1,Math.floor(px[i]/(W/FIELD_W)))),_tvy161c=Math.max(0,Math.min(FIELD_H-1,Math.floor(py[i]/(H/FIELD_H))));vmRegs[di]=Math.max(0,1-Math.abs(towerTerritoryField[_tvy161c*FIELD_W+_tvx161c]))*k;}break; // TERRITORY_VACANCY — full parity
+      case 162:{const _rwx162c=Math.max(0,Math.min(FIELD_W-1,Math.floor(px[i]/(W/FIELD_W)))),_rwy162c=Math.max(0,Math.min(FIELD_H-1,Math.floor(py[i]/(H/FIELD_H)))),_rwi162c=_rwy162c*FIELD_W+_rwx162c;const _rwa162c=Math.min(localRes[i],Math.abs(vmRegs[si]*k)*0.05);rootField[_rwi162c]=Math.min(5,rootField[_rwi162c]+_rwa162c);localRes[i]-=_rwa162c;vmRegs[di]=rootField[_rwi162c];}break; // ROOT_WRITE — full parity
     }
     if(op>=CORE_OPCODES&&op<CORE_OPCODES+MAX_BOUND_OPCODES){
       const _bos=genome.boundOpcodes;
@@ -16096,6 +16104,8 @@ function executeSoloVM(){
         case 158:{const _sfx158s=Math.max(0,Math.min(FIELD_W-1,Math.floor(px[i]/(W/FIELD_W)))),_sfy158s=Math.max(0,Math.min(FIELD_H-1,Math.floor(py[i]/(H/FIELD_H))));vmRegs[di]=Math.min(3,signalField[_sfy158s*FIELD_W+_sfx158s])*k;}break; // SIGNAL_SENSE — full parity
         case 159:{const _sgx159s=Math.max(1,Math.min(FIELD_W-2,Math.floor(px[i]/(W/FIELD_W)))),_sgy159s=Math.max(1,Math.min(FIELD_H-2,Math.floor(py[i]/(H/FIELD_H))));vmRegs[di]=(signalField[_sgy159s*FIELD_W+_sgx159s+1]-signalField[_sgy159s*FIELD_W+_sgx159s-1])*0.5*k;}break; // SIGNAL_GRAD_X — full parity
         case 160:{const _sgx160s=Math.max(1,Math.min(FIELD_W-2,Math.floor(px[i]/(W/FIELD_W)))),_sgy160s=Math.max(1,Math.min(FIELD_H-2,Math.floor(py[i]/(H/FIELD_H))));vmRegs[di]=(signalField[(_sgy160s+1)*FIELD_W+_sgx160s]-signalField[(_sgy160s-1)*FIELD_W+_sgx160s])*0.5*k;}break; // SIGNAL_GRAD_Y — full parity
+        case 161:{const _tvx161s=Math.max(0,Math.min(FIELD_W-1,Math.floor(px[i]/(W/FIELD_W)))),_tvy161s=Math.max(0,Math.min(FIELD_H-1,Math.floor(py[i]/(H/FIELD_H))));vmRegs[di]=Math.max(0,1-Math.abs(towerTerritoryField[_tvy161s*FIELD_W+_tvx161s]))*k;}break; // TERRITORY_VACANCY — full parity
+        case 162:{const _rwx162s=Math.max(0,Math.min(FIELD_W-1,Math.floor(px[i]/(W/FIELD_W)))),_rwy162s=Math.max(0,Math.min(FIELD_H-1,Math.floor(py[i]/(H/FIELD_H)))),_rwi162s=_rwy162s*FIELD_W+_rwx162s;const _rwa162s=Math.min(localRes[i],Math.abs(vmRegs[si]*k)*0.05);rootField[_rwi162s]=Math.min(5,rootField[_rwi162s]+_rwa162s);localRes[i]-=_rwa162s;vmRegs[di]=rootField[_rwi162s];}break; // ROOT_WRITE — full parity
       }
       if(op>=CORE_OPCODES&&op<CORE_OPCODES+MAX_BOUND_OPCODES){
         const _bos=genome.boundOpcodes;
