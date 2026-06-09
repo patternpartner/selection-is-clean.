@@ -273,7 +273,7 @@ const MAX_BOUND_OPCODES=32; // UNLOCKED #7b: was 16. Wider namespace for system-
 // Bumping CORE_OPCODES is the ONLY edit needed to add a core opcode — the bound guards
 // (op>=CORE_OPCODES) and OPCODE_COUNT derive from it, so a boundary typo can no longer
 // orphan an opcode or collide a core op with a bound slot (the Pe60 / op142-class bug).
-const CORE_OPCODES=202; // 0..201 core — op199 PARTNER_DENSITY_AT, op200 SIGMOID, op201 MOD
+const CORE_OPCODES=208; // 0..207 core — op202 PARTNER_MEM_READ, op203 PARTNER_MEM_WRITE, op204 PHASE_READ, op205 PARTNER_PHASE_READ, op206 POW, op207 LOG
                         // 0..132 core — op132 SEASON_PHASE: perceive the current feast/famine cycle position
                         // 0..131 core — op131 ENERGY_STRESS: the system perceives conserved-budget scarcity
                         // 0..130 core — OPENED THE SWITCH: op128 READ_OWN_CASTE, op129 READ_PARTNER_CASTE,
@@ -8735,6 +8735,12 @@ function profileVM(){
         case 199:vmRegs[di]=0*(k||1);break; // PARTNER_DENSITY_AT profiler stub — zero (no partner during profiling)
         case 200:vmRegs[di]=(1/(1+Math.exp(-vmRegs[si]*(k||1))));break; // SIGMOID profiler stub — full parity
         case 201:vmRegs[di]=(k!==0?((vmRegs[si]%(k||1))+(Math.abs(k||1)))%(Math.abs(k||1)):0);break; // MOD profiler stub — full parity
+        case 202:vmRegs[di]=0*(k||1);break; // PARTNER_MEM_READ profiler stub — zero (no partner during profiling)
+        case 203:vmRegs[di]=0*(k||1);break; // PARTNER_MEM_WRITE profiler stub — zero (no partner during profiling)
+        case 204:vmRegs[di]=0*(k||1);break; // PHASE_READ profiler stub — zero (phase not meaningful during profiling)
+        case 205:vmRegs[di]=0*(k||1);break; // PARTNER_PHASE_READ profiler stub — zero (no partner during profiling)
+        case 206:vmRegs[di]=Math.pow(Math.abs(vmRegs[si]),(Math.abs(k)||1));break; // POW profiler stub — full parity
+        case 207:vmRegs[di]=Math.log(Math.max(0.001,Math.abs(vmRegs[si])))*(k||1);break; // LOG profiler stub — full parity
       }
       if(op>=CORE_OPCODES&&op<CORE_OPCODES+MAX_BOUND_OPCODES){
         const _bos=genome.boundOpcodes;
@@ -13400,6 +13406,12 @@ function executeVM(i,j,sim,d){
       case 199:{const _pdx199=Math.max(0,Math.min(FIELD_W-1,Math.floor(px[j]/(W/FIELD_W)))),_pdy199=Math.max(0,Math.min(FIELD_H-1,Math.floor(py[j]/(H/FIELD_H))));vmRegs[di]=Math.min(5,densityField[_pdy199*FIELD_W+_pdx199]/3)*k;}break; // PARTNER_DENSITY_AT — local particle crowding at partner's grid cell. Completes the partner-field sensing set (signal op193, root op194, crystal op197, density op199). Enables: avoid interactions with partners in dense zones (resource-stressed, highly competitive); seek partners in sparse zones (fresh territory, opportunity); detect if partner is a loner (low density = pioneer, coloniser) vs. embedded in a crowd (high density = core of population).
       case 200:{vmRegs[di]=1/(1+Math.exp(-vmRegs[si]*k));}break; // SIGMOID — smooth saturating activation: output in (0,1), centred at 0.5 when si=0. The first continuously differentiable threshold function in the VM. Enables: soft probabilistic gates (sigmoid(stress) ≈ 0 when relaxed, ≈ 1 when stressed); smooth cooperation-to-defection transitions instead of hard COND_SKIP steps; evolved neural-net-like computation by chaining sigmoid outputs as inputs to further ops; bet-hedging by treating sigmoid output as a probability of action.
       case 201:{const _mk201=k||1;vmRegs[di]=(_mk201!==0?(((vmRegs[si]%_mk201)+Math.abs(_mk201))%Math.abs(_mk201)):0);}break; // MOD — positive modulo: result always in [0, |k|). Enables cyclic/periodic logic: phase[i] wraps in [0,2π) via MOD(phase_accumulator, 2π); caste cycling (MOD(age, NUM_TYPES) gives cyclic caste index); memory-address cycling (MOD(counter, MEM_SIZE) prevents register overflow in counting loops). The positive-remainder formulation (not JS %) handles negative inputs correctly.
+      case 202:{vmRegs[di]=pMem[j*MEM_SIZE+(vmRegs[si]&7)]*k;}break; // PARTNER_MEM_READ — read a memory cell from partner's working memory (cell index = vmRegs[si]&7). Opens a direct inter-particle information channel: one particle writes a value to mem[n] via MEM_WRITE, any partner can read it. Enables evolved stigmergy: particles leave state in memory that partners can read without a dedicated signal opcode. Combined with PARTNER_MEM_WRITE (op203): social memory sharing, teaching, parasitic memory corruption, distributed state machines where two particles hold different halves of a joint computation.
+      case 203:{pMem[j*MEM_SIZE+(vmRegs[si]&7)]=Math.max(-8,Math.min(8,vmRegs[di]*k));vmRegs[di]=pMem[j*MEM_SIZE+(vmRegs[si]&7)];}break; // PARTNER_MEM_WRITE — write into partner's memory cell (cell index = vmRegs[si]&7, value = vmRegs[di]*k, clamped to [-8,8]). First opcode that lets one particle directly modify another's internal state. Enables: imprinting (set partner's caste-memory to own value for coordination); parasitic state injection (overwrite partner's counter with 0 to disrupt its strategy); cooperative bootstrapping (write initial values into a newborn partner's memory before it can compute them itself); adversarial interference.
+      case 204:{vmRegs[di]=phase[i]*k;}break; // PHASE_READ — raw phase angle of own oscillator. Unlike op51 cos(phase) and op52 sin(phase) which encode phase indirectly, this gives the actual angle. Enables: MOD(PHASE_READ, 2π) for phase wrapping; FLOOR(PHASE_READ / (π/4)) to classify phase into 8 octants; direct phase arithmetic — compute phase difference by subtraction before sin-encoding it. Completes the phase-sensing toolkit: PHASE_READ + MOD + FLOOR → discrete phase-state machines.
+      case 205:{vmRegs[di]=phase[j]*k;}break; // PARTNER_PHASE_READ — raw phase angle of partner's oscillator. Complements PHASE_SYNC (op168) which nudges phase toward partner's. Now particles can read the actual partner angle and decide whether to sync, anti-sync, or ignore — conditional phase-locking strategies. Also enables phase-based kin detection: particles with phase≈own are likely recent descendants; large phase difference indicates long evolutionary separation.
+      case 206:{vmRegs[di]=Math.pow(Math.abs(vmRegs[si]),Math.abs(k));}break; // POW — |vmRegs[si]|^|k|. Exponential scaling that determinism cannot achieve with multiplication alone. Enables: competitive exclusion models (fitness ∝ resource^2 gives winner-takes-all dynamics); decay curves (resource^0.5 = diminishing returns on surplus); spatial scaling (distance^2 for inverse-square fields); evolved power-law fitness landscapes. The first op that can express super-linear returns to scale.
+      case 207:{vmRegs[di]=Math.log(Math.max(0.001,Math.abs(vmRegs[si])))*k;}break; // LOG — natural log of |vmRegs[si]|, floored at log(0.001)≈−6.9. Enables: log-scale sensing (log(density) compresses large ranges to manageable signals — a particle in a crowd of 100 and a crowd of 10 differ by only log(10)≈2.3 rather than 90); information-theoretic computations; diminishing-return resource valuation (log(res) flattens at high res, naturally encoding satiation); entropy estimates via Σ p·log(p) patterns.
     }
     // BOUND-OPCODE BOUNDARY (Pe60-class fix, now single-sourced via CORE_OPCODES).
     // History: the guard once read op>=126 (boi=op-126), which (a) collided with core
@@ -14477,6 +14489,12 @@ function executeVM(i,j,sim,d){
         case 199:{const _pdx199p=Math.max(0,Math.min(FIELD_W-1,Math.floor(px[j]/(W/FIELD_W)))),_pdy199p=Math.max(0,Math.min(FIELD_H-1,Math.floor(py[j]/(H/FIELD_H))));vmRegs[di]=Math.min(5,densityField[_pdy199p*FIELD_W+_pdx199p]/3)*k;}break; // PARTNER_DENSITY_AT — full parity
         case 200:{vmRegs[di]=1/(1+Math.exp(-vmRegs[si]*k));}break; // SIGMOID — full parity
         case 201:{const _mk201p=k||1;vmRegs[di]=(_mk201p!==0?(((vmRegs[si]%_mk201p)+Math.abs(_mk201p))%Math.abs(_mk201p)):0);}break; // MOD — full parity
+        case 202:{vmRegs[di]=pMem[j*MEM_SIZE+(vmRegs[si]&7)]*k;}break; // PARTNER_MEM_READ — full parity
+        case 203:{pMem[j*MEM_SIZE+(vmRegs[si]&7)]=Math.max(-8,Math.min(8,vmRegs[di]*k));vmRegs[di]=pMem[j*MEM_SIZE+(vmRegs[si]&7)];}break; // PARTNER_MEM_WRITE — full parity
+        case 204:{vmRegs[di]=phase[i]*k;}break; // PHASE_READ — full parity
+        case 205:{vmRegs[di]=phase[j]*k;}break; // PARTNER_PHASE_READ — full parity
+        case 206:{vmRegs[di]=Math.pow(Math.abs(vmRegs[si]),Math.abs(k));}break; // POW — full parity
+        case 207:{vmRegs[di]=Math.log(Math.max(0.001,Math.abs(vmRegs[si])))*k;}break; // LOG — full parity
       }
       if(op>=CORE_OPCODES&&op<CORE_OPCODES+MAX_BOUND_OPCODES){
         const _bos=genome.boundOpcodes;
@@ -15679,6 +15697,12 @@ function executeClusterVM(i,j,sim,d){
       case 199:{const _pdx199c=Math.max(0,Math.min(FIELD_W-1,Math.floor(px[j]/(W/FIELD_W)))),_pdy199c=Math.max(0,Math.min(FIELD_H-1,Math.floor(py[j]/(H/FIELD_H))));vmRegs[di]=Math.min(5,densityField[_pdy199c*FIELD_W+_pdx199c]/3)*k;}break; // PARTNER_DENSITY_AT — full parity
       case 200:{vmRegs[di]=1/(1+Math.exp(-vmRegs[si]*k));}break; // SIGMOID — full parity
       case 201:{const _mk201c=k||1;vmRegs[di]=(_mk201c!==0?(((vmRegs[si]%_mk201c)+Math.abs(_mk201c))%Math.abs(_mk201c)):0);}break; // MOD — full parity
+      case 202:{vmRegs[di]=pMem[j*MEM_SIZE+(vmRegs[si]&7)]*k;}break; // PARTNER_MEM_READ — full parity
+      case 203:{pMem[j*MEM_SIZE+(vmRegs[si]&7)]=Math.max(-8,Math.min(8,vmRegs[di]*k));vmRegs[di]=pMem[j*MEM_SIZE+(vmRegs[si]&7)];}break; // PARTNER_MEM_WRITE — full parity
+      case 204:{vmRegs[di]=phase[i]*k;}break; // PHASE_READ — full parity
+      case 205:{vmRegs[di]=phase[j]*k;}break; // PARTNER_PHASE_READ — full parity
+      case 206:{vmRegs[di]=Math.pow(Math.abs(vmRegs[si]),Math.abs(k));}break; // POW — full parity
+      case 207:{vmRegs[di]=Math.log(Math.max(0.001,Math.abs(vmRegs[si])))*k;}break; // LOG — full parity
     }
     if(op>=CORE_OPCODES&&op<CORE_OPCODES+MAX_BOUND_OPCODES){
       const _bos=genome.boundOpcodes;
@@ -16326,6 +16350,12 @@ function executeSoloVM(){
         case 199:{vmRegs[di]=0;}break; // PARTNER_DENSITY_AT — NOP in solo context (no partner)
         case 200:{vmRegs[di]=1/(1+Math.exp(-vmRegs[si]*k));}break; // SIGMOID — full parity
         case 201:{const _mk201s=k||1;vmRegs[di]=(_mk201s!==0?(((vmRegs[si]%_mk201s)+Math.abs(_mk201s))%Math.abs(_mk201s)):0);}break; // MOD — full parity
+        case 202:{vmRegs[di]=0;}break; // PARTNER_MEM_READ — NOP in solo context (no partner)
+        case 203:{vmRegs[di]=0;}break; // PARTNER_MEM_WRITE — NOP in solo context (no partner)
+        case 204:{vmRegs[di]=phase[i]*k;}break; // PHASE_READ — full parity
+        case 205:{vmRegs[di]=0;}break; // PARTNER_PHASE_READ — NOP in solo context (no partner)
+        case 206:{vmRegs[di]=Math.pow(Math.abs(vmRegs[si]),Math.abs(k));}break; // POW — full parity
+        case 207:{vmRegs[di]=Math.log(Math.max(0.001,Math.abs(vmRegs[si])))*k;}break; // LOG — full parity
       }
       if(op>=CORE_OPCODES&&op<CORE_OPCODES+MAX_BOUND_OPCODES){
         const _bos=genome.boundOpcodes;
