@@ -273,7 +273,7 @@ const MAX_BOUND_OPCODES=32; // UNLOCKED #7b: was 16. Wider namespace for system-
 // Bumping CORE_OPCODES is the ONLY edit needed to add a core opcode — the bound guards
 // (op>=CORE_OPCODES) and OPCODE_COUNT derive from it, so a boundary typo can no longer
 // orphan an opcode or collide a core op with a bound slot (the Pe60 / op142-class bug).
-const CORE_OPCODES=199; // 0..198 core — op196 ABS, op197 PARTNER_CRYSTAL_AT, op198 SIGN
+const CORE_OPCODES=202; // 0..201 core — op199 PARTNER_DENSITY_AT, op200 SIGMOID, op201 MOD
                         // 0..132 core — op132 SEASON_PHASE: perceive the current feast/famine cycle position
                         // 0..131 core — op131 ENERGY_STRESS: the system perceives conserved-budget scarcity
                         // 0..130 core — OPENED THE SWITCH: op128 READ_OWN_CASTE, op129 READ_PARTNER_CASTE,
@@ -8732,6 +8732,9 @@ function profileVM(){
         case 196:vmRegs[di]=Math.abs(vmRegs[si])*(k||1);break; // ABS profiler stub — full parity
         case 197:vmRegs[di]=0*(k||1);break; // PARTNER_CRYSTAL_AT profiler stub — zero (no partner during profiling)
         case 198:vmRegs[di]=Math.sign(vmRegs[si])*(k||1);break; // SIGN profiler stub — full parity
+        case 199:vmRegs[di]=0*(k||1);break; // PARTNER_DENSITY_AT profiler stub — zero (no partner during profiling)
+        case 200:vmRegs[di]=(1/(1+Math.exp(-vmRegs[si]*(k||1))));break; // SIGMOID profiler stub — full parity
+        case 201:vmRegs[di]=(k!==0?((vmRegs[si]%(k||1))+(Math.abs(k||1)))%(Math.abs(k||1)):0);break; // MOD profiler stub — full parity
       }
       if(op>=CORE_OPCODES&&op<CORE_OPCODES+MAX_BOUND_OPCODES){
         const _bos=genome.boundOpcodes;
@@ -13394,6 +13397,9 @@ function executeVM(i,j,sim,d){
       case 196:{vmRegs[di]=Math.abs(vmRegs[si])*k;}break; // ABS — absolute value of register. Removes sign ambiguity from sensors: abs(HOME_BEARING_X) gives unsigned heading magnitude; abs(gradient) measures steepness without caring which way it slopes; abs(phaseDiff) measures synchrony regardless of lead/lag. Pairs with SIGN (op198) to decompose a value into magnitude and direction separately, enabling magnitude-gated decisions that are sign-direction-agnostic.
       case 197:{const _pcx197=Math.max(0,Math.min(FIELD_W-1,Math.floor(px[j]/(W/FIELD_W)))),_pcy197=Math.max(0,Math.min(FIELD_H-1,Math.floor(py[j]/(H/FIELD_H))));vmRegs[di]=Math.min(2,crystalField[_pcy197*FIELD_W+_pcx197]*2)*k;}break; // PARTNER_CRYSTAL_AT — crystal-phase density at partner's grid cell (0=liquid/amorphous, →2=dense crystal). Completes the partner-field context trio (PARTNER_SIGNAL_AT op193, PARTNER_ROOT_AT op194, PARTNER_CRYSTAL_AT op197). Enables: avoid interactions with partners in dense crystal (viscous, movement-restricted); prefer partners in crystal zones as stable anchors; detect if partner has settled in a high-coherence cluster site.
       case 198:{vmRegs[di]=Math.sign(vmRegs[si])*k;}break; // SIGN — returns -1 (negative), 0 (zero), or +1 (positive). Extracts pure direction without magnitude: sign(gradient) gives chemotaxis direction independent of gradient strength; sign(phaseDiff) gives lead/lag direction independent of how far out of phase; sign(HOME_BEARING_X) gives left/right without distance. Enables threshold-free directional decisions: if SIGN(sensor)>0, go right — no need to calibrate against a specific magnitude.
+      case 199:{const _pdx199=Math.max(0,Math.min(FIELD_W-1,Math.floor(px[j]/(W/FIELD_W)))),_pdy199=Math.max(0,Math.min(FIELD_H-1,Math.floor(py[j]/(H/FIELD_H))));vmRegs[di]=Math.min(5,densityField[_pdy199*FIELD_W+_pdx199]/3)*k;}break; // PARTNER_DENSITY_AT — local particle crowding at partner's grid cell. Completes the partner-field sensing set (signal op193, root op194, crystal op197, density op199). Enables: avoid interactions with partners in dense zones (resource-stressed, highly competitive); seek partners in sparse zones (fresh territory, opportunity); detect if partner is a loner (low density = pioneer, coloniser) vs. embedded in a crowd (high density = core of population).
+      case 200:{vmRegs[di]=1/(1+Math.exp(-vmRegs[si]*k));}break; // SIGMOID — smooth saturating activation: output in (0,1), centred at 0.5 when si=0. The first continuously differentiable threshold function in the VM. Enables: soft probabilistic gates (sigmoid(stress) ≈ 0 when relaxed, ≈ 1 when stressed); smooth cooperation-to-defection transitions instead of hard COND_SKIP steps; evolved neural-net-like computation by chaining sigmoid outputs as inputs to further ops; bet-hedging by treating sigmoid output as a probability of action.
+      case 201:{const _mk201=k||1;vmRegs[di]=(_mk201!==0?(((vmRegs[si]%_mk201)+Math.abs(_mk201))%Math.abs(_mk201)):0);}break; // MOD — positive modulo: result always in [0, |k|). Enables cyclic/periodic logic: phase[i] wraps in [0,2π) via MOD(phase_accumulator, 2π); caste cycling (MOD(age, NUM_TYPES) gives cyclic caste index); memory-address cycling (MOD(counter, MEM_SIZE) prevents register overflow in counting loops). The positive-remainder formulation (not JS %) handles negative inputs correctly.
     }
     // BOUND-OPCODE BOUNDARY (Pe60-class fix, now single-sourced via CORE_OPCODES).
     // History: the guard once read op>=126 (boi=op-126), which (a) collided with core
@@ -14468,6 +14474,9 @@ function executeVM(i,j,sim,d){
         case 196:{vmRegs[di]=Math.abs(vmRegs[si])*k;}break; // ABS — full parity
         case 197:{const _pcx197p=Math.max(0,Math.min(FIELD_W-1,Math.floor(px[j]/(W/FIELD_W)))),_pcy197p=Math.max(0,Math.min(FIELD_H-1,Math.floor(py[j]/(H/FIELD_H))));vmRegs[di]=Math.min(2,crystalField[_pcy197p*FIELD_W+_pcx197p]*2)*k;}break; // PARTNER_CRYSTAL_AT — full parity
         case 198:{vmRegs[di]=Math.sign(vmRegs[si])*k;}break; // SIGN — full parity
+        case 199:{const _pdx199p=Math.max(0,Math.min(FIELD_W-1,Math.floor(px[j]/(W/FIELD_W)))),_pdy199p=Math.max(0,Math.min(FIELD_H-1,Math.floor(py[j]/(H/FIELD_H))));vmRegs[di]=Math.min(5,densityField[_pdy199p*FIELD_W+_pdx199p]/3)*k;}break; // PARTNER_DENSITY_AT — full parity
+        case 200:{vmRegs[di]=1/(1+Math.exp(-vmRegs[si]*k));}break; // SIGMOID — full parity
+        case 201:{const _mk201p=k||1;vmRegs[di]=(_mk201p!==0?(((vmRegs[si]%_mk201p)+Math.abs(_mk201p))%Math.abs(_mk201p)):0);}break; // MOD — full parity
       }
       if(op>=CORE_OPCODES&&op<CORE_OPCODES+MAX_BOUND_OPCODES){
         const _bos=genome.boundOpcodes;
@@ -15667,6 +15676,9 @@ function executeClusterVM(i,j,sim,d){
       case 196:{vmRegs[di]=Math.abs(vmRegs[si])*k;}break; // ABS — full parity
       case 197:{const _pcx197c=Math.max(0,Math.min(FIELD_W-1,Math.floor(px[j]/(W/FIELD_W)))),_pcy197c=Math.max(0,Math.min(FIELD_H-1,Math.floor(py[j]/(H/FIELD_H))));vmRegs[di]=Math.min(2,crystalField[_pcy197c*FIELD_W+_pcx197c]*2)*k;}break; // PARTNER_CRYSTAL_AT — full parity
       case 198:{vmRegs[di]=Math.sign(vmRegs[si])*k;}break; // SIGN — full parity
+      case 199:{const _pdx199c=Math.max(0,Math.min(FIELD_W-1,Math.floor(px[j]/(W/FIELD_W)))),_pdy199c=Math.max(0,Math.min(FIELD_H-1,Math.floor(py[j]/(H/FIELD_H))));vmRegs[di]=Math.min(5,densityField[_pdy199c*FIELD_W+_pdx199c]/3)*k;}break; // PARTNER_DENSITY_AT — full parity
+      case 200:{vmRegs[di]=1/(1+Math.exp(-vmRegs[si]*k));}break; // SIGMOID — full parity
+      case 201:{const _mk201c=k||1;vmRegs[di]=(_mk201c!==0?(((vmRegs[si]%_mk201c)+Math.abs(_mk201c))%Math.abs(_mk201c)):0);}break; // MOD — full parity
     }
     if(op>=CORE_OPCODES&&op<CORE_OPCODES+MAX_BOUND_OPCODES){
       const _bos=genome.boundOpcodes;
@@ -16311,6 +16323,9 @@ function executeSoloVM(){
         case 196:{vmRegs[di]=Math.abs(vmRegs[si])*k;}break; // ABS — full parity
         case 197:{vmRegs[di]=0;}break; // PARTNER_CRYSTAL_AT — NOP in solo context (no partner)
         case 198:{vmRegs[di]=Math.sign(vmRegs[si])*k;}break; // SIGN — full parity
+        case 199:{vmRegs[di]=0;}break; // PARTNER_DENSITY_AT — NOP in solo context (no partner)
+        case 200:{vmRegs[di]=1/(1+Math.exp(-vmRegs[si]*k));}break; // SIGMOID — full parity
+        case 201:{const _mk201s=k||1;vmRegs[di]=(_mk201s!==0?(((vmRegs[si]%_mk201s)+Math.abs(_mk201s))%Math.abs(_mk201s)):0);}break; // MOD — full parity
       }
       if(op>=CORE_OPCODES&&op<CORE_OPCODES+MAX_BOUND_OPCODES){
         const _bos=genome.boundOpcodes;
