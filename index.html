@@ -273,7 +273,7 @@ const MAX_BOUND_OPCODES=32; // UNLOCKED #7b: was 16. Wider namespace for system-
 // Bumping CORE_OPCODES is the ONLY edit needed to add a core opcode — the bound guards
 // (op>=CORE_OPCODES) and OPCODE_COUNT derive from it, so a boundary typo can no longer
 // orphan an opcode or collide a core op with a bound slot (the Pe60 / op142-class bug).
-const CORE_OPCODES=152; // 0..151 core — op147-148 FIELD_GRAD_X/Y (chemotaxis), op149-150 DETRITAL_GRAD_X/Y (decomposer navigation), op151 PROG_LENGTH_SENSE (complexity self-awareness)
+const CORE_OPCODES=155; // 0..154 core — op147-148 FIELD_GRAD_X/Y (chemotaxis), op149-150 DETRITAL_GRAD_X/Y (decomposer navigation), op151 PROG_LENGTH_SENSE, op152 RECOMBINE (horizontal gene transfer), op153 PROG_TRIM (genome economy), op154 MUT_RATE_SET (evolvable evolvability / SOS response)
                         // 0..132 core — op132 SEASON_PHASE: perceive the current feast/famine cycle position
                         // 0..131 core — op131 ENERGY_STRESS: the system perceives conserved-budget scarcity
                         // 0..130 core — OPENED THE SWITCH: op128 READ_OWN_CASTE, op129 READ_PARTNER_CASTE,
@@ -8667,6 +8667,9 @@ function profileVM(){
         case 149:vmRegs[di]=0*(k||1);break; // DETRITAL_GRAD_X profiler stub — zero
         case 150:vmRegs[di]=0*(k||1);break; // DETRITAL_GRAD_Y profiler stub — zero
         case 151:vmRegs[di]=0.5*(k||1);break; // PROG_LENGTH_SENSE profiler stub — mid-complexity representative
+        case 152:vmRegs[di]=0*(k||1);break; // RECOMBINE profiler stub — no partner during profiling
+        case 153:vmRegs[di]=0*(k||1);break; // PROG_TRIM profiler stub — profiler does not modify programs
+        case 154:vmRegs[di]=0*(k||1);break; // MUT_RATE_SET profiler stub — no mutation during profiling
       }
       if(op>=CORE_OPCODES&&op<CORE_OPCODES+MAX_BOUND_OPCODES){
         const _bos=genome.boundOpcodes;
@@ -13273,6 +13276,9 @@ function executeVM(i,j,sim,d){
       case 149:{const _gdx149=Math.max(1,Math.min(FIELD_W-2,Math.floor(px[i]/(W/FIELD_W)))),_gdy149=Math.max(1,Math.min(FIELD_H-2,Math.floor(py[i]/(H/FIELD_H))));vmRegs[di]=(detritalField[_gdy149*FIELD_W+_gdx149+1]-detritalField[_gdy149*FIELD_W+_gdx149-1])*0.5*k;}break; // DETRITAL_GRAD_X — detrital nutrient gradient in X. Decomposer chemotaxis: navigate toward death zones rather than stumbling upon them.
       case 150:{const _gdx150=Math.max(1,Math.min(FIELD_W-2,Math.floor(px[i]/(W/FIELD_W)))),_gdy150=Math.max(1,Math.min(FIELD_H-2,Math.floor(py[i]/(H/FIELD_H))));vmRegs[di]=(detritalField[(_gdy150+1)*FIELD_W+_gdx150]-detritalField[(_gdy150-1)*FIELD_W+_gdx150])*0.5*k;}break; // DETRITAL_GRAD_Y — detrital nutrient gradient in Y. With DETRITAL_GRAD_X enables full 2D decomposer navigation.
       case 151:{vmRegs[di]=(pProg[i]?pProg[i].length/Math.max(1,genome.vmMaxInstructions||16):0)*k;}break; // PROG_LENGTH_SENSE — own program complexity as normalized ratio (0=minimal, →1=at cap). Enables self-regulatory circuits: sense own complexity, grow until a threshold, switch behavioral mode. Complexity becomes a self-perceived property.
+      case 152:{if(pProg[i]&&pProg[j]&&pProg[j].length>0&&localRes[i]>0.15){const _segLen152=Math.min(2,Math.floor(Math.random()*3)+1);const _segSrc152=Math.floor(Math.random()*pProg[j].length);const _seg152=pProg[j].slice(_segSrc152,_segSrc152+_segLen152);const _dstPos152=Math.floor(Math.random()*(pProg[i].length+1));pProg[i].splice(_dstPos152,0,..._seg152);const _maxLen152=Math.min(genome.vmMaxInstructions||16,24);while(pProg[i].length>_maxLen152)pProg[i].pop();localRes[i]-=0.15;vmRegs[di]=pProg[i].length;}else{vmRegs[di]=0;}}break; // RECOMBINE — splice a segment from partner's program into own; evolves de-novo horizontal gene transfer of proven sub-routines. Combinatorial novelty explodes relative to point mutation alone: entire functional modules can propagate laterally through a population in a single interaction.
+      case 153:{if(pProg[i]&&pProg[i].length>1){pProg[i].pop();localRes[i]=Math.min(2,localRes[i]+0.02);vmRegs[di]=pProg[i].length;}else{vmRegs[di]=0;}}break; // PROG_TRIM — remove last instruction from own program; counter-force to PROG_GROW; enables genome economy via selection (shorter programs pay less metabolic cost per tick). PROG_GROW and PROG_TRIM together create genome-length homeostasis as an evolved property.
+      case 154:{if(pGenome[i])pGenome[i].innovationRate=Math.max(0,Math.min(0.06,Math.abs(vmRegs[si]*k)));vmRegs[di]=pGenome[i]?pGenome[i].innovationRate:0;}break; // MUT_RATE_SET — self-modify own innovation rate bounded [0..0.06]. Particles under resource stress can evolve hypermutation (SOS response); stable well-fed particles can evolve near-zero rate (error minimisation). Evolvability itself becomes a heritable, selectable trait — second-order evolution.
     }
     // BOUND-OPCODE BOUNDARY (Pe60-class fix, now single-sourced via CORE_OPCODES).
     // History: the guard once read op>=126 (boi=op-126), which (a) collided with core
@@ -14300,6 +14306,9 @@ function executeVM(i,j,sim,d){
         case 149:{const _gdx149p=Math.max(1,Math.min(FIELD_W-2,Math.floor(px[i]/(W/FIELD_W)))),_gdy149p=Math.max(1,Math.min(FIELD_H-2,Math.floor(py[i]/(H/FIELD_H))));vmRegs[di]=(detritalField[_gdy149p*FIELD_W+_gdx149p+1]-detritalField[_gdy149p*FIELD_W+_gdx149p-1])*0.5*k;}break; // DETRITAL_GRAD_X — full parity
         case 150:{const _gdx150p=Math.max(1,Math.min(FIELD_W-2,Math.floor(px[i]/(W/FIELD_W)))),_gdy150p=Math.max(1,Math.min(FIELD_H-2,Math.floor(py[i]/(H/FIELD_H))));vmRegs[di]=(detritalField[(_gdy150p+1)*FIELD_W+_gdx150p]-detritalField[(_gdy150p-1)*FIELD_W+_gdx150p])*0.5*k;}break; // DETRITAL_GRAD_Y — full parity
         case 151:{vmRegs[di]=(pProg[i]?pProg[i].length/Math.max(1,genome.vmMaxInstructions||16):0)*k;}break; // PROG_LENGTH_SENSE — full parity
+        case 152:{if(pProg[i]&&pProg[j]&&pProg[j].length>0&&localRes[i]>0.15){const _segLen152p=Math.min(2,Math.floor(Math.random()*3)+1);const _segSrc152p=Math.floor(Math.random()*pProg[j].length);const _seg152p=pProg[j].slice(_segSrc152p,_segSrc152p+_segLen152p);const _dstPos152p=Math.floor(Math.random()*(pProg[i].length+1));pProg[i].splice(_dstPos152p,0,..._seg152p);const _maxLen152p=Math.min(genome.vmMaxInstructions||16,24);while(pProg[i].length>_maxLen152p)pProg[i].pop();localRes[i]-=0.15;vmRegs[di]=pProg[i].length;}else{vmRegs[di]=0;}}break; // RECOMBINE — full parity
+        case 153:{if(pProg[i]&&pProg[i].length>1){pProg[i].pop();localRes[i]=Math.min(2,localRes[i]+0.02);vmRegs[di]=pProg[i].length;}else{vmRegs[di]=0;}}break; // PROG_TRIM — full parity
+        case 154:{if(pGenome[i])pGenome[i].innovationRate=Math.max(0,Math.min(0.06,Math.abs(vmRegs[si]*k)));vmRegs[di]=pGenome[i]?pGenome[i].innovationRate:0;}break; // MUT_RATE_SET — full parity
       }
       if(op>=CORE_OPCODES&&op<CORE_OPCODES+MAX_BOUND_OPCODES){
         const _bos=genome.boundOpcodes;
@@ -15452,6 +15461,9 @@ function executeClusterVM(i,j,sim,d){
       case 149:{const _gdx149c=Math.max(1,Math.min(FIELD_W-2,Math.floor(px[i]/(W/FIELD_W)))),_gdy149c=Math.max(1,Math.min(FIELD_H-2,Math.floor(py[i]/(H/FIELD_H))));vmRegs[di]=(detritalField[_gdy149c*FIELD_W+_gdx149c+1]-detritalField[_gdy149c*FIELD_W+_gdx149c-1])*0.5*k;}break; // DETRITAL_GRAD_X — full parity
       case 150:{const _gdx150c=Math.max(1,Math.min(FIELD_W-2,Math.floor(px[i]/(W/FIELD_W)))),_gdy150c=Math.max(1,Math.min(FIELD_H-2,Math.floor(py[i]/(H/FIELD_H))));vmRegs[di]=(detritalField[(_gdy150c+1)*FIELD_W+_gdx150c]-detritalField[(_gdy150c-1)*FIELD_W+_gdx150c])*0.5*k;}break; // DETRITAL_GRAD_Y — full parity
       case 151:{vmRegs[di]=(pProg[i]?pProg[i].length/Math.max(1,genome.vmMaxInstructions||16):0)*k;}break; // PROG_LENGTH_SENSE — full parity
+      case 152:{if(pProg[i]&&pProg[j]&&pProg[j].length>0&&localRes[i]>0.15){const _segLen152c=Math.min(2,Math.floor(Math.random()*3)+1);const _segSrc152c=Math.floor(Math.random()*pProg[j].length);const _seg152c=pProg[j].slice(_segSrc152c,_segSrc152c+_segLen152c);const _dstPos152c=Math.floor(Math.random()*(pProg[i].length+1));pProg[i].splice(_dstPos152c,0,..._seg152c);const _maxLen152c=Math.min(genome.vmMaxInstructions||16,24);while(pProg[i].length>_maxLen152c)pProg[i].pop();localRes[i]-=0.15;vmRegs[di]=pProg[i].length;}else{vmRegs[di]=0;}}break; // RECOMBINE — full parity
+      case 153:{if(pProg[i]&&pProg[i].length>1){pProg[i].pop();localRes[i]=Math.min(2,localRes[i]+0.02);vmRegs[di]=pProg[i].length;}else{vmRegs[di]=0;}}break; // PROG_TRIM — full parity
+      case 154:{if(pGenome[i])pGenome[i].innovationRate=Math.max(0,Math.min(0.06,Math.abs(vmRegs[si]*k)));vmRegs[di]=pGenome[i]?pGenome[i].innovationRate:0;}break; // MUT_RATE_SET — full parity
     }
     if(op>=CORE_OPCODES&&op<CORE_OPCODES+MAX_BOUND_OPCODES){
       const _bos=genome.boundOpcodes;
@@ -16049,6 +16061,9 @@ function executeSoloVM(){
         case 149:{const _gdx149s=Math.max(1,Math.min(FIELD_W-2,Math.floor(px[i]/(W/FIELD_W)))),_gdy149s=Math.max(1,Math.min(FIELD_H-2,Math.floor(py[i]/(H/FIELD_H))));vmRegs[di]=(detritalField[_gdy149s*FIELD_W+_gdx149s+1]-detritalField[_gdy149s*FIELD_W+_gdx149s-1])*0.5*k;}break; // DETRITAL_GRAD_X — full parity
         case 150:{const _gdx150s=Math.max(1,Math.min(FIELD_W-2,Math.floor(px[i]/(W/FIELD_W)))),_gdy150s=Math.max(1,Math.min(FIELD_H-2,Math.floor(py[i]/(H/FIELD_H))));vmRegs[di]=(detritalField[(_gdy150s+1)*FIELD_W+_gdx150s]-detritalField[(_gdy150s-1)*FIELD_W+_gdx150s])*0.5*k;}break; // DETRITAL_GRAD_Y — full parity
         case 151:{vmRegs[di]=(pProg[i]?pProg[i].length/Math.max(1,genome.vmMaxInstructions||16):0)*k;}break; // PROG_LENGTH_SENSE — full parity
+        case 152:{vmRegs[di]=0;}break; // RECOMBINE — NOP in solo context (no interaction partner)
+        case 153:{if(pProg[i]&&pProg[i].length>1){pProg[i].pop();localRes[i]=Math.min(2,localRes[i]+0.02);vmRegs[di]=pProg[i].length;}else{vmRegs[di]=0;}}break; // PROG_TRIM — full parity
+        case 154:{if(pGenome[i])pGenome[i].innovationRate=Math.max(0,Math.min(0.06,Math.abs(vmRegs[si]*k)));vmRegs[di]=pGenome[i]?pGenome[i].innovationRate:0;}break; // MUT_RATE_SET — full parity
       }
       if(op>=CORE_OPCODES&&op<CORE_OPCODES+MAX_BOUND_OPCODES){
         const _bos=genome.boundOpcodes;
