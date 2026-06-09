@@ -273,7 +273,7 @@ const MAX_BOUND_OPCODES=32; // UNLOCKED #7b: was 16. Wider namespace for system-
 // Bumping CORE_OPCODES is the ONLY edit needed to add a core opcode — the bound guards
 // (op>=CORE_OPCODES) and OPCODE_COUNT derive from it, so a boundary typo can no longer
 // orphan an opcode or collide a core op with a bound slot (the Pe60 / op142-class bug).
-const CORE_OPCODES=190; // 0..189 core — op187 EPIGEN_READ, op188 EPIGEN_SET, op189 EPIGEN_CLR
+const CORE_OPCODES=193; // 0..192 core — op190 PARTNER_EPIGEN_READ, op191 PARTNER_EPIGEN_SET, op192 NEGATE
                         // 0..132 core — op132 SEASON_PHASE: perceive the current feast/famine cycle position
                         // 0..131 core — op131 ENERGY_STRESS: the system perceives conserved-budget scarcity
                         // 0..130 core — OPENED THE SWITCH: op128 READ_OWN_CASTE, op129 READ_PARTNER_CASTE,
@@ -8723,6 +8723,9 @@ function profileVM(){
         case 187:vmRegs[di]=0*(k||1);break; // EPIGEN_READ profiler stub — zero (no epigenetic state during profiling)
         case 188:vmRegs[di]=0*(k||1);break; // EPIGEN_SET profiler stub — NOP (no epigenetic modification during profiling)
         case 189:vmRegs[di]=0*(k||1);break; // EPIGEN_CLR profiler stub — NOP (no epigenetic modification during profiling)
+        case 190:vmRegs[di]=0*(k||1);break; // PARTNER_EPIGEN_READ profiler stub — zero (no partner during profiling)
+        case 191:vmRegs[di]=0*(k||1);break; // PARTNER_EPIGEN_SET profiler stub — NOP (no partner during profiling)
+        case 192:vmRegs[di]=-vmRegs[si]*(k||1);break; // NEGATE profiler stub — full negation
       }
       if(op>=CORE_OPCODES&&op<CORE_OPCODES+MAX_BOUND_OPCODES){
         const _bos=genome.boundOpcodes;
@@ -13376,6 +13379,9 @@ function executeVM(i,j,sim,d){
       case 187:{vmRegs[di]=((pEpigen[i]>>(vmRegs[si]&7))&1)*k;}break; // EPIGEN_READ — read bit (vmRegs[si]&7) from own epigenetic mask (0=cleared, 1*k=set). pEpigen[i] is 8 bits: heritable boolean flags inherited at birth from parentA with 5% per-bit flip rate, surviving across tick boundaries. Combined with COND_SKIP (op186): [EPIGEN_READ→r0, COND_SKIP(si=r0), ACTION_IF_BIT_SET] implements epigenetically gated behaviour. With EPIGEN_SET (op188) and EPIGEN_CLR (op189): particles write their own state flags based on environmental sensing, evolving finite-state machines whose transitions are governed by sensory input.
       case 188:{pEpigen[i]|=(1<<(vmRegs[si]&7));vmRegs[di]=((pEpigen[i]>>(vmRegs[si]&7))&1)*k;}break; // EPIGEN_SET — set bit (vmRegs[si]&7) in own epigenetic mask (bit becomes 1); returns new bit value. Enables context-sensitive state transitions: sense a dangerous caste → set "danger" bit → future COND_SKIP+EPIGEN_READ gates avoid cooperating with that caste. Because pEpigen is heritable, offspring inherit the set state — a form of soft Lamarckian transmission: a lineage that repeatedly encounters danger can shift its descendants toward a pre-set "danger-aware" expression profile without genome mutation.
       case 189:{pEpigen[i]&=~(1<<(vmRegs[si]&7));vmRegs[di]=((pEpigen[i]>>(vmRegs[si]&7))&1)*k;}break; // EPIGEN_CLR — clear bit (vmRegs[si]&7) in own epigenetic mask (bit becomes 0); returns new bit value (always 0). Enables resetting state flags after conditions resolve. With SET and READ, implements full 8-state epigenetic FSM: each bit independently controls a behavioural mode. Heritable clearing means offspring of cleared parents start unprimed — enabling reset of maladaptive epigenetic states that built up during a bad patch.
+      case 190:{vmRegs[di]=((pEpigen[j]>>(vmRegs[si]&7))&1)*k;}break; // PARTNER_EPIGEN_READ — read bit (vmRegs[si]&7) from partner's epigenetic mask. Pairs with own EPIGEN_READ (op187). Enables: epigenetic kin recognition — compare own bit to partner's bit to detect shared ancestral priming (bit matches → likely kin); immune-like detection — lineages set caste-signature bits in own epigen and test whether partner has matching bits to detect same-lineage members; combined with COND_SKIP (op186), gate cooperation on epigenetic match.
+      case 191:{pEpigen[j]|=(1<<(vmRegs[si]&7));vmRegs[di]=((pEpigen[j]>>(vmRegs[si]&7))&1)*k;}break; // PARTNER_EPIGEN_SET — set bit (vmRegs[si]&7) in partner's epigenetic mask (heritable effect: partner's offspring inherit the set bit with 95% fidelity). Enables social epigenetic programming: mutualists brand cooperative partners so their offspring start pre-primed for cooperation; teachers mark novices with a "trained" bit after a cooperative interaction; viral epigenetics: lineages spread their epigenetic signature laterally via interactions, creating population-level epigenetic waves without genome mutation. Arms race: hosts can evolve EPIGEN_CLR to clear unwanted partner-set bits.
+      case 192:{vmRegs[di]=-vmRegs[si]*k;}break; // NEGATE — vmRegs[di] = -(vmRegs[si] * k). Completes the conditional-logic toolkit: COND_SKIP fires when vmRegs[si]<=0; NEGATE(sensor) followed by COND_SKIP fires when sensor>0. Together enables both branch directions without a separate opcode. Also enables: inverted cooperation (cooperate when sensor is negative = partner is poor); oscillating push-pull strategies (negate own phase signal to create anti-phase cooperation timing); sign-flipping arithmetic for difference calculations.
     }
     // BOUND-OPCODE BOUNDARY (Pe60-class fix, now single-sourced via CORE_OPCODES).
     // History: the guard once read op>=126 (boi=op-126), which (a) collided with core
@@ -14441,6 +14447,9 @@ function executeVM(i,j,sim,d){
         case 187:{vmRegs[di]=((pEpigen[i]>>(vmRegs[si]&7))&1)*k;}break; // EPIGEN_READ — full parity
         case 188:{pEpigen[i]|=(1<<(vmRegs[si]&7));vmRegs[di]=((pEpigen[i]>>(vmRegs[si]&7))&1)*k;}break; // EPIGEN_SET — full parity
         case 189:{pEpigen[i]&=~(1<<(vmRegs[si]&7));vmRegs[di]=((pEpigen[i]>>(vmRegs[si]&7))&1)*k;}break; // EPIGEN_CLR — full parity
+        case 190:{vmRegs[di]=((pEpigen[j]>>(vmRegs[si]&7))&1)*k;}break; // PARTNER_EPIGEN_READ — full parity
+        case 191:{pEpigen[j]|=(1<<(vmRegs[si]&7));vmRegs[di]=((pEpigen[j]>>(vmRegs[si]&7))&1)*k;}break; // PARTNER_EPIGEN_SET — full parity
+        case 192:{vmRegs[di]=-vmRegs[si]*k;}break; // NEGATE — full parity
       }
       if(op>=CORE_OPCODES&&op<CORE_OPCODES+MAX_BOUND_OPCODES){
         const _bos=genome.boundOpcodes;
@@ -15631,6 +15640,9 @@ function executeClusterVM(i,j,sim,d){
       case 187:{vmRegs[di]=((pEpigen[i]>>(vmRegs[si]&7))&1)*k;}break; // EPIGEN_READ — full parity
       case 188:{pEpigen[i]|=(1<<(vmRegs[si]&7));vmRegs[di]=((pEpigen[i]>>(vmRegs[si]&7))&1)*k;}break; // EPIGEN_SET — full parity
       case 189:{pEpigen[i]&=~(1<<(vmRegs[si]&7));vmRegs[di]=((pEpigen[i]>>(vmRegs[si]&7))&1)*k;}break; // EPIGEN_CLR — full parity
+      case 190:{vmRegs[di]=((pEpigen[j]>>(vmRegs[si]&7))&1)*k;}break; // PARTNER_EPIGEN_READ — full parity
+      case 191:{pEpigen[j]|=(1<<(vmRegs[si]&7));vmRegs[di]=((pEpigen[j]>>(vmRegs[si]&7))&1)*k;}break; // PARTNER_EPIGEN_SET — full parity
+      case 192:{vmRegs[di]=-vmRegs[si]*k;}break; // NEGATE — full parity
     }
     if(op>=CORE_OPCODES&&op<CORE_OPCODES+MAX_BOUND_OPCODES){
       const _bos=genome.boundOpcodes;
@@ -16266,6 +16278,9 @@ function executeSoloVM(){
         case 187:{vmRegs[di]=((pEpigen[i]>>(vmRegs[si]&7))&1)*k;}break; // EPIGEN_READ — full parity
         case 188:{pEpigen[i]|=(1<<(vmRegs[si]&7));vmRegs[di]=((pEpigen[i]>>(vmRegs[si]&7))&1)*k;}break; // EPIGEN_SET — full parity
         case 189:{pEpigen[i]&=~(1<<(vmRegs[si]&7));vmRegs[di]=((pEpigen[i]>>(vmRegs[si]&7))&1)*k;}break; // EPIGEN_CLR — full parity
+        case 190:{vmRegs[di]=0;}break; // PARTNER_EPIGEN_READ — NOP in solo context (no partner)
+        case 191:{vmRegs[di]=0;}break; // PARTNER_EPIGEN_SET — NOP in solo context (no partner)
+        case 192:{vmRegs[di]=-vmRegs[si]*k;}break; // NEGATE — full parity
       }
       if(op>=CORE_OPCODES&&op<CORE_OPCODES+MAX_BOUND_OPCODES){
         const _bos=genome.boundOpcodes;
