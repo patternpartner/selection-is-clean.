@@ -273,7 +273,7 @@ const MAX_BOUND_OPCODES=32; // UNLOCKED #7b: was 16. Wider namespace for system-
 // Bumping CORE_OPCODES is the ONLY edit needed to add a core opcode — the bound guards
 // (op>=CORE_OPCODES) and OPCODE_COUNT derive from it, so a boundary typo can no longer
 // orphan an opcode or collide a core op with a bound slot (the Pe60 / op142-class bug).
-const CORE_OPCODES=208; // 0..207 core — op202 PARTNER_MEM_READ, op203 PARTNER_MEM_WRITE, op204 PHASE_READ, op205 PARTNER_PHASE_READ, op206 POW, op207 LOG
+const CORE_OPCODES=220; // 0..219 core — op208-211 velocity I/O, op212-216 toxin/immune warfare, op217-219 oscillator direct control
                         // 0..132 core — op132 SEASON_PHASE: perceive the current feast/famine cycle position
                         // 0..131 core — op131 ENERGY_STRESS: the system perceives conserved-budget scarcity
                         // 0..130 core — OPENED THE SWITCH: op128 READ_OWN_CASTE, op129 READ_PARTNER_CASTE,
@@ -5332,6 +5332,8 @@ const clusterID=new Int16Array(CAP);
 // Home position — stamped by MARK_POS (op175), read by HOME_DIST (op176) and HOME_BEARING_X (op177)
 const pHomeX=new Float32Array(CAP);
 const pHomeY=new Float32Array(CAP);
+const toxinField=new Float32Array(FIELD_W*FIELD_H); // chemical toxin layer: particles emit via TOXIN_EMIT (op212), decays each tick, damages particles without immunity; enables evolved chemical arms races and antibiotic warfare
+const pImmune=new Float32Array(CAP); // per-particle immunity (0=none, 1=full); invested via IMMUNE_BOOST (op215), inherited weakly, decays each tick; shields against toxin damage
 // Epigenetic state — 8 heritable boolean flags per particle (one bit each).
 // Inherited at birth from parentA with ~5% per-bit flip rate.
 // Read by EPIGEN_READ (op187), written by EPIGEN_SET (op188) / EPIGEN_CLR (op189).
@@ -8741,6 +8743,18 @@ function profileVM(){
         case 205:vmRegs[di]=0*(k||1);break; // PARTNER_PHASE_READ profiler stub — zero (no partner during profiling)
         case 206:vmRegs[di]=Math.pow(Math.abs(vmRegs[si]),(Math.abs(k)||1));break; // POW profiler stub — full parity
         case 207:vmRegs[di]=Math.log(Math.max(0.001,Math.abs(vmRegs[si])))*(k||1);break; // LOG profiler stub — full parity
+        case 208:vmRegs[di]=0*(k||1);break; // VX_READ profiler stub — zero (no motion during profiling)
+        case 209:vmRegs[di]=0*(k||1);break; // VY_READ profiler stub — zero
+        case 210:vmRegs[di]=0*(k||1);break; // IMPULSE_X profiler stub — NOP (no partner)
+        case 211:vmRegs[di]=0*(k||1);break; // IMPULSE_Y profiler stub — NOP (no partner)
+        case 212:vmRegs[di]=0*(k||1);break; // TOXIN_EMIT profiler stub — NOP (no field write during profiling)
+        case 213:vmRegs[di]=0*(k||1);break; // TOXIN_SENSE profiler stub — zero (no toxin during profiling)
+        case 214:vmRegs[di]=0*(k||1);break; // PARTNER_TOXIN_AT profiler stub — zero (no partner)
+        case 215:vmRegs[di]=0*(k||1);break; // IMMUNE_BOOST profiler stub — zero
+        case 216:vmRegs[di]=0*(k||1);break; // SELF_IMMUNE profiler stub — zero
+        case 217:vmRegs[di]=0*(k||1);break; // PHASE_SET profiler stub — NOP (no side-effects during profiling)
+        case 218:vmRegs[di]=0*(k||1);break; // FREQ_READ profiler stub — zero
+        case 219:vmRegs[di]=0*(k||1);break; // FREQ_SET profiler stub — NOP
       }
       if(op>=CORE_OPCODES&&op<CORE_OPCODES+MAX_BOUND_OPCODES){
         const _bos=genome.boundOpcodes;
@@ -11170,7 +11184,7 @@ function addParticle(x,y,tv,born,parentA,parentB){
   phase[i]=Math.random()*Math.PI*2;freq[i]=0.02+Math.random()*0.04;
   amp[i]=born?0.5:0.3+Math.random()*0.5;
   palive[i]=1;page[i]=0;localRes[i]=0;collapse[i]=0;clusterID[i]=-1;
-  pHomeX[i]=x;pHomeY[i]=y;
+  pHomeX[i]=x;pHomeY[i]=y;pImmune[i]=(parentA>=0&&parentA<N)?pImmune[parentA]*0.25:0;
   {let _eg=(parentA>=0&&parentA<N)?pEpigen[parentA]:0;for(let _b=0;_b<8;_b++)if(Math.random()<0.05)_eg^=(1<<_b);pEpigen[i]=_eg;}
   echoIdx[i]=0;
   for(let e=0;e<EL;e++){echox[i*EL+e]=x;echoy[i*EL+e]=y}
@@ -11219,7 +11233,7 @@ function addCompound(x,y,nt,nvx,nvy,na,np,nf,parentA,parentB){
   for(let d=0;d<DIMS;d++)tend[i*DIMS+d]=nt[d];
   phase[i]=np;freq[i]=nf;amp[i]=na;
   palive[i]=1;page[i]=0;localRes[i]=0;collapse[i]=0;clusterID[i]=-1;
-  pHomeX[i]=x;pHomeY[i]=y;
+  pHomeX[i]=x;pHomeY[i]=y;pImmune[i]=(parentA>=0&&parentA<N)?pImmune[parentA]*0.25:0;
   {let _eg=(parentA>=0&&parentA<N)?pEpigen[parentA]:0;for(let _b=0;_b<8;_b++)if(Math.random()<0.05)_eg^=(1<<_b);pEpigen[i]=_eg;}
   echoIdx[i]=0;
   for(let e=0;e<EL;e++){echox[i*EL+e]=x;echoy[i*EL+e]=y}
@@ -11307,6 +11321,7 @@ function applyEntropy(){
       amp[i]-=genome.entropyBaseline;
       amp[i]-=densityCost;
       amp[i]+=localRes[i]*genome.entropyK;
+      {const _txi=Math.max(0,Math.min(FIELD_W-1,Math.floor(px[i]/(W/FIELD_W)))),_tyi=Math.max(0,Math.min(FIELD_H-1,Math.floor(py[i]/(H/FIELD_H)))),_tox=toxinField[_tyi*FIELD_W+_txi];if(_tox>0.05){const _dmg=_tox*Math.max(0,1-pImmune[i])*0.018;amp[i]-=_dmg;}pImmune[i]*=0.997;} // TOXIN DAMAGE + IMMUNE DECAY: toxin deals up to 1.8% amp/tick fully unshielded; immunity decays 0.3%/tick — must be actively maintained via IMMUNE_BOOST (op215)
       if(energyAdequacy<1)amp[i]-=(1-energyAdequacy)*STARVE_DRAIN; // starvation: the world couldn't feed everyone this tick
       if(isNaN(amp[i]))amp[i]=0;
       if(amp[i]<genome.deathThreshold){
@@ -13412,6 +13427,18 @@ function executeVM(i,j,sim,d){
       case 205:{vmRegs[di]=phase[j]*k;}break; // PARTNER_PHASE_READ — raw phase angle of partner's oscillator. Complements PHASE_SYNC (op168) which nudges phase toward partner's. Now particles can read the actual partner angle and decide whether to sync, anti-sync, or ignore — conditional phase-locking strategies. Also enables phase-based kin detection: particles with phase≈own are likely recent descendants; large phase difference indicates long evolutionary separation.
       case 206:{vmRegs[di]=Math.pow(Math.abs(vmRegs[si]),Math.abs(k));}break; // POW — |vmRegs[si]|^|k|. Exponential scaling that determinism cannot achieve with multiplication alone. Enables: competitive exclusion models (fitness ∝ resource^2 gives winner-takes-all dynamics); decay curves (resource^0.5 = diminishing returns on surplus); spatial scaling (distance^2 for inverse-square fields); evolved power-law fitness landscapes. The first op that can express super-linear returns to scale.
       case 207:{vmRegs[di]=Math.log(Math.max(0.001,Math.abs(vmRegs[si])))*k;}break; // LOG — natural log of |vmRegs[si]|, floored at log(0.001)≈−6.9. Enables: log-scale sensing (log(density) compresses large ranges to manageable signals — a particle in a crowd of 100 and a crowd of 10 differ by only log(10)≈2.3 rather than 90); information-theoretic computations; diminishing-return resource valuation (log(res) flattens at high res, naturally encoding satiation); entropy estimates via Σ p·log(p) patterns.
+      case 208:{vmRegs[di]=vx[i]*k;}break; // VX_READ — own x-velocity. First velocity-sensing opcode. Enables: inertia-aware steering (if moving right, steer differently than if stationary); momentum-conditioned foraging; detect whether crystal viscosity is slowing movement (vx/vy ≈ 0 near dense crystal); evolve flocking by aligning velocity with neighbours. Together with VY_READ (op209) gives full 2D velocity vector.
+      case 209:{vmRegs[di]=vy[i]*k;}break; // VY_READ — own y-velocity. See VX_READ. With VX_READ enables: speed = sqrt(VX²+VY²) via POW+ABS; heading = atan2(VY,VX) approximated with SIGN ops; detect stalls; implement momentum-preserving turns.
+      case 210:{const _ix210=Math.max(-2,Math.min(2,vmRegs[si]*k*0.06));vx[j]+=_ix210;vmRegs[di]=_ix210;}break; // IMPULSE_X — add a lateral impulse to partner's x-velocity (capped ±2 units/tick, scaled by 0.06 to prevent runaway). First force-exertion opcode. Enables: shoving competitors away from resource patches; shepherding kin toward food; collective vortex formation; predator-herding of prey into kill zones. With IMPULSE_Y (op211): full 2D directed force between particles.
+      case 211:{const _iy211=Math.max(-2,Math.min(2,vmRegs[si]*k*0.06));vy[j]+=_iy211;vmRegs[di]=_iy211;}break; // IMPULSE_Y — add impulse to partner's y-velocity. See IMPULSE_X. Combining IMPULSE_X+Y lets one particle exert a directed push or pull on any interacting partner: competitive shoving, cooperative herding, evolved swarming dynamics, centripetal spiral formation.
+      case 212:{const _tx212=Math.max(0,Math.min(FIELD_W-1,Math.floor(px[i]/(W/FIELD_W)))),_ty212=Math.max(0,Math.min(FIELD_H-1,Math.floor(py[i]/(H/FIELD_H)))),_ti212=_ty212*FIELD_W+_tx212;const _te212=Math.abs(vmRegs[si]*k)*0.12;if(localRes[i]>=_te212*0.4){toxinField[_ti212]=Math.min(3,toxinField[_ti212]+_te212);localRes[i]-=_te212*0.4;vmRegs[di]=toxinField[_ti212];}else{vmRegs[di]=0;}}break; // TOXIN_EMIT — secrete toxin into own grid cell (costs localRes*0.4 per unit emitted; capped at 3). Creates a chemical weapon that harms non-immune particles crossing the cell. Enables: evolved antibiotic warfare; territorial poisoning; altruistic area denial (sacrifice resources to protect kin territory from invaders); arms races between toxin producers and immune evaders.
+      case 213:{const _tsx213=Math.max(0,Math.min(FIELD_W-1,Math.floor(px[i]/(W/FIELD_W)))),_tsy213=Math.max(0,Math.min(FIELD_H-1,Math.floor(py[i]/(H/FIELD_H))));vmRegs[di]=toxinField[_tsy213*FIELD_W+_tsx213]*k;}break; // TOXIN_SENSE — read toxin concentration at own position. Enables toxin avoidance (chemotaxis away from high-toxin zones); enables producers to detect if their own toxin is degrading and reinvest; enables immune particles to preferentially occupy toxin-rich zones as competitive exclusion.
+      case 214:{const _ptx214=Math.max(0,Math.min(FIELD_W-1,Math.floor(px[j]/(W/FIELD_W)))),_pty214=Math.max(0,Math.min(FIELD_H-1,Math.floor(py[j]/(H/FIELD_H))));vmRegs[di]=toxinField[_pty214*FIELD_W+_ptx214]*k;}break; // PARTNER_TOXIN_AT — toxin concentration at partner's grid cell. Enables: detect if partner is a toxin producer (high toxin at their cell = likely source); avoid interactions near poisoned partners; immune particles seek out high-toxin partners to profit from exclusive access to a zone non-immune particles flee.
+      case 215:{const _ib215=Math.abs(vmRegs[si]*k)*0.1;if(localRes[i]>=_ib215*0.6){pImmune[i]=Math.min(1,pImmune[i]+_ib215);localRes[i]-=_ib215*0.6;vmRegs[di]=pImmune[i];}else{vmRegs[di]=pImmune[i];}}break; // IMMUNE_BOOST — invest reserves into own immunity (0→1 scale; costs localRes*0.6 per unit gained). Immunity decays at 0.3%/tick so must be actively maintained. Enables: evolved immune systems that continuously reinvest; conditional immunity (boost only when TOXIN_SENSE > threshold); immunity as a costly honest signal (immune particles can't also be maximising resources).
+      case 216:{vmRegs[di]=pImmune[i]*k;}break; // SELF_IMMUNE — read own current immunity level (0=none, 1=full). Enables conditional immunity investment: if SELF_IMMUNE < threshold, boost; enables immune-level reporting via PARTNER_MEM_WRITE so kin can see each other's defence status; enables immune decay detection to time re-investment optimally.
+      case 217:{phase[i]=vmRegs[si]*k;vmRegs[di]=phase[i];}break; // PHASE_SET — directly write own phase angle. Unlike PHASE_SYNC (op168) which nudges phase toward partner's, this sets phase to an arbitrary value. Enables: phase reset (zero own oscillator for synchronisation); deliberate anti-phase (set phase=partner+π to anti-synchronise for niche differentiation); phase-based signalling codes (encode messages in discrete phase states); rapid entrainment without gradual convergence.
+      case 218:{vmRegs[di]=freq[i]*k;}break; // FREQ_READ — read own oscillator frequency. Enables: frequency matching with partners without PHASE_SYNC; detect if own frequency has drifted from initial value; gate behaviours on own clock speed (slow oscillators = conservative strategy, fast = aggressive); compare freq[i] vs freq[j] via subtraction to detect resonance.
+      case 219:{freq[i]=Math.max(0.001,Math.abs(vmRegs[si]*k));vmRegs[di]=freq[i];}break; // FREQ_SET — directly set own oscillator frequency (floored at 0.001 to prevent zero-frequency stall). Enables: evolved frequency hopping to escape entrainment by competitors; frequency modulation as a communication channel; slow down oscillator when energy-stressed (lower freq = lower metabolic pace); speed up when resources are rich for faster behavioural cycling.
     }
     // BOUND-OPCODE BOUNDARY (Pe60-class fix, now single-sourced via CORE_OPCODES).
     // History: the guard once read op>=126 (boi=op-126), which (a) collided with core
@@ -14495,6 +14522,18 @@ function executeVM(i,j,sim,d){
         case 205:{vmRegs[di]=phase[j]*k;}break; // PARTNER_PHASE_READ — full parity
         case 206:{vmRegs[di]=Math.pow(Math.abs(vmRegs[si]),Math.abs(k));}break; // POW — full parity
         case 207:{vmRegs[di]=Math.log(Math.max(0.001,Math.abs(vmRegs[si])))*k;}break; // LOG — full parity
+        case 208:{vmRegs[di]=vx[i]*k;}break; // VX_READ — full parity
+        case 209:{vmRegs[di]=vy[i]*k;}break; // VY_READ — full parity
+        case 210:{const _ix210p=Math.max(-2,Math.min(2,vmRegs[si]*k*0.06));vx[j]+=_ix210p;vmRegs[di]=_ix210p;}break; // IMPULSE_X — full parity
+        case 211:{const _iy211p=Math.max(-2,Math.min(2,vmRegs[si]*k*0.06));vy[j]+=_iy211p;vmRegs[di]=_iy211p;}break; // IMPULSE_Y — full parity
+        case 212:{const _tx212p=Math.max(0,Math.min(FIELD_W-1,Math.floor(px[i]/(W/FIELD_W)))),_ty212p=Math.max(0,Math.min(FIELD_H-1,Math.floor(py[i]/(H/FIELD_H)))),_ti212p=_ty212p*FIELD_W+_tx212p;const _te212p=Math.abs(vmRegs[si]*k)*0.12;if(localRes[i]>=_te212p*0.4){toxinField[_ti212p]=Math.min(3,toxinField[_ti212p]+_te212p);localRes[i]-=_te212p*0.4;vmRegs[di]=toxinField[_ti212p];}else{vmRegs[di]=0;}}break; // TOXIN_EMIT — full parity
+        case 213:{const _tsx213p=Math.max(0,Math.min(FIELD_W-1,Math.floor(px[i]/(W/FIELD_W)))),_tsy213p=Math.max(0,Math.min(FIELD_H-1,Math.floor(py[i]/(H/FIELD_H))));vmRegs[di]=toxinField[_tsy213p*FIELD_W+_tsx213p]*k;}break; // TOXIN_SENSE — full parity
+        case 214:{const _ptx214p=Math.max(0,Math.min(FIELD_W-1,Math.floor(px[j]/(W/FIELD_W)))),_pty214p=Math.max(0,Math.min(FIELD_H-1,Math.floor(py[j]/(H/FIELD_H))));vmRegs[di]=toxinField[_pty214p*FIELD_W+_ptx214p]*k;}break; // PARTNER_TOXIN_AT — full parity
+        case 215:{const _ib215p=Math.abs(vmRegs[si]*k)*0.1;if(localRes[i]>=_ib215p*0.6){pImmune[i]=Math.min(1,pImmune[i]+_ib215p);localRes[i]-=_ib215p*0.6;vmRegs[di]=pImmune[i];}else{vmRegs[di]=pImmune[i];}}break; // IMMUNE_BOOST — full parity
+        case 216:{vmRegs[di]=pImmune[i]*k;}break; // SELF_IMMUNE — full parity
+        case 217:{phase[i]=vmRegs[si]*k;vmRegs[di]=phase[i];}break; // PHASE_SET — full parity
+        case 218:{vmRegs[di]=freq[i]*k;}break; // FREQ_READ — full parity
+        case 219:{freq[i]=Math.max(0.001,Math.abs(vmRegs[si]*k));vmRegs[di]=freq[i];}break; // FREQ_SET — full parity
       }
       if(op>=CORE_OPCODES&&op<CORE_OPCODES+MAX_BOUND_OPCODES){
         const _bos=genome.boundOpcodes;
@@ -15703,6 +15742,18 @@ function executeClusterVM(i,j,sim,d){
       case 205:{vmRegs[di]=phase[j]*k;}break; // PARTNER_PHASE_READ — full parity
       case 206:{vmRegs[di]=Math.pow(Math.abs(vmRegs[si]),Math.abs(k));}break; // POW — full parity
       case 207:{vmRegs[di]=Math.log(Math.max(0.001,Math.abs(vmRegs[si])))*k;}break; // LOG — full parity
+      case 208:{vmRegs[di]=vx[i]*k;}break; // VX_READ — full parity
+      case 209:{vmRegs[di]=vy[i]*k;}break; // VY_READ — full parity
+      case 210:{const _ix210c=Math.max(-2,Math.min(2,vmRegs[si]*k*0.06));vx[j]+=_ix210c;vmRegs[di]=_ix210c;}break; // IMPULSE_X — full parity
+      case 211:{const _iy211c=Math.max(-2,Math.min(2,vmRegs[si]*k*0.06));vy[j]+=_iy211c;vmRegs[di]=_iy211c;}break; // IMPULSE_Y — full parity
+      case 212:{const _tx212c=Math.max(0,Math.min(FIELD_W-1,Math.floor(px[i]/(W/FIELD_W)))),_ty212c=Math.max(0,Math.min(FIELD_H-1,Math.floor(py[i]/(H/FIELD_H)))),_ti212c=_ty212c*FIELD_W+_tx212c;const _te212c=Math.abs(vmRegs[si]*k)*0.12;if(localRes[i]>=_te212c*0.4){toxinField[_ti212c]=Math.min(3,toxinField[_ti212c]+_te212c);localRes[i]-=_te212c*0.4;vmRegs[di]=toxinField[_ti212c];}else{vmRegs[di]=0;}}break; // TOXIN_EMIT — full parity
+      case 213:{const _tsx213c=Math.max(0,Math.min(FIELD_W-1,Math.floor(px[i]/(W/FIELD_W)))),_tsy213c=Math.max(0,Math.min(FIELD_H-1,Math.floor(py[i]/(H/FIELD_H))));vmRegs[di]=toxinField[_tsy213c*FIELD_W+_tsx213c]*k;}break; // TOXIN_SENSE — full parity
+      case 214:{const _ptx214c=Math.max(0,Math.min(FIELD_W-1,Math.floor(px[j]/(W/FIELD_W)))),_pty214c=Math.max(0,Math.min(FIELD_H-1,Math.floor(py[j]/(H/FIELD_H))));vmRegs[di]=toxinField[_pty214c*FIELD_W+_ptx214c]*k;}break; // PARTNER_TOXIN_AT — full parity
+      case 215:{const _ib215c=Math.abs(vmRegs[si]*k)*0.1;if(localRes[i]>=_ib215c*0.6){pImmune[i]=Math.min(1,pImmune[i]+_ib215c);localRes[i]-=_ib215c*0.6;vmRegs[di]=pImmune[i];}else{vmRegs[di]=pImmune[i];}}break; // IMMUNE_BOOST — full parity
+      case 216:{vmRegs[di]=pImmune[i]*k;}break; // SELF_IMMUNE — full parity
+      case 217:{phase[i]=vmRegs[si]*k;vmRegs[di]=phase[i];}break; // PHASE_SET — full parity
+      case 218:{vmRegs[di]=freq[i]*k;}break; // FREQ_READ — full parity
+      case 219:{freq[i]=Math.max(0.001,Math.abs(vmRegs[si]*k));vmRegs[di]=freq[i];}break; // FREQ_SET — full parity
     }
     if(op>=CORE_OPCODES&&op<CORE_OPCODES+MAX_BOUND_OPCODES){
       const _bos=genome.boundOpcodes;
@@ -16356,6 +16407,18 @@ function executeSoloVM(){
         case 205:{vmRegs[di]=0;}break; // PARTNER_PHASE_READ — NOP in solo context (no partner)
         case 206:{vmRegs[di]=Math.pow(Math.abs(vmRegs[si]),Math.abs(k));}break; // POW — full parity
         case 207:{vmRegs[di]=Math.log(Math.max(0.001,Math.abs(vmRegs[si])))*k;}break; // LOG — full parity
+        case 208:{vmRegs[di]=vx[i]*k;}break; // VX_READ — full parity
+        case 209:{vmRegs[di]=vy[i]*k;}break; // VY_READ — full parity
+        case 210:{vmRegs[di]=0;}break; // IMPULSE_X — NOP in solo context (no partner)
+        case 211:{vmRegs[di]=0;}break; // IMPULSE_Y — NOP in solo context (no partner)
+        case 212:{const _tx212s=Math.max(0,Math.min(FIELD_W-1,Math.floor(px[i]/(W/FIELD_W)))),_ty212s=Math.max(0,Math.min(FIELD_H-1,Math.floor(py[i]/(H/FIELD_H)))),_ti212s=_ty212s*FIELD_W+_tx212s;const _te212s=Math.abs(vmRegs[si]*k)*0.12;if(localRes[i]>=_te212s*0.4){toxinField[_ti212s]=Math.min(3,toxinField[_ti212s]+_te212s);localRes[i]-=_te212s*0.4;vmRegs[di]=toxinField[_ti212s];}else{vmRegs[di]=0;}}break; // TOXIN_EMIT — full parity (solo particles can still poison their cell)
+        case 213:{const _tsx213s=Math.max(0,Math.min(FIELD_W-1,Math.floor(px[i]/(W/FIELD_W)))),_tsy213s=Math.max(0,Math.min(FIELD_H-1,Math.floor(py[i]/(H/FIELD_H))));vmRegs[di]=toxinField[_tsy213s*FIELD_W+_tsx213s]*k;}break; // TOXIN_SENSE — full parity
+        case 214:{vmRegs[di]=0;}break; // PARTNER_TOXIN_AT — NOP in solo context (no partner)
+        case 215:{const _ib215s=Math.abs(vmRegs[si]*k)*0.1;if(localRes[i]>=_ib215s*0.6){pImmune[i]=Math.min(1,pImmune[i]+_ib215s);localRes[i]-=_ib215s*0.6;vmRegs[di]=pImmune[i];}else{vmRegs[di]=pImmune[i];}}break; // IMMUNE_BOOST — full parity
+        case 216:{vmRegs[di]=pImmune[i]*k;}break; // SELF_IMMUNE — full parity
+        case 217:{phase[i]=vmRegs[si]*k;vmRegs[di]=phase[i];}break; // PHASE_SET — full parity
+        case 218:{vmRegs[di]=freq[i]*k;}break; // FREQ_READ — full parity
+        case 219:{freq[i]=Math.max(0.001,Math.abs(vmRegs[si]*k));vmRegs[di]=freq[i];}break; // FREQ_SET — full parity
       }
       if(op>=CORE_OPCODES&&op<CORE_OPCODES+MAX_BOUND_OPCODES){
         const _bos=genome.boundOpcodes;
@@ -16867,6 +16930,7 @@ function loop(){
     updateBridges(); // BRIDGE LAYER: lateral connections between separate sub-tower tops — material accumulates at bridge midpoints, seeding new towers from the bridge rather than from initialisation
     { const _rW=W/FIELD_W,_rH=H/FIELD_H; for(const c of clusters){ if(!c||c.size<2||c.persistAge<3)continue; const rcx=Math.max(0,Math.min(FIELD_W-1,Math.floor(c.cx/_rW))),rcy=Math.max(0,Math.min(FIELD_H-1,Math.floor(c.cy/_rH))); rootField[rcy*FIELD_W+rcx]=Math.min(5,rootField[rcy*FIELD_W+rcx]+0.45*c.coherence); } } // ROOT DEPOSITION: anchors stamp the substrate — coherent persistent clusters write deeper roots
     {let _tb=0;const _tW=W/FIELD_W,_tH=H/FIELD_H;for(const _tf of hierTower){for(const _tu of _tf){if(_tu.reg<0.5)continue;const _tx=Math.max(0,Math.min(FIELD_W-1,Math.floor(_tu.cx/_tW))),_ty=Math.max(0,Math.min(FIELD_H-1,Math.floor(_tu.cy/_tH)));rootField[_ty*FIELD_W+_tx]=Math.min(5,rootField[_ty*FIELD_W+_tx]+0.06*_tu.reg*_tu.level);_tb+=_tu.reg*_tu.level*0.0002;}}mutPressureAccum+=_tb;} // TOWER DOWNWARD SIGNAL: stable high floors fertilise their root footprint and raise evolutionary pressure — complex structure breeds the variation that may eventually unsettle it
+    {for(let _ti=0;_ti<FIELD_W*FIELD_H;_ti++)toxinField[_ti]*=0.94;} // TOXIN DECAY: ×0.94/60tick (~half-life 11 ticks) — persistent enough for area denial but clears before long-term ecological damage; slower than signal (0.87) but faster than detrital (0.95)
     {const _crW=W/FIELD_W,_crH=H/FIELD_H;for(let _cri=0;_cri<FIELD_W*FIELD_H;_cri++){crystalField[_cri]*=0.93;detritalField[_cri]*=0.95;}for(const _crc of clusters){if(!_crc||_crc.persistAge<200||_crc.coherence<0.8)continue;const _crx=Math.max(0,Math.min(FIELD_W-1,Math.floor(_crc.cx/_crW))),_cry=Math.max(0,Math.min(FIELD_H-1,Math.floor(_crc.cy/_crH)));crystalField[_cry*FIELD_W+_crx]=Math.min(1,crystalField[_cry*FIELD_W+_crx]+_crc.coherence*0.15);}} // CRYSTAL PHASE + DETRITAL DECAY: crystal ×0.93/60tick (~900-tick lifetime); detrital ×0.95/60tick (~780-tick half-life — persistent dead-matter patches outlast their creators, giving decomposers time to find them
     if(hierTower.length>=2){const _topFl=hierTower[hierTower.length-1];const _cdW=W/FIELD_W,_cdH=H/FIELD_H;const _excR2d=CELL*CELL*16;for(const _tud of _topFl){if(_tud.reg<0.72||Math.random()>0.12)continue;let _bvd=0,_bxd=-1,_byd=-1;for(let _fyd=0;_fyd<FIELD_H;_fyd++){for(let _fxd=0;_fxd<FIELD_W;_fxd++){const _rvd=rootField[_fyd*FIELD_W+_fxd];if(_rvd<0.4||_rvd<=_bvd)continue;const _wxd=(_fxd+0.5)*_cdW,_wyd=(_fyd+0.5)*_cdH,_ddd=(_wxd-_tud.cx)*(_wxd-_tud.cx)+(_wyd-_tud.cy)*(_wyd-_tud.cy);if(_ddd<_excR2d)continue;_bvd=_rvd;_bxd=_wxd;_byd=_wyd;}}if(_bxd<0)continue;const _leavd=[..._tud.leaves];if(!_leavd.length)continue;const _sidd=_leavd[Math.floor(Math.random()*_leavd.length)];if(_sidd===undefined||!palive[_sidd])continue;const _dkd=Math.sqrt((_bxd-px[_sidd])*(_bxd-px[_sidd])+(_byd-py[_sidd])*(_byd-py[_sidd]))||1;vx[_sidd]+=(_bxd-px[_sidd])/_dkd*3.5;vy[_sidd]+=(_byd-py[_sidd])/_dkd*3.5;}} // CANOPY DISPERSAL: mature tower tops (reg>0.72, ≥2 floors) cast seeds toward rootField hotspots beyond bridge range — seeds carry the lineage's genome to distant soil, nucleating new clusters and towers. Life propagates beyond bridge reach. The arc closes: roots → tunneling → clusters → bridges → towers → seeds → new towers → new roots.
     {const _spW=W/FIELD_W,_spH=H/FIELD_H;for(const [_spk,_spreg] of _hierReg){if(_spreg>0.08)continue;const _spAge=tick-(_hierBirth.get(_spk)||tick);if(_spAge<300)continue;const _spParts=_spk.split('|');if(_spParts.length<3)continue;const _spfx=Math.max(0,Math.min(FIELD_W-1,Math.floor(parseInt(_spParts[1])*CELL/_spW))),_spfy=Math.max(0,Math.min(FIELD_H-1,Math.floor(parseInt(_spParts[2])*CELL/_spH)));rootField[_spfy*FIELD_W+_spfx]=Math.min(5,rootField[_spfy*FIELD_W+_spfx]+0.65);}} // SUCCESSION PULSE: when an old floor (≥300 tick life) collapses, it dumps nutrients back into the substrate — the fallen tower fertilises the next generation growing in its place
