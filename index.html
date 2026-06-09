@@ -273,7 +273,7 @@ const MAX_BOUND_OPCODES=32; // UNLOCKED #7b: was 16. Wider namespace for system-
 // Bumping CORE_OPCODES is the ONLY edit needed to add a core opcode — the bound guards
 // (op>=CORE_OPCODES) and OPCODE_COUNT derive from it, so a boundary typo can no longer
 // orphan an opcode or collide a core op with a bound slot (the Pe60 / op142-class bug).
-const CORE_OPCODES=184; // 0..183 core — op181 SELF_RES_SENSE, op182 SELF_AMP_SENSE, op183 PARTNER_COLLAPSE
+const CORE_OPCODES=187; // 0..186 core — op184 CLUSTER_SIZE_DIRECT, op185 SAME_CLUSTER_DIRECT, op186 COND_SKIP
                         // 0..132 core — op132 SEASON_PHASE: perceive the current feast/famine cycle position
                         // 0..131 core — op131 ENERGY_STRESS: the system perceives conserved-budget scarcity
                         // 0..130 core — OPENED THE SWITCH: op128 READ_OWN_CASTE, op129 READ_PARTNER_CASTE,
@@ -8713,6 +8713,9 @@ function profileVM(){
         case 181:vmRegs[di]=0.5*(k||1);break; // SELF_RES_SENSE profiler stub — 0.5 (neutral mid-resource)
         case 182:vmRegs[di]=0.5*(k||1);break; // SELF_AMP_SENSE profiler stub — 0.5 (neutral mid-amplitude)
         case 183:vmRegs[di]=0*(k||1);break; // PARTNER_COLLAPSE profiler stub — zero (no partner collapse during profiling)
+        case 184:{const _csd184pr=genome._profileClusterSize||0;vmRegs[di]=Math.min(3,_csd184pr/10)*(k||1);}break; // CLUSTER_SIZE_DIRECT profiler stub — use a representative cluster size from genome profile context
+        case 185:vmRegs[di]=0*(k||1);break; // SAME_CLUSTER_DIRECT profiler stub — zero (no partner cluster context during profiling)
+        case 186:vmRegs[di]=0*(k||1);break; // COND_SKIP profiler stub — NOP (no instruction skip during profiling; each instruction evaluated independently)
       }
       if(op>=CORE_OPCODES&&op<CORE_OPCODES+MAX_BOUND_OPCODES){
         const _bos=genome.boundOpcodes;
@@ -13358,6 +13361,9 @@ function executeVM(i,j,sim,d){
       case 181:{vmRegs[di]=localRes[i]*k;}break; // SELF_RES_SENSE — read own reserve resource level directly (0..2). Unlike ENERGY_STRESS_SENSE (op131) which returns a population-normalised stress scalar derived from energyAdequacy, this gives the actual per-particle localRes value. Enables: resource-conditional strategies without computing indirectly from stress signals; gate ROOT_WRITE (op162) and ENERGY_DONATE (op156) on having surplus (localRes>1); detect approaching depletion (localRes<0.3) and switch to scavenging (DETRITAL_HARVEST op146); compare own resource to partner's via subtraction (op164 PARTNER_RES_SENSE − op181 = differential wealth signal).
       case 182:{vmRegs[di]=Math.max(0,amp[i])*k;}break; // SELF_AMP_SENSE — read own amplitude (structural energy / vitality) directly. Complement to op37 PARTNER_AMP but without genome.selfAmpInfluence gating. Enables: amplitude-conditional reproduction gating; trigger APOPTOSIS (op165) when amp falls below survival threshold before passively dying; modulate resource-harvesting aggression by own vitality; broadcast own health status (BROADCAST_WRITE(SELF_AMP_SENSE)) so cluster-mates can detect and respond to distress.
       case 183:{vmRegs[di]=collapse[j]*k;}break; // PARTNER_COLLAPSE — read partner's collapse value (0..2+). Pairs with COLLAPSE_SENSE (op180) which reads own collapse. Enables: avoid or exploit collapsing partners; scavenger lineages sense structurally stressed particles and wait nearby (pheromone trail via INJECT_SIGNAL op174) for APOPTOSIS or passive death to release detrital; mutualists detect distress and donate resources before partner dies; predators time ENERGY_DRAIN (op155) against peak collapse for maximum yield with minimum counter-force.
+      case 184:{const _cidx184=clusterID[i]>=0&&clusterID[i]<MAX_CLUSTERS?clusterByID[clusterID[i]]:-1;vmRegs[di]=(_cidx184>=0&&_cidx184<clusters.length)?Math.min(3,clusters[_cidx184].size/10)*k:0;}break; // CLUSTER_SIZE_DIRECT — read own cluster member count without genome gating (complement to op62 SELF_CLUSTER_SIZE which requires genome.selfClusterSizeInfluence>0). Returns clusters[idx].size/10 capped at 3. Enables: cluster-size-conditional strategies without needing the shared genome to explicitly enable the sensor; solo particles (clusterID<0) get 0; colony-counting for division-of-labour decisions (grow caste X when cluster<threshold, grow caste Y when large).
+      case 185:{vmRegs[di]=(clusterID[i]>=0&&clusterID[i]===clusterID[j])?k:0;}break; // SAME_CLUSTER_DIRECT — ungated check whether i and j share a cluster (1*k if same cluster, 0 otherwise). Complement to op76 SAME_CLUSTER_CHECK which is gated by genome.sameClusterInfluence. With ENERGY_DONATE (op156) and ENERGY_DRAIN (op155) gated on this, lineages can evolve kin-altruism without needing the shared genome to enable the signal: in-group cooperation, out-group exploitation at the particle program level. Combined with CASTE_MEM_READ (op170) enables cluster+caste conditional strategies.
+      case 186:{if(vmRegs[si]<=0)ip++;vmRegs[di]=vmRegs[si]>0?k:0;}break; // COND_SKIP — conditional branch: if vmRegs[si]<=0, increment ip to skip the NEXT instruction (the for-loop's own ip++ then advances past it; net advance=2, skipping one instruction safely). The first branching primitive in the VM. Enables evolved if-then logic without separate programs: [SENSOR→r0, COND_SKIP(si=r0), ACTION_IF_POSITIVE, ALWAYS_RUNS]. Selection pressure: programs that gate costly actions (APOPTOSIS, ENERGY_DRAIN) on sensing conditions outperform unconditional actors in variable environments. Opens the path to evolved subroutine-like structures via sequenced skips.
     }
     // BOUND-OPCODE BOUNDARY (Pe60-class fix, now single-sourced via CORE_OPCODES).
     // History: the guard once read op>=126 (boi=op-126), which (a) collided with core
@@ -14417,6 +14423,9 @@ function executeVM(i,j,sim,d){
         case 181:{vmRegs[di]=localRes[i]*k;}break; // SELF_RES_SENSE — full parity
         case 182:{vmRegs[di]=Math.max(0,amp[i])*k;}break; // SELF_AMP_SENSE — full parity
         case 183:{vmRegs[di]=collapse[j]*k;}break; // PARTNER_COLLAPSE — full parity
+        case 184:{const _cidx184p=clusterID[i]>=0&&clusterID[i]<MAX_CLUSTERS?clusterByID[clusterID[i]]:-1;vmRegs[di]=(_cidx184p>=0&&_cidx184p<clusters.length)?Math.min(3,clusters[_cidx184p].size/10)*k:0;}break; // CLUSTER_SIZE_DIRECT — full parity
+        case 185:{vmRegs[di]=(clusterID[i]>=0&&clusterID[i]===clusterID[j])?k:0;}break; // SAME_CLUSTER_DIRECT — full parity
+        case 186:{if(vmRegs[si]<=0)ip++;vmRegs[di]=vmRegs[si]>0?k:0;}break; // COND_SKIP — full parity
       }
       if(op>=CORE_OPCODES&&op<CORE_OPCODES+MAX_BOUND_OPCODES){
         const _bos=genome.boundOpcodes;
@@ -15601,6 +15610,9 @@ function executeClusterVM(i,j,sim,d){
       case 181:{vmRegs[di]=localRes[i]*k;}break; // SELF_RES_SENSE — full parity
       case 182:{vmRegs[di]=Math.max(0,amp[i])*k;}break; // SELF_AMP_SENSE — full parity
       case 183:{vmRegs[di]=collapse[j]*k;}break; // PARTNER_COLLAPSE — full parity
+      case 184:{const _cidx184c=clusterID[i]>=0&&clusterID[i]<MAX_CLUSTERS?clusterByID[clusterID[i]]:-1;vmRegs[di]=(_cidx184c>=0&&_cidx184c<clusters.length)?Math.min(3,clusters[_cidx184c].size/10)*k:0;}break; // CLUSTER_SIZE_DIRECT — full parity
+      case 185:{vmRegs[di]=(clusterID[i]>=0&&clusterID[i]===clusterID[j])?k:0;}break; // SAME_CLUSTER_DIRECT — full parity
+      case 186:{if(vmRegs[si]<=0)ip++;vmRegs[di]=vmRegs[si]>0?k:0;}break; // COND_SKIP — full parity
     }
     if(op>=CORE_OPCODES&&op<CORE_OPCODES+MAX_BOUND_OPCODES){
       const _bos=genome.boundOpcodes;
@@ -16230,6 +16242,9 @@ function executeSoloVM(){
         case 181:{vmRegs[di]=localRes[i]*k;}break; // SELF_RES_SENSE — full parity
         case 182:{vmRegs[di]=Math.max(0,amp[i])*k;}break; // SELF_AMP_SENSE — full parity
         case 183:{vmRegs[di]=0;}break; // PARTNER_COLLAPSE — NOP in solo context (no partner)
+        case 184:{const _cidx184s=clusterID[i]>=0&&clusterID[i]<MAX_CLUSTERS?clusterByID[clusterID[i]]:-1;vmRegs[di]=(_cidx184s>=0&&_cidx184s<clusters.length)?Math.min(3,clusters[_cidx184s].size/10)*k:0;}break; // CLUSTER_SIZE_DIRECT — full parity (solo = 0 since clusterID[i]<0)
+        case 185:{vmRegs[di]=0;}break; // SAME_CLUSTER_DIRECT — NOP in solo context (no partner)
+        case 186:{if(vmRegs[si]<=0)ip++;vmRegs[di]=vmRegs[si]>0?k:0;}break; // COND_SKIP — full parity (branching works the same in solo VM)
       }
       if(op>=CORE_OPCODES&&op<CORE_OPCODES+MAX_BOUND_OPCODES){
         const _bos=genome.boundOpcodes;
