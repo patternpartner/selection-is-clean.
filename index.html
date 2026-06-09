@@ -273,7 +273,7 @@ const MAX_BOUND_OPCODES=32; // UNLOCKED #7b: was 16. Wider namespace for system-
 // Bumping CORE_OPCODES is the ONLY edit needed to add a core opcode — the bound guards
 // (op>=CORE_OPCODES) and OPCODE_COUNT derive from it, so a boundary typo can no longer
 // orphan an opcode or collide a core op with a bound slot (the Pe60 / op142-class bug).
-const CORE_OPCODES=159; // 0..158 core — op147-150 chemotaxis/detrital gradients, op151 PROG_LENGTH_SENSE, op152 RECOMBINE, op153 PROG_TRIM, op154 MUT_RATE_SET, op155 ENERGY_DRAIN, op156 ENERGY_DONATE, op157 SIGNAL_EMIT (pheromone write), op158 SIGNAL_SENSE (pheromone read)
+const CORE_OPCODES=161; // 0..160 core — op147-150 chemotaxis/detrital gradients, op151 PROG_LENGTH_SENSE, op152 RECOMBINE, op153 PROG_TRIM, op154 MUT_RATE_SET, op155 ENERGY_DRAIN, op156 ENERGY_DONATE, op157 SIGNAL_EMIT, op158 SIGNAL_SENSE, op159 SIGNAL_GRAD_X, op160 SIGNAL_GRAD_Y
                         // 0..132 core — op132 SEASON_PHASE: perceive the current feast/famine cycle position
                         // 0..131 core — op131 ENERGY_STRESS: the system perceives conserved-budget scarcity
                         // 0..130 core — OPENED THE SWITCH: op128 READ_OWN_CASTE, op129 READ_PARTNER_CASTE,
@@ -8675,6 +8675,8 @@ function profileVM(){
         case 156:vmRegs[di]=0*(k||1);break; // ENERGY_DONATE profiler stub — no live partners during profiling
         case 157:vmRegs[di]=0*(k||1);break; // SIGNAL_EMIT profiler stub — no live signal field during profiling
         case 158:vmRegs[di]=0*(k||1);break; // SIGNAL_SENSE profiler stub — zero (no signals during profiling)
+        case 159:vmRegs[di]=0*(k||1);break; // SIGNAL_GRAD_X profiler stub — flat signal field during profiling
+        case 160:vmRegs[di]=0*(k||1);break; // SIGNAL_GRAD_Y profiler stub — flat signal field during profiling
       }
       if(op>=CORE_OPCODES&&op<CORE_OPCODES+MAX_BOUND_OPCODES){
         const _bos=genome.boundOpcodes;
@@ -9652,7 +9654,7 @@ function updateField(){
       if(isNaN(rootField[_idx]))rootField[_idx]=0;
       bridgeField[_idx]*=0.970; // bridge corridors decay faster than roots — dissolve when the towers that made them drift apart
       towerTerritoryField[_idx]*=0.988; // territory identity fades slowly — abandoned zones drift back to neutral, opening space for recolonisation
-      signalField[_idx]*=0.87; // pheromone signals decay rapidly — half-life ~5 ticks; volatile by design so signals carry current intent, not history
+      {const _SFD=0.12;let _sfNew=signalField[_idx]*(1-_SFD*4);if(x>0)_sfNew+=signalField[_idx-1]*_SFD;if(x<FIELD_W-1)_sfNew+=signalField[_idx+1]*_SFD;if(y>0)_sfNew+=signalField[_idx-FIELD_W]*_SFD;if(y<FIELD_H-1)_sfNew+=signalField[_idx+FIELD_W]*_SFD;signalField[_idx]=_sfNew*0.87;} // pheromone diffusion + decay: spread rate 0.12 (faster than rootField 0.038), decay ×0.87/tick — signals diffuse ~2-3 cells before fading; enables directional trail gradients for chemotaxis
     }
   }
 }
@@ -13289,6 +13291,8 @@ function executeVM(i,j,sim,d){
       case 156:{if(vmRegs[si]>k&&localRes[i]>0.2){const _gf156=Math.min(Math.abs(vmRegs[si])*0.08,localRes[i]*0.15);localRes[i]-=_gf156;localRes[j]=Math.min(2,localRes[j]+_gf156);vmRegs[di]=_gf156;}else{vmRegs[di]=0;}}break; // ENERGY_DONATE — gift energy to interaction partner (mutualism/cooperation). Capped at 15% of own reserves. Closes the ecological interaction spectrum from pure predation (op155) through neutrality to pure mutualism. Kin-selection and reciprocal altruism become evolvable without hard-coding: a lineage that donates to kin (same caste/territory) while draining non-kin evolves inclusive-fitness optima on its own.
       case 157:{const _sfx157=Math.max(0,Math.min(FIELD_W-1,Math.floor(px[i]/(W/FIELD_W)))),_sfy157=Math.max(0,Math.min(FIELD_H-1,Math.floor(py[i]/(H/FIELD_H))));signalField[_sfy157*FIELD_W+_sfx157]=Math.min(3,signalField[_sfy157*FIELD_W+_sfx157]+Math.abs(vmRegs[si]*k));vmRegs[di]=signalField[_sfy157*FIELD_W+_sfx157];}break; // SIGNAL_EMIT — add to the volatile pheromone layer at own position (decays ~5t half-life). Enables alarm cascades (predator-fleeing particles emit signal → bystanders detect and preemptively flee), trail marking (foragers mark rich patches → others follow), and territory broadcasting. First purely communicative opcode: no resource or force effect, only information.
       case 158:{const _sfx158=Math.max(0,Math.min(FIELD_W-1,Math.floor(px[i]/(W/FIELD_W)))),_sfy158=Math.max(0,Math.min(FIELD_H-1,Math.floor(py[i]/(H/FIELD_H))));vmRegs[di]=Math.min(3,signalField[_sfy158*FIELD_W+_sfx158])*k;}break; // SIGNAL_SENSE — read local pheromone signal. Paired with SIGNAL_EMIT: evolved lineages can author communication protocols — the signal meaning is not pre-assigned; whatever coding convention is evolutionarily stable becomes the de-facto language of the population.
+      case 159:{const _sgx159=Math.max(1,Math.min(FIELD_W-2,Math.floor(px[i]/(W/FIELD_W)))),_sgy159=Math.max(1,Math.min(FIELD_H-2,Math.floor(py[i]/(H/FIELD_H))));vmRegs[di]=(signalField[_sgy159*FIELD_W+_sgx159+1]-signalField[_sgy159*FIELD_W+_sgx159-1])*0.5*k;}break; // SIGNAL_GRAD_X — pheromone gradient in X; enables navigation toward signal sources (forager trails, alarm sources, territorial markers). Completes the chemical communication navigation pair.
+      case 160:{const _sgx160=Math.max(1,Math.min(FIELD_W-2,Math.floor(px[i]/(W/FIELD_W)))),_sgy160=Math.max(1,Math.min(FIELD_H-2,Math.floor(py[i]/(H/FIELD_H))));vmRegs[di]=(signalField[(_sgy160+1)*FIELD_W+_sgx160]-signalField[(_sgy160-1)*FIELD_W+_sgx160])*0.5*k;}break; // SIGNAL_GRAD_Y — pheromone gradient in Y. With SIGNAL_GRAD_X enables full 2D chemical navigation: trail following, alarm dispersal, resource broadcast tracking. The full chemical ecology stack is now: emit(157) → diffuse(updateField) → sense(158) → navigate(159,160).
     }
     // BOUND-OPCODE BOUNDARY (Pe60-class fix, now single-sourced via CORE_OPCODES).
     // History: the guard once read op>=126 (boi=op-126), which (a) collided with core
@@ -14323,6 +14327,8 @@ function executeVM(i,j,sim,d){
         case 156:{if(vmRegs[si]>k&&localRes[i]>0.2){const _gf156p=Math.min(Math.abs(vmRegs[si])*0.08,localRes[i]*0.15);localRes[i]-=_gf156p;localRes[j]=Math.min(2,localRes[j]+_gf156p);vmRegs[di]=_gf156p;}else{vmRegs[di]=0;}}break; // ENERGY_DONATE — full parity
         case 157:{const _sfx157p=Math.max(0,Math.min(FIELD_W-1,Math.floor(px[i]/(W/FIELD_W)))),_sfy157p=Math.max(0,Math.min(FIELD_H-1,Math.floor(py[i]/(H/FIELD_H))));signalField[_sfy157p*FIELD_W+_sfx157p]=Math.min(3,signalField[_sfy157p*FIELD_W+_sfx157p]+Math.abs(vmRegs[si]*k));vmRegs[di]=signalField[_sfy157p*FIELD_W+_sfx157p];}break; // SIGNAL_EMIT — full parity
         case 158:{const _sfx158p=Math.max(0,Math.min(FIELD_W-1,Math.floor(px[i]/(W/FIELD_W)))),_sfy158p=Math.max(0,Math.min(FIELD_H-1,Math.floor(py[i]/(H/FIELD_H))));vmRegs[di]=Math.min(3,signalField[_sfy158p*FIELD_W+_sfx158p])*k;}break; // SIGNAL_SENSE — full parity
+        case 159:{const _sgx159p=Math.max(1,Math.min(FIELD_W-2,Math.floor(px[i]/(W/FIELD_W)))),_sgy159p=Math.max(1,Math.min(FIELD_H-2,Math.floor(py[i]/(H/FIELD_H))));vmRegs[di]=(signalField[_sgy159p*FIELD_W+_sgx159p+1]-signalField[_sgy159p*FIELD_W+_sgx159p-1])*0.5*k;}break; // SIGNAL_GRAD_X — full parity
+        case 160:{const _sgx160p=Math.max(1,Math.min(FIELD_W-2,Math.floor(px[i]/(W/FIELD_W)))),_sgy160p=Math.max(1,Math.min(FIELD_H-2,Math.floor(py[i]/(H/FIELD_H))));vmRegs[di]=(signalField[(_sgy160p+1)*FIELD_W+_sgx160p]-signalField[(_sgy160p-1)*FIELD_W+_sgx160p])*0.5*k;}break; // SIGNAL_GRAD_Y — full parity
       }
       if(op>=CORE_OPCODES&&op<CORE_OPCODES+MAX_BOUND_OPCODES){
         const _bos=genome.boundOpcodes;
@@ -15482,6 +15488,8 @@ function executeClusterVM(i,j,sim,d){
       case 156:{if(vmRegs[si]>k&&localRes[i]>0.2){const _gf156c=Math.min(Math.abs(vmRegs[si])*0.08,localRes[i]*0.15);localRes[i]-=_gf156c;localRes[j]=Math.min(2,localRes[j]+_gf156c);vmRegs[di]=_gf156c;}else{vmRegs[di]=0;}}break; // ENERGY_DONATE — full parity
       case 157:{const _sfx157c=Math.max(0,Math.min(FIELD_W-1,Math.floor(px[i]/(W/FIELD_W)))),_sfy157c=Math.max(0,Math.min(FIELD_H-1,Math.floor(py[i]/(H/FIELD_H))));signalField[_sfy157c*FIELD_W+_sfx157c]=Math.min(3,signalField[_sfy157c*FIELD_W+_sfx157c]+Math.abs(vmRegs[si]*k));vmRegs[di]=signalField[_sfy157c*FIELD_W+_sfx157c];}break; // SIGNAL_EMIT — full parity
       case 158:{const _sfx158c=Math.max(0,Math.min(FIELD_W-1,Math.floor(px[i]/(W/FIELD_W)))),_sfy158c=Math.max(0,Math.min(FIELD_H-1,Math.floor(py[i]/(H/FIELD_H))));vmRegs[di]=Math.min(3,signalField[_sfy158c*FIELD_W+_sfx158c])*k;}break; // SIGNAL_SENSE — full parity
+      case 159:{const _sgx159c=Math.max(1,Math.min(FIELD_W-2,Math.floor(px[i]/(W/FIELD_W)))),_sgy159c=Math.max(1,Math.min(FIELD_H-2,Math.floor(py[i]/(H/FIELD_H))));vmRegs[di]=(signalField[_sgy159c*FIELD_W+_sgx159c+1]-signalField[_sgy159c*FIELD_W+_sgx159c-1])*0.5*k;}break; // SIGNAL_GRAD_X — full parity
+      case 160:{const _sgx160c=Math.max(1,Math.min(FIELD_W-2,Math.floor(px[i]/(W/FIELD_W)))),_sgy160c=Math.max(1,Math.min(FIELD_H-2,Math.floor(py[i]/(H/FIELD_H))));vmRegs[di]=(signalField[(_sgy160c+1)*FIELD_W+_sgx160c]-signalField[(_sgy160c-1)*FIELD_W+_sgx160c])*0.5*k;}break; // SIGNAL_GRAD_Y — full parity
     }
     if(op>=CORE_OPCODES&&op<CORE_OPCODES+MAX_BOUND_OPCODES){
       const _bos=genome.boundOpcodes;
@@ -16086,6 +16094,8 @@ function executeSoloVM(){
         case 156:{vmRegs[di]=0;}break; // ENERGY_DONATE — NOP in solo context (no interaction partner)
         case 157:{const _sfx157s=Math.max(0,Math.min(FIELD_W-1,Math.floor(px[i]/(W/FIELD_W)))),_sfy157s=Math.max(0,Math.min(FIELD_H-1,Math.floor(py[i]/(H/FIELD_H))));signalField[_sfy157s*FIELD_W+_sfx157s]=Math.min(3,signalField[_sfy157s*FIELD_W+_sfx157s]+Math.abs(vmRegs[si]*k));vmRegs[di]=signalField[_sfy157s*FIELD_W+_sfx157s];}break; // SIGNAL_EMIT — full parity (solo particles can emit signals autonomously)
         case 158:{const _sfx158s=Math.max(0,Math.min(FIELD_W-1,Math.floor(px[i]/(W/FIELD_W)))),_sfy158s=Math.max(0,Math.min(FIELD_H-1,Math.floor(py[i]/(H/FIELD_H))));vmRegs[di]=Math.min(3,signalField[_sfy158s*FIELD_W+_sfx158s])*k;}break; // SIGNAL_SENSE — full parity
+        case 159:{const _sgx159s=Math.max(1,Math.min(FIELD_W-2,Math.floor(px[i]/(W/FIELD_W)))),_sgy159s=Math.max(1,Math.min(FIELD_H-2,Math.floor(py[i]/(H/FIELD_H))));vmRegs[di]=(signalField[_sgy159s*FIELD_W+_sgx159s+1]-signalField[_sgy159s*FIELD_W+_sgx159s-1])*0.5*k;}break; // SIGNAL_GRAD_X — full parity
+        case 160:{const _sgx160s=Math.max(1,Math.min(FIELD_W-2,Math.floor(px[i]/(W/FIELD_W)))),_sgy160s=Math.max(1,Math.min(FIELD_H-2,Math.floor(py[i]/(H/FIELD_H))));vmRegs[di]=(signalField[(_sgy160s+1)*FIELD_W+_sgx160s]-signalField[(_sgy160s-1)*FIELD_W+_sgx160s])*0.5*k;}break; // SIGNAL_GRAD_Y — full parity
       }
       if(op>=CORE_OPCODES&&op<CORE_OPCODES+MAX_BOUND_OPCODES){
         const _bos=genome.boundOpcodes;
