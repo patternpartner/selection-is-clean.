@@ -273,7 +273,7 @@ const MAX_BOUND_OPCODES=32; // UNLOCKED #7b: was 16. Wider namespace for system-
 // Bumping CORE_OPCODES is the ONLY edit needed to add a core opcode — the bound guards
 // (op>=CORE_OPCODES) and OPCODE_COUNT derive from it, so a boundary typo can no longer
 // orphan an opcode or collide a core op with a bound slot (the Pe60 / op142-class bug).
-const CORE_OPCODES=178; // 0..177 core — op175 MARK_POS, op176 HOME_DIST, op177 HOME_BEARING_X
+const CORE_OPCODES=181; // 0..180 core — op178 HOME_BEARING_Y, op179 HGT_DONATE, op180 COLLAPSE_SENSE
                         // 0..132 core — op132 SEASON_PHASE: perceive the current feast/famine cycle position
                         // 0..131 core — op131 ENERGY_STRESS: the system perceives conserved-budget scarcity
                         // 0..130 core — OPENED THE SWITCH: op128 READ_OWN_CASTE, op129 READ_PARTNER_CASTE,
@@ -8707,6 +8707,9 @@ function profileVM(){
         case 175:vmRegs[di]=0*(k||1);break; // MARK_POS profiler stub — NOP during profiling (no stable position)
         case 176:vmRegs[di]=0*(k||1);break; // HOME_DIST profiler stub — zero (always at home during profiling)
         case 177:vmRegs[di]=0*(k||1);break; // HOME_BEARING_X profiler stub — zero (no displacement during profiling)
+        case 178:vmRegs[di]=0*(k||1);break; // HOME_BEARING_Y profiler stub — zero (no displacement during profiling)
+        case 179:vmRegs[di]=0*(k||1);break; // HGT_DONATE profiler stub — NOP during profiling (no partner genome to modify)
+        case 180:vmRegs[di]=0*(k||1);break; // COLLAPSE_SENSE profiler stub — zero (no collapse during profiling)
       }
       if(op>=CORE_OPCODES&&op<CORE_OPCODES+MAX_BOUND_OPCODES){
         const _bos=genome.boundOpcodes;
@@ -13345,7 +13348,10 @@ function executeVM(i,j,sim,d){
       case 174:{const _ix174=Math.max(0,Math.min(FIELD_W-1,Math.floor(px[j]/(W/FIELD_W)))),_iy174=Math.max(0,Math.min(FIELD_H-1,Math.floor(py[j]/(H/FIELD_H)))),_ii174=_iy174*FIELD_W+_ix174;const _ia174=Math.abs(vmRegs[si]*k)*0.3;signalField[_ii174]=Math.min(3,signalField[_ii174]+_ia174);vmRegs[di]=_ia174;}break; // INJECT_SIGNAL — deposit pheromone at PARTNER'S position (not own position like SIGNAL_EMIT op157). The first opcode enabling directed marking: leave a chemical trail on partners you interact with. Enables: mark exploiters so others avoid them (reputation via signal, readable by SIGNAL_SENSE op158); mark cooperators so kin seek them out; create pheromone exclusion zones around dangerous partners; implement distributed chemical communication without centralised signalling. With SIGNAL_GRAD_X/Y (ops 159-160) and INJECT_SIGNAL, lineages build social reputation landscapes.
       case 175:{pHomeX[i]=px[i];pHomeY[i]=py[i];vmRegs[di]=0;}break; // MARK_POS — stamp current position as home. Writes px[i] and py[i] into dedicated pHomeX/pHomeY arrays (not pMem, to avoid clobber). Combined with HOME_DIST (op176) and HOME_BEARING_X (op177), enables natal site philopatry: mark birthplace or a resource patch, then navigate back after excursions. Enables: territory patrolling (mark centre, measure dist, return when dist>threshold); kin-cluster anchoring (mark cluster centroid via CLUSTER_POOL interaction, return to it); foraging circuits (mark food source, exploit, navigate home).
       case 176:{const _hdx176=px[i]-pHomeX[i],_hdy176=py[i]-pHomeY[i];vmRegs[di]=Math.sqrt(_hdx176*_hdx176+_hdy176*_hdy176)/(W*0.1)*k;}break; // HOME_DIST — Euclidean distance from marked home position, normalised by 10% of world width (so distance=W*0.1 → 1.0). Enables distance-conditional behaviour: reproduce when near home (familiar habitat advantage), stop feeding and return when HOME_DIST>threshold, invest in local root-write only when HOME_DIST is small (stay in own territory). Without normalisation the raw pixel distance would be genome-parameter-dependent; normalised output is k-scalable.
-      case 177:{const _hbdx177=pHomeX[i]-px[i],_hbdy177=pHomeY[i]-py[i],_hbd177=Math.sqrt(_hbdx177*_hbdx177+_hbdy177*_hbdy177)+0.01;vmRegs[di]=(_hbdx177/_hbd177)*k;}break; // HOME_BEARING_X — X component of the unit vector pointing from current position toward home. Range -1..1 scaled by k. Combined with HOME_DIST (op176) as a gate (only navigate when far enough from home) and with velocity updates (vmRegs[di] → vx adjustment upstream), enables evolved homing flight: particles can navigate back to a marked location across the world without a fixed compass. Pair with a future HOME_BEARING_Y for full 2D homing.
+      case 177:{const _hbdx177=pHomeX[i]-px[i],_hbdy177=pHomeY[i]-py[i],_hbd177=Math.sqrt(_hbdx177*_hbdx177+_hbdy177*_hbdy177)+0.01;vmRegs[di]=(_hbdx177/_hbd177)*k;}break; // HOME_BEARING_X — X component of the unit vector pointing from current position toward home. Range -1..1 scaled by k. Combined with HOME_DIST (op176) as a gate (only navigate when far enough from home) and with velocity updates (vmRegs[di] → vx adjustment upstream), enables evolved homing flight: particles can navigate back to a marked location across the world without a fixed compass.
+      case 178:{const _hbdx178=pHomeX[i]-px[i],_hbdy178=pHomeY[i]-py[i],_hbd178=Math.sqrt(_hbdx178*_hbdx178+_hbdy178*_hbdy178)+0.01;vmRegs[di]=(_hbdy178/_hbd178)*k;}break; // HOME_BEARING_Y — Y component of unit vector toward home. Completes the 2D homing navigation pair: combine HOME_BEARING_X (op177) → vx adjustment and HOME_BEARING_Y → vy adjustment, gated by HOME_DIST (op176) > threshold, to achieve full 2D homing flight. Enables: migratory particles that travel to distant resource patches and navigate back to the marked kin cluster; honeybee-style central-place foraging circuits; natal site return after overwintering dispersal.
+      case 179:{if(vmRegs[si]>k&&pProg[i]&&pProg[j]&&pProg[i].length>0){const _cap179=Math.min(genome.vmMaxInstructions||16,48);if(pProg[j].length<_cap179){const _si179=Math.abs(Math.floor(vmRegs[si]*3))%pProg[i].length;const _ins179=pProg[i][_si179];if(_ins179){const _di179=Math.floor(Math.random()*(pProg[j].length+1));pProg[j].splice(_di179,0,[_ins179[0],_ins179[1],_ins179[2],+_ins179[3]]);vmRegs[di]=1;}else{vmRegs[di]=0;}}else{vmRegs[di]=0;}}else{vmRegs[di]=0;}}break; // HGT_DONATE — insert one of own instructions into partner's genome at a random position (horizontal gene transfer, donor direction). Complement to RECOMBINE (op152) which takes from partner. Donors pay no resource cost; evolved selection pressure determines whether donation spreads. Creates viral gene dynamics: a beneficial instruction in one lineage can propagate laterally into others without requiring shared ancestry. Enables: evolved mutualism where donors gain indirect benefit (partners become more valuable); evolved parasitism where donors inject disruptive instructions; genetic missionaries that spread successful strategies across the population.
+      case 180:{vmRegs[di]=collapse[i]*k;}break; // COLLAPSE_SENSE — read own collapse value (0..2+), a measure of accumulated stress, resonant damage, and ghost-field loading. High collapse indicates a particle under heavy structural stress. Enables stress-conditional strategies: trigger APOPTOSIS (op165) when collapse exceeds threshold (damaged particles sacrifice themselves before they are destroyed passively); reduce resource investment during high-stress periods; signal health status to cluster-mates via BROADCAST_WRITE (op11). The collapse variable already drives amp boosts and visual smear; this opcode makes it VM-readable for the first time.
     }
     // BOUND-OPCODE BOUNDARY (Pe60-class fix, now single-sourced via CORE_OPCODES).
     // History: the guard once read op>=126 (boi=op-126), which (a) collided with core
@@ -14399,6 +14405,9 @@ function executeVM(i,j,sim,d){
         case 175:{pHomeX[i]=px[i];pHomeY[i]=py[i];vmRegs[di]=0;}break; // MARK_POS — full parity
         case 176:{const _hdx176p=px[i]-pHomeX[i],_hdy176p=py[i]-pHomeY[i];vmRegs[di]=Math.sqrt(_hdx176p*_hdx176p+_hdy176p*_hdy176p)/(W*0.1)*k;}break; // HOME_DIST — full parity
         case 177:{const _hbdx177p=pHomeX[i]-px[i],_hbdy177p=pHomeY[i]-py[i],_hbd177p=Math.sqrt(_hbdx177p*_hbdx177p+_hbdy177p*_hbdy177p)+0.01;vmRegs[di]=(_hbdx177p/_hbd177p)*k;}break; // HOME_BEARING_X — full parity
+        case 178:{const _hbdx178p=pHomeX[i]-px[i],_hbdy178p=pHomeY[i]-py[i],_hbd178p=Math.sqrt(_hbdx178p*_hbdx178p+_hbdy178p*_hbdy178p)+0.01;vmRegs[di]=(_hbdy178p/_hbd178p)*k;}break; // HOME_BEARING_Y — full parity
+        case 179:{if(vmRegs[si]>k&&pProg[i]&&pProg[j]&&pProg[i].length>0){const _cap179p=Math.min(genome.vmMaxInstructions||16,48);if(pProg[j].length<_cap179p){const _si179p=Math.abs(Math.floor(vmRegs[si]*3))%pProg[i].length;const _ins179p=pProg[i][_si179p];if(_ins179p){const _di179p=Math.floor(Math.random()*(pProg[j].length+1));pProg[j].splice(_di179p,0,[_ins179p[0],_ins179p[1],_ins179p[2],+_ins179p[3]]);vmRegs[di]=1;}else{vmRegs[di]=0;}}else{vmRegs[di]=0;}}else{vmRegs[di]=0;}}break; // HGT_DONATE — full parity
+        case 180:{vmRegs[di]=collapse[i]*k;}break; // COLLAPSE_SENSE — full parity
       }
       if(op>=CORE_OPCODES&&op<CORE_OPCODES+MAX_BOUND_OPCODES){
         const _bos=genome.boundOpcodes;
@@ -15577,6 +15586,9 @@ function executeClusterVM(i,j,sim,d){
       case 175:{pHomeX[i]=px[i];pHomeY[i]=py[i];vmRegs[di]=0;}break; // MARK_POS — full parity
       case 176:{const _hdx176c=px[i]-pHomeX[i],_hdy176c=py[i]-pHomeY[i];vmRegs[di]=Math.sqrt(_hdx176c*_hdx176c+_hdy176c*_hdy176c)/(W*0.1)*k;}break; // HOME_DIST — full parity
       case 177:{const _hbdx177c=pHomeX[i]-px[i],_hbdy177c=pHomeY[i]-py[i],_hbd177c=Math.sqrt(_hbdx177c*_hbdx177c+_hbdy177c*_hbdy177c)+0.01;vmRegs[di]=(_hbdx177c/_hbd177c)*k;}break; // HOME_BEARING_X — full parity
+      case 178:{const _hbdx178c=pHomeX[i]-px[i],_hbdy178c=pHomeY[i]-py[i],_hbd178c=Math.sqrt(_hbdx178c*_hbdx178c+_hbdy178c*_hbdy178c)+0.01;vmRegs[di]=(_hbdy178c/_hbd178c)*k;}break; // HOME_BEARING_Y — full parity
+      case 179:{if(vmRegs[si]>k&&pProg[i]&&pProg[j]&&pProg[i].length>0){const _cap179c=Math.min(genome.vmMaxInstructions||16,48);if(pProg[j].length<_cap179c){const _si179c=Math.abs(Math.floor(vmRegs[si]*3))%pProg[i].length;const _ins179c=pProg[i][_si179c];if(_ins179c){const _di179c=Math.floor(Math.random()*(pProg[j].length+1));pProg[j].splice(_di179c,0,[_ins179c[0],_ins179c[1],_ins179c[2],+_ins179c[3]]);vmRegs[di]=1;}else{vmRegs[di]=0;}}else{vmRegs[di]=0;}}else{vmRegs[di]=0;}}break; // HGT_DONATE — full parity
+      case 180:{vmRegs[di]=collapse[i]*k;}break; // COLLAPSE_SENSE — full parity
     }
     if(op>=CORE_OPCODES&&op<CORE_OPCODES+MAX_BOUND_OPCODES){
       const _bos=genome.boundOpcodes;
@@ -16200,6 +16212,9 @@ function executeSoloVM(){
         case 175:{pHomeX[i]=px[i];pHomeY[i]=py[i];vmRegs[di]=0;}break; // MARK_POS — full parity (solo particles mark home equally)
         case 176:{const _hdx176s=px[i]-pHomeX[i],_hdy176s=py[i]-pHomeY[i];vmRegs[di]=Math.sqrt(_hdx176s*_hdx176s+_hdy176s*_hdy176s)/(W*0.1)*k;}break; // HOME_DIST — full parity
         case 177:{const _hbdx177s=pHomeX[i]-px[i],_hbdy177s=pHomeY[i]-py[i],_hbd177s=Math.sqrt(_hbdx177s*_hbdx177s+_hbdy177s*_hbdy177s)+0.01;vmRegs[di]=(_hbdx177s/_hbd177s)*k;}break; // HOME_BEARING_X — full parity
+        case 178:{const _hbdx178s=pHomeX[i]-px[i],_hbdy178s=pHomeY[i]-py[i],_hbd178s=Math.sqrt(_hbdx178s*_hbdx178s+_hbdy178s*_hbdy178s)+0.01;vmRegs[di]=(_hbdy178s/_hbd178s)*k;}break; // HOME_BEARING_Y — full parity
+        case 179:{vmRegs[di]=0;}break; // HGT_DONATE — NOP in solo context (no partner genome)
+        case 180:{vmRegs[di]=collapse[i]*k;}break; // COLLAPSE_SENSE — full parity (solo particles also experience collapse)
       }
       if(op>=CORE_OPCODES&&op<CORE_OPCODES+MAX_BOUND_OPCODES){
         const _bos=genome.boundOpcodes;
