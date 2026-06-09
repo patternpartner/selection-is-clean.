@@ -273,7 +273,7 @@ const MAX_BOUND_OPCODES=32; // UNLOCKED #7b: was 16. Wider namespace for system-
 // Bumping CORE_OPCODES is the ONLY edit needed to add a core opcode — the bound guards
 // (op>=CORE_OPCODES) and OPCODE_COUNT derive from it, so a boundary typo can no longer
 // orphan an opcode or collide a core op with a bound slot (the Pe60 / op142-class bug).
-const CORE_OPCODES=193; // 0..192 core — op190 PARTNER_EPIGEN_READ, op191 PARTNER_EPIGEN_SET, op192 NEGATE
+const CORE_OPCODES=196; // 0..195 core — op193 PARTNER_SIGNAL_AT, op194 PARTNER_ROOT_AT, op195 FLOOR
                         // 0..132 core — op132 SEASON_PHASE: perceive the current feast/famine cycle position
                         // 0..131 core — op131 ENERGY_STRESS: the system perceives conserved-budget scarcity
                         // 0..130 core — OPENED THE SWITCH: op128 READ_OWN_CASTE, op129 READ_PARTNER_CASTE,
@@ -8726,6 +8726,9 @@ function profileVM(){
         case 190:vmRegs[di]=0*(k||1);break; // PARTNER_EPIGEN_READ profiler stub — zero (no partner during profiling)
         case 191:vmRegs[di]=0*(k||1);break; // PARTNER_EPIGEN_SET profiler stub — NOP (no partner during profiling)
         case 192:vmRegs[di]=-vmRegs[si]*(k||1);break; // NEGATE profiler stub — full negation
+        case 193:vmRegs[di]=0*(k||1);break; // PARTNER_SIGNAL_AT profiler stub — zero (no partner during profiling)
+        case 194:vmRegs[di]=0*(k||1);break; // PARTNER_ROOT_AT profiler stub — zero (no partner during profiling)
+        case 195:vmRegs[di]=Math.floor(vmRegs[si])*(k||1);break; // FLOOR profiler stub — full parity (pure register computation)
       }
       if(op>=CORE_OPCODES&&op<CORE_OPCODES+MAX_BOUND_OPCODES){
         const _bos=genome.boundOpcodes;
@@ -13382,6 +13385,9 @@ function executeVM(i,j,sim,d){
       case 190:{vmRegs[di]=((pEpigen[j]>>(vmRegs[si]&7))&1)*k;}break; // PARTNER_EPIGEN_READ — read bit (vmRegs[si]&7) from partner's epigenetic mask. Pairs with own EPIGEN_READ (op187). Enables: epigenetic kin recognition — compare own bit to partner's bit to detect shared ancestral priming (bit matches → likely kin); immune-like detection — lineages set caste-signature bits in own epigen and test whether partner has matching bits to detect same-lineage members; combined with COND_SKIP (op186), gate cooperation on epigenetic match.
       case 191:{pEpigen[j]|=(1<<(vmRegs[si]&7));vmRegs[di]=((pEpigen[j]>>(vmRegs[si]&7))&1)*k;}break; // PARTNER_EPIGEN_SET — set bit (vmRegs[si]&7) in partner's epigenetic mask (heritable effect: partner's offspring inherit the set bit with 95% fidelity). Enables social epigenetic programming: mutualists brand cooperative partners so their offspring start pre-primed for cooperation; teachers mark novices with a "trained" bit after a cooperative interaction; viral epigenetics: lineages spread their epigenetic signature laterally via interactions, creating population-level epigenetic waves without genome mutation. Arms race: hosts can evolve EPIGEN_CLR to clear unwanted partner-set bits.
       case 192:{vmRegs[di]=-vmRegs[si]*k;}break; // NEGATE — vmRegs[di] = -(vmRegs[si] * k). Completes the conditional-logic toolkit: COND_SKIP fires when vmRegs[si]<=0; NEGATE(sensor) followed by COND_SKIP fires when sensor>0. Together enables both branch directions without a separate opcode. Also enables: inverted cooperation (cooperate when sensor is negative = partner is poor); oscillating push-pull strategies (negate own phase signal to create anti-phase cooperation timing); sign-flipping arithmetic for difference calculations.
+      case 193:{const _psx193=Math.max(0,Math.min(FIELD_W-1,Math.floor(px[j]/(W/FIELD_W)))),_psy193=Math.max(0,Math.min(FIELD_H-1,Math.floor(py[j]/(H/FIELD_H))));vmRegs[di]=Math.min(3,signalField[_psy193*FIELD_W+_psx193])*k;}break; // PARTNER_SIGNAL_AT — read pheromone concentration at partner's grid cell. Unlike SIGNAL_SENSE (op158) which reads own position, this reveals partner's chemical context: is partner bathed in alarm signal, in a trail, in a broadcast zone? Enables: reject partners in high-alarm zones (danger contagion avoidance); preferentially interact with partners in established signal corridors (trust trails); know before moving whether partner's locale is chemically marked.
+      case 194:{const _prx194=Math.max(0,Math.min(FIELD_W-1,Math.floor(px[j]/(W/FIELD_W)))),_pry194=Math.max(0,Math.min(FIELD_H-1,Math.floor(py[j]/(H/FIELD_H))));vmRegs[di]=rootField[_pry194*FIELD_W+_prx194]*k;}break; // PARTNER_ROOT_AT — read root-infrastructure density at partner's location. Complements ROOT_SENSE (op169, own pos) and ROOT_WRITE (op162, own pos). Now particles know whether their partner stands on fertile built ground or barren territory: prefer partners on root-rich cells (they are likely kin-territory holders); detect territory encroachment (own-root-rich cell, partner-root-poor = intruder); measure partner's niche-construction investment history without reading genome.
+      case 195:{vmRegs[di]=Math.floor(vmRegs[si])*k;}break; // FLOOR — integer rounding toward zero. Discretises continuous signals into integer steps: floor(caste/2) groups 8 castes into 4 broad classes; floor(localRes) separates depleted (0) from partial (1) from full (2) reserve bands; floor(phase/PI) separates phase hemispheres. Enables conditional branching on discrete state without COND_SKIP chains: compare floor values for exact integer equality.
     }
     // BOUND-OPCODE BOUNDARY (Pe60-class fix, now single-sourced via CORE_OPCODES).
     // History: the guard once read op>=126 (boi=op-126), which (a) collided with core
@@ -14450,6 +14456,9 @@ function executeVM(i,j,sim,d){
         case 190:{vmRegs[di]=((pEpigen[j]>>(vmRegs[si]&7))&1)*k;}break; // PARTNER_EPIGEN_READ — full parity
         case 191:{pEpigen[j]|=(1<<(vmRegs[si]&7));vmRegs[di]=((pEpigen[j]>>(vmRegs[si]&7))&1)*k;}break; // PARTNER_EPIGEN_SET — full parity
         case 192:{vmRegs[di]=-vmRegs[si]*k;}break; // NEGATE — full parity
+        case 193:{const _psx193p=Math.max(0,Math.min(FIELD_W-1,Math.floor(px[j]/(W/FIELD_W)))),_psy193p=Math.max(0,Math.min(FIELD_H-1,Math.floor(py[j]/(H/FIELD_H))));vmRegs[di]=Math.min(3,signalField[_psy193p*FIELD_W+_psx193p])*k;}break; // PARTNER_SIGNAL_AT — full parity
+        case 194:{const _prx194p=Math.max(0,Math.min(FIELD_W-1,Math.floor(px[j]/(W/FIELD_W)))),_pry194p=Math.max(0,Math.min(FIELD_H-1,Math.floor(py[j]/(H/FIELD_H))));vmRegs[di]=rootField[_pry194p*FIELD_W+_prx194p]*k;}break; // PARTNER_ROOT_AT — full parity
+        case 195:{vmRegs[di]=Math.floor(vmRegs[si])*k;}break; // FLOOR — full parity
       }
       if(op>=CORE_OPCODES&&op<CORE_OPCODES+MAX_BOUND_OPCODES){
         const _bos=genome.boundOpcodes;
@@ -15643,6 +15652,9 @@ function executeClusterVM(i,j,sim,d){
       case 190:{vmRegs[di]=((pEpigen[j]>>(vmRegs[si]&7))&1)*k;}break; // PARTNER_EPIGEN_READ — full parity
       case 191:{pEpigen[j]|=(1<<(vmRegs[si]&7));vmRegs[di]=((pEpigen[j]>>(vmRegs[si]&7))&1)*k;}break; // PARTNER_EPIGEN_SET — full parity
       case 192:{vmRegs[di]=-vmRegs[si]*k;}break; // NEGATE — full parity
+      case 193:{const _psx193c=Math.max(0,Math.min(FIELD_W-1,Math.floor(px[j]/(W/FIELD_W)))),_psy193c=Math.max(0,Math.min(FIELD_H-1,Math.floor(py[j]/(H/FIELD_H))));vmRegs[di]=Math.min(3,signalField[_psy193c*FIELD_W+_psx193c])*k;}break; // PARTNER_SIGNAL_AT — full parity
+      case 194:{const _prx194c=Math.max(0,Math.min(FIELD_W-1,Math.floor(px[j]/(W/FIELD_W)))),_pry194c=Math.max(0,Math.min(FIELD_H-1,Math.floor(py[j]/(H/FIELD_H))));vmRegs[di]=rootField[_pry194c*FIELD_W+_prx194c]*k;}break; // PARTNER_ROOT_AT — full parity
+      case 195:{vmRegs[di]=Math.floor(vmRegs[si])*k;}break; // FLOOR — full parity
     }
     if(op>=CORE_OPCODES&&op<CORE_OPCODES+MAX_BOUND_OPCODES){
       const _bos=genome.boundOpcodes;
@@ -16281,6 +16293,9 @@ function executeSoloVM(){
         case 190:{vmRegs[di]=0;}break; // PARTNER_EPIGEN_READ — NOP in solo context (no partner)
         case 191:{vmRegs[di]=0;}break; // PARTNER_EPIGEN_SET — NOP in solo context (no partner)
         case 192:{vmRegs[di]=-vmRegs[si]*k;}break; // NEGATE — full parity
+        case 193:{vmRegs[di]=0;}break; // PARTNER_SIGNAL_AT — NOP in solo context (no partner)
+        case 194:{vmRegs[di]=0;}break; // PARTNER_ROOT_AT — NOP in solo context (no partner)
+        case 195:{vmRegs[di]=Math.floor(vmRegs[si])*k;}break; // FLOOR — full parity
       }
       if(op>=CORE_OPCODES&&op<CORE_OPCODES+MAX_BOUND_OPCODES){
         const _bos=genome.boundOpcodes;
