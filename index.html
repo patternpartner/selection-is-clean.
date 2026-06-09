@@ -273,7 +273,7 @@ const MAX_BOUND_OPCODES=32; // UNLOCKED #7b: was 16. Wider namespace for system-
 // Bumping CORE_OPCODES is the ONLY edit needed to add a core opcode — the bound guards
 // (op>=CORE_OPCODES) and OPCODE_COUNT derive from it, so a boundary typo can no longer
 // orphan an opcode or collide a core op with a bound slot (the Pe60 / op142-class bug).
-const CORE_OPCODES=169; // 0..168 core — op165 APOPTOSIS, op166 CLUSTER_POOL, op167 KIN_SENSE, op168 PHASE_SYNC
+const CORE_OPCODES=172; // 0..171 core — op169 ROOT_SENSE, op170 CASTE_MEM_READ, op171 CASTE_MEM_WRITE
                         // 0..132 core — op132 SEASON_PHASE: perceive the current feast/famine cycle position
                         // 0..131 core — op131 ENERGY_STRESS: the system perceives conserved-budget scarcity
                         // 0..130 core — OPENED THE SWITCH: op128 READ_OWN_CASTE, op129 READ_PARTNER_CASTE,
@@ -8695,6 +8695,9 @@ function profileVM(){
         case 166:vmRegs[di]=0*(k||1);break; // CLUSTER_POOL profiler stub — no resource pooling during profiling
         case 167:vmRegs[di]=0.5*(k||1);break; // KIN_SENSE profiler stub — 0.5 (neutral mid-similarity)
         case 168:vmRegs[di]=0*(k||1);break; // PHASE_SYNC profiler stub — no phase delta during profiling
+        case 169:vmRegs[di]=0*(k||1);break; // ROOT_SENSE profiler stub — zero (no root field during profiling)
+        case 170:vmRegs[di]=0*(k||1);break; // CASTE_MEM_READ profiler stub — zero (no partner caste during profiling)
+        case 171:vmRegs[di]=0*(k||1);break; // CASTE_MEM_WRITE profiler stub — NOP during profiling
       }
       if(op>=CORE_OPCODES&&op<CORE_OPCODES+MAX_BOUND_OPCODES){
         const _bos=genome.boundOpcodes;
@@ -13323,6 +13326,9 @@ function executeVM(i,j,sim,d){
       case 166:{if(vmRegs[si]>k&&clusterID[i]>=0&&clusterID[i]===clusterID[j]){const _df166=(localRes[i]-localRes[j])*0.05;if(_df166>0){localRes[i]-=_df166;localRes[j]=Math.min(2,localRes[j]+_df166);vmRegs[di]=_df166;}else if(_df166<0){const _d2=-_df166;localRes[j]-=_d2;localRes[i]=Math.min(2,localRes[i]+_d2);vmRegs[di]=_d2;}else{vmRegs[di]=0;}}else{vmRegs[di]=0;}}break; // CLUSTER_POOL — soft resource equalization with cluster-mate: transfer 5% of the localRes gap toward equality, but only between particles sharing the same clusterID. Excludes defectors. Enables evolved kin-resource pooling: clusters that share resources reduce individual variance, improving collective survival during famine. Combined with TERRITORY_SIGNAL (op139) and KIN_SENSE (op167), lineages evolve conditional mutualism: pool with kin, drain strangers.
       case 167:{const _pA167=pProg[i],_pB167=pProg[j];if(_pA167&&_pB167&&_pA167.length&&_pB167.length){const _n167=Math.min(4,Math.min(_pA167.length,_pB167.length));let _m167=0;for(let _k167=0;_k167<_n167;_k167++)if(_pA167[_k167]&&_pB167[_k167]&&_pA167[_k167][0]===_pB167[_k167][0])_m167++;vmRegs[di]=(_m167/_n167)*k;}else{vmRegs[di]=0;}}break; // KIN_SENSE — opcode-level genetic similarity to partner: 1=identical first-4 opcodes, 0=maximally divergent. Provides a kin recognition signal without explicit genealogy tracking. With ENERGY_DRAIN (op155) and ENERGY_DONATE (op156) gated on this signal, lineages evolve Hamilton's rule: help when relatedness × benefit > cost. Closes the inclusive fitness loop: kin selection becomes evolvable rather than designed.
       case 168:{const _pd168=phase[j]-phase[i];phase[i]+=Math.sin(_pd168)*Math.abs(vmRegs[si]*k)*0.1;vmRegs[di]=Math.sin(_pd168);}break; // PHASE_SYNC — voluntarily adjust own phase toward partner's by fraction Math.abs(vmRegs[si]*k)*0.1 of the sine of the gap. Unlike the automatic entrain() mechanism, this is evolved: lineages choose when to synchronize. Enables: coordinate phase with kin before cluster formation; diverge from competitors to avoid entrainment capture; build resonant clusters for higher phaseAlign fitness scores.
+      case 169:{const _rx169=Math.max(0,Math.min(FIELD_W-1,Math.floor(px[i]/(W/FIELD_W)))),_ry169=Math.max(0,Math.min(FIELD_H-1,Math.floor(py[i]/(H/FIELD_H))));vmRegs[di]=rootField[_ry169*FIELD_W+_rx169]*k;}break; // ROOT_SENSE — read rootField level at own position (0..5). Closes the ROOT_WRITE (op162) loop: niche construction becomes a sensed resource. Enables: invest-and-sense cycles (build root until threshold, then harvest its benefit via better foraging); landmark navigation (migrate toward root-rich areas built by ancestors); kin-niche detection (high root at empty cell = kin territory, colonise preferentially). Without ROOT_SENSE, ROOT_WRITE is write-only — particles can build infrastructure but cannot condition behaviour on what was built.
+      case 170:{vmRegs[di]=pMem[i*MEM_SIZE+(pType[j]&7)]*k;}break; // CASTE_MEM_READ — read the pMem slot indexed by partner's caste type (pType[j]&7, so 8 slots for 8 possible castes). Enables caste-keyed interaction history: "how have I fared against green particles?" Combined with CASTE_MEM_WRITE (op171), ENERGY_DRAIN (op155), and ENERGY_DONATE (op156) gated on the retrieved value, lineages can evolve caste-conditional tit-for-tat: the first reciprocal-altruism strategy not relying on lineage-specific memory.
+      case 171:{pMem[i*MEM_SIZE+(pType[j]&7)]=Math.max(-8,Math.min(8,vmRegs[si]));vmRegs[di]=vmRegs[si];}break; // CASTE_MEM_WRITE — write to the pMem slot indexed by partner's caste type. After each interaction with a caste-j particle, record the outcome (positive=cooperated, negative=defected). Next encounter reads it with CASTE_MEM_READ to decide whether to cooperate or defect. Together these opcodes close the reciprocal altruism loop: tit-for-tat by caste. Selection pressure: defectors exploit naive cooperators, then face retaliation across all future encounters with that caste.
     }
     // BOUND-OPCODE BOUNDARY (Pe60-class fix, now single-sourced via CORE_OPCODES).
     // History: the guard once read op>=126 (boi=op-126), which (a) collided with core
@@ -14367,6 +14373,9 @@ function executeVM(i,j,sim,d){
         case 166:{if(vmRegs[si]>k&&clusterID[i]>=0&&clusterID[i]===clusterID[j]){const _df166p=(localRes[i]-localRes[j])*0.05;if(_df166p>0){localRes[i]-=_df166p;localRes[j]=Math.min(2,localRes[j]+_df166p);vmRegs[di]=_df166p;}else if(_df166p<0){const _d2p=-_df166p;localRes[j]-=_d2p;localRes[i]=Math.min(2,localRes[i]+_d2p);vmRegs[di]=_d2p;}else{vmRegs[di]=0;}}else{vmRegs[di]=0;}}break; // CLUSTER_POOL — full parity
         case 167:{const _pA167p=pProg[i],_pB167p=pProg[j];if(_pA167p&&_pB167p&&_pA167p.length&&_pB167p.length){const _n167p=Math.min(4,Math.min(_pA167p.length,_pB167p.length));let _m167p=0;for(let _k167p=0;_k167p<_n167p;_k167p++)if(_pA167p[_k167p]&&_pB167p[_k167p]&&_pA167p[_k167p][0]===_pB167p[_k167p][0])_m167p++;vmRegs[di]=(_m167p/_n167p)*k;}else{vmRegs[di]=0;}}break; // KIN_SENSE — full parity
         case 168:{const _pd168p=phase[j]-phase[i];phase[i]+=Math.sin(_pd168p)*Math.abs(vmRegs[si]*k)*0.1;vmRegs[di]=Math.sin(_pd168p);}break; // PHASE_SYNC — full parity
+        case 169:{const _rx169p=Math.max(0,Math.min(FIELD_W-1,Math.floor(px[i]/(W/FIELD_W)))),_ry169p=Math.max(0,Math.min(FIELD_H-1,Math.floor(py[i]/(H/FIELD_H))));vmRegs[di]=rootField[_ry169p*FIELD_W+_rx169p]*k;}break; // ROOT_SENSE — full parity
+        case 170:{vmRegs[di]=pMem[i*MEM_SIZE+(pType[j]&7)]*k;}break; // CASTE_MEM_READ — full parity
+        case 171:{pMem[i*MEM_SIZE+(pType[j]&7)]=Math.max(-8,Math.min(8,vmRegs[si]));vmRegs[di]=vmRegs[si];}break; // CASTE_MEM_WRITE — full parity
       }
       if(op>=CORE_OPCODES&&op<CORE_OPCODES+MAX_BOUND_OPCODES){
         const _bos=genome.boundOpcodes;
@@ -15536,6 +15545,9 @@ function executeClusterVM(i,j,sim,d){
       case 166:{if(vmRegs[si]>k&&clusterID[i]>=0&&clusterID[i]===clusterID[j]){const _df166c=(localRes[i]-localRes[j])*0.05;if(_df166c>0){localRes[i]-=_df166c;localRes[j]=Math.min(2,localRes[j]+_df166c);vmRegs[di]=_df166c;}else if(_df166c<0){const _d2c=-_df166c;localRes[j]-=_d2c;localRes[i]=Math.min(2,localRes[i]+_d2c);vmRegs[di]=_d2c;}else{vmRegs[di]=0;}}else{vmRegs[di]=0;}}break; // CLUSTER_POOL — full parity
       case 167:{const _pA167c=pProg[i],_pB167c=pProg[j];if(_pA167c&&_pB167c&&_pA167c.length&&_pB167c.length){const _n167c=Math.min(4,Math.min(_pA167c.length,_pB167c.length));let _m167c=0;for(let _k167c=0;_k167c<_n167c;_k167c++)if(_pA167c[_k167c]&&_pB167c[_k167c]&&_pA167c[_k167c][0]===_pB167c[_k167c][0])_m167c++;vmRegs[di]=(_m167c/_n167c)*k;}else{vmRegs[di]=0;}}break; // KIN_SENSE — full parity
       case 168:{const _pd168c=phase[j]-phase[i];phase[i]+=Math.sin(_pd168c)*Math.abs(vmRegs[si]*k)*0.1;vmRegs[di]=Math.sin(_pd168c);}break; // PHASE_SYNC — full parity
+      case 169:{const _rx169c=Math.max(0,Math.min(FIELD_W-1,Math.floor(px[i]/(W/FIELD_W)))),_ry169c=Math.max(0,Math.min(FIELD_H-1,Math.floor(py[i]/(H/FIELD_H))));vmRegs[di]=rootField[_ry169c*FIELD_W+_rx169c]*k;}break; // ROOT_SENSE — full parity
+      case 170:{vmRegs[di]=pMem[i*MEM_SIZE+(pType[j]&7)]*k;}break; // CASTE_MEM_READ — full parity
+      case 171:{pMem[i*MEM_SIZE+(pType[j]&7)]=Math.max(-8,Math.min(8,vmRegs[si]));vmRegs[di]=vmRegs[si];}break; // CASTE_MEM_WRITE — full parity
     }
     if(op>=CORE_OPCODES&&op<CORE_OPCODES+MAX_BOUND_OPCODES){
       const _bos=genome.boundOpcodes;
@@ -16150,6 +16162,9 @@ function executeSoloVM(){
         case 166:{vmRegs[di]=0;}break; // CLUSTER_POOL — NOP in solo context (no cluster partner present)
         case 167:{vmRegs[di]=0;}break; // KIN_SENSE — NOP in solo context (no partner to compare with)
         case 168:{vmRegs[di]=0;}break; // PHASE_SYNC — NOP in solo context (no partner phase to track)
+        case 169:{const _rx169s=Math.max(0,Math.min(FIELD_W-1,Math.floor(px[i]/(W/FIELD_W)))),_ry169s=Math.max(0,Math.min(FIELD_H-1,Math.floor(py[i]/(H/FIELD_H))));vmRegs[di]=rootField[_ry169s*FIELD_W+_rx169s]*k;}break; // ROOT_SENSE — full parity (solo particles benefit equally from sensing built infrastructure)
+        case 170:{vmRegs[di]=0;}break; // CASTE_MEM_READ — NOP in solo context (no partner caste to index)
+        case 171:{vmRegs[di]=0;}break; // CASTE_MEM_WRITE — NOP in solo context (no partner caste to index)
       }
       if(op>=CORE_OPCODES&&op<CORE_OPCODES+MAX_BOUND_OPCODES){
         const _bos=genome.boundOpcodes;
