@@ -273,7 +273,7 @@ const MAX_BOUND_OPCODES=32; // UNLOCKED #7b: was 16. Wider namespace for system-
 // Bumping CORE_OPCODES is the ONLY edit needed to add a core opcode — the bound guards
 // (op>=CORE_OPCODES) and OPCODE_COUNT derive from it, so a boundary typo can no longer
 // orphan an opcode or collide a core op with a bound slot (the Pe60 / op142-class bug).
-const CORE_OPCODES=196; // 0..195 core — op193 PARTNER_SIGNAL_AT, op194 PARTNER_ROOT_AT, op195 FLOOR
+const CORE_OPCODES=199; // 0..198 core — op196 ABS, op197 PARTNER_CRYSTAL_AT, op198 SIGN
                         // 0..132 core — op132 SEASON_PHASE: perceive the current feast/famine cycle position
                         // 0..131 core — op131 ENERGY_STRESS: the system perceives conserved-budget scarcity
                         // 0..130 core — OPENED THE SWITCH: op128 READ_OWN_CASTE, op129 READ_PARTNER_CASTE,
@@ -8729,6 +8729,9 @@ function profileVM(){
         case 193:vmRegs[di]=0*(k||1);break; // PARTNER_SIGNAL_AT profiler stub — zero (no partner during profiling)
         case 194:vmRegs[di]=0*(k||1);break; // PARTNER_ROOT_AT profiler stub — zero (no partner during profiling)
         case 195:vmRegs[di]=Math.floor(vmRegs[si])*(k||1);break; // FLOOR profiler stub — full parity (pure register computation)
+        case 196:vmRegs[di]=Math.abs(vmRegs[si])*(k||1);break; // ABS profiler stub — full parity
+        case 197:vmRegs[di]=0*(k||1);break; // PARTNER_CRYSTAL_AT profiler stub — zero (no partner during profiling)
+        case 198:vmRegs[di]=Math.sign(vmRegs[si])*(k||1);break; // SIGN profiler stub — full parity
       }
       if(op>=CORE_OPCODES&&op<CORE_OPCODES+MAX_BOUND_OPCODES){
         const _bos=genome.boundOpcodes;
@@ -13388,6 +13391,9 @@ function executeVM(i,j,sim,d){
       case 193:{const _psx193=Math.max(0,Math.min(FIELD_W-1,Math.floor(px[j]/(W/FIELD_W)))),_psy193=Math.max(0,Math.min(FIELD_H-1,Math.floor(py[j]/(H/FIELD_H))));vmRegs[di]=Math.min(3,signalField[_psy193*FIELD_W+_psx193])*k;}break; // PARTNER_SIGNAL_AT — read pheromone concentration at partner's grid cell. Unlike SIGNAL_SENSE (op158) which reads own position, this reveals partner's chemical context: is partner bathed in alarm signal, in a trail, in a broadcast zone? Enables: reject partners in high-alarm zones (danger contagion avoidance); preferentially interact with partners in established signal corridors (trust trails); know before moving whether partner's locale is chemically marked.
       case 194:{const _prx194=Math.max(0,Math.min(FIELD_W-1,Math.floor(px[j]/(W/FIELD_W)))),_pry194=Math.max(0,Math.min(FIELD_H-1,Math.floor(py[j]/(H/FIELD_H))));vmRegs[di]=rootField[_pry194*FIELD_W+_prx194]*k;}break; // PARTNER_ROOT_AT — read root-infrastructure density at partner's location. Complements ROOT_SENSE (op169, own pos) and ROOT_WRITE (op162, own pos). Now particles know whether their partner stands on fertile built ground or barren territory: prefer partners on root-rich cells (they are likely kin-territory holders); detect territory encroachment (own-root-rich cell, partner-root-poor = intruder); measure partner's niche-construction investment history without reading genome.
       case 195:{vmRegs[di]=Math.floor(vmRegs[si])*k;}break; // FLOOR — integer rounding toward zero. Discretises continuous signals into integer steps: floor(caste/2) groups 8 castes into 4 broad classes; floor(localRes) separates depleted (0) from partial (1) from full (2) reserve bands; floor(phase/PI) separates phase hemispheres. Enables conditional branching on discrete state without COND_SKIP chains: compare floor values for exact integer equality.
+      case 196:{vmRegs[di]=Math.abs(vmRegs[si])*k;}break; // ABS — absolute value of register. Removes sign ambiguity from sensors: abs(HOME_BEARING_X) gives unsigned heading magnitude; abs(gradient) measures steepness without caring which way it slopes; abs(phaseDiff) measures synchrony regardless of lead/lag. Pairs with SIGN (op198) to decompose a value into magnitude and direction separately, enabling magnitude-gated decisions that are sign-direction-agnostic.
+      case 197:{const _pcx197=Math.max(0,Math.min(FIELD_W-1,Math.floor(px[j]/(W/FIELD_W)))),_pcy197=Math.max(0,Math.min(FIELD_H-1,Math.floor(py[j]/(H/FIELD_H))));vmRegs[di]=Math.min(2,crystalField[_pcy197*FIELD_W+_pcx197]*2)*k;}break; // PARTNER_CRYSTAL_AT — crystal-phase density at partner's grid cell (0=liquid/amorphous, →2=dense crystal). Completes the partner-field context trio (PARTNER_SIGNAL_AT op193, PARTNER_ROOT_AT op194, PARTNER_CRYSTAL_AT op197). Enables: avoid interactions with partners in dense crystal (viscous, movement-restricted); prefer partners in crystal zones as stable anchors; detect if partner has settled in a high-coherence cluster site.
+      case 198:{vmRegs[di]=Math.sign(vmRegs[si])*k;}break; // SIGN — returns -1 (negative), 0 (zero), or +1 (positive). Extracts pure direction without magnitude: sign(gradient) gives chemotaxis direction independent of gradient strength; sign(phaseDiff) gives lead/lag direction independent of how far out of phase; sign(HOME_BEARING_X) gives left/right without distance. Enables threshold-free directional decisions: if SIGN(sensor)>0, go right — no need to calibrate against a specific magnitude.
     }
     // BOUND-OPCODE BOUNDARY (Pe60-class fix, now single-sourced via CORE_OPCODES).
     // History: the guard once read op>=126 (boi=op-126), which (a) collided with core
@@ -14459,6 +14465,9 @@ function executeVM(i,j,sim,d){
         case 193:{const _psx193p=Math.max(0,Math.min(FIELD_W-1,Math.floor(px[j]/(W/FIELD_W)))),_psy193p=Math.max(0,Math.min(FIELD_H-1,Math.floor(py[j]/(H/FIELD_H))));vmRegs[di]=Math.min(3,signalField[_psy193p*FIELD_W+_psx193p])*k;}break; // PARTNER_SIGNAL_AT — full parity
         case 194:{const _prx194p=Math.max(0,Math.min(FIELD_W-1,Math.floor(px[j]/(W/FIELD_W)))),_pry194p=Math.max(0,Math.min(FIELD_H-1,Math.floor(py[j]/(H/FIELD_H))));vmRegs[di]=rootField[_pry194p*FIELD_W+_prx194p]*k;}break; // PARTNER_ROOT_AT — full parity
         case 195:{vmRegs[di]=Math.floor(vmRegs[si])*k;}break; // FLOOR — full parity
+        case 196:{vmRegs[di]=Math.abs(vmRegs[si])*k;}break; // ABS — full parity
+        case 197:{const _pcx197p=Math.max(0,Math.min(FIELD_W-1,Math.floor(px[j]/(W/FIELD_W)))),_pcy197p=Math.max(0,Math.min(FIELD_H-1,Math.floor(py[j]/(H/FIELD_H))));vmRegs[di]=Math.min(2,crystalField[_pcy197p*FIELD_W+_pcx197p]*2)*k;}break; // PARTNER_CRYSTAL_AT — full parity
+        case 198:{vmRegs[di]=Math.sign(vmRegs[si])*k;}break; // SIGN — full parity
       }
       if(op>=CORE_OPCODES&&op<CORE_OPCODES+MAX_BOUND_OPCODES){
         const _bos=genome.boundOpcodes;
@@ -15655,6 +15664,9 @@ function executeClusterVM(i,j,sim,d){
       case 193:{const _psx193c=Math.max(0,Math.min(FIELD_W-1,Math.floor(px[j]/(W/FIELD_W)))),_psy193c=Math.max(0,Math.min(FIELD_H-1,Math.floor(py[j]/(H/FIELD_H))));vmRegs[di]=Math.min(3,signalField[_psy193c*FIELD_W+_psx193c])*k;}break; // PARTNER_SIGNAL_AT — full parity
       case 194:{const _prx194c=Math.max(0,Math.min(FIELD_W-1,Math.floor(px[j]/(W/FIELD_W)))),_pry194c=Math.max(0,Math.min(FIELD_H-1,Math.floor(py[j]/(H/FIELD_H))));vmRegs[di]=rootField[_pry194c*FIELD_W+_prx194c]*k;}break; // PARTNER_ROOT_AT — full parity
       case 195:{vmRegs[di]=Math.floor(vmRegs[si])*k;}break; // FLOOR — full parity
+      case 196:{vmRegs[di]=Math.abs(vmRegs[si])*k;}break; // ABS — full parity
+      case 197:{const _pcx197c=Math.max(0,Math.min(FIELD_W-1,Math.floor(px[j]/(W/FIELD_W)))),_pcy197c=Math.max(0,Math.min(FIELD_H-1,Math.floor(py[j]/(H/FIELD_H))));vmRegs[di]=Math.min(2,crystalField[_pcy197c*FIELD_W+_pcx197c]*2)*k;}break; // PARTNER_CRYSTAL_AT — full parity
+      case 198:{vmRegs[di]=Math.sign(vmRegs[si])*k;}break; // SIGN — full parity
     }
     if(op>=CORE_OPCODES&&op<CORE_OPCODES+MAX_BOUND_OPCODES){
       const _bos=genome.boundOpcodes;
@@ -16296,6 +16308,9 @@ function executeSoloVM(){
         case 193:{vmRegs[di]=0;}break; // PARTNER_SIGNAL_AT — NOP in solo context (no partner)
         case 194:{vmRegs[di]=0;}break; // PARTNER_ROOT_AT — NOP in solo context (no partner)
         case 195:{vmRegs[di]=Math.floor(vmRegs[si])*k;}break; // FLOOR — full parity
+        case 196:{vmRegs[di]=Math.abs(vmRegs[si])*k;}break; // ABS — full parity
+        case 197:{vmRegs[di]=0;}break; // PARTNER_CRYSTAL_AT — NOP in solo context (no partner)
+        case 198:{vmRegs[di]=Math.sign(vmRegs[si])*k;}break; // SIGN — full parity
       }
       if(op>=CORE_OPCODES&&op<CORE_OPCODES+MAX_BOUND_OPCODES){
         const _bos=genome.boundOpcodes;
