@@ -5168,6 +5168,16 @@ function cloneGenome(src){
   // they are the self's bookkeeping, read-only in the per-particle hot path, never cloned per birth.
   return g;
 }
+function crossoverProg(progA,progB){ // single-point crossover: prefix from A, suffix from B
+  if(!progA||!progB||progA.length<2||progB.length<2)return progA;
+  const cut=1+Math.floor(Math.random()*(progA.length-1));
+  const bStart=Math.floor(Math.random()*Math.max(1,progB.length));
+  const child=[...progA.slice(0,cut),...progB.slice(bStart)];
+  const cap=genome.vmMaxInstructions||16;
+  while(child.length>cap)child.pop();
+  if(!child.length)child.push([0,0,0,0]);
+  return child;
+}
 function mutateChildGenome(g){
   const rate=genome.mutationRate||0.06,scale=genome.mutationScale||1;
   // FULL divergence — gloves-off random walk on EVERY heritable scalar gene (relative step). Only
@@ -11138,7 +11148,11 @@ function addParticle(x,y,tv,born,parentA,parentB){
   // UNLOCKED #9 FULL: this lineage's COMPLETE genome — parent's whole genome cloned + every gene
   // mutated (physics AND behavior diverge), or a fresh clone of the self for seeds. pProg aliases the
   // program so the existing VM read paths keep working unchanged.
-  pGenome[i]=(parentA>=0&&parentA<N&&pGenome[parentA])?mutateChildGenome(cloneGenome(pGenome[parentA])):cloneGenome(genome);
+  // Two-parent crossover: when parentB also has a genome, a 30% chance produces a genuinely
+  // recombined program (prefix from A, suffix from B) rather than a pure clone-with-mutation.
+  {const _bg=(parentA>=0&&parentA<N&&pGenome[parentA])?cloneGenome(pGenome[parentA]):cloneGenome(genome);
+  if(parentB>=0&&parentB<N&&pGenome[parentB]&&Math.random()<0.3)_bg.vmProgram=crossoverProg(_bg.vmProgram,pGenome[parentB].vmProgram);
+  pGenome[i]=mutateChildGenome(_bg);}
   pProg[i]=pGenome[i].vmProgram;
   return i;
 }
@@ -11174,10 +11188,10 @@ function addCompound(x,y,nt,nvx,nvy,na,np,nf,parentA,parentB){
   pType[i]=(parentA>=0&&parentA<N)
     ? ((Math.random()<(genome.typeMutRate||0))?((Math.random()*NUM_TYPES)|0):pType[parentA])
     : ((Math.random()*NUM_TYPES)|0);
-  // UNLOCKED #9 FULL: this lineage's COMPLETE genome — parent's whole genome cloned + every gene
-  // mutated (physics AND behavior diverge), or a fresh clone of the self for seeds. pProg aliases the
-  // program so the existing VM read paths keep working unchanged.
-  pGenome[i]=(parentA>=0&&parentA<N&&pGenome[parentA])?mutateChildGenome(cloneGenome(pGenome[parentA])):cloneGenome(genome);
+  // UNLOCKED #9 FULL + two-parent crossover: compound child also crosses A×B programs.
+  {const _bg=(parentA>=0&&parentA<N&&pGenome[parentA])?cloneGenome(pGenome[parentA]):cloneGenome(genome);
+  if(parentB>=0&&parentB<N&&pGenome[parentB]&&Math.random()<0.3)_bg.vmProgram=crossoverProg(_bg.vmProgram,pGenome[parentB].vmProgram);
+  pGenome[i]=mutateChildGenome(_bg);}
   pProg[i]=pGenome[i].vmProgram;
   return i;
 }
