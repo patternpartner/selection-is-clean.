@@ -1,0 +1,4 @@
+# V8 profiler isolate logs
+isolate-*.log
+# transient run logs
+*.tmp
