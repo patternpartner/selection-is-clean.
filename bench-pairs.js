@@ -11,12 +11,19 @@ globalThis.localStorage={getItem:()=>null,setItem(){},removeItem(){}};
 globalThis.navigator={userAgent:'node',hardwareConcurrency:4,wakeLock:null};
 globalThis.BroadcastChannel=class{constructor(){}postMessage(){}addEventListener(){}close(){}set onmessage(_){}};
 globalThis.fetch=()=>new Promise(()=>{});globalThis.devicePixelRatio=1;globalThis.innerWidth=1280;globalThis.innerHeight=720;
-// REAL clock this time — so time-budget gates behave like the browser.
+// Clock: real by default; deterministic (5ms per tick, frozen within a tick) when SEED is set,
+// so time-budget gates fire identically across A/B runs.
 const t0=Date.now();
-globalThis.performance={now:()=>Date.now()-t0};
+globalThis.__detMs=0;
+globalThis.performance=process.env.SEED?{now:()=>globalThis.__detMs}:{now:()=>Date.now()-t0};
+// Seeded RNG (mulberry32) for exact replay across code variants.
+if(process.env.SEED){
+  let a=(parseInt(process.env.SEED,10)|0)>>>0;
+  Math.random=function(){a|=0;a=a+0x6D2B79F5|0;let t=Math.imul(a^a>>>15,1|a);t=t+Math.imul(t^t>>>7,61|t)^t;return((t^t>>>14)>>>0)/4294967296;};
+}
 globalThis.requestAnimationFrame=()=>0;globalThis.cancelAnimationFrame=()=>{};globalThis.setTimeout=()=>0;globalThis.clearTimeout=()=>{};globalThis.setInterval=()=>0;globalThis.clearInterval=()=>{};
 console.error=()=>{};console.warn=()=>{};
-const html=fs.readFileSync(__dirname+'/index.html','utf8');
+const html=fs.readFileSync(process.env.INDEX||(__dirname+'/index.html'),'utf8');
 let code=html.match(/<script>([\s\S]*)<\/script>/)[1];
 // Instrument: count pairwise VM invocations (the two calls inside processGrid's pair loop).
 globalThis.__pairs=0;
@@ -26,6 +33,7 @@ const driver=`
   const out=[];
   for(let s=0;s<ticks;s++){
     globalThis.__pairs=0;
+    globalThis.__detMs+=5;
     const a=Date.now();
     try{loop();}catch(e){}
     out.push({tick,N,pairs:globalThis.__pairs,ms:Date.now()-a});
@@ -37,6 +45,7 @@ const m=new Module(__dirname+'/bench-sim.js');m.filename=__dirname+'/bench-sim.j
 m._compile(code+driver,m.filename);
 const TICKS=parseInt(process.env.TICKS||'120',10);
 const rows=globalThis.__run(TICKS);
+if(process.env.DUMP){for(const r of rows)console.log(JSON.stringify({t:r.tick,N:r.N,p:r.pairs}));process.exit(0);}
 // summarize in buckets of 20
 for(let b=0;b<rows.length;b+=20){
   const seg=rows.slice(b,b+20);
