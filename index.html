@@ -273,7 +273,7 @@ const MAX_BOUND_OPCODES=32; // UNLOCKED #7b: was 16. Wider namespace for system-
 // Bumping CORE_OPCODES is the ONLY edit needed to add a core opcode — the bound guards
 // (op>=CORE_OPCODES) and OPCODE_COUNT derive from it, so a boundary typo can no longer
 // orphan an opcode or collide a core op with a bound slot (the Pe60 / op142-class bug).
-const CORE_OPCODES=220; // 0..219 core — op208-211 velocity I/O, op212-216 toxin/immune warfare, op217-219 oscillator direct control
+const CORE_OPCODES=232; // 0..231 core — op208-211 velocity I/O, op212-216 toxin/immune warfare, op217-219 oscillator direct control, op220-231 scaffold morphogenesis + genomic self-inspection + reproductive autonomy + cluster quorum sensing
                         // 0..132 core — op132 SEASON_PHASE: perceive the current feast/famine cycle position
                         // 0..131 core — op131 ENERGY_STRESS: the system perceives conserved-budget scarcity
                         // 0..130 core — OPENED THE SWITCH: op128 READ_OWN_CASTE, op129 READ_PARTNER_CASTE,
@@ -5334,6 +5334,7 @@ const pHomeX=new Float32Array(CAP);
 const pHomeY=new Float32Array(CAP);
 const toxinField=new Float32Array(FIELD_W*FIELD_H); // chemical toxin layer: particles emit via TOXIN_EMIT (op212), decays each tick, damages particles without immunity; enables evolved chemical arms races and antibiotic warfare
 const pImmune=new Float32Array(CAP); // per-particle immunity (0=none, 1=full); invested via IMMUNE_BOOST (op215), inherited weakly, decays each tick; shields against toxin damage
+const scaffoldField=new Float32Array(FIELD_W*FIELD_H); // morphogen scaffold layer: particles emit via SCAFFOLD_WRITE (op220), decays slowly (~700-tick half-life), biases offspring birth placement toward peaks; enables evolved niche construction, territorial marking, and lineage-specific habitat engineering
 // Epigenetic state — 8 heritable boolean flags per particle (one bit each).
 // Inherited at birth from parentA with ~5% per-bit flip rate.
 // Read by EPIGEN_READ (op187), written by EPIGEN_SET (op188) / EPIGEN_CLR (op189).
@@ -8755,6 +8756,18 @@ function profileVM(){
         case 217:vmRegs[di]=0*(k||1);break; // PHASE_SET profiler stub — NOP (no side-effects during profiling)
         case 218:vmRegs[di]=0*(k||1);break; // FREQ_READ profiler stub — zero
         case 219:vmRegs[di]=0*(k||1);break; // FREQ_SET profiler stub — NOP
+        case 220:vmRegs[di]=0*(k||1);break; // SCAFFOLD_WRITE profiler stub — NOP (no side-effects during profiling)
+        case 221:vmRegs[di]=0*(k||1);break; // SCAFFOLD_SENSE profiler stub — zero (no scaffold during profiling)
+        case 222:vmRegs[di]=0*(k||1);break; // PARTNER_SCAFFOLD_AT profiler stub — zero (no partner)
+        case 223:vmRegs[di]=0*(k||1);break; // GENOME_OP_AT profiler stub — zero
+        case 224:vmRegs[di]=0*(k||1);break; // GENOME_K_AT profiler stub — zero
+        case 225:vmRegs[di]=0*(k||1);break; // WHOLE_GENOME_COPY profiler stub — NOP (no partner during profiling)
+        case 226:vmRegs[di]=0*(k||1);break; // SPAWN_REQUEST profiler stub — NOP (no births during profiling)
+        case 227:vmRegs[di]=0*(k||1);break; // PARTNER_IMMUNE profiler stub — zero (no partner)
+        case 228:vmRegs[di]=0*(k||1);break; // MUTRATE_READ profiler stub — zero
+        case 229:vmRegs[di]=0*(k||1);break; // PROB_SKIP profiler stub — NOP (no branching during profiling)
+        case 230:vmRegs[di]=0*(k||1);break; // TICK_PHASE profiler stub — zero
+        case 231:vmRegs[di]=0*(k||1);break; // CLUSTER_QUORUM profiler stub — zero (no cluster during profiling)
       }
       if(op>=CORE_OPCODES&&op<CORE_OPCODES+MAX_BOUND_OPCODES){
         const _bos=genome.boundOpcodes;
@@ -13439,6 +13452,18 @@ function executeVM(i,j,sim,d){
       case 217:{phase[i]=vmRegs[si]*k;vmRegs[di]=phase[i];}break; // PHASE_SET — directly write own phase angle. Unlike PHASE_SYNC (op168) which nudges phase toward partner's, this sets phase to an arbitrary value. Enables: phase reset (zero own oscillator for synchronisation); deliberate anti-phase (set phase=partner+π to anti-synchronise for niche differentiation); phase-based signalling codes (encode messages in discrete phase states); rapid entrainment without gradual convergence.
       case 218:{vmRegs[di]=freq[i]*k;}break; // FREQ_READ — read own oscillator frequency. Enables: frequency matching with partners without PHASE_SYNC; detect if own frequency has drifted from initial value; gate behaviours on own clock speed (slow oscillators = conservative strategy, fast = aggressive); compare freq[i] vs freq[j] via subtraction to detect resonance.
       case 219:{freq[i]=Math.max(0.001,Math.abs(vmRegs[si]*k));vmRegs[di]=freq[i];}break; // FREQ_SET — directly set own oscillator frequency (floored at 0.001 to prevent zero-frequency stall). Enables: evolved frequency hopping to escape entrainment by competitors; frequency modulation as a communication channel; slow down oscillator when energy-stressed (lower freq = lower metabolic pace); speed up when resources are rich for faster behavioural cycling.
+      case 220:{const _tx220=Math.max(0,Math.min(FIELD_W-1,Math.floor(px[i]/(W/FIELD_W)))),_ty220=Math.max(0,Math.min(FIELD_H-1,Math.floor(py[i]/(H/FIELD_H)))),_sw220=Math.abs(vmRegs[si]*k)*0.1;if(localRes[i]>=_sw220*0.5){scaffoldField[_ty220*FIELD_W+_tx220]=Math.min(5,scaffoldField[_ty220*FIELD_W+_tx220]+_sw220);localRes[i]-=_sw220*0.5;vmRegs[di]=scaffoldField[_ty220*FIELD_W+_tx220];}else{vmRegs[di]=0;}}break; // SCAFFOLD_WRITE — emit morphogen at own cell into scaffoldField; cost 0.5× amount in localRes; returns new cell value. Enables: carve persistent niche markers; guide offspring placement via scaffold peak birth attraction; outcompete neighbours by staking territory in high-scaffold zones.
+      case 221:{const _tsx221=Math.max(0,Math.min(FIELD_W-1,Math.floor(px[i]/(W/FIELD_W)))),_tsy221=Math.max(0,Math.min(FIELD_H-1,Math.floor(py[i]/(H/FIELD_H))));vmRegs[di]=scaffoldField[_tsy221*FIELD_W+_tsx221]*k;}break; // SCAFFOLD_SENSE — read scaffoldField value at own current cell; no cost. Enables: detect own territory strength; sense gradient across ticks; gate SCAFFOLD_WRITE to avoid over-investing.
+      case 222:{const _ptx222=Math.max(0,Math.min(FIELD_W-1,Math.floor(px[j]/(W/FIELD_W)))),_pty222=Math.max(0,Math.min(FIELD_H-1,Math.floor(py[j]/(H/FIELD_H))));vmRegs[di]=scaffoldField[_pty222*FIELD_W+_ptx222]*k;}break; // PARTNER_SCAFFOLD_AT — read scaffoldField at partner's cell. Enables: detect partner niche overlap; decide cooperate vs compete; assess territory before WHOLE_GENOME_COPY.
+      case 223:{const _glen223=pProg[i]?pProg[i].length:0;if(_glen223>0){const _gidx223=Math.floor(Math.abs(vmRegs[si]))|0;vmRegs[di]=(pProg[i][_gidx223%_glen223][0]||0)*k;}else{vmRegs[di]=0;}}break; // GENOME_OP_AT — read opcode at instruction index abs(vmRegs[si]) % program.length; enables genomic self-inspection, conditional branching on own code, conserved-core detection.
+      case 224:{const _glen224=pProg[i]?pProg[i].length:0;if(_glen224>0){const _gidx224=Math.floor(Math.abs(vmRegs[si]))|0;vmRegs[di]=(pProg[i][_gidx224%_glen224][3]||0)*k;}else{vmRegs[di]=0;}}break; // GENOME_K_AT — read k-constant at instruction index; paired with GENOME_OP_AT for full instruction decoding; enables self-tuning by reading own coefficients.
+      case 225:{const _wgc225=0.3;if(localRes[i]>=_wgc225&&j>=0&&j<N&&pProg[j]){localRes[i]-=_wgc225;pProg[i]=cloneProg(pProg[j]);vmRegs[di]=1*k;}else{vmRegs[di]=0;}}break; // WHOLE_GENOME_COPY — replace own behavioral program with deep-copy of partner's (viral HGT); costs 0.3 localRes; returns 1 on success. Enables horizontal strategy transfer; genome parasitism; symbiotic program merging.
+      case 226:{if(localRes[i]>=0.4&&amp[i]>=0.2&&N+birthQueue.length<CAP-1){localRes[i]-=0.4;amp[i]-=0.2;const _nt226=new Float32Array(DIMS);for(let _nd226=0;_nd226<DIMS;_nd226++)_nt226[_nd226]=tend[i*DIMS+_nd226];birthQueue.push({x:px[i]+(Math.random()-0.5)*30,y:py[i]+(Math.random()-0.5)*30,t:_nt226,parent:i});vmRegs[di]=1*k;}else{vmRegs[di]=0;}}break; // SPAWN_REQUEST — queue a birth near own position (scaffold peak attraction applies at birth); costs 0.4 localRes + 0.2 amp; returns 1 on success. Enables deliberate programmatic reproduction; scaffold-guided colonisation; cluster expansion decisions.
+      case 227:{vmRegs[di]=pImmune[j]*k;}break; // PARTNER_IMMUNE — read partner's current immunity level. Enables: avoid attacking immune partners; selectively target naive hosts; cooperate to share defence costs.
+      case 228:{vmRegs[di]=(pGenome[i]?pGenome[i].innovationRate:genome.innovationRate||0)*k;}break; // MUTRATE_READ — read own current innovation rate. Enables conditional hypermutation (SOS response); stable lineage self-certification; detecting error-prone phases.
+      case 229:{if(Math.random()>Math.max(0,Math.min(1,vmRegs[si]*k)))ip++;vmRegs[di]=0;}break; // PROB_SKIP — skip next instruction with probability max(0,min(1,vmRegs[si]*k)); always writes 0 to di. Enables stochastic decision making; bet-hedging; probabilistic gene expression; noisy oscillators.
+      case 230:{const _tp230=Math.max(1,Math.floor(Math.abs(k)));vmRegs[di]=(tick%_tp230)/_tp230;}break; // TICK_PHASE — global tick modulo abs(k), normalised to [0,1); k is the period. Enables circadian-rhythm strategies; time-gated cooperation; burst feeding synchronised to global clock; inter-particle phase signalling.
+      case 231:{const _cqcid231=clusterID[i];if(_cqcid231>=0){const _cqbit231=1<<(Math.round(Math.abs(vmRegs[si]))&7);let _cqtot231=0,_cqset231=0;for(let _cqn231=0;_cqn231<N;_cqn231++){if(clusterID[_cqn231]===_cqcid231){_cqtot231++;if(pEpigen[_cqn231]&_cqbit231)_cqset231++;}}vmRegs[di]=_cqtot231>0?(_cqset231/_cqtot231)*k:0;}else{vmRegs[di]=0;}}break; // CLUSTER_QUORUM — fraction of own cluster members with epigenetic bit (vmRegs[si]&7) set; O(N) scan; solitary returns 0. Enables quorum sensing; epigenetic voting; collective gene-expression switching; democratic phase coordination.
     }
     // BOUND-OPCODE BOUNDARY (Pe60-class fix, now single-sourced via CORE_OPCODES).
     // History: the guard once read op>=126 (boi=op-126), which (a) collided with core
@@ -14534,6 +14559,18 @@ function executeVM(i,j,sim,d){
         case 217:{phase[i]=vmRegs[si]*k;vmRegs[di]=phase[i];}break; // PHASE_SET — full parity
         case 218:{vmRegs[di]=freq[i]*k;}break; // FREQ_READ — full parity
         case 219:{freq[i]=Math.max(0.001,Math.abs(vmRegs[si]*k));vmRegs[di]=freq[i];}break; // FREQ_SET — full parity
+        case 220:{const _tx220p=Math.max(0,Math.min(FIELD_W-1,Math.floor(px[i]/(W/FIELD_W)))),_ty220p=Math.max(0,Math.min(FIELD_H-1,Math.floor(py[i]/(H/FIELD_H)))),_sw220p=Math.abs(vmRegs[si]*k)*0.1;if(localRes[i]>=_sw220p*0.5){scaffoldField[_ty220p*FIELD_W+_tx220p]=Math.min(5,scaffoldField[_ty220p*FIELD_W+_tx220p]+_sw220p);localRes[i]-=_sw220p*0.5;vmRegs[di]=scaffoldField[_ty220p*FIELD_W+_tx220p];}else{vmRegs[di]=0;}}break; // SCAFFOLD_WRITE — full parity
+        case 221:{const _tsx221p=Math.max(0,Math.min(FIELD_W-1,Math.floor(px[i]/(W/FIELD_W)))),_tsy221p=Math.max(0,Math.min(FIELD_H-1,Math.floor(py[i]/(H/FIELD_H))));vmRegs[di]=scaffoldField[_tsy221p*FIELD_W+_tsx221p]*k;}break; // SCAFFOLD_SENSE — full parity
+        case 222:{const _ptx222p=Math.max(0,Math.min(FIELD_W-1,Math.floor(px[j]/(W/FIELD_W)))),_pty222p=Math.max(0,Math.min(FIELD_H-1,Math.floor(py[j]/(H/FIELD_H))));vmRegs[di]=scaffoldField[_pty222p*FIELD_W+_ptx222p]*k;}break; // PARTNER_SCAFFOLD_AT — full parity
+        case 223:{const _glen223p=pProg[i]?pProg[i].length:0;if(_glen223p>0){const _gidx223p=Math.floor(Math.abs(vmRegs[si]))|0;vmRegs[di]=(pProg[i][_gidx223p%_glen223p][0]||0)*k;}else{vmRegs[di]=0;}}break; // GENOME_OP_AT — full parity
+        case 224:{const _glen224p=pProg[i]?pProg[i].length:0;if(_glen224p>0){const _gidx224p=Math.floor(Math.abs(vmRegs[si]))|0;vmRegs[di]=(pProg[i][_gidx224p%_glen224p][3]||0)*k;}else{vmRegs[di]=0;}}break; // GENOME_K_AT — full parity
+        case 225:{const _wgc225p=0.3;if(localRes[i]>=_wgc225p&&j>=0&&j<N&&pProg[j]){localRes[i]-=_wgc225p;pProg[i]=cloneProg(pProg[j]);vmRegs[di]=1*k;}else{vmRegs[di]=0;}}break; // WHOLE_GENOME_COPY — full parity
+        case 226:{if(localRes[i]>=0.4&&amp[i]>=0.2&&N+birthQueue.length<CAP-1){localRes[i]-=0.4;amp[i]-=0.2;const _nt226p=new Float32Array(DIMS);for(let _nd226p=0;_nd226p<DIMS;_nd226p++)_nt226p[_nd226p]=tend[i*DIMS+_nd226p];birthQueue.push({x:px[i]+(Math.random()-0.5)*30,y:py[i]+(Math.random()-0.5)*30,t:_nt226p,parent:i});vmRegs[di]=1*k;}else{vmRegs[di]=0;}}break; // SPAWN_REQUEST — full parity
+        case 227:{vmRegs[di]=pImmune[j]*k;}break; // PARTNER_IMMUNE — full parity
+        case 228:{vmRegs[di]=(pGenome[i]?pGenome[i].innovationRate:genome.innovationRate||0)*k;}break; // MUTRATE_READ — full parity
+        case 229:{if(Math.random()>Math.max(0,Math.min(1,vmRegs[si]*k)))ip++;vmRegs[di]=0;}break; // PROB_SKIP — full parity
+        case 230:{const _tp230p=Math.max(1,Math.floor(Math.abs(k)));vmRegs[di]=(tick%_tp230p)/_tp230p;}break; // TICK_PHASE — full parity
+        case 231:{const _cqcid231p=clusterID[i];if(_cqcid231p>=0){const _cqbit231p=1<<(Math.round(Math.abs(vmRegs[si]))&7);let _cqtot231p=0,_cqset231p=0;for(let _cqn231p=0;_cqn231p<N;_cqn231p++){if(clusterID[_cqn231p]===_cqcid231p){_cqtot231p++;if(pEpigen[_cqn231p]&_cqbit231p)_cqset231p++;}}vmRegs[di]=_cqtot231p>0?(_cqset231p/_cqtot231p)*k:0;}else{vmRegs[di]=0;}}break; // CLUSTER_QUORUM — full parity
       }
       if(op>=CORE_OPCODES&&op<CORE_OPCODES+MAX_BOUND_OPCODES){
         const _bos=genome.boundOpcodes;
@@ -15754,6 +15791,18 @@ function executeClusterVM(i,j,sim,d){
       case 217:{phase[i]=vmRegs[si]*k;vmRegs[di]=phase[i];}break; // PHASE_SET — full parity
       case 218:{vmRegs[di]=freq[i]*k;}break; // FREQ_READ — full parity
       case 219:{freq[i]=Math.max(0.001,Math.abs(vmRegs[si]*k));vmRegs[di]=freq[i];}break; // FREQ_SET — full parity
+      case 220:{const _tx220c=Math.max(0,Math.min(FIELD_W-1,Math.floor(px[i]/(W/FIELD_W)))),_ty220c=Math.max(0,Math.min(FIELD_H-1,Math.floor(py[i]/(H/FIELD_H)))),_sw220c=Math.abs(vmRegs[si]*k)*0.1;if(localRes[i]>=_sw220c*0.5){scaffoldField[_ty220c*FIELD_W+_tx220c]=Math.min(5,scaffoldField[_ty220c*FIELD_W+_tx220c]+_sw220c);localRes[i]-=_sw220c*0.5;vmRegs[di]=scaffoldField[_ty220c*FIELD_W+_tx220c];}else{vmRegs[di]=0;}}break; // SCAFFOLD_WRITE — full parity
+      case 221:{const _tsx221c=Math.max(0,Math.min(FIELD_W-1,Math.floor(px[i]/(W/FIELD_W)))),_tsy221c=Math.max(0,Math.min(FIELD_H-1,Math.floor(py[i]/(H/FIELD_H))));vmRegs[di]=scaffoldField[_tsy221c*FIELD_W+_tsx221c]*k;}break; // SCAFFOLD_SENSE — full parity
+      case 222:{const _ptx222c=Math.max(0,Math.min(FIELD_W-1,Math.floor(px[j]/(W/FIELD_W)))),_pty222c=Math.max(0,Math.min(FIELD_H-1,Math.floor(py[j]/(H/FIELD_H))));vmRegs[di]=scaffoldField[_pty222c*FIELD_W+_ptx222c]*k;}break; // PARTNER_SCAFFOLD_AT — full parity
+      case 223:{const _glen223c=pProg[i]?pProg[i].length:0;if(_glen223c>0){const _gidx223c=Math.floor(Math.abs(vmRegs[si]))|0;vmRegs[di]=(pProg[i][_gidx223c%_glen223c][0]||0)*k;}else{vmRegs[di]=0;}}break; // GENOME_OP_AT — full parity
+      case 224:{const _glen224c=pProg[i]?pProg[i].length:0;if(_glen224c>0){const _gidx224c=Math.floor(Math.abs(vmRegs[si]))|0;vmRegs[di]=(pProg[i][_gidx224c%_glen224c][3]||0)*k;}else{vmRegs[di]=0;}}break; // GENOME_K_AT — full parity
+      case 225:{const _wgc225c=0.3;if(localRes[i]>=_wgc225c&&j>=0&&j<N&&pProg[j]){localRes[i]-=_wgc225c;pProg[i]=cloneProg(pProg[j]);vmRegs[di]=1*k;}else{vmRegs[di]=0;}}break; // WHOLE_GENOME_COPY — full parity
+      case 226:{if(localRes[i]>=0.4&&amp[i]>=0.2&&N+birthQueue.length<CAP-1){localRes[i]-=0.4;amp[i]-=0.2;const _nt226c=new Float32Array(DIMS);for(let _nd226c=0;_nd226c<DIMS;_nd226c++)_nt226c[_nd226c]=tend[i*DIMS+_nd226c];birthQueue.push({x:px[i]+(Math.random()-0.5)*30,y:py[i]+(Math.random()-0.5)*30,t:_nt226c,parent:i});vmRegs[di]=1*k;}else{vmRegs[di]=0;}}break; // SPAWN_REQUEST — full parity
+      case 227:{vmRegs[di]=pImmune[j]*k;}break; // PARTNER_IMMUNE — full parity
+      case 228:{vmRegs[di]=(pGenome[i]?pGenome[i].innovationRate:genome.innovationRate||0)*k;}break; // MUTRATE_READ — full parity
+      case 229:{if(Math.random()>Math.max(0,Math.min(1,vmRegs[si]*k)))ip++;vmRegs[di]=0;}break; // PROB_SKIP — full parity
+      case 230:{const _tp230c=Math.max(1,Math.floor(Math.abs(k)));vmRegs[di]=(tick%_tp230c)/_tp230c;}break; // TICK_PHASE — full parity
+      case 231:{const _cqcid231c=clusterID[i];if(_cqcid231c>=0){const _cqbit231c=1<<(Math.round(Math.abs(vmRegs[si]))&7);let _cqtot231c=0,_cqset231c=0;for(let _cqn231c=0;_cqn231c<N;_cqn231c++){if(clusterID[_cqn231c]===_cqcid231c){_cqtot231c++;if(pEpigen[_cqn231c]&_cqbit231c)_cqset231c++;}}vmRegs[di]=_cqtot231c>0?(_cqset231c/_cqtot231c)*k:0;}else{vmRegs[di]=0;}}break; // CLUSTER_QUORUM — full parity
     }
     if(op>=CORE_OPCODES&&op<CORE_OPCODES+MAX_BOUND_OPCODES){
       const _bos=genome.boundOpcodes;
@@ -16419,6 +16468,18 @@ function executeSoloVM(){
         case 217:{phase[i]=vmRegs[si]*k;vmRegs[di]=phase[i];}break; // PHASE_SET — full parity
         case 218:{vmRegs[di]=freq[i]*k;}break; // FREQ_READ — full parity
         case 219:{freq[i]=Math.max(0.001,Math.abs(vmRegs[si]*k));vmRegs[di]=freq[i];}break; // FREQ_SET — full parity
+        case 220:{const _tx220s=Math.max(0,Math.min(FIELD_W-1,Math.floor(px[i]/(W/FIELD_W)))),_ty220s=Math.max(0,Math.min(FIELD_H-1,Math.floor(py[i]/(H/FIELD_H)))),_sw220s=Math.abs(vmRegs[si]*k)*0.1;if(localRes[i]>=_sw220s*0.5){scaffoldField[_ty220s*FIELD_W+_tx220s]=Math.min(5,scaffoldField[_ty220s*FIELD_W+_tx220s]+_sw220s);localRes[i]-=_sw220s*0.5;vmRegs[di]=scaffoldField[_ty220s*FIELD_W+_tx220s];}else{vmRegs[di]=0;}}break; // SCAFFOLD_WRITE — full parity (own position only)
+        case 221:{const _tsx221s=Math.max(0,Math.min(FIELD_W-1,Math.floor(px[i]/(W/FIELD_W)))),_tsy221s=Math.max(0,Math.min(FIELD_H-1,Math.floor(py[i]/(H/FIELD_H))));vmRegs[di]=scaffoldField[_tsy221s*FIELD_W+_tsx221s]*k;}break; // SCAFFOLD_SENSE — full parity
+        case 222:{vmRegs[di]=0;}break; // PARTNER_SCAFFOLD_AT — NOP in solo context (no partner)
+        case 223:{const _glen223s=pProg[i]?pProg[i].length:0;if(_glen223s>0){const _gidx223s=Math.floor(Math.abs(vmRegs[si]))|0;vmRegs[di]=(pProg[i][_gidx223s%_glen223s][0]||0)*k;}else{vmRegs[di]=0;}}break; // GENOME_OP_AT — full parity
+        case 224:{const _glen224s=pProg[i]?pProg[i].length:0;if(_glen224s>0){const _gidx224s=Math.floor(Math.abs(vmRegs[si]))|0;vmRegs[di]=(pProg[i][_gidx224s%_glen224s][3]||0)*k;}else{vmRegs[di]=0;}}break; // GENOME_K_AT — full parity
+        case 225:{vmRegs[di]=0;}break; // WHOLE_GENOME_COPY — NOP in solo context (no interaction partner)
+        case 226:{if(localRes[i]>=0.4&&amp[i]>=0.2&&N+birthQueue.length<CAP-1){localRes[i]-=0.4;amp[i]-=0.2;const _nt226s=new Float32Array(DIMS);for(let _nd226s=0;_nd226s<DIMS;_nd226s++)_nt226s[_nd226s]=tend[i*DIMS+_nd226s];birthQueue.push({x:px[i]+(Math.random()-0.5)*30,y:py[i]+(Math.random()-0.5)*30,t:_nt226s,parent:i});vmRegs[di]=1*k;}else{vmRegs[di]=0;}}break; // SPAWN_REQUEST — full parity (solo particles can still spawn)
+        case 227:{vmRegs[di]=0;}break; // PARTNER_IMMUNE — NOP in solo context (no partner)
+        case 228:{vmRegs[di]=(pGenome[i]?pGenome[i].innovationRate:genome.innovationRate||0)*k;}break; // MUTRATE_READ — full parity
+        case 229:{if(Math.random()>Math.max(0,Math.min(1,vmRegs[si]*k)))ip++;vmRegs[di]=0;}break; // PROB_SKIP — full parity
+        case 230:{const _tp230s=Math.max(1,Math.floor(Math.abs(k)));vmRegs[di]=(tick%_tp230s)/_tp230s;}break; // TICK_PHASE — full parity
+        case 231:{vmRegs[di]=0;}break; // CLUSTER_QUORUM — NOP in solo context (no cluster)
       }
       if(op>=CORE_OPCODES&&op<CORE_OPCODES+MAX_BOUND_OPCODES){
         const _bos=genome.boundOpcodes;
@@ -16931,6 +16992,7 @@ function loop(){
     { const _rW=W/FIELD_W,_rH=H/FIELD_H; for(const c of clusters){ if(!c||c.size<2||c.persistAge<3)continue; const rcx=Math.max(0,Math.min(FIELD_W-1,Math.floor(c.cx/_rW))),rcy=Math.max(0,Math.min(FIELD_H-1,Math.floor(c.cy/_rH))); rootField[rcy*FIELD_W+rcx]=Math.min(5,rootField[rcy*FIELD_W+rcx]+0.45*c.coherence); } } // ROOT DEPOSITION: anchors stamp the substrate — coherent persistent clusters write deeper roots
     {let _tb=0;const _tW=W/FIELD_W,_tH=H/FIELD_H;for(const _tf of hierTower){for(const _tu of _tf){if(_tu.reg<0.5)continue;const _tx=Math.max(0,Math.min(FIELD_W-1,Math.floor(_tu.cx/_tW))),_ty=Math.max(0,Math.min(FIELD_H-1,Math.floor(_tu.cy/_tH)));rootField[_ty*FIELD_W+_tx]=Math.min(5,rootField[_ty*FIELD_W+_tx]+0.06*_tu.reg*_tu.level);_tb+=_tu.reg*_tu.level*0.0002;}}mutPressureAccum+=_tb;} // TOWER DOWNWARD SIGNAL: stable high floors fertilise their root footprint and raise evolutionary pressure — complex structure breeds the variation that may eventually unsettle it
     {for(let _ti=0;_ti<FIELD_W*FIELD_H;_ti++)toxinField[_ti]*=0.94;} // TOXIN DECAY: ×0.94/60tick (~half-life 11 ticks) — persistent enough for area denial but clears before long-term ecological damage; slower than signal (0.87) but faster than detrital (0.95)
+    {for(let _sci=0;_sci<FIELD_W*FIELD_H;_sci++)scaffoldField[_sci]*=0.998;} // SCAFFOLD DECAY: ×0.998/60tick (~700-tick half-life) — scaffold persists across generations, maintaining morphogenetic memory; slow enough that active deposition by a lineage builds stable territory, fast enough that abandoned niches eventually clear
     {const _crW=W/FIELD_W,_crH=H/FIELD_H;for(let _cri=0;_cri<FIELD_W*FIELD_H;_cri++){crystalField[_cri]*=0.93;detritalField[_cri]*=0.95;}for(const _crc of clusters){if(!_crc||_crc.persistAge<200||_crc.coherence<0.8)continue;const _crx=Math.max(0,Math.min(FIELD_W-1,Math.floor(_crc.cx/_crW))),_cry=Math.max(0,Math.min(FIELD_H-1,Math.floor(_crc.cy/_crH)));crystalField[_cry*FIELD_W+_crx]=Math.min(1,crystalField[_cry*FIELD_W+_crx]+_crc.coherence*0.15);}} // CRYSTAL PHASE + DETRITAL DECAY: crystal ×0.93/60tick (~900-tick lifetime); detrital ×0.95/60tick (~780-tick half-life — persistent dead-matter patches outlast their creators, giving decomposers time to find them
     if(hierTower.length>=2){const _topFl=hierTower[hierTower.length-1];const _cdW=W/FIELD_W,_cdH=H/FIELD_H;const _excR2d=CELL*CELL*16;for(const _tud of _topFl){if(_tud.reg<0.72||Math.random()>0.12)continue;let _bvd=0,_bxd=-1,_byd=-1;for(let _fyd=0;_fyd<FIELD_H;_fyd++){for(let _fxd=0;_fxd<FIELD_W;_fxd++){const _rvd=rootField[_fyd*FIELD_W+_fxd];if(_rvd<0.4||_rvd<=_bvd)continue;const _wxd=(_fxd+0.5)*_cdW,_wyd=(_fyd+0.5)*_cdH,_ddd=(_wxd-_tud.cx)*(_wxd-_tud.cx)+(_wyd-_tud.cy)*(_wyd-_tud.cy);if(_ddd<_excR2d)continue;_bvd=_rvd;_bxd=_wxd;_byd=_wyd;}}if(_bxd<0)continue;const _leavd=[..._tud.leaves];if(!_leavd.length)continue;const _sidd=_leavd[Math.floor(Math.random()*_leavd.length)];if(_sidd===undefined||!palive[_sidd])continue;const _dkd=Math.sqrt((_bxd-px[_sidd])*(_bxd-px[_sidd])+(_byd-py[_sidd])*(_byd-py[_sidd]))||1;vx[_sidd]+=(_bxd-px[_sidd])/_dkd*3.5;vy[_sidd]+=(_byd-py[_sidd])/_dkd*3.5;}} // CANOPY DISPERSAL: mature tower tops (reg>0.72, ≥2 floors) cast seeds toward rootField hotspots beyond bridge range — seeds carry the lineage's genome to distant soil, nucleating new clusters and towers. Life propagates beyond bridge reach. The arc closes: roots → tunneling → clusters → bridges → towers → seeds → new towers → new roots.
     {const _spW=W/FIELD_W,_spH=H/FIELD_H;for(const [_spk,_spreg] of _hierReg){if(_spreg>0.08)continue;const _spAge=tick-(_hierBirth.get(_spk)||tick);if(_spAge<300)continue;const _spParts=_spk.split('|');if(_spParts.length<3)continue;const _spfx=Math.max(0,Math.min(FIELD_W-1,Math.floor(parseInt(_spParts[1])*CELL/_spW))),_spfy=Math.max(0,Math.min(FIELD_H-1,Math.floor(parseInt(_spParts[2])*CELL/_spH)));rootField[_spfy*FIELD_W+_spfx]=Math.min(5,rootField[_spfy*FIELD_W+_spfx]+0.65);}} // SUCCESSION PULSE: when an old floor (≥300 tick life) collapses, it dumps nutrients back into the substrate — the fallen tower fertilises the next generation growing in its place
@@ -18987,7 +19049,8 @@ function loop(){
   let birthsProcessed=0;
   while(birthQueue.length>0&&N<CAP&&birthsProcessed<5){
     const b=birthQueue.pop();
-    if(addParticle(b.x,b.y,b.t,true,b.parent,-1)>=0)birthsThisTick++;
+    let _bsx=b.x,_bsy=b.y;{const _scW=W/FIELD_W,_scH=H/FIELD_H;let _scBest=0;for(let _sdy=-1;_sdy<=1;_sdy++)for(let _sdx=-1;_sdx<=1;_sdx++){const _sfx=Math.max(0,Math.min(FIELD_W-1,Math.floor((b.x+_sdx*_scW)/_scW))),_sfy=Math.max(0,Math.min(FIELD_H-1,Math.floor((b.y+_sdy*_scH)/_scH))),_sv=scaffoldField[_sfy*FIELD_W+_sfx];if(_sv>_scBest+0.05){_scBest=_sv;_bsx=Math.max(0,Math.min(W,b.x+_sdx*_scW*0.4+(Math.random()-0.5)*_scW*0.3));_bsy=Math.max(0,Math.min(H,b.y+_sdy*_scH*0.4+(Math.random()-0.5)*_scH*0.3));}}}
+    if(addParticle(_bsx,_bsy,b.t,true,b.parent,-1)>=0)birthsThisTick++;
     birthsProcessed++;
   }
   if(birthQueue.length>20)birthQueue.length=0;
