@@ -54,8 +54,8 @@ globalThis.fetch = () => new Promise(() => {}); // never resolves
 globalThis.devicePixelRatio = 1;
 globalThis.innerWidth = 1280;
 globalThis.innerHeight = 720;
-let _t = 0;
-globalThis.performance = { now: () => (_t += 16) }; // monotonic virtual clock
+const _epoch = Date.now();
+globalThis.performance = { now: () => Date.now() - _epoch }; // real clock so time-budget gates (e.g. the 80ms updateField guard) behave as in the browser
 
 // Neutralize self-driving so WE control stepping.
 globalThis.requestAnimationFrame = () => 0;
