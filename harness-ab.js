@@ -1,12 +1,11 @@
-// A/B experiment harness: same open-endedness metrics as harness-oee.js, but with two
-// tunable dynamics knobs patched non-destructively into the loaded code, so we can ask
-// "does this change keep diversity from collapsing?" against an identical baseline.
+// A/B experiment harness: same open-endedness metrics as harness-oee.js, with two
+// tunable dynamics knobs. index.html now implements the interaction cap NATIVELY
+// (const INTERACTION_CAP, overridable via globalThis.__CAP_K), so CAP_K here just sets
+// that override; NFD_MULT is still patched in (NFD_STRENGTH has no native hook).
 //
-//   CAP_K    (default Infinity): max meaningful interactions a particle engages per tick.
-//   NFD_MULT (default 1): multiplier on NFD_STRENGTH (the rare-kind-gains pressure).
-//
-// At CAP_K=Infinity, NFD_MULT=1 the patched code is behaviorally identical to stock
-// index.html (verified by trajectory diff) — the instrumentation is inert at defaults.
+//   CAP_K    (default: native INTERACTION_CAP from index.html, i.e. leave unset).
+//            Set CAP_K=Infinity-equivalent via a big number to recover uncapped dynamics.
+//   NFD_MULT (default 1): multiplier on NFD_STRENGTH.
 //
 // Original header follows:
 // Open-endedness metrics harness for index.html.
@@ -117,18 +116,17 @@ console.warn = () => {};
 const html = fs.readFileSync(process.env.INDEX || (__dirname + '/index.html'), 'utf8');
 const code = html.match(/<script>([\s\S]*)<\/script>/)[1];
 // ── A/B knobs ─────────────────────────────────────────────────────
-globalThis.__CAP_K = process.env.CAP_K ? parseInt(process.env.CAP_K, 10) : Infinity;
+// CAP_K: only override the native cap when explicitly provided (so the default run
+// measures index.html exactly as shipped). Pass a large value for "uncapped".
+if (process.env.CAP_K) globalThis.__CAP_K = (process.env.CAP_K === 'inf' ? 1e9 : parseInt(process.env.CAP_K, 10));
 globalThis.__NFD_MULT = process.env.NFD_MULT ? parseFloat(process.env.NFD_MULT) : 1;
 let _code = code;
 function _patch(find, repl) {
   if (_code.indexOf(find) === -1) { console.error('AB PATCH MISS:', find.slice(0, 60)); process.exit(2); }
   _code = _code.replace(find, repl);
 }
+// NFD strength multiplier (no native hook; cap is native so not patched here).
 _patch('amp[_i]+=NFD_STRENGTH*', 'amp[_i]+=NFD_STRENGTH*globalThis.__NFD_MULT*');
-_patch('for(let i=0;i<N;i++){localRes[i]=0;pNeighborCount[i]=0;}',
-  'if(!globalThis.__pIntCount)globalThis.__pIntCount=new Int16Array(CAP);const pIntCount=globalThis.__pIntCount;for(let i=0;i<N;i++){localRes[i]=0;pNeighborCount[i]=0;pIntCount[i]=0;}');
-_patch('if(d<iR&&d>0){',
-  'if(d<iR&&d>0&&pIntCount[i]<globalThis.__CAP_K&&pIntCount[j]<globalThis.__CAP_K){pIntCount[i]++;pIntCount[j]++;');
 
 
 // ── Metrics driver (runs in module scope → sees all sim globals) ──
@@ -336,7 +334,7 @@ const verdict = {
 };
 
 console.log(JSON.stringify({
-  config: { TICKS, SAMPLE, SEED: process.env.SEED || null, INDEX: process.env.INDEX || 'index.html', CAP_K: globalThis.__CAP_K, NFD_MULT: globalThis.__NFD_MULT },
+  config: { TICKS, SAMPLE, SEED: process.env.SEED || null, INDEX: process.env.INDEX || 'index.html', CAP_K: (globalThis.__CAP_K!==undefined?globalThis.__CAP_K:'native'), NFD_MULT: globalThis.__NFD_MULT },
   timing_ms: { boot: tBoot - t0, run: tDone - tBoot, perKtick: +(((tDone - tBoot) / TICKS) * 1000).toFixed(1) },
   loopErrors, lastErr, driverErr: globalThis.__driverErr || 0,
   verdict,
