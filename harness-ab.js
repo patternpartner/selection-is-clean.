@@ -3,7 +3,6 @@
 // "does this change keep diversity from collapsing?" against an identical baseline.
 //
 //   CAP_K    (default Infinity): max meaningful interactions a particle engages per tick.
-//            Bounds the dense-blob all-to-all coupling that drives both monoculture and cost.
 //   NFD_MULT (default 1): multiplier on NFD_STRENGTH (the rare-kind-gains pressure).
 //
 // At CAP_K=Infinity, NFD_MULT=1 the patched code is behaviorally identical to stock
@@ -125,12 +124,9 @@ function _patch(find, repl) {
   if (_code.indexOf(find) === -1) { console.error('AB PATCH MISS:', find.slice(0, 60)); process.exit(2); }
   _code = _code.replace(find, repl);
 }
-// (A) NFD strength multiplier
 _patch('amp[_i]+=NFD_STRENGTH*', 'amp[_i]+=NFD_STRENGTH*globalThis.__NFD_MULT*');
-// (B) per-tick interaction-count reset + array (declared inside processGrid each call)
 _patch('for(let i=0;i<N;i++){localRes[i]=0;pNeighborCount[i]=0;}',
   'if(!globalThis.__pIntCount)globalThis.__pIntCount=new Int16Array(CAP);const pIntCount=globalThis.__pIntCount;for(let i=0;i<N;i++){localRes[i]=0;pNeighborCount[i]=0;pIntCount[i]=0;}');
-// (C) gate the interaction body on the cap; count engaged interactions for both partners
 _patch('if(d<iR&&d>0){',
   'if(d<iR&&d>0&&pIntCount[i]<globalThis.__CAP_K&&pIntCount[j]<globalThis.__CAP_K){pIntCount[i]++;pIntCount[j]++;');
 
@@ -315,7 +311,14 @@ const diversity = {
   clusters_early: +thirdMean(S, 'clusters', 0, t1).toFixed(1),
   clusters_late: +thirdMean(S, 'clusters', t2, n).toFixed(1)
 };
-diversity.collapsing = diversity.kinds_late < diversity.kinds_early * 0.7;
+// Collapse keyed on ENTROPY (bits), which is resolution-independent — unlike the
+// occupied-kinds count, which is capped by the coarse 64-cell binning and gave false
+// positives (a world holding even diversity across few-but-balanced kinds read as
+// "collapsing"). A >=30% entropy loss early->late is the collapse signal; kinds ratio
+// kept as a secondary diagnostic.
+diversity.entropyRatio = diversity.entropyBits_early > 0 ? +(diversity.entropyBits_late / diversity.entropyBits_early).toFixed(2) : null;
+diversity.kindsRatio = diversity.kinds_early > 0 ? +(diversity.kinds_late / diversity.kinds_early).toFixed(2) : null;
+diversity.collapsing = diversity.entropyRatio !== null && diversity.entropyRatio < 0.7;
 
 const verdict = {
   novelty_late_vs_early: { earlyNewKindsPer1k: +earlyRate.toFixed(2), lateNewKindsPer1k: +lateRate.toFixed(2),

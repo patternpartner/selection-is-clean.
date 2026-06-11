@@ -286,7 +286,14 @@ const diversity = {
   clusters_early: +thirdMean(S, 'clusters', 0, t1).toFixed(1),
   clusters_late: +thirdMean(S, 'clusters', t2, n).toFixed(1)
 };
-diversity.collapsing = diversity.kinds_late < diversity.kinds_early * 0.7;
+// Collapse keyed on ENTROPY (bits), which is resolution-independent — unlike the
+// occupied-kinds count, which is capped by the coarse 64-cell binning and gave false
+// positives (a world holding even diversity across few-but-balanced kinds read as
+// "collapsing"). A >=30% entropy loss early->late is the collapse signal; kinds ratio
+// kept as a secondary diagnostic.
+diversity.entropyRatio = diversity.entropyBits_early > 0 ? +(diversity.entropyBits_late / diversity.entropyBits_early).toFixed(2) : null;
+diversity.kindsRatio = diversity.kinds_early > 0 ? +(diversity.kinds_late / diversity.kinds_early).toFixed(2) : null;
+diversity.collapsing = diversity.entropyRatio !== null && diversity.entropyRatio < 0.7;
 
 const verdict = {
   novelty_late_vs_early: { earlyNewKindsPer1k: +earlyRate.toFixed(2), lateNewKindsPer1k: +lateRate.toFixed(2),
