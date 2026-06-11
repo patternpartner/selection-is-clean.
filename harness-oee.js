@@ -113,7 +113,9 @@ const driver = `
   // Cumulative discovery sets (novelty): kinds the system has EVER produced.
   const seenBins=new Set();      // tendency-space cells ever occupied
   const seenMotifs=new Set();    // remembered cultural motifs ever seen
-  let cumLineages=0;             // high-water mark of lineage registry size
+  let births=0;                  // high-water lineage-registry size = BIRTH THROUGHPUT,
+                                 // NOT novelty (it rises with every birth regardless of
+                                 // whether anything new appears). Reported, never trusted as OEE.
   let prevBins=new Set();        // last sample's occupied bins (for churn)
 
   // Coarsen a tendency vector to a discrete cell. Reuse the sim's own tendBin
@@ -161,7 +163,7 @@ const driver = `
         if(!seenMotifs.has(sig)){seenMotifs.add(sig);motifNew++;}
       }
     }
-    if(typeof lineageRegistry!=='undefined'&&lineageRegistry.size>cumLineages) cumLineages=lineageRegistry.size;
+    if(typeof lineageRegistry!=='undefined'&&lineageRegistry.size>births) births=lineageRegistry.size;
 
     // ---- complexity (the system's own building blocks) ----
     const G=(typeof genome!=='undefined')?genome:{};
@@ -186,7 +188,7 @@ const driver = `
       cumKinds:seenBins.size,
       newKinds:newBins,
       cumMotifs:seenMotifs.size,
-      cumLineages:cumLineages,
+      births:births, // throughput, not novelty (see decl) — diagnostic only
       // complexity
       vmLen, vmDistinctOps:opSet.size, liveAtoms, totAtoms, boundOps,
       DIMS:(typeof DIMS!=='undefined')?DIMS:-1, fitSensors,
@@ -242,27 +244,61 @@ const lateRate = windowNewRate(S, Math.floor(2 * n / 3), n - 1);
 const last = S[n - 1] || {};
 const first = S[0] || {};
 
-const complexityGrew = {
-  vmLen: (last.vmLen || 0) - (first.vmLen || 0),
-  liveAtoms: (last.liveAtoms || 0) - (first.liveAtoms || 0),
-  boundOps: (last.boundOps || 0) - (first.boundOps || 0),
-  DIMS: (last.DIMS || 0) - (first.DIMS || 0),
-  distinctOps: (last.vmDistinctOps || 0) - (first.vmDistinctOps || 0),
-  generation: (last.generation || 0) - (first.generation || 0)
+// Least-squares slope of a field over sample index → trend, robust to a single
+// endpoint landing on an oscillation peak (the +4 vmLen artifact in the first run).
+function slope(series, key) {
+  const m = series.length;
+  if (m < 2) return 0;
+  let sx = 0, sy = 0, sxx = 0, sxy = 0;
+  for (let i = 0; i < m; i++) { const x = i, y = series[i][key] || 0; sx += x; sy += y; sxx += x * x; sxy += x * y; }
+  const d = m * sxx - sx * sx;
+  return d ? (m * sxy - sx * sy) / d : 0; // units of field per sample
+}
+function thirdMean(series, key, lo, hi) {
+  let s = 0, c = 0; for (let i = lo; i < hi && i < series.length; i++) { s += series[i][key] || 0; c++; } return c ? s / c : 0;
+}
+const t1 = Math.floor(n / 3), t2 = Math.floor(2 * n / 3);
+
+// Complexity: trend (slope per sample), not endpoint delta. endpointDelta kept but
+// labelled as endpoint-sensitive so it's never read as a ratchet on its own.
+const complexity = {
+  vmLen_slopePerSample: +slope(S, 'vmLen').toFixed(4),
+  vmLen_endpointDelta: (last.vmLen || 0) - (first.vmLen || 0),
+  distinctOps_slopePerSample: +slope(S, 'vmDistinctOps').toFixed(4),
+  liveAtoms_max: Math.max(...S.map(r => r.liveAtoms || 0)),
+  totAtoms_max: Math.max(...S.map(r => r.totAtoms || 0)),
+  boundOps_max: Math.max(...S.map(r => r.boundOps || 0)),
+  DIMS_delta: (last.DIMS || 0) - (first.DIMS || 0),
+  generation_delta: (last.generation || 0) - (first.generation || 0)
 };
-// Mean standing diversity over the run (evenness 0..1).
-const meanEven = n ? +(S.reduce((a, r) => a + r.diversityEvenness, 0) / n).toFixed(3) : 0;
-const meanKinds = n ? +(S.reduce((a, r) => a + r.occupiedKinds, 0) / n).toFixed(1) : 0;
+// A real ratchet shows a slope clearly above the noise of its oscillation.
+const vmStd = (() => { const mu = thirdMean(S, 'vmLen', 0, n); let v = 0; for (const r of S) v += ((r.vmLen || 0) - mu) ** 2; return Math.sqrt(v / Math.max(1, n)); })();
+complexity.vmLen_ratchets = complexity.vmLen_slopePerSample * n > vmStd; // total rise exceeds one std of the wobble
+
+// Diversity trend: is the world holding variety or collapsing toward monoculture?
+const diversity = {
+  evenness_early: +thirdMean(S, 'diversityEvenness', 0, t1).toFixed(3),
+  evenness_late: +thirdMean(S, 'diversityEvenness', t2, n).toFixed(3),
+  kinds_early: +thirdMean(S, 'occupiedKinds', 0, t1).toFixed(1),
+  kinds_late: +thirdMean(S, 'occupiedKinds', t2, n).toFixed(1),
+  entropyBits_early: +thirdMean(S, 'diversityHbits', 0, t1).toFixed(2),
+  entropyBits_late: +thirdMean(S, 'diversityHbits', t2, n).toFixed(2),
+  clusters_early: +thirdMean(S, 'clusters', 0, t1).toFixed(1),
+  clusters_late: +thirdMean(S, 'clusters', t2, n).toFixed(1)
+};
+diversity.collapsing = diversity.kinds_late < diversity.kinds_early * 0.7;
 
 const verdict = {
   novelty_late_vs_early: { earlyNewKindsPer1k: +earlyRate.toFixed(2), lateNewKindsPer1k: +lateRate.toFixed(2),
-    stillProducing: lateRate > 0.05, ratio: earlyRate > 0 ? +(lateRate / earlyRate).toFixed(2) : null },
-  diversity_mean: { evenness: meanEven, occupiedKinds: meanKinds },
-  complexity_delta: complexityGrew,
-  complexity_topTierEngaged: (complexityGrew.liveAtoms > 0 || complexityGrew.boundOps > 0 || complexityGrew.DIMS > 0),
+    decayedTo: earlyRate > 0 ? +(lateRate / earlyRate).toFixed(2) : null, stillProducing: lateRate > 0.05 },
+  diversity_trend: diversity,
+  complexity_trend: complexity,
+  complexity_topTierEngaged: (complexity.liveAtoms_max > 0 || complexity.boundOps_max > 0 || complexity.DIMS_delta > 0),
   notes: [
     'novelty.stillProducing is NECESSARY, not sufficient: neutral drift also makes new kinds.',
-    'topTierEngaged=false means the self-authoring machinery never populated — the open-ended layer is dormant.',
+    'diversity.collapsing=true means the world is losing variety over time (monoculture pull winning).',
+    'complexity.vmLen_ratchets distinguishes real growth from an oscillation that happened to end high.',
+    'topTierEngaged=false means the self-authoring machinery never became load-bearing (atoms born but liveAtoms=0 still counts as dormant).',
     'Decisive adaptiveness test (does novelty get SELECTED) requires ablation — next harness.'
   ]
 };
