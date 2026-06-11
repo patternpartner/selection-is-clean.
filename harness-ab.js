@@ -121,6 +121,7 @@ globalThis.__NFD_MULT = process.env.NFD_MULT ? parseFloat(process.env.NFD_MULT) 
 if (process.env.MUT_INTERVAL) globalThis.__MUT_INTERVAL = parseInt(process.env.MUT_INTERVAL, 10);
 globalThis.__AUTHOR_MULT = process.env.AUTHOR_MULT ? parseFloat(process.env.AUTHOR_MULT) : 1;
 globalThis.__WIRE_INJECT = process.env.WIRE_INJECT ? parseFloat(process.env.WIRE_INJECT) : 0;
+globalThis.__WIRE_SEED = process.env.WIRE_SEED === '1';
 let _code = code;
 function _patch(find, repl) {
   if (_code.indexOf(find) === -1) { console.error('AB PATCH MISS:', find.slice(0, 60)); process.exit(2); }
@@ -133,10 +134,13 @@ _patch('mutationInterval:300,', 'mutationInterval:(globalThis.__MUT_INTERVAL||30
 // Authoring-rate multipliers: atom birth + bound-opcode creation.
 _patch('if(Math.random()<rate*0.15){', 'if(Math.random()<rate*0.15*globalThis.__AUTHOR_MULT){');
 _patch('if(Math.random()<0.01){', 'if(Math.random()<0.01*globalThis.__AUTHOR_MULT){');
-// WIRE_INJECT (experiment): force authored-opcode call-sites into a fraction of living
-// programs at authoring time, to test whether USED authoring helps. inert at 0.
+// WIRE_INJECT (experiment): force authored-opcode call-sites into a fraction of LIVING
+// programs at authoring time (heavy-handed; proven harmful to diversity). inert at 0.
+// WIRE_SEED (experiment): organic alternative — splice ONE call-site into the global
+// genome.vmProgram; newborns without a lineage program inherit/execute it and selection
+// decides spread. inert when unset.
 _patch('bos.push(Math.floor(Math.random()*uas.length));',
-  'bos.push(Math.floor(Math.random()*uas.length));{const _no=CORE_OPCODES+bos.length-1,_fr=globalThis.__WIRE_INJECT||0;if(_fr>0&&typeof pProg!=="undefined"&&typeof N!=="undefined"){for(let _q=0;_q<N;_q++){if(palive[_q]&&pProg[_q]&&pProg[_q].length<genome.vmMaxInstructions&&Math.random()<_fr){pProg[_q].splice(Math.floor(Math.random()*(pProg[_q].length+1)),0,[_no,Math.floor(Math.random()*12),Math.floor(Math.random()*12),(Math.random()-0.5)*0.6]);}}}}');
+  'bos.push(Math.floor(Math.random()*uas.length));{const _no=CORE_OPCODES+bos.length-1,_fr=globalThis.__WIRE_INJECT||0;if(_fr>0&&typeof pProg!=="undefined"&&typeof N!=="undefined"){for(let _q=0;_q<N;_q++){if(palive[_q]&&pProg[_q]&&pProg[_q].length<genome.vmMaxInstructions&&Math.random()<_fr){pProg[_q].splice(Math.floor(Math.random()*(pProg[_q].length+1)),0,[_no,Math.floor(Math.random()*12),Math.floor(Math.random()*12),(Math.random()-0.5)*0.6]);}}}if(globalThis.__WIRE_SEED&&genome.vmProgram.length<genome.vmMaxInstructions){genome.vmProgram.splice(Math.floor(Math.random()*(genome.vmProgram.length+1)),0,[_no,Math.floor(Math.random()*12),Math.floor(Math.random()*12),(Math.random()-0.5)*0.6]);}}');
 
 
 // ── Metrics driver (runs in module scope → sees all sim globals) ──
@@ -344,7 +348,7 @@ const verdict = {
 };
 
 console.log(JSON.stringify({
-  config: { TICKS, SAMPLE, SEED: process.env.SEED || null, INDEX: process.env.INDEX || 'index.html', CAP_K: (globalThis.__CAP_K!==undefined?globalThis.__CAP_K:'native'), NFD_MULT: globalThis.__NFD_MULT, MUT_INTERVAL: (globalThis.__MUT_INTERVAL||'native'), AUTHOR_MULT: globalThis.__AUTHOR_MULT, WIRE_INJECT: globalThis.__WIRE_INJECT },
+  config: { TICKS, SAMPLE, SEED: process.env.SEED || null, INDEX: process.env.INDEX || 'index.html', CAP_K: (globalThis.__CAP_K!==undefined?globalThis.__CAP_K:'native'), NFD_MULT: globalThis.__NFD_MULT, MUT_INTERVAL: (globalThis.__MUT_INTERVAL||'native'), AUTHOR_MULT: globalThis.__AUTHOR_MULT, WIRE_INJECT: globalThis.__WIRE_INJECT, WIRE_SEED: globalThis.__WIRE_SEED },
   timing_ms: { boot: tBoot - t0, run: tDone - tBoot, perKtick: +(((tDone - tBoot) / TICKS) * 1000).toFixed(1) },
   loopErrors, lastErr, driverErr: globalThis.__driverErr || 0,
   verdict,
