@@ -1,11 +1,11 @@
-// A/B experiment harness: same open-endedness metrics as harness-oee.js, with two
-// tunable dynamics knobs. index.html now implements the interaction cap NATIVELY
-// (const INTERACTION_CAP, overridable via globalThis.__CAP_K), so CAP_K here just sets
-// that override; NFD_MULT is still patched in (NFD_STRENGTH has no native hook).
-//
-//   CAP_K    (default: native INTERACTION_CAP from index.html, i.e. leave unset).
-//            Set CAP_K=Infinity-equivalent via a big number to recover uncapped dynamics.
-//   NFD_MULT (default 1): multiplier on NFD_STRENGTH.
+// A/B experiment harness: OEE metrics + tunable dynamics knobs patched non-destructively.
+//   CAP_K     override native INTERACTION_CAP (unset = native; "inf" = uncapped).
+//   NFD_MULT  multiplier on NFD_STRENGTH (default 1).
+//   MUT_INTERVAL  initial genome.mutationInterval (default native 300). Shorten to give
+//                 the genome-authoring tier (atoms/opcodes/objWeights) MORE trials.
+//   AUTHOR_MULT   multiplier on the atom-birth and bound-opcode authoring probabilities
+//                 (default 1), to favour authoring specifically over other mutations.
+// All default to behavior identical to stock index.html (verified inert-at-defaults).
 //
 // Original header follows:
 // Open-endedness metrics harness for index.html.
@@ -116,17 +116,22 @@ console.warn = () => {};
 const html = fs.readFileSync(process.env.INDEX || (__dirname + '/index.html'), 'utf8');
 const code = html.match(/<script>([\s\S]*)<\/script>/)[1];
 // ── A/B knobs ─────────────────────────────────────────────────────
-// CAP_K: only override the native cap when explicitly provided (so the default run
-// measures index.html exactly as shipped). Pass a large value for "uncapped".
 if (process.env.CAP_K) globalThis.__CAP_K = (process.env.CAP_K === 'inf' ? 1e9 : parseInt(process.env.CAP_K, 10));
 globalThis.__NFD_MULT = process.env.NFD_MULT ? parseFloat(process.env.NFD_MULT) : 1;
+if (process.env.MUT_INTERVAL) globalThis.__MUT_INTERVAL = parseInt(process.env.MUT_INTERVAL, 10);
+globalThis.__AUTHOR_MULT = process.env.AUTHOR_MULT ? parseFloat(process.env.AUTHOR_MULT) : 1;
 let _code = code;
 function _patch(find, repl) {
   if (_code.indexOf(find) === -1) { console.error('AB PATCH MISS:', find.slice(0, 60)); process.exit(2); }
   _code = _code.replace(find, repl);
 }
-// NFD strength multiplier (no native hook; cap is native so not patched here).
+// NFD strength multiplier (cap is native; not patched).
 _patch('amp[_i]+=NFD_STRENGTH*', 'amp[_i]+=NFD_STRENGTH*globalThis.__NFD_MULT*');
+// Initial mutation interval override (still evolvable from there).
+_patch('mutationInterval:300,', 'mutationInterval:(globalThis.__MUT_INTERVAL||300),');
+// Authoring-rate multipliers: atom birth + bound-opcode creation.
+_patch('if(Math.random()<rate*0.15){', 'if(Math.random()<rate*0.15*globalThis.__AUTHOR_MULT){');
+_patch('if(Math.random()<0.01){', 'if(Math.random()<0.01*globalThis.__AUTHOR_MULT){');
 
 
 // ── Metrics driver (runs in module scope → sees all sim globals) ──
@@ -334,7 +339,7 @@ const verdict = {
 };
 
 console.log(JSON.stringify({
-  config: { TICKS, SAMPLE, SEED: process.env.SEED || null, INDEX: process.env.INDEX || 'index.html', CAP_K: (globalThis.__CAP_K!==undefined?globalThis.__CAP_K:'native'), NFD_MULT: globalThis.__NFD_MULT },
+  config: { TICKS, SAMPLE, SEED: process.env.SEED || null, INDEX: process.env.INDEX || 'index.html', CAP_K: (globalThis.__CAP_K!==undefined?globalThis.__CAP_K:'native'), NFD_MULT: globalThis.__NFD_MULT, MUT_INTERVAL: (globalThis.__MUT_INTERVAL||'native'), AUTHOR_MULT: globalThis.__AUTHOR_MULT },
   timing_ms: { boot: tBoot - t0, run: tDone - tBoot, perKtick: +(((tDone - tBoot) / TICKS) * 1000).toFixed(1) },
   loopErrors, lastErr, driverErr: globalThis.__driverErr || 0,
   verdict,
