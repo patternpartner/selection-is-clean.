@@ -10794,6 +10794,20 @@ function mutateGenome(){
     const roll=Math.random();
     if(roll<0.4&&bos.length<MAX_BOUND_OPCODES&&uas.length>0){
       bos.push(Math.floor(Math.random()*uas.length));
+      // WIRING: when a bound opcode is authored, splice ONE call-site into the global
+      // program so the new primitive is actually REACHABLE by executing programs. Without
+      // this the author->bind->execute loop never closes: a bound opcode sits in a tiny
+      // window of the 264-opcode space that program mutation hits by ~2% lottery, so
+      // authored atoms are bound but never called (measured: uaCalls stayed 0 across runs
+      // even with dozens of atoms authored). This does NOT force authoring — birth rate is
+      // unchanged and evolvable — it only lets selection JUDGE an authored primitive on a
+      // fair field instead of one it can essentially never reach. Forcing call-sites into
+      // LIVING programs instead was tested and collapses diversity; a single germline seed,
+      // entering the population by inheritance and subject to selection, does not.
+      if(genome.vmProgram.length<genome.vmMaxInstructions){
+        genome.vmProgram.splice(Math.floor(Math.random()*(genome.vmProgram.length+1)),0,
+          [CORE_OPCODES+bos.length-1,Math.floor(Math.random()*12),Math.floor(Math.random()*12),(Math.random()-0.5)*0.6]);
+      }
     } else if(roll<0.7&&bos.length>0){
       bos[Math.floor(Math.random()*bos.length)]=uas.length>0?Math.floor(Math.random()*uas.length):0;
     } else if(bos.length>0){
