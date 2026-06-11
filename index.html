@@ -5309,6 +5309,16 @@ const pSignalNetPos=new Float32Array(CAP);
 // during the processGrid pair sweep. Reset to 0 at the start of processGrid.
 // Opcode 35 (NEIGHBOR_DENSITY) reads this as a VM-accessible pressure signal.
 const pNeighborCount=new Int16Array(CAP);
+// INTERACTION CAP — max meaningful pairwise interactions a particle engages per tick.
+// In a dense cluster a particle would otherwise interact with every neighbour every
+// tick: that all-to-all coupling is BOTH the engine of monoculture collapse (verified
+// headless: uncapped seed-11 loses 95% of tendency-entropy; capped at 10 keeps 71%)
+// AND the quadratic cost that bogs the sim (verified: ~7x slower uncapped). Capping the
+// number of partners — not the radius — relieves both at once. A substrate ceiling, not
+// a taste: raise it toward Infinity to recover exact pre-cap dynamics. Sampling which
+// neighbours get the budget stays unbiased (the existing random interaction-driver coin).
+const INTERACTION_CAP=10;
+const pIntCount=new Int16Array(CAP); // interactions particle engaged this tick (reset in processGrid)
 // Pe37: honest loop-closure metric. Pe36's util was avgEmit * signalInfluence — emission
 // weighted by a genome knob, not a measurement of whether anything LISTENS. This counts
 // actual opcode-25 (SIGNAL_READ) executions, mirroring how Pe34/35 tracked opcode-23.
@@ -10784,6 +10794,20 @@ function mutateGenome(){
     const roll=Math.random();
     if(roll<0.4&&bos.length<MAX_BOUND_OPCODES&&uas.length>0){
       bos.push(Math.floor(Math.random()*uas.length));
+      // WIRING: when a bound opcode is authored, splice ONE call-site into the global
+      // program so the new primitive is actually REACHABLE by executing programs. Without
+      // this the author->bind->execute loop never closes: a bound opcode sits in a tiny
+      // window of the 264-opcode space that program mutation hits by ~2% lottery, so
+      // authored atoms are bound but never called (measured: uaCalls stayed 0 across runs
+      // even with dozens of atoms authored). This does NOT force authoring — birth rate is
+      // unchanged and evolvable — it only lets selection JUDGE an authored primitive on a
+      // fair field instead of one it can essentially never reach. Forcing call-sites into
+      // LIVING programs instead was tested and collapses diversity; a single germline seed,
+      // entering the population by inheritance and subject to selection, does not.
+      if(genome.vmProgram.length<genome.vmMaxInstructions){
+        genome.vmProgram.splice(Math.floor(Math.random()*(genome.vmProgram.length+1)),0,
+          [CORE_OPCODES+bos.length-1,Math.floor(Math.random()*12),Math.floor(Math.random()*12),(Math.random()-0.5)*0.6]);
+      }
     } else if(roll<0.7&&bos.length>0){
       bos[Math.floor(Math.random()*bos.length)]=uas.length>0?Math.floor(Math.random()*uas.length):0;
     } else if(bos.length>0){
@@ -16507,7 +16531,10 @@ function executeSoloVM(){
 function processGrid(){
   clearGrid();
   for(let i=0;i<N;i++){if(!palive[i])continue;const k=gKey(px[i],py[i]);pnext[i]=grid[k];grid[k]=i}
-  for(let i=0;i<N;i++){localRes[i]=0;pNeighborCount[i]=0;} // Pe51: reset density counter each tick
+  for(let i=0;i<N;i++){localRes[i]=0;pNeighborCount[i]=0;pIntCount[i]=0;} // Pe51: reset density + interaction counters each tick
+  // Resolve the per-tick interaction budget. globalThis.__CAP_K lets the headless A/B
+  // harness sweep this without editing the genome; the browser uses INTERACTION_CAP.
+  const _capK=(typeof globalThis!=='undefined'&&globalThis.__CAP_K!==undefined)?globalThis.__CAP_K:INTERACTION_CAP;
   for(let i=0;i<N;i++){
     if(!palive[i])continue;
     const gx=(px[i]/CELL)|0,gy=(py[i]/CELL)|0;
@@ -16519,7 +16546,8 @@ function processGrid(){
         if(j>i&&palive[j]&&palive[i]){
           const ddx=px[i]-px[j],ddy=py[i]-py[j],d2=ddx*ddx+ddy*ddy,d=Math.sqrt(d2),minD=pSz[i]+pSz[j];
           const iR=Math.max(10,genome.interactionRadius||55);
-          if(d<iR&&d>0){
+          if(d<iR&&d>0&&pIntCount[i]<_capK&&pIntCount[j]<_capK){
+            pIntCount[i]++;pIntCount[j]++;
             const sim=tendSim(i,j);
             const pa=Math.cos(phase[i]-phase[j]);
             localRes[i]+=Math.max(0,sim*pa)*(1-d/iR);
