@@ -4870,7 +4870,7 @@ let genome={
   vmInfluence:0.3,      // ratio of VM effects vs hardcoded physics. EVOLVES.
   ruleScale:1.0,
   metabolicCost:0.00002,  // amp cost PER INSTRUCTION PER INTERACTION. Evolves.
-  predation:0,            // #1 antagonistic coevolution: tendency to drain a neighbour's energy. Evolvable; 0=none.
+  predation:0.05,         // #1 antagonistic coevolution: tendency to drain a neighbour's energy. Evolvable; 0=none.
   defense:0,              // #1 resistance to being preyed upon. Evolvable. predation vs defense = the arms race.
                           // Forces elegant code: bloated programs starve.
 
@@ -16576,8 +16576,8 @@ function processGrid(){
             {const _gpi=pGenome[i]||genome,_gpj=pGenome[j]||genome,_prox=1-d/iR;
              const _aij=Math.min(1,Math.max(0,(_gpi.predation||0)-(_gpj.defense||0)));
              const _aji=Math.min(1,Math.max(0,(_gpj.predation||0)-(_gpi.defense||0)));
-             if(_aij>0){const _e=_aij*_prox*0.02*Math.max(0,amp[j]);amp[i]+=_e;amp[j]-=_e;}
-             if(_aji>0){const _e=_aji*_prox*0.02*Math.max(0,amp[i]);amp[j]+=_e;amp[i]-=_e;}}
+             if(_aij>0){const _e=_aij*_prox*0.25*Math.max(0,amp[j]);amp[i]+=_e;amp[j]-=_e;}
+             if(_aji>0){const _e=_aji*_prox*0.25*Math.max(0,amp[i]);amp[j]+=_e;amp[i]-=_e;}}
             {const _drv=Math.random()<0.5?i:j,_oth=_drv===i?j:i; // FIX (review): which genome GOVERNS this pairwise interaction is now an unbiased coin, not the lower array index. executeVM models a single mutual exchange (action-reaction force/phase, conservative amp & tend transfers, midpoint spawn), so one program must govern it by design — but over time each particle's genome drives ~half its encounters, removing the artifact where only pGenome[lower-index] ever ran and behavior tracked array order.
              const _sppA=pProg[_drv],_sppB=pProg[_oth];
              const _sppN=Math.min(6,Math.min(_sppA?_sppA.length:0,_sppB?_sppB.length:0));
