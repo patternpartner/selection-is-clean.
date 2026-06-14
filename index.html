@@ -10843,19 +10843,24 @@ function checkExtinction(){
   let alive=0;
   for(let i=0;i<N;i++)if(palive[i])alive++;
 
-  if(alive<genome.extinctionThresh&&tick>500){
+  // PHOENIX: evolvability death. A non-positive mutationRate is the absorbing trap that
+  // silently disables all rate-gated mutation (maybe() never fires again) — the world can no
+  // longer change. Treat that as a death that triggers rebirth, so the lineage outlives the
+  // frozen world instead of being stranded in it. Mortality kept; the line made continuous.
+  const evoDead=genome.mutationRate<=0;
+  if((alive<genome.extinctionThresh||evoDead)&&tick>500){
     genome.extinctions++;
     extinctionCount++;
     lastExtinctionTick=genome.totalTicks;
 
     genome.lineage.push({
       t:genome.totalTicks,event:'extinction',
-      cause:selfModel.trend<0?'decline':'collapse',
+      cause:evoDead?'evolvability':(selfModel.trend<0?'decline':'collapse'),
       lastFitness:+(currentFitness.toFixed(3)),
       mutRate:+(genome.mutationRate.toFixed(3))
     });
     if(genome.lineage.length>4)genome.lineage.shift();
-    recordEvent('extinction',{alive,fit:+currentFitness.toFixed(3),mut:+genome.mutationRate.toFixed(3)});
+    recordEvent('extinction',{alive,fit:+currentFitness.toFixed(3),mut:+genome.mutationRate.toFixed(3),cause:evoDead?'evolvability':'population'});
 
     genome.generation++;
     try{const g2=encodeGenome();if(g2.length<500000)localStorage.setItem('selection_genome',g2)}catch(e){}
@@ -10875,11 +10880,16 @@ function checkExtinction(){
       for(let i=0;i<n;i++)addParticle(Math.random()*W,Math.random()*H,randomTendency(),false);
     }
 
-    // Post-extinction mutation burst — higher mutation for one cycle
+    // Rebirth mutation cycle. PHOENIX: if the lineage died of evolvability collapse, the
+    // reborn world inherits the dead world's germline — its atoms, programs, structure — but
+    // with the CAPACITY to evolve renewed: a fresh positive mutation rate. This restores the
+    // ability to change, never a particular change (no human chooses the finals). A living-
+    // population extinction (rate still positive) keeps its evolved rate, with the usual burst.
     const savedRate=genome.mutationRate;
-    genome.mutationRate=Math.min(0.25,genome.mutationRate*2);
+    const renewed=savedRate>0;
+    genome.mutationRate=renewed?Math.min(0.25,savedRate*2):(0.02+Math.random()*0.06);
     mutateGenome();
-    genome.mutationRate=savedRate;
+    genome.mutationRate=renewed?savedRate:(0.01+Math.random()*0.05);
 
     currentFitness=0;fitnessSamples=0;
     // Pe108: velocity resets alongside level. Reboot starts with no trajectory information.

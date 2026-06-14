@@ -65,7 +65,9 @@ globalThis.document = {
 globalThis.window = globalThis;
 globalThis.addEventListener = () => {};
 globalThis.removeEventListener = () => {};
-globalThis.location = { hash: '', pathname: '/', search: '', href: 'http://x/' };
+// GENOME=path.json resumes from an exported selection-genome (boot-time URL-hash import path).
+const _gnHash = process.env.GENOME ? ('#' + JSON.parse(require('fs').readFileSync(process.env.GENOME, 'utf8')).genome) : '';
+globalThis.location = { hash: _gnHash, pathname: '/', search: '', href: 'http://x/' };
 globalThis.history = { replaceState() {}, pushState() {} };
 globalThis.localStorage = { getItem: () => null, setItem() {}, removeItem() {} };
 globalThis.navigator = { userAgent: 'node', hardwareConcurrency: 4, wakeLock: null };
