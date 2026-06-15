@@ -16854,6 +16854,179 @@ function init(){
   }
 }
 
+// ════════════════════════════════════════════════════════════════════════════
+// OPEN-ENDED NICHE ECONOMY — swing #11 at the diversity ceiling.
+// ───────────────────────────────────────────────────────────────────────────
+// The proven ceiling: ONE currency (amp) → one way to win → one winner. Every
+// earlier lever redistributed a FIXED niche structure, and coexistence on any
+// fixed structure is capped by limiting similarity (≈ spectrum-width/niche-width)
+// — exactly the 2–7 types those runs collapsed to. Open-endedness needs the
+// NUMBER of niches to GROW with the act of living. Three composable mechanisms,
+// each its own knob so every control can be run:
+//
+//  (1) EXPANDING CROSS-FEED FRONTIER  [__NICHE_FRONTIER]
+//      Resource lives on a spectrum of channels indexed by the heritable diet
+//      trait (tend dim 0). Harvest is trait-matched, with a master-of-one ↔
+//      jack-of-all TRADE-OFF: each organism's harvesting effort is normalised to
+//      a fixed budget, so a narrow specialist drains its one channel fast but
+//      starves elsewhere, while a generalist sips everywhere and masters nothing.
+//      Competition divides each channel among its consumers, so a crowded channel
+//      pays little per-capita and a different one becomes the better bet —
+//      coexistence by resource partitioning, not a rarity tax. A fraction of every
+//      harvest is re-deposited DOWNSTREAM (b→b+OFFSET) as fresh resource, so a
+//      thriving population literally builds the next niche: new mountains appear
+//      faster than they are climbed. Abiotic supply tapers from the origin, so the
+//      frontier must be CONSTRUCTED, not handed out.
+//
+//  (2) BIOTIC / COEVOLUTIONARY NICHES  [__NICHE_BIOTIC]
+//      A conserved predation transfer carries amplitude UP the diet ladder: prey
+//      in channel b−1 lose exactly what predators in channel b gain (∝ amp). So
+//      every occupied channel creates a predation niche above it — each new type
+//      IS a new niche (Red Queen). Conserved, so it can never mint or destroy the
+//      population's energy; it only restructures who holds it.
+//
+//  (3) OPCODE-NOVELTY — the coupling gap  [__OPCODE_NOVELTY]
+//      Evolution uses ~20 of 232 opcodes ("museum, lights off"). A small
+//      mean-centred bonus rewards lineages whose program runs opcodes that are
+//      globally RARE among the living, so the dormant predation/mutualism/field
+//      machinery gets discovered and exercised rather than left dark.
+//
+// SAFETY: lever 2 (predation) is conserved and lever 3 (opcode-novelty) is mean-centred —
+// neither can mint or destroy amp. Lever 1's REAL income IS a genuine food source (that is the
+// whole point — a zero-sum tax cannot exceed limiting similarity), but it is bounded by the
+// existing metabolic brake: more amp → more births → density/starvation drain rises → N
+// self-limits, so it raises DIVERSITY, not headcount-without-limit, and cannot be wireheaded.
+// All three knobs default OFF (opt-in) and are read at call time so the headless harness can A/B.
+// Graded honestly (OEE-NOTES.md): real partitioned niches roughly HALVE the collapse and ~double
+// retained kinds vs baseline — best of any swing — but do not yet cleanly break the ceiling, so
+// this ships dormant rather than adopted.
+const NICHE_BINS=16;                 // resource channels along the diet spectrum
+const NICHE_ABIOTIC=0.06;            // abiotic supply at the origin channel
+const NICHE_TAPER=0.82;              // geometric taper of abiotic supply per channel out
+const NICHE_CAP=4.0;                 // per-channel standing-stock ceiling
+const NICHE_HARVEST=0.35;            // fraction of a channel's stock harvested per tick
+const NICHE_PERSIST=0.95;            // unharvested stock carried over (abandoned frontier fades)
+const NICHE_STRENGTH=0.006;          // max amp/tick from niche-harvest success — MEAN-CENTRED control mode only
+// REAL income mode (default): niche harvest is a genuine, partitioned food source — each channel
+// has its own carrying capacity, so coexistence count = number of supplied channels, NOT the
+// limiting-similarity cap of a zero-sum tax. Total income is bounded by the metabolic brake (more
+// amp → more births → density/starvation drain rises → N self-limits), so it cannot wirehead.
+const NICHE_REAL_SUPPLY=0.32;        // abiotic supply per channel in REAL mode (a real food source, not a nudge)
+const NICHE_REAL_TAPER=1.0;          // FLAT supply: no channel is intrinsically best, so there is no single mountain — coexistence rests purely on symmetric crowding (frequency dependence), and cross-feeding can extend the occupied frontier
+const NICHE_GAIN_REAL=0.05;          // harvested-resource → amplitude conversion (lone specialist ≈0.02 amp/tick; crowded channel splits it)
+const NICHE_CROSSFEED=0.55;          // fraction of harvest re-deposited downstream (lever 1)
+const NICHE_OFFSET=3;                // downstream channel step (coprime to 16 → chain reaches all)
+const NICHE_PRED_RATE=0.012;         // predator amp/tick per unit prey, conserved (lever 2)
+const NICHE_PRED_MAXFRAC=0.03;       // ceiling: predators take ≤3% of a prey channel's amp/tick
+const OPNOV_STRENGTH=0.0025;         // max amp/tick from running globally-rare opcodes (lever 3)
+const OPNOV_INTERVAL=120;            // ticks between opcode-frequency recomputes
+const nicheRes=new Float32Array(NICHE_BINS);      // standing stock per channel
+const nicheDemand=new Float32Array(NICHE_BINS);   // total harvesting effort per channel
+const nicheBiomass=new Float32Array(NICHE_BINS);  // living amp per diet channel
+const nicheCross=new Float32Array(NICHE_BINS);    // deferred cross-feed deposits (avoids intra-tick order bias)
+const nichePredGain=new Float32Array(NICHE_BINS); // predator amp gain per unit amp, per channel
+const nichePreyLoss=new Float32Array(NICHE_BINS); // prey amp loss per unit amp, per channel
+const nicheAbiotic=new Float32Array(NICHE_BINS);  // precomputed tapered abiotic supply (mean-centred control)
+const nicheAbioticReal=new Float32Array(NICHE_BINS); // precomputed tapered abiotic supply (REAL income mode)
+const pNicheRaw=new Float32Array(CAP);            // per-organism resource captured this tick
+const pDietBin=new Int16Array(CAP);               // per-organism diet channel this tick
+const opFreq=new Float32Array(256);               // opcode frequency among living programs
+let opFreqTotal=0;
+for(let _b=0;_b<NICHE_BINS;_b++){ nicheAbiotic[_b]=NICHE_ABIOTIC*Math.pow(NICHE_TAPER,_b); nicheAbioticReal[_b]=NICHE_REAL_SUPPLY*Math.pow(NICHE_REAL_TAPER,_b); }
+nicheRes.fill(0.3);
+// Diet channel and specialisation half-width derive from the heritable tendency axis.
+function nicheDietBin(i){ let c=((tend[i*DIMS]+1.2)/2.4)*NICHE_BINS|0; return c<0?0:c>=NICHE_BINS?NICHE_BINS-1:c; }
+function nicheWidth(i){ let s=(tend[i*DIMS+1]+1.2)/2.4; s=s<0?0:s>1?1:s; return 0.6+s*(NICHE_BINS*0.5-0.6); }
+
+function applyNicheEconomy(){
+  // Opt-in: every lever defaults OFF so stock index.html is byte-for-byte unchanged. Set the
+  // matching global to 1 to enable (the headless harness exposes these as env knobs). Graded but
+  // not yet a clean break of the ceiling — see OEE-NOTES.md — so it ships dormant, not adopted.
+  const FR =(typeof globalThis!=='undefined'&&(globalThis.__NICHE_FRONTIER|0)===1);
+  const BIO=(typeof globalThis!=='undefined'&&(globalThis.__NICHE_BIOTIC|0)===1);
+  const NOV=(typeof globalThis!=='undefined'&&(globalThis.__OPCODE_NOVELTY|0)===1);
+  if(!FR&&!BIO&&!NOV) return;
+  const _season=1+SEASON_AMPLITUDE*Math.sin(2*Math.PI*tick/SEASON_PERIOD);
+
+  // diet bins + per-channel living biomass
+  nicheBiomass.fill(0); let alive=0;
+  for(let i=0;i<N;i++){ if(!palive[i])continue; alive++; const c=nicheDietBin(i); pDietBin[i]=c; nicheBiomass[c]+=amp[i]>0?amp[i]:0; }
+  if(alive===0) return;
+
+  // ── LEVER 1: expanding cross-feed frontier ──────────────────────────────
+  if(FR){
+    const REAL=!(typeof globalThis!=='undefined'&&globalThis.__NICHE_REAL===0); // real partitioned income (default); ===0 → mean-centred control
+    const supply=REAL?nicheAbioticReal:nicheAbiotic;
+    // regen: tapered abiotic supply + carry-over of unharvested stock
+    for(let b=0;b<NICHE_BINS;b++){ nicheRes[b]=Math.min(NICHE_CAP, nicheRes[b]*NICHE_PERSIST + supply[b]*_season); nicheCross[b]=0; }
+    // demand pass: trait-matched, effort-normalised (the master/jack trade-off). UNIFORM effort (1 per
+    // organism, not amp-weighted) so a channel's share is set purely by how CROWDED it is — this gives
+    // each channel its own carrying capacity, instead of letting the highest-amp type harvest the most
+    // (which was rich-get-richer and reinforced monoculture).
+    nicheDemand.fill(0);
+    for(let i=0;i<N;i++){ if(!palive[i])continue; const c=pDietBin[i], w=nicheWidth(i);
+      const lo=Math.max(0,Math.ceil(c-w)), hi=Math.min(NICHE_BINS-1,Math.floor(c+w)); let wsum=0;
+      for(let b=lo;b<=hi;b++) wsum+=1-Math.abs(b-c)/w; if(wsum<=0)wsum=1;
+      for(let b=lo;b<=hi;b++){ const wt=(1-Math.abs(b-c)/w)/wsum; nicheDemand[b]+=wt; } }
+    // harvest pass: each organism's share of a channel = its weighted effort / channel demand
+    let sumRaw=0, cnt=0;
+    for(let i=0;i<N;i++){ if(!palive[i])continue; const c=pDietBin[i], w=nicheWidth(i); pNicheRaw[i]=0;
+      const lo=Math.max(0,Math.ceil(c-w)), hi=Math.min(NICHE_BINS-1,Math.floor(c+w)); let wsum=0;
+      for(let b=lo;b<=hi;b++) wsum+=1-Math.abs(b-c)/w; if(wsum<=0)wsum=1;
+      let raw=0;
+      for(let b=lo;b<=hi;b++){ const dem=nicheDemand[b]; if(dem<=0)continue; const wt=(1-Math.abs(b-c)/w)/wsum;
+        const got=nicheRes[b]*NICHE_HARVEST*(wt/dem); raw+=got;
+        nicheCross[(b+NICHE_OFFSET)%NICHE_BINS]+=got*NICHE_CROSSFEED; } // cross-feed downstream (deferred)
+      pNicheRaw[i]=raw; sumRaw+=raw; cnt++; }
+    // deplete harvested channels, then apply deferred cross-feed deposits
+    for(let b=0;b<NICHE_BINS;b++){ if(nicheDemand[b]>0) nicheRes[b]*=(1-NICHE_HARVEST); nicheRes[b]=Math.min(NICHE_CAP, nicheRes[b]+nicheCross[b]); }
+    if(REAL){
+      // REAL partitioned income: harvested resource becomes genuine amplitude. A specialist alone on a
+      // channel banks real energy and reproduces; as its kind fills the channel, per-capita share falls
+      // to the maintenance line and that niche stops growing — a stable population PER channel. The
+      // metabolic brake caps the TOTAL, so this raises diversity, not headcount-without-limit.
+      for(let i=0;i<N;i++){ if(!palive[i])continue; amp[i]+=NICHE_GAIN_REAL*pNicheRaw[i]; }
+    }else{
+      // mean-centred control: zero-sum like NFD — provably cannot exceed limiting similarity (kept to prove the point).
+      const meanRaw=cnt>0?sumRaw/cnt:0;
+      if(meanRaw>1e-9) for(let i=0;i<N;i++){ if(!palive[i])continue; amp[i]+=NICHE_STRENGTH*Math.max(-1,Math.min(1, pNicheRaw[i]/meanRaw-1)); }
+    }
+  }
+
+  // ── LEVER 2: biotic / coevolutionary niches (conserved predation up the ladder) ──
+  if(BIO){
+    for(let b=0;b<NICHE_BINS;b++){ nichePredGain[b]=0; nichePreyLoss[b]=0; }
+    for(let b=0;b<NICHE_BINS;b++){ const preyB=(b-1+NICHE_BINS)%NICHE_BINS; const predMass=nicheBiomass[b], preyMass=nicheBiomass[preyB];
+      if(predMass<=0||preyMass<=0)continue;
+      const transfer=Math.min(preyMass*NICHE_PRED_MAXFRAC, predMass*NICHE_PRED_RATE); // total amp moved this tick
+      nichePredGain[b]+=transfer/predMass;       // distribute to predators ∝ their amp
+      nichePreyLoss[preyB]+=transfer/preyMass; }  // distribute loss to prey ∝ their amp
+    for(let i=0;i<N;i++){ if(!palive[i])continue; const c=pDietBin[i], a=amp[i]>0?amp[i]:0; amp[i]+=a*(nichePredGain[c]-nichePreyLoss[c]); }
+  }
+
+  // ── LEVER 3: opcode-novelty (break the coupling gap) ─────────────────────
+  if(NOV){
+    if(opFreqTotal===0 || tick%OPNOV_INTERVAL===0){ opFreq.fill(0); opFreqTotal=0;
+      for(let i=0;i<N;i++){ if(!palive[i])continue; const pr=pProg[i]; if(!pr)continue;
+        for(let q=0;q<pr.length;q++){ const op=pr[q][0]|0; if(op>=0&&op<256){ opFreq[op]++; opFreqTotal++; } } } }
+    if(opFreqTotal>0){
+      let sumNov=0, cnt=0;
+      for(let i=0;i<N;i++){ if(!palive[i])continue; const pr=pProg[i]; let s=0,n=0;
+        if(pr) for(let q=0;q<pr.length;q++){ const op=pr[q][0]|0; if(op>=0&&op<256){ s+=1-opFreq[op]/opFreqTotal; n++; } }
+        const sc=n>0?s/n:0; pNicheRaw[i]=sc; sumNov+=sc; cnt++; } // reuse pNicheRaw as scratch (frontier already consumed it)
+      const meanNov=cnt>0?sumNov/cnt:0;
+      if(meanNov>1e-9) for(let i=0;i<N;i++){ if(!palive[i])continue; amp[i]+=OPNOV_STRENGTH*Math.max(-1,Math.min(1, pNicheRaw[i]/meanNov-1)); }
+    }
+  }
+}
+
+// Count of resource channels currently occupied by living organisms (≥THRESH amp) —
+// the direct "how many niches does life hold" readout for the OEE harness.
+function nicheOccupancy(thresh){ const T=thresh||0.02; const seen=new Float32Array(NICHE_BINS);
+  for(let i=0;i<N;i++){ if(palive[i]) seen[nicheDietBin(i)]+=amp[i]>0?amp[i]:0; }
+  let occ=0,tot=0; for(let b=0;b<NICHE_BINS;b++){ tot+=seen[b]; }
+  for(let b=0;b<NICHE_BINS;b++){ if(tot>0&&seen[b]/tot>=T) occ++; } return occ; }
+
 function loop(){
   lastLoopTime=performance.now();
   try{
@@ -16867,6 +17040,7 @@ function loop(){
     const _mean=N/TCELLS;
     for(let _i=0;_i<N;_i++){ if(!palive[_i])continue; const _bc=tHist[tendBin(_i)];
       amp[_i]+=NFD_STRENGTH*Math.max(-1,Math.min(1, 1-_bc/(_mean+0.001))); } } // rare kind gains, common kind pays → the world keeps generating novelty instead of freezing
+  applyNicheEconomy(); // OEE swing #11: multi-niche resource spectrum + cross-feeding + biotic predation + opcode-novelty (knob-gated; mean-centred/conserved)
   flushNetworkEvents();
   smx+=(mx-smx)*.05;smy+=(my-smy)*.05;
   if(pulling){pStr=Math.min(pStr+.02,1);pDur++}else pStr*=.92;
