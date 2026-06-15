@@ -16565,6 +16565,16 @@ function processGrid(){
             // Pe51 Layer 40: count neighbors within interaction radius for density sensing
             if(pNeighborCount[i]<127)pNeighborCount[i]++;
             if(pNeighborCount[j]<127)pNeighborCount[j]++;
+            // ENDOGENOUS FITNESS LANDSCAPE (the swing): energy flows from the COMMONER kind to the
+            // rarer one, scaled by how DIFFERENT they are — conserved, never created. The population
+            // becomes its own environment: every kind is food for kinds unlike it, so niche space =
+            // kind space and GROWS with diversity. Being common is a liability (you're everyone's
+            // resource); dominance manufactures its own predators, so no single peak can hold. A
+            // landscape the organisms continuously rebuild — the only known route past a one-niche ceiling.
+            {const _fi=tHist[tendBin(i)]||1,_fj=tHist[tendBin(j)]||1,_dist=1-sim;
+             if(_dist>0.1&&_fi!==_fj){const _flow=0.2*_dist*(Math.abs(_fi-_fj)/(_fi+_fj))*(1-d/iR);
+               if(_fi>_fj){const _e=_flow*Math.max(0,amp[i]);amp[j]+=_e;amp[i]-=_e;}
+               else{const _e=_flow*Math.max(0,amp[j]);amp[i]+=_e;amp[j]-=_e;}}}
             {const _drv=Math.random()<0.5?i:j,_oth=_drv===i?j:i; // FIX (review): which genome GOVERNS this pairwise interaction is now an unbiased coin, not the lower array index. executeVM models a single mutual exchange (action-reaction force/phase, conservative amp & tend transfers, midpoint spawn), so one program must govern it by design — but over time each particle's genome drives ~half its encounters, removing the artifact where only pGenome[lower-index] ever ran and behavior tracked array order.
              const _sppA=pProg[_drv],_sppB=pProg[_oth];
              const _sppN=Math.min(6,Math.min(_sppA?_sppA.length:0,_sppB?_sppB.length:0));
