@@ -120,6 +120,16 @@ console.warn = () => {};
 //                      LOCAL carrying capacity, so overflow spreads to other cells (real per-niche competition).
 if (process.env.NICHE_NDIM !== undefined) globalThis.__NICHE_NDIM = parseInt(process.env.NICHE_NDIM, 10);
 if (process.env.NICHE_LOCAL !== undefined) globalThis.__NICHE_LOCAL = parseInt(process.env.NICHE_LOCAL, 10);
+// swing #15 synthesis + retention knobs:
+//   NICHE_CELLDRIFT=1  (with NICHE_NDIM=1) each cell's supply pulses on its own phase — no niche stays settled.
+//   TEND_MUT=<x>       scale diet-axis exploration (default 1) — tests whether retention is exploration-limited.
+if (process.env.NICHE_CELLDRIFT !== undefined) globalThis.__NICHE_CELLDRIFT = parseInt(process.env.NICHE_CELLDRIFT, 10);
+if (process.env.TEND_MUT !== undefined) globalThis.__TEND_MUT = parseFloat(process.env.TEND_MUT);
+// retention diagnostic + fix:
+//   GLOBALTEND=<x>     scale the global diet-axis mean-reversion sink (0 = ablate; default 1).
+//   NICHE_LOCALTEND=1  (with NICHE_NDIM=1) localise it: pull toward the per-niche centroid, not the global one.
+if (process.env.GLOBALTEND !== undefined) globalThis.__GLOBALTEND = parseFloat(process.env.GLOBALTEND);
+if (process.env.NICHE_LOCALTEND !== undefined) globalThis.__NICHE_LOCALTEND = parseInt(process.env.NICHE_LOCALTEND, 10);
 if (process.env.NICHE_FRONTIER !== undefined) globalThis.__NICHE_FRONTIER = parseInt(process.env.NICHE_FRONTIER, 10);
 if (process.env.NICHE_BIOTIC !== undefined) globalThis.__NICHE_BIOTIC = parseInt(process.env.NICHE_BIOTIC, 10);
 if (process.env.OPCODE_NOVELTY !== undefined) globalThis.__OPCODE_NOVELTY = parseInt(process.env.OPCODE_NOVELTY, 10);

@@ -145,3 +145,44 @@ niche/competition layer — it is **upstream of it**: diversity is generated fas
 The honest next experiment is therefore **not another niche mechanism** but to ablate/instrument the
 homogenisers and raise diet-axis exploration, and measure whether retention (occupancy slope) goes
 non-negative. All of #11–#14 ship dormant (knobs default OFF); stock behaviour unchanged.
+
+---
+
+# Swing #15 — retention, not capacity (the `globalTend` sink, and the local fix)
+
+Credit: the mechanistic framing here came from a parallel instance and was decisive.
+
+**The wall, analytically (not empirically).** Every tick, `tend[i] += (globalTend[d] − tend[i]) ×
+2e-5` (index.html ~L17142): global mean-reversion on the diet axis. Against ±5e-4/tick mutation, the
+mutation-vs-reversion balance pins the trait distribution at
+`var ≈ injection/removal ≈ (5e-4)² / (2·2e-5) ≈ 0.006 → std ≈ 0.08`. On a [−1.2,1.2] axis with 4-bin
+cells, std 0.08 fits inside one bin. **No downstream niche capacity can hold diversity when the
+upstream trait distribution is pinned that tight** — which is exactly why #13 starts at 22–31
+occupied cells and relaxes to ~6. The retention diagnosis is now mechanistic, not just observed.
+
+**Diagnostic (seed 7, 6000 ticks, on #13+#14; `__GLOBALTEND` scales the sink, 0 = ablate):**
+
+| config | occ_late | kinds_late | entropy_late | clusters_late |
+|---|---|---|---|---|
+| globalTend ON (stock) | 6 | 9 | 1.86 | 4 |
+| globalTend OFF (ablated) | **11.25** | 13.8 | 2.48 | 10.5 (incoherent) |
+| **localized — `__NICHE_LOCALTEND=1`** | 8.5 | 11.8 | 2.2 | **4 (coherent)** |
+
+Ablating `globalTend` in isolation nearly **doubles** retained occupancy (6 → 11.25) — the single
+biggest mover in the whole sequence, confirming it is the dominant sink. But full ablation blows
+cluster coherence (4 → 10.5), which would cost the live piece its visual structure. **Localising the
+homogeniser** — pulling each organism toward its own NICHE-CELL centroid instead of the global mean
+(`__NICHE_LOCALTEND=1`, also on L17142) — recovers most of the diversity gain (occ 6 → 8.5, kinds
+9 → 11.8) **while keeping coherence (4 clusters).** Within-niche coherence survives; cross-niche
+divergence stops being punished. This is the fourth independent time the answer has been
+"the global version concentrates; localise it" (cf. #14 local competition).
+
+**Status.** Still not open-ended — slope stays negative (other sinks remain: HGT, motif re-adoption,
+seasonal culls), so retention is improved, not yet self-sustaining. Remaining protocol, with
+attribution discipline (one sink at a time): HGT/motif off next, then a diet-mutation sweep
+(`__TEND_MUT`). **Validation caveat:** occupancy-slope ≥ 0 is necessary, not sufficient — a higher
+mutation rate can inflate variance into a *smear* of tourists (the bin-inflation confound), so the
+retained occupancy must be confirmed HERITABLE/persistent per cell (lineages stay), not a random
+scatter. The coherent `clusters_late=4` under the localized fix is an encouraging (not conclusive)
+sign of persistence. New knobs (`__GLOBALTEND`, `__NICHE_LOCALTEND`, `__TEND_MUT`, `__NICHE_CELLDRIFT`)
+all default to stock behaviour.
