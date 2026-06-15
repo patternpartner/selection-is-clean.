@@ -16932,6 +16932,25 @@ const NICHE_PRED_RATE=0.012;         // predator amp/tick per unit prey, conserv
 const NICHE_PRED_MAXFRAC=0.03;       // ceiling: predators take ≤3% of a prey channel's amp/tick
 const OPNOV_STRENGTH=0.0025;         // max amp/tick from running globally-rare opcodes (lever 3)
 const OPNOV_INTERVAL=120;            // ticks between opcode-frequency recomputes
+// N-DIMENSIONAL NICHE CELLS — swing #13: attack the COUNT. A 1-D diet axis is bounded by limiting
+// similarity to a handful of types; lifting diet to D tendency dimensions makes the niche count
+// COMBINATORIAL (bins^D), so the ceiling rises by orders of magnitude. Each cell is a real,
+// partitioned resource; empty cells accrue stock to the cap, so the FIRST lineage to reach a new
+// cell harvests a rich colonisation bonus — living literally opens (and pays for) new ways to live.
+// Opt-in via __NICHE_NDIM=1 (with __NICHE_FRONTIER=1); replaces the 1-D channel geometry.
+const NICHE_ND_DIMS=4;               // tendency dimensions used as diet coordinates
+const NICHE_ND_BINS=4;               // bins per diet dimension
+const NICHE_ND_CELLS=256;            // = NICHE_ND_BINS**NICHE_ND_DIMS (4^4)
+const NICHE_ND_SUPPLY=0.18;          // per-cell supply/tick (lone occupant ≈0.009 amp/tick; empty cell builds a colonisation bonus)
+const NICHE_ND_OFFSET=37;            // cross-feed cell stride (odd → coprime to 256 → reaches every cell)
+// LOCAL COMPETITION — swing #14. Per-niche income alone still lets one fast cell flood the world,
+// because death/crowding is GLOBAL. Here crowding your OWN diet-cell costs amplitude, so each cell
+// has a hard LOCAL carrying capacity and overflow is pushed into other cells — coexistence by real
+// per-niche competition (NFD done right: a partitioned resource, not a global rarity tax; and not
+// the frozen-immobility artifact, since cell-mates still physically interact and compete).
+// Opt-in via __NICHE_LOCAL=1 (with __NICHE_NDIM=1).
+const NICHE_CELL_FLOOR=2;            // occupants per cell that pay no crowding cost
+const NICHE_LOCAL_COST=0.0025;       // amp/tick lost per occupant above the floor (caps each cell locally)
 const nicheRes=new Float32Array(NICHE_BINS);      // standing stock per channel
 const nicheDemand=new Float32Array(NICHE_BINS);   // total harvesting effort per channel
 const nicheBiomass=new Float32Array(NICHE_BINS);  // living amp per diet channel
@@ -16941,6 +16960,11 @@ const nichePreyLoss=new Float32Array(NICHE_BINS); // prey amp loss per unit amp,
 const nicheAbiotic=new Float32Array(NICHE_BINS);  // precomputed tapered abiotic supply (mean-centred control)
 const nicheAbioticReal=new Float32Array(NICHE_BINS); // precomputed tapered abiotic supply (REAL income mode)
 const nicheSupplyNow=new Float32Array(NICHE_BINS); // per-tick drifting supply (swing #12)
+const nicheCellRes=new Float32Array(NICHE_ND_CELLS);   // standing stock per N-dim diet cell (swing #13)
+const nicheCellOcc=new Int32Array(NICHE_ND_CELLS);     // occupants per cell this tick
+const nicheCellCross=new Float32Array(NICHE_ND_CELLS); // deferred cross-feed deposits per cell
+const pDietCell=new Int32Array(CAP);                   // per-organism diet cell this tick
+nicheCellRes.fill(0.3);
 const pNicheRaw=new Float32Array(CAP);            // per-organism resource captured this tick
 const pDietBin=new Int16Array(CAP);               // per-organism diet channel this tick
 const opFreq=new Float32Array(256);               // opcode frequency among living programs
@@ -16950,6 +16974,10 @@ nicheRes.fill(0.3);
 // Diet channel and specialisation half-width derive from the heritable tendency axis.
 function nicheDietBin(i){ let c=((tend[i*DIMS]+1.2)/2.4)*NICHE_BINS|0; return c<0?0:c>=NICHE_BINS?NICHE_BINS-1:c; }
 function nicheWidth(i){ let s=(tend[i*DIMS+1]+1.2)/2.4; s=s<0?0:s>1?1:s; return 0.6+s*(NICHE_BINS*0.5-0.6); }
+// Swing #13: hash D heritable tendency dims into one of bins^D diet cells (the combinatorial niche space).
+function nicheCellOf(i){ let r=0; const D=NICHE_ND_DIMS<DIMS?NICHE_ND_DIMS:DIMS;
+  for(let d=0;d<D;d++){ let q=((tend[i*DIMS+d]+1.2)/2.4*NICHE_ND_BINS)|0; q=q<0?0:q>=NICHE_ND_BINS?NICHE_ND_BINS-1:q; r=r*NICHE_ND_BINS+q; }
+  return r; }
 // Swing #12: drifting supply peaks (moving niches). Peaks roam the channel ring on slow sinusoids;
 // total supply is renormalised to NICHE_REAL_SUPPLY*NICHE_BINS so only the LOCATION of food moves.
 function nicheDriftSupply(){ const total=NICHE_REAL_SUPPLY*NICHE_BINS; let sum=0;
@@ -16976,6 +17004,20 @@ function applyNicheEconomy(){
   for(let i=0;i<N;i++){ if(!palive[i])continue; alive++; const c=nicheDietBin(i); pDietBin[i]=c; nicheBiomass[c]+=amp[i]>0?amp[i]:0; }
   if(alive===0) return;
 
+  // ── LEVER 1b: N-dimensional niche cells (swing #13) — combinatorial count, replaces the 1-D geometry ──
+  if(FR && (typeof globalThis!=='undefined'&&(globalThis.__NICHE_NDIM|0)===1)){
+    // regen every cell; empty cells accrue to NICHE_CAP → a colonisation bonus for the first arrival
+    for(let c=0;c<NICHE_ND_CELLS;c++){ nicheCellRes[c]=Math.min(NICHE_CAP, nicheCellRes[c]*NICHE_PERSIST + NICHE_ND_SUPPLY*_season); nicheCellOcc[c]=0; nicheCellCross[c]=0; }
+    for(let i=0;i<N;i++){ if(!palive[i])continue; const c=nicheCellOf(i); pDietCell[i]=c; nicheCellOcc[c]++; }
+    // harvest: occupants of a cell split its take equally (each cell its own carrying capacity); REAL income; cross-feed to an offset cell
+    const LOCAL=(typeof globalThis!=='undefined'&&(globalThis.__NICHE_LOCAL|0)===1); // swing #14: per-cell crowding cost
+    for(let i=0;i<N;i++){ if(!palive[i])continue; const c=pDietCell[i], occ=nicheCellOcc[c]; if(occ<=0)continue;
+      const got=nicheCellRes[c]*NICHE_HARVEST/occ; amp[i]+=NICHE_GAIN_REAL*got;
+      if(LOCAL&&occ>NICHE_CELL_FLOOR) amp[i]-=NICHE_LOCAL_COST*(occ-NICHE_CELL_FLOOR); // local carrying capacity: crowding your own niche hurts
+      nicheCellCross[(c+NICHE_ND_OFFSET)%NICHE_ND_CELLS]+=got*NICHE_CROSSFEED; }
+    for(let c=0;c<NICHE_ND_CELLS;c++){ if(nicheCellOcc[c]>0) nicheCellRes[c]*=(1-NICHE_HARVEST); nicheCellRes[c]=Math.min(NICHE_CAP, nicheCellRes[c]+nicheCellCross[c]); }
+    // (biotic + opcode-novelty levers below still apply if their knobs are set)
+  } else
   // ── LEVER 1: expanding cross-feed frontier ──────────────────────────────
   if(FR){
     const REAL=!(typeof globalThis!=='undefined'&&globalThis.__NICHE_REAL===0); // real partitioned income (default); ===0 → mean-centred control
@@ -17046,7 +17088,12 @@ function applyNicheEconomy(){
 
 // Count of resource channels currently occupied by living organisms (≥THRESH amp) —
 // the direct "how many niches does life hold" readout for the OEE harness.
-function nicheOccupancy(thresh){ const T=thresh||0.02; const seen=new Float32Array(NICHE_BINS);
+function nicheOccupancy(thresh){
+  // Swing #13 ND mode: report distinct diet CELLS holding ≥2 living organisms (the combinatorial count).
+  if(typeof globalThis!=='undefined'&&(globalThis.__NICHE_NDIM|0)===1){ const occN=new Int32Array(NICHE_ND_CELLS);
+    for(let i=0;i<N;i++){ if(palive[i]) occN[nicheCellOf(i)]++; }
+    let o=0; for(let c=0;c<NICHE_ND_CELLS;c++){ if(occN[c]>=2) o++; } return o; }
+  const T=thresh||0.02; const seen=new Float32Array(NICHE_BINS);
   for(let i=0;i<N;i++){ if(palive[i]) seen[nicheDietBin(i)]+=amp[i]>0?amp[i]:0; }
   let occ=0,tot=0; for(let b=0;b<NICHE_BINS;b++){ tot+=seen[b]; }
   for(let b=0;b<NICHE_BINS;b++){ if(tot>0&&seen[b]/tot>=T) occ++; } return occ; }

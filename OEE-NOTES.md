@@ -105,7 +105,43 @@ Hunger is *convergent*: everything chases the same shifting targets. Drift chang
 **Consolidated conclusion across #11–#12.** Only one thing moved the needle: making niches a
 **real, partitioned food source** (collapse roughly halved, kinds roughly doubled). Everything that
 touched *how fitness is shaped* rather than *how many separated, simultaneously-supplied niches
-exist* — rarity tax, mean-centring, drift — left the count where limiting similarity puts it. The
-remaining path is to make the niche **count itself grow without bound**: unbounded trait space
-(grow `DIMS`, tie new dimensions to the occupied frontier) and/or a non-wrapping cross-feed frontier
-that adds a genuinely new channel each time the edge fills. Ships dormant; both knobs default OFF.
+exist* — rarity tax, mean-centring, drift — left the count where limiting similarity puts it.
+
+---
+
+# Swings #13–#14 — attack the count (N-dim cells; local competition)
+
+- **#13 N-dim niche cells** (`__NICHE_NDIM=1`): diet is a cell in a 4-dim × 4-bin space (256 niches,
+  combinatorial), each a real partitioned resource; empty cells accrue a colonisation bonus.
+- **#14 local competition** (`__NICHE_LOCAL=1`, with #13): crowding your own diet-cell costs amp, so
+  each niche has a hard local carrying capacity (NFD done right — real per-niche competition).
+
+**Results (seed 7, 6000 ticks), entropyRatio = late/early entropy (≥0.7 = not collapsing):**
+
+| config | entropyRatio | kinds_late | nicheOcc early→late |
+|---|---|---|---|
+| baseline | 0.44 | 5 | 7 → 5 |
+| 1-D real frontier (#11) | **0.63–0.69** | ~11 | 8 → 5 |
+| drift (#12) | 0.67 | 8.8 | 9 → 5 |
+| N-dim cells (#13) | 0.35 (collapses harder) | 8.3 | 23 → 6 |
+| N-dim + local (#14) | 0.65 | 9 | 22 → 6 |
+
+**The pattern is the finding.** #13 has 256 niches and *starts* with 22–31 occupied, yet collapses
+*hardest* — combinatorial capacity is not the constraint. #14's local competition rescues #13 from
+0.35 back to 0.65, but **every lever — real income, drift, combinatorial space, local competition —
+lands at the same ~0.65 wall, and none holds occupancy flat.** The system sheds diversity to the
+same level no matter how much niche capacity or competition structure is added.
+
+**Revised diagnosis (where the next swing must aim).** The binding constraint is no longer in the
+niche/competition layer — it is **upstream of it**: diversity is generated faster than it can be
+*retained*. Two upstream suspects, both pre-existing and untouched by #11–#14:
+1. **Slow diet exploration.** Offspring inherit the parent's `tend` (birth averages parents) and
+   `tend` mutates only ±0.0005/tick, so lineages cannot *spread* across niches fast enough to offset
+   selective + seasonal concentration. The niches exist; nothing colonises them in time.
+2. **Active homogenisers.** Every tick `tend` is pulled toward the population mean (the `globalTend`
+   attractor, ~2e-5/tick), plus motif re-adoption and HGT — a persistent inward pull collapsing the
+   diet axis regardless of niche structure.
+
+The honest next experiment is therefore **not another niche mechanism** but to ablate/instrument the
+homogenisers and raise diet-axis exploration, and measure whether retention (occupancy slope) goes
+non-negative. All of #11–#14 ship dormant (knobs default OFF); stock behaviour unchanged.

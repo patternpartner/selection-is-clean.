@@ -114,6 +114,12 @@ console.warn = () => {};
 //                      mean-centred control — proves a tax cannot beat limiting similarity.
 //   NICHE_DRIFT=1      (with NICHE_FRONTIER=1) swing #12: supply peaks DRIFT, so the profitable
 //                      diet is a moving target — no lineage can summit-and-stop.
+//   NICHE_NDIM=1       (with NICHE_FRONTIER=1) swing #13: diet is an N-dim cell (bins^D niches),
+//                      a combinatorial count instead of a 1-D handful. nicheOcc = occupied cells.
+//   NICHE_LOCAL=1      (with NICHE_NDIM=1) swing #14: per-cell crowding cost — each niche gets a
+//                      LOCAL carrying capacity, so overflow spreads to other cells (real per-niche competition).
+if (process.env.NICHE_NDIM !== undefined) globalThis.__NICHE_NDIM = parseInt(process.env.NICHE_NDIM, 10);
+if (process.env.NICHE_LOCAL !== undefined) globalThis.__NICHE_LOCAL = parseInt(process.env.NICHE_LOCAL, 10);
 if (process.env.NICHE_FRONTIER !== undefined) globalThis.__NICHE_FRONTIER = parseInt(process.env.NICHE_FRONTIER, 10);
 if (process.env.NICHE_BIOTIC !== undefined) globalThis.__NICHE_BIOTIC = parseInt(process.env.NICHE_BIOTIC, 10);
 if (process.env.OPCODE_NOVELTY !== undefined) globalThis.__OPCODE_NOVELTY = parseInt(process.env.OPCODE_NOVELTY, 10);
