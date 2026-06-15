@@ -16207,18 +16207,6 @@ function updateParticles(){
     localRes[i]+=localField*(pGenome[i]?pGenome[i].fieldInfluence:genome.fieldInfluence)*affinity; // per-lineage field coupling: each lineage's evolved fieldInfluence now governs its own resource harvest
     amp[i]+=localField*0.0008*affinity;
     for(let d=0;d<DIMS;d++){tend[i*DIMS+d]+=(Math.random()-0.5)*0.001;const v=tend[i*DIMS+d];if(v>1.2)tend[i*DIMS+d]=1.2;if(v<-1.2)tend[i*DIMS+d]=-1.2}
-    // ADAPTIVE RADIATION: local adaptation to self-constructed niches. Each particle stamps its
-    // own tendency onto the local field signature (niche construction) AND gains/loses energy by
-    // how well it MATCHES that local signature — but the match-pressure is gated by how CLAIMED
-    // the cell is. Empty frontier (ownership~0): no pressure, free to colonise. Established niche
-    // (ownership~1): strong selection to fit the residents who built it. Result: space fragments
-    // into regions each adapted to whoever settled it; a single global peak becomes many local
-    // ones, and divergent kinds coexist instead of one winner taking the whole carrying capacity.
-    {const _sB=lfIdx*FIELD_SIG_DIMS;let _mt=0;
-     for(let s=0;s<FIELD_SIG_DIMS;s++){const _tv=tend[i*DIMS+s];_mt+=1-Math.min(1,Math.abs(_tv-fieldSig[_sB+s])/1.2);fieldSig[_sB+s]+=(_tv-fieldSig[_sB+s])*0.05;}
-     _mt/=FIELD_SIG_DIMS;const _own=fieldOwnership[lfIdx];
-     amp[i]+=0.008*(2*_mt-1)*_own;
-     fieldOwnership[lfIdx]=Math.min(1,_own+0.02);}
     const absencePeriod=ABSENCE_BASE+Math.sin(tick*0.0007)*180+(Math.sin(tick*0.00031)*90)|0;
     const cyclePos=tick%Math.max(200,absencePeriod);
     const isAbsent=cyclePos>(Math.max(200,absencePeriod)*(1-ABSENCE_DUTY));
