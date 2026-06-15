@@ -10472,7 +10472,7 @@ function mutateGenome(){
   genome.ruleScale=maybe(genome.ruleScale,0.2,3.0,0.2);
   genome.vmMaxInstructions=__cl(Math.round(maybe(genome.vmMaxInstructions,6,20,1)),1,96); // UNLOCKED #7b: ceiling 48→96
   genome.uaMaxDepth=__cl(Math.round(maybe(genome.uaMaxDepth||1,1,UA_DEPTH_CAP,0.6)),1,UA_DEPTH_CAP); // UNLOCKED #7b: the system evolves how deeply it composes its own primitives
-  genome.metabolicCost=maybe(genome.metabolicCost,0.000002,0.0002,0.00002);
+  genome.metabolicCost=__cl(maybe(genome.metabolicCost,0.000002,0.0002,0.00002),0.000002,0.0002); // #2 energy economy: no free lunch — cost stays positive (the negative-drift hole that euthanised selection is closed)
 
   // HGT parameter evolution
   genome.hgtRate=maybe(genome.hgtRate,0.01,0.5,0.04);
