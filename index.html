@@ -16914,6 +16914,18 @@ const NICHE_STRENGTH=0.006;          // max amp/tick from niche-harvest success 
 const NICHE_REAL_SUPPLY=0.32;        // abiotic supply per channel in REAL mode (a real food source, not a nudge)
 const NICHE_REAL_TAPER=1.0;          // FLAT supply: no channel is intrinsically best, so there is no single mountain — coexistence rests purely on symmetric crowding (frequency dependence), and cross-feeding can extend the occupied frontier
 const NICHE_GAIN_REAL=0.05;          // harvested-resource → amplitude conversion (lone specialist ≈0.02 amp/tick; crowded channel splits it)
+// DRIFTING NICHES — swing #12, after "Convergent Hunger". Stationary niches (even real, even flat)
+// still let diet slowly re-concentrate on whichever channel a lineage settles, then stop: a summit.
+// Here the supply PEAKS roam over the channel ring (drifting attractors), so the profitable diet is
+// a MOVING target — no lineage can finish climbing, selection can't freeze on a champion, and the
+// peaks carry the occupied frontier with them (the Red Queen as geometry). Total supply is held
+// constant (peaks are renormalised each tick), so this changes WHERE the food is, not how much —
+// carrying capacity is unaffected. Opt-in via __NICHE_DRIFT=1 (implies REAL income to be meaningful).
+const NICHE_DRIFT_PEAKS=3;           // moving supply peaks (Convergent Hunger ran 3 attractors)
+const NICHE_DRIFT_PERIOD=4000;       // ticks for a peak to complete one drift cycle
+const NICHE_DRIFT_AMP=4.0;           // how many channels a peak roams from its base
+const NICHE_PEAK_WIDTH=1.6;          // Gaussian half-width of a supply peak (channels)
+const NICHE_PEAK_FLOOR=0.15;         // background floor so abandoned channels stay marginally alive
 const NICHE_CROSSFEED=0.55;          // fraction of harvest re-deposited downstream (lever 1)
 const NICHE_OFFSET=3;                // downstream channel step (coprime to 16 → chain reaches all)
 const NICHE_PRED_RATE=0.012;         // predator amp/tick per unit prey, conserved (lever 2)
@@ -16928,6 +16940,7 @@ const nichePredGain=new Float32Array(NICHE_BINS); // predator amp gain per unit 
 const nichePreyLoss=new Float32Array(NICHE_BINS); // prey amp loss per unit amp, per channel
 const nicheAbiotic=new Float32Array(NICHE_BINS);  // precomputed tapered abiotic supply (mean-centred control)
 const nicheAbioticReal=new Float32Array(NICHE_BINS); // precomputed tapered abiotic supply (REAL income mode)
+const nicheSupplyNow=new Float32Array(NICHE_BINS); // per-tick drifting supply (swing #12)
 const pNicheRaw=new Float32Array(CAP);            // per-organism resource captured this tick
 const pDietBin=new Int16Array(CAP);               // per-organism diet channel this tick
 const opFreq=new Float32Array(256);               // opcode frequency among living programs
@@ -16937,6 +16950,16 @@ nicheRes.fill(0.3);
 // Diet channel and specialisation half-width derive from the heritable tendency axis.
 function nicheDietBin(i){ let c=((tend[i*DIMS]+1.2)/2.4)*NICHE_BINS|0; return c<0?0:c>=NICHE_BINS?NICHE_BINS-1:c; }
 function nicheWidth(i){ let s=(tend[i*DIMS+1]+1.2)/2.4; s=s<0?0:s>1?1:s; return 0.6+s*(NICHE_BINS*0.5-0.6); }
+// Swing #12: drifting supply peaks (moving niches). Peaks roam the channel ring on slow sinusoids;
+// total supply is renormalised to NICHE_REAL_SUPPLY*NICHE_BINS so only the LOCATION of food moves.
+function nicheDriftSupply(){ const total=NICHE_REAL_SUPPLY*NICHE_BINS; let sum=0;
+  for(let b=0;b<NICHE_BINS;b++){ let v=NICHE_PEAK_FLOOR;
+    for(let k=0;k<NICHE_DRIFT_PEAKS;k++){
+      const mu=k*NICHE_BINS/NICHE_DRIFT_PEAKS + NICHE_DRIFT_AMP*Math.sin(2*Math.PI*tick/NICHE_DRIFT_PERIOD + 2*Math.PI*k/NICHE_DRIFT_PEAKS);
+      let d=Math.abs(b-mu); d=Math.min(d, NICHE_BINS-d); // circular distance on the channel ring
+      v+=Math.exp(-(d*d)/(2*NICHE_PEAK_WIDTH*NICHE_PEAK_WIDTH)); }
+    nicheSupplyNow[b]=v; sum+=v; }
+  if(sum>0){ const s=total/sum; for(let b=0;b<NICHE_BINS;b++) nicheSupplyNow[b]*=s; } }
 
 function applyNicheEconomy(){
   // Opt-in: every lever defaults OFF so stock index.html is byte-for-byte unchanged. Set the
@@ -16956,8 +16979,9 @@ function applyNicheEconomy(){
   // ── LEVER 1: expanding cross-feed frontier ──────────────────────────────
   if(FR){
     const REAL=!(typeof globalThis!=='undefined'&&globalThis.__NICHE_REAL===0); // real partitioned income (default); ===0 → mean-centred control
-    const supply=REAL?nicheAbioticReal:nicheAbiotic;
-    // regen: tapered abiotic supply + carry-over of unharvested stock
+    const DRIFT=(typeof globalThis!=='undefined'&&(globalThis.__NICHE_DRIFT|0)===1); // swing #12: moving supply peaks
+    let supply; if(DRIFT){ nicheDriftSupply(); supply=nicheSupplyNow; } else supply=REAL?nicheAbioticReal:nicheAbiotic;
+    // regen: abiotic supply (stationary or drifting) + carry-over of unharvested stock
     for(let b=0;b<NICHE_BINS;b++){ nicheRes[b]=Math.min(NICHE_CAP, nicheRes[b]*NICHE_PERSIST + supply[b]*_season); nicheCross[b]=0; }
     // demand pass: trait-matched, effort-normalised (the master/jack trade-off). UNIFORM effort (1 per
     // organism, not amp-weighted) so a channel's share is set purely by how CROWDED it is — this gives

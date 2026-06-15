@@ -77,4 +77,35 @@ NICHE_FRONTIER=1 SEED=7 TICKS=7000 SAMPLE=700 node harness-oee.js | sed -n '/"ve
 NICHE_FRONTIER=1 NICHE_REAL=0 SEED=7 TICKS=7000 SAMPLE=700 node harness-oee.js | sed -n '/"verdict"/,/"notes"/p'
 # all three
 NICHE_FRONTIER=1 NICHE_BIOTIC=1 OPCODE_NOVELTY=1 SEED=7 TICKS=7000 SAMPLE=700 node harness-oee.js | sed -n '/"verdict"/,/"notes"/p'
+# swing #12: drifting niches
+NICHE_FRONTIER=1 NICHE_DRIFT=1 SEED=7 TICKS=6000 SAMPLE=600 node harness-oee.js | sed -n '/"verdict"/,/"notes"/p'
 ```
+
+---
+
+# Swing #12 — drifting niches ("Convergent Hunger")
+
+**Idea.** A static niche, even a real one, lets diet re-concentrate then stop: a summit. So make
+the supply PEAKS *drift* over the channel ring (moving attractors), so the profitable diet is a
+moving target and no lineage can finish climbing. Knob: `__NICHE_DRIFT=1`.
+
+**Result (seed 7, 6000 ticks): no improvement; marginally worse.**
+
+| config | entropyBits early→late | kinds_late | occ early→late |
+|---|---|---|---|
+| stationary real frontier | 3.21 → 2.03 | 10.8 | 8 → 5.25 |
+| **drifting (swing #12)** | 2.51 → 1.69 | 8.8 | 8.67 → 5 |
+
+**Why — the sharp lesson.** Drift stops the system *settling* but does not *diversify* it: the
+population tracks the moving peak **together**. A drifting attractor is still ONE attractor; with 3
+peaks you get ~3 moving clusters — exactly the limiting-similarity count, now in motion. Convergent
+Hunger is *convergent*: everything chases the same shifting targets. Drift changes the **dynamics**
+(non-stationary) but not the **count**, and the ceiling is a ceiling on count.
+
+**Consolidated conclusion across #11–#12.** Only one thing moved the needle: making niches a
+**real, partitioned food source** (collapse roughly halved, kinds roughly doubled). Everything that
+touched *how fitness is shaped* rather than *how many separated, simultaneously-supplied niches
+exist* — rarity tax, mean-centring, drift — left the count where limiting similarity puts it. The
+remaining path is to make the niche **count itself grow without bound**: unbounded trait space
+(grow `DIMS`, tie new dimensions to the occupied frontier) and/or a non-wrapping cross-feed frontier
+that adds a genuinely new channel each time the edge fills. Ships dormant; both knobs default OFF.

@@ -112,10 +112,13 @@ console.warn = () => {};
 //   OPCODE_NOVELTY=1   opcode-novelty / coupling-gap pressure (lever 3)
 //   NICHE_REAL=0       (with NICHE_FRONTIER=1) swap lever 1's REAL income for the zero-sum
 //                      mean-centred control — proves a tax cannot beat limiting similarity.
+//   NICHE_DRIFT=1      (with NICHE_FRONTIER=1) swing #12: supply peaks DRIFT, so the profitable
+//                      diet is a moving target — no lineage can summit-and-stop.
 if (process.env.NICHE_FRONTIER !== undefined) globalThis.__NICHE_FRONTIER = parseInt(process.env.NICHE_FRONTIER, 10);
 if (process.env.NICHE_BIOTIC !== undefined) globalThis.__NICHE_BIOTIC = parseInt(process.env.NICHE_BIOTIC, 10);
 if (process.env.OPCODE_NOVELTY !== undefined) globalThis.__OPCODE_NOVELTY = parseInt(process.env.OPCODE_NOVELTY, 10);
 if (process.env.NICHE_REAL !== undefined) globalThis.__NICHE_REAL = parseInt(process.env.NICHE_REAL, 10);
+if (process.env.NICHE_DRIFT !== undefined) globalThis.__NICHE_DRIFT = parseInt(process.env.NICHE_DRIFT, 10);
 
 const html = fs.readFileSync(process.env.INDEX || (__dirname + '/index.html'), 'utf8');
 const code = html.match(/<script>([\s\S]*)<\/script>/)[1];
