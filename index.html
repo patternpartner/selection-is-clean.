@@ -5126,18 +5126,28 @@ function cloneProg(p){
   for(let i=0;i<p.length;i++){const ins=p[i]||[0,0,0,0];out[i]=[ins[0]|0,ins[1]|0,ins[2]|0,+ins[3]||0];}
   return out;
 }
+function __ecoOp(){
+  // COUPLING FIX: the diagnostic showed evolution samples only ~20 of 264 opcodes, so the
+  // ecological ops the substrate already has — op155 ENERGY_DRAIN (predation), op156
+  // ENERGY_DONATE (mutualism) — never enter programs and selection never sees them. Bias a
+  // fraction of opcode mutations toward that ecological pair so they REACH evolved programs
+  // and can be kept-or-dropped by selection. Makes the capability reachable, not chosen:
+  // whether predation/mutualism actually win remains selection's call.
+  if(Math.random()<0.15) return Math.random()<0.5?155:156;
+  return Math.floor(Math.random()*OPCODE_COUNT);
+}
 function inheritProg(parentProg,inheritedCap){ // child = copy of parent's program + birth mutation (rate from the self's genes)
   const p=cloneProg((Array.isArray(parentProg)&&parentProg.length)?parentProg:genome.vmProgram);
   const rate=genome.mutationRate||0.06,scale=genome.mutationScale||1,cap=inheritedCap||(genome.vmMaxInstructions||16);
   for(let i=0;i<p.length;i++){
     if(Math.random()<rate*1.2){
       p[i][3]+=(Math.random()-0.5)*0.15*scale;p[i][3]=Math.max(-2,Math.min(2,p[i][3]));
-      if(Math.random()<rate)p[i][0]=Math.floor(Math.random()*OPCODE_COUNT);
+      if(Math.random()<rate)p[i][0]=__ecoOp();
       if(Math.random()<rate*0.2)p[i][1]=Math.floor(Math.random()*12);
       if(Math.random()<rate*0.2)p[i][2]=Math.floor(Math.random()*12);
     }
   }
-  if(p.length<cap&&Math.random()<rate*0.15)p.splice(Math.floor(Math.random()*(p.length+1)),0,[Math.floor(Math.random()*OPCODE_COUNT),Math.floor(Math.random()*12),Math.floor(Math.random()*12),(Math.random()-0.5)*0.6]);
+  if(p.length<cap&&Math.random()<rate*0.15)p.splice(Math.floor(Math.random()*(p.length+1)),0,[__ecoOp(),Math.floor(Math.random()*12),Math.floor(Math.random()*12),(Math.random()-0.5)*0.6]);
   if(p.length>1&&Math.random()<rate*0.08)p.splice(Math.floor(Math.random()*p.length),1);
   while(p.length>cap)p.pop();
   if(!p.length)p.push([0,0,0,0]);
