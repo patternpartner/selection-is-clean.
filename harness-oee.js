@@ -416,6 +416,23 @@ const driver = `
     const boundOps=Array.isArray(G.boundOpcodes)?G.boundOpcodes.length:0;
     const fitSensors=Array.isArray(G.fitnessSensors)?G.fitnessSensors.length:0;
 
+    // ── CLUSTER LINEAGE-PURITY PROBE (gated CLUSTER_PURITY=1) — the make-or-break measurement before any
+    //    deme swing. Are clusters real demes (one persistent cluster-lineageID holds one particle-lineage pLin
+    //    across its life) or lineage-salad (re-formed each ~30-tick cycle by pure proximity, mixing lineages)?
+    //    Emits per-cluster {cluster lineageID, persistAge, dominant pLin, purity, #distinct pLin}. The driver
+    //    samples at SAMPLE-tick spacing; the post-processor stitches a cluster-lineageID's domPlin over time
+    //    to get temporal stability (the decisive signal); purity-vs-persistAge here is the snapshot proxy. ──
+    let cpur;
+    if(process.env.CLUSTER_PURITY && typeof clusters!=='undefined' && typeof clusterID!=='undefined' && typeof pLin!=='undefined'){
+      const hist=new Map();   // clusterID idx → Map(pLin → count)
+      for(let i=0;i<N;i++){ if(!palive[i])continue; const c=clusterID[i]; if(c<0)continue;
+        let h=hist.get(c); if(!h){ h=new Map(); hist.set(c,h); } h.set(pLin[i],(h.get(pLin[i])||0)+1); }
+      cpur=[];
+      for(const [c,h] of hist){ const cl=clusters[c]; if(!cl)continue;
+        let sz=0,dom=0,domLin=-1; for(const [pl,n] of h){ sz+=n; if(n>dom){ dom=n; domLin=pl; } }
+        cpur.push({lin:cl.lineageID|0, age:cl.persistAge|0, sz, dom:domLin, df:+(dom/sz).toFixed(3), np:h.size}); }
+    }
+
     return {
       tick:(typeof tick!=='undefined')?tick:-1,
       N:alive,
@@ -468,7 +485,8 @@ const driver = `
       // niche economy (swing #11): channels of the resource spectrum currently held by life
       nicheOcc:(typeof nicheOccupancy==='function')?nicheOccupancy():-1,
       // turnover
-      kindChurn:+churn.toFixed(3)
+      kindChurn:+churn.toFixed(3),
+      ...(cpur!==undefined?{cpur}:{})   // cluster lineage-purity probe (CLUSTER_PURITY=1)
     };
   }
 
