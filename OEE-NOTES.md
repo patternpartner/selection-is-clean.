@@ -237,3 +237,53 @@ literal "expanding space, not moving point" resolution of Convergent Hunger.
 numbers trustworthy; a saturation-gated production trigger; and high-`DIMS` coherence handled the
 same local>global way (`tendSim`/clustering relative to the niche, not the whole population). New
 knobs (`__DIMS_GROW`, `__DIMS_CAP`, `__DIMS_SPREAD`) default to stock (no growth).
+
+---
+
+# Lineage instrument + freeze-and-watch — #16's headline RETRACTED
+
+Credit: the parallel instance caught the confound. The arithmetic was a smoking gun — DIMS 5→7 with
+spread-init 0.15 can inject up to log2(4)×2 = 4.0 bits, and the measured `traitDimEnt` gain was +4.0.
+The metric counts variance whether seeded or earned; it cannot tell a seed from a harvest. So before
+any saturation-gated trigger (which would gate on a possibly-phantom fill signal), we instrument.
+
+**Instrument.** Heritable lineage tag `pLin` (child inherits parent's at birth, follows the particle
+through `compact()`), and `axisStats(d)`: a trait axis's 4-bin entropy, total variance, and
+**R = between-lineage variance / total variance**. R≈0 → each lineage's members are spread like the
+whole population (unstructured noise / seeded smear). R→1 → distinct lineages hold distinct heritable
+values (colonisation). Harness logs `newAxis` (= `axisStats(DIMS-1)`) and `ctrlAxis0` (positive
+control: a lived-in, niche-relevant axis).
+
+**Freeze-and-watch (seed 7, on #13+#14+localtend):** open ONE axis at tick 700 seeded *wide*
+(`__DIMS_SPREAD=0.6` → fills all 4 bins, ~2 bits), freeze growth (`__DIMS_CAP=6`), watch ~7000 ticks.
+
+| tick | newAxis Vtot | newAxis R | lineages(new) | ctrl0 R |
+|---|---|---|---|---|
+| 801  | 0.086 | 0.85 | 61 | 0.94 |
+| 2401 | 0.152 | 0.90 | 42 | 0.77 |
+| 4801 | 0.156 | 0.47 | 12 | 0.49 |
+| 6401 | 0.084 | 0.38 | 15 | 0.41 |
+| 8001 | 0.043 | 0.26 |  9 | 0.23 |
+
+**Verdict: the new axis is a SEED, not a harvest.** Its variance decays (0.086 → 0.043), its
+lineage-structure R decays (0.85 → 0.26), and at every step it is statistically indistinguishable
+from the lived-in control axis 0 — it never colonises, it relaxes into the same wash-out. The #16
+"board grew / diversity rose 6.1→10.1 bits" headline is **retracted**: `traitDimEntropy` measured the
+injected spread-init, exactly the bin-inflation confound (immobility artifact / tourist-occupancy),
+now at the dimensional level.
+
+**Bigger finding the instrument exposed.** Lineage count **collapses 61 → 9–12 while N GROWS
+205 → 457.** Diversity is increasingly within-lineage mutational smear, not many persistent lineages,
+so both axes' R fall together. This means the retention metrics (cell occupancy, entropy) were
+**masking lineage concentration** — the tourist confound — so every occupancy/entropy number earlier
+in this file is now suspect until re-checked against lineage persistence. The instrument did not just
+break #16; it put the whole session's headline numbers on notice.
+
+**What this re-frames.** A new axis colonises only if it is (a) SELECTED — wired into fitness; dims
+≥4 are NOT in the niche economy, so the new axis is neutral and washes out by construction — and
+(b) held by PERSISTENT lineages, which the freeze-and-watch shows the current config does not provide
+even on existing axes. So the prerequisites are stronger than "retention fills the board": fix
+lineage-level retention (not just cell occupancy), THEN wire new dims into selection, THEN gate the
+ratchet. `setDims` (clean remap + spread-init) remains the right architecture; the EVIDENCE for it
+was confound-prone and is now corrected. Instrument knobs/fields default to stock; nothing shipped
+relies on the retracted claim.

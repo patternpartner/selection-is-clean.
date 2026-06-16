@@ -235,6 +235,10 @@ const driver = `
       // dimensionality ratchet (swing #16): live DIMS vs the (formerly inert) evolvable tendDims, and
       // whether the trait axes actually carry variation (board grew vs degenerate).
       tendDims:(G.tendDims|0), traitDimEnt:(typeof traitDimEntropy==='function')?traitDimEntropy():-1,
+      // seed-vs-harvest: the newest axis vs axis 0 (positive control). R = lineage-structured fraction
+      // of variance; watch newAxis.ent/Vtot decay-or-hold and R after a frozen grow.
+      newAxis:(typeof axisStats==='function')?axisStats((typeof DIMS!=='undefined'?DIMS-1:-1)):null,
+      ctrlAxis0:(typeof axisStats==='function')?axisStats(0):null,
       // niche economy (swing #11): channels of the resource spectrum currently held by life
       nicheOcc:(typeof nicheOccupancy==='function')?nicheOccupancy():-1,
       // turnover

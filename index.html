@@ -5112,6 +5112,10 @@ const pPlasmidLen=new Uint8Array(CAP); // how many plasmid instructions this par
 // is FOR. The substrate provides the degree of freedom; the system authors its significance.
 const NUM_TYPES=8;                     // substrate cap on simultaneous castes (fits Uint8 with room)
 const pType=new Uint8Array(CAP);
+// Heritable lineage tag (instrument, swing #16-validation): child inherits parent's id; seeds get a
+// fresh one. Lets us ask whether trait-axis variance is ORGANISED BY LINEAGE (heritable colonisation)
+// or is unstructured noise (a seeded smear that washes out) — the seed-vs-harvest discriminator.
+const pLin=new Int32Array(CAP); let _linNext=1;
 // UNLOCKED #9 — PER-PARTICLE BEHAVIORAL GENOME (the meta-population). Each particle runs its OWN VM
 // program (its behavioral genotype), inherited at birth and mutated, so lineages diverge and compete
 // under selection. The global genome stays the shared, self-modeling "self": it owns physics + the
@@ -11262,6 +11266,7 @@ function addParticle(x,y,tv,born,parentA,parentB){
   pType[i]=(parentA>=0&&parentA<N)
     ? ((Math.random()<(genome.typeMutRate||0))?((Math.random()*NUM_TYPES)|0):pType[parentA])
     : ((Math.random()*NUM_TYPES)|0);
+  pLin[i]=(parentA>=0&&parentA<N)?pLin[parentA]:(_linNext++); // heritable lineage tag follows descent
   // UNLOCKED #9 FULL: this lineage's COMPLETE genome — parent's whole genome cloned + every gene
   // mutated (physics AND behavior diverge), or a fresh clone of the self for seeds. pProg aliases the
   // program so the existing VM read paths keep working unchanged.
@@ -11307,6 +11312,7 @@ function addCompound(x,y,nt,nvx,nvy,na,np,nf,parentA,parentB){
   pType[i]=(parentA>=0&&parentA<N)
     ? ((Math.random()<(genome.typeMutRate||0))?((Math.random()*NUM_TYPES)|0):pType[parentA])
     : ((Math.random()*NUM_TYPES)|0);
+  pLin[i]=(parentA>=0&&parentA<N)?pLin[parentA]:(_linNext++); // heritable lineage tag follows descent
   // UNLOCKED #9 FULL + two-parent crossover: compound child also crosses A×B programs.
   {const _bg=(parentA>=0&&parentA<N&&pGenome[parentA])?cloneGenome(pGenome[parentA]):cloneGenome(genome);
   if(parentB>=0&&parentB<N&&pGenome[parentB]&&Math.random()<0.3)_bg.vmProgram=crossoverProg(_bg.vmProgram,pGenome[parentB].vmProgram);
@@ -16784,7 +16790,7 @@ function compact(){
     pPlasmidAge[w]=pPlasmidAge[r];
     pBroadcast[w*2]=pBroadcast[r*2];pBroadcast[w*2+1]=pBroadcast[r*2+1];
     clusterID[w]=clusterID[r];
-    pType[w]=pType[r];pProg[w]=pProg[r];pGenome[w]=pGenome[r]; // UNLOCKED #7a/#9: caste + full per-particle genome relocate with the particle (also fixes a caste-scramble bug)
+    pType[w]=pType[r];pProg[w]=pProg[r];pGenome[w]=pGenome[r];pLin[w]=pLin[r]; // UNLOCKED #7a/#9: caste + full per-particle genome (+ lineage tag) relocate with the particle (also fixes a caste-scramble bug)
     for(let rx=0;rx<REFLEX_DEPTH*2;rx++)pReflexHist[w*REFLEX_DEPTH*2+rx]=pReflexHist[r*REFLEX_DEPTH*2+rx];
     for(let rx=0;rx<REFLEX_DIMS;rx++)pReflexState[w*REFLEX_DIMS+rx]=pReflexState[r*REFLEX_DIMS+rx];
     pReflexIdx[w]=pReflexIdx[r];
@@ -17141,6 +17147,24 @@ function traitDimEntropy(){ let H=0; const B=4;
     for(let i=0;i<N;i++){ if(!palive[i])continue; let q=((tend[i*DIMS+d]+1.2)/2.4*B)|0; q=q<0?0:q>=B?B-1:q; cnt[q]++; tot++; }
     if(tot>0){ for(let b=0;b<B;b++){ if(cnt[b]>0){ const p=cnt[b]/tot; H-=p*Math.log2(p); } } } }
   return +H.toFixed(3); } // bits, summed across axes (max 2*DIMS)
+// Seed-vs-harvest discriminator for one trait axis. Returns its 4-bin entropy, total variance, and
+// R = between-lineage variance / total variance (Vb/(Vb+Vw)). R≈0 → each lineage's members are
+// spread like the whole population: the variance is unstructured noise (a seeded smear). R→1 → the
+// variance is ORGANISED BY LINEAGE: distinct lineages hold distinct, heritable values (colonisation).
+// Paired with watching `Vtot`/`ent` decay-or-hold after a frozen grow, this separates an injected
+// seed (washes to the homogeniser floor, low R) from a board that actually grew (holds, high R).
+function axisStats(d){ if(d<0||d>=DIMS)d=DIMS-1; const B=4; const cnt=new Int32Array(B);
+  const lsum=new Map(), lsq=new Map(), lcnt=new Map(); let gsum=0,gsq=0,gn=0;
+  for(let i=0;i<N;i++){ if(!palive[i])continue; const v=tend[i*DIMS+d];
+    let q=((v+1.2)/2.4*B)|0; q=q<0?0:q>=B?B-1:q; cnt[q]++;
+    const l=pLin[i]; lsum.set(l,(lsum.get(l)||0)+v); lsq.set(l,(lsq.get(l)||0)+v*v); lcnt.set(l,(lcnt.get(l)||0)+1);
+    gsum+=v; gsq+=v*v; gn++; }
+  let ent=0; for(let b=0;b<B;b++){ if(cnt[b]>0){ const p=cnt[b]/gn; ent-=p*Math.log2(p); } }
+  if(gn<2) return {d, ent:+ent.toFixed(3), Vtot:0, R:0, lineages:lsum.size, n:gn};
+  const gmean=gsum/gn, Vtot=gsq/gn-gmean*gmean; let Vw=0,wTot=0,Vb=0;
+  for(const [l,c] of lcnt){ const m=lsum.get(l)/c; Vb+=c*(m-gmean)*(m-gmean); if(c>=2){ Vw+=Math.max(0,lsq.get(l)/c-m*m)*c; wTot+=c; } }
+  Vb/=gn; Vw=wTot>0?Vw/wTot:0; const R=(Vb+Vw)>1e-9?Vb/(Vb+Vw):0;
+  return {d, ent:+ent.toFixed(3), Vtot:+Vtot.toFixed(4), R:+R.toFixed(3), lineages:lsum.size, n:gn}; }
 
 function loop(){
   lastLoopTime=performance.now();
