@@ -11273,7 +11273,7 @@ function addParticle(x,y,tv,born,parentA,parentB){
   // Two-parent crossover: when parentB also has a genome, a 30% chance produces a genuinely
   // recombined program (prefix from A, suffix from B) rather than a pure clone-with-mutation.
   {const _bg=(parentA>=0&&parentA<N&&pGenome[parentA])?cloneGenome(pGenome[parentA]):cloneGenome(genome);
-  if(parentB>=0&&parentB<N&&pGenome[parentB]&&Math.random()<0.3)_bg.vmProgram=crossoverProg(_bg.vmProgram,pGenome[parentB].vmProgram);
+  if(parentB>=0&&parentB<N&&pGenome[parentB]&&Math.random()<0.3&&(!__SPEC.gate||pLin[parentA]===pLin[parentB]))_bg.vmProgram=crossoverProg(_bg.vmProgram,pGenome[parentB].vmProgram); // #17: crossover is gene flow — gated to within-lineage when isolating
   pGenome[i]=mutateChildGenome(_bg);}
   pProg[i]=pGenome[i].vmProgram;
   return i;
@@ -11315,7 +11315,7 @@ function addCompound(x,y,nt,nvx,nvy,na,np,nf,parentA,parentB){
   pLin[i]=(parentA>=0&&parentA<N)?pLin[parentA]:(_linNext++); // heritable lineage tag follows descent
   // UNLOCKED #9 FULL + two-parent crossover: compound child also crosses A×B programs.
   {const _bg=(parentA>=0&&parentA<N&&pGenome[parentA])?cloneGenome(pGenome[parentA]):cloneGenome(genome);
-  if(parentB>=0&&parentB<N&&pGenome[parentB]&&Math.random()<0.3)_bg.vmProgram=crossoverProg(_bg.vmProgram,pGenome[parentB].vmProgram);
+  if(parentB>=0&&parentB<N&&pGenome[parentB]&&Math.random()<0.3&&(!__SPEC.gate||pLin[parentA]===pLin[parentB]))_bg.vmProgram=crossoverProg(_bg.vmProgram,pGenome[parentB].vmProgram); // #17: within-lineage gene flow only when isolating
   pGenome[i]=mutateChildGenome(_bg);}
   pProg[i]=pGenome[i].vmProgram;
   return i;
@@ -11379,7 +11379,8 @@ function applyEntropy(){
       {const _txi=__cl(Math.floor(px[i]/(W/FIELD_W)),0,FIELD_W-1),_tyi=__cl(Math.floor(py[i]/(H/FIELD_H)),0,FIELD_H-1),_tox=inhibitorField[_tyi*FIELD_W+_txi];if(_tox>0.05){const _dmg=_tox*Math.max(0,1-pResistance[i])*0.018;amp[i]-=_dmg;}pResistance[i]*=0.997;} // INHIBITOR DAMAGE + RESISTANCE DECAY: inhibitor deals up to 1.8% amp/tick at zero resistance; resistance decays 0.3%/tick — must be actively maintained via RESISTANCE_BOOST (op215)
       if(energyAdequacy<1)amp[i]-=(1-energyAdequacy)*STARVE_DRAIN; // starvation: the world couldn't feed everyone this tick
       if(isNaN(amp[i]))amp[i]=0;
-      if(amp[i]<genome.deathThreshold){
+      const _deathT=specInGrace(pLin[i])?genome.deathThreshold*0.25:genome.deathThreshold; // #17: founders get death-relief while young/small so they don't die in the cradle
+      if(amp[i]<_deathT){
         deaths.push(i);deathsThisTick++;deathsByPhysics++;
         addBits(px[i],py[i],2,pR[i],pG[i],pB[i],0.3);
         palive[i]=0;
@@ -13453,7 +13454,7 @@ function executeVM(i,j,sim,d){
       case 176:{const _hdx176=px[i]-pHomeX[i],_hdy176=py[i]-pHomeY[i];vmRegs[di]=Math.sqrt(_hdx176*_hdx176+_hdy176*_hdy176)/(W*0.1)*k;}break; // HOME_DIST — Euclidean distance from marked home position, normalised by 10% of world width (so distance=W*0.1 → 1.0). Enables distance-conditional behaviour: reproduce when near home (familiar habitat advantage), stop feeding and return when HOME_DIST>threshold, invest in local root-write only when HOME_DIST is small (stay in own territory). Without normalisation the raw pixel distance would be genome-parameter-dependent; normalised output is k-scalable.
       case 177:{const _hbdx177=pHomeX[i]-px[i],_hbdy177=pHomeY[i]-py[i],_hbd177=Math.sqrt(_hbdx177*_hbdx177+_hbdy177*_hbdy177)+0.01;vmRegs[di]=(_hbdx177/_hbd177)*k;}break; // HOME_BEARING_X — X component of the unit vector pointing from current position toward home. Range -1..1 scaled by k. Combined with HOME_DIST (op176) as a gate (only navigate when far enough from home) and with velocity updates (vmRegs[di] → vx adjustment upstream), enables evolved homing flight: particles can navigate back to a marked location across the world without a fixed compass.
       case 178:{const _hbdx178=pHomeX[i]-px[i],_hbdy178=pHomeY[i]-py[i],_hbd178=Math.sqrt(_hbdx178*_hbdx178+_hbdy178*_hbdy178)+0.01;vmRegs[di]=(_hbdy178/_hbd178)*k;}break; // HOME_BEARING_Y — Y component of unit vector toward home. Completes the 2D homing navigation pair: combine HOME_BEARING_X (op177) → vx adjustment and HOME_BEARING_Y → vy adjustment, gated by HOME_DIST (op176) > threshold, to achieve full 2D homing flight. Enables: migratory particles that travel to distant resource patches and navigate back to the marked kin cluster; honeybee-style central-place foraging circuits; natal site return after overwintering dispersal.
-      case 179:{if(vmRegs[si]>k&&pProg[i]&&pProg[j]&&pProg[i].length>0){const _cap179=Math.min(genome.vmMaxInstructions||16,48);if(pProg[j].length<_cap179){const _si179=Math.abs(Math.floor(vmRegs[si]*3))%pProg[i].length;const _ins179=pProg[i][_si179];if(_ins179){const _di179=Math.floor(Math.random()*(pProg[j].length+1));pProg[j].splice(_di179,0,[_ins179[0],_ins179[1],_ins179[2],+_ins179[3]]);vmRegs[di]=1;}else{vmRegs[di]=0;}}else{vmRegs[di]=0;}}else{vmRegs[di]=0;}}break; // HGT_DONATE — insert one of own instructions into partner's genome at a random position (horizontal gene transfer, donor direction). Complement to RECOMBINE (op152) which takes from partner. Donors pay no resource cost; evolved selection pressure determines whether donation spreads. Creates viral gene dynamics: a beneficial instruction in one lineage can propagate laterally into others without requiring shared ancestry. Enables: evolved mutualism where donors gain indirect benefit (partners become more valuable); evolved parasitism where donors inject disruptive instructions; genetic missionaries that spread successful strategies across the population.
+      case 179:{if(vmRegs[si]>k&&pProg[i]&&pProg[j]&&pProg[i].length>0&&(!__SPEC.gate||pLin[i]===pLin[j])){const _cap179=Math.min(genome.vmMaxInstructions||16,48); /* #17: HGT donation gated to within-lineage when isolating */if(pProg[j].length<_cap179){const _si179=Math.abs(Math.floor(vmRegs[si]*3))%pProg[i].length;const _ins179=pProg[i][_si179];if(_ins179){const _di179=Math.floor(Math.random()*(pProg[j].length+1));pProg[j].splice(_di179,0,[_ins179[0],_ins179[1],_ins179[2],+_ins179[3]]);vmRegs[di]=1;}else{vmRegs[di]=0;}}else{vmRegs[di]=0;}}else{vmRegs[di]=0;}}break; // HGT_DONATE — insert one of own instructions into partner's genome at a random position (horizontal gene transfer, donor direction). Complement to RECOMBINE (op152) which takes from partner. Donors pay no resource cost; evolved selection pressure determines whether donation spreads. Creates viral gene dynamics: a beneficial instruction in one lineage can propagate laterally into others without requiring shared ancestry. Enables: evolved mutualism where donors gain indirect benefit (partners become more valuable); evolved parasitism where donors inject disruptive instructions; genetic missionaries that spread successful strategies across the population.
       case 180:{vmRegs[di]=collapse[i]*k;}break; // COLLAPSE_SENSE — read own collapse value (0..2+), a measure of accumulated stress, resonant damage, and ghost-field loading. High collapse indicates a particle under heavy structural stress. Enables stress-conditional strategies: trigger APOPTOSIS (op165) when collapse exceeds threshold (damaged particles sacrifice themselves before they are destroyed passively); reduce resource investment during high-stress periods; signal health status to cluster-mates via BROADCAST_WRITE (op11). The collapse variable already drives amp boosts and visual smear; this opcode makes it VM-readable for the first time.
       case 181:{vmRegs[di]=localRes[i]*k;}break; // SELF_RES_SENSE — read own reserve resource level directly (0..2). Unlike ENERGY_STRESS_SENSE (op131) which returns a population-normalised stress scalar derived from energyAdequacy, this gives the actual per-particle localRes value. Enables: resource-conditional strategies without computing indirectly from stress signals; gate ROOT_WRITE (op162) and ENERGY_DONATE (op156) on having surplus (localRes>1); detect approaching depletion (localRes<0.3) and switch to scavenging (DETRITAL_HARVEST op146); compare own resource to partner's via subtraction (op164 PARTNER_RES_SENSE − op181 = differential wealth signal).
       case 182:{vmRegs[di]=Math.max(0,amp[i])*k;}break; // SELF_AMP_SENSE — read own amplitude (structural energy / vitality) directly. Complement to op37 PARTNER_AMP but without genome.selfAmpInfluence gating. Enables: amplitude-conditional reproduction gating; trigger APOPTOSIS (op165) when amp falls below survival threshold before passively dying; modulate resource-harvesting aggression by own vitality; broadcast own health status (BROADCAST_WRITE(SELF_AMP_SENSE)) so cluster-mates can detect and respond to distress.
@@ -16575,7 +16576,7 @@ function processGrid(){
              const _sppA=pProg[_drv],_sppB=pProg[_oth];
              const _sppN=Math.min(6,Math.min(_sppA?_sppA.length:0,_sppB?_sppB.length:0));
              let _sppD=0;for(let _spk=0;_spk<_sppN;_spk++)if(_sppA[_spk]&&_sppB[_spk]&&_sppA[_spk][0]!==_sppB[_spk][0])_sppD++;
-             const _spGate=_sppN===0||_sppD<_sppN*0.75; // speciation gate: ≥75% opcode mismatch in first 6 instructions = behavioral isolation, entrain suppressed
+             const _spGate=(_sppN===0||_sppD<_sppN*0.75)&&(!__SPEC.gate||pLin[_drv]===pLin[_oth]); // ≥75% opcode mismatch = behavioral isolation; #17 also suppresses entrainment across lineage ids when isolating
              const _g=genome;genome=pGenome[_drv]||genome;try{
               if(_spGate)entrain(_drv,_oth,sim,d); // suppressed between behaviorally isolated lineages
               executeVM(_drv,_oth,sim,d);
@@ -16594,7 +16595,7 @@ function processGrid(){
               pSignalReceive[i]+=pSignalEmitPrev[j]*prox36;
               pSignalReceive[j]+=pSignalEmitPrev[i]*prox36;
             }
-            const bl=genome.tendencyBleed*(1-d/iR);
+            const bl=genome.tendencyBleed*(1-d/iR)*((__SPEC.gate&&pLin[i]!==pLin[j])?0:1); // #17: trait bleed is gene flow — suppressed across lineages when isolating
             for(let dd=0;dd<DIMS;dd++){const avg=(tend[i*DIMS+dd]+tend[j*DIMS+dd])*0.5;tend[i*DIMS+dd]+=(avg-tend[i*DIMS+dd])*bl;tend[j*DIMS+dd]+=(avg-tend[j*DIMS+dd])*bl}
             const mg=(tend[i*DIMS+3]+tend[j*DIMS+3]);
             if(mg>genome.magneticThresh&&d>minD*2){const f=mg*0.0003/d;vx[i]-=ddx*f;vy[i]-=ddy*f;vx[j]+=ddx*f;vy[j]+=ddy*f}
@@ -16995,6 +16996,65 @@ function nicheWidth(i){ let s=(tend[i*DIMS+1]+1.2)/2.4; s=s<0?0:s>1?1:s; return 
 function nicheCellOf(i){ let r=0; const D=NICHE_ND_DIMS<DIMS?NICHE_ND_DIMS:DIMS;
   for(let d=0;d<D;d++){ let q=((tend[i*DIMS+d]+1.2)/2.4*NICHE_ND_BINS)|0; q=q<0?0:q>=NICHE_ND_BINS?NICHE_ND_BINS-1:q; r=r*NICHE_ND_BINS+q; }
   return r; }
+// ═══ SWING #17: CLADOGENESIS — the speciation primitive (knob-gated; default = STOCK, byte-identical) ═══
+// The substrate already FORKS the genome per birth (cloneGenome + mutateChildGenome) and selects on it;
+// genomes diverge. What was missing is a way for divergence to ACCUMULATE: every re-merger pulls
+// sub-populations back together faster than drift separates them. #17 isolates the re-mergers WITHIN
+// lineage — crossover (gene flow, the load-bearing one), tendencyBleed (trait flow), HGT_DONATE (op179),
+// and the globalTend sink (pulled to the lineage-local centroid, not the global mean) — and entrainment
+// (already behaviorally gated). When a viable sub-population (≥minsize) sits in a niche-cell DISTINCT from
+// its lineage's main body AND its trait centroid has diverged ≥divT, it is MINTED a new lineage id
+// (cladogenesis). Founders get death-relief grace so they don't die in the cradle. Divergent selection —
+// what makes daughters mean something, not just ID-distinct — is supplied by the REAL partitioned niche
+// cells (NICHE_NDIM+NICHE_REAL); the "same-landscape" control turns that off (NICHE_REAL=0) to prove
+// isolation alone is not enough. Persistence (not gross births) is the success metric — see harness.
+const __SPEC=(function(){ const G=(typeof globalThis!=='undefined')?globalThis:{}; const m=(G.__SPECIATE|0)===1;
+  const sub=k=>G[k]!==undefined?(G[k]|0):(m?1:0);
+  return { on:m, gate:sub('__SPEC_GATE'), mint:sub('__SPEC_MINT'),
+    grace:(G.__SPEC_GRACE!==undefined?+G.__SPEC_GRACE:2000),
+    minsize:(G.__SPEC_MINSIZE!==undefined?(G.__SPEC_MINSIZE|0):12),
+    divT:(G.__SPEC_DIVT!==undefined?+G.__SPEC_DIVT:0.20) }; })();
+const linCentroid=new Map();  // pLin → Float32Array(DIMS): trait centroid (rebuilt each cadence)
+const linSize=new Map();      // pLin → living count (rebuilt each cadence)
+const linModalCell=new Map(); // pLin → its most-occupied niche cell (rebuilt each cadence)
+const linBirthTick=new Map(); // pLin → tick it was MINTED by speciation (persists; only minted lineages)
+const linParent=new Map();    // pLin → parent pLin at the speciation event (persists; genealogy)
+let specMintCount=0;          // cumulative cladogenesis events (exposed for the harness)
+function specComputeAgg(){ // per-lineage centroid, size, and modal niche-cell — O(N), called each cadence
+  linCentroid.clear(); linSize.clear();
+  const cellCnt=new Map(); // "lin:cell" → count, to find each lineage's modal cell
+  for(let i=0;i<N;i++){ if(!palive[i])continue; const l=pLin[i];
+    let c=linCentroid.get(l); if(!c){ c=new Float32Array(DIMS); linCentroid.set(l,c); }
+    for(let d=0;d<DIMS;d++)c[d]+=tend[i*DIMS+d];
+    linSize.set(l,(linSize.get(l)||0)+1);
+    const key=l+':'+nicheCellOf(i); cellCnt.set(key,(cellCnt.get(key)||0)+1); }
+  for(const [l,c] of linCentroid){ const n=linSize.get(l)||1; for(let d=0;d<DIMS;d++)c[d]/=n; }
+  linModalCell.clear(); const bestN=new Map();
+  for(const [key,cnt] of cellCnt){ const ci=key.indexOf(':'); const l=+key.slice(0,ci), cell=+key.slice(ci+1);
+    if(cnt>(bestN.get(l)||0)){ bestN.set(l,cnt); linModalCell.set(l,cell); } }
+}
+function specMint(){ // cladogenesis: split off viable, cell-distinct, trait-diverged sub-populations
+  if(!__SPEC.mint)return;
+  const groups=new Map(); // "lin:cell" → {l,cell,idx[]}
+  for(let i=0;i<N;i++){ if(!palive[i])continue; const l=pLin[i], cell=nicheCellOf(i), key=l+':'+cell;
+    let g=groups.get(key); if(!g){ g={l,cell,idx:[]}; groups.set(key,g); } g.idx.push(i); }
+  for(const g of groups.values()){
+    if(g.idx.length<__SPEC.minsize)continue;            // (a) viable founder size, not a doomed singleton
+    if(g.cell===linModalCell.get(g.l))continue;          // (c) a niche-cell DISTINCT from the lineage's main body
+    const lc=linCentroid.get(g.l); if(!lc)continue;
+    let dist=0; const gc=new Float32Array(DIMS);
+    for(const i of g.idx)for(let d=0;d<DIMS;d++)gc[d]+=tend[i*DIMS+d];
+    for(let d=0;d<DIMS;d++){ gc[d]/=g.idx.length; const dd=gc[d]-lc[d]; dist+=dd*dd; }
+    if(Math.sqrt(dist)<__SPEC.divT)continue;             // (b) trait centroid has genuinely diverged from parent
+    const nl=_linNext++; linParent.set(nl,g.l); linBirthTick.set(nl,tick); // MINT
+    for(const i of g.idx)pLin[i]=nl;
+    specMintCount++;
+  }
+}
+function specInGrace(l){ // founder protection: a freshly-minted lineage gets death-relief while young OR small
+  if(!__SPEC.on)return false; const bt=linBirthTick.get(l); if(bt===undefined)return false;
+  return (tick-bt)<__SPEC.grace || (linSize.get(l)||0)<__SPEC.minsize;
+}
 // Swing #12: drifting supply peaks (moving niches). Peaks roam the channel ring on slow sinusoids;
 // total supply is renormalised to NICHE_REAL_SUPPLY*NICHE_BINS so only the LOCATION of food moves.
 function nicheDriftSupply(){ const total=NICHE_REAL_SUPPLY*NICHE_BINS; let sum=0;
@@ -17198,6 +17258,7 @@ function loop(){
     let alive=0;
     for(let i=0;i<N;i++){if(!palive[i])continue;for(let d=0;d<DIMS;d++)globalTend[d]+=tend[i*DIMS+d];alive++}
     if(alive>0)for(let d=0;d<DIMS;d++)globalTend[d]/=alive;
+    if(__SPEC.on){ specComputeAgg(); specMint(); } // swing #17: per-lineage aggregates, then cladogenesis mint
   }
   // Diet-axis homogeniser. The GLOBAL mean-reversion (×0.00002/tick) is the dominant diversity sink:
   // against ±0.0005/tick mutation it pins the trait distribution at std≈0.08 — inside one diet bin —
@@ -17211,6 +17272,11 @@ function loop(){
       cellTendCnt.fill(0); cellTendSum.fill(0);
       for(let i=0;i<N;i++){ if(!palive[i])continue; const c=pDietCell[i]; cellTendCnt[c]++; for(let d=0;d<DIMS;d++) cellTendSum[c*DIMS_MAX+d]+=tend[i*DIMS+d]; }
       for(let i=0;i<N;i++){ if(!palive[i])continue; const c=pDietCell[i], n=cellTendCnt[c]; if(n<=0)continue; for(let d=0;d<DIMS;d++){ const m=cellTendSum[c*DIMS_MAX+d]/n; tend[i*DIMS+d]+=(m-tend[i*DIMS+d])*0.00002*_gt; } }
+    } else if(__SPEC.gate){
+      // swing #17: pull each particle toward ITS LINEAGE's centroid, not the global mean — the global
+      // sink is the strongest cross-lineage re-merger, so isolating it lets lineages drift apart.
+      for(let i=0;i<N;i++){ if(!palive[i])continue; const c=linCentroid.get(pLin[i]); if(!c)continue;
+        for(let d=0;d<DIMS;d++)tend[i*DIMS+d]+=(c[d]-tend[i*DIMS+d])*0.00002*_gt; }
     } else if(_gt!==0){
       for(let i=0;i<N;i++){if(!palive[i])continue;for(let d=0;d<DIMS;d++)tend[i*DIMS+d]+=(globalTend[d]-tend[i*DIMS+d])*0.00002*_gt}
     } }

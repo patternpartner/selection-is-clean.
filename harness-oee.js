@@ -141,6 +141,18 @@ if (process.env.NICHE_BIOTIC !== undefined) globalThis.__NICHE_BIOTIC = parseInt
 if (process.env.OPCODE_NOVELTY !== undefined) globalThis.__OPCODE_NOVELTY = parseInt(process.env.OPCODE_NOVELTY, 10);
 if (process.env.NICHE_REAL !== undefined) globalThis.__NICHE_REAL = parseInt(process.env.NICHE_REAL, 10);
 if (process.env.NICHE_DRIFT !== undefined) globalThis.__NICHE_DRIFT = parseInt(process.env.NICHE_DRIFT, 10);
+// swing #17 cladogenesis (the speciation primitive). SPECIATE=1 turns it on; sub-toggles default to the
+// master and exist for the 3-way control:
+//   SPECIATE=1        master: isolate re-mergers within lineage + mint diverged sub-populations + grace.
+//   SPEC_GATE=0       (control "mint-on/iso-off") label lineages but DON'T gate the re-mergers — must still collapse.
+//   SPEC_MINT=0       isolate but never mint (diagnostic).
+//   SPEC_GRACE=<t>    founder death-relief window in ticks (default 2000); SPEC_MINSIZE founder size (default 12).
+//   SPEC_DIVT=<x>     trait-centroid divergence threshold to mint (default 0.20).
+// Divergent selection is supplied by REAL partitioned niche cells (run with NICHE_NDIM=1 NICHE_REAL=1);
+// the "same-landscape" control sets NICHE_REAL=0 (flat income) so isolation has no per-cell optimum to bite on.
+for (const k of ['SPECIATE','SPEC_GATE','SPEC_MINT','SPEC_MINSIZE']) if (process.env[k] !== undefined) globalThis['__' + k] = parseInt(process.env[k], 10);
+for (const k of ['SPEC_GRACE','SPEC_DIVT']) if (process.env[k] !== undefined) globalThis['__' + k] = parseFloat(process.env[k]);
+if (process.env.SPEC_DEBUG !== undefined) globalThis.__SPEC_DEBUG = parseInt(process.env.SPEC_DEBUG, 10);
 
 const html = fs.readFileSync(process.env.INDEX || (__dirname + '/index.html'), 'utf8');
 const code = html.match(/<script>([\s\S]*)<\/script>/)[1];
@@ -211,6 +223,52 @@ const driver = `
       prevLin=curLin;
     }
 
+    // ---- swing #17: NET-PERSISTENT-DIVERGENT lineage count (the speciation success metric) ----
+    // Gross mints are a fiat output of the mint rule (the #16 trap one level up), so they prove nothing.
+    // A minted lineage COUNTS only if, recomputed here independently of the sim's own bookkeeping, it:
+    //   (a) persists — alive with >=minsize members AND has outlived its founder grace (age>=PERSIST_WIN,
+    //       so it survived WITHOUT the death subsidy), (b) stays diverged — trait centroid >=divT from its
+    //       parent's, not relaxed back, (c) holds a niche-cell distinct from its parent's main body.
+    // linViable (alive lineages >=minsize) is the standing-diversity headline to compare against stock ~24.
+    let specMinted=-1, specAlive=0, specPersist=0, linViable=0;
+    if(typeof __SPEC!=='undefined' && __SPEC.on && typeof pLin!=='undefined'){
+      const PERSIST_WIN=3000, MIN=__SPEC.minsize, DT=__SPEC.divT;
+      const size=new Map(), cen=new Map(), cellCnt=new Map();
+      for(let i=0;i<N;i++){ if(!palive[i])continue; const l=pLin[i];
+        size.set(l,(size.get(l)||0)+1);
+        let c=cen.get(l); if(!c){ c=new Float64Array(DIMS); cen.set(l,c); }
+        for(let d=0;d<DIMS;d++)c[d]+=tend[i*DIMS+d];
+        const cell=(typeof nicheCellOf==='function')?nicheCellOf(i):0;
+        cellCnt.set(l+':'+cell,(cellCnt.get(l+':'+cell)||0)+1); }
+      for(const [l,c] of cen){ const n=size.get(l)||1; for(let d=0;d<DIMS;d++)c[d]/=n; }
+      const modal=new Map(), bestN=new Map();
+      for(const [key,cnt] of cellCnt){ const ci=key.indexOf(':'), l=+key.slice(0,ci), cell=+key.slice(ci+1);
+        if(cnt>(bestN.get(l)||0)){ bestN.set(l,cnt); modal.set(l,cell); } }
+      for(const [l,sz] of size) if(sz>=MIN) linViable++;
+      specMinted=(typeof specMintCount!=='undefined')?specMintCount:-1;
+      for(const [l,bt] of linBirthTick){
+        const sz=size.get(l)||0; if(sz<1)continue; specAlive++;
+        if(sz<MIN)continue;
+        if((tick-bt)<PERSIST_WIN)continue;
+        const p=linParent.get(l), pc=cen.get(p), lc=cen.get(l); if(!lc)continue;
+        if(!pc)continue;                                      // conservative: need a LIVING parent to prove ongoing divergence (orphans whose parent died are not auto-passed — that would be the #16 confound)
+        let div=0; for(let d=0;d<DIMS;d++){ const dd=lc[d]-pc[d]; div+=dd*dd; } div=Math.sqrt(div);
+        if(div<DT)continue;                                   // (b) still diverged from its (living) parent
+        if(modal.get(l)===modal.get(p))continue;              // (c) distinct niche-cell from parent's main body
+        specPersist++;
+      }
+      // opt-in: at the final sample, dump per-minted-lineage diagnostics so we can see which gate binds.
+      if(globalThis.__SPEC_DEBUG && tick>=${TICKS}-1){
+        let rows=[]; for(const [l,bt] of linBirthTick){ const sz=size.get(l)||0; if(sz<1)continue;
+          const p=linParent.get(l), pc=cen.get(p), lc=cen.get(l); let div=-1;
+          if(pc&&lc){ let s=0; for(let d=0;d<DIMS;d++){ const dd=lc[d]-pc[d]; s+=dd*dd; } div=Math.sqrt(s); }
+          rows.push({l,parent:p,sz,age:tick-bt,div:+div.toFixed(3),cell:modal.get(l),pcell:modal.get(p),pAlive:(size.get(p)||0)}); }
+        rows.sort((a,b)=>b.sz-a.sz);
+        process.stderr.write('SPEC_DEBUG minted lineages (size-sorted):'+String.fromCharCode(10));
+        for(const r of rows)process.stderr.write('  lin='+r.l+' parent='+r.parent+' size='+r.sz+' age='+r.age+' div='+r.div+' cell='+r.cell+' parentCell='+r.pcell+' parentSize='+r.pAlive+' | passSize='+(r.sz>=MIN)+' passAge='+(r.age>=PERSIST_WIN)+' passDiv='+(r.div>=DT)+' passCell='+(r.cell!==r.pcell)+String.fromCharCode(10));
+      }
+    }
+
     let motifNew=0;
     if(typeof genome!=='undefined'&&Array.isArray(genome.stableMotifs)){
       for(const m of genome.stableMotifs){
@@ -256,6 +314,10 @@ const driver = `
       // window (immigration only — divergence-speciation is 0 by construction), extinct this window,
       // and cumulative lineages ever seen alive.
       linStanding, linBirths, linDeaths, linCum:(typeof seenLin!=='undefined')?seenLin.size:-1,
+      // swing #17 cladogenesis: cumulative mints, minted-and-alive, NET-PERSISTENT-DIVERGENT (the real
+      // success metric — survived past grace, still diverged, still cell-distinct), and viable standing
+      // lineages (>=minsize) to compare against the stock ~24 island-equilibrium.
+      specMinted, specAlive, specPersist, linViable,
       // seed-vs-harvest: the newest axis vs axis 0 (positive control). R = lineage-structured fraction
       // of variance; watch newAxis.ent/Vtot decay-or-hold and R after a frozen grow.
       newAxis:(typeof axisStats==='function')?axisStats((typeof DIMS!=='undefined'?DIMS-1:-1)):null,

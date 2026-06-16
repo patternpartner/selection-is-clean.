@@ -331,3 +331,62 @@ The next swing is a branching/isolation primitive; everything else is downstream
 into selection stays necessary-not-sufficient: a selectable new axis without branching just lets the
 dominant lineage smear one dimension higher.) Instrument-only change; stock behaviour and knobs
 unchanged.
+
+---
+
+# Swing #17 — CLADOGENESIS: building the speciation primitive (knob-gated; default STOCK)
+
+Correction that sharpened the design: the genome is NOT global — it already FORKS per birth
+(`cloneGenome` + `mutateChildGenome`; physics, death threshold, even mutation rate via op154 are
+per-lineage heritable, with crossover at birth). Genomes already diverge; the system just **re-merges
+them faster than divergence accumulates**. So #17 is not "fork the genome" — it is **isolate the
+re-mergers so divergence can accumulate**, plus a **mint** (relabel a diverged sub-population as a new
+lineage) and **founder protection**. The re-merger list, corrected: **{globalTend, tendencyBleed, HGT
+(op179), entrainment, crossover}** — crossover is gene flow, the load-bearing one the first pass missed.
+
+**What shipped (all behind `__SPECIATE`, default off → stock byte-identical, verified 0 errors):**
+- **Isolation gates** (`SPEC_GATE`): crossover (birth, both paths) and HGT-donate (op179) restricted to
+  same-`pLin`; tendencyBleed zeroed across lineages; entrain `_spGate` extended to suppress cross-lineage;
+  the globalTend sink redirected from the global mean to each lineage's own centroid.
+- **Mint / cladogenesis** (`SPEC_MINT`): each cadence, a same-lineage sub-population that (a) is ≥minsize,
+  (b) sits in a niche-cell distinct from its lineage's modal cell, and (c) has a trait centroid ≥`SPEC_DIVT`
+  from the lineage centroid → gets a fresh `pLin`; genealogy (`linParent`) and birthTick recorded.
+- **Founder protection** (`SPEC_GRACE`): minted lineages get death-threshold relief while young or small,
+  so founders don't die in the cradle (the deaths>births bottleneck from the retention work).
+- **Divergent selection** is supplied by the REAL partitioned niche cells (`NICHE_FRONTIER=1 NICHE_NDIM=1`);
+  the same-landscape control drops them.
+- **Success metric (harness, confound-proof):** NET-PERSISTENT-DIVERGENT count — a minted lineage counts
+  only if, recomputed independently, it persists (alive, ≥minsize, age past the grace window so it survived
+  WITHOUT subsidy), stays diverged (centroid ≥divT from its **living** parent — orphans whose parent died
+  are NOT auto-passed, that would be the #16 fiat-output confound), and holds a distinct cell. Gross mints
+  are ignored on purpose.
+
+**Three-way knockout control (seeds 7/11/23, 9–10k ticks). Robust result — max inter-lineage divergence:**
+| config | what | maxdiv s7 | s11 | s23 | persistent-divergent (conservative) |
+|---|---|---|---|---|---|
+| FULL | mint + isolation + divergent selection | 1.07 | 1.43 | 0.89 | 1 / 0 / 3 |
+| ISO-OFF | mint + divergent selection, **re-mergers NOT gated** | 0.61 | 0.64 | 0.34 | 0 / 0 / 0 |
+| NO-DIVSEL | mint + isolation, **no niche cells** | 0.02 | 0.09 | 0.04 | 0 / 0 / 0 |
+
+**Verdict — the two halves are each necessary, and the knockout proves it (not the label).**
+- **Divergent selection is the ENGINE of divergence.** Remove the niche cells and max divergence collapses
+  to ~0.05 on every seed — with no per-cell fitness gradient, lineages have no reason to leave the common
+  trait region, so they never diverge regardless of isolation. (This is also why every PRIOR run in this
+  session that forgot `NICHE_FRONTIER=1` was inert: the niche economy is gated by it, so "FULL" without it
+  silently equals "no-divsel" — a real methodological trap, caught before it shipped.)
+- **Isolation is the RATCHET.** With divergent selection present, removing the gates (ISO-OFF) roughly HALVES
+  achievable divergence (1.0→0.5) and drops persistent consolidation to zero on every seed — gene flow
+  (crossover the dominant channel) re-blends what selection separates before it can fix.
+- **Only FULL produces persistent incipient species** — e.g. seed 7 lin417: 116 members, centroid 0.74 from
+  a living parent, distinct cell, survived past grace; seed 23: three such lineages.
+
+**Honest bound — at the threshold, not over it.** The persistent-divergent *count* is marginal and
+seed-dependent (0–3), not yet a standing radiation robustly above the stock ~24 island-equilibrium. The
+system now REACHES cladogenesis (divergence up to ~1.4 vs stock's structural ~0, and lineages that clear
+the full persistence bar) but does not yet SUSTAIN many species: most minted lineages' divergence still
+decays back as reproduction re-mixes them. The gates throttle gene flow but birth still pairs across
+lineages; the missing strengthener is **reproductive isolation proper — assortative mating** (refuse
+cross-lineage births outright, not just gate the gene transfer within a shared birth), so a diverged
+sub-population cannot be reabsorbed at all. That is the next swing's lever. Constraint #3 (isolation +
+divergent selection are two halves of one primitive) is now an empirical, knockout-confirmed fact rather
+than a hypothesis. Stock behaviour and all existing knobs unchanged; #17 is opt-in.
