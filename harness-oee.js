@@ -156,6 +156,11 @@ const driver = `
                                  // NOT novelty (it rises with every birth regardless of
                                  // whether anything new appears). Reported, never trusted as OEE.
   let prevBins=new Set();        // last sample's occupied bins (for churn)
+  // LINEAGE birth/death decomposition (the speciation-vs-extinction term). A new pLin id can only be
+  // minted by a PARENTLESS spawn (reseed/immigration) — parented births inherit the parent's id — so
+  // divergence-speciation is 0 by construction; this measures whether immigration births even appear
+  // and persist against the death rate. cumLin counts distinct lineages EVER seen alive.
+  const seenLin=new Set(); let prevLin=new Set();
 
   // Coarsen a tendency vector to a discrete cell. Reuse the sim's own tendBin
   // if present (keeps our bins identical to the NFD bins); else replicate.
@@ -193,6 +198,18 @@ const driver = `
     let lost=0; for(const b of prevBins) if(!curBins.has(b)) lost++;
     const churn=prevBins.size>0?lost/prevBins.size:0;
     prevBins=curBins;
+
+    // ---- lineage birth/death decomposition ----
+    let linStanding=0, linBirths=0, linDeaths=0;
+    if(typeof pLin!=='undefined'){
+      const curLin=new Set();
+      for(let i=0;i<N;i++){ if(palive[i]) curLin.add(pLin[i]); }
+      linStanding=curLin.size;
+      for(const l of curLin) if(!seenLin.has(l)) linBirths++;   // first-ever appearance (new lineage entered)
+      for(const l of prevLin) if(!curLin.has(l)) linDeaths++;   // present last sample, gone now (extinct)
+      for(const l of curLin) seenLin.add(l);
+      prevLin=curLin;
+    }
 
     let motifNew=0;
     if(typeof genome!=='undefined'&&Array.isArray(genome.stableMotifs)){
@@ -235,6 +252,10 @@ const driver = `
       // dimensionality ratchet (swing #16): live DIMS vs the (formerly inert) evolvable tendDims, and
       // whether the trait axes actually carry variation (board grew vs degenerate).
       tendDims:(G.tendDims|0), traitDimEnt:(typeof traitDimEntropy==='function')?traitDimEntropy():-1,
+      // lineage birth/death (speciation vs extinction term): standing distinct lineages, new this
+      // window (immigration only — divergence-speciation is 0 by construction), extinct this window,
+      // and cumulative lineages ever seen alive.
+      linStanding, linBirths, linDeaths, linCum:(typeof seenLin!=='undefined')?seenLin.size:-1,
       // seed-vs-harvest: the newest axis vs axis 0 (positive control). R = lineage-structured fraction
       // of variance; watch newAxis.ent/Vtot decay-or-hold and R after a frozen grow.
       newAxis:(typeof axisStats==='function')?axisStats((typeof DIMS!=='undefined'?DIMS-1:-1)):null,

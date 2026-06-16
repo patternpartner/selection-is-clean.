@@ -287,3 +287,47 @@ lineage-level retention (not just cell occupancy), THEN wire new dims into selec
 ratchet. `setDims` (clean remap + spread-init) remains the right architecture; the EVIDENCE for it
 was confound-prone and is now corrected. Instrument knobs/fields default to stock; nothing shipped
 relies on the retracted claim.
+
+---
+
+# Lineage birth/death decomposition — the missing SPECIATION term
+
+The reframe (parallel instance): every swing raised the *carrying capacity* of a system that has an
+extinction term and **no speciation term**. The substrate evolves around a shared genome
+(`mutateGenome` is global; `pGenome[]` is a sparse override); a new `pLin` id is minted **only by a
+parentless spawn** (reseed/immigration) — parented births inherit the parent's id — so
+**divergence-speciation = 0 by construction.** Mutation is anagenesis (drift *within* a lineage); the
+cell-occupancy we kept measuring was one shrinking set of lineages smearing across the bins. The
+decisive measurement is therefore lineage BIRTHS vs DEATHS, not standing count.
+
+**Decomposition (per 1000 ticks, seed 7, lineage births = first-ever appearances = immigration only):**
+
+Stock (no knobs): standing 329→28 by t=1001 (302 deaths), then steady ~24–29 with births≈deaths
+(~0–3/1000t); `cum` 329→341 over 10000t.
+Retention (#13+#14+localtend): standing 329→52→45→40→25→17→**11**, with deaths persistently exceeding
+births (6–19 vs 1–9 per 1000t); `cum` 329→367.
+
+**Verdict — there is no speciation term.** The 329-strong founder cohort coalesces to ~28 within the
+first 1000 ticks in BOTH configs. Thereafter **every lineage birth is immigration** (parentless
+reseed) at ~0.001–0.004 lineages/tick; `cum` (ever seen) barely moves. Standing diversity is an
+**immigration⇄extinction (island-biogeography) equilibrium**, not a speciating system.
+Divergence-speciation is structurally zero — confirmed in code and in the numbers. OEE's defining
+condition (speciation ≥ extinction) cannot be met when speciation is identically zero; immigration is
+the only source and it is sparse and mostly low-novelty (`replenish` ghost/motif branches reseed near
+the global mean / a motif; only the edge branch injects a fresh `randomTendency`).
+
+**The sting — retention ended with FEWER lineages than stock (11 vs 24).** Despite higher
+cell-occupancy/entropy, the localized-homogeniser config has deaths persistently exceeding births and
+decays to 11 standing lineages — *below* stock. Exactly the predicted confound: relaxing
+mean-reversion let one lineage's mutational smear spread across MORE cells (prettier occupancy) while
+FEWER lineages persisted. Cell-occupancy measured the smear; lineage count is the truth.
+
+**Conclusion for the session.** `setDims` + the retention fixes are correct *carrying-capacity*
+architecture, but the term never in the equation is **cladogenesis**: a primitive that lets a
+sub-population diverge into a new, independently-heritable lineage and keeps it reproductively
+isolated (against the shared genome, HGT, entrainment that re-merge everything). Without it, no amount
+of niches, dimensions, or retention can sustain many lineages — the system can only merge and die.
+The next swing is a branching/isolation primitive; everything else is downstream of it. (Dim-wiring
+into selection stays necessary-not-sufficient: a selectable new axis without branching just lets the
+dominant lineage smear one dimension higher.) Instrument-only change; stock behaviour and knobs
+unchanged.
