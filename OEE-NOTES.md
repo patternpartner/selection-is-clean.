@@ -507,3 +507,62 @@ lineages reach those cells (#17) but then die there demographically (this probe)
 If a founder-protection swing keeps incipient lineages alive and the *occupied*-cell count then climbs toward
 the 256 ceiling, only THEN does niche space (and the #16 ratchet) become the next binding constraint. Until
 founder survival is fixed, it isn't.
+
+## Swing #20 — colonization vs survival, run as a 2×2: BOTH REFUTED on the smear-proof metric
+
+#19 said the binding term is per-capita growth of a rare lineage in an empty cell, not death rate or lack of
+room. Two candidate fixes, deliberately separated so the metric (not a prior) picks the horn:
+- **knob S `COLO_SURV`** (death term) — while a minted founder is in grace it cannot be reaped; pinned to
+  life support at the relief line (stronger grace + min-viable-size floor).
+- **knob C `COLO_PIONEER`** (growth term) — pioneer income (under-occupied cells pay first arrivals a bonus
+  that scales with accrued stock, self-limiting once the cell fills) + Allee relief (sub-minsize minted
+  lineages get a per-capita income uplift that fades at viable size). This is **#13's pioneer bonus
+  resurrected on the #17 speciation substrate** — #13 failed for lack of distinct lineages to be the pioneers;
+  #17 supplies them, so the bonus should now land on many pioneers instead of one universal colonizer.
+
+**The metric guard (the point of the whole exercise).** Every prior call was confoundable by *one viable
+lineage smearing into many empty cells* reading as colonization. So the headline is **`radiationCells` =
+distinct HOME (modal) cells of viable lineages** — a smear keeps ONE home cell however far its tendrils reach,
+so only NEW lineages establishing NEW home cells move it — reported against the confoundable `occCellsRaw` and
+the smear magnitude `cellsPerViableLin`.
+
+**2×2 (seeds 7/11/23, 10k ticks, means; `radiationCells` is the metric of record):**
+| config | **radiationCells** | occCellsRaw | cellsPerViableLin | linViable | specAlive | specPersist |
+|---|---|---|---|---|---|---|
+| 00 base       | **4.3** | 12.3 | 3.7 | 7.7  | 20   | 1.7 |
+| 10 surv (S)   | **4.0** | 10.3 | 2.1 | 11.3 | 21   | 1.0 |
+| 01 pioneer (C)| **3.7** | 17.3 | 2.0 | 7.3  | 14   | 0.7 |
+| 11 both (S+C) | **3.3** | 21.0 | 3.5 | 7.7  | 26   | 1.0 |
+
+**Verdict — the growth-term hypothesis is NOT supported; the prediction is falsified.**
+1. **`radiationCells` is FLAT at ~3–5 across all four cells** and across the whole run (no `radTraj` climbs;
+   they oscillate 3–7). Neither survival, colonization, nor both moves distinct-home-cell radiation off
+   baseline. The pre-registered success signal (C lifts distinct-cells) did not occur.
+2. **Colonization raised `occCellsRaw` (12→17–21) — and the guard proves it is SMEAR, not radiation.**
+   `cellsPerViableLin` climbs in lockstep (to **7.5** on both/seed 11, where occCellsRaw hit **33** but
+   radiationCells stayed **4**): a handful of lineages spread tendrils across many cells while their home
+   cells stay put. **Had we scored the #19 raw-occupied-cell metric we would have falsely declared
+   colonization a win.** The smear-proof headline is the only reason we didn't — it earned its keep.
+3. **Colonization re-triggered the #13 single-colonizer collapse on seed 11** (linViable 8→3, specAlive 24→1,
+   vCellsOcc=2): a strong pioneer subsidy still feeds ONE universal winner even on the #17 substrate. So the
+   premise that "#17 supplies the distinct pioneers #13 lacked" is **not borne out** — the bonus does not
+   distribute across many lineages; it is captured. And this is overshoot, not under-powering: the same knob
+   that collapses seed 11 cannot be too weak elsewhere, so strengthening C would worsen smear/capture, not
+   produce radiation.
+4. **Survival behaved exactly as predicted: protected relics.** Mild `linViable` bump (7.7→11.3) with flat
+   `radiationCells` — persistence without radiation, the death-term pathology #19 warned of.
+
+**The reframe this forces.** Even a growth incentive strong enough to overshoot into collapse does not produce
+HOME-cell establishment in empty cells. Viable lineages pile into a few modal cells (`linPerOccCell` ~3–5) and
+at most send transient tendrils outward. The barrier to radiation is therefore neither death rate (S) nor
+per-capita reward in empty cells (C): it is that a lineage's **trait centroid / center of mass won't RELOCATE
+to a new cell and stay there.** The homogenizer (the globalTend sink + gene flow pulling the bulk back to the
+ancestral centroid) re-absorbs pioneers faster than they can found a new home. This points straight back at
+the **retention / homogenizer thread (#15)**: the operative lever is trait-centroid MOBILITY under the
+homogenizing sink, not the niche economy and not founder survival. The next swing should test detaching a
+sub-population's centroid (e.g. localTend strength vs divergent pull), with `radiationCells` still the gate.
+
+**Honest bound.** 3 seeds, 10k ticks; `radiationCells` differences sit within the 3–6 seed-to-seed noise, so
+the strong claim is the *null* (no lever lifts it), not a ranking among them. What would flip it: a config
+where `radiationCells` climbs monotonically over a longer run while `cellsPerViableLin` stays flat — that
+would be real radiation, and none of these four produced it. Both knobs ship dormant (default off).
