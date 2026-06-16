@@ -664,3 +664,47 @@ core IS what a deme is, so this inflates the *number* not the *existence*. 3 see
 aesthetic stake stands: clusters are mobile cohesive groups (flocking) — if cluster-local mating gives demes,
 we get speciation while the image keeps flowing; only if it's sub-threshold AND tightening fails would
 frozen-dispersal be required, and only then is the beauty-vs-openness conflict real.
+
+## Measurement (#22 conduit) — the erasure is the MINT's niche-cell gate, not gene flow and not re-tagging
+
+Before building cluster-local mating, the sharp question: what does the leaky fringe conduit actually carry
+that #17 doesn't already gate? #17 restricts crossover/HGT/entrainment/trait-bleed to within-lineage, so a
+core×fringe cross-lineage pairing already has its genetic blending suppressed — if that holds, the fringe is
+spatial company, not a genetic conduit, and the only thing to do is mate cluster-wide for the encounter boost.
+The suspected ungated channel was lineage RE-TAGGING (a divergent fringe cohort relabelled into the dominant,
+erasure invisible to the gene-flow math). Two-part probe: (a) core↔fringe trait distance; (b) instrument the
+mint to count viable trait-diverged sub-groups refused for reasons other than gene flow.
+
+**Code-read first — literal re-tagging is REFUTED.** Every write to `pLin` is: spawn (descent inheritance),
+array compaction (relocation), and the #17 mint (`17121`, which only SPLITS off a *new* lineage). There is no
+path that overwrites a particle's pLin with its cluster's dominant lineage. Erasure-by-relabel does not exist.
+
+**But the deeper instinct is CONFIRMED via a different gate. Probe (3 seeds, 8k ticks):**
+- **Q-a fringe character:** fringe fraction 0.53 (confirms the leaky deme); core↔fringe trait distance
+  **cfd = 0.455 — 2.3× the mint threshold divT=0.20.** The fringe is trait-DISSIMILAR, i.e. the #18
+  *generative* hybridisation tail, NOT homogenising bulk. The "plug the leak" instinct is doubly wrong:
+  plugging would destroy the generative tail (#18's exact error). Keep cluster-wide; do not tighten to core.
+- **Q-b the conduit:** mints=57 vs **specMintBlockCell=190 — viable, trait-diverged (≥divT) sub-groups
+  refused a mint PURELY because they share their parent's modal niche-cell. Ratio 3.3×.** The niche-cell
+  distinctness gate (condition c) erases 3.3× more genuine trait-divergence than it mints. Divergence on the
+  ~15 non-niche trait axes can never satisfy a gate that demands distinctness on the single diet/niche axis,
+  so it is re-homogenised and never tagged — a bookkeeping erasure invisible to the gene-flow math, exactly
+  the *kind* of channel predicted, though the mechanism is the mint gate, not re-tagging.
+
+**Verdict — the binding wall is not gene flow; divergence already EXISTS and is being refused recording.** The
+fringe sits at cfd 0.455 (>2× divT): the system is not failing to diverge, it is failing to *mint* the
+divergence it already has, because the mint's ecological-distinctness test is single-axis (niche-cell). This
+also relocates the #22 build: cluster-local *mating* (the 3.5× encounter boost) addresses gene flow, which is
+NOT the binding wall here; the lever is the **mint gate**. Reframed swing: replace the mint's niche-cell
+distinctness with **cluster** distinctness — group mint candidates by (lineage, clusterID), require a cluster
+distinct from the lineage's modal cluster, keep size + divT. A trait-diverged sub-cohort that forms its own
+persistent cluster (a deme, per the prior measurement) then mints EVEN inside a shared niche-cell. This is the
+correct cluster reuse: the deme as the *unit of speciation*, aimed at the actual erasure conduit.
+
+**Honest caveat (must address in the build).** specMintBlockCell groups are keyed (lineage, modal-cell), so
+some of the 190 are the lineage's own MAIN BODY reading as "diverged" from its multi-cell global centroid —
+minting those would relabel the bulk, and refusing them is correct. The cluster-distinctness reframe sidesteps
+this: the main body is its own large cluster, so a fringe cohort forming a *distinct* cluster is genuinely
+separated, not the bulk. Still, the next build must verify the relaxed gate mints genuine sub-cohorts, not the
+main body, and that the mints PERSIST (specPersist) and lift radiationCells — if they don't persist, gene flow
+(the user's Wall 1) re-homogenises them and IS the next wall after all. 3 seeds, 8k ticks.
