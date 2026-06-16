@@ -750,3 +750,50 @@ divergence on them is differentiation-free) — which converges with the other i
 The cluster gate may also itself act as the persistence filter the niche-cell gate lacks (a transient drift
 blip won't form a persistent distinct cluster; a stable deme will) — the matrix tests that too. 3 seeds, 8k;
 32 completed streaks is small n, so the persistence split is indicative, not tight.
+
+## Swing #22 — permissive mint gate (gate ≠ metric): CONFIRMS Half A (niche-first); the wall is #16
+
+The resolution of the gate/metric tension: the niche-cell gate used the SUCCESS condition (niche-distinctness,
+which radiationCells measures, strict + smear-proof) as the ENTRY condition — foreclosing every intermediate
+state of split-first speciation. So separate the jobs: make the gate PERMISSIVE (distinct DEME = distinct
+cluster, drop the niche-cell entry req), keep radiationCells STRICT as the bar. Safe by construction: an
+ID-inflation-immune metric can't be fooled by a permissive gate — over-split all you like, only distinct home
+cells register. Paired with founder grace (COLO_SURV) so isolated sub-bin founders survive the #20 Allee trap
+to character-displace. Decisive instrument: cascadeCount = same-cell ("permissive") mints that LATER reach a
+distinct home cell (split-then-displace = the literal niche-first vs split-first answer).
+
+**Matrix (MINT_GATE ∈ {cell stock, cluster permissive-deme, relax size+divT}, 3 seeds, 10k, founder grace on):**
+| gate | **radCells (strict bar)** | cascade | bornSame | minted | linViable | persist |
+|---|---|---|---|---|---|---|
+| cell (stock)        | **4.00** | 0    | 0   | 21.3 | 11.3 | 1.00 |
+| cluster (permissive)| **2.67** | 1.00 | 2.0 | 10.3 | 7.3  | 0.67 |
+| relax (size+divT)   | **2.33** | 0.33 | 2.3 | 21.3 | 6.3  | 0.67 |
+
+**Verdict — Half A (niche-first) CONFIRMED; the gate was enforcing real niche-distinctness, not a bug.**
+1. **The strict bar does NOT rise — it falls** (4.0 → 2.7 → 2.3). The pre-registered success signal (permissive
+   gate lifts radiationCells) did not occur. Permissive minting produces no net radiation; it *fragments*
+   lineages (linViable 11.3 → 7.3/6.3, persist 1.0 → 0.67), splitting them into ecologically-equivalent pieces
+   that don't hold distinct niches.
+2. **The cascade is REAL but rare and insufficient.** cascadeCount is not identically zero — cluster mode
+   averages 1.0, and seed 23 built a holding cascade (casTraj 0>1>1>3>2>3, bornSame→5, radTraj peaked 9).
+   Split-then-displace *does* happen occasionally. But it's far too weak to overcome the fragmentation cost, so
+   it never lifts the strict bar. The 7 persistent refused cohorts were not a foreclosed cascade of any size.
+3. **Safety held exactly as designed — no false positive.** relax over-split to 21 mints, yet radiationCells
+   stayed at 2.3: the ID-tag fog did not register. The metric stayed sovereign as judge; the permissive gate
+   could not fool it. This is the clean, confound-free negative, not a polluted result.
+
+**Where this lands the whole arc.** Permissive entry + strict success = no speciation gain ⇒ the binding wall
+is not the gate and not gene flow. It is that **divergence on the few selected axes IS niche divergence**
+(sub-bin = differentiation-free), so there is no split-first pathway to a NEW niche to displace into — exactly
+the **#16 wall** (only ~4 trait axes are wired into the economy; the rest are neutral). Six trait-layer levers
+(strength #20-C, survival #20-S, spatial-locality #21, deme-gate + relax #22) have now failed to lift
+radiationCells off ~4. The lever that remains untried is **making more trait axes niche-relevant** (wire neutral
+dims into the resource economy) and/or **finer niche resolution** (more bins, so sub-bin selected-axis
+divergence becomes a real new niche) — the niche-economy side, converging with the other instance's
+neutral-axis thread. That is the next swing.
+
+**Honest bound.** 3 seeds, 10k; radCells variance is high (cluster 1/2/5) so the strong claim is the *null*
+(no lift), not the precise size of the drop. The cascade was still growing at 10k in seed 23 — a longer run
+*might* accumulate more displacement — but at 10k the strict bar is flat-to-down across all three seeds and
+both permissive modes. All gates default to 'cell' (stock, byte-identical). The experiment was the right call:
+it foreclosed nothing by fiat, kept the metric strict, and returned a clean negative that points the next move.
