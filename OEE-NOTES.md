@@ -620,3 +620,47 @@ under spatial-local pull — none did. One real caveat: the spatial pull is weak
 others) and acts only on traits; a STRONG trait-lock combined with even mild dispersal limitation might yet
 produce allopatry — but that combination *is* the spatial-structure thread, which is the point. Knob ships
 dormant (default off).
+
+## Measurement (pre-#22) — cluster lineage-purity: clusters are LEAKY DEMES (persistent core, churning fringe)
+
+The reframe after #21: every speciation route has failed (allopatric #21, sympatric ingredients #14/#17/#18)
+for ONE common cause — a panmictic population has maximal effective gene flow, and the bar (disruptive
+selection > gene flow) can't be met. So the binding primitive isn't "allopatry," it's *reduce effective gene
+flow via persistent local mating neighbourhoods*. The substrate already HAS a persistent local unit — clusters
+(`clusterID`, `clusters[].persistAge`, cross-cycle identity via `clusters[].lineageID` inherited by
+proximity+tendency match). #21 used raw spatial radius (re-mixes every tick); the right unit was clusters. But
+re-pointing #21's mechanism to clusters is only cheap-reuse if clusters are real demes. **Make-or-break
+measurement, run before building** (probe `CLUSTER_PURITY=1`: per cluster emit {cluster lineageID, persistAge,
+dominant particle-lineage pLin, purity, #distinct pLin}; post-process snapshot-purity-by-age + temporal
+dominant-pLin stability). 3 seeds, 8k ticks, clusters with ≥4 members.
+
+**Q1 — snapshot purity by persistAge (size-weighted):** purity (dominant-pLin fraction) is **FLAT ~0.45–0.54
+across all ages** (new→old: .448/.541/.512/.418 — does NOT purify with age); #distinct pLin per cluster RISES
+with age (7.8→10.5→12.0→**15.7**). Instantaneously a cluster is ~half one lineage plus a fringe of 8–16 others,
+and the fringe grows as the cluster ages.
+
+**Q2 — temporal stability of a persistent cluster-lineageID's dominant pLin (the decisive axis):** 108
+persistent cluster-lineages, mean life ~20 samples (~1200 ticks); dominant-pLin stability **mean 0.80, median
+0.86**; only **~2.07 distinct dominant lineages over an entire life**; **56%** are ≥0.8 stable. Against the
+salad null (a cluster re-rolled each cycle from 8–16 co-resident lineages would rotate its dominant through
+many values over 20 samples, not 2), this is decisive: **the dominant identity persists.**
+
+**Verdict — the salad hypothesis is REFUTED; clusters are demes AT THE CORE but LEAKY at the membrane.** The
+reconciliation of Q1 and Q2: a cluster has a *stable, persistent ~50% plurality core* (one particle-lineage
+held ~80% of a 1200-tick life — a real deme) wrapped in a *churning multi-lineage fringe* (the other ~50%,
+8–16 rotating lineages, growing with age). Both readings are true and describe the same object.
+
+**Implication for the swing (cheap-reuse IS justified, with eyes open).** Clusters are a usable persistent
+deme unit, so re-pointing #21's spatial-local centroid + mate-sampling from raw radius to `clusterID` is the
+right next move — NOT new offspring-stay-near-parent viscosity. Quantified expectation: global same-lineage
+mating prob ≈ Σpₗ² ≈ 0.08 (≈12 even lineages); within-cluster, dominant≈0.5 ⇒ Σpₗ² ≈ 0.28 — cluster-local
+mating ≈ **3.5× more same-lineage mating**, a real cut in cross-lineage flow, but **PARTIAL not complete**
+because the fringe stays cross-lineage. So predict a real-but-possibly-sub-threshold effect. If sub-threshold,
+the next knob is *tighten the deme to cluster∩dominant-lineage* (sharpen the membrane), still not new physics.
+
+**Honest bound.** Cluster cross-cycle identity is matched partly by tendency similarity, which correlates with
+pLin — so some of Q2's 0.80 is baked into the tracking definition. But a trait+lineage-coherent persistent
+core IS what a deme is, so this inflates the *number* not the *existence*. 3 seeds, 8k ticks, sz≥4. The
+aesthetic stake stands: clusters are mobile cohesive groups (flocking) — if cluster-local mating gives demes,
+we get speciation while the image keeps flowing; only if it's sub-threshold AND tightening fails would
+frozen-dispersal be required, and only then is the beauty-vs-openness conflict real.
