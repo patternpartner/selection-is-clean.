@@ -164,6 +164,10 @@ for (const k of ['COLO_PIONEER_K','COLO_ALLEE_K']) if (process.env[k] !== undefi
 // same-lineage neighbours' mean tend; ALLO_SHUF=1 is the non-spatial strength-matched control; ALLO_K caps
 // neighbours folded in. Needs SPECIATE=1. Headline = bifurcLin (lineage spatially splits into 2 centroids).
 for (const k of ['SPATIAL_TEND','ALLO_SHUF','ALLO_K']) if (process.env[k] !== undefined) globalThis['__' + k] = parseInt(process.env[k], 10);
+// swing #22: permissive mint gate. MINT_GATE = 'cell' (stock) | 'cluster' (permissive deme gate, drop
+// niche-cell entry req) | 'relax' (size+divT only). Pair with COLO_SURV=1 for founder grace. radiationCells
+// stays the strict success bar; cascadeCount = same-cell mints that LATER reach a distinct home cell.
+if (process.env.MINT_GATE !== undefined) globalThis.__MINT_GATE = String(process.env.MINT_GATE);
 
 const html = fs.readFileSync(process.env.INDEX || (__dirname + '/index.html'), 'utf8');
 const code = html.match(/<script>([\s\S]*)<\/script>/)[1];
@@ -259,6 +263,8 @@ const driver = `
     // swing #21 bifurcation probe: does a single lineage occupy TWO spatially-separated clusters with diverged
     // trait centroids (the allopatric precursor #17's mint needs)? Measured directly, not via downstream cells.
     let bifurcLin=-1, bifurcDist=-1, bifurcSep=-1;
+    // swing #22 cascade: permissive same-cell mints that later reached a distinct home cell (split-then-displace).
+    let cascadeCount=-1, bornSameAlive=-1;
     if(typeof __SPEC!=='undefined' && __SPEC.on && typeof pLin!=='undefined'){
       const PERSIST_WIN=3000, MIN=__SPEC.minsize, DT=__SPEC.divT;
       const size=new Map(), cen=new Map(), cellCnt=new Map();
@@ -315,6 +321,17 @@ const driver = `
           let td=0; for(let d=0;d<DIMS;d++){ const dd=ta[d]/an-tb[d]/bn; td+=dd*dd; } td=Math.sqrt(td);
           if(td>=DT){ bc++; bds+=td; bss+=Math.sqrt((cax-cbx)**2+(cay-cby)**2); } }
         bifurcLin=bc; bifurcDist=bc?+(bds/bc).toFixed(3):0; bifurcSep=bc?+(bss/bc).toFixed(1):0;
+      }
+      // ── swing #22 CASCADE (split-then-displace) — the decisive instrument. Of viable lineages minted INTO
+      //    their parent's niche-cell (permissive same-cell mints the cell-gate would refuse), how many have
+      //    SINCE migrated to a distinct home cell from their parent? That delta is the literal niche-first vs
+      //    split-first answer: >0 and growing = split-first cascade is real; flat 0 = no displacement, the
+      //    cell-gate was enforcing real niche-distinctness (Half A / the #16 wall). bornSameAlive = denominator. ──
+      if(typeof linBirthSameCell!=='undefined' && typeof linParent!=='undefined'){
+        cascadeCount=0; bornSameAlive=0;
+        for(const [l,sz] of size){ if(sz<MIN)continue; if(!linBirthSameCell.get(l))continue; bornSameAlive++;
+          const p=linParent.get(l), lm=modal.get(l), pm=modal.get(p);
+          if(lm!==undefined && pm!==undefined && lm!==pm) cascadeCount++; }
       }
       specMinted=(typeof specMintCount!=='undefined')?specMintCount:-1;
       for(const [l,bt] of linBirthTick){
@@ -497,6 +514,10 @@ const driver = `
       // swing #21 allopatry: bifurcLin = lineages spatially split into two trait-diverged centroids (the
       // direct mechanism signal); bifurcDist = mean trait gap, bifurcSep = mean spatial gap of those splits.
       bifurcLin, bifurcDist, bifurcSep,
+      // swing #22: cascadeCount = same-cell permissive mints that LATER reached a distinct home cell (the
+      // split-then-displace signal); bornSameAlive = viable same-cell mints (denominator). radiationCells stays
+      // the strict success bar — a cascade shows as cascadeCount>0 AND radiationCells climbing.
+      cascadeCount, bornSameAlive,
       // swing #18 — assortative mating. Headline OEE signature = genealogy DEPTH growing over time
       // (specMaxDepth) and NESTED cladogenesis (specNested), not a standing tip count. Guardrails:
       // linVarWithin (inbreeding-to-fixation watch), specMateStarved (Allee-trap extinctions), and the

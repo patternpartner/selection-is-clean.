@@ -17109,6 +17109,20 @@ const specBlockAxisSq=new Float64Array(DIMS_MAX), specMintAxisSq=new Float64Arra
 // is doing its job and minting them would be ID-tag birth-inflation. blockStreakMean/Max = current live streaks.
 const _blockStreak=new Map();   // "L:cell" → consecutive cadences continuously blockCell
 let _blockStreakDoneSum=0, _blockStreakDoneN=0; const _blockStreakHist=new Int32Array(12); // completed streaks
+// ═══ SWING #22: PERMISSIVE MINT GATE — separate the gate's job from the metric's ════════════════════════
+// The niche-cell distinctness gate conflated two roles: it used the SUCCESS condition (niche distinctness,
+// which radiationCells measures, strict + smear-proof) as the ENTRY condition. Using the destination as the
+// entry requirement forecloses every intermediate state from which the destination is reached — split-first
+// speciation (isolate on a non-resource trait, niche divergence follows via character displacement) is erased
+// at the cradle. Fix: make the gate PERMISSIVE (distinct DEME = distinct cluster, drop the niche-cell entry
+// requirement), keep radiationCells STRICT as the success bar. Safe by construction: a strict, ID-inflation-
+// immune success metric cannot be fooled by a permissive gate — over-split all you like, only distinct home
+// cells register. Pair with founder grace (__COLO_SURV) so isolated sub-bin founders don't die of the #20
+// Allee trap before they can character-displace. Decisive instrument: do permissively-minted (same-cell)
+// cohorts LATER migrate to a distinct home cell? (split-then-displace = the cascade; harness cascadeCount).
+const __MINTGATE=(function(){ const G=(typeof globalThis!=='undefined')?globalThis:{};
+  return { mode:(G.__MINT_GATE||'cell') }; })(); // 'cell' (stock, niche-cell gate) | 'cluster' (permissive deme gate) | 'relax' (size+divT only)
+const linBirthSameCell=new Map(); // pLin → minted INTO its parent's modal niche-cell? (a permissive mint the cell-gate would refuse) — cascade denominator
 function specComputeAgg(){ // per-lineage centroid, size, and modal niche-cell — O(N), called each cadence
   linCentroid.clear(); linSize.clear();
   const cellCnt=new Map(); // "lin:cell" → count, to find each lineage's modal cell
@@ -17124,6 +17138,9 @@ function specComputeAgg(){ // per-lineage centroid, size, and modal niche-cell �
 }
 function specMint(){ // cladogenesis: split off viable, cell-distinct, trait-diverged sub-populations
   if(!__SPEC.mint)return;
+  const mode=__MINTGATE.mode;
+  // ── diagnostic + (cell/relax) mint pass: group by (lineage, niche-cell). The diagnostics (axis, streak,
+  //    blockCell) measure the CELL gate's behaviour regardless of which gate is active, for cross-mode compare. ──
   const groups=new Map(); // "lin:cell" → {l,cell,idx[]}
   for(let i=0;i<N;i++){ if(!palive[i])continue; const l=pLin[i], cell=nicheCellOf(i), key=l+':'+cell;
     let g=groups.get(key); if(!g){ g={l,cell,idx:[]}; groups.set(key,g); } g.idx.push(i); }
@@ -17137,18 +17154,43 @@ function specMint(){ // cladogenesis: split off viable, cell-distinct, trait-div
     for(let d=0;d<DIMS;d++){ gc[d]/=g.idx.length; const dd=gc[d]-lc[d]; _axScr[d]=dd*dd; dist+=_axScr[d]; } // _axScr = per-axis squared divergence
     const diverged=Math.sqrt(dist)>=__SPEC.divT;         // (b) trait centroid has genuinely diverged from parent
     const cellDistinct=(g.cell!==linModalCell.get(g.l)); // (c) a niche-cell DISTINCT from the lineage's main body
-    if(diverged&&!cellDistinct){ specMintBlockCell++; for(let d=0;d<DIMS;d++)specBlockAxisSq[d]+=_axScr[d]; _blkSeen.add(g.l+':'+g.cell); } // ← SUSPECT: trait-diverged but cell-collided; record WHICH axes + streak
+    if(diverged&&!cellDistinct){ specMintBlockCell++; for(let d=0;d<DIMS;d++)specBlockAxisSq[d]+=_axScr[d]; _blkSeen.add(g.l+':'+g.cell); } // diverged but cell-collided — the cell gate refuses these
     else if(!diverged&&cellDistinct)specMintBlockDiv++;  // cell-distinct but not yet diverged enough (legitimate hold)
-    if(!cellDistinct)continue;                            // (c) gate
-    if(!diverged)continue;                                // (b) gate
-    const nl=_linNext++; linParent.set(nl,g.l); linBirthTick.set(nl,tick); // MINT
-    for(const i of g.idx)pLin[i]=nl;
-    for(let d=0;d<DIMS;d++)specMintAxisSq[d]+=_axScr[d]; // control: where REAL (minted) divergence lives
-    specMintCount++;
+    // MINT here only for 'cell' (stock: needs cell-distinct) and 'relax' (drops cell-distinct). 'cluster' mints below.
+    if((mode==='cell'&&cellDistinct&&diverged)||(mode==='relax'&&diverged)){
+      const nl=_linNext++; linParent.set(nl,g.l); linBirthTick.set(nl,tick); linBirthSameCell.set(nl,!cellDistinct); // MINT
+      for(const i of g.idx)pLin[i]=nl;
+      for(let d=0;d<DIMS;d++)specMintAxisSq[d]+=_axScr[d]; // control: where REAL (minted) divergence lives
+      specMintCount++;
+    }
   }
   // streak bookkeeping: keys that dropped out of blockCell this cadence finalize their streak; survivors grow
   for(const [k,s] of _blockStreak){ if(!_blkSeen.has(k)){ _blockStreakDoneSum+=s; _blockStreakDoneN++; _blockStreakHist[s<11?s:11]++; _blockStreak.delete(k); } }
   for(const k of _blkSeen) _blockStreak.set(k,(_blockStreak.get(k)||0)+1);
+  // ── PERMISSIVE deme mint pass (mode 'cluster'): group by (lineage, clusterID); a distinct DEME (cluster)
+  //    replaces distinct niche-cell as the entry condition. Drops the success-as-gate conflation; radiationCells
+  //    stays strict as the bar. Sub-bin founders that form their own cluster + diverged in trait now mint. ──
+  if(mode==='cluster'){
+    const cg=new Map(); // "l:cluster" → {l,cl,idx[]}
+    for(let i=0;i<N;i++){ if(!palive[i])continue; const cl=clusterID[i]; if(cl<0)continue; const l=pLin[i], key=l+':'+cl;
+      let g=cg.get(key); if(!g){ g={l,cl,idx:[]}; cg.set(key,g); } g.idx.push(i); }
+    const modCl=new Map(), bestN=new Map(); // each lineage's modal (largest) cluster = its "main body"
+    for(const g of cg.values()){ if(g.idx.length>(bestN.get(g.l)||0)){ bestN.set(g.l,g.idx.length); modCl.set(g.l,g.cl); } }
+    for(const g of cg.values()){
+      if(g.idx.length<__SPEC.minsize)continue;           // (a) viable
+      if(g.cl===modCl.get(g.l))continue;                  // (c') a DEME distinct from the lineage's main cluster
+      const lc=linCentroid.get(g.l); if(!lc)continue;
+      let dist=0; const gc=new Float32Array(DIMS);
+      for(const i of g.idx)for(let d=0;d<DIMS;d++)gc[d]+=tend[i*DIMS+d];
+      for(let d=0;d<DIMS;d++){ gc[d]/=g.idx.length; const dd=gc[d]-lc[d]; dist+=dd*dd; }
+      if(Math.sqrt(dist)<__SPEC.divT)continue;            // (b) diverged
+      let bc=0,bcell=0; const cc=new Map();               // cohort's modal niche-cell, to flag same-cell (permissive) mints
+      for(const i of g.idx){ const c=nicheCellOf(i), v=(cc.get(c)||0)+1; cc.set(c,v); if(v>bc){ bc=v; bcell=c; } }
+      const nl=_linNext++; linParent.set(nl,g.l); linBirthTick.set(nl,tick); linBirthSameCell.set(nl,bcell===linModalCell.get(g.l));
+      for(const i of g.idx)pLin[i]=nl;
+      specMintCount++;
+    }
+  }
 }
 function specInGrace(l){ // founder protection: a freshly-minted lineage gets death-relief while young OR small
   if(!__SPEC.on)return false; const bt=linBirthTick.get(l); if(bt===undefined)return false;
