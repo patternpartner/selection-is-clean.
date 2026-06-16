@@ -186,3 +186,54 @@ retained occupancy must be confirmed HERITABLE/persistent per cell (lineages sta
 scatter. The coherent `clusters_late=4` under the localized fix is an encouraging (not conclusive)
 sign of persistence. New knobs (`__GLOBALTEND`, `__NICHE_LOCALTEND`, `__TEND_MUT`, `__NICHE_CELLDRIFT`)
 all default to stock behaviour.
+
+---
+
+# Swing #16 — grow the BOARD (the dimensionality ratchet)
+
+Credit: the reframe (retention fills a fixed board; only the number of AXES growing is open-ended)
+came from the parallel instance and is the most important strategic turn in the sequence.
+
+**The board is finite.** Diversity lives in 4-bin cells on `DIMS` axes → `4^DIMS` cells. Even perfect
+retention (the sink work) saturates a fixed board and stops. Open-endedness needs a new *kind* of
+difference (a new axis), not another *value* of an old one.
+
+**The lever existed but was inert — confirmed in code.** `genome.tendDims` (evolvable 2..16, mutated
+live at ~L10785) is the only such lever, but `DIMS = genome.tendDims` runs *only* in
+`sanitizeGenome()`, called *only* at boot (L5833 load, L16849 `init`). So `DIMS` is frozen at 5 for
+the whole run (hence `DIMS_delta=0` everywhere), and there is **no stride remap**: a naive change
+would reinterpret every flat `tend` vector at shifted offsets (scramble) and the new axis would be
+born at zero (no variation). `tend` is the **only** array strided by the live `DIMS` — everything
+else uses fixed `REFLEX_DIMS`/`NM_DIMS`/`FIELD_SIG_DIMS` — so the fix is surgical.
+
+**`setDims()` (swing #16):** snapshot → re-lay-out `tend` from old stride to new (no overlap hazard)
+→ **spread-initialise** the new axis (`__DIMS_SPREAD`) so it carries real cross-particle variation
+immediately. Driver knob `__DIMS_GROW=<interval>` forces a new axis periodically (tests the lever in
+isolation); `traitDimEntropy()` (Σ per-axis 4-bin entropy over all live DIMS) measures whether new
+axes actually carry variation.
+
+**Result (seed 7, on #13+#14+localtend):**
+
+| run | DIMS path | traitDimEnt | population |
+|---|---|---|---|
+| spread 0.5, every 800t | 5→10 | 6.1 → 9.2 (rises) | shocks: N 340→72 at DIMS 10 |
+| spread 0.15, every 1200t | 5→7 | **6.1 → 10.1 (rises cleanly)** | stable (N 240–283) through DIMS 7 |
+| (both, beyond DIMS ~8) | 8→10 | falls (10→4.6) | degrades (N → ~80) |
+
+**The lever works** — no scramble, no remap crash — and with a gentle spread the board **grows**,
+raising trait-space diversity from 6.1 to 10+ bits: the first time in the sequence multi-dimensional
+diversity *increased* rather than saturating or collapsing.
+
+**The soft ceiling at DIMS ~7–8 is the unifying insight.** Forced growth outruns COLONISATION: a new
+axis lands on a population that cannot spread across it before the next axis opens, so trait density
+thins and high-`DIMS` `tendSim` coherence is lost → dilution collapse. Therefore the ratchet must be
+**saturation-GATED** (open a new axis only when the current board is well-filled), which means
+**retention is the prerequisite for the ratchet, not an alternative to it.** The two halves of the
+session unify: retention (#11–#15, esp. the localized homogeniser) FILLS the board; the ratchet (#16)
+GROWS it; gated together — grow only as fast as you can fill — is the open-ended engine, and the
+literal "expanding space, not moving point" resolution of Convergent Hunger.
+
+**Still owed:** the per-cell lineage-identity instrument (persistence vs mutation smear) to make the
+numbers trustworthy; a saturation-gated production trigger; and high-`DIMS` coherence handled the
+same local>global way (`tendSim`/clustering relative to the niche, not the whole population). New
+knobs (`__DIMS_GROW`, `__DIMS_CAP`, `__DIMS_SPREAD`) default to stock (no growth).

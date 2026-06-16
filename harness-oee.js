@@ -130,6 +130,12 @@ if (process.env.TEND_MUT !== undefined) globalThis.__TEND_MUT = parseFloat(proce
 //   NICHE_LOCALTEND=1  (with NICHE_NDIM=1) localise it: pull toward the per-niche centroid, not the global one.
 if (process.env.GLOBALTEND !== undefined) globalThis.__GLOBALTEND = parseFloat(process.env.GLOBALTEND);
 if (process.env.NICHE_LOCALTEND !== undefined) globalThis.__NICHE_LOCALTEND = parseInt(process.env.NICHE_LOCALTEND, 10);
+// swing #16 dimensionality ratchet:
+//   DIMS_GROW=<interval>  open a new trait axis every <interval> ticks (0 = off). Tests whether the
+//                         board can GROW without catastrophe. DIMS_CAP caps it (default 10).
+if (process.env.DIMS_GROW !== undefined) globalThis.__DIMS_GROW = parseInt(process.env.DIMS_GROW, 10);
+if (process.env.DIMS_CAP !== undefined) globalThis.__DIMS_CAP = parseInt(process.env.DIMS_CAP, 10);
+if (process.env.DIMS_SPREAD !== undefined) globalThis.__DIMS_SPREAD = parseFloat(process.env.DIMS_SPREAD);
 if (process.env.NICHE_FRONTIER !== undefined) globalThis.__NICHE_FRONTIER = parseInt(process.env.NICHE_FRONTIER, 10);
 if (process.env.NICHE_BIOTIC !== undefined) globalThis.__NICHE_BIOTIC = parseInt(process.env.NICHE_BIOTIC, 10);
 if (process.env.OPCODE_NOVELTY !== undefined) globalThis.__OPCODE_NOVELTY = parseInt(process.env.OPCODE_NOVELTY, 10);
@@ -226,6 +232,9 @@ const driver = `
       vmLen, vmDistinctOps:opSet.size, liveAtoms, totAtoms, boundOps,
       DIMS:(typeof DIMS!=='undefined')?DIMS:-1, fitSensors,
       generation:(G.generation|0), extinctions:(G.extinctions|0),
+      // dimensionality ratchet (swing #16): live DIMS vs the (formerly inert) evolvable tendDims, and
+      // whether the trait axes actually carry variation (board grew vs degenerate).
+      tendDims:(G.tendDims|0), traitDimEnt:(typeof traitDimEntropy==='function')?traitDimEntropy():-1,
       // niche economy (swing #11): channels of the resource spectrum currently held by life
       nicheOcc:(typeof nicheOccupancy==='function')?nicheOccupancy():-1,
       // turnover

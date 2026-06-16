@@ -17112,6 +17112,36 @@ function nicheOccupancy(thresh){
   let occ=0,tot=0; for(let b=0;b<NICHE_BINS;b++){ tot+=seen[b]; }
   for(let b=0;b<NICHE_BINS;b++){ if(tot>0&&seen[b]/tot>=T) occ++; } return occ; }
 
+// ════════════════════════════════════════════════════════════════════════════
+// DIMENSIONALITY RATCHET — swing #16: grow the BOARD, not just fill it.
+// Retention (#11–#15) fills a FIXED board: diversity lives in 4-bin cells on DIMS axes, so even
+// perfect retention saturates 4^DIMS cells and stops. Open-endedness needs the number of AXES to
+// grow — a NEW kind of difference, not another value of an old one. The substrate already has the
+// lever (genome.tendDims, evolvable 2..16) but it is INERT: DIMS is derived from it only at boot
+// (sanitizeGenome), so the live mutation at ~L10785 never takes effect, and there is no stride
+// remap — a naive DIMS change would reinterpret every particle's flat trait vector at shifted
+// offsets (scramble) and the new axis would be born at zero (no cross-particle variation). setDims
+// fixes both: it re-lays-out `tend` from the old stride to the new (via a snapshot, so no overlap
+// hazard), and SPREAD-INITIALISES the new axis so it carries real differentiation immediately
+// instead of waiting on slow mutation against the homogenisers. `tend` is the ONLY array strided by
+// the live DIMS, so this is genuinely surgical.
+const DIMS_GROW_SPREAD=0.5;          // default half-range of values seeded onto a newly opened axis (override: __DIMS_SPREAD)
+function setDims(newD){
+  newD=Math.max(2,Math.min(DIMS_MAX,newD|0)); const oldD=DIMS; if(newD===oldD) return;
+  const sp=(typeof globalThis!=='undefined'&&globalThis.__DIMS_SPREAD!==undefined)?+globalThis.__DIMS_SPREAD:DIMS_GROW_SPREAD;
+  const hi=N>0?N:0; const snap=tend.slice(0,hi*oldD); // snapshot old layout (alive slots are packed 0..N-1)
+  for(let i=0;i<hi;i++){ for(let d=0;d<newD;d++){
+    tend[i*newD+d] = d<oldD ? snap[i*oldD+d] : (Math.random()*2-1)*sp; } }
+  DIMS=newD; genome.tendDims=newD;
+}
+// Per-axis 4-bin Shannon entropy summed over all live DIMS — shows whether NEW axes carry real
+// variation (the board actually grew) rather than sitting degenerate.
+function traitDimEntropy(){ let H=0; const B=4;
+  for(let d=0;d<DIMS;d++){ const cnt=new Int32Array(B); let tot=0;
+    for(let i=0;i<N;i++){ if(!palive[i])continue; let q=((tend[i*DIMS+d]+1.2)/2.4*B)|0; q=q<0?0:q>=B?B-1:q; cnt[q]++; tot++; }
+    if(tot>0){ for(let b=0;b<B;b++){ if(cnt[b]>0){ const p=cnt[b]/tot; H-=p*Math.log2(p); } } } }
+  return +H.toFixed(3); } // bits, summed across axes (max 2*DIMS)
+
 function loop(){
   lastLoopTime=performance.now();
   try{
@@ -17126,6 +17156,10 @@ function loop(){
     for(let _i=0;_i<N;_i++){ if(!palive[_i])continue; const _bc=tHist[tendBin(_i)];
       amp[_i]+=NFD_STRENGTH*Math.max(-1,Math.min(1, 1-_bc/(_mean+0.001))); } } // rare kind gains, common kind pays → the world keeps generating novelty instead of freezing
   applyNicheEconomy(); // OEE swing #11: multi-niche resource spectrum + cross-feeding + biotic predation + opcode-novelty (knob-gated; mean-centred/conserved)
+  // Swing #16: dimensionality ratchet. __DIMS_GROW=interval forces a new axis every N ticks (tests the
+  // lever in isolation, decoupled from the still-unsolved saturation trigger); caps at __DIMS_CAP||10.
+  if(typeof globalThis!=='undefined'&&(globalThis.__DIMS_GROW|0)>0){ const _gi=globalThis.__DIMS_GROW|0, _cap=Math.min(DIMS_MAX,(globalThis.__DIMS_CAP|0)||10);
+    if(tick>600&&tick%_gi===0&&DIMS<_cap) setDims(DIMS+1); }
   flushNetworkEvents();
   smx+=(mx-smx)*.05;smy+=(my-smy)*.05;
   if(pulling){pStr=Math.min(pStr+.02,1);pDur++}else pStr*=.92;
