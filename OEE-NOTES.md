@@ -566,3 +566,57 @@ sub-population's centroid (e.g. localTend strength vs divergent pull), with `rad
 the strong claim is the *null* (no lever lifts it), not a ranking among them. What would flip it: a config
 where `radiationCells` climbs monotonically over a longer run while `cellsPerViableLin` stays flat — that
 would be real radiation, and none of these four produced it. Both knobs ship dormant (default off).
+
+## Swing #21 — spatially-local homogeniser (allopatry): REFUTED, and it relocates the wall to spatial structure
+
+#20 refuted the *strength* axis of centroid mobility (pioneer income = divergent pull turned up → capture +
+smear, not radiation). The one version it had NOT ruled out: localise the trait sink in SPACE. The #15→#17
+sink is per-lineage but spatially GLOBAL (`linCentroid` = mean over ALL the lineage's members regardless of
+position), so a physically separated sub-cohort is still pulled across all space to the parent mean — one
+centroid, hence the smear. **`SPATIAL_TEND=1`** pulls each particle toward the mean tend of NEARBY
+same-lineage neighbours only (existing spatial grid); a loner pioneer gets no pull (uncaged), a clustered
+cohort still coheres locally — the jailer/foundation split a strength knob structurally can't do. Control
+**`ALLO_SHUF=1`**: identical machinery, neighbours drawn NON-spatially (random lineage-mates), count-matched
+→ strength-matched; isolates allopatry from a mere strength cut. New direct signal **`bifurcLin`**: a lineage
+2-means-split in POSITION space into two sub-clusters both ≥minsize whose TRAIT centroids are ≥divT apart —
+exactly the allopatric precursor #17's mint needs, measured directly rather than via downstream cell count.
+
+**Experiment (seeds 7/11/23, 10k ticks, means). `radiationCells` = unchanged smear-proof gate; `bifurc` = mechanism:**
+| config | **radCells** | **bifurc** | cellsPerLin | linViable | persist |
+|---|---|---|---|---|---|
+| 00 base                | 4.3 | 0.33 | 3.73 | 7.7 | 1.7 |
+| 21 spatial (SPATIAL_TEND)   | **3.7** | **0.0** | 2.03 | 9.0 | 0.7 |
+| 21 shuf (control)      | 4.7 | 1.0  | 2.30 | 9.0 | 1.3 |
+
+**Verdict — REFUTED, and it fires the pre-registered escape clause: the wall is NOT the homogeniser.**
+1. **`radiationCells` FLAT (~3.7–4.7); spatial ≤ baseline.** No radiation, same as #20. The gate did not move.
+2. **Spatial-local produced ZERO bifurcations on all three seeds** — *fewer* than baseline (0.33) or the
+   non-spatial control (1.0). The mechanism the swing exists to manufacture did not fire even once.
+3. **The control discriminates the WRONG way for the hypothesis.** Allopatry predicts spatial ≫ shuf; observed
+   is spatial ≤ shuf. The non-spatial draw produced as many/more transient splits, so spatial-locality
+   contributes no allopatric signal — it is not even acting as a beneficial strength cut (radiation flat).
+4. **The few splits that occur (0–2) appear in ALL configs incl. baseline,** with large spatial gaps
+   (`bifSep` 70–127) but NO persistence (`bifTraj` oscillates 0–2, never climbs). Transient positional flukes,
+   not building structure.
+5. Side effect: spatial-local pull made lineages MORE compact (`cellsPerLin` 3.73→2.03) — local cohesion
+   preserved as designed — but compactness ≠ bifurcation. Tighter single blobs, not two centroids.
+
+**Why it can't work here, and where the constraint actually is.** The homogeniser pulls TRAITS, not
+positions; allopatry needs persistent spatial SEPARATION, and the substrate has none. Particles re-mix
+positionally every tick (movement, gravity, clustering, root forces), so "nearby same-lineage neighbours" is a
+constantly-reshuffling sample of the whole lineage — on average ≈ the lineage-global centroid, just noisier.
+A separated sub-cohort never STAYS separated long enough to grow a divergent local centroid. This is exactly
+the escape clause pre-registered at the end of #20: radiationCells flat under spatial-local pull + bifurcation
+tracking ⇒ the binding constraint is **the absence of persistent spatial territoriality**, not trait
+structure. **The next thread is SPATIAL STRUCTURE itself** — dispersal limitation / viscosity / geographic
+barriers / spatial niches that keep sub-populations apart — NOT another trait-axis lever. Until a cohort can
+persist in a *place*, no trait mechanism (homogeniser-local or otherwise) can manufacture allopatric
+divergence. Trait structure has now been worked from strength (#20-C), survival (#20-S), and spatial-locality
+(#21) and none lifts the gate; the unexamined primitive is territoriality.
+
+**Honest bound.** 3 seeds, 10k ticks; bifurcation counts are tiny (0–2) so the claim rests on the null + the
+spatial≤shuf direction, not magnitudes. What would flip it: bifurcLin climbing monotonically and persisting
+under spatial-local pull — none did. One real caveat: the spatial pull is weak (0.00002/tick, matched to the
+others) and acts only on traits; a STRONG trait-lock combined with even mild dispersal limitation might yet
+produce allopatry — but that combination *is* the spatial-structure thread, which is the point. Knob ships
+dormant (default off).
