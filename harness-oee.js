@@ -150,8 +150,8 @@ if (process.env.NICHE_DRIFT !== undefined) globalThis.__NICHE_DRIFT = parseInt(p
 //   SPEC_DIVT=<x>     trait-centroid divergence threshold to mint (default 0.20).
 // Divergent selection is supplied by REAL partitioned niche cells (run with NICHE_NDIM=1 NICHE_REAL=1);
 // the "same-landscape" control sets NICHE_REAL=0 (flat income) so isolation has no per-cell optimum to bite on.
-for (const k of ['SPECIATE','SPEC_GATE','SPEC_MINT','SPEC_MINSIZE']) if (process.env[k] !== undefined) globalThis['__' + k] = parseInt(process.env[k], 10);
-for (const k of ['SPEC_GRACE','SPEC_DIVT']) if (process.env[k] !== undefined) globalThis['__' + k] = parseFloat(process.env[k]);
+for (const k of ['SPECIATE','SPEC_GATE','SPEC_MINT','SPEC_MINSIZE','SPEC_ASSORT']) if (process.env[k] !== undefined) globalThis['__' + k] = parseInt(process.env[k], 10);
+for (const k of ['SPEC_GRACE','SPEC_DIVT','SPEC_ASSORT_T','SPEC_ASSORT_K']) if (process.env[k] !== undefined) globalThis['__' + k] = parseFloat(process.env[k]);
 if (process.env.SPEC_DEBUG !== undefined) globalThis.__SPEC_DEBUG = parseInt(process.env.SPEC_DEBUG, 10);
 
 const html = fs.readFileSync(process.env.INDEX || (__dirname + '/index.html'), 'utf8');
@@ -173,6 +173,8 @@ const driver = `
   // divergence-speciation is 0 by construction; this measures whether immigration births even appear
   // and persist against the death rate. cumLin counts distinct lineages EVER seen alive.
   const seenLin=new Set(); let prevLin=new Set();
+  let mateStarvedCum=0;          // swing #18: cumulative extinctions of lineages whose lifetime spawns were mate-REFUSED >50% (the Allee trap)
+  const prevLinSize=new Map();   // last sample's per-lineage living size (to know a dead lineage WAS viable when it vanished)
 
   // Coarsen a tendency vector to a discrete cell. Reuse the sim's own tendBin
   // if present (keeps our bins identical to the NFD bins); else replicate.
@@ -231,6 +233,7 @@ const driver = `
     //       parent's, not relaxed back, (c) holds a niche-cell distinct from its parent's main body.
     // linViable (alive lineages >=minsize) is the standing-diversity headline to compare against stock ~24.
     let specMinted=-1, specAlive=0, specPersist=0, linViable=0;
+    let specMaxDepth=0, specNested=0, linVarWithin=-1, specBirthRej=-1, specBirthAcc=-1, specMateStarved=-1;
     if(typeof __SPEC!=='undefined' && __SPEC.on && typeof pLin!=='undefined'){
       const PERSIST_WIN=3000, MIN=__SPEC.minsize, DT=__SPEC.divT;
       const size=new Map(), cen=new Map(), cellCnt=new Map();
@@ -256,6 +259,30 @@ const driver = `
         if(div<DT)continue;                                   // (b) still diverged from its (living) parent
         if(modal.get(l)===modal.get(p))continue;              // (c) distinct niche-cell from parent's main body
         specPersist++;
+      }
+      // ── swing #18 metrics: the success criterion is a DEEPENING genealogy, not a standing tip count ──
+      // depthOf(l) = how many MINT events separate l from a non-minted (founder/immigrant) root. depth 1 =
+      // first-generation daughter; depth>=2 = NESTED cladogenesis (a daughter that itself speciated) — the
+      // tree branching again. Open-endedness = this max depth keeps GROWING over time, not a one-off branch.
+      const depthOf=(l)=>{ let d=0,cur=l,g=0; while(linBirthTick.has(cur)&&g++<4096){ d++; const pp=linParent.get(cur); if(pp===undefined)break; cur=pp; } return d; };
+      for(const [l,sz] of size){ if(sz<1)continue; const d=depthOf(l);
+        if(d>specMaxDepth)specMaxDepth=d;
+        if(d>=2&&sz>=MIN)specNested++; }                       // alive, viable, nested-origin lineages right now
+      // ── Guardrail 2: within-lineage genetic variance (inbreeding-to-fixation watch) ──
+      const lvar=new Map();
+      for(let i=0;i<N;i++){ if(!palive[i])continue; const l=pLin[i]; const c=cen.get(l); if(!c)continue;
+        let s=0; for(let d=0;d<DIMS;d++){ const dd=tend[i*DIMS+d]-c[d]; s+=dd*dd; } lvar.set(l,(lvar.get(l)||0)+s); }
+      { let vs=0,vn=0; for(const [l,sz] of size){ if(sz>=MIN){ vs+=(lvar.get(l)||0)/sz; vn++; } } linVarWithin=vn?+(vs/vn).toFixed(5):0; }
+      // ── Guardrail 1: extinction-by-mate-scarcity. A lineage that was viable last sample, is gone now, and
+      // whose lifetime spawns were >50% mate-REFUSED, died of the Allee trap (couldn't find a compatible mate). ──
+      if(__SPEC.assort && typeof linAcc!=='undefined'){
+        for(const [l,psz] of prevLinSize){ if(psz>=MIN && !size.has(l)){
+          const rej=linRej.get(l)||0, acc=linAcc.get(l)||0;
+          if(rej+acc>0 && rej/(rej+acc)>0.5) mateStarvedCum++; } }
+        prevLinSize.clear(); for(const [l,sz] of size) prevLinSize.set(l,sz);
+        specBirthRej=(typeof specBirthReject!=='undefined')?specBirthReject:0;
+        specBirthAcc=(typeof specBirthAccept!=='undefined')?specBirthAccept:0;
+        specMateStarved=mateStarvedCum;
       }
       // opt-in: at the final sample, dump per-minted-lineage diagnostics so we can see which gate binds.
       if(globalThis.__SPEC_DEBUG && tick>=${TICKS}-1){
@@ -318,6 +345,13 @@ const driver = `
       // success metric — survived past grace, still diverged, still cell-distinct), and viable standing
       // lineages (>=minsize) to compare against the stock ~24 island-equilibrium.
       specMinted, specAlive, specPersist, linViable,
+      // swing #18 — assortative mating. Headline OEE signature = genealogy DEPTH growing over time
+      // (specMaxDepth) and NESTED cladogenesis (specNested), not a standing tip count. Guardrails:
+      // linVarWithin (inbreeding-to-fixation watch), specMateStarved (Allee-trap extinctions), and the
+      // realized/refused spawn split (specBirthAcc/Rej). specSimMean = mean trait-similarity at spawn.
+      specMaxDepth, specNested, linVarWithin, specBirthAcc, specBirthRej, specMateStarved,
+      specSimMean:(typeof specSimCnt!=='undefined'&&specSimCnt>0)?+(specSimSum/specSimCnt).toFixed(3):-1,
+      specSimHist:(typeof specSimHist!=='undefined')?Array.from(specSimHist):null,
       // seed-vs-harvest: the newest axis vs axis 0 (positive control). R = lineage-structured fraction
       // of variance; watch newAxis.ent/Vtot decay-or-hold and R after a frozen grow.
       newAxis:(typeof axisStats==='function')?axisStats((typeof DIMS!=='undefined'?DIMS-1:-1)):null,
