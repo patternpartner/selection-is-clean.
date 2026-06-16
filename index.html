@@ -17096,6 +17096,19 @@ let specMintCount=0;          // cumulative cladogenesis events (exposed for the
 //    a viable, trait-DIVERGED sub-group co-located in its parent's modal cell (which cluster-mates are) is
 //    refused a mint by condition (c) and re-homogenised, never tagged. specMintBlockCell counts exactly that. ──
 let specMintCand=0, specMintBlockCell=0, specMintBlockDiv=0;
+// per-axis divergence accounting: WHERE (which trait axis) does refused-vs-minted divergence live? Niche-cell
+// gate uses axes 0..NICHE_ND_DIMS-1 (=0..3, the SELECTED/economy axes); #16 proved axes ≥4 are NEUTRAL. If the
+// refused (blockCell) divergence is mostly on axes ≥4, the gate is correctly refusing functionless variation
+// (minting it = ID-tag birth-inflation); if it's on axes 0..3 sub-bin, the gate is too coarse and the
+// cluster-distinctness reframe is warranted. specMintAxisSq is the minted control (where REAL divergence lives).
+const specBlockAxisSq=new Float64Array(DIMS_MAX), specMintAxisSq=new Float64Array(DIMS_MAX), _axScr=new Float64Array(DIMS_MAX);
+// PERSISTENCE of refused cohorts — the decisive horn. A refused (blockCell) cohort is keyed (lineage:cell);
+// each cadence it stays viable+diverged its streak grows. If refused cohorts hold divergence for many cadences
+// (~30 ticks each), they are STABLE incipient species the gate wrongly refuses → cluster reframe is right. If
+// streaks are 1–2 cadences, the divergence is transient drift (ecologically equivalent, washes out) → the gate
+// is doing its job and minting them would be ID-tag birth-inflation. blockStreakMean/Max = current live streaks.
+const _blockStreak=new Map();   // "L:cell" → consecutive cadences continuously blockCell
+let _blockStreakDoneSum=0, _blockStreakDoneN=0; const _blockStreakHist=new Int32Array(12); // completed streaks
 function specComputeAgg(){ // per-lineage centroid, size, and modal niche-cell — O(N), called each cadence
   linCentroid.clear(); linSize.clear();
   const cellCnt=new Map(); // "lin:cell" → count, to find each lineage's modal cell
@@ -17114,23 +17127,28 @@ function specMint(){ // cladogenesis: split off viable, cell-distinct, trait-div
   const groups=new Map(); // "lin:cell" → {l,cell,idx[]}
   for(let i=0;i<N;i++){ if(!palive[i])continue; const l=pLin[i], cell=nicheCellOf(i), key=l+':'+cell;
     let g=groups.get(key); if(!g){ g={l,cell,idx:[]}; groups.set(key,g); } g.idx.push(i); }
+  const _blkSeen=new Set(); // blockCell keys this cadence, for streak tracking
   for(const g of groups.values()){
     if(g.idx.length<__SPEC.minsize)continue;            // (a) viable founder size, not a doomed singleton
     specMintCand++;
     const lc=linCentroid.get(g.l); if(!lc)continue;
     let dist=0; const gc=new Float32Array(DIMS);         // compute divergence for ALL viable groups, to classify refusals
     for(const i of g.idx)for(let d=0;d<DIMS;d++)gc[d]+=tend[i*DIMS+d];
-    for(let d=0;d<DIMS;d++){ gc[d]/=g.idx.length; const dd=gc[d]-lc[d]; dist+=dd*dd; }
+    for(let d=0;d<DIMS;d++){ gc[d]/=g.idx.length; const dd=gc[d]-lc[d]; _axScr[d]=dd*dd; dist+=_axScr[d]; } // _axScr = per-axis squared divergence
     const diverged=Math.sqrt(dist)>=__SPEC.divT;         // (b) trait centroid has genuinely diverged from parent
     const cellDistinct=(g.cell!==linModalCell.get(g.l)); // (c) a niche-cell DISTINCT from the lineage's main body
-    if(diverged&&!cellDistinct)specMintBlockCell++;      // ← THE SUSPECT: trait-diverged but cell-collided → erased, not minted
+    if(diverged&&!cellDistinct){ specMintBlockCell++; for(let d=0;d<DIMS;d++)specBlockAxisSq[d]+=_axScr[d]; _blkSeen.add(g.l+':'+g.cell); } // ← SUSPECT: trait-diverged but cell-collided; record WHICH axes + streak
     else if(!diverged&&cellDistinct)specMintBlockDiv++;  // cell-distinct but not yet diverged enough (legitimate hold)
     if(!cellDistinct)continue;                            // (c) gate
     if(!diverged)continue;                                // (b) gate
     const nl=_linNext++; linParent.set(nl,g.l); linBirthTick.set(nl,tick); // MINT
     for(const i of g.idx)pLin[i]=nl;
+    for(let d=0;d<DIMS;d++)specMintAxisSq[d]+=_axScr[d]; // control: where REAL (minted) divergence lives
     specMintCount++;
   }
+  // streak bookkeeping: keys that dropped out of blockCell this cadence finalize their streak; survivors grow
+  for(const [k,s] of _blockStreak){ if(!_blkSeen.has(k)){ _blockStreakDoneSum+=s; _blockStreakDoneN++; _blockStreakHist[s<11?s:11]++; _blockStreak.delete(k); } }
+  for(const k of _blkSeen) _blockStreak.set(k,(_blockStreak.get(k)||0)+1);
 }
 function specInGrace(l){ // founder protection: a freshly-minted lineage gets death-relief while young OR small
   if(!__SPEC.on)return false; const bt=linBirthTick.get(l); if(bt===undefined)return false;

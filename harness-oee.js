@@ -478,6 +478,18 @@ const driver = `
       specMintCand:(typeof specMintCand!=='undefined')?specMintCand:-1,
       specMintBlockCell:(typeof specMintBlockCell!=='undefined')?specMintBlockCell:-1,
       specMintBlockDiv:(typeof specMintBlockDiv!=='undefined')?specMintBlockDiv:-1,
+      // per-axis squared divergence (cumulative): refused (blockCell) vs minted. Selected axes = 0..3
+      // (niche economy), neutral = 4+ (#16). If blockAxisSq is concentrated on 4+, the gate is correctly
+      // refusing functionless variation; if on 0..3, it is too coarse and the cluster reframe is warranted.
+      specBlockAxisSq:(typeof specBlockAxisSq!=='undefined')?Array.from(specBlockAxisSq.slice(0,(typeof DIMS!=='undefined'?DIMS:8))).map(x=>+x.toFixed(3)):null,
+      specMintAxisSq:(typeof specMintAxisSq!=='undefined')?Array.from(specMintAxisSq.slice(0,(typeof DIMS!=='undefined'?DIMS:8))).map(x=>+x.toFixed(3)):null,
+      // refused-cohort PERSISTENCE: how many cadences (~30 ticks) a refused cohort stays continuously diverged.
+      // Long streaks → stable incipient species the gate wrongly refuses; 1–2 → transient drift (gate correct).
+      blockStreakLiveMean:(typeof _blockStreak!=='undefined'&&_blockStreak.size>0)?+([..._blockStreak.values()].reduce((a,b)=>a+b,0)/_blockStreak.size).toFixed(2):0,
+      blockStreakLiveMax:(typeof _blockStreak!=='undefined'&&_blockStreak.size>0)?Math.max(..._blockStreak.values()):0,
+      blockStreakLiveN:(typeof _blockStreak!=='undefined')?_blockStreak.size:-1,
+      blockStreakDoneMean:(typeof _blockStreakDoneN!=='undefined'&&_blockStreakDoneN>0)?+(_blockStreakDoneSum/_blockStreakDoneN).toFixed(2):0,
+      blockStreakHist:(typeof _blockStreakHist!=='undefined')?Array.from(_blockStreakHist):null,
       // swing #20 colonization 2×2 guard: radiationCells (distinct home cells of viable lineages) is the
       // smear-proof success metric; occCellsRaw is the confoundable raw count. A rising occCellsRaw with a
       // flat radiationCells = one lineage smearing, NOT radiation. cellsPerViableLin = smear magnitude.
