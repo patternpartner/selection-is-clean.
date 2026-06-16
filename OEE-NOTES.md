@@ -708,3 +708,45 @@ this: the main body is its own large cluster, so a fringe cohort forming a *dist
 separated, not the bulk. Still, the next build must verify the relaxed gate mints genuine sub-cohorts, not the
 main body, and that the mints PERSIST (specPersist) and lift radiationCells — if they don't persist, gene flow
 (the user's Wall 1) re-homogenises them and IS the next wall after all. 3 seeds, 8k ticks.
+
+## Measurement (#22 horn-decider) — refused divergence is SELECTED-axis and PARTLY PERSISTS: mixed, leans build-with-hard-gating
+
+Before committing the cluster-mint reframe, the question it skipped: is the 190 refused divergence on SELECTED
+axes (0–3, the niche economy) or NEUTRAL axes (4+, proven neutral by #16), and does it PERSIST? Neutral +
+transient ⇒ the gate is correctly refusing functionless variation (minting = ID-tag birth-inflation), don't
+touch it. Selected + persistent ⇒ the gate is too coarse, build the reframe. Instrumented per-axis squared
+divergence (refused vs minted) + a streak tracker (consecutive cadences a refused cohort stays diverged).
+
+**Axis — the "neutral-axis" prediction is REFUTED.** refused selected(0–3)=88% / neutral=12%; minted 87% / 13%
+(uniform would be 80/20, so neutral is UNDER-represented in both). Refused and minted divergence are
+*indistinguishable by axis* and both sit on the SELECTED economy axes. The refused cohorts are not diverging on
+functionless dims — they diverge on the same axes as successful mints, but stay *sub-bin* (don't cross a
+4-bin niche-cell boundary). Caveat: DIMS=5 here, only ONE neutral axis, so the neutral-side test is weak; the
+sub-bin reading, not the axis count, carries the result.
+
+**Persistence — mixed, with a real persistent subset.** 32 completed streaks across 3 seeds: 47% transient
+(1–2 cadences ≈30–60t, drift the gate is RIGHT to refuse), but **38% persist ≥4 cadences, mean 6.1 cadences
+(~180t), tail of 7 cohorts ≥11 cadences (≥330t).** A handful of persistently-diverged cohorts account for much
+of the 190 refusals — the gate repeatedly refuses the SAME incipient species. Per-seed mean streak 4.0/6.6/7.7.
+
+**Verdict — neither horn clean; the refused pool is half transient drift + ~38% genuine persistent
+selected-axis-sub-bin cohorts, and the niche-cell gate cannot tell them apart.** By the pre-registered rule
+(selected + persist → build) this clears the bar. But the rule omitted a third constraint the axis result
+forces: same niche-cell = **ecological EQUIVALENCE** (identical resource draw). Even a cohort that diverges and
+persists ~330t on selected-but-sub-bin axes has NO niche differentiation, so it lacks a stable-coexistence
+mechanism — competitive exclusion / drift should eventually merge it. Persistence on the *cadence* scale (≤330t)
+is not proof of persistence on the *run* scale (8000t). So minting the 38% might yield lineages that live a few
+hundred ticks then collapse — radiation that doesn't stick. Only minting-and-watching settles this; it is a
+dynamical outcome, not measurable pre-build.
+
+**Decision: the deciding experiment IS the build.** Build the cluster-distinctness mint gate (knob) + a
+relax-all-cell control (knob), default off, and gate HARD on radiationCells + lineage PERSISTENCE past grace —
+NOT gross mint count, which would lie by inflating with the transient 47%. Two falsifiable outcomes: (i) new
+lineages persist and radiationCells climbs ⇒ the gate was too coarse, the reframe is the lever; (ii) new
+lineages collapse / radiationCells stays flat ⇒ ecological equivalence (no niche differentiation) re-merges
+them, the niche-cell gate was doing real ecological work, and the true wall is that selected-axis divergence
+isn't PRODUCING niche differentiation (the #16 wall: the few selected axes ARE the niche axes, so sub-bin
+divergence on them is differentiation-free) — which converges with the other instance's neutral-axis thread.
+The cluster gate may also itself act as the persistence filter the niche-cell gate lacks (a transient drift
+blip won't form a persistent distinct cluster; a stable deme will) — the matrix tests that too. 3 seeds, 8k;
+32 completed streaks is small n, so the persistence split is indicative, not tight.
