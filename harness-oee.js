@@ -160,6 +160,10 @@ if (process.env.SPEC_DECAY !== undefined) globalThis.__SPEC_DECAY = parseInt(pro
 //   COLO_PIONEER_K / COLO_ALLEE_K / COLO_PIONEER_OCC  tune the C lever (defaults 2.0 / 1.0 / NICHE_CELL_FLOOR).
 for (const k of ['COLO_SURV','COLO_PIONEER','COLO_PIONEER_OCC']) if (process.env[k] !== undefined) globalThis['__' + k] = parseInt(process.env[k], 10);
 for (const k of ['COLO_PIONEER_K','COLO_ALLEE_K']) if (process.env[k] !== undefined) globalThis['__' + k] = parseFloat(process.env[k]);
+// swing #21: spatially-local homogeniser (allopatry). SPATIAL_TEND=1 pulls each particle toward nearby
+// same-lineage neighbours' mean tend; ALLO_SHUF=1 is the non-spatial strength-matched control; ALLO_K caps
+// neighbours folded in. Needs SPECIATE=1. Headline = bifurcLin (lineage spatially splits into 2 centroids).
+for (const k of ['SPATIAL_TEND','ALLO_SHUF','ALLO_K']) if (process.env[k] !== undefined) globalThis['__' + k] = parseInt(process.env[k], 10);
 
 const html = fs.readFileSync(process.env.INDEX || (__dirname + '/index.html'), 'utf8');
 const code = html.match(/<script>([\s\S]*)<\/script>/)[1];
@@ -252,6 +256,9 @@ const driver = `
     let decayProbe=null;
     // swing #20 colonization guard (smear-proof): see the block below for definitions.
     let occCellsRaw=-1, radiationCells=-1, vCellsOcc=-1, cellsPerViableLin=-1, linPerOccCell=-1;
+    // swing #21 bifurcation probe: does a single lineage occupy TWO spatially-separated clusters with diverged
+    // trait centroids (the allopatric precursor #17's mint needs)? Measured directly, not via downstream cells.
+    let bifurcLin=-1, bifurcDist=-1, bifurcSep=-1;
     if(typeof __SPEC!=='undefined' && __SPEC.on && typeof pLin!=='undefined'){
       const PERSIST_WIN=3000, MIN=__SPEC.minsize, DT=__SPEC.divT;
       const size=new Map(), cen=new Map(), cellCnt=new Map();
@@ -284,6 +291,31 @@ const driver = `
         vCellsOcc=cellLins.size;           // distinct cells holding any viable-lineage member (smear-inflatable; shows the gap)
         let cs=0,cn=0; for(const [,s] of linCells){ cs+=s.size; cn++; } cellsPerViableLin=cn?+(cs/cn).toFixed(2):0;
         let ls=0,ln=0; for(const [,s] of cellLins){ ls+=s.size; ln++; } linPerOccCell=ln?+(ls/ln).toFixed(2):0; }
+      // ── swing #21 BIFURCATION probe — the direct signal of the allopatry mechanism. For each lineage big
+      //    enough to split (>=2*MIN), 2-means its members in POSITION space; if both spatial clusters are
+      //    viable (>=MIN) AND their TRAIT centroids are >=DT apart, the lineage has bifurcated into two
+      //    centroids — exactly the precursor #17's mint needs. Counts these, plus mean trait dist + spatial
+      //    separation. This is what #21 tries to manufacture; measure it, not just its downstream cell count. ──
+      if(typeof px!=='undefined' && typeof py!=='undefined'){
+        const mem=new Map(); for(let i=0;i<N;i++){ if(!palive[i])continue; const l=pLin[i]; let a=mem.get(l); if(!a){a=[];mem.set(l,a);} a.push(i); }
+        let bc=0,bds=0,bss=0;
+        for(const [l,idx] of mem){ if(idx.length<2*MIN)continue;
+          let cax=px[idx[0]],cay=py[idx[0]],cbx=px[idx[0]],cby=py[idx[0]];   // seed the two centroids at the x-extremes
+          for(const i of idx){ if(px[i]<cax){cax=px[i];cay=py[i];} if(px[i]>cbx){cbx=px[i];cby=py[i];} }
+          const asg=new Int8Array(idx.length);
+          for(let it=0;it<6;it++){ let ax=0,ay=0,an=0,bx=0,by=0,bn=0;
+            for(let k=0;k<idx.length;k++){ const i=idx[k];
+              const da=(px[i]-cax)**2+(py[i]-cay)**2, db=(px[i]-cbx)**2+(py[i]-cby)**2, g=da<=db?0:1; asg[k]=g;
+              if(g===0){ax+=px[i];ay+=py[i];an++;} else {bx+=px[i];by+=py[i];bn++;} }
+            if(an>0){cax=ax/an;cay=ay/an;} if(bn>0){cbx=bx/bn;cby=by/bn;} }
+          let an=0,bn=0; const ta=new Float64Array(DIMS), tb=new Float64Array(DIMS);
+          for(let k=0;k<idx.length;k++){ const i=idx[k];
+            if(asg[k]===0){an++;for(let d=0;d<DIMS;d++)ta[d]+=tend[i*DIMS+d];} else {bn++;for(let d=0;d<DIMS;d++)tb[d]+=tend[i*DIMS+d];} }
+          if(an<MIN||bn<MIN)continue;                                       // both spatial sub-groups must be viable
+          let td=0; for(let d=0;d<DIMS;d++){ const dd=ta[d]/an-tb[d]/bn; td+=dd*dd; } td=Math.sqrt(td);
+          if(td>=DT){ bc++; bds+=td; bss+=Math.sqrt((cax-cbx)**2+(cay-cby)**2); } }
+        bifurcLin=bc; bifurcDist=bc?+(bds/bc).toFixed(3):0; bifurcSep=bc?+(bss/bc).toFixed(1):0;
+      }
       specMinted=(typeof specMintCount!=='undefined')?specMintCount:-1;
       for(const [l,bt] of linBirthTick){
         const sz=size.get(l)||0; if(sz<1)continue; specAlive++;
@@ -418,6 +450,9 @@ const driver = `
       // smear-proof success metric; occCellsRaw is the confoundable raw count. A rising occCellsRaw with a
       // flat radiationCells = one lineage smearing, NOT radiation. cellsPerViableLin = smear magnitude.
       occCellsRaw, radiationCells, vCellsOcc, cellsPerViableLin, linPerOccCell,
+      // swing #21 allopatry: bifurcLin = lineages spatially split into two trait-diverged centroids (the
+      // direct mechanism signal); bifurcDist = mean trait gap, bifurcSep = mean spatial gap of those splits.
+      bifurcLin, bifurcDist, bifurcSep,
       // swing #18 — assortative mating. Headline OEE signature = genealogy DEPTH growing over time
       // (specMaxDepth) and NESTED cladogenesis (specNested), not a standing tip count. Guardrails:
       // linVarWithin (inbreeding-to-fixation watch), specMateStarved (Allee-trap extinctions), and the

@@ -17064,6 +17064,27 @@ const __COLO=(function(){ const G=(typeof globalThis!=='undefined')?globalThis:{
     alleeK:(G.__COLO_ALLEE_K!==undefined?+G.__COLO_ALLEE_K:1.0),        // per-capita income uplift for sub-minsize lineage members
     pioneerOcc:(G.__COLO_PIONEER_OCC!==undefined?(G.__COLO_PIONEER_OCC|0):NICHE_CELL_FLOOR) }; })(); // occ at/below which a cell still pays pioneer income
 
+// ═══ SWING #21: SPATIALLY-LOCAL homogeniser — allopatry, not a strength knob ═══════════════════════════
+// #20 refuted the STRENGTH axis: turning the divergent pull UP (pioneer income) gave capture/collapse, not
+// radiation, and lineages spread into empty cells as one SMEAR (one centroid, many cells). The #15→#17 sink
+// is per-lineage but spatially GLOBAL — globalTend/linCentroid is the mean over ALL the lineage's members
+// regardless of where they are — so a sub-cohort physically separated on the far side of the world is still
+// pulled across all space back to the parent mean. The pull is jailer (re-absorbs the pioneer) AND
+// foundation (lets a cohort cohere into a home); a strength knob can't separate them because it's one force.
+// Localising it in SPACE can: pull each particle toward the mean tend of NEARBY same-lineage neighbours only.
+// A spatially-separated sub-group then grows its OWN local centroid (allopatry); the lineage develops two
+// centroids; once they diverge in trait + sit in distinct cells, #17's mint splits them. Long-range jailer
+// cut, local foundation kept. CONTROL (__ALLO_SHUF=1): identical machinery but neighbours drawn NON-spatially
+// (random lineage-mates), matched count → matched effective strength/noise; isolates allopatry from a strength
+// cut. If only the spatial version lifts bifurcation+radiationCells, allopatry is the mechanism; if the
+// shuffle helps too, it was just a weaker pull (and will smear like #20's C). Requires __SPECIATE (lineage ids).
+const __ALLO=(function(){ const G=(typeof globalThis!=='undefined')?globalThis:{};
+  return { on:(G.__SPATIAL_TEND|0)===1,
+    shuf:(G.__ALLO_SHUF|0)===1,                                         // control: non-spatial neighbour draw
+    k:(G.__ALLO_K!==undefined?(G.__ALLO_K|0):16) }; })();              // max same-lineage neighbours folded into the local centroid
+const _alloScratch=new Float32Array(DIMS_MAX);                          // per-particle local-centroid accumulator
+const _alloMembers=new Map();                                          // pLin → [idx,...] (rebuilt each tick, only under __ALLO.shuf)
+
 const linCentroid=new Map();  // pLin → Float32Array(DIMS): trait centroid (rebuilt each cadence)
 const linSize=new Map();      // pLin → living count (rebuilt each cadence)
 const linModalCell=new Map(); // pLin → its most-occupied niche cell (rebuilt each cadence)
@@ -17344,6 +17365,23 @@ function loop(){
       cellTendCnt.fill(0); cellTendSum.fill(0);
       for(let i=0;i<N;i++){ if(!palive[i])continue; const c=pDietCell[i]; cellTendCnt[c]++; for(let d=0;d<DIMS;d++) cellTendSum[c*DIMS_MAX+d]+=tend[i*DIMS+d]; }
       for(let i=0;i<N;i++){ if(!palive[i])continue; const c=pDietCell[i], n=cellTendCnt[c]; if(n<=0)continue; for(let d=0;d<DIMS;d++){ const m=cellTendSum[c*DIMS_MAX+d]/n; tend[i*DIMS+d]+=(m-tend[i*DIMS+d])*0.00002*_gt; } }
+    } else if(__SPEC.on && __ALLO.on && _gt!==0){
+      // swing #21: spatially-LOCAL same-lineage centroid. Pull each particle toward the mean tend of nearby
+      // same-lineage neighbours only (grid is last tick's — positions barely move, fine). A loner pioneer
+      // with no same-lineage neighbours gets NO pull (cnt=0) → it is not jailed; a separated cohort forms its
+      // own local centroid → the lineage can grow two centroids and #17 can split them.
+      if(__ALLO.shuf){ _alloMembers.clear();                            // control: build per-lineage member lists for a NON-spatial draw
+        for(let i=0;i<N;i++){ if(!palive[i])continue; const l=pLin[i]; let a=_alloMembers.get(l); if(!a){a=[];_alloMembers.set(l,a);} a.push(i); } }
+      for(let i=0;i<N;i++){ if(!palive[i])continue; const l=pLin[i];
+        let cnt=0; for(let d=0;d<DIMS;d++)_alloScratch[d]=0;
+        if(__ALLO.shuf){ const lst=_alloMembers.get(l); if(lst&&lst.length){ const K=__ALLO.k<lst.length?__ALLO.k:lst.length;
+            for(let s=0;s<K;s++){ const j=lst[(Math.random()*lst.length)|0]; for(let d=0;d<DIMS;d++)_alloScratch[d]+=tend[j*DIMS+d]; cnt++; } } }
+        else { const gx=(px[i]/CELL)|0, gy=(py[i]/CELL)|0;
+          for(let dy=-1;dy<=1&&cnt<__ALLO.k;dy++)for(let dx=-1;dx<=1&&cnt<__ALLO.k;dx++){
+            const nx=gx+dx,ny=gy+dy; if(nx<0||ny<0||nx>=gW||ny>=gH)continue; let j=grid[ny*gW+nx],_lc=0;
+            while(j>=0&&j<CAP&&_lc++<CAP&&cnt<__ALLO.k){ if(palive[j]&&pLin[j]===l){ for(let d=0;d<DIMS;d++)_alloScratch[d]+=tend[j*DIMS+d]; cnt++; } j=pnext[j]; } } }
+        if(cnt>0)for(let d=0;d<DIMS;d++){ const m=_alloScratch[d]/cnt; tend[i*DIMS+d]+=(m-tend[i*DIMS+d])*0.00002*_gt; }
+      }
     } else if(__SPEC.gate){
       // swing #17: pull each particle toward ITS LINEAGE's centroid, not the global mean — the global
       // sink is the strongest cross-lineage re-merger, so isolating it lets lineages drift apart.
