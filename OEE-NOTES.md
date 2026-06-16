@@ -445,3 +445,65 @@ ceiling on a sustained radiation is therefore NOT pre-zygotic isolation — it i
 survival and per-cell carrying capacity** (the deaths>births founder bottleneck from the retention work).
 Strengthening isolation past where #17 already took it doesn't add species; it subtracts them. Honest
 negative, in the graded tradition of #11–#16. Stock behaviour and all existing knobs unchanged; #18 is opt-in.
+
+---
+
+# Map update (post-#18): ISOLATION IS A MAXED-OUT LEVER — and the (A)/(B) measurement says DEMOGRAPHICS
+
+## Banking #18 precisely: an interior optimum in isolation, proven from both sides
+Put this swing next to #17's ISO-OFF knockout and the shape is unambiguous — pre-zygotic isolation is
+**not a lever anymore, it is a tuned parameter we have now bracketed on both sides:**
+- **Too little** (#17 ISO-OFF, gates removed) → collapse. Bulk gene flow re-merges what selection separates.
+- **Too much** (#18, assortative mate choice added) → collapse. The generative tail starves; the Allee trap
+  bites the bulk (viable→1).
+- **The base system already sits near the peak**: ~99.9% of reproduction is assortative *by proximity alone*,
+  no explicit choice needed. Stop pushing isolation in either direction.
+
+The session-long instinct "gene flow is the enemy" was **half right**: the BULK re-merging is the enemy
+(#17 confirmed), but the **cross-trait tail is generative** — rare hybridization is net-constructive,
+founding and feeding lineages and driving the nested cladogenesis (suppressing it cut persistent species
+5→1, cladogenesis 12→5/6). That is real biology (hybrid speciation, adaptive introgression). **Code change
+banked:** `interferenceCreate` (compound formation = the hybridization channel) is now EXEMPT from mate
+choice; assort applies only to the homotypic `executeVM`/`executeClusterVM` paths. Gating the hybridization
+channel suppressed exactly the radiation-feeding tail, so it is left free on purpose.
+
+## The real question is downstream — measure (A) founder demographics vs (B) niche saturation
+Two mechanisms, opposite fixes: (A) incipient species die by small-population stochasticity regardless of
+whether their niche has room (fix: founder protection); (B) they die because cells are full and the incumbent
+wins by priority (fix: more niche space). Discriminator: does an incipient lineage's per-interval DECAY
+correlate with its target cell's OCCUPANCY entering that interval? (probe: `SPEC_DECAY=1`, longitudinal.)
+
+**Measurement (seeds 7/11/23, 10k ticks, assort OFF — base dynamics). 1300+ lineage-interval observations:**
+| seed | occupied cells | maxOcc | medOcc | corr(occ,Δsize) | meanOcc decay/grow | meanOther decay/grow | decayRate by occ bin |
+|---|---|---|---|---|---|---|---|
+| 7  | **12 / 256** | 123 | 4  | −0.080 | 81.6 / 65.3  | 64.2 / 51.4  | 0.33 / 0.37 |
+| 11 | **12 / 256** | 151 | 3  | −0.085 | 169 / 163    | 158 / 152    | — / 0.36 |
+| 23 | **13 / 256** | 120 | 24 | −0.076 | 89.5 / **92.8** | 61.1 / **73.7** | 0.20 / 0.22 |
+
+**Verdict — (A) founder demographics, with a decisive auxiliary fact that also PARKS the dimensionality story.**
+1. **Niche space is 95% EMPTY on every seed** (12–13 of 256 cells). There is enormous unused niche room —
+   so simple saturation (B, "nowhere to radiate into") is **false**. And empty cells are not unprofitable:
+   the N-dim economy regens every cell and hands the first arrival a colonisation bonus. The room is real
+   and it goes unused.
+2. **Decay is occupancy-INDEPENDENT.** `corr(occ,Δsize) ≈ −0.08` on all three seeds — occupancy explains
+   <1% of decay variance — and the decay-rate-by-occupancy bins are flat (0.33 vs 0.37; 0.20 vs 0.22). The
+   crowding cost is a uniform background tax (every occupied cell runs 50–170 occupants, far over FLOOR=2),
+   NOT the differential cause of who decays.
+3. **No robust priority effect.** The decay-vs-grow gaps in occupancy and heterospecific-neighbour count are
+   small and **flip sign across seeds** (seed 23 decays in *emptier*, fewer-neighbour cells). A real incumbent
+   effect would be a strong, consistent negative on every seed; this is noise around zero.
+
+By the pre-registered rule ("decay independent of occupancy, happening even with room → (A)"), this is
+**demographics**. The lever is **founder protection** — stronger/longer grace, a minimum-viable-size floor,
+Allee-aware demographic relief so incipient lineages (which #17 now produces, and which DO reach distinct,
+roomy cells) survive the small-population window instead of decaying back. **The dimensionality-ratchet
+fusion stays parked:** growing niche space cannot be the fix when 95% of the existing niche space is already
+empty and uncolonised — the binding constraint is keeping founders alive, not making more room for them.
+
+**Honest bound / what would flip this.** The one whiff of (B) is the weak, *consistent* −0.08 correlation —
+crowding contributes a little, just not differentially enough to be the mechanism. And "95% empty cells" is
+empty TRAIT space, colonised only by a lineage evolving its tendency into a new cell; the gap is that minted
+lineages reach those cells (#17) but then die there demographically (this probe), not that the cells are full.
+If a founder-protection swing keeps incipient lineages alive and the *occupied*-cell count then climbs toward
+the 256 ceiling, only THEN does niche space (and the #16 ratchet) become the next binding constraint. Until
+founder survival is fixed, it isn't.

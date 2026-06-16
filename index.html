@@ -16033,8 +16033,11 @@ function interferenceCreate(i,j){
   const interference=Math.cos(dp);
   const sim=tendSim(i,j);
   if(interference>genome.creationThresh&&sim>0.1){
-    _specSpawnSim(sim);                                  // record the attempt's similarity BEFORE the gate (compound channel is the dominant, dissimilar-pairing one)
-    if(__SPEC.assort&&!specAssortAccept(i,j,sim)){ _specReject(i); return false; } // pre-zygotic isolation on the compound-spawn path too
+    _specSpawnSim(sim);                                  // observe the compound channel's similarity distribution (the dominant, dissimilar-pairing one)
+    // swing #18 finding: compound formation is HYBRIDIZATION — its cross-lineage births are net-generative
+    // (they found and feed lineages faster than they homogenise). So mate choice does NOT gate this channel;
+    // assort applies only to the homotypic executeVM/executeClusterVM reproduction. Gating here suppressed
+    // exactly the radiation-feeding tail (persistent species 5->1). Left free on purpose.
     const energy=(amp[i]+amp[j])*interference*0.5;
     if(energy<0.15)return false;
     const totalAmp=amp[i]+amp[j];
@@ -16045,7 +16048,7 @@ function interferenceCreate(i,j){
     const k=addCompound(cx,cy,nt,(vx[i]*amp[i]+vx[j]*amp[j])/totalAmp*0.3,(vy[i]*amp[i]+vy[j]*amp[j])/totalAmp*0.3,energy*0.6,(phase[i]+phase[j])*0.5,(freq[i]+freq[j])*0.5,i,j);
     if(k>=0){
       amp[i]-=amp[i]*genome.creationCost;amp[j]-=amp[j]*genome.creationCost;
-      birthsThisTick++; if(__SPEC.assort)_specAccept(i);
+      birthsThisTick++;   // hybridization channel: always allowed (no mate-choice bookkeeping — no choice is exercised here)
       const r=(pR[i]+pR[j])/2,g=(pG[i]+pG[j])/2,b=(pB[i]+pB[j])/2;
       if(energy>0.3)addShock(cx,cy,energy*0.5,r,g,b);
       addBits(cx,cy,Math.floor(energy*4),r,g,b,energy*0.4);

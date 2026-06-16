@@ -153,6 +153,7 @@ if (process.env.NICHE_DRIFT !== undefined) globalThis.__NICHE_DRIFT = parseInt(p
 for (const k of ['SPECIATE','SPEC_GATE','SPEC_MINT','SPEC_MINSIZE','SPEC_ASSORT']) if (process.env[k] !== undefined) globalThis['__' + k] = parseInt(process.env[k], 10);
 for (const k of ['SPEC_GRACE','SPEC_DIVT','SPEC_ASSORT_T','SPEC_ASSORT_K']) if (process.env[k] !== undefined) globalThis['__' + k] = parseFloat(process.env[k]);
 if (process.env.SPEC_DEBUG !== undefined) globalThis.__SPEC_DEBUG = parseInt(process.env.SPEC_DEBUG, 10);
+if (process.env.SPEC_DECAY !== undefined) globalThis.__SPEC_DECAY = parseInt(process.env.SPEC_DECAY, 10);
 
 const html = fs.readFileSync(process.env.INDEX || (__dirname + '/index.html'), 'utf8');
 const code = html.match(/<script>([\s\S]*)<\/script>/)[1];
@@ -175,6 +176,14 @@ const driver = `
   const seenLin=new Set(); let prevLin=new Set();
   let mateStarvedCum=0;          // swing #18: cumulative extinctions of lineages whose lifetime spawns were mate-REFUSED >50% (the Allee trap)
   const prevLinSize=new Map();   // last sample's per-lineage living size (to know a dead lineage WAS viable when it vanished)
+  // ── swing #19 decay probe (opt-in __SPEC_DECAY): does an incipient lineage's DECAY correlate with its
+  //    target cell's OCCUPANCY? Decay concentrated in full cells → niche saturation (B). Decay independent
+  //    of occupancy, happening even into cells with room → pure demographics (A). Longitudinal across samples.
+  const prevSpec=new Map();      // l -> {size, cell, occ, occOther} measured at the PREVIOUS sample (conditions entering each interval)
+  let dpN=0,dpDecay=0, dpOccD=0,dpOccG=0, dpOthD=0,dpOthG=0;     // means of entering-occupancy, decay vs grow cohorts
+  let dpRoomDecay=0;                                            // decay events that happened when the target cell still had room (occ<=FLOOR)
+  let dpSx=0,dpSy=0,dpSxx=0,dpSyy=0,dpSxy=0,dpSn=0;             // Pearson accumulators for corr(enteringOcc, deltaSize)
+  const dpHist=[[0,0],[0,0],[0,0]];                            // per occupancy bin [decayCount, totalObs]: occ<=FLOOR, <=2*FLOOR, >2*FLOOR
 
   // Coarsen a tendency vector to a discrete cell. Reuse the sim's own tendBin
   // if present (keeps our bins identical to the NFD bins); else replicate.
@@ -234,6 +243,7 @@ const driver = `
     // linViable (alive lineages >=minsize) is the standing-diversity headline to compare against stock ~24.
     let specMinted=-1, specAlive=0, specPersist=0, linViable=0;
     let specMaxDepth=0, specNested=0, linVarWithin=-1, specBirthRej=-1, specBirthAcc=-1, specMateStarved=-1;
+    let decayProbe=null;
     if(typeof __SPEC!=='undefined' && __SPEC.on && typeof pLin!=='undefined'){
       const PERSIST_WIN=3000, MIN=__SPEC.minsize, DT=__SPEC.divT;
       const size=new Map(), cen=new Map(), cellCnt=new Map();
@@ -294,6 +304,39 @@ const driver = `
         process.stderr.write('SPEC_DEBUG minted lineages (size-sorted):'+String.fromCharCode(10));
         for(const r of rows)process.stderr.write('  lin='+r.l+' parent='+r.parent+' size='+r.sz+' age='+r.age+' div='+r.div+' cell='+r.cell+' parentCell='+r.pcell+' parentSize='+r.pAlive+' | passSize='+(r.sz>=MIN)+' passAge='+(r.age>=PERSIST_WIN)+' passDiv='+(r.div>=DT)+' passCell='+(r.cell!==r.pcell)+String.fromCharCode(10));
       }
+      // ── swing #19 decay probe: regress each minted lineage's per-interval size change on the OCCUPANCY of
+      //    the cell it sat in ENTERING that interval. Saturation (B) → decay rises with occupancy / clusters in
+      //    full cells; demographics (A) → decay is occupancy-independent and happens even into cells with room. ──
+      if(globalThis.__SPEC_DECAY){
+        const FLOOR=(typeof NICHE_CELL_FLOOR!=='undefined')?NICHE_CELL_FLOOR:2;
+        const cellTotal=new Map();                            // cell -> living particles of ALL lineages (the crowding the cell actually imposes)
+        for(const [key,cnt] of cellCnt){ const cell=+key.slice(key.indexOf(':')+1); cellTotal.set(cell,(cellTotal.get(cell)||0)+cnt); }
+        for(const [l,pr] of prevSpec){
+          if(pr.size<2)continue;                              // only cohorts large enough for "decay" to be meaningful
+          const cur=size.get(l)||0, delta=cur-pr.size;        // size change over [prev, now]; cur=0 means the lineage went extinct
+          const occ=pr.occ, oth=pr.occOther;                  // conditions ENTERING the interval (occupancy can't be caused by the later decay)
+          dpN++; if(delta<0){ dpDecay++; dpOccD+=occ; dpOthD+=oth; if(occ<=FLOOR)dpRoomDecay++; } else { dpOccG+=occ; dpOthG+=oth; }
+          dpSn++; dpSx+=occ; dpSy+=delta; dpSxx+=occ*occ; dpSyy+=delta*delta; dpSxy+=occ*delta;
+          const bi=occ<=FLOOR?0:(occ<=2*FLOOR?1:2); dpHist[bi][1]++; if(delta<0)dpHist[bi][0]++;
+        }
+        prevSpec.clear();                                     // refresh longitudinal state with this sample's minted lineages
+        for(const [l,bt] of linBirthTick){ const sz=size.get(l)||0; if(sz<1)continue;
+          const m=modal.get(l), tot=cellTotal.get(m)||sz, own=cellCnt.get(l+':'+m)||sz;
+          prevSpec.set(l,{size:sz, cell:m, occ:tot, occOther:tot-own}); }
+        const cov=dpSxy-dpSx*dpSy/(dpSn||1), vx=dpSxx-dpSx*dpSx/(dpSn||1), vy=dpSyy-dpSy*dpSy/(dpSn||1);
+        const corr=(dpSn>2 && vx>0 && vy>0)?cov/Math.sqrt(vx*vy):0;
+        // ── niche-space saturation snapshot: is there room to radiate INTO? (the (B) precondition) ──
+        const occs=Array.from(cellTotal.values()).sort((a,b)=>a-b);
+        const totalCells=(typeof NICHE_ND_CELLS!=='undefined')?NICHE_ND_CELLS:-1;
+        const occCells=occs.length, maxOcc=occs.length?occs[occs.length-1]:0, medOcc=occs.length?occs[occs.length>>1]:0;
+        decayProbe={ obs:dpN, decayEvents:dpDecay,
+          totalCells, occCells, emptyCellFrac:totalCells>0?+(1-occCells/totalCells).toFixed(3):-1, maxCellOcc:maxOcc, medCellOcc:medOcc,
+          meanOccDecay:+(dpDecay?dpOccD/dpDecay:0).toFixed(2), meanOccGrow:+((dpN-dpDecay)?dpOccG/(dpN-dpDecay):0).toFixed(2),
+          meanOtherDecay:+(dpDecay?dpOthD/dpDecay:0).toFixed(2), meanOtherGrow:+((dpN-dpDecay)?dpOthG/(dpN-dpDecay):0).toFixed(2),
+          corrOccDelta:+corr.toFixed(3),                      // <0 = more crowded → more decline = saturation (B); ~0 = occupancy-blind = demographics (A)
+          fracDecayWithRoom:+(dpDecay?dpRoomDecay/dpDecay:0).toFixed(3), // decay events that hit while the cell still had room (occ<=FLOOR)
+          decayRateByOcc:dpHist.map(b=>b[1]?+(b[0]/b[1]).toFixed(3):-1), obsByOcc:dpHist.map(b=>b[1]) }; // bins: occ<=FLOOR, <=2*FLOOR, >2*FLOOR
+      }
     }
 
     let motifNew=0;
@@ -350,6 +393,7 @@ const driver = `
       // linVarWithin (inbreeding-to-fixation watch), specMateStarved (Allee-trap extinctions), and the
       // realized/refused spawn split (specBirthAcc/Rej). specSimMean = mean trait-similarity at spawn.
       specMaxDepth, specNested, linVarWithin, specBirthAcc, specBirthRej, specMateStarved,
+      decayProbe,   // swing #19: (A)demographics vs (B)niche-saturation discriminator (only populated under __SPEC_DECAY)
       specSimMean:(typeof specSimCnt!=='undefined'&&specSimCnt>0)?+(specSimSum/specSimCnt).toFixed(3):-1,
       specSimHist:(typeof specSimHist!=='undefined')?Array.from(specSimHist):null,
       // seed-vs-harvest: the newest axis vs axis 0 (positive control). R = lineage-structured fraction
