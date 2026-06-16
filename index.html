@@ -11379,8 +11379,15 @@ function applyEntropy(){
       {const _txi=__cl(Math.floor(px[i]/(W/FIELD_W)),0,FIELD_W-1),_tyi=__cl(Math.floor(py[i]/(H/FIELD_H)),0,FIELD_H-1),_tox=inhibitorField[_tyi*FIELD_W+_txi];if(_tox>0.05){const _dmg=_tox*Math.max(0,1-pResistance[i])*0.018;amp[i]-=_dmg;}pResistance[i]*=0.997;} // INHIBITOR DAMAGE + RESISTANCE DECAY: inhibitor deals up to 1.8% amp/tick at zero resistance; resistance decays 0.3%/tick — must be actively maintained via RESISTANCE_BOOST (op215)
       if(energyAdequacy<1)amp[i]-=(1-energyAdequacy)*STARVE_DRAIN; // starvation: the world couldn't feed everyone this tick
       if(isNaN(amp[i]))amp[i]=0;
-      const _deathT=specInGrace(pLin[i])?genome.deathThreshold*0.25:genome.deathThreshold; // #17: founders get death-relief while young/small so they don't die in the cradle
-      if(amp[i]<_deathT){
+      const _ig=specInGrace(pLin[i]); // #17: a freshly-minted lineage is young/small → death-relief so it doesn't die in the cradle
+      const _deathT=_ig?genome.deathThreshold*0.25:genome.deathThreshold;
+      if(amp[i]<_deathT && _ig && __COLO.surv){
+        // SWING #20 knob S (survival): min-viable-size FLOOR — while a minted founder is in grace it cannot be
+        // reaped on the amp threshold; it is pinned to life support at the relief line so the cohort can cross
+        // the stochastic founding dip. This is the DEATH term only (orthogonal to knob C's growth term) — by
+        // design it produces persistence, NOT radiation, so the 2×2 can attribute which lever fills empty cells.
+        amp[i]=_deathT;
+      } else if(amp[i]<_deathT){
         deaths.push(i);deathsThisTick++;deathsByPhysics++;
         addBits(px[i],py[i],2,pR[i],pG[i],pB[i],0.3);
         palive[i]=0;
@@ -17038,6 +17045,25 @@ const __SPEC=(function(){ const G=(typeof globalThis!=='undefined')?globalThis:{
     assortT:(G.__SPEC_ASSORT_T!==undefined?+G.__SPEC_ASSORT_T:0.75),  // similarity midpoint of the acceptance curve
     assortK:(G.__SPEC_ASSORT_K!==undefined?+G.__SPEC_ASSORT_K:10) };  // steepness: SOFT (small) → HARD cutoff (large; K~1000 ≈ step)
   })();
+// ═══ SWING #20: COLONIZATION vs SURVIVAL — two ORTHOGONAL levers, run as a 2×2 (default both off) ═══
+// Measurement #19 found founder decay is occupancy-INDEPENDENT and only ~12/256 cells are occupied: niche
+// space is abundant, founders die anyway. The naive fix (more grace) is a DEATH term → it buys persistence
+// (protected relics), not radiation. What fills empty cells is a GROWTH term: positive frequency-dependence
+// pointed at empty cells so a rare pioneer OUT-reproduces. So we separate the two and let the metric pick:
+//   knob S  __COLO_SURV=1     death-grace + min-viable-size floor (above, in the death loop). Survival only.
+//   knob C  __COLO_PIONEER=1  pioneer income + Allee relief (below, in the niche-cell harvest). Growth only.
+// This is swing #13's pioneer bonus — "empty cells accrue stock, first arrival gets rich" — resurrected on
+// the #17 speciation substrate: #13 failed because there were no distinct lineages to be the pioneers; #17
+// supplies them. Prediction (falsifiable): S alone raises persistence, leaves distinct-lineage-cells ~12;
+// C alone raises distinct-lineage-cells; both together is the radiation. Success is gated on the smear-proof
+// metric (cells that are the HOME of a distinct viable lineage), never raw occupied-cell count — see harness.
+const __COLO=(function(){ const G=(typeof globalThis!=='undefined')?globalThis:{};
+  return { surv:(G.__COLO_SURV|0)===1,
+    pioneer:(G.__COLO_PIONEER|0)===1,
+    pioneerK:(G.__COLO_PIONEER_K!==undefined?+G.__COLO_PIONEER_K:2.0),  // extra first-arrival income, as a multiple of base cell harvest
+    alleeK:(G.__COLO_ALLEE_K!==undefined?+G.__COLO_ALLEE_K:1.0),        // per-capita income uplift for sub-minsize lineage members
+    pioneerOcc:(G.__COLO_PIONEER_OCC!==undefined?(G.__COLO_PIONEER_OCC|0):NICHE_CELL_FLOOR) }; })(); // occ at/below which a cell still pays pioneer income
+
 const linCentroid=new Map();  // pLin → Float32Array(DIMS): trait centroid (rebuilt each cadence)
 const linSize=new Map();      // pLin → living count (rebuilt each cadence)
 const linModalCell=new Map(); // pLin → its most-occupied niche cell (rebuilt each cadence)
@@ -17128,6 +17154,17 @@ function applyNicheEconomy(){
     const LOCAL=(typeof globalThis!=='undefined'&&(globalThis.__NICHE_LOCAL|0)===1); // swing #14: per-cell crowding cost
     for(let i=0;i<N;i++){ if(!palive[i])continue; const c=pDietCell[i], occ=nicheCellOcc[c]; if(occ<=0)continue;
       const got=nicheCellRes[c]*NICHE_HARVEST/occ; amp[i]+=NICHE_GAIN_REAL*got;
+      if(__COLO.pioneer){
+        // SWING #20 knob C (colonization): a GROWTH term, orthogonal to knob S's death relief. Two self-limiting
+        // parts, both pointed at the 244 empty cells so a rare pioneer's per-capita growth goes positive:
+        //  • pioneer income — while a cell is still under-occupied the first arrivals harvest its accrued stock
+        //    at a bonus rate (got already scales with the stock an empty cell built up). Ends once the cell fills
+        //    past pioneerOcc → reduced competition for first arrivals, not a permanent subsidy.
+        if(occ<=__COLO.pioneerOcc) amp[i]+=NICHE_GAIN_REAL*got*__COLO.pioneerK;
+        //  • Allee relief — a sub-minsize minted lineage gets a per-capita income uplift so rarity itself isn't
+        //    penalised; fades to zero as the founder reaches viable size. (linSize is refreshed each cadence.)
+        if(__SPEC.on){ const _ls=linSize.get(pLin[i])||0; if(_ls>0&&_ls<__SPEC.minsize) amp[i]+=NICHE_GAIN_REAL*got*__COLO.alleeK; }
+      }
       if(LOCAL&&occ>NICHE_CELL_FLOOR) amp[i]-=NICHE_LOCAL_COST*(occ-NICHE_CELL_FLOOR); // local carrying capacity: crowding your own niche hurts
       nicheCellCross[(c+NICHE_ND_OFFSET)%NICHE_ND_CELLS]+=got*NICHE_CROSSFEED; }
     for(let c=0;c<NICHE_ND_CELLS;c++){ if(nicheCellOcc[c]>0) nicheCellRes[c]*=(1-NICHE_HARVEST); nicheCellRes[c]=Math.min(NICHE_CAP, nicheCellRes[c]+nicheCellCross[c]); }

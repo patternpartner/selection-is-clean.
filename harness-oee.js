@@ -154,6 +154,12 @@ for (const k of ['SPECIATE','SPEC_GATE','SPEC_MINT','SPEC_MINSIZE','SPEC_ASSORT'
 for (const k of ['SPEC_GRACE','SPEC_DIVT','SPEC_ASSORT_T','SPEC_ASSORT_K']) if (process.env[k] !== undefined) globalThis['__' + k] = parseFloat(process.env[k]);
 if (process.env.SPEC_DEBUG !== undefined) globalThis.__SPEC_DEBUG = parseInt(process.env.SPEC_DEBUG, 10);
 if (process.env.SPEC_DECAY !== undefined) globalThis.__SPEC_DECAY = parseInt(process.env.SPEC_DECAY, 10);
+// swing #20: colonization-vs-survival 2×2. Both default off (=baseline #17). Run as a 2×2 over {S,C}:
+//   COLO_SURV=1     knob S — death-grace + min-viable-size floor (survival term; predicted: persistence up, distinct-cells flat)
+//   COLO_PIONEER=1  knob C — pioneer income + Allee relief (growth term; predicted: distinct-lineage-cells climbs off ~12)
+//   COLO_PIONEER_K / COLO_ALLEE_K / COLO_PIONEER_OCC  tune the C lever (defaults 2.0 / 1.0 / NICHE_CELL_FLOOR).
+for (const k of ['COLO_SURV','COLO_PIONEER','COLO_PIONEER_OCC']) if (process.env[k] !== undefined) globalThis['__' + k] = parseInt(process.env[k], 10);
+for (const k of ['COLO_PIONEER_K','COLO_ALLEE_K']) if (process.env[k] !== undefined) globalThis['__' + k] = parseFloat(process.env[k]);
 
 const html = fs.readFileSync(process.env.INDEX || (__dirname + '/index.html'), 'utf8');
 const code = html.match(/<script>([\s\S]*)<\/script>/)[1];
@@ -244,6 +250,8 @@ const driver = `
     let specMinted=-1, specAlive=0, specPersist=0, linViable=0;
     let specMaxDepth=0, specNested=0, linVarWithin=-1, specBirthRej=-1, specBirthAcc=-1, specMateStarved=-1;
     let decayProbe=null;
+    // swing #20 colonization guard (smear-proof): see the block below for definitions.
+    let occCellsRaw=-1, radiationCells=-1, vCellsOcc=-1, cellsPerViableLin=-1, linPerOccCell=-1;
     if(typeof __SPEC!=='undefined' && __SPEC.on && typeof pLin!=='undefined'){
       const PERSIST_WIN=3000, MIN=__SPEC.minsize, DT=__SPEC.divT;
       const size=new Map(), cen=new Map(), cellCnt=new Map();
@@ -258,6 +266,24 @@ const driver = `
       for(const [key,cnt] of cellCnt){ const ci=key.indexOf(':'), l=+key.slice(0,ci), cell=+key.slice(ci+1);
         if(cnt>(bestN.get(l)||0)){ bestN.set(l,cnt); modal.set(l,cell); } }
       for(const [l,sz] of size) if(sz>=MIN) linViable++;
+      // ── swing #20 RADIATION GUARD: the one confound that has bitten every prior call — one viable lineage
+      //    smearing into many empty cells reads as "colonization" but is not radiation. Raw occupied-cell count
+      //    can't tell them apart; these can. The HEADLINE is radiationCells = number of distinct HOME (modal)
+      //    cells of viable lineages: a smear keeps ONE home cell however far its tendrils reach, so it cannot
+      //    inflate this — only NEW lineages establishing in NEW home cells move it. Success = this climbs off
+      //    ~12, NOT occCellsRaw. cellsPerViableLin = smear magnitude; occCellsRaw vs radiationCells = the gap. ──
+      { const occSet=new Set(), cellLins=new Map(), linCells=new Map();
+        for(const [key,cnt] of cellCnt){ const ci=key.indexOf(':'), l=+key.slice(0,ci), cell=+key.slice(ci+1);
+          occSet.add(cell);
+          if((size.get(l)||0)>=MIN){
+            let s=cellLins.get(cell); if(!s){ s=new Set(); cellLins.set(cell,s); } s.add(l);
+            let cs=linCells.get(l); if(!cs){ cs=new Set(); linCells.set(l,cs); } cs.add(cell); } }
+        const homeSet=new Set(); for(const [l] of linCells) homeSet.add(modal.get(l));
+        occCellsRaw=occSet.size;          // distinct cells with ANY living member (the confoundable number)
+        radiationCells=homeSet.size;       // distinct home cells of distinct viable lineages (smear-proof headline)
+        vCellsOcc=cellLins.size;           // distinct cells holding any viable-lineage member (smear-inflatable; shows the gap)
+        let cs=0,cn=0; for(const [,s] of linCells){ cs+=s.size; cn++; } cellsPerViableLin=cn?+(cs/cn).toFixed(2):0;
+        let ls=0,ln=0; for(const [,s] of cellLins){ ls+=s.size; ln++; } linPerOccCell=ln?+(ls/ln).toFixed(2):0; }
       specMinted=(typeof specMintCount!=='undefined')?specMintCount:-1;
       for(const [l,bt] of linBirthTick){
         const sz=size.get(l)||0; if(sz<1)continue; specAlive++;
@@ -388,6 +414,10 @@ const driver = `
       // success metric — survived past grace, still diverged, still cell-distinct), and viable standing
       // lineages (>=minsize) to compare against the stock ~24 island-equilibrium.
       specMinted, specAlive, specPersist, linViable,
+      // swing #20 colonization 2×2 guard: radiationCells (distinct home cells of viable lineages) is the
+      // smear-proof success metric; occCellsRaw is the confoundable raw count. A rising occCellsRaw with a
+      // flat radiationCells = one lineage smearing, NOT radiation. cellsPerViableLin = smear magnitude.
+      occCellsRaw, radiationCells, vCellsOcc, cellsPerViableLin, linPerOccCell,
       // swing #18 — assortative mating. Headline OEE signature = genealogy DEPTH growing over time
       // (specMaxDepth) and NESTED cladogenesis (specNested), not a standing tip count. Guardrails:
       // linVarWithin (inbreeding-to-fixation watch), specMateStarved (Allee-trap extinctions), and the
