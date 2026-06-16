@@ -5885,7 +5885,7 @@ function sanitizeGenome(){
   // Pe38 Layer 27: signal role influence — how strongly net signal role feeds into VM.
   genome.signalRoleInfluence=__cl(finiteOr(genome.signalRoleInfluence,0.1),0,1);
   genome.dissolutionWeight=__cl(finiteOr(genome.dissolutionWeight,0.2),0,1); // Pe39
-  genome.atrophyRate=__cl(finiteOr(genome.atrophyRate,0.05),0,0.3); // Pe40 Layer 29
+  genome.atrophyRate=__cl(finiteOr(genome.atrophyRate,0.12),0,0.6); // Pe40 Layer 29 — AUTONOMY: higher default (0.05→0.12) + doubled cap (0.3→0.6)
   genome.metaSignalInfluence=__cl(finiteOr(genome.metaSignalInfluence,0.1),0,1); // Pe42 Layer 31
   if(genome.metaSignalValue===undefined)genome.metaSignalValue=0;
   if(genome.metaSignalGrad===undefined)genome.metaSignalGrad=0;
@@ -9957,7 +9957,7 @@ function mutateGenome(){
   // would have been lifted back to 0.07 instead of decayed). If fitness does not
   // respond to a deliberate kick, the param is genuinely inert and decay is licensed.
   // "Test dormancy by probing, not by absence of signal." atrophyRate=0 → inert (Pe39).
-  const aRate=__cl(genome.atrophyRate||0,0,0.3);
+  const aRate=__cl(genome.atrophyRate||0,0,0.6); // AUTONOMY: doubled headroom (was 0.3) — the system may self-cull harder if selection favours it
   if(aRate>0.001){
     for(const p of META_LAYER_PARAMS){
       if(!ATROPHY_SAFE.has(p))continue;
@@ -9965,9 +9965,13 @@ function mutateGenome(){
       if(!e||e.traceSlow===undefined)continue;
       const conf=e.conf||0;
       const tSlow=e.traceSlow;
-      // High confidence required (fast/slow agree) — never act on a volatile signal.
-      const harmful = conf>0.5 && tSlow<-0.15;
-      const quiet   = conf>0.5 && Math.abs(tSlow)<0.03 && Math.abs(e.trace)<0.05;
+      // AUTONOMY: lower the evidence bar (conf 0.5→0.35) and the harmful threshold (tSlow −0.15→−0.10)
+      // so the architecture dares to retire its own layers on less certainty — more self-determination
+      // over what it keeps. The probe-before-prune rescue below is KEPT intact: it is the safeguard against
+      // culling a beneficial-but-quiet layer (the gen2768 failure), so quiet params still get a deliberate
+      // kick and are spared if fitness responds. We raise aggression around the safety, not through it.
+      const harmful = conf>0.35 && tSlow<-0.10;
+      const quiet   = conf>0.35 && Math.abs(tSlow)<0.03 && Math.abs(e.trace)<0.05;
       if(harmful){
         // Unchanged from Pe40 — this path was correct. Worse trace decays faster.
         const strength=aRate*(0.5+Math.abs(tSlow));
@@ -10003,7 +10007,7 @@ function mutateGenome(){
             e.probeState=0; e.probeWait=0;
             if(!moved){
               // Inert under a deliberate stimulus → genuinely dead. Decay licensed.
-              const factor=__cl(1-aRate*0.5,0,1);
+              const factor=__cl(1-aRate,0,1); // AUTONOMY: confirmed-dead decays at FULL rate (was half)
               if(isFinite(genome[p]))genome[p]*=factor;
             }
             // moved → it was quietly contributing. Leave it at the probed value;
@@ -10207,7 +10211,7 @@ function mutateGenome(){
   genome.signalRoleInfluence=__cl(metaMaybe(genome.signalRoleInfluence,0.05,'signalRoleInfluence'),0,1);
   // Pe39 Layer 28: dissolutionWeight — in META_LAYER_PARAMS so attribution tracks it
   genome.dissolutionWeight=__cl(metaMaybe(genome.dissolutionWeight,0.05,'dissolutionWeight'),0,1);
-  genome.atrophyRate=__cl(metaMaybe(genome.atrophyRate,0.04,'atrophyRate'),0,0.3); // Pe40 Layer 29
+  genome.atrophyRate=__cl(metaMaybe(genome.atrophyRate,0.04,'atrophyRate'),0,0.6); // Pe40 Layer 29 — AUTONOMY: doubled cap (0.3→0.6)
   genome.metaSignalInfluence=__cl(metaMaybe(genome.metaSignalInfluence,0.04,'metaSignalInfluence'),0,1); // Pe42 Layer 31
   genome.metaSignalGradInfluence=__cl(metaMaybe(genome.metaSignalGradInfluence||0,0.04,'metaSignalGradInfluence'),0,1); // Pe43 Layer 32
   genome.metaSignalVolInfluence=__cl(metaMaybe(genome.metaSignalVolInfluence||0,0.04,'metaSignalVolInfluence'),0,1); // Pe44 Layer 33
@@ -17028,6 +17032,21 @@ function nicheCellOf(i){ let r=0; const D=NICHE_ND_DIMS<DIMS?NICHE_ND_DIMS:DIMS;
 // what makes daughters mean something, not just ID-distinct — is supplied by the REAL partitioned niche
 // cells (NICHE_NDIM+NICHE_REAL); the "same-landscape" control turns that off (NICHE_REAL=0) to prove
 // isolation alone is not enough. Persistence (not gross births) is the success metric — see harness.
+// ═══ LIVE STACK — promote the OEE experiment stack to default-ON in the artwork ═══════════════════════
+// Decision (this session): every harness verdict was rendered in an isolated, stacked regime the live piece
+// never runs. The only ground truth is the artwork actually executing these mechanisms — so turn the coherent
+// stack ON by default and observe it live. The harness still overrides any flag it sets explicitly (we only
+// fill UNDEFINED), so experiments are unaffected and any flag can still be forced off with X=0. TREATMENTS
+// only: scientific controls (__ALLO_SHUF), the refuted net-harmful opt-in (__SPEC_ASSORT, #18), and
+// mutually-exclusive variants (__MINT_GATE cluster/relax; __NICHE_LOCALTEND vs __SPATIAL_TEND) are left off
+// for a separate, explicit choice. Revert = delete this block (every flag falls back to default-off).
+if(typeof globalThis!=='undefined'){
+  const LIVE={ __NICHE_FRONTIER:1, __NICHE_NDIM:1, __NICHE_LOCAL:1, // niche economy: cross-feed frontier + N-dim diet cells + per-cell crowding (#13/#14)
+               __SPECIATE:1,                                        // cladogenesis #17 — brings gate+mint on; assort (#18) stays off
+               __COLO_SURV:1, __COLO_PIONEER:1,                     // colonization & survival #20
+               __SPATIAL_TEND:1 };                                  // allopatric (spatially-local) homogeniser #21
+  for(const k in LIVE) if(globalThis[k]===undefined) globalThis[k]=LIVE[k];
+}
 const __SPEC=(function(){ const G=(typeof globalThis!=='undefined')?globalThis:{}; const m=(G.__SPECIATE|0)===1;
   const sub=k=>G[k]!==undefined?(G[k]|0):(m?1:0);
   return { on:m, gate:sub('__SPEC_GATE'), mint:sub('__SPEC_MINT'),
