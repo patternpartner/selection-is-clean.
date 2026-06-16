@@ -5112,6 +5112,10 @@ const pPlasmidLen=new Uint8Array(CAP); // how many plasmid instructions this par
 // is FOR. The substrate provides the degree of freedom; the system authors its significance.
 const NUM_TYPES=8;                     // substrate cap on simultaneous castes (fits Uint8 with room)
 const pType=new Uint8Array(CAP);
+// Heritable lineage tag (instrument, swing #16-validation): child inherits parent's id; seeds get a
+// fresh one. Lets us ask whether trait-axis variance is ORGANISED BY LINEAGE (heritable colonisation)
+// or is unstructured noise (a seeded smear that washes out) — the seed-vs-harvest discriminator.
+const pLin=new Int32Array(CAP); let _linNext=1;
 // UNLOCKED #9 — PER-PARTICLE BEHAVIORAL GENOME (the meta-population). Each particle runs its OWN VM
 // program (its behavioral genotype), inherited at birth and mutated, so lineages diverge and compete
 // under selection. The global genome stays the shared, self-modeling "self": it owns physics + the
@@ -5881,7 +5885,7 @@ function sanitizeGenome(){
   // Pe38 Layer 27: signal role influence — how strongly net signal role feeds into VM.
   genome.signalRoleInfluence=__cl(finiteOr(genome.signalRoleInfluence,0.1),0,1);
   genome.dissolutionWeight=__cl(finiteOr(genome.dissolutionWeight,0.2),0,1); // Pe39
-  genome.atrophyRate=__cl(finiteOr(genome.atrophyRate,0.05),0,0.3); // Pe40 Layer 29
+  genome.atrophyRate=__cl(finiteOr(genome.atrophyRate,0.12),0,0.6); // Pe40 Layer 29 — AUTONOMY: higher default (0.05→0.12) + doubled cap (0.3→0.6)
   genome.metaSignalInfluence=__cl(finiteOr(genome.metaSignalInfluence,0.1),0,1); // Pe42 Layer 31
   if(genome.metaSignalValue===undefined)genome.metaSignalValue=0;
   if(genome.metaSignalGrad===undefined)genome.metaSignalGrad=0;
@@ -9953,7 +9957,7 @@ function mutateGenome(){
   // would have been lifted back to 0.07 instead of decayed). If fitness does not
   // respond to a deliberate kick, the param is genuinely inert and decay is licensed.
   // "Test dormancy by probing, not by absence of signal." atrophyRate=0 → inert (Pe39).
-  const aRate=__cl(genome.atrophyRate||0,0,0.3);
+  const aRate=__cl(genome.atrophyRate||0,0,0.6); // AUTONOMY: doubled headroom (was 0.3) — the system may self-cull harder if selection favours it
   if(aRate>0.001){
     for(const p of META_LAYER_PARAMS){
       if(!ATROPHY_SAFE.has(p))continue;
@@ -9961,9 +9965,13 @@ function mutateGenome(){
       if(!e||e.traceSlow===undefined)continue;
       const conf=e.conf||0;
       const tSlow=e.traceSlow;
-      // High confidence required (fast/slow agree) — never act on a volatile signal.
-      const harmful = conf>0.5 && tSlow<-0.15;
-      const quiet   = conf>0.5 && Math.abs(tSlow)<0.03 && Math.abs(e.trace)<0.05;
+      // AUTONOMY: lower the evidence bar (conf 0.5→0.35) and the harmful threshold (tSlow −0.15→−0.10)
+      // so the architecture dares to retire its own layers on less certainty — more self-determination
+      // over what it keeps. The probe-before-prune rescue below is KEPT intact: it is the safeguard against
+      // culling a beneficial-but-quiet layer (the gen2768 failure), so quiet params still get a deliberate
+      // kick and are spared if fitness responds. We raise aggression around the safety, not through it.
+      const harmful = conf>0.35 && tSlow<-0.10;
+      const quiet   = conf>0.35 && Math.abs(tSlow)<0.03 && Math.abs(e.trace)<0.05;
       if(harmful){
         // Unchanged from Pe40 — this path was correct. Worse trace decays faster.
         const strength=aRate*(0.5+Math.abs(tSlow));
@@ -9999,7 +10007,7 @@ function mutateGenome(){
             e.probeState=0; e.probeWait=0;
             if(!moved){
               // Inert under a deliberate stimulus → genuinely dead. Decay licensed.
-              const factor=__cl(1-aRate*0.5,0,1);
+              const factor=__cl(1-aRate,0,1); // AUTONOMY: confirmed-dead decays at FULL rate (was half)
               if(isFinite(genome[p]))genome[p]*=factor;
             }
             // moved → it was quietly contributing. Leave it at the probed value;
@@ -10203,7 +10211,7 @@ function mutateGenome(){
   genome.signalRoleInfluence=__cl(metaMaybe(genome.signalRoleInfluence,0.05,'signalRoleInfluence'),0,1);
   // Pe39 Layer 28: dissolutionWeight — in META_LAYER_PARAMS so attribution tracks it
   genome.dissolutionWeight=__cl(metaMaybe(genome.dissolutionWeight,0.05,'dissolutionWeight'),0,1);
-  genome.atrophyRate=__cl(metaMaybe(genome.atrophyRate,0.04,'atrophyRate'),0,0.3); // Pe40 Layer 29
+  genome.atrophyRate=__cl(metaMaybe(genome.atrophyRate,0.04,'atrophyRate'),0,0.6); // Pe40 Layer 29 — AUTONOMY: doubled cap (0.3→0.6)
   genome.metaSignalInfluence=__cl(metaMaybe(genome.metaSignalInfluence,0.04,'metaSignalInfluence'),0,1); // Pe42 Layer 31
   genome.metaSignalGradInfluence=__cl(metaMaybe(genome.metaSignalGradInfluence||0,0.04,'metaSignalGradInfluence'),0,1); // Pe43 Layer 32
   genome.metaSignalVolInfluence=__cl(metaMaybe(genome.metaSignalVolInfluence||0,0.04,'metaSignalVolInfluence'),0,1); // Pe44 Layer 33
@@ -11262,13 +11270,14 @@ function addParticle(x,y,tv,born,parentA,parentB){
   pType[i]=(parentA>=0&&parentA<N)
     ? ((Math.random()<(genome.typeMutRate||0))?((Math.random()*NUM_TYPES)|0):pType[parentA])
     : ((Math.random()*NUM_TYPES)|0);
+  pLin[i]=(parentA>=0&&parentA<N)?pLin[parentA]:(_linNext++); // heritable lineage tag follows descent
   // UNLOCKED #9 FULL: this lineage's COMPLETE genome — parent's whole genome cloned + every gene
   // mutated (physics AND behavior diverge), or a fresh clone of the self for seeds. pProg aliases the
   // program so the existing VM read paths keep working unchanged.
   // Two-parent crossover: when parentB also has a genome, a 30% chance produces a genuinely
   // recombined program (prefix from A, suffix from B) rather than a pure clone-with-mutation.
   {const _bg=(parentA>=0&&parentA<N&&pGenome[parentA])?cloneGenome(pGenome[parentA]):cloneGenome(genome);
-  if(parentB>=0&&parentB<N&&pGenome[parentB]&&Math.random()<0.3)_bg.vmProgram=crossoverProg(_bg.vmProgram,pGenome[parentB].vmProgram);
+  if(parentB>=0&&parentB<N&&pGenome[parentB]&&Math.random()<0.3&&(!__SPEC.gate||pLin[parentA]===pLin[parentB]))_bg.vmProgram=crossoverProg(_bg.vmProgram,pGenome[parentB].vmProgram); // #17: crossover is gene flow — gated to within-lineage when isolating
   pGenome[i]=mutateChildGenome(_bg);}
   pProg[i]=pGenome[i].vmProgram;
   return i;
@@ -11307,9 +11316,10 @@ function addCompound(x,y,nt,nvx,nvy,na,np,nf,parentA,parentB){
   pType[i]=(parentA>=0&&parentA<N)
     ? ((Math.random()<(genome.typeMutRate||0))?((Math.random()*NUM_TYPES)|0):pType[parentA])
     : ((Math.random()*NUM_TYPES)|0);
+  pLin[i]=(parentA>=0&&parentA<N)?pLin[parentA]:(_linNext++); // heritable lineage tag follows descent
   // UNLOCKED #9 FULL + two-parent crossover: compound child also crosses A×B programs.
   {const _bg=(parentA>=0&&parentA<N&&pGenome[parentA])?cloneGenome(pGenome[parentA]):cloneGenome(genome);
-  if(parentB>=0&&parentB<N&&pGenome[parentB]&&Math.random()<0.3)_bg.vmProgram=crossoverProg(_bg.vmProgram,pGenome[parentB].vmProgram);
+  if(parentB>=0&&parentB<N&&pGenome[parentB]&&Math.random()<0.3&&(!__SPEC.gate||pLin[parentA]===pLin[parentB]))_bg.vmProgram=crossoverProg(_bg.vmProgram,pGenome[parentB].vmProgram); // #17: within-lineage gene flow only when isolating
   pGenome[i]=mutateChildGenome(_bg);}
   pProg[i]=pGenome[i].vmProgram;
   return i;
@@ -11373,7 +11383,15 @@ function applyEntropy(){
       {const _txi=__cl(Math.floor(px[i]/(W/FIELD_W)),0,FIELD_W-1),_tyi=__cl(Math.floor(py[i]/(H/FIELD_H)),0,FIELD_H-1),_tox=inhibitorField[_tyi*FIELD_W+_txi];if(_tox>0.05){const _dmg=_tox*Math.max(0,1-pResistance[i])*0.018;amp[i]-=_dmg;}pResistance[i]*=0.997;} // INHIBITOR DAMAGE + RESISTANCE DECAY: inhibitor deals up to 1.8% amp/tick at zero resistance; resistance decays 0.3%/tick — must be actively maintained via RESISTANCE_BOOST (op215)
       if(energyAdequacy<1)amp[i]-=(1-energyAdequacy)*STARVE_DRAIN; // starvation: the world couldn't feed everyone this tick
       if(isNaN(amp[i]))amp[i]=0;
-      if(amp[i]<genome.deathThreshold){
+      const _ig=specInGrace(pLin[i]); // #17: a freshly-minted lineage is young/small → death-relief so it doesn't die in the cradle
+      const _deathT=_ig?genome.deathThreshold*0.25:genome.deathThreshold;
+      if(amp[i]<_deathT && _ig && __COLO.surv){
+        // SWING #20 knob S (survival): min-viable-size FLOOR — while a minted founder is in grace it cannot be
+        // reaped on the amp threshold; it is pinned to life support at the relief line so the cohort can cross
+        // the stochastic founding dip. This is the DEATH term only (orthogonal to knob C's growth term) — by
+        // design it produces persistence, NOT radiation, so the 2×2 can attribute which lever fills empty cells.
+        amp[i]=_deathT;
+      } else if(amp[i]<_deathT){
         deaths.push(i);deathsThisTick++;deathsByPhysics++;
         addBits(px[i],py[i],2,pR[i],pG[i],pB[i],0.3);
         palive[i]=0;
@@ -13447,7 +13465,7 @@ function executeVM(i,j,sim,d){
       case 176:{const _hdx176=px[i]-pHomeX[i],_hdy176=py[i]-pHomeY[i];vmRegs[di]=Math.sqrt(_hdx176*_hdx176+_hdy176*_hdy176)/(W*0.1)*k;}break; // HOME_DIST — Euclidean distance from marked home position, normalised by 10% of world width (so distance=W*0.1 → 1.0). Enables distance-conditional behaviour: reproduce when near home (familiar habitat advantage), stop feeding and return when HOME_DIST>threshold, invest in local root-write only when HOME_DIST is small (stay in own territory). Without normalisation the raw pixel distance would be genome-parameter-dependent; normalised output is k-scalable.
       case 177:{const _hbdx177=pHomeX[i]-px[i],_hbdy177=pHomeY[i]-py[i],_hbd177=Math.sqrt(_hbdx177*_hbdx177+_hbdy177*_hbdy177)+0.01;vmRegs[di]=(_hbdx177/_hbd177)*k;}break; // HOME_BEARING_X — X component of the unit vector pointing from current position toward home. Range -1..1 scaled by k. Combined with HOME_DIST (op176) as a gate (only navigate when far enough from home) and with velocity updates (vmRegs[di] → vx adjustment upstream), enables evolved homing flight: particles can navigate back to a marked location across the world without a fixed compass.
       case 178:{const _hbdx178=pHomeX[i]-px[i],_hbdy178=pHomeY[i]-py[i],_hbd178=Math.sqrt(_hbdx178*_hbdx178+_hbdy178*_hbdy178)+0.01;vmRegs[di]=(_hbdy178/_hbd178)*k;}break; // HOME_BEARING_Y — Y component of unit vector toward home. Completes the 2D homing navigation pair: combine HOME_BEARING_X (op177) → vx adjustment and HOME_BEARING_Y → vy adjustment, gated by HOME_DIST (op176) > threshold, to achieve full 2D homing flight. Enables: migratory particles that travel to distant resource patches and navigate back to the marked kin cluster; honeybee-style central-place foraging circuits; natal site return after overwintering dispersal.
-      case 179:{if(vmRegs[si]>k&&pProg[i]&&pProg[j]&&pProg[i].length>0){const _cap179=Math.min(genome.vmMaxInstructions||16,48);if(pProg[j].length<_cap179){const _si179=Math.abs(Math.floor(vmRegs[si]*3))%pProg[i].length;const _ins179=pProg[i][_si179];if(_ins179){const _di179=Math.floor(Math.random()*(pProg[j].length+1));pProg[j].splice(_di179,0,[_ins179[0],_ins179[1],_ins179[2],+_ins179[3]]);vmRegs[di]=1;}else{vmRegs[di]=0;}}else{vmRegs[di]=0;}}else{vmRegs[di]=0;}}break; // HGT_DONATE — insert one of own instructions into partner's genome at a random position (horizontal gene transfer, donor direction). Complement to RECOMBINE (op152) which takes from partner. Donors pay no resource cost; evolved selection pressure determines whether donation spreads. Creates viral gene dynamics: a beneficial instruction in one lineage can propagate laterally into others without requiring shared ancestry. Enables: evolved mutualism where donors gain indirect benefit (partners become more valuable); evolved parasitism where donors inject disruptive instructions; genetic missionaries that spread successful strategies across the population.
+      case 179:{if(vmRegs[si]>k&&pProg[i]&&pProg[j]&&pProg[i].length>0&&(!__SPEC.gate||pLin[i]===pLin[j])){const _cap179=Math.min(genome.vmMaxInstructions||16,48); /* #17: HGT donation gated to within-lineage when isolating */if(pProg[j].length<_cap179){const _si179=Math.abs(Math.floor(vmRegs[si]*3))%pProg[i].length;const _ins179=pProg[i][_si179];if(_ins179){const _di179=Math.floor(Math.random()*(pProg[j].length+1));pProg[j].splice(_di179,0,[_ins179[0],_ins179[1],_ins179[2],+_ins179[3]]);vmRegs[di]=1;}else{vmRegs[di]=0;}}else{vmRegs[di]=0;}}else{vmRegs[di]=0;}}break; // HGT_DONATE — insert one of own instructions into partner's genome at a random position (horizontal gene transfer, donor direction). Complement to RECOMBINE (op152) which takes from partner. Donors pay no resource cost; evolved selection pressure determines whether donation spreads. Creates viral gene dynamics: a beneficial instruction in one lineage can propagate laterally into others without requiring shared ancestry. Enables: evolved mutualism where donors gain indirect benefit (partners become more valuable); evolved parasitism where donors inject disruptive instructions; genetic missionaries that spread successful strategies across the population.
       case 180:{vmRegs[di]=collapse[i]*k;}break; // COLLAPSE_SENSE — read own collapse value (0..2+), a measure of accumulated stress, resonant damage, and ghost-field loading. High collapse indicates a particle under heavy structural stress. Enables stress-conditional strategies: trigger APOPTOSIS (op165) when collapse exceeds threshold (damaged particles sacrifice themselves before they are destroyed passively); reduce resource investment during high-stress periods; signal health status to cluster-mates via BROADCAST_WRITE (op11). The collapse variable already drives amp boosts and visual smear; this opcode makes it VM-readable for the first time.
       case 181:{vmRegs[di]=localRes[i]*k;}break; // SELF_RES_SENSE — read own reserve resource level directly (0..2). Unlike ENERGY_STRESS_SENSE (op131) which returns a population-normalised stress scalar derived from energyAdequacy, this gives the actual per-particle localRes value. Enables: resource-conditional strategies without computing indirectly from stress signals; gate ROOT_WRITE (op162) and ENERGY_DONATE (op156) on having surplus (localRes>1); detect approaching depletion (localRes<0.3) and switch to scavenging (DETRITAL_HARVEST op146); compare own resource to partner's via subtraction (op164 PARTNER_RES_SENSE − op181 = differential wealth signal).
       case 182:{vmRegs[di]=Math.max(0,amp[i])*k;}break; // SELF_AMP_SENSE — read own amplitude (structural energy / vitality) directly. Complement to op37 PARTNER_AMP but without genome.selfAmpInfluence gating. Enables: amplitude-conditional reproduction gating; trigger APOPTOSIS (op165) when amp falls below survival threshold before passively dying; modulate resource-harvesting aggression by own vitality; broadcast own health status (BROADCAST_WRITE(SELF_AMP_SENSE)) so cluster-mates can detect and respond to distress.
@@ -14673,12 +14691,16 @@ function executeVM(i,j,sim,d){
   }
 
   if(vmActions[4]*influence>0.0002&&Math.random()<0.002&&N<CAP){
+    _specSpawnSim(sim);
+    if(__SPEC.assort&&!specAssortAccept(i,j,sim)){ _specReject(i); } else { // pre-zygotic isolation: refuse to pair across a trait gap
     const cx=(px[i]+px[j])*0.5,cy=(py[i]+py[j])*0.5;
     const nt=new Float32Array(DIMS);
     for(let dd=0;dd<DIMS;dd++)nt[dd]=(tend[i*DIMS+dd]+tend[j*DIMS+dd])*0.5;
     addParticle(cx,cy,nt,false,i,j);
     amp[i]*=0.7;amp[j]*=0.7;
     birthsThisTick++;
+    if(__SPEC.assort)_specAccept(i);
+    }
   }
 
   const sigMod=vmActions[5]*influence*0.003;
@@ -15882,12 +15904,16 @@ function executeClusterVM(i,j,sim,d){
   }
 
   if(vmActions[4]*influence>0.0002&&Math.random()<0.001&&N<CAP){
+    _specSpawnSim(sim);
+    if(__SPEC.assort&&!specAssortAccept(i,j,sim)){ _specReject(i); } else { // pre-zygotic isolation: refuse to pair across a trait gap
     const cx=(px[i]+px[j])*0.5,cy=(py[i]+py[j])*0.5;
     const nt=new Float32Array(DIMS);
     for(let dd=0;dd<DIMS;dd++)nt[dd]=(tend[i*DIMS+dd]+tend[j*DIMS+dd])*0.5;
     addParticle(cx,cy,nt,false,i,j);
     amp[i]*=0.75;amp[j]*=0.75;
     birthsThisTick++;
+    if(__SPEC.assort)_specAccept(i);
+    }
   }
 
   const clSigMod=vmActions[5]*influence*0.004;
@@ -16018,6 +16044,11 @@ function interferenceCreate(i,j){
   const interference=Math.cos(dp);
   const sim=tendSim(i,j);
   if(interference>genome.creationThresh&&sim>0.1){
+    _specSpawnSim(sim);                                  // observe the compound channel's similarity distribution (the dominant, dissimilar-pairing one)
+    // swing #18 finding: compound formation is HYBRIDIZATION — its cross-lineage births are net-generative
+    // (they found and feed lineages faster than they homogenise). So mate choice does NOT gate this channel;
+    // assort applies only to the homotypic executeVM/executeClusterVM reproduction. Gating here suppressed
+    // exactly the radiation-feeding tail (persistent species 5->1). Left free on purpose.
     const energy=(amp[i]+amp[j])*interference*0.5;
     if(energy<0.15)return false;
     const totalAmp=amp[i]+amp[j];
@@ -16028,7 +16059,7 @@ function interferenceCreate(i,j){
     const k=addCompound(cx,cy,nt,(vx[i]*amp[i]+vx[j]*amp[j])/totalAmp*0.3,(vy[i]*amp[i]+vy[j]*amp[j])/totalAmp*0.3,energy*0.6,(phase[i]+phase[j])*0.5,(freq[i]+freq[j])*0.5,i,j);
     if(k>=0){
       amp[i]-=amp[i]*genome.creationCost;amp[j]-=amp[j]*genome.creationCost;
-      birthsThisTick++;
+      birthsThisTick++;   // hybridization channel: always allowed (no mate-choice bookkeeping — no choice is exercised here)
       const r=(pR[i]+pR[j])/2,g=(pG[i]+pG[j])/2,b=(pB[i]+pB[j])/2;
       if(energy>0.3)addShock(cx,cy,energy*0.5,r,g,b);
       addBits(cx,cy,Math.floor(energy*4),r,g,b,energy*0.4);
@@ -16206,7 +16237,7 @@ function updateParticles(){
     const affinity=fieldAffinity(lfIdx,getParticleSig(i));
     localRes[i]+=localField*(pGenome[i]?pGenome[i].fieldInfluence:genome.fieldInfluence)*affinity; // per-lineage field coupling: each lineage's evolved fieldInfluence now governs its own resource harvest
     amp[i]+=localField*0.0008*affinity;
-    for(let d=0;d<DIMS;d++){tend[i*DIMS+d]+=(Math.random()-0.5)*0.001;const v=tend[i*DIMS+d];if(v>1.2)tend[i*DIMS+d]=1.2;if(v<-1.2)tend[i*DIMS+d]=-1.2}
+    {const _tm=(typeof globalThis!=='undefined'&&globalThis.__TEND_MUT)?+globalThis.__TEND_MUT:1; for(let d=0;d<DIMS;d++){tend[i*DIMS+d]+=(Math.random()-0.5)*0.001*_tm;const v=tend[i*DIMS+d];if(v>1.2)tend[i*DIMS+d]=1.2;if(v<-1.2)tend[i*DIMS+d]=-1.2}} // __TEND_MUT scales diet-axis exploration (retention test)
     const absencePeriod=ABSENCE_BASE+Math.sin(tick*0.0007)*180+(Math.sin(tick*0.00031)*90)|0;
     const cyclePos=tick%Math.max(200,absencePeriod);
     const isAbsent=cyclePos>(Math.max(200,absencePeriod)*(1-ABSENCE_DUTY));
@@ -16569,7 +16600,7 @@ function processGrid(){
              const _sppA=pProg[_drv],_sppB=pProg[_oth];
              const _sppN=Math.min(6,Math.min(_sppA?_sppA.length:0,_sppB?_sppB.length:0));
              let _sppD=0;for(let _spk=0;_spk<_sppN;_spk++)if(_sppA[_spk]&&_sppB[_spk]&&_sppA[_spk][0]!==_sppB[_spk][0])_sppD++;
-             const _spGate=_sppN===0||_sppD<_sppN*0.75; // speciation gate: ≥75% opcode mismatch in first 6 instructions = behavioral isolation, entrain suppressed
+             const _spGate=(_sppN===0||_sppD<_sppN*0.75)&&(!__SPEC.gate||pLin[_drv]===pLin[_oth]); // ≥75% opcode mismatch = behavioral isolation; #17 also suppresses entrainment across lineage ids when isolating
              const _g=genome;genome=pGenome[_drv]||genome;try{
               if(_spGate)entrain(_drv,_oth,sim,d); // suppressed between behaviorally isolated lineages
               executeVM(_drv,_oth,sim,d);
@@ -16588,7 +16619,7 @@ function processGrid(){
               pSignalReceive[i]+=pSignalEmitPrev[j]*prox36;
               pSignalReceive[j]+=pSignalEmitPrev[i]*prox36;
             }
-            const bl=genome.tendencyBleed*(1-d/iR);
+            const bl=genome.tendencyBleed*(1-d/iR)*((__SPEC.gate&&pLin[i]!==pLin[j])?0:1); // #17: trait bleed is gene flow — suppressed across lineages when isolating
             for(let dd=0;dd<DIMS;dd++){const avg=(tend[i*DIMS+dd]+tend[j*DIMS+dd])*0.5;tend[i*DIMS+dd]+=(avg-tend[i*DIMS+dd])*bl;tend[j*DIMS+dd]+=(avg-tend[j*DIMS+dd])*bl}
             const mg=(tend[i*DIMS+3]+tend[j*DIMS+3]);
             if(mg>genome.magneticThresh&&d>minD*2){const f=mg*0.0003/d;vx[i]-=ddx*f;vy[i]-=ddy*f;vx[j]+=ddx*f;vy[j]+=ddy*f}
@@ -16784,7 +16815,7 @@ function compact(){
     pPlasmidAge[w]=pPlasmidAge[r];
     pBroadcast[w*2]=pBroadcast[r*2];pBroadcast[w*2+1]=pBroadcast[r*2+1];
     clusterID[w]=clusterID[r];
-    pType[w]=pType[r];pProg[w]=pProg[r];pGenome[w]=pGenome[r]; // UNLOCKED #7a/#9: caste + full per-particle genome relocate with the particle (also fixes a caste-scramble bug)
+    pType[w]=pType[r];pProg[w]=pProg[r];pGenome[w]=pGenome[r];pLin[w]=pLin[r]; // UNLOCKED #7a/#9: caste + full per-particle genome (+ lineage tag) relocate with the particle (also fixes a caste-scramble bug)
     for(let rx=0;rx<REFLEX_DEPTH*2;rx++)pReflexHist[w*REFLEX_DEPTH*2+rx]=pReflexHist[r*REFLEX_DEPTH*2+rx];
     for(let rx=0;rx<REFLEX_DIMS;rx++)pReflexState[w*REFLEX_DIMS+rx]=pReflexState[r*REFLEX_DIMS+rx];
     pReflexIdx[w]=pReflexIdx[r];
@@ -16854,6 +16885,529 @@ function init(){
   }
 }
 
+// ════════════════════════════════════════════════════════════════════════════
+// OPEN-ENDED NICHE ECONOMY — swing #11 at the diversity ceiling.
+// ───────────────────────────────────────────────────────────────────────────
+// The proven ceiling: ONE currency (amp) → one way to win → one winner. Every
+// earlier lever redistributed a FIXED niche structure, and coexistence on any
+// fixed structure is capped by limiting similarity (≈ spectrum-width/niche-width)
+// — exactly the 2–7 types those runs collapsed to. Open-endedness needs the
+// NUMBER of niches to GROW with the act of living. Three composable mechanisms,
+// each its own knob so every control can be run:
+//
+//  (1) EXPANDING CROSS-FEED FRONTIER  [__NICHE_FRONTIER]
+//      Resource lives on a spectrum of channels indexed by the heritable diet
+//      trait (tend dim 0). Harvest is trait-matched, with a master-of-one ↔
+//      jack-of-all TRADE-OFF: each organism's harvesting effort is normalised to
+//      a fixed budget, so a narrow specialist drains its one channel fast but
+//      starves elsewhere, while a generalist sips everywhere and masters nothing.
+//      Competition divides each channel among its consumers, so a crowded channel
+//      pays little per-capita and a different one becomes the better bet —
+//      coexistence by resource partitioning, not a rarity tax. A fraction of every
+//      harvest is re-deposited DOWNSTREAM (b→b+OFFSET) as fresh resource, so a
+//      thriving population literally builds the next niche: new mountains appear
+//      faster than they are climbed. Abiotic supply tapers from the origin, so the
+//      frontier must be CONSTRUCTED, not handed out.
+//
+//  (2) BIOTIC / COEVOLUTIONARY NICHES  [__NICHE_BIOTIC]
+//      A conserved predation transfer carries amplitude UP the diet ladder: prey
+//      in channel b−1 lose exactly what predators in channel b gain (∝ amp). So
+//      every occupied channel creates a predation niche above it — each new type
+//      IS a new niche (Red Queen). Conserved, so it can never mint or destroy the
+//      population's energy; it only restructures who holds it.
+//
+//  (3) OPCODE-NOVELTY — the coupling gap  [__OPCODE_NOVELTY]
+//      Evolution uses ~20 of 232 opcodes ("museum, lights off"). A small
+//      mean-centred bonus rewards lineages whose program runs opcodes that are
+//      globally RARE among the living, so the dormant predation/mutualism/field
+//      machinery gets discovered and exercised rather than left dark.
+//
+// SAFETY: lever 2 (predation) is conserved and lever 3 (opcode-novelty) is mean-centred —
+// neither can mint or destroy amp. Lever 1's REAL income IS a genuine food source (that is the
+// whole point — a zero-sum tax cannot exceed limiting similarity), but it is bounded by the
+// existing metabolic brake: more amp → more births → density/starvation drain rises → N
+// self-limits, so it raises DIVERSITY, not headcount-without-limit, and cannot be wireheaded.
+// All three knobs default OFF (opt-in) and are read at call time so the headless harness can A/B.
+// Graded honestly (OEE-NOTES.md): real partitioned niches roughly HALVE the collapse and ~double
+// retained kinds vs baseline — best of any swing — but do not yet cleanly break the ceiling, so
+// this ships dormant rather than adopted.
+const NICHE_BINS=16;                 // resource channels along the diet spectrum
+const NICHE_ABIOTIC=0.06;            // abiotic supply at the origin channel
+const NICHE_TAPER=0.82;              // geometric taper of abiotic supply per channel out
+const NICHE_CAP=4.0;                 // per-channel standing-stock ceiling
+const NICHE_HARVEST=0.35;            // fraction of a channel's stock harvested per tick
+const NICHE_PERSIST=0.95;            // unharvested stock carried over (abandoned frontier fades)
+const NICHE_STRENGTH=0.006;          // max amp/tick from niche-harvest success — MEAN-CENTRED control mode only
+// REAL income mode (default): niche harvest is a genuine, partitioned food source — each channel
+// has its own carrying capacity, so coexistence count = number of supplied channels, NOT the
+// limiting-similarity cap of a zero-sum tax. Total income is bounded by the metabolic brake (more
+// amp → more births → density/starvation drain rises → N self-limits), so it cannot wirehead.
+const NICHE_REAL_SUPPLY=0.32;        // abiotic supply per channel in REAL mode (a real food source, not a nudge)
+const NICHE_REAL_TAPER=1.0;          // FLAT supply: no channel is intrinsically best, so there is no single mountain — coexistence rests purely on symmetric crowding (frequency dependence), and cross-feeding can extend the occupied frontier
+const NICHE_GAIN_REAL=0.05;          // harvested-resource → amplitude conversion (lone specialist ≈0.02 amp/tick; crowded channel splits it)
+// DRIFTING NICHES — swing #12, after "Convergent Hunger". Stationary niches (even real, even flat)
+// still let diet slowly re-concentrate on whichever channel a lineage settles, then stop: a summit.
+// Here the supply PEAKS roam over the channel ring (drifting attractors), so the profitable diet is
+// a MOVING target — no lineage can finish climbing, selection can't freeze on a champion, and the
+// peaks carry the occupied frontier with them (the Red Queen as geometry). Total supply is held
+// constant (peaks are renormalised each tick), so this changes WHERE the food is, not how much —
+// carrying capacity is unaffected. Opt-in via __NICHE_DRIFT=1 (implies REAL income to be meaningful).
+const NICHE_DRIFT_PEAKS=3;           // moving supply peaks (Convergent Hunger ran 3 attractors)
+const NICHE_DRIFT_PERIOD=4000;       // ticks for a peak to complete one drift cycle
+const NICHE_DRIFT_AMP=4.0;           // how many channels a peak roams from its base
+const NICHE_PEAK_WIDTH=1.6;          // Gaussian half-width of a supply peak (channels)
+const NICHE_PEAK_FLOOR=0.15;         // background floor so abandoned channels stay marginally alive
+const NICHE_CROSSFEED=0.55;          // fraction of harvest re-deposited downstream (lever 1)
+const NICHE_OFFSET=3;                // downstream channel step (coprime to 16 → chain reaches all)
+const NICHE_PRED_RATE=0.012;         // predator amp/tick per unit prey, conserved (lever 2)
+const NICHE_PRED_MAXFRAC=0.03;       // ceiling: predators take ≤3% of a prey channel's amp/tick
+const OPNOV_STRENGTH=0.0025;         // max amp/tick from running globally-rare opcodes (lever 3)
+const OPNOV_INTERVAL=120;            // ticks between opcode-frequency recomputes
+// N-DIMENSIONAL NICHE CELLS — swing #13: attack the COUNT. A 1-D diet axis is bounded by limiting
+// similarity to a handful of types; lifting diet to D tendency dimensions makes the niche count
+// COMBINATORIAL (bins^D), so the ceiling rises by orders of magnitude. Each cell is a real,
+// partitioned resource; empty cells accrue stock to the cap, so the FIRST lineage to reach a new
+// cell harvests a rich colonisation bonus — living literally opens (and pays for) new ways to live.
+// Opt-in via __NICHE_NDIM=1 (with __NICHE_FRONTIER=1); replaces the 1-D channel geometry.
+const NICHE_ND_DIMS=4;               // tendency dimensions used as diet coordinates
+const NICHE_ND_BINS=4;               // bins per diet dimension
+const NICHE_ND_CELLS=256;            // = NICHE_ND_BINS**NICHE_ND_DIMS (4^4)
+const NICHE_ND_SUPPLY=0.18;          // per-cell supply/tick (lone occupant ≈0.009 amp/tick; empty cell builds a colonisation bonus)
+const NICHE_ND_OFFSET=37;            // cross-feed cell stride (odd → coprime to 256 → reaches every cell)
+// LOCAL COMPETITION — swing #14. Per-niche income alone still lets one fast cell flood the world,
+// because death/crowding is GLOBAL. Here crowding your OWN diet-cell costs amplitude, so each cell
+// has a hard LOCAL carrying capacity and overflow is pushed into other cells — coexistence by real
+// per-niche competition (NFD done right: a partitioned resource, not a global rarity tax; and not
+// the frozen-immobility artifact, since cell-mates still physically interact and compete).
+// Opt-in via __NICHE_LOCAL=1 (with __NICHE_NDIM=1).
+const NICHE_CELL_FLOOR=2;            // occupants per cell that pay no crowding cost
+const NICHE_LOCAL_COST=0.0025;       // amp/tick lost per occupant above the floor (caps each cell locally)
+// LOCAL (PER-CELL) DRIFT — swing #15, the synthesis. #13 supplies many niches, #14 lets them coexist,
+// but together they buy a stable diverse equilibrium — a high CLOSED ceiling, not open-endedness.
+// Here each cell's supply pulses on its OWN phase (uncorrelated across the board), so a lineage
+// settled in a cell finds its supply waning while neighbours wax: no niche can be permanently
+// settled, and turnover is distributed (not convergent on one moving peak, the way global drift was).
+// This only yields sustained turnover (not just culling) if exploration can track it — see __TEND_MUT.
+// Opt-in via __NICHE_CELLDRIFT=1 (with __NICHE_NDIM=1).
+const NICHE_CELLDRIFT_PERIOD=1500;   // ticks per cell supply pulse (faster than the population can fully track)
+const NICHE_CELLDRIFT_AMP=1.0;       // supply swing per cell (1.0 → 0..2× of base, floored)
+const nicheRes=new Float32Array(NICHE_BINS);      // standing stock per channel
+const nicheDemand=new Float32Array(NICHE_BINS);   // total harvesting effort per channel
+const nicheBiomass=new Float32Array(NICHE_BINS);  // living amp per diet channel
+const nicheCross=new Float32Array(NICHE_BINS);    // deferred cross-feed deposits (avoids intra-tick order bias)
+const nichePredGain=new Float32Array(NICHE_BINS); // predator amp gain per unit amp, per channel
+const nichePreyLoss=new Float32Array(NICHE_BINS); // prey amp loss per unit amp, per channel
+const nicheAbiotic=new Float32Array(NICHE_BINS);  // precomputed tapered abiotic supply (mean-centred control)
+const nicheAbioticReal=new Float32Array(NICHE_BINS); // precomputed tapered abiotic supply (REAL income mode)
+const nicheSupplyNow=new Float32Array(NICHE_BINS); // per-tick drifting supply (swing #12)
+const nicheCellRes=new Float32Array(NICHE_ND_CELLS);   // standing stock per N-dim diet cell (swing #13)
+const nicheCellOcc=new Int32Array(NICHE_ND_CELLS);     // occupants per cell this tick
+const nicheCellCross=new Float32Array(NICHE_ND_CELLS); // deferred cross-feed deposits per cell
+const pDietCell=new Int32Array(CAP);                   // per-organism diet cell this tick
+const cellTendSum=new Float32Array(NICHE_ND_CELLS*DIMS_MAX); // per-cell tend centroid accumulator (localised homogeniser)
+const cellTendCnt=new Int32Array(NICHE_ND_CELLS);
+nicheCellRes.fill(0.3);
+const pNicheRaw=new Float32Array(CAP);            // per-organism resource captured this tick
+const pDietBin=new Int16Array(CAP);               // per-organism diet channel this tick
+const opFreq=new Float32Array(256);               // opcode frequency among living programs
+let opFreqTotal=0;
+for(let _b=0;_b<NICHE_BINS;_b++){ nicheAbiotic[_b]=NICHE_ABIOTIC*Math.pow(NICHE_TAPER,_b); nicheAbioticReal[_b]=NICHE_REAL_SUPPLY*Math.pow(NICHE_REAL_TAPER,_b); }
+nicheRes.fill(0.3);
+// Diet channel and specialisation half-width derive from the heritable tendency axis.
+function nicheDietBin(i){ let c=((tend[i*DIMS]+1.2)/2.4)*NICHE_BINS|0; return c<0?0:c>=NICHE_BINS?NICHE_BINS-1:c; }
+function nicheWidth(i){ let s=(tend[i*DIMS+1]+1.2)/2.4; s=s<0?0:s>1?1:s; return 0.6+s*(NICHE_BINS*0.5-0.6); }
+// Swing #13: hash D heritable tendency dims into one of bins^D diet cells (the combinatorial niche space).
+function nicheCellOf(i){ let r=0; const D=NICHE_ND_DIMS<DIMS?NICHE_ND_DIMS:DIMS;
+  for(let d=0;d<D;d++){ let q=((tend[i*DIMS+d]+1.2)/2.4*NICHE_ND_BINS)|0; q=q<0?0:q>=NICHE_ND_BINS?NICHE_ND_BINS-1:q; r=r*NICHE_ND_BINS+q; }
+  return r; }
+// ═══ SWING #17: CLADOGENESIS — the speciation primitive (knob-gated; default = STOCK, byte-identical) ═══
+// The substrate already FORKS the genome per birth (cloneGenome + mutateChildGenome) and selects on it;
+// genomes diverge. What was missing is a way for divergence to ACCUMULATE: every re-merger pulls
+// sub-populations back together faster than drift separates them. #17 isolates the re-mergers WITHIN
+// lineage — crossover (gene flow, the load-bearing one), tendencyBleed (trait flow), HGT_DONATE (op179),
+// and the globalTend sink (pulled to the lineage-local centroid, not the global mean) — and entrainment
+// (already behaviorally gated). When a viable sub-population (≥minsize) sits in a niche-cell DISTINCT from
+// its lineage's main body AND its trait centroid has diverged ≥divT, it is MINTED a new lineage id
+// (cladogenesis). Founders get death-relief grace so they don't die in the cradle. Divergent selection —
+// what makes daughters mean something, not just ID-distinct — is supplied by the REAL partitioned niche
+// cells (NICHE_NDIM+NICHE_REAL); the "same-landscape" control turns that off (NICHE_REAL=0) to prove
+// isolation alone is not enough. Persistence (not gross births) is the success metric — see harness.
+// ═══ LIVE STACK — promote the OEE experiment stack to default-ON in the artwork ═══════════════════════
+// Decision (this session): every harness verdict was rendered in an isolated, stacked regime the live piece
+// never runs. The only ground truth is the artwork actually executing these mechanisms — so turn the coherent
+// stack ON by default and observe it live. The harness still overrides any flag it sets explicitly (we only
+// fill UNDEFINED), so experiments are unaffected and any flag can still be forced off with X=0. TREATMENTS
+// only: scientific controls (__ALLO_SHUF), the refuted net-harmful opt-in (__SPEC_ASSORT, #18), and
+// mutually-exclusive variants (__MINT_GATE cluster/relax; __NICHE_LOCALTEND vs __SPATIAL_TEND) are left off
+// for a separate, explicit choice. Revert = delete this block (every flag falls back to default-off).
+if(typeof globalThis!=='undefined'){
+  const LIVE={ __NICHE_FRONTIER:1, __NICHE_NDIM:1, __NICHE_LOCAL:1, // niche economy: cross-feed frontier + N-dim diet cells + per-cell crowding (#13/#14)
+               __SPECIATE:1,                                        // cladogenesis #17 — brings gate+mint on; assort (#18) stays off
+               __COLO_SURV:1, __COLO_PIONEER:1,                     // colonization & survival #20
+               __SPATIAL_TEND:1 };                                  // allopatric (spatially-local) homogeniser #21
+  for(const k in LIVE) if(globalThis[k]===undefined) globalThis[k]=LIVE[k];
+}
+const __SPEC=(function(){ const G=(typeof globalThis!=='undefined')?globalThis:{}; const m=(G.__SPECIATE|0)===1;
+  const sub=k=>G[k]!==undefined?(G[k]|0):(m?1:0);
+  return { on:m, gate:sub('__SPEC_GATE'), mint:sub('__SPEC_MINT'),
+    grace:(G.__SPEC_GRACE!==undefined?+G.__SPEC_GRACE:2000),
+    minsize:(G.__SPEC_MINSIZE!==undefined?(G.__SPEC_MINSIZE|0):12),
+    divT:(G.__SPEC_DIVT!==undefined?+G.__SPEC_DIVT:0.20),
+    // ── pre-zygotic isolation: trait-based SOFT assortative mating (separate opt-in knob) ──────────
+    // The #17 gates approximate POST-zygotic isolation (gene flow blocked once a birth happens). This
+    // is the missing PRE-zygotic half: mate CHOICE. Gating on tendSim (not lineage id) makes it
+    // REINFORCEMENT — barely-diverged pairs still interbreed, the barrier rises automatically as
+    // divergent selection pushes traits apart, and it can't manufacture id-tag species by fiat.
+    assort:(G.__SPEC_ASSORT|0)===1,
+    // measured: spawns cluster at cosine-sim ~0.97 (within-population); the reabsorbing cross-gap gene
+    // flow is the rare sim<0.8 tail. T=0.75 bites that tail and barely touches the bulk (low Allee risk).
+    assortT:(G.__SPEC_ASSORT_T!==undefined?+G.__SPEC_ASSORT_T:0.75),  // similarity midpoint of the acceptance curve
+    assortK:(G.__SPEC_ASSORT_K!==undefined?+G.__SPEC_ASSORT_K:10) };  // steepness: SOFT (small) → HARD cutoff (large; K~1000 ≈ step)
+  })();
+// ═══ SWING #20: COLONIZATION vs SURVIVAL — two ORTHOGONAL levers, run as a 2×2 (default both off) ═══
+// Measurement #19 found founder decay is occupancy-INDEPENDENT and only ~12/256 cells are occupied: niche
+// space is abundant, founders die anyway. The naive fix (more grace) is a DEATH term → it buys persistence
+// (protected relics), not radiation. What fills empty cells is a GROWTH term: positive frequency-dependence
+// pointed at empty cells so a rare pioneer OUT-reproduces. So we separate the two and let the metric pick:
+//   knob S  __COLO_SURV=1     death-grace + min-viable-size floor (above, in the death loop). Survival only.
+//   knob C  __COLO_PIONEER=1  pioneer income + Allee relief (below, in the niche-cell harvest). Growth only.
+// This is swing #13's pioneer bonus — "empty cells accrue stock, first arrival gets rich" — resurrected on
+// the #17 speciation substrate: #13 failed because there were no distinct lineages to be the pioneers; #17
+// supplies them. Prediction (falsifiable): S alone raises persistence, leaves distinct-lineage-cells ~12;
+// C alone raises distinct-lineage-cells; both together is the radiation. Success is gated on the smear-proof
+// metric (cells that are the HOME of a distinct viable lineage), never raw occupied-cell count — see harness.
+const __COLO=(function(){ const G=(typeof globalThis!=='undefined')?globalThis:{};
+  return { surv:(G.__COLO_SURV|0)===1,
+    pioneer:(G.__COLO_PIONEER|0)===1,
+    pioneerK:(G.__COLO_PIONEER_K!==undefined?+G.__COLO_PIONEER_K:2.0),  // extra first-arrival income, as a multiple of base cell harvest
+    alleeK:(G.__COLO_ALLEE_K!==undefined?+G.__COLO_ALLEE_K:1.0),        // per-capita income uplift for sub-minsize lineage members
+    pioneerOcc:(G.__COLO_PIONEER_OCC!==undefined?(G.__COLO_PIONEER_OCC|0):NICHE_CELL_FLOOR) }; })(); // occ at/below which a cell still pays pioneer income
+
+// ═══ SWING #21: SPATIALLY-LOCAL homogeniser — allopatry, not a strength knob ═══════════════════════════
+// #20 refuted the STRENGTH axis: turning the divergent pull UP (pioneer income) gave capture/collapse, not
+// radiation, and lineages spread into empty cells as one SMEAR (one centroid, many cells). The #15→#17 sink
+// is per-lineage but spatially GLOBAL — globalTend/linCentroid is the mean over ALL the lineage's members
+// regardless of where they are — so a sub-cohort physically separated on the far side of the world is still
+// pulled across all space back to the parent mean. The pull is jailer (re-absorbs the pioneer) AND
+// foundation (lets a cohort cohere into a home); a strength knob can't separate them because it's one force.
+// Localising it in SPACE can: pull each particle toward the mean tend of NEARBY same-lineage neighbours only.
+// A spatially-separated sub-group then grows its OWN local centroid (allopatry); the lineage develops two
+// centroids; once they diverge in trait + sit in distinct cells, #17's mint splits them. Long-range jailer
+// cut, local foundation kept. CONTROL (__ALLO_SHUF=1): identical machinery but neighbours drawn NON-spatially
+// (random lineage-mates), matched count → matched effective strength/noise; isolates allopatry from a strength
+// cut. If only the spatial version lifts bifurcation+radiationCells, allopatry is the mechanism; if the
+// shuffle helps too, it was just a weaker pull (and will smear like #20's C). Requires __SPECIATE (lineage ids).
+const __ALLO=(function(){ const G=(typeof globalThis!=='undefined')?globalThis:{};
+  return { on:(G.__SPATIAL_TEND|0)===1,
+    shuf:(G.__ALLO_SHUF|0)===1,                                         // control: non-spatial neighbour draw
+    k:(G.__ALLO_K!==undefined?(G.__ALLO_K|0):16) }; })();              // max same-lineage neighbours folded into the local centroid
+const _alloScratch=new Float32Array(DIMS_MAX);                          // per-particle local-centroid accumulator
+const _alloMembers=new Map();                                          // pLin → [idx,...] (rebuilt each tick, only under __ALLO.shuf)
+
+const linCentroid=new Map();  // pLin → Float32Array(DIMS): trait centroid (rebuilt each cadence)
+const linSize=new Map();      // pLin → living count (rebuilt each cadence)
+const linModalCell=new Map(); // pLin → its most-occupied niche cell (rebuilt each cadence)
+const linBirthTick=new Map(); // pLin → tick it was MINTED by speciation (persists; only minted lineages)
+const linParent=new Map();    // pLin → parent pLin at the speciation event (persists; genealogy)
+let specMintCount=0;          // cumulative cladogenesis events (exposed for the harness)
+// ── mint-refusal accounting (swing #22 conduit probe) — is trait-divergence being erased by a BOOKKEEPING
+//    gate invisible to the gene-flow math, rather than by gene flow? The suspect is the niche-cell gate:
+//    a viable, trait-DIVERGED sub-group co-located in its parent's modal cell (which cluster-mates are) is
+//    refused a mint by condition (c) and re-homogenised, never tagged. specMintBlockCell counts exactly that. ──
+let specMintCand=0, specMintBlockCell=0, specMintBlockDiv=0;
+// per-axis divergence accounting: WHERE (which trait axis) does refused-vs-minted divergence live? Niche-cell
+// gate uses axes 0..NICHE_ND_DIMS-1 (=0..3, the SELECTED/economy axes); #16 proved axes ≥4 are NEUTRAL. If the
+// refused (blockCell) divergence is mostly on axes ≥4, the gate is correctly refusing functionless variation
+// (minting it = ID-tag birth-inflation); if it's on axes 0..3 sub-bin, the gate is too coarse and the
+// cluster-distinctness reframe is warranted. specMintAxisSq is the minted control (where REAL divergence lives).
+const specBlockAxisSq=new Float64Array(DIMS_MAX), specMintAxisSq=new Float64Array(DIMS_MAX), _axScr=new Float64Array(DIMS_MAX);
+// PERSISTENCE of refused cohorts — the decisive horn. A refused (blockCell) cohort is keyed (lineage:cell);
+// each cadence it stays viable+diverged its streak grows. If refused cohorts hold divergence for many cadences
+// (~30 ticks each), they are STABLE incipient species the gate wrongly refuses → cluster reframe is right. If
+// streaks are 1–2 cadences, the divergence is transient drift (ecologically equivalent, washes out) → the gate
+// is doing its job and minting them would be ID-tag birth-inflation. blockStreakMean/Max = current live streaks.
+const _blockStreak=new Map();   // "L:cell" → consecutive cadences continuously blockCell
+let _blockStreakDoneSum=0, _blockStreakDoneN=0; const _blockStreakHist=new Int32Array(12); // completed streaks
+// ═══ SWING #22: PERMISSIVE MINT GATE — separate the gate's job from the metric's ════════════════════════
+// The niche-cell distinctness gate conflated two roles: it used the SUCCESS condition (niche distinctness,
+// which radiationCells measures, strict + smear-proof) as the ENTRY condition. Using the destination as the
+// entry requirement forecloses every intermediate state from which the destination is reached — split-first
+// speciation (isolate on a non-resource trait, niche divergence follows via character displacement) is erased
+// at the cradle. Fix: make the gate PERMISSIVE (distinct DEME = distinct cluster, drop the niche-cell entry
+// requirement), keep radiationCells STRICT as the success bar. Safe by construction: a strict, ID-inflation-
+// immune success metric cannot be fooled by a permissive gate — over-split all you like, only distinct home
+// cells register. Pair with founder grace (__COLO_SURV) so isolated sub-bin founders don't die of the #20
+// Allee trap before they can character-displace. Decisive instrument: do permissively-minted (same-cell)
+// cohorts LATER migrate to a distinct home cell? (split-then-displace = the cascade; harness cascadeCount).
+const __MINTGATE=(function(){ const G=(typeof globalThis!=='undefined')?globalThis:{};
+  return { mode:(G.__MINT_GATE||'cell') }; })(); // 'cell' (stock, niche-cell gate) | 'cluster' (permissive deme gate) | 'relax' (size+divT only)
+const linBirthSameCell=new Map(); // pLin → minted INTO its parent's modal niche-cell? (a permissive mint the cell-gate would refuse) — cascade denominator
+function specComputeAgg(){ // per-lineage centroid, size, and modal niche-cell — O(N), called each cadence
+  linCentroid.clear(); linSize.clear();
+  const cellCnt=new Map(); // "lin:cell" → count, to find each lineage's modal cell
+  for(let i=0;i<N;i++){ if(!palive[i])continue; const l=pLin[i];
+    let c=linCentroid.get(l); if(!c){ c=new Float32Array(DIMS); linCentroid.set(l,c); }
+    for(let d=0;d<DIMS;d++)c[d]+=tend[i*DIMS+d];
+    linSize.set(l,(linSize.get(l)||0)+1);
+    const key=l+':'+nicheCellOf(i); cellCnt.set(key,(cellCnt.get(key)||0)+1); }
+  for(const [l,c] of linCentroid){ const n=linSize.get(l)||1; for(let d=0;d<DIMS;d++)c[d]/=n; }
+  linModalCell.clear(); const bestN=new Map();
+  for(const [key,cnt] of cellCnt){ const ci=key.indexOf(':'); const l=+key.slice(0,ci), cell=+key.slice(ci+1);
+    if(cnt>(bestN.get(l)||0)){ bestN.set(l,cnt); linModalCell.set(l,cell); } }
+}
+function specMint(){ // cladogenesis: split off viable, cell-distinct, trait-diverged sub-populations
+  if(!__SPEC.mint)return;
+  const mode=__MINTGATE.mode;
+  // ── diagnostic + (cell/relax) mint pass: group by (lineage, niche-cell). The diagnostics (axis, streak,
+  //    blockCell) measure the CELL gate's behaviour regardless of which gate is active, for cross-mode compare. ──
+  const groups=new Map(); // "lin:cell" → {l,cell,idx[]}
+  for(let i=0;i<N;i++){ if(!palive[i])continue; const l=pLin[i], cell=nicheCellOf(i), key=l+':'+cell;
+    let g=groups.get(key); if(!g){ g={l,cell,idx:[]}; groups.set(key,g); } g.idx.push(i); }
+  const _blkSeen=new Set(); // blockCell keys this cadence, for streak tracking
+  for(const g of groups.values()){
+    if(g.idx.length<__SPEC.minsize)continue;            // (a) viable founder size, not a doomed singleton
+    specMintCand++;
+    const lc=linCentroid.get(g.l); if(!lc)continue;
+    let dist=0; const gc=new Float32Array(DIMS);         // compute divergence for ALL viable groups, to classify refusals
+    for(const i of g.idx)for(let d=0;d<DIMS;d++)gc[d]+=tend[i*DIMS+d];
+    for(let d=0;d<DIMS;d++){ gc[d]/=g.idx.length; const dd=gc[d]-lc[d]; _axScr[d]=dd*dd; dist+=_axScr[d]; } // _axScr = per-axis squared divergence
+    const diverged=Math.sqrt(dist)>=__SPEC.divT;         // (b) trait centroid has genuinely diverged from parent
+    const cellDistinct=(g.cell!==linModalCell.get(g.l)); // (c) a niche-cell DISTINCT from the lineage's main body
+    if(diverged&&!cellDistinct){ specMintBlockCell++; for(let d=0;d<DIMS;d++)specBlockAxisSq[d]+=_axScr[d]; _blkSeen.add(g.l+':'+g.cell); } // diverged but cell-collided — the cell gate refuses these
+    else if(!diverged&&cellDistinct)specMintBlockDiv++;  // cell-distinct but not yet diverged enough (legitimate hold)
+    // MINT here only for 'cell' (stock: needs cell-distinct) and 'relax' (drops cell-distinct). 'cluster' mints below.
+    if((mode==='cell'&&cellDistinct&&diverged)||(mode==='relax'&&diverged)){
+      const nl=_linNext++; linParent.set(nl,g.l); linBirthTick.set(nl,tick); linBirthSameCell.set(nl,!cellDistinct); // MINT
+      for(const i of g.idx)pLin[i]=nl;
+      for(let d=0;d<DIMS;d++)specMintAxisSq[d]+=_axScr[d]; // control: where REAL (minted) divergence lives
+      specMintCount++;
+    }
+  }
+  // streak bookkeeping: keys that dropped out of blockCell this cadence finalize their streak; survivors grow
+  for(const [k,s] of _blockStreak){ if(!_blkSeen.has(k)){ _blockStreakDoneSum+=s; _blockStreakDoneN++; _blockStreakHist[s<11?s:11]++; _blockStreak.delete(k); } }
+  for(const k of _blkSeen) _blockStreak.set(k,(_blockStreak.get(k)||0)+1);
+  // ── PERMISSIVE deme mint pass (mode 'cluster'): group by (lineage, clusterID); a distinct DEME (cluster)
+  //    replaces distinct niche-cell as the entry condition. Drops the success-as-gate conflation; radiationCells
+  //    stays strict as the bar. Sub-bin founders that form their own cluster + diverged in trait now mint. ──
+  if(mode==='cluster'){
+    const cg=new Map(); // "l:cluster" → {l,cl,idx[]}
+    for(let i=0;i<N;i++){ if(!palive[i])continue; const cl=clusterID[i]; if(cl<0)continue; const l=pLin[i], key=l+':'+cl;
+      let g=cg.get(key); if(!g){ g={l,cl,idx:[]}; cg.set(key,g); } g.idx.push(i); }
+    const modCl=new Map(), bestN=new Map(); // each lineage's modal (largest) cluster = its "main body"
+    for(const g of cg.values()){ if(g.idx.length>(bestN.get(g.l)||0)){ bestN.set(g.l,g.idx.length); modCl.set(g.l,g.cl); } }
+    for(const g of cg.values()){
+      if(g.idx.length<__SPEC.minsize)continue;           // (a) viable
+      if(g.cl===modCl.get(g.l))continue;                  // (c') a DEME distinct from the lineage's main cluster
+      const lc=linCentroid.get(g.l); if(!lc)continue;
+      let dist=0; const gc=new Float32Array(DIMS);
+      for(const i of g.idx)for(let d=0;d<DIMS;d++)gc[d]+=tend[i*DIMS+d];
+      for(let d=0;d<DIMS;d++){ gc[d]/=g.idx.length; const dd=gc[d]-lc[d]; dist+=dd*dd; }
+      if(Math.sqrt(dist)<__SPEC.divT)continue;            // (b) diverged
+      let bc=0,bcell=0; const cc=new Map();               // cohort's modal niche-cell, to flag same-cell (permissive) mints
+      for(const i of g.idx){ const c=nicheCellOf(i), v=(cc.get(c)||0)+1; cc.set(c,v); if(v>bc){ bc=v; bcell=c; } }
+      const nl=_linNext++; linParent.set(nl,g.l); linBirthTick.set(nl,tick); linBirthSameCell.set(nl,bcell===linModalCell.get(g.l));
+      for(const i of g.idx)pLin[i]=nl;
+      specMintCount++;
+    }
+  }
+}
+function specInGrace(l){ // founder protection: a freshly-minted lineage gets death-relief while young OR small
+  if(!__SPEC.on)return false; const bt=linBirthTick.get(l); if(bt===undefined)return false;
+  return (tick-bt)<__SPEC.grace || (linSize.get(l)||0)<__SPEC.minsize;
+}
+// ── assortative-mating machinery (swing #18; active only when __SPEC.assort) ──────────────────────
+let specBirthAccept=0, specBirthReject=0;               // realized vs mate-refused spawns (cumulative, global)
+let specSimSum=0, specSimCnt=0; const specSimHist=new Int32Array(10); // spawn-similarity distribution (to pick the threshold)
+const linAcc=new Map(), linRej=new Map();               // per-lineage realized/refused spawns → Allee-trap (mate-scarcity) diagnosis
+function specAssortAccept(i,j,sim){                      // soft mate choice: P(accept) rises with trait similarity
+  const x=__SPEC.assortK*(sim-__SPEC.assortT);          // K small → gentle reinforcement slope; K large → hard barrier at assortT
+  return Math.random() < 1/(1+Math.exp(-x));
+}
+function _specSpawnSim(sim){ if(__SPEC.on){ specSimSum+=sim; specSimCnt++; let b=((sim+1)*5)|0; specSimHist[b<0?0:b>9?9:b]++; } }
+function _specReject(i){ specBirthReject++; const l=pLin[i]; linRej.set(l,(linRej.get(l)||0)+1); }
+function _specAccept(i){ specBirthAccept++; const l=pLin[i]; linAcc.set(l,(linAcc.get(l)||0)+1); }
+// Swing #12: drifting supply peaks (moving niches). Peaks roam the channel ring on slow sinusoids;
+// total supply is renormalised to NICHE_REAL_SUPPLY*NICHE_BINS so only the LOCATION of food moves.
+function nicheDriftSupply(){ const total=NICHE_REAL_SUPPLY*NICHE_BINS; let sum=0;
+  for(let b=0;b<NICHE_BINS;b++){ let v=NICHE_PEAK_FLOOR;
+    for(let k=0;k<NICHE_DRIFT_PEAKS;k++){
+      const mu=k*NICHE_BINS/NICHE_DRIFT_PEAKS + NICHE_DRIFT_AMP*Math.sin(2*Math.PI*tick/NICHE_DRIFT_PERIOD + 2*Math.PI*k/NICHE_DRIFT_PEAKS);
+      let d=Math.abs(b-mu); d=Math.min(d, NICHE_BINS-d); // circular distance on the channel ring
+      v+=Math.exp(-(d*d)/(2*NICHE_PEAK_WIDTH*NICHE_PEAK_WIDTH)); }
+    nicheSupplyNow[b]=v; sum+=v; }
+  if(sum>0){ const s=total/sum; for(let b=0;b<NICHE_BINS;b++) nicheSupplyNow[b]*=s; } }
+
+function applyNicheEconomy(){
+  // Opt-in: every lever defaults OFF so stock index.html is byte-for-byte unchanged. Set the
+  // matching global to 1 to enable (the headless harness exposes these as env knobs). Graded but
+  // not yet a clean break of the ceiling — see OEE-NOTES.md — so it ships dormant, not adopted.
+  const FR =(typeof globalThis!=='undefined'&&(globalThis.__NICHE_FRONTIER|0)===1);
+  const BIO=(typeof globalThis!=='undefined'&&(globalThis.__NICHE_BIOTIC|0)===1);
+  const NOV=(typeof globalThis!=='undefined'&&(globalThis.__OPCODE_NOVELTY|0)===1);
+  if(!FR&&!BIO&&!NOV) return;
+  const _season=1+SEASON_AMPLITUDE*Math.sin(2*Math.PI*tick/SEASON_PERIOD);
+
+  // diet bins + per-channel living biomass
+  nicheBiomass.fill(0); let alive=0;
+  for(let i=0;i<N;i++){ if(!palive[i])continue; alive++; const c=nicheDietBin(i); pDietBin[i]=c; nicheBiomass[c]+=amp[i]>0?amp[i]:0; }
+  if(alive===0) return;
+
+  // ── LEVER 1b: N-dimensional niche cells (swing #13) — combinatorial count, replaces the 1-D geometry ──
+  if(FR && (typeof globalThis!=='undefined'&&(globalThis.__NICHE_NDIM|0)===1)){
+    // regen every cell; empty cells accrue to NICHE_CAP → a colonisation bonus for the first arrival
+    const CELLDRIFT=(typeof globalThis!=='undefined'&&(globalThis.__NICHE_CELLDRIFT|0)===1); // swing #15: per-cell drift
+    for(let c=0;c<NICHE_ND_CELLS;c++){ let sup=NICHE_ND_SUPPLY;
+      if(CELLDRIFT){ sup=NICHE_ND_SUPPLY*(1+NICHE_CELLDRIFT_AMP*Math.sin(2*Math.PI*tick/NICHE_CELLDRIFT_PERIOD + c*2.39996323)); if(sup<NICHE_ND_SUPPLY*0.1)sup=NICHE_ND_SUPPLY*0.1; } // each cell pulses on its own (golden-angle) phase
+      nicheCellRes[c]=Math.min(NICHE_CAP, nicheCellRes[c]*NICHE_PERSIST + sup*_season); nicheCellOcc[c]=0; nicheCellCross[c]=0; }
+    for(let i=0;i<N;i++){ if(!palive[i])continue; const c=nicheCellOf(i); pDietCell[i]=c; nicheCellOcc[c]++; }
+    // harvest: occupants of a cell split its take equally (each cell its own carrying capacity); REAL income; cross-feed to an offset cell
+    const LOCAL=(typeof globalThis!=='undefined'&&(globalThis.__NICHE_LOCAL|0)===1); // swing #14: per-cell crowding cost
+    for(let i=0;i<N;i++){ if(!palive[i])continue; const c=pDietCell[i], occ=nicheCellOcc[c]; if(occ<=0)continue;
+      const got=nicheCellRes[c]*NICHE_HARVEST/occ; amp[i]+=NICHE_GAIN_REAL*got;
+      if(__COLO.pioneer){
+        // SWING #20 knob C (colonization): a GROWTH term, orthogonal to knob S's death relief. Two self-limiting
+        // parts, both pointed at the 244 empty cells so a rare pioneer's per-capita growth goes positive:
+        //  • pioneer income — while a cell is still under-occupied the first arrivals harvest its accrued stock
+        //    at a bonus rate (got already scales with the stock an empty cell built up). Ends once the cell fills
+        //    past pioneerOcc → reduced competition for first arrivals, not a permanent subsidy.
+        if(occ<=__COLO.pioneerOcc) amp[i]+=NICHE_GAIN_REAL*got*__COLO.pioneerK;
+        //  • Allee relief — a sub-minsize minted lineage gets a per-capita income uplift so rarity itself isn't
+        //    penalised; fades to zero as the founder reaches viable size. (linSize is refreshed each cadence.)
+        if(__SPEC.on){ const _ls=linSize.get(pLin[i])||0; if(_ls>0&&_ls<__SPEC.minsize) amp[i]+=NICHE_GAIN_REAL*got*__COLO.alleeK; }
+      }
+      if(LOCAL&&occ>NICHE_CELL_FLOOR) amp[i]-=NICHE_LOCAL_COST*(occ-NICHE_CELL_FLOOR); // local carrying capacity: crowding your own niche hurts
+      nicheCellCross[(c+NICHE_ND_OFFSET)%NICHE_ND_CELLS]+=got*NICHE_CROSSFEED; }
+    for(let c=0;c<NICHE_ND_CELLS;c++){ if(nicheCellOcc[c]>0) nicheCellRes[c]*=(1-NICHE_HARVEST); nicheCellRes[c]=Math.min(NICHE_CAP, nicheCellRes[c]+nicheCellCross[c]); }
+    // (biotic + opcode-novelty levers below still apply if their knobs are set)
+  } else
+  // ── LEVER 1: expanding cross-feed frontier ──────────────────────────────
+  if(FR){
+    const REAL=!(typeof globalThis!=='undefined'&&globalThis.__NICHE_REAL===0); // real partitioned income (default); ===0 → mean-centred control
+    const DRIFT=(typeof globalThis!=='undefined'&&(globalThis.__NICHE_DRIFT|0)===1); // swing #12: moving supply peaks
+    let supply; if(DRIFT){ nicheDriftSupply(); supply=nicheSupplyNow; } else supply=REAL?nicheAbioticReal:nicheAbiotic;
+    // regen: abiotic supply (stationary or drifting) + carry-over of unharvested stock
+    for(let b=0;b<NICHE_BINS;b++){ nicheRes[b]=Math.min(NICHE_CAP, nicheRes[b]*NICHE_PERSIST + supply[b]*_season); nicheCross[b]=0; }
+    // demand pass: trait-matched, effort-normalised (the master/jack trade-off). UNIFORM effort (1 per
+    // organism, not amp-weighted) so a channel's share is set purely by how CROWDED it is — this gives
+    // each channel its own carrying capacity, instead of letting the highest-amp type harvest the most
+    // (which was rich-get-richer and reinforced monoculture).
+    nicheDemand.fill(0);
+    for(let i=0;i<N;i++){ if(!palive[i])continue; const c=pDietBin[i], w=nicheWidth(i);
+      const lo=Math.max(0,Math.ceil(c-w)), hi=Math.min(NICHE_BINS-1,Math.floor(c+w)); let wsum=0;
+      for(let b=lo;b<=hi;b++) wsum+=1-Math.abs(b-c)/w; if(wsum<=0)wsum=1;
+      for(let b=lo;b<=hi;b++){ const wt=(1-Math.abs(b-c)/w)/wsum; nicheDemand[b]+=wt; } }
+    // harvest pass: each organism's share of a channel = its weighted effort / channel demand
+    let sumRaw=0, cnt=0;
+    for(let i=0;i<N;i++){ if(!palive[i])continue; const c=pDietBin[i], w=nicheWidth(i); pNicheRaw[i]=0;
+      const lo=Math.max(0,Math.ceil(c-w)), hi=Math.min(NICHE_BINS-1,Math.floor(c+w)); let wsum=0;
+      for(let b=lo;b<=hi;b++) wsum+=1-Math.abs(b-c)/w; if(wsum<=0)wsum=1;
+      let raw=0;
+      for(let b=lo;b<=hi;b++){ const dem=nicheDemand[b]; if(dem<=0)continue; const wt=(1-Math.abs(b-c)/w)/wsum;
+        const got=nicheRes[b]*NICHE_HARVEST*(wt/dem); raw+=got;
+        nicheCross[(b+NICHE_OFFSET)%NICHE_BINS]+=got*NICHE_CROSSFEED; } // cross-feed downstream (deferred)
+      pNicheRaw[i]=raw; sumRaw+=raw; cnt++; }
+    // deplete harvested channels, then apply deferred cross-feed deposits
+    for(let b=0;b<NICHE_BINS;b++){ if(nicheDemand[b]>0) nicheRes[b]*=(1-NICHE_HARVEST); nicheRes[b]=Math.min(NICHE_CAP, nicheRes[b]+nicheCross[b]); }
+    if(REAL){
+      // REAL partitioned income: harvested resource becomes genuine amplitude. A specialist alone on a
+      // channel banks real energy and reproduces; as its kind fills the channel, per-capita share falls
+      // to the maintenance line and that niche stops growing — a stable population PER channel. The
+      // metabolic brake caps the TOTAL, so this raises diversity, not headcount-without-limit.
+      for(let i=0;i<N;i++){ if(!palive[i])continue; amp[i]+=NICHE_GAIN_REAL*pNicheRaw[i]; }
+    }else{
+      // mean-centred control: zero-sum like NFD — provably cannot exceed limiting similarity (kept to prove the point).
+      const meanRaw=cnt>0?sumRaw/cnt:0;
+      if(meanRaw>1e-9) for(let i=0;i<N;i++){ if(!palive[i])continue; amp[i]+=NICHE_STRENGTH*Math.max(-1,Math.min(1, pNicheRaw[i]/meanRaw-1)); }
+    }
+  }
+
+  // ── LEVER 2: biotic / coevolutionary niches (conserved predation up the ladder) ──
+  if(BIO){
+    for(let b=0;b<NICHE_BINS;b++){ nichePredGain[b]=0; nichePreyLoss[b]=0; }
+    for(let b=0;b<NICHE_BINS;b++){ const preyB=(b-1+NICHE_BINS)%NICHE_BINS; const predMass=nicheBiomass[b], preyMass=nicheBiomass[preyB];
+      if(predMass<=0||preyMass<=0)continue;
+      const transfer=Math.min(preyMass*NICHE_PRED_MAXFRAC, predMass*NICHE_PRED_RATE); // total amp moved this tick
+      nichePredGain[b]+=transfer/predMass;       // distribute to predators ∝ their amp
+      nichePreyLoss[preyB]+=transfer/preyMass; }  // distribute loss to prey ∝ their amp
+    for(let i=0;i<N;i++){ if(!palive[i])continue; const c=pDietBin[i], a=amp[i]>0?amp[i]:0; amp[i]+=a*(nichePredGain[c]-nichePreyLoss[c]); }
+  }
+
+  // ── LEVER 3: opcode-novelty (break the coupling gap) ─────────────────────
+  if(NOV){
+    if(opFreqTotal===0 || tick%OPNOV_INTERVAL===0){ opFreq.fill(0); opFreqTotal=0;
+      for(let i=0;i<N;i++){ if(!palive[i])continue; const pr=pProg[i]; if(!pr)continue;
+        for(let q=0;q<pr.length;q++){ const op=pr[q][0]|0; if(op>=0&&op<256){ opFreq[op]++; opFreqTotal++; } } } }
+    if(opFreqTotal>0){
+      let sumNov=0, cnt=0;
+      for(let i=0;i<N;i++){ if(!palive[i])continue; const pr=pProg[i]; let s=0,n=0;
+        if(pr) for(let q=0;q<pr.length;q++){ const op=pr[q][0]|0; if(op>=0&&op<256){ s+=1-opFreq[op]/opFreqTotal; n++; } }
+        const sc=n>0?s/n:0; pNicheRaw[i]=sc; sumNov+=sc; cnt++; } // reuse pNicheRaw as scratch (frontier already consumed it)
+      const meanNov=cnt>0?sumNov/cnt:0;
+      if(meanNov>1e-9) for(let i=0;i<N;i++){ if(!palive[i])continue; amp[i]+=OPNOV_STRENGTH*Math.max(-1,Math.min(1, pNicheRaw[i]/meanNov-1)); }
+    }
+  }
+}
+
+// Count of resource channels currently occupied by living organisms (≥THRESH amp) —
+// the direct "how many niches does life hold" readout for the OEE harness.
+function nicheOccupancy(thresh){
+  // Swing #13 ND mode: report distinct diet CELLS holding ≥2 living organisms (the combinatorial count).
+  if(typeof globalThis!=='undefined'&&(globalThis.__NICHE_NDIM|0)===1){ const occN=new Int32Array(NICHE_ND_CELLS);
+    for(let i=0;i<N;i++){ if(palive[i]) occN[nicheCellOf(i)]++; }
+    let o=0; for(let c=0;c<NICHE_ND_CELLS;c++){ if(occN[c]>=2) o++; } return o; }
+  const T=thresh||0.02; const seen=new Float32Array(NICHE_BINS);
+  for(let i=0;i<N;i++){ if(palive[i]) seen[nicheDietBin(i)]+=amp[i]>0?amp[i]:0; }
+  let occ=0,tot=0; for(let b=0;b<NICHE_BINS;b++){ tot+=seen[b]; }
+  for(let b=0;b<NICHE_BINS;b++){ if(tot>0&&seen[b]/tot>=T) occ++; } return occ; }
+
+// ════════════════════════════════════════════════════════════════════════════
+// DIMENSIONALITY RATCHET — swing #16: grow the BOARD, not just fill it.
+// Retention (#11–#15) fills a FIXED board: diversity lives in 4-bin cells on DIMS axes, so even
+// perfect retention saturates 4^DIMS cells and stops. Open-endedness needs the number of AXES to
+// grow — a NEW kind of difference, not another value of an old one. The substrate already has the
+// lever (genome.tendDims, evolvable 2..16) but it is INERT: DIMS is derived from it only at boot
+// (sanitizeGenome), so the live mutation at ~L10785 never takes effect, and there is no stride
+// remap — a naive DIMS change would reinterpret every particle's flat trait vector at shifted
+// offsets (scramble) and the new axis would be born at zero (no cross-particle variation). setDims
+// fixes both: it re-lays-out `tend` from the old stride to the new (via a snapshot, so no overlap
+// hazard), and SPREAD-INITIALISES the new axis so it carries real differentiation immediately
+// instead of waiting on slow mutation against the homogenisers. `tend` is the ONLY array strided by
+// the live DIMS, so this is genuinely surgical.
+const DIMS_GROW_SPREAD=0.5;          // default half-range of values seeded onto a newly opened axis (override: __DIMS_SPREAD)
+function setDims(newD){
+  newD=Math.max(2,Math.min(DIMS_MAX,newD|0)); const oldD=DIMS; if(newD===oldD) return;
+  const sp=(typeof globalThis!=='undefined'&&globalThis.__DIMS_SPREAD!==undefined)?+globalThis.__DIMS_SPREAD:DIMS_GROW_SPREAD;
+  const hi=N>0?N:0; const snap=tend.slice(0,hi*oldD); // snapshot old layout (alive slots are packed 0..N-1)
+  for(let i=0;i<hi;i++){ for(let d=0;d<newD;d++){
+    tend[i*newD+d] = d<oldD ? snap[i*oldD+d] : (Math.random()*2-1)*sp; } }
+  DIMS=newD; genome.tendDims=newD;
+}
+// Per-axis 4-bin Shannon entropy summed over all live DIMS — shows whether NEW axes carry real
+// variation (the board actually grew) rather than sitting degenerate.
+function traitDimEntropy(){ let H=0; const B=4;
+  for(let d=0;d<DIMS;d++){ const cnt=new Int32Array(B); let tot=0;
+    for(let i=0;i<N;i++){ if(!palive[i])continue; let q=((tend[i*DIMS+d]+1.2)/2.4*B)|0; q=q<0?0:q>=B?B-1:q; cnt[q]++; tot++; }
+    if(tot>0){ for(let b=0;b<B;b++){ if(cnt[b]>0){ const p=cnt[b]/tot; H-=p*Math.log2(p); } } } }
+  return +H.toFixed(3); } // bits, summed across axes (max 2*DIMS)
+// Seed-vs-harvest discriminator for one trait axis. Returns its 4-bin entropy, total variance, and
+// R = between-lineage variance / total variance (Vb/(Vb+Vw)). R≈0 → each lineage's members are
+// spread like the whole population: the variance is unstructured noise (a seeded smear). R→1 → the
+// variance is ORGANISED BY LINEAGE: distinct lineages hold distinct, heritable values (colonisation).
+// Paired with watching `Vtot`/`ent` decay-or-hold after a frozen grow, this separates an injected
+// seed (washes to the homogeniser floor, low R) from a board that actually grew (holds, high R).
+function axisStats(d){ if(d<0||d>=DIMS)d=DIMS-1; const B=4; const cnt=new Int32Array(B);
+  const lsum=new Map(), lsq=new Map(), lcnt=new Map(); let gsum=0,gsq=0,gn=0;
+  for(let i=0;i<N;i++){ if(!palive[i])continue; const v=tend[i*DIMS+d];
+    let q=((v+1.2)/2.4*B)|0; q=q<0?0:q>=B?B-1:q; cnt[q]++;
+    const l=pLin[i]; lsum.set(l,(lsum.get(l)||0)+v); lsq.set(l,(lsq.get(l)||0)+v*v); lcnt.set(l,(lcnt.get(l)||0)+1);
+    gsum+=v; gsq+=v*v; gn++; }
+  let ent=0; for(let b=0;b<B;b++){ if(cnt[b]>0){ const p=cnt[b]/gn; ent-=p*Math.log2(p); } }
+  if(gn<2) return {d, ent:+ent.toFixed(3), Vtot:0, R:0, lineages:lsum.size, n:gn};
+  const gmean=gsum/gn, Vtot=gsq/gn-gmean*gmean; let Vw=0,wTot=0,Vb=0;
+  for(const [l,c] of lcnt){ const m=lsum.get(l)/c; Vb+=c*(m-gmean)*(m-gmean); if(c>=2){ Vw+=Math.max(0,lsq.get(l)/c-m*m)*c; wTot+=c; } }
+  Vb/=gn; Vw=wTot>0?Vw/wTot:0; const R=(Vb+Vw)>1e-9?Vb/(Vb+Vw):0;
+  return {d, ent:+ent.toFixed(3), Vtot:+Vtot.toFixed(4), R:+R.toFixed(3), lineages:lsum.size, n:gn}; }
+
 function loop(){
   lastLoopTime=performance.now();
   try{
@@ -16867,6 +17421,11 @@ function loop(){
     const _mean=N/TCELLS;
     for(let _i=0;_i<N;_i++){ if(!palive[_i])continue; const _bc=tHist[tendBin(_i)];
       amp[_i]+=NFD_STRENGTH*Math.max(-1,Math.min(1, 1-_bc/(_mean+0.001))); } } // rare kind gains, common kind pays → the world keeps generating novelty instead of freezing
+  applyNicheEconomy(); // OEE swing #11: multi-niche resource spectrum + cross-feeding + biotic predation + opcode-novelty (knob-gated; mean-centred/conserved)
+  // Swing #16: dimensionality ratchet. __DIMS_GROW=interval forces a new axis every N ticks (tests the
+  // lever in isolation, decoupled from the still-unsolved saturation trigger); caps at __DIMS_CAP||10.
+  if(typeof globalThis!=='undefined'&&(globalThis.__DIMS_GROW|0)>0){ const _gi=globalThis.__DIMS_GROW|0, _cap=Math.min(DIMS_MAX,(globalThis.__DIMS_CAP|0)||10);
+    if(tick>600&&tick%_gi===0&&DIMS<_cap) setDims(DIMS+1); }
   flushNetworkEvents();
   smx+=(mx-smx)*.05;smy+=(my-smy)*.05;
   if(pulling){pStr=Math.min(pStr+.02,1);pDur++}else pStr*=.92;
@@ -16881,8 +17440,45 @@ function loop(){
     let alive=0;
     for(let i=0;i<N;i++){if(!palive[i])continue;for(let d=0;d<DIMS;d++)globalTend[d]+=tend[i*DIMS+d];alive++}
     if(alive>0)for(let d=0;d<DIMS;d++)globalTend[d]/=alive;
+    if(__SPEC.on){ specComputeAgg(); specMint(); } // swing #17: per-lineage aggregates, then cladogenesis mint
   }
-  for(let i=0;i<N;i++){if(!palive[i])continue;for(let d=0;d<DIMS;d++)tend[i*DIMS+d]+=(globalTend[d]-tend[i*DIMS+d])*0.00002}
+  // Diet-axis homogeniser. The GLOBAL mean-reversion (×0.00002/tick) is the dominant diversity sink:
+  // against ±0.0005/tick mutation it pins the trait distribution at std≈0.08 — inside one diet bin —
+  // so no downstream niche capacity can be colonised. __GLOBALTEND scales it (0 = ablate, diagnostic).
+  // __NICHE_LOCALTEND localises it: pull toward the per-NICHE-CELL centroid instead of the global one,
+  // so within-niche coherence (the art's clustering) survives while cross-niche divergence is no longer
+  // punished (diversity retained) — the local>global fix this session keeps arriving at.
+  { const _gt=(typeof globalThis!=='undefined'&&globalThis.__GLOBALTEND!==undefined)?+globalThis.__GLOBALTEND:1;
+    const _loc=(typeof globalThis!=='undefined'&&(globalThis.__NICHE_LOCALTEND|0)===1&&(globalThis.__NICHE_NDIM|0)===1);
+    if(_loc){
+      cellTendCnt.fill(0); cellTendSum.fill(0);
+      for(let i=0;i<N;i++){ if(!palive[i])continue; const c=pDietCell[i]; cellTendCnt[c]++; for(let d=0;d<DIMS;d++) cellTendSum[c*DIMS_MAX+d]+=tend[i*DIMS+d]; }
+      for(let i=0;i<N;i++){ if(!palive[i])continue; const c=pDietCell[i], n=cellTendCnt[c]; if(n<=0)continue; for(let d=0;d<DIMS;d++){ const m=cellTendSum[c*DIMS_MAX+d]/n; tend[i*DIMS+d]+=(m-tend[i*DIMS+d])*0.00002*_gt; } }
+    } else if(__SPEC.on && __ALLO.on && _gt!==0){
+      // swing #21: spatially-LOCAL same-lineage centroid. Pull each particle toward the mean tend of nearby
+      // same-lineage neighbours only (grid is last tick's — positions barely move, fine). A loner pioneer
+      // with no same-lineage neighbours gets NO pull (cnt=0) → it is not jailed; a separated cohort forms its
+      // own local centroid → the lineage can grow two centroids and #17 can split them.
+      if(__ALLO.shuf){ _alloMembers.clear();                            // control: build per-lineage member lists for a NON-spatial draw
+        for(let i=0;i<N;i++){ if(!palive[i])continue; const l=pLin[i]; let a=_alloMembers.get(l); if(!a){a=[];_alloMembers.set(l,a);} a.push(i); } }
+      for(let i=0;i<N;i++){ if(!palive[i])continue; const l=pLin[i];
+        let cnt=0; for(let d=0;d<DIMS;d++)_alloScratch[d]=0;
+        if(__ALLO.shuf){ const lst=_alloMembers.get(l); if(lst&&lst.length){ const K=__ALLO.k<lst.length?__ALLO.k:lst.length;
+            for(let s=0;s<K;s++){ const j=lst[(Math.random()*lst.length)|0]; for(let d=0;d<DIMS;d++)_alloScratch[d]+=tend[j*DIMS+d]; cnt++; } } }
+        else { const gx=(px[i]/CELL)|0, gy=(py[i]/CELL)|0;
+          for(let dy=-1;dy<=1&&cnt<__ALLO.k;dy++)for(let dx=-1;dx<=1&&cnt<__ALLO.k;dx++){
+            const nx=gx+dx,ny=gy+dy; if(nx<0||ny<0||nx>=gW||ny>=gH)continue; let j=grid[ny*gW+nx],_lc=0;
+            while(j>=0&&j<CAP&&_lc++<CAP&&cnt<__ALLO.k){ if(palive[j]&&pLin[j]===l){ for(let d=0;d<DIMS;d++)_alloScratch[d]+=tend[j*DIMS+d]; cnt++; } j=pnext[j]; } } }
+        if(cnt>0)for(let d=0;d<DIMS;d++){ const m=_alloScratch[d]/cnt; tend[i*DIMS+d]+=(m-tend[i*DIMS+d])*0.00002*_gt; }
+      }
+    } else if(__SPEC.gate){
+      // swing #17: pull each particle toward ITS LINEAGE's centroid, not the global mean — the global
+      // sink is the strongest cross-lineage re-merger, so isolating it lets lineages drift apart.
+      for(let i=0;i<N;i++){ if(!palive[i])continue; const c=linCentroid.get(pLin[i]); if(!c)continue;
+        for(let d=0;d<DIMS;d++)tend[i*DIMS+d]+=(c[d]-tend[i*DIMS+d])*0.00002*_gt; }
+    } else if(_gt!==0){
+      for(let i=0;i<N;i++){if(!palive[i])continue;for(let d=0;d<DIMS;d++)tend[i*DIMS+d]+=(globalTend[d]-tend[i*DIMS+d])*0.00002*_gt}
+    } }
 
   exogenousPerturbation();
 

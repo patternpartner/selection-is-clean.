@@ -105,6 +105,70 @@ let loopErrors = 0, lastErr = '';
 console.error = (...a) => { const s = a.join(' '); if (/Loop error|Boot error|Watchdog/.test(s)) { loopErrors++; lastErr = s.slice(0, 160); } };
 console.warn = () => {};
 
+// ── OEE niche-economy knobs (swing #11): opt-in levers for A/B + controls ──
+// Stock behaviour (baseline) = set NONE of these. Enable a lever with =1.
+//   NICHE_FRONTIER=1   expanding cross-feed resource-spectrum frontier (lever 1)
+//   NICHE_BIOTIC=1     biotic / coevolutionary predation niches (lever 2)
+//   OPCODE_NOVELTY=1   opcode-novelty / coupling-gap pressure (lever 3)
+//   NICHE_REAL=0       (with NICHE_FRONTIER=1) swap lever 1's REAL income for the zero-sum
+//                      mean-centred control — proves a tax cannot beat limiting similarity.
+//   NICHE_DRIFT=1      (with NICHE_FRONTIER=1) swing #12: supply peaks DRIFT, so the profitable
+//                      diet is a moving target — no lineage can summit-and-stop.
+//   NICHE_NDIM=1       (with NICHE_FRONTIER=1) swing #13: diet is an N-dim cell (bins^D niches),
+//                      a combinatorial count instead of a 1-D handful. nicheOcc = occupied cells.
+//   NICHE_LOCAL=1      (with NICHE_NDIM=1) swing #14: per-cell crowding cost — each niche gets a
+//                      LOCAL carrying capacity, so overflow spreads to other cells (real per-niche competition).
+if (process.env.NICHE_NDIM !== undefined) globalThis.__NICHE_NDIM = parseInt(process.env.NICHE_NDIM, 10);
+if (process.env.NICHE_LOCAL !== undefined) globalThis.__NICHE_LOCAL = parseInt(process.env.NICHE_LOCAL, 10);
+// swing #15 synthesis + retention knobs:
+//   NICHE_CELLDRIFT=1  (with NICHE_NDIM=1) each cell's supply pulses on its own phase — no niche stays settled.
+//   TEND_MUT=<x>       scale diet-axis exploration (default 1) — tests whether retention is exploration-limited.
+if (process.env.NICHE_CELLDRIFT !== undefined) globalThis.__NICHE_CELLDRIFT = parseInt(process.env.NICHE_CELLDRIFT, 10);
+if (process.env.TEND_MUT !== undefined) globalThis.__TEND_MUT = parseFloat(process.env.TEND_MUT);
+// retention diagnostic + fix:
+//   GLOBALTEND=<x>     scale the global diet-axis mean-reversion sink (0 = ablate; default 1).
+//   NICHE_LOCALTEND=1  (with NICHE_NDIM=1) localise it: pull toward the per-niche centroid, not the global one.
+if (process.env.GLOBALTEND !== undefined) globalThis.__GLOBALTEND = parseFloat(process.env.GLOBALTEND);
+if (process.env.NICHE_LOCALTEND !== undefined) globalThis.__NICHE_LOCALTEND = parseInt(process.env.NICHE_LOCALTEND, 10);
+// swing #16 dimensionality ratchet:
+//   DIMS_GROW=<interval>  open a new trait axis every <interval> ticks (0 = off). Tests whether the
+//                         board can GROW without catastrophe. DIMS_CAP caps it (default 10).
+if (process.env.DIMS_GROW !== undefined) globalThis.__DIMS_GROW = parseInt(process.env.DIMS_GROW, 10);
+if (process.env.DIMS_CAP !== undefined) globalThis.__DIMS_CAP = parseInt(process.env.DIMS_CAP, 10);
+if (process.env.DIMS_SPREAD !== undefined) globalThis.__DIMS_SPREAD = parseFloat(process.env.DIMS_SPREAD);
+if (process.env.NICHE_FRONTIER !== undefined) globalThis.__NICHE_FRONTIER = parseInt(process.env.NICHE_FRONTIER, 10);
+if (process.env.NICHE_BIOTIC !== undefined) globalThis.__NICHE_BIOTIC = parseInt(process.env.NICHE_BIOTIC, 10);
+if (process.env.OPCODE_NOVELTY !== undefined) globalThis.__OPCODE_NOVELTY = parseInt(process.env.OPCODE_NOVELTY, 10);
+if (process.env.NICHE_REAL !== undefined) globalThis.__NICHE_REAL = parseInt(process.env.NICHE_REAL, 10);
+if (process.env.NICHE_DRIFT !== undefined) globalThis.__NICHE_DRIFT = parseInt(process.env.NICHE_DRIFT, 10);
+// swing #17 cladogenesis (the speciation primitive). SPECIATE=1 turns it on; sub-toggles default to the
+// master and exist for the 3-way control:
+//   SPECIATE=1        master: isolate re-mergers within lineage + mint diverged sub-populations + grace.
+//   SPEC_GATE=0       (control "mint-on/iso-off") label lineages but DON'T gate the re-mergers — must still collapse.
+//   SPEC_MINT=0       isolate but never mint (diagnostic).
+//   SPEC_GRACE=<t>    founder death-relief window in ticks (default 2000); SPEC_MINSIZE founder size (default 12).
+//   SPEC_DIVT=<x>     trait-centroid divergence threshold to mint (default 0.20).
+// Divergent selection is supplied by REAL partitioned niche cells (run with NICHE_NDIM=1 NICHE_REAL=1);
+// the "same-landscape" control sets NICHE_REAL=0 (flat income) so isolation has no per-cell optimum to bite on.
+for (const k of ['SPECIATE','SPEC_GATE','SPEC_MINT','SPEC_MINSIZE','SPEC_ASSORT']) if (process.env[k] !== undefined) globalThis['__' + k] = parseInt(process.env[k], 10);
+for (const k of ['SPEC_GRACE','SPEC_DIVT','SPEC_ASSORT_T','SPEC_ASSORT_K']) if (process.env[k] !== undefined) globalThis['__' + k] = parseFloat(process.env[k]);
+if (process.env.SPEC_DEBUG !== undefined) globalThis.__SPEC_DEBUG = parseInt(process.env.SPEC_DEBUG, 10);
+if (process.env.SPEC_DECAY !== undefined) globalThis.__SPEC_DECAY = parseInt(process.env.SPEC_DECAY, 10);
+// swing #20: colonization-vs-survival 2×2. Both default off (=baseline #17). Run as a 2×2 over {S,C}:
+//   COLO_SURV=1     knob S — death-grace + min-viable-size floor (survival term; predicted: persistence up, distinct-cells flat)
+//   COLO_PIONEER=1  knob C — pioneer income + Allee relief (growth term; predicted: distinct-lineage-cells climbs off ~12)
+//   COLO_PIONEER_K / COLO_ALLEE_K / COLO_PIONEER_OCC  tune the C lever (defaults 2.0 / 1.0 / NICHE_CELL_FLOOR).
+for (const k of ['COLO_SURV','COLO_PIONEER','COLO_PIONEER_OCC']) if (process.env[k] !== undefined) globalThis['__' + k] = parseInt(process.env[k], 10);
+for (const k of ['COLO_PIONEER_K','COLO_ALLEE_K']) if (process.env[k] !== undefined) globalThis['__' + k] = parseFloat(process.env[k]);
+// swing #21: spatially-local homogeniser (allopatry). SPATIAL_TEND=1 pulls each particle toward nearby
+// same-lineage neighbours' mean tend; ALLO_SHUF=1 is the non-spatial strength-matched control; ALLO_K caps
+// neighbours folded in. Needs SPECIATE=1. Headline = bifurcLin (lineage spatially splits into 2 centroids).
+for (const k of ['SPATIAL_TEND','ALLO_SHUF','ALLO_K']) if (process.env[k] !== undefined) globalThis['__' + k] = parseInt(process.env[k], 10);
+// swing #22: permissive mint gate. MINT_GATE = 'cell' (stock) | 'cluster' (permissive deme gate, drop
+// niche-cell entry req) | 'relax' (size+divT only). Pair with COLO_SURV=1 for founder grace. radiationCells
+// stays the strict success bar; cascadeCount = same-cell mints that LATER reach a distinct home cell.
+if (process.env.MINT_GATE !== undefined) globalThis.__MINT_GATE = String(process.env.MINT_GATE);
+
 const html = fs.readFileSync(process.env.INDEX || (__dirname + '/index.html'), 'utf8');
 const code = html.match(/<script>([\s\S]*)<\/script>/)[1];
 
@@ -119,6 +183,21 @@ const driver = `
                                  // NOT novelty (it rises with every birth regardless of
                                  // whether anything new appears). Reported, never trusted as OEE.
   let prevBins=new Set();        // last sample's occupied bins (for churn)
+  // LINEAGE birth/death decomposition (the speciation-vs-extinction term). A new pLin id can only be
+  // minted by a PARENTLESS spawn (reseed/immigration) — parented births inherit the parent's id — so
+  // divergence-speciation is 0 by construction; this measures whether immigration births even appear
+  // and persist against the death rate. cumLin counts distinct lineages EVER seen alive.
+  const seenLin=new Set(); let prevLin=new Set();
+  let mateStarvedCum=0;          // swing #18: cumulative extinctions of lineages whose lifetime spawns were mate-REFUSED >50% (the Allee trap)
+  const prevLinSize=new Map();   // last sample's per-lineage living size (to know a dead lineage WAS viable when it vanished)
+  // ── swing #19 decay probe (opt-in __SPEC_DECAY): does an incipient lineage's DECAY correlate with its
+  //    target cell's OCCUPANCY? Decay concentrated in full cells → niche saturation (B). Decay independent
+  //    of occupancy, happening even into cells with room → pure demographics (A). Longitudinal across samples.
+  const prevSpec=new Map();      // l -> {size, cell, occ, occOther} measured at the PREVIOUS sample (conditions entering each interval)
+  let dpN=0,dpDecay=0, dpOccD=0,dpOccG=0, dpOthD=0,dpOthG=0;     // means of entering-occupancy, decay vs grow cohorts
+  let dpRoomDecay=0;                                            // decay events that happened when the target cell still had room (occ<=FLOOR)
+  let dpSx=0,dpSy=0,dpSxx=0,dpSyy=0,dpSxy=0,dpSn=0;             // Pearson accumulators for corr(enteringOcc, deltaSize)
+  const dpHist=[[0,0],[0,0],[0,0]];                            // per occupancy bin [decayCount, totalObs]: occ<=FLOOR, <=2*FLOOR, >2*FLOOR
 
   // Coarsen a tendency vector to a discrete cell. Reuse the sim's own tendBin
   // if present (keeps our bins identical to the NFD bins); else replicate.
@@ -157,6 +236,184 @@ const driver = `
     const churn=prevBins.size>0?lost/prevBins.size:0;
     prevBins=curBins;
 
+    // ---- lineage birth/death decomposition ----
+    let linStanding=0, linBirths=0, linDeaths=0;
+    if(typeof pLin!=='undefined'){
+      const curLin=new Set();
+      for(let i=0;i<N;i++){ if(palive[i]) curLin.add(pLin[i]); }
+      linStanding=curLin.size;
+      for(const l of curLin) if(!seenLin.has(l)) linBirths++;   // first-ever appearance (new lineage entered)
+      for(const l of prevLin) if(!curLin.has(l)) linDeaths++;   // present last sample, gone now (extinct)
+      for(const l of curLin) seenLin.add(l);
+      prevLin=curLin;
+    }
+
+    // ---- swing #17: NET-PERSISTENT-DIVERGENT lineage count (the speciation success metric) ----
+    // Gross mints are a fiat output of the mint rule (the #16 trap one level up), so they prove nothing.
+    // A minted lineage COUNTS only if, recomputed here independently of the sim's own bookkeeping, it:
+    //   (a) persists — alive with >=minsize members AND has outlived its founder grace (age>=PERSIST_WIN,
+    //       so it survived WITHOUT the death subsidy), (b) stays diverged — trait centroid >=divT from its
+    //       parent's, not relaxed back, (c) holds a niche-cell distinct from its parent's main body.
+    // linViable (alive lineages >=minsize) is the standing-diversity headline to compare against stock ~24.
+    let specMinted=-1, specAlive=0, specPersist=0, linViable=0;
+    let specMaxDepth=0, specNested=0, linVarWithin=-1, specBirthRej=-1, specBirthAcc=-1, specMateStarved=-1;
+    let decayProbe=null;
+    // swing #20 colonization guard (smear-proof): see the block below for definitions.
+    let occCellsRaw=-1, radiationCells=-1, vCellsOcc=-1, cellsPerViableLin=-1, linPerOccCell=-1;
+    // swing #21 bifurcation probe: does a single lineage occupy TWO spatially-separated clusters with diverged
+    // trait centroids (the allopatric precursor #17's mint needs)? Measured directly, not via downstream cells.
+    let bifurcLin=-1, bifurcDist=-1, bifurcSep=-1;
+    // swing #22 cascade: permissive same-cell mints that later reached a distinct home cell (split-then-displace).
+    let cascadeCount=-1, bornSameAlive=-1;
+    if(typeof __SPEC!=='undefined' && __SPEC.on && typeof pLin!=='undefined'){
+      const PERSIST_WIN=3000, MIN=__SPEC.minsize, DT=__SPEC.divT;
+      const size=new Map(), cen=new Map(), cellCnt=new Map();
+      for(let i=0;i<N;i++){ if(!palive[i])continue; const l=pLin[i];
+        size.set(l,(size.get(l)||0)+1);
+        let c=cen.get(l); if(!c){ c=new Float64Array(DIMS); cen.set(l,c); }
+        for(let d=0;d<DIMS;d++)c[d]+=tend[i*DIMS+d];
+        const cell=(typeof nicheCellOf==='function')?nicheCellOf(i):0;
+        cellCnt.set(l+':'+cell,(cellCnt.get(l+':'+cell)||0)+1); }
+      for(const [l,c] of cen){ const n=size.get(l)||1; for(let d=0;d<DIMS;d++)c[d]/=n; }
+      const modal=new Map(), bestN=new Map();
+      for(const [key,cnt] of cellCnt){ const ci=key.indexOf(':'), l=+key.slice(0,ci), cell=+key.slice(ci+1);
+        if(cnt>(bestN.get(l)||0)){ bestN.set(l,cnt); modal.set(l,cell); } }
+      for(const [l,sz] of size) if(sz>=MIN) linViable++;
+      // ── swing #20 RADIATION GUARD: the one confound that has bitten every prior call — one viable lineage
+      //    smearing into many empty cells reads as "colonization" but is not radiation. Raw occupied-cell count
+      //    can't tell them apart; these can. The HEADLINE is radiationCells = number of distinct HOME (modal)
+      //    cells of viable lineages: a smear keeps ONE home cell however far its tendrils reach, so it cannot
+      //    inflate this — only NEW lineages establishing in NEW home cells move it. Success = this climbs off
+      //    ~12, NOT occCellsRaw. cellsPerViableLin = smear magnitude; occCellsRaw vs radiationCells = the gap. ──
+      { const occSet=new Set(), cellLins=new Map(), linCells=new Map();
+        for(const [key,cnt] of cellCnt){ const ci=key.indexOf(':'), l=+key.slice(0,ci), cell=+key.slice(ci+1);
+          occSet.add(cell);
+          if((size.get(l)||0)>=MIN){
+            let s=cellLins.get(cell); if(!s){ s=new Set(); cellLins.set(cell,s); } s.add(l);
+            let cs=linCells.get(l); if(!cs){ cs=new Set(); linCells.set(l,cs); } cs.add(cell); } }
+        const homeSet=new Set(); for(const [l] of linCells) homeSet.add(modal.get(l));
+        occCellsRaw=occSet.size;          // distinct cells with ANY living member (the confoundable number)
+        radiationCells=homeSet.size;       // distinct home cells of distinct viable lineages (smear-proof headline)
+        vCellsOcc=cellLins.size;           // distinct cells holding any viable-lineage member (smear-inflatable; shows the gap)
+        let cs=0,cn=0; for(const [,s] of linCells){ cs+=s.size; cn++; } cellsPerViableLin=cn?+(cs/cn).toFixed(2):0;
+        let ls=0,ln=0; for(const [,s] of cellLins){ ls+=s.size; ln++; } linPerOccCell=ln?+(ls/ln).toFixed(2):0; }
+      // ── swing #21 BIFURCATION probe — the direct signal of the allopatry mechanism. For each lineage big
+      //    enough to split (>=2*MIN), 2-means its members in POSITION space; if both spatial clusters are
+      //    viable (>=MIN) AND their TRAIT centroids are >=DT apart, the lineage has bifurcated into two
+      //    centroids — exactly the precursor #17's mint needs. Counts these, plus mean trait dist + spatial
+      //    separation. This is what #21 tries to manufacture; measure it, not just its downstream cell count. ──
+      if(typeof px!=='undefined' && typeof py!=='undefined'){
+        const mem=new Map(); for(let i=0;i<N;i++){ if(!palive[i])continue; const l=pLin[i]; let a=mem.get(l); if(!a){a=[];mem.set(l,a);} a.push(i); }
+        let bc=0,bds=0,bss=0;
+        for(const [l,idx] of mem){ if(idx.length<2*MIN)continue;
+          let cax=px[idx[0]],cay=py[idx[0]],cbx=px[idx[0]],cby=py[idx[0]];   // seed the two centroids at the x-extremes
+          for(const i of idx){ if(px[i]<cax){cax=px[i];cay=py[i];} if(px[i]>cbx){cbx=px[i];cby=py[i];} }
+          const asg=new Int8Array(idx.length);
+          for(let it=0;it<6;it++){ let ax=0,ay=0,an=0,bx=0,by=0,bn=0;
+            for(let k=0;k<idx.length;k++){ const i=idx[k];
+              const da=(px[i]-cax)**2+(py[i]-cay)**2, db=(px[i]-cbx)**2+(py[i]-cby)**2, g=da<=db?0:1; asg[k]=g;
+              if(g===0){ax+=px[i];ay+=py[i];an++;} else {bx+=px[i];by+=py[i];bn++;} }
+            if(an>0){cax=ax/an;cay=ay/an;} if(bn>0){cbx=bx/bn;cby=by/bn;} }
+          let an=0,bn=0; const ta=new Float64Array(DIMS), tb=new Float64Array(DIMS);
+          for(let k=0;k<idx.length;k++){ const i=idx[k];
+            if(asg[k]===0){an++;for(let d=0;d<DIMS;d++)ta[d]+=tend[i*DIMS+d];} else {bn++;for(let d=0;d<DIMS;d++)tb[d]+=tend[i*DIMS+d];} }
+          if(an<MIN||bn<MIN)continue;                                       // both spatial sub-groups must be viable
+          let td=0; for(let d=0;d<DIMS;d++){ const dd=ta[d]/an-tb[d]/bn; td+=dd*dd; } td=Math.sqrt(td);
+          if(td>=DT){ bc++; bds+=td; bss+=Math.sqrt((cax-cbx)**2+(cay-cby)**2); } }
+        bifurcLin=bc; bifurcDist=bc?+(bds/bc).toFixed(3):0; bifurcSep=bc?+(bss/bc).toFixed(1):0;
+      }
+      // ── swing #22 CASCADE (split-then-displace) — the decisive instrument. Of viable lineages minted INTO
+      //    their parent's niche-cell (permissive same-cell mints the cell-gate would refuse), how many have
+      //    SINCE migrated to a distinct home cell from their parent? That delta is the literal niche-first vs
+      //    split-first answer: >0 and growing = split-first cascade is real; flat 0 = no displacement, the
+      //    cell-gate was enforcing real niche-distinctness (Half A / the #16 wall). bornSameAlive = denominator. ──
+      if(typeof linBirthSameCell!=='undefined' && typeof linParent!=='undefined'){
+        cascadeCount=0; bornSameAlive=0;
+        for(const [l,sz] of size){ if(sz<MIN)continue; if(!linBirthSameCell.get(l))continue; bornSameAlive++;
+          const p=linParent.get(l), lm=modal.get(l), pm=modal.get(p);
+          if(lm!==undefined && pm!==undefined && lm!==pm) cascadeCount++; }
+      }
+      specMinted=(typeof specMintCount!=='undefined')?specMintCount:-1;
+      for(const [l,bt] of linBirthTick){
+        const sz=size.get(l)||0; if(sz<1)continue; specAlive++;
+        if(sz<MIN)continue;
+        if((tick-bt)<PERSIST_WIN)continue;
+        const p=linParent.get(l), pc=cen.get(p), lc=cen.get(l); if(!lc)continue;
+        if(!pc)continue;                                      // conservative: need a LIVING parent to prove ongoing divergence (orphans whose parent died are not auto-passed — that would be the #16 confound)
+        let div=0; for(let d=0;d<DIMS;d++){ const dd=lc[d]-pc[d]; div+=dd*dd; } div=Math.sqrt(div);
+        if(div<DT)continue;                                   // (b) still diverged from its (living) parent
+        if(modal.get(l)===modal.get(p))continue;              // (c) distinct niche-cell from parent's main body
+        specPersist++;
+      }
+      // ── swing #18 metrics: the success criterion is a DEEPENING genealogy, not a standing tip count ──
+      // depthOf(l) = how many MINT events separate l from a non-minted (founder/immigrant) root. depth 1 =
+      // first-generation daughter; depth>=2 = NESTED cladogenesis (a daughter that itself speciated) — the
+      // tree branching again. Open-endedness = this max depth keeps GROWING over time, not a one-off branch.
+      const depthOf=(l)=>{ let d=0,cur=l,g=0; while(linBirthTick.has(cur)&&g++<4096){ d++; const pp=linParent.get(cur); if(pp===undefined)break; cur=pp; } return d; };
+      for(const [l,sz] of size){ if(sz<1)continue; const d=depthOf(l);
+        if(d>specMaxDepth)specMaxDepth=d;
+        if(d>=2&&sz>=MIN)specNested++; }                       // alive, viable, nested-origin lineages right now
+      // ── Guardrail 2: within-lineage genetic variance (inbreeding-to-fixation watch) ──
+      const lvar=new Map();
+      for(let i=0;i<N;i++){ if(!palive[i])continue; const l=pLin[i]; const c=cen.get(l); if(!c)continue;
+        let s=0; for(let d=0;d<DIMS;d++){ const dd=tend[i*DIMS+d]-c[d]; s+=dd*dd; } lvar.set(l,(lvar.get(l)||0)+s); }
+      { let vs=0,vn=0; for(const [l,sz] of size){ if(sz>=MIN){ vs+=(lvar.get(l)||0)/sz; vn++; } } linVarWithin=vn?+(vs/vn).toFixed(5):0; }
+      // ── Guardrail 1: extinction-by-mate-scarcity. A lineage that was viable last sample, is gone now, and
+      // whose lifetime spawns were >50% mate-REFUSED, died of the Allee trap (couldn't find a compatible mate). ──
+      if(__SPEC.assort && typeof linAcc!=='undefined'){
+        for(const [l,psz] of prevLinSize){ if(psz>=MIN && !size.has(l)){
+          const rej=linRej.get(l)||0, acc=linAcc.get(l)||0;
+          if(rej+acc>0 && rej/(rej+acc)>0.5) mateStarvedCum++; } }
+        prevLinSize.clear(); for(const [l,sz] of size) prevLinSize.set(l,sz);
+        specBirthRej=(typeof specBirthReject!=='undefined')?specBirthReject:0;
+        specBirthAcc=(typeof specBirthAccept!=='undefined')?specBirthAccept:0;
+        specMateStarved=mateStarvedCum;
+      }
+      // opt-in: at the final sample, dump per-minted-lineage diagnostics so we can see which gate binds.
+      if(globalThis.__SPEC_DEBUG && tick>=${TICKS}-1){
+        let rows=[]; for(const [l,bt] of linBirthTick){ const sz=size.get(l)||0; if(sz<1)continue;
+          const p=linParent.get(l), pc=cen.get(p), lc=cen.get(l); let div=-1;
+          if(pc&&lc){ let s=0; for(let d=0;d<DIMS;d++){ const dd=lc[d]-pc[d]; s+=dd*dd; } div=Math.sqrt(s); }
+          rows.push({l,parent:p,sz,age:tick-bt,div:+div.toFixed(3),cell:modal.get(l),pcell:modal.get(p),pAlive:(size.get(p)||0)}); }
+        rows.sort((a,b)=>b.sz-a.sz);
+        process.stderr.write('SPEC_DEBUG minted lineages (size-sorted):'+String.fromCharCode(10));
+        for(const r of rows)process.stderr.write('  lin='+r.l+' parent='+r.parent+' size='+r.sz+' age='+r.age+' div='+r.div+' cell='+r.cell+' parentCell='+r.pcell+' parentSize='+r.pAlive+' | passSize='+(r.sz>=MIN)+' passAge='+(r.age>=PERSIST_WIN)+' passDiv='+(r.div>=DT)+' passCell='+(r.cell!==r.pcell)+String.fromCharCode(10));
+      }
+      // ── swing #19 decay probe: regress each minted lineage's per-interval size change on the OCCUPANCY of
+      //    the cell it sat in ENTERING that interval. Saturation (B) → decay rises with occupancy / clusters in
+      //    full cells; demographics (A) → decay is occupancy-independent and happens even into cells with room. ──
+      if(globalThis.__SPEC_DECAY){
+        const FLOOR=(typeof NICHE_CELL_FLOOR!=='undefined')?NICHE_CELL_FLOOR:2;
+        const cellTotal=new Map();                            // cell -> living particles of ALL lineages (the crowding the cell actually imposes)
+        for(const [key,cnt] of cellCnt){ const cell=+key.slice(key.indexOf(':')+1); cellTotal.set(cell,(cellTotal.get(cell)||0)+cnt); }
+        for(const [l,pr] of prevSpec){
+          if(pr.size<2)continue;                              // only cohorts large enough for "decay" to be meaningful
+          const cur=size.get(l)||0, delta=cur-pr.size;        // size change over [prev, now]; cur=0 means the lineage went extinct
+          const occ=pr.occ, oth=pr.occOther;                  // conditions ENTERING the interval (occupancy can't be caused by the later decay)
+          dpN++; if(delta<0){ dpDecay++; dpOccD+=occ; dpOthD+=oth; if(occ<=FLOOR)dpRoomDecay++; } else { dpOccG+=occ; dpOthG+=oth; }
+          dpSn++; dpSx+=occ; dpSy+=delta; dpSxx+=occ*occ; dpSyy+=delta*delta; dpSxy+=occ*delta;
+          const bi=occ<=FLOOR?0:(occ<=2*FLOOR?1:2); dpHist[bi][1]++; if(delta<0)dpHist[bi][0]++;
+        }
+        prevSpec.clear();                                     // refresh longitudinal state with this sample's minted lineages
+        for(const [l,bt] of linBirthTick){ const sz=size.get(l)||0; if(sz<1)continue;
+          const m=modal.get(l), tot=cellTotal.get(m)||sz, own=cellCnt.get(l+':'+m)||sz;
+          prevSpec.set(l,{size:sz, cell:m, occ:tot, occOther:tot-own}); }
+        const cov=dpSxy-dpSx*dpSy/(dpSn||1), vx=dpSxx-dpSx*dpSx/(dpSn||1), vy=dpSyy-dpSy*dpSy/(dpSn||1);
+        const corr=(dpSn>2 && vx>0 && vy>0)?cov/Math.sqrt(vx*vy):0;
+        // ── niche-space saturation snapshot: is there room to radiate INTO? (the (B) precondition) ──
+        const occs=Array.from(cellTotal.values()).sort((a,b)=>a-b);
+        const totalCells=(typeof NICHE_ND_CELLS!=='undefined')?NICHE_ND_CELLS:-1;
+        const occCells=occs.length, maxOcc=occs.length?occs[occs.length-1]:0, medOcc=occs.length?occs[occs.length>>1]:0;
+        decayProbe={ obs:dpN, decayEvents:dpDecay,
+          totalCells, occCells, emptyCellFrac:totalCells>0?+(1-occCells/totalCells).toFixed(3):-1, maxCellOcc:maxOcc, medCellOcc:medOcc,
+          meanOccDecay:+(dpDecay?dpOccD/dpDecay:0).toFixed(2), meanOccGrow:+((dpN-dpDecay)?dpOccG/(dpN-dpDecay):0).toFixed(2),
+          meanOtherDecay:+(dpDecay?dpOthD/dpDecay:0).toFixed(2), meanOtherGrow:+((dpN-dpDecay)?dpOthG/(dpN-dpDecay):0).toFixed(2),
+          corrOccDelta:+corr.toFixed(3),                      // <0 = more crowded → more decline = saturation (B); ~0 = occupancy-blind = demographics (A)
+          fracDecayWithRoom:+(dpDecay?dpRoomDecay/dpDecay:0).toFixed(3), // decay events that hit while the cell still had room (occ<=FLOOR)
+          decayRateByOcc:dpHist.map(b=>b[1]?+(b[0]/b[1]).toFixed(3):-1), obsByOcc:dpHist.map(b=>b[1]) }; // bins: occ<=FLOOR, <=2*FLOOR, >2*FLOOR
+      }
+    }
+
     let motifNew=0;
     if(typeof genome!=='undefined'&&Array.isArray(genome.stableMotifs)){
       for(const m of genome.stableMotifs){
@@ -175,6 +432,32 @@ const driver = `
     const totAtoms=Array.isArray(G.userAtoms)?G.userAtoms.length:0;
     const boundOps=Array.isArray(G.boundOpcodes)?G.boundOpcodes.length:0;
     const fitSensors=Array.isArray(G.fitnessSensors)?G.fitnessSensors.length:0;
+
+    // ── CLUSTER LINEAGE-PURITY PROBE (gated CLUSTER_PURITY=1) — the make-or-break measurement before any
+    //    deme swing. Are clusters real demes (one persistent cluster-lineageID holds one particle-lineage pLin
+    //    across its life) or lineage-salad (re-formed each ~30-tick cycle by pure proximity, mixing lineages)?
+    //    Emits per-cluster {cluster lineageID, persistAge, dominant pLin, purity, #distinct pLin}. The driver
+    //    samples at SAMPLE-tick spacing; the post-processor stitches a cluster-lineageID's domPlin over time
+    //    to get temporal stability (the decisive signal); purity-vs-persistAge here is the snapshot proxy. ──
+    let cpur;
+    if(process.env.CLUSTER_PURITY && typeof clusters!=='undefined' && typeof clusterID!=='undefined' && typeof pLin!=='undefined'){
+      const hist=new Map();   // clusterID idx → Map(pLin → count)
+      for(let i=0;i<N;i++){ if(!palive[i])continue; const c=clusterID[i]; if(c<0)continue;
+        let h=hist.get(c); if(!h){ h=new Map(); hist.set(c,h); } h.set(pLin[i],(h.get(pLin[i])||0)+1); }
+      const dom=new Map(), meta=new Map();   // c → dominant pLin; c → {sz,domLin,domN,np}
+      for(const [c,h] of hist){ let sz=0,dn=0,dl=-1; for(const [pl,n] of h){ sz+=n; if(n>dn){ dn=n; dl=pl; } } dom.set(c,dl); meta.set(c,{sz,domLin:dl,domN:dn,np:h.size}); }
+      // core (=dominant-pLin members) vs fringe (=rest) trait centroids: is the fringe trait-SIMILAR to the
+      // core (homogenising bulk → plugging helps) or DISSIMILAR (the #18 generative hybridisation tail → keep)?
+      const coreS=new Map(), coreC=new Map(), frinS=new Map(), frinC=new Map();
+      for(let i=0;i<N;i++){ if(!palive[i])continue; const c=clusterID[i]; if(c<0)continue; const dl=dom.get(c); if(dl===undefined)continue;
+        if(pLin[i]===dl){ let s=coreS.get(c); if(!s){ s=new Float64Array(DIMS); coreS.set(c,s); } for(let d=0;d<DIMS;d++)s[d]+=tend[i*DIMS+d]; coreC.set(c,(coreC.get(c)||0)+1); }
+        else { let s=frinS.get(c); if(!s){ s=new Float64Array(DIMS); frinS.set(c,s); } for(let d=0;d<DIMS;d++)s[d]+=tend[i*DIMS+d]; frinC.set(c,(frinC.get(c)||0)+1); } }
+      cpur=[];
+      for(const [c,m] of meta){ const cl=clusters[c]; if(!cl)continue;
+        let cfd=-1; const cn=coreC.get(c)||0, fn=frinC.get(c)||0;
+        if(cn>0&&fn>0){ const cs=coreS.get(c), fsum=frinS.get(c); let dd=0; for(let d=0;d<DIMS;d++){ const x=cs[d]/cn-fsum[d]/fn; dd+=x*x; } cfd=+Math.sqrt(dd).toFixed(3); }
+        cpur.push({lin:cl.lineageID|0, age:cl.persistAge|0, sz:m.sz, dom:m.domLin, df:+(m.domN/m.sz).toFixed(3), np:m.np, ff:+(fn/m.sz).toFixed(3), cfd}); }
+    }
 
     return {
       tick:(typeof tick!=='undefined')?tick:-1,
@@ -195,8 +478,63 @@ const driver = `
       vmLen, vmDistinctOps:opSet.size, liveAtoms, totAtoms, boundOps,
       DIMS:(typeof DIMS!=='undefined')?DIMS:-1, fitSensors,
       generation:(G.generation|0), extinctions:(G.extinctions|0),
+      // dimensionality ratchet (swing #16): live DIMS vs the (formerly inert) evolvable tendDims, and
+      // whether the trait axes actually carry variation (board grew vs degenerate).
+      tendDims:(G.tendDims|0), traitDimEnt:(typeof traitDimEntropy==='function')?traitDimEntropy():-1,
+      // lineage birth/death (speciation vs extinction term): standing distinct lineages, new this
+      // window (immigration only — divergence-speciation is 0 by construction), extinct this window,
+      // and cumulative lineages ever seen alive.
+      linStanding, linBirths, linDeaths, linCum:(typeof seenLin!=='undefined')?seenLin.size:-1,
+      // swing #17 cladogenesis: cumulative mints, minted-and-alive, NET-PERSISTENT-DIVERGENT (the real
+      // success metric — survived past grace, still diverged, still cell-distinct), and viable standing
+      // lineages (>=minsize) to compare against the stock ~24 island-equilibrium.
+      specMinted, specAlive, specPersist, linViable,
+      // swing #22 conduit probe: of viable sub-groups, how many trait-DIVERGED ones are refused a mint purely
+      // because they share the parent's niche-cell (specMintBlockCell) — divergence erased by bookkeeping, not
+      // gene flow. Compare to actual mints (specMinted) and to cell-distinct-but-not-yet-diverged holds.
+      specMintCand:(typeof specMintCand!=='undefined')?specMintCand:-1,
+      specMintBlockCell:(typeof specMintBlockCell!=='undefined')?specMintBlockCell:-1,
+      specMintBlockDiv:(typeof specMintBlockDiv!=='undefined')?specMintBlockDiv:-1,
+      // per-axis squared divergence (cumulative): refused (blockCell) vs minted. Selected axes = 0..3
+      // (niche economy), neutral = 4+ (#16). If blockAxisSq is concentrated on 4+, the gate is correctly
+      // refusing functionless variation; if on 0..3, it is too coarse and the cluster reframe is warranted.
+      specBlockAxisSq:(typeof specBlockAxisSq!=='undefined')?Array.from(specBlockAxisSq.slice(0,(typeof DIMS!=='undefined'?DIMS:8))).map(x=>+x.toFixed(3)):null,
+      specMintAxisSq:(typeof specMintAxisSq!=='undefined')?Array.from(specMintAxisSq.slice(0,(typeof DIMS!=='undefined'?DIMS:8))).map(x=>+x.toFixed(3)):null,
+      // refused-cohort PERSISTENCE: how many cadences (~30 ticks) a refused cohort stays continuously diverged.
+      // Long streaks → stable incipient species the gate wrongly refuses; 1–2 → transient drift (gate correct).
+      blockStreakLiveMean:(typeof _blockStreak!=='undefined'&&_blockStreak.size>0)?+([..._blockStreak.values()].reduce((a,b)=>a+b,0)/_blockStreak.size).toFixed(2):0,
+      blockStreakLiveMax:(typeof _blockStreak!=='undefined'&&_blockStreak.size>0)?Math.max(..._blockStreak.values()):0,
+      blockStreakLiveN:(typeof _blockStreak!=='undefined')?_blockStreak.size:-1,
+      blockStreakDoneMean:(typeof _blockStreakDoneN!=='undefined'&&_blockStreakDoneN>0)?+(_blockStreakDoneSum/_blockStreakDoneN).toFixed(2):0,
+      blockStreakHist:(typeof _blockStreakHist!=='undefined')?Array.from(_blockStreakHist):null,
+      // swing #20 colonization 2×2 guard: radiationCells (distinct home cells of viable lineages) is the
+      // smear-proof success metric; occCellsRaw is the confoundable raw count. A rising occCellsRaw with a
+      // flat radiationCells = one lineage smearing, NOT radiation. cellsPerViableLin = smear magnitude.
+      occCellsRaw, radiationCells, vCellsOcc, cellsPerViableLin, linPerOccCell,
+      // swing #21 allopatry: bifurcLin = lineages spatially split into two trait-diverged centroids (the
+      // direct mechanism signal); bifurcDist = mean trait gap, bifurcSep = mean spatial gap of those splits.
+      bifurcLin, bifurcDist, bifurcSep,
+      // swing #22: cascadeCount = same-cell permissive mints that LATER reached a distinct home cell (the
+      // split-then-displace signal); bornSameAlive = viable same-cell mints (denominator). radiationCells stays
+      // the strict success bar — a cascade shows as cascadeCount>0 AND radiationCells climbing.
+      cascadeCount, bornSameAlive,
+      // swing #18 — assortative mating. Headline OEE signature = genealogy DEPTH growing over time
+      // (specMaxDepth) and NESTED cladogenesis (specNested), not a standing tip count. Guardrails:
+      // linVarWithin (inbreeding-to-fixation watch), specMateStarved (Allee-trap extinctions), and the
+      // realized/refused spawn split (specBirthAcc/Rej). specSimMean = mean trait-similarity at spawn.
+      specMaxDepth, specNested, linVarWithin, specBirthAcc, specBirthRej, specMateStarved,
+      decayProbe,   // swing #19: (A)demographics vs (B)niche-saturation discriminator (only populated under __SPEC_DECAY)
+      specSimMean:(typeof specSimCnt!=='undefined'&&specSimCnt>0)?+(specSimSum/specSimCnt).toFixed(3):-1,
+      specSimHist:(typeof specSimHist!=='undefined')?Array.from(specSimHist):null,
+      // seed-vs-harvest: the newest axis vs axis 0 (positive control). R = lineage-structured fraction
+      // of variance; watch newAxis.ent/Vtot decay-or-hold and R after a frozen grow.
+      newAxis:(typeof axisStats==='function')?axisStats((typeof DIMS!=='undefined'?DIMS-1:-1)):null,
+      ctrlAxis0:(typeof axisStats==='function')?axisStats(0):null,
+      // niche economy (swing #11): channels of the resource spectrum currently held by life
+      nicheOcc:(typeof nicheOccupancy==='function')?nicheOccupancy():-1,
       // turnover
-      kindChurn:+churn.toFixed(3)
+      kindChurn:+churn.toFixed(3),
+      ...(cpur!==undefined?{cpur}:{})   // cluster lineage-purity probe (CLUSTER_PURITY=1)
     };
   }
 
@@ -297,9 +635,19 @@ diversity.entropyRatio = diversity.entropyBits_early > 0 ? +(diversity.entropyBi
 diversity.kindsRatio = diversity.kinds_early > 0 ? +(diversity.kinds_late / diversity.kinds_early).toFixed(2) : null;
 diversity.collapsing = diversity.entropyRatio !== null && diversity.entropyRatio < 0.7;
 
+const niche = {
+  occ_early: +thirdMean(S, 'nicheOcc', 0, t1).toFixed(2),
+  occ_late: +thirdMean(S, 'nicheOcc', t2, n).toFixed(2),
+  occ_max: Math.max(...S.map(r => r.nicheOcc || 0)),
+  occ_slopePerSample: +slope(S, 'nicheOcc').toFixed(4)
+};
+// Growing (not just high) occupancy is the open-ended signal: niches being ADDED faster than lost.
+niche.growing = niche.occ_slopePerSample > 0 && niche.occ_late > niche.occ_early;
+
 const verdict = {
   novelty_late_vs_early: { earlyNewKindsPer1k: +earlyRate.toFixed(2), lateNewKindsPer1k: +lateRate.toFixed(2),
     decayedTo: earlyRate > 0 ? +(lateRate / earlyRate).toFixed(2) : null, stillProducing: lateRate > 0.05 },
+  niche_trend: niche,
   diversity_trend: diversity,
   complexity_trend: complexity,
   complexity_topTierEngaged: (complexity.liveAtoms_max > 0 || complexity.boundOps_max > 0 || complexity.DIMS_delta > 0),
