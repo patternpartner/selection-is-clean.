@@ -390,3 +390,58 @@ cross-lineage births outright, not just gate the gene transfer within a shared b
 sub-population cannot be reabsorbed at all. That is the next swing's lever. Constraint #3 (isolation +
 divergent selection are two halves of one primitive) is now an empirical, knockout-confirmed fact rather
 than a hypothesis. Stock behaviour and all existing knobs unchanged; #17 is opt-in.
+
+---
+
+# Swing #18 — ASSORTATIVE MATING: testing #17's stated lever (knob-gated; default off) → REFUTED
+
+Swing #17 closed by naming the next lever explicitly: *"the missing strengthener is reproductive
+isolation proper — assortative mating ... so a diverged sub-population cannot be reabsorbed at all."*
+The hypothesis: post-zygotic gene-flow gates (#17) throttle re-mixing but birth still **pairs** across
+lineages, so add **pre-zygotic mate choice** and persistent species should consolidate. This swing built
+that lever and ran the knockout. **The hypothesis is wrong for this system: mate choice is net HARMFUL.**
+
+**What shipped (all behind `__SPEC_ASSORT`, default off → stock unchanged, `loopErrors:0` verified):**
+- **Soft trait-similarity mate choice** on all three two-parent reproduction paths (`executeVM`,
+  `executeClusterVM`, `interferenceCreate`): a candidate pair spawns with `P = sigmoid(K·(sim − T))`,
+  `sim = tendSim(i,j)`. Gating on **trait similarity, not lineage id**, makes it REINFORCEMENT (the barrier
+  rises automatically as selection pushes traits apart) rather than id-tag speciation by fiat. `T` = the
+  similarity midpoint, `K` = steepness (small = soft slope, K≈1000 ≈ hard step).
+- **Open-endedness headline = genealogy DEPTH, not a tip count.** `specMaxDepth` = mint-events from a lineage
+  back to a non-minted root; `specNested` = alive, viable, depth≥2 lineages (a daughter that itself
+  speciated — the tree branching *again*). Plus guardrails: within-lineage variance (inbreeding watch),
+  mate-starved extinctions (Allee trap), realized/refused spawn split, and the spawn-similarity histogram.
+
+**First thing the histogram showed (the result before the result): reproduction is ALREADY assortative.**
+In BASE, **99.87% of reproduction attempts pair particles at cosine-sim > 0.8** (seeds 7/11 mean-sim 0.998).
+Spatial/trait proximity already makes mating near-homotypic; explicit mate choice is mostly **redundant**,
+and where it bites it can only remove the thin cross-trait tail.
+
+**Knockout (seeds 7/11/23, 10k ticks). `depth/nested/persist`, viable count, mate-starved extinctions:**
+| config | s7 | s11 | s23 | persistent species (Σ) | within-lin var (s7) |
+|---|---|---|---|---|---|
+| BASE (assort off) | d4/n6/**p1** v8 | d3/n3/**p1** v7 | d2/n3/**p3** v8 | **5** | 0.052 |
+| SOFT (T=0.75 K=10, nicks tail) | d3/n1/p0 v7 ·ms1 | d3/n1/p1 v**4** ·ms1 | d3/n3/p0 v6 ·ms3 | **1** | 0.062 |
+| BULK (T=0.97 K=80, bites the bulk) | d3/n3/p1 v7 ·ms1 | d3/n3/p0 v8 | d**0**/n0/p0 v**1** ·3.18M refused | **1** | **0.038** |
+
+**Verdict — assortative mating REFUTED as the consolidation lever. Three mechanisms, all instrument-caught:**
+1. **Redundant.** Reproduction is already ~99.9% assortative by proximity (histogram), so soft choice changes
+   little of the bulk and only touches the cross-trait tail.
+2. **The cross-trait tail is GENERATIVE, not reabsorptive.** Suppressing it cuts persistent species **5 → 1**
+   and nested cladogenesis (12 → 5/6) across the matrix. The tell is **seed 23**: it has the fattest
+   cross-trait tail (mean-sim 0.904, not 0.998) *and* the most persistent species at BASE (p3) — exactly the
+   seed #17's logic predicts assort should help most. Instead SOFT collapses it p3 → p0 with 3 mate-starved
+   extinctions. The residual cross-lineage births were *seeding and feeding* lineages faster than they
+   homogenised them.
+3. **Allee trap.** Push the barrier into the reproductive bulk (BULK on the wide-tail seed 23) and mating
+   nearly shuts down — 3.18M refused matings, 586 realized — collapsing the whole population to a single
+   lineage (viable→1). The mechanism *does* work as designed (within-lineage variance compresses, 0.052→0.038
+   on seed 7), it just buys tighter clusters at the cost of fewer of them.
+
+**What this corrects about #17.** #17 framed reabsorption-at-the-mating-step as the binding constraint and
+assortative mating as the fix. The knockout says the opposite: at the mating step the system is already
+isolated *enough* (proximity does it), and the small remaining gene flow is **net constructive**. The real
+ceiling on a sustained radiation is therefore NOT pre-zygotic isolation — it is downstream: **founder
+survival and per-cell carrying capacity** (the deaths>births founder bottleneck from the retention work).
+Strengthening isolation past where #17 already took it doesn't add species; it subtracts them. Honest
+negative, in the graded tradition of #11–#16. Stock behaviour and all existing knobs unchanged; #18 is opt-in.
