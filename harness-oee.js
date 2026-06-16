@@ -427,10 +427,19 @@ const driver = `
       const hist=new Map();   // clusterID idx → Map(pLin → count)
       for(let i=0;i<N;i++){ if(!palive[i])continue; const c=clusterID[i]; if(c<0)continue;
         let h=hist.get(c); if(!h){ h=new Map(); hist.set(c,h); } h.set(pLin[i],(h.get(pLin[i])||0)+1); }
+      const dom=new Map(), meta=new Map();   // c → dominant pLin; c → {sz,domLin,domN,np}
+      for(const [c,h] of hist){ let sz=0,dn=0,dl=-1; for(const [pl,n] of h){ sz+=n; if(n>dn){ dn=n; dl=pl; } } dom.set(c,dl); meta.set(c,{sz,domLin:dl,domN:dn,np:h.size}); }
+      // core (=dominant-pLin members) vs fringe (=rest) trait centroids: is the fringe trait-SIMILAR to the
+      // core (homogenising bulk → plugging helps) or DISSIMILAR (the #18 generative hybridisation tail → keep)?
+      const coreS=new Map(), coreC=new Map(), frinS=new Map(), frinC=new Map();
+      for(let i=0;i<N;i++){ if(!palive[i])continue; const c=clusterID[i]; if(c<0)continue; const dl=dom.get(c); if(dl===undefined)continue;
+        if(pLin[i]===dl){ let s=coreS.get(c); if(!s){ s=new Float64Array(DIMS); coreS.set(c,s); } for(let d=0;d<DIMS;d++)s[d]+=tend[i*DIMS+d]; coreC.set(c,(coreC.get(c)||0)+1); }
+        else { let s=frinS.get(c); if(!s){ s=new Float64Array(DIMS); frinS.set(c,s); } for(let d=0;d<DIMS;d++)s[d]+=tend[i*DIMS+d]; frinC.set(c,(frinC.get(c)||0)+1); } }
       cpur=[];
-      for(const [c,h] of hist){ const cl=clusters[c]; if(!cl)continue;
-        let sz=0,dom=0,domLin=-1; for(const [pl,n] of h){ sz+=n; if(n>dom){ dom=n; domLin=pl; } }
-        cpur.push({lin:cl.lineageID|0, age:cl.persistAge|0, sz, dom:domLin, df:+(dom/sz).toFixed(3), np:h.size}); }
+      for(const [c,m] of meta){ const cl=clusters[c]; if(!cl)continue;
+        let cfd=-1; const cn=coreC.get(c)||0, fn=frinC.get(c)||0;
+        if(cn>0&&fn>0){ const cs=coreS.get(c), fsum=frinS.get(c); let dd=0; for(let d=0;d<DIMS;d++){ const x=cs[d]/cn-fsum[d]/fn; dd+=x*x; } cfd=+Math.sqrt(dd).toFixed(3); }
+        cpur.push({lin:cl.lineageID|0, age:cl.persistAge|0, sz:m.sz, dom:m.domLin, df:+(m.domN/m.sz).toFixed(3), np:m.np, ff:+(fn/m.sz).toFixed(3), cfd}); }
     }
 
     return {
@@ -463,6 +472,12 @@ const driver = `
       // success metric — survived past grace, still diverged, still cell-distinct), and viable standing
       // lineages (>=minsize) to compare against the stock ~24 island-equilibrium.
       specMinted, specAlive, specPersist, linViable,
+      // swing #22 conduit probe: of viable sub-groups, how many trait-DIVERGED ones are refused a mint purely
+      // because they share the parent's niche-cell (specMintBlockCell) — divergence erased by bookkeeping, not
+      // gene flow. Compare to actual mints (specMinted) and to cell-distinct-but-not-yet-diverged holds.
+      specMintCand:(typeof specMintCand!=='undefined')?specMintCand:-1,
+      specMintBlockCell:(typeof specMintBlockCell!=='undefined')?specMintBlockCell:-1,
+      specMintBlockDiv:(typeof specMintBlockDiv!=='undefined')?specMintBlockDiv:-1,
       // swing #20 colonization 2×2 guard: radiationCells (distinct home cells of viable lineages) is the
       // smear-proof success metric; occCellsRaw is the confoundable raw count. A rising occCellsRaw with a
       // flat radiationCells = one lineage smearing, NOT radiation. cellsPerViableLin = smear magnitude.

@@ -17091,6 +17091,11 @@ const linModalCell=new Map(); // pLin → its most-occupied niche cell (rebuilt 
 const linBirthTick=new Map(); // pLin → tick it was MINTED by speciation (persists; only minted lineages)
 const linParent=new Map();    // pLin → parent pLin at the speciation event (persists; genealogy)
 let specMintCount=0;          // cumulative cladogenesis events (exposed for the harness)
+// ── mint-refusal accounting (swing #22 conduit probe) — is trait-divergence being erased by a BOOKKEEPING
+//    gate invisible to the gene-flow math, rather than by gene flow? The suspect is the niche-cell gate:
+//    a viable, trait-DIVERGED sub-group co-located in its parent's modal cell (which cluster-mates are) is
+//    refused a mint by condition (c) and re-homogenised, never tagged. specMintBlockCell counts exactly that. ──
+let specMintCand=0, specMintBlockCell=0, specMintBlockDiv=0;
 function specComputeAgg(){ // per-lineage centroid, size, and modal niche-cell — O(N), called each cadence
   linCentroid.clear(); linSize.clear();
   const cellCnt=new Map(); // "lin:cell" → count, to find each lineage's modal cell
@@ -17111,12 +17116,17 @@ function specMint(){ // cladogenesis: split off viable, cell-distinct, trait-div
     let g=groups.get(key); if(!g){ g={l,cell,idx:[]}; groups.set(key,g); } g.idx.push(i); }
   for(const g of groups.values()){
     if(g.idx.length<__SPEC.minsize)continue;            // (a) viable founder size, not a doomed singleton
-    if(g.cell===linModalCell.get(g.l))continue;          // (c) a niche-cell DISTINCT from the lineage's main body
+    specMintCand++;
     const lc=linCentroid.get(g.l); if(!lc)continue;
-    let dist=0; const gc=new Float32Array(DIMS);
+    let dist=0; const gc=new Float32Array(DIMS);         // compute divergence for ALL viable groups, to classify refusals
     for(const i of g.idx)for(let d=0;d<DIMS;d++)gc[d]+=tend[i*DIMS+d];
     for(let d=0;d<DIMS;d++){ gc[d]/=g.idx.length; const dd=gc[d]-lc[d]; dist+=dd*dd; }
-    if(Math.sqrt(dist)<__SPEC.divT)continue;             // (b) trait centroid has genuinely diverged from parent
+    const diverged=Math.sqrt(dist)>=__SPEC.divT;         // (b) trait centroid has genuinely diverged from parent
+    const cellDistinct=(g.cell!==linModalCell.get(g.l)); // (c) a niche-cell DISTINCT from the lineage's main body
+    if(diverged&&!cellDistinct)specMintBlockCell++;      // ← THE SUSPECT: trait-diverged but cell-collided → erased, not minted
+    else if(!diverged&&cellDistinct)specMintBlockDiv++;  // cell-distinct but not yet diverged enough (legitimate hold)
+    if(!cellDistinct)continue;                            // (c) gate
+    if(!diverged)continue;                                // (b) gate
     const nl=_linNext++; linParent.set(nl,g.l); linBirthTick.set(nl,tick); // MINT
     for(const i of g.idx)pLin[i]=nl;
     specMintCount++;
