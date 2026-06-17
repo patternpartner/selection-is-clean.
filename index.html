@@ -9958,6 +9958,7 @@ function mutateGenome(){
   // respond to a deliberate kick, the param is genuinely inert and decay is licensed.
   // "Test dormancy by probing, not by absence of signal." atrophyRate=0 → inert (Pe39).
   const aRate=__cl(genome.atrophyRate||0,0,0.6); // AUTONOMY: doubled headroom (was 0.3) — the system may self-cull harder if selection favours it
+  let _deadVerdict=0; // layers the system CONFIDENTLY condemns this cycle (harmful or probe-confirmed dead) — its own dead-weight verdict, fed into the create/cull operator below
   if(aRate>0.001){
     for(const p of META_LAYER_PARAMS){
       if(!ATROPHY_SAFE.has(p))continue;
@@ -9978,6 +9979,7 @@ function mutateGenome(){
         const factor=__cl(1-strength,0,1);
         if(isFinite(genome[p]))genome[p]*=factor;
         e.probeState=0; // a param that turned harmful abandons any in-flight probe
+        _deadVerdict++; // the system judged this layer harmful dead weight
       }else if(quiet){
         if(!e.probeState){
           // Enter probe: inject a deliberate definite stimulus, defer decay.
@@ -10009,6 +10011,8 @@ function mutateGenome(){
               // Inert under a deliberate stimulus → genuinely dead. Decay licensed.
               const factor=__cl(1-aRate,0,1); // AUTONOMY: confirmed-dead decays at FULL rate (was half)
               if(isFinite(genome[p]))genome[p]*=factor;
+              _deadVerdict++; // the system probed and confirmed this layer dead weight
+
             }
             // moved → it was quietly contributing. Leave it at the probed value;
             // the probe was also the rescue.
@@ -10038,6 +10042,20 @@ function mutateGenome(){
     }
     genome.metaSignalValue=msWeight>0?Math.min(1,msSum/msWeight):0;
   }
+
+  // ═══ SELF-GOVERNED STRUCTURE (the teeth): the system's OWN verdict decides whether to CREATE or CULL its
+  // program. Until now the create/cull operator (grow/shrink below) was blind random, and atrophy's verdict
+  // only zeroed dials — a layer judged dead kept executing and kept costing. Here the verdict gets teeth:
+  // _deadVerdict (layers the system confidently condemned this cycle) biases the program toward CONTRACTION,
+  // and a clear-thriving self-signal (metaSignalValue well above neutral) licenses GROWTH. Crucially this is
+  // NEUTRAL when the system has no strong verdict (factors → 1), so default behaviour is unchanged; the system
+  // only steers when it has actually judged. Teeth = real program length → real per-instruction metabolic cost.
+  // Bounded by the length>6 floor, the vmMaxInstructions cap, and the finite energy pool (the exogenous
+  // backstop selection can't evolve away). Creation never fully stops; pruning never fully collapses.
+  const _deadFrac=__cl(_deadVerdict/8,0,1);                              // 0=nothing condemned … 1=heavily self-judged bloated
+  const _thrive=__cl(((genome.metaSignalValue||0)-0.6)/0.4,0,1);          // 0 until metaSignal is CLEARLY high (>0.6)
+  const _growFactor=__cl(1-0.7*_deadFrac+0.5*_thrive,0.3,1.6);            // dead weight suppresses creation; clear thriving licenses more
+  const _shrinkFactor=__cl(1+1.2*_deadFrac,1,2.5);                        // condemned dead weight → cull harder; neutral (1) otherwise
 
   // ═══ Pe43 Layer 32: COMPUTE META-SIGNAL GRADIENT ═══
   // Direction the attribution health is moving, EMA-smoothed across mutation cycles.
@@ -10682,7 +10700,8 @@ function mutateGenome(){
   }
 
   // Program growth: insert a random instruction — Pe33: biased when behavioral gradient active
-  if(genome.vmProgram.length<genome.vmMaxInstructions&&Math.random()<rate*0.15){
+  // _growFactor: the system creates more when thriving, less when it has condemned its own dead weight.
+  if(genome.vmProgram.length<genome.vmMaxInstructions&&Math.random()<rate*0.15*_growFactor){
     const pos=Math.floor(Math.random()*(genome.vmProgram.length+1));
     const bgb=__cl(genome.behaviorGradientBias||0,0,1);
     const vmNudgeDirs33=lastShadowNudgeDir.slice(5,12); // [f,p,a,tb,sp,sm,mp]
@@ -10712,14 +10731,16 @@ function mutateGenome(){
     genome.vmProgram.splice(pos,0,newInst);
   }
 
-  // Program shrinkage: delete an instruction
-  if(genome.vmProgram.length>6&&Math.random()<rate*0.1){
+  // Program shrinkage: delete an instruction — _shrinkFactor: the system culls harder when its own attribution
+  // condemned dead-weight layers this cycle. THIS is where the verdict finally bites real structure + cost.
+  if(genome.vmProgram.length>6&&Math.random()<rate*0.1*_shrinkFactor){
     const pos=Math.floor(Math.random()*genome.vmProgram.length);
     genome.vmProgram.splice(pos,1);
   }
 
-  // Instruction duplication (with mutation — a powerful evolutionary operator)
-  if(genome.vmProgram.length<genome.vmMaxInstructions-1&&Math.random()<rate*0.08){
+  // Instruction duplication (with mutation — a powerful evolutionary operator) — also a CREATE op, so governed
+  // by _growFactor: amplified when thriving, damped when the system has judged itself bloated.
+  if(genome.vmProgram.length<genome.vmMaxInstructions-1&&Math.random()<rate*0.08*_growFactor){
     const src=Math.floor(Math.random()*genome.vmProgram.length);
     const copy=[...genome.vmProgram[src]];
     copy[3]+=(Math.random()-0.5)*0.2; // mutate the constant on copy
