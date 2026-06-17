@@ -7584,6 +7584,18 @@ const META_LAYER_PARAMS=[
 // genome[p] directly as before.
 const OBJ_WEIGHT_PARAMS=new Set(['stabilityWeight','diversityWeight','coherenceWeight','churnWeight']);
 const OBJ_WEIGHT_INDEX={stabilityWeight:0,diversityWeight:1,coherenceWeight:2,churnWeight:3};
+// ═══ HOLDING COST — make carrying a meta-layer cost something, so dead weight becomes CONDEMNABLE ═══
+// The run data (gen1 t15128) showed the system evolved its atrophyRate to 0.42 (eager to prune) but pruned
+// nothing: 58% of layers parked at an identical ~0.42, every credit trace flat (max 0.08, none below the
+// −0.10 harmful bar). A layer that does nothing and a layer that quietly helps looked IDENTICAL (both ≈0),
+// because carrying a layer was free → dead weight read as "neutral", not "harmful". This taxes it: an unused
+// layer's trace bleeds toward a small NEGATIVE target = its carrying cost (below), so doing-nothing-while-
+// costing settles past the harmful threshold and gets condemned, while a layer that periodically earns
+// positive credit is lifted back up and survives. The tax is scaled by the genome's OWN evolved atrophyRate
+// (willingness-to-prune sets the self-tax — a genome that didn't choose to prune isn't taxed) and by the
+// param's value, so it SELF-LIMITS: as a condemned param decays, its cost shrinks and the pressure releases,
+// settling each layer where its proven credit covers its cost rather than annihilating it.
+const META_HOLDING_K=0.6;  // carry-cost coefficient. target = -K*atrophyRate*|value|. Tune from run data.
 // Pe40 Layer 29: subset of META_LAYER_PARAMS whose value 0 is documented as
 // "[prior version] exactly" — i.e. zero provably means the layer is dormant and
 // prior behavior is recovered. Only these are atrophy-eligible. Threshold / cost /
@@ -9902,6 +9914,7 @@ function mutateGenome(){
   }
   // Scale: 1.0 when only one param perturbed, decays toward 0.2 as all 16 move together.
   const _isoWeight=Math.max(0.2,1-(_activePerturbCount-1)*0.055);
+  const _holdRate=META_HOLDING_K*__cl(genome.atrophyRate||0,0,0.6); // holding-cost rate: the genome's own pruning willingness sets its self-tax
 
   for(const p of META_LAYER_PARAMS){
     const e=mc[p];
@@ -9926,10 +9939,15 @@ function mutateGenome(){
       }
       e.pendingDelta=0; // consumed
     }else{
-      // No movement last cycle — bleed slowly so a frozen gate stops reading as
-      // load-bearing. Honest diagnostic over sticky history.
-      e.trace*=0.995;
-      if(e.traceSlow!==undefined)e.traceSlow*=0.998;
+      // No movement last cycle. HOLDING COST: instead of bleeding toward 0 ("neutral, not dead"), bleed
+      // toward a small NEGATIVE target = this layer's carrying cost, so a layer that just sits there costing
+      // settles below the harmful threshold and becomes condemnable. Both fast+slow ease to the SAME target so
+      // they agree (confidence stays high → the verdict can fire). Self-limiting: target ∝ value, so as a
+      // condemned param decays the pressure releases. A genome with low atrophyRate has ~0 tax (didn't choose
+      // to prune). A layer that periodically earns positive credit (IF-branch above) is lifted back out.
+      const _carryTarget=-_holdRate*Math.abs(genome[p]||0);
+      e.trace+=(_carryTarget-e.trace)*0.02;
+      if(e.traceSlow!==undefined)e.traceSlow+=(_carryTarget-e.traceSlow)*0.01;
     }
     // Pe38: confidence — agreement between fast and slow EMA.
     // 1.0 = both fully agree (reliable); 0.0 = opposite sign (volatile or transitioning).
