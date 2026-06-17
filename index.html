@@ -17083,7 +17083,8 @@ if(typeof globalThis!=='undefined'){
   const LIVE={ __NICHE_FRONTIER:1, __NICHE_NDIM:1, __NICHE_LOCAL:1, // niche economy: cross-feed frontier + N-dim diet cells + per-cell crowding (#13/#14)
                __SPECIATE:1,                                        // cladogenesis #17 — brings gate+mint on; assort (#18) stays off
                __COLO_SURV:1, __COLO_PIONEER:1,                     // colonization & survival #20
-               __SPATIAL_TEND:1 };                                  // allopatric (spatially-local) homogeniser #21
+               __SPATIAL_TEND:1,                                    // allopatric (spatially-local) homogeniser #21
+               __MINT_GATE:'cluster' };                             // permissive deme gate #22 — mint split-first on a distinct CLUSTER, not a distinct niche-cell, so the strict cell-distinctness entry condition (destination-as-entry: foreclosed split-first speciation, the monoculture-lock) no longer erases incipient lineages at the cradle; founder grace (__COLO_SURV) above lets sub-bin founders survive to character-displace
   for(const k in LIVE) if(globalThis[k]===undefined) globalThis[k]=LIVE[k];
 }
 const __SPEC=(function(){ const G=(typeof globalThis!=='undefined')?globalThis:{}; const m=(G.__SPECIATE|0)===1;
