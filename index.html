@@ -7012,6 +7012,7 @@ function detectClusters(){
   // Flood-fill on spatial grid using resonance bonds
   clusterID.fill(-1);
   let cid=0;
+  let rejCid=MAX_CLUSTERS; // throwaway ids for sub-min-size components (see else-branch below)
   clusters.length=0;
 
   for(let i=0;i<N;i++){
@@ -7086,6 +7087,17 @@ function detectClusters(){
         lineageID:createLineage(0),
       });
       cid++;
+    } else {
+      // Sub-min-size component: NOT a recognized cluster. cid only advances on an accepted
+      // cluster, so leaving these members on the current `cid` makes that id shared by other
+      // rejects AND the next accepted cluster — and specMint's cluster-mode groups by raw
+      // clusterID, so it would union unrelated components into a phantom deme that satisfies
+      // __SPEC.minsize and mints a lineage that was never a distinct cluster. Give each reject
+      // a UNIQUE id beyond MAX_CLUSTERS instead: still >=0 (not re-seeded/absorbed), but every
+      // clusterByID access is guarded `<MAX_CLUSTERS?…:-1`, so it correctly reads as
+      // cluster-less everywhere and can't collide with a real cluster's id. (CAP=1800 ≪ Int16.)
+      for(const m of members)clusterID[m]=rejCid;
+      rejCid++;
     }
   }
 }
