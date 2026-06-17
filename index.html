@@ -395,6 +395,71 @@ function rendCall(atom,t0,t1,t2,t3,amp,phase,col){
   try{const v=atom.compiled(t0,t1,t2,t3,amp,phase,col);return(typeof v==='number'&&isFinite(v))?v:0;}
   catch(e){atom.failed=true;return 0;}
 }
+// ── Evolvable draw-program (render VM) ─────────────────────────────────────────
+// rend (above) evolves the PALETTE — R,G,B,size. This gives the genome a PEN: a small
+// mutating program that composes each particle's FORM from a curated alphabet of
+// inherently-soft primitives. The guardrail is the ALPHABET, not the composition —
+// every primitive is small, bounded, drawn in the particle's own colour at low alpha,
+// so any random program reads as a different ORGANISM, never as noise or strobe. The
+// default program is the hand-authored renderer re-expressed in those primitives, so
+// enabling the VM starts visually ~identical and evolution explores outward from good.
+const DRAW_MAX=4;     // primitives per particle (cost + restraint bound)
+const DRAW_NPRIM=5;   // primitive vocabulary: 0 DOT 1 HALO 2 RING 3 SPOKE 4 SATELLITE
+const DRAW_NREG=12;   // per-particle register bank (each normalised ~0..1)
+// op = [prim, ra, rb, rc]; ra/rb/rc index the register bank.
+const DRAW_DEFAULT=[
+  [1,8,7,0],   // HALO : soft glow, radius←size, alpha←collapse
+  [2,8,7,0],   // RING : faint outline, radius←size
+  [0,8,4,0],   // DOT  : the body, radius←size, alpha←amp
+  [4,5,8,4]    // (mutable 4th slot; seeded inert-ish) — gives evolution room
+];
+function defaultDraw(){ return DRAW_DEFAULT.map(o=>o.slice()); }
+function sanitizeDraw(d){
+  if(!Array.isArray(d)||d.length<1)return defaultDraw();
+  const out=[];
+  for(const o of d){ if(out.length>=DRAW_MAX)break; if(!Array.isArray(o)||o.length<4)continue;
+    out.push([ Math.abs(o[0]|0)%DRAW_NPRIM, Math.abs(o[1]|0)%DRAW_NREG, Math.abs(o[2]|0)%DRAW_NREG, Math.abs(o[3]|0)%DRAW_NREG ]); }
+  return out.length?out:defaultDraw();
+}
+const _drawReg=new Float32Array(DRAW_NREG);
+let __DRAWVM=false; // set true after the LIVE-config block if __DRAW_VM is enabled
+// Run the genome's draw-program for particle i (px/py/pR.. already computed this frame).
+// Every length/alpha is hard-clamped so no program can fill the screen or strobe.
+function runDrawProgram(i){
+  const prog=genome.draw; if(!prog||!prog.length)return;
+  const base=Math.max(0.4,pSz[i]);
+  const a=Math.min(1,amp[i]*0.8);
+  const r=pR[i]|0,g=pG[i]|0,b=pB[i]|0, x=px[i],y=py[i];
+  const col=collapse[i], ph=phase[i];
+  const R=_drawReg;
+  R[0]=__cl((tend[i*DIMS]+1.2)/2.4,0,1);
+  R[1]=DIMS>1?__cl((tend[i*DIMS+1]+1.2)/2.4,0,1):0.5;
+  R[2]=DIMS>2?__cl((tend[i*DIMS+2]+1.2)/2.4,0,1):0.5;
+  R[3]=DIMS>3?__cl((tend[i*DIMS+3]+1.2)/2.4,0,1):0.5;
+  R[4]=__cl(amp[i],0,1);
+  R[5]=(Math.sin(ph)+1)*0.5;
+  R[6]=(Math.cos(ph)+1)*0.5;
+  R[7]=__cl(col,0,1);
+  R[8]=__cl(pSz[i]/8,0,1);
+  R[9]=r/255; R[10]=g/255; R[11]=b/255;
+  // faint particles run only the first two ops (keeps frame cost near the hand-authored renderer)
+  const nOps=a>0.4?prog.length:Math.min(2,prog.length);
+  for(let k=0;k<nOps;k++){
+    const op=prog[k], A=R[op[1]],B=R[op[2]],C=R[op[3]];
+    switch(op[0]){
+      case 0:{const rad=__cl(base*(0.5+1.5*A),0.4,14),al=__cl(a*(0.25+0.6*B),0,0.7);
+        X.beginPath();X.arc(x,y,rad,0,6.28);X.fillStyle=`rgba(${r},${g},${b},${al})`;X.fill();break;}
+      case 1:{const rad=__cl(base*(1.5+4*A),1,18),al=__cl(a*(0.02+0.05*B),0,0.09);
+        X.beginPath();X.arc(x,y,rad,0,6.28);X.fillStyle=`rgba(${r},${g},${b},${al})`;X.fill();break;}
+      case 2:{const rad=__cl(base*(0.6+2.5*A),0.5,16),al=__cl(a*(0.1+0.3*B),0,0.45);
+        X.beginPath();X.arc(x,y,rad,0,6.28);X.strokeStyle=`rgba(${r},${g},${b},${al})`;X.lineWidth=0.4;X.stroke();break;}
+      case 3:{const ang=A*6.283,len=__cl(base*(0.5+2.5*B),1,14),al=__cl(a*(0.1+0.3*C),0,0.4);
+        X.beginPath();X.moveTo(x,y);X.lineTo(x+Math.cos(ang)*len,y+Math.sin(ang)*len);X.strokeStyle=`rgba(${r},${g},${b},${al})`;X.lineWidth=0.4;X.stroke();break;}
+      case 4:{const ang=A*6.283,dist=__cl(base*(1+2.5*B),1,16),rad=__cl(base*0.5*C,0.3,6),al=__cl(a*0.5,0,0.5);
+        X.beginPath();X.arc(x+Math.cos(ang)*dist,y+Math.sin(ang)*dist,rad,0,6.28);X.fillStyle=`rgba(${r},${g},${b},${al})`;X.fill();break;}
+    }
+  }
+}
 // UNLOCKED #7a/#7b — context fed to system-authored atoms (set per-VM-tick; finite & bounded).
 // c=proximity, d=energy, m=caste-match. Read by uaCall below so the 9 call sites stay untouched.
 let uaCtxC=0,uaCtxD=0,uaCtxM=0;
@@ -5170,6 +5235,7 @@ function cloneGenome(src){
   g.userAtoms=Array.isArray(src.userAtoms)?src.userAtoms.map(a=>({expression:a.expression,compiled:null,failed:!!a.failed,uses:0,state:0})):[];
   g.fitnessSensors=Array.isArray(src.fitnessSensors)?src.fitnessSensors.map(s=>({...s,program:cloneProg(s.program)})):src.fitnessSensors;
   g.rend=Array.isArray(src.rend)?src.rend.map(a=>({expression:a.expression,compiled:null,failed:!!a.failed})):src.rend;
+  g.draw=Array.isArray(src.draw)?src.draw.map(o=>o.slice()):src.draw;
   // reflective journals (lineage, epochs, metaCredit, shadowScenarioBank, ...) stay SHARED refs —
   // they are the self's bookkeeping, read-only in the per-particle hot path, never cloned per birth.
   return g;
@@ -5424,6 +5490,7 @@ function encodeGenome(){
     tmr:+(genome.typeMutRate||0.02).toFixed(4), // UNLOCKED #7a caste-innovation rate
     td: genome.tendDims|0,
     rn: Array.isArray(genome.rend)?genome.rend.map(a=>({e:a.expression,f:!!a.failed})):null,
+    dr: Array.isArray(genome.draw)?genome.draw.map(o=>o.slice()):null,
     bo: Array.isArray(genome.boundOpcodes)?genome.boundOpcodes.map(b=>b|0):[],
     co: CORE_OPCODES, // MIGRATION (review): stamp the opcode-boundary this save was written under, so a later CORE_OPCODES shift can remap saved bound-opcode programs on load
     ua:cleanAtoms,
@@ -5684,6 +5751,7 @@ function decodeGenome(data){
     if(g.ua)genome.userAtoms=g.ua.map(a=>({expression:a.expression,compiled:null,failed:!!a.failed,uses:a.uses|0,age:a.age|0}));
     if(typeof g.td==='number') genome.tendDims=__cl(g.td|0,2,DIMS_MAX);
     if(Array.isArray(g.rn)&&g.rn.length===4) genome.rend=g.rn.map(a=>({expression:a.e||'0',compiled:null,failed:!!a.f}));
+    if(Array.isArray(g.dr)) genome.draw=sanitizeDraw(g.dr);
     if(Array.isArray(g.bo)) genome.boundOpcodes=g.bo.map(n=>Math.max(0,n|0));
     if(typeof g.clr==='number')genome.creditLearnRate=g.clr; // Pe25 Layer 15
     if(typeof g.gb==='number')genome.gradientBias=g.gb;      // Pe26 Layer 16a
@@ -6638,6 +6706,7 @@ function sanitizeGenome(){
   genome.prevSmoothedFitness=finiteOr(genome.prevSmoothedFitness,0);
   genome.userAtoms=Array.isArray(genome.userAtoms)?genome.userAtoms.filter(a=>a&&typeof a.expression==='string').map(a=>({expression:a.expression.slice(0,160),compiled:null,failed:!!a.failed,uses:a.uses|0,age:a.age|0})):[];
   if(!Array.isArray(genome.rend)||genome.rend.length!==4) genome.rend=defaultRend();
+  genome.draw=sanitizeDraw(genome.draw);
   genome.rend=genome.rend.map(a=>({expression:typeof a.expression==='string'?a.expression.slice(0,200):'0',compiled:null,failed:!!a.failed}));
   if(!Array.isArray(genome.boundOpcodes)) genome.boundOpcodes=[];
   genome.boundOpcodes=genome.boundOpcodes.filter(n=>typeof n==='number'&&n>=0).slice(0,MAX_BOUND_OPCODES);
@@ -10846,6 +10915,12 @@ function mutateGenome(){
   if(Math.random()<0.003){
     const ri=Math.floor(Math.random()*4);
     genome.rend[ri]={expression:uaGenExpression(),compiled:null,failed:false};
+  }
+  if(Math.random()<0.004){ // mutate the draw-program: add / drop / retype a primitive (neutral drift, rides selection like rend)
+    const d=genome.draw||(genome.draw=defaultDraw()); const roll=Math.random();
+    if(roll<0.3&&d.length<DRAW_MAX) d.push([(Math.random()*DRAW_NPRIM)|0,(Math.random()*DRAW_NREG)|0,(Math.random()*DRAW_NREG)|0,(Math.random()*DRAW_NREG)|0]);
+    else if(roll<0.45&&d.length>1) d.splice((Math.random()*d.length)|0,1);
+    else { const o=d[(Math.random()*d.length)|0], f=(Math.random()*4)|0; o[f]=f===0?((Math.random()*DRAW_NPRIM)|0):((Math.random()*DRAW_NREG)|0); }
   }
   if(Math.random()<0.01){
     const uas=genome.userAtoms||[];
@@ -16804,11 +16879,14 @@ function render(){
     const s=Math.max(.2,pSz[i]),col=collapse[i],smear=1-col;
     const r=pR[i]|0,g=pG[i]|0,b=pB[i]|0;
     if(smear>0.12){for(let e=0;e<EL;e++){const ei=(echoIdx[i]-1-e+EL*100)%EL;const ex=echox[i*EL+ei],ey=echoy[i*EL+ei],ea=a*smear*0.06*(1-e/EL),fx=px[i]+(px[i]-ex)*0.4,fy=py[i]+(py[i]-ey)*0.4;X.beginPath();X.arc(ex,ey,s*.5,0,6.28);X.fillStyle=`rgba(${r},${g},${b},${ea})`;X.fill();X.beginPath();X.arc(fx,fy,s*.3,0,6.28);X.fillStyle=`rgba(${r},${g},${b},${ea*.5})`;X.fill()}}
-    if(smear>0.08){const hr=s*1.8+smear*3;X.beginPath();X.arc(px[i],py[i],hr,0,6.28);X.fillStyle=`rgba(${r},${g},${b},${a*smear*0.012})`;X.fill();const fr=hr*(1+Math.sin(phase[i]*4)*0.25);X.beginPath();X.arc(px[i],py[i],fr,0,6.28);X.strokeStyle=`rgba(${r},${g},${b},${a*smear*0.015})`;X.lineWidth=.2;X.stroke()}
-    if(col>0.15){X.beginPath();X.arc(px[i],py[i],s*2.2,0,6.28);X.fillStyle=`rgba(${r},${g},${b},${a*col*0.035})`;X.fill()}
-    const bodySize=s*(0.5+col*0.5);
-    X.beginPath();X.arc(px[i],py[i],bodySize,0,6.28);X.fillStyle=`rgba(${r},${g},${b},${a*(0.4+col*0.5)})`;X.fill();
-    if(col>0.3&&amp[i]>0.3){X.beginPath();X.arc(px[i],py[i],bodySize*0.25,0,6.28);X.fillStyle=`rgba(${Math.min(255,r+50)|0},${Math.min(255,g+50)|0},${Math.min(255,b+50)|0},${a*col*0.35})`;X.fill()}
+    if(__DRAWVM){ runDrawProgram(i); }
+    else {
+      if(smear>0.08){const hr=s*1.8+smear*3;X.beginPath();X.arc(px[i],py[i],hr,0,6.28);X.fillStyle=`rgba(${r},${g},${b},${a*smear*0.012})`;X.fill();const fr=hr*(1+Math.sin(phase[i]*4)*0.25);X.beginPath();X.arc(px[i],py[i],fr,0,6.28);X.strokeStyle=`rgba(${r},${g},${b},${a*smear*0.015})`;X.lineWidth=.2;X.stroke()}
+      if(col>0.15){X.beginPath();X.arc(px[i],py[i],s*2.2,0,6.28);X.fillStyle=`rgba(${r},${g},${b},${a*col*0.035})`;X.fill()}
+      const bodySize=s*(0.5+col*0.5);
+      X.beginPath();X.arc(px[i],py[i],bodySize,0,6.28);X.fillStyle=`rgba(${r},${g},${b},${a*(0.4+col*0.5)})`;X.fill();
+      if(col>0.3&&amp[i]>0.3){X.beginPath();X.arc(px[i],py[i],bodySize*0.25,0,6.28);X.fillStyle=`rgba(${Math.min(255,r+50)|0},${Math.min(255,g+50)|0},${Math.min(255,b+50)|0},${a*col*0.35})`;X.fill()}
+    }
   }
 
   for(let f=flashN-1;f>=0;f--){
@@ -17096,9 +17174,11 @@ if(typeof globalThis!=='undefined'){
                __SPECIATE:1,                                        // cladogenesis #17 — brings gate+mint on; assort (#18) stays off
                __COLO_SURV:1, __COLO_PIONEER:1,                     // colonization & survival #20
                __SPATIAL_TEND:1,                                    // allopatric (spatially-local) homogeniser #21
-               __MINT_GATE:'cluster' };                             // permissive deme gate #22 — mint split-first on a distinct CLUSTER, not a distinct niche-cell, so the strict cell-distinctness entry condition (destination-as-entry: foreclosed split-first speciation, the monoculture-lock) no longer erases incipient lineages at the cradle; founder grace (__COLO_SURV) above lets sub-bin founders survive to character-displace
+               __MINT_GATE:'cluster',                               // permissive deme gate #22 — mint split-first on a distinct CLUSTER, not a distinct niche-cell, so the strict cell-distinctness entry condition (destination-as-entry: foreclosed split-first speciation, the monoculture-lock) no longer erases incipient lineages at the cradle; founder grace (__COLO_SURV) above lets sub-bin founders survive to character-displace
+               __DRAW_VM:1 };                                       // render VM #23 — the genome composes its own particle FORM from a curated, bounded primitive alphabet (seed = the hand-authored renderer), not just its palette
   for(const k in LIVE) if(globalThis[k]===undefined) globalThis[k]=LIVE[k];
 }
+__DRAWVM=(typeof globalThis!=='undefined'&&(globalThis.__DRAW_VM|0)===1); // resolve the render-VM toggle now that LIVE defaults are filled
 const __SPEC=(function(){ const G=(typeof globalThis!=='undefined')?globalThis:{}; const m=(G.__SPECIATE|0)===1;
   const sub=k=>G[k]!==undefined?(G[k]|0):(m?1:0);
   return { on:m, gate:sub('__SPEC_GATE'), mint:sub('__SPEC_MINT'),
