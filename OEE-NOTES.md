@@ -797,3 +797,57 @@ neutral-axis thread. That is the next swing.
 *might* accumulate more displacement — but at 10k the strict bar is flat-to-down across all three seeds and
 both permissive modes. All gates default to 'cell' (stock, byte-identical). The experiment was the right call:
 it foreclosed nothing by fiat, kept the metric strict, and returned a clean negative that points the next move.
+
+## Swing #24 (LIVE, straight to main) — break the #16 wall by GEOMETRY, not cell count
+
+A bold live move, not a dormant knob. Context: swings #11–#22 worked the niche economy from retention,
+strength, survival, spatial-locality, gene flow and the mint gate — six trait-layer levers, none lifted
+radiationCells off ~4. #22's clean negative located the binding wall precisely: **divergence on the few
+selected axes IS niche divergence, sub-bin = differentiation-free** (the #16 wall). The unexamined lever was
+the niche GEOMETRY itself. The instinct to "add more cells" was already refuted — #19 found only ~12 of 256
+cells ever occupied, so the ceiling was never the cell budget. The wall is that the niche space had the wrong
+SHAPE in two specific ways:
+
+1. **One axis was ecologically blind.** `NICHE_ND_DIMS=4` of the `DIMS=5` active tendency axes fed the diet
+   cell. The 5th axis was NEUTRAL by construction (the #16/#22 finding, with the honest caveat that DIMS=5
+   left only one neutral axis to test). Divergence on it was invisible to the economy, re-homogenised, never
+   minted.
+2. **Cells were too coarse to register divergence.** Cells were 0.6 wide (`NICHE_ND_BINS=4`) while the
+   within-lineage spread is pinned to std~0.08 and cross-lineage divergence to divT~0.20. A genuinely-diverged
+   cohort therefore stayed SUB-BIN inside its parent's cell, and the niche-cell gate refused it
+   (specMintBlockCell — the conduit #22 instrumented). The monoculture lock.
+
+**The change (`index.html`, three constants + comments; LIVE default, no new knob):**
+`NICHE_ND_DIMS 4→5` (the 5th axis now carries real ecology — the neutral axis is wired in),
+`NICHE_ND_BINS 4→6` (cell width 0.6→0.4), `NICHE_ND_CELLS 256→7776` (=6^5).
+`NICHE_ND_SUPPLY` UNCHANGED at 0.18 and `NICHE_ND_OFFSET` 37 still coprime to the new count (7776=2^5·3^5).
+
+**Why it's safe and energetically free.** Per-cell income is unchanged, and total income scales with
+OCCUPANCY (bounded by N, the metabolic brake caps headcount), NOT with cell count — only occupied cells are
+harvested; the extra cells are empty colonisation slots, not new energy. The cell width (0.4 ≈ 5 std of the
+within-lineage bulk) keeps the main body sitting inside ONE cell, so the bulk does NOT fragment — explicitly
+avoiding the #22 over-split failure where permissive minting shattered lineages into ecologically-equivalent
+pieces. What changes is only the divT-scale divergence: a 0.20 shift now straddles a cell boundary ~half the
+time (vs ~1/3 at width 0.6), landing a diverged cohort in a DISTINCT niche-cell it can be minted into and
+character-displace within. The existing colonization machinery (COLO_SURV founder grace, the empty-cell
+pioneer bonus, NICHE_CELL_FLOOR=2 crowding-free pairs) is exactly the support a founder pair needs to
+establish in a freshly-reached cell.
+
+**Departure from method, stated honestly.** This ships LIVE and default-ON with NO pre-registered harness
+measurement — a deliberate break from the dormant-knob discipline of #11–#22, taken in the spirit of the
+post-#22 "the live artwork is the ground truth" stance (the default-ON stack, the render VM, the permissive
+mint flip). The reasoning above is a hypothesis, not a verdict.
+
+**Falsifiable prediction (how to read it later, when a long real-run export is available).** If the geometry
+was the wall: occupied cells rise above the ~12/256 floor (proportionally), radiationCells climbs off ~4, and
+the monoculture absorbing state (divMean pinned at 0 for 200k+ ticks, seen in the t106k/t256k exports) becomes
+escapable — minted lineages now reach genuinely distinct cells and persist. If it was NOT the wall: occupancy
+stays a tiny fraction, radiationCells stays flat, and the diverged cohorts that now cross cell boundaries
+still re-merge — which would mean the divergence itself isn't being PRODUCED (a generation problem, pointing
+back at the homogeniser/mutation supply), not that it had nowhere to land. Either outcome is informative; the
+move was to stop testing the gate and the flow and instead reshape the board the game is played on.
+
+**Next, if #24 holds but saturates:** make the cell space track DIMS dynamically (sparse/hashed cells) so the
+#16 dimensionality ratchet — when the genome grows a NEW tendency axis — automatically grows the niche space
+with it. That is the board literally growing, the open-ended end-state; it needs a sparse cell store, not the
+dense 6^DIMS array, so it's the right separate swing.

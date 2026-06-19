@@ -17098,11 +17098,25 @@ const OPNOV_INTERVAL=120;            // ticks between opcode-frequency recompute
 // partitioned resource; empty cells accrue stock to the cap, so the FIRST lineage to reach a new
 // cell harvests a rich colonisation bonus — living literally opens (and pays for) new ways to live.
 // Opt-in via __NICHE_NDIM=1 (with __NICHE_FRONTIER=1); replaces the 1-D channel geometry.
-const NICHE_ND_DIMS=4;               // tendency dimensions used as diet coordinates
-const NICHE_ND_BINS=4;               // bins per diet dimension
-const NICHE_ND_CELLS=256;            // = NICHE_ND_BINS**NICHE_ND_DIMS (4^4)
-const NICHE_ND_SUPPLY=0.18;          // per-cell supply/tick (lone occupant ≈0.009 amp/tick; empty cell builds a colonisation bonus)
-const NICHE_ND_OFFSET=37;            // cross-feed cell stride (odd → coprime to 256 → reaches every cell)
+// SWING #24 (live) — break the #16 wall by GEOMETRY, not cell count. #19 found only ~12/256 cells ever
+// occupied, so the ceiling was never the cell budget; #16/#22 found the binding constraint is that the
+// niche space had the WRONG SHAPE: (a) only 4 of the 5 active tendency axes fed the diet cell, so the 5th
+// was ecologically NEUTRAL and divergence on it was invisible, re-homogenised, never minted; and (b) cells
+// were 0.6 wide while within-lineage spread is pinned to std~0.08 and cross-lineage divergence to divT~0.20,
+// so a genuinely-diverged cohort stayed SUB-BIN inside the parent cell and the niche-cell gate refused it
+// (differentiation-free, the monoculture lock). Fix the geometry: use ALL 5 active axes (the previously-
+// neutral one now carries real ecology), and halve the cell width (4→6 bins, 0.6→0.4). The within-lineage
+// bulk (≈5 std wide) still sits inside one cell so the main body does NOT fragment (avoids the #22 over-
+// split failure), but a divT divergence now straddles a boundary ~half the time and lands in a distinct
+// niche it can be minted into and character-displace within. Energetically FREE: per-cell income is
+// unchanged and total income scales with OCCUPANCY (bounded by N), not cell count — the extra cells are
+// empty colonisation slots, not new energy. (DIMS default 5; if the #16 dimensionality ratchet grows DIMS
+// past NICHE_ND_DIMS, the new axes stay neutral until a future swing makes the cell space track DIMS.)
+const NICHE_ND_DIMS=5;               // tendency dimensions used as diet coordinates (was 4 — the 5th axis was neutral, #16 wall)
+const NICHE_ND_BINS=6;               // bins per diet dimension (was 4 — coarse cells trapped divergence sub-bin, #22)
+const NICHE_ND_CELLS=7776;           // = NICHE_ND_BINS**NICHE_ND_DIMS (6^5)
+const NICHE_ND_SUPPLY=0.18;          // per-cell supply/tick (lone occupant ≈0.009 amp/tick; empty cell builds a colonisation bonus) — UNCHANGED: income tracks occupancy, not cell count
+const NICHE_ND_OFFSET=37;            // cross-feed cell stride (prime, coprime to 7776=2^5·3^5 → reaches every cell)
 // LOCAL COMPETITION — swing #14. Per-niche income alone still lets one fast cell flood the world,
 // because death/crowding is GLOBAL. Here crowding your OWN diet-cell costs amplitude, so each cell
 // has a hard LOCAL carrying capacity and overflow is pushed into other cells — coexistence by real
@@ -17248,7 +17262,8 @@ let specMintCount=0;          // cumulative cladogenesis events (exposed for the
 //    refused a mint by condition (c) and re-homogenised, never tagged. specMintBlockCell counts exactly that. ──
 let specMintCand=0, specMintBlockCell=0, specMintBlockDiv=0;
 // per-axis divergence accounting: WHERE (which trait axis) does refused-vs-minted divergence live? Niche-cell
-// gate uses axes 0..NICHE_ND_DIMS-1 (=0..3, the SELECTED/economy axes); #16 proved axes ≥4 are NEUTRAL. If the
+// gate uses axes 0..NICHE_ND_DIMS-1; #16 proved (at NICHE_ND_DIMS=4) that axis ≥4 was NEUTRAL — swing #23 wired
+// the 5th axis in (swing #24, NICHE_ND_DIMS=5) so it now carries ecology too. If the
 // refused (blockCell) divergence is mostly on axes ≥4, the gate is correctly refusing functionless variation
 // (minting it = ID-tag birth-inflation); if it's on axes 0..3 sub-bin, the gate is too coarse and the
 // cluster-distinctness reframe is warranted. specMintAxisSq is the minted control (where REAL divergence lives).
