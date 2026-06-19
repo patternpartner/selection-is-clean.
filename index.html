@@ -17146,6 +17146,7 @@ const nicheSupplyNow=new Float32Array(NICHE_BINS); // per-tick drifting supply (
 const nicheCellRes=new Float32Array(NICHE_ND_CELLS);   // standing stock per N-dim diet cell (swing #13)
 const nicheCellOcc=new Int32Array(NICHE_ND_CELLS);     // occupants per cell this tick
 const nicheCellCross=new Float32Array(NICHE_ND_CELLS); // deferred cross-feed deposits per cell
+const nicheCellBuilt=new Float32Array(NICHE_ND_CELLS);   // swing #29: persistent, life-built supply boost per cell (niche construction)
 const nicheCellBio=new Float32Array(NICHE_ND_CELLS);     // swing #28: living biomass (Σamp) per cell — Red Queen predation
 const nicheCellPredGain=new Float32Array(NICHE_ND_CELLS);// per-unit-amp gain to predators in a cell
 const nicheCellPreyLoss=new Float32Array(NICHE_ND_CELLS);// per-unit-amp loss to prey in a cell
@@ -17161,6 +17162,18 @@ const nicheCellPreyLoss=new Float32Array(NICHE_ND_CELLS);// per-unit-amp loss to
 const RQ_STRIDE=53;        // predator cell C eats prey cell (C+RQ_STRIDE); prime, coprime to 7776 → one long predation cycle over all cells
 const RQ_RATE=0.05;        // max fraction of a PREDATOR cell's biomass converted from prey per tick
 const RQ_MAXFRAC=0.10;     // cap on fraction of a PREY cell's biomass taken per tick (prey can't be wiped instantly → bounded, stable)
+// SWING #29 — NICHE CONSTRUCTION (ecosystem engineering). The other great open-endedness engine the system
+// never had: until now the environment is FIXED scaffolding life merely occupies. Here life DURABLY reshapes
+// its own niche — a lived-in cell accrues a persistent supply boost (soil-building), which decays slowly when
+// abandoned, so an engineered niche OUTLIVES its builder and invites recolonisation: environmental structure
+// accumulates independent of who is currently alive (the inherited-niche / extended-phenotype route to OEE).
+// Anti-monopoly by design: the boost is to the cell's SHARED supply (split equally among occupants, not the
+// builder), and it is CAPPED — so it deepens a niche for whoever lives there (incl. descendants/competitors),
+// it does not let one lineage privatise a cell. Pairs with #28: predation thins winners, construction rewards
+// persistence — together they push toward many deep, defended, inherited niches rather than one shallow blob.
+const NICHE_BUILD_RATE=0.0006;   // per-tick supply boost added while a cell is occupied
+const NICHE_BUILD_MAX=0.10;      // cap on the built boost (~0.55× base supply 0.18) — deepens, never dwarfs
+const NICHE_BUILD_DECAY=0.9990;  // per-tick decay of the boost when a cell is empty (legacy persists ~700t)
 const pDietCell=new Int32Array(CAP);                   // per-organism diet cell this tick
 const cellTendSum=new Float32Array(NICHE_ND_CELLS*DIMS_MAX); // per-cell tend centroid accumulator (localised homogeniser)
 const cellTendCnt=new Int32Array(NICHE_ND_CELLS);
@@ -17218,6 +17231,7 @@ if(typeof globalThis!=='undefined'){
                __MINT_GATE:'cluster',                               // permissive deme gate #22 — mint split-first on a distinct CLUSTER, not a distinct niche-cell, so the strict cell-distinctness entry condition (destination-as-entry: foreclosed split-first speciation, the monoculture-lock) no longer erases incipient lineages at the cradle; founder grace (__COLO_SURV) above lets sub-bin founders survive to character-displace
                __DRAW_VM:1,                                        // render VM #23 — the genome composes its own particle FORM from a curated, bounded primitive alphabet (seed = the hand-authored renderer), not just its palette
                __DIMS_SAT:3000,                                     // dimensionality ratchet #25 — saturation-gated: every 3000 ticks, grow a new heritable trait axis IFF distinct occupied niche-cells ≥ threshold (default 24), capped at 9 dims. With all-dims nicheCellOf, each grown axis is selected from birth — the board grows itself when (and only when) diversity earns it
+               __NICHE_BUILD:1,                                     // niche construction #29 — life durably reshapes its own environment: a lived-in cell accrues a persistent, CAPPED, SHARED supply boost (soil-building) that decays slowly when abandoned, so engineered niches outlive their builders and accumulate as inherited environmental structure. Anti-monopoly (shared+capped); pairs with #28 (predation thins winners, construction rewards persistence)
                __RED_QUEEN:1,                                       // biotic / Red Queen #28 — conserved, frequency-dependent predation over the live N-dim cells: predators in cell C draw a zero-sum amp transfer from prey cell C+stride. "Kill the winner" (common prey predated hard, rare protected) promotes coexistence; prey escape only by crossing a cell boundary, so predation SELECTS for divergence. The unbounded (biotic) niche engine the abiotic arc #11–#27 could never reach
                __CHAR_DISP:0 };                                     // character displacement #27 — DORMANT (default off): the matched A/B (seed 7, 6k) showed it NET-HARMFUL to diversity (entropyRatio 0.67 vs control 0.74; evenness 0.61 vs 0.70) — rate 0.0015 OVER-spaces lineages toward the trait-space edges instead of letting more coexist. Code+knob kept for a re-tune (gentler rate, or gate on same-niche-cell overlap not raw trait distance); force on with CHAR_DISP=1
   for(const k in LIVE) if(globalThis[k]===undefined) globalThis[k]=LIVE[k];
@@ -17459,8 +17473,10 @@ function applyNicheEconomy(){
   if(FR && (typeof globalThis!=='undefined'&&(globalThis.__NICHE_NDIM|0)===1)){
     // regen every cell; empty cells accrue to NICHE_CAP → a colonisation bonus for the first arrival
     const CELLDRIFT=(typeof globalThis!=='undefined'&&(globalThis.__NICHE_CELLDRIFT|0)===1); // swing #15: per-cell drift
+    const BUILD=(typeof globalThis!=='undefined'&&(globalThis.__NICHE_BUILD|0)===1); // swing #29: niche construction
     for(let c=0;c<NICHE_ND_CELLS;c++){ let sup=NICHE_ND_SUPPLY;
       if(CELLDRIFT){ sup=NICHE_ND_SUPPLY*(1+NICHE_CELLDRIFT_AMP*Math.sin(2*Math.PI*tick/NICHE_CELLDRIFT_PERIOD + c*2.39996323)); if(sup<NICHE_ND_SUPPLY*0.1)sup=NICHE_ND_SUPPLY*0.1; } // each cell pulses on its own (golden-angle) phase
+      if(BUILD){ if(nicheCellOcc[c]>0){ const b=nicheCellBuilt[c]+NICHE_BUILD_RATE; nicheCellBuilt[c]=b<NICHE_BUILD_MAX?b:NICHE_BUILD_MAX; } else nicheCellBuilt[c]*=NICHE_BUILD_DECAY; sup+=nicheCellBuilt[c]; } // nicheCellOcc still holds LAST tick's count here (reset below)
       nicheCellRes[c]=Math.min(NICHE_CAP, nicheCellRes[c]*NICHE_PERSIST + sup*_season); nicheCellOcc[c]=0; nicheCellCross[c]=0; }
     for(let i=0;i<N;i++){ if(!palive[i])continue; const c=nicheCellOf(i); pDietCell[i]=c; nicheCellOcc[c]++; }
     // harvest: occupants of a cell split its take equally (each cell its own carrying capacity); REAL income; cross-feed to an offset cell

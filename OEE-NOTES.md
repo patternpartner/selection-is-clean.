@@ -1041,3 +1041,40 @@ occupied cells / evenness) WORSE than the off-control, flip `__RED_QUEEN` to def
 rate too high / destabilising. If neutral-or-better, it stays and the next move is to make the prey-link
 trait-meaningful (predator trait = prey trait + δ in real trait space, not just index stride) for a true
 coevolutionary kernel. The knob is a clean one-flip rollback either way.
+
+## Swing #29 (LIVE, straight to main) — niche construction: life reshapes its own environment
+
+The mutualistic complement to #28, and the second great open-endedness engine the live system never had. Until
+now the environment is FIXED scaffolding that life merely occupies; selection acts on organisms against a
+static landscape. **Niche construction** makes the landscape part of the evolving system: organisms durably
+reshape their own niches, and those modifications are inherited by whoever comes next — the extended-phenotype
+/ inherited-niche route to open-endedness (beavers' dams, earthworms' soil, oxygen-producing life remaking the
+atmosphere).
+
+**Mechanism (`__NICHE_BUILD`, default-on live; in the N-dim regen loop).** A lived-in cell accrues a
+persistent supply boost (`nicheCellBuilt[c]` += 0.0006/tick while occupied, capped at 0.10 ≈ 0.55× base
+supply); an abandoned cell's boost decays slowly (×0.9990/tick, legacy ~700t). The boost is added to the
+cell's regen, so the niche literally deepens where life persists and stays enriched for a while after life
+leaves. Two design choices keep it generative rather than collapsing:
+- **Shared, not privatised:** the boost feeds the cell's supply, which is split EQUALLY among occupants (the
+  existing anti-rich-get-richer harvest). A lineage that engineers a cell makes it better for whoever lives
+  there — descendants AND competitors — so it cannot monopolise the cell. The benefit is to the NICHE, not
+  the builder.
+- **Capped + legacy:** the cap (~0.55× base) means an engineered cell deepens but never dwarfs the others, and
+  the slow decay means an abandoned rich cell is a colonisation magnet — structure accumulates in the
+  environment independent of the current population. That decoupling (niche outlives builder) is the
+  open-ended part: the world remembers what lived in it.
+
+**Pairs with #28.** Predation (#28) thins whatever is winning; construction (#29) rewards persistence and
+builds defended, inherited niches. Together the intent is many deep, occupied, history-bearing niches rather
+than one shallow blob — biotic structure that does not saturate the way the abiotic board (#11–#27) did.
+
+**Honest status — shipped on principle + clean boot; matched A/B PENDING (same gate as #27/#28).** Boots and
+runs clean (zero loop/driver errors). Net diversity effect unmeasured. Risk to watch: the occupied→richer→more
+occupied positive feedback could concentrate population into a few cells (cell-level monopoly → diversity
+loss), countered in-stack by #14 local crowding cost, equal-split harvest, and #28 kill-the-winner — whether
+that balance holds is exactly what the A/B/live-run decides. **Pre-registered revert:** if a matched A/B (on
+vs off) shows diversity (entropyRatio / occupied cells / evenness) WORSE than control, the feedback is
+over-strong — lower `NICHE_BUILD_RATE`/`_MAX` or flip `__NICHE_BUILD` default-off (one line). Clean one-flip
+rollback. The #28 and #29 A/Bs are the honest gate this pair has not yet passed; running them is the immediate
+next task, not more building on top.
