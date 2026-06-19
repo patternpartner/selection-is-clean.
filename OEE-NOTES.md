@@ -851,3 +851,56 @@ move was to stop testing the gate and the flow and instead reshape the board the
 #16 dimensionality ratchet — when the genome grows a NEW tendency axis — automatically grows the niche space
 with it. That is the board literally growing, the open-ended end-state; it needs a sparse cell store, not the
 dense 6^DIMS array, so it's the right separate swing.
+
+## Swing #25 (LIVE, straight to main) — the board grows itself: saturation-gated dimensionality, every axis ecological
+
+The brave completion of #24. The whole arc's end-state, named since #16, is a board whose number of AXES
+grows — a NEW kind of difference, not another value of an old one. #16 built the mechanism (`setDims`: clean
+stride remap + spread-init of the new axis) but the freeze-and-watch **RETRACTED** the headline: a grown axis
+is a SEED, not a harvest — it washed out because "dims ≥4 are NOT in the niche economy, so the new axis is
+neutral by construction." The retraction's prescription was explicit: **wire new dims into selection FIRST,
+then gate the ratchet.** #24 did the first half for axis 4. #25 does the rest and ships the ratchet live.
+
+**Two coupled changes (`index.html`; harness knobs added):**
+
+1. **`nicheCellOf` reads EVERY active axis.** For DIMS within the dense grid (≤NICHE_ND_DIMS=5) it is the
+   BYTE-IDENTICAL combinatorial index — the default piece is unchanged. Once the board grows past the grid it
+   hashes all binned dims (`Math.imul`-based) into the fixed cell count, so every axis — including the newest —
+   carries ecology. Collisions are negligible at the tens-of-occupied-cells this system runs at, and the empty
+   grid was already free (income tracks occupancy, #24). This is what removes the "neutral new axis" that
+   sank #16: a grown axis is now SELECTED from birth, and `setDims`'s spread-init gives it real variation to
+   select on immediately.
+
+2. **Saturation-GATED growth (the #16 open problem, solved the simplest honest way).** #16's blind clock
+   (`__DIMS_GROW`, every N ticks regardless of state) is kept only as the isolation knob; the live trigger is
+   new (`__DIMS_SAT`): every 3000 ticks, grow ONE axis IFF the count of distinct occupied niche-cells ≥ 24,
+   capped at 9 dims. Growth is **earned by diversity, never premature**. The coupling is the point: if the
+   world collapses to monoculture, occupancy stays low and DIMS never grows (no harm, no neutral-axis
+   injection); if #24's geometry lets diversity climb past the gate, the board expands to make room and the
+   all-dims cell map makes that room immediately ecological. Success buys more room; more room is instantly a
+   new way to live. That is the open-ended board that grows itself.
+
+**Verified (correctness, not a verdict):** forced low-threshold run grows DIMS 5→9 and runs to completion
+with zero loop/driver errors, stable at 9 dims (the `setDims` remap, the hashed cell map at DIMS>5, and the
+gate all hold). Default config (threshold 24) does NOT grow prematurely and boots clean. `tend` and every
+trait-strided scratch buffer are DIMS_MAX-allocated, so the live stride change is safe — as #16's setDims
+comment claimed and this confirms.
+
+**Departure from method + the honest open question.** Ships LIVE/default-on with no pre-registered verdict,
+in the post-#22 "the live artwork is the ground truth" stance. The saturation trigger is a DESIGN proposal,
+not a measured result. And the deeper #16 finding is NOT yet answered: the freeze-and-watch saw lineage count
+collapse (61→9) while N grew — diversity as within-lineage smear, not persistent lineages — and a grown axis's
+between-lineage structure R decayed. #25 makes the new axis SELECTED (necessary), but whether a grown axis is
+held by PERSISTENT lineages (sufficient) is exactly what only the live run can now show, because the
+prerequisites it needed (#17 mint, #20 colonization, #21 local homogeniser, #24 niche geometry, #25 selection
+of new axes) are for the first time ALL in place at once. Two falsifiable outcomes on a long real-run export:
+(i) DIMS climbs past 5 AND the new axes hold lineage-structured variation (R stays high) AND diversity rises —
+the board grew, open-endedness; (ii) DIMS climbs but the new axes wash to the homogeniser floor (R decays,
+the #16 pattern repeats even when selected) — then the binding wall was never selection or board size but
+lineage PERSISTENCE itself (the homogenisers re-merging faster than divergence accumulates), and the next
+swing is the homogeniser, not the board.
+
+**Next, regardless of outcome:** if grown axes wash out, attack persistence directly (weaken/localise the
+global homogeniser further, or make the mint's grace longer). If they hold, the cap (9) becomes the new
+ceiling and the move is to make the gate continuous (grow whenever saturated, no cap) — true unbounded
+open-endedness, now safe because growth is diversity-gated and self-limiting.

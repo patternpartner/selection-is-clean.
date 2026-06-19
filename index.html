@@ -17160,9 +17160,21 @@ nicheRes.fill(0.3);
 function nicheDietBin(i){ let c=((tend[i*DIMS]+1.2)/2.4)*NICHE_BINS|0; return c<0?0:c>=NICHE_BINS?NICHE_BINS-1:c; }
 function nicheWidth(i){ let s=(tend[i*DIMS+1]+1.2)/2.4; s=s<0?0:s>1?1:s; return 0.6+s*(NICHE_BINS*0.5-0.6); }
 // Swing #13: hash D heritable tendency dims into one of bins^D diet cells (the combinatorial niche space).
-function nicheCellOf(i){ let r=0; const D=NICHE_ND_DIMS<DIMS?NICHE_ND_DIMS:DIMS;
-  for(let d=0;d<D;d++){ let q=((tend[i*DIMS+d]+1.2)/2.4*NICHE_ND_BINS)|0; q=q<0?0:q>=NICHE_ND_BINS?NICHE_ND_BINS-1:q; r=r*NICHE_ND_BINS+q; }
-  return r; }
+// SWING #25: the niche cell must read EVERY active axis, or a newly-evolved axis (the #16 dimensionality
+// ratchet) is ecologically NEUTRAL and washes out — the exact failure the #16 freeze-and-watch RETRACTED
+// (a new axis is a seed, not a harvest, "because dims ≥4 are NOT in the niche economy"). The retraction's
+// prescription was: wire new dims into selection FIRST, then gate the ratchet. #24 did axis 4; this does the
+// rest. For DIMS within the dense grid (≤NICHE_ND_DIMS) it is the BYTE-IDENTICAL combinatorial index, so the
+// default piece is unchanged; once the board grows past the grid it hashes ALL binned dims into the fixed
+// cell count (so every axis, including the newest, carries ecology). Collisions are negligible at the
+// tens-of-occupied-cells this system runs at, and cost nothing the empty grid wasn't already costing.
+function nicheCellOf(i){ const base=i*DIMS;
+  if(DIMS<=NICHE_ND_DIMS){ let r=0;
+    for(let d=0;d<DIMS;d++){ let q=((tend[base+d]+1.2)/2.4*NICHE_ND_BINS)|0; q=q<0?0:q>=NICHE_ND_BINS?NICHE_ND_BINS-1:q; r=r*NICHE_ND_BINS+q; }
+    return r; }
+  let h=0;
+  for(let d=0;d<DIMS;d++){ let q=((tend[base+d]+1.2)/2.4*NICHE_ND_BINS)|0; q=q<0?0:q>=NICHE_ND_BINS?NICHE_ND_BINS-1:q; h=(Math.imul(h,31)+q+1)>>>0; }
+  return h%NICHE_ND_CELLS; }
 // ═══ SWING #17: CLADOGENESIS — the speciation primitive (knob-gated; default = STOCK, byte-identical) ═══
 // The substrate already FORKS the genome per birth (cloneGenome + mutateChildGenome) and selects on it;
 // genomes diverge. What was missing is a way for divergence to ACCUMULATE: every re-merger pulls
@@ -17189,7 +17201,8 @@ if(typeof globalThis!=='undefined'){
                __COLO_SURV:1, __COLO_PIONEER:1,                     // colonization & survival #20
                __SPATIAL_TEND:1,                                    // allopatric (spatially-local) homogeniser #21
                __MINT_GATE:'cluster',                               // permissive deme gate #22 — mint split-first on a distinct CLUSTER, not a distinct niche-cell, so the strict cell-distinctness entry condition (destination-as-entry: foreclosed split-first speciation, the monoculture-lock) no longer erases incipient lineages at the cradle; founder grace (__COLO_SURV) above lets sub-bin founders survive to character-displace
-               __DRAW_VM:1 };                                       // render VM #23 — the genome composes its own particle FORM from a curated, bounded primitive alphabet (seed = the hand-authored renderer), not just its palette
+               __DRAW_VM:1,                                        // render VM #23 — the genome composes its own particle FORM from a curated, bounded primitive alphabet (seed = the hand-authored renderer), not just its palette
+               __DIMS_SAT:3000 };                                   // dimensionality ratchet #25 — saturation-gated: every 3000 ticks, grow a new heritable trait axis IFF distinct occupied niche-cells ≥ threshold (default 24), capped at 9 dims. With all-dims nicheCellOf, each grown axis is selected from birth — the board grows itself when (and only when) diversity earns it
   for(const k in LIVE) if(globalThis[k]===undefined) globalThis[k]=LIVE[k];
 }
 __DRAWVM=(typeof globalThis!=='undefined'&&(globalThis.__DRAW_VM|0)===1); // resolve the render-VM toggle now that LIVE defaults are filled
@@ -17573,6 +17586,17 @@ function loop(){
   // lever in isolation, decoupled from the still-unsolved saturation trigger); caps at __DIMS_CAP||10.
   if(typeof globalThis!=='undefined'&&(globalThis.__DIMS_GROW|0)>0){ const _gi=globalThis.__DIMS_GROW|0, _cap=Math.min(DIMS_MAX,(globalThis.__DIMS_CAP|0)||10);
     if(tick>600&&tick%_gi===0&&DIMS<_cap) setDims(DIMS+1); }
+  // SWING #25 (LIVE): SATURATION-GATED growth — the board grows a new axis only when life is ALREADY richly
+  // exploiting the current one. The #16 retraction's open problem was the trigger: a blind clock (__DIMS_GROW)
+  // injects axes whether or not the board is full, and the journal left the saturation trigger "unsolved". This
+  // solves it the simplest honest way: grow iff the count of distinct occupied niche-cells crosses a threshold —
+  // growth is EARNED by diversity, never premature. If the world collapses to monoculture, occupancy stays low
+  // and DIMS never grows (no harm); if #24's geometry lets diversity climb, the board expands to make room, and
+  // the all-dims nicheCellOf above makes each new (spread-seeded) axis selected from birth. That coupling —
+  // success buys more room, more room is immediately ecological — is the open-ended board that grows itself.
+  if(typeof globalThis!=='undefined'&&(globalThis.__DIMS_SAT|0)>0){ const _si=globalThis.__DIMS_SAT|0,
+      _cap=Math.min(DIMS_MAX,(globalThis.__DIMS_SAT_CAP|0)||9), _thr=(globalThis.__DIMS_SAT_OCC|0)||24;
+    if(tick>1200&&tick%_si===0&&DIMS<_cap&&nicheOccupancy()>=_thr) setDims(DIMS+1); }
   flushNetworkEvents();
   smx+=(mx-smx)*.05;smy+=(my-smy)*.05;
   if(pulling){pStr=Math.min(pStr+.02,1);pDur++}else pStr*=.92;
