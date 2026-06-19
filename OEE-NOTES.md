@@ -1137,3 +1137,30 @@ but does not apportion credit among #28/#29/#30. The isolating factorial (each k
 follow-up to learn which engine carries the win and whether any is a passenger; deferred because, the combined
 effect being clearly positive, there is no harmful culprit to hunt (unlike #27). Run-scale persistence (the
 deep #16 wall) remains a live-export question; this A/B shows the engines don't HURT and clearly help at 6k.
+
+## Swing #31 (LIVE, straight to main) — true coevolutionary kernel: the Red Queen made real
+
+Built because #28 SURVIVED its gate (the upgrade is now worth making). #28's predator→prey link is a fixed
+INDEX stride (cell C eats C+53): consistent enough to produce turnover, but the link carries no TRAIT meaning,
+so predators never track prey through trait space and there is no actual arms race — just a fixed food web on
+a cell permutation. #31 makes the link TRAIT-RELATIONAL.
+
+**Mechanism (`__RQ_TRAIT`, sub-mode of `__RED_QUEEN`, default-on live).** A predator eats organisms whose diet
+trait sits `RQ_TRAIT_SHIFT`=2 bins away IN THE SAME SPATIAL REGION (an "attack image" on the diet axis, cyclic
+— 2 of 6 bins gives a directed 3-cycle, never mutual A↔B predation). Per-organism (each predator's prey cell =
+`nicheCellPreyOf(i)`: its own trait with the diet bin shifted, same region), conserved by a 3-pass scheme
+(demand → bounded extract ≤RQ_RATE·demand and ≤RQ_MAXFRAC·preyBiomass → distribute gain ∝ predator amp, loss ∝
+prey amp; Σgain = Σloss exactly). Consequence: a prey cohort under pressure escapes only by SHIFTING ITS DIET
+into a different cell, where a different predator's image points — and predators that track the shift are
+rewarded. An open-ended pursuit in real trait space, localised to regions (allopatric predation), that
+reinforces #17 divergence and #30 territory rather than being orthogonal to them. Off → falls back to #28's
+validated index-stride.
+
+**Honest status — clean boot; A/B PENDING.** Boots/runs clean (zero loop/driver errors; evenness 0.978, occ 65
+at 2k — stable, no energy runaway from the conserved transfer). The comparison that matters is #31
+(trait-relational) vs #28 (index-stride), both with RED_QUEEN on — does giving predation trait-meaning improve
+diversity/turnover over the fixed graph? Running now. **Pre-registered rule:** if trait-relational ≥
+index-stride on diversity, keep `__RQ_TRAIT` on; if worse, flip it off (clean fallback to validated #28). Same
+discipline as #27/#28/#29. The deeper coevolution signature (sustained predator-prey trait CYCLING, not just
+standing diversity) needs a turnover/chase instrument the harness lacks — flagged for a future measurement
+swing; for now the gate is "does it beat the fixed-graph baseline on the diversity metrics we have."

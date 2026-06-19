@@ -17162,6 +17162,28 @@ const nicheCellPreyLoss=new Float32Array(NICHE_ND_CELLS);// per-unit-amp loss to
 const RQ_STRIDE=53;        // predator cell C eats prey cell (C+RQ_STRIDE); prime, coprime to 7776 → one long predation cycle over all cells
 const RQ_RATE=0.05;        // max fraction of a PREDATOR cell's biomass converted from prey per tick
 const RQ_MAXFRAC=0.10;     // cap on fraction of a PREY cell's biomass taken per tick (prey can't be wiped instantly → bounded, stable)
+const nicheCellDemand=new Float32Array(NICHE_ND_CELLS); // swing #31: total predator appetite routed to each (prey) cell
+const pPreyCell=new Int32Array(CAP);                    // swing #31: per-organism prey cell (its trait-neighbour target)
+// SWING #31 — TRUE COEVOLUTIONARY KERNEL (the Red Queen made REAL). #28 linked predator→prey cells by a fixed
+// INDEX stride (C+53) — consistent enough for turnover, but the link has no TRAIT meaning, so predators don't
+// track prey through trait space and there is no arms race. #31 makes the link TRAIT-RELATIONAL: a predator
+// eats organisms that sit RQ_TRAIT_SHIFT diet-bins away IN THE SAME SPATIAL REGION (an "attack image" on the
+// diet axis). Now a prey cohort under pressure escapes only by shifting its diet — moving to a different cell,
+// where a DIFFERENT predator's image points — and predators that track the shift are rewarded: an open-ended
+// pursuit in real trait space, localised to regions (allopatric predation), reinforcing #17 divergence and #30
+// territory. Conserved by a 3-pass scheme (demand → bounded extract → distribute gain∝predator-amp,
+// loss∝prey-amp). Sub-mode of __RED_QUEEN: __RQ_TRAIT on → trait-relational; off → #28 index-stride fallback.
+const RQ_TRAIT_SHIFT=2;    // diet-bin offset of a predator's prey image (cyclic; 2 of 6 bins → a directed 3-cycle, never mutual A↔B predation)
+function nicheCellPreyOf(i){ const base=i*DIMS;
+  const SP=(typeof globalThis!=='undefined'&&(globalThis.__SPATIAL_NICHE|0)===1);
+  const binOf=(d)=>{ let q=((tend[base+d]+1.2)/2.4*NICHE_ND_BINS)|0; q=q<0?0:q>=NICHE_ND_BINS?NICHE_ND_BINS-1:q;
+    if(d===0){ q=(q+RQ_TRAIT_SHIFT)%NICHE_ND_BINS; if(q<0)q+=NICHE_ND_BINS; } return q; };  // shift ONLY the diet axis
+  if(DIMS<=NICHE_ND_DIMS && !SP){ let r=0; for(let d=0;d<DIMS;d++) r=r*NICHE_ND_BINS+binOf(d); return r; }
+  let h=0; for(let d=0;d<DIMS;d++) h=(Math.imul(h,31)+binOf(d)+1)>>>0;
+  if(SP){ let rx=W>0?(px[i]/W*NICHE_SPATIAL_DIV)|0:0, ry=H>0?(py[i]/H*NICHE_SPATIAL_DIV)|0:0;
+    rx=rx<0?0:rx>=NICHE_SPATIAL_DIV?NICHE_SPATIAL_DIV-1:rx; ry=ry<0?0:ry>=NICHE_SPATIAL_DIV?NICHE_SPATIAL_DIV-1:ry;
+    h=(Math.imul(h,31)+(ry*NICHE_SPATIAL_DIV+rx)+1)>>>0; }
+  return h%NICHE_ND_CELLS; }
 // SWING #29 — NICHE CONSTRUCTION (ecosystem engineering). The other great open-endedness engine the system
 // never had: until now the environment is FIXED scaffolding life merely occupies. Here life DURABLY reshapes
 // its own niche — a lived-in cell accrues a persistent supply boost (soil-building), which decays slowly when
@@ -17249,6 +17271,7 @@ if(typeof globalThis!=='undefined'){
                __DIMS_SAT:3000,                                     // dimensionality ratchet #25 — saturation-gated: every 3000 ticks, grow a new heritable trait axis IFF distinct occupied niche-cells ≥ threshold (default 24), capped at 9 dims. With all-dims nicheCellOf, each grown axis is selected from birth — the board grows itself when (and only when) diversity earns it
                __SPATIAL_NICHE:1,                                   // spatial niches / territoriality #30 — fold a 4×4 spatial region into the niche cell so location is a niche axis: income/crowding/predation/construction become per-region, so holding ground pays and regions become defended, inherited territories. With the existing spatially-biased offspring placement, this is the allopatric route #21 found blocked (income now rewards the spatial viscosity that pull-only #21 lacked)
                __NICHE_BUILD:1,                                     // niche construction #29 — life durably reshapes its own environment: a lived-in cell accrues a persistent, CAPPED, SHARED supply boost (soil-building) that decays slowly when abandoned, so engineered niches outlive their builders and accumulate as inherited environmental structure. Anti-monopoly (shared+capped); pairs with #28 (predation thins winners, construction rewards persistence)
+               __RQ_TRAIT:1,                                        // coevolutionary kernel #31 — sub-mode of __RED_QUEEN: predators eat trait-NEIGHBOURS (RQ_TRAIT_SHIFT diet-bins away, same region) instead of #28's meaningless index-stride cell, so prey flee through trait space and predators track them — a real arms race localised to regions. Conserved 3-pass. Off → #28 index-stride fallback
                __RED_QUEEN:1,                                       // biotic / Red Queen #28 — conserved, frequency-dependent predation over the live N-dim cells: predators in cell C draw a zero-sum amp transfer from prey cell C+stride. "Kill the winner" (common prey predated hard, rare protected) promotes coexistence; prey escape only by crossing a cell boundary, so predation SELECTS for divergence. The unbounded (biotic) niche engine the abiotic arc #11–#27 could never reach
                __CHAR_DISP:0 };                                     // character displacement #27 — DORMANT (default off): the matched A/B (seed 7, 6k) showed it NET-HARMFUL to diversity (entropyRatio 0.67 vs control 0.74; evenness 0.61 vs 0.70) — rate 0.0015 OVER-spaces lineages toward the trait-space edges instead of letting more coexist. Code+knob kept for a re-tune (gentler rate, or gate on same-niche-cell overlap not raw trait distance); force on with CHAR_DISP=1
   for(const k in LIVE) if(globalThis[k]===undefined) globalThis[k]=LIVE[k];
@@ -17516,13 +17539,25 @@ function applyNicheEconomy(){
     for(let c=0;c<NICHE_ND_CELLS;c++){ if(nicheCellOcc[c]>0) nicheCellRes[c]*=(1-NICHE_HARVEST); nicheCellRes[c]=Math.min(NICHE_CAP, nicheCellRes[c]+nicheCellCross[c]); }
     // ── SWING #28: Red Queen biotic transfer over the live cells (conserved, frequency-dependent, bounded) ──
     if(typeof globalThis!=='undefined'&&(globalThis.__RED_QUEEN|0)===1){
-      nicheCellBio.fill(0); nicheCellPredGain.fill(0); nicheCellPreyLoss.fill(0);
+      nicheCellBio.fill(0);
       for(let i=0;i<N;i++){ if(!palive[i])continue; const a=amp[i]>0?amp[i]:0; if(a>0) nicheCellBio[pDietCell[i]]+=a; }
-      for(let c=0;c<NICHE_ND_CELLS;c++){ if(nicheCellOcc[c]<=0)continue; const preyC=(c+RQ_STRIDE)%NICHE_ND_CELLS;
-        const pm=nicheCellBio[c], rm=nicheCellBio[preyC]; if(pm<=0||rm<=0)continue;
-        const transfer=Math.min(rm*RQ_MAXFRAC, pm*RQ_RATE);      // conserved: predators gain exactly what prey lose
-        nicheCellPredGain[c]+=transfer/pm; nicheCellPreyLoss[preyC]+=transfer/rm; }
-      for(let i=0;i<N;i++){ if(!palive[i])continue; const c=pDietCell[i], a=amp[i]>0?amp[i]:0; if(a>0) amp[i]+=a*(nicheCellPredGain[c]-nicheCellPreyLoss[c]); }
+      if((globalThis.__RQ_TRAIT|0)===1){
+        // ── SWING #31: TRAIT-RELATIONAL prey link (conserved, 3-pass). predGain[P]=gain per unit predator-demand routed to P; preyLoss[P]=loss per unit biomass in P ──
+        nicheCellDemand.fill(0); nicheCellPredGain.fill(0); nicheCellPreyLoss.fill(0);
+        for(let i=0;i<N;i++){ if(!palive[i])continue; const a=amp[i]>0?amp[i]:0; if(a<=0){pPreyCell[i]=-1;continue;} const pc=nicheCellPreyOf(i); pPreyCell[i]=pc; nicheCellDemand[pc]+=a; }
+        for(let c=0;c<NICHE_ND_CELLS;c++){ const D=nicheCellDemand[c], B=nicheCellBio[c]; if(D<=0||B<=0)continue;
+          const extract=Math.min(D*RQ_RATE, B*RQ_MAXFRAC);       // bounded; conserved (Σgain = extract = Σloss per prey cell)
+          nicheCellPredGain[c]=extract/D; nicheCellPreyLoss[c]=extract/B; }
+        for(let i=0;i<N;i++){ if(!palive[i])continue; const a=amp[i]>0?amp[i]:0; if(a<=0)continue; const pc=pPreyCell[i];
+          const gain=pc>=0?a*nicheCellPredGain[pc]:0, loss=a*nicheCellPreyLoss[pDietCell[i]]; amp[i]+=gain-loss; }
+      } else {
+        nicheCellPredGain.fill(0); nicheCellPreyLoss.fill(0);
+        for(let c=0;c<NICHE_ND_CELLS;c++){ if(nicheCellOcc[c]<=0)continue; const preyC=(c+RQ_STRIDE)%NICHE_ND_CELLS;
+          const pm=nicheCellBio[c], rm=nicheCellBio[preyC]; if(pm<=0||rm<=0)continue;
+          const transfer=Math.min(rm*RQ_MAXFRAC, pm*RQ_RATE);    // conserved: predators gain exactly what prey lose
+          nicheCellPredGain[c]+=transfer/pm; nicheCellPreyLoss[preyC]+=transfer/rm; }
+        for(let i=0;i<N;i++){ if(!palive[i])continue; const c=pDietCell[i], a=amp[i]>0?amp[i]:0; if(a>0) amp[i]+=a*(nicheCellPredGain[c]-nicheCellPreyLoss[c]); }
+      }
     }
     // (biotic + opcode-novelty levers below still apply if their knobs are set)
   } else
