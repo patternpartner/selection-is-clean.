@@ -1164,3 +1164,28 @@ index-stride on diversity, keep `__RQ_TRAIT` on; if worse, flip it off (clean fa
 discipline as #27/#28/#29. The deeper coevolution signature (sustained predator-prey trait CYCLING, not just
 standing diversity) needs a turnover/chase instrument the harness lacks — flagged for a future measurement
 swing; for now the gate is "does it beat the fixed-graph baseline on the diversity metrics we have."
+
+## Swing #32 (LIVE, straight to main) — mutualism: the first positive (+/+) interaction
+
+Every biotic force so far is competitive (−): predation #28/#31, crowding #14. Real ecosystems are also built
+on FACILITATION — partners that make each other more productive (pollinators/plants, gut flora, lichen). #32
+adds it. With `NICHE_ND_BINS` even and `MUT_SHIFT = BINS/2 = 3`, the partner-of-partner closes (b+3+3 ≡ b), so
+each organism's mutualist is its DIET-OPPOSITE in the same region and the relation is RECIPROCAL (A↔B). Both
+gain a bounded, POSITIVE-SUM bonus (`min(own amp, partner-cell biomass) × MUT_RATE`) from the partner's local
+presence — mutualism CREATES value, so unlike predation it is not zero-sum; the metabolic brake caps the total.
+
+**Effect intended.** Complementary diet types are rewarded for CO-OCCURRING, so a region tends to fill with a
+balanced, interdependent PAIR rather than collapsing to one monoculture — a proto-symbiosis / division-of-
+labour that raises evenness and seeds a higher-level (paired) unit. Combined with #28/#31, every type now sits
+in a real interaction web: it has prey (diet−2), predators (diet+2), and a partner (diet-opposite) — and with
+#30 these all resolve WITHIN a spatial territory. That web of −/− and +/+ couplings across trait space is a
+much richer, less saturable selective landscape than the abiotic cells alone.
+
+**Honest status — clean boot; A/B PENDING (knob `__MUTUALISM`, default-on).** Boots/runs clean (zero errors;
+evenness 0.853, occ 71 at 2k — the positive-sum term did NOT inflate amp / runaway, the brake holds). Unvalidated
+on diversity. Both #31 and #32 now await their gate; the owed comparison is the full stack (#28–32) vs the
+already-validated #28–30 stack — i.e. do the trait-relational kernel (#31) and mutualism (#32) ADD to the
+validated biotic+spatial base, or are they passengers / regressions? **Pre-registered rule (unchanged):** each
+is its own knob; whichever fails to beat the #28–30 baseline on diversity gets flipped dormant. The risk to
+watch for #32 specifically: rewarding co-occurrence could COUNTERACT the territorial separation of #30 (mixing
+vs sorting) — the A/B's evenness-vs-occupancy split will show which force wins.
