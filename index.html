@@ -17146,6 +17146,21 @@ const nicheSupplyNow=new Float32Array(NICHE_BINS); // per-tick drifting supply (
 const nicheCellRes=new Float32Array(NICHE_ND_CELLS);   // standing stock per N-dim diet cell (swing #13)
 const nicheCellOcc=new Int32Array(NICHE_ND_CELLS);     // occupants per cell this tick
 const nicheCellCross=new Float32Array(NICHE_ND_CELLS); // deferred cross-feed deposits per cell
+const nicheCellBio=new Float32Array(NICHE_ND_CELLS);     // swing #28: living biomass (Σamp) per cell — Red Queen predation
+const nicheCellPredGain=new Float32Array(NICHE_ND_CELLS);// per-unit-amp gain to predators in a cell
+const nicheCellPreyLoss=new Float32Array(NICHE_ND_CELLS);// per-unit-amp loss to prey in a cell
+// SWING #28 — BIOTIC / RED QUEEN on the live N-dim cells. The #11–#27 arc fought ONE ceiling: abiotic niches
+// are FINITE (limiting similarity caps coexistence on any fixed resource structure). Biotic niches are not —
+// every type that thrives becomes a RESOURCE for something else, and the chase never reaches an equilibrium.
+// This is the canonical open-endedness engine, and the live piece has never run it (the #11 biotic lever was
+// 1-D and dormant). Predators in cell C draw a CONSERVED amp transfer from a consistently-linked prey cell
+// C+stride (gain to predators ∝ amp, loss to prey ∝ amp — zero-sum, no energy inflation). It is "kill the
+// winner": a crowded prey cell is predated hard, a rare one barely — predation on the common protects the
+// rare, which PROMOTES coexistence instead of capping it. And it couples to #24: a prey cohort escapes its
+// predator only by crossing a CELL boundary, so predation actively SELECTS for divergence (more speciation).
+const RQ_STRIDE=53;        // predator cell C eats prey cell (C+RQ_STRIDE); prime, coprime to 7776 → one long predation cycle over all cells
+const RQ_RATE=0.05;        // max fraction of a PREDATOR cell's biomass converted from prey per tick
+const RQ_MAXFRAC=0.10;     // cap on fraction of a PREY cell's biomass taken per tick (prey can't be wiped instantly → bounded, stable)
 const pDietCell=new Int32Array(CAP);                   // per-organism diet cell this tick
 const cellTendSum=new Float32Array(NICHE_ND_CELLS*DIMS_MAX); // per-cell tend centroid accumulator (localised homogeniser)
 const cellTendCnt=new Int32Array(NICHE_ND_CELLS);
@@ -17203,6 +17218,7 @@ if(typeof globalThis!=='undefined'){
                __MINT_GATE:'cluster',                               // permissive deme gate #22 — mint split-first on a distinct CLUSTER, not a distinct niche-cell, so the strict cell-distinctness entry condition (destination-as-entry: foreclosed split-first speciation, the monoculture-lock) no longer erases incipient lineages at the cradle; founder grace (__COLO_SURV) above lets sub-bin founders survive to character-displace
                __DRAW_VM:1,                                        // render VM #23 — the genome composes its own particle FORM from a curated, bounded primitive alphabet (seed = the hand-authored renderer), not just its palette
                __DIMS_SAT:3000,                                     // dimensionality ratchet #25 — saturation-gated: every 3000 ticks, grow a new heritable trait axis IFF distinct occupied niche-cells ≥ threshold (default 24), capped at 9 dims. With all-dims nicheCellOf, each grown axis is selected from birth — the board grows itself when (and only when) diversity earns it
+               __RED_QUEEN:1,                                       // biotic / Red Queen #28 — conserved, frequency-dependent predation over the live N-dim cells: predators in cell C draw a zero-sum amp transfer from prey cell C+stride. "Kill the winner" (common prey predated hard, rare protected) promotes coexistence; prey escape only by crossing a cell boundary, so predation SELECTS for divergence. The unbounded (biotic) niche engine the abiotic arc #11–#27 could never reach
                __CHAR_DISP:0 };                                     // character displacement #27 — DORMANT (default off): the matched A/B (seed 7, 6k) showed it NET-HARMFUL to diversity (entropyRatio 0.67 vs control 0.74; evenness 0.61 vs 0.70) — rate 0.0015 OVER-spaces lineages toward the trait-space edges instead of letting more coexist. Code+knob kept for a re-tune (gentler rate, or gate on same-niche-cell overlap not raw trait distance); force on with CHAR_DISP=1
   for(const k in LIVE) if(globalThis[k]===undefined) globalThis[k]=LIVE[k];
 }
@@ -17465,6 +17481,16 @@ function applyNicheEconomy(){
       if(LOCAL&&occ>NICHE_CELL_FLOOR) amp[i]-=NICHE_LOCAL_COST*(occ-NICHE_CELL_FLOOR); // local carrying capacity: crowding your own niche hurts
       nicheCellCross[(c+NICHE_ND_OFFSET)%NICHE_ND_CELLS]+=got*NICHE_CROSSFEED; }
     for(let c=0;c<NICHE_ND_CELLS;c++){ if(nicheCellOcc[c]>0) nicheCellRes[c]*=(1-NICHE_HARVEST); nicheCellRes[c]=Math.min(NICHE_CAP, nicheCellRes[c]+nicheCellCross[c]); }
+    // ── SWING #28: Red Queen biotic transfer over the live cells (conserved, frequency-dependent, bounded) ──
+    if(typeof globalThis!=='undefined'&&(globalThis.__RED_QUEEN|0)===1){
+      nicheCellBio.fill(0); nicheCellPredGain.fill(0); nicheCellPreyLoss.fill(0);
+      for(let i=0;i<N;i++){ if(!palive[i])continue; const a=amp[i]>0?amp[i]:0; if(a>0) nicheCellBio[pDietCell[i]]+=a; }
+      for(let c=0;c<NICHE_ND_CELLS;c++){ if(nicheCellOcc[c]<=0)continue; const preyC=(c+RQ_STRIDE)%NICHE_ND_CELLS;
+        const pm=nicheCellBio[c], rm=nicheCellBio[preyC]; if(pm<=0||rm<=0)continue;
+        const transfer=Math.min(rm*RQ_MAXFRAC, pm*RQ_RATE);      // conserved: predators gain exactly what prey lose
+        nicheCellPredGain[c]+=transfer/pm; nicheCellPreyLoss[preyC]+=transfer/rm; }
+      for(let i=0;i<N;i++){ if(!palive[i])continue; const c=pDietCell[i], a=amp[i]>0?amp[i]:0; if(a>0) amp[i]+=a*(nicheCellPredGain[c]-nicheCellPreyLoss[c]); }
+    }
     // (biotic + opcode-novelty levers below still apply if their knobs are set)
   } else
   // ── LEVER 1: expanding cross-feed frontier ──────────────────────────────

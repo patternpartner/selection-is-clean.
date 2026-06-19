@@ -1010,3 +1010,34 @@ it: (a) much gentler rate (0.0003–0.0006, at/below the homogeniser scale) so i
 so it only acts on lineages actually competing for the same resource — which is what "limiting similarity"
 actually means, and avoids pushing already-separated lineages off the edge. Stack through #26 is unchanged and
 remains default-on; only #27 is dormant.
+
+## Swing #28 (LIVE, straight to main) — the Red Queen: a biotic niche engine on the live cells
+
+The most ambitious move of the session, aimed at the ONE ceiling the whole #11–#27 arc never broke: **abiotic
+niches are finite.** Limiting similarity caps coexistence on any fixed resource structure; #24 reshaped it,
+#25 grew it, but a board of abiotic cells still saturates. **Biotic niches do not saturate** — every type that
+thrives becomes a RESOURCE for something else, and the predator-prey chase has no equilibrium to settle into.
+This is the canonical engine of open-ended evolution, and the live piece has never run it (the #11 biotic
+lever was 1-D and dormant).
+
+**The mechanism (`__RED_QUEEN`, default-on live; in the N-dim niche branch).** Predators in cell C draw a
+CONSERVED amp transfer from a consistently-linked prey cell C+53 (stride prime/coprime to 7776 → one long
+predation cycle over all cells): gain to predators ∝ their amp, loss to prey ∝ their amp, zero-sum, so it
+inflates no energy (the metabolic brake is untouched). Transfer is bounded (≤5% of predator biomass, ≤10% of
+a prey cell per tick → no instant wipeouts, stable). Two properties make it diversity-POSITIVE in theory,
+unlike #27:
+- **Kill-the-winner (frequency-dependent):** a crowded prey cell is predated hard, a rare one barely — so
+  predation falls hardest on whatever is winning, protecting the rare. This is the classic mechanism by which
+  predation PROMOTES coexistence rather than capping it (opposite sign to abiotic competition).
+- **Predation selects for divergence:** a prey cohort escapes its predator only by crossing a CELL boundary
+  into a different cell (which has a different predator). So predation pressure is a direct selective force for
+  the boundary-crossing divergence #24 made possible and #17 mints — predation and speciation reinforce.
+
+**Honest status — shipped on principle + clean boot; matched A/B PENDING (the #27 lesson).** Verified it boots
+and runs clean (zero loop/driver errors). The net diversity effect is NOT yet measured — and #27 just proved a
+plausible-sounding force can be net-harmful, so the same gate applies. **Pre-registered revert rule (identical
+to #27):** the matched A/B (RED_QUEEN on vs off, same seed) is running; if it shows diversity (entropyRatio /
+occupied cells / evenness) WORSE than the off-control, flip `__RED_QUEEN` to default-off (one line) — predation
+rate too high / destabilising. If neutral-or-better, it stays and the next move is to make the prey-link
+trait-meaningful (predator trait = prey trait + δ in real trait space, not just index stride) for a true
+coevolutionary kernel. The knob is a clean one-flip rollback either way.
