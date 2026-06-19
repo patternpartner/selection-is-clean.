@@ -1078,3 +1078,32 @@ vs off) shows diversity (entropyRatio / occupied cells / evenness) WORSE than co
 over-strong — lower `NICHE_BUILD_RATE`/`_MAX` or flip `__NICHE_BUILD` default-off (one line). Clean one-flip
 rollback. The #28 and #29 A/Bs are the honest gate this pair has not yet passed; running them is the immediate
 next task, not more building on top.
+
+## Swing #30 (LIVE, straight to main) — spatial niches / territoriality: the allopatric route, at last
+
+The deepest pre-registered thread the project never built. Every speciation route across #11–#29 was
+SYMPATRIC (divergence within a shared space); #21 ended by naming the missing primitive outright: *"the next
+thread is SPATIAL STRUCTURE itself… until a cohort can persist in a PLACE, no trait mechanism can manufacture
+allopatric divergence — the unexamined primitive is territoriality."* #21 itself failed because it pulled
+TRAITS toward spatial neighbours while income stayed global — there was no selective reward for holding ground,
+so positions re-mixed and no territory formed.
+
+**The fix (`__SPATIAL_NICHE`, default-on live; folded into `nicheCellOf`).** Make LOCATION a niche axis: a
+coarse 4×4 region grid over the canvas is folded into the niche cell, so two organisms with identical traits in
+different regions occupy DIFFERENT cells. Every per-cell force therefore becomes per-REGION — harvest income,
+crowding (#14), predation (#28), construction (#29). Consequences: an under-occupied region pays a colonisation
+bonus, a crowded region hurts, and a region can be built up (#29) and defended. Crucially, the substrate
+ALREADY biases offspring placement spatially (cluster-centroid spawn at ~L16986, the `scaffoldField` habitat
+layer) — that dispersal viscosity finally has a selective REWARD, the exact ingredient #21 lacked. A lineage
+holding region R now coexists with a different lineage in R′ without competing → allopatry, plus sympatric trait
+divergence within each region. Folded through the hash path, so cell count is unchanged and the default-off
+path stays byte-identical.
+
+**Honest status — clean boot, verdict consolidated.** Boots/runs clean (zero errors); occupied cells rose
+~37→68 on the smoke run, consistent with space multiplying held niches (necessary, not sufficient — could be
+churn, not territory). I had been running a slow isolating 2×2 for #28/#29 but killed it (≈3 min/run, ~25 min)
+to keep momentum; #28/#29/#30 are now validated TOGETHER by a single consolidated A/B: the full biotic+spatial
+stack vs the pre-#28 baseline (RED_QUEEN=NICHE_BUILD=SPATIAL_NICHE=0 = the #26 stack). **Pre-registered rule:**
+if the full stack beats baseline on diversity → keep all three default-on; if it loses → run the isolating
+factorial to find and flip the culprit (each is its own knob). The biotic+spatial engines are the session's
+thesis — abiotic niches are finite, biotic+spatial ones are not — and this consolidated test is their gate.

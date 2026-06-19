@@ -17196,12 +17196,28 @@ function nicheWidth(i){ let s=(tend[i*DIMS+1]+1.2)/2.4; s=s<0?0:s>1?1:s; return 
 // default piece is unchanged; once the board grows past the grid it hashes ALL binned dims into the fixed
 // cell count (so every axis, including the newest, carries ecology). Collisions are negligible at the
 // tens-of-occupied-cells this system runs at, and cost nothing the empty grid wasn't already costing.
+// SWING #30 — SPATIAL NICHES / TERRITORIALITY (the allopatric route the project never built). Every speciation
+// route #11–#29 tried was SYMPATRIC; #21 concluded the missing primitive is spatial persistence ("until a
+// cohort can persist in a PLACE, no trait mechanism can manufacture allopatric divergence"), and that it failed
+// because it pulled TRAITS spatially while income stayed global — no reward for holding ground. This ties income
+// to PLACE: fold a coarse spatial region (NICHE_SPATIAL_DIV² grid) into the niche cell, so two identical-trait
+// organisms in different regions are DIFFERENT niches. Harvest, crowding (#14), predation (#28) and construction
+// (#29) all become per-region, so an under-occupied region pays (colonisation), a crowded one hurts, and a
+// region can be built up and DEFENDED. Offspring placement is already spatially biased (cluster-centroid spawn +
+// the scaffoldField habitat layer) — that viscosity finally has a selective reward, so territories can persist:
+// a lineage holding region R coexists with a different lineage in R' without competing → allopatry. Knob-gated;
+// folded through the hash path so the cell count is unchanged and the default-off path stays byte-identical.
+const NICHE_SPATIAL_DIV=4;           // √(spatial regions): 4 → a 4×4 = 16-region territorial grid over the canvas
 function nicheCellOf(i){ const base=i*DIMS;
-  if(DIMS<=NICHE_ND_DIMS){ let r=0;
+  const SP=(typeof globalThis!=='undefined'&&(globalThis.__SPATIAL_NICHE|0)===1);
+  if(DIMS<=NICHE_ND_DIMS && !SP){ let r=0;
     for(let d=0;d<DIMS;d++){ let q=((tend[base+d]+1.2)/2.4*NICHE_ND_BINS)|0; q=q<0?0:q>=NICHE_ND_BINS?NICHE_ND_BINS-1:q; r=r*NICHE_ND_BINS+q; }
     return r; }
   let h=0;
   for(let d=0;d<DIMS;d++){ let q=((tend[base+d]+1.2)/2.4*NICHE_ND_BINS)|0; q=q<0?0:q>=NICHE_ND_BINS?NICHE_ND_BINS-1:q; h=(Math.imul(h,31)+q+1)>>>0; }
+  if(SP){ let rx=W>0?(px[i]/W*NICHE_SPATIAL_DIV)|0:0, ry=H>0?(py[i]/H*NICHE_SPATIAL_DIV)|0:0;
+    rx=rx<0?0:rx>=NICHE_SPATIAL_DIV?NICHE_SPATIAL_DIV-1:rx; ry=ry<0?0:ry>=NICHE_SPATIAL_DIV?NICHE_SPATIAL_DIV-1:ry;
+    h=(Math.imul(h,31)+(ry*NICHE_SPATIAL_DIV+rx)+1)>>>0; }
   return h%NICHE_ND_CELLS; }
 // ═══ SWING #17: CLADOGENESIS — the speciation primitive (knob-gated; default = STOCK, byte-identical) ═══
 // The substrate already FORKS the genome per birth (cloneGenome + mutateChildGenome) and selects on it;
@@ -17231,6 +17247,7 @@ if(typeof globalThis!=='undefined'){
                __MINT_GATE:'cluster',                               // permissive deme gate #22 — mint split-first on a distinct CLUSTER, not a distinct niche-cell, so the strict cell-distinctness entry condition (destination-as-entry: foreclosed split-first speciation, the monoculture-lock) no longer erases incipient lineages at the cradle; founder grace (__COLO_SURV) above lets sub-bin founders survive to character-displace
                __DRAW_VM:1,                                        // render VM #23 — the genome composes its own particle FORM from a curated, bounded primitive alphabet (seed = the hand-authored renderer), not just its palette
                __DIMS_SAT:3000,                                     // dimensionality ratchet #25 — saturation-gated: every 3000 ticks, grow a new heritable trait axis IFF distinct occupied niche-cells ≥ threshold (default 24), capped at 9 dims. With all-dims nicheCellOf, each grown axis is selected from birth — the board grows itself when (and only when) diversity earns it
+               __SPATIAL_NICHE:1,                                   // spatial niches / territoriality #30 — fold a 4×4 spatial region into the niche cell so location is a niche axis: income/crowding/predation/construction become per-region, so holding ground pays and regions become defended, inherited territories. With the existing spatially-biased offspring placement, this is the allopatric route #21 found blocked (income now rewards the spatial viscosity that pull-only #21 lacked)
                __NICHE_BUILD:1,                                     // niche construction #29 — life durably reshapes its own environment: a lived-in cell accrues a persistent, CAPPED, SHARED supply boost (soil-building) that decays slowly when abandoned, so engineered niches outlive their builders and accumulate as inherited environmental structure. Anti-monopoly (shared+capped); pairs with #28 (predation thins winners, construction rewards persistence)
                __RED_QUEEN:1,                                       // biotic / Red Queen #28 — conserved, frequency-dependent predation over the live N-dim cells: predators in cell C draw a zero-sum amp transfer from prey cell C+stride. "Kill the winner" (common prey predated hard, rare protected) promotes coexistence; prey escape only by crossing a cell boundary, so predation SELECTS for divergence. The unbounded (biotic) niche engine the abiotic arc #11–#27 could never reach
                __CHAR_DISP:0 };                                     // character displacement #27 — DORMANT (default off): the matched A/B (seed 7, 6k) showed it NET-HARMFUL to diversity (entropyRatio 0.67 vs control 0.74; evenness 0.61 vs 0.70) — rate 0.0015 OVER-spaces lineages toward the trait-space edges instead of letting more coexist. Code+knob kept for a re-tune (gentler rate, or gate on same-niche-cell overlap not raw trait distance); force on with CHAR_DISP=1
