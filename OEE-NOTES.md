@@ -981,3 +981,32 @@ net effect is genuinely unverified. **Pre-registered revert rule:** if a long li
 `__CHAR_DISP` from the LIVE block (one line) or lower CHARDISP_RATE, before any further building on it. The
 knob makes this a clean one-flip rollback. The matched A/B (on vs off, ≥3 seeds, ≥10k) is the first thing the
 next session should finish — it was started here and is the honest gate this swing has NOT yet passed.
+
+### #27 VERDICT (matched A/B completed) — NET-HARMFUL at rate 0.0015, flipped to DORMANT
+
+The control finished. Matched A/B, SEED=7, 6k ticks, full live stack, character displacement ON vs OFF:
+
+| metric | CHAR_DISP ON | OFF (control) | direction |
+|---|---|---|---|
+| entropyRatio (late/early) | 0.67 (**collapsing**) | 0.74 (not collapsing) | OFF better |
+| entropyBits late | 2.38 | 2.72 | OFF better |
+| evenness late | 0.609 | 0.696 | OFF better |
+| kindsRatio | 0.56 | 0.60 | OFF better |
+| occupied cells late | 37 | 40 | OFF better |
+| occ slope | −0.95 | −1.55 | ON better (only metric) |
+
+**Verdict: net-harmful on every diversity metric but one.** Displacement at rate 0.0015 doesn't let MORE
+lineages coexist — it pushes the SAME lineages toward the trait-space edges (where the niche supply is sparse),
+shedding evenness and entropy. The one favourable metric (slightly slower occupancy decline) is consistent
+with that reading: a few edge-pushed lineages cling on while overall variety thins. The disruptive-selection
+INSTINCT may still be right, but this implementation over-spaces.
+
+**Action: `__CHAR_DISP` flipped to default-OFF (dormant knob); code + knob retained.** This honours the
+journal's discipline — a measured-harmful mechanism does not ship default-on, even under the live-is-ground-
+truth stance, because here the ground truth was measurable and it said no. Single seed, so the verdict is
+"default-off pending a ≥3-seed confirmation", not a hard refutation. Two concrete re-tunes for whoever revisits
+it: (a) much gentler rate (0.0003–0.0006, at/below the homogeniser scale) so it nudges rather than flings; or
+(b) gate the push on SAME-NICHE-CELL co-occupancy (true ecological overlap) rather than raw trait proximity,
+so it only acts on lineages actually competing for the same resource — which is what "limiting similarity"
+actually means, and avoids pushing already-separated lineages off the edge. Stack through #26 is unchanged and
+remains default-on; only #27 is dormant.
