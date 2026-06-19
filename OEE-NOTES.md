@@ -1107,3 +1107,33 @@ stack vs the pre-#28 baseline (RED_QUEEN=NICHE_BUILD=SPATIAL_NICHE=0 = the #26 s
 if the full stack beats baseline on diversity → keep all three default-on; if it loses → run the isolating
 factorial to find and flip the culprit (each is its own knob). The biotic+spatial engines are the session's
 thesis — abiotic niches are finite, biotic+spatial ones are not — and this consolidated test is their gate.
+
+## VERDICT (#28+#29+#30, consolidated 3-seed A/B) — biotic+spatial stack VALIDATED, kept default-on
+
+The honest gate the biotic/spatial engines owed. Consolidated A/B, 3 seeds, 6k ticks: FULL (Red Queen #28 +
+niche construction #29 + spatial niches #30, all on) vs BASE (the #26 stack, all three off).
+
+| metric | s7 FULL/BASE | s23 FULL/BASE | s99 FULL/BASE |
+|---|---|---|---|
+| entropyRatio | 0.87 / 0.74 | 0.82 / 0.68 (BASE collapsing) | 0.84 / 0.81 |
+| evenness late | 0.888 / 0.696 | 0.838 / 0.680 | 0.839 / 0.691 |
+| entropyBits late | 2.85 / 2.72 | 2.69 / 2.37 | 2.86 / 2.63 |
+| occupied cells | 64.5 / 40 | 64.75 / 27.5 | 23.5 / 31.5 |
+
+**Verdict: the full stack beats baseline on entropyRatio, evenness, and entropyBits across ALL THREE seeds**,
+and on seed 23 it RESCUED a collapsing baseline (0.68→0.82). Evenness is the strongest and most consistent
+signal (≈0.70→0.84 everywhere): the engines hold the distribution even rather than letting it slide toward a
+few dominant types — exactly the "kill-the-winner (#28) + defended inherited territories (#29/#30)" thesis.
+Occupied-cell count is the one mixed metric (up on s7/s23, down on s99), so the win is in DIVERSITY QUALITY
+(evenness/entropy), not necessarily raw niche count — consistent with territories CONCENTRATING life into
+fewer-but-more-even holdings on some seeds. Zero errors throughout.
+
+**Decision: keep #28/#29/#30 all default-on.** Opposite of #27 — here the matched control says the mechanisms
+help, consistently. This is the session's headline alongside #26's verified R-hold: the abiotic arc (#11–#27)
+kept hitting the finite-niche ceiling; the biotic+spatial engines (#28–#30) measurably lift diversity over it.
+
+**Honest bound.** 3 seeds, 6k ticks, CONSOLIDATED (not isolated) — it confirms the COMBINED effect is positive
+but does not apportion credit among #28/#29/#30. The isolating factorial (each knob alone) is the natural
+follow-up to learn which engine carries the win and whether any is a passenger; deferred because, the combined
+effect being clearly positive, there is no harmful culprit to hunt (unlike #27). Run-scale persistence (the
+deep #16 wall) remains a live-export question; this A/B shows the engines don't HURT and clearly help at 6k.
