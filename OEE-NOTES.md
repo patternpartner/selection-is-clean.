@@ -1189,3 +1189,53 @@ validated biotic+spatial base, or are they passengers / regressions? **Pre-regis
 is its own knob; whichever fails to beat the #28–30 baseline on diversity gets flipped dormant. The risk to
 watch for #32 specifically: rewarding co-occurrence could COUNTERACT the territorial separation of #30 (mixing
 vs sorting) — the A/B's evenness-vs-occupancy split will show which force wins.
+
+## VERDICT (#31 + #32, 3-seed A/B vs validated #28–30 base) — a WASH, both flipped DORMANT
+
+The owed gate. 3 seeds, 6k: FULL (#28–32, trait-relational predation + mutualism on) vs BASE (#28–30, both off).
+
+| seed | entRatio FULL/BASE | evenness FULL/BASE | occ FULL/BASE |
+|---|---|---|---|
+| 7  | 0.85 / 0.87 | 0.941 / 0.888 | 60.75 / 64.5 |
+| 23 | 0.86 / 0.82 | 0.882 / 0.838 | 55.5 / 64.75 |
+| 99 | 0.75 / 0.84 | 0.747 / 0.839 | 44.5 / 23.5 |
+
+**Verdict: a wash, leaning slightly negative.** Averaged entropyRatio FULL 0.82 vs BASE 0.84; evenness ≈ equal;
+seed 99 a clear FULL regression (0.75 vs 0.84). Unlike #27 it is not net-HARMFUL, but it does not BEAT the
+validated baseline either — and the project's standard is earn-your-default-on, not merely don't-hurt. **Both
+`__RQ_TRAIT` (#31) and `__MUTUALISM` (#32) flipped default-OFF; code + knobs retained.** Honest reading: these
+two add INTERACTION STRUCTURE (a real arms race; reciprocal partnerships) whose payoff is in TURNOVER and
+proto-symbiotic pairing, neither of which the standing-diversity harness measures — so "wash on entropy/evenness"
+is a weak test of what they actually do, not a refutation. They ship dormant pending a turnover/chase
+instrument (pre-registered as the next measurement swing) and an isolating factorial (#31-alone vs #32-alone)
+to see if one is a winner masked by the other. The live stack returns to the VALIDATED #28–30 + abiotic
+foundation. (3 seeds, 6k — same bound as the #28–30 win it is measured against, so the comparison is apples-to-
+apples.)
+
+## MEASUREMENT (live export, gen1 t64548) — THE BOARD GREW ITSELF and diversity REGENERATED from collapse
+
+The first real-artwork ground truth of the session, not a harness run. A genome exported from the live piece at
+**tick 64548** — past the ~t40k monoculture regime that the 360c2fb commit diagnosed as an absorbing state.
+Decoded epoch series (EP) + genome fields:
+
+- **`tendDims = 9`.** The board grew itself from the base 5 to the cap 9 — the unambiguous signature of #25
+  (saturation-gated dimensionality), FIRING in the live artwork, not just the harness. The growth-count column
+  of EP rises 0→1→2→3 across the run (t15k, t25k, t60k), i.e. the ratchet tripped repeatedly as diversity
+  earned new axes; td=9 by export.
+- **Diversity REGENERATED from a mid-run collapse.** kinds: 20 → 23 → **crash to 2 at t15k** → bottoms at 1
+  (t45k) → **recovers to 10 at t60k**. `divMean`: unrecorded/≈0 through the collapse, then **0.508 (t50k) →
+  0.646 (t55k) → 0.71 (t60k)** — climbing in the back half. population tracks it: 266 → bottleneck 67 (t15k) →
+  448 (t60k). This is exactly the designed escape: the piece fell into the post-bottleneck monoculture #24 was
+  built to break, and in the back half the open-endedness engines pulled it BACK OUT — diversity, dimensions,
+  and population all rising together.
+- Supporting: VM length grew to 15, 5 persistent multi-sample motifs carrying 9-dim trait vectors (ages 8–18
+  samples), 4 live lineages at export. The self-authoring/complexity machinery is engaged, not dormant.
+
+**Honest bound — strong but single-run, and causation is inferred not proven.** One export, gen1; the global
+engine flags aren't stored in the genome, so I can confirm #25 ran live (td=9 is impossible otherwise) but
+cannot prove from this file alone WHICH of #24/#28–30 drove the diversity recovery vs other dynamics. What it
+DOES establish: (1) the dimensionality ratchet works in the real artwork, reaching the cap; (2) the live piece
+does NOT stay trapped in the monoculture absorbing state — it regenerated to 10 kinds / divMean 0.71 by t60k.
+The headline metric the whole arc chased — diversity that recovers and climbs instead of collapsing — is
+present in the live ground truth. A multi-export time series (or run-scale logging of the engine flags) would
+turn this from "consistent with the thesis" into "attributed to it"; that is the next real-data swing.
