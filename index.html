@@ -17538,8 +17538,19 @@ function setDims(newD){
   newD=Math.max(2,Math.min(DIMS_MAX,newD|0)); const oldD=DIMS; if(newD===oldD) return;
   const sp=(typeof globalThis!=='undefined'&&globalThis.__DIMS_SPREAD!==undefined)?+globalThis.__DIMS_SPREAD:DIMS_GROW_SPREAD;
   const hi=N>0?N:0; const snap=tend.slice(0,hi*oldD); // snapshot old layout (alive slots are packed 0..N-1)
-  for(let i=0;i<hi;i++){ for(let d=0;d<newD;d++){
-    tend[i*newD+d] = d<oldD ? snap[i*oldD+d] : (Math.random()*2-1)*sp; } }
+  // SWING #26: seed a newly opened axis with LINEAGE-STRUCTURED values, not per-particle uniform noise. Uniform
+  // noise has lineage-mean ≈ 0, so the live same-lineage homogeniser (#21) pulls every member's new value back
+  // toward ~0 and the axis is born neutral-by-ERASURE — exactly the #16 wash-out (between-lineage R decays, the
+  // board only seeded noise). Instead, hash each lineage id to a distinct base in [-sp,sp]: same-lineage members
+  // SHARE it (the homogeniser now PRESERVES rather than erases), distinct lineages get distinct values, so the
+  // axis is lineage-structured from birth (high R) and — via #25's all-dims nicheCellOf — immediately ecological.
+  // Small per-particle jitter keeps a mutational substrate inside each lineage without drowning the signal.
+  for(let i=0;i<hi;i++){
+    const l=pLin[i]|0; let h=Math.imul(l^0x9e3779b9,0x85ebca6b)>>>0; h=(h^(h>>>15))>>>0; const base=((h/4294967295)*2-1)*sp;
+    for(let d=0;d<newD;d++){
+      if(d<oldD){ tend[i*newD+d]=snap[i*oldD+d]; }
+      else { let v=base+(Math.random()*2-1)*sp*0.12; tend[i*newD+d]=v<-1.2?-1.2:v>1.2?1.2:v; } }
+  }
   DIMS=newD; genome.tendDims=newD;
 }
 // Per-axis 4-bin Shannon entropy summed over all live DIMS — shows whether NEW axes carry real

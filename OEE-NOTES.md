@@ -904,3 +904,52 @@ swing is the homogeniser, not the board.
 global homogeniser further, or make the mint's grace longer). If they hold, the cap (9) becomes the new
 ceiling and the move is to make the gate continuous (grow whenever saturated, no cap) — true unbounded
 open-endedness, now safe because growth is diversity-gated and self-limiting.
+
+## Swing #26 (LIVE, straight to main) — lineage-structured axis seeding: grown axes that DON'T wash out
+
+The flaw in #25, found by reading the live homogeniser instead of assuming it. The live diversity sink is NOT
+the global mean-reversion (that path is off in the live stack) — it is the #21 spatially-LOCAL **same-lineage**
+homogeniser: each particle is pulled (×0.00002/tick) toward the mean of its nearby same-lineage neighbours.
+That is exactly why #25's grown axes would have repeated the #16 wash-out: `setDims` seeded a new axis with
+**per-particle uniform random** values, so each lineage's mean on the new axis ≈ 0, and the same-lineage
+homogeniser then drags every member back toward that ≈0 lineage-mean — the axis is born neutral-by-ERASURE, R
+decays, the board only seeded noise. #25 made the new axis *selected*; it did nothing to stop the homogeniser
+from erasing the very variation selection needs.
+
+**The fix (`setDims`, swing #26):** seed each new axis with **lineage-structured** values. Hash the lineage
+id to a distinct base in [-sp,sp]; same-lineage members SHARE that base (so the homogeniser now PRESERVES it
+instead of erasing it), distinct lineages get distinct bases, and a small per-particle jitter keeps a within-
+lineage mutational substrate. The new axis is lineage-organised from birth — and via #25's all-dims
+`nicheCellOf`, immediately ecological (each lineage's distinct base lands it in its own niche-cell on the new
+axis). This is the precise mechanism that turns "grow the board" from noise-injection into real colonisation.
+
+**Verified (this IS a measured result, not just a design claim).** Forced-growth run (gate threshold lowered
+so DIMS marches 5→8, SEED=7, 5k ticks), streaming `axisStats(DIMS-1).R` = between-lineage variance fraction:
+
+| sample | DIMS | new-axis R | ctrl-axis-0 R |
+|---|---|---|---|
+| post-grow → 6 | 6 | 0.956 | 0.892 |
+| post-grow → 8 | 8 | 0.987 | 0.768 |
+| +500t | 8 | 0.786 | 0.709 |
+| +1000t | 8 | 0.745 | 0.688 |
+| +1500t | 8 | 0.753 | 0.719 |
+
+The new axis HOLDS at R ≈ 0.75 — statistically indistinguishable from (often above) the lived-in control
+axis 0 — and does NOT decay. Compare the #16 retraction's uniform seed, which decayed monotonically
+0.85 → 0.47 → 0.38 → **0.26** toward the homogeniser floor and was "statistically indistinguishable from the
+control as it relaxed into the same wash-out." Same metric, opposite verdict: the lineage-structured seed
+makes a grown axis carry **persistent, lineage-organised** variation. Zero loop/driver errors; DIMS stable at
+the cap. (Two isolated R=0 samples land exactly on a grow tick — a measurement-boundary artifact, not decay.)
+
+**What this closes and what it doesn't.** It closes the #16 wash-out at its root for grown axes: the board can
+now grow axes that STAY differentiated under the live homogeniser. It does NOT by itself prove run-scale
+open-endedness — R holding for ~1500 ticks past a grow is not 200k-tick persistence, and the forced gate here
+is far more aggressive than the live saturation gate (every 600t at threshold 6 vs every 3000t at threshold
+24). The honest live test stands: does a saturation-EARNED grow, lineage-seeded, produce lineages that persist
+and keep diversity climbing across a long real run? But the specific failure mode that doomed #16 — and that
+#25 alone would have walked back into — is now measured shut.
+
+**Next:** with grown axes holding structure, the remaining persistence question is purely about the EXISTING
+axes' lineages over run-scale (the #16 61→9 collapse, measured before the current stack). If a long export
+still shows lineage count bleeding while DIMS grows, the lever is the homogeniser rate / mint grace on the old
+axes — not the seeding, which #26 has now shown does its job.
