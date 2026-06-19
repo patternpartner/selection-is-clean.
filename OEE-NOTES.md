@@ -953,3 +953,31 @@ and keep diversity climbing across a long real run? But the specific failure mod
 axes' lineages over run-scale (the #16 61→9 collapse, measured before the current stack). If a long export
 still shows lineage count bleeding while DIMS grows, the lever is the homogeniser rate / mint grace on the old
 axes — not the seeding, which #26 has now shown does its job.
+
+## Swing #27 (LIVE, straight to main) — character displacement: the missing disruptive-selection term
+
+The journal's deepest structural diagnosis, acted on at last: every prior swing raised the carrying capacity
+of a system that has an extinction term and gene flow (the homogeniser re-merges) but **no force pushing
+distinct lineages APART**. Minted lineages sit at ecological EQUIVALENCE, so competitive exclusion and
+re-merging collapse them — the #16 61→9. #24/#25/#26 gave divergence somewhere to land, a board that grows,
+and grown axes that hold; none of them makes two co-located lineages actively SEPARATE.
+
+**The term (`applyCharacterDisplacement`, cadence, knob `__CHAR_DISP`, default-on live):** each particle is
+nudged AWAY from the trait centroids of OTHER viable lineages (size ≥4), weighted by a Gaussian of trait
+distance (σ²=2·0.45², rate 0.0015). Overlapping lineages push hard; separated ones not at all — limiting
+similarity made dynamical, self-limiting (overlap→push→separation→push fades, no runaway). Within-lineage
+cohesion (the same-lineage homogeniser, the art's clustering) is untouched; only BETWEEN-lineage spacing
+grows. Synergises with #25 — more axes = more empty trait-space to displace into without piling at the ±1.2
+edges. O(N·L), once per cadence.
+
+**Honest status — shipped on stability + principle, NOT on a measured diversity win.** Verified STABLE: a 6k
+single-seed run (SEED=7, full live stack) completed with zero loop/driver errors, tend stayed bounded, no
+runaway. But that same run was *collapsing* (entropyRatio 0.67 < 0.7; kinds 26.7→15) — and the matched
+CHAR_DISP=0 control did not finish in the window, so **I cannot yet attribute that collapse, or rule out that
+displacement at rate 0.0015 is over-spacing and SHEDDING kinds.** This ships under the post-#22
+live-is-ground-truth stance: the design is sound and the mechanism is the structurally-missing term, but its
+net effect is genuinely unverified. **Pre-registered revert rule:** if a long live export shows diversity
+(entropy/occupied-cells) WORSE than the pre-#27 baseline, the cause is over-strong displacement — drop
+`__CHAR_DISP` from the LIVE block (one line) or lower CHARDISP_RATE, before any further building on it. The
+knob makes this a clean one-flip rollback. The matched A/B (on vs off, ≥3 seeds, ≥10k) is the first thing the
+next session should finish — it was started here and is the honest gate this swing has NOT yet passed.

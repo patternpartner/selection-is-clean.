@@ -17202,7 +17202,8 @@ if(typeof globalThis!=='undefined'){
                __SPATIAL_TEND:1,                                    // allopatric (spatially-local) homogeniser #21
                __MINT_GATE:'cluster',                               // permissive deme gate #22 — mint split-first on a distinct CLUSTER, not a distinct niche-cell, so the strict cell-distinctness entry condition (destination-as-entry: foreclosed split-first speciation, the monoculture-lock) no longer erases incipient lineages at the cradle; founder grace (__COLO_SURV) above lets sub-bin founders survive to character-displace
                __DRAW_VM:1,                                        // render VM #23 — the genome composes its own particle FORM from a curated, bounded primitive alphabet (seed = the hand-authored renderer), not just its palette
-               __DIMS_SAT:3000 };                                   // dimensionality ratchet #25 — saturation-gated: every 3000 ticks, grow a new heritable trait axis IFF distinct occupied niche-cells ≥ threshold (default 24), capped at 9 dims. With all-dims nicheCellOf, each grown axis is selected from birth — the board grows itself when (and only when) diversity earns it
+               __DIMS_SAT:3000,                                     // dimensionality ratchet #25 — saturation-gated: every 3000 ticks, grow a new heritable trait axis IFF distinct occupied niche-cells ≥ threshold (default 24), capped at 9 dims. With all-dims nicheCellOf, each grown axis is selected from birth — the board grows itself when (and only when) diversity earns it
+               __CHAR_DISP:1 };                                     // character displacement #27 — the disruptive-selection term: at each cadence, nudge each particle away from OTHER viable lineages' trait centroids (Gaussian-weighted, self-limiting), so distinct lineages SPACE APART instead of collapsing to ecological equivalence (the #16 61→9). Within-lineage cohesion untouched
   for(const k in LIVE) if(globalThis[k]===undefined) globalThis[k]=LIVE[k];
 }
 __DRAWVM=(typeof globalThis!=='undefined'&&(globalThis.__DRAW_VM|0)===1); // resolve the render-VM toggle now that LIVE defaults are filled
@@ -17266,6 +17267,7 @@ const _alloMembers=new Map();                                          // pLin �
 const linCentroid=new Map();  // pLin → Float32Array(DIMS): trait centroid (rebuilt each cadence)
 const linSize=new Map();      // pLin → living count (rebuilt each cadence)
 const linModalCell=new Map(); // pLin → its most-occupied niche cell (rebuilt each cadence)
+const _dispScr=new Float32Array(DIMS_MAX); // swing #27: per-particle character-displacement accumulator
 const linBirthTick=new Map(); // pLin → tick it was MINTED by speciation (persists; only minted lineages)
 const linParent=new Map();    // pLin → parent pLin at the speciation event (persists; genealogy)
 let specMintCount=0;          // cumulative cladogenesis events (exposed for the harness)
@@ -17314,6 +17316,31 @@ function specComputeAgg(){ // per-lineage centroid, size, and modal niche-cell �
   linModalCell.clear(); const bestN=new Map();
   for(const [key,cnt] of cellCnt){ const ci=key.indexOf(':'); const l=+key.slice(0,ci), cell=+key.slice(ci+1);
     if(cnt>(bestN.get(l)||0)){ bestN.set(l,cnt); linModalCell.set(l,cell); } }
+}
+// ═══ SWING #27: CHARACTER DISPLACEMENT — the missing DISRUPTIVE-SELECTION term ═══════════════════════════
+// The journal's deepest structural diagnosis: every prior swing raised the carrying capacity of a system with
+// an extinction term and gene flow (the homogeniser re-merges) but NO force pushing distinct lineages APART.
+// So minted lineages sit at ecological EQUIVALENCE and competitive exclusion / re-merging collapses them (the
+// #16 61→9). This adds the term: each particle is nudged AWAY from the trait centroids of OTHER (viable)
+// lineages, weighted by a Gaussian of trait distance — overlapping lineages push hard, separated ones not at
+// all. That IS limiting-similarity made dynamical: overlap → push → separation → push fades (self-limiting,
+// no runaway). Within-lineage cohesion (the same-lineage homogeniser, the art's clustering) is untouched; only
+// BETWEEN-lineage spacing grows. Synergises with #25: more axes = more empty trait-space to displace into, so
+// many lineages coexist without piling at the ±1.2 edges. Runs at the cadence on the fresh centroids (O(N·L)).
+const CHARDISP_SIG2=2*0.45*0.45, CHARDISP_RATE=0.0015, CHARDISP_MINSZ=4;
+function applyCharacterDisplacement(){
+  const cents=[], cls=[];
+  for(const [l,c] of linCentroid){ if((linSize.get(l)||0)>=CHARDISP_MINSZ){ cents.push(c); cls.push(l); } }
+  const L=cents.length; if(L<2) return;                      // need ≥2 viable lineages to space apart
+  for(let i=0;i<N;i++){ if(!palive[i])continue; const l=pLin[i], base=i*DIMS;
+    let any=false; for(let d=0;d<DIMS;d++)_dispScr[d]=0;
+    for(let k=0;k<L;k++){ if(cls[k]===l)continue; const c2=cents[k];
+      let dist2=0; for(let d=0;d<DIMS;d++){ const df=tend[base+d]-c2[d]; dist2+=df*df; }
+      const w=Math.exp(-dist2/CHARDISP_SIG2); if(w<0.01)continue; any=true;
+      for(let d=0;d<DIMS;d++)_dispScr[d]+=(tend[base+d]-c2[d])*w; }
+    if(!any)continue;
+    for(let d=0;d<DIMS;d++){ let v=tend[base+d]+_dispScr[d]*CHARDISP_RATE; tend[base+d]=v<-1.2?-1.2:v>1.2?1.2:v; }
+  }
 }
 function specMint(){ // cladogenesis: split off viable, cell-distinct, trait-diverged sub-populations
   if(!__SPEC.mint)return;
@@ -17622,7 +17649,8 @@ function loop(){
     let alive=0;
     for(let i=0;i<N;i++){if(!palive[i])continue;for(let d=0;d<DIMS;d++)globalTend[d]+=tend[i*DIMS+d];alive++}
     if(alive>0)for(let d=0;d<DIMS;d++)globalTend[d]/=alive;
-    if(__SPEC.on){ specComputeAgg(); specMint(); } // swing #17: per-lineage aggregates, then cladogenesis mint
+    if(__SPEC.on){ specComputeAgg(); specMint(); // swing #17: per-lineage aggregates, then cladogenesis mint
+      if(typeof globalThis!=='undefined'&&(globalThis.__CHAR_DISP|0)===1) applyCharacterDisplacement(); } // swing #27: disruptive-selection / character displacement
   }
   // Diet-axis homogeniser. The GLOBAL mean-reversion (×0.00002/tick) is the dominant diversity sink:
   // against ±0.0005/tick mutation it pins the trait distribution at std≈0.08 — inside one diet bin —
