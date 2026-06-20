@@ -1267,3 +1267,27 @@ weakly a heritable group TRAIT yet. If the A/B shows it helps, the natural Part 
 selection to SAMPLE ACROSS niche-cells so daughters inherit the parent's division of labour — turning injection
 into true heritable group-level organisation. **Pre-registered rule (unchanged):** beat the baseline (#28–30
 live, GROUP_ROLES off) on diversity → keep on; wash/worse → flip dormant (clean knob revert), like #31/#32.
+
+### #33 VERDICT (3-seed A/B) — HARNESS-INVISIBLE (identical to the digit); kept on by non-harm construction
+
+The A/B (GROUP_ROLES on vs off, 3 seeds, 6k) came back **byte-for-byte identical** on every metric, every seed
+(entRatio 0.87/0.82/0.84, evenness/occ/entBits all exactly equal ON=OFF). That is not a wash — it means #33
+changed NOTHING in the harness. Cause, traced: cluster budding (`attemptClusterBudding`) gates on size ≥14 AND
+persistAge ≥ budThreshold(6–12 cycles); headless 6k runs don't grow colonies to that size/age, so the bud path
+— and thus the role-diversity bonus — never fires. The harness cannot exercise the major transition at all
+(confirmed indirectly by the identical RNG trajectories: a single different bud draw would diverge a chaotic
+run). The live export (t64548), by contrast, shows the budding machinery ACTIVE (cluster lineages, budCount).
+
+**This is categorically different from #31/#32.** Those were MEASURABLY neutral-to-worse (tested, failed the
+bar) → dormant. #33 is UNTESTABLE here but NON-HARMFUL BY CONSTRUCTION: `roleBonus = 0.5·min(1,(cells−1)/6) ≥ 0`
+is strictly additive to bud chance, so `budChance_with ≥ budChance_without` always — #33 can only ever INCREASE
+the reproduction of role-diverse colonies, never suppress anything, never reduce diversity or destabilise. And
+budding carries its own metabolic cost + cluster cap, so "more budding of good colonies" is bounded.
+
+**Decision: keep `__GROUP_ROLES` default-on** — not on harness validation (impossible here), but on (1) strict
+non-harm by construction and (2) the live export confirming the machinery it hooks into runs in the real piece.
+Honest bound: this is NOT validated, it is shown-safe-and-untestable-headless. **The real test is a live export
+measuring whether colonies become more role-diverse (members spanning more niche-cells) over a run with
+GROUP_ROLES on vs a prior export** — registered as the next real-data swing, alongside the #31/#32 turnover
+instrument. If that live test ever shows no colony-differentiation signal, #33 is a no-op and should be flipped
+off to keep the live path honest; until then it ships as a sound, bounded, additive group-selection pressure.
