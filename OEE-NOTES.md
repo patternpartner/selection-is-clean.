@@ -1239,3 +1239,31 @@ does NOT stay trapped in the monoculture absorbing state — it regenerated to 1
 The headline metric the whole arc chased — diversity that recovers and climbs instead of collapsing — is
 present in the live ground truth. A multi-export time series (or run-scale logging of the engine flags) would
 turn this from "consistent with the thesis" into "attributed to it"; that is the next real-data swing.
+
+## Swing #33 (LIVE, straight to main) — major transition: group selection for DIVISION OF LABOUR
+
+The big push. The substrate already has a real SECOND LEVEL OF SELECTION — persistent cohesive clusters bud
+daughter colonies, with an evolvable cluster-genome (budRate/budThreshold/splitFraction…) inherited by
+daughters (`attemptClusterBudding`, the Pe22f "major evolutionary transition"). But group FITNESS rewarded only
+energy + coherence + territory — nothing ecological. So group selection could not drive the thing that MAKES a
+major transition matter: internal DIFFERENTIATION. A colony that is one big monoculture blob and a colony that
+is a functioning little ecosystem of specialists budded at the same rate.
+
+**The change (`__GROUP_ROLES`, default-on).** Add a DIVISION-OF-LABOUR term to the bud chance: count the
+distinct niche-cells occupied by a cluster's members and boost its reproduction by
+`GROUP_ROLE_GAIN·min(1,(distinctCells−1)/GROUP_ROLE_NORM)` — 0 for a one-cell colony, up to +0.5 (≈ the scale
+of the existing territory score) for a colony spanning ≥7 cells. Now a functionally-differentiated colony
+out-reproduces a uniform one. This couples the VALIDATED niche economy (#24/#28–30) into the second level of
+selection, and because a budded slice spans several cells, it steadily injects ROLE-DIVERSE founder groups into
+the population — selection toward colonies that hold a whole little ecosystem rather than one type. That is the
+hallmark of multicellularity (germ/soma, specialists), expressed through the transition machinery that already
+exists rather than bolted on.
+
+**Honest status — clean boot; A/B PENDING.** Boots/runs clean (zero errors; evenness 0.98 at 2.5k). Net effect
+unmeasured; A/B (on vs off, 3 seeds) running. **Caveat on heritability:** budding currently takes a SPATIAL
+slice of the colony, which need not preserve role-diversity in the daughter — so this is reliably a population-
+level diversity-INJECTION pressure (differentiated colonies seed more role-diverse founder groups) but only
+weakly a heritable group TRAIT yet. If the A/B shows it helps, the natural Part 2 is to bias bud-member
+selection to SAMPLE ACROSS niche-cells so daughters inherit the parent's division of labour — turning injection
+into true heritable group-level organisation. **Pre-registered rule (unchanged):** beat the baseline (#28–30
+live, GROUP_ROLES off) on diversity → keep on; wash/worse → flip dormant (clean knob revert), like #31/#32.

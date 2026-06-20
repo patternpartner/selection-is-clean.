@@ -7294,6 +7294,8 @@ function trackClusterPersistence(){
 // The daughter inherits the parent's VM program and field signature (with mutation).
 // This makes clusters true reproductive units — lineages that engineer well spread.
 // Budding physically displaces particles to create real spatial separation.
+const GROUP_ROLE_GAIN=0.5;   // swing #33: max bud-chance bonus for a maximally role-diverse colony (scale of territoryScore)
+const GROUP_ROLE_NORM=6;     // swing #33: distinct niche-cells (minus 1) at which the role bonus saturates
 function attemptClusterBudding(){
   if(clusters.length>=MAX_CLUSTERS-2)return; // leave room
   // Snapshot cluster count — don't iterate over newly budded clusters
@@ -7316,7 +7318,23 @@ function attemptClusterBudding(){
     const fieldBonus=Math.min(0.3,centerField*0.2);
     const _rqStress=Math.max(0,(0.4-centerField)/0.4); // Red Queen stress: depleted field = parasite/competitor pressure → boost innovation rate
 
-    const budChance=(territoryScore+fieldBonus)*0.008*cg.budRate; // bud rate now heritable
+    const budChance0=(territoryScore+fieldBonus)*0.008*cg.budRate; // bud rate now heritable
+    // ═══ SWING #33: GROUP-LEVEL SELECTION FOR DIVISION OF LABOUR — make the major transition serve open-endedness ═══
+    // The cluster budding above is a real second level of selection, but group FITNESS rewards only energy +
+    // coherence + territory — nothing about ECOLOGICAL DIFFERENTIATION. A colony whose members span many DISTINCT
+    // niche-cells is a functionally-differentiated proto-organism (specialists / division of labour), the actual
+    // hallmark of multicellularity; a monoculture blob is not. #33 rewards it: count distinct occupied niche-cells
+    // among members and boost bud chance, so differentiated colonies out-reproduce uniform ones. This couples the
+    // validated niche economy (#24/#28–30) into group selection and steadily injects ROLE-DIVERSE founder groups
+    // (a budded slice spanning several cells) into the population — selection pressure toward colonies that hold a
+    // whole little ecosystem, not one type. Knob __GROUP_ROLES, default-on.
+    let budChance=budChance0;
+    if(typeof globalThis!=='undefined'&&(globalThis.__GROUP_ROLES|0)===1){
+      const _cells=new Set();
+      for(let i=0;i<N;i++){ if(palive[i]&&clusterID[i]===c.id) _cells.add(nicheCellOf(i)); }
+      const roleBonus=GROUP_ROLE_GAIN*Math.min(1,(_cells.size-1)/GROUP_ROLE_NORM); // 0 for a one-cell (monoculture) colony → up to GAIN for a colony spanning GROUP_ROLE_NORM+1 cells
+      budChance=(territoryScore+fieldBonus+roleBonus)*0.008*cg.budRate;
+    }
     if(Math.random()>budChance)continue;
 
     // Find bud direction — prefer direction with unclaimed territory
@@ -17282,6 +17300,7 @@ if(typeof globalThis!=='undefined'){
                __SPATIAL_TEND:1,                                    // allopatric (spatially-local) homogeniser #21
                __MINT_GATE:'cluster',                               // permissive deme gate #22 — mint split-first on a distinct CLUSTER, not a distinct niche-cell, so the strict cell-distinctness entry condition (destination-as-entry: foreclosed split-first speciation, the monoculture-lock) no longer erases incipient lineages at the cradle; founder grace (__COLO_SURV) above lets sub-bin founders survive to character-displace
                __DRAW_VM:1,                                        // render VM #23 — the genome composes its own particle FORM from a curated, bounded primitive alphabet (seed = the hand-authored renderer), not just its palette
+               __GROUP_ROLES:1,                                     // major transition #33 — group-level selection for DIVISION OF LABOUR: a colony spanning many distinct niche-cells (a functionally-differentiated proto-organism) out-reproduces a monoculture blob, via a role-diversity bonus on the existing cluster bud chance. Couples the validated niche economy into the second level of selection; injects role-diverse founder groups into the population
                __DIMS_SAT:3000,                                     // dimensionality ratchet #25 — saturation-gated: every 3000 ticks, grow a new heritable trait axis IFF distinct occupied niche-cells ≥ threshold (default 24), capped at 9 dims. With all-dims nicheCellOf, each grown axis is selected from birth — the board grows itself when (and only when) diversity earns it
                __SPATIAL_NICHE:1,                                   // spatial niches / territoriality #30 — fold a 4×4 spatial region into the niche cell so location is a niche axis: income/crowding/predation/construction become per-region, so holding ground pays and regions become defended, inherited territories. With the existing spatially-biased offspring placement, this is the allopatric route #21 found blocked (income now rewards the spatial viscosity that pull-only #21 lacked)
                __NICHE_BUILD:1,                                     // niche construction #29 — life durably reshapes its own environment: a lived-in cell accrues a persistent, CAPPED, SHARED supply boost (soil-building) that decays slowly when abandoned, so engineered niches outlive their builders and accumulate as inherited environmental structure. Anti-monopoly (shared+capped); pairs with #28 (predation thins winners, construction rewards persistence)
