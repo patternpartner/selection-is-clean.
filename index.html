@@ -7305,7 +7305,9 @@ function attemptClusterBudding(){
     const c=clusters[ci];
     // Pe22f: cluster genome drives budding dynamics. Designer constants become evolvable.
     const cg=c.clusterGenome||(c.clusterGenome=seedClusterGenome());
-    if(c.persistAge<cg.budThreshold||c.size<14)continue; // threshold is now heritable
+    const _budMinSize=(typeof globalThis!=='undefined'&&(globalThis.__GROUP_PROBE|0)===1)?6:14;       // __GROUP_PROBE: lower the bud thresholds so the major transition fires in short HEADLESS runs (measurement only; default off → live thresholds unchanged)
+    const _budThr=(typeof globalThis!=='undefined'&&(globalThis.__GROUP_PROBE|0)===1)?Math.min(cg.budThreshold,3):cg.budThreshold;
+    if(c.persistAge<_budThr||c.size<_budMinSize)continue; // threshold is now heritable
 
     // Success metric: territorial control + coherence + energy
     // Clusters that engineer rich environments AND maintain internal order can reproduce
@@ -7385,6 +7387,17 @@ function attemptClusterBudding(){
       // Velocity kick toward bud site
       vx[pi]+=(bx-px[pi])*0.003;
       vy[pi]+=(by-py[pi])*0.003;
+    }
+
+    // SWING #33 instrument (__BUD_INSTR): record each bud's PARENT role-diversity (distinct niche-cells among all
+    // members) and DAUGHTER role-diversity (distinct cells among the budded slice). With GROUP_ROLES on, budding
+    // colonies should be MORE role-diverse (selection working); daughter vs parent shows how much Part 2 is owed.
+    if(typeof globalThis!=='undefined'&&(globalThis.__BUD_INSTR|0)===1){
+      const _pc=new Set(); for(const _cd of candidates) _pc.add(nicheCellOf(_cd.idx));
+      const _dc=new Set(); for(const _pi of budded) _dc.add(nicheCellOf(_pi));
+      globalThis.__budEvents=(globalThis.__budEvents||0)+1;
+      globalThis.__budParentRoleSum=(globalThis.__budParentRoleSum||0)+_pc.size;
+      globalThis.__budDaughterRoleSum=(globalThis.__budDaughterRoleSum||0)+_dc.size;
     }
 
     // METABOLIC COST — budding is expensive for both parent and daughter

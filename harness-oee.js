@@ -136,7 +136,7 @@ if (process.env.NICHE_LOCALTEND !== undefined) globalThis.__NICHE_LOCALTEND = pa
 if (process.env.DIMS_GROW !== undefined) globalThis.__DIMS_GROW = parseInt(process.env.DIMS_GROW, 10);
 if (process.env.DIMS_CAP !== undefined) globalThis.__DIMS_CAP = parseInt(process.env.DIMS_CAP, 10);
 if (process.env.DIMS_SPREAD !== undefined) globalThis.__DIMS_SPREAD = parseFloat(process.env.DIMS_SPREAD);
-for (const k of ['DIMS_SAT','DIMS_SAT_CAP','DIMS_SAT_OCC','CHAR_DISP','RED_QUEEN','NICHE_BUILD','SPATIAL_NICHE','RQ_TRAIT','MUTUALISM','GROUP_ROLES']) if (process.env[k] !== undefined) globalThis['__' + k] = parseInt(process.env[k], 10);
+for (const k of ['DIMS_SAT','DIMS_SAT_CAP','DIMS_SAT_OCC','CHAR_DISP','RED_QUEEN','NICHE_BUILD','SPATIAL_NICHE','RQ_TRAIT','MUTUALISM','GROUP_ROLES','GROUP_PROBE','BUD_INSTR']) if (process.env[k] !== undefined) globalThis['__' + k] = parseInt(process.env[k], 10);
 if (process.env.NICHE_FRONTIER !== undefined) globalThis.__NICHE_FRONTIER = parseInt(process.env.NICHE_FRONTIER, 10);
 if (process.env.NICHE_BIOTIC !== undefined) globalThis.__NICHE_BIOTIC = parseInt(process.env.NICHE_BIOTIC, 10);
 if (process.env.OPCODE_NOVELTY !== undefined) globalThis.__OPCODE_NOVELTY = parseInt(process.env.OPCODE_NOVELTY, 10);
@@ -650,6 +650,14 @@ const verdict = {
     decayedTo: earlyRate > 0 ? +(lateRate / earlyRate).toFixed(2) : null, stillProducing: lateRate > 0.05 },
   niche_trend: niche,
   diversity_trend: diversity,
+  // swing #33 instrument: the major-transition layer the standing-diversity metrics can't see. budEvents=0 means
+  // budding never fired (use GROUP_PROBE=1 to lower thresholds headless). meanParentRole = mean distinct niche-cells
+  // among a budding colony's members (does GROUP_ROLES make BUDDING colonies more differentiated?); meanDaughterRole
+  // = same for the budded slice (does the daughter INHERIT the division of labour, or is Part 2 owed?).
+  group_transition: (() => { const e = globalThis.__budEvents || 0;
+    return { budEvents: e,
+      meanParentRole: e > 0 ? +((globalThis.__budParentRoleSum || 0) / e).toFixed(2) : null,
+      meanDaughterRole: e > 0 ? +((globalThis.__budDaughterRoleSum || 0) / e).toFixed(2) : null }; })(),
   complexity_trend: complexity,
   complexity_topTierEngaged: (complexity.liveAtoms_max > 0 || complexity.boundOps_max > 0 || complexity.DIMS_delta > 0),
   notes: [

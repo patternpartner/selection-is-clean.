@@ -1291,3 +1291,22 @@ measuring whether colonies become more role-diverse (members spanning more niche
 GROUP_ROLES on vs a prior export** — registered as the next real-data swing, alongside the #31/#32 turnover
 instrument. If that live test ever shows no colony-differentiation signal, #33 is a no-op and should be flipped
 off to keep the live path honest; until then it ships as a sound, bounded, additive group-selection pressure.
+
+## Tooling — group-transition instrument (give the harness eyes for the major transition)
+
+#33's A/B was harness-INVISIBLE (identical ON/OFF) because cluster budding never fires in headless runs. Rather
+than take #33 on faith, built the instrument the verdict said was owed: per-bud recording of PARENT role-
+diversity (distinct niche-cells among a budding colony's members) and DAUGHTER role-diversity (distinct cells
+among the budded slice), exposed in the harness verdict as `group_transition {budEvents, meanParentRole,
+meanDaughterRole}`. Plus `__GROUP_PROBE` (lowers the bud size/age thresholds for headless measurement; default
+off so the live piece is unchanged) and `__BUD_INSTR` (enables the counters). The two readouts answer the two
+real questions: does GROUP_ROLES make BUDDING colonies more differentiated (parent), and does the daughter
+INHERIT it (daughter vs parent → how much Part 2 is owed)?
+
+**Preliminary finding (being confirmed by a longer run):** even with `GROUP_PROBE=1` (size≥6, persistAge≥3),
+budEvents = 0 in 6k headless runs — colonies in the canvas-stubbed headless environment apparently don't grow
+large/persistent enough to bud. If the longer run also shows 0, the honest conclusion is structural: the major
+transition is NOT measurable in this headless harness at all (it needs the full spatial cluster dynamics the
+stubs don't reproduce), and #33's only valid test is a LIVE export with the instrument's questions asked of
+real bud events. The instrument is then still the right artifact — it just has to be pointed at live data, not
+the harness. (Recorded so the next session doesn't re-derive that the harness can't see the group layer.)
