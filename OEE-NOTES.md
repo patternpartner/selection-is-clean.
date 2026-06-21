@@ -1407,3 +1407,34 @@ RQ_RATE, the DIMS_SAT threshold) are designer constants. Wiring them into the ev
 let selection tune the system's OWN evolvability — "evolve the rules of evolution," the deepest open-ended lever
 left. High-leverage, high-risk (evolved params can destabilise); the right next big push, but a real
 architectural commitment.
+
+## Swing #35 (LIVE) — META-EVOLUTION: the open-endedness engines become evolvable genes
+
+The deepest lever, and the one you greenlit. Every engine this session (#24–#34) had a designer-constant
+intensity. #35 makes four of them EVOLVABLE genome genes, so the system tunes its OWN open-endedness — "evolve
+the rules of evolution." This is idiomatic, not bolted-on: the genome already turns dozens of hardcoded
+constants (physics, perception, mutation) into evolvable fields; #35 adds the engine dials to that framework.
+
+**The four dials (global genome fields, default = the exact prior constant):**
+- `opnovStrength` (#34 genotypic exploration) ∈ [0, 0.01]
+- `nicheBuildRate` (#29 niche-construction effort) ∈ [0, 0.003]
+- `rqRate` (#28 predation aggression) ∈ [0, 0.15]
+- `dimsSatThresh` (#25 board-growth eagerness — lower grows the board easier) ∈ [8, 60]
+
+**Wiring (the established pattern, six sites each, all name-checked):** field defaults to the constant →
+engines read `genome.X ?? CONST` (so an evolved 0 = "off" is honoured) → `mutateGenome` random-walks each via
+`maybe()` at gentle magnitudes → `sanitizeGenome` clamps to the safe bounds → `encodeGenome` writes an `oe`
+array → `decodeGenome` reads it defensively (per-element typeof, then sanitize defaults/clamps). Lineage
+selection adjudicates them like any gene.
+
+**Safety — bounded by construction, backward-compatible.** Every bound was chosen so no evolved value can
+destabilise: predation stays conserved (rqRate≤0.15), novelty stays mean-centred (can't inflate), build stays
+capped (NICHE_BUILD_MAX is separate), growth stays gated+capped at DIMS 9. sanitizeGenome clamps on every load/
+adoption, so however mutation or selection moves them, they land in range. Old exports (no `oe`, e.g. t64548)
+load unchanged — decode skips, sanitize defaults to the constants. Clean boot, zero errors, evenness 0.878 at
+2.5k (behaviour unchanged at t=0, as designed — the genes START at the old constants and only drift under
+selection). New exports carry `oe`, so this is the one #35 thing a LIVE EXPORT directly validates: watch
+whether the four dials DRIFT from their defaults over a run, and in which direction — that is the system
+expressing a preference about how open-ended to be. If they sit pinned at defaults, the selection signal on
+them is too weak (wire them to a more direct fitness term); if they swing to bounds, selection has a strong
+opinion and the next move is to widen the most-pressed bound.

@@ -567,6 +567,17 @@ let genome={
   velocityDamping:0.998,  // was hardcoded
   deathThreshold:0.04,    // was DEATH_THRESHOLD constant
 
+  // ═══ LAYER (#35): META-EVOLUTION — the open-endedness ENGINES become evolvable ═══
+  // The engines built this session (#24–#34) had designer-constant intensities. Here the system can tune its
+  // OWN open-endedness: these default to the exact constants (so behaviour is unchanged until selection moves
+  // them), are clamped in sanitizeGenome (so evolution can't destabilise), and mutate via the global genome.
+  // "Evolve the rules of evolution" — lineage selection now adjudicates how hard the system explores genotypes,
+  // engineers its niches, predates, and grows its board.
+  opnovStrength:0.0025,   // #34 genotypic exploration intensity (OPNOV_STRENGTH)
+  nicheBuildRate:0.0006,  // #29 niche-construction effort (NICHE_BUILD_RATE)
+  rqRate:0.05,            // #28 predation aggression (RQ_RATE)
+  dimsSatThresh:24,       // #25 board-growth eagerness (occupied-cell threshold to grow a new axis; lower = grows easier)
+
   // ═══ LAYER 2: PERCEPTION ═══
   // How the system sees itself. Previously hardcoded detection params.
   clusterBondThresh:0.15, // was hardcoded in flood-fill
@@ -5489,6 +5500,7 @@ function encodeGenome(){
     uad:genome.uaMaxDepth|0,                  // UNLOCKED #7b atom recursion depth
     tmr:+(genome.typeMutRate||0.02).toFixed(4), // UNLOCKED #7a caste-innovation rate
     td: genome.tendDims|0,
+    oe:[genome.opnovStrength,genome.nicheBuildRate,genome.rqRate,genome.dimsSatThresh].map(v=>+(+v).toPrecision(4)), // #35 evolvable open-endedness engine dials
     rn: Array.isArray(genome.rend)?genome.rend.map(a=>({e:a.expression,f:!!a.failed})):null,
     dr: Array.isArray(genome.draw)?genome.draw.map(o=>o.slice()):null,
     bo: Array.isArray(genome.boundOpcodes)?genome.boundOpcodes.map(b=>b|0):[],
@@ -5750,6 +5762,11 @@ function decodeGenome(data){
     if(typeof g.tmr==='number')genome.typeMutRate=g.tmr;   // UNLOCKED #7a
     if(g.ua)genome.userAtoms=g.ua.map(a=>({expression:a.expression,compiled:null,failed:!!a.failed,uses:a.uses|0,age:a.age|0}));
     if(typeof g.td==='number') genome.tendDims=__cl(g.td|0,2,DIMS_MAX);
+    if(Array.isArray(g.oe)){ // #35 evolvable engine dials (sanitizeGenome clamps + defaults any missing)
+      if(typeof g.oe[0]==='number')genome.opnovStrength=g.oe[0];
+      if(typeof g.oe[1]==='number')genome.nicheBuildRate=g.oe[1];
+      if(typeof g.oe[2]==='number')genome.rqRate=g.oe[2];
+      if(typeof g.oe[3]==='number')genome.dimsSatThresh=g.oe[3]; }
     if(Array.isArray(g.rn)&&g.rn.length===4) genome.rend=g.rn.map(a=>({expression:a.e||'0',compiled:null,failed:!!a.f}));
     if(Array.isArray(g.dr)) genome.draw=sanitizeDraw(g.dr);
     if(Array.isArray(g.bo)) genome.boundOpcodes=g.bo.map(n=>Math.max(0,n|0));
@@ -5918,6 +5935,13 @@ function validChemistryTable(table){
 function sanitizeGenome(){
   genome.tendDims = __cl( Math.round(genome.tendDims||5),2,DIMS_MAX);
   DIMS = genome.tendDims;
+  // #35 meta-evolution: clamp the evolvable open-endedness-engine dials to safe bounds (default to the original
+  // constants when missing, so old genomes load unchanged). Bounds are wide enough for real tuning, tight enough
+  // that no evolved value can destabilise (predation conserved, novelty mean-centred, build capped, growth gated).
+  genome.opnovStrength = __cl(finiteOr(genome.opnovStrength,0.0025),0,0.01);
+  genome.nicheBuildRate = __cl(finiteOr(genome.nicheBuildRate,0.0006),0,0.003);
+  genome.rqRate = __cl(finiteOr(genome.rqRate,0.05),0,0.15);
+  genome.dimsSatThresh = __cl(Math.round(finiteOr(genome.dimsSatThresh,24)),8,60);
   if(!Array.isArray(genome.objWeights)||genome.objWeights.length<4)genome.objWeights=[0.25,0.25,0.25,0.25];
   genome.objWeights=genome.objWeights.slice(0,4).map(v=>finiteOr(v,0)); // UNLOCKED: no force-positive, no sum=1 renormalization
   genome.vmProgram=Array.isArray(genome.vmProgram)?genome.vmProgram.map(cleanInstruction).slice(0,96):[[0,0,0,0]]; // UNLOCKED #7b: matches the raised vmMaxInstructions ceiling
@@ -10323,6 +10347,12 @@ function mutateGenome(){
   genome.magneticThresh=maybe(genome.magneticThresh,0.1,0.8,0.04);
   genome.velocityDamping=maybe(genome.velocityDamping,0.98,0.9999,0.003);
   genome.deathThreshold=maybe(genome.deathThreshold,0.01,0.15,0.01);
+  // #35 META-EVOLUTION: the open-endedness-engine dials random-walk like any physics gene; sanitizeGenome clamps
+  // them, lineage selection adjudicates them — the system tunes its own exploration / construction / predation / growth.
+  genome.opnovStrength=maybe(genome.opnovStrength,0,0.01,0.0008);
+  genome.nicheBuildRate=maybe(genome.nicheBuildRate,0,0.003,0.0003);
+  genome.rqRate=maybe(genome.rqRate,0,0.15,0.01);
+  genome.dimsSatThresh=maybe(genome.dimsSatThresh,8,60,3);
 
   // UNLOCKED autonomy genes: the system evolves its own perceptual/mortality clocks and
   // crowding floor. Gloves-off random walk; substrate floor only (interval >=1, floor >=0).
@@ -17575,7 +17605,7 @@ function applyNicheEconomy(){
     const BUILD=(typeof globalThis!=='undefined'&&(globalThis.__NICHE_BUILD|0)===1); // swing #29: niche construction
     for(let c=0;c<NICHE_ND_CELLS;c++){ let sup=NICHE_ND_SUPPLY;
       if(CELLDRIFT){ sup=NICHE_ND_SUPPLY*(1+NICHE_CELLDRIFT_AMP*Math.sin(2*Math.PI*tick/NICHE_CELLDRIFT_PERIOD + c*2.39996323)); if(sup<NICHE_ND_SUPPLY*0.1)sup=NICHE_ND_SUPPLY*0.1; } // each cell pulses on its own (golden-angle) phase
-      if(BUILD){ if(nicheCellOcc[c]>0){ const b=nicheCellBuilt[c]+NICHE_BUILD_RATE; nicheCellBuilt[c]=b<NICHE_BUILD_MAX?b:NICHE_BUILD_MAX; } else nicheCellBuilt[c]*=NICHE_BUILD_DECAY; sup+=nicheCellBuilt[c]; } // nicheCellOcc still holds LAST tick's count here (reset below)
+      if(BUILD){ if(nicheCellOcc[c]>0){ const b=nicheCellBuilt[c]+(genome.nicheBuildRate??NICHE_BUILD_RATE); nicheCellBuilt[c]=b<NICHE_BUILD_MAX?b:NICHE_BUILD_MAX; } else nicheCellBuilt[c]*=NICHE_BUILD_DECAY; sup+=nicheCellBuilt[c]; } // nicheCellOcc still holds LAST tick's count here (reset below); rate is evolvable (#35)
       nicheCellRes[c]=Math.min(NICHE_CAP, nicheCellRes[c]*NICHE_PERSIST + sup*_season); nicheCellOcc[c]=0; nicheCellCross[c]=0; }
     for(let i=0;i<N;i++){ if(!palive[i])continue; const c=nicheCellOf(i); pDietCell[i]=c; nicheCellOcc[c]++; }
     // harvest: occupants of a cell split its take equally (each cell its own carrying capacity); REAL income; cross-feed to an offset cell
@@ -17605,7 +17635,7 @@ function applyNicheEconomy(){
         nicheCellDemand.fill(0); nicheCellPredGain.fill(0); nicheCellPreyLoss.fill(0);
         for(let i=0;i<N;i++){ if(!palive[i])continue; const a=amp[i]>0?amp[i]:0; if(a<=0){pPreyCell[i]=-1;continue;} const pc=nicheCellPreyOf(i); pPreyCell[i]=pc; nicheCellDemand[pc]+=a; }
         for(let c=0;c<NICHE_ND_CELLS;c++){ const D=nicheCellDemand[c], B=nicheCellBio[c]; if(D<=0||B<=0)continue;
-          const extract=Math.min(D*RQ_RATE, B*RQ_MAXFRAC);       // bounded; conserved (Σgain = extract = Σloss per prey cell)
+          const extract=Math.min(D*(genome.rqRate??RQ_RATE), B*RQ_MAXFRAC);       // bounded; conserved (Σgain = extract = Σloss per prey cell); rate evolvable (#35)
           nicheCellPredGain[c]=extract/D; nicheCellPreyLoss[c]=extract/B; }
         for(let i=0;i<N;i++){ if(!palive[i])continue; const a=amp[i]>0?amp[i]:0; if(a<=0)continue; const pc=pPreyCell[i];
           const gain=pc>=0?a*nicheCellPredGain[pc]:0, loss=a*nicheCellPreyLoss[pDietCell[i]]; amp[i]+=gain-loss; }
@@ -17613,7 +17643,7 @@ function applyNicheEconomy(){
         nicheCellPredGain.fill(0); nicheCellPreyLoss.fill(0);
         for(let c=0;c<NICHE_ND_CELLS;c++){ if(nicheCellOcc[c]<=0)continue; const preyC=(c+RQ_STRIDE)%NICHE_ND_CELLS;
           const pm=nicheCellBio[c], rm=nicheCellBio[preyC]; if(pm<=0||rm<=0)continue;
-          const transfer=Math.min(rm*RQ_MAXFRAC, pm*RQ_RATE);    // conserved: predators gain exactly what prey lose
+          const transfer=Math.min(rm*RQ_MAXFRAC, pm*(genome.rqRate??RQ_RATE));    // conserved: predators gain exactly what prey lose; rate evolvable (#35)
           nicheCellPredGain[c]+=transfer/pm; nicheCellPreyLoss[preyC]+=transfer/rm; }
         for(let i=0;i<N;i++){ if(!palive[i])continue; const c=pDietCell[i], a=amp[i]>0?amp[i]:0; if(a>0) amp[i]+=a*(nicheCellPredGain[c]-nicheCellPreyLoss[c]); }
       }
@@ -17697,7 +17727,7 @@ function applyNicheEconomy(){
         if(pr) for(let q=0;q<pr.length;q++){ const op=pr[q][0]|0; if(op>=0&&op<256){ s+=1-Math.min(1,opCum[op]*256); n++; } } // opCum·256 = usage share ×#opcodes; rare/never-explored → ~0 → novelty ~1
         const sc=n>0?s/n:0; pNicheRaw[i]=sc; sumNov+=sc; cnt++; } // reuse pNicheRaw as scratch (frontier already consumed it)
       const meanNov=cnt>0?sumNov/cnt:0;
-      if(meanNov>1e-9) for(let i=0;i<N;i++){ if(!palive[i])continue; amp[i]+=OPNOV_STRENGTH*Math.max(-1,Math.min(1, pNicheRaw[i]/meanNov-1)); }
+      if(meanNov>1e-9){ const _ops=(genome.opnovStrength??OPNOV_STRENGTH); for(let i=0;i<N;i++){ if(!palive[i])continue; amp[i]+=_ops*Math.max(-1,Math.min(1, pNicheRaw[i]/meanNov-1)); } } // strength evolvable (#35)
     }
   }
 }
@@ -17800,7 +17830,7 @@ function loop(){
   // the all-dims nicheCellOf above makes each new (spread-seeded) axis selected from birth. That coupling —
   // success buys more room, more room is immediately ecological — is the open-ended board that grows itself.
   if(typeof globalThis!=='undefined'&&(globalThis.__DIMS_SAT|0)>0){ const _si=globalThis.__DIMS_SAT|0,
-      _cap=Math.min(DIMS_MAX,(globalThis.__DIMS_SAT_CAP|0)||9), _thr=(globalThis.__DIMS_SAT_OCC|0)||24;
+      _cap=Math.min(DIMS_MAX,(globalThis.__DIMS_SAT_CAP|0)||9), _thr=(globalThis.__DIMS_SAT_OCC|0)||(genome.dimsSatThresh|0)||24; // threshold evolvable (#35)
     if(tick>1200&&tick%_si===0&&DIMS<_cap&&nicheOccupancy()>=_thr) setDims(DIMS+1); }
   flushNetworkEvents();
   smx+=(mx-smx)*.05;smy+=(my-smy)*.05;
