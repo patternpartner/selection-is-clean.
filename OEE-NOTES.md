@@ -1377,3 +1377,33 @@ OPCODE_NOVELTY on vs the historical ~20. If a future export shows opcode breadth
 lights are coming on; if it stays flat, the pull is too weak (raise OPNOV_STRENGTH) or mutation isn't
 introducing new opcodes fast enough (a mutation-operator swing, not a reward swing). Mean-centred = safe to run
 live while we wait for that data.
+
+## STATE OF THE STACK (as of #34) — the live open-endedness architecture + export-validation checklist
+
+Three axes of open-endedness now run in the live piece. What to look for in a LIVE EXPORT to validate each
+(the harness is blind to most of this — listed so the next real export earns its keep):
+
+**Ecological (validated headless + live)**
+- #24 niche board (5 axes wired, finer cells) · #28 Red Queen predation · #29 niche construction · #30 spatial
+  territoriality. → 3-seed A/B validated (entropy/evenness beat baseline; rescued a collapsing seed). Live
+  export check: `divMean` holding/climbing late-run; occupied niche-cells; no permanent monoculture lock.
+- #25 board grows itself (saturation-gated dimensions). → CONFIRMED LIVE (t64548 export: tendDims=9). Check:
+  `td` > 5, growing with diversity.
+
+**Hierarchical (live, validates only from export)**
+- #33 major transition: group selection for division of labour (Part 1) + heritable role-inheritance (Part 2).
+  Harness CANNOT test (budding never fires headless). Check: cluster_bud events carry `pr`/`dr`; with the stack
+  on, `pr` above typical colony role-diversity (selection working) and `dr ≈ pr` (Part 2 making it heritable).
+
+**Genotypic (live, validates only from export)**
+- #34 opcode-exploration (mean-centred, cumulative-innovation weighted). Slow; harness can't show it. Check:
+  opcode breadth (`co` / distinct opcodes used) climbing above the historical ~20; `liveAtoms`/authored atoms.
+
+**Dormant (honest negatives, one-flip revivable):** #27 character displacement (measured harmful), #31
+coevolutionary kernel + #32 mutualism (A/B wash on standing diversity — need a turnover instrument).
+
+**Biggest untouched frontier:** META-EVOLUTION — the engine parameters (OPNOV_STRENGTH, NICHE_BUILD_RATE,
+RQ_RATE, the DIMS_SAT threshold) are designer constants. Wiring them into the evolvable genome meta-layer would
+let selection tune the system's OWN evolvability — "evolve the rules of evolution," the deepest open-ended lever
+left. High-leverage, high-risk (evolved params can destabilise); the right next big push, but a real
+architectural commitment.
