@@ -1438,3 +1438,41 @@ whether the four dials DRIFT from their defaults over a run, and in which direct
 expressing a preference about how open-ended to be. If they sit pinned at defaults, the selection signal on
 them is too weak (wire them to a more direct fitness term); if they swing to bounds, selection has a strong
 opinion and the next move is to widen the most-pressed bound.
+
+## MEASUREMENT (live export, gen11 t225183) — META-EVOLUTION CONFIRMED; sustained diversity still UNSOLVED
+
+The first RUN-SCALE live validation of the full session stack (#24–#35): 225k ticks, 11 generations. Decoded.
+
+**Meta-evolution (#35) WORKS — and the system expressed a clear preference.** The evolvable dials drifted from
+their defaults; one drifted hard:
+- `dimsSatThresh` 24 → **11.18 (−53%)** — the system HALVED its own board-growth threshold. A 53% one-way move
+  over the run reads as directional selection, not drift: given control, the system chose to grow new dimensions
+  far more easily.
+- `rqRate` 0.05 → 0.0552 (+10%), `opnovStrength` 0.0025 → 0.00207 (−17%), `nicheBuildRate` −4% (≈drift).
+And it acted on the preference: `tendDims` reached **11**, with the EP growth-count column climbing 0→8,
+accelerating late-run exactly as the lowered threshold predicts. Genotype layer alive too: 8 authored atoms,
+one (`(-0.52)-(Math.cos(m))`) load-bearing at 18 uses.
+
+**But sustained diversity FAILED at run-scale — the honest negative.** The kinds/divMean trajectory:
+- t5k–45k healthy (divMean ~0.65–0.72, kinds 4–27).
+- **t50k–195k: a ~145k-tick MONOCULTURE LOCK** — divMean collapses to ~0.1–0.2 (null at the deepest), kinds ≈0,
+  while population stays healthy (300–620). One homogeneous blob.
+- t200k–210k: a sharp recovery (divMean 0.69, kinds 22) — then crashes again by t215k (kinds 0, pop halved).
+
+**The decisive decoupling: the board grew dimensions the ENTIRE time diversity was collapsed.** Growing the
+niche SPACE does not fill it with sustained kind-diversity — empty new axes don't help a monocultural
+population. Worse, the system's self-evolved strategy (grow the board easier) optimised the wrong lever: it left
+`rqRate` (the kill-the-winner anti-monoculture force) near baseline and poured its meta-evolution into
+dimensions. Structural/dimensional open-endedness (board growth, dial evolution, genotype exploration) is REAL
+and self-reinforcing; diversity open-endedness is NOT — they are decoupled, and the run lived mostly in
+monoculture.
+
+**Implication for the next thread.** The wall is not niche-space size (we have 11 dims and the system wants
+more) — it is that nothing SUSTAINS coexistence against the homogenising pull at this population scale (~500).
+Recoveries prove escape is possible; the 145k-tick locks prove it isn't maintained. Two concrete moves: (1)
+widen `rqRate`'s upper bound (current cap 0.15 may be too low for kill-the-winner to bite a 500-strong
+monoculture) so meta-evolution CAN crank predation if it helps; (2) — more fundamental — wire DIVERSITY ITSELF
+into the fitness the dials are selected on, so the system is rewarded for staying varied, not just for growing
+its board. As it stands the dials evolve toward whatever raises lineage fitness, and a fit monoculture is a
+valid optimum; nothing makes the system VALUE its own diversity. That missing term — diversity as a first-class
+objective the meta-layer optimises — is the real next swing.
