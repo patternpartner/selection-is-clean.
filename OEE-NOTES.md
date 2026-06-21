@@ -1476,3 +1476,24 @@ into the fitness the dials are selected on, so the system is rewarded for stayin
 its board. As it stands the dials evolve toward whatever raises lineage fitness, and a fit monoculture is a
 valid optimum; nothing makes the system VALUE its own diversity. That missing term — diversity as a first-class
 objective the meta-layer optimises — is the real next swing.
+
+### #aec616b verdict REVISED by live observation — "monoculture lock" is likely PUNCTUATED EQUILIBRIUM, not failure
+
+Watching the live artwork (not the metric) corrected the reading above. The flat `kinds≈0` stretches are NOT a
+dead stalemate: inside the t212–213k window the event log holds a CASCADE of ~9 extinctions in ~700 ticks
+(`alive` 7→0→5→1→2→0…), the generation counter advancing to 11, and an authored atom being BORN (`ua_birth`)
+mid-cascade — i.e. rapid crisis-and-renewal turnover the standing-diversity number flattens to "0". Live, this
+reads as PUNCTUATED EQUILIBRIUM (long stasis → fast extinction/regeneration burst), which is a legitimate — and
+arguably richer — open-ended signature, not convergence. Under the flat stretches THREE things grew
+monotonically the whole run: the board (5→11 dims), the population trend, and the evolvable dials. So the system
+was loading tension during stasis, not idling.
+
+**Correction to the prior entry:** "sustained diversity FAILED" overstated it — the right frame is "standing
+KIND-diversity is episodic/punctuated, while structural complexity (dims, dials, genotype, generations) grows
+continuously." The proposed fix (wire diversity into fitness) is now ON HOLD — forcing steady diversity could
+SUPPRESS the boom-bust that makes the piece alive; you don't anesthetise a punctuated system. The real open
+question is no longer "diversity vs monoculture" but **is the punctuation GROWING or DAMPING** — bursts bigger/
+more frequent + board climbing + dials moving + each recovery higher (open-ended growth), vs each crash
+bottoming lower + bursts thinning (slow wind-down). A t≈275k export (another 50k) decides it; verdict deferred
+until then. Lesson restated: the live artwork saw what the headless metric could not — exactly the earlier
+caution about over-trusting the harness.
