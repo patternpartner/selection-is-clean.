@@ -1349,3 +1349,31 @@ role-diverse colonies bud more (Part 1) AND pass their differentiation to daught
 climb. Non-harmful by construction (same member count moves, same energy; only WHICH members change). Clean
 boot. Validation, like all of #33, lives in the cluster_bud event log: a future GROUP_ROLES export should now
 show dr ≈ pr (daughters inheriting the parent's role-spread) where before Part 2 it would have been dr ≪ pr.
+
+## Swing #34 (LIVE) — genotypic open-endedness: turn the lights on in the opcode museum
+
+The whole arc has been ECOLOGICAL open-endedness (niche/biotic/spatial/group). #34 opens the GENETIC half. The
+VM "museum" runs ~20 of 256 opcodes (the long-diagnosed coupling gap): mutation rarely introduces unused
+opcodes and nothing pulls toward them, so the vast program space sits dark. #34 activates the dormant
+opcode-novelty lever in the live stack AND upgrades it: instead of rewarding merely CURRENTLY-rare opcodes, it
+rewards opcodes the population has HISTORICALLY under-explored — `opCum`, a slow EMA (×0.98) of each opcode's
+usage share, so a never-tried opcode stays ≈0 and is maximally novel, sustaining pressure INTO the unused space
+rather than reshuffling the used 20.
+
+**Principled, not the inflation trap.** The reward stays MEAN-CENTRED (zero-sum): it re-weights a fixed amp pool
+toward genotypic explorers, it does NOT mint amp for novelty by fiat. That matters — the journal's hard #16/#22
+lesson is that un-function-gated novelty income is drift-inflation (rewarding ID-tags / functionless variation).
+Mean-centred opcode-novelty can't do that: it only gives explorers a relative edge, and REAL selection (the
+niche economy, biotic pressure, survival) then keeps or discards them. Novelty is raw MATERIAL fed to the
+ratchet, not fitness handed out for being different. #11 already showed this lever produces a real
+VM-exploration signal; #34 makes it default-on and aims its pull at the genuinely-unexplored opcodes.
+
+**Honest status — shipped on design; harness can't validate it (and that's expected).** Clean boot, zero
+errors, no instability. distinctOps slope = 0 at 4k ticks — genotype exploration is SLOW (opCum's EMA moves
+over thousands of ticks; new opcodes spread over many generations), so a short headless run can't show it, and
+chasing it in the harness would be the exact safe-space mistake. The real signal lives in a LONG live export:
+the `co` (opcodes-used) breadth, `liveAtoms`/authored-atom count, and distinct-opcode count over a real run with
+OPCODE_NOVELTY on vs the historical ~20. If a future export shows opcode breadth climbing above ~20, the museum
+lights are coming on; if it stays flat, the pull is too weak (raise OPNOV_STRENGTH) or mutation isn't
+introducing new opcodes fast enough (a mutation-operator swing, not a reward swing). Mean-centred = safe to run
+live while we wait for that data.

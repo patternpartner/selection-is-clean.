@@ -17259,6 +17259,7 @@ const pNicheRaw=new Float32Array(CAP);            // per-organism resource captu
 const pDietBin=new Int16Array(CAP);               // per-organism diet channel this tick
 const opFreq=new Float32Array(256);               // opcode frequency among living programs
 let opFreqTotal=0;
+const opCum=new Float32Array(256);                // swing #34: slow EMA of each opcode's usage SHARE over history (a never-explored opcode stays ≈0 → maximally novel; sustains pressure into the unused program space, not just current rarity)
 for(let _b=0;_b<NICHE_BINS;_b++){ nicheAbiotic[_b]=NICHE_ABIOTIC*Math.pow(NICHE_TAPER,_b); nicheAbioticReal[_b]=NICHE_REAL_SUPPLY*Math.pow(NICHE_REAL_TAPER,_b); }
 nicheRes.fill(0.3);
 // Diet channel and specialisation half-width derive from the heritable tendency axis.
@@ -17330,6 +17331,7 @@ if(typeof globalThis!=='undefined'){
                __MUTUALISM:0,                                       // mutualism #32 — DORMANT (default off): the 3-seed A/B vs the validated #28-30 base was a WASH (entRatio avg 0.82 vs 0.84; regression on seed 99) — it doesn't earn default-on on standing-diversity metrics. Code+knob kept; the +/+ interaction's payoff (proto-symbiosis structure) needs a turnover instrument the harness lacks. Force on with MUTUALISM=1
                __RQ_TRAIT:0,                                        // coevolutionary kernel #31 — DORMANT (default off): same A/B wash as #32 (neutral-to-slightly-worse vs #28-30 index-stride base) — the trait-relational arms race doesn't beat the fixed graph on standing diversity (its real signature, predator-prey trait cycling, is unmeasured here). Code+knob kept; force on with RQ_TRAIT=1. Falls back to validated #28 predation
                __RED_QUEEN:1,                                       // biotic / Red Queen #28 — conserved, frequency-dependent predation over the live N-dim cells: predators in cell C draw a zero-sum amp transfer from prey cell C+stride. "Kill the winner" (common prey predated hard, rare protected) promotes coexistence; prey escape only by crossing a cell boundary, so predation SELECTS for divergence. The unbounded (biotic) niche engine the abiotic arc #11–#27 could never reach
+               __OPCODE_NOVELTY:1,                                  // genotypic open-endedness #34 — the genetic complement to the ecological engines: mean-centred (zero-sum, no inflation) reward for running opcodes the population has HISTORICALLY under-explored (opCum EMA), turning the lights on in the ~20/256-opcode "museum". Real selection then keeps or discards the explorers — novelty is raw material, not fitness-by-fiat
                __CHAR_DISP:0 };                                     // character displacement #27 — DORMANT (default off): the matched A/B (seed 7, 6k) showed it NET-HARMFUL to diversity (entropyRatio 0.67 vs control 0.74; evenness 0.61 vs 0.70) — rate 0.0015 OVER-spaces lineages toward the trait-space edges instead of letting more coexist. Code+knob kept for a re-tune (gentler rate, or gate on same-niche-cell overlap not raw trait distance); force on with CHAR_DISP=1
   for(const k in LIVE) if(globalThis[k]===undefined) globalThis[k]=LIVE[k];
 }
@@ -17678,15 +17680,21 @@ function applyNicheEconomy(){
     for(let i=0;i<N;i++){ if(!palive[i])continue; const c=pDietBin[i], a=amp[i]>0?amp[i]:0; amp[i]+=a*(nichePredGain[c]-nichePreyLoss[c]); }
   }
 
-  // ── LEVER 3: opcode-novelty (break the coupling gap) ─────────────────────
+  // ── LEVER 3: opcode-novelty — GENOTYPIC open-endedness (swing #34: cumulative-innovation weighting) ─────────
+  // The genetic complement to the ecological engines: the VM "museum" runs ~20 of 256 opcodes. Reward running
+  // opcodes the population has HISTORICALLY under-explored (opCum, a slow EMA of usage share), not just
+  // currently-rare ones — so the pull is sustained into the unused space and a never-tried opcode is maximally
+  // novel. Stays MEAN-CENTRED (zero-sum): novelty cannot inflate amp by fiat (the #16/#22 ID-drift trap); it
+  // only re-weights a fixed pool toward genotypic explorers, whom real selection then keeps or discards.
   if(NOV){
     if(opFreqTotal===0 || tick%OPNOV_INTERVAL===0){ opFreq.fill(0); opFreqTotal=0;
       for(let i=0;i<N;i++){ if(!palive[i])continue; const pr=pProg[i]; if(!pr)continue;
-        for(let q=0;q<pr.length;q++){ const op=pr[q][0]|0; if(op>=0&&op<256){ opFreq[op]++; opFreqTotal++; } } } }
+        for(let q=0;q<pr.length;q++){ const op=pr[q][0]|0; if(op>=0&&op<256){ opFreq[op]++; opFreqTotal++; } } }
+      if(opFreqTotal>0) for(let op=0;op<256;op++) opCum[op]=opCum[op]*0.98+(opFreq[op]/opFreqTotal)*0.02; } // history of usage share
     if(opFreqTotal>0){
       let sumNov=0, cnt=0;
       for(let i=0;i<N;i++){ if(!palive[i])continue; const pr=pProg[i]; let s=0,n=0;
-        if(pr) for(let q=0;q<pr.length;q++){ const op=pr[q][0]|0; if(op>=0&&op<256){ s+=1-opFreq[op]/opFreqTotal; n++; } }
+        if(pr) for(let q=0;q<pr.length;q++){ const op=pr[q][0]|0; if(op>=0&&op<256){ s+=1-Math.min(1,opCum[op]*256); n++; } } // opCum·256 = usage share ×#opcodes; rare/never-explored → ~0 → novelty ~1
         const sc=n>0?s/n:0; pNicheRaw[i]=sc; sumNov+=sc; cnt++; } // reuse pNicheRaw as scratch (frontier already consumed it)
       const meanNov=cnt>0?sumNov/cnt:0;
       if(meanNov>1e-9) for(let i=0;i<N;i++){ if(!palive[i])continue; amp[i]+=OPNOV_STRENGTH*Math.max(-1,Math.min(1, pNicheRaw[i]/meanNov-1)); }
