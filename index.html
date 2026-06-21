@@ -7389,17 +7389,6 @@ function attemptClusterBudding(){
       vy[pi]+=(by-py[pi])*0.003;
     }
 
-    // SWING #33 instrument (__BUD_INSTR): record each bud's PARENT role-diversity (distinct niche-cells among all
-    // members) and DAUGHTER role-diversity (distinct cells among the budded slice). With GROUP_ROLES on, budding
-    // colonies should be MORE role-diverse (selection working); daughter vs parent shows how much Part 2 is owed.
-    if(typeof globalThis!=='undefined'&&(globalThis.__BUD_INSTR|0)===1){
-      const _pc=new Set(); for(const _cd of candidates) _pc.add(nicheCellOf(_cd.idx));
-      const _dc=new Set(); for(const _pi of budded) _dc.add(nicheCellOf(_pi));
-      globalThis.__budEvents=(globalThis.__budEvents||0)+1;
-      globalThis.__budParentRoleSum=(globalThis.__budParentRoleSum||0)+_pc.size;
-      globalThis.__budDaughterRoleSum=(globalThis.__budDaughterRoleSum||0)+_dc.size;
-    }
-
     // METABOLIC COST — budding is expensive for both parent and daughter
     // Pe22f: parent retention factor is heritable (metabolicBias). Daughter pays a derived cost.
     for(let i=0;i<N;i++){
@@ -7480,14 +7469,22 @@ function attemptClusterBudding(){
     addShock(bx,by,0.5,r,g,b_);
     addShock(c.cx,c.cy,0.3,r*0.7,g*0.7,b_*0.7);
 
+    // SWING #33 — record this bud's role-diversity into the live event log so a real export can VALIDATE the
+    // major transition (the headless harness can't: budding never fires there). pr = distinct niche-cells among
+    // the parent colony's members; dr = distinct cells in the budded daughter slice. With GROUP_ROLES on, pr of
+    // budding colonies should trend higher (selection working); dr vs pr shows how much daughters inherit it.
+    let _pr=0,_dr=0; { const _ps=new Set(); for(const _cd of candidates)_ps.add(nicheCellOf(_cd.idx)); _pr=_ps.size;
+      const _ds=new Set(); for(const _pi of budded)_ds.add(nicheCellOf(_pi)); _dr=_ds.size; }
+    if(typeof globalThis!=='undefined'&&(globalThis.__BUD_INSTR|0)===1){ globalThis.__budEvents=(globalThis.__budEvents||0)+1;
+      globalThis.__budParentRoleSum=(globalThis.__budParentRoleSum||0)+_pr; globalThis.__budDaughterRoleSum=(globalThis.__budDaughterRoleSum||0)+_dr; }
     // Record in lineage
     genome.lineage.push({
       t:genome.totalTicks,event:'bud',
       parentSize:c.size,daughterSize:budded.length,
-      parentAge:c.persistAge
+      parentAge:c.persistAge,parentRole:_pr,daughterRole:_dr
     });
     if(genome.lineage.length>6)genome.lineage.shift();
-    recordEvent('cluster_bud',{p:c.size,d:budded.length,a:c.persistAge},300);
+    recordEvent('cluster_bud',{p:c.size,d:budded.length,a:c.persistAge,pr:_pr,dr:_dr},300);
   }
 
   // Rebuild lookup if any budding happened

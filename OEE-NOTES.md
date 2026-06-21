@@ -1310,3 +1310,29 @@ transition is NOT measurable in this headless harness at all (it needs the full 
 stubs don't reproduce), and #33's only valid test is a LIVE export with the instrument's questions asked of
 real bud events. The instrument is then still the right artifact — it just has to be pointed at live data, not
 the harness. (Recorded so the next session doesn't re-derive that the harness can't see the group layer.)
+
+## Instrument (#33 measurability) — the harness CAN'T drive the major transition; live event log now carries role-diversity
+
+Acting on the #33 blind spot. Built a bud-role-diversity instrument: each cluster bud records its PARENT
+role-diversity (distinct niche-cells among members) and DAUGHTER role-diversity (distinct cells in the budded
+slice). Added a `__GROUP_PROBE` knob that floors the bud thresholds (size 14→6, persistAge→3) so budding could
+fire in short headless runs, and harness reporting (`group_transition: {budEvents, meanParentRole,
+meanDaughterRole}`).
+
+**Finding: budding NEVER fires in the headless harness, even floored.** GROUP_PROBE=1, BUD_INSTR=1, up to
+12000 ticks: budEvents=0 — despite 30 clusters forming. Clusters form but stay too small/transient (never
+reach size 6 AND persist 3 detection cycles simultaneously) in the canvas-stubbed environment. So the entire
+group-level / major-transition layer is STRUCTURALLY unmeasurable in this harness — it needs the full spatial
+dynamics the stubs don't reproduce. This is a real, confirmed limitation, not a tuning issue: the standing-
+diversity harness measures the particle level; the group level is invisible to it.
+
+**Resolution — measure it where it actually fires: the live artwork.** Bud events are already logged to the
+export event stream (`recordEvent('cluster_bud', …)`), and the t64548 export carried exactly that kind of log.
+So the instrument now writes `pr` (parent role-diversity) and `dr` (daughter role-diversity) into BOTH the
+cluster_bud event and the genome.lineage bud records — always-on, cheap (buds are rare). A future live export
+with GROUP_ROLES on will therefore CARRY the data to validate #33 directly: if budding colonies' `pr` trends
+above the population's typical colony role-diversity, group selection for division of labour is working; if
+`dr` ≪ `pr`, the daughter isn't inheriting it and Part 2 (sample bud members across niche-cells) is owed. The
+harness `group_transition` block + `__GROUP_PROBE` remain for any future harness that better reproduces
+clustering. Net: #33 went from "untestable, taken on faith" to "instrumented at the live layer where it fires"
+— the honest way to close the blind spot is to measure where the phenomenon lives, not to fake it headless.
