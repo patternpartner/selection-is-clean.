@@ -1336,3 +1336,16 @@ above the population's typical colony role-diversity, group selection for divisi
 harness `group_transition` block + `__GROUP_PROBE` remain for any future harness that better reproduces
 clustering. Net: #33 went from "untestable, taken on faith" to "instrumented at the live layer where it fires"
 — the honest way to close the blind spot is to measure where the phenomenon lives, not to fake it headless.
+
+## Swing #33 Part 2 (LIVE) — heritable division of labour: the daughter is a microcosm
+
+Completes the major transition. Part 1 (#33) rewards role-diverse colonies with more budding, but budding took
+a SPATIAL slice of the colony — a daughter need not inherit the parent's role-diversity (dr ≪ pr), so the trait
+could be injected but not ACCUMULATE across generations. Part 2: when `__GROUP_ROLES` is on, the budded members
+are chosen to SPAN niche-cells — bucket candidates by cell (each still in facing order), round-robin across
+buckets — so the daughter is a microcosm of the parent's ecosystem. Division of labour is now HERITABLE across
+the transition, not just a one-shot injection. This is the half that makes group-level selection cumulative:
+role-diverse colonies bud more (Part 1) AND pass their differentiation to daughters (Part 2) → the trait can
+climb. Non-harmful by construction (same member count moves, same energy; only WHICH members change). Clean
+boot. Validation, like all of #33, lives in the cluster_bud event log: a future GROUP_ROLES export should now
+show dr ≈ pr (daughters inheriting the parent's role-spread) where before Part 2 it would have been dr ≪ pr.

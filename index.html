@@ -7377,8 +7377,21 @@ function attemptClusterBudding(){
     const toMove=Math.min(targetSplit,candidates.length-3); // parent keeps at least 3
     if(toMove<3)continue; // not enough to form viable daughter
 
-    for(let m=0;m<toMove;m++){
-      const pi=candidates[m].idx;
+    // SWING #33 Part 2 — HERITABLE DIVISION OF LABOUR. Part 1 rewards role-diverse colonies with more budding,
+    // but a daughter that is just a spatial slice need not INHERIT that diversity (dr ≪ pr), so the trait can't
+    // accumulate. Here, when __GROUP_ROLES is on, choose the budded members to SPAN niche-cells: bucket candidates
+    // by cell (each bucket still in facing order) and round-robin across buckets. The daughter becomes a microcosm
+    // of the parent's ecosystem — role-diversity is now heritable across the major transition, not just injected.
+    let _chosen;
+    if(typeof globalThis!=='undefined'&&(globalThis.__GROUP_ROLES|0)===1){
+      const _byCell=new Map();
+      for(const _cd of candidates){ const _ce=nicheCellOf(_cd.idx); let _b=_byCell.get(_ce); if(!_b){_b=[];_byCell.set(_ce,_b);} _b.push(_cd.idx); }
+      _chosen=[]; const _lists=[..._byCell.values()]; let _prog=true;
+      while(_chosen.length<toMove&&_prog){ _prog=false;
+        for(const _l of _lists){ if(_l.length){ _chosen.push(_l.shift()); _prog=true; if(_chosen.length>=toMove)break; } } }
+    } else { _chosen=[]; for(let m=0;m<toMove;m++) _chosen.push(candidates[m].idx); }
+
+    for(const pi of _chosen){
       budded.push(pi);
       // PHYSICAL DISPLACEMENT — actually move particles toward bud site
       const pushStrength=0.4+Math.random()*0.3;
