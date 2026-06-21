@@ -1497,3 +1497,39 @@ more frequent + board climbing + dials moving + each recovery higher (open-ended
 bottoming lower + bursts thinning (slow wind-down). A t≈275k export (another 50k) decides it; verdict deferred
 until then. Lesson restated: the live artwork saw what the headless metric could not — exactly the earlier
 caution about over-trusting the harness.
+
+## VERDICT (gen12, t409596) — punctuation DAMPED to a stable attractor; meta-evolution turned OFF its own diversity-maintenance
+
+The growing-vs-damping question, answered by a ~410k-tick run (185k past gen11). **DAMPED.** After the last
+diversity burst (t200–210k, kinds→22), the system settled: t225k–410k holds divMean pinned at ~0.08–0.10 and
+SLOWLY DECLINING to ~0.063, kinds = 0 the entire 185k, population large and stable (climbing 280→651, pinned at
+651 for ~40k ticks of zero-churn stasis, one mild dip/recovery at t370k). The boom-bust the live view caught
+was the TAIL of the punctuated phase; it did not recur. The system found a stable, large, homogeneous attractor.
+
+**But the dials reveal WHY — and it's the session's deepest finding.** Meta-evolution (#35) is dynamic: the
+genome moved the engine dials substantially gen11→gen12, and one move is decisive —
+
+| dial | default | gen11 (t225k) | gen12 (t410k) |
+|---|---|---|---|
+| opnovStrength (#34 explore) | 0.0025 | 0.00207 | **0.00427** (↑) |
+| nicheBuildRate (#29 build) | 0.0006 | 0.00058 | **0.00119** (↑) |
+| rqRate (#28 predation) | 0.05 | 0.0552 | **0.00087** (↓ −98%) |
+| dimsSatThresh (#25 growth) | 24 | 11.18 | 19.42 (↑, back toward default) |
+
+**The system evolved predation to near-ZERO.** Predation is the #28 "kill-the-winner" force — the one mechanism
+that MAINTAINS diversity by taxing whatever dominates. Given control of its own rate, selection drove it to
+~2% of default. This is why it converged to monoculture: predation is CONSERVED (zero-sum) — it costs the
+predator-lineage and only benefits the commons (diversity), so it is not individually adaptive, and meta-
+evolution removed it. Classic evolutionary suicide / tragedy-of-the-commons: each lineage gains by predating
+less, collectively low predation → no winner-control → monoculture. The system selected AWAY from its own
+open-endedness because open-endedness wasn't individually selected.
+
+**This is the resolved answer to "why does it monoculture," and it indicts #35's design, productively:** making
+the diversity-MAINTAINING dial freely evolvable let selection switch it off. Two clean implications for next:
+(a) FLOOR rqRate (don't let predation evolve below, say, 0.03) — keep the diversity-maintenance non-negotiable
+while the other dials stay free; or (b) wire standing diversity into the fitness the dials are selected on, so
+maintaining variety is individually rewarded (group-selection-for-diversity). (a) is the cleaner test: if a
+floored predation rate keeps the boom-bust alive past t220k, the tragedy-of-the-commons reading is confirmed.
+Still alive underneath: board grew to td=13, gen 12, longestStable 1362→2488, dials actively evolving — an
+alive, evolving, but diversity-converged system. The piece didn't die; it found peace, which for an open-ended
+artwork is its own kind of failure.
