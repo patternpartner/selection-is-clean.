@@ -1533,3 +1533,27 @@ floored predation rate keeps the boom-bust alive past t220k, the tragedy-of-the-
 Still alive underneath: board grew to td=13, gen 12, longestStable 1362→2488, dials actively evolving — an
 alive, evolving, but diversity-converged system. The piece didn't die; it found peace, which for an open-ended
 artwork is its own kind of failure.
+
+## Swing #36 (LIVE) — FLOOR rqRate at 0.03: make diversity-maintenance non-negotiable
+
+The fix the gen11→12→14 data demanded. Three live exports proved the tragedy-of-the-commons: with predation
+freely evolvable, selection drove `rqRate` monotonically 0.0552 → 0.00087 → **−0.0011** (negative, clamped to
+0), and standing diversity died in lockstep — divMean bled to ~0.05, kinds=0 for 120k+ ticks, population frozen
+at exactly 500. Predation (#28 kill-the-winner) is the one force that MAINTAINS diversity by taxing the winner,
+but it is conserved (individually costly, benefits only the commons), so meta-evolution correctly — and fatally
+— switched it off. Open-endedness was not individually adaptive, so the system selected against it.
+
+**Change (one line in sanitizeGenome):** `rqRate` clamp floor 0 → **0.03** (range now [0.03, 0.15]). The other
+three dials (opnov, build, dimsSatThresh) stay fully free — only the diversity-maintaining one is held above a
+minimum. 0.03 is ~60% of the boom-bust-era rate (~0.055, which sustained the punctuated dynamics through
+t220k), enough to keep winner-control on. Selection will keep pushing below 0.03 and sanitize will keep clamping
+it back up each cadence — predation is now MAINTAINED against individual selection, which is the whole point.
+
+**This is the direct test of the diagnosis, with a falsifiable prediction.** Reload the artwork (a page reload
+re-runs sanitizeGenome on the saved genome, lifting its rqRate from ~0 up to the 0.03 floor) and run it past
+where this run flatlined. PREDICTION: if tragedy-of-the-commons was the cause, a floored predation rate revives
+the boom-bust — recurring diversity flourishes (kinds>0 episodes) instead of the frozen-500 monoculture, and
+divMean oscillating rather than pinned at 0.05. If diversity STAYS dead at 0.03 floored predation, the cause is
+elsewhere (predation too weak even at 0.03 — raise the floor; or the homogeniser/mate-finding is the binding
+term) and the commons reading is wrong. Either outcome resolves the deepest wall of the project. Clean boot,
+zero errors. Backward-compatible (old exports' rqRate just clamps up to 0.03 on load).
