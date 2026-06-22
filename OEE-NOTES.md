@@ -1565,3 +1565,37 @@ fell BELOW ~0.05 — so a 0.03 floor could sit under the revival threshold and p
 stays dead → "commons reading wrong", when really the floor was just too low). Floor now 0.05, the rate the
 system itself proved sustains the punctuated dynamics. Range [0.05, 0.15]; other three dials still free. The
 test is now valid: if floored-at-0.05 predation revives kinds>0 flourishes, tragedy-of-the-commons is confirmed.
+
+## #36 CONFIRMED (fresh floored run, gen1 t92k) — flooring predation PREVENTS the monoculture collapse
+
+The tragedy-of-the-commons test, run clean: fresh start (#reset), rqRate floored at 0.05, vs the free-evolving
+run as age-matched control. Head-to-head, same ticks, the window where the free run died (t55k–90k):
+
+| tick | floored kinds | free kinds |
+|---|---|---|
+| t50k | 3 | 2 |
+| t55k | 4 | 0 |
+| t60k | 8 | 0 |
+| t65k | 5 | 0 |
+| t70k | 6 | 0 |
+| t75k | 4 | 0 |
+| t80k | 4 | 1 |
+| t85k | 9 | 1 |
+| t90k | **19** | 0 |
+
+The free run flatlined to kinds=0 (monoculture) for 35k+ straight ticks; the floored run held kinds oscillating
+3–9 and flourished to 19. Mechanism confirmed: rqRate sits at 0.057 (held at the floor, NOT evolved to zero as
+the free run did, 0.055→0.0009→−0.001). Population swings 109–525 (punctuated dynamics alive, not the free
+run's frozen-500 stasis). x=0 extinctions; board grew to td=9. **This is the predicted result: the monoculture
+collapse was CAUSED by predation (the diversity-maintaining force) being individually maladaptive and evolving
+off; flooring it prevents the collapse.** The deepest wall of the whole #11–#36 arc — every prior swing hit it —
+is, on this evidence, cracked: not by adding a mechanism but by stopping selection from disabling the one
+already present.
+
+**Honest bounds (not the final word):** (1) only t92k — the free run's deepest lock was t90k–220k, so the
+floored run must clear past t220k to prove diversity HOLDS through the full danger zone, not just the entry to
+it. (2) divMean recording is inconsistent across these exports (null through most of the floored run, one
+reading 0.584 at t90k); the robust cross-run signal is `kinds` (distinct occupied bins), which is unambiguous:
+3–19 vs 0. (3) one run, one seed-equivalent. The result is strong and directional but wants the longer run to
+seal it. PREDICTION still live: if it clears t220k still throwing kinds>0 flourishes, the commons reading is
+fully confirmed and #36 is the fix.
