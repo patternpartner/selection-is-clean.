@@ -1668,3 +1668,32 @@ plateaus and diversity re-settles → NFD in program space just churns neutrally
 failed, and the honest conclusion is that this architecture equilibrates wherever you point the driver. Either
 result is worth more than the hype. The real risk, named: program-vocabulary may be too loosely coupled to
 survival for the pressure to produce FUNCTIONAL novelty rather than cosmetic opcode-shuffling.
+
+## Swing #38 (LIVE) — the EXPANDING VIABILITY FRONTIER: stop treating the niche space as fixed
+
+The real swing — and the admission that #37 wasn't one. #37 was the SAFE form of a bold idea (bounded,
+mean-centred, "can't break anything"); I optimized for not-breaking, which is the opposite of biggest-risk/
+biggest-gain. Its failure taught the actual lesson: in this system NOVELTY HAS NOWHERE VIABLE TO GO — trait
+dims are neutral (#16), program space is lethal (#37) — so every frontier is dead on arrival and the
+population settles. Reverting #37 (my reflex) just removes the pressure. We don't go back.
+
+**#38 attacks the root: make the niche space a MOVING FRONTIER instead of a fixed grid.** Every occupied
+niche-cell raises the resource of its trait-ADJACENT cells (one diet-bin away, each dimension), so the
+unexplored territory just beyond the living edge becomes habitable. Life pioneering a region opens the next
+one — ecological succession with no edge of the map, the first mechanism in this whole arc that is structurally
+UNBOUNDED (the frontier moves outward as fast as life advances). Deliberately NOT capped or decayed (the #29
+safety hedge stripped out): boost is full (FRONTIER_BOOST=0.06, ~1/3 of base supply), bounded only by NICHE_CAP
+per cell. Combinatorial-cell regime (DIMS≤grid). Knob `__FRONTIER_EXPAND`, default-on.
+
+**Paired with #37, not instead of it.** #37 is the PRESSURE (computationally-common costs survival); #38 is the
+VIABLE PLACE for that pressure to push. Together: drive toward novelty AND make novelty habitable as life
+reaches it. #37 stays on.
+
+**The named risk, accepted (this is the point):** an uncapped frontier can flood resource faster than life
+fills it → easy living everywhere near the edge → selection washes out → a spreading undifferentiated blob
+instead of succession. That is the failure mode and I did not hedge against it. Clean boot, no crash, entropy
+0.74 at 4k (with both #37+#38 on) — but the harness cannot see frontier dynamics. **The live run decides, and
+the signals are sharp:** does occupied-cell count keep CLIMBING (the frontier advancing) with diversity HELD or
+rising (succession) → the unbounded thing finally; or does occupancy saturate / resource flood and diversity
+flatten (blob) → the frontier washed out selection, lower FRONTIER_BOOST or gate it to under-occupied edges.
+Biggest risk taken for the biggest gain; the data, not the framing, says whether it worked.

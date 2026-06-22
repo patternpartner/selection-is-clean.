@@ -17203,6 +17203,7 @@ const NICHE_ND_DIMS=5;               // tendency dimensions used as diet coordin
 const NICHE_ND_BINS=6;               // bins per diet dimension (was 4 — coarse cells trapped divergence sub-bin, #22)
 const NICHE_ND_CELLS=7776;           // = NICHE_ND_BINS**NICHE_ND_DIMS (6^5)
 const NICHE_ND_SUPPLY=0.18;          // per-cell supply/tick (lone occupant ≈0.009 amp/tick; empty cell builds a colonisation bonus) — UNCHANGED: income tracks occupancy, not cell count
+const FRONTIER_BOOST=0.06;           // swing #38: resource added per tick to each trait-neighbour of an occupied cell — makes the unexplored edge viable (≈1/3 of base supply, deliberately strong; uncapped except by NICHE_CAP)
 const NICHE_ND_OFFSET=37;            // cross-feed cell stride (prime, coprime to 7776=2^5·3^5 → reaches every cell)
 // LOCAL COMPETITION — swing #14. Per-niche income alone still lets one fast cell flood the world,
 // because death/crowding is GLOBAL. Here crowding your OWN diet-cell costs amplitude, so each cell
@@ -17377,6 +17378,7 @@ if(typeof globalThis!=='undefined'){
                __MUTUALISM:0,                                       // mutualism #32 — DORMANT (default off): the 3-seed A/B vs the validated #28-30 base was a WASH (entRatio avg 0.82 vs 0.84; regression on seed 99) — it doesn't earn default-on on standing-diversity metrics. Code+knob kept; the +/+ interaction's payoff (proto-symbiosis structure) needs a turnover instrument the harness lacks. Force on with MUTUALISM=1
                __RQ_TRAIT:0,                                        // coevolutionary kernel #31 — DORMANT (default off): same A/B wash as #32 (neutral-to-slightly-worse vs #28-30 index-stride base) — the trait-relational arms race doesn't beat the fixed graph on standing diversity (its real signature, predator-prey trait cycling, is unmeasured here). Code+knob kept; force on with RQ_TRAIT=1. Falls back to validated #28 predation
                __RED_QUEEN:1,                                       // biotic / Red Queen #28 — conserved, frequency-dependent predation over the live N-dim cells: predators in cell C draw a zero-sum amp transfer from prey cell C+stride. "Kill the winner" (common prey predated hard, rare protected) promotes coexistence; prey escape only by crossing a cell boundary, so predation SELECTS for divergence. The unbounded (biotic) niche engine the abiotic arc #11–#27 could never reach
+               __FRONTIER_EXPAND:1,                                 // EXPANDING VIABILITY FRONTIER #38 (the real big swing) — every occupied niche-cell makes its trait-ADJACENT cells viable, so the unexplored edge comes alive as life reaches it: an ever-moving frontier, ecological succession with no edge of the map. Uncapped (no #29-style safety); risk: floods faster than life fills → washes out selection. Pairs with #37 (the pressure) by giving novelty somewhere VIABLE to go
                __GENO_PARASITE:1,                                   // genotype-NFD #37 (GIANT LEAP attempt) — negative-frequency-dependence on PROGRAM-vocabulary signature, not trait-bin: being computationally common costs survival, rare program-vocabularies pay, so the population is driven to keep exploring the UNBOUNDED program space (which cannot saturate like the finite trait/niche space that forced every prior equilibrium). Same proven-safe NFD form. Honest: an attempt at the unbounded, not a guarantee
                __OPCODE_NOVELTY:1,                                  // genotypic open-endedness #34 — the genetic complement to the ecological engines: mean-centred (zero-sum, no inflation) reward for running opcodes the population has HISTORICALLY under-explored (opCum EMA), turning the lights on in the ~20/256-opcode "museum". Real selection then keeps or discards the explorers — novelty is raw material, not fitness-by-fiat
                __CHAR_DISP:0 };                                     // character displacement #27 — DORMANT (default off): the matched A/B (seed 7, 6k) showed it NET-HARMFUL to diversity (entropyRatio 0.67 vs control 0.74; evenness 0.61 vs 0.70) — rate 0.0015 OVER-spaces lineages toward the trait-space edges instead of letting more coexist. Code+knob kept for a re-tune (gentler rate, or gate on same-niche-cell overlap not raw trait distance); force on with CHAR_DISP=1
@@ -17625,6 +17627,23 @@ function applyNicheEconomy(){
       if(BUILD){ if(nicheCellOcc[c]>0){ const b=nicheCellBuilt[c]+(genome.nicheBuildRate??NICHE_BUILD_RATE); nicheCellBuilt[c]=b<NICHE_BUILD_MAX?b:NICHE_BUILD_MAX; } else nicheCellBuilt[c]*=NICHE_BUILD_DECAY; sup+=nicheCellBuilt[c]; } // nicheCellOcc still holds LAST tick's count here (reset below); rate is evolvable (#35)
       nicheCellRes[c]=Math.min(NICHE_CAP, nicheCellRes[c]*NICHE_PERSIST + sup*_season); nicheCellOcc[c]=0; nicheCellCross[c]=0; }
     for(let i=0;i<N;i++){ if(!palive[i])continue; const c=nicheCellOf(i); pDietCell[i]=c; nicheCellOcc[c]++; }
+    // ═══ SWING #38: THE EXPANDING VIABILITY FRONTIER — life builds the ground in front of itself ═══════════
+    // The root failure (every prior swing): novelty has nowhere VIABLE to go. The niche space is a FIXED grid
+    // that saturates → an optimum → equilibrium. #38 makes it a moving frontier: every occupied cell raises the
+    // resource of its trait-ADJACENT (one diet-bin away) cells, so the unexplored territory just beyond the
+    // living edge becomes habitable. Life pioneering a region opens the next region; there is no edge of the
+    // map. Ecological succession with no ceiling. NOT capped/decayed for safety (the #29 hedge) — boost is full
+    // and only NICHE_CAP bounds a single cell; the risk (named, accepted) is that it floods faster than life
+    // fills it and washes out selection into a spreading blob. Combinatorial-cell regime only (DIMS≤grid).
+    if(typeof globalThis!=='undefined'&&(globalThis.__FRONTIER_EXPAND|0)===1 && DIMS<=NICHE_ND_DIMS){
+      const FB=FRONTIER_BOOST, SPD=DIMS<NICHE_ND_DIMS?DIMS:NICHE_ND_DIMS;
+      for(let c=0;c<NICHE_ND_CELLS;c++){ if(nicheCellOcc[c]<=0)continue;
+        let pw=1;
+        for(let d=0;d<SPD;d++){ const q=(Math.floor(c/pw))%NICHE_ND_BINS;
+          if(q>0){ const nc=c-pw; nicheCellRes[nc]=Math.min(NICHE_CAP,nicheCellRes[nc]+FB); }
+          if(q<NICHE_ND_BINS-1){ const nc=c+pw; nicheCellRes[nc]=Math.min(NICHE_CAP,nicheCellRes[nc]+FB); }
+          pw*=NICHE_ND_BINS; } }
+    }
     // harvest: occupants of a cell split its take equally (each cell its own carrying capacity); REAL income; cross-feed to an offset cell
     const LOCAL=(typeof globalThis!=='undefined'&&(globalThis.__NICHE_LOCAL|0)===1); // swing #14: per-cell crowding cost
     for(let i=0;i<N;i++){ if(!palive[i])continue; const c=pDietCell[i], occ=nicheCellOcc[c]; if(occ<=0)continue;
