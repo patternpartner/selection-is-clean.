@@ -1599,3 +1599,42 @@ reading 0.584 at t90k); the robust cross-run signal is `kinds` (distinct occupie
 3–19 vs 0. (3) one run, one seed-equivalent. The result is strong and directional but wants the longer run to
 seal it. PREDICTION still live: if it clears t220k still throwing kinds>0 flourishes, the commons reading is
 fully confirmed and #36 is the fix.
+
+## #36 CONFIRMED (floored run cleared the deep zone, gen1 t160k) — the monoculture wall is cracked
+
+The floored run ran straight through t90k–160k — the exact window the free run spent as a frozen monoculture
+(kinds=0, divMean dead, every sample). Result, age-matched:
+
+| tick | floored kinds / divMean | free kinds / divMean |
+|---|---|---|
+| t90k | 19 / 0.584 | 0 / null |
+| t100k | 24 / 0.636 | 0 / null |
+| t120k | 10 / 0.609 | 0 / null |
+| t140k | 4 / 0.660 | 0 / null |
+| t160k | 4 / 0.602 | 0 / null |
+
+divMean held ~0.65 for 70k ticks through the dead zone; the free run was flat-zero the whole time. **The
+tragedy-of-the-commons diagnosis is confirmed: the monoculture collapse was caused by predation (the
+diversity-maintaining force) being evolved off, and flooring it prevents the collapse.** The deepest wall of
+the #11–#36 arc — every prior swing crashed into it — is cracked, by stopping selection from disabling the
+engine already present rather than by adding a new one.
+
+**Three honest wrinkles:**
+1. **It settles to STABLE diversity, not ever-growing.** kinds peaked ~24 (t100k) then declined and plateaued
+   at ~3–4 (t130k–160k), while divMean stayed rock-stable at ~0.66. So it's a stable, even coexistence of a few
+   very distinct types — a living diverse community (vs the free run's single type), but a maintained
+   equilibrium, not unbounded radiation. If divMean were crashing too it'd signal a slow slide to monoculture;
+   it isn't, so this reads as equilibrium, not decline. (Watch whether kinds holds at ~4 past t160k.)
+2. **rqRate EVOLVED UP to 0.070 — above the 0.05 floor, which isn't even binding.** Strong hint that the floor's
+   real job was to break a VICIOUS CYCLE (collapsing diversity → predation becomes costly → evolved down →
+   more collapse). Once the floor keeps the system in the diverse basin, predation is selected UP on its own —
+   it's beneficial in a diverse world. So the floor may only need to prevent the INITIAL fall, not fight
+   selection forever. (One datapoint; a "lower floor / temporary floor" experiment would test it.)
+3. **We traded drama for stability.** gen1, x=0 — NO mass extinctions, no resets (the free run hit gen11 with
+   repeated extinction cascades AND monoculture). Floored predation gives BOTH stability and diversity, but the
+   dramatic boom-bust flourishes are gone — that punctuation was partly the system thrashing toward collapse.
+   Calmer and more alive; less explosive. An aesthetic choice now lives here, not a correctness one.
+
+**Status: confirmed with high confidence.** 70k ticks of sustained diversity through the control's dead zone is
+decisive; running to ~t220k+ would be the final formality. The arc's central question — why open-endedness
+collapses — is answered (it's not individually adaptive) and the one-line fix is validated on the live artwork.
