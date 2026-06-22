@@ -1697,3 +1697,35 @@ the signals are sharp:** does occupied-cell count keep CLIMBING (the frontier ad
 rising (succession) → the unbounded thing finally; or does occupancy saturate / resource flood and diversity
 flatten (blob) → the frontier washed out selection, lower FRONTIER_BOOST or gate it to under-occupied edges.
 Biggest risk taken for the biggest gain; the data, not the framing, says whether it worked.
+
+## BUGFIX — fitness NaN (long-standing, NOT a swing): stale motif vector read past its length after DIMS growth
+
+User reported the live HUD fitness had been NaN "for some time." Diagnosed with a deterministic headless probe
+(scratchpad/nanhunt.js) rather than guesswork. Findings, in order:
+
+- **The NaN is a one-way trap.** `currentFitness = currentFitness*0.9 + fitness*0.1` — a single non-finite
+  sample poisons the EMA permanently. So it presents as "NaN forever," not a flicker. It also feeds the
+  op91/op92 self-fitness VM sensors and credit-assignment, so it is not merely cosmetic.
+- **NOT caused by #37/#38.** Frontier-on and frontier-off both went NaN at the same tick (3220 vs 3215, seed 7).
+  My earlier suspicion that the recent swings caused it was wrong; this bug predates them. (Recent `divMean`
+  readings were therefore NaN-garbage, but integer `kinds` readings and the pre-#37 tragedy-of-the-commons
+  finding stand — those exports had finite fitness.)
+- **Root cause:** a parentless reseed builds a tendency from a stored stable-motif vector:
+  `tv[d] = motif.t[d] + noise`. The dimensionality ratchet grows DIMS (5→6), but stored `motif.t` vectors are
+  NOT extended, so `motif.t[newDim]` is `undefined` → `undefined + number = NaN` → the reseeded particle is born
+  with a NaN tendency → poisons `clusterDiversity()` → `selfModel.diversity` → the fitness EMA.
+- **Amplifier:** every clamp in the codebase uses `x<lo?lo:x>hi?hi:x` / `Math.max/min`, which catch ±Infinity
+  but PASS NaN THROUGH (all comparisons with NaN are false). So once created, a NaN propagated unclamped.
+
+**Fixes (defensive at the chokepoints + the true source):**
+- `addParticle`/`addCompound`: never born with a non-finite tendency (per-dim finite guard).
+- Motif reads (reseed `tv` and cluster-similarity `sim`): treat missing post-growth dims as 0.
+- VM register clamps (9 sites) + the evolvable instruction immediate `k` + `tbleed` + `tend[+4]` writes:
+  made NaN-safe (`Number.isFinite` guard) so no future source can leak a NaN past a clamp.
+- `clusterDiversity()` returns 0 instead of NaN; the fitness EMA skips a non-finite sample instead of being
+  poisoned by it.
+
+Verified: deterministic probe runs clean 5000 ticks (seeds 7 & 42), past the old tick-3220 failure, with zero
+non-finite values in amp/tend/nicheCellRes/diversity/currentFitness. Lesson worth keeping: **the clamp idiom in
+this codebase silently leaks NaN, and any vector captured before a DIMS-growth event is stale when read at the
+new width.**

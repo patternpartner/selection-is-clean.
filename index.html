@@ -8225,7 +8225,7 @@ function profileVM(){
 
     for(let ip=0,_prs=0;ip<nInst&&_prs<nInst*2;ip++,_prs++){
       const inst=prog[ip];if(!inst)continue;
-      const [op,src,dst,k]=inst;
+      const [op,src,dst,_k0]=inst; const k=Number.isFinite(_k0)?_k0:0; // NaN-FIX: k is an evolvable instruction immediate; a NaN here flows through case-4 (vmActions+=vmRegs*k) past the register clamp into amp/tend and poisons the fitness EMA.
       const si=Math.abs(src)%12,di=Math.abs(dst)%12;
       switch(op){
         case 0:vmRegs[di]=vmRegs[si];break;
@@ -8967,7 +8967,7 @@ function profileVM(){
           if(_bua) vmRegs[di]=uaCall(_bua,vmRegs[si],vmRegs[(si+1)%12]);
         }
       }
-      for(let r=0;r<12;r++){const _v=vmRegs[r];vmRegs[r]=_v<-8?-8:_v>8?8:_v;}
+      for(let r=0;r<12;r++){const _v=vmRegs[r];vmRegs[r]=Number.isFinite(_v)?(_v<-8?-8:_v>8?8:_v):0;}
     }
 
     for(let a=0;a<7;a++)totals[a]+=vmActions[a];
@@ -9083,7 +9083,7 @@ function evaluateSensors(useRealWeight){
     let sensorEmit=0; // Pe25 Layer 15: raw (un-weighted) output for credit signal
 
     for(const inst of sensor.program){
-      const[op,src,dst,k]=inst;
+      const[op,src,dst,_k0]=inst; const k=Number.isFinite(_k0)?_k0:0;
       const si=Math.abs(src)%16,di=Math.abs(dst)%16;
       switch(op){
         case 0:regs[di]=regs[si];break;
@@ -9097,7 +9097,7 @@ function evaluateSensors(useRealWeight){
           break;
         }
       }
-      for(let r=0;r<16;r++){const _v=regs[r];regs[r]=_v<-8?-8:_v>8?8:_v;}
+      for(let r=0;r<16;r++){const _v=regs[r];regs[r]=Number.isFinite(_v)?(_v<-8?-8:_v>8?8:_v):0;}
     }
     if(useRealWeight)sensor.lastEmit=sensorEmit; // Pe25 Layer 15
   }
@@ -11182,7 +11182,8 @@ function clusterDiversity(){
       pairs++;
     }
   }
-  return pairs>0?Math.min(1,totalDist/pairs):0;
+  const dv=pairs>0?Math.min(1,totalDist/pairs):0;
+  return Number.isFinite(dv)?dv:0; // never surface NaN (a transient non-finite centroid must not poison the diversity reading)
 }
 
 // ═══════════════════════════════════════
@@ -11450,7 +11451,7 @@ function addParticle(x,y,tv,born,parentA,parentB){
   const i=N++;
   px[i]=x;py[i]=y;
   vx[i]=(Math.random()-.5)*(born?2:.3);vy[i]=(Math.random()-.5)*(born?2:.3);
-  for(let d=0;d<DIMS;d++)tend[i*DIMS+d]=tv?tv[d]:0;
+  for(let d=0;d<DIMS;d++){const _t=tv?tv[d]:0; tend[i*DIMS+d]=Number.isFinite(_t)?_t:0;} // chokepoint: a particle must never be born with a non-finite tendency (stale pre-growth source vectors can carry NaN)
   phase[i]=Math.random()*Math.PI*2;freq[i]=0.02+Math.random()*0.04;
   amp[i]=born?0.5:0.3+Math.random()*0.5;
   palive[i]=1;page[i]=0;localRes[i]=0;collapse[i]=0;clusterID[i]=-1;
@@ -11501,7 +11502,7 @@ function addCompound(x,y,nt,nvx,nvy,na,np,nf,parentA,parentB){
   if(parentA>=0){ if(worldEnergy<BIRTH_ENERGY_COST)return-1; worldEnergy-=BIRTH_ENERGY_COST; }
   const i=N++;
   px[i]=x;py[i]=y;vx[i]=nvx;vy[i]=nvy;
-  for(let d=0;d<DIMS;d++)tend[i*DIMS+d]=nt[d];
+  for(let d=0;d<DIMS;d++){const _t=nt[d]; tend[i*DIMS+d]=Number.isFinite(_t)?_t:0;} // chokepoint: never born with a non-finite tendency
   phase[i]=np;freq[i]=nf;amp[i]=na;
   palive[i]=1;page[i]=0;localRes[i]=0;collapse[i]=0;clusterID[i]=-1;
   pHomeX[i]=x;pHomeY[i]=y;pResistance[i]=(parentA>=0&&parentA<N)?pResistance[parentA]*0.25:0;
@@ -11667,7 +11668,7 @@ function executeVM(i,j,sim,d){
     vmRegs[7]+=pReflexState[rBase+1]*reflexInf;
     vmRegs[8]+=pReflexState[rBase+2]*reflexInf;
     vmRegs[9]+=pReflexState[rBase+3]*reflexInf;
-    for(let r=6;r<=9;r++){const _v=vmRegs[r];vmRegs[r]=_v<-8?-8:_v>8?8:_v;}
+    for(let r=6;r<=9;r++){const _v=vmRegs[r];vmRegs[r]=Number.isFinite(_v)?(_v<-8?-8:_v>8?8:_v):0;}
   }
 
   // Pe38 Layer 27: signal role register. Net emitter/listener position feeds into vmRegs[10]
@@ -11706,7 +11707,7 @@ function executeVM(i,j,sim,d){
 
   for(let ip=0,_vs=0;ip<nInst&&_vs<nInst*2;ip++,_vs++){
     const inst=prog[ip];if(!inst)continue;
-    const [op,src,dst,k]=inst;
+    const [op,src,dst,_k0]=inst; const k=Number.isFinite(_k0)?_k0:0; // NaN-FIX: k is an evolvable instruction immediate; a NaN here flows through case-4 (vmActions+=vmRegs*k) past the register clamp into amp/tend and poisons the fitness EMA.
     const si=Math.abs(src)%12,di=Math.abs(dst)%12;
 
     switch(op){
@@ -13748,7 +13749,7 @@ function executeVM(i,j,sim,d){
         if(_bua) vmRegs[di]=uaCall(_bua,vmRegs[si],vmRegs[(si+1)%12]);
       }
     }
-    for(let r=0;r<12;r++){const _v=vmRegs[r];vmRegs[r]=_v<-8?-8:_v>8?8:_v;}
+    for(let r=0;r<12;r++){const _v=vmRegs[r];vmRegs[r]=Number.isFinite(_v)?(_v<-8?-8:_v>8?8:_v):0;}
   }
 
   const bond=sim*phaseAlign*proximity;
@@ -14847,7 +14848,7 @@ function executeVM(i,j,sim,d){
           if(_bua) vmRegs[di]=uaCall(_bua,vmRegs[si],vmRegs[(si+1)%12]);
         }
       }
-      for(let r=0;r<12;r++){const _v=vmRegs[r];vmRegs[r]=_v<-8?-8:_v>8?8:_v;}
+      for(let r=0;r<12;r++){const _v=vmRegs[r];vmRegs[r]=Number.isFinite(_v)?(_v<-8?-8:_v>8?8:_v):0;}
     }
     amp[i]-=nPi*genome.metabolicCost*0.5;
   }
@@ -14899,7 +14900,8 @@ function executeVM(i,j,sim,d){
   if(Math.abs(tbleed)>0.000001){
     for(let dd=0;dd<DIMS;dd++){
       const diff=(tend[j*DIMS+dd]-tend[i*DIMS+dd])*tbleed;
-      tend[i*DIMS+dd]+=diff;tend[j*DIMS+dd]-=diff;
+      let _vi=tend[i*DIMS+dd]+diff, _vj=tend[j*DIMS+dd]-diff;   // NaN-FIX: tbleed is an evolvable VM term; an unbounded/non-finite tbleed runs tend → ±Infinity/NaN (poisoning clusterDiversity → the fitness EMA permanently). Clamp to ±1.2 like every other tend writer, finite-safe (a bare <,> clamp lets NaN pass).
+      tend[i*DIMS+dd]=Number.isFinite(_vi)?(_vi<-1.2?-1.2:_vi>1.2?1.2:_vi):0; tend[j*DIMS+dd]=Number.isFinite(_vj)?(_vj<-1.2?-1.2:_vj>1.2?1.2:_vj):0;
     }
   }
 
@@ -14934,7 +14936,7 @@ function executeVM(i,j,sim,d){
 
   mutPressureAccum+=vmActions[6]*influence*0.0001;
 
-  if(DIMS>4){ tend[i*DIMS+4]+=vmActions[7]*influence*0.01; tend[i*DIMS+4]=Math.max(-1,Math.min(1,tend[i*DIMS+4])); }
+  if(DIMS>4){ tend[i*DIMS+4]+=vmActions[7]*influence*0.01; { const _v4=tend[i*DIMS+4]; tend[i*DIMS+4]=Number.isFinite(_v4)?Math.max(-1,Math.min(1,_v4)):0; } }
 }
 
 function executeClusterVM(i,j,sim,d){
@@ -14972,7 +14974,7 @@ function executeClusterVM(i,j,sim,d){
     vmRegs[9]+=cl.clusterGenome.innovationRate*cgr;
     vmRegs[10]+=cl.clusterGenome.metabolicBias*cgr;
     vmRegs[11]+=cl.clusterGenome.splitFraction*cgr;
-    for(let r=8;r<=11;r++)vmRegs[r]=Math.max(-8,Math.min(8,vmRegs[r]));
+    for(let r=8;r<=11;r++){const _v=vmRegs[r];vmRegs[r]=Number.isFinite(_v)?Math.max(-8,Math.min(8,_v)):0;}
   }
 
   vmActions[0]=0;vmActions[1]=0;vmActions[2]=0;vmActions[3]=0;vmActions[4]=0;vmActions[5]=0;vmActions[6]=0;vmActions[7]=0;
@@ -14982,7 +14984,7 @@ function executeClusterVM(i,j,sim,d){
 
   for(let ip=0,_cs=0;ip<nInst&&_cs<nInst*2;ip++,_cs++){
     const inst=prog[ip];if(!inst)continue;
-    const [op,src,dst,k]=inst;
+    const [op,src,dst,_k0]=inst; const k=Number.isFinite(_k0)?_k0:0; // NaN-FIX: k is an evolvable instruction immediate; a NaN here flows through case-4 (vmActions+=vmRegs*k) past the register clamp into amp/tend and poisons the fitness EMA.
     const si=Math.abs(src)%12,di=Math.abs(dst)%12;
     switch(op){
       case 0:vmRegs[di]=vmRegs[si];break;
@@ -16083,7 +16085,7 @@ function executeClusterVM(i,j,sim,d){
         if(_bua) vmRegs[di]=uaCall(_bua,vmRegs[si],vmRegs[(si+1)%12]);
       }
     }
-    for(let r=0;r<12;r++){const _v=vmRegs[r];vmRegs[r]=_v<-8?-8:_v>8?8:_v;}
+    for(let r=0;r<12;r++){const _v=vmRegs[r];vmRegs[r]=Number.isFinite(_v)?(_v<-8?-8:_v>8?8:_v):0;}
   }
 
   const ddx=px[j]-px[i],ddy=py[j]-py[i];
@@ -16112,7 +16114,8 @@ function executeClusterVM(i,j,sim,d){
   if(Math.abs(tbleed)>0.000001){
     for(let dd=0;dd<DIMS;dd++){
       const diff=(tend[j*DIMS+dd]-tend[i*DIMS+dd])*tbleed;
-      tend[i*DIMS+dd]+=diff;tend[j*DIMS+dd]-=diff;
+      let _vi=tend[i*DIMS+dd]+diff, _vj=tend[j*DIMS+dd]-diff;   // NaN-FIX: tbleed is an evolvable VM term; an unbounded/non-finite tbleed runs tend → ±Infinity/NaN (poisoning clusterDiversity → the fitness EMA permanently). Clamp to ±1.2 like every other tend writer, finite-safe (a bare <,> clamp lets NaN pass).
+      tend[i*DIMS+dd]=Number.isFinite(_vi)?(_vi<-1.2?-1.2:_vi>1.2?1.2:_vi):0; tend[j*DIMS+dd]=Number.isFinite(_vj)?(_vj<-1.2?-1.2:_vj>1.2?1.2:_vj):0;
     }
   }
 
@@ -16140,7 +16143,7 @@ function executeClusterVM(i,j,sim,d){
 
   mutPressureAccum+=vmActions[6]*influence*0.00008;
 
-  if(DIMS>4){ tend[i*DIMS+4]+=vmActions[7]*influence*0.01; tend[i*DIMS+4]=Math.max(-1,Math.min(1,tend[i*DIMS+4])); }
+  if(DIMS>4){ tend[i*DIMS+4]+=vmActions[7]*influence*0.01; { const _v4=tend[i*DIMS+4]; tend[i*DIMS+4]=Number.isFinite(_v4)?Math.max(-1,Math.min(1,_v4)):0; } }
 
   const clCost=nInst*genome.metabolicCost*CLUSTER_VM_COST_SHARE;
   amp[i]-=clCost;amp[j]-=clCost;
@@ -16517,14 +16520,14 @@ function executeSoloVM(){
       vmRegs[7]+=pReflexState[rBase+1]*reflexInf;
       vmRegs[8]+=pReflexState[rBase+2]*reflexInf;
       vmRegs[9]+=pReflexState[rBase+3]*reflexInf;
-      for(let r=6;r<=9;r++){const _v=vmRegs[r];vmRegs[r]=_v<-8?-8:_v>8?8:_v;}
+      for(let r=6;r<=9;r++){const _v=vmRegs[r];vmRegs[r]=Number.isFinite(_v)?(_v<-8?-8:_v>8?8:_v):0;}
     }
 
     vmActions[0]=0;vmActions[1]=0;vmActions[2]=0;vmActions[3]=0;vmActions[4]=0;vmActions[5]=0;vmActions[6]=0;vmActions[7]=0;
 
     for(let ip=0,_ss=0;ip<nInst&&_ss<nInst*2;ip++,_ss++){
       const inst=prog[ip];if(!inst)continue;
-      const [op,src,dst,k]=inst;
+      const [op,src,dst,_k0]=inst; const k=Number.isFinite(_k0)?_k0:0; // NaN-FIX: k is an evolvable instruction immediate; a NaN here flows through case-4 (vmActions+=vmRegs*k) past the register clamp into amp/tend and poisons the fitness EMA.
       const si=Math.abs(src)%12,di=Math.abs(dst)%12;
       switch(op){
         case 0:vmRegs[di]=vmRegs[si];break;
@@ -16769,14 +16772,14 @@ function executeSoloVM(){
           if(_bua) vmRegs[di]=uaCall(_bua,vmRegs[si],vmRegs[(si+1)%12]);
         }
       }
-      for(let r=0;r<12;r++){const _v=vmRegs[r];vmRegs[r]=_v<-8?-8:_v>8?8:_v;}
+      for(let r=0;r<12;r++){const _v=vmRegs[r];vmRegs[r]=Number.isFinite(_v)?(_v<-8?-8:_v>8?8:_v):0;}
     }
 
     for(let m=0;m<MEM_SIZE;m++)pMem[i*MEM_SIZE+m]=vmRegs[4+m];
 
     vx[i]+=vmActions[0]*soloInfluence*0.5;
     vy[i]+=vmActions[1]*soloInfluence*0.5;
-    if(DIMS>4){ tend[i*DIMS+4]+=vmActions[7]*soloInfluence*0.01; tend[i*DIMS+4]=Math.max(-1,Math.min(1,tend[i*DIMS+4])); }
+    if(DIMS>4){ tend[i*DIMS+4]+=vmActions[7]*soloInfluence*0.01; { const _v4=tend[i*DIMS+4]; tend[i*DIMS+4]=Number.isFinite(_v4)?Math.max(-1,Math.min(1,_v4)):0; } }
     mutPressureAccum+=vmActions[6]*soloInfluence*0.00005;
     }finally{genome=_selfG;}
   }
@@ -17065,7 +17068,7 @@ function replenish(){
       if(clusters.length>0){
         let bestC=null,bestSim=-1;
         for(const c of clusters){
-          let sim=0;for(let d=0;d<DIMS;d++)sim+=c.tendency[d]*motif.t[d];
+          let sim=0;for(let d=0;d<DIMS;d++)sim+=c.tendency[d]*(motif.t[d]||0); // motif.t may be shorter than DIMS after a growth event; treat missing dims as 0
           if(sim>bestSim){bestSim=sim;bestC=c}
         }
         if(bestC&&bestSim>0.3){
@@ -17075,7 +17078,7 @@ function replenish(){
         }
       }
       const tv=new Float32Array(DIMS);
-      for(let d=0;d<DIMS;d++)tv[d]=motif.t[d]+(Math.random()-0.5)*0.15;
+      for(let d=0;d<DIMS;d++){const _mt=motif.t[d]; tv[d]=(Number.isFinite(_mt)?_mt:0)+(Math.random()-0.5)*0.15;} // NaN-FIX: motif.t was captured at a smaller DIMS; after the dimensionality ratchet grows the board, motif.t[newDim] is undefined → NaN floods a reseeded particle's tendency → poisons clusterDiversity → the fitness EMA.
       addParticle(spawnX,spawnY,tv,false);
     }else{
       const e=Math.random()*4|0;let x,y;
@@ -18253,7 +18256,7 @@ function loop(){
       (clusters.filter(c=>c.persistAge<2).length/Math.max(1,clusters.length))*w[3]+
       realSensorScore*realSensorWeight+
       predictionQuality*relW)/(wT+realSensorWeight+relW);
-    currentFitness=currentFitness*0.9+fitness*0.1;
+    if(Number.isFinite(fitness)) currentFitness=currentFitness*0.9+fitness*0.1; // guard: the EMA is a one-way NaN trap — a single non-finite sample would poison currentFitness forever (HUD, op91/op92 self-fitness sensors, credit-assignment). Skip a bad sample instead.
     // Pe108 Layer 97: derive smoothed velocity from per-tick currentFitness delta.
     // EMA factor 0.85/0.15 — slightly more responsive than currentFitness itself, so the
     // VM sees direction changes a bit before they're fully reflected in the level reading.
