@@ -547,6 +547,15 @@ let energyAdequacy=1;               // fraction of this tick's metabolic demand 
 // reason to use it. (Verified headless: stable, no extinction, carrying capacity preserved.)
 const TBINS=4, TCELLS=TBINS*TBINS*TBINS, NFD_STRENGTH=0.004;
 const tHist=new Int32Array(TCELLS);
+// SWING #37: negative-frequency-dependence relocated from the finite TRAIT space to the unbounded PROGRAM space.
+// The trait/niche space saturates (→ stable equilibrium, the wall we kept hitting); program space (256 opcodes,
+// combinatorial) cannot. opHash gives each opcode a random tag; an organism's signature is the order-independent
+// sum over its DISTINCT opcodes (its computational "vocabulary"). Genotype-NFD then taxes common vocabularies and
+// rewards rare ones — being computationally common costs survival, so the population must keep fleeing into
+// unexplored program-space. Same proven-safe form as the trait-NFD above; default rate matches it.
+const GENO_NFD_STRENGTH=0.004;
+const opHash=new Int32Array(256); for(let _k=0;_k<256;_k++) opHash[_k]=(Math.imul(_k+1,2654435761)|0);
+const _paraSeen=new Int32Array(256); let _paraGen=0;
 function tendBin(i){ const b=i*DIMS; let r=0;
   for(let d=0;d<3;d++){ let q=((tend[b+d]+1.2)/2.4*TBINS)|0; q=q<0?0:q>=TBINS?TBINS-1:q; r=r*TBINS+q; } return r; }
 // The real carrying capacity emerges from density-dependent metabolic cost.
@@ -5200,6 +5209,7 @@ const pLin=new Int32Array(CAP); let _linNext=1;
 // (selfLearnFromBest). Dual-process: a Darwinian population beneath a reflective self.
 // SCOPE, stated plainly: the PROGRAM (behavior) is per-particle; physics/meta params remain shared.
 const pProg=new Array(CAP).fill(null);
+const pParaSig=new Int32Array(CAP); // swing #37: cached program-vocabulary signature per organism (genotype-NFD)
 function cloneProg(p){
   if(!Array.isArray(p)||!p.length)return [[0,0,0,0]];
   const out=new Array(p.length);
@@ -17367,6 +17377,7 @@ if(typeof globalThis!=='undefined'){
                __MUTUALISM:0,                                       // mutualism #32 — DORMANT (default off): the 3-seed A/B vs the validated #28-30 base was a WASH (entRatio avg 0.82 vs 0.84; regression on seed 99) — it doesn't earn default-on on standing-diversity metrics. Code+knob kept; the +/+ interaction's payoff (proto-symbiosis structure) needs a turnover instrument the harness lacks. Force on with MUTUALISM=1
                __RQ_TRAIT:0,                                        // coevolutionary kernel #31 — DORMANT (default off): same A/B wash as #32 (neutral-to-slightly-worse vs #28-30 index-stride base) — the trait-relational arms race doesn't beat the fixed graph on standing diversity (its real signature, predator-prey trait cycling, is unmeasured here). Code+knob kept; force on with RQ_TRAIT=1. Falls back to validated #28 predation
                __RED_QUEEN:1,                                       // biotic / Red Queen #28 — conserved, frequency-dependent predation over the live N-dim cells: predators in cell C draw a zero-sum amp transfer from prey cell C+stride. "Kill the winner" (common prey predated hard, rare protected) promotes coexistence; prey escape only by crossing a cell boundary, so predation SELECTS for divergence. The unbounded (biotic) niche engine the abiotic arc #11–#27 could never reach
+               __GENO_PARASITE:1,                                   // genotype-NFD #37 (GIANT LEAP attempt) — negative-frequency-dependence on PROGRAM-vocabulary signature, not trait-bin: being computationally common costs survival, rare program-vocabularies pay, so the population is driven to keep exploring the UNBOUNDED program space (which cannot saturate like the finite trait/niche space that forced every prior equilibrium). Same proven-safe NFD form. Honest: an attempt at the unbounded, not a guarantee
                __OPCODE_NOVELTY:1,                                  // genotypic open-endedness #34 — the genetic complement to the ecological engines: mean-centred (zero-sum, no inflation) reward for running opcodes the population has HISTORICALLY under-explored (opCum EMA), turning the lights on in the ~20/256-opcode "museum". Real selection then keeps or discards the explorers — novelty is raw material, not fitness-by-fiat
                __CHAR_DISP:0 };                                     // character displacement #27 — DORMANT (default off): the matched A/B (seed 7, 6k) showed it NET-HARMFUL to diversity (entropyRatio 0.67 vs control 0.74; evenness 0.61 vs 0.70) — rate 0.0015 OVER-spaces lineages toward the trait-space edges instead of letting more coexist. Code+knob kept for a re-tune (gentler rate, or gate on same-niche-cell overlap not raw trait distance); force on with CHAR_DISP=1
   for(const k in LIVE) if(globalThis[k]===undefined) globalThis[k]=LIVE[k];
@@ -17822,6 +17833,17 @@ function loop(){
     const _mean=N/TCELLS;
     for(let _i=0;_i<N;_i++){ if(!palive[_i])continue; const _bc=tHist[tendBin(_i)];
       amp[_i]+=NFD_STRENGTH*Math.max(-1,Math.min(1, 1-_bc/(_mean+0.001))); } } // rare kind gains, common kind pays → the world keeps generating novelty instead of freezing
+  // SWING #37: the SAME negative-frequency-dependence, but on PROGRAM-vocabulary signature (unbounded space) — the
+  // giant-leap attempt. Being computationally common costs survival; rare program-vocabularies pay, so the
+  // population is driven to keep exploring program-space, which (unlike the trait/niche space) cannot saturate.
+  if(typeof globalThis!=='undefined'&&(globalThis.__GENO_PARASITE|0)===1){
+    const sigCount=new Map();
+    for(let _i=0;_i<N;_i++){ if(!palive[_i])continue; const pr=pProg[_i]; let s=0;
+      if(pr){ _paraGen++; for(let q=0;q<pr.length;q++){ const op=pr[q][0]|0; if(op>=0&&op<256&&_paraSeen[op]!==_paraGen){ _paraSeen[op]=_paraGen; s=(s+opHash[op])|0; } } }
+      pParaSig[_i]=s; sigCount.set(s,(sigCount.get(s)||0)+1); }
+    const _meanG=N/Math.max(1,sigCount.size);
+    for(let _i=0;_i<N;_i++){ if(!palive[_i])continue; const _gc=sigCount.get(pParaSig[_i])||1;
+      amp[_i]+=GENO_NFD_STRENGTH*Math.max(-1,Math.min(1, 1-_gc/(_meanG+0.001))); } }
   applyNicheEconomy(); // OEE swing #11: multi-niche resource spectrum + cross-feeding + biotic predation + opcode-novelty (knob-gated; mean-centred/conserved)
   // Swing #16: dimensionality ratchet. __DIMS_GROW=interval forces a new axis every N ticks (tests the
   // lever in isolation, decoupled from the still-unsolved saturation trigger); caps at __DIMS_CAP||10.

@@ -1638,3 +1638,33 @@ engine already present rather than by adding a new one.
 **Status: confirmed with high confidence.** 70k ticks of sustained diversity through the control's dead zone is
 decisive; running to ~t220k+ would be the final formality. The arc's central question — why open-endedness
 collapses — is answered (it's not individually adaptive) and the one-line fix is validated on the live artwork.
+
+## Swing #37 (LIVE) — the giant-leap ATTEMPT: relocate negative-frequency-dependence to the unbounded PROGRAM space
+
+Framed honestly, no back-patting. The deflation stands: #36 only PREVENTED collapse and produced a stable
+~4-type equilibrium — the opposite of open-endedness. The reason it equilibrates is structural: the trait/niche
+space is FINITE (≤6^DIMS cells), so it saturates and there's an optimum to settle on. Open-endedness (the
+unbounded) needs a driver in a space that can't saturate. The one such space here — and the only layer that
+stayed alive while diversity was dead (atoms born/used/culled, opcodes churning) — is the PROGRAM space: 256
+opcodes, combinatorial structure, effectively unbounded.
+
+**The move:** take the system's core diversity engine — negative-frequency-dependence (NFD: rare gains, common
+pays), which currently acts on 4-bin TRAIT cells — and add a second copy that acts on PROGRAM-VOCABULARY
+signature (the order-independent hash-sum over an organism's distinct opcodes). Being computationally common
+now costs survival; rare vocabularies are rewarded. Because program-space doesn't saturate, the population can
+be driven to keep fleeing into unexplored opcodes indefinitely — there is no final optimum to settle on. Same
+proven-safe, bounded, ~zero-sum NFD form as the trait term (rate 0.004), so it can't inflate or destroy.
+Synergises with #34 (escaping parasitism = using rarer opcodes = lighting up the unused 236). Knob
+`__GENO_PARASITE`, default-on.
+
+**This is an ATTEMPT, explicitly not a result.** Clean boot, zero errors, kinds 10 / entropyRatio 0.64 at 4k
+(stable, unbroken). The harness CANNOT test the claim — program-space exploration is slow (distinctOps flat at
+4k, as expected) and only a long live run shows whether this produces UNBOUNDED novelty or just relocates the
+equilibrium into program space and churns. **Falsifiable, sharp:** run fresh (#reset) and watch, in exports,
+whether distinct-opcode breadth (`co`/the used-opcode count) keeps CLIMBING without settling and whether
+kinds/divMean keep MOVING rather than plateauing as #36 did. If breadth climbs unbounded and the system never
+settles → the leap worked, open-endedness relocated to the space that has room for it. If opcode breadth
+plateaus and diversity re-settles → NFD in program space just churns neutrally / saturates too, the leap
+failed, and the honest conclusion is that this architecture equilibrates wherever you point the driver. Either
+result is worth more than the hype. The real risk, named: program-vocabulary may be too loosely coupled to
+survival for the pressure to produce FUNCTIONAL novelty rather than cosmetic opcode-shuffling.
