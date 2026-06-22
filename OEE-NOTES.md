@@ -1557,3 +1557,11 @@ divMean oscillating rather than pinned at 0.05. If diversity STAYS dead at 0.03 
 elsewhere (predation too weak even at 0.03 — raise the floor; or the homogeniser/mate-finding is the binding
 term) and the commons reading is wrong. Either outcome resolves the deepest wall of the project. Clean boot,
 zero errors. Backward-compatible (old exports' rqRate just clamps up to 0.03 on load).
+
+### #36 floor raised 0.03 → 0.05 (the proven-healthy rate)
+
+Corrected my own timid call. The boom-bust phase ran rqRate at ~0.05 (t50k–220k) and diversity died only as it
+fell BELOW ~0.05 — so a 0.03 floor could sit under the revival threshold and produce a FALSE NEGATIVE (diversity
+stays dead → "commons reading wrong", when really the floor was just too low). Floor now 0.05, the rate the
+system itself proved sustains the punctuated dynamics. Range [0.05, 0.15]; other three dials still free. The
+test is now valid: if floored-at-0.05 predation revives kinds>0 flourishes, tragedy-of-the-commons is confirmed.

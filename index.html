@@ -5940,12 +5940,13 @@ function sanitizeGenome(){
   // that no evolved value can destabilise (predation conserved, novelty mean-centred, build capped, growth gated).
   genome.opnovStrength = __cl(finiteOr(genome.opnovStrength,0.0025),0,0.01);
   genome.nicheBuildRate = __cl(finiteOr(genome.nicheBuildRate,0.0006),0,0.003);
-  // #36: rqRate FLOORED at 0.03 (was 0). Three live exports (gen11/12/14) showed selection drive predation to 0
+  // #36: rqRate FLOORED at 0.05 (was 0). Three live exports (gen11/12/14) showed selection drive predation to 0
   // and NEGATIVE — evolutionary suicide: predation (#28 kill-the-winner) is the diversity-MAINTAINING force but
   // it's conserved/individually-costly, so meta-evolution switched it off and the world collapsed to a frozen
-  // monoculture (divMean→0.05, kinds=0 for 120k+ ticks). The floor keeps diversity-maintenance NON-NEGOTIABLE
-  // while the other three dials stay free — the direct test of the tragedy-of-the-commons diagnosis.
-  genome.rqRate = __cl(finiteOr(genome.rqRate,0.05),0.03,0.15);
+  // monoculture (divMean→0.05, kinds=0 for 120k+ ticks). Floor set to the rate the system itself ran at through
+  // the HEALTHY boom-bust phase (~0.05, t50k–220k); diversity died only as predation fell BELOW that, so a lower
+  // floor risks an invalid test. Keeps diversity-maintenance non-negotiable while the other three dials stay free.
+  genome.rqRate = __cl(finiteOr(genome.rqRate,0.05),0.05,0.15);
   genome.dimsSatThresh = __cl(Math.round(finiteOr(genome.dimsSatThresh,24)),8,60);
   if(!Array.isArray(genome.objWeights)||genome.objWeights.length<4)genome.objWeights=[0.25,0.25,0.25,0.25];
   genome.objWeights=genome.objWeights.slice(0,4).map(v=>finiteOr(v,0)); // UNLOCKED: no force-positive, no sum=1 renormalization
