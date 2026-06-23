@@ -1729,3 +1729,90 @@ Verified: deterministic probe runs clean 5000 ticks (seeds 7 & 42), past the old
 non-finite values in amp/tend/nicheCellRes/diversity/currentFitness. Lesson worth keeping: **the clamp idiom in
 this codebase silently leaks NaN, and any vector captured before a DIMS-growth event is stale when read at the
 new width.**
+
+## Swing #39 (LIVE) — the HISTORICAL NOVELTY ARCHIVE: a target that recedes as you reach it — headless says mild-harm-but-VOLATILE; the live run decides
+
+The bold one, aimed squarely at the wall the whole #11–#38 arc kept naming: **the system always equilibrates
+because every selective driver references a SATURABLE target.** Objective fitness → converges. Trait-NFD rewards
+rare-*now* → saturates the instant the niche cells fill. Program-NFD (#37) is lethal. The #38 frontier can flood
+→ blob. The one selective target that *provably* cannot saturate (Lehman & Stanley 2011, novelty search): the
+distance from an **ever-growing archive of what has already existed.** Reward an organism for being unlike
+everything that has *ever* lived, not unlike its current neighbours. Reaching new trait-space ADDS it to the
+archive, raising the bar — the target recedes as it is approached, so it can never be satisfied. Structurally
+unbounded by construction, and — unlike the public-good predation #36 had to floor — novelty-vs-archive is
+*individually* adaptive, so the dial was left FREE/unfloored as a sharp test of whether novelty-seeking holds
+under selection or evolves off like rqRate did.
+
+**What was built (`index.html`; knob `__NOVELTY_ARCHIVE`, evolvable dial `novStrength` = 5th `oe` element).**
+A bounded archive (`novArchive`, cap 1500, reservoir-replaced) of DIMS-length trait-signatures sampled across
+history. On a 24-tick cadence: score each organism's novelty = mean trait-distance to its K=8 nearest archive
+entries (random 220-entry scan, so cost is O(N) regardless of archive size; ragged post-DIMS-growth vectors read
+missing dims as 0 — the #BUGFIX lesson applied); reward it via an amp term; insert past-threshold organisms into
+the archive with an **adaptive insertion threshold** that rises as space fills (the engine of the receding
+target). Wired as the established #35 six-site evolvable dial (default 0.004, range [0,0.012], free/unfloored).
+
+**The result — two seed-fixed (SEED=7, 10k-tick) A/Bs vs the live stack, graded honestly:**
+
+| metric | control (OFF) | #39 v1 (raw-centre) | #39 v2 (bound-then-centre, shipped) |
+|---|---|---|---|
+| nicheOcc early→late | 39.5 → 67 (max 76) | 37.5 → **30** (max 60) | 35 → 57 (max 64) |
+| niche_trend.growing | true | **false** | true |
+| entropyRatio (late/early) | 0.80 | **0.51** | 0.67 |
+| evenness_late | 0.875 | **0.504** | 0.752 |
+| diversity.collapsing | false | true | true |
+
+- **v1 was a catastrophe, and it taught the real lesson.** Centring novelty on the *live-population* mean
+  re-imports the exact "relative-to-current-crowd" reference that makes NFD saturate — and worse, a few frontier
+  explorers inflate the mean and slam the established BULK to the −1 floor, taxing it into homogenisation (occ
+  collapsed 60→21, evenness halved, while *population rose* 423→473: a fitter, more crowded near-monoculture).
+  The archive's whole point is to reference cumulative HISTORY, not the instantaneous crowd; centring on the
+  crowd threw that away.
+- **v2 (BOUND-THEN-CENTRE) fixed the catastrophe but not the deficit.** Saturating each novelty to [0,1] against
+  the adaptive scale *before* centring makes one extreme pioneer cap at 1 (it can't drag the baseline), so the
+  bulk is gently relieved instead of taxed — occupancy climbs again (35→57, growing TRUE), evenness recovers to
+  0.752. But it is **still mildly NET-HARMFUL vs control on every diversity axis** (entropyRatio 0.67 vs 0.80,
+  evenness 0.752 vs 0.875, occ 57 vs 67), and `collapsing` stays flagged while control's doesn't.
+
+**First call (RETRACTED): DORMANT.** I shipped it default-off, citing #27's precedent (mildly net-harmful headless
+A/B, entropyRatio 0.67 vs 0.80) — the safe, defensible call. Then I caught the move: #38's entry directly above
+indicts exactly this reflex ("#37 was the SAFE form of a bold idea... I optimized for not-breaking, which is the
+opposite of biggest-risk/biggest-gain"). I built #39 bounded+mean-centred+can't-break, got a lukewarm headless
+number, and retreated to dormant — the bold idea pre-shrunk to safe, the trap one paragraph up. Worse, I then
+reached for the HEADLESS harness AGAIN to "get evidence" for a swing whose whole claim (the receding-target
+dynamic) is the one thing the notebook says repeatedly the harness CANNOT see — substituting a safe proxy I run
+for the live run only the artwork can render.
+
+**Actual verdict: LIVE (default ON, the active bet).** Banked with eyes open. A deep seed-7 A/B (to t28–36k,
+streamed, killed early — the harness was the wrong instrument) said something more interesting than "it hurts":
+ON is not lower-and-flat, it is **more VOLATILE** than control —
+
+| tick | OFF nicheOcc / Hbits / evenness | ON nicheOcc / Hbits / evenness |
+|---|---|---|
+| 8k | 76 / 2.61 / 0.87 | 59 / 2.24 / 0.75 |
+| 16k | 73 / 2.87 / **0.955** | 48 / 1.12 / **0.372** ← deep dip |
+| 24k | 62 / 2.72 / 0.91 | **104** / 2.43 / 0.81 ← high spike |
+| 28k | 66 / 2.76 / 0.92 | 68 / 2.89 / **0.963** ← recovered |
+
+Control holds a steady high plateau (occ ~50–80, evenness ~0.9, the calm #36 equilibrium). ON swings HARDER:
+evenness craters to 0.37 then occupancy spikes to **104 (above anything control reached in-window) and evenness
+recovers to 0.963**. On the AVERAGE that's the mild net-harm the 10k A/B flagged; but the SHAPE — deep crash →
+overshoot recovery — is exactly the boom-bust the notebook elsewhere reads as PUNCTUATED open-endedness vs
+thrashing-toward-collapse, and the notebook is equally explicit that **only the live artwork can tell those two
+apart** (cf. the gen11 t212k cascade re-read). So the headless number is real but it is grading the wrong axis:
+a punctuated system looks "worse" on a mean-diversity metric precisely when it is most alive.
+
+**This is why it ships ON and goes to you, not to the harness.** The decisive test is the live run, and it is
+yours to run — fresh `#reset`, watch past t50k into the danger zone (t50k–220k) where every prior lock lived:
+1. **Punctuation GROWING or DAMPING?** Do the occupancy spikes get bigger/more frequent and each recovery land
+   higher (open-ended) — or do the crashes bottom lower and the spikes thin (a slow wind-down to monoculture)?
+   The t16k→t24k crash-then-overshoot is one cycle; the live run shows whether they compound.
+2. **Does nicheOcc break ABOVE control's plateau and stay there** (the receding target advancing the frontier) —
+   or re-settle into #36's calm equilibrium (the archive saturates too, and this architecture equilibrates
+   wherever you point the driver)?
+3. **Does the free dial `novStrength` HOLD** under selection (novelty-seeking is individually adaptive — the
+   prediction that distinguishes it from the public-good predation #36 had to floor) **or collapse toward 0**
+   like rqRate did (it's another commons, and the next move is to floor it)?
+
+Honest one-line summary, corrected: **the headless harness says mild-harm-but-volatile; I almost let that timid
+number bury a bold idea on a metric that can't see what it's testing — so it ships ON as the live bet, and the
+artwork, not the harness, renders the verdict.**
