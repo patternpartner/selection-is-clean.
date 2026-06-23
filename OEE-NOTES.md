@@ -1865,3 +1865,52 @@ harness "couldn't see" was just DEPTH I didn't let it reach. Run that A/B to t80
 on this evidence, the receding-target idea works: the one selective driver that references cumulative history
 instead of a saturable target is the first thing in the arc to turn the monoculture wall from a terminal state
 into a recoverable phase.
+
+## #39 deep run (live export gen1 t161636) — SUSTAINED boom-bust, wall non-terminal; but peaks FLAT and the dial ERODING (sober correction to the t80k read)
+
+The deep run I asked for, past t160k — and it both confirms and DEFLATES the t80648 read. It confirms the escape
+is not a one-off; it deflates "punctuation GROWING." Decoded, three full boom-bust cycles, gen1, x=0 (no reset):
+
+| cycle | peak kinds | the lock that follows | lock depth/length |
+|---|---|---|---|
+| 1 | **20** (t10k) | t45–50k | divMean 0.27, ~10k ticks |
+| 2 | **19** (t85k) | t95–120k | divMean **0.199**, **~25k ticks** |
+| 3 | **19** (t150k) | (t155k dip to kinds 8, no full lock yet) | — |
+
+**The real, durable win — bigger than the t80k single escape suggested:** the monoculture wall is now
+*non-terminal*. The free run locked once at t50k and died there 145k+ ticks; #36 anesthetised it to a flat calm.
+This run LOCKS AND ESCAPES, repeatedly — three times in 160k ticks, every lock climbing back to ~19 kinds, no
+reset, no extinction-to-gen2. Monoculture became a recurrent PHASE, not a grave. That is the qualitative break the
+#11–#38 arc never reached, and t161k shows it is a *sustained* property, not a lucky single bounce.
+
+**But the t80k call "punctuation GROWING" was premature — corrected to FLAT.** I asked whether each recovery
+lands higher. It does not: peaks are 20 → 19 → 19, flat (slightly declining if anything). The receding-target
+driver delivers RECURRENT ESCAPE, not EVER-HIGHER RADIATION. There is still a diversity ceiling (~20 kinds);
+#39 does not lift it — it refuses to let the floor become permanent. So this is sustained punctuation around a
+fixed ceiling, NOT the unbounded open-endedness the arc's holy grail wants. Honest downgrade of my own t80k
+enthusiasm: one escape looked like growth; three escapes reveal a flat-peaked oscillator.
+
+**Two early DAMPING signals I will not paper over:**
+1. **Locks are deepening and lengthening.** Cycle 2's lock ran ~2.5× as long as cycle 1's and bottomed lower
+   (divMean 0.199 vs 0.27). Escape capacity is still intact at t160k (recovery to 19 was as strong as cycle 2's),
+   but if that trend continued a future lock might not escape. Unresolved at 3 cycles.
+2. **`novStrength` is eroding, not holding.** 0.004 (default) → 0.00334 (t80k) → 0.00284 (t161k): a steady
+   monotonic −29% decline. This REVISES the t80k "HELD" claim. It is NOT predation's collapse-to-zero (rqRate hit
+   ~0/negative), so novelty-vs-archive is LESS of a public good — but it is not purely individually adaptive
+   either; there is a weak commons pressure bleeding it down. If it keeps falling the escapes weaken. (Structural
+   complexity still rising underneath: td 8→9, longestStable 974→1436 — the board and stability still grow even as
+   the dial bleeds.)
+
+**Sober verdict: not damping-to-death, not unbounded growth — a SUSTAINED BOOM-BUST ATTRACTOR with flat peaks.**
+The headline achievement is real and it is the arc's first: the wall is reliably non-terminal, monoculture is now
+escapable and recurrent rather than absorbing. But #39 is NOT the unbounded-radiation solution — the ceiling is
+unmoved, and two slow trends (deepening locks, eroding dial) could be the early signature of a very slow
+wind-down rather than a stable oscillation. **The decisive test is now a t250k+ run:** does cycle 4's peak hold
+near 19 (stable attractor) or land lower while the lock lengthens (slow damping), and does `novStrength` stabilise
+or keep bleeding? Two concrete next moves if it is damping: (a) FLOOR `novStrength` the way #36 floored rqRate
+(the eroding dial says the commons pressure, though weak, is real); (b) attack the FLAT CEILING directly — the
+escapes prove the floor is beaten, so the open problem has moved from "why does it lock" to "why don't the peaks
+climb," which is the limiting-similarity ceiling (#11's original wall) reasserting itself at the top of each
+boom. The lesson on me, restated: at t80k I caught one escape and reached for "growing"; the honest word was
+always "escaped, once" — three cycles later the right word is "sustained but flat." Watch more cycles before
+either word becomes a verdict.
