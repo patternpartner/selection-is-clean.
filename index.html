@@ -8068,7 +8068,13 @@ function evolveShadowBank(){
     genome.shadowScenarioBank=seedShadowBank();
   }
   const bank=genome.shadowScenarioBank;
-  for(const sc of bank)sc.age++;
+  // FIX (frozen-bank): wins was a cumulative immortal counter, so an early winner sat above
+  // winThresh forever and the bank never freed a slot — verified: same 5 SEED scenarios at
+  // t80648 and t161636, wins only ever climbed (110→175), zero evicted, spawn code never ran.
+  // Decay makes a slot worth its RECENT wins, so a scenario that stops winning falls below the
+  // bar and frees the slot. Gated for A/B: __SHADOW_WINS_DECAY=1 reproduces the frozen behaviour.
+  const winsDecay=(typeof globalThis!=='undefined'&&globalThis.__SHADOW_WINS_DECAY!==undefined)?globalThis.__SHADOW_WINS_DECAY:0.97;
+  for(const sc of bank){ sc.age++; if(winsDecay!==1) sc.wins*=winsDecay; }
 
   // Eviction: scenarios must keep earning their slot. Threshold scales with age, so
   // a one-time winner can't sit forever — to survive past age=60 it needs ~5 wins,
@@ -8123,6 +8129,19 @@ function evolveShadowBank(){
   // inside the range where the mechanism still exists. Default 0.5 = Pe30 behavior.
   const cap=__cl((genome.shadowScenarios|0)||5,3,SHADOW_SCENARIOS_MAX);
   const exploreRate=__cl(genome.shadowExploreRate||0.5,0.1,0.9);
+  // FORCED TURNOVER (frozen-bank fix): the conditional eviction above needs wins<floor(age*0.08),
+  // but ratified incumbents get age reset (→ winThresh pinned at its floor ~2) while any winner has
+  // wins ≫ 2, so it NEVER fires — the bank sat full of its 5 seeds for 161k ticks (0 turnover, all
+  // src=seed) and the refill loop below never ran. wins-decay alone can't help: ratified seeds stay
+  // young. So when the churn pass rolls and the bank is full, retire the weakest-by-(decayed-)wins
+  // challenger-eligible entry to open ONE slot the refill fills with a contender. Real (μ+λ)
+  // tournament: a seed survives only while it out-wins what the bank can imagine to replace it.
+  if(bank.length>=cap&&bank.length>3&&Math.random()<__cl(genome.shadowBankChurn??0.5,0,1)){
+    let rIdx=-1; for(let i=0;i<bank.length;i++){ if(bank[i].src==='seed'||bank[i].src==='random'){rIdx=i;break;} } // keep one reserved (insurance, as the eviction block intends)
+    let wi=-1,wv=Infinity;
+    for(let i=0;i<bank.length;i++){ if(i===rIdx||(bank[i].age||0)<8)continue; const w=bank[i].wins||0; if(w<wv){wv=w;wi=i;} } // age≥8 grace so a fresh contender isn't culled before it can win
+    if(wi>=0) bank.splice(wi,1);
+  }
   let safety=20;
   while(bank.length<cap&&safety-->0){
     const winners=bank.filter(s=>s.wins>0);
