@@ -1729,3 +1729,66 @@ Verified: deterministic probe runs clean 5000 ticks (seeds 7 & 42), past the old
 non-finite values in amp/tend/nicheCellRes/diversity/currentFitness. Lesson worth keeping: **the clamp idiom in
 this codebase silently leaks NaN, and any vector captured before a DIMS-growth event is stale when read at the
 new width.**
+
+## Swing #39 — the HISTORICAL NOVELTY ARCHIVE: a target that recedes as you reach it → DORMANT (mildly net-harmful on the A/B, like #27)
+
+The bold one, aimed squarely at the wall the whole #11–#38 arc kept naming: **the system always equilibrates
+because every selective driver references a SATURABLE target.** Objective fitness → converges. Trait-NFD rewards
+rare-*now* → saturates the instant the niche cells fill. Program-NFD (#37) is lethal. The #38 frontier can flood
+→ blob. The one selective target that *provably* cannot saturate (Lehman & Stanley 2011, novelty search): the
+distance from an **ever-growing archive of what has already existed.** Reward an organism for being unlike
+everything that has *ever* lived, not unlike its current neighbours. Reaching new trait-space ADDS it to the
+archive, raising the bar — the target recedes as it is approached, so it can never be satisfied. Structurally
+unbounded by construction, and — unlike the public-good predation #36 had to floor — novelty-vs-archive is
+*individually* adaptive, so the dial was left FREE/unfloored as a sharp test of whether novelty-seeking holds
+under selection or evolves off like rqRate did.
+
+**What was built (`index.html`; knob `__NOVELTY_ARCHIVE`, evolvable dial `novStrength` = 5th `oe` element).**
+A bounded archive (`novArchive`, cap 1500, reservoir-replaced) of DIMS-length trait-signatures sampled across
+history. On a 24-tick cadence: score each organism's novelty = mean trait-distance to its K=8 nearest archive
+entries (random 220-entry scan, so cost is O(N) regardless of archive size; ragged post-DIMS-growth vectors read
+missing dims as 0 — the #BUGFIX lesson applied); reward it via an amp term; insert past-threshold organisms into
+the archive with an **adaptive insertion threshold** that rises as space fills (the engine of the receding
+target). Wired as the established #35 six-site evolvable dial (default 0.004, range [0,0.012], free/unfloored).
+
+**The result — two seed-fixed (SEED=7, 10k-tick) A/Bs vs the live stack, graded honestly:**
+
+| metric | control (OFF) | #39 v1 (raw-centre) | #39 v2 (bound-then-centre, shipped) |
+|---|---|---|---|
+| nicheOcc early→late | 39.5 → 67 (max 76) | 37.5 → **30** (max 60) | 35 → 57 (max 64) |
+| niche_trend.growing | true | **false** | true |
+| entropyRatio (late/early) | 0.80 | **0.51** | 0.67 |
+| evenness_late | 0.875 | **0.504** | 0.752 |
+| diversity.collapsing | false | true | true |
+
+- **v1 was a catastrophe, and it taught the real lesson.** Centring novelty on the *live-population* mean
+  re-imports the exact "relative-to-current-crowd" reference that makes NFD saturate — and worse, a few frontier
+  explorers inflate the mean and slam the established BULK to the −1 floor, taxing it into homogenisation (occ
+  collapsed 60→21, evenness halved, while *population rose* 423→473: a fitter, more crowded near-monoculture).
+  The archive's whole point is to reference cumulative HISTORY, not the instantaneous crowd; centring on the
+  crowd threw that away.
+- **v2 (BOUND-THEN-CENTRE) fixed the catastrophe but not the deficit.** Saturating each novelty to [0,1] against
+  the adaptive scale *before* centring makes one extreme pioneer cap at 1 (it can't drag the baseline), so the
+  bulk is gently relieved instead of taxed — occupancy climbs again (35→57, growing TRUE), evenness recovers to
+  0.752. But it is **still mildly NET-HARMFUL vs control on every diversity axis** (entropyRatio 0.67 vs 0.80,
+  evenness 0.752 vs 0.875, occ 57 vs 67), and `collapsing` stays flagged while control's doesn't.
+
+**Verdict: DORMANT (default off).** This is the same call, on nearly the same numbers, as **#27 character
+displacement** (flipped dormant for entropyRatio 0.67 vs 0.74, seed 7) — a mildly net-harmful headless A/B does
+not earn default-on in this lab, however good the theory. The honest position: at 10k ticks the archive has
+barely turned over once and the board is only at DIMS 8, so the receding-target dynamic this swing exists to
+produce is a **long-horizon (t50k+) phenomenon the harness structurally cannot reach** — exactly the danger zone
+(t50k–220k) where every prior monoculture lock lived. The zero-sum novelty term is mostly added selection NOISE
+on a well-tuned stack until enough history accumulates to make the gradient real, which is a coherent reason for
+short-horizon mild-harm + hypothesised long-horizon benefit — but it is a *hypothesis*, and I have zero positive
+evidence, so it ships dormant, not as a default-on attempt. Code + knob + evolvable dial kept intact;
+backward-compatible (old exports lack `oe[4]` → sanitize defaults `novStrength`).
+
+**The live test, falsifiable and sharp (force `NOVELTY_ARCHIVE=1`, fresh `#reset`, run past t50k):** (1) does
+nicheOcc / kinds keep CLIMBING through the t50k–220k danger zone instead of locking (the receding target
+working) — or does it re-settle like #36's stable ~4-type equilibrium (the archive saturates too, and this
+architecture equilibrates wherever you point the driver)? (2) does the free dial `novStrength` HOLD under
+selection (novelty-seeking is individually adaptive, the prediction) or collapse toward 0 like the public-good
+rqRate did (it's another commons, and needs flooring)? Either answer is worth more than the framing. Honest
+one-line summary: **the idea is sound and the implementation is clean, but on the only evidence obtainable
+headless it mildly hurts; banked dormant with a sharp live prediction rather than over-claimed.**

@@ -586,6 +586,7 @@ let genome={
   nicheBuildRate:0.0006,  // #29 niche-construction effort (NICHE_BUILD_RATE)
   rqRate:0.05,            // #28 predation aggression (RQ_RATE)
   dimsSatThresh:24,       // #25 board-growth eagerness (occupied-cell threshold to grow a new axis; lower = grows easier)
+  novStrength:0.004,     // #39 historical-novelty-archive reward intensity — FREE/unfloored: does novelty-seeking hold (individually adaptive) or evolve off like the public-good predation did?
 
   // ═══ LAYER 2: PERCEPTION ═══
   // How the system sees itself. Previously hardcoded detection params.
@@ -5210,6 +5211,26 @@ const pLin=new Int32Array(CAP); let _linNext=1;
 // SCOPE, stated plainly: the PROGRAM (behavior) is per-particle; physics/meta params remain shared.
 const pProg=new Array(CAP).fill(null);
 const pParaSig=new Int32Array(CAP); // swing #37: cached program-vocabulary signature per organism (genotype-NFD)
+// ═══ SWING #39: the HISTORICAL NOVELTY ARCHIVE — open-ended novelty search (Lehman & Stanley 2011) ═══
+// Every prior driver in this arc references a SATURABLE target, so the system always equilibrates:
+// objective fitness → converges; trait-NFD rewards rare-NOW → saturates the instant the niches fill;
+// program-NFD (#37) is lethal; the #38 frontier can flood → blob. The one selective target that PROVABLY
+// cannot saturate is distance from an EVER-GROWING archive of what has already existed: reward an organism
+// for being unlike everything that has EVER lived, not unlike its current neighbours. Reaching new
+// trait-space ADDS it to the archive, raising the bar — the target recedes as it is approached, so it can
+// never be satisfied. Structurally unbounded by construction; the missing ingredient of the whole #11–#38 arc.
+// Crucially it dodges the #36 tragedy-of-the-commons: novelty-vs-archive is INDIVIDUALLY adaptive (the
+// pioneer itself is rewarded), so — unlike the public-good predation that meta-evolution switched off — the
+// dial is left FREE/unfloored on purpose. Whether `novStrength` then HOLDS under free evolution (individually
+// adaptive) or collapses to 0 like rqRate did (another commons) is itself the sharp, falsifiable test.
+const NOV_ARCHIVE_CAP=1500;          // bounded memory; reservoir-replaced once full so it stays representative across all history
+const NOV_K=8;                       // novelty = mean trait-distance to the K nearest archive entries
+const NOV_SAMPLE=220;                // cap the k-NN scan per organism (random archive subset) so cost is O(N) regardless of archive size
+const NOV_CADENCE=24;                // the k-NN is heavier than per-tick NFD; run it on this cadence and pulse the amp term
+const novArchive=[];                 // Float32Array trait-signatures (each length = DIMS at capture time; ragged after board growth — read missing dims as 0)
+let novArchiveSeen=0;                // total candidates ever considered (reservoir-sampling counter)
+let novThresh=0.18;                  // ADAPTIVE insertion threshold — rises as the archive densifies, the engine of the receding target
+const pNov=new Float32Array(CAP);    // per-organism novelty score, refreshed each cadence
 function cloneProg(p){
   if(!Array.isArray(p)||!p.length)return [[0,0,0,0]];
   const out=new Array(p.length);
@@ -5510,7 +5531,7 @@ function encodeGenome(){
     uad:genome.uaMaxDepth|0,                  // UNLOCKED #7b atom recursion depth
     tmr:+(genome.typeMutRate||0.02).toFixed(4), // UNLOCKED #7a caste-innovation rate
     td: genome.tendDims|0,
-    oe:[genome.opnovStrength,genome.nicheBuildRate,genome.rqRate,genome.dimsSatThresh].map(v=>+(+v).toPrecision(4)), // #35 evolvable open-endedness engine dials
+    oe:[genome.opnovStrength,genome.nicheBuildRate,genome.rqRate,genome.dimsSatThresh,genome.novStrength].map(v=>+(+v).toPrecision(4)), // #35 evolvable open-endedness engine dials (+ #39 novStrength at [4])
     rn: Array.isArray(genome.rend)?genome.rend.map(a=>({e:a.expression,f:!!a.failed})):null,
     dr: Array.isArray(genome.draw)?genome.draw.map(o=>o.slice()):null,
     bo: Array.isArray(genome.boundOpcodes)?genome.boundOpcodes.map(b=>b|0):[],
@@ -5776,7 +5797,8 @@ function decodeGenome(data){
       if(typeof g.oe[0]==='number')genome.opnovStrength=g.oe[0];
       if(typeof g.oe[1]==='number')genome.nicheBuildRate=g.oe[1];
       if(typeof g.oe[2]==='number')genome.rqRate=g.oe[2];
-      if(typeof g.oe[3]==='number')genome.dimsSatThresh=g.oe[3]; }
+      if(typeof g.oe[3]==='number')genome.dimsSatThresh=g.oe[3];
+      if(typeof g.oe[4]==='number')genome.novStrength=g.oe[4]; } // #39 (older exports lack oe[4] → sanitize defaults it)
     if(Array.isArray(g.rn)&&g.rn.length===4) genome.rend=g.rn.map(a=>({expression:a.e||'0',compiled:null,failed:!!a.f}));
     if(Array.isArray(g.dr)) genome.draw=sanitizeDraw(g.dr);
     if(Array.isArray(g.bo)) genome.boundOpcodes=g.bo.map(n=>Math.max(0,n|0));
@@ -5958,6 +5980,9 @@ function sanitizeGenome(){
   // floor risks an invalid test. Keeps diversity-maintenance non-negotiable while the other three dials stay free.
   genome.rqRate = __cl(finiteOr(genome.rqRate,0.05),0.05,0.15);
   genome.dimsSatThresh = __cl(Math.round(finiteOr(genome.dimsSatThresh,24)),8,60);
+  // #39 novStrength: FREE/unfloored (range [0,0.012]) — unlike rqRate, novelty-vs-archive is individually
+  // adaptive, so it should not need a floor; whether it holds or collapses is the swing's central measurement.
+  genome.novStrength = __cl(finiteOr(genome.novStrength,0.004),0,0.012);
   if(!Array.isArray(genome.objWeights)||genome.objWeights.length<4)genome.objWeights=[0.25,0.25,0.25,0.25];
   genome.objWeights=genome.objWeights.slice(0,4).map(v=>finiteOr(v,0)); // UNLOCKED: no force-positive, no sum=1 renormalization
   genome.vmProgram=Array.isArray(genome.vmProgram)?genome.vmProgram.map(cleanInstruction).slice(0,96):[[0,0,0,0]]; // UNLOCKED #7b: matches the raised vmMaxInstructions ceiling
@@ -10369,6 +10394,7 @@ function mutateGenome(){
   genome.nicheBuildRate=maybe(genome.nicheBuildRate,0,0.003,0.0003);
   genome.rqRate=maybe(genome.rqRate,0,0.15,0.01);
   genome.dimsSatThresh=maybe(genome.dimsSatThresh,8,60,3);
+  genome.novStrength=maybe(genome.novStrength,0,0.012,0.0006); // #39 — free random walk, no floor (see sanitizeGenome)
 
   // UNLOCKED autonomy genes: the system evolves its own perceptual/mortality clocks and
   // crowding floor. Gloves-off random walk; substrate floor only (interval >=1, floor >=0).
@@ -17384,6 +17410,7 @@ if(typeof globalThis!=='undefined'){
                __FRONTIER_EXPAND:1,                                 // EXPANDING VIABILITY FRONTIER #38 (the real big swing) — every occupied niche-cell makes its trait-ADJACENT cells viable, so the unexplored edge comes alive as life reaches it: an ever-moving frontier, ecological succession with no edge of the map. Uncapped (no #29-style safety); risk: floods faster than life fills → washes out selection. Pairs with #37 (the pressure) by giving novelty somewhere VIABLE to go
                __GENO_PARASITE:0,                                   // genotype-NFD #37 — OFF, to ISOLATE #38 (not a retreat to safety). Two live runs: #37 alone pinned pop ~134 / zero atoms / null divMean; #37+#38 nearly identical (pop ~151, struggling, 1 extinction). The program-NFD drain suppresses the population so hard that #38's frontier has no life to advance — it strangles the real swing. Off so #38 gets a clean test. Force on with GENO_PARASITE=1
                __OPCODE_NOVELTY:1,                                  // genotypic open-endedness #34 — the genetic complement to the ecological engines: mean-centred (zero-sum, no inflation) reward for running opcodes the population has HISTORICALLY under-explored (opCum EMA), turning the lights on in the ~20/256-opcode "museum". Real selection then keeps or discards the explorers — novelty is raw material, not fitness-by-fiat
+               __NOVELTY_ARCHIVE:0,                                 // HISTORICAL NOVELTY ARCHIVE #39 — DORMANT (default off). Reward divergence from an EVER-GROWING archive of trait-signatures across ALL history, not current neighbours (trait-NFD); the target recedes as it's reached, so it cannot saturate — the open-ended engine the #11–#38 arc lacked. Two seed-7 10k A/Bs: v1 (centre on the live-pop mean) was a catastrophe (occ 60→21, entropyRatio 0.51) — current-population centring re-imports NFD's saturation AND a few frontier explorers tax the bulk to the floor. v2 (BOUND-THEN-CENTRE, outlier-robust, the shipped code) fixed the catastrophe (occ 35→57, growing TRUE) but is still mildly NET-HARMFUL vs control (entropyRatio 0.67 vs 0.80, evenness 0.752 vs 0.875) — same verdict basis as #27. Shipped dormant: the receding-target benefit is a long-horizon (t50k+) claim the 10k harness can't reach; no positive evidence yet. Force on with NOVELTY_ARCHIVE=1 to run the live test
                __CHAR_DISP:0 };                                     // character displacement #27 — DORMANT (default off): the matched A/B (seed 7, 6k) showed it NET-HARMFUL to diversity (entropyRatio 0.67 vs control 0.74; evenness 0.61 vs 0.70) — rate 0.0015 OVER-spaces lineages toward the trait-space edges instead of letting more coexist. Code+knob kept for a re-tune (gentler rate, or gate on same-niche-cell overlap not raw trait distance); force on with CHAR_DISP=1
   for(const k in LIVE) if(globalThis[k]===undefined) globalThis[k]=LIVE[k];
 }
@@ -17866,6 +17893,61 @@ function loop(){
     const _meanG=N/Math.max(1,sigCount.size);
     for(let _i=0;_i<N;_i++){ if(!palive[_i])continue; const _gc=sigCount.get(pParaSig[_i])||1;
       amp[_i]+=GENO_NFD_STRENGTH*Math.max(-1,Math.min(1, 1-_gc/(_meanG+0.001))); } }
+  // ── SWING #39: HISTORICAL NOVELTY ARCHIVE — reward divergence from all of history, not current neighbours ──
+  // Cadenced (the k-NN is O(N·sample·DIMS)). The amp term is mean-centred + bounded EXACTLY like the trait-NFD
+  // above, so it cannot inflate amp into the #38 blob: it only redistributes toward whoever is more
+  // archive-novel than the current crowd. But the reference (the archive) is CUMULATIVE history, not the live
+  // population — so in the bulk the gradient is ~flat, while any mutant stepping OUTSIDE the archived region
+  // scores high, gets pulled out, and thereby ARCHIVES that region so the next pioneer must go further. That
+  // receding-target gradient at the frontier is the open-ended engine the saturating trait-NFD never had.
+  if((globalThis.__NOVELTY_ARCHIVE|0)===1 && tick%NOV_CADENCE===0){
+    const novStrength=(typeof genome!=='undefined'&&isFinite(genome.novStrength))?genome.novStrength:0.004;
+    const AL=novArchive.length, D=DIMS;
+    // 1) score: novelty[i] = mean trait-distance to the K nearest archive entries (random NOV_SAMPLE subset)
+    let mNov=0, scored=0;
+    for(let _i=0;_i<N;_i++){ if(!palive[_i]){ pNov[_i]=0; continue; }
+      if(AL===0){ pNov[_i]=1; mNov+=1; scored++; continue; }
+      const bi=_i*D; const scan=AL<=NOV_SAMPLE?AL:NOV_SAMPLE;
+      // K nearest via a tiny fixed-size max-list (K is small, so this is cheaper than a full sort)
+      let kd0=1e9,kd1=1e9,kd2=1e9,kd3=1e9,kd4=1e9,kd5=1e9,kd6=1e9,kd7=1e9; // NOV_K slots
+      const kd=[kd0,kd1,kd2,kd3,kd4,kd5,kd6,kd7];
+      for(let s=0;s<scan;s++){ const e=AL<=NOV_SAMPLE?novArchive[s]:novArchive[(Math.random()*AL)|0];
+        const eL=e.length; let dist=0;
+        for(let d=0;d<D;d++){ const a=tend[bi+d], b=d<eL?e[d]:0; const dd=a-b; dist+=dd*dd; }
+        // insert dist into the K-smallest list if it beats the current max slot
+        let mx=0; for(let k=1;k<NOV_K;k++) if(kd[k]>kd[mx]) mx=k;
+        if(dist<kd[mx]) kd[mx]=dist; }
+      let acc=0,cnt=0; for(let k=0;k<NOV_K;k++){ if(kd[k]<1e9){ acc+=Math.sqrt(kd[k]); cnt++; } }
+      const nv=cnt?acc/cnt:1; pNov[_i]=nv; mNov+=nv; scored++; }
+    mNov=scored?mNov/scored:0;
+    // 2) reward: BOUND-THEN-CENTRE (conserved/zero-sum, outlier-robust). The first cut centred the RAW
+    //    novelty then bounded — so a few frontier explorers inflated the mean and slammed the established
+    //    BULK to the −1 floor, taxing it into homogenisation (seed-7 A/B: occ 60→21, entropyRatio halved).
+    //    Here each organism's novelty is first SATURATED to [0,1] against the adaptive insertion scale, THEN
+    //    centred on the mean of that bounded signal: one extreme pioneer caps at 1 and can't drag the baseline,
+    //    so above-frontier organisms gain and the bulk is only gently relieved — spread, not collapse. Still
+    //    conserved (Σ≈0, no #38 inflation) and self-scaling as the archive densifies (novThresh tracks it).
+    const scale=2*novThresh+1e-3; let mR=0; // pNov stays RAW (step 3 inserts on it); bound only for the reward
+    for(let _i=0;_i<N;_i++){ if(!palive[_i])continue; mR+=Math.min(1,pNov[_i]/scale); }
+    mR=scored?mR/scored:0;
+    for(let _i=0;_i<N;_i++){ if(!palive[_i])continue;
+      amp[_i]+=novStrength*Math.max(-1,Math.min(1,Math.min(1,pNov[_i]/scale)-mR)); }
+    // 3) insert: organisms beyond the adaptive threshold enter the archive (the standard novelty-search rule),
+    //    with a reservoir replace once full so the archive thins toward a representative cross-section of all
+    //    history. The threshold self-tunes to hold the insertion rate roughly constant — as space fills, more
+    //    candidates clear the bar, the bar rises, and the frontier the archive marks keeps advancing outward.
+    let added=0;
+    for(let _i=0;_i<N;_i++){ if(!palive[_i])continue;
+      if(pNov[_i]>novThresh || AL===0){
+        const bi=_i*D; const sig=new Float32Array(D); for(let d=0;d<D;d++) sig[d]=tend[bi+d];
+        novArchiveSeen++;
+        if(novArchive.length<NOV_ARCHIVE_CAP){ novArchive.push(sig); }
+        else { novArchive[(Math.random()*NOV_ARCHIVE_CAP)|0]=sig; } // reservoir replace
+        added++; if(added>=12) break; } } // cap insertions/cadence so one diverse moment can't flood the archive
+    // adaptive threshold: nudge up when we inserted, down when nothing cleared the bar (keeps the target receding)
+    if(added>0) novThresh*=1.02; else novThresh*=0.99;
+    if(novThresh<0.02) novThresh=0.02; else if(novThresh>4) novThresh=4;
+  }
   applyNicheEconomy(); // OEE swing #11: multi-niche resource spectrum + cross-feeding + biotic predation + opcode-novelty (knob-gated; mean-centred/conserved)
   // Swing #16: dimensionality ratchet. __DIMS_GROW=interval forces a new axis every N ticks (tests the
   // lever in isolation, decoupled from the still-unsolved saturation trigger); caps at __DIMS_CAP||10.
