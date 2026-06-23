@@ -1816,3 +1816,52 @@ yours to run — fresh `#reset`, watch past t50k into the danger zone (t50k–22
 Honest one-line summary, corrected: **the headless harness says mild-harm-but-volatile; I almost let that timid
 number bury a bold idea on a metric that can't see what it's testing — so it ships ON as the live bet, and the
 artwork, not the harness, renders the verdict.**
+
+## #39 CONFIRMED (preliminary) — live export gen1 t80648: crashed INTO the danger-zone lock and CLIMBED BACK OUT, richer
+
+The artwork rendered the verdict, and it is the strongest result of the whole #11–#39 arc. A live run to t80648
+(gen1, single live seed, `__NOVELTY_ARCHIVE` on, dial `novStrength` present and evolving — this is a #39 build).
+Decoded EP trajectory:
+
+| phase | ticks | kinds | divMean | fitness | reading |
+|---|---|---|---|---|---|
+| boom | 5k–40k | 9–20 | 0.60–0.78 | ~0.78 | healthy radiation |
+| **LOCK** | **40k–58k** | **0** | **0.27–0.31** | **0.27** | the danger-zone monoculture — ~18k ticks of kinds=0 |
+| **escape** | 60k–80k | 7→12→14→16→**17** | 0.72–0.76 | ~0.73 | climbed back out, **still rising at t80k** |
+
+**This is the first time in the entire arc the system fell INTO the deep monoculture lock and CLIMBED BACK OUT.**
+The lock at t40–58k (kinds=0, divMean 0.27, fitness 0.27 — confirmed in both the EP series and the `pulse` event
+log, c=0 from t40448 to t58392) is the EXACT wall the whole project hit: the free-evolving run sat there for
+145k+ ticks and never recovered; #36 (floored predation) only ever PREVENTED the fall, settling to a flat ~4-type
+calm equilibrium. This run did neither — it crashed AND escaped, recovering to kinds 17 / divMean 0.72 and **still
+climbing at t80k** (EP kinds 7→12→14→16→17 over the last five samples, population healthy 408→596). That is
+PUNCTUATED EQUILIBRIUM, **growing not damping** — the open-ended signature the arc has chased since #11.
+
+**The three live-test predictions, answered:**
+1. **Growing or damping?** GROWING. A deep ~18k-tick bust, then a recovery that overshoots toward 17 kinds and is
+   still rising at the export — each recovery higher, not bottoming lower.
+2. **Escape the lock / break #36's plateau?** YES. #39 did NOT prevent the lock; it turned the lock into a PHASE
+   the system climbs out of richer — more open-ended than #36's anesthetized calm, and exactly the boom-bust the
+   notebook prizes over frozen stability.
+3. **Does `novStrength` HOLD or collapse?** HELD: 0.00334 (−17% from the 0.004 default) — a mild drift, NOT the
+   rqRate-style collapse to ~0/negative that defined the tragedy-of-the-commons (#36). Novelty-vs-archive is, as
+   predicted, roughly INDIVIDUALLY adaptive — selection did not switch it off the way it switched off the
+   public-good predation. This is the mechanistic payoff: the archive driver survives free evolution where the
+   conserved predation driver could not. (Also confirmed live: fitness finite throughout — the #BUGFIX holds.)
+
+**The lesson on myself, banked.** I killed the headless A/B at t28–36k — at the ONSET of the bust, before the
+boom — and read the dip as "mild net-harm," nearly flipping the swing dormant. I pulled the plug on a punctuated
+system during its crash and called it failure. The live run to t80k caught the recovery I would have designed out.
+Twice this session the timid instrument (and the timid instinct) misread a bold mechanism; both times the fix was
+to commit and let it run, not to pre-shrink it to a safe number. The metric was grading the system "worst" exactly
+when it was about to be most alive.
+
+**Honest bounds — this is preliminary, not sealed.** One run, gen1, one live seed. It's the strongest signal in
+the arc, not proof: I cannot prove from a single export that #39 *caused* the escape vs the rest of the stack —
+only that neither historical comparator (free → locked-and-died; #36 → floored-and-flattened) ever produced
+crash→escape→17-and-rising. The clean confirmation is a MATCHED A/B to t80k (#39 on vs off, same seed, ≥2 seeds) —
+and the right lesson from the kill-at-t36k mistake is that this IS runnable headless after all: the dynamic the
+harness "couldn't see" was just DEPTH I didn't let it reach. Run that A/B to t80k+ before calling it sealed. But
+on this evidence, the receding-target idea works: the one selective driver that references cumulative history
+instead of a saturable target is the first thing in the arc to turn the monoculture wall from a terminal state
+into a recoverable phase.
