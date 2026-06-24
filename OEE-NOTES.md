@@ -1914,3 +1914,63 @@ climb," which is the limiting-similarity ceiling (#11's original wall) reasserti
 boom. The lesson on me, restated: at t80k I caught one escape and reached for "growing"; the honest word was
 always "escaped, once" — three cycles later the right word is "sustained but flat." Watch more cycles before
 either word becomes a verdict.
+
+## THE GENERATIVE-LAYER MAP — the open-endedness engines, audited from the code (most are inert)
+
+Prompted to stop watching the diversity metric and read what every layer ACTUALLY does, traced from two live
+exports 80k ticks apart (t80648, t161636), three headless probes, and the mechanism source. Method: be the code —
+forget the comments, diff the real state, run it to see what fires. The result reframes the whole #11–#39 arc.
+
+**The clean dichotomy.** The system's open-endedness is almost entirely CONTINUOUS (it freely tunes and rewrites
+its existing parametric structure) while its DISCRETE/COMBINATORIAL novelty generators — the layers that would
+mint genuinely NEW primitives, opcodes, scenario-types, lineage-generations — are STALLED.
+
+| layer | kind | t80k→t161k | verdict |
+|---|---|---|---|
+| main VM program `V` | continuous | 14/16 instructions rewritten | ALIVE |
+| scalar genes (×137) | continuous | 128/137 drifted | ALIVE |
+| physics `p`, weights `w`/`oct`, dials `oe` | continuous | all moved | ALIVE |
+| render expressions `rn` | continuous | 1/4 mutated | ALIVE |
+| board dims `td` | discrete | 8→9 (gated, earned) | WORKS (slow) — the one structural engine that fires |
+| stable motifs `M` | discrete | 3→5, one aged 182 (size 59, coherence 0.98), consumed via culturalBias 0.3 | WORKS — real cultural memory |
+| fitness sensors `fs` | discrete | 1→2, both at utility ~0.04 (cull line 0.03) | MARGINAL churn |
+| authored atoms `ua` | discrete | 0→0 | INERT — 1 birth / 35k ticks, 0 uses ever |
+| bound opcodes `bo` | discrete | 0→0 | INERT — gated on `uas.length>0`, ~never true |
+| scenario bank `sb` | discrete | 5 seeds, identical, all src=seed | WAS INERT (frozen 161k; fixed this session) |
+| generation `g` | discrete | 1→1 | never produced a 2nd generation in 161k ticks |
+
+**The atom pipeline is dead at stage one, and the code already knew.** The chain is birth → bind-opcode → wire a
+call-site → execute. Probe (35k ticks): **1 atom born, 0 uses, 0 live** — birth is throttled to ~0 because
+`rate = mutationRate × stabilityFactor` and a stable run floors `stabilityFactor` at 0.3 (10045), so birth prob
+`rate×0.15` ≈ 0.001–0.007/cycle. And bound-opcode creation is gated `if(uas.length>0)` (11061) — downstream-dead
+behind the empty atom library. The comment at 11063–11072 DIAGNOSES exactly this ("authored atoms are bound but
+never called — measured: uaCalls stayed 0 across runs") and patches it by splicing a call-site on bind — but the
+patch sits behind the unreachable `uas.length>0` precondition. A real fix for a loop that the throttle never lets
+reach the patched link. This is the comment-vs-code gap in its purest form: the prose describes a closed
+author→execute loop; the arithmetic leaves it open at the source.
+
+**Why this is the headline, not another swing.** It is a structural explanation for the flat diversity ceiling
+the whole arc kept hitting. You can reshuffle and re-tune a FIXED alphabet of primitives forever (continuous
+layers, fully alive) — but you cannot RADIATE into qualitatively new kinds without new discrete structure, and
+the discrete generators that mint it (atoms, opcodes, scenarios, generations) do not fire. The boom-bust around
+~20 kinds (#39) is the system exploring the COMBINATORIAL ceiling of a frozen primitive set; #39's receding
+target helped it escape locks WITHIN that ceiling but could never raise it, because raising it needs engines that
+are stalled. The two discrete layers that DO work (board dims, motifs) move slowly and are exactly the two that
+don't depend on the dead atom pipeline.
+
+**The meta-finding for the project.** 39 swings graded "open-endedness" largely by ecological surface metrics
+(kinds, divMean, occupancy), while the GENERATIVE machinery underneath — the self-authoring layers that are the
+actual theoretical basis for UNBOUNDED open-endedness (Pe22f atoms, Pe27–Pe39 scenarios, opcode binding) — has
+been largely inert the entire time, and in places the code's own comments describe mechanisms the arithmetic
+never lets run. The biggest available lever is not swing #40 in ecology-space. It is making the discrete
+generators actually fire: unthrottle atom birth (decouple it from stabilityFactor, or floor it), close the
+author→bind→use loop at the SOURCE (births), and the scenario-bank fix already landed this session is the
+template — a designed evolutionary layer, verified to produce nothing, made to turn over by fixing the one piece
+of arithmetic that strangled it. Audit before swing: three engines were dark; one is now lit.
+
+**Honest scope.** The continuous layers are genuinely, vigorously alive — this is not "the system is frozen." It
+is "the system adapts richly within a fixed structure and almost never grows new structure." And one regime
+caveat: a different, high-mutation run authored "dozens" of atoms (per the 11067 measurement) — so atom birth is
+not always ~0; in THIS stable run it is throttled. But in neither regime do atoms ever get USED (uaCalls 0), so
+the pipeline is dead by throttle (stable runs) or by the never-closed use-loop (mutating runs). Two roads to the
+same zero.
