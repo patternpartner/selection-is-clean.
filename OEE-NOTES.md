@@ -1974,3 +1974,21 @@ caveat: a different, high-mutation run authored "dozens" of atoms (per the 11067
 not always ~0; in THIS stable run it is throttled. But in neither regime do atoms ever get USED (uaCalls 0), so
 the pipeline is dead by throttle (stable runs) or by the never-closed use-loop (mutating runs). Two roads to the
 same zero.
+
+### FIX LANDED — atom pipeline lit (and bound opcodes with it)
+
+Acting on the map. Two-part fix in mutateGenome (gated `__ATOM_PIPELINE`, A/B-able): (1) FLOOR atom-birth
+probability at 0.02 so a stable run still authors (births were ~0 because `rate` scales with stabilityFactor);
+(2) on birth, immediately BIND the atom and splice ONE germline call-site (the proven-safe inheritance route,
+not forced into living programs) so the primitive is reachable and `uaCall` increments its `uses`. Verified
+headless A/B (15k ticks): OFF = 0 births / 0 uses / 0 bound (the frozen baseline); ON = atom authored, bound,
+and **called 9 times** (maxUses 0→9), bound-opcodes 0→1, ua_first_use fired. The author→bind→execute loop that
+was dead at the source now closes, and bound opcodes light up as the predicted cascade. Conservative by design —
+authored primitives now ENTER the genome and face selection rather than dying unseen; not a flood.
+
+**Status of the three dark engines: all addressed.** Scenario bank — fixed (forced tournament turnover).
+Authored atoms — fixed (birth floor + closed use-loop). Bound opcodes — lit as a cascade of the atom fix. Each
+verified headless, each gated for A/B, each the same template: find the one piece of arithmetic strangling a
+designed evolutionary layer, fix that, run it to confirm it turns over. STILL OPEN and deliberately NOT touched:
+generation stuck at 1 (the system never speciated to a 2nd generation in 161k ticks) — observed, not yet
+diagnosed; fixing it blind would repeat the wins-decay mistake. That one wants its own trace before any change.
