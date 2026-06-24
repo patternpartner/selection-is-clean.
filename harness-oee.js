@@ -136,7 +136,8 @@ if (process.env.NICHE_LOCALTEND !== undefined) globalThis.__NICHE_LOCALTEND = pa
 if (process.env.DIMS_GROW !== undefined) globalThis.__DIMS_GROW = parseInt(process.env.DIMS_GROW, 10);
 if (process.env.DIMS_CAP !== undefined) globalThis.__DIMS_CAP = parseInt(process.env.DIMS_CAP, 10);
 if (process.env.DIMS_SPREAD !== undefined) globalThis.__DIMS_SPREAD = parseFloat(process.env.DIMS_SPREAD);
-for (const k of ['DIMS_SAT','DIMS_SAT_CAP','DIMS_SAT_OCC','CHAR_DISP','RED_QUEEN','NICHE_BUILD','SPATIAL_NICHE','RQ_TRAIT','MUTUALISM','GROUP_ROLES','GROUP_PROBE','BUD_INSTR','GENO_PARASITE','FRONTIER_EXPAND','NOVELTY_ARCHIVE']) if (process.env[k] !== undefined) globalThis['__' + k] = parseInt(process.env[k], 10);
+for (const k of ['DIMS_SAT','DIMS_SAT_CAP','DIMS_SAT_OCC','CHAR_DISP','RED_QUEEN','NICHE_BUILD','SPATIAL_NICHE','RQ_TRAIT','MUTUALISM','GROUP_ROLES','GROUP_PROBE','BUD_INSTR','GENO_PARASITE','FRONTIER_EXPAND','NOVELTY_ARCHIVE','ATOM_PIPELINE']) if (process.env[k] !== undefined) globalThis['__' + k] = parseInt(process.env[k], 10);
+if (process.env.SHADOW_WINS_DECAY !== undefined) globalThis.__SHADOW_WINS_DECAY = parseFloat(process.env.SHADOW_WINS_DECAY);
 if (process.env.NICHE_FRONTIER !== undefined) globalThis.__NICHE_FRONTIER = parseInt(process.env.NICHE_FRONTIER, 10);
 if (process.env.NICHE_BIOTIC !== undefined) globalThis.__NICHE_BIOTIC = parseInt(process.env.NICHE_BIOTIC, 10);
 if (process.env.OPCODE_NOVELTY !== undefined) globalThis.__OPCODE_NOVELTY = parseInt(process.env.OPCODE_NOVELTY, 10);

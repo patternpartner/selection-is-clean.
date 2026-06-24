@@ -1992,3 +1992,35 @@ verified headless, each gated for A/B, each the same template: find the one piec
 designed evolutionary layer, fix that, run it to confirm it turns over. STILL OPEN and deliberately NOT touched:
 generation stuck at 1 (the system never speciated to a 2nd generation in 161k ticks) — observed, not yet
 diagnosed; fixing it blind would repeat the wins-decay mistake. That one wants its own trace before any change.
+
+### ENGINES-LIT A/B (seed-7, t60k headless) — the fixes work, but the diversity ceiling DID NOT MOVE
+
+Option 2: does unfreezing the generators (bank tournament + atom pipeline, both default-on) actually raise the
+diversity ceiling, or do they turn over without helping? Seed-matched A/B, engines LIT (default) vs FROZEN
+(`SHADOW_WINS_DECAY=1 ATOM_PIPELINE=0`), 60k ticks.
+
+| late (t44–60k) | FROZEN | LIT |
+|---|---|---|
+| occupiedKinds | 8 (flat) | 8 (flat) |
+| nicheOcc | 80–104 | 62–82 |
+| Hbits / evenness | ~2.9 / ~0.97 | ~2.9 / ~0.95 |
+| live atoms / bound ops | 0 / 0 | **4 / 5 (climbing)** |
+
+**Result: the generative fixes are confirmed working but ecologically inert at this horizon.** LIT accumulates
+4 atoms / 5 bound opcodes by t60k (vs the frozen 0/0) — the pipeline genuinely turns over — yet both arms
+plateau at 8 kinds with comparable entropy/evenness, and LIT's occupancy is if anything slightly lower. No
+regression (the atom-wiring doesn't hurt), no lift. This is the "lit but inert-in-effect" branch, flagged in
+advance.
+
+**The finding that matters: "are the generative engines running" and "is the system more diverse" are
+DECOUPLED.** Lighting the generators was correct — they were verifiably broken and are now verifiably fixed —
+but they are not the lever for the diversity ceiling. Whatever pins kinds at ~8 is NOT the frozen generators; it
+is the ecology itself (limiting similarity, #11's original wall), which neither 39 ecological swings nor the
+generative-engine fixes have moved. The bottleneck is deeper than any one engine.
+
+**Honest caveat (don't over-read):** one seed, t60k, and the atom engine only reached 4 atoms right at the end —
+so this is "no effect yet, engine barely ramped," not "definitively no effect." A much longer run (or a higher
+birth floor so atoms become a substantial fraction of the genome and exert real selective pressure), and the
+LIVE run, are where a slow ecological payoff would show if one exists. But the directional verdict stands: the
+generative layer and the diversity ceiling are separable problems, and #40 — if it targets the ceiling — must
+attack limiting similarity in the ecology directly, not the engines underneath it.
