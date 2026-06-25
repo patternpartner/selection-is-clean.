@@ -2024,3 +2024,32 @@ birth floor so atoms become a substantial fraction of the genome and exert real 
 LIVE run, are where a slow ecological payoff would show if one exists. But the directional verdict stands: the
 generative layer and the diversity ceiling are separable problems, and #40 — if it targets the ceiling — must
 attack limiting similarity in the ecology directly, not the engines underneath it.
+
+### LIVE CONFIRMATION (export gen1 t71821, new code) — the three fixed engines fire HARD live; ecological effect re-opened
+
+First live export running the lit engines (bank tournament + atom pipeline + #39, all default-on). Decoded:
+
+**All three fixes confirmed working in the artwork, directly (no inference):**
+- Authored atoms: 4 live, and USED — `(-1.36)-(Math.tanh(m))` called 36×, `(s)-(0.92)` 18×. Event log shows the
+  loop closing in real time: ua_birth t64480 → ua_first_use t64500 (20 ticks later). The pipeline that logged
+  0 uses across its entire prior history now carries load-bearing self-authored primitives.
+- Bound opcodes: [0,0,1,1,2,3] — six, where it was always [].
+- Scenario bank: 1 seed + 3 child + 3 random at novel evolved axes (1.12, 1.13, -1.22, 1.35…). The bank that held
+  5 immortal seeds for 161k ticks is now 6/7 evolved scenarios. Tournament turnover works live.
+- novStrength rose to 0.0047 (default 0.004) — did NOT erode as it did (0.0028) in the frozen-bank t161k run; a
+  point for #39's individual-adaptiveness. rqRate 0.055 healthy. dims td 12. fitness finite (NaN fix holds).
+
+**Diversity: healthier, but NOT attributable.** kinds oscillate 6–23 with NO monoculture lock through t72k —
+where the #39-only run had two deep locks to 0 (t45–58k, t95–120k). Peaks to 23, divMean steady ~0.65, pop
+healthy/growing, x=0. Encouraging. But one live (random) seed; cannot attribute "no lock" to the engines vs seed
+variance.
+
+**The honest reversal this forces on my own prior verdict.** The headless seed-7 A/B concluded "lit but
+inert-in-effect — engines don't move the ceiling." That verdict was almost certainly SEED-7-SPECIFIC: seed-7
+throttled the atom engine to 4-barely-used atoms (its stable trajectory floored stabilityFactor → near-zero
+births), so the test never activated the thing it was measuring. THIS run proves the engines CAN fire hard (36
+atom-uses, bank fully turned over). So the ecological question — do ACTIVE generators affect diversity — is
+RE-OPENED, not closed. The controlled test was confounded by low engine activity; the right test is matched
+seeds WHERE the engines actually fire (multi-seed headless), and more live runs to see whether "no lock"
+persists. Lesson, again: a clean negative on one seed is not a negative on the mechanism — check that the
+treatment was actually applied before believing the null.
