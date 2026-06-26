@@ -2167,3 +2167,32 @@ effect, because creativity finally has something external to differentiate ON �
 system's strength instead of head-on. STILL TO BUILD: REACH (write ports — atom output affecting neighbours/field/
 multiple registers). It is a real side-effect on the conserved-energy economy, so it gets its own bounded design +
 verification rather than being rammed in here.
+
+### ENRICH part 2 — REACH (write-ports): the loop closes, sense→compute→ACT, verified
+
+Built on the user's reasoning ("eyes and hands need something to reach for") — correct design, not preference:
+perception+computation with no actuator is half a loop, and eyes/hands can't even SHOW an effect if everything
+the atom senses only lands back in its own register. So REACH completes it.
+
+Design (gated __REACH, default on, ONE site — the main per-particle eval's bound-opcode handler, 14935): an
+authored atom's output emits a BOUNDED amount into one of the VM's EXISTING, already-conserved actuators —
+vmActions[0]=force, [2]=ampTransfer(conserved transfer), [3]=tendBleed(clamped trait move), [4]=spawnDrive,
+[5]=signal, [6]=mutPressure — using the SAME `vmActions[ch]+=val*k` semantics as the ACTION_EMIT opcode (case 4).
+Channel = di%7, gain clamp(-2,2)·k·0.2. It rides the existing influence/coefficients + conserved-energy budget,
+so atoms become EFFECTORS without a new unconserved side-effect channel. Cached flag __REACH_ON keeps the
+per-instruction hot loop off the globalThis path; telemetry __reachFires counts firings.
+
+Verified (reachprobe.js — seed 5 sense→act atoms to force the condition seed-7 won't, 8k ticks): REACH ON fires
+**3660×** by t8k with population (460) and meanAmp (1.18) STABLE and comparable to OFF (427 / 1.19) — no energy
+explosion, no collapse, no NaN under heavy actuation. ON vs OFF diverge (real effect) but both healthy. Note: a
+plain seed-7 on/off A/B was bit-IDENTICAL because that seed barely authors atoms — the hollow-null trap again;
+the fix was to force atoms, not trust a seed that never fires the engine.
+
+**All three enrichments now live + verified (HANDS, EYES, REACH).** The computational engine — a self-extending VM
+that authors its own instructions — now has a real ALU (selection/direction/magnitude/quantize), read-ports
+(position/clock/neighbour), and write-ports (drive the conserved actuators). Authored primitives went from
+functions-of-SELF to full sense→compute→ACT agent programs. The possibility space opened from "evolve a number" to
+"evolve a behaviour." Hypothesis still flagged, not claimed: niche differentiation may now emerge from the
+system's STRENGTH (authorship) because creativity finally has world to sense and act on — the diversity wall
+approached sideways. Only the LIVE run (where atoms vary and fire hard, cf. t119k's 36-use atoms) tests whether it
+does; the harness verified the tools are SAFE and FIRE, not that they're good.
