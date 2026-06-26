@@ -2053,3 +2053,32 @@ RE-OPENED, not closed. The controlled test was confounded by low engine activity
 seeds WHERE the engines actually fire (multi-seed headless), and more live runs to see whether "no lock"
 persists. Lesson, again: a clean negative on one seed is not a negative on the mechanism — check that the
 treatment was actually applied before believing the null.
+
+### LIVE (same run continued, gen2 t119333) — reached generation 2; engines sustained; healthiest trajectory yet, stated with discipline
+
+The t71821 run continued to t119k and crossed into GENERATION 2 (x=0, no reset).
+
+**Generation advanced on its own — the "stuck at 1" engine was slow, not dead.** I flagged generations as a
+possible 4th dead engine and deliberately did NOT fix it blind. Vindicated: it advanced unaided. Had I "fixed"
+it I'd have patched a non-bug. Restraint paid.
+
+**All three lit engines are SUSTAINED across 119k ticks, not a one-off:**
+- Atoms: 7 authored, 2 load-bearing (`(a)/(-0.27)` 36 uses, `(Math.exp(s))/(s)` 18), other 5 at 0 uses — healthy
+  selection (most authored primitives are useless, a few aren't). Bound opcodes up to 9.
+- Scenario bank fully turned over: 1 seed of 7 (rest child/random).
+- novStrength rising 0.0028 → 0.0047 → 0.005: novelty-seeking SELECTED UP, not eroded — a sustained point for
+  #39's individual-adaptiveness (contrast the frozen-bank run where it bled toward 0).
+- fitness finite throughout.
+
+**Diversity — healthiest of the session, stated with t80k's lesson applied.** No sustained lock (kinds floor 2,
+never 0). Peak kinds by third: early 23 / mid 14 / LATE 27 — the highest peak is late, and it came as a
+post-crash RADIATION (t110k pop 688→272, recovered to kinds 27 @t115k): punctuated boom-bust with a creative
+recovery, better than the #39-only run (flat ~19, deepening locks to 0). BUT I will NOT call this "growing": the
+27 is a single post-crash spike, the mid-third sagged to 14, and I mislabeled exactly this shape "growing" at
+t80k before t161k flattened it. Honest status: no damping evident, late peak highest, gen2 reached — whether a
+real upward trend or a lucky volatile seed is what t250k+ decides.
+
+**Attribution caveat unchanged:** one live seed; cannot credit the engines for the health vs seed variance. The
+controlled seed-7 headless said no ceiling effect (but that seed barely fired the engines). This seed fires them
+hard AND looks healthier — suggestive, not proven. Matched multi-seed is the only clean test, and the live
+artwork can't supply it. Let the run reach 250k+; that resolves growing-vs-spike.
