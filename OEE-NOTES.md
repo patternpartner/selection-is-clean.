@@ -2136,3 +2136,34 @@ Meta: SECOND instance this session of an unseen external input (first the networ
 internal-dynamics interpretation. The open-system lesson, concretely, twice. Default assumption going forward:
 any dramatic discontinuity in a live export may be the user's hand (reload, tab, cursor), not the system — ASK
 before crediting internal dynamics.
+
+### ENRICH the creative tool — give the computational engine richer I/O (HANDS + EYES done; REACH next)
+
+Reframe (the user's): stop fighting the system's WEAKNESS (ecological diversity, the 39-swing wall) and support its
+proven STRENGTH (authorship). The system is a self-extending VM — authored atoms are new instructions it writes and
+wires into its own opcode space. But that engine had a fat ALU and almost no I/O: the atom grammar offered 8 unary
+scalar functions and inputs that were 6/7 SELF (own regs/use/state; only c=proximity, d=energy reached outside). So
+authored primitives could only be elaborate functions of THEMSELVES — exactly what the exports showed (`(a)/(-0.27)`,
+`exp(s)/s`). Open-endedness had nowhere to go because creation had nothing external to be about.
+
+Two enrichments shipped (gated `__RICH_GRAMMAR`, default on):
+- HANDS (richer ALU): Math.min/max (SELECTION — threshold, piecewise, ReLU), atan2 (DIRECTION), hypot (MAGNITUDE),
+  round (QUANTIZE — discrete states). New binary-function branch in uaGenTerm; Math is in scope at uaCompile so they
+  just work, isFinite-guarded.
+- EYES (read ports): nx,ny = normalized position (space), t = a bounded slow clock sin(tick·0.0011) (rhythm/time),
+  nb = the interaction partner's clamped amplitude (a social sense). Wired through uaCompile's signature, uaCall, a
+  finite-safe uaSetEyes(i,j) at all 3 atom call-sites, and the grammar var pool.
+
+Verified end-to-end (grammarverify.js, 500 authored expressions, uaMaxDepth=3): 500/500 compile, 0 failed, 500/500
+FINITE output — the substrate risk (a new sense/func leaking NaN/Inf) is disproven. New vocab richly used (nx 181,
+ny 172, nb 173, min 69, max 79, atan2 75, hypot 88, round 157 / 500). Samples are the qualitative leap: e.g.
+`((cos(a))>(t)) ? (b) : (tanh(nx))` — branch on a clock comparison, output by position. That is sense→compute logic
+the old grammar could not express. Clean boot, healthy sim run, gated/reversible.
+
+The possibility space this opens: authored instructions can now read the world + select + orient, so the engine can
+express sense→compute (and, once REACH lands, →act) — i.e. AGENT behaviour: foraging a gradient, signalling, rhythm,
+responding to neighbours. Hypothesis (flagged, not claimed): niche differentiation may fall out of this as a side
+effect, because creativity finally has something external to differentiate ON — the wall approached from the
+system's strength instead of head-on. STILL TO BUILD: REACH (write ports — atom output affecting neighbours/field/
+multiple registers). It is a real side-effect on the conserved-energy economy, so it gets its own bounded design +
+verification rather than being rammed in here.

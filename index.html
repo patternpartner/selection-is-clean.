@@ -307,6 +307,19 @@ const USER_VARS=["a","b","u","c","d","m","s"]; // a,b=source regs; u=own use cou
 const USER_CMP=["<",">","<=",">="]; // UNLOCKED #7b: comparisons — used ONLY as ternary conditions
 const USER_FUNCS=["Math.abs","Math.tanh","Math.sin","Math.cos","Math.sign","Math.sqrt","Math.log1p","Math.exp"];
 const USER_OPS=["+","-","*","/"]; // UNLOCKED #7b: division added; the final isFinite guard in uaCompile neutralizes /0 → ±Inf/NaN
+// ENRICH — supporting the system's STRENGTH (authorship), not fighting its weakness (diversity). The atom
+// grammar was a fat ALU with almost no I/O: 8 unary scalar funcs, and inputs that were 6/7 SELF. So authored
+// primitives could only be elaborate functions of themselves. Two enrichments, gated by __RICH_GRAMMAR:
+//   HANDS — multi-arg functions: min/max = SELECTION (threshold, piecewise, ReLU), atan2 = DIRECTION, hypot =
+//           MAGNITUDE; plus round = QUANTIZE (discrete states). Richer operations per instruction.
+//   EYES  — world-sensing inputs: nx,ny = normalized position (space), t = a slow clock (rhythm/time), nb = a
+//           neighbour signal (the interaction partner's amplitude). The engine can now read the WORLD, not just
+//           itself, so authored code can be a function of environment + others — the substrate for sense→act behaviour.
+// All finite-safe by construction (positions/sin/clamped-amp) + the existing isFinite guard in uaCompile.
+const USER_WORLD_VARS=["nx","ny","t","nb"]; // EYES — appended to the var pool when rich grammar is on
+const USER_BINFUNCS=["Math.min","Math.max","Math.atan2","Math.hypot"]; // HANDS — 2-arg functions
+const USER_FUNCS_RICH=USER_FUNCS.concat(["Math.round"]); // + QUANTIZE
+function uaRich(){return (typeof globalThis==='undefined')||((globalThis.__RICH_GRAMMAR??1)|0)!==0;}
 const UA_DEPTH_CAP=4; // substrate ceiling on authored-expression nesting — bounds compile cost / string length, NOT meaning
 // UNLOCKED #7b — RECURSIVE GRAMMAR. Was depth-1 ("two terms, one binary op"). Now the system
 // can compose structurally richer primitives it invents. depth<=0 → a leaf (var/constant,
@@ -339,13 +352,21 @@ function uaGenTerm(depth){
       // uaFuel in uaCall, so a cycle of atoms calling each other can't freeze the tab.
       return "f("+uaGenTerm(depth-1)+","+uaGenTerm(depth-1)+","+uaGenTerm(depth-1)+")";
     }
+    if(uaRich()&&roll<0.82){
+      // HANDS — multi-arg function: min/max = SELECTION (threshold / piecewise), atan2 = DIRECTION, hypot = MAGNITUDE
+      const bf=USER_BINFUNCS[(Math.random()*USER_BINFUNCS.length)|0];
+      return bf+"("+uaGenTerm(depth-1)+","+uaGenTerm(depth-1)+")";
+    }
   }
+  const rich=uaRich();
+  const vars=rich?USER_VARS.concat(USER_WORLD_VARS):USER_VARS;   // EYES expand the leaf pool
+  const funcs=rich?USER_FUNCS_RICH:USER_FUNCS;                   // + round (quantize)
   const useFunc=Math.random()<0.35;
   const val=Math.random()<0.5
-    ? USER_VARS[(Math.random()*USER_VARS.length)|0]
+    ? vars[(Math.random()*vars.length)|0]
     : (Math.random()*4-2).toFixed(2);
   if(useFunc){
-    const fn=USER_FUNCS[(Math.random()*USER_FUNCS.length)|0];
+    const fn=funcs[(Math.random()*funcs.length)|0];
     // Wrap log1p/sqrt input in abs to avoid negative domain errors
     const safeVal=(fn==="Math.log1p"||fn==="Math.sqrt")?"Math.abs("+val+")":val;
     return fn+"("+safeVal+")";
@@ -368,7 +389,7 @@ function uaCompile(atom){
   try{
     // Pe24: compiled function takes (a,b,u) — u is normalized self-usage count.
     // Old atoms with expressions only referencing a,b still compile fine; u is unused param.
-    atom.compiled=new Function("a","b","u","c","d","m","s","f","const r=("+atom.expression+");return isFinite(r)?r:0;");
+    atom.compiled=new Function("a","b","u","c","d","m","s","f","nx","ny","t","nb","const r=("+atom.expression+");return isFinite(r)?r:0;");
     atom.failed=false;
   }catch(e){
     atom.compiled=null;
@@ -462,7 +483,15 @@ function runDrawProgram(i){
 }
 // UNLOCKED #7a/#7b — context fed to system-authored atoms (set per-VM-tick; finite & bounded).
 // c=proximity, d=energy, m=caste-match. Read by uaCall below so the 9 call sites stay untouched.
-let uaCtxC=0,uaCtxD=0,uaCtxM=0;
+let uaCtxC=0,uaCtxD=0,uaCtxM=0,uaCtxNx=0,uaCtxNy=0,uaCtxT=0,uaCtxNb=0; // +EYES: position, slow clock, neighbour signal
+// EYES — set the world-sensing context for atom i (partner j, or -1 if solo). All finite by construction:
+// positions are finite Float32 / W,H>0; t is a bounded slow clock; nb is the partner's clamped amplitude.
+function uaSetEyes(i,j){
+  uaCtxNx = (typeof W==='number'&&W>0) ? px[i]/W : 0;
+  uaCtxNy = (typeof H==='number'&&H>0) ? py[i]/H : 0;
+  uaCtxT  = Math.sin(tick*0.0011);                                   // slow clock ∈ [-1,1] → authored rhythm
+  uaCtxNb = (j>=0) ? Math.max(-8,Math.min(8, amp[j]||0)) : 0;        // neighbour amplitude (clamped) → a social sense
+}
 // UNLOCKED #10 — atoms are now STATEFUL, RECURRENT, COMPOSABLE programs, not stateless arithmetic:
 //   • s : the atom's own previous output, fed back in → persistent memory across ticks. Temporal
 //         dynamics (integrators, leaky filters, oscillators, counters) become expressible.
@@ -489,7 +518,7 @@ function uaCall(atom,a,b){
     const prevUses=atom.uses|0;
     const u=Math.min(4,prevUses/100);
     const s=isFinite(atom.state)?atom.state:0;   // recurrent state = previous output
-    const r=atom.compiled(a,b,u,uaCtxC,uaCtxD,uaCtxM,s,uaCallF);
+    const r=atom.compiled(a,b,u,uaCtxC,uaCtxD,uaCtxM,s,uaCallF,uaCtxNx,uaCtxNy,uaCtxT,uaCtxNb);
     atom.uses=prevUses+1;
     const out=isFinite(r)?Math.max(-8,Math.min(8,r)):0;
     atom.state=out;                              // persist for next tick → recurrence
@@ -11715,7 +11744,7 @@ function executeVM(i,j,sim,d){
 
   // UNLOCKED #7a/#7b: feed this interaction's context to system-authored atoms (c,d,m inputs).
   // caste-match: +1 if the pair shares a caste, -1 otherwise. Evolved code decides its meaning.
-  uaCtxC=proximity;uaCtxD=energy;uaCtxM=(pType[i]===pType[j])?1:-1;
+  uaCtxC=proximity;uaCtxD=energy;uaCtxM=(pType[i]===pType[j])?1:-1; uaSetEyes(i,j);
 
   vmRegs[0]=sim;
   vmRegs[1]=phaseAlign;
@@ -15015,7 +15044,7 @@ function executeClusterVM(i,j,sim,d){
   const energy=(amp[i]+amp[j])*0.5;
   const influence=cl.vmInfluence*genome.ruleScale*0.0015;
 
-  uaCtxC=proximity;uaCtxD=energy;uaCtxM=(pType[i]===pType[j])?1:-1; // UNLOCKED #7a/#7b: atom context
+  uaCtxC=proximity;uaCtxD=energy;uaCtxM=(pType[i]===pType[j])?1:-1; uaSetEyes(i,j); // UNLOCKED #7a/#7b: atom context (+EYES)
 
   vmRegs[0]=sim;
   vmRegs[1]=phaseAlign;
@@ -16564,7 +16593,7 @@ function executeSoloVM(){
     const nInst=Math.min(prog.length,genome.vmMaxInstructions);
     if(nInst===0)continue;
     const soloInfluence=genome.vmInfluence*genome.ruleScale*0.0005; // per-particle now (was hoisted out of the loop on the global genome — review)
-    uaCtxC=0;uaCtxD=amp[i];uaCtxM=0; // solo atom context (no partner → caste-match 0)
+    uaCtxC=0;uaCtxD=amp[i];uaCtxM=0; uaSetEyes(i,-1); // solo atom context (no partner → caste-match 0; +EYES)
 
     const soloCost=nInst*genome.metabolicCost*0.5;
     amp[i]-=soloCost;
@@ -17448,6 +17477,7 @@ if(typeof globalThis!=='undefined'){
                __GENO_PARASITE:0,                                   // genotype-NFD #37 — OFF, to ISOLATE #38 (not a retreat to safety). Two live runs: #37 alone pinned pop ~134 / zero atoms / null divMean; #37+#38 nearly identical (pop ~151, struggling, 1 extinction). The program-NFD drain suppresses the population so hard that #38's frontier has no life to advance — it strangles the real swing. Off so #38 gets a clean test. Force on with GENO_PARASITE=1
                __OPCODE_NOVELTY:1,                                  // genotypic open-endedness #34 — the genetic complement to the ecological engines: mean-centred (zero-sum, no inflation) reward for running opcodes the population has HISTORICALLY under-explored (opCum EMA), turning the lights on in the ~20/256-opcode "museum". Real selection then keeps or discards the explorers — novelty is raw material, not fitness-by-fiat
                __NOVELTY_ARCHIVE:1,                                 // HISTORICAL NOVELTY ARCHIVE #39 — LIVE (default on, the active bet). Reward divergence from an EVER-GROWING archive of trait-signatures across ALL history, not current neighbours (trait-NFD); the target recedes as it's reached, so it cannot saturate — the open-ended engine the #11–#38 arc lacked. Reward is BOUND-THEN-CENTRE (conserved, outlier-robust) after a raw-centre first cut taxed the bulk to collapse. Headless A/B is mildly net-harmful on AVERAGE (entropyRatio 0.67 vs 0.80) BUT markedly more VOLATILE — deeper dips (evenness 0.37 @t16k) and higher spikes (nicheOcc 104 @t24k vs control's steadier plateau) — which is ambiguous between thrashing-toward-collapse and PUNCTUATED open-endedness, the exact call the notebook says only the LIVE artwork can make. Shipped ON to run that live test, not pre-shrunk to dormant. dial novStrength free/unfloored. Force off with NOVELTY_ARCHIVE=0
+               __RICH_GRAMMAR:1,                                    // ENRICH the atom-authoring grammar (the creative tool) — HANDS: min/max (selection), atan2 (direction), hypot (magnitude), round (quantize); EYES: nx,ny (position), t (slow clock), nb (neighbour amplitude). Turns authored primitives from functions-of-SELF into functions-of-the-WORLD — substrate for sense→act behaviour. Verified 500/500 compile+finite, no substrate damage. Force off with RICH_GRAMMAR=0
                __CHAR_DISP:0 };                                     // character displacement #27 — DORMANT (default off): the matched A/B (seed 7, 6k) showed it NET-HARMFUL to diversity (entropyRatio 0.67 vs control 0.74; evenness 0.61 vs 0.70) — rate 0.0015 OVER-spaces lineages toward the trait-space edges instead of letting more coexist. Code+knob kept for a re-tune (gentler rate, or gate on same-niche-cell overlap not raw trait distance); force on with CHAR_DISP=1
   for(const k in LIVE) if(globalThis[k]===undefined) globalThis[k]=LIVE[k];
 }
