@@ -2108,3 +2108,31 @@ The rule going forward: MATCH THE INSTRUMENT TO THE QUESTION'S ONTOLOGY.
 - OPEN questions (does diversity sustain? is it alive? what does gene flow do?) → ONLY the live run answers, because
   the answer depends on inputs the harness doesn't have. Using the closed instrument here — because it's
   controllable — is the recurring error. Controllable and correct are not the same thing.
+
+### CORRECTION (deep run gen3 t196521) — "generation advanced on its own" was WRONG; it's the reload count, and it confounds the crashes
+
+User clarified: the generation counter increments when a TAB IS CLOSED AND RELOADED (loads fresh from browser,
+genome/EP persist via storage, population reseeds), NOT via internal speciation. This RETRACTS the t119k claim
+"the stuck-at-1 generation engine advanced on its own — restraint vindicated." False. Gen 1→2→3 = three tab loads.
+The internal speciation-to-new-generation engine has NO evidence of firing; I mistook a reload artifact for
+evolution — crediting the closed-system story for an unseen external action.
+
+**It also implicates the population crashes.** The two big crashes align with the two generation transitions:
+t110k (pop 688→272) ≈ gen1→2 reload; t155k (607→301) ≈ gen2→3 reload. So the "punctuated boom-bust with creative
+recovery" I credited at t119k is most likely RELOAD-RESEED-AND-REGROW: a fresh population radiating from the
+evolved genome, not spontaneous internal punctuation. The radiations right after each crash (kinds 27 @t115k, 24
+@t165k) are reload-driven, and the richest stretch (t110–165k, mean 17.5) is confounded by BOTH the reloads AND
+the network window — two external inputs, neither visible in the metric.
+
+**The clean internal read (t170–195k: lit engines, no network, well past last reload):** kinds settle 9–17 and
+trend DOWN at the end (17→11→12→14→11→9). Same place #39 landed — no monoculture lock (floor never 0 across the
+whole run, which IS better than the #39-only run), but a settling oscillation, not open-ended growth. The 27-kind
+peak was injected novelty (reload + network), never the system climbing.
+
+**Survives clean:** the engines. 14 atoms (3 load-bearing: 27/18/9 uses), 18 bound opcodes, bank fully turned
+over, sustained across 196k ticks — independent of diversity, not confounded. The fixes work.
+
+Meta: SECOND instance this session of an unseen external input (first the network, now reloads) confounding an
+internal-dynamics interpretation. The open-system lesson, concretely, twice. Default assumption going forward:
+any dramatic discontinuity in a live export may be the user's hand (reload, tab, cursor), not the system — ASK
+before crediting internal dynamics.
