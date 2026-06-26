@@ -2082,3 +2082,29 @@ real upward trend or a lucky volatile seed is what t250k+ decides.
 controlled seed-7 headless said no ceiling effect (but that seed barely fired the engines). This seed fires them
 hard AND looks healthier — suggestive, not proven. Matched multi-seed is the only clean test, and the live
 artwork can't supply it. Let the run reach 250k+; that resolves growing-vs-spike.
+
+### METHOD — the harness is a CLOSED model of an OPEN system; match the instrument to the question's ontology
+
+Crystallized after discovering the t119k run had been networked with 3 tabs (real inter-universe gene flow, ≥56
+foreign packets absorbed at netReceptivity 0.5) — invisible to the harness, which stubs BroadcastChannel entirely.
+
+The principle (the user's, sharpened): the live artwork is coupled to channels the harness has no model of and
+CANNOT contain even in principle — other running universes (each a full system with its own evolved history), the
+user's cursor (a real force field on the sim), real wall-clock time. These are not approximation error to be
+shrunk; they are inputs that exist in the territory and not in the map. You can ARTIFICIALLY inject a proxy
+(random motifs ≈ network perturbation) but you cannot MIMIC it, because the real content is evolved code from a
+peer universe with 100k ticks of selection behind it — to mimic that you'd have to RUN the other universe, at
+which point you're not modeling the system, you're running the open world.
+
+Why this matters concretely — every harness failure this session was at an OPEN boundary: (1) killed a run during
+its bust because the closed mean-metric couldn't see the punctuation it was mid-cycle on; (2) called the lit
+engines "inert" on a seed that never fired them (a closed run sitting in a dead corner); (3) graded the whole
+t119k run as a sealed box while it was open to two other universes — the single input most likely to explain its
+standout radiation, structurally unrepresentable in the harness.
+
+The rule going forward: MATCH THE INSTRUMENT TO THE QUESTION'S ONTOLOGY.
+- CLOSED questions (does this mechanism turn over? does it crash? does it leak NaN?) → harness answers honestly
+  and cheaply; the bank/atom fixes ARE genuinely verified this way. Keep using it for these.
+- OPEN questions (does diversity sustain? is it alive? what does gene flow do?) → ONLY the live run answers, because
+  the answer depends on inputs the harness doesn't have. Using the closed instrument here — because it's
+  controllable — is the recurring error. Controllable and correct are not the same thing.
