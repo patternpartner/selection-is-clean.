@@ -2196,3 +2196,31 @@ functions-of-SELF to full sense→compute→ACT agent programs. The possibility 
 system's STRENGTH (authorship) because creativity finally has world to sense and act on — the diversity wall
 approached sideways. Only the LIVE run (where atoms vary and fire hard, cf. t119k's 36-use atoms) tests whether it
 does; the harness verified the tools are SAFE and FIRE, not that they're good.
+
+### LIVE on all 3 enrichments (gen1 t76390) — the engine authors BEHAVIOURS now; but the rich creations are ORPHANED (call-sites stripped)
+
+First live run with HANDS+EYES+REACH. Read the atoms as behaviours (the point of the enrichment), not kind-count.
+
+**WIN — confirmed live: the system authors sense→compute programs the old grammar could not express.** Current
+atoms include: branch-on-the-CLOCK `((sign(t))<=(sin(-1.36)))?(exp):(log)·…`; decide-on-ENERGY `((a)>=(tanh(d)))?
+…`; context-sensitive-on-PROXIMITY `(0.41)<(exp(c))?(s):(0.40)`; orient-by-POSITION `atan2(…,cos(c))·(…+nx)`;
+compose two sub-atoms `f(-1.48,c,ny)-f(…)`. ua_first_use confirms eye-using atoms were called (`sqrt(abs(ny))-
+tanh(nb)`, `cos(1.87)/nx`). The possibility space opened as designed — authored primitives are now world-sensing,
+conditional, oriented behaviours.
+
+**BOTTLENECK — the rich creations are ORPHANED.** Every current atom shows uses=0 (some at age 217). Checked why:
+the global program V = opcodes [9,4,3,2,4,…,49,0,0] — NOT ONE bound-opcode (≥232) call-site. The germline call-site
+the pipeline-fix splices at birth is STRIPPED by program adoption/turnover (the self re-adopts its program from the
+best lineage, overwriting the splice). So atoms survive bound-but-disconnected: no execution, no uses, no selection
+signal. The richest authored behaviours are the most likely to be orphaned before they can matter.
+
+**Therefore diversity unchanged (kinds 5–23, peaks ~23, no lock — same as pre-enrichment), and now we know WHY:**
+the enriched primitives that might differentiate niches aren't getting USED. The loop opens (author→bind→initial
+use) but is not DURABLE — creations don't persist in the executed program for selection to keep the good ones.
+Fitness finite but ran low (~0.42) with an internal crash at t50k — consistent with authored-but-orphaned churn
+(one run; not over-read).
+
+**Next lever (better-targeted than "more vocabulary"): DURABILITY.** The atom-pipeline fix lit the loop; it must
+make authored call-sites STICK against program adoption/mutation, so the system's rich behaviours get a sustained
+trial under selection instead of being disconnected at birth+1. Hypothesis stands but is now conditional: niche
+differentiation may emerge from authored behaviour ONLY ONCE those behaviours persist long enough to be selected.
