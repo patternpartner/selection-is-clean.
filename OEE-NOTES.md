@@ -2224,3 +2224,25 @@ Fitness finite but ran low (~0.42) with an internal crash at t50k — consistent
 make authored call-sites STICK against program adoption/mutation, so the system's rich behaviours get a sustained
 trial under selection instead of being disconnected at birth+1. Hypothesis stands but is now conditional: niche
 differentiation may emerge from authored behaviour ONLY ONCE those behaviours persist long enough to be selected.
+
+### DURABILITY FIX — authored behaviours now persist for a real trial (confirmed cause, verified fix)
+
+Acting on the orphaned-atoms finding. CONFIRMED the cause first (orphanverify, wrapping selfLearnFromBest): seeded
+3 call-sites → all stripped within 2000 ticks, and the wrapper attributed every strip to selfLearnFromBest. The
+self re-adopts the best lineage's program (`genome.vmProgram=cloneProg(pProg[best])`), which rarely carries a
+freshly-authored atom, so the birth-spliced call-site is overwritten — atoms frozen bound-but-disconnected (uses
+stuck at 36) before selection could judge them.
+
+FIX (selfLearnFromBest, gated __ATOM_DURABLE): carry the authored bound-opcode call-sites across adoption —
+deduped, capped to half the program ceiling so the self can't be dominated by atom-calls. Verified A/B (12k):
+OFF = call-sites 0 immediately, atom uses FROZEN at 36; ON = call-sites held ~8k ticks, atom uses climb
+36→162→387→567→**621** (a 17× sustained trial), population stable ~400 (no stickiness collapse), and call-sites
+EVENTUALLY fade rather than locking in — extended trial then release to selection, the right shape. The stickiness
+risk I flagged did not materialize (the half-ceiling cap + natural turnover handle it).
+
+So the author→bind→use→SELECT loop is now durable: authored behaviours get expressed hundreds of times under
+selection instead of being disconnected at birth+1. This was the bottleneck behind "engine authors behaviours but
+diversity unchanged" — the differentiating primitives now actually get a fair, sustained trial. Whether that moves
+the ecology is, as always, the LIVE test (one more enrichment-stack export past the danger zone), not a harness
+claim. Chain status: bank✓ atoms✓ bound-opcodes✓ enrichment(hands/eyes/reach)✓ durability✓ — each fix exposed the
+next link; this closes the authoring loop end to end.

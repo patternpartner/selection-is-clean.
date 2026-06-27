@@ -486,6 +486,7 @@ function runDrawProgram(i){
 let uaCtxC=0,uaCtxD=0,uaCtxM=0,uaCtxNx=0,uaCtxNy=0,uaCtxT=0,uaCtxNb=0; // +EYES: position, slow clock, neighbour signal
 let __REACH_ON=true; // +REACH cached flag (resolved after the LIVE registry); kept out of the per-instruction globalThis read path
 let __reachFires=0; // telemetry: how many times an authored atom drove an actuator (sense→ACT firings)
+let __ATOM_DURABLE=true; // +DURABILITY: preserve authored call-sites across self-adoption (resolved after LIVE registry)
 // EYES — set the world-sensing context for atom i (partner j, or -1 if solo). All finite by construction:
 // positions are finite Float32 / W,H>0; t is a bounded slow clock; nb is the partner's clamped amplitude.
 function uaSetEyes(i,j){
@@ -5288,7 +5289,21 @@ function inheritProg(parentProg,inheritedCap){ // child = copy of parent's progr
 function selfLearnFromBest(){ // the population's best discovery flows back into the reflective baseline
   let best=-1,bestAmp=-1e9;
   for(let i=0;i<N;i++){if(palive[i]&&pProg[i]&&amp[i]>bestAmp){bestAmp=amp[i];best=i;}}
-  if(best>=0&&pProg[best]&&pProg[best].length)genome.vmProgram=cloneProg(pProg[best]);
+  if(best>=0&&pProg[best]&&pProg[best].length){
+    // DURABILITY FIX (confirmed via orphanverify): this adoption was STRIPPING every authored
+    // bound-opcode call-site within ~2000 ticks (the best lineage rarely carries a freshly-authored
+    // atom), freezing atoms bound-but-DISCONNECTED before selection could judge them. So an atom got
+    // a ~one-shot trial then was orphaned forever. Fix: carry the authored call-sites across adoption
+    // (deduped, capped to half the program ceiling so the self can't be dominated by atom-calls), so
+    // authored BEHAVIOURS persist and accumulate a real selection signal. Gate __ATOM_DURABLE.
+    let _carry=null;
+    if(__ATOM_DURABLE){ _carry=[]; const _old=genome.vmProgram;
+      for(let q=0;q<_old.length&&_carry.length<((genome.vmMaxInstructions||16)>>1);q++){ if(_old[q][0]>=CORE_OPCODES)_carry.push(_old[q]); } }
+    genome.vmProgram=cloneProg(pProg[best]);
+    if(_carry&&_carry.length){ const _vp=genome.vmProgram, _have=new Set();
+      for(let q=0;q<_vp.length;q++) if(_vp[q][0]>=CORE_OPCODES)_have.add(_vp[q][0]);
+      for(const _ins of _carry){ if(_vp.length>=(genome.vmMaxInstructions||16))break; if(!_have.has(_ins[0])){ _vp.splice((Math.random()*(_vp.length+1))|0,0,[_ins[0],_ins[1],_ins[2],_ins[3]]); _have.add(_ins[0]); } } }
+  }
 }
 // UNLOCKED #9 FULL — EVERY PARTICLE CARRIES ITS OWN COMPLETE GENOME (not just its program).
 // pGenome[i] is a full clone of the parent's genome with EVERY heritable gene mutated, so lineages
@@ -17488,12 +17503,14 @@ if(typeof globalThis!=='undefined'){
                __OPCODE_NOVELTY:1,                                  // genotypic open-endedness #34 — the genetic complement to the ecological engines: mean-centred (zero-sum, no inflation) reward for running opcodes the population has HISTORICALLY under-explored (opCum EMA), turning the lights on in the ~20/256-opcode "museum". Real selection then keeps or discards the explorers — novelty is raw material, not fitness-by-fiat
                __NOVELTY_ARCHIVE:1,                                 // HISTORICAL NOVELTY ARCHIVE #39 — LIVE (default on, the active bet). Reward divergence from an EVER-GROWING archive of trait-signatures across ALL history, not current neighbours (trait-NFD); the target recedes as it's reached, so it cannot saturate — the open-ended engine the #11–#38 arc lacked. Reward is BOUND-THEN-CENTRE (conserved, outlier-robust) after a raw-centre first cut taxed the bulk to collapse. Headless A/B is mildly net-harmful on AVERAGE (entropyRatio 0.67 vs 0.80) BUT markedly more VOLATILE — deeper dips (evenness 0.37 @t16k) and higher spikes (nicheOcc 104 @t24k vs control's steadier plateau) — which is ambiguous between thrashing-toward-collapse and PUNCTUATED open-endedness, the exact call the notebook says only the LIVE artwork can make. Shipped ON to run that live test, not pre-shrunk to dormant. dial novStrength free/unfloored. Force off with NOVELTY_ARCHIVE=0
                __RICH_GRAMMAR:1,                                    // ENRICH the atom-authoring grammar (the creative tool) — HANDS: min/max (selection), atan2 (direction), hypot (magnitude), round (quantize); EYES: nx,ny (position), t (slow clock), nb (neighbour amplitude). Turns authored primitives from functions-of-SELF into functions-of-the-WORLD — substrate for sense→act behaviour. Verified 500/500 compile+finite, no substrate damage. Force off with RICH_GRAMMAR=0
+               __ATOM_DURABLE:1,                                    // DURABILITY — preserve authored bound-opcode call-sites across selfLearnFromBest adoption (confirmed: adoption was stripping them within ~2k ticks, orphaning atoms before selection could judge them). Gives authored BEHAVIOURS a sustained trial. Force off with ATOM_DURABLE=0
                __REACH:1,                                           // REACH — authored atoms drive the VM's existing conserved actuators (force/ampTransfer/tendBleed/spawn) directly, closing sense→compute→ACT. Atoms become effectors, not just calculators. Bounded (clamp+0.2 gain) and rides the existing conserved-energy physics. Force off with REACH=0
                __CHAR_DISP:0 };                                     // character displacement #27 — DORMANT (default off): the matched A/B (seed 7, 6k) showed it NET-HARMFUL to diversity (entropyRatio 0.67 vs control 0.74; evenness 0.61 vs 0.70) — rate 0.0015 OVER-spaces lineages toward the trait-space edges instead of letting more coexist. Code+knob kept for a re-tune (gentler rate, or gate on same-niche-cell overlap not raw trait distance); force on with CHAR_DISP=1
   for(const k in LIVE) if(globalThis[k]===undefined) globalThis[k]=LIVE[k];
 }
 __DRAWVM=(typeof globalThis!=='undefined'&&(globalThis.__DRAW_VM|0)===1); // resolve the render-VM toggle now that LIVE defaults are filled
 __REACH_ON=(typeof globalThis==='undefined')||((globalThis.__REACH??1)|0)!==0; // resolve REACH once (LIVE defaults filled); referenced in the per-instruction hot loop
+__ATOM_DURABLE=(typeof globalThis==='undefined')||((globalThis.__ATOM_DURABLE??1)|0)!==0; // resolve DURABILITY once
 const __SPEC=(function(){ const G=(typeof globalThis!=='undefined')?globalThis:{}; const m=(G.__SPECIATE|0)===1;
   const sub=k=>G[k]!==undefined?(G[k]|0):(m?1:0);
   return { on:m, gate:sub('__SPEC_GATE'), mint:sub('__SPEC_MINT'),
