@@ -2274,3 +2274,23 @@ the signal, not the one that's convenient to instrument.
 Practical upshot: to see authored behaviours establish LIVE, run CONTINUOUS (no tab restarts) ~50k+ ticks. The
 author→bind→use→select loop is now genuinely closed on continuous runs; reloads reset it. (Hardening against
 reload — persisting established call-sites through save/load — is a possible future lever, not done.)
+
+### RELOAD-DURABILITY FIX — the saved state was orphaned; load now re-establishes call-sites (real code change)
+
+User's challenge: the gen4 export ALREADY ran the durability code and showed uses=0, so expecting a different
+result from the same code is wrong. Correct. The export proves a concrete defect: it saved 7 bound atoms
+(bo:[0,1,2,2,3,2,4]) with ZERO call-sites in the program (V had no opcode ≥232). So every reload restores that
+inconsistent state — atoms bound-but-disconnected — and starts ORPHANED before durability (which only acts during
+a run) can help. The continuous-headless fix (selfLearnFromBest carry, verified 9→2385) never gets a chance across
+a reload because load itself hands it a dead genome.
+
+FIX (sanitizeGenome, gated __ATOM_DURABLE — runs on load): for each bound opcode lacking a call-site, splice one
+in (bounded by the program ceiling). So a reload re-establishes the author→use loop instead of inheriting the
+broken saved state. Verified against the EXACT gen4 failure mode (reloadfix.js): reproduce the broken state
+(7 bound, 0 call-sites) → after sanitizeGenome, call-sites 0→7; run 6k ticks → atoms reach 297 uses (vs frozen 0),
+population healthy 516. Clean boot.
+
+This is the genuine code change that justifies a different live result — not a re-run of identical code. Combined
+with the continuous fix, the loop now survives BOTH normal program turnover (selfLearnFromBest carry) AND save/
+reload (this). The reloaded usage pattern the user actually has is now covered. Lesson, stated plainly: "run it
+again" is not a fix; the export named a real defect (orphaned saved state) and the fix addresses THAT.

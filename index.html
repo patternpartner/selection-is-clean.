@@ -6821,6 +6821,16 @@ function sanitizeGenome(){
   genome.rend=genome.rend.map(a=>({expression:typeof a.expression==='string'?a.expression.slice(0,200):'0',compiled:null,failed:!!a.failed}));
   if(!Array.isArray(genome.boundOpcodes)) genome.boundOpcodes=[];
   genome.boundOpcodes=genome.boundOpcodes.filter(n=>typeof n==='number'&&n>=0).slice(0,MAX_BOUND_OPCODES);
+  // DURABILITY across save/load: a reload restores boundOpcodes + vmProgram from the save, but the saved
+  // program often has NO call-site for its bound atoms (gen4 export: 7 bound, 0 call-sites in V) — so a
+  // reloaded run starts ORPHANED, atoms bound-but-disconnected, before anything can run. Re-establish one
+  // call-site per bound opcode that lacks one (bounded by the program ceiling) so the author→use loop
+  // survives reload. Confirmed cause: the live uses=0 was reloads inheriting this broken saved state.
+  if(__ATOM_DURABLE&&genome.boundOpcodes.length&&Array.isArray(genome.vmProgram)){
+    const _vp=genome.vmProgram,_cap=genome.vmMaxInstructions||16,_have=new Set();
+    for(let q=0;q<_vp.length;q++) if(_vp[q][0]>=CORE_OPCODES)_have.add(_vp[q][0]);
+    for(let k=0;k<genome.boundOpcodes.length;k++){ const _op=CORE_OPCODES+k; if(_vp.length>=_cap)break; if(!_have.has(_op)){ _vp.splice((Math.random()*(_vp.length+1))|0,0,[_op,(Math.random()*12)|0,(Math.random()*12)|0,(Math.random()-0.5)*0.6]); _have.add(_op); } }
+  }
   genome.lineage=Array.isArray(genome.lineage)?genome.lineage.slice(-6):[];
   genome.eventLog=Array.isArray(genome.eventLog)?genome.eventLog.slice(-EVENT_LOG_SIZE):[];
   if(!Array.isArray(genome.epochs))genome.epochs=[];
