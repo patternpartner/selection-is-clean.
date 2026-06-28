@@ -2246,3 +2246,31 @@ diversity unchanged" — the differentiating primitives now actually get a fair,
 the ecology is, as always, the LIVE test (one more enrichment-stack export past the danger zone), not a harness
 claim. Chain status: bank✓ atoms✓ bound-opcodes✓ enrichment(hands/eyes/reach)✓ durability✓ — each fix exposed the
 next link; this closes the authoring loop end to end.
+
+### DURABILITY — VERIFIED on the natural path; the live "uses=0" was the RELOAD confound (and I nearly called it broken)
+
+The gen4 t85051 export showed every atom uses=0 → I diagnosed the durability fix as targeting the wrong program
+(children inherit parent's pProg via inheritProg, not the global self the fix preserves) and was about to call it
+hollow. Before fixing, ran the decisive test I should have run first: NATURAL atom births, CONTINUOUS run (no
+reseed/reload), durability on vs off, 50k ticks.
+
+| natural births, continuous 50k (same 3 atoms) | first-uses | maxUses |
+|---|---|---|
+| durability OFF | 10 | 9 |
+| durability ON  | 127 | **2385** |
+
+The fix is REAL: 265× on the path that matters (maxUses 9→2385). OFF=9 matches the old pre-fix natural runs, so
+it's clean. So BOTH my prior conclusions were wrong and self-correcting: the seeded probe (621) was a false
+positive on a forced path; the live-gen4 read ("broken/hollow") was a false NEGATIVE on a reloaded path. The
+continuous natural-birth test is the truth, and it says durability works.
+
+The live uses=0 was the RELOADS: gen4 = 4 reloads, each reseeding the population and resetting the author→use loop
+before it could establish; continuous → 2385. Same open-system confound as the network and the crash-radiations —
+the user's actions, invisible in the export except as side-effects, repeatedly mistaken for system behaviour. The
+harness (which can't reload) revealed what the reloaded export hid. Meta-lesson, fourth instance: before crediting
+OR blaming the system for what an export shows, rule out the user's hand — and run the path that actually carries
+the signal, not the one that's convenient to instrument.
+
+Practical upshot: to see authored behaviours establish LIVE, run CONTINUOUS (no tab restarts) ~50k+ ticks. The
+author→bind→use→select loop is now genuinely closed on continuous runs; reloads reset it. (Hardening against
+reload — persisting established call-sites through save/load — is a possible future lever, not done.)
