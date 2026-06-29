@@ -2294,3 +2294,27 @@ This is the genuine code change that justifies a different live result — not a
 with the continuous fix, the loop now survives BOTH normal program turnover (selfLearnFromBest carry) AND save/
 reload (this). The reloaded usage pattern the user actually has is now covered. Lesson, stated plainly: "run it
 again" is not a fix; the export named a real defect (orphaned saved state) and the fix addresses THAT.
+
+### MILESTONE (live gen0 t48804, continuous, latest code) — the author→use→SELECT loop is CLOSED; atom reaches 387 uses
+
+First live export, continuous (gen0, no reloads), on the fully-fixed stack (bank/atoms/bound-opcodes/enrichment/
+durability/reload-durability). The decisive number: an authored atom `(a)/(Math.log1p(Math.abs(-0.24)))` reached
+**387 uses** — persisted and ran under selection. Every prior live export showed authored atoms frozen at 0 (or
+~36 transiently). This is the first time the author→bind→use→select loop demonstrably CLOSES in the live artwork,
+under the user's real usage. The ~10-fix arc (each closing one broken link) paid off: the machinery works
+end-to-end. (Mechanism note: global program V still has 0 call-sites — the atom accumulated uses via the
+POPULATION path, call-sites oscillating in/out of the self; the loop runs through pProg, as designed.)
+
+HONEST CAVEATS — a milestone, not a win:
+- The selected atom is SIMPLE (a/log1p(0.24) ≈ 4.65·a), not a sense→act behaviour. The world-sensing one
+  ((0.08)*(nx), reads position) got first-used but is NOT the one selection kept. So "the system keeps what it
+  authors" is now true; "RICH behaviours win selection" is not yet (simple-useful beats complex-untested early —
+  correct selection, but not the payoff).
+- DIVERSITY UNCHANGED: kinds 9–24, peaks ~24, no lock — same band as every prior run. The loop closing did NOT,
+  by itself, move the ecology. fitness healthy/climbing (~0.81), pop healthy, gen0/x0.
+
+So the precise state: the infrastructure is built and verified live, and the deep question is finally ASKABLE for
+the first time — does closed-loop authorship of behaviours move the ecology / drive niche differentiation? First
+data point: not visibly, not yet. That is the real open question of the whole project, now reachable because the
+loop holds. Next: longer continuous runs (does the used-atom set grow richer and start to differentiate niches?),
+and whether reach-driven behaviours ever out-select simple scalings.
