@@ -1,10 +1,10 @@
-// Non-biological scoreboard for index.html — the computational-economy view.
+// Scoreboard for index.html — the machine's-eye view.
 //
-// The rest of the harness family scores this system as an ECOLOGY (kinds,
-// niches, diversity, speciation). That framing imports a promise the mechanics
-// don't cash and reads progress off noisy, lagging proxies. This harness scores
-// the SAME run as what it literally is: a self-extending VM that mints and
-// prices its own primitives. No biology — only the machine.
+// The older harnesses score this system by population-diversity surface metrics
+// whose vocabulary is borrowed from elsewhere; that framing imports a promise the
+// mechanics don't cash and reads progress off noisy, lagging proxies. This harness
+// scores the SAME run as what it literally is: a self-extending VM that mints and
+// prices its own primitives. Only the machine — programs, opcodes, primitives, bits.
 //
 // Four families, each a concrete quantity read from live state, not a metaphor:
 //   ISA       — the alphabet actually in use. How much of the 232-opcode core is
@@ -21,8 +21,8 @@
 //
 // Honesty note: MDL-rising is NECESSARY, not sufficient — neutral drift also adds
 // tokens. The decisive test is whether the accreted structure is SELECTED (ablation,
-// a separate harness). This scoreboard measures the computational signature without
-// the ecological costume, and flags which signals are load-bearing vs cosmetic.
+// a separate harness). This scoreboard measures the computational signature
+// directly, and flags which signals are load-bearing vs cosmetic.
 //
 // Env:  TICKS (default 20000)  SAMPLE (ticks between samples, default 500)
 //       SEED  (optional: seeded RNG + deterministic clock for exact replay)
@@ -111,80 +111,20 @@ let loopErrors = 0, lastErr = '';
 console.error = (...a) => { const s = a.join(' '); if (/Loop error|Boot error|Watchdog/.test(s)) { loopErrors++; lastErr = s.slice(0, 160); } };
 console.warn = () => {};
 
-// ── OEE niche-economy knobs (swing #11): opt-in levers for A/B + controls ──
-// Stock behaviour (baseline) = set NONE of these. Enable a lever with =1.
-//   NICHE_FRONTIER=1   expanding cross-feed resource-spectrum frontier (lever 1)
-//   NICHE_BIOTIC=1     biotic / coevolutionary predation niches (lever 2)
-//   OPCODE_NOVELTY=1   opcode-novelty / coupling-gap pressure (lever 3)
-//   NICHE_REAL=0       (with NICHE_FRONTIER=1) swap lever 1's REAL income for the zero-sum
-//                      mean-centred control — proves a tax cannot beat limiting similarity.
-//   NICHE_DRIFT=1      (with NICHE_FRONTIER=1) swing #12: supply peaks DRIFT, so the profitable
-//                      diet is a moving target — no lineage can summit-and-stop.
-//   NICHE_NDIM=1       (with NICHE_FRONTIER=1) swing #13: diet is an N-dim cell (bins^D niches),
-//                      a combinatorial count instead of a 1-D handful. nicheOcc = occupied cells.
-//   NICHE_LOCAL=1      (with NICHE_NDIM=1) swing #14: per-cell crowding cost — each niche gets a
-//                      LOCAL carrying capacity, so overflow spreads to other cells (real per-niche competition).
-if (process.env.NICHE_NDIM !== undefined) globalThis.__NICHE_NDIM = parseInt(process.env.NICHE_NDIM, 10);
-if (process.env.NICHE_LOCAL !== undefined) globalThis.__NICHE_LOCAL = parseInt(process.env.NICHE_LOCAL, 10);
-// swing #15 synthesis + retention knobs:
-//   NICHE_CELLDRIFT=1  (with NICHE_NDIM=1) each cell's supply pulses on its own phase — no niche stays settled.
-//   TEND_MUT=<x>       scale diet-axis exploration (default 1) — tests whether retention is exploration-limited.
-if (process.env.NICHE_CELLDRIFT !== undefined) globalThis.__NICHE_CELLDRIFT = parseInt(process.env.NICHE_CELLDRIFT, 10);
-if (process.env.TEND_MUT !== undefined) globalThis.__TEND_MUT = parseFloat(process.env.TEND_MUT);
-// retention diagnostic + fix:
-//   GLOBALTEND=<x>     scale the global diet-axis mean-reversion sink (0 = ablate; default 1).
-//   NICHE_LOCALTEND=1  (with NICHE_NDIM=1) localise it: pull toward the per-niche centroid, not the global one.
-if (process.env.GLOBALTEND !== undefined) globalThis.__GLOBALTEND = parseFloat(process.env.GLOBALTEND);
-if (process.env.NICHE_LOCALTEND !== undefined) globalThis.__NICHE_LOCALTEND = parseInt(process.env.NICHE_LOCALTEND, 10);
-// swing #16 dimensionality ratchet:
-//   DIMS_GROW=<interval>  open a new trait axis every <interval> ticks (0 = off). Tests whether the
-//                         board can GROW without catastrophe. DIMS_CAP caps it (default 10).
-if (process.env.DIMS_GROW !== undefined) globalThis.__DIMS_GROW = parseInt(process.env.DIMS_GROW, 10);
-if (process.env.DIMS_CAP !== undefined) globalThis.__DIMS_CAP = parseInt(process.env.DIMS_CAP, 10);
-if (process.env.DIMS_SPREAD !== undefined) globalThis.__DIMS_SPREAD = parseFloat(process.env.DIMS_SPREAD);
-for (const k of ['DIMS_SAT','DIMS_SAT_CAP','DIMS_SAT_OCC','CHAR_DISP','RED_QUEEN','NICHE_BUILD','SPATIAL_NICHE','RQ_TRAIT','MUTUALISM','GROUP_ROLES','GROUP_PROBE','BUD_INSTR','GENO_PARASITE','FRONTIER_EXPAND','NOVELTY_ARCHIVE','ATOM_PIPELINE','RICH_GRAMMAR','REACH']) if (process.env[k] !== undefined) globalThis['__' + k] = parseInt(process.env[k], 10);
-if (process.env.SHADOW_WINS_DECAY !== undefined) globalThis.__SHADOW_WINS_DECAY = parseFloat(process.env.SHADOW_WINS_DECAY);
-if (process.env.NICHE_FRONTIER !== undefined) globalThis.__NICHE_FRONTIER = parseInt(process.env.NICHE_FRONTIER, 10);
-if (process.env.NICHE_BIOTIC !== undefined) globalThis.__NICHE_BIOTIC = parseInt(process.env.NICHE_BIOTIC, 10);
-if (process.env.OPCODE_NOVELTY !== undefined) globalThis.__OPCODE_NOVELTY = parseInt(process.env.OPCODE_NOVELTY, 10);
-if (process.env.NICHE_REAL !== undefined) globalThis.__NICHE_REAL = parseInt(process.env.NICHE_REAL, 10);
-if (process.env.NICHE_DRIFT !== undefined) globalThis.__NICHE_DRIFT = parseInt(process.env.NICHE_DRIFT, 10);
-// swing #17 cladogenesis (the speciation primitive). SPECIATE=1 turns it on; sub-toggles default to the
-// master and exist for the 3-way control:
-//   SPECIATE=1        master: isolate re-mergers within lineage + mint diverged sub-populations + grace.
-//   SPEC_GATE=0       (control "mint-on/iso-off") label lineages but DON'T gate the re-mergers — must still collapse.
-//   SPEC_MINT=0       isolate but never mint (diagnostic).
-//   SPEC_GRACE=<t>    founder death-relief window in ticks (default 2000); SPEC_MINSIZE founder size (default 12).
-//   SPEC_DIVT=<x>     trait-centroid divergence threshold to mint (default 0.20).
-// Divergent selection is supplied by REAL partitioned niche cells (run with NICHE_NDIM=1 NICHE_REAL=1);
-// the "same-landscape" control sets NICHE_REAL=0 (flat income) so isolation has no per-cell optimum to bite on.
-for (const k of ['SPECIATE','SPEC_GATE','SPEC_MINT','SPEC_MINSIZE','SPEC_ASSORT']) if (process.env[k] !== undefined) globalThis['__' + k] = parseInt(process.env[k], 10);
-for (const k of ['SPEC_GRACE','SPEC_DIVT','SPEC_ASSORT_T','SPEC_ASSORT_K']) if (process.env[k] !== undefined) globalThis['__' + k] = parseFloat(process.env[k]);
-if (process.env.SPEC_DEBUG !== undefined) globalThis.__SPEC_DEBUG = parseInt(process.env.SPEC_DEBUG, 10);
-if (process.env.SPEC_DECAY !== undefined) globalThis.__SPEC_DECAY = parseInt(process.env.SPEC_DECAY, 10);
-// swing #20: colonization-vs-survival 2×2. Both default off (=baseline #17). Run as a 2×2 over {S,C}:
-//   COLO_SURV=1     knob S — death-grace + min-viable-size floor (survival term; predicted: persistence up, distinct-cells flat)
-//   COLO_PIONEER=1  knob C — pioneer income + Allee relief (growth term; predicted: distinct-lineage-cells climbs off ~12)
-//   COLO_PIONEER_K / COLO_ALLEE_K / COLO_PIONEER_OCC  tune the C lever (defaults 2.0 / 1.0 / NICHE_CELL_FLOOR).
-for (const k of ['COLO_SURV','COLO_PIONEER','COLO_PIONEER_OCC']) if (process.env[k] !== undefined) globalThis['__' + k] = parseInt(process.env[k], 10);
-for (const k of ['COLO_PIONEER_K','COLO_ALLEE_K']) if (process.env[k] !== undefined) globalThis['__' + k] = parseFloat(process.env[k]);
-// swing #21: spatially-local homogeniser (allopatry). SPATIAL_TEND=1 pulls each particle toward nearby
-// same-lineage neighbours' mean tend; ALLO_SHUF=1 is the non-spatial strength-matched control; ALLO_K caps
-// neighbours folded in. Needs SPECIATE=1. Headline = bifurcLin (lineage spatially splits into 2 centroids).
-for (const k of ['SPATIAL_TEND','ALLO_SHUF','ALLO_K']) if (process.env[k] !== undefined) globalThis['__' + k] = parseInt(process.env[k], 10);
-// swing #22: permissive mint gate. MINT_GATE = 'cell' (stock) | 'cluster' (permissive deme gate, drop
-// niche-cell entry req) | 'relax' (size+divT only). Pair with COLO_SURV=1 for founder grace. radiationCells
-// stays the strict success bar; cascadeCount = same-cell mints that LATER reach a distinct home cell.
-if (process.env.MINT_GATE !== undefined) globalThis.__MINT_GATE = String(process.env.MINT_GATE);
+// ── Self-extension knobs (the computational stack) ──────────────────────────
+// The only levers this scoreboard exposes. Each defaults ON in the engine; set
+// =0 to ablate it for an A/B. The substrate carries many other toggles, but they
+// are irrelevant to what this instrument measures, so they're intentionally not
+// wired here — an unset engine toggle just runs its stock default.
+//   ATOM_PIPELINE  author a new primitive, bind it, and wire a call-site (the mint)
+//   ATOM_DURABLE   keep authored call-sites across program adoption + reload
+//   REACH          let an authored primitive's output drive an actuator (sense->act)
+//   RICH_GRAMMAR   give the authoring grammar world-reading + selection/compose ops
+for (const k of ['ATOM_PIPELINE', 'ATOM_DURABLE', 'REACH', 'RICH_GRAMMAR'])
+  if (process.env[k] !== undefined) globalThis['__' + k] = parseInt(process.env[k], 10);
 
 const html = fs.readFileSync(process.env.INDEX || (__dirname + '/index.html'), 'utf8');
 const code = html.match(/<script>([\s\S]*)<\/script>/)[1];
-
-// ── Metrics driver (runs in module scope → sees all sim globals) ──
-
-// ATOM_DURABLE passthrough (the sim reads globalThis.__ATOM_DURABLE at boot; the
-// generic knob loop above doesn't cover it). Set =0 to ablate durability.
-if (process.env.ATOM_DURABLE !== undefined) globalThis.__ATOM_DURABLE = parseInt(process.env.ATOM_DURABLE, 10);
 
 // ── Scoreboard driver (runs in module scope → sees genome, pProg, CORE_OPCODES, __reachFires) ──
 const driver = `
@@ -352,7 +292,7 @@ console.log(JSON.stringify({
   scoreboard: { ISA, MINT, BEHAVIOUR, MDL },
   signals,
   notes: [
-    'This scoreboard scores the run as a self-extending VM, not an ecology. No kinds/niches/species.',
+    'This scoreboard scores the run as a self-extending VM: programs, opcodes, authored primitives, bits.',
     'senseAct_gaining is the core question, stated computationally: do world-sensing atoms win call-share over pure self-scalings?',
     'mdl_ratchets is NECESSARY, not sufficient for open-endedness — neutral drift also adds tokens. Decisive test = is the accreted structure SELECTED (ablation, separate harness).',
     'authored_opcodes_running=false means the mint never became load-bearing at the ISA level, even if atoms were adopted via the population path.',
