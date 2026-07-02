@@ -188,4 +188,39 @@ The real open-endedness signal to watch from here is **`loadBearingOps` climbing
 a long run** — accumulating genuinely useful authored primitives — which is what MDL
 was meant to proxy and couldn't. Making adoption competitive (prune call-sites that
 aren't load-bearing) is the paired change that would also make `senseUseShare` mean
-something again. Neither the long run nor competitive adoption is done yet.
+something again.
+
+### Competitive adoption — and the structural wall it exposes
+
+Added `COST` (rent per authored call-site, subtracted from a program's priced value)
+plus durability that protects only currently load-bearing opcodes. With rent on, a
+call-site survives only if its contribution exceeds its cost. Result (track, seed 7):
+
+| COST | authored ops in best | load-bearing | note |
+|---|---|---|---|
+| 0 (free) | 9 | 1 (marginal, drop ~0.002) | free adoption props up dead weight |
+| 0.0003 | 1 | 0 | collapses |
+| 0.001 | 1 | 0 | `priceDropSum` **negative** — ablation *improves* price |
+| 0.002–0.003 | 0–1 | 0 | mint fully rejected |
+
+**There is no rent level (down to 0.0003) at which authored primitives survive
+competition while contributing.** The moment call-sites cost anything, the best
+program sheds them, and some are actively harmful (negative price-drop). The 1–2
+"load-bearing" primitives seen under free adoption were an artifact of durability
+propping them up.
+
+The cause is structural, not a tuning failure: **an authored atom is a frozen
+composition of the same functions the core instruction set already provides**
+(`sin`, `cos`, `atan2`, `+`, `*`, …). A program can already express inline anything
+an atom offers — so the atom is convenience, not new capability, and competition
+correctly prices convenience-with-no-new-power at zero. This is the computational
+restatement of the original project's central wall ("reshuffle a fixed alphabet
+forever"), now demonstrated from the inside via ablation + competition rather than
+inferred from diversity curves.
+
+**The lever this implies (specific, not guessed):** for the mint to be load-bearing,
+an authored primitive must carry something the core ops cannot — the clearest
+candidate is **state** (memory across calls/ticks). The atom grammar already has a
+dormant `s` slot; a stateful authored primitive would give a program a capability the
+stateless core lacks, which is the first thing competition might actually pay rent
+for. Not done here — but it is the honest next strike, derived from the finding.

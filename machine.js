@@ -42,6 +42,10 @@ const ATOM_PIPELINE = ((process.env.ATOM_PIPELINE ?? '1') | 0) !== 0;  // author
 const ATOM_DURABLE  = ((process.env.ATOM_DURABLE  ?? '1') | 0) !== 0;  // keep authored call-sites across reproduction
 const REACH         = ((process.env.REACH         ?? '1') | 0) !== 0;  // authored output drives an actuator channel
 const RICH_GRAMMAR  = ((process.env.RICH_GRAMMAR  ?? '1') | 0) !== 0;  // grammar can read input channels + select/compose
+// COMPETITIVE ADOPTION: each authored call-site pays rent out of a program's priced value,
+// so a call-site only survives if its contribution exceeds its cost. COST=0 restores the old
+// free-adoption behaviour (the A/B baseline that showed 7-10 dead-weight ops per best program).
+const COST = parseFloat(process.env.COST ?? '0.003');
 
 // ── input channels (the abstract environment; NOT a physical world) ──
 // A handful of ambient signals programs may read. Purely computational: oscillators
@@ -71,6 +75,7 @@ function inputs(t) {
 const atoms = [];        // { expr, fn, uses, age }
 const bound = [];        // indices into `atoms` promoted to opcodes; opcode id = CORE_OPCODES + position
 const SELF = [];         // ids >= CORE that appear as a call-site somewhere (for reload/durability semantics)
+let _lbSet = new Set();  // opcodes currently found LOAD-BEARING on the best program; only these get durability protection
 
 const SELF_VARS = ['a', 'b', 'u', 's'];                    // register / internal
 const INPUT_VARS = ['c', 'd', 'm', 'nx', 'ny', 't', 'nb']; // read the environment
@@ -209,10 +214,12 @@ function mutate(prog) {
     const ai = author();
     if (ai >= 0) { const opId = bindAtom(ai); if (opId >= 0) { spliceCallsite(p, opId); if (SELF.indexOf(opId) < 0) SELF.push(opId); } }
   }
-  // DURABILITY: guarantee established authored opcodes retain a call-site through reproduction
-  if (ATOM_DURABLE && SELF.length) {
+  // DURABILITY: retain established authored opcodes through reproduction — but only the ones
+  // currently found LOAD-BEARING. Non-load-bearing call-sites are left to the cost + mutation
+  // to prune, so adoption reflects contribution rather than force-keeping everything.
+  if (ATOM_DURABLE && _lbSet.size) {
     const have = new Set(); for (const ins of p) if (ins[0] >= CORE_OPCODES) have.add(ins[0]);
-    for (const opId of SELF) { if (p.length >= PROG_LEN + 8) break; if (!have.has(opId) && rnd() < 0.5) spliceCallsite(p, opId); }
+    for (const opId of _lbSet) { if (p.length >= PROG_LEN + 8) break; if (!have.has(opId) && rnd() < 0.5) spliceCallsite(p, opId); }
   }
   return p;
 }
@@ -230,17 +237,17 @@ function loadBearing(best, tick) {
   const ops = new Set(); for (const ins of best) if ((ins[0] | 0) >= CORE_OPCODES) ops.add(ins[0] | 0);
   const was = _probing; _probing = true;
   let pFull = 0; for (const cx of ctxs) pFull += price(runProg(best, cx, null), cx); pFull /= ctxs.length;
-  let lb = 0, maxDrop = 0, sumDrop = 0;
+  let lb = 0, maxDrop = 0, sumDrop = 0; const set = new Set();
   for (const op of ops) {
     const mute = new Set([op]);
     let pA = 0; for (const cx of ctxs) pA += price(runProg(best, cx, mute), cx); pA /= ctxs.length;
     const drop = pFull - pA;
-    if (drop > 1e-4) lb++;
+    if (drop > 1e-4) { lb++; set.add(op); }
     if (drop > maxDrop) maxDrop = drop;
     sumDrop += drop;
   }
   _probing = was;
-  return { authoredOpsInBest: ops.size, loadBearingOps: lb, priceDropSum: +sumDrop.toFixed(4), priceDropMax: +maxDrop.toFixed(4) };
+  return { authoredOpsInBest: ops.size, loadBearingOps: lb, priceDropSum: +sumDrop.toFixed(4), priceDropMax: +maxDrop.toFixed(4), set };
 }
 function score(tick, best) {
   const used = new Set();
@@ -274,10 +281,16 @@ let bestProg = progs[0];
 for (let tick = 0; tick <= TICKS; tick++) {
   const ctx = inputs(tick);
   let sum = 0, bi = 0, bv = -1;
-  for (let i = 0; i < N; i++) { const out = runProg(progs[i], ctx); const v = price(out, ctx); val[i] = v; sum += out; if (v > bv) { bv = v; bi = i; } }
+  for (let i = 0; i < N; i++) {
+    const out = runProg(progs[i], ctx);
+    let ac = 0; const pr = progs[i]; for (let j = 0; j < pr.length; j++) if (pr[j][0] >= CORE_OPCODES) ac++;  // authored call-sites
+    const v = price(out, ctx) - COST * ac;                 // COMPETITIVE ADOPTION: each call-site pays rent
+    val[i] = v; sum += out; if (v > bv) { bv = v; bi = i; }
+  }
   _coupling = sum / N;                                     // feed nb for next tick (pure computational coupling)
   bestProg = progs[bi];
   for (const a of atoms) a.age++;
+  if (tick % 500 === 0) { _lbSet = loadBearing(bestProg, tick).set; }  // refresh which opcodes durability protects
   // reproduction: tournament — replace a random program with a mutated copy of a fitter one
   const K = Math.max(8, (N * 0.25) | 0);
   for (let r = 0; r < K; r++) {
@@ -312,7 +325,7 @@ const signals = {
   mint_load_bearing: scoreboard.LOADBEARING.loadBearingOps_max > 0,
 };
 console.log(JSON.stringify({
-  config: { SEED, TICKS, POP: N, PRICE_MODE, stack: { ATOM_PIPELINE, ATOM_DURABLE, REACH, RICH_GRAMMAR } },
+  config: { SEED, TICKS, POP: N, PRICE_MODE, COST, stack: { ATOM_PIPELINE, ATOM_DURABLE, REACH, RICH_GRAMMAR } },
   timing_ms: { run: dt, perKtick: +((dt / TICKS) * 1000).toFixed(1) },
   scoreboard, signals,
   notes: [
