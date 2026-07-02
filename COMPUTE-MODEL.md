@@ -156,3 +156,36 @@ Net: the clean core is real, fast, and biology-free, and it correctly runs the
 author→bind→wire→price loop. It does **not** yet demonstrate open-endedness — it
 demonstrates that the current signals can be driven entirely by plumbing, which is
 exactly what the objective-ablation control is for.
+
+### Load-bearing use — the honest metric, added and run
+
+`machine.js` now measures **load-bearing use** directly: take the best program, and
+for each authored opcode it calls, neutralise that opcode (passthrough) and measure
+how much the program's `price` drops across 24 input contexts. A drop => the
+primitive does real work under the objective; no drop => it is dead weight that
+automatic adoption kept anyway. (Probing doesn't mutate `uses`/telemetry.)
+
+Result (seed 7, 20k):
+
+| mode | authored opcodes in best | load-bearing | max price drop | senseShare |
+|---|---|---|---|---|
+| track | 10 | **1** | 0.074 | 0.27 → 0.53 |
+| const | 7 | **2** | 0.66 | 0.27 → 0.52 |
+
+What this settles:
+
+- **The raw-`uses` inflation is ~5–10×.** The best program wires 7–10 authored
+  opcodes; only 1–2 are load-bearing. Adoption drags the rest along dead.
+- **The loop is not sterile.** `mint_load_bearing` is true in both modes: selection
+  keeps ≥1 primitive that genuinely does work under whatever objective is set. First
+  positive in the arc that survives the control. (In `const` the load-bearing atom is
+  a useful *constant* producer — correct for a constant target.)
+- **`senseUseShare` measures the dead weight, not the working core** — which is why
+  it's objective-insensitive. The 1–2 useful atoms are drowned in the share by the
+  grammar-biased plurality automatic adoption retained.
+
+The real open-endedness signal to watch from here is **`loadBearingOps` climbing over
+a long run** — accumulating genuinely useful authored primitives — which is what MDL
+was meant to proxy and couldn't. Making adoption competitive (prune call-sites that
+aren't load-bearing) is the paired change that would also make `senseUseShare` mean
+something again. Neither the long run nor competitive adoption is done yet.

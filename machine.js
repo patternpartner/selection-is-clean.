@@ -49,6 +49,7 @@ const RICH_GRAMMAR  = ((process.env.RICH_GRAMMAR  ?? '1') | 0) !== 0;  // gramma
 // The grammar names them c,d,m,nx,ny,t,nb (kept from the original so the same
 // input-reading detection applies) — here they are just channels, no spatial meaning.
 let __reachFires = 0;                                      // telemetry: authored output -> actuator drives
+let _probing = false;                                      // true during ablation probing: don't mutate uses/telemetry
 let _coupling = 0;                                         // nb: last tick's population-mean output
 function inputs(t) {
   const tt = t * 0.01;
@@ -96,7 +97,7 @@ function uaCall(idx, a, b, ctx) {
   const at = atoms[((idx % atoms.length) + atoms.length) % atoms.length];
   if (!at || !at.fn || _uaFuel <= 0) return 0;
   _uaFuel--;
-  at.uses++;
+  if (!_probing) at.uses++;
   const f = (i, x, y) => uaCall(i, +x || 0, +y || 0, ctx);
   const r = at.fn(a, b, at.uses, ctx.c, ctx.d, ctx.m, 0, f, ctx.nx, ctx.ny, ctx.t, ctx.nb);
   return isFinite(r) ? r : 0;
@@ -120,7 +121,7 @@ function randProg() { const p = []; for (let i = 0; i < PROG_LEN; i++) p.push(ra
 function cloneProg(p) { return p.map(ins => ins.slice()); }
 
 // core opcode semantics: R[di] = op(R[si], R[si+1], k, inputs)
-function runProg(prog, ctx) {
+function runProg(prog, ctx, mute) {
   const R = new Float64Array(REGS);
   R[0] = ctx.nx; R[1] = ctx.ny; R[2] = ctx.t;             // seed a few registers from inputs so reads matter
   let out = 0;
@@ -130,11 +131,14 @@ function runProg(prog, ctx) {
     const a = R[si], b = R[(si + 1) % REGS];
     let v;
     if (op >= CORE_OPCODES) {                              // authored opcode: call the bound atom
+      if (mute && mute.has(op)) { v = a; }                 // ablation: neutralise this authored op (passthrough), no reach
+      else {
       const bi = bound[op - CORE_OPCODES];
       const at = (bi != null) ? atoms[bi] : null;
-      if (at && at.fn) { at.uses++; const f = (idx, x, y) => uaCall(idx, +x || 0, +y || 0, ctx); v = at.fn(a, b, at.uses, ctx.c, ctx.d, ctx.m, 0, f, ctx.nx, ctx.ny, ctx.t, ctx.nb); v = isFinite(v) ? v : 0;
-        if (REACH) { __reachFires++; out += Math.max(-2, Math.min(2, v)) * k * 0.2; } }   // authored output drives the actuator channel
+      if (at && at.fn) { if (!_probing) at.uses++; const f = (idx, x, y) => uaCall(idx, +x || 0, +y || 0, ctx); v = at.fn(a, b, at.uses, ctx.c, ctx.d, ctx.m, 0, f, ctx.nx, ctx.ny, ctx.t, ctx.nb); v = isFinite(v) ? v : 0;
+        if (REACH) { if (!_probing) __reachFires++; out += Math.max(-2, Math.min(2, v)) * k * 0.2; } }   // authored output drives the actuator channel
       else v = a;
+      }
     } else {
       switch (op % 20) {
         case 0: v = a + b; break;
@@ -216,6 +220,28 @@ function mutate(prog) {
 // ── metrics (the four families, substrate-native) ──
 function pdepth(e) { let d = 0, mx = 0; for (let i = 0; i < e.length; i++) { const ch = e[i]; if (ch === '(') mx = Math.max(mx, ++d); else if (ch === ')') d--; } return mx; }
 const SENSE = /\b(nx|ny|nb|c|d|m|t)\b/, COMPOSE = /\bf\s*\(/;
+// LOAD-BEARING use: the honest test raw-`uses` can't do. Take the best program, and for
+// each authored opcode it calls, neutralise that opcode (passthrough) and measure how much
+// the program's PRICE drops across a spread of input contexts. A drop => the authored
+// primitive is doing real work under the current objective; no drop => it's dead weight the
+// automatic-adoption plumbing kept anyway. Probing doesn't mutate uses/telemetry.
+function loadBearing(best, tick) {
+  const ctxs = []; for (let j = 0; j < 24; j++) ctxs.push(inputs(tick + j * 137));
+  const ops = new Set(); for (const ins of best) if ((ins[0] | 0) >= CORE_OPCODES) ops.add(ins[0] | 0);
+  const was = _probing; _probing = true;
+  let pFull = 0; for (const cx of ctxs) pFull += price(runProg(best, cx, null), cx); pFull /= ctxs.length;
+  let lb = 0, maxDrop = 0, sumDrop = 0;
+  for (const op of ops) {
+    const mute = new Set([op]);
+    let pA = 0; for (const cx of ctxs) pA += price(runProg(best, cx, mute), cx); pA /= ctxs.length;
+    const drop = pFull - pA;
+    if (drop > 1e-4) lb++;
+    if (drop > maxDrop) maxDrop = drop;
+    sumDrop += drop;
+  }
+  _probing = was;
+  return { authoredOpsInBest: ops.size, loadBearingOps: lb, priceDropSum: +sumDrop.toFixed(4), priceDropMax: +maxDrop.toFixed(4) };
+}
 function score(tick, best) {
   const used = new Set();
   for (const p of progs) for (const ins of p) used.add(ins[0] | 0);
@@ -232,10 +258,12 @@ function score(tick, best) {
   for (const e of active) parts.push(e);
   const src = parts.join('\n');
   let mdl = 0; try { mdl = zlib.gzipSync(src).length; } catch (e) {}
+  const lb = loadBearing(best, tick);
   return { tick, isaUsedDistinct: used.size, isaUsedCore: usedCore, isaUsedBound: usedBound,
     boundDeclared: bound.length, boundLive, atoms: atoms.length, atomsAdopted: adopted,
     usesTot, usesMax, depthMax, depthMean: adopted ? +(depthSum / adopted).toFixed(2) : 0, composites: comp,
     senseAtoms, senseUseShare: usesTot > 0 ? +(senseUses / usesTot).toFixed(3) : 0, reachFires: __reachFires,
+    authoredOpsInBest: lb.authoredOpsInBest, loadBearingOps: lb.loadBearingOps, priceDropSum: lb.priceDropSum, priceDropMax: lb.priceDropMax,
     vmLen: best.length, mdlBytes: mdl };
 }
 
@@ -272,6 +300,7 @@ const scoreboard = {
   MINT: { atomsAdopted_max: Math.max(0, ...series.map(r => r.atomsAdopted || 0)), usesMax_max: Math.max(0, ...series.map(r => r.usesMax || 0)), depthMean_early: +wmean(series, 'depthMean', 0, t1).toFixed(2), depthMean_late: +wmean(series, 'depthMean', t2, nS).toFixed(2), depthMax_max: Math.max(0, ...series.map(r => r.depthMax || 0)), composites_max: Math.max(0, ...series.map(r => r.composites || 0)) },
   BEHAVIOUR: { senseAtoms_max: Math.max(0, ...series.map(r => r.senseAtoms || 0)), senseUseShare_early: +wmean(series, 'senseUseShare', 0, t1).toFixed(3), senseUseShare_late: +wmean(series, 'senseUseShare', t2, nS).toFixed(3), reachFires_total: last.reachFires || 0 },
   MDL: { bytes_early: +wmean(series, 'mdlBytes', 0, t1).toFixed(1), bytes_late: +wmean(series, 'mdlBytes', t2, nS).toFixed(1), bytes_slopePerSample: +slope(series, 'mdlBytes').toFixed(4), ratchets: slope(series, 'mdlBytes') * nS > mdlStd && mdlStd > 0 },
+  LOADBEARING: { loadBearingOps_max: Math.max(0, ...series.map(r => r.loadBearingOps || 0)), loadBearingOps_late: +wmean(series, 'loadBearingOps', t2, nS).toFixed(2), authoredOpsInBest_max: Math.max(0, ...series.map(r => r.authoredOpsInBest || 0)), priceDropSum_late: +wmean(series, 'priceDropSum', t2, nS).toFixed(4), priceDropMax_max: Math.max(0, ...series.map(r => r.priceDropMax || 0)) },
 };
 const signals = {
   mint_active: scoreboard.MINT.atomsAdopted_max > 0,
@@ -279,6 +308,8 @@ const signals = {
   mint_deepening: scoreboard.MINT.depthMean_late > scoreboard.MINT.depthMean_early,
   senseAct_gaining: scoreboard.BEHAVIOUR.senseUseShare_late > scoreboard.BEHAVIOUR.senseUseShare_early,
   mdl_ratchets: scoreboard.MDL.ratchets,
+  // the honest one: does the mint keep primitives that actually do work under the objective?
+  mint_load_bearing: scoreboard.LOADBEARING.loadBearingOps_max > 0,
 };
 console.log(JSON.stringify({
   config: { SEED, TICKS, POP: N, PRICE_MODE, stack: { ATOM_PIPELINE, ATOM_DURABLE, REACH, RICH_GRAMMAR } },
