@@ -46,6 +46,13 @@ const RICH_GRAMMAR  = ((process.env.RICH_GRAMMAR  ?? '1') | 0) !== 0;  // gramma
 // so a call-site only survives if its contribution exceeds its cost. COST=0 restores the old
 // free-adoption behaviour (the A/B baseline that showed 7-10 dead-weight ops per best program).
 const COST = parseFloat(process.env.COST ?? '0.003');
+// STATE (FLAWED — kept for the record, off by default): an attempt to give authored atoms
+// memory via a cell read as `s` and written back each call. It does NOT work as memory: the
+// cell lives on the shared atom object, so all ~400 programs thrash the same value every tick
+// (population-shared, not per-program). The `filter` fixture below and the double-dissociation
+// it was built for are therefore INCONCLUSIVE. Real per-program state + trajectory-based pricing
+// are required — see COMPUTE-MODEL.md. STATE=1 re-enables the flawed cell for inspection.
+const STATE = ((process.env.STATE ?? '0') | 0) !== 0;
 
 // ── input channels (the abstract environment; NOT a physical world) ──
 // A handful of ambient signals programs may read. Purely computational: oscillators
@@ -55,6 +62,10 @@ const COST = parseFloat(process.env.COST ?? '0.003');
 let __reachFires = 0;                                      // telemetry: authored output -> actuator drives
 let _probing = false;                                      // true during ablation probing: don't mutate uses/telemetry
 let _coupling = 0;                                         // nb: last tick's population-mean output
+// filter-mode environment: a hidden slow random walk `_lat`, observable ONLY through the noisy
+// channel `_obs` (carried on nb). No closed-form function of t reproduces it, and no instantaneous
+// read beats averaging it over time — so MEMORY genuinely earns here, and nowhere else.
+let _lat = 0, _obs = 0;
 function inputs(t) {
   const tt = t * 0.01;
   return {
@@ -64,7 +75,7 @@ function inputs(t) {
     nx: Math.sin(tt),
     ny: Math.cos(tt * 0.5),
     t: tt,
-    nb: _coupling,
+    nb: PRICE_MODE === 'filter' ? _obs : _coupling,
   };
 }
 
@@ -104,8 +115,10 @@ function uaCall(idx, a, b, ctx) {
   _uaFuel--;
   if (!_probing) at.uses++;
   const f = (i, x, y) => uaCall(i, +x || 0, +y || 0, ctx);
-  const r = at.fn(a, b, at.uses, ctx.c, ctx.d, ctx.m, 0, f, ctx.nx, ctx.ny, ctx.t, ctx.nb);
-  return isFinite(r) ? r : 0;
+  const r = at.fn(a, b, at.uses, ctx.c, ctx.d, ctx.m, STATE ? at.st : 0, f, ctx.nx, ctx.ny, ctx.t, ctx.nb);
+  const rv = isFinite(r) ? r : 0;
+  if (STATE && !_probing) at.st = Math.max(-4, Math.min(4, rv));   // write-back to a POPULATION-SHARED cell (NOT per-program memory; flawed — see STATE note)
+  return rv;
 }
 function compile(expr) {
   try { return new Function('a', 'b', 'u', 'c', 'd', 'm', 's', 'f', 'nx', 'ny', 't', 'nb', 'const r=(' + expr + ');return isFinite(r)?r:0;'); }
@@ -116,7 +129,7 @@ function author() {
   const expr = randExpr(3);
   const fn = compile(expr);
   if (!fn) return -1;
-  atoms.push({ expr, fn, uses: 0, age: 0 });
+  atoms.push({ expr, fn, uses: 0, age: 0, st: 0 });        // st: persistent memory cell (the `s` slot)
   return atoms.length - 1;
 }
 
@@ -140,7 +153,8 @@ function runProg(prog, ctx, mute) {
       else {
       const bi = bound[op - CORE_OPCODES];
       const at = (bi != null) ? atoms[bi] : null;
-      if (at && at.fn) { if (!_probing) at.uses++; const f = (idx, x, y) => uaCall(idx, +x || 0, +y || 0, ctx); v = at.fn(a, b, at.uses, ctx.c, ctx.d, ctx.m, 0, f, ctx.nx, ctx.ny, ctx.t, ctx.nb); v = isFinite(v) ? v : 0;
+      if (at && at.fn) { if (!_probing) at.uses++; const f = (idx, x, y) => uaCall(idx, +x || 0, +y || 0, ctx); v = at.fn(a, b, at.uses, ctx.c, ctx.d, ctx.m, STATE ? at.st : 0, f, ctx.nx, ctx.ny, ctx.t, ctx.nb); v = isFinite(v) ? v : 0;
+        if (STATE && !_probing) at.st = Math.max(-4, Math.min(4, v));   // write-back to a POPULATION-SHARED cell (NOT per-program memory; flawed — see STATE note)
         if (REACH) { if (!_probing) __reachFires++; out += Math.max(-2, Math.min(2, v)) * k * 0.2; } }   // authored output drives the actuator channel
       else v = a;
       }
@@ -183,9 +197,15 @@ function runProg(prog, ctx, mute) {
 //            Reading inputs gives NO edge. This is the control: if senseAct_gaining
 //            stays high here, the input-share signal is NOT the objective talking
 //            (it's grammar bias / automatic adoption). If it collapses, it WAS.
+//   'filter'          — value = how well output recovers the HIDDEN latent behind the
+//            noisy nb channel. The one fixture where MEMORY earns: a stateless read
+//            of nb is noise-limited, while integrating nb over time (an authored
+//            stateful atom) can beat it. Tests whether competition BUYS state.
 const PRICE_MODE = process.env.PRICE_MODE || 'track';
 function price(out, ctx) {
-  const target = PRICE_MODE === 'const' ? 0.5 : (Math.sin(ctx.t) * 0.8 + ctx.nb * 0.2);
+  const target = PRICE_MODE === 'const' ? 0.5
+    : PRICE_MODE === 'filter' ? _lat
+    : (Math.sin(ctx.t) * 0.8 + ctx.nb * 0.2);
   const err = out - target;
   return 1 / (1 + err * err);                              // in (0,1], best at perfect match
 }
@@ -279,6 +299,10 @@ const series = [];
 const t0 = Date.now();
 let bestProg = progs[0];
 for (let tick = 0; tick <= TICKS; tick++) {
+  if (PRICE_MODE === 'filter') {                           // advance the hidden walk + its noisy observation
+    _lat = 0.995 * _lat + 0.03 * (rnd() * 2 - 1);
+    _obs = _lat + 0.6 * (rnd() * 2 - 1);
+  }
   const ctx = inputs(tick);
   let sum = 0, bi = 0, bv = -1;
   for (let i = 0; i < N; i++) {
@@ -325,7 +349,7 @@ const signals = {
   mint_load_bearing: scoreboard.LOADBEARING.loadBearingOps_max > 0,
 };
 console.log(JSON.stringify({
-  config: { SEED, TICKS, POP: N, PRICE_MODE, COST, stack: { ATOM_PIPELINE, ATOM_DURABLE, REACH, RICH_GRAMMAR } },
+  config: { SEED, TICKS, POP: N, PRICE_MODE, COST, STATE, stack: { ATOM_PIPELINE, ATOM_DURABLE, REACH, RICH_GRAMMAR } },
   timing_ms: { run: dt, perKtick: +((dt / TICKS) * 1000).toFixed(1) },
   scoreboard, signals,
   notes: [
