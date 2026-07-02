@@ -113,3 +113,46 @@ This table translates them once, so the log stays readable without importing the
 
 Everything above the table is the vocabulary to use. The table is the bridge, not a
 license to reintroduce the left column.
+
+## First findings on the clean core (`machine.js`)
+
+Recorded because a negative result found by distrusting a positive one is the most
+useful thing here so far.
+
+**The scoreboard's `senseAct_gaining` and `mdl_ratchets` signals are NOT
+selection-sensitive on the clean core — they are artifacts.** A 2×2 A/B over the
+selection objective (`PRICE_MODE=track`, where reading inputs earns a real fitness
+edge, vs `PRICE_MODE=const`, where it earns nothing) at two seeds:
+
+| | track (input helps) | const (input useless) |
+|---|---|---|
+| seed 7 | senseShare 0.272 → 0.534 | 0.267 → 0.52 |
+| seed 3 | 0.474 → 0.948 | 0.469 → 0.933 |
+
+The control is a near-perfect twin of the treatment. Input-reading atoms gain
+call-share **whether or not reading inputs is rewarded** — so the rise is not
+selection discovering useful world-reading behaviour. It is two mechanism artifacts:
+
+1. **Automatic adoption.** Every program runs every instruction every tick and
+   `ATOM_DURABLE` force-keeps call-sites, so a bound atom accumulates `uses`
+   regardless of whether it contributes to the program's priced output. `uses`
+   collapses to *presence*, not usefulness (note the astronomical `usesMax` ~1e8).
+2. **Grammar bias.** `RICH_GRAMMAR` draws from 7 input vars vs 4 self vars, so a
+   randomly authored atom is input-reading by construction. With adoption automatic,
+   `senseUseShare` just tracks that grammar composition.
+
+`mdl_ratchets` is true under the control too — consistent with MDL rising from
+continuous code rewriting alone (already known from the original substrate).
+
+**Consequence for the instrument.** Share-of-raw-`uses` is the wrong measure. The
+metric that would mean something is **load-bearing use**: does ablating an atom (or
+its call-sites) *hurt* the program's price? That is the ablation test the original
+notes always flagged as the decisive one, now confirmed necessary here. Before any
+BEHAVIOUR/MINT number is trusted, two things must change: adoption must be made
+competitive (atoms earn call-sites instead of being force-kept), and use must be
+weighted by fitness contribution, not counted raw.
+
+Net: the clean core is real, fast, and biology-free, and it correctly runs the
+author→bind→wire→price loop. It does **not** yet demonstrate open-endedness — it
+demonstrates that the current signals can be driven entirely by plumbing, which is
+exactly what the objective-ablation control is for.

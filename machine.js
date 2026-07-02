@@ -166,14 +166,19 @@ function runProg(prog, ctx) {
 }
 
 // ── PRICE — the selection objective. PLACEHOLDER. This is the crux; swap it. ──
-// One explicit bet: value = how well a program's output TRACKS an input-driven target.
-// Because the target moves with the input channels, a program that READS inputs can
-// beat one that emits a constant — so input-reading CAN win, if the loop discovers and
-// keeps it. That is the thing under test, not a claim that prediction is the goal.
+// PRICE_MODE selects the objective. Two are provided, and their contrast is a
+// falsification control, not a menu of purposes:
+//   'track' (default) — value = how well output tracks an INPUT-DRIVEN target.
+//            Input-reading has a real edge, so it CAN win if the loop finds it.
+//   'const'           — value = how well output holds a FIXED target (0.5).
+//            Reading inputs gives NO edge. This is the control: if senseAct_gaining
+//            stays high here, the input-share signal is NOT the objective talking
+//            (it's grammar bias / automatic adoption). If it collapses, it WAS.
+const PRICE_MODE = process.env.PRICE_MODE || 'track';
 function price(out, ctx) {
-  const target = Math.sin(ctx.t) * 0.8 + ctx.nb * 0.2;     // input-driven, non-stationary
+  const target = PRICE_MODE === 'const' ? 0.5 : (Math.sin(ctx.t) * 0.8 + ctx.nb * 0.2);
   const err = out - target;
-  return 1 / (1 + err * err);                              // in (0,1], best at perfect tracking
+  return 1 / (1 + err * err);                              // in (0,1], best at perfect match
 }
 
 // ── population ──
@@ -276,7 +281,7 @@ const signals = {
   mdl_ratchets: scoreboard.MDL.ratchets,
 };
 console.log(JSON.stringify({
-  config: { SEED, TICKS, POP: N, stack: { ATOM_PIPELINE, ATOM_DURABLE, REACH, RICH_GRAMMAR } },
+  config: { SEED, TICKS, POP: N, PRICE_MODE, stack: { ATOM_PIPELINE, ATOM_DURABLE, REACH, RICH_GRAMMAR } },
   timing_ms: { run: dt, perKtick: +((dt / TICKS) * 1000).toFixed(1) },
   scoreboard, signals,
   notes: [
