@@ -240,6 +240,42 @@ because two things in **my own design** were wrong:
 So the state question is still open — the test couldn't ask it. Doing it right needs
 **per-program state** (memory that lives with the program and survives its lifetime, not on the
 shared atom) **and trajectory-based pricing/probing** (evaluate over a run of consecutive ticks
-with state persisting, and ablate against that trajectory). That is a real architecture change,
-and it is the honest next fork — flagged here rather than rushed. `STATE` defaults off; the
-flawed cell is left behind `STATE=1` only for inspection.
+with state persisting, and ablate against that trajectory).
+
+### Rebuilt right — and the mint finally earns rent, for a reason nobody predicted
+
+Both flaws fixed: per-program memory (`mems[i]`, keyed by opcode, reset on replacement;
+composition stays stateless) and trajectory selection (programs accrue price over `EPOCH=32`
+consecutive ticks and reproduce on the mean) plus a trajectory-replay load-bearing probe
+(replay the last 64 recorded contexts, full vs ablated, both from fresh memory).
+
+Double dissociation at COST=0.001, seeds 3 and 7:
+
+| condition | load-bearing authored ops |
+|---|---|
+| `track`, STATE on | 0 (mint rejected, as before) |
+| `filter`, STATE on | 1 (priceDrop up to 0.63) |
+| `filter`, STATE **off** | 1 (priceDrop up to 0.63) |
+
+**The mint earns rent in `filter` mode in 4/4 runs (track 0/2) — but state is not why:**
+ablating memory changes nothing. Two more findings fell out of chasing that surprise:
+
+1. **REACH is dead code.** `REACH=0` was bit-identical to `REACH=1` — because every
+   instruction ends with `out = R[0]`, which clobbers the additive reach contribution
+   immediately. The "second output path" never existed. (Caught only because a
+   deterministic A/B came back bit-identical — determinism is an instrument.)
+2. **What competition actually buys is DENSITY.** The winning primitive, verbatim:
+   `Math.atan2(s, f(25, ((-1.02)>(-0.81)?(t):(-0.55)), c))` — with `s`=0 this is a step
+   function of *another atom's* output on an input channel: a composed, conditional,
+   multi-step unit in ONE instruction slot. Under a program-length ceiling, slots are the
+   scarce resource, and an authored opcode is **compression**: one slot buys a deep
+   expression. That is a real capability the core ISA cannot match slot-for-slot — and it
+   only pays when the problem is hard enough (`filter`) that slots are scarce; on the easy
+   `track` objective, rent beats it.
+
+So the wall statement gets its honest refinement: the mint cannot sell new *functions*
+(the core has them all), but it CAN sell new *density* — and selection buys density
+exactly when the environment makes program length bind. The state question remains open
+(memory now works mechanically, but nothing bought it yet — possibly because the noisy
+`filter` fixture is solvable well enough by dense stateless estimators); the next
+sharpening is an environment where no stateless estimator can compete at all.

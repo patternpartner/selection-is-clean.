@@ -46,13 +46,18 @@ const RICH_GRAMMAR  = ((process.env.RICH_GRAMMAR  ?? '1') | 0) !== 0;  // gramma
 // so a call-site only survives if its contribution exceeds its cost. COST=0 restores the old
 // free-adoption behaviour (the A/B baseline that showed 7-10 dead-weight ops per best program).
 const COST = parseFloat(process.env.COST ?? '0.003');
-// STATE (FLAWED — kept for the record, off by default): an attempt to give authored atoms
-// memory via a cell read as `s` and written back each call. It does NOT work as memory: the
-// cell lives on the shared atom object, so all ~400 programs thrash the same value every tick
-// (population-shared, not per-program). The `filter` fixture below and the double-dissociation
-// it was built for are therefore INCONCLUSIVE. Real per-program state + trajectory-based pricing
-// are required — see COMPUTE-MODEL.md. STATE=1 re-enables the flawed cell for inspection.
-const STATE = ((process.env.STATE ?? '0') | 0) !== 0;
+// STATE: authored atoms can hold memory across calls, read as `s` and written back from the
+// return value. The cell is PER-PROGRAM (lives in that program's `mem`, keyed by opcode) and
+// persists across ticks for a living program; it is reset when the program is replaced. This is
+// the one capability the stateless core ISA cannot express — the lever the competitive-adoption
+// finding pointed at. Composition calls (f()) stay stateless. STATE=0 ablates it.
+// (First attempt was flawed: a population-shared cell + instant-context probing. Both fixed:
+// per-program mem here, trajectory-based pricing/probing below.)
+const STATE = ((process.env.STATE ?? '1') | 0) !== 0;
+// EPOCH: selection is TRAJECTORY-BASED — programs accrue price over EPOCH consecutive ticks
+// (memory persisting) and reproduce on the accumulated mean, so capabilities that only pay off
+// across time (memory) can be selected for at all. Single-tick selection cannot see them.
+const EPOCH = Math.max(4, parseInt(process.env.EPOCH || '32', 10));
 
 // ── input channels (the abstract environment; NOT a physical world) ──
 // A handful of ambient signals programs may read. Purely computational: oscillators
@@ -115,10 +120,8 @@ function uaCall(idx, a, b, ctx) {
   _uaFuel--;
   if (!_probing) at.uses++;
   const f = (i, x, y) => uaCall(i, +x || 0, +y || 0, ctx);
-  const r = at.fn(a, b, at.uses, ctx.c, ctx.d, ctx.m, STATE ? at.st : 0, f, ctx.nx, ctx.ny, ctx.t, ctx.nb);
-  const rv = isFinite(r) ? r : 0;
-  if (STATE && !_probing) at.st = Math.max(-4, Math.min(4, rv));   // write-back to a POPULATION-SHARED cell (NOT per-program memory; flawed — see STATE note)
-  return rv;
+  const r = at.fn(a, b, at.uses, ctx.c, ctx.d, ctx.m, 0, f, ctx.nx, ctx.ny, ctx.t, ctx.nb);  // composition is stateless: memory belongs to a program's call-site, not the shared library
+  return isFinite(r) ? r : 0;
 }
 function compile(expr) {
   try { return new Function('a', 'b', 'u', 'c', 'd', 'm', 's', 'f', 'nx', 'ny', 't', 'nb', 'const r=(' + expr + ');return isFinite(r)?r:0;'); }
@@ -129,7 +132,7 @@ function author() {
   const expr = randExpr(3);
   const fn = compile(expr);
   if (!fn) return -1;
-  atoms.push({ expr, fn, uses: 0, age: 0, st: 0 });        // st: persistent memory cell (the `s` slot)
+  atoms.push({ expr, fn, uses: 0, age: 0 });               // memory is per-program (in `mem`), never on the shared atom
   return atoms.length - 1;
 }
 
@@ -139,7 +142,9 @@ function randProg() { const p = []; for (let i = 0; i < PROG_LEN; i++) p.push(ra
 function cloneProg(p) { return p.map(ins => ins.slice()); }
 
 // core opcode semantics: R[di] = op(R[si], R[si+1], k, inputs)
-function runProg(prog, ctx, mute) {
+// `mem` is the PROGRAM's persistent store (keyed by authored opcode id): the `s` an authored
+// atom reads, and where its return value is written back. Passing null runs stateless.
+function runProg(prog, ctx, mute, mem) {
   const R = new Float64Array(REGS);
   R[0] = ctx.nx; R[1] = ctx.ny; R[2] = ctx.t;             // seed a few registers from inputs so reads matter
   let out = 0;
@@ -153,8 +158,10 @@ function runProg(prog, ctx, mute) {
       else {
       const bi = bound[op - CORE_OPCODES];
       const at = (bi != null) ? atoms[bi] : null;
-      if (at && at.fn) { if (!_probing) at.uses++; const f = (idx, x, y) => uaCall(idx, +x || 0, +y || 0, ctx); v = at.fn(a, b, at.uses, ctx.c, ctx.d, ctx.m, STATE ? at.st : 0, f, ctx.nx, ctx.ny, ctx.t, ctx.nb); v = isFinite(v) ? v : 0;
-        if (STATE && !_probing) at.st = Math.max(-4, Math.min(4, v));   // write-back to a POPULATION-SHARED cell (NOT per-program memory; flawed — see STATE note)
+      if (at && at.fn) { if (!_probing) at.uses++; const f = (idx, x, y) => uaCall(idx, +x || 0, +y || 0, ctx);
+        const s = (STATE && mem) ? (mem[op] || 0) : 0;
+        v = at.fn(a, b, at.uses, ctx.c, ctx.d, ctx.m, s, f, ctx.nx, ctx.ny, ctx.t, ctx.nb); v = isFinite(v) ? v : 0;
+        if (STATE && mem) mem[op] = Math.max(-4, Math.min(4, v));   // write-back to THIS program's memory (probe replays pass their own fresh mem)
         if (REACH) { if (!_probing) __reachFires++; out += Math.max(-2, Math.min(2, v)) * k * 0.2; } }   // authored output drives the actuator channel
       else v = a;
       }
@@ -204,11 +211,15 @@ function runProg(prog, ctx, mute) {
 const PRICE_MODE = process.env.PRICE_MODE || 'track';
 function price(out, ctx) {
   const target = PRICE_MODE === 'const' ? 0.5
-    : PRICE_MODE === 'filter' ? _lat
+    : PRICE_MODE === 'filter' ? (ctx.lat ?? _lat)          // ctx carries its own latent so replayed trajectories price correctly
     : (Math.sin(ctx.t) * 0.8 + ctx.nb * 0.2);
   const err = out - target;
   return 1 / (1 + err * err);                              // in (0,1], best at perfect match
 }
+// trajectory history: the last HISTN {ctx (with lat)} snapshots, so the load-bearing probe can
+// REPLAY a real stretch of environment. Memory's value only exists across a sequence — probing
+// scattered instants (the first attempt's second flaw) is structurally blind to it.
+const HISTN = 64; const HIST = [];
 
 // ── population ──
 let progs = [], val = new Float64Array(N), csites = new Float64Array(N);  // csites: authored call-sites carried (durability telemetry)
@@ -247,21 +258,20 @@ function mutate(prog) {
 // ── metrics (the four families, substrate-native) ──
 function pdepth(e) { let d = 0, mx = 0; for (let i = 0; i < e.length; i++) { const ch = e[i]; if (ch === '(') mx = Math.max(mx, ++d); else if (ch === ')') d--; } return mx; }
 const SENSE = /\b(nx|ny|nb|c|d|m|t)\b/, COMPOSE = /\bf\s*\(/;
-// LOAD-BEARING use: the honest test raw-`uses` can't do. Take the best program, and for
-// each authored opcode it calls, neutralise that opcode (passthrough) and measure how much
-// the program's PRICE drops across a spread of input contexts. A drop => the authored
-// primitive is doing real work under the current objective; no drop => it's dead weight the
-// automatic-adoption plumbing kept anyway. Probing doesn't mutate uses/telemetry.
-function loadBearing(best, tick) {
-  const ctxs = []; for (let j = 0; j < 24; j++) ctxs.push(inputs(tick + j * 137));
+// LOAD-BEARING use: the honest test raw-`uses` can't do. REPLAY the recorded trajectory
+// (HIST) with the best program — full, then with each authored opcode neutralised — and
+// measure the mean-price drop. Both runs start from fresh memory and traverse the SAME
+// consecutive contexts, so a primitive whose value is temporal (memory) is visible, which
+// scattered-instant probing could never see. A drop => real work; none => dead weight.
+function loadBearing(best) {
   const ops = new Set(); for (const ins of best) if ((ins[0] | 0) >= CORE_OPCODES) ops.add(ins[0] | 0);
+  if (HIST.length < 16) return { authoredOpsInBest: ops.size, loadBearingOps: 0, priceDropSum: 0, priceDropMax: 0, set: new Set() };
   const was = _probing; _probing = true;
-  let pFull = 0; for (const cx of ctxs) pFull += price(runProg(best, cx, null), cx); pFull /= ctxs.length;
+  const replay = (mute) => { const mem = {}; let p = 0; for (const cx of HIST) p += price(runProg(best, cx, mute, mem), cx); return p / HIST.length; };
+  const pFull = replay(null);
   let lb = 0, maxDrop = 0, sumDrop = 0; const set = new Set();
   for (const op of ops) {
-    const mute = new Set([op]);
-    let pA = 0; for (const cx of ctxs) pA += price(runProg(best, cx, mute), cx); pA /= ctxs.length;
-    const drop = pFull - pA;
+    const drop = pFull - replay(new Set([op]));
     if (drop > 1e-4) { lb++; set.add(op); }
     if (drop > maxDrop) maxDrop = drop;
     sumDrop += drop;
@@ -285,7 +295,7 @@ function score(tick, best) {
   for (const e of active) parts.push(e);
   const src = parts.join('\n');
   let mdl = 0; try { mdl = zlib.gzipSync(src).length; } catch (e) {}
-  const lb = loadBearing(best, tick);
+  const lb = loadBearing(best);
   return { tick, isaUsedDistinct: used.size, isaUsedCore: usedCore, isaUsedBound: usedBound,
     boundDeclared: bound.length, boundLive, atoms: atoms.length, atomsAdopted: adopted,
     usesTot, usesMax, depthMax, depthMean: adopted ? +(depthSum / adopted).toFixed(2) : 0, composites: comp,
@@ -294,34 +304,46 @@ function score(tick, best) {
     vmLen: best.length, mdlBytes: mdl };
 }
 
-// ── run: evaluate -> price -> reproduce, with self-extension in the copy step ──
+// ── run: evaluate every tick, reproduce on EPOCH-mean price (trajectory selection) ──
+// Memory (mems[i]) persists across a program's lifetime and resets on replacement, so a
+// stateful primitive can accumulate value an instantaneous read can't — and selection,
+// acting on the epoch mean, can actually pay for it.
 const series = [];
 const t0 = Date.now();
 let bestProg = progs[0];
+const mems = new Array(N); for (let i = 0; i < N; i++) mems[i] = {};
+const acc = new Float64Array(N);
 for (let tick = 0; tick <= TICKS; tick++) {
   if (PRICE_MODE === 'filter') {                           // advance the hidden walk + its noisy observation
     _lat = 0.995 * _lat + 0.03 * (rnd() * 2 - 1);
     _obs = _lat + 0.6 * (rnd() * 2 - 1);
   }
   const ctx = inputs(tick);
-  let sum = 0, bi = 0, bv = -1;
+  if (PRICE_MODE === 'filter') ctx.lat = _lat;             // the trajectory record carries its own target
+  HIST.push(ctx); if (HIST.length > HISTN) HIST.shift();
+  let sum = 0;
   for (let i = 0; i < N; i++) {
-    const out = runProg(progs[i], ctx);
+    const out = runProg(progs[i], ctx, null, mems[i]);
     let ac = 0; const pr = progs[i]; for (let j = 0; j < pr.length; j++) if (pr[j][0] >= CORE_OPCODES) ac++;  // authored call-sites
-    const v = price(out, ctx) - COST * ac;                 // COMPETITIVE ADOPTION: each call-site pays rent
-    val[i] = v; sum += out; if (v > bv) { bv = v; bi = i; }
+    acc[i] += price(out, ctx) - COST * ac;                 // COMPETITIVE ADOPTION: each call-site pays rent
+    sum += out;
   }
   _coupling = sum / N;                                     // feed nb for next tick (pure computational coupling)
-  bestProg = progs[bi];
   for (const a of atoms) a.age++;
-  if (tick % 500 === 0) { _lbSet = loadBearing(bestProg, tick).set; }  // refresh which opcodes durability protects
-  // reproduction: tournament — replace a random program with a mutated copy of a fitter one
-  const K = Math.max(8, (N * 0.25) | 0);
-  for (let r = 0; r < K; r++) {
-    const x = ri(N), y = ri(N);
-    const winner = val[x] >= val[y] ? x : y, loser = val[x] >= val[y] ? y : x;
-    progs[loser] = mutate(progs[winner]);
+  if (tick % EPOCH === EPOCH - 1) {                        // epoch boundary: settle accounts, reproduce, reset
+    let bi = 0, bv = -Infinity;
+    for (let i = 0; i < N; i++) { val[i] = acc[i] / EPOCH; acc[i] = 0; if (val[i] > bv) { bv = val[i]; bi = i; } }
+    bestProg = progs[bi];
+    const K = Math.max(8, (N * 0.25) | 0);
+    for (let r = 0; r < K; r++) {
+      const x = ri(N), y = ri(N);
+      const winner = val[x] >= val[y] ? x : y, loser = val[x] >= val[y] ? y : x;
+      progs[loser] = mutate(progs[winner]);
+      mems[loser] = {};                                    // a new program starts with fresh memory
+      val[loser] = val[winner];                            // seed: inherit standing until it earns its own epoch
+    }
   }
+  if (tick % 500 === 0) { _lbSet = loadBearing(bestProg).set; }  // refresh which opcodes durability protects
   if (tick % SAMPLE === 0) { const m = score(tick, bestProg); series.push(m); if (STREAM) process.stdout.write(JSON.stringify(m) + '\n'); }
 }
 const dt = Date.now() - t0;
@@ -339,6 +361,9 @@ const scoreboard = {
   MDL: { bytes_early: +wmean(series, 'mdlBytes', 0, t1).toFixed(1), bytes_late: +wmean(series, 'mdlBytes', t2, nS).toFixed(1), bytes_slopePerSample: +slope(series, 'mdlBytes').toFixed(4), ratchets: slope(series, 'mdlBytes') * nS > mdlStd && mdlStd > 0 },
   LOADBEARING: { loadBearingOps_max: Math.max(0, ...series.map(r => r.loadBearingOps || 0)), loadBearingOps_late: +wmean(series, 'loadBearingOps', t2, nS).toFixed(2), authoredOpsInBest_max: Math.max(0, ...series.map(r => r.authoredOpsInBest || 0)), priceDropSum_late: +wmean(series, 'priceDropSum', t2, nS).toFixed(4), priceDropMax_max: Math.max(0, ...series.map(r => r.priceDropMax || 0)) },
 };
+// the final load-bearing primitives, verbatim — the direct evidence of WHAT competition bought
+const lbFinal = loadBearing(bestProg);
+const lbExprs = [...lbFinal.set].map(op => ({ op, drop: undefined, expr: (atoms[bound[op - CORE_OPCODES]] || {}).expr }));
 const signals = {
   mint_active: scoreboard.MINT.atomsAdopted_max > 0,
   authored_opcodes_running: scoreboard.ISA.boundLive_max > 0,
@@ -349,9 +374,10 @@ const signals = {
   mint_load_bearing: scoreboard.LOADBEARING.loadBearingOps_max > 0,
 };
 console.log(JSON.stringify({
-  config: { SEED, TICKS, POP: N, PRICE_MODE, COST, STATE, stack: { ATOM_PIPELINE, ATOM_DURABLE, REACH, RICH_GRAMMAR } },
+  config: { SEED, TICKS, POP: N, PRICE_MODE, COST, STATE, EPOCH, stack: { ATOM_PIPELINE, ATOM_DURABLE, REACH, RICH_GRAMMAR } },
   timing_ms: { run: dt, perKtick: +((dt / TICKS) * 1000).toFixed(1) },
   scoreboard, signals,
+  loadBearingExprs: lbExprs,
   notes: [
     'No particles, no ecology — programs over a shared instruction set, priced and copied.',
     'price() is a PLACEHOLDER objective (input-tracking). It is the crux and is meant to be swapped.',
