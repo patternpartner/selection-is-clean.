@@ -222,5 +222,24 @@ inferred from diversity curves.
 an authored primitive must carry something the core ops cannot — the clearest
 candidate is **state** (memory across calls/ticks). The atom grammar already has a
 dormant `s` slot; a stateful authored primitive would give a program a capability the
-stateless core lacks, which is the first thing competition might actually pay rent
-for. Not done here — but it is the honest next strike, derived from the finding.
+stateless core lacks, which is the first thing competition might actually pay rent for.
+
+### State — attempted, inconclusive by two design flaws (recorded, not spun)
+
+Tried it: a per-atom memory cell (`st`, wired to `s`) plus a `filter` price mode — recover
+a hidden slow random walk observed only through noise on `nb`, where averaging over time
+beats any instantaneous read, so memory *should* earn. Ran the double dissociation
+(`filter`/`track` × `STATE` on/off) at COST=0.001. The numbers were messy and prove nothing,
+because two things in **my own design** were wrong:
+
+1. **State was population-shared, not per-program.** `st` lives on the shared atom object, so
+   all ~400 programs thrash one cell every tick. That is not memory.
+2. **The load-bearing probe scores independent contexts, not a trajectory.** Memory only pays
+   off across a sequence; a probe over 24 scattered instants structurally cannot see it.
+
+So the state question is still open — the test couldn't ask it. Doing it right needs
+**per-program state** (memory that lives with the program and survives its lifetime, not on the
+shared atom) **and trajectory-based pricing/probing** (evaluate over a run of consecutive ticks
+with state persisting, and ablate against that trajectory). That is a real architecture change,
+and it is the honest next fork — flagged here rather than rushed. `STATE` defaults off; the
+flawed cell is left behind `STATE=1` only for inspection.
