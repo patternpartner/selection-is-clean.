@@ -2318,3 +2318,52 @@ the first time — does closed-loop authorship of behaviours move the ecology / 
 data point: not visibly, not yet. That is the real open question of the whole project, now reachable because the
 loop holds. Next: longer continuous runs (does the used-atom set grow richer and start to differentiate niches?),
 and whether reach-driven behaviours ever out-select simple scalings.
+
+### SWINGS #40 + #41 — two deliberately RISKIER bets, shipped LIVE off a smoke test, not a harness verdict
+
+Framing (the user's, mid-session): every prior swing above got real headless verification because the harness
+COULD exercise it. But the harness was never the point — the artwork actually running, with a person watching and
+feeding back, is what built all 39 swings before this. Spent too long re-learning that lesson in-session (a long
+detour through headless A/B) before correcting back to the actual loop: smoke-test for safety, ship live, let the
+real run be the test. Recorded honestly here, including the detour, because the notebook doesn't retcon its own path.
+
+**#40 GROUP SELECTION FOR THE COMMONS (`__GROUP_COMMONS`).** Diagnosis it acts on: swing #36 found rqRate
+(predation aggression, the diversity-MAINTAINING force #28 needs) is a commons — individually costly, so
+individual-level selection drove it to 0 and it had to be FLOORED by fiat in sanitizeGenome (clamped to
+[0.05,0.15]). A floor is a designer's thumb on the scale, not a resolution. The textbook resolution to a
+tragedy-of-the-commons is a SECOND level of selection: groups that sustain the commons out-reproduce groups that
+let it collapse, even though defectors still win WITHIN any one group. The cluster-budding pass is already a real
+second level of selection (#33 uses it for role-diversity); #40 couples the SAME lever to commons-maintenance —
+a colony whose members hold rqRate near the ceiling of its evolvable range buds more than one sitting at the floor.
+
+*What's actually verified:* headless smoke-clean only — two 8k-tick runs (seed 7, `GROUP_PROBE=1 BUD_INSTR=1`,
+commons on/off) produced zero loop errors, zero NaN. The MECHANISM itself is NOT verified: cluster budding fired
+0 times in one run and 1 in the other — the same gap #33's own notes admit ("budding never fires there" in short
+headless windows). A 25k-tick follow-up A/B was started to get more bud events but was abandoned mid-run per the
+user's correction below — the harness was never going to be the instrument that judges this. commons_trend showed
+`held:true` in the smoke runs but that number is not meaningful yet (rqRate never had a chance to be pulled since
+budding barely fired). **Ships live, unverified on the actual mechanism, to let the artwork be the test.**
+
+**#41 HORIZONTAL ATOM TRANSFER (`__MEME_TRANSFER`).** Every prior route an authored atom spreads by is VERTICAL
+(parent→child inheritance, selfLearnFromBest's carry-across-adoption, reload's sanitizeGenome splice). None let a
+proven atom cross from one living lineage into ANOTHER living lineage mid-life. #41 adds a horizontal route: on
+close contact (`proximity>0.6`, `p=0.004` per qualifying interaction), a particle may adopt its neighbour's
+most-PROVEN (highest-uses) bound atom directly into its own genome — dedupe by expression, capped by the same
+`MAX_BOUND_OPCODES` ceiling germline authoring respects. The atom becomes a second unit of selection, judged on
+its own spread across lineage boundaries, not on whether its original host thrived.
+
+*What's actually verified — this one has a real, clean, non-confounded positive signal:* same-seed 8k-tick A/B
+(seed 7). CONTROL (transfer off): `totAtoms_max:0, boundOps_max:0` — the population authored and bound ZERO atoms
+anywhere, the whole run, so there is nothing a shared-seeding confound could ride on. TREATMENT (transfer on):
+exactly ONE atom ever existed (`totAtoms_max:1`), yet `memeCarriers:410`, spread via `342` recorded transfer
+events, reaching `memeTopLineages:153` — 153 DISTINCT lineages carrying an atom that, per the control, has no
+vertical route to more than one. That is the decisive test this project always demands (a metric the confound
+can't fake, same idiom as bifurcLin/cascadeCount): horizontal spread is real, not an artifact of common ancestry.
+Population/fitness stayed healthy in both runs (no destabilisation), and a default-config smoke run (no env
+overrides, exactly what the browser boots) at 3k ticks was also clean (0 loop/driver errors).
+
+**Both promoted to LIVE default-on** (same bar #39 used: smoke-clean, not fully proven, and the artwork is the
+real instrument). Next: does #41's second replicator ever produce an atom that out-spreads what selection alone
+would keep (a meme that wins by transmissibility, not by helping its host)? Does #40 ever get enough bud events
+in a real continuous run to show rqRate holding above the floor instead of just sitting on it? Both unanswerable
+from a harness — only the live run, watched and reported back, answers them.
