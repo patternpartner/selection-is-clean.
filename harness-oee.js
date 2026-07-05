@@ -136,7 +136,7 @@ if (process.env.NICHE_LOCALTEND !== undefined) globalThis.__NICHE_LOCALTEND = pa
 if (process.env.DIMS_GROW !== undefined) globalThis.__DIMS_GROW = parseInt(process.env.DIMS_GROW, 10);
 if (process.env.DIMS_CAP !== undefined) globalThis.__DIMS_CAP = parseInt(process.env.DIMS_CAP, 10);
 if (process.env.DIMS_SPREAD !== undefined) globalThis.__DIMS_SPREAD = parseFloat(process.env.DIMS_SPREAD);
-for (const k of ['DIMS_SAT','DIMS_SAT_CAP','DIMS_SAT_OCC','CHAR_DISP','RED_QUEEN','NICHE_BUILD','SPATIAL_NICHE','RQ_TRAIT','MUTUALISM','GROUP_ROLES','GROUP_PROBE','BUD_INSTR','GENO_PARASITE','FRONTIER_EXPAND','NOVELTY_ARCHIVE','ATOM_PIPELINE','RICH_GRAMMAR','REACH']) if (process.env[k] !== undefined) globalThis['__' + k] = parseInt(process.env[k], 10);
+for (const k of ['DIMS_SAT','DIMS_SAT_CAP','DIMS_SAT_OCC','CHAR_DISP','RED_QUEEN','NICHE_BUILD','SPATIAL_NICHE','RQ_TRAIT','MUTUALISM','GROUP_ROLES','GROUP_PROBE','BUD_INSTR','GENO_PARASITE','FRONTIER_EXPAND','NOVELTY_ARCHIVE','ATOM_PIPELINE','RICH_GRAMMAR','REACH','ATOM_DURABLE','GROUP_COMMONS','MEME_TRANSFER']) if (process.env[k] !== undefined) globalThis['__' + k] = parseInt(process.env[k], 10);
 if (process.env.SHADOW_WINS_DECAY !== undefined) globalThis.__SHADOW_WINS_DECAY = parseFloat(process.env.SHADOW_WINS_DECAY);
 if (process.env.NICHE_FRONTIER !== undefined) globalThis.__NICHE_FRONTIER = parseInt(process.env.NICHE_FRONTIER, 10);
 if (process.env.NICHE_BIOTIC !== undefined) globalThis.__NICHE_BIOTIC = parseInt(process.env.NICHE_BIOTIC, 10);
@@ -435,6 +435,38 @@ const driver = `
     const boundOps=Array.isArray(G.boundOpcodes)?G.boundOpcodes.length:0;
     const fitSensors=Array.isArray(G.fitnessSensors)?G.fitnessSensors.length:0;
 
+    // ── SWING #40 instrument: population-mean rqRate. The decisive test for GROUP_COMMONS — swing #36
+    //    found individual selection drives this commons trait to 0 (floored by fiat in sanitizeGenome).
+    //    If group selection (the colony-bud bonus) is a real countervailing force, meanRqRate should hold
+    //    well above the floor under GROUP_COMMONS=1 relative to GROUP_COMMONS=0 over a long run. ──
+    let meanRqRate=-1;
+    if(typeof pGenome!=='undefined'){
+      let s=0,c=0;
+      for(let i=0;i<N;i++){ if(palive[i]&&pGenome[i]&&isFinite(pGenome[i].rqRate)){ s+=pGenome[i].rqRate; c++; } }
+      meanRqRate=c?+(s/c).toFixed(4):(isFinite(G.rqRate)?+G.rqRate.toFixed(4):-1);
+    }
+
+    // ── SWING #41 instrument: does the single most-carried bound-atom expression cross LINEAGE
+    //    boundaries? Vertical inheritance alone (MEME_TRANSFER=0) can only spread an atom within ONE
+    //    clonal lineage (a child inherits its parent's bank) — memeTopLineages should sit near 1. Real
+    //    HORIZONTAL transfer (MEME_TRANSFER=1) lets it cross into other living lineages — the smoking-gun
+    //    signal, same idiom as bifurcLin/cascadeCount: a metric the confound (common ancestry) can't fake. ──
+    let memeDistinctExprs=-1, memeCarriers=-1, memeTopPrevalence=-1, memeTopLineages=-1;
+    if(typeof pGenome!=='undefined'){
+      const exprCount=new Map(); let carriers=0;
+      for(let i=0;i<N;i++){ if(!palive[i])continue; const g=pGenome[i]; if(!g||!Array.isArray(g.userAtoms)||!Array.isArray(g.boundOpcodes)||!g.boundOpcodes.length)continue;
+        carriers++; const seen=new Set();
+        for(const ai of g.boundOpcodes){ const a=g.userAtoms[ai]; if(a&&a.expression&&!seen.has(a.expression)){ seen.add(a.expression); exprCount.set(a.expression,(exprCount.get(a.expression)||0)+1); } } }
+      let topExpr=null,topCount=0; for(const [e,v] of exprCount) if(v>topCount){topCount=v;topExpr=e;}
+      memeDistinctExprs=exprCount.size; memeCarriers=carriers; memeTopPrevalence=topCount;
+      if(topExpr!==null && typeof pLin!=='undefined'){
+        const linSet=new Set();
+        for(let i=0;i<N;i++){ if(!palive[i])continue; const g=pGenome[i]; if(!g||!Array.isArray(g.userAtoms)||!Array.isArray(g.boundOpcodes))continue;
+          for(const ai of g.boundOpcodes){ const a=g.userAtoms[ai]; if(a&&a.expression===topExpr){ linSet.add(pLin[i]); break; } } }
+        memeTopLineages=linSet.size;
+      }
+    }
+
     // ── CLUSTER LINEAGE-PURITY PROBE (gated CLUSTER_PURITY=1) — the make-or-break measurement before any
     //    deme swing. Are clusters real demes (one persistent cluster-lineageID holds one particle-lineage pLin
     //    across its life) or lineage-salad (re-formed each ~30-tick cycle by pure proximity, mixing lineages)?
@@ -534,6 +566,10 @@ const driver = `
       ctrlAxis0:(typeof axisStats==='function')?axisStats(0):null,
       // niche economy (swing #11): channels of the resource spectrum currently held by life
       nicheOcc:(typeof nicheOccupancy==='function')?nicheOccupancy():-1,
+      // swing #40: population-mean rqRate (the commons trait) — compare GROUP_COMMONS=1 vs 0 over a long run.
+      meanRqRate,
+      // swing #41: does the most-carried bound-atom expression cross lineage boundaries?
+      memeDistinctExprs, memeCarriers, memeTopPrevalence, memeTopLineages,
       // turnover
       kindChurn:+churn.toFixed(3),
       ...(cpur!==undefined?{cpur}:{})   // cluster lineage-purity probe (CLUSTER_PURITY=1)
@@ -646,6 +682,23 @@ const niche = {
 // Growing (not just high) occupancy is the open-ended signal: niches being ADDED faster than lost.
 niche.growing = niche.occ_slopePerSample > 0 && niche.occ_late > niche.occ_early;
 
+// swing #40: does the commons (rqRate) HOLD under group selection, vs the #36 baseline of decaying to the floor?
+const commons = {
+  rqRate_early: +thirdMean(S, 'meanRqRate', 0, t1).toFixed(4),
+  rqRate_late: +thirdMean(S, 'meanRqRate', t2, n).toFixed(4)
+};
+commons.held = commons.rqRate_early > 0 ? (commons.rqRate_late / commons.rqRate_early) >= 0.9 : null;
+
+// swing #41: horizontal spread — memeTopLineages > 1 is the signal vertical inheritance alone cannot fake
+// (a single clonal lineage's inherited atom bank never crosses into another living lineage on its own).
+const meme = {
+  transfersCum: globalThis.__memeTransfers || 0,
+  topPrevalence_last: last.memeTopPrevalence ?? -1,
+  topLineages_last: last.memeTopLineages ?? -1,
+  distinctExprs_last: last.memeDistinctExprs ?? -1,
+  crossedLineages: (last.memeTopLineages ?? 0) > 1
+};
+
 const verdict = {
   novelty_late_vs_early: { earlyNewKindsPer1k: +earlyRate.toFixed(2), lateNewKindsPer1k: +lateRate.toFixed(2),
     decayedTo: earlyRate > 0 ? +(lateRate / earlyRate).toFixed(2) : null, stillProducing: lateRate > 0.05 },
@@ -655,10 +708,13 @@ const verdict = {
   // budding never fired (use GROUP_PROBE=1 to lower thresholds headless). meanParentRole = mean distinct niche-cells
   // among a budding colony's members (does GROUP_ROLES make BUDDING colonies more differentiated?); meanDaughterRole
   // = same for the budded slice (does the daughter INHERIT the division of labour, or is Part 2 owed?).
-  group_transition: (() => { const e = globalThis.__budEvents || 0;
+  group_transition: (() => { const e = globalThis.__budEvents || 0; const ec = globalThis.__budCommonsN || 0;
     return { budEvents: e,
       meanParentRole: e > 0 ? +((globalThis.__budParentRoleSum || 0) / e).toFixed(2) : null,
-      meanDaughterRole: e > 0 ? +((globalThis.__budDaughterRoleSum || 0) / e).toFixed(2) : null }; })(),
+      meanDaughterRole: e > 0 ? +((globalThis.__budDaughterRoleSum || 0) / e).toFixed(2) : null,
+      meanCommonsAtBud: ec > 0 ? +((globalThis.__budCommonsSum || 0) / ec).toFixed(4) : null }; })(),
+  commons_trend: commons,
+  meme_transfer: meme,
   complexity_trend: complexity,
   complexity_topTierEngaged: (complexity.liveAtoms_max > 0 || complexity.boundOps_max > 0 || complexity.DIMS_delta > 0),
   notes: [

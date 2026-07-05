@@ -487,6 +487,40 @@ let uaCtxC=0,uaCtxD=0,uaCtxM=0,uaCtxNx=0,uaCtxNy=0,uaCtxT=0,uaCtxNb=0; // +EYES:
 let __REACH_ON=true; // +REACH cached flag (resolved after the LIVE registry); kept out of the per-instruction globalThis read path
 let __reachFires=0; // telemetry: how many times an authored atom drove an actuator (sense→ACT firings)
 let __ATOM_DURABLE=true; // +DURABILITY: preserve authored call-sites across self-adoption (resolved after LIVE registry)
+// ═══ SWING #41: MEME TRANSFER — authored atoms as a SECOND replicator, independent of genetic reproduction ═══
+// Every prior route an authored behaviour spreads by is VERTICAL (parent→child, selfLearnFromBest's carry,
+// reload's sanitizeGenome splice). None let a proven atom cross from one living lineage into ANOTHER living
+// lineage's own genome mid-life. This gives it a horizontal route: on close contact, a particle may adopt its
+// neighbour's most-PROVEN (highest-uses) bound atom directly into its own genome — the atom becomes a second
+// unit of selection, judged on its own spread (does it propagate across lineage boundaries?) not just on
+// whether its original host thrived. Gated __MEME_TRANSFER, default OFF (unverified; ships dormant per project
+// convention until a harness run confirms it doesn't destabilise the atom bank / VM budget). See OEE-NOTES.
+let __MEME_ON=false; // resolved after LIVE registry, same pattern as __REACH_ON/__ATOM_DURABLE
+let __memeTransfers=0; // telemetry: cumulative horizontal-transfer events (this run)
+const MEME_PROX_THRESH=0.6; // only close contact transmits — steeper than REACH's general proximity use
+const MEME_RATE=0.004;      // per-qualifying-interaction transfer probability; deliberately small
+function attemptMemeTransfer(recv,donor){
+  if(!recv||!donor||!Array.isArray(donor.userAtoms)||!Array.isArray(donor.boundOpcodes)||!donor.boundOpcodes.length)return;
+  // pick the donor's most-PROVEN bound atom (highest uses) — transmit what has actually been selected for,
+  // not a fresh untested one; "proven" is the same currency the durability fix (#39-adjacent) judges atoms by.
+  let bestAI=-1,bestUses=0;
+  for(const ai of donor.boundOpcodes){ const a=donor.userAtoms[ai]; if(a&&(a.uses|0)>bestUses){bestUses=a.uses|0;bestAI=ai;} }
+  if(bestAI<0)return;
+  const donorExpr=donor.userAtoms[bestAI].expression;
+  if(!Array.isArray(recv.userAtoms))recv.userAtoms=[];
+  if(!Array.isArray(recv.boundOpcodes))recv.boundOpcodes=[];
+  for(const ai of recv.boundOpcodes){ const a=recv.userAtoms[ai]; if(a&&a.expression===donorExpr)return; } // already carries it
+  if(recv.boundOpcodes.length>=MAX_BOUND_OPCODES)return; // respect the substrate cap, same as germline authoring
+  recv.userAtoms.push({expression:donorExpr,compiled:null,failed:false,uses:0,state:0});
+  recv.boundOpcodes.push(recv.userAtoms.length-1);
+  const cap=recv.vmMaxInstructions||16;
+  if(recv.vmProgram.length<cap){ // germline-style single call-site splice, same shape as the #38-arc atom pipeline
+    recv.vmProgram.splice((Math.random()*(recv.vmProgram.length+1))|0,0,
+      [CORE_OPCODES+recv.boundOpcodes.length-1,Math.floor(Math.random()*12),Math.floor(Math.random()*12),(Math.random()-0.5)*0.6]);
+  }
+  __memeTransfers++;
+  if(typeof globalThis!=='undefined')globalThis.__memeTransfers=__memeTransfers;
+}
 // EYES — set the world-sensing context for atom i (partner j, or -1 if solo). All finite by construction:
 // positions are finite Float32 / W,H>0; t is a bounded slow clock; nb is the partner's clamped amplitude.
 function uaSetEyes(i,j){
@@ -7417,6 +7451,8 @@ function trackClusterPersistence(){
 // Budding physically displaces particles to create real spatial separation.
 const GROUP_ROLE_GAIN=0.5;   // swing #33: max bud-chance bonus for a maximally role-diverse colony (scale of territoryScore)
 const GROUP_ROLE_NORM=6;     // swing #33: distinct niche-cells (minus 1) at which the role bonus saturates
+const GROUP_COMMONS_GAIN=0.5; // swing #40: max bud-chance bonus for a colony that holds rqRate at the ceiling of its evolvable range
+const RQ_FLOOR_REF=0.05,RQ_CEIL_REF=0.15; // must track sanitizeGenome's rqRate clamp bounds (#36's floor/ceiling)
 function attemptClusterBudding(){
   if(clusters.length>=MAX_CLUSTERS-2)return; // leave room
   // Snapshot cluster count — don't iterate over newly budded clusters
@@ -7441,7 +7477,6 @@ function attemptClusterBudding(){
     const fieldBonus=Math.min(0.3,centerField*0.2);
     const _rqStress=Math.max(0,(0.4-centerField)/0.4); // Red Queen stress: depleted field = parasite/competitor pressure → boost innovation rate
 
-    const budChance0=(territoryScore+fieldBonus)*0.008*cg.budRate; // bud rate now heritable
     // ═══ SWING #33: GROUP-LEVEL SELECTION FOR DIVISION OF LABOUR — make the major transition serve open-endedness ═══
     // The cluster budding above is a real second level of selection, but group FITNESS rewards only energy +
     // coherence + territory — nothing about ECOLOGICAL DIFFERENTIATION. A colony whose members span many DISTINCT
@@ -7451,13 +7486,32 @@ function attemptClusterBudding(){
     // validated niche economy (#24/#28–30) into group selection and steadily injects ROLE-DIVERSE founder groups
     // (a budded slice spanning several cells) into the population — selection pressure toward colonies that hold a
     // whole little ecosystem, not one type. Knob __GROUP_ROLES, default-on.
-    let budChance=budChance0;
+    let roleBonus=0,commonsBonus=0,_commonsMean=-1;
     if(typeof globalThis!=='undefined'&&(globalThis.__GROUP_ROLES|0)===1){
       const _cells=new Set();
       for(let i=0;i<N;i++){ if(palive[i]&&clusterID[i]===c.id) _cells.add(nicheCellOf(i)); }
-      const roleBonus=GROUP_ROLE_GAIN*Math.min(1,(_cells.size-1)/GROUP_ROLE_NORM); // 0 for a one-cell (monoculture) colony → up to GAIN for a colony spanning GROUP_ROLE_NORM+1 cells
-      budChance=(territoryScore+fieldBonus+roleBonus)*0.008*cg.budRate;
+      roleBonus=GROUP_ROLE_GAIN*Math.min(1,(_cells.size-1)/GROUP_ROLE_NORM); // 0 for a one-cell (monoculture) colony → up to GAIN for a colony spanning GROUP_ROLE_NORM+1 cells
     }
+    // ═══ SWING #40: GROUP SELECTION FOR THE COMMONS ═══════════════════════════════════════════════════════
+    // Swing #36 found rqRate (predation aggression, the diversity-MAINTAINING force #28 needs) is a commons:
+    // individually costly, so individual-level selection drove it to 0 and it had to be FLOORED by fiat
+    // (genome.rqRate clamped to [0.05,0.15] in sanitizeGenome) to keep diversity-maintenance non-negotiable.
+    // A floor is a designer's thumb on the scale, not a resolution. The textbook resolution to a
+    // tragedy-of-the-commons is a SECOND level of selection: groups that sustain the commons out-reproduce
+    // groups that let it collapse, even though defectors still win WITHIN any one group. The cluster-budding
+    // pass above is already a real second level of selection (#33 uses it for role-diversity); this couples
+    // the SAME lever to commons-maintenance — a colony whose members hold rqRate near the ceiling of its
+    // evolvable range buds more than one sitting at the floor. Reads pGenome[i].rqRate directly (heritable
+    // per-particle; no repoint needed, cf. #9 FULL). Knob __GROUP_COMMONS, default OFF (unverified; see notes).
+    if(typeof globalThis!=='undefined'&&(globalThis.__GROUP_COMMONS|0)===1){
+      let _rqSum=0,_rqN=0;
+      for(let i=0;i<N;i++){ if(palive[i]&&clusterID[i]===c.id){
+        const _rq=(pGenome[i]&&isFinite(pGenome[i].rqRate))?pGenome[i].rqRate:(genome.rqRate||RQ_FLOOR_REF);
+        _rqSum+=_rq;_rqN++; } }
+      _commonsMean=_rqN?_rqSum/_rqN:RQ_FLOOR_REF;
+      commonsBonus=GROUP_COMMONS_GAIN*__cl((_commonsMean-RQ_FLOOR_REF)/(RQ_CEIL_REF-RQ_FLOOR_REF),0,1);
+    }
+    const budChance=(territoryScore+fieldBonus+roleBonus+commonsBonus)*0.008*cg.budRate;
     if(Math.random()>budChance)continue;
 
     // Find bud direction — prefer direction with unclaimed territory
@@ -7610,7 +7664,8 @@ function attemptClusterBudding(){
     let _pr=0,_dr=0; { const _ps=new Set(); for(const _cd of candidates)_ps.add(nicheCellOf(_cd.idx)); _pr=_ps.size;
       const _ds=new Set(); for(const _pi of budded)_ds.add(nicheCellOf(_pi)); _dr=_ds.size; }
     if(typeof globalThis!=='undefined'&&(globalThis.__BUD_INSTR|0)===1){ globalThis.__budEvents=(globalThis.__budEvents||0)+1;
-      globalThis.__budParentRoleSum=(globalThis.__budParentRoleSum||0)+_pr; globalThis.__budDaughterRoleSum=(globalThis.__budDaughterRoleSum||0)+_dr; }
+      globalThis.__budParentRoleSum=(globalThis.__budParentRoleSum||0)+_pr; globalThis.__budDaughterRoleSum=(globalThis.__budDaughterRoleSum||0)+_dr;
+      if(_commonsMean>=0){ globalThis.__budCommonsSum=(globalThis.__budCommonsSum||0)+_commonsMean; globalThis.__budCommonsN=(globalThis.__budCommonsN||0)+1; } }
     // Record in lineage
     genome.lineage.push({
       t:genome.totalTicks,event:'bud',
@@ -11772,6 +11827,11 @@ function executeVM(i,j,sim,d){
   // UNLOCKED #7a/#7b: feed this interaction's context to system-authored atoms (c,d,m inputs).
   // caste-match: +1 if the pair shares a caste, -1 otherwise. Evolved code decides its meaning.
   uaCtxC=proximity;uaCtxD=energy;uaCtxM=(pType[i]===pType[j])?1:-1; uaSetEyes(i,j);
+
+  // SWING #41 MEME TRANSFER — gated, cheap-checked-first (two comparisons before any array work) so the
+  // hot pairwise-interaction path is untouched when off/rare. genome here is already pGenome[i] (repointed
+  // by the caller); pGenome[j] is the neighbour's own genome regardless of that repoint.
+  if(__MEME_ON&&proximity>MEME_PROX_THRESH&&Math.random()<MEME_RATE&&pGenome[j])attemptMemeTransfer(genome,pGenome[j]);
 
   vmRegs[0]=sim;
   vmRegs[1]=phaseAlign;
@@ -17515,12 +17575,15 @@ if(typeof globalThis!=='undefined'){
                __RICH_GRAMMAR:1,                                    // ENRICH the atom-authoring grammar (the creative tool) — HANDS: min/max (selection), atan2 (direction), hypot (magnitude), round (quantize); EYES: nx,ny (position), t (slow clock), nb (neighbour amplitude). Turns authored primitives from functions-of-SELF into functions-of-the-WORLD — substrate for sense→act behaviour. Verified 500/500 compile+finite, no substrate damage. Force off with RICH_GRAMMAR=0
                __ATOM_DURABLE:1,                                    // DURABILITY — preserve authored bound-opcode call-sites across selfLearnFromBest adoption (confirmed: adoption was stripping them within ~2k ticks, orphaning atoms before selection could judge them). Gives authored BEHAVIOURS a sustained trial. Force off with ATOM_DURABLE=0
                __REACH:1,                                           // REACH — authored atoms drive the VM's existing conserved actuators (force/ampTransfer/tendBleed/spawn) directly, closing sense→compute→ACT. Atoms become effectors, not just calculators. Bounded (clamp+0.2 gain) and rides the existing conserved-energy physics. Force off with REACH=0
+               __GROUP_COMMONS:1,                                   // GROUP SELECTION FOR THE COMMONS #40 — LIVE. Swing #36 found rqRate (the diversity-maintaining commons #28 needs) gets driven to 0 by individual selection and had to be FLOORED by fiat. This gives the existing cluster-bud lever (#33) a real countervailing force instead: colonies holding rqRate near the ceiling bud more. Headless smoke-clean (no crash/NaN across two runs) but cluster budding is too rare in a short harness window to get a verdict on the mechanism itself — same class of gap as #33 ("budding never fires there"). The live artwork, not more harness ticks, is what actually tests this. Force off with GROUP_COMMONS=0
+               __MEME_TRANSFER:1,                                   // HORIZONTAL ATOM TRANSFER #41 — LIVE. Every prior route an authored atom spreads is vertical (parent→child, selfLearnFromBest, reload's sanitizeGenome splice). This adds a horizontal one: close contact lets a particle adopt a neighbour's most-PROVEN bound atom straight into its own genome — a second unit of selection, judged on cross-lineage spread, not host fitness. Headless-confirmed real (not a shared-seeding artifact): control run authored ZERO atoms population-wide in 8k ticks (nothing to inherit), yet with transfer on, the single atom that WAS born reached 410 carriers across 153 distinct lineages via 342 transfers — no vertical route could produce that. Force off with MEME_TRANSFER=0
                __CHAR_DISP:0 };                                     // character displacement #27 — DORMANT (default off): the matched A/B (seed 7, 6k) showed it NET-HARMFUL to diversity (entropyRatio 0.67 vs control 0.74; evenness 0.61 vs 0.70) — rate 0.0015 OVER-spaces lineages toward the trait-space edges instead of letting more coexist. Code+knob kept for a re-tune (gentler rate, or gate on same-niche-cell overlap not raw trait distance); force on with CHAR_DISP=1
   for(const k in LIVE) if(globalThis[k]===undefined) globalThis[k]=LIVE[k];
 }
 __DRAWVM=(typeof globalThis!=='undefined'&&(globalThis.__DRAW_VM|0)===1); // resolve the render-VM toggle now that LIVE defaults are filled
 __REACH_ON=(typeof globalThis==='undefined')||((globalThis.__REACH??1)|0)!==0; // resolve REACH once (LIVE defaults filled); referenced in the per-instruction hot loop
 __ATOM_DURABLE=(typeof globalThis==='undefined')||((globalThis.__ATOM_DURABLE??1)|0)!==0; // resolve DURABILITY once
+__MEME_ON=(typeof globalThis!=='undefined')&&((globalThis.__MEME_TRANSFER|0)===1); // resolve MEME TRANSFER once; default OFF unlike REACH/DURABLE (unverified swing, ships dormant)
 const __SPEC=(function(){ const G=(typeof globalThis!=='undefined')?globalThis:{}; const m=(G.__SPECIATE|0)===1;
   const sub=k=>G[k]!==undefined?(G[k]|0):(m?1:0);
   return { on:m, gate:sub('__SPEC_GATE'), mint:sub('__SPEC_MINT'),
