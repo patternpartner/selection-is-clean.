@@ -73,6 +73,11 @@ function validNetworkPayload(type,data){
   if(type==='plasmid')return Array.isArray(data)&&data.length<=NET_MAX_PLASMID&&data.every(validInstruction);
   if(type==='motif')return Array.isArray(data)&&data.length<=8&&data.every(validInstruction);
   if(type==='inscription')return data&&finitePacketNumber(data.op,-64,64)&&finitePacketNumber(data.A,-16,16)&&finitePacketNumber(data.B,-16,16)&&finitePacketNumber(data.str,0,2);
+  // 'applied' — a peer's own acknowledgment that a packet it received (from us or anyone else on the
+  // channel) actually changed ITS sim state. Not a request/reply pair (no packet IDs — BroadcastChannel
+  // is multicast, there's no single "the other end" to address); just a gossip-style announcement any
+  // listener can count. data.kind names which of the 4 effect types fired.
+  if(type==='applied')return data&&typeof data.kind==='string'&&['migrant','plasmid','motif','inscription'].includes(data.kind);
   return false;
 }
 function queueNetworkPacket(queue,data,limit,type){
@@ -92,6 +97,9 @@ function handleNetworkMessage(raw){
   else if(msg.type==='motif')queueNetworkPacket(incomingMotifs,msg.data,NET_QUEUE_LIMITS.motif,'motif');
   else if(msg.type==='inscription')queueNetworkPacket(incomingInscriptions,msg.data,NET_QUEUE_LIMITS.inscription,'inscription');
   else if(msg.type==='hello')networkSend('hello-reply');
+  else if(msg.type==='applied'){ // a peer (any peer — another Selection tab, φ, anything) says OUR broadcast (or someone's) actually landed
+    if(genome.netAckApplied&&typeof genome.netAckApplied==='object'&&genome.netAckApplied[msg.data.kind]!==undefined)genome.netAckApplied[msg.data.kind]++;
+  }
 }
 try{
   bc=new BroadcastChannel(NETWORK_CHANNEL);
@@ -189,6 +197,8 @@ function networkReceive(){
     for(let dd=0;dd<DIMS;dd++)t[dd]=m.tend[dd]||0;
     const newIdx=addParticle(nx,ny,t,false);
     if(newIdx>=0){
+      genome.netApplied.migrant++;
+      networkSend('applied',{kind:'migrant'}); // tell whoever's listening (possibly the original sender) that this landed
       amp[newIdx]=m.amp||0.5;
       phase[newIdx]=m.phase||0;
       for(let mm=0;mm<MEM_SIZE&&mm<(m.mem?m.mem.length:0);mm++){
@@ -214,6 +224,8 @@ function networkReceive(){
     if(N===0)continue;
     const target=Math.floor(Math.random()*N);
     if(!palive[target])continue;
+    genome.netApplied.plasmid++;
+    networkSend('applied',{kind:'plasmid'});
     const pLen=Math.min(MAX_PLASMID,pl.length);
     pPlasmidLen[target]=pLen;
     for(let pi=0;pi<pLen;pi++){
@@ -231,11 +243,14 @@ function networkReceive(){
     if(!genome.vmProgram)continue;
     // Inject motif at a random position in the global VM
     const insertAt=Math.floor(Math.random()*genome.vmProgram.length);
+    let _motifLanded=false;
     for(let i=0;i<mot.length&&insertAt+i<genome.vmProgram.length;i++){
       if(Math.random()<0.3){ // soft overwrite — not every motif instruction lands
         genome.vmProgram[insertAt+i]=[mot[i][0],mot[i][1],mot[i][2],mot[i][3]];
+        _motifLanded=true;
       }
     }
+    if(_motifLanded){genome.netApplied.motif++;networkSend('applied',{kind:'motif'});}
   }
   // Inscriptions — write the received cell program into a random empty cell
   while(incomingInscriptions.length>0){
@@ -243,6 +258,8 @@ function networkReceive(){
     if(Math.random()>rec)continue;
     const idx=Math.floor(Math.random()*FIELD_W*FIELD_H);
     if(cellProgStr[idx]<0.2){ // only inscribe where nothing is already strong
+      genome.netApplied.inscription++;
+      networkSend('applied',{kind:'inscription'});
       cellProgOp[idx]=ins.op;
       cellProgA[idx]=ins.A;
       cellProgB[idx]=ins.B;
@@ -5593,6 +5610,12 @@ function encodeGenome(){
     C:genome.chemistryTable,
     // Network coupling
     n:[genome.netMigrantRate,genome.netPlasmidRate,genome.netMotifRate,genome.netInscribeRate,genome.netReceptivity].map(v=>+(v.toPrecision(4))),
+    // Network EFFECT telemetry (cumulative, this lineage's save-history): how many incoming packets from
+    // ANY peer on the channel actually changed sim state, broken down by type. See sanitizeGenome note.
+    na:genome.netApplied,
+    // How many 'applied' acknowledgments this lineage has received FROM other peers — evidence something
+    // broadcast (by us or anyone) landed on the other end. Gossip-style, not per-packet request/reply.
+    nap:genome.netAckApplied,
     // Identity
     g:genome.generation,T:genome.totalTicks,
     L:genome.lineage.slice(-4),
@@ -5813,6 +5836,12 @@ function decodeGenome(data){
     if(g.C)genome.chemistryTable=g.C;
     if(g.n){
       [genome.netMigrantRate,genome.netPlasmidRate,genome.netMotifRate,genome.netInscribeRate,genome.netReceptivity]=g.n;
+    }
+    if(g.na&&typeof g.na==='object'){
+      genome.netApplied={migrant:g.na.migrant|0,plasmid:g.na.plasmid|0,motif:g.na.motif|0,inscription:g.na.inscription|0};
+    }
+    if(g.nap&&typeof g.nap==='object'){
+      genome.netAckApplied={migrant:g.nap.migrant|0,plasmid:g.nap.plasmid|0,motif:g.nap.motif|0,inscription:g.nap.inscription|0};
     }
     // Handle older genomes without newer params
     if(!genome.hgtRate)genome.hgtRate=0.15;
@@ -6853,6 +6882,19 @@ function sanitizeGenome(){
   if(!Array.isArray(genome.rend)||genome.rend.length!==4) genome.rend=defaultRend();
   genome.draw=sanitizeDraw(genome.draw);
   genome.rend=genome.rend.map(a=>({expression:typeof a.expression==='string'?a.expression.slice(0,200):'0',compiled:null,failed:!!a.failed}));
+  // NETWORK-EFFECT TELEMETRY: distinct from netStats.accepted (received+validated) — this counts only
+  // packets that actually WROTE something into sim state (a particle spawned, a plasmid installed, a
+  // motif instruction landed past its 30% gate, a cell actually inscribed). Source-agnostic by
+  // construction: it counts effects from ANY peer on the channel — another Selection tab, a foreign
+  // substrate like φ, or anything else speaking this protocol — since Selection never checks who sent a
+  // packet, only whether it validates and whether the receiving code's own gates let it through.
+  if(!genome.netApplied||typeof genome.netApplied!=='object')genome.netApplied={migrant:0,plasmid:0,motif:0,inscription:0};
+  else{ const na=genome.netApplied; na.migrant=finiteOr(na.migrant,0)|0; na.plasmid=finiteOr(na.plasmid,0)|0; na.motif=finiteOr(na.motif,0)|0; na.inscription=finiteOr(na.inscription,0)|0; }
+  // netAckApplied: how many 'applied' announcements this lineage has RECEIVED from other peers — i.e.
+  // evidence that something WE (or anyone) broadcast actually changed someone else's sim state. Gossip,
+  // not a request/reply — see the 'applied' packet type note in validNetworkPayload.
+  if(!genome.netAckApplied||typeof genome.netAckApplied!=='object')genome.netAckApplied={migrant:0,plasmid:0,motif:0,inscription:0};
+  else{ const nk=genome.netAckApplied; nk.migrant=finiteOr(nk.migrant,0)|0; nk.plasmid=finiteOr(nk.plasmid,0)|0; nk.motif=finiteOr(nk.motif,0)|0; nk.inscription=finiteOr(nk.inscription,0)|0; }
   if(!Array.isArray(genome.boundOpcodes)) genome.boundOpcodes=[];
   genome.boundOpcodes=genome.boundOpcodes.filter(n=>typeof n==='number'&&n>=0).slice(0,MAX_BOUND_OPCODES);
   // DURABILITY across save/load: a reload restores boundOpcodes + vmProgram from the save, but the saved
