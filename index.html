@@ -49,6 +49,24 @@ const peerLastSeen={};         // peer id → last tick we heard from them
 const netStats={sent:0,received:0,accepted:0,dropped:0,bad:0,lastType:''};
 const netEventPending={migrant:0,plasmid:0,motif:0,inscription:0};
 
+// ═══ ALIEN ATTRIBUTION — the reflective self forms a theory of the OTHER substrates on the
+// bridge, not just itself ═══
+// Every other evolvable part of Selection (VM program, atoms, cluster genome, draw program) is
+// subject to selection; the self's own reflective apparatus (shadow-sim, metaCredit) never was —
+// and it only ever models Selection's OWN future. runShadowSim() forward-simulates Selection's
+// specific cluster/field physics equations; it cannot be pointed at φ's fluid grid or the SAT
+// crucible's population without being a different function. metaCredit's underlying PATTERN can:
+// "I predicted a direction, time passed, did reality confirm it" doesn't care what's being
+// predicted. This reuses that pattern with a genuinely alien target — a peer's packet-emission
+// rate on the bridge, the only observable available with zero cooperation from other files — and
+// uses the self's own authored ATOMS as the predictor, so this is also a real second test of
+// whether primitives selected for one role (driving actuators) generalize to a totally different
+// one (forecasting a foreign substrate), not a bespoke hand-written heuristic bolted on the side.
+const peerObservable=new Map();     // tab -> {count:packets this window, prevCount:last window's count, windowStart:tick}
+const pendingAlienPredictions=new Map(); // tab -> {atomIdx, direction, baseline, madeAtTick}
+const ALIEN_WINDOW=180;             // ticks per observation window
+const ALIEN_PREDICT_CADENCE=200;    // how often to attempt a new prediction cycle
+
 function netPacket(type,data){return {v:NET_PROTOCOL_VERSION,tab:TAB_ID,born:tick,type,data}}
 function networkSend(type,data){
   if(!bc)return false;
@@ -91,6 +109,14 @@ function handleNetworkMessage(raw){
   if(msg.v!==undefined&&msg.v!==NET_PROTOCOL_VERSION){netStats.bad++;return}
   peerLastSeen[msg.tab||'unknown']=tick;
   netStats.received++;netStats.lastType=msg.type||'';
+  { // ALIEN ATTRIBUTION observable: count this peer's packets this window, regardless of type —
+    // the only thing being tracked is "how active is this peer," not what any packet means.
+    const _pt=msg.tab||'unknown';
+    let _po=peerObservable.get(_pt);
+    if(!_po){ _po={count:0,prevCount:0,windowStart:tick}; peerObservable.set(_pt,_po); }
+    if(tick-_po.windowStart>=ALIEN_WINDOW){ _po.prevCount=_po.count; _po.count=0; _po.windowStart=tick; }
+    _po.count++;
+  }
   if(!validNetworkPayload(msg.type,msg.data)){netStats.bad++;return}
   if(msg.type==='migrant')queueNetworkPacket(incomingMigrants,msg.data,NET_QUEUE_LIMITS.migrant,'migrant');
   else if(msg.type==='plasmid')queueNetworkPacket(incomingPlasmids,msg.data,NET_QUEUE_LIMITS.plasmid,'plasmid');
@@ -5616,6 +5642,9 @@ function encodeGenome(){
     // How many 'applied' acknowledgments this lineage has received FROM other peers — evidence something
     // broadcast (by us or anyone) landed on the other end. Gossip-style, not per-packet request/reply.
     nap:genome.netAckApplied,
+    // Alien attribution: does the self's theory of OTHER bridge substrates' near-future behaviour
+    // (formed by its own authored atoms) actually hold up? attempts/hits, cumulative.
+    ap:genome.alienPredict,
     // Identity
     g:genome.generation,T:genome.totalTicks,
     L:genome.lineage.slice(-4),
@@ -5842,6 +5871,9 @@ function decodeGenome(data){
     }
     if(g.nap&&typeof g.nap==='object'){
       genome.netAckApplied={migrant:g.nap.migrant|0,plasmid:g.nap.plasmid|0,motif:g.nap.motif|0,inscription:g.nap.inscription|0};
+    }
+    if(g.ap&&typeof g.ap==='object'){
+      genome.alienPredict={attempts:g.ap.attempts|0,hits:g.ap.hits|0};
     }
     // Handle older genomes without newer params
     if(!genome.hgtRate)genome.hgtRate=0.15;
@@ -6895,6 +6927,11 @@ function sanitizeGenome(){
   // not a request/reply — see the 'applied' packet type note in validNetworkPayload.
   if(!genome.netAckApplied||typeof genome.netAckApplied!=='object')genome.netAckApplied={migrant:0,plasmid:0,motif:0,inscription:0};
   else{ const nk=genome.netAckApplied; nk.migrant=finiteOr(nk.migrant,0)|0; nk.plasmid=finiteOr(nk.plasmid,0)|0; nk.motif=finiteOr(nk.motif,0)|0; nk.inscription=finiteOr(nk.inscription,0)|0; }
+  // alienPredict: cumulative attempts/hits of the self's own theory of OTHER bridge substrates'
+  // near-future behaviour (packet-rate direction), formed by its own authored atoms. See the
+  // rationale comment above peerObservable / runAlienPrediction.
+  if(!genome.alienPredict||typeof genome.alienPredict!=='object')genome.alienPredict={attempts:0,hits:0};
+  else{ const ap=genome.alienPredict; ap.attempts=finiteOr(ap.attempts,0)|0; ap.hits=finiteOr(ap.hits,0)|0; }
   if(!Array.isArray(genome.boundOpcodes)) genome.boundOpcodes=[];
   genome.boundOpcodes=genome.boundOpcodes.filter(n=>typeof n==='number'&&n>=0).slice(0,MAX_BOUND_OPCODES);
   // DURABILITY across save/load: a reload restores boundOpcodes + vmProgram from the save, but the saved
@@ -11851,6 +11888,44 @@ function applyEntropy(){
         }
         j=pnext[j];
       }
+    }
+  }
+}
+
+// ═══ ALIEN ATTRIBUTION — form and score a prediction about each active bridge peer's near-future
+// packet-emission rate, using the self's own most-proven authored atom as the predictor. See the
+// declaration comment above peerObservable for the full rationale. Runs on a fixed cadence from
+// the main loop, same shape as attemptHGT/evolvePlasmids.
+function runAlienPrediction(){
+  if(!genome.alienPredict)genome.alienPredict={attempts:0,hits:0};
+  const bos=genome.boundOpcodes,uas=genome.userAtoms;
+  if(!bos||!bos.length||!uas||!uas.length)return; // nothing to predict WITH yet — no atoms bound
+  for(const [tab,po] of peerObservable){
+    if(tick-(peerLastSeen[tab]||0)>ALIEN_WINDOW*3)continue; // peer's gone quiet; nothing fresh to judge
+    // 1) SCORE a pending prediction for this peer, if its window has since rolled over.
+    const pending=pendingAlienPredictions.get(tab);
+    if(pending&&po.windowStart!==pending.windowStartAtPrediction){
+      const actualDir=Math.sign(po.prevCount-pending.baseline);
+      const hit=actualDir===pending.direction;
+      genome.alienPredict.attempts++;
+      if(hit){
+        genome.alienPredict.hits++;
+        const a=uas[pending.atomIdx]; if(a)a.uses=(a.uses|0)+1; // same currency every other role already accrues
+      }
+      recordEvent('alien_predict',{tab:String(tab).slice(0,16),hit,pred:pending.direction,actual:actualDir},400);
+      pendingAlienPredictions.delete(tab);
+    }
+    // 2) FORM a new prediction for this peer, if none is currently pending.
+    if(!pendingAlienPredictions.has(tab)){
+      let bestAI=-1,bestUses=-1;
+      for(const ai of bos){ const a=uas[ai]; if(a&&(a.uses|0)>bestUses){bestUses=a.uses|0;bestAI=ai;} }
+      if(bestAI<0)continue;
+      const atom=uas[bestAI];
+      const baseline=po.prevCount, recentPartial=po.count; // only "trend so far" signal honestly available
+      uaCtxC=0;uaCtxD=0;uaCtxM=0;uaCtxNx=0;uaCtxNy=0;uaCtxT=Math.sin(tick*0.0011);uaCtxNb=0;
+      const out=uaCall(atom, Math.tanh((baseline||0)/20), Math.tanh((recentPartial||0)/20));
+      const direction=out>0.05?1:(out<-0.05?-1:0);
+      pendingAlienPredictions.set(tab,{atomIdx:bestAI,direction,baseline,madeAtTick:tick,windowStartAtPrediction:po.windowStart});
     }
   }
 }
@@ -18593,6 +18668,8 @@ function loop(){
   }
 
   if(tick%300===0&&tick>600)collectClusterUpstream(); // Pe26: drain cluster discoveries upward
+
+  if(tick%ALIEN_PREDICT_CADENCE===0&&tick>ALIEN_WINDOW)runAlienPrediction(); // the self forms a theory of the OTHER substrates on the bridge
 
   if(tick%10===0)peakBondThisTick*=0.8;
 
