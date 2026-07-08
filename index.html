@@ -11327,14 +11327,20 @@ function checkExtinction(){
     extinctionCount++;
     lastExtinctionTick=genome.totalTicks;
 
+    // sinceBoot=tick (the session-local counter, never restored from a save -- confirmed by
+    // reading init(): tick always starts at 0 on load) makes a reload-triggered rebirth
+    // (fires moments after boot, tick small) distinguishable from a genuine deep-run collapse
+    // (fires after the lineage actually lived for a long stretch this session) without having
+    // to infer it from timestamps after the fact.
     genome.lineage.push({
       t:genome.totalTicks,event:'extinction',
       cause:evoDead?'evolvability':(selfModel.trend<0?'decline':'collapse'),
       lastFitness:+(currentFitness.toFixed(3)),
-      mutRate:+(genome.mutationRate.toFixed(3))
+      mutRate:+(genome.mutationRate.toFixed(3)),
+      sinceBoot:tick
     });
     if(genome.lineage.length>4)genome.lineage.shift();
-    recordEvent('extinction',{alive,fit:+currentFitness.toFixed(3),mut:+genome.mutationRate.toFixed(3),cause:evoDead?'evolvability':'population'});
+    recordEvent('extinction',{alive,fit:+currentFitness.toFixed(3),mut:+genome.mutationRate.toFixed(3),cause:evoDead?'evolvability':'population',sinceBoot:tick});
 
     genome.generation++;
     try{const g2=encodeGenome();if(g2.length<500000)localStorage.setItem('selection_genome',g2)}catch(e){}
@@ -17402,7 +17408,28 @@ function init(){
   const loaded=loadGenome();
   sanitizeGenome();
   const n=Math.min(400,(W*H/2800)|0);
-  for(let i=0;i<n;i++)addParticle(Math.random()*W,Math.random()*H,randomTendency(),false);
+  // FIX: no live particle state is saved/restored -- only the self's evolved parameters, atoms,
+  // and history -- so every reload used to hand a long-evolved self a 100% blind-random
+  // population (randomTendency() for all n), even though checkExtinction()'s OWN rebirth path
+  // already knows better and seeds preferentially from genome.stableMotifs (cultural memory).
+  // That asymmetry meant a fresh reload's population was LESS informed than even a same-session
+  // extinction event's rebirth gets -- a real, traceable contributor to the pattern of reloads
+  // frequently showing as a new generation: a badly-mismatched random reseed under long-evolved
+  // physics/thresholds often can't hold above extinctionThresh past the tick>500 gate, so
+  // checkExtinction() fires almost immediately post-boot and increments generation. Mirrors
+  // checkExtinction's own reseed exactly -- no new mechanic, just closing a real inconsistency.
+  if(loaded&&Array.isArray(genome.stableMotifs)&&genome.stableMotifs.length>0){
+    const motifCount=Math.floor(n*(genome.culturalBias||0));
+    for(let i=0;i<motifCount;i++){
+      const motif=genome.stableMotifs[Math.random()*genome.stableMotifs.length|0];
+      const tv=new Float32Array(DIMS);
+      for(let d=0;d<DIMS;d++)tv[d]=(motif.t[d]||0)+(Math.random()-0.5)*0.2;
+      addParticle(Math.random()*W,Math.random()*H,tv,false);
+    }
+    for(let i=motifCount;i<n;i++)addParticle(Math.random()*W,Math.random()*H,randomTendency(),false);
+  } else {
+    for(let i=0;i<n;i++)addParticle(Math.random()*W,Math.random()*H,randomTendency(),false);
+  }
   if(loaded){
     genEl.textContent=`gen ${genome.generation} | ${genome.totalTicks} ticks inherited`;
   }
