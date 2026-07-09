@@ -181,6 +181,12 @@ const driver = `
   // Cumulative discovery sets (novelty): kinds the system has EVER produced.
   const seenBins=new Set();      // tendency-space cells ever occupied
   const seenMotifs=new Set();    // remembered cultural motifs ever seen
+  const seenAtomExprs=new Set(); // AUTHORSHIP-novelty axis: distinct authored-atom expressions EVER seen
+                                 // live in the population. Analogue of seenBins (ecology) but for the
+                                 // self-extending VM's own vocabulary. The thesis test: does THIS keep
+                                 // climbing after cumKinds (ecological novelty) plateaus? Atom COUNT is
+                                 // ceiling-capped (MAX_BOUND_OPCODES); cumulative distinct EXPRESSIONS is
+                                 // not — a fully-turned-over bank keeps minting new expressions forever.
   let births=0;                  // high-water lineage-registry size = BIRTH THROUGHPUT,
                                  // NOT novelty (it rises with every birth regardless of
                                  // whether anything new appears). Reported, never trusted as OEE.
@@ -452,18 +458,26 @@ const driver = `
     //    HORIZONTAL transfer (MEME_TRANSFER=1) lets it cross into other living lineages — the smoking-gun
     //    signal, same idiom as bifurcLin/cascadeCount: a metric the confound (common ancestry) can't fake. ──
     let memeDistinctExprs=-1, memeCarriers=-1, memeTopPrevalence=-1, memeTopLineages=-1;
+    let memeCarrierAmpAdv=null; // top-meme carrier mean-amp MINUS non-carrier mean-amp (fitness proxy)
     if(typeof pGenome!=='undefined'){
       const exprCount=new Map(); let carriers=0;
       for(let i=0;i<N;i++){ if(!palive[i])continue; const g=pGenome[i]; if(!g||!Array.isArray(g.userAtoms)||!Array.isArray(g.boundOpcodes)||!g.boundOpcodes.length)continue;
         carriers++; const seen=new Set();
-        for(const ai of g.boundOpcodes){ const a=g.userAtoms[ai]; if(a&&a.expression&&!seen.has(a.expression)){ seen.add(a.expression); exprCount.set(a.expression,(exprCount.get(a.expression)||0)+1); } } }
+        for(const ai of g.boundOpcodes){ const a=g.userAtoms[ai]; if(a&&a.expression&&!seen.has(a.expression)){ seen.add(a.expression); exprCount.set(a.expression,(exprCount.get(a.expression)||0)+1); seenAtomExprs.add(a.expression); } } }
       let topExpr=null,topCount=0; for(const [e,v] of exprCount) if(v>topCount){topCount=v;topExpr=e;}
       memeDistinctExprs=exprCount.size; memeCarriers=carriers; memeTopPrevalence=topCount;
       if(topExpr!==null && typeof pLin!=='undefined'){
         const linSet=new Set();
+        // AGAINST-HOST-INTEREST probe: does the most-spread meme help its hosts, or spread despite them?
+        // Compare mean amp (the single fitness currency every income path funnels through) of particles
+        // that CARRY topExpr vs those that don't. Advantage <= 0 while prevalence RISES = a selfish
+        // replicator winning by transmissibility, not by host benefit — the #41 question, made decisive.
+        let cS=0,cN=0,nS=0,nN=0;
         for(let i=0;i<N;i++){ if(!palive[i])continue; const g=pGenome[i]; if(!g||!Array.isArray(g.userAtoms)||!Array.isArray(g.boundOpcodes))continue;
-          for(const ai of g.boundOpcodes){ const a=g.userAtoms[ai]; if(a&&a.expression===topExpr){ linSet.add(pLin[i]); break; } } }
+          let has=false; for(const ai of g.boundOpcodes){ const a=g.userAtoms[ai]; if(a&&a.expression===topExpr){ has=true; break; } }
+          if(has){ linSet.add(pLin[i]); cS+=amp[i]; cN++; } else { nS+=amp[i]; nN++; } }
         memeTopLineages=linSet.size;
+        if(cN>0&&nN>0) memeCarrierAmpAdv=+((cS/cN)-(nS/nN)).toFixed(4);
       }
     }
 
@@ -570,6 +584,9 @@ const driver = `
       meanRqRate,
       // swing #41: does the most-carried bound-atom expression cross lineage boundaries?
       memeDistinctExprs, memeCarriers, memeTopPrevalence, memeTopLineages,
+      // AUTHORSHIP thesis: cumulative distinct atom expressions ever seen (the non-saturating axis?),
+      // and whether the most-spread meme helps its hosts (>0) or spreads against their interest (<=0).
+      cumAtomExprs:seenAtomExprs.size, memeCarrierAmpAdv,
       // turnover
       kindChurn:+churn.toFixed(3),
       ...(cpur!==undefined?{cpur}:{})   // cluster lineage-purity probe (CLUSTER_PURITY=1)
@@ -699,6 +716,40 @@ const meme = {
   crossedLineages: (last.memeTopLineages ?? 0) > 1
 };
 
+// AUTHORSHIP-vs-ECOLOGY thesis: is the self-extending VM's vocabulary the axis that DOESN'T saturate,
+// while the ecological (kinds) axis does? Compare the LATE-THIRD discovery slopes of each cumulative
+// set. Ecology plateauing (cumKinds slope -> ~0) while authorship keeps climbing (cumAtomExprs slope
+// stays > 0) is the thesis signal. Both being flat would refute it (authorship saturates too); both
+// climbing would mean neither has hit its wall yet in this window.
+const lateS = S.slice(t2);
+const authorship = {
+  cumKinds_lateSlope: +slope(lateS, 'cumKinds').toFixed(4),      // ecological novelty, per sample
+  cumAtomExprs_lateSlope: +slope(lateS, 'cumAtomExprs').toFixed(4), // authorship novelty, per sample
+  cumAtomExprs_last: last.cumAtomExprs ?? -1,
+  cumKinds_last: last.cumKinds ?? -1
+};
+// Thesis holds if authorship is still discovering while ecology has effectively stopped.
+authorship.authorshipOutrunsEcology = authorship.cumAtomExprs_lateSlope > 0.05 && authorship.cumKinds_lateSlope <= 0.05;
+
+// SELFISH-MEME probe (the #41 question made decisive): does the most-spread meme ever GAIN prevalence
+// in a window while its carriers have NO fitness advantage (amp advantage <= 0)? That is a replicator
+// winning by transmissibility against host interest — vertical selection cannot produce it.
+let riseAgainstInterest = 0, riseWithBenefit = 0, advSamples = 0, advSum = 0;
+for (let i = 1; i < S.length; i++) {
+  const a = S[i].memeCarrierAmpAdv, pPrev = S[i-1].memeTopPrevalence, pNow = S[i].memeTopPrevalence;
+  if (a === null || a === undefined || pPrev == null || pNow == null || pPrev < 0) continue;
+  advSamples++; advSum += a;
+  if (pNow > pPrev) { if (a <= 0) riseAgainstInterest++; else riseWithBenefit++; }
+}
+const selfishMeme = {
+  meanCarrierAmpAdv: advSamples ? +(advSum / advSamples).toFixed(4) : null, // >0 = memes help hosts on average
+  prevalenceRoseAgainstInterest: riseAgainstInterest,   // spread events with carrier advantage <= 0
+  prevalenceRoseWithBenefit: riseWithBenefit,
+  // A meme winning by pure transmissibility exists if spread-against-interest events occur AND
+  // dominate the benefit-driven ones — otherwise spread is just ordinary host-benefit selection.
+  transmissibilityWin: riseAgainstInterest > 0 && riseAgainstInterest >= riseWithBenefit
+};
+
 const verdict = {
   novelty_late_vs_early: { earlyNewKindsPer1k: +earlyRate.toFixed(2), lateNewKindsPer1k: +lateRate.toFixed(2),
     decayedTo: earlyRate > 0 ? +(lateRate / earlyRate).toFixed(2) : null, stillProducing: lateRate > 0.05 },
@@ -715,6 +766,8 @@ const verdict = {
       meanCommonsAtBud: ec > 0 ? +((globalThis.__budCommonsSum || 0) / ec).toFixed(4) : null }; })(),
   commons_trend: commons,
   meme_transfer: meme,
+  authorship_vs_ecology: authorship,
+  selfish_meme: selfishMeme,
   complexity_trend: complexity,
   complexity_topTierEngaged: (complexity.liveAtoms_max > 0 || complexity.boundOps_max > 0 || complexity.DIMS_delta > 0),
   notes: [
