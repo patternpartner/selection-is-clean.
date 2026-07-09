@@ -601,6 +601,27 @@ const driver = `
     };
   }
 
+  // ── ABLATION hooks (adaptiveness instrument) ──
+  // Knock out an authored atom by replacing its expression with constant 0 (recompiled), removing its
+  // functional contribution while leaving opcode numbering and program structure intact. Matched op on
+  // proven vs control atoms isolates "this atom is load-bearing" from "perturbing any atom hurts".
+  globalThis.__atomTargets=function(){
+    const ua=(typeof genome!=='undefined'&&Array.isArray(genome.userAtoms))?genome.userAtoms:[];
+    const bo=(typeof genome!=='undefined'&&Array.isArray(genome.boundOpcodes))?genome.boundOpcodes:[];
+    const bound=bo.map(i=>ua[i]).filter(a=>a&&a.expression);
+    let proven=null,pu=-1,control=null,cu=Infinity;
+    for(const a of bound){ const u=a.uses|0; if(u>pu){pu=u;proven=a;} if(u<cu){cu=u;control=a;} }
+    return { provenExpr:proven?proven.expression:null, provenUses:pu,
+             controlExpr:control?control.expression:null, controlUses:(cu===Infinity?-1:cu),
+             nBound:bound.length, totAtoms:ua.length };
+  };
+  globalThis.__dumpGenome=function(){ return (typeof encodeGenome==='function')?encodeGenome():null; };
+  globalThis.__ablate=function(expr){
+    if(!expr||typeof genome==='undefined'||!Array.isArray(genome.userAtoms))return 0;
+    let n=0; for(const a of genome.userAtoms){ if(a&&a.expression===expr){ a.expression='0'; a.compiled=null; a.failed=false; a.uses=0; n++; } }
+    return n;
+  };
+
   globalThis.__SERIES=[];
   globalThis.__runOEE=function(ticks,every){
     let m=metrics(); globalThis.__SERIES.push(m); if(STREAM)process.stdout.write(JSON.stringify(m)+String.fromCharCode(10));
@@ -623,8 +644,26 @@ try { m._compile(code + driver, m.filename); }
 catch (e) { console.log('COMPILE/BOOT THREW:', e.message); process.exit(1); }
 const tBoot = Date.now();
 
+// ADAPTIVENESS ABLATION: knock out the named atom BEFORE running the continuation (booted from GENOME).
+// ABLATE=proven|control|none selects which env-supplied expression to neutralise.
+let ablatedCount = 0, ablateExpr = null;
+if (process.env.ABLATE && process.env.ABLATE !== 'none') {
+  ablateExpr = process.env.ABLATE_EXPR || '';
+  ablatedCount = globalThis.__ablate(ablateExpr);
+}
+
 globalThis.__runOEE(TICKS, SAMPLE);
 const tDone = Date.now();
+
+// DUMP_GENOME: write the evolved genome (resume-wrapper format) + its ablation targets, so a follow-up
+// run can boot from it and knock out the most-proven authored atom.
+if (process.env.DUMP_GENOME) {
+  try {
+    const targets = globalThis.__atomTargets();
+    const g = globalThis.__dumpGenome();
+    fs.writeFileSync(process.env.DUMP_GENOME, JSON.stringify({ type: 'selection-genome', version: 2, genome: g, targets }));
+  } catch (e) { console.error('DUMP_GENOME failed:', e.message); }
+}
 
 const S = globalThis.__SERIES;
 
@@ -805,6 +844,7 @@ console.log(JSON.stringify({
   config: { TICKS, SAMPLE, SEED: process.env.SEED || null, INDEX: process.env.INDEX || 'index.html' },
   timing_ms: { boot: tBoot - t0, run: tDone - tBoot, perKtick: +(((tDone - tBoot) / TICKS) * 1000).toFixed(1) },
   loopErrors, lastErr, driverErr: globalThis.__driverErr || 0,
+  ablation: process.env.ABLATE ? { mode: process.env.ABLATE, expr: ablateExpr, atomsNeutralised: ablatedCount } : null,
   verdict,
   series: STREAM ? '(streamed as JSONL above)' : S
 }, null, 1));
