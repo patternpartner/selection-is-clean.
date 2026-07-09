@@ -181,12 +181,17 @@ const driver = `
   // Cumulative discovery sets (novelty): kinds the system has EVER produced.
   const seenBins=new Set();      // tendency-space cells ever occupied
   const seenMotifs=new Set();    // remembered cultural motifs ever seen
-  const seenAtomExprs=new Set(); // AUTHORSHIP-novelty axis: distinct authored-atom expressions EVER seen
-                                 // live in the population. Analogue of seenBins (ecology) but for the
-                                 // self-extending VM's own vocabulary. The thesis test: does THIS keep
-                                 // climbing after cumKinds (ecological novelty) plateaus? Atom COUNT is
-                                 // ceiling-capped (MAX_BOUND_OPCODES); cumulative distinct EXPRESSIONS is
-                                 // not — a fully-turned-over bank keeps minting new expressions forever.
+  const seenAtomExprs=new Set();       // AUTHORSHIP-novelty axis (RAW): distinct germline atom expressions
+                                       // EVER authored. Analogue of seenBins for the self-extending VM's own
+                                       // vocabulary — BUT rising here can be pure neutral drift (uaGenExpression
+                                       // mints random untested strings), the same caveat cumKinds carries.
+  const seenProvenAtomExprs=new Set(); // AUTHORSHIP-novelty axis (ADAPTIVE): distinct germline expressions that
+                                       // were ever observed PROVEN (uses>0 — actually called by opcode 22, so
+                                       // selection has judged them). Standing proven count (liveAtoms) is
+                                       // ceiling-bounded; this cumulative-ever set rising while liveAtoms holds
+                                       // flat = proven-vocabulary TURNOVER, the real open-ended signal. If THIS
+                                       // plateaus too, authorship saturates like everything else and the thesis
+                                       // that "authorship is the non-saturating axis" is refuted.
   let births=0;                  // high-water lineage-registry size = BIRTH THROUGHPUT,
                                  // NOT novelty (it rises with every birth regardless of
                                  // whether anything new appears). Reported, never trusted as OEE.
@@ -438,6 +443,9 @@ const driver = `
     const opSet=new Set(); if(Array.isArray(G.vmProgram))for(const ins of G.vmProgram)opSet.add(ins[0]|0);
     const liveAtoms=Array.isArray(G.userAtoms)?G.userAtoms.filter(a=>a&&(a.uses|0)>0).length:0;
     const totAtoms=Array.isArray(G.userAtoms)?G.userAtoms.length:0;
+    // AUTHORSHIP-novelty accumulation — the germline is where atoms are authored (line ~11064).
+    // Raw = every expression ever; Proven = expressions ever seen with uses>0 (selection-judged).
+    if(Array.isArray(G.userAtoms))for(const a of G.userAtoms){ if(a&&a.expression){ seenAtomExprs.add(a.expression); if((a.uses|0)>0)seenProvenAtomExprs.add(a.expression); } }
     const boundOps=Array.isArray(G.boundOpcodes)?G.boundOpcodes.length:0;
     const fitSensors=Array.isArray(G.fitnessSensors)?G.fitnessSensors.length:0;
 
@@ -586,7 +594,7 @@ const driver = `
       memeDistinctExprs, memeCarriers, memeTopPrevalence, memeTopLineages,
       // AUTHORSHIP thesis: cumulative distinct atom expressions ever seen (the non-saturating axis?),
       // and whether the most-spread meme helps its hosts (>0) or spreads against their interest (<=0).
-      cumAtomExprs:seenAtomExprs.size, memeCarrierAmpAdv,
+      cumAtomExprs:seenAtomExprs.size, cumProvenAtomExprs:seenProvenAtomExprs.size, memeCarrierAmpAdv,
       // turnover
       kindChurn:+churn.toFixed(3),
       ...(cpur!==undefined?{cpur}:{})   // cluster lineage-purity probe (CLUSTER_PURITY=1)
@@ -723,13 +731,27 @@ const meme = {
 // climbing would mean neither has hit its wall yet in this window.
 const lateS = S.slice(t2);
 const authorship = {
-  cumKinds_lateSlope: +slope(lateS, 'cumKinds').toFixed(4),      // ecological novelty, per sample
-  cumAtomExprs_lateSlope: +slope(lateS, 'cumAtomExprs').toFixed(4), // authorship novelty, per sample
+  cumKinds_lateSlope: +slope(lateS, 'cumKinds').toFixed(4),               // ecological novelty, per sample
+  cumAtomExprs_lateSlope: +slope(lateS, 'cumAtomExprs').toFixed(4),       // RAW authorship novelty (drift-prone)
+  cumProvenAtomExprs_lateSlope: +slope(lateS, 'cumProvenAtomExprs').toFixed(4), // ADAPTIVE: proven-atom turnover
+  liveAtoms_lateMean: +thirdMean(S, 'liveAtoms', t2, n).toFixed(2),       // standing proven count (ceiling-bounded)
+  cumProvenAtomExprs_last: last.cumProvenAtomExprs ?? -1,
   cumAtomExprs_last: last.cumAtomExprs ?? -1,
   cumKinds_last: last.cumKinds ?? -1
 };
-// Thesis holds if authorship is still discovering while ecology has effectively stopped.
-authorship.authorshipOutrunsEcology = authorship.cumAtomExprs_lateSlope > 0.05 && authorship.cumKinds_lateSlope <= 0.05;
+// The HONEST thesis test. Raw expression churn rising means little (neutral drift). The real signal is
+// PROVEN-vocabulary turnover: standing proven count (liveAtoms) holds ~flat (bounded bank) while the
+// cumulative set of DISTINCT proven expressions keeps growing — the bank keeps replacing proven atoms
+// with NEW proven atoms after ecology has stopped discovering. That is authorship as the non-saturating
+// axis. If cumProvenAtomExprs also flattens late, authorship saturates too and the thesis is refuted.
+authorship.ecologySaturatedLate = authorship.cumKinds_lateSlope <= 0.05;
+authorship.provenVocabStillTurningOver = authorship.cumProvenAtomExprs_lateSlope > 0.02;
+authorship.authorshipOutrunsEcology = authorship.ecologySaturatedLate && authorship.provenVocabStillTurningOver;
+authorship.note = authorship.authorshipOutrunsEcology
+  ? 'THESIS SUPPORTED (this run): ecology saturated, proven vocabulary still turning over.'
+  : authorship.ecologySaturatedLate
+    ? 'THESIS NOT SUPPORTED (this run): ecology saturated AND proven authorship saturated too.'
+    : 'INCONCLUSIVE: ecology had not saturated in this window — longer run needed.';
 
 // SELFISH-MEME probe (the #41 question made decisive): does the most-spread meme ever GAIN prevalence
 // in a window while its carriers have NO fitness advantage (amp advantage <= 0)? That is a replicator
