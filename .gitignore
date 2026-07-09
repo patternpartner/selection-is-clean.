@@ -2,3 +2,5 @@
 isolate-*.log
 # transient run logs
 *.tmp
+# regenerable Pe program cache for bridge experiments
+bridge/experiments/pe-instructions-cache.json
