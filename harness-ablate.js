@@ -21,8 +21,10 @@ const path = require('path');
 const HARNESS = path.join(__dirname, 'harness-oee.js');
 const TMP = process.env.TMPDIR || '/tmp';
 const GENOME_FILE = path.join(TMP, 'ablate-genome-' + process.pid + '.json');
-const ENGINE = { MEME_TRANSFER:'1', NOVELTY_ARCHIVE:'1', GENO_PARASITE:'1', GROUP_COMMONS:'1',
-                 RICH_GRAMMAR:'1', REACH:'1', ATOM_PIPELINE:'1', ATOM_DURABLE:'1' };
+// Lean engine: the atom-authoring pipeline only. NOVELTY_ARCHIVE (O(N.sample.DIMS) k-NN) and GENO_PARASITE
+// dominate runtime (~52s/1000 ticks with them, ~19s without) and are IRRELEVANT to whether an authored atom
+// is load-bearing for fitness — the question this harness asks. Dropping them keeps the experiment tractable.
+const ENGINE = { MEME_TRANSFER:'1', GROUP_COMMONS:'1', RICH_GRAMMAR:'1', REACH:'1', ATOM_PIPELINE:'1', ATOM_DURABLE:'1' };
 const AUTH_SEED = process.env.AUTH_SEED || '7';
 const AUTH_TICKS = process.env.AUTH_TICKS || '60000';
 const CONT_TICKS = process.env.CONT_TICKS || '20000';
