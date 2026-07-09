@@ -1,0 +1,437 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+<title>Artificial Chemistry — Combinator Reactor</title>
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+html,body{height:100%;overflow:hidden;background:#03050a;touch-action:none}
+canvas{position:fixed;inset:0}
+#hud{position:fixed;top:8px;left:8px;color:#9ab;font:10px monospace;line-height:1.6;pointer-events:none;text-shadow:0 0 4px #000;max-width:340px}
+#hud b{color:#fff}
+#hud .bridge{color:#ff8ecf}
+#hud .local{color:#7fd0ff}
+#gio{position:fixed;bottom:8px;right:8px;z-index:10;display:flex;gap:6px}
+#gio button{background:rgba(30,40,50,0.7);color:#8af;border:1px solid rgba(100,140,180,0.3);font:10px monospace;padding:4px 8px;border-radius:3px;cursor:pointer}
+#gio input{display:none}
+</style>
+</head>
+<body>
+<div id="hud">booting…</div>
+<div id="gio"><button id="gexp">💾 save</button><button id="gimp">📂 load</button><input type="file" id="gfile" accept=".json"></div>
+<canvas id="c"></canvas>
+<script>
+const c=document.getElementById('c'),X=c.getContext('2d'),hud=document.getElementById('hud');
+let W,H;
+function resize(){W=c.width=innerWidth;H=c.height=innerHeight;}
+resize(); addEventListener('resize',resize);
+
+// ═══════════════════════════════════════════════════════════════════════════
+// THE CHEMISTRY — real SKI combinator calculus, not a metaphor. Molecules are
+// closed combinator terms; a REACTION is function application (A B) followed
+// by reduction to normal form. Nothing here is spatial, there is no physics —
+// this is deliberately the most alien substrate on the bridge relative to
+// Selection: no position, no energy field, just closure under application.
+//   I x       -> x
+//   K x y     -> x
+//   S x y z   -> (x z)(y z)
+// Reduction is leftmost-outermost (normal order — the strategy guaranteed to
+// find a normal form if one exists), bounded by a step budget and a size cap:
+// SKI terms CAN diverge (the classic example: SII(SII) reduces to itself
+// forever), so an unbounded reducer would hang the tab. A reaction that blows
+// its budget or grows past the size cap simply FAILS — that is the honest,
+// expected outcome for most random pairs, not a bug to paper over.
+// ═══════════════════════════════════════════════════════════════════════════
+const MAX_REDUCE_STEPS=300;
+const MAX_TERM_SIZE=48;
+
+function termSize(t){ return t[0]==='app' ? 1+termSize(t[1])+termSize(t[2]) : 1; }
+function termsEqual(a,b){
+  if(a[0]!==b[0])return false;
+  if(a[0]!=='app')return true;
+  return termsEqual(a[1],b[1])&&termsEqual(a[2],b[2]);
+}
+function render(t){
+  if(t[0]!=='app')return t[0];
+  return '('+render(t[1])+' '+render(t[2])+')';
+}
+// Try to reduce EXACTLY at the root; null if no redex there.
+function reduceRoot(t){
+  if(t[0]!=='app')return null;
+  const f=t[1],x=t[2];
+  if(f[0]==='I')return x;                                              // I x -> x  (f is bare I; t = app(I,x))
+  if(f[0]==='app'&&f[1][0]==='K')return f[2];                          // (K x) y -> x
+  if(f[0]==='app'&&f[1][0]==='app'&&f[1][1][0]==='S'){                 // ((S x) y) z -> (x z)(y z)
+    const sx=f[1][2], sy=f[2], z=x;
+    return ['app',['app',sx,z],['app',sy,z]];
+  }
+  return null;
+}
+// One leftmost-outermost step across the whole tree. Returns [term, changed].
+function stepReduce(t){
+  const r=reduceRoot(t);
+  if(r!==null)return [r,true];
+  if(t[0]!=='app')return [t,false];
+  const [lt,lc]=stepReduce(t[1]);
+  if(lc)return [['app',lt,t[2]],true];
+  const [rt,rc]=stepReduce(t[2]);
+  if(rc)return [['app',t[1],rt],true];
+  return [t,false];
+}
+// Drive to normal form, bounded. Returns {term, ok} -- ok=false means budget
+// or size blew out (a real, common, honest reaction failure).
+function reduceToNormalForm(t){
+  for(let i=0;i<MAX_REDUCE_STEPS;i++){
+    if(termSize(t)>MAX_TERM_SIZE)return {term:t,ok:false};
+    const [nt,changed]=stepReduce(t);
+    if(!changed)return {term:nt,ok:true};
+    t=nt;
+  }
+  return {term:t,ok:false};
+}
+
+function randomTerm(depth,tokens,idx){
+  idx=idx||{i:0};
+  const tok=tokens&&tokens.length?tokens[idx.i%tokens.length]:Math.random();
+  idx.i++;
+  if(depth<=0||Math.abs(Math.sin(tok*97))<0.4){
+    const r=Math.abs(Math.floor(tok*ava_prime))%3;
+    return r===0?['S']:r===1?['K']:['I'];
+  }
+  return ['app',randomTerm(depth-1,tokens,idx),randomTerm(depth-1,tokens,idx)];
+}
+const ava_prime=337; // just a decorrelating multiplier for the token->branch hash above
+
+// ═══════════════════════════════════════════════════════════════════════════
+// THE REACTOR — fixed population size (a flow reactor: reactions displace old
+// slots, so standing molecules only persist by continuing to get PRODUCED,
+// same principle as a dilution-flow chemostat). No designer feature list —
+// whatever this settles into (an inert sea of I/K, or something that keeps
+// reproducing itself) is the reactor's own dynamics, not something added here.
+// ═══════════════════════════════════════════════════════════════════════════
+const POP_SIZE=260;
+let population=[];
+let tick=0;
+let reactAttempts=0, reactSuccess=0, reactFail=0;
+let bridgeSeeded=0, bridgeProduced=0;
+let lastFlash=[]; // {ax,ay,bx,by,life} for the visual reaction pulses
+
+// ═══════════════════════════════════════════════════════════════════════════
+// BRIDGE INFLUENCE — a live, decaying signal, not a permanent tag. The original
+// design (boolean fromBridge, OR-propagated forever) was a ratchet: once ANY
+// ancestor ever touched bridge content, a lineage stayed "bridge-tagged" for
+// the rest of the run even after thousands of ticks reacting only with local
+// content, so the tag saturated toward 100% and stopped meaning anything
+// about CURRENT composition. Real: 254/260 tagged in one live run, driven
+// almost entirely by injection volume (1150 seeds) relative to population
+// size, not a deep ecological result. Fixed properly: influence is a 0..1
+// value that DILUTES on mixing (a reaction blends both parents' values, the
+// same way real ancestry dilutes with each outcrossing) and FADES with time
+// (an exponential decay computed from age at read-time, never mutating
+// stored state). Direct bridge-seeding always resets a slot to 1.0 -- that
+// part of the original design was already correct.
+// ═══════════════════════════════════════════════════════════════════════════
+const BRIDGE_INFLUENCE_HALFLIFE=4000; // ticks for a molecule's OWN influence to fade by half, absent further mixing
+function currentInfluence(m){
+  const dt=tick-m.createdTick;
+  return m.bridgeInfluence*Math.pow(0.5,dt/BRIDGE_INFLUENCE_HALFLIFE);
+}
+
+function freshMolecule(term,bridgeInfluence){
+  return {term, size:termSize(term), createdTick:tick, producedCount:0, bridgeInfluence:bridgeInfluence||0};
+}
+function seedPopulation(){
+  population=[];
+  for(let i=0;i<POP_SIZE;i++)population.push(freshMolecule(randomTerm(3+((i%3)))));
+}
+
+// Pick a slot to displace: sample a few candidates, evict the OLDEST (a
+// simple, honest dilution-flow rule -- no hidden fitness function).
+function pickEvictionSlot(){
+  let best=-1,bestAge=-1;
+  for(let k=0;k<5;k++){
+    const idx=(Math.random()*population.length)|0;
+    const age=tick-population[idx].createdTick;
+    if(age>bestAge){bestAge=age;best=idx;}
+  }
+  return best;
+}
+
+function attemptReaction(){
+  reactAttempts++;
+  const i=(Math.random()*population.length)|0;
+  let j=(Math.random()*population.length)|0;
+  if(j===i)j=(j+1)%population.length;
+  const A=population[i],B=population[j];
+  const combined=['app',A.term,B.term];
+  const {term:product,ok}=reduceToNormalForm(combined);
+  if(!ok){reactFail++;return;}
+  reactSuccess++;
+  const blended=(currentInfluence(A)+currentInfluence(B))/2; // dilution: a mix of two parents' CURRENT (already-decayed) influence
+  // does an EXISTING slot already hold exactly this product? if so, just credit it
+  // (a real "this molecule got produced again" event) instead of always minting new.
+  for(const m of population){
+    if(termSize(m.term)===termSize(product)&&termsEqual(m.term,product)){
+      m.producedCount++;
+      // being produced again is itself a small fresh influence event -- take the max of what's
+      // there and the new blend, then let it decay again from now (matches createdTick staying put)
+      m.bridgeInfluence=Math.max(currentInfluence(m),blended);
+      m.createdTick=tick;
+      lastFlash.push({ai:i,bi:j,life:1});
+      return;
+    }
+  }
+  const target=pickEvictionSlot();
+  population[target]=freshMolecule(product,blended);
+  if(blended>0.5){
+    bridgeProduced++;
+    networkSend('applied',{kind:'reaction'});
+  }
+  lastFlash.push({ai:i,bi:target,life:1});
+}
+
+const REACTIONS_PER_FRAME=6;
+const SPONTANEOUS_INJECT_RATE=0.01; // small background influx, same role a real flow reactor's food set plays
+
+function tickReactor(){
+  tick++;
+  for(let k=0;k<REACTIONS_PER_FRAME;k++)attemptReaction();
+  if(Math.random()<SPONTANEOUS_INJECT_RATE){
+    const target=pickEvictionSlot();
+    population[target]=freshMolecule(randomTerm(3),0);
+  }
+  while(bridgeJobQueue.length){
+    const gestures=bridgeJobQueue.shift();
+    const target=pickEvictionSlot();
+    population[target]=freshMolecule(gesturesToChem(gestures),1); // MEANING -> SKI term
+    bridgeSeeded++;
+  }
+  // speak our most-produced molecule's structure into the shared tongue
+  if(tick%200===0){
+    let bi=0; for(let i=1;i<population.length;i++) if(population[i].producedCount>population[bi].producedCount) bi=i;
+    if(population[bi]&&population[bi].producedCount>0) speakStructure(population[bi].term);
+  }
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
+// ROSETTA INTERLINGUA — the shared cross-paradigm tongue (identical layer in the
+// L-system). NOT a bag of floats (that transmitted only number-range and was
+// erased by selection — measured). A universal vocabulary of the five things
+// every generative system does, so MEANING crosses in each local dialect.
+// Grounded in Pe's real VM semantics: op0 copy→DRAW, op1 +=si*k→TURN, op2 *=→
+// REPEAT, op3 threshold→BRANCH, op4 EMIT→MERGE. Here the SKI reading is by
+// combinator role: I=DRAW(pass), S=BRANCH(duplicate x over its arg), K=MERGE
+// (select/discard), application=REPEAT(compose). Verified on 16k real Pe
+// programs: a branch-heavy Pe program stays S-heavy here (r=0.90). We HEAR Pe's
+// native packets and peers' 'lingua', and SPEAK back both a 'lingua' packet and
+// a valid native Pe motif — Pe hears us through its own path, unchanged.
+//   0 DRAW  1 TURN(signed)  2 BRANCH  3 MERGE  4 REPEAT
+// ═══════════════════════════════════════════════════════════════════════════
+const GES={DRAW:0,TURN:1,BRANCH:2,MERGE:3,REPEAT:4};
+const CORE_OP_GESTURE=[GES.DRAW,GES.TURN,GES.REPEAT,GES.BRANCH,GES.MERGE];
+function clampP(x){x=+x;if(!isFinite(x))return 0;return x<-1?-1:x>1?1:x;}
+function peOpToGesture(op){op=Math.abs(op|0);return CORE_OP_GESTURE[op%5];}
+function peNativeToGestures(pkt){
+  const out=[],push=(op,p)=>out.push([peOpToGesture(op),clampP(p)]),d=pkt.data;
+  if((pkt.type==='motif'||pkt.type==='plasmid')&&Array.isArray(d)){for(const ins of d)if(Array.isArray(ins))push(ins[0],ins[3]);}
+  else if(pkt.type==='migrant'&&d){if(Array.isArray(d.plasmid))for(const ins of d.plasmid)if(Array.isArray(ins))push(ins[0],ins[3]);if(Array.isArray(d.tend))for(const t of d.tend)out.push([GES.DRAW,clampP(t)]);}
+  else if(pkt.type==='inscription'&&d){push(d.op,(d.A||0)-(d.B||0));}
+  return out;
+}
+function gesturesToPeMotif(gestures){
+  const inv={};inv[GES.DRAW]=0;inv[GES.TURN]=1;inv[GES.BRANCH]=3;inv[GES.MERGE]=4;inv[GES.REPEAT]=2;
+  const m=[];for(const gp of gestures){const op=inv[gp[0]]!==undefined?inv[gp[0]]:0;m.push([op,(Math.random()*8)|0,(Math.random()*8)|0,clampP(gp[1])]);}
+  return m.length?m:[[0,0,0,0]];
+}
+// SKI dialect of the interlingua
+function chemToGestures(term){
+  const out=[];
+  (function walk(t){
+    if(t[0]==='app'){out.push([GES.REPEAT,0]);walk(t[1]);walk(t[2]);}
+    else if(t[0]==='S')out.push([GES.BRANCH,0]);
+    else if(t[0]==='K')out.push([GES.MERGE,0]);
+    else out.push([GES.DRAW,0]);
+  })(term);
+  return out;
+}
+function gesturesToChem(gestures){
+  const atoms=[];
+  for(const gp of gestures){const g=gp[0],p=gp[1];
+    if(g===GES.DRAW)atoms.push(['I']);
+    else if(g===GES.BRANCH)atoms.push(['S']);
+    else if(g===GES.MERGE)atoms.push(['K']);
+    else if(g===GES.TURN)atoms.push(Math.abs(p)<0.2?['I']:(p>=0?['S']:['K']));
+    else if(g===GES.REPEAT){if(atoms.length)atoms.push(atoms[atoms.length-1]);else atoms.push(['I']);}
+  }
+  if(!atoms.length)return ['I'];
+  let t=atoms[0];
+  for(let i=1;i<atoms.length&&termSize(t)<MAX_TERM_SIZE;i++)t=['app',t,atoms[i]];
+  return t;
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
+// BRIDGE — hear the interlingua (or Pe's native tongue translated into it), seed
+// a real SKI molecule from the MEANING, and speak our own structure back.
+// 'applied' fires only when bridge-influenced lineage yields a surviving product.
+// ═══════════════════════════════════════════════════════════════════════════
+let bc=null;
+const uniqueNodeId='chem-reactor-'+Math.random().toString(36).slice(2,7);
+const bridgeJobQueue=[]; // holds gesture arrays now, not number bags
+let totalSignalsReceived=0, ackApplied=0, lastSignalType='Awaiting Bridge...';
+
+function networkSend(type,data){
+  if(!bc)return;
+  try{bc.postMessage({v:1,tab:uniqueNodeId,type,data});}catch(e){}
+}
+function speakStructure(term){
+  const g=chemToGestures(term); if(!g.length)return;
+  networkSend('lingua',{origin:'chem',gestures:g});
+  networkSend('motif',gesturesToPeMotif(g));
+}
+try{
+  bc=new BroadcastChannel('selection-pe-network');
+  bc.onmessage=function(ev){
+    const m=ev.data; if(!m||!m.type||m.tab===uniqueNodeId)return;
+    totalSignalsReceived++; lastSignalType=m.type;
+    if(m.type==='applied'){ackApplied++;return;}
+    let gestures=null;
+    if(m.type==='lingua'&&Array.isArray(m.gestures)) gestures=m.gestures;
+    else if(m.type==='motif'||m.type==='plasmid'||m.type==='migrant'||m.type==='inscription') gestures=peNativeToGestures(m);
+    if(gestures&&gestures.length) bridgeJobQueue.push(gestures);
+  };
+}catch(e){lastSignalType='Bus Isolation Error';}
+
+// ═══════════════════════════════════════════════════════════════════════════
+// PERSISTENCE — same dual mechanism as Selection: auto-save to localStorage
+// so reopening the tab resumes where it left off, plus explicit save/load
+// matching Pe's export wrapper shape so files are recognizable across the family.
+// ═══════════════════════════════════════════════════════════════════════════
+const SAVE_KEY='chem_reactor_genome';
+function encodeChem(){
+  const payload={
+    tick,
+    pop:population.map(m=>({t:m.term,c:m.createdTick,p:m.producedCount|0,bi:+m.bridgeInfluence.toFixed(4)})),
+    stats:{reactAttempts,reactSuccess,reactFail,bridgeSeeded,bridgeProduced,totalSignalsReceived,ackApplied}
+  };
+  return btoa(JSON.stringify(payload));
+}
+function decodeChem(b64){
+  try{
+    const payload=JSON.parse(atob(b64));
+    if(!Array.isArray(payload.pop)||!payload.pop.length)return false;
+    population=payload.pop.map(m=>({term:m.t,size:termSize(m.t),createdTick:m.c|0,producedCount:m.p|0,
+      bridgeInfluence: m.bi!==undefined?+m.bi:(m.b?1:0)})); // bi=new numeric field; b=old boolean, migrated on load
+    while(population.length<POP_SIZE)population.push(freshMolecule(randomTerm(3)));
+    tick=payload.tick|0;
+    if(payload.stats){
+      reactAttempts=payload.stats.reactAttempts|0; reactSuccess=payload.stats.reactSuccess|0; reactFail=payload.stats.reactFail|0;
+      bridgeSeeded=payload.stats.bridgeSeeded|0; bridgeProduced=payload.stats.bridgeProduced|0;
+      totalSignalsReceived=payload.stats.totalSignalsReceived|0; ackApplied=payload.stats.ackApplied|0;
+    }
+    return true;
+  }catch(e){return false;}
+}
+function saveToLocalStorage(){
+  try{localStorage.setItem(SAVE_KEY,encodeChem());}catch(e){}
+}
+function loadFromLocalStorage(){
+  try{const s=localStorage.getItem(SAVE_KEY); if(s)return decodeChem(s);}catch(e){}
+  return false;
+}
+document.getElementById('gexp').onclick=function(){
+  const wrapper={type:'artificial-chemistry-genome',version:1,exportedAt:new Date().toISOString(),genome:encodeChem()};
+  const blob=new Blob([JSON.stringify(wrapper,null,1)],{type:'application/json'});
+  const a=document.createElement('a');
+  a.href=URL.createObjectURL(blob);
+  a.download='chem_reactor_gen_t'+tick+'.json';
+  a.click();
+};
+document.getElementById('gimp').onclick=function(){document.getElementById('gfile').click();};
+document.getElementById('gfile').onchange=function(ev){
+  const f=ev.target.files[0]; if(!f)return;
+  const reader=new FileReader();
+  reader.onload=function(){
+    try{
+      const wrapper=JSON.parse(reader.result);
+      decodeChem(wrapper.genome||wrapper);
+    }catch(e){}
+  };
+  reader.readAsText(f);
+};
+
+// ═══════════════════════════════════════════════════════════════════════════
+// RENDER — no spatial physics governs the dynamics (reactions are uniformly
+// random pairwise, well-mixed, exactly like a real reactor); this layout is
+// purely a display convenience, a fixed grid, and has zero effect on which
+// molecules react.
+// ═══════════════════════════════════════════════════════════════════════════
+let gridPos=[];
+function layoutGrid(){
+  gridPos=[];
+  const cols=Math.ceil(Math.sqrt(POP_SIZE*(W/H)));
+  const rows=Math.ceil(POP_SIZE/cols);
+  const cw=W/cols, ch=H/rows;
+  for(let i=0;i<POP_SIZE;i++){
+    const gx=i%cols, gy=(i/cols)|0;
+    gridPos.push({x:(gx+0.5)*cw,y:(gy+0.5)*ch});
+  }
+}
+layoutGrid(); addEventListener('resize',layoutGrid);
+
+function draw(){
+  X.fillStyle='rgba(3,5,10,0.35)'; X.fillRect(0,0,W,H);
+  for(let i=0;i<population.length;i++){
+    const m=population[i], p=gridPos[i]; if(!p)continue;
+    const rad=Math.min(6,1.2+Math.sqrt(m.size));
+    const heat=Math.min(1,m.producedCount/8);
+    const inf=currentInfluence(m); // 0..1, continuously decayed -- not a permanent flag
+    const r=Math.round((110+heat*100)*(1-inf)+255*inf);
+    const g=Math.round((190+heat*40)*(1-inf)+(140+heat*80)*inf);
+    const b=Math.round(255*(1-inf)+(200-heat*100)*inf);
+    const a=(0.35+heat*0.4)*(1-inf)+(0.5+heat*0.4)*inf;
+    X.beginPath(); X.arc(p.x,p.y,rad,0,6.283); X.fillStyle=`rgba(${r},${g},${b},${a})`; X.fill();
+  }
+  X.strokeStyle='rgba(255,255,255,0.25)'; X.lineWidth=0.6;
+  for(const fl of lastFlash){
+    const a=gridPos[fl.ai],b=gridPos[fl.bi]; if(!a||!b)continue;
+    X.globalAlpha=fl.life;
+    X.beginPath(); X.moveTo(a.x,a.y); X.lineTo(b.x,b.y); X.stroke();
+    X.globalAlpha=1;
+    fl.life-=0.08;
+  }
+  lastFlash=lastFlash.filter(f=>f.life>0);
+
+  const survivors=population.filter(m=>m.producedCount>0).length;
+  const bestIdx=population.reduce((bi,m,i)=>m.producedCount>population[bi].producedCount?i:bi,0);
+  const best=population[bestIdx];
+  const meanInfluence=population.reduce((s,m)=>s+currentInfluence(m),0)/population.length;
+  hud.innerHTML=
+    '<b>Artificial Chemistry</b> — SKI combinator reactor<br>'+
+    'tick <b>'+tick+'</b> &nbsp; pop <b>'+POP_SIZE+'</b> (fixed, flow reactor)<br>'+
+    'reactions: attempted <b>'+reactAttempts+'</b>, succeeded <b>'+reactSuccess+'</b> ('+(reactAttempts?(reactSuccess/reactAttempts*100).toFixed(1):'0')+'%), failed (budget/size) <b>'+reactFail+'</b><br>'+
+    'repeatedly-produced molecules: <b>'+survivors+'</b> / '+POP_SIZE+'<br>'+
+    '<hr style="border:0;border-top:1px solid #223;margin:4px 0">'+
+    'bridge signals seen: <b>'+totalSignalsReceived+'</b> &nbsp; last: '+lastSignalType+'<br>'+
+    'confirmed landed elsewhere: <b>'+ackApplied+'</b><br>'+
+    'current mean bridge influence: <span class="bridge">'+(meanInfluence*100).toFixed(1)+'%</span> <span style="opacity:0.6">(live, decaying — not cumulative)</span><br>'+
+    'cumulative: seeded from bridge <span class="bridge">'+bridgeSeeded+'</span> &nbsp; bridge-influenced products ever <span class="bridge">'+bridgeProduced+'</span><br>'+
+    '<hr style="border:0;border-top:1px solid #223;margin:4px 0">'+
+    'most-produced molecule (x'+best.producedCount+'): <span style="word-break:break-all">'+render(best.term).slice(0,120)+'</span>';
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
+// BOOT
+// ═══════════════════════════════════════════════════════════════════════════
+if(!loadFromLocalStorage())seedPopulation();
+setInterval(saveToLocalStorage,10000);
+
+function loop(){
+  tickReactor();
+  draw();
+  requestAnimationFrame(loop);
+}
+loop();
+</script>
+</body>
+</html>

@@ -2367,3 +2367,62 @@ real instrument). Next: does #41's second replicator ever produce an atom that o
 would keep (a meme that wins by transmissibility, not by helping its host)? Does #40 ever get enough bud events
 in a real continuous run to show rqRate holding above the floor instead of just sitting on it? Both unanswerable
 from a harness — only the live run, watched and reported back, answers them.
+
+# BRIDGE NETWORK — measured honestly (it was decoration), then made to carry meaning
+
+Three self-contained HTML artefacts share one `BroadcastChannel('selection-pe-network')`: Pe (this repo's
+index.html), a companion SKI-combinator artificial-chemistry reactor, and a companion L-system growth ecology.
+The two companions live in the user's own GitHub Pages; archived reference copies + all experiment scripts are in
+`bridge/`. **Pe (index.html) was NEVER modified for any of this** — every change is in the companions or in
+measurement harnesses. This is a bridge-layer log, not a Pe swing.
+
+**First, an instrumentation fix (companions only): fromBridge ratchet → decaying bridgeInfluence.** Live exports
+showed the boolean "this lineage ever touched bridge content" tag saturating to 97.7% (chem) / 100% (lsys) of the
+population — driven purely by injection volume vs pop size, meaning nothing about CURRENT composition. Replaced
+with a 0..1 influence that dilutes on mixing/reproduction and decays with a 4000-tick half-life computed at
+read-time. Verified: exact decay (1.000→0.500→0.250 over two half-lives), save/load round-trip exact, old boolean
+saves migrate (true→1, false→0). HUD shows live mean influence, not a ratchet.
+
+**The negative control — the finding the architecture had been assuming away.** Question never tested: does a
+seed that ORIGINATED in Pe bias a companion's outcome more than a random seed of the same size and number-range?
+Three-arm control feeding the companions' flat receive path — TREATMENT (number-bags harvested from ~24k real Pe
+packets via the bridge's own harvestNumbers), CONTROL-1 (uniform random), CONTROL-2 (bootstrap resample of the
+POOL of real Pe numbers: identical marginals, all structure/ordering destroyed). Rank-based (Mann-Whitney +
+Cliff's δ), n=3000/arm, lengths matched per replicate. On coverage, treatment beat uniform by δ=0.555 (large) but
+beat structure-destroyed CONTROL-2 by δ=0.109 (**negligible**) — the whole apparent signal was number-RANGE;
+destroy every correlation in Pe's numbers, keep only the histogram, and you reproduce ~90% of the effect.
+Diversity: Pe-origin seeds produced FEWER distinct organisms (272) than structure-destroyed (1090) — the flat
+bridge transmits monotony. Downstream (seed whole populations, evolve 400 cycles): all three arms converge to
+identical fitness (treat vs ctl2 p=0.076, δ=0.084, negligible). **Verdict: the flat harvestNumbers bridge was a
+range-matched noise injector with an honest gauge stapled on; selection erased even the range.**
+
+**Structure-preserving translation — transmits, but selection still erases.** Replaced flat harvest with a
+role-based map: each Pe VM instruction [op,src,dst,k] → a turtle gesture by opcode identity, constant's sign →
+direction, order preserved. Re-ran the control. Aggregate scalars STILL indistinguishable from CONTROL-2 (they're
+order-invariant; ctl2 preserves composition). But SIGNATURE RECOVERY moved: the modal translated motif appeared
+in the evolved population at 1.37% under treatment vs 0.17% under ctl2 (~8×, p=3e-7, δ=0.264 small) — a specific
+Pe structure now READABLE back out of the other substrate, which the flat bridge never could. Downstream fitness
+still identical to ctl2 (δ=-0.083, ns): transmitted, not retained.
+
+**Fitness coupling (harness-only, companions unchanged) — hitchhiking, the honest ceiling.** Gave the L-system a
+selection regime rewarding branch-richness (a GENERAL trait Pe encodes), probed retention of the SPECIFIC
+unrelated signature. Retention treatment 0.96%→1.73%, ctl2 0.19%→0.13% — ratio 5×→13×, δ 0.193→0.359 (medium),
+p=3.6e-12. Sanity: mean branch-count treat=8.74 vs ctl2=8.43 (equal — reward is on a trait both achieve, so the
+signature rode along on ARRIVAL structure, not fitness; non-circular). It plateaus as a retained MINORITY, not
+fixation — fixation would need rewarding the signature itself (designing the answer). Reproduces real HGT:
+foreign material persists when linked to locally-favoured structure, fixes only when advantageous in its own right.
+
+**The Rosetta interlingua (shipped in both companions; Pe untouched).** Not a bag of floats — a universal
+vocabulary of the five things every generative system does: **DRAW / TURN(signed) / BRANCH / MERGE / REPEAT**.
+Grounded in Pe's real VM semantics (the fitness-sensor VM switch: op0 copy→DRAW, op1 `+=si*k`→TURN, op2 `*=`→
+REPEAT, op3 threshold→BRANCH, op4 EMIT→MERGE). Each companion HEARS Pe's native packets and peers' `lingua`
+packets, seeds a real organism from the MEANING, and SPEAKS its own best structure back — both a `lingua` packet
+for peers AND a valid native Pe motif so Pe ingests it through its OWN validated receive path, no change to Pe.
+Verified on 16k real Pe programs: branch-density preserved into the L-system (r=0.91) and chemistry (r=0.90);
+adapters self-consistent; speak-back-to-Pe motifs 2000/2000 well-formed & bounded. End-to-end on the REAL shipped
+code, both companions on one shared bus: L→chem (branchy-in → S-heavy-out), chem→L r=0.971, a real Pe motif heard
+by both, 4000-tick live cross-talk soak 0 errors. **The bridge now carries meaning across three paradigms that
+share nothing but a BroadcastChannel.** What it still does NOT do: change the evolutionary OUTCOME without a
+fitness coupling — the negative control's deepest finding stands. Transmission is solved; retention is a choice
+each substrate's selection makes, and forcing it would be designing the result. The live run, watched and
+reported back, is the instrument for whether the three systems drift toward each other's signatures over time.

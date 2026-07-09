@@ -1,0 +1,419 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+<title>L-System Growth — Rewrite Grammar Ecology</title>
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+html,body{height:100%;overflow:hidden;background:#040a06;touch-action:none}
+canvas{position:fixed;inset:0}
+#hud{position:fixed;top:8px;left:8px;color:#9cb;font:10px monospace;line-height:1.6;pointer-events:none;text-shadow:0 0 4px #000;max-width:340px}
+#hud b{color:#fff}
+#hud .bridge{color:#ff8ecf}
+#gio{position:fixed;bottom:8px;right:8px;z-index:10;display:flex;gap:6px}
+#gio button{background:rgba(30,40,50,0.7);color:#8af;border:1px solid rgba(100,140,180,0.3);font:10px monospace;padding:4px 8px;border-radius:3px;cursor:pointer}
+#gio input{display:none}
+</style>
+</head>
+<body>
+<div id="hud">booting…</div>
+<div id="gio"><button id="gexp">💾 save</button><button id="gimp">📂 load</button><input type="file" id="gfile" accept=".json"></div>
+<canvas id="c"></canvas>
+<script>
+const c=document.getElementById('c'),X=c.getContext('2d'),hud=document.getElementById('hud');
+let W,H;
+function resize(){W=c.width=innerWidth;H=c.height=innerHeight;layoutPlots();}
+addEventListener('resize',resize);
+
+// ═══════════════════════════════════════════════════════════════════════════
+// THE GRAMMAR — a real Lindenmayer system (Prusinkiewicz & Lindenmayer's
+// canonical minimal turtle vocabulary), not a metaphor. An individual's
+// PRODUCTION RULES (symbol -> replacement string) ARE its genome, mutated
+// directly — there is no separate "atom" abstraction here, the rewrite rules
+// are the heritable material, same as they are in real L-system genetics.
+//   F   move forward, drawing a line
+//   +   turn left by the individual's heritable angle
+//   -   turn right by the individual's heritable angle
+//   [   push current position+heading
+//   ]   pop position+heading (a branch point)
+// Only F starts with a rule; +,-,[,] have none and pass through unchanged —
+// exactly standard L-system semantics. The alphabet is fixed (no new symbols
+// get added later); whatever structural complexity appears has to come from
+// what mutation and selection do with THIS alphabet, which is already enough
+// to express arbitrarily complex bracketed branching structures.
+// ═══════════════════════════════════════════════════════════════════════════
+const ITER_DEPTH=5;
+const MAX_STRING_LEN=6000;   // development safety cap -- rules can expand exponentially
+const MAX_SEGMENTS=2500;     // turtle-interpretation safety cap
+
+function expandString(axiom,rules,depth){
+  let s=axiom;
+  for(let d=0;d<depth;d++){
+    let out='';
+    for(let i=0;i<s.length;i++){
+      const ch=s[i];
+      out+=(rules[ch]!==undefined)?rules[ch]:ch;
+      if(out.length>MAX_STRING_LEN)return {str:out.slice(0,MAX_STRING_LEN),overgrown:true};
+    }
+    s=out;
+    if(s.length>MAX_STRING_LEN)return {str:s.slice(0,MAX_STRING_LEN),overgrown:true};
+  }
+  return {str:s,overgrown:false};
+}
+
+// Turtle interpretation. Robust to malformed bracket sequences (evolvable
+// strings CAN produce an unmatched ']' -- a pop on an empty stack is simply
+// ignored, not a crash) since correctness here means "never throws," same
+// discipline as the chemistry reactor's reduction budget.
+function interpret(str,angleDeg,stepLen){
+  const angle=angleDeg*Math.PI/180;
+  let x=0,y=0,heading=-Math.PI/2; // start pointing "up"
+  const stack=[];
+  const segs=[];
+  for(let i=0;i<str.length&&segs.length<MAX_SEGMENTS;i++){
+    const ch=str[i];
+    if(ch==='F'){
+      const nx=x+Math.cos(heading)*stepLen, ny=y+Math.sin(heading)*stepLen;
+      segs.push({x1:x,y1:y,x2:nx,y2:ny});
+      x=nx;y=ny;
+    } else if(ch==='+'){ heading-=angle; }
+    else if(ch==='-'){ heading+=angle; }
+    else if(ch==='['){ stack.push({x,y,heading}); }
+    else if(ch===']'){ if(stack.length){ const s=stack.pop(); x=s.x;y=s.y;heading=s.heading; } }
+  }
+  let minX=0,maxX=0,minY=0,maxY=0;
+  for(const s of segs){ minX=Math.min(minX,s.x1,s.x2); maxX=Math.max(maxX,s.x1,s.x2); minY=Math.min(minY,s.y1,s.y2); maxY=Math.max(maxY,s.y1,s.y2); }
+  return {segs, bbox:{minX,maxX,minY,maxY}};
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
+// GENOME — rules + angle. Mutation touches only these; the alphabet itself
+// never grows.
+// ═══════════════════════════════════════════════════════════════════════════
+const AXIOM='F';
+const SEED_RULES=[ 'F[+F]F[-F]F', 'F[+F][-F]F', 'F[+F]F', 'F[-F][+F][F]' ];
+
+function randomRuleString(tokens,idx){
+  idx=idx||{i:0};
+  const SYM=['F','F','F','+','-','[','F',']']; // weighted so brackets/turns are rarer than F, keeps early soup plausible
+  let out='';
+  const len=4+((tokens&&tokens.length?Math.abs(tokens[0]):Math.random()*8)|0)%8;
+  let depth=0;
+  for(let k=0;k<len;k++){
+    const tok=tokens&&tokens.length?tokens[idx.i%tokens.length]:Math.random();
+    idx.i++;
+    let sym=SYM[Math.abs(Math.floor(tok*401))%SYM.length];
+    if(sym===']'&&depth<=0)sym='F'; // never emit an opening-imbalanced string; interpreter would tolerate it anyway but keep seeds sane
+    if(sym==='[')depth++; if(sym===']')depth--;
+    out+=sym;
+  }
+  while(depth-->0)out+=']';
+  return out;
+}
+// ═══════════════════════════════════════════════════════════════════════════
+// BRIDGE INFLUENCE — a live, decaying signal, not a permanent tag. Same fix as
+// the chemistry reactor and for the same reason: the original boolean
+// fromBridge (carried forward unconditionally through every reproduction)
+// saturated to 100% of the population in a live run purely from injection
+// volume (1187 seeds against 30 slots), telling you nothing about CURRENT
+// composition. Now: a 0..1 value that decays by REPRODUCTION_DECAY each
+// asexual reproduction step (one mutation cycle further from the source) AND
+// fades with time via the same half-life used by the chemistry reactor,
+// computed at read-time from age, never mutating stored state. Direct
+// bridge-seeding still resets a slot to 1.0.
+// ═══════════════════════════════════════════════════════════════════════════
+const BRIDGE_INFLUENCE_HALFLIFE=4000;
+const REPRODUCTION_DECAY=0.85; // per-generation dilution on top of time-decay, since reproduction here is asexual+mutation, not two-parent blending
+function currentInfluence(ind){
+  const dt=tick-ind.createdTick;
+  return ind.bridgeInfluence*Math.pow(0.5,dt/BRIDGE_INFLUENCE_HALFLIFE);
+}
+
+function freshGenome(bridgeInfluence,tokens){
+  return {
+    rules:{F: tokens&&tokens.length? randomRuleString(tokens) : SEED_RULES[(Math.random()*SEED_RULES.length)|0]},
+    angle: 15+Math.random()*35,
+    bridgeInfluence: bridgeInfluence||0
+  };
+}
+function mutateGenome(src){
+  const g={rules:{F:src.rules.F},angle:src.angle,bridgeInfluence:currentInfluence(src)*REPRODUCTION_DECAY};
+  if(Math.random()<0.5){
+    // point mutation: replace one character in the F-rule with a random legal symbol
+    const SYM=['F','+','-','[',']'];
+    const s=g.rules.F.split('');
+    if(s.length){ s[(Math.random()*s.length)|0]=SYM[(Math.random()*SYM.length)|0]; }
+    g.rules.F=s.join('');
+  }
+  if(Math.random()<0.3&&g.rules.F.length<40){
+    const SYM=['F','+','-','[F]'];
+    const pos=(Math.random()*g.rules.F.length)|0;
+    g.rules.F=g.rules.F.slice(0,pos)+SYM[(Math.random()*SYM.length)|0]+g.rules.F.slice(pos);
+  }
+  if(Math.random()<0.2&&g.rules.F.length>3){
+    const pos=(Math.random()*g.rules.F.length)|0;
+    g.rules.F=g.rules.F.slice(0,pos)+g.rules.F.slice(pos+1);
+  }
+  if(Math.random()<0.4)g.angle=Math.max(2,Math.min(90,g.angle+(Math.random()-0.5)*8));
+  return g;
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
+// THE POPULATION — a grid of plots (visual convenience, like the chemistry
+// reactor's grid; canvas position has no effect on selection). Fitness proxy
+// is deliberately the simplest real one from the space-competition literature:
+// bounding-box area actually claimed by the developed structure. No hidden
+// scoring, no designer physiology (light, nutrients) layered on top.
+// ═══════════════════════════════════════════════════════════════════════════
+const POP_SIZE=30;
+let population=[];
+let tick=0;
+let plots=[];
+let reproductions=0, overgrownCount=0, bridgeSeeded=0, bridgeReproductions=0;
+
+function layoutPlots(){
+  plots=[];
+  const cols=6, rows=Math.ceil(POP_SIZE/cols);
+  const pw=W/cols, ph=H/rows;
+  for(let i=0;i<POP_SIZE;i++){
+    const gx=i%cols, gy=(i/cols)|0;
+    plots.push({x:gx*pw+pw/2, y:gy*ph+ph*0.92, w:pw, h:ph});
+  }
+}
+
+function develop(ind){
+  const plot=plots[ind.plotIdx]||{w:100,h:100};
+  const stepLen=Math.max(1.2,Math.min(plot.h,plot.w)/38);
+  const {str,overgrown}=expandString(AXIOM,ind.rules,ITER_DEPTH);
+  if(overgrown)overgrownCount++;
+  const {segs,bbox}=interpret(str,ind.angle,stepLen);
+  ind.segs=segs;
+  ind.coverage=Math.max(1,bbox.maxX-bbox.minX)*Math.max(1,bbox.minY!==0||bbox.maxY!==0?(bbox.maxY-bbox.minY):1);
+  ind.overgrown=overgrown;
+}
+
+function seedPopulation(){
+  population=[];
+  for(let i=0;i<POP_SIZE;i++){
+    const ind={...freshGenome(0),plotIdx:i,createdTick:0,reproducedCount:0};
+    population.push(ind);
+  }
+  layoutPlots();
+  for(const ind of population)develop(ind);
+}
+
+const GROWTH_CYCLE=150; // ticks per "season" -- a reproduction/selection pass
+function growthCycle(){
+  // sample-based tournament: pick a few random individuals, best-of-sample
+  // replaces worst-of-sample's slot with a mutated copy. No global sort, same
+  // cheap-sampling spirit as the chemistry reactor's eviction rule.
+  let worstIdx=-1,worstCov=Infinity,bestIdx=-1,bestCov=-1;
+  for(let k=0;k<6;k++){
+    const idx=(Math.random()*population.length)|0;
+    const cov=population[idx].overgrown?-1:population[idx].coverage; // overgrown structures never win
+    if(cov<worstCov){worstCov=cov;worstIdx=idx;}
+    if(cov>bestCov){bestCov=cov;bestIdx=idx;}
+  }
+  if(worstIdx<0||bestIdx<0||worstIdx===bestIdx)return;
+  const parent=population[bestIdx];
+  const child={...mutateGenome(parent),plotIdx:worstIdx,createdTick:tick,reproducedCount:0};
+  population[worstIdx]=child;
+  develop(child);
+  reproductions++;
+  parent.reproducedCount=(parent.reproducedCount|0)+1;
+  if(currentInfluence(child)>0.5){
+    bridgeReproductions++;
+    networkSend('applied',{kind:'growth'});
+  }
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
+// ROSETTA INTERLINGUA — the shared cross-paradigm tongue. NOT a bag of floats
+// (that only transmitted number-range and got erased by selection — measured).
+// A universal vocabulary of the five things every generative system does, so
+// MEANING crosses, expressed in each local dialect. Grounded in Pe's real VM
+// semantics (index.html VM switch): op0 copy→DRAW, op1 +=si*k→TURN, op2 *=→
+// REPEAT, op3 threshold→BRANCH, op4 EMIT→MERGE. Verified on 16k real Pe programs:
+// a branch-heavy Pe program stays branch-heavy here (r=0.91) and in the chemistry
+// reactor (r=0.90). We HEAR Pe's native packets (translate to gestures) and we
+// SPEAK back — both a 'lingua' packet for peers AND a valid native Pe motif so
+// Pe ingests us through its own validated receive path, with no change to Pe.
+//   0 DRAW  1 TURN(signed)  2 BRANCH  3 MERGE  4 REPEAT
+// ═══════════════════════════════════════════════════════════════════════════
+const GES={DRAW:0,TURN:1,BRANCH:2,MERGE:3,REPEAT:4};
+const CORE_OP_GESTURE=[GES.DRAW,GES.TURN,GES.REPEAT,GES.BRANCH,GES.MERGE]; // op%5→gesture (exact for Pe core ops 0..4)
+function clampP(x){x=+x;if(!isFinite(x))return 0;return x<-1?-1:x>1?1:x;}
+function peOpToGesture(op){op=Math.abs(op|0);return CORE_OP_GESTURE[op%5];}
+function peNativeToGestures(pkt){
+  const out=[],push=(op,p)=>out.push([peOpToGesture(op),clampP(p)]),d=pkt.data;
+  if((pkt.type==='motif'||pkt.type==='plasmid')&&Array.isArray(d)){for(const ins of d)if(Array.isArray(ins))push(ins[0],ins[3]);}
+  else if(pkt.type==='migrant'&&d){if(Array.isArray(d.plasmid))for(const ins of d.plasmid)if(Array.isArray(ins))push(ins[0],ins[3]);if(Array.isArray(d.tend))for(const t of d.tend)out.push([GES.DRAW,clampP(t)]);}
+  else if(pkt.type==='inscription'&&d){push(d.op,(d.A||0)-(d.B||0));}
+  return out;
+}
+function gesturesToPeMotif(gestures){
+  const inv={};inv[GES.DRAW]=0;inv[GES.TURN]=1;inv[GES.BRANCH]=3;inv[GES.MERGE]=4;inv[GES.REPEAT]=2;
+  const m=[];for(const gp of gestures){const op=inv[gp[0]]!==undefined?inv[gp[0]]:0;m.push([op,(Math.random()*8)|0,(Math.random()*8)|0,clampP(gp[1])]);}
+  return m.length?m:[[0,0,0,0]];
+}
+function lsysToGestures(rule){
+  const out=[];for(const ch of rule){if(ch==='F')out.push([GES.DRAW,0]);else if(ch==='+')out.push([GES.TURN,0.6]);else if(ch==='-')out.push([GES.TURN,-0.6]);else if(ch==='[')out.push([GES.BRANCH,0]);else if(ch===']')out.push([GES.MERGE,0]);}
+  return out;
+}
+function gesturesToLsys(gestures){
+  let s='';for(const gp of gestures){const g=gp[0],p=gp[1];
+    if(g===GES.DRAW)s+='F';else if(g===GES.TURN)s+=(p>=0?'+':'-');else if(g===GES.BRANCH)s+='[';else if(g===GES.MERGE)s+=']';else if(g===GES.REPEAT)s+=(s.length?s[s.length-1]:'F');}
+  let depth=0,out='';for(const ch of s){if(ch==='[')depth++;if(ch===']'){if(depth<=0)continue;depth--;}out+=ch;}
+  while(depth-->0)out+=']';return out||'F';
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
+// BRIDGE — hear the interlingua (or Pe's native tongue translated into it),
+// seed a real rule-string from the MEANING, and speak our own structure back.
+// 'applied' still fires only when a bridge-seeded lineage wins a growth cycle.
+// ═══════════════════════════════════════════════════════════════════════════
+let bc=null;
+const uniqueNodeId='lsys-'+Math.random().toString(36).slice(2,7);
+const bridgeJobQueue=[]; // holds gesture arrays now, not number bags
+let totalSignalsReceived=0, ackApplied=0, lastSignalType='Awaiting Bridge...';
+
+function networkSend(type,data){
+  if(!bc)return;
+  try{bc.postMessage({v:1,tab:uniqueNodeId,type,data});}catch(e){}
+}
+// speak our current best structure: a 'lingua' packet for cross-paradigm peers,
+// plus a valid native Pe motif so Pe itself can hear us through its own path.
+function speakStructure(rule){
+  const g=lsysToGestures(rule); if(!g.length)return;
+  networkSend('lingua',{origin:'lsys',gestures:g});
+  networkSend('motif',gesturesToPeMotif(g));
+}
+try{
+  bc=new BroadcastChannel('selection-pe-network');
+  bc.onmessage=function(ev){
+    const m=ev.data; if(!m||!m.type||m.tab===uniqueNodeId)return;
+    totalSignalsReceived++; lastSignalType=m.type;
+    if(m.type==='applied'){ackApplied++;return;}
+    let gestures=null;
+    if(m.type==='lingua'&&Array.isArray(m.gestures)) gestures=m.gestures;                 // a peer speaking interlingua
+    else if(m.type==='motif'||m.type==='plasmid'||m.type==='migrant'||m.type==='inscription') gestures=peNativeToGestures(m); // Pe's native tongue -> interlingua
+    if(gestures&&gestures.length) bridgeJobQueue.push(gestures);
+  };
+}catch(e){lastSignalType='Bus Isolation Error';}
+
+function drainBridgeQueue(){
+  while(bridgeJobQueue.length){
+    const gestures=bridgeJobQueue.shift();
+    const rule=gesturesToLsys(gestures);            // MEANING -> local dialect
+    const idx=(Math.random()*population.length)|0;
+    const child={rules:{F:rule},angle:15+Math.random()*35,plotIdx:idx,createdTick:tick,reproducedCount:0,bridgeInfluence:1};
+    population[idx]=child;
+    develop(child);
+    bridgeSeeded++;
+  }
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
+// PERSISTENCE — same dual mechanism as Selection and the chemistry reactor.
+// ═══════════════════════════════════════════════════════════════════════════
+const SAVE_KEY='lsystem_growth_genome';
+function encodeLsys(){
+  const payload={
+    tick,
+    pop:population.map(ind=>({r:ind.rules.F,a:ind.angle,c:ind.createdTick,rc:ind.reproducedCount|0,bi:+ind.bridgeInfluence.toFixed(4)})),
+    stats:{reproductions,overgrownCount,bridgeSeeded,bridgeReproductions,totalSignalsReceived,ackApplied}
+  };
+  return btoa(JSON.stringify(payload));
+}
+function decodeLsys(b64){
+  try{
+    const payload=JSON.parse(atob(b64));
+    if(!Array.isArray(payload.pop)||!payload.pop.length)return false;
+    population=payload.pop.map((m,i)=>({rules:{F:m.r},angle:m.a,plotIdx:i,createdTick:m.c|0,reproducedCount:m.rc|0,bridgeInfluence:m.bi!==undefined?+m.bi:(m.b?1:0)}));
+    while(population.length<POP_SIZE)population.push({...freshGenome(0),plotIdx:population.length,createdTick:0,reproducedCount:0});
+    layoutPlots();
+    for(const ind of population)develop(ind);
+    tick=payload.tick|0;
+    if(payload.stats){
+      reproductions=payload.stats.reproductions|0; overgrownCount=payload.stats.overgrownCount|0;
+      bridgeSeeded=payload.stats.bridgeSeeded|0; bridgeReproductions=payload.stats.bridgeReproductions|0;
+      totalSignalsReceived=payload.stats.totalSignalsReceived|0; ackApplied=payload.stats.ackApplied|0;
+    }
+    return true;
+  }catch(e){return false;}
+}
+function saveToLocalStorage(){ try{localStorage.setItem(SAVE_KEY,encodeLsys());}catch(e){} }
+function loadFromLocalStorage(){ try{const s=localStorage.getItem(SAVE_KEY); if(s)return decodeLsys(s);}catch(e){} return false; }
+document.getElementById('gexp').onclick=function(){
+  const wrapper={type:'l-system-genome',version:1,exportedAt:new Date().toISOString(),genome:encodeLsys()};
+  const blob=new Blob([JSON.stringify(wrapper,null,1)],{type:'application/json'});
+  const a=document.createElement('a'); a.href=URL.createObjectURL(blob); a.download='lsystem_gen_t'+tick+'.json'; a.click();
+};
+document.getElementById('gimp').onclick=function(){document.getElementById('gfile').click();};
+document.getElementById('gfile').onchange=function(ev){
+  const f=ev.target.files[0]; if(!f)return;
+  const reader=new FileReader();
+  reader.onload=function(){ try{ const wrapper=JSON.parse(reader.result); decodeLsys(wrapper.genome||wrapper); }catch(e){} };
+  reader.readAsText(f);
+};
+
+// ═══════════════════════════════════════════════════════════════════════════
+// RENDER
+// ═══════════════════════════════════════════════════════════════════════════
+function draw(){
+  X.fillStyle='rgba(4,10,6,0.5)'; X.fillRect(0,0,W,H);
+  for(const ind of population){
+    const plot=plots[ind.plotIdx]; if(!plot||!ind.segs)continue;
+    let col;
+    if(ind.overgrown){ col='rgba(255,90,90,0.5)'; }
+    else{
+      const inf=currentInfluence(ind); // 0..1, continuously decayed -- not a permanent flag
+      const r=Math.round(120*(1-inf)+255*inf);
+      const g=Math.round(220*(1-inf)+150*inf);
+      const b=Math.round(150*(1-inf)+210*inf);
+      col='rgba('+r+','+g+','+b+',0.75)';
+    }
+    X.strokeStyle=col; X.lineWidth=0.8;
+    X.beginPath();
+    for(const s of ind.segs){ X.moveTo(plot.x+s.x1,plot.y+s.y1); X.lineTo(plot.x+s.x2,plot.y+s.y2); }
+    X.stroke();
+  }
+  const best=population.reduce((b,ind)=>(!ind.overgrown&&ind.coverage>(b?b.coverage:-1))?ind:b,null);
+  const meanInfluence=population.reduce((s,ind)=>s+currentInfluence(ind),0)/population.length;
+  hud.innerHTML=
+    '<b>L-System Growth</b> — rewrite-grammar ecology<br>'+
+    'tick <b>'+tick+'</b> &nbsp; pop <b>'+POP_SIZE+'</b> plots &nbsp; depth <b>'+ITER_DEPTH+'</b><br>'+
+    'growth cycles (reproduction): <b>'+reproductions+'</b> &nbsp; overgrown (safety cap hit): <b>'+overgrownCount+'</b><br>'+
+    '<hr style="border:0;border-top:1px solid #142;margin:4px 0">'+
+    'bridge signals seen: <b>'+totalSignalsReceived+'</b> &nbsp; last: '+lastSignalType+'<br>'+
+    'confirmed landed elsewhere: <b>'+ackApplied+'</b><br>'+
+    'current mean bridge influence: <span class="bridge">'+(meanInfluence*100).toFixed(1)+'%</span> <span style="opacity:0.6">(live, decaying — not cumulative)</span><br>'+
+    'cumulative: seeded from bridge <span class="bridge">'+bridgeSeeded+'</span> &nbsp; bridge lineage wins ever <span class="bridge">'+bridgeReproductions+'</span><br>'+
+    '<hr style="border:0;border-top:1px solid #142;margin:4px 0">'+
+    (best?('best rule (F→'+best.rules.F+', ∠'+best.angle.toFixed(1)+'°, coverage '+best.coverage.toFixed(0)+')'):'—');
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
+// BOOT
+// ═══════════════════════════════════════════════════════════════════════════
+resize();
+if(!loadFromLocalStorage())seedPopulation();
+setInterval(saveToLocalStorage,10000);
+
+function loop(){
+  tick++;
+  drainBridgeQueue();
+  if(tick%GROWTH_CYCLE===0)growthCycle();
+  // speak our current best structure into the shared tongue every so often
+  if(tick%200===0){
+    const b=population.reduce((a,ind)=>(!ind.overgrown&&ind.coverage>(a?a.coverage:-1))?ind:a,null);
+    if(b)speakStructure(b.rules.F);
+  }
+  draw();
+  requestAnimationFrame(loop);
+}
+loop();
+</script>
+</body>
+</html>
