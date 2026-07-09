@@ -2426,3 +2426,43 @@ share nothing but a BroadcastChannel.** What it still does NOT do: change the ev
 fitness coupling — the negative control's deepest finding stands. Transmission is solved; retention is a choice
 each substrate's selection makes, and forcing it would be designing the result. The live run, watched and
 reported back, is the instrument for whether the three systems drift toward each other's signatures over time.
+
+# AUTHORSHIP vs ECOLOGY — is the self-extending VM the axis that doesn't saturate?
+
+The claim, argued then TESTED: after 40+ swings the ecological (diversity) axis provably saturates, but the
+system's real strength is authorship — the VM writing and binding its own opcodes. Is authorship the axis that
+stays open-ended when ecology freezes? Instrumented in `harness-oee.js` (observability only; Pe unchanged):
+`cumAtomExprs` (distinct germline atom expressions ever authored — RAW), `cumProvenAtomExprs` (ever seen with
+uses>0 — executed/ADAPTIVE), and `memeCarrierAmpAdv` (top-meme carrier vs non-carrier mean-amp: does a spread
+meme help its host or spread against it?).
+
+*A targeting error caught first:* the initial `cumAtomExprs` read the per-particle bank (≈empty, stayed at 1) and
+would have falsely reported the thesis untested. Atoms are authored in the GERMLINE `genome.userAtoms`; fixed to
+accumulate there, and split raw-vs-proven because raw expression births are drift (uaGenExpression mints random
+untested strings — the same necessary-not-sufficient caveat cumKinds carries).
+
+*Result (seed 7, 150k ticks, full engine, 0 loop/driver errors).* Ecology froze hard: `cumKinds` hit 26 by tick
+~9k and never moved again — 140k ticks, zero new kinds, late-slope 0. Proven authorship kept turning over: standing
+proven count (`liveAtoms`) held bounded at ~3 (oscillating 2–5) the whole back half, WHILE the cumulative set of
+distinct PROVEN expressions climbed monotonically through the late third (13→14→15→16→17→18→19, late-slope 0.165/
+sample). Raw churn rose faster (57 exprs) but that's discounted as drift. **The bank stays small but its
+membership keeps being REPLACED by new executed atoms after ecology has completely stopped discovering. Thesis
+SUPPORTED on the adaptive measure — authorship is open-ended TURNOVER where ecology is frozen.**
+
+*Three caveats that kill the comfortable version of the claim, stated plainly:*
+1. "Proven" = executed (uses>0, opcode 22 called it at least once), NOT demonstrated fitness-beneficial. This is
+   reachability-turnover, a necessary-not-sufficient adaptiveness bar — the same bar cumKinds gets held to. The
+   real test (do proven atoms correlate with host fitness / survive ablation) is the next instrument, not this one.
+2. Standing complexity is BOUNDED (~3 proven atoms; boundOps capped ~16). So this is open-ended NOVELTY-TURNOVER
+   at bounded standing complexity, NOT unbounded complexity growth. Meaningful (it matches a standard OEE
+   definition — continued production of adaptive novelty) but it is not the system climbing without limit.
+3. The selfish-meme / horizontal-transfer question is UNANSWERED: `transfersCum=0` across the entire 150k run,
+   `memeTopPrevalence` essentially 0 — the #41 horizontal channel NEVER FIRED in a long clean closed run. The
+   celebrated #41 result (342 transfers, 153 lineages) came from a specific seed-7 8k-tick A/B and did not
+   reproduce here at all. Either it is condition-specific or that earlier signal deserves re-examination. The
+   "does a meme win against its host" question cannot be answered until the mechanism reliably fires.
+
+Net: the thesis I argued for is supported in its precise, deflated form (adaptive-vocabulary turnover, bounded
+standing complexity) and NOT in its grand form (unbounded authorship growth), and one of its sub-claims (#41
+horizontal transfer as a live force) failed to reproduce. That is the honest shape of it — recorded so the next
+pass raises the adaptiveness bar (fitness-linked proven atoms) instead of re-arguing the story.

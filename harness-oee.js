@@ -181,6 +181,17 @@ const driver = `
   // Cumulative discovery sets (novelty): kinds the system has EVER produced.
   const seenBins=new Set();      // tendency-space cells ever occupied
   const seenMotifs=new Set();    // remembered cultural motifs ever seen
+  const seenAtomExprs=new Set();       // AUTHORSHIP-novelty axis (RAW): distinct germline atom expressions
+                                       // EVER authored. Analogue of seenBins for the self-extending VM's own
+                                       // vocabulary — BUT rising here can be pure neutral drift (uaGenExpression
+                                       // mints random untested strings), the same caveat cumKinds carries.
+  const seenProvenAtomExprs=new Set(); // AUTHORSHIP-novelty axis (ADAPTIVE): distinct germline expressions that
+                                       // were ever observed PROVEN (uses>0 — actually called by opcode 22, so
+                                       // selection has judged them). Standing proven count (liveAtoms) is
+                                       // ceiling-bounded; this cumulative-ever set rising while liveAtoms holds
+                                       // flat = proven-vocabulary TURNOVER, the real open-ended signal. If THIS
+                                       // plateaus too, authorship saturates like everything else and the thesis
+                                       // that "authorship is the non-saturating axis" is refuted.
   let births=0;                  // high-water lineage-registry size = BIRTH THROUGHPUT,
                                  // NOT novelty (it rises with every birth regardless of
                                  // whether anything new appears). Reported, never trusted as OEE.
@@ -432,6 +443,9 @@ const driver = `
     const opSet=new Set(); if(Array.isArray(G.vmProgram))for(const ins of G.vmProgram)opSet.add(ins[0]|0);
     const liveAtoms=Array.isArray(G.userAtoms)?G.userAtoms.filter(a=>a&&(a.uses|0)>0).length:0;
     const totAtoms=Array.isArray(G.userAtoms)?G.userAtoms.length:0;
+    // AUTHORSHIP-novelty accumulation — the germline is where atoms are authored (line ~11064).
+    // Raw = every expression ever; Proven = expressions ever seen with uses>0 (selection-judged).
+    if(Array.isArray(G.userAtoms))for(const a of G.userAtoms){ if(a&&a.expression){ seenAtomExprs.add(a.expression); if((a.uses|0)>0)seenProvenAtomExprs.add(a.expression); } }
     const boundOps=Array.isArray(G.boundOpcodes)?G.boundOpcodes.length:0;
     const fitSensors=Array.isArray(G.fitnessSensors)?G.fitnessSensors.length:0;
 
@@ -452,18 +466,26 @@ const driver = `
     //    HORIZONTAL transfer (MEME_TRANSFER=1) lets it cross into other living lineages — the smoking-gun
     //    signal, same idiom as bifurcLin/cascadeCount: a metric the confound (common ancestry) can't fake. ──
     let memeDistinctExprs=-1, memeCarriers=-1, memeTopPrevalence=-1, memeTopLineages=-1;
+    let memeCarrierAmpAdv=null; // top-meme carrier mean-amp MINUS non-carrier mean-amp (fitness proxy)
     if(typeof pGenome!=='undefined'){
       const exprCount=new Map(); let carriers=0;
       for(let i=0;i<N;i++){ if(!palive[i])continue; const g=pGenome[i]; if(!g||!Array.isArray(g.userAtoms)||!Array.isArray(g.boundOpcodes)||!g.boundOpcodes.length)continue;
         carriers++; const seen=new Set();
-        for(const ai of g.boundOpcodes){ const a=g.userAtoms[ai]; if(a&&a.expression&&!seen.has(a.expression)){ seen.add(a.expression); exprCount.set(a.expression,(exprCount.get(a.expression)||0)+1); } } }
+        for(const ai of g.boundOpcodes){ const a=g.userAtoms[ai]; if(a&&a.expression&&!seen.has(a.expression)){ seen.add(a.expression); exprCount.set(a.expression,(exprCount.get(a.expression)||0)+1); seenAtomExprs.add(a.expression); } } }
       let topExpr=null,topCount=0; for(const [e,v] of exprCount) if(v>topCount){topCount=v;topExpr=e;}
       memeDistinctExprs=exprCount.size; memeCarriers=carriers; memeTopPrevalence=topCount;
       if(topExpr!==null && typeof pLin!=='undefined'){
         const linSet=new Set();
+        // AGAINST-HOST-INTEREST probe: does the most-spread meme help its hosts, or spread despite them?
+        // Compare mean amp (the single fitness currency every income path funnels through) of particles
+        // that CARRY topExpr vs those that don't. Advantage <= 0 while prevalence RISES = a selfish
+        // replicator winning by transmissibility, not by host benefit — the #41 question, made decisive.
+        let cS=0,cN=0,nS=0,nN=0;
         for(let i=0;i<N;i++){ if(!palive[i])continue; const g=pGenome[i]; if(!g||!Array.isArray(g.userAtoms)||!Array.isArray(g.boundOpcodes))continue;
-          for(const ai of g.boundOpcodes){ const a=g.userAtoms[ai]; if(a&&a.expression===topExpr){ linSet.add(pLin[i]); break; } } }
+          let has=false; for(const ai of g.boundOpcodes){ const a=g.userAtoms[ai]; if(a&&a.expression===topExpr){ has=true; break; } }
+          if(has){ linSet.add(pLin[i]); cS+=amp[i]; cN++; } else { nS+=amp[i]; nN++; } }
         memeTopLineages=linSet.size;
+        if(cN>0&&nN>0) memeCarrierAmpAdv=+((cS/cN)-(nS/nN)).toFixed(4);
       }
     }
 
@@ -570,17 +592,47 @@ const driver = `
       meanRqRate,
       // swing #41: does the most-carried bound-atom expression cross lineage boundaries?
       memeDistinctExprs, memeCarriers, memeTopPrevalence, memeTopLineages,
+      // AUTHORSHIP thesis: cumulative distinct atom expressions ever seen (the non-saturating axis?),
+      // and whether the most-spread meme helps its hosts (>0) or spreads against their interest (<=0).
+      cumAtomExprs:seenAtomExprs.size, cumProvenAtomExprs:seenProvenAtomExprs.size, memeCarrierAmpAdv,
       // turnover
       kindChurn:+churn.toFixed(3),
       ...(cpur!==undefined?{cpur}:{})   // cluster lineage-purity probe (CLUSTER_PURITY=1)
     };
   }
 
+  // ── ABLATION hooks (adaptiveness instrument) ──
+  // Knock out an authored atom by replacing its expression with constant 0 (recompiled), removing its
+  // functional contribution while leaving opcode numbering and program structure intact. Matched op on
+  // proven vs control atoms isolates "this atom is load-bearing" from "perturbing any atom hurts".
+  globalThis.__atomTargets=function(){
+    const ua=(typeof genome!=='undefined'&&Array.isArray(genome.userAtoms))?genome.userAtoms:[];
+    const bo=(typeof genome!=='undefined'&&Array.isArray(genome.boundOpcodes))?genome.boundOpcodes:[];
+    let provenIdx=-1,pu=-1,controlIdx=-1,cu=Infinity;
+    for(const bi of bo){ const a=ua[bi]; if(!a||!a.expression)continue; const u=a.uses|0;
+      if(u>pu){pu=u;provenIdx=bi;} if(u<cu){cu=u;controlIdx=bi;} }
+    return { provenIdx, provenExpr:provenIdx>=0?ua[provenIdx].expression:null, provenUses:pu,
+             controlIdx, controlExpr:controlIdx>=0?ua[controlIdx].expression:null, controlUses:(cu===Infinity?-1:cu),
+             nBound:bo.length, totAtoms:ua.length };
+  };
+  globalThis.__dumpGenome=function(){ return (typeof encodeGenome==='function')?encodeGenome():null; };
+  // SUSTAINED knockout: pin a specific atom SLOT to constant 0. Must be re-applied every tick because
+  // atom mutation (mutateGenome, rate*0.3) would otherwise re-randomise the slot's expression and
+  // resurrect it — the flaw that made the first ablation run measure a knockout lasting ~5% of the run.
+  globalThis.__ablatePinIdx=-1;
+  globalThis.__applyPin=function(){
+    const i=globalThis.__ablatePinIdx;
+    if(i<0||typeof genome==='undefined'||!Array.isArray(genome.userAtoms))return;
+    const a=genome.userAtoms[i];
+    if(a&&(a.expression!=='0'||a.compiled!==null)){ a.expression='0'; a.compiled=null; a.failed=false; }
+  };
+
   globalThis.__SERIES=[];
   globalThis.__runOEE=function(ticks,every){
     let m=metrics(); globalThis.__SERIES.push(m); if(STREAM)process.stdout.write(JSON.stringify(m)+String.fromCharCode(10));
     for(let s=0;s<ticks;s++){
       globalThis.__detMs+=5;
+      globalThis.__applyPin();   // hold the knockout dead against re-mutation, every tick
       try{loop();}catch(e){globalThis.__driverErr=(globalThis.__driverErr||0)+1;}
       if((s+1)%every===0){ m=metrics(); globalThis.__SERIES.push(m); if(STREAM)process.stdout.write(JSON.stringify(m)+String.fromCharCode(10)); }
     }
@@ -598,8 +650,29 @@ try { m._compile(code + driver, m.filename); }
 catch (e) { console.log('COMPILE/BOOT THREW:', e.message); process.exit(1); }
 const tBoot = Date.now();
 
+// ADAPTIVENESS ABLATION: knock out the named atom BEFORE running the continuation (booted from GENOME).
+// ABLATE=proven|control|none selects which env-supplied expression to neutralise.
+let ablatedCount = 0, ablateExpr = null, ablateIdx = -1;
+if (process.env.ABLATE && process.env.ABLATE !== 'none' && process.env.ABLATE_IDX !== undefined) {
+  ablateIdx = parseInt(process.env.ABLATE_IDX, 10);
+  ablateExpr = process.env.ABLATE_EXPR || null;
+  globalThis.__ablatePinIdx = ablateIdx;   // pinned; re-applied every tick inside __runOEE
+  globalThis.__applyPin();
+  ablatedCount = ablateIdx >= 0 ? 1 : 0;
+}
+
 globalThis.__runOEE(TICKS, SAMPLE);
 const tDone = Date.now();
+
+// DUMP_GENOME: write the evolved genome (resume-wrapper format) + its ablation targets, so a follow-up
+// run can boot from it and knock out the most-proven authored atom.
+if (process.env.DUMP_GENOME) {
+  try {
+    const targets = globalThis.__atomTargets();
+    const g = globalThis.__dumpGenome();
+    fs.writeFileSync(process.env.DUMP_GENOME, JSON.stringify({ type: 'selection-genome', version: 2, genome: g, targets }));
+  } catch (e) { console.error('DUMP_GENOME failed:', e.message); }
+}
 
 const S = globalThis.__SERIES;
 
@@ -699,6 +772,54 @@ const meme = {
   crossedLineages: (last.memeTopLineages ?? 0) > 1
 };
 
+// AUTHORSHIP-vs-ECOLOGY thesis: is the self-extending VM's vocabulary the axis that DOESN'T saturate,
+// while the ecological (kinds) axis does? Compare the LATE-THIRD discovery slopes of each cumulative
+// set. Ecology plateauing (cumKinds slope -> ~0) while authorship keeps climbing (cumAtomExprs slope
+// stays > 0) is the thesis signal. Both being flat would refute it (authorship saturates too); both
+// climbing would mean neither has hit its wall yet in this window.
+const lateS = S.slice(t2);
+const authorship = {
+  cumKinds_lateSlope: +slope(lateS, 'cumKinds').toFixed(4),               // ecological novelty, per sample
+  cumAtomExprs_lateSlope: +slope(lateS, 'cumAtomExprs').toFixed(4),       // RAW authorship novelty (drift-prone)
+  cumProvenAtomExprs_lateSlope: +slope(lateS, 'cumProvenAtomExprs').toFixed(4), // ADAPTIVE: proven-atom turnover
+  liveAtoms_lateMean: +thirdMean(S, 'liveAtoms', t2, n).toFixed(2),       // standing proven count (ceiling-bounded)
+  cumProvenAtomExprs_last: last.cumProvenAtomExprs ?? -1,
+  cumAtomExprs_last: last.cumAtomExprs ?? -1,
+  cumKinds_last: last.cumKinds ?? -1
+};
+// The HONEST thesis test. Raw expression churn rising means little (neutral drift). The real signal is
+// PROVEN-vocabulary turnover: standing proven count (liveAtoms) holds ~flat (bounded bank) while the
+// cumulative set of DISTINCT proven expressions keeps growing — the bank keeps replacing proven atoms
+// with NEW proven atoms after ecology has stopped discovering. That is authorship as the non-saturating
+// axis. If cumProvenAtomExprs also flattens late, authorship saturates too and the thesis is refuted.
+authorship.ecologySaturatedLate = authorship.cumKinds_lateSlope <= 0.05;
+authorship.provenVocabStillTurningOver = authorship.cumProvenAtomExprs_lateSlope > 0.02;
+authorship.authorshipOutrunsEcology = authorship.ecologySaturatedLate && authorship.provenVocabStillTurningOver;
+authorship.note = authorship.authorshipOutrunsEcology
+  ? 'THESIS SUPPORTED (this run): ecology saturated, proven vocabulary still turning over.'
+  : authorship.ecologySaturatedLate
+    ? 'THESIS NOT SUPPORTED (this run): ecology saturated AND proven authorship saturated too.'
+    : 'INCONCLUSIVE: ecology had not saturated in this window — longer run needed.';
+
+// SELFISH-MEME probe (the #41 question made decisive): does the most-spread meme ever GAIN prevalence
+// in a window while its carriers have NO fitness advantage (amp advantage <= 0)? That is a replicator
+// winning by transmissibility against host interest — vertical selection cannot produce it.
+let riseAgainstInterest = 0, riseWithBenefit = 0, advSamples = 0, advSum = 0;
+for (let i = 1; i < S.length; i++) {
+  const a = S[i].memeCarrierAmpAdv, pPrev = S[i-1].memeTopPrevalence, pNow = S[i].memeTopPrevalence;
+  if (a === null || a === undefined || pPrev == null || pNow == null || pPrev < 0) continue;
+  advSamples++; advSum += a;
+  if (pNow > pPrev) { if (a <= 0) riseAgainstInterest++; else riseWithBenefit++; }
+}
+const selfishMeme = {
+  meanCarrierAmpAdv: advSamples ? +(advSum / advSamples).toFixed(4) : null, // >0 = memes help hosts on average
+  prevalenceRoseAgainstInterest: riseAgainstInterest,   // spread events with carrier advantage <= 0
+  prevalenceRoseWithBenefit: riseWithBenefit,
+  // A meme winning by pure transmissibility exists if spread-against-interest events occur AND
+  // dominate the benefit-driven ones — otherwise spread is just ordinary host-benefit selection.
+  transmissibilityWin: riseAgainstInterest > 0 && riseAgainstInterest >= riseWithBenefit
+};
+
 const verdict = {
   novelty_late_vs_early: { earlyNewKindsPer1k: +earlyRate.toFixed(2), lateNewKindsPer1k: +lateRate.toFixed(2),
     decayedTo: earlyRate > 0 ? +(lateRate / earlyRate).toFixed(2) : null, stillProducing: lateRate > 0.05 },
@@ -715,6 +836,8 @@ const verdict = {
       meanCommonsAtBud: ec > 0 ? +((globalThis.__budCommonsSum || 0) / ec).toFixed(4) : null }; })(),
   commons_trend: commons,
   meme_transfer: meme,
+  authorship_vs_ecology: authorship,
+  selfish_meme: selfishMeme,
   complexity_trend: complexity,
   complexity_topTierEngaged: (complexity.liveAtoms_max > 0 || complexity.boundOps_max > 0 || complexity.DIMS_delta > 0),
   notes: [
@@ -730,6 +853,7 @@ console.log(JSON.stringify({
   config: { TICKS, SAMPLE, SEED: process.env.SEED || null, INDEX: process.env.INDEX || 'index.html' },
   timing_ms: { boot: tBoot - t0, run: tDone - tBoot, perKtick: +(((tDone - tBoot) / TICKS) * 1000).toFixed(1) },
   loopErrors, lastErr, driverErr: globalThis.__driverErr || 0,
+  ablation: process.env.ABLATE ? { mode: process.env.ABLATE, idx: ablateIdx, expr: ablateExpr, pinnedNeutralised: ablatedCount } : null,
   verdict,
   series: STREAM ? '(streamed as JSONL above)' : S
 }, null, 1));
