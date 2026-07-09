@@ -608,18 +608,23 @@ const driver = `
   globalThis.__atomTargets=function(){
     const ua=(typeof genome!=='undefined'&&Array.isArray(genome.userAtoms))?genome.userAtoms:[];
     const bo=(typeof genome!=='undefined'&&Array.isArray(genome.boundOpcodes))?genome.boundOpcodes:[];
-    const bound=bo.map(i=>ua[i]).filter(a=>a&&a.expression);
-    let proven=null,pu=-1,control=null,cu=Infinity;
-    for(const a of bound){ const u=a.uses|0; if(u>pu){pu=u;proven=a;} if(u<cu){cu=u;control=a;} }
-    return { provenExpr:proven?proven.expression:null, provenUses:pu,
-             controlExpr:control?control.expression:null, controlUses:(cu===Infinity?-1:cu),
-             nBound:bound.length, totAtoms:ua.length };
+    let provenIdx=-1,pu=-1,controlIdx=-1,cu=Infinity;
+    for(const bi of bo){ const a=ua[bi]; if(!a||!a.expression)continue; const u=a.uses|0;
+      if(u>pu){pu=u;provenIdx=bi;} if(u<cu){cu=u;controlIdx=bi;} }
+    return { provenIdx, provenExpr:provenIdx>=0?ua[provenIdx].expression:null, provenUses:pu,
+             controlIdx, controlExpr:controlIdx>=0?ua[controlIdx].expression:null, controlUses:(cu===Infinity?-1:cu),
+             nBound:bo.length, totAtoms:ua.length };
   };
   globalThis.__dumpGenome=function(){ return (typeof encodeGenome==='function')?encodeGenome():null; };
-  globalThis.__ablate=function(expr){
-    if(!expr||typeof genome==='undefined'||!Array.isArray(genome.userAtoms))return 0;
-    let n=0; for(const a of genome.userAtoms){ if(a&&a.expression===expr){ a.expression='0'; a.compiled=null; a.failed=false; a.uses=0; n++; } }
-    return n;
+  // SUSTAINED knockout: pin a specific atom SLOT to constant 0. Must be re-applied every tick because
+  // atom mutation (mutateGenome, rate*0.3) would otherwise re-randomise the slot's expression and
+  // resurrect it — the flaw that made the first ablation run measure a knockout lasting ~5% of the run.
+  globalThis.__ablatePinIdx=-1;
+  globalThis.__applyPin=function(){
+    const i=globalThis.__ablatePinIdx;
+    if(i<0||typeof genome==='undefined'||!Array.isArray(genome.userAtoms))return;
+    const a=genome.userAtoms[i];
+    if(a&&(a.expression!=='0'||a.compiled!==null)){ a.expression='0'; a.compiled=null; a.failed=false; }
   };
 
   globalThis.__SERIES=[];
@@ -627,6 +632,7 @@ const driver = `
     let m=metrics(); globalThis.__SERIES.push(m); if(STREAM)process.stdout.write(JSON.stringify(m)+String.fromCharCode(10));
     for(let s=0;s<ticks;s++){
       globalThis.__detMs+=5;
+      globalThis.__applyPin();   // hold the knockout dead against re-mutation, every tick
       try{loop();}catch(e){globalThis.__driverErr=(globalThis.__driverErr||0)+1;}
       if((s+1)%every===0){ m=metrics(); globalThis.__SERIES.push(m); if(STREAM)process.stdout.write(JSON.stringify(m)+String.fromCharCode(10)); }
     }
@@ -646,10 +652,13 @@ const tBoot = Date.now();
 
 // ADAPTIVENESS ABLATION: knock out the named atom BEFORE running the continuation (booted from GENOME).
 // ABLATE=proven|control|none selects which env-supplied expression to neutralise.
-let ablatedCount = 0, ablateExpr = null;
-if (process.env.ABLATE && process.env.ABLATE !== 'none') {
-  ablateExpr = process.env.ABLATE_EXPR || '';
-  ablatedCount = globalThis.__ablate(ablateExpr);
+let ablatedCount = 0, ablateExpr = null, ablateIdx = -1;
+if (process.env.ABLATE && process.env.ABLATE !== 'none' && process.env.ABLATE_IDX !== undefined) {
+  ablateIdx = parseInt(process.env.ABLATE_IDX, 10);
+  ablateExpr = process.env.ABLATE_EXPR || null;
+  globalThis.__ablatePinIdx = ablateIdx;   // pinned; re-applied every tick inside __runOEE
+  globalThis.__applyPin();
+  ablatedCount = ablateIdx >= 0 ? 1 : 0;
 }
 
 globalThis.__runOEE(TICKS, SAMPLE);
@@ -844,7 +853,7 @@ console.log(JSON.stringify({
   config: { TICKS, SAMPLE, SEED: process.env.SEED || null, INDEX: process.env.INDEX || 'index.html' },
   timing_ms: { boot: tBoot - t0, run: tDone - tBoot, perKtick: +(((tDone - tBoot) / TICKS) * 1000).toFixed(1) },
   loopErrors, lastErr, driverErr: globalThis.__driverErr || 0,
-  ablation: process.env.ABLATE ? { mode: process.env.ABLATE, expr: ablateExpr, atomsNeutralised: ablatedCount } : null,
+  ablation: process.env.ABLATE ? { mode: process.env.ABLATE, idx: ablateIdx, expr: ablateExpr, pinnedNeutralised: ablatedCount } : null,
   verdict,
   series: STREAM ? '(streamed as JSONL above)' : S
 }, null, 1));

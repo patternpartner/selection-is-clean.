@@ -64,17 +64,17 @@ async function pool(jobs, conc) {
   const T = dumped.targets || {};
   console.error(`[author] targets: provenExpr=${JSON.stringify(T.provenExpr)} (uses=${T.provenUses}) ` +
                 `controlExpr=${JSON.stringify(T.controlExpr)} (uses=${T.controlUses}) nBound=${T.nBound}`);
-  if (!T.provenExpr || T.provenUses <= 0) { console.log(JSON.stringify({ error: 'no proven atom to ablate', targets: T }, null, 1)); return; }
-  const haveControl = T.controlExpr && T.controlExpr !== T.provenExpr;
-  const conditions = [ ['none', ''], ['proven', T.provenExpr] ];
-  if (haveControl) conditions.push(['control', T.controlExpr]);
+  if (T.provenIdx == null || T.provenIdx < 0 || T.provenUses <= 0) { console.log(JSON.stringify({ error: 'no proven atom to ablate', targets: T }, null, 1)); return; }
+  const haveControl = T.controlIdx >= 0 && T.controlIdx !== T.provenIdx;
+  const conditions = [ ['none', -1], ['proven', T.provenIdx] ];
+  if (haveControl) conditions.push(['control', T.controlIdx]);
 
-  // build the continuation job matrix
+  // build the continuation job matrix — knockout is PINNED by slot index (re-applied every tick)
   const specs = [];
-  for (const seed of SEEDS) for (const [mode, expr] of conditions) specs.push({ seed, mode, expr });
+  for (const seed of SEEDS) for (const [mode, idx] of conditions) specs.push({ seed, mode, idx });
   const jobs = specs.map(sp => async () => {
     const r = await run({ ...ENGINE, GENOME: GENOME_FILE, SEED: sp.seed, TICKS: CONT_TICKS, SAMPLE,
-      ABLATE: sp.mode, ABLATE_EXPR: sp.expr });
+      ABLATE: sp.mode, ABLATE_IDX: String(sp.idx) });
     const series = r.series || [];
     return { ...sp, amp: lateMean(series, 'meanAmp'), N: lateMean(series, 'N'),
       neutralised: r.ablation ? r.ablation.atomsNeutralised : 0, driverErr: r.driverErr };
@@ -99,20 +99,35 @@ async function pool(jobs, conc) {
   }).filter(x=>x!==null);
   const provenHits = paired('proven');
   const controlHits = haveControl ? paired('control') : [];
-  const provenDrop = mean(provenHits);
+  const provenDrop = mean(provenHits), provenSd = sd(provenHits);
   const controlDrop = haveControl ? mean(controlHits) : null;
-  const provenHurtsMoreCount = haveControl ? provenHits.filter((d,i)=>d>controlHits[i]).length : provenHits.filter(d=>d>0).length;
+  // The decisive quantity: per-seed (proven-drop MINUS control-drop). Positive = the PROVEN atom's removal
+  // hurt more than a matched dummy removal, in THAT seed. Robustness needs this consistent across seeds AND
+  // its mean to exceed its own spread — otherwise it is one outlier, exactly what sank the first run.
+  const diff = haveControl ? provenHits.map((d,i)=>d-controlHits[i]) : provenHits;
+  const diffMean = mean(diff), diffSd = sd(diff);
+  const diffPositiveSeeds = diff.filter(d=>d>0).length;
+  const majority = Math.ceil(2*diff.length/3);
+  const beatsNoise = diffMean > diffSd;               // effect larger than its seed-to-seed noise
+  const consistent = diffPositiveSeeds >= majority;   // holds in >=2/3 of seeds
+
+  let label;
+  if (diffMean > 0 && beatsNoise && consistent) label = 'ADAPTIVE';
+  else if (diffMean <= 0 && consistent === false) label = 'NOT_ADAPTIVE';
+  else label = 'INCONCLUSIVE';
 
   const verdict = {
-    target: { provenExpr: T.provenExpr, provenUses: T.provenUses, controlExpr: T.controlExpr||null },
+    target: { provenExpr: T.provenExpr, provenUses: T.provenUses, controlExpr: T.controlExpr||null,
+              provenIdx: T.provenIdx, controlIdx: T.controlIdx },
     perCondition: summary,
     provenKnockout_meanFitnessDrop: +provenDrop.toFixed(4),
     controlKnockout_meanFitnessDrop: controlDrop===null?null:+controlDrop.toFixed(4),
-    seedsProvenHurtMore: provenHurtsMoreCount + '/' + provenHits.length,
-    // Adaptive iff the proven knockout reliably lowers fitness AND does so more than the control knockout.
-    ADAPTIVE: provenDrop > 0 && (controlDrop===null ? provenHurtsMoreCount === provenHits.length
-                                                    : provenDrop > controlDrop && provenHurtsMoreCount > provenHits.length/2),
-    note: 'ADAPTIVE=true means the most-proven authored atom is load-bearing for fitness, not merely executed.'
+    perSeed_provenMinusControl: diff.map(d=>+d.toFixed(4)),
+    effect_mean: +diffMean.toFixed(4), effect_sd: +diffSd.toFixed(4),
+    beatsOwnNoise: beatsNoise, positiveInSeeds: diffPositiveSeeds + '/' + diff.length + ' (need >=' + majority + ')',
+    // Three-way honest verdict — no green light on a single outlier.
+    VERDICT: label,
+    note: 'ADAPTIVE = proven-atom knockout robustly (effect>noise, >=2/3 seeds) hurts fitness MORE than a matched control knockout. INCONCLUSIVE = signal within noise. Knockout is now PINNED every tick (mutation cannot resurrect it).'
   };
   console.log(JSON.stringify({ config:{AUTH_SEED,AUTH_TICKS,CONT_TICKS,SEEDS,conditions:conditions.map(c=>c[0])}, verdict, raw: results }, null, 1));
   try { fs.unlinkSync(GENOME_FILE); } catch(e){}
