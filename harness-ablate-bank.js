@@ -32,15 +32,26 @@ function sd(a){ const m=mean(a); return Math.sqrt(mean(a.map(x=>(x-m)*(x-m)))); 
 async function pool(jobs,conc){ const out=new Array(jobs.length); let i=0; async function w(){ while(i<jobs.length){ const idx=i++; out[idx]=await jobs[idx](); } } await Promise.all(Array.from({length:Math.min(conc,jobs.length)},w)); return out; }
 
 (async()=>{
-  console.error(`[author] seed=${AUTH_SEED} ticks=${AUTH_TICKS} …`);
-  await run({ ...ENGINE, SEED:AUTH_SEED, TICKS:AUTH_TICKS, SAMPLE, DUMP_GENOME:GENOME_FILE });
-  const T = (JSON.parse(fs.readFileSync(GENOME_FILE,'utf8')).targets)||{};
-  console.error(`[author] bank: totAtoms=${T.totAtoms} nBound=${T.nBound} (most-used uses=${T.provenUses})`);
-  if (!T.totAtoms) { console.log(JSON.stringify({ error:'genome authored no atoms — nothing to ablate', targets:T },null,1)); return; }
+  // BASE_GENOME: ablate a SUPPLIED genome (e.g. a real live export) instead of authoring a fresh one.
+  let genomeFile = GENOME_FILE, ownsFile = true, T = {};
+  if (process.env.BASE_GENOME) {
+    genomeFile = process.env.BASE_GENOME; ownsFile = false;
+    const g = JSON.parse(Buffer.from(JSON.parse(fs.readFileSync(genomeFile,'utf8')).genome,'base64').toString('utf8'));
+    const ua = g.ua||[], bo = g.bo||[];
+    T = { totAtoms: ua.length, nBound: Array.isArray(bo)?bo.length:0, provenUses: Math.max(0,...ua.map(a=>a&&(a.uses|0)||0)),
+          liveExpr: ua.filter(a=>a&&(a.uses|0)>0).map(a=>a.expression) };
+    console.error(`[base] supplied genome: totAtoms=${T.totAtoms} nBound=${T.nBound} proven(uses>0)=${T.liveExpr.length} maxUses=${T.provenUses}`);
+  } else {
+    console.error(`[author] seed=${AUTH_SEED} ticks=${AUTH_TICKS} …`);
+    await run({ ...ENGINE, SEED:AUTH_SEED, TICKS:AUTH_TICKS, SAMPLE, DUMP_GENOME:genomeFile });
+    T = (JSON.parse(fs.readFileSync(GENOME_FILE,'utf8')).targets)||{};
+    console.error(`[author] bank: totAtoms=${T.totAtoms} nBound=${T.nBound} (most-used uses=${T.provenUses})`);
+  }
+  if (!T.totAtoms) { console.log(JSON.stringify({ error:'genome has no atoms — nothing to ablate', targets:T },null,1)); return; }
 
   const specs = [];
   for (const seed of SEEDS) for (const mode of ['none','all']) specs.push({ seed, mode });
-  const jobs = specs.map(sp=>async()=>{ const r=await run({ ...ENGINE, GENOME:GENOME_FILE, SEED:sp.seed, TICKS:CONT_TICKS, SAMPLE, ABLATE:sp.mode });
+  const jobs = specs.map(sp=>async()=>{ const r=await run({ ...ENGINE, GENOME:genomeFile, SEED:sp.seed, TICKS:CONT_TICKS, SAMPLE, ABLATE:sp.mode });
     const s=r.series||[]; return { ...sp, amp:lateMean(s,'meanAmp'), N:lateMean(s,'N'), boundOps:lateMean(s,'boundOps'), driverErr:r.driverErr }; });
   console.error(`[continue] ${jobs.length} runs (${SEEDS.length} seeds x [none, all]), conc=${CONC} …`);
   const results = await pool(jobs, CONC);
@@ -63,5 +74,5 @@ async function pool(jobs,conc){ const out=new Array(jobs.length); let i=0; async
     note:'BANK_ADAPTIVE = removing the whole authored-atom bank robustly lowers fitness (the VM self-extension has selective grip). BANK_NEUTRAL = it does not (the atoms are executed decoration). Whole bank pinned to 0 every tick.'
   };
   console.log(JSON.stringify({ config:{AUTH_SEED,AUTH_TICKS,CONT_TICKS,SEEDS}, verdict, raw:results },null,1));
-  try{ fs.unlinkSync(GENOME_FILE); }catch(e){}
+  if(ownsFile){try{ fs.unlinkSync(genomeFile); }catch(e){}}
 })().catch(e=>{ console.error('BANK ABLATION FAILED:',e.message); process.exit(1); });
