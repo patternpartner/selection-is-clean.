@@ -2466,3 +2466,18 @@ Net: the thesis I argued for is supported in its precise, deflated form (adaptiv
 standing complexity) and NOT in its grand form (unbounded authorship growth), and one of its sub-claims (#41
 horizontal transfer as a live force) failed to reproduce. That is the honest shape of it — recorded so the next
 pass raises the adaptiveness bar (fitness-linked proven atoms) instead of re-arguing the story.
+
+*The adaptiveness bar, raised (harness-ablate.js).* The decisive test the notes kept deferring: knock out the
+most-PROVEN authored atom (pinned to constant 0 every tick so mutation cannot resurrect it) and measure whether
+fitness actually falls — against a CONTROL knockout of a bound-but-unused atom, across seeds. All via the existing
+GENOME= resume path; Pe unchanged. First run FALSELY flagged ADAPTIVE on one outlier seed and a knockout that
+mutation silently reversed within a few hundred ticks — both caught and fixed (pinned knockout; verdict requires
+effect>own-noise AND >=2/3 seeds). Corrected result (author seed 7, 45k ticks; 5 continuation seeds x 10k): the
+most-used atom `(1.03)-(m)` (uses=1044) knocked out gives per-seed (proven-minus-control) fitness drops of
+[0.008, 0.002, 0.088, -0.018, 0.002] — effect mean 0.016 < its own sd 0.037, one outlier seed (17) carrying all
+of it. **VERDICT: INCONCLUSIVE, leaning NOT-adaptive — even Pe's most heavily-executed authored atom is not
+robustly load-bearing for fitness; survival is robust to permanently losing it.** So authorship turns over
+(proven-vocab result above) but no single proven atom demonstrably pulls fitness weight. The clean next test,
+distinguishing "no atom matters" from "no SINGLE atom matters": ablate the WHOLE bank vs none. If that is also
+null, the self-extending VM is executing atoms with no selective grip — the largest honest result the project
+could reach, and it would reframe whether adding MORE mechanism (e.g. structural binding) buys anything at all.
