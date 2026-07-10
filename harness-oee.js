@@ -619,12 +619,14 @@ const driver = `
   // SUSTAINED knockout: pin a specific atom SLOT to constant 0. Must be re-applied every tick because
   // atom mutation (mutateGenome, rate*0.3) would otherwise re-randomise the slot's expression and
   // resurrect it — the flaw that made the first ablation run measure a knockout lasting ~5% of the run.
-  globalThis.__ablatePinIdx=-1;
+  globalThis.__ablatePinIdx=-1;   // -1 none | integer slot | 'all' (whole-bank knockout)
   globalThis.__applyPin=function(){
     const i=globalThis.__ablatePinIdx;
-    if(i<0||typeof genome==='undefined'||!Array.isArray(genome.userAtoms))return;
-    const a=genome.userAtoms[i];
-    if(a&&(a.expression!=='0'||a.compiled!==null)){ a.expression='0'; a.compiled=null; a.failed=false; }
+    if(typeof genome==='undefined'||!Array.isArray(genome.userAtoms))return;
+    const zero=a=>{ if(a&&(a.expression!=='0'||a.compiled!==null)){ a.expression='0'; a.compiled=null; a.failed=false; } };
+    if(i==='all'){ for(const a of genome.userAtoms)zero(a); return; } // also freezes authorship: any newly-minted atom is re-zeroed next tick
+    if(i<0)return;
+    zero(genome.userAtoms[i]);
   };
 
   globalThis.__SERIES=[];
@@ -653,10 +655,14 @@ const tBoot = Date.now();
 // ADAPTIVENESS ABLATION: knock out the named atom BEFORE running the continuation (booted from GENOME).
 // ABLATE=proven|control|none selects which env-supplied expression to neutralise.
 let ablatedCount = 0, ablateExpr = null, ablateIdx = -1;
-if (process.env.ABLATE && process.env.ABLATE !== 'none' && process.env.ABLATE_IDX !== undefined) {
+if (process.env.ABLATE === 'all') {
+  globalThis.__ablatePinIdx = 'all';       // whole-bank knockout: every authored atom pinned to 0 each tick
+  globalThis.__applyPin();
+  ablateIdx = 'all'; ablatedCount = -1;
+} else if (process.env.ABLATE && process.env.ABLATE !== 'none' && process.env.ABLATE_IDX !== undefined) {
   ablateIdx = parseInt(process.env.ABLATE_IDX, 10);
   ablateExpr = process.env.ABLATE_EXPR || null;
-  globalThis.__ablatePinIdx = ablateIdx;   // pinned; re-applied every tick inside __runOEE
+  globalThis.__ablatePinIdx = ablateIdx;   // pinned single slot; re-applied every tick inside __runOEE
   globalThis.__applyPin();
   ablatedCount = ablateIdx >= 0 ? 1 : 0;
 }
