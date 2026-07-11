@@ -58,20 +58,27 @@ async function pool(jobs,conc){ const out=new Array(jobs.length); let i=0; async
 
   const ampBy = m => results.filter(r=>r.mode===m).map(r=>r.amp);
   const perSeedDrop = SEEDS.map(seed=>{ const n=results.find(r=>r.seed===seed&&r.mode==='none'), a=results.find(r=>r.seed===seed&&r.mode==='all'); return (n&&a)?n.amp-a.amp:null; }).filter(x=>x!==null);
-  const dropMean=mean(perSeedDrop), dropSd=sd(perSeedDrop), positive=perSeedDrop.filter(d=>d>0).length;
-  const majority=Math.ceil(2*perSeedDrop.length/3);
-  const beatsNoise=dropMean>dropSd, consistent=positive>=majority;
-  let label; if(dropMean>0&&beatsNoise&&consistent)label='BANK_ADAPTIVE'; else if(dropMean<=0)label='BANK_NEUTRAL'; else label='INCONCLUSIVE';
+  const n=perSeedDrop.length, dropMean=mean(perSeedDrop);
+  // Proper significance: the question is whether the MEAN paired effect is nonzero, so test it against its
+  // STANDARD ERROR (sampSd/sqrt(n)) — a paired t — NOT against the raw seed-to-seed spread. (The earlier
+  // mean>sd bar was wrong and under-called a real effect.) Plus a one-sided sign test on effect direction.
+  const sampSd = n>1 ? Math.sqrt(perSeedDrop.reduce((s,d)=>s+(d-dropMean)*(d-dropMean),0)/(n-1)) : Infinity;
+  const se = sampSd/Math.sqrt(n), tStat = se>0 ? dropMean/se : 0;
+  const positive = perSeedDrop.filter(d=>d>0).length;
+  const choose=(N,k)=>{let r=1;for(let i=0;i<k;i++)r=r*(N-i)/(i+1);return r;};
+  let signP=0; for(let i=positive;i<=n;i++)signP+=choose(n,i); signP/=Math.pow(2,n); // one-sided
+  const significant = tStat>=1.9 && signP<=0.05;   // t~p<0.05(1-sided) AND directional consistency
+  let label; if(dropMean>0 && significant)label='BANK_ADAPTIVE'; else if(dropMean>0 && signP<=0.10)label='BANK_WEAKLY_ADAPTIVE'; else if(dropMean<=0)label='BANK_NEUTRAL'; else label='INCONCLUSIVE';
 
   const verdict = {
     bank:{ totAtoms:T.totAtoms, nBound:T.nBound },
     intact_meanAmp:+mean(ampBy('none')).toFixed(4),
     wholeBankAblated_meanAmp:+mean(ampBy('all')).toFixed(4),
     perSeed_intactMinusAblated:perSeedDrop.map(d=>+d.toFixed(4)),
-    effect_mean:+dropMean.toFixed(4), effect_sd:+dropSd.toFixed(4),
-    beatsOwnNoise:beatsNoise, positiveInSeeds:positive+'/'+perSeedDrop.length+' (need >='+majority+')',
+    effect_mean:+dropMean.toFixed(4), effect_SE:+se.toFixed(4), t:+tStat.toFixed(2),
+    positiveInSeeds:positive+'/'+n, signTest_oneSidedP:+signP.toFixed(3),
     VERDICT:label,
-    note:'BANK_ADAPTIVE = removing the whole authored-atom bank robustly lowers fitness (the VM self-extension has selective grip). BANK_NEUTRAL = it does not (the atoms are executed decoration). Whole bank pinned to 0 every tick.'
+    note:'BANK_ADAPTIVE = removing the whole authored-atom bank significantly lowers fitness (paired t>=1.9, sign p<=0.05) — the VM self-extension has selective grip, likely distributed (compare the single-atom ablation). BANK_NEUTRAL = mean effect <=0. Whole bank pinned to 0 every tick.'
   };
   console.log(JSON.stringify({ config:{AUTH_SEED,AUTH_TICKS,CONT_TICKS,SEEDS}, verdict, raw:results },null,1));
   if(ownsFile){try{ fs.unlinkSync(genomeFile); }catch(e){}}

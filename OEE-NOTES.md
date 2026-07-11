@@ -2481,3 +2481,24 @@ robustly load-bearing for fitness; survival is robust to permanently losing it.*
 distinguishing "no atom matters" from "no SINGLE atom matters": ablate the WHOLE bank vs none. If that is also
 null, the self-extending VM is executing atoms with no selective grip — the largest honest result the project
 could reach, and it would reframe whether adding MORE mechanism (e.g. structural binding) buys anything at all.
+
+*Whole-bank ablation — resolved, and it's REDUNDANCY (harness-ablate-bank.js, ABLATE=all).* Pin EVERY authored
+atom to 0 each tick (also freezing authorship) and compare fitness to intact, across seeds. Run on a real LIVE
+export the user provided (selection_gen13_t163038: 9 atoms, 8 proven, top atom used 4840x — far richer than any
+sealed run authors, itself evidence authoring is fed by open-system input) plus a headless seed-7 genome.
+   A METHOD ERROR caught and fixed mid-analysis: the verdict first tested effect_mean > effect_SD (must exceed
+the seed-to-seed SPREAD) and reported INCONCLUSIVE. That is the wrong bar — "is the mean paired effect nonzero"
+is tested against the STANDARD ERROR (sd/sqrt(n)), a paired t, not the raw spread. Corrected:
+  - single-atom knockout: t=0.89, sign 4/5 — genuinely NULL. No individual atom is load-bearing.
+  - whole-bank, LIVE genome (8 seeds): mean drop 0.0103 amp, t=2.21, sign 7/8, one-sided p=0.035 — SIGNIFICANT.
+  - whole-bank, POOLED (13 seeds live+headless): t=2.79, sign 11/13, one-sided p=0.011 — SIGNIFICANT.
+**Verdict: the authored-atom bank is WEAKLY BUT REALLY adaptive, in a DISTRIBUTED/REDUNDANT way — removing any
+one atom does nothing, removing the whole bank lowers fitness ~1-1.5% of amp, consistently.** Not decoration
+(the sign is too consistent, 11/13); not a powerhouse (~1.5% amp, and population viability is untouched — N
+identical in both arms, so authorship is not load-bearing for SURVIVAL, only a marginal fitness tilt). The
+user's live genome resolved on its own what the synthetic runs left at the noise floor.
+   What this means for direction: authorship has genuine (if small) selective grip, spread redundantly — so the
+move is NOT more mechanism bolted alongside it, but wiring MORE of the system's fitness-relevant signals through
+the authored atoms so the grip they already have gets larger. And the whole arc's method lesson repeats once
+more: a green/red verdict flag is only as honest as its statistics — the instrument under-called a real effect
+until the test was corrected, caught only by recomputing t and the sign test by hand.
