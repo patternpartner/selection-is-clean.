@@ -537,6 +537,15 @@ let uaCtxC=0,uaCtxD=0,uaCtxM=0,uaCtxNx=0,uaCtxNy=0,uaCtxT=0,uaCtxNb=0; // +EYES:
 //   the mover existed, the income existed, but the atom had no sense of whether moving toward food paid.
 let uaCtxRl=0,uaCtxRd=0;
 let __FORAGE_ON=true; // +FORAGE cached flag (resolved after the LIVE registry); gates the sense computation + grammar pool
+// +DECISION GAIN (swing #43): the shadow-sim loop imagines variant selves, picks a winner, and biases the real
+//   system toward it — but the behavioural bias was SIGN-ONLY (a winner reality confirmed and one it refuted pushed
+//   evolution identically). So the system's imagination steered it regardless of whether the imagination was right —
+//   "the bearing on the system deciding" was lost. This closes the loop: genome.decisionConfidence rises only when
+//   an applied shadow winner is VALIDATED by real fitness, and scales how hard the system commits to its own
+//   self-model. Cold start (confidence 0) == today's behaviour; commitment authority is EARNED. Self-limiting: over-
+//   commitment that hurts fitness drives the winner's creditTrace negative → confidence decays → commitment relaxes.
+//   Also makes the caricatured rollout safe — a prediction reality refutes earns no confidence, so it cannot commit.
+let __DECIDE_ON=true; // +DECISION cached flag (resolved after the LIVE registry)
 let __REACH_ON=true; // +REACH cached flag (resolved after the LIVE registry); kept out of the per-instruction globalThis read path
 let __reachFires=0; // telemetry: how many times an authored atom drove an actuator (sense→ACT firings)
 let __ATOM_DURABLE=true; // +DURABILITY: preserve authored call-sites across self-adoption (resolved after LIVE registry)
@@ -760,6 +769,7 @@ let genome={
   // selection (per-mutation/death). creditLearnRate=0 disables and recovers
   // Pe24 behavior exactly.
   creditLearnRate:1.0,        // mutable global multiplier on credit signal
+  decisionConfidence:0,       // swing #43: earned trust in the self-model's shadow winners (0..1); scales commitment. Starts at 0 → no authority until validated.
   objCreditTrace:[0,0,0,0],   // EMA of (axisDelta * fitnessDelta) per designer axis
   prevObjValues:[0,0,0,0],    // stability, diversity, coherence, churn from prev tick
   prevSmoothedFitness:0,      // for fitnessDelta computation
@@ -5693,6 +5703,7 @@ function encodeGenome(){
     co: CORE_OPCODES, // MIGRATION (review): stamp the opcode-boundary this save was written under, so a later CORE_OPCODES shift can remap saved bound-opcode programs on load
     ua:cleanAtoms,
     clr:+(genome.creditLearnRate||1).toFixed(4), // Pe25 Layer 15: evolvable learning rate
+    dc:+(genome.decisionConfidence||0).toFixed(4), // swing #43: earned self-model commitment authority (persists across reload)
     gb:+(genome.gradientBias||0.3).toFixed(4),   // Pe26 Layer 16a: gradient bias
     gub:+(genome.gradientUpstreamBias||0.2).toFixed(4), // Pe26 Layer 16c: upstream bias
     bgb:+(genome.behaviorGradientBias||0.2).toFixed(4), // Pe33: behavioral gradient bias
@@ -5967,6 +5978,7 @@ function decodeGenome(data){
     if(Array.isArray(g.dr)) genome.draw=sanitizeDraw(g.dr);
     if(Array.isArray(g.bo)) genome.boundOpcodes=g.bo.map(n=>Math.max(0,n|0));
     if(typeof g.clr==='number')genome.creditLearnRate=g.clr; // Pe25 Layer 15
+    if(typeof g.dc==='number')genome.decisionConfidence=g.dc; // swing #43: restore earned commitment authority
     if(typeof g.gb==='number')genome.gradientBias=g.gb;      // Pe26 Layer 16a
     if(typeof g.gub==='number')genome.gradientUpstreamBias=g.gub; // Pe26 Layer 16c
     if(typeof g.bgb==='number')genome.behaviorGradientBias=g.bgb; // Pe33
@@ -6159,6 +6171,7 @@ function sanitizeGenome(){
   if(genome.fitnessSensors.length===0)genome.fitnessSensors=[{program:[[2,5,6,1.0],[4,6,0,1.0]],weight:0.1,realWeight:0,creditTrace:0,lastEmit:0,prevEmit:0}];
   // Pe25 Layer 15: credit-assignment defaults for old saves
   genome.creditLearnRate=__cl(finiteOr(genome.creditLearnRate,1.0),0,3);
+  genome.decisionConfidence=__cl(finiteOr(genome.decisionConfidence,0),0,1); // swing #43: bounded earned authority
   // Pe26 Layer 16: gradient defaults for old saves
   genome.gradientBias=__cl(finiteOr(genome.gradientBias,0.3),0,1);
   genome.gradientUpstreamBias=__cl(finiteOr(genome.gradientUpstreamBias,0.2),0,1);
@@ -9443,6 +9456,18 @@ function applyCreditAssignment(){
       // EMA update — same coefficients as objCreditTrace for consistency
       const newTrace=((sc.creditTrace||0)*0.99)+fSign*0.01;
       sc.creditTrace=Math.max(-1,Math.min(1,newTrace));
+      // ═══ swing #43: DECISION CONFIDENCE ═══
+      // Did committing to the self-model's winner pay off? Confidence is an EMA of "the currently-applied
+      // shadow winner is validated" (its creditTrace positive). It rises only when the system's own predictions
+      // are borne out by real fitness, and decays when they are not — so commitment authority is EARNED, not
+      // assumed. 10× the creditTrace EMA rate so it can accumulate meaningfully within a lifetime. Bounded [0,1].
+      if(__DECIDE_ON){
+        const hit=sc.creditTrace>0?1:0;
+        genome.decisionConfidence=__cl((genome.decisionConfidence||0)*0.99+hit*0.1,0,1);
+      }
+    } else if(__DECIDE_ON){
+      // Winner scenario was evicted before it could be validated — mild decay (a decision we couldn't confirm).
+      genome.decisionConfidence=__cl((genome.decisionConfidence||0)*0.999,0,1);
     }
   }
 }
@@ -9648,7 +9673,10 @@ function runShadowSim(){
 
   // Pe27: derive applied nudge from the winning bank entry. Same axis-specific scales
   // as Pe26 at amplitude=±1, so Pe26-equivalent bank entries reproduce Pe26 behavior.
-  const ps=genome.perturbScale;
+  // swing #43: DECISION GAIN — a validated self-model commits harder (up to 4×) to the direction it chose;
+  // at cold start (confidence 0) this is ×1, i.e. exactly the prior behaviour. Stays within the same clamps.
+  const _decGain=__DECIDE_ON?(1+__cl(genome.decisionConfidence||0,0,1)*3):1;
+  const ps=genome.perturbScale*_decGain;
   const sc=bank[bestS];
   genome.entropyBaseline=__cl(genome.entropyBaseline+sc.e*SCEN_APPLY.e*ps,0.0001,0.003);
   genome.entropyK      =__cl(genome.entropyK      +sc.k*SCEN_APPLY.k*ps,0.00005,0.002);
@@ -11130,7 +11158,11 @@ function mutateGenome(){
   const bgbActive=__cl(genome.behaviorGradientBias||0,0,1);
   const vmGradActive=bgbActive>0.05&&risk>0.15;
   if(vmGradActive){
-    const vmNudgeScale=genome.perturbScale*bgbActive*Math.min(1,risk*1.5)*0.08;
+    // swing #43: DECISION GAIN on the behavioural commitment — the winning imagined direction pushes harder
+    // (up to 4×) once the self-model has EARNED confidence by being validated against real fitness. At cold
+    // start (confidence 0) this is ×1 — the prior sign-only behaviour. inst[3] stays clamped to ±2 below.
+    const _decGainB=__DECIDE_ON?(1+__cl(genome.decisionConfidence||0,0,1)*3):1;
+    const vmNudgeScale=genome.perturbScale*bgbActive*Math.min(1,risk*1.5)*0.08*_decGainB;
     const vmNudgeDirs=lastShadowNudgeDir.slice(5,12); // [f,p,a,tb,sp,sm,mp]
     for(let ip=0;ip<genome.vmProgram.length;ip++){
       const inst=genome.vmProgram[ip];
@@ -11172,11 +11204,14 @@ function mutateGenome(){
     const behavGradStrong=bgb>0.05&&risk>0.1&&bestBehavDir!==0;
 
     let newInst;
-    if(behavGradStrong&&Math.random()<bgb){
+    // swing #43: a confident self-model is likelier to instantiate the behaviour it imagined (insertion prob
+    // rises with earned confidence) and initialises it more strongly. Cold start (confidence 0) == prior behaviour.
+    const _decGainI=__DECIDE_ON?(1+__cl(genome.decisionConfidence||0,0,1)*3):1;
+    if(behavGradStrong&&Math.random()<__cl(bgb*_decGainI,0,1)){
       // Pe33: targeted EMIT insertion. The gradient says "more of channel X" — insert
       // an EMIT instruction that contributes to exactly that channel.
       // k-value initialized in the gradient direction; magnitude proportional to bias strength.
-      const initK=bestBehavDir*(0.2+Math.random()*0.4)*bgb;
+      const initK=Math.max(-2,Math.min(2,bestBehavDir*(0.2+Math.random()*0.4)*bgb*_decGainI));
       newInst=[4, Math.floor(Math.random()*12), bestBehavAxis, initK]; // opcode 4 = EMIT
       recordEvent('directed_emit',{ch:bestBehavAxis,dir:bestBehavDir,bgb:+bgb.toFixed(2)},800);
     } else {
@@ -17740,6 +17775,7 @@ if(typeof globalThis!=='undefined'){
                __OPCODE_NOVELTY:1,                                  // genotypic open-endedness #34 — the genetic complement to the ecological engines: mean-centred (zero-sum, no inflation) reward for running opcodes the population has HISTORICALLY under-explored (opCum EMA), turning the lights on in the ~20/256-opcode "museum". Real selection then keeps or discards the explorers — novelty is raw material, not fitness-by-fiat
                __NOVELTY_ARCHIVE:1,                                 // HISTORICAL NOVELTY ARCHIVE #39 — LIVE (default on, the active bet). Reward divergence from an EVER-GROWING archive of trait-signatures across ALL history, not current neighbours (trait-NFD); the target recedes as it's reached, so it cannot saturate — the open-ended engine the #11–#38 arc lacked. Reward is BOUND-THEN-CENTRE (conserved, outlier-robust) after a raw-centre first cut taxed the bulk to collapse. Headless A/B is mildly net-harmful on AVERAGE (entropyRatio 0.67 vs 0.80) BUT markedly more VOLATILE — deeper dips (evenness 0.37 @t16k) and higher spikes (nicheOcc 104 @t24k vs control's steadier plateau) — which is ambiguous between thrashing-toward-collapse and PUNCTUATED open-endedness, the exact call the notebook says only the LIVE artwork can make. Shipped ON to run that live test, not pre-shrunk to dormant. dial novStrength free/unfloored. Force off with NOVELTY_ARCHIVE=0
                __RICH_GRAMMAR:1,                                    // ENRICH the atom-authoring grammar (the creative tool) — HANDS: min/max (selection), atan2 (direction), hypot (magnitude), round (quantize); EYES: nx,ny (position), t (slow clock), nb (neighbour amplitude). Turns authored primitives from functions-of-SELF into functions-of-the-WORLD — substrate for sense→act behaviour. Verified 500/500 compile+finite, no substrate damage. Force off with RICH_GRAMMAR=0
+               __DECIDE:1,                                          // DECISION GAIN #43 — LIVE. The shadow-sim imagines variant selves and biases the real system toward a winner, but the behavioural bias was SIGN-ONLY: a self-test reality confirmed and one it refuted pushed evolution identically, so the system's imagination steered it regardless of being right ("lost the bearing on the system deciding"). This closes the loop — genome.decisionConfidence (0..1) rises only when an applied shadow winner is VALIDATED by real fitness, and scales commitment (physics nudge + behavioural mutation bias) up to 4×. Cold start (confidence 0) == prior behaviour; authority is EARNED. Self-limiting (over-commitment that hurts → creditTrace negative → confidence decays) and it makes the caricatured rollout safe (refuted predictions earn no confidence, cannot commit). Force off with DECIDE=0
                __FORAGE_EYES:1,                                     // FORAGE EYES #42 — LIVE. Answers the ablation null (no authored atom, nor the whole bank, robustly grips fitness): the atom could sense position/clock/neighbour but NOT the resource field, so chemotaxis (the sense→act behaviour that converts to fitness via the existing localRes→amp income) was unlearnable. Adds two senses whose geometry matches an EXISTING actuator: rl=own field level, rd=field(partner)−field(self) — rd aligns with the force actuator (pushes along the partner axis), so an atom can learn rd→force = move toward richer neighbours. No new actuator, no unconserved channel; rides existing conserved physics like REACH. Substrate-verified (compile+finite); whether it gives authorship grip is the LIVE test, not a harness claim. Force off with FORAGE_EYES=0
                __ATOM_DURABLE:1,                                    // DURABILITY — preserve authored bound-opcode call-sites across selfLearnFromBest adoption (confirmed: adoption was stripping them within ~2k ticks, orphaning atoms before selection could judge them). Gives authored BEHAVIOURS a sustained trial. Force off with ATOM_DURABLE=0
                __REACH:1,                                           // REACH — authored atoms drive the VM's existing conserved actuators (force/ampTransfer/tendBleed/spawn) directly, closing sense→compute→ACT. Atoms become effectors, not just calculators. Bounded (clamp+0.2 gain) and rides the existing conserved-energy physics. Force off with REACH=0
@@ -17751,6 +17787,7 @@ if(typeof globalThis!=='undefined'){
 __DRAWVM=(typeof globalThis!=='undefined'&&(globalThis.__DRAW_VM|0)===1); // resolve the render-VM toggle now that LIVE defaults are filled
 __REACH_ON=(typeof globalThis==='undefined')||((globalThis.__REACH??1)|0)!==0; // resolve REACH once (LIVE defaults filled); referenced in the per-instruction hot loop
 __FORAGE_ON=(typeof globalThis==='undefined')||((globalThis.__FORAGE_EYES??1)|0)!==0; // resolve FORAGE once; gates the resource-sense computation in uaSetEyes
+__DECIDE_ON=(typeof globalThis==='undefined')||((globalThis.__DECIDE??1)|0)!==0; // resolve DECISION GAIN once; gates confidence accrual + commitment scaling
 __ATOM_DURABLE=(typeof globalThis==='undefined')||((globalThis.__ATOM_DURABLE??1)|0)!==0; // resolve DURABILITY once
 __MEME_ON=(typeof globalThis!=='undefined')&&((globalThis.__MEME_TRANSFER|0)===1); // resolve MEME TRANSFER once; default OFF unlike REACH/DURABLE (unverified swing, ships dormant)
 const __SPEC=(function(){ const G=(typeof globalThis!=='undefined')?globalThis:{}; const m=(G.__SPECIATE|0)===1;

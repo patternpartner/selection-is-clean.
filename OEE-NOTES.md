@@ -2590,3 +2590,41 @@ atoms fire, drive actuators, and amp is unchanged; that coupling is where the gr
 instrument. (b) The OPEN BOUNDARY — where this run's real dynamics demonstrably live (311 absorbed motifs), which
 the closed harness cannot model and the notebook has said four times is the actual causal channel. Adding internal
 mechanism (Gemini) or senses (#42) does not touch either.
+
+### SWING #43 — DECISION GAIN: the system's self-tests earn the authority to act ("the bearing on deciding", restored)
+
+The user's diagnosis, made precise in the code. runShadowSim() is a genuine test-to-do loop: fork the state,
+imagine 5 variant selves ("what if I were more spawny/attractive/bleedy"), roll each forward shadowHorizon ticks,
+score, pick a winner, act. But three coupling points had drained the "deciding" out of it:
+  (1) the rollout tests a 7-knob CARICATURE in hardcoded coarse physics (9532-73), not the real VM/atoms;
+  (2) the winner's behavioural "do" was SIGN-ONLY (11140, 11179) — a self-test reality CONFIRMED and one it
+      REFUTED biased evolution identically. The system's imagination steered it regardless of being right;
+  (3) the credit that should make good self-tests persist never accumulated (glacial EMAs, wins=0 after ~3000
+      shadow runs in the t352k export).
+Together: the system modelled itself richly and varied itself richly, but nothing it discovered about itself
+became something it DID with any gain. Test-to-see, not test-to-do.
+
+FIX (gated __DECIDE, default on, ONE new state var). genome.decisionConfidence ∈[0,1] is an EMA of "the currently-
+applied shadow winner is VALIDATED" — its scenario creditTrace positive, i.e. real fitness rose during its tenure
+(computed in applyCreditAssignment where df=Δfitness already lives). It rises only when the self-model's own
+predictions are borne out, decays when they aren't (or when a winner is evicted unconfirmed). Confidence then
+scales commitment via _decGain = 1 + confidence·3 at both actuators: the physics nudge application (SCEN_APPLY, ps)
+and the behavioural mutation bias (vmNudgeScale + targeted-EMIT insertion prob/initK). So a validated self-model
+commits up to 4× harder to the direction it chose; an unvalidated one barely nudges.
+
+Why this restores DECIDING without risk: commitment authority is EARNED, not assumed — at cold start
+(confidence 0) _decGain=1, i.e. byte-for-byte the prior behaviour, so it cannot destabilise from rest; authority
+only grows as reality confirms the system's predictions. Self-limiting by construction: over-commitment that hurts
+fitness drives the winner's creditTrace negative → confidence decays → commitment relaxes (negative feedback). All
+nudges stay within the EXISTING clamps (inst[3]∈±2, physics param ranges). And it turns break (1) from a hazard
+into a non-issue: a caricature prediction reality refutes earns no confidence, so a bad self-model literally cannot
+act — the validation gate makes low-fidelity testing safe rather than needing the expensive high-fidelity rollout.
+decisionConfidence persists across reload (serialized dc), so earned authority is a heritable trait.
+
+What this does NOT do (honest): it does not raise the rollout's FIDELITY (break 1) — the shadow sim still imagines
+a 7-knob self in approximate physics; #43 only ensures the system commits to those imaginings in proportion to how
+often they've been right. The deeper swing (run the real VM/atoms in a forked sub-population and adopt winners via
+the selfLearnFromBest path) is the next lever, deliberately not rammed in here. Shipped LIVE, unverified by harness
+by design — the artwork is the instrument (syntax-checked only, gated/reversible with DECIDE=0). What to watch in a
+continuous run: does decisionConfidence ever climb off 0 (do the self-tests EVER get validated?), and if it does,
+does earned commitment change the ecology where sign-only biasing never could.
