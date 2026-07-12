@@ -2542,3 +2542,14 @@ moves the ablation verdict is the LIVE test (continuous run past the authoring w
 not a harness claim — stated plainly so the next pass raises the bar rather than re-arguing the story. Ships live,
 gated, reversible (FORAGE_EYES=0). If it changes nothing, that is itself a strong result: it would mean the null
 isn't about a missing sense but something deeper about whether authored behaviour can grip in this substrate at all.
+
+**6-seed confirmation (firms it, + a new caveat).** Re-ran on seeds 11/13/17/19/23/29. Five seeds tight and
+consistent with the 3-seed run: intact−ablated = [−0.0045, 0.068, 0.0097, 0.0192, 0.0172] — mean ≈ 0.02, all
+sub-noise. So the NEUTRAL-leaning verdict holds, firmer. The sixth seed (29) is an ARTIFACT that poisons the naive
+stat: its INTACT arm ran meanAmp to 4643 (pop healthy 471, driverErr 0 — a runaway amplification, not a crash),
+while its ablated arm sat at 1.17. Naive mean/sd (774/1730) are entirely this one seed; exclude it and nothing
+changes. Two takeaways: (1) verdict unchanged on 5 clean seeds — the bank is not robustly load-bearing for fitness;
+(2) NEW — the bank CAN drive a rare amp explosion (a large but non-adaptive effect ablation suppresses), so meanAmp
+is not a robust fitness statistic for this test. A future ablation pass should use a clamped/median fitness measure
+before any BANK_ADAPTIVE claim, and the runaway itself (what authored dynamic amplifies amp 4000× in seed 29?) is
+worth its own look.
