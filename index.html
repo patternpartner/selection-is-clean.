@@ -360,9 +360,11 @@ const USER_OPS=["+","-","*","/"]; // UNLOCKED #7b: division added; the final isF
 //           itself, so authored code can be a function of environment + others — the substrate for sense→act behaviour.
 // All finite-safe by construction (positions/sin/clamped-amp) + the existing isFinite guard in uaCompile.
 const USER_WORLD_VARS=["nx","ny","t","nb"]; // EYES — appended to the var pool when rich grammar is on
+const USER_FORAGE_VARS=["rl","rd"]; // FORAGE EYES — resource senses; appended when rich grammar AND forage are on
 const USER_BINFUNCS=["Math.min","Math.max","Math.atan2","Math.hypot"]; // HANDS — 2-arg functions
 const USER_FUNCS_RICH=USER_FUNCS.concat(["Math.round"]); // + QUANTIZE
 function uaRich(){return (typeof globalThis==='undefined')||((globalThis.__RICH_GRAMMAR??1)|0)!==0;}
+function uaForage(){return (typeof globalThis==='undefined')||((globalThis.__FORAGE_EYES??1)|0)!==0;}
 const UA_DEPTH_CAP=4; // substrate ceiling on authored-expression nesting — bounds compile cost / string length, NOT meaning
 // UNLOCKED #7b — RECURSIVE GRAMMAR. Was depth-1 ("two terms, one binary op"). Now the system
 // can compose structurally richer primitives it invents. depth<=0 → a leaf (var/constant,
@@ -402,7 +404,7 @@ function uaGenTerm(depth){
     }
   }
   const rich=uaRich();
-  const vars=rich?USER_VARS.concat(USER_WORLD_VARS):USER_VARS;   // EYES expand the leaf pool
+  const vars=rich?(uaForage()?USER_VARS.concat(USER_WORLD_VARS,USER_FORAGE_VARS):USER_VARS.concat(USER_WORLD_VARS)):USER_VARS;   // EYES (+FORAGE) expand the leaf pool
   const funcs=rich?USER_FUNCS_RICH:USER_FUNCS;                   // + round (quantize)
   const useFunc=Math.random()<0.35;
   const val=Math.random()<0.5
@@ -432,7 +434,7 @@ function uaCompile(atom){
   try{
     // Pe24: compiled function takes (a,b,u) — u is normalized self-usage count.
     // Old atoms with expressions only referencing a,b still compile fine; u is unused param.
-    atom.compiled=new Function("a","b","u","c","d","m","s","f","nx","ny","t","nb","const r=("+atom.expression+");return isFinite(r)?r:0;");
+    atom.compiled=new Function("a","b","u","c","d","m","s","f","nx","ny","t","nb","rl","rd","const r=("+atom.expression+");return isFinite(r)?r:0;");
     atom.failed=false;
   }catch(e){
     atom.compiled=null;
@@ -527,6 +529,14 @@ function runDrawProgram(i){
 // UNLOCKED #7a/#7b — context fed to system-authored atoms (set per-VM-tick; finite & bounded).
 // c=proximity, d=energy, m=caste-match. Read by uaCall below so the 9 call sites stay untouched.
 let uaCtxC=0,uaCtxD=0,uaCtxM=0,uaCtxNx=0,uaCtxNy=0,uaCtxT=0,uaCtxNb=0; // +EYES: position, slow clock, neighbour signal
+// +FORAGE EYES (swing #42): a RESOURCE sense whose geometry matches an EXISTING actuator, so authorship can grip.
+//   rl = own local field level (∈[0,1]) — "am I in food?"; rd = field(partner)−field(self) (∈[-1,1]) — "is my
+//   partner toward more food?". rd aligns with the force actuator (vmActions[0] pushes along the partner axis),
+//   so an atom can learn rd→force = chemotaxis toward richer neighbours, converting to fitness through the
+//   EXISTING localRes→amp income path — no new actuator, no unconserved channel. The bridge the ablation exposed:
+//   the mover existed, the income existed, but the atom had no sense of whether moving toward food paid.
+let uaCtxRl=0,uaCtxRd=0;
+let __FORAGE_ON=true; // +FORAGE cached flag (resolved after the LIVE registry); gates the sense computation + grammar pool
 let __REACH_ON=true; // +REACH cached flag (resolved after the LIVE registry); kept out of the per-instruction globalThis read path
 let __reachFires=0; // telemetry: how many times an authored atom drove an actuator (sense→ACT firings)
 let __ATOM_DURABLE=true; // +DURABILITY: preserve authored call-sites across self-adoption (resolved after LIVE registry)
@@ -571,6 +581,19 @@ function uaSetEyes(i,j){
   uaCtxNy = (typeof H==='number'&&H>0) ? py[i]/H : 0;
   uaCtxT  = Math.sin(tick*0.0011);                                   // slow clock ∈ [-1,1] → authored rhythm
   uaCtxNb = (j>=0) ? Math.max(-8,Math.min(8, amp[j]||0)) : 0;        // neighbour amplitude (clamped) → a social sense
+  // +FORAGE EYES — resource senses along the actionable (partner) axis. All finite by construction (clamped field
+  //   reads, W/H>0). Cheap: 1–2 field lookups. Gated so an A/B (FORAGE_EYES=0) zeroes them exactly.
+  if(__FORAGE_ON && typeof field!=='undefined' && typeof W==='number' && W>0 && typeof H==='number' && H>0){
+    const _fw=W/FIELD_W,_fh=H/FIELD_H;
+    const _cxi=__cl(Math.floor(px[i]/_fw),0,FIELD_W-1),_cyi=__cl(Math.floor(py[i]/_fh),0,FIELD_H-1);
+    const _here=field[_cyi*FIELD_W+_cxi]||0;
+    uaCtxRl = _here<0?0:_here>1?1:_here;                             // own local resource level ∈[0,1]
+    if(j>=0){
+      const _cxj=__cl(Math.floor(px[j]/_fw),0,FIELD_W-1),_cyj=__cl(Math.floor(py[j]/_fh),0,FIELD_H-1);
+      const _there=field[_cyj*FIELD_W+_cxj]||0, _d=_there-_here;
+      uaCtxRd = _d<-1?-1:_d>1?1:_d;                                 // partner-minus-own resource ∈[-1,1] (force-axis aligned)
+    } else uaCtxRd=0;
+  } else { uaCtxRl=0; uaCtxRd=0; }
 }
 // UNLOCKED #10 — atoms are now STATEFUL, RECURRENT, COMPOSABLE programs, not stateless arithmetic:
 //   • s : the atom's own previous output, fed back in → persistent memory across ticks. Temporal
@@ -598,7 +621,7 @@ function uaCall(atom,a,b){
     const prevUses=atom.uses|0;
     const u=Math.min(4,prevUses/100);
     const s=isFinite(atom.state)?atom.state:0;   // recurrent state = previous output
-    const r=atom.compiled(a,b,u,uaCtxC,uaCtxD,uaCtxM,s,uaCallF,uaCtxNx,uaCtxNy,uaCtxT,uaCtxNb);
+    const r=atom.compiled(a,b,u,uaCtxC,uaCtxD,uaCtxM,s,uaCallF,uaCtxNx,uaCtxNy,uaCtxT,uaCtxNb,uaCtxRl,uaCtxRd);
     atom.uses=prevUses+1;
     const out=isFinite(r)?Math.max(-8,Math.min(8,r)):0;
     atom.state=out;                              // persist for next tick → recurrence
@@ -11928,7 +11951,7 @@ function runAlienPrediction(){
       if(bestAI<0)continue;
       const atom=uas[bestAI];
       const baseline=po.prevCount, recentPartial=po.count; // only "trend so far" signal honestly available
-      uaCtxC=0;uaCtxD=0;uaCtxM=0;uaCtxNx=0;uaCtxNy=0;uaCtxT=Math.sin(tick*0.0011);uaCtxNb=0;
+      uaCtxC=0;uaCtxD=0;uaCtxM=0;uaCtxNx=0;uaCtxNy=0;uaCtxT=Math.sin(tick*0.0011);uaCtxNb=0;uaCtxRl=0;uaCtxRd=0;
       const out=uaCall(atom, Math.tanh((baseline||0)/20), Math.tanh((recentPartial||0)/20));
       const direction=out>0.05?1:(out<-0.05?-1:0);
       pendingAlienPredictions.set(tab,{atomIdx:bestAI,direction,baseline,madeAtTick:tick,windowStartAtPrediction:po.windowStart});
@@ -17717,6 +17740,7 @@ if(typeof globalThis!=='undefined'){
                __OPCODE_NOVELTY:1,                                  // genotypic open-endedness #34 — the genetic complement to the ecological engines: mean-centred (zero-sum, no inflation) reward for running opcodes the population has HISTORICALLY under-explored (opCum EMA), turning the lights on in the ~20/256-opcode "museum". Real selection then keeps or discards the explorers — novelty is raw material, not fitness-by-fiat
                __NOVELTY_ARCHIVE:1,                                 // HISTORICAL NOVELTY ARCHIVE #39 — LIVE (default on, the active bet). Reward divergence from an EVER-GROWING archive of trait-signatures across ALL history, not current neighbours (trait-NFD); the target recedes as it's reached, so it cannot saturate — the open-ended engine the #11–#38 arc lacked. Reward is BOUND-THEN-CENTRE (conserved, outlier-robust) after a raw-centre first cut taxed the bulk to collapse. Headless A/B is mildly net-harmful on AVERAGE (entropyRatio 0.67 vs 0.80) BUT markedly more VOLATILE — deeper dips (evenness 0.37 @t16k) and higher spikes (nicheOcc 104 @t24k vs control's steadier plateau) — which is ambiguous between thrashing-toward-collapse and PUNCTUATED open-endedness, the exact call the notebook says only the LIVE artwork can make. Shipped ON to run that live test, not pre-shrunk to dormant. dial novStrength free/unfloored. Force off with NOVELTY_ARCHIVE=0
                __RICH_GRAMMAR:1,                                    // ENRICH the atom-authoring grammar (the creative tool) — HANDS: min/max (selection), atan2 (direction), hypot (magnitude), round (quantize); EYES: nx,ny (position), t (slow clock), nb (neighbour amplitude). Turns authored primitives from functions-of-SELF into functions-of-the-WORLD — substrate for sense→act behaviour. Verified 500/500 compile+finite, no substrate damage. Force off with RICH_GRAMMAR=0
+               __FORAGE_EYES:1,                                     // FORAGE EYES #42 — LIVE. Answers the ablation null (no authored atom, nor the whole bank, robustly grips fitness): the atom could sense position/clock/neighbour but NOT the resource field, so chemotaxis (the sense→act behaviour that converts to fitness via the existing localRes→amp income) was unlearnable. Adds two senses whose geometry matches an EXISTING actuator: rl=own field level, rd=field(partner)−field(self) — rd aligns with the force actuator (pushes along the partner axis), so an atom can learn rd→force = move toward richer neighbours. No new actuator, no unconserved channel; rides existing conserved physics like REACH. Substrate-verified (compile+finite); whether it gives authorship grip is the LIVE test, not a harness claim. Force off with FORAGE_EYES=0
                __ATOM_DURABLE:1,                                    // DURABILITY — preserve authored bound-opcode call-sites across selfLearnFromBest adoption (confirmed: adoption was stripping them within ~2k ticks, orphaning atoms before selection could judge them). Gives authored BEHAVIOURS a sustained trial. Force off with ATOM_DURABLE=0
                __REACH:1,                                           // REACH — authored atoms drive the VM's existing conserved actuators (force/ampTransfer/tendBleed/spawn) directly, closing sense→compute→ACT. Atoms become effectors, not just calculators. Bounded (clamp+0.2 gain) and rides the existing conserved-energy physics. Force off with REACH=0
                __GROUP_COMMONS:1,                                   // GROUP SELECTION FOR THE COMMONS #40 — LIVE. Swing #36 found rqRate (the diversity-maintaining commons #28 needs) gets driven to 0 by individual selection and had to be FLOORED by fiat. This gives the existing cluster-bud lever (#33) a real countervailing force instead: colonies holding rqRate near the ceiling bud more. Headless smoke-clean (no crash/NaN across two runs) but cluster budding is too rare in a short harness window to get a verdict on the mechanism itself — same class of gap as #33 ("budding never fires there"). The live artwork, not more harness ticks, is what actually tests this. Force off with GROUP_COMMONS=0
@@ -17726,6 +17750,7 @@ if(typeof globalThis!=='undefined'){
 }
 __DRAWVM=(typeof globalThis!=='undefined'&&(globalThis.__DRAW_VM|0)===1); // resolve the render-VM toggle now that LIVE defaults are filled
 __REACH_ON=(typeof globalThis==='undefined')||((globalThis.__REACH??1)|0)!==0; // resolve REACH once (LIVE defaults filled); referenced in the per-instruction hot loop
+__FORAGE_ON=(typeof globalThis==='undefined')||((globalThis.__FORAGE_EYES??1)|0)!==0; // resolve FORAGE once; gates the resource-sense computation in uaSetEyes
 __ATOM_DURABLE=(typeof globalThis==='undefined')||((globalThis.__ATOM_DURABLE??1)|0)!==0; // resolve DURABILITY once
 __MEME_ON=(typeof globalThis!=='undefined')&&((globalThis.__MEME_TRANSFER|0)===1); // resolve MEME TRANSFER once; default OFF unlike REACH/DURABLE (unverified swing, ships dormant)
 const __SPEC=(function(){ const G=(typeof globalThis!=='undefined')?globalThis:{}; const m=(G.__SPECIATE|0)===1;

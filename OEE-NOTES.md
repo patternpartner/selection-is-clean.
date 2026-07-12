@@ -2506,3 +2506,39 @@ Bearing on the "add more mechanism" question the last entry raised: this weakens
 (binding/multicellularity) onto a bank with no shown selective grip risks the orphaned-atom failure one level up.
 The honest next levers are (a) instrument WHY novelty turns over with no grip — itself an OEE result — or (b) treat
 the OPEN boundary (bridge/peers/the user's hand), where the causal action has repeatedly been, as the real substrate.
+
+### SWING #42 — FORAGE EYES: the resource sense that gives authorship something to grip (built to answer the ablation null)
+
+The ablation arc (single-atom, then whole-bank) came back INCONCLUSIVE-leaning-NEUTRAL both times: no authored
+atom, and not the whole bank, robustly pulls fitness. The user's own live export (gen0 t773) sharpened it —
+ua:[] bo:[], zero authored atoms: at the age real runs sit, the bank often doesn't even exist to have grip.
+Measuring grip harder was not the bottleneck. The bottleneck was diagnosed twice already in these notes: swing
+#11's opening ("one currency — amp — so one way to win → one winner") and the ENRICH/durability endpoint (rich
+sense→act atoms get first-used but selection keeps the trivial scalar 4.65·a, because nothing makes the rich
+behaviour PAY). The world gave authored sense→act behaviours nothing to grip on.
+
+The fix, checked against the actual actuator geometry BEFORE building (the lesson of the orphaned atoms — don't
+add an eye with no matching hand). Income is `amp += localRes·entropyK`, and localRes is drained from a spatial
+`field` grid — so moving to richer field cells pays. Force (vmActions[0]) is applied ALONG THE PARTNER AXIS
+(`vx[i]+=nx*force`), not toward an arbitrary vector. So an absolute gradient sense would be unactionable; the
+sense that MATCHES the existing mover is a partner-relative one. Added two (gated __FORAGE_EYES, default on):
+- rl = own local field level ∈[0,1] — "am I in food?"
+- rd = field(partner) − field(self) ∈[-1,1] — "is my partner toward more food?"
+rd aligns with the force actuator, so an atom can learn `rd → drive force = move toward richer neighbours` —
+chemotaxis that converts to fitness through the EXISTING localRes→amp path. No new actuator, no unconserved
+channel; rides existing conserved physics exactly like REACH. This is the specific bridge the null exposed: the
+mover existed, the income existed, only the perception was missing.
+
+VERIFIED — the substrate bar only (same bar ENRICH/REACH shipped on):
+- forageverify.js: 800/800 authored expressions compile, 4000/4000 outputs finite across the real eye ranges AND
+  adversarial NaN/Inf inputs; rl used in 396, rd in 405 — richly exercised, zero non-finite. Engine node --check clean.
+- Live-engine smoke (harness-oee, seed 7, 3k, FORAGE on): 0 loop errors, 0 driver errors, population 329→352,
+  meanAmp 1.159 (finite, on baseline), evenness 0.856, kinds 25 — boots clean, no NaN, healthy. (No atoms authored
+  in 3k — seed 7 authors over ~45k, so the in-sim rd path isn't exercised at this length; the substrate verify
+  drove that exact compiled path across real rd ranges instead.)
+
+NOT verified: that it gives authorship GRIP. Whether an rd-driven foraging atom out-selects a trivial scalar and
+moves the ablation verdict is the LIVE test (continuous run past the authoring window, watched and reported back),
+not a harness claim — stated plainly so the next pass raises the bar rather than re-arguing the story. Ships live,
+gated, reversible (FORAGE_EYES=0). If it changes nothing, that is itself a strong result: it would mean the null
+isn't about a missing sense but something deeper about whether authored behaviour can grip in this substrate at all.
