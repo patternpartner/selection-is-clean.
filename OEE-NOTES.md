@@ -2553,3 +2553,40 @@ changes. Two takeaways: (1) verdict unchanged on 5 clean seeds — the bank is n
 is not a robust fitness statistic for this test. A future ablation pass should use a clamped/median fitness measure
 before any BANK_ADAPTIVE claim, and the runaway itself (what authored dynamic amplifies amp 4000× in seed 29?) is
 worth its own look.
+
+### LIVE #42 + REAL-BANK ABLATION (export gen1 t352728) — the sense is USED but the whole bank is fitness-INERT; the largest honest null, now on a real bank
+
+First mature live run of swing #42 (FORAGE EYES), and the user's real artwork export — so the live test I said
+only they could run. Two findings, one narrow win and one large deflation.
+
+**Live read of #42 (t352728, gen1).** The FORAGE sense is real and used: atom `(rl)-(0.05)` reached uses=261,
+authored/bound/executed under real usage, not orphaned — substrate holds at 352k. But three deflations, stated
+plainly: (1) only the SCALAR rl sense got used, as a thresholded readout — the directional rd→force chemotaxis
+that was the POINT of #42 never made it into a used main-VM atom (rd appears only in the render VM). Selection kept
+the trivial scalar again — the exact prior pattern. (2) Bank UP, fitness DOWN: over the run the bank climbed 0→28
+atoms while fitMean fell 0.389→0.076 (5×) and the cluster/diversity epoch metrics sat at 0 from ~25k; of 28 atoms
+exactly TWO are used (clock (-1.03)-t at 2066, (rl)-0.05 at 261), the other 26 orphaned at 0. (3) HEAVILY
+CONFOUNDED — the two open boundaries the notebook always catches: g:1 (one reload) AND massive network absorption
+(na: 311 motifs, 45 plasmids, 14 inscriptions ingested from peers; 196/777 alien-predict hits vs tabs 1upwb6uk +
+chem-reactor-htb). So NOTHING internal is cleanly attributable to #42; the fitness decline could be network
+indigestion as easily as authorship. #42 verdict: verified ACTIVE live (its sense is used), NOT verified to grip,
+and the one run shows trivial-adoption, not chemotaxis.
+
+**The clean test the export finally enabled — whole-bank ablation on a REAL fat bank (BASE_GENOME).** 28 atoms, 32
+bound opcodes, 2 proven (maxUses 2066). Ran it forward CLOSED (harness strips the reload + network — "does the bank
+grip fitness" is a CLOSED question the harness answers honestly). Seeds 11/13/17/19/23 x 10k, intact vs
+whole-bank-pinned-to-0: intact meanAmp 1.1937 vs ablated 1.1935, per-seed diffs [0,0,0.0008,0,0], effect 0.0002 <<
+noise, **4 of 5 seeds BIT-IDENTICAL**. Checked the hollow-null trap the notebook caught twice (bit-identical because
+atoms never fire): NOT hollow — a resume of this genome fires the bank (cumProvenAtomExprs=4 in a 3k continuation,
+boundOps 32, amp healthy 1.2). So the atoms EXECUTE and removing all 28 leaves fitness bit-identical.
+
+**VERDICT: the strongest, cleanest null the project has reached — the self-extension bank is EXECUTED but
+fitness-INERT.** Not "atoms don't fire" (hollow) but "atoms fire and still don't move amp." This is the largest
+honest result the earlier ablation entry anticipated, now on a real mature 28-atom bank rather than a thin synthetic
+one. It reframes the whole "add more mechanism" axis, #42 included: giving the engine a richer SENSE didn't help,
+because the problem isn't perception — the executed atoms' outputs don't couple to the amp economy at all. The two
+honest frontiers left: (a) MECHANISTIC — why does REACH (atom→actuator→physics→amp) not translate to fitness? the
+atoms fire, drive actuators, and amp is unchanged; that coupling is where the grip is lost and is the next thing to
+instrument. (b) The OPEN BOUNDARY — where this run's real dynamics demonstrably live (311 absorbed motifs), which
+the closed harness cannot model and the notebook has said four times is the actual causal channel. Adding internal
+mechanism (Gemini) or senses (#42) does not touch either.
