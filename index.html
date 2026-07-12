@@ -546,6 +546,15 @@ let __FORAGE_ON=true; // +FORAGE cached flag (resolved after the LIVE registry);
 //   commitment that hurts fitness drives the winner's creditTrace negative → confidence decays → commitment relaxes.
 //   Also makes the caricatured rollout safe — a prediction reality refutes earns no confidence, so it cannot commit.
 let __DECIDE_ON=true; // +DECISION cached flag (resolved after the LIVE registry)
+// +DECIDE FROM THE REAL WINNER (swing #44): the deeper move. runShadowSim imagines variant selves in a 7-knob
+//   CARICATURE — but the real population ALREADY is a faithful self-test: every pGenome/pProg lineage is a full
+//   self on the real substrate under real selection, and selfLearnFromBest already adopts the best lineage's
+//   PROGRAM. It never adopts its PHYSICS, so the self's behaviour tracks reality while its physics is steered by
+//   the caricature. #44 closes that: decide the self's physics by stepping toward the REAL population winner, and
+//   feed reality's direction (not an imagined scenario's) into #43's commitment machinery. When on, it REPLACES
+//   the caricature's physics commitment — imagine behaviour, but decide physics from what is actually winning.
+//   Always-on baseline step from tick one (the bet is placed, not deferred); earned confidence amplifies it.
+let __DECIDE_REAL=true; // +DECIDE-FROM-REAL cached flag (resolved after the LIVE registry)
 let __REACH_ON=true; // +REACH cached flag (resolved after the LIVE registry); kept out of the per-instruction globalThis read path
 let __reachFires=0; // telemetry: how many times an authored atom drove an actuator (sense→ACT firings)
 let __ATOM_DURABLE=true; // +DURABILITY: preserve authored call-sites across self-adoption (resolved after LIVE registry)
@@ -5415,6 +5424,33 @@ function selfLearnFromBest(){ // the population's best discovery flows back into
       for(const _ins of _carry){ if(_vp.length>=(genome.vmMaxInstructions||16))break; if(!_have.has(_ins[0])){ _vp.splice((Math.random()*(_vp.length+1))|0,0,[_ins[0],_ins[1],_ins[2],_ins[3]]); _have.add(_ins[0]); } } }
   }
 }
+// swing #44 — DECIDE FROM THE REAL WINNER. selfLearnFromBest (above) adopts the best living lineage's PROGRAM; this
+// adopts its PHYSICS, so the self tracks the whole realized winner instead of a caricatured 7-knob imagination.
+// The population is the faithful self-test; this decides from it. See the __DECIDE_REAL note for rationale.
+const DECIDE_PHYS_AXES=[["entropyBaseline",0.0001,0.003],["entropyK",0.00005,0.002],["entrainRate",0.003,0.05],["creationCost",0.1,0.6],["entrainThresh",0.08,0.55]];
+function decideFromRealWinner(){
+  if(!__DECIDE_REAL)return;
+  let best=-1,bestAmp=-1e9;
+  for(let i=0;i<N;i++){ if(palive[i]&&pGenome[i]&&amp[i]>bestAmp){bestAmp=amp[i];best=i;} }
+  if(best<0||!pGenome[best])return;
+  const bg=pGenome[best];
+  // VALIDATION drives confidence for REAL: did tracking the winner coincide with the self's fitness rising?
+  const cf=(typeof currentFitness==='number'&&isFinite(currentFitness))?currentFitness:0;
+  const dfit=cf-(genome.prevDecideFitness||0); genome.prevDecideFitness=cf;
+  if(Math.abs(dfit)>1e-5){ genome.decisionConfidence=__cl((genome.decisionConfidence||0)*0.99+(dfit>0?1:0)*0.1,0,1); }
+  const conf=__cl(genome.decisionConfidence||0,0,1);
+  // ALWAYS-ON baseline commitment (0.06 of the gap to the winner), amplified up to 4× by earned confidence. The
+  // bet is placed from tick one; confidence changes how HARD the self commits, not WHETHER. Bounded to each clamp.
+  const step=0.06*(1+conf*3);
+  for(let a=0;a<DECIDE_PHYS_AXES.length;a++){
+    const key=DECIDE_PHYS_AXES[a][0], lo=DECIDE_PHYS_AXES[a][1], hi=DECIDE_PHYS_AXES[a][2];
+    const bv=+bg[key], sv=+genome[key];
+    if(!isFinite(bv)||!isFinite(sv))continue;
+    lastShadowNudgeDir[a]=bv>sv?1:bv<sv?-1:0;   // reality's direction feeds the existing #43 commitment machinery
+    const nx=sv+(bv-sv)*step;
+    if(isFinite(nx))genome[key]=__cl(nx,lo,hi);
+  }
+}
 // UNLOCKED #9 FULL — EVERY PARTICLE CARRIES ITS OWN COMPLETE GENOME (not just its program).
 // pGenome[i] is a full clone of the parent's genome with EVERY heritable gene mutated, so lineages
 // diverge in physics AND behavior and compete. The engine runs on it via the repoint: during a
@@ -9678,11 +9714,15 @@ function runShadowSim(){
   const _decGain=__DECIDE_ON?(1+__cl(genome.decisionConfidence||0,0,1)*3):1;
   const ps=genome.perturbScale*_decGain;
   const sc=bank[bestS];
-  genome.entropyBaseline=__cl(genome.entropyBaseline+sc.e*SCEN_APPLY.e*ps,0.0001,0.003);
-  genome.entropyK      =__cl(genome.entropyK      +sc.k*SCEN_APPLY.k*ps,0.00005,0.002);
-  genome.entrainRate   =__cl( genome.entrainRate     +sc.r*SCEN_APPLY.r*ps,0.003,0.05);
-  genome.creationCost  =__cl(   genome.creationCost    +sc.c*SCEN_APPLY.c*ps,0.1,0.6);
-  genome.entrainThresh =__cl(  genome.entrainThresh   +sc.t*SCEN_APPLY.t*ps,0.08,0.55);
+  // swing #44: when deciding physics from the REAL winner, reality REPLACES the caricature here — the shadow-sim
+  // still imagines BEHAVIOUR (nudgeDir[5..11] below), but physics commitment comes from decideFromRealWinner().
+  if(!__DECIDE_REAL){
+    genome.entropyBaseline=__cl(genome.entropyBaseline+sc.e*SCEN_APPLY.e*ps,0.0001,0.003);
+    genome.entropyK      =__cl(genome.entropyK      +sc.k*SCEN_APPLY.k*ps,0.00005,0.002);
+    genome.entrainRate   =__cl( genome.entrainRate     +sc.r*SCEN_APPLY.r*ps,0.003,0.05);
+    genome.creationCost  =__cl(   genome.creationCost    +sc.c*SCEN_APPLY.c*ps,0.1,0.6);
+    genome.entrainThresh =__cl(  genome.entrainThresh   +sc.t*SCEN_APPLY.t*ps,0.08,0.55);
+  }
   // Pe32: behavioral nudge is NOT applied directly to parameters (there's no "force"
   // genome field). Instead, lastShadowNudgeDir[5..11] is read by mutateGenome to bias
   // VM instruction mutations toward the winning behavioral direction. The translation
@@ -17775,6 +17815,7 @@ if(typeof globalThis!=='undefined'){
                __OPCODE_NOVELTY:1,                                  // genotypic open-endedness #34 — the genetic complement to the ecological engines: mean-centred (zero-sum, no inflation) reward for running opcodes the population has HISTORICALLY under-explored (opCum EMA), turning the lights on in the ~20/256-opcode "museum". Real selection then keeps or discards the explorers — novelty is raw material, not fitness-by-fiat
                __NOVELTY_ARCHIVE:1,                                 // HISTORICAL NOVELTY ARCHIVE #39 — LIVE (default on, the active bet). Reward divergence from an EVER-GROWING archive of trait-signatures across ALL history, not current neighbours (trait-NFD); the target recedes as it's reached, so it cannot saturate — the open-ended engine the #11–#38 arc lacked. Reward is BOUND-THEN-CENTRE (conserved, outlier-robust) after a raw-centre first cut taxed the bulk to collapse. Headless A/B is mildly net-harmful on AVERAGE (entropyRatio 0.67 vs 0.80) BUT markedly more VOLATILE — deeper dips (evenness 0.37 @t16k) and higher spikes (nicheOcc 104 @t24k vs control's steadier plateau) — which is ambiguous between thrashing-toward-collapse and PUNCTUATED open-endedness, the exact call the notebook says only the LIVE artwork can make. Shipped ON to run that live test, not pre-shrunk to dormant. dial novStrength free/unfloored. Force off with NOVELTY_ARCHIVE=0
                __RICH_GRAMMAR:1,                                    // ENRICH the atom-authoring grammar (the creative tool) — HANDS: min/max (selection), atan2 (direction), hypot (magnitude), round (quantize); EYES: nx,ny (position), t (slow clock), nb (neighbour amplitude). Turns authored primitives from functions-of-SELF into functions-of-the-WORLD — substrate for sense→act behaviour. Verified 500/500 compile+finite, no substrate damage. Force off with RICH_GRAMMAR=0
+               __DECIDE_REAL:1,                                     // DECIDE FROM THE REAL WINNER #44 — LIVE. The deeper move behind #43: the shadow-sim imagines a 7-knob caricature self, but the real population already IS a faithful self-test (every pGenome/pProg lineage runs the real substrate under real selection) and selfLearnFromBest already adopts the best lineage's PROGRAM — just never its PHYSICS. #44 steps the self's physics toward the REAL population winner and feeds reality's direction into #43's commitment machinery, REPLACING the caricature's physics commitment (behaviour is still imagined). Always-on baseline step (the bet is placed from tick one); earned decisionConfidence amplifies it up to 4×; bounded to each param clamp. Force off with DECIDE_REAL=0
                __DECIDE:1,                                          // DECISION GAIN #43 — LIVE. The shadow-sim imagines variant selves and biases the real system toward a winner, but the behavioural bias was SIGN-ONLY: a self-test reality confirmed and one it refuted pushed evolution identically, so the system's imagination steered it regardless of being right ("lost the bearing on the system deciding"). This closes the loop — genome.decisionConfidence (0..1) rises only when an applied shadow winner is VALIDATED by real fitness, and scales commitment (physics nudge + behavioural mutation bias) up to 4×. Cold start (confidence 0) == prior behaviour; authority is EARNED. Self-limiting (over-commitment that hurts → creditTrace negative → confidence decays) and it makes the caricatured rollout safe (refuted predictions earn no confidence, cannot commit). Force off with DECIDE=0
                __FORAGE_EYES:1,                                     // FORAGE EYES #42 — LIVE. Answers the ablation null (no authored atom, nor the whole bank, robustly grips fitness): the atom could sense position/clock/neighbour but NOT the resource field, so chemotaxis (the sense→act behaviour that converts to fitness via the existing localRes→amp income) was unlearnable. Adds two senses whose geometry matches an EXISTING actuator: rl=own field level, rd=field(partner)−field(self) — rd aligns with the force actuator (pushes along the partner axis), so an atom can learn rd→force = move toward richer neighbours. No new actuator, no unconserved channel; rides existing conserved physics like REACH. Substrate-verified (compile+finite); whether it gives authorship grip is the LIVE test, not a harness claim. Force off with FORAGE_EYES=0
                __ATOM_DURABLE:1,                                    // DURABILITY — preserve authored bound-opcode call-sites across selfLearnFromBest adoption (confirmed: adoption was stripping them within ~2k ticks, orphaning atoms before selection could judge them). Gives authored BEHAVIOURS a sustained trial. Force off with ATOM_DURABLE=0
@@ -17788,6 +17829,7 @@ __DRAWVM=(typeof globalThis!=='undefined'&&(globalThis.__DRAW_VM|0)===1); // res
 __REACH_ON=(typeof globalThis==='undefined')||((globalThis.__REACH??1)|0)!==0; // resolve REACH once (LIVE defaults filled); referenced in the per-instruction hot loop
 __FORAGE_ON=(typeof globalThis==='undefined')||((globalThis.__FORAGE_EYES??1)|0)!==0; // resolve FORAGE once; gates the resource-sense computation in uaSetEyes
 __DECIDE_ON=(typeof globalThis==='undefined')||((globalThis.__DECIDE??1)|0)!==0; // resolve DECISION GAIN once; gates confidence accrual + commitment scaling
+__DECIDE_REAL=(typeof globalThis==='undefined')||((globalThis.__DECIDE_REAL??1)|0)!==0; // resolve DECIDE-FROM-REAL once; gates real-winner physics adoption
 __ATOM_DURABLE=(typeof globalThis==='undefined')||((globalThis.__ATOM_DURABLE??1)|0)!==0; // resolve DURABILITY once
 __MEME_ON=(typeof globalThis!=='undefined')&&((globalThis.__MEME_TRANSFER|0)===1); // resolve MEME TRANSFER once; default OFF unlike REACH/DURABLE (unverified swing, ships dormant)
 const __SPEC=(function(){ const G=(typeof globalThis!=='undefined')?globalThis:{}; const m=(G.__SPECIATE|0)===1;
@@ -18778,6 +18820,7 @@ function loop(){
 
   if(tick%Math.max(1,(genome.cadenceLineage|0)||600)===0){
     selfLearnFromBest(); // UNLOCKED #9: the self re-adopts its most successful lineage's program
+    decideFromRealWinner(); // swing #44: ...and its PHYSICS — decide from the real population winner, not the caricature
     if(selfModel.persistentClusters>0){
       for(const c of clusters){
         if(c.persistAge>5&&c.size>5){

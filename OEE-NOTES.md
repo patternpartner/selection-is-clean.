@@ -2628,3 +2628,36 @@ the selfLearnFromBest path) is the next lever, deliberately not rammed in here. 
 by design — the artwork is the instrument (syntax-checked only, gated/reversible with DECIDE=0). What to watch in a
 continuous run: does decisionConfidence ever climb off 0 (do the self-tests EVER get validated?), and if it does,
 does earned commitment change the ecology where sign-only biasing never could.
+
+### SWING #44 — DECIDE FROM THE REAL WINNER: the deeper move #43 pointed at, actually made
+
+Made after the user named the hedge: I diagnosed that the system commits to its own discoveries with no gain, then
+shipped #43 — a fix that also commits with no gain until "earned" (cold-start=identity, self-limiting, bounded). I
+reproduced the exact flaw I described, and deferred the structural move behind risk/cost arguments that didn't hold
+up. The cost argument in particular was wrong: reading selfLearnFromBest + pGenome shows the expensive "real-VM
+rollout" I said the deep move needed ALREADY EXISTS — the population. Every pGenome/pProg lineage is a full self
+running the real substrate under real selection; selfLearnFromBest already adopts the best lineage's PROGRAM. The
+gap: it never adopts the winner's PHYSICS, so the self's behaviour tracks reality while its physics is steered by
+the shadow-sim's 7-knob caricature (breaks 1+2 at the root).
+
+#44 (gated __DECIDE_REAL, default on): decideFromRealWinner(), called right after selfLearnFromBest at cadence-
+Lineage. Picks the highest-amp living lineage (same selection selfLearnFromBest uses), steps the self's five
+physics params (entropyBaseline/K, entrainRate/Thresh, creationCost) a bounded fraction (0.06 of the gap, ×(1+
+conf·3)) toward that REAL winner, and writes reality's per-axis direction into lastShadowNudgeDir[0..4] — the same
+channel #43's commitment machinery reads. When on it REPLACES the caricature's physics application (the shadow-sim
+still imagines BEHAVIOUR via nudgeDir[5..11]; physics is now decided from what is actually winning). So: imagine
+behaviour, decide physics from reality.
+
+The difference from #43, deliberately: this is ALWAYS-ON from tick one — a real baseline step, NOT deferred until
+confidence is earned. Confidence changes how HARD the self commits, not WHETHER. That is the point the user was
+making — a bet placed, not a fuse that never blows. And it makes decisionConfidence able to actually leave 0,
+because it now validates against tracking the REAL winner (self-fitness rising while stepping toward it) instead of
+a caricature's scenario credit. Bounded to each param clamp; the winner is a living healthy lineage so its physics
+are viable by construction; the self keeps independence between the sparse (cadenceLineage) updates and via its own
+mutation. Shipped LIVE, syntax-checked only, reversible (DECIDE_REAL=0), no harness — the artwork is the instrument.
+
+Honest open question for the live run: does decisionConfidence now climb off 0 (does tracking the real winner track
+rising fitness)? And does the self, now adopting the whole realized winner (program via selfLearnFromBest + physics
+via #44) rather than a caricature, behave differently than 44 swings of caricature-steered physics ever did. Still
+NOT done: fully retiring the shadow caricature for behaviour too (derive behavioural commitment from the winner's
+program-diff, not imagined 7-knob deltas) — the next move, named not deferred.
