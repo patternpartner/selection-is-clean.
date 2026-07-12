@@ -2481,3 +2481,28 @@ robustly load-bearing for fitness; survival is robust to permanently losing it.*
 distinguishing "no atom matters" from "no SINGLE atom matters": ablate the WHOLE bank vs none. If that is also
 null, the self-extending VM is executing atoms with no selective grip — the largest honest result the project
 could reach, and it would reframe whether adding MORE mechanism (e.g. structural binding) buys anything at all.
+
+### WHOLE-BANK ABLATION (the test the single-atom result deferred) — bank is NOT robustly load-bearing either
+
+Ran the harness the last entry promised (harness-ablate-bank.js): pin the ENTIRE authored-atom bank to 0 every
+tick (which also freezes authorship — any newly minted atom is re-zeroed next tick) and compare meanAmp to intact,
+from the same authored genome, across seeds. This distinguishes "no SINGLE atom matters (redundancy)" from "NO atom
+matters (decoration)".
+
+Result (author seed 7, 45k ticks → bank of 4 atoms, 3 bound; continuation seeds 11/13/17 × 10k): intact meanAmp
+1.169 vs whole-bank-ablated 1.145. Per-seed (intact − ablated) = [−0.0045, 0.068, 0.0097]: effect mean 0.024 <
+its own sd 0.031, 2/3 seeds positive, ONE seed (13) carrying nearly all of it. **VERDICT: INCONCLUSIVE, leaning
+NEUTRAL — removing the whole bank does not robustly lower fitness.** Same shape as the single-atom knockout
+(positive mean, sub-noise, one outlier seed). So on this test the self-extension engine executes atoms with no
+demonstrable selective grip — survival is robust to losing the entire bank at once, not just any one atom.
+
+NOT a clean null, and it should not be inflated into one. Two limits kill the strong version: (1) seed 7's bank is
+THIN (4 atoms) — possibly too little grip to detect vs the t119k-class runs with 36-use atoms; this tests THIS
+genome, small. (2) n=3 seeds (a 6-seed re-run is the immediate firming step; the deeper one is the harness's
+BASE_GENOME hook against a real heavy-authoring live export, and if a fat real bank is ALSO sub-noise, that is the
+clean quotable result).
+
+Bearing on the "add more mechanism" question the last entry raised: this weakens it. Stacking structural depth
+(binding/multicellularity) onto a bank with no shown selective grip risks the orphaned-atom failure one level up.
+The honest next levers are (a) instrument WHY novelty turns over with no grip — itself an OEE result — or (b) treat
+the OPEN boundary (bridge/peers/the user's hand), where the causal action has repeatedly been, as the real substrate.
