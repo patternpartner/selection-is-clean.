@@ -4,3 +4,6 @@ isolate-*.log
 *.tmp
 # regenerable Pe program cache for bridge experiments
 bridge/experiments/pe-instructions-cache.json
+# ablation experiment scratch logs
+scratch-bankablate.*
+bankablate.err
