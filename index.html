@@ -20753,6 +20753,93 @@ function boot(){
   }
 }
 boot();
+
+// ═══ IN-SIM METABOLISM PANEL — a read-only view of the coupled-universe organism, hosted INSIDE a universe tab so
+// it runs wherever this tab runs (no separate tab to be suspended on mobile). INERT unless the URL hash contains
+// 'metab'. It opens its OWN BroadcastChannel object — a second channel in this page receives every message except
+// ones IT sent, i.e. it hears BOTH peers AND this tab's own bc emissions/'applied' acks — so it reconstructs the
+// full inter-universe flow matrix from the wire with zero coupling to the sim. Driven by setInterval (survives
+// backgrounding like the sim's own setTimeout loop). Toggle: add/remove #metab in the URL, or tap × / the pill.
+(function metabolismPanel(){
+  if(typeof BroadcastChannel==='undefined')return;
+  const CH='selection-pe-network', CUR=['motif','plasmid','migrant','inscription'];
+  const COL={motif:'#3987e5',plasmid:'#c98500',migrant:'#199e70',inscription:'#e66767'};
+  const RATE_WIN=8000, PEER_TTL=6000, BUD_WIN=1500, NS=120;
+  let on=false, ch=null, timer=null, root=null, collapsed=false;
+  const tabs=new Map(); let buds=0; const recentPlas=[]; const scope={motif:[],plasmid:[]};
+  function blk(){return {motif:[],plasmid:[],migrant:[],inscription:[]};}
+  const getT=id=>{ let t=tabs.get(id); if(!t){t={last:Date.now(),eT:blk(),aT:blk()}; tabs.set(id,t);} return t; };
+  function rate(a,now){ let i=0; while(i<a.length&&a[i]<now-RATE_WIN)i++; if(i)a.splice(0,i); return a.length/(RATE_WIN/1000); }
+  function onMsg(m){
+    if(!m||typeof m!=='object'||!m.type)return; const now=Date.now(), id=m.tab||'?';
+    if(m.type==='hello'||m.type==='hello-reply'){getT(id).last=now;return;}
+    if(CUR.indexOf(m.type)>=0){ const t=getT(id); t.last=now; t.eT[m.type].push(now);
+      if(m.type==='plasmid'){recentPlas.push({id,t:now}); while(recentPlas.length&&now-recentPlas[0].t>BUD_WIN)recentPlas.shift();} }
+    else if(m.type==='applied'&&m.data&&CUR.indexOf(m.data.kind)>=0){ const t=getT(id); t.last=now; t.aT[m.data.kind].push(now);
+      if(m.data.kind==='plasmid'&&recentPlas.some(e=>e.id!==id&&now-e.t<=BUD_WIN))buds++; }
+  }
+  const live=now=>[...tabs.entries()].filter(([,t])=>now-t.last<PEER_TTL);
+  const act=(t,now)=>{ let s=0; CUR.forEach(c=>s+=rate(t.eT[c],now)+rate(t.aT[c],now)); return s; };
+  function role(t,now){ const me=rate(t.eT.motif,now),ma=rate(t.aT.motif,now),pe=rate(t.eT.plasmid,now),pa=rate(t.aT.plasmid,now);
+    if(me-ma>0.05&&me>0.05)return 'pump'; if(ma-me>0.03||pe-pa>0.03)return 'bloom'; return '·'; }
+  function spark(){
+    const n=scope.motif.length; if(n<2)return '';
+    let mx=0.2; for(let i=0;i<n;i++){mx=Math.max(mx,Math.abs(scope.motif[i]),Math.abs(scope.plasmid[i]));}
+    const W=232,H=40,x=i=>(i/(NS-1)*W).toFixed(1),y=v=>(H/2-(v/mx)*(H/2-3)).toFixed(1);
+    const p=(arr,c)=>{let d='';for(let i=0;i<n;i++)d+=(i?'L':'M')+x(i)+' '+y(arr[i])+' ';return '<path d="'+d+'" fill="none" stroke="'+c+'" stroke-width="1.5"/>';};
+    return '<svg class="msp" viewBox="0 0 '+W+' '+H+'" preserveAspectRatio="none"><line x1="0" y1="'+H/2+'" x2="'+W+'" y2="'+H/2+'" stroke="#54524c" stroke-width="1"/>'+p(scope.motif,COL.motif)+p(scope.plasmid,COL.plasmid)+'</svg>';
+  }
+  function draw(){
+    if(!root)return; const now=Date.now();
+    const L=live(now).map(([id,t])=>({id,t,a:act(t,now)})).sort((x,y)=>y.a-x.a);
+    if(L.length>1){ const A=L[0].t,B=L[1].t; scope.motif.push(rate(B.eT.motif,now)-rate(A.eT.motif,now)); scope.plasmid.push(rate(B.eT.plasmid,now)-rate(A.eT.plasmid,now)); }
+    else { scope.motif.push(0); scope.plasmid.push(0); }
+    if(scope.motif.length>NS){scope.motif.shift();scope.plasmid.shift();}
+    if(collapsed){ root.classList.add('col'); root.innerHTML='<div class="mpill">&#8635; metab &middot; '+L.length+'</div>'; return; }
+    root.classList.remove('col');
+    let di=0,dk=0,mn=0,pn=0;
+    if(L.length>1){ const A=L[0].t,B=L[1].t;
+      CUR.forEach(c=>{const ea=rate(A.eT[c],now),eb=rate(B.eT[c],now),tt=ea+eb; if(tt>0.02){di+=Math.abs(eb-ea)/tt;dk++;}});
+      mn=rate(B.eT.motif,now)-rate(A.eT.motif,now); pn=rate(B.eT.plasmid,now)-rate(A.eT.plasmid,now); }
+    const diff=dk?di/dk:0, loop=Math.abs(mn)>0.05&&Math.abs(pn)>0.05&&Math.sign(mn)!==Math.sign(pn);
+    let h='<div class="mhd"><b>METABOLISM</b><span class="mm">'+L.length+' univ'+(L.length===1?'':'s')+'</span><span class="mxb">&times;</span></div>';
+    h+='<div class="mvd">'+(L.length<2?'waiting for a peer…':((loop?'⟳ two-stroke loop':(Math.abs(mn)+Math.abs(pn)>0.05?'→ flowing':'· quiet'))+' &nbsp; '+(diff*100|0)+'% diff &nbsp; '+buds+' buds'))+'</div>';
+    for(const {id,t} of L.slice(0,4)){ const r=role(t,now);
+      h+='<div class="mrw"><span class="mid">'+(id===TAB_ID?'you':(id+'').slice(0,6))+'</span><span class="mrl '+r+'">'+r+'</span><span class="mcs">'+
+        '<i style="background:'+COL.motif+'"></i>'+rate(t.eT.motif,now).toFixed(1)+'/'+rate(t.aT.motif,now).toFixed(1)+
+        ' <i style="background:'+COL.plasmid+'"></i>'+rate(t.eT.plasmid,now).toFixed(1)+'/'+rate(t.aT.plasmid,now).toFixed(1)+'</span></div>'; }
+    h+=spark();
+    h+='<div class="mft">out/in per sec &middot; <i style="background:'+COL.motif+'"></i>motif <i style="background:'+COL.plasmid+'"></i>plasmid&#8202;(bud)</div>';
+    root.innerHTML=h;
+  }
+  const CSS='#metabPanel{position:fixed;right:10px;bottom:10px;z-index:99999;width:270px;max-width:46vw;'+
+    'font:11px/1.4 ui-monospace,Menlo,monospace;color:#f0efe9;background:rgba(20,20,19,.82);'+
+    'border:1px solid #3a3934;border-radius:9px;padding:9px 10px;backdrop-filter:blur(3px);-webkit-backdrop-filter:blur(3px);user-select:none}'+
+    '#metabPanel.col{width:auto;padding:6px 9px}'+
+    '#metabPanel .mhd{display:flex;align-items:center;gap:7px;margin-bottom:5px}'+
+    '#metabPanel .mhd b{font-size:10px;letter-spacing:.09em}'+
+    '#metabPanel .mm{color:#8f8d83;font-size:10px}#metabPanel .mxb{margin-left:auto;cursor:pointer;color:#8f8d83;padding:0 4px;font-size:15px}'+
+    '#metabPanel .mvd{color:#c7c5ba;margin-bottom:6px;font-size:10.5px}'+
+    '#metabPanel .mrw{display:flex;align-items:center;gap:6px;margin:2px 0}'+
+    '#metabPanel .mid{width:44px;color:#f0efe9;overflow:hidden;text-overflow:ellipsis}#metabPanel .mrl{font-size:9px;text-transform:uppercase;letter-spacing:.05em;width:38px;color:#8f8d83}'+
+    '#metabPanel .mrl.pump{color:'+COL.motif+'}#metabPanel .mrl.bloom{color:'+COL.plasmid+'}'+
+    '#metabPanel .mcs{margin-left:auto;color:#c7c5ba;font-variant-numeric:tabular-nums;font-size:10px}'+
+    '#metabPanel .mcs i,#metabPanel .mft i{display:inline-block;width:7px;height:7px;border-radius:2px;vertical-align:middle;margin-right:1px}'+
+    '#metabPanel .msp{width:100%;height:40px;display:block;margin:5px 0 2px}'+
+    '#metabPanel .mft{color:#8f8d83;font-size:9px;margin-top:2px}'+
+    '#metabPanel .mpill{cursor:pointer;color:#c7c5ba;font-size:10px;letter-spacing:.05em}';
+  function enable(){
+    if(on)return; on=true;
+    if(!document.getElementById('metabStyle')){ const st=document.createElement('style'); st.id='metabStyle'; st.textContent=CSS; document.head.appendChild(st); }
+    root=document.createElement('div'); root.id='metabPanel'; document.body.appendChild(root);
+    root.addEventListener('click',e=>{ if(e.target.classList.contains('mxb')||e.target.classList.contains('mpill')){collapsed=!collapsed;draw();} });
+    try{ ch=new BroadcastChannel(CH); ch.onmessage=e=>onMsg(e.data); }catch(_){}
+    timer=setInterval(draw,450); draw();
+  }
+  function disable(){ if(!on)return; on=false; if(ch){try{ch.close()}catch(_){}}ch=null; clearInterval(timer); if(root){root.remove();root=null;} tabs.clear(); buds=0; recentPlas.length=0; scope.motif.length=0; scope.plasmid.length=0; }
+  function sync(){ if(/metab/i.test(location.hash))enable(); else disable(); }
+  window.addEventListener('hashchange',sync); sync();
+})();
 </script>
 </body>
 </html>

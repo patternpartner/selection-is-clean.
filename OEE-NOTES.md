@@ -2692,3 +2692,26 @@ artifact is a different origin and cannot join the channel).
 Next, matched to the open ontology: the trace makes "is the loop closing, and which way is it pumping" a measured
 time series instead of an inference — the honest instrument for the two-body organism the single-universe swings
 kept mis-grading as a dead run plus a lucky one.
+
+### INSTRUMENT (in-sim) — #metab panel: the metabolism view hosted inside a universe tab (phone-viable)
+
+The standalone metabolism.html can't run as a third tab on a 2-slot phone — mobile suspends the backgrounded tab,
+so it would collect nothing (the sim itself survives hiding, line ~20685: it switches rAF→setTimeout(loop,67) when
+hidden; a passive monitor tab does not). Fix, the user's instinct too: put the view INSIDE index.html so it runs
+wherever a universe tab runs — no extra tab to suspend. Split-screen the two universes, enable the panel in one.
+
+Injected after boot(): a self-contained IIFE, INERT unless location.hash contains 'metab' (zero footprint on the
+default art — a regex test on load/hashchange and nothing else). When on it opens its OWN BroadcastChannel object;
+per spec a second channel in the same page receives every message except ones it sent, so it hears BOTH peers AND
+this tab's own bc emissions/'applied' acks — reconstructing the full flow matrix from the wire with ZERO coupling
+to the sim (it never reads sim state, never posts). Confirmed universes broadcast 'applied' on absorb (idx 227/254/
+279/288), so absorption is wire-visible per tab. Driven by setInterval(450ms) — survives backgrounding like the sim
+loop, unlike the standalone's rAF. Compact corner overlay: per-tab pump/bloom roles ('you' = this tab), motif &
+plasmid out/in rates, differentiation %, bud count, and a net-flow sparkline (the two-stroke). Toggle via #metab or
+tap ×/pill.
+
+Verified headless (Playwright, real index.html#metab booted + simulated peer traffic): panel present, 0 page
+errors, correctly read 3 univs, PUMP/BLOOM split, 100% differentiation, 69 bud transfers, and this tab's own real
+absorptions as 'you'. Both instruments now exist: metabolism.html (standalone, best tiled on a desktop) and the
+#metab in-sim panel (phone-viable, always runs with its host universe). The apparatus finally matches the ontology
+— the coupled organism is observable live, on the device the art actually runs on.
