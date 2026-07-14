@@ -2715,3 +2715,20 @@ errors, correctly read 3 univs, PUMP/BLOOM split, 100% differentiation, 69 bud t
 absorptions as 'you'. Both instruments now exist: metabolism.html (standalone, best tiled on a desktop) and the
 #metab in-sim panel (phone-viable, always runs with its host universe). The apparatus finally matches the ontology
 — the coupled organism is observable live, on the device the art actually runs on.
+
+### INSTRUMENT — coupling data now lives IN the export (cpl), always-collected
+
+The user's question: the panel reconstructs the metabolism live but threw it away — why isn't it in the export we
+already make? Right. The cumulative na/nap WERE in the export (aggregate absorbed/acked per channel — that is what
+first revealed the source-sink balance), but the PER-PEER breakdown, the TIME-RESOLVED two-stroke, and the BUD-
+transfer count were not, and were only ever live on screen.
+
+Fixed by splitting the observer into always-on COLLECTION and hash-gated VISUAL. Collection runs regardless of the
+panel (even under #nometab): it accumulates per-peer emit/absorb totals, cumulative bud transfers, and a recent
+net-flow series, restores them from genome.coupling on load (so they accumulate across the frequent reloads), and
+flushes genome.coupling every ~3s. New serializer field 'cpl' (beside ap) + loader + it rides out in every export.
+Verified headless through the REAL export path (encodeGenome round-trip): cpl present with self id, cumulative buds,
+per-peer {emit,absorb} (the source→sink structure, e.g. peerB emit motif:40 / peerC absorb plasmid:40), and the
+two-stroke series — panel shown or hidden, 0 page errors. So a SINGLE export now tells the coupling story, and two
+line up fully, without a separate trace. The apparatus and the ontology finally match at the level of the data the
+user actually sends.
