@@ -2661,3 +2661,34 @@ rising fitness)? And does the self, now adopting the whole realized winner (prog
 via #44) rather than a caricature, behave differently than 44 swings of caricature-steered physics ever did. Still
 NOT done: fully retiring the shadow caricature for behaviour too (derive behavioural commitment from the winner's
 program-diff, not imagined 7-knob deltas) — the next move, named not deferred.
+
+### INSTRUMENT — metabolism.html: seeing the coupled organism the harness is blind to
+
+The user, watching two universes run in parallel, saw what every per-universe read this session missed: they were
+ONE system. Decoding the two exports as a pair confirmed it in the flow data — a near-closed, DIFFERENTIATED,
+anti-parallel exchange: MOTIFS flow B→A (B out 439 ≈ A in 424) while PLASMIDS flow A→B (A out 60 ≈ B in 62), every
+number cross-matching its partner. Two currencies, opposite directions = a metabolic loop. Read as one organism: B
+is the novelty PUMP (authorship-churn exports motifs; its own ecology burns to monoculture as the cost), A is the
+INTEGRATOR/BLOOM (imports novelty, flowers to 30 kinds/fit 0.68, buds packaged plasmids back). Plasmids ARE the
+budding currency — A buds, B absorbs and saturates: "the budding transferred," exactly as the user saw. This is the
+trophic division-of-labour the project chased for 40+ swings and never got inside one closed universe — it
+self-organised BETWEEN universes, at the open boundary the notebook named four times and the closed instruments
+(harness, ablation, per-universe fitness) are structurally blind to.
+
+So the instrument was wrong for the ontology. metabolism.html (repo root, self-contained, offline, NO sim change)
+is a READ-ONLY listener on the BroadcastChannel('selection-pe-network') — the same wire the universes couple over.
+It reconstructs the flow matrix live: emissions tagged by sender tab, absorptions read directly off the 'applied'
+gossip packets (a peer announcing "a packet of this kind changed MY state"). It renders: per-universe emit/absorb
+per currency with auto PUMP/BLOOM role badges; a flow diagram (currency-coloured directed arcs); a net-flow
+oscilloscope (each currency's net direction between the two busiest tabs over time — anti-parallel lines = the
+two-stroke, visible at a glance); a differentiation index; a budding-transfer detector (a plasmid emit followed
+within 1.5s by a peer's applied-plasmid); and a wall-clock event trace with JSON export. Verified headless
+(Playwright, simulated two-universe traffic): 0 console errors, and it correctly reads the pump/bloom split, the
+anti-parallel motif/plasmid flow, and the bud transfers. The export button is the point — the user sends me a
+trace and I finally SEE instrumentally what they see visually. Colour == currency throughout (validated categorical
+palette, dataviz skill); it must be hosted same-origin as index.html for BroadcastChannel to reach it (a claude.ai
+artifact is a different origin and cannot join the channel).
+
+Next, matched to the open ontology: the trace makes "is the loop closing, and which way is it pumping" a measured
+time series instead of an inference — the honest instrument for the two-body organism the single-universe swings
+kept mis-grading as a dead run plus a lucky one.
