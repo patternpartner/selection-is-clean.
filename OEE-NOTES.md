@@ -2745,3 +2745,28 @@ Restored peers get a grace window. Verified headless: an active peer reads live:
 live:false (retained until the 60s prune), liveCount matches the panel's count, 0 errors. The panel's live count was
 already correct (it filters by a 6s TTL) — this makes the EXPORT honest too, so a single cpl now says how many
 universes are actually coupled, not how many tab-ids have ever been heard.
+
+### COHORT (8 live exports, gen2–3, one channel) — trophic division of labour, read straight from cpl
+
+First multi-body read using the in-export coupling data. Eight universes on one BroadcastChannel; decoded all eight
+and cross-referenced their cpl. Result: the cohort has DIFFERENTIATED by age/size/diversity into producers and
+consumers.
+  - OLD/large/low-diversity (gen2, T~100k): 0q6tklcc (kinds 1, pop 647) and ug2ruqtp (kinds 5, pop 625) are the
+    PRODUCTION ENGINE. Consensus per-peer emit (summed over all 8 observers' cpl): 0q6tklcc emits 154 motif + 142
+    plasmid — the super-producer of BOTH novelty and buds, far above all; ug2ruqtp emits 0 motif / 58 plasmid and
+    is a motif sink (plasmid-producer / novelty-consumer).
+  - YOUNG (gen3, T~60k, six of them): kinds 8–15 on small pops (194–351) — the CONSUMERS/bloomers, absorbing the
+    buds+novelty and flowering into diversity.
+This is the producer↔consumer / trophic division of labour the project chased for 40+ swings and never got inside a
+single closed universe — self-organised across an 8-body cohort, mediated by plasmid(bud)+motif(novelty) flow, and
+LEGIBLE FROM THE EXPORTS because cpl carries the per-peer matrix. The apparatus finally matches the ontology at
+cohort scale.
+
+INSTRUMENT CORRECTION recorded: the aggregate nap is NOT directional in a many-body net — it counts every 'applied'
+gossip packet from ANY peer, so it saturates to a ~420 global channel-activity counter, near-identical for all 8
+("everyone is a +330 source" was an artifact). Direction comes only from the per-peer cpl emit/absorb — which is
+exactly why that was built. Caveats kept: cpl per-peer counts are partial windows (each observer since its own
+start), 0q6tklcc's dominance is partly big-pop-broadcasts-more, n=1 cohort, reload-confounded, and no no-network
+control proves old→young flow CAUSES the young diversity (only that the structure is consistent). dc pegged (1, or
+~0.98 for the gen2 pair) everywhere; FORAGE rl atoms present but mostly uses=0 in this batch — the story here is the
+coupling, not the internal swings.
