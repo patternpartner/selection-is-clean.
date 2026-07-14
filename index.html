@@ -20755,8 +20755,10 @@ function boot(){
 boot();
 
 // ═══ IN-SIM METABOLISM PANEL — a read-only view of the coupled-universe organism, hosted INSIDE a universe tab so
-// it runs wherever this tab runs (no separate tab to be suspended on mobile). INERT unless the URL hash contains
-// 'metab'. It opens its OWN BroadcastChannel object — a second channel in this page receives every message except
+// it runs wherever this tab runs (no separate tab to be suspended on mobile). ON BY DEFAULT so EVERY universe shows
+// its own panel (both sides of the coin); a tap on × collapses it to a pill (remembered across reloads), and the URL
+// hash '#nometab' (or #cleanart) hides it entirely for a pure-art view.
+// It opens its OWN BroadcastChannel object — a second channel in this page receives every message except
 // ones IT sent, i.e. it hears BOTH peers AND this tab's own bc emissions/'applied' acks — so it reconstructs the
 // full inter-universe flow matrix from the wire with zero coupling to the sim. Driven by setInterval (survives
 // backgrounding like the sim's own setTimeout loop). Toggle: add/remove #metab in the URL, or tap × / the pill.
@@ -20830,14 +20832,15 @@ boot();
     '#metabPanel .mpill{cursor:pointer;color:#c7c5ba;font-size:10px;letter-spacing:.05em}';
   function enable(){
     if(on)return; on=true;
+    try{collapsed=localStorage.getItem('metabCollapsed')==='1';}catch(_){}   // remember collapse choice across the frequent reloads
     if(!document.getElementById('metabStyle')){ const st=document.createElement('style'); st.id='metabStyle'; st.textContent=CSS; document.head.appendChild(st); }
     root=document.createElement('div'); root.id='metabPanel'; document.body.appendChild(root);
-    root.addEventListener('click',e=>{ if(e.target.classList.contains('mxb')||e.target.classList.contains('mpill')){collapsed=!collapsed;draw();} });
+    root.addEventListener('click',e=>{ if(e.target.classList.contains('mxb')||e.target.classList.contains('mpill')){collapsed=!collapsed;try{localStorage.setItem('metabCollapsed',collapsed?'1':'0');}catch(_){}draw();} });
     try{ ch=new BroadcastChannel(CH); ch.onmessage=e=>onMsg(e.data); }catch(_){}
     timer=setInterval(draw,450); draw();
   }
   function disable(){ if(!on)return; on=false; if(ch){try{ch.close()}catch(_){}}ch=null; clearInterval(timer); if(root){root.remove();root=null;} tabs.clear(); buds=0; recentPlas.length=0; scope.motif.length=0; scope.plasmid.length=0; }
-  function sync(){ if(/metab/i.test(location.hash))enable(); else disable(); }
+  function sync(){ if(/nometab|no-metab|hidemetab|cleanart/i.test(location.hash))disable(); else enable(); }
   window.addEventListener('hashchange',sync); sync();
 })();
 </script>
