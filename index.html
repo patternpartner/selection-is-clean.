@@ -20773,31 +20773,36 @@ boot();
   if(typeof BroadcastChannel==='undefined')return;
   const CH='selection-pe-network', CUR=['motif','plasmid','migrant','inscription'];
   const COL={motif:'#3987e5',plasmid:'#c98500',migrant:'#199e70',inscription:'#e66767'};
-  const RATE_WIN=8000, PEER_TTL=6000, BUD_WIN=1500, NS=120;
+  const RATE_WIN=8000, PEER_TTL=6000, BUD_WIN=1500, NS=120, STALE_MS=60000; // STALE: drop a tab id not heard from in 60s (closed, or reloaded into a fresh id) so cpl doesn't count ghosts
   let ch=null, root=null, collapsed=false, visual=false;
   const tabs=new Map(); const recentPlas=[]; const scope={motif:[],plasmid:[]};
   // cumulative, persisted-in-export state (accumulates across reloads via genome.coupling):
   const cum=new Map(); let budsCum=0;
   function blk0(){return {motif:0,plasmid:0,migrant:0,inscription:0};}
-  const cumT=id=>{ let t=cum.get(id); if(!t){t={emit:blk0(),absorb:blk0()}; cum.set(id,t);} return t; };
+  const cumT=id=>{ let t=cum.get(id); if(!t){t={emit:blk0(),absorb:blk0(),last:0}; cum.set(id,t);} return t; };
   (function restore(){ try{ const c=(typeof genome!=='undefined'&&genome&&genome.coupling)||null;
-    if(c){ budsCum=c.buds||0; if(c.peers) for(const id in c.peers){ const p=c.peers[id]||{}; cum.set(id,{emit:Object.assign(blk0(),p.emit),absorb:Object.assign(blk0(),p.absorb)}); } } }catch(_){} })();
+    if(c){ budsCum=c.buds||0; if(c.peers) for(const id in c.peers){ const p=c.peers[id]||{}; cum.set(id,{emit:Object.assign(blk0(),p.emit),absorb:Object.assign(blk0(),p.absorb),last:Date.now()}); } } }catch(_){} })(); // restore with a grace window — restored peers prune after STALE_MS unless re-seen
   function blk(){return {motif:[],plasmid:[],migrant:[],inscription:[]};}
   const getT=id=>{ let t=tabs.get(id); if(!t){t={last:Date.now(),eT:blk(),aT:blk()}; tabs.set(id,t);} return t; };
   function rate(a,now){ let i=0; while(i<a.length&&a[i]<now-RATE_WIN)i++; if(i)a.splice(0,i); return a.length/(RATE_WIN/1000); }
   function onMsg(m){
     if(!m||typeof m!=='object'||!m.type)return; const now=Date.now(), id=m.tab||'?';
-    if(m.type==='hello'||m.type==='hello-reply'){getT(id).last=now;return;}
-    if(CUR.indexOf(m.type)>=0){ const t=getT(id); t.last=now; t.eT[m.type].push(now); cumT(id).emit[m.type]++;
+    if(m.type==='hello'||m.type==='hello-reply'){getT(id).last=now;cumT(id).last=now;return;}
+    if(CUR.indexOf(m.type)>=0){ const t=getT(id),ct=cumT(id); t.last=now; ct.last=now; t.eT[m.type].push(now); ct.emit[m.type]++;
       if(m.type==='plasmid'){recentPlas.push({id,t:now}); while(recentPlas.length&&now-recentPlas[0].t>BUD_WIN)recentPlas.shift();} }
-    else if(m.type==='applied'&&m.data&&CUR.indexOf(m.data.kind)>=0){ const t=getT(id); t.last=now; t.aT[m.data.kind].push(now); cumT(id).absorb[m.data.kind]++;
+    else if(m.type==='applied'&&m.data&&CUR.indexOf(m.data.kind)>=0){ const t=getT(id),ct=cumT(id); t.last=now; ct.last=now; t.aT[m.data.kind].push(now); ct.absorb[m.data.kind]++;
       if(m.data.kind==='plasmid'&&recentPlas.some(e=>e.id!==id&&now-e.t<=BUD_WIN))budsCum++; }
   }
   function flush(){ // write the coupling snapshot into the genome → serialized as 'cpl' in every export
     try{ if(typeof genome==='undefined'||!genome)return;
-      const peers={}; for(const [id,t] of cum){ peers[id]={emit:t.emit,absorb:t.absorb}; }
+      const nowF=Date.now(); const peers={}; let liveCount=0;
+      for(const [id,t] of cum){ const ago=nowF-(t.last||0);
+        if(ago>STALE_MS){ cum.delete(id); continue; }                 // drop ghosts of closed/reloaded tabs
+        const isLive=ago<PEER_TTL; if(isLive)liveCount++;
+        peers[id]={emit:t.emit,absorb:t.absorb,agoMs:ago,live:isLive}; }
+      for(const [id,t] of tabs){ if(nowF-(t.last||0)>STALE_MS)tabs.delete(id); } // same prune for the windowed map
       const series=[]; for(let i=0;i<scope.motif.length;i++)series.push([+scope.motif[i].toFixed(2),+scope.plasmid[i].toFixed(2)]);
-      genome.coupling={ self:(typeof TAB_ID!=='undefined'?TAB_ID:'?'), buds:budsCum, peers, netSeries:series, updated:(typeof tick!=='undefined'?(tick|0):0) };
+      genome.coupling={ self:(typeof TAB_ID!=='undefined'?TAB_ID:'?'), buds:budsCum, liveCount, peers, netSeries:series, updated:(typeof tick!=='undefined'?(tick|0):0) };
     }catch(_){}
   }
   const live=now=>[...tabs.entries()].filter(([,t])=>now-t.last<PEER_TTL);

@@ -2732,3 +2732,16 @@ per-peer {emit,absorb} (the source→sink structure, e.g. peerB emit motif:40 / 
 two-stroke series — panel shown or hidden, 0 page errors. So a SINGLE export now tells the coupling story, and two
 line up fully, without a separate trace. The apparatus and the ontology finally match at the level of the data the
 user actually sends.
+
+### INSTRUMENT fix — cpl liveness: don't count ghosts of closed tabs
+
+TAB_ID is regenerated per page load, so closing tabs and opening new ones yields NEW ids; cpl.peers was
+accumulating the closed tabs' ids and I misread a t26500 export as a "4-body organism" when it was 2 live screens +
+2 ghosts of just-closed tabs (the big-emit ids pkwdc0k3/90ss3lpc were the previous, now-closed pair; the new pair
+3dkyssv9/5a8012f3 had tiny counts because they'd just opened). Fix: each cum peer now carries a last-seen stamp
+(updated on every message incl. hello); flush marks each peer live:(seen<6s) with agoMs, reports liveCount, and
+prunes any id not heard from in 60s (closed or reloaded-into-a-new-id) from both the cum and windowed maps.
+Restored peers get a grace window. Verified headless: an active peer reads live:true, a peer silent 8s reads
+live:false (retained until the 60s prune), liveCount matches the panel's count, 0 errors. The panel's live count was
+already correct (it filters by a 6s TTL) — this makes the EXPORT honest too, so a single cpl now says how many
+universes are actually coupled, not how many tab-ids have ever been heard.
