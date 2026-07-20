@@ -2843,3 +2843,49 @@ fresh instances, then compare coupled-fresh vs isolated-fresh diversity trajecto
 analogue of what the live cohort showed; this run only establishes that the null hypothesis (symmetric coupling ⇒
 free diversity gain) does not hold, which is the honest prerequisite before spending a longer run on the
 asymmetric setup.
+
+### SWING #45b — ASYMMETRIC COUPLING TEST: the actual analogue, run — still no diversity gain
+
+Built harness-coupling-asym.js to run the follow-up #45 named: give the fresh cohort an actual mature producer to
+couple to (age/size/diversity asymmetry, matching the live COHORT's structure) instead of symmetric same-age peers.
+One producer (seed 7, the project's canonical authoring seed) matured 30000 ticks ALONE (its channel open from
+boot, nobody listening yet — same trick as harness-coupling.js's isolated arm, just used for real this time), then
+3 matched fresh pairs (seeds 11/13/17) joined for 15000 ticks — coupled shares the producer's channel (so the 3
+coupled fresh instances are ALSO on the wire with each other, not just the producer — a real small multi-body
+cohort with one elder, which is actually more faithful to the live topology than a strict pairwise design), isolated
+gets a private channel per seed, same strength-matched control as #45.
+
+Producer profile at maturity vs a fresh instance's own tick-0 baseline: N 630 vs 329 (real size asymmetry), 
+occupiedKinds 8 vs 25, diversityHbits 2.97 vs 3.56 — genuinely lower-diversity and larger, qualitatively matching
+the live producer's profile (large, low-diversity), though nowhere near the live extreme (kinds=1 at T~100k) —
+30000 ticks produced a moderately mature producer, not a monoculture. Sanity: freshCoupled_sawExternalPeer 3/3,
+freshIsolated_sawExternalPeer 0/3, freshIsolated_absorbedAnything 0/3 — isolation control clean again. One reading
+needs a caveat, not a redo: the producer's OWN final sample showed externalPeers=0 despite absorb=59 (real,
+nonzero) — worked out why rather than treating it as a red flag: the producer is far heavier per tick (N=630+,
+lineageRegistry=8766) than the ~400-490-particle fresh instances, so it very likely finished its own final ticks
+well after the fresh-coupled workers had already exited; the metab collector prunes any peer id unheard from in 60
+real seconds, so by the producer's LAST sample the fresh peers' entries had gone stale and were pruned — a
+snapshot-timing artifact, not evidence the coupling was ever silent. The fresh side's own readings (3/3, live
+throughout their own shorter run) are the trustworthy half of this sanity check.
+
+**Verdict** (delta = fresh-coupled − fresh-isolated, matched pairs, late-window means, seeds 11/13/17):
+meanAmp NO_EFFECT (mean −0.0037, sd 0.0096, 1/3 positive). diversityHbits NO_EFFECT (mean +0.14, sd 0.25, 2/3
+positive — trending the right direction this time, unlike #45, but still doesn't beat its own noise).
+diversityEvenness NO_EFFECT (mean +0.094, sd 0.124, 2/3 positive — same pattern). occupiedKinds COUPLED_LOWER
+(mean −1.24, sd 1.12, 3/3 seeds ≤0: −2.72, 0, −1) — the one metric that stayed consistently negative in BOTH the
+symmetric (#45) and this asymmetric run.
+
+So: giving the fresh cohort a real mature producer did NOT flip the result into a robust diversity gain.
+occupiedKinds is still directionally lower under coupling in both experiments; Hbits/evenness nudged positive here
+but not enough to call it a real effect at n=3. Read plainly, this does not refute the live COHORT reading — it
+narrows where the disagreement must live. Two honest candidates, both about SCALE not mechanism: (1) this
+producer's maturity (kinds=8) is far short of the live producer's monoculture extreme (kinds=1) — an elder that
+hasn't differentiated much may not be much of a novelty pump yet; (2) the coupling window here (15000 ticks) is a
+sliver of the live young universes' own maturation time (t~60k before they were read as "bloomers") — 15000 ticks
+may simply not be enough time for absorbed novelty to convert into occupied niches even if the mechanism is real.
+Both point the same direction: this harness's compute budget (this one run took ~41 minutes wall-clock) is
+underscaled relative to the live timescales the COHORT finding actually lived at, not that the hypothesis is wrong.
+Named, not run without checking first given the cost already spent: either a much longer maturation (push the
+producer toward genuine near-monoculture) or a much longer coupling phase (closer to 60k+ ticks) would be the
+faithful next test, but both push a single harness pass well past an hour and deserve a deliberate go-ahead rather
+than another automatic launch.
