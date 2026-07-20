@@ -2770,3 +2770,76 @@ start), 0q6tklcc's dominance is partly big-pop-broadcasts-more, n=1 cohort, relo
 control proves old→young flow CAUSES the young diversity (only that the structure is consistent). dc pegged (1, or
 ~0.98 for the gen2 pair) everywhere; FORAGE rl atoms present but mostly uses=0 in this batch — the story here is the
 coupling, not the internal swings.
+
+### INSTRUMENT fix — the whole headless harness apparatus was dead at boot
+
+Picked this up next and tried to run harness.js before touching anything: it threw
+`Cannot read properties of undefined (reading 'appendChild')` at boot, before tick 1. Cause: the #metab in-sim
+panel's metabolismObserver IIFE runs unconditionally whenever BroadcastChannel exists, and its showPanel() opens
+with `document.head.appendChild(st)` / `document.body.appendChild(root)`, later using `root.classList.add/remove`
+and `root.remove()`. The four harness DOM stubs (harness.js, harness-oee.js, harness-ab.js, harness-stream.js)
+never defined document.head/body, and their shared makeEl() stub had no appendChild/classList/remove. So every
+headless run since that panel landed — harness-ablate.js and harness-ablate-bank.js too, since they just execFile
+harness-oee.js — has been dying at boot, before executing a single tick. Whether anyone actually tried a harness
+run in that window is unknown; what's certain is the apparatus itself, not the sim, was broken. Fixed by adding
+appendChild/removeChild/remove/classList to makeEl() and head/body to the document stub in all four files.
+Separately, harness-ab.js's AUTHOR_MULT text-patch target (`if(Math.random()<rate*0.15){`) no longer matched
+current index.html (the line is now a brace-less single statement gated by an added `p.length<cap&&`), so
+_patch()'s indexOf check failed and silently called process.exit(2) — silent because harness-ab.js's own
+console.error override swallows anything that isn't a Loop/Boot/Watchdog message. Retargeted the patch to the
+current substring. All six harness entry points verified booting and running clean again (0 loopErrors, 0
+driverErr) before any of the work below started.
+
+### SWING #45 — CAUSAL NETWORK-COUPLING TEST: the no-network control the live cohort never had
+
+The COHORT entry above named its own biggest hole: nothing closed proved coupling CAUSES the old→young diversity
+flow rather than merely correlating with population age/size (n=1, reload-confounded, no no-network control).
+Every closed harness up to this point stubs BroadcastChannel to a no-op — none of them could touch this question;
+every prior ablation/OEE/A-B run in this file was run fully uncoupled. Built harness-coupling.js +
+harness-coupling-worker.js to close that specific hole: matched-seed universes run two ways —
+COUPLED (instances share one real channel name) vs ISOLATED (identical code path, identical per-tick network cost,
+but each instance's BroadcastChannel constructor is remapped to a private channel name, so no peer message ever
+arrives). Same seed in both arms of a pair, so any divergence is attributable to coupling itself.
+
+Architecture note, honestly logged because it cost a false start: first attempt used `vm.createContext` for
+per-instance isolation (same process, N sandboxed globals). Measured ~4x slower per tick than harness.js's plain
+CommonJS/global approach — contextified sandbox objects have a materially slower global-property-access path than
+a real V8 realm. Switched to `worker_threads`: each instance gets a full, fast, independent V8 isolate, and Node's
+BroadcastChannel already multicasts by name across worker threads in the same process natively — verified directly
+with a 2-worker smoke test before building on it, so no hand-rolled message router was needed at all.
+
+Sanity check (this is the part that makes the result trustworthy, not just the headline numbers): the metabolism
+collector's own second channel ('ch') hears its own main channel's ('bc') emissions by design — real
+BroadcastChannel semantics, a second channel object hears everything except what IT sent — so even a fully
+isolated instance shows one 'self' entry in genome.coupling.peers. __sample() now reports externalPeers (excluding
+genome.coupling.self) so the isolated arm's silence is measured correctly instead of showing a false peers>0.
+Result at full scale (4 seeds, 15000 ticks): coupled 4/4 heard a real external peer, isolated 0/4 did, AND isolated
+0/4 ever absorbed anything (absorb only increments via handleNetworkMessage, which independently filters out
+msg.tab===TAB_ID — this is proof the isolation is real at the sim-state level, not a labeling artifact).
+
+**Verdict.** Delta = coupled − isolated, matched pairs, late-window (last third) means, seeds 11/13/17/19:
+meanAmp COUPLED_LOWER (mean −0.004, sd 0.0034, 3/4 seeds negative) — small, ~0.3% of baseline ~1.18.
+occupiedKinds COUPLED_LOWER (mean −0.68, sd 0.40, 4/4 seeds ≤0) — the most consistent signal in this run.
+diversityHbits and diversityEvenness both NO_EFFECT (one seed, 19, swung strongly positive against the other
+three, so neither beats its own noise).
+
+So: in THIS setup, coupling did not raise diversity — if anything it mildly lowered occupied-niche count and mean
+fitness, consistent in direction across most seeds but small in magnitude and only n=4. Read plainly, not
+inflated: this is NOT a replication of the live COHORT finding, and isn't trying to be — that cohort's
+differentiation came from AGE/MATURITY ASYMMETRY (an old, large, low-diversity producer feeding novelty to young,
+small, high-diversity bloomers). This harness coupled SYMMETRIC same-age peers, all booted together from the same
+tick zero. That symmetric coupling trends toward mild homogenization rather than diversification is actually the
+sharper, complementary result: it suggests the live cohort's diversity gain specifically required the
+producer/consumer asymmetry, not coupling per se — mutual gene-flow between equals doesn't manufacture novelty on
+its own, matching the classical population-genetics intuition that migration between symmetric demes homogenizes
+rather than diversifies. Caveats stated plainly: 15000 ticks is short next to the live cohort's t~60k–100k
+maturity windows and this never ran long enough to let any instance actually differentiate into a producer role;
+n=4 seeds is thin; effect sizes are small enough that a longer or larger run could still overturn NO_EFFECT into a
+real signal either direction.
+
+The next swing this points at, named not deferred: an ASYMMETRIC version of this same harness — pre-run one
+instance to a mature/low-diversity state (matching the live producer's profile) before coupling it to several
+fresh instances, then compare coupled-fresh vs isolated-fresh diversity trajectories. That is the actual causal
+analogue of what the live cohort showed; this run only establishes that the null hypothesis (symmetric coupling ⇒
+free diversity gain) does not hold, which is the honest prerequisite before spending a longer run on the
+asymmetric setup.
