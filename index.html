@@ -5466,7 +5466,9 @@ function cloneGenome(src){
   g.prevObjValues=Array.isArray(src.prevObjValues)?src.prevObjValues.slice():[0,0,0,0];
   g.boundOpcodes=Array.isArray(src.boundOpcodes)?src.boundOpcodes.slice():[];
   g.vmProgram=cloneProg(src.vmProgram);
-  g.userAtoms=Array.isArray(src.userAtoms)?src.userAtoms.map(a=>({expression:a.expression,compiled:null,failed:!!a.failed,uses:0,state:0})):[];
+  // alienHits/alienAttempts reset on clone, same as uses — a new lineage re-earns its own predictive
+  // track record rather than inheriting the parent's (see SWING #46: ALIEN GRIP).
+  g.userAtoms=Array.isArray(src.userAtoms)?src.userAtoms.map(a=>({expression:a.expression,compiled:null,failed:!!a.failed,uses:0,state:0,alienHits:0,alienAttempts:0})):[];
   g.fitnessSensors=Array.isArray(src.fitnessSensors)?src.fitnessSensors.map(s=>({...s,program:cloneProg(s.program)})):src.fitnessSensors;
   g.rend=Array.isArray(src.rend)?src.rend.map(a=>({expression:a.expression,compiled:null,failed:!!a.failed})):src.rend;
   g.draw=Array.isArray(src.draw)?src.draw.map(o=>o.slice()):src.draw;
@@ -5673,7 +5675,9 @@ function encodeGenome(){
     expression:a.expression,
     failed:!!a.failed,
     uses:a.uses|0,
-    age:a.age|0
+    age:a.age|0,
+    alienHits:a.alienHits|0,
+    alienAttempts:a.alienAttempts|0
   }));
   const cleanSensors=(genome.fitnessSensors||[]).map(s=>({
     program:(s.program||[]).map(inst=>cleanInstruction(inst)),
@@ -6006,7 +6010,7 @@ function decodeGenome(data){
     if(typeof g.mtl==='number')genome.mutationTail=g.mtl;  // UNLOCKED #6 (absent in pre-unlock saves → sanitize defaults to 0)
     if(typeof g.uad==='number')genome.uaMaxDepth=g.uad|0;  // UNLOCKED #7b
     if(typeof g.tmr==='number')genome.typeMutRate=g.tmr;   // UNLOCKED #7a
-    if(g.ua)genome.userAtoms=g.ua.map(a=>({expression:a.expression,compiled:null,failed:!!a.failed,uses:a.uses|0,age:a.age|0}));
+    if(g.ua)genome.userAtoms=g.ua.map(a=>({expression:a.expression,compiled:null,failed:!!a.failed,uses:a.uses|0,age:a.age|0,alienHits:a.alienHits|0,alienAttempts:a.alienAttempts|0}));
     if(typeof g.td==='number') genome.tendDims=__cl(g.td|0,2,DIMS_MAX);
     if(Array.isArray(g.oe)){ // #35 evolvable engine dials (sanitizeGenome clamps + defaults any missing)
       if(typeof g.oe[0]==='number')genome.opnovStrength=g.oe[0];
@@ -6987,7 +6991,7 @@ function sanitizeGenome(){
   if(!Array.isArray(genome.prevObjValues)||genome.prevObjValues.length<4)genome.prevObjValues=[0,0,0,0];
   genome.prevObjValues=genome.prevObjValues.slice(0,4).map(v=>finiteOr(v,0));
   genome.prevSmoothedFitness=finiteOr(genome.prevSmoothedFitness,0);
-  genome.userAtoms=Array.isArray(genome.userAtoms)?genome.userAtoms.filter(a=>a&&typeof a.expression==='string').map(a=>({expression:a.expression.slice(0,160),compiled:null,failed:!!a.failed,uses:a.uses|0,age:a.age|0})):[];
+  genome.userAtoms=Array.isArray(genome.userAtoms)?genome.userAtoms.filter(a=>a&&typeof a.expression==='string').map(a=>({expression:a.expression.slice(0,160),compiled:null,failed:!!a.failed,uses:a.uses|0,age:a.age|0,alienHits:a.alienHits|0,alienAttempts:a.alienAttempts|0})):[];
   if(!Array.isArray(genome.rend)||genome.rend.length!==4) genome.rend=defaultRend();
   genome.draw=sanitizeDraw(genome.draw);
   genome.rend=genome.rend.map(a=>({expression:typeof a.expression==='string'?a.expression.slice(0,200):'0',compiled:null,failed:!!a.failed}));
@@ -11138,12 +11142,25 @@ function mutateGenome(){
   // opcode 22 never references an atom, its uses stays 0 and it's dead weight.
   if(!genome.userAtoms)genome.userAtoms=[];
   // Mutate existing atoms — replace expression entirely.
+  // SWING #46: ALIEN GRIP. Whole-bank ablation proved the atom bank EXECUTED but FITNESS-INERT on the
+  // self's own amp economy (OEE-NOTES, "the largest honest null the project has reached") — uses (the
+  // currency this loop otherwise ignores) doesn't move amp either way. runAlienPrediction() already
+  // scores atoms against a genuinely exogenous target (a coupled peer's future packet rate, a substrate
+  // this genome cannot causally influence back), but until now a hit only bumped the same dead `uses`
+  // counter — no consequence, no teeth. alienGrip(ua) is that atom's OWN hit-rate on the alien channel
+  // (0 until it's cleared a minimum-sample floor, see below); an atom that's actually proven itself as
+  // a predictor of something OTHER earns protection from this blind expression-overwrite, proportional
+  // to its accuracy. At grip=0 (untested, unbound, or bad) this is byte-for-byte the old unconditional
+  // rate*0.3. Gated __ALIEN_SELECT, default on, reversible.
+  const _alienSelect=(typeof globalThis==='undefined')||((globalThis.__ALIEN_SELECT??1)|0)!==0;
   for(const ua of genome.userAtoms){
-    if(Math.random()<rate*0.3){
+    const grip=_alienSelect?alienGrip(ua):0;
+    if(Math.random()<rate*0.3*(1-grip)){
       ua.expression=uaGenExpression();
       ua.compiled=null;
       ua.failed=false;
       ua.uses=0; // reset usage count on mutation
+      ua.alienHits=0; ua.alienAttempts=0; // new expression → prior predictive record no longer means anything
     }
   }
   // Birth new atom. FIX (dead atom pipeline): births were throttled to ~0 in stable runs (rate
@@ -11157,7 +11174,7 @@ function mutateGenome(){
   const _atomFix=(typeof globalThis==='undefined')||((globalThis.__ATOM_PIPELINE??1)|0)!==0;
   if(Math.random()<(_atomFix?Math.max(0.02,rate*0.15):rate*0.15)){
     const expression=uaGenExpression();
-    genome.userAtoms.push({expression,compiled:null,failed:false,uses:0});
+    genome.userAtoms.push({expression,compiled:null,failed:false,uses:0,alienHits:0,alienAttempts:0});
     if(_atomFix){
       const bos=genome.boundOpcodes||(genome.boundOpcodes=[]);
       if(bos.length<MAX_BOUND_OPCODES){
@@ -11179,9 +11196,13 @@ function mutateGenome(){
       if(genome.userAtoms[i].failed){removeIdx=i;break;}
     }
     if(removeIdx<0){
+      const _alienSelectC=(typeof globalThis==='undefined')||((globalThis.__ALIEN_SELECT??1)|0)!==0;
       for(let i=0;i<genome.userAtoms.length;i++){
         const a=genome.userAtoms[i];
-        if((a.uses|0)===0&&(a.age|0)>2){removeIdx=i;break;}
+        // "unused" only by the (proven fitness-inert) uses route — an atom with real alien grip is
+        // doing exogenous predictive work opcode-22 never sees, and dying here would just delete that
+        // record. See SWING #46 above.
+        if((a.uses|0)===0&&(a.age|0)>2&&!(_alienSelectC&&alienGrip(a)>0)){removeIdx=i;break;}
       }
     }
     if(removeIdx>=0){
@@ -12001,14 +12022,39 @@ function applyEntropy(){
   }
 }
 
+// SWING #46: ALIEN GRIP. An atom's own hit-rate on the alien-prediction channel below — 0 until it
+// clears a minimum sample floor, so a lucky n=1 hit can't buy protection. Deliberately no comparison
+// to a hand-picked "chance" baseline (predicted/actual direction isn't a clean coin flip): raw
+// accuracy, smoothly scaled, one floor and nothing else tuned in. Used by both the mutation-protection
+// and cull-exemption below, and nowhere else — this is the only thing that reads it besides authorship.
+const ALIEN_GRIP_MIN_ATTEMPTS=6;
+function alienGrip(a){
+  if(!a)return 0;
+  const att=a.alienAttempts|0;
+  return att>=ALIEN_GRIP_MIN_ATTEMPTS?(a.alienHits|0)/att:0;
+}
+
 // ═══ ALIEN ATTRIBUTION — form and score a prediction about each active bridge peer's near-future
-// packet-emission rate, using the self's own most-proven authored atom as the predictor. See the
-// declaration comment above peerObservable for the full rationale. Runs on a fixed cadence from
-// the main loop, same shape as attemptHGT/evolvePlasmids.
+// packet-emission rate, using an authored atom as the predictor. See the declaration comment above
+// peerObservable for the full rationale. Runs on a fixed cadence from the main loop, same shape as
+// attemptHGT/evolvePlasmids.
+//
+// SWING #46: until now a hit only bumped `uses` — the same currency the whole-bank ablation proved
+// EXECUTED but FITNESS-INERT on the self's own amp economy (OEE-NOTES: "the largest honest null the
+// project has reached"). That gave alien-prediction accuracy zero evolutionary consequence: it could
+// never protect an atom, never shape authorship, never compete against anything. Two changes give it
+// real teeth, both gated __ALIEN_SELECT (default on, reversible — off reproduces the pre-#46 behaviour
+// exactly, uses-bump included, for a clean A/B):
+//   (1) SCORING now credits the atom's OWN alienHits/alienAttempts (a currency with nothing else
+//       feeding it and nothing else spending it — see alienGrip above), instead of the dead `uses`.
+//   (2) FORMING now sometimes tests a random bound atom instead of always the highest-`uses` incumbent
+//       — otherwise only whatever the (already proven-inert) internal route favours would ever get a
+//       shot at the alien channel, and the new currency could never discover anything the old one hadn't.
 function runAlienPrediction(){
   if(!genome.alienPredict)genome.alienPredict={attempts:0,hits:0};
   const bos=genome.boundOpcodes,uas=genome.userAtoms;
   if(!bos||!bos.length||!uas||!uas.length)return; // nothing to predict WITH yet — no atoms bound
+  const _alienSelect=(typeof globalThis==='undefined')||((globalThis.__ALIEN_SELECT??1)|0)!==0;
   for(const [tab,po] of peerObservable){
     if(tick-(peerLastSeen[tab]||0)>ALIEN_WINDOW*3)continue; // peer's gone quiet; nothing fresh to judge
     // 1) SCORE a pending prediction for this peer, if its window has since rolled over.
@@ -12017,24 +12063,39 @@ function runAlienPrediction(){
       const actualDir=Math.sign(po.prevCount-pending.baseline);
       const hit=actualDir===pending.direction;
       genome.alienPredict.attempts++;
-      if(hit){
-        genome.alienPredict.hits++;
-        const a=uas[pending.atomIdx]; if(a)a.uses=(a.uses|0)+1; // same currency every other role already accrues
+      if(hit)genome.alienPredict.hits++;
+      if(_alienSelect){
+        // userAtoms is a plain array; culling/HGT can shift indices during the ALIEN_WINDOW gap between
+        // forming and scoring a prediction, so match the expression too — a mismatch is a safe no-op,
+        // not a silent mis-credit to whatever atom happens to now sit at that index.
+        const a=uas[pending.atomIdx];
+        if(a&&a.expression===pending.expression){
+          a.alienAttempts=(a.alienAttempts|0)+1;
+          if(hit)a.alienHits=(a.alienHits|0)+1;
+        }
+      } else if(hit){
+        const a=uas[pending.atomIdx]; if(a)a.uses=(a.uses|0)+1; // pre-#46: same currency every other role accrues
       }
       recordEvent('alien_predict',{tab:String(tab).slice(0,16),hit,pred:pending.direction,actual:actualDir},400);
       pendingAlienPredictions.delete(tab);
     }
     // 2) FORM a new prediction for this peer, if none is currently pending.
     if(!pendingAlienPredictions.has(tab)){
-      let bestAI=-1,bestUses=-1;
-      for(const ai of bos){ const a=uas[ai]; if(a&&(a.uses|0)>bestUses){bestUses=a.uses|0;bestAI=ai;} }
-      if(bestAI<0)continue;
-      const atom=uas[bestAI];
+      let candidateAI=-1;
+      if(_alienSelect&&bos.length>1&&Math.random()<0.3){
+        candidateAI=bos[Math.floor(Math.random()*bos.length)]; // exploration: give any bound atom a turn
+      } else {
+        let bestUses=-1;
+        for(const ai of bos){ const a=uas[ai]; if(a&&(a.uses|0)>bestUses){bestUses=a.uses|0;candidateAI=ai;} }
+      }
+      if(candidateAI<0)continue;
+      const atom=uas[candidateAI];
+      if(!atom)continue;
       const baseline=po.prevCount, recentPartial=po.count; // only "trend so far" signal honestly available
       uaCtxC=0;uaCtxD=0;uaCtxM=0;uaCtxNx=0;uaCtxNy=0;uaCtxT=Math.sin(tick*0.0011);uaCtxNb=0;uaCtxRl=0;uaCtxRd=0;
       const out=uaCall(atom, Math.tanh((baseline||0)/20), Math.tanh((recentPartial||0)/20));
       const direction=out>0.05?1:(out<-0.05?-1:0);
-      pendingAlienPredictions.set(tab,{atomIdx:bestAI,direction,baseline,madeAtTick:tick,windowStartAtPrediction:po.windowStart});
+      pendingAlienPredictions.set(tab,{atomIdx:candidateAI,expression:atom.expression,direction,baseline,madeAtTick:tick,windowStartAtPrediction:po.windowStart});
     }
   }
 }

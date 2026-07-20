@@ -7,7 +7,7 @@
 const { workerData, parentPort } = require('worker_threads');
 const fs = require('fs');
 
-const { seed, ticks, sample, isolate, index, channel, maturationTicks, role } = workerData;
+const { seed, ticks, sample, isolate, index, channel, maturationTicks, role, alienSelect } = workerData;
 
 // ── Browser API stubs (mirrors harness.js, incl. the document.head/body/classList fix) ──
 function selfProxy() {
@@ -88,6 +88,10 @@ if (isolate) {
   };
 }
 
+// SWING #46 (ALIEN GRIP) is default-on in the sim itself; pass alienSelect:0 in workerData to run
+// this instance with it off (pre-#46 behaviour) for an A/B under real coupling.
+if (alienSelect !== undefined) globalThis.__ALIEN_SELECT = alienSelect | 0;
+
 let loopErrors = 0, lastErr = '';
 const _err = console.error.bind(console);
 console.error = (...a) => {
@@ -138,13 +142,31 @@ const driver = `
       }
       cpl={buds:c.buds||0, liveCount:c.liveCount||0, peers:Object.keys(c.peers||{}).length, externalPeers:extPeers, emit, absorb};
     }
+    // SWING #46 (ALIEN GRIP) instrumentation: aggregate + best-atom alien-prediction accuracy, so a
+    // coupling run can tell whether the new currency is even accumulating, separate from whether it's
+    // shaping the bank (that's the mutation/cull protection, not observable from a sample alone).
+    let alien=null;
+    if(typeof genome!=='undefined'&&genome.alienPredict){
+      const ap=genome.alienPredict;
+      let bestGrip=0,bestAttempts=0,gripped=0;
+      if(Array.isArray(genome.userAtoms)){
+        for(const a of genome.userAtoms){
+          const att=a&&(a.alienAttempts|0)||0;
+          if(att<6)continue; // mirror ALIEN_GRIP_MIN_ATTEMPTS — atoms below the sample floor don't count as "gripped" here either
+          gripped++;
+          const grip=(a.alienHits|0)/att;
+          if(grip>bestGrip||(grip===bestGrip&&att>bestAttempts)){bestGrip=grip;bestAttempts=att;}
+        }
+      }
+      alien={attempts:ap.attempts|0, hits:ap.hits|0, grippedAtoms:gripped, bestAtomGrip:+bestGrip.toFixed(3), bestAtomAttempts:bestAttempts};
+    }
     return {
       tick:(typeof tick!=='undefined')?tick:-1,
       N:alive, meanAmp:+(alive?ampSum/alive:0).toFixed(4),
       occupiedKinds:occupied, diversityHbits:+Hbits.toFixed(3), diversityEvenness:+Hnorm.toFixed(3),
       lineages:(typeof lineageRegistry!=='undefined'?lineageRegistry.size:-1),
       extinctions:(typeof genome!=='undefined'?(genome.extinctions||0):-1),
-      cpl
+      cpl, alien
     };
   };
   globalThis.__runChunk=function(n){
