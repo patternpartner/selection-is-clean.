@@ -2889,3 +2889,44 @@ Named, not run without checking first given the cost already spent: either a muc
 producer toward genuine near-monoculture) or a much longer coupling phase (closer to 60k+ ticks) would be the
 faithful next test, but both push a single harness pass well past an hour and deserve a deliberate go-ahead rather
 than another automatic launch.
+
+### SWING #46 — ALIEN GRIP: alien-prediction accuracy becomes its own selection currency, not a dead one
+
+The two coupling swings above (#45, #45b) both landed honest nulls at their tested scale — symmetric and
+asymmetric coupling alike left occupiedKinds flat-to-lower, nothing showed a robust diversity gain. Rather than
+push a third, much longer coupling run without a deliberate go-ahead, the user asked for the one direction that
+fits everything learned this session and hasn't been tried — not here, not (as far as either of us knows) in ALife
+more broadly: stop trying to fix authored cognition's grip on LOCAL fitness (proven dead by the whole-bank
+ablation) and instead give it a currency that was never entangled with the self's own body in the first place.
+
+It was already half-built. runAlienPrediction() (added some swings back, barely used) has the self's most-proven
+atom predict a coupled peer's near-future packet-emission rate — a genuinely alien target, since that peer is a
+causally independent substrate (possibly Selection, possibly φ's fluid grid, possibly the SAT crucible) the self
+cannot influence back through this channel, only observe. But a hit only ever bumped `uses` — the exact currency
+the whole-bank ablation proved EXECUTED but FITNESS-INERT. So the mechanism had zero teeth: it could never protect
+an atom, shape authorship, or compete against anything. It was scorekeeping nobody could win or lose.
+
+**The move.** Give atoms their own alienHits/alienAttempts, fed and spent by nothing else — a currency clean of the
+proven-dead one. alienGrip(atom) = raw hit-rate once an atom clears a 6-attempt floor (no hand-picked "chance"
+baseline; predicted/actual direction isn't a clean coin flip so a real baseline would need its own instrumentation
+pass — left honest rather than guessed). That grip now scales down two things that used to be blind to it: the
+per-mutation-cycle chance an atom's whole expression gets randomly overwritten, and the uses===0 cull that would
+otherwise delete an atom doing real exogenous predictive work that opcode-22 just never happens to call. A second
+change was needed for the currency to mean anything at all: prediction FORMATION used to always test the
+highest-`uses` incumbent, which would have meant only whatever the (already-inert) internal route already favoured
+ever got a shot at the alien channel — added a 30% chance to test a random bound atom instead, so the new currency
+can actually discover something the old one never could. Gated __ALIEN_SELECT, default on; off reproduces the
+pre-#46 behaviour exactly (uses-bump included) for a clean A/B. alienHits/alienAttempts added to all four places
+atoms cross a boundary (encodeGenome/decodeGenome/sanitizeGenome/cloneGenome) so the record survives save/reload
+instead of silently vanishing — cloneGenome resets it to 0, same as uses, so a new lineage re-earns its own record
+rather than inheriting a parent's.
+
+**Verified, not yet validated as adaptive.** Full file parses; harness.js and harness-oee.js boot and run clean (0
+loopErrors/driverErr) with the gate on. A direct two-worker real-coupling check (bypassing the summary-only
+orchestrators to read raw samples) confirmed the mechanism end to end: attempts/hits climb against REAL peer
+traffic, grippedAtoms and bestAtomGrip stay at 0 until an atom crosses the 6-attempt floor then read ~0.43-0.57 —
+plausible, not saturating to a suspicious 1.0. Gate-off run reproduces the old no-crash behaviour, grippedAtoms
+staying 0 throughout. What's NOT yet shown: whether this changes which atoms actually survive over a long run, or
+whether it moves any downstream measure at all — that would be a whole-bank-style ablation comparing __ALIEN_SELECT
+on vs off under real coupling over enough ticks for grip to actually differentiate the bank, which is the honest
+next pass and, given how the last two runs went, deserves a deliberate go before launching.
