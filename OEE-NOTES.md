@@ -2930,3 +2930,41 @@ staying 0 throughout. What's NOT yet shown: whether this changes which atoms act
 whether it moves any downstream measure at all — that would be a whole-bank-style ablation comparing __ALIEN_SELECT
 on vs off under real coupling over enough ticks for grip to actually differentiate the bank, which is the honest
 next pass and, given how the last two runs went, deserves a deliberate go before launching.
+
+### SWING #46 ABLATION — a genuinely mixed result: real signal, but not the clean one hoped for
+
+Ran the direct test: 4 matched seeds, each present twice in ONE shared coupled cohort (__ALIEN_SELECT on vs off,
+same channel, same peer-traffic environment, only each instance's own gate differs), 45000 ticks — long enough for
+atoms to actually get authored (the pilot at 3000 ticks proved that much isn't: totAtoms stayed 0 in all four
+instances, confirming this project's own ~45k-tick authoring-window precedent the hard way before spending the
+full run on it).
+
+Gate mechanics: clean. on_sawExternalPeer 4/4, on_grippedAnyAtom 4/4 — every ON instance grew at least one atom
+with real measured grip, and bestAtomGrip landed in a tight, plausible band (0.44-0.45) across all four seeds,
+independently — not saturating to a suspicious 1.0, not scattered noise either. off_grippedAnyAtom stayed exactly
+0/4 as it must by construction. The instrument is trustworthy.
+
+**The hypothesis test itself is mixed, not a clean confirmation.** meanAtomAge — the direct behavioural signature
+of protection actually happening — came back NO_EFFECT (mean +8.4, sd 25.2, 3/4 seeds positive but noisy; one seed,
+17, went the WRONG way: ON 71.7 vs OFF 101.5, the isolated arm's atoms lived LONGER). totAtoms: NO_EFFECT, also
+noisy. liveAtoms (uses>0 count) is the one metric that reaches a real verdict: ON_HIGHER, mean +1.28, beats its own
+noise, 3/4 seeds positive — atoms protected from the blind mutation-overwrite are ending up with more of them
+eventually crossing into "called via ordinary opcode-22 execution" too, an indirect but real downstream signature
+that something is different about the bank's composition under ON. meanAmp: a small, borderline ON_LOWER
+(mean -0.030, sd 0.030 — barely beats noise, 3/4 seeds negative) — a modest possible COST to local fitness from
+protecting atoms selected on a criterion that has nothing to do with local fitness, worth stating plainly rather
+than hand-waved away since the mechanism was explicitly built to be decoupled from that axis, not to help it.
+diversityHbits and occupiedKinds: no effect either way.
+
+Read honestly: this is not "another dead currency" (liveAtoms moved, real and consistent; alien accuracy is
+genuinely accumulating in the wild against real peer traffic, not just in the earlier isolated smoke test) — but
+it's also not the clean "protection has real teeth" story hoped for, since the most DIRECT test (age) didn't
+robustly move, and even reversed once. Two honest reasons this run may simply be underpowered rather than the
+mechanism being inert: (1) n=4 seeds is thin for a noisy per-mutation-cycle probabilistic effect — protection
+LOWERS overwrite odds, it doesn't eliminate them, so even a real effect needs many mutation cycles and many seeds
+to separate from chance; (2) mean age is sensitive to bank SIZE differences between arms (a bank with one very old
+atom and several young ones reads differently from a bank with several moderately-aged atoms) — a cleaner statistic
+(max atom age, or fraction surviving past N cycles) might show what a mean washes out. Not run further without a
+deliberate go-ahead: this ablation alone cost ~50 minutes, on top of ~40 and ~30 for the two coupling swings before
+it. The honest next move, named: either a much larger n (more seeds) or a sharper survival statistic, not just a
+longer run at the same n — more ticks alone won't fix a mean that's already noisy at n=4.
