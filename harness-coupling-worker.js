@@ -7,7 +7,7 @@
 const { workerData, parentPort } = require('worker_threads');
 const fs = require('fs');
 
-const { seed, ticks, sample, isolate, index, channel } = workerData;
+const { seed, ticks, sample, isolate, index, channel, maturationTicks, role } = workerData;
 
 // ── Browser API stubs (mirrors harness.js, incl. the document.head/body/classList fix) ──
 function selfProxy() {
@@ -170,13 +170,14 @@ try {
 
 (async () => {
   if (bootErr) {
-    parentPort.postMessage({ seed, isolate, bootErr, series: [] });
+    parentPort.postMessage({ seed, isolate, role, bootErr, series: [] });
     process.exit(0);
   }
   const CHUNK = 100;
   const series = [];
   series.push(globalThis.__sample());
   let done = 0;
+  let maturedPosted = false;
   while (done < ticks) {
     const n = Math.min(CHUNK, ticks - done);
     globalThis.__runChunk(n);
@@ -185,9 +186,16 @@ try {
     // BroadcastChannel deliveries actually get processed before the next chunk.
     await new Promise((res) => setImmediate(res));
     if (done % sample < CHUNK || done === ticks) series.push(globalThis.__sample());
+    // Asymmetric-coupling checkpoint: a producer worker keeps running (channel already open, but
+    // nobody else has joined it yet) past this point — this message is the orchestrator's signal
+    // that maturation is done and it's safe to spawn fresh peers onto the same channel name.
+    if (!maturedPosted && maturationTicks && done >= maturationTicks) {
+      maturedPosted = true;
+      parentPort.postMessage({ seed, isolate, role, matured: true, snapshotAtMaturation: globalThis.__sample() });
+    }
   }
   parentPort.postMessage({
-    seed, isolate,
+    seed, isolate, role,
     loopErrors, lastErr, driverErr: globalThis.__driverErr || 0,
     series
   });
