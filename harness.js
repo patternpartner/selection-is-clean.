@@ -30,6 +30,8 @@ function makeEl() {
     getContext: () => CTX,
     addEventListener() {}, removeEventListener() {},
     set onclick(_) {}, set onchange(_) {}, click() {},
+    appendChild() {}, removeChild() {}, remove() {},
+    classList: { add() {}, remove() {}, toggle() {}, contains() { return false; } },
     style: {}, width: 1280, height: 720, _text: '',
     get textContent() { return this._text; },
     set textContent(v) { this._text = v; }
@@ -40,6 +42,7 @@ globalThis.document = {
   getElementById: (id) => (ELS[id] || (ELS[id] = makeEl())),
   createElement: () => makeEl(),
   addEventListener() {}, removeEventListener() {},
+  head: makeEl(), body: makeEl(),
   get hidden() { return false; }
 };
 globalThis.window = globalThis;

@@ -60,6 +60,8 @@ function makeEl() {
     getContext: () => CTX,
     addEventListener() {}, removeEventListener() {},
     set onclick(_) {}, set onchange(_) {}, click() {},
+    appendChild() {}, removeChild() {}, remove() {},
+    classList: { add() {}, remove() {}, toggle() {}, contains() { return false; } },
     style: {}, width: 1280, height: 720, _text: '',
     get textContent() { return this._text; },
     set textContent(v) { this._text = v; }
@@ -70,6 +72,7 @@ globalThis.document = {
   getElementById: (id) => (ELS[id] || (ELS[id] = makeEl())),
   createElement: () => makeEl(),
   addEventListener() {}, removeEventListener() {},
+  head: makeEl(), body: makeEl(),
   get hidden() { return false; }
 };
 globalThis.window = globalThis;
@@ -134,7 +137,7 @@ _patch('amp[_i]+=NFD_STRENGTH*', 'amp[_i]+=NFD_STRENGTH*globalThis.__NFD_MULT*')
 // Initial mutation interval override (still evolvable from there).
 _patch('mutationInterval:300,', 'mutationInterval:(globalThis.__MUT_INTERVAL||300),');
 // Authoring-rate multipliers: atom birth + bound-opcode creation.
-_patch('if(Math.random()<rate*0.15){', 'if(Math.random()<rate*0.15*globalThis.__AUTHOR_MULT){');
+_patch('Math.random()<rate*0.15)', 'Math.random()<rate*0.15*globalThis.__AUTHOR_MULT)');
 _patch('if(Math.random()<0.01){', 'if(Math.random()<0.01*globalThis.__AUTHOR_MULT){');
 // WIRE_INJECT (experiment): force authored-opcode call-sites into a fraction of LIVING
 // programs at authoring time (heavy-handed; proven harmful to diversity). inert at 0.
