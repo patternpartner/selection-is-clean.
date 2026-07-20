@@ -160,13 +160,24 @@ const driver = `
       }
       alien={attempts:ap.attempts|0, hits:ap.hits|0, grippedAtoms:gripped, bestAtomGrip:+bestGrip.toFixed(3), bestAtomAttempts:bestAttempts};
     }
+    // Bank composition/survival — the direct behavioural signature of ALIEN GRIP actually protecting
+    // atoms, independent of the alien bookkeeping itself: does __ALIEN_SELECT change how OLD the bank's
+    // atoms get before being overwritten, not just whether grip stats exist.
+    let bank=null;
+    if(typeof genome!=='undefined'&&Array.isArray(genome.userAtoms)){
+      const ua=genome.userAtoms;
+      let ageSum=0,live=0;
+      for(const a of ua){ ageSum+=(a&&(a.age|0))||0; if(a&&(a.uses|0)>0)live++; }
+      bank={totAtoms:ua.length, boundOps:Array.isArray(genome.boundOpcodes)?genome.boundOpcodes.length:0,
+        liveAtoms:live, meanAtomAge:+(ua.length?ageSum/ua.length:0).toFixed(2)};
+    }
     return {
       tick:(typeof tick!=='undefined')?tick:-1,
       N:alive, meanAmp:+(alive?ampSum/alive:0).toFixed(4),
       occupiedKinds:occupied, diversityHbits:+Hbits.toFixed(3), diversityEvenness:+Hnorm.toFixed(3),
       lineages:(typeof lineageRegistry!=='undefined'?lineageRegistry.size:-1),
       extinctions:(typeof genome!=='undefined'?(genome.extinctions||0):-1),
-      cpl, alien
+      cpl, alien, bank
     };
   };
   globalThis.__runChunk=function(n){
