@@ -5143,15 +5143,27 @@ let genome={
   netReceptivity:0.5,       // 0..1 probability of accepting incoming packets (evolvable isolation)
 
   // ═══ LAYER 10: REFLEXIVITY — the system models itself from inside ═══
-  // Particles track their own state trajectory and adjust behaviour.
-  // Clusters recognise themselves as clusters and optimise for group survival.
-  // This is not imposed — it's evolvable. The system discovers self-reference is adaptive (or not).
+  // Particles track their own state trajectory and adjust behaviour via reflexInfluence — a separate
+  // pathway from cluster reflex below, untested by the audit that corrected the claim beneath it.
+  //
+  // CLUSTER reflex (clusterReflexAge/clusterReflexWeight, updateClusterReflex()): computes trend/
+  // threatLevel/cohesionTrend/selfRecognition per cluster and injects reflexThreat+reflexTrend into
+  // cluster-VM registers 4/5. Two of those four fields — selfRecognition, and its own exported mirror
+  // reflexCohesion — are CONFIRMED PURE ORNAMENTS: no consumer anywhere but a HUD count (now itself
+  // corrected, see reflexWarmed near executeClusterVM). The other two had a real bug: c.reflex was
+  // never carried forward across detection cycles, so trend/cohesionTrend could never leave zero
+  // regardless of how long a cluster persisted. Fixed (Swing #47, see clusterReflexes above) — the
+  // signal is now REAL, firing nonzero on ~90% of injections. A 5-seed open-vs-severed ablation still
+  // comes back bit-identical: EXECUTED, but no evolved cluster-VM program is observed to read what it
+  // writes. Left that way deliberately, not patched further — see the injection site for why. Full
+  // record: OEE-NOTES, CONFABULATION ASSAY entries. This comment is corrected TO the diagnostics that
+  // measured it, not the other way around.
   reflexSampleRate:0.15,      // fraction of particles that update self-model per tick (cost control)
   reflexDepth:4,              // how many historical samples each particle keeps (memory cost)
   reflexInfluence:0.1,        // how strongly self-model affects VM register initialisation (EVOLVES)
   reflexDecay:0.95,           // how fast old self-model samples fade
   clusterReflexAge:5,         // min persist age before cluster develops self-model
-  clusterReflexWeight:0.15,    // how much cluster self-model influences cluster VM (EVOLVES)
+  clusterReflexWeight:0.15,    // scales reflexThreat/reflexTrend into cluster-VM registers 4/5 (EVOLVES) — see LAYER 10 note above: signal real as of Swing #47, not observed to be read by any evolved program
 
   // ═══ LAYER 12: CLUSTER SELF-READ (Pe24) ═══
   // Cluster VMs can read their own clusterGenome values as VM registers.
@@ -5466,7 +5478,9 @@ function cloneGenome(src){
   g.prevObjValues=Array.isArray(src.prevObjValues)?src.prevObjValues.slice():[0,0,0,0];
   g.boundOpcodes=Array.isArray(src.boundOpcodes)?src.boundOpcodes.slice():[];
   g.vmProgram=cloneProg(src.vmProgram);
-  g.userAtoms=Array.isArray(src.userAtoms)?src.userAtoms.map(a=>({expression:a.expression,compiled:null,failed:!!a.failed,uses:0,state:0})):[];
+  // alienHits/alienAttempts reset on clone, same as uses — a new lineage re-earns its own predictive
+  // track record rather than inheriting the parent's (see SWING #46: ALIEN GRIP).
+  g.userAtoms=Array.isArray(src.userAtoms)?src.userAtoms.map(a=>({expression:a.expression,compiled:null,failed:!!a.failed,uses:0,state:0,alienHits:0,alienAttempts:0})):[];
   g.fitnessSensors=Array.isArray(src.fitnessSensors)?src.fitnessSensors.map(s=>({...s,program:cloneProg(s.program)})):src.fitnessSensors;
   g.rend=Array.isArray(src.rend)?src.rend.map(a=>({expression:a.expression,compiled:null,failed:!!a.failed})):src.rend;
   g.draw=Array.isArray(src.draw)?src.draw.map(o=>o.slice()):src.draw;
@@ -5673,7 +5687,9 @@ function encodeGenome(){
     expression:a.expression,
     failed:!!a.failed,
     uses:a.uses|0,
-    age:a.age|0
+    age:a.age|0,
+    alienHits:a.alienHits|0,
+    alienAttempts:a.alienAttempts|0
   }));
   const cleanSensors=(genome.fitnessSensors||[]).map(s=>({
     program:(s.program||[]).map(inst=>cleanInstruction(inst)),
@@ -6006,7 +6022,7 @@ function decodeGenome(data){
     if(typeof g.mtl==='number')genome.mutationTail=g.mtl;  // UNLOCKED #6 (absent in pre-unlock saves → sanitize defaults to 0)
     if(typeof g.uad==='number')genome.uaMaxDepth=g.uad|0;  // UNLOCKED #7b
     if(typeof g.tmr==='number')genome.typeMutRate=g.tmr;   // UNLOCKED #7a
-    if(g.ua)genome.userAtoms=g.ua.map(a=>({expression:a.expression,compiled:null,failed:!!a.failed,uses:a.uses|0,age:a.age|0}));
+    if(g.ua)genome.userAtoms=g.ua.map(a=>({expression:a.expression,compiled:null,failed:!!a.failed,uses:a.uses|0,age:a.age|0,alienHits:a.alienHits|0,alienAttempts:a.alienAttempts|0}));
     if(typeof g.td==='number') genome.tendDims=__cl(g.td|0,2,DIMS_MAX);
     if(Array.isArray(g.oe)){ // #35 evolvable engine dials (sanitizeGenome clamps + defaults any missing)
       if(typeof g.oe[0]==='number')genome.opnovStrength=g.oe[0];
@@ -6987,7 +7003,7 @@ function sanitizeGenome(){
   if(!Array.isArray(genome.prevObjValues)||genome.prevObjValues.length<4)genome.prevObjValues=[0,0,0,0];
   genome.prevObjValues=genome.prevObjValues.slice(0,4).map(v=>finiteOr(v,0));
   genome.prevSmoothedFitness=finiteOr(genome.prevSmoothedFitness,0);
-  genome.userAtoms=Array.isArray(genome.userAtoms)?genome.userAtoms.filter(a=>a&&typeof a.expression==='string').map(a=>({expression:a.expression.slice(0,160),compiled:null,failed:!!a.failed,uses:a.uses|0,age:a.age|0})):[];
+  genome.userAtoms=Array.isArray(genome.userAtoms)?genome.userAtoms.filter(a=>a&&typeof a.expression==='string').map(a=>({expression:a.expression.slice(0,160),compiled:null,failed:!!a.failed,uses:a.uses|0,age:a.age|0,alienHits:a.alienHits|0,alienAttempts:a.alienAttempts|0})):[];
   if(!Array.isArray(genome.rend)||genome.rend.length!==4) genome.rend=defaultRend();
   genome.draw=sanitizeDraw(genome.draw);
   genome.rend=genome.rend.map(a=>({expression:typeof a.expression==='string'?a.expression.slice(0,200):'0',compiled:null,failed:!!a.failed}));
@@ -7224,6 +7240,18 @@ function recordDissolutionFossil(c,quality){
 }
 let clusterAge=new Map(); // track persistence across snapshots
 let clusterVMs=new Map(); // persist per-cluster VM programs across detection cycles (keyed by hash)
+// Swing #47 FIX: persist per-cluster reflex state (trend/threat/cohesion sample history) across
+// detection cycles, the same way clusterVMs already does for vmProgram. Before this, c.reflex was
+// silently missing from the carry-forward list — detectClusters() rebuilds `clusters` from scratch
+// every cycle (clusters.length=0), so a persisting cluster's history arrays never survived past one
+// entry, and trend/cohesionTrend could never leave their zero initialization no matter how long the
+// cluster lived. Confirmed by direct instrumentation (OEE-NOTES, CONFABULATION ASSAY entries):
+// gateTrendZero read 100% across 2M+ firings before this fix, ~13% after, with the exact same
+// sample-history bar (3) and update cadence (tick%60) — an object-lifetime bug, not a tuning issue.
+// Written by updateClusterReflex() itself, AFTER it updates the state — trackClusterPersistence()
+// runs earlier in the same tick%60 block, so storing there instead (the first attempt) always
+// captured last cycle's PRE-update value and never worked; see the store site below for why this one does.
+let clusterReflexes=new Map();
 // Pe30 Layer 20: per-cluster scenario fossil. A cluster snapshots the global bank's
 // top scenario AT BIRTH and carries it for its whole life. This is what makes Pe28's
 // resurrection pathway genuinely fire — a long-lived cluster's snapshot is genuinely
@@ -7515,6 +7543,11 @@ function trackClusterPersistence(){
       const prevAge=clusterAge.get(bestMatch.hash)||0;
       newAge.set(c.hash,prevAge+1);
       c.persistAge=prevAge+1;
+      // Swing #47: restore reflex state (trend/threat/cohesion sample history) — see clusterReflexes
+      // declaration above. Without this, c.reflex is undefined at the top of every updateClusterReflex()
+      // call regardless of match, and sizeHistory/coherenceHistory can never exceed length 1.
+      const prevReflex=clusterReflexes.get(bestMatch.hash);
+      if(prevReflex)c.reflex=prevReflex;
       // ═══ CLUSTER VM INHERITANCE ═══
       // Carry the previous cluster's evolved VM forward — this is what makes
       // cluster programs accumulate rather than reset every detection cycle
@@ -11138,12 +11171,25 @@ function mutateGenome(){
   // opcode 22 never references an atom, its uses stays 0 and it's dead weight.
   if(!genome.userAtoms)genome.userAtoms=[];
   // Mutate existing atoms — replace expression entirely.
+  // SWING #46: ALIEN GRIP. Whole-bank ablation proved the atom bank EXECUTED but FITNESS-INERT on the
+  // self's own amp economy (OEE-NOTES, "the largest honest null the project has reached") — uses (the
+  // currency this loop otherwise ignores) doesn't move amp either way. runAlienPrediction() already
+  // scores atoms against a genuinely exogenous target (a coupled peer's future packet rate, a substrate
+  // this genome cannot causally influence back), but until now a hit only bumped the same dead `uses`
+  // counter — no consequence, no teeth. alienGrip(ua) is that atom's OWN hit-rate on the alien channel
+  // (0 until it's cleared a minimum-sample floor, see below); an atom that's actually proven itself as
+  // a predictor of something OTHER earns protection from this blind expression-overwrite, proportional
+  // to its accuracy. At grip=0 (untested, unbound, or bad) this is byte-for-byte the old unconditional
+  // rate*0.3. Gated __ALIEN_SELECT, default on, reversible.
+  const _alienSelect=(typeof globalThis==='undefined')||((globalThis.__ALIEN_SELECT??1)|0)!==0;
   for(const ua of genome.userAtoms){
-    if(Math.random()<rate*0.3){
+    const grip=_alienSelect?alienGrip(ua):0;
+    if(Math.random()<rate*0.3*(1-grip)){
       ua.expression=uaGenExpression();
       ua.compiled=null;
       ua.failed=false;
       ua.uses=0; // reset usage count on mutation
+      ua.alienHits=0; ua.alienAttempts=0; // new expression → prior predictive record no longer means anything
     }
   }
   // Birth new atom. FIX (dead atom pipeline): births were throttled to ~0 in stable runs (rate
@@ -11157,7 +11203,7 @@ function mutateGenome(){
   const _atomFix=(typeof globalThis==='undefined')||((globalThis.__ATOM_PIPELINE??1)|0)!==0;
   if(Math.random()<(_atomFix?Math.max(0.02,rate*0.15):rate*0.15)){
     const expression=uaGenExpression();
-    genome.userAtoms.push({expression,compiled:null,failed:false,uses:0});
+    genome.userAtoms.push({expression,compiled:null,failed:false,uses:0,alienHits:0,alienAttempts:0});
     if(_atomFix){
       const bos=genome.boundOpcodes||(genome.boundOpcodes=[]);
       if(bos.length<MAX_BOUND_OPCODES){
@@ -11179,9 +11225,13 @@ function mutateGenome(){
       if(genome.userAtoms[i].failed){removeIdx=i;break;}
     }
     if(removeIdx<0){
+      const _alienSelectC=(typeof globalThis==='undefined')||((globalThis.__ALIEN_SELECT??1)|0)!==0;
       for(let i=0;i<genome.userAtoms.length;i++){
         const a=genome.userAtoms[i];
-        if((a.uses|0)===0&&(a.age|0)>2){removeIdx=i;break;}
+        // "unused" only by the (proven fitness-inert) uses route — an atom with real alien grip is
+        // doing exogenous predictive work opcode-22 never sees, and dying here would just delete that
+        // record. See SWING #46 above.
+        if((a.uses|0)===0&&(a.age|0)>2&&!(_alienSelectC&&alienGrip(a)>0)){removeIdx=i;break;}
       }
     }
     if(removeIdx>=0){
@@ -11727,12 +11777,14 @@ function updateParticleReflex(){
 }
 
 function updateClusterReflex(){
+  if(__reflexDebugOn)reflexDebugCounters.ucrCalls++;
   const minAge=genome.clusterReflexAge||5;
 
   for(const c of clusters){
     if(c.persistAge<minAge)continue;
 
     if(!c.reflex){
+      if(__reflexDebugOn)reflexDebugCounters.ucrNewReflex++;
       c.reflex={
         ampHistory:[],
         sizeHistory:[],
@@ -11754,6 +11806,7 @@ function updateClusterReflex(){
     if(r.coherenceHistory.length>8)r.coherenceHistory.shift();
 
     if(r.sizeHistory.length>=3){
+      if(__reflexDebugOn&&!r.__warmed){r.__warmed=true;reflexDebugCounters.ucrWarmup++;}
       const recent=r.sizeHistory.slice(-2).reduce((a,b)=>a+b,0)/2;
       const older=r.sizeHistory.slice(0,2).reduce((a,b)=>a+b,0)/2;
       r.trend=Math.max(-1,Math.min(1,(recent-older)/(Math.max(1,older))*5));
@@ -11775,6 +11828,9 @@ function updateClusterReflex(){
     c.reflexThreat=r.threatLevel;
     c.reflexRecognition=r.selfRecognition;
     c.reflexCohesion=r.cohesionTrend;
+    clusterReflexes.set(c.hash,r); // Swing #47: store AFTER this cycle's update — correct side of the
+    // tick%60 cycle. trackClusterPersistence() runs earlier in the same cycle; storing there instead
+    // (the first attempt at this fix) always captured last cycle's pre-update value and never worked.
   }
 }
 
@@ -12001,14 +12057,39 @@ function applyEntropy(){
   }
 }
 
+// SWING #46: ALIEN GRIP. An atom's own hit-rate on the alien-prediction channel below — 0 until it
+// clears a minimum sample floor, so a lucky n=1 hit can't buy protection. Deliberately no comparison
+// to a hand-picked "chance" baseline (predicted/actual direction isn't a clean coin flip): raw
+// accuracy, smoothly scaled, one floor and nothing else tuned in. Used by both the mutation-protection
+// and cull-exemption below, and nowhere else — this is the only thing that reads it besides authorship.
+const ALIEN_GRIP_MIN_ATTEMPTS=6;
+function alienGrip(a){
+  if(!a)return 0;
+  const att=a.alienAttempts|0;
+  return att>=ALIEN_GRIP_MIN_ATTEMPTS?(a.alienHits|0)/att:0;
+}
+
 // ═══ ALIEN ATTRIBUTION — form and score a prediction about each active bridge peer's near-future
-// packet-emission rate, using the self's own most-proven authored atom as the predictor. See the
-// declaration comment above peerObservable for the full rationale. Runs on a fixed cadence from
-// the main loop, same shape as attemptHGT/evolvePlasmids.
+// packet-emission rate, using an authored atom as the predictor. See the declaration comment above
+// peerObservable for the full rationale. Runs on a fixed cadence from the main loop, same shape as
+// attemptHGT/evolvePlasmids.
+//
+// SWING #46: until now a hit only bumped `uses` — the same currency the whole-bank ablation proved
+// EXECUTED but FITNESS-INERT on the self's own amp economy (OEE-NOTES: "the largest honest null the
+// project has reached"). That gave alien-prediction accuracy zero evolutionary consequence: it could
+// never protect an atom, never shape authorship, never compete against anything. Two changes give it
+// real teeth, both gated __ALIEN_SELECT (default on, reversible — off reproduces the pre-#46 behaviour
+// exactly, uses-bump included, for a clean A/B):
+//   (1) SCORING now credits the atom's OWN alienHits/alienAttempts (a currency with nothing else
+//       feeding it and nothing else spending it — see alienGrip above), instead of the dead `uses`.
+//   (2) FORMING now sometimes tests a random bound atom instead of always the highest-`uses` incumbent
+//       — otherwise only whatever the (already proven-inert) internal route favours would ever get a
+//       shot at the alien channel, and the new currency could never discover anything the old one hadn't.
 function runAlienPrediction(){
   if(!genome.alienPredict)genome.alienPredict={attempts:0,hits:0};
   const bos=genome.boundOpcodes,uas=genome.userAtoms;
   if(!bos||!bos.length||!uas||!uas.length)return; // nothing to predict WITH yet — no atoms bound
+  const _alienSelect=(typeof globalThis==='undefined')||((globalThis.__ALIEN_SELECT??1)|0)!==0;
   for(const [tab,po] of peerObservable){
     if(tick-(peerLastSeen[tab]||0)>ALIEN_WINDOW*3)continue; // peer's gone quiet; nothing fresh to judge
     // 1) SCORE a pending prediction for this peer, if its window has since rolled over.
@@ -12017,24 +12098,39 @@ function runAlienPrediction(){
       const actualDir=Math.sign(po.prevCount-pending.baseline);
       const hit=actualDir===pending.direction;
       genome.alienPredict.attempts++;
-      if(hit){
-        genome.alienPredict.hits++;
-        const a=uas[pending.atomIdx]; if(a)a.uses=(a.uses|0)+1; // same currency every other role already accrues
+      if(hit)genome.alienPredict.hits++;
+      if(_alienSelect){
+        // userAtoms is a plain array; culling/HGT can shift indices during the ALIEN_WINDOW gap between
+        // forming and scoring a prediction, so match the expression too — a mismatch is a safe no-op,
+        // not a silent mis-credit to whatever atom happens to now sit at that index.
+        const a=uas[pending.atomIdx];
+        if(a&&a.expression===pending.expression){
+          a.alienAttempts=(a.alienAttempts|0)+1;
+          if(hit)a.alienHits=(a.alienHits|0)+1;
+        }
+      } else if(hit){
+        const a=uas[pending.atomIdx]; if(a)a.uses=(a.uses|0)+1; // pre-#46: same currency every other role accrues
       }
       recordEvent('alien_predict',{tab:String(tab).slice(0,16),hit,pred:pending.direction,actual:actualDir},400);
       pendingAlienPredictions.delete(tab);
     }
     // 2) FORM a new prediction for this peer, if none is currently pending.
     if(!pendingAlienPredictions.has(tab)){
-      let bestAI=-1,bestUses=-1;
-      for(const ai of bos){ const a=uas[ai]; if(a&&(a.uses|0)>bestUses){bestUses=a.uses|0;bestAI=ai;} }
-      if(bestAI<0)continue;
-      const atom=uas[bestAI];
+      let candidateAI=-1;
+      if(_alienSelect&&bos.length>1&&Math.random()<0.3){
+        candidateAI=bos[Math.floor(Math.random()*bos.length)]; // exploration: give any bound atom a turn
+      } else {
+        let bestUses=-1;
+        for(const ai of bos){ const a=uas[ai]; if(a&&(a.uses|0)>bestUses){bestUses=a.uses|0;candidateAI=ai;} }
+      }
+      if(candidateAI<0)continue;
+      const atom=uas[candidateAI];
+      if(!atom)continue;
       const baseline=po.prevCount, recentPartial=po.count; // only "trend so far" signal honestly available
       uaCtxC=0;uaCtxD=0;uaCtxM=0;uaCtxNx=0;uaCtxNy=0;uaCtxT=Math.sin(tick*0.0011);uaCtxNb=0;uaCtxRl=0;uaCtxRd=0;
       const out=uaCall(atom, Math.tanh((baseline||0)/20), Math.tanh((recentPartial||0)/20));
       const direction=out>0.05?1:(out<-0.05?-1:0);
-      pendingAlienPredictions.set(tab,{atomIdx:bestAI,direction,baseline,madeAtTick:tick,windowStartAtPrediction:po.windowStart});
+      pendingAlienPredictions.set(tab,{atomIdx:candidateAI,expression:atom.expression,direction,baseline,madeAtTick:tick,windowStartAtPrediction:po.windowStart});
     }
   }
 }
@@ -15352,13 +15448,35 @@ function executeVM(i,j,sim,d){
   if(DIMS>4){ tend[i*DIMS+4]+=vmActions[7]*influence*0.01; { const _v4=tend[i*DIMS+4]; tend[i*DIMS+4]=Number.isFinite(_v4)?Math.max(-1,Math.min(1,_v4)):0; } }
 }
 
+// Always-on, cheap (2 integer increments per gate fire) — the HUD reads this for the nonzero-addend
+// rate. Distinct from the debug suite below, which is gated off by default because it isn't free
+// (a vmProgram scan per nonzero firing).
+const reflexTelemetry={fires:0,nonzero:0};
+// Swing #47 debug counters — OFF by default. Set globalThis.__REFLEX_DEBUG=1 before boot to enable;
+// results in reflexDebugCounters (plain top-level object, same pattern as reflexTelemetry above —
+// NOT genome.reflexDebug: `genome` gets repointed to pGenome[i] throughout particle/cluster processing
+// (see e.g. "genome=pGenome[i]||genome" in applyMetabolism/executeSoloVM) and restored after, so a
+// genome-attached counter fragments across however many distinct per-lineage genome clones happen to
+// be active rather than accumulating in one place — caught exactly this way: reflexTelemetry.fires and
+// this suite's gateFires increment in the same block and read 70x apart before the fix, only explicable
+// by one of them landing on a moving target). This is the instrumentation the audit built externally as
+// a harness text-patch (OEE-NOTES, CONFABULATION ASSAY entries) — kept in the artifact itself because,
+// per that audit, "no static reading substitutes for it."
+const __reflexDebugOn=(typeof globalThis!=='undefined')&&((globalThis.__REFLEX_DEBUG|0)!==0);
+const reflexDebugCounters={ecvEntries:0,ecvNoCid:0,ecvNoCidx:0,ecvNoProg:0,ecvPassed:0,
+  ucrCalls:0,ucrNewReflex:0,ucrWarmup:0,gateFires:0,gateThreatZero:0,gateTrendZero:0,
+  sumAbsThreatAddend:0,sumAbsTrendAddend:0,sumAbsResidue4:0,sumAbsResidue5:0,
+  nonzeroFirings:0,nonzeroFiringsReadable:0};
+
 function executeClusterVM(i,j,sim,d){
+  if(__reflexDebugOn)reflexDebugCounters.ecvEntries++;
   const cid=clusterID[i];
-  if(cid<0)return;
+  if(cid<0){if(__reflexDebugOn)reflexDebugCounters.ecvNoCid++;return;}
   const cIdx=cid<MAX_CLUSTERS?clusterByID[cid]:-1;
-  if(cIdx<0)return;
+  if(cIdx<0){if(__reflexDebugOn)reflexDebugCounters.ecvNoCidx++;return;}
   const cl=clusters[cIdx];
-  if(!cl||!cl.vmProgram)return;
+  if(!cl||!cl.vmProgram){if(__reflexDebugOn)reflexDebugCounters.ecvNoProg++;return;}
+  if(__reflexDebugOn)reflexDebugCounters.ecvPassed++;
 
   const proximity=1-d/CELL;
   const phaseAlign=Math.cos(phase[i]-phase[j]);
@@ -15373,7 +15491,32 @@ function executeClusterVM(i,j,sim,d){
   vmRegs[3]=energy;
 
   const crw=genome.clusterReflexWeight||0;
+  // Signal is real as of Swing #47 (clusterReflexes fix, above) — delivered to registers 4/5, which
+  // no evolved program has yet been observed to read (CONFABULATION ASSAY, OEE-NOTES: 5-seed ablation,
+  // signal firing nonzero on ~90% of injections, still bit-identical open vs severed). Left as-is,
+  // deliberately: relocating the injection to registers 0-3 (where evolved code demonstrably looks)
+  // would answer the open question by construction instead of letting it play out. The awkward address
+  // is the experiment now — does anything ever evolve to read 4/5, live, across real runs.
   if(crw>0.001&&cl.reflexThreat!==undefined){
+    reflexTelemetry.fires++;
+    const _reflexNonzero=cl.reflexThreat!==0||cl.reflexTrend!==0;
+    if(_reflexNonzero)reflexTelemetry.nonzero++;
+    if(__reflexDebugOn){
+      const _dbg=reflexDebugCounters;
+      _dbg.gateFires++;
+      if(cl.reflexThreat===0)_dbg.gateThreatZero++;
+      if(cl.reflexTrend===0)_dbg.gateTrendZero++;
+      _dbg.sumAbsThreatAddend+=Math.abs(cl.reflexThreat*crw);
+      _dbg.sumAbsTrendAddend+=Math.abs(cl.reflexTrend*crw);
+      _dbg.sumAbsResidue4+=Math.abs(vmRegs[4]);
+      _dbg.sumAbsResidue5+=Math.abs(vmRegs[5]);
+      if(_reflexNonzero){
+        _dbg.nonzeroFirings++;
+        let _r45=false;
+        for(let _pi=0;_pi<cl.vmProgram.length;_pi++){const _inst=cl.vmProgram[_pi];if(!_inst)continue;if(Math.abs(_inst[1])%12===4||Math.abs(_inst[1])%12===5){_r45=true;break;}}
+        if(_r45)_dbg.nonzeroFiringsReadable++;
+      }
+    }
     vmRegs[4]+=cl.reflexThreat*crw;
     vmRegs[5]+=cl.reflexTrend*crw;
   }
@@ -18857,7 +19000,13 @@ function loop(){
     const fTrend=selfModel.fieldTrend||0;
     const rInf=genome.reflexInfluence||0;
     const crW=genome.clusterReflexWeight||0;
-    const reflexClusters=clusters.filter(c=>c.reflex&&c.reflex.selfRecognition>0.3).length;
+    // Swing #47: report the organ, not the ornament. selfRecognition (persistAge/20, only ever read
+    // by this HUD line before now) is a confirmed pure ornament — CONFABULATION ASSAY, OEE-NOTES.
+    // reflexWarmed counts clusters whose trend/cohesionTrend have actually left zero (the real
+    // manipulation check); reflexNonzeroRate is the live share of gate firings carrying a genuine
+    // nonzero value — cheap, always-on (reflexTelemetry, declared near executeClusterVM).
+    const reflexWarmed=clusters.filter(c=>c.reflex&&c.reflex.sizeHistory&&c.reflex.sizeHistory.length>=3).length;
+    const reflexNonzeroRate=reflexTelemetry.fires>0?(reflexTelemetry.nonzero/reflexTelemetry.fires):0;
     const nPeers=countPeers();
     const netTag=nPeers>0?` | net:${nPeers}⟷ s${netStats.sent} a${netStats.accepted}${netStats.bad?' !'+netStats.bad:''}`:'';
     const _gb=genome.gradientBias||0;
@@ -20619,7 +20768,7 @@ function loop(){
     _hud+=`${livingLin}lin fit:${currentFitness.toFixed(2)} stb:${(selfModel.stability||0).toFixed(2)} | `;
     _hud+=`vm:${genome.vmProgram.length}inst ${nSensors}sns ${hgtEventsTotal}hgt | `;
     _hud+=`pop:${N}/${CAP} fld:${fieldTotal.toFixed(0)}${fTrend<-0.01?'↓':fTrend>0.01?'↑':'~'} risk:${cRisk.toFixed(2)} | `;
-    _hud+=`⟲${rInf.toFixed(2)} ${reflexClusters}rc${netTag}${cgTag}${uaTag}`;
+    _hud+=`⟲${rInf.toFixed(2)} ${reflexWarmed}rc/${(reflexNonzeroRate*100|0)}%${netTag}${cgTag}${uaTag}`;
     _hud+=`${(genome.eventLog&&genome.eventLog.length)?' ev:'+genome.eventLog.length:''}`;
     _hud+=`${gradTag}${mrTag}${relTag}${sigTag}${attrTag}${fitwTag}${inscTag}${f2Tag}${ndcTag}`;
     _hud+=`${saiTag}${paiTag}${pdcTag}${ageTag}${pageTag}${spdTag}${pspdTag}${haiTag}${arTag}`;

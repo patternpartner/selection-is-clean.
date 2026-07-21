@@ -2770,3 +2770,396 @@ start), 0q6tklcc's dominance is partly big-pop-broadcasts-more, n=1 cohort, relo
 control proves old→young flow CAUSES the young diversity (only that the structure is consistent). dc pegged (1, or
 ~0.98 for the gen2 pair) everywhere; FORAGE rl atoms present but mostly uses=0 in this batch — the story here is the
 coupling, not the internal swings.
+
+### INSTRUMENT fix — the whole headless harness apparatus was dead at boot
+
+Picked this up next and tried to run harness.js before touching anything: it threw
+`Cannot read properties of undefined (reading 'appendChild')` at boot, before tick 1. Cause: the #metab in-sim
+panel's metabolismObserver IIFE runs unconditionally whenever BroadcastChannel exists, and its showPanel() opens
+with `document.head.appendChild(st)` / `document.body.appendChild(root)`, later using `root.classList.add/remove`
+and `root.remove()`. The four harness DOM stubs (harness.js, harness-oee.js, harness-ab.js, harness-stream.js)
+never defined document.head/body, and their shared makeEl() stub had no appendChild/classList/remove. So every
+headless run since that panel landed — harness-ablate.js and harness-ablate-bank.js too, since they just execFile
+harness-oee.js — has been dying at boot, before executing a single tick. Whether anyone actually tried a harness
+run in that window is unknown; what's certain is the apparatus itself, not the sim, was broken. Fixed by adding
+appendChild/removeChild/remove/classList to makeEl() and head/body to the document stub in all four files.
+Separately, harness-ab.js's AUTHOR_MULT text-patch target (`if(Math.random()<rate*0.15){`) no longer matched
+current index.html (the line is now a brace-less single statement gated by an added `p.length<cap&&`), so
+_patch()'s indexOf check failed and silently called process.exit(2) — silent because harness-ab.js's own
+console.error override swallows anything that isn't a Loop/Boot/Watchdog message. Retargeted the patch to the
+current substring. All six harness entry points verified booting and running clean again (0 loopErrors, 0
+driverErr) before any of the work below started.
+
+### SWING #45 — CAUSAL NETWORK-COUPLING TEST: the no-network control the live cohort never had
+
+The COHORT entry above named its own biggest hole: nothing closed proved coupling CAUSES the old→young diversity
+flow rather than merely correlating with population age/size (n=1, reload-confounded, no no-network control).
+Every closed harness up to this point stubs BroadcastChannel to a no-op — none of them could touch this question;
+every prior ablation/OEE/A-B run in this file was run fully uncoupled. Built harness-coupling.js +
+harness-coupling-worker.js to close that specific hole: matched-seed universes run two ways —
+COUPLED (instances share one real channel name) vs ISOLATED (identical code path, identical per-tick network cost,
+but each instance's BroadcastChannel constructor is remapped to a private channel name, so no peer message ever
+arrives). Same seed in both arms of a pair, so any divergence is attributable to coupling itself.
+
+Architecture note, honestly logged because it cost a false start: first attempt used `vm.createContext` for
+per-instance isolation (same process, N sandboxed globals). Measured ~4x slower per tick than harness.js's plain
+CommonJS/global approach — contextified sandbox objects have a materially slower global-property-access path than
+a real V8 realm. Switched to `worker_threads`: each instance gets a full, fast, independent V8 isolate, and Node's
+BroadcastChannel already multicasts by name across worker threads in the same process natively — verified directly
+with a 2-worker smoke test before building on it, so no hand-rolled message router was needed at all.
+
+Sanity check (this is the part that makes the result trustworthy, not just the headline numbers): the metabolism
+collector's own second channel ('ch') hears its own main channel's ('bc') emissions by design — real
+BroadcastChannel semantics, a second channel object hears everything except what IT sent — so even a fully
+isolated instance shows one 'self' entry in genome.coupling.peers. __sample() now reports externalPeers (excluding
+genome.coupling.self) so the isolated arm's silence is measured correctly instead of showing a false peers>0.
+Result at full scale (4 seeds, 15000 ticks): coupled 4/4 heard a real external peer, isolated 0/4 did, AND isolated
+0/4 ever absorbed anything (absorb only increments via handleNetworkMessage, which independently filters out
+msg.tab===TAB_ID — this is proof the isolation is real at the sim-state level, not a labeling artifact).
+
+**Verdict.** Delta = coupled − isolated, matched pairs, late-window (last third) means, seeds 11/13/17/19:
+meanAmp COUPLED_LOWER (mean −0.004, sd 0.0034, 3/4 seeds negative) — small, ~0.3% of baseline ~1.18.
+occupiedKinds COUPLED_LOWER (mean −0.68, sd 0.40, 4/4 seeds ≤0) — the most consistent signal in this run.
+diversityHbits and diversityEvenness both NO_EFFECT (one seed, 19, swung strongly positive against the other
+three, so neither beats its own noise).
+
+So: in THIS setup, coupling did not raise diversity — if anything it mildly lowered occupied-niche count and mean
+fitness, consistent in direction across most seeds but small in magnitude and only n=4. Read plainly, not
+inflated: this is NOT a replication of the live COHORT finding, and isn't trying to be — that cohort's
+differentiation came from AGE/MATURITY ASYMMETRY (an old, large, low-diversity producer feeding novelty to young,
+small, high-diversity bloomers). This harness coupled SYMMETRIC same-age peers, all booted together from the same
+tick zero. That symmetric coupling trends toward mild homogenization rather than diversification is actually the
+sharper, complementary result: it suggests the live cohort's diversity gain specifically required the
+producer/consumer asymmetry, not coupling per se — mutual gene-flow between equals doesn't manufacture novelty on
+its own, matching the classical population-genetics intuition that migration between symmetric demes homogenizes
+rather than diversifies. Caveats stated plainly: 15000 ticks is short next to the live cohort's t~60k–100k
+maturity windows and this never ran long enough to let any instance actually differentiate into a producer role;
+n=4 seeds is thin; effect sizes are small enough that a longer or larger run could still overturn NO_EFFECT into a
+real signal either direction.
+
+The next swing this points at, named not deferred: an ASYMMETRIC version of this same harness — pre-run one
+instance to a mature/low-diversity state (matching the live producer's profile) before coupling it to several
+fresh instances, then compare coupled-fresh vs isolated-fresh diversity trajectories. That is the actual causal
+analogue of what the live cohort showed; this run only establishes that the null hypothesis (symmetric coupling ⇒
+free diversity gain) does not hold, which is the honest prerequisite before spending a longer run on the
+asymmetric setup.
+
+### SWING #45b — ASYMMETRIC COUPLING TEST: the actual analogue, run — still no diversity gain
+
+Built harness-coupling-asym.js to run the follow-up #45 named: give the fresh cohort an actual mature producer to
+couple to (age/size/diversity asymmetry, matching the live COHORT's structure) instead of symmetric same-age peers.
+One producer (seed 7, the project's canonical authoring seed) matured 30000 ticks ALONE (its channel open from
+boot, nobody listening yet — same trick as harness-coupling.js's isolated arm, just used for real this time), then
+3 matched fresh pairs (seeds 11/13/17) joined for 15000 ticks — coupled shares the producer's channel (so the 3
+coupled fresh instances are ALSO on the wire with each other, not just the producer — a real small multi-body
+cohort with one elder, which is actually more faithful to the live topology than a strict pairwise design), isolated
+gets a private channel per seed, same strength-matched control as #45.
+
+Producer profile at maturity vs a fresh instance's own tick-0 baseline: N 630 vs 329 (real size asymmetry), 
+occupiedKinds 8 vs 25, diversityHbits 2.97 vs 3.56 — genuinely lower-diversity and larger, qualitatively matching
+the live producer's profile (large, low-diversity), though nowhere near the live extreme (kinds=1 at T~100k) —
+30000 ticks produced a moderately mature producer, not a monoculture. Sanity: freshCoupled_sawExternalPeer 3/3,
+freshIsolated_sawExternalPeer 0/3, freshIsolated_absorbedAnything 0/3 — isolation control clean again. One reading
+needs a caveat, not a redo: the producer's OWN final sample showed externalPeers=0 despite absorb=59 (real,
+nonzero) — worked out why rather than treating it as a red flag: the producer is far heavier per tick (N=630+,
+lineageRegistry=8766) than the ~400-490-particle fresh instances, so it very likely finished its own final ticks
+well after the fresh-coupled workers had already exited; the metab collector prunes any peer id unheard from in 60
+real seconds, so by the producer's LAST sample the fresh peers' entries had gone stale and were pruned — a
+snapshot-timing artifact, not evidence the coupling was ever silent. The fresh side's own readings (3/3, live
+throughout their own shorter run) are the trustworthy half of this sanity check.
+
+**Verdict** (delta = fresh-coupled − fresh-isolated, matched pairs, late-window means, seeds 11/13/17):
+meanAmp NO_EFFECT (mean −0.0037, sd 0.0096, 1/3 positive). diversityHbits NO_EFFECT (mean +0.14, sd 0.25, 2/3
+positive — trending the right direction this time, unlike #45, but still doesn't beat its own noise).
+diversityEvenness NO_EFFECT (mean +0.094, sd 0.124, 2/3 positive — same pattern). occupiedKinds COUPLED_LOWER
+(mean −1.24, sd 1.12, 3/3 seeds ≤0: −2.72, 0, −1) — the one metric that stayed consistently negative in BOTH the
+symmetric (#45) and this asymmetric run.
+
+So: giving the fresh cohort a real mature producer did NOT flip the result into a robust diversity gain.
+occupiedKinds is still directionally lower under coupling in both experiments; Hbits/evenness nudged positive here
+but not enough to call it a real effect at n=3. Read plainly, this does not refute the live COHORT reading — it
+narrows where the disagreement must live. Two honest candidates, both about SCALE not mechanism: (1) this
+producer's maturity (kinds=8) is far short of the live producer's monoculture extreme (kinds=1) — an elder that
+hasn't differentiated much may not be much of a novelty pump yet; (2) the coupling window here (15000 ticks) is a
+sliver of the live young universes' own maturation time (t~60k before they were read as "bloomers") — 15000 ticks
+may simply not be enough time for absorbed novelty to convert into occupied niches even if the mechanism is real.
+Both point the same direction: this harness's compute budget (this one run took ~41 minutes wall-clock) is
+underscaled relative to the live timescales the COHORT finding actually lived at, not that the hypothesis is wrong.
+Named, not run without checking first given the cost already spent: either a much longer maturation (push the
+producer toward genuine near-monoculture) or a much longer coupling phase (closer to 60k+ ticks) would be the
+faithful next test, but both push a single harness pass well past an hour and deserve a deliberate go-ahead rather
+than another automatic launch.
+
+### SWING #46 — ALIEN GRIP: alien-prediction accuracy becomes its own selection currency, not a dead one
+
+The two coupling swings above (#45, #45b) both landed honest nulls at their tested scale — symmetric and
+asymmetric coupling alike left occupiedKinds flat-to-lower, nothing showed a robust diversity gain. Rather than
+push a third, much longer coupling run without a deliberate go-ahead, the user asked for the one direction that
+fits everything learned this session and hasn't been tried — not here, not (as far as either of us knows) in ALife
+more broadly: stop trying to fix authored cognition's grip on LOCAL fitness (proven dead by the whole-bank
+ablation) and instead give it a currency that was never entangled with the self's own body in the first place.
+
+It was already half-built. runAlienPrediction() (added some swings back, barely used) has the self's most-proven
+atom predict a coupled peer's near-future packet-emission rate — a genuinely alien target, since that peer is a
+causally independent substrate (possibly Selection, possibly φ's fluid grid, possibly the SAT crucible) the self
+cannot influence back through this channel, only observe. But a hit only ever bumped `uses` — the exact currency
+the whole-bank ablation proved EXECUTED but FITNESS-INERT. So the mechanism had zero teeth: it could never protect
+an atom, shape authorship, or compete against anything. It was scorekeeping nobody could win or lose.
+
+**The move.** Give atoms their own alienHits/alienAttempts, fed and spent by nothing else — a currency clean of the
+proven-dead one. alienGrip(atom) = raw hit-rate once an atom clears a 6-attempt floor (no hand-picked "chance"
+baseline; predicted/actual direction isn't a clean coin flip so a real baseline would need its own instrumentation
+pass — left honest rather than guessed). That grip now scales down two things that used to be blind to it: the
+per-mutation-cycle chance an atom's whole expression gets randomly overwritten, and the uses===0 cull that would
+otherwise delete an atom doing real exogenous predictive work that opcode-22 just never happens to call. A second
+change was needed for the currency to mean anything at all: prediction FORMATION used to always test the
+highest-`uses` incumbent, which would have meant only whatever the (already-inert) internal route already favoured
+ever got a shot at the alien channel — added a 30% chance to test a random bound atom instead, so the new currency
+can actually discover something the old one never could. Gated __ALIEN_SELECT, default on; off reproduces the
+pre-#46 behaviour exactly (uses-bump included) for a clean A/B. alienHits/alienAttempts added to all four places
+atoms cross a boundary (encodeGenome/decodeGenome/sanitizeGenome/cloneGenome) so the record survives save/reload
+instead of silently vanishing — cloneGenome resets it to 0, same as uses, so a new lineage re-earns its own record
+rather than inheriting a parent's.
+
+**Verified, not yet validated as adaptive.** Full file parses; harness.js and harness-oee.js boot and run clean (0
+loopErrors/driverErr) with the gate on. A direct two-worker real-coupling check (bypassing the summary-only
+orchestrators to read raw samples) confirmed the mechanism end to end: attempts/hits climb against REAL peer
+traffic, grippedAtoms and bestAtomGrip stay at 0 until an atom crosses the 6-attempt floor then read ~0.43-0.57 —
+plausible, not saturating to a suspicious 1.0. Gate-off run reproduces the old no-crash behaviour, grippedAtoms
+staying 0 throughout. What's NOT yet shown: whether this changes which atoms actually survive over a long run, or
+whether it moves any downstream measure at all — that would be a whole-bank-style ablation comparing __ALIEN_SELECT
+on vs off under real coupling over enough ticks for grip to actually differentiate the bank, which is the honest
+next pass and, given how the last two runs went, deserves a deliberate go before launching.
+
+### SWING #46 ABLATION — a genuinely mixed result: real signal, but not the clean one hoped for
+
+Ran the direct test: 4 matched seeds, each present twice in ONE shared coupled cohort (__ALIEN_SELECT on vs off,
+same channel, same peer-traffic environment, only each instance's own gate differs), 45000 ticks — long enough for
+atoms to actually get authored (the pilot at 3000 ticks proved that much isn't: totAtoms stayed 0 in all four
+instances, confirming this project's own ~45k-tick authoring-window precedent the hard way before spending the
+full run on it).
+
+Gate mechanics: clean. on_sawExternalPeer 4/4, on_grippedAnyAtom 4/4 — every ON instance grew at least one atom
+with real measured grip, and bestAtomGrip landed in a tight, plausible band (0.44-0.45) across all four seeds,
+independently — not saturating to a suspicious 1.0, not scattered noise either. off_grippedAnyAtom stayed exactly
+0/4 as it must by construction. The instrument is trustworthy.
+
+**The hypothesis test itself is mixed, not a clean confirmation.** meanAtomAge — the direct behavioural signature
+of protection actually happening — came back NO_EFFECT (mean +8.4, sd 25.2, 3/4 seeds positive but noisy; one seed,
+17, went the WRONG way: ON 71.7 vs OFF 101.5, the isolated arm's atoms lived LONGER). totAtoms: NO_EFFECT, also
+noisy. liveAtoms (uses>0 count) is the one metric that reaches a real verdict: ON_HIGHER, mean +1.28, beats its own
+noise, 3/4 seeds positive — atoms protected from the blind mutation-overwrite are ending up with more of them
+eventually crossing into "called via ordinary opcode-22 execution" too, an indirect but real downstream signature
+that something is different about the bank's composition under ON. meanAmp: a small, borderline ON_LOWER
+(mean -0.030, sd 0.030 — barely beats noise, 3/4 seeds negative) — a modest possible COST to local fitness from
+protecting atoms selected on a criterion that has nothing to do with local fitness, worth stating plainly rather
+than hand-waved away since the mechanism was explicitly built to be decoupled from that axis, not to help it.
+diversityHbits and occupiedKinds: no effect either way.
+
+Read honestly: this is not "another dead currency" (liveAtoms moved, real and consistent; alien accuracy is
+genuinely accumulating in the wild against real peer traffic, not just in the earlier isolated smoke test) — but
+it's also not the clean "protection has real teeth" story hoped for, since the most DIRECT test (age) didn't
+robustly move, and even reversed once. Two honest reasons this run may simply be underpowered rather than the
+mechanism being inert: (1) n=4 seeds is thin for a noisy per-mutation-cycle probabilistic effect — protection
+LOWERS overwrite odds, it doesn't eliminate them, so even a real effect needs many mutation cycles and many seeds
+to separate from chance; (2) mean age is sensitive to bank SIZE differences between arms (a bank with one very old
+atom and several young ones reads differently from a bank with several moderately-aged atoms) — a cleaner statistic
+(max atom age, or fraction surviving past N cycles) might show what a mean washes out. Not run further without a
+deliberate go-ahead: this ablation alone cost ~50 minutes, on top of ~40 and ~30 for the two coupling swings before
+it. The honest next move, named: either a much larger n (more seeds) or a sharper survival statistic, not just a
+longer run at the same n — more ticks alone won't fix a mean that's already noisy at n=4.
+
+### CONFABULATION ASSAY (a collaborator's reframe, tested against this codebase directly)
+
+A collaborator proposed reading this project's own history through cognitive science: an LLM-authored codebase
+writing `selfRecognition = min(1, persistAge/20)` and naming it self-recognition is confabulation in the strict
+sense — a sincere name produced by the same process that wrote the mechanism, with nothing enforcing correspondence
+between the two. Their claim: this codebase is an unusually good instrument for measuring the rate, because
+authorship is near-total LLM, the domain (memory/signaling/self-recognition) maximizes exactly the narrative
+pressure that produces confabulation, and every claim sits next to an inspectable mechanism — correspondence is a
+grep and an ablation, not a philosophical dispute. Proposed method: trace every named structure, knock each out
+headless across seeds, score each annotation's claimed function against measured causal contribution — organ,
+ornament, or undocumented load-bearing machinery.
+
+**Tier-0 (static reachability, no run needed).** The flagship example checks out exactly as claimed. `selfRecognition`
+(`c.reflex.selfRecognition=Math.min(1,c.persistAge/20)`, in `updateClusterReflex()`) has exactly one consumer in the
+whole file: a HUD debug string (`${reflexClusters}rc`). Selection-blind by construction — no run needed to know
+ablating it changes nothing. Its governing comment (the LAYER 10 block, not a stray inline note) makes a falsifiable
+architectural claim that doesn't hold for this specific field: "Clusters recognise themselves as clusters... This is
+not imposed — it's evolvable. The system discovers self-reference is adaptive (or not)." selfRecognition has no
+channel through which evolution COULD discover anything about it — the claim promises an enforcement mechanism that
+structurally cannot exist for the one field carrying the layer's own name.
+
+First pass at the struct's other three fields wrongly called `cohesionTrend`/`reflexCohesion` a second pure ornament
+— caught by the collaborator re-verifying against their own mounted copy rather than trusting the relayed table, and
+confirmed independently here rather than taken on trust: the error was a grep for the exported name (`reflexCohesion`)
+that never queried the internal one (`cohesionTrend`), which IS read, one line below its own assignment
+(`(-r.cohesionTrend*0.3)` feeding `threatLevel`). Fresh direct grep afterward found the finer split: the internal
+value is live (composed into threatLevel → reflexThreat → vmRegs[4]), but its own EXPORTED mirror (`c.reflexCohesion`,
+a separate write onto the cluster object) has exactly one occurrence in the file — the assignment itself. A live
+computation with a dead advertised address: two distinct failure modes wearing what looked like one name. Both
+resolved by grep alone, no ablation needed, matching the method's own claim that Tier-0 settles unreachability
+without a run.
+
+**Tier-1 (dynamic ablation) on the one reachable sibling.** reflexThreat and reflexTrend both write vmRegs[4]/[5]
+directly in executeClusterVM, gated by clusterReflexWeight (evolvable, defaults 0.15, well above the 0.001 gate) —
+not ornaments by the static test. harness-ablate-reflex.js + harness-reflex-leaf.js text-patch that one gate
+permanently closed vs intact (clusterReflexWeight's own evolution left untouched — confirmed via crwFinal reading
+identically in both arms), 5 matched seeds, 20000 ticks. Result: intact and ablated bit-identical to many decimal
+places on meanAmp, occupiedKinds, and diversityHbits — for every single seed.
+
+Bit-identical is exactly the "hollow null" signature this project has hit before (an ablated path that never
+actually fires reads as "no effect" for the wrong reason). Rather than report it on the strength of the number
+alone, added a diagnostic-only firing counter (globalThis.__gateFires, same condition and branch, purely additive)
+and ran a direct check: 2,145,567 gate firings over 20000 ticks on a single seed — upward of 100 times per tick,
+every tick, for the whole run. Not hollow. The write happens massively and unambiguously; ablating it still changes
+nothing, not by an epsilon, across all 5 seeds. Sharper than the whole-bank ablation's own finding (4/5 seeds
+bit-identical, one showing a trace effect) — this is 5/5 perfect despite roughly two orders of magnitude more
+executions per run than the atom bank ever accumulates in its 45k-tick authoring window.
+
+**VERDICT: REFLEX_EXECUTED_BUT_INERT, and a finer failure mode than either taxonomy had a slot for.** Not
+unreachable (fires 2M+ times). Not merely untested (directly measured). The likely mechanism, traced but not yet
+directly confirmed: vmRegs[4]/[5] are written before a cluster's own vmProgram instructions run; whether the write
+has any consequence depends on whether that specific program's instructions (seeded via seedClusterVM(), sampling
+and biased toward EMIT instructions from the global program) happen to address registers 4 or 5 as a SOURCE at all
+— addressable in principle (si=Math.abs(src)%12, no special-casing), but possibly never actually rolled in this
+regime's instantiated programs. Executed, wired, massively exercised, and downstream-orphaned — a mechanism can
+apparently fire without ever being consumed, which is a step short of the atom bank's "consumed but doesn't move
+fitness" and a step past a pure unreachable ornament.
+
+Honest caveat, same one the whole-bank ablation itself needed a BASE_GENOME follow-up to address: this tests a
+fresh, unauthored, 20000-tick boot. Cluster VM programs haven't had the time or authoring pressure a real mature
+export would give them to diversify their register usage. "Zero grip in this regime" is not yet "zero grip ever" —
+the honest next test is the same real-genome pass the atom bank got, not assumed from this result alone.
+
+Running tally, static + dynamic together: selfRecognition — pure ornament (Tier-0). reflexCohesion (the export) —
+pure ornament (Tier-0), distinct from the live internal value it mirrors. reflexThreat/reflexTrend — reachable,
+massively executed, EXECUTED_BUT_INERT at this scale (Tier-1, verified). One authoring event, no blind ratings, n
+small — a specimen, not yet a rate. But exact, so far, on every field checked.
+
+### CONFABULATION ASSAY — the reflex null, fully mechanised: not dormant, not orphaned, input-starved
+
+A collaborator (Fable, working from the same file — confirmed, not a separate extraction) raised a real
+hypothesis in response to the bit-identical reflex ablation: what if the pathway is dormant, gated behind a rare
+vmProgram grant? Already falsifiable from the gateFires counter alone (2.1M+ firings can't happen through a guard
+that's usually closed), but the sharper part of the same message — a fired gate can still add exactly zero if
+threatLevel structurally clamps to 0 for the clusters that actually exist — was genuinely open, so three diagnostics
+were added to settle it by direct count rather than further argument: executeClusterVM entries vs early-returns
+split by which guard bounced; updateClusterReflex call count + fresh-reflex-object count; and, at the gate itself,
+zero-vs-nonzero counts plus running sums of the actual addend magnitudes.
+
+Result, one seed, 20000 ticks: executeClusterVM entered 23,568,236 times; ecvNoProg=0 — NEVER bounced on a missing
+vmProgram, confirming the grant is neither dormant nor severed. 15,199,814 calls (64%) pass every guard. Of the
+2,145,567 gate firings: gateTrendZero=2,145,567 — 100%, every single one — and sumAbsTrendAddend=0, not
+approximately zero, exactly zero across two million samples. gateThreatZero=2,142,094 (99.84%); the remaining
+0.16% sum to 156.285 in magnitude, averaging ~0.045 each.
+
+Traced to the exact source, confirmed by rereading updateClusterReflex(): r.trend and r.cohesionTrend are
+initialized to 0 and only leave that value once sizeHistory/coherenceHistory accumulate 3 samples — which requires
+a cluster to survive THREE CONSECUTIVE updateClusterReflex cycles (~180 ticks of continuous, matched persistence).
+With only 333 total calls to that function across the whole 20000-tick run and 190 fresh-reflex-object creations,
+clusters essentially never persist long enough to clear that bar: trend never once left its zero initialization in
+over two million observations. threatLevel inherits the same structural zero from trend/cohesionTrend, going
+nonzero only via its size<4 fallback term — exactly matching the rare, small, ~0.045-magnitude nonzero firings
+observed.
+
+**Revised verdict.** Not EXECUTED_BUT_INERT in the atom-bank sense (selected, executed, no fitness grip) — a fourth
+and more specific failure mode: the wire is real, correctly wired, and fires constantly, but the SIGNAL it's meant
+to carry structurally cannot form at this timescale, because the clusters that would carry it don't persist long
+enough. Not dormant (fires millions of times), not severed (confirmed same file, ecvNoProg=0), not orphaned in the
+sense investigated earlier (this is upstream of that question) — input-starved. The honest prediction this now
+makes, sharper than the earlier vague "try a mature genome" caveat: a genome/run where clusters persist
+substantially longer than ~180 ticks (a real export, or a longer stability-selected run) should show trend/
+cohesionTrend actually leaving zero, and would be the correct next test of whether the pathway grips fitness once
+its input is no longer starved — not yet run, named for whoever picks this up next.
+
+### CONFABULATION ASSAY — Fable's protocol run to completion: signal forms, still the deepest ornament
+
+Fable's pre-registered experiment, relayed and run in full. Manipulation check first (does trend/cohesionTrend
+ever leave zero if actually given a fair chance): Arm 1 as originally specified (history bar 3->2 samples,
+updateClusterReflex cadence tick%60->tick%15) FAILED it — ucrWarmup stayed 0, gateTrendZero stayed exactly 100%,
+even with cadence confirmed quadrupled (ucrCalls 333->1333). Per protocol this yields no verdict about the wire and
+names the real suspect instead: persistence tracking. Verified directly — every occurrence of `.reflex` in the file
+(4 total) sits inside updateClusterReflex() or the HUD read; trackClusterPersistence(), which explicitly carries
+vmProgram/vmInfluence/fieldSignature/lineageID forward across detection cycles via the clusterVMs map, never
+mentions .reflex. Since detectClusters() rebuilds `clusters` from scratch every cycle, c.reflex is undefined at the
+start of every call for every cluster regardless of how long it persists by hash-match — sizeHistory can never
+exceed length 1. Not a window problem; an object-lifetime problem.
+
+Built PERSIST_REFLEX to fix exactly that gap — twice. First attempt stored `c.reflex` into the existing newVMs map
+inside trackClusterPersistence(), which looked right but has a timing bug: that store runs BEFORE
+updateClusterReflex() executes later in the same tick-cadence block, so it always captured last cycle's PRE-update
+value (undefined on a cluster's first qualifying cycle) and could never catch up. Caught by comparing diagnostics
+against the unfixed run and finding them bit-identical down to ucrNewReflex's last digit — a fix that changes
+nothing is itself a result worth checking, not assuming. Fixed properly with a dedicated __clusterReflexes map,
+written by updateClusterReflex() itself immediately AFTER updating r, read back on the next cycle's restore —
+correct side of the sequence. Documented the dead first attempt in-line rather than deleting it.
+
+**Readout 1 (manipulation check): PASSED, decisively**, with the real fix. ucrWarmup 0->51. gateTrendZero
+100%->9.16% (89,360/975,301). sumAbsTrendAddend 0->55,966 (exactly zero before, substantially nonzero now).
+nonzeroFirings 11,986->922,010 (94.5% of all firings now carry a real value).
+
+**Readout 2 (bit-divergence): FAILED.** Full ablation, ARM1+PERSIST_REFLEX active in both arms, 5 seeds, 20000
+ticks, gate open vs severed: meanAmp, occupiedKinds, diversityHbits bit-identical to the same decimal place, every
+seed, despite the signal now firing nonzero 94.5% of the time. Per the pre-registered protocol, readout 2 failing
+means readout 3 (the fitness ledger) is moot — nothing to measure survival/births/novelty against when the arms
+are identical. This is Fable's outcome #3, named in advance: "the registers are never read; self-sensing writes to
+a channel nothing consults, the deepest ornament yet."
+
+One finer thread, not fully closed: the earlier diagnostic found 245 (of ~922k) nonzero firings where the cluster's
+vmProgram textually contains an instruction addressing register 4 or 5 — presence, not proof of execution, since
+the cluster VM has a branch opcode (case 14) that can skip instructions entirely. Given perfect bit-identity held
+anyway, those 245 textual matches evidently never executed in a way that reached anything consequential — a second,
+finer unreachability sitting under the one already measured, not separately instrumented.
+
+**Standing record, static + dynamic, this cluster:** selfRecognition — pure ornament (Tier-0, no run needed).
+reflexCohesion (the export) — pure ornament (Tier-0), distinct from the live cohesionTrend it mirrors.
+reflexThreat/reflexTrend — wired, fires millions of times, signal-starved by a real object-lifetime bug at
+baseline, and STILL bit-identical once that bug is fixed and the signal genuinely forms. Every field in this one
+struct resolves to the same place by a different route. Four counters, two of them added mid-investigation to close
+gaps the first pass didn't know it had, one real bug caught by comparing a "fix" against its own diagnostics rather
+than trusting it worked. Nothing banked without the subtraction actually being performed.
+
+### SWING #47 — MERGE: the audit's first repair enters the lineage as one
+
+Fable's merge instructions, followed as three separate decisions rather than one port — the branch contained
+three different kinds of change and only one of them was a fix.
+
+**Ported: the repair itself.** clusterReflexes (new Map, declared beside clusterVMs) restores c.reflex from the
+matched previous cluster in trackClusterPersistence(), and updateClusterReflex() stores it back immediately after
+updating — correct side of the tick%60 cycle, unlike the first (harness-only) attempt at this fix, which stored
+inside trackClusterPersistence() itself and always captured last cycle's pre-update value. Before merging, ran the
+one characterization Fable's caveat required: does the repair ALONE — original sample bar (3), original cadence
+(tick%60), no window manipulation — actually produce signal, or does it need the manipulations too? It does not
+need them: ucrWarmup 0->16, gateTrendZero 100%->12.8%, sumAbsTrendAddend 0->189,512 on a single seed, fix alone,
+unmodified regime. The repair is sufficient by itself; ported exactly that, nothing else.
+
+**Not ported: the manipulations.** Sample bars (3->2) and cadence (tick%60->tick%15) were interventions built to
+force signal formation for testing, not repairs — index.html's bars stay at 3, cadence stays at tick%60, exactly
+as before this swing.
+
+**Not touched: the injection address.** Registers 4/5 stay the injection target for reflexThreat/reflexTrend,
+deliberately, though evolved cluster-VM code demonstrably reads registers 0-3 more. Moving the signal to where code
+already looks would answer the open question (does anything evolve to read 4/5) by construction instead of letting
+it play out. Every real browser session left open, with the repair merged, is now that experiment running live —
+gate open, signal real for the first time in the mechanism's history. Relocating would have contaminated exactly
+the measurement the merge makes possible.
+
+**Instrumentation ported, gated.** The full diagnostic suite (ecvEntries/ecvNoCid/ecvNoCidx/ecvNoProg/ecvPassed,
+ucrCalls/ucrNewReflex/ucrWarmup, gateFires/gateThreatZero/gateTrendZero, addend and residue sums,
+nonzeroFirings/nonzeroFiringsReadable) lives in the file now, off by default (globalThis.__REFLEX_DEBUG=1 to
+enable, results in genome.reflexDebug) — the audit's own tools kept where the audit happened, because static
+reading never once substituted for them this investigation. One piece left always-on and free: reflexTelemetry
+(fires/nonzero, two integers) feeds the HUD change below without needing the debug flag at all.
+
+**HUD corrected.** The line that used to report `${reflexClusters}rc` — a count filtered on selfRecognition>0.3, a
+confirmed pure ornament — now reports `${reflexWarmed}rc/${nonzeroRate}%`: clusters whose history has actually left
+zero, and the live share of gate firings carrying a genuine nonzero value. The HUD reports the organ, not the
+ornament, going forward.
+
+**Comments corrected to the diagnostics, not the reverse.** The LAYER 10 block and clusterReflexWeight's own
+declaration comment now state exactly what's verified: the cluster reflex signal is real as of this swing,
+delivered to registers no evolved program has been observed to read; selfRecognition and the reflexCohesion export
+are confirmed pure ornaments; the particle-level reflex (reflexInfluence) is a separate, unaudited pathway and the
+correction does not extend to it — stated explicitly rather than left to imply more than was tested. Full empirical
+record stays here, in OEE-NOTES; the code states the verified conclusion and points back to it.

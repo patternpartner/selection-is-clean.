@@ -50,6 +50,8 @@ function makeEl() {
     getContext: () => CTX,
     addEventListener() {}, removeEventListener() {},
     set onclick(_) {}, set onchange(_) {}, click() {},
+    appendChild() {}, removeChild() {}, remove() {},
+    classList: { add() {}, remove() {}, toggle() {}, contains() { return false; } },
     style: {}, width: 1280, height: 720, _text: '',
     get textContent() { return this._text; },
     set textContent(v) { this._text = v; }
@@ -60,6 +62,7 @@ globalThis.document = {
   getElementById: (id) => (ELS[id] || (ELS[id] = makeEl())),
   createElement: () => makeEl(),
   addEventListener() {}, removeEventListener() {},
+  head: makeEl(), body: makeEl(),
   get hidden() { return false; }
 };
 globalThis.window = globalThis;
@@ -142,6 +145,7 @@ if (process.env.NICHE_FRONTIER !== undefined) globalThis.__NICHE_FRONTIER = pars
 if (process.env.NICHE_BIOTIC !== undefined) globalThis.__NICHE_BIOTIC = parseInt(process.env.NICHE_BIOTIC, 10);
 if (process.env.OPCODE_NOVELTY !== undefined) globalThis.__OPCODE_NOVELTY = parseInt(process.env.OPCODE_NOVELTY, 10);
 if (process.env.FORAGE_EYES !== undefined) globalThis.__FORAGE_EYES = parseInt(process.env.FORAGE_EYES, 10);
+if (process.env.ALIEN_SELECT !== undefined) globalThis.__ALIEN_SELECT = parseInt(process.env.ALIEN_SELECT, 10); // SWING #46
 if (process.env.NICHE_REAL !== undefined) globalThis.__NICHE_REAL = parseInt(process.env.NICHE_REAL, 10);
 if (process.env.NICHE_DRIFT !== undefined) globalThis.__NICHE_DRIFT = parseInt(process.env.NICHE_DRIFT, 10);
 // swing #17 cladogenesis (the speciation primitive). SPECIATE=1 turns it on; sub-toggles default to the
