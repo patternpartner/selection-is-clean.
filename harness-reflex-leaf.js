@@ -90,6 +90,12 @@ if (ABLATE) {
   const n = code.split(GATE).length - 1;
   if (n !== 1) { console.log(JSON.stringify({ error: `ablation patch target found ${n} times, expected 1 — index.html has drifted`, series: [] })); process.exit(1); }
   code = code.replace(GATE, 'if(false&&cl.reflexThreat!==undefined){');
+} else {
+  // Diagnostic-only, additive: count how often the gate actually opens in the INTACT arm, so a
+  // bit-identical ablation result can be told apart from a hollow one (gate structurally never
+  // fires) rather than a genuine null (fires, still no grip). Does not change behavior — same
+  // condition, same branch, just a counter alongside it.
+  code = code.replace(GATE, 'if(crw>0.001&&cl.reflexThreat!==undefined){globalThis.__gateFires=(globalThis.__gateFires||0)+1;');
 }
 
 const driver = `
@@ -152,5 +158,6 @@ console.log(JSON.stringify({
   ablated: ABLATE, seed: process.env.SEED || null,
   loopErrors, lastErr, driverErr: globalThis.__driverErr || 0,
   crwFinal: S.length ? S[S.length - 1].crw : null,
+  gateFires: globalThis.__gateFires || 0,
   series: S
 }));
