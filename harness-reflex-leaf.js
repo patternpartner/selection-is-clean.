@@ -138,14 +138,25 @@ try {
     code = patchOnce(code, CADENCE, 'if(tick%15===0){\n    let alive=0,totalAmp=0,totalRes=0,', 'updateClusterReflex cadence');
   }
   if (PERSIST_REFLEX) {
+    // FIRST ATTEMPT (kept here as a documented dead end, not silently dropped): stuffing
+    // reflex into newVMs.set() inside trackClusterPersistence() looked right but has a timing
+    // bug — that store runs BEFORE updateClusterReflex() executes later in the same tick%60
+    // block, so it always captures last cycle's PRE-update value (undefined, on a cluster's
+    // first qualifying cycle) and never catches up. Fixed properly with a dedicated map that
+    // updateClusterReflex() itself writes to, AFTER updating r — correct timing, same pattern
+    // clusterVMs already uses for vmProgram, just written from the right side of the cycle.
+    code = patchOnce(code,
+      'let clusterVMs=new Map(); // persist per-cluster VM programs across detection cycles (keyed by hash)',
+      'let clusterVMs=new Map(); // persist per-cluster VM programs across detection cycles (keyed by hash)\nlet __clusterReflexes=new Map(); // PERSIST_REFLEX diagnostic: persist .reflex across cycles, written post-update',
+      'clusterReflexes map declaration');
     code = patchOnce(code,
       '      const prevVM=clusterVMs.get(bestMatch.hash);\n      if(prevVM){\n        c.vmProgram=prevVM.prog.map(inst=>[...inst]); // deep copy',
-      '      const prevVM=clusterVMs.get(bestMatch.hash);\n      if(prevVM){\n        if(prevVM.reflex)c.reflex=prevVM.reflex; // PERSIST_REFLEX: carry reflex state forward like vmProgram/lineage\n        c.vmProgram=prevVM.prog.map(inst=>[...inst]); // deep copy',
+      '      const __prevReflex=__clusterReflexes.get(bestMatch.hash);\n      if(__prevReflex)c.reflex=__prevReflex; // PERSIST_REFLEX: carry reflex state forward like vmProgram/lineage\n      const prevVM=clusterVMs.get(bestMatch.hash);\n      if(prevVM){\n        c.vmProgram=prevVM.prog.map(inst=>[...inst]); // deep copy',
       'reflex restore in trackClusterPersistence');
     code = patchOnce(code,
-      'newVMs.set(c.hash,{prog:c.vmProgram.map(inst=>[...inst]),inf:c.vmInfluence,sig:Array.from(c.fieldSignature||[0,0,0]),lineage:c.lineageID});',
-      'newVMs.set(c.hash,{prog:c.vmProgram.map(inst=>[...inst]),inf:c.vmInfluence,sig:Array.from(c.fieldSignature||[0,0,0]),lineage:c.lineageID,reflex:c.reflex});',
-      'reflex store in trackClusterPersistence');
+      '    c.reflexTrend=r.trend;\n    c.reflexThreat=r.threatLevel;\n    c.reflexRecognition=r.selfRecognition;\n    c.reflexCohesion=r.cohesionTrend;\n  }\n}',
+      '    c.reflexTrend=r.trend;\n    c.reflexThreat=r.threatLevel;\n    c.reflexRecognition=r.selfRecognition;\n    c.reflexCohesion=r.cohesionTrend;\n    __clusterReflexes.set(c.hash,r); // PERSIST_REFLEX: store AFTER this cycle\'s update, correct timing\n  }\n}',
+      'reflex store after updateClusterReflex updates it');
   }
   // Gate block: addend logging (as before) + residue-before-injection + register-4/5-readability
   // check for the rare nonzero firings (closes the 0.16% stitch — does anything downstream even
