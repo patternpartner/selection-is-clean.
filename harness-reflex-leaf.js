@@ -85,17 +85,41 @@ const INDEX = process.env.INDEX || (__dirname + '/index.html');
 const html = fs.readFileSync(INDEX, 'utf8');
 let code = html.match(/<script>([\s\S]*)<\/script>/)[1];
 
-const GATE = 'if(crw>0.001&&cl.reflexThreat!==undefined){';
+const GATE_BLOCK = 'if(crw>0.001&&cl.reflexThreat!==undefined){\n    vmRegs[4]+=cl.reflexThreat*crw;\n    vmRegs[5]+=cl.reflexTrend*crw;\n  }';
+const ECV_GUARD = 'function executeClusterVM(i,j,sim,d){\n  const cid=clusterID[i];\n  if(cid<0)return;\n  const cIdx=cid<MAX_CLUSTERS?clusterByID[cid]:-1;\n  if(cIdx<0)return;\n  const cl=clusters[cIdx];\n  if(!cl||!cl.vmProgram)return;';
+const UCR_START = 'function updateClusterReflex(){';
+const UCR_NEWREFLEX = 'if(!c.reflex){';
+
+function patchOnce(src, find, repl, label) {
+  const n = src.split(find).length - 1;
+  if (n !== 1) throw new Error(`patch target for ${label} found ${n} times, expected 1 — index.html has drifted`);
+  return src.replace(find, repl);
+}
+
 if (ABLATE) {
-  const n = code.split(GATE).length - 1;
-  if (n !== 1) { console.log(JSON.stringify({ error: `ablation patch target found ${n} times, expected 1 — index.html has drifted`, series: [] })); process.exit(1); }
-  code = code.replace(GATE, 'if(false&&cl.reflexThreat!==undefined){');
+  code = patchOnce(code, 'if(crw>0.001&&cl.reflexThreat!==undefined){', 'if(false&&cl.reflexThreat!==undefined){', 'gate');
 } else {
-  // Diagnostic-only, additive: count how often the gate actually opens in the INTACT arm, so a
-  // bit-identical ablation result can be told apart from a hollow one (gate structurally never
-  // fires) rather than a genuine null (fires, still no grip). Does not change behavior — same
-  // condition, same branch, just a counter alongside it.
-  code = code.replace(GATE, 'if(crw>0.001&&cl.reflexThreat!==undefined){globalThis.__gateFires=(globalThis.__gateFires||0)+1;');
+  // Three diagnostics requested to distinguish a genuinely severed/dormant pathway from one that
+  // fires but contributes trivially-zero addends (threatLevel clamps to [0,1] — a healthy, growing,
+  // size>=4 cluster plausibly lands exactly on 0 there constantly). All additive, same branches,
+  // same conditions — no behavior change, just counters and running sums.
+  try {
+    code = patchOnce(code, ECV_GUARD,
+      'function executeClusterVM(i,j,sim,d){\n  globalThis.__ecvEntries=(globalThis.__ecvEntries||0)+1;\n  const cid=clusterID[i];\n  if(cid<0){globalThis.__ecvNoCid=(globalThis.__ecvNoCid||0)+1;return;}\n  const cIdx=cid<MAX_CLUSTERS?clusterByID[cid]:-1;\n  if(cIdx<0){globalThis.__ecvNoCidx=(globalThis.__ecvNoCidx||0)+1;return;}\n  const cl=clusters[cIdx];\n  if(!cl||!cl.vmProgram){globalThis.__ecvNoProg=(globalThis.__ecvNoProg||0)+1;return;}\n  globalThis.__ecvPassed=(globalThis.__ecvPassed||0)+1;',
+      'executeClusterVM guard');
+    code = patchOnce(code, UCR_START,
+      'function updateClusterReflex(){\n  globalThis.__ucrCalls=(globalThis.__ucrCalls||0)+1;',
+      'updateClusterReflex entry');
+    code = patchOnce(code, UCR_NEWREFLEX,
+      'globalThis.__ucrNewReflex=(globalThis.__ucrNewReflex||0)+1;if(!c.reflex){',
+      'updateClusterReflex new-reflex count');
+    code = patchOnce(code, GATE_BLOCK,
+      'if(crw>0.001&&cl.reflexThreat!==undefined){\n    globalThis.__gateFires=(globalThis.__gateFires||0)+1;\n    if(cl.reflexThreat===0)globalThis.__gateThreatZero=(globalThis.__gateThreatZero||0)+1;\n    if(cl.reflexTrend===0)globalThis.__gateTrendZero=(globalThis.__gateTrendZero||0)+1;\n    globalThis.__sumAbsThreatAddend=(globalThis.__sumAbsThreatAddend||0)+Math.abs(cl.reflexThreat*crw);\n    globalThis.__sumAbsTrendAddend=(globalThis.__sumAbsTrendAddend||0)+Math.abs(cl.reflexTrend*crw);\n    vmRegs[4]+=cl.reflexThreat*crw;\n    vmRegs[5]+=cl.reflexTrend*crw;\n  }',
+      'gate block with addend logging');
+  } catch (e) {
+    console.log(JSON.stringify({ error: e.message, series: [] }));
+    process.exit(1);
+  }
 }
 
 const driver = `
@@ -158,6 +182,19 @@ console.log(JSON.stringify({
   ablated: ABLATE, seed: process.env.SEED || null,
   loopErrors, lastErr, driverErr: globalThis.__driverErr || 0,
   crwFinal: S.length ? S[S.length - 1].crw : null,
-  gateFires: globalThis.__gateFires || 0,
+  diagnostics: ABLATE ? null : {
+    ecvEntries: globalThis.__ecvEntries || 0,
+    ecvNoCid: globalThis.__ecvNoCid || 0,
+    ecvNoCidx: globalThis.__ecvNoCidx || 0,
+    ecvNoProg: globalThis.__ecvNoProg || 0,
+    ecvPassed: globalThis.__ecvPassed || 0,
+    ucrCalls: globalThis.__ucrCalls || 0,
+    ucrNewReflex: globalThis.__ucrNewReflex || 0,
+    gateFires: globalThis.__gateFires || 0,
+    gateThreatZero: globalThis.__gateThreatZero || 0,
+    gateTrendZero: globalThis.__gateTrendZero || 0,
+    sumAbsThreatAddend: globalThis.__sumAbsThreatAddend || 0,
+    sumAbsTrendAddend: globalThis.__sumAbsTrendAddend || 0
+  },
   series: S
 }));
