@@ -12,6 +12,15 @@ const ABLATE = process.env.ABLATE_REFLEX === '1';
 // to 2, and quadruple the cadence that feeds it (tick%60 -> tick%15) — orthogonal to ABLATE_REFLEX,
 // so all four combinations (arm1 x {open,severed}) run through the same leaf.
 const ARM1 = process.env.ARM1 === '1';
+// PERSIST_REFLEX: the arm1 manipulation check (window shrunk to 2 samples, cadence quadrupled)
+// still came back ucrWarmup=0 — a deeper cause than window/cadence. trackClusterPersistence()
+// explicitly carries vmProgram/vmInfluence/fieldSignature/lineageID (and clusterGenome, separately)
+// forward across detection cycles via the clusterVMs map, but never .reflex — and detectClusters()
+// rebuilds `clusters` from scratch every cycle (clusters.length=0), so c.reflex is undefined at the
+// start of every updateClusterReflex() call for every cluster, no matter how long it's persisted by
+// hash-match. sizeHistory/coherenceHistory can never exceed length 1. Independent of ARM1 — a
+// different, deeper bottleneck than the one Fable's design targeted.
+const PERSIST_REFLEX = process.env.PERSIST_REFLEX === '1';
 
 function selfProxy() {
   const f = function () { return p; };
@@ -128,6 +137,16 @@ try {
   if (ARM1) {
     code = patchOnce(code, CADENCE, 'if(tick%15===0){\n    let alive=0,totalAmp=0,totalRes=0,', 'updateClusterReflex cadence');
   }
+  if (PERSIST_REFLEX) {
+    code = patchOnce(code,
+      '      const prevVM=clusterVMs.get(bestMatch.hash);\n      if(prevVM){\n        c.vmProgram=prevVM.prog.map(inst=>[...inst]); // deep copy',
+      '      const prevVM=clusterVMs.get(bestMatch.hash);\n      if(prevVM){\n        if(prevVM.reflex)c.reflex=prevVM.reflex; // PERSIST_REFLEX: carry reflex state forward like vmProgram/lineage\n        c.vmProgram=prevVM.prog.map(inst=>[...inst]); // deep copy',
+      'reflex restore in trackClusterPersistence');
+    code = patchOnce(code,
+      'newVMs.set(c.hash,{prog:c.vmProgram.map(inst=>[...inst]),inf:c.vmInfluence,sig:Array.from(c.fieldSignature||[0,0,0]),lineage:c.lineageID});',
+      'newVMs.set(c.hash,{prog:c.vmProgram.map(inst=>[...inst]),inf:c.vmInfluence,sig:Array.from(c.fieldSignature||[0,0,0]),lineage:c.lineageID,reflex:c.reflex});',
+      'reflex store in trackClusterPersistence');
+  }
   // Gate block: addend logging (as before) + residue-before-injection + register-4/5-readability
   // check for the rare nonzero firings (closes the 0.16% stitch — does anything downstream even
   // read what got written, for the cases where it's not trivially zero at the source).
@@ -199,7 +218,7 @@ console.log(JSON.stringify({
   ablated: ABLATE, seed: process.env.SEED || null,
   loopErrors, lastErr, driverErr: globalThis.__driverErr || 0,
   crwFinal: S.length ? S[S.length - 1].crw : null,
-  arm1: ARM1,
+  arm1: ARM1, persistReflex: PERSIST_REFLEX,
   diagnostics: {
     ecvEntries: globalThis.__ecvEntries || 0,
     ecvNoCid: globalThis.__ecvNoCid || 0,
