@@ -5143,15 +5143,27 @@ let genome={
   netReceptivity:0.5,       // 0..1 probability of accepting incoming packets (evolvable isolation)
 
   // ═══ LAYER 10: REFLEXIVITY — the system models itself from inside ═══
-  // Particles track their own state trajectory and adjust behaviour.
-  // Clusters recognise themselves as clusters and optimise for group survival.
-  // This is not imposed — it's evolvable. The system discovers self-reference is adaptive (or not).
+  // Particles track their own state trajectory and adjust behaviour via reflexInfluence — a separate
+  // pathway from cluster reflex below, untested by the audit that corrected the claim beneath it.
+  //
+  // CLUSTER reflex (clusterReflexAge/clusterReflexWeight, updateClusterReflex()): computes trend/
+  // threatLevel/cohesionTrend/selfRecognition per cluster and injects reflexThreat+reflexTrend into
+  // cluster-VM registers 4/5. Two of those four fields — selfRecognition, and its own exported mirror
+  // reflexCohesion — are CONFIRMED PURE ORNAMENTS: no consumer anywhere but a HUD count (now itself
+  // corrected, see reflexWarmed near executeClusterVM). The other two had a real bug: c.reflex was
+  // never carried forward across detection cycles, so trend/cohesionTrend could never leave zero
+  // regardless of how long a cluster persisted. Fixed (Swing #47, see clusterReflexes above) — the
+  // signal is now REAL, firing nonzero on ~90% of injections. A 5-seed open-vs-severed ablation still
+  // comes back bit-identical: EXECUTED, but no evolved cluster-VM program is observed to read what it
+  // writes. Left that way deliberately, not patched further — see the injection site for why. Full
+  // record: OEE-NOTES, CONFABULATION ASSAY entries. This comment is corrected TO the diagnostics that
+  // measured it, not the other way around.
   reflexSampleRate:0.15,      // fraction of particles that update self-model per tick (cost control)
   reflexDepth:4,              // how many historical samples each particle keeps (memory cost)
   reflexInfluence:0.1,        // how strongly self-model affects VM register initialisation (EVOLVES)
   reflexDecay:0.95,           // how fast old self-model samples fade
   clusterReflexAge:5,         // min persist age before cluster develops self-model
-  clusterReflexWeight:0.15,    // how much cluster self-model influences cluster VM (EVOLVES)
+  clusterReflexWeight:0.15,    // scales reflexThreat/reflexTrend into cluster-VM registers 4/5 (EVOLVES) — see LAYER 10 note above: signal real as of Swing #47, not observed to be read by any evolved program
 
   // ═══ LAYER 12: CLUSTER SELF-READ (Pe24) ═══
   // Cluster VMs can read their own clusterGenome values as VM registers.
@@ -7228,6 +7240,18 @@ function recordDissolutionFossil(c,quality){
 }
 let clusterAge=new Map(); // track persistence across snapshots
 let clusterVMs=new Map(); // persist per-cluster VM programs across detection cycles (keyed by hash)
+// Swing #47 FIX: persist per-cluster reflex state (trend/threat/cohesion sample history) across
+// detection cycles, the same way clusterVMs already does for vmProgram. Before this, c.reflex was
+// silently missing from the carry-forward list — detectClusters() rebuilds `clusters` from scratch
+// every cycle (clusters.length=0), so a persisting cluster's history arrays never survived past one
+// entry, and trend/cohesionTrend could never leave their zero initialization no matter how long the
+// cluster lived. Confirmed by direct instrumentation (OEE-NOTES, CONFABULATION ASSAY entries):
+// gateTrendZero read 100% across 2M+ firings before this fix, ~13% after, with the exact same
+// sample-history bar (3) and update cadence (tick%60) — an object-lifetime bug, not a tuning issue.
+// Written by updateClusterReflex() itself, AFTER it updates the state — trackClusterPersistence()
+// runs earlier in the same tick%60 block, so storing there instead (the first attempt) always
+// captured last cycle's PRE-update value and never worked; see the store site below for why this one does.
+let clusterReflexes=new Map();
 // Pe30 Layer 20: per-cluster scenario fossil. A cluster snapshots the global bank's
 // top scenario AT BIRTH and carries it for its whole life. This is what makes Pe28's
 // resurrection pathway genuinely fire — a long-lived cluster's snapshot is genuinely
@@ -7519,6 +7543,11 @@ function trackClusterPersistence(){
       const prevAge=clusterAge.get(bestMatch.hash)||0;
       newAge.set(c.hash,prevAge+1);
       c.persistAge=prevAge+1;
+      // Swing #47: restore reflex state (trend/threat/cohesion sample history) — see clusterReflexes
+      // declaration above. Without this, c.reflex is undefined at the top of every updateClusterReflex()
+      // call regardless of match, and sizeHistory/coherenceHistory can never exceed length 1.
+      const prevReflex=clusterReflexes.get(bestMatch.hash);
+      if(prevReflex)c.reflex=prevReflex;
       // ═══ CLUSTER VM INHERITANCE ═══
       // Carry the previous cluster's evolved VM forward — this is what makes
       // cluster programs accumulate rather than reset every detection cycle
@@ -11748,12 +11777,14 @@ function updateParticleReflex(){
 }
 
 function updateClusterReflex(){
+  if(__reflexDebugOn)__reflexDebugInit().ucrCalls++;
   const minAge=genome.clusterReflexAge||5;
 
   for(const c of clusters){
     if(c.persistAge<minAge)continue;
 
     if(!c.reflex){
+      if(__reflexDebugOn)__reflexDebugInit().ucrNewReflex++;
       c.reflex={
         ampHistory:[],
         sizeHistory:[],
@@ -11775,6 +11806,7 @@ function updateClusterReflex(){
     if(r.coherenceHistory.length>8)r.coherenceHistory.shift();
 
     if(r.sizeHistory.length>=3){
+      if(__reflexDebugOn&&!r.__warmed){r.__warmed=true;__reflexDebugInit().ucrWarmup++;}
       const recent=r.sizeHistory.slice(-2).reduce((a,b)=>a+b,0)/2;
       const older=r.sizeHistory.slice(0,2).reduce((a,b)=>a+b,0)/2;
       r.trend=Math.max(-1,Math.min(1,(recent-older)/(Math.max(1,older))*5));
@@ -11796,6 +11828,9 @@ function updateClusterReflex(){
     c.reflexThreat=r.threatLevel;
     c.reflexRecognition=r.selfRecognition;
     c.reflexCohesion=r.cohesionTrend;
+    clusterReflexes.set(c.hash,r); // Swing #47: store AFTER this cycle's update — correct side of the
+    // tick%60 cycle. trackClusterPersistence() runs earlier in the same cycle; storing there instead
+    // (the first attempt at this fix) always captured last cycle's pre-update value and never worked.
   }
 }
 
@@ -15413,13 +15448,32 @@ function executeVM(i,j,sim,d){
   if(DIMS>4){ tend[i*DIMS+4]+=vmActions[7]*influence*0.01; { const _v4=tend[i*DIMS+4]; tend[i*DIMS+4]=Number.isFinite(_v4)?Math.max(-1,Math.min(1,_v4)):0; } }
 }
 
+// Always-on, cheap (2 integer increments per gate fire) — the HUD reads this for the nonzero-addend
+// rate. Distinct from the debug suite below, which is gated off by default because it isn't free
+// (a vmProgram scan per nonzero firing).
+const reflexTelemetry={fires:0,nonzero:0};
+// Swing #47 debug counters — OFF by default. Set globalThis.__REFLEX_DEBUG=1 before boot to enable;
+// results land in genome.reflexDebug for export/inspection. This is exactly the instrumentation the
+// audit built externally as a harness text-patch (OEE-NOTES, CONFABULATION ASSAY entries) — kept in
+// the artifact itself because, per that audit, "no static reading substitutes for it."
+const __reflexDebugOn=(typeof globalThis!=='undefined')&&((globalThis.__REFLEX_DEBUG|0)!==0);
+function __reflexDebugInit(){
+  if(!genome.reflexDebug)genome.reflexDebug={ecvEntries:0,ecvNoCid:0,ecvNoCidx:0,ecvNoProg:0,ecvPassed:0,
+    ucrCalls:0,ucrNewReflex:0,ucrWarmup:0,gateFires:0,gateThreatZero:0,gateTrendZero:0,
+    sumAbsThreatAddend:0,sumAbsTrendAddend:0,sumAbsResidue4:0,sumAbsResidue5:0,
+    nonzeroFirings:0,nonzeroFiringsReadable:0};
+  return genome.reflexDebug;
+}
+
 function executeClusterVM(i,j,sim,d){
+  if(__reflexDebugOn)__reflexDebugInit().ecvEntries++;
   const cid=clusterID[i];
-  if(cid<0)return;
+  if(cid<0){if(__reflexDebugOn)__reflexDebugInit().ecvNoCid++;return;}
   const cIdx=cid<MAX_CLUSTERS?clusterByID[cid]:-1;
-  if(cIdx<0)return;
+  if(cIdx<0){if(__reflexDebugOn)__reflexDebugInit().ecvNoCidx++;return;}
   const cl=clusters[cIdx];
-  if(!cl||!cl.vmProgram)return;
+  if(!cl||!cl.vmProgram){if(__reflexDebugOn)__reflexDebugInit().ecvNoProg++;return;}
+  if(__reflexDebugOn)__reflexDebugInit().ecvPassed++;
 
   const proximity=1-d/CELL;
   const phaseAlign=Math.cos(phase[i]-phase[j]);
@@ -15434,7 +15488,32 @@ function executeClusterVM(i,j,sim,d){
   vmRegs[3]=energy;
 
   const crw=genome.clusterReflexWeight||0;
+  // Signal is real as of Swing #47 (clusterReflexes fix, above) — delivered to registers 4/5, which
+  // no evolved program has yet been observed to read (CONFABULATION ASSAY, OEE-NOTES: 5-seed ablation,
+  // signal firing nonzero on ~90% of injections, still bit-identical open vs severed). Left as-is,
+  // deliberately: relocating the injection to registers 0-3 (where evolved code demonstrably looks)
+  // would answer the open question by construction instead of letting it play out. The awkward address
+  // is the experiment now — does anything ever evolve to read 4/5, live, across real runs.
   if(crw>0.001&&cl.reflexThreat!==undefined){
+    reflexTelemetry.fires++;
+    const _reflexNonzero=cl.reflexThreat!==0||cl.reflexTrend!==0;
+    if(_reflexNonzero)reflexTelemetry.nonzero++;
+    if(__reflexDebugOn){
+      const _dbg=__reflexDebugInit();
+      _dbg.gateFires++;
+      if(cl.reflexThreat===0)_dbg.gateThreatZero++;
+      if(cl.reflexTrend===0)_dbg.gateTrendZero++;
+      _dbg.sumAbsThreatAddend+=Math.abs(cl.reflexThreat*crw);
+      _dbg.sumAbsTrendAddend+=Math.abs(cl.reflexTrend*crw);
+      _dbg.sumAbsResidue4+=Math.abs(vmRegs[4]);
+      _dbg.sumAbsResidue5+=Math.abs(vmRegs[5]);
+      if(_reflexNonzero){
+        _dbg.nonzeroFirings++;
+        let _r45=false;
+        for(let _pi=0;_pi<cl.vmProgram.length;_pi++){const _inst=cl.vmProgram[_pi];if(!_inst)continue;if(Math.abs(_inst[1])%12===4||Math.abs(_inst[1])%12===5){_r45=true;break;}}
+        if(_r45)_dbg.nonzeroFiringsReadable++;
+      }
+    }
     vmRegs[4]+=cl.reflexThreat*crw;
     vmRegs[5]+=cl.reflexTrend*crw;
   }
@@ -18918,7 +18997,13 @@ function loop(){
     const fTrend=selfModel.fieldTrend||0;
     const rInf=genome.reflexInfluence||0;
     const crW=genome.clusterReflexWeight||0;
-    const reflexClusters=clusters.filter(c=>c.reflex&&c.reflex.selfRecognition>0.3).length;
+    // Swing #47: report the organ, not the ornament. selfRecognition (persistAge/20, only ever read
+    // by this HUD line before now) is a confirmed pure ornament — CONFABULATION ASSAY, OEE-NOTES.
+    // reflexWarmed counts clusters whose trend/cohesionTrend have actually left zero (the real
+    // manipulation check); reflexNonzeroRate is the live share of gate firings carrying a genuine
+    // nonzero value — cheap, always-on (reflexTelemetry, declared near executeClusterVM).
+    const reflexWarmed=clusters.filter(c=>c.reflex&&c.reflex.sizeHistory&&c.reflex.sizeHistory.length>=3).length;
+    const reflexNonzeroRate=reflexTelemetry.fires>0?(reflexTelemetry.nonzero/reflexTelemetry.fires):0;
     const nPeers=countPeers();
     const netTag=nPeers>0?` | net:${nPeers}⟷ s${netStats.sent} a${netStats.accepted}${netStats.bad?' !'+netStats.bad:''}`:'';
     const _gb=genome.gradientBias||0;
@@ -20680,7 +20765,7 @@ function loop(){
     _hud+=`${livingLin}lin fit:${currentFitness.toFixed(2)} stb:${(selfModel.stability||0).toFixed(2)} | `;
     _hud+=`vm:${genome.vmProgram.length}inst ${nSensors}sns ${hgtEventsTotal}hgt | `;
     _hud+=`pop:${N}/${CAP} fld:${fieldTotal.toFixed(0)}${fTrend<-0.01?'↓':fTrend>0.01?'↑':'~'} risk:${cRisk.toFixed(2)} | `;
-    _hud+=`⟲${rInf.toFixed(2)} ${reflexClusters}rc${netTag}${cgTag}${uaTag}`;
+    _hud+=`⟲${rInf.toFixed(2)} ${reflexWarmed}rc/${(reflexNonzeroRate*100|0)}%${netTag}${cgTag}${uaTag}`;
     _hud+=`${(genome.eventLog&&genome.eventLog.length)?' ev:'+genome.eventLog.length:''}`;
     _hud+=`${gradTag}${mrTag}${relTag}${sigTag}${attrTag}${fitwTag}${inscTag}${f2Tag}${ndcTag}`;
     _hud+=`${saiTag}${paiTag}${pdcTag}${ageTag}${pageTag}${spdTag}${pspdTag}${haiTag}${arTag}`;

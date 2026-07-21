@@ -3119,3 +3119,47 @@ baseline, and STILL bit-identical once that bug is fixed and the signal genuinel
 struct resolves to the same place by a different route. Four counters, two of them added mid-investigation to close
 gaps the first pass didn't know it had, one real bug caught by comparing a "fix" against its own diagnostics rather
 than trusting it worked. Nothing banked without the subtraction actually being performed.
+
+### SWING #47 — MERGE: the audit's first repair enters the lineage as one
+
+Fable's merge instructions, followed as three separate decisions rather than one port — the branch contained
+three different kinds of change and only one of them was a fix.
+
+**Ported: the repair itself.** clusterReflexes (new Map, declared beside clusterVMs) restores c.reflex from the
+matched previous cluster in trackClusterPersistence(), and updateClusterReflex() stores it back immediately after
+updating — correct side of the tick%60 cycle, unlike the first (harness-only) attempt at this fix, which stored
+inside trackClusterPersistence() itself and always captured last cycle's pre-update value. Before merging, ran the
+one characterization Fable's caveat required: does the repair ALONE — original sample bar (3), original cadence
+(tick%60), no window manipulation — actually produce signal, or does it need the manipulations too? It does not
+need them: ucrWarmup 0->16, gateTrendZero 100%->12.8%, sumAbsTrendAddend 0->189,512 on a single seed, fix alone,
+unmodified regime. The repair is sufficient by itself; ported exactly that, nothing else.
+
+**Not ported: the manipulations.** Sample bars (3->2) and cadence (tick%60->tick%15) were interventions built to
+force signal formation for testing, not repairs — index.html's bars stay at 3, cadence stays at tick%60, exactly
+as before this swing.
+
+**Not touched: the injection address.** Registers 4/5 stay the injection target for reflexThreat/reflexTrend,
+deliberately, though evolved cluster-VM code demonstrably reads registers 0-3 more. Moving the signal to where code
+already looks would answer the open question (does anything evolve to read 4/5) by construction instead of letting
+it play out. Every real browser session left open, with the repair merged, is now that experiment running live —
+gate open, signal real for the first time in the mechanism's history. Relocating would have contaminated exactly
+the measurement the merge makes possible.
+
+**Instrumentation ported, gated.** The full diagnostic suite (ecvEntries/ecvNoCid/ecvNoCidx/ecvNoProg/ecvPassed,
+ucrCalls/ucrNewReflex/ucrWarmup, gateFires/gateThreatZero/gateTrendZero, addend and residue sums,
+nonzeroFirings/nonzeroFiringsReadable) lives in the file now, off by default (globalThis.__REFLEX_DEBUG=1 to
+enable, results in genome.reflexDebug) — the audit's own tools kept where the audit happened, because static
+reading never once substituted for them this investigation. One piece left always-on and free: reflexTelemetry
+(fires/nonzero, two integers) feeds the HUD change below without needing the debug flag at all.
+
+**HUD corrected.** The line that used to report `${reflexClusters}rc` — a count filtered on selfRecognition>0.3, a
+confirmed pure ornament — now reports `${reflexWarmed}rc/${nonzeroRate}%`: clusters whose history has actually left
+zero, and the live share of gate firings carrying a genuine nonzero value. The HUD reports the organ, not the
+ornament, going forward.
+
+**Comments corrected to the diagnostics, not the reverse.** The LAYER 10 block and clusterReflexWeight's own
+declaration comment now state exactly what's verified: the cluster reflex signal is real as of this swing,
+delivered to registers no evolved program has been observed to read; selfRecognition and the reflexCohesion export
+are confirmed pure ornaments; the particle-level reflex (reflexInfluence) is a separate, unaudited pathway and the
+correction does not extend to it — stated explicitly rather than left to imply more than was tested. Full empirical
+record stays here, in OEE-NOTES; the code states the verified conclusion and points back to it.
