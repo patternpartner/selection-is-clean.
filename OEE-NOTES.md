@@ -2968,3 +2968,71 @@ atom and several young ones reads differently from a bank with several moderatel
 deliberate go-ahead: this ablation alone cost ~50 minutes, on top of ~40 and ~30 for the two coupling swings before
 it. The honest next move, named: either a much larger n (more seeds) or a sharper survival statistic, not just a
 longer run at the same n — more ticks alone won't fix a mean that's already noisy at n=4.
+
+### CONFABULATION ASSAY (a collaborator's reframe, tested against this codebase directly)
+
+A collaborator proposed reading this project's own history through cognitive science: an LLM-authored codebase
+writing `selfRecognition = min(1, persistAge/20)` and naming it self-recognition is confabulation in the strict
+sense — a sincere name produced by the same process that wrote the mechanism, with nothing enforcing correspondence
+between the two. Their claim: this codebase is an unusually good instrument for measuring the rate, because
+authorship is near-total LLM, the domain (memory/signaling/self-recognition) maximizes exactly the narrative
+pressure that produces confabulation, and every claim sits next to an inspectable mechanism — correspondence is a
+grep and an ablation, not a philosophical dispute. Proposed method: trace every named structure, knock each out
+headless across seeds, score each annotation's claimed function against measured causal contribution — organ,
+ornament, or undocumented load-bearing machinery.
+
+**Tier-0 (static reachability, no run needed).** The flagship example checks out exactly as claimed. `selfRecognition`
+(`c.reflex.selfRecognition=Math.min(1,c.persistAge/20)`, in `updateClusterReflex()`) has exactly one consumer in the
+whole file: a HUD debug string (`${reflexClusters}rc`). Selection-blind by construction — no run needed to know
+ablating it changes nothing. Its governing comment (the LAYER 10 block, not a stray inline note) makes a falsifiable
+architectural claim that doesn't hold for this specific field: "Clusters recognise themselves as clusters... This is
+not imposed — it's evolvable. The system discovers self-reference is adaptive (or not)." selfRecognition has no
+channel through which evolution COULD discover anything about it — the claim promises an enforcement mechanism that
+structurally cannot exist for the one field carrying the layer's own name.
+
+First pass at the struct's other three fields wrongly called `cohesionTrend`/`reflexCohesion` a second pure ornament
+— caught by the collaborator re-verifying against their own mounted copy rather than trusting the relayed table, and
+confirmed independently here rather than taken on trust: the error was a grep for the exported name (`reflexCohesion`)
+that never queried the internal one (`cohesionTrend`), which IS read, one line below its own assignment
+(`(-r.cohesionTrend*0.3)` feeding `threatLevel`). Fresh direct grep afterward found the finer split: the internal
+value is live (composed into threatLevel → reflexThreat → vmRegs[4]), but its own EXPORTED mirror (`c.reflexCohesion`,
+a separate write onto the cluster object) has exactly one occurrence in the file — the assignment itself. A live
+computation with a dead advertised address: two distinct failure modes wearing what looked like one name. Both
+resolved by grep alone, no ablation needed, matching the method's own claim that Tier-0 settles unreachability
+without a run.
+
+**Tier-1 (dynamic ablation) on the one reachable sibling.** reflexThreat and reflexTrend both write vmRegs[4]/[5]
+directly in executeClusterVM, gated by clusterReflexWeight (evolvable, defaults 0.15, well above the 0.001 gate) —
+not ornaments by the static test. harness-ablate-reflex.js + harness-reflex-leaf.js text-patch that one gate
+permanently closed vs intact (clusterReflexWeight's own evolution left untouched — confirmed via crwFinal reading
+identically in both arms), 5 matched seeds, 20000 ticks. Result: intact and ablated bit-identical to many decimal
+places on meanAmp, occupiedKinds, and diversityHbits — for every single seed.
+
+Bit-identical is exactly the "hollow null" signature this project has hit before (an ablated path that never
+actually fires reads as "no effect" for the wrong reason). Rather than report it on the strength of the number
+alone, added a diagnostic-only firing counter (globalThis.__gateFires, same condition and branch, purely additive)
+and ran a direct check: 2,145,567 gate firings over 20000 ticks on a single seed — upward of 100 times per tick,
+every tick, for the whole run. Not hollow. The write happens massively and unambiguously; ablating it still changes
+nothing, not by an epsilon, across all 5 seeds. Sharper than the whole-bank ablation's own finding (4/5 seeds
+bit-identical, one showing a trace effect) — this is 5/5 perfect despite roughly two orders of magnitude more
+executions per run than the atom bank ever accumulates in its 45k-tick authoring window.
+
+**VERDICT: REFLEX_EXECUTED_BUT_INERT, and a finer failure mode than either taxonomy had a slot for.** Not
+unreachable (fires 2M+ times). Not merely untested (directly measured). The likely mechanism, traced but not yet
+directly confirmed: vmRegs[4]/[5] are written before a cluster's own vmProgram instructions run; whether the write
+has any consequence depends on whether that specific program's instructions (seeded via seedClusterVM(), sampling
+and biased toward EMIT instructions from the global program) happen to address registers 4 or 5 as a SOURCE at all
+— addressable in principle (si=Math.abs(src)%12, no special-casing), but possibly never actually rolled in this
+regime's instantiated programs. Executed, wired, massively exercised, and downstream-orphaned — a mechanism can
+apparently fire without ever being consumed, which is a step short of the atom bank's "consumed but doesn't move
+fitness" and a step past a pure unreachable ornament.
+
+Honest caveat, same one the whole-bank ablation itself needed a BASE_GENOME follow-up to address: this tests a
+fresh, unauthored, 20000-tick boot. Cluster VM programs haven't had the time or authoring pressure a real mature
+export would give them to diversify their register usage. "Zero grip in this regime" is not yet "zero grip ever" —
+the honest next test is the same real-genome pass the atom bank got, not assumed from this result alone.
+
+Running tally, static + dynamic together: selfRecognition — pure ornament (Tier-0). reflexCohesion (the export) —
+pure ornament (Tier-0), distinct from the live internal value it mirrors. reflexThreat/reflexTrend — reachable,
+massively executed, EXECUTED_BUT_INERT at this scale (Tier-1, verified). One authoring event, no blind ratings, n
+small — a specimen, not yet a rate. But exact, so far, on every field checked.
