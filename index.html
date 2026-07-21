@@ -11777,14 +11777,14 @@ function updateParticleReflex(){
 }
 
 function updateClusterReflex(){
-  if(__reflexDebugOn)__reflexDebugInit().ucrCalls++;
+  if(__reflexDebugOn)reflexDebugCounters.ucrCalls++;
   const minAge=genome.clusterReflexAge||5;
 
   for(const c of clusters){
     if(c.persistAge<minAge)continue;
 
     if(!c.reflex){
-      if(__reflexDebugOn)__reflexDebugInit().ucrNewReflex++;
+      if(__reflexDebugOn)reflexDebugCounters.ucrNewReflex++;
       c.reflex={
         ampHistory:[],
         sizeHistory:[],
@@ -11806,7 +11806,7 @@ function updateClusterReflex(){
     if(r.coherenceHistory.length>8)r.coherenceHistory.shift();
 
     if(r.sizeHistory.length>=3){
-      if(__reflexDebugOn&&!r.__warmed){r.__warmed=true;__reflexDebugInit().ucrWarmup++;}
+      if(__reflexDebugOn&&!r.__warmed){r.__warmed=true;reflexDebugCounters.ucrWarmup++;}
       const recent=r.sizeHistory.slice(-2).reduce((a,b)=>a+b,0)/2;
       const older=r.sizeHistory.slice(0,2).reduce((a,b)=>a+b,0)/2;
       r.trend=Math.max(-1,Math.min(1,(recent-older)/(Math.max(1,older))*5));
@@ -15453,27 +15453,30 @@ function executeVM(i,j,sim,d){
 // (a vmProgram scan per nonzero firing).
 const reflexTelemetry={fires:0,nonzero:0};
 // Swing #47 debug counters — OFF by default. Set globalThis.__REFLEX_DEBUG=1 before boot to enable;
-// results land in genome.reflexDebug for export/inspection. This is exactly the instrumentation the
-// audit built externally as a harness text-patch (OEE-NOTES, CONFABULATION ASSAY entries) — kept in
-// the artifact itself because, per that audit, "no static reading substitutes for it."
+// results in reflexDebugCounters (plain top-level object, same pattern as reflexTelemetry above —
+// NOT genome.reflexDebug: `genome` gets repointed to pGenome[i] throughout particle/cluster processing
+// (see e.g. "genome=pGenome[i]||genome" in applyMetabolism/executeSoloVM) and restored after, so a
+// genome-attached counter fragments across however many distinct per-lineage genome clones happen to
+// be active rather than accumulating in one place — caught exactly this way: reflexTelemetry.fires and
+// this suite's gateFires increment in the same block and read 70x apart before the fix, only explicable
+// by one of them landing on a moving target). This is the instrumentation the audit built externally as
+// a harness text-patch (OEE-NOTES, CONFABULATION ASSAY entries) — kept in the artifact itself because,
+// per that audit, "no static reading substitutes for it."
 const __reflexDebugOn=(typeof globalThis!=='undefined')&&((globalThis.__REFLEX_DEBUG|0)!==0);
-function __reflexDebugInit(){
-  if(!genome.reflexDebug)genome.reflexDebug={ecvEntries:0,ecvNoCid:0,ecvNoCidx:0,ecvNoProg:0,ecvPassed:0,
-    ucrCalls:0,ucrNewReflex:0,ucrWarmup:0,gateFires:0,gateThreatZero:0,gateTrendZero:0,
-    sumAbsThreatAddend:0,sumAbsTrendAddend:0,sumAbsResidue4:0,sumAbsResidue5:0,
-    nonzeroFirings:0,nonzeroFiringsReadable:0};
-  return genome.reflexDebug;
-}
+const reflexDebugCounters={ecvEntries:0,ecvNoCid:0,ecvNoCidx:0,ecvNoProg:0,ecvPassed:0,
+  ucrCalls:0,ucrNewReflex:0,ucrWarmup:0,gateFires:0,gateThreatZero:0,gateTrendZero:0,
+  sumAbsThreatAddend:0,sumAbsTrendAddend:0,sumAbsResidue4:0,sumAbsResidue5:0,
+  nonzeroFirings:0,nonzeroFiringsReadable:0};
 
 function executeClusterVM(i,j,sim,d){
-  if(__reflexDebugOn)__reflexDebugInit().ecvEntries++;
+  if(__reflexDebugOn)reflexDebugCounters.ecvEntries++;
   const cid=clusterID[i];
-  if(cid<0){if(__reflexDebugOn)__reflexDebugInit().ecvNoCid++;return;}
+  if(cid<0){if(__reflexDebugOn)reflexDebugCounters.ecvNoCid++;return;}
   const cIdx=cid<MAX_CLUSTERS?clusterByID[cid]:-1;
-  if(cIdx<0){if(__reflexDebugOn)__reflexDebugInit().ecvNoCidx++;return;}
+  if(cIdx<0){if(__reflexDebugOn)reflexDebugCounters.ecvNoCidx++;return;}
   const cl=clusters[cIdx];
-  if(!cl||!cl.vmProgram){if(__reflexDebugOn)__reflexDebugInit().ecvNoProg++;return;}
-  if(__reflexDebugOn)__reflexDebugInit().ecvPassed++;
+  if(!cl||!cl.vmProgram){if(__reflexDebugOn)reflexDebugCounters.ecvNoProg++;return;}
+  if(__reflexDebugOn)reflexDebugCounters.ecvPassed++;
 
   const proximity=1-d/CELL;
   const phaseAlign=Math.cos(phase[i]-phase[j]);
@@ -15499,7 +15502,7 @@ function executeClusterVM(i,j,sim,d){
     const _reflexNonzero=cl.reflexThreat!==0||cl.reflexTrend!==0;
     if(_reflexNonzero)reflexTelemetry.nonzero++;
     if(__reflexDebugOn){
-      const _dbg=__reflexDebugInit();
+      const _dbg=reflexDebugCounters;
       _dbg.gateFires++;
       if(cl.reflexThreat===0)_dbg.gateThreatZero++;
       if(cl.reflexTrend===0)_dbg.gateTrendZero++;
