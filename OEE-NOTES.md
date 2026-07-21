@@ -3072,3 +3072,50 @@ makes, sharper than the earlier vague "try a mature genome" caveat: a genome/run
 substantially longer than ~180 ticks (a real export, or a longer stability-selected run) should show trend/
 cohesionTrend actually leaving zero, and would be the correct next test of whether the pathway grips fitness once
 its input is no longer starved — not yet run, named for whoever picks this up next.
+
+### CONFABULATION ASSAY — Fable's protocol run to completion: signal forms, still the deepest ornament
+
+Fable's pre-registered experiment, relayed and run in full. Manipulation check first (does trend/cohesionTrend
+ever leave zero if actually given a fair chance): Arm 1 as originally specified (history bar 3->2 samples,
+updateClusterReflex cadence tick%60->tick%15) FAILED it — ucrWarmup stayed 0, gateTrendZero stayed exactly 100%,
+even with cadence confirmed quadrupled (ucrCalls 333->1333). Per protocol this yields no verdict about the wire and
+names the real suspect instead: persistence tracking. Verified directly — every occurrence of `.reflex` in the file
+(4 total) sits inside updateClusterReflex() or the HUD read; trackClusterPersistence(), which explicitly carries
+vmProgram/vmInfluence/fieldSignature/lineageID forward across detection cycles via the clusterVMs map, never
+mentions .reflex. Since detectClusters() rebuilds `clusters` from scratch every cycle, c.reflex is undefined at the
+start of every call for every cluster regardless of how long it persists by hash-match — sizeHistory can never
+exceed length 1. Not a window problem; an object-lifetime problem.
+
+Built PERSIST_REFLEX to fix exactly that gap — twice. First attempt stored `c.reflex` into the existing newVMs map
+inside trackClusterPersistence(), which looked right but has a timing bug: that store runs BEFORE
+updateClusterReflex() executes later in the same tick-cadence block, so it always captured last cycle's PRE-update
+value (undefined on a cluster's first qualifying cycle) and could never catch up. Caught by comparing diagnostics
+against the unfixed run and finding them bit-identical down to ucrNewReflex's last digit — a fix that changes
+nothing is itself a result worth checking, not assuming. Fixed properly with a dedicated __clusterReflexes map,
+written by updateClusterReflex() itself immediately AFTER updating r, read back on the next cycle's restore —
+correct side of the sequence. Documented the dead first attempt in-line rather than deleting it.
+
+**Readout 1 (manipulation check): PASSED, decisively**, with the real fix. ucrWarmup 0->51. gateTrendZero
+100%->9.16% (89,360/975,301). sumAbsTrendAddend 0->55,966 (exactly zero before, substantially nonzero now).
+nonzeroFirings 11,986->922,010 (94.5% of all firings now carry a real value).
+
+**Readout 2 (bit-divergence): FAILED.** Full ablation, ARM1+PERSIST_REFLEX active in both arms, 5 seeds, 20000
+ticks, gate open vs severed: meanAmp, occupiedKinds, diversityHbits bit-identical to the same decimal place, every
+seed, despite the signal now firing nonzero 94.5% of the time. Per the pre-registered protocol, readout 2 failing
+means readout 3 (the fitness ledger) is moot — nothing to measure survival/births/novelty against when the arms
+are identical. This is Fable's outcome #3, named in advance: "the registers are never read; self-sensing writes to
+a channel nothing consults, the deepest ornament yet."
+
+One finer thread, not fully closed: the earlier diagnostic found 245 (of ~922k) nonzero firings where the cluster's
+vmProgram textually contains an instruction addressing register 4 or 5 — presence, not proof of execution, since
+the cluster VM has a branch opcode (case 14) that can skip instructions entirely. Given perfect bit-identity held
+anyway, those 245 textual matches evidently never executed in a way that reached anything consequential — a second,
+finer unreachability sitting under the one already measured, not separately instrumented.
+
+**Standing record, static + dynamic, this cluster:** selfRecognition — pure ornament (Tier-0, no run needed).
+reflexCohesion (the export) — pure ornament (Tier-0), distinct from the live cohesionTrend it mirrors.
+reflexThreat/reflexTrend — wired, fires millions of times, signal-starved by a real object-lifetime bug at
+baseline, and STILL bit-identical once that bug is fixed and the signal genuinely forms. Every field in this one
+struct resolves to the same place by a different route. Four counters, two of them added mid-investigation to close
+gaps the first pass didn't know it had, one real bug caught by comparing a "fix" against its own diagnostics rather
+than trusting it worked. Nothing banked without the subtraction actually being performed.
