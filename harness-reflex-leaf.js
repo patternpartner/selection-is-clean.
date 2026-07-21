@@ -7,6 +7,11 @@ const fs = require('fs');
 const TICKS = parseInt(process.env.TICKS || '20000', 10);
 const SAMPLE = parseInt(process.env.SAMPLE || '1000', 10);
 const ABLATE = process.env.ABLATE_REFLEX === '1';
+// ARM1 (Fable's design): does trend/cohesionTrend ever leave zero if given a fair chance to? Two
+// independent fixes to the starvation found in the diagnostic run — lower the 3-sample history bar
+// to 2, and quadruple the cadence that feeds it (tick%60 -> tick%15) — orthogonal to ABLATE_REFLEX,
+// so all four combinations (arm1 x {open,severed}) run through the same leaf.
+const ARM1 = process.env.ARM1 === '1';
 
 function selfProxy() {
   const f = function () { return p; };
@@ -89,6 +94,9 @@ const GATE_BLOCK = 'if(crw>0.001&&cl.reflexThreat!==undefined){\n    vmRegs[4]+=
 const ECV_GUARD = 'function executeClusterVM(i,j,sim,d){\n  const cid=clusterID[i];\n  if(cid<0)return;\n  const cIdx=cid<MAX_CLUSTERS?clusterByID[cid]:-1;\n  if(cIdx<0)return;\n  const cl=clusters[cIdx];\n  if(!cl||!cl.vmProgram)return;';
 const UCR_START = 'function updateClusterReflex(){';
 const UCR_NEWREFLEX = 'if(!c.reflex){';
+const SIZE_GATE = 'if(r.sizeHistory.length>=3){';
+const COH_GATE = 'if(r.coherenceHistory.length>=3){';
+const CADENCE = 'if(tick%60===0){\n    let alive=0,totalAmp=0,totalRes=0,';
 
 function patchOnce(src, find, repl, label) {
   const n = src.split(find).length - 1;
@@ -96,30 +104,39 @@ function patchOnce(src, find, repl, label) {
   return src.replace(find, repl);
 }
 
-if (ABLATE) {
-  code = patchOnce(code, 'if(crw>0.001&&cl.reflexThreat!==undefined){', 'if(false&&cl.reflexThreat!==undefined){', 'gate');
-} else {
-  // Three diagnostics requested to distinguish a genuinely severed/dormant pathway from one that
-  // fires but contributes trivially-zero addends (threatLevel clamps to [0,1] — a healthy, growing,
-  // size>=4 cluster plausibly lands exactly on 0 there constantly). All additive, same branches,
-  // same conditions — no behavior change, just counters and running sums.
-  try {
-    code = patchOnce(code, ECV_GUARD,
-      'function executeClusterVM(i,j,sim,d){\n  globalThis.__ecvEntries=(globalThis.__ecvEntries||0)+1;\n  const cid=clusterID[i];\n  if(cid<0){globalThis.__ecvNoCid=(globalThis.__ecvNoCid||0)+1;return;}\n  const cIdx=cid<MAX_CLUSTERS?clusterByID[cid]:-1;\n  if(cIdx<0){globalThis.__ecvNoCidx=(globalThis.__ecvNoCidx||0)+1;return;}\n  const cl=clusters[cIdx];\n  if(!cl||!cl.vmProgram){globalThis.__ecvNoProg=(globalThis.__ecvNoProg||0)+1;return;}\n  globalThis.__ecvPassed=(globalThis.__ecvPassed||0)+1;',
-      'executeClusterVM guard');
-    code = patchOnce(code, UCR_START,
-      'function updateClusterReflex(){\n  globalThis.__ucrCalls=(globalThis.__ucrCalls||0)+1;',
-      'updateClusterReflex entry');
-    code = patchOnce(code, UCR_NEWREFLEX,
-      'globalThis.__ucrNewReflex=(globalThis.__ucrNewReflex||0)+1;if(!c.reflex){',
-      'updateClusterReflex new-reflex count');
-    code = patchOnce(code, GATE_BLOCK,
-      'if(crw>0.001&&cl.reflexThreat!==undefined){\n    globalThis.__gateFires=(globalThis.__gateFires||0)+1;\n    if(cl.reflexThreat===0)globalThis.__gateThreatZero=(globalThis.__gateThreatZero||0)+1;\n    if(cl.reflexTrend===0)globalThis.__gateTrendZero=(globalThis.__gateTrendZero||0)+1;\n    globalThis.__sumAbsThreatAddend=(globalThis.__sumAbsThreatAddend||0)+Math.abs(cl.reflexThreat*crw);\n    globalThis.__sumAbsTrendAddend=(globalThis.__sumAbsTrendAddend||0)+Math.abs(cl.reflexTrend*crw);\n    vmRegs[4]+=cl.reflexThreat*crw;\n    vmRegs[5]+=cl.reflexTrend*crw;\n  }',
-      'gate block with addend logging');
-  } catch (e) {
-    console.log(JSON.stringify({ error: e.message, series: [] }));
-    process.exit(1);
+// Diagnostics are always instrumented (both ABLATE arms) — additive, doesn't change which branch
+// runs. The gate's OWN condition is what ABLATE flips; when false, the counters inside just never
+// increment (correctly reading zero), same as any other dead branch.
+const gateCond = ABLATE ? 'false&&cl.reflexThreat!==undefined' : 'crw>0.001&&cl.reflexThreat!==undefined';
+try {
+  code = patchOnce(code, ECV_GUARD,
+    'function executeClusterVM(i,j,sim,d){\n  globalThis.__ecvEntries=(globalThis.__ecvEntries||0)+1;\n  const cid=clusterID[i];\n  if(cid<0){globalThis.__ecvNoCid=(globalThis.__ecvNoCid||0)+1;return;}\n  const cIdx=cid<MAX_CLUSTERS?clusterByID[cid]:-1;\n  if(cIdx<0){globalThis.__ecvNoCidx=(globalThis.__ecvNoCidx||0)+1;return;}\n  const cl=clusters[cIdx];\n  if(!cl||!cl.vmProgram){globalThis.__ecvNoProg=(globalThis.__ecvNoProg||0)+1;return;}\n  globalThis.__ecvPassed=(globalThis.__ecvPassed||0)+1;',
+    'executeClusterVM guard');
+  code = patchOnce(code, UCR_START,
+    'function updateClusterReflex(){\n  globalThis.__ucrCalls=(globalThis.__ucrCalls||0)+1;',
+    'updateClusterReflex entry');
+  code = patchOnce(code, UCR_NEWREFLEX,
+    'globalThis.__ucrNewReflex=(globalThis.__ucrNewReflex||0)+1;if(!c.reflex){',
+    'updateClusterReflex new-reflex count');
+  // Warmup counter: fires once per cluster-reflex object, the first tick its history actually
+  // clears the sample bar (2 under ARM1, 3 at baseline) — "did the manipulation check pass".
+  const sizeThresh = ARM1 ? 2 : 3;
+  code = patchOnce(code, SIZE_GATE,
+    `if(r.sizeHistory.length>=${sizeThresh}){\n      if(!r.__warmed){r.__warmed=true;globalThis.__ucrWarmup=(globalThis.__ucrWarmup||0)+1;}`,
+    'sizeHistory threshold + warmup counter');
+  code = patchOnce(code, COH_GATE, `if(r.coherenceHistory.length>=${sizeThresh}){`, 'coherenceHistory threshold');
+  if (ARM1) {
+    code = patchOnce(code, CADENCE, 'if(tick%15===0){\n    let alive=0,totalAmp=0,totalRes=0,', 'updateClusterReflex cadence');
   }
+  // Gate block: addend logging (as before) + residue-before-injection + register-4/5-readability
+  // check for the rare nonzero firings (closes the 0.16% stitch — does anything downstream even
+  // read what got written, for the cases where it's not trivially zero at the source).
+  code = patchOnce(code, GATE_BLOCK,
+    `if(${gateCond}){\n    globalThis.__gateFires=(globalThis.__gateFires||0)+1;\n    if(cl.reflexThreat===0)globalThis.__gateThreatZero=(globalThis.__gateThreatZero||0)+1;\n    if(cl.reflexTrend===0)globalThis.__gateTrendZero=(globalThis.__gateTrendZero||0)+1;\n    globalThis.__sumAbsThreatAddend=(globalThis.__sumAbsThreatAddend||0)+Math.abs(cl.reflexThreat*crw);\n    globalThis.__sumAbsTrendAddend=(globalThis.__sumAbsTrendAddend||0)+Math.abs(cl.reflexTrend*crw);\n    globalThis.__sumAbsResidue4=(globalThis.__sumAbsResidue4||0)+Math.abs(vmRegs[4]);\n    globalThis.__sumAbsResidue5=(globalThis.__sumAbsResidue5||0)+Math.abs(vmRegs[5]);\n    if(cl.reflexThreat!==0||cl.reflexTrend!==0){\n      globalThis.__nonzeroFirings=(globalThis.__nonzeroFirings||0)+1;\n      let __r45=false;\n      if(cl.vmProgram){for(let __pi=0;__pi<cl.vmProgram.length;__pi++){const __inst=cl.vmProgram[__pi];if(!__inst)continue;if(Math.abs(__inst[1])%12===4||Math.abs(__inst[1])%12===5){__r45=true;break;}}}\n      if(__r45)globalThis.__nonzeroFiringsReadable=(globalThis.__nonzeroFiringsReadable||0)+1;\n    }\n    vmRegs[4]+=cl.reflexThreat*crw;\n    vmRegs[5]+=cl.reflexTrend*crw;\n  }`,
+    'gate block with addend/residue/readability logging');
+} catch (e) {
+  console.log(JSON.stringify({ error: e.message, series: [] }));
+  process.exit(1);
 }
 
 const driver = `
@@ -182,7 +199,8 @@ console.log(JSON.stringify({
   ablated: ABLATE, seed: process.env.SEED || null,
   loopErrors, lastErr, driverErr: globalThis.__driverErr || 0,
   crwFinal: S.length ? S[S.length - 1].crw : null,
-  diagnostics: ABLATE ? null : {
+  arm1: ARM1,
+  diagnostics: {
     ecvEntries: globalThis.__ecvEntries || 0,
     ecvNoCid: globalThis.__ecvNoCid || 0,
     ecvNoCidx: globalThis.__ecvNoCidx || 0,
@@ -190,11 +208,16 @@ console.log(JSON.stringify({
     ecvPassed: globalThis.__ecvPassed || 0,
     ucrCalls: globalThis.__ucrCalls || 0,
     ucrNewReflex: globalThis.__ucrNewReflex || 0,
+    ucrWarmup: globalThis.__ucrWarmup || 0,
     gateFires: globalThis.__gateFires || 0,
     gateThreatZero: globalThis.__gateThreatZero || 0,
     gateTrendZero: globalThis.__gateTrendZero || 0,
     sumAbsThreatAddend: globalThis.__sumAbsThreatAddend || 0,
-    sumAbsTrendAddend: globalThis.__sumAbsTrendAddend || 0
+    sumAbsTrendAddend: globalThis.__sumAbsTrendAddend || 0,
+    sumAbsResidue4: globalThis.__sumAbsResidue4 || 0,
+    sumAbsResidue5: globalThis.__sumAbsResidue5 || 0,
+    nonzeroFirings: globalThis.__nonzeroFirings || 0,
+    nonzeroFiringsReadable: globalThis.__nonzeroFiringsReadable || 0
   },
   series: S
 }));
