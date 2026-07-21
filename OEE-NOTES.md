@@ -3036,3 +3036,39 @@ Running tally, static + dynamic together: selfRecognition — pure ornament (Tie
 pure ornament (Tier-0), distinct from the live internal value it mirrors. reflexThreat/reflexTrend — reachable,
 massively executed, EXECUTED_BUT_INERT at this scale (Tier-1, verified). One authoring event, no blind ratings, n
 small — a specimen, not yet a rate. But exact, so far, on every field checked.
+
+### CONFABULATION ASSAY — the reflex null, fully mechanised: not dormant, not orphaned, input-starved
+
+A collaborator (Fable, working from the same file — confirmed, not a separate extraction) raised a real
+hypothesis in response to the bit-identical reflex ablation: what if the pathway is dormant, gated behind a rare
+vmProgram grant? Already falsifiable from the gateFires counter alone (2.1M+ firings can't happen through a guard
+that's usually closed), but the sharper part of the same message — a fired gate can still add exactly zero if
+threatLevel structurally clamps to 0 for the clusters that actually exist — was genuinely open, so three diagnostics
+were added to settle it by direct count rather than further argument: executeClusterVM entries vs early-returns
+split by which guard bounced; updateClusterReflex call count + fresh-reflex-object count; and, at the gate itself,
+zero-vs-nonzero counts plus running sums of the actual addend magnitudes.
+
+Result, one seed, 20000 ticks: executeClusterVM entered 23,568,236 times; ecvNoProg=0 — NEVER bounced on a missing
+vmProgram, confirming the grant is neither dormant nor severed. 15,199,814 calls (64%) pass every guard. Of the
+2,145,567 gate firings: gateTrendZero=2,145,567 — 100%, every single one — and sumAbsTrendAddend=0, not
+approximately zero, exactly zero across two million samples. gateThreatZero=2,142,094 (99.84%); the remaining
+0.16% sum to 156.285 in magnitude, averaging ~0.045 each.
+
+Traced to the exact source, confirmed by rereading updateClusterReflex(): r.trend and r.cohesionTrend are
+initialized to 0 and only leave that value once sizeHistory/coherenceHistory accumulate 3 samples — which requires
+a cluster to survive THREE CONSECUTIVE updateClusterReflex cycles (~180 ticks of continuous, matched persistence).
+With only 333 total calls to that function across the whole 20000-tick run and 190 fresh-reflex-object creations,
+clusters essentially never persist long enough to clear that bar: trend never once left its zero initialization in
+over two million observations. threatLevel inherits the same structural zero from trend/cohesionTrend, going
+nonzero only via its size<4 fallback term — exactly matching the rare, small, ~0.045-magnitude nonzero firings
+observed.
+
+**Revised verdict.** Not EXECUTED_BUT_INERT in the atom-bank sense (selected, executed, no fitness grip) — a fourth
+and more specific failure mode: the wire is real, correctly wired, and fires constantly, but the SIGNAL it's meant
+to carry structurally cannot form at this timescale, because the clusters that would carry it don't persist long
+enough. Not dormant (fires millions of times), not severed (confirmed same file, ecvNoProg=0), not orphaned in the
+sense investigated earlier (this is upstream of that question) — input-starved. The honest prediction this now
+makes, sharper than the earlier vague "try a mature genome" caveat: a genome/run where clusters persist
+substantially longer than ~180 ticks (a real export, or a longer stability-selected run) should show trend/
+cohesionTrend actually leaving zero, and would be the correct next test of whether the pathway grips fitness once
+its input is no longer starved — not yet run, named for whoever picks this up next.
