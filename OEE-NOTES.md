@@ -3163,3 +3163,54 @@ delivered to registers no evolved program has been observed to read; selfRecogni
 are confirmed pure ornaments; the particle-level reflex (reflexInfluence) is a separate, unaudited pathway and the
 correction does not extend to it — stated explicitly rather than left to imply more than was tested. Full empirical
 record stays here, in OEE-NOTES; the code states the verified conclusion and points back to it.
+
+### SWING #48 — CONSEQUENCE: the gain the authors held fixed, handed to selection (Fable's design, built)
+
+The confabulation assay's final specimen, and the first change it motivated that alters a long-fixed constant
+rather than fixing a bug. The reflex ablations (#47 and prior) kept landing the same verdict — signal real,
+readership absent — and the barrier turned out not to be sensing or computing but CONSEQUENCE. The live VM sites
+multiply their output by a hardcoded constant (0.002 paired / 0.0015 cluster / 0.0005 solo) before it touches
+physics. Fable's reframe, verified here against source: that constant does NOT cap vmInfluence's range — mutation
+is already gloves-off (the maybe() min/max args are documented dead, line ~10391: "if the system wants a value of
+-47 or 12000 it gets one"), and neither vmInfluence nor ruleScale is clamped in sanitizeGenome at all. What the
+constant caps is the SELECTION GRADIENT: the return on climbing vmInfluence is 0.002 per unit, so the fitness slope
+that would push consequence up is flattened to a rounding error, and self-sensing on registers 4/5 is provably not
+worth reading through that straw. The reflex "ornament" verdict was downstream of the choke all along — negative
+reflexInfluence wasn't rejection of self-knowledge, it was correct accounting: no signal is worth paying amplitude
+for when the action it informs is scaled by two-thousandths.
+
+Even the freedom gene was ornamental: line 5107, `vmInfluence:0.3, // ratio of VM effects vs hardcoded physics.
+EVOLVES.` — annotated as freedom, heritable, climbing monotonically across the live exports (vi 0.294→0.691 by
+age) — and the arithmetic downstream guarantees its maximum meaning is ~1% of the physics. The annotation says
+EVOLVES; the multiplication says decoratively.
+
+Built per Fable's spec, unbounded version (the reasoning: a capped "10x either side" version tests "can the author
+pick a better ceiling," which is the wrong hypothesis and is also less falsifiable — if gain hits a 10x cap and
+readership still doesn't move, the economy thesis escapes on "maybe 12% is still below threshold"; uncapped, if
+selection is free to buy any gain and doesn't, the thesis dies cleanly). Implementation:
+  - ONE gene `vmGain` (default 1.0), multiplying all three LIVE sites (executeVM 0.002, executeClusterVM 0.0015,
+    executeSoloVM 0.0005) — NOT the shadow-sim rollout (that's imagination, left calibrated to base so the decision
+    machinery's counterfactuals aren't silently divorced from the physics it's reasoning about). All three read the
+    per-lineage genome (verified: genome is repointed to pGenome[_drv] at the interaction site and pGenome[i] in
+    executeSoloVM), so each lineage carries and evolves its own consequence.
+  - Log-scale multiplicative mutation (vmGain *= exp(tailDraw()*scale*0.5)), reusing the same gloves-off heavy tail
+    as every other gene. NO authored ceiling — finite + strictly-positive guard only (a domain guard by the audit's
+    own taxonomy: catches NaN/Inf, prevents multiplicative lock at zero). Discipline on runaway gain lives
+    downstream: huge gain saturates the existing physics clamps, the lineage destabilises and dies — that death is
+    the mechanism, and the 8-tab metapopulation is what makes it affordable.
+  - Serialized (vg) + a pool-wide aggregate (vgs: self/mean/max/min/n over living lineages, piggybacking the
+    existing tick%60 O(N) scan) so gain-climb is legible from a single export, the way cpl carries coupling.
+    HUD shows pop mean~max. Reversibility lives in the exports, not a gate — no in-run revert switch.
+  - "Identical" claim kept honest in-comment: at 1.0 the gain APPLICATION is exact identity (x*const*1.0===x*const),
+    so no physics jump on reload — but the trajectory is NOT byte-identical to pre-#48, because vmGain is a new
+    mutable gene drawing from the shared RNG stream. Stated as exactly that, no more.
+
+Verified: full file parses; headless boot clean (3000 ticks, 0 loopErrors, 0 driverErr) — expected, since ×1.0 is
+identity so the default sim is algebraically unchanged. In flight at write time: a 15000-tick seeded probe
+confirming vmGain actually mutates off 1.0 across lineages and stays finite (no NaN amp) before this is considered
+safe to deploy. NOT yet deployed: rolling to the living pool is a separate action the user holds deliberately — the
+last clamp, and the one that stays. Frozen prediction (Fable's, on record): gain climbs + readership of 4/5 follows
+→ economy thesis confirmed, self-sensing gets its retrial in a world where knowing finally pays; gain climbs +
+readership flat → self-signal convicted at its strongest challenge; gain stays low even when free → the whole
+barrier thesis dies on the spot; instability + extinction dominate → the stability frontier was real and the
+authors' fear calibrated. Every branch pays.
