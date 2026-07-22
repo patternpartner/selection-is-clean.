@@ -5753,6 +5753,14 @@ function encodeGenome(){
     // organism picture is in the data, not only live on screen. Written by the observer block after boot().
     cpl:genome.coupling||null,
     vgs:{s:+(vmGainStats.self.toPrecision(6)),mn:+(vmGainStats.mean.toPrecision(6)),mx:+(vmGainStats.max.toPrecision(6)),mi:+(vmGainStats.min.toPrecision(6)),n:vmGainStats.n|0}, // #48: pool-wide gain aggregate
+    // #48 rider (Fable) — the SELF-model's forecast error (already computed each tick%60 as an EMA of
+    // actual-minus-predicted for pop/coherence/clusters/diversity; surfaced here, not newly computed).
+    // The staleness gauge: as this self's vmGain (vgs.s) drifts and its body's dynamics shift while its
+    // linear forecast + shadow-sim stay calibrated to base, |fe| should GROW — a self-model going stale
+    // in proportion to the freedom it bought. HONEST scope: this is the singular SELF's error, NOT
+    // per-lineage — the shadow apparatus is self-only, so "accuracy vs vg per lineage" isn't available;
+    // read it as one curve, fe against vgs.s, within-#48. See OEE-NOTES SWING #48 riders.
+    fe:{p:+(selfModel.errors.pop).toFixed(3),c:+(selfModel.errors.coherence).toFixed(4),cl:+(selfModel.errors.clusters).toFixed(3),d:+(selfModel.errors.diversity).toFixed(4)},
 
     // Identity
     g:genome.generation,T:genome.totalTicks,
