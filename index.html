@@ -5106,6 +5106,24 @@ let genome={
                         // system compose structurally richer primitives. Bounded by UA_DEPTH_CAP.
   vmInfluence:0.3,      // ratio of VM effects vs hardcoded physics. EVOLVES.
   ruleScale:1.0,
+  // ═══ SWING #48: CONSEQUENCE — the gain the authors held fixed, handed to selection ═══
+  // The live VM sites multiply their output by a hardcoded constant (0.002 paired, 0.0015 cluster,
+  // 0.0005 solo) — an inherited "stability insurance" nobody re-decided across ~60 versions. Its effect
+  // (confabulation-assay finding, OEE-NOTES): it doesn't cap vmInfluence's RANGE (mutation is gloves-off,
+  // unclamped) — it flattens the SELECTION GRADIENT on consequence, so the incentive to use the VM's
+  // freedom is throttled to a rounding error, and self-sensing (registers 4/5) is provably not worth
+  // reading through that straw. vmGain promotes that constant family to ONE evolvable gene, multiplying
+  // all three live sites (NOT the shadow-sim rollout — that's imagination, left calibrated to base).
+  // HONEST on "identical": at 1.0 the gain APPLICATION is exact identity (x*const*1.0===x*const in IEEE754),
+  // so a reload sees no sudden physics jump — gain starts at 1.0 and only drifts. It does NOT make the
+  // trajectory byte-identical to pre-#48: vmGain is a new mutable gene, its mutation draws from the shared
+  // RNG stream, so the future diverges — exactly as adding any gene does. No stronger claim than that.
+  // NO authored ceiling: lineages purchase their own consequence at their own risk; runaway gain saturates the
+  // downstream physics clamps and the lineage destabilises and dies — that death IS the mechanism, and
+  // the 8-tab metapopulation is what makes it affordable (a lineage can die of its choice without ending
+  // the run). Frozen prediction: where evolved gain climbs, watch whether register 4/5 readership finally
+  // pays. Reversibility lives in the exports, not a gate. Log-scale mutation; finite+positive guard only.
+  vmGain:1.0,
   metabolicCost:0.00002,  // amp cost PER INSTRUCTION PER INTERACTION. Evolves.
                           // Forces elegant code: bloated programs starve.
 
@@ -5734,6 +5752,8 @@ function encodeGenome(){
     // transfers, self id, and a recent net-flow series (the two-stroke). Rides out in every export so the coupled-
     // organism picture is in the data, not only live on screen. Written by the observer block after boot().
     cpl:genome.coupling||null,
+    vgs:{s:+(vmGainStats.self.toPrecision(6)),mn:+(vmGainStats.mean.toPrecision(6)),mx:+(vmGainStats.max.toPrecision(6)),mi:+(vmGainStats.min.toPrecision(6)),n:vmGainStats.n|0}, // #48: pool-wide gain aggregate
+
     // Identity
     g:genome.generation,T:genome.totalTicks,
     L:genome.lineage.slice(-4),
@@ -5747,6 +5767,7 @@ function encodeGenome(){
     V:genome.vmProgram.map(inst=>cleanInstruction(inst)),
     vi:+(genome.vmInfluence.toPrecision(3)),
     vs:+(genome.ruleScale.toPrecision(3)),
+    vg:+(genome.vmGain||1).toPrecision(6), // #48: evolvable consequence gain (6 sig figs — it can range orders of magnitude)
     vm:genome.vmMaxInstructions,
     mtl:+(genome.mutationTail||0).toFixed(4), // UNLOCKED #6 search-distribution shape
     uad:genome.uaMaxDepth|0,                  // UNLOCKED #7b atom recursion depth
@@ -6018,6 +6039,7 @@ function decodeGenome(data){
     if(g.V)genome.vmProgram=g.V;
     if(g.vi!==undefined)genome.vmInfluence=g.vi;
     if(g.vs)genome.ruleScale=g.vs;
+    if(typeof g.vg==='number')genome.vmGain=g.vg; // #48: restore evolvable gain (absent in pre-#48 saves → sanitize defaults to 1.0 = identical behaviour)
     if(g.vm)genome.vmMaxInstructions=g.vm;
     if(typeof g.mtl==='number')genome.mutationTail=g.mtl;  // UNLOCKED #6 (absent in pre-unlock saves → sanitize defaults to 0)
     if(typeof g.uad==='number')genome.uaMaxDepth=g.uad|0;  // UNLOCKED #7b
@@ -6221,6 +6243,10 @@ function sanitizeGenome(){
   genome.vmProgram=Array.isArray(genome.vmProgram)?genome.vmProgram.map(cleanInstruction).slice(0,96):[[0,0,0,0]]; // UNLOCKED #7b: matches the raised vmMaxInstructions ceiling
   if(genome.vmProgram.length===0)genome.vmProgram=[[0,0,0,0]];
   genome.vmMaxInstructions=__cl(Math.round(finiteOr(genome.vmMaxInstructions,16)),1,96); // UNLOCKED #7b: ceiling 48→96 (metabolic cost + nInst*2 budget keep length self-regulating)
+  // #48: vmGain — finite + strictly-positive guard ONLY. Deliberately NO upper clamp: the whole point
+  // is that no author picks the ceiling. Missing (pre-#48 save) or non-finite → 1.0 (identical to old
+  // behaviour). Runaway values are disciplined downstream by the physics clamps, not here.
+  genome.vmGain=(Number.isFinite(genome.vmGain)&&genome.vmGain>0)?genome.vmGain:1;
   genome.mutationTail=__cl(finiteOr(genome.mutationTail,0),0,1);                          // UNLOCKED #6 (pre-unlock saves → 0 = old behavior)
   genome.uaMaxDepth=__cl(Math.round(finiteOr(genome.uaMaxDepth,1)),1,UA_DEPTH_CAP);        // UNLOCKED #7b
   genome.typeMutRate=__cl(finiteOr(genome.typeMutRate,0.02),0,1);                          // UNLOCKED #7a
@@ -11046,6 +11072,15 @@ function mutateGenome(){
   // vmInfluence evolves: the system decides how much its rules matter.
   genome.vmInfluence=maybe(genome.vmInfluence,0.05,2.0,0.08);
   genome.ruleScale=maybe(genome.ruleScale,0.2,3.0,0.2);
+  // Swing #48: vmGain — log-scale (multiplicative) random walk, symmetric in orders of magnitude,
+  // reusing tailDraw() so it inherits the same gloves-off heavy tail as every other gene. NO authored
+  // ceiling — only a finite+positive guard (a domain guard by the audit's taxonomy: catches NaN/Inf and
+  // prevents multiplicative lock at zero). A lineage is free to buy any consequence it can survive.
+  if(genome.vmGain===undefined)genome.vmGain=1;
+  if(Math.random()<rate){
+    const _ng=genome.vmGain*Math.exp(tailDraw()*scale*0.5);
+    if(Number.isFinite(_ng)&&_ng>1e-9)genome.vmGain=_ng;
+  }
   genome.vmMaxInstructions=__cl(Math.round(maybe(genome.vmMaxInstructions,6,20,1)),1,96); // UNLOCKED #7b: ceiling 48→96
   genome.uaMaxDepth=__cl(Math.round(maybe(genome.uaMaxDepth||1,1,UA_DEPTH_CAP,0.6)),1,UA_DEPTH_CAP); // UNLOCKED #7b: the system evolves how deeply it composes its own primitives
   genome.metabolicCost=__cl(maybe(genome.metabolicCost,0.000002,0.0002,0.00002),0.000002,0.0002); // #2 energy economy: no free lunch — cost stays positive (the negative-drift hole that euthanised selection is closed)
@@ -12144,7 +12179,7 @@ function executeVM(i,j,sim,d){
   const proximity=1-d/CELL;
   const phaseAlign=Math.cos(phase[i]-phase[j]);
   const energy=(amp[i]+amp[j])*0.5;
-  const influence=genome.vmInfluence*genome.ruleScale*0.002;
+  const influence=genome.vmInfluence*genome.ruleScale*0.002*(genome.vmGain||1); // #48: evolvable gain
 
   // UNLOCKED #7a/#7b: feed this interaction's context to system-authored atoms (c,d,m inputs).
   // caste-match: +1 if the pair shares a caste, -1 otherwise. Evolved code decides its meaning.
@@ -15452,6 +15487,11 @@ function executeVM(i,j,sim,d){
 // rate. Distinct from the debug suite below, which is gated off by default because it isn't free
 // (a vmProgram scan per nonzero firing).
 const reflexTelemetry={fires:0,nonzero:0};
+// #48: population-wide vmGain aggregate — always-on, cheap (piggybacks the existing tick%60 O(N) scan).
+// Rides out in every export as 'vgs' so pool-wide gain-climb is legible from a single genome, the same
+// way cpl carries the coupling picture. self = the reflective baseline's gain; the rest are over living
+// per-lineage pGenome. This is the primary dial for the #48 frozen prediction.
+const vmGainStats={self:1,mean:1,max:1,min:1,n:0};
 // Swing #47 debug counters — OFF by default. Set globalThis.__REFLEX_DEBUG=1 before boot to enable;
 // results in reflexDebugCounters (plain top-level object, same pattern as reflexTelemetry above —
 // NOT genome.reflexDebug: `genome` gets repointed to pGenome[i] throughout particle/cluster processing
@@ -15481,7 +15521,7 @@ function executeClusterVM(i,j,sim,d){
   const proximity=1-d/CELL;
   const phaseAlign=Math.cos(phase[i]-phase[j]);
   const energy=(amp[i]+amp[j])*0.5;
-  const influence=cl.vmInfluence*genome.ruleScale*0.0015;
+  const influence=cl.vmInfluence*genome.ruleScale*0.0015*(genome.vmGain||1); // #48: evolvable gain
 
   uaCtxC=proximity;uaCtxD=energy;uaCtxM=(pType[i]===pType[j])?1:-1; uaSetEyes(i,j); // UNLOCKED #7a/#7b: atom context (+EYES)
 
@@ -17056,7 +17096,7 @@ function executeSoloVM(){
     const prog=pProg[i]||genome.vmProgram;  // UNLOCKED #9: isolated particle runs its own program too
     const nInst=Math.min(prog.length,genome.vmMaxInstructions);
     if(nInst===0)continue;
-    const soloInfluence=genome.vmInfluence*genome.ruleScale*0.0005; // per-particle now (was hoisted out of the loop on the global genome — review)
+    const soloInfluence=genome.vmInfluence*genome.ruleScale*0.0005*(genome.vmGain||1); // per-particle now (was hoisted out of the loop on the global genome — review); #48: evolvable gain
     uaCtxC=0;uaCtxD=amp[i];uaCtxM=0; uaSetEyes(i,-1); // solo atom context (no partner → caste-match 0; +EYES)
 
     const soloCost=nInst*genome.metabolicCost*0.5;
@@ -18634,6 +18674,16 @@ function loop(){
   if(tick%60===0){
     let alive=0,totalAmp=0,totalRes=0,_sumX128=0,_sumY128=0,_sumX2128=0,_sumY2128=0,_tfup132=0,_tf2up133=0;
     for(let i=0;i<N;i++){if(!palive[i])continue;alive++;totalAmp+=amp[i];totalRes+=localRes[i];_sumX128+=px[i];_sumY128+=py[i];_sumX2128+=px[i]*px[i];_sumY2128+=py[i]*py[i];const _cx132=__cl(Math.floor(px[i]/(W/FIELD_W)),0,FIELD_W-1),_cy132=__cl(Math.floor(py[i]/(H/FIELD_H)),0,FIELD_H-1),_ci132=_cy132*FIELD_W+_cx132;_tfup132+=field[_ci132];_tf2up133+=field2[_ci132];}
+    { // #48: population vmGain aggregate over living per-lineage genomes (separate light pass, /60 ticks)
+      let _vgSum=0,_vgMax=-Infinity,_vgMin=Infinity,_vgN=0;
+      for(let i=0;i<N;i++){ if(!palive[i])continue; const _pg=pGenome[i]; const _vg=(_pg&&Number.isFinite(_pg.vmGain))?_pg.vmGain:(genome.vmGain||1);
+        _vgSum+=_vg; if(_vg>_vgMax)_vgMax=_vg; if(_vg<_vgMin)_vgMin=_vg; _vgN++; }
+      vmGainStats.self=genome.vmGain||1;
+      vmGainStats.n=_vgN;
+      vmGainStats.mean=_vgN>0?_vgSum/_vgN:(genome.vmGain||1);
+      vmGainStats.max=_vgN>0?_vgMax:(genome.vmGain||1);
+      vmGainStats.min=_vgN>0?_vgMin:(genome.vmGain||1);
+    }
     selfModel.meanFieldUnderPop=alive>0?_tfup132/alive:0;
     selfModel.meanField2UnderPop=alive>0?_tf2up133/alive:0;
     // Pe134 Layer 123: field-under-pop momentum
@@ -20769,6 +20819,7 @@ function loop(){
     _hud+=`vm:${genome.vmProgram.length}inst ${nSensors}sns ${hgtEventsTotal}hgt | `;
     _hud+=`pop:${N}/${CAP} fld:${fieldTotal.toFixed(0)}${fTrend<-0.01?'↓':fTrend>0.01?'↑':'~'} risk:${cRisk.toFixed(2)} | `;
     _hud+=`⟲${rInf.toFixed(2)} ${reflexWarmed}rc/${(reflexNonzeroRate*100|0)}%${netTag}${cgTag}${uaTag}`;
+    _hud+=` g${vmGainStats.mean.toFixed(2)}~${vmGainStats.max.toFixed(2)}`;
     _hud+=`${(genome.eventLog&&genome.eventLog.length)?' ev:'+genome.eventLog.length:''}`;
     _hud+=`${gradTag}${mrTag}${relTag}${sigTag}${attrTag}${fitwTag}${inscTag}${f2Tag}${ndcTag}`;
     _hud+=`${saiTag}${paiTag}${pdcTag}${ageTag}${pageTag}${spdTag}${pspdTag}${haiTag}${arTag}`;
