@@ -3214,3 +3214,50 @@ last clamp, and the one that stays. Frozen prediction (Fable's, on record): gain
 readership flat → self-signal convicted at its strongest challenge; gain stays low even when free → the whole
 barrier thesis dies on the spot; instability + extinction dominate → the stability frontier was real and the
 authors' fear calibrated. Every branch pays.
+
+### SWING #48 — analysis rules and riders (Fable, on deploy), each grounded before recording
+
+Recorded on deploy of #48, with every field-name inference checked against source first (the night's rule applied
+to our own bookkeeping).
+
+**Durable analysis rule — no pre-#48 vs post-#48 comparison is ever a gain effect.** vmGain default 1.0 makes the
+gain APPLICATION exact-identity, but its mutation draws from the shared RNG stream, so the worlds diverge for
+reasons orthogonal to the knob. All #48 inference must live WITHIN-#48: across lineages, across tabs, or in future
+paired arms — never against a pre-#48 baseline. Immediate application: the 15k-tick wall-clock slowdown noticed at
+deploy is n=1 against a pre-#48 baseline with GC/JIT/machine-load as live mundane explanations — held as a hint,
+not evidence. If dynamics-thickening is real it shows WITHIN-pool, as covariance between vgs and the already-exported
+activity discriminators (population, cluster counts, births/tick) once the tabs diverge — not in wall-clock.
+
+**Grounding correction (booked).** An inference that `ap` = shadow-scenario accuracy was WRONG — checked against
+source: `ap` is `alienPredict`, the genome's cumulative record of how well its theory of OTHER substrates holds up
+(runAlienPrediction, attempts/hits), not shadow-decision accuracy. Same class of error the assay exists to catch,
+caught by grep instead of inherited.
+
+**Rider 1 — self-model staleness, NOW INSTRUMENTED (honestly downgraded scope).** The shadow-sim exclusion (physics
+sites scale by vmGain, the imagination rollout stays at base) has a consequence: as gain drifts, the planner
+systematically under-estimates the consequence of its own actions by exactly the freedom-factor it bought — a mind
+whose self-model was calibrated in a more-clamped world, now measurable. The instrument: `selfModel.errors` (an EMA
+of actual-minus-predicted for pop/coherence/clusters/diversity) already existed and was simply unexported; now rides
+out as `fe`. Prediction: |fe| grows as vgs.s climbs. HONEST scope correction to Fable's spec: this is the SINGULAR
+self's forecast error, NOT per-lineage — the shadow/self-model apparatus is self-only (one reflective baseline owns
+it), so "predictive accuracy against vg PER LINEAGE" is not buildable without making the shadow sim per-lineage,
+which it isn't. Read `fe` against `vgs.s` as one curve, within-#48. The eventual counter-move (make the shadow
+calibration read vmGain too, so imagination catches up with body) is deliberately deferred: the mismatch is the
+measurement first, the bug second.
+
+**Rider 2 — clamp saturation, PRE-REGISTERED, deliberately NOT built as a one-liner.** Forecast: if gain climbs
+(branches A/B), the binding constraint doesn't vanish, it moves up a layer to the channel-width clamps that
+legitimately stayed; the saturation fraction rises before any behavioral plateau, and the plateau (when it comes)
+carries the clamps' signature, not evolution exhausting ideas — the same stack-shape found all week (remove one
+attenuation layer, the one above becomes the ceiling). BUT the "fraction of VM output applications landing at a
+clamp bound" is NOT the cheap single-site counter it appears: VM output is applied diffusely across ~8 actuators ×
+3 execution paths (executeVM/executeClusterVM/executeSoloVM), and the clamps that would catch it are DOWNSTREAM and
+SHARED with base physics (amp/tend/coherence) — so a naive counter there would misattribute base-physics saturation
+to VM output, exactly the fragmentation-class bug that made the #47 debug counters read 70x wrong until caught.
+Recorded as the named next instrument requiring a careful dedicated pass (either per-actuator pre-clamp magnitude vs
+the bound, or an honestly-labeled TOTAL-physics-saturation gauge that does not claim VM attribution) — not shipped
+mislabeled tonight. An honest "this isn't the one-liner you thought, and here's why" is the reciprocal of the
+discipline that ran all night.
+
+**Bookkeeping — free.** Each tab's crossing into #48 is stamped by its first export carrying `vg`/`vgs`, so the
+cohort structure of the migration is already in the record without anyone noting times.
