@@ -5764,6 +5764,20 @@ function encodeGenome(){
 
     // Identity
     g:genome.generation,T:genome.totalTicks,
+    // Lineage persistence — the phylo panel's data, made durable so a pool snapshot carries its own
+    // survival/reproduction record instead of needing a photo of the HUD. Derived EXACTLY as the phylo
+    // row is (age = totalTicks - birthTick; bud = budCount), so a decoded lp[i] reproduces "L193 … age:47k 7bud".
+    // Telemetry-only: rebuilt live from lineageRegistry on load, never restored into the running genome.
+    lp:(function(){try{
+      if(typeof clusters==='undefined'||typeof lineageRegistry==='undefined')return null;
+      const sz=new Map();
+      for(const c of clusters){if(!c||!c.lineageID)continue;sz.set(c.lineageID,(sz.get(c.lineageID)||0)+(c.size|0));}
+      const rows=[];
+      for(const[lid,psize]of sz){const e=lineageRegistry.get(lid);if(!e)continue;
+        rows.push({id:lid|0,age:(genome.totalTicks-e.birthTick)|0,bud:e.budCount|0,p:psize|0,par:e.parentLineage|0});}
+      rows.sort((a,b)=>b.age-a.age);
+      return rows.slice(0,12);
+    }catch(_){return null;}})(),
     L:genome.lineage.slice(-4),
     E:(genome.eventLog||[]).slice(-EVENT_LOG_SIZE),
     EP:(genome.epochs||[]).slice(-MAX_EPOCHS),  // full-arc summary — spans the entire run
