@@ -3319,3 +3319,44 @@ drift, not merit (Q2). And CC's deeper opcodes-as-choice-space intuition gets th
 genuine functional concentration self-organized through selection alone, precisely in the layer atrophy was never
 allowed to help (Q3). The knife exists and swings — it is simply not where the sculpting happened. The sculpting
 happened where there was no knife.
+
+### META-INFLUENCE ABLATION + the carry-cost DECISION (mine, sole authority) — warranted, deliberately not-yet-shipped
+
+Follow-up to the atrophy probe, to answer the prerequisite it left open: the 116-gene meta-influence layer is
+inert BY ATTRIBUTION (protected=0) and net-inflates despite the pruner — but is that inflation HARMFUL, or harmless
+free weight? You don't add a pruning cost to prune weight you haven't shown is a liability; that's the
+unverified-intervention class this whole record is about.
+
+Whole-layer ablation (harness-meta-ablate.js; zero every ATROPHY_SAFE param on self + every lineage clone, vs
+intact, 3 seeds, 20k): meanAmp delta (intact − ablated) = −0.036, sd 0.054 — does NOT beat noise, and the layer was
+NEVER beneficial in any seed. metaMag 38–43 → ~0.03 confirms the ablation bit. 0 loop/driver errors both arms; same
+population, same diversity. On seed 11 the intact arm was notably WORSE (1.08 vs 1.19 ablated — the inflated
+coefficients mildly DEPRESSED fitness). Verdict: the meta-influence layer is non-load-bearing — inert to the
+system's own attribution AND inert-to-mildly-negative to fitness when removed. Confirms protected=0 from the
+outside.
+
+**The transferable lesson, fully grounded.** Concentration in this system comes from ONE thing: a metabolic cost
+that creates a real fitness gradient against bloat. The opcode layer concentrates cleanly (87% of instances on a
+5-op core; 184/232 opcodes never expressed) BECAUSE amp[i] -= nInst*metabolicCost — every instruction costs
+amplitude, bloated programs starve, lean ones win, no pruner needed. The meta-influence layer inflates unchecked
+because its coefficients cost NOTHING (a high coefficient gating a never-executed opcode is free), and the atrophy
+machinery meant to prune it works INDIRECTLY through attribution classification, which loses the tug-of-war to
+gloves-off mutation (the probe run: 1472 cuts fired, layer inflated 4–5× anyway). The pruner that works is
+metabolic; the pruner that loses is judgmental.
+
+**The warranted change:** transfer the winning mechanism — charge amp for carrying meta-influence magnitude at the
+same per-unit economy instructions already pay, read per-lineage so lean lineages out-compete bloated ones. NOT for
+tidiness (the ablation shows the bloat is nearly harmless) but for SYMMETRY: it lets selection decide the meta
+layer's fate via a real gradient, the way it already decides the opcode layer's — a decision the system structurally
+cannot make today. Design note for whoever builds it: the cost must be STRUCTURAL (a carrying-cost law), not a
+per-lineage evolvable gene — a self-cost gene gets evolved to 0 to dodge while keeping the bloat (commons problem);
+the one authored magnitude should be tied to the existing metabolicCost rate and kept gentle.
+
+**DECISION (sole authority, owned): the change is right, and it is deliberately NOT shipped now.** Two reasons,
+both load-bearing: (1) the live pool is mid-vmGain experiment — a second simultaneous structural change makes both
+uninterpretable and violates the within-experiment attribution rule recorded at #48; I will not contaminate a
+running measurement to look decisive. (2) n=3 with one driving seed is too thin to justify a new structural pressure
+on the live pool. Sequence committed: vmGain reports first → firm the ablation with more seeds → then ship the
+carry-cost as its own isolated, interpretable swing. "What needs changed" has a real answer (the carry-cost,
+specified above); the honest part of the answer is not-yet, in that order, for those reasons. Choosing not to touch
+index.html here is the exercised decision, not the absence of one.
