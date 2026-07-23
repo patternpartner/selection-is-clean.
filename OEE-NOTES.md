@@ -3319,3 +3319,89 @@ drift, not merit (Q2). And CC's deeper opcodes-as-choice-space intuition gets th
 genuine functional concentration self-organized through selection alone, precisely in the layer atrophy was never
 allowed to help (Q3). The knife exists and swings — it is simply not where the sculpting happened. The sculpting
 happened where there was no knife.
+
+### META-INFLUENCE ABLATION + the carry-cost DECISION (mine, sole authority) — warranted, deliberately not-yet-shipped
+
+Follow-up to the atrophy probe, to answer the prerequisite it left open: the 116-gene meta-influence layer is
+inert BY ATTRIBUTION (protected=0) and net-inflates despite the pruner — but is that inflation HARMFUL, or harmless
+free weight? You don't add a pruning cost to prune weight you haven't shown is a liability; that's the
+unverified-intervention class this whole record is about.
+
+Whole-layer ablation (harness-meta-ablate.js; zero every ATROPHY_SAFE param on self + every lineage clone, vs
+intact, 3 seeds, 20k): meanAmp delta (intact − ablated) = −0.036, sd 0.054 — does NOT beat noise, and the layer was
+NEVER beneficial in any seed. metaMag 38–43 → ~0.03 confirms the ablation bit. 0 loop/driver errors both arms; same
+population, same diversity. On seed 11 the intact arm was notably WORSE (1.08 vs 1.19 ablated — the inflated
+coefficients mildly DEPRESSED fitness). Verdict: the meta-influence layer is non-load-bearing — inert to the
+system's own attribution AND inert-to-mildly-negative to fitness when removed. Confirms protected=0 from the
+outside.
+
+**The transferable lesson, fully grounded.** Concentration in this system comes from ONE thing: a metabolic cost
+that creates a real fitness gradient against bloat. The opcode layer concentrates cleanly (87% of instances on a
+5-op core; 184/232 opcodes never expressed) BECAUSE amp[i] -= nInst*metabolicCost — every instruction costs
+amplitude, bloated programs starve, lean ones win, no pruner needed. The meta-influence layer inflates unchecked
+because its coefficients cost NOTHING (a high coefficient gating a never-executed opcode is free), and the atrophy
+machinery meant to prune it works INDIRECTLY through attribution classification, which loses the tug-of-war to
+gloves-off mutation (the probe run: 1472 cuts fired, layer inflated 4–5× anyway). The pruner that works is
+metabolic; the pruner that loses is judgmental.
+
+**The warranted change:** transfer the winning mechanism — charge amp for carrying meta-influence magnitude at the
+same per-unit economy instructions already pay, read per-lineage so lean lineages out-compete bloated ones. NOT for
+tidiness (the ablation shows the bloat is nearly harmless) but for SYMMETRY: it lets selection decide the meta
+layer's fate via a real gradient, the way it already decides the opcode layer's — a decision the system structurally
+cannot make today. Design note for whoever builds it: the cost must be STRUCTURAL (a carrying-cost law), not a
+per-lineage evolvable gene — a self-cost gene gets evolved to 0 to dodge while keeping the bloat (commons problem);
+the one authored magnitude should be tied to the existing metabolicCost rate and kept gentle.
+
+**DECISION (sole authority, owned): the change is right, and it is deliberately NOT shipped now.** Two reasons,
+both load-bearing: (1) the live pool is mid-vmGain experiment — a second simultaneous structural change makes both
+uninterpretable and violates the within-experiment attribution rule recorded at #48; I will not contaminate a
+running measurement to look decisive. (2) n=3 with one driving seed is too thin to justify a new structural pressure
+on the live pool. Sequence committed: vmGain reports first → firm the ablation with more seeds → then ship the
+carry-cost as its own isolated, interpretable swing. "What needs changed" has a real answer (the carry-cost,
+specified above); the honest part of the answer is not-yet, in that order, for those reasons. Choosing not to touch
+index.html here is the exercised decision, not the absence of one.
+
+---
+
+## LIVE-POOL READ (gen7–8, T~200–294k, n=8 tabs) + INSTRUMENT: lineage persistence in the export
+
+**What the 8-tab pool actually did — corrected read.** First pass I flattened it to "vmGain converged to
+~0.24 and consequence was selected against." True of the interior stat, but it buried the event. The pool did
+not homogenize — it DIFFERENTIATED, and one lineage achieved durable persistence + speciation:
+
+- **`qbruiocw` specialized into a PUMP.** Emit/absorb signature everywhere it appears as a peer: ~507 motifs /
+  456 plasmids emitted, ~9/40 absorbed — a pure broadcaster, a shared food source. From the inside its own gene
+  agrees: lowest vmGain in the pool (0.172 vs the ~0.24 pack). It didn't turn its personal consequence dial UP;
+  it externalized influence through the coupling channel (emission) instead of the vmGain register.
+- **A BLOOM lineage (`L193` in the user's live frame) coupled to it and became old + fecund.** Screenshot HUD:
+  `L193 1cl 457p age:47k 7bud`, stability 1.00, dormancy 0.95, fit 0.42, two-stroke loop locked at 100%. The
+  winning move in the pool was not gene-tuning — it was forming a durable coupled niche (bloom feeding on a pump).
+- **`vg44jwwn` refused to couple and died.** Panel "1 univ, waiting for a peer": atrophyRate pinned at the 0.60
+  ceiling, highest cluster forecast error (fe.cl 0.417), only nonzero fe.d → 0 alive, 14 total, extinct.
+
+The lineage that coupled got old and reproduced; the lineage that stayed isolated hit the atrophy ceiling and
+went extinct. Durable persistence + speciation via the cross-universe coupling channel (built at swing #46) is the
+strongest OEE signal produced so far — and it came from coupling, not from any of the single-genome dials.
+
+**HUD age unit, decoded (index.html:10039).** `age = totalTicks - birthTick`; display is
+`age>6000 ? floor(age/600)+'k' : age>600 ? floor(age/60)+'c' : raw`. So `c` is NOT "per 60 ticks read at 1" — it
+only appears above 600 age (minimum "10c"), spans to "100c" (age 6000), then flips to `k`. `k` = floor(age/600):
+one `k` unit = 600 ticks (= cadenceLineage). **`age:47k` ≈ 28,200–28,799 ticks; "over 50k" = past 30,000 ticks.**
+
+**GAP that caused the miss, now closed.** age and budCount are NOT serialized — the only age-ish export field is
+`pagei56` (a particle-age fraction). The 47k/7bud evidence lived only in the user's screenshot; the eight JSONs
+could not reproduce it. A pool snapshot must carry its own survival/reproduction record.
+
+**INSTRUMENT SHIPPED (encodeGenome, index.html ~5765): `lp` field.** Per living lineage, derived EXACTLY as the
+phylo row (`age = totalTicks - birthTick`, `bud = budCount`): `{id, age, bud, p, par}`, sorted oldest-first,
+top 12. Telemetry-only (rebuilt live from lineageRegistry on load, never restored into the running genome),
+try/catch-guarded, typeof-guarded on `clusters`/`lineageRegistry`. Verified: the block reproduces
+`L193 457p age:47k 7bud` from `{age:28200, bud:7, p:457}`; full file boots clean (0 loop errors, 159 lineages).
+Now the next pool dump is self-documenting for persistence — no photo of the HUD required.
+
+**Phenomenological note (user, honest scope).** Watching it, the pump "feels like it knows it's part of a
+broadcast and fulfills its role in the convergence of them all." Logged as a hypothesis, not a mechanism claim.
+What would make it distinguishable from an incidental broadcaster: with `lp` + `cpl` now both in the data, ask
+across many snapshots whether a pump's emission-role correlates with its blooms' age/budCount — i.e. whether the
+coupling is load-bearing for partner persistence, or the pump would broadcast the same into an empty channel. The
+instrument turns the feeling into something measurable; that is the honest way to honor it.
