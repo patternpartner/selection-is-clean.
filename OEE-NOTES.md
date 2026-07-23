@@ -3261,3 +3261,61 @@ discipline that ran all night.
 
 **Bookkeeping — free.** Each tab's crossing into #48 is stamped by its first export carrying `vg`/`vgs`, so the
 cohort structure of the migration is already in the record without anyone noting times.
+
+### ATROPHY PROBE (Fable's keystone) — the pruner fires, loses to drift in its own layer, and the real concentration is where it can't reach
+
+Fable's four-question packet, run one seed (7) to 20k via harness-atrophy-probe.js (existing atrophy block
+instrumented, mechanism unchanged; every patch target verified unique; atrophyRate clamp read from source). The
+question that governed the rest: does the atrophy fire. It does — and the full answer splits both framings and
+recombines them into something sharper than either.
+
+**Q1 KEYSTONE — atrophy FIRES, abundantly.** 1472 cut events over 20k ticks (uncapped census count; the raw log
+buffered its first 400), across 116 of 116 ATROPHY_SAFE params — every single one was cut, repeatedly (3–4x each in
+the logged window). 0 loop/driver errors. Fable's branch A (45%: "fires and cuts real params — framing gets teeth")
+lands; the 35% "pruner is ornament" branch is refuted outright. The knife is real and swings hard.
+
+**Q2 THREE-STATE — but the confound resolves AGAINST the "still earning" reading, decisively.** The packet's three
+states were protected / eligible / structurally-unreached. Two of the three are EMPTY in the data:
+  - structurally-unreached (conf≤0.35, jurisdiction gap): 0.0% — every param cleared the confidence bar (final conf
+    min 0.609, median 0.867). The knife reaches its entire jurisdiction. No blind spot.
+  - protected (positive slow-trace, earning keep): 0 params, ever. Final traceSlow is NEGATIVE for all 116 (min
+    −0.057, median −0.022, max −0.0017 — not one crosses zero). By the system's OWN attribution, none of its 116
+    meta-influence genes positively contributes.
+  - quiet-eligible (should decay): 92.6% of all param-cycles; the remaining 7.4% mildly-negative "middling."
+So the elevated mirror-genes are NOT high-and-protected and NOT high-because-unreachable. They are high-and-quiet-
+and-cut. The elevation is DRIFT, not merit, confirmed two ways: (a) selfAgeInfluence grew 0.15→0.65 (4.3× its
+default) and lineagePeakInfluence 0.12→0.66 (5.5×) DESPITE the 1472 cuts; (b) top params sit 2–5× above their own
+recorded peakValue (the last value at which they were ever positively credited — lineagePeakInfluence val 0.658 vs
+peak 0.192; fieldCrossInfluence 0.628 vs 0.134). Fable's confound concern was exactly right: "elevated = still
+earning" is false by the system's own books.
+
+**The unification of Q1+Q2 — the pruner is a losing rearguard in a net-inflating layer.** Atrophy fires on 100% of
+its jurisdiction with high confidence and correctly judges nearly everything quiet — yet the params it patrols grew
+4–5× over the run anyway. Mutational drift re-inflates the meta-influence layer faster than atrophy (evolved rate
+0.21) removes it. So it is neither CC's clean "concentration engine" nor a dead ornament: it is an active knife that
+LOSES the tug-of-war in its own territory. The meta layer net-bloats despite constant, well-aimed cutting. This is
+also the confabulation-assay's largest single specimen yet: ~116 genes each annotated "attribution tracks whether
+this sensing helps," and the attribution's verdict, uniform across all of them, is that none does.
+
+**Q3 OPCODES — and here is where real concentration DID happen, in the layer with NO pruner.** Atrophy patrols only
+scalar influence-genes; it cannot touch a single opcode, so the 232-wide VM choice-space has no culler at all.
+Census of 422 living evolved programs vs the boot seed: the seed used 5 distinct opcodes (0–4, arithmetic+emit, 12
+instances); evolved programs use 48 distinct opcodes across 5778 instances — selection EXPLORED 43 new operations
+out of the 232-wide space on its own. And the frequency is sharply CONCENTRATED, not flat: the top 5 opcodes hold
+87% of all instances (op4/EMIT alone 30%), the other 43 share a 13% long tail, and 184 of 232 possible opcodes
+never appear in any living program. That is real concentration — exploration into the space, then power-law
+concentration onto a functional core — emerging from ordinary selection with no dedicated culler. Fable's 60%
+opcode prediction confirmed, and it is the strongest result in the packet: bloat that does nothing simply stops
+being expressed, no knife required.
+
+**Q4 BOUND — atrophyRate 0.05→0.21, interior to its [0,0.6] ceiling.** An optimum, not a pin (this run). The live
+pool's ~0.55 is closer to the 0.6 ceiling but still not at it; per the within-#48/within-run rule these are not
+directly comparable, but neither is pinned.
+
+**Verdict — whose framing.** Both, in different layers, and the split is the finding. CC's start-maximal thesis gets
+its mechanism: the pruner is real, sharp, and reaches everything (Q1). Fable's ornament-heavy read is confirmed by
+the system's own attribution: the entire meta-influence layer is uniformly non-contributing and its elevation is
+drift, not merit (Q2). And CC's deeper opcodes-as-choice-space intuition gets the cleanest confirmation of all:
+genuine functional concentration self-organized through selection alone, precisely in the layer atrophy was never
+allowed to help (Q3). The knife exists and swings — it is simply not where the sculpting happened. The sculpting
+happened where there was no knife.
