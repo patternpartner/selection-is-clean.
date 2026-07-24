@@ -3487,3 +3487,79 @@ metric with room to move, which is strictly stronger than what the record can cu
 live pool is mid-vmGain experiment and a second simultaneous structural change makes both uninterpretable; and the
 clamp is a physics bound whose removal is exactly the "stability frontier" #48 pre-registered a branch for. The
 gauge is observation-only and safe to run against the pool at any time. `index.html` is untouched by this entry.
+
+---
+
+## SWING #49 (LIVE, shipped) — THE CURRENCY: scarcity that binds on the individual, not just the headcount
+
+The user's call, and it is a correction to the project's direction, not just to a mechanism: recent sessions have
+been almost entirely audit. Swing #48 is the last real build, and it was Fable's design. The atrophy probe, the
+meta-influence ablation, the carry-cost decision, the lineage instrument and this session's saturation audit are
+all measurement. The critique, accepted in full: **every test here comes back null, and a null feels like a
+result** — a well-evidenced paragraph that changes nothing. The confabulation assay is that trap in its purest
+form: 232 opcodes x 186 genes x 140 layers is years of defensible ablations, none of which move the system.
+
+**The diagnosis this ships against.** The world-energy block (index.html ~660-686) is a real economy and it
+works — at the POPULATION level. Metabolic upkeep plus a seasonal influx pins carrying capacity well below CAP,
+exactly as documented. What it never did was create differential fitness AMONG THE LIVING. Two constants were why:
+
+1. `if(amp[i]>1.2)amp[i]=1.2` — a bare literal. Saturation audit: 79-87% of living particles at EXACTLY that
+   value, median and p10 both on the clamp, CV ~0.09. Surplus was discarded, and the selection differential
+   with it.
+2. Reproduction (opcode 16) was a STEP: `amp[i]>0.4 && Math.random()<0.03`. Flat 3% for everyone above the gate,
+   and 99% of the population is above that gate.
+
+So amp was a viability FLAG with a huge dead zone, not a currency. **That is the structural reason ~48 swings of
+mechanism kept ablating to null** — 116 meta-influence genes inert by the system's own attribution, a 28-atom
+authored bank ablating bit-identical, a cluster reflex firing 2M+ times unread. Not 48 failures: one failure,
+observed 48 times. No mechanism can have fitness grip in a world where fitness does not vary. The record already
+had the principle and stopped an inch short of generalising it — the atrophy probe's "the pruner that works is
+metabolic; the pruner that loses is judgmental." The opcode layer is the ONLY layer that ever self-organised real
+structure (48 opcodes explored, 87% of instances on a 5-op core, 184 never expressed) and it has no machinery at
+all — it has `amp[i] -= nInst*metabolicCost`. **The only thing that ever produced structure here was a cost.**
+
+**What shipped.** Both halves, because either alone is inert — raising the ceiling without grading reproduction
+just rescales a flat landscape, and grading reproduction without raising the ceiling grades a population that is
+all at one value.
+  - `AMP_CAP=6.0` (structural const, NOT a gene — a self-benefiting parameter gets evolved straight to its bound;
+    a per-lineage cap is a commons problem and exactly the wireheading the world-energy comment rules out).
+  - Spawn odds proportional: `Math.random()<0.03*(amp[i]/AMP_CAP)`, all three execution paths. The 0.4 viability
+    gate is untouched. At the cap the rate is the historical 0.03 exactly, so this only ever grades DOWNWARD.
+  - Six amp sensor reads RESCALED, not re-ranged (`amp/AMP_CAP*AMP_SENSOR_SCALE`, span still [0,1.2]) — evolved VM
+    arithmetic is calibrated to that span. Same range, real resolution: they used to read a constant 1.2 for 80%
+    of particles. Same treatment for op182 SELF_AMP_SENSE x4, which was raw and only ever bounded by the clamp.
+  - Render register `R[4]` normalised — it was `__cl(amp[i],0,1)`, i.e. already pinned at 1 for most particles.
+  - Shadow-sim amp ceiling tracks AMP_CAP. DELIBERATE CONTRAST with #48, which held the shadow sim at base vmGain
+    on purpose: that exclusion is about the CONSEQUENCE of VM output and keeps imagination reasoning against a
+    stable physics. This is different in kind — AMP_CAP is the RANGE of the state variable. An imagined population
+    saturating 5x below the real one is not a counterfactual, it is a different world, and the avgAmp<0.1 death
+    test and every rollout score would inherit the error.
+
+**Why 6.0 and not higher.** Measured the curve rather than guessing (seed 7, 3000 ticks): cap 1.2 -> CV 0.089,
+atCap 80%; cap 6 -> CV 0.199, atCap 67%; cap 24 -> CV 0.319, atCap 47%. Dispersion keeps improving but even at 24
+the MEDIAN particle is still on the ceiling, so no value in this range "solves" saturation — a bigger bucket moves
+it, it does not remove it. 6.0 is 2.2x the dispersion for a 5x change vs 3.6x for a 20x change: the better ratio
+per unit of disruption to a live artwork. **Named honestly: this is a first step on a monotone curve, not an
+endpoint.** The real endpoint is a COST that scales with held amp (surplus should be expensive to hoard), which
+is the same insight as the shelved carry-cost and is the natural #50.
+
+**VERIFIED (not assumed).**
+  - Headless seed 7, 3000 ticks: 0 loop errors, 0 driver errors. N 418-437 (stable — the ~6% lower mean birth
+    rate did not depress the population). CV 0.193 vs 0.089 before. atCap 66% vs 80%. p10 4.82 = 80% of cap,
+    where it used to sit ON the cap.
+  - LIVE BROWSER (the harness stubs the canvas entirely, so the render-register change was invisible to it):
+    page loads, 0 console errors, 0 page errors, AMP_CAP=6 live, meanAmp 5.581, atCap 68% matching headless, and
+    the canvas is painting (91k non-black pixels sampled). The render path is intact.
+  - Grep swept for every other place assuming amp<=1.2; the remaining 1.2s in the file are tend clamps and a pow
+    exponent, unrelated.
+
+**The gradient, concretely.** A particle at p10 (amp 4.82) now spawns at 0.024/tick against 0.03 at the cap — 20%
+fewer offspring per unit time. That is a real, monotone selection differential where there was previously exactly
+none, across the range where ~95% of the population lives.
+
+**What this does NOT claim.** It does not show any previously-null mechanism now grips — that is the next
+question, and re-running one recorded ablation under #49 is the obvious test. It does not rescue the strongest
+null in the record: the 28-atom real-bank ablation was 4/5 seeds BIT-IDENTICAL, and no amount of headroom
+manufactures a difference where execution produced exact zero. That verdict stands unchanged. And #49 is a
+structural change to a live pool mid-vmGain-experiment — by the within-#48 attribution rule, gain readings that
+straddle this commit are not comparable, and that cost was accepted deliberately rather than deferred again.

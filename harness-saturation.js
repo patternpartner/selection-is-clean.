@@ -107,11 +107,11 @@ let code = html.match(/<script>([\s\S]*)<\/script>/)[1];
 // distribution under a RAISED clamp, not just the shipped one. Default off = byte-identical code.
 const AMP_CAP = process.env.AMP_CAP !== undefined ? parseFloat(process.env.AMP_CAP) : 1.2;
 if (process.env.AMP_CAP !== undefined) {
-  const NEEDLE = 'if(amp[i]>1.2)amp[i]=1.2;';
+  const NEEDLE = 'const AMP_CAP=6.0;';
   const hits = code.split(NEEDLE).length - 1;
   if (!Number.isFinite(AMP_CAP) || AMP_CAP <= 0 || hits !== 1) {
     console.log(JSON.stringify({error:'AMP_CAP invalid or patch target not unique ('+hits+' hits)'})); process.exit(1); }
-  code = code.replace(NEEDLE, 'if(amp[i]>' + AMP_CAP + ')amp[i]=' + AMP_CAP + ';');
+  code = code.replace(NEEDLE, 'const AMP_CAP=' + AMP_CAP + ';');
 }
 
 const driver = `
@@ -125,7 +125,7 @@ const driver = `
     var sum=0; for(var j=0;j<n;j++)sum+=vals[j];
     var mean=sum/n, v=0; for(var j2=0;j2<n;j2++){var d=vals[j2]-mean; v+=d*d;}
     var sd=Math.sqrt(v/n);
-    var CAPV=${AMP_CAP}, dT=(typeof genome!=='undefined'?genome.deathThreshold:0.04);
+    var CAPV=(typeof AMP_CAP!=='undefined')?AMP_CAP:1.2, dT=(typeof genome!=='undefined'?genome.deathThreshold:0.04);
     function frac(pred){var c=0;for(var k=0;k<n;k++)if(pred(vals[k]))c++;return c/n;}
     function q(p){return vals[Math.min(n-1,Math.floor(p*n))];}
     return {

@@ -677,10 +677,10 @@ let code2 = code;
 if (process.env.AMP_CAP !== undefined) {
   const capV = parseFloat(process.env.AMP_CAP);
   if (!Number.isFinite(capV) || capV <= 0) { console.log(JSON.stringify({error:'AMP_CAP must be a positive finite number'})); process.exit(1); }
-  const NEEDLE = 'if(amp[i]>1.2)amp[i]=1.2;';
+  const NEEDLE = 'const AMP_CAP=6.0;';
   const hits = code2.split(NEEDLE).length - 1;
   if (hits !== 1) { console.log(JSON.stringify({error:`AMP_CAP patch target not unique (${hits} occurrences) — refusing to patch`})); process.exit(1); }
-  code2 = code2.replace(NEEDLE, `if(amp[i]>${capV})amp[i]=${capV};`);
+  code2 = code2.replace(NEEDLE, `const AMP_CAP=${capV};`);
   globalThis.__ampCap = capV;
   console.error(`[AMP_CAP] physics clamp 1.2 -> ${capV} (1 site patched; sensor clamps left at 1.2)`);
 }
