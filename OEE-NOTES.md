@@ -3405,3 +3405,254 @@ What would make it distinguishable from an incidental broadcaster: with `lp` + `
 across many snapshots whether a pump's emission-role correlates with its blooms' age/budCount — i.e. whether the
 coupling is load-bearing for partner persistence, or the pump would broadcast the same into an empty channel. The
 instrument turns the feeling into something measurable; that is the honest way to honor it.
+
+---
+
+## SATURATION AUDIT — the dependent variable is pinned at its clamp, and the instrument can only see harm
+
+Asked for an assessment of the project, ran one, and it produced a result that is not about any single
+mechanism — it is about the measuring apparatus that graded ~10 of the swings above. Recorded here because it
+changes how those verdicts should be read, not because it overturns any of them.
+
+**What was built.** `harness-saturation.js` — swing #48's Rider 2 in the one form that entry said was honestly
+available: "an honestly-labeled TOTAL-physics-saturation gauge that does not claim VM attribution." It attributes
+nothing to VM output (the reason the per-site counter was correctly refused as a one-liner still stands: VM output
+is diffuse across ~8 actuators x 3 paths, and the catching clamps are shared with base physics). It censuses the
+distribution of `amp[i]` over living particles against its own hard bound. Observation only; Pe unpatched.
+
+**The bound in question.** `index.html:12091`, `if(amp[i]>1.2)amp[i]=1.2;` — a bare numeric literal in the
+interaction loop. Not a gene, not in `sanitizeGenome`, not annotated, never re-decided. The same class of object as
+the 0.002/0.0015/0.0005 gain constants #48 promoted to `vmGain`, and reached by the same route: inherited, and
+nobody's decision since.
+
+**MEASURED (3 seeds — 7, 3, 11 — 6000 ticks, 0 loop errors, 0 driver errors, all three).**
+
+| seed | t1501 atCap | t6001 atCap | t6001 within1% | t6001 p10 | t6001 p50 | t6001 mean | headroom | cv boot→t6001 |
+|---|---|---|---|---|---|---|---|---|
+| 7  | 0.701 | **0.871** | 0.969 | 1.1999 | 1.2 | 1.192 | **0.7%** | 0.273→0.049 |
+| 3  | 0.789 | **0.831** | 0.945 | 1.2    | 1.2 | 1.179 | **1.7%** | 0.256→0.093 |
+| 11 | 0.696 | **0.787** | 0.940 | 1.2    | 1.2 | 1.183 | **1.4%** | 0.271→0.069 |
+
+The population starts dispersed (mean ~0.56, cv ~0.26, nothing at the cap) and is at the ceiling within ~1500
+ticks. By t6001 the MEDIAN and the 10th PERCENTILE both sit exactly at the clamp in all three seeds: 79-87% of
+living particles hold the identical clamped value, 94-97% are within 1% of it, and dispersion has fallen by 3-5x.
+
+**The two gates, for scale (`harness-tie.js`, seed 7, band census).** Death is `amp[i] < deathThreshold` (0.04).
+Reproduction is op16, gated `amp[i]>0.4 && page[i]>80 && Math.random()<0.03`, costing `amp[i]*=0.5` — so above
+~0.8 a particle can spawn and remain over the gate, and more amp buys nothing further. Measured: **98.8-99.4%** of
+living particles are above the 0.4 reproduction gate, and **93.6-98.6%** are above the 0.8 point where additional
+amp stops conferring additional reproductive capability. The population does not merely sit near the ceiling — it
+sits entirely inside the region where the currency has stopped being a currency.
+
+**Why this bears on the record.** `meanAmp` is the shared primary dependent variable of `harness-ablate-bank.js`,
+`harness-meta-ablate.js` and `harness-ablate-reflex.js`. Compare the remaining absolute headroom above the mean
+(1.2 − mean = **0.008 / 0.021 / 0.017**) against the effect sizes those harnesses reported:
+
+- whole-bank ablation: intact 1.169 vs ablated 1.145, effect **0.024**, sd 0.031
+- meta-influence ablation: effect **−0.036**, sd 0.054
+- single most-proven atom: effect **0.016**, sd 0.037
+
+The effects being measured are the same size as, or larger than, the distance from the intact arm's mean to the
+ceiling. **An intervention that HELPS therefore cannot register — its benefit is truncated by the clamp before the
+comparison begins — while an intervention that HURTS has the whole range below to move in.** That asymmetry is
+visible in the record's own results: the meta-layer ablation found the layer "NEVER beneficial in any seed," and
+every positive effect reported anywhere in the ablation series is sub-noise and carried by one outlier seed.
+
+**Scope, stated precisely — this does NOT overturn the nulls.**
+1. It does not explain the BIT-IDENTICAL results (the reflex ablations, #47 and prior). Those are exact
+   zero-difference in execution across 5/5 seeds; a saturated metric would still show float noise. Reflex remains
+   convicted on its own evidence, and that conviction is untouched by this.
+2. It does not show the atom bank or the meta layer ARE load-bearing. It shows the test as run could not have
+   demonstrated that they were. "Leaning neutral, inconclusive" was the correct call and remains so — this
+   explains WHY those tests kept landing inconclusive rather than resolving.
+3. It is one authoring pass, 3 seeds, 6000 ticks, fresh unauthored boots. The same real-genome caveat every
+   headless finding here carries applies unchanged.
+
+**A refuted hypothesis, kept.** The saturation numbers suggested a sharper claim: `selfLearnFromBest()` (:5440)
+and `decideFromRealWinner()` (:5464) both pick "the best lineage" by strict argmax over `amp[i]`, so with 75%+ of
+particles holding the identical clamped Float32 the argmax should have been resolving a mass tie by array order —
+"DECIDE FROM THE REAL WINNER" (#44) deciding from an arbitrary index. Instrumented it (`harness-tie.js`) rather
+than reporting it from source. **REFUTED**: `tiedAtMax` is 1 at nearly every sample, and `bestAmp` reads
+1.200020-1.200875 — strictly above the clamp, because amp takes further additions after the clamp site within the
+same tick. The maximum is genuinely unique; the argmax is not degenerate. Recorded because a static read that
+looked airtight was wrong, which is the whole methodological point of this file.
+
+**The named next test, not run.** Raise or genome-ify the 1.2 clamp and re-run ONE already-recorded ablation
+(whole-bank is the cleanest, its result is documented and its apparatus exists). Prediction: the effect separates
+from noise, or it does not. If it does, the ablation series needs re-reading against an unsaturated metric and
+several "inconclusive, leaning neutral" verdicts are live again. If it does not, the nulls are confirmed on a
+metric with room to move, which is strictly stronger than what the record can currently claim. Either branch pays.
+
+**NOT SHIPPED, and deliberately so** — same two reasons #48's carry-cost decision named, and they still hold: the
+live pool is mid-vmGain experiment and a second simultaneous structural change makes both uninterpretable; and the
+clamp is a physics bound whose removal is exactly the "stability frontier" #48 pre-registered a branch for. The
+gauge is observation-only and safe to run against the pool at any time. `index.html` is untouched by this entry.
+
+---
+
+## SWING #49 (LIVE, shipped) — THE CURRENCY: scarcity that binds on the individual, not just the headcount
+
+The user's call, and it is a correction to the project's direction, not just to a mechanism: recent sessions have
+been almost entirely audit. Swing #48 is the last real build, and it was Fable's design. The atrophy probe, the
+meta-influence ablation, the carry-cost decision, the lineage instrument and this session's saturation audit are
+all measurement. The critique, accepted in full: **every test here comes back null, and a null feels like a
+result** — a well-evidenced paragraph that changes nothing. The confabulation assay is that trap in its purest
+form: 232 opcodes x 186 genes x 140 layers is years of defensible ablations, none of which move the system.
+
+**The diagnosis this ships against.** The world-energy block (index.html ~660-686) is a real economy and it
+works — at the POPULATION level. Metabolic upkeep plus a seasonal influx pins carrying capacity well below CAP,
+exactly as documented. What it never did was create differential fitness AMONG THE LIVING. Two constants were why:
+
+1. `if(amp[i]>1.2)amp[i]=1.2` — a bare literal. Saturation audit: 79-87% of living particles at EXACTLY that
+   value, median and p10 both on the clamp, CV ~0.09. Surplus was discarded, and the selection differential
+   with it.
+2. Reproduction (opcode 16) was a STEP: `amp[i]>0.4 && Math.random()<0.03`. Flat 3% for everyone above the gate,
+   and 99% of the population is above that gate.
+
+So amp was a viability FLAG with a huge dead zone, not a currency. **That is the structural reason ~48 swings of
+mechanism kept ablating to null** — 116 meta-influence genes inert by the system's own attribution, a 28-atom
+authored bank ablating bit-identical, a cluster reflex firing 2M+ times unread. Not 48 failures: one failure,
+observed 48 times. No mechanism can have fitness grip in a world where fitness does not vary. The record already
+had the principle and stopped an inch short of generalising it — the atrophy probe's "the pruner that works is
+metabolic; the pruner that loses is judgmental." The opcode layer is the ONLY layer that ever self-organised real
+structure (48 opcodes explored, 87% of instances on a 5-op core, 184 never expressed) and it has no machinery at
+all — it has `amp[i] -= nInst*metabolicCost`. **The only thing that ever produced structure here was a cost.**
+
+**What shipped.** Both halves, because either alone is inert — raising the ceiling without grading reproduction
+just rescales a flat landscape, and grading reproduction without raising the ceiling grades a population that is
+all at one value.
+  - `AMP_CAP=6.0` (structural const, NOT a gene — a self-benefiting parameter gets evolved straight to its bound;
+    a per-lineage cap is a commons problem and exactly the wireheading the world-energy comment rules out).
+  - Spawn odds proportional: `Math.random()<0.03*(amp[i]/AMP_CAP)`, all three execution paths. The 0.4 viability
+    gate is untouched. At the cap the rate is the historical 0.03 exactly, so this only ever grades DOWNWARD.
+  - Six amp sensor reads RESCALED, not re-ranged (`amp/AMP_CAP*AMP_SENSOR_SCALE`, span still [0,1.2]) — evolved VM
+    arithmetic is calibrated to that span. Same range, real resolution: they used to read a constant 1.2 for 80%
+    of particles. Same treatment for op182 SELF_AMP_SENSE x4, which was raw and only ever bounded by the clamp.
+  - Render register `R[4]` normalised — it was `__cl(amp[i],0,1)`, i.e. already pinned at 1 for most particles.
+  - Shadow-sim amp ceiling tracks AMP_CAP. DELIBERATE CONTRAST with #48, which held the shadow sim at base vmGain
+    on purpose: that exclusion is about the CONSEQUENCE of VM output and keeps imagination reasoning against a
+    stable physics. This is different in kind — AMP_CAP is the RANGE of the state variable. An imagined population
+    saturating 5x below the real one is not a counterfactual, it is a different world, and the avgAmp<0.1 death
+    test and every rollout score would inherit the error.
+
+**Why 6.0 and not higher.** Measured the curve rather than guessing (seed 7, 3000 ticks): cap 1.2 -> CV 0.089,
+atCap 80%; cap 6 -> CV 0.199, atCap 67%; cap 24 -> CV 0.319, atCap 47%. Dispersion keeps improving but even at 24
+the MEDIAN particle is still on the ceiling, so no value in this range "solves" saturation — a bigger bucket moves
+it, it does not remove it. 6.0 is 2.2x the dispersion for a 5x change vs 3.6x for a 20x change: the better ratio
+per unit of disruption to a live artwork. **Named honestly: this is a first step on a monotone curve, not an
+endpoint.** The real endpoint is a COST that scales with held amp (surplus should be expensive to hoard), which
+is the same insight as the shelved carry-cost and is the natural #50.
+
+**VERIFIED (not assumed).**
+  - Headless seed 7, 3000 ticks: 0 loop errors, 0 driver errors. N 418-437 (stable — the ~6% lower mean birth
+    rate did not depress the population). CV 0.193 vs 0.089 before. atCap 66% vs 80%. p10 4.82 = 80% of cap,
+    where it used to sit ON the cap.
+  - LIVE BROWSER (the harness stubs the canvas entirely, so the render-register change was invisible to it):
+    page loads, 0 console errors, 0 page errors, AMP_CAP=6 live, meanAmp 5.581, atCap 68% matching headless, and
+    the canvas is painting (91k non-black pixels sampled). The render path is intact.
+  - Grep swept for every other place assuming amp<=1.2; the remaining 1.2s in the file are tend clamps and a pow
+    exponent, unrelated.
+
+**The gradient, concretely.** A particle at p10 (amp 4.82) now spawns at 0.024/tick against 0.03 at the cap — 20%
+fewer offspring per unit time. That is a real, monotone selection differential where there was previously exactly
+none, across the range where ~95% of the population lives.
+
+**What this does NOT claim.** It does not show any previously-null mechanism now grips — that is the next
+question, and re-running one recorded ablation under #49 is the obvious test. It does not rescue the strongest
+null in the record: the 28-atom real-bank ablation was 4/5 seeds BIT-IDENTICAL, and no amount of headroom
+manufactures a difference where execution produced exact zero. That verdict stands unchanged. And #49 is a
+structural change to a live pool mid-vmGain-experiment — by the within-#48 attribution rule, gain readings that
+straddle this commit are not comparable, and that cost was accepted deliberately rather than deferred again.
+
+### #49 FOLLOW-UP (10k ticks, seeds 3 + 11) — stable, but the dispersion DECAYS; the "2.2x" was measured mid-transient
+
+Ran the longer horizon the 3000-tick verification could not speak to. Two findings, one reassuring and one that
+corrects the entry above.
+
+**Stability: CONFIRMED.** Seeds 3 and 11, 10000 ticks: 0 loop errors, 0 driver errors, no NaN, in both. Population
+GREW 329 -> 449/448 and lineage registry reached 4513/4345. The ~6% lower mean birth rate did not depress the
+population at horizon, and nothing destabilised — the #48 "stability frontier" fear does not materialise at this
+cap value.
+
+**Dispersion: DECAYS, and the headline number above was taken mid-transient.** CV by tick, post-#49:
+
+| seed | t2501 | t5001 | t7501 | t10001 |
+|---|---|---|---|---|
+| 3  | 0.255 | 0.169 | 0.152 | **0.133** |
+| 11 | 0.231 | 0.218 | 0.122 | **0.142** |
+
+The entry above reports CV 0.193 at t3001 as "2.2x the pre-#49 0.089." Both halves of that are fine in isolation
+and the comparison is still roughly right at MATCHED ticks — pre-#49 vs post-#49 on the same seeds runs 0.123 vs
+0.255 (seed 3, ~t2.5-3k), 0.085 vs 0.169 (~t4.5-5k), 0.093 vs 0.152 (~t6-7.5k), i.e. a consistent ~2x — but it
+reads as though the gain is a steady state, and it is not. **Both conditions decay; #49 decays from a higher
+start and holds roughly 2x, it does not stop the erosion.** By t10001 p10 is back at 97-99.6% of the cap
+(5.84/5.98 of 6.0), which is where it sat, relative to the old cap, before this swing.
+
+**This is exactly what the cap-24 probe predicted and the entry above already stated in principle** ("a bigger
+bucket moves saturation, it does not remove it"; "a first step on a monotone curve, not an endpoint"). The
+follow-up just converts that from a caveat into a measurement: the population re-saturates whatever ceiling it is
+given, on a timescale of ~10k ticks. Raising the ceiling buys a transient, and a permanent ~2x on the dispersion
+floor — real, and not nothing, since the reproduction gradient is monotone in amp and now has something to grade —
+but the erosion mechanism is untouched.
+
+**What this sharpens for #50.** The remaining fix is not a larger AMP_CAP — the curve says that only lengthens the
+transient. It is a COST THAT SCALES WITH HELD AMP, so that hoarding surplus is expensive and the distribution
+cannot collapse onto the ceiling in the first place. That is the same mechanism as the shelved carry-cost and the
+same principle the atrophy probe already isolated (metabolic pressure concentrates; judgmental machinery does
+not). #49 gave the currency a range and made reproduction grade on it; #50 has to make the range defensible.
+
+### SWING #50 + #50b VERDICT (10k, seeds 7 + 3, fixed census) — PASS on both criteria; one open question
+
+**#50 as first built (fixed rent, fixed ceiling) FAILED, and the failure named the real design.** Rate sweep,
+seed 7, 6000 ticks, 0 errors:
+
+| rate | atCap t2001->t6001 | CV t2001->t6001 | mean t2001->t6001 |
+|---|---|---|---|
+| 0.005 | 39% -> 58% | 0.361 -> 0.210 | 4.77 -> 5.46 |
+| 0.012 | 6.6% -> 43% | 0.644 -> 0.290 | 2.83 -> 5.01 |
+| 0.020 | 8.4% -> 34% | 0.808 -> 0.391 | 2.54 -> 4.52 |
+
+Higher rent is monotonically better — the mechanism works directionally — but the mean climbs toward the cap at
+EVERY rate. `A_eq=I/c` only stands still if income is static, and it is not: lineages evolve to earn more, I(t)
+rises, A_eq rises, and any FIXED ceiling is reached eventually whatever c is. **That is adaptation outrunning a
+static cost, not a mis-picked constant**, and it is why tuning c harder was the wrong move.
+
+**#50b: the ceiling tracks the population** (`cap = 4 x mean living amp`, floored at AMP_CAP). Scale-free — if
+every income improves by g, every amp scales by g, the ceiling scales by g, and CV is PRESERVED. Ten dependent
+sites rewired to the live ceiling (6 vigor sensors, 4x op182, render register, shadow-sim clamp), cached per tick.
+
+**VERDICT (10000 ticks, seeds 7 and 3, 0 loop errors, 0 driver errors both):**
+
+| | #49 @ t10k | #50b @ t10k |
+|---|---|---|
+| atCeiling | 70% / 73% | **1.9% / 0.0%** |
+| CV | 0.133 / 0.142 | **0.974 / 0.730** |
+| N | 449 / 448 | 433 / 447 |
+
+Both pass conditions met. The bulk is off the ceiling and STAYS off across the whole run (seed 7: 6.0% -> 2.2% ->
+0.9% -> 0.5% -> 1.9%), and dispersion holds at 5-10x the pre-#49 baseline (~0.07) instead of decaying toward it.
+This is the first configuration in the record where the amp distribution does not collapse onto its own bound.
+
+**A MEASUREMENT BUG CAUGHT BEFORE IT PRODUCED A VERDICT.** Both the browser probe and the harness census were
+computing atCap against AMP_CAP — the FLOOR constant — not the effective ceiling, reporting pinning that was not
+happening. Caught because one browser dump showed `ceil=53.7` and `atCap=0.827` simultaneously, which cannot both
+be true. The two 10k runs already in flight were discarded rather than reported. Third time this session that
+measuring beat reasoning-from-source (after the refuted argmax-tie hypothesis and #49's mid-transient headline).
+
+**OPEN — absolute inflation, and a concern of mine that the data then DEFLATED.** Seed 7 stabilises (mean ~14,
+ceiling ~55). Seed 3 does not: mean 7.6 -> 15.2 -> 30.5 -> 52.3 -> 62.1, ceiling to 250, decelerating but not
+clearly converged. I claimed this would disable the absolute death threshold (0.04), since seed 3's p01 sits at
+1.13 — 28x above it — so nothing should be starving. **Checked instead of asserted, and I was wrong**: the
+amp-starvation path fires 535 times over 2500 ticks (~0.21/tick). p01 is the 1st percentile of SURVIVORS, and
+particles that fall under the threshold die and leave the census before it is taken; a healthy-looking p01 is
+consistent with a working death filter, not evidence against one. The honest residual question is whether that
+rate HOLDS at seed 3's inflated end-state (mean ~62, not ~4) — a 10k run with the cumulative counter is in
+flight and will settle it. If starvation deaths thin out as the economy inflates, the fix is to make
+deathThreshold and the 0.4 reproduction gate relative too, for the same reason the ceiling had to become
+relative — otherwise inflation silently switches off the absolute-valued half of selection. Named as #50c,
+conditional on that measurement, NOT built on the strength of an argument that has already been wrong once here.
+
+**What this does NOT establish.** That any previously-null mechanism now grips. #50 makes fitness vary; whether
+the 48 recorded nulls were mechanism failures or artifacts of flat fitness is the NEXT question, and the clean
+test is re-running one recorded ablation under #50 — the thin-bank whole-bank ablation, whose apparatus exists.
+The 28-atom real-bank null (4/5 seeds bit-identical) is still immune to all of this and still stands.

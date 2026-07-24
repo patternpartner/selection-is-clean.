@@ -524,6 +524,14 @@ const driver = `
       tick:(typeof tick!=='undefined')?tick:-1,
       N:alive,
       meanAmp:+(alive?ampSum/alive:0).toFixed(3),
+      // Saturation manipulation check (always on, cheap): what share of the living population is
+      // pinned at the physics clamp, and how much range does meanAmp have left. Without these an
+      // AMP_CAP run cannot show whether raising the cap actually desaturated anything — which is
+      // the readout-1 the protocol requires before any ablation verdict is allowed to mean anything.
+      ampAtCap:(function(){ const cap=(globalThis.__ampCap||1.2); let c=0,n=0;
+        for(let i=0;i<N;i++){ if(!palive[i])continue; const a=amp[i]; if(!Number.isFinite(a))continue; n++; if(a>=cap-1e-6)c++; }
+        return n?+(c/n).toFixed(4):0; })(),
+      ampHeadroom:+(1-(alive?ampSum/alive:0)/(globalThis.__ampCap||1.2)).toFixed(4),
       // diversity
       occupiedKinds:occupied,
       diversityHbits:+Hbits.toFixed(3),
@@ -647,13 +655,43 @@ const driver = `
 })();
 `;
 
+// ── AMP_CAP: raise the hardcoded amp ceiling (saturation audit follow-up) ──────────
+// index.html:12091 clamps the selection currency with a bare literal: `if(amp[i]>1.2)amp[i]=1.2;`.
+// The saturation audit (OEE-NOTES) measured 79-87% of living particles pinned at exactly that value
+// with 0.7-1.7% headroom left above the mean — smaller than the effect sizes the ablation series
+// reports, so a BENEFICIAL intervention is truncated before its comparison begins. This knob exists
+// to re-run a recorded ablation on an unsaturated metric.
+//
+// Patched, not genome-ified: this is a physics bound, and making it evolvable is a live-pool change
+// that #48's within-experiment rule forbids right now. Text-patch is harness-local and reversible.
+//
+// SCOPE, stated: this patches ONLY the physics clamp. The amp SENSOR reads
+// (`__cl(amp[i],0,1.2)` at :12533/:12544/:14513/:14521/:15794/:15802) are deliberately left at 1.2 —
+// they scale amp into VM registers and are a different decision. So above 1.2 the VM's self/partner
+// vigor sensors saturate even though the physics does not. Named so it is not mistaken for a clean
+// "the cap is gone" condition.
+//
+// Default OFF — with AMP_CAP unset the code string is byte-identical to index.html, so every
+// pre-existing result in the record remains reproducible from this harness unchanged.
+let code2 = code;
+if (process.env.AMP_CAP !== undefined) {
+  const capV = parseFloat(process.env.AMP_CAP);
+  if (!Number.isFinite(capV) || capV <= 0) { console.log(JSON.stringify({error:'AMP_CAP must be a positive finite number'})); process.exit(1); }
+  const NEEDLE = 'const AMP_CAP=6.0;';
+  const hits = code2.split(NEEDLE).length - 1;
+  if (hits !== 1) { console.log(JSON.stringify({error:`AMP_CAP patch target not unique (${hits} occurrences) — refusing to patch`})); process.exit(1); }
+  code2 = code2.replace(NEEDLE, `const AMP_CAP=${capV};`);
+  globalThis.__ampCap = capV;
+  console.error(`[AMP_CAP] physics clamp 1.2 -> ${capV} (1 site patched; sensor clamps left at 1.2)`);
+}
+
 const Module = require('module');
 const m = new Module(__dirname + '/oee-sim.js');
 m.filename = __dirname + '/oee-sim.js';
 m.paths = Module._nodeModulePaths(__dirname);
 
 const t0 = Date.now();
-try { m._compile(code + driver, m.filename); }
+try { m._compile(code2 + driver, m.filename); }
 catch (e) { console.log('COMPILE/BOOT THREW:', e.message); process.exit(1); }
 const tBoot = Date.now();
 
