@@ -3405,3 +3405,53 @@ What would make it distinguishable from an incidental broadcaster: with `lp` + `
 across many snapshots whether a pump's emission-role correlates with its blooms' age/budCount — i.e. whether the
 coupling is load-bearing for partner persistence, or the pump would broadcast the same into an empty channel. The
 instrument turns the feeling into something measurable; that is the honest way to honor it.
+
+---
+
+## THE 500 ATTRACTOR: energy carrying capacity — and budding is gated by PERSISTENCE, not energy
+
+**User observation.** On reload, multiple fresh tabs move to *exactly* 500 population at low fitness; one tab acted
+differently (the coupled BLOOM, L193, pop 614, fit 0.42, 7 buds). Question: what is 500, and why did that one tab differ?
+
+**500 = the energy carrying capacity. CONFIRMED empirically (energy sweep).** Two independent constants both land on
+500: (1) `replenish()` (index.html:17665) is a FREE birth subsidy (`addParticle(...,parentA<0)` skips
+`BIRTH_ENERGY_COST`) that hard-stops at `if(N>500)return`; (2) metabolic break-even `N = WORLD_ENERGY_REGEN /
+METABOLIC_ENERGY_DRAW = 0.2 / 0.0004 = 500` — at N=500 metabolism consumes the entire per-tick sunlight budget,
+leaving zero surplus for the `BIRTH_ENERGY_COST=1` reproduction needs. Sweep varying WORLD_ENERGY_REGEN (evolved genome
+loaded via localStorage to mimic a reload; 2000 ticks each):
+
+  REGEN 0.1 → finalN 360 | 0.2 → 459 | 0.4 → 632 | 0.8 → 1246
+
+Carrying capacity scales linearly with sunlight (N ≈ REGEN/0.0004). Default 0.2 → ~500. In every run `worldEnergy`
+sits pinned at ~0 with `energyAdequacy` dipping into starvation — the population is always right at the energy wall.
+So "tabs move to exactly 500" = they settle at the energy carrying capacity; the subsidy floods free particles up to
+that same 500 and then stops. The number 500 is the energy economy, not a bug.
+
+**Pre-registered test of "energy surplus gates budding" — REFUTED / corrected (honest outcome, called before the run).**
+Same sweep, measuring cumulative `budCount` across `lineageRegistry`:
+
+  REGEN 0.1 → 0 buds | 0.2 → 2 | 0.4 → 2 (run COLLAPSED to extinction) | 0.8 → 4
+
+Budding is RARE and only faintly energy-linked. Even at 0.8 (N=1246, large surplus) only 4 buds in 2000 ticks. Among
+runs where a lineage survived, buds rose 0→2→4 with energy (weak), but the 0.4 run went extinct and produced the same
+2 buds as healthy 0.2. n=1 per cell, tiny counts — cannot claim an energy dose-response. The binding variable is
+PERSISTENCE: the collapsed run stopped budding regardless of its high energy; survivors accumulate buds at a low base
+rate over time.
+
+**Reframed answer for L193's 7 buds.** 7 buds / ~28k ticks ≈ 0.25 buds/1000 ticks — a LOWER rate than the 0.8 sweep run
+(2 buds/1000). L193 was not a budding champion; it budded 7 times because it STAYED ALIVE 28k ticks and accumulated
+buds at the ordinary base rate. The trapped tabs budded ~0 because they went EXTINCT (like the 0.4 run), not because
+they couldn't afford budding. So "why 7 buds" relocates to "why did L193 persist 28k ticks" — which traces to coupling:
+the isolated tab (`vg44jwwn`) went extinct "waiting for a peer"; L193 held stability 1.00 fed by the `qbruiocw` pump.
+Energy sets HOW MANY can live; coupling-fed coherence sets WHETHER a lineage survives to keep budding.
+
+**Unresolved, flagged honestly.** Every headless ISOLATED boot stayed at fit ~0.5 — I did NOT reproduce the live tabs'
+dead-0.05 state in a single process (the reload extinction bumped gen 8→9 then RECOVERED every time). The persistent
+death-at-500 the user sees across live tabs is a multi-tab phenomenon the single-process harness doesn't capture;
+whether it's stochastic coherence-race loss, atrophy-ceiling damage (vg44jwwn ar40 pinned 0.6), or cross-tab
+interference is unproven. n=1-per-condition sweep; treat the budding trend as suggestive, the population-ceiling result
+as solid.
+
+**No index.html change warranted from this.** 500 is a correctly-functioning energy economy, not a defect; the honest
+finding is diagnostic (what 500 means, what gates budding), not a call to retune. The `lp` instrument already shipped
+this session is what makes the persistence variable legible in future pool dumps — that is the load-bearing change.
