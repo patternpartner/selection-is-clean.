@@ -721,6 +721,39 @@ const AMP_SENSOR_SCALE=1.2;         // #49: amp sensors keep their ORIGINAL [0,1
                                     // arithmetic downstream is calibrated to it, so the sensors are RESCALED
                                     // (amp/AMP_CAP*1.2), not re-ranged. Same span, real resolution: they used to
                                     // read a constant 1.2 for 80% of particles; now they resolve the distribution.
+// ═══ SWING #50: CARRYING COST — make the range DEFENSIBLE ═══
+// #49's own 10k follow-up convicted it: raising the ceiling bought a transient. CV ran 0.255 -> 0.133 (seed 3)
+// and 0.231 -> 0.142 (seed 11) over 10000 ticks, and p10 returned to 97-99.6% of the new cap. The population
+// re-saturates ANY ceiling it is given, because no cost in the loop above scales with what a particle HOLDS:
+// entropyBaseline and densityCost are flat, inhibitor damage is resistance-scaled, starvation is world-level.
+// Income accumulates against fixed costs, so every particle climbs to the clamp and the clamp discards the
+// difference between them. A bigger bucket only lengthens the climb.
+//
+// The fix is rent. `amp[i] -= amp[i]*AMP_CARRY_RATE` makes holding surplus cost something in proportion to the
+// surplus held, so a particle settles where its INCOME balances its rent: A_eq = I/AMP_CARRY_RATE. That is the
+// same mechanism as the metabolic per-instruction cost — the one layer in this system that ever self-organised
+// real structure (opcode concentration, 87% of instances on a 5-op core, no pruner) — applied to the currency
+// itself. It is also the shelved carry-cost from the meta-influence entry, built for amp instead.
+//
+// LINEAR, deliberately, and this is the load-bearing design choice. Under a linear rent, equilibrium amp is
+// PROPORTIONAL to income: A_eq = I/c, so CV(amp) = CV(income) and the distribution becomes a faithful readout of
+// earning ability. A superlinear rent (c*A^2, the intuitive "tax the rich harder") gives A_eq = sqrt(I/c) and
+// therefore HALVES the coefficient of variation — it would compress exactly the dispersion this swing exists to
+// create. The intuitive choice is the wrong one here.
+const AMP_CARRY_RATE=0.005;         // #50: per-tick rent on held amplitude. Structural, not a gene — a self-cost
+                                    // gene is evolved straight to 0 to dodge the rent while keeping the surplus
+                                    // (the commons problem named in the meta-influence carry-cost design note).
+// #50: reproduction grades on RELATIVE amp, not absolute. Necessary, not cosmetic: rent lowers equilibrium amp,
+// and #49's absolute `amp/AMP_CAP` term would have read that as a population-wide collapse in birth rate and
+// depressed N for a reason that has nothing to do with fitness. Grading on amp/mean makes the MEAN birth rate
+// identically 0.03 at any absolute scale (E[amp/mean]=1), so #50 changes WHO reproduces without changing how
+// MANY — and selection becomes purely differential, which is the whole point. Ratio capped at 3x so a single
+// outlier cannot monopolise the birth queue; falls back to #49's absolute term before the first 60-tick scan
+// populates avgAmplitude.
+function reproDrive(a){
+  const m=(typeof selfModel!=='undefined'&&selfModel.avgAmplitude>0)?selfModel.avgAmplitude:0;
+  return m>0?__cl(a/m,0,3):__cl(a/AMP_CAP,0,1);
+}
 // NEGATIVE FREQUENCY-DEPENDENCE — the engine of novelty. Without it, selection is purely
 // stabilising: the single best type out-breeds everything and the world freezes into a
 // monoculture, an optimiser sitting forever on one peak (verified: a control with this OFF
@@ -12113,6 +12146,7 @@ function applyEntropy(){
       amp[i]-=genome.entropyBaseline;
       amp[i]-=densityCost;
       amp[i]+=localRes[i]*genome.entropyK;
+      amp[i]-=amp[i]*AMP_CARRY_RATE; // #50: rent on held amplitude — the only cost in this loop that scales with what a particle HOLDS, so equilibrium amp tracks INCOME (A_eq=I/rate) instead of everyone climbing to the clamp
       {const _txi=__cl(Math.floor(px[i]/(W/FIELD_W)),0,FIELD_W-1),_tyi=__cl(Math.floor(py[i]/(H/FIELD_H)),0,FIELD_H-1),_tox=inhibitorField[_tyi*FIELD_W+_txi];if(_tox>0.05){const _dmg=_tox*Math.max(0,1-pResistance[i])*0.018;amp[i]-=_dmg;}pResistance[i]*=0.997;} // INHIBITOR DAMAGE + RESISTANCE DECAY: inhibitor deals up to 1.8% amp/tick at zero resistance; resistance decays 0.3%/tick — must be actively maintained via RESISTANCE_BOOST (op215)
       if(energyAdequacy<1)amp[i]-=(1-energyAdequacy)*STARVE_DRAIN; // starvation: the world couldn't feed everyone this tick
       if(isNaN(amp[i]))amp[i]=0;
@@ -12330,10 +12364,12 @@ function executeVM(i,j,sim,d){
       case 14:if(vmRegs[si]>k)ip=Math.abs(Math.floor(vmRegs[di]))%nInst;break;
       case 15:{const ageFrac=Math.min(1,page[i]/800);vmRegs[di]=vmRegs[si]*(1-ageFrac)+k*ageFrac;}break;
       case 16:{
-        // #49: spawn odds are PROPORTIONAL to amp, not a flat 3% above the gate. The 0.4 viability
-        // gate stays (that decision is untouched); above it, vigor now pays. At the cap the rate is
-        // the historical 0.03 exactly, so this only ever grades DOWNWARD from the old behaviour.
-        if(amp[i]>0.4 && page[i]>80 && N+birthQueue.length<CAP-1 && Math.random()<0.03*(amp[i]/AMP_CAP)){
+        // #49 -> #50: spawn odds are PROPORTIONAL to vigor, not a flat 3% above the gate. The 0.4
+        // viability gate stays (that decision is untouched); above it, vigor pays. #49 graded on
+        // absolute amp/AMP_CAP; #50 grades on amp RELATIVE to the living mean (reproDrive), so the
+        // mean birth rate stays 0.03 at any absolute amp scale and the rent below cannot be mistaken
+        // for a population-wide fertility collapse. Selection here is purely differential.
+        if(amp[i]>0.4 && page[i]>80 && N+birthQueue.length<CAP-1 && Math.random()<0.03*reproDrive(amp[i])){
           const offX=__cl(px[i]+vmRegs[si]*15,0,W);
           const offY=__cl(py[i]+vmRegs[di]*15,0,H);
           const nt=new Float32Array(DIMS);
@@ -14387,7 +14423,7 @@ function executeVM(i,j,sim,d){
         case 14:if(vmRegs[si]>k)ip=Math.abs(Math.floor(vmRegs[di]))%nPi;break;
         case 15:{const pAgeFrac=Math.min(1,page[i]/800);vmRegs[di]=vmRegs[si]*(1-pAgeFrac)+k*pAgeFrac;}break;
         case 16:{
-          if(amp[i]>0.4&&page[i]>80&&N+birthQueue.length<CAP-1&&Math.random()<0.03*(amp[i]/AMP_CAP)){ // #49: proportional, full parity with the main path
+          if(amp[i]>0.4&&page[i]>80&&N+birthQueue.length<CAP-1&&Math.random()<0.03*reproDrive(amp[i])){ // #50: relative-amp drive, full parity with the main path
             const pnt=new Float32Array(DIMS);
             for(let dd=0;dd<DIMS;dd++)pnt[dd]=tend[i*DIMS+dd]+k*0.1*(vmRegs[(dd+4)%12]-0.5);
             birthQueue.push({x:__cl(px[i]+vmRegs[si]*15,0,W),y:__cl(py[i]+vmRegs[di]*15,0,H),t:pnt,parent:i});
@@ -15669,7 +15705,7 @@ function executeClusterVM(i,j,sim,d){
       case 14:{const cNInst=cl?cl.vmProgram.length:prog.length;if(vmRegs[si]>k)ip=Math.abs(Math.floor(vmRegs[di]))%Math.max(1,cNInst);}break;
       case 15:{const cAgeFrac=Math.min(1,page[i]/800);vmRegs[di]=vmRegs[si]*(1-cAgeFrac)+k*cAgeFrac;}break;
       case 16:{
-        if(amp[i]>0.4&&page[i]>80&&N+birthQueue.length<CAP-1&&Math.random()<0.03*(amp[i]/AMP_CAP)){ // #49: proportional, full parity with the main path
+        if(amp[i]>0.4&&page[i]>80&&N+birthQueue.length<CAP-1&&Math.random()<0.03*reproDrive(amp[i])){ // #50: relative-amp drive, full parity with the main path
           const cnt=new Float32Array(DIMS);
           for(let dd=0;dd<DIMS;dd++)cnt[dd]=tend[i*DIMS+dd]+k*0.1*(vmRegs[(dd+4)%12]-0.5);
           birthQueue.push({x:__cl(px[i]+vmRegs[si]*15,0,W),y:__cl(py[i]+vmRegs[di]*15,0,H),t:cnt,parent:i});

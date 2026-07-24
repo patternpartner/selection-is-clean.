@@ -106,6 +106,15 @@ let code = html.match(/<script>([\s\S]*)<\/script>/)[1];
 // AMP_CAP — same verified-unique patch as harness-oee.js, so the gauge can characterise the
 // distribution under a RAISED clamp, not just the shipped one. Default off = byte-identical code.
 const AMP_CAP = process.env.AMP_CAP !== undefined ? parseFloat(process.env.AMP_CAP) : 1.2;
+// CARRY_RATE — same verified-unique patch, for calibrating #50's rent without editing index.html.
+if (process.env.CARRY_RATE !== undefined) {
+  const cr = parseFloat(process.env.CARRY_RATE);
+  const N2 = 'const AMP_CARRY_RATE=0.005;';
+  const h2 = code.split(N2).length - 1;
+  if (!Number.isFinite(cr) || cr < 0 || h2 !== 1) {
+    console.log(JSON.stringify({error:'CARRY_RATE invalid or patch target not unique ('+h2+' hits)'})); process.exit(1); }
+  code = code.replace(N2, 'const AMP_CARRY_RATE=' + cr + ';');
+}
 if (process.env.AMP_CAP !== undefined) {
   const NEEDLE = 'const AMP_CAP=6.0;';
   const hits = code.split(NEEDLE).length - 1;
