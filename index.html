@@ -502,7 +502,7 @@ function runDrawProgram(i){
   R[1]=DIMS>1?__cl((tend[i*DIMS+1]+1.2)/2.4,0,1):0.5;
   R[2]=DIMS>2?__cl((tend[i*DIMS+2]+1.2)/2.4,0,1):0.5;
   R[3]=DIMS>3?__cl((tend[i*DIMS+3]+1.2)/2.4,0,1):0.5;
-  R[4]=__cl(amp[i]/AMP_CAP,0,1); // #49: normalised — was __cl(amp[i],0,1), i.e. pinned at 1 for any particle over unit amp (most of them)
+  R[4]=__cl(amp[i]/_ampCeilCached,0,1); // #49: normalised — was __cl(amp[i],0,1), i.e. pinned at 1 for any particle over unit amp (most of them)
   R[5]=(Math.sin(ph)+1)*0.5;
   R[6]=(Math.cos(ph)+1)*0.5;
   R[7]=__cl(col,0,1);
@@ -716,7 +716,35 @@ let energyAdequacy=1;               // fraction of this tick's metabolic demand 
 // parameter gets evolved straight to its bound to dodge the cost it is supposed to pay. A per-lineage
 // ampCap would be raised by every lineage immediately (a commons problem), which is the wireheading
 // the world-energy comment above is careful to rule out. One authored constant replaces another.
-const AMP_CAP=6.0;                  // #49: retained-surplus ceiling (was a bare 1.2 in the interaction loop)
+const AMP_CAP=6.0;                  // #49/#50: FLOOR for the effective ceiling (see ampCeiling below), and the
+                                    // ceiling outright until the first 60-tick scan populates avgAmplitude.
+// #50b: the ceiling is RELATIVE, and this is the correction the rate sweep forced. Rent alone does not hold:
+// A_eq = I/c only stands still if income I is static, and it is not — the sweep showed the mean climbing toward
+// the cap at EVERY rate tested (0.005: atCap 39->58%, CV 0.361->0.210; 0.012: 6.6->43%, 0.644->0.290; 0.020:
+// 8.4->34%, 0.808->0.391). Higher rent is monotonically better but only DELAYS it. The reason is not a
+// mis-picked constant: lineages evolve to earn more, so I(t) rises, so A_eq rises, so the fixed ceiling is
+// eventually reached whatever c is. That is adaptation outrunning a static cost, and no constant fixes it.
+//
+// So the ceiling tracks the population instead of standing still. cap = AMP_CAP_REL * mean(amp), floored at
+// AMP_CAP. This is SCALE-FREE: if every particle's income improves by a factor g, every amp scales by g, the
+// ceiling scales by g, and CV is preserved — the distribution's SHAPE survives the population getting richer,
+// which is the entire point of #50. It is also self-limiting by construction: at most a thin upper tail can sit
+// at 4x the mean, so the bulk cannot pin against it the way it pinned against 1.2 and then against 6.0.
+// Rent still sets the level (mean = I/c); the ceiling now only ever truncates outliers.
+//
+// Note the ceiling does NOT create a runaway: mean is pinned by rent, not by the ceiling, so cap = 4*I/c rises
+// only as fast as real earning power does.
+const AMP_CAP_REL=4.0;              // #50b: effective ceiling = this x mean living amp (floored at AMP_CAP)
+const AMP_CAP_HARD=1e4;             // #50b: absolute numeric guard ONLY — NaN/Inf containment, not an economic
+                                    // parameter. If this ever binds, something upstream is broken.
+let _ampCeilCached=AMP_CAP;         // #50b: refreshed once per tick in the physics loop; read by the VM sensor
+                                    // sites, the render register and the shadow sim, all of which would
+                                    // otherwise re-saturate against a fixed divisor as the economy grows.
+function ampCeiling(){
+  const m=(typeof selfModel!=='undefined'&&selfModel.avgAmplitude>0)?selfModel.avgAmplitude:0;
+  const c=m>0?Math.max(AMP_CAP,AMP_CAP_REL*m):AMP_CAP;
+  return c<AMP_CAP_HARD?c:AMP_CAP_HARD;
+}
 const AMP_SENSOR_SCALE=1.2;         // #49: amp sensors keep their ORIGINAL [0,1.2] output range — evolved VM
                                     // arithmetic downstream is calibrated to it, so the sensors are RESCALED
                                     // (amp/AMP_CAP*1.2), not re-ranged. Same span, real resolution: they used to
@@ -740,7 +768,8 @@ const AMP_SENSOR_SCALE=1.2;         // #49: amp sensors keep their ORIGINAL [0,1
 // earning ability. A superlinear rent (c*A^2, the intuitive "tax the rich harder") gives A_eq = sqrt(I/c) and
 // therefore HALVES the coefficient of variation — it would compress exactly the dispersion this swing exists to
 // create. The intuitive choice is the wrong one here.
-const AMP_CARRY_RATE=0.005;         // #50: per-tick rent on held amplitude. Structural, not a gene — a self-cost
+const AMP_CARRY_RATE=0.020;         // #50: per-tick rent on held amplitude. 0.005 -> 0.020: the 6k sweep showed
+                                    // 0.005 barely clears c=I/AMP_CAP and behaved as a slower #49. Structural, not a gene — a self-cost
                                     // gene is evolved straight to 0 to dodge the rent while keeping the surplus
                                     // (the commons problem named in the meta-influence carry-cost design note).
 // #50: reproduction grades on RELATIVE amp, not absolute. Necessary, not cosmetic: rent lowers equilibrium amp,
@@ -752,7 +781,7 @@ const AMP_CARRY_RATE=0.005;         // #50: per-tick rent on held amplitude. Str
 // populates avgAmplitude.
 function reproDrive(a){
   const m=(typeof selfModel!=='undefined'&&selfModel.avgAmplitude>0)?selfModel.avgAmplitude:0;
-  return m>0?__cl(a/m,0,3):__cl(a/AMP_CAP,0,1);
+  return m>0?__cl(a/m,0,3):__cl(a/_ampCeilCached,0,1);
 }
 // NEGATIVE FREQUENCY-DEPENDENCE — the engine of novelty. Without it, selection is purely
 // stabilising: the single best type out-breeds everything and the world freezes into a
@@ -9792,7 +9821,7 @@ function runShadowSim(){
         // state variable itself. An imagined population whose amp saturates 5x below the real one
         // is not a calibrated counterfactual, it is a different world, and every rollout score and
         // the avgAmp<0.1 death test would inherit the error.
-        sim[i].avgAmp=__cl(sim[i].avgAmp,0,AMP_CAP);
+        sim[i].avgAmp=__cl(sim[i].avgAmp,0,_ampCeilCached);
         sim[i].coherence=__cl(sim[i].coherence,0,1);
       }
 
@@ -12139,6 +12168,7 @@ function applyEntropy(){
   const deaths=[];
   deathsThisTick=0;
   const densityCost=(genome.densityCostK||0.00003)*Math.max(0,N-(genome.densityFloor??100));
+  const _ampCeil=_ampCeilCached=ampCeiling(); // #50b: once per tick, not per particle — it is a population statistic
   for(let i=0;i<N;i++){
     if(!palive[i])continue;
     const _g=genome;genome=pGenome[i]||genome; // UNLOCKED #9 FULL: per-lineage metabolism & death threshold
@@ -12166,7 +12196,7 @@ function applyEntropy(){
         {const _dtx=__cl(Math.floor(px[i]/(W/FIELD_W)),0,FIELD_W-1),_dty=__cl(Math.floor(py[i]/(H/FIELD_H)),0,FIELD_H-1);detritalField[_dty*FIELD_W+_dtx]=Math.min(3,detritalField[_dty*FIELD_W+_dtx]+Math.max(0,amp[i])*0.22+Math.max(0,localRes[i])*0.12);} // DETRITAL DEPOSIT: dead particle's biomass (amplitude + reserves) persists in place as a harvestable nutrient pool — decomposer lineages mining DETRITAL_HARVEST can build an entire metabolism on death; trophic cascade foundation
         worldEnergy=Math.min(WORLD_ENERGY_MAX,worldEnergy+BIRTH_ENERGY_COST*DEATH_ENERGY_RETURN); // death returns resource to the world
       }
-      if(amp[i]>AMP_CAP)amp[i]=AMP_CAP; // #49: was a bare 1.2 — surplus above it used to be discarded, taking the selection differential with it
+      if(amp[i]>_ampCeil)amp[i]=_ampCeil; // #49/#50b: was a bare 1.2, then a fixed 6.0; now a ceiling that tracks the population so the bulk cannot pin against it
     }finally{genome=_g;}
   }
   for(let d=0;d<deaths.length;d++){
@@ -12613,7 +12643,7 @@ function executeVM(i,j,sim,d){
         // selfAmpInfluence=0 → returns 0 → Pe51 exactly.
         const sai52=genome.selfAmpInfluence||0;
         if(sai52>0.001){
-          vmRegs[di]=__cl(amp[i]/AMP_CAP*AMP_SENSOR_SCALE,0,AMP_SENSOR_SCALE)*sai52*k;
+          vmRegs[di]=__cl(amp[i]/_ampCeilCached*AMP_SENSOR_SCALE,0,AMP_SENSOR_SCALE)*sai52*k;
         }
       }break;
       case 37:{
@@ -12624,7 +12654,7 @@ function executeVM(i,j,sim,d){
         // partnerAmpInfluence=0 → returns 0 → Pe52 exactly.
         const pai53=genome.partnerAmpInfluence||0;
         if(pai53>0.001){
-          vmRegs[di]=__cl(amp[j]/AMP_CAP*AMP_SENSOR_SCALE,0,AMP_SENSOR_SCALE)*pai53*k;
+          vmRegs[di]=__cl(amp[j]/_ampCeilCached*AMP_SENSOR_SCALE,0,AMP_SENSOR_SCALE)*pai53*k;
         }
       }break;
       case 38:{
@@ -14323,7 +14353,7 @@ function executeVM(i,j,sim,d){
       case 179:{if(vmRegs[si]>k&&pProg[i]&&pProg[j]&&pProg[i].length>0&&(!__SPEC.gate||pLin[i]===pLin[j])){const _cap179=Math.min(genome.vmMaxInstructions||16,48); /* #17: HGT donation gated to within-lineage when isolating */if(pProg[j].length<_cap179){const _si179=Math.abs(Math.floor(vmRegs[si]*3))%pProg[i].length;const _ins179=pProg[i][_si179];if(_ins179){const _di179=Math.floor(Math.random()*(pProg[j].length+1));pProg[j].splice(_di179,0,[_ins179[0],_ins179[1],_ins179[2],+_ins179[3]]);vmRegs[di]=1;}else{vmRegs[di]=0;}}else{vmRegs[di]=0;}}else{vmRegs[di]=0;}}break; // HGT_DONATE — insert one of own instructions into partner's genome at a random position (horizontal gene transfer, donor direction). Complement to RECOMBINE (op152) which takes from partner. Donors pay no resource cost; evolved selection pressure determines whether donation spreads. Creates viral gene dynamics: a beneficial instruction in one lineage can propagate laterally into others without requiring shared ancestry. Enables: evolved mutualism where donors gain indirect benefit (partners become more valuable); evolved parasitism where donors inject disruptive instructions; genetic missionaries that spread successful strategies across the population.
       case 180:{vmRegs[di]=collapse[i]*k;}break; // COLLAPSE_SENSE — read own collapse value (0..2+), a measure of accumulated stress, resonant damage, and ghost-field loading. High collapse indicates a particle under heavy structural stress. Enables stress-conditional strategies: trigger APOPTOSIS (op165) when collapse exceeds threshold (damaged particles sacrifice themselves before they are destroyed passively); reduce resource investment during high-stress periods; signal health status to cluster-mates via BROADCAST_WRITE (op11). The collapse variable already drives amp boosts and visual smear; this opcode makes it VM-readable for the first time.
       case 181:{vmRegs[di]=localRes[i]*k;}break; // SELF_RES_SENSE — read own reserve resource level directly (0..2). Unlike ENERGY_STRESS_SENSE (op131) which returns a population-normalised stress scalar derived from energyAdequacy, this gives the actual per-particle localRes value. Enables: resource-conditional strategies without computing indirectly from stress signals; gate ROOT_WRITE (op162) and ENERGY_DONATE (op156) on having surplus (localRes>1); detect approaching depletion (localRes<0.3) and switch to scavenging (DETRITAL_HARVEST op146); compare own resource to partner's via subtraction (op164 PARTNER_RES_SENSE − op181 = differential wealth signal).
-      case 182:{vmRegs[di]=Math.max(0,amp[i])/AMP_CAP*AMP_SENSOR_SCALE*k;}break; // SELF_AMP_SENSE — read own amplitude (structural energy / vitality) directly. Complement to op37 PARTNER_AMP but without genome.selfAmpInfluence gating. Enables: amplitude-conditional reproduction gating; trigger APOPTOSIS (op165) when amp falls below survival threshold before passively dying; modulate resource-harvesting aggression by own vitality; broadcast own health status (BROADCAST_WRITE(SELF_AMP_SENSE)) so cluster-mates can detect and respond to distress.
+      case 182:{vmRegs[di]=Math.max(0,amp[i])/_ampCeilCached*AMP_SENSOR_SCALE*k;}break; // SELF_AMP_SENSE — read own amplitude (structural energy / vitality) directly. Complement to op37 PARTNER_AMP but without genome.selfAmpInfluence gating. Enables: amplitude-conditional reproduction gating; trigger APOPTOSIS (op165) when amp falls below survival threshold before passively dying; modulate resource-harvesting aggression by own vitality; broadcast own health status (BROADCAST_WRITE(SELF_AMP_SENSE)) so cluster-mates can detect and respond to distress.
       case 183:{vmRegs[di]=collapse[j]*k;}break; // PARTNER_COLLAPSE — read partner's collapse value (0..2+). Pairs with COLLAPSE_SENSE (op180) which reads own collapse. Enables: avoid or exploit collapsing partners; scavenger lineages sense structurally stressed particles and wait nearby (pheromone trail via INJECT_SIGNAL op174) for APOPTOSIS or passive death to release detrital; mutualists detect distress and donate resources before partner dies; predators time ENERGY_DRAIN (op155) against peak collapse for maximum yield with minimum counter-force.
       case 184:{const _cidx184=clusterID[i]>=0&&clusterID[i]<MAX_CLUSTERS?clusterByID[clusterID[i]]:-1;vmRegs[di]=(_cidx184>=0&&_cidx184<clusters.length)?Math.min(3,clusters[_cidx184].size/10)*k:0;}break; // CLUSTER_SIZE_DIRECT — read own cluster member count without genome gating (complement to op62 SELF_CLUSTER_SIZE which requires genome.selfClusterSizeInfluence>0). Returns clusters[idx].size/10 capped at 3. Enables: cluster-size-conditional strategies without needing the shared genome to explicitly enable the sensor; solo particles (clusterID<0) get 0; colony-counting for division-of-labour decisions (grow caste X when cluster<threshold, grow caste Y when large).
       case 185:{vmRegs[di]=(clusterID[i]>=0&&clusterID[i]===clusterID[j])?k:0;}break; // SAME_CLUSTER_DIRECT — ungated check whether i and j share a cluster (1*k if same cluster, 0 otherwise). Complement to op76 SAME_CLUSTER_CHECK which is gated by genome.sameClusterInfluence. With ENERGY_DONATE (op156) and ENERGY_DRAIN (op155) gated on this, lineages can evolve kin-altruism without needing the shared genome to enable the signal: in-group cooperation, out-group exploitation at the particle program level. Combined with CASTE_MEM_READ (op170) enables cluster+caste conditional strategies.
@@ -14593,7 +14623,7 @@ function executeVM(i,j,sim,d){
           // Reads amp[i] into vmRegs[di], scaled by selfAmpInfluence × k.
           const sai52p=genome.selfAmpInfluence||0;
           if(sai52p>0.001){
-            vmRegs[di]=__cl(amp[i]/AMP_CAP*AMP_SENSOR_SCALE,0,AMP_SENSOR_SCALE)*sai52p*k;
+            vmRegs[di]=__cl(amp[i]/_ampCeilCached*AMP_SENSOR_SCALE,0,AMP_SENSOR_SCALE)*sai52p*k;
           }
         }break;
         case 37:{
@@ -14601,7 +14631,7 @@ function executeVM(i,j,sim,d){
           // Reads amp[j] into vmRegs[di], scaled by partnerAmpInfluence × k.
           const pai53p=genome.partnerAmpInfluence||0;
           if(pai53p>0.001){
-            vmRegs[di]=__cl(amp[j]/AMP_CAP*AMP_SENSOR_SCALE,0,AMP_SENSOR_SCALE)*pai53p*k;
+            vmRegs[di]=__cl(amp[j]/_ampCeilCached*AMP_SENSOR_SCALE,0,AMP_SENSOR_SCALE)*pai53p*k;
           }
         }break;
         case 38:{
@@ -15430,7 +15460,7 @@ function executeVM(i,j,sim,d){
         case 179:{if(vmRegs[si]>k&&pProg[i]&&pProg[j]&&pProg[i].length>0){const _cap179p=Math.min(genome.vmMaxInstructions||16,48);if(pProg[j].length<_cap179p){const _si179p=Math.abs(Math.floor(vmRegs[si]*3))%pProg[i].length;const _ins179p=pProg[i][_si179p];if(_ins179p){const _di179p=Math.floor(Math.random()*(pProg[j].length+1));pProg[j].splice(_di179p,0,[_ins179p[0],_ins179p[1],_ins179p[2],+_ins179p[3]]);vmRegs[di]=1;}else{vmRegs[di]=0;}}else{vmRegs[di]=0;}}else{vmRegs[di]=0;}}break; // HGT_DONATE — full parity
         case 180:{vmRegs[di]=collapse[i]*k;}break; // COLLAPSE_SENSE — full parity
         case 181:{vmRegs[di]=localRes[i]*k;}break; // SELF_RES_SENSE — full parity
-        case 182:{vmRegs[di]=Math.max(0,amp[i])/AMP_CAP*AMP_SENSOR_SCALE*k;}break; // SELF_AMP_SENSE — full parity
+        case 182:{vmRegs[di]=Math.max(0,amp[i])/_ampCeilCached*AMP_SENSOR_SCALE*k;}break; // SELF_AMP_SENSE — full parity
         case 183:{vmRegs[di]=collapse[j]*k;}break; // PARTNER_COLLAPSE — full parity
         case 184:{const _cidx184p=clusterID[i]>=0&&clusterID[i]<MAX_CLUSTERS?clusterByID[clusterID[i]]:-1;vmRegs[di]=(_cidx184p>=0&&_cidx184p<clusters.length)?Math.min(3,clusters[_cidx184p].size/10)*k:0;}break; // CLUSTER_SIZE_DIRECT — full parity
         case 185:{vmRegs[di]=(clusterID[i]>=0&&clusterID[i]===clusterID[j])?k:0;}break; // SAME_CLUSTER_DIRECT — full parity
@@ -15874,7 +15904,7 @@ function executeClusterVM(i,j,sim,d){
         // Pe52 Layer 41: SELF_AMP in cluster VM — full parity with particle VM.
         const sai52c=genome.selfAmpInfluence||0;
         if(sai52c>0.001){
-          vmRegs[di]=__cl(amp[i]/AMP_CAP*AMP_SENSOR_SCALE,0,AMP_SENSOR_SCALE)*sai52c*k;
+          vmRegs[di]=__cl(amp[i]/_ampCeilCached*AMP_SENSOR_SCALE,0,AMP_SENSOR_SCALE)*sai52c*k;
         }
       }break;
       case 37:{
@@ -15882,7 +15912,7 @@ function executeClusterVM(i,j,sim,d){
         // Reads amp[j] into vmRegs[di], scaled by partnerAmpInfluence × k.
         const pai53c=genome.partnerAmpInfluence||0;
         if(pai53c>0.001){
-          vmRegs[di]=__cl(amp[j]/AMP_CAP*AMP_SENSOR_SCALE,0,AMP_SENSOR_SCALE)*pai53c*k;
+          vmRegs[di]=__cl(amp[j]/_ampCeilCached*AMP_SENSOR_SCALE,0,AMP_SENSOR_SCALE)*pai53c*k;
         }
       }break;
       case 38:{
@@ -16727,7 +16757,7 @@ function executeClusterVM(i,j,sim,d){
       case 179:{if(vmRegs[si]>k&&pProg[i]&&pProg[j]&&pProg[i].length>0){const _cap179c=Math.min(genome.vmMaxInstructions||16,48);if(pProg[j].length<_cap179c){const _si179c=Math.abs(Math.floor(vmRegs[si]*3))%pProg[i].length;const _ins179c=pProg[i][_si179c];if(_ins179c){const _di179c=Math.floor(Math.random()*(pProg[j].length+1));pProg[j].splice(_di179c,0,[_ins179c[0],_ins179c[1],_ins179c[2],+_ins179c[3]]);vmRegs[di]=1;}else{vmRegs[di]=0;}}else{vmRegs[di]=0;}}else{vmRegs[di]=0;}}break; // HGT_DONATE — full parity
       case 180:{vmRegs[di]=collapse[i]*k;}break; // COLLAPSE_SENSE — full parity
       case 181:{vmRegs[di]=localRes[i]*k;}break; // SELF_RES_SENSE — full parity
-      case 182:{vmRegs[di]=Math.max(0,amp[i])/AMP_CAP*AMP_SENSOR_SCALE*k;}break; // SELF_AMP_SENSE — full parity
+      case 182:{vmRegs[di]=Math.max(0,amp[i])/_ampCeilCached*AMP_SENSOR_SCALE*k;}break; // SELF_AMP_SENSE — full parity
       case 183:{vmRegs[di]=collapse[j]*k;}break; // PARTNER_COLLAPSE — full parity
       case 184:{const _cidx184c=clusterID[i]>=0&&clusterID[i]<MAX_CLUSTERS?clusterByID[clusterID[i]]:-1;vmRegs[di]=(_cidx184c>=0&&_cidx184c<clusters.length)?Math.min(3,clusters[_cidx184c].size/10)*k:0;}break; // CLUSTER_SIZE_DIRECT — full parity
       case 185:{vmRegs[di]=(clusterID[i]>=0&&clusterID[i]===clusterID[j])?k:0;}break; // SAME_CLUSTER_DIRECT — full parity
@@ -17414,7 +17444,7 @@ function executeSoloVM(){
         case 179:{vmRegs[di]=0;}break; // HGT_DONATE — NOP in solo context (no partner genome)
         case 180:{vmRegs[di]=collapse[i]*k;}break; // COLLAPSE_SENSE — full parity (solo particles also experience collapse)
         case 181:{vmRegs[di]=localRes[i]*k;}break; // SELF_RES_SENSE — full parity
-        case 182:{vmRegs[di]=Math.max(0,amp[i])/AMP_CAP*AMP_SENSOR_SCALE*k;}break; // SELF_AMP_SENSE — full parity
+        case 182:{vmRegs[di]=Math.max(0,amp[i])/_ampCeilCached*AMP_SENSOR_SCALE*k;}break; // SELF_AMP_SENSE — full parity
         case 183:{vmRegs[di]=0;}break; // PARTNER_COLLAPSE — NOP in solo context (no partner)
         case 184:{const _cidx184s=clusterID[i]>=0&&clusterID[i]<MAX_CLUSTERS?clusterByID[clusterID[i]]:-1;vmRegs[di]=(_cidx184s>=0&&_cidx184s<clusters.length)?Math.min(3,clusters[_cidx184s].size/10)*k:0;}break; // CLUSTER_SIZE_DIRECT — full parity (solo = 0 since clusterID[i]<0)
         case 185:{vmRegs[di]=0;}break; // SAME_CLUSTER_DIRECT — NOP in solo context (no partner)

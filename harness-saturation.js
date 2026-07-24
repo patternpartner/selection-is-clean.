@@ -134,7 +134,10 @@ const driver = `
     var sum=0; for(var j=0;j<n;j++)sum+=vals[j];
     var mean=sum/n, v=0; for(var j2=0;j2<n;j2++){var d=vals[j2]-mean; v+=d*d;}
     var sd=Math.sqrt(v/n);
-    var CAPV=(typeof AMP_CAP!=='undefined')?AMP_CAP:1.2, dT=(typeof genome!=='undefined'?genome.deathThreshold:0.04);
+    // #50b: measure against the EFFECTIVE ceiling. Once the ceiling floats (cap = AMP_CAP_REL x mean),
+    // comparing amp to the floor constant AMP_CAP reports pinning that is not happening.
+    var CAPV=(typeof ampCeiling==='function')?ampCeiling():((typeof AMP_CAP!=='undefined')?AMP_CAP:1.2);
+    var dT=(typeof genome!=='undefined'?genome.deathThreshold:0.04);
     function frac(pred){var c=0;for(var k=0;k<n;k++)if(pred(vals[k]))c++;return c/n;}
     function q(p){return vals[Math.min(n-1,Math.floor(p*n))];}
     return {
