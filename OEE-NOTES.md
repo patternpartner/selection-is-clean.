@@ -3563,3 +3563,40 @@ null in the record: the 28-atom real-bank ablation was 4/5 seeds BIT-IDENTICAL, 
 manufactures a difference where execution produced exact zero. That verdict stands unchanged. And #49 is a
 structural change to a live pool mid-vmGain-experiment — by the within-#48 attribution rule, gain readings that
 straddle this commit are not comparable, and that cost was accepted deliberately rather than deferred again.
+
+### #49 FOLLOW-UP (10k ticks, seeds 3 + 11) — stable, but the dispersion DECAYS; the "2.2x" was measured mid-transient
+
+Ran the longer horizon the 3000-tick verification could not speak to. Two findings, one reassuring and one that
+corrects the entry above.
+
+**Stability: CONFIRMED.** Seeds 3 and 11, 10000 ticks: 0 loop errors, 0 driver errors, no NaN, in both. Population
+GREW 329 -> 449/448 and lineage registry reached 4513/4345. The ~6% lower mean birth rate did not depress the
+population at horizon, and nothing destabilised — the #48 "stability frontier" fear does not materialise at this
+cap value.
+
+**Dispersion: DECAYS, and the headline number above was taken mid-transient.** CV by tick, post-#49:
+
+| seed | t2501 | t5001 | t7501 | t10001 |
+|---|---|---|---|---|
+| 3  | 0.255 | 0.169 | 0.152 | **0.133** |
+| 11 | 0.231 | 0.218 | 0.122 | **0.142** |
+
+The entry above reports CV 0.193 at t3001 as "2.2x the pre-#49 0.089." Both halves of that are fine in isolation
+and the comparison is still roughly right at MATCHED ticks — pre-#49 vs post-#49 on the same seeds runs 0.123 vs
+0.255 (seed 3, ~t2.5-3k), 0.085 vs 0.169 (~t4.5-5k), 0.093 vs 0.152 (~t6-7.5k), i.e. a consistent ~2x — but it
+reads as though the gain is a steady state, and it is not. **Both conditions decay; #49 decays from a higher
+start and holds roughly 2x, it does not stop the erosion.** By t10001 p10 is back at 97-99.6% of the cap
+(5.84/5.98 of 6.0), which is where it sat, relative to the old cap, before this swing.
+
+**This is exactly what the cap-24 probe predicted and the entry above already stated in principle** ("a bigger
+bucket moves saturation, it does not remove it"; "a first step on a monotone curve, not an endpoint"). The
+follow-up just converts that from a caveat into a measurement: the population re-saturates whatever ceiling it is
+given, on a timescale of ~10k ticks. Raising the ceiling buys a transient, and a permanent ~2x on the dispersion
+floor — real, and not nothing, since the reproduction gradient is monotone in amp and now has something to grade —
+but the erosion mechanism is untouched.
+
+**What this sharpens for #50.** The remaining fix is not a larger AMP_CAP — the curve says that only lengthens the
+transient. It is a COST THAT SCALES WITH HELD AMP, so that hoarding surplus is expensive and the distribution
+cannot collapse onto the ceiling in the first place. That is the same mechanism as the shelved carry-cost and the
+same principle the atrophy probe already isolated (metabolic pressure concentrates; judgmental machinery does
+not). #49 gave the currency a range and made reproduction grade on it; #50 has to make the range defensible.
