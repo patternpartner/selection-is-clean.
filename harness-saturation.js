@@ -80,7 +80,31 @@ globalThis.devicePixelRatio = 1;
 globalThis.innerWidth = 1280;
 globalThis.innerHeight = 720;
 const _epoch = Date.now();
-globalThis.performance = { now: () => Date.now() - _epoch }; // real clock so time-budget gates (e.g. the 80ms updateField guard) behave as in the browser
+// DETERMINISM FIX: harness.js (this file's ancestor) uses the REAL clock, but the sim has wall-clock
+// time-budget gates (e.g. the 80ms updateField guard), so under CPU contention the same SEED takes a
+// different amount of work per tick and trajectories diverge. Observed directly: seed 3 at 10k ticks
+// reached mean amp 62.1 in one run and 9.7 in another, same code, same seed. harness-oee.js and
+// harness-atrophy-probe.js already use a deterministic virtual clock when seeded; this now matches them
+// exactly (__detMs advanced 5ms/tick), so seeded runs are reproducible and cross-run comparison is valid.
+// Unseeded runs keep the real clock, matching browser behaviour.
+globalThis.__detMs = 0;
+globalThis.performance = process.env.SEED
+  ? { now: () => globalThis.__detMs }
+  : { now: () => Date.now() - _epoch };
+
+// SEEDING — harness.js (this file's ancestor) has NO seed block at all, so `SEED=n` was silently a
+// no-op in every run made with it or its descendants: the runs were independent and unreproducible,
+// and any comparison that assumed two runs shared a seed was invalid. Ported verbatim from
+// harness-oee.js so seeded runs here are genuinely reproducible and comparable.
+if (process.env.SEED) {
+  let a = (parseInt(process.env.SEED, 10) | 0) >>> 0;
+  Math.random = function () {
+    a |= 0; a = a + 0x6D2B79F5 | 0;
+    let t = Math.imul(a ^ a >>> 15, 1 | a);
+    t = t + Math.imul(t ^ t >>> 7, 61 | t) ^ t;
+    return ((t ^ t >>> 14) >>> 0) / 4294967296;
+  };
+}
 
 // Neutralize self-driving so WE control stepping.
 globalThis.requestAnimationFrame = () => 0;
@@ -171,6 +195,7 @@ const driver = `
   globalThis.__run = function(ticks, every){
     sample();
     for(var s=0;s<ticks;s++){
+      globalThis.__detMs+=5; // advance the virtual clock exactly as harness-oee.js does
       try{ loop(); }catch(e){ globalThis.__driverErr=(globalThis.__driverErr||0)+1; }
       if((s+1)%every===0) sample();
     }

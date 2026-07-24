@@ -79,7 +79,24 @@ globalThis.devicePixelRatio = 1;
 globalThis.innerWidth = 1280;
 globalThis.innerHeight = 720;
 const _epoch = Date.now();
-globalThis.performance = { now: () => Date.now() - _epoch }; // real clock so time-budget gates (e.g. the 80ms updateField guard) behave as in the browser
+globalThis.__detMs = 0;
+globalThis.performance = process.env.SEED
+  ? { now: () => globalThis.__detMs }
+  : { now: () => Date.now() - _epoch };
+
+// SEEDING — harness.js (this file's ancestor) has NO seed block at all, so `SEED=n` was silently a
+// no-op in every run made with it or its descendants: the runs were independent and unreproducible,
+// and any comparison that assumed two runs shared a seed was invalid. Ported verbatim from
+// harness-oee.js so seeded runs here are genuinely reproducible and comparable.
+if (process.env.SEED) {
+  let a = (parseInt(process.env.SEED, 10) | 0) >>> 0;
+  Math.random = function () {
+    a |= 0; a = a + 0x6D2B79F5 | 0;
+    let t = Math.imul(a ^ a >>> 15, 1 | a);
+    t = t + Math.imul(t ^ t >>> 7, 61 | t) ^ t;
+    return ((t ^ t >>> 14) >>> 0) / 4294967296;
+  };
+}
 
 // Neutralize self-driving so WE control stepping.
 globalThis.requestAnimationFrame = () => 0;
@@ -129,7 +146,7 @@ const driver = `
     globalThis.__SAMPLES.push({tick:(typeof tick!=='undefined'?tick:-1), N:N, tie:t, bands:b});
   }
   globalThis.__run=function(ticks,every){ sample();
-    for(var s=0;s<ticks;s++){ try{loop();}catch(e){globalThis.__driverErr=(globalThis.__driverErr||0)+1;}
+    for(var s=0;s<ticks;s++){ globalThis.__detMs+=5; try{loop();}catch(e){globalThis.__driverErr=(globalThis.__driverErr||0)+1;}
       if((s+1)%every===0)sample(); } };
 })();
 `;
