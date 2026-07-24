@@ -3600,3 +3600,59 @@ transient. It is a COST THAT SCALES WITH HELD AMP, so that hoarding surplus is e
 cannot collapse onto the ceiling in the first place. That is the same mechanism as the shelved carry-cost and the
 same principle the atrophy probe already isolated (metabolic pressure concentrates; judgmental machinery does
 not). #49 gave the currency a range and made reproduction grade on it; #50 has to make the range defensible.
+
+### SWING #50 + #50b VERDICT (10k, seeds 7 + 3, fixed census) — PASS on both criteria; one open question
+
+**#50 as first built (fixed rent, fixed ceiling) FAILED, and the failure named the real design.** Rate sweep,
+seed 7, 6000 ticks, 0 errors:
+
+| rate | atCap t2001->t6001 | CV t2001->t6001 | mean t2001->t6001 |
+|---|---|---|---|
+| 0.005 | 39% -> 58% | 0.361 -> 0.210 | 4.77 -> 5.46 |
+| 0.012 | 6.6% -> 43% | 0.644 -> 0.290 | 2.83 -> 5.01 |
+| 0.020 | 8.4% -> 34% | 0.808 -> 0.391 | 2.54 -> 4.52 |
+
+Higher rent is monotonically better — the mechanism works directionally — but the mean climbs toward the cap at
+EVERY rate. `A_eq=I/c` only stands still if income is static, and it is not: lineages evolve to earn more, I(t)
+rises, A_eq rises, and any FIXED ceiling is reached eventually whatever c is. **That is adaptation outrunning a
+static cost, not a mis-picked constant**, and it is why tuning c harder was the wrong move.
+
+**#50b: the ceiling tracks the population** (`cap = 4 x mean living amp`, floored at AMP_CAP). Scale-free — if
+every income improves by g, every amp scales by g, the ceiling scales by g, and CV is PRESERVED. Ten dependent
+sites rewired to the live ceiling (6 vigor sensors, 4x op182, render register, shadow-sim clamp), cached per tick.
+
+**VERDICT (10000 ticks, seeds 7 and 3, 0 loop errors, 0 driver errors both):**
+
+| | #49 @ t10k | #50b @ t10k |
+|---|---|---|
+| atCeiling | 70% / 73% | **1.9% / 0.0%** |
+| CV | 0.133 / 0.142 | **0.974 / 0.730** |
+| N | 449 / 448 | 433 / 447 |
+
+Both pass conditions met. The bulk is off the ceiling and STAYS off across the whole run (seed 7: 6.0% -> 2.2% ->
+0.9% -> 0.5% -> 1.9%), and dispersion holds at 5-10x the pre-#49 baseline (~0.07) instead of decaying toward it.
+This is the first configuration in the record where the amp distribution does not collapse onto its own bound.
+
+**A MEASUREMENT BUG CAUGHT BEFORE IT PRODUCED A VERDICT.** Both the browser probe and the harness census were
+computing atCap against AMP_CAP — the FLOOR constant — not the effective ceiling, reporting pinning that was not
+happening. Caught because one browser dump showed `ceil=53.7` and `atCap=0.827` simultaneously, which cannot both
+be true. The two 10k runs already in flight were discarded rather than reported. Third time this session that
+measuring beat reasoning-from-source (after the refuted argmax-tie hypothesis and #49's mid-transient headline).
+
+**OPEN — absolute inflation, and a concern of mine that the data then DEFLATED.** Seed 7 stabilises (mean ~14,
+ceiling ~55). Seed 3 does not: mean 7.6 -> 15.2 -> 30.5 -> 52.3 -> 62.1, ceiling to 250, decelerating but not
+clearly converged. I claimed this would disable the absolute death threshold (0.04), since seed 3's p01 sits at
+1.13 — 28x above it — so nothing should be starving. **Checked instead of asserted, and I was wrong**: the
+amp-starvation path fires 535 times over 2500 ticks (~0.21/tick). p01 is the 1st percentile of SURVIVORS, and
+particles that fall under the threshold die and leave the census before it is taken; a healthy-looking p01 is
+consistent with a working death filter, not evidence against one. The honest residual question is whether that
+rate HOLDS at seed 3's inflated end-state (mean ~62, not ~4) — a 10k run with the cumulative counter is in
+flight and will settle it. If starvation deaths thin out as the economy inflates, the fix is to make
+deathThreshold and the 0.4 reproduction gate relative too, for the same reason the ceiling had to become
+relative — otherwise inflation silently switches off the absolute-valued half of selection. Named as #50c,
+conditional on that measurement, NOT built on the strength of an argument that has already been wrong once here.
+
+**What this does NOT establish.** That any previously-null mechanism now grips. #50 makes fitness vary; whether
+the 48 recorded nulls were mechanism failures or artifacts of flat fitness is the NEXT question, and the clean
+test is re-running one recorded ablation under #50 — the thin-bank whole-bank ablation, whose apparatus exists.
+The 28-atom real-bank null (4/5 seeds bit-identical) is still immune to all of this and still stands.

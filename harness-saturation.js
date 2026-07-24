@@ -123,6 +123,12 @@ if (process.env.AMP_CAP !== undefined) {
   code = code.replace(NEEDLE, 'const AMP_CAP=' + AMP_CAP + ';');
 }
 
+// cumulative amp-starvation death counter (the in-sim counters reset each cycle)
+{ const N3='deaths.push(i);deathsThisTick++;deathsByPhysics++;';
+  const h3=code.split(N3).length-1;
+  if(h3!==1){ console.log(JSON.stringify({error:'amp-death needle not unique ('+h3+')'})); process.exit(1); }
+  code=code.replace(N3, N3+'globalThis.__ampDeaths=(globalThis.__ampDeaths||0)+1;'); }
+
 const driver = `
 ;(function(){
   globalThis.__SAMPLES = [];
@@ -155,6 +161,7 @@ const driver = `
     var c=null; try{c=census();}catch(e){}
     globalThis.__SAMPLES.push({
       tick:(typeof tick!=='undefined'?tick:-1),
+      ampDeaths:(globalThis.__ampDeaths||0),
       N:(typeof N!=='undefined'?N:-1),
       lineages:(typeof lineageRegistry!=='undefined'?lineageRegistry.size:-1),
       clusters:(typeof clusters!=='undefined'?clusters.length:-1),
