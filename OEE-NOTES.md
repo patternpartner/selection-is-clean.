@@ -3405,3 +3405,85 @@ What would make it distinguishable from an incidental broadcaster: with `lp` + `
 across many snapshots whether a pump's emission-role correlates with its blooms' age/budCount — i.e. whether the
 coupling is load-bearing for partner persistence, or the pump would broadcast the same into an empty channel. The
 instrument turns the feeling into something measurable; that is the honest way to honor it.
+
+---
+
+## SATURATION AUDIT — the dependent variable is pinned at its clamp, and the instrument can only see harm
+
+Asked for an assessment of the project, ran one, and it produced a result that is not about any single
+mechanism — it is about the measuring apparatus that graded ~10 of the swings above. Recorded here because it
+changes how those verdicts should be read, not because it overturns any of them.
+
+**What was built.** `harness-saturation.js` — swing #48's Rider 2 in the one form that entry said was honestly
+available: "an honestly-labeled TOTAL-physics-saturation gauge that does not claim VM attribution." It attributes
+nothing to VM output (the reason the per-site counter was correctly refused as a one-liner still stands: VM output
+is diffuse across ~8 actuators x 3 paths, and the catching clamps are shared with base physics). It censuses the
+distribution of `amp[i]` over living particles against its own hard bound. Observation only; Pe unpatched.
+
+**The bound in question.** `index.html:12091`, `if(amp[i]>1.2)amp[i]=1.2;` — a bare numeric literal in the
+interaction loop. Not a gene, not in `sanitizeGenome`, not annotated, never re-decided. The same class of object as
+the 0.002/0.0015/0.0005 gain constants #48 promoted to `vmGain`, and reached by the same route: inherited, and
+nobody's decision since.
+
+**MEASURED (3 seeds — 7, 3, 11 — 6000 ticks, 0 loop errors, 0 driver errors, all three).**
+
+| seed | t1501 atCap | t6001 atCap | t6001 within1% | t6001 p10 | t6001 p50 | t6001 mean | headroom | cv boot→t6001 |
+|---|---|---|---|---|---|---|---|---|
+| 7  | 0.701 | **0.871** | 0.969 | 1.1999 | 1.2 | 1.192 | **0.7%** | 0.273→0.049 |
+| 3  | 0.789 | **0.831** | 0.945 | 1.2    | 1.2 | 1.179 | **1.7%** | 0.256→0.093 |
+| 11 | 0.696 | **0.787** | 0.940 | 1.2    | 1.2 | 1.183 | **1.4%** | 0.271→0.069 |
+
+The population starts dispersed (mean ~0.56, cv ~0.26, nothing at the cap) and is at the ceiling within ~1500
+ticks. By t6001 the MEDIAN and the 10th PERCENTILE both sit exactly at the clamp in all three seeds: 79-87% of
+living particles hold the identical clamped value, 94-97% are within 1% of it, and dispersion has fallen by 3-5x.
+
+**The two gates, for scale (`harness-tie.js`, seed 7, band census).** Death is `amp[i] < deathThreshold` (0.04).
+Reproduction is op16, gated `amp[i]>0.4 && page[i]>80 && Math.random()<0.03`, costing `amp[i]*=0.5` — so above
+~0.8 a particle can spawn and remain over the gate, and more amp buys nothing further. Measured: **98.8-99.4%** of
+living particles are above the 0.4 reproduction gate, and **93.6-98.6%** are above the 0.8 point where additional
+amp stops conferring additional reproductive capability. The population does not merely sit near the ceiling — it
+sits entirely inside the region where the currency has stopped being a currency.
+
+**Why this bears on the record.** `meanAmp` is the shared primary dependent variable of `harness-ablate-bank.js`,
+`harness-meta-ablate.js` and `harness-ablate-reflex.js`. Compare the remaining absolute headroom above the mean
+(1.2 − mean = **0.008 / 0.021 / 0.017**) against the effect sizes those harnesses reported:
+
+- whole-bank ablation: intact 1.169 vs ablated 1.145, effect **0.024**, sd 0.031
+- meta-influence ablation: effect **−0.036**, sd 0.054
+- single most-proven atom: effect **0.016**, sd 0.037
+
+The effects being measured are the same size as, or larger than, the distance from the intact arm's mean to the
+ceiling. **An intervention that HELPS therefore cannot register — its benefit is truncated by the clamp before the
+comparison begins — while an intervention that HURTS has the whole range below to move in.** That asymmetry is
+visible in the record's own results: the meta-layer ablation found the layer "NEVER beneficial in any seed," and
+every positive effect reported anywhere in the ablation series is sub-noise and carried by one outlier seed.
+
+**Scope, stated precisely — this does NOT overturn the nulls.**
+1. It does not explain the BIT-IDENTICAL results (the reflex ablations, #47 and prior). Those are exact
+   zero-difference in execution across 5/5 seeds; a saturated metric would still show float noise. Reflex remains
+   convicted on its own evidence, and that conviction is untouched by this.
+2. It does not show the atom bank or the meta layer ARE load-bearing. It shows the test as run could not have
+   demonstrated that they were. "Leaning neutral, inconclusive" was the correct call and remains so — this
+   explains WHY those tests kept landing inconclusive rather than resolving.
+3. It is one authoring pass, 3 seeds, 6000 ticks, fresh unauthored boots. The same real-genome caveat every
+   headless finding here carries applies unchanged.
+
+**A refuted hypothesis, kept.** The saturation numbers suggested a sharper claim: `selfLearnFromBest()` (:5440)
+and `decideFromRealWinner()` (:5464) both pick "the best lineage" by strict argmax over `amp[i]`, so with 75%+ of
+particles holding the identical clamped Float32 the argmax should have been resolving a mass tie by array order —
+"DECIDE FROM THE REAL WINNER" (#44) deciding from an arbitrary index. Instrumented it (`harness-tie.js`) rather
+than reporting it from source. **REFUTED**: `tiedAtMax` is 1 at nearly every sample, and `bestAmp` reads
+1.200020-1.200875 — strictly above the clamp, because amp takes further additions after the clamp site within the
+same tick. The maximum is genuinely unique; the argmax is not degenerate. Recorded because a static read that
+looked airtight was wrong, which is the whole methodological point of this file.
+
+**The named next test, not run.** Raise or genome-ify the 1.2 clamp and re-run ONE already-recorded ablation
+(whole-bank is the cleanest, its result is documented and its apparatus exists). Prediction: the effect separates
+from noise, or it does not. If it does, the ablation series needs re-reading against an unsaturated metric and
+several "inconclusive, leaning neutral" verdicts are live again. If it does not, the nulls are confirmed on a
+metric with room to move, which is strictly stronger than what the record can currently claim. Either branch pays.
+
+**NOT SHIPPED, and deliberately so** — same two reasons #48's carry-cost decision named, and they still hold: the
+live pool is mid-vmGain experiment and a second simultaneous structural change makes both uninterpretable; and the
+clamp is a physics bound whose removal is exactly the "stability frontier" #48 pre-registered a branch for. The
+gauge is observation-only and safe to run against the pool at any time. `index.html` is untouched by this entry.
