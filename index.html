@@ -751,17 +751,6 @@ const AMP_CAP_HARD=1e4;             // #50b: absolute numeric guard ONLY — NaN
 // implicitly tuned. At that mean the scale factor is exactly 1 and behaviour is the historical behaviour;
 // above it the thresholds track. genome.deathThreshold stays per-lineage evolvable — #50c changes what its
 // value MEANS (a fraction of prevailing wealth) without taking the knob away from selection.
-// ═══ SWING #50d: A FLOOR ON THE BUST ═══
-// The both-economies comparison (OEE-NOTES) showed #50c buys violent boom-bust rather than diversity: two of
-// three seeds hit N=0 and reseeded back, against an old economy that climbs monotonically to a static 500.
-// Non-terminal, but a live artwork would show total wipeouts. This bounds the downside without restoring the
-// clamp: below POP_FLOOR living particles, amp-starvation death is suspended and the particle is pinned to its
-// own threshold instead — life support, exactly the mechanism swing #20's knob S already uses for founder
-// lineages in grace (`amp[i]=_deathT` a few lines below). Selection keeps operating everywhere above the floor;
-// only the last N are protected, so a bust can still be deep, it just cannot be total.
-// NOT a return to stability insurance by the back door: the floor is on POPULATION, not on amplitude, so the
-// currency keeps varying and the measurement gain #49/#50 bought is untouched.
-const POP_FLOOR=80;                 // #50d: below this many living particles, starvation death is suspended
 const AMP_REF=1.16;                 // #50c: pre-#49 equilibrium mean amp — the scale the absolute thresholds
                                     // were calibrated against. Scale factor = mean/AMP_REF, so at the old
                                     // equilibrium every threshold keeps its historical value exactly.
@@ -12204,7 +12193,6 @@ function applyEntropy(){
   const densityCost=(genome.densityCostK||0.00003)*Math.max(0,N-(genome.densityFloor??100));
   const _ampCeil=_ampCeilCached=ampCeiling(); // #50b: once per tick, not per particle — it is a population statistic
   const _ampSc=_ampScaleCached=ampScale();    // #50c: ditto — thresholds are fractions of prevailing wealth
-  let _popNow=0; for(let _pi=0;_pi<N;_pi++) if(palive[_pi])_popNow++; // #50d: living count, decremented as deaths land
   for(let i=0;i<N;i++){
     if(!palive[i])continue;
     const _g=genome;genome=pGenome[i]||genome; // UNLOCKED #9 FULL: per-lineage metabolism & death threshold
@@ -12224,10 +12212,7 @@ function applyEntropy(){
         // the stochastic founding dip. This is the DEATH term only (orthogonal to knob C's growth term) — by
         // design it produces persistence, NOT radiation, so the 2×2 can attribute which lever fills empty cells.
         amp[i]=_deathT;
-      } else if(amp[i]<_deathT && _popNow<=POP_FLOOR){
-        amp[i]=_deathT; // #50d: at the floor — life support instead of reaping, same device as knob S above
       } else if(amp[i]<_deathT){
-        _popNow--; // #50d
         deaths.push(i);deathsThisTick++;deathsByPhysics++;
         addBits(px[i],py[i],2,pR[i],pG[i],pB[i],0.3);
         palive[i]=0;
