@@ -3751,3 +3751,52 @@ thesis dies on the spot" — and branch 4 alongside it (67 extinctions, populati
 "the stability frontier was real and the authors' fear calibrated"). **If VM output is on balance costly, then
 selection driving its consequence toward zero is not a failure to discover something good — it is correctly
 pricing something bad.** Two independent measurements, from opposite directions, agreeing.
+
+### BOTH ECONOMIES, SAME GENOME — #48's branch 4 lands, on my own work: the 1.2 clamp WAS stability insurance
+
+The user's call: run the real gen83 genome forward under the pre-#49 economy and under #50c, side by side.
+Method: `INDEX=` pointed at `d6febcb:index.html` (verified pre-#49 — that commit touched only notes and
+harnesses) vs current HEAD, same GENOME, same 3 seeds, 20000 ticks. Read ONLY on scale-free measures —
+population, kinds, diversity — never meanAmp, whose scale differs between the arms by construction.
+
+| seed | OLD finalN | NEW finalN | OLD kinds | NEW kinds | OLD H | NEW H |
+|---|---|---|---|---|---|---|
+| 11 | 500 | 376 | 17 | 14 | 3.54 | 3.44 |
+| 13 | 500 | 353 | 15 | 14 | 3.36 | 3.45 |
+| 17 | 500 | 0* | 16 | 15* | 3.55 | 3.50* |
+
+*seed 17's final sample landed in a trough — see below. 0 loop errors, 0 driver errors, all six runs.
+
+**The trajectories are the result, not the endpoints.**
+  - OLD, every seed: monotone climb to exactly 500, meanAmp pinned at exactly 1.2, and it stays there.
+    `329 -> 429 -> 437 -> 447 -> 453 -> 458 -> 467 -> 477 -> 488 -> 497 -> 500`. A static equilibrium against
+    both ceilings at once.
+  - NEW, every seed: violent boom-bust. Seed 11 `424 -> 480 -> 296 -> 298 -> ... -> 376`. Seed 13
+    `431 -> 307 -> 305 -> 0 -> 63 -> 364 -> ... -> 353`. Seed 17 `418 -> 293 -> 315 -> 154 -> 332 -> 0 -> 370
+    -> 363 -> 0`. **Two of three seeds hit N=0 and reseeded back.**
+
+**CORRECTION to my own first read, made before reporting it:** I read seed 17's finalN=0 as an extinction caused
+by my changes. It is not — the population recovers to 370 two samples later; the final sample simply landed in a
+trough. The honest statement is oscillation with total crashes and reseed recovery, not termination.
+
+**DIVERSITY DID NOT IMPROVE.** H 3.19-3.57 (new) vs 3.35-3.57 (old); kinds 12-16 in both. The new economy bought
+instability, not diversity. That is the swing's own stated purpose failing to materialise on this genome.
+
+**#48's branch 4 fires, and it fires on me.** "Instability + extinction dominate -> the stability frontier was
+real and the authors' fear calibrated." I characterised `if(amp[i]>1.2)amp[i]=1.2` as "a bare literal nobody
+re-decided," the same class of object as the vmGain constants. On this evidence that framing was WRONG: the clamp
+was doing load-bearing work as stability insurance, and removing it produces precisely the catastrophe the
+original authors appear to have been guarding against. Reading an undocumented constant as unconsidered is its
+own confabulation — the absence of a stated reason is not the absence of a reason.
+
+**Two counterweights, neither of which rescues the change.** (1) The OLD arm's stability is exactly the static
+attractor this project has fought since #36 — pinned at cap on population AND amplitude, going nowhere, which is
+what #36/#39 were built to escape. (2) The crashes are NON-TERMINAL, with reseed recovery to ~370, which is the
+punctuation shape #39 explicitly wanted. But #39 wanted punctuation WITH diversity gain, and there is none here.
+
+**Bearing on the live pool: do not deploy #49/#50 to the tabs on this evidence.** A live artwork would show total
+population wipeouts. The economy work stays on the branch until either the instability is bounded (a floor on the
+bust, or a gentler AMP_CAP_REL) or a diversity gain appears to justify the cost. What #49/#50 demonstrably DID
+achieve is measurement: they turned a saturated dependent variable into one that varies, which is what made the
+gen83 bank ablation informative for the first time. That is a real result about the APPARATUS, and it is
+separable from — and survives — this negative result about the physics.
