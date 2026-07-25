@@ -3800,3 +3800,54 @@ bust, or a gentler AMP_CAP_REL) or a diversity gain appears to justify the cost.
 achieve is measurement: they turned a saturated dependent variable into one that varies, which is what made the
 gen83 bank ablation informative for the first time. That is a real result about the APPARATUS, and it is
 separable from — and survives — this negative result about the physics.
+
+### THE 2x2, COMPLETE — the whole-bank null was an APPARATUS ARTIFACT. Same bank, same seeds, 5/5 identical vs 0/5.
+
+The isolating cell reported. The gen83 bank (17 atoms, 25 bound, 12 proven, top atom 9,701 uses) ablated under
+BOTH economies, same 5 seeds, same 10k ticks, `INDEX=` switching only the physics file.
+
+| seed | pre-#49 intact | pre-#49 ablated | | #50 intact | #50 ablated |
+|---|---|---|---|---|---|
+| 11 | 1.2000 | 1.2000 | **IDENT** | 2.6770 | 1.1847 |
+| 13 | 1.1940 | 1.1940 | **IDENT** | 1.8915 | 2.5255 |
+| 17 | 1.2000 | 1.2000 | **IDENT** | 2.2283 | 2.6305 |
+| 19 | 1.2000 | 1.2000 | **IDENT** | 2.3163 | 2.6808 |
+| 23 | 1.2000 | 1.2000 | **IDENT** | 2.2708 | 2.7352 |
+
+**5/5 bit-identical under the clamped currency. 0/5 under the floating one.** Effect exactly 0 with sd exactly 0,
+against [1.4923, −0.634, −0.4022, −0.3645, −0.4645]. Bank held constant, seeds held constant; only the economy
+differs. **The confound named in attempt 2 is closed.**
+
+**The mechanism is visible in the numbers themselves.** Under the old economy intact AND ablated both read exactly
+`1.2000` — the clamp literal. The two arms are identical because both are pinned against the ceiling. The clamp
+was not failing to DETECT the bank's effect; it was arithmetically ERASING it, in both directions, before any
+comparison could see it.
+
+**VERDICT: the record's whole-bank null was an artifact of the measuring apparatus, not a property of the bank.**
+The prior entry — "the self-extension bank is EXECUTED but fitness-INERT... the strongest, cleanest null the
+project has reached" — was measured through an instrument that could not have returned any other answer. Every
+whole-bank and single-atom ablation in this file that reported meanAmp near 1.2 and concluded "no grip" inherits
+the same defect. Those verdicts should be read as UNTESTED, not as null.
+
+**What the bank actually does, now that it can be seen: in 4 of 5 seeds, deleting it leaves the population with
+MORE amp and MORE particles** (tightly clustered −0.36 to −0.63; seed 11 a strong outlier the other way). The
+self-extension machinery — this project's theoretical basis for open-endedness — is a net DRAG on the lineages
+carrying it.
+
+**This also explains the accumulation.** ~48 swings added mechanism, and the clamp concealed the price of every
+one of them: not only were benefits truncated, costs were too. A system that cannot measure the cost of what it
+adds will keep adding. That is the structural account of how the record reached 140 layers, 232 opcodes and 186
+genes with almost every audited mechanism reading inert.
+
+**Independent corroboration, from the user's live exports.** #48 shipped vmGain UNBOUNDED so selection could buy
+any consequence it wanted. It drove it DOWN monotonically instead — vg 1.000 → 1.123 → 0.841 → 0.217, whole pool
+converged (min 0.2168, max 0.2371, n=137). If VM output is on balance costly, selection pricing its consequence
+toward zero is correct accounting, not a failure to discover. Two measurements, opposite directions, same
+conclusion.
+
+**Scope, stated.** This does NOT vindicate #49/#50 as physics — the both-economies run showed they buy boom-bust,
+not diversity, and #48's branch 4 fires on them (see the previous entry; the 1.2 clamp was load-bearing stability
+insurance and I was wrong to call it unconsidered). The apparatus result and the physics result are separable and
+both stand: the swings were a bad change to the world and a decisive fix to the instrument. The instrument gain
+is what should be kept — whether by shipping a bounded version (#50d) or by running ablations on a branch build
+purely as a measuring rig while the live pool keeps the clamp.
