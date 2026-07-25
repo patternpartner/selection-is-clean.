@@ -3851,3 +3851,41 @@ insurance and I was wrong to call it unconsidered). The apparatus result and the
 both stand: the swings were a bad change to the world and a decisive fix to the instrument. The instrument gain
 is what should be kept — whether by shipping a bounded version (#50d) or by running ablations on a branch build
 purely as a measuring rig while the live pool keeps the clamp.
+
+### #50d FLOOR — FAILED by its own pre-registered criteria, and REVERTED. Life support at scale poisons the pool.
+
+The user's call: put a floor on the bust and rerun. Built (POP_FLOOR=80: below that many living particles,
+amp-starvation death suspended, particle pinned to its own threshold — the same device knob S already uses for
+founder grace), rerun on the same genome, same 3 seeds, same 20k ticks, directly comparable to the unfloored runs.
+
+| seed | #50d N trajectory |
+|---|---|
+| 11 | 329 424 480 **80 80** 117 **80 80 81 80** 154 |
+| 13 | 329 419 431 **80 80** 109 169 211 220 **80** 125 |
+| 17 | 329 415 418 **80 80** 122 **80 80** 97 81 114 |
+
+Criterion 1 (no seed reaching 0): PASSED. Criterion 3 (diversity no worse than the unfloored 3.19-3.57): **FAILED**
+— H 2.985/3.026/3.208, kinds 10/11/13, worse than the unfloored #50c (H 3.437/3.451, kinds 14) AND worse than
+pre-#49 (H 3.358-3.548, kinds 15-17). And the named failure mode occurred exactly as pre-registered: seed 11 sits
+at exactly 80 for six of eight post-crash samples, seed 17 for five of eight. **A floor doing harm quietly rather
+than a crash doing it loudly** — the words were written before the run.
+
+**Mechanism, clear in hindsight and worth recording.** Pinning at `_deathT` does not preserve a population; it
+manufactures a permanent underclass of zero-amp particles that keep drawing metabolic upkeep and density cost
+while contributing nothing. The floor does not stop the bust — it makes the bust PERMANENT and taxes the
+survivors. Knob S's version works because it protects a handful of founders briefly; the same device applied to
+80 particles indefinitely inverts its effect. A mechanism that is benign at small scale and harmful at large
+scale, which is its own lesson about porting a device out of the context that justified it.
+
+**REVERTED** (`git revert 77a5463`). index.html carries #49/#50/#50b/#50c and no floor.
+
+**The coherent position this leaves, stated plainly.** #49/#50 are a BAD CHANGE TO THE PHYSICS (boom-bust, no
+diversity gain, #48's branch 4 fires) and a DECISIVE FIX TO THE INSTRUMENT (the 2x2: same bank 5/5 bit-identical
+under the clamp, 0/5 without it). Those are separable, and the separation is the recommendation:
+  - **The live pool keeps the clamp.** Do not deploy. The artwork would show wipeouts, and now also would not be
+    helped by a floor.
+  - **The branch build is a MEASURING RIG.** Its value is that ablations run on it can detect an effect at all.
+    Every "no grip" verdict in this file measured through the clamped currency is UNTESTED and can now be re-run
+    properly, one at a time, without touching the live artwork.
+That costs the artwork nothing and recovers the whole ablation series. The instrument was the deliverable; the
+physics change was the price of finding that out, and it does not have to be paid twice.
