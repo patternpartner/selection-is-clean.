@@ -3889,3 +3889,60 @@ under the clamp, 0/5 without it). Those are separable, and the separation is the
     properly, one at a time, without touching the live artwork.
 That costs the artwork nothing and recovers the whole ablation series. The instrument was the deliverable; the
 physics change was the price of finding that out, and it does not have to be paid twice.
+
+### META-INFLUENCE ABLATION RE-RUN ON THE RIG — a recorded null OVERTURNED, on the project's own target metric
+
+Second use of the instrument for its purpose. Target chosen because it structurally cannot come back hollow: the
+record already established this layer fires and that ablating it bites (metaMag 38-43 -> 0.03), and the atrophy
+probe found all 116 genes reading NEGATIVE on the system's own attribution while the layer net-inflated 4-5x
+anyway. 5 seeds x {intact, ablated}, 20000 ticks, 0 loop errors and 0 driver errors in all ten runs.
+Pre-#50 baseline: effect -0.036, sd 0.054, "never beneficial in any seed", INCONCLUSIVE-leaning-neutral, n=3.
+
+**On amp — the ablation now BITES, but gives no directional verdict.**
+
+| seed | intact | ablated | intact−abl | relative |
+|---|---|---|---|---|
+| 7 | 62.93 | 48.70 | +14.23 | +22.6% |
+| 11 | 26.83 | 35.02 | −8.19 | −30.5% |
+| 13 | 35.04 | 37.68 | −2.64 | −7.5% |
+| 17 | 30.17 | 19.42 | +10.76 | +35.6% |
+| 19 | 31.46 | 44.19 | −12.73 | −40.5% |
+
+Per-seed effects of 7.5–40.5%, an order of magnitude above the pre-#50 ~3%, but 2/5 favour intact and 3/5 favour
+ablated. mean 0.285, sd 10.52. On amp the layer is causally LOUD and directionally MUTE — it perturbs the
+trajectory hard without a consistent sign.
+
+**On diversity — a clean, consistent, directional result.**
+
+| seed | kinds intact | kinds ablated | Δ |
+|---|---|---|---|
+| 7 | 6.71 | 7.14 | +0.43 |
+| 11 | 8.00 | 8.57 | +0.57 |
+| 13 | 8.00 | 8.00 | 0.00 |
+| 17 | 5.86 | 6.86 | +1.00 |
+| 19 | 5.29 | 7.86 | +2.57 |
+
+**mean +0.914, sd 0.888 — beats its own noise; ablated >= intact in 5/5 seeds, strictly greater in 4/5.** By this
+project's own adoption criteria (effect > own noise AND majority-consistent) that is a PASS. **Removing the
+116-gene meta-influence layer RAISES occupied kinds, consistently, by ~13-17% relative.**
+
+**Why this was invisible before, mechanically.** occupiedKinds is not itself clamped — so the question is why the
+pre-#50 run reported "same population, same diversity". Because with amp saturated, every lineage had effectively
+identical reproductive success regardless of its meta-genes, so the layer could not differentially shape WHICH
+lineages persisted, and diversity is downstream of exactly that. On the rig the chain is restored:
+meta-genes -> amp -> reproduction -> which lineages survive -> occupied kinds. The clamp did not hide a diversity
+effect by compressing diversity; it hid it by severing the causal path that produces one.
+
+**What this means for the record.** The layer is not merely inert-by-attribution (atrophy probe, protected=0) and
+not merely non-load-bearing (pre-#50 ablation). It is **actively suppressing the project's primary goal metric** —
+the diversity ceiling that swings #11 through #39 were all built to break. 116 genes each annotated "attribution
+tracks whether this sensing helps", whose removal makes the system measurably more diverse. And the carry-cost
+decision recorded earlier — deliberately not-yet-shipped, reasoning that "the ablation shows the bloat is nearly
+harmless" so a pruning cost was warranted only for SYMMETRY — rested on a measurement taken through the clamp.
+On the rig the bloat is not nearly harmless. That decision should be re-opened with this result in hand.
+
+**Honest scope.** n=5, one authoring regime, headless, fresh boots — the same caveats every headless finding here
+carries. The amp result is genuinely inconclusive and is NOT being reported as harm. The diversity result is one
+statistic clearing its own noise bar by a modest margin (0.914 vs 0.888); it wants a 10-seed confirmation before
+anything is built on it. What is NOT in doubt is the categorical change: a test that returned effect −0.036 ± 0.054
+now returns per-seed swings of up to 40%.
