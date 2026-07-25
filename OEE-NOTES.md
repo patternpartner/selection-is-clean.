@@ -3701,3 +3701,53 @@ likely reading, but likely is not established, and the flattering version is the
 target. Pre-#50 baseline to beat: effect -0.036, sd 0.054, never beneficial in any seed, INCONCLUSIVE. Under a
 saturated currency that verdict was unfalsifiable in one direction — an intact arm 0.03 from the ceiling had no
 room to express a benefit. It does now.
+
+### THE PAYOFF TEST, attempt 2 — the user's REAL gen83 bank, ablated under #50: THE ABLATION FINALLY BITES
+
+The user supplied four live exports, and the mature one (gen83, T=467423) carried exactly what 45k ticks of
+headless authoring could not produce: **17 atoms, 25 bound opcodes, 12 PROVEN, top atom `(1.36)*(t)` at 9,701
+uses**, second `(nb)-(c)` at 6,648. A genuinely fat, heavily-executed bank. Ablation cannot come back hollow on it.
+
+**RESULT (5 seeds x [intact, whole-bank-pinned-to-0], 10k ticks, 0 driver errors, under the #50c economy):**
+
+| seed | intact amp | ablated amp | intact N | ablated N | rel |
+|---|---|---|---|---|---|
+| 11 | 2.677 | 1.185 | 299 | 113 | +55.7% |
+| 13 | 1.892 | **2.526** | 229 | **305** | −33.5% |
+| 17 | 2.228 | **2.631** | 205 | **279** | −18.1% |
+| 19 | 2.316 | **2.681** | 195 | **264** | −15.7% |
+| 23 | 2.271 | **2.735** | 265 | **372** | −20.5% |
+
+**ZERO bit-identical seeds.** Every seed moves, by 15–56%. Set against the record's pre-#50 real-bank ablation —
+28 atoms, effect 0.0002, **4 of 5 seeds BIT-IDENTICAL** — this is a categorical change. The bank is no longer
+causally inert.
+
+**And the direction is the finding: in 4 of 5 seeds, DELETING the bank makes the population better off** — more
+amp AND more population, effects tightly clustered (−0.36 to −0.63), seed 11 a strong outlier the other way.
+The self-extension machinery, this project's theoretical basis for open-endedness, is a net DRAG on the lineages
+carrying it.
+
+**The harness's own verdict logic is wrong here, and that is worth recording.** It printed BANK_NEUTRAL because
+effect_mean (−0.075) < effect_sd (0.789) — but the mean is near zero only because seed 11 (+1.49) cancels four
+consistent negatives. `harness-ablate-bank.js` scores BANK_ADAPTIVE (removing it lowers fitness) vs BANK_NEUTRAL
+(everything else); **it has no category for "removing it RAISES fitness," so a real, consistent, costly effect
+files as neutral.** Any future use of this harness needs that third branch or it will keep mislabelling harm as
+nothing.
+
+**CONFOUND, not yet closed — the honest limit on the headline.** The pre-#50 bit-identical result used a
+DIFFERENT bank (28 atoms, a different export). So "inert before, active now" currently confounds BANK with
+ECONOMY. The isolating cell — this same gen83 bank, ablated under the pre-#49 economy (`INDEX=` pointed at
+d6febcb:index.html) — is running at write time. Pre-registered: if that arm comes back mostly bit-identical, the
+saturation thesis is confirmed cleanly (same bank, same seeds, inert under a clamped currency, live under a
+floating one) and the record's whole-bank null is an APPARATUS artifact, not a property of the bank. If it also
+moves, the difference is the bank and not the economy, and this result reduces to "this particular bank is
+active" — much weaker. Not claiming the strong version until that cell reports.
+
+**Convergent evidence from the exports themselves, pointing the same way.** #48 shipped vmGain UNBOUNDED so
+selection could buy any consequence it wanted. Across the four exports it did the opposite, monotonically:
+vg 1.000 (t2015) → 1.123 (t4250) → 0.841 (t14359) → **0.217 (gen83 t467423)**, with the whole pool converged
+tight (min 0.2168, max 0.2371, n=137). Fable's branch 3 — "gain stays low even when free → the whole barrier
+thesis dies on the spot" — and branch 4 alongside it (67 extinctions, population 500 → ~90, one lineage left:
+"the stability frontier was real and the authors' fear calibrated"). **If VM output is on balance costly, then
+selection driving its consequence toward zero is not a failure to discover something good — it is correctly
+pricing something bad.** Two independent measurements, from opposite directions, agreeing.
