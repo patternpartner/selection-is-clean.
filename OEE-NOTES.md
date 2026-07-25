@@ -3656,3 +3656,48 @@ conditional on that measurement, NOT built on the strength of an argument that h
 the 48 recorded nulls were mechanism failures or artifacts of flat fitness is the NEXT question, and the clean
 test is re-running one recorded ablation under #50 — the thin-bank whole-bank ablation, whose apparatus exists.
 The 28-atom real-bank null (4/5 seeds bit-identical) is still immune to all of this and still stands.
+
+### THE PAYOFF TEST, attempt 1 — whole-bank ablation under #50: DISCARDED as hollow, not reported as a null
+
+The question the whole economy arc exists to answer: with fitness finally varying, do the record's ablation nulls
+change? First attempt targeted the whole-bank ablation, because its apparatus and its pre-#50 result both exist.
+
+**Authored a fresh bank under the #50 economy** (seed 7, 45k ticks, full ENGINE knobs, ATOM_PIPELINE + ATOM_DURABLE
+on). Result: `totAtoms=3 nBound=3 proven(uses>0)=0 maxUses=0`. Three atoms born, three bound, NONE ever executed.
+For comparison the record's original seed-7 bank had a most-used atom at uses=1044.
+
+**Ran the ablation anyway** — justified, because the record documents `uses=0` at dump time becoming live atoms on
+resume (the real-bank entry verified non-hollowness exactly that way) — but with the usage counters visible and the
+discard condition named in advance rather than after seeing the number.
+
+**Result: 5 seeds x [intact, whole-bank-pinned-to-0], 10k ticks, 0 driver errors. VERDICT string says
+BANK_NEUTRAL. It is being DISCARDED.** Raw arms:
+
+| seed | intact | ablated | |
+|---|---|---|---|
+| 11 | 53.1745 | 53.1745 | bit-identical |
+| 13 | 54.2120 | 54.2120 | bit-identical |
+| 17 | 80.2140 | 82.0450 | differs |
+| 19 | 34.3977 | 34.3977 | bit-identical |
+| 23 | 27.5892 | 26.9285 | differs |
+
+3/5 bit-identical, and `boundOps` is unchanged between arms in every seed (4.5/4.5, 4/4, 3/3). Combined with
+proven-uses=0 at authoring, that is the hollow-null signature the record has been caught by twice. **The atoms
+never executed, so knocking them out could not have changed anything, so the null carries no information about
+whether #50 moved the verdict.** Reporting it would have produced precisely the result this arc is hunting, which
+is exactly why it cannot be allowed to count.
+
+**Mechanism, traced but NOT closed.** uaCall() increments `uses` on every invocation and is reached from opcode 22,
+so uses=0 means op22 never executed against a valid atom index across 45k ticks. Born, bound, never called. The
+GENERATIVE-LAYER MAP recorded this same failure ("authored atoms 0->0 INERT — 1 birth / 35k ticks, 0 uses ever")
+and the ATOM_PIPELINE fix was supposed to have lit it; birth and binding clearly work here, calling does not.
+**Honest open question I am NOT resolving by assumption: whether this is the pre-existing throttle the record
+describes, or a regression introduced by #49/#50's four swings.** The swings touched amp sensor register values
+(op37/52/53, op182 x4), spawn rates and the death threshold — none of which gate op22 — so pre-existing is the
+likely reading, but likely is not established, and the flattering version is the one to distrust.
+
+**Attempt 2 targets the meta-influence layer instead** — 116 genes whose ablation verifiably bites (metaMag
+38-43 -> 0.03 confirmed in the pre-#50 run), so it structurally cannot come back hollow. Same question, answerable
+target. Pre-#50 baseline to beat: effect -0.036, sd 0.054, never beneficial in any seed, INCONCLUSIVE. Under a
+saturated currency that verdict was unfalsifiable in one direction — an intact arm 0.03 from the ceiling had no
+room to express a benefit. It does now.
