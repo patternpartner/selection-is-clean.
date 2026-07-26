@@ -4006,3 +4006,53 @@ proposal to delete these subsystems from index.html** — the same discipline th
 measurement on the rig is not a licence to change the artwork. What it licenses is the next measurement, and it
 names it: strip further (which layer is next-most costly), and confirm at n=10 before anything structural is
 built on it.
+
+### THE MARGINAL SWEEP — there IS no next-most-costly layer. Subtraction stops paying after meta+bank.
+
+The subtraction test found meta and bank impose almost exactly additive costs and I wrote that this "predicts
+further subtraction keeps paying." **That prediction is now refuted.** Seven subsystems stripped one at a time ON
+TOP of meta+bank (so the number is MARGINAL cost against the already-stripped 13.83-kinds baseline), 5 seeds,
+20000 ticks, 35 runs, **0 loop errors and 0 driver errors in all thirty-five**.
+
+| subsystem | mean Δkinds | sd | clears own noise | Δpop | max amp | per-seed Δ |
+|---|---|---|---|---|---|---|
+| learn (selfLearnFromBest) | **−1.514** | 1.317 | **YES** | −43 | 2.8 | −1.9 0.0 0.0 −3.3 −2.4 |
+| decide (decideFromRealWinner) | −1.429 | 1.525 | no | −30 | **956.1** | −3.4 −0.1 −2.6 −1.7 +0.7 |
+| niche (applyNicheEconomy) | −1.086 | 1.824 | no | −29 | 1.8 | +0.9 −1.0 +1.0 −3.3 −3.0 |
+| credit (applyCreditAssignment) | **+0.000** | 0.000 | — | +0 | 3.1 | 0 0 0 0 0 |
+| alien (runAlienPrediction) | **+0.000** | 0.000 | — | +0 | 3.1 | 0 0 0 0 0 |
+| reflex (updateClusterReflex) | **+0.000** | 0.000 | — | +0 | 3.1 | 0 0 0 0 0 |
+| shadow (runShadowSim) | +0.171 | 0.343 | no | +1 | 3.0 | 0 0 0 0 +0.9 |
+
+**The answer to "which layer is next-most costly" is: none of them.** Every remaining subsystem is either exactly
+inert or LOAD-BEARING (negative Δ = removing it hurts). Not one is a marginal tax. The accretion is not uniformly
+costly — it is two taxes (meta, bank), four inert layers, and three pieces holding the system together.
+
+**Three subsystems are EXACTLY zero — sd 0.000, all five seeds.** credit, alien and reflex fire and have literally
+no downstream consequence. Verified as real ablations, not skipped patches: a diagnostic counted the early-return
+firing 14x (shadow) and 33x (reflex) per 2000 ticks. They are called, they are skipped, and the trajectory does not
+move by a single bin. Note also that if runShadowSim consumed ANY rng, skipping it would shift the shared stream
+and force divergence — bit-identical output means it consumes none and reaches nothing.
+
+**REFLEX: a recorded null CONFIRMED rather than overturned.** The confabulation assay convicted the cluster reflex
+as "the deepest ornament yet" on bit-identical ablation evidence — but that was measured through the clamp, and
+the clamp has now been shown to return bit-identity for a causally live subsystem (the gen83 bank: 5/5 identical
+clamped, 0/5 on the rig). Reflex was retested on the rig and is STILL exactly 0.000 in all five seeds. That
+verdict was right, and right for the right reasons. The apparatus fix overturned the bank null and confirmed this
+one — which is what a working instrument is supposed to do, and is the strongest available evidence that the rig
+is not simply manufacturing effects.
+
+**learn is the only entry clearing its own noise bar, and it is NEGATIVE.** selfLearnFromBest — the path by which
+the population's best discovery flows back into the reflective baseline — costs 1.514 kinds when removed. After a
+session in which almost every measured mechanism turned out to be a tax or inert, this is the first subsystem
+measured as genuinely load-bearing FOR DIVERSITY.
+
+**decide carries a stability role, visible in the amp column.** Strip decideFromRealWinner and mean amplitude runs
+to 956 against a ~2.9 baseline. Mechanistically exactly what #44's design implies: it steps the self's physics
+toward the realized population winner, and without it the reflective baseline's physics drifts unchecked. Its
+Δkinds does not clear noise, but the amp blowup is unambiguous and is its own finding.
+
+**What this settles about the subtraction thesis.** "The accretion itself is the load" was too strong, and I
+proposed it. The accurate version is narrower: the meta-influence layer and the authored-atom bank are taxes worth
+~2.8 kinds between them; most of the rest of the machinery is inert; and a small number of subsystems are doing
+real work. A map, not a verdict — and it says where any future pruning should and should not go.
