@@ -760,6 +760,56 @@ const XENO_HAZARD=0.30;             // inhibitor deposited with it — foreign m
 const RETENTION_WEIGHT=0.22;        // share of the fitness signal given to descent depth
 let deepestLineage=0;               // max budCount observed among living lineages, EMA-smoothed below
 let retentionScore=0;
+// ═══════════════════════════════════════════════════════════════════════════════════════
+// SECOND WAVE (#52) — five more. #51 gave this world a life cycle: birth, ageing, death, descent
+// (singleton fraction 0.77 -> 0.37, largest lineage 36 -> 89, and it grew visible colonies). That
+// created lineages that persist. This wave gives those lineages the five things they still cannot do:
+// SPLIT, INVENT, EXPAND INTO, PAY FOR THEMSELVES, and RECOMBINE ACROSS.
+// ═══════════════════════════════════════════════════════════════════════════════════════
+
+// LEAP 6 — SPECIATION BY DIVERGENCE. The record states it outright: "a new pLin id can only be minted
+// by a PARENTLESS spawn — parented births inherit the parent's id — so divergence-speciation is 0 by
+// construction." Lineages could never SPLIT. Radiation was structurally impossible, which is a large
+// part of why cumKinds froze at 26 for 140k ticks: the only way to get a new lineage was to be handed
+// one by the world, and #51 just closed that tap. Now an offspring that has drifted far enough from its
+// parent in trait space founds its own lineage, registered as a CHILD of the parent's. Descent can fork.
+const SPECIATE_DIST=0.55;           // trait-space distance from parent that founds a new lineage
+const SPECIATE_MIN_AGE=400;         // parent lineage must be established before it can throw daughters
+
+// LEAP 7 — LIGHT THE CALL SITE. The atom pipeline's chain is birth -> bind -> wire a call-site ->
+// execute, and it has always died at the last link: measured this session, a 45k-tick authoring run
+// produced 3 atoms, 3 bound, uses=0. Born, bound, never called. The existing fix splices op22 into the
+// GERMLINE program, but the living population runs pProg, so the splice never reaches anything that
+// executes. Now a bound atom is spliced into LIVING programs too. This is the layer the whole
+// open-endedness thesis rests on and it has never once run.
+const ATOM_WIRE_RATE=0.02;          // per-cycle chance a living program gets an atom call-site spliced in
+
+// LEAP 8 — UNBOUND THE NICHE SPACE. tend is hard-clamped to +/-1.2 everywhere, so trait space is finite,
+// so the number of distinguishable niches is finite, so coexistence is capped by limiting similarity no
+// matter what else is built. Swing #11 diagnosed exactly this ("bounded trait space => <=16 channels =>
+// still a FINITE niche count") and every swing since redistributed a fixed niche count. The bound now
+// behaves like #51's amp line: crossing it is allowed but costs amplitude, so a lineage can push into
+// genuinely new trait territory if it can pay. The niche space stops being a box.
+const TEND_SOFT=1.2;                // the historical wall, now a toll booth
+const TEND_HARD=3.0;                // absolute bound retained for numerical safety
+const TEND_TOLL=0.010;              // amp charged per tick per unit beyond the soft line
+
+// LEAP 9 — EVERYTHING COSTS. The one mechanism in this codebase that ever produced real self-organised
+// structure is metabolic: amp[i] -= nInst*metabolicCost made opcodes concentrate onto a 5-op core with
+// no pruner at all. The meta-influence layer inflates unchecked precisely because its coefficients cost
+// NOTHING (measured: 1472 atrophy cuts fired and the layer still grew 4-5x). The atrophy machinery that
+// judges is losing; the pressure that charges wins. So carried machinery is now billed at the same
+// per-unit economy instructions already pay. STRUCTURAL, not a gene — a self-cost gene gets evolved to
+// zero to dodge the bill while keeping the bloat.
+const CARRY_COST_META=0.0000009;    // amp/tick per unit of summed meta-influence magnitude
+const CARRY_COST_ATOM=0.0000040;    // amp/tick per carried atom in the bank
+
+// LEAP 10 — HYBRIDISATION. Crossover is gated to within-lineage whenever isolation is on, so once
+// lineages exist they can never exchange anything. Real radiations are punctuated by hybridisation, and
+// this world now has genuine lineages (11 alive of 777 ever) for the first time — so cross-lineage gene
+// flow becomes possible, rare, and costly enough to stay rare. A hybrid inherits a program spliced from
+// two distinct evolutionary histories, which is a novelty source no amount of point mutation supplies.
+const HYBRID_RATE=0.035;            // chance a cross-lineage pairing exchanges program material anyway
 let worldEnergy=WORLD_ENERGY_MAX;
 let energyAdequacy=1;               // fraction of this tick's metabolic demand the pool could meet
 // NEGATIVE FREQUENCY-DEPENDENCE — the engine of novelty. Without it, selection is purely
@@ -10477,6 +10527,29 @@ function collectClusterUpstream(){
   }
 }
 
+// LEAP 7 (#52) — the atom pipeline has always died at its last link. Birth works, binding works, and
+// then uses stays 0 because the call-site splice only ever reached the GERMLINE program while the living
+// population executes pProg. Measured this session: 45k ticks of authoring produced 3 atoms, 3 bound,
+// uses=0. Born, bound, never called. This wires a call-site into a LIVING program, so authored atoms
+// finally get executed and can be judged by selection instead of dying unexpressed.
+function wireAtomCallSites(){
+  try{
+    const uas=genome.userAtoms;
+    if(!uas||!uas.length)return;
+    for(let i=0;i<N;i++){
+      if(!palive[i]||!pProg[i])continue;
+      if(Math.random()>ATOM_WIRE_RATE)continue;
+      const pr=pProg[i];
+      let has=false; for(let q=0;q<pr.length;q++) if(pr[q][0]===22){has=true;break;}
+      if(has)continue;
+      const cap=Math.min((genome.vmMaxInstructions||16),48);
+      const inst=[22,(Math.random()*12)|0,(Math.random()*12)|0,(Math.random()*uas.length)|0];
+      if(pr.length<cap) pr.splice((Math.random()*(pr.length+1))|0,0,inst);
+      else pr[(Math.random()*pr.length)|0]=inst;
+    }
+  }catch(e){}
+}
+
 function mutateGenome(){
   // Pe22b: substrate physics — defensive defaults for old genomes
   // (the actual mutation happens further down, after `rate` and `maybe` exist)
@@ -12043,14 +12116,31 @@ function addParticle(x,y,tv,born,parentA,parentB){
   pType[i]=(parentA>=0&&parentA<N)
     ? ((Math.random()<(genome.typeMutRate||0))?((Math.random()*NUM_TYPES)|0):pType[parentA])
     : ((Math.random()*NUM_TYPES)|0);
-  pLin[i]=(parentA>=0&&parentA<N)?pLin[parentA]:(_linNext++); // heritable lineage tag follows descent
+  // LEAP 6 (#52) — descent can FORK. An offspring far enough from its parent in trait space founds its
+  // own lineage, registered as a child of the parent's. Before this, divergence-speciation was 0 by
+  // construction and the only source of new lineages was the world handing out free founders.
+  pLin[i]=(parentA>=0&&parentA<N)?pLin[parentA]:(_linNext++);
+  if(parentA>=0&&parentA<N&&tv){
+    let _d2=0; for(let _sd=0;_sd<DIMS;_sd++){const _dv=(tv[_sd]||0)-tend[parentA*DIMS+_sd]; _d2+=_dv*_dv;}
+    if(_d2>SPECIATE_DIST*SPECIATE_DIST){
+      try{
+        const _pe=lineageRegistry.get(pLin[parentA]);
+        if(_pe&&!_pe.extinct&&(genome.totalTicks-_pe.birthTick)>SPECIATE_MIN_AGE){
+          const _new=createLineage(pLin[parentA]);
+          if(_pe.children)_pe.children.push(_new);
+          pLin[i]=_new;
+          recordEvent('speciation',{parent:pLin[parentA]|0,child:_new|0,dist:+Math.sqrt(_d2).toFixed(3)},600);
+        }
+      }catch(e){}
+    }
+  }
   // UNLOCKED #9 FULL: this lineage's COMPLETE genome — parent's whole genome cloned + every gene
   // mutated (physics AND behavior diverge), or a fresh clone of the self for seeds. pProg aliases the
   // program so the existing VM read paths keep working unchanged.
   // Two-parent crossover: when parentB also has a genome, a 30% chance produces a genuinely
   // recombined program (prefix from A, suffix from B) rather than a pure clone-with-mutation.
   {const _bg=(parentA>=0&&parentA<N&&pGenome[parentA])?cloneGenome(pGenome[parentA]):cloneGenome(genome);
-  if(parentB>=0&&parentB<N&&pGenome[parentB]&&Math.random()<0.3&&(!__SPEC.gate||pLin[parentA]===pLin[parentB]))_bg.vmProgram=crossoverProg(_bg.vmProgram,pGenome[parentB].vmProgram); // #17: crossover is gene flow — gated to within-lineage when isolating
+  if(parentB>=0&&parentB<N&&pGenome[parentB]&&Math.random()<0.3&&(!__SPEC.gate||pLin[parentA]===pLin[parentB]||Math.random()<HYBRID_RATE) /* LEAP 10 (#52): rare cross-lineage gene flow — two distinct histories spliced, a novelty source point mutation cannot supply */)_bg.vmProgram=crossoverProg(_bg.vmProgram,pGenome[parentB].vmProgram); // #17: crossover is gene flow — gated to within-lineage when isolating
   pGenome[i]=mutateChildGenome(_bg);}
   pProg[i]=pGenome[i].vmProgram;
   return i;
@@ -12090,10 +12180,27 @@ function addCompound(x,y,nt,nvx,nvy,na,np,nf,parentA,parentB){
   pType[i]=(parentA>=0&&parentA<N)
     ? ((Math.random()<(genome.typeMutRate||0))?((Math.random()*NUM_TYPES)|0):pType[parentA])
     : ((Math.random()*NUM_TYPES)|0);
-  pLin[i]=(parentA>=0&&parentA<N)?pLin[parentA]:(_linNext++); // heritable lineage tag follows descent
+  // LEAP 6 (#52) — descent can FORK. An offspring far enough from its parent in trait space founds its
+  // own lineage, registered as a child of the parent's. Before this, divergence-speciation was 0 by
+  // construction and the only source of new lineages was the world handing out free founders.
+  pLin[i]=(parentA>=0&&parentA<N)?pLin[parentA]:(_linNext++);
+  if(parentA>=0&&parentA<N&&nt){
+    let _d2=0; for(let _sd=0;_sd<DIMS;_sd++){const _dv=(nt[_sd]||0)-tend[parentA*DIMS+_sd]; _d2+=_dv*_dv;}
+    if(_d2>SPECIATE_DIST*SPECIATE_DIST){
+      try{
+        const _pe=lineageRegistry.get(pLin[parentA]);
+        if(_pe&&!_pe.extinct&&(genome.totalTicks-_pe.birthTick)>SPECIATE_MIN_AGE){
+          const _new=createLineage(pLin[parentA]);
+          if(_pe.children)_pe.children.push(_new);
+          pLin[i]=_new;
+          recordEvent('speciation',{parent:pLin[parentA]|0,child:_new|0,dist:+Math.sqrt(_d2).toFixed(3)},600);
+        }
+      }catch(e){}
+    }
+  }
   // UNLOCKED #9 FULL + two-parent crossover: compound child also crosses A×B programs.
   {const _bg=(parentA>=0&&parentA<N&&pGenome[parentA])?cloneGenome(pGenome[parentA]):cloneGenome(genome);
-  if(parentB>=0&&parentB<N&&pGenome[parentB]&&Math.random()<0.3&&(!__SPEC.gate||pLin[parentA]===pLin[parentB]))_bg.vmProgram=crossoverProg(_bg.vmProgram,pGenome[parentB].vmProgram); // #17: within-lineage gene flow only when isolating
+  if(parentB>=0&&parentB<N&&pGenome[parentB]&&Math.random()<0.3&&(!__SPEC.gate||pLin[parentA]===pLin[parentB]||Math.random()<HYBRID_RATE) /* LEAP 10 (#52): rare cross-lineage gene flow — two distinct histories spliced, a novelty source point mutation cannot supply */)_bg.vmProgram=crossoverProg(_bg.vmProgram,pGenome[parentB].vmProgram); // #17: within-lineage gene flow only when isolating
   pGenome[i]=mutateChildGenome(_bg);}
   pProg[i]=pGenome[i].vmProgram;
   return i;
@@ -12153,6 +12260,14 @@ function applyEntropy(){
     try{
       amp[i]-=genome.entropyBaseline;
       amp[i]-=densityCost;
+      // LEAP 9 (#52) — carried machinery is billed at the same economy instructions already pay. The
+      // meta layer inflated 4-5x THROUGH 1472 atrophy cuts because its coefficients were free; the
+      // opcode layer concentrated onto a 5-op core with no pruner because instructions cost amp. This
+      // charges the bloat rather than judging it, which is the pressure that demonstrably works here.
+      {const _mm=genome.__metaMag;
+       if(_mm!==undefined&&_mm>0)amp[i]-=_mm*CARRY_COST_META;
+       const _ab=genome.userAtoms?genome.userAtoms.length:0;
+       if(_ab>0)amp[i]-=_ab*CARRY_COST_ATOM;}
       amp[i]+=localRes[i]*genome.entropyK;
       {const _txi=__cl(Math.floor(px[i]/(W/FIELD_W)),0,FIELD_W-1),_tyi=__cl(Math.floor(py[i]/(H/FIELD_H)),0,FIELD_H-1),_tox=inhibitorField[_tyi*FIELD_W+_txi];if(_tox>0.05){const _dmg=_tox*Math.max(0,1-pResistance[i])*0.018;amp[i]-=_dmg;}pResistance[i]*=0.997;} // INHIBITOR DAMAGE + RESISTANCE DECAY: inhibitor deals up to 1.8% amp/tick at zero resistance; resistance decays 0.3%/tick — must be actively maintained via RESISTANCE_BOOST (op215)
       if(energyAdequacy<1)amp[i]-=(1-energyAdequacy)*STARVE_DRAIN; // starvation: the world couldn't feed everyone this tick
@@ -17180,7 +17295,19 @@ function updateParticles(){
     const affinity=fieldAffinity(lfIdx,getParticleSig(i));
     localRes[i]+=localField*(pGenome[i]?pGenome[i].fieldInfluence:genome.fieldInfluence)*affinity; // per-lineage field coupling: each lineage's evolved fieldInfluence now governs its own resource harvest
     amp[i]+=localField*0.0008*affinity;
-    {const _tm=(typeof globalThis!=='undefined'&&globalThis.__TEND_MUT)?+globalThis.__TEND_MUT:1; for(let d=0;d<DIMS;d++){tend[i*DIMS+d]+=(Math.random()-0.5)*0.001*_tm;const v=tend[i*DIMS+d];if(v>1.2)tend[i*DIMS+d]=1.2;if(v<-1.2)tend[i*DIMS+d]=-1.2}} // __TEND_MUT scales diet-axis exploration (retention test)
+    // LEAP 8 (#52) — the trait wall is a toll booth. Beyond TEND_SOFT a particle keeps drifting but pays
+    // amplitude for the distance, so genuinely new niche territory is reachable at a price instead of
+    // being unreachable at any price. This is the bound swing #11 identified as the real ceiling.
+    {const _tm=(typeof globalThis!=='undefined'&&globalThis.__TEND_MUT)?+globalThis.__TEND_MUT:1;
+     let _over=0;
+     for(let d=0;d<DIMS;d++){
+       tend[i*DIMS+d]+=(Math.random()-0.5)*0.001*_tm;
+       let v=tend[i*DIMS+d];
+       if(v>TEND_HARD)v=TEND_HARD; else if(v<-TEND_HARD)v=-TEND_HARD;
+       tend[i*DIMS+d]=v;
+       const a=v<0?-v:v; if(a>TEND_SOFT)_over+=a-TEND_SOFT;
+     }
+     if(_over>0)amp[i]-=_over*TEND_TOLL;} // __TEND_MUT scales diet-axis exploration (retention test)
     const absencePeriod=ABSENCE_BASE+Math.sin(tick*0.0007)*180+(Math.sin(tick*0.00031)*90)|0;
     const cyclePos=tick%Math.max(200,absencePeriod);
     const isAbsent=cyclePos>(Math.max(200,absencePeriod)*(1-ABSENCE_DUTY));
@@ -18836,6 +18963,11 @@ function loop(){
     selfModel.population=alive;
 
     selfModel.avgAmplitude=alive>0?totalAmp/alive:0;
+    // LEAP 9 (#52) — measure the machinery the population is carrying, so it can be billed for it.
+    try{ let _mm=0;
+      if(typeof ATROPHY_SAFE!=='undefined')for(const _p of ATROPHY_SAFE){const _v=genome[_p]; if(isFinite(_v))_mm+=_v<0?-_v:_v;}
+      genome.__metaMag=_mm;
+    }catch(e){ genome.__metaMag=0; }
     selfModel.avgResonance=alive>0?totalRes/alive:0;
     // Pe128 Layer 117: spatial spread — 2D std dev of particle positions, normalized.
     if(alive>1){const _mX=_sumX128/alive,_mY=_sumY128/alive;const _vX=_sumX2128/alive-_mX*_mX,_vY=_sumY2128/alive-_mY*_mY;selfModel.spatialSpread=Math.sqrt(Math.max(0,_vX+_vY))/Math.sqrt(W*W+H*H);}
@@ -21015,6 +21147,7 @@ function loop(){
   }
   if(birthQueue.length>20)birthQueue.length=0;
   if(tick%45===0)compact();
+  if(tick%120===0)wireAtomCallSites(); // LEAP 7 (#52): authored atoms reach living programs
   NprevTick=N; // Pe87: snapshot N for POPULATION_RATE next tick
   }catch(e){
     console.error('Loop error:',e.message,e.stack);
