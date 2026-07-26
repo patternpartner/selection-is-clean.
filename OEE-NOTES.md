@@ -4056,3 +4056,56 @@ toward the realized population winner, and without it the reflective baseline's 
 proposed it. The accurate version is narrower: the meta-influence layer and the authored-atom bank are taxes worth
 ~2.8 kinds between them; most of the rest of the machinery is inert; and a small number of subsystems are doing
 real work. A map, not a verdict — and it says where any future pruning should and should not go.
+
+### THE SIGN REVERSES — the "taxes" are rig-specific. In the artwork's own economy the machinery is LOAD-BEARING.
+
+Every subtraction finding so far lived on the #49/#50 rig — a build already recommended against deploying. So
+the meta+bank tax was a true statement about a system the user does not run. This closes that gap, and the answer
+overturns my own thesis.
+
+Same arms (STRIP=none vs both), same gen83 genome, same 5 seeds, same 20000 ticks, `INDEX=` pointed at the
+pre-#49 clamped build (d6febcb:index.html) — i.e. the economy the live artwork runs.
+
+| seed | none kinds | both kinds | Δ |
+|---|---|---|---|
+| 7 | 14.00 | 14.14 | +0.14 |
+| 11 | 16.00 | 14.43 | −1.57 |
+| 13 | 15.00 | 14.14 | −0.86 |
+| 17 | 15.71 | 13.14 | −2.57 |
+| 19 | 13.57 | 12.14 | −1.43 |
+
+**CLAMPED: Δkinds −1.257, sd 0.892, CLEARS ITS NOISE BAR, worse in 4/5 seeds.**
+**RIG: Δkinds +2.771, sd 2.218, clears, better in 4/5 seeds.**
+
+Same intervention, same bank, same seeds — **opposite sign, both clearing noise.** (amp reads exactly 1.200 in
+all ten clamped arms, the clamp pinning everything as expected.)
+
+**MY EXPLANATION FOR THE ORIGINAL NULL WAS WRONG.** I wrote that the clamp SEVERS the causal path
+(meta-genes -> amp -> reproduction -> which lineages persist -> kinds), so a diversity effect could not form.
+It forms. It is not invisible under the clamp — it is REVERSED and it clears noise, which is a stronger effect
+than the one I claimed was absent. That explanation should be read as retracted.
+
+**The reading the data supports, and it is more generous to this project than my subtraction thesis.** In a
+saturated economy selection is WEAK — every lineage has near-identical reproductive success — so diversity has to
+be maintained by generative machinery, and removing the meta layer and the authored-atom bank costs ~1.3 kinds.
+On the rig selection is STRONG, and the same machinery becomes a net cost of ~2.8 kinds. **The value of these
+subsystems is not a property of the subsystems. It is a property of the subsystem-economy PAIR.** The 48 swings
+of accreted machinery were not irrational: they are fitted to the economy the project actually runs, where weak
+selection makes generative mechanism the thing that holds diversity up.
+
+**BEARING — the practical output of this whole arc, stated plainly.**
+  1. **Do NOT prune meta or bank from the live artwork.** In its economy they are load-bearing, measured, 4/5
+     seeds, clearing noise. The subtraction result does not transfer.
+  2. **Do NOT deploy #49/#50** — already established separately (boom-bust, no diversity gain, #48's branch 4).
+  3. The rig remains valid as an INSTRUMENT (it overturned the bank null and confirmed the reflex null), but
+     every verdict it produces is a verdict about the rig's economy, and must be re-tested against the clamped
+     build before it can touch the artwork. That re-test is cheap — `INDEX=` — and it is now mandatory, not
+     optional. This result is the reason why.
+  4. The carry-cost decision, which I said earlier should be re-opened on the strength of the rig result, should
+     NOT be. On the clamped build the meta layer earns its keep.
+
+**The methodological lesson, which is the assay's own lesson one level up.** The confabulation assay was built to
+catch claims whose correspondence to mechanism was never checked. This session built a better instrument, and
+then I generalised its readings to a system that instrument does not describe — asserting a property of
+subsystems that was really a property of subsystems-under-a-specific-physics. Same error class, committed with
+better tools. The check that caught it cost one env var and ten runs, and existed the whole time.
