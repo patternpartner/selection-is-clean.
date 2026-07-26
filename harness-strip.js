@@ -142,7 +142,12 @@ const driver=`
   function sample(){ let alive=0,ampSum=0; const bc={}; for(let i=0;i<N;i++){ if(!palive[i])continue; alive++; ampSum+=amp[i]; const b=__binOf(i); bc[b]=(bc[b]||0)+1; }
     const __lin=(function(){try{const h={};let n=0;for(let i=0;i<N;i++){if(!palive[i])continue;n++;h[pLin[i]]=(h[pLin[i]]||0)+1;}
       const sz=Object.values(h).sort((a,b)=>b-a);
-      return {alive:n,nLin:sz.length,top:sz.slice(0,3),singles:sz.filter(x=>x===1).length};}catch(e){return null;}})();
+      const singles=sz.filter(x=>x===1).length;
+      const inMulti=sz.filter(x=>x>1).reduce((a,b)=>a+b,0);
+      return {alive:n,nLin:sz.length,top:sz.slice(0,3),singles,
+              singleFrac:n?+(singles/n).toFixed(3):0,          // share of POPULATION that is its own lineage
+              multiFrac:n?+(inMulti/n).toFixed(3):0,           // share living in a lineage with >1 member
+              maxLin:sz[0]||0, meanLin:sz.length?+(n/sz.length).toFixed(2):0};}catch(e){return null;}})();
     const __pur=(function(){try{return __purity(__binOf,(i)=>(typeof pLin!=='undefined'?pLin[i]:0),N);}catch(e){return{p:0,pn:0,ex:0,owned:0,ownedNull:0};}})(); globalThis.__samples.push({tick:(typeof tick!=='undefined'?tick:-1),N:alive,meanAmp:+(alive?ampSum/alive:0).toFixed(4),kinds:Object.keys(bc).length,lin:__lin,purity:__pur.p,purityNull:__pur.pn,purityExcess:__pur.ex,owned:__pur.owned,ownedNull:__pur.ownedNull,uaUses:(function(){try{let u=0,n=0;for(const a of (genome.userAtoms||[])){u+=(a.uses|0);if((a.uses|0)>0)n++;}return u+'/'+n;}catch(e){return '?';}})()}); }
   globalThis.__run=function(n,every){ sample(); for(let s=0;s<n;s++){ globalThis.__detMs+=5; try{loop();}catch(e){globalThis.__driverErr=(globalThis.__driverErr||0)+1;} if((s+1)%every===0)sample(); } };
   globalThis.__metaMag=function(){ // sum of |ATROPHY_SAFE params| on the self — to confirm ablation actually zeroed it
