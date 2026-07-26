@@ -33,6 +33,21 @@ const STRIP = (process.env.STRIP || (process.env.ABLATE_META === '1' ? 'meta' : 
 if(!['none','meta','bank','both'].includes(STRIP)){ console.log(JSON.stringify({error:'STRIP must be none|meta|bank|both'})); process.exit(1); }
 const ABLATE = (STRIP === 'meta' || STRIP === 'both');       // zero the 116 meta-influence genes
 const ABLATE_BANK = (STRIP === 'bank' || STRIP === 'both');  // pin every authored atom to constant 0
+// EXTRA=<name>: strip one further subsystem ON TOP of the current arm, so the measurement is the MARGINAL
+// cost of that subsystem against an already-stripped baseline — which is the question the additive result
+// posed. Each is a single verified-unique chokepoint at a function entry; the function still gets CALLED
+// (so a dead call-path cannot masquerade as a cheap layer), it just returns before doing anything.
+const EXTRA = (process.env.EXTRA || 'none').toLowerCase();
+const EXTRA_TARGETS = {
+  shadow:  ['function runShadowSim(){',          'function runShadowSim(){ if(globalThis.__x)return;'],
+  credit:  ['function applyCreditAssignment(){', 'function applyCreditAssignment(){ if(globalThis.__x)return;'],
+  alien:   ['function runAlienPrediction(){',    'function runAlienPrediction(){ if(globalThis.__x)return;'],
+  reflex:  ['function updateClusterReflex(){',   'function updateClusterReflex(){ if(globalThis.__x)return;'],
+  learn:   ['function selfLearnFromBest(){',     'function selfLearnFromBest(){ if(globalThis.__x)return;'],
+  decide:  ['function decideFromRealWinner(){',  'function decideFromRealWinner(){ if(globalThis.__x)return;'],
+  niche:   ['function applyNicheEconomy(){',     'function applyNicheEconomy(){ if(globalThis.__x)return;'],
+};
+if(EXTRA!=='none' && !EXTRA_TARGETS[EXTRA]){ console.log(JSON.stringify({error:'EXTRA must be none|'+Object.keys(EXTRA_TARGETS).join('|')})); process.exit(1); }
 
 function selfProxy(){const f=function(){return p;};const p=new Proxy(f,{get(_t,prop){if(prop===Symbol.toPrimitive)return()=>0;if(prop==='width'||prop==='height')return 0;if(prop==='data')return new Uint8ClampedArray(4);return p;},apply(){return p;}});return p;}
 const CTX=selfProxy();
@@ -83,9 +98,14 @@ if(ABLATE_BANK){
     'bank-zero');
 }
 
+if(EXTRA!=='none'){
+  const [find,repl]=EXTRA_TARGETS[EXTRA];
+  patchOnce(find, repl, 'extra-'+EXTRA);
+}
+
 const driver=`
 ;(function(){
-  globalThis.__stripBank=${ABLATE_BANK};
+  globalThis.__stripBank=${ABLATE_BANK}; globalThis.__x=${EXTRA!=='none'};
   function __binOf(i){ if(typeof tendBin==='function'){try{return tendBin(i);}catch(e){}} const b=i*DIMS;let r=0;for(let d=0;d<3&&d<DIMS;d++){let q=((tend[b+d]+1.2)/2.4*4)|0;q=q<0?0:q>3?3:q;r=r*4+q;}return r; }
   globalThis.__samples=[];
   function sample(){ let alive=0,ampSum=0; const bc={}; for(let i=0;i<N;i++){ if(!palive[i])continue; alive++; ampSum+=amp[i]; const b=__binOf(i); bc[b]=(bc[b]||0)+1; } globalThis.__samples.push({tick:(typeof tick!=='undefined'?tick:-1),N:alive,meanAmp:+(alive?ampSum/alive:0).toFixed(4),kinds:Object.keys(bc).length,uaUses:(function(){try{let u=0,n=0;for(const a of (genome.userAtoms||[])){u+=(a.uses|0);if((a.uses|0)>0)n++;}return u+'/'+n;}catch(e){return '?';}})()}); }
@@ -101,5 +121,5 @@ globalThis.__run(TICKS,1000);
 const S=globalThis.__samples;
 const t2=Math.floor(2*S.length/3);
 function lateMean(k){let s=0,c=0;for(let i=t2;i<S.length;i++){const v=S[i][k];if(typeof v==='number'){s+=v;c++;}}return c?+(s/c).toFixed(4):0;}
-console.log(JSON.stringify({ strip:STRIP, ablated:ABLATE, ablatedBank:ABLATE_BANK, seed:process.env.SEED||null, loopErrors, lastErr, driverErr:globalThis.__driverErr||0,
+console.log(JSON.stringify({ strip:STRIP, extra:EXTRA, ablated:ABLATE, ablatedBank:ABLATE_BANK, seed:process.env.SEED||null, loopErrors, lastErr, driverErr:globalThis.__driverErr||0,
   metaMag:globalThis.__metaMag(), lateMeanAmp:lateMean('meanAmp'), lateN:lateMean('N'), lateKinds:lateMean('kinds'), finalSample:S[S.length-1] }));
