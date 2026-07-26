@@ -4109,3 +4109,58 @@ catch claims whose correspondence to mechanism was never checked. This session b
 then I generalised its readings to a system that instrument does not describe — asserting a property of
 subsystems that was really a property of subsystems-under-a-specific-physics. Same error class, committed with
 better tools. The check that caught it cost one env var and ten runs, and existed the whole time.
+
+### #51 + #52 — TEN LEAPS, VERIFIED. The freeze is broken, descent is dominant, and the atom pipeline FIRED.
+
+Built as two waves of five, on a clean base — my own #49-#50c economy work was REVERTED first, because it
+was measured bad for the artwork and keeping it would have been sentiment rather than learning. Every leap
+follows from a number in this file.
+
+**Wave 1 (#51) — the life cycle.** Senescence (heritable lifespanBias), descent-or-death (reseeding is
+emergency-only), surplus converts (the 1.2 clamp becomes a lossy conversion into inheritable reproductive
+provision), the boundary bites (absorbed peer material deposits real resource and real hazard), retention
+in fitness (lineage depth and persistence at weight 0.22).
+
+**Wave 2 (#52) — what lineages can then do.** Speciation by divergence (previously 0 BY CONSTRUCTION),
+atom call-sites wired into LIVING programs, the trait wall becomes a toll, carried machinery is billed at
+the metabolic economy, rare cross-lineage hybridisation.
+
+**MEASURED (fresh boot, 6000 ticks, 0 loop errors and 0 driver errors):**
+
+| | original (frozen) | after #51 | after #52 |
+|---|---|---|---|
+| singleton fraction | 0.770–0.796 | 0.374 | **0.081** |
+| in a multi-member lineage | ~0.21 | 0.626 | **0.919** |
+| largest lineage | 12–36 | 89 | **146** |
+| mean lineage size | 1.21–1.25 | 2.38 | **6.30** |
+| living lineages | ~400 | 155 | **53** |
+| authored-atom uses | 0 | 0 | **162 (1 proven)** |
+
+**THE ATOM PIPELINE FIRED.** The GENERATIVE-LAYER MAP recorded "authored atoms 0->0 INERT — 1 birth /
+35k ticks, 0 uses ever," and this session independently reproduced it (45k authoring: 3 atoms, 3 bound,
+uses=0). The chain is birth -> bind -> wire a call-site -> execute, and it always died at the last link
+because the splice targeted the GERMLINE while the living population executes pProg. LEAP 7 wires living
+programs. 162 invocations and one proven atom in 6000 ticks. The self-extending VM — the layer this
+project's entire open-endedness thesis rests on — is executing its own authored primitives for the first
+time in the record.
+
+**LIVE (browser, 0 console errors).** It grew structures neither prior build produced: hexagonally packed
+colonies (close-packed lattice, not loose clustering) and yellow FILAMENTS spanning between organisms,
+including a branched three-way junction. Connective structure between individuals is new. Panel reads
+16 alive / 692 total with lineages of visibly different ages coexisting (L654 55p age:124c alongside 4-bud
+juveniles), and the metabolism role reads BLOOM — the trophic differentiation previously seen only in the
+live multi-tab pool now appearing in a single instance.
+
+**A REAL BUG, caught before commit.** The first #52 run threw 1516 loop errors: the speciation block read
+`tv`, which is addParticle's parameter name, while addCompound calls the same vector `nt`. Two spawn
+paths, one identifier. Fixed and re-run clean. Committed the wave with verification status stated as
+pending rather than implied, and the numbers followed.
+
+**THE NUMBER TO WATCH, named now rather than after it goes wrong.** occupiedKinds fell 14–16 -> 10.5 ->
+**9** across the two waves. That is the predicted signature of selection pruning drift-occupied bins —
+kinds SHOULD fall when churn is replaced by descent, and this file has established that occupiedKinds
+cannot distinguish the two. But it is also exactly what consolidation into a single dynasty looks like
+from outside. maxLin climbing (36 -> 89 -> 146) while nLin falls (400 -> 155 -> 53) is consistent with
+BOTH readings. Speciation (#6) and the niche toll (#8) are the counterweights and 6000 ticks is early for
+radiation. **The falsifier: if at 50k+ kinds keeps sliding while maxLin keeps climbing and speciation
+events stay rare, wave 2 has overshot into monoculture and #6/#8 need strengthening — not more leaps.**
