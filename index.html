@@ -202,6 +202,26 @@ function networkBroadcast(){
   }
 }
 
+// LEAP 4 (#51) — THE BOUNDARY BITES. Absorbed peer material used to be passive cargo: counted, applied,
+// and otherwise inert. But the strongest open-endedness signal this project has produced came from the
+// coupling channel (a pump lineage feeding a bloom to 457 particles and 7 buds over 47k live ticks), and
+// the record says four separate times that the causal action lives at the open boundary. So foreign
+// matter is now a FORCE in the world it lands in: it deposits genuine resource where it arrives, and
+// genuine inhibitor around it. Openness becomes something to be exploited or survived — a selective
+// gradient that only exists when peers are present — instead of decoration.
+function xenoImpact(sx,sy){
+  try{
+    const fx=__cl(Math.floor(sx/(W/FIELD_W)),0,FIELD_W-1), fy=__cl(Math.floor(sy/(H/FIELD_H)),0,FIELD_H-1);
+    const fi=fy*FIELD_W+fx;
+    detritalField[fi]=Math.min(3,detritalField[fi]+XENO_RESOURCE);
+    for(let dy=-1;dy<=1;dy++)for(let dx=-1;dx<=1;dx++){
+      if(!dx&&!dy)continue;
+      const nx=__cl(fx+dx,0,FIELD_W-1), ny=__cl(fy+dy,0,FIELD_H-1);
+      inhibitorField[ny*FIELD_W+nx]=Math.min(2.5,inhibitorField[ny*FIELD_W+nx]+XENO_HAZARD*0.5);
+    }
+  }catch(e){}
+}
+
 // ═══ RECEIVE — integrate incoming packets into our population ═══
 function networkReceive(){
   const rec=genome.netReceptivity||0;
@@ -223,7 +243,7 @@ function networkReceive(){
     for(let dd=0;dd<DIMS;dd++)t[dd]=m.tend[dd]||0;
     const newIdx=addParticle(nx,ny,t,false);
     if(newIdx>=0){
-      genome.netApplied.migrant++;
+      genome.netApplied.migrant++; xenoImpact(Math.random()*W,Math.random()*H); // LEAP 4
       networkSend('applied',{kind:'migrant'}); // tell whoever's listening (possibly the original sender) that this landed
       amp[newIdx]=m.amp||0.5;
       phase[newIdx]=m.phase||0;
@@ -250,7 +270,7 @@ function networkReceive(){
     if(N===0)continue;
     const target=Math.floor(Math.random()*N);
     if(!palive[target])continue;
-    genome.netApplied.plasmid++;
+    genome.netApplied.plasmid++; xenoImpact(Math.random()*W,Math.random()*H); // LEAP 4
     networkSend('applied',{kind:'plasmid'});
     const pLen=Math.min(MAX_PLASMID,pl.length);
     pPlasmidLen[target]=pLen;
@@ -276,7 +296,7 @@ function networkReceive(){
         _motifLanded=true;
       }
     }
-    if(_motifLanded){genome.netApplied.motif++;networkSend('applied',{kind:'motif'});}
+    if(_motifLanded){genome.netApplied.motif++; xenoImpact(Math.random()*W,Math.random()*H); /* LEAP 4 */ networkSend('applied',{kind:'motif'});}
   }
   // Inscriptions — write the received cell program into a random empty cell
   while(incomingInscriptions.length>0){
@@ -502,7 +522,7 @@ function runDrawProgram(i){
   R[1]=DIMS>1?__cl((tend[i*DIMS+1]+1.2)/2.4,0,1):0.5;
   R[2]=DIMS>2?__cl((tend[i*DIMS+2]+1.2)/2.4,0,1):0.5;
   R[3]=DIMS>3?__cl((tend[i*DIMS+3]+1.2)/2.4,0,1):0.5;
-  R[4]=__cl(amp[i]/_ampCeilCached,0,1); // #49: normalised — was __cl(amp[i],0,1), i.e. pinned at 1 for any particle over unit amp (most of them)
+  R[4]=__cl(amp[i],0,1);
   R[5]=(Math.sin(ph)+1)*0.5;
   R[6]=(Math.cos(ph)+1)*0.5;
   R[7]=__cl(col,0,1);
@@ -682,130 +702,168 @@ const STARVE_DRAIN=0.04;            // max amplitude lost per tick when the worl
 // lean years dip it below metabolic demand, producing recurring scarcity the system can adapt to.
 const SEASON_PERIOD=2500;           // ticks per "year"
 const SEASON_AMPLITUDE=0.45;        // +/- swing in sunlight; lean season drives adequacy below 1
+// ═══════════════════════════════════════════════════════════════════════════════════════
+// FIVE LEAPS (#51) — committed from a session that measured this system rather than argued with it.
+// Every one follows from a number, and the numbers are in OEE-NOTES. The prior session's economy work
+// (#49-#50c) was REVERTED before building these: it was measured bad for the artwork (boom-bust, no
+// diversity gain) and keeping it would have been sentiment, not learning.
+//
+// THE FINDING THAT FORCED ALL FIVE: the closed population FREEZES. At N=500, per-particle upkeep
+// (METABOLIC_ENERGY_DRAW*500 = 0.2) exactly consumes WORLD_ENERGY_REGEN (0.2), leaving nothing to pay
+// BIRTH_ENERGY_COST — and nothing dies, because amp pins at the 1.2 clamp against a 0.04 death
+// threshold. Measured: lineage composition BIT-IDENTICAL at t20000 and t80000 (singleFrac 0.770,
+// maxLin 36, nLin 399, both samples, seed 7). Sixty thousand ticks, not one birth or death. The
+// diversity number kept drifting the whole time, because living particles' tend keeps moving — which
+// is exactly why occupiedKinds cannot tell novelty from noise. It was measuring a photograph.
+// ═══════════════════════════════════════════════════════════════════════════════════════
+
+// LEAP 1 — SENESCENCE. Nothing here has ever had to die. Mortality was purely a failure mode (amp
+// starvation), so a well-fed particle was immortal, and immortality at carrying capacity IS the freeze.
+// Age now kills, with a heritable set-point: a lineage can evolve toward long life or fast turnover, and
+// the trade-off is real because reproduction costs amplitude the old cannot keep re-earning.
+// This is the single change that turns the photograph back into a river.
+const SENESCENCE_ONSET=1800;        // ticks of life before mortality begins to bite at all
+const SENESCENCE_SCALE=0.00035;     // per-tick death hazard added per unit of (age-onset)/1000, x lifespanBias
+
+// LEAP 2 — DESCENT OR DEATH. 76% of living particles were the sole member of their lineage: the
+// population was a standing crop of unrelated founders, because replenish() mints PARENTLESS spawns and
+// a parentless spawn starts a new lineage by construction. No genealogy, so nothing heritable can be
+// selected, so no ratchet. Reseeding is now EMERGENCY ONLY. Above a small floor the population must be
+// maintained by descent or not at all.
+const RESEED_FLOOR=90;              // above this, the world stops handing out free founders
+
+// LEAP 3 — SURPLUS CONVERTS. The 1.2 clamp discards everything above it, which destroys the selection
+// differential (measured: whole-bank ablation 5/5 BIT-IDENTICAL under the clamp, 0/5 without it — the
+// clamp was erasing a causally live subsystem). But removing the clamp destabilises: two of three seeds
+// crashed to zero. Both prior attempts were wrong because both treated it as a WALL. Surplus above the
+// soft line is now BANKED as reproductive provision instead of being clipped — amp stays bounded (the
+// stability the clamp was really providing) while surplus stops being thrown away (the differential it
+// was destroying). Provision is spent at reproduction, so acquiring more than you can hold pays.
+const AMP_SOFT=1.2;                 // the historical clamp, now a conversion line rather than a ceiling
+const AMP_HARD=2.0;                 // absolute bound retained for numerical safety
+const PROVISION_CAP=6.0;            // most a particle can bank
+const PROVISION_YIELD=0.55;         // fraction of surplus that survives conversion — banking is lossy
+
+// LEAP 4 — THE BOUNDARY BITES. The record says four times that the causal action is at the open
+// boundary, and the strongest OEE signal in the whole file came from there: a pump lineage feeding a
+// bloom that reached 457 particles and 7 buds across 47k ticks. But absorbed peer material was passive
+// cargo. Now foreign material is a FORCE: what a peer sends deposits real resource where it lands and
+// real hazard around it. Openness becomes selective rather than decorative.
+const XENO_RESOURCE=0.22;           // resource deposited per absorbed packet
+const XENO_HAZARD=0.30;             // inhibitor deposited with it — foreign matter is opportunity AND risk
+
+// LEAP 5 — SELECT FOR RETENTION, NOT STANDING CROP. selfModel.diversity is a standing-crop measure and
+// the system's own fitness optimises it, which is why 48 swings pushed on a number that rewards churn.
+// Lineage depth — how far descent has actually carried — now enters fitness directly. The system starts
+// optimising for what open-endedness IS (novelty that is retained) instead of for how much noise is
+// standing around at this instant.
+const RETENTION_WEIGHT=0.22;        // share of the fitness signal given to descent depth
+let deepestLineage=0;               // max budCount observed among living lineages, EMA-smoothed below
+let retentionScore=0;
+// ═══════════════════════════════════════════════════════════════════════════════════════
+// SECOND WAVE (#52) — five more. #51 gave this world a life cycle: birth, ageing, death, descent
+// (singleton fraction 0.77 -> 0.37, largest lineage 36 -> 89, and it grew visible colonies). That
+// created lineages that persist. This wave gives those lineages the five things they still cannot do:
+// SPLIT, INVENT, EXPAND INTO, PAY FOR THEMSELVES, and RECOMBINE ACROSS.
+// ═══════════════════════════════════════════════════════════════════════════════════════
+
+// LEAP 6 — SPECIATION BY DIVERGENCE. The record states it outright: "a new pLin id can only be minted
+// by a PARENTLESS spawn — parented births inherit the parent's id — so divergence-speciation is 0 by
+// construction." Lineages could never SPLIT. Radiation was structurally impossible, which is a large
+// part of why cumKinds froze at 26 for 140k ticks: the only way to get a new lineage was to be handed
+// one by the world, and #51 just closed that tap. Now an offspring that has drifted far enough from its
+// parent in trait space founds its own lineage, registered as a CHILD of the parent's. Descent can fork.
+const SPECIATE_DIST=0.55;           // trait-space distance from parent that founds a new lineage
+const SPECIATE_MIN_AGE=400;         // parent lineage must be established before it can throw daughters
+
+// LEAP 7 — LIGHT THE CALL SITE. The atom pipeline's chain is birth -> bind -> wire a call-site ->
+// execute, and it has always died at the last link: measured this session, a 45k-tick authoring run
+// produced 3 atoms, 3 bound, uses=0. Born, bound, never called. The existing fix splices op22 into the
+// GERMLINE program, but the living population runs pProg, so the splice never reaches anything that
+// executes. Now a bound atom is spliced into LIVING programs too. This is the layer the whole
+// open-endedness thesis rests on and it has never once run.
+const ATOM_WIRE_RATE=0.02;          // per-cycle chance a living program gets an atom call-site spliced in
+
+// LEAP 8 — UNBOUND THE NICHE SPACE. tend is hard-clamped to +/-1.2 everywhere, so trait space is finite,
+// so the number of distinguishable niches is finite, so coexistence is capped by limiting similarity no
+// matter what else is built. Swing #11 diagnosed exactly this ("bounded trait space => <=16 channels =>
+// still a FINITE niche count") and every swing since redistributed a fixed niche count. The bound now
+// behaves like #51's amp line: crossing it is allowed but costs amplitude, so a lineage can push into
+// genuinely new trait territory if it can pay. The niche space stops being a box.
+const TEND_SOFT=1.2;                // the historical wall, now a toll booth
+const TEND_HARD=3.0;                // absolute bound retained for numerical safety
+const TEND_TOLL=0.010;              // amp charged per tick per unit beyond the soft line
+
+// LEAP 9 — EVERYTHING COSTS. The one mechanism in this codebase that ever produced real self-organised
+// structure is metabolic: amp[i] -= nInst*metabolicCost made opcodes concentrate onto a 5-op core with
+// no pruner at all. The meta-influence layer inflates unchecked precisely because its coefficients cost
+// NOTHING (measured: 1472 atrophy cuts fired and the layer still grew 4-5x). The atrophy machinery that
+// judges is losing; the pressure that charges wins. So carried machinery is now billed at the same
+// per-unit economy instructions already pay. STRUCTURAL, not a gene — a self-cost gene gets evolved to
+// zero to dodge the bill while keeping the bloat.
+const CARRY_COST_META=0.0000009;    // amp/tick per unit of summed meta-influence magnitude
+const CARRY_COST_ATOM=0.0000040;    // amp/tick per carried atom in the bank
+
+// LEAP 10 — HYBRIDISATION. Crossover is gated to within-lineage whenever isolation is on, so once
+// lineages exist they can never exchange anything. Real radiations are punctuated by hybridisation, and
+// this world now has genuine lineages (11 alive of 777 ever) for the first time — so cross-lineage gene
+// flow becomes possible, rare, and costly enough to stay rare. A hybrid inherits a program spliced from
+// two distinct evolutionary histories, which is a novelty source no amount of point mutation supplies.
+const HYBRID_RATE=0.035;            // chance a cross-lineage pairing exchanges program material anyway
+// ═══════════════════════════════════════════════════════════════════════════════════════
+// THIRD WAVE (#53) — the anti-monoculture wave, and it is a direct answer to a measured failure.
+// #51 gave the world a life cycle and it worked TOO well: at 20000 ticks, singleton fraction hit 0
+// and every particle lived in a real lineage — and occupiedKinds COLLAPSED from 14-16 to 1.71. Fifteen
+// lineages averaging 24 members, one at 115, all in the same trait space. Monoculture.
+//
+// The diagnosis is not subtle. Selection was broken for this system's whole history (nothing was born,
+// nothing died, amp pinned at the clamp), so every diversity mechanism ever built here was tuned against
+// a population that could not respond to it. Turn selection on and those mechanisms are revealed as far
+// too weak — and one of them is actively pulling the wrong way. Wave 3 makes diversity maintenance
+// strong enough to stand against real selection, which is a thing this codebase has never had to do.
+// ═══════════════════════════════════════════════════════════════════════════════════════
+
+// LEAP 11 — KILL THE HOMOGENISER. Every tick, every particle is pulled toward the population mean in
+// trait space (globalTend). Under the frozen economy that was harmless decoration; under real selection
+// it is a continuous force FOR monoculture, running against every diversity mechanism in the file. It is
+// inverted here: the pull becomes a gentle PUSH away from the mean, so the population's own centre of
+// mass repels rather than attracts. Character displacement as a standing force instead of a swing.
+const HOMOGEN_SIGN=-1.0;            // was implicitly +1 (toward the mean); now away from it
+const HOMOGEN_RATE=0.00006;         // 3x the old magnitude, opposite direction
+
+// LEAP 12 — COMPETITION BY SIMILARITY. densityCost charges for the GLOBAL population size, so a particle
+// pays the same whether its neighbours are its twins or nothing like it. That is not how coexistence
+// works: competition is strongest between similar individuals, and limiting similarity is the mechanism
+// that lets unlike things coexist. Crowding is now charged by how many nearby particles share your trait
+// bin, so being different is cheap and being the same is expensive.
+const SIMIL_COST=0.00055;           // amp/tick per same-bin neighbour within the local cell
+const SIMIL_RADIUS=1;               // grid cells scanned around self
+
+// LEAP 13 — RARITY PAYS, NON-ZERO-SUM. NFD exists at strength 0.004 and is a mean-centred TRANSFER: the
+// rare gain exactly what the common lose, which #11 proved cannot beat limiting similarity ("a zero-sum
+// tax"). Rarity now buys a genuine METABOLIC DISCOUNT — a rare type's upkeep is cheaper, full stop. That
+// is a real advantage rather than a redistribution, and it does not cancel out across the population.
+const RARITY_DISCOUNT=0.62;         // upkeep multiplier at maximum rarity (1.0 = no discount)
+
+// LEAP 14 — TROPHIC PREDATION BETWEEN LINEAGES. The Red Queen was built (#28) against a population that
+// could not die, so it could not bite. Now lineages far apart in trait space can CONSUME each other:
+// amplitude flows from prey to predator on contact. The consequence is the one that matters — dominance
+// makes you the most abundant prey, so no lineage can hold the whole board. Predation is the classic
+// answer to competitive exclusion and this world has never actually had it.
+const PREDATE_MIN_DIST=0.85;        // trait distance beyond which one lineage can eat another
+const PREDATE_RATE=0.055;           // fraction of prey amplitude transferred per encounter
+
+// LEAP 15 — GENERATIONS ADVANCE, AND THE NICHE SPACE GROWS WITH THEM. genome.generation has never moved
+// on its own: the live export read g:83 and that turned out to be the RELOAD count, while a 161k-tick run
+// stayed at generation 1. A generation is not a reload — it is the population having wholly replaced its
+// founders. That is now detected, and each real generational turnover EARNS a dimension of trait space if
+// the frontier is occupied. Niche space stops being a fixed box and becomes something descent extends:
+// the ratchet this project has been looking for since swing #11.
+const GEN_TURNOVER_FRAC=0.92;       // share of the population descended from post-founder lineages
+let genFounders=null;               // lineage ids alive at the last generational boundary
+let lastGenTick=0;
 let worldEnergy=WORLD_ENERGY_MAX;
 let energyAdequacy=1;               // fraction of this tick's metabolic demand the pool could meet
-// ═══ SWING #49: THE CURRENCY — scarcity that binds on the INDIVIDUAL, not just the headcount ═══
-// The block above is a real economy, and it works — at the POPULATION level. World energy plus
-// metabolic upkeep pins carrying capacity well below CAP, exactly as documented. What it never did
-// was create differential fitness AMONG THE LIVING, and two constants were why:
-//
-//   (1) `if(amp[i]>1.2)amp[i]=1.2` — a bare literal in the interaction loop. Measured (saturation
-//       audit, OEE-NOTES): 79-87% of living particles sit at EXACTLY that value, median and 10th
-//       percentile both on the clamp, CV collapsing to ~0.09. Acquiring more amp than the next
-//       particle bought nothing — the surplus was discarded by the clamp. Raising it 5x and
-//       re-measuring, the population re-pinned at the new ceiling but CV MORE THAN DOUBLED
-//       (0.089 -> 0.199) and p10 came off the ceiling entirely: the dispersion was always there,
-//       the clamp was throwing it away.
-//   (2) reproduction (opcode 16) was a STEP: `amp[i]>0.4 && Math.random()<0.03`. Flat 3% for
-//       everyone above the gate. 99% of the population is above that gate and 95% is above the
-//       point where a spawn's `amp*=0.5` still leaves the parent over it — so the entire live
-//       range was reproductively identical.
-//
-// Together those made amp a viability FLAG with a huge dead zone, not a currency. That is the
-// structural reason ~48 swings of mechanism kept ablating to null: 116 meta-influence genes inert
-// by the system's own attribution, a 28-atom authored bank ablating bit-identical, a cluster-reflex
-// signal firing 2M+ times unread. Not 48 failures — one failure, observed 48 times. No mechanism
-// can have fitness grip in a world where fitness does not vary.
-//
-// The fix is the pair, because either alone is inert: raising the ceiling without grading
-// reproduction just rescales a flat landscape, and grading reproduction without raising the ceiling
-// grades a population that is all at one value. Now surplus is retained (AMP_CAP) AND surplus pays
-// (proportional spawn odds).
-//
-// STRUCTURAL, deliberately NOT a gene — the atrophy probe's own lesson (OEE-NOTES): a self-benefiting
-// parameter gets evolved straight to its bound to dodge the cost it is supposed to pay. A per-lineage
-// ampCap would be raised by every lineage immediately (a commons problem), which is the wireheading
-// the world-energy comment above is careful to rule out. One authored constant replaces another.
-const AMP_CAP=6.0;                  // #49/#50: FLOOR for the effective ceiling (see ampCeiling below), and the
-                                    // ceiling outright until the first 60-tick scan populates avgAmplitude.
-// #50b: the ceiling is RELATIVE, and this is the correction the rate sweep forced. Rent alone does not hold:
-// A_eq = I/c only stands still if income I is static, and it is not — the sweep showed the mean climbing toward
-// the cap at EVERY rate tested (0.005: atCap 39->58%, CV 0.361->0.210; 0.012: 6.6->43%, 0.644->0.290; 0.020:
-// 8.4->34%, 0.808->0.391). Higher rent is monotonically better but only DELAYS it. The reason is not a
-// mis-picked constant: lineages evolve to earn more, so I(t) rises, so A_eq rises, so the fixed ceiling is
-// eventually reached whatever c is. That is adaptation outrunning a static cost, and no constant fixes it.
-//
-// So the ceiling tracks the population instead of standing still. cap = AMP_CAP_REL * mean(amp), floored at
-// AMP_CAP. This is SCALE-FREE: if every particle's income improves by a factor g, every amp scales by g, the
-// ceiling scales by g, and CV is preserved — the distribution's SHAPE survives the population getting richer,
-// which is the entire point of #50. It is also self-limiting by construction: at most a thin upper tail can sit
-// at 4x the mean, so the bulk cannot pin against it the way it pinned against 1.2 and then against 6.0.
-// Rent still sets the level (mean = I/c); the ceiling now only ever truncates outliers.
-//
-// Note the ceiling does NOT create a runaway: mean is pinned by rent, not by the ceiling, so cap = 4*I/c rises
-// only as fast as real earning power does.
-const AMP_CAP_REL=4.0;              // #50b: effective ceiling = this x mean living amp (floored at AMP_CAP)
-const AMP_CAP_HARD=1e4;             // #50b: absolute numeric guard ONLY — NaN/Inf containment, not an economic
-                                    // parameter. If this ever binds, something upstream is broken.
-// ═══ SWING #50c: the ABSOLUTE-VALUED half of selection goes relative too ═══
-// #50b made the ceiling, reproduction drive and every amp sensor relative. Two thresholds stayed absolute —
-// the death threshold (genome.deathThreshold, default 0.04) and opcode 16's 0.4 viability gate — and that is
-// incoherent by construction: if the currency's scale is free to drift, a fixed threshold silently changes
-// meaning. It does. MEASURED (10k run, amp-starvation deaths counted cumulatively): the interval death rate
-// falls 0.192 -> 0.142 -> 0.068 -> 0.048 -> 0.047 per tick as mean amp rises 3.3 -> 9.7. Roughly inverse to
-// inflation. Not disabled — eroding, in proportion, with no reason to stop. Inflation was quietly switching
-// off the CULLING half of selection while #50b's relative machinery kept the reproducing half intact.
-//
-// Both thresholds now scale with the living mean. AMP_REF is the calibration anchor, not a magic number: it
-// is the pre-#49 equilibrium mean amp, the level at which deathThreshold's 0.04 default and the 0.4 gate were
-// implicitly tuned. At that mean the scale factor is exactly 1 and behaviour is the historical behaviour;
-// above it the thresholds track. genome.deathThreshold stays per-lineage evolvable — #50c changes what its
-// value MEANS (a fraction of prevailing wealth) without taking the knob away from selection.
-const AMP_REF=1.16;                 // #50c: pre-#49 equilibrium mean amp — the scale the absolute thresholds
-                                    // were calibrated against. Scale factor = mean/AMP_REF, so at the old
-                                    // equilibrium every threshold keeps its historical value exactly.
-let _ampScaleCached=1;              // #50c: refreshed per tick beside the ceiling; used by the death test and
-                                    // by opcode 16's viability gate across all three execution paths.
-function ampScale(){
-  const m=(typeof selfModel!=='undefined'&&selfModel.avgAmplitude>0)?selfModel.avgAmplitude:0;
-  return m>0?Math.max(0.25,m/AMP_REF):1; // floored: a transient near-zero mean must not make everything immortal
-}
-let _ampCeilCached=AMP_CAP;         // #50b: refreshed once per tick in the physics loop; read by the VM sensor
-                                    // sites, the render register and the shadow sim, all of which would
-                                    // otherwise re-saturate against a fixed divisor as the economy grows.
-function ampCeiling(){
-  const m=(typeof selfModel!=='undefined'&&selfModel.avgAmplitude>0)?selfModel.avgAmplitude:0;
-  const c=m>0?Math.max(AMP_CAP,AMP_CAP_REL*m):AMP_CAP;
-  return c<AMP_CAP_HARD?c:AMP_CAP_HARD;
-}
-const AMP_SENSOR_SCALE=1.2;         // #49: amp sensors keep their ORIGINAL [0,1.2] output range — evolved VM
-                                    // arithmetic downstream is calibrated to it, so the sensors are RESCALED
-                                    // (amp/AMP_CAP*1.2), not re-ranged. Same span, real resolution: they used to
-                                    // read a constant 1.2 for 80% of particles; now they resolve the distribution.
-// ═══ SWING #50: CARRYING COST — make the range DEFENSIBLE ═══
-// #49's own 10k follow-up convicted it: raising the ceiling bought a transient. CV ran 0.255 -> 0.133 (seed 3)
-// and 0.231 -> 0.142 (seed 11) over 10000 ticks, and p10 returned to 97-99.6% of the new cap. The population
-// re-saturates ANY ceiling it is given, because no cost in the loop above scales with what a particle HOLDS:
-// entropyBaseline and densityCost are flat, inhibitor damage is resistance-scaled, starvation is world-level.
-// Income accumulates against fixed costs, so every particle climbs to the clamp and the clamp discards the
-// difference between them. A bigger bucket only lengthens the climb.
-//
-// The fix is rent. `amp[i] -= amp[i]*AMP_CARRY_RATE` makes holding surplus cost something in proportion to the
-// surplus held, so a particle settles where its INCOME balances its rent: A_eq = I/AMP_CARRY_RATE. That is the
-// same mechanism as the metabolic per-instruction cost — the one layer in this system that ever self-organised
-// real structure (opcode concentration, 87% of instances on a 5-op core, no pruner) — applied to the currency
-// itself. It is also the shelved carry-cost from the meta-influence entry, built for amp instead.
-//
-// LINEAR, deliberately, and this is the load-bearing design choice. Under a linear rent, equilibrium amp is
-// PROPORTIONAL to income: A_eq = I/c, so CV(amp) = CV(income) and the distribution becomes a faithful readout of
-// earning ability. A superlinear rent (c*A^2, the intuitive "tax the rich harder") gives A_eq = sqrt(I/c) and
-// therefore HALVES the coefficient of variation — it would compress exactly the dispersion this swing exists to
-// create. The intuitive choice is the wrong one here.
-const AMP_CARRY_RATE=0.020;         // #50: per-tick rent on held amplitude. 0.005 -> 0.020: the 6k sweep showed
-                                    // 0.005 barely clears c=I/AMP_CAP and behaved as a slower #49. Structural, not a gene — a self-cost
-                                    // gene is evolved straight to 0 to dodge the rent while keeping the surplus
-                                    // (the commons problem named in the meta-influence carry-cost design note).
-// #50: reproduction grades on RELATIVE amp, not absolute. Necessary, not cosmetic: rent lowers equilibrium amp,
-// and #49's absolute `amp/AMP_CAP` term would have read that as a population-wide collapse in birth rate and
-// depressed N for a reason that has nothing to do with fitness. Grading on amp/mean makes the MEAN birth rate
-// identically 0.03 at any absolute scale (E[amp/mean]=1), so #50 changes WHO reproduces without changing how
-// MANY — and selection becomes purely differential, which is the whole point. Ratio capped at 3x so a single
-// outlier cannot monopolise the birth queue; falls back to #49's absolute term before the first 60-tick scan
-// populates avgAmplitude.
-function reproDrive(a){
-  const m=(typeof selfModel!=='undefined'&&selfModel.avgAmplitude>0)?selfModel.avgAmplitude:0;
-  return m>0?__cl(a/m,0,3):__cl(a/_ampCeilCached,0,1);
-}
 // NEGATIVE FREQUENCY-DEPENDENCE — the engine of novelty. Without it, selection is purely
 // stabilising: the single best type out-breeds everything and the world freezes into a
 // monoculture, an optimiser sitting forever on one peak (verified: a control with this OFF
@@ -5226,6 +5284,9 @@ let genome={
   uaMaxDepth:1,         // UNLOCKED #7b: nesting depth of self-authored atom expressions. 1 = the
                         // original grammar exactly (two terms, one binary op). Higher lets the
                         // system compose structurally richer primitives. Bounded by UA_DEPTH_CAP.
+  lifespanBias:1.0,     // LEAP 1 (#51): heritable senescence set-point. >1 = longer-lived, <1 = fast turnover.
+                        // The trade-off is real: longevity means more chances to breed, but reproduction
+                        // costs amplitude an ageing particle must keep re-earning against a rising hazard.
   vmInfluence:0.3,      // ratio of VM effects vs hardcoded physics. EVOLVES.
   ruleScale:1.0,
   // ═══ SWING #48: CONSEQUENCE — the gain the authors held fixed, handed to selection ═══
@@ -5505,6 +5566,8 @@ const pType=new Uint8Array(CAP);
 // fresh one. Lets us ask whether trait-axis variance is ORGANISED BY LINEAGE (heritable colonisation)
 // or is unstructured noise (a seeded smear that washes out) — the seed-vs-harvest discriminator.
 const pLin=new Int32Array(CAP); let _linNext=1;
+const pProvision=new Float32Array(CAP); // LEAP 3: banked reproductive surplus, spent at spawn
+const pRarity=new Float32Array(CAP).fill(1); // LEAP 13: per-particle upkeep multiplier — rare is cheap
 // UNLOCKED #9 — PER-PARTICLE BEHAVIORAL GENOME (the meta-population). Each particle runs its OWN VM
 // program (its behavioral genotype), inherited at birth and mutated, so lineages diverge and compete
 // under selection. The global genome stays the shared, self-modeling "self": it owns physics + the
@@ -9837,14 +9900,7 @@ function runShadowSim(){
         // Death
         if(sim[i].avgAmp<0.1)sim[i].size=Math.max(0,sim[i].size-2);
 
-        // #49: tracks AMP_CAP. NOTE the deliberate contrast with #48, which left the shadow sim at
-        // base vmGain on purpose: that exclusion is about the CONSEQUENCE of VM output, and holding
-        // it fixed keeps imagination reasoning against a stable physics (the resulting staleness is
-        // measured, not fixed — rider `fe`). This is different in kind: AMP_CAP is the RANGE of the
-        // state variable itself. An imagined population whose amp saturates 5x below the real one
-        // is not a calibrated counterfactual, it is a different world, and every rollout score and
-        // the avgAmp<0.1 death test would inherit the error.
-        sim[i].avgAmp=__cl(sim[i].avgAmp,0,_ampCeilCached);
+        sim[i].avgAmp=__cl(sim[i].avgAmp,0,1.2);
         sim[i].coherence=__cl(sim[i].coherence,0,1);
       }
 
@@ -10522,6 +10578,29 @@ function collectClusterUpstream(){
       });
     }
   }
+}
+
+// LEAP 7 (#52) — the atom pipeline has always died at its last link. Birth works, binding works, and
+// then uses stays 0 because the call-site splice only ever reached the GERMLINE program while the living
+// population executes pProg. Measured this session: 45k ticks of authoring produced 3 atoms, 3 bound,
+// uses=0. Born, bound, never called. This wires a call-site into a LIVING program, so authored atoms
+// finally get executed and can be judged by selection instead of dying unexpressed.
+function wireAtomCallSites(){
+  try{
+    const uas=genome.userAtoms;
+    if(!uas||!uas.length)return;
+    for(let i=0;i<N;i++){
+      if(!palive[i]||!pProg[i])continue;
+      if(Math.random()>ATOM_WIRE_RATE)continue;
+      const pr=pProg[i];
+      let has=false; for(let q=0;q<pr.length;q++) if(pr[q][0]===22){has=true;break;}
+      if(has)continue;
+      const cap=Math.min((genome.vmMaxInstructions||16),48);
+      const inst=[22,(Math.random()*12)|0,(Math.random()*12)|0,(Math.random()*uas.length)|0];
+      if(pr.length<cap) pr.splice((Math.random()*(pr.length+1))|0,0,inst);
+      else pr[(Math.random()*pr.length)|0]=inst;
+    }
+  }catch(e){}
 }
 
 function mutateGenome(){
@@ -11221,6 +11300,7 @@ function mutateGenome(){
   // The system's discovered physics evolve.
   // Instructions change. Programs grow/shrink. Conditional thresholds drift.
   // vmInfluence evolves: the system decides how much its rules matter.
+  genome.lifespanBias=maybe(genome.lifespanBias,0.15,6.0,0.10); // LEAP 1: selection owns the lifespan set-point
   genome.vmInfluence=maybe(genome.vmInfluence,0.05,2.0,0.08);
   genome.ruleScale=maybe(genome.ruleScale,0.2,3.0,0.2);
   // Swing #48: vmGain — log-scale (multiplicative) random walk, symmetric in orders of magnitude,
@@ -12059,6 +12139,7 @@ function addParticle(x,y,tv,born,parentA,parentB){
   phase[i]=Math.random()*Math.PI*2;freq[i]=0.02+Math.random()*0.04;
   amp[i]=born?0.5:0.3+Math.random()*0.5;
   palive[i]=1;page[i]=0;localRes[i]=0;collapse[i]=0;clusterID[i]=-1;
+  pProvision[i]=0; // LEAP 3: cleared at birth; the birthQueue drain endows it when the parent banked surplus
   pHomeX[i]=x;pHomeY[i]=y;pResistance[i]=(parentA>=0&&parentA<N)?pResistance[parentA]*0.25:0;
   {let _eg=(parentA>=0&&parentA<N)?pEpigen[parentA]:0;for(let _b=0;_b<8;_b++)if(Math.random()<0.05)_eg^=(1<<_b);pEpigen[i]=_eg;}
   echoIdx[i]=0;
@@ -12088,14 +12169,31 @@ function addParticle(x,y,tv,born,parentA,parentB){
   pType[i]=(parentA>=0&&parentA<N)
     ? ((Math.random()<(genome.typeMutRate||0))?((Math.random()*NUM_TYPES)|0):pType[parentA])
     : ((Math.random()*NUM_TYPES)|0);
-  pLin[i]=(parentA>=0&&parentA<N)?pLin[parentA]:(_linNext++); // heritable lineage tag follows descent
+  // LEAP 6 (#52) — descent can FORK. An offspring far enough from its parent in trait space founds its
+  // own lineage, registered as a child of the parent's. Before this, divergence-speciation was 0 by
+  // construction and the only source of new lineages was the world handing out free founders.
+  pLin[i]=(parentA>=0&&parentA<N)?pLin[parentA]:(_linNext++);
+  if(parentA>=0&&parentA<N&&tv){
+    let _d2=0; for(let _sd=0;_sd<DIMS;_sd++){const _dv=(tv[_sd]||0)-tend[parentA*DIMS+_sd]; _d2+=_dv*_dv;}
+    if(_d2>SPECIATE_DIST*SPECIATE_DIST){
+      try{
+        const _pe=lineageRegistry.get(pLin[parentA]);
+        if(_pe&&!_pe.extinct&&(genome.totalTicks-_pe.birthTick)>SPECIATE_MIN_AGE){
+          const _new=createLineage(pLin[parentA]);
+          if(_pe.children)_pe.children.push(_new);
+          pLin[i]=_new;
+          recordEvent('speciation',{parent:pLin[parentA]|0,child:_new|0,dist:+Math.sqrt(_d2).toFixed(3)},600);
+        }
+      }catch(e){}
+    }
+  }
   // UNLOCKED #9 FULL: this lineage's COMPLETE genome — parent's whole genome cloned + every gene
   // mutated (physics AND behavior diverge), or a fresh clone of the self for seeds. pProg aliases the
   // program so the existing VM read paths keep working unchanged.
   // Two-parent crossover: when parentB also has a genome, a 30% chance produces a genuinely
   // recombined program (prefix from A, suffix from B) rather than a pure clone-with-mutation.
   {const _bg=(parentA>=0&&parentA<N&&pGenome[parentA])?cloneGenome(pGenome[parentA]):cloneGenome(genome);
-  if(parentB>=0&&parentB<N&&pGenome[parentB]&&Math.random()<0.3&&(!__SPEC.gate||pLin[parentA]===pLin[parentB]))_bg.vmProgram=crossoverProg(_bg.vmProgram,pGenome[parentB].vmProgram); // #17: crossover is gene flow — gated to within-lineage when isolating
+  if(parentB>=0&&parentB<N&&pGenome[parentB]&&Math.random()<0.3&&(!__SPEC.gate||pLin[parentA]===pLin[parentB]||Math.random()<HYBRID_RATE) /* LEAP 10 (#52): rare cross-lineage gene flow — two distinct histories spliced, a novelty source point mutation cannot supply */)_bg.vmProgram=crossoverProg(_bg.vmProgram,pGenome[parentB].vmProgram); // #17: crossover is gene flow — gated to within-lineage when isolating
   pGenome[i]=mutateChildGenome(_bg);}
   pProg[i]=pGenome[i].vmProgram;
   return i;
@@ -12109,6 +12207,7 @@ function addCompound(x,y,nt,nvx,nvy,na,np,nf,parentA,parentB){
   for(let d=0;d<DIMS;d++){const _t=nt[d]; tend[i*DIMS+d]=Number.isFinite(_t)?_t:0;} // chokepoint: never born with a non-finite tendency
   phase[i]=np;freq[i]=nf;amp[i]=na;
   palive[i]=1;page[i]=0;localRes[i]=0;collapse[i]=0;clusterID[i]=-1;
+  pProvision[i]=0; // LEAP 3: cleared at birth; the birthQueue drain endows it when the parent banked surplus
   pHomeX[i]=x;pHomeY[i]=y;pResistance[i]=(parentA>=0&&parentA<N)?pResistance[parentA]*0.25:0;
   {let _eg=(parentA>=0&&parentA<N)?pEpigen[parentA]:0;for(let _b=0;_b<8;_b++)if(Math.random()<0.05)_eg^=(1<<_b);pEpigen[i]=_eg;}
   echoIdx[i]=0;
@@ -12134,10 +12233,27 @@ function addCompound(x,y,nt,nvx,nvy,na,np,nf,parentA,parentB){
   pType[i]=(parentA>=0&&parentA<N)
     ? ((Math.random()<(genome.typeMutRate||0))?((Math.random()*NUM_TYPES)|0):pType[parentA])
     : ((Math.random()*NUM_TYPES)|0);
-  pLin[i]=(parentA>=0&&parentA<N)?pLin[parentA]:(_linNext++); // heritable lineage tag follows descent
+  // LEAP 6 (#52) — descent can FORK. An offspring far enough from its parent in trait space founds its
+  // own lineage, registered as a child of the parent's. Before this, divergence-speciation was 0 by
+  // construction and the only source of new lineages was the world handing out free founders.
+  pLin[i]=(parentA>=0&&parentA<N)?pLin[parentA]:(_linNext++);
+  if(parentA>=0&&parentA<N&&nt){
+    let _d2=0; for(let _sd=0;_sd<DIMS;_sd++){const _dv=(nt[_sd]||0)-tend[parentA*DIMS+_sd]; _d2+=_dv*_dv;}
+    if(_d2>SPECIATE_DIST*SPECIATE_DIST){
+      try{
+        const _pe=lineageRegistry.get(pLin[parentA]);
+        if(_pe&&!_pe.extinct&&(genome.totalTicks-_pe.birthTick)>SPECIATE_MIN_AGE){
+          const _new=createLineage(pLin[parentA]);
+          if(_pe.children)_pe.children.push(_new);
+          pLin[i]=_new;
+          recordEvent('speciation',{parent:pLin[parentA]|0,child:_new|0,dist:+Math.sqrt(_d2).toFixed(3)},600);
+        }
+      }catch(e){}
+    }
+  }
   // UNLOCKED #9 FULL + two-parent crossover: compound child also crosses A×B programs.
   {const _bg=(parentA>=0&&parentA<N&&pGenome[parentA])?cloneGenome(pGenome[parentA]):cloneGenome(genome);
-  if(parentB>=0&&parentB<N&&pGenome[parentB]&&Math.random()<0.3&&(!__SPEC.gate||pLin[parentA]===pLin[parentB]))_bg.vmProgram=crossoverProg(_bg.vmProgram,pGenome[parentB].vmProgram); // #17: within-lineage gene flow only when isolating
+  if(parentB>=0&&parentB<N&&pGenome[parentB]&&Math.random()<0.3&&(!__SPEC.gate||pLin[parentA]===pLin[parentB]||Math.random()<HYBRID_RATE) /* LEAP 10 (#52): rare cross-lineage gene flow — two distinct histories spliced, a novelty source point mutation cannot supply */)_bg.vmProgram=crossoverProg(_bg.vmProgram,pGenome[parentB].vmProgram); // #17: within-lineage gene flow only when isolating
   pGenome[i]=mutateChildGenome(_bg);}
   pProg[i]=pGenome[i].vmProgram;
   return i;
@@ -12191,21 +12307,53 @@ function applyEntropy(){
   const deaths=[];
   deathsThisTick=0;
   const densityCost=(genome.densityCostK||0.00003)*Math.max(0,N-(genome.densityFloor??100));
-  const _ampCeil=_ampCeilCached=ampCeiling(); // #50b: once per tick, not per particle — it is a population statistic
-  const _ampSc=_ampScaleCached=ampScale();    // #50c: ditto — thresholds are fractions of prevailing wealth
+  // LEAP 12 + 14 (#53) — one local pass over the spatial grid does both jobs, because both are about
+  // WHO your neighbours are rather than how many exist globally.
+  //   12: crowding is charged by SIMILARITY. Competition is strongest between like individuals; that is
+  //       what lets unlike ones coexist, and densityCost (a global N term) could never express it.
+  //   14: lineages far apart in trait space EAT each other. The Red Queen was built against a population
+  //       that could not die, so it never bit. Dominance now makes you the most abundant prey.
+  {
+    for(let i=0;i<N;i++){
+      if(!palive[i])continue;
+      const gx=(px[i]/CELL)|0, gy=(py[i]/CELL)|0;
+      let same=0;
+      for(let dy=-SIMIL_RADIUS;dy<=SIMIL_RADIUS;dy++)for(let dx=-SIMIL_RADIUS;dx<=SIMIL_RADIUS;dx++){
+        const nx=gx+dx, ny=gy+dy;
+        if(nx<0||ny<0||nx>=gW||ny>=gH)continue;
+        for(let j=grid[ny*gW+nx];j!==-1&&j!==undefined;j=pnext[j]){
+          if(j===i||!palive[j])continue;
+          let d2=0; for(let d=0;d<DIMS;d++){const dv=tend[i*DIMS+d]-tend[j*DIMS+d]; d2+=dv*dv;}
+          if(d2<0.09){ same++; }
+          else if(d2>PREDATE_MIN_DIST*PREDATE_MIN_DIST && amp[i]>amp[j]){
+            const take=amp[j]*PREDATE_RATE*0.5;
+            if(take>0){ amp[j]-=take; amp[i]+=take*0.7; } // 30% lost to the transfer — predation is not free
+          }
+        }
+      }
+      if(same>0)amp[i]-=same*SIMIL_COST;
+    }
+  }
   for(let i=0;i<N;i++){
     if(!palive[i])continue;
     const _g=genome;genome=pGenome[i]||genome; // UNLOCKED #9 FULL: per-lineage metabolism & death threshold
     try{
-      amp[i]-=genome.entropyBaseline;
+      amp[i]-=genome.entropyBaseline*(pRarity[i]||1); // LEAP 13 (#53): rarity discounts upkeep
       amp[i]-=densityCost;
+      // LEAP 9 (#52) — carried machinery is billed at the same economy instructions already pay. The
+      // meta layer inflated 4-5x THROUGH 1472 atrophy cuts because its coefficients were free; the
+      // opcode layer concentrated onto a 5-op core with no pruner because instructions cost amp. This
+      // charges the bloat rather than judging it, which is the pressure that demonstrably works here.
+      {const _mm=genome.__metaMag;
+       if(_mm!==undefined&&_mm>0)amp[i]-=_mm*CARRY_COST_META;
+       const _ab=genome.userAtoms?genome.userAtoms.length:0;
+       if(_ab>0)amp[i]-=_ab*CARRY_COST_ATOM;}
       amp[i]+=localRes[i]*genome.entropyK;
-      amp[i]-=amp[i]*AMP_CARRY_RATE; // #50: rent on held amplitude — the only cost in this loop that scales with what a particle HOLDS, so equilibrium amp tracks INCOME (A_eq=I/rate) instead of everyone climbing to the clamp
       {const _txi=__cl(Math.floor(px[i]/(W/FIELD_W)),0,FIELD_W-1),_tyi=__cl(Math.floor(py[i]/(H/FIELD_H)),0,FIELD_H-1),_tox=inhibitorField[_tyi*FIELD_W+_txi];if(_tox>0.05){const _dmg=_tox*Math.max(0,1-pResistance[i])*0.018;amp[i]-=_dmg;}pResistance[i]*=0.997;} // INHIBITOR DAMAGE + RESISTANCE DECAY: inhibitor deals up to 1.8% amp/tick at zero resistance; resistance decays 0.3%/tick — must be actively maintained via RESISTANCE_BOOST (op215)
       if(energyAdequacy<1)amp[i]-=(1-energyAdequacy)*STARVE_DRAIN; // starvation: the world couldn't feed everyone this tick
       if(isNaN(amp[i]))amp[i]=0;
       const _ig=specInGrace(pLin[i]); // #17: a freshly-minted lineage is young/small → death-relief so it doesn't die in the cradle
-      const _deathT=(_ig?genome.deathThreshold*0.25:genome.deathThreshold)*_ampSc; // #50c: a fraction of prevailing wealth, not a fixed absolute that inflation erodes
+      const _deathT=_ig?genome.deathThreshold*0.25:genome.deathThreshold;
       if(amp[i]<_deathT && _ig && __COLO.surv){
         // SWING #20 knob S (survival): min-viable-size FLOOR — while a minted founder is in grace it cannot be
         // reaped on the amp threshold; it is pinned to life support at the relief line so the cohort can cross
@@ -12220,7 +12368,28 @@ function applyEntropy(){
         {const _dtx=__cl(Math.floor(px[i]/(W/FIELD_W)),0,FIELD_W-1),_dty=__cl(Math.floor(py[i]/(H/FIELD_H)),0,FIELD_H-1);detritalField[_dty*FIELD_W+_dtx]=Math.min(3,detritalField[_dty*FIELD_W+_dtx]+Math.max(0,amp[i])*0.22+Math.max(0,localRes[i])*0.12);} // DETRITAL DEPOSIT: dead particle's biomass (amplitude + reserves) persists in place as a harvestable nutrient pool — decomposer lineages mining DETRITAL_HARVEST can build an entire metabolism on death; trophic cascade foundation
         worldEnergy=Math.min(WORLD_ENERGY_MAX,worldEnergy+BIRTH_ENERGY_COST*DEATH_ENERGY_RETURN); // death returns resource to the world
       }
-      if(amp[i]>_ampCeil)amp[i]=_ampCeil; // #49/#50b: was a bare 1.2, then a fixed 6.0; now a ceiling that tracks the population so the bulk cannot pin against it
+      // LEAP 3 — SURPLUS CONVERTS. Above AMP_SOFT the excess is not discarded, it is banked (lossily)
+      // as reproductive provision. amp stays bounded; surplus stops being thrown away.
+      if(amp[i]>AMP_SOFT){
+        const _sur=amp[i]-AMP_SOFT;
+        amp[i]=AMP_SOFT;
+        pProvision[i]=Math.min(PROVISION_CAP,pProvision[i]+_sur*PROVISION_YIELD);
+      }
+      if(amp[i]>AMP_HARD)amp[i]=AMP_HARD; // numerical guard only
+      // LEAP 1 — SENESCENCE. Age kills, on a heritable set-point. Immortality at carrying capacity was
+      // the freeze; this is what keeps the energy budget turning over so births can ever be paid for.
+      if(page[i]>SENESCENCE_ONSET && !_ig){
+        const _lb=(genome.lifespanBias!==undefined&&isFinite(genome.lifespanBias))?Math.max(0.15,genome.lifespanBias):1;
+        const _haz=((page[i]-SENESCENCE_ONSET)/1000)*SENESCENCE_SCALE/_lb;
+        if(Math.random()<_haz){
+          deaths.push(i);deathsThisTick++;deathsByAge++;
+          addBits(px[i],py[i],2,pR[i],pG[i],pB[i],0.25);
+          palive[i]=0;
+          {const _sx=__cl(Math.floor(px[i]/(W/FIELD_W)),0,FIELD_W-1),_sy=__cl(Math.floor(py[i]/(H/FIELD_H)),0,FIELD_H-1);
+           detritalField[_sy*FIELD_W+_sx]=Math.min(3,detritalField[_sy*FIELD_W+_sx]+Math.max(0,amp[i])*0.25+pProvision[i]*0.15);}
+          worldEnergy=Math.min(WORLD_ENERGY_MAX,worldEnergy+BIRTH_ENERGY_COST*DEATH_ENERGY_RETURN);
+        }
+      }
     }finally{genome=_g;}
   }
   for(let d=0;d<deaths.length;d++){
@@ -12418,18 +12587,16 @@ function executeVM(i,j,sim,d){
       case 14:if(vmRegs[si]>k)ip=Math.abs(Math.floor(vmRegs[di]))%nInst;break;
       case 15:{const ageFrac=Math.min(1,page[i]/800);vmRegs[di]=vmRegs[si]*(1-ageFrac)+k*ageFrac;}break;
       case 16:{
-        // #49 -> #50: spawn odds are PROPORTIONAL to vigor, not a flat 3% above the gate. The 0.4
-        // viability gate stays (that decision is untouched); above it, vigor pays. #49 graded on
-        // absolute amp/AMP_CAP; #50 grades on amp RELATIVE to the living mean (reproDrive), so the
-        // mean birth rate stays 0.03 at any absolute amp scale and the rent below cannot be mistaken
-        // for a population-wide fertility collapse. Selection here is purely differential.
-        if(amp[i]>0.4*_ampScaleCached && page[i]>80 && N+birthQueue.length<CAP-1 && Math.random()<0.03*reproDrive(amp[i])){
+        if(amp[i]>0.4 && page[i]>80 && N+birthQueue.length<CAP-1 && Math.random()<0.03){
           const offX=__cl(px[i]+vmRegs[si]*15,0,W);
           const offY=__cl(py[i]+vmRegs[di]*15,0,H);
           const nt=new Float32Array(DIMS);
           for(let dd=0;dd<DIMS;dd++)nt[dd]=tend[i*DIMS+dd]+k*0.1*(vmRegs[(dd+4)%12]-0.5);
-          birthQueue.push({x:offX,y:offY,t:nt,parent:i});
-          amp[i]*=0.5;
+          birthQueue.push({x:offX,y:offY,t:nt,parent:i,prov:pProvision[i]});
+          // LEAP 3 — banked surplus pays the reproductive cost first, so a well-provisioned parent keeps
+          // its amplitude and can breed again sooner. Acquiring more than you can hold now compounds.
+          {const _need=amp[i]*0.5, _use=Math.min(pProvision[i],_need);
+           pProvision[i]-=_use; amp[i]-=(_need-_use);}
         }
       }break;
       case 17:{
@@ -12667,7 +12834,7 @@ function executeVM(i,j,sim,d){
         // selfAmpInfluence=0 → returns 0 → Pe51 exactly.
         const sai52=genome.selfAmpInfluence||0;
         if(sai52>0.001){
-          vmRegs[di]=__cl(amp[i]/_ampCeilCached*AMP_SENSOR_SCALE,0,AMP_SENSOR_SCALE)*sai52*k;
+          vmRegs[di]=__cl(amp[i],0,1.2)*sai52*k;
         }
       }break;
       case 37:{
@@ -12678,7 +12845,7 @@ function executeVM(i,j,sim,d){
         // partnerAmpInfluence=0 → returns 0 → Pe52 exactly.
         const pai53=genome.partnerAmpInfluence||0;
         if(pai53>0.001){
-          vmRegs[di]=__cl(amp[j]/_ampCeilCached*AMP_SENSOR_SCALE,0,AMP_SENSOR_SCALE)*pai53*k;
+          vmRegs[di]=__cl(amp[j],0,1.2)*pai53*k;
         }
       }break;
       case 38:{
@@ -14377,7 +14544,7 @@ function executeVM(i,j,sim,d){
       case 179:{if(vmRegs[si]>k&&pProg[i]&&pProg[j]&&pProg[i].length>0&&(!__SPEC.gate||pLin[i]===pLin[j])){const _cap179=Math.min(genome.vmMaxInstructions||16,48); /* #17: HGT donation gated to within-lineage when isolating */if(pProg[j].length<_cap179){const _si179=Math.abs(Math.floor(vmRegs[si]*3))%pProg[i].length;const _ins179=pProg[i][_si179];if(_ins179){const _di179=Math.floor(Math.random()*(pProg[j].length+1));pProg[j].splice(_di179,0,[_ins179[0],_ins179[1],_ins179[2],+_ins179[3]]);vmRegs[di]=1;}else{vmRegs[di]=0;}}else{vmRegs[di]=0;}}else{vmRegs[di]=0;}}break; // HGT_DONATE — insert one of own instructions into partner's genome at a random position (horizontal gene transfer, donor direction). Complement to RECOMBINE (op152) which takes from partner. Donors pay no resource cost; evolved selection pressure determines whether donation spreads. Creates viral gene dynamics: a beneficial instruction in one lineage can propagate laterally into others without requiring shared ancestry. Enables: evolved mutualism where donors gain indirect benefit (partners become more valuable); evolved parasitism where donors inject disruptive instructions; genetic missionaries that spread successful strategies across the population.
       case 180:{vmRegs[di]=collapse[i]*k;}break; // COLLAPSE_SENSE — read own collapse value (0..2+), a measure of accumulated stress, resonant damage, and ghost-field loading. High collapse indicates a particle under heavy structural stress. Enables stress-conditional strategies: trigger APOPTOSIS (op165) when collapse exceeds threshold (damaged particles sacrifice themselves before they are destroyed passively); reduce resource investment during high-stress periods; signal health status to cluster-mates via BROADCAST_WRITE (op11). The collapse variable already drives amp boosts and visual smear; this opcode makes it VM-readable for the first time.
       case 181:{vmRegs[di]=localRes[i]*k;}break; // SELF_RES_SENSE — read own reserve resource level directly (0..2). Unlike ENERGY_STRESS_SENSE (op131) which returns a population-normalised stress scalar derived from energyAdequacy, this gives the actual per-particle localRes value. Enables: resource-conditional strategies without computing indirectly from stress signals; gate ROOT_WRITE (op162) and ENERGY_DONATE (op156) on having surplus (localRes>1); detect approaching depletion (localRes<0.3) and switch to scavenging (DETRITAL_HARVEST op146); compare own resource to partner's via subtraction (op164 PARTNER_RES_SENSE − op181 = differential wealth signal).
-      case 182:{vmRegs[di]=Math.max(0,amp[i])/_ampCeilCached*AMP_SENSOR_SCALE*k;}break; // SELF_AMP_SENSE — read own amplitude (structural energy / vitality) directly. Complement to op37 PARTNER_AMP but without genome.selfAmpInfluence gating. Enables: amplitude-conditional reproduction gating; trigger APOPTOSIS (op165) when amp falls below survival threshold before passively dying; modulate resource-harvesting aggression by own vitality; broadcast own health status (BROADCAST_WRITE(SELF_AMP_SENSE)) so cluster-mates can detect and respond to distress.
+      case 182:{vmRegs[di]=Math.max(0,amp[i])*k;}break; // SELF_AMP_SENSE — read own amplitude (structural energy / vitality) directly. Complement to op37 PARTNER_AMP but without genome.selfAmpInfluence gating. Enables: amplitude-conditional reproduction gating; trigger APOPTOSIS (op165) when amp falls below survival threshold before passively dying; modulate resource-harvesting aggression by own vitality; broadcast own health status (BROADCAST_WRITE(SELF_AMP_SENSE)) so cluster-mates can detect and respond to distress.
       case 183:{vmRegs[di]=collapse[j]*k;}break; // PARTNER_COLLAPSE — read partner's collapse value (0..2+). Pairs with COLLAPSE_SENSE (op180) which reads own collapse. Enables: avoid or exploit collapsing partners; scavenger lineages sense structurally stressed particles and wait nearby (pheromone trail via INJECT_SIGNAL op174) for APOPTOSIS or passive death to release detrital; mutualists detect distress and donate resources before partner dies; predators time ENERGY_DRAIN (op155) against peak collapse for maximum yield with minimum counter-force.
       case 184:{const _cidx184=clusterID[i]>=0&&clusterID[i]<MAX_CLUSTERS?clusterByID[clusterID[i]]:-1;vmRegs[di]=(_cidx184>=0&&_cidx184<clusters.length)?Math.min(3,clusters[_cidx184].size/10)*k:0;}break; // CLUSTER_SIZE_DIRECT — read own cluster member count without genome gating (complement to op62 SELF_CLUSTER_SIZE which requires genome.selfClusterSizeInfluence>0). Returns clusters[idx].size/10 capped at 3. Enables: cluster-size-conditional strategies without needing the shared genome to explicitly enable the sensor; solo particles (clusterID<0) get 0; colony-counting for division-of-labour decisions (grow caste X when cluster<threshold, grow caste Y when large).
       case 185:{vmRegs[di]=(clusterID[i]>=0&&clusterID[i]===clusterID[j])?k:0;}break; // SAME_CLUSTER_DIRECT — ungated check whether i and j share a cluster (1*k if same cluster, 0 otherwise). Complement to op76 SAME_CLUSTER_CHECK which is gated by genome.sameClusterInfluence. With ENERGY_DONATE (op156) and ENERGY_DRAIN (op155) gated on this, lineages can evolve kin-altruism without needing the shared genome to enable the signal: in-group cooperation, out-group exploitation at the particle program level. Combined with CASTE_MEM_READ (op170) enables cluster+caste conditional strategies.
@@ -14477,7 +14644,7 @@ function executeVM(i,j,sim,d){
         case 14:if(vmRegs[si]>k)ip=Math.abs(Math.floor(vmRegs[di]))%nPi;break;
         case 15:{const pAgeFrac=Math.min(1,page[i]/800);vmRegs[di]=vmRegs[si]*(1-pAgeFrac)+k*pAgeFrac;}break;
         case 16:{
-          if(amp[i]>0.4*_ampScaleCached&&page[i]>80&&N+birthQueue.length<CAP-1&&Math.random()<0.03*reproDrive(amp[i])){ // #50: relative-amp drive, full parity with the main path
+          if(amp[i]>0.4&&page[i]>80&&N+birthQueue.length<CAP-1&&Math.random()<0.03){
             const pnt=new Float32Array(DIMS);
             for(let dd=0;dd<DIMS;dd++)pnt[dd]=tend[i*DIMS+dd]+k*0.1*(vmRegs[(dd+4)%12]-0.5);
             birthQueue.push({x:__cl(px[i]+vmRegs[si]*15,0,W),y:__cl(py[i]+vmRegs[di]*15,0,H),t:pnt,parent:i});
@@ -14647,7 +14814,7 @@ function executeVM(i,j,sim,d){
           // Reads amp[i] into vmRegs[di], scaled by selfAmpInfluence × k.
           const sai52p=genome.selfAmpInfluence||0;
           if(sai52p>0.001){
-            vmRegs[di]=__cl(amp[i]/_ampCeilCached*AMP_SENSOR_SCALE,0,AMP_SENSOR_SCALE)*sai52p*k;
+            vmRegs[di]=__cl(amp[i],0,1.2)*sai52p*k;
           }
         }break;
         case 37:{
@@ -14655,7 +14822,7 @@ function executeVM(i,j,sim,d){
           // Reads amp[j] into vmRegs[di], scaled by partnerAmpInfluence × k.
           const pai53p=genome.partnerAmpInfluence||0;
           if(pai53p>0.001){
-            vmRegs[di]=__cl(amp[j]/_ampCeilCached*AMP_SENSOR_SCALE,0,AMP_SENSOR_SCALE)*pai53p*k;
+            vmRegs[di]=__cl(amp[j],0,1.2)*pai53p*k;
           }
         }break;
         case 38:{
@@ -15484,7 +15651,7 @@ function executeVM(i,j,sim,d){
         case 179:{if(vmRegs[si]>k&&pProg[i]&&pProg[j]&&pProg[i].length>0){const _cap179p=Math.min(genome.vmMaxInstructions||16,48);if(pProg[j].length<_cap179p){const _si179p=Math.abs(Math.floor(vmRegs[si]*3))%pProg[i].length;const _ins179p=pProg[i][_si179p];if(_ins179p){const _di179p=Math.floor(Math.random()*(pProg[j].length+1));pProg[j].splice(_di179p,0,[_ins179p[0],_ins179p[1],_ins179p[2],+_ins179p[3]]);vmRegs[di]=1;}else{vmRegs[di]=0;}}else{vmRegs[di]=0;}}else{vmRegs[di]=0;}}break; // HGT_DONATE — full parity
         case 180:{vmRegs[di]=collapse[i]*k;}break; // COLLAPSE_SENSE — full parity
         case 181:{vmRegs[di]=localRes[i]*k;}break; // SELF_RES_SENSE — full parity
-        case 182:{vmRegs[di]=Math.max(0,amp[i])/_ampCeilCached*AMP_SENSOR_SCALE*k;}break; // SELF_AMP_SENSE — full parity
+        case 182:{vmRegs[di]=Math.max(0,amp[i])*k;}break; // SELF_AMP_SENSE — full parity
         case 183:{vmRegs[di]=collapse[j]*k;}break; // PARTNER_COLLAPSE — full parity
         case 184:{const _cidx184p=clusterID[i]>=0&&clusterID[i]<MAX_CLUSTERS?clusterByID[clusterID[i]]:-1;vmRegs[di]=(_cidx184p>=0&&_cidx184p<clusters.length)?Math.min(3,clusters[_cidx184p].size/10)*k:0;}break; // CLUSTER_SIZE_DIRECT — full parity
         case 185:{vmRegs[di]=(clusterID[i]>=0&&clusterID[i]===clusterID[j])?k:0;}break; // SAME_CLUSTER_DIRECT — full parity
@@ -15759,7 +15926,7 @@ function executeClusterVM(i,j,sim,d){
       case 14:{const cNInst=cl?cl.vmProgram.length:prog.length;if(vmRegs[si]>k)ip=Math.abs(Math.floor(vmRegs[di]))%Math.max(1,cNInst);}break;
       case 15:{const cAgeFrac=Math.min(1,page[i]/800);vmRegs[di]=vmRegs[si]*(1-cAgeFrac)+k*cAgeFrac;}break;
       case 16:{
-        if(amp[i]>0.4*_ampScaleCached&&page[i]>80&&N+birthQueue.length<CAP-1&&Math.random()<0.03*reproDrive(amp[i])){ // #50: relative-amp drive, full parity with the main path
+        if(amp[i]>0.4&&page[i]>80&&N+birthQueue.length<CAP-1&&Math.random()<0.03){
           const cnt=new Float32Array(DIMS);
           for(let dd=0;dd<DIMS;dd++)cnt[dd]=tend[i*DIMS+dd]+k*0.1*(vmRegs[(dd+4)%12]-0.5);
           birthQueue.push({x:__cl(px[i]+vmRegs[si]*15,0,W),y:__cl(py[i]+vmRegs[di]*15,0,H),t:cnt,parent:i});
@@ -15928,7 +16095,7 @@ function executeClusterVM(i,j,sim,d){
         // Pe52 Layer 41: SELF_AMP in cluster VM — full parity with particle VM.
         const sai52c=genome.selfAmpInfluence||0;
         if(sai52c>0.001){
-          vmRegs[di]=__cl(amp[i]/_ampCeilCached*AMP_SENSOR_SCALE,0,AMP_SENSOR_SCALE)*sai52c*k;
+          vmRegs[di]=__cl(amp[i],0,1.2)*sai52c*k;
         }
       }break;
       case 37:{
@@ -15936,7 +16103,7 @@ function executeClusterVM(i,j,sim,d){
         // Reads amp[j] into vmRegs[di], scaled by partnerAmpInfluence × k.
         const pai53c=genome.partnerAmpInfluence||0;
         if(pai53c>0.001){
-          vmRegs[di]=__cl(amp[j]/_ampCeilCached*AMP_SENSOR_SCALE,0,AMP_SENSOR_SCALE)*pai53c*k;
+          vmRegs[di]=__cl(amp[j],0,1.2)*pai53c*k;
         }
       }break;
       case 38:{
@@ -16781,7 +16948,7 @@ function executeClusterVM(i,j,sim,d){
       case 179:{if(vmRegs[si]>k&&pProg[i]&&pProg[j]&&pProg[i].length>0){const _cap179c=Math.min(genome.vmMaxInstructions||16,48);if(pProg[j].length<_cap179c){const _si179c=Math.abs(Math.floor(vmRegs[si]*3))%pProg[i].length;const _ins179c=pProg[i][_si179c];if(_ins179c){const _di179c=Math.floor(Math.random()*(pProg[j].length+1));pProg[j].splice(_di179c,0,[_ins179c[0],_ins179c[1],_ins179c[2],+_ins179c[3]]);vmRegs[di]=1;}else{vmRegs[di]=0;}}else{vmRegs[di]=0;}}else{vmRegs[di]=0;}}break; // HGT_DONATE — full parity
       case 180:{vmRegs[di]=collapse[i]*k;}break; // COLLAPSE_SENSE — full parity
       case 181:{vmRegs[di]=localRes[i]*k;}break; // SELF_RES_SENSE — full parity
-      case 182:{vmRegs[di]=Math.max(0,amp[i])/_ampCeilCached*AMP_SENSOR_SCALE*k;}break; // SELF_AMP_SENSE — full parity
+      case 182:{vmRegs[di]=Math.max(0,amp[i])*k;}break; // SELF_AMP_SENSE — full parity
       case 183:{vmRegs[di]=collapse[j]*k;}break; // PARTNER_COLLAPSE — full parity
       case 184:{const _cidx184c=clusterID[i]>=0&&clusterID[i]<MAX_CLUSTERS?clusterByID[clusterID[i]]:-1;vmRegs[di]=(_cidx184c>=0&&_cidx184c<clusters.length)?Math.min(3,clusters[_cidx184c].size/10)*k:0;}break; // CLUSTER_SIZE_DIRECT — full parity
       case 185:{vmRegs[di]=(clusterID[i]>=0&&clusterID[i]===clusterID[j])?k:0;}break; // SAME_CLUSTER_DIRECT — full parity
@@ -17208,7 +17375,19 @@ function updateParticles(){
     const affinity=fieldAffinity(lfIdx,getParticleSig(i));
     localRes[i]+=localField*(pGenome[i]?pGenome[i].fieldInfluence:genome.fieldInfluence)*affinity; // per-lineage field coupling: each lineage's evolved fieldInfluence now governs its own resource harvest
     amp[i]+=localField*0.0008*affinity;
-    {const _tm=(typeof globalThis!=='undefined'&&globalThis.__TEND_MUT)?+globalThis.__TEND_MUT:1; for(let d=0;d<DIMS;d++){tend[i*DIMS+d]+=(Math.random()-0.5)*0.001*_tm;const v=tend[i*DIMS+d];if(v>1.2)tend[i*DIMS+d]=1.2;if(v<-1.2)tend[i*DIMS+d]=-1.2}} // __TEND_MUT scales diet-axis exploration (retention test)
+    // LEAP 8 (#52) — the trait wall is a toll booth. Beyond TEND_SOFT a particle keeps drifting but pays
+    // amplitude for the distance, so genuinely new niche territory is reachable at a price instead of
+    // being unreachable at any price. This is the bound swing #11 identified as the real ceiling.
+    {const _tm=(typeof globalThis!=='undefined'&&globalThis.__TEND_MUT)?+globalThis.__TEND_MUT:1;
+     let _over=0;
+     for(let d=0;d<DIMS;d++){
+       tend[i*DIMS+d]+=(Math.random()-0.5)*0.001*_tm;
+       let v=tend[i*DIMS+d];
+       if(v>TEND_HARD)v=TEND_HARD; else if(v<-TEND_HARD)v=-TEND_HARD;
+       tend[i*DIMS+d]=v;
+       const a=v<0?-v:v; if(a>TEND_SOFT)_over+=a-TEND_SOFT;
+     }
+     if(_over>0)amp[i]-=_over*TEND_TOLL;} // __TEND_MUT scales diet-axis exploration (retention test)
     const absencePeriod=ABSENCE_BASE+Math.sin(tick*0.0007)*180+(Math.sin(tick*0.00031)*90)|0;
     const cyclePos=tick%Math.max(200,absencePeriod);
     const isAbsent=cyclePos>(Math.max(200,absencePeriod)*(1-ABSENCE_DUTY));
@@ -17300,7 +17479,7 @@ function executeSoloVM(){
         case 14:if(vmRegs[si]>k)ip=Math.abs(Math.floor(vmRegs[di]))%nInst;break;
         case 15:{const ageFrac=Math.min(1,page[i]/800);vmRegs[di]=vmRegs[si]*(1-ageFrac)+k*ageFrac;}break;
         case 16:{
-          if(amp[i]>0.4*_ampScaleCached&&page[i]>80&&N+birthQueue.length<CAP-1&&Math.random()<0.015*reproDrive(amp[i])){ // #50c: FOURTH spawn path, missed by #49 and #50 — its base rate is 0.015 (half the others) and it was still a flat step while the other three graded. Now consistent.
+          if(amp[i]>0.4&&page[i]>80&&N+birthQueue.length<CAP-1&&Math.random()<0.015){
             const offX=__cl(px[i]+vmRegs[si]*15,0,W);
             const offY=__cl(py[i]+vmRegs[di]*15,0,H);
             const nt=new Float32Array(DIMS);
@@ -17468,7 +17647,7 @@ function executeSoloVM(){
         case 179:{vmRegs[di]=0;}break; // HGT_DONATE — NOP in solo context (no partner genome)
         case 180:{vmRegs[di]=collapse[i]*k;}break; // COLLAPSE_SENSE — full parity (solo particles also experience collapse)
         case 181:{vmRegs[di]=localRes[i]*k;}break; // SELF_RES_SENSE — full parity
-        case 182:{vmRegs[di]=Math.max(0,amp[i])/_ampCeilCached*AMP_SENSOR_SCALE*k;}break; // SELF_AMP_SENSE — full parity
+        case 182:{vmRegs[di]=Math.max(0,amp[i])*k;}break; // SELF_AMP_SENSE — full parity
         case 183:{vmRegs[di]=0;}break; // PARTNER_COLLAPSE — NOP in solo context (no partner)
         case 184:{const _cidx184s=clusterID[i]>=0&&clusterID[i]<MAX_CLUSTERS?clusterByID[clusterID[i]]:-1;vmRegs[di]=(_cidx184s>=0&&_cidx184s<clusters.length)?Math.min(3,clusters[_cidx184s].size/10)*k:0;}break; // CLUSTER_SIZE_DIRECT — full parity (solo = 0 since clusterID[i]<0)
         case 185:{vmRegs[di]=0;}break; // SAME_CLUSTER_DIRECT — NOP in solo context (no partner)
@@ -17789,7 +17968,7 @@ function compact(){
     pPlasmidAge[w]=pPlasmidAge[r];
     pBroadcast[w*2]=pBroadcast[r*2];pBroadcast[w*2+1]=pBroadcast[r*2+1];
     clusterID[w]=clusterID[r];
-    pType[w]=pType[r];pProg[w]=pProg[r];pGenome[w]=pGenome[r];pLin[w]=pLin[r]; // UNLOCKED #7a/#9: caste + full per-particle genome (+ lineage tag) relocate with the particle (also fixes a caste-scramble bug)
+    pType[w]=pType[r];pProg[w]=pProg[r];pGenome[w]=pGenome[r];pLin[w]=pLin[r];pProvision[w]=pProvision[r]; // UNLOCKED #7a/#9: caste + full per-particle genome (+ lineage tag) relocate with the particle (also fixes a caste-scramble bug)
     for(let rx=0;rx<REFLEX_DEPTH*2;rx++)pReflexHist[w*REFLEX_DEPTH*2+rx]=pReflexHist[r*REFLEX_DEPTH*2+rx];
     for(let rx=0;rx<REFLEX_DIMS;rx++)pReflexState[w*REFLEX_DIMS+rx]=pReflexState[r*REFLEX_DIMS+rx];
     pReflexIdx[w]=pReflexIdx[r];
@@ -17801,7 +17980,11 @@ function compact(){
 
 function replenish(){
   if(N>500)return;
-  const pressure=N<50?0.25:N<100?0.15:N<200?0.06:N<500?0.01:0;
+  // LEAP 2 — DESCENT OR DEATH. Free founders were 76% of the living population and each one starts its
+  // own lineage, so the world was manufacturing exactly the thing that prevents genealogy. Reseeding is
+  // now emergency-only: above RESEED_FLOOR the population must be maintained by descent or shrink.
+  if(N>=RESEED_FLOOR)return;
+  const pressure=N<50?0.25:0.10;
   if(Math.random()>pressure)return;
 
   const gate=genome.fieldBirthGate;
@@ -18645,7 +18828,12 @@ function loop(){
   { tHist.fill(0); for(let _i=0;_i<N;_i++){ if(palive[_i]) tHist[tendBin(_i)]++; }
     const _mean=N/TCELLS;
     for(let _i=0;_i<N;_i++){ if(!palive[_i])continue; const _bc=tHist[tendBin(_i)];
-      amp[_i]+=NFD_STRENGTH*Math.max(-1,Math.min(1, 1-_bc/(_mean+0.001))); } } // rare kind gains, common kind pays → the world keeps generating novelty instead of freezing
+      amp[_i]+=NFD_STRENGTH*Math.max(-1,Math.min(1, 1-_bc/(_mean+0.001)));
+      // LEAP 13 (#53) — rarity now also buys a genuine METABOLIC DISCOUNT, not just a transfer. The
+      // mean-centred term above is zero-sum by construction, which #11 proved cannot beat limiting
+      // similarity. This one does not cancel across the population: being rare is simply cheaper to be.
+      pRarity[_i]=RARITY_DISCOUNT+(1-RARITY_DISCOUNT)*Math.min(1,_bc/(_mean+0.001));
+    } } // rare kind gains, common kind pays → the world keeps generating novelty instead of freezing
   // SWING #37: the SAME negative-frequency-dependence, but on PROGRAM-vocabulary signature (unbounded space) — the
   // giant-leap attempt. Being computationally common costs survival; rare program-vocabularies pay, so the
   // population is driven to keep exploring program-space, which (unlike the trait/niche space) cannot saturate.
@@ -18780,7 +18968,12 @@ function loop(){
       for(let i=0;i<N;i++){ if(!palive[i])continue; const c=linCentroid.get(pLin[i]); if(!c)continue;
         for(let d=0;d<DIMS;d++)tend[i*DIMS+d]+=(c[d]-tend[i*DIMS+d])*0.00002*_gt; }
     } else if(_gt!==0){
-      for(let i=0;i<N;i++){if(!palive[i])continue;for(let d=0;d<DIMS;d++)tend[i*DIMS+d]+=(globalTend[d]-tend[i*DIMS+d])*0.00002*_gt}
+      // LEAP 11 (#53) — the mean now REPELS. This line used to pull every particle toward the population
+      // centroid every tick: harmless under a frozen economy, a standing force for monoculture once
+      // selection became real. Sign inverted, magnitude tripled — character displacement as physics.
+      for(let i=0;i<N;i++){if(!palive[i])continue;for(let d=0;d<DIMS;d++){
+        const _v=tend[i*DIMS+d]+(globalTend[d]-tend[i*DIMS+d])*HOMOGEN_RATE*HOMOGEN_SIGN*_gt;
+        tend[i*DIMS+d]=_v<-TEND_HARD?-TEND_HARD:_v>TEND_HARD?TEND_HARD:_v;}}
     } }
 
   exogenousPerturbation();
@@ -18860,6 +19053,11 @@ function loop(){
     selfModel.population=alive;
 
     selfModel.avgAmplitude=alive>0?totalAmp/alive:0;
+    // LEAP 9 (#52) — measure the machinery the population is carrying, so it can be billed for it.
+    try{ let _mm=0;
+      if(typeof ATROPHY_SAFE!=='undefined')for(const _p of ATROPHY_SAFE){const _v=genome[_p]; if(isFinite(_v))_mm+=_v<0?-_v:_v;}
+      genome.__metaMag=_mm;
+    }catch(e){ genome.__metaMag=0; }
     selfModel.avgResonance=alive>0?totalRes/alive:0;
     // Pe128 Layer 117: spatial spread — 2D std dev of particle positions, normalized.
     if(alive>1){const _mX=_sumX128/alive,_mY=_sumY128/alive;const _vX=_sumX2128/alive-_mX*_mX,_vY=_sumY2128/alive-_mY*_mY;selfModel.spatialSpread=Math.sqrt(Math.max(0,_vX+_vY))/Math.sqrt(W*W+H*H);}
@@ -19108,10 +19306,31 @@ function loop(){
     predictionErrorAccum=0;
     predictionUpdateCount=0;
     predictionQueriedCount=0; // Pe35 Layer 24b
+    // LEAP 5 (#51) — RETENTION ENTERS FITNESS. selfModel.diversity is a STANDING-CROP measure: it counts
+    // what is present now, and a bin held by drift scores identically to one held by something that
+    // earned it. Measured consequence: kinds kept drifting through 60k ticks in which not one particle
+    // was born or died. Forty-eight swings optimised that number. Descent depth — how far inheritance
+    // has actually carried, and how long lineages persist — now enters the fitness signal directly, so
+    // the system optimises for novelty that is RETAINED rather than for how much noise is standing about.
+    {
+      let _deep=0,_alive=0,_agesum=0;
+      try{
+        for(const [lid,e] of lineageRegistry){
+          if(e.extinct)continue; _alive++;
+          if((e.budCount|0)>_deep)_deep=e.budCount|0;
+          _agesum+=Math.min(1,(genome.totalTicks-e.birthTick)/20000);
+        }
+      }catch(err){}
+      deepestLineage=deepestLineage*0.95+_deep*0.05;
+      const _depth=Math.min(1,deepestLineage/8);                  // 8 buds = a fully realised lineage
+      const _persist=_alive?Math.min(1,_agesum/Math.max(1,_alive)):0;
+      retentionScore=retentionScore*0.9+(0.6*_depth+0.4*_persist)*0.1;
+    }
     const fitness=(selfModel.stability*w[0]+selfModel.diversity*w[1]+selfModel.avgCoherence*w[2]+
+      retentionScore*RETENTION_WEIGHT+
       (clusters.filter(c=>c.persistAge<2).length/Math.max(1,clusters.length))*w[3]+
       realSensorScore*realSensorWeight+
-      predictionQuality*relW)/(wT+realSensorWeight+relW);
+      predictionQuality*relW)/(wT+realSensorWeight+relW+RETENTION_WEIGHT);
     if(Number.isFinite(fitness)) currentFitness=currentFitness*0.9+fitness*0.1; // guard: the EMA is a one-way NaN trap — a single non-finite sample would poison currentFitness forever (HUD, op91/op92 self-fitness sensors, credit-assignment). Skip a bad sample instead.
     // Pe108 Layer 97: derive smoothed velocity from per-tick currentFitness delta.
     // EMA factor 0.85/0.15 — slightly more responsive than currentFitness itself, so the
@@ -21009,11 +21228,45 @@ function loop(){
   while(birthQueue.length>0&&N<CAP&&birthsProcessed<5){
     const b=birthQueue.pop();
     let _bsx=b.x,_bsy=b.y;{const _scW=W/FIELD_W,_scH=H/FIELD_H;let _scBest=0;for(let _sdy=-1;_sdy<=1;_sdy++)for(let _sdx=-1;_sdx<=1;_sdx++){const _sfx=__cl(Math.floor((b.x+_sdx*_scW)/_scW),0,FIELD_W-1),_sfy=__cl(Math.floor((b.y+_sdy*_scH)/_scH),0,FIELD_H-1),_sv=scaffoldField[_sfy*FIELD_W+_sfx];if(_sv>_scBest+0.05){_scBest=_sv;_bsx=__cl(b.x+_sdx*_scW*0.4+(Math.random()-0.5)*_scW*0.3,0,W);_bsy=__cl(b.y+_sdy*_scH*0.4+(Math.random()-0.5)*_scH*0.3,0,H);}}}
-    if(addParticle(_bsx,_bsy,b.t,true,b.parent,-1)>=0)birthsThisTick++;
+    {const _ni=addParticle(_bsx,_bsy,b.t,true,b.parent,-1);
+     if(_ni>=0){ birthsThisTick++;
+       // LEAP 3 — a provisioned parent endows its offspring, so surplus compounds ACROSS generations
+       // instead of dying with the individual. That is what makes it heritable wealth, not a buffer.
+       if(b.prov>0)pProvision[_ni]=Math.min(PROVISION_CAP,b.prov*0.35); } }
     birthsProcessed++;
   }
   if(birthQueue.length>20)birthQueue.length=0;
   if(tick%45===0)compact();
+  if(tick%120===0)wireAtomCallSites(); // LEAP 7 (#52): authored atoms reach living programs
+  // LEAP 15 (#53) — a GENERATION is the population having wholly replaced its founders. genome.generation
+  // has never moved on its own: a live export read g:83, which turned out to be the RELOAD count, while a
+  // 161k-tick run stayed at generation 1. Detected properly here — and each real turnover EARNS a
+  // dimension of trait space when the frontier is occupied, so niche space becomes something descent
+  // extends rather than a fixed box. This is the ratchet the arc has wanted since swing #11.
+  if(tick%600===0){
+    try{
+      const live=new Set();
+      for(let i=0;i<N;i++) if(palive[i]) live.add(pLin[i]);
+      if(genFounders===null){ genFounders=live; lastGenTick=tick; }
+      else if(live.size>0){
+        let replaced=0;
+        for(const l of live) if(!genFounders.has(l)) replaced++;
+        if(replaced/live.size>=GEN_TURNOVER_FRAC && tick-lastGenTick>1200){
+          genome.generation=(genome.generation|0)+1;
+          genFounders=live; lastGenTick=tick;
+          recordEvent('generation',{g:genome.generation|0,lineages:live.size,t:tick},900);
+          // the frontier is occupied if anything has pushed past the soft trait bound — if descent has
+          // reached the edge of the space, the space gets bigger.
+          let atFrontier=false;
+          for(let i=0;i<N&&!atFrontier;i++){ if(!palive[i])continue;
+            for(let d=0;d<DIMS;d++){const a=Math.abs(tend[i*DIMS+d]); if(a>TEND_SOFT){atFrontier=true;break;}} }
+          if(atFrontier&&DIMS<DIMS_MAX&&typeof setDims==='function'){
+            try{ setDims(DIMS+1); recordEvent('dims_earned',{dims:DIMS,g:genome.generation|0},900); }catch(e){}
+          }
+        }
+      }
+    }catch(e){}
+  }
   NprevTick=N; // Pe87: snapshot N for POPULATION_RATE next tick
   }catch(e){
     console.error('Loop error:',e.message,e.stack);

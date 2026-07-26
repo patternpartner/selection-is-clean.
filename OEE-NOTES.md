@@ -3656,3 +3656,511 @@ conditional on that measurement, NOT built on the strength of an argument that h
 the 48 recorded nulls were mechanism failures or artifacts of flat fitness is the NEXT question, and the clean
 test is re-running one recorded ablation under #50 — the thin-bank whole-bank ablation, whose apparatus exists.
 The 28-atom real-bank null (4/5 seeds bit-identical) is still immune to all of this and still stands.
+
+### THE PAYOFF TEST, attempt 1 — whole-bank ablation under #50: DISCARDED as hollow, not reported as a null
+
+The question the whole economy arc exists to answer: with fitness finally varying, do the record's ablation nulls
+change? First attempt targeted the whole-bank ablation, because its apparatus and its pre-#50 result both exist.
+
+**Authored a fresh bank under the #50 economy** (seed 7, 45k ticks, full ENGINE knobs, ATOM_PIPELINE + ATOM_DURABLE
+on). Result: `totAtoms=3 nBound=3 proven(uses>0)=0 maxUses=0`. Three atoms born, three bound, NONE ever executed.
+For comparison the record's original seed-7 bank had a most-used atom at uses=1044.
+
+**Ran the ablation anyway** — justified, because the record documents `uses=0` at dump time becoming live atoms on
+resume (the real-bank entry verified non-hollowness exactly that way) — but with the usage counters visible and the
+discard condition named in advance rather than after seeing the number.
+
+**Result: 5 seeds x [intact, whole-bank-pinned-to-0], 10k ticks, 0 driver errors. VERDICT string says
+BANK_NEUTRAL. It is being DISCARDED.** Raw arms:
+
+| seed | intact | ablated | |
+|---|---|---|---|
+| 11 | 53.1745 | 53.1745 | bit-identical |
+| 13 | 54.2120 | 54.2120 | bit-identical |
+| 17 | 80.2140 | 82.0450 | differs |
+| 19 | 34.3977 | 34.3977 | bit-identical |
+| 23 | 27.5892 | 26.9285 | differs |
+
+3/5 bit-identical, and `boundOps` is unchanged between arms in every seed (4.5/4.5, 4/4, 3/3). Combined with
+proven-uses=0 at authoring, that is the hollow-null signature the record has been caught by twice. **The atoms
+never executed, so knocking them out could not have changed anything, so the null carries no information about
+whether #50 moved the verdict.** Reporting it would have produced precisely the result this arc is hunting, which
+is exactly why it cannot be allowed to count.
+
+**Mechanism, traced but NOT closed.** uaCall() increments `uses` on every invocation and is reached from opcode 22,
+so uses=0 means op22 never executed against a valid atom index across 45k ticks. Born, bound, never called. The
+GENERATIVE-LAYER MAP recorded this same failure ("authored atoms 0->0 INERT — 1 birth / 35k ticks, 0 uses ever")
+and the ATOM_PIPELINE fix was supposed to have lit it; birth and binding clearly work here, calling does not.
+**Honest open question I am NOT resolving by assumption: whether this is the pre-existing throttle the record
+describes, or a regression introduced by #49/#50's four swings.** The swings touched amp sensor register values
+(op37/52/53, op182 x4), spawn rates and the death threshold — none of which gate op22 — so pre-existing is the
+likely reading, but likely is not established, and the flattering version is the one to distrust.
+
+**Attempt 2 targets the meta-influence layer instead** — 116 genes whose ablation verifiably bites (metaMag
+38-43 -> 0.03 confirmed in the pre-#50 run), so it structurally cannot come back hollow. Same question, answerable
+target. Pre-#50 baseline to beat: effect -0.036, sd 0.054, never beneficial in any seed, INCONCLUSIVE. Under a
+saturated currency that verdict was unfalsifiable in one direction — an intact arm 0.03 from the ceiling had no
+room to express a benefit. It does now.
+
+### THE PAYOFF TEST, attempt 2 — the user's REAL gen83 bank, ablated under #50: THE ABLATION FINALLY BITES
+
+The user supplied four live exports, and the mature one (gen83, T=467423) carried exactly what 45k ticks of
+headless authoring could not produce: **17 atoms, 25 bound opcodes, 12 PROVEN, top atom `(1.36)*(t)` at 9,701
+uses**, second `(nb)-(c)` at 6,648. A genuinely fat, heavily-executed bank. Ablation cannot come back hollow on it.
+
+**RESULT (5 seeds x [intact, whole-bank-pinned-to-0], 10k ticks, 0 driver errors, under the #50c economy):**
+
+| seed | intact amp | ablated amp | intact N | ablated N | rel |
+|---|---|---|---|---|---|
+| 11 | 2.677 | 1.185 | 299 | 113 | +55.7% |
+| 13 | 1.892 | **2.526** | 229 | **305** | −33.5% |
+| 17 | 2.228 | **2.631** | 205 | **279** | −18.1% |
+| 19 | 2.316 | **2.681** | 195 | **264** | −15.7% |
+| 23 | 2.271 | **2.735** | 265 | **372** | −20.5% |
+
+**ZERO bit-identical seeds.** Every seed moves, by 15–56%. Set against the record's pre-#50 real-bank ablation —
+28 atoms, effect 0.0002, **4 of 5 seeds BIT-IDENTICAL** — this is a categorical change. The bank is no longer
+causally inert.
+
+**And the direction is the finding: in 4 of 5 seeds, DELETING the bank makes the population better off** — more
+amp AND more population, effects tightly clustered (−0.36 to −0.63), seed 11 a strong outlier the other way.
+The self-extension machinery, this project's theoretical basis for open-endedness, is a net DRAG on the lineages
+carrying it.
+
+**The harness's own verdict logic is wrong here, and that is worth recording.** It printed BANK_NEUTRAL because
+effect_mean (−0.075) < effect_sd (0.789) — but the mean is near zero only because seed 11 (+1.49) cancels four
+consistent negatives. `harness-ablate-bank.js` scores BANK_ADAPTIVE (removing it lowers fitness) vs BANK_NEUTRAL
+(everything else); **it has no category for "removing it RAISES fitness," so a real, consistent, costly effect
+files as neutral.** Any future use of this harness needs that third branch or it will keep mislabelling harm as
+nothing.
+
+**CONFOUND, not yet closed — the honest limit on the headline.** The pre-#50 bit-identical result used a
+DIFFERENT bank (28 atoms, a different export). So "inert before, active now" currently confounds BANK with
+ECONOMY. The isolating cell — this same gen83 bank, ablated under the pre-#49 economy (`INDEX=` pointed at
+d6febcb:index.html) — is running at write time. Pre-registered: if that arm comes back mostly bit-identical, the
+saturation thesis is confirmed cleanly (same bank, same seeds, inert under a clamped currency, live under a
+floating one) and the record's whole-bank null is an APPARATUS artifact, not a property of the bank. If it also
+moves, the difference is the bank and not the economy, and this result reduces to "this particular bank is
+active" — much weaker. Not claiming the strong version until that cell reports.
+
+**Convergent evidence from the exports themselves, pointing the same way.** #48 shipped vmGain UNBOUNDED so
+selection could buy any consequence it wanted. Across the four exports it did the opposite, monotonically:
+vg 1.000 (t2015) → 1.123 (t4250) → 0.841 (t14359) → **0.217 (gen83 t467423)**, with the whole pool converged
+tight (min 0.2168, max 0.2371, n=137). Fable's branch 3 — "gain stays low even when free → the whole barrier
+thesis dies on the spot" — and branch 4 alongside it (67 extinctions, population 500 → ~90, one lineage left:
+"the stability frontier was real and the authors' fear calibrated"). **If VM output is on balance costly, then
+selection driving its consequence toward zero is not a failure to discover something good — it is correctly
+pricing something bad.** Two independent measurements, from opposite directions, agreeing.
+
+### BOTH ECONOMIES, SAME GENOME — #48's branch 4 lands, on my own work: the 1.2 clamp WAS stability insurance
+
+The user's call: run the real gen83 genome forward under the pre-#49 economy and under #50c, side by side.
+Method: `INDEX=` pointed at `d6febcb:index.html` (verified pre-#49 — that commit touched only notes and
+harnesses) vs current HEAD, same GENOME, same 3 seeds, 20000 ticks. Read ONLY on scale-free measures —
+population, kinds, diversity — never meanAmp, whose scale differs between the arms by construction.
+
+| seed | OLD finalN | NEW finalN | OLD kinds | NEW kinds | OLD H | NEW H |
+|---|---|---|---|---|---|---|
+| 11 | 500 | 376 | 17 | 14 | 3.54 | 3.44 |
+| 13 | 500 | 353 | 15 | 14 | 3.36 | 3.45 |
+| 17 | 500 | 0* | 16 | 15* | 3.55 | 3.50* |
+
+*seed 17's final sample landed in a trough — see below. 0 loop errors, 0 driver errors, all six runs.
+
+**The trajectories are the result, not the endpoints.**
+  - OLD, every seed: monotone climb to exactly 500, meanAmp pinned at exactly 1.2, and it stays there.
+    `329 -> 429 -> 437 -> 447 -> 453 -> 458 -> 467 -> 477 -> 488 -> 497 -> 500`. A static equilibrium against
+    both ceilings at once.
+  - NEW, every seed: violent boom-bust. Seed 11 `424 -> 480 -> 296 -> 298 -> ... -> 376`. Seed 13
+    `431 -> 307 -> 305 -> 0 -> 63 -> 364 -> ... -> 353`. Seed 17 `418 -> 293 -> 315 -> 154 -> 332 -> 0 -> 370
+    -> 363 -> 0`. **Two of three seeds hit N=0 and reseeded back.**
+
+**CORRECTION to my own first read, made before reporting it:** I read seed 17's finalN=0 as an extinction caused
+by my changes. It is not — the population recovers to 370 two samples later; the final sample simply landed in a
+trough. The honest statement is oscillation with total crashes and reseed recovery, not termination.
+
+**DIVERSITY DID NOT IMPROVE.** H 3.19-3.57 (new) vs 3.35-3.57 (old); kinds 12-16 in both. The new economy bought
+instability, not diversity. That is the swing's own stated purpose failing to materialise on this genome.
+
+**#48's branch 4 fires, and it fires on me.** "Instability + extinction dominate -> the stability frontier was
+real and the authors' fear calibrated." I characterised `if(amp[i]>1.2)amp[i]=1.2` as "a bare literal nobody
+re-decided," the same class of object as the vmGain constants. On this evidence that framing was WRONG: the clamp
+was doing load-bearing work as stability insurance, and removing it produces precisely the catastrophe the
+original authors appear to have been guarding against. Reading an undocumented constant as unconsidered is its
+own confabulation — the absence of a stated reason is not the absence of a reason.
+
+**Two counterweights, neither of which rescues the change.** (1) The OLD arm's stability is exactly the static
+attractor this project has fought since #36 — pinned at cap on population AND amplitude, going nowhere, which is
+what #36/#39 were built to escape. (2) The crashes are NON-TERMINAL, with reseed recovery to ~370, which is the
+punctuation shape #39 explicitly wanted. But #39 wanted punctuation WITH diversity gain, and there is none here.
+
+**Bearing on the live pool: do not deploy #49/#50 to the tabs on this evidence.** A live artwork would show total
+population wipeouts. The economy work stays on the branch until either the instability is bounded (a floor on the
+bust, or a gentler AMP_CAP_REL) or a diversity gain appears to justify the cost. What #49/#50 demonstrably DID
+achieve is measurement: they turned a saturated dependent variable into one that varies, which is what made the
+gen83 bank ablation informative for the first time. That is a real result about the APPARATUS, and it is
+separable from — and survives — this negative result about the physics.
+
+### THE 2x2, COMPLETE — the whole-bank null was an APPARATUS ARTIFACT. Same bank, same seeds, 5/5 identical vs 0/5.
+
+The isolating cell reported. The gen83 bank (17 atoms, 25 bound, 12 proven, top atom 9,701 uses) ablated under
+BOTH economies, same 5 seeds, same 10k ticks, `INDEX=` switching only the physics file.
+
+| seed | pre-#49 intact | pre-#49 ablated | | #50 intact | #50 ablated |
+|---|---|---|---|---|---|
+| 11 | 1.2000 | 1.2000 | **IDENT** | 2.6770 | 1.1847 |
+| 13 | 1.1940 | 1.1940 | **IDENT** | 1.8915 | 2.5255 |
+| 17 | 1.2000 | 1.2000 | **IDENT** | 2.2283 | 2.6305 |
+| 19 | 1.2000 | 1.2000 | **IDENT** | 2.3163 | 2.6808 |
+| 23 | 1.2000 | 1.2000 | **IDENT** | 2.2708 | 2.7352 |
+
+**5/5 bit-identical under the clamped currency. 0/5 under the floating one.** Effect exactly 0 with sd exactly 0,
+against [1.4923, −0.634, −0.4022, −0.3645, −0.4645]. Bank held constant, seeds held constant; only the economy
+differs. **The confound named in attempt 2 is closed.**
+
+**The mechanism is visible in the numbers themselves.** Under the old economy intact AND ablated both read exactly
+`1.2000` — the clamp literal. The two arms are identical because both are pinned against the ceiling. The clamp
+was not failing to DETECT the bank's effect; it was arithmetically ERASING it, in both directions, before any
+comparison could see it.
+
+**VERDICT: the record's whole-bank null was an artifact of the measuring apparatus, not a property of the bank.**
+The prior entry — "the self-extension bank is EXECUTED but fitness-INERT... the strongest, cleanest null the
+project has reached" — was measured through an instrument that could not have returned any other answer. Every
+whole-bank and single-atom ablation in this file that reported meanAmp near 1.2 and concluded "no grip" inherits
+the same defect. Those verdicts should be read as UNTESTED, not as null.
+
+**What the bank actually does, now that it can be seen: in 4 of 5 seeds, deleting it leaves the population with
+MORE amp and MORE particles** (tightly clustered −0.36 to −0.63; seed 11 a strong outlier the other way). The
+self-extension machinery — this project's theoretical basis for open-endedness — is a net DRAG on the lineages
+carrying it.
+
+**This also explains the accumulation.** ~48 swings added mechanism, and the clamp concealed the price of every
+one of them: not only were benefits truncated, costs were too. A system that cannot measure the cost of what it
+adds will keep adding. That is the structural account of how the record reached 140 layers, 232 opcodes and 186
+genes with almost every audited mechanism reading inert.
+
+**Independent corroboration, from the user's live exports.** #48 shipped vmGain UNBOUNDED so selection could buy
+any consequence it wanted. It drove it DOWN monotonically instead — vg 1.000 → 1.123 → 0.841 → 0.217, whole pool
+converged (min 0.2168, max 0.2371, n=137). If VM output is on balance costly, selection pricing its consequence
+toward zero is correct accounting, not a failure to discover. Two measurements, opposite directions, same
+conclusion.
+
+**Scope, stated.** This does NOT vindicate #49/#50 as physics — the both-economies run showed they buy boom-bust,
+not diversity, and #48's branch 4 fires on them (see the previous entry; the 1.2 clamp was load-bearing stability
+insurance and I was wrong to call it unconsidered). The apparatus result and the physics result are separable and
+both stand: the swings were a bad change to the world and a decisive fix to the instrument. The instrument gain
+is what should be kept — whether by shipping a bounded version (#50d) or by running ablations on a branch build
+purely as a measuring rig while the live pool keeps the clamp.
+
+### #50d FLOOR — FAILED by its own pre-registered criteria, and REVERTED. Life support at scale poisons the pool.
+
+The user's call: put a floor on the bust and rerun. Built (POP_FLOOR=80: below that many living particles,
+amp-starvation death suspended, particle pinned to its own threshold — the same device knob S already uses for
+founder grace), rerun on the same genome, same 3 seeds, same 20k ticks, directly comparable to the unfloored runs.
+
+| seed | #50d N trajectory |
+|---|---|
+| 11 | 329 424 480 **80 80** 117 **80 80 81 80** 154 |
+| 13 | 329 419 431 **80 80** 109 169 211 220 **80** 125 |
+| 17 | 329 415 418 **80 80** 122 **80 80** 97 81 114 |
+
+Criterion 1 (no seed reaching 0): PASSED. Criterion 3 (diversity no worse than the unfloored 3.19-3.57): **FAILED**
+— H 2.985/3.026/3.208, kinds 10/11/13, worse than the unfloored #50c (H 3.437/3.451, kinds 14) AND worse than
+pre-#49 (H 3.358-3.548, kinds 15-17). And the named failure mode occurred exactly as pre-registered: seed 11 sits
+at exactly 80 for six of eight post-crash samples, seed 17 for five of eight. **A floor doing harm quietly rather
+than a crash doing it loudly** — the words were written before the run.
+
+**Mechanism, clear in hindsight and worth recording.** Pinning at `_deathT` does not preserve a population; it
+manufactures a permanent underclass of zero-amp particles that keep drawing metabolic upkeep and density cost
+while contributing nothing. The floor does not stop the bust — it makes the bust PERMANENT and taxes the
+survivors. Knob S's version works because it protects a handful of founders briefly; the same device applied to
+80 particles indefinitely inverts its effect. A mechanism that is benign at small scale and harmful at large
+scale, which is its own lesson about porting a device out of the context that justified it.
+
+**REVERTED** (`git revert 77a5463`). index.html carries #49/#50/#50b/#50c and no floor.
+
+**The coherent position this leaves, stated plainly.** #49/#50 are a BAD CHANGE TO THE PHYSICS (boom-bust, no
+diversity gain, #48's branch 4 fires) and a DECISIVE FIX TO THE INSTRUMENT (the 2x2: same bank 5/5 bit-identical
+under the clamp, 0/5 without it). Those are separable, and the separation is the recommendation:
+  - **The live pool keeps the clamp.** Do not deploy. The artwork would show wipeouts, and now also would not be
+    helped by a floor.
+  - **The branch build is a MEASURING RIG.** Its value is that ablations run on it can detect an effect at all.
+    Every "no grip" verdict in this file measured through the clamped currency is UNTESTED and can now be re-run
+    properly, one at a time, without touching the live artwork.
+That costs the artwork nothing and recovers the whole ablation series. The instrument was the deliverable; the
+physics change was the price of finding that out, and it does not have to be paid twice.
+
+### META-INFLUENCE ABLATION RE-RUN ON THE RIG — a recorded null OVERTURNED, on the project's own target metric
+
+Second use of the instrument for its purpose. Target chosen because it structurally cannot come back hollow: the
+record already established this layer fires and that ablating it bites (metaMag 38-43 -> 0.03), and the atrophy
+probe found all 116 genes reading NEGATIVE on the system's own attribution while the layer net-inflated 4-5x
+anyway. 5 seeds x {intact, ablated}, 20000 ticks, 0 loop errors and 0 driver errors in all ten runs.
+Pre-#50 baseline: effect -0.036, sd 0.054, "never beneficial in any seed", INCONCLUSIVE-leaning-neutral, n=3.
+
+**On amp — the ablation now BITES, but gives no directional verdict.**
+
+| seed | intact | ablated | intact−abl | relative |
+|---|---|---|---|---|
+| 7 | 62.93 | 48.70 | +14.23 | +22.6% |
+| 11 | 26.83 | 35.02 | −8.19 | −30.5% |
+| 13 | 35.04 | 37.68 | −2.64 | −7.5% |
+| 17 | 30.17 | 19.42 | +10.76 | +35.6% |
+| 19 | 31.46 | 44.19 | −12.73 | −40.5% |
+
+Per-seed effects of 7.5–40.5%, an order of magnitude above the pre-#50 ~3%, but 2/5 favour intact and 3/5 favour
+ablated. mean 0.285, sd 10.52. On amp the layer is causally LOUD and directionally MUTE — it perturbs the
+trajectory hard without a consistent sign.
+
+**On diversity — a clean, consistent, directional result.**
+
+| seed | kinds intact | kinds ablated | Δ |
+|---|---|---|---|
+| 7 | 6.71 | 7.14 | +0.43 |
+| 11 | 8.00 | 8.57 | +0.57 |
+| 13 | 8.00 | 8.00 | 0.00 |
+| 17 | 5.86 | 6.86 | +1.00 |
+| 19 | 5.29 | 7.86 | +2.57 |
+
+**mean +0.914, sd 0.888 — beats its own noise; ablated >= intact in 5/5 seeds, strictly greater in 4/5.** By this
+project's own adoption criteria (effect > own noise AND majority-consistent) that is a PASS. **Removing the
+116-gene meta-influence layer RAISES occupied kinds, consistently, by ~13-17% relative.**
+
+**Why this was invisible before, mechanically.** occupiedKinds is not itself clamped — so the question is why the
+pre-#50 run reported "same population, same diversity". Because with amp saturated, every lineage had effectively
+identical reproductive success regardless of its meta-genes, so the layer could not differentially shape WHICH
+lineages persisted, and diversity is downstream of exactly that. On the rig the chain is restored:
+meta-genes -> amp -> reproduction -> which lineages survive -> occupied kinds. The clamp did not hide a diversity
+effect by compressing diversity; it hid it by severing the causal path that produces one.
+
+**What this means for the record.** The layer is not merely inert-by-attribution (atrophy probe, protected=0) and
+not merely non-load-bearing (pre-#50 ablation). It is **actively suppressing the project's primary goal metric** —
+the diversity ceiling that swings #11 through #39 were all built to break. 116 genes each annotated "attribution
+tracks whether this sensing helps", whose removal makes the system measurably more diverse. And the carry-cost
+decision recorded earlier — deliberately not-yet-shipped, reasoning that "the ablation shows the bloat is nearly
+harmless" so a pruning cost was warranted only for SYMMETRY — rested on a measurement taken through the clamp.
+On the rig the bloat is not nearly harmless. That decision should be re-opened with this result in hand.
+
+**Honest scope.** n=5, one authoring regime, headless, fresh boots — the same caveats every headless finding here
+carries. The amp result is genuinely inconclusive and is NOT being reported as harm. The diversity result is one
+statistic clearing its own noise bar by a modest margin (0.914 vs 0.888); it wants a 10-seed confirmation before
+anything is built on it. What is NOT in doubt is the categorical change: a test that returned effect −0.036 ± 0.054
+now returns per-seed swings of up to 40%.
+
+### THE SUBTRACTION TEST — 48 swings added mechanism; removing two subsystems raises diversity 25%
+
+Asked to think outside the box, and the box was "ablate one more layer." Three independent measurements on the
+rig had already pointed the same way from different directions — the gen83 atom bank is a net drag in 4/5 seeds;
+the 116-gene meta-influence layer costs ~0.9 kinds; vmGain fell 1.0 -> 0.217 with the pool converged on the floor
+when selection was free to raise it. Each was filed separately as a null or a curiosity. Together they say the
+ACCRETION ITSELF is the load. So: subtract both, separately and together, and ask what the stripped system does
+on the metric the whole #11-#39 arc was built to move.
+
+`harness-strip.js` (STRIP=none|meta|bank|both), real gen83 genome via the GENOME resume path, 5 seeds, 20000
+ticks, 20 runs, **0 loop errors and 0 driver errors in all twenty**. Bank verifiably live in every intact arm
+(14,763–30,384 atom invocations, 9–14 proven atoms) — the counter increments even in the ablated arm, output
+zeroed after counting, precisely so non-hollowness is demonstrable rather than asserted.
+
+**OCCUPIED KINDS**
+
+| seed | none | meta | bank | both |
+|---|---|---|---|---|
+| 7 | 11.14 | 13.00 | 13.86 | 14.00 |
+| 11 | 11.71 | 14.43 | 11.57 | 13.14 |
+| 13 | 13.71 | 13.43 | 10.57 | 13.29 |
+| 17 | 11.00 | 11.43 | 11.00 | 14.86 |
+| 19 | 7.71 | 13.71 | 11.43 | 13.86 |
+| **mean** | **11.06** | **13.20** | **11.69** | **13.83** |
+
+| arm − none | mean | sd | beats own noise | better in |
+|---|---|---|---|---|
+| meta | +2.143 | 2.196 | no | 4/5 |
+| bank | +0.629 | 2.412 | no | 2/5 |
+| **both** | **+2.771** | **2.218** | **YES** | **4/5** |
+
+Population moves the same way: 251 -> 349, **+39%**.
+
+**Two structural facts, not just a big number.** (1) **Stripping BOTH is the only arm whose diversity gain clears
+its own noise bar** — neither subsystem alone does. (2) The effects are almost exactly ADDITIVE: meta alone
++2.143, bank alone +0.629, sum +2.772, both measured +2.771. Two independent taxes, no interaction term. That
+matters: it means this is not one subsystem's pathology, it is what accumulated machinery does here in general,
+and it predicts that further subtraction keeps paying.
+
+**LEAVE-ONE-OUT — robust.** Per-seed both−none: +2.86, +1.43, −0.43, +3.86, +6.14. Dropping ANY single seed
+leaves the effect beating its own noise, including dropping seed 19 (the largest contributor): mean +1.929,
+sd 1.611. Not one seed carrying it.
+
+**What this says about the project, plainly.** Forty-eight swings were spent ADDING mechanism to break a
+diversity ceiling. On the first instrument capable of detecting either a cost or a benefit, deleting two
+subsystems raises diversity 25% and population 39%. The ceiling those swings kept hitting was not a limit the
+system needed more machinery to escape — a substantial part of it was the machinery. And this is exactly the
+principle the atrophy probe already isolated and stopped one inch short of generalising: concentration came from
+a metabolic COST (opcodes, 87% of instances on a 5-op core, no pruner needed), while the layer that cost nothing
+inflated unchecked. Bloat that is free does not merely fail to help. It is charged to diversity.
+
+**HONEST SCOPE, and it is real.** n=5, one genome (gen83), one regime, headless and CLOSED — this genome's live
+history absorbed 190 plasmids, 180 motifs and 45 inscriptions from peers, and the record is emphatic that the
+open boundary is where the live causal action lives. The margin clears its noise bar but not lavishly (2.771 vs
+2.218), and one seed goes the other way. This is a strong signal and a specimen, not a rate. **It is also NOT a
+proposal to delete these subsystems from index.html** — the same discipline that killed #50d applies: a
+measurement on the rig is not a licence to change the artwork. What it licenses is the next measurement, and it
+names it: strip further (which layer is next-most costly), and confirm at n=10 before anything structural is
+built on it.
+
+### THE MARGINAL SWEEP — there IS no next-most-costly layer. Subtraction stops paying after meta+bank.
+
+The subtraction test found meta and bank impose almost exactly additive costs and I wrote that this "predicts
+further subtraction keeps paying." **That prediction is now refuted.** Seven subsystems stripped one at a time ON
+TOP of meta+bank (so the number is MARGINAL cost against the already-stripped 13.83-kinds baseline), 5 seeds,
+20000 ticks, 35 runs, **0 loop errors and 0 driver errors in all thirty-five**.
+
+| subsystem | mean Δkinds | sd | clears own noise | Δpop | max amp | per-seed Δ |
+|---|---|---|---|---|---|---|
+| learn (selfLearnFromBest) | **−1.514** | 1.317 | **YES** | −43 | 2.8 | −1.9 0.0 0.0 −3.3 −2.4 |
+| decide (decideFromRealWinner) | −1.429 | 1.525 | no | −30 | **956.1** | −3.4 −0.1 −2.6 −1.7 +0.7 |
+| niche (applyNicheEconomy) | −1.086 | 1.824 | no | −29 | 1.8 | +0.9 −1.0 +1.0 −3.3 −3.0 |
+| credit (applyCreditAssignment) | **+0.000** | 0.000 | — | +0 | 3.1 | 0 0 0 0 0 |
+| alien (runAlienPrediction) | **+0.000** | 0.000 | — | +0 | 3.1 | 0 0 0 0 0 |
+| reflex (updateClusterReflex) | **+0.000** | 0.000 | — | +0 | 3.1 | 0 0 0 0 0 |
+| shadow (runShadowSim) | +0.171 | 0.343 | no | +1 | 3.0 | 0 0 0 0 +0.9 |
+
+**The answer to "which layer is next-most costly" is: none of them.** Every remaining subsystem is either exactly
+inert or LOAD-BEARING (negative Δ = removing it hurts). Not one is a marginal tax. The accretion is not uniformly
+costly — it is two taxes (meta, bank), four inert layers, and three pieces holding the system together.
+
+**Three subsystems are EXACTLY zero — sd 0.000, all five seeds.** credit, alien and reflex fire and have literally
+no downstream consequence. Verified as real ablations, not skipped patches: a diagnostic counted the early-return
+firing 14x (shadow) and 33x (reflex) per 2000 ticks. They are called, they are skipped, and the trajectory does not
+move by a single bin. Note also that if runShadowSim consumed ANY rng, skipping it would shift the shared stream
+and force divergence — bit-identical output means it consumes none and reaches nothing.
+
+**REFLEX: a recorded null CONFIRMED rather than overturned.** The confabulation assay convicted the cluster reflex
+as "the deepest ornament yet" on bit-identical ablation evidence — but that was measured through the clamp, and
+the clamp has now been shown to return bit-identity for a causally live subsystem (the gen83 bank: 5/5 identical
+clamped, 0/5 on the rig). Reflex was retested on the rig and is STILL exactly 0.000 in all five seeds. That
+verdict was right, and right for the right reasons. The apparatus fix overturned the bank null and confirmed this
+one — which is what a working instrument is supposed to do, and is the strongest available evidence that the rig
+is not simply manufacturing effects.
+
+**learn is the only entry clearing its own noise bar, and it is NEGATIVE.** selfLearnFromBest — the path by which
+the population's best discovery flows back into the reflective baseline — costs 1.514 kinds when removed. After a
+session in which almost every measured mechanism turned out to be a tax or inert, this is the first subsystem
+measured as genuinely load-bearing FOR DIVERSITY.
+
+**decide carries a stability role, visible in the amp column.** Strip decideFromRealWinner and mean amplitude runs
+to 956 against a ~2.9 baseline. Mechanistically exactly what #44's design implies: it steps the self's physics
+toward the realized population winner, and without it the reflective baseline's physics drifts unchecked. Its
+Δkinds does not clear noise, but the amp blowup is unambiguous and is its own finding.
+
+**What this settles about the subtraction thesis.** "The accretion itself is the load" was too strong, and I
+proposed it. The accurate version is narrower: the meta-influence layer and the authored-atom bank are taxes worth
+~2.8 kinds between them; most of the rest of the machinery is inert; and a small number of subsystems are doing
+real work. A map, not a verdict — and it says where any future pruning should and should not go.
+
+### THE SIGN REVERSES — the "taxes" are rig-specific. In the artwork's own economy the machinery is LOAD-BEARING.
+
+Every subtraction finding so far lived on the #49/#50 rig — a build already recommended against deploying. So
+the meta+bank tax was a true statement about a system the user does not run. This closes that gap, and the answer
+overturns my own thesis.
+
+Same arms (STRIP=none vs both), same gen83 genome, same 5 seeds, same 20000 ticks, `INDEX=` pointed at the
+pre-#49 clamped build (d6febcb:index.html) — i.e. the economy the live artwork runs.
+
+| seed | none kinds | both kinds | Δ |
+|---|---|---|---|
+| 7 | 14.00 | 14.14 | +0.14 |
+| 11 | 16.00 | 14.43 | −1.57 |
+| 13 | 15.00 | 14.14 | −0.86 |
+| 17 | 15.71 | 13.14 | −2.57 |
+| 19 | 13.57 | 12.14 | −1.43 |
+
+**CLAMPED: Δkinds −1.257, sd 0.892, CLEARS ITS NOISE BAR, worse in 4/5 seeds.**
+**RIG: Δkinds +2.771, sd 2.218, clears, better in 4/5 seeds.**
+
+Same intervention, same bank, same seeds — **opposite sign, both clearing noise.** (amp reads exactly 1.200 in
+all ten clamped arms, the clamp pinning everything as expected.)
+
+**MY EXPLANATION FOR THE ORIGINAL NULL WAS WRONG.** I wrote that the clamp SEVERS the causal path
+(meta-genes -> amp -> reproduction -> which lineages persist -> kinds), so a diversity effect could not form.
+It forms. It is not invisible under the clamp — it is REVERSED and it clears noise, which is a stronger effect
+than the one I claimed was absent. That explanation should be read as retracted.
+
+**The reading the data supports, and it is more generous to this project than my subtraction thesis.** In a
+saturated economy selection is WEAK — every lineage has near-identical reproductive success — so diversity has to
+be maintained by generative machinery, and removing the meta layer and the authored-atom bank costs ~1.3 kinds.
+On the rig selection is STRONG, and the same machinery becomes a net cost of ~2.8 kinds. **The value of these
+subsystems is not a property of the subsystems. It is a property of the subsystem-economy PAIR.** The 48 swings
+of accreted machinery were not irrational: they are fitted to the economy the project actually runs, where weak
+selection makes generative mechanism the thing that holds diversity up.
+
+**BEARING — the practical output of this whole arc, stated plainly.**
+  1. **Do NOT prune meta or bank from the live artwork.** In its economy they are load-bearing, measured, 4/5
+     seeds, clearing noise. The subtraction result does not transfer.
+  2. **Do NOT deploy #49/#50** — already established separately (boom-bust, no diversity gain, #48's branch 4).
+  3. The rig remains valid as an INSTRUMENT (it overturned the bank null and confirmed the reflex null), but
+     every verdict it produces is a verdict about the rig's economy, and must be re-tested against the clamped
+     build before it can touch the artwork. That re-test is cheap — `INDEX=` — and it is now mandatory, not
+     optional. This result is the reason why.
+  4. The carry-cost decision, which I said earlier should be re-opened on the strength of the rig result, should
+     NOT be. On the clamped build the meta layer earns its keep.
+
+**The methodological lesson, which is the assay's own lesson one level up.** The confabulation assay was built to
+catch claims whose correspondence to mechanism was never checked. This session built a better instrument, and
+then I generalised its readings to a system that instrument does not describe — asserting a property of
+subsystems that was really a property of subsystems-under-a-specific-physics. Same error class, committed with
+better tools. The check that caught it cost one env var and ten runs, and existed the whole time.
+
+### #51 + #52 — TEN LEAPS, VERIFIED. The freeze is broken, descent is dominant, and the atom pipeline FIRED.
+
+Built as two waves of five, on a clean base — my own #49-#50c economy work was REVERTED first, because it
+was measured bad for the artwork and keeping it would have been sentiment rather than learning. Every leap
+follows from a number in this file.
+
+**Wave 1 (#51) — the life cycle.** Senescence (heritable lifespanBias), descent-or-death (reseeding is
+emergency-only), surplus converts (the 1.2 clamp becomes a lossy conversion into inheritable reproductive
+provision), the boundary bites (absorbed peer material deposits real resource and real hazard), retention
+in fitness (lineage depth and persistence at weight 0.22).
+
+**Wave 2 (#52) — what lineages can then do.** Speciation by divergence (previously 0 BY CONSTRUCTION),
+atom call-sites wired into LIVING programs, the trait wall becomes a toll, carried machinery is billed at
+the metabolic economy, rare cross-lineage hybridisation.
+
+**MEASURED (fresh boot, 6000 ticks, 0 loop errors and 0 driver errors):**
+
+| | original (frozen) | after #51 | after #52 |
+|---|---|---|---|
+| singleton fraction | 0.770–0.796 | 0.374 | **0.081** |
+| in a multi-member lineage | ~0.21 | 0.626 | **0.919** |
+| largest lineage | 12–36 | 89 | **146** |
+| mean lineage size | 1.21–1.25 | 2.38 | **6.30** |
+| living lineages | ~400 | 155 | **53** |
+| authored-atom uses | 0 | 0 | **162 (1 proven)** |
+
+**THE ATOM PIPELINE FIRED.** The GENERATIVE-LAYER MAP recorded "authored atoms 0->0 INERT — 1 birth /
+35k ticks, 0 uses ever," and this session independently reproduced it (45k authoring: 3 atoms, 3 bound,
+uses=0). The chain is birth -> bind -> wire a call-site -> execute, and it always died at the last link
+because the splice targeted the GERMLINE while the living population executes pProg. LEAP 7 wires living
+programs. 162 invocations and one proven atom in 6000 ticks. The self-extending VM — the layer this
+project's entire open-endedness thesis rests on — is executing its own authored primitives for the first
+time in the record.
+
+**LIVE (browser, 0 console errors).** It grew structures neither prior build produced: hexagonally packed
+colonies (close-packed lattice, not loose clustering) and yellow FILAMENTS spanning between organisms,
+including a branched three-way junction. Connective structure between individuals is new. Panel reads
+16 alive / 692 total with lineages of visibly different ages coexisting (L654 55p age:124c alongside 4-bud
+juveniles), and the metabolism role reads BLOOM — the trophic differentiation previously seen only in the
+live multi-tab pool now appearing in a single instance.
+
+**A REAL BUG, caught before commit.** The first #52 run threw 1516 loop errors: the speciation block read
+`tv`, which is addParticle's parameter name, while addCompound calls the same vector `nt`. Two spawn
+paths, one identifier. Fixed and re-run clean. Committed the wave with verification status stated as
+pending rather than implied, and the numbers followed.
+
+**THE NUMBER TO WATCH, named now rather than after it goes wrong.** occupiedKinds fell 14–16 -> 10.5 ->
+**9** across the two waves. That is the predicted signature of selection pruning drift-occupied bins —
+kinds SHOULD fall when churn is replaced by descent, and this file has established that occupiedKinds
+cannot distinguish the two. But it is also exactly what consolidation into a single dynasty looks like
+from outside. maxLin climbing (36 -> 89 -> 146) while nLin falls (400 -> 155 -> 53) is consistent with
+BOTH readings. Speciation (#6) and the niche toll (#8) are the counterweights and 6000 ticks is early for
+radiation. **The falsifier: if at 50k+ kinds keeps sliding while maxLin keeps climbing and speciation
+events stay rare, wave 2 has overshot into monoculture and #6/#8 need strengthening — not more leaps.**
