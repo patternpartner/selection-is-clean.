@@ -3946,3 +3946,63 @@ carries. The amp result is genuinely inconclusive and is NOT being reported as h
 statistic clearing its own noise bar by a modest margin (0.914 vs 0.888); it wants a 10-seed confirmation before
 anything is built on it. What is NOT in doubt is the categorical change: a test that returned effect −0.036 ± 0.054
 now returns per-seed swings of up to 40%.
+
+### THE SUBTRACTION TEST — 48 swings added mechanism; removing two subsystems raises diversity 25%
+
+Asked to think outside the box, and the box was "ablate one more layer." Three independent measurements on the
+rig had already pointed the same way from different directions — the gen83 atom bank is a net drag in 4/5 seeds;
+the 116-gene meta-influence layer costs ~0.9 kinds; vmGain fell 1.0 -> 0.217 with the pool converged on the floor
+when selection was free to raise it. Each was filed separately as a null or a curiosity. Together they say the
+ACCRETION ITSELF is the load. So: subtract both, separately and together, and ask what the stripped system does
+on the metric the whole #11-#39 arc was built to move.
+
+`harness-strip.js` (STRIP=none|meta|bank|both), real gen83 genome via the GENOME resume path, 5 seeds, 20000
+ticks, 20 runs, **0 loop errors and 0 driver errors in all twenty**. Bank verifiably live in every intact arm
+(14,763–30,384 atom invocations, 9–14 proven atoms) — the counter increments even in the ablated arm, output
+zeroed after counting, precisely so non-hollowness is demonstrable rather than asserted.
+
+**OCCUPIED KINDS**
+
+| seed | none | meta | bank | both |
+|---|---|---|---|---|
+| 7 | 11.14 | 13.00 | 13.86 | 14.00 |
+| 11 | 11.71 | 14.43 | 11.57 | 13.14 |
+| 13 | 13.71 | 13.43 | 10.57 | 13.29 |
+| 17 | 11.00 | 11.43 | 11.00 | 14.86 |
+| 19 | 7.71 | 13.71 | 11.43 | 13.86 |
+| **mean** | **11.06** | **13.20** | **11.69** | **13.83** |
+
+| arm − none | mean | sd | beats own noise | better in |
+|---|---|---|---|---|
+| meta | +2.143 | 2.196 | no | 4/5 |
+| bank | +0.629 | 2.412 | no | 2/5 |
+| **both** | **+2.771** | **2.218** | **YES** | **4/5** |
+
+Population moves the same way: 251 -> 349, **+39%**.
+
+**Two structural facts, not just a big number.** (1) **Stripping BOTH is the only arm whose diversity gain clears
+its own noise bar** — neither subsystem alone does. (2) The effects are almost exactly ADDITIVE: meta alone
++2.143, bank alone +0.629, sum +2.772, both measured +2.771. Two independent taxes, no interaction term. That
+matters: it means this is not one subsystem's pathology, it is what accumulated machinery does here in general,
+and it predicts that further subtraction keeps paying.
+
+**LEAVE-ONE-OUT — robust.** Per-seed both−none: +2.86, +1.43, −0.43, +3.86, +6.14. Dropping ANY single seed
+leaves the effect beating its own noise, including dropping seed 19 (the largest contributor): mean +1.929,
+sd 1.611. Not one seed carrying it.
+
+**What this says about the project, plainly.** Forty-eight swings were spent ADDING mechanism to break a
+diversity ceiling. On the first instrument capable of detecting either a cost or a benefit, deleting two
+subsystems raises diversity 25% and population 39%. The ceiling those swings kept hitting was not a limit the
+system needed more machinery to escape — a substantial part of it was the machinery. And this is exactly the
+principle the atrophy probe already isolated and stopped one inch short of generalising: concentration came from
+a metabolic COST (opcodes, 87% of instances on a 5-op core, no pruner needed), while the layer that cost nothing
+inflated unchecked. Bloat that is free does not merely fail to help. It is charged to diversity.
+
+**HONEST SCOPE, and it is real.** n=5, one genome (gen83), one regime, headless and CLOSED — this genome's live
+history absorbed 190 plasmids, 180 motifs and 45 inscriptions from peers, and the record is emphatic that the
+open boundary is where the live causal action lives. The margin clears its noise bar but not lavishly (2.771 vs
+2.218), and one seed goes the other way. This is a strong signal and a specimen, not a rate. **It is also NOT a
+proposal to delete these subsystems from index.html** — the same discipline that killed #50d applies: a
+measurement on the rig is not a licence to change the artwork. What it licenses is the next measurement, and it
+names it: strip further (which layer is next-most costly), and confirm at n=10 before anything structural is
+built on it.
