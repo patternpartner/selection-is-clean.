@@ -810,6 +810,58 @@ const CARRY_COST_ATOM=0.0000040;    // amp/tick per carried atom in the bank
 // flow becomes possible, rare, and costly enough to stay rare. A hybrid inherits a program spliced from
 // two distinct evolutionary histories, which is a novelty source no amount of point mutation supplies.
 const HYBRID_RATE=0.035;            // chance a cross-lineage pairing exchanges program material anyway
+// ═══════════════════════════════════════════════════════════════════════════════════════
+// THIRD WAVE (#53) — the anti-monoculture wave, and it is a direct answer to a measured failure.
+// #51 gave the world a life cycle and it worked TOO well: at 20000 ticks, singleton fraction hit 0
+// and every particle lived in a real lineage — and occupiedKinds COLLAPSED from 14-16 to 1.71. Fifteen
+// lineages averaging 24 members, one at 115, all in the same trait space. Monoculture.
+//
+// The diagnosis is not subtle. Selection was broken for this system's whole history (nothing was born,
+// nothing died, amp pinned at the clamp), so every diversity mechanism ever built here was tuned against
+// a population that could not respond to it. Turn selection on and those mechanisms are revealed as far
+// too weak — and one of them is actively pulling the wrong way. Wave 3 makes diversity maintenance
+// strong enough to stand against real selection, which is a thing this codebase has never had to do.
+// ═══════════════════════════════════════════════════════════════════════════════════════
+
+// LEAP 11 — KILL THE HOMOGENISER. Every tick, every particle is pulled toward the population mean in
+// trait space (globalTend). Under the frozen economy that was harmless decoration; under real selection
+// it is a continuous force FOR monoculture, running against every diversity mechanism in the file. It is
+// inverted here: the pull becomes a gentle PUSH away from the mean, so the population's own centre of
+// mass repels rather than attracts. Character displacement as a standing force instead of a swing.
+const HOMOGEN_SIGN=-1.0;            // was implicitly +1 (toward the mean); now away from it
+const HOMOGEN_RATE=0.00006;         // 3x the old magnitude, opposite direction
+
+// LEAP 12 — COMPETITION BY SIMILARITY. densityCost charges for the GLOBAL population size, so a particle
+// pays the same whether its neighbours are its twins or nothing like it. That is not how coexistence
+// works: competition is strongest between similar individuals, and limiting similarity is the mechanism
+// that lets unlike things coexist. Crowding is now charged by how many nearby particles share your trait
+// bin, so being different is cheap and being the same is expensive.
+const SIMIL_COST=0.00055;           // amp/tick per same-bin neighbour within the local cell
+const SIMIL_RADIUS=1;               // grid cells scanned around self
+
+// LEAP 13 — RARITY PAYS, NON-ZERO-SUM. NFD exists at strength 0.004 and is a mean-centred TRANSFER: the
+// rare gain exactly what the common lose, which #11 proved cannot beat limiting similarity ("a zero-sum
+// tax"). Rarity now buys a genuine METABOLIC DISCOUNT — a rare type's upkeep is cheaper, full stop. That
+// is a real advantage rather than a redistribution, and it does not cancel out across the population.
+const RARITY_DISCOUNT=0.62;         // upkeep multiplier at maximum rarity (1.0 = no discount)
+
+// LEAP 14 — TROPHIC PREDATION BETWEEN LINEAGES. The Red Queen was built (#28) against a population that
+// could not die, so it could not bite. Now lineages far apart in trait space can CONSUME each other:
+// amplitude flows from prey to predator on contact. The consequence is the one that matters — dominance
+// makes you the most abundant prey, so no lineage can hold the whole board. Predation is the classic
+// answer to competitive exclusion and this world has never actually had it.
+const PREDATE_MIN_DIST=0.85;        // trait distance beyond which one lineage can eat another
+const PREDATE_RATE=0.055;           // fraction of prey amplitude transferred per encounter
+
+// LEAP 15 — GENERATIONS ADVANCE, AND THE NICHE SPACE GROWS WITH THEM. genome.generation has never moved
+// on its own: the live export read g:83 and that turned out to be the RELOAD count, while a 161k-tick run
+// stayed at generation 1. A generation is not a reload — it is the population having wholly replaced its
+// founders. That is now detected, and each real generational turnover EARNS a dimension of trait space if
+// the frontier is occupied. Niche space stops being a fixed box and becomes something descent extends:
+// the ratchet this project has been looking for since swing #11.
+const GEN_TURNOVER_FRAC=0.92;       // share of the population descended from post-founder lineages
+let genFounders=null;               // lineage ids alive at the last generational boundary
+let lastGenTick=0;
 let worldEnergy=WORLD_ENERGY_MAX;
 let energyAdequacy=1;               // fraction of this tick's metabolic demand the pool could meet
 // NEGATIVE FREQUENCY-DEPENDENCE — the engine of novelty. Without it, selection is purely
@@ -5515,6 +5567,7 @@ const pType=new Uint8Array(CAP);
 // or is unstructured noise (a seeded smear that washes out) — the seed-vs-harvest discriminator.
 const pLin=new Int32Array(CAP); let _linNext=1;
 const pProvision=new Float32Array(CAP); // LEAP 3: banked reproductive surplus, spent at spawn
+const pRarity=new Float32Array(CAP).fill(1); // LEAP 13: per-particle upkeep multiplier — rare is cheap
 // UNLOCKED #9 — PER-PARTICLE BEHAVIORAL GENOME (the meta-population). Each particle runs its OWN VM
 // program (its behavioral genotype), inherited at birth and mutated, so lineages diverge and compete
 // under selection. The global genome stays the shared, self-modeling "self": it owns physics + the
@@ -12254,11 +12307,38 @@ function applyEntropy(){
   const deaths=[];
   deathsThisTick=0;
   const densityCost=(genome.densityCostK||0.00003)*Math.max(0,N-(genome.densityFloor??100));
+  // LEAP 12 + 14 (#53) — one local pass over the spatial grid does both jobs, because both are about
+  // WHO your neighbours are rather than how many exist globally.
+  //   12: crowding is charged by SIMILARITY. Competition is strongest between like individuals; that is
+  //       what lets unlike ones coexist, and densityCost (a global N term) could never express it.
+  //   14: lineages far apart in trait space EAT each other. The Red Queen was built against a population
+  //       that could not die, so it never bit. Dominance now makes you the most abundant prey.
+  {
+    for(let i=0;i<N;i++){
+      if(!palive[i])continue;
+      const gx=(px[i]/CELL)|0, gy=(py[i]/CELL)|0;
+      let same=0;
+      for(let dy=-SIMIL_RADIUS;dy<=SIMIL_RADIUS;dy++)for(let dx=-SIMIL_RADIUS;dx<=SIMIL_RADIUS;dx++){
+        const nx=gx+dx, ny=gy+dy;
+        if(nx<0||ny<0||nx>=gW||ny>=gH)continue;
+        for(let j=grid[ny*gW+nx];j!==-1&&j!==undefined;j=pnext[j]){
+          if(j===i||!palive[j])continue;
+          let d2=0; for(let d=0;d<DIMS;d++){const dv=tend[i*DIMS+d]-tend[j*DIMS+d]; d2+=dv*dv;}
+          if(d2<0.09){ same++; }
+          else if(d2>PREDATE_MIN_DIST*PREDATE_MIN_DIST && amp[i]>amp[j]){
+            const take=amp[j]*PREDATE_RATE*0.5;
+            if(take>0){ amp[j]-=take; amp[i]+=take*0.7; } // 30% lost to the transfer — predation is not free
+          }
+        }
+      }
+      if(same>0)amp[i]-=same*SIMIL_COST;
+    }
+  }
   for(let i=0;i<N;i++){
     if(!palive[i])continue;
     const _g=genome;genome=pGenome[i]||genome; // UNLOCKED #9 FULL: per-lineage metabolism & death threshold
     try{
-      amp[i]-=genome.entropyBaseline;
+      amp[i]-=genome.entropyBaseline*(pRarity[i]||1); // LEAP 13 (#53): rarity discounts upkeep
       amp[i]-=densityCost;
       // LEAP 9 (#52) — carried machinery is billed at the same economy instructions already pay. The
       // meta layer inflated 4-5x THROUGH 1472 atrophy cuts because its coefficients were free; the
@@ -18748,7 +18828,12 @@ function loop(){
   { tHist.fill(0); for(let _i=0;_i<N;_i++){ if(palive[_i]) tHist[tendBin(_i)]++; }
     const _mean=N/TCELLS;
     for(let _i=0;_i<N;_i++){ if(!palive[_i])continue; const _bc=tHist[tendBin(_i)];
-      amp[_i]+=NFD_STRENGTH*Math.max(-1,Math.min(1, 1-_bc/(_mean+0.001))); } } // rare kind gains, common kind pays → the world keeps generating novelty instead of freezing
+      amp[_i]+=NFD_STRENGTH*Math.max(-1,Math.min(1, 1-_bc/(_mean+0.001)));
+      // LEAP 13 (#53) — rarity now also buys a genuine METABOLIC DISCOUNT, not just a transfer. The
+      // mean-centred term above is zero-sum by construction, which #11 proved cannot beat limiting
+      // similarity. This one does not cancel across the population: being rare is simply cheaper to be.
+      pRarity[_i]=RARITY_DISCOUNT+(1-RARITY_DISCOUNT)*Math.min(1,_bc/(_mean+0.001));
+    } } // rare kind gains, common kind pays → the world keeps generating novelty instead of freezing
   // SWING #37: the SAME negative-frequency-dependence, but on PROGRAM-vocabulary signature (unbounded space) — the
   // giant-leap attempt. Being computationally common costs survival; rare program-vocabularies pay, so the
   // population is driven to keep exploring program-space, which (unlike the trait/niche space) cannot saturate.
@@ -18883,7 +18968,12 @@ function loop(){
       for(let i=0;i<N;i++){ if(!palive[i])continue; const c=linCentroid.get(pLin[i]); if(!c)continue;
         for(let d=0;d<DIMS;d++)tend[i*DIMS+d]+=(c[d]-tend[i*DIMS+d])*0.00002*_gt; }
     } else if(_gt!==0){
-      for(let i=0;i<N;i++){if(!palive[i])continue;for(let d=0;d<DIMS;d++)tend[i*DIMS+d]+=(globalTend[d]-tend[i*DIMS+d])*0.00002*_gt}
+      // LEAP 11 (#53) — the mean now REPELS. This line used to pull every particle toward the population
+      // centroid every tick: harmless under a frozen economy, a standing force for monoculture once
+      // selection became real. Sign inverted, magnitude tripled — character displacement as physics.
+      for(let i=0;i<N;i++){if(!palive[i])continue;for(let d=0;d<DIMS;d++){
+        const _v=tend[i*DIMS+d]+(globalTend[d]-tend[i*DIMS+d])*HOMOGEN_RATE*HOMOGEN_SIGN*_gt;
+        tend[i*DIMS+d]=_v<-TEND_HARD?-TEND_HARD:_v>TEND_HARD?TEND_HARD:_v;}}
     } }
 
   exogenousPerturbation();
@@ -21148,6 +21238,35 @@ function loop(){
   if(birthQueue.length>20)birthQueue.length=0;
   if(tick%45===0)compact();
   if(tick%120===0)wireAtomCallSites(); // LEAP 7 (#52): authored atoms reach living programs
+  // LEAP 15 (#53) — a GENERATION is the population having wholly replaced its founders. genome.generation
+  // has never moved on its own: a live export read g:83, which turned out to be the RELOAD count, while a
+  // 161k-tick run stayed at generation 1. Detected properly here — and each real turnover EARNS a
+  // dimension of trait space when the frontier is occupied, so niche space becomes something descent
+  // extends rather than a fixed box. This is the ratchet the arc has wanted since swing #11.
+  if(tick%600===0){
+    try{
+      const live=new Set();
+      for(let i=0;i<N;i++) if(palive[i]) live.add(pLin[i]);
+      if(genFounders===null){ genFounders=live; lastGenTick=tick; }
+      else if(live.size>0){
+        let replaced=0;
+        for(const l of live) if(!genFounders.has(l)) replaced++;
+        if(replaced/live.size>=GEN_TURNOVER_FRAC && tick-lastGenTick>1200){
+          genome.generation=(genome.generation|0)+1;
+          genFounders=live; lastGenTick=tick;
+          recordEvent('generation',{g:genome.generation|0,lineages:live.size,t:tick},900);
+          // the frontier is occupied if anything has pushed past the soft trait bound — if descent has
+          // reached the edge of the space, the space gets bigger.
+          let atFrontier=false;
+          for(let i=0;i<N&&!atFrontier;i++){ if(!palive[i])continue;
+            for(let d=0;d<DIMS;d++){const a=Math.abs(tend[i*DIMS+d]); if(a>TEND_SOFT){atFrontier=true;break;}} }
+          if(atFrontier&&DIMS<DIMS_MAX&&typeof setDims==='function'){
+            try{ setDims(DIMS+1); recordEvent('dims_earned',{dims:DIMS,g:genome.generation|0},900); }catch(e){}
+          }
+        }
+      }
+    }catch(e){}
+  }
   NprevTick=N; // Pe87: snapshot N for POPULATION_RATE next tick
   }catch(e){
     console.error('Loop error:',e.message,e.stack);
