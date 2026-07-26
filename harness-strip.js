@@ -111,7 +111,39 @@ const driver=`
   globalThis.__stripBank=${ABLATE_BANK}; globalThis.__x=${EXTRA!=='none'};
   function __binOf(i){ if(typeof tendBin==='function'){try{return tendBin(i);}catch(e){}} const b=i*DIMS;let r=0;for(let d=0;d<3&&d<DIMS;d++){let q=((tend[b+d]+1.2)/2.4*4)|0;q=q<0?0:q>3?3:q;r=r*4+q;}return r; }
   globalThis.__samples=[];
-  function sample(){ let alive=0,ampSum=0; const bc={}; for(let i=0;i<N;i++){ if(!palive[i])continue; alive++; ampSum+=amp[i]; const b=__binOf(i); bc[b]=(bc[b]||0)+1; } globalThis.__samples.push({tick:(typeof tick!=='undefined'?tick:-1),N:alive,meanAmp:+(alive?ampSum/alive:0).toFixed(4),kinds:Object.keys(bc).length,uaUses:(function(){try{let u=0,n=0;for(const a of (genome.userAtoms||[])){u+=(a.uses|0);if((a.uses|0)>0)n++;}return u+'/'+n;}catch(e){return '?';}})()}); }
+  // KIND PURITY — does a lineage OWN a tendency bin, or do particles merely wander through it?
+  // Drift occupies a bin with scattered particles from many lineages; novelty occupies it with a coherent
+  // lineage that found it and holds it. Raw purity is confounded (a size-1 bin scores 1.0 by construction,
+  // so drift's many-small-bins inflate it), so this reports purity against a SHUFFLED-LABEL NULL: same bin
+  // sizes, same lineage abundances, lineage labels permuted. excess = real - shuffled is the structure that
+  // is not explained by how many bins there are and how common each lineage is.
+  // The shuffle uses its OWN prng — it must never draw from Math.random, which would consume the sim's
+  // seeded stream and change the trajectory being measured.
+  let __ps=0x9E3779B9; function __prand(){ __ps=(__ps+0x6D2B79F5)|0; let t=Math.imul(__ps^__ps>>>15,1|__ps); t=(t+Math.imul(t^t>>>7,61|t))^t; return ((t^t>>>14)>>>0)/4294967296; }
+  function __purity(binOf,linOf,n){
+    const bins=[],lins=[];
+    for(let i=0;i<n;i++){ if(!palive[i])continue; bins.push(binOf(i)); lins.push(linOf(i)); }
+    if(!bins.length) return {p:0,pn:0,ex:0,owned:0};
+    function score(labels){
+      const h={},sz={};
+      for(let k=0;k<bins.length;k++){ const b=bins[k]; (h[b]=h[b]||{}); h[b][labels[k]]=(h[b][labels[k]]||0)+1; sz[b]=(sz[b]||0)+1; }
+      let wsum=0,wtot=0,owned=0;
+      for(const b in sz){ let mx=0; for(const l in h[b]) if(h[b][l]>mx)mx=h[b][l];
+        const pr=mx/sz[b]; wsum+=pr*sz[b]; wtot+=sz[b];
+        if(sz[b]>=5 && pr>=0.5) owned++; }               // owned: a real bin (>=5) majority-held by one lineage
+      return {p:wtot?wsum/wtot:0, owned};
+    }
+    const real=score(lins);
+    const sh=lins.slice();
+    for(let k=sh.length-1;k>0;k--){ const j=(__prand()*(k+1))|0; const t=sh[k]; sh[k]=sh[j]; sh[j]=t; }
+    const nul=score(sh);
+    return {p:+real.p.toFixed(4), pn:+nul.p.toFixed(4), ex:+(real.p-nul.p).toFixed(4), owned:real.owned, ownedNull:nul.owned};
+  }
+  function sample(){ let alive=0,ampSum=0; const bc={}; for(let i=0;i<N;i++){ if(!palive[i])continue; alive++; ampSum+=amp[i]; const b=__binOf(i); bc[b]=(bc[b]||0)+1; }
+    const __lin=(function(){try{const h={};let n=0;for(let i=0;i<N;i++){if(!palive[i])continue;n++;h[pLin[i]]=(h[pLin[i]]||0)+1;}
+      const sz=Object.values(h).sort((a,b)=>b-a);
+      return {alive:n,nLin:sz.length,top:sz.slice(0,3),singles:sz.filter(x=>x===1).length};}catch(e){return null;}})();
+    const __pur=(function(){try{return __purity(__binOf,(i)=>(typeof pLin!=='undefined'?pLin[i]:0),N);}catch(e){return{p:0,pn:0,ex:0,owned:0,ownedNull:0};}})(); globalThis.__samples.push({tick:(typeof tick!=='undefined'?tick:-1),N:alive,meanAmp:+(alive?ampSum/alive:0).toFixed(4),kinds:Object.keys(bc).length,lin:__lin,purity:__pur.p,purityNull:__pur.pn,purityExcess:__pur.ex,owned:__pur.owned,ownedNull:__pur.ownedNull,uaUses:(function(){try{let u=0,n=0;for(const a of (genome.userAtoms||[])){u+=(a.uses|0);if((a.uses|0)>0)n++;}return u+'/'+n;}catch(e){return '?';}})()}); }
   globalThis.__run=function(n,every){ sample(); for(let s=0;s<n;s++){ globalThis.__detMs+=5; try{loop();}catch(e){globalThis.__driverErr=(globalThis.__driverErr||0)+1;} if((s+1)%every===0)sample(); } };
   globalThis.__metaMag=function(){ // sum of |ATROPHY_SAFE params| on the self — to confirm ablation actually zeroed it
     if(typeof ATROPHY_SAFE==='undefined')return null; let s=0,n=0; for(const p of ATROPHY_SAFE){ if(isFinite(genome[p])){s+=Math.abs(genome[p]);n++;} } return {sum:+s.toFixed(3),n}; };
@@ -125,4 +157,4 @@ const S=globalThis.__samples;
 const t2=Math.floor(2*S.length/3);
 function lateMean(k){let s=0,c=0;for(let i=t2;i<S.length;i++){const v=S[i][k];if(typeof v==='number'){s+=v;c++;}}return c?+(s/c).toFixed(4):0;}
 console.log(JSON.stringify({ strip:STRIP, extra:EXTRA, ablated:ABLATE, ablatedBank:ABLATE_BANK, seed:process.env.SEED||null, loopErrors, lastErr, driverErr:globalThis.__driverErr||0,
-  metaMag:globalThis.__metaMag(), lateMeanAmp:lateMean('meanAmp'), lateN:lateMean('N'), lateKinds:lateMean('kinds'), finalSample:S[S.length-1] }));
+  metaMag:globalThis.__metaMag(), lateMeanAmp:lateMean('meanAmp'), lateN:lateMean('N'), lateKinds:lateMean('kinds'), latePurity:lateMean('purity'), latePurityNull:lateMean('purityNull'), latePurityExcess:lateMean('purityExcess'), lateOwned:lateMean('owned'), lateOwnedNull:lateMean('ownedNull'), finalSample:S[S.length-1] }));
