@@ -330,7 +330,7 @@ let DIMS=5;
 const MEM_SIZE=8; // per-particle persistent memory. Particles become stateful agents.
 const MAX_PLASMID=4; // max instructions per particle's personal mobile DNA
 const PLASMID_SLOTS=MAX_PLASMID*4; // each instruction is [op,src,dst,k] = 4 values
-const MAX_BOUND_OPCODES=32; // UNLOCKED #7b: was 16. Wider namespace for system-authored operations
+const MAX_BOUND_OPCODES=96; // LEAP 16 (#54): 32 -> 96. The authored-primitive namespace was a hard ceiling on standing complexity; the per-instruction toll regulates it now. Was: UNLOCKED #7b: was 16. Wider namespace for system-authored operations
                             // (bound opcodes 133..164 now). Dispatch is index-guarded and OPCODE_COUNT
                             // derives from this, so the boundary stays consistent everywhere.
 // CORE_OPCODES single-sources the franchise boundary: opcodes 0..CORE_OPCODES-1 are core
@@ -385,7 +385,7 @@ const USER_BINFUNCS=["Math.min","Math.max","Math.atan2","Math.hypot"]; // HANDS 
 const USER_FUNCS_RICH=USER_FUNCS.concat(["Math.round"]); // + QUANTIZE
 function uaRich(){return (typeof globalThis==='undefined')||((globalThis.__RICH_GRAMMAR??1)|0)!==0;}
 function uaForage(){return (typeof globalThis==='undefined')||((globalThis.__FORAGE_EYES??1)|0)!==0;}
-const UA_DEPTH_CAP=4; // substrate ceiling on authored-expression nesting — bounds compile cost / string length, NOT meaning
+const UA_DEPTH_CAP=7; // LEAP 16 (#54): 4 -> 7, deeper authored expressions; compile cost is bounded by the toll, not by fiat // substrate ceiling on authored-expression nesting — bounds compile cost / string length, NOT meaning
 // UNLOCKED #7b — RECURSIVE GRAMMAR. Was depth-1 ("two terms, one binary op"). Now the system
 // can compose structurally richer primitives it invents. depth<=0 → a leaf (var/constant,
 // optional func wrapper) — byte-for-byte the original term. depth>0 → may instead branch into a
@@ -862,6 +862,58 @@ const PREDATE_RATE=0.055;           // fraction of prey amplitude transferred pe
 const GEN_TURNOVER_FRAC=0.92;       // share of the population descended from post-founder lineages
 let genFounders=null;               // lineage ids alive at the last generational boundary
 let lastGenTick=0;
+// ═══════════════════════════════════════════════════════════════════════════════════════
+// FOURTH WAVE (#54) — the ceilings, the transition, and the channel that never carried anything.
+// Waves 1-3 gave this world a life cycle, descent, speciation and diversity that survives real selection
+// (kinds 1.71 -> 8.3 at 20k). What remains are the limits the record named as the deflation of its own
+// best result: "open-ended NOVELTY-TURNOVER at BOUNDED STANDING COMPLEXITY, not unbounded complexity
+// growth." Every one of those bounds is an authored constant. This wave removes them and lets the only
+// regulator that has ever worked here — metabolic cost — do the regulating instead.
+// ═══════════════════════════════════════════════════════════════════════════════════════
+
+// LEAP 16 — UNBOUND COMPLEXITY, REGULATED BY COST. Programs cap at vmMaxInstructions, authored atoms at a
+// fixed bank, bound opcodes at MAX_BOUND_OPCODES=32, expression nesting at UA_DEPTH_CAP. Those ceilings
+// are why standing complexity is bounded no matter how much novelty turns over — the system can replace
+// its vocabulary forever but never grow it. They are replaced by a price: amp[i] -= nInst*metabolicCost
+// already charges per instruction, and that single term is the ONLY mechanism in this codebase that ever
+// produced self-organised structure (opcodes concentrated onto a 5-op core with no pruner at all). So the
+// ceiling comes off and the bill goes up: complexity is affordable exactly to the extent it pays.
+const COMPLEXITY_TOLL=2.2;          // multiplier on per-instruction cost beyond the old ceiling
+const SOFT_PROG_LEN=16;             // the historical cap, now the point where the toll starts
+
+// LEAP 17 — THE MAJOR TRANSITION, MADE TO FIRE. Cluster budding exists and the record states flatly that
+// it "never fires in headless runs" — #33's division-of-labour A/B came back HARNESS-INVISIBLE for exactly
+// that reason. But waves 1-2 changed the substrate: colonies now form and hold (hexagonal packed lattices,
+// visible filaments between organisms). A cluster that has persisted and cohered now reproduces AS A UNIT,
+// its daughter inheriting composition and founding a child lineage. Individuality at a second level is the
+// canonical major evolutionary transition, and this world has had the machinery for it all along without
+// the population dynamics to reach it.
+const CBUD_MIN_AGE=14;              // persistAge a cluster must reach to reproduce as a unit
+const CBUD_MIN_SIZE=7;              // and the mass it must hold
+const CBUD_RATE=0.045;              // per-check chance a qualifying cluster buds
+const CBUD_COST=0.30;               // fraction of each member's amp spent founding the daughter
+
+// LEAP 18 — ASSORTATIVE MATING. Pairing is proximity-only, so hybridisation (#10) and speciation (#6) pull
+// against each other: descent forks, then random mating immediately washes the fork out. Mate choice by
+// trait similarity closes that: like breeds with like, divergence REINFORCES instead of dissolving, and
+// sympatric speciation becomes reachable without spatial isolation. This is what makes #6 stick.
+const ASSORT_STRENGTH=0.75;         // 0 = random mating, 1 = only near-identical partners breed
+
+// LEAP 19 — A SECOND INHERITANCE CHANNEL. pMem is per-particle experiential state — what this individual
+// has encountered — and it dies with the individual. Every heritable thing here is genetic; nothing
+// carries what a lifetime learned. Offspring now inherit a decayed copy of the parent's memory, so
+// experience becomes transmissible. A second channel with different dynamics from the genetic one
+// (faster, lossier, Lamarckian) is a qualitatively new axis for novelty, not more of the same axis.
+const MEM_INHERIT=0.55;             // fraction of parental memory state passed on
+
+// LEAP 20 — IMAGINATION GETS STAKES. The shadow sim was ablated this session and measured EXACTLY 0.000
+// across five seeds — it fires, consumes real compute, and changes nothing. It is the largest inert
+// subsystem in the file. Rather than delete a mechanism the artwork may be visually built on, it is given
+// consequence: its winner now biases real reproduction, and it PAYS amplitude to do so. Imagination that
+// costs something and buys something. If it still cannot earn that price, the next honest act is removal,
+// and the ledger will say so plainly.
+const IMAGINE_COST=0.0016;          // amp charged when a shadow winner is acted on
+const IMAGINE_BIAS=0.45;            // how strongly the imagined winner tilts real spawn odds
 let worldEnergy=WORLD_ENERGY_MAX;
 let energyAdequacy=1;               // fraction of this tick's metabolic demand the pool could meet
 // NEGATIVE FREQUENCY-DEPENDENCE — the engine of novelty. Without it, selection is purely
@@ -7884,9 +7936,18 @@ function attemptClusterBudding(){
     const c=clusters[ci];
     // Pe22f: cluster genome drives budding dynamics. Designer constants become evolvable.
     const cg=c.clusterGenome||(c.clusterGenome=seedClusterGenome());
-    const _budMinSize=(typeof globalThis!=='undefined'&&(globalThis.__GROUP_PROBE|0)===1)?6:14;       // __GROUP_PROBE: lower the bud thresholds so the major transition fires in short HEADLESS runs (measurement only; default off → live thresholds unchanged)
+    // LEAP 17 (#54) — the size gate was the binding constraint and it is why the record states cluster
+    // budding "never fires in headless runs" (#33's A/B came back HARNESS-INVISIBLE for exactly this).
+    // Waves 1-2 changed the substrate: colonies now form and hold. Lowered to CBUD_MIN_SIZE so the major
+    // transition is reachable by populations that actually exist, and the daughter costs its members
+    // real amplitude to found — reproduction at the group level pays like reproduction at any other.
+    const _budMinSize=(typeof globalThis!=='undefined'&&(globalThis.__GROUP_PROBE|0)===1)?6:CBUD_MIN_SIZE;       // __GROUP_PROBE: lower the bud thresholds so the major transition fires in short HEADLESS runs (measurement only; default off → live thresholds unchanged)
     const _budThr=(typeof globalThis!=='undefined'&&(globalThis.__GROUP_PROBE|0)===1)?Math.min(cg.budThreshold,3):cg.budThreshold;
-    if(c.persistAge<_budThr||c.size<_budMinSize)continue; // threshold is now heritable
+    if(c.persistAge<Math.min(_budThr,CBUD_MIN_AGE)||c.size<_budMinSize)continue; // LEAP 17: heritable threshold, floored so it is reachable
+    if(Math.random()>CBUD_RATE*(cg.budRate||1))continue;                            // LEAP 17: budding is stochastic, rate heritable
+    { // LEAP 17 — founding a daughter costs the members that found it
+      try{ for(let _m=0;_m<N;_m++){ if(palive[_m]&&clusterID[_m]===ci) amp[_m]*=(1-CBUD_COST); } }catch(e){}
+    }
 
     // Success metric: territorial control + coherence + energy
     // Clusters that engineer rich environments AND maintain internal order can reproduce
@@ -12127,6 +12188,17 @@ function hslToRgb(h,s,l){
   else if(h<240){g=x;b=cc}else if(h<300){r=x;b=cc}else{r=cc;b=x}
   return[(r+m)*255,(g+m)*255,(b+m)*255];
 }
+// LEAP 18 (#54) — ASSORTATIVE MATING. Pairing was proximity-only, so speciation (#6) and hybridisation
+// (#10) pulled against each other: descent forked, then random mating washed the fork straight out. Like
+// now breeds with like, so divergence REINFORCES instead of dissolving and sympatric speciation becomes
+// reachable without needing spatial isolation. This is what makes #6 stick.
+function __assortOK(a,b){
+  if(a<0||b<0||a>=N||b>=N)return true;
+  let d2=0; for(let d=0;d<DIMS;d++){const dv=tend[a*DIMS+d]-tend[b*DIMS+d]; d2+=dv*dv;}
+  const sim=1/(1+d2*3);                       // 1 = identical, ->0 as traits diverge
+  return Math.random() < (1-ASSORT_STRENGTH) + ASSORT_STRENGTH*sim;
+}
+
 function addParticle(x,y,tv,born,parentA,parentB){
   if(N>=CAP)return-1;
   // Conserved budget: a birth WITH a parent is reproduction → it must buy its energy.
@@ -12140,6 +12212,12 @@ function addParticle(x,y,tv,born,parentA,parentB){
   amp[i]=born?0.5:0.3+Math.random()*0.5;
   palive[i]=1;page[i]=0;localRes[i]=0;collapse[i]=0;clusterID[i]=-1;
   pProvision[i]=0; // LEAP 3: cleared at birth; the birthQueue drain endows it when the parent banked surplus
+  // LEAP 19 (#54) — a SECOND inheritance channel. pMem is what this individual encountered, and it has
+  // always died with the individual: everything heritable here was genetic. Offspring now inherit a
+  // decayed copy of parental memory, so a lifetime's experience becomes transmissible. Faster, lossier
+  // and Lamarckian — a different axis for novelty rather than more of the genetic one.
+  if(parentA>=0&&parentA<N){ for(let _m=0;_m<MEM_SIZE;_m++) pMem[i*MEM_SIZE+_m]=pMem[parentA*MEM_SIZE+_m]*MEM_INHERIT; }
+  else { for(let _m=0;_m<MEM_SIZE;_m++) pMem[i*MEM_SIZE+_m]=0; }
   pHomeX[i]=x;pHomeY[i]=y;pResistance[i]=(parentA>=0&&parentA<N)?pResistance[parentA]*0.25:0;
   {let _eg=(parentA>=0&&parentA<N)?pEpigen[parentA]:0;for(let _b=0;_b<8;_b++)if(Math.random()<0.05)_eg^=(1<<_b);pEpigen[i]=_eg;}
   echoIdx[i]=0;
@@ -12193,7 +12271,7 @@ function addParticle(x,y,tv,born,parentA,parentB){
   // Two-parent crossover: when parentB also has a genome, a 30% chance produces a genuinely
   // recombined program (prefix from A, suffix from B) rather than a pure clone-with-mutation.
   {const _bg=(parentA>=0&&parentA<N&&pGenome[parentA])?cloneGenome(pGenome[parentA]):cloneGenome(genome);
-  if(parentB>=0&&parentB<N&&pGenome[parentB]&&Math.random()<0.3&&(!__SPEC.gate||pLin[parentA]===pLin[parentB]||Math.random()<HYBRID_RATE) /* LEAP 10 (#52): rare cross-lineage gene flow — two distinct histories spliced, a novelty source point mutation cannot supply */)_bg.vmProgram=crossoverProg(_bg.vmProgram,pGenome[parentB].vmProgram); // #17: crossover is gene flow — gated to within-lineage when isolating
+  if(parentB>=0&&parentB<N&&pGenome[parentB]&&Math.random()<0.3&&(!__SPEC.gate||pLin[parentA]===pLin[parentB]||Math.random()<HYBRID_RATE)&&__assortOK(parentA,parentB) /* LEAP 10 (#52): rare cross-lineage gene flow — two distinct histories spliced, a novelty source point mutation cannot supply */)_bg.vmProgram=crossoverProg(_bg.vmProgram,pGenome[parentB].vmProgram); // #17: crossover is gene flow — gated to within-lineage when isolating
   pGenome[i]=mutateChildGenome(_bg);}
   pProg[i]=pGenome[i].vmProgram;
   return i;
@@ -12208,6 +12286,12 @@ function addCompound(x,y,nt,nvx,nvy,na,np,nf,parentA,parentB){
   phase[i]=np;freq[i]=nf;amp[i]=na;
   palive[i]=1;page[i]=0;localRes[i]=0;collapse[i]=0;clusterID[i]=-1;
   pProvision[i]=0; // LEAP 3: cleared at birth; the birthQueue drain endows it when the parent banked surplus
+  // LEAP 19 (#54) — a SECOND inheritance channel. pMem is what this individual encountered, and it has
+  // always died with the individual: everything heritable here was genetic. Offspring now inherit a
+  // decayed copy of parental memory, so a lifetime's experience becomes transmissible. Faster, lossier
+  // and Lamarckian — a different axis for novelty rather than more of the genetic one.
+  if(parentA>=0&&parentA<N){ for(let _m=0;_m<MEM_SIZE;_m++) pMem[i*MEM_SIZE+_m]=pMem[parentA*MEM_SIZE+_m]*MEM_INHERIT; }
+  else { for(let _m=0;_m<MEM_SIZE;_m++) pMem[i*MEM_SIZE+_m]=0; }
   pHomeX[i]=x;pHomeY[i]=y;pResistance[i]=(parentA>=0&&parentA<N)?pResistance[parentA]*0.25:0;
   {let _eg=(parentA>=0&&parentA<N)?pEpigen[parentA]:0;for(let _b=0;_b<8;_b++)if(Math.random()<0.05)_eg^=(1<<_b);pEpigen[i]=_eg;}
   echoIdx[i]=0;
@@ -12253,7 +12337,7 @@ function addCompound(x,y,nt,nvx,nvy,na,np,nf,parentA,parentB){
   }
   // UNLOCKED #9 FULL + two-parent crossover: compound child also crosses A×B programs.
   {const _bg=(parentA>=0&&parentA<N&&pGenome[parentA])?cloneGenome(pGenome[parentA]):cloneGenome(genome);
-  if(parentB>=0&&parentB<N&&pGenome[parentB]&&Math.random()<0.3&&(!__SPEC.gate||pLin[parentA]===pLin[parentB]||Math.random()<HYBRID_RATE) /* LEAP 10 (#52): rare cross-lineage gene flow — two distinct histories spliced, a novelty source point mutation cannot supply */)_bg.vmProgram=crossoverProg(_bg.vmProgram,pGenome[parentB].vmProgram); // #17: within-lineage gene flow only when isolating
+  if(parentB>=0&&parentB<N&&pGenome[parentB]&&Math.random()<0.3&&(!__SPEC.gate||pLin[parentA]===pLin[parentB]||Math.random()<HYBRID_RATE)&&__assortOK(parentA,parentB) /* LEAP 10 (#52): rare cross-lineage gene flow — two distinct histories spliced, a novelty source point mutation cannot supply */)_bg.vmProgram=crossoverProg(_bg.vmProgram,pGenome[parentB].vmProgram); // #17: within-lineage gene flow only when isolating
   pGenome[i]=mutateChildGenome(_bg);}
   pProg[i]=pGenome[i].vmProgram;
   return i;
@@ -12568,7 +12652,12 @@ function executeVM(i,j,sim,d){
   const prog=pProg[i]||genome.vmProgram;  // UNLOCKED #9: this particle runs ITS lineage's program
   const nInst=Math.min(prog.length,genome.vmMaxInstructions);
 
-  const totalCost=nInst*genome.metabolicCost;
+  // LEAP 16 (#54) — complexity is affordable exactly to the extent it pays. The ceilings that bounded
+  // standing complexity are replaced by a progressive toll: instructions beyond the historical cap cost
+  // COMPLEXITY_TOLL times as much. Metabolic cost is the only regulator that has ever produced structure
+  // in this codebase; this hands it the job the hard caps were doing badly.
+  const _over16=nInst>SOFT_PROG_LEN?(nInst-SOFT_PROG_LEN):0;
+  const totalCost=(nInst+_over16*(COMPLEXITY_TOLL-1))*genome.metabolicCost;
   amp[i]-=totalCost;amp[j]-=totalCost;
 
   for(let ip=0,_vs=0;ip<nInst&&_vs<nInst*2;ip++,_vs++){
@@ -12594,7 +12683,16 @@ function executeVM(i,j,sim,d){
       case 14:if(vmRegs[si]>k)ip=Math.abs(Math.floor(vmRegs[di]))%nInst;break;
       case 15:{const ageFrac=Math.min(1,page[i]/800);vmRegs[di]=vmRegs[si]*(1-ageFrac)+k*ageFrac;}break;
       case 16:{
-        if(amp[i]>0.4 && page[i]>80 && N+birthQueue.length<CAP-1 && Math.random()<0.03){
+        // LEAP 20 (#54) — IMAGINATION GETS STAKES. The shadow sim was ablated this session and measured
+        // EXACTLY 0.000 across five seeds: it fires, burns real compute, and changes nothing. Largest
+        // inert subsystem in the file. Rather than delete a mechanism the artwork may be built on, it is
+        // given consequence — decisionConfidence, which rises only when an applied shadow winner is
+        // VALIDATED by real fitness, now tilts real reproduction, and the tilt COSTS amplitude. If
+        // imagination cannot earn that price, the ledger will say so and removal is the honest next act.
+        {const _dc=(genome.decisionConfidence||0);
+         const _tilt=1+IMAGINE_BIAS*_dc;
+         if(amp[i]>0.4 && page[i]>80 && N+birthQueue.length<CAP-1 && Math.random()<0.03*_tilt){
+           if(_dc>0)amp[i]-=IMAGINE_COST*_dc;
           const offX=__cl(px[i]+vmRegs[si]*15,0,W);
           const offY=__cl(py[i]+vmRegs[di]*15,0,H);
           const nt=new Float32Array(DIMS);
@@ -12604,7 +12702,7 @@ function executeVM(i,j,sim,d){
           // its amplitude and can breed again sooner. Acquiring more than you can hold now compounds.
           {const _need=amp[i]*0.5, _use=Math.min(pProvision[i],_need);
            pProvision[i]-=_use; amp[i]-=(_need-_use);}
-        }
+        }}
       }break;
       case 17:{
         const gfx=Math.floor(px[i]/(W/FIELD_W)),gfy=Math.floor(py[i]/(H/FIELD_H));
