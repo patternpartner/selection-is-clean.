@@ -4218,3 +4218,113 @@ when one was a single bad mechanism.
 I said I would revert it if it does not beat wave 2 and that test has not been run. Everything here is
 6k–20k ticks against a live pool that runs to 467k with an open network boundary the harness stubs entirely —
 LEAP 25 (migrants carrying programs) is provably INERT in every headless run and can only be tested live.
+
+### #57 MODES — the best configuration in the record, and a false claim caught by its own instrument
+
+Five words arrived with no explanation: HOLD, CARRY, STRETCH, SHIFT, SURGE. Read as a behavioural MODE
+vocabulary — five discrete strategies rather than five more scalars — with the reading stated up front so
+it was cheap to correct.
+
+**Why discrete.** Every axis in this world is continuous: trait space, influence coefficients, gains,
+thresholds. Continuous axes collapse under competitive exclusion — selection slides the population to one
+end and the variance dies, which is exactly the monoculture wave 1 produced (kinds 1.71 at 20k). HOLD and
+SURGE are not two points on a line. Each is priced to win somewhere and lose elsewhere (HOLD: upkeep 0.55,
+defence 2.20, repro 0.45 — cheap to be, hard to kill, barely breeds. SURGE: upkeep 1.85, repro 2.20,
+defence 0.55 — wins feast, dies first in famine), and this world's conditions cycle.
+
+**THE INSTRUMENT CAUGHT MY OWN FALSE CLAIM.** The commit said mode gives "the first genuinely categorical
+decision evolved code can make here." The census disproved it the only way possible: inherited-bias
+distribution came back IDENTICAL to current-mode distribution, digit for digit, across three seeds — only
+possible if nothing ever switched. SET_MODE was never executed. Same failure as the atom pipeline, same
+cause (a new opcode only enters a program if mutation draws it, and seeded programs contain no reference),
+same fix as LEAP 7 (wire it into living programs). I had solved this shape two waves earlier and did not
+apply it to my own new opcodes.
+
+**Method note worth keeping.** pMode and pModeBias were censused separately because I anticipated a failure
+there — but I predicted switching-WITHOUT-inheritance and got inheritance-WITHOUT-switching. The instrument
+caught the failure I had NOT predicted, because it measured the mechanism rather than my hypothesis about
+it. A test built to confirm the guess would have missed it.
+
+**RESULT AFTER THE FIX (3 seeds, 6000 ticks, 0 loop and 0 driver errors):**
+
+| | before switching | after |
+|---|---|---|
+| mode evenness | 0.40 / 0.35 / 0.51 | **0.957 / 0.691 / 0.872** |
+| occupiedKinds | 9.67 / 11.33 / 10.67 | **14.33 / 12.33 / 10.33** |
+| mean kinds | 10.56 | **12.33** |
+
+Seed 7's modes sit at [0.073, 0.259, 0.193, 0.219, 0.256] — five strategies at near-parity, evenness 0.957
+of a possible 1.0 — while its inherited bias remains 80% SURGE. **The two have DECOUPLED: lineages inherit
+one strategy and behaviourally adopt another as conditions demand.** Plasticity layered on heredity, and
+that decoupling is what drove diversity up. Dominant modes are also SEED-CONTINGENT (SURGE in one, HOLD in
+two), so no strategy is globally superior — which hand-pricing could not have guaranteed.
+
+**THE COMPARISON THAT MATTERS.** The original build ran kinds 14–16 and was a PHOTOGRAPH: lineage
+composition bit-identical from t20000 to t80000, no births, no deaths. Seed 7 now runs 14.33 in a
+population that ages, dies, reproduces by descent, speciates, predates, authors and executes its own
+primitives, and chooses between discrete ways of being alive. **Diversity matching the frozen build, in a
+living system.** Not unanimous — seed 13 went 10.67 -> 10.33 — so 2 of 3 up on a strong mean.
+
+**LIVE.** 0 console errors. Two large hexagonal colonies, one dense orange and one dispersing with filament
+structure; 14 lineages alive of 821 ever, oldest at 72 particles and age 328c.
+
+---
+
+## #58 — wave 7. A hollow column of my own, and the price of closing it.
+
+**The finding that actually matters is not a fitness number.** #57 shipped the mode
+table with `MODE_REACH` declared at `index.html:1009` and read nowhere in the file.
+STRETCH therefore paid 1.25x upkeep and took cuts to speed, reproduction and defence
+in exchange for a benefit that was a comment. It was a strictly dominated strategy
+sitting in the table looking like a choice, and it survived purely on drift — while I
+was writing commit messages about the world's first categorical decision.
+
+This is the hollow-mechanism pattern. It is the thing this record has spent forty
+swings learning to catch, it is the whole premise of the confabulation-assay framing,
+and it went in three commits ago under my own hand and stayed there through a
+"VERIFIED" commit. The verification checked that switching *happened* (frac != bias).
+It never checked that the thing being switched *to* paid out. A census that confirms a
+mechanism fires is not a check that the mechanism does anything.
+
+### The five leaps
+- **31 REACH IS REAL** — per-particle falloff denominator. Applied to the falloff and
+  deliberately not to the `d<iR` cutoff: the grid sweep scans +/-1 cell of CELL=55, so a
+  widened cutoff would find distant partners by grid alignment, an artifact wearing
+  physics. HOLD's 0.80*55=44 is below the cutoff, so `max(0,...)` means HOLD cannot feed
+  at range at all. Asymmetric — each side reads its own reach.
+- **32 COMPLEMENTARITY** — same-mode encounters 0.80, cross-mode 1.30. Frequency
+  dependence on *strategy* rather than genotype.
+- **33 SURGE IS A TERMINAL BET** — burns provision per tick, acute hazard once dry,
+  hazard adds to senescence rather than replacing it.
+- **34 PLASTICITY IS A LUXURY GOOD** — switch paid from provision first, 4x cost with no
+  reserve. History gates capability for the first time in this world.
+- **35 MODES ARE VISIBLE** — hue/saturation per mode. Readout only; explicitly not
+  applied to `pSz`, which is read as collision extent.
+
+### Measured, 6k ticks, seeds 7/17/23. loopErrors 0/0 all three.
+`lateKinds`: 12.00 / 11.00 / 11.67, mean **11.56**, against #57's 14.33 / 12.33 / 10.33,
+mean **12.33**. A decline of 0.78, inside the +/-2 pre-registered band, so the rule says
+keep leaps 32-34 and they are kept. Recorded as a decline, not as noise-that-happens-to-
+be-fine: nothing in this wave improved kinds.
+
+**Leap 31 landed structurally.** Seed 7 realized modes `[.327 .065 .412 .025 .171]`
+against inherited `[.025 .04 .462 .08 .392]` — STRETCH from dominated to most-occupied,
+HOLD 13x commoner in practice than in heredity.
+
+**The spread is the real result.** #57 spanned 4.00 across seeds; wave 7 spans 1.00. The
+floor rose 1.34 and the ceiling fell 2.33. That is the signature of a stabilising
+mechanism, which is what leap 32 is — frequency dependence holds the rare up and the
+common down, and it cuts both tails doing it. A wave that compresses variance is not the
+same kind of failure as a wave that lowers the mean, and the mean-only reading would have
+missed it entirely.
+
+### Open, and honestly open
+Seed 23 finished a CARRY monoculture, evenness 0.376, realized `[.028 .854 .059 .041
+.018]` against inherited `[.010 .877 .069 .026 .018]` — near-zero switching. Seed 7 kept
+its decoupling; seed 23 lost it. That fits leap 34 exactly (a provision-poor lineage
+priced out of plasticity) and it is a HYPOTHESIS, not a measurement. `modeSwitches` was
+added in this wave for precisely this question and then not surfaced in the harness, so
+the current claim rests on `frac ~= biasFrac` rather than on counted transitions. Until
+that counter is read, "leap 34 suppressed switching" is a story, and this record's whole
+convention is that stories of this shape have been wrong before — twice in one session,
+both times refuted by bit-identical runs.

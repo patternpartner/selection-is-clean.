@@ -349,7 +349,7 @@ const MAX_BOUND_OPCODES=96; // LEAP 16 (#54): 32 -> 96. The authored-primitive n
 // Bumping CORE_OPCODES is the ONLY edit needed to add a core opcode — the bound guards
 // (op>=CORE_OPCODES) and OPCODE_COUNT derive from it, so a boundary typo can no longer
 // orphan an opcode or collide a core op with a bound slot (the Pe60 / op142-class bug).
-const CORE_OPCODES=232; // 0..231 core — op208-211 velocity I/O, op212-216 inhibitor/resistance mechanics, op217-219 oscillator direct control, op220-231 scaffold morphogenesis + genomic self-inspection + reproductive autonomy + cluster quorum sensing
+const CORE_OPCODES=235; // #57: 232 -> 235, admitting SET_MODE (232), READ_MODE (233), PARTNER_MODE (234) — the first categorical decision evolved code can make here. Was: // 0..231 core — op208-211 velocity I/O, op212-216 inhibitor/resistance mechanics, op217-219 oscillator direct control, op220-231 scaffold morphogenesis + genomic self-inspection + reproductive autonomy + cluster quorum sensing
                         // 0..132 core — op132 SEASON_PHASE: perceive the current feast/famine cycle position
                         // 0..131 core — op131 ENERGY_STRESS: the system perceives conserved-budget scarcity
                         // 0..130 core — OPENED THE SWITCH: op128 READ_OWN_CASTE, op129 READ_PARTNER_CASTE,
@@ -986,6 +986,44 @@ const VM_CONSEQUENCE=1.0;           // LEAP 27 REVERTED (#56) — pre-registered
                                     // consequence rose. Set back to 1.0; vmGain stays free to raise it if
                                     // selection actually wants it, which is the honest version of #48's
                                     // question anyway. Subtraction, as the commit before this one promised.
+// ═══════════════════════════════════════════════════════════════════════════════════════
+// SIXTH WAVE (#57) — MODES. Every axis in this world is CONTINUOUS: trait space, influence
+// coefficients, gains, thresholds. Continuous axes collapse under competitive exclusion — selection
+// slides the population toward one end and the variance dies, which is precisely the monoculture wave 1
+// produced (kinds 1.71 at 20k). A DISCRETE strategy space cannot collapse the same way: HOLD and SURGE
+// are not two points on a line that selection can slide along, they are different ways of being alive,
+// each best under different conditions, and conditions here cycle (seasons, crowding, predation, boom
+// and bust). This gives the VM something categorical to decide, gives lineages a strategy to inherit,
+// and gives the eye something to distinguish — one system serving all three faces of this thing.
+// ═══════════════════════════════════════════════════════════════════════════════════════
+const MODE_HOLD=0, MODE_CARRY=1, MODE_STRETCH=2, MODE_SHIFT=3, MODE_SURGE=4, MODE_COUNT=5;
+const MODE_NAMES=['hold','carry','stretch','shift','surge'];
+// Each mode is a real bargain, not a label. Every one is best somewhere and ruinous somewhere else:
+//   HOLD    — cheap to be, hard to kill, goes nowhere. Wins famine and crowding; loses every race.
+//   CARRY   — moves reserves with it and provisions offspring richly. Wins patchy worlds; pays freight.
+//   STRETCH — long reach, touches distant partners and resources. Wins sparse worlds; costly upkeep.
+//   SHIFT   — fast, disperses, escapes. Wins collapse and predation; starves in place.
+//   SURGE   — burns amplitude for output and reproduction. Wins feast; dies first in famine.
+const MODE_UPKEEP =[0.55, 1.10, 1.25, 1.15, 1.85]; // multiplier on entropyBaseline
+const MODE_SPEED  =[0.35, 0.90, 0.80, 2.10, 1.30]; // multiplier on velocity
+const MODE_REACH  =[0.80, 1.00, 1.90, 0.90, 1.10]; // multiplier on interaction radius
+const MODE_REPRO  =[0.45, 1.05, 0.85, 0.70, 2.20]; // multiplier on spawn odds
+const MODE_DEFENCE=[2.20, 1.00, 0.85, 1.20, 0.55]; // divisor on inhibitor damage taken
+const MODE_WIRE_RATE=0.03;          // #57 fix: per-cycle chance a living program gains a mode opcode
+const MODE_SWITCH_COST=0.045;       // amplitude paid to change strategy — commitment has to mean something
+// ── #58, wave 7. #57 shipped the mode table with MODE_REACH declared and never read anywhere in the
+// file. That made STRETCH a strictly dominated strategy: 1.25x upkeep, cuts to speed, reproduction and
+// defence, and its single compensating benefit was a comment. It survived on drift, which is exactly
+// the hollow-mechanism pattern this project's own record keeps catching in other people's work. These
+// five constants close that hole and then make the rest of the table mean something too.
+const MODE_SAME_GAIN=0.80;          // LEAP 32 — two particles in the SAME mode compete for the same thing
+const MODE_DIFF_GAIN=1.30;          // LEAP 32 — two in DIFFERENT modes trade; rarity pays at the encounter
+const SURGE_BURN=0.020;             // LEAP 33 — provision drawn down per tick while in SURGE
+const SURGE_EXHAUST_HAZARD=0.0022;  // LEAP 33 — per-tick death odds once SURGE has nothing left to burn
+const MODE_LOCK_MULT=4.0;           // LEAP 34 — switching costs this much more with no reserve to pay from
+const MODE_HUE=[205, 45, 300, 130, 12];   // LEAP 35 — hue offset per mode, so the polymorphism is visible
+const MODE_SAT=[0.70, 1.00, 1.15, 0.95, 1.35];
+let modeSwitches=0;                 // telemetry: total SET_MODE transitions actually executed
 let worldEnergy=WORLD_ENERGY_MAX;
 let energyAdequacy=1;               // fraction of this tick's metabolic demand the pool could meet
 // NEGATIVE FREQUENCY-DEPENDENCE — the engine of novelty. Without it, selection is purely
@@ -5695,6 +5733,8 @@ const pType=new Uint8Array(CAP);
 // or is unstructured noise (a seeded smear that washes out) — the seed-vs-harvest discriminator.
 const pLin=new Int32Array(CAP); let _linNext=1;
 const pProvision=new Float32Array(CAP); // LEAP 3: banked reproductive surplus, spent at spawn
+const pMode=new Uint8Array(CAP);        // #57: current behavioural mode — a DISCRETE strategy, VM-settable
+const pModeBias=new Uint8Array(CAP);    // #57: inherited default — the strategy a lineage is born into
 const pRarity=new Float32Array(CAP).fill(1); // LEAP 13: per-particle upkeep multiplier — rare is cheap
 // UNLOCKED #9 — PER-PARTICLE BEHAVIORAL GENOME (the meta-population). Each particle runs its OWN VM
 // program (its behavioral genotype), inherited at birth and mutated, so lineages diverge and compete
@@ -10208,6 +10248,9 @@ const inst={
   opcodeHist:[],      // opcode frequency in global program over time
 };
 let deathsByPhysics=0,deathsByAge=0;
+let deathsBySurge=0; // LEAP 33 (#58) — telemetry only. A SUBSET tally, not a partition of deathsByAge:
+                     // an old particle that surges dry is counted in both, which is the honest reading
+                     // since the two hazards are added, not chosen between.
 let hgtWindow=0; // HGT events since last measurement
 let dashboardVisible=true; // always on — touch events unreliable at high particle counts
 
@@ -10722,6 +10765,31 @@ function collectClusterUpstream(){
 // population executes pProg. Measured this session: 45k ticks of authoring produced 3 atoms, 3 bound,
 // uses=0. Born, bound, never called. This wires a call-site into a LIVING program, so authored atoms
 // finally get executed and can be judged by selection instead of dying unexpressed.
+// #57 FIX — SET_MODE was reachable in principle and never invoked in practice. The census proved it the
+// only way it could be proved: inherited-bias distribution came back IDENTICAL to current-mode
+// distribution, digit for digit, across three seeds — which is only possible if no particle ever switched.
+// Modes were heritable (real, and selection acts on it) but the "categorical decision" the commit claimed
+// evolved code could make was never once made. Same failure as the atom pipeline: wired, reachable,
+// never called — because a brand-new opcode only enters a program if mutation happens to draw it, and
+// programs seeded from the base genome contain no reference to it. Same fix as LEAP 7: put it in front of
+// living code so selection can judge whether deciding is worth anything.
+function wireModeOpcodes(){
+  try{
+    for(let i=0;i<N;i++){
+      if(!palive[i]||!pProg[i])continue;
+      if(Math.random()>MODE_WIRE_RATE)continue;
+      const pr=pProg[i];
+      let has=false; for(let q=0;q<pr.length;q++){const o=pr[q][0]; if(o===232||o===233||o===234){has=true;break;}}
+      if(has)continue;
+      const op=(Math.random()<0.5)?232:(Math.random()<0.5?233:234);
+      const inst=[op,(Math.random()*12)|0,(Math.random()*12)|0,(Math.random()*MODE_COUNT)|0];
+      const cap=Math.min((genome.vmMaxInstructions||16),48);
+      if(pr.length<cap) pr.splice((Math.random()*(pr.length+1))|0,0,inst);
+      else pr[(Math.random()*pr.length)|0]=inst;
+    }
+  }catch(e){}
+}
+
 function wireAtomCallSites(){
   try{
     const uas=genome.userAtoms;
@@ -12306,6 +12374,10 @@ function addParticle(x,y,tv,born,parentA,parentB){
   phase[i]=Math.random()*Math.PI*2;freq[i]=0.02+Math.random()*0.04;
   amp[i]=born?0.5:0.3+Math.random()*0.5;
   palive[i]=1;page[i]=0;localRes[i]=0;collapse[i]=0;clusterID[i]=-1;
+  // #57 — a lineage is BORN INTO a strategy and mostly keeps it, with a small chance of switching at
+  // birth. That is what makes mode a heritable discrete trait selection can act on, rather than noise.
+  pModeBias[i]=(parentA>=0&&parentA<N)?(Math.random()<0.06?((Math.random()*MODE_COUNT)|0):pModeBias[parentA]):((Math.random()*MODE_COUNT)|0);
+  pMode[i]=pModeBias[i];
   pProvision[i]=0; // LEAP 3: cleared at birth; the birthQueue drain endows it when the parent banked surplus
   // LEAP 19 (#54) — a SECOND inheritance channel. pMem is what this individual encountered, and it has
   // always died with the individual: everything heritable here was genetic. Offspring now inherit a
@@ -12380,6 +12452,10 @@ function addCompound(x,y,nt,nvx,nvy,na,np,nf,parentA,parentB){
   for(let d=0;d<DIMS;d++){const _t=nt[d]; tend[i*DIMS+d]=Number.isFinite(_t)?_t:0;} // chokepoint: never born with a non-finite tendency
   phase[i]=np;freq[i]=nf;amp[i]=na;
   palive[i]=1;page[i]=0;localRes[i]=0;collapse[i]=0;clusterID[i]=-1;
+  // #57 — a lineage is BORN INTO a strategy and mostly keeps it, with a small chance of switching at
+  // birth. That is what makes mode a heritable discrete trait selection can act on, rather than noise.
+  pModeBias[i]=(parentA>=0&&parentA<N)?(Math.random()<0.06?((Math.random()*MODE_COUNT)|0):pModeBias[parentA]):((Math.random()*MODE_COUNT)|0);
+  pMode[i]=pModeBias[i];
   pProvision[i]=0; // LEAP 3: cleared at birth; the birthQueue drain endows it when the parent banked surplus
   // LEAP 19 (#54) — a SECOND inheritance channel. pMem is what this individual encountered, and it has
   // always died with the individual: everything heritable here was genetic. Offspring now inherit a
@@ -12457,6 +12533,16 @@ function computeVisuals(i){
     hue+=smear*Math.sin(phase[i]*3)*35;
     sat=sat*col+15*smear;lit=lit*col+(25+Math.sin(phase[i])*8)*smear;
     lit*=0.5+amp[i]*0.8;sat*=0.4+amp[i]*0.6;
+    // LEAP 35 (#58) — MODES ARE VISIBLE. Five categorical strategies that render identically are not,
+    // for the artwork's purposes, five strategies: a live polymorphism and a monoculture looked the
+    // same on screen, which is the one place this project is supposed to be legible without a harness.
+    // Mode now rotates hue and scales saturation, so a field holding five strategies reads as a field
+    // with visibly different KINDS of thing in it. This is a READOUT, not a physics change — hue and
+    // saturation feed pR/pG/pB, which nothing in the selection path consumes. Deliberately NOT applied
+    // to pSz: size is read as collision extent (minD=pSz[i]+pSz[j] in the pair sweep), so scaling it
+    // by mode would be a silent physics edit wearing a rendering comment.
+    hue=(hue+MODE_HUE[pMode[i]])%360;
+    sat*=MODE_SAT[pMode[i]];
     hue=((hue%360)+360)%360;
     sat=__cl(sat,3,100);lit=__cl(lit,5,88);
     const[r,g,b]=hslToRgb(hue,sat,lit);
@@ -12517,7 +12603,7 @@ function applyEntropy(){
     if(!palive[i])continue;
     const _g=genome;genome=pGenome[i]||genome; // UNLOCKED #9 FULL: per-lineage metabolism & death threshold
     try{
-      amp[i]-=genome.entropyBaseline*(pRarity[i]||1); // LEAP 13 (#53): rarity discounts upkeep
+      amp[i]-=genome.entropyBaseline*(pRarity[i]||1)*MODE_UPKEEP[pMode[i]]; // #57: a mode is a real bargain — HOLD is cheap to be, SURGE is expensive
       if(genome.somaRepair>0)amp[i]-=genome.somaRepair*SOMA_REPAIR_COST; // LEAP 23 (#56): maintenance is paid for, every tick
       // LEAP 26 (#56) — A SECOND INCOME. Detritus pays trait-matched decomposers directly, as field
       // resource pays everyone else. A livelihood running on death cannot be monopolised by whatever
@@ -12545,7 +12631,7 @@ function applyEntropy(){
        if(_ua&&_ua.length){ let _dead=0; for(let _q=0;_q<_ua.length;_q++) if(!((_ua[_q].uses|0)>0))_dead++;
          if(_dead>0)amp[i]-=_dead*CARRY_COST_ATOM; }}
       amp[i]+=localRes[i]*genome.entropyK;
-      {const _txi=__cl(Math.floor(px[i]/(W/FIELD_W)),0,FIELD_W-1),_tyi=__cl(Math.floor(py[i]/(H/FIELD_H)),0,FIELD_H-1),_tox=inhibitorField[_tyi*FIELD_W+_txi];if(_tox>0.05){const _dmg=_tox*Math.max(0,1-pResistance[i])*0.018;amp[i]-=_dmg;}pResistance[i]*=0.997;} // INHIBITOR DAMAGE + RESISTANCE DECAY: inhibitor deals up to 1.8% amp/tick at zero resistance; resistance decays 0.3%/tick — must be actively maintained via RESISTANCE_BOOST (op215)
+      {const _txi=__cl(Math.floor(px[i]/(W/FIELD_W)),0,FIELD_W-1),_tyi=__cl(Math.floor(py[i]/(H/FIELD_H)),0,FIELD_H-1),_tox=inhibitorField[_tyi*FIELD_W+_txi];if(_tox>0.05){const _dmg=_tox*Math.max(0,1-pResistance[i])*0.018/MODE_DEFENCE[pMode[i]];amp[i]-=_dmg;}pResistance[i]*=0.997;} // INHIBITOR DAMAGE + RESISTANCE DECAY: inhibitor deals up to 1.8% amp/tick at zero resistance; resistance decays 0.3%/tick — must be actively maintained via RESISTANCE_BOOST (op215)
       if(energyAdequacy<1)amp[i]-=(1-energyAdequacy)*STARVE_DRAIN; // starvation: the world couldn't feed everyone this tick
       if(isNaN(amp[i]))amp[i]=0;
       const _ig=specInGrace(pLin[i]); // #17: a freshly-minted lineage is young/small → death-relief so it doesn't die in the cradle
@@ -12574,12 +12660,29 @@ function applyEntropy(){
       if(amp[i]>AMP_HARD)amp[i]=AMP_HARD; // numerical guard only
       // LEAP 1 — SENESCENCE. Age kills, on a heritable set-point. Immortality at carrying capacity was
       // the freeze; this is what keeps the energy budget turning over so births can ever be paid for.
+      let _haz=0;
       if(page[i]>SENESCENCE_ONSET && !_ig){
         const _lb=(genome.lifespanBias!==undefined&&isFinite(genome.lifespanBias))?Math.max(0.15,genome.lifespanBias):1;
         const _sr=__cl(genome.somaRepair||0,0,SOMA_REPAIR_MAX);   // LEAP 23 (#56)
-        const _haz=((page[i]-SENESCENCE_ONSET)/1000)*SENESCENCE_SCALE/_lb*(1-SOMA_HAZARD_RELIEF*(_sr/SOMA_REPAIR_MAX));
+        _haz=((page[i]-SENESCENCE_ONSET)/1000)*SENESCENCE_SCALE/_lb*(1-SOMA_HAZARD_RELIEF*(_sr/SOMA_REPAIR_MAX));
+      }
+      // LEAP 33 (#58) — SURGE IS A TERMINAL BET. #57 gave SURGE 2.2x reproduction for 1.85x upkeep,
+      // which at the amplitude this population actually sits at is close to a free lunch: upkeep is a
+      // small subtraction and reproduction is the whole game, so nothing stopped SURGE from becoming
+      // the only rational mode. It now runs on a reserve. Every tick in SURGE burns banked provision;
+      // once the reserve is empty the particle is running on its own structure and takes an acute
+      // hazard that has nothing to do with age. That makes SURGE semelparity — spend the body to make
+      // offspring — and gives it a failure mode, which is what it needed to be a strategy rather than
+      // an upgrade. Note this hazard ADDS to senescence rather than replacing it: an old particle that
+      // surges is in genuine trouble, which is the correct life-history statement.
+      if(pMode[i]===MODE_SURGE && !_ig){
+        if(pProvision[i]>0) pProvision[i]=Math.max(0,pProvision[i]-SURGE_BURN);
+        else _haz+=SURGE_EXHAUST_HAZARD;
+      }
+      if(_haz>0 && !_ig){
         if(Math.random()<_haz){
           deaths.push(i);deathsThisTick++;deathsByAge++;
+          if(pMode[i]===MODE_SURGE&&pProvision[i]<=0)deathsBySurge++; // LEAP 33
           addBits(px[i],py[i],2,pR[i],pG[i],pB[i],0.25);
           palive[i]=0;
           {const _sx=__cl(Math.floor(px[i]/(W/FIELD_W)),0,FIELD_W-1),_sy=__cl(Math.floor(py[i]/(H/FIELD_H)),0,FIELD_H-1);
@@ -12811,7 +12914,7 @@ function executeVM(i,j,sim,d){
         // imagination cannot earn that price, the ledger will say so and removal is the honest next act.
         {const _dc=(genome.decisionConfidence||0);
          const _tilt=1+IMAGINE_BIAS*_dc;
-         if(amp[i]>0.4 && page[i]>80 && N+birthQueue.length<CAP-1 && Math.random()<0.03*_tilt){
+         if(amp[i]>0.4 && page[i]>80 && N+birthQueue.length<CAP-1 && Math.random()<0.03*_tilt*MODE_REPRO[pMode[i]]){ // #57: SURGE breeds hard, HOLD barely breeds
            if(_dc>0)amp[i]-=IMAGINE_COST*_dc;
           const offX=__cl(px[i]+vmRegs[si]*15,0,W);
           const offY=__cl(py[i]+vmRegs[di]*15,0,H);
@@ -14818,6 +14921,30 @@ function executeVM(i,j,sim,d){
       case 228:{vmRegs[di]=(pGenome[i]?pGenome[i].innovationRate:genome.innovationRate||0)*k;}break; // MUTRATE_READ — read own current innovation rate. Enables conditional hypermutation (SOS response); stable lineage self-certification; detecting error-prone phases.
       case 229:{if(Math.random()>__cl(vmRegs[si]*k,0,1))ip++;vmRegs[di]=0;}break; // PROB_SKIP — skip next instruction with probability max(0,min(1,vmRegs[si]*k)); always writes 0 to di. Enables stochastic decision making; bet-hedging; probabilistic gene expression; noisy oscillators.
       case 230:{const _tp230=Math.max(1,Math.floor(Math.abs(k)));vmRegs[di]=(tick%_tp230)/_tp230;}break; // TICK_PHASE — global tick modulo abs(k), normalised to [0,1); k is the period. Enables circadian-rhythm strategies; time-gated cooperation; burst feeding synchronised to global clock; inter-particle phase signalling.
+      // #57 — SET_MODE. The VM can now make a CATEGORICAL decision about how to be, not just nudge a
+      // scalar. Switching costs amplitude, so commitment means something and thrash is punished; a
+      // lineage that flips every tick pays for it. This is the first genuinely discrete choice evolved
+      // code has ever had access to in this world.
+      case 232:{const _nm=((Math.abs(Math.floor(vmRegs[si]))|0)%MODE_COUNT);
+        if(_nm!==pMode[i]){
+          // LEAP 34 (#58) — PLASTICITY IS A LUXURY GOOD. The switch is paid out of banked provision
+          // first and only then out of working amplitude, and it costs MODE_LOCK_MULT times more when
+          // there is no reserve to pay from. A well-provisioned lineage can afford to be conditional;
+          // a poor one is effectively locked into whatever mode it inherited and has to live with it.
+          // Plasticity stops being free, which means the CAPACITY to switch is now under selection in
+          // its own right rather than only the choice of mode. It also means the same code does
+          // different things in a rich lineage and a poor one — the first time in this world that a
+          // particle's history, rather than its program or its genome, gates what it can do.
+          const _c=MODE_SWITCH_COST*(pProvision[i]>0?1:MODE_LOCK_MULT);
+          const _fromProv=Math.min(pProvision[i],_c);
+          pProvision[i]-=_fromProv; amp[i]-=(_c-_fromProv);
+          pMode[i]=_nm; modeSwitches++;
+        }
+        vmRegs[di]=_nm*(k||1);}break;
+      // #57 — READ_MODE. Self-knowledge of strategy, and of a partner's, so behaviour can be conditional
+      // on what kind of thing you are and what kind of thing you just met.
+      case 233:{vmRegs[di]=pMode[i]*(k||1);}break;
+      case 234:{vmRegs[di]=(j>=0&&j<N?pMode[j]:0)*(k||1);}break;
       case 231:{const _cqcid231=clusterID[i];if(_cqcid231>=0){const _cqbit231=1<<(Math.round(Math.abs(vmRegs[si]))&7);let _cqtot231=0,_cqset231=0;for(let _cqn231=0;_cqn231<N;_cqn231++){if(clusterID[_cqn231]===_cqcid231){_cqtot231++;if(pEpigen[_cqn231]&_cqbit231)_cqset231++;}}vmRegs[di]=_cqtot231>0?(_cqset231/_cqtot231)*k:0;}else{vmRegs[di]=0;}}break; // CLUSTER_QUORUM — fraction of own cluster members with epigenetic bit (vmRegs[si]&7) set; O(N) scan; solitary returns 0. Enables quorum sensing; epigenetic voting; collective gene-expression switching; democratic phase coordination.
     }
     // BOUND-OPCODE BOUNDARY (Pe60-class fix, now single-sourced via CORE_OPCODES).
@@ -17629,7 +17756,7 @@ function updateParticles(){
       if(ghostStrength>0.01){const gdx=ghostX-px[i],gdy=ghostY-py[i],gd=Math.sqrt(gdx*gdx+gdy*gdy),gr=GHOST_RADIUS*ghostStrength;if(gd<gr){const h=Math.pow(1-gd/gr,1.2)*ghostStrength;amp[i]+=genome.ghostAmpDrip*h;vx[i]+=gdx*0.00003*h;vy[i]+=gdy*0.00003*h}}
     }
     vx[i]+=(Math.random()-.5)*.003;vy[i]+=(Math.random()-.5)*.003;
-    {const _vd=pGenome[i]?pGenome[i].velocityDamping:genome.velocityDamping;vx[i]*=_vd;vy[i]*=_vd;}{const _crv=crystalField[lfIdx];if(_crv>0.25){const _crd=_crv*0.12;vx[i]*=(1-_crd);vy[i]*=(1-_crd);if(_crv>0.5)localRes[i]=Math.min(2,localRes[i]+_crv*0.002);}}px[i]+=vx[i];py[i]+=vy[i]; // per-lineage damping + crystal viscosity: crystal cells resist motion (up to -12% velocity per tick) and concentrate resources; a genuinely different physical experience from liquid state
+    {const _vd=pGenome[i]?pGenome[i].velocityDamping:genome.velocityDamping;vx[i]*=_vd;vy[i]*=_vd;}{const _crv=crystalField[lfIdx];if(_crv>0.25){const _crd=_crv*0.12;vx[i]*=(1-_crd);vy[i]*=(1-_crd);if(_crv>0.5)localRes[i]=Math.min(2,localRes[i]+_crv*0.002);}}{const _ms=MODE_SPEED[pMode[i]];px[i]+=vx[i]*_ms;py[i]+=vy[i]*_ms;} // #57: SHIFT runs, HOLD stays put — per-lineage damping + crystal viscosity: crystal cells resist motion (up to -12% velocity per tick) and concentrate resources; a genuinely different physical experience from liquid state
     if(px[i]<8)vx[i]+=.08;if(px[i]>W-8)vx[i]-=.08;if(py[i]<8)vy[i]+=.08;if(py[i]>H-8)vy[i]-=.08;
     if(tick%3===0){const ei=echoIdx[i]%EL;echox[i*EL+ei]=px[i];echoy[i*EL+ei]=py[i];echoIdx[i]++}
     // Pe36 Layer 25: signal decay. Received signals fade each tick to prevent runaway.
@@ -17966,8 +18093,27 @@ function processGrid(){
             pIntCount[i]++;pIntCount[j]++;
             const sim=tendSim(i,j);
             const pa=Math.cos(phase[i]-phase[j]);
-            localRes[i]+=Math.max(0,sim*pa)*(1-d/iR);
-            localRes[j]+=Math.max(0,sim*pa)*(1-d/iR);
+            // LEAP 31 (#58) — REACH IS REAL. MODE_REACH shipped in #57 and was never read: STRETCH paid
+            // 1.25x upkeep and took cuts to speed, reproduction and defence in exchange for a benefit
+            // that did not exist. The falloff denominator is now per-particle, so a STRETCH particle
+            // still harvests at a distance where a HOLD particle gets literally nothing (0.80*55=44 is
+            // BELOW the 55 cutoff, hence the max(0,...) — HOLD cannot feed at range at all, which is
+            // the point of it). Deliberately NOT applied to the `d<iR` cutoff: the grid sweep scans
+            // only +/-1 cell of CELL=55, so a widened cutoff would find long-range partners only when
+            // grid alignment happened to allow it — a positional artifact dressed as physics. Widening
+            // the falloff is grid-safe. It is also asymmetric: each side reads its OWN reach, so a
+            // STRETCH particle can feed off a partner that is not feeding back.
+            //
+            // LEAP 32 (#58) — COMPLEMENTARITY. Two particles in the same mode want the same things and
+            // get in each other's way; two in different modes have something to exchange. This is
+            // negative frequency-dependence acting on STRATEGY rather than on genotype — the standard
+            // mechanism for holding a polymorphism open. #57 pushed mode evenness to 0.84 but had
+            // nothing keeping it there: modes were drift-maintained, and drift-maintained diversity is
+            // the thing this record has spent forty swings learning to distrust. A rare mode now earns
+            // more per encounter simply by being rare, at the moment of the encounter itself.
+            const _gain=Math.max(0,sim*pa)*((pMode[i]===pMode[j])?MODE_SAME_GAIN:MODE_DIFF_GAIN);
+            localRes[i]+=_gain*Math.max(0,1-d/(iR*MODE_REACH[pMode[i]]));
+            localRes[j]+=_gain*Math.max(0,1-d/(iR*MODE_REACH[pMode[j]]));
             // Pe51 Layer 40: count neighbors within interaction radius for density sensing
             if(pNeighborCount[i]<127)pNeighborCount[i]++;
             if(pNeighborCount[j]<127)pNeighborCount[j]++;
@@ -18193,7 +18339,7 @@ function compact(){
     pPlasmidAge[w]=pPlasmidAge[r];
     pBroadcast[w*2]=pBroadcast[r*2];pBroadcast[w*2+1]=pBroadcast[r*2+1];
     clusterID[w]=clusterID[r];
-    pType[w]=pType[r];pProg[w]=pProg[r];pGenome[w]=pGenome[r];pLin[w]=pLin[r];pProvision[w]=pProvision[r]; // UNLOCKED #7a/#9: caste + full per-particle genome (+ lineage tag) relocate with the particle (also fixes a caste-scramble bug)
+    pType[w]=pType[r];pProg[w]=pProg[r];pGenome[w]=pGenome[r];pLin[w]=pLin[r];pProvision[w]=pProvision[r];pMode[w]=pMode[r];pModeBias[w]=pModeBias[r]; // UNLOCKED #7a/#9: caste + full per-particle genome (+ lineage tag) relocate with the particle (also fixes a caste-scramble bug)
     for(let rx=0;rx<REFLEX_DEPTH*2;rx++)pReflexHist[w*REFLEX_DEPTH*2+rx]=pReflexHist[r*REFLEX_DEPTH*2+rx];
     for(let rx=0;rx<REFLEX_DIMS;rx++)pReflexState[w*REFLEX_DIMS+rx]=pReflexState[r*REFLEX_DIMS+rx];
     pReflexIdx[w]=pReflexIdx[r];
@@ -21468,6 +21614,7 @@ function loop(){
   if(birthQueue.length>20)birthQueue.length=0;
   if(tick%45===0)compact();
   if(tick%120===0)wireAtomCallSites(); // LEAP 7 (#52): authored atoms reach living programs
+  if(tick%150===0)wireModeOpcodes();   // #57 fix: the mode decision reaches living programs
   // LEAP 15 (#53) — a GENERATION is the population having wholly replaced its founders. genome.generation
   // has never moved on its own: a live export read g:83, which turned out to be the RELOAD count, while a
   // 161k-tick run stayed at generation 1. Detected properly here — and each real turnover EARNS a
