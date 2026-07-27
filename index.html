@@ -1009,6 +1009,7 @@ const MODE_SPEED  =[0.35, 0.90, 0.80, 2.10, 1.30]; // multiplier on velocity
 const MODE_REACH  =[0.80, 1.00, 1.90, 0.90, 1.10]; // multiplier on interaction radius
 const MODE_REPRO  =[0.45, 1.05, 0.85, 0.70, 2.20]; // multiplier on spawn odds
 const MODE_DEFENCE=[2.20, 1.00, 0.85, 1.20, 0.55]; // divisor on inhibitor damage taken
+const MODE_WIRE_RATE=0.03;          // #57 fix: per-cycle chance a living program gains a mode opcode
 const MODE_SWITCH_COST=0.045;       // amplitude paid to change strategy — commitment has to mean something
 let worldEnergy=WORLD_ENERGY_MAX;
 let energyAdequacy=1;               // fraction of this tick's metabolic demand the pool could meet
@@ -10748,6 +10749,31 @@ function collectClusterUpstream(){
 // population executes pProg. Measured this session: 45k ticks of authoring produced 3 atoms, 3 bound,
 // uses=0. Born, bound, never called. This wires a call-site into a LIVING program, so authored atoms
 // finally get executed and can be judged by selection instead of dying unexpressed.
+// #57 FIX — SET_MODE was reachable in principle and never invoked in practice. The census proved it the
+// only way it could be proved: inherited-bias distribution came back IDENTICAL to current-mode
+// distribution, digit for digit, across three seeds — which is only possible if no particle ever switched.
+// Modes were heritable (real, and selection acts on it) but the "categorical decision" the commit claimed
+// evolved code could make was never once made. Same failure as the atom pipeline: wired, reachable,
+// never called — because a brand-new opcode only enters a program if mutation happens to draw it, and
+// programs seeded from the base genome contain no reference to it. Same fix as LEAP 7: put it in front of
+// living code so selection can judge whether deciding is worth anything.
+function wireModeOpcodes(){
+  try{
+    for(let i=0;i<N;i++){
+      if(!palive[i]||!pProg[i])continue;
+      if(Math.random()>MODE_WIRE_RATE)continue;
+      const pr=pProg[i];
+      let has=false; for(let q=0;q<pr.length;q++){const o=pr[q][0]; if(o===232||o===233||o===234){has=true;break;}}
+      if(has)continue;
+      const op=(Math.random()<0.5)?232:(Math.random()<0.5?233:234);
+      const inst=[op,(Math.random()*12)|0,(Math.random()*12)|0,(Math.random()*MODE_COUNT)|0];
+      const cap=Math.min((genome.vmMaxInstructions||16),48);
+      if(pr.length<cap) pr.splice((Math.random()*(pr.length+1))|0,0,inst);
+      else pr[(Math.random()*pr.length)|0]=inst;
+    }
+  }catch(e){}
+}
+
 function wireAtomCallSites(){
   try{
     const uas=genome.userAtoms;
@@ -21513,6 +21539,7 @@ function loop(){
   if(birthQueue.length>20)birthQueue.length=0;
   if(tick%45===0)compact();
   if(tick%120===0)wireAtomCallSites(); // LEAP 7 (#52): authored atoms reach living programs
+  if(tick%150===0)wireModeOpcodes();   // #57 fix: the mode decision reaches living programs
   // LEAP 15 (#53) — a GENERATION is the population having wholly replaced its founders. genome.generation
   // has never moved on its own: a live export read g:83, which turned out to be the RELOAD count, while a
   // 161k-tick run stayed at generation 1. Detected properly here — and each real turnover EARNS a
