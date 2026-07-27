@@ -976,7 +976,16 @@ const DETRITUS_TRAIT_DIM=1;         // tend dimension read as the decomposer axi
 // therefore could not be judged at all. Selection was not rejecting consequence; it had no way to price
 // it. The base constant is raised now that there is real descent to reward good behaviour and real death
 // to punish bad, and vmGain remains free to move from there. Fable's four branches get a fair trial.
-const VM_CONSEQUENCE=3.5;           // multiplier on the 0.002 straw the assay identified
+const VM_CONSEQUENCE=1.0;           // LEAP 27 REVERTED (#56) — pre-registered rule applied. Wave 5 dropped
+                                    // mean kinds 10.66 -> 9.00 across 3 seeds while atom uses rose 435 ->
+                                    // 756: more invention, paid for in diversity. Of the five, 25 is inert
+                                    // headless (no peers), and 23/24/26 all ADD axes or livelihoods, so
+                                    // they should push diversity up. 27 is the mechanism that homogenises —
+                                    // tripling VM influence over physics makes every lineage's behaviour
+                                    // more VM-determined, and it is what produced boom-bust the last time
+                                    // consequence rose. Set back to 1.0; vmGain stays free to raise it if
+                                    // selection actually wants it, which is the honest version of #48's
+                                    // question anyway. Subtraction, as the commit before this one promised.
 let worldEnergy=WORLD_ENERGY_MAX;
 let energyAdequacy=1;               // fraction of this tick's metabolic demand the pool could meet
 // NEGATIVE FREQUENCY-DEPENDENCE — the engine of novelty. Without it, selection is purely
