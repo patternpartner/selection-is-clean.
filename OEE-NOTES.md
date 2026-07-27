@@ -4267,3 +4267,64 @@ living system.** Not unanimous — seed 13 went 10.67 -> 10.33 — so 2 of 3 up 
 
 **LIVE.** 0 console errors. Two large hexagonal colonies, one dense orange and one dispersing with filament
 structure; 14 lineages alive of 821 ever, oldest at 72 particles and age 328c.
+
+---
+
+## #58 — wave 7. A hollow column of my own, and the price of closing it.
+
+**The finding that actually matters is not a fitness number.** #57 shipped the mode
+table with `MODE_REACH` declared at `index.html:1009` and read nowhere in the file.
+STRETCH therefore paid 1.25x upkeep and took cuts to speed, reproduction and defence
+in exchange for a benefit that was a comment. It was a strictly dominated strategy
+sitting in the table looking like a choice, and it survived purely on drift — while I
+was writing commit messages about the world's first categorical decision.
+
+This is the hollow-mechanism pattern. It is the thing this record has spent forty
+swings learning to catch, it is the whole premise of the confabulation-assay framing,
+and it went in three commits ago under my own hand and stayed there through a
+"VERIFIED" commit. The verification checked that switching *happened* (frac != bias).
+It never checked that the thing being switched *to* paid out. A census that confirms a
+mechanism fires is not a check that the mechanism does anything.
+
+### The five leaps
+- **31 REACH IS REAL** — per-particle falloff denominator. Applied to the falloff and
+  deliberately not to the `d<iR` cutoff: the grid sweep scans +/-1 cell of CELL=55, so a
+  widened cutoff would find distant partners by grid alignment, an artifact wearing
+  physics. HOLD's 0.80*55=44 is below the cutoff, so `max(0,...)` means HOLD cannot feed
+  at range at all. Asymmetric — each side reads its own reach.
+- **32 COMPLEMENTARITY** — same-mode encounters 0.80, cross-mode 1.30. Frequency
+  dependence on *strategy* rather than genotype.
+- **33 SURGE IS A TERMINAL BET** — burns provision per tick, acute hazard once dry,
+  hazard adds to senescence rather than replacing it.
+- **34 PLASTICITY IS A LUXURY GOOD** — switch paid from provision first, 4x cost with no
+  reserve. History gates capability for the first time in this world.
+- **35 MODES ARE VISIBLE** — hue/saturation per mode. Readout only; explicitly not
+  applied to `pSz`, which is read as collision extent.
+
+### Measured, 6k ticks, seeds 7/17/23. loopErrors 0/0 all three.
+`lateKinds`: 12.00 / 11.00 / 11.67, mean **11.56**, against #57's 14.33 / 12.33 / 10.33,
+mean **12.33**. A decline of 0.78, inside the +/-2 pre-registered band, so the rule says
+keep leaps 32-34 and they are kept. Recorded as a decline, not as noise-that-happens-to-
+be-fine: nothing in this wave improved kinds.
+
+**Leap 31 landed structurally.** Seed 7 realized modes `[.327 .065 .412 .025 .171]`
+against inherited `[.025 .04 .462 .08 .392]` — STRETCH from dominated to most-occupied,
+HOLD 13x commoner in practice than in heredity.
+
+**The spread is the real result.** #57 spanned 4.00 across seeds; wave 7 spans 1.00. The
+floor rose 1.34 and the ceiling fell 2.33. That is the signature of a stabilising
+mechanism, which is what leap 32 is — frequency dependence holds the rare up and the
+common down, and it cuts both tails doing it. A wave that compresses variance is not the
+same kind of failure as a wave that lowers the mean, and the mean-only reading would have
+missed it entirely.
+
+### Open, and honestly open
+Seed 23 finished a CARRY monoculture, evenness 0.376, realized `[.028 .854 .059 .041
+.018]` against inherited `[.010 .877 .069 .026 .018]` — near-zero switching. Seed 7 kept
+its decoupling; seed 23 lost it. That fits leap 34 exactly (a provision-poor lineage
+priced out of plasticity) and it is a HYPOTHESIS, not a measurement. `modeSwitches` was
+added in this wave for precisely this question and then not surfaced in the harness, so
+the current claim rests on `frac ~= biasFrac` rather than on counted transitions. Until
+that counter is read, "leap 34 suppressed switching" is a story, and this record's whole
+convention is that stories of this shape have been wrong before — twice in one session,
+both times refuted by bit-identical runs.
