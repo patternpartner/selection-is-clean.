@@ -730,6 +730,7 @@ const SENESCENCE_SCALE=0.00035;     // per-tick death hazard added per unit of (
 // a parentless spawn starts a new lineage by construction. No genealogy, so nothing heritable can be
 // selected, so no ratchet. Reseeding is now EMERGENCY ONLY. Above a small floor the population must be
 // maintained by descent or not at all.
+const UA_GRACE_AGE=12;              // LEAP 21 (#55): ageing cycles a new atom gets before the unused-cull can reach it
 const RESEED_FLOOR=90;              // above this, the world stops handing out free founders
 
 // LEAP 3 — SURPLUS CONVERTS. The 1.2 clamp discards everything above it, which destroys the selection
@@ -11531,6 +11532,7 @@ function mutateGenome(){
   if(Math.random()<(_atomFix?Math.max(0.02,rate*0.15):rate*0.15)){
     const expression=uaGenExpression();
     genome.userAtoms.push({expression,compiled:null,failed:false,uses:0,alienHits:0,alienAttempts:0});
+    try{ if(typeof wireAtomCallSites==='function')wireAtomCallSites(); }catch(e){} // LEAP 21: reachable immediately, not at the next 120-tick boundary
     if(_atomFix){
       const bos=genome.boundOpcodes||(genome.boundOpcodes=[]);
       if(bos.length<MAX_BOUND_OPCODES){
@@ -11558,7 +11560,14 @@ function mutateGenome(){
         // "unused" only by the (proven fitness-inert) uses route — an atom with real alien grip is
         // doing exogenous predictive work opcode-22 never sees, and dying here would just delete that
         // record. See SWING #46 above.
-        if((a.uses|0)===0&&(a.age|0)>2&&!(_alienSelectC&&alienGrip(a)>0)){removeIdx=i;break;}
+        // LEAP 21 (#55) — GRACE FOR THE NEWLY AUTHORED. Measured: a fresh-boot wave-4 run ends with
+        // bank=0 uses=0 proven=0 failed=0 — atoms are not pruned by any cost, they are CULLED BEFORE
+        // ANYTHING CAN CALL THEM. Birth is floored at 2%/cycle so births do fire; the cull removes any
+        // atom with uses===0 after 2 ageing cycles; and wireAtomCallSites returns early on an empty
+        // bank. Born -> culled -> nothing to wire -> born again: a deadlock with a race in it, which
+        // wave 3 won occasionally (27 uses) and wave 4 never does. A primitive now gets a real trial
+        // before it can be judged unused.
+        if((a.uses|0)===0&&(a.age|0)>UA_GRACE_AGE&&!(_alienSelectC&&alienGrip(a)>0)){removeIdx=i;break;}
       }
     }
     if(removeIdx>=0){
