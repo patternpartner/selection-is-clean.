@@ -12656,7 +12656,15 @@ function executeVM(i,j,sim,d){
   // standing complexity are replaced by a progressive toll: instructions beyond the historical cap cost
   // COMPLEXITY_TOLL times as much. Metabolic cost is the only regulator that has ever produced structure
   // in this codebase; this hands it the job the hard caps were doing badly.
-  const _over16=nInst>SOFT_PROG_LEN?(nInst-SOFT_PROG_LEN):0;
+  // FIX (#54) — the toll must not strangle the pipeline that makes complexity worth having. Measured:
+  // atom uses ran 162 (wave 2) -> 27 (wave 3) -> 0 (wave 4). LEAP 16 favours short programs, so the op22
+  // call-sites LEAP 7 splices in get pruned, and then LEAP 9 deletes the atoms that are no longer used.
+  // Three leaps strangling a fourth. An atom call-site is the OPPOSITE of bloat — it is the instruction
+  // through which authored complexity pays for itself — so op22 is exempt from the over-cap surcharge.
+  let _atomCalls=0;
+  for(let _q=0;_q<nInst;_q++){ const _in=prog[_q]; if(_in&&_in[0]===22)_atomCalls++; }
+  const _billable=nInst-_atomCalls;
+  const _over16=_billable>SOFT_PROG_LEN?(_billable-SOFT_PROG_LEN):0;
   const totalCost=(nInst+_over16*(COMPLEXITY_TOLL-1))*genome.metabolicCost;
   amp[i]-=totalCost;amp[j]-=totalCost;
 
