@@ -106,6 +106,15 @@ if(EXTRA!=='none'){
   patchOnce(find, repl, 'extra-'+EXTRA);
 }
 
+// count the atom-birth event itself — two causal stories about "no atoms" have now been wrong, both
+// because the readout could not distinguish "never attempted" from "attempted and removed".
+{ const N4='const expression=uaGenExpression();';
+  const h4=code.split(N4).length-1;
+  if(h4===1) code=code.replace(N4, 'globalThis.__uaBirths=(globalThis.__uaBirths||0)+1; '+N4); }
+{ const N5='function mutateGenome(){';
+  const h5=code.split(N5).length-1;
+  if(h5===1) code=code.replace(N5, N5+' globalThis.__mutCalls=(globalThis.__mutCalls||0)+1;'); }
+
 const driver=`
 ;(function(){
   globalThis.__stripBank=${ABLATE_BANK}; globalThis.__x=${EXTRA!=='none'};
@@ -161,5 +170,5 @@ globalThis.__run(TICKS,1000);
 const S=globalThis.__samples;
 const t2=Math.floor(2*S.length/3);
 function lateMean(k){let s=0,c=0;for(let i=t2;i<S.length;i++){const v=S[i][k];if(typeof v==='number'){s+=v;c++;}}return c?+(s/c).toFixed(4):0;}
-console.log(JSON.stringify({ strip:STRIP, extra:EXTRA, ablated:ABLATE, ablatedBank:ABLATE_BANK, seed:process.env.SEED||null, loopErrors, lastErr, driverErr:globalThis.__driverErr||0,
+console.log(JSON.stringify({ strip:STRIP, extra:EXTRA, ablated:ABLATE, ablatedBank:ABLATE_BANK, seed:process.env.SEED||null, loopErrors, lastErr, driverErr:globalThis.__driverErr||0, uaBirths:globalThis.__uaBirths||0, mutCalls:globalThis.__mutCalls||0,
   metaMag:globalThis.__metaMag(), lateMeanAmp:lateMean('meanAmp'), lateN:lateMean('N'), lateKinds:lateMean('kinds'), latePurity:lateMean('purity'), latePurityNull:lateMean('purityNull'), latePurityExcess:lateMean('purityExcess'), lateOwned:lateMean('owned'), lateOwnedNull:lateMean('ownedNull'), finalSample:S[S.length-1] }));
