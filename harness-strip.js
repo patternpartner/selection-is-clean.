@@ -106,6 +106,15 @@ if(EXTRA!=='none'){
   patchOnce(find, repl, 'extra-'+EXTRA);
 }
 
+// count the atom-birth event itself — two causal stories about "no atoms" have now been wrong, both
+// because the readout could not distinguish "never attempted" from "attempted and removed".
+{ const N4='const expression=uaGenExpression();';
+  const h4=code.split(N4).length-1;
+  if(h4===1) code=code.replace(N4, 'globalThis.__uaBirths=(globalThis.__uaBirths||0)+1; '+N4); }
+{ const N5='function mutateGenome(){';
+  const h5=code.split(N5).length-1;
+  if(h5===1) code=code.replace(N5, N5+' globalThis.__mutCalls=(globalThis.__mutCalls||0)+1;'); }
+
 const driver=`
 ;(function(){
   globalThis.__stripBank=${ABLATE_BANK}; globalThis.__x=${EXTRA!=='none'};
@@ -148,7 +157,7 @@ const driver=`
               singleFrac:n?+(singles/n).toFixed(3):0,          // share of POPULATION that is its own lineage
               multiFrac:n?+(inMulti/n).toFixed(3):0,           // share living in a lineage with >1 member
               maxLin:sz[0]||0, meanLin:sz.length?+(n/sz.length).toFixed(2):0};}catch(e){return null;}})();
-    const __pur=(function(){try{return __purity(__binOf,(i)=>(typeof pLin!=='undefined'?pLin[i]:0),N);}catch(e){return{p:0,pn:0,ex:0,owned:0,ownedNull:0};}})(); globalThis.__samples.push({tick:(typeof tick!=='undefined'?tick:-1),N:alive,meanAmp:+(alive?ampSum/alive:0).toFixed(4),kinds:Object.keys(bc).length,lin:__lin,purity:__pur.p,purityNull:__pur.pn,purityExcess:__pur.ex,owned:__pur.owned,ownedNull:__pur.ownedNull,uaUses:(function(){try{let u=0,n=0;for(const a of (genome.userAtoms||[])){u+=(a.uses|0);if((a.uses|0)>0)n++;}return u+'/'+n;}catch(e){return '?';}})()}); }
+    const __pur=(function(){try{return __purity(__binOf,(i)=>(typeof pLin!=='undefined'?pLin[i]:0),N);}catch(e){return{p:0,pn:0,ex:0,owned:0,ownedNull:0};}})(); globalThis.__samples.push({tick:(typeof tick!=='undefined'?tick:-1),N:alive,meanAmp:+(alive?ampSum/alive:0).toFixed(4),kinds:Object.keys(bc).length,lin:__lin,purity:__pur.p,purityNull:__pur.pn,purityExcess:__pur.ex,owned:__pur.owned,ownedNull:__pur.ownedNull,uaUses:(function(){try{let u=0,n=0,f=0;const A=genome.userAtoms||[];for(const a of A){u+=(a.uses|0);if((a.uses|0)>0)n++;if(a.failed)f++;}return 'bank='+A.length+' uses='+u+' proven='+n+' failed='+f+' bound='+((genome.boundOpcodes||[]).length);}catch(e){return '?';}})()}); }
   globalThis.__run=function(n,every){ sample(); for(let s=0;s<n;s++){ globalThis.__detMs+=5; try{loop();}catch(e){globalThis.__driverErr=(globalThis.__driverErr||0)+1;} if((s+1)%every===0)sample(); } };
   globalThis.__metaMag=function(){ // sum of |ATROPHY_SAFE params| on the self — to confirm ablation actually zeroed it
     if(typeof ATROPHY_SAFE==='undefined')return null; let s=0,n=0; for(const p of ATROPHY_SAFE){ if(isFinite(genome[p])){s+=Math.abs(genome[p]);n++;} } return {sum:+s.toFixed(3),n}; };
@@ -161,5 +170,5 @@ globalThis.__run(TICKS,1000);
 const S=globalThis.__samples;
 const t2=Math.floor(2*S.length/3);
 function lateMean(k){let s=0,c=0;for(let i=t2;i<S.length;i++){const v=S[i][k];if(typeof v==='number'){s+=v;c++;}}return c?+(s/c).toFixed(4):0;}
-console.log(JSON.stringify({ strip:STRIP, extra:EXTRA, ablated:ABLATE, ablatedBank:ABLATE_BANK, seed:process.env.SEED||null, loopErrors, lastErr, driverErr:globalThis.__driverErr||0,
+console.log(JSON.stringify({ strip:STRIP, extra:EXTRA, ablated:ABLATE, ablatedBank:ABLATE_BANK, seed:process.env.SEED||null, loopErrors, lastErr, driverErr:globalThis.__driverErr||0, uaBirths:globalThis.__uaBirths||0, mutCalls:globalThis.__mutCalls||0,
   metaMag:globalThis.__metaMag(), lateMeanAmp:lateMean('meanAmp'), lateN:lateMean('N'), lateKinds:lateMean('kinds'), latePurity:lateMean('purity'), latePurityNull:lateMean('purityNull'), latePurityExcess:lateMean('purityExcess'), lateOwned:lateMean('owned'), lateOwnedNull:lateMean('ownedNull'), finalSample:S[S.length-1] }));

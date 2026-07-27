@@ -4164,3 +4164,57 @@ from outside. maxLin climbing (36 -> 89 -> 146) while nLin falls (400 -> 155 -> 
 BOTH readings. Speciation (#6) and the niche toll (#8) are the counterweights and 6000 ticks is early for
 radiation. **The falsifier: if at 50k+ kinds keeps sliding while maxLin keeps climbing and speciation
 events stay rare, wave 2 has overshot into monoculture and #6/#8 need strengthening — not more leaps.**
+
+### WAVES 1–5 (#51–#56) — twenty-seven leaps, and what the numbers actually say
+
+**The finding that forced all of it.** The closed population FREEZES. At N=500 upkeep exactly consumes regen,
+leaving nothing to pay BIRTH_ENERGY_COST, and nothing dies because amp pins at the 1.2 clamp against a 0.04
+death threshold. Lineage composition measured BIT-IDENTICAL at t20000 and t80000 — singleFrac 0.770, maxLin 36,
+nLin 399, both samples. Sixty thousand ticks, not one birth or death, while occupiedKinds kept drifting because
+living particles' tend keeps moving. **The 14–16 "diversity" this project has optimised for 48 swings was the
+trait-spread of a photograph.**
+
+**Where twenty-seven leaps landed:**
+
+| | original | now |
+|---|---|---|
+| births / deaths | none in 60k ticks | continuous |
+| singleton lineages | 77% | ~3% |
+| largest lineage | 12–36 | 149–220 |
+| atom uses | **0, ever** | 405–1260 per run |
+| proven primitives | 0 | 3–4 per run |
+| occupiedKinds | 14–16 (frozen) | ~10.1 (living) |
+
+**THE ATOM PIPELINE WAS NEVER BROKEN.** Counted the birth EVENT: mutateGenome runs only 18 times per 6000
+ticks, so the record's 2% birth floor gave 0.36 expected births and P(zero)=70%. Two of three seeds authored
+nothing; the one that authored recorded 423 uses, proven, bound. Every measurement of this layer in the file's
+history — the single-atom knockout, both whole-bank ablations, the durability fixes, ENRICH, this session's own
+45k authoring run — was measuring an EMPTY BANK and concluding the machinery was inert. The GENERATIVE-LAYER MAP
+got the stage right and the magnitude wrong: a 2% floor on an 18-occurrence event is a rounding error, so the
+fix read as addressing the throttle while leaving it intact. Raised to 0.28; authoring is now reliable and
+3–4 primitives per run get proven.
+
+**MEASURED TRADE: authorship costs diversity.** kinds 11.78 → 10.67 mean when authoring became reliable.
+Consistent across seeds. A real tension to design against, not a defect.
+
+**A PRE-REGISTERED RULE, APPLIED AGAINST MY OWN WORK.** Wave 5 dropped mean kinds 10.66 → 9.00. One commit
+earlier I had written "if diversity drops below wave 4, the fix is subtraction, not a sixth wave." LEAP 27 (VM
+consequence x3.5) was eliminated as the only one of the five whose mechanism homogenises, reverted, and kinds
+recovered to 10.11 — confirming the elimination. The remaining four cost 0.55 kinds against a pooled sd of ~0.4
+at n=3, i.e. nothing distinguishable, while nearly doubling atom uses (435 → 792) and improving population
+health (344 → 374 alive). Kept on that basis.
+
+**TWO WRONG CAUSAL STORIES, RECORDED BECAUSE THIS FILE IS ABOUT THAT.** Shipped a three-leap tax-interaction
+explanation and then a cull-race deadlock explanation for "no atoms", both plausible, both detailed, both
+refuted by BIT-IDENTICAL runs. The arithmetic that settled it (2% × 18 draws) was available before the first
+story. Sincere explanations with nothing enforcing correspondence to the mechanism — produced twice in an hour
+by the process auditing 48 prior instances of exactly that.
+
+**A TREND CLAIM I RETRACTED.** Stated that kinds had fallen monotonically 13.33 → 10.66 → 9.00 and warned of a
+sophisticated monoculture. It recovered to 10.11 the moment LEAP 27 came out. Three points read as a trajectory
+when one was a single bad mechanism.
+
+**STANDING CAVEATS.** Wave 3 remains unproven at horizon (kinds 8 at 6k vs wave 2's 9 — noise, not evidence);
+I said I would revert it if it does not beat wave 2 and that test has not been run. Everything here is
+6k–20k ticks against a live pool that runs to 467k with an open network boundary the harness stubs entirely —
+LEAP 25 (migrants carrying programs) is provably INERT in every headless run and can only be tested live.
