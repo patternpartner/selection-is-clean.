@@ -8518,10 +8518,14 @@ function cosmosStep(ch){
 
     // GROWTH — a cell rich enough pays creationCost to found another, which starts less ordered and
     // trait-displaced. Growth therefore BUYS mass at the price of coherence: the child's central tension.
+    // Bounded by the PRE-spawn length: a for..of here would also visit cells spawned during the same
+    // pass, which is harmless today only because a newborn's amp sits below the p.c*1.5 bar — not a
+    // property worth depending on.
     if(mass<COSMOS_CELLS){
-      for(const cl of ch.cells){
-        if(cl.dead||mass>=COSMOS_CELLS)continue;
-        if(cl.amp<=p.c*1.5)continue;
+      const len=ch.cells.length;
+      for(let a=0;a<len&&mass<COSMOS_CELLS;a++){
+        const cl=ch.cells[a];
+        if(cl.dead||cl.amp<=p.c*1.5)continue;
         if(Math.random()>0.04*pr.drive)continue;
         cl.amp-=p.c;
         const t0=new Float32Array(dims);
@@ -8532,14 +8536,18 @@ function cosmosStep(ch){
     }
 
     // DEATH, and the child's aggregate state.
-    let liveMass=0,cohSum=0;
+    let liveMass=0,cohSum=0,deadCount=0;
     for(const cl of ch.cells){
-      if(cl.dead)continue;
+      if(cl.dead){deadCount++;continue;}
       cl.coh=__cl(cl.coh,0,1);
-      if(!isFinite(cl.amp)||cl.amp<COSMOS_DEATH_AMP){cl.dead=true;continue;}
+      if(!isFinite(cl.amp)||cl.amp<COSMOS_DEATH_AMP){cl.dead=true;deadCount++;continue;}
       liveMass++;cohSum+=cl.coh;
     }
     if(!liveMass){ch.cells.length=0;break;}
+    // Reclaim corpses. Dead cells are skipped but still ITERATED, and the entrainment pass is O(len^2),
+    // so without this a long-lived child that cycles cells accumulates an ever-growing array and the
+    // layer's cost drifts upward over a run. This has to hold on a phone.
+    if(deadCount>4)ch.cells=ch.cells.filter(cl=>!cl.dead);
     const coh=cohSum/liveMass;
     if(coh>ch.peakCoh)ch.peakCoh=coh;
     if(liveMass>ch.peakMass)ch.peakMass=liveMass;
