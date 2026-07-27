@@ -730,6 +730,7 @@ const SENESCENCE_SCALE=0.00035;     // per-tick death hazard added per unit of (
 // a parentless spawn starts a new lineage by construction. No genealogy, so nothing heritable can be
 // selected, so no ratchet. Reseeding is now EMERGENCY ONLY. Above a small floor the population must be
 // maintained by descent or not at all.
+const UA_BIRTH_FLOOR=0.28;          // LEAP 22 (#55): ~5 authored primitives per 6k ticks instead of 0.36
 const UA_GRACE_AGE=12;              // LEAP 21 (#55): ageing cycles a new atom gets before the unused-cull can reach it
 const RESEED_FLOOR=90;              // above this, the world stops handing out free founders
 
@@ -11529,7 +11530,17 @@ function mutateGenome(){
   // route the bind-branch uses — NOT forced into living programs, which collapses diversity per the
   // 11067 note) so the new primitive is reachable and selection can actually judge it on a fair field.
   const _atomFix=(typeof globalThis==='undefined')||((globalThis.__ATOM_PIPELINE??1)|0)!==0;
-  if(Math.random()<(_atomFix?Math.max(0.02,rate*0.15):rate*0.15)){
+  // LEAP 22 (#55) — MEASURED, not theorised. Counters over 3 seeds x 6000 ticks: mutateGenome runs
+  // only EIGHTEEN times (mutationInterval ~333 ticks), so the existing 2% floor gives 0.36 expected
+  // births per run and P(zero)=0.98^18=70%. Observed: seeds 7 and 13 authored NOTHING, seed 11 authored
+  // one. That is the whole "dead pipeline" — a coin landing tails, not a toll, not a cull, not a
+  // deadlock (I shipped both of those stories and both were wrong; the runs came back bit-identical).
+  // The record's own fix was right in kind and wrong in magnitude: a 2% floor on an event that happens
+  // 18 times is not a floor, it is a rounding error.
+  // AND THE PIPELINE ITSELF WORKS. The one seed that authored an atom recorded uses=423, proven=1,
+  // bound=1 — four hundred and twenty-three invocations from a single primitive. Nothing downstream
+  // needed fixing; authoring just had to happen often enough to be judged.
+  if(Math.random()<(_atomFix?Math.max(UA_BIRTH_FLOOR,rate*0.15):rate*0.15)){
     const expression=uaGenExpression();
     genome.userAtoms.push({expression,compiled:null,failed:false,uses:0,alienHits:0,alienAttempts:0});
     try{ if(typeof wireAtomCallSites==='function')wireAtomCallSites(); }catch(e){} // LEAP 21: reachable immediately, not at the next 120-tick boundary
