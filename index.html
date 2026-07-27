@@ -161,7 +161,10 @@ function networkBroadcast(){
         const pB=idx*PLASMID_SLOTS+pi*4;
         plas.push([pPlasmid[pB],pPlasmid[pB+1],pPlasmid[pB+2],pPlasmid[pB+3]]);
       }
-      networkSend('migrant',{nx:px[idx]/W,ny:py[idx]/H,tend:t,mem:m,plasmid:plas,amp:amp[idx],phase:phase[idx]});
+      // LEAP 25 (#56) — send the emigrant's PROGRAM with it. Without this the receive-side change is
+      // hollow: a migrant would arrive expecting heredity that was never transmitted.
+      const _mprog=(MIGRANT_CARRIES_PROGRAM&&pProg[idx])?pProg[idx].slice(0,48).map(r=>[r[0]|0,r[1]|0,r[2]|0,+(+r[3]).toFixed(4)]):null;
+      networkSend('migrant',{nx:px[idx]/W,ny:py[idx]/H,tend:t,mem:m,plasmid:plas,amp:amp[idx],phase:phase[idx],prog:_mprog});
     }
   }
   // Plasmid package: pick a random particle's plasmid and broadcast
@@ -247,6 +250,14 @@ function networkReceive(){
       networkSend('applied',{kind:'migrant'}); // tell whoever's listening (possibly the original sender) that this landed
       amp[newIdx]=m.amp||0.5;
       phase[newIdx]=m.phase||0;
+      // LEAP 25 (#56) — a migrant used to land as a bare phenotype: tend, amp, phase, memory, no evolved
+      // history. It founded a lineage carrying nothing heritable from where it came. The one channel this
+      // record repeatedly names as where the causal action lives was passing phenotype without heredity.
+      // A migrant now brings its sender's PROGRAM, so a foreign lineage with real history behind it can
+      // establish here — gene flow between universes rather than immigration of blanks.
+      if(MIGRANT_CARRIES_PROGRAM&&Array.isArray(m.prog)&&m.prog.length){
+        try{ pProg[newIdx]=m.prog.slice(0,48).map(r=>[r[0]|0,r[1]|0,r[2]|0,+r[3]||0]); }catch(e){}
+      }
       for(let mm=0;mm<MEM_SIZE&&mm<(m.mem?m.mem.length:0);mm++){
         pMem[newIdx*MEM_SIZE+mm]=m.mem[mm];
       }
@@ -916,6 +927,56 @@ const MEM_INHERIT=0.55;             // fraction of parental memory state passed 
 // and the ledger will say so plainly.
 const IMAGINE_COST=0.0016;          // amp charged when a shadow winner is acted on
 const IMAGINE_BIAS=0.45;            // how strongly the imagined winner tilts real spawn odds
+// ═══════════════════════════════════════════════════════════════════════════════════════
+// FIFTH WAVE (#56) — this world still has essentially ONE WAY TO MAKE A LIVING. Swing #11 opened with
+// that exact diagnosis ("one currency — amp — so one way to win → one winner") and 45 swings since have
+// redistributed a single resource rather than adding livelihoods. Waves 1-4 built a population that can
+// actually be selected; this one gives selection genuinely different things to select FOR.
+// ═══════════════════════════════════════════════════════════════════════════════════════
+
+// LEAP 23 — DISPOSABLE SOMA. #51 gave this world ageing, but with no way to invest against it: every
+// lineage ages on the same schedule and the only heritable knob is lifespanBias. Real life-history
+// diversity comes from a TRADE-OFF — amplitude spent on maintenance is amplitude not spent on offspring.
+// With that trade-off present, live-fast/die-young and slow/long become distinct viable strategies rather
+// than one being simply better, and r-vs-K is a diversity axis that exists at right angles to trait
+// space. It cannot be collapsed by competitive exclusion in the way a single resource axis can.
+const SOMA_REPAIR_MAX=0.6;          // strongest maintenance investment an evolved lineage can choose
+const SOMA_REPAIR_COST=0.00055;     // amp/tick at full investment
+const SOMA_HAZARD_RELIEF=0.75;      // fraction of senescence hazard removed at full investment
+
+// LEAP 24 — RARITY IN PROGRAM SPACE. Swing #37 built negative-frequency-dependence on PROGRAM vocabulary
+// rather than trait bins, on the key insight that trait space is bounded and saturates while program
+// space is combinatorially unbounded and cannot. It was built, gated __GENO_PARASITE, and left OFF —
+// tested against a frozen population where no frequency could change because nothing reproduced. That is
+// the single most open-ended-relevant mechanism in the file and it has never run in a world with descent.
+// Switched on, and strengthened: being computationally common now costs, so the population is pushed to
+// keep exploring a space that has no far wall.
+const GENO_NFD_ON=1;
+const GENO_NFD_BOOST=2.4;           // multiplier on #37's original strength, which was tuned against stasis
+
+// LEAP 25 — MIGRANTS ARRIVE AS FOREIGNERS. An incoming migrant currently lands as a bare particle: tend,
+// amp, phase, memory. It founds a lineage (parentless spawn) but carries NO evolved history — no program,
+// no genome. So the one channel the record repeatedly identifies as where the causal action lives has
+// been passing along phenotype without heredity. A migrant now arrives with its sender's PROGRAM, so a
+// foreign lineage with real evolutionary history behind it can establish here. This is gene flow between
+// universes rather than immigration of blanks.
+const MIGRANT_CARRIES_PROGRAM=1;
+
+// LEAP 26 — A SECOND INCOME. Death deposits detritus and op146 can harvest it, but harvesting requires an
+// evolved program to discover the opcode, so the decomposer niche is reachable only by luck. Detritus now
+// pays DIRECTLY to particles whose diet trait sits in the decomposer register, exactly as field resource
+// pays the others. A livelihood that runs on death cannot be monopolised by whatever dominates the
+// living economy, because its supply is produced BY that dominance.
+const DETRITUS_YIELD=0.055;         // amp per unit detritus for a trait-matched decomposer
+const DETRITUS_TRAIT_DIM=1;         // tend dimension read as the decomposer axis
+
+// LEAP 27 — THE CONSEQUENCE RETRIAL. #48 handed vmGain to selection unbounded, and selection drove it
+// DOWN 1.0 -> 0.217 with the whole pool converged on the floor. That was read as "consequence is not
+// worth buying" — but it was measured in the frozen economy, where nothing was born or died and VM output
+// therefore could not be judged at all. Selection was not rejecting consequence; it had no way to price
+// it. The base constant is raised now that there is real descent to reward good behaviour and real death
+// to punish bad, and vmGain remains free to move from there. Fable's four branches get a fair trial.
+const VM_CONSEQUENCE=3.5;           // multiplier on the 0.002 straw the assay identified
 let worldEnergy=WORLD_ENERGY_MAX;
 let energyAdequacy=1;               // fraction of this tick's metabolic demand the pool could meet
 // NEGATIVE FREQUENCY-DEPENDENCE — the engine of novelty. Without it, selection is purely
@@ -5338,6 +5399,10 @@ let genome={
   uaMaxDepth:1,         // UNLOCKED #7b: nesting depth of self-authored atom expressions. 1 = the
                         // original grammar exactly (two terms, one binary op). Higher lets the
                         // system compose structurally richer primitives. Bounded by UA_DEPTH_CAP.
+  somaRepair:0.0,       // LEAP 23 (#56): heritable investment in maintenance. Amp spent here is amp not
+                        // spent on offspring — the trade-off is the point. With it, live-fast/die-young
+                        // and slow/long become distinct viable strategies rather than one dominating, and
+                        // r-vs-K becomes a diversity axis at right angles to trait space.
   lifespanBias:1.0,     // LEAP 1 (#51): heritable senescence set-point. >1 = longer-lived, <1 = fast turnover.
                         // The trade-off is real: longevity means more chances to breed, but reproduction
                         // costs amplitude an ageing particle must keep re-earning against a rising hazard.
@@ -11363,6 +11428,7 @@ function mutateGenome(){
   // The system's discovered physics evolve.
   // Instructions change. Programs grow/shrink. Conditional thresholds drift.
   // vmInfluence evolves: the system decides how much its rules matter.
+  genome.somaRepair=__cl(maybe(genome.somaRepair,0,SOMA_REPAIR_MAX,0.05),0,SOMA_REPAIR_MAX); // LEAP 23
   genome.lifespanBias=maybe(genome.lifespanBias,0.15,6.0,0.10); // LEAP 1: selection owns the lifespan set-point
   genome.vmInfluence=maybe(genome.vmInfluence,0.05,2.0,0.08);
   genome.ruleScale=maybe(genome.ruleScale,0.2,3.0,0.2);
@@ -12443,6 +12509,16 @@ function applyEntropy(){
     const _g=genome;genome=pGenome[i]||genome; // UNLOCKED #9 FULL: per-lineage metabolism & death threshold
     try{
       amp[i]-=genome.entropyBaseline*(pRarity[i]||1); // LEAP 13 (#53): rarity discounts upkeep
+      if(genome.somaRepair>0)amp[i]-=genome.somaRepair*SOMA_REPAIR_COST; // LEAP 23 (#56): maintenance is paid for, every tick
+      // LEAP 26 (#56) — A SECOND INCOME. Detritus pays trait-matched decomposers directly, as field
+      // resource pays everyone else. A livelihood running on death cannot be monopolised by whatever
+      // dominates the living economy, because that dominance is what SUPPLIES it.
+      {const _dx=__cl(Math.floor(px[i]/(W/FIELD_W)),0,FIELD_W-1),_dy=__cl(Math.floor(py[i]/(H/FIELD_H)),0,FIELD_H-1),_di=_dy*FIELD_W+_dx;
+       const _dt=detritalField[_di];
+       if(_dt>0.02&&DIMS>DETRITUS_TRAIT_DIM){
+         const _fit=1-Math.min(1,Math.abs(tend[i*DIMS+DETRITUS_TRAIT_DIM]-0.8)); // decomposer register
+         if(_fit>0.15){ const _take=Math.min(_dt,_fit*DETRITUS_YIELD); detritalField[_di]-=_take; amp[i]+=_take*0.85; }
+       }}
       amp[i]-=densityCost;
       // LEAP 9 (#52) — carried machinery is billed at the same economy instructions already pay. The
       // meta layer inflated 4-5x THROUGH 1472 atrophy cuts because its coefficients were free; the
@@ -12491,7 +12567,8 @@ function applyEntropy(){
       // the freeze; this is what keeps the energy budget turning over so births can ever be paid for.
       if(page[i]>SENESCENCE_ONSET && !_ig){
         const _lb=(genome.lifespanBias!==undefined&&isFinite(genome.lifespanBias))?Math.max(0.15,genome.lifespanBias):1;
-        const _haz=((page[i]-SENESCENCE_ONSET)/1000)*SENESCENCE_SCALE/_lb;
+        const _sr=__cl(genome.somaRepair||0,0,SOMA_REPAIR_MAX);   // LEAP 23 (#56)
+        const _haz=((page[i]-SENESCENCE_ONSET)/1000)*SENESCENCE_SCALE/_lb*(1-SOMA_HAZARD_RELIEF*(_sr/SOMA_REPAIR_MAX));
         if(Math.random()<_haz){
           deaths.push(i);deathsThisTick++;deathsByAge++;
           addBits(px[i],py[i],2,pR[i],pG[i],pB[i],0.25);
@@ -12613,7 +12690,13 @@ function executeVM(i,j,sim,d){
   const proximity=1-d/CELL;
   const phaseAlign=Math.cos(phase[i]-phase[j]);
   const energy=(amp[i]+amp[j])*0.5;
-  const influence=genome.vmInfluence*genome.ruleScale*0.002*(genome.vmGain||1); // #48: evolvable gain
+  // LEAP 27 (#56) — THE CONSEQUENCE RETRIAL. #48 handed vmGain to selection unbounded and selection drove
+  // it DOWN, 1.0 -> 0.217, pool converged on the floor. Read then as "consequence is not worth buying" —
+  // but it was measured in the frozen economy, where nothing was born or died and VM output therefore
+  // could not be PRICED at all. Selection was not rejecting consequence; it had no instrument to judge it.
+  // The base constant rises now that descent rewards good behaviour and death punishes bad, and vmGain
+  // stays free to move from there. Fable's four branches finally get a fair trial.
+  const influence=genome.vmInfluence*genome.ruleScale*0.002*VM_CONSEQUENCE*(genome.vmGain||1);
 
   // UNLOCKED #7a/#7b: feed this interaction's context to system-authored atoms (c,d,m inputs).
   // caste-match: +1 if the pair shares a caste, -1 otherwise. Evolved code decides its meaning.
@@ -18970,14 +19053,19 @@ function loop(){
   // SWING #37: the SAME negative-frequency-dependence, but on PROGRAM-vocabulary signature (unbounded space) — the
   // giant-leap attempt. Being computationally common costs survival; rare program-vocabularies pay, so the
   // population is driven to keep exploring program-space, which (unlike the trait/niche space) cannot saturate.
-  if(typeof globalThis!=='undefined'&&(globalThis.__GENO_PARASITE|0)===1){
+  // LEAP 24 (#56) — rarity in PROGRAM space, switched on. #37 built this on the insight that trait space
+  // is bounded and saturates while program space is combinatorially unbounded and cannot — then left it
+  // gated OFF, having tested it against a frozen population where no frequency could change because
+  // nothing reproduced. It is the most open-endedness-relevant mechanism in the file and has never run in
+  // a world with descent. Default ON now, and boosted: its original strength was tuned against stasis.
+  if(GENO_NFD_ON||(typeof globalThis!=='undefined'&&(globalThis.__GENO_PARASITE|0)===1)){
     const sigCount=new Map();
     for(let _i=0;_i<N;_i++){ if(!palive[_i])continue; const pr=pProg[_i]; let s=0;
       if(pr){ _paraGen++; for(let q=0;q<pr.length;q++){ const op=pr[q][0]|0; if(op>=0&&op<256&&_paraSeen[op]!==_paraGen){ _paraSeen[op]=_paraGen; s=(s+opHash[op])|0; } } }
       pParaSig[_i]=s; sigCount.set(s,(sigCount.get(s)||0)+1); }
     const _meanG=N/Math.max(1,sigCount.size);
     for(let _i=0;_i<N;_i++){ if(!palive[_i])continue; const _gc=sigCount.get(pParaSig[_i])||1;
-      amp[_i]+=GENO_NFD_STRENGTH*Math.max(-1,Math.min(1, 1-_gc/(_meanG+0.001))); } }
+      amp[_i]+=GENO_NFD_STRENGTH*GENO_NFD_BOOST*Math.max(-1,Math.min(1, 1-_gc/(_meanG+0.001))); } }
   // ── SWING #39: HISTORICAL NOVELTY ARCHIVE — reward divergence from all of history, not current neighbours ──
   // Cadenced (the k-NN is O(N·sample·DIMS)). The amp term is mean-centred + bounded EXACTLY like the trait-NFD
   // above, so it cannot inflate amp into the #38 blob: it only redistributes toward whoever is more
