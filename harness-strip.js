@@ -149,6 +149,16 @@ const driver=`
     return {p:+real.p.toFixed(4), pn:+nul.p.toFixed(4), ex:+(real.p-nul.p).toFixed(4), owned:real.owned, ownedNull:nul.owned};
   }
   function sample(){ let alive=0,ampSum=0; const bc={}; for(let i=0;i<N;i++){ if(!palive[i])continue; alive++; ampSum+=amp[i]; const b=__binOf(i); bc[b]=(bc[b]||0)+1; }
+    const __modes=(function(){try{
+      const h=[0,0,0,0,0],b=[0,0,0,0,0]; let n=0;
+      for(let i=0;i<N;i++){ if(!palive[i])continue; n++; h[pMode[i]]++; b[pModeBias[i]]++; }
+      if(!n)return null;
+      const frac=h.map(x=>+(x/n).toFixed(3));
+      const occupied=h.filter(x=>x>0).length;
+      // Shannon evenness over modes: 1 = all five equally held, 0 = everything in one mode.
+      let H=0; for(const x of h){ if(x>0){ const pr=x/n; H-=pr*Math.log(pr); } }
+      return {frac,occupied,evenness:+(H/Math.log(5)).toFixed(3),biasFrac:b.map(x=>+(x/n).toFixed(3))};
+    }catch(e){return null;}})();
     const __lin=(function(){try{const h={};let n=0;for(let i=0;i<N;i++){if(!palive[i])continue;n++;h[pLin[i]]=(h[pLin[i]]||0)+1;}
       const sz=Object.values(h).sort((a,b)=>b-a);
       const singles=sz.filter(x=>x===1).length;
@@ -157,7 +167,7 @@ const driver=`
               singleFrac:n?+(singles/n).toFixed(3):0,          // share of POPULATION that is its own lineage
               multiFrac:n?+(inMulti/n).toFixed(3):0,           // share living in a lineage with >1 member
               maxLin:sz[0]||0, meanLin:sz.length?+(n/sz.length).toFixed(2):0};}catch(e){return null;}})();
-    const __pur=(function(){try{return __purity(__binOf,(i)=>(typeof pLin!=='undefined'?pLin[i]:0),N);}catch(e){return{p:0,pn:0,ex:0,owned:0,ownedNull:0};}})(); globalThis.__samples.push({tick:(typeof tick!=='undefined'?tick:-1),N:alive,meanAmp:+(alive?ampSum/alive:0).toFixed(4),kinds:Object.keys(bc).length,lin:__lin,purity:__pur.p,purityNull:__pur.pn,purityExcess:__pur.ex,owned:__pur.owned,ownedNull:__pur.ownedNull,uaUses:(function(){try{let u=0,n=0,f=0;const A=genome.userAtoms||[];for(const a of A){u+=(a.uses|0);if((a.uses|0)>0)n++;if(a.failed)f++;}return 'bank='+A.length+' uses='+u+' proven='+n+' failed='+f+' bound='+((genome.boundOpcodes||[]).length);}catch(e){return '?';}})()}); }
+    const __pur=(function(){try{return __purity(__binOf,(i)=>(typeof pLin!=='undefined'?pLin[i]:0),N);}catch(e){return{p:0,pn:0,ex:0,owned:0,ownedNull:0};}})(); globalThis.__samples.push({tick:(typeof tick!=='undefined'?tick:-1),N:alive,meanAmp:+(alive?ampSum/alive:0).toFixed(4),kinds:Object.keys(bc).length,lin:__lin,modes:__modes,purity:__pur.p,purityNull:__pur.pn,purityExcess:__pur.ex,owned:__pur.owned,ownedNull:__pur.ownedNull,uaUses:(function(){try{let u=0,n=0,f=0;const A=genome.userAtoms||[];for(const a of A){u+=(a.uses|0);if((a.uses|0)>0)n++;if(a.failed)f++;}return 'bank='+A.length+' uses='+u+' proven='+n+' failed='+f+' bound='+((genome.boundOpcodes||[]).length);}catch(e){return '?';}})()}); }
   globalThis.__run=function(n,every){ sample(); for(let s=0;s<n;s++){ globalThis.__detMs+=5; try{loop();}catch(e){globalThis.__driverErr=(globalThis.__driverErr||0)+1;} if((s+1)%every===0)sample(); } };
   globalThis.__metaMag=function(){ // sum of |ATROPHY_SAFE params| on the self — to confirm ablation actually zeroed it
     if(typeof ATROPHY_SAFE==='undefined')return null; let s=0,n=0; for(const p of ATROPHY_SAFE){ if(isFinite(genome[p])){s+=Math.abs(genome[p]);n++;} } return {sum:+s.toFixed(3),n}; };
