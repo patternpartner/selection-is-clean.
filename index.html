@@ -1011,6 +1011,19 @@ const MODE_REPRO  =[0.45, 1.05, 0.85, 0.70, 2.20]; // multiplier on spawn odds
 const MODE_DEFENCE=[2.20, 1.00, 0.85, 1.20, 0.55]; // divisor on inhibitor damage taken
 const MODE_WIRE_RATE=0.03;          // #57 fix: per-cycle chance a living program gains a mode opcode
 const MODE_SWITCH_COST=0.045;       // amplitude paid to change strategy — commitment has to mean something
+// ── #58, wave 7. #57 shipped the mode table with MODE_REACH declared and never read anywhere in the
+// file. That made STRETCH a strictly dominated strategy: 1.25x upkeep, cuts to speed, reproduction and
+// defence, and its single compensating benefit was a comment. It survived on drift, which is exactly
+// the hollow-mechanism pattern this project's own record keeps catching in other people's work. These
+// five constants close that hole and then make the rest of the table mean something too.
+const MODE_SAME_GAIN=0.80;          // LEAP 32 — two particles in the SAME mode compete for the same thing
+const MODE_DIFF_GAIN=1.30;          // LEAP 32 — two in DIFFERENT modes trade; rarity pays at the encounter
+const SURGE_BURN=0.020;             // LEAP 33 — provision drawn down per tick while in SURGE
+const SURGE_EXHAUST_HAZARD=0.0022;  // LEAP 33 — per-tick death odds once SURGE has nothing left to burn
+const MODE_LOCK_MULT=4.0;           // LEAP 34 — switching costs this much more with no reserve to pay from
+const MODE_HUE=[205, 45, 300, 130, 12];   // LEAP 35 — hue offset per mode, so the polymorphism is visible
+const MODE_SAT=[0.70, 1.00, 1.15, 0.95, 1.35];
+let modeSwitches=0;                 // telemetry: total SET_MODE transitions actually executed
 let worldEnergy=WORLD_ENERGY_MAX;
 let energyAdequacy=1;               // fraction of this tick's metabolic demand the pool could meet
 // NEGATIVE FREQUENCY-DEPENDENCE — the engine of novelty. Without it, selection is purely
@@ -10235,6 +10248,9 @@ const inst={
   opcodeHist:[],      // opcode frequency in global program over time
 };
 let deathsByPhysics=0,deathsByAge=0;
+let deathsBySurge=0; // LEAP 33 (#58) — telemetry only. A SUBSET tally, not a partition of deathsByAge:
+                     // an old particle that surges dry is counted in both, which is the honest reading
+                     // since the two hazards are added, not chosen between.
 let hgtWindow=0; // HGT events since last measurement
 let dashboardVisible=true; // always on — touch events unreliable at high particle counts
 
@@ -12517,6 +12533,16 @@ function computeVisuals(i){
     hue+=smear*Math.sin(phase[i]*3)*35;
     sat=sat*col+15*smear;lit=lit*col+(25+Math.sin(phase[i])*8)*smear;
     lit*=0.5+amp[i]*0.8;sat*=0.4+amp[i]*0.6;
+    // LEAP 35 (#58) — MODES ARE VISIBLE. Five categorical strategies that render identically are not,
+    // for the artwork's purposes, five strategies: a live polymorphism and a monoculture looked the
+    // same on screen, which is the one place this project is supposed to be legible without a harness.
+    // Mode now rotates hue and scales saturation, so a field holding five strategies reads as a field
+    // with visibly different KINDS of thing in it. This is a READOUT, not a physics change — hue and
+    // saturation feed pR/pG/pB, which nothing in the selection path consumes. Deliberately NOT applied
+    // to pSz: size is read as collision extent (minD=pSz[i]+pSz[j] in the pair sweep), so scaling it
+    // by mode would be a silent physics edit wearing a rendering comment.
+    hue=(hue+MODE_HUE[pMode[i]])%360;
+    sat*=MODE_SAT[pMode[i]];
     hue=((hue%360)+360)%360;
     sat=__cl(sat,3,100);lit=__cl(lit,5,88);
     const[r,g,b]=hslToRgb(hue,sat,lit);
@@ -12634,12 +12660,29 @@ function applyEntropy(){
       if(amp[i]>AMP_HARD)amp[i]=AMP_HARD; // numerical guard only
       // LEAP 1 — SENESCENCE. Age kills, on a heritable set-point. Immortality at carrying capacity was
       // the freeze; this is what keeps the energy budget turning over so births can ever be paid for.
+      let _haz=0;
       if(page[i]>SENESCENCE_ONSET && !_ig){
         const _lb=(genome.lifespanBias!==undefined&&isFinite(genome.lifespanBias))?Math.max(0.15,genome.lifespanBias):1;
         const _sr=__cl(genome.somaRepair||0,0,SOMA_REPAIR_MAX);   // LEAP 23 (#56)
-        const _haz=((page[i]-SENESCENCE_ONSET)/1000)*SENESCENCE_SCALE/_lb*(1-SOMA_HAZARD_RELIEF*(_sr/SOMA_REPAIR_MAX));
+        _haz=((page[i]-SENESCENCE_ONSET)/1000)*SENESCENCE_SCALE/_lb*(1-SOMA_HAZARD_RELIEF*(_sr/SOMA_REPAIR_MAX));
+      }
+      // LEAP 33 (#58) — SURGE IS A TERMINAL BET. #57 gave SURGE 2.2x reproduction for 1.85x upkeep,
+      // which at the amplitude this population actually sits at is close to a free lunch: upkeep is a
+      // small subtraction and reproduction is the whole game, so nothing stopped SURGE from becoming
+      // the only rational mode. It now runs on a reserve. Every tick in SURGE burns banked provision;
+      // once the reserve is empty the particle is running on its own structure and takes an acute
+      // hazard that has nothing to do with age. That makes SURGE semelparity — spend the body to make
+      // offspring — and gives it a failure mode, which is what it needed to be a strategy rather than
+      // an upgrade. Note this hazard ADDS to senescence rather than replacing it: an old particle that
+      // surges is in genuine trouble, which is the correct life-history statement.
+      if(pMode[i]===MODE_SURGE && !_ig){
+        if(pProvision[i]>0) pProvision[i]=Math.max(0,pProvision[i]-SURGE_BURN);
+        else _haz+=SURGE_EXHAUST_HAZARD;
+      }
+      if(_haz>0 && !_ig){
         if(Math.random()<_haz){
           deaths.push(i);deathsThisTick++;deathsByAge++;
+          if(pMode[i]===MODE_SURGE&&pProvision[i]<=0)deathsBySurge++; // LEAP 33
           addBits(px[i],py[i],2,pR[i],pG[i],pB[i],0.25);
           palive[i]=0;
           {const _sx=__cl(Math.floor(px[i]/(W/FIELD_W)),0,FIELD_W-1),_sy=__cl(Math.floor(py[i]/(H/FIELD_H)),0,FIELD_H-1);
@@ -14883,7 +14926,20 @@ function executeVM(i,j,sim,d){
       // lineage that flips every tick pays for it. This is the first genuinely discrete choice evolved
       // code has ever had access to in this world.
       case 232:{const _nm=((Math.abs(Math.floor(vmRegs[si]))|0)%MODE_COUNT);
-        if(_nm!==pMode[i]){ amp[i]-=MODE_SWITCH_COST; pMode[i]=_nm; }
+        if(_nm!==pMode[i]){
+          // LEAP 34 (#58) — PLASTICITY IS A LUXURY GOOD. The switch is paid out of banked provision
+          // first and only then out of working amplitude, and it costs MODE_LOCK_MULT times more when
+          // there is no reserve to pay from. A well-provisioned lineage can afford to be conditional;
+          // a poor one is effectively locked into whatever mode it inherited and has to live with it.
+          // Plasticity stops being free, which means the CAPACITY to switch is now under selection in
+          // its own right rather than only the choice of mode. It also means the same code does
+          // different things in a rich lineage and a poor one — the first time in this world that a
+          // particle's history, rather than its program or its genome, gates what it can do.
+          const _c=MODE_SWITCH_COST*(pProvision[i]>0?1:MODE_LOCK_MULT);
+          const _fromProv=Math.min(pProvision[i],_c);
+          pProvision[i]-=_fromProv; amp[i]-=(_c-_fromProv);
+          pMode[i]=_nm; modeSwitches++;
+        }
         vmRegs[di]=_nm*(k||1);}break;
       // #57 — READ_MODE. Self-knowledge of strategy, and of a partner's, so behaviour can be conditional
       // on what kind of thing you are and what kind of thing you just met.
@@ -18037,8 +18093,27 @@ function processGrid(){
             pIntCount[i]++;pIntCount[j]++;
             const sim=tendSim(i,j);
             const pa=Math.cos(phase[i]-phase[j]);
-            localRes[i]+=Math.max(0,sim*pa)*(1-d/iR);
-            localRes[j]+=Math.max(0,sim*pa)*(1-d/iR);
+            // LEAP 31 (#58) — REACH IS REAL. MODE_REACH shipped in #57 and was never read: STRETCH paid
+            // 1.25x upkeep and took cuts to speed, reproduction and defence in exchange for a benefit
+            // that did not exist. The falloff denominator is now per-particle, so a STRETCH particle
+            // still harvests at a distance where a HOLD particle gets literally nothing (0.80*55=44 is
+            // BELOW the 55 cutoff, hence the max(0,...) — HOLD cannot feed at range at all, which is
+            // the point of it). Deliberately NOT applied to the `d<iR` cutoff: the grid sweep scans
+            // only +/-1 cell of CELL=55, so a widened cutoff would find long-range partners only when
+            // grid alignment happened to allow it — a positional artifact dressed as physics. Widening
+            // the falloff is grid-safe. It is also asymmetric: each side reads its OWN reach, so a
+            // STRETCH particle can feed off a partner that is not feeding back.
+            //
+            // LEAP 32 (#58) — COMPLEMENTARITY. Two particles in the same mode want the same things and
+            // get in each other's way; two in different modes have something to exchange. This is
+            // negative frequency-dependence acting on STRATEGY rather than on genotype — the standard
+            // mechanism for holding a polymorphism open. #57 pushed mode evenness to 0.84 but had
+            // nothing keeping it there: modes were drift-maintained, and drift-maintained diversity is
+            // the thing this record has spent forty swings learning to distrust. A rare mode now earns
+            // more per encounter simply by being rare, at the moment of the encounter itself.
+            const _gain=Math.max(0,sim*pa)*((pMode[i]===pMode[j])?MODE_SAME_GAIN:MODE_DIFF_GAIN);
+            localRes[i]+=_gain*Math.max(0,1-d/(iR*MODE_REACH[pMode[i]]));
+            localRes[j]+=_gain*Math.max(0,1-d/(iR*MODE_REACH[pMode[j]]));
             // Pe51 Layer 40: count neighbors within interaction radius for density sensing
             if(pNeighborCount[i]<127)pNeighborCount[i]++;
             if(pNeighborCount[j]<127)pNeighborCount[j]++;
