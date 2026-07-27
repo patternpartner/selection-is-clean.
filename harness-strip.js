@@ -159,6 +159,25 @@ const driver=`
       let H=0; for(const x of h){ if(x>0){ const pr=x/n; H-=pr*Math.log(pr); } }
       return {frac,occupied,evenness:+(H/Math.log(5)).toFixed(3),biasFrac:b.map(x=>+(x/n).toFixed(3))};
     }catch(e){return null;}})();
+    // WAVE 8 (#59) COSMOS CENSUS. Built to measure the MECHANISM rather than my hypothesis about it —
+    // #57's census caught a failure it had NOT predicted precisely because it read the mechanism. So
+    // launches, deaths, emitters, emissions and merges are counted SEPARATELY, because "it fired" and
+    // "it paid out" are different claims and #58 shipped a wave that confused them. launchDrive is the
+    // payout test that does not depend on my reading: launching costs amp up front and returns nothing
+    // unless a child beats the odds, so if contact is worth nothing, cluster-level selection should push
+    // the heritable propensity DOWN across a run.
+    const __cos=(function(){try{
+      if(typeof cosmosStats==='undefined')return null;
+      let dsum=0,dn=0;
+      for(const c of clusters){const g=c&&c.clusterGenome;if(g&&isFinite(g.launchDrive)){dsum+=g.launchDrive;dn++;}}
+      return {launches:cosmosStats.launches,deaths:cosmosStats.deaths,emitters:cosmosStats.emitters,
+              emissions:cosmosStats.emissions,merges:cosmosStats.merges,senseReads:cosmosStats.senseReads,senseHits:cosmosStats.senseHits,
+              live:cosmosChildren.length,
+              meanAge:cosmosStats.ageN?+(cosmosStats.ageSum/cosmosStats.ageN).toFixed(1):0,
+              meanPeakCoh:cosmosStats.ageN?+(cosmosStats.peakCohSum/cosmosStats.ageN).toFixed(3):0,
+              drive:dn?+(dsum/dn).toFixed(3):null,driveN:dn,
+              bankCosmos:(function(){try{return (genome.shadowScenarioBank||[]).filter(s=>s&&s.src==='cosmos').length}catch(e){return -1}})()};
+    }catch(e){return null;}})();
     const __lin=(function(){try{const h={};let n=0;for(let i=0;i<N;i++){if(!palive[i])continue;n++;h[pLin[i]]=(h[pLin[i]]||0)+1;}
       const sz=Object.values(h).sort((a,b)=>b-a);
       const singles=sz.filter(x=>x===1).length;
@@ -167,7 +186,7 @@ const driver=`
               singleFrac:n?+(singles/n).toFixed(3):0,          // share of POPULATION that is its own lineage
               multiFrac:n?+(inMulti/n).toFixed(3):0,           // share living in a lineage with >1 member
               maxLin:sz[0]||0, meanLin:sz.length?+(n/sz.length).toFixed(2):0};}catch(e){return null;}})();
-    const __pur=(function(){try{return __purity(__binOf,(i)=>(typeof pLin!=='undefined'?pLin[i]:0),N);}catch(e){return{p:0,pn:0,ex:0,owned:0,ownedNull:0};}})(); globalThis.__samples.push({tick:(typeof tick!=='undefined'?tick:-1),N:alive,meanAmp:+(alive?ampSum/alive:0).toFixed(4),kinds:Object.keys(bc).length,lin:__lin,modes:__modes,purity:__pur.p,purityNull:__pur.pn,purityExcess:__pur.ex,owned:__pur.owned,ownedNull:__pur.ownedNull,uaUses:(function(){try{let u=0,n=0,f=0;const A=genome.userAtoms||[];for(const a of A){u+=(a.uses|0);if((a.uses|0)>0)n++;if(a.failed)f++;}return 'bank='+A.length+' uses='+u+' proven='+n+' failed='+f+' bound='+((genome.boundOpcodes||[]).length);}catch(e){return '?';}})()}); }
+    const __pur=(function(){try{return __purity(__binOf,(i)=>(typeof pLin!=='undefined'?pLin[i]:0),N);}catch(e){return{p:0,pn:0,ex:0,owned:0,ownedNull:0};}})(); globalThis.__samples.push({tick:(typeof tick!=='undefined'?tick:-1),N:alive,meanAmp:+(alive?ampSum/alive:0).toFixed(4),kinds:Object.keys(bc).length,lin:__lin,modes:__modes,cosmos:__cos,purity:__pur.p,purityNull:__pur.pn,purityExcess:__pur.ex,owned:__pur.owned,ownedNull:__pur.ownedNull,uaUses:(function(){try{let u=0,n=0,f=0;const A=genome.userAtoms||[];for(const a of A){u+=(a.uses|0);if((a.uses|0)>0)n++;if(a.failed)f++;}return 'bank='+A.length+' uses='+u+' proven='+n+' failed='+f+' bound='+((genome.boundOpcodes||[]).length);}catch(e){return '?';}})()}); }
   globalThis.__run=function(n,every){ sample(); for(let s=0;s<n;s++){ globalThis.__detMs+=5; try{loop();}catch(e){globalThis.__driverErr=(globalThis.__driverErr||0)+1;} if((s+1)%every===0)sample(); } };
   globalThis.__metaMag=function(){ // sum of |ATROPHY_SAFE params| on the self — to confirm ablation actually zeroed it
     if(typeof ATROPHY_SAFE==='undefined')return null; let s=0,n=0; for(const p of ATROPHY_SAFE){ if(isFinite(genome[p])){s+=Math.abs(genome[p]);n++;} } return {sum:+s.toFixed(3),n}; };
@@ -181,4 +200,7 @@ const S=globalThis.__samples;
 const t2=Math.floor(2*S.length/3);
 function lateMean(k){let s=0,c=0;for(let i=t2;i<S.length;i++){const v=S[i][k];if(typeof v==='number'){s+=v;c++;}}return c?+(s/c).toFixed(4):0;}
 console.log(JSON.stringify({ strip:STRIP, extra:EXTRA, ablated:ABLATE, ablatedBank:ABLATE_BANK, seed:process.env.SEED||null, loopErrors, lastErr, driverErr:globalThis.__driverErr||0, uaBirths:globalThis.__uaBirths||0, mutCalls:globalThis.__mutCalls||0,
-  metaMag:globalThis.__metaMag(), lateMeanAmp:lateMean('meanAmp'), lateN:lateMean('N'), lateKinds:lateMean('kinds'), latePurity:lateMean('purity'), latePurityNull:lateMean('purityNull'), latePurityExcess:lateMean('purityExcess'), lateOwned:lateMean('owned'), lateOwnedNull:lateMean('ownedNull'), finalSample:S[S.length-1] }));
+  metaMag:globalThis.__metaMag(), lateMeanAmp:lateMean('meanAmp'), lateN:lateMean('N'), lateKinds:lateMean('kinds'),
+  // #59: launchDrive early vs late is the self-administered payout test — see the census comment.
+  cosmosDriveEarly:(S[1]&&S[1].cosmos)?S[1].cosmos.drive:null, cosmosDriveLate:(S[S.length-1]&&S[S.length-1].cosmos)?S[S.length-1].cosmos.drive:null,
+  cosmos:(S[S.length-1]||{}).cosmos||null, latePurity:lateMean('purity'), latePurityNull:lateMean('purityNull'), latePurityExcess:lateMean('purityExcess'), lateOwned:lateMean('owned'), lateOwnedNull:lateMean('ownedNull'), finalSample:S[S.length-1] }));

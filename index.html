@@ -349,7 +349,7 @@ const MAX_BOUND_OPCODES=96; // LEAP 16 (#54): 32 -> 96. The authored-primitive n
 // Bumping CORE_OPCODES is the ONLY edit needed to add a core opcode — the bound guards
 // (op>=CORE_OPCODES) and OPCODE_COUNT derive from it, so a boundary typo can no longer
 // orphan an opcode or collide a core op with a bound slot (the Pe60 / op142-class bug).
-const CORE_OPCODES=235; // #57: 232 -> 235, admitting SET_MODE (232), READ_MODE (233), PARTNER_MODE (234) — the first categorical decision evolved code can make here. Was: // 0..231 core — op208-211 velocity I/O, op212-216 inhibitor/resistance mechanics, op217-219 oscillator direct control, op220-231 scaffold morphogenesis + genomic self-inspection + reproductive autonomy + cluster quorum sensing
+const CORE_OPCODES=236; // #59: 235 -> 236, admitting COSMOS_SENSE (235) — the state of the daughter worlds this lineage launched, as data. Was: // #57: 232 -> 235, admitting SET_MODE (232), READ_MODE (233), PARTNER_MODE (234) — the first categorical decision evolved code can make here. Was: // 0..231 core — op208-211 velocity I/O, op212-216 inhibitor/resistance mechanics, op217-219 oscillator direct control, op220-231 scaffold morphogenesis + genomic self-inspection + reproductive autonomy + cluster quorum sensing
                         // 0..132 core — op132 SEASON_PHASE: perceive the current feast/famine cycle position
                         // 0..131 core — op131 ENERGY_STRESS: the system perceives conserved-budget scarcity
                         // 0..130 core — OPENED THE SWITCH: op128 READ_OWN_CASTE, op129 READ_PARTNER_CASTE,
@@ -1024,6 +1024,68 @@ const MODE_LOCK_MULT=4.0;           // LEAP 34 — switching costs this much mor
 const MODE_HUE=[205, 45, 300, 130, 12];   // LEAP 35 — hue offset per mode, so the polymorphism is visible
 const MODE_SAT=[0.70, 1.00, 1.15, 0.95, 1.35];
 let modeSwitches=0;                 // telemetry: total SET_MODE transitions actually executed
+// ═══ WAVE 8 (#59): COSMOLOGICAL SCAFFOLDING — reproduction at the level of the world ══════════════
+// Every prior level of selection in this file selects over things INSIDE one physics: particles own
+// their constants (cloneGenome copies scalars by value), clusters own budRate and splitFraction, and
+// the shadow sim imagines perturbed constants but throws the imagining away every cadence and scores
+// it by the parent's own criterion. Nothing has ever been selected over a physics that then had to
+// live with itself. This wave adds that: an eligible cluster can found a DAUGHTER WORLD carrying a
+// multiplicatively perturbed copy of its own five physics constants, and that world then runs its own
+// coarse ecology on its own clock with no reference to the parent's fields, population, or fitness.
+// It is not scored. It either organises or it does not.
+//
+// WHY THE CONSTANTS BITE. The child's income term is coherence x entropyK x mass x COSMOS_GAIN and its
+// drain is entropyBaseline; GAIN=1.0 puts a child at the knife edge under the PARENT's own constants
+// (defaults e=8e-4, k=4e-4: at coh 0.5 and mass 4 income is 8e-4 against a drain of 8e-4 x burn). The
+// perturbation therefore decides the outcome rather than the calibration deciding it. Children are
+// seeded DISORDERED (coherence ~0.05, two cells) on a finite endowment converted from the launch cost,
+// so a child has to bootstrap order and mass before its endowment drains — a genuine race.
+//
+// MEASURED, before this shipped, on 400 children run to completion under sampled constants in an
+// isolated probe that loads these same functions: 33.5% ever emit, 66.5% are never heard from. Median
+// peak coherence 0.331 against a 0.62 gate, p10 0.057 (never organised at all), p90 0.877; median
+// lifetime 521 of a possible 900 ticks; 35.5% survive to heat death. What separates a heard child from a
+// silent one, in order of strength, is CHEAP GROWTH (creationCost 0.312 in emitters vs 0.407 in the
+// silent), then low entropyBaseline (7.8e-4 vs 9.1e-4), then entrainRate (0.0175 vs 0.0151). entrainThresh
+// barely separates at all. So the outcome is decided by the constants, and by the ones a cosmologist
+// would expect to decide it. "Most will die" is a measurement here, not an intention.
+//
+// THE RETURN PATH IS DELIBERATELY NARROW, and it is the part most at risk of being a handout. A child
+// that holds coherence and mass for COSMOS_EMIT_HOLD of its own ticks EMITS, which does exactly one
+// thing: xenoImpact() at the launch site — the channel this file already uses for matter arriving from
+// another world, depositing real resource AND real hazard. Contact is opportunity and risk, not a
+// subsidy, and it lands where the launch happened so it falls on the launcher's own descendants.
+// Emitting COSTS the child amplitude, so talking back competes with staying alive. Only a child that
+// emits COSMOS_MERGE_EMITS times gets to MERGE, and merging does not change the parent either: it
+// injects its constants as a PROPOSAL into the existing shadowScenarioBank (same shape and code path
+// as the Pe28 fossil injection), where the parent's own shadow sim, creditTrace and decisionConfidence
+// machinery are free to reject it. A child universe can make an argument. It cannot win one.
+const COSMOS_MAX=6;                 // concurrent live children — bounds the whole layer's cost
+const COSMOS_CELLS=10;              // coarse cells a child may hold
+const COSMOS_TICKS=30;              // child ticks per parent cluster-cycle — the daughter has its own clock
+const COSMOS_MAX_AGE=900;           // child ticks before heat death (~1800 parent ticks per lifetime)
+const COSMOS_LAUNCH_SIZE=9;         // mass the launcher must hold. Picked from a census of the CURRENT
+const COSMOS_LAUNCH_COH=0.55;       // build (3000 ticks, seed 7): 68 of 660 cluster-observations clear
+const COSMOS_LAUNCH_AGE=10;         // this gate, so it is reachable headless without being trivial.
+const COSMOS_LAUNCH_RATE=0.35;      // per-cycle chance an eligible cluster launches, x its heritable launchDrive
+const COSMOS_LAUNCH_COST=0.20;      // fraction of each member's amp spent founding a world
+const COSMOS_ENDOW_YIELD=0.55;      // fraction of that cost surviving conversion into the child's endowment
+const COSMOS_CONST_DRIFT=0.35;      // sd of the LOG-normal perturbation on each inherited constant
+const COSMOS_GAIN=1.0;              // see the knife-edge calibration above
+const COSMOS_DECOH=0.004;           // per-child-tick order leak — disorder is free, order is not
+const COSMOS_DEATH_AMP=0.05;        // a cell below this is dead
+const COSMOS_EMIT_COH=0.62;         // coherence a child must build FROM 0.05 to be heard at all
+const COSMOS_EMIT_MASS=4;           // and the mass it must hold while doing it
+const COSMOS_EMIT_HOLD=12;          // consecutive child ticks it must hold both
+const COSMOS_EMIT_COST=0.06;        // fraction of every cell's amp spent reaching across the boundary
+const COSMOS_MERGE_EMITS=3;         // emissions before its constants become a bank proposal
+const COSMOS_WIRE_RATE=0.03;        // per-cycle chance a living program gains COSMOS_SENSE (op235).
+                                    // #57's lesson, applied before the fact: a new opcode that only
+                                    // mutation can reach is never executed, so it must be put in front
+                                    // of living code or the sensory half of this wave is decoration.
+let cosmosChildren=[];              // live daughter worlds
+let cosmosSense=new Map();          // cluster lineageID -> {n,cohSum}; rebuilt each cycle for op235
+let cosmosStats={launches:0,deaths:0,emitters:0,emissions:0,merges:0,ageSum:0,ageN:0,peakCohSum:0,senseReads:0,senseHits:0};
 let worldEnergy=WORLD_ENERGY_MAX;
 let energyAdequacy=1;               // fraction of this tick's metabolic demand the pool could meet
 // NEGATIVE FREQUENCY-DEPENDENCE — the engine of novelty. Without it, selection is purely
@@ -7680,6 +7742,15 @@ function seedClusterGenome(){
     splitFraction:0.25+Math.random()*0.2,   // fraction moved to daughter (0.25..0.45)
     innovationRate:0.1+Math.random()*0.3,   // VM mutation rate on bud (0.1..0.4)
     metabolicBias:0.85+Math.random()*0.1,   // parent amp retention after bud (0.85..0.95)
+    // WAVE 8 (#59) — heritable propensity to found a daughter WORLD. This is the decision half of
+    // cosmological scaffolding: the size/coherence/persistAge gate only makes a cluster ELIGIBLE, and
+    // whether an eligible cluster actually launches is drawn against this trait, which is inherited
+    // by budded daughters and drifts under mutateClusterGenome like every other cluster-level trait.
+    // It is also the wave's cheapest honest instrument. Launching costs amplitude up front and returns
+    // nothing unless a child beats the odds, so if the return path pays nothing, cluster-level
+    // selection should push launchDrive DOWN over a run; if contact is worth its price it should hold
+    // or rise. That is a payout test the mechanism performs on itself, rather than one I assert.
+    launchDrive:0.2+Math.random()*0.8,      // 0.2..1.0
   };
 }
 function mutateClusterGenome(parent,scale){
@@ -7689,6 +7760,7 @@ function mutateClusterGenome(parent,scale){
     splitFraction:__cl(parent.splitFraction+(Math.random()-0.5)*scale*0.1,0.1,0.7),
     innovationRate:__cl(parent.innovationRate+(Math.random()-0.5)*scale*0.15,0.01,0.8),
     metabolicBias:__cl(parent.metabolicBias+(Math.random()-0.5)*scale*0.05,0.6,0.99),
+    launchDrive:__cl(finiteOr(parent.launchDrive,0.6)+(Math.random()-0.5)*scale*0.3,0,2), // WAVE 8 (#59)
   };
 }
 let clusterByID=new Int16Array(0); // fast lookup: clusterByID[cid] = index into clusters[]
@@ -8277,6 +8349,317 @@ function attemptClusterBudding(){
 
   // Rebuild lookup if any budding happened
   if(clusters.length>nClusters)buildClusterLookup();
+}
+
+// ═══════════════════════════════════════
+// WAVE 8 (#59): COSMOLOGICAL SCAFFOLDING — the engine. See the constant block for the argument.
+// ═══════════════════════════════════════
+function cosmosOn(){return (typeof globalThis==='undefined')||((globalThis.__COSMOS??1)|0)!==0}
+
+function cosmosGauss(){ // Box-Muller. Called 5x per launch; launches are rare, so cost is irrelevant.
+  let u=Math.random();if(u<1e-9)u=1e-9;
+  return Math.sqrt(-2*Math.log(u))*Math.cos(2*Math.PI*Math.random());
+}
+
+// A child's program is NOT executed as bytecode — a coarse world has no particles to run opcodes on,
+// and pretending otherwise would be the hollow-mechanism pattern this record exists to catch. It is
+// PROJECTED onto three dynamical knobs by a fixed mapping. What varies under selection is the program
+// content the launcher hands down and the mutation applied at launch; the mapping itself is designed
+// and is stated here as designed.
+function cosmosProject(prog){
+  if(!Array.isArray(prog)||!prog.length)return{bind:1,drive:1,burn:1};
+  let ks=0,ka=0;const ops=new Set();
+  for(const ins of prog){
+    const k=(ins&&isFinite(ins[3]))?ins[3]:0;
+    ks+=k;ka+=Math.abs(k);ops.add(ins?(ins[0]|0):0);
+  }
+  const n=prog.length;
+  return{
+    bind:1+0.5*Math.tanh(ks/n),                    // 0.5..1.5 — how strongly aligned contact builds order
+    drive:0.5+Math.min(1,ops.size/n),              // 0.5..1.5 — opcode variety read as growth propensity
+    burn:1+0.4*Math.min(2,ka/n),                   // 1.0..1.8 — coefficient magnitude read as upkeep
+  };
+}
+
+function cosmosMutateProg(prog){
+  const out=[];
+  for(const ins of (Array.isArray(prog)?prog:[])){
+    if(!ins)continue;
+    const c=[ins[0]|0,ins[1]|0,ins[2]|0,isFinite(ins[3])?ins[3]:0];
+    if(Math.random()<0.25)c[3]+=cosmosGauss()*0.4;
+    if(Math.random()<0.10)c[0]=(Math.random()*CORE_OPCODES)|0;
+    out.push(c);
+  }
+  if(!out.length)out.push([(Math.random()*CORE_OPCODES)|0,0,0,Math.random()*2-1]);
+  return out;
+}
+
+function cosmosSim(a,b,dims){
+  let d=0,na=0,nb=0;
+  for(let q=0;q<dims;q++){d+=a[q]*b[q];na+=a[q]*a[q];nb+=b[q]*b[q];}
+  const n=Math.sqrt(na*nb);
+  return n>1e-9?d/n:0;
+}
+
+function attemptCosmosLaunch(){
+  if(!cosmosOn())return;
+  if(cosmosChildren.length>=COSMOS_MAX)return;
+  for(const c of clusters){
+    if(cosmosChildren.length>=COSMOS_MAX)break;
+    if(!c)continue;
+    // ELIGIBILITY (size, coherence, persistence) — this only makes a launch POSSIBLE.
+    if(c.size<COSMOS_LAUNCH_SIZE||c.coherence<COSMOS_LAUNCH_COH||(c.persistAge||0)<COSMOS_LAUNCH_AGE)continue;
+    // DECISION — drawn against the cluster's own heritable launchDrive, not against a bare constant.
+    const cg=c.clusterGenome||(c.clusterGenome=seedClusterGenome());
+    const drive=finiteOr(cg.launchDrive,0.6);
+    if(drive<=0||Math.random()>COSMOS_LAUNCH_RATE*drive)continue;
+
+    // The child inherits the LAUNCHING LINEAGE's physics — the mean over the members' own pGenome
+    // scalars, which each lineage genuinely owns (cloneGenome copies them by value). Not the global
+    // self's physics: descent has to run through the cluster that paid for it.
+    const dims=DIMS;
+    let n=0,e=0,k=0,r=0,cc=0,tt=0;const tSum=new Float32Array(dims);
+    for(let i=0;i<N;i++){
+      if(!palive[i]||clusterID[i]!==c.id)continue;
+      const g=pGenome[i]||genome;
+      e+=finiteOr(g.entropyBaseline,genome.entropyBaseline);
+      k+=finiteOr(g.entropyK,genome.entropyK);
+      r+=finiteOr(g.entrainRate,genome.entrainRate);
+      cc+=finiteOr(g.creationCost,genome.creationCost);
+      tt+=finiteOr(g.entrainThresh,genome.entrainThresh);
+      for(let q=0;q<dims;q++)tSum[q]+=tend[i*dims+q];
+      n++;
+    }
+    if(n<COSMOS_EMIT_MASS)continue; // members may have died since detection
+    e/=n;k/=n;r/=n;cc/=n;tt/=n;
+    for(let q=0;q<dims;q++)tSum[q]/=n;
+
+    // COST, and the endowment it converts into. Founding a world is paid for by the members that
+    // found it, and only COSMOS_ENDOW_YIELD of what they pay reaches the child — the same lossy
+    // conversion idiom LEAP 3 uses for reproductive provision.
+    let endow=0;
+    for(let i=0;i<N;i++){
+      if(!palive[i]||clusterID[i]!==c.id)continue;
+      const spend=amp[i]*COSMOS_LAUNCH_COST;
+      amp[i]-=spend;endow+=spend;
+    }
+    endow*=COSMOS_ENDOW_YIELD;
+    if(endow<=0)continue;
+
+    // SLIGHTLY ALTERED CONSTANTS — multiplicative (log-normal) so a perturbation means the same thing
+    // to entropyK at 5e-4 as to creationCost at 0.3. Clamped only to keep the child's arithmetic finite.
+    const jit=(v)=>v*Math.exp(cosmosGauss()*COSMOS_CONST_DRIFT);
+    const phys={
+      e:__cl(jit(e),1e-5,0.02),
+      k:__cl(jit(k),1e-6,0.01),
+      r:__cl(jit(r),0.0005,0.3),
+      c:__cl(jit(cc),0.02,2),
+      t:__cl(jit(tt),0.01,0.95),
+    };
+
+    // Two disordered cells sharing the endowment. A new world starts as a new world does.
+    const cells=[];
+    for(let s=0;s<2;s++){
+      const t0=new Float32Array(dims);
+      for(let q=0;q<dims;q++)t0[q]=tSum[q]+cosmosGauss()*0.25;
+      cells.push({amp:endow/2,coh:0.05+Math.random()*0.03,tend:t0,dead:false});
+    }
+
+    cosmosChildren.push({
+      sx:c.cx,sy:c.cy,clin:c.lineageID|0,dims,
+      phys,base:{e:genome.entropyBaseline,k:genome.entropyK,r:genome.entrainRate,c:genome.creationCost,t:genome.entrainThresh},
+      proj:cosmosProject(cosmosMutateProg(c.vmProgram)),
+      cells,age:0,hold:0,emits:0,merged:false,peakCoh:0,peakMass:2,
+    });
+    cosmosStats.launches++;
+    recordEvent('cosmos_launch',{sz:c.size,coh:+c.coherence.toFixed(2),dr:+drive.toFixed(2),e:+phys.e.toExponential(1),live:cosmosChildren.length},240);
+  }
+}
+
+// One child universe, COSMOS_TICKS of its own time. No read of the parent's fields, population or
+// fitness appears anywhere in this function — that separation is the whole point of the layer, and
+// the only parent state it touches is on EMISSION, through xenoImpact.
+function cosmosStep(ch){
+  const p=ch.phys,pr=ch.proj,dims=ch.dims;
+  for(let t=0;t<COSMOS_TICKS&&ch.cells.length;t++){
+    ch.age++;
+    let mass=0;
+    for(const cl of ch.cells)if(!cl.dead)mass++;
+    if(!mass)break;
+
+    // BASE PHYSICS — drain against coherence-and-mass-scaled income. Order and size compound; a small
+    // disordered world cannot pay its own upkeep, which is why most children die.
+    for(const cl of ch.cells){
+      if(cl.dead)continue;
+      cl.amp-=p.e*pr.burn;
+      cl.amp+=cl.coh*p.k*mass*COSMOS_GAIN;
+      cl.coh-=COSMOS_DECOH;
+    }
+
+    // ENTRAINMENT — aligned cells build order in each other and converge in trait space. entrainThresh
+    // decides what counts as aligned, entrainRate how fast it acts. The coupling is ADDITIVE over pairs
+    // (a cell entrains with each partner independently, the same per-pair form the shadow sim uses), so
+    // a larger world builds order faster. That is deliberate and it is the reason growth is worth buying;
+    // stating it because it is a load-bearing assumption, not an obvious one.
+    for(let a=0;a<ch.cells.length;a++){
+      const ca=ch.cells[a];if(ca.dead)continue;
+      for(let b=a+1;b<ch.cells.length;b++){
+        const cb=ch.cells[b];if(cb.dead)continue;
+        if(cosmosSim(ca.tend,cb.tend,dims)<=p.t)continue;
+        const g=p.r*pr.bind;
+        ca.coh+=(1-ca.coh)*g*0.5;
+        cb.coh+=(1-cb.coh)*g*0.5;
+        for(let q=0;q<dims;q++){
+          const d=(cb.tend[q]-ca.tend[q])*g*0.25;
+          ca.tend[q]+=d;cb.tend[q]-=d;
+        }
+      }
+    }
+
+    // GROWTH — a cell rich enough pays creationCost to found another, which starts less ordered and
+    // trait-displaced. Growth therefore BUYS mass at the price of coherence: the child's central tension.
+    if(mass<COSMOS_CELLS){
+      for(const cl of ch.cells){
+        if(cl.dead||mass>=COSMOS_CELLS)continue;
+        if(cl.amp<=p.c*1.5)continue;
+        if(Math.random()>0.04*pr.drive)continue;
+        cl.amp-=p.c;
+        const t0=new Float32Array(dims);
+        for(let q=0;q<dims;q++)t0[q]=cl.tend[q]+cosmosGauss()*0.2;
+        ch.cells.push({amp:p.c*0.5,coh:cl.coh*0.5,tend:t0,dead:false});
+        mass++;
+      }
+    }
+
+    // DEATH, and the child's aggregate state.
+    let liveMass=0,cohSum=0;
+    for(const cl of ch.cells){
+      if(cl.dead)continue;
+      cl.coh=__cl(cl.coh,0,1);
+      if(!isFinite(cl.amp)||cl.amp<COSMOS_DEATH_AMP){cl.dead=true;continue;}
+      liveMass++;cohSum+=cl.coh;
+    }
+    if(!liveMass){ch.cells.length=0;break;}
+    const coh=cohSum/liveMass;
+    if(coh>ch.peakCoh)ch.peakCoh=coh;
+    if(liveMass>ch.peakMass)ch.peakMass=liveMass;
+
+    // EMISSION — held, not instantaneous, and it costs.
+    if(coh>=COSMOS_EMIT_COH&&liveMass>=COSMOS_EMIT_MASS){
+      ch.hold++;
+      if(ch.hold>=COSMOS_EMIT_HOLD){
+        ch.hold=0;
+        for(const cl of ch.cells)if(!cl.dead)cl.amp*=(1-COSMOS_EMIT_COST);
+        cosmosEmit(ch,coh,liveMass);
+      }
+    }else ch.hold=0;
+
+    if(ch.age>=COSMOS_MAX_AGE)break;
+  }
+}
+
+// CONTACT. The only thing a child can do to the parent, and it is the channel this world already uses
+// for foreign matter: resource at the launch site, hazard in the ring around it. Whether contact helps
+// is then the parent's ecology's business, not this function's.
+function cosmosEmit(ch,coh,mass){
+  if(!ch.emits)cosmosStats.emitters++;
+  ch.emits++;cosmosStats.emissions++;
+  xenoImpact(ch.sx,ch.sy);
+  try{addShock(ch.sx,ch.sy,0.35,120,200,255)}catch(e){}
+  recordEvent('cosmos_contact',{age:ch.age,coh:+coh.toFixed(2),m:mass,n:ch.emits},240);
+  if(!ch.merged&&ch.emits>=COSMOS_MERGE_EMITS)cosmosMerge(ch);
+}
+
+// MERGE — a proposal, not a change. The child's constants are expressed as a delta from the parent's
+// own in the scenario bank's units and pushed into that bank, which is the structure this file already
+// uses to hold foreign physics proposals accountable (Pe27 wins, Pe29 creditTrace, #43 confidence).
+// If the proposal is bad the parent's existing machinery evicts it. Nothing here touches genome physics.
+function cosmosMerge(ch){
+  ch.merged=true;
+  try{
+    if(!Array.isArray(genome.shadowScenarioBank)||!genome.shadowScenarioBank.length)genome.shadowScenarioBank=seedShadowBank();
+    const bank=genome.shadowScenarioBank;
+    const amp5={
+      e:__cl((ch.phys.e-ch.base.e)/SCEN_TEST.e,-2,2),
+      k:__cl((ch.phys.k-ch.base.k)/SCEN_TEST.k,-2,2),
+      r:__cl((ch.phys.r-ch.base.r)/SCEN_TEST.r,-2,2),
+      c:__cl((ch.phys.c-ch.base.c)/SCEN_TEST.c,-2,2),
+      t:__cl((ch.phys.t-ch.base.t)/SCEN_TEST.t,-2,2),
+    };
+    const prop={...amp5,f:0,p:0,a:0,tb:0,sp:0,sm:0,mp:0,wins:0,age:0,src:'cosmos',creditTrace:0};
+    let matchIdx=-1,bestDist=0.3;
+    for(let i=0;i<bank.length;i++){const d=scenarioDist(bank[i],prop);if(d<bestDist){bestDist=d;matchIdx=i}}
+    if(matchIdx>=0){
+      // A world that independently arrived at a physics already in the bank RE-RATIFIES it, exactly as
+      // a cluster fossil does. Same code path, same effect, no privilege.
+      bank[matchIdx].age=Math.max(0,bank[matchIdx].age-30);
+    }else if(bank.length<SHADOW_SCENARIOS_MAX){
+      bank.push(prop);
+    }else return; // bank full and nothing similar: the proposal is simply not heard
+    cosmosStats.merges++;
+    recordEvent('cosmos_merge',{e:+amp5.e.toFixed(2),k:+amp5.k.toFixed(2),r:+amp5.r.toFixed(2),emits:ch.emits,ratified:matchIdx>=0?1:0},600);
+  }catch(err){}
+}
+
+function updateCosmos(){
+  if(!cosmosOn()){cosmosSense.clear();return}
+  const keep=[];
+  for(const ch of cosmosChildren){
+    cosmosStep(ch);
+    const dead=!ch.cells.length||ch.age>=COSMOS_MAX_AGE;
+    if(dead){
+      cosmosStats.deaths++;cosmosStats.ageSum+=ch.age;cosmosStats.ageN++;cosmosStats.peakCohSum+=ch.peakCoh;
+      recordEvent('cosmos_death',{age:ch.age,peakCoh:+ch.peakCoh.toFixed(2),peakM:ch.peakMass,emits:ch.emits},240);
+    }else keep.push(ch);
+  }
+  cosmosChildren=keep;
+  // SENSE MAP — rebuilt once per cycle so op235 is an O(1) lookup rather than a scan.
+  cosmosSense.clear();
+  for(const ch of cosmosChildren){
+    let m=0,s=0;for(const cl of ch.cells){if(cl.dead)continue;m++;s+=cl.coh}
+    if(!m)continue;
+    let e=cosmosSense.get(ch.clin);
+    if(!e){e={n:0,cohSum:0};cosmosSense.set(ch.clin,e)}
+    e.n++;e.cohSum+=s/m;
+  }
+}
+
+// What op235 returns for a given particle: the state of the daughter worlds its OWN cluster lineage
+// launched. Data in a register. Nothing here decides what a program does with it.
+// senseHits counts NONZERO returns, separately from senseReads. #58's hollow column was a table entry
+// that was never read; the matching failure for a sense opcode is a register that is read constantly and
+// always returns 0, which looks identical to a working signal from the outside. The two counters make
+// that distinguishable, and if hits stays 0 while reads runs to the millions then this half of the wave
+// is decoration and must be reported as decoration.
+function cosmosSenseFor(i){
+  if(!cosmosSense.size)return 0;
+  const cid=clusterID[i];
+  if(cid<0||cid>=MAX_CLUSTERS)return 0;
+  const ci=clusterByID[cid];
+  if(ci<0||ci>=clusters.length||!clusters[ci])return 0;
+  const e=cosmosSense.get(clusters[ci].lineageID|0);
+  if(!e||!e.n)return 0;
+  cosmosStats.senseHits++;
+  return Math.min(3,e.n+e.cohSum/e.n);
+}
+
+// #57's lesson applied before the fact rather than after: a brand-new opcode enters no seeded program,
+// so without this COSMOS_SENSE would be reachable-in-principle and never once executed.
+function wireCosmosOpcode(){
+  if(!cosmosOn())return;
+  try{
+    for(let i=0;i<N;i++){
+      if(!palive[i]||!pProg[i])continue;
+      if(Math.random()>COSMOS_WIRE_RATE)continue;
+      const pr=pProg[i];
+      let has=false;for(let q=0;q<pr.length;q++)if(pr[q][0]===235){has=true;break}
+      if(has)continue;
+      const inst=[235,(Math.random()*12)|0,(Math.random()*12)|0,Math.random()*2-1];
+      const cap=Math.min((genome.vmMaxInstructions||16),48);
+      if(pr.length<cap)pr.splice((Math.random()*(pr.length+1))|0,0,inst);
+      else pr[(Math.random()*pr.length)|0]=inst;
+    }
+  }catch(e){}
 }
 
 // ═══════════════════════════════════════
@@ -14945,6 +15328,11 @@ function executeVM(i,j,sim,d){
       // on what kind of thing you are and what kind of thing you just met.
       case 233:{vmRegs[di]=pMode[i]*(k||1);}break;
       case 234:{vmRegs[di]=(j>=0&&j<N?pMode[j]:0)*(k||1);}break;
+      // #59 — COSMOS_SENSE. The daughter worlds this particle's cluster lineage launched, as a number
+      // in a register: live count plus their mean coherence, capped at 3. Strictly a signal. Nothing in
+      // this case decides anything; whether a program conditions on having living descendants at the
+      // level of physics is for selection to work out.
+      case 235:{cosmosStats.senseReads++;vmRegs[di]=cosmosSenseFor(i)*(k||1);}break;
       case 231:{const _cqcid231=clusterID[i];if(_cqcid231>=0){const _cqbit231=1<<(Math.round(Math.abs(vmRegs[si]))&7);let _cqtot231=0,_cqset231=0;for(let _cqn231=0;_cqn231<N;_cqn231++){if(clusterID[_cqn231]===_cqcid231){_cqtot231++;if(pEpigen[_cqn231]&_cqbit231)_cqset231++;}}vmRegs[di]=_cqtot231>0?(_cqset231/_cqtot231)*k:0;}else{vmRegs[di]=0;}}break; // CLUSTER_QUORUM — fraction of own cluster members with epigenetic bit (vmRegs[si]&7) set; O(N) scan; solitary returns 0. Enables quorum sensing; epigenetic voting; collective gene-expression switching; democratic phase coordination.
     }
     // BOUND-OPCODE BOUNDARY (Pe60-class fix, now single-sourced via CORE_OPCODES).
@@ -18698,7 +19086,8 @@ function nicheCellOf(i){ const base=i*DIMS;
 // mutually-exclusive variants (__MINT_GATE cluster/relax; __NICHE_LOCALTEND vs __SPATIAL_TEND) are left off
 // for a separate, explicit choice. Revert = delete this block (every flag falls back to default-off).
 if(typeof globalThis!=='undefined'){
-  const LIVE={ __NICHE_FRONTIER:1, __NICHE_NDIM:1, __NICHE_LOCAL:1, // niche economy: cross-feed frontier + N-dim diet cells + per-cell crowding (#13/#14)
+  const LIVE={ __COSMOS:1,                                          // COSMOLOGICAL SCAFFOLDING #59 — eligible clusters found daughter WORLDS carrying perturbed copies of their own physics constants; each runs its own coarse ecology on its own clock, unscored, and most die. A survivor's only reach back is xenoImpact at the launch site (resource AND hazard), and only a repeat emitter gets to put its constants into the shadowScenarioBank as a proposal the parent's existing vetting machinery can reject. Force off with COSMOS=0
+               __NICHE_FRONTIER:1, __NICHE_NDIM:1, __NICHE_LOCAL:1, // niche economy: cross-feed frontier + N-dim diet cells + per-cell crowding (#13/#14)
                __SPECIATE:1,                                        // cladogenesis #17 — brings gate+mint on; assort (#18) stays off
                __COLO_SURV:1, __COLO_PIONEER:1,                     // colonization & survival #20
                __SPATIAL_TEND:1,                                    // allopatric (spatially-local) homogeniser #21
@@ -19510,6 +19899,8 @@ function loop(){
     for(let _ri=0;_ri<_rcN;_ri++){const _rca=clusters[_ri];if(!_rca||_rca.size<1)continue;for(let _rj=_ri+1;_rj<_rcN;_rj++){const _rcb=clusters[_rj];if(!_rcb||_rcb.size<1)continue;if(_rca.lineageID===_rcb.lineageID)continue;const _rdx=_rca.cx-_rcb.cx,_rdy=_rca.cy-_rcb.cy;if(_rdx*_rdx+_rdy*_rdy>CELL*CELL*36)continue;const _rpA=new Set((_rca.vmProgram||[]).map(x=>x[0]));const _rpB=new Set((_rcb.vmProgram||[]).map(x=>x[0]));let _rint=0;for(const _rop of _rpA)if(_rpB.has(_rop))_rint++;const _run=_rpA.size+_rpB.size-_rint;const _rd=_run>0?1-_rint/_run:0;if(_rd>(_rca.rivalDissim||0))_rca.rivalDissim=_rd;if(_rd>(_rcb.rivalDissim||0))_rcb.rivalDissim=_rd;}}
     }
     attemptClusterBudding();
+    attemptCosmosLaunch(); // WAVE 8 (#59): eligible clusters may found daughter WORLDS — reproduction one level above the colony
+    updateCosmos();        // WAVE 8 (#59): each live child runs COSMOS_TICKS of its own time under its own constants, and most of them die
     updateHomeostatStack(); // RECURSIVE TOWER: clusters bind into super-units into higher units, each a slower homeostat regulating the floor below — open stack, no coded ceiling
     updateBridges(); // BRIDGE LAYER: lateral connections between separate sub-tower tops — material accumulates at bridge midpoints, seeding new towers from the bridge rather than from initialisation
     { const _rW=W/FIELD_W,_rH=H/FIELD_H; for(const c of clusters){ if(!c||c.size<2||c.persistAge<3)continue; const rcx=__cl(Math.floor(c.cx/_rW),0,FIELD_W-1),rcy=__cl(Math.floor(c.cy/_rH),0,FIELD_H-1); rootField[rcy*FIELD_W+rcx]=Math.min(5,rootField[rcy*FIELD_W+rcx]+0.45*c.coherence); } } // ROOT DEPOSITION: anchors stamp the substrate — coherent persistent clusters write deeper roots
@@ -21615,6 +22006,7 @@ function loop(){
   if(tick%45===0)compact();
   if(tick%120===0)wireAtomCallSites(); // LEAP 7 (#52): authored atoms reach living programs
   if(tick%150===0)wireModeOpcodes();   // #57 fix: the mode decision reaches living programs
+  if(tick%150===0)wireCosmosOpcode();  // #59: COSMOS_SENSE reaches living programs — wired at birth of the layer, not two waves later
   // LEAP 15 (#53) — a GENERATION is the population having wholly replaced its founders. genome.generation
   // has never moved on its own: a live export read g:83, which turned out to be the RELOAD count, while a
   // 161k-tick run stayed at generation 1. Detected properly here — and each real turnover EARNS a

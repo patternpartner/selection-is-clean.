@@ -4328,3 +4328,52 @@ the current claim rests on `frac ~= biasFrac` rather than on counted transitions
 that counter is read, "leap 34 suppressed switching" is a story, and this record's whole
 convention is that stories of this shape have been wrong before — twice in one session,
 both times refuted by bit-identical runs.
+
+---
+
+## #59 — wave 8. COSMOLOGICAL SCAFFOLDING: reproduction at the level of the world.
+
+**PRE-REGISTERED, before the measurement runs, so the bar cannot move to meet the result.**
+
+The idea, stated as received: clusters that reach a certain size and coherence can *launch* a
+daughter simulation with slightly altered physics constants — a true child universe. Most will
+die. A few may invent rules that let them communicate back, or merge. Almost certainly too
+ambitious, which is why it is worth building.
+
+**What is genuinely new here, against the forty-eight swings already in this file.** Every prior
+level of selection selects over things inside ONE physics. Particles own their constants
+(`cloneGenome` copies scalars by value). Clusters own `budRate` and `splitFraction`. The shadow
+sim perturbs physics constants — but it throws the perturbation away every cadence and scores it
+by the parent's own criterion, which is why `EXTRA=shadow` can ablate it without the world
+noticing. Nothing in the record has ever been selected over a physics that then had to live with
+itself. That is the one thing this wave adds.
+
+**The falsifiers, in the order they should be checked:**
+
+1. **Kinds.** If `lateKinds` falls more than 2.0 below wave 7's mean of 11.56, the wave is
+   subtraction and the fix is subtraction, not a ninth wave. Same +/-2 band #58 pre-registered,
+   kept deliberately so the two waves are comparable.
+2. **The hollow-column check, which is the one that matters.** `launches > 0` proves nothing.
+   #58's `MODE_REACH` fired constantly and paid nothing, and the "VERIFIED" commit checked that
+   switching *happened*, never that the thing switched *to* paid out. So: if `emissions == 0`
+   across seeds, the return path is decoration and must be reported as decoration. If
+   `senseHits == 0` while `senseReads` runs to the millions, the sense opcode is a register that
+   is always 0 — the same failure wearing a different coat — and reported the same way.
+3. **"Most will die" is a claim with a number and it must be measured, not intended.** Already
+   measured in an isolated probe that loads the real `cosmosStep` (400 children run to
+   completion): 33.5% ever emit, 66.5% never heard from, median peak coherence 0.331 against a
+   0.62 gate, median lifetime 521 of 900. If the in-sim rate comes back near 100%, the gate is a
+   handout and the number is wrong, whatever the kinds column says.
+4. **The payout test the mechanism runs on itself.** `launchDrive` is heritable at the cluster
+   level and launching costs amplitude up front. If contact is worth nothing, cluster-level
+   selection should push `launchDrive` DOWN from its 0.6 seed mean across a run. This is the one
+   check that does not depend on my reading of the numbers, which is why it is here — two
+   sincere causal stories in this record were refuted by bit-identical runs, and the arithmetic
+   that settled it was available before the first story.
+
+**What this wave does NOT claim in advance.** Not that it raises diversity — nothing about
+world-level reproduction has any reason to move `occupiedKinds` at 6k ticks, and if it does I
+should distrust the mechanism I built rather than believe the number. Not that merge is
+selective: the probe already says 33.0% of children reach 3 emissions against 33.5% reaching 1,
+so `COSMOS_MERGE_EMITS` is a DELAY (a child must hold order ~36+ of its own ticks) and not a
+second filter. Recorded now rather than discovered later and dressed up.
