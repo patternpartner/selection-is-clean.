@@ -12346,8 +12346,15 @@ function applyEntropy(){
       // charges the bloat rather than judging it, which is the pressure that demonstrably works here.
       {const _mm=genome.__metaMag;
        if(_mm!==undefined&&_mm>0)amp[i]-=_mm*CARRY_COST_META;
-       const _ab=genome.userAtoms?genome.userAtoms.length:0;
-       if(_ab>0)amp[i]-=_ab*CARRY_COST_ATOM;}
+       // FIX (#53) — charge the BLOAT, not the working machinery. Measured: wave 2 showed 162 atom uses
+       // at 6k and 0/0 by 20k. LEAP 9's per-atom levy was taxing out of existence exactly what LEAP 7
+       // had just switched on — two leaps in one wave pulling against each other. An atom that has been
+       // CALLED is earning; only unproven atoms are carried weight. This is the same distinction the
+       // opcode layer already makes implicitly (an instruction that never executes still costs, but an
+       // instruction that runs is paying for itself in the same currency).
+       const _ua=genome.userAtoms;
+       if(_ua&&_ua.length){ let _dead=0; for(let _q=0;_q<_ua.length;_q++) if(!((_ua[_q].uses|0)>0))_dead++;
+         if(_dead>0)amp[i]-=_dead*CARRY_COST_ATOM; }}
       amp[i]+=localRes[i]*genome.entropyK;
       {const _txi=__cl(Math.floor(px[i]/(W/FIELD_W)),0,FIELD_W-1),_tyi=__cl(Math.floor(py[i]/(H/FIELD_H)),0,FIELD_H-1),_tox=inhibitorField[_tyi*FIELD_W+_txi];if(_tox>0.05){const _dmg=_tox*Math.max(0,1-pResistance[i])*0.018;amp[i]-=_dmg;}pResistance[i]*=0.997;} // INHIBITOR DAMAGE + RESISTANCE DECAY: inhibitor deals up to 1.8% amp/tick at zero resistance; resistance decays 0.3%/tick — must be actively maintained via RESISTANCE_BOOST (op215)
       if(energyAdequacy<1)amp[i]-=(1-energyAdequacy)*STARVE_DRAIN; // starvation: the world couldn't feed everyone this tick
