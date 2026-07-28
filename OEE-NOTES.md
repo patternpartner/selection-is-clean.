@@ -4597,3 +4597,50 @@ hidden tax on exactly the poor clusters the price excludes, which is the same sh
 3. **KINDS** against #60's 11.33, same +/-2.0 band. No prediction; stated as no prediction.
 4. **CONSERVATION** must still hold (`fluxErr` at epsilon) — #60's guarantee is not allowed to
    regress silently while attention is on the launch path.
+
+### #61 RESULT — the gate was three criteria wearing one, and the one was never specified
+
+**All four falsifiers cleared. Kinds 11.33 -> 11.11, delta -0.22, inside the band. 0 loop errors,
+0 driver errors, all seeds.**
+
+**FALSIFIER 1 — NOT COSMETIC, and the reason is the finding.** 85 launches, 38 of which the old gate
+would also have admitted: **45% overlap, so 55% of launches came from clusters the old gate refused.**
+Then the question that mattered — WHICH of the three criteria was doing the refusing:
+
+| of the 47 refused launches | rejected by |
+|---|---|
+| `size >= 9` | **0 (0%)** |
+| `coherence >= 0.55` | 7 (15%) |
+| `persistAge >= 10` | **45 (96%)** |
+
+The size criterion never bound ONCE in three seeds. The smallest cluster the affordability gate
+admitted had size 11 — already over the threshold — because the price itself requires ~11 amp of
+member mass and size follows from that. The gate that read as "size AND coherence AND persistence"
+was, in operation, `persistAge >= 10` with two ornaments.
+
+**This matters more than the subtraction.** The wave was specified as "clusters that reach a certain
+size and coherence" — and the code was selecting on AGE, a criterion nobody specified, with no evident
+bearing on whether a cluster can found a world. Newly-admitted launchers average size 50.2, coherence
+0.841, persistAge 3.3 against the old population's 78.7 / 0.895 / 26.3: they are large and coherent
+and simply YOUNG. Every previous wave's launcher pool was an age-filtered sample and nothing in the
+file said so, because a compound condition reports as one boolean and no instrument had ever asked
+which term flipped it. Same family as MODE_REACH — apparatus that reads as load-bearing and is not —
+but harder to see, because here two of the three terms were live and one was inert.
+
+**FALSIFIER 2 — the economy absorbed it, and slightly benefited.** Launches roughly doubled on seed 7
+(15 -> 36; 18 -> 23; 19 -> 26). lateN ROSE on all three (343.7 -> 356.7, 319.3 -> 334.7, 333.3 ->
+353.3) and meanAmp rose on two. netFlux into the parent rose to 47.7/25.9/28.1, i.e. 4.0%/2.2%/2.3%
+of world regen — the layer is a larger net matter source than it was, and population rose alongside
+it. Direction is consistent with subsidy; causation is NOT established and one should not read it as
+established. launchDrive went 0.55->0.595, 0.469->0.433, 0.771->0.611: two of three down, not
+decisive either way.
+
+**FALSIFIER 4 — conservation held while attention was elsewhere.** maxSingle residual 1.19e-07,
+unchanged from #60. Parasites rose 4/17/15 -> 12/16/20.
+
+**A REAL BUG, fixed in passing and worth its own line.** The old code charged members and then
+launched on whatever it raised. A cluster able to raise 0.3 of a 2.18 price founded a starved child
+anyway. So every emit rate this file has reported for waves 8 and 9 — including the 43% and 57%
+"most will die" figures — includes children underfunded at birth by a gate that never checked what it
+collected. Those numbers are not retracted, but they are not clean either, and the affordability gate
+is the first version where the price is actually enforced.
