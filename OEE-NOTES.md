@@ -4444,3 +4444,62 @@ gain). The emission gate then DELETES itself — having matter to push becomes t
 no longer decide what world-level success looks like. It also makes the channel two-way in principle,
 which is where Tierra's shape actually lives: a child that draws matter FROM its parent is a parasite,
 and that would not need to be built, only stopped from being prevented.
+
+---
+
+## #60 — wave 9. THE BOUNDARY IS CONSERVED, AND THE GATE IS DELETED.
+
+**PRE-REGISTERED before the runs.** This wave is subtraction of a designer's thumb, not another
+mechanism, and it acts on the critique #59 earned rather than on its numbers.
+
+**What #59 got wrong, structurally.** The child was never scored — that part held. But the CHANNEL
+BACK was gated on coherence x mass held for 12 ticks, which is a computed fitness function at the
+world level. It fixed the accounting boundary exactly where I put it: a child that organised as an
+oscillator, as spatial structure, or as high-turnover flux had no route to being heard, not because
+it failed but because it did not succeed in the currency I chose. The second level was built as a
+second level. And the channel was open in matter — `detritalField += XENO_RESOURCE`, a constant
+unrelated to anything the child paid.
+
+**The change.** No criterion anywhere on the channel. Matter moves between the child's total
+amplitude and the parent's detrital stock at the launch cell DOWN THE DIFFERENTIAL, both directions,
+every child tick. Whichever side holds more, loses. Exactly what one loses the other gains, bounded
+by what the loser holds and by the reservoir ceiling, so a transfer can be truncated but never
+invented. `detritalField` is the right reservoir because it is already a matter stock in amp units
+with real consumers — dead particles deposit `amp*0.22`, decomposers harvest at DETRITUS_YIELD — so
+arriving matter enters an existing economy rather than a channel built to receive it.
+
+Three things follow that were not designed in:
+- Communicating back stops being a binary event and becomes a signed, continuous quantity.
+- **Parasitism becomes expressible without being built.** A child whose physics keeps it poor draws
+  matter FROM its launch site. Nothing privileges the outward direction. The interesting relation is
+  not implemented, it is merely not prevented — which is the Tierra shape, and the thing forty years
+  of installed fitness functions have made rare.
+- Merge gets a criterion in the SHARED CURRENCY instead of in my aesthetic: a child proposes its
+  physics once it has exported more than it was founded with. Any route to net-positive export
+  qualifies.
+
+**SCOPE OF THE CLAIM, so it cannot be overread.** The BOUNDARY is closed. The child's interior stays
+open in energy — it generates amplitude from `coh*k*mass*gain`, its own sun. That is the real
+ecosystem arrangement rather than a half-measure, but it means a thriving child is a net matter
+SOURCE for the parent. That is a new failure mode this design could introduce and it is measured
+below, not assumed away.
+
+### Falsifiers, in the order they should be checked
+
+1. **CONSERVATION.** `fluxErr` accumulates |actual child delta + actual parent delta| over every
+   transfer, measuring stocks either side rather than the intended flow. Anything above
+   floating-point epsilon means the channel creates matter and the wave's central claim is false,
+   whatever the diversity column says. This is the instrument built to return the answer the design
+   forbids.
+2. **IS THE SECOND DIRECTION REAL?** If `parasites == 0` across seeds, inward flow is a direction
+   that exists only in this comment — a hollow column of exactly the #58 kind, and reported as one.
+   The claim "parasitism is expressible" is falsified by zero instances, not excused by them.
+3. **IS THE LAYER AN AMP PUMP?** `netFlux` is export minus import into the parent's economy. Large
+   and positive means the daughter worlds are inflating the parent, which the metabolic economy will
+   feel. Named now because it is the failure mode the conservation fix could plausibly cause.
+4. **KINDS.** Against wave 8 fixed (9.78 mean), same +/-2.0 band. Wave 7 reference is 11.56. Stated
+   plainly: I do not expect this to raise kinds and would distrust the mechanism if it did, because
+   nothing about conserving a boundary has a reason to move standing trait diversity at 6k ticks.
+5. **THE GATE IS ACTUALLY GONE.** No coherence or mass criterion may remain anywhere on the channel.
+   Checked by grep, not by memory — #58's hollow column was a constant declared and never read, and
+   the mirror-image failure is a criterion deleted in the comment and left in the code.

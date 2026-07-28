@@ -1080,10 +1080,6 @@ const COSMOS_ENDOW_CAP=1.2;         // and the MOST any child can be founded wit
                                     // its parent happened to be; what mass buys is the ability to pay the
                                     // launch cost at all, not a richer universe. Members still pay in
                                     // proportion, so a large launcher pays MORE than its child receives.
-const COSMOS_EMIT_DECOH=0.5;        // coherence retained after reaching across the boundary. Contact costs
-                                    // ORDER, not only amplitude — without this a child that organises once
-                                    // emits every COSMOS_EMIT_HOLD ticks for the rest of its life (measured:
-                                    // 283 emissions from 7 children) and contact is a stream, not an event.
 const COSMOS_BANK_MAX=2;            // most slots cosmos proposals may hold at once. Measured without it: 5
                                     // proposals in a bank that trims to 5 — the channel held a MAJORITY of
                                     // the parent's scenario machinery, which makes "a child can make an
@@ -1107,11 +1103,51 @@ const COSMOS_GAIN=1.0;              // dimensionless multiplier on the PER-CHILD
                                     // rather than true against one snapshot of the genome.
 const COSMOS_DECOH=0.004;           // per-child-tick order leak — disorder is free, order is not
 const COSMOS_DEATH_AMP=0.05;        // a cell below this is dead
-const COSMOS_EMIT_COH=0.62;         // coherence a child must build FROM 0.05 to be heard at all
-const COSMOS_EMIT_MASS=4;           // and the mass it must hold while doing it
-const COSMOS_EMIT_HOLD=12;          // consecutive child ticks it must hold both
-const COSMOS_EMIT_COST=0.06;        // fraction of every cell's amp spent reaching across the boundary
-const COSMOS_MERGE_EMITS=3;         // emissions before its constants become a bank proposal
+// ═══ WAVE 9 (#60): THE BOUNDARY IS CONSERVED, AND THE GATE IS DELETED ═════════════════════════════
+// Wave 8's return path was gated on coherence x mass held for 12 ticks. That is a computed fitness
+// function at the WORLD level, and it fixed the accounting boundary exactly where a designer put it:
+// a child that organised as a stable oscillator, as spatial structure, or as high-turnover flux had
+// no route to being heard — not because it failed, but because it did not succeed in the currency I
+// chose. Making launchDrive heritable never touched that. The second level was built as a second
+// level rather than discovered.
+//
+// It was also open in matter. Contact ran `detritalField += XENO_RESOURCE`, a CONSTANT unrelated to
+// anything the child paid, so the parent received matter no one lost. The leak subtracted in #59 was
+// an accounting failure of the same family, found in the one place the code created and destroyed
+// amplitude with no counterpart — which is a reason to suspect the others rather than to relax.
+//
+// So: no gate anywhere on the channel. Matter flows between the child's total amplitude and the
+// parent's detrital stock at the launch cell DOWN THE DIFFERENTIAL, the way diffusion does. Whichever
+// side holds more, loses. Exactly what one side loses the other gains, bounded by what the loser
+// actually holds and by the reservoir's own ceiling. detritalField is the right reservoir because it
+// is already a matter stock in amp units with real consumers: dead particles deposit amp*0.22 into it
+// and decomposers harvest it back at DETRITUS_YIELD, so arriving matter enters an existing economy
+// instead of a channel built to receive it.
+//
+// THREE CONSEQUENCES, none of them designed in, all of them measured:
+//   - "Communicating back" stops being a binary event and becomes a signed, continuous QUANTITY.
+//   - PARASITISM becomes expressible without being built. A child whose physics keeps it poor draws
+//     matter FROM its launch site continuously. Nothing privileges the outward direction. This is the
+//     Tierra shape: the interesting relation is not implemented, it is merely not prevented.
+//   - MERGE gets a criterion in the shared currency instead of in my aesthetic — a child proposes its
+//     physics only once it has EXPORTED MORE THAN IT WAS FOUNDED WITH, i.e. paid for itself. Any way
+//     of achieving net-positive export qualifies; no shape is privileged.
+//
+// SCOPE OF THE CONSERVATION CLAIM, stated precisely so it cannot be overread: the BOUNDARY is closed.
+// The child's interior is still open in energy — it generates amplitude from coh*k*mass*gain, which is
+// its own sun. That is the real ecosystem arrangement (closed in matter, open in energy) rather than a
+// half-measure, but it does mean a thriving child is a net matter SOURCE for the parent, and that is a
+// new failure mode this design could introduce. It is pre-registered and measured, not assumed away.
+const COSMOS_FLUX_RATE=0.02;        // fraction of the child/parent differential that crosses per child tick
+const COSMOS_FLUX_MAXFRAC=0.5;      // most of its own stock a child can shed in one tick — numerical guard only
+const COSMOS_DETRITUS_CAP=3;        // the detrital reservoir's ceiling; mirrors the field's own clamp, and a
+                                    // push that would exceed it is TRUNCATED rather than silently vanishing,
+                                    // because "the deposit was capped" is exactly how matter gets created.
+const COSMOS_REF_MASS=4;            // reference mass for the knife-edge gain calibration. This was
+                                    // COSMOS_EMIT_MASS doing double duty as an emission gate; the gate is
+                                    // gone and the calibration reference remains, renamed so it cannot be
+                                    // mistaken for a criterion.
+const COSMOS_MIN_FOUNDERS=4;        // live members a cluster must still have at launch time
 const COSMOS_WIRE_RATE=0.03;        // per-cycle chance a living program gains COSMOS_SENSE (op235).
                                     // #57's lesson, applied before the fact: a new opcode that only
                                     // mutation can reach is never executed, so it must be put in front
@@ -1126,7 +1162,9 @@ let cosmosSense=new Map();          // cluster lineageID -> {n,cohSum}; rebuilt 
 // launch records the constants it went out with and what became of it.
 const COSMOS_LOG_MAX=64;
 let cosmosLaunchLog=[];
-let cosmosStats={launches:0,deaths:0,emitters:0,emissions:0,merges:0,ageSum:0,ageN:0,peakCohSum:0,senseReads:0,senseHits:0};
+let cosmosStats={launches:0,deaths:0,emitters:0,emissions:0,merges:0,ageSum:0,ageN:0,peakCohSum:0,senseReads:0,senseHits:0,
+  // #60 boundary accounting. fluxErr is the assay that can falsify the wave's central claim.
+  fluxOut:0,fluxIn:0,fluxErr:0,fluxErrMax:0,parasites:0,netAtDeath:0,netNegDeaths:0};
 let worldEnergy=WORLD_ENERGY_MAX;
 let energyAdequacy=1;               // fraction of this tick's metabolic demand the pool could meet
 // NEGATIVE FREQUENCY-DEPENDENCE — the engine of novelty. Without it, selection is purely
@@ -8479,7 +8517,7 @@ function attemptCosmosLaunch(){
       for(let q=0;q<dims;q++)tSum[q]+=tend[i*dims+q];
       n++;
     }
-    if(n<COSMOS_EMIT_MASS)continue; // members may have died since detection
+    if(n<COSMOS_MIN_FOUNDERS)continue; // members may have died since detection
     e/=n;k/=n;r/=n;cc/=n;tt/=n;
     for(let q=0;q<dims;q++)tSum[q]/=n;
 
@@ -8537,12 +8575,13 @@ function attemptCosmosLaunch(){
     // two of that run's four emitters were a division blowup wearing physics. Calibrating against the
     // value the child actually runs is self-consistent by construction and cannot blow up.
     const kRef=__cl(Math.abs(k),1e-6,0.01), eRef=__cl(Math.abs(e),1e-5,0.02);
-    const gain=COSMOS_GAIN*(eRef*proj.burn)/(0.5*kRef*COSMOS_EMIT_MASS);
+    const gain=COSMOS_GAIN*(eRef*proj.burn)/(0.5*kRef*COSMOS_REF_MASS);
     const child={
       sx:c.cx,sy:c.cy,clin:c.lineageID|0,dims,
       phys,base:{e:genome.entropyBaseline,k:genome.entropyK,r:genome.entrainRate,c:genome.creationCost,t:genome.entrainThresh},
       proj,gain,
-      cells,age:0,hold:0,emits:0,merged:false,peakCoh:0,peakMass:2,
+      cells,age:0,emits:0,merged:false,peakCoh:0,peakMass:2,
+      endow,exported:0,imported:0,parasite:0,   // #60: the child must export more than it was founded with to be heard
     };
     // The log entry is the SAME object the child carries, so death fills in the outcome without a lookup.
     // inherited = the launching lineage's mean BEFORE perturbation, so the log separates what heredity
@@ -8632,37 +8671,74 @@ function cosmosStep(ch){
     if(coh>ch.peakCoh)ch.peakCoh=coh;
     if(liveMass>ch.peakMass)ch.peakMass=liveMass;
 
-    // EMISSION — held, not instantaneous, and it costs.
-    if(coh>=COSMOS_EMIT_COH&&liveMass>=COSMOS_EMIT_MASS){
-      ch.hold++;
-      if(ch.hold>=COSMOS_EMIT_HOLD){
-        ch.hold=0;
-        for(const cl of ch.cells)if(!cl.dead){cl.amp*=(1-COSMOS_EMIT_COST);cl.coh*=COSMOS_EMIT_DECOH;}
-        cosmosEmit(ch,coh,liveMass);
-      }
-    }else ch.hold=0;
+    // THE BOUNDARY. No criterion — matter crosses down the differential, both ways, every tick.
+    if(cosmosContactOn())cosmosFlux(ch);
 
     if(ch.age>=COSMOS_MAX_AGE)break;
   }
 }
 
-// CONTACT. The only thing a child can do to the parent, and it is the channel this world already uses
-// for foreign matter: resource at the launch site, hazard in the ring around it. Whether contact helps
-// is then the parent's ecology's business, not this function's.
-function cosmosEmit(ch,coh,mass){
-  if(!ch.emits)cosmosStats.emitters++;
-  ch.emits++;cosmosStats.emissions++;
-  if(cosmosContactOn())xenoImpact(ch.sx,ch.sy); // __COSMOS_CONTACT=0 isolates the resource+hazard deposit
-  try{addShock(ch.sx,ch.sy,0.35,120,200,255)}catch(e){}
-  recordEvent('cosmos_contact',{age:ch.age,coh:+coh.toFixed(2),m:mass,n:ch.emits},240);
-  if(!ch.merged&&ch.emits>=COSMOS_MERGE_EMITS)cosmosMerge(ch);
+// THE CONSERVED BOUNDARY (#60). Matter moves between the child's total amplitude and the parent's
+// detrital stock at the launch cell, down the differential. Direction is set by which side holds more,
+// never by a criterion — so a thriving child exports, a starving one draws, and neither is privileged
+// by anything in this function. What one side loses the other gains, bounded by what the LOSER actually
+// holds and by the reservoir ceiling, so the transfer can be truncated but never invented.
+//
+// The audit is deliberate, not decoration. It measures the ACTUAL stocks either side of the transfer
+// rather than the intended flow, so it can return the one answer the design forbids — that matter was
+// created. Reported as cosmosStats.fluxErr; anything above floating-point epsilon falsifies the wave's
+// central claim, whatever the diversity numbers say.
+function cosmosFlux(ch){
+  const fx=__cl(Math.floor(ch.sx/(W/FIELD_W)),0,FIELD_W-1),fy=__cl(Math.floor(ch.sy/(H/FIELD_H)),0,FIELD_H-1);
+  const fi=fy*FIELD_W+fx;
+  let c0=0,live=0;
+  for(const cl of ch.cells){if(cl.dead)continue;c0+=cl.amp;live++;}
+  if(!live)return 0;
+  const p0=detritalField[fi];
+  let flow=(c0-p0)*COSMOS_FLUX_RATE;
+
+  if(flow>0){
+    // Child exports. Bounded by its own stock and by the reservoir's headroom — a push that would
+    // overflow the cap is TRUNCATED at the source, because "the deposit was clamped" is precisely how
+    // matter gets created without anyone noticing.
+    flow=Math.min(flow,c0*COSMOS_FLUX_MAXFRAC,Math.max(0,COSMOS_DETRITUS_CAP-p0));
+    if(!(flow>0))return 0;
+    const f=flow/c0;
+    for(const cl of ch.cells)if(!cl.dead)cl.amp-=cl.amp*f;
+    detritalField[fi]=p0+flow;
+    ch.exported+=flow;cosmosStats.fluxOut+=flow;cosmosStats.emissions++;
+    if(!ch.emits){ch.emits=1;cosmosStats.emitters++;}
+  }else if(flow<0){
+    // Child draws on its parent's launch site. Nothing here decides this is illegitimate.
+    const want=Math.min(-flow,p0);
+    if(!(want>0))return 0;
+    detritalField[fi]=p0-want;
+    const share=want/live;
+    for(const cl of ch.cells)if(!cl.dead)cl.amp+=share;
+    flow=-want;
+    ch.imported+=want;cosmosStats.fluxIn+=want;
+    if(!ch.parasite){ch.parasite=1;cosmosStats.parasites++;}
+  }else return 0;
+
+  // AUDIT — actual deltas, not intended flow.
+  let c1=0;for(const cl of ch.cells){if(cl.dead)continue;c1+=cl.amp;}
+  const resid=(c1-c0)+(detritalField[fi]-p0);
+  cosmosStats.fluxErr+=Math.abs(resid);
+  if(Math.abs(resid)>cosmosStats.fluxErrMax)cosmosStats.fluxErrMax=Math.abs(resid);
+
+  // MERGE gets its criterion in the SHARED CURRENCY: a child proposes its physics once it has exported
+  // more than it was founded with. Any way of achieving that qualifies; no shape is privileged.
+  const net=ch.exported-ch.imported;
+  if(!ch.merged&&net>ch.endow)cosmosMerge(ch,net);
+  if(Math.abs(flow)>0.05){try{addShock(ch.sx,ch.sy,0.3,flow>0?120:255,flow>0?200:110,flow>0?255:90)}catch(e){}} // readout only
+  return flow;
 }
 
 // MERGE — a proposal, not a change. The child's constants are expressed as a delta from the parent's
 // own in the scenario bank's units and pushed into that bank, which is the structure this file already
 // uses to hold foreign physics proposals accountable (Pe27 wins, Pe29 creditTrace, #43 confidence).
 // If the proposal is bad the parent's existing machinery evicts it. Nothing here touches genome physics.
-function cosmosMerge(ch){
+function cosmosMerge(ch,net){
   ch.merged=true;
   if(!cosmosMergeOn())return; // __COSMOS_MERGE=0 isolates the scenario-bank proposal
   try{
@@ -8689,7 +8765,7 @@ function cosmosMerge(ch){
       bank.push(prop);
     }else return; // bank full, or the channel already holds its share: the proposal is simply not heard
     cosmosStats.merges++;
-    recordEvent('cosmos_merge',{e:+amp5.e.toFixed(2),k:+amp5.k.toFixed(2),r:+amp5.r.toFixed(2),emits:ch.emits,ratified:matchIdx>=0?1:0},600);
+    recordEvent('cosmos_merge',{e:+amp5.e.toFixed(2),k:+amp5.k.toFixed(2),r:+amp5.r.toFixed(2),net:+(net||0).toFixed(3),endow:+ch.endow.toFixed(3),ratified:matchIdx>=0?1:0},600);
   }catch(err){}
 }
 
@@ -8701,7 +8777,8 @@ function updateCosmos(){
     if(ch.log){ch.log.emits=ch.emits;ch.log.age=ch.age;ch.log.peakCoh=+ch.peakCoh.toFixed(3);ch.log.peakMass=ch.peakMass;}
     const dead=!ch.cells.length||ch.age>=COSMOS_MAX_AGE;
     if(dead){
-      if(ch.log){ch.log.alive=0;ch.log.heatDeath=ch.age>=COSMOS_MAX_AGE?1:0;}
+      if(ch.log){ch.log.alive=0;ch.log.heatDeath=ch.age>=COSMOS_MAX_AGE?1:0;ch.log.exported=+ch.exported.toFixed(3);ch.log.imported=+ch.imported.toFixed(3);}
+      {const _net=ch.exported-ch.imported;cosmosStats.netAtDeath+=_net;if(_net<0)cosmosStats.netNegDeaths++;}
       cosmosStats.deaths++;cosmosStats.ageSum+=ch.age;cosmosStats.ageN++;cosmosStats.peakCohSum+=ch.peakCoh;
       recordEvent('cosmos_death',{age:ch.age,peakCoh:+ch.peakCoh.toFixed(2),peakM:ch.peakMass,emits:ch.emits},240);
     }else keep.push(ch);

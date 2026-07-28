@@ -180,6 +180,14 @@ const driver=`
       for(const c of clusters){const g=c&&c.clusterGenome;if(g&&isFinite(g.launchDrive)){dsum+=g.launchDrive;dn++;}}
       return {launches:cosmosStats.launches,deaths:cosmosStats.deaths,emitters:cosmosStats.emitters,
               emissions:cosmosStats.emissions,merges:cosmosStats.merges,senseReads:cosmosStats.senseReads,senseHits:cosmosStats.senseHits,
+              // #60 boundary accounting. fluxErr is the assay that can return "matter was created" and
+              // so falsify the wave's central claim; parasites/netNeg answer whether the two-way channel
+              // is real or whether inward flow is a direction that exists only in the comment.
+              fluxOut:+cosmosStats.fluxOut.toFixed(4),fluxIn:+cosmosStats.fluxIn.toFixed(4),
+              netFlux:+(cosmosStats.fluxOut-cosmosStats.fluxIn).toFixed(4),
+              fluxErr:cosmosStats.fluxErr,fluxErrMax:cosmosStats.fluxErrMax,
+              parasites:cosmosStats.parasites,netNegDeaths:cosmosStats.netNegDeaths,
+              netAtDeath:+cosmosStats.netAtDeath.toFixed(4),
               live:cosmosChildren.length,
               meanAge:cosmosStats.ageN?+(cosmosStats.ageSum/cosmosStats.ageN).toFixed(1):0,
               meanPeakCoh:cosmosStats.ageN?+(cosmosStats.peakCohSum/cosmosStats.ageN).toFixed(3):0,
@@ -201,7 +209,7 @@ const driver=`
   globalThis.__cosmosLog=function(){ try{ return cosmosLaunchLog.map(L=>({
       e:+L.e.toPrecision(3),k:+L.k.toPrecision(3),r:+L.r.toPrecision(3),c:+L.c.toPrecision(3),t:+L.t.toPrecision(3),
       ie:+L.inh.e.toPrecision(3),ik:+L.inh.k.toPrecision(3),ir:+L.inh.r.toPrecision(3),ic:+L.inh.c.toPrecision(3),it:+L.inh.t.toPrecision(3),
-      endow:L.endow,mem:L.members,gain:L.gain,emits:L.emits,age:L.age,pk:L.peakCoh,pm:L.peakMass,alive:L.alive,hd:L.heatDeath|0})); }catch(e){ return null; } };
+      endow:L.endow,mem:L.members,gain:L.gain,exp:L.exported,imp:L.imported,emits:L.emits,age:L.age,pk:L.peakCoh,pm:L.peakMass,alive:L.alive,hd:L.heatDeath|0})); }catch(e){ return null; } };
   globalThis.__cosmosDefaults=function(){ try{ return {e:genome.entropyBaseline,k:genome.entropyK,r:genome.entrainRate,c:genome.creationCost,t:genome.entrainThresh}; }catch(e){ return null; } };
   globalThis.__metaMag=function(){ // sum of |ATROPHY_SAFE params| on the self — to confirm ablation actually zeroed it
     if(typeof ATROPHY_SAFE==='undefined')return null; let s=0,n=0; for(const p of ATROPHY_SAFE){ if(isFinite(genome[p])){s+=Math.abs(genome[p]);n++;} } return {sum:+s.toFixed(3),n}; };
