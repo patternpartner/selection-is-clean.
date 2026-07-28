@@ -8442,6 +8442,7 @@ function cosmosCostOn(){return (typeof globalThis==='undefined')||((globalThis._
 function cosmosContactOn(){return (typeof globalThis==='undefined')||((globalThis.__COSMOS_CONTACT??1)|0)!==0}
 function cosmosMergeOn(){return (typeof globalThis==='undefined')||((globalThis.__COSMOS_MERGE??1)|0)!==0}
 function cosmosSenseOn(){return (typeof globalThis==='undefined')||((globalThis.__COSMOS_SENSE??1)|0)!==0}
+function cosmosAffordOn(){return (typeof globalThis==='undefined')||((globalThis.__COSMOS_AFFORD??1)|0)!==0} // #61: eligibility = can you pay, vs the old size/coherence/age gate
 
 function cosmosGauss(){ // Box-Muller. Called 5x per launch; launches are rare, so cost is irrelevant.
   let u=Math.random();if(u<1e-9)u=1e-9;
@@ -8494,12 +8495,25 @@ function attemptCosmosLaunch(){
   for(const c of clusters){
     if(cosmosChildren.length>=COSMOS_MAX)break;
     if(!c)continue;
-    // ELIGIBILITY (size, coherence, persistence) — this only makes a launch POSSIBLE.
-    if(c.size<COSMOS_LAUNCH_SIZE||c.coherence<COSMOS_LAUNCH_COH||(c.persistAge||0)<COSMOS_LAUNCH_AGE)continue;
     // DECISION — drawn against the cluster's own heritable launchDrive, not against a bare constant.
+    // Checked first so an unaffordable attempt costs one random draw rather than an O(N) member scan.
     const cg=c.clusterGenome||(c.clusterGenome=seedClusterGenome());
     const drive=finiteOr(cg.launchDrive,0.6);
     if(drive<=0||Math.random()>COSMOS_LAUNCH_RATE*drive)continue;
+    // WAVE 10 (#61) — ELIGIBILITY IS AFFORDABILITY, and nothing else.
+    // The gate here was size >= 9 AND coherence >= 0.55 AND persistAge >= 10: three designer criteria
+    // deciding which clusters are the RIGHT KIND of thing to found a world, i.e. the same announced
+    // second level #60 removed from the return path, still sitting on the launch path. There IS a
+    // shared currency available for it and I said in #60 there was not: the price. Founding costs
+    // COSMOS_ENDOW_CAP/COSMOS_ENDOW_YIELD of amplitude, so the only honest question is whether the
+    // members can raise it. Size and coherence stop being criteria and become CONSEQUENCES — a cluster
+    // needs ~11 amp of member mass to afford the price, which large coherent clusters usually have and
+    // small ragged ones usually do not, but nothing checks for largeness. A small cluster of very rich
+    // particles may found a world; a big cluster of starving ones may not. That is a different
+    // partition of the space than my gate produced, and the currency draws it rather than my taste.
+    // __COSMOS_AFFORD=0 restores the old three-criteria gate so the two can be measured against each
+    // other, which is the point — "the subtraction changed nothing" is a result this must be able to
+    // return.
 
     // The child inherits the LAUNCHING LINEAGE's physics — the mean over the members' own pGenome
     // scalars, which each lineage genuinely owns (cloneGenome copies them by value). Not the global
@@ -8517,9 +8531,25 @@ function attemptCosmosLaunch(){
       for(let q=0;q<dims;q++)tSum[q]+=tend[i*dims+q];
       n++;
     }
-    if(n<COSMOS_MIN_FOUNDERS)continue; // members may have died since detection
+    if(n<1)continue; // no live members left since detection
     e/=n;k/=n;r/=n;cc/=n;tt/=n;
     for(let q=0;q<dims;q++)tSum[q]/=n;
+
+    // AFFORDABILITY, computed WITHOUT charging. A failed attempt must cost nothing — charging on a
+    // failure would be a hidden tax on exactly the poor clusters the price is meant to exclude, and
+    // this file has just spent a wave subtracting one of those.
+    const need=COSMOS_ENDOW_CAP/COSMOS_ENDOW_YIELD;
+    let affordable=0;
+    for(let i=0;i<N&&affordable<need;i++){
+      if(!palive[i]||clusterID[i]!==c.id)continue;
+      affordable+=Math.max(0,amp[i])*COSMOS_LAUNCH_COST;
+    }
+    // Recorded whether or not it gates, so the overlap between the two gates is measurable rather
+    // than argued about.
+    const oldGate=(c.size>=COSMOS_LAUNCH_SIZE&&c.coherence>=COSMOS_LAUNCH_COH&&(c.persistAge||0)>=COSMOS_LAUNCH_AGE);
+    const canAfford=(affordable>=need);
+    if(cosmosAffordOn()){ if(!canAfford)continue; }
+    else { if(!oldGate||n<COSMOS_MIN_FOUNDERS)continue; }
 
     // COST, and the endowment it converts into. Founding a world is paid for by the members that
     // found it, and only COSMOS_ENDOW_YIELD of what they pay reaches the child — the same lossy
@@ -8534,7 +8564,6 @@ function attemptCosmosLaunch(){
     // 0.00 for the contact deposits and 0.00 for the sense opcode. Founding a world still costs its
     // founders, because reproduction at any level in this file pays (LEAP 17); it no longer destroys
     // amplitude that goes nowhere.
-    const need=COSMOS_ENDOW_CAP/COSMOS_ENDOW_YIELD;
     let raised=0;
     for(let i=0;i<N&&raised<need;i++){
       if(!palive[i]||clusterID[i]!==c.id)continue;
@@ -8587,6 +8616,7 @@ function attemptCosmosLaunch(){
     // inherited = the launching lineage's mean BEFORE perturbation, so the log separates what heredity
     // handed over from what the perturbation did to it.
     child.log={e:phys.e,k:phys.k,r:phys.r,c:phys.c,t:phys.t,endow:+endow.toFixed(3),members:n,gain:+gain.toPrecision(4),
+               oldGate:oldGate?1:0,afford:+affordable.toFixed(3),csize:c.size,ccoh:+c.coherence.toFixed(3),cage:c.persistAge|0,
                inh:{e,k,r,c:cc,t:tt},emits:0,age:0,peakCoh:0,peakMass:2,alive:1};
     if(cosmosLaunchLog.length<COSMOS_LOG_MAX)cosmosLaunchLog.push(child.log);
     cosmosChildren.push(child);

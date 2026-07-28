@@ -74,7 +74,7 @@ globalThis.setTimeout=()=>0;globalThis.clearTimeout=()=>{};globalThis.setInterva
 // that cannot be turned off is not a control, so the plumbing goes in before any ablation claim does.
 // Same one-line form as harness-oee.js.
 if (process.env.COSMOS !== undefined) globalThis.__COSMOS = parseInt(process.env.COSMOS, 10);
-for (const kn of ['COSMOS_COST','COSMOS_CONTACT','COSMOS_MERGE','COSMOS_SENSE'])
+for (const kn of ['COSMOS_COST','COSMOS_CONTACT','COSMOS_MERGE','COSMOS_SENSE','COSMOS_AFFORD'])
   if (process.env[kn] !== undefined) globalThis['__'+kn] = parseInt(process.env[kn], 10);
 let loopErrors=0,lastErr='';
 console.error=(...a)=>{const s=a.join(' ');if(/Loop error|Boot error|Watchdog/.test(s)){loopErrors++;lastErr=s.slice(0,160);}};
@@ -209,7 +209,7 @@ const driver=`
   globalThis.__cosmosLog=function(){ try{ return cosmosLaunchLog.map(L=>({
       e:+L.e.toPrecision(3),k:+L.k.toPrecision(3),r:+L.r.toPrecision(3),c:+L.c.toPrecision(3),t:+L.t.toPrecision(3),
       ie:+L.inh.e.toPrecision(3),ik:+L.inh.k.toPrecision(3),ir:+L.inh.r.toPrecision(3),ic:+L.inh.c.toPrecision(3),it:+L.inh.t.toPrecision(3),
-      endow:L.endow,mem:L.members,gain:L.gain,exp:L.exported,imp:L.imported,emits:L.emits,age:L.age,pk:L.peakCoh,pm:L.peakMass,alive:L.alive,hd:L.heatDeath|0})); }catch(e){ return null; } };
+      endow:L.endow,mem:L.members,gain:L.gain,exp:L.exported,imp:L.imported,oldGate:L.oldGate,afford:L.afford,csize:L.csize,ccoh:L.ccoh,cage:L.cage,emits:L.emits,age:L.age,pk:L.peakCoh,pm:L.peakMass,alive:L.alive,hd:L.heatDeath|0})); }catch(e){ return null; } };
   globalThis.__cosmosDefaults=function(){ try{ return {e:genome.entropyBaseline,k:genome.entropyK,r:genome.entrainRate,c:genome.creationCost,t:genome.entrainThresh}; }catch(e){ return null; } };
   globalThis.__metaMag=function(){ // sum of |ATROPHY_SAFE params| on the self — to confirm ablation actually zeroed it
     if(typeof ATROPHY_SAFE==='undefined')return null; let s=0,n=0; for(const p of ATROPHY_SAFE){ if(isFinite(genome[p])){s+=Math.abs(genome[p]);n++;} } return {sum:+s.toFixed(3),n}; };

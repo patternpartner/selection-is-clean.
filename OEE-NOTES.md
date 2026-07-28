@@ -4561,3 +4561,39 @@ still a parameter vector plus a fixed projection, and the eligibility gate on LA
 coherence 0.55, persistAge 10) is still a designer's criterion — the thumb was removed from the
 return path only. The launch side is the obvious next subtraction and it is harder, because
 "which clusters may found worlds" has no shared currency to defer to the way the boundary did.
+
+---
+
+## #61 — wave 10. ELIGIBILITY IS AFFORDABILITY. Pre-registered.
+
+#60 removed the announced criterion from the RETURN path and I wrote, in the same entry, that the
+LAUNCH path could not get the same treatment because "which clusters may found worlds" has no shared
+currency to defer to. That was wrong, and the currency was already in the code: **the price**.
+
+Founding costs `COSMOS_ENDOW_CAP/COSMOS_ENDOW_YIELD` of amplitude. So the only honest question is
+whether the members can raise it. `size>=9 AND coherence>=0.55 AND persistAge>=10` is deleted; size
+and coherence become CONSEQUENCES rather than criteria (a cluster needs ~11 amp of member mass to
+afford the price, which large coherent clusters usually have) but nothing checks for largeness. A
+small cluster of rich particles may found a world; a large cluster of starving ones may not.
+
+**A real bug found while doing this.** The old code charged members and then launched on whatever it
+raised — `if(endow<=0)continue`. A cluster able to raise 0.3 of a 2.18 price launched anyway, with a
+starved child. That was "can you pay anything", not "can you pay", and it means every previous wave's
+emit rates include children that were underfunded at birth by a gate that never checked. Affordability
+is now computed WITHOUT charging, and a failed attempt costs nothing — charging on failure would be a
+hidden tax on exactly the poor clusters the price excludes, which is the same shape as the #59 leak.
+
+### Falsifiers
+
+1. **IS THE SUBTRACTION COSMETIC?** The load-bearing one. Every launch logs `oldGate` (whether the
+   old three-criteria gate would have passed) alongside `afford`. If essentially every affordable
+   cluster also satisfies the old gate, the two partitions coincide, the subtraction changed nothing,
+   and it must be reported as cosmetic — a knob renamed rather than a thumb removed. This is the
+   hollow-mechanism check aimed at my own correction rather than at the code it corrects.
+2. **DOES THE ECONOMY SURVIVE IT?** Removing three criteria admits more launchers. Each launch drains
+   ~2.18 amp against a world regen of 1200 over 6000 ticks. If launches rise far enough to bite,
+   `lateN` and `lateMeanAmp` will show it, and heritable `launchDrive` should be selected DOWN — the
+   payout test the mechanism runs on itself.
+3. **KINDS** against #60's 11.33, same +/-2.0 band. No prediction; stated as no prediction.
+4. **CONSERVATION** must still hold (`fluxErr` at epsilon) — #60's guarantee is not allowed to
+   regress silently while attention is on the launch path.
