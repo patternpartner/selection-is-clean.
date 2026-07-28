@@ -1070,8 +1070,41 @@ const COSMOS_LAUNCH_AGE=10;         // this gate, so it is reachable headless wi
 const COSMOS_LAUNCH_RATE=0.35;      // per-cycle chance an eligible cluster launches, x its heritable launchDrive
 const COSMOS_LAUNCH_COST=0.20;      // fraction of each member's amp spent founding a world
 const COSMOS_ENDOW_YIELD=0.55;      // fraction of that cost surviving conversion into the child's endowment
+const COSMOS_ENDOW_CAP=1.2;         // and the MOST any child can be founded with, whatever the launcher's mass.
+                                    // This cap is the correction to the first version of this wave, which
+                                    // failed its own pre-registered check: endowment scaled with cluster
+                                    // mass, so a 100-member launcher funded its child for ~13,750 ticks
+                                    // against a max age of 900, death by exhaustion became impossible, and
+                                    // 7 of 7 children emitted with every death a heat death at age 900.
+                                    // A daughter world's initial conditions should not scale with how big
+                                    // its parent happened to be; what mass buys is the ability to pay the
+                                    // launch cost at all, not a richer universe. Members still pay in
+                                    // proportion, so a large launcher pays MORE than its child receives.
+const COSMOS_EMIT_DECOH=0.5;        // coherence retained after reaching across the boundary. Contact costs
+                                    // ORDER, not only amplitude — without this a child that organises once
+                                    // emits every COSMOS_EMIT_HOLD ticks for the rest of its life (measured:
+                                    // 283 emissions from 7 children) and contact is a stream, not an event.
+const COSMOS_BANK_MAX=2;            // most slots cosmos proposals may hold at once. Measured without it: 5
+                                    // proposals in a bank that trims to 5 — the channel held a MAJORITY of
+                                    // the parent's scenario machinery, which makes "a child can make an
+                                    // argument but cannot win one" false as a description of the code.
 const COSMOS_CONST_DRIFT=0.35;      // sd of the LOG-normal perturbation on each inherited constant
-const COSMOS_GAIN=1.0;              // see the knife-edge calibration above
+const COSMOS_GAIN=1.0;              // dimensionless multiplier on the PER-CHILD derived gain (see below).
+                                    // It was an absolute constant, calibrated against the genome's DEFAULT
+                                    // entropyK, and that was wrong in a way only the per-launch log could
+                                    // show: the live population runs entropyK ~3.45x the default (measured
+                                    // 0.00135 vs 0.00039), entropyK IS the child's income coefficient, so
+                                    // in-sim income ran ~3.45x the drain and NO child could starve. 9 of 9
+                                    // launched children emitted. The isolated probe sampled around the
+                                    // default and saw a real filter, which is exactly why the two
+                                    // instruments disagreed. Each child's gain is now derived at launch
+                                    // from ITS OWN inherited constants, so a child starts at the knife edge
+                                    // relative to its own lineage's physics whatever the population has
+                                    // drifted to, and income/drain at the emission gate reduces to
+                                    // (k_perturbed/k_inherited) / (e_perturbed/e_inherited) — the RATIO of
+                                    // the two perturbations and nothing else. Scale-free, and it makes
+                                    // "slightly altered constants decide the outcome" true by construction
+                                    // rather than true against one snapshot of the genome.
 const COSMOS_DECOH=0.004;           // per-child-tick order leak — disorder is free, order is not
 const COSMOS_DEATH_AMP=0.05;        // a cell below this is dead
 const COSMOS_EMIT_COH=0.62;         // coherence a child must build FROM 0.05 to be heard at all
@@ -1085,6 +1118,14 @@ const COSMOS_WIRE_RATE=0.03;        // per-cycle chance a living program gains C
                                     // of living code or the sensory half of this wave is decoration.
 let cosmosChildren=[];              // live daughter worlds
 let cosmosSense=new Map();          // cluster lineageID -> {n,cohSum}; rebuilt each cycle for op235
+// PER-LAUNCH LOG, bounded. The isolated probe says 26% of children ever emit; the simulation says ~100%
+// across 9 launches. One of those is measuring something the other is not, and the candidate explanation
+// is that in-sim launchers are not a random sample of physics — they are the constants of lineages that
+// got big, coherent and persistent enough to qualify, i.e. heredity working. That is a causal story, and
+// two sincere causal stories in this record were refuted by bit-identical runs, so it gets measured: each
+// launch records the constants it went out with and what became of it.
+const COSMOS_LOG_MAX=64;
+let cosmosLaunchLog=[];
 let cosmosStats={launches:0,deaths:0,emitters:0,emissions:0,merges:0,ageSum:0,ageN:0,peakCohSum:0,senseReads:0,senseHits:0};
 let worldEnergy=WORLD_ENERGY_MAX;
 let energyAdequacy=1;               // fraction of this tick's metabolic demand the pool could meet
@@ -8443,7 +8484,7 @@ function attemptCosmosLaunch(){
       const spend=amp[i]*COSMOS_LAUNCH_COST;
       amp[i]-=spend;endow+=spend;
     }
-    endow*=COSMOS_ENDOW_YIELD;
+    endow=Math.min(endow*COSMOS_ENDOW_YIELD,COSMOS_ENDOW_CAP);
     if(endow<=0)continue;
 
     // SLIGHTLY ALTERED CONSTANTS — multiplicative (log-normal) so a perturbation means the same thing
@@ -8465,12 +8506,31 @@ function attemptCosmosLaunch(){
       cells.push({amp:endow/2,coh:0.05+Math.random()*0.03,tend:t0,dead:false});
     }
 
-    cosmosChildren.push({
+    const proj=cosmosProject(cosmosMutateProg(c.vmProgram));
+    // Knife edge, derived per child from the constants it INHERITED (pre-perturbation): the gain that
+    // makes income equal drain at coherence 0.5 and the emission mass. See COSMOS_GAIN for why this is
+    // derived rather than fixed.
+    // kRef/eRef are the inherited values put through the SAME bounds the child's own physics gets, which
+    // is the whole point: evolved genomes reach NEGATIVE entropyK (measured, inherited k of -5.13e-05 and
+    // -1.14e-04 in one 3000-tick run), and calibrating against a raw negative denominator that a Math.max
+    // floor then clamped to 1e-12 produced gains of 3.1e8 and 7.4e8. Both of those children emitted, so
+    // two of that run's four emitters were a division blowup wearing physics. Calibrating against the
+    // value the child actually runs is self-consistent by construction and cannot blow up.
+    const kRef=__cl(Math.abs(k),1e-6,0.01), eRef=__cl(Math.abs(e),1e-5,0.02);
+    const gain=COSMOS_GAIN*(eRef*proj.burn)/(0.5*kRef*COSMOS_EMIT_MASS);
+    const child={
       sx:c.cx,sy:c.cy,clin:c.lineageID|0,dims,
       phys,base:{e:genome.entropyBaseline,k:genome.entropyK,r:genome.entrainRate,c:genome.creationCost,t:genome.entrainThresh},
-      proj:cosmosProject(cosmosMutateProg(c.vmProgram)),
+      proj,gain,
       cells,age:0,hold:0,emits:0,merged:false,peakCoh:0,peakMass:2,
-    });
+    };
+    // The log entry is the SAME object the child carries, so death fills in the outcome without a lookup.
+    // inherited = the launching lineage's mean BEFORE perturbation, so the log separates what heredity
+    // handed over from what the perturbation did to it.
+    child.log={e:phys.e,k:phys.k,r:phys.r,c:phys.c,t:phys.t,endow:+endow.toFixed(3),members:n,gain:+gain.toPrecision(4),
+               inh:{e,k,r,c:cc,t:tt},emits:0,age:0,peakCoh:0,peakMass:2,alive:1};
+    if(cosmosLaunchLog.length<COSMOS_LOG_MAX)cosmosLaunchLog.push(child.log);
+    cosmosChildren.push(child);
     cosmosStats.launches++;
     recordEvent('cosmos_launch',{sz:c.size,coh:+c.coherence.toFixed(2),dr:+drive.toFixed(2),e:+phys.e.toExponential(1),live:cosmosChildren.length},240);
   }
@@ -8480,7 +8540,7 @@ function attemptCosmosLaunch(){
 // fitness appears anywhere in this function — that separation is the whole point of the layer, and
 // the only parent state it touches is on EMISSION, through xenoImpact.
 function cosmosStep(ch){
-  const p=ch.phys,pr=ch.proj,dims=ch.dims;
+  const p=ch.phys,pr=ch.proj,dims=ch.dims,g=isFinite(ch.gain)?ch.gain:COSMOS_GAIN;
   for(let t=0;t<COSMOS_TICKS&&ch.cells.length;t++){
     ch.age++;
     let mass=0;
@@ -8492,7 +8552,7 @@ function cosmosStep(ch){
     for(const cl of ch.cells){
       if(cl.dead)continue;
       cl.amp-=p.e*pr.burn;
-      cl.amp+=cl.coh*p.k*mass*COSMOS_GAIN;
+      cl.amp+=cl.coh*p.k*mass*g;
       cl.coh-=COSMOS_DECOH;
     }
 
@@ -8557,7 +8617,7 @@ function cosmosStep(ch){
       ch.hold++;
       if(ch.hold>=COSMOS_EMIT_HOLD){
         ch.hold=0;
-        for(const cl of ch.cells)if(!cl.dead)cl.amp*=(1-COSMOS_EMIT_COST);
+        for(const cl of ch.cells)if(!cl.dead){cl.amp*=(1-COSMOS_EMIT_COST);cl.coh*=COSMOS_EMIT_DECOH;}
         cosmosEmit(ch,coh,liveMass);
       }
     }else ch.hold=0;
@@ -8595,15 +8655,18 @@ function cosmosMerge(ch){
       t:__cl((ch.phys.t-ch.base.t)/SCEN_TEST.t,-2,2),
     };
     const prop={...amp5,f:0,p:0,a:0,tb:0,sp:0,sm:0,mp:0,wins:0,age:0,src:'cosmos',creditTrace:0};
-    let matchIdx=-1,bestDist=0.3;
-    for(let i=0;i<bank.length;i++){const d=scenarioDist(bank[i],prop);if(d<bestDist){bestDist=d;matchIdx=i}}
+    let matchIdx=-1,bestDist=0.3,nCosmos=0;
+    for(let i=0;i<bank.length;i++){
+      if(bank[i]&&bank[i].src==='cosmos')nCosmos++;
+      const d=scenarioDist(bank[i],prop);if(d<bestDist){bestDist=d;matchIdx=i}
+    }
     if(matchIdx>=0){
       // A world that independently arrived at a physics already in the bank RE-RATIFIES it, exactly as
       // a cluster fossil does. Same code path, same effect, no privilege.
       bank[matchIdx].age=Math.max(0,bank[matchIdx].age-30);
-    }else if(bank.length<SHADOW_SCENARIOS_MAX){
+    }else if(bank.length<SHADOW_SCENARIOS_MAX&&nCosmos<COSMOS_BANK_MAX){
       bank.push(prop);
-    }else return; // bank full and nothing similar: the proposal is simply not heard
+    }else return; // bank full, or the channel already holds its share: the proposal is simply not heard
     cosmosStats.merges++;
     recordEvent('cosmos_merge',{e:+amp5.e.toFixed(2),k:+amp5.k.toFixed(2),r:+amp5.r.toFixed(2),emits:ch.emits,ratified:matchIdx>=0?1:0},600);
   }catch(err){}
@@ -8614,8 +8677,10 @@ function updateCosmos(){
   const keep=[];
   for(const ch of cosmosChildren){
     cosmosStep(ch);
+    if(ch.log){ch.log.emits=ch.emits;ch.log.age=ch.age;ch.log.peakCoh=+ch.peakCoh.toFixed(3);ch.log.peakMass=ch.peakMass;}
     const dead=!ch.cells.length||ch.age>=COSMOS_MAX_AGE;
     if(dead){
+      if(ch.log){ch.log.alive=0;ch.log.heatDeath=ch.age>=COSMOS_MAX_AGE?1:0;}
       cosmosStats.deaths++;cosmosStats.ageSum+=ch.age;cosmosStats.ageN++;cosmosStats.peakCohSum+=ch.peakCoh;
       recordEvent('cosmos_death',{age:ch.age,peakCoh:+ch.peakCoh.toFixed(2),peakM:ch.peakMass,emits:ch.emits},240);
     }else keep.push(ch);

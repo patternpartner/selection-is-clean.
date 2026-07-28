@@ -68,6 +68,12 @@ globalThis.__detMs=0;globalThis.performance={now:()=>globalThis.__detMs};
 if(process.env.SEED){let a=(parseInt(process.env.SEED,10)|0)>>>0;Math.random=function(){a=(a+0x6D2B79F5)|0;let t=Math.imul(a^a>>>15,1|a);t=(t+Math.imul(t^t>>>7,61|t))^t;return ((t^t>>>14)>>>0)/4294967296;};}
 globalThis.requestAnimationFrame=()=>0;globalThis.cancelAnimationFrame=()=>{};
 globalThis.setTimeout=()=>0;globalThis.clearTimeout=()=>{};globalThis.setInterval=()=>0;globalThis.clearInterval=()=>{};
+// ENV KNOBS. This file never had any, and that silently invalidated the first cost A/B run against it:
+// COSMOS=0 was passed, nothing read it, the LIVE block filled __COSMOS=1 in both arms, and the two runs
+// came back identical to the digit — 2 launches and 10 emissions on both sides of a "control". An arm
+// that cannot be turned off is not a control, so the plumbing goes in before any ablation claim does.
+// Same one-line form as harness-oee.js.
+if (process.env.COSMOS !== undefined) globalThis.__COSMOS = parseInt(process.env.COSMOS, 10);
 let loopErrors=0,lastErr='';
 console.error=(...a)=>{const s=a.join(' ');if(/Loop error|Boot error|Watchdog/.test(s)){loopErrors++;lastErr=s.slice(0,160);}};
 console.warn=()=>{};
@@ -188,6 +194,13 @@ const driver=`
               maxLin:sz[0]||0, meanLin:sz.length?+(n/sz.length).toFixed(2):0};}catch(e){return null;}})();
     const __pur=(function(){try{return __purity(__binOf,(i)=>(typeof pLin!=='undefined'?pLin[i]:0),N);}catch(e){return{p:0,pn:0,ex:0,owned:0,ownedNull:0};}})(); globalThis.__samples.push({tick:(typeof tick!=='undefined'?tick:-1),N:alive,meanAmp:+(alive?ampSum/alive:0).toFixed(4),kinds:Object.keys(bc).length,lin:__lin,modes:__modes,cosmos:__cos,purity:__pur.p,purityNull:__pur.pn,purityExcess:__pur.ex,owned:__pur.owned,ownedNull:__pur.ownedNull,uaUses:(function(){try{let u=0,n=0,f=0;const A=genome.userAtoms||[];for(const a of A){u+=(a.uses|0);if((a.uses|0)>0)n++;if(a.failed)f++;}return 'bank='+A.length+' uses='+u+' proven='+n+' failed='+f+' bound='+((genome.boundOpcodes||[]).length);}catch(e){return '?';}})()}); }
   globalThis.__run=function(n,every){ sample(); for(let s=0;s<n;s++){ globalThis.__detMs+=5; try{loop();}catch(e){globalThis.__driverErr=(globalThis.__driverErr||0)+1;} if((s+1)%every===0)sample(); } };
+  // #59: the per-launch log lives in the SIM module's scope, so it needs a driver-scope accessor — the
+  // same reason __metaMag exists. Reading it directly from the harness file returned null silently.
+  globalThis.__cosmosLog=function(){ try{ return cosmosLaunchLog.map(L=>({
+      e:+L.e.toPrecision(3),k:+L.k.toPrecision(3),r:+L.r.toPrecision(3),c:+L.c.toPrecision(3),t:+L.t.toPrecision(3),
+      ie:+L.inh.e.toPrecision(3),ik:+L.inh.k.toPrecision(3),ir:+L.inh.r.toPrecision(3),ic:+L.inh.c.toPrecision(3),it:+L.inh.t.toPrecision(3),
+      endow:L.endow,mem:L.members,gain:L.gain,emits:L.emits,age:L.age,pk:L.peakCoh,pm:L.peakMass,alive:L.alive,hd:L.heatDeath|0})); }catch(e){ return null; } };
+  globalThis.__cosmosDefaults=function(){ try{ return {e:genome.entropyBaseline,k:genome.entropyK,r:genome.entrainRate,c:genome.creationCost,t:genome.entrainThresh}; }catch(e){ return null; } };
   globalThis.__metaMag=function(){ // sum of |ATROPHY_SAFE params| on the self — to confirm ablation actually zeroed it
     if(typeof ATROPHY_SAFE==='undefined')return null; let s=0,n=0; for(const p of ATROPHY_SAFE){ if(isFinite(genome[p])){s+=Math.abs(genome[p]);n++;} } return {sum:+s.toFixed(3),n}; };
 })();
@@ -203,4 +216,5 @@ console.log(JSON.stringify({ strip:STRIP, extra:EXTRA, ablated:ABLATE, ablatedBa
   metaMag:globalThis.__metaMag(), lateMeanAmp:lateMean('meanAmp'), lateN:lateMean('N'), lateKinds:lateMean('kinds'),
   // #59: launchDrive early vs late is the self-administered payout test — see the census comment.
   cosmosDriveEarly:(S[1]&&S[1].cosmos)?S[1].cosmos.drive:null, cosmosDriveLate:(S[S.length-1]&&S[S.length-1].cosmos)?S[S.length-1].cosmos.drive:null,
-  cosmos:(S[S.length-1]||{}).cosmos||null, latePurity:lateMean('purity'), latePurityNull:lateMean('purityNull'), latePurityExcess:lateMean('purityExcess'), lateOwned:lateMean('owned'), lateOwnedNull:lateMean('ownedNull'), finalSample:S[S.length-1] }));
+  cosmos:(S[S.length-1]||{}).cosmos||null,
+  cosmosLog:globalThis.__cosmosLog?globalThis.__cosmosLog():null, cosmosDefaults:globalThis.__cosmosDefaults?globalThis.__cosmosDefaults():null, latePurity:lateMean('purity'), latePurityNull:lateMean('purityNull'), latePurityExcess:lateMean('purityExcess'), lateOwned:lateMean('owned'), lateOwnedNull:lateMean('ownedNull'), finalSample:S[S.length-1] }));
