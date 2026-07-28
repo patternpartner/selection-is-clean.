@@ -8396,6 +8396,14 @@ function attemptClusterBudding(){
 // WAVE 8 (#59): COSMOLOGICAL SCAFFOLDING — the engine. See the constant block for the argument.
 // ═══════════════════════════════════════
 function cosmosOn(){return (typeof globalThis==='undefined')||((globalThis.__COSMOS??1)|0)!==0}
+// PER-LEAP ABLATION KNOBS. The wave came in at -2.33 kinds against a pre-registered +/-2.0 band, and
+// the rule written before the runs says the fix is subtraction. Subtraction needs to know which part is
+// costing, and this file has three recorded instances of a plausible causal story being wrong, so each
+// consequence of the layer gets its own switch and the answer gets measured rather than reasoned out.
+function cosmosCostOn(){return (typeof globalThis==='undefined')||((globalThis.__COSMOS_COST??1)|0)!==0}
+function cosmosContactOn(){return (typeof globalThis==='undefined')||((globalThis.__COSMOS_CONTACT??1)|0)!==0}
+function cosmosMergeOn(){return (typeof globalThis==='undefined')||((globalThis.__COSMOS_MERGE??1)|0)!==0}
+function cosmosSenseOn(){return (typeof globalThis==='undefined')||((globalThis.__COSMOS_SENSE??1)|0)!==0}
 
 function cosmosGauss(){ // Box-Muller. Called 5x per launch; launches are rare, so cost is irrelevant.
   let u=Math.random();if(u<1e-9)u=1e-9;
@@ -8482,7 +8490,8 @@ function attemptCosmosLaunch(){
     for(let i=0;i<N;i++){
       if(!palive[i]||clusterID[i]!==c.id)continue;
       const spend=amp[i]*COSMOS_LAUNCH_COST;
-      amp[i]-=spend;endow+=spend;
+      if(cosmosCostOn())amp[i]-=spend;   // __COSMOS_COST=0 isolates the amp tax on launcher members
+      endow+=spend;
     }
     endow=Math.min(endow*COSMOS_ENDOW_YIELD,COSMOS_ENDOW_CAP);
     if(endow<=0)continue;
@@ -8632,7 +8641,7 @@ function cosmosStep(ch){
 function cosmosEmit(ch,coh,mass){
   if(!ch.emits)cosmosStats.emitters++;
   ch.emits++;cosmosStats.emissions++;
-  xenoImpact(ch.sx,ch.sy);
+  if(cosmosContactOn())xenoImpact(ch.sx,ch.sy); // __COSMOS_CONTACT=0 isolates the resource+hazard deposit
   try{addShock(ch.sx,ch.sy,0.35,120,200,255)}catch(e){}
   recordEvent('cosmos_contact',{age:ch.age,coh:+coh.toFixed(2),m:mass,n:ch.emits},240);
   if(!ch.merged&&ch.emits>=COSMOS_MERGE_EMITS)cosmosMerge(ch);
@@ -8644,6 +8653,7 @@ function cosmosEmit(ch,coh,mass){
 // If the proposal is bad the parent's existing machinery evicts it. Nothing here touches genome physics.
 function cosmosMerge(ch){
   ch.merged=true;
+  if(!cosmosMergeOn())return; // __COSMOS_MERGE=0 isolates the scenario-bank proposal
   try{
     if(!Array.isArray(genome.shadowScenarioBank)||!genome.shadowScenarioBank.length)genome.shadowScenarioBank=seedShadowBank();
     const bank=genome.shadowScenarioBank;
@@ -8719,7 +8729,7 @@ function cosmosSenseFor(i){
 // #57's lesson applied before the fact rather than after: a brand-new opcode enters no seeded program,
 // so without this COSMOS_SENSE would be reachable-in-principle and never once executed.
 function wireCosmosOpcode(){
-  if(!cosmosOn())return;
+  if(!cosmosOn()||!cosmosSenseOn())return; // __COSMOS_SENSE=0 isolates the op235 splice into living programs
   try{
     for(let i=0;i<N;i++){
       if(!palive[i]||!pProg[i])continue;
