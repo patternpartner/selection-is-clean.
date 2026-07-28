@@ -8486,14 +8486,25 @@ function attemptCosmosLaunch(){
     // COST, and the endowment it converts into. Founding a world is paid for by the members that
     // found it, and only COSMOS_ENDOW_YIELD of what they pay reaches the child — the same lossy
     // conversion idiom LEAP 3 uses for reproductive provision.
-    let endow=0;
-    for(let i=0;i<N;i++){
+    // Members are charged ONLY up to what the child can actually receive, and then collection stops.
+    // The first version charged every member COSMOS_LAUNCH_COST unconditionally and THEN capped the
+    // endowment, which turned the surplus into amplitude annihilated outright: 6% of the charge reached
+    // a child founded by a 100-member cluster, 18.8 amp destroyed to deliver 1.2. That is not a cost,
+    // it is a leak, and it scaled with the size of the launcher — a repeated, size-superlinear tax on
+    // exactly the largest and most persistent clusters, i.e. on the structures that hold standing
+    // diversity. Measured: ablating the charge recovered seed 17 from 8.00 kinds to 12.33, against
+    // 0.00 for the contact deposits and 0.00 for the sense opcode. Founding a world still costs its
+    // founders, because reproduction at any level in this file pays (LEAP 17); it no longer destroys
+    // amplitude that goes nowhere.
+    const need=COSMOS_ENDOW_CAP/COSMOS_ENDOW_YIELD;
+    let raised=0;
+    for(let i=0;i<N&&raised<need;i++){
       if(!palive[i]||clusterID[i]!==c.id)continue;
-      const spend=amp[i]*COSMOS_LAUNCH_COST;
+      const spend=Math.min(amp[i]*COSMOS_LAUNCH_COST,need-raised);
       if(cosmosCostOn())amp[i]-=spend;   // __COSMOS_COST=0 isolates the amp tax on launcher members
-      endow+=spend;
+      raised+=spend;
     }
-    endow=Math.min(endow*COSMOS_ENDOW_YIELD,COSMOS_ENDOW_CAP);
+    let endow=Math.min(raised*COSMOS_ENDOW_YIELD,COSMOS_ENDOW_CAP);
     if(endow<=0)continue;
 
     // SLIGHTLY ALTERED CONSTANTS — multiplicative (log-normal) so a perturbation means the same thing
