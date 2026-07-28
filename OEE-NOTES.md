@@ -4503,3 +4503,61 @@ below, not assumed away.
 5. **THE GATE IS ACTUALLY GONE.** No coherence or mass criterion may remain anywhere on the channel.
    Checked by grep, not by memory — #58's hollow column was a constant declared and never read, and
    the mirror-image failure is a criterion deleted in the comment and left in the code.
+
+### #60 RESULT — all five falsifiers cleared, and the headline I wanted was wrong
+
+**Kinds: w8 fixed 9.78 -> w9 11.33, +1.56, inside the band. Wave 7 reference 11.56, so w9 sits -0.23
+off the pre-cosmology build** — the diversity wave 8 cost is essentially recovered.
+
+| seed | wave 7 | w8 fixed | w9 | w9 vs w8 |
+|---|---|---|---|---|
+| 7 | 12.00 | 11.00 | 12.67 | +1.67 |
+| 17 | 11.00 | 8.00 | 11.67 | +3.67 |
+| 23 | 11.67 | 10.33 | 9.67 | -0.67 |
+
+**AND THE OBVIOUS READING OF THAT IS FALSE.** I pre-registered "I do not expect this to raise kinds
+and would distrust the mechanism if it did." It rose, so I ran the ablation instead of writing the
+commit message. `__COSMOS_CONTACT=0` runs the children with no boundary exchange at all:
+
+| seed | w8 fixed | w9 full | w9 NO FLUX | flux contributes |
+|---|---|---|---|---|
+| 7 | 11.00 | 12.67 | **12.33** | **+0.33** |
+| 17 | 8.00 | 11.67 | 10.00 | +1.67 |
+
+Most of the recovery is **deleting the old gated path**, not conserving the new one. That path called
+`xenoImpact`, which deposits inhibitor HAZARD in a ring at every launch site — an unconserved damage
+source landing precisely where the largest persistent clusters live, 358 times per run. Removing it is
+what moved kinds. On seed 7 the conserved flux is worth +0.33 of a +1.67 recovery; seed 17 reads
++1.67 but on 6 launches against 18, non-comparable under the same trajectory rule applied to #59.
+
+So: **the conserved boundary is justified structurally, not by diversity.** "Conservation recovered
+the diversity" was the headline available and it is not what happened. Also note #59's CONTACT
+ablation measured that same hazard path at EXACTLY 0.00 — true then, because the launch leak swamped
+it; false as a general claim. An ablation is valid only against the build it was run on.
+
+**The other four falsifiers:**
+
+1. **CONSERVATION — passes.** Max single-transfer residual 1.17e-07 against per-transfer flows of
+   1e-2 to 1e0; accumulated fluxErr 2.7e-05 to 1.8e-04 over total flows of 15-40. Relative error
+   ~1e-7: double-precision arithmetic, not a leak. The assay could have said matter was created.
+2. **THE SECOND DIRECTION IS REAL — passes decisively, and this is the result worth keeping.**
+   Parasites 4/17/15 of 15/18/19 launches, and **10 of 52 children died having taken more from their
+   launch site than they gave it**. Nothing implements parasitism. The differential rule has no
+   opinion about direction, and lineages that founded poor worlds got drained by them. This is the
+   one place in this file where an interesting relation is NOT PREVENTED rather than installed.
+3. **AMP PUMP — real, small, reported as a quantity.** netFlux +39.5/+6.5/+15.3 against 1200 amp of
+   world regen over the run: 3.3%/0.5%/1.3%. Population unchanged (343.7/319.3/333.3 vs w8's
+   330.3/271.3/357.3). The layer IS a net matter source, as pre-registered; the economy does not
+   feel it at this magnitude.
+5. **THE GATE IS ACTUALLY GONE — checked by grep, not memory.** No coherence or mass term survives
+   anywhere on the channel; the six dead constants are deleted rather than left declared.
+
+**Merges fell 8 -> 4 across seeds.** The currency criterion (export more than you were founded with)
+is harder than the old count-three-emissions criterion, which is the intended direction: merge is now
+a claim about having paid for yourself rather than about having been loud.
+
+**What this wave does not do.** The child's interior is still open in energy, genome->phenotype is
+still a parameter vector plus a fixed projection, and the eligibility gate on LAUNCH (size 9,
+coherence 0.55, persistAge 10) is still a designer's criterion — the thumb was removed from the
+return path only. The launch side is the obvious next subtraction and it is harder, because
+"which clusters may found worlds" has no shared currency to defer to the way the boundary did.
