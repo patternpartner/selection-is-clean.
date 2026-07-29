@@ -4644,3 +4644,71 @@ anyway. So every emit rate this file has reported for waves 8 and 9 — includin
 "most will die" figures — includes children underfunded at birth by a gate that never checked what it
 collected. Those numbers are not retracted, but they are not clean either, and the affordability gate
 is the first version where the price is actually enforced.
+
+---
+
+## #62 — TERM-LEVEL GATE AUDIT. Speciation-by-divergence has never fired, and the reason is a cross-level flag.
+
+**The instrument, and why it did not exist before.** #61 found the cosmology's launch gate — written
+as `size>=9 AND coherence>=0.55 AND persistAge>=10` — was in operation `persistAge>=10` with two
+ornaments, the size term having rejected exactly zero candidates in three seeds. That is a general
+failure mode with no instrument in this project: **a compound condition reports as ONE boolean.**
+Every readout here — counts, rates, diversity curves, ablation arms — sees `eligible: true/false` and
+cannot see which term flipped it. Dead apparatus does not only hide in unread constants (MODE_REACH,
+#58); it hides INSIDE live conditions, where two of three terms firing makes the whole gate look
+load-bearing. `harness-gates.js` rewrites chosen conditions into per-term counters and reports, for
+each term, how often it was **the sole blocker** — a term that is never the sole blocker never
+independently changed an outcome, so deleting it admits exactly the same set. Per-term, falsifiable,
+where every prior instrument could only judge whole mechanisms.
+
+Only PURE gates are instrumented: forcing evaluation of a `Math.random()` term would consume draws
+the original short-circuits away and shift the seeded trajectory, auditing a different world than the
+one under audit. The per-interaction predation gate (5.6M evaluations per 2000 ticks) is opt-in
+behind `HOT=1` — instrumenting it tripped the watchdog and produced a loop error, which is itself the
+measurement that it is a hot path.
+
+### THE FINDING: `speciate_parent` passes 0.0% (seeds 7 and 17, 6000 ticks)
+
+| term | seed 7 block / SOLE | seed 17 block / SOLE |
+|---|---|---|
+| `noEntry` | 24.4% / 24.4% | 4.9% / 4.9% |
+| **`extinct`** | **75.6% / 74.8%** | **95.1% / 95.1%** |
+| `tooYoung` | 0.8% / **0.0%** | 0.0% / **0.0%** |
+
+127 and 81 evaluations, **zero passes**. The trait-distance branch fires readily; the parent
+eligibility test then rejects every single candidate, almost entirely on `extinct`.
+
+**The cause is a cross-level flag.** `trackClusterPersistence` maintains extinction like this:
+
+```js
+const livingLineages=new Set();
+for(const c of clusters) if(c.lineageID) livingLineages.add(c.lineageID);   // CLUSTER lineages
+for(const [lid,entry] of lineageRegistry) if(!entry.extinct && !livingLineages.has(lid)) entry.extinct=true;
+```
+
+It marks a lineage extinct when no **cluster** carries that id. The speciation gate reads
+`lineageRegistry.get(pLin[parentA])` — a **particle** lineage. There are 7–20 clusters at a time
+against 18–22 distinct live particle lineages and a registry of 870+ entries, so a particle can be
+alive and breeding while its lineage is flagged extinct because no cluster happens to carry that id
+this cycle. Extinction is being decided at the cluster level and read at the particle level.
+
+**And `SPECIATE_MIN_AGE` is dead apparatus.** It is the criterion the swing was designed around —
+"parent lineage must be established before it can throw daughters" — and it blocked 1 attempt out of
+208 across two seeds, never as the sole blocker. It has never changed an outcome.
+
+**A HYPOTHESIS OF MY OWN, MEASURED AND REFUTED.** Seeing `noEntry` block 77.5% in a 2000-tick pilot,
+I proposed a namespace collision: `pLin` is assigned from `_linNext++` for founders and from
+`createLineage()`'s `nextLineageID++` for speciated particles, two independent counters (lines 5875
+and 7851), so `lineageRegistry.get(pLin[x])` would be a cross-namespace lookup hitting only by
+coincidence. Direct assay: **100% of live particles' pLin values are registry keys** on both seeds
+(407/407 and 369/369). The counters' ranges overlap (`_linNext` 334 vs `nextLineageID` 871), so the
+lookups hit. The two-counter hazard is real and latent — nothing keeps those ranges aligned — but it
+is not what is blocking speciation, and the story would have been wrong in print for the fifth time
+this session had the assay not been built to check it.
+
+### What this does NOT establish
+Whether the `__SPEC` mint path (`specMint`, which assigns `pLin` from its own `createLineage`) also
+fails — it is a different mechanism and was not instrumented. And whether fixing the extinction sweep
+to include particle lineages *helps*: that is a one-line change with large consequences for lineage
+turnover, and it needs its own pre-registration and its own measurement rather than being bolted onto
+the wave that found it. Recorded as the next step, not performed as part of this one.
