@@ -8174,8 +8174,21 @@ function trackClusterPersistence(){
   buildClusterLookup();
 
   // ═══ LINEAGE CENSUS — mark extinct lineages, measure divergence ═══
+  // #63 FIX — EXTINCTION WAS DECIDED AT ONE LEVEL AND READ AT ANOTHER.
+  // This set was built from CLUSTER lineage ids only, while the speciation gate reads
+  // lineageRegistry.get(pLin[parentA]) — a PARTICLE lineage. With 7-20 clusters against 18-22 live
+  // particle lineages and 870+ registry entries, a particle could be alive and breeding while its
+  // lineage read `extinct` because no cluster happened to carry that id this cycle. The gate audit
+  // (#62, harness-gates.js) measured the consequence: speciate_parent passed 0 of 208 evaluations
+  // across two seeds, blocked on `extinct` as the sole blocker 75-95% of the time, so
+  // speciation-by-divergence had never once completed — while SPECIATE_MIN_AGE, the criterion the
+  // swing was actually designed around, blocked 1 attempt in 208 and never alone.
+  // A lineage is alive if ANY live particle carries it, whether or not a cluster does. Clusters are
+  // re-detected by flood-fill every 60 ticks and are a far coarser and more transient object than a
+  // lineage; using them as the liveness test made lineage death a rendering artifact of clustering.
   const livingLineages=new Set();
   for(const c of clusters)if(c.lineageID)livingLineages.add(c.lineageID);
+  for(let i=0;i<N;i++)if(palive[i])livingLineages.add(pLin[i]);
   for(const[lid,entry] of lineageRegistry){
     if(!entry.extinct&&!livingLineages.has(lid)){
       entry.extinct=true;

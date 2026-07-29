@@ -4712,3 +4712,27 @@ fails — it is a different mechanism and was not instrumented. And whether fixi
 to include particle lineages *helps*: that is a one-line change with large consequences for lineage
 turnover, and it needs its own pre-registration and its own measurement rather than being bolted onto
 the wave that found it. Recorded as the next step, not performed as part of this one.
+
+---
+
+## #63 — fix the extinction sweep. Pre-registered.
+
+One line: `livingLineages` now also collects `pLin[i]` for every live particle, not only cluster
+lineage ids. A lineage is alive if ANY live particle carries it. Clusters are re-detected by
+flood-fill every 60 ticks and are a far coarser, more transient object than a lineage; using them as
+the liveness test made lineage death an artifact of clustering.
+
+### Falsifiers
+1. **DOES SPECIATION NOW FIRE?** The direct test, and the reason for the change. `speciate_parent`
+   passRate must leave 0.0%. If it does not, the extinct flag was not the binding constraint and the
+   #62 attribution was wrong.
+2. **DOES `SPECIATE_MIN_AGE` COME ALIVE?** It blocked 1 of 208 and was never the sole blocker. If it
+   is still never the sole blocker with `extinct` out of the way, it is dead apparatus on its own
+   merits and should be deleted rather than kept as decoration — the #58 rule applied to a constant
+   this session found rather than inherited.
+3. **KINDS** against #61's 11.11, +/-2.0 band. Speciation firing for the first time could go either
+   way: more lineages could mean more standing diversity, or fragmentation into unviable singletons —
+   the 77%-singleton pathology waves 1-2 were built to cure. No prediction offered.
+4. **DOES THE REGISTRY BLOW UP?** `pruneLineages` only deletes entries that are `extinct`, so marking
+   fewer lineages extinct means pruning less. Registry size and `lateN`/`meanAmp` are watched; an
+   unbounded registry on a phone is a defect even if diversity improves.
