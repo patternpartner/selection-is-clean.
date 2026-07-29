@@ -4736,3 +4736,52 @@ the liveness test made lineage death an artifact of clustering.
 4. **DOES THE REGISTRY BLOW UP?** `pruneLineages` only deletes entries that are `extinct`, so marking
    fewer lineages extinct means pruning less. Registry size and `lateN`/`meanAmp` are watched; an
    unbounded registry on a phone is a defect even if diversity improves.
+
+### #63 RESULT — speciation fires for the first time, and a constant was deleted by its own pre-registered rule
+
+**FALSIFIER 1 — SPECIATION NOW FIRES. `speciate_parent` passRate 0.0% -> 32.9%** (45 of 137
+evaluations, seed 7). #62's attribution is confirmed: the cross-level `extinct` flag was the binding
+constraint, and speciation-by-divergence — a mechanism this file has claimed since #52 — had never
+once completed until this one-line change. `extinct` still blocks 44.5% (down from 75.6%), which is
+now legitimate: those are lineages with no live carrier at all.
+
+**FALSIFIER 2 — AND SPECIATE_MIN_AGE FAILED IT, SO IT IS GONE.** With `extinct` out of the way it
+blocked **0 of 137**. The pre-registration said: if it is still never the sole blocker, it is dead
+apparatus on its own merits and should be deleted rather than kept as decoration. Deleted — both the
+term and the declaration, because a declared-but-unread constant is exactly the MODE_REACH pattern.
+
+The deletion claim was that removal is behaviour-neutral, and that claim was CHECKED rather than
+asserted: seed 7 came back **bit-identical** — kinds 12.3333, N 357, meanAmp 1.1675, latePurity
+0.6324, and the entire `finalSample` and cosmos telemetry blocks equal. The term was structurally
+unreachable (by the time a lineage has a registry entry and is not extinct it is always older than
+400 ticks), not merely unlucky. Not retuned upward until it bound, because raising a threshold until
+it binds is tuning a criterion to justify its own existence.
+
+**FALSIFIER 3 — KINDS 10.89 vs #61's 11.11, -0.22, inside the band. But the risk named in advance
+materialised on one seed.**
+
+| seed | #61 | #63 | nLin | maxLin | singleFrac |
+|---|---|---|---|---|---|
+| 7 | 12.33 | 12.33 | 33 | 146 | 0.064 |
+| 17 | 11.33 | 11.67 | 34 | 88 | 0.050 |
+| 23 | 9.67 | **8.67** | **137** | 90 | **0.360** |
+
+The pre-registration said speciation firing could fragment the population into unviable singletons —
+the 77%-singleton pathology waves 1-2 were built to cure. Seeds 7 and 17 stayed consolidated (33-34
+lineages, 5-6% singletons). Seed 23 went to 137 lineages at 36% singletons and lost a full kind.
+**That is the predicted failure mode appearing in 1 of 3 seeds**, and it is the thing to watch: if
+speciation is going to be load-bearing it has to produce lineages that persist, and on seed 23 it is
+producing lineages that do not. Recorded as an open risk, not as an acceptable cost.
+
+**FALSIFIER 4 — the registry grew 870 -> 1166 (+34%).** `pruneLineages` only deletes entries that are
+`extinct`, so marking fewer lineages extinct means pruning less. Not unbounded at 6k ticks and
+`MAX_LINEAGE_HISTORY` still gates the sweep, but the live pool runs to 467k and this was never
+measured there. Standing caveat, not a clean pass.
+
+**Cumulative note on this session.** Six causal stories formed, six checked, five refuted or
+substantially corrected by instruments built to return "nothing is happening": the heredity
+explanation for the probe/sim gap, the negative-entropyK blowup, CONTACT as the diversity cost, the
+launch charge described as a cost when it was a hole, the pLin namespace collision, and the
+conservation-recovered-diversity headline. The one that survived contact with its instrument was
+#62's `extinct` attribution — and it survived because the audit measured which TERM blocked rather
+than whether the gate blocked.

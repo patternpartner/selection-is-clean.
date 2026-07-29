@@ -787,7 +787,15 @@ let retentionScore=0;
 // one by the world, and #51 just closed that tap. Now an offspring that has drifted far enough from its
 // parent in trait space founds its own lineage, registered as a CHILD of the parent's. Descent can fork.
 const SPECIATE_DIST=0.55;           // trait-space distance from parent that founds a new lineage
-const SPECIATE_MIN_AGE=400;         // parent lineage must be established before it can throw daughters
+// SPECIATE_MIN_AGE DELETED (#63). It read "parent lineage must be established before it can throw
+// daughters" and it never once did that. The #62 gate audit measured it blocking 1 attempt in 208 and
+// never as the sole blocker; with the extinction flag fixed so speciation actually fires (passRate
+// 0% -> 32.9%) it blocked 0 of 137. By the time a lineage has a registry entry and is not extinct it
+// is always older than 400 ticks, so the term was structurally unreachable, not merely unlucky.
+// Deleted rather than retuned, because raising a threshold until it binds is tuning a criterion to
+// justify its own existence. Removal was claimed behaviour-neutral and CHECKED: seed 7 came back
+// bit-identical (kinds 12.3333, N 357, meanAmp 1.1675, finalSample and cosmos block all identical).
+// A declared-but-unread constant is the MODE_REACH pattern, so the declaration goes too.
 
 // LEAP 7 — LIGHT THE CALL SITE. The atom pipeline's chain is birth -> bind -> wire a call-site ->
 // execute, and it has always died at the last link: measured this session, a 45k-tick authoring run
@@ -13020,7 +13028,7 @@ function addParticle(x,y,tv,born,parentA,parentB){
     if(_d2>SPECIATE_DIST*SPECIATE_DIST){
       try{
         const _pe=lineageRegistry.get(pLin[parentA]);
-        if(_pe&&!_pe.extinct&&(genome.totalTicks-_pe.birthTick)>SPECIATE_MIN_AGE){
+        if(_pe&&!_pe.extinct){
           const _new=createLineage(pLin[parentA]);
           if(_pe.children)_pe.children.push(_new);
           pLin[i]=_new;
@@ -13094,7 +13102,7 @@ function addCompound(x,y,nt,nvx,nvy,na,np,nf,parentA,parentB){
     if(_d2>SPECIATE_DIST*SPECIATE_DIST){
       try{
         const _pe=lineageRegistry.get(pLin[parentA]);
-        if(_pe&&!_pe.extinct&&(genome.totalTicks-_pe.birthTick)>SPECIATE_MIN_AGE){
+        if(_pe&&!_pe.extinct){
           const _new=createLineage(pLin[parentA]);
           if(_pe.children)_pe.children.push(_new);
           pLin[i]=_new;
