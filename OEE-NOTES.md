@@ -4833,3 +4833,44 @@ in every regime measured" is the ceiling here, not "dead", and the comment in th
 **Running total from the gate audit: three gates instrumented, two dead terms found and deleted, both
 deletions verified bit-identical.** `cluster_upstream` is now `persistAge<6 || coherence<0.45`, where
 `coherence` does bind (sole 6 times of 99 post-fix) and `persistAge` does 57-65% of the work.
+
+---
+
+## #65 — two more gates audited. One is entirely dead and is being KEPT, and the reason is the finding.
+
+**`spec_entrain` (behavioural-isolation gate for entrainment, #17): both terms live.** crossLineage
+sole 55.8%, mismatch sole 5.8%, across 1.47M evaluations. No dead term. It is a PER-PAIR path and
+instrumenting it produced a watchdog loop error — the same signature the predation gate gave — so it
+now sits behind `HOT=1` with predate, and its numbers must not be mixed with a run not carrying that
+cost.
+
+**`upstream_prog` (`if(!c.vmProgram||c.vmProgram.length<2)continue;`): the ENTIRE GATE is dead.**
+55 evaluations across seeds 7 and 17, 55 passes, both terms blocking zero times. And unlike `avgAmp`
+this one has a full structural argument: `seedClusterVM()` pads with NOPs
+(`while(indices.length<MAX_CLUSTER_VM)indices.push(-1)`) and pushes exactly one instruction per
+index, so it ALWAYS returns exactly MAX_CLUSTER_VM=8 entries; inherited programs are deep copies of
+that. Neither `!c.vmProgram` nor `length<2` is reachable.
+
+### AND IT IS NOT BEING DELETED. That distinction is the point of this entry.
+
+By the rule applied in #63 and #64, a structurally unreachable term is dead apparatus and should go.
+Applying that rule here would be wrong, and the audit cannot tell the difference on its own:
+
+- `SPECIATE_MIN_AGE` was a **biological criterion** — "parent lineage must be established before it
+  can throw daughters." It claimed to do selective work, shaping which lineages speciate. It never
+  did any. That is DECORATION: apparatus that reads as load-bearing and is not, which is the whole
+  pattern this record exists to catch.
+- `!c.vmProgram || length<2` is a **null-safety guard**. It claims no selective work whatsoever. Its
+  job is to be false. It is inert BY DESIGN, not by accident.
+
+The gate audit finds inert TERMS. It cannot distinguish decoration from a defensive rail, because
+that distinction lives in what the term CLAIMS, not in what it does — and only the claim can be
+falsified. Deleting a guard because it has never yet been needed is how an invariant becomes a crash
+two waves later, and this session has already changed `vmProgram` handling once.
+
+**So the audit's output requires a second, human judgement, and pretending otherwise would make the
+instrument itself a source of confident error.** Recorded as INERT-BY-DESIGN, kept, and the reason
+written down so the next pass does not re-flag it and delete it.
+
+**Running total: 5 gates instrumented, 3 fully-inert terms found. 2 deleted (both verified
+bit-identical), 1 kept deliberately.**

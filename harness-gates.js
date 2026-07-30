@@ -80,9 +80,11 @@ patchOnce(
   "if(__g('cluster_bud',['persistAge',c.persistAge<Math.min(_budThr,CBUD_MIN_AGE),'size',c.size<_budMinSize]))continue;",
   'cluster_bud');
 
+// avgAmp was deleted from this gate in #64 (sole blocker 0 of 314). patchOnce caught the stale string
+// as x0 rather than silently matching nothing, which is the whole reason it exists.
 patchOnce(
-  'if(c.persistAge<6||c.coherence<0.45||c.avgAmp<0.38)continue;',
-  "if(__g('cluster_upstream',['persistAge',c.persistAge<6,'coherence',c.coherence<0.45,'avgAmp',c.avgAmp<0.38]))continue;",
+  'if(c.persistAge<6||c.coherence<0.45)continue;',
+  "if(__g('cluster_upstream',['persistAge',c.persistAge<6,'coherence',c.coherence<0.45]))continue;",
   'cluster_upstream');
 
 // speciation: the parent-lineage eligibility test, guarded inside the trait-distance branch
@@ -96,6 +98,26 @@ if((process.env.HOT|0)===1) patchOnce(
   'else if(d2>PREDATE_MIN_DIST*PREDATE_MIN_DIST && amp[i]>amp[j]){',
   "else if(!__g('predate',['tooSimilar',!(d2>PREDATE_MIN_DIST*PREDATE_MIN_DIST),'notStronger',!(amp[i]>amp[j])])){",
   'predate');
+
+
+// #65 — more pure compound gates. Each added because a compound condition reports as ONE boolean and
+// this project has now found two dead terms hiding inside live conditions (SPECIATE_MIN_AGE, avgAmp).
+patchOnce(
+  'if(!c.vmProgram||c.vmProgram.length<2)continue;',
+  "if(__g('upstream_prog',['noProgram',!c.vmProgram,'tooShort',!!(c.vmProgram&&c.vmProgram.length<2)]))continue;",
+  'upstream_prog');
+
+// Behavioural-isolation gate for entrainment (#17). Both halves are pure: an opcode-mismatch fraction
+// and a lineage-identity test. __SPEC.gate is a config flag, so it is folded in as its own term —
+// a flag that is always one value is exactly the kind of inert term this audit exists to surface.
+// spec_entrain is a PER-PAIR path — 1.47M evaluations per 2500 ticks — and instrumenting it produced
+// a loop error (watchdog), the same signature the predation gate gave. Behind HOT=1 with predate, and
+// its numbers must not be mixed with a run that did not carry that cost. Measured while it was on,
+// both terms are live: crossLineage sole 55.8%, mismatch sole 5.8%. No dead term there.
+if((process.env.HOT|0)===1) patchOnce(
+  'const _spGate=(_sppN===0||_sppD<_sppN*0.75)&&(!__SPEC.gate||pLin[_drv]===pLin[_oth]);',
+  "const _spGate=!__g('spec_entrain',['mismatch',!(_sppN===0||_sppD<_sppN*0.75),'crossLineage',!(!__SPEC.gate||pLin[_drv]===pLin[_oth])]);",
+  'spec_entrain');
 
 const driver=`
 ;(function(){
