@@ -4874,3 +4874,71 @@ written down so the next pass does not re-flag it and delete it.
 
 **Running total: 5 gates instrumented, 3 fully-inert terms found. 2 deleted (both verified
 bit-identical), 1 kept deliberately.**
+
+---
+
+## #66 — THE HORIZON RESULT. Every diversity verdict in this session was measuring a transient.
+
+### The sweep
+
+Current build, 12000 ticks, 7 seeds: kinds mean **6.83**, sd 1.67, range 5.00–9.80. Against the 6k
+values every band in this session was drawn from:
+
+| seed | 6k | 12k | change |
+|---|---|---|---|
+| 3 | 8.67 | 9.80 | **+1.13** |
+| 7 | 12.33 | 7.80 | −4.53 |
+| 11 | 9.33 | 5.40 | −3.93 |
+| 17 | 11.67 | 6.20 | −5.47 |
+| 23 | 8.67 | 5.00 | −3.67 |
+| **mean** | **10.13** | **6.84** | **−3.29** |
+
+**6k does not predict 12k in level OR in rank order.** Seed 7 was best at 6k and third at 12k; seed 3
+was joint-worst at 6k and best at 12k. The two seeds that looked strongest at 6k fall hardest.
+
+### The comparison every verdict actually needed
+
+Wave 7 (pre-cosmology, commit 64fe602, via `INDEX=`) against the current build, same seeds, 12000
+ticks:
+
+| seed | wave 7 | current | delta |
+|---|---|---|---|
+| 3 | 9.40 | 9.80 | +0.40 |
+| 7 | 10.80 | 7.80 | −3.00 |
+| 17 | 3.40 | 6.20 | +2.80 |
+| **mean** | **7.87** | **7.93** | **+0.07** |
+
+**Waves 8, 9 and 10 plus the #63 extinction fix are DIVERSITY-NEUTRAL at horizon.** +0.07 kinds
+against per-seed swings of ±3. Not a win, not a loss — no detectable effect.
+
+### What this does to the session's own record
+
+Every band drawn at 6k was measuring a transient, and the drama it produced was noise:
+#59's "−2.33, FAILS the band", the leak subtraction that "rescued" it to −1.78, #60's "+1.56,
+recovered nearly everything wave 8 cost", #61's −0.22, #63's −0.22. At 12k none of those differences
+survive. The verdicts were sincerely derived, pre-registered in advance, applied against my own work
+— and drawn from a horizon that does not carry to the next one.
+
+Worse for the method: the 12k spread across 7 seeds is 4.80 with sd 1.67, so a 3-seed mean carries a
+standard error near 0.96 and the ±2.0 band is about two standard errors. Marginal on its own terms
+even before the horizon problem.
+
+**Not retracted: the STRUCTURAL results, none of which were diversity arguments.** Conservation at
+double-precision epsilon (max residual 1.17e-07). Parasitism emerging from a differential rule that
+has no opinion about direction — 10 of 52 children dying having taken more than they gave. Speciation
+going 0.0% → 32.9% pass rate after a one-line cross-level fix, a mechanism claimed since #52 that had
+never once completed. Two bit-identical deletions. The launch gate being `persistAge` with two
+ornaments, size having rejected 0 of 47. Those stand on their own measurements.
+
+**An observation, offered as an observation and not a claim:** population is higher in the current
+build on all three horizon-controlled seeds (361→379, 200→351, 356→373). That was not pre-registered,
+n=3, and `lateN` is not what any of this was aimed at. It is the kind of number that becomes a
+confident story if left unqualified, and this file has six of those from today alone.
+
+### The standing correction to method
+
+Nothing in this project should draw a diversity verdict at 6000 ticks again. The minimum honest
+protocol is 12000+ ticks and ≥5 seeds, with the prior build run under `INDEX=` at the SAME horizon
+rather than compared to a remembered number. That is roughly 4x the compute per verdict, and the
+alternative is what this session did: five sincere, pre-registered, self-applied verdicts that a
+longer run erases.
