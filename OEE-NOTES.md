@@ -4785,3 +4785,51 @@ launch charge described as a cost when it was a hole, the pLin namespace collisi
 conservation-recovered-diversity headline. The one that survived contact with its instrument was
 #62's `extinct` attribution — and it survived because the audit measured which TERM blocked rather
 than whether the gate blocked.
+
+---
+
+## #64 — the fragmentation risk retired, a second dead term deleted, and a methodological hole opened
+
+**THE FRAGMENTATION RISK #63 PRE-REGISTERED IS RETIRED, and not by argument.** Seed 23's 137
+lineages at 36% singletons was a TRANSIENT RADIATION, not a shattering. At 12000 ticks the same seed
+reads nLin 16, singleFrac 0.027, maxLin 145, multiFrac 0.973 — radiation followed by selection, which
+is what speciation is supposed to look like. It was also not common: fresh seeds 3 and 11 came in at
+nLin 40/18 and singleFrac 0.065/0.024. Seed 23 at 6k was one of five seeds caught mid-radiation.
+
+**THE CONTROL THAT MATTERED.** Kinds fell 8.67 (6k) -> 5.00 (12k) on that seed and the obvious
+reading was that speciation firing had cost diversity at horizon. Run against the PRE-#63 build via
+`INDEX=` at the same seed and horizon: **pre-fix 5.40, post-fix 5.00.** The collapse is the seed's
+own trajectory, present in both builds; the fix costs 0.40 kinds, noise. Without the isolated control
+this would have been recorded as the extinction fix damaging long-run diversity, which is false.
+
+### THE METHODOLOGICAL HOLE THIS OPENED, and it is the most important line in this entry
+
+Seed 23 loses ~40% of its standing kinds between 6k and 12k **in both builds**. Every wave in this
+session — #58 through #63 — was measured at 6000 ticks and every +/-2.0 band was drawn there. If 6k
+sits mid-transient, those bands measured a TRAJECTORY rather than a STATE, and a wave could pass its
+band at 6k while making things worse at horizon. Nothing tested that until now.
+
+Compounding it: seeds 3 and 11 read kinds 8.67 and 9.33, against seeds 7 and 17 at 12.33 and 11.67.
+The 7/17/23 triple used as the standard all session may not be representative of the seed
+distribution, which would make every band noisier than it looked. **No wave in this session is
+retracted on this basis — but every verdict in it is now conditional on a 6k horizon and a 3-seed
+sample, and that condition was never stated when the verdicts were given.** The fix is a wider sweep
+at a longer horizon before any future wave leans on those bands, not a re-litigation of the ones
+already recorded.
+
+### A SECOND DEAD TERM DELETED: `avgAmp<0.38` in the cluster-upstream gate
+
+Sole blocker **0 times in 314 evaluations** across four runs (seeds 7 and 17, before and after the
+#63 fix). A term that is never the sole blocker cannot change what a gate admits — every time it
+blocked, another term blocked too — so removal is behaviour-neutral by construction. Checked, not
+argued: seeds 7 and 17 both came back **bit-identical**, finalSample included.
+
+**The claim is deliberately scoped weaker than #63's.** `SPECIATE_MIN_AGE` had a structural argument
+— a lineage with a live registry entry is always older than 400 ticks, so the term was unreachable.
+This one has only a correlation: `avgAmp<0.38` means a starving cluster, and starving clusters are
+also young, so `persistAge<6` fires first. Correlations can come apart in an unsampled regime. "Dead
+in every regime measured" is the ceiling here, not "dead", and the comment in the code says so.
+
+**Running total from the gate audit: three gates instrumented, two dead terms found and deleted, both
+deletions verified bit-identical.** `cluster_upstream` is now `persistAge<6 || coherence<0.45`, where
+`coherence` does bind (sole 6 times of 99 post-fix) and `persistAge` does 57-65% of the work.

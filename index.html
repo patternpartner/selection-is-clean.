@@ -11336,7 +11336,17 @@ function collectClusterUpstream(){
   if(ub<=0.01)return;
   for(const c of clusters){
     // Qualification: old enough, coherent enough, energetically viable
-    if(c.persistAge<6||c.coherence<0.45||c.avgAmp<0.38)continue;
+    // #64: the `avgAmp<0.38` term was DELETED here. The gate audit (harness-gates.js) measured it as
+    // the sole blocker 0 times in 314 evaluations across four runs — seeds 7 and 17, before and after
+    // the #63 extinction fix. A term that is never the sole blocker cannot change what the gate
+    // admits: every time it blocked, another term blocked too. Removal is therefore behaviour-neutral
+    // by construction, and that was CHECKED bit-identically rather than argued.
+    // The claim is scoped WEAKER than #63's SPECIATE_MIN_AGE deletion, deliberately. That term had a
+    // structural argument — a lineage with a live registry entry is always older than 400 ticks, so it
+    // was unreachable. This one has only a correlation: avgAmp<0.38 means a starving cluster, and
+    // starving clusters are also young, so persistAge<6 fires first. Correlations can come apart in a
+    // regime not yet sampled. "Dead in every regime measured" is the honest ceiling here, not "dead".
+    if(c.persistAge<6||c.coherence<0.45)continue;
     if(!c.vmProgram||c.vmProgram.length<2)continue;
     if(clusterUpstreamBuffer.length>=MAX_UPSTREAM_BUFFER)break;
     // Sample a 1-2 instruction motif from the cluster's VM
