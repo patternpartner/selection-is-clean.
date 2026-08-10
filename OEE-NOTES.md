@@ -5211,3 +5211,100 @@ distinguishable from a lineage that lived 59 ticks holding one particle.
 
 Protocol: #66's. 12000 ticks, 5 seeds (3, 7, 11, 17, 23 — the #66/#69 set), with the pre-#67 build run
 under `INDEX=` at the same horizon rather than compared to a remembered number.
+
+### #70 RESULT — `singleFrac` is not a diversity metric. It is one mechanism's churn rate, and the mechanism is failing.
+
+#66 protocol: 12000 ticks, 5 seeds (3, 7, 11, 17, 23). 0 loop errors on every seed. Census complete on
+every seed (`registry + pruned === minted`, 0 pruned — the cutoff is `totalTicks-30000` so nothing is
+eligible at this horizon) and `zombie` 0 on every seed, so `extinct` was never stale.
+
+**Falsifier 1 (control): PASSED.** Bit-identical to the pre-census build on all 26 reported fields,
+3000 ticks, seeds 11 and 13. The instrument does not move the system.
+
+**Falsifier 2 (my prediction): FALSIFIED, and falsified by the horizon.** I predicted the live
+singleton population would be dominated by `founder`. At 3000 ticks it was — 83 of 95 singletons on
+seed 11. At 12000 ticks **founders are 3 of 350 singletons, 0.9%.** The boot cohort of 329 founder
+lineages is down to 13 alive across all five seeds; it does not persist, it drains. The prediction was
+pilot-informed, I recorded it as such, and the pilot horizon is exactly what made it wrong. That is
+#66's finding arriving inside my own falsifier: 3k does not predict 12k, in level or in sign.
+
+### The result
+
+| mint site | minted | ever recruited | **recFrac** | alive at 12k | mean lifespan | mean peak | peak max |
+|---|---|---|---|---|---|---|---|
+| `cluster` | 7841 | 0 | **0.000** | 27 | 54.4 | 0.00 | 0 |
+| `founder` | 1645 | 338 | 0.205 | 13 | 2049.9 | 2.06 | 165 |
+| `speciate` | 1171 | 21 | **0.018** | 362 | 2808.7 | 1.17 | 52 |
+| `specDeme` | 36 | 36 | **1.000** | 36 | 5438.7 | **52.45** | 147 |
+
+**There are two speciation mechanisms in this system and they differ by a factor of 56 in recruitment.**
+`speciate` (trait-divergence in `addParticle`, LEAP 6 / #52) relabels exactly ONE offspring, so every
+mint is a singleton by construction and 98.2% of them never gain a second member. `specDeme`
+(cladogenesis under `__MINT_GATE:'cluster'`, #22) reassigns an entire diverged deme at once — 36 mints,
+36 recruitments, **not one failure across five seeds**, mean peak membership 52.
+
+**And `singleFrac` is, to within a few percent, the live `speciate` count over population:**
+
+| seed | live `specDeme` | live `speciate` | N | speciate/N | **`singleFrac`** |
+|---|---|---|---|---|---|
+| 3 | 13 | 19 | 397 | 0.048 | **0.048** |
+| 7 | 4 | 38 | 308 | 0.123 | **0.114** |
+| 11 | 11 | 92 | 361 | 0.255 | **0.252** |
+| 17 | 8 | 50 | 372 | 0.134 | **0.118** |
+| 23 | **0** | 163 | 351 | 0.464 | **0.459** |
+
+Seed 23 is the case that makes it plain: zero deme-mints, 427 `speciate` mints, and the highest
+singleton fraction in the set. Seed 3 is its mirror — the most deme-mints, the fewest live `speciate`,
+the lowest singleton fraction. **`singleFrac` was never measuring fragmentation or speciation. It was
+counting the standing crop of the mechanism that fails, and it rises when the mechanism that WORKS
+does not fire.**
+
+### What that does to #69
+
+#69 left the number OPEN between two readings and said both were stories. Both were, and **neither was
+the right shape.** Not "0.198 is speciation working" — the mechanism producing those singletons recruits
+1.8% of the time. Not "0.198 is the churn pathology waves 1-2 cured" — that claim was about nothing
+descending, and `specDeme` lineages descend perfectly well while the population sits healthy at 348-395.
+The pooling was the error. One metric, two mechanisms, opposite behaviour, and the metric tracks
+whichever one is more numerous — which is the failing one, by 33x in count.
+
+This is `occupiedKinds` again, in a new place: a snapshot statistic that cannot distinguish two
+mechanisms it sums over. That has now been the error three times in this file (kinds vs monoculture,
+the +/-2.0 band, singleFrac), and the pattern is the same each time — **a scalar summed across
+mechanisms with different signs.**
+
+### #69's falsifier 1, answered properly for the first time
+
+"Does the registry grow without bound?" #69 answered by watching NON-EXTINCT entries (84 -> 108). The
+census reads total entries: **1776-2571 at 12000 ticks, 0 pruned, growing at roughly 150-215 per 1000
+ticks.** The driver is not speciation. It is `cluster`: 7841 of 10693 entries (73%), **every one of
+which has peak membership 0** — no particle ever carries a cluster-minted id — with mean lifespan 54.4
+ticks, i.e. one detection cadence. 71.7% of every lineage ever minted lives 60 ticks or less.
+
+The registry is two different kinds of object under one namespace. #67 unified the COUNTERS; the
+OBJECTS were never unified, and `MAX_LINEAGE_HISTORY=60` is sized for a registry that runs 30-40x
+larger. `pruneLineages` cannot fire at all before tick 30000 by construction (`cutoff =
+totalTicks-30000`), so a long run on a phone reaches ~5-6k entries before the first entry is even
+eligible for collection. Measured, bounded, linear — not a runaway — but not what the falsifier was
+watching, and driven by the mechanism nobody was watching.
+
+### What stands, and what is named rather than done
+
+**Stands:** the census (controlled, complete, non-perturbing), and the recruitment asymmetry, which is
+5 seeds, 1207 speciation mints, and unanimous.
+
+**NOT done, deliberately.** The obvious move is to act on `speciate` — 1171 mints for 21 recruitments
+looks like a mechanism paying for nothing. It is not being touched in this entry, for two reasons.
+First, this file's convention: an instrument entry that also changes mechanism cannot tell which of the
+two produced the next number. Second, and more important, **`recFrac` is not fitness.** A mechanism that
+mints 1171 lineages of which 21 take hold may be exactly what a divergence process is supposed to look
+like — 21 successful foundings that would not otherwise exist — and the cost of the other 1150 has not
+been measured. The pre-registered question for the next wave is whether the 1150 failures cost anything
+beyond registry entries, and the arm that answers it is `speciate` ablated against intact, at 12000
+ticks and 5 seeds, on kinds and on `specDeme` mint rate.
+
+**A second thing this cannot answer.** 13 founder lineages alive at 12k, from 329 — but a founder
+lineage "dies" when its id stops being carried, and `speciate` REMOVES carriers by relabelling them.
+So founder extinction here mixes real death with descent-by-renaming, and the census as built cannot
+separate them. The instrument for that is an ancestry walk to the founding id rather than a carrier
+count, and it is named here, not built, in the same form #69 named this one.
