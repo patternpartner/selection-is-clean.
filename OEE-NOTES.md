@@ -4942,3 +4942,72 @@ protocol is 12000+ ticks and ≥5 seeds, with the prior build run under `INDEX=`
 rather than compared to a remembered number. That is roughly 4x the compute per verdict, and the
 alternative is what this session did: five sincere, pre-registered, self-applied verdicts that a
 longer run erases.
+
+---
+
+## #67 — RETRACTION. #63's speciation headline measured numeric aliasing, and my refutation of that was wrong.
+
+**A code review of `64fe602..HEAD` found what six instruments and eleven commits had not.** The
+highest-severity finding contradicts an entry in this file that I wrote as a refutation.
+
+### What I claimed, and what was true
+
+In #62 I hypothesised a namespace collision: `pLin` is minted from `_linNext++` for founders and from
+`createLineage()`'s `nextLineageID++` for speciated particles — two independent counters — so
+`lineageRegistry.get(pLin[x])` would be a cross-namespace lookup hitting only by coincidence. I then
+built an assay, measured "100% of live particles' pLin values are registry keys", and recorded the
+hypothesis as REFUTED, adding it to the session's tally of wrong causal stories.
+
+**The assay asked the wrong question.** "Does `pLin[i]` have a registry entry" returns TRUE under
+aliasing — that is what aliasing means. It never asked whether the entry BELONGS to that lineage.
+A provenance assay that tags each id at its mint site says:
+
+| | |
+|---|---|
+| live particles | 324 |
+| carrying a founder id that indexes ANOTHER lineage's record | **316** |
+| properly registered | **8** |
+| non-extinct registry entries | 84 |
+| of those, cluster-carried | 6 |
+| **held alive by aliasing alone** | **70** |
+
+So the hypothesis was RIGHT and the refutation was an artifact of a weak instrument. This is the
+seventh causal error of the session and the first where the fault was in the instrument built to check
+the story rather than in the story — which is worse, because the whole method rests on those.
+
+### What that invalidates
+
+- **#63's headline "speciation fires, passRate 0.0% -> 32.9%" is RETRACTED.** `_pe` was a foreign
+  lineage's record. What fired was an aliased lookup, not a criterion. `_pe.children.push(_new)` and
+  the `parentLineage` field recorded FABRICATED parentage for every one of those events.
+- **#63's extinction fix made the aliasing load-bearing.** Adding `pLin[i]` to `livingLineages` marks
+  registry entries non-extinct by numeric coincidence, so `pruneLineages` — which only deletes extinct
+  entries — could never reclaim 70 of 84.
+- A second silent failure, same review: the `speciate_parent` patch in `harness-gates.js` targeted a
+  string that #63's own `SPECIATE_MIN_AGE` deletion had removed, via unchecked `split/join`. It
+  matched ZERO times, the gate vanished from every audit after 341c45a, **and #65's results were
+  printed without it while I did not notice its absence.** `patchOnce` exists precisely to prevent
+  that and I bypassed it. Replaced with `patchExactly(...,expected)`, which asserts the count in both
+  directions — the speciation gate legitimately appears twice (addParticle and addCompound).
+
+### The fix: ONE NAMESPACE
+
+Founders now mint through `createLineage` in both spawn paths, and `specMint`'s two sites do the same
+(they had a THIRD bookkeeping system — `linParent`/`linBirthTick`/`linBirthSameCell` — and minted from
+`_linNext` as well, which made specMint lineages permanently ineligible for speciation-by-divergence).
+Every `pLin` value is now a real registry key with a real birthTick and a real parent.
+
+**Measured after the fix:** 324 of 324 live particles properly registered, 0 aliases, 0 entries held
+alive by aliasing.
+
+**And the gate is now vacuous, which is the honest reading.** `speciate_parent` passes 21 of 21
+(100%): with one namespace plus #63's extinction fix, `_pe && !_pe.extinct` never rejects anything.
+Speciation-by-divergence now fires on trait distance alone — arguably correct, since `SPECIATE_DIST`
+is the actual criterion — but the eligibility test is now a null-check that always passes, i.e. inert
+by design in the #65 sense. It stays, for the #65 reason, and this note is here so the next pass does
+not read 100% as a triumph.
+
+**Open, and measured next, not asserted:** speciation firing unconditionally could mint lineages
+without bound (non-extinct entries already 84 -> 108). Under the #66 protocol this needs 12000+ ticks
+and >=5 seeds against the prior build at the same horizon. Nine further review findings remain
+unaddressed and are listed in the commit.

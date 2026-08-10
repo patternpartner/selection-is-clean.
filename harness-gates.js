@@ -65,10 +65,16 @@ console.warn=()=>{};
 
 const html=fs.readFileSync(__dirname+'/index.html','utf8');
 let code=html.match(/<script>([\s\S]*)<\/script>/)[1];
-function patchOnce(find,repl,label){
+function patchOnce(find,repl,label){ patchExactly(find,repl,label,1); }
+// patchExactly asserts the EXPECTED number of matches rather than accepting whatever it finds. The
+// speciation gate legitimately appears twice (addParticle and addCompound each have a spawn path), and
+// the earlier version of this file used unchecked split/join for it — which matched zero times after
+// #63 deleted the string it targeted, silently dropping the gate from every later audit. Either
+// direction of drift is caught now: too few matches AND too many.
+function patchExactly(find,repl,label,expected){
   const n=code.split(find).length-1;
-  if(n!==1){console.log(JSON.stringify({error:`patch ${label} x${n}`}));process.exit(1);}
-  code=code.replace(find,repl);
+  if(n!==expected){console.log(JSON.stringify({error:`patch ${label} x${n} expected ${expected}`}));process.exit(1);}
+  code=code.split(find).join(repl);
 }
 
 // ── THE GATES ────────────────────────────────────────────────────────────────────────────────────
@@ -87,18 +93,15 @@ patchOnce(
   "if(__g('cluster_upstream',['persistAge',c.persistAge<6,'coherence',c.coherence<0.45]))continue;",
   'cluster_upstream');
 
-// speciation: the parent-lineage eligibility test, guarded inside the trait-distance branch
-code=code.split('if(_pe&&!_pe.extinct&&(genome.totalTicks-_pe.birthTick)>SPECIATE_MIN_AGE){')
-         .join("if(!__g('speciate_parent',['noEntry',!_pe,'extinct',!!(_pe&&_pe.extinct),'tooYoung',!!(_pe&&(genome.totalTicks-_pe.birthTick)<=SPECIATE_MIN_AGE)])){");
-
-// predate sits in the PER-INTERACTION inner loop — 5.6M evaluations per 2000 ticks — so instrumenting
-// it is real overhead on a path the watchdog watches. Opt-in via HOT=1, and its numbers should not be
-// mixed with a run that did not carry that cost.
-if((process.env.HOT|0)===1) patchOnce(
-  'else if(d2>PREDATE_MIN_DIST*PREDATE_MIN_DIST && amp[i]>amp[j]){',
-  "else if(!__g('predate',['tooSimilar',!(d2>PREDATE_MIN_DIST*PREDATE_MIN_DIST),'notStronger',!(amp[i]>amp[j])])){",
-  'predate');
-
+// speciation: the parent-lineage eligibility test. MUST go through patchOnce — the previous version
+// used unchecked split/join against a string that #63's own SPECIATE_MIN_AGE deletion had removed, so
+// it matched ZERO times and this gate silently disappeared from every audit after 341c45a. The #65
+// output was printed without it and the absence was not noticed. An unchecked patch is an instrument
+// that lies quietly, which is the exact failure this file collects.
+patchExactly(
+  'if(_pe&&!_pe.extinct){',
+  "if(!__g('speciate_parent',['noEntry',!_pe,'extinct',!!(_pe&&_pe.extinct)])){",
+  'speciate_parent',2);   // both spawn paths: addParticle and addCompound
 
 // #65 — more pure compound gates. Each added because a compound condition reports as ONE boolean and
 // this project has now found two dead terms hiding inside live conditions (SPECIATE_MIN_AGE, avgAmp).
@@ -118,6 +121,17 @@ if((process.env.HOT|0)===1) patchOnce(
   'const _spGate=(_sppN===0||_sppD<_sppN*0.75)&&(!__SPEC.gate||pLin[_drv]===pLin[_oth]);',
   "const _spGate=!__g('spec_entrain',['mismatch',!(_sppN===0||_sppD<_sppN*0.75),'crossLineage',!(!__SPEC.gate||pLin[_drv]===pLin[_oth])]);",
   'spec_entrain');
+
+// Tag every pLin mint site so provenance is recorded rather than inferred.
+// Post-#67 the founder path mints through createLineage, so it is tagged as LINEAGE-minted. The
+// founder set now stays empty by construction, and aliasCarrier going to 0 is the fix's success
+// criterion rather than a vacuous reading — the previous version of this assay reported 0 because the
+// tag sets did not exist yet at boot, which is a different thing entirely and looked identical.
+patchExactly('pLin[i]=(parentA>=0&&parentA<N)?pLin[parentA]:createLineage(0);',
+  'pLin[i]=(parentA>=0&&parentA<N)?pLin[parentA]:(function(){const _v=createLineage(0);globalThis.__lineageMinted&&globalThis.__lineageMinted.add(_v);return _v;})();',
+  'mint-founder',2);   // both spawn paths
+{ const N2='pLin[i]=_new;'; const h=code.split(N2).length-1;
+  if(h>0) code=code.split(N2).join('pLin[i]=_new; globalThis.__lineageMinted&&globalThis.__lineageMinted.add(_new);'); }
 
 const driver=`
 ;(function(){
@@ -140,6 +154,32 @@ const driver=`
   // counters then most pLin values are not registry keys at all and the gate is failing on a lookup
   // miss rather than on the biological criterion it is written in terms of. Measured directly rather
   // than inferred from the gate audit, because inference is how this record's wrong stories start.
+  // PROVENANCE ASSAY. pLin is minted from TWO counters: _linNext++ for founders and createLineage()'s
+  // nextLineageID++ for speciated particles. The previous assay asked only whether pLin[i] had a
+  // registry entry — which is TRUE under numeric aliasing, since both counters start at 1 and their
+  // ranges overlap. It therefore could not distinguish "this lineage is registered" from "this number
+  // happens to index someone else's entry", and #62's namespace hypothesis was declared refuted on its
+  // strength. This one records where each pLin value actually CAME FROM.
+  globalThis.__aliasAssay=function(){
+    let live=0,alias=0,proper=0,unknown=0;
+    for(let i=0;i<N;i++){ if(!palive[i])continue; live++;
+      const l=pLin[i];
+      const isFounder=globalThis.__founderMinted.has(l), isLineage=globalThis.__lineageMinted.has(l);
+      if(isFounder&&lineageRegistry.has(l)&&!isLineage) alias++;      // founder id indexing someone else's entry
+      else if(isLineage&&lineageRegistry.has(l)) proper++;            // genuinely registered
+      else unknown++;
+    }
+    // how many non-extinct registry entries are held alive ONLY by a founder-minted pLin alias?
+    let nonExtinct=0,clusterCarried=0,aliasHeld=0;
+    const carried=new Set(); for(const c of clusters) if(c&&c.lineageID) carried.add(c.lineageID);
+    const livePLin=new Set(); for(let i=0;i<N;i++) if(palive[i]) livePLin.add(pLin[i]);
+    for(const [lid,e] of lineageRegistry){ if(e.extinct)continue; nonExtinct++;
+      if(carried.has(lid)) clusterCarried++;
+      else if(livePLin.has(lid)&&globalThis.__founderMinted.has(lid)&&!globalThis.__lineageMinted.has(lid)) aliasHeld++; }
+    return {live,aliasCarrier:alias,properCarrier:proper,unknown,
+            nonExtinctEntries:nonExtinct,clusterCarried,heldAliveByAliasOnly:aliasHeld,
+            founderMinted:globalThis.__founderMinted.size,lineageMinted:globalThis.__lineageMinted.size};
+  };
   globalThis.__nsAssay=function(){
     let live=0,hit=0;const seen=new Set(),seenHit=new Set();
     for(let i=0;i<N;i++){ if(!palive[i])continue; live++;
@@ -152,13 +192,18 @@ const driver=`
   };
 })();
 `;
+// Created BEFORE m._compile so boot-time mints are tagged. The first version put these in the driver
+// IIFE, which runs after the sim has already initialised, so every founder minted during boot read as
+// "unknown" and the assay silently could not answer the question it was built for.
+globalThis.__founderMinted=new Set();
+globalThis.__lineageMinted=new Set();
 const Module=require('module');
 const m=new Module(__dirname+'/gates-sim.js');m.filename=__dirname+'/gates-sim.js';m.paths=Module._nodeModulePaths(__dirname);
 try{ m._compile(code+driver,m.filename); }catch(e){ console.log(JSON.stringify({error:'BOOT: '+e.message}));process.exit(1); }
 globalThis.__run(TICKS);
 
 const G=globalThis.__G;
-const out={seed:process.env.SEED||null,ticks:TICKS,loopErrors,lastErr,driverErr:globalThis.__derr||0,namespace:globalThis.__nsAssay(),gates:{}};
+const out={seed:process.env.SEED||null,ticks:TICKS,loopErrors,lastErr,driverErr:globalThis.__derr||0,namespace:globalThis.__nsAssay(),alias:globalThis.__aliasAssay(),gates:{}};
 for(const name in G){
   const g=G[name];
   out.gates[name]={n:g.n,pass:g.pass,passRate:+(g.pass/Math.max(1,g.n)).toFixed(4),
