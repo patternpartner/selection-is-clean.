@@ -5308,3 +5308,39 @@ lineage "dies" when its id stops being carried, and `speciate` REMOVES carriers 
 So founder extinction here mixes real death with descent-by-renaming, and the census as built cannot
 separate them. The instrument for that is an ancestry walk to the founding id rather than a carrier
 count, and it is named here, not built, in the same form #69 named this one.
+
+### #70 addendum — both #69 baselines reproduce exactly, and the range-overlap hypothesis is retired
+
+The pre-#67 build under `INDEX=`, same 5 seeds, same 12000 ticks, 0 loop errors:
+
+| | pre-#67 (measured here) | #69's recorded value | current build (measured here) | #69's recorded value |
+|---|---|---|---|---|
+| mean nLin | 13.8 | 13.8 | 82.2 | 82.2 |
+| mean singleFrac | 0.012 | 0.012 | 0.198 | 0.198 |
+| mean kinds | 6.84 | 6.84 | 5.76 | 5.76 |
+| mean lateN | 369.0 | 369.0 | 373.1 | 373.1 |
+
+Both reproduce to the digit, which is the check that matters: the census build is the #69 build, and
+every number above is being compared at one horizon rather than against a remembered one.
+
+**The whole 13.8 -> 82.2 gap is one mechanism switching on.** Pre-#67 there is no `speciate` — #62
+established 0 passes in 208 evaluations — so nLin 13.8 IS the surviving founder count and nothing else.
+Post-fix the same quantity is 2.6 founders + 72.4 `speciate` + 7.2 `specDeme`. #69 called the baseline
+invalid because it was measured on a build where speciation never fired; that is confirmed, and it is
+stronger than #69 put it. Since `singleFrac` is the live-`speciate` fraction (above), a build with zero
+`speciate` mints has singleFrac ~0 **by construction**. The comparison could not have come out any
+other way, whatever the system was doing.
+
+**Founders drain FASTER with speciation on** — 10/11/13/19/16 alive pre-#67 against 1/3/1/3/5 now. That
+is the descent-by-renaming caveat showing up as a number: `speciate` removes a founder's carriers by
+relabelling them, so some of that difference is founder lineages being renamed rather than dying. The
+census cannot split those, which is exactly the limit named at the end of the result.
+
+**Hypothesis retired.** I proposed that pre-#67 `nLin` might be DEFLATED by id collisions — founders
+drawing from `_linNext` and speciated children from `nextLineageID`, two counters into one array. The
+counters were measured rather than assumed: `_linNext` ends at 335-343, `nextLineageID` at 1362-2226,
+so the ranges do overlap and the collision was possible. **It is also irrelevant.** The collision needed
+traffic on the `pLin[i]=_new` route, and that route carried nothing pre-#67 because the gate never
+opened. The hypothesis was #67's known aliasing restated on a path with no flow, and the simpler
+already-established fact accounts for the entire gap without it. Recorded here because a hypothesis
+that dies quietly gets re-proposed later.
