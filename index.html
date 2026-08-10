@@ -1059,6 +1059,12 @@ let modeSwitches=0;                 // telemetry: total SET_MODE transitions act
 // would expect to decide it. "Most will die" is a measurement here, not an intention.
 //
 // THE RETURN PATH IS DELIBERATELY NARROW, and it is the part most at risk of being a handout. A child
+// [SUPERSEDED BY #60 — kept for the record of what was tried. The gate described below was DELETED:
+// there is no COSMOS_EMIT_HOLD, no COSMOS_MERGE_EMITS and no xenoImpact call in this layer any more.
+// Matter now crosses the boundary down a differential with no criterion, both directions, and merge
+// requires net export above the founding endowment. A comment describing removed machinery is the
+// MODE_REACH pattern in prose, which is why this marker is here rather than the paragraph being left
+// to read as current.]
 // that holds coherence and mass for COSMOS_EMIT_HOLD of its own ticks EMITS, which does exactly one
 // thing: xenoImpact() at the launch site — the channel this file already uses for matter arriving from
 // another world, depositing real resource AND real hazard. Contact is opportunity and risk, not a
@@ -1170,7 +1176,7 @@ let cosmosSense=new Map();          // cluster lineageID -> {n,cohSum}; rebuilt 
 // launch records the constants it went out with and what became of it.
 const COSMOS_LOG_MAX=64;
 let cosmosLaunchLog=[];
-let cosmosStats={launches:0,deaths:0,emitters:0,emissions:0,merges:0,ageSum:0,ageN:0,peakCohSum:0,senseReads:0,senseHits:0,
+let cosmosStats={launches:0,deaths:0,everExported:0,fluxTicksOut:0,merges:0,ageSum:0,ageN:0,peakCohSum:0,senseReads:0,senseHits:0,
   // #60 boundary accounting. fluxErr is the assay that can falsify the wave's central claim.
   fluxOut:0,fluxIn:0,fluxErr:0,fluxErrMax:0,parasites:0,netAtDeath:0,netNegDeaths:0};
 let worldEnergy=WORLD_ENERGY_MAX;
@@ -8588,7 +8594,9 @@ function attemptCosmosLaunch(){
     let raised=0;
     for(let i=0;i<N&&raised<need;i++){
       if(!palive[i]||clusterID[i]!==c.id)continue;
-      const spend=Math.min(amp[i]*COSMOS_LAUNCH_COST,need-raised);
+      // max(0,...) matches the affordability scan above. Without it a member with negative amplitude
+      // GAINS amplitude here and reduces `raised`, so a launch could be charged less than it collected.
+      const spend=Math.min(Math.max(0,amp[i])*COSMOS_LAUNCH_COST,need-raised);
       if(cosmosCostOn())amp[i]-=spend;   // __COSMOS_COST=0 isolates the amp tax on launcher members
       raised+=spend;
     }
@@ -8624,13 +8632,27 @@ function attemptCosmosLaunch(){
     // floor then clamped to 1e-12 produced gains of 3.1e8 and 7.4e8. Both of those children emitted, so
     // two of that run's four emitters were a division blowup wearing physics. Calibrating against the
     // value the child actually runs is self-consistent by construction and cannot blow up.
-    const kRef=__cl(Math.abs(k),1e-6,0.01), eRef=__cl(Math.abs(e),1e-5,0.02);
+    // The calibration must use the SAME clamp the child's own physics gets, INCLUDING sign. Using
+    // Math.abs here while `phys.k` clamps a negative inherited k up to the 1e-6 floor made the two
+    // disagree by orders of magnitude: for inherited k=-1.38e-4 the gain was calibrated against
+    // 1.38e-4 while income ran at 1e-6, giving income/drain ~0.007 instead of ~1 — deterministic
+    // starvation with the perturbation discarded, which contradicted this block's own claim that the
+    // outcome reduces to the ratio of the two perturbations. Clamping without abs makes both floors
+    // agree, so a negative-k lineage simply contributes nothing on the k axis and e decides.
+    const kRef=__cl(k,1e-6,0.01), eRef=__cl(e,1e-5,0.02);
     const gain=COSMOS_GAIN*(eRef*proj.burn)/(0.5*kRef*COSMOS_REF_MASS);
     const child={
       sx:c.cx,sy:c.cy,clin:c.lineageID|0,dims,
-      phys,base:{e:genome.entropyBaseline,k:genome.entropyK,r:genome.entrainRate,c:genome.creationCost,t:genome.entrainThresh},
+      phys,
+      // The proposal baseline is the INHERITED lineage physics, not a snapshot of the global genome.
+      // With the global snapshot, `phys - base` mixed the child's perturbation together with however
+      // far its lineage had already drifted from the self, and since lineages drift far the result
+      // saturated at the +/-2 bank clamp — measured: both cosmos entries at e:-2. The child's actual
+      // discovery is "shifting these constants in this direction, from where my lineage was, worked",
+      // and that is a direction the bank can use. Relative to the lineage, so the perturbation survives.
+      base:{e,k,r,c:cc,t:tt},
       proj,gain,
-      cells,age:0,emits:0,merged:false,peakCoh:0,peakMass:2,
+      cells,age:0,everExported:0,merged:false,peakCoh:0,peakMass:2,
       endow,exported:0,imported:0,parasite:0,   // #60: the child must export more than it was founded with to be heard
     };
     // The log entry is the SAME object the child carries, so death fills in the outcome without a lookup.
@@ -8638,7 +8660,7 @@ function attemptCosmosLaunch(){
     // handed over from what the perturbation did to it.
     child.log={e:phys.e,k:phys.k,r:phys.r,c:phys.c,t:phys.t,endow:+endow.toFixed(3),members:n,gain:+gain.toPrecision(4),
                oldGate:oldGate?1:0,afford:+affordable.toFixed(3),csize:c.size,ccoh:+c.coherence.toFixed(3),cage:c.persistAge|0,
-               inh:{e,k,r,c:cc,t:tt},emits:0,age:0,peakCoh:0,peakMass:2,alive:1};
+               inh:{e,k,r,c:cc,t:tt},exported:0,imported:0,age:0,peakCoh:0,peakMass:2,alive:1};
     if(cosmosLaunchLog.length<COSMOS_LOG_MAX)cosmosLaunchLog.push(child.log);
     cosmosChildren.push(child);
     cosmosStats.launches++;
@@ -8648,7 +8670,8 @@ function attemptCosmosLaunch(){
 
 // One child universe, COSMOS_TICKS of its own time. No read of the parent's fields, population or
 // fitness appears anywhere in this function — that separation is the whole point of the layer, and
-// the only parent state it touches is on EMISSION, through xenoImpact.
+// the only parent state it touches is the conserved boundary transfer in cosmosFlux (#60). It does NOT
+// call xenoImpact — that was the wave-8 return path and it is gone.
 function cosmosStep(ch){
   const p=ch.phys,pr=ch.proj,dims=ch.dims,g=isFinite(ch.gain)?ch.gain:COSMOS_GAIN;
   for(let t=0;t<COSMOS_TICKS&&ch.cells.length;t++){
@@ -8723,6 +8746,12 @@ function cosmosStep(ch){
     if(liveMass>ch.peakMass)ch.peakMass=liveMass;
 
     // THE BOUNDARY. No criterion — matter crosses down the differential, both ways, every tick.
+    // KNOB NESTING, stated rather than left to be discovered: merge's criterion is a fact about
+    // cumulative export, and export only happens through this call, so __COSMOS_CONTACT=0 necessarily
+    // zeroes MERGE as well. The two knobs are NOT independent and #59's ablation table read them as
+    // though they were, which confounded its MERGE row; #60's no-flux arm disabled merge too. That is
+    // inherent to a currency-based criterion rather than a wiring mistake, so it is documented and
+    // reported by the harness instead of being papered over with a second code path.
     if(cosmosContactOn())cosmosFlux(ch);
 
     if(ch.age>=COSMOS_MAX_AGE)break;
@@ -8757,8 +8786,15 @@ function cosmosFlux(ch){
     const f=flow/c0;
     for(const cl of ch.cells)if(!cl.dead)cl.amp-=cl.amp*f;
     detritalField[fi]=p0+flow;
-    ch.exported+=flow;cosmosStats.fluxOut+=flow;cosmosStats.emissions++;
-    if(!ch.emits){ch.emits=1;cosmosStats.emitters++;}
+    // NAMING, corrected. These counted "emissions" and "emitters" as though a threshold had been
+    // crossed, but under the conserved boundary an outward flow happens whenever the child holds more
+    // than its launch cell, and a launch cell is usually empty — so every child exported on its first
+    // tick and `emissions` counted transfer ticks. Measured: launches 15, emitters 15, emissions 4688.
+    // Read as "was heard" those numbers were meaningless. They are transfer bookkeeping and are named
+    // for that now; the quantity that carries meaning is net export against the endowment, which is
+    // what the merge criterion already tests.
+    ch.exported+=flow;cosmosStats.fluxOut+=flow;cosmosStats.fluxTicksOut++;
+    if(!ch.everExported){ch.everExported=1;cosmosStats.everExported++;}
   }else if(flow<0){
     // Child draws on its parent's launch site. Nothing here decides this is illegitimate.
     const want=Math.min(-flow,p0);
@@ -8795,13 +8831,25 @@ function cosmosMerge(ch,net){
   try{
     if(!Array.isArray(genome.shadowScenarioBank)||!genome.shadowScenarioBank.length)genome.shadowScenarioBank=seedShadowBank();
     const bank=genome.shadowScenarioBank;
-    const amp5={
-      e:__cl((ch.phys.e-ch.base.e)/SCEN_TEST.e,-2,2),
-      k:__cl((ch.phys.k-ch.base.k)/SCEN_TEST.k,-2,2),
-      r:__cl((ch.phys.r-ch.base.r)/SCEN_TEST.r,-2,2),
-      c:__cl((ch.phys.c-ch.base.c)/SCEN_TEST.c,-2,2),
-      t:__cl((ch.phys.t-ch.base.t)/SCEN_TEST.t,-2,2),
+    // SCALED, NOT CLIPPED. Per-axis clamping was distorting the proposal's DIRECTION, which is the only
+    // thing the bank actually uses a scenario for. SCEN_TEST is calibrated for the small nudges the
+    // shadow bank normally carries (e 1.5e-4, k 5e-5), while a COSMOS_CONST_DRIFT perturbation is a 35%
+    // multiplicative shift of an evolved constant — in bank units that is k 7.0, t 5.2, c 4.1, e 1.9,
+    // r 1.7. Clamping each axis independently pinned k, t and c to 2 while leaving e and r interior,
+    // which rotates the vector into a direction no child ever discovered. Measured before this fix: 6 of
+    // 10 axes at exactly +/-2. Dividing through by the largest component preserves the direction exactly
+    // and gives up only the magnitude, which the bank re-scales through SCEN_APPLY anyway.
+    const raw={
+      e:(ch.phys.e-ch.base.e)/SCEN_TEST.e,
+      k:(ch.phys.k-ch.base.k)/SCEN_TEST.k,
+      r:(ch.phys.r-ch.base.r)/SCEN_TEST.r,
+      c:(ch.phys.c-ch.base.c)/SCEN_TEST.c,
+      t:(ch.phys.t-ch.base.t)/SCEN_TEST.t,
     };
+    let _mx=0; for(const _a in raw){ const _v=Math.abs(raw[_a]); if(isFinite(_v)&&_v>_mx)_mx=_v; }
+    const _sc=(_mx>2)?(2/_mx):1;
+    const amp5={e:raw.e*_sc,k:raw.k*_sc,r:raw.r*_sc,c:raw.c*_sc,t:raw.t*_sc};
+    for(const _a in amp5) if(!isFinite(amp5[_a]))amp5[_a]=0;
     const prop={...amp5,f:0,p:0,a:0,tb:0,sp:0,sm:0,mp:0,wins:0,age:0,src:'cosmos',creditTrace:0};
     let matchIdx=-1,bestDist=0.3,nCosmos=0;
     for(let i=0;i<bank.length;i++){
@@ -8825,13 +8873,17 @@ function updateCosmos(){
   const keep=[];
   for(const ch of cosmosChildren){
     cosmosStep(ch);
-    if(ch.log){ch.log.emits=ch.emits;ch.log.age=ch.age;ch.log.peakCoh=+ch.peakCoh.toFixed(3);ch.log.peakMass=ch.peakMass;}
+    // Written EVERY cycle, not only on death. exported/imported were death-only, so the surviving
+    // children — 6 of 15 at 3000 ticks — carried no trade figures in the log whose entire purpose is
+    // to record them.
+    if(ch.log){ch.log.age=ch.age;ch.log.peakCoh=+ch.peakCoh.toFixed(3);ch.log.peakMass=ch.peakMass;
+      ch.log.exported=+ch.exported.toFixed(3);ch.log.imported=+ch.imported.toFixed(3);}
     const dead=!ch.cells.length||ch.age>=COSMOS_MAX_AGE;
     if(dead){
-      if(ch.log){ch.log.alive=0;ch.log.heatDeath=ch.age>=COSMOS_MAX_AGE?1:0;ch.log.exported=+ch.exported.toFixed(3);ch.log.imported=+ch.imported.toFixed(3);}
+      if(ch.log){ch.log.alive=0;ch.log.heatDeath=ch.age>=COSMOS_MAX_AGE?1:0;}
       {const _net=ch.exported-ch.imported;cosmosStats.netAtDeath+=_net;if(_net<0)cosmosStats.netNegDeaths++;}
       cosmosStats.deaths++;cosmosStats.ageSum+=ch.age;cosmosStats.ageN++;cosmosStats.peakCohSum+=ch.peakCoh;
-      recordEvent('cosmos_death',{age:ch.age,peakCoh:+ch.peakCoh.toFixed(2),peakM:ch.peakMass,emits:ch.emits},240);
+      recordEvent('cosmos_death',{age:ch.age,peakCoh:+ch.peakCoh.toFixed(2),peakM:ch.peakMass,exp:+ch.exported.toFixed(2),imp:+ch.imported.toFixed(2)},240);
     }else keep.push(ch);
   }
   cosmosChildren=keep;
@@ -8868,7 +8920,13 @@ function cosmosSenseFor(i){
 // #57's lesson applied before the fact rather than after: a brand-new opcode enters no seeded program,
 // so without this COSMOS_SENSE would be reachable-in-principle and never once executed.
 function wireCosmosOpcode(){
-  if(!cosmosOn()||!cosmosSenseOn())return; // __COSMOS_SENSE=0 isolates the op235 splice into living programs
+  if(!cosmosOn())return;
+  // RNG-MATCHED ABLATION. This used to return immediately when __COSMOS_SENSE=0, which skipped roughly
+  // 7000 Math.random() draws per 3000 ticks and shifted the entire seeded trajectory — so the arm was
+  // not a control at all, it was a different world. Measured divergence on the unmatched version:
+  // launches 12 vs 11, lateKinds 16 vs 14, from a knob that is supposed to isolate one opcode splice.
+  // Every draw is now consumed on both sides and only the WRITE to pProg is conditional.
+  const on=cosmosSenseOn();
   try{
     for(let i=0;i<N;i++){
       if(!palive[i]||!pProg[i])continue;
@@ -8878,8 +8936,10 @@ function wireCosmosOpcode(){
       if(has)continue;
       const inst=[235,(Math.random()*12)|0,(Math.random()*12)|0,Math.random()*2-1];
       const cap=Math.min((genome.vmMaxInstructions||16),48);
-      if(pr.length<cap)pr.splice((Math.random()*(pr.length+1))|0,0,inst);
-      else pr[(Math.random()*pr.length)|0]=inst;
+      const at=(pr.length<cap)?((Math.random()*(pr.length+1))|0):((Math.random()*pr.length)|0);
+      if(!on)continue;  // draws consumed above; only the mutation is withheld
+      if(pr.length<cap)pr.splice(at,0,inst);
+      else pr[at]=inst;
     }
   }catch(e){}
 }
@@ -19342,7 +19402,7 @@ function nicheCellOf(i){ const base=i*DIMS;
 // mutually-exclusive variants (__MINT_GATE cluster/relax; __NICHE_LOCALTEND vs __SPATIAL_TEND) are left off
 // for a separate, explicit choice. Revert = delete this block (every flag falls back to default-off).
 if(typeof globalThis!=='undefined'){
-  const LIVE={ __COSMOS:1,                                          // COSMOLOGICAL SCAFFOLDING #59 — eligible clusters found daughter WORLDS carrying perturbed copies of their own physics constants; each runs its own coarse ecology on its own clock, unscored, and most die. A survivor's only reach back is xenoImpact at the launch site (resource AND hazard), and only a repeat emitter gets to put its constants into the shadowScenarioBank as a proposal the parent's existing vetting machinery can reject. Force off with COSMOS=0
+  const LIVE={ __COSMOS:1,                                          // COSMOLOGICAL SCAFFOLDING #59-#67 — clusters that can AFFORD the price found daughter WORLDS carrying perturbed copies of their own lineage's physics constants; each runs its own coarse ecology on its own clock, unscored, and most die. Matter crosses the boundary down a differential in BOTH directions, exactly conserved (audited to double-precision epsilon), so a thriving child exports to its launch site and a starving one drains it — parasitism is expressible without being built. A child that has exported more than it was founded with proposes its constants into the shadowScenarioBank, where the existing vetting machinery may evict them. No coherence-or-mass gate anywhere on the channel (deleted #60); eligibility is affordability (#61). Force off with COSMOS=0
                __NICHE_FRONTIER:1, __NICHE_NDIM:1, __NICHE_LOCAL:1, // niche economy: cross-feed frontier + N-dim diet cells + per-cell crowding (#13/#14)
                __SPECIATE:1,                                        // cladogenesis #17 — brings gate+mint on; assort (#18) stays off
                __COLO_SURV:1, __COLO_PIONEER:1,                     // colonization & survival #20

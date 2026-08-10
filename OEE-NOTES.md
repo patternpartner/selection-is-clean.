@@ -5011,3 +5011,70 @@ not read 100% as a triumph.
 without bound (non-extinct entries already 84 -> 108). Under the #66 protocol this needs 12000+ ticks
 and >=5 seeds against the prior build at the same horizon. Nine further review findings remain
 unaddressed and are listed in the commit.
+
+---
+
+## #68 — the remaining nine review findings, fixed. Two needed a second attempt.
+
+A code review of `64fe602..HEAD` raised eleven findings. #67 handled the three severe ones (the
+aliasing retraction, the fabricated parentage, the silently-dead audit patch). These are the other
+nine. Live-verified after: 0 console errors, 0 page errors, canvas painting 108k pixels, 342 alive
+across 16 clusters, conservation intact at 1.15e-07.
+
+**4 — the sense ablation arm was not a control.** `wireCosmosOpcode` returned immediately on
+`__COSMOS_SENSE=0`, skipping ~7000 `Math.random()` draws per 3000 ticks and shifting the whole seeded
+trajectory: measured divergence launches 12 vs 11, lateKinds 16 vs 14, from a knob meant to isolate one
+opcode splice. Every draw is now consumed on both sides and only the write to `pProg` is withheld.
+
+**5 — two knobs that were secretly one.** `cosmosMerge` is reachable only from `cosmosFlux`, which
+`cosmosContactOn()` gates, so `__COSMOS_CONTACT=0` also zeroed MERGE. #59's ablation table read them as
+independent and its MERGE row (+1.33) was confounded; #60's no-flux arm disabled merge too. This is
+inherent — merge's criterion is a fact about cumulative export, and export only happens in that call —
+so it is documented at both sites and the harness now REPORTS the nesting when the knob is set, rather
+than a second code path being invented to hide it.
+
+**6 — the proposal direction was being rotated, and the first fix was not enough.** Proposals were
+computed against a launch-time snapshot of the GLOBAL genome while `phys` derives from the lineage
+mean, so the delta mixed the child's perturbation with its lineage's drift. Fixed to the inherited
+baseline — and it was still saturated, 6 of 10 axes at exactly +/-2. The real cause is scale:
+`SCEN_TEST` is calibrated for the small nudges the shadow bank normally carries (e 1.5e-4, k 5e-5),
+while a `COSMOS_CONST_DRIFT` perturbation is a 35% multiplicative shift of an evolved constant — in
+bank units k 7.0, t 5.2, c 4.1, e 1.9, r 1.7. Clamping per axis pinned k, t and c while leaving e and r
+interior, **rotating the vector into a direction no child ever discovered.** Now divided through by the
+largest component: direction preserved exactly, magnitude given up (the bank re-scales via `SCEN_APPLY`
+anyway). After: exactly one axis at the clamp per entry, which is the largest component by construction.
+
+**7 — counters that could only ever say yes.** `emitters`/`emissions` counted a threshold crossing that
+is always true: under the conserved boundary an outward flow happens whenever the child holds more than
+its launch cell, and a launch cell is usually empty. Measured launches 15, emitters 15, emissions 4688.
+Read as "was heard", meaningless. Renamed `everExported`/`fluxTicksOut` — transfer bookkeeping, named
+for what it is. The quantity that carries meaning is net export against the endowment, which the merge
+criterion already tests.
+
+**8 — the knife edge disagreed with the physics it calibrated.** Gain used `Math.abs(k)` while income
+runs the sign-clamped `phys.k`, so for inherited k = -1.38e-4 the gain was set against 1.38e-4 while
+income ran at 1e-6: income/drain ~0.007 instead of ~1, deterministic starvation with the perturbation
+discarded — contradicting that block's own claim that the outcome reduces to the ratio of the two
+perturbations. Both now clamp identically without `abs`, so a negative-k lineage contributes nothing on
+the k axis and e decides.
+
+**9 — the log omitted exactly what it existed to record.** `exported`/`imported` were written only on
+death, so surviving children (6 of 15 at 3000 ticks) had no trade figures. Written every cycle now;
+verified a live row reads exp=0.708 imp=0.001 at age 840.
+
+**10 — a missing guard its own sibling had.** The launch charge loop lacked the `Math.max(0,...)` the
+affordability scan twelve lines above has; a member with negative amplitude would GAIN amplitude and
+reduce `raised`. Not observed, fixed anyway.
+
+**11 — three comment blocks describing machinery that no longer exists.** The wave-8 header, the
+`cosmosStep` header and the LIVE flag description all still specified `COSMOS_EMIT_HOLD`,
+`COSMOS_MERGE_EMITS` and an `xenoImpact` call, none of which survived #60. Prose describing removed
+mechanism is the MODE_REACH pattern in documentation — a reader trusts it exactly as much as a
+declared constant. The wave-8 header is marked SUPERSEDED rather than deleted, since the record of what
+was tried is the point of this file; the other two are corrected.
+
+**Method note.** Eleven findings, in code that six purpose-built instruments and eleven commits of
+measurement had already been over. The instruments caught what they were pointed at; the review caught
+what nothing was pointed at, and two of its findings (the aliasing, the audit patch matching zero
+times) invalidated conclusions this file had already recorded as results. Measurement and reading are
+not substitutes for each other.

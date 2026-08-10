@@ -178,8 +178,13 @@ const driver=`
       if(typeof cosmosStats==='undefined')return null;
       let dsum=0,dn=0;
       for(const c of clusters){const g=c&&c.clusterGenome;if(g&&isFinite(g.launchDrive)){dsum+=g.launchDrive;dn++;}}
-      return {launches:cosmosStats.launches,deaths:cosmosStats.deaths,emitters:cosmosStats.emitters,
-              emissions:cosmosStats.emissions,merges:cosmosStats.merges,senseReads:cosmosStats.senseReads,senseHits:cosmosStats.senseHits,
+      return {launches:cosmosStats.launches,deaths:cosmosStats.deaths,everExported:cosmosStats.everExported,
+              fluxTicksOut:cosmosStats.fluxTicksOut,merges:cosmosStats.merges,senseReads:cosmosStats.senseReads,senseHits:cosmosStats.senseHits,
+              // Knob nesting reported rather than left to be rediscovered: merge's criterion is a fact
+              // about cumulative export, and export only happens in cosmosFlux, so CONTACT=0 zeroes
+              // MERGE too. #59's ablation table read these as independent and its MERGE row was
+              // confounded by exactly this.
+              knobsNested:((globalThis.__COSMOS_CONTACT??1)|0)===0?'CONTACT=0 also zeroes MERGE':null,
               // #60 boundary accounting. fluxErr is the assay that can return "matter was created" and
               // so falsify the wave's central claim; parasites/netNeg answer whether the two-way channel
               // is real or whether inward flow is a direction that exists only in the comment.
@@ -209,7 +214,15 @@ const driver=`
   globalThis.__cosmosLog=function(){ try{ return cosmosLaunchLog.map(L=>({
       e:+L.e.toPrecision(3),k:+L.k.toPrecision(3),r:+L.r.toPrecision(3),c:+L.c.toPrecision(3),t:+L.t.toPrecision(3),
       ie:+L.inh.e.toPrecision(3),ik:+L.inh.k.toPrecision(3),ir:+L.inh.r.toPrecision(3),ic:+L.inh.c.toPrecision(3),it:+L.inh.t.toPrecision(3),
-      endow:L.endow,mem:L.members,gain:L.gain,exp:L.exported,imp:L.imported,oldGate:L.oldGate,afford:L.afford,csize:L.csize,ccoh:L.ccoh,cage:L.cage,emits:L.emits,age:L.age,pk:L.peakCoh,pm:L.peakMass,alive:L.alive,hd:L.heatDeath|0})); }catch(e){ return null; } };
+      endow:L.endow,mem:L.members,gain:L.gain,exp:L.exported,imp:L.imported,oldGate:L.oldGate,afford:L.afford,csize:L.csize,ccoh:L.ccoh,cage:L.cage,age:L.age,pk:L.peakCoh,pm:L.peakMass,alive:L.alive,hd:L.heatDeath|0})); }catch(e){ return null; } };
+  // Finding 6 verification: dump the actual cosmos bank entries. With the baseline taken from the
+  // GLOBAL genome these came back saturated at the +/-2 clamp (measured: both entries e:-2), meaning the
+  // child's real perturbation was discarded. Relative to the INHERITED lineage physics they should be
+  // interior values.
+  globalThis.__cosmosBank=function(){ try{
+    return (genome.shadowScenarioBank||[]).filter(x=>x&&x.src==='cosmos')
+      .map(x=>({e:+x.e.toFixed(3),k:+x.k.toFixed(3),r:+x.r.toFixed(3),c:+x.c.toFixed(3),t:+x.t.toFixed(3)}));
+  }catch(e){return null} };
   globalThis.__cosmosDefaults=function(){ try{ return {e:genome.entropyBaseline,k:genome.entropyK,r:genome.entrainRate,c:genome.creationCost,t:genome.entrainThresh}; }catch(e){ return null; } };
   globalThis.__metaMag=function(){ // sum of |ATROPHY_SAFE params| on the self — to confirm ablation actually zeroed it
     if(typeof ATROPHY_SAFE==='undefined')return null; let s=0,n=0; for(const p of ATROPHY_SAFE){ if(isFinite(genome[p])){s+=Math.abs(genome[p]);n++;} } return {sum:+s.toFixed(3),n}; };
@@ -227,4 +240,4 @@ console.log(JSON.stringify({ strip:STRIP, extra:EXTRA, ablated:ABLATE, ablatedBa
   // #59: launchDrive early vs late is the self-administered payout test — see the census comment.
   cosmosDriveEarly:(S[1]&&S[1].cosmos)?S[1].cosmos.drive:null, cosmosDriveLate:(S[S.length-1]&&S[S.length-1].cosmos)?S[S.length-1].cosmos.drive:null,
   cosmos:(S[S.length-1]||{}).cosmos||null,
-  cosmosLog:globalThis.__cosmosLog?globalThis.__cosmosLog():null, cosmosDefaults:globalThis.__cosmosDefaults?globalThis.__cosmosDefaults():null, latePurity:lateMean('purity'), latePurityNull:lateMean('purityNull'), latePurityExcess:lateMean('purityExcess'), lateOwned:lateMean('owned'), lateOwnedNull:lateMean('ownedNull'), finalSample:S[S.length-1] }));
+  cosmosLog:globalThis.__cosmosLog?globalThis.__cosmosLog():null, cosmosDefaults:globalThis.__cosmosDefaults?globalThis.__cosmosDefaults():null, cosmosBank:globalThis.__cosmosBank?globalThis.__cosmosBank():null, latePurity:lateMean('purity'), latePurityNull:lateMean('purityNull'), latePurityExcess:lateMean('purityExcess'), lateOwned:lateMean('owned'), lateOwnedNull:lateMean('ownedNull'), finalSample:S[S.length-1] }));
