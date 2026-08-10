@@ -787,7 +787,20 @@ let retentionScore=0;
 // one by the world, and #51 just closed that tap. Now an offspring that has drifted far enough from its
 // parent in trait space founds its own lineage, registered as a CHILD of the parent's. Descent can fork.
 const SPECIATE_DIST=0.55;           // trait-space distance from parent that founds a new lineage
-// SPECIATE_MIN_AGE DELETED (#63). It read "parent lineage must be established before it can throw
+// SPECIATE_MIN_AGE — RESTORED in #69 after being deleted in #63, and the round trip is the record.
+// #63 measured it blocking 0 of 137 attempts, never as the sole blocker, and deleting it came back
+// BIT-IDENTICAL on seed 7 (kinds 12.3333, N 357, meanAmp 1.1675, finalSample and cosmos block equal).
+// That measurement was correct and the conclusion drawn from it was wrong, because #67 then found the
+// lookup FEEDING that gate was returning another lineage's record for 316 of 324 particles. The term
+// never bound because the condition upstream of it was broken. With the namespaces unified the gate
+// became vacuous — speciate_parent passes 100% — and speciation fired on trait distance alone: nLin
+// 11 -> 204 and singleton fraction 1.2% -> 53.4% at 12000 ticks, which is the pathology the waves 1-2
+// arc was built to cure (77% -> 3%).
+// So: "provably inert, verified bit-identical" was true CONDITIONAL ON A BUILD THAT WAS ITSELF WRONG.
+// Fixing an upstream defect can resurrect the need for downstream apparatus that was deleted on sound
+// evidence, and a bit-identity proof certifies only the build it ran on.
+const SPECIATE_MIN_AGE=400;         // parent lineage must be established before it can throw daughters
+// Superseded note from #63, kept because this file is about the record and not about looking right: It read "parent lineage must be established before it can throw
 // daughters" and it never once did that. The #62 gate audit measured it blocking 1 attempt in 208 and
 // never as the sole blocker; with the extinction flag fixed so speciation actually fires (passRate
 // 0% -> 32.9%) it blocked 0 of 137. By the time a lineage has a registry entry and is not extinct it
@@ -13110,7 +13123,7 @@ function addParticle(x,y,tv,born,parentA,parentB){
     if(_d2>SPECIATE_DIST*SPECIATE_DIST){
       try{
         const _pe=lineageRegistry.get(pLin[parentA]);
-        if(_pe&&!_pe.extinct){
+        if(_pe&&!_pe.extinct&&(genome.totalTicks-_pe.birthTick)>SPECIATE_MIN_AGE){
           const _new=createLineage(pLin[parentA]);
           if(_pe.children)_pe.children.push(_new);
           pLin[i]=_new;
@@ -13196,7 +13209,7 @@ function addCompound(x,y,nt,nvx,nvy,na,np,nf,parentA,parentB){
     if(_d2>SPECIATE_DIST*SPECIATE_DIST){
       try{
         const _pe=lineageRegistry.get(pLin[parentA]);
-        if(_pe&&!_pe.extinct){
+        if(_pe&&!_pe.extinct&&(genome.totalTicks-_pe.birthTick)>SPECIATE_MIN_AGE){
           const _new=createLineage(pLin[parentA]);
           if(_pe.children)_pe.children.push(_new);
           pLin[i]=_new;

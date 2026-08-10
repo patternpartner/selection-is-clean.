@@ -99,8 +99,8 @@ patchOnce(
 // output was printed without it and the absence was not noticed. An unchecked patch is an instrument
 // that lies quietly, which is the exact failure this file collects.
 patchExactly(
-  'if(_pe&&!_pe.extinct){',
-  "if(!__g('speciate_parent',['noEntry',!_pe,'extinct',!!(_pe&&_pe.extinct)])){",
+  'if(_pe&&!_pe.extinct&&(genome.totalTicks-_pe.birthTick)>SPECIATE_MIN_AGE){',
+  "if(!__g('speciate_parent',['noEntry',!_pe,'extinct',!!(_pe&&_pe.extinct),'tooYoung',!!(_pe&&(genome.totalTicks-_pe.birthTick)<=SPECIATE_MIN_AGE)])){",
   'speciate_parent',2);   // both spawn paths: addParticle and addCompound
 
 // #65 — more pure compound gates. Each added because a compound condition reports as ONE boolean and
