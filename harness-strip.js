@@ -224,6 +224,50 @@ const driver=`
       .map(x=>({e:+x.e.toFixed(3),k:+x.k.toFixed(3),r:+x.r.toFixed(3),c:+x.c.toFixed(3),t:+x.t.toFixed(3)}));
   }catch(e){return null} };
   globalThis.__cosmosDefaults=function(){ try{ return {e:genome.entropyBaseline,k:genome.entropyK,r:genome.entrainRate,c:genome.creationCost,t:genome.entrainThresh}; }catch(e){ return null; } };
+  // #70 — LINEAGE LIFESPAN + RECRUITMENT CENSUS. The instrument #69 named as missing. singleFrac is a
+  // snapshot: it counts lineages of size 1 without asking whether they are new lineages on their way up
+  // or lineages that will die alone, and those are opposite readings of the same number. This reports,
+  // per mint site, how many lineages were minted, how many EVER reached 2+ members, and how long they
+  // lived — which separates the two readings. Registry-side only; no simulation state is touched.
+  globalThis.__linCensus=function(){ try{
+    const now=genome.totalTicks, out={}, all={n:0,rec:0,alive:0,lifeSum:0,peakSum:0,zombie:0};
+    const lifeHist=[0,0,0,0,0,0]; // <=60, <=300, <=1000, <=3000, <=10000, >10000 ticks
+    const peakHist={}; // peak membership -> count
+    for(const[lid,e] of lineageRegistry){
+      const s=e.src||'?'; const o=out[s]||(out[s]={n:0,rec:0,alive:0,lifeSum:0,peakMax:0,peakSum:0,zombie:0});
+      const life=(e.extinct?(e.deathTick||now):now)-e.birthTick;
+      const rec=e.peak>1?1:0;
+      o.n++; all.n++; o.rec+=rec; all.rec+=rec; o.lifeSum+=life; all.lifeSum+=life;
+      o.peakSum+=e.peak; all.peakSum+=e.peak; if(e.peak>o.peakMax)o.peakMax=e.peak;
+      o.zombie+=e.zombie|0; all.zombie+=e.zombie|0;
+      if(!e.extinct){ o.alive++; all.alive++; }
+      lifeHist[life<=60?0:life<=300?1:life<=1000?2:life<=3000?3:life<=10000?4:5]++;
+      peakHist[e.peak]=(peakHist[e.peak]||0)+1;
+    }
+    for(const s in out){ const o=out[s];
+      o.recFrac=o.n?+(o.rec/o.n).toFixed(3):0; o.meanLife=o.n?+(o.lifeSum/o.n).toFixed(1):0;
+      o.meanPeak=o.n?+(o.peakSum/o.n).toFixed(2):0; delete o.lifeSum; delete o.peakSum; }
+    // The live singleton population, split by the mint site that produced it. singleFrac's numerator,
+    // finally attributable: a singleton minted by 'founder' is the world handing out a free lineage,
+    // a singleton minted by 'speciate' is a divergence event that has not recruited YET.
+    const cnt={}; for(let i=0;i<N;i++){ if(!palive[i])continue; cnt[pLin[i]]=(cnt[pLin[i]]||0)+1; }
+    const singBySrc={}, liveBySrc={};
+    for(const k in cnt){ const e=lineageRegistry.get(+k), s=e?(e.src||'?'):'UNREGISTERED';
+      liveBySrc[s]=(liveBySrc[s]||0)+1; if(cnt[k]===1)singBySrc[s]=(singBySrc[s]||0)+1; }
+    // Reconciliation: registry + pruned must equal every id ever minted, or the census is partial and
+    // says so rather than reporting a total that merely looks complete.
+    return { tick:now, registry:lineageRegistry.size, minted:nextLineageID-1,
+      pruned:linPruned.n, prunedBySrc:linPruned.bySrc, prunedRecruited:linPruned.everRecruited,
+      complete:(lineageRegistry.size+linPruned.n)===(nextLineageID-1),
+      all:{n:all.n,rec:all.rec,recFrac:all.n?+(all.rec/all.n).toFixed(3):0,alive:all.alive,
+           meanLife:all.n?+(all.lifeSum/all.n).toFixed(1):0,meanPeak:all.n?+(all.peakSum/all.n).toFixed(2):0,
+           zombie:all.zombie},
+      bySrc:out, lifeHist, peakHist, liveBySrc, singBySrc }; }catch(e){ return {error:String(e&&e.message||e)}; } };
+  // #70 — founder-mint count on the PRE-#67 build, where founders came from their own counter. That
+  // build has no census, but _linNext IS the founder tally, so this makes the one number the census
+  // cannot reach on the old code readable under INDEX=. Returns null on any build past #67, where the
+  // variable no longer exists and bySrc.founder.n is the same quantity.
+  globalThis.__linNextVal=function(){ try{ return (typeof _linNext!=='undefined')?_linNext:null; }catch(e){ return null; } };
   globalThis.__metaMag=function(){ // sum of |ATROPHY_SAFE params| on the self — to confirm ablation actually zeroed it
     if(typeof ATROPHY_SAFE==='undefined')return null; let s=0,n=0; for(const p of ATROPHY_SAFE){ if(isFinite(genome[p])){s+=Math.abs(genome[p]);n++;} } return {sum:+s.toFixed(3),n}; };
 })();
@@ -240,4 +284,4 @@ console.log(JSON.stringify({ strip:STRIP, extra:EXTRA, ablated:ABLATE, ablatedBa
   // #59: launchDrive early vs late is the self-administered payout test — see the census comment.
   cosmosDriveEarly:(S[1]&&S[1].cosmos)?S[1].cosmos.drive:null, cosmosDriveLate:(S[S.length-1]&&S[S.length-1].cosmos)?S[S.length-1].cosmos.drive:null,
   cosmos:(S[S.length-1]||{}).cosmos||null,
-  cosmosLog:globalThis.__cosmosLog?globalThis.__cosmosLog():null, cosmosDefaults:globalThis.__cosmosDefaults?globalThis.__cosmosDefaults():null, cosmosBank:globalThis.__cosmosBank?globalThis.__cosmosBank():null, latePurity:lateMean('purity'), latePurityNull:lateMean('purityNull'), latePurityExcess:lateMean('purityExcess'), lateOwned:lateMean('owned'), lateOwnedNull:lateMean('ownedNull'), finalSample:S[S.length-1] }));
+  cosmosLog:globalThis.__cosmosLog?globalThis.__cosmosLog():null, cosmosDefaults:globalThis.__cosmosDefaults?globalThis.__cosmosDefaults():null, cosmosBank:globalThis.__cosmosBank?globalThis.__cosmosBank():null, linCensus:globalThis.__linCensus?globalThis.__linCensus():null, linNext:globalThis.__linNextVal?globalThis.__linNextVal():null, latePurity:lateMean('purity'), latePurityNull:lateMean('purityNull'), latePurityExcess:lateMean('purityExcess'), lateOwned:lateMean('owned'), lateOwnedNull:lateMean('ownedNull'), finalSample:S[S.length-1] }));

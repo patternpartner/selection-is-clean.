@@ -127,8 +127,11 @@ if((process.env.HOT|0)===1) patchOnce(
 // founder set now stays empty by construction, and aliasCarrier going to 0 is the fix's success
 // criterion rather than a vacuous reading — the previous version of this assay reported 0 because the
 // tag sets did not exist yet at boot, which is a different thing entirely and looked identical.
-patchExactly('pLin[i]=(parentA>=0&&parentA<N)?pLin[parentA]:createLineage(0);',
-  'pLin[i]=(parentA>=0&&parentA<N)?pLin[parentA]:(function(){const _v=createLineage(0);globalThis.__lineageMinted&&globalThis.__lineageMinted.add(_v);return _v;})();',
+// #70: the mint sites now carry a `src` tag, so this target string moved. patchExactly asserts the
+// count in both directions, so a stale target fails loudly rather than vanishing from the audit the
+// way the speciate_parent patch did in #67. Kept verbatim-synced with index.html.
+patchExactly("pLin[i]=(parentA>=0&&parentA<N)?pLin[parentA]:createLineage(0,'founder');",
+  "pLin[i]=(parentA>=0&&parentA<N)?pLin[parentA]:(function(){const _v=createLineage(0,'founder');globalThis.__lineageMinted&&globalThis.__lineageMinted.add(_v);return _v;})();",
   'mint-founder',2);   // both spawn paths
 { const N2='pLin[i]=_new;'; const h=code.split(N2).length-1;
   if(h>0) code=code.split(N2).join('pLin[i]=_new; globalThis.__lineageMinted&&globalThis.__lineageMinted.add(_new);'); }

@@ -7879,7 +7879,13 @@ let nextLineageID=1;
 const lineageRegistry=new Map(); // lineageID → {color, birthTick, parentLineage, budCount, lastSeen, extinct, children}
 const MAX_LINEAGE_HISTORY=60; // how many lineages to keep in registry before pruning dead ones
 
-function createLineage(parentLineageID){
+// #70 CENSUS — `src` tags the MINT SITE. #69 left open whether the singleton fraction is speciation
+// working or fragmentation, and named the missing instrument: per-lineage lifespan and recruitment.
+// Neither question is answerable without knowing WHICH mechanism minted each id — post-#67 every
+// parentless particle mints a registry entry too, so "82 lineages" may be 82 speciation events or 82
+// founders that never reproduced, and singleFrac cannot tell those apart. The tag is a string written
+// once at mint; it is read only by instruments and never by the simulation.
+function createLineage(parentLineageID,src){
   const lid=nextLineageID++;
   // Generate a distinctive color from lineage ID — golden ratio hue spacing
   const hue=(lid*137.508)%360;
@@ -7894,7 +7900,13 @@ function createLineage(parentLineageID){
     budCount:0,
     lastSeen:genome.totalTicks,
     extinct:false,
-    children:[] // child lineage IDs (from budding speciation events)
+    children:[], // child lineage IDs (from budding speciation events)
+    // #70 census fields. Written by the lineage census (every 60 ticks, detection cadence) and by
+    // pruneLineages; read only by instruments. Nothing in the simulation branches on any of them.
+    src:src||'?',   // mint site: founder|speciate|cluster|bud|specMint|specDeme
+    peak:0,         // max simultaneous live PARTICLE members ever observed at a census
+    censusN:0,      // live particle members at the most recent census
+    zombie:0        // censuses at which this entry read `extinct` while something still carried it
   });
   if(parentLineageID>0){
     const parent=lineageRegistry.get(parentLineageID);
@@ -7910,11 +7922,21 @@ function getLineageColor(lid){
 }
 
 // Prune extinct lineages that haven't been seen in a long time
+// #70: pruning DELETES census records, so any census read straight off the registry is silently
+// partial once pruning starts. `linPruned` keeps the count and the summed recruitment of what was
+// removed, so an instrument can reconcile registry.size + linPruned.n against nextLineageID-1 and
+// report a hole rather than a total that looks complete. (At the horizons measured so far the cutoff
+// is negative and nothing prunes; this exists so that stops being an unstated assumption.)
+const linPruned={n:0,everRecruited:0,lifeSum:0,bySrc:Object.create(null)};
 function pruneLineages(){
   if(lineageRegistry.size<MAX_LINEAGE_HISTORY)return;
   const cutoff=genome.totalTicks-30000;
   for(const[lid,entry] of lineageRegistry){
     if(entry.extinct&&entry.lastSeen<cutoff&&entry.children.length===0){
+      linPruned.n++;
+      if(entry.peak>1)linPruned.everRecruited++;
+      linPruned.lifeSum+=((entry.deathTick||genome.totalTicks)-entry.birthTick);
+      linPruned.bySrc[entry.src]=(linPruned.bySrc[entry.src]||0)+1;
       lineageRegistry.delete(lid);
     }
   }
@@ -8071,7 +8093,7 @@ function detectClusters(){
         ]),
         // Lineage: new spontaneous clusters get new lineage IDs
         // Persistence inheritance overwrites this in trackClusterPersistence()
-        lineageID:createLineage(0),
+        lineageID:createLineage(0,'cluster'),
       });
       cid++;
     } else {
@@ -8213,13 +8235,30 @@ function trackClusterPersistence(){
   // A lineage is alive if ANY live particle carries it, whether or not a cluster does. Clusters are
   // re-detected by flood-fill every 60 ticks and are a far coarser and more transient object than a
   // lineage; using them as the liveness test made lineage death a rendering artifact of clustering.
-  const livingLineages=new Set();
+  // #70 RECRUITMENT CENSUS. #69's open question — is singleFrac 0.198 speciation working or
+  // fragmentation? — turns on whether a newly minted lineage ever RECRUITS members or dies alone, and
+  // singleFrac is a snapshot that cannot answer it. `peak` is the max simultaneous live-particle
+  // membership this lineage has ever held; with birthTick and deathTick it gives lifespan and
+  // recruitment per lineage, which is the instrument #69 named as missing.
+  // RESOLUTION LIMIT, stated because it bounds every reading taken from this: the census runs at the
+  // detection cadence (60 ticks). A lineage minted and extinguished inside one cadence is recorded
+  // with peak 0 — real, but indistinguishable from a lineage that lived 59 ticks with one member.
+  const linMembers=new Map();
+  for(let i=0;i<N;i++)if(palive[i])linMembers.set(pLin[i],(linMembers.get(pLin[i])||0)+1);
+  const livingLineages=new Set(linMembers.keys());
   for(const c of clusters)if(c.lineageID)livingLineages.add(c.lineageID);
-  for(let i=0;i<N;i++)if(palive[i])livingLineages.add(pLin[i]);
   for(const[lid,entry] of lineageRegistry){
+    const _m=linMembers.get(lid)||0;
+    entry.censusN=_m;
+    if(_m>entry.peak)entry.peak=_m;
     if(!entry.extinct&&!livingLineages.has(lid)){
       entry.extinct=true;
       entry.deathTick=genome.totalTicks;
+    }else if(entry.extinct&&livingLineages.has(lid)){
+      // The flag is never cleared here: `extinct` is read by the speciation gate, so un-setting it
+      // would make this instrument change the dynamics it measures. Counted instead, so a stale flag
+      // shows up as a number rather than as silence.
+      entry.zombie++;
     }
   }
   pruneLineages();
@@ -8380,7 +8419,7 @@ function attemptClusterBudding(){
 
     // Create daughter cluster entry
     // Daughter inherits parent's lineage — same ancestry, divergence happens naturally
-    const daughterLineage=createLineage(c.lineageID);
+    const daughterLineage=createLineage(c.lineageID,'bud');
     const parentEntry=lineageRegistry.get(c.lineageID);
     if(parentEntry)parentEntry.budCount++;
     // Pe22f: daughter's cluster genome is a mutated copy of parent's.
@@ -13117,14 +13156,14 @@ function addParticle(x,y,tv,born,parentA,parentB){
   // 32.9%" result measured alias hit-rate rather than any criterion. That headline is retracted.
   // A founder now mints through createLineage like everything else, so every pLin value IS a registry
   // key with a real birthTick and a real parent.
-  pLin[i]=(parentA>=0&&parentA<N)?pLin[parentA]:createLineage(0);
+  pLin[i]=(parentA>=0&&parentA<N)?pLin[parentA]:createLineage(0,'founder');
   if(parentA>=0&&parentA<N&&tv){
     let _d2=0; for(let _sd=0;_sd<DIMS;_sd++){const _dv=(tv[_sd]||0)-tend[parentA*DIMS+_sd]; _d2+=_dv*_dv;}
     if(_d2>SPECIATE_DIST*SPECIATE_DIST){
       try{
         const _pe=lineageRegistry.get(pLin[parentA]);
         if(_pe&&!_pe.extinct&&(genome.totalTicks-_pe.birthTick)>SPECIATE_MIN_AGE){
-          const _new=createLineage(pLin[parentA]);
+          const _new=createLineage(pLin[parentA],'speciate');
           if(_pe.children)_pe.children.push(_new);
           pLin[i]=_new;
           recordEvent('speciation',{parent:pLin[parentA]|0,child:_new|0,dist:+Math.sqrt(_d2).toFixed(3)},600);
@@ -13203,14 +13242,14 @@ function addCompound(x,y,nt,nvx,nvy,na,np,nf,parentA,parentB){
   // 32.9%" result measured alias hit-rate rather than any criterion. That headline is retracted.
   // A founder now mints through createLineage like everything else, so every pLin value IS a registry
   // key with a real birthTick and a real parent.
-  pLin[i]=(parentA>=0&&parentA<N)?pLin[parentA]:createLineage(0);
+  pLin[i]=(parentA>=0&&parentA<N)?pLin[parentA]:createLineage(0,'founder');
   if(parentA>=0&&parentA<N&&nt){
     let _d2=0; for(let _sd=0;_sd<DIMS;_sd++){const _dv=(nt[_sd]||0)-tend[parentA*DIMS+_sd]; _d2+=_dv*_dv;}
     if(_d2>SPECIATE_DIST*SPECIATE_DIST){
       try{
         const _pe=lineageRegistry.get(pLin[parentA]);
         if(_pe&&!_pe.extinct&&(genome.totalTicks-_pe.birthTick)>SPECIATE_MIN_AGE){
-          const _new=createLineage(pLin[parentA]);
+          const _new=createLineage(pLin[parentA],'speciate');
           if(_pe.children)_pe.children.push(_new);
           pLin[i]=_new;
           recordEvent('speciation',{parent:pLin[parentA]|0,child:_new|0,dist:+Math.sqrt(_d2).toFixed(3)},600);
@@ -19608,7 +19647,7 @@ function specMint(){ // cladogenesis: split off viable, cell-distinct, trait-div
     else if(!diverged&&cellDistinct)specMintBlockDiv++;  // cell-distinct but not yet diverged enough (legitimate hold)
     // MINT here only for 'cell' (stock: needs cell-distinct) and 'relax' (drops cell-distinct). 'cluster' mints below.
     if((mode==='cell'&&cellDistinct&&diverged)||(mode==='relax'&&diverged)){
-      const nl=createLineage(g.l); linParent.set(nl,g.l); linBirthTick.set(nl,tick); linBirthSameCell.set(nl,!cellDistinct); // MINT — #67: through createLineage so pLin is a registry key (was _linNext++, a second namespace)
+      const nl=createLineage(g.l,'specMint'); linParent.set(nl,g.l); linBirthTick.set(nl,tick); linBirthSameCell.set(nl,!cellDistinct); // MINT — #67: through createLineage so pLin is a registry key (was _linNext++, a second namespace)
       for(const i of g.idx)pLin[i]=nl;
       for(let d=0;d<DIMS;d++)specMintAxisSq[d]+=_axScr[d]; // control: where REAL (minted) divergence lives
       specMintCount++;
@@ -19636,7 +19675,7 @@ function specMint(){ // cladogenesis: split off viable, cell-distinct, trait-div
       if(Math.sqrt(dist)<__SPEC.divT)continue;            // (b) diverged
       let bc=0,bcell=0; const cc=new Map();               // cohort's modal niche-cell, to flag same-cell (permissive) mints
       for(const i of g.idx){ const c=nicheCellOf(i), v=(cc.get(c)||0)+1; cc.set(c,v); if(v>bc){ bc=v; bcell=c; } }
-      const nl=createLineage(g.l); linParent.set(nl,g.l); linBirthTick.set(nl,tick); linBirthSameCell.set(nl,bcell===linModalCell.get(g.l)); // #67: through createLineage (was _linNext++)
+      const nl=createLineage(g.l,'specDeme'); linParent.set(nl,g.l); linBirthTick.set(nl,tick); linBirthSameCell.set(nl,bcell===linModalCell.get(g.l)); // #67: through createLineage (was _linNext++)
       for(const i of g.idx)pLin[i]=nl;
       specMintCount++;
     }

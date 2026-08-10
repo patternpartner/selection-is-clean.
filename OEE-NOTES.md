@@ -5157,3 +5157,57 @@ stage of this arc — vacuous gate included, where nLin hit 204 and singletons 5
 headline metric never noticed. Falsifier 2 existed only because #63 had made me suspicious enough to
 write it down, and it is the only reason any of this surfaced. A pre-registered band is not protection
 if the band is measuring the wrong quantity.
+
+---
+
+## #70 — the lineage lifespan and recruitment census. The instrument #69 named, built and controlled.
+
+#69 ended on an open question and, unusually for this file, on a specification for the thing that would
+close it: *"a per-lineage lifespan and recruitment census — for each minted lineage, ticks survived and
+peak member count."* Until that exists, "0.198 singletons is fragmentation" and "0.198 singletons is
+speciation working" are both stories, and this session's stories have been wrong seven times.
+
+### What was built
+
+Three fields on each registry entry, written by the existing lineage census (detection cadence, 60
+ticks) and read only by instruments:
+
+- **`src`** — the MINT SITE, tagged at `createLineage`. Six exist and they are not the same mechanism:
+  `founder` (a parentless spawn), `cluster` (a spontaneous cluster at detection), `bud` (cluster
+  budding), `speciate` (trait-divergence in `addParticle`/`addCompound`), `specMint` / `specDeme`
+  (cladogenesis, `__MINT_GATE` cell vs cluster mode). #69 could not ask its own question without this:
+  post-#67 every parentless particle mints a registry entry too, so "82 lineages" could be 82
+  divergence events or 82 founders that never reproduced, and `singleFrac` cannot tell those apart.
+- **`peak`** — max simultaneous live-particle membership ever observed. With `birthTick` and the
+  already-present `deathTick` this gives lifespan and recruitment per lineage.
+- **`zombie`** — censuses at which the entry read `extinct` while something still carried it. The
+  `extinct` flag is deliberately NOT cleared: it is read by the speciation gate, so un-setting it would
+  make the instrument change the dynamics it measures. A stale flag becomes a number instead of silence.
+
+`linPruned` accumulates what `pruneLineages` deletes, so `registry + pruned === minted` is checkable and
+a partial census reports as partial rather than as a total that merely looks complete.
+
+**Stated resolution limit, because it bounds every reading below:** the census runs at the detection
+cadence. A lineage minted and extinguished inside one 60-tick cadence records `peak` 0 — real, but not
+distinguishable from a lineage that lived 59 ticks holding one particle.
+
+### Falsifiers
+
+1. **CONTROL — DOES THE INSTRUMENT MOVE THE SYSTEM?** It adds no `Math.random()` draws and writes only
+   fields nothing branches on. Predicted bit-identical output against the pre-census build on every
+   reported field. **If any field differs the census is discarded and rebuilt** — an instrument that
+   perturbs its subject is #68's finding 4 again, and that one shifted a whole seeded trajectory from a
+   knob meant to isolate one opcode.
+2. **WHERE DO THE SINGLETONS COME FROM?** Predicted: the live singleton population is dominated by
+   `founder`, not by either speciation mechanism. **This prediction is NOT blind** — it is read off
+   1000- and 3000-tick pilots (seeds 11, 13) run while building the instrument, and it is recorded here
+   as a pilot-informed prediction rather than dressed up as foresight. What is genuinely open is
+   whether it survives to 12000, the horizon #66 established as the only one this project may draw a
+   diversity verdict at.
+3. **DO NEW LINEAGES RECRUIT?** `recFrac` (share ever reaching 2+ members) per mint site at 12000
+   ticks. No prediction.
+4. **IS THE CENSUS COMPLETE AND HONEST?** `registry + pruned === minted`, and `zombie` reports whether
+   `extinct` is stale.
+
+Protocol: #66's. 12000 ticks, 5 seeds (3, 7, 11, 17, 23 — the #66/#69 set), with the pre-#67 build run
+under `INDEX=` at the same horizon rather than compared to a remembered number.
