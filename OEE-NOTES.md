@@ -5419,3 +5419,91 @@ control was attached to.
 Recorded now, before the 12000-tick runs, with the numbers that exist: one seed, 1500 ticks. Whether
 escapees accumulate, hold a growing share of amplitude, or are cleaned up by senescence is exactly what
 the 5-seed protocol is for, and the pilot-inversion warning above applies to this too.
+
+### #71 RESULT — the clamp headline survives the horizon; my escapee reading does not
+
+12000 ticks, 5 seeds (3, 7, 11, 17, 23), 0 loop errors and 0 driver errors on every seed.
+
+**The clamp census, and the pre-registered prediction.** I predicted the 300-tick pilot would UNDERSTATE
+binding once genomes had drifted into their ceilings. Partly right, and the part that mattered was wrong:
+
+| | 300 ticks (pilot) | 12000 ticks (5 seeds) |
+|---|---|---|
+| sites never called | 574 of 801 | **322-365 of 801** |
+| sites that ever bind | 30 | **60-70** |
+| evaluations | 3.6M | **237-264M** |
+| **overall bind rate** | **0.0253** | **0.0196-0.0365** |
+
+Roughly 230 more sites get exercised and the number that ever bind doubles — the direction I predicted.
+**The rate does not move.** Across a quarter of a billion clamp evaluations per run, 2-4% bind, and 40%
+of clamp sites are never reached at all. **The headline survives the horizon test: the 801 clamps are
+not what is closing this substrate.** That is against the hypothesis I put up before measuring, and it
+takes the clamps off the list of things to remove.
+
+**Where binding IS concentrated** (pooled, 5 seeds):
+
+| line | evaluations | binds | rate | site |
+|---|---|---|---|---|
+| 15727 | 1.5M | 1.4M | **0.968** | VM case 9, position→field lookup |
+| 516 | 10.5M | 9.3M | **0.892** | `R[4]=__cl(amp[i],0,1)` — render register |
+| 12965 | 3.1M | 2.2M | **0.722** | `pReflexState[rBase+2]` |
+| 527 | 13.7M | 9.3M | **0.680** | `__DRAW_VM` radius / alpha |
+| 13254 | 21.0M | 3.9M | 0.187 | colour channel |
+| 617 | **344.0M** | 0.74M | 0.002 | `_cxi=__cl(Math.floor(px[i]/_fw),0,FIELD_W-1)` |
+
+Line 516 is worth its own note: **amplitude fed to a render register saturates 89% of the time**, so
+that sensor is pinned at 1 in nine reads out of ten and carries well under a bit. A sensor that constant
+is not an input. Same shape as #68's finding 6 — a channel calibrated for a range the system left long
+ago — and the same shape as the "near-inert channel" pattern generally.
+
+### RETRACTION — the escapee population does not accumulate, and I said it at 1500 ticks
+
+Last entry recorded 8 of 310 live particles off-world at 1500 ticks on seed 11, 2.6%, and left open
+whether they accumulate. **They do not.** At 12000 ticks:
+
+| seed | alive | off-world | non-finite | beyond 10^6 screens | in clusters | amp held off-world |
+|---|---|---|---|---|---|---|
+| 3 | 397 | 1 | 1 | 1 | 1 | 0.25% |
+| 7 | 308 | **0** | 2 | 0 | 0 | 0 |
+| 11 | 361 | 3 | 1 | 2 | 3 | 0.85% |
+| 17 | 372 | 7 | 3 | 6 | 7 | 1.74% |
+| 23 | 351 | **0** | 0 | 0 | 0 | 0 |
+| **pooled** | **1789** | **11 (0.62%)** | **7** | **9** | **11 of 11** | — |
+
+Seed 11 is the direct comparison: **8 off-world at 1500 ticks, 3 at 12000, while the population grew
+310 -> 361**, and amplitude held off-world fell 2.8% -> 0.85%. Two of five seeds finish with none at
+all. The ordinary economy collects them. **"Escapees accumulate" was a 1500-tick, one-seed story and it
+is withdrawn** — the third time this session a pilot horizon has produced a wrong verdict, after #70's
+falsifier and the clamp pilot above, and the only one of the three I stated to the user before the
+protocol had run.
+
+**What survives, and it is still the point.** Across five 12000-tick runs: **7 particles finished alive
+with non-finite positions**, 11 finished off-world with xMax 2.29e32, and **all 11 were assigned to
+clusters**, so cluster centroids and tendencies were computed over members at 10^32. The mechanism is
+confirmed: position is never clamped, the field index derived from it is (line 617, 344M evaluations,
+743,800 binds), so leaving the world is absorbed into an edge-cell read instead of throwing.
+
+The corrected claim is narrower and sharper than the one I withdrew. It is not that escapees pile up.
+It is that **nothing kills them for being at 10^32.** They are removed, eventually, by exactly the same
+starvation and senescence that removes a healthy particle — the substrate has no way to express "this
+state is fatal", only "this state is expensive". That is regime 3 stated precisely, and it is a stronger
+result than an accumulation count would have been, because it does not depend on how many there are.
+
+**NaN passthrough**, measured because a clamp cannot correct what fails both its comparisons: 0, 18, 20,
+38, 46 across the five seeds. Small, non-zero on four of five, and no instrument in this project would
+have reported it.
+
+### What this does to the guardrail question
+
+The user's premise — open-endedness needs mutations that can break things — is not answered by removing
+clamps. The census took that option off the table: 2-4% bind, 40% of sites never fire, and the heavy
+binders are render-path. **The candidates that remain are the ones #70 named and this measured around:**
+the modulo folding on every VM register index, the dispatch switch with no `default:`, and the absence
+of any path by which a particle's own state can be fatal to it. The escapee is the existence proof for
+the third: a state that is meaningless, unreachable by any instrument, and survivable.
+
+Named for the next wave, not done here: a lethality path. The minimal version is not "allow crashes" —
+it is a `default:` case and a finiteness test that KILL the particle rather than repairing or folding
+it, so that the same event which is currently absorbed becomes an ordinary death with an ordinary
+selective consequence. Pre-registering it needs a control that separates "lethality improved diversity"
+from "lethality reduced the population", which the #70 census plus `lateN` can do.
