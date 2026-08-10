@@ -5078,3 +5078,33 @@ measurement had already been over. The instruments caught what they were pointed
 what nothing was pointed at, and two of its findings (the aliasing, the audit patch matching zero
 times) invalidated conclusions this file had already recorded as results. Measurement and reading are
 not substitutes for each other.
+
+---
+
+## #69 — the #67 namespace fix under the #66 protocol. Pre-registered.
+
+#67 changed lineage identity across the whole system — founders and both `specMint` sites now mint
+through `createLineage` — and it has never been measured. #66 established the protocol: 12000+ ticks,
+>=5 seeds, prior build at the SAME horizon rather than against a remembered number. The control already
+exists: the `h12k-*` runs were taken at #66, before #67, on these seeds, at this horizon.
+
+### Falsifiers
+
+1. **DOES THE REGISTRY GROW WITHOUT BOUND?** The named risk. Every founder now creates a registry
+   entry, and #63's fix marks entries non-extinct while any live particle carries them, while
+   `pruneLineages` only deletes extinct ones. Non-extinct entries were already seen rising 84 -> 108 at
+   3000 ticks. If registry size grows superlinearly to 12000, the fix is a memory leak on a piece that
+   must run on a phone, and that outweighs any diversity result.
+2. **DOES SPECIATION NOW RUN AWAY?** `speciate_parent` passes 100% post-fix (the gate is vacuous), so
+   divergence alone mints lineages. If `nLin` explodes and `singleFrac` stays high at 12k — rather than
+   radiating and consolidating as seed 23 did in #64 — the fix has traded a broken gate for unbounded
+   fragmentation.
+3. **KINDS** against the pre-#67 12k values, +/-2.0 band, 5 seeds. No prediction. #66 showed this
+   metric does not carry between horizons and that the band is roughly two standard errors at n=3;
+   at n=5 it is tighter but still wide.
+4. **ECONOMY**: `lateN` and `lateMeanAmp` against the same control, plus 0 loop errors.
+
+Stated in advance: the #67 fix was made because the old code was WRONG — `lineageRegistry.get(pLin[x])`
+returned another lineage's record for 316 of 324 particles and speciation recorded fabricated parentage.
+Correctness is the reason it stands. If it costs diversity it still stands, and the cost is recorded as
+a cost; a fix for fabricated data does not need to also improve a metric to be justified.
