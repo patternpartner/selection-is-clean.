@@ -267,7 +267,13 @@ const driver=`
   // build has no census, but _linNext IS the founder tally, so this makes the one number the census
   // cannot reach on the old code readable under INDEX=. Returns null on any build past #67, where the
   // variable no longer exists and bySrc.founder.n is the same quantity.
-  globalThis.__linNextVal=function(){ try{ return (typeof _linNext!=='undefined')?_linNext:null; }catch(e){ return null; } };
+  // Both counters, so their RANGES are comparable rather than assumed. On the pre-#67 build founders
+  // draw from _linNext and speciated children from nextLineageID; if those ranges overlap, a speciated
+  // child can be relabelled with an id a living founder already holds, and two distinct lineages read
+  // as one. That is a different failure from the one #67 fixed (a lookup returning a foreign record)
+  // and it would DEFLATE nLin rather than inflate it.
+  globalThis.__linNextVal=function(){ try{ return {linNext:(typeof _linNext!=='undefined')?_linNext:null,
+    lineageIDNext:(typeof nextLineageID!=='undefined')?nextLineageID:null}; }catch(e){ return null; } };
   globalThis.__metaMag=function(){ // sum of |ATROPHY_SAFE params| on the self — to confirm ablation actually zeroed it
     if(typeof ATROPHY_SAFE==='undefined')return null; let s=0,n=0; for(const p of ATROPHY_SAFE){ if(isFinite(genome[p])){s+=Math.abs(genome[p]);n++;} } return {sum:+s.toFixed(3),n}; };
 })();
