@@ -5344,3 +5344,78 @@ traffic on the `pLin[i]=_new` route, and that route carried nothing pre-#67 beca
 opened. The hypothesis was #67's known aliasing restated on a path with no flow, and the simpler
 already-established fact accounts for the entire gap without it. Recorded here because a hypothesis
 that dies quietly gets re-proposed later.
+
+---
+
+## #71 — the clamp census. Built to ask which guardrails fire; found a class of particle nothing can see.
+
+**Premise, stated because it is the user's and not mine:** true open-ended evolution needs mutations that
+can break things. #70's mechanism finding supports it — every VM register index is folded
+(`Math.abs(src)%12`, `%8`, `%MEM_SIZE`), the dispatch switch has **no `default:`** so an unrecognised
+opcode is a silent no-op, and 801 `__cl()` call sites bound the rest. No mutation can produce a program
+that breaks.
+
+**Where I would refine it, because it changes what to build.** There are three regimes, not two:
+crash-the-host (an uncaught throw halts the world — correctly prevented; Tierra and Avida don't allow
+this either), lethal-to-the-individual (a bad program kills its particle — **absent from this codebase
+entirely**), and silently-absorbed. This system is in the third, which is worse for evolution than
+either of the others: a broken genome neither dies nor works, so selection sees nothing either way.
+**It is free.** That is a mechanism for the repeated "channel measures near-inert" finding — the
+substrate makes inertness cost nothing.
+
+So: measure which guardrails actually fire before removing any. `harness-clamp.js` rewrites every
+`__cl(` CALL SITE (never the definition) to a counting variant returning identical values, and reports
+per site: evaluations, binds at lo, binds at hi, and NaN passthroughs — NaN fails both comparisons, so
+it leaves a clamp UNCHANGED, the one way a clamp silently fails at its job. Harness-side only;
+`index.html` carries nothing, for the reason `harness-gates.js` rewrites gates here rather than
+shipping counters to a phone.
+
+**Falsifier 1 (control): PASSED.** `NOCOUNT=1` is the no-rewrite arm; `fingerprint` is a checksum over
+live particle state (positions, amplitudes, tendencies, lineage ids, program lengths) rather than a
+summary of it. Identical across arms, seeds 11 and 13, 1500 ticks. Two scalars agreeing would not have
+been a control.
+
+### The pilot says the clamps are NOT the constraint — and this is pre-registered as possibly wrong
+
+At 300 ticks, seed 11: **801 sites, 574 never called at all, 30 ever bound, overall bind rate 2.5%.**
+The heaviest binders are render-path (`__DRAW_VM` radius/alpha saturating 64-79%, the colour channel
+22%) — a saturated channel, but not one under selection in a headless harness.
+
+**Pre-registered, in advance of the 12000-tick runs: I expect this to UNDERSTATE binding, and the
+direction is principled rather than a hedge.** At 300 ticks the genome has barely evolved; clamps on
+evolved physics constants cannot bind until lineages have drifted into their ceilings. #70's falsifier
+died precisely this way — true at 3000 ticks, inverted by 12000 — so a pilot-shaped verdict on 801
+sites is exactly the error this file has now made twice. Protocol: 12000 ticks, 5 seeds (3, 7, 11, 17,
+23).
+
+### What the CONTROL found, which is not what the census was pointed at
+
+`fingerprint.pos` came back `null`. Not NaN — **overflow**. Positions summed to -2.2e8 at 300 ticks and
+to Infinity by 1500. Measured directly, seed 11 at 1500 ticks, 310 live particles:
+
+| | |
+|---|---|
+| off-world | 8 (2.6%) |
+| of those, beyond 10^6 screens | **5** |
+| non-finite position, still alive | **1** |
+| xMax | **4.6e31** |
+| yMin | **-2.0e31** |
+| amplitude held off-world | 2.8% of the total |
+| **off-world particles assigned to a cluster** | **8 of 8** |
+
+**Particle position is never clamped. The FIELD INDEX derived from it is** — `const
+fcx=__cl(Math.floor(px[i]/_rcW),1,FIELD_W-2)`, binding 5% of the time. So a particle at x=4.6e31 does
+not throw on an out-of-bounds array read; it is silently binned into the edge cell, flood-fills with
+whatever is there, and **joins a cluster**. Cluster centroids, sizes and tendencies are being computed
+over members at 10^31.
+
+This is regime 3 in its purest available form. The particle does not crash the world (`loopErrors` 0 on
+every run in this session). It does not die. It interacts with nothing. It counts toward `alive`,
+toward `lateN`, toward every population figure this project has ever recorded, and it holds amplitude
+inside a conserved economy. **No instrument in this project could see it** — which is why it has been
+here through seventy entries, and why it was found by a control checksum rather than by the census the
+control was attached to.
+
+Recorded now, before the 12000-tick runs, with the numbers that exist: one seed, 1500 ticks. Whether
+escapees accumulate, hold a growing share of amplitude, or are cleaned up by senescence is exactly what
+the 5-seed protocol is for, and the pilot-inversion warning above applies to this too.
