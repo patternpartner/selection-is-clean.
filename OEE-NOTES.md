@@ -5108,3 +5108,52 @@ Stated in advance: the #67 fix was made because the old code was WRONG — `line
 returned another lineage's record for 316 of 324 particles and speciation recorded fabricated parentage.
 Correctness is the reason it stands. If it costs diversity it still stands, and the cost is recorded as
 a cost; a fix for fabricated data does not need to also improve a metric to be justified.
+
+### #69 RESULT — partial mitigation, and the baseline it was measured against is not a valid target
+
+Restored criterion, #66 protocol (12000 ticks, 5 seeds), against both the vacuous-gate build and the
+pre-#67 build at the same horizon:
+
+| | pre-#67 | vacuous gate | criterion restored |
+|---|---|---|---|
+| mean nLin | 13.8 | 110.4 | **82.2** |
+| mean singleFrac | 0.012 | 0.287 | **0.198** |
+| mean kinds | 6.84 | 5.96 | 5.76 |
+| mean lateN | 369.0 | 369.1 | 373.1 |
+
+Restoring `SPECIATE_MIN_AGE` cut singletons 31% and lineage count 25%. It is a **partial mitigation,
+not a cure** — and on seeds 11 and 23 it did nothing at all (73 -> 104, 162 -> 168). Kinds -1.08 against
+the pre-#67 baseline, inside the band; economy healthy; 0 loop errors across all five seeds.
+
+**THE COMPARISON IS INVALID AND THAT IS THE POINT.** The pre-#67 baseline of singleFrac 0.012 was
+measured on a build where speciation-by-divergence NEVER FIRED — #62 established 0 passes in 208
+evaluations. It is the singleton fraction of a system with no speciation in it. Treating it as the
+target means treating "the mechanism is broken" as the goal, which is what the whole #62-#67 arc was
+about escaping.
+
+**And the number is genuinely ambiguous.** A newly speciated lineage IS a singleton until it
+reproduces, so part of 0.198 is exactly what working speciation looks like and part may be the churn
+pathology waves 1-2 cured. Those are opposite readings of one statistic. The waves 1-2 claim was never
+about singleton COUNT — 77% singletons meant nothing was descending — so the distinguishing question is
+whether these new lineages **recruit members or die alone**, and **no instrument in this project tracks
+lineage lifespan or per-lineage growth.** `singleFrac` is a snapshot and cannot answer it, exactly as
+`occupiedKinds` cannot distinguish selective pruning from monoculture (established earlier in this
+file, and re-learned here).
+
+**So this is left OPEN rather than resolved, and the missing instrument is named:** a per-lineage
+lifespan and recruitment census — for each minted lineage, ticks survived and peak member count. Until
+that exists, "0.198 singletons is fragmentation" and "0.198 singletons is speciation working" are both
+stories, and this record's whole convention is that stories of that shape have been wrong seven times
+in this session.
+
+**What stands:** #67 (correctness — the lookup was returning foreign records for 316 of 324 particles),
+#69's restoration (the criterion is load-bearing for the first time: `tooYoung` blocks 25% and is the
+sole blocker every time, while `noEntry` and `extinct` are now the inert terms — a complete reversal of
+the pre-fix audit). Both are justified on mechanism. Neither is justified on diversity, and neither is
+claimed to be.
+
+**A note on the band, because it would have waved this through.** Kinds came in inside +/-2.0 at every
+stage of this arc — vacuous gate included, where nLin hit 204 and singletons 53%. The pre-registered
+headline metric never noticed. Falsifier 2 existed only because #63 had made me suspicious enough to
+write it down, and it is the only reason any of this surfaced. A pre-registered band is not protection
+if the band is measuring the wrong quantity.
