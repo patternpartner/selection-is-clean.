@@ -6166,3 +6166,54 @@ exactly the asymmetry that produces a wrong headline.
 
 `ATOM_HERITABLE=0` consumes no extra draws, so the off arm reproduces the prior build bit-identically and
 IS the historical baseline #66's protocol compares against.
+
+### #80 RESULT — fixation in every seed, no diversity cost, and the pilot inverted again
+
+12000 ticks, 5 seeds, treatment vs `ATOM_HERITABLE=0`. 0 loop errors and 0 driver errors in all ten runs.
+
+| seed | seeded | carriers @12k | transfers | atom invocations | kinds ON/OFF | alive ON/OFF |
+|---|---|---|---|---|---|---|
+| 3 | 16 | 360 | 565 | 12,555,451 | 10 / 7 | 361 / 362 |
+| 7 | 10 | 353 | 843 | 10,569,386 | 4 / 5 | 353 / 346 |
+| 11 | 12 | 352 | 309 | 6,747,422 | 4 / 6 | 352 / 354 |
+| 17 | 12 | 332 | 528 | 5,176,757 | 5 / 4 | 333 / 368 |
+| 23 | 7 | 342 | 527 | 8,581,820 | 5 / 3 | 342 / 354 |
+
+**Carrier fraction at 12000: 1.00 on every seed.** Every live particle carries an authored primitive.
+The trajectories are the same shape in all five — a single carrier around t=2000-3000, then sigmoid to
+fixation by t≈9000. 5.2 to 12.6 million invocations from particle programs, against zero in the off arm
+and zero in every measurement this project has taken before this wave.
+
+**Diversity: kinds ON 5.60 vs OFF 5.00, delta +0.60, sd 2.07, standard error 0.93 at n=5. Does not clear
+noise — a null.** The 6000-tick pilot in the previous entry read **-3.0** and it has inverted to +0.6.
+**That is the fourth pilot in this session to invert at 12000** (#70's falsifier, #71's escapee rate,
+#74's program share, now this), and the fourth time the pre-registered refusal to read it was the only
+thing that prevented a wrong headline.
+
+**Population: alive ON 348.2 vs OFF 356.8, delta -8.6, sd 16.2, SE 7.2 — 1.2 standard errors, does not
+clear either, but worse in 4 of 5 seeds.** Recorded as a possible small cost that this design cannot
+resolve, not as a null and not as a finding.
+
+### The pre-registered falsifier, answered
+
+The parasite signature was: **carriers rise while kinds and lateN fall, consistently across seeds.**
+Carriers rose to fixation everywhere; kinds did not fall. **The selfish-element reading is not
+confirmed**, and the channel stands without needing a toll attached to it.
+
+**But fixation is evidence of TRANSMISSIBILITY, not of benefit, and this result does not distinguish
+them.** At MEME_RATE 0.004 per qualifying contact across ~350 particles, a strictly neutral element
+would also reach fixation on roughly this timescale. Three readings remain consistent with the data —
+the primitive pays, the primitive is neutral and transmission outruns drift, or the primitive costs a
+little and transmission outruns selection — and the -8.6 on population is exactly the size the third
+would produce.
+
+**Named, not claimed:** the measurement that separates them is a carrier-versus-non-carrier comparison
+taken DURING the spread, while both classes exist — mean amplitude and per-capita reproduction at
+t=4000-6000, when carriers sit near 30%. After fixation there is no contrast left to measure, which is
+why it has to be sampled in the window rather than at the end. The #75 sampler already walks every live
+genome each window and would need one added split.
+
+**What stands:** the bound-slot namespace is live for the first time — dead through #74 and #75, and
+dead by construction before that. An authored primitive now enters the population, spreads horizontally,
+is inherited, and executes from particle programs millions of times per run. Whether it is worth
+carrying is a separate question, it is unanswered, and the instrument for it is named above.
