@@ -88,6 +88,35 @@ if(!NOCOUNT) code=code.replace(/__cl\(/g,(m,off)=>{
 if(!NOCOUNT && defSeen!==1){ console.log(JSON.stringify({error:'expected exactly 1 __cl definition, saw '+defSeen})); process.exit(1); }
 if(!NOCOUNT && !sites.length){ console.log(JSON.stringify({error:'no __cl call sites found'})); process.exit(1); }
 
+// #77 probe: is the ambient `genome` inside executeVM the PARTICLE's genome? If it is, the two guards
+// there were already per-lineage and #76's "all five read the global list" is wrong for those two.
+{ const A="      const _og=(__ATOM_DISPATCH&&pGenome[i])?pGenome[i]:genome;";
+  if(code.split(A).length-1===1) code=code.replace(A, A+"{const _S=globalThis.__ogp=globalThis.__ogp||{same:0,diff:0,noP:0};if(!pGenome[i])_S.noP++;else if(genome===pGenome[i])_S.same++;else _S.diff++;}");
+}
+{ const B="    if(__ATOM_XFER){ if(pGenome[i]){ const _dn=";
+  if(code.split(B).length-1===1) code=code.replace(B, "    if(__ATOM_XFER){ if(pGenome[i]){ {const _T=globalThis.__dnp=globalThis.__dnp||{selfIsParticle:0,selfIsOther:0};if(genome===pGenome[i])_T.selfIsParticle++;else _T.selfIsOther++;} const _dn=");
+}
+
+// ── #77 TRANSFER DIAGNOSTIC ─────────────────────────────────────────────────────────────────────
+// Both arms came back bit-identical with memeTransfers 0, so the reversal changed nothing and the
+// germline-unproven hypothesis is refuted (germProven 2-7, germUses 567-1377). That leaves two very
+// different states the counter cannot distinguish: the function is never CALLED, or it is called and
+// returns at a guard. Counting calls and each return reason separates them.
+{ const A='function attemptMemeTransfer(recv,donor){';
+  if(code.split(A).length-1!==1){ console.log(JSON.stringify({error:'attemptMemeTransfer anchor x'+(code.split(A).length-1)})); process.exit(1); }
+  code=code.replace(A, A+'globalThis.__xf=globalThis.__xf||{calls:0,noDonor:0,noProven:0,dup:0,cap:0,ok:0};globalThis.__xf.calls++;');
+  const G1='  if(!recv||!donor||!Array.isArray(donor.userAtoms)||!Array.isArray(donor.boundOpcodes)||!donor.boundOpcodes.length)return;';
+  if(code.split(G1).length-1===1) code=code.replace(G1,'  if(!recv||!donor||!Array.isArray(donor.userAtoms)||!Array.isArray(donor.boundOpcodes)||!donor.boundOpcodes.length){globalThis.__xf.noDonor++;return;}');
+  const G2='  if(bestAI<0)return;';
+  if(code.split(G2).length-1===1) code=code.replace(G2,'  if(bestAI<0){globalThis.__xf.noProven++;return;}');
+}
+// count the guarded CALL SITE separately: how often the proximity+rate lottery actually opens
+{ const C='if(__MEME_ON&&proximity>MEME_PROX_THRESH&&Math.random()<MEME_RATE){';
+  if(code.split(C).length-1===1) code=code.replace(C, C+'globalThis.__xfSite=(globalThis.__xfSite||0)+1;');
+  const P='if(__MEME_ON&&proximity>MEME_PROX_THRESH)';
+  code=code.replace('const bond=sim*phaseAlign*proximity;','globalThis.__proxMax=Math.max(globalThis.__proxMax||0,proximity);const bond=sim*phaseAlign*proximity;');
+}
+
 // ── #74 UNRECOGNISED-OPCODE RATE ────────────────────────────────────────────────────────────────
 // #73 settled that the next lethality target should be the dispatch `default:` — an unrecognised
 // opcode IS heritable by construction, unlike escape. What is not known is whether making it fatal is
@@ -262,6 +291,9 @@ const driver=`
              on:(typeof __ESCAPE_DEATH!=='undefined'?!!__ESCAPE_DEATH:null),
              nearEscapes:near, meanSpeed:n?+(sum/n).toFixed(4):0, maxSpeed:+mx.toFixed(4) };
   }catch(e){ return {error:String(e&&e.message||e)}; } };
+  globalThis.__memeDiag=function(){ try{ return { ogProbe:globalThis.__ogp||null, dnProbe:globalThis.__dnp||null, MEME_ON:(typeof __MEME_ON!=='undefined'?__MEME_ON:null),
+    ATOM_XFER:(typeof __ATOM_XFER!=='undefined'?__ATOM_XFER:null), rate:MEME_RATE, thresh:MEME_PROX_THRESH,
+    siteOpened:globalThis.__xfSite||0, proxMax:globalThis.__proxMax||0, xf:globalThis.__xf||null }; }catch(e){ return {error:String(e&&e.message||e)}; } };
   globalThis.__opcodes=function(){ try{
     const sites=[]; for(let i=0;i<6;i++) sites.push({site:i,
       exec:__opAll[i], miss:__opMissN[i], missCore:__opMissCore[i], missBound:__opMissBound[i],
@@ -326,7 +358,7 @@ const nanSites=rows.filter(r=>r.nan>0).sort((a,b)=>b.nan-a.nan).slice(0,TOP);
 
 console.log(JSON.stringify({
   seed:process.env.SEED||null, ticks:TICKS, index:process.env.INDEX||'index.html', nocount:NOCOUNT,
-  fingerprint, posRange:globalThis.__posRange(), escape:globalThis.__escape(), escSeries:globalThis.__escSeries||null, boundSeries:globalThis.__boundSeries||null, deathLineages:globalThis.__deathLineages?globalThis.__deathLineages():null, opcodes:globalThis.__opcodes?globalThis.__opcodes():null,
+  fingerprint, posRange:globalThis.__posRange(), escape:globalThis.__escape(), escSeries:globalThis.__escSeries||null, boundSeries:globalThis.__boundSeries||null, deathLineages:globalThis.__deathLineages?globalThis.__deathLineages():null, opcodes:globalThis.__opcodes?globalThis.__opcodes():null, memeDiag:globalThis.__memeDiag?globalThis.__memeDiag():null,
   loopErrors, lastErr, driverErr:globalThis.__driverErr||0,
   alive:globalThis.__aliveN(), kinds:globalThis.__kinds(),
   sites:NS, sitesNeverCalled:neverCalled, sitesEverBound:everBound,

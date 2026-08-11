@@ -5980,3 +5980,76 @@ particle genomes that does not currently exist: authoring into lineages, or reve
 direction, or seeding at clone time. That is a three-part mechanism change, not the one-line redirect it
 appeared to be, and it is not being written on the strength of a session that has now produced three
 instruments incapable of answering their own question.
+
+---
+
+## #78 — LEAP 35 REVERTED. Both halves were no-ops, and #76 was wrong too. Three retractions from reading instead of measuring.
+
+The user asked for (a) the `executeVM` bound guard and (b) per-lineage dispatch with the transfer
+direction reversed. (a) was already void by #76. **(b) is now void as well, and the reason invalidates
+#76's own diagnosis.**
+
+### The measurement
+
+`executeVM` is called from line 18951 as:
+
+```
+const _g=genome; genome=pGenome[_drv]||genome; try{ ... executeVM(_drv,_oth,sim,d); ... }finally{genome=_g;}
+```
+
+**The ambient `genome` is swapped to the particle's own genome for the whole call.** Probed at the
+transfer call site inside `executeVM`, 1500 ticks, seed 11: `genome===pGenome[i]` on **1280 of 1280**
+evaluations, never otherwise.
+
+Two consequences, both fatal to LEAP 35:
+
+1. **`ATOM_DISPATCH` was a no-op.** The two guards inside `executeVM` read the ambient `genome`, which
+   during particle execution IS `pGenome[i]`. They were **already** resolving per-lineage. `_og===genome`
+   always, which is exactly why treatment and control came back bit-identical on all three seeds.
+2. **`ATOM_XFER`'s germline fallback resolved to the particle itself.** `_dn = ... : genome` under the
+   swap is `pGenome[i]` — an empty list — so `attemptMemeTransfer` returned at its first guard on every
+   call. Measured: `calls 1793, noDonor 1793` at 2000 ticks; `calls 1280, noDonor 1280` at 1500. Never
+   once past the first line.
+
+### What this retracts
+
+**#76 claimed "all five dispatch guards read the GLOBAL `genome.boundOpcodes`, so per-lineage lists are
+dead state." Wrong for the two inside `executeVM`.** During particle execution those read the particle's
+own list. The lists are READ. They are simply never WRITTEN — authoring happens in `mutateGenome`, which
+runs unswapped on the self genome, and no path carries an atom from there into any particle genome.
+
+And my germline-unproven hypothesis from the LEAP 35 commit is refuted by its own telemetry: `germProven`
+2-7, `germUses` 567-1377. Proven atoms exist. The transfer never got far enough to look at them.
+
+### The pattern, stated because it is now the most reliable finding of the session
+
+Three retractions in a row, all from the same act: **reading a 1.5MB file through grep windows and
+inferring structure.** #75 said a guard was missing — it was 2000 lines past the window. #76 said the
+guards read a global — they read an ambient that is swapped. #77 built a fix on both. Every one of these
+was refuted in minutes by a probe that printed what the code actually did at runtime.
+
+The measured findings in this session have held up; **every claim about STRUCTURE that I did not probe
+has been wrong.** In a file with a 236-case switch spanning two thousand lines and a global that is
+reassigned per particle, static reading is not evidence. The rule this file already applies to results
+now has to apply to code: if it was not observed executing, it is a hypothesis.
+
+### State
+
+LEAP 35 is reverted from `index.html` (bit-identical to `92dc582`; verified it parses). The harness
+diagnostics are KEPT — `__memeDiag` with the call/return-reason counters and the swap probe are what
+found this, and they are the instrument the next attempt needs.
+
+### The corrected design, named not written
+
+The gap is now located exactly: **atoms are authored into the self genome and nothing carries them into
+a particle genome.** Contact transfer particle-to-particle is the right spread mechanism and its
+direction is now understood, but it needs a first carrier, and inside `executeVM` there is no handle to
+the self genome to seed from — `genome` is the particle there.
+
+So the seeding must happen where the self genome IS ambient: **at the authoring site in `mutateGenome`,
+inject the newly bound atom into one live particle genome.** One infection per authoring, from which the
+reversed contact transfer spreads it. That requires no germline handle inside the hot loop and touches
+one place.
+
+**Before writing it, `mutateGenome`'s call sites (12753, 20580) must be PROBED, not read, to confirm they
+run unswapped.** That is the exact assumption that has failed three times, and it is cheap to check.
