@@ -6369,3 +6369,43 @@ So the position stands where #81 left it, with a number attached: **an authored 
 seed, is executed millions of times per run, and confers no benefit larger than ~4% on amplitude or
 detectable at all on reproduction.** Neutral-and-transmissible remains the best-supported reading. It is
 still not proven, and the cost of proving it is now known rather than guessed.
+
+---
+
+## #83 — 45 seeds. Pre-registered, and the only thing that can move the bound.
+
+#82 established that the power limit is **seed count, not sampling resolution**: between-seed sd is
+0.0336 and adding windows inside a seed leaves that untouched. The 95% bound on a hidden amplitude
+benefit stood at **4% of the amplitude scale** and tightening it to ~1% needs SE ~0.005, which at that sd
+is roughly 45 seeds. This is that run: **45 seeds x 2 arms x 12000 ticks, 250-tick sampling.**
+
+Seeds are the 5 already used (3, 7, 11, 17, 23) plus 40 further primes, so the existing results are a
+subset of the new set rather than a separate experiment.
+
+**Both arms are kept, for two reasons.** The pre-registered estimator is real-minus-sham and changing it
+mid-arc would make the comparison to #81/#82 meaningless. And at n=45 the sham arm's OWN carrier
+advantage — 1.46 SE at n=5, which #82 explicitly refused to round down to zero — gets a roughly threefold
+tighter standard error, so **falsifier 2 becomes decidable rather than merely undetected.** That answer
+determines whether every future carrier measurement in this project needs a control arm at all, which is
+worth as much as the headline.
+
+**Engineering, recorded because a long run has failure modes a short one does not.** ~9 core-hours on 4
+cores, about 2.5 hours wall clock, and this container has already restarted once mid-session. The runner
+is therefore **resumable** — any output that exists and is non-empty is skipped — and writes to a `.tmp`
+that is only renamed after a completeness check on the closing brace, so a killed run cannot leave a
+half-written file that later reads as done. A prior batch in this session was analysed while three of ten
+files were still being written; the guard exists because of that.
+
+### Falsifiers
+
+1. **DOES THE ATOM PAY?** Carrier-minus-non-carrier amplitude and per-capita births, real minus sham, at
+   n=45. **No prediction offered**: five stated expectations have failed this session, the most recent
+   being my own account of why the previous test was underpowered.
+2. **IS THERE A POSITION CONFOUND?** The sham arm alone. At n=45 this is answerable; at n=5 it was not.
+3. **BOUND.** Whatever the point estimate, the 95% interval is the deliverable. A null at n=45 that
+   bounds the effect below ~1% is a materially different statement from a null at n=5 that bounds it
+   below 4%, and it is the statement this run exists to produce.
+
+Recorded in advance: **a null here does not become proof of neutrality.** It becomes a tighter bound, and
+the difference between those two readings is the entire reason the previous four nulls were not written
+up as "the primitive is neutral".
