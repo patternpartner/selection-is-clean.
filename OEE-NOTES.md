@@ -5689,3 +5689,67 @@ first-crossing-only marker per particle that survives index recycling, which is 
 pass. Named here rather than left to be reinvented.
 
 Protocol: 12000 ticks, 5 seeds (3, 7, 11, 17, 23), treatment arm.
+
+### #73 RESULT — no concentration. The janitor reading stands, with the caveat it was pre-registered with.
+
+12000 ticks, 5 seeds, treatment arm, 20000 permutations per seed.
+
+| seed | escape deaths | lineages hit | max in one lineage | observed pairs | null mean | p |
+|---|---|---|---|---|---|---|
+| 3 | 18 | 17 | 2 | 1 | 3.00 | 0.870 |
+| 7 | 39 | 24 | **8** | **40** | 19.50 | **0.033** |
+| 11 | 29 | 23 | 4 | 9 | 6.29 | 0.231 |
+| 17 | 31 | 27 | 3 | 5 | 6.51 | 0.597 |
+| 23 | 28 | 21 | 6 | 17 | 11.45 | 0.195 |
+
+**Fisher combined X2 = 14.33 on 10 df against a 18.31 critical value. Does not clear.** The
+pre-registered falsifier required p<0.05 AND consistent sign; the sign is not consistent — three seeds
+sit above their null, **two sit below it**. One seed at p=0.033 out of five is what multiple testing
+produces on its own: P(at least one hit at alpha=0.05 across 5 seeds) = **22.6%**.
+
+**And seed 7 does not survive being looked at.** Its concentration is carried by two LARGE lineages
+whose escape share is barely elevated:
+
+| lineage | escape deaths | total deaths in that lineage | escape share |
+|---|---|---|---|
+| 244 | 8 | 163 | 5% |
+| 1514 | 4 | 93 | 4% |
+| 25 | **3** | **5** | **60%** |
+| population baseline | 39 | 1591 | **2.45%** |
+
+Lineages 244 and 1514 run at 2x baseline, which is not a strategy, and they dominate the statistic for a
+reason that is my instrument's fault: **co-lineage pairs is QUADRATIC in per-lineage count, so it is
+driven by whichever lineage is largest**, and large lineages have more of everything. The permutation
+weighting controls for that in expectation but the statistic still has high variance from big lineages
+and low power against diffuse heritability. A per-lineage RATE statistic would have been the better
+choice. Lineage 25 — 3 of its 5 deaths by escape — is the only row here that looks like a trait, and it
+is five deaths.
+
+**Verdict: no detectable concentration. The janitor reading from #72 stands.** Per the pre-registration
+this is reported as ambiguous and not as proof: the treatment arm removes escapers, so it erases the
+signal it is testing for, and the honest statement is "no concentration detectable under a test that
+prunes what it looks for" — not "escape is not heritable".
+
+### Where this leaves the guardrail question
+
+Three waves have now converged on one statement. #71: the substrate can express "expensive" but not
+"fatal". #72: adding a fatal state removed the garbage and changed nothing that evolves. #73: the state
+it made fatal is not detectably heritable, so there was nothing there for selection to act ON.
+
+**The premise survives; the target was wrong.** Lethality does not produce selection by being lethal. It
+produces selection when the lethal state is reachable by something inherited — and escape, as far as
+this can measure, is a numerical accident that any lineage can have.
+
+**Which settles the next target without needing another measurement to justify it.** The opcode dispatch
+`default:` case is reachable by inheritance BY CONSTRUCTION: an unrecognised opcode sits in `pProg`, is
+copied to offspring by `cloneGenome`, is spread by crossover and by the RECOMBINE opcode, and is
+currently a free no-op that costs its carrier nothing. That is the opposite of escape on the one axis
+these three waves have shown to matter. It does not need a heritability assay first, because opcode
+content being heritable is not an empirical question about this system.
+
+**Open, and named rather than assumed:** whether a `default:` that costs or kills is survivable at all.
+Mutation produces unrecognised opcodes at some rate this project has never measured, and if that rate is
+high, a fatal `default:` is a population-extinction event rather than a selection pressure. **The
+measurement that must precede that wave is the unrecognised-opcode rate per program per tick** — cheap,
+harness-side, and it decides between the fatal and the metabolic-cost version of the change before
+either is written.
