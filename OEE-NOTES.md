@@ -6279,3 +6279,48 @@ against 620 for non-carriers, which is a null so exact that it should be treated
 five seeds say otherwise.
 
 Protocol: 12000 ticks, 5 seeds, real arm and sham arm.
+
+### #81 RESULT — no detectable atom effect, a confound that turned out not to exist, and an underpowered test
+
+12000 ticks, 5 seeds, real arm and sham arm. Windows counted only where carriers sit between 10% and 90%.
+
+**Falsifier 3 (validity of the control): PASSES.** The sham spreads like the real thing — carriers at
+12000 read 360/307, 353/361, 352/372, 332/354, 342/345 (real/sham), from 7-16 seedings on both sides.
+The atom's own output is not feeding its transmission, so the arms are comparable and the subtraction is
+legitimate.
+
+**Falsifier 2 (is the position confound real?): NO.** The sham arm's own carrier advantage is
+**dAmp +0.0172, sd 0.0326** (SE 0.0146, ~1.2 SE) and **dBirths/capita +7.3, sd 509** (SE 228). Neither
+is distinguishable from zero. **Contact-acquired carrier status does not predict amplitude or
+reproduction**, so the confound the sham was built to subtract is not measurably there. The sham was
+unnecessary — and that is a result, not wasted work: the next version of this measurement can use the
+raw split at half the compute, which it could not have justified beforehand.
+
+**Falsifier 1 (does the atom pay?): NULL on both measures.**
+
+| real minus sham | mean | sd | SE | sign consistency |
+|---|---|---|---|---|
+| carrier amplitude advantage | **-0.0106** | 0.0472 | 0.0211 | positive in 2/5 |
+| carrier per-capita birth advantage | **+124.9** | 430.5 | 192.5 | positive in 3/5 |
+
+Both under 0.7 standard errors, neither consistent in sign. **There is no evidence the primitive does
+anything for the particles carrying it**, on either the energy currency or the reproductive one.
+
+**And the test is underpowered, which is stated rather than buried.** The spread crosses the 10-90% band
+in only **3 to 7 sampling windows per seed**, because fixation arrives by t~9000 and the sampler runs
+every 1000 ticks. With that few windows the estimator cannot exclude a small real effect — it can only
+say that nothing large is present. The fix is not more seeds, it is **a 250-tick sampling cadence during
+the spread**, which would give roughly four times the windows at no extra simulation cost.
+
+### What the whole arc now says
+
+#80 put an authored primitive into every particle in every seed and had it executed millions of times
+per run. #81 finds no benefit to the carriers. Together these are consistent with **a neutral element
+that fixes because transmission outruns drift** — which is exactly the reading #80 pre-registered as
+indistinguishable and refused to resolve, and it remains the best-supported one rather than a proven one.
+
+That is not a failure of the wave. **The bound-slot namespace went from structurally dead to live and
+saturated**, which is a capability the system did not have, and the question of whether its CONTENT is
+worth anything is now answerable by measurement instead of unanswerable in principle. Before #80 there
+was nothing to measure. The honest summary is: **the channel works, the cargo is unproven, and the
+instrument that would prove it needs four times the sampling resolution.**
