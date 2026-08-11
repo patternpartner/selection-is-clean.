@@ -88,6 +88,28 @@ if(!NOCOUNT) code=code.replace(/__cl\(/g,(m,off)=>{
 if(!NOCOUNT && defSeen!==1){ console.log(JSON.stringify({error:'expected exactly 1 __cl definition, saw '+defSeen})); process.exit(1); }
 if(!NOCOUNT && !sites.length){ console.log(JSON.stringify({error:'no __cl call sites found'})); process.exit(1); }
 
+// ── #73 DEATH PROVENANCE ────────────────────────────────────────────────────────────────────────
+// #72 found the escape kill has no selective consequence — the death rate is flat after burn-in — and
+// inferred that escape is an ACCIDENT rather than a heritable strategy. That was an inference. This
+// measures it: tag every death with its cause AND the lineage of the particle that died, so the escape
+// distribution can be tested against the distribution of all other deaths. If escape were heritable it
+// would concentrate in lineages; if it is a numerical excursion it is spread in proportion to exposure,
+// and other-cause deaths are the exposure proxy that needs no new per-tick accounting.
+// Harness-side, like the clamp rewrite: index.html carries none of this.
+function patchExactly(find,repl,label,expected){
+  const n=code.split(find).length-1;
+  if(n!==expected){ console.log(JSON.stringify({error:'patch '+label+' x'+n+' expected '+expected})); process.exit(1); }
+  code=code.split(find).join(repl);
+}
+for(const [cause,marker] of [['escape','deathsByEscape++;'],['physics','deathsByPhysics++;'],['age','deathsByAge++;']]){
+  patchExactly('deaths.push(i);deathsThisTick++;'+marker,
+               'deaths.push(i);deathsThisTick++;'+marker+'__dTag("'+cause+'",pLin[i]);',
+               'death-'+cause, 1);
+}
+code = 'const __dLog={escape:new Map(),physics:new Map(),age:new Map()};\n'
+     + 'function __dTag(c,l){const m=__dLog[c];if(m)m.set(l,(m.get(l)||0)+1);}\n'
+     + code;
+
 // __clS is __cl plus counters. Identical return for identical input, no randomness, so the trajectory
 // cannot move. NaN is tallied apart from binds: x<lo and x>hi are both false for NaN, so a NaN sails
 // through unchanged — the clamp reports success while having done nothing.
@@ -167,6 +189,9 @@ const driver=`
              on:(typeof __ESCAPE_DEATH!=='undefined'?!!__ESCAPE_DEATH:null),
              nearEscapes:near, meanSpeed:n?+(sum/n).toFixed(4):0, maxSpeed:+mx.toFixed(4) };
   }catch(e){ return {error:String(e&&e.message||e)}; } };
+  globalThis.__deathLineages=function(){ try{ const o={};
+    for(const k in __dLog){ const e=[]; for(const [l,n] of __dLog[k]) e.push([l,n]); o[k]=e; } return o;
+  }catch(e){ return {error:String(e&&e.message||e)}; } };
   globalThis.__aliveN=function(){ try{ let a=0; for(let i=0;i<N;i++)if(palive[i])a++; return a; }catch(e){ return -1; } };
   globalThis.__kinds=function(){ try{ const b={}; for(let i=0;i<N;i++){ if(!palive[i])continue;
       const q=i*DIMS; let r=0; for(let d=0;d<3&&d<DIMS;d++){ let v=((tend[q+d]+1.2)/2.4*4)|0; v=v<0?0:v>3?3:v; r=r*4+v; } b[r]=1; }
@@ -198,7 +223,7 @@ const nanSites=rows.filter(r=>r.nan>0).sort((a,b)=>b.nan-a.nan).slice(0,TOP);
 
 console.log(JSON.stringify({
   seed:process.env.SEED||null, ticks:TICKS, index:process.env.INDEX||'index.html', nocount:NOCOUNT,
-  fingerprint, posRange:globalThis.__posRange(), escape:globalThis.__escape(), escSeries:globalThis.__escSeries||null,
+  fingerprint, posRange:globalThis.__posRange(), escape:globalThis.__escape(), escSeries:globalThis.__escSeries||null, deathLineages:globalThis.__deathLineages?globalThis.__deathLineages():null,
   loopErrors, lastErr, driverErr:globalThis.__driverErr||0,
   alive:globalThis.__aliveN(), kinds:globalThis.__kinds(),
   sites:NS, sitesNeverCalled:neverCalled, sitesEverBound:everBound,

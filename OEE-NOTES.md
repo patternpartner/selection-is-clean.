@@ -5642,3 +5642,50 @@ precede the `default:` wave, because it is the same question asked where the ans
 1e32, 7 particles per 5 runs no longer finish alive with non-finite positions, and the substrate can now
 express "fatal" for the first time. None of that is claimed to have improved diversity, and the
 measurement says it did not.
+
+---
+
+## #73 — is escape HERITABLE? The measurement #72 named instead of assuming. Pre-registered.
+
+#72 killed the escapees, the death rate came back flat after burn-in, and I concluded that lethality
+only produces selection when the lethal state is reachable by a heritable strategy — escape being an
+accident rather than a program. **That last clause was an inference, not a measurement**, and it is the
+clause the next wave's target selection rests on. This measures it.
+
+### Instrument
+
+Every death is tagged harness-side with its cause AND the lineage of the particle that died —
+`patchExactly` on all three `deaths.push(i)` sites, asserting one match each. `index.html` carries none
+of it, the #71 rule. Verified at 600 ticks: 3 escape / 306 physics / 19 age, and the escape log total
+agrees with `deathsByEscape` exactly, which is the internal check that the tag is on the path it claims.
+
+**The null needs no new per-tick accounting.** If escape is an accident it should be distributed like
+any other death — both proportional to a lineage's exposure — so other-cause deaths ARE the exposure
+proxy. Test: assign the E escape deaths at random to lineages weighted by each lineage's TOTAL deaths,
+20000 permutations, statistic = co-lineage escape pairs (sum of C(k,2)). This assumes nothing about the
+shape of the lineage-size distribution, which is the reason for a permutation test rather than a
+chi-square on 2000 mostly-empty cells.
+
+### Falsifier
+
+**CONCENTRATED (p<0.05, and consistent in sign across seeds) → escape IS heritable**, the janitor
+reading in #72 is wrong, the flat rate needs a different explanation, and the escape kill may yet have a
+selective consequence that 12000 ticks was too short to show. **NOT CONCENTRATED → the janitor reading
+stands**, and with it the claim that the opcode `default:` is the better next target because opcode
+content is inherited and escape is not.
+
+### The confound, stated in advance, with its direction
+
+**The treatment arm selects against the trait it is measuring.** An escaping particle is removed, so a
+strongly heritable escape tendency would be pruned as fast as it appeared and would show up here as
+LESS concentration than it truly has. So the test is conservative: **a positive result is trustworthy, a
+null is ambiguous.** The direction matters for how the answer may be read — a null cannot be reported as
+"escape is definitely not heritable", only as "no concentration detectable under a test that erases what
+it looks for".
+
+The stronger design, if this returns null: tag escape-threshold crossings in the `ESCAPE_DEATH=0` arm
+where the particle is NOT removed, so heritability is not being erased while it is measured. It needs a
+first-crossing-only marker per particle that survives index recycling, which is why it is not in this
+pass. Named here rather than left to be reinvented.
+
+Protocol: 12000 ticks, 5 seeds (3, 7, 11, 17, 23), treatment arm.
