@@ -170,10 +170,33 @@ const driver=`
   // that drive unbounded velocity should make the rate DECLINE; a janitor collecting a constant trickle
   // of garbage should make it FLAT. Sampled per window, cumulative counter differenced.
   globalThis.__escSeries=[];
-  globalThis.__run=function(n,win){ win=win||1000; let prev=0;
+  // #75 BOUND-SLOT OCCUPANCY. 'bos.push(...)' fills the 96 authored-atom slots as a DENSE PREFIX, and
+  // cloneGenome slices the list, so each lineage has its own frontier: opcode CORE_OPCODES+k resolves
+  // iff k < that particle's own bos.length. Two consequences worth measuring rather than reasoning
+  // about. First, every dead bound opcode is structurally a pseudogene — it comes alive if the frontier
+  // ever advances past it, which is the pre-adaptation the bound-slot design exists to permit. Second,
+  // the SAME instruction is functional in one lineage and inert in another, purely by genetic
+  // background. Sampled per window: the self frontier, atoms authored, and the live population's bound
+  // instructions split into resolving vs waiting.
+  globalThis.__boundSeries=[];
+  globalThis.__sampleBound=function(t){ try{
+    const bosSelf=(genome.boundOpcodes||[]).length, atoms=(genome.userAtoms||[]).length;
+    let live=0,waiting=0,mn=1e9,mx=-1,sum=0,np=0,maxWait=0;
+    for(let i=0;i<N;i++){ if(!palive[i]||!pProg[i])continue;
+      const bg=(pGenome[i]&&Array.isArray(pGenome[i].boundOpcodes))?pGenome[i].boundOpcodes:(genome.boundOpcodes||[]);
+      const f=bg.length; np++; sum+=f; if(f<mn)mn=f; if(f>mx)mx=f;
+      for(const ins of pProg[i]){ if(!ins)continue; const op=ins[0]|0;
+        if(op>=CORE_OPCODES&&op<CORE_OPCODES+MAX_BOUND_OPCODES){
+          const k=op-CORE_OPCODES;
+          if(k<f)live++; else { waiting++; if(k>maxWait)maxWait=k; } } } }
+    globalThis.__boundSeries.push({t, bosSelf, atoms, MAX:MAX_BOUND_OPCODES,
+      frontierMin:np?mn:0, frontierMax:np?mx:0, frontierMean:np?+(sum/np).toFixed(2):0,
+      boundInstLive:live, boundInstWaiting:waiting, highestWaitingSlot:maxWait});
+  }catch(e){ globalThis.__boundSeries.push({t,error:String(e&&e.message||e)}); } };
+  globalThis.__run=function(n,win){ win=win||1000; let prev=0; globalThis.__sampleBound(0);
     for(let s=0;s<n;s++){ globalThis.__detMs+=5; try{loop();}catch(e){ globalThis.__driverErr=(globalThis.__driverErr||0)+1; }
       if((s+1)%win===0){ let cur=0; try{ cur=(typeof deathsByEscape!=='undefined')?deathsByEscape:0; }catch(e){}
-        globalThis.__escSeries.push(cur-prev); prev=cur; } } };
+        globalThis.__escSeries.push(cur-prev); prev=cur; globalThis.__sampleBound(s+1); } } };
   // Census accessors live in the SIM module's scope for the same reason __metaMag does — read from the
   // harness file directly they come back undefined, silently.
   globalThis.__clampDump=function(){ if(typeof __clCalls==='undefined')return []; const o=[]; for(let i=0;i<__clCalls.length;i++)
@@ -297,7 +320,7 @@ const nanSites=rows.filter(r=>r.nan>0).sort((a,b)=>b.nan-a.nan).slice(0,TOP);
 
 console.log(JSON.stringify({
   seed:process.env.SEED||null, ticks:TICKS, index:process.env.INDEX||'index.html', nocount:NOCOUNT,
-  fingerprint, posRange:globalThis.__posRange(), escape:globalThis.__escape(), escSeries:globalThis.__escSeries||null, deathLineages:globalThis.__deathLineages?globalThis.__deathLineages():null, opcodes:globalThis.__opcodes?globalThis.__opcodes():null,
+  fingerprint, posRange:globalThis.__posRange(), escape:globalThis.__escape(), escSeries:globalThis.__escSeries||null, boundSeries:globalThis.__boundSeries||null, deathLineages:globalThis.__deathLineages?globalThis.__deathLineages():null, opcodes:globalThis.__opcodes?globalThis.__opcodes():null,
   loopErrors, lastErr, driverErr:globalThis.__driverErr||0,
   alive:globalThis.__aliveN(), kinds:globalThis.__kinds(),
   sites:NS, sitesNeverCalled:neverCalled, sitesEverBound:everBound,
