@@ -10965,6 +10965,10 @@ const inst={
   opcodeHist:[],      // opcode frequency in global program over time
 };
 let deathsByPhysics=0,deathsByAge=0;
+// LEAP 34 (#72) — ESCAPE IS FATAL. Cumulative, never reset: this is the tally that says whether the
+// mechanism fires at all, and a per-cycle counter would hide a rate of one per thousand ticks.
+let deathsByEscape=0, escapeNonFinite=0;
+let __ESCAPE_DEATH=true; // resolved after the LIVE block, same pattern as __DRAWVM/__REACH_ON. Force off with ESCAPE_DEATH=0
 let deathsBySurge=0; // LEAP 33 (#58) — telemetry only. A SUBSET tally, not a partition of deathsByAge:
                      // an old particle that surges dry is counted in both, which is the honest reading
                      // since the two hazards are added, not chosen between.
@@ -13385,6 +13389,43 @@ function applyEntropy(){
       {const _txi=__cl(Math.floor(px[i]/(W/FIELD_W)),0,FIELD_W-1),_tyi=__cl(Math.floor(py[i]/(H/FIELD_H)),0,FIELD_H-1),_tox=inhibitorField[_tyi*FIELD_W+_txi];if(_tox>0.05){const _dmg=_tox*Math.max(0,1-pResistance[i])*0.018/MODE_DEFENCE[pMode[i]];amp[i]-=_dmg;}pResistance[i]*=0.997;} // INHIBITOR DAMAGE + RESISTANCE DECAY: inhibitor deals up to 1.8% amp/tick at zero resistance; resistance decays 0.3%/tick — must be actively maintained via RESISTANCE_BOOST (op215)
       if(energyAdequacy<1)amp[i]-=(1-energyAdequacy)*STARVE_DRAIN; // starvation: the world couldn't feed everyone this tick
       if(isNaN(amp[i]))amp[i]=0;
+      // ═══ LEAP 34 (#72) — ESCAPE IS FATAL. The first state in this system that can kill you. ═══
+      // #71 measured what the substrate does with a particle that leaves the world: nothing. Position is
+      // never clamped, but the FIELD INDEX derived from it is (line ~617, 344M evaluations, 743k binds),
+      // so a particle at x=2.29e32 does not fault on an out-of-bounds read — it is silently binned into
+      // the edge cell, flood-fills from there, and JOINS A CLUSTER. Measured at 12000 ticks across 5
+      // seeds: 11 live particles off-world, 7 alive with NON-FINITE positions, all 11 cluster members,
+      // so cluster centroids and tendencies were being computed over members at 1e32.
+      // Nothing killed them for it. They were removed eventually by the same starvation that removes a
+      // healthy particle, because the substrate could express "expensive" but had no way to express
+      // "fatal". That is the whole of #71's finding and this is the minimal answer to it: the state is
+      // now lethal to its carrier, through the ORDINARY death path, so every existing piece of
+      // bookkeeping — detrital deposit, worldEnergy return, the amplitude redistribution pass — applies
+      // unchanged. No special-case removal, because a special-case removal would be a fourth regime.
+      // THRESHOLD, and why it is not a tuned parameter: #71 measured a GAP. Legitimate off-edge
+      // particles sit within one screen of the world (the spawner launches from x=-5 and W+5); every
+      // escapee measured was at 1e17 or beyond. Nothing at all lives in between. Any threshold inside
+      // that gap gives identical results, so this number is not a knob the result is sensitive to.
+      // NO GRACE EXEMPTION, deliberately: #17's founder grace protects a young lineage from STARVING in
+      // the cradle. It is not a licence to be at 1e32, and a lineage that only survives by holding
+      // members outside the world is not a lineage the grace period was written to protect.
+      if(__ESCAPE_DEATH && palive[i]){
+        const _ex=px[i], _ey=py[i];
+        const _nf=!(_ex>-Infinity&&_ex<Infinity)||!(_ey>-Infinity&&_ey<Infinity); // NaN and +/-Infinity both
+        const _far=!_nf&&(_ex<-W||_ex>W*2||_ey<-H||_ey>H*2);
+        if(_nf||_far){
+          if(_nf)escapeNonFinite++;
+          deaths.push(i);deathsThisTick++;deathsByEscape++;
+          palive[i]=0;
+          // Deliberately NO detrital or root deposit and NO worldEnergy return. Those write to a field
+          // cell derived from this particle's position, and this particle's position is exactly what is
+          // not trustworthy — depositing at the clamped edge cell would put its body somewhere it never
+          // was. The amplitude it held leaves the economy with it, which is a real subtraction and is
+          // measured as one rather than papered over.
+          amp[i]=0;
+          continue;
+        }
+      }
       const _ig=specInGrace(pLin[i]); // #17: a freshly-minted lineage is young/small → death-relief so it doesn't die in the cradle
       const _deathT=_ig?genome.deathThreshold*0.25:genome.deathThreshold;
       if(amp[i]<_deathT && _ig && __COLO.surv){
@@ -19484,6 +19525,7 @@ if(typeof globalThis!=='undefined'){
   for(const k in LIVE) if(globalThis[k]===undefined) globalThis[k]=LIVE[k];
 }
 __DRAWVM=(typeof globalThis!=='undefined'&&(globalThis.__DRAW_VM|0)===1); // resolve the render-VM toggle now that LIVE defaults are filled
+__ESCAPE_DEATH=(typeof globalThis==='undefined')||((globalThis.__ESCAPE_DEATH??1)|0)!==0; // LEAP 34 (#72) — resolve escape lethality once. Defaults ON: #71 established the current behaviour is wrong (cluster centroids computed over members at 1e32), and correctness is the reason it stands, not a diversity result
 __REACH_ON=(typeof globalThis==='undefined')||((globalThis.__REACH??1)|0)!==0; // resolve REACH once (LIVE defaults filled); referenced in the per-instruction hot loop
 __FORAGE_ON=(typeof globalThis==='undefined')||((globalThis.__FORAGE_EYES??1)|0)!==0; // resolve FORAGE once; gates the resource-sense computation in uaSetEyes
 __DECIDE_ON=(typeof globalThis==='undefined')||((globalThis.__DECIDE??1)|0)!==0; // resolve DECISION GAIN once; gates confidence accrual + commitment scaling

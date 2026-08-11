@@ -5507,3 +5507,60 @@ it is a `default:` case and a finiteness test that KILL the particle rather than
 it, so that the same event which is currently absorbed becomes an ordinary death with an ordinary
 selective consequence. Pre-registering it needs a control that separates "lethality improved diversity"
 from "lethality reduced the population", which the #70 census plus `lateN` can do.
+
+---
+
+## #72 — LEAP 34: escape is fatal. The first state in this system that can kill you. Pre-registered.
+
+#71 established that this substrate can express "expensive" but has no way to express "fatal", and that
+the clamps are not what closes it (2-4% bind rate, 40% of sites never reached). What it can't do is kill
+a particle for the state it is in. The escapee is the existence proof: at 12000 ticks across 5 seeds, 11
+live particles off-world, 7 alive with non-finite positions, xMax 2.29e32, **all 11 assigned to
+clusters** — so cluster centroids and tendencies were computed over members at 1e32, and nothing
+anywhere treated that as an error.
+
+### The mechanism, and what was deliberately left out
+
+A particle whose position is non-finite, or is further outside the world than the measured gap, dies
+**through the ordinary death path** — `deaths.push`, `deathsThisTick`, `palive[i]=0` — so every existing
+piece of bookkeeping applies unchanged. A special-case removal would have been a fourth regime.
+
+- **The threshold is not a tuned parameter.** #71 measured a GAP: legitimate off-edge particles sit
+  within one screen (the spawner launches from x=-5 and W+5); every escapee measured was at 1e17 or
+  beyond; **nothing lives in between.** Any threshold inside that gap gives identical results. It is set
+  at one world-dimension outside, and the result is not sensitive to it.
+- **No grace exemption.** #17's founder grace protects a young lineage from STARVING in the cradle. It
+  is not a licence to be at 1e32, and a lineage surviving only by holding members outside the world is
+  not what the grace period was written to protect.
+- **No detrital deposit, no root deposit, no worldEnergy return.** Those write to a field cell derived
+  from the dead particle's position, and that position is exactly what is not trustworthy — depositing
+  at the clamped edge cell would bury the body somewhere it never was. **The amplitude it held leaves
+  the economy with it.** That is a real subtraction; it is recorded as one rather than papered over.
+- **Default ON**, resolved after the LIVE block like `__DRAWVM`. Forced off with `ESCAPE_DEATH=0`, which
+  is the control arm. It defaults on because #71 established the current behaviour is WRONG, not because
+  a metric is expected to move — the #67 precedent.
+
+### Falsifiers
+
+1. **DOES IT FIRE?** `deathsByEscape` > 0 across 5 seeds. A pilot at 800 ticks on seed 11 gives 3 escape
+   deaths, so this is close to answered already; if it came back 0 at 12000 the mechanism would be inert
+   and would be reverted rather than kept as documentation.
+2. **DOES IT DO THE JOB?** `offWorld` and `nonFinite` at 12000 ticks should go to ~0 in the treatment arm
+   against 11 and 7 in the control. This is the direct success criterion and the only one the mechanism
+   is actually claimed to satisfy.
+3. **POWER — STATED IN ADVANCE SO A NULL CANNOT BE MISREAD.** The intervention touches ~0.6% of the
+   population. **No diversity metric in this project has the power to detect a 0.6% intervention.** A
+   flat `kinds` and a flat `lateN` are the EXPECTED outcome and must not be reported as "no effect" or,
+   worse, as "harmless". The justification is correctness. This is the #67/#69 pattern: a fix for wrong
+   data does not need to also improve a metric to be justified.
+4. **THE INTERESTING ONE — DOES LETHALITY PRODUCE SELECTION?** This is the user's thesis under test.
+   If escape is fatal, VM programs driving unbounded velocity are now selected against, and the leading
+   indicator is `nearEscapes` (live particles outside the world but not yet past the kill line) plus
+   `maxSpeed`. **Prediction: if lethality has a selective consequence, nearEscapes and maxSpeed fall in
+   the treatment arm relative to control.** If they are flat, the kill removes garbage after the fact
+   without ever changing what evolves — a real and negative finding about adding lethality, and the one
+   worth knowing.
+5. **CONSERVATION AND SAFETY.** 0 loop errors, 0 driver errors, `lateN` inside a +/-2 sd band.
+
+Protocol: 12000 ticks, 5 seeds (3, 7, 11, 17, 23), treatment vs `ESCAPE_DEATH=0` control at the same
+horizon — #66's rule, and the arm exists this time rather than being a remembered number.

@@ -57,7 +57,7 @@ globalThis.setTimeout=()=>0;globalThis.clearTimeout=()=>{};globalThis.setInterva
 // that cannot be turned off is not a control, so the plumbing goes in before any ablation claim does.
 // Same one-line form as harness-oee.js.
 if (process.env.COSMOS !== undefined) globalThis.__COSMOS = parseInt(process.env.COSMOS, 10);
-for (const kn of ['COSMOS_COST','COSMOS_CONTACT','COSMOS_MERGE','COSMOS_SENSE','COSMOS_AFFORD'])
+for (const kn of ['COSMOS_COST','COSMOS_CONTACT','COSMOS_MERGE','COSMOS_SENSE','COSMOS_AFFORD','ESCAPE_DEATH'])
   if (process.env[kn] !== undefined) globalThis['__'+kn] = parseInt(process.env[kn], 10);
 let loopErrors=0,lastErr='';
 console.error=(...a)=>{const s=a.join(' ');if(/Loop error|Boot error|Watchdog/.test(s)){loopErrors++;lastErr=s.slice(0,160);}};
@@ -145,6 +145,19 @@ const driver=`
             ampOffFrac:(ampIn+ampOut)>0?+(ampOut/(ampIn+ampOut)).toFixed(4):0,
             xMin:mnx, xMax:mxx, yMin:mny, yMax:mxy, W, H};
   }catch(e){ return {error:String(e&&e.message||e)}; } };
+  // #72 falsifier 4. Lethality only matters if it has a SELECTIVE consequence — if programs that drive
+  // unbounded velocity are now selected against. Near-escapes (live particles outside the world but not
+  // yet past the kill threshold) are the leading indicator: they should FALL in the treatment arm if
+  // selection is acting, and stay flat if the kill merely removes garbage after the fact.
+  globalThis.__escape=function(){ try{ let mx=0,sum=0,n=0,near=0;
+    for(let i=0;i<N;i++){ if(!palive[i])continue; n++;
+      const vxi=vx[i],vyi=vy[i]; if(isFinite(vxi)&&isFinite(vyi)){ const sp=Math.sqrt(vxi*vxi+vyi*vyi); sum+=sp; if(sp>mx)mx=sp; }
+      const x=px[i],y=py[i]; if(isFinite(x)&&isFinite(y)&&(x<0||x>W||y<0||y>H))near++; }
+    return { deathsByEscape:(typeof deathsByEscape!=='undefined'?deathsByEscape:null),
+             escapeNonFinite:(typeof escapeNonFinite!=='undefined'?escapeNonFinite:null),
+             on:(typeof __ESCAPE_DEATH!=='undefined'?!!__ESCAPE_DEATH:null),
+             nearEscapes:near, meanSpeed:n?+(sum/n).toFixed(4):0, maxSpeed:+mx.toFixed(4) };
+  }catch(e){ return {error:String(e&&e.message||e)}; } };
   globalThis.__aliveN=function(){ try{ let a=0; for(let i=0;i<N;i++)if(palive[i])a++; return a; }catch(e){ return -1; } };
   globalThis.__kinds=function(){ try{ const b={}; for(let i=0;i<N;i++){ if(!palive[i])continue;
       const q=i*DIMS; let r=0; for(let d=0;d<3&&d<DIMS;d++){ let v=((tend[q+d]+1.2)/2.4*4)|0; v=v<0?0:v>3?3:v; r=r*4+v; } b[r]=1; }
@@ -176,7 +189,7 @@ const nanSites=rows.filter(r=>r.nan>0).sort((a,b)=>b.nan-a.nan).slice(0,TOP);
 
 console.log(JSON.stringify({
   seed:process.env.SEED||null, ticks:TICKS, index:process.env.INDEX||'index.html', nocount:NOCOUNT,
-  fingerprint, posRange:globalThis.__posRange(),
+  fingerprint, posRange:globalThis.__posRange(), escape:globalThis.__escape(),
   loopErrors, lastErr, driverErr:globalThis.__driverErr||0,
   alive:globalThis.__aliveN(), kinds:globalThis.__kinds(),
   sites:NS, sitesNeverCalled:neverCalled, sitesEverBound:everBound,
