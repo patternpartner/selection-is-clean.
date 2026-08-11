@@ -5564,3 +5564,81 @@ piece of bookkeeping applies unchanged. A special-case removal would have been a
 
 Protocol: 12000 ticks, 5 seeds (3, 7, 11, 17, 23), treatment vs `ESCAPE_DEATH=0` control at the same
 horizon — #66's rule, and the arm exists this time rather than being a remembered number.
+
+### #72 RESULT — the escapees are gone, and lethality turned out to be a janitor, not a selective force
+
+12000 ticks, 5 seeds, treatment vs `ESCAPE_DEATH=0` control at the same horizon. 0 loop errors and 0
+driver errors in all ten runs.
+
+**Falsifier 1 — DOES IT FIRE? Yes. 145 escape deaths** (18/39/29/31/28). `escapeNonFinite` is **0 on
+every seed**: nothing was ever killed for a non-finite position, because the distance test catches it
+first. A particle cannot reach infinity without passing through 1e32 on the way, so the non-finite state
+is unreachable once the far state is fatal — the narrower test made the wider one dead, which is worth
+knowing before anyone reads `escapeNonFinite: 0` as the check being broken.
+
+**Falsifier 2 — DOES IT DO THE JOB? Yes.**
+
+| | control | treatment |
+|---|---|---|
+| off-world at 12k | 11 | **1** |
+| non-finite, alive | 7 | **0** |
+| max coordinate | 2.29e32 | **1273.7** |
+| off-world particles in clusters | 11 of 11 | 1 of 1 |
+
+The single survivor is 4.8px below the bottom edge — in transit, exactly what the tolerance band exists
+to spare. The treatment arm's entire coordinate range is x [9.8, 1273.7], y [10.2, 724.8]. No cluster
+centroid in the treatment arm is computed over a member at 1e32.
+
+**Falsifier 3 — the pre-registered null held.** kinds 5.00 vs 5.20 (d -0.20, sd 0.84-1.58), alive 356.8
+vs 357.8 (d -1.0). Flat, as stated in advance. Per the pre-registration this is **not** reportable as
+"harmless": a 0.6% intervention against instruments that cannot see 0.6% produces this result whether it
+is harmless or not, and the justification stands on correctness alone.
+
+**Falsifier 4 — NO SELECTION. This is a negative result on the premise that motivated the wave.**
+
+My first instrument could not have answered it and I should not have chosen it. `maxSpeed` and
+`meanSpeed` are taken over LIVE particles, so killing the 1e37 outliers drops them by arithmetic:
+control maxSpeed reads 1.4e37 against treatment 1.65, a number that looks decisive and means nothing.
+That is this file's recurring failure — a metric summed over the thing being intervened on — committed
+by me, one entry after writing it up as the recurring failure.
+
+The quantity that separates selection from deletion is the escape-death RATE. Pooled, per 1000-tick
+window:
+
+| window | 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9 | 10 | 11 | 12 |
+|---|---|---|---|---|---|---|---|---|---|---|---|---|
+| deaths | **37** | 10 | 8 | 17 | 8 | 6 | 11 | 6 | 12 | 6 | 12 | 12 |
+
+First half 86, second half 59, ratio 0.69 — which looks like a decline until you notice **the entire
+decline is window 1.** Windows 2-12 average 9.8 and show no trend at all (windows 2-4 mean 11.7, windows
+10-12 mean 10.0). That is precisely the burn-in confound pre-registered above, and it is the whole
+effect. Per-seed halves are not unanimous either: 3 of 5 decline, 1 flat, 1 rises (seed 7: 18 -> 21).
+
+**The rate is flat. Killing escapees removed them and changed nothing about what evolves.**
+
+### What the negative result is actually worth
+
+It does not refute the premise that open-endedness needs breakable mutations. It refines it, and the
+refinement is the useful part:
+
+**Lethality only produces selection if the lethal state is reachable by a HERITABLE strategy.** Escape
+is almost certainly an accident — a transient numerical excursion — not a program. Killing an accident
+is hygiene: the population is cleaner and no gene frequency moves. Killing a strategy is selection.
+This wave added the first fatal state in the system and got the first kind, not the second.
+
+Which is a real result for choosing the NEXT guardrail, and it reverses the ordering I gave: the opcode
+dispatch `default:` is the better target precisely because opcode content **is** heritable — an
+unrecognised opcode is in the genome, is inherited, and is currently a free no-op. A fatal or costly
+`default:` acts on something selection can see. The escape kill could not, by construction.
+
+**Named, not done: is escape heritable at all?** The claim above is an inference, not a measurement.
+#70's census machinery answers it directly — record `pLin` at each escape death and compare that
+distribution against the population's. If escape deaths concentrate in particular lineages, the state IS
+heritable and the flat rate needs a different explanation; if they are spread in proportion to lineage
+size, escape is an accident and the janitor reading is confirmed. That is the measurement that should
+precede the `default:` wave, because it is the same question asked where the answer can differ.
+
+**What stands:** LEAP 34, on correctness. Cluster centroids are no longer computed over members at
+1e32, 7 particles per 5 runs no longer finish alive with non-finite positions, and the substrate can now
+express "fatal" for the first time. None of that is claimed to have improved diversity, and the
+measurement says it did not.
