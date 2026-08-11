@@ -6053,3 +6053,57 @@ one place.
 
 **Before writing it, `mutateGenome`'s call sites (12753, 20580) must be PROBED, not read, to confirm they
 run unswapped.** That is the exact assumption that has failed three times, and it is cheap to check.
+
+---
+
+## #79 — the mutateGenome probe. The first structural assumption in four attempts that survives being measured.
+
+#78 named the corrected seeding design and refused to write it until the assumption underneath was
+probed rather than read, because that assumption class had failed three times running. Probed:
+
+| | seed 11 | seed 7 |
+|---|---|---|
+| `mutateGenome` calls in 6000 ticks | 18 | 18 |
+| ambient genome === the boot-captured self reference | **18 / 18** | **18 / 18** |
+| ambient genome identical to ANY live particle genome | **0** | **0** |
+| live particle genomes present at the call | 275 - 346 | 296 - 369 |
+| probe errors | none | none |
+
+**Two independent tests, agreeing.** A captured boot reference goes stale if anything reassigns `genome`
+wholesale, so it cannot stand alone; an identity scan across all live `pGenome[k]` depends on no
+reference at all. Both say the same thing on every one of 36 calls across two seeds: **`mutateGenome`
+runs with the SELF genome ambient, never a particle's.**
+
+Two further facts the probe returned without being asked, both load-bearing for the design:
+
+- **The call cadence is 18 per 6000 ticks**, on a regular 300-tick step starting at tick 900 — which
+  independently reproduces #55's measurement of eighteen calls, from a different instrument. Authoring
+  opportunities are scarce and evenly spaced, so a seeding event attached here fires at most ~36 times
+  per 12000-tick run. That is a bounded intervention, not a broadcast.
+- **There are always 275-369 live particle genomes at the moment of the call.** Seeding has targets; the
+  design is not resting on a population that might be empty when it fires.
+
+### What this licenses, and what it still does not
+
+**Licensed:** the seeding site. An atom authored and bound inside `mutateGenome` can be injected into a
+live particle genome from there, because the self genome is genuinely ambient at that point and the
+particle array is genuinely populated. Neither of those was known before this probe; both were assumed
+by #78 and one of them (the ambient) is precisely what #77 got wrong one level down.
+
+**Still not licensed, and not to be assumed:** that injecting into ONE particle produces spread. The
+reversed contact transfer that would carry it is itself unmeasured in a state where a donor exists —
+every observation of it so far (`calls 1793, noDonor 1793`; `calls 1280, noDonor 1280`) was taken when
+no donor could exist, so those runs say nothing about what it does when one does. **The first carrier
+and the spread are two separate claims and only the first has a probed foundation.**
+
+The measurement that follows the seeding change is therefore not "did diversity move" — it is
+`carriers` over time, which the #75 sampler already reports, against the pre-registered alternative that
+one carrier appears and the atom dies with it.
+
+### Method note
+
+Four structural claims this session: three read from the file and all three wrong (#75 a guard 2000
+lines past the window, #76 an ambient mistaken for a global, #77 a fix built on both), one probed and
+correct. The cost of the probe was two 6000-tick runs and about ten lines of harness. The cost of the
+three unprobed claims was a wave written, measured, retracted and reverted. **The ratio is the argument**
+and it now applies to code the same way this file has always applied it to results.

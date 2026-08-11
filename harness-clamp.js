@@ -97,6 +97,26 @@ if(!NOCOUNT && !sites.length){ console.log(JSON.stringify({error:'no __cl call s
   if(code.split(B).length-1===1) code=code.replace(B, "    if(__ATOM_XFER){ if(pGenome[i]){ {const _T=globalThis.__dnp=globalThis.__dnp||{selfIsParticle:0,selfIsOther:0};if(genome===pGenome[i])_T.selfIsParticle++;else _T.selfIsOther++;} const _dn=");
 }
 
+// ── #79 mutateGenome AMBIENT PROBE ──────────────────────────────────────────────────────────────
+// The corrected seeding design needs mutateGenome to run with the SELF genome ambient. That is exactly
+// the class of assumption that has been wrong three times (#75 #76 #77), so it is probed rather than
+// read. Two independent tests, because a captured boot reference goes stale if anything reassigns
+// genome wholesale, and an identity scan over pGenome does not depend on any reference at all:
+//   bootRef  — is the ambient genome the same object the driver captured before any swap?
+//   isParticle — is the ambient genome identical to ANY live particle genome right now?
+// Also records how many live particle genomes exist at that moment, since seeding needs a target.
+{ const A='function mutateGenome(){';
+  const n=code.split(A).length-1;
+  if(n!==1){ console.log(JSON.stringify({error:'mutateGenome anchor x'+n})); process.exit(1); }
+  code=code.replace(A, A+'{try{const _P=globalThis.__mg=globalThis.__mg||{calls:0,bootRefSame:0,bootRefDiff:0,isParticle:0,notParticle:0,ticks:[],targets:[]};'
+    +'_P.calls++;'
+    +'if(globalThis.__selfRef){ if(genome===globalThis.__selfRef)_P.bootRefSame++; else _P.bootRefDiff++; }'
+    +'var _hit=false,_tg=0; for(var _k=0;_k<N;_k++){ if(!palive[_k])continue; if(pGenome[_k]){_tg++; if(pGenome[_k]===genome)_hit=true;} }'
+    +'if(_hit)_P.isParticle++; else _P.notParticle++;'
+    +'if(_P.ticks.length<40){_P.ticks.push(typeof tick!=="undefined"?tick:-1);_P.targets.push(_tg);}'
+    +'}catch(e){globalThis.__mgErr=String(e&&e.message||e);}}');
+}
+
 // ── #77 TRANSFER DIAGNOSTIC ─────────────────────────────────────────────────────────────────────
 // Both arms came back bit-identical with memeTransfers 0, so the reversal changed nothing and the
 // germline-unproven hypothesis is refuted (germProven 2-7, germUses 567-1377). That leaves two very
@@ -198,6 +218,7 @@ const driver=`
   // quantity that separates the two is the escape-death RATE over time. Selection removing the programs
   // that drive unbounded velocity should make the rate DECLINE; a janitor collecting a constant trickle
   // of garbage should make it FLAT. Sampled per window, cumulative counter differenced.
+  globalThis.__selfRef=genome; // captured before any loop() call, i.e. before any per-particle swap
   globalThis.__escSeries=[];
   // #75 BOUND-SLOT OCCUPANCY. 'bos.push(...)' fills the 96 authored-atom slots as a DENSE PREFIX, and
   // cloneGenome slices the list, so each lineage has its own frontier: opcode CORE_OPCODES+k resolves
@@ -291,6 +312,11 @@ const driver=`
              on:(typeof __ESCAPE_DEATH!=='undefined'?!!__ESCAPE_DEATH:null),
              nearEscapes:near, meanSpeed:n?+(sum/n).toFixed(4):0, maxSpeed:+mx.toFixed(4) };
   }catch(e){ return {error:String(e&&e.message||e)}; } };
+  globalThis.__mutProbe=function(){ try{ const P=globalThis.__mg||null; if(!P)return {calls:0};
+    return { calls:P.calls, bootRefSame:P.bootRefSame, bootRefDiff:P.bootRefDiff,
+             ambientIsAParticleGenome:P.isParticle, ambientIsNotAParticleGenome:P.notParticle,
+             firstTicks:P.ticks.slice(0,12), liveGenomesAtCall:P.targets.slice(0,12),
+             err:globalThis.__mgErr||null }; }catch(e){ return {error:String(e&&e.message||e)}; } };
   globalThis.__memeDiag=function(){ try{ return { ogProbe:globalThis.__ogp||null, dnProbe:globalThis.__dnp||null, MEME_ON:(typeof __MEME_ON!=='undefined'?__MEME_ON:null),
     ATOM_XFER:(typeof __ATOM_XFER!=='undefined'?__ATOM_XFER:null), rate:MEME_RATE, thresh:MEME_PROX_THRESH,
     siteOpened:globalThis.__xfSite||0, proxMax:globalThis.__proxMax||0, xf:globalThis.__xf||null }; }catch(e){ return {error:String(e&&e.message||e)}; } };
@@ -358,7 +384,7 @@ const nanSites=rows.filter(r=>r.nan>0).sort((a,b)=>b.nan-a.nan).slice(0,TOP);
 
 console.log(JSON.stringify({
   seed:process.env.SEED||null, ticks:TICKS, index:process.env.INDEX||'index.html', nocount:NOCOUNT,
-  fingerprint, posRange:globalThis.__posRange(), escape:globalThis.__escape(), escSeries:globalThis.__escSeries||null, boundSeries:globalThis.__boundSeries||null, deathLineages:globalThis.__deathLineages?globalThis.__deathLineages():null, opcodes:globalThis.__opcodes?globalThis.__opcodes():null, memeDiag:globalThis.__memeDiag?globalThis.__memeDiag():null,
+  fingerprint, posRange:globalThis.__posRange(), escape:globalThis.__escape(), escSeries:globalThis.__escSeries||null, boundSeries:globalThis.__boundSeries||null, deathLineages:globalThis.__deathLineages?globalThis.__deathLineages():null, opcodes:globalThis.__opcodes?globalThis.__opcodes():null, memeDiag:globalThis.__memeDiag?globalThis.__memeDiag():null, mutProbe:globalThis.__mutProbe?globalThis.__mutProbe():null,
   loopErrors, lastErr, driverErr:globalThis.__driverErr||0,
   alive:globalThis.__aliveN(), kinds:globalThis.__kinds(),
   sites:NS, sitesNeverCalled:neverCalled, sitesEverBound:everBound,
