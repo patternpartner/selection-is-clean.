@@ -98,7 +98,16 @@ if(!NOCOUNT) code = 'const __clCalls=new Float64Array('+NS+'),__clLo=new Float64
 
 const driver=`
 ;(function(){
-  globalThis.__run=function(n){ for(let s=0;s<n;s++){ globalThis.__detMs+=5; try{loop();}catch(e){ globalThis.__driverErr=(globalThis.__driverErr||0)+1; } } };
+  // #72 falsifier 4, second attempt. maxSpeed and meanSpeed CANNOT answer it: they are taken over live
+  // particles, so killing the 1e37 outliers drops them by arithmetic rather than by selection. The
+  // quantity that separates the two is the escape-death RATE over time. Selection removing the programs
+  // that drive unbounded velocity should make the rate DECLINE; a janitor collecting a constant trickle
+  // of garbage should make it FLAT. Sampled per window, cumulative counter differenced.
+  globalThis.__escSeries=[];
+  globalThis.__run=function(n,win){ win=win||1000; let prev=0;
+    for(let s=0;s<n;s++){ globalThis.__detMs+=5; try{loop();}catch(e){ globalThis.__driverErr=(globalThis.__driverErr||0)+1; }
+      if((s+1)%win===0){ let cur=0; try{ cur=(typeof deathsByEscape!=='undefined')?deathsByEscape:0; }catch(e){}
+        globalThis.__escSeries.push(cur-prev); prev=cur; } } };
   // Census accessors live in the SIM module's scope for the same reason __metaMag does — read from the
   // harness file directly they come back undefined, silently.
   globalThis.__clampDump=function(){ if(typeof __clCalls==='undefined')return []; const o=[]; for(let i=0;i<__clCalls.length;i++)
@@ -189,7 +198,7 @@ const nanSites=rows.filter(r=>r.nan>0).sort((a,b)=>b.nan-a.nan).slice(0,TOP);
 
 console.log(JSON.stringify({
   seed:process.env.SEED||null, ticks:TICKS, index:process.env.INDEX||'index.html', nocount:NOCOUNT,
-  fingerprint, posRange:globalThis.__posRange(), escape:globalThis.__escape(),
+  fingerprint, posRange:globalThis.__posRange(), escape:globalThis.__escape(), escSeries:globalThis.__escSeries||null,
   loopErrors, lastErr, driverErr:globalThis.__driverErr||0,
   alive:globalThis.__aliveN(), kinds:globalThis.__kinds(),
   sites:NS, sitesNeverCalled:neverCalled, sitesEverBound:everBound,
