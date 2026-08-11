@@ -5829,3 +5829,82 @@ reach.
 
 Named, not assumed, in the form this file has used since #69. Nothing is being changed on the strength
 of an unmeasured story about pseudogenes.
+
+---
+
+## #75 — the bound slots fill, and reach nobody. Plus a correction to #74's reasoning.
+
+12000 ticks, 5 seeds. **The authoring pipeline works.** Atoms authored and slots bound track 1:1 and
+advance steadily all run — close to the rate arithmetic's prediction of 11-17:
+
+| seed | t=0 | 2k | 4k | 6k | 8k | 10k | **12k** | atoms |
+|---|---|---|---|---|---|---|---|---|
+| 3 | 0 | 1 | 3 | 4 | 5 | 7 | **9** | 10 |
+| 7 | 0 | 0 | 1 | 4 | 5 | 8 | **8** | 8 |
+| 11 | 0 | 1 | 5 | 10 | 11 | 14 | **15** | 15 |
+| 17 | 0 | 1 | 4 | 7 | 11 | 14 | **15** | 15 |
+| 23 | 0 | 1 | 3 | 3 | 4 | 5 | **8** | 9 |
+
+**And every live particle's frontier is 0. On every seed, at every sample.** 49 of 49 bound-range
+instructions in live programs are waiting; **not one resolves.** The instructions sit at slots 78, 89,
+91, 95 — while the frontier that exists reaches 15.
+
+### Why: the particle VM has no bound-opcode dispatch at all
+
+`executeVM` (line 13592) — the main behavioural loop, **185 million instruction executions per run** —
+goes from its instruction decode straight into `switch(op)` with no `op>=CORE_OPCODES` guard anywhere in
+it. The three guards in this file are in the SENSOR VM (10433), the PLASMID VM (15755) and the CLUSTER
+VM (16854). `pProg[i]` — a particle's own evolved program — is executed by `executeVM`. **So a bound
+opcode in a particle's program is unreachable by construction, and no amount of authoring will ever
+change that.**
+
+Atoms are not stranded; they reach particle programs through **core opcode 22**, a dedicated atom-call
+instruction that `executeVM` special-cases and exempts from the complexity toll (`_in[0]===22`). That is
+the working pipeline #55 measured at 423 invocations. The 96-slot namespace is a SECOND route, and for
+particle programs it is a route to nowhere.
+
+**The pseudogene reading is therefore FALSE where it mattered.** #74 left open whether an opcode
+addressing an empty slot is neutral-now-functional-later. In particle programs it is neither: those
+slots cannot come alive there under any binding sequence. In plasmid and cluster programs the reading
+holds — the frontier genuinely advances 0 -> 8-15 and instructions below it do start resolving — but
+those are 96 slots deep and the frontier reaches 15, so 81 of 96 stay dead through a full run.
+
+### CORRECTION to #74
+
+In #74 I "fixed" the bound check to read `pGenome[i].boundOpcodes` instead of the global list, reasoning
+that `cloneGenome` slices it per genome. **The slicing is real and the fix was wrong**: all three
+dispatch guards read `genome.boundOpcodes` — the GLOBAL self genome — so per-lineage bound lists are
+copied, diverge, and are then **never consulted by any dispatcher.** They are dead state.
+
+The consequence for #74's headline is narrower than the error: **2.75% of programs carrying an
+unresolvable opcode stands**, because for particle programs every bound-range opcode is unresolvable
+regardless of any list. The number was right and my reason for it was wrong — the lineage hasn't bound
+those slots was not why; the particle VM cannot dispatch them at all is why. Recorded because this file's
+whole convention is that a right number reached by a wrong route is the thing that bites later.
+
+This also strengthens #74's central result rather than weakening it. Bound-range opcodes are **100%
+useless in the particle VM, always**, and selection still drove them down to 0.14% of 185M executions
+against a 28.9% random baseline. The purge is against a class of instruction that could never have paid,
+and it happened with no lethality anywhere in the loop.
+
+### What is now measured, and what it says about the premise
+
+Bound opcodes are dispatchable in the sensor, plasmid and cluster VMs — **40% of executions** — and
+undispatchable in the particle and shadow VMs, which are the other 60%. The mutation operator samples
+[0, 332) everywhere regardless. So a mutation's meaning depends on which VM will run it, and nothing in
+the operator knows which that is.
+
+**This is the third subsystem found outside the accounting, and the pattern is now the finding.** #74:
+plasmids are re-randomized rather than inherited-and-taxed, so 48% of their work is noise. #75: the
+bound namespace is dispatched in some VMs and not others, and its per-lineage state is copied but never
+read. The premise this arc started from — that the system needs mutations that can break — has been
+answered in a way that keeps inverting: **where the accounting reaches, selection already works without
+any lethality. The failures are all in the seams between subsystems, not in the absence of fatality.**
+
+**Named, not done.** Three candidate repairs, and they are not equivalent: (a) give `executeVM` the same
+bound-dispatch guard the other three VMs have, making the 96-slot namespace real for particle programs;
+(b) have the dispatchers read the per-lineage list they already maintain, making authored primitives
+heritable rather than global; (c) narrow the mutation operator to the reachable range. **(a) and (b)
+together would make authored atoms a genuine evolvable opcode set** — which is the mechanism this
+project has claimed for the bound slots since #54 and which has never once executed from a particle's
+own program. That is a change to what can evolve, not a cleanup, and it needs its own pre-registration.
