@@ -88,6 +88,49 @@ if(!NOCOUNT) code=code.replace(/__cl\(/g,(m,off)=>{
 if(!NOCOUNT && defSeen!==1){ console.log(JSON.stringify({error:'expected exactly 1 __cl definition, saw '+defSeen})); process.exit(1); }
 if(!NOCOUNT && !sites.length){ console.log(JSON.stringify({error:'no __cl call sites found'})); process.exit(1); }
 
+// ── #74 UNRECOGNISED-OPCODE RATE ────────────────────────────────────────────────────────────────
+// #73 settled that the next lethality target should be the dispatch `default:` — an unrecognised
+// opcode IS heritable by construction, unlike escape. What is not known is whether making it fatal is
+// survivable: mutation draws opcodes uniformly from [0, OPCODE_COUNT) and nobody here has ever measured
+// how many of those draws land somewhere with no implementation. If the miss rate is high, a fatal
+// default is a population-extinction event rather than a selection pressure, and the metabolic-cost
+// version is the only writable one. That decision needs a number, and this is the number.
+//
+// Method: a `default:` clause placed FIRST in each switch. JS dispatches to default only when no case
+// matches regardless of clause order, so `switch(op){default:{count();break;} case 0: ...}` is exactly
+// equivalent to a default at the end — and the anchor `switch(op){` is a string that actually exists,
+// which a default at the end is not. Previously an unmatched op fell out of the switch doing nothing;
+// now it counts and breaks. Same behaviour, which the fingerprint control has to confirm.
+const OPSITES=['shadow','sensor','particle','plasmid','cluster','shadow2'];
+// The set of opcodes the PARTICLE VM actually implements, read off its own case labels rather than
+// inferred from what happened to miss at runtime. An opcode that is unimplemented but never executed
+// would be invisible to a runtime histogram, and this number decides whether a fatal default is
+// survivable — it is not a number to estimate.
+const PARTICLE_SWITCH_IDX=2;
+let IMPLEMENTED=null;
+{ let at=-1; for(let k=0;k<=PARTICLE_SWITCH_IDX;k++) at=code.indexOf('switch(op){',at+1);
+  if(at<0){ console.log(JSON.stringify({error:'particle VM switch not found'})); process.exit(1); }
+  let depth=0,i=code.indexOf('{',at),end=-1;
+  for(;i<code.length;i++){ const c=code[i];
+    if(c==='{')depth++; else if(c==='}'){ depth--; if(depth===0){ end=i; break; } } }
+  if(end<0){ console.log(JSON.stringify({error:'particle VM switch unterminated'})); process.exit(1); }
+  const body=code.slice(at,end);
+  const labs=new Set(); let m; const re=/case\s+(\d+)\s*:/g;
+  while((m=re.exec(body))!==null) labs.add(+m[1]);
+  IMPLEMENTED=[...labs].sort((a,b)=>a-b);
+  if(IMPLEMENTED.length<50){ console.log(JSON.stringify({error:'implausible case count '+IMPLEMENTED.length})); process.exit(1); }
+}
+{ const n=code.split('switch(op){').length-1;
+  if(n!==6){ console.log(JSON.stringify({error:'expected 6 switch(op) dispatches, saw '+n})); process.exit(1); }
+  let k=0;
+  code=code.split('switch(op){').map((seg,i)=> i===0?seg:('__opAll['+(k)+']++;switch(op){default:{__opMiss('+(k++)+',op);break;}'+seg)).join('');
+  // the split/join above prefixes each occurrence; k advances once per join point
+}
+code = 'const __opAll=new Float64Array(6),__opMissN=new Float64Array(6),__opMissCore=new Float64Array(6),__opMissBound=new Float64Array(6);\n'
+     + 'const __opMissHist=new Map();\n'
+     + 'function __opMiss(s,op){__opMissN[s]++;if(op>=CORE_OPCODES)__opMissBound[s]++;else __opMissCore[s]++;__opMissHist.set(op,(__opMissHist.get(op)||0)+1);}\n'
+     + code;
+
 // ── #73 DEATH PROVENANCE ────────────────────────────────────────────────────────────────────────
 // #72 found the escape kill has no selective consequence — the death rate is flat after burn-in — and
 // inferred that escape is an ACCIDENT rather than a heritable strategy. That was an inference. This
@@ -120,6 +163,7 @@ if(!NOCOUNT) code = 'const __clCalls=new Float64Array('+NS+'),__clLo=new Float64
 
 const driver=`
 ;(function(){
+  const __IMPL=${JSON.stringify(IMPLEMENTED)};
   // #72 falsifier 4, second attempt. maxSpeed and meanSpeed CANNOT answer it: they are taken over live
   // particles, so killing the 1e37 outliers drops them by arithmetic rather than by selection. The
   // quantity that separates the two is the escape-death RATE over time. Selection removing the programs
@@ -189,6 +233,36 @@ const driver=`
              on:(typeof __ESCAPE_DEATH!=='undefined'?!!__ESCAPE_DEATH:null),
              nearEscapes:near, meanSpeed:n?+(sum/n).toFixed(4):0, maxSpeed:+mx.toFixed(4) };
   }catch(e){ return {error:String(e&&e.message||e)}; } };
+  globalThis.__opcodes=function(){ try{
+    const sites=[]; for(let i=0;i<6;i++) sites.push({site:i,
+      exec:__opAll[i], miss:__opMissN[i], missCore:__opMissCore[i], missBound:__opMissBound[i],
+      missFrac:__opAll[i]?+(__opMissN[i]/__opAll[i]).toFixed(5):0});
+    const h=[...__opMissHist.entries()].sort((a,b)=>b[1]-a[1]).slice(0,15);
+    let tExec=0,tMiss=0,tCore=0,tBound=0;
+    for(let i=0;i<6;i++){ tExec+=__opAll[i]; tMiss+=__opMissN[i]; tCore+=__opMissCore[i]; tBound+=__opMissBound[i]; }
+    // Programs carrying at least one op with no implementation. The EXECUTION rate says how much work is
+    // wasted; this says how much of the POPULATION a fatal default would kill, which is the survivability
+    // question and is not the same number.
+    let progs=0,progsWithMiss=0,instTot=0,instMiss=0;
+    const impl=new Set(__IMPL);
+    for(let i=0;i<N;i++){ if(!palive[i]||!pProg[i])continue; progs++; let bad=0;
+      // cloneGenome does g.boundOpcodes=src.boundOpcodes.slice() — the bound list is PER GENOME, not
+      // shared, so the binding that decides whether an opcode resolves is the one on THIS particle's
+      // own genome. Reading the global list would mark a slot bound for a lineage that never bound it,
+      // and this is the number the fatal-vs-cost decision rests on.
+      const _bg=(pGenome[i]&&Array.isArray(pGenome[i].boundOpcodes))?pGenome[i].boundOpcodes:(genome.boundOpcodes||[]);
+      for(const ins of pProg[i]){ if(!ins)continue; instTot++;
+        const op=ins[0]|0;
+        const isBound=(op>=CORE_OPCODES&&op<CORE_OPCODES+MAX_BOUND_OPCODES&&_bg[op-CORE_OPCODES]);
+        if(!impl.has(op)&&!isBound){ bad++; instMiss++; } }
+      if(bad)progsWithMiss++; }
+    return { CORE_OPCODES, OPCODE_COUNT, implementedCases:__IMPL.length, unimplementedInCore:CORE_OPCODES-__IMPL.filter(x=>x<CORE_OPCODES).length, sites,
+      totalExec:tExec, totalMiss:tMiss, missCore:tCore, missBound:tBound,
+      missFrac:tExec?+(tMiss/tExec).toFixed(5):0,
+      liveProgs:progs, progsWithMiss, progsWithMissFrac:progs?+(progsWithMiss/progs).toFixed(4):0,
+      instTot, instMiss, instMissFrac:instTot?+(instMiss/instTot).toFixed(4):0,
+      topMissedOps:h };
+  }catch(e){ return {error:String(e&&e.message||e)}; } };
   globalThis.__deathLineages=function(){ try{ const o={};
     for(const k in __dLog){ const e=[]; for(const [l,n] of __dLog[k]) e.push([l,n]); o[k]=e; } return o;
   }catch(e){ return {error:String(e&&e.message||e)}; } };
@@ -223,7 +297,7 @@ const nanSites=rows.filter(r=>r.nan>0).sort((a,b)=>b.nan-a.nan).slice(0,TOP);
 
 console.log(JSON.stringify({
   seed:process.env.SEED||null, ticks:TICKS, index:process.env.INDEX||'index.html', nocount:NOCOUNT,
-  fingerprint, posRange:globalThis.__posRange(), escape:globalThis.__escape(), escSeries:globalThis.__escSeries||null, deathLineages:globalThis.__deathLineages?globalThis.__deathLineages():null,
+  fingerprint, posRange:globalThis.__posRange(), escape:globalThis.__escape(), escSeries:globalThis.__escSeries||null, deathLineages:globalThis.__deathLineages?globalThis.__deathLineages():null, opcodes:globalThis.__opcodes?globalThis.__opcodes():null,
   loopErrors, lastErr, driverErr:globalThis.__driverErr||0,
   alive:globalThis.__aliveN(), kinds:globalThis.__kinds(),
   sites:NS, sitesNeverCalled:neverCalled, sitesEverBound:everBound,
