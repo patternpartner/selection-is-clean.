@@ -598,7 +598,14 @@ let __ATOM_DURABLE=true; // +DURABILITY: preserve authored call-sites across sel
 // whether its original host thrived. Gated __MEME_TRANSFER, default OFF (unverified; ships dormant per project
 // convention until a harness run confirms it doesn't destabilise the atom bank / VM budget). See OEE-NOTES.
 let __MEME_ON=false; // resolved after LIVE registry, same pattern as __REACH_ON/__ATOM_DURABLE
+// LEAP 35 (#77) — AUTHORED ATOMS BECOME HERITABLE. Two coupled halves, each with its own knob so the
+// ablation is possible, but deliberately shipped together: dispatch-per-lineage without a propagation
+// path resolves to nothing for everyone (every particle's list is empty), and propagation without
+// dispatch-per-lineage writes state no dispatcher reads. Either half alone is worse than neither.
+let __ATOM_XFER=true;     // contact transfer writes INTO a particle genome (was: into the global one). ATOM_XFER=0
+let __ATOM_DISPATCH=true; // a particle's program resolves bound opcodes against its OWN genome. ATOM_DISPATCH=0
 let __memeTransfers=0; // telemetry: cumulative horizontal-transfer events (this run)
+let __memeToParticle=0; // LEAP 35 (#77): transfers whose RECEIVER is a particle genome — the route that did not exist before
 const MEME_PROX_THRESH=0.6; // only close contact transmits — steeper than REACH's general proximity use
 const MEME_RATE=0.004;      // per-qualifying-interaction transfer probability; deliberately small
 function attemptMemeTransfer(recv,donor){
@@ -615,6 +622,7 @@ function attemptMemeTransfer(recv,donor){
   if(recv.boundOpcodes.length>=MAX_BOUND_OPCODES)return; // respect the substrate cap, same as germline authoring
   recv.userAtoms.push({expression:donorExpr,compiled:null,failed:false,uses:0,state:0});
   recv.boundOpcodes.push(recv.userAtoms.length-1);
+  if(recv!==genome)__memeToParticle++; // LEAP 35 (#77)
   const cap=recv.vmMaxInstructions||16;
   if(recv.vmProgram.length<cap){ // germline-style single call-site splice, same shape as the #38-arc atom pipeline
     recv.vmProgram.splice((Math.random()*(recv.vmProgram.length+1))|0,0,
@@ -13609,7 +13617,23 @@ function executeVM(i,j,sim,d){
   // SWING #41 MEME TRANSFER — gated, cheap-checked-first (two comparisons before any array work) so the
   // hot pairwise-interaction path is untouched when off/rare. genome here is already pGenome[i] (repointed
   // by the caller); pGenome[j] is the neighbour's own genome regardless of that repoint.
-  if(__MEME_ON&&proximity>MEME_PROX_THRESH&&Math.random()<MEME_RATE&&pGenome[j])attemptMemeTransfer(genome,pGenome[j]);
+  // LEAP 35 (#77) — THE TRANSFER RAN THE WRONG WAY. #76 measured this call as
+  // attemptMemeTransfer(genome, pGenome[j]): receiver GLOBAL, donor PARTICLE. Nothing else ever writes
+  // an atom into a particle genome — cloneGenome only copies a parent's list, and every founder cloned
+  // from the global genome at boot when it was empty — so the donor pool was empty on every seed at
+  // every sample and the function returned at its first guard, always. LEAP #41's horizontal transfer
+  // could not fire by construction.
+  // Reversed: a particle RECEIVES. The donor is a neighbour that actually carries something, else the
+  // germline — so the first atom enters the population from the genome that authored it, and once
+  // carriers exist the particle-to-particle route takes over on its own. One mechanism (contact
+  // transfer) with a donor-selection rule, not two mechanisms bolted together.
+  // The Math.random() draw is consumed IDENTICALLY in both arms. #68's finding 4 was an ablation that
+  // skipped draws and shifted the whole seeded trajectory; a knob that changes the random stream is not
+  // a control.
+  if(__MEME_ON&&proximity>MEME_PROX_THRESH&&Math.random()<MEME_RATE){
+    if(__ATOM_XFER){ if(pGenome[i]){ const _dn=(pGenome[j]&&Array.isArray(pGenome[j].boundOpcodes)&&pGenome[j].boundOpcodes.length)?pGenome[j]:genome; attemptMemeTransfer(pGenome[i],_dn); } }
+    else if(pGenome[j]) attemptMemeTransfer(genome,pGenome[j]);
+  }
 
   vmRegs[0]=sim;
   vmRegs[1]=phaseAlign;
@@ -15752,11 +15776,15 @@ function executeVM(i,j,sim,d){
     // got and corrupting one it can't see. The boundary now derives from CORE_OPCODES, so
     // core ops never reach this guard and every bound slot 0..MAX_BOUND_OPCODES-1 is covered.
     // This restores a capacity a typo removed; it does not steer what the system does with it.
+    // LEAP 35 (#77): resolve against the genome running this program. Only the two guards inside
+    // executeVM move — profileVM, executeClusterVM and executeSoloVM run the SELF's program rather than
+    // a particle's, so the global genome stays the right namespace for them.
     if(op>=CORE_OPCODES&&op<CORE_OPCODES+MAX_BOUND_OPCODES){
-      const _bos=genome.boundOpcodes;
+      const _og=(__ATOM_DISPATCH&&pGenome[i])?pGenome[i]:genome;
+      const _bos=_og.boundOpcodes;
       const _boi=op-CORE_OPCODES;
       if(_bos&&_boi<_bos.length){
-        const _bua=genome.userAtoms&&genome.userAtoms[_bos[_boi]];
+        const _bua=_og.userAtoms&&_og.userAtoms[_bos[_boi]];
         if(_bua) vmRegs[di]=uaCall(_bua,vmRegs[si],vmRegs[(si+1)%12]);
       }
     }
@@ -16852,10 +16880,11 @@ function executeVM(i,j,sim,d){
         case 231:{const _cqcid231p=clusterID[i];if(_cqcid231p>=0){const _cqbit231p=1<<(Math.round(Math.abs(vmRegs[si]))&7);let _cqtot231p=0,_cqset231p=0;for(let _cqn231p=0;_cqn231p<N;_cqn231p++){if(clusterID[_cqn231p]===_cqcid231p){_cqtot231p++;if(pEpigen[_cqn231p]&_cqbit231p)_cqset231p++;}}vmRegs[di]=_cqtot231p>0?(_cqset231p/_cqtot231p)*k:0;}else{vmRegs[di]=0;}}break; // CLUSTER_QUORUM — full parity
       }
       if(op>=CORE_OPCODES&&op<CORE_OPCODES+MAX_BOUND_OPCODES){
-        const _bos=genome.boundOpcodes;
+        const _og=(__ATOM_DISPATCH&&pGenome[i])?pGenome[i]:genome; // LEAP 35 (#77) — plasmid VM, same particle
+        const _bos=_og.boundOpcodes;
         const _boi=op-CORE_OPCODES;
         if(_bos&&_boi<_bos.length){
-          const _bua=genome.userAtoms&&genome.userAtoms[_bos[_boi]];
+          const _bua=_og.userAtoms&&_og.userAtoms[_bos[_boi]];
           if(_bua){ const _out=uaCall(_bua,vmRegs[si],vmRegs[(si+1)%12]); vmRegs[di]=_out;
             // REACH — close sense→compute→ACT: the atom's output drives one of the VM's EXISTING,
             // already-conserved actuators directly (vmActions: 0=force, 2=ampTransfer[conserved],
@@ -19525,7 +19554,9 @@ if(typeof globalThis!=='undefined'){
   for(const k in LIVE) if(globalThis[k]===undefined) globalThis[k]=LIVE[k];
 }
 __DRAWVM=(typeof globalThis!=='undefined'&&(globalThis.__DRAW_VM|0)===1); // resolve the render-VM toggle now that LIVE defaults are filled
-__ESCAPE_DEATH=(typeof globalThis==='undefined')||((globalThis.__ESCAPE_DEATH??1)|0)!==0; // LEAP 34 (#72) — resolve escape lethality once. Defaults ON: #71 established the current behaviour is wrong (cluster centroids computed over members at 1e32), and correctness is the reason it stands, not a diversity result
+__ESCAPE_DEATH=(typeof globalThis==='undefined')||((globalThis.__ESCAPE_DEATH??1)|0)!==0;
+__ATOM_XFER=(typeof globalThis==='undefined')||((globalThis.__ATOM_XFER??1)|0)!==0;         // LEAP 35 (#77)
+__ATOM_DISPATCH=(typeof globalThis==='undefined')||((globalThis.__ATOM_DISPATCH??1)|0)!==0; // LEAP 35 (#77) // LEAP 34 (#72) — resolve escape lethality once. Defaults ON: #71 established the current behaviour is wrong (cluster centroids computed over members at 1e32), and correctness is the reason it stands, not a diversity result
 __REACH_ON=(typeof globalThis==='undefined')||((globalThis.__REACH??1)|0)!==0; // resolve REACH once (LIVE defaults filled); referenced in the per-instruction hot loop
 __FORAGE_ON=(typeof globalThis==='undefined')||((globalThis.__FORAGE_EYES??1)|0)!==0; // resolve FORAGE once; gates the resource-sense computation in uaSetEyes
 __DECIDE_ON=(typeof globalThis==='undefined')||((globalThis.__DECIDE??1)|0)!==0; // resolve DECISION GAIN once; gates confidence accrual + commitment scaling

@@ -57,7 +57,7 @@ globalThis.setTimeout=()=>0;globalThis.clearTimeout=()=>{};globalThis.setInterva
 // that cannot be turned off is not a control, so the plumbing goes in before any ablation claim does.
 // Same one-line form as harness-oee.js.
 if (process.env.COSMOS !== undefined) globalThis.__COSMOS = parseInt(process.env.COSMOS, 10);
-for (const kn of ['COSMOS_COST','COSMOS_CONTACT','COSMOS_MERGE','COSMOS_SENSE','COSMOS_AFFORD','ESCAPE_DEATH'])
+for (const kn of ['COSMOS_COST','COSMOS_CONTACT','COSMOS_MERGE','COSMOS_SENSE','COSMOS_AFFORD','ESCAPE_DEATH','ATOM_XFER','ATOM_DISPATCH','MEME_TRANSFER'])
   if (process.env[kn] !== undefined) globalThis['__'+kn] = parseInt(process.env[kn], 10);
 let loopErrors=0,lastErr='';
 console.error=(...a)=>{const s=a.join(' ');if(/Loop error|Boot error|Watchdog/.test(s)){loopErrors++;lastErr=s.slice(0,160);}};
@@ -190,6 +190,12 @@ const driver=`
           const k=op-CORE_OPCODES;
           if(k<f)live++; else { waiting++; if(k>maxWait)maxWait=k; } } } }
     globalThis.__boundSeries.push({t, bosSelf, atoms, MAX:MAX_BOUND_OPCODES,
+      carriers:(function(){let c=0;for(let q=0;q<N;q++){if(!palive[q])continue;const g=pGenome[q];if(g&&Array.isArray(g.boundOpcodes)&&g.boundOpcodes.length)c++;}return c;})(),
+      memeToParticle:(typeof __memeToParticle!=='undefined'?__memeToParticle:null),
+      memeTransfers:(typeof __memeTransfers!=='undefined'?__memeTransfers:null),
+      germUses:(function(){let u=0;for(const a of (genome.userAtoms||[]))u+=(a.uses|0);return u;})(),
+      germProven:(function(){let n=0;for(const a of (genome.userAtoms||[]))if((a.uses|0)>0)n++;return n;})(),
+      atomUses:(function(){let u=0;for(let q=0;q<N;q++){if(!palive[q])continue;const g=pGenome[q];if(!g||!Array.isArray(g.userAtoms))continue;for(const a of g.userAtoms)u+=(a.uses|0);}return u;})(),
       frontierMin:np?mn:0, frontierMax:np?mx:0, frontierMean:np?+(sum/np).toFixed(2):0,
       boundInstLive:live, boundInstWaiting:waiting, highestWaitingSlot:maxWait});
   }catch(e){ globalThis.__boundSeries.push({t,error:String(e&&e.message||e)}); } };
