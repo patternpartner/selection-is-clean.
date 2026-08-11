@@ -97,6 +97,41 @@ if(!NOCOUNT && !sites.length){ console.log(JSON.stringify({error:'no __cl call s
   if(code.split(B).length-1===1) code=code.replace(B, "    if(__ATOM_XFER){ if(pGenome[i]){ {const _T=globalThis.__dnp=globalThis.__dnp||{selfIsParticle:0,selfIsOther:0};if(genome===pGenome[i])_T.selfIsParticle++;else _T.selfIsOther++;} const _dn=");
 }
 
+// ── #81 CARRIER vs NON-CARRIER, WITH A SHAM CONTROL ─────────────────────────────────────────────
+// #80 reached fixation on every seed and could not say whether the primitive PAYS: at MEME_RATE 0.004
+// across ~350 particles a strictly neutral element fixes on the same timescale. The contrast has to be
+// sampled DURING the spread, while both classes exist.
+//
+// THE CONFOUND, which is why a raw split would not settle it either: carrier status is not randomly
+// assigned. The first carrier is random, but spread is by CONTACT, so carriers are whoever sits in dense
+// well-connected regions — and that predicts amplitude and reproduction on its own, with no help from the
+// atom. A carrier advantage measured directly is "the atom pays" and "well-connected particles get atoms
+// first" summed together, which is the same shape of error as #72's maxSpeed.
+//
+// SHAM ARM: ATOM_SHAM=1 makes uaCall return 0 while still counting the invocation, so the atom spreads
+// and is executed exactly as before but its output reaches nothing — the same device harness-strip uses
+// for STRIP=bank. Then:
+//   carrier advantage (real)  = atom effect + position confound
+//   carrier advantage (sham)  = position confound alone
+//   difference                = the atom effect, with the confound subtracted rather than assumed away
+if((process.env.ATOM_SHAM|0)===1){
+  const A='function uaCall(atom,a,b){';
+  if(code.split(A).length-1!==1){ console.log(JSON.stringify({error:'uaCall anchor'})); process.exit(1); }
+  code=code.replace(A, A+'if(atom){atom.uses=(atom.uses|0)+1;} return 0; // #81 SHAM: executed, output reaches nothing');
+}
+// Births by the PARENT's carrier status — per-capita reproduction is the second half of "does it pay",
+// and amplitude alone cannot show a primitive that converts energy into offspring rather than into mass.
+// BOTH spawn paths. The first version of this counted only addParticle and returned 0 carrier births
+// against 30 non-carrier births while carriers were 34% of the population — impossible by chance, and the
+// tell that the instrument could not see what it was asked about. #70 established there are two spawn
+// paths and every prior instrument in this file that touched one of them had to touch both.
+for(const [FN,SIG] of [['addParticle','function addParticle(x,y,tv,born,parentA,parentB){'],
+                       ['addCompound','function addCompound(x,y,nt,nvx,nvy,na,np,nf,parentA,parentB){']]){
+  if(code.split(SIG).length-1!==1){ console.log(JSON.stringify({error:'birth anchor '+FN})); process.exit(1); }
+  code=code.replace(SIG, SIG+'{try{if(parentA>=0&&parentA<N&&pGenome[parentA]){const _B=globalThis.__bth=globalThis.__bth||{carrier:0,nonCarrier:0};'
+    +'const _bg=pGenome[parentA].boundOpcodes; if(Array.isArray(_bg)&&_bg.length)_B.carrier++; else _B.nonCarrier++;}}catch(e){}}');
+}
+
 // ── #79 mutateGenome AMBIENT PROBE ──────────────────────────────────────────────────────────────
 // The corrected seeding design needs mutateGenome to run with the SELF genome ambient. That is exactly
 // the class of assumption that has been wrong three times (#75 #76 #77), so it is probed rather than
@@ -239,7 +274,20 @@ const driver=`
         if(op>=CORE_OPCODES&&op<CORE_OPCODES+MAX_BOUND_OPCODES){
           const k=op-CORE_OPCODES;
           if(k<f)live++; else { waiting++; if(k>maxWait)maxWait=k; } } } }
-    globalThis.__boundSeries.push({t, bosSelf, atoms, MAX:MAX_BOUND_OPCODES,
+    // #81 split: amplitude, age and reproductive provision for carriers vs non-carriers, plus the
+    // cumulative birth counts by parent class differenced per window by the reader.
+    let _cn=0,_ca=0,_cg=0,_cp=0,_nn=0,_na=0,_ng=0,_np2=0;
+    for(let q=0;q<N;q++){ if(!palive[q])continue; const g=pGenome[q];
+      const isC=g&&Array.isArray(g.boundOpcodes)&&g.boundOpcodes.length>0;
+      const _am=amp[q], _ag=(typeof page!=='undefined'?page[q]:0), _pv=(typeof pProvision!=='undefined'?pProvision[q]:0);
+      if(isC){ _cn++; if(isFinite(_am))_ca+=_am; _cg+=_ag; if(isFinite(_pv))_cp+=_pv; }
+      else { _nn++; if(isFinite(_am))_na+=_am; _ng+=_ag; if(isFinite(_pv))_np2+=_pv; } }
+    const _sp={carrierN:_cn, nonCarrierN:_nn,
+      carrierAmp:_cn?+(_ca/_cn).toFixed(4):null, nonCarrierAmp:_nn?+(_na/_nn).toFixed(4):null,
+      carrierAge:_cn?+(_cg/_cn).toFixed(1):null, nonCarrierAge:_nn?+(_ng/_nn).toFixed(1):null,
+      carrierProv:_cn?+(_cp/_cn).toFixed(4):null, nonCarrierProv:_nn?+(_np2/_nn).toFixed(4):null,
+      birthsCarrier:(globalThis.__bth?globalThis.__bth.carrier:0), birthsNonCarrier:(globalThis.__bth?globalThis.__bth.nonCarrier:0)};
+    globalThis.__boundSeries.push({t, bosSelf, atoms, MAX:MAX_BOUND_OPCODES, split:_sp,
       carriers:(function(){let c=0;for(let q=0;q<N;q++){if(!palive[q])continue;const g=pGenome[q];if(g&&Array.isArray(g.boundOpcodes)&&g.boundOpcodes.length)c++;}return c;})(),
       memeToParticle:(typeof __memeToParticle!=='undefined'?__memeToParticle:null),
       memeTransfers:(typeof __memeTransfers!=='undefined'?__memeTransfers:null),

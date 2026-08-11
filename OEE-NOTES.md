@@ -6217,3 +6217,65 @@ genome each window and would need one added split.
 dead by construction before that. An authored primitive now enters the population, spreads horizontally,
 is inherited, and executes from particle programs millions of times per run. Whether it is worth
 carrying is a separate question, it is unanswered, and the instrument for it is named above.
+
+---
+
+## #81 — the carrier vs non-carrier split, with a sham arm. Pre-registered.
+
+#80 reached fixation on all five seeds and could not say whether the primitive PAYS: at `MEME_RATE`
+0.004 across ~350 particles, a strictly neutral element fixes on the same timescale. The contrast has to
+be sampled DURING the spread, while both classes still exist.
+
+### The confound, and why a raw split would not have settled it either
+
+**Carrier status is not randomly assigned.** The first carrier is random, but spread is by CONTACT, so
+carriers are whoever sits in dense, well-connected regions — and that predicts amplitude and reproduction
+on its own, with no help from the atom. A carrier advantage measured directly is "the atom pays" and
+"well-connected particles acquire atoms first" summed together. That is the same shape as #72's
+`maxSpeed`, where the metric could not separate selection from deletion, and it is the third time this
+session that the obvious instrument for a question could not answer it.
+
+**SHAM ARM.** `ATOM_SHAM=1` makes `uaCall` return 0 while still counting the invocation, so the atom is
+authored, seeded, transferred, inherited and EXECUTED exactly as in the real arm — its output simply
+reaches nothing. Same device `harness-strip` uses for `STRIP=bank`. Then:
+
+| | |
+|---|---|
+| carrier advantage, real arm | atom effect **+** position confound |
+| carrier advantage, sham arm | position confound alone |
+| **difference** | **the atom effect, with the confound subtracted rather than assumed away** |
+
+### What is measured per window
+
+Carriers and non-carriers separately: count, mean amplitude, mean age, mean reproductive provision, plus
+cumulative births by the PARENT's carrier status, differenced per window by the reader. Amplitude alone
+would miss a primitive that converts energy into offspring instead of into mass, which is why births are
+in there.
+
+**A counting bug caught before the protocol ran, recorded because it is the session's recurring shape.**
+The first version hooked only `addParticle` and reported **0 carrier births against 30 non-carrier
+births while carriers were 34% of the population** — impossible by chance at p~4e-6, and the tell that
+the instrument could not see what it was asked about. #70 established there are TWO spawn paths; with
+`addCompound` added the same window reads 45,873 against 648,795. Every prior instrument in this file
+that touched one spawn path had to touch both, and this one had to learn it again.
+
+### Falsifiers
+
+1. **DOES THE ATOM PAY?** Carrier-minus-non-carrier amplitude and per-capita births, real arm MINUS sham
+   arm, over the windows where carriers sit between roughly 10% and 90%. Positive and consistent across
+   seeds -> the primitive pays and #80's fixation is selection. Zero -> it is neutral and fixation is
+   transmission outrunning drift. Negative -> it is a selfish element and the -8.6 population reading in
+   #80 was real.
+2. **IS THE CONFOUND ACTUALLY THERE?** The sham arm's own carrier advantage. If it is ~0, position does
+   not predict acquisition and the sham was unnecessary — worth knowing either way, since it is the
+   assumption the whole design rests on.
+3. **DOES THE SHAM SPREAD THE SAME WAY?** Carrier trajectories in both arms should be similar; if the
+   sham fixes much slower, the atom's own output is feeding transmission and the arms are not comparable.
+   This is a validity check on the control, not a result.
+
+No prediction is offered on falsifier 1. Four pilots in this session have inverted at 12000 ticks, and a
+one-seed pilot exists for this one too — per-capita births at t=3000-4000 came out 616 for carriers
+against 620 for non-carriers, which is a null so exact that it should be treated as a coincidence until
+five seeds say otherwise.
+
+Protocol: 12000 ticks, 5 seeds, real arm and sham arm.
