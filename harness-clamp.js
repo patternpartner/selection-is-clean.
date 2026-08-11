@@ -57,7 +57,7 @@ globalThis.setTimeout=()=>0;globalThis.clearTimeout=()=>{};globalThis.setInterva
 // that cannot be turned off is not a control, so the plumbing goes in before any ablation claim does.
 // Same one-line form as harness-oee.js.
 if (process.env.COSMOS !== undefined) globalThis.__COSMOS = parseInt(process.env.COSMOS, 10);
-for (const kn of ['COSMOS_COST','COSMOS_CONTACT','COSMOS_MERGE','COSMOS_SENSE','COSMOS_AFFORD','ESCAPE_DEATH','ATOM_XFER','ATOM_DISPATCH','MEME_TRANSFER'])
+for (const kn of ['COSMOS_COST','COSMOS_CONTACT','COSMOS_MERGE','COSMOS_SENSE','COSMOS_AFFORD','ESCAPE_DEATH','ATOM_HERITABLE','MEME_TRANSFER'])
   if (process.env[kn] !== undefined) globalThis['__'+kn] = parseInt(process.env[kn], 10);
 let loopErrors=0,lastErr='';
 console.error=(...a)=>{const s=a.join(' ');if(/Loop error|Boot error|Watchdog/.test(s)){loopErrors++;lastErr=s.slice(0,160);}};
@@ -243,6 +243,7 @@ const driver=`
       carriers:(function(){let c=0;for(let q=0;q<N;q++){if(!palive[q])continue;const g=pGenome[q];if(g&&Array.isArray(g.boundOpcodes)&&g.boundOpcodes.length)c++;}return c;})(),
       memeToParticle:(typeof __memeToParticle!=='undefined'?__memeToParticle:null),
       memeTransfers:(typeof __memeTransfers!=='undefined'?__memeTransfers:null),
+      atomSeeded:(typeof __atomSeeded!=='undefined'?__atomSeeded:null),
       germUses:(function(){let u=0;for(const a of (genome.userAtoms||[]))u+=(a.uses|0);return u;})(),
       germProven:(function(){let n=0;for(const a of (genome.userAtoms||[]))if((a.uses|0)>0)n++;return n;})(),
       atomUses:(function(){let u=0;for(let q=0;q<N;q++){if(!palive[q])continue;const g=pGenome[q];if(!g||!Array.isArray(g.userAtoms))continue;for(const a of g.userAtoms)u+=(a.uses|0);}return u;})(),
@@ -311,6 +312,15 @@ const driver=`
              escapeNonFinite:(typeof escapeNonFinite!=='undefined'?escapeNonFinite:null),
              on:(typeof __ESCAPE_DEATH!=='undefined'?!!__ESCAPE_DEATH:null),
              nearEscapes:near, meanSpeed:n?+(sum/n).toFixed(4):0, maxSpeed:+mx.toFixed(4) };
+  }catch(e){ return {error:String(e&&e.message||e)}; } };
+  // #80: does pProg[k] alias pGenome[k].vmProgram? The seeding change splices a call-site into the
+  // genome's program; if the two are separate arrays the splice is never executed and the mechanism is
+  // inert. Structural claim -> probed, not read.
+  globalThis.__aliasProbe=function(){ try{ let same=0,diff=0,noP=0,noG=0;
+    for(let k=0;k<N;k++){ if(!palive[k])continue;
+      const g=pGenome[k]; if(!g){noG++;continue;} if(!pProg[k]){noP++;continue;}
+      if(pProg[k]===g.vmProgram)same++; else diff++; }
+    return {aliased:same, separate:diff, noProg:noP, noGenome:noG};
   }catch(e){ return {error:String(e&&e.message||e)}; } };
   globalThis.__mutProbe=function(){ try{ const P=globalThis.__mg||null; if(!P)return {calls:0};
     return { calls:P.calls, bootRefSame:P.bootRefSame, bootRefDiff:P.bootRefDiff,
@@ -384,7 +394,7 @@ const nanSites=rows.filter(r=>r.nan>0).sort((a,b)=>b.nan-a.nan).slice(0,TOP);
 
 console.log(JSON.stringify({
   seed:process.env.SEED||null, ticks:TICKS, index:process.env.INDEX||'index.html', nocount:NOCOUNT,
-  fingerprint, posRange:globalThis.__posRange(), escape:globalThis.__escape(), escSeries:globalThis.__escSeries||null, boundSeries:globalThis.__boundSeries||null, deathLineages:globalThis.__deathLineages?globalThis.__deathLineages():null, opcodes:globalThis.__opcodes?globalThis.__opcodes():null, memeDiag:globalThis.__memeDiag?globalThis.__memeDiag():null, mutProbe:globalThis.__mutProbe?globalThis.__mutProbe():null,
+  fingerprint, posRange:globalThis.__posRange(), escape:globalThis.__escape(), escSeries:globalThis.__escSeries||null, boundSeries:globalThis.__boundSeries||null, deathLineages:globalThis.__deathLineages?globalThis.__deathLineages():null, opcodes:globalThis.__opcodes?globalThis.__opcodes():null, memeDiag:globalThis.__memeDiag?globalThis.__memeDiag():null, mutProbe:globalThis.__mutProbe?globalThis.__mutProbe():null, aliasProbe:globalThis.__aliasProbe?globalThis.__aliasProbe():null,
   loopErrors, lastErr, driverErr:globalThis.__driverErr||0,
   alive:globalThis.__aliveN(), kinds:globalThis.__kinds(),
   sites:NS, sitesNeverCalled:neverCalled, sitesEverBound:everBound,

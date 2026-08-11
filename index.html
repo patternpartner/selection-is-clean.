@@ -598,9 +598,47 @@ let __ATOM_DURABLE=true; // +DURABILITY: preserve authored call-sites across sel
 // whether its original host thrived. Gated __MEME_TRANSFER, default OFF (unverified; ships dormant per project
 // convention until a harness run confirms it doesn't destabilise the atom bank / VM budget). See OEE-NOTES.
 let __MEME_ON=false; // resolved after LIVE registry, same pattern as __REACH_ON/__ATOM_DURABLE
+// LEAP 35 (#80) — AUTHORED ATOMS BECOME HERITABLE. Two halves under one knob because either alone does
+// nothing: seeding without the reversed transfer gives one carrier and no spread, and the reversed
+// transfer without seeding has no donor to spread FROM (measured: calls 1793, noDonor 1793).
+// The first version of this (#77) also flipped dispatch to a per-lineage list. That was a NO-OP and is
+// not repeated: #78 probed executeVM and found the ambient `genome` IS pGenome[i] there, 1280 of 1280,
+// so those guards were already per-lineage. The lists were being READ all along; nothing wrote them.
+let __ATOM_HERITABLE=true; // force off with ATOM_HERITABLE=0 — that arm reproduces the prior build exactly
+let __atomSeeded=0;        // telemetry: germline -> particle injections
 let __memeTransfers=0; // telemetry: cumulative horizontal-transfer events (this run)
 const MEME_PROX_THRESH=0.6; // only close contact transmits — steeper than REACH's general proximity use
 const MEME_RATE=0.004;      // per-qualifying-interaction transfer probability; deliberately small
+// LEAP 35 (#80) — THE FIRST CARRIER. #79 probed mutateGenome: the ambient genome is the SELF on 36 of
+// 36 calls across two seeds, and 275-369 live particle genomes are present each time. So this is the one
+// place a newly authored atom can be handed from the germline to the population, and it is the only new
+// route added — spread is left entirely to the existing contact transfer.
+// The call-site instruction goes into pProg[tgt], NOT into g.vmProgram, because those are normally the
+// same array but opcode 225 does pProg[i]=cloneProg(pProg[j]) and desynchronises them. The VM iterates
+// pProg; a splice into a genome array it no longer aliases would never execute. (Probed: 335 of 335 live
+// particles aliased at 1200 ticks, so the divergence is rare — rare is not never, and this costs nothing.)
+// Bounded by construction: mutateGenome runs ~18 times per 6000 ticks, so this fires at most ~36 times
+// in a 12000-tick run. One injection per authored atom, into one particle.
+function seedAtomIntoParticle(atomIdx){
+  if(!__ATOM_HERITABLE)return;
+  const _a=genome.userAtoms&&genome.userAtoms[atomIdx]; if(!_a)return;
+  let _n=0; for(let k=0;k<N;k++)if(palive[k]&&pGenome[k])_n++;
+  if(!_n)return;
+  let _t=(Math.random()*_n)|0, _tgt=-1;
+  for(let k=0;k<N;k++){ if(!palive[k]||!pGenome[k])continue; if(_t--===0){_tgt=k;break;} }
+  if(_tgt<0)return;
+  const _g=pGenome[_tgt];
+  if(!Array.isArray(_g.userAtoms))_g.userAtoms=[];
+  if(!Array.isArray(_g.boundOpcodes))_g.boundOpcodes=[];
+  for(const _ai of _g.boundOpcodes){ const _x=_g.userAtoms[_ai]; if(_x&&_x.expression===_a.expression)return; } // already carries it
+  if(_g.boundOpcodes.length>=MAX_BOUND_OPCODES)return;
+  _g.userAtoms.push({expression:_a.expression,compiled:null,failed:false,uses:0,state:0}); // own copy — compiled is per-genome
+  _g.boundOpcodes.push(_g.userAtoms.length-1);
+  const _op=CORE_OPCODES+_g.boundOpcodes.length-1;
+  const _prog=pProg[_tgt]||_g.vmProgram, _cap=_g.vmMaxInstructions||16;
+  if(_prog&&_prog.length<_cap)_prog.splice((Math.random()*(_prog.length+1))|0,0,[_op,(Math.random()*12)|0,(Math.random()*12)|0,(Math.random()-0.5)*0.6]);
+  __atomSeeded++;
+}
 function attemptMemeTransfer(recv,donor){
   if(!recv||!donor||!Array.isArray(donor.userAtoms)||!Array.isArray(donor.boundOpcodes)||!donor.boundOpcodes.length)return;
   // pick the donor's most-PROVEN bound atom (highest uses) — transmit what has actually been selected for,
@@ -12422,6 +12460,7 @@ function mutateGenome(){
       const bos=genome.boundOpcodes||(genome.boundOpcodes=[]);
       if(bos.length<MAX_BOUND_OPCODES){
         bos.push(genome.userAtoms.length-1);
+        seedAtomIntoParticle(genome.userAtoms.length-1); // LEAP 35 (#80): hand it to one live particle
         if(genome.vmProgram.length<genome.vmMaxInstructions){
           genome.vmProgram.splice(Math.floor(Math.random()*(genome.vmProgram.length+1)),0,
             [CORE_OPCODES+bos.length-1,Math.floor(Math.random()*12),Math.floor(Math.random()*12),(Math.random()-0.5)*0.6]);
@@ -13609,7 +13648,19 @@ function executeVM(i,j,sim,d){
   // SWING #41 MEME TRANSFER — gated, cheap-checked-first (two comparisons before any array work) so the
   // hot pairwise-interaction path is untouched when off/rare. genome here is already pGenome[i] (repointed
   // by the caller); pGenome[j] is the neighbour's own genome regardless of that repoint.
-  if(__MEME_ON&&proximity>MEME_PROX_THRESH&&Math.random()<MEME_RATE&&pGenome[j])attemptMemeTransfer(genome,pGenome[j]);
+  // LEAP 35 (#80) — the transfer ran the wrong way: receiver GLOBAL, donor PARTICLE, so nothing ever
+  // wrote an atom into a particle genome and the donor pool was empty on every seed. Reversed: a particle
+  // RECEIVES from a neighbour. No germline fallback — #78 probed this scope and the ambient `genome` is
+  // pGenome[i] here, so a fallback to it would donate the particle to itself, which is what returned
+  // noDonor on 1280 of 1280 calls in the first attempt. The germline hands over at the authoring site
+  // instead (seedAtomIntoParticle), where #79 confirmed the self genome really is ambient.
+  // Draws are NOT consumed in the off arm: ATOM_HERITABLE=0 must reproduce the prior build bit-identically
+  // so the control IS the historical baseline, which is what #66's protocol compares against. The stream
+  // divergence in the treatment arm is inherent to adding a mechanism, not an artifact of the knob.
+  if(__MEME_ON&&proximity>MEME_PROX_THRESH&&Math.random()<MEME_RATE){
+    if(__ATOM_HERITABLE){ if(pGenome[i]&&pGenome[j])attemptMemeTransfer(pGenome[i],pGenome[j]); }
+    else if(pGenome[j]) attemptMemeTransfer(genome,pGenome[j]);
+  }
 
   vmRegs[0]=sim;
   vmRegs[1]=phaseAlign;
@@ -19525,7 +19576,8 @@ if(typeof globalThis!=='undefined'){
   for(const k in LIVE) if(globalThis[k]===undefined) globalThis[k]=LIVE[k];
 }
 __DRAWVM=(typeof globalThis!=='undefined'&&(globalThis.__DRAW_VM|0)===1); // resolve the render-VM toggle now that LIVE defaults are filled
-__ESCAPE_DEATH=(typeof globalThis==='undefined')||((globalThis.__ESCAPE_DEATH??1)|0)!==0; // LEAP 34 (#72) — resolve escape lethality once. Defaults ON: #71 established the current behaviour is wrong (cluster centroids computed over members at 1e32), and correctness is the reason it stands, not a diversity result
+__ESCAPE_DEATH=(typeof globalThis==='undefined')||((globalThis.__ESCAPE_DEATH??1)|0)!==0;
+__ATOM_HERITABLE=(typeof globalThis==='undefined')||((globalThis.__ATOM_HERITABLE??1)|0)!==0; // LEAP 35 (#80) // LEAP 34 (#72) — resolve escape lethality once. Defaults ON: #71 established the current behaviour is wrong (cluster centroids computed over members at 1e32), and correctness is the reason it stands, not a diversity result
 __REACH_ON=(typeof globalThis==='undefined')||((globalThis.__REACH??1)|0)!==0; // resolve REACH once (LIVE defaults filled); referenced in the per-instruction hot loop
 __FORAGE_ON=(typeof globalThis==='undefined')||((globalThis.__FORAGE_EYES??1)|0)!==0; // resolve FORAGE once; gates the resource-sense computation in uaSetEyes
 __DECIDE_ON=(typeof globalThis==='undefined')||((globalThis.__DECIDE??1)|0)!==0; // resolve DECISION GAIN once; gates confidence accrual + commitment scaling

@@ -6107,3 +6107,62 @@ lines past the window, #76 an ambient mistaken for a global, #77 a fix built on 
 correct. The cost of the probe was two 6000-tick runs and about ten lines of harness. The cost of the
 three unprobed claims was a wave written, measured, retracted and reverted. **The ratio is the argument**
 and it now applies to code the same way this file has always applied it to results.
+
+---
+
+## #80 — LEAP 35 v2: the germline hands an atom to one particle, and it spreads. The mechanism runs for the first time.
+
+Two halves under one knob, because #77 established either alone does nothing: **seeding** (the germline
+injects a newly authored atom into ONE live particle) and the **reversed contact transfer** (a particle
+receives from a neighbour instead of the global genome receiving from a particle).
+
+Both rest on probed facts this time, not read ones. #79: `mutateGenome` runs with the SELF genome ambient
+on 36 of 36 calls, with 275-369 live particle genomes present. #78: inside `executeVM` the ambient
+`genome` IS `pGenome[i]` on 1280 of 1280, which is why the germline fallback in v1 donated a particle to
+itself and why v2 has no fallback. **The per-lineage dispatch flip from v1 is NOT repeated** — those
+guards were already per-lineage; that half was a no-op.
+
+One design point earned by a probe rather than assumed: the call-site instruction is spliced into
+`pProg[tgt]`, not `_g.vmProgram`. Those are normally the same array — measured 335 of 335 live particles
+aliased — but opcode 225 executes `pProg[i]=cloneProg(pProg[j])` and desynchronises them. The VM iterates
+`pProg`; a splice into an array it no longer aliases would silently never run.
+
+### First result — seed 11, 6000 ticks, treatment vs `ATOM_HERITABLE=0`
+
+| | ON | OFF |
+|---|---|---|
+| germline -> particle injections | **5** | 0 |
+| carriers at t=6000 | **323** of ~362 | 0 |
+| contact transfers | **179** | 0 |
+| atom invocations from particle programs | **2,817,059** | 0 |
+| mean bound-list length per particle | 0.98 | 0 |
+
+Carriers over time: **0, 0, 1, 14, 111, 189, 323.** One carrier at t=2000 becomes 323 by t=6000.
+
+**This is the first time in this project's recorded history that an authored primitive has executed from
+a particle's own program.** #55 measured 423 invocations of one atom from the germline; this is 2.8
+million from the population. The bound-slot namespace, dead through #74 and #75, is live.
+
+### And the pilot shows a cost, which is NOT a verdict
+
+Same run: **kinds 7 vs 10, alive 362 vs 397** — both worse in the treatment arm. One seed, 6000 ticks.
+**Three pilots in this session have inverted at 12000** (#70's falsifier, #71's escapee rate, #74's
+program share), so this number is recorded and explicitly not read. 12000 ticks x 5 seeds x both arms is
+running.
+
+### The falsifier that matters, pre-registered
+
+Not "did kinds fall". **Horizontal transfer selects for TRANSMISSIBILITY, not for host benefit.** An atom
+reaching 89% of the population in 4000 ticks while diversity falls is the signature of a selfish element,
+and this wave has just built the channel one would spread through. The distinguishing measurement is
+whether carrier fraction and population health move together or opposite:
+
+- carriers rise, kinds/lateN hold or rise -> the primitive pays and the mechanism is what it claims
+- carriers rise, kinds/lateN fall, **consistently across seeds at 12k** -> a parasite, and the honest
+  response is to keep the channel and charge for it, not to delete the result
+
+Stated in advance because the first reading is available now and the second requires waiting, which is
+exactly the asymmetry that produces a wrong headline.
+
+`ATOM_HERITABLE=0` consumes no extra draws, so the off arm reproduces the prior build bit-identically and
+IS the historical baseline #66's protocol compares against.
