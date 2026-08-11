@@ -5753,3 +5753,79 @@ high, a fatal `default:` is a population-extinction event rather than a selectio
 measurement that must precede that wave is the unrecognised-opcode rate per program per tick** — cheap,
 harness-side, and it decides between the fatal and the metabolic-cost version of the change before
 either is written.
+
+---
+
+## #74 — the unrecognised-opcode rate. The answer inverts the premise: selection has ALREADY purged them where it can reach.
+
+12000 ticks, 5 seeds, 0 loop errors. **Control passed:** fingerprints identical to #73's runs on all
+five seeds, so the six `default:` clauses do not perturb — they count and break where an unmatched
+opcode previously fell out doing nothing.
+
+### The survivability number the wave was for
+
+| | pooled, 5 seeds |
+|---|---|
+| live programs carrying an unresolvable opcode | **49 of 1784 = 2.75%** |
+| instructions in live programs that resolve to nothing | 49 of 24264 = **0.20%** |
+| per-seed program share | 1.4% - 4.3% |
+
+A fatal `default:` **in the particle VM is survivable**: a 2.75% cull on first execution, then acting at
+the mutation rate. Not an extinction event. That was the question and it is answered.
+
+### But the per-VM breakdown says the particle VM is the wrong target
+
+| VM | executions | misses | **miss rate** | core opcodes implemented |
+|---|---|---|---|---|
+| **particle** | 185,327,274 | 263,305 | **0.14%** | **236 / 236** |
+| plasmid | 48,469,997 | 23,253,657 | **47.98%** | 229 / 236 |
+| cluster | 110,112,192 | 16,212,526 | **14.72%** | 229 / 236 |
+| shadow2 | 53,095,185 | 4,793,353 | 9.03% | 133 / 236 |
+| shadow | 16,173 | 2,889 | 17.86% | 220 / 236 |
+| sensor | 1,542 | 0 | 0% | 5 / 236 |
+
+**The plasmid VM's 48% is not a coverage gap** — it implements 229 of 236 core opcodes. The misses are
+opcodes in the BOUND range [236, 332), the 96 authored-atom slots, most of which are empty.
+`missBound` dominates `missCore` everywhere (seed 3: 40.4M against 8.6M).
+
+**And that gives the baseline that makes the particle VM's number mean something.** Mutation draws
+uniformly from [0, OPCODE_COUNT) = [0, 332), and 96 of those 332 are bound slots — so **28.9% of every
+fresh opcode draw lands in the bound range by construction.** The plasmid VM sits at 48%, above that
+baseline. The particle VM sits at **0.14%, two hundred times BELOW it.**
+
+### What that inverts
+
+#71 concluded that this substrate makes inertness free, and I have been reasoning from that for three
+waves. **It is not uniformly true, and the exception is the biggest thing in this measurement.** In the
+particle VM — where programs are inherited through `cloneGenome`, where every instruction pays the
+per-instruction toll, and where selection can therefore see them — unresolvable opcodes have been driven
+from a 28.9% random baseline to 0.14%. **Selection has already purged them, with no lethality anywhere
+in the loop, using nothing but the existing metabolic cost.**
+
+The 39 million no-op executions per run are real, and they live specifically where that force is absent:
+plasmids, whose contents are re-randomized (`if(Math.random()<0.5)pPlasmid[base]=Math.floor(Math.random()
+*OPCODE_COUNT)`) rather than inherited-and-taxed, and the cluster VM.
+
+So the answer to "does this system need mutations that can break things" gets a sharper form than either
+the premise or my three waves of argument had: **where a cost already reaches, it works — a 200-fold
+purge without a single fatal state. Where nothing reaches, half the work is noise.** The problem was
+never that failure isn't fatal. It is that whole subsystems are outside the accounting.
+
+### The interpretation that has to be settled before anything is changed
+
+An opcode pointing at an EMPTY bound slot is not obviously waste. The 96 slots exist so authored atoms
+can fill them, and an instruction addressing a slot that is empty now and filled later is a **pseudogene
+— neutral today, functional after a binding event.** Charging it, or killing for it, would delete
+exactly the pre-adaptation the bound-slot design exists to permit. On the other hand, if the slots stay
+empty for whole runs, "pre-adaptation" is a story about a thing that never happens and 29% of the
+mutation operator's range is dead by construction.
+
+**Those are opposite readings of one number and this data cannot separate them.** The measurement that
+can: **how many of the 96 bound slots are filled, and when.** If bindings accumulate and previously-dead
+opcodes come alive, the pseudogene reading holds and the `default:` must stay free. If the count sits
+near zero for 12000 ticks, the bound range is dead weight in the mutation operator and the right fix is
+not a `default:` at all — it is that the operator samples a namespace two-thirds of which no VM can
+reach.
+
+Named, not assumed, in the form this file has used since #69. Nothing is being changed on the strength
+of an unmeasured story about pseudogenes.
