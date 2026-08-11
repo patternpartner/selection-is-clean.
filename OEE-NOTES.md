@@ -6324,3 +6324,48 @@ saturated**, which is a capability the system did not have, and the question of 
 worth anything is now answerable by measurement instead of unanswerable in principle. Before #80 there
 was nothing to measure. The honest summary is: **the channel works, the cargo is unproven, and the
 instrument that would prove it needs four times the sampling resolution.**
+
+### #82 RESULT — the nulls hold, and my prediction about WHY the test was underpowered was wrong
+
+**Control first: PASSED.** Ten comparisons (5 seeds x 2 arms) of the 250-tick runs against the 1000-tick
+runs on identical seeds — fingerprints, alive, kinds and loop errors identical in every one. The sampler
+is read-only and does not perturb, which was a structural claim and is now a measured one.
+
+Resolution did what it was supposed to: windows per run 13 -> 49, and in-band windows (carriers 10-90%)
+from 3-7 per seed to **11-26 per seed, 79 real and 94 sham in total** against roughly 19 before.
+
+| | real | sham | real minus sham | SE | ratio |
+|---|---|---|---|---|---|
+| carrier amplitude advantage | +0.0034 | +0.0187 | **-0.0153** | 0.0150 | 1.02 SE |
+| carrier per-capita birth advantage | +51.1 | +1.6 | **+49.5** | 59.4 | 0.83 SE |
+
+**Falsifier 1: still null on both measures**, positive in 2/5 and 3/5 seeds. **Falsifier 2: the position
+confound is still not detectable** — sham dAmp 1.46 SE, sham dBirths 0.03 SE. The sham arm remains
+unnecessary on the evidence, though 1.46 SE on amplitude is a hint rather than a clean zero and should
+not be rounded down to one.
+
+### The prediction I stated, and why it failed
+
+I wrote in advance: *"quadrupling the sample count shrinks the standard error by about half, which turns
+#81's -0.0106 +/- 0.0211 into roughly +/- 0.011."* **It went to +/- 0.0150 — a 29% reduction, not 50%.**
+
+The reason is the useful part. **Between-SEED variance dominates, not within-seed sampling noise.** The
+seed-level spread is sd 0.0336, and SE at n=5 is computed from that; adding windows inside each seed
+sharpens each seed's estimate but leaves the seed-to-seed disagreement untouched. **The power limit was
+never the sampling resolution. It is the number of seeds**, and #81's diagnosis of its own weakness —
+which I wrote and then acted on — was wrong about the cause while being right that the test was weak.
+
+That is the fifth stated expectation in this session to fail, and the first one to fail in a way that
+changes what the fix is rather than just what the answer is.
+
+### What can actually be claimed
+
+**95% bound on a hidden amplitude benefit: |effect| < 0.0448, i.e. under 4% of the amplitude scale.**
+That is a weak bound and it is the honest one. To tighten it to 1% requires SE ~0.005, and at sd 0.0336
+that is **roughly 45 seeds** — about nine times the compute of this run, and no amount of extra sampling
+inside the existing five would substitute.
+
+So the position stands where #81 left it, with a number attached: **an authored primitive fixes in every
+seed, is executed millions of times per run, and confers no benefit larger than ~4% on amplitude or
+detectable at all on reproduction.** Neutral-and-transmissible remains the best-supported reading. It is
+still not proven, and the cost of proving it is now known rather than guessed.
