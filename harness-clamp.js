@@ -30,6 +30,11 @@
 const fs = require('fs');
 const TICKS = parseInt(process.env.TICKS || '3000', 10);
 const TOP   = parseInt(process.env.TOP || '25', 10);
+// #82: sampling cadence. #81 was underpowered because the spread crosses the 10-90% carrier band in only
+// 3-7 windows at 1000 ticks — fixation arrives by t~9000. The sampler is read-only (no draws, no writes
+// to simulation state), so raising the rate cannot move the trajectory; the fingerprint control confirms
+// it rather than assuming it.
+const SWIN  = parseInt(process.env.SAMPLE_WIN || '1000', 10);
 const NOCOUNT = (process.env.NOCOUNT|0) === 1;  // control arm: skip the rewrite entirely
 
 function selfProxy(){const f=function(){return p;};const p=new Proxy(f,{get(_t,prop){if(prop===Symbol.toPrimitive)return()=>0;if(prop==='width'||prop==='height')return 0;if(prop==='data')return new Uint8ClampedArray(4);return p;},apply(){return p;}});return p;}
@@ -420,7 +425,7 @@ const driver=`
 const Module=require('module');
 const m=new Module(__dirname+'/clamp-sim.js');m.filename=__dirname+'/clamp-sim.js';m.paths=Module._nodeModulePaths(__dirname);
 try{ m._compile(code+driver,m.filename); }catch(e){ console.log(JSON.stringify({error:'BOOT: '+e.message}));process.exit(1); }
-globalThis.__run(TICKS);
+globalThis.__run(TICKS, SWIN);
 const dump=NOCOUNT?[]:globalThis.__clampDump();
 const fingerprint=globalThis.__fingerprint();
 
@@ -441,7 +446,7 @@ const byFrac =[...rows].filter(r=>r.calls>=1000).sort((a,b)=>b.bindFrac-a.bindFr
 const nanSites=rows.filter(r=>r.nan>0).sort((a,b)=>b.nan-a.nan).slice(0,TOP);
 
 console.log(JSON.stringify({
-  seed:process.env.SEED||null, ticks:TICKS, index:process.env.INDEX||'index.html', nocount:NOCOUNT,
+  seed:process.env.SEED||null, ticks:TICKS, sampleWin:SWIN, index:process.env.INDEX||'index.html', nocount:NOCOUNT,
   fingerprint, posRange:globalThis.__posRange(), escape:globalThis.__escape(), escSeries:globalThis.__escSeries||null, boundSeries:globalThis.__boundSeries||null, deathLineages:globalThis.__deathLineages?globalThis.__deathLineages():null, opcodes:globalThis.__opcodes?globalThis.__opcodes():null, memeDiag:globalThis.__memeDiag?globalThis.__memeDiag():null, mutProbe:globalThis.__mutProbe?globalThis.__mutProbe():null, aliasProbe:globalThis.__aliasProbe?globalThis.__aliasProbe():null,
   loopErrors, lastErr, driverErr:globalThis.__driverErr||0,
   alive:globalThis.__aliveN(), kinds:globalThis.__kinds(),
