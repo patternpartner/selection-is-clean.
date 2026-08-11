@@ -5908,3 +5908,75 @@ heritable rather than global; (c) narrow the mutation operator to the reachable 
 together would make authored atoms a genuine evolvable opcode set** — which is the mechanism this
 project has claimed for the bound slots since #54 and which has never once executed from a particle's
 own program. That is a change to what can evolve, not a cleanup, and it needs its own pre-registration.
+
+---
+
+## #76 — RETRACTION of #75's central claim. The guard I said was missing is there, 2000 lines past where I looked.
+
+**#75 claimed `executeVM` has no bound-opcode dispatch at all. That is false.** The particle VM's switch
+opens at line 13683 and **closes at 15746**; the BOUND-OPCODE BOUNDARY guard sits at **15756**,
+immediately after it, inside `executeVM` (which runs 13592-16986). There are **five** such guards in this
+file, not three — the two I missed use the same text but sit past the window I searched.
+
+**How the error was made, because the shape of it matters more than the fact.** I searched
+`NR>=13400 && NR<=13700` for `CORE_OPCODES|boundOpcodes|uaCall`, found nothing, and concluded the
+dispatch did not exist. The particle VM's switch is two thousand lines long — 236 cases — so a
+300-line window starting at its opening brace could not have contained the guard that follows its
+closing brace. **I inferred absence from a window that could not have shown presence**, and then built a
+headline, a correction to #74, and a recommendation for the next wave on top of it.
+
+That is the same error class this file has been cataloguing all session, in a new place: #70's falsifier
+(a pilot horizon that could not show the effect), #72's `maxSpeed` (a metric that could not separate
+selection from deletion), and now a search window that could not find what it was searching for. **Three
+instruments this session that were incapable of returning the answer they were asked for.** The tell is
+identical in all three: a null result reported without asking what the instrument would have done had
+the answer been yes.
+
+### What #75 got right, and what has to be recomputed
+
+**Right, and unaffected:** the authoring pipeline works and the global frontier advances 0 -> 8-15 of 96
+across five seeds, tracking atoms 1:1. The per-genome `boundOpcodes` lists are real and are **dead
+state** — `cloneGenome` slices them (6018), `attemptMemeTransfer` writes them (613-617), and **all five
+dispatch guards read the GLOBAL `genome.boundOpcodes`**, so nothing ever consults a lineage's own list.
+
+**Wrong, and withdrawn:** "a bound opcode in a particle's program is unreachable by construction". It is
+reachable, via the global list, in the particle VM like everywhere else. Bound opcodes 236..250 resolve
+at 12k.
+
+**Recomputed:** #75 classified instructions as live/waiting against the PER-GENOME frontier (0
+everywhere), which is not what dispatch reads. Against the GLOBAL frontier the observed waiting
+instructions sit at slots 78, 89, 91 and 95 — all far beyond a frontier of 15 — so those specific
+instructions genuinely do not resolve, but the "49 of 49, 100% waiting" figure was computed against the
+wrong denominator and is withdrawn as stated.
+
+**#74's 2.75% is affected and also withdrawn as stated**, for the same reason: it counted every
+bound-range instruction as unresolvable on the strength of empty per-genome lists. Against the global
+frontier the correct figure is lower and has not been measured.
+
+### And a finding that survives all of it, which is why (a) is void and (b) is not what it looked like
+
+`attemptMemeTransfer` has exactly one call site, at 13612:
+
+```
+if(__MEME_ON&&proximity>MEME_PROX_THRESH&&Math.random()<MEME_RATE&&pGenome[j])attemptMemeTransfer(genome,pGenome[j]);
+```
+
+**The receiver is the global genome and the donor is a particle.** Transfer runs particle -> global only.
+Nothing ever writes an atom into a particle's genome except `cloneGenome`, which copies its parent's
+list — and every founder cloned from the global genome at boot, when the list was empty.
+
+So the donor pool for horizontal transfer is the set of particle genomes with a non-empty bound list,
+**and that set is empty on every seed at every sample** (#75's frontier data, which stands). The
+function returns at its first guard, always. **LEAP #41's horizontal atom transfer cannot fire, by
+construction**, and its recorded result — 410 carriers across 153 lineages — needs re-checking against
+this code, because the field those carriers carry is one no dispatcher reads.
+
+**Therefore (a) — "give `executeVM` the bound guard" — is VOID. The guard is already there.**
+
+**And (b) — "have dispatchers read the per-lineage list" — cannot be done as stated without breaking
+dispatch.** Every per-lineage list is empty, so switching the five guards to read them would make bound
+opcodes resolve for NOBODY, which is strictly worse than today. (b) requires a propagation path into
+particle genomes that does not currently exist: authoring into lineages, or reversing the transfer
+direction, or seeding at clone time. That is a three-part mechanism change, not the one-line redirect it
+appeared to be, and it is not being written on the strength of a session that has now produced three
+instruments incapable of answering their own question.
