@@ -513,6 +513,72 @@ decorative and only the enrichment matters.
 
 ---
 
+## Plasmids (Layer 8; 15820–16923) — the fourth replicator, and the comparison that explains the atom arc
+
+**[read]** Per-particle mobile DNA: up to `MAX_PLASMID=4` instructions of `[op,src,dst,k]`, stored in
+`pPlasmid`, with `pPlasmidAge` tracking persistence.
+
+- transfer on high-resonance contact: `plasmidTransferRate` 0.008, gated on `plasmidTransferThresh` 0.55
+- own mutation rate `plasmidMutRate` 0.04, spontaneous origination `plasmidSpawnRate` 0.002
+- broadcast across tabs in the network layer (159–293)
+- priced: `amp[i] -= nPi × metabolicCost × 0.5` (16923) — half rate
+
+**[read] Plasmids execute inline in `executeVM`, on the SAME `vmRegs` and `vmActions`** as the host
+program (15820–15826), through their own 229-case dispatch that includes opcode 4.
+
+### So the system has FOUR replicators
+
+| replicator | unit | transmission | can it ACT? |
+|---|---|---|---|
+| particle genome + program | 188 params + ≤20 instructions | vertical descent | yes |
+| cluster | cluster genome + cluster VM | budding | yes |
+| **plasmid** | ≤4 **instructions** | **horizontal**, on resonance | **yes — full opcode set** |
+| **authored atom** | one **expression** | **horizontal**, on contact | **no — writes a register only** |
+
+**[inferred] and this is the clearest statement of the atom problem I have found.** The system already
+contains a working horizontally-transmitted replicator that carries **actions** — a plasmid is
+*instructions*, so it can emit, spawn, harvest, recombine, write fields. The authored atom is the one
+replicator that carries only a **value**: `vmRegs[di] = uaCall(...)`. It computes, and then something
+else must happen to route what it computed.
+
+**#83 measured the value-carrier and found it neutral.** The action-carrier sitting beside it in the same
+function was never the thing under test.
+
+**The architectural fix is one line**, and it collapses the four-way conjunction identified above to a
+single term: dispatch the bound opcode to an action channel rather than a register —
+
+```js
+// current (13734 region):  vmRegs[di] = uaCall(_bua, vmRegs[si], vmRegs[(si+1)%12]);
+// candidate:               vmActions[Math.abs(di)%8] += uaCall(_bua, vmRegs[si], vmRegs[(si+1)%12]);
+```
+
+That makes an authored primitive an *actuator* with evolved content, i.e. an EMIT whose coefficient is a
+self-authored expression instead of a constant `k`. **Pre-registered prediction, recorded before any
+run: under this change the #81–#84 carrier estimator should stop returning null**, because the atom's
+output would reach `vmActions` by construction rather than by a ~2% routing lottery. If it *still*
+returns null with the routing removed, the neutrality is genuinely about expression content and the
+grammar is the thing to attack.
+
+**Caveat [assumption]:** this is a candidate experiment, not a recommendation to ship. It changes what a
+bound opcode MEANS, so it must run as an arm against the current build, not replace it — and the
+existing sham/forced machinery from #84 already provides the controls.
+
+---
+
+## Also found, worth recording
+
+**[read] Evolvable chemistry** (5697–5706): `chemistryTable` is 12 opcode slots, each a recipe of
+monomials `[coefSource, termA, termB, target]` over local state. Seeded from **random** monomials —
+"no Gray-Scott, no Turing, no known chemistry. The substrate discovers its own dynamics from the
+starting noise." Mutates at `chemistryMutRate` 0.02.
+
+**[read] Evolvable sociality** (Layer 22): `netMigrantRate` and three sibling rates govern broadcasting
+particles, plasmids, VM motifs and inscriptions to other browser tabs. All four evolve — "the system
+decides whether to be social." Cross-tab arrivals deposit `XENO_RESOURCE` 0.22 and `XENO_HAZARD` 0.30:
+foreign matter is opportunity and risk.
+
+---
+
 ## Synthesis — what this system actually is, and what it needs
 
 **What it is [read]:** a multi-level evolutionary system with two replicators (particles and budding
