@@ -233,9 +233,59 @@ frees the cores.
 
 ---
 
+## The motor vocabulary (16951–17009 pairwise, 18914+ solo) — and the real fitness function
+
+**[read]** All eight action slots, and what consumes them:
+
+| slot | pairwise effect | magnitude |
+|---|---|---|
+| 0 | force along the partner axis — movement | `×influence×proximity` |
+| 1 | phase shift between the pair | `×influence` |
+| **2** | **amplitude transfer `amp[i]-=t; amp[j]+=t`** — VM-controlled energy trade/theft | `×influence×0.5` |
+| 3 | tendency bleed — trait exchange toward the partner | `×influence` |
+| **4** | **REPRODUCTION GATE** | see below |
+| 5 | signal modulation | `×influence×0.003` |
+| 6 | mutation-pressure accumulation — the VM tunes its own mutation rate | `×influence×0.0001` |
+| 7 | writes its own identity vector (`tend` dim 4) | `×influence×0.01` |
+
+**[read] The fitness function is one line** (16978, and 18244 for the cluster path):
+
+```js
+if(vmActions[4]*influence>0.0002 && Math.random()<0.002 && N<CAP){ ... addParticle(...); amp[i]*=0.7; amp[j]*=0.7; }
+```
+
+**Sexual reproduction is gated on a VM action.** The particle decides to reproduce, pays 30% of its
+amplitude to do it, and the decision reaches the world through `vmActions[4]`.
+
+**[read] Solo path (18914) exposes only slots 0, 1, 6, 7** — no reproduction and no amplitude transfer
+without a partner.
+
+### The bottleneck, restated correctly
+
+The action space is not impoverished — it contains movement, energy theft, reproduction, self-directed
+mutation rate, and self-editing of identity. **The constraint is that all eight are reachable only
+through `case 4`**, `{const ai=Math.abs(dst)%8; vmActions[ai] += vmRegs[si]*k;}`.
+
+So to reproduce sexually a program needs an opcode-4 instruction whose `dst ≡ 4 (mod 8)` carrying a
+positive value. Under a uniform opcode draw that is `1/332 × 1/8 ≈ 0.038%` per instruction — which
+**cannot** be what happens, because populations reproduce vigorously (~10⁵ births per 10³ ticks).
+
+**[inferred] Therefore opcode 4 must be enormously enriched in evolved programs.** It is the sole gate
+to reproduction, so selection on it is about as strong as selection gets. This **invalidates the uniform
+draw assumption in the effector arithmetic above**, and in the direction that matters: if programs are
+dense in opcode 4, then an atom's output is far more likely to reach an effector than the ~2% I
+estimated, and the routing story for #81–#84 weakens considerably.
+
+**The realised opcode histogram over live programs is now the single most important unmeasured quantity
+in this map.** It decides whether the atom-neutrality result is about routing (sparse effectors) or about
+content (dense effectors). It is cheap and read-only.
+
+---
+
 ## Open questions this map raises
 
-1. **What does `metabolicCost` actually evolve to?** [not measured] — the highest-value cheap instrument
+1. **The realised opcode histogram in live programs** — decides routing-vs-content for the whole atom arc, and invalidates or confirms the effector arithmetic. [not measured]
+2. **What does `metabolicCost` actually evolve to?** [not measured] — the highest-value cheap instrument
    in the file.
 2. **Is `vmRegs[di]` ever read downstream?** [not measured] — needs the opcode read/write table below.
 3. **Opcode semantics table** — which of the 236 core opcodes read which registers, and which write
