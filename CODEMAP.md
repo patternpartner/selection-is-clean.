@@ -912,6 +912,49 @@ attribution meta-layer; signals; the network bridge.
 
 ---
 
+## The auto-wiring family — the substrate injects opcodes into living programs
+
+**[read]** Three functions splice opcodes directly into `pProg[i]` on a cadence, outside mutation and
+outside descent:
+
+| function | opcodes injected | rate | cadence |
+|---|---|---|---|
+| `wireAtomCallSites` (11562) | **22** (atom call by index) | `ATOM_WIRE_RATE=0.02` | 120 ticks + on every authoring |
+| `wireModeOpcodes` | **232 / 233 / 234** (mode decision) | `MODE_WIRE_RATE` | 150 ticks |
+| `wireCosmosOpcode` | **235** (COSMOS_SENSE) | `COSMOS_WIRE_RATE` | 150 ticks |
+
+Each skips a program that already carries one of its opcodes, and splices (or overwrites, if at the
+length cap) otherwise.
+
+**[inferred] So a non-trivial fraction of live program content is INJECTED by the substrate rather than
+evolved.** The stated rationale (LEAP 7, #52) is that a new opcode sits in a tiny window of a 332-opcode
+space that mutation hits by ~2% lottery, so without wiring "the author→bind→execute loop never closes."
+That is a real problem and this is a reasonable fix — but it means **any claim that selection
+"discovered" a use of opcode 22, 232-235 must account for the substrate having placed it there.**
+Presence is injected; only *retention* is selected.
+
+### RNG-matched ablation — a methodological lesson recorded in code
+
+**[read]** `wireCosmosOpcode` carries this:
+
+> *"This used to return immediately when `__COSMOS_SENSE=0`, which skipped roughly 7000
+> `Math.random()` draws per 3000 ticks and shifted the entire seeded trajectory — so the arm was not a
+> control at all, it was a different world. Measured divergence on the unmatched version: launches 12 vs
+> 11, lateKinds 16 vs 14, from a knob that is supposed to isolate one opcode splice. Every draw is now
+> consumed on both sides and only the WRITE to `pProg` is conditional."*
+
+**A knob that skips RNG draws is not a control.** This generalises to every ablation in the project.
+
+**[read] Checked against #84's own arms, because the lesson demanded it.** `ATOM_SHAM` / `ATOM_FORCE`
+patch `uaCall` to return early. Does the skipped body consume randomness? `uaCompile` uses
+`new Function` (no RNG), and compiled atom expressions are built from `uaGenTerm`'s vocabulary —
+`a,b,u,c,d,m,s,f,nx,ny,t,nb,rl,rd` and literal constants — which contains **no `Math.random()`**. So the
+sham/forced arms consume the same draws as the real arm at the patch site, and are RNG-matched. The
+trajectory divergence that does occur is downstream of changed amplitudes, which is inherent to a
+treatment rather than an artifact of the knob — the same distinction #80 drew for `ATOM_HERITABLE`.
+
+---
+
 ## ★ OPCODE 22 — a THIRD atom-call path, auto-wired, and a possible confound in #81–#84
 
 Found by sweeping for cadenced `tick%N` blocks — the scan class that had hidden the generation ratchet.
