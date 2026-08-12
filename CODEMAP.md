@@ -908,9 +908,51 @@ including directed-EMIT; death and life history; clusters and cluster budding; t
 channels; the shadow sim and what feeds it; plasmids; cosmos; speciation; alien attribution; the
 attribution meta-layer; signals; the network bridge.
 
-**Not mapped:** rendering and the draw VM (`__DRAW_VM`, form composition — cosmetic to selection), the
-HUD/UI, export/import serialisation detail, and the `bridge/` directory (separate experiments:
-`rosetta.js`, `chemistry-reactor.html`, `lsystem-growth.html`).
+**Not mapped:** the HUD/UI, export/import serialisation detail, and the `bridge/` directory (separate
+experiments: `rosetta.js`, `chemistry-reactor.html`, `lsystem-growth.html`).
+
+---
+
+## ★ The render layer is NOT cosmetic — it contains two free null controls
+
+I described this region as "cosmetic to selection" and was challenged to verify it. Verified, and the
+conclusion changes.
+
+**[read] Causally inert, confirmed.** `runDrawProgram` (525–559) reads sim state and writes **nothing**
+back — no `amp`, `vx`, `tend`, `pMem`, `field`, `phase`. It is called once, from the render path at
+19125, under `__DRAWVM`. Every length and alpha is hard-clamped.
+
+**[read] But it is HERITABLE and MUTATING.** `genome.draw` is a program of ≤`DRAW_MAX=4` primitives over
+a 5-symbol alphabet (DOT, HALO, RING, SPOKE, SATELLITE) and a 12-register bank, cloned per particle,
+sanitised at 7615, and **mutated at rate 0.004** (12672) by add / drop / retype. The comment states its
+status outright: *"neutral drift, rides selection like rend"*.
+
+**[read] `genome.rend` is the same shape and more interesting**: 4 slots, mutated at rate 0.003, each
+regenerated with **`uaGenExpression()`** — *the very same grammar that authors atoms* — but its output
+reaches only the renderer.
+
+### Why this matters to the atom arc
+
+**[inferred] The system contains two strictly-neutral, heritable, mutating traits, and the atom arc
+never used either as a control.**
+
+- **`rend` is a perfect "cargo without a channel" null.** It is an authored expression from the identical
+  grammar, provably unable to affect fitness. Contrasting atom dynamics against `rend` dynamics isolates
+  *the effect of having an actuator channel at all*, holding the generator constant. That is precisely
+  the question #84 is spending ~5 core-hours to approach from the other direction.
+- **`draw` is a drift baseline at MEME_RATE.** #80 argued in prose that *"at MEME_RATE 0.004 across ~350
+  particles, a strictly neutral element fixes on the same timescale"* — and a strictly neutral element
+  mutating at 0.004 was already in the genome, its fixation timescale directly measurable rather than
+  asserted.
+
+**Caveat, stated because it limits the claim:** `draw` and `rend` are inherited **vertically only**
+(`cloneGenome`), whereas atoms also move horizontally. So they are a clean null for *drift and vertical
+fixation*, not for contact-driven spread. The sham arm remains necessary for the fitness question.
+
+**Method note.** I asserted this region was cosmetic without reading it, was asked whether I could be
+sure, and could not. The assertion was wrong in the same direction as every other error in this
+document — underestimating the system. **A region being causally inert is not the same as being
+uninteresting; inert-but-heritable is exactly what a control is made of.**
 
 **Confidence note.** Everything marked **[read]** was taken from source, and several **[read]** claims
 in this document corrected earlier **[inferred]** ones in the same document — the corrections are left
