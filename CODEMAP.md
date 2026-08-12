@@ -912,6 +912,55 @@ attribution meta-layer; signals; the network bridge.
 
 ---
 
+## ★ OPCODE 22 — a THIRD atom-call path, auto-wired, and a possible confound in #81–#84
+
+Found by sweeping for cadenced `tick%N` blocks — the scan class that had hidden the generation ratchet.
+
+**[read] `case 22`** (particle VM):
+```js
+case 22:{ const uas=genome.userAtoms;
+  if(uas&&uas.length>0){ const uIdx=Math.abs(Math.floor(k))%uas.length;
+    vmRegs[di]=uaCall(uas[uIdx],vmRegs[si],vmRegs[(si+1)%12]); } }break;
+```
+The instruction's 4th field `k` is an **atom INDEX**, not a coefficient. It needs only `userAtoms` —
+**`boundOpcodes` is not consulted at all.** No REACH at this site.
+
+**[read] `wireAtomCallSites()`** (11562), called every 120 ticks (22469) *and* immediately on every atom
+authoring (12458): for each live program, with probability `ATOM_WIRE_RATE=0.02`, if it has no opcode-22
+instruction already, splice in `[22, rand12, rand12, randIndex]`. Ungated by any knob.
+
+**[read] Germline authoring (12455) pushes to `userAtoms` UNCONDITIONALLY**; it binds into
+`boundOpcodes` only inside `if(_atomFix)`. `cloneGenome` (6060) copies both lists, so descent keeps them
+in sync — but the germline can hold atoms that were never bound.
+
+### Why this may bias #81–#84 toward null
+
+**[read]** The carrier test used throughout is
+`isC = g && Array.isArray(g.boundOpcodes) && g.boundOpcodes.length > 0`.
+
+**[inferred] That is "carries a bound opcode", NOT "executes atoms".** A particle with
+`userAtoms.length>0` and `boundOpcodes.length===0` is classed a **non-carrier** while still calling
+atoms through an auto-wired opcode 22. If both classes execute the same atoms, the
+carrier-minus-non-carrier contrast **partially cancels the very effect it is measuring**, biasing the
+estimator toward zero — a mechanism that would produce #83's null independently of the routing story.
+
+**Not established, and directly measurable.** Whether this actually contaminates the split depends on
+whether any live particle holds a non-empty `userAtoms` with an empty `boundOpcodes`. **That has never
+been measured.** The instrument is one counter in the existing sampler:
+
+```
+atomsNoBind = count(palive && pGenome[i].userAtoms?.length && !pGenome[i].boundOpcodes?.length)
+```
+
+If it is 0 throughout, the split is clean and this concern is retired on evidence. If it is non-zero,
+every carrier estimate in #81, #82, #83 and #84 is attenuated by an unmeasured amount, and the fix is to
+redefine the split as *executes-atoms* rather than *carries-bound-opcode*.
+
+**This is now the highest-priority instrument in this map**, ahead of the opcode histogram, because it
+bears on whether four completed experiments measured what they reported.
+
+---
+
 ## ★ THE GENERATION RATCHET (22477–22500) — found while checking the region I called "HUD"
 
 **[read]** Unconditional, no knob, every 600 ticks:
