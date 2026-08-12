@@ -285,8 +285,9 @@ content (dense effectors). It is cheap and read-only.
 ## Open questions this map raises
 
 1. **The realised opcode histogram in live programs** — decides routing-vs-content for the whole atom arc, and invalidates or confirms the effector arithmetic. [not measured]
-2. **What does `metabolicCost` actually evolve to?** [not measured] — the highest-value cheap instrument
-   in the file.
-2. **Is `vmRegs[di]` ever read downstream?** [not measured] — needs the opcode read/write table below.
-3. **Opcode semantics table** — which of the 236 core opcodes read which registers, and which write
-   `vmActions`. Not yet built; required to answer (2) statically.
+2. **What does `metabolicCost` actually evolve to?** [not measured] — if it sits at the floor, carrying
+   instructions is ~free and several separate findings collapse into one mechanism.
+3. **Is the carrier confound frequency-dependent selection or regression to the mean?** Patch
+   `GENO_NFD_ON=1`→`0` (line 1013) harness-side. Decides whether #83's "position confound" reading holds.
+4. **Is `vmRegs[di]` ever read downstream?** [not measured] — needs a per-opcode register read/write table,
+   which the effector census started but did not finish.
