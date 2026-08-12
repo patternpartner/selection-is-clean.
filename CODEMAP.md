@@ -225,11 +225,32 @@ cause: **regression to the mean predicts a declining curve too** — early carri
 selected subset, and the advantage decays as the class grows to include everyone. Both hypotheses
 predict the observed slope.
 
-**The discriminator:** `GENO_NFD_ON` is a hard constant `=1` at line 1013 with no env gate. A
-harness-side rewrite to `0` separates them cleanly — if the slope flattens, it is the NFD; if it
-survives, it is position/regression and #83's reading stands. This is the single most informative
-follow-up this map has produced, it costs one patched constant, and it cannot run until the #84 batch
-frees the cores.
+**The discriminator, now known to need TWO knobs, not one.** `GENO_NFD_ON` is a hard constant `=1` at
+line 1013. But `__OPCODE_NOVELTY` is **also LIVE** (19565) and acts on carriers by the same route:
+
+**[read] 19955–19965**: `opCum[op]` is a slow EMA of each opcode's usage share, recomputed every
+`OPNOV_INTERVAL=120` ticks. Per-particle novelty sums `1 - min(1, opCum[op]*256)` over program
+instructions **with `op < 256`**, and the reward is mean-centred:
+`amp[i] += opnovStrength * clamp(pNicheRaw[i]/meanNov - 1, -1, 1)`, strength 0.0025 (evolvable).
+
+**[read]** An atom's opcode is `CORE_OPCODES + k = 236 + k`, so the first ~20 bound opcodes fall **inside
+the `op < 256` window** and are scored. A freshly-spread atom's opcode has `opCum ≈ 0` → novelty ≈ 1 →
+**maximal bonus**, decaying exactly as the atom's usage share rises across the population.
+
+**So there are THREE mean-centred rarity terms that produce a declining carrier advantage**, two of them
+keyed directly to the bound opcode:
+
+| term | strength | acts on carriers via |
+|---|---|---|
+| genotypic NFD | ±0.0096 | program signature includes opcode 236 |
+| **opcode novelty** | ±0.0025 | opcode 236 is historically unexplored |
+| trait NFD | ±0.004 | only if carriers differ in trait bin |
+
+The discriminator against regression-to-the-mean therefore requires patching **both** `GENO_NFD_ON=0`
+**and** `__OPCODE_NOVELTY=0`. Testing one alone would leave the other producing the same signature and
+would be read as "the confound survived, so it is position" — a false negative. This is the single most
+informative follow-up this map has produced; it costs two patched constants and cannot run until the #84
+batch frees the cores.
 
 ---
 
