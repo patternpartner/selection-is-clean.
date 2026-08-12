@@ -908,7 +908,57 @@ including directed-EMIT; death and life history; clusters and cluster budding; t
 channels; the shadow sim and what feeds it; plasmids; cosmos; speciation; alien attribution; the
 attribution meta-layer; signals; the network bridge.
 
-**Not mapped:** export/import serialisation detail only.
+**Not mapped:** nothing structural remains. Serialisation, the cadenced sweep, and the render layer are
+all covered below.
+
+---
+
+## Remaining cadenced mechanisms, and the upward channel
+
+**[read] The `tick%N` sweep, completed.** `tick%3` echo trail (18609, visual); `tick%45` `compact()`
+(array housekeeping); `tick%60` two blocks — population aggregates (`vmGainStats`) and germline
+bookkeeping (`peakFitness`, `currentStableStreak`, `longestStable`), both read-only over sim state;
+`tick%100` `profileVM()`; `tick%120` `sampleInstrumentation()` and `wireAtomCallSites()`; `tick%150`
+`wireModeOpcodes()` / `wireCosmosOpcode()`; `tick%300` `collectClusterUpstream()`; `tick%600` the
+generation ratchet; `tick%900` `archiveGenome()`; plus `OPNOV_INTERVAL`, `NOV_CADENCE`,
+`ALIEN_PREDICT_CADENCE`.
+
+**[read] `collectClusterUpstream` (Pe26) is a genuine UPWARD information channel.** Gated by
+`genome.gradientUpstreamBias`; qualifying clusters (`persistAge≥6`, `coherence≥0.45`, `vmProgram≥2`)
+donate a sampled **1–2 instruction motif** into `clusterUpstreamBuffer`, capped at
+`MAX_UPSTREAM_BUFFER`. So group-level discoveries flow *up* into the germline — the system has
+multi-level **information flow**, not only multi-level selection.
+
+### An exemplary piece of epistemics, embedded in that function
+
+**[read]** A gate term `avgAmp<0.38` was deleted after `harness-gates.js` measured it as *"the sole
+blocker 0 times in 314 evaluations across four runs"* — removal therefore behaviour-neutral by
+construction, and **checked bit-identically rather than argued**. Then the comment does something rarer:
+
+> *"The claim is scoped WEAKER than #63's SPECIATE_MIN_AGE deletion, deliberately. That term had a
+> structural argument… This one has only a correlation: `avgAmp<0.38` means a starving cluster, and
+> starving clusters are also young, so `persistAge<6` fires first. Correlations can come apart in a
+> regime not yet sampled. **"Dead in every regime measured" is the honest ceiling here, not "dead".**"*
+
+**[inferred]** Refusing to upgrade a measured null into a structural claim, and saying explicitly *why*
+this null is weaker than a superficially similar one, is the same discipline as #83's method note about
+retiring controls. It belongs in this map because it is the standard the codebase sets for itself, and
+it is the standard against which the four unmeasured items below should be judged.
+
+---
+
+## Serialisation (6263–6300, 7741–7760, 12710)
+
+**[read]** `exportGenome` / `importGenome` (file), `archiveGenome` (every 900 ticks), and URL-hash resume
+via `location.hash` — the mechanism `harness-clamp.js` uses for `GENOME=`. The wire format is
+**abbreviated keys** (`age, z, p, q, w, oct, fs, m, f, n, …`) with `ua` for atoms and `dr` for the draw
+program, reconstituted through `sanitizeGenome` / `sanitizeDraw` on load.
+
+**[read]** Atoms survive serialisation with `uses`, `age`, `alienHits`, `alienAttempts` preserved (6628)
+— unlike `cloneGenome`, which **resets** `uses` and the alien counters so a new lineage re-earns its own
+track record. **A reloaded genome therefore carries a provenance a freshly-cloned one does not**, which
+matters for any experiment resuming from `GENOME=`: `attemptMemeTransfer` picks the donor's
+**most-used** atom, so a reloaded bank arrives with its usage ranking already established.
 
 ---
 
