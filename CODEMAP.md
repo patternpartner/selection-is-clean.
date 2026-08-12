@@ -391,6 +391,58 @@ separable — compare directed-emit insertions against a shuffled-axis control.
 
 ---
 
+## Death and life history (13440–13530) — the best-designed part of the system
+
+**[read] Four death causes**, all through one ordinary path so bookkeeping stays uniform:
+
+| cause | condition | body deposited? |
+|---|---|---|
+| **escape** | non-finite position, or beyond `[-W, 2W]×[-H, 2H]` | **no** — deliberately: the position is exactly what is untrustworthy |
+| **starvation** | `amp < genome.deathThreshold` | yes — `rootField +0.18`, `detritalField += amp×0.22 + localRes×0.12` |
+| **senescence** | hazard after `page > SENESCENCE_ONSET=1800` | yes |
+| **surge exhaustion** | `MODE_SURGE` with provision spent | yes |
+
+**[read] Death feeds a trophic level.** Corpses deposit into `detritalField` and `rootField`, which are
+harvestable by other opcodes (146, 162, 165) — decomposer lineages can build a metabolism on death.
+Starvation and senescence also return `BIRTH_ENERGY_COST × DEATH_ENERGY_RETURN` to `worldEnergy`.
+
+**[read] Founder grace** (`specInGrace`): a young lineage gets `deathThreshold×0.25`, and under
+`__COLO.surv` is pinned to life support rather than reaped — protection against the stochastic founding
+dip, deliberately not extended to escapees.
+
+**[read] Surplus is banked, not discarded**: `amp` above `AMP_SOFT` converts to `pProvision` at
+`PROVISION_YIELD=0.55`.
+
+**[read] Real life-history trade-offs**, and these are properly built:
+- `somaRepair` — buys up to `SOMA_HAZARD_RELIEF=0.75` of senescence hazard, and **costs
+  `amp -= somaRepair × SOMA_REPAIR_COST` every tick** (13401). Disposable-soma theory, implemented.
+- `MODE_SURGE` — 2.2× reproduction, burns banked provision each tick, then takes an acute hazard when
+  the reserve empties. Semelparity with a genuine failure mode.
+
+### The pattern that keeps recurring: "evolvable" often means "will sit at a bound"
+
+**[read] Selection direction for individually-selected genome parameters:**
+
+| parameter | bound | direction individual selection pushes | compensating cost? |
+|---|---|---|---|
+| `metabolicCost` | [2e-6, 2e-4] | **down** (pay less per instruction) | **none visible** |
+| `deathThreshold` | [0.01, 0.15] | **down** (survive at lower amp) | **none visible** |
+| `lifespanBias` | [0.15, 6.0] | up (live longer) | implicit only |
+| `somaRepair` | [0, 0.6] | up | **yes** — per-tick amp |
+| `vmMaxInstructions` | [6, 20] → clamp [1,96] | up | yes — `nInst × metabolicCost` |
+
+**[inferred] Where there is no compensating cost, the parameter's *bound* is the real design decision and
+the evolution is decorative.** `metabolicCost` and `deathThreshold` are the two with no visible
+counter-pressure, and both are exactly the parameters that set how hard selection bites.
+
+**[not measured] One instrument answers this entire class of question**: dump evolved genome parameter
+values at intervals over a run and see which sit at their bounds. It is read-only, cheap, and would
+settle `metabolicCost` (open question 2), the life-history parameters above, and the general "is
+evolvable decorative here?" question in a single run. **This is now the highest-value cheap measurement
+this map has identified.**
+
+---
+
 ## Open questions this map raises
 
 1. **The realised opcode histogram in live programs** — decides routing-vs-content for the whole atom arc, and invalidates or confirms the effector arithmetic. [not measured]
