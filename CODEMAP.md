@@ -792,6 +792,41 @@ recorded as refuted and net-harmful in #18.
 
 ---
 
+## Alien attribution (52–68, 12420–12494, 13555–13570) — a SECOND selection channel on atoms
+
+**[read]** The self's reflective apparatus (shadow-sim, metaCredit) only ever modelled Selection's own
+future. This reuses the metaCredit *pattern* — *"I predicted a direction, time passed, did reality
+confirm it"* — against a genuinely alien target: **a peer tab's packet-emission rate on the
+BroadcastChannel**, the only observable available with zero cooperation from other files.
+
+**[read] The predictor is an authored ATOM.** From the declaration comment: this is *"a real second test
+of whether primitives selected for one role (driving actuators) generalize to a totally different one
+(forecasting a foreign substrate), not a bespoke hand-written heuristic bolted on the side."*
+
+**[read] It has teeth.** `alienGrip(a) = alienHits/alienAttempts` once `attempts ≥
+ALIEN_GRIP_MIN_ATTEMPTS`. Gated `__ALIEN_SELECT`, default ON. Two consequences:
+- atom selection weighting at 12427
+- **cull protection at 12494**: an atom with zero uses past `UA_GRACE_AGE` is removed **unless**
+  `alienGrip(a) > 0`
+
+**[inferred] So authored atoms have TWO fitness channels: driving actuators, and forecasting foreign
+substrates.** The #80–#84 arc measured only the first.
+
+**[inferred] and this channel is almost certainly DEAD in every headless experiment.** `peerObservable`
+is populated only by `handleNetworkMessage` from real BroadcastChannel traffic (115). The harness stubs
+`BroadcastChannel` as a no-op class with no peers, so no packets arrive → `peerObservable` stays empty →
+no predictions are formed → `alienAttempts` stays 0 → `alienGrip` is 0 for every atom, always.
+
+**Consequences for the arc, both worth stating:**
+1. The cull-protection branch never fires headless, so atom retention in #80–#84 is governed purely by
+   `uses`, not by predictive grip. That is a *simplification* of the live artwork's dynamics, and it was
+   never noted as a difference between harness and live.
+2. **A whole selective channel designed for authored atoms cannot be measured by the harness at all.**
+   Testing whether primitives generalize across substrates requires ≥2 live tabs, which is exactly the
+   regime the notebook's "only the LIVE artwork can make this call" comments keep pointing at.
+
+---
+
 ## Synthesis — what this system actually is, and what it needs
 
 **What it is [read]:** a **five-level** evolutionary system — particles, budding clusters, horizontally
