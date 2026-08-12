@@ -644,6 +644,75 @@ have*. Both things are true at once, and neither substitutes for reading the exe
 
 ---
 
+## ★ THE HEADLINE FINDING — REACH exists, is LIVE, and does not apply to the atoms the arc measured
+
+**[read] There is a `LIVE STACK` block (19548–19586)** that promotes the whole OEE experiment stack to
+default-ON: `__COSMOS, __NICHE_FRONTIER, __NICHE_NDIM, __NICHE_LOCAL, __SPECIATE, __COLO_SURV,
+__SPATIAL_TEND, __MINT_GATE:'cluster', __DRAW_VM, __GROUP_ROLES, __DIMS_SAT:3000, __SPATIAL_NICHE,
+__NICHE_BUILD, __NOVELTY_ARCHIVE, __RICH_GRAMMAR, __DECIDE, __DECIDE_REAL, __FORAGE_EYES,
+__ATOM_DURABLE, __REACH, __GROUP_COMMONS, __MEME_TRANSFER, __OPCODE_NOVELTY`. Fill rule:
+`for(const k in LIVE) if(globalThis[k]===undefined) globalThis[k]=LIVE[k];` — the harness overrides only
+what it sets explicitly.
+
+**This contradicts OEE-NOTES.md swing #11's "ships dormant (all knobs default OFF)".** Every experiment
+since runs the full stack unless it forced flags off.
+
+### `__REACH` — atoms as effectors
+
+**[read] 16910–16917**, and this is the whole thing:
+
+```js
+if(_bua){ const _out=uaCall(_bua,vmRegs[si],vmRegs[(si+1)%12]); vmRegs[di]=_out;
+  if(__REACH_ON){ vmActions[Math.abs(di)%7]+=Math.max(-2,Math.min(2,_out))*k*0.2; __reachFires++; }
+}
+```
+
+Its LIVE comment: *"authored atoms drive the VM's existing conserved actuators directly, closing
+sense→compute→ACT. **Atoms become EFFECTORS, not just calculators.**"*
+
+**So the architectural fix proposed earlier in this map already exists and is on by default.**
+
+### But it is applied at ONE of NINE bound-opcode dispatch sites
+
+**[read]** Bound-opcode dispatch appears at 10476, 13823, 15811, 15897, **16910**, 17179, 18207, 18729,
+18906. Grepping `__REACH_ON` at each: **only 16910 has it.**
+
+**[read] And 16910 is on the PLASMID path.** The nearest preceding operand definition is line 15828,
+inside the plasmid loop (`const op=pPlasmid[pBase+ip*4]|0; … const si=…,di=…`), and the block closes at
+16923 with `amp[i]-=nPi*genome.metabolicCost*0.5`. The main particle program's dispatch is 13823, whose
+operands come from 13732 — **no REACH**.
+
+### Why this is the headline
+
+**[read]** `seedAtomIntoParticle` (639) splices the atom call-site into `pProg[tgt]` — the main program.
+`attemptMemeTransfer` (658) splices into `recv.vmProgram` — also the main program. **Neither route ever
+places an atom in a plasmid.**
+
+**[inferred, and it follows directly] Every atom in #80, #81, #82, #83 and #84 executed on the
+non-REACH path.** The mechanism that makes authored atoms effectors is live, was built for exactly this
+problem, and does not reach the atoms the entire arc has been measuring. Those atoms were calculators
+writing a register, and their output reached fitness only through the ~2% routing lottery.
+
+This explains, without needing any new hypothesis:
+- **#83's null** — the measured cargo genuinely could not act.
+- **Why REACH exists at all** — someone diagnosed this and built the fix.
+- **#84's stage-1 shape** — a small (~2 SE), not large, forced-arm effect is exactly what register-only
+  routing predicts.
+
+### The interventions this implies, in order
+
+1. **Add REACH to site 13823** (the main-program dispatch) as an experimental arm against the current
+   build. One line, and #84's sham/forced machinery already supplies the controls. **Pre-registered
+   prediction: the carrier estimator stops returning null.**
+2. **Measure `__reachFires`** — the counter already exists (590). If it is non-zero, REACH is firing for
+   plasmid-borne atoms and the contrast between plasmid-atoms and program-atoms is directly observable
+   in the current build, with no code change at all.
+3. **`Math.abs(di)%7` on an 8-slot array** — `vmActions[7]` is unreachable via REACH. Slot 7 writes
+   `tend` dim 4. Possibly deliberate (identity self-write excluded), possibly an off-by-one; the comment
+   lists channels "0,2,3,4,5,6" and never mentions 1 or 7, so it reads as deliberate-but-undocumented.
+
+---
+
 ## Synthesis — what this system actually is, and what it needs
 
 **What it is [read]:** a multi-level evolutionary system with two replicators (particles and budding
