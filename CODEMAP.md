@@ -734,10 +734,69 @@ This explains, without needing any new hypothesis:
 
 ---
 
+## Cosmos (1086–1170) — selection over PHYSICS, and the fifth replicator
+
+**[read]** An eligible cluster can found a **daughter world** carrying a multiplicatively perturbed copy
+of its own five physics constants (`entropyBaseline`, `entropyK`, `entrainRate`, `creationCost`,
+`entrainThresh`). The child runs its own coarse ecology on its own clock, with no reference to the
+parent's fields, population or fitness.
+
+**[read] "It is not scored. It either organises or it does not."** — selection without a fitness
+function, which is the honest form of it. Children are seeded **disordered** (coherence ~0.05, two
+cells) on a finite endowment converted from the launch cost, so a child must bootstrap order and mass
+before its endowment drains: a genuine race.
+
+**[read] Matter crosses the boundary in both directions, exactly conserved** (audited to
+double-precision epsilon). A thriving child exports to its launch site; a starving one drains it — so
+**parasitism is expressible without being built in**.
+
+**[read] The loop closes upward**: a child that has exported more than it was founded with **proposes its
+constants into `shadowScenarioBank`**, where the existing vetting machinery may evict them. World-level
+outcomes feed back into the parent's imagination.
+
+**[read] Measured before shipping**, on 400 children run to completion: 33.5% ever emit, 66.5% never
+heard from; median peak coherence 0.331 against a 0.62 gate; median lifetime 521 of 900 ticks; 35.5%
+survive to heat death. What separates a heard child from a silent one, in order: **cheap growth**
+(`creationCost` 0.312 in emitters vs 0.407 in silent), then low `entropyBaseline` (7.8e-4 vs 9.1e-4),
+then `entrainRate`. *"Most will die is a measurement here, not an intention."*
+
+### So the system has FIVE levels of selection
+
+| level | unit | inheritance |
+|---|---|---|
+| particle | genome (188 params) + program | vertical descent + crossover + hybridisation |
+| cluster | cluster genome + cluster VM + scenarioFossil | budding |
+| plasmid | ≤4 instructions | horizontal, on resonance |
+| authored atom | one expression | horizontal, on contact |
+| **world** | **five physics constants** | **founding, unscored** |
+
+---
+
+## Speciation (`__SPEC`, 19587+) — cladogenesis with both isolation halves
+
+**[read]** `__SPECIATE:1` is LIVE. Defaults: `grace:2000` (founder death-relief), `minsize:12`,
+`divT:0.20` (trait-centroid divergence threshold). A viable sub-population sitting in a niche-cell
+distinct from its lineage's main body, with centroid diverged ≥ `divT`, is **minted a new lineage id**.
+
+**[read] `__MINT_GATE:'cluster'`** — mint on a distinct *cluster* rather than a distinct niche-cell.
+The recorded reason: the strict cell-distinctness condition "foreclosed split-first speciation, the
+monoculture-lock", erasing incipient lineages at the cradle.
+
+**[read] Post-zygotic isolation** (#17) blocks gene flow — crossover, `tendencyBleed`, `HGT_DONATE`
+(op179), and the `globalTend` sink is pulled to the *lineage-local* centroid rather than the global mean.
+**Pre-zygotic isolation** (`__SPEC_ASSORT`) is trait-based soft assortative mating and is **left OFF** —
+recorded as refuted and net-harmful in #18.
+
+**[read] Lineages are tracked**: `createLineage(parent, src)` with sources `'founder'`, `'cluster'`,
+`'bud'`; `pLin[i]` inherits from parent A or mints a founder id.
+
+---
+
 ## Synthesis — what this system actually is, and what it needs
 
-**What it is [read]:** a multi-level evolutionary system with two replicators (particles and budding
-clusters), a third quasi-replicator (horizontally transmitted authored atoms), self-modifying programs,
+**What it is [read]:** a **five-level** evolutionary system — particles, budding clusters, horizontally
+transmitted plasmids, horizontally transmitted authored atoms, and founded daughter worlds carrying
+perturbed physics — with self-modifying programs,
 instruction-level recombination and lateral program copy, a priced resource economy, an eight-channel
 writable substrate that itself computes, real life-history trade-offs (disposable soma, semelparity),
 and a self-authored expression grammar with branching, composition and recurrence.
