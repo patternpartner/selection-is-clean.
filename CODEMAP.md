@@ -169,6 +169,70 @@ second cheap instrument this map calls for.
 
 ---
 
+## The selection gradient (main loop, 20041+) — what actually drives differential survival
+
+**[read]** `loop()` applies amplitude-modifying terms in this order: seasonal energy influx → metabolism
+takes first claim on `worldEnergy` → **trait NFD** → **rarity metabolic discount** → **genotypic NFD** →
+**novelty-archive reward** → `applyNicheEconomy()` → DIMS growth.
+
+**[read] Magnitudes, per tick:**
+
+| term | strength | zero-sum? |
+|---|---|---|
+| **genotypic NFD** — rare *program vocabulary* | `0.004 × 2.4` = **±0.0096** | yes |
+| **trait NFD** — rare trait bin | **±0.004** | yes |
+| novelty-archive reward | `novStrength` 0.004, cadence 24 | yes ("bound-then-centre") |
+| rarity metabolic discount | `RARITY_DISCOUNT=0.62` upkeep multiplier | **no** |
+| resource income `localRes × entropyK` | 0.0004 default; **~0.00135 evolved** (noted at 1156) | no |
+| VM cost, ~12 instructions | ~0.00024 per interaction | no |
+
+**[inferred] Being rare is worth roughly ten times more than foraging well.** The two largest terms are
+both zero-sum rarity taxes. Nothing in the loop rewards a particle for computing well — only for being
+different. An authored primitive that genuinely improved foraging would earn at most ~0.00135/tick
+against rarity terms of ±0.0136/tick, a ~10:1 noise-to-signal ratio.
+
+**[inferred] This reframes the whole #81–#84 arc.** Those experiments have been trying to detect a
+behavioural benefit an order of magnitude below the dominant selective term. The 1.6% bound of #83 is
+fully consistent with a real effect that is simply swamped.
+
+### The carrier confound is frequency-dependent, and #83 may have misattributed it
+
+**[read]** The genotypic-NFD signature is `sum of opHash[op]` over **distinct** opcodes with `op < 256`
+(20069). An atom's opcode is `CORE_OPCODES + k` = **236 + k**, so the first bound opcodes are inside the
+window. **Carriers therefore form their own signature class**, and the term rewards whichever class is
+rarer — at ±0.0096, the strongest term in the system.
+
+**[measured, on 52 completed #84 runs, 1625 windows with both classes ≥3]** Carrier advantage against
+carrier frequency:
+
+| carrier fraction | mean dAmp |
+|---|---|
+| 0.1–0.2 | **+0.0317** |
+| 0.3–0.4 | +0.0305 |
+| 0.5–0.6 | +0.0089 |
+| 0.6–0.8 | ~0.000 |
+| 0.9–1.0 | **−0.0095** |
+
+OLS slope **−0.0141**. The advantage is a declining function of frequency — the signature of frequency
+dependence, not of a fixed property of carriers.
+
+**Averaged over the 10–90% band this gives ≈ +0.018. #83's sham-arm "position confound" was +0.0186.**
+
+**[inferred, NOT established]** #83 read that number as *"contact-acquired carrier status predicts
+amplitude — well-connected particles acquire atoms first."* A designed frequency-dependent mechanism
+with the right sign and the right order of magnitude reproduces it. That does not prove NFD is the
+cause: **regression to the mean predicts a declining curve too** — early carriers may simply be a
+selected subset, and the advantage decays as the class grows to include everyone. Both hypotheses
+predict the observed slope.
+
+**The discriminator:** `GENO_NFD_ON` is a hard constant `=1` at line 1013 with no env gate. A
+harness-side rewrite to `0` separates them cleanly — if the slope flattens, it is the NFD; if it
+survives, it is position/regression and #83's reading stands. This is the single most informative
+follow-up this map has produced, it costs one patched constant, and it cannot run until the #84 batch
+frees the cores.
+
+---
+
 ## Open questions this map raises
 
 1. **What does `metabolicCost` actually evolve to?** [not measured] — the highest-value cheap instrument
