@@ -443,7 +443,110 @@ this map has identified.**
 
 ---
 
-## Open questions this map raises
+## Multi-level selection: clusters (8090–8520) — a real second replicator
+
+**[read]** Clusters form by flood-fill where `bond > genome.clusterBondThresh` within an interaction
+radius, subject to `clusterMinSize`. A cluster is **not** just a label — it carries its own heritable
+state:
+
+`{ vmProgram: seedClusterVM(), vmInfluence, clusterGenome, lineageID, fieldSignature, coherence,
+   scenarioFossil }`
+
+**[read] Clusters BUD.** A daughter inherits the parent's `vmProgram` instruction-by-instruction with
+mutation, its `clusterGenome`, a derived `lineageID`, a jittered `fieldSignature`, and a
+**`scenarioFossil`** — the parent's birth-time scenario snapshot, i.e. ancestral memory passed down the
+bud line.
+
+**[read] Red Queen mutation boost**: `_effInnov = clusterGenome.innovationRate × (1 + _rqStress×1.5 +
+rivalDissim×0.8)` — cluster mutation rate rises with field depletion and with divergence from rivals.
+Opcode swap on bud is `rate×0.27`, drawn from `CORE_OPCODES` only.
+
+**[inferred]** Cluster VMs therefore **cannot acquire authored atoms by mutation** — bound opcodes
+(≥`CORE_OPCODES`) are outside the draw. Authored primitives are a particle-level phenomenon only. That
+is an asymmetry the atom arc never mentions.
+
+---
+
+## The substrate: eight field channels (6093–6135)
+
+**[read]** `FIELD_W×FIELD_H = 40×40` per channel:
+
+| channel | role |
+|---|---|
+| `field` / `field2` | primary + secondary resource, enabling cross-channel reactions |
+| `field1Prev` / `field2Prev` | previous-tick snapshots → temporal derivatives are sensable |
+| `fieldMemory` | 0=virgin, higher=more history — "territorial scar depth" |
+| `fieldSig` / `fieldOwnership` | per-cell territorial signature and claim strength (0=commons) |
+| `rootField` | slow-decay mycelial network; persistent clusters deposit, others tunnel along |
+| `detritalField` | corpse biomass; read by op145, harvested by op146 — the trophic substrate |
+| `signalField` | volatile pheromone, ~5-tick half-life — alarm cascades, trails, marking |
+| `cellProgOp/A/B/Str` | **an inscribed PROGRAM per cell** — the substrate itself computes |
+
+**[read]** `cellProgStr` decays unless reinforced, and Layer 35 blends the inscribed cell's coefficient
+back into `vmRegs[11]`. So particles write programs into the world, the world runs them, and the result
+re-enters particle cognition. That loop is closed.
+
+---
+
+## The shadow simulation, and a precise version of the tension
+
+**[read]** `lastShadowNudgeDir` is a 12-slot direction vector:
+
+- **indices 0–4** (physics: `entropyBaseline`, `entropyK`, `entrainRate`, `creationCost`,
+  `entrainThresh`) — written by **both** `decideFromRealWinner()` (6038, from the highest-amplitude REAL
+  particle) and the shadow sim (10900–10904). Consumed by `gradMaybe` at 11948–11952 to bias physics
+  mutation directionally.
+- **indices 5–11** (behaviour: force, phaseShift, ampTransfer, tendBleed, **spawnDrive**, sigModulate,
+  mutPressure) — written **ONLY** by the shadow sim (10905–10911, from `_wv`, the winning scenario).
+
+**[read]** `mutateGenome` reads `lastShadowNudgeDir.slice(5,12)` at 12521 and 12556 — the behavioural
+half — to pick `bestBehavAxis` for directed-EMIT insertion.
+
+**[inferred] So the aiming of directed variation over BEHAVIOUR comes exclusively from the shadow sim**,
+with no reality-derived fallback; reality only informs the physics axes. Given the `case 16` comment
+recording the shadow sim as ablated to **exactly 0.000 across five seeds**, the axis choice may be
+uninformed. Two things this does *not* mean: it does not disable directed-EMIT (opcode 4 is still
+preferentially inserted, so actuator density still rises), and the 0.000 ablation predates LEAP 20
+giving the shadow stakes via `decisionConfidence`. **Separable and unmeasured:** compare directed-EMIT
+against a shuffled-axis control — same insertion rate, random channel. If outcomes match, the aiming is
+decorative and only the enrichment matters.
+
+---
+
+## Synthesis — what this system actually is, and what it needs
+
+**What it is [read]:** a multi-level evolutionary system with two replicators (particles and budding
+clusters), a third quasi-replicator (horizontally transmitted authored atoms), self-modifying programs,
+instruction-level recombination and lateral program copy, a priced resource economy, an eight-channel
+writable substrate that itself computes, real life-history trade-offs (disposable soma, semelparity),
+and a self-authored expression grammar with branching, composition and recurrence.
+
+**The two honest structural criticisms that survived the full read:**
+
+1. **The oldest currency is gameable; the newest is not.** `metabolicCost` and `deathThreshold` are
+   evolvable with no visible counter-pressure, and they are precisely the parameters setting how hard
+   selection bites. The high opcodes (138+) have hardcoded `localRes` prices a genome cannot mutate away.
+   The fix is not "add cost" — cost exists — it is **make the legacy parameters non-gameable**, the way
+   the newer layer already does.
+
+2. **Perception vastly outgrew action, and the bridge is narrow.** ~90 sensory layers and 71 sensor
+   gates feed 12 registers, which reach the world through `case 4` plus ~40 direct-effect opcodes. The
+   system has repeatedly answered this with directed-EMIT — but that mechanism's aim is fed by a
+   subsystem measured inert.
+
+**What it needs, in cost order [inferred]:**
+
+- **Measure before building.** One read-only genome dump settles whether `metabolicCost` and
+  `deathThreshold` sit at their bounds. If they do, that single fact reframes #70, #74 and #83 at once.
+- **The opcode histogram.** Decides whether the atom-neutrality arc is about routing or content, and it
+  is the load-bearing unknown under four experiments.
+- **`GENO_NFD_ON=0`.** Separates frequency-dependent selection from regression to the mean in #83's
+  "position confound".
+- **Shuffled-axis control on directed-EMIT.** Tests whether the shadow sim's aiming carries information.
+
+All four are read-only or one-constant patches. **None require new mechanisms**, which is the finding
+that most surprised me: this system's next gains look like they come from measuring what is already
+built, not from building more.
 
 1. **The realised opcode histogram in live programs** — decides routing-vs-content for the whole atom arc, and invalidates or confirms the effector arithmetic. [not measured]
 2. **What does `metabolicCost` actually evolve to?** [not measured] — if it sits at the floor, carrying
