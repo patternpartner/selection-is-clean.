@@ -6561,3 +6561,56 @@ carried over from #83's 45, so all four arms share seeds and window structure.
 question is answered and the point estimate is NOT quoted as an unbiased effect size — stopping on a large
 result inflates it, and the claim being bought here is binary. If it does not, the run escalates to n=45
 to place a bound directly comparable to #83's 1.6%.
+
+### #84 STAGE 1 (n=9) — the pilot was chaos, the rig reproduces #83, and the headline sits at 1.97 SE
+
+4 arms x 9 seeds x 12000 ticks, 250-tick sampling. 36 of 36 runs complete, zero loop errors, every arm
+self-identifying in its own output (`sham=true`, `force=8`, `force=-8`, `force=null`).
+
+**Falsifier 3 — the band is reachable in every arm.** In-band windows 141/146/141/159 for
+real/sham/+8/-8, 7 to 27 per seed. No arm failed to spread and no seed had to be reported as undefined.
+
+**Falsifier 2 — NO transmission effect. The pilot observation is refuted.**
+
+| carrier fraction | t=4000 | t=6000 | t=8000 | t=12000 |
+|---|---|---|---|---|
+| sham | 0.066 | 0.270 | 0.561 | 0.971 |
+| forced +8 | 0.071 | 0.333 | 0.675 | 0.975 |
+| forced -8 | 0.101 | 0.328 | 0.560 | 0.975 |
+
+The 43-against-2 that reshaped this protocol was **one seed of chaos**, exactly as the pre-registration
+said it might be. Cargo does not measurably move how fast the element spreads. The pilot still earned its
+keep — it is why transmission was measured in all four arms instead of assumed — but as a finding it is
+dead, and it is the seventh stated expectation in this session to fail.
+
+**Rig validation, unplanned and worth more than it cost.** The real arm reproduces #83 at a fifth of the
+seeds: **real-sham dAmp +0.0024 (SE 0.0136)** here against **-0.0018 (SE 0.0084)** at n=45. Same null,
+same scale, independent batch. The instrument is the one #83 used.
+
+**Falsifier 1 — the headline, and it does not clear the bar I set for it.**
+
+| contrast | estimate | SE | ratio | 95% CI | sign |
+|---|---|---|---|---|---|
+| real - sham, dAmp | +0.00242 | 0.01359 | 0.18 | [-0.0242, +0.0291] | 5/9 |
+| **forced +8 - sham, dAmp** | **-0.02532** | 0.01283 | **1.97** | [-0.05046, -0.00018] | 2/9 |
+| forced -8 - sham, dAmp | -0.00380 | 0.02198 | 0.17 | [-0.0469, +0.0393] | 6/9 |
+| **+8 minus -8** (widest contrast) | -0.02152 | 0.01822 | 1.18 | [-0.0572, +0.0142] | 2/9 |
+
+Births are null on every contrast (0.00 to 0.67 SE).
+
+The +8 rail is **negative in 7 of 9 seeds** and its 95% interval excludes zero — by a margin of 0.00018,
+which is to say it does not meaningfully exclude it. Three contrasts were tested and one landed near 2 SE;
+that is what three contrasts do. **The pre-registered threshold was 3 SE and this is 1.97**, so the
+question stays open and the rule applies.
+
+**Escalating to n=45, as pre-registered.** This is recorded and committed BEFORE the escalation runs, so
+the record shows a rule being followed rather than a number being chased — the failure mode #83 caught
+itself in was recommending one thing and doing another.
+
+Scope: **sham, +8 and -8 to 45 seeds** (36 further primes, 43 through 227). The real arm stays at n=9 —
+it exists here as a reproduction check on the rig, it passed, and #83 already holds it at n=45. Spending
+36 more runs to re-derive a null that two independent batches agree on would buy nothing.
+
+**My stated prediction is not yet resolved.** I predicted falsifier 1 would come back non-null on at least
+one rail. It leans that way on +8 and is nowhere on -8, at a significance I pre-committed to calling
+insufficient. Claiming it now would be reading a 1.97 as a 3.
