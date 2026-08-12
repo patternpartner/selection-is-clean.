@@ -579,6 +579,71 @@ foreign matter is opportunity and risk.
 
 ---
 
+## CORRECTIONS to earlier sections of this map (865–885)
+
+Two claims made earlier in this document, and repeated to the user, are **wrong**. The code says so
+directly.
+
+### 1. The bounded-trait-space wall WAS addressed
+
+**[read]** (865–867):
+```js
+const TEND_SOFT=1.2;   // the historical wall, now a toll booth
+const TEND_HARD=3.0;   // absolute bound retained for numerical safety
+const TEND_TOLL=0.010; // amp charged per tick per unit beyond the soft line
+```
+
+The comment above it states the diagnosis explicitly — *"Swing #11 diagnosed exactly this (bounded trait
+space ⇒ ≤16 channels ⇒ still a FINITE niche count) and every swing since redistributed a fixed niche
+count. The bound now behaves like #51's amp line: crossing it is allowed but costs amplitude… The niche
+space stops being a box."*
+
+**I claimed swing #11's diagnosis "has not been addressed by anything in #54–#84." That is false.** It
+was addressed structurally: the ±1.2 clamp became a priced boundary a lineage can pay to cross.
+
+### 2. The gameable-cost failure mode was already identified, and already fixed for new machinery
+
+**[read] LEAP 9 (869–877)** states the principle I derived independently, in almost the same words:
+
+> *"The meta-influence layer inflates unchecked precisely because its coefficients cost NOTHING
+> (measured: 1472 atrophy cuts fired and the layer still grew 4-5×). The atrophy machinery that judges is
+> losing; the pressure that charges wins. So carried machinery is now billed at the same per-unit economy
+> instructions already pay. **STRUCTURAL, not a gene — a self-cost gene gets evolved to zero to dodge the
+> bill while keeping the bloat.**"*
+
+```js
+const CARRY_COST_META=0.0000009;  // amp/tick per unit of summed meta-influence magnitude
+const CARRY_COST_ATOM=0.0000040;  // amp/tick per carried atom in the bank
+```
+
+**So the "system sets its own tax rate" critique was already known here and already acted on.** New
+costs are deliberately structural constants precisely because a cost gene would be evolved to zero.
+`metabolicCost` remaining a gene is a legacy holdover, not an oversight in principle.
+
+**And it matters directly for the atom arc: carrying an atom is NOT free.** `CARRY_COST_ATOM` charges
+0.000004 amp/tick per atom in the bank, structurally, un-dodgeable. Combined with #83's finding of no
+benefit, an authored atom is a small **net negative** to its carrier — which is consistent with the
+−8.6 population reading #80 recorded and could not attribute.
+
+### 3. Other measured failures recorded in code, not in the notebook
+
+- **Atrophy loses to inflation**: 1472 cuts fired, layer still grew 4–5×.
+- **LEAP 11 "KILL THE HOMOGENISER"**: `globalTend` pulled every particle toward the population mean each
+  tick — harmless under a frozen economy, "a continuous force FOR monoculture" once selection was real.
+- **#51's reversal**: turning selection on collapsed `occupiedKinds` from 14–16 to 1.71. The diagnosis
+  recorded is that *every diversity mechanism in the file had been tuned against a population that could
+  not respond to it.*
+- **`HYBRID_RATE=0.035`**: cross-lineage program exchange, because isolation made lineages permanently
+  non-exchanging.
+
+**[inferred] The lesson for reading this codebase:** the source comments contain measured results that
+never reached OEE-NOTES.md, including several that pre-empt criticisms an outside reader would arrive at
+independently. The comments are unreliable as *descriptions of current behaviour* — they claim actuators
+that do not exist — but they are a genuine experimental record of *why constants have the values they
+have*. Both things are true at once, and neither substitutes for reading the executable code.
+
+---
+
 ## Synthesis — what this system actually is, and what it needs
 
 **What it is [read]:** a multi-level evolutionary system with two replicators (particles and budding
@@ -589,11 +654,12 @@ and a self-authored expression grammar with branching, composition and recurrenc
 
 **The two honest structural criticisms that survived the full read:**
 
-1. **The oldest currency is gameable; the newest is not.** `metabolicCost` and `deathThreshold` are
-   evolvable with no visible counter-pressure, and they are precisely the parameters setting how hard
-   selection bites. The high opcodes (138+) have hardcoded `localRes` prices a genome cannot mutate away.
-   The fix is not "add cost" — cost exists — it is **make the legacy parameters non-gameable**, the way
-   the newer layer already does.
+1. **The oldest currency is gameable; the newest is not** — and the codebase already knows it.
+   `metabolicCost` and `deathThreshold` are evolvable with no visible counter-pressure. But LEAP 9 states
+   the exact failure mode ("a self-cost gene gets evolved to zero to dodge the bill") and makes all newer
+   costs structural constants. So this is a **legacy holdover in two named parameters**, not a
+   philosophy of the system. The fix is narrow: convert those two, or measure whether they sit at their
+   bounds first.
 
 2. **Perception vastly outgrew action, and the bridge is narrow.** ~90 sensory layers and 71 sensor
    gates feed 12 registers, which reach the world through `case 4` plus ~40 direct-effect opcodes. The
