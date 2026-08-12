@@ -6470,3 +6470,94 @@ would have produced a confident wrong result with no way to detect it from insid
 is narrower than "measure everything": **a control may only be retired on evidence powerful enough to
 have detected what it controls for.** At n=5 that evidence did not exist, and the fact that the control
 kept returning nothing was not evidence that it was measuring nothing.
+
+---
+
+## #84 — the positive control the arc never had: can this instrument see a cargo that DOES something?
+
+#83 closed with "the channel works, the cargo is neutral", bounded at 1.6% of the amplitude scale. The
+first half of that sentence is established — #80 put an authored primitive into every particle in every
+seed and #83 confirmed it executes millions of times per run. **The second half rests on an assumption
+nobody in this arc has paid for: that the carrier split would have SEEN an atom effect if there were
+one.** Four nulls from an instrument never shown able to return anything else is a weaker statement than
+it looks, and #83's own method note is the reason this cannot be waved through — *a control may only be
+retired on evidence powerful enough to have detected what it controls for.* The mirror of that rule
+applies to a null, and this arc has not paid it either.
+
+### Why "the write is invisible" is a live alternative, not a formality
+
+The bound opcode does `vmRegs[di]=uaCall(_bua,vmRegs[si],vmRegs[(si+1)%12])`. **Behaviour does not leave
+the VM through `vmRegs`.** It leaves through `vmActions[0..7]` (force, and the seven other actuators) and
+through `pMem`, which registers 4..4+MEM_SIZE are written back into. So the atom's output reaches
+selection only if some LATER instruction in the same ≤16-instruction program happens to read `di` and
+route it to an actuator. A write no instruction routes out is invisible to selection **whatever value it
+carries** — and under that reading every null in #81/#82/#83 is a fact about the coupling, not about the
+contents, and "the cargo is neutral" is the wrong sentence for it.
+
+### The intervention
+
+`ATOM_FORCE=<v>` pins `uaCall`'s return to the constant `v`, counting the invocation exactly as the sham
+does. **The sham is this knob at v=0**, which makes `ATOM_FORCE=0` a free self-check rather than a claim.
+
+`uaCall` clamps its output to [-8,8], so **+8 and -8 are the rails**: the +8 vs -8 contrast is the widest
+cargo difference the substrate permits, and it is far outside the range a random authored expression over
+small-valued variables typically produces. If the carrier split cannot see THAT, it cannot see any cargo.
+
+**Self-check, run before pre-registration and passed.** `ATOM_FORCE=0` against `ATOM_SHAM=1`, SEED=3,
+1500 ticks: fingerprints identical to the digit (`n:345, pos:331343.424084, amp:296.276399, lin:42632,
+prog:4260`). The new arm is the old arm plus a constant, measured rather than asserted.
+
+**A second check that had to be run because the first one passed for the wrong reason.** At 1500 ticks
+`ATOM_FORCE=8` was ALSO bit-identical to the sham — not because the knob is inert but because no atom has
+been seeded that early (`atomSeeded=0`, `carriers=0` at t=1000). An arm that cannot be turned off is not a
+control, and the same is true of one that has nothing to act on yet, so divergence was confirmed at 5000
+ticks before committing to the protocol.
+
+### The pilot observation that changed what gets measured
+
+SEED=3, 5000 ticks, one seed:
+
+| arm | carriers at t=5000 | atomSeeded | atomUses | memeTransfers |
+|---|---|---|---|---|
+| sham (v=0) | 2 | 4 | 3,276 | 3 |
+| **forced +8** | **43** | 7 | 195,968 | 48 |
+| forced -8 | 1 | 2 | 1,458 | 2 |
+
+**This is n=1 and may be chaos**, and it is recorded as an observation rather than a result for a specific
+reason: forcing the output changes the trajectory, which changes where particles are, which changes when
+the `Math.random()<MEME_RATE` contact lottery opens. 43 against 2 could be a systematic transmission
+effect or it could be two runs that diverged and landed differently. Four pilots in this session have
+inverted at 12000 ticks and this one gets no more credit than they earned.
+
+What it does change is **what the protocol records**: if cargo can move how fast the element SPREADS, then
+a fitness-only estimator would miss it, and the spread trajectory is measured in every arm rather than
+checked once as a validity condition the way #81's falsifier 3 did it.
+
+### Falsifiers
+
+1. **CAN THE INSTRUMENT SEE CARGO AT ALL?** The #83 estimator, unchanged — carrier-minus-non-carrier
+   amplitude and per-capita births over windows where carriers sit between 10% and 90% — for forced(+8)
+   minus sham and forced(-8) minus sham. Non-zero on either → the instrument responds to cargo, and #83's
+   null is properly about the contents. **Null on both, at a precision comparable to #83's ±0.0084** →
+   the bound-opcode write does not reach fitness, and the whole arc has been bounding the coupling.
+2. **DOES CARGO MOVE TRANSMISSION?** Carrier fraction against time, per arm. This is the pilot's 43-vs-2,
+   given seeds. A cargo effect on spread with no effect on carrier fitness would be its own finding: an
+   element whose contents change how well it propagates without changing what it does for its host.
+3. **IS THE BAND REACHABLE IN EVERY ARM?** The -8 pilot had 1 carrier at t=5000. If an arm never crosses
+   10%, falsifier 1 is undefined for it — that gets reported as an arm that produced no in-band windows,
+   **not** dropped into a mean over the seeds that happened to work.
+
+**Prediction, stated so it can fail.** I expect falsifier 1 to come back non-null on at least one rail —
+±8 is a hundredfold outside typical cargo and it seems implausible that the register file absorbs it
+without trace. I hold this weakly: the register-routing argument above is a real mechanism, six stated
+expectations have failed in this session, and the most recent one to fail was my own account of why a
+test was underpowered.
+
+Protocol: **4 arms (real, sham, forced +8, forced -8) x 9 seeds x 12000 ticks, 250-tick sampling.** Seeds
+3, 7, 11, 17, 23 (#83's five) plus 29, 31, 37, 41. Real and sham are re-run at matched n rather than
+carried over from #83's 45, so all four arms share seeds and window structure.
+
+**Escalation rule, fixed in advance.** If the forced-vs-sham contrast exceeds 3 SE at n=9, the sensitivity
+question is answered and the point estimate is NOT quoted as an unbiased effect size — stopping on a large
+result inflates it, and the claim being bought here is binary. If it does not, the run escalates to n=45
+to place a bound directly comparable to #83's 1.6%.
