@@ -282,6 +282,61 @@ content (dense effectors). It is cheap and read-only.
 
 ---
 
+## CORRECTION — the effector census was wrong twice more, and the high opcodes change the picture
+
+The census above scanned only for particle-state targets (`vx`, `amp`, `phase`…). Rescanning for **every**
+assigned or mutated identifier in each case body finds far more.
+
+**[read] Well-identified effector categories in the particle VM:**
+
+| target | opcodes | what it means |
+|---|---|---|
+| `localRes` | 138,140,144,146,152,153,155,156,162,166,212,215,220,225,… (15) | the resource currency — read AND spent |
+| **`pProg`** | **144, 152, 153, 179, 225** | **self-modifying code** |
+| `amp` | 16, 24, 165, 226, 232 | direct energy |
+| `field` / `field2` / `signalField` / `detritalField` / `rootField` / `inhibitorField` / `scaffoldField` | 9,10,31,138,140,146,157,162,165,174,212,220 | stigmergic writes to six substrate channels |
+| **`birthQueue`** | **16, 226** | **a second reproduction path** |
+| `cellProgOp/A/B/Str` | 20 | writes a *program* into a substrate cell |
+| `pType`, `pHomeX/Y`, `pResistance`, `pMode`, `freq`, `pMem` | 130,175,215,232,219,7,18 | self-modification of identity/state |
+
+**Counting honestly: a strict scan gives 42 of 236; a wider one gives 93 but catches undeclared locals.
+The true figure is between, and an exact count needs a real parser rather than regex.** Either way it is
+far above the "~13" I reported earlier, and that estimate propagated into my routing arithmetic.
+
+### Reproduction has more than one path — my "one-line fitness function" was wrong
+
+**[read] `case 226` — SPAWN_REQUEST — is fully programmatic ASEXUAL reproduction:**
+
+```js
+if(localRes[i]>=0.4 && amp[i]>=0.2 && N+birthQueue.length<CAP-1){
+  localRes[i]-=0.4; amp[i]-=0.2; birthQueue.push({...,parent:i}); vmRegs[di]=1*k; }
+```
+
+One parent, VM-decided, **priced at 0.4 `localRes` + 0.2 `amp`**. It bypasses `vmActions[4]` entirely.
+So reproduction routes are at least: `vmActions[4]` (sexual, 16978), `birthQueue` via opcodes 16/226
+(asexual), and `addCompound` (18397).
+
+### The high opcodes are a different, better-designed layer
+
+**[read] `case 225` — PROG_LATERAL_COPY**: `pProg[i]=cloneProg(pProg[j])`, cost 0.3 `localRes`. Wholesale
+program horizontal transfer.
+**[read] `case 152` — RECOMBINE**: splices a segment of the partner's program into its own, cost 0.15
+`localRes`, length-capped.
+
+**[inferred] and this materially revises the "system sets its own tax rate" finding above.** That
+critique holds for `metabolicCost` — the per-instruction VM tax, which is evolvable and selected
+downward. It does **not** hold for the high opcodes: their prices (0.4, 0.3, 0.15 `localRes`) are
+**hardcoded constants a genome cannot mutate away**. The later layers of this system have a real,
+non-gameable economy.
+
+**So the honest version of the gradient critique is narrower than the one I gave earlier:** the *legacy*
+VM cost is gameable and the *rarity* terms dominate amplitude, but the high-opcode layer has genuine
+priced actions — resource-costed reproduction, program copying, recombination, and stigmergic writes.
+The system is not uniformly gradient-free; it is gradient-free in its oldest currency and priced in its
+newest.
+
+---
+
 ## Open questions this map raises
 
 1. **The realised opcode histogram in live programs** — decides routing-vs-content for the whole atom arc, and invalidates or confirms the effector arithmetic. [not measured]
