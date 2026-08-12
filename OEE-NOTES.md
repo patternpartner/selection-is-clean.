@@ -6614,3 +6614,97 @@ it exists here as a reproduction check on the rig, it passed, and #83 already ho
 **My stated prediction is not yet resolved.** I predicted falsifier 1 would come back non-null on at least
 one rail. It leans that way on +8 and is nowhere on -8, at a significance I pre-committed to calling
 insufficient. Claiming it now would be reading a 1.97 as a 3.
+
+---
+
+## #85 — five measurements from the code map, and one of them inverts the economy
+
+#84's escalation was **stopped at 39 of 108 runs** and is not being resumed. A full structural read of
+`index.html` (now committed as `CODEMAP.md`) turned up several ways the harness regime differs from what
+the experiments assumed, and tightening a possibly-mismeasured estimator was the wrong use of the cores.
+**#84 stage 1 (n=9) stands as recorded**: forced-cargo contrast at 1.97 SE, below the pre-registered 3 SE
+bar, unresolved.
+
+All five instruments are read-only or one-constant patches. **Control passed**: the instrumented build
+returns a fingerprint identical to the digit against the pre-change build (SEED=3, 3000 ticks:
+`n:320, pos:367540.226973, amp:309.912372, lin:38358, prog:4182`).
+
+Protocol: 6 seeds x {control, NFD_OFF} x 12000 ticks, 250-tick sampling. **M1-M4 below are from the
+4 completed control runs (seeds 3, 7, 11, 17). M5 is pending the paired arm.**
+
+### M1 — the #81-#84 carrier split is CLEAN. Concern retired on evidence.
+
+The map raised a real worry: opcode 22 calls atoms **by index out of `userAtoms` and never consults
+`boundOpcodes`**, so a particle with atoms but no bound opcode would be scored a NON-CARRIER while still
+executing atoms — attenuating every carrier estimate in the arc toward null.
+
+**Measured: `atomsOnly = 0` in every window of every seed.** Particles are always `both` or `neither`;
+the two lists never desynchronise. The carrier definition means exactly what #81-#84 claimed. **This is
+the outcome I said in advance I preferred, and it held — recorded because the preference was stated
+first.**
+
+### M2 — REACH has never fired. Not once.
+
+`__reachFires = 0` on all four seeds at 12000 ticks.
+
+`__REACH` is LIVE and its comment reads *"authored atoms drive the VM's existing conserved actuators
+directly… Atoms become EFFECTORS, not just calculators."* It is wired at **one of nine** bound-opcode
+dispatch sites (16910), and that site is on the **plasmid** path. Seeded and transferred atoms are
+spliced into the main program (13823), which has no REACH.
+
+Prediction stated before the run: *"non-zero here = plasmid-borne atoms only."* **It is zero**, which is
+stronger — no atom is ever executed from a plasmid at all, so the mechanism is inert in practice rather
+than merely narrow. Seventh failed prediction of this arc, and the first to fail by being too generous.
+
+### M3 — the routing bottleneck does not exist. My arithmetic was 10x wrong.
+
+| | measured | uniform-draw expectation | enrichment |
+|---|---|---|---|
+| opcode 4 (EMIT) share of instructions | **25.4%** | 0.30% | **84x** |
+| effector share | 28.4% | 10.5% | 2.7x |
+| programs containing opcode 4 | **357 / 361** | — | — |
+
+CODEMAP estimated "~2% of atom placements route to an effect" from a uniform opcode draw. Programs are
+**saturated** with actuators — a quarter of all instructions are EMIT and essentially every program has
+one — so the true routing probability is ~20-25%. **Routing is not why the atoms read neutral.** Top
+opcodes are the arithmetic core (4, 2, 1, 0, 3) plus the auto-wired 236, 235, 22.
+
+### M4 — `metabolicCost` IS NEGATIVE IN LIVE GENOMES, AND SELECTION DRIVES IT THERE
+
+```
+metabolicCost   mean -0.00653   min -0.0223   max 0.000533
+                documented clamp: [0.000002, 0.0002]
+```
+
+`amp[i] -= nInst * genome.metabolicCost`. **With a negative cost, instructions PAY.** Longer programs
+earn amplitude, so the term selects for its own further inversion — runaway, not drift.
+
+**Mechanism, checked rather than inferred.** Particle genomes are mutated by `mutateChildGenome` (6078),
+whose own comment states the design: *"FULL divergence — gloves-off random walk on EVERY heritable scalar
+gene… **Only the crash floors (isFinite + the VM's own per-op clamps) remain; range is the system's to
+find.**"* No `__cl`, no `sanitizeGenome`. Step size is `(|v|*0.12 + 0.02)` — the additive `0.02` is
+**1000x the magnitude** of a parameter living at 2e-5, so it cannot stay near its intended scale and
+random-walks straight through zero.
+
+**The clamp that would prevent this is in `mutateGenome` — the GERMLINE path only** (12292), carrying the
+comment *"no free lunch — cost stays positive (the negative-drift hole that euthanised selection is
+closed)"*. The hole is closed for the germline. **Particle genomes are where selection operates, and
+there it is open.** Same signature on `somaRepair` (min -0.0086, floor 0) and `uaMaxDepth` (0.931,
+floor 1).
+
+### What M4 ties together
+
+- **#70 "inertness is free"** — worse than free. Inertness *pays*.
+- **#74 "selection purged unresolvable opcodes where a cost reaches"** — the cost is inverted, so it
+  reaches in the wrong direction.
+- **#83 a neutral element fixes** — carrying anything is rewarded, so neutrality is the *ceiling*, not
+  the expectation.
+- `vmMaxInstructions` sits pinned at 16.0.
+
+The recurring "this system has no selective gradient" reading across a dozen entries was right in effect
+and wrong in mechanism. **For program length the gradient is not absent; it points backwards.**
+
+**This is a defect, not a finding about evolution**, and it should be fixed and the affected arc re-run
+rather than reinterpreted. The minimal fix is to apply the existing germline clamps inside
+`mutateChildGenome` for the parameters whose SIGN carries meaning — `metabolicCost` above all — while
+leaving "range is the system's to find" intact for those where it does not.
