@@ -124,6 +124,31 @@ if((process.env.ATOM_SHAM|0)===1){
   if(code.split(A).length-1!==1){ console.log(JSON.stringify({error:'uaCall anchor'})); process.exit(1); }
   code=code.replace(A, A+'if(atom){atom.uses=(atom.uses|0)+1;} return 0; // #81 SHAM: executed, output reaches nothing');
 }
+// ── #84 FORCED CARGO — THE POSITIVE CONTROL THE ARC NEVER HAD ───────────────────────────────────
+// #81, #82 and #83 produced four nulls and finally a 1.6% bound, all read as "the cargo is neutral".
+// That reading assumes something never demonstrated: that this measurement COULD see an atom effect if
+// one were there. #83's own method note says a control may only be retired on evidence powerful enough
+// to have detected what it controls for. The mirror of that rule applies to a null, and it has not been
+// paid: nothing in the arc has shown the carrier split responds to an atom that actually does something.
+//
+// ATOM_FORCE=<v> pins uaCall's return to the constant v, invocation counting and all, exactly as the
+// sham does. The sham IS this knob at v=0 — which makes ATOM_FORCE=0 a free self-check: it must come
+// back bit-identical to ATOM_SHAM=1 on the same seed, or the new arm is not the old one plus a constant.
+//
+// v=+8 and v=-8 are the clamp rails (uaCall clamps its output to [-8,8]), so the +8 vs -8 contrast is
+// the WIDEST cargo difference the substrate permits. If the carrier split cannot see THAT, it cannot
+// see any cargo, and every null in this arc is a statement about the coupling rather than the contents.
+// Structural reason this is a live possibility rather than a formality: the atom writes vmRegs[di], but
+// behaviour leaves the VM through vmActions and pMem. A write to a register no later instruction routes
+// out is invisible to selection no matter what value it carries.
+if(process.env.ATOM_FORCE!==undefined){
+  if((process.env.ATOM_SHAM|0)===1){ console.log(JSON.stringify({error:'ATOM_FORCE and ATOM_SHAM are the same patch; set one'})); process.exit(1); }
+  const FV=Number(process.env.ATOM_FORCE);
+  if(!isFinite(FV)){ console.log(JSON.stringify({error:'ATOM_FORCE must be finite, got '+process.env.ATOM_FORCE})); process.exit(1); }
+  const A='function uaCall(atom,a,b){';
+  if(code.split(A).length-1!==1){ console.log(JSON.stringify({error:'uaCall anchor'})); process.exit(1); }
+  code=code.replace(A, A+'if(atom){atom.uses=(atom.uses|0)+1;} return '+FV+'; // #84 FORCED CARGO: executed, output is a constant');
+}
 // Births by the PARENT's carrier status — per-capita reproduction is the second half of "does it pay",
 // and amplitude alone cannot show a primitive that converts energy into offspring rather than into mass.
 // BOTH spawn paths. The first version of this counted only addParticle and returned 0 carrier births
@@ -447,6 +472,9 @@ const nanSites=rows.filter(r=>r.nan>0).sort((a,b)=>b.nan-a.nan).slice(0,TOP);
 
 console.log(JSON.stringify({
   seed:process.env.SEED||null, ticks:TICKS, sampleWin:SWIN, index:process.env.INDEX||'index.html', nocount:NOCOUNT,
+  // #84: arms must be self-identifying in their own output. A batch of 36 files distinguished only by
+  // filename is one rename away from an arm swap that no later check could catch.
+  atomSham:(process.env.ATOM_SHAM|0)===1, atomForce:(process.env.ATOM_FORCE!==undefined?Number(process.env.ATOM_FORCE):null),
   fingerprint, posRange:globalThis.__posRange(), escape:globalThis.__escape(), escSeries:globalThis.__escSeries||null, boundSeries:globalThis.__boundSeries||null, deathLineages:globalThis.__deathLineages?globalThis.__deathLineages():null, opcodes:globalThis.__opcodes?globalThis.__opcodes():null, memeDiag:globalThis.__memeDiag?globalThis.__memeDiag():null, mutProbe:globalThis.__mutProbe?globalThis.__mutProbe():null, aliasProbe:globalThis.__aliasProbe?globalThis.__aliasProbe():null,
   loopErrors, lastErr, driverErr:globalThis.__driverErr||0,
   alive:globalThis.__aliveN(), kinds:globalThis.__kinds(),
