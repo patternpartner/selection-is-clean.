@@ -908,8 +908,75 @@ including directed-EMIT; death and life history; clusters and cluster budding; t
 channels; the shadow sim and what feeds it; plasmids; cosmos; speciation; alien attribution; the
 attribution meta-layer; signals; the network bridge.
 
-**Not mapped:** the HUD/UI, export/import serialisation detail, and the `bridge/` directory (separate
-experiments: `rosetta.js`, `chemistry-reactor.html`, `lsystem-growth.html`).
+**Not mapped:** export/import serialisation detail only.
+
+---
+
+## ★ THE GENERATION RATCHET (22477–22500) — found while checking the region I called "HUD"
+
+**[read]** Unconditional, no knob, every 600 ticks:
+
+```js
+for(const l of live) if(!genFounders.has(l)) replaced++;
+if(replaced/live.size >= GEN_TURNOVER_FRAC && tick-lastGenTick > 1200){
+  genome.generation++;  genFounders=live;  lastGenTick=tick;
+  let atFrontier=false;
+  for(…) for(let d=0;d<DIMS;d++) if(Math.abs(tend[i*DIMS+d])>TEND_SOFT){atFrontier=true;break;}
+  if(atFrontier && DIMS<DIMS_MAX) setDims(DIMS+1);   // recordEvent('dims_earned', …)
+}
+```
+
+**A generation is counted only when a real fraction of live lineages have been REPLACED** — turnover,
+not clock time. And when a generation turns over **while some lineage has pushed past `TEND_SOFT`**, the
+trait space **grows a dimension**. The comment: *"if descent has reached the edge of the space, the space
+gets bigger… **This is the ratchet the arc has wanted since swing #11.**"*
+
+**[inferred] So there are THREE independent mechanisms addressing swing #11's bounded-niche-space wall**,
+and I earlier told the user there were none:
+
+1. `TEND_SOFT` / `TEND_TOLL` (865) — the ±1.2 wall became a priced boundary; pay amp to cross.
+2. **This ratchet** — `DIMS` grows when generational turnover coincides with an occupied frontier. Earned
+   twice over, and ungated.
+3. `__DIMS_SAT:3000` (LIVE) — saturation-gated growth: every 3000 ticks, grow an axis iff distinct
+   occupied niche-cells clear a threshold.
+
+**Method note.** This was found only because the claim "the rest is cosmetic" was challenged. It sits
+next to HUD string-building, which is why a structural scan skipped it — **proximity in the file is not
+proximity in function**, and the single most open-endedness-relevant mechanism in this codebase lives
+twenty lines from `_hud+=` string concatenation.
+
+---
+
+## The `bridge/` directory — a cross-paradigm interlingua with its own controlled arc
+
+**[read]** Three browser artefacts share one `BroadcastChannel('selection-pe-network')`: Pe
+(`index.html`, **never modified for the bridge**), `chemistry-reactor.html` (SKI-combinator artificial
+chemistry), `lsystem-growth.html` (Lindenmayer rewrite grammar).
+
+**[read] The Rosetta interlingua** (`rosetta.js`) is a five-gesture universal vocabulary —
+`DRAW, TURN, BRANCH, MERGE, REPEAT` — grounded in Pe's arithmetic core:
+`op0 copy→DRAW, op1 +=si*k→TURN, op2 *=→REPEAT, op3 threshold→BRANCH, op4 EMIT→MERGE`. Companions hear
+Pe's native `motif`/`plasmid`/`migrant`/`inscription` packets, translate to gestures, seed a real
+organism from the MEANING, and speak back **a valid native Pe motif** so Pe ingests via its own
+validated receive path.
+
+**[read] The arc is controlled, with effect sizes** (README):
+1. Flat `harvestNumbers` receive path was **decoration** — negative control showed only number-RANGE
+   crossed (Cliff δ=0.109, negligible), and selection erased even that.
+2. Structure-preserving translation **transmits** (recoverable at ~8× the structure-destroyed baseline)
+   but selection still erases it from the fitness outcome.
+3. Fitness coupling makes the signature **hitchhike** into a retained minority (retention 5×→13×,
+   δ→0.359) — *"only as far as honest, non-circular selection allows; fixation would mean designing the
+   answer."*
+4. Rosetta ships transmission: branch-density preserved into the L-system (**r=0.91**) and chemistry
+   (**r=0.90**), bidirectional.
+
+**[inferred] One limitation worth flagging.** `peOpToGesture(op) = CORE_OP_GESTURE[op%5]` maps *any*
+opcode to a gesture by residue mod 5. The comment is honest — *"exact for 0..4"* — but given this map's
+finding that the particle VM has 236 opcodes with ~42+ effectors, `op%5` is a very lossy projection for
+everything above op 4 (op 152 RECOMBINE → `152%5=2` → REPEAT, which is arbitrary). The measured r≈0.9
+shows something real crosses; what crosses is a projection of the arithmetic core, not of Pe's semantics
+in general.
 
 ---
 
