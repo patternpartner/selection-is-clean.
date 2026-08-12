@@ -827,6 +827,45 @@ no predictions are formed → `alienAttempts` stays 0 → `alienGrip` is 0 for e
 
 ---
 
+## Attribution / the meta-layer (Layer 26; 1579–1598, 9118+) — credit assignment over the genome
+
+**[read]** Every parameter in `META_LAYER_PARAMS` (**126 tracked params**) carries a `creditTrace`,
+accumulated each mutation cycle as `EMA( sign(perturbation applied last cycle) × sign(fitness change
+since) )`. Causally ordered: perturb at cycle N, run an interval, fitness moves, cycle N+1 attributes
+the move to that perturbation. Params that do not move bleed toward zero, so a gate frozen at 0 reads as
+"not currently contributing" rather than holding stale credit.
+
+**[read]** `metaCredit` holds `{trace, pendingDelta, fitAtApply}` per param. `metaCreditBias` (default
+0.1, evolvable, bounded [0, 0.5]) gates the only behavioural change: above 0, a tracked param's
+perturbation is **leaned** toward its credited direction. At 0 it is a pure random walk and attribution
+is purely observational. *"The random component always dominates"* — lean, not lock.
+
+**[read] The meta-layer is explicitly self-referential.** `atrophyRate` is itself in
+`META_LAYER_PARAMS` — *"atrophy can atrophy itself"* — as is `metaMutationBias` (so differential
+mutation can be retired by attribution) and `fitnessMirrorBias`. `ATROPHY_SAFE` lists **97** params
+exempt from being atrophied.
+
+**[inferred]** This is the machinery that produces `_growFactor` / `_shrinkFactor` in the mutation
+operators — i.e. the system's self-assessment feeds back into how hard it creates and culls structure.
+It is also the layer LEAP 9 measured as *losing*: 1472 atrophy cuts fired while the layer it judged grew
+4–5×, which is why `CARRY_COST_META` was added as a structural charge rather than trusting the verdict.
+
+---
+
+## Signals (Layer 25) — explicit communication, and it is priced
+
+**[read]** Pe31–35 gave particles only *implicit* communication (neighbour models, plasmids, field
+deposition). Layer 25 adds **explicit** emit/receive, with three evolvable parameters and — notably —
+a real cost: `signalEmitCost` default **0.005**, so *"emitting has real cost, must earn its keep"*. The
+comment states the alternative and rejects it: at 0, *"signaling is free (particles can spam, but no
+selection against it)"*.
+
+**[inferred]** Signals are therefore one of the mechanisms built *with* the LEAP 9 lesson already
+applied — a channel that would otherwise inflate is priced at the point of emission. `signalField` is
+the volatile carrier (~5-tick half-life), written by opcodes 157, 165, 174.
+
+---
+
 ## Synthesis — what this system actually is, and what it needs
 
 **What it is [read]:** a **five-level** evolutionary system — particles, budding clusters, horizontally
