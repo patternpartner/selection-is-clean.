@@ -6409,3 +6409,64 @@ files were still being written; the guard exists because of that.
 Recorded in advance: **a null here does not become proof of neutrality.** It becomes a tighter bound, and
 the difference between those two readings is the entire reason the previous four nulls were not written
 up as "the primitive is neutral".
+
+### #83 RESULT — the primitive is neutral to within 1.6%, and the control I twice called unnecessary is what prevented a false positive
+
+45 seeds, both arms, 12000 ticks, 250-tick sampling. **45 of 45 pairs complete, 1620 in-band windows.**
+
+### Falsifier 2 — THE POSITION CONFOUND IS REAL, and this reverses my own recommendation
+
+| sham arm alone | estimate | SE | ratio | 95% CI |
+|---|---|---|---|---|
+| carrier amplitude advantage | **+0.01863** | 0.00554 | **3.36 SE** | [+0.0078, +0.0295] |
+| carrier per-capita birth advantage | **+46.27** | 14.13 | **3.27 SE** | excludes 0 |
+
+**Both exclude zero.** Contact-acquired carrier status DOES predict amplitude and reproduction, on its
+own, with the atom's output disconnected.
+
+At n=5 this read 1.46 SE and 0.03 SE. **#81 concluded "the sham was unnecessary — the next version can
+use the raw split at half the compute", and #82 repeated it.** That recommendation was wrong, and it was
+wrong in the most expensive direction available: **without the sham arm, the raw carrier advantage is
++0.0168 at SE ~0.006 — about 2.8 SE — and would have been reported as "the primitive pays".** The
+control is the only thing standing between this arc and a false positive.
+
+Both entries hedged the claim in the same words — "1.46 SE is a hint rather than a clean zero and should
+not be rounded down" — and then recommended rounding it down anyway. **The hedge was correct and the
+recommendation contradicted it.** Writing the caveat is not the same as acting on it.
+
+### Falsifier 1 — the atom effect is null, and now tightly
+
+| real minus sham | estimate | sd | SE | ratio | sign |
+|---|---|---|---|---|---|
+| carrier amplitude advantage | **-0.00184** | 0.05615 | 0.00837 | 0.22 SE | positive in 19/45 |
+| carrier per-capita births | **+4.04** | 105.65 | 15.75 | 0.26 SE | positive in 23/45 |
+
+Both within a quarter of a standard error of zero, with sign splits (19/45, 23/45) indistinguishable
+from coin flips. This is not a weak null; it is a point estimate sitting on zero.
+
+### Falsifier 3 — THE BOUND, which is what this run existed to produce
+
+**95% CI on the amplitude effect: [-0.0182, +0.0146]. |effect| < 1.61% of the amplitude scale**, against
+3.96% at n=5. Per-capita births: [-26.8, +34.9].
+
+**An authored primitive fixes in every seed, executes millions of times per run, and confers no benefit
+larger than 1.6% on amplitude and none detectable on reproduction.** Neutral-and-transmissible is no
+longer the best-supported reading among several — it is the measured one, to a stated tolerance.
+
+### What this arc established
+
+The bound-slot namespace went from structurally dead (#74, #75) to live and saturated (#80) to
+quantified (#83). The channel works. **The cargo is neutral.** That is a real answer to the question
+this project has carried since #54 about whether authored primitives are a route to open-endedness: they
+spread, they are inherited, they execute — and, as currently authored, they do nothing for their
+carriers. The next question is not about the CHANNEL, which is solved, but about what generates the
+expressions travelling down it.
+
+### Method note, and it is the session's most consequential one
+
+Six stated expectations failed here. Five changed only an answer. **This one was a recommendation about
+METHOD** — drop the control arm, halve the compute — and had it been followed, the next measurement
+would have produced a confident wrong result with no way to detect it from inside. The rule that follows
+is narrower than "measure everything": **a control may only be retired on evidence powerful enough to
+have detected what it controls for.** At n=5 that evidence did not exist, and the fact that the control
+kept returning nothing was not evidence that it was measuring nothing.
