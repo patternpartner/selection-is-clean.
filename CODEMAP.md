@@ -337,6 +337,60 @@ newest.
 
 ---
 
+## Mutation operators (11580–12605) — and the system's own answer to the routing bottleneck
+
+**[read] Per-instruction mutation**, rate from `genome.mutationRate`:
+
+| operator | probability | note |
+|---|---|---|
+| opcode swap | `rate` | uniform over `OPCODE_COUNT`=332 |
+| source-register swap | `rate×0.2` | |
+| dest-register swap | `rate×0.2` | |
+| **insert instruction** | `rate×0.15×_growFactor` | biased — see below |
+| delete instruction | `rate×0.1×_shrinkFactor` | floor of 6 instructions |
+| **duplicate-with-mutation** | `rate×0.08×_growFactor` | copies an instruction, jitters its constant — the gene-duplication operator |
+
+`_growFactor` / `_shrinkFactor` are driven by the system's **own attribution verdict** on its layers: it
+creates more when thriving and culls harder when it has judged itself bloated.
+
+### DIRECTED EMIT — the architecture already attacks the actuator bottleneck
+
+**[read]** On insertion (12552–12581):
+
+```js
+const vmNudgeDirs33 = lastShadowNudgeDir.slice(5,12);        // from the SHADOW SIM
+const bestBehavAxis = /* channel with the strongest nudge */;
+const behavGradStrong = bgb>0.05 && risk>0.1 && bestBehavDir!==0;
+if(behavGradStrong && Math.random() < cl(bgb*_decGainI,0,1)){
+  newInst=[4, random(12), bestBehavAxis, initK];             // opcode 4 = EMIT, aimed at that channel
+}
+```
+
+Plus **anti-gradient vetting**: an inserted EMIT whose constant opposes a strong gradient is re-rolled
+60% of the time.
+
+**[inferred] This is the designed answer to the bottleneck I flagged earlier, and it substantially
+weakens my routing story.** Actuator instructions are not left to a 1-in-332 uniform draw — the system
+*preferentially inserts* them, aims them at a specific action channel, and initialises their constant in
+the gradient direction. Combined with selection (opcode 4 gates sexual reproduction), evolved programs
+should be **strongly enriched** in opcode 4. My "~2% of atom placements route to an effect" estimate
+assumed uniformity and is very likely too low.
+
+### The tension worth naming
+
+**[read]** The direction fed to directed-emit comes from `lastShadowNudgeDir` — the **shadow simulation**.
+**[read]** The comment inside `case 16` records that the shadow sim "was ablated this session and measured
+**EXACTLY 0.000** across five seeds: it fires, burns real compute, and changes nothing. Largest inert
+subsystem in the file."
+
+**[inferred]** So the mechanism that aims directed variation is driven by a subsystem previously measured
+to have no effect. Note this does **not** disable directed-emit: even with a noise-valued `bestBehavAxis`,
+the branch still preferentially inserts **opcode 4**, so actuator density rises regardless. What would be
+lost is the *aiming*, not the enrichment. Whether the axis choice carries information is unmeasured, and
+separable — compare directed-emit insertions against a shuffled-axis control.
+
+---
+
 ## Open questions this map raises
 
 1. **The realised opcode histogram in live programs** — decides routing-vs-content for the whole atom arc, and invalidates or confirms the effector arithmetic. [not measured]
