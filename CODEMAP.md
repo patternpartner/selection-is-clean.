@@ -866,7 +866,56 @@ the volatile carrier (~5-tick half-life), written by opcodes 157, 165, 174.
 
 ---
 
-## Synthesis — what this system actually is, and what it needs
+## The network bridge (1–330) — four channels of cross-population gene flow
+
+**[read]** `BroadcastChannel('selection-pe-network')`, multicast, `NET_PROTOCOL_VERSION=1`. Four
+transferable payload types, each with its own evolvable emission rate (Layer 22 — *"the system decides
+whether to be social"*):
+
+| type | payload | effect on arrival |
+|---|---|---|
+| `migrant` | a whole particle: `tend`, `mem`, **plasmid**, `amp`, `phase` | `addParticle` into the local world |
+| `plasmid` | ≤4 instructions | injected into a local particle |
+| `motif` | ≤8 VM instructions | program fragment |
+| `inscription` | cell program `{op, A, B, str}` | written into the substrate |
+
+Plus `applied` — a gossip-style announcement that a received packet actually changed the receiver's sim
+state. The comment is precise about why it is not a request/reply: BroadcastChannel is multicast, *"no
+single 'the other end' to address"*, so any listener can count it. **This is the observable that alien
+attribution predicts.**
+
+**[read] Every payload is strictly validated** (`validNetworkPayload`, 82–100): bounds-checked,
+length-capped, finite-checked on every field, with `validInstruction` enforcing 4-element instructions
+in `[-64,64]` / `[-16,16]`. `NET_DIMS=5`, `NET_MEM_SIZE=8`, `NET_MAX_PLASMID=4` deliberately mirror core
+constants for validation before local constants are known.
+
+**[read]** `xenoImpact` (215) deposits `XENO_RESOURCE=0.22` and `XENO_HAZARD=0.30` — foreign matter is
+opportunity and risk, and queues are bounded by `NET_QUEUE_LIMITS`.
+
+**[inferred]** Treating other tabs as untrusted input is the right call and is implemented carefully.
+The consequence for experiments is the one already noted under alien attribution: **headless runs stub
+`BroadcastChannel` to a no-op, so all four channels AND the alien-prediction observable are inert in
+every harness result in this project.**
+
+---
+
+## Coverage of this map
+
+**Mapped [read]:** macro structure; the genome (188 params); the metabolic and ecological economy; the
+atom grammar, runtime and transfer; the effector census across all six dispatches; the selection
+gradient in the main loop; the motor vocabulary and every reproduction path; mutation operators
+including directed-EMIT; death and life history; clusters and cluster budding; the eight substrate
+channels; the shadow sim and what feeds it; plasmids; cosmos; speciation; alien attribution; the
+attribution meta-layer; signals; the network bridge.
+
+**Not mapped:** rendering and the draw VM (`__DRAW_VM`, form composition — cosmetic to selection), the
+HUD/UI, export/import serialisation detail, and the `bridge/` directory (separate experiments:
+`rosetta.js`, `chemistry-reactor.html`, `lsystem-growth.html`).
+
+**Confidence note.** Everything marked **[read]** was taken from source, and several **[read]** claims
+in this document corrected earlier **[inferred]** ones in the same document — the corrections are left
+in place rather than edited away, because the pattern of *what* I got wrong is itself information: every
+error ran in the direction of underestimating the system.
 
 **What it is [read]:** a **five-level** evolutionary system — particles, budding clusters, horizontally
 transmitted plasmids, horizontally transmitted authored atoms, and founded daughter worlds carrying
