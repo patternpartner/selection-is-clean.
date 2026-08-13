@@ -586,6 +586,7 @@ let __DECIDE_ON=true; // +DECISION cached flag (resolved after the LIVE registry
 //   the caricature's physics commitment — imagine behaviour, but decide physics from what is actually winning.
 //   Always-on baseline step from tick one (the bet is placed, not deferred); earned confidence amplifies it.
 let __DECIDE_REAL=true; // +DECIDE-FROM-REAL cached flag (resolved after the LIVE registry)
+let __CHILD_SIGN_FLOOR=true; // #85: floor sign-carrying genes in the CHILD mutation path; CHILD_SIGN_FLOOR=0 reproduces the prior build
 let __REACH_ON=true; // +REACH cached flag (resolved after the LIVE registry); kept out of the per-instruction globalThis read path
 let __reachFires=0; // telemetry: how many times an authored atom drove an actuator (sense→ACT firings)
 let __ATOM_DURABLE=true; // +DURABILITY: preserve authored call-sites across self-adoption (resolved after LIVE registry)
@@ -6085,6 +6086,25 @@ function mutateChildGenome(g){
       const nx=v+(Math.random()-0.5)*(Math.abs(v)*0.12+0.02)*scale;
       if(isFinite(nx))g[k]=nx;
     }
+  }
+  // ═══ #85 SIGN FLOORS — a price that goes negative is a subsidy, not a range ═══════════════
+  // mutateChildGenome is deliberately unclamped ("range is the system's to find") and that stays. But a
+  // parameter SUBTRACTED as a price inverts into a REWARD when it crosses zero, which is not a range the
+  // system is exploring — it is a broken invariant. Measured (#85, 4 seeds, 12k ticks): live particle
+  // genomes sat at metabolicCost mean -0.0065, min -0.0223, against a germline clamp of [2e-6, 2e-4].
+  // With amp[i] -= nInst*metabolicCost negative, LONGER PROGRAMS EARN AMPLITUDE, so the term selects for
+  // its own further inversion — runaway, not drift. The germline path (mutateGenome) has clamped this
+  // since the "negative-drift hole that euthanised selection is closed" fix; the CHILD path never did,
+  // and the child path is where selection actually operates.
+  // Scope is deliberately minimal: only parameters whose SIGN carries meaning. entropyK is NOT floored —
+  // negative entropyK is recorded elsewhere in this file as a measured, meaningful evolved state.
+  // Gated: __CHILD_SIGN_FLOOR=0 reproduces the prior build exactly, for the A/B.
+  if(__CHILD_SIGN_FLOOR){
+    if(typeof g.metabolicCost==='number'&&!(g.metabolicCost>=2e-6)) g.metabolicCost=2e-6; // price, not subsidy
+    if(typeof g.somaRepair==='number'&&!(g.somaRepair>=0))          g.somaRepair=0;        // paid per tick; negative = free amp
+    if(typeof g.deathThreshold==='number'&&!(g.deathThreshold>0))   g.deathThreshold=0.01; // a non-positive floor is unreachable death
+    if(typeof g.mutationRate==='number'&&!(g.mutationRate>=0))      g.mutationRate=0;      // negative probability
+    if(typeof g.uaMaxDepth==='number'&&!(g.uaMaxDepth>=1))          g.uaMaxDepth=1;        // structural: depth<1 has no meaning
   }
   g.vmProgram=inheritProg(g.vmProgram,g.vmMaxInstructions||16); // pass evolved cap so lineages that evolved larger programs don't have children truncated to the global default
   if(Array.isArray(g.objWeights))for(let i=0;i<4;i++)if(Math.random()<rate){const nx=g.objWeights[i]+(Math.random()-0.5)*0.06*scale;if(isFinite(nx))g.objWeights[i]=nx;}
@@ -19578,7 +19598,8 @@ if(typeof globalThis!=='undefined'){
 __DRAWVM=(typeof globalThis!=='undefined'&&(globalThis.__DRAW_VM|0)===1); // resolve the render-VM toggle now that LIVE defaults are filled
 __ESCAPE_DEATH=(typeof globalThis==='undefined')||((globalThis.__ESCAPE_DEATH??1)|0)!==0;
 __ATOM_HERITABLE=(typeof globalThis==='undefined')||((globalThis.__ATOM_HERITABLE??1)|0)!==0; // LEAP 35 (#80) // LEAP 34 (#72) — resolve escape lethality once. Defaults ON: #71 established the current behaviour is wrong (cluster centroids computed over members at 1e32), and correctness is the reason it stands, not a diversity result
-__REACH_ON=(typeof globalThis==='undefined')||((globalThis.__REACH??1)|0)!==0; // resolve REACH once (LIVE defaults filled); referenced in the per-instruction hot loop
+__REACH_ON=(typeof globalThis==='undefined')||((globalThis.__REACH??1)|0)!==0;
+__CHILD_SIGN_FLOOR=(typeof globalThis==='undefined')||((globalThis.__CHILD_SIGN_FLOOR??1)|0)!==0; // #85 sign floors // resolve REACH once (LIVE defaults filled); referenced in the per-instruction hot loop
 __FORAGE_ON=(typeof globalThis==='undefined')||((globalThis.__FORAGE_EYES??1)|0)!==0; // resolve FORAGE once; gates the resource-sense computation in uaSetEyes
 __DECIDE_ON=(typeof globalThis==='undefined')||((globalThis.__DECIDE??1)|0)!==0; // resolve DECISION GAIN once; gates confidence accrual + commitment scaling
 __DECIDE_REAL=(typeof globalThis==='undefined')||((globalThis.__DECIDE_REAL??1)|0)!==0; // resolve DECIDE-FROM-REAL once; gates real-winner physics adoption
