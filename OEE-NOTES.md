@@ -6708,3 +6708,84 @@ and wrong in mechanism. **For program length the gradient is not absent; it poin
 rather than reinterpreted. The minimal fix is to apply the existing germline clamps inside
 `mutateChildGenome` for the parameters whose SIGN carries meaning — `metabolicCost` above all — while
 leaving "range is the system's to find" intact for those where it does not.
+
+### #85 M5 — my frequency-dependence hypothesis is REFUTED
+
+6 seeds, control vs `NFD_OFF=1` (both `GENO_NFD_ON=0` and `__OPCODE_NOVELTY=0`). Estimator pre-registered
+as the slope DIFFERENCE between arms, not the control slope.
+
+| arm | slope of dAmp on carrier fraction | SE |
+|---|---|---|
+| control | -0.0263 | 0.0221 |
+| NFD + novelty OFF | -0.0282 | 0.0127 |
+| **difference** | **-0.0020** | 0.0255 (**0.1 SE**) |
+
+Disabling both designed rarity terms did **not** flatten the slope; it moved it 8% the wrong way. The
+declining carrier advantage is **not** produced by the frequency-dependent mechanisms. **#83's reading —
+a position/acquisition confound — stands, and the reinterpretation offered from the code map was wrong.**
+
+Power caveat, stated rather than buried: if NFD explained the whole slope the difference would be
+~+0.026, which sits ~1 SE from the observed value. Disfavoured, **not excluded**. The hypothesis gained
+no support; that is the most that can be claimed.
+
+---
+
+## #86 — the sign-floor fix, and what restoring a real price actually buys
+
+`mutateChildGenome` floors the parameters whose SIGN carries meaning (`metabolicCost`, `somaRepair`,
+`deathThreshold`, `mutationRate`, `uaMaxDepth`). `entropyK` deliberately NOT floored — negative
+`entropyK` is recorded elsewhere as a measured, meaningful evolved state. Gated `CHILD_SIGN_FLOOR`.
+
+**Control: `CHILD_SIGN_FLOOR=0` is bit-identical to the pre-patch build** (SEED=3, 3000 ticks,
+fingerprint `n:320 pos:367540.226973 amp:309.912372 prog:4182`), so the off arm IS the prior build and
+the A/B is legitimate. The on arm diverges, so the knob bites.
+
+Protocol: 6 seeds x {off, on} x 12000 ticks.
+
+### The target is corrected
+
+| | off (prior build) | on (sign floors) |
+|---|---|---|
+| `metabolicCost` mean | **-6.59e-3** | **+2.82e-5** |
+| seeds with negative mean | **6 / 6** | **0 / 6** |
+| min across live genomes | -0.0224 | 0.000002 (the floor, exactly) |
+
+### Consequences, paired by seed
+
+| metric | off | on | diff | SE | ratio |
+|---|---|---|---|---|---|
+| alive | 344 | 236 | **-108** | 12.95 | **8.3** |
+| carriers | 335 | 200 | **-135** | 11.47 | **11.8** |
+| atomUses | 7.95M | 2.75M | **-5.20M** | 1.14M | **4.6** |
+| effector share | 0.283 | 0.248 | -0.035 | 0.029 | 1.2 |
+| mean prog length | 14.57 | 13.18 | -1.38 | 1.41 | 1.0 |
+| kinds | 5.67 | 7.50 | +1.83 | 2.17 | **0.8** |
+| vmMaxInstructions | 15.97 | 16.19 | +0.22 | 0.145 | 1.5 |
+
+### What this establishes, and what it does not
+
+**Established:** the economy was inverted in every seed of the shipped build; the mechanism is the
+unclamped child-mutation path; the fix restores the invariant; and restoring a real price costs **~31% of
+carrying capacity** (8.3 SE) and **~65% of atom execution** (4.6 SE). Both are exactly what a real cost
+should do, and both are solid.
+
+**NOT established, and I predicted otherwise on both:**
+1. **Diversity does not improve.** `kinds` 5.67 -> 7.50 at **0.8 SE**. At n=4 mid-run this read
+   5.67 -> 9.00 at 1.1 SE and I nearly reported it; it regressed as seeds were added. Classic noisy
+   early signal, and a reminder that the partial-batch read is the one to distrust.
+2. **Programs do not shrink.** I inferred that "longer programs earn amplitude" explained lengths pinned
+   near the cap. Under a genuine per-instruction price, mean length falls only 14.57 -> 13.18 (1.0 SE)
+   and `vmMaxInstructions` does not fall at all. **The length pinning is not primarily driven by the
+   inverted cost**, so that inference is retired.
+
+**Therefore: this is a CORRECTNESS fix, not an improvement.** It should ship because the germline path
+has clamped this since the "negative-drift hole" fix and the child path is where selection actually
+operates — not because it buys diversity, which on this evidence it does not. Shipping it as an
+open-endedness gain would be the same error the notebook has caught repeatedly: reporting a defect
+repair as a discovery.
+
+**Consequence for the arc:** every result from #70 onward was measured in an economy where instructions
+paid their carriers. That does not automatically invalidate them — the carrier estimator is a
+within-run contrast and both arms shared the inversion — but "inertness is free" and "a neutral element
+fixes" were both measured under a *subsidy*, and the honest position is that they need re-running under
+the corrected economy before they are quoted again.
