@@ -6789,3 +6789,53 @@ paid their carriers. That does not automatically invalidate them — the carrier
 within-run contrast and both arms shared the inversion — but "inertness is free" and "a neutral element
 fixes" were both measured under a *subsidy*, and the honest position is that they need re-running under
 the corrected economy before they are quoted again.
+
+---
+
+## #87 — #83 re-run under the corrected economy. Pre-registered, written while the batch runs empty.
+
+#86 established that every seed of the shipped build carried a **negative `metabolicCost`** — instructions
+paid their carriers rather than costing them. #83's headline ("an authored primitive fixes in every seed,
+executes millions of times per run, and confers no benefit larger than 1.6%") was measured entirely
+inside that inverted economy. This re-runs it with the economy corrected.
+
+**Protocol: identical to #83.** 45 seeds (3, 7, 11, 17, 23 + 40 further primes), both arms, 12000 ticks,
+250-tick sampling, `CHILD_SIGN_FLOOR=1` stated explicitly on every command line. Estimator unchanged:
+carrier-minus-non-carrier amplitude and per-capita births, **real minus sham**, over windows where
+carriers sit between 10% and 90%.
+
+**Both arms kept, and the reason is #83's own.** #83 found the position confound REAL at 3.36 SE after
+#81 and #82 had twice recommended retiring the sham to halve the compute — and recorded that without it
+the raw split would have read +0.0168 at ~2.8 SE and been reported as "the primitive pays". Dropping the
+control here to save four hours would repeat precisely the error that entry exists to document.
+
+### What is different this time, and why the comparison is not clean
+
+**#86 measured the corrected economy as a materially different world**: carrying capacity −31% (8.3 SE),
+atom execution −65% (4.6 SE), carriers 335 → 200. So this is **not** #83 with one variable moved; it is
+#83's estimator applied to a smaller, poorer, less atom-saturated population. Stated up front because the
+temptation on any difference will be to attribute it to "the economy is fixed now", and that attribution
+is not available from this design alone.
+
+**Specific risk to the estimator:** with fewer particles and less execution, the spread may cross the
+10–90% band in fewer windows per seed, which is exactly the underpowering #81 hit and #82 diagnosed. If
+in-band windows per seed drop materially below #83's range, the bound will be looser than #83's at the
+same n, and that must be reported as a power difference rather than a finding.
+
+### Falsifiers
+
+1. **DOES THE ATOM PAY, IN A WORLD WHERE INSTRUCTIONS COST?** Real minus sham on amplitude and per-capita
+   births at n=45. #83 gave [-0.0182, +0.0146], |effect| < 1.61%.
+2. **IS THE POSITION CONFOUND STILL REAL?** The sham arm alone. #83 measured +0.01863 ± 0.00554 (3.36 SE)
+   on amplitude and +46.27 ± 14.13 on births. If it survives correction, it is a property of
+   contact-based acquisition rather than of the inverted economy.
+3. **THE BOUND.** Whatever the point estimate, the 95% interval is the deliverable, reported alongside
+   in-band window counts so a looser bound cannot be mistaken for a smaller effect.
+
+**No prediction offered on falsifier 1.** Eight stated expectations have failed in this session, the two
+most recent being my own: that fixing the economy would improve diversity (it did not, 0.8 SE) and that
+it would shorten programs (it did not, 1.0 SE). A ninth guess adds nothing.
+
+**Recorded in advance:** a null here does not restore #83's claim, and a non-null does not overturn it.
+Either way the honest output is a bound measured in an economy that works as designed, replacing a bound
+measured in one that did not.
