@@ -19618,10 +19618,10 @@ if(typeof globalThis!=='undefined'){
 __DRAWVM=(typeof globalThis!=='undefined'&&(globalThis.__DRAW_VM|0)===1); // resolve the render-VM toggle now that LIVE defaults are filled
 __ESCAPE_DEATH=(typeof globalThis==='undefined')||((globalThis.__ESCAPE_DEATH??1)|0)!==0;
 __ATOM_HERITABLE=(typeof globalThis==='undefined')||((globalThis.__ATOM_HERITABLE??1)|0)!==0; // LEAP 35 (#80) // LEAP 34 (#72) — resolve escape lethality once. Defaults ON: #71 established the current behaviour is wrong (cluster centroids computed over members at 1e32), and correctness is the reason it stands, not a diversity result
-__REACH_ON=(typeof globalThis==='undefined')||((globalThis.__REACH??1)|0)!==0;
+__REACH_ON=(typeof globalThis==='undefined')||((globalThis.__REACH??1)|0)!==0; // resolve REACH once (LIVE defaults filled); referenced in the per-instruction hot loop
 __REACH_MAIN=(typeof globalThis!=='undefined')&&((globalThis.__REACH_MAIN|0)===1); // #88 arm: default OFF
 __REACH_NOK=(typeof globalThis!=='undefined')&&((globalThis.__REACH_NOK|0)===1); // #90 arm: default OFF
-__CHILD_SIGN_FLOOR=(typeof globalThis==='undefined')||((globalThis.__CHILD_SIGN_FLOOR??1)|0)!==0; // #85 sign floors // resolve REACH once (LIVE defaults filled); referenced in the per-instruction hot loop
+__CHILD_SIGN_FLOOR=(typeof globalThis==='undefined')||((globalThis.__CHILD_SIGN_FLOOR??1)|0)!==0; // #85 sign floors: default ON
 __FORAGE_ON=(typeof globalThis==='undefined')||((globalThis.__FORAGE_EYES??1)|0)!==0; // resolve FORAGE once; gates the resource-sense computation in uaSetEyes
 __DECIDE_ON=(typeof globalThis==='undefined')||((globalThis.__DECIDE??1)|0)!==0; // resolve DECISION GAIN once; gates confidence accrual + commitment scaling
 __DECIDE_REAL=(typeof globalThis==='undefined')||((globalThis.__DECIDE_REAL??1)|0)!==0; // resolve DECIDE-FROM-REAL once; gates real-winner physics adoption
