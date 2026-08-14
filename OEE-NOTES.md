@@ -6950,3 +6950,27 @@ nothing — dAmp +0.0385±0.0578 (n=43) vs +0.0350±0.0588 (n=42). The headline 
 well-placed particles in a straightforward way.
 **Does not touch:** whether an atom that can ACT would pay. Every run in #87, like every run in #80-#84,
 had `__reachFires = 0` — the atoms were calculators. That is #88.
+
+### CORRECTION to #85/#88 — "REACH has never fired" was an overgeneralisation from n=4
+
+#85 measured `__reachFires = 0` on 4 seeds and I wrote, repeatedly and in the #88 pre-registration, that
+REACH "has never fired, not once" and is "completely inert". **At n=45 that is false.**
+
+| arm (from #87, REACH_MAIN off) | mean reachFires | seeds reading zero |
+|---|---|---|
+| real | **4,842** | 39/45 |
+| sham | 663 | 40/45 |
+| #88 real (REACH_MAIN on) | **4,276,126** | 0/11 |
+
+REACH **does** fire on the plasmid path — in roughly 6 of 45 seeds, at a rate about **880x lower** than
+main-path wiring produces. The 4 seeds #85 happened to sample were all in the ~87% that read zero.
+
+**What survives:** 4,842 against 4,276,126 is inert for every practical purpose, and the structural claim
+is unchanged — REACH is wired at the plasmid dispatch, seeded and transferred atoms take the main path,
+and the mechanism is not reaching the atoms the arc measures.
+
+**What does not survive: the word "never".** It was a universal claimed from four seeds, in a session
+whose entire subject has been small-sample overreach — #84's 1.97 SE, the diversity signal that
+evaporated between n=4 and n=6, and #83's own position confound that read 1.46 SE at n=5 and 3.36 SE at
+n=45. The instrument that caught this was the #88 analyser printing arm diagnostics **before** the
+headline, which is the only reason it surfaced before the result did.
