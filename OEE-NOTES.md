@@ -6893,3 +6893,60 @@ the downstream gains I predicted from it.
 **Recorded in advance:** a non-null here does NOT show authored primitives drive open-endedness. It would
 show only that a value which reaches an actuator can be selected on — the precondition the arc has been
 missing, not the conclusion it has been chasing.
+
+### #87 RESULT — the conclusion survives, the BOUND does not, and the confound inverted
+
+45/45 pairs, zero loop errors. Economy verified in the data: `metabolicCost` mean +2.783e-5, **negative in
+0/45**. Power held — 918 real / 937 sham in-band windows, mean ~20.5 per seed against #83's 11-26 range,
+so the pre-registered risk that a smaller population would thin the band did not materialise. Carrier
+fraction still reaches 0.872 by t=12000: the atom spreads to near-fixation under a real cost.
+
+### Falsifier 2 — THE POSITION CONFOUND IS REAL, 7x LARGER, AND INVERTED ON AMPLITUDE
+
+| sham arm alone | #83 (inverted economy) | #87 (corrected) |
+|---|---|---|
+| carrier amplitude advantage | **+0.01863** SE 0.00554 (3.36 SE) | **-0.12542** SE 0.02316 (**5.41 SE**) |
+| carrier per-capita births | +46.27 SE 14.13 (3.27 SE) | **+49.33** SE 11.35 (4.35 SE) |
+
+Amplitude **flipped sign and grew sevenfold**; births stayed put. Under a real cost, contact-acquired
+carrier status predicts a **poorer** particle that nonetheless **out-reproduces** — coherent as ecology
+(dense, well-connected regions have more mating contact and more competition for amplitude), and it means
+the two currencies now disagree about what the confound does.
+
+**And this is where the control earns everything.** The real arm's raw carrier advantage is
+`-0.12542 + 0.03849 = -0.0869`. **Without the sham arm, #87 would have reported that the authored
+primitive significantly HARMS its carriers** — a confident, wrong, opposite-signed result. #81 and #82
+twice recommended retiring this control to halve the compute; #83 caught that and kept it. In the
+corrected economy the control is doing *more* work than when #83 rescued it, not less.
+
+### Falsifier 1 — still no evidence the atom pays
+
+| real minus sham | estimate | sd | SE | ratio | 95% CI |
+|---|---|---|---|---|---|
+| carrier amplitude advantage | +0.03849 | 0.19346 | 0.02950 | **1.30 SE** | [-0.0193, +0.0963] |
+| carrier per-capita births | +0.59 | 97.89 | 14.93 | 0.04 SE | [-28.7, +29.9] |
+
+Positive in 27/43 and 20/43 — coin flips. **#83's central conclusion survives the economy correction: an
+authored primitive spreads to fixation, executes millions of times, and confers no detectable benefit.**
+
+### Falsifier 3 — THE BOUND DOES NOT SURVIVE, and that is the honest headline
+
+**#83: |effect| < 1.61%. #87: |effect| < 9.63%.** Six times looser at the same n=45, because between-seed
+sd went from 0.05615 to **0.19346** — a 3.4x increase, matching the 7x growth in the confound. The
+corrected economy is a noisier world to measure carrier effects in.
+
+So the sentence "neutral to within 1.6%" **must be withdrawn**. It was measured in an economy where
+instructions paid their carriers. The replacement is weaker and honest: **neutral to within ~10%, in an
+economy that works as designed.**
+
+**Robustness (pre-registered):** excluding the 3 seeds with <5 in-band windows in either arm changes
+nothing — dAmp +0.0385±0.0578 (n=43) vs +0.0350±0.0588 (n=42). The headline is not carried by thin data.
+
+### What #87 settles, and what it does not
+
+**Settles:** the atom-neutrality result was not an artifact of the inverted economy. It reproduces.
+**Withdraws:** the 1.6% bound, replaced by ~10%.
+**Reverses:** the confound's sign on amplitude, and with it any intuition that carriers are the
+well-placed particles in a straightforward way.
+**Does not touch:** whether an atom that can ACT would pay. Every run in #87, like every run in #80-#84,
+had `__reachFires = 0` — the atoms were calculators. That is #88.
