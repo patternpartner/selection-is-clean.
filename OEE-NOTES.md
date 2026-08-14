@@ -7288,3 +7288,65 @@ ON THE GERMLINE ATOM BANK**, through cull protection, and the germline bank is e
 **So the bridge changes WHICH EXPRESSIONS ENTER THE POPULATION.** That is a generator-level filter, it
 was designed in, and it has never operated. "The content is the problem" and "the content is unfiltered
 because the filter was never switched on" are the same sentence, and the second one is actionable.
+
+---
+
+## #92 — SELF-PREDICTION. The atom bank's content filter now runs without a peer.
+
+**Not another measurement. A change to `index.html`.**
+
+`alienGrip` is the ONLY content filter on the germline atom bank: an unused atom past `UA_GRACE_AGE`
+survives the cull iff it has predicted something correctly (12494). It is scored only against
+`peerObservable`, which is populated only by real BroadcastChannel traffic. So the filter **requires a
+second tab**. Headless it has never run — `alienAttempts` is 0 in every run this project has produced.
+In the artwork it runs only when someone opens two tabs, which is almost never.
+
+**A generator whose selection filter almost never operates emits unfiltered noise.** That is what
+#80–#90 kept measuring and reporting as "the cargo is neutral". The cargo was never filtered.
+
+### The change
+
+`runAlienPrediction` is **target-agnostic** — it forms a directional prediction, waits a window, scores
+it, credits the atom. The only peer-specific part is the observable. So it is given one the system always
+has: **atoms predict the direction of the population's own BIRTH RATE over an `ALIEN_WINDOW`.**
+
+Three insertions, no change to the scoring logic:
+1. `selfObservable` — same `{count, prevCount, windowStart}` shape as a peer entry. **Deliberately kept
+   out of `peerLastSeen`**, because `countPeers()` iterates that and a synthetic entry there would make
+   the system believe it has a peer and alter its network behaviour.
+2. Per-tick accumulation of `birthsThisTick`, placed before the counters are cleared.
+3. `runAlienPrediction` iterates peers **plus** the endogenous target. The loop body is untouched.
+
+Gated `SELF_PREDICT`, **ships DORMANT** per project convention.
+
+### Controls
+
+| | fingerprint |
+|---|---|
+| pre-#92 build | `n:221, pos:285885.780531, amp:144.952874, lin:168342` |
+| `SELF_PREDICT=0` | **identical** |
+| `SELF_PREDICT=1` | diverges; 0 loop errors |
+
+### It runs alone — the point of the whole exercise
+
+8000 ticks, **zero peers**, via `harness-bridge.js SOLO=1`:
+
+| | SELF_PREDICT=0 (every prior run) | SELF_PREDICT=1 |
+|---|---|---|
+| prediction attempts | **0** | **34** |
+| hits | 0 | 20 |
+| germline atoms | 4 | **9** |
+| atoms carrying grip | **0** | **5** |
+| best per-atom grip | 0 | **1.0** |
+
+The bank retains more than twice the atoms, because cull protection can now save the ones that predict.
+
+**What this does NOT establish, stated before anyone reads 20/34 as skill.** 20 hits in 34 attempts is
+z=0.86 against chance — **not evidence that atoms predict better than random**. What is established is
+that the channel OPERATES: predictions form, resolve, credit atoms, and change which atoms survive.
+Whether the filter selects for anything real is the next question, and it needs proper n plus a
+shuffled-direction control.
+
+**Why this matters more than the arc it interrupts.** Every experiment from #80 to #91 measured atoms
+drawn from an unfiltered bank, then concluded the atoms were worthless. The system was designed with a
+filter on that bank. The filter needed a peer. Nobody ever gave it one — and now it does not need one.

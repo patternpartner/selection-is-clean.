@@ -64,6 +64,21 @@ const netEventPending={migrant:0,plasmid:0,motif:0,inscription:0};
 // one (forecasting a foreign substrate), not a bespoke hand-written heuristic bolted on the side.
 const peerObservable=new Map();     // tab -> {count:packets this window, prevCount:last window's count, windowStart:tick}
 const pendingAlienPredictions=new Map(); // tab -> {atomIdx, direction, baseline, madeAtTick}
+// ═══ #92 SELF-PREDICTION — give the atom bank's selection filter an ENDOGENOUS target ═══════════
+// alienGrip is the atom bank's only content filter: an unused atom past UA_GRACE_AGE survives the cull
+// iff it has predicted something correctly (12494). It is scored ONLY against peerObservable, which is
+// populated ONLY by real BroadcastChannel traffic — so the filter requires a second tab. Headless it has
+// never run (alienAttempts 0 in every run this project has produced); in the artwork it runs only when
+// someone opens two tabs. A generator whose selection filter almost never operates emits unfiltered
+// noise, which is what #80-#90 kept measuring and calling "the cargo is neutral".
+// runAlienPrediction is target-AGNOSTIC — it forms a directional prediction, waits a window, scores it.
+// The only peer-specific thing is the observable. So: give it one the system always has. Atoms predict
+// the direction of the population's own BIRTH RATE over an ALIEN_WINDOW. Same shape, same scoring, same
+// crediting, same cull protection — and the filter now runs alone.
+// Deliberately kept OUT of peerLastSeen: countPeers() iterates that, and a synthetic entry there would
+// make the system believe it has a peer and change its network behaviour.
+let selfObservable=null;
+let __SELF_PREDICT=false; // resolved after the LIVE registry; SELF_PREDICT=1 enables. Ships DORMANT.
 const ALIEN_WINDOW=180;             // ticks per observation window
 const ALIEN_PREDICT_CADENCE=200;    // how often to attempt a new prediction cycle
 
@@ -13601,8 +13616,12 @@ function runAlienPrediction(){
   const bos=genome.boundOpcodes,uas=genome.userAtoms;
   if(!bos||!bos.length||!uas||!uas.length)return; // nothing to predict WITH yet — no atoms bound
   const _alienSelect=(typeof globalThis==='undefined')||((globalThis.__ALIEN_SELECT??1)|0)!==0;
-  for(const [tab,po] of peerObservable){
-    if(tick-(peerLastSeen[tab]||0)>ALIEN_WINDOW*3)continue; // peer's gone quiet; nothing fresh to judge
+  // #92: peers plus the endogenous target. The loop body below is untouched — it was always
+  // target-agnostic, and that is the whole reason this works without rewriting the scorer.
+  const _predTargets=[...peerObservable];
+  if(__SELF_PREDICT&&selfObservable)_predTargets.push(['__self',selfObservable]);
+  for(const [tab,po] of _predTargets){
+    if(tab!=='__self' && tick-(peerLastSeen[tab]||0)>ALIEN_WINDOW*3)continue; // peer's gone quiet; nothing fresh to judge
     // 1) SCORE a pending prediction for this peer, if its window has since rolled over.
     const pending=pendingAlienPredictions.get(tab);
     if(pending&&po.windowStart!==pending.windowStartAtPrediction){
@@ -19621,6 +19640,7 @@ __ATOM_HERITABLE=(typeof globalThis==='undefined')||((globalThis.__ATOM_HERITABL
 __REACH_ON=(typeof globalThis==='undefined')||((globalThis.__REACH??1)|0)!==0; // resolve REACH once (LIVE defaults filled); referenced in the per-instruction hot loop
 __REACH_MAIN=(typeof globalThis!=='undefined')&&((globalThis.__REACH_MAIN|0)===1); // #88 arm: default OFF
 __REACH_NOK=(typeof globalThis!=='undefined')&&((globalThis.__REACH_NOK|0)===1); // #90 arm: default OFF
+__SELF_PREDICT=(typeof globalThis!=='undefined')&&((globalThis.__SELF_PREDICT|0)===1); // #92: default OFF
 __CHILD_SIGN_FLOOR=(typeof globalThis==='undefined')||((globalThis.__CHILD_SIGN_FLOOR??1)|0)!==0; // #85 sign floors: default ON
 __FORAGE_ON=(typeof globalThis==='undefined')||((globalThis.__FORAGE_EYES??1)|0)!==0; // resolve FORAGE once; gates the resource-sense computation in uaSetEyes
 __DECIDE_ON=(typeof globalThis==='undefined')||((globalThis.__DECIDE??1)|0)!==0; // resolve DECISION GAIN once; gates confidence accrual + commitment scaling
@@ -20631,6 +20651,14 @@ function loop(){
       }
     }
 
+    // #92: accumulate the endogenous observable BEFORE the per-tick counters are cleared. Births are the
+    // analogue of "how active is this peer" — a count that rises and falls on the system's own dynamics.
+    if(__SELF_PREDICT){
+      if(!selfObservable) selfObservable={count:0,prevCount:0,windowStart:tick};
+      if(tick-selfObservable.windowStart>=ALIEN_WINDOW){
+        selfObservable.prevCount=selfObservable.count; selfObservable.count=0; selfObservable.windowStart=tick; }
+      selfObservable.count+=birthsThisTick;
+    }
     deathsThisTick=0;birthsThisTick=0;
   }
 
