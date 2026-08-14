@@ -7397,3 +7397,63 @@ population by seeding and horizontal transfer on the basis of that score.
 
 Every prior experiment in this file ran with links 2, 3 and 4 absent. **What #80–#91 measured was the
 output of an unfiltered generator with no path from filter to population — because there was no filter.**
+
+---
+
+## #95 — two defects in my own #92, and the filter turns out to have nothing to filter on
+
+#94 was killed at 16/90 when its diagnostic showed pooled prediction skill of **233/615 = 37.9%,
+z=-6.01 — significantly BELOW chance**. Measuring a filter that scores backwards is not worth 3.7 hours.
+Two defects, both introduced or exposed by #92.
+
+### Defect 1 — abstention was charged as a failed prediction (original, not mine)
+
+`direction` is THREE-valued: an atom outputting within [-0.05,+0.05] predicts 0, "no change". The outcome
+is `Math.sign(prevCount-baseline)`, essentially never exactly 0, so a 0-prediction is **structurally
+unhittable** — and the scorer charged it as an attempt anyway, on both `genome.alienPredict` and the
+atom's own `alienAttempts`. An atom that declines to commit was penalised for declining.
+
+`ABSTAIN_FREE` (default ON, a scoring-correctness fix) makes an abstaining atom place no bet at all.
+Measured effect: 54 -> 50 attempts, skill 42.6% -> 46.0% on one seed. **Real but small — abstentions were
+~7%, not the ~24% I predicted.** So this was not the main cause, and my stated hypothesis was wrong about
+the magnitude.
+
+### Defect 2 — I chose an observable whose SCALE destroyed the signal (mine, #92)
+
+The atom is handed `tanh(baseline/20)` and `tanh(recentPartial/20)`. That normalisation was written for
+the PEER observable — packet counts, tens per window — where tanh discriminates. **Raw births are ~1333
+per `ALIEN_WINDOW`, and `tanh(1333/20) === 1` EXACTLY.** Both inputs saturated to 1.0 on every prediction.
+
+**The atom received no information whatsoever.** It emitted a constant, and a constant scored against a
+directionally-biased outcome lands below chance. That is the whole of the -6.01.
+
+`SELF_OBS_SCALE=50` brings births into the same decade as packet counts. The endogenous target was right
+in kind and wrong in scale, and the scale error was mine.
+
+### After both fixes: the atoms predict AT chance, not above it
+
+4 seeds, 12000 ticks, `SELF_PREDICT=1 GRIP_SEED=1`:
+
+| | pooled skill | z |
+|---|---|---|
+| before fixes | 233/615 = **37.9%** | **-6.01** |
+| after fixes | 78/172 = **45.3%** | **-1.22** |
+
+The systematic artifact is gone. What remains is indistinguishable from coin-flipping. n=172 cannot
+exclude a small effect in either direction, but there is **no evidence the atoms carry predictive
+information about the population's own dynamics.**
+
+### What this means for #92/#93, stated plainly
+
+The filter now runs, and scores fairly, and **has nothing to filter on.** `alienGrip` is selecting among
+atoms that are all equally uninformative — it is selecting noise, exactly as the #94 analyser's own
+legend warned it might.
+
+**And that converges with the metabolic result.** #80–#90 found atoms confer no metabolic benefit, even
+with a direct actuator channel (#88). #95 finds they carry no predictive information either. **Two
+independent fitness channels, the same answer: the expressions `uaGenExpression` produces have no
+exploitable structure.**
+
+The generator is not one hypothesis among several any more. It is what is left after the economy (#87),
+the wiring (#88), the carrier split (#85), and now the predictive channel have each been eliminated by
+measurement.

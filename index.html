@@ -86,6 +86,8 @@ let __SELF_PREDICT=false; // resolved after the LIVE registry; SELF_PREDICT=1 en
 // and then the newest/most-executed thing leaves it anyway — selection with no propagation.
 // GRIP_SEED=1 makes both routes prefer the highest-grip atom, so what the filter selects is what
 // spreads. Ships DORMANT.
+const SELF_OBS_SCALE=50; // #95: births/window ~1333 -> ~27, inside tanh(x/20)'s informative range
+let __ABSTAIN_FREE=true; // #95: an abstaining atom is not charged a failed prediction. ABSTAIN_FREE=0 = prior behaviour.
 let __GRIP_SEED=false;
 // Highest alienGrip among a genome's BOUND atoms, tie-broken by uses so a bank with no scored atom
 // behaves exactly as before. Returns -1 if there is nothing bound.
@@ -13692,6 +13694,21 @@ function runAlienPrediction(){
       uaCtxC=0;uaCtxD=0;uaCtxM=0;uaCtxNx=0;uaCtxNy=0;uaCtxT=Math.sin(tick*0.0011);uaCtxNb=0;uaCtxRl=0;uaCtxRd=0;
       const out=uaCall(atom, Math.tanh((baseline||0)/20), Math.tanh((recentPartial||0)/20));
       const direction=out>0.05?1:(out<-0.05?-1:0);
+      // ═══ #95 ABSTENTION IS NOT A FAILED PREDICTION ═════════════════════════════════════════════
+      // direction is THREE-valued: an atom whose output sits in [-0.05,+0.05] predicts 0, "no change".
+      // The outcome it is scored against is Math.sign(prevCount - baseline), which is essentially never
+      // exactly 0 — so a 0-prediction is STRUCTURALLY UNHITTABLE, and the scorer still charges it as an
+      // attempt on both genome.alienPredict and the atom's own alienAttempts. Measured (#94 partial,
+      // 16 runs): pooled skill 233/615 = 37.9%, z=-6.01 BELOW chance — consistent with ~24% of
+      // predictions being unhittable abstentions rather than with any anti-correlation.
+      // Consequence: alienGrip selected for OUTPUT MAGNITUDE (atoms loud enough to clear the dead zone),
+      // not for predictive skill. That is true of the original peer-scored design too, not only of the
+      // endogenous target added in #92.
+      // Fix: an abstaining atom simply does not place a bet. No pending prediction, no attempt charged,
+      // no miss recorded. Committed predictions are scored exactly as before.
+      // Gated ABSTAIN_FREE (default ON — this is a scoring-correctness fix, not a new mechanism;
+      // ABSTAIN_FREE=0 reproduces the prior behaviour for the A/B).
+      if(__ABSTAIN_FREE && direction===0) continue;
       pendingAlienPredictions.set(tab,{atomIdx:candidateAI,expression:atom.expression,direction,baseline,madeAtTick:tick,windowStartAtPrediction:po.windowStart});
     }
   }
@@ -19674,6 +19691,7 @@ __REACH_MAIN=(typeof globalThis!=='undefined')&&((globalThis.__REACH_MAIN|0)===1
 __REACH_NOK=(typeof globalThis!=='undefined')&&((globalThis.__REACH_NOK|0)===1); // #90 arm: default OFF
 __SELF_PREDICT=(typeof globalThis!=='undefined')&&((globalThis.__SELF_PREDICT|0)===1); // #92: default OFF
 __GRIP_SEED=(typeof globalThis!=='undefined')&&((globalThis.__GRIP_SEED|0)===1); // #93: default OFF
+__ABSTAIN_FREE=(typeof globalThis==='undefined')||((globalThis.__ABSTAIN_FREE??1)|0)!==0; // #95: default ON
 __CHILD_SIGN_FLOOR=(typeof globalThis==='undefined')||((globalThis.__CHILD_SIGN_FLOOR??1)|0)!==0; // #85 sign floors: default ON
 __FORAGE_ON=(typeof globalThis==='undefined')||((globalThis.__FORAGE_EYES??1)|0)!==0; // resolve FORAGE once; gates the resource-sense computation in uaSetEyes
 __DECIDE_ON=(typeof globalThis==='undefined')||((globalThis.__DECIDE??1)|0)!==0; // resolve DECISION GAIN once; gates confidence accrual + commitment scaling
@@ -20690,7 +20708,15 @@ function loop(){
       if(!selfObservable) selfObservable={count:0,prevCount:0,windowStart:tick};
       if(tick-selfObservable.windowStart>=ALIEN_WINDOW){
         selfObservable.prevCount=selfObservable.count; selfObservable.count=0; selfObservable.windowStart=tick; }
-      selfObservable.count+=birthsThisTick;
+      // ═══ #95 SCALE. The atom is handed tanh(baseline/20) and tanh(recentPartial/20). That
+      // normalisation was written for the PEER observable — packet counts, tens per window — where tanh
+      // is informative. Raw births are ~1333 per ALIEN_WINDOW, and tanh(1333/20) === 1 EXACTLY, so both
+      // inputs saturated to 1.0 on every prediction and the atom received NO information: it emitted a
+      // constant, and a constant scored against a directionally-biased outcome lands BELOW chance.
+      // Measured before this fix: 233/615 = 37.9%, z=-6.01. That was my error in #92 — the endogenous
+      // target was correct in kind and wrong in scale.
+      // SELF_OBS_SCALE brings births into the same decade as packet counts so tanh can discriminate.
+      selfObservable.count+=birthsThisTick/SELF_OBS_SCALE;
     }
     deathsThisTick=0;birthsThisTick=0;
   }
