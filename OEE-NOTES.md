@@ -6839,3 +6839,57 @@ it would shorten programs (it did not, 1.0 SE). A ninth guess adds nothing.
 **Recorded in advance:** a null here does not restore #83's claim, and a non-null does not overturn it.
 Either way the honest output is a bound measured in an economy that works as designed, replacing a bound
 measured in one that did not.
+
+---
+
+## #88 — REACH on the MAIN dispatch. Pre-registered before the arm is applied or run.
+
+#85 measured `__reachFires = 0` on every seed at 12000 ticks. `__REACH` — the mechanism whose own comment
+reads *"authored atoms drive the VM's existing conserved actuators directly… Atoms become EFFECTORS, not
+just calculators"* — is wired at **one of five** bound-opcode dispatch sites, and that site (16926) is on
+the **plasmid** path. `seedAtomIntoParticle` and `attemptMemeTransfer` both splice into the **main**
+program (dispatch 15827), which has none. **So no atom in #80-#84, or in #87, has ever been an effector.**
+
+`__REACH_MAIN` adds the identical emit to the main dispatch: same form, same `%7` channel fold, same
+`clamp(±2) * k * 0.2` gain as the plasmid site — deliberately, so the arm tests the **placement** and not
+a new formula. **Ships DORMANT** (default off, not added to the LIVE stack) per project convention: it is
+an unverified arm, not a fix.
+
+**Controls, run before pre-registration:**
+- `REACH_MAIN=0` against the current build, SEED=3, 6000 ticks: **fingerprints identical** (`n:223,
+  pos:271710.185542, amp:93.866881, lin:57955, prog:2897`). The off arm IS the current build.
+- `REACH_MAIN=1`: **`__reachFires` 0 → 346,185**. The arm bites, and the counter that has read zero for
+  the entire arc finally moves.
+
+### Design — and it leans on #87 rather than duplicating it
+
+The sham device composes correctly with REACH: `ATOM_SHAM=1` makes `uaCall` return 0, so the emit becomes
+`vmActions[...] += 0`, while `__reachFires` still increments. The atom is authored, seeded, transferred,
+inherited, executed and **routed to an actuator** — carrying zero. So real-minus-sham under `REACH_MAIN=1`
+isolates exactly *"the atom's computed value reaching an actuator"* against *"zero reaching an actuator"*.
+
+#87 already supplies `REACH_MAIN=0 × {real, sham}` at n=45. #88 therefore runs only
+**`REACH_MAIN=1 × {real, sham}`, 45 seeds, 12000 ticks, 250-tick sampling**, and the comparison of
+interest is the **difference of differences**: does giving the atom a channel change whether it pays?
+
+### Falsifiers
+
+1. **DOES THE ATOM PAY WHEN IT CAN ACT?** Real minus sham on amplitude and per-capita births under
+   `REACH_MAIN=1`. This is the first time in the arc the question is being asked of an atom that has an
+   actuator.
+2. **DOES THE PLACEMENT MATTER?** (#88 real−sham) minus (#87 real−sham). Non-zero means the neutrality
+   measured across #81-#84 and #87 was a property of the **wiring**, not the cargo.
+3. **IS THE POPULATION STILL COMPARABLE?** The one-seed control showed total amp +66% and alive 223→242
+   with REACH on. If the arms differ that much at n=45, the carrier estimator is being computed in two
+   different ecologies and the difference-of-differences is confounded — that gets reported, not
+   explained away.
+
+**Prediction, stated so it can fail.** I expect falsifier 1 to come back **non-null** — this is the one
+intervention that gives the atom's output a path to behaviour by construction rather than by lottery.
+I hold it more weakly than the reasoning suggests: nine stated expectations have failed this session,
+including two of mine in the last hour, and #86 already showed that fixing a real defect bought none of
+the downstream gains I predicted from it.
+
+**Recorded in advance:** a non-null here does NOT show authored primitives drive open-endedness. It would
+show only that a value which reaches an actuator can be selected on — the precondition the arc has been
+missing, not the conclusion it has been chasing.
