@@ -6561,3 +6561,839 @@ carried over from #83's 45, so all four arms share seeds and window structure.
 question is answered and the point estimate is NOT quoted as an unbiased effect size — stopping on a large
 result inflates it, and the claim being bought here is binary. If it does not, the run escalates to n=45
 to place a bound directly comparable to #83's 1.6%.
+
+### #84 STAGE 1 (n=9) — the pilot was chaos, the rig reproduces #83, and the headline sits at 1.97 SE
+
+4 arms x 9 seeds x 12000 ticks, 250-tick sampling. 36 of 36 runs complete, zero loop errors, every arm
+self-identifying in its own output (`sham=true`, `force=8`, `force=-8`, `force=null`).
+
+**Falsifier 3 — the band is reachable in every arm.** In-band windows 141/146/141/159 for
+real/sham/+8/-8, 7 to 27 per seed. No arm failed to spread and no seed had to be reported as undefined.
+
+**Falsifier 2 — NO transmission effect. The pilot observation is refuted.**
+
+| carrier fraction | t=4000 | t=6000 | t=8000 | t=12000 |
+|---|---|---|---|---|
+| sham | 0.066 | 0.270 | 0.561 | 0.971 |
+| forced +8 | 0.071 | 0.333 | 0.675 | 0.975 |
+| forced -8 | 0.101 | 0.328 | 0.560 | 0.975 |
+
+The 43-against-2 that reshaped this protocol was **one seed of chaos**, exactly as the pre-registration
+said it might be. Cargo does not measurably move how fast the element spreads. The pilot still earned its
+keep — it is why transmission was measured in all four arms instead of assumed — but as a finding it is
+dead, and it is the seventh stated expectation in this session to fail.
+
+**Rig validation, unplanned and worth more than it cost.** The real arm reproduces #83 at a fifth of the
+seeds: **real-sham dAmp +0.0024 (SE 0.0136)** here against **-0.0018 (SE 0.0084)** at n=45. Same null,
+same scale, independent batch. The instrument is the one #83 used.
+
+**Falsifier 1 — the headline, and it does not clear the bar I set for it.**
+
+| contrast | estimate | SE | ratio | 95% CI | sign |
+|---|---|---|---|---|---|
+| real - sham, dAmp | +0.00242 | 0.01359 | 0.18 | [-0.0242, +0.0291] | 5/9 |
+| **forced +8 - sham, dAmp** | **-0.02532** | 0.01283 | **1.97** | [-0.05046, -0.00018] | 2/9 |
+| forced -8 - sham, dAmp | -0.00380 | 0.02198 | 0.17 | [-0.0469, +0.0393] | 6/9 |
+| **+8 minus -8** (widest contrast) | -0.02152 | 0.01822 | 1.18 | [-0.0572, +0.0142] | 2/9 |
+
+Births are null on every contrast (0.00 to 0.67 SE).
+
+The +8 rail is **negative in 7 of 9 seeds** and its 95% interval excludes zero — by a margin of 0.00018,
+which is to say it does not meaningfully exclude it. Three contrasts were tested and one landed near 2 SE;
+that is what three contrasts do. **The pre-registered threshold was 3 SE and this is 1.97**, so the
+question stays open and the rule applies.
+
+**Escalating to n=45, as pre-registered.** This is recorded and committed BEFORE the escalation runs, so
+the record shows a rule being followed rather than a number being chased — the failure mode #83 caught
+itself in was recommending one thing and doing another.
+
+Scope: **sham, +8 and -8 to 45 seeds** (36 further primes, 43 through 227). The real arm stays at n=9 —
+it exists here as a reproduction check on the rig, it passed, and #83 already holds it at n=45. Spending
+36 more runs to re-derive a null that two independent batches agree on would buy nothing.
+
+**My stated prediction is not yet resolved.** I predicted falsifier 1 would come back non-null on at least
+one rail. It leans that way on +8 and is nowhere on -8, at a significance I pre-committed to calling
+insufficient. Claiming it now would be reading a 1.97 as a 3.
+
+---
+
+## #85 — five measurements from the code map, and one of them inverts the economy
+
+#84's escalation was **stopped at 39 of 108 runs** and is not being resumed. A full structural read of
+`index.html` (now committed as `CODEMAP.md`) turned up several ways the harness regime differs from what
+the experiments assumed, and tightening a possibly-mismeasured estimator was the wrong use of the cores.
+**#84 stage 1 (n=9) stands as recorded**: forced-cargo contrast at 1.97 SE, below the pre-registered 3 SE
+bar, unresolved.
+
+All five instruments are read-only or one-constant patches. **Control passed**: the instrumented build
+returns a fingerprint identical to the digit against the pre-change build (SEED=3, 3000 ticks:
+`n:320, pos:367540.226973, amp:309.912372, lin:38358, prog:4182`).
+
+Protocol: 6 seeds x {control, NFD_OFF} x 12000 ticks, 250-tick sampling. **M1-M4 below are from the
+4 completed control runs (seeds 3, 7, 11, 17). M5 is pending the paired arm.**
+
+### M1 — the #81-#84 carrier split is CLEAN. Concern retired on evidence.
+
+The map raised a real worry: opcode 22 calls atoms **by index out of `userAtoms` and never consults
+`boundOpcodes`**, so a particle with atoms but no bound opcode would be scored a NON-CARRIER while still
+executing atoms — attenuating every carrier estimate in the arc toward null.
+
+**Measured: `atomsOnly = 0` in every window of every seed.** Particles are always `both` or `neither`;
+the two lists never desynchronise. The carrier definition means exactly what #81-#84 claimed. **This is
+the outcome I said in advance I preferred, and it held — recorded because the preference was stated
+first.**
+
+### M2 — REACH has never fired. Not once.
+
+`__reachFires = 0` on all four seeds at 12000 ticks.
+
+`__REACH` is LIVE and its comment reads *"authored atoms drive the VM's existing conserved actuators
+directly… Atoms become EFFECTORS, not just calculators."* It is wired at **one of nine** bound-opcode
+dispatch sites (16910), and that site is on the **plasmid** path. Seeded and transferred atoms are
+spliced into the main program (13823), which has no REACH.
+
+Prediction stated before the run: *"non-zero here = plasmid-borne atoms only."* **It is zero**, which is
+stronger — no atom is ever executed from a plasmid at all, so the mechanism is inert in practice rather
+than merely narrow. Seventh failed prediction of this arc, and the first to fail by being too generous.
+
+### M3 — the routing bottleneck does not exist. My arithmetic was 10x wrong.
+
+| | measured | uniform-draw expectation | enrichment |
+|---|---|---|---|
+| opcode 4 (EMIT) share of instructions | **25.4%** | 0.30% | **84x** |
+| effector share | 28.4% | 10.5% | 2.7x |
+| programs containing opcode 4 | **357 / 361** | — | — |
+
+CODEMAP estimated "~2% of atom placements route to an effect" from a uniform opcode draw. Programs are
+**saturated** with actuators — a quarter of all instructions are EMIT and essentially every program has
+one — so the true routing probability is ~20-25%. **Routing is not why the atoms read neutral.** Top
+opcodes are the arithmetic core (4, 2, 1, 0, 3) plus the auto-wired 236, 235, 22.
+
+### M4 — `metabolicCost` IS NEGATIVE IN LIVE GENOMES, AND SELECTION DRIVES IT THERE
+
+```
+metabolicCost   mean -0.00653   min -0.0223   max 0.000533
+                documented clamp: [0.000002, 0.0002]
+```
+
+`amp[i] -= nInst * genome.metabolicCost`. **With a negative cost, instructions PAY.** Longer programs
+earn amplitude, so the term selects for its own further inversion — runaway, not drift.
+
+**Mechanism, checked rather than inferred.** Particle genomes are mutated by `mutateChildGenome` (6078),
+whose own comment states the design: *"FULL divergence — gloves-off random walk on EVERY heritable scalar
+gene… **Only the crash floors (isFinite + the VM's own per-op clamps) remain; range is the system's to
+find.**"* No `__cl`, no `sanitizeGenome`. Step size is `(|v|*0.12 + 0.02)` — the additive `0.02` is
+**1000x the magnitude** of a parameter living at 2e-5, so it cannot stay near its intended scale and
+random-walks straight through zero.
+
+**The clamp that would prevent this is in `mutateGenome` — the GERMLINE path only** (12292), carrying the
+comment *"no free lunch — cost stays positive (the negative-drift hole that euthanised selection is
+closed)"*. The hole is closed for the germline. **Particle genomes are where selection operates, and
+there it is open.** Same signature on `somaRepair` (min -0.0086, floor 0) and `uaMaxDepth` (0.931,
+floor 1).
+
+### What M4 ties together
+
+- **#70 "inertness is free"** — worse than free. Inertness *pays*.
+- **#74 "selection purged unresolvable opcodes where a cost reaches"** — the cost is inverted, so it
+  reaches in the wrong direction.
+- **#83 a neutral element fixes** — carrying anything is rewarded, so neutrality is the *ceiling*, not
+  the expectation.
+- `vmMaxInstructions` sits pinned at 16.0.
+
+The recurring "this system has no selective gradient" reading across a dozen entries was right in effect
+and wrong in mechanism. **For program length the gradient is not absent; it points backwards.**
+
+**This is a defect, not a finding about evolution**, and it should be fixed and the affected arc re-run
+rather than reinterpreted. The minimal fix is to apply the existing germline clamps inside
+`mutateChildGenome` for the parameters whose SIGN carries meaning — `metabolicCost` above all — while
+leaving "range is the system's to find" intact for those where it does not.
+
+### #85 M5 — my frequency-dependence hypothesis is REFUTED
+
+6 seeds, control vs `NFD_OFF=1` (both `GENO_NFD_ON=0` and `__OPCODE_NOVELTY=0`). Estimator pre-registered
+as the slope DIFFERENCE between arms, not the control slope.
+
+| arm | slope of dAmp on carrier fraction | SE |
+|---|---|---|
+| control | -0.0263 | 0.0221 |
+| NFD + novelty OFF | -0.0282 | 0.0127 |
+| **difference** | **-0.0020** | 0.0255 (**0.1 SE**) |
+
+Disabling both designed rarity terms did **not** flatten the slope; it moved it 8% the wrong way. The
+declining carrier advantage is **not** produced by the frequency-dependent mechanisms. **#83's reading —
+a position/acquisition confound — stands, and the reinterpretation offered from the code map was wrong.**
+
+Power caveat, stated rather than buried: if NFD explained the whole slope the difference would be
+~+0.026, which sits ~1 SE from the observed value. Disfavoured, **not excluded**. The hypothesis gained
+no support; that is the most that can be claimed.
+
+---
+
+## #86 — the sign-floor fix, and what restoring a real price actually buys
+
+`mutateChildGenome` floors the parameters whose SIGN carries meaning (`metabolicCost`, `somaRepair`,
+`deathThreshold`, `mutationRate`, `uaMaxDepth`). `entropyK` deliberately NOT floored — negative
+`entropyK` is recorded elsewhere as a measured, meaningful evolved state. Gated `CHILD_SIGN_FLOOR`.
+
+**Control: `CHILD_SIGN_FLOOR=0` is bit-identical to the pre-patch build** (SEED=3, 3000 ticks,
+fingerprint `n:320 pos:367540.226973 amp:309.912372 prog:4182`), so the off arm IS the prior build and
+the A/B is legitimate. The on arm diverges, so the knob bites.
+
+Protocol: 6 seeds x {off, on} x 12000 ticks.
+
+### The target is corrected
+
+| | off (prior build) | on (sign floors) |
+|---|---|---|
+| `metabolicCost` mean | **-6.59e-3** | **+2.82e-5** |
+| seeds with negative mean | **6 / 6** | **0 / 6** |
+| min across live genomes | -0.0224 | 0.000002 (the floor, exactly) |
+
+### Consequences, paired by seed
+
+| metric | off | on | diff | SE | ratio |
+|---|---|---|---|---|---|
+| alive | 344 | 236 | **-108** | 12.95 | **8.3** |
+| carriers | 335 | 200 | **-135** | 11.47 | **11.8** |
+| atomUses | 7.95M | 2.75M | **-5.20M** | 1.14M | **4.6** |
+| effector share | 0.283 | 0.248 | -0.035 | 0.029 | 1.2 |
+| mean prog length | 14.57 | 13.18 | -1.38 | 1.41 | 1.0 |
+| kinds | 5.67 | 7.50 | +1.83 | 2.17 | **0.8** |
+| vmMaxInstructions | 15.97 | 16.19 | +0.22 | 0.145 | 1.5 |
+
+### What this establishes, and what it does not
+
+**Established:** the economy was inverted in every seed of the shipped build; the mechanism is the
+unclamped child-mutation path; the fix restores the invariant; and restoring a real price costs **~31% of
+carrying capacity** (8.3 SE) and **~65% of atom execution** (4.6 SE). Both are exactly what a real cost
+should do, and both are solid.
+
+**NOT established, and I predicted otherwise on both:**
+1. **Diversity does not improve.** `kinds` 5.67 -> 7.50 at **0.8 SE**. At n=4 mid-run this read
+   5.67 -> 9.00 at 1.1 SE and I nearly reported it; it regressed as seeds were added. Classic noisy
+   early signal, and a reminder that the partial-batch read is the one to distrust.
+2. **Programs do not shrink.** I inferred that "longer programs earn amplitude" explained lengths pinned
+   near the cap. Under a genuine per-instruction price, mean length falls only 14.57 -> 13.18 (1.0 SE)
+   and `vmMaxInstructions` does not fall at all. **The length pinning is not primarily driven by the
+   inverted cost**, so that inference is retired.
+
+**Therefore: this is a CORRECTNESS fix, not an improvement.** It should ship because the germline path
+has clamped this since the "negative-drift hole" fix and the child path is where selection actually
+operates — not because it buys diversity, which on this evidence it does not. Shipping it as an
+open-endedness gain would be the same error the notebook has caught repeatedly: reporting a defect
+repair as a discovery.
+
+**Consequence for the arc:** every result from #70 onward was measured in an economy where instructions
+paid their carriers. That does not automatically invalidate them — the carrier estimator is a
+within-run contrast and both arms shared the inversion — but "inertness is free" and "a neutral element
+fixes" were both measured under a *subsidy*, and the honest position is that they need re-running under
+the corrected economy before they are quoted again.
+
+---
+
+## #87 — #83 re-run under the corrected economy. Pre-registered, written while the batch runs empty.
+
+#86 established that every seed of the shipped build carried a **negative `metabolicCost`** — instructions
+paid their carriers rather than costing them. #83's headline ("an authored primitive fixes in every seed,
+executes millions of times per run, and confers no benefit larger than 1.6%") was measured entirely
+inside that inverted economy. This re-runs it with the economy corrected.
+
+**Protocol: identical to #83.** 45 seeds (3, 7, 11, 17, 23 + 40 further primes), both arms, 12000 ticks,
+250-tick sampling, `CHILD_SIGN_FLOOR=1` stated explicitly on every command line. Estimator unchanged:
+carrier-minus-non-carrier amplitude and per-capita births, **real minus sham**, over windows where
+carriers sit between 10% and 90%.
+
+**Both arms kept, and the reason is #83's own.** #83 found the position confound REAL at 3.36 SE after
+#81 and #82 had twice recommended retiring the sham to halve the compute — and recorded that without it
+the raw split would have read +0.0168 at ~2.8 SE and been reported as "the primitive pays". Dropping the
+control here to save four hours would repeat precisely the error that entry exists to document.
+
+### What is different this time, and why the comparison is not clean
+
+**#86 measured the corrected economy as a materially different world**: carrying capacity −31% (8.3 SE),
+atom execution −65% (4.6 SE), carriers 335 → 200. So this is **not** #83 with one variable moved; it is
+#83's estimator applied to a smaller, poorer, less atom-saturated population. Stated up front because the
+temptation on any difference will be to attribute it to "the economy is fixed now", and that attribution
+is not available from this design alone.
+
+**Specific risk to the estimator:** with fewer particles and less execution, the spread may cross the
+10–90% band in fewer windows per seed, which is exactly the underpowering #81 hit and #82 diagnosed. If
+in-band windows per seed drop materially below #83's range, the bound will be looser than #83's at the
+same n, and that must be reported as a power difference rather than a finding.
+
+### Falsifiers
+
+1. **DOES THE ATOM PAY, IN A WORLD WHERE INSTRUCTIONS COST?** Real minus sham on amplitude and per-capita
+   births at n=45. #83 gave [-0.0182, +0.0146], |effect| < 1.61%.
+2. **IS THE POSITION CONFOUND STILL REAL?** The sham arm alone. #83 measured +0.01863 ± 0.00554 (3.36 SE)
+   on amplitude and +46.27 ± 14.13 on births. If it survives correction, it is a property of
+   contact-based acquisition rather than of the inverted economy.
+3. **THE BOUND.** Whatever the point estimate, the 95% interval is the deliverable, reported alongside
+   in-band window counts so a looser bound cannot be mistaken for a smaller effect.
+
+**No prediction offered on falsifier 1.** Eight stated expectations have failed in this session, the two
+most recent being my own: that fixing the economy would improve diversity (it did not, 0.8 SE) and that
+it would shorten programs (it did not, 1.0 SE). A ninth guess adds nothing.
+
+**Recorded in advance:** a null here does not restore #83's claim, and a non-null does not overturn it.
+Either way the honest output is a bound measured in an economy that works as designed, replacing a bound
+measured in one that did not.
+
+---
+
+## #88 — REACH on the MAIN dispatch. Pre-registered before the arm is applied or run.
+
+#85 measured `__reachFires = 0` on every seed at 12000 ticks. `__REACH` — the mechanism whose own comment
+reads *"authored atoms drive the VM's existing conserved actuators directly… Atoms become EFFECTORS, not
+just calculators"* — is wired at **one of five** bound-opcode dispatch sites, and that site (16926) is on
+the **plasmid** path. `seedAtomIntoParticle` and `attemptMemeTransfer` both splice into the **main**
+program (dispatch 15827), which has none. **So no atom in #80-#84, or in #87, has ever been an effector.**
+
+`__REACH_MAIN` adds the identical emit to the main dispatch: same form, same `%7` channel fold, same
+`clamp(±2) * k * 0.2` gain as the plasmid site — deliberately, so the arm tests the **placement** and not
+a new formula. **Ships DORMANT** (default off, not added to the LIVE stack) per project convention: it is
+an unverified arm, not a fix.
+
+**Controls, run before pre-registration:**
+- `REACH_MAIN=0` against the current build, SEED=3, 6000 ticks: **fingerprints identical** (`n:223,
+  pos:271710.185542, amp:93.866881, lin:57955, prog:2897`). The off arm IS the current build.
+- `REACH_MAIN=1`: **`__reachFires` 0 → 346,185**. The arm bites, and the counter that has read zero for
+  the entire arc finally moves.
+
+### Design — and it leans on #87 rather than duplicating it
+
+The sham device composes correctly with REACH: `ATOM_SHAM=1` makes `uaCall` return 0, so the emit becomes
+`vmActions[...] += 0`, while `__reachFires` still increments. The atom is authored, seeded, transferred,
+inherited, executed and **routed to an actuator** — carrying zero. So real-minus-sham under `REACH_MAIN=1`
+isolates exactly *"the atom's computed value reaching an actuator"* against *"zero reaching an actuator"*.
+
+#87 already supplies `REACH_MAIN=0 × {real, sham}` at n=45. #88 therefore runs only
+**`REACH_MAIN=1 × {real, sham}`, 45 seeds, 12000 ticks, 250-tick sampling**, and the comparison of
+interest is the **difference of differences**: does giving the atom a channel change whether it pays?
+
+### Falsifiers
+
+1. **DOES THE ATOM PAY WHEN IT CAN ACT?** Real minus sham on amplitude and per-capita births under
+   `REACH_MAIN=1`. This is the first time in the arc the question is being asked of an atom that has an
+   actuator.
+2. **DOES THE PLACEMENT MATTER?** (#88 real−sham) minus (#87 real−sham). Non-zero means the neutrality
+   measured across #81-#84 and #87 was a property of the **wiring**, not the cargo.
+3. **IS THE POPULATION STILL COMPARABLE?** The one-seed control showed total amp +66% and alive 223→242
+   with REACH on. If the arms differ that much at n=45, the carrier estimator is being computed in two
+   different ecologies and the difference-of-differences is confounded — that gets reported, not
+   explained away.
+
+**Prediction, stated so it can fail.** I expect falsifier 1 to come back **non-null** — this is the one
+intervention that gives the atom's output a path to behaviour by construction rather than by lottery.
+I hold it more weakly than the reasoning suggests: nine stated expectations have failed this session,
+including two of mine in the last hour, and #86 already showed that fixing a real defect bought none of
+the downstream gains I predicted from it.
+
+**Recorded in advance:** a non-null here does NOT show authored primitives drive open-endedness. It would
+show only that a value which reaches an actuator can be selected on — the precondition the arc has been
+missing, not the conclusion it has been chasing.
+
+### #87 RESULT — the conclusion survives, the BOUND does not, and the confound inverted
+
+45/45 pairs, zero loop errors. Economy verified in the data: `metabolicCost` mean +2.783e-5, **negative in
+0/45**. Power held — 918 real / 937 sham in-band windows, mean ~20.5 per seed against #83's 11-26 range,
+so the pre-registered risk that a smaller population would thin the band did not materialise. Carrier
+fraction still reaches 0.872 by t=12000: the atom spreads to near-fixation under a real cost.
+
+### Falsifier 2 — THE POSITION CONFOUND IS REAL, 7x LARGER, AND INVERTED ON AMPLITUDE
+
+| sham arm alone | #83 (inverted economy) | #87 (corrected) |
+|---|---|---|
+| carrier amplitude advantage | **+0.01863** SE 0.00554 (3.36 SE) | **-0.12542** SE 0.02316 (**5.41 SE**) |
+| carrier per-capita births | +46.27 SE 14.13 (3.27 SE) | **+49.33** SE 11.35 (4.35 SE) |
+
+Amplitude **flipped sign and grew sevenfold**; births stayed put. Under a real cost, contact-acquired
+carrier status predicts a **poorer** particle that nonetheless **out-reproduces** — coherent as ecology
+(dense, well-connected regions have more mating contact and more competition for amplitude), and it means
+the two currencies now disagree about what the confound does.
+
+**And this is where the control earns everything.** The real arm's raw carrier advantage is
+`-0.12542 + 0.03849 = -0.0869`. **Without the sham arm, #87 would have reported that the authored
+primitive significantly HARMS its carriers** — a confident, wrong, opposite-signed result. #81 and #82
+twice recommended retiring this control to halve the compute; #83 caught that and kept it. In the
+corrected economy the control is doing *more* work than when #83 rescued it, not less.
+
+### Falsifier 1 — still no evidence the atom pays
+
+| real minus sham | estimate | sd | SE | ratio | 95% CI |
+|---|---|---|---|---|---|
+| carrier amplitude advantage | +0.03849 | 0.19346 | 0.02950 | **1.30 SE** | [-0.0193, +0.0963] |
+| carrier per-capita births | +0.59 | 97.89 | 14.93 | 0.04 SE | [-28.7, +29.9] |
+
+Positive in 27/43 and 20/43 — coin flips. **#83's central conclusion survives the economy correction: an
+authored primitive spreads to fixation, executes millions of times, and confers no detectable benefit.**
+
+### Falsifier 3 — THE BOUND DOES NOT SURVIVE, and that is the honest headline
+
+**#83: |effect| < 1.61%. #87: |effect| < 9.63%.** Six times looser at the same n=45, because between-seed
+sd went from 0.05615 to **0.19346** — a 3.4x increase, matching the 7x growth in the confound. The
+corrected economy is a noisier world to measure carrier effects in.
+
+So the sentence "neutral to within 1.6%" **must be withdrawn**. It was measured in an economy where
+instructions paid their carriers. The replacement is weaker and honest: **neutral to within ~10%, in an
+economy that works as designed.**
+
+**Robustness (pre-registered):** excluding the 3 seeds with <5 in-band windows in either arm changes
+nothing — dAmp +0.0385±0.0578 (n=43) vs +0.0350±0.0588 (n=42). The headline is not carried by thin data.
+
+### What #87 settles, and what it does not
+
+**Settles:** the atom-neutrality result was not an artifact of the inverted economy. It reproduces.
+**Withdraws:** the 1.6% bound, replaced by ~10%.
+**Reverses:** the confound's sign on amplitude, and with it any intuition that carriers are the
+well-placed particles in a straightforward way.
+**Does not touch:** whether an atom that can ACT would pay. Every run in #87, like every run in #80-#84,
+had `__reachFires = 0` — the atoms were calculators. That is #88.
+
+### CORRECTION to #85/#88 — "REACH has never fired" was an overgeneralisation from n=4
+
+#85 measured `__reachFires = 0` on 4 seeds and I wrote, repeatedly and in the #88 pre-registration, that
+REACH "has never fired, not once" and is "completely inert". **At n=45 that is false.**
+
+| arm (from #87, REACH_MAIN off) | mean reachFires | seeds reading zero |
+|---|---|---|
+| real | **4,842** | 39/45 |
+| sham | 663 | 40/45 |
+| #88 real (REACH_MAIN on) | **4,276,126** | 0/11 |
+
+REACH **does** fire on the plasmid path — in roughly 6 of 45 seeds, at a rate about **880x lower** than
+main-path wiring produces. The 4 seeds #85 happened to sample were all in the ~87% that read zero.
+
+**What survives:** 4,842 against 4,276,126 is inert for every practical purpose, and the structural claim
+is unchanged — REACH is wired at the plasmid dispatch, seeded and transferred atoms take the main path,
+and the mechanism is not reaching the atoms the arc measures.
+
+**What does not survive: the word "never".** It was a universal claimed from four seeds, in a session
+whose entire subject has been small-sample overreach — #84's 1.97 SE, the diversity signal that
+evaporated between n=4 and n=6, and #83's own position confound that read 1.46 SE at n=5 and 3.36 SE at
+n=45. The instrument that caught this was the #88 analyser printing arm diagnostics **before** the
+headline, which is the only reason it surfaced before the result did.
+
+### #88 RESULT — the atom does NOT pay even when it CAN act. The wiring explanation is dead.
+
+45/45 pairs in both arms, zero loop errors.
+
+**The arm bit, unambiguously.** `__reachFires` mean **3,144,773** (real) and **3,082,043** (sham), zero in
+**0/45** — against 4,842 / 663 with the plasmid-only wiring. Atoms in this arm were routed to actuators
+roughly **650x more often** than anything in #80-#87. For the first time in the arc, the question is being
+asked of an atom that can act.
+
+**The two worlds are the same ecology** (falsifier 3): alive 1.5 SE, kinds 0.8 SE, carrier fraction
+0.5 SE, in-band windows 0.2 SE. The difference-of-differences is not confounded by one arm living
+somewhere else — which the one-seed control had hinted it might be, and does not.
+
+### Falsifier 1 — does the atom pay when it can act? NO.
+
+| real minus sham | estimate | SE | ratio | 95% CI | sign |
+|---|---|---|---|---|---|
+| dAmp, REACH **off** (#87) | +0.03849 | 0.02950 | 1.30 SE | [-0.019, +0.096] | 27/43 |
+| dAmp, REACH **on** (#88) | **+0.01764** | 0.03052 | **0.58 SE** | [-0.042, +0.077] | 22/44 |
+| dBirths, REACH off | +0.59 | 14.93 | 0.04 SE | [-28.7, +29.9] | 20/43 |
+| dBirths, REACH on | +20.18 | 15.74 | 1.28 SE | [-10.7, +51.0] | 29/44 |
+
+Giving the atom a guaranteed path to an actuator made the amplitude contrast **weaker**, not stronger
+(1.30 SE -> 0.58 SE). Births move from 0.04 SE to 1.28 SE, positive in 29/44 — a directional hint, and
+with four contrasts on the table one at 1.28 SE is what four contrasts do. It is not a result.
+
+### Falsifier 2 — does the placement matter? NO.
+
+| difference of differences | estimate | SE | ratio |
+|---|---|---|---|
+| dAmp | -0.02085 | 0.04245 | **0.49 SE** |
+| dBirths | +19.59 | 21.69 | **0.90 SE** |
+
+**Both null. The neutrality measured across #81-#84 and #87 is NOT a property of the wiring.**
+
+### My prediction failed, and it was the strongest one I made
+
+I pre-registered: *"I expect falsifier 1 to come back non-null — this is the one intervention that gives
+the atom's output a path to behaviour by construction rather than by lottery."* It came back at 0.58 SE.
+That is the **tenth** stated expectation to fail this session and the **third of mine today**, after the
+diversity gain from #86 (0.8 SE) and the program-length shrinkage (1.0 SE).
+
+It is also the failure that matters most, because the routing story was the through-line of the entire
+code read — the CODEMAP built it across several sections, #85's M3 already refuted its arithmetic
+(actuators are 25.4% of instructions, not 2%), and #88 has now refuted it empirically at the one place
+the arithmetic could not reach.
+
+### What this closes, and where it points
+
+**Closed:** the atom-neutrality result is not about routing, not about the inverted economy (#87), and
+not about the carrier split conflating classes (#85 M1). Four candidate explanations for a decade of
+nulls are now eliminated by measurement rather than argument.
+
+**Where it points, and this is now the only place left:** the atoms spread, are inherited, execute
+millions of times, and — with a direct line to force, amplitude transfer, spawn drive and mutation rate —
+still do nothing for their carriers. **The content is the problem.** `uaGenExpression` composes random
+expressions over `a,b,u,c,d,m,s,nx,ny,t,nb,rl,rd` with branching and recursion, and what it generates is
+apparently orthogonal to anything selection can use, even when wired straight to the actuators.
+
+The next question is not about the channel, which is now solved and measured. It is about the
+**generator** — and unlike every previous statement of that sentence in this file, the alternatives have
+actually been eliminated rather than assumed away.
+
+---
+
+## #89 — the positive control, finally on a channel that works. Pre-registered.
+
+#88 eliminated wiring: an atom with a direct line to the actuators still confers nothing (0.58 SE), and
+placement made no difference (0.49 SE). The remaining explanation is that **the CONTENT is worthless**.
+Before attacking the generator, that needs the positive control the arc has never had on a working
+channel — **can this instrument detect ANY cargo, when the cargo is guaranteed to reach an actuator?**
+
+#84 asked exactly this and could not answer it: it ran `ATOM_FORCE` on the **register** path, where
+`__reachFires` was ~0, so a forced value had the same routing lottery as a random one. It stalled at
+1.97 SE against a pre-registered 3 SE bar and was stopped at 39/108. **#89 is #84's question asked where
+the answer can exist.**
+
+**Design, leaning on #88 exactly as #88 leaned on #87.** `ATOM_FORCE=0` was verified bit-identical to
+`ATOM_SHAM=1`, so #88's `on_sham` arm (45 seeds, `REACH_MAIN=1`) IS the zero-cargo control. #89 runs only
+**`ATOM_FORCE=8 REACH_MAIN=1`, 45 seeds, 12000 ticks, 250-tick sampling** — 45 runs, not 90.
+
+`uaCall` clamps to [-8,8], so +8 is the rail: the largest value the substrate permits, emitted directly
+into force, amplitude transfer, spawn drive and mutation rate at `clamp(±2)*k*0.2` gain.
+
+### Falsifiers
+
+1. **CAN THE INSTRUMENT SEE CARGO AT ALL?** Carrier advantage, forced(+8) minus sham(0), both under
+   `REACH_MAIN=1`. **Non-null -> the channel works and the neutrality is genuinely about content**, which
+   makes the generator the correct and only remaining target. **Null -> no cargo can pay through this
+   channel regardless of value**, and the entire authored-primitive mechanism is inert by construction —
+   a much larger and more uncomfortable conclusion than "the grammar is bad".
+2. **IS THE ECOLOGY COMPARABLE?** Forcing every atom to +8 is a large intervention; if alive/kinds/carrier
+   fraction diverge from the sham arm the contrast is confounded and that gets reported, not explained.
+
+**Escalation rule, fixed in advance.** If forced(+8) minus sham is null, I run the **-8 arm** before
+concluding "no cargo can pay" — a single rail could fail by pushing a saturated actuator, and the
+symmetric ±8 contrast is the widest the substrate permits. Only if BOTH rails are null does falsifier 1's
+second branch stand.
+
+**Prediction: non-null.** Stated plainly and held loosely — my last three predictions failed, most
+recently this exact intuition applied to REACH. The difference is that this arm does not require any
+evolved expression to be useful; it substitutes a maximal constant for the content and asks only whether
+the pipe carries anything. If THIS is null, the pipe is not a pipe.
+
+### #89 RESULT — suggestive, not established, and the escalation arm is running
+
+45/45, zero loop errors. Arm identity confirmed: `atomForce=8`, `reachFires` mean **2,805,202**, zero in
+**0/45**. Ecology comparable to the sham arm on every metric (alive 0.5 SE, kinds 1.0 SE, carrier fraction
+0.4 SE, in-band windows 0.8 SE), so the contrast is not confounded by one arm living elsewhere.
+
+| forced(+8) minus sham(0), both REACH_MAIN=1 | estimate | SE | ratio | 95% CI | sign |
+|---|---|---|---|---|---|
+| carrier amplitude advantage | **+0.05520** | 0.02807 | **1.97 SE** | [+0.0002, +0.1102] | **32/44** |
+| carrier per-capita births | -21.14 | 13.75 | 1.54 SE | [-48.1, +5.8] | 16/44 |
+
+**Two statistics disagree, and the disagreement is the finding.** The paired t gives 1.97 SE with an
+interval that clears zero by 0.0002 — i.e. not meaningfully. The **sign test gives 32/44 positive,
+z=2.86, two-sided p=0.0037**, which is not a coin flip. The gap means the seed distribution is
+**heavy-tailed**: a few extreme seeds inflate the SE while the median seed moves consistently positive.
+For EXISTENCE the sign test is the more robust statistic; for MAGNITUDE the t-interval is the honest one.
+So: **there is real evidence the pipe carries something, and no reliable estimate of how much.**
+
+**The two currencies disagree again.** Amplitude up (32/44 positive), births down (16/44 positive,
+-21.14). Forcing maximal cargo into the actuators appears to raise carrier amplitude while lowering
+carrier reproduction — the same amplitude/births split #87 found in the position confound. Whatever the
+channel carries, it is not carrying it into offspring.
+
+**An arithmetic coincidence worth recording so nobody later mistakes it for a pattern.** #84's forced-cargo
+test on the DEAD register path also came back at **1.97 SE**, with a 95% interval clearing zero by
+0.00018. #89 on a WORKING channel gives 1.97 SE clearing zero by 0.00019. These are different
+experiments on different paths with different point estimates (+0.0385 vs +0.0552); the matching ratios
+are a coincidence of two noisy estimators, not a signal, and are recorded here only because the
+resemblance is striking enough to invite exactly that error.
+
+**Escalation, per the pre-registered rule and against my own interest.** 1.97 SE is below the bar I set
+in #84 and did not clear here either. The result leans my way — I predicted non-null — which is precisely
+when a confirmatory arm is worth most. The **-8 arm** is now running: it completes the symmetric ±8
+contrast (the widest the substrate permits), and a real channel effect should show the OPPOSITE sign on
+the opposite rail. If -8 mirrors +8, the pipe carries and the generator is the target. If -8 is null or
+same-signed, the +8 result is an artifact and the mechanism is inert.
+
+### #89b RESULT — the escalation design was VOID, and the effect does not survive proper specification
+
+45/45 on the -8 rail, zero loop errors.
+
+| contrast (REACH_MAIN=1 throughout) | estimate | SE | ratio | sign |
+|---|---|---|---|---|
+| +8 vs 0, dAmp | +0.05520 | 0.02807 | 1.97 SE | 32/44 (z=2.86) |
+| **-8 vs 0, dAmp** | **+0.03907** | 0.03031 | 1.29 SE | **24/44 (z=0.45)** |
+| **+8 vs -8, dAmp** | **-0.00262** | 0.03144 | **0.08 SE** | 19/45 |
+
+**The -8 rail is the SAME sign as +8, not the mirror image.** Per the pre-registered rule that reads as
+"the +8 result is an artifact" — but the rule's premise was wrong, and that is the more important finding.
+
+### The design error, owned
+
+The emit is `vmActions[|di|%7] += clamp(_out, ±2) * k * 0.2`, where **`k` is the instruction's own
+immediate**, initialised by mutation as `(Math.random()-0.5)*0.6` — **random sign**. So:
+
+- `+8` -> `+2 * k * 0.2` -> U(-0.12, +0.12)
+- `-8` -> `-2 * k * 0.2` -> U(-0.12, +0.12)
+
+**Identical distributions.** The atom's sign is multiplied by a random-signed coefficient before it
+reaches an actuator. **The ±8 contrast could not have shown mirroring even with a perfectly working
+channel**, and the 0.08 SE on `+8 vs -8` is not evidence of absence — it is the arithmetic working as
+specified. I designed a discriminator that cannot discriminate, pre-registered it, and only caught it by
+asking why a result was *so* exactly null.
+
+### What the arms actually test, and the correct estimator
+
+±8 are the **same treatment** (non-zero magnitude at the actuator) measured twice on the same seeds.
+Averaging them per seed and contrasting against zero cargo:
+
+| POOLED, cargo magnitude > 0 vs cargo = 0 | value |
+|---|---|
+| estimate | **+0.04714** |
+| SE | 0.02621 |
+| ratio | **1.80 SE** |
+| 95% CI | **[-0.0042, +0.0985]** — includes zero |
+| sign | 27/44 (z=1.36) |
+
+**Not established.** The +8 arm's 1.97 SE / 32-of-44 was the more favourable of two measurements of one
+treatment; specified properly the answer is 1.80 SE with an interval spanning zero.
+
+### Where this leaves the question, stated without dressing
+
+**Falsifier 1 is UNRESOLVED, not answered.** After #84 (stopped), #89 (+8) and #89b (-8), the honest
+statement is: forcing maximal cargo through a demonstrably working actuator channel shifts carrier
+amplitude by about +0.047 with a confidence interval that includes zero. The pipe *may* carry. 45 seeds
+cannot say.
+
+**Two routes, both specific:**
+1. **Power.** SE 0.0262 needs ~4x the seeds for a 3 SE verdict — roughly 180 seeds per arm, ~14 core-hours.
+2. **Better specification, and this is the cheaper and better one.** Emit `clamp(_out)*0.2` **without the
+   `k` multiplier** at the REACH site. Then +8 and -8 genuinely differ, the sign question becomes
+   answerable, and the contrast tests what it was always meant to test. The current design is confounded
+   by an evolvable random-signed coefficient sitting between the cargo and the actuator.
+
+**Method note.** Three of this session's designs have now failed not on their statistics but on their
+*premises*: #85's frequency-dependence discriminator needed two knobs rather than one; the "REACH never
+fires" claim was a universal from four seeds; and this one built its headline contrast on a sign
+difference the substrate erases. Pre-registration protects against moving the goalposts. It does not
+protect against a goalpost that was never connected to the pitch.
+
+---
+
+## #90 — the sign contrast, on a channel where sign survives. Pre-registered.
+
+#89b established that `clamp(_out,±2)*k*0.2` erases the atom's sign: `k` is the instruction immediate,
+initialised `(Math.random()-0.5)*0.6`, so +8 and -8 gave identical emit distributions and the ±8 contrast
+was void by construction (0.08 SE — arithmetic, not evidence).
+
+`REACH_NOK=1` drops `k`: the emit becomes `clamp(_out,±2)*0.2`, deterministic and sign-preserving.
+
+**Stated plainly: this changes TWO things.** It fixes the sign AND raises emit magnitude ~7x (mean
+|k|*0.4 ≈ 0.06 -> flat 0.4). **This is a new arm, not a magnitude-matched correction of #89.** The ±8
+contrast within it is self-contained and internally valid; it must NOT be compared to #89's magnitudes.
+
+**Controls (SEED=3, 6000 ticks), run before pre-registration:**
+- `REACH_NOK=0` is bit-identical to the pre-#90 build (`n:238, pos:271438.762918, amp:103.623248`).
+- `REACH_NOK=1`: **+8 gives n=288 amp=254.2; -8 gives n=272 amp=59.6.** A 4x amplitude difference between
+  rails that were statistically identical under `k`. The sign now bites.
+
+Protocol: **`REACH_MAIN=1 REACH_NOK=1` x {ATOM_FORCE=8, ATOM_FORCE=-8} x 45 seeds x 12000 ticks**,
+250-tick sampling. 90 runs.
+
+### Falsifiers
+
+1. **DOES THE ATOM'S VALUE MATTER?** Carrier advantage, +8 minus -8. This is the contrast #84, #89 and
+   #89b all intended and none could perform. Non-null -> the channel carries sign-dependent cargo, the
+   neutrality of authored atoms is about their CONTENT, and the generator is the target. Null at this
+   magnitude -> carrier fitness is insensitive to what the atom emits even at a flat 0.4 into the
+   actuators, which would be a far stronger inertness result than anything measured so far.
+2. **IS THE ECOLOGY COMPARABLE?** The one-seed control already shows amp 254 vs 60 — the arms may sit in
+   very different worlds. If alive/kinds/carrier-fraction diverge at n=45, the carrier contrast is being
+   computed in two ecologies and that is reported as a confound, not explained away. **This is the
+   likeliest way this experiment fails to answer its question.**
+
+**Prediction: non-null.** Two of my three previous predictions failed, and the one that "succeeded"
+(#89's +8) collapsed under proper specification. But the one-seed control here is not subtle — a 4x
+amplitude gap — and unlike #88 the intervention is no longer routed through a coefficient that erases it.
+
+**Recorded in advance:** a non-null on falsifier 1 shows that a FORCED constant reaching an actuator can
+be selected on. It does not show that an EVOLVED expression does. That remains the generator question,
+and #90 is the precondition for asking it, not the answer to it.
+
+---
+
+## #91 — PE ↔ PE. The first run of this system against itself, and a fitness channel switched on for the first time.
+
+#88 eliminated wiring; #87 eliminated the inverted economy; #85 eliminated the carrier-split confound.
+The arc's conclusion was "the content is the problem". Before attacking the generator, the code map
+surfaced something that changes what that sentence means.
+
+**Authored atoms have TWO fitness channels, and only one has ever been measured.**
+
+1. **METABOLIC** — does the carrier gain amplitude and offspring. Measured across #80–#90; null to ~10%,
+   and still null when handed a direct actuator channel (#88, 0.49 SE).
+2. **PREDICTIVE (`alienGrip`)** — the atom is used as a FORECASTER of a peer substrate's packet-emission
+   rate on the bridge, scored on hit-rate (13599, `runAlienPrediction`). That score feeds atom selection
+   weighting (12427) and **cull protection (12494: an unused atom past `UA_GRACE_AGE` survives iff
+   `alienGrip > 0`)**. Its declaration comment calls it *"a real second test of whether primitives
+   selected for one role (driving actuators) generalize to a totally different one (forecasting a foreign
+   substrate)"*.
+
+**`harness-clamp.js` line 53 stubs `BroadcastChannel` to a no-op.** No peers → `peerObservable` empty →
+no predictions formed → `alienAttempts` 0 → `alienGrip` 0 for **every atom in every headless run this
+project has ever produced**, including all ~350 runs of #84–#90. **The arc measured atoms on a fitness
+function they were not designed for, while the one they were designed for was structurally switched off.**
+
+### `harness-bridge.js` — two Pe instances, one live channel
+
+Two child processes each boot the real `index.html`; a `BroadcastChannel` shim relays over node IPC
+through the parent. Separate processes rather than one, because the script writes its flags and DOM shims
+onto `globalThis` — and because two processes are the faithful analogue of the two browser tabs the
+network layer was written for. `SOLO=1` disables the relay: that arm reproduces every prior headless run.
+
+**Engineering note.** The sim must be run in 200-tick slices with `setImmediate` between them. A single
+blocking `__run(TICKS)` starves the event loop, no IPC message is ever delivered, and the harness would
+silently reproduce the exact no-peer condition it exists to escape — a control that looks like a
+treatment.
+
+### It works, and the channel is live
+
+8000 ticks, seeds 3 and 7, both instances:
+
+| | A (seed 3) | B (seed 7) |
+|---|---|---|
+| peers seen | 1 | 1 |
+| predictions attempted / hit | **24 / 9** | **22 / 7** |
+| germline atoms with attempts | 4 of 8 | 2 of 8 |
+| best per-atom `alienGrip` | **0.50** | **0.33** |
+| cross-instance packets received | 77 | 89 |
+| horizontal atom transfers | 130 | 68 |
+
+`alienAttempts` has been 0 in every prior run in this project's history. It is now non-zero, atoms are
+being scored as forecasters of a foreign substrate, and some hold grip up to 1.0 transiently.
+
+### The structural finding that matters more than the numbers
+
+**`partAlienAttempts = 0` at every sample, in both instances, with 124–133 particle atoms alive.**
+
+`runAlienPrediction` scores **only `genome.userAtoms`** — the germline bank. `cloneGenome` deliberately
+resets `alienHits`/`alienAttempts` so a new lineage re-earns its own record. So particle atoms — the ones
+that spread by contact and that #80–#90 measured — never accumulate grip.
+
+**Therefore the predictive channel does not act on carrier fitness at all. It acts as a SELECTION FILTER
+ON THE GERMLINE ATOM BANK**, through cull protection, and the germline bank is exactly what
+`seedAtomIntoParticle` draws from.
+
+**So the bridge changes WHICH EXPRESSIONS ENTER THE POPULATION.** That is a generator-level filter, it
+was designed in, and it has never operated. "The content is the problem" and "the content is unfiltered
+because the filter was never switched on" are the same sentence, and the second one is actionable.
+
+---
+
+## #92 — SELF-PREDICTION. The atom bank's content filter now runs without a peer.
+
+**Not another measurement. A change to `index.html`.**
+
+`alienGrip` is the ONLY content filter on the germline atom bank: an unused atom past `UA_GRACE_AGE`
+survives the cull iff it has predicted something correctly (12494). It is scored only against
+`peerObservable`, which is populated only by real BroadcastChannel traffic. So the filter **requires a
+second tab**. Headless it has never run — `alienAttempts` is 0 in every run this project has produced.
+In the artwork it runs only when someone opens two tabs, which is almost never.
+
+**A generator whose selection filter almost never operates emits unfiltered noise.** That is what
+#80–#90 kept measuring and reporting as "the cargo is neutral". The cargo was never filtered.
+
+### The change
+
+`runAlienPrediction` is **target-agnostic** — it forms a directional prediction, waits a window, scores
+it, credits the atom. The only peer-specific part is the observable. So it is given one the system always
+has: **atoms predict the direction of the population's own BIRTH RATE over an `ALIEN_WINDOW`.**
+
+Three insertions, no change to the scoring logic:
+1. `selfObservable` — same `{count, prevCount, windowStart}` shape as a peer entry. **Deliberately kept
+   out of `peerLastSeen`**, because `countPeers()` iterates that and a synthetic entry there would make
+   the system believe it has a peer and alter its network behaviour.
+2. Per-tick accumulation of `birthsThisTick`, placed before the counters are cleared.
+3. `runAlienPrediction` iterates peers **plus** the endogenous target. The loop body is untouched.
+
+Gated `SELF_PREDICT`, **ships DORMANT** per project convention.
+
+### Controls
+
+| | fingerprint |
+|---|---|
+| pre-#92 build | `n:221, pos:285885.780531, amp:144.952874, lin:168342` |
+| `SELF_PREDICT=0` | **identical** |
+| `SELF_PREDICT=1` | diverges; 0 loop errors |
+
+### It runs alone — the point of the whole exercise
+
+8000 ticks, **zero peers**, via `harness-bridge.js SOLO=1`:
+
+| | SELF_PREDICT=0 (every prior run) | SELF_PREDICT=1 |
+|---|---|---|
+| prediction attempts | **0** | **34** |
+| hits | 0 | 20 |
+| germline atoms | 4 | **9** |
+| atoms carrying grip | **0** | **5** |
+| best per-atom grip | 0 | **1.0** |
+
+The bank retains more than twice the atoms, because cull protection can now save the ones that predict.
+
+**What this does NOT establish, stated before anyone reads 20/34 as skill.** 20 hits in 34 attempts is
+z=0.86 against chance — **not evidence that atoms predict better than random**. What is established is
+that the channel OPERATES: predictions form, resolve, credit atoms, and change which atoms survive.
+Whether the filter selects for anything real is the next question, and it needs proper n plus a
+shuffled-direction control.
+
+**Why this matters more than the arc it interrupts.** Every experiment from #80 to #91 measured atoms
+drawn from an unfiltered bank, then concluded the atoms were worthless. The system was designed with a
+filter on that bank. The filter needed a peer. Nobody ever gave it one — and now it does not need one.
+
+---
+
+## #93 — GRIP-WEIGHTED PROPAGATION. Closing the loop #92 opened.
+
+**#92 gave the germline atom bank a filter that runs without a peer. Tracing what the filter feeds showed
+it is disconnected at the other end.**
+
+- `seedAtomIntoParticle(genome.userAtoms.length-1)` (12500) hands over the **NEWEST** atom.
+- `attemptMemeTransfer` picks the donor's **most-USED** atom (664).
+- Neither consults `alienGrip`.
+
+So `alienGrip` could save a predictive atom from the cull, and then the newest or most-executed thing
+left the bank anyway. **Selection with no propagation.** `GRIP_SEED=1` makes both routes prefer the
+highest-grip bound atom. Ships DORMANT.
+
+### A confound I introduced and the measurement caught
+
+The first `bestGripAtomIdx` tie-broke by `uses` and returned a winner even when **every atom had zero
+grip** — which silently changed germline seeding from "newest" to "most-used". `GRIP_SEED=1` with
+`SELF_PREDICT=0` moved the trajectory (**n 221 -> 193, amp 145 -> 51**) with the filter switched off.
+I had written a comment asserting that case was a no-op. The control refuted my own comment.
+
+That is the fourth design this session to fail on its premise rather than its statistics, and the first
+where the false premise was one I wrote into a comment while implementing it. Fixed: `bestGripAtomIdx`
+now returns -1 unless some atom has genuine grip (>= `ALIEN_GRIP_MIN_ATTEMPTS`=6 attempts and a non-zero
+hit rate), so each call site keeps its original fallback.
+
+### Controls, after the fix
+
+| arm | result |
+|---|---|
+| `GRIP_SEED=0 SELF_PREDICT=0` | bit-identical to pre-#93 |
+| `GRIP_SEED=1 SELF_PREDICT=0` | **bit-identical to baseline — a true no-op with no grip to use** |
+| `GRIP_SEED=1 SELF_PREDICT=1` | diverges; 0 loop errors |
+
+The middle row is the one that matters: the knob now does nothing until the filter has actually scored
+something, so #93 tests propagation-of-selected-atoms and not an incidental change to seeding order.
+
+### State of the mechanism after #92 + #93
+
+For the first time the loop is closed end to end: atoms are **authored** (random grammar) → **scored**
+against an endogenous target → **retained** by cull protection if they predict → **propagated** into the
+population by seeding and horizontal transfer on the basis of that score.
+
+Every prior experiment in this file ran with links 2, 3 and 4 absent. **What #80–#91 measured was the
+output of an unfiltered generator with no path from filter to population — because there was no filter.**

@@ -62,7 +62,7 @@ globalThis.setTimeout=()=>0;globalThis.clearTimeout=()=>{};globalThis.setInterva
 // that cannot be turned off is not a control, so the plumbing goes in before any ablation claim does.
 // Same one-line form as harness-oee.js.
 if (process.env.COSMOS !== undefined) globalThis.__COSMOS = parseInt(process.env.COSMOS, 10);
-for (const kn of ['COSMOS_COST','COSMOS_CONTACT','COSMOS_MERGE','COSMOS_SENSE','COSMOS_AFFORD','ESCAPE_DEATH','ATOM_HERITABLE','MEME_TRANSFER'])
+for (const kn of ['COSMOS_COST','COSMOS_CONTACT','COSMOS_MERGE','COSMOS_SENSE','COSMOS_AFFORD','ESCAPE_DEATH','ATOM_HERITABLE','MEME_TRANSFER','CHILD_SIGN_FLOOR','REACH_MAIN','REACH_NOK','SELF_PREDICT','ALIEN_SELECT','GRIP_SEED'])
   if (process.env[kn] !== undefined) globalThis['__'+kn] = parseInt(process.env[kn], 10);
 let loopErrors=0,lastErr='';
 console.error=(...a)=>{const s=a.join(' ');if(/Loop error|Boot error|Watchdog/.test(s)){loopErrors++;lastErr=s.slice(0,160);}};
@@ -148,6 +148,23 @@ if(process.env.ATOM_FORCE!==undefined){
   const A='function uaCall(atom,a,b){';
   if(code.split(A).length-1!==1){ console.log(JSON.stringify({error:'uaCall anchor'})); process.exit(1); }
   code=code.replace(A, A+'if(atom){atom.uses=(atom.uses|0)+1;} return '+FV+'; // #84 FORCED CARGO: executed, output is a constant');
+}
+// ── #85 NFD_OFF — the frequency-dependence discriminator, and it needs BOTH knobs ────────────────
+// The measured carrier advantage falls monotonically with carrier frequency (slope -0.0141 over 1625
+// windows), which #83 read as a position confound ("well-connected particles acquire atoms first").
+// Two DESIGNED mechanisms produce the same signature, both keyed to the bound opcode itself:
+//   GENO_NFD      (±0.0096) — the program-vocabulary signature hashes distinct opcodes with op<256,
+//                             and an atom's opcode is 236+k, so carriers form their own signature class
+//   OPCODE_NOVELTY(±0.0025) — rewards historically under-explored opcodes; a fresh atom opcode has
+//                             opCum~0, i.e. maximal novelty, decaying exactly as it spreads
+// Regression to the mean predicts a declining curve too, so this arm separates them. BOTH must be off:
+// patching one alone leaves the other producing the same signature, which would be read as "the
+// confound survived, therefore it is position" — a false negative that looks like a result.
+if((process.env.NFD_OFF|0)===1){
+  const A='const GENO_NFD_ON=1;';
+  if(code.split(A).length-1!==1){ console.log(JSON.stringify({error:'GENO_NFD_ON anchor'})); process.exit(1); }
+  code=code.replace(A,'const GENO_NFD_ON=0; // #85 NFD_OFF');
+  globalThis.__OPCODE_NOVELTY=0;   // LIVE block only fills UNDEFINED, so an explicit 0 survives it
 }
 // Births by the PARENT's carrier status — per-capita reproduction is the second half of "does it pay",
 // and amplitude alone cannot show a primitive that converts energy into offspring rather than into mass.
@@ -317,7 +334,59 @@ const driver=`
       carrierAge:_cn?+(_cg/_cn).toFixed(1):null, nonCarrierAge:_nn?+(_ng/_nn).toFixed(1):null,
       carrierProv:_cn?+(_cp/_cn).toFixed(4):null, nonCarrierProv:_nn?+(_np2/_nn).toFixed(4):null,
       birthsCarrier:(globalThis.__bth?globalThis.__bth.carrier:0), birthsNonCarrier:(globalThis.__bth?globalThis.__bth.nonCarrier:0)};
+    // ── #85 INSTRUMENTS (all read-only; the fingerprint control must come back identical) ──────────
+    // 1. ATOMS-WITHOUT-BIND. The carrier test used by #81-#84 is boundOpcodes.length>0. Opcode 22
+    //    calls atoms BY INDEX out of userAtoms and never consults boundOpcodes, so a particle with
+    //    atoms but no bound opcode is scored a NON-CARRIER while still executing atoms. If that class
+    //    is non-empty, every carrier estimate in the arc is attenuated toward null by an unknown amount.
+    let _abBoth=0,_abAtomsOnly=0,_abBindOnly=0,_abNeither=0;
+    for(let q=0;q<N;q++){ if(!palive[q])continue; const g=pGenome[q]; if(!g)continue;
+      const ua=Array.isArray(g.userAtoms)&&g.userAtoms.length>0;
+      const bo=Array.isArray(g.boundOpcodes)&&g.boundOpcodes.length>0;
+      if(ua&&bo)_abBoth++; else if(ua)_abAtomsOnly++; else if(bo)_abBindOnly++; else _abNeither++; }
+    // 2. REALISED OPCODE HISTOGRAM over live programs. Decides routing-vs-content: if effectors and
+    //    opcode 4 are heavily enriched, the "atoms rarely reach an actuator" story is wrong.
+    const _EFF=[4,7,9,10,11,16,18,20,24,31,130,138,140,144,146,152,153,157,162,165,166,168,174,175,
+                179,210,211,212,215,217,219,220,225,226,232];
+    const _effSet=new Set(_EFF);
+    let _instTot=0,_op4=0,_op22=0,_effN=0,_progsWithOp4=0,_progsWithEff=0,_progsWithOp22=0,_progN=0;
+    const _hist=new Map();
+    for(let q=0;q<N;q++){ if(!palive[q]||!pProg[q])continue; _progN++;
+      let h4=false,he=false,h22=false;
+      for(const ins of pProg[q]){ if(!ins)continue; const o=ins[0]|0; _instTot++;
+        _hist.set(o,(_hist.get(o)||0)+1);
+        if(o===4){_op4++;h4=true;} if(o===22){_op22++;h22=true;}
+        if(_effSet.has(o)){_effN++;he=true;} }
+      if(h4)_progsWithOp4++; if(he)_progsWithEff++; if(h22)_progsWithOp22++; }
+    const _top=[..._hist.entries()].sort((a,b)=>b[1]-a[1]).slice(0,12);
+    // 3. EVOLVED GENOME VALUES. Which "evolvable" parameters actually sit at a bound?
+    const _gk=['metabolicCost','deathThreshold','lifespanBias','somaRepair','mutationRate',
+               'vmMaxInstructions','uaMaxDepth','opnovStrength','metaCreditBias','entropyK','vmGain'];
+    const _gv={};
+    for(const k of _gk){ let s=0,n=0,mn=Infinity,mx=-Infinity;
+      for(let q=0;q<N;q++){ if(!palive[q])continue; const g=pGenome[q]; if(!g)continue;
+        const v=+g[k]; if(!isFinite(v))continue; s+=v; n++; if(v<mn)mn=v; if(v>mx)mx=v; }
+      _gv[k]=n?{mean:+(s/n).toPrecision(4),min:+mn.toPrecision(4),max:+mx.toPrecision(4)}:null; }
     globalThis.__boundSeries.push({t, bosSelf, atoms, MAX:MAX_BOUND_OPCODES, split:_sp,
+      atomsNoBind:{both:_abBoth, atomsOnly:_abAtomsOnly, bindOnly:_abBindOnly, neither:_abNeither},
+      reachFires:(typeof __reachFires!=='undefined'?__reachFires:null),
+      // #94: the predictive filter's state. Read-only; the fingerprint control must stay identical.
+      grip:(function(){ try{
+        let n=0,scored=0,hits=0,att=0,best=0;
+        for(const _a of (genome.userAtoms||[])){ if(!_a)continue; n++;
+          const A=_a.alienAttempts|0,H=_a.alienHits|0; att+=A; hits+=H;
+          if(A>=6){ const g=H/A; if(g>0){scored++; if(g>best)best=g;} } }
+        return {bankAtoms:n, scoredAtoms:scored, bestGrip:+best.toFixed(3),
+                predAttempts:(genome.alienPredict?genome.alienPredict.attempts:0),
+                predHits:(genome.alienPredict?genome.alienPredict.hits:0),
+                atomAttempts:att, atomHits:hits};
+      }catch(e){ return null; } })(),
+      opcodes:{instTot:_instTot, progs:_progN, op4:_op4, op22:_op22, eff:_effN,
+               op4Frac:_instTot?+(_op4/_instTot).toFixed(5):0,
+               effFrac:_instTot?+(_effN/_instTot).toFixed(5):0,
+               progsWithOp4:_progsWithOp4, progsWithEff:_progsWithEff, progsWithOp22:_progsWithOp22,
+               top:_top},
+      genomeVals:_gv,
       carriers:(function(){let c=0;for(let q=0;q<N;q++){if(!palive[q])continue;const g=pGenome[q];if(g&&Array.isArray(g.boundOpcodes)&&g.boundOpcodes.length)c++;}return c;})(),
       memeToParticle:(typeof __memeToParticle!=='undefined'?__memeToParticle:null),
       memeTransfers:(typeof __memeTransfers!=='undefined'?__memeTransfers:null),
@@ -475,6 +544,7 @@ console.log(JSON.stringify({
   // #84: arms must be self-identifying in their own output. A batch of 36 files distinguished only by
   // filename is one rename away from an arm swap that no later check could catch.
   atomSham:(process.env.ATOM_SHAM|0)===1, atomForce:(process.env.ATOM_FORCE!==undefined?Number(process.env.ATOM_FORCE):null),
+  nfdOff:(process.env.NFD_OFF|0)===1,
   fingerprint, posRange:globalThis.__posRange(), escape:globalThis.__escape(), escSeries:globalThis.__escSeries||null, boundSeries:globalThis.__boundSeries||null, deathLineages:globalThis.__deathLineages?globalThis.__deathLineages():null, opcodes:globalThis.__opcodes?globalThis.__opcodes():null, memeDiag:globalThis.__memeDiag?globalThis.__memeDiag():null, mutProbe:globalThis.__mutProbe?globalThis.__mutProbe():null, aliasProbe:globalThis.__aliasProbe?globalThis.__aliasProbe():null,
   loopErrors, lastErr, driverErr:globalThis.__driverErr||0,
   alive:globalThis.__aliveN(), kinds:globalThis.__kinds(),
