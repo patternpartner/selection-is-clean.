@@ -7350,3 +7350,50 @@ shuffled-direction control.
 **Why this matters more than the arc it interrupts.** Every experiment from #80 to #91 measured atoms
 drawn from an unfiltered bank, then concluded the atoms were worthless. The system was designed with a
 filter on that bank. The filter needed a peer. Nobody ever gave it one — and now it does not need one.
+
+---
+
+## #93 — GRIP-WEIGHTED PROPAGATION. Closing the loop #92 opened.
+
+**#92 gave the germline atom bank a filter that runs without a peer. Tracing what the filter feeds showed
+it is disconnected at the other end.**
+
+- `seedAtomIntoParticle(genome.userAtoms.length-1)` (12500) hands over the **NEWEST** atom.
+- `attemptMemeTransfer` picks the donor's **most-USED** atom (664).
+- Neither consults `alienGrip`.
+
+So `alienGrip` could save a predictive atom from the cull, and then the newest or most-executed thing
+left the bank anyway. **Selection with no propagation.** `GRIP_SEED=1` makes both routes prefer the
+highest-grip bound atom. Ships DORMANT.
+
+### A confound I introduced and the measurement caught
+
+The first `bestGripAtomIdx` tie-broke by `uses` and returned a winner even when **every atom had zero
+grip** — which silently changed germline seeding from "newest" to "most-used". `GRIP_SEED=1` with
+`SELF_PREDICT=0` moved the trajectory (**n 221 -> 193, amp 145 -> 51**) with the filter switched off.
+I had written a comment asserting that case was a no-op. The control refuted my own comment.
+
+That is the fourth design this session to fail on its premise rather than its statistics, and the first
+where the false premise was one I wrote into a comment while implementing it. Fixed: `bestGripAtomIdx`
+now returns -1 unless some atom has genuine grip (>= `ALIEN_GRIP_MIN_ATTEMPTS`=6 attempts and a non-zero
+hit rate), so each call site keeps its original fallback.
+
+### Controls, after the fix
+
+| arm | result |
+|---|---|
+| `GRIP_SEED=0 SELF_PREDICT=0` | bit-identical to pre-#93 |
+| `GRIP_SEED=1 SELF_PREDICT=0` | **bit-identical to baseline — a true no-op with no grip to use** |
+| `GRIP_SEED=1 SELF_PREDICT=1` | diverges; 0 loop errors |
+
+The middle row is the one that matters: the knob now does nothing until the filter has actually scored
+something, so #93 tests propagation-of-selected-atoms and not an incidental change to seeding order.
+
+### State of the mechanism after #92 + #93
+
+For the first time the loop is closed end to end: atoms are **authored** (random grammar) → **scored**
+against an endogenous target → **retained** by cull protection if they predict → **propagated** into the
+population by seeding and horizontal transfer on the basis of that score.
+
+Every prior experiment in this file ran with links 2, 3 and 4 absent. **What #80–#91 measured was the
+output of an unfiltered generator with no path from filter to population — because there was no filter.**

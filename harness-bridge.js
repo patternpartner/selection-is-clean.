@@ -62,7 +62,7 @@ if(process.env.BRIDGE_CHILD){
   };
 
   { let a=(SEED|0)>>>0; Math.random=function(){a=(a+0x6D2B79F5)|0;let t=Math.imul(a^a>>>15,1|a);t=(t+Math.imul(t^t>>>7,61|t))^t;return ((t^t>>>14)>>>0)/4294967296;}; }
-  for(const kn of ['CHILD_SIGN_FLOOR','REACH_MAIN','REACH_NOK','ALIEN_SELECT','MEME_TRANSFER','SELF_PREDICT'])
+  for(const kn of ['CHILD_SIGN_FLOOR','REACH_MAIN','REACH_NOK','ALIEN_SELECT','MEME_TRANSFER','SELF_PREDICT','GRIP_SEED'])
     if(process.env[kn]!==undefined) globalThis['__'+kn]=parseInt(process.env[kn],10);
   if(globalThis.__CHILD_SIGN_FLOOR===undefined) globalThis.__CHILD_SIGN_FLOOR=1;
 

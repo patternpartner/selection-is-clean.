@@ -79,6 +79,32 @@ const pendingAlienPredictions=new Map(); // tab -> {atomIdx, direction, baseline
 // make the system believe it has a peer and change its network behaviour.
 let selfObservable=null;
 let __SELF_PREDICT=false; // resolved after the LIVE registry; SELF_PREDICT=1 enables. Ships DORMANT.
+// ═══ #93 GRIP-WEIGHTED PROPAGATION — close the loop the filter opens ════════════════════════════
+// #92 lets alienGrip SAVE a predictive atom from the cull. But nothing downstream consults grip:
+// seedAtomIntoParticle() is called with `genome.userAtoms.length-1` (the NEWEST atom, 12500), and
+// attemptMemeTransfer picks the donor's most-USED atom (664). So the filter shapes the germline bank
+// and then the newest/most-executed thing leaves it anyway — selection with no propagation.
+// GRIP_SEED=1 makes both routes prefer the highest-grip atom, so what the filter selects is what
+// spreads. Ships DORMANT.
+let __GRIP_SEED=false;
+// Highest alienGrip among a genome's BOUND atoms, tie-broken by uses so a bank with no scored atom
+// behaves exactly as before. Returns -1 if there is nothing bound.
+// Returns -1 unless some bound atom has ACTUAL grip (>= ALIEN_GRIP_MIN_ATTEMPTS attempts and a non-zero
+// hit rate), so each call site keeps its own original fallback and the knob is a true no-op on an
+// unfiltered bank. The first version tie-broke by `uses` and returned a winner even when every atom had
+// zero grip — which silently changed germline seeding from "newest" to "most-used" and moved the
+// trajectory (n 221->193, amp 145->51) with the filter switched OFF. The comment claimed a no-op the
+// measurement refuted; this is the fix.
+function bestGripAtomIdx(g){
+  if(!g||!Array.isArray(g.boundOpcodes)||!Array.isArray(g.userAtoms))return -1;
+  let bi=-1,bg=0,bu=-1;
+  for(const ai of g.boundOpcodes){ const a=g.userAtoms[ai]; if(!a)continue;
+    const att=a.alienAttempts|0; if(att<ALIEN_GRIP_MIN_ATTEMPTS)continue;
+    const gr=(a.alienHits|0)/att; if(gr<=0)continue;
+    const u=a.uses|0;
+    if(gr>bg||(gr===bg&&u>bu)){ bg=gr; bu=u; bi=ai; } }
+  return bi;
+}
 const ALIEN_WINDOW=180;             // ticks per observation window
 const ALIEN_PREDICT_CADENCE=200;    // how often to attempt a new prediction cycle
 
@@ -663,6 +689,9 @@ function attemptMemeTransfer(recv,donor){
   // not a fresh untested one; "proven" is the same currency the durability fix (#39-adjacent) judges atoms by.
   let bestAI=-1,bestUses=0;
   for(const ai of donor.boundOpcodes){ const a=donor.userAtoms[ai]; if(a&&(a.uses|0)>bestUses){bestUses=a.uses|0;bestAI=ai;} }
+  // #93: transmit what the FILTER selected, not merely what ran most. Falls back to the uses-ranked
+  // pick when no atom has been scored, so an unfiltered bank behaves exactly as before.
+  if(__GRIP_SEED){ const _g=bestGripAtomIdx(donor); if(_g>=0)bestAI=_g; }
   if(bestAI<0)return;
   const donorExpr=donor.userAtoms[bestAI].expression;
   if(!Array.isArray(recv.userAtoms))recv.userAtoms=[];
@@ -12497,7 +12526,10 @@ function mutateGenome(){
       const bos=genome.boundOpcodes||(genome.boundOpcodes=[]);
       if(bos.length<MAX_BOUND_OPCODES){
         bos.push(genome.userAtoms.length-1);
-        seedAtomIntoParticle(genome.userAtoms.length-1); // LEAP 35 (#80): hand it to one live particle
+        // #93: hand over the highest-grip atom rather than the newest, when the filter is running.
+        { let _si=genome.userAtoms.length-1;
+          if(__GRIP_SEED){ const _g=bestGripAtomIdx(genome); if(_g>=0)_si=_g; }
+          seedAtomIntoParticle(_si); } // LEAP 35 (#80): hand it to one live particle
         if(genome.vmProgram.length<genome.vmMaxInstructions){
           genome.vmProgram.splice(Math.floor(Math.random()*(genome.vmProgram.length+1)),0,
             [CORE_OPCODES+bos.length-1,Math.floor(Math.random()*12),Math.floor(Math.random()*12),(Math.random()-0.5)*0.6]);
@@ -19641,6 +19673,7 @@ __REACH_ON=(typeof globalThis==='undefined')||((globalThis.__REACH??1)|0)!==0; /
 __REACH_MAIN=(typeof globalThis!=='undefined')&&((globalThis.__REACH_MAIN|0)===1); // #88 arm: default OFF
 __REACH_NOK=(typeof globalThis!=='undefined')&&((globalThis.__REACH_NOK|0)===1); // #90 arm: default OFF
 __SELF_PREDICT=(typeof globalThis!=='undefined')&&((globalThis.__SELF_PREDICT|0)===1); // #92: default OFF
+__GRIP_SEED=(typeof globalThis!=='undefined')&&((globalThis.__GRIP_SEED|0)===1); // #93: default OFF
 __CHILD_SIGN_FLOOR=(typeof globalThis==='undefined')||((globalThis.__CHILD_SIGN_FLOOR??1)|0)!==0; // #85 sign floors: default ON
 __FORAGE_ON=(typeof globalThis==='undefined')||((globalThis.__FORAGE_EYES??1)|0)!==0; // resolve FORAGE once; gates the resource-sense computation in uaSetEyes
 __DECIDE_ON=(typeof globalThis==='undefined')||((globalThis.__DECIDE??1)|0)!==0; // resolve DECISION GAIN once; gates confidence accrual + commitment scaling
