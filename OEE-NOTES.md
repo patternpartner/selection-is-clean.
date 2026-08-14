@@ -6974,3 +6974,66 @@ whose entire subject has been small-sample overreach — #84's 1.97 SE, the dive
 evaporated between n=4 and n=6, and #83's own position confound that read 1.46 SE at n=5 and 3.36 SE at
 n=45. The instrument that caught this was the #88 analyser printing arm diagnostics **before** the
 headline, which is the only reason it surfaced before the result did.
+
+### #88 RESULT — the atom does NOT pay even when it CAN act. The wiring explanation is dead.
+
+45/45 pairs in both arms, zero loop errors.
+
+**The arm bit, unambiguously.** `__reachFires` mean **3,144,773** (real) and **3,082,043** (sham), zero in
+**0/45** — against 4,842 / 663 with the plasmid-only wiring. Atoms in this arm were routed to actuators
+roughly **650x more often** than anything in #80-#87. For the first time in the arc, the question is being
+asked of an atom that can act.
+
+**The two worlds are the same ecology** (falsifier 3): alive 1.5 SE, kinds 0.8 SE, carrier fraction
+0.5 SE, in-band windows 0.2 SE. The difference-of-differences is not confounded by one arm living
+somewhere else — which the one-seed control had hinted it might be, and does not.
+
+### Falsifier 1 — does the atom pay when it can act? NO.
+
+| real minus sham | estimate | SE | ratio | 95% CI | sign |
+|---|---|---|---|---|---|
+| dAmp, REACH **off** (#87) | +0.03849 | 0.02950 | 1.30 SE | [-0.019, +0.096] | 27/43 |
+| dAmp, REACH **on** (#88) | **+0.01764** | 0.03052 | **0.58 SE** | [-0.042, +0.077] | 22/44 |
+| dBirths, REACH off | +0.59 | 14.93 | 0.04 SE | [-28.7, +29.9] | 20/43 |
+| dBirths, REACH on | +20.18 | 15.74 | 1.28 SE | [-10.7, +51.0] | 29/44 |
+
+Giving the atom a guaranteed path to an actuator made the amplitude contrast **weaker**, not stronger
+(1.30 SE -> 0.58 SE). Births move from 0.04 SE to 1.28 SE, positive in 29/44 — a directional hint, and
+with four contrasts on the table one at 1.28 SE is what four contrasts do. It is not a result.
+
+### Falsifier 2 — does the placement matter? NO.
+
+| difference of differences | estimate | SE | ratio |
+|---|---|---|---|
+| dAmp | -0.02085 | 0.04245 | **0.49 SE** |
+| dBirths | +19.59 | 21.69 | **0.90 SE** |
+
+**Both null. The neutrality measured across #81-#84 and #87 is NOT a property of the wiring.**
+
+### My prediction failed, and it was the strongest one I made
+
+I pre-registered: *"I expect falsifier 1 to come back non-null — this is the one intervention that gives
+the atom's output a path to behaviour by construction rather than by lottery."* It came back at 0.58 SE.
+That is the **tenth** stated expectation to fail this session and the **third of mine today**, after the
+diversity gain from #86 (0.8 SE) and the program-length shrinkage (1.0 SE).
+
+It is also the failure that matters most, because the routing story was the through-line of the entire
+code read — the CODEMAP built it across several sections, #85's M3 already refuted its arithmetic
+(actuators are 25.4% of instructions, not 2%), and #88 has now refuted it empirically at the one place
+the arithmetic could not reach.
+
+### What this closes, and where it points
+
+**Closed:** the atom-neutrality result is not about routing, not about the inverted economy (#87), and
+not about the carrier split conflating classes (#85 M1). Four candidate explanations for a decade of
+nulls are now eliminated by measurement rather than argument.
+
+**Where it points, and this is now the only place left:** the atoms spread, are inherited, execute
+millions of times, and — with a direct line to force, amplitude transfer, spawn drive and mutation rate —
+still do nothing for their carriers. **The content is the problem.** `uaGenExpression` composes random
+expressions over `a,b,u,c,d,m,s,nx,ny,t,nb,rl,rd` with branching and recursion, and what it generates is
+apparently orthogonal to anything selection can use, even when wired straight to the actuators.
+
+The next question is not about the channel, which is now solved and measured. It is about the
+**generator** — and unlike every previous statement of that sentence in this file, the alternatives have
+actually been eliminated rather than assumed away.
