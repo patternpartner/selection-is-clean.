@@ -7037,3 +7037,44 @@ apparently orthogonal to anything selection can use, even when wired straight to
 The next question is not about the channel, which is now solved and measured. It is about the
 **generator** — and unlike every previous statement of that sentence in this file, the alternatives have
 actually been eliminated rather than assumed away.
+
+---
+
+## #89 — the positive control, finally on a channel that works. Pre-registered.
+
+#88 eliminated wiring: an atom with a direct line to the actuators still confers nothing (0.58 SE), and
+placement made no difference (0.49 SE). The remaining explanation is that **the CONTENT is worthless**.
+Before attacking the generator, that needs the positive control the arc has never had on a working
+channel — **can this instrument detect ANY cargo, when the cargo is guaranteed to reach an actuator?**
+
+#84 asked exactly this and could not answer it: it ran `ATOM_FORCE` on the **register** path, where
+`__reachFires` was ~0, so a forced value had the same routing lottery as a random one. It stalled at
+1.97 SE against a pre-registered 3 SE bar and was stopped at 39/108. **#89 is #84's question asked where
+the answer can exist.**
+
+**Design, leaning on #88 exactly as #88 leaned on #87.** `ATOM_FORCE=0` was verified bit-identical to
+`ATOM_SHAM=1`, so #88's `on_sham` arm (45 seeds, `REACH_MAIN=1`) IS the zero-cargo control. #89 runs only
+**`ATOM_FORCE=8 REACH_MAIN=1`, 45 seeds, 12000 ticks, 250-tick sampling** — 45 runs, not 90.
+
+`uaCall` clamps to [-8,8], so +8 is the rail: the largest value the substrate permits, emitted directly
+into force, amplitude transfer, spawn drive and mutation rate at `clamp(±2)*k*0.2` gain.
+
+### Falsifiers
+
+1. **CAN THE INSTRUMENT SEE CARGO AT ALL?** Carrier advantage, forced(+8) minus sham(0), both under
+   `REACH_MAIN=1`. **Non-null -> the channel works and the neutrality is genuinely about content**, which
+   makes the generator the correct and only remaining target. **Null -> no cargo can pay through this
+   channel regardless of value**, and the entire authored-primitive mechanism is inert by construction —
+   a much larger and more uncomfortable conclusion than "the grammar is bad".
+2. **IS THE ECOLOGY COMPARABLE?** Forcing every atom to +8 is a large intervention; if alive/kinds/carrier
+   fraction diverge from the sham arm the contrast is confounded and that gets reported, not explained.
+
+**Escalation rule, fixed in advance.** If forced(+8) minus sham is null, I run the **-8 arm** before
+concluding "no cargo can pay" — a single rail could fail by pushing a saturated actuator, and the
+symmetric ±8 contrast is the widest the substrate permits. Only if BOTH rails are null does falsifier 1's
+second branch stand.
+
+**Prediction: non-null.** Stated plainly and held loosely — my last three predictions failed, most
+recently this exact intuition applied to REACH. The difference is that this arm does not require any
+evolved expression to be useful; it substitutes a maximal constant for the content and asks only whether
+the pipe carries anything. If THIS is null, the pipe is not a pipe.
