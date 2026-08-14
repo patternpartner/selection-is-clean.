@@ -7220,3 +7220,71 @@ amplitude gap — and unlike #88 the intervention is no longer routed through a 
 **Recorded in advance:** a non-null on falsifier 1 shows that a FORCED constant reaching an actuator can
 be selected on. It does not show that an EVOLVED expression does. That remains the generator question,
 and #90 is the precondition for asking it, not the answer to it.
+
+---
+
+## #91 — PE ↔ PE. The first run of this system against itself, and a fitness channel switched on for the first time.
+
+#88 eliminated wiring; #87 eliminated the inverted economy; #85 eliminated the carrier-split confound.
+The arc's conclusion was "the content is the problem". Before attacking the generator, the code map
+surfaced something that changes what that sentence means.
+
+**Authored atoms have TWO fitness channels, and only one has ever been measured.**
+
+1. **METABOLIC** — does the carrier gain amplitude and offspring. Measured across #80–#90; null to ~10%,
+   and still null when handed a direct actuator channel (#88, 0.49 SE).
+2. **PREDICTIVE (`alienGrip`)** — the atom is used as a FORECASTER of a peer substrate's packet-emission
+   rate on the bridge, scored on hit-rate (13599, `runAlienPrediction`). That score feeds atom selection
+   weighting (12427) and **cull protection (12494: an unused atom past `UA_GRACE_AGE` survives iff
+   `alienGrip > 0`)**. Its declaration comment calls it *"a real second test of whether primitives
+   selected for one role (driving actuators) generalize to a totally different one (forecasting a foreign
+   substrate)"*.
+
+**`harness-clamp.js` line 53 stubs `BroadcastChannel` to a no-op.** No peers → `peerObservable` empty →
+no predictions formed → `alienAttempts` 0 → `alienGrip` 0 for **every atom in every headless run this
+project has ever produced**, including all ~350 runs of #84–#90. **The arc measured atoms on a fitness
+function they were not designed for, while the one they were designed for was structurally switched off.**
+
+### `harness-bridge.js` — two Pe instances, one live channel
+
+Two child processes each boot the real `index.html`; a `BroadcastChannel` shim relays over node IPC
+through the parent. Separate processes rather than one, because the script writes its flags and DOM shims
+onto `globalThis` — and because two processes are the faithful analogue of the two browser tabs the
+network layer was written for. `SOLO=1` disables the relay: that arm reproduces every prior headless run.
+
+**Engineering note.** The sim must be run in 200-tick slices with `setImmediate` between them. A single
+blocking `__run(TICKS)` starves the event loop, no IPC message is ever delivered, and the harness would
+silently reproduce the exact no-peer condition it exists to escape — a control that looks like a
+treatment.
+
+### It works, and the channel is live
+
+8000 ticks, seeds 3 and 7, both instances:
+
+| | A (seed 3) | B (seed 7) |
+|---|---|---|
+| peers seen | 1 | 1 |
+| predictions attempted / hit | **24 / 9** | **22 / 7** |
+| germline atoms with attempts | 4 of 8 | 2 of 8 |
+| best per-atom `alienGrip` | **0.50** | **0.33** |
+| cross-instance packets received | 77 | 89 |
+| horizontal atom transfers | 130 | 68 |
+
+`alienAttempts` has been 0 in every prior run in this project's history. It is now non-zero, atoms are
+being scored as forecasters of a foreign substrate, and some hold grip up to 1.0 transiently.
+
+### The structural finding that matters more than the numbers
+
+**`partAlienAttempts = 0` at every sample, in both instances, with 124–133 particle atoms alive.**
+
+`runAlienPrediction` scores **only `genome.userAtoms`** — the germline bank. `cloneGenome` deliberately
+resets `alienHits`/`alienAttempts` so a new lineage re-earns its own record. So particle atoms — the ones
+that spread by contact and that #80–#90 measured — never accumulate grip.
+
+**Therefore the predictive channel does not act on carrier fitness at all. It acts as a SELECTION FILTER
+ON THE GERMLINE ATOM BANK**, through cull protection, and the germline bank is exactly what
+`seedAtomIntoParticle` draws from.
+
+**So the bridge changes WHICH EXPRESSIONS ENTER THE POPULATION.** That is a generator-level filter, it
+was designed in, and it has never operated. "The content is the problem" and "the content is unfiltered
+because the filter was never switched on" are the same sentence, and the second one is actionable.
