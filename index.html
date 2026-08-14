@@ -587,6 +587,7 @@ let __DECIDE_ON=true; // +DECISION cached flag (resolved after the LIVE registry
 //   Always-on baseline step from tick one (the bet is placed, not deferred); earned confidence amplifies it.
 let __DECIDE_REAL=true; // +DECIDE-FROM-REAL cached flag (resolved after the LIVE registry)
 let __CHILD_SIGN_FLOOR=true; // #85: floor sign-carrying genes in the CHILD mutation path; CHILD_SIGN_FLOOR=0 reproduces the prior build
+let __REACH_NOK=false; // #90: drop the random-signed k from the REACH emit; REACH_NOK=1 enables
 let __REACH_MAIN=false; // #88: REACH on the MAIN program dispatch. DORMANT by default; REACH_MAIN=1 enables.
 let __REACH_ON=true; // +REACH cached flag (resolved after the LIVE registry); kept out of the per-instruction globalThis read path
 let __reachFires=0; // telemetry: how many times an authored atom drove an actuator (sense→ACT firings)
@@ -15839,7 +15840,14 @@ function executeVM(i,j,sim,d){
           // This is the SAME emit form, gain and channel-fold as the plasmid site, deliberately — the arm
           // tests the PLACEMENT, not a new formula. Ships DORMANT (default off) per project convention;
           // REACH_MAIN=1 turns it on.
-          if(__REACH_MAIN){ vmActions[Math.abs(di)%7]+=Math.max(-2,Math.min(2,_out))*k*0.2; __reachFires++; }
+          // #90: REACH_NOK drops the `k` multiplier. `k` is the instruction's own immediate, initialised
+          // (Math.random()-0.5)*0.6 — RANDOM SIGN — so clamp(_out)*k has the same distribution for
+          // _out=+8 and _out=-8. #89/#89b's ±8 "widest cargo contrast" was therefore void by construction
+          // (+8 vs -8 came back 0.08 SE, which was the arithmetic, not evidence). Without k the emit is
+          // deterministic and sign-preserving, so ±8 is a genuine sign contrast. NOTE this also raises the
+          // emit magnitude ~7x (mean |k|*0.4 ≈ 0.06 → flat 0.4): a new arm, not a matched correction.
+          // REACH_NOK=0 reproduces the #88/#89 build exactly.
+          if(__REACH_MAIN){ vmActions[Math.abs(di)%7]+=Math.max(-2,Math.min(2,_out))*(__REACH_NOK?1:k)*0.2; __reachFires++; }
         }
       }
     }
@@ -19612,6 +19620,7 @@ __ESCAPE_DEATH=(typeof globalThis==='undefined')||((globalThis.__ESCAPE_DEATH??1
 __ATOM_HERITABLE=(typeof globalThis==='undefined')||((globalThis.__ATOM_HERITABLE??1)|0)!==0; // LEAP 35 (#80) // LEAP 34 (#72) — resolve escape lethality once. Defaults ON: #71 established the current behaviour is wrong (cluster centroids computed over members at 1e32), and correctness is the reason it stands, not a diversity result
 __REACH_ON=(typeof globalThis==='undefined')||((globalThis.__REACH??1)|0)!==0;
 __REACH_MAIN=(typeof globalThis!=='undefined')&&((globalThis.__REACH_MAIN|0)===1); // #88 arm: default OFF
+__REACH_NOK=(typeof globalThis!=='undefined')&&((globalThis.__REACH_NOK|0)===1); // #90 arm: default OFF
 __CHILD_SIGN_FLOOR=(typeof globalThis==='undefined')||((globalThis.__CHILD_SIGN_FLOOR??1)|0)!==0; // #85 sign floors // resolve REACH once (LIVE defaults filled); referenced in the per-instruction hot loop
 __FORAGE_ON=(typeof globalThis==='undefined')||((globalThis.__FORAGE_EYES??1)|0)!==0; // resolve FORAGE once; gates the resource-sense computation in uaSetEyes
 __DECIDE_ON=(typeof globalThis==='undefined')||((globalThis.__DECIDE??1)|0)!==0; // resolve DECISION GAIN once; gates confidence accrual + commitment scaling

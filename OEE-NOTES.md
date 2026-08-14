@@ -7178,3 +7178,45 @@ cannot say.
 fires" claim was a universal from four seeds; and this one built its headline contrast on a sign
 difference the substrate erases. Pre-registration protects against moving the goalposts. It does not
 protect against a goalpost that was never connected to the pitch.
+
+---
+
+## #90 — the sign contrast, on a channel where sign survives. Pre-registered.
+
+#89b established that `clamp(_out,±2)*k*0.2` erases the atom's sign: `k` is the instruction immediate,
+initialised `(Math.random()-0.5)*0.6`, so +8 and -8 gave identical emit distributions and the ±8 contrast
+was void by construction (0.08 SE — arithmetic, not evidence).
+
+`REACH_NOK=1` drops `k`: the emit becomes `clamp(_out,±2)*0.2`, deterministic and sign-preserving.
+
+**Stated plainly: this changes TWO things.** It fixes the sign AND raises emit magnitude ~7x (mean
+|k|*0.4 ≈ 0.06 -> flat 0.4). **This is a new arm, not a magnitude-matched correction of #89.** The ±8
+contrast within it is self-contained and internally valid; it must NOT be compared to #89's magnitudes.
+
+**Controls (SEED=3, 6000 ticks), run before pre-registration:**
+- `REACH_NOK=0` is bit-identical to the pre-#90 build (`n:238, pos:271438.762918, amp:103.623248`).
+- `REACH_NOK=1`: **+8 gives n=288 amp=254.2; -8 gives n=272 amp=59.6.** A 4x amplitude difference between
+  rails that were statistically identical under `k`. The sign now bites.
+
+Protocol: **`REACH_MAIN=1 REACH_NOK=1` x {ATOM_FORCE=8, ATOM_FORCE=-8} x 45 seeds x 12000 ticks**,
+250-tick sampling. 90 runs.
+
+### Falsifiers
+
+1. **DOES THE ATOM'S VALUE MATTER?** Carrier advantage, +8 minus -8. This is the contrast #84, #89 and
+   #89b all intended and none could perform. Non-null -> the channel carries sign-dependent cargo, the
+   neutrality of authored atoms is about their CONTENT, and the generator is the target. Null at this
+   magnitude -> carrier fitness is insensitive to what the atom emits even at a flat 0.4 into the
+   actuators, which would be a far stronger inertness result than anything measured so far.
+2. **IS THE ECOLOGY COMPARABLE?** The one-seed control already shows amp 254 vs 60 — the arms may sit in
+   very different worlds. If alive/kinds/carrier-fraction diverge at n=45, the carrier contrast is being
+   computed in two ecologies and that is reported as a confound, not explained away. **This is the
+   likeliest way this experiment fails to answer its question.**
+
+**Prediction: non-null.** Two of my three previous predictions failed, and the one that "succeeded"
+(#89's +8) collapsed under proper specification. But the one-seed control here is not subtle — a 4x
+amplitude gap — and unlike #88 the intervention is no longer routed through a coefficient that erases it.
+
+**Recorded in advance:** a non-null on falsifier 1 shows that a FORCED constant reaching an actuator can
+be selected on. It does not show that an EVOLVED expression does. That remains the generator question,
+and #90 is the precondition for asking it, not the answer to it.
