@@ -370,6 +370,17 @@ const driver=`
     globalThis.__boundSeries.push({t, bosSelf, atoms, MAX:MAX_BOUND_OPCODES, split:_sp,
       atomsNoBind:{both:_abBoth, atomsOnly:_abAtomsOnly, bindOnly:_abBindOnly, neither:_abNeither},
       reachFires:(typeof __reachFires!=='undefined'?__reachFires:null),
+      // #94: the predictive filter's state. Read-only; the fingerprint control must stay identical.
+      grip:(function(){ try{
+        let n=0,scored=0,hits=0,att=0,best=0;
+        for(const _a of (genome.userAtoms||[])){ if(!_a)continue; n++;
+          const A=_a.alienAttempts|0,H=_a.alienHits|0; att+=A; hits+=H;
+          if(A>=6){ const g=H/A; if(g>0){scored++; if(g>best)best=g;} } }
+        return {bankAtoms:n, scoredAtoms:scored, bestGrip:+best.toFixed(3),
+                predAttempts:(genome.alienPredict?genome.alienPredict.attempts:0),
+                predHits:(genome.alienPredict?genome.alienPredict.hits:0),
+                atomAttempts:att, atomHits:hits};
+      }catch(e){ return null; } })(),
       opcodes:{instTot:_instTot, progs:_progN, op4:_op4, op22:_op22, eff:_effN,
                op4Frac:_instTot?+(_op4/_instTot).toFixed(5):0,
                effFrac:_instTot?+(_effN/_instTot).toFixed(5):0,
