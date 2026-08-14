@@ -1246,7 +1246,7 @@ built, not from building more.
 | 1 | Does the carrier split conflate classes (opcode 22)? | **NO.** `atomsOnly = 0` in every window of every seed. #81–#84's split is clean; the concern is retired on evidence. |
 | 2 | Does `metabolicCost` sit at a bound? | **Worse — it is NEGATIVE.** Mean −0.00653, negative in 6/6 seeds, against a documented clamp of [2e-6, 2e-4]. Instructions paid their carriers. Fixed in #86. |
 | 3 | Is routing the bottleneck? | **NO, and this map was badly wrong.** Opcode 4 is **25.4%** of live instructions (**84× the uniform expectation**) and **357/361 programs contain one**. The "~2% of atom placements route to an effect" arithmetic assumed a uniform opcode draw and is **retired**. |
-| 4 | Does REACH fire? | **NEVER.** `__reachFires = 0` on every seed at 12000 ticks. The mechanism that turns atoms into effectors has not executed once — no atom is ever run from a plasmid. |
+| 4 | Does REACH fire? | **Almost never — and "never" was my overclaim from 4 seeds.** #85 measured `__reachFires = 0` on all 4 seeds sampled; at **n=45** it is non-zero in **6/45** (mean 4,842) against **4,276,126** when wired to the main path. So REACH fires in ~13% of seeds at ~**880× below** main-path rate. Inert for practical purposes; not absent. |
 | 5 | Frequency dependence, or regression to the mean? | **Frequency dependence REFUTED.** Disabling both `GENO_NFD_ON` and `__OPCODE_NOVELTY` did not flatten the carrier-advantage slope (difference −0.0020, **0.1 SE**). #83's position-confound reading stands; the reinterpretation offered in this map was **wrong**. |
 
 ### Scorecard for this document
@@ -1257,9 +1257,11 @@ sections is dead: actuators are ubiquitous, not scarce, because directed-EMIT in
 opcode 4 enrich them ~84×. The frequency-dependence reinterpretation of #83 is dead too.
 
 **What survives is (4), and it is the finding of the whole read:** REACH is real, is LIVE by default,
-carries the comment *"Atoms become EFFECTORS, not just calculators"* — and has **never fired**, because
-it is wired at the single dispatch site (16910, the plasmid path) that seeded and transferred atoms
-never take. Every atom in #80–#84 was a calculator writing a register.
+carries the comment *"Atoms become EFFECTORS, not just calculators"* — and **essentially never fires on
+the atoms the arc measures**: non-zero in only 6 of 45 seeds, at ~880× below the rate main-path wiring
+produces. It is wired at the plasmid dispatch (16926); `seedAtomIntoParticle` and `attemptMemeTransfer`
+both splice into the main program (15827), which had none until #88 added the gated arm.
+*(Corrected: I first wrote "never fired" from a 4-seed sample. At n=45 it is rare, not absent.)*
 
 ### The standing recommendation, unchanged by any of the above
 
