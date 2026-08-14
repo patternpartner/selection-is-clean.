@@ -7078,3 +7078,40 @@ second branch stand.
 recently this exact intuition applied to REACH. The difference is that this arm does not require any
 evolved expression to be useful; it substitutes a maximal constant for the content and asks only whether
 the pipe carries anything. If THIS is null, the pipe is not a pipe.
+
+### #89 RESULT — suggestive, not established, and the escalation arm is running
+
+45/45, zero loop errors. Arm identity confirmed: `atomForce=8`, `reachFires` mean **2,805,202**, zero in
+**0/45**. Ecology comparable to the sham arm on every metric (alive 0.5 SE, kinds 1.0 SE, carrier fraction
+0.4 SE, in-band windows 0.8 SE), so the contrast is not confounded by one arm living elsewhere.
+
+| forced(+8) minus sham(0), both REACH_MAIN=1 | estimate | SE | ratio | 95% CI | sign |
+|---|---|---|---|---|---|
+| carrier amplitude advantage | **+0.05520** | 0.02807 | **1.97 SE** | [+0.0002, +0.1102] | **32/44** |
+| carrier per-capita births | -21.14 | 13.75 | 1.54 SE | [-48.1, +5.8] | 16/44 |
+
+**Two statistics disagree, and the disagreement is the finding.** The paired t gives 1.97 SE with an
+interval that clears zero by 0.0002 — i.e. not meaningfully. The **sign test gives 32/44 positive,
+z=2.86, two-sided p=0.0037**, which is not a coin flip. The gap means the seed distribution is
+**heavy-tailed**: a few extreme seeds inflate the SE while the median seed moves consistently positive.
+For EXISTENCE the sign test is the more robust statistic; for MAGNITUDE the t-interval is the honest one.
+So: **there is real evidence the pipe carries something, and no reliable estimate of how much.**
+
+**The two currencies disagree again.** Amplitude up (32/44 positive), births down (16/44 positive,
+-21.14). Forcing maximal cargo into the actuators appears to raise carrier amplitude while lowering
+carrier reproduction — the same amplitude/births split #87 found in the position confound. Whatever the
+channel carries, it is not carrying it into offspring.
+
+**An arithmetic coincidence worth recording so nobody later mistakes it for a pattern.** #84's forced-cargo
+test on the DEAD register path also came back at **1.97 SE**, with a 95% interval clearing zero by
+0.00018. #89 on a WORKING channel gives 1.97 SE clearing zero by 0.00019. These are different
+experiments on different paths with different point estimates (+0.0385 vs +0.0552); the matching ratios
+are a coincidence of two noisy estimators, not a signal, and are recorded here only because the
+resemblance is striking enough to invite exactly that error.
+
+**Escalation, per the pre-registered rule and against my own interest.** 1.97 SE is below the bar I set
+in #84 and did not clear here either. The result leans my way — I predicted non-null — which is precisely
+when a confirmatory arm is worth most. The **-8 arm** is now running: it completes the symmetric ±8
+contrast (the widest the substrate permits), and a real channel effect should show the OPPOSITE sign on
+the opposite rail. If -8 mirrors +8, the pipe carries and the generator is the target. If -8 is null or
+same-signed, the +8 result is an artifact and the mechanism is inert.
