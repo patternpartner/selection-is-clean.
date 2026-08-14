@@ -1271,3 +1271,51 @@ is (a) one line, (b) targets a mechanism the codebase already built and believes
 a falsifiable prediction: **the carrier estimator should stop returning null.** If it still returns null
 with routing removed *and* the economy corrected, the neutrality is genuinely about expression content
 and the grammar is the thing to attack.
+
+---
+
+## ★ THE REACH EMIT'S `k` MULTIPLIER ERASES THE ATOM'S SIGN (#89b)
+
+**[read]** Both REACH sites emit `vmActions[|di|%7] += clamp(_out, ±2) * k * 0.2`, where `k` is the
+instruction's own immediate — `inst[3]`, initialised by mutation as `(Math.random()-0.5)*0.6` and
+therefore **random-signed**.
+
+**[measured] Consequence: the atom's output sign does not survive to the actuator.**
+
+| forced `_out` | emit | distribution |
+|---|---|---|
+| +8 | `+2 * k * 0.2` | U(−0.12, +0.12) |
+| −8 | `−2 * k * 0.2` | U(−0.12, +0.12) |
+
+**Identical.** Confirmed empirically: `+8 vs −8` carrier advantage came back **0.08 SE** (#89b) — which is
+the arithmetic working as written, not evidence of inertness. Any experiment contrasting atom output
+*signs* through REACH is void by construction.
+
+**[fixed, #90]** `REACH_NOK=1` emits `clamp(_out,±2)*0.2` with no `k`. `REACH_NOK=0` is bit-identical to
+the prior build. One-seed control at 6000 ticks: `+8` gives `n=288 amp=254.2`, `−8` gives `n=272
+amp=59.6` — a 4× amplitude gap between rails that were statistically identical under `k`.
+
+**[inferred] This generalises beyond the atom arc.** `case 4` (the sole register→actuator bridge) is
+`vmActions[|dst|%8] += vmRegs[si] * k`, with the same random-signed `k`. So **every** value routed to an
+actuator by an evolved program passes through a coefficient whose sign is set by mutation, not by the
+computation. Selection can tune `k` per instruction, so this is not a defect — but it means the *sign* of
+any computed quantity is a separately-evolved property, not an inherited one, and a newly inserted EMIT
+is equally likely to push either way regardless of what it reads.
+
+---
+
+## Arc status after #85–#90 (running record)
+
+| # | question | outcome |
+|---|---|---|
+| #85 | five open questions from this map | 1 clean, 1 worse than inferred (negative cost), 2 refuted the map |
+| #86 | does fixing the economy help? | correctness fix; **no** diversity gain (0.8 SE), no program shortening (1.0 SE) |
+| #87 | #83 re-run under corrected economy | neutrality **reproduces**; #83's 1.6% bound **withdrawn** → ~10%; confound inverted and grew 7× |
+| #88 | does REACH placement matter? | **null** (0.49 SE). Wiring is not the explanation. |
+| #89 | can the instrument see forced cargo? | +8: 1.97 SE — did not survive pooling |
+| #89b | ±8 sign contrast | **design void** — `k` erases sign. Pooled magnitude effect 1.80 SE, CI spans zero. |
+| #90 | sign contrast with `k` removed | *running* |
+
+**Standing count of failed predictions this session: 10, three of them mine.** Three designs failed on
+their *premises* rather than their statistics (two-knob discriminator, "never fires" from n=4, sign
+contrast through a sign-erasing coefficient).
