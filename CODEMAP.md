@@ -76,8 +76,34 @@ The comment at 12292 shows the floor was added deliberately — "no free lunch �
 negative-drift hole that euthanised selection is closed)". Positive was the fix. **Positive but
 negligible was not ruled out.**
 
-*Status: [inferred], NOT measured. `metabolicCost` over time is a one-line read-only instrument and has
-not been run. It is the first thing to measure after the #84 batch drains.*
+### ★ MEASURED (#85/#86) — worse than inferred: the cost is NEGATIVE, and the clamp is on the wrong path
+
+**[measured]** Live particle genomes, 12000 ticks, 6 seeds:
+
+| | value |
+|---|---|
+| `metabolicCost` mean | **−0.00653** |
+| min across live genomes | **−0.0224** |
+| seeds with a negative mean | **6 / 6** |
+| documented clamp | [0.000002, 0.0002] |
+
+`amp[i] -= nInst * metabolicCost` with a negative cost means **instructions PAY their carrier**. Longer
+programs earn amplitude, so the term selects for its own further inversion — runaway, not drift.
+
+**[read] The mechanism.** Particle genomes are mutated by `mutateChildGenome` (6078), not `mutateGenome`:
+*"FULL divergence — gloves-off random walk on EVERY heritable scalar gene… Only the crash floors
+(isFinite + the VM's own per-op clamps) remain; range is the system's to find."* No `__cl`, no
+`sanitizeGenome`. Step size `(|v|*0.12 + 0.02)` — the additive `0.02` is **1000× the magnitude** of a
+parameter living at 2e-5, so it random-walks straight through zero. **The clamp carrying the comment
+"the negative-drift hole that euthanised selection is closed" is in the GERMLINE path only; the child
+path is where selection operates.** Same signature on `somaRepair` (min −0.0086, floor 0) and
+`uaMaxDepth` (0.931, floor 1).
+
+**[fixed, #86]** `CHILD_SIGN_FLOOR` floors the parameters whose sign carries meaning. Off arm is
+bit-identical to the prior build. Corrected: `metabolicCost` mean +2.82e-5, negative in 0/6.
+**Cost of correction: −31% carrying capacity (8.3 SE), −65% atom execution (4.6 SE). It buys NO measured
+diversity gain (kinds +1.83, 0.8 SE) and does NOT shorten programs (1.0 SE)** — both of those were my
+predictions and both failed. It is a correctness fix, not an improvement.
 
 ---
 
@@ -1210,3 +1236,36 @@ built, not from building more.
    `GENO_NFD_ON=1`→`0` (line 1013) harness-side. Decides whether #83's "position confound" reading holds.
 4. **Is `vmRegs[di]` ever read downstream?** [not measured] — needs a per-opcode register read/write table,
    which the effector census started but did not finish.
+
+---
+
+## ★ ALL FIVE OPEN QUESTIONS ANSWERED (#85/#86) — and this map was wrong about two
+
+| # | question this map raised | answer |
+|---|---|---|
+| 1 | Does the carrier split conflate classes (opcode 22)? | **NO.** `atomsOnly = 0` in every window of every seed. #81–#84's split is clean; the concern is retired on evidence. |
+| 2 | Does `metabolicCost` sit at a bound? | **Worse — it is NEGATIVE.** Mean −0.00653, negative in 6/6 seeds, against a documented clamp of [2e-6, 2e-4]. Instructions paid their carriers. Fixed in #86. |
+| 3 | Is routing the bottleneck? | **NO, and this map was badly wrong.** Opcode 4 is **25.4%** of live instructions (**84× the uniform expectation**) and **357/361 programs contain one**. The "~2% of atom placements route to an effect" arithmetic assumed a uniform opcode draw and is **retired**. |
+| 4 | Does REACH fire? | **NEVER.** `__reachFires = 0` on every seed at 12000 ticks. The mechanism that turns atoms into effectors has not executed once — no atom is ever run from a plasmid. |
+| 5 | Frequency dependence, or regression to the mean? | **Frequency dependence REFUTED.** Disabling both `GENO_NFD_ON` and `__OPCODE_NOVELTY` did not flatten the carrier-advantage slope (difference −0.0020, **0.1 SE**). #83's position-confound reading stands; the reinterpretation offered in this map was **wrong**. |
+
+### Scorecard for this document
+
+Of the five decisive unknowns it identified, the map guessed the mechanism right on (2), and **wrong on
+(3) and (5)** — the two places it argued at greatest length. The routing story it built across several
+sections is dead: actuators are ubiquitous, not scarce, because directed-EMIT insertion and selection on
+opcode 4 enrich them ~84×. The frequency-dependence reinterpretation of #83 is dead too.
+
+**What survives is (4), and it is the finding of the whole read:** REACH is real, is LIVE by default,
+carries the comment *"Atoms become EFFECTORS, not just calculators"* — and has **never fired**, because
+it is wired at the single dispatch site (16910, the plasmid path) that seeded and transferred atoms
+never take. Every atom in #80–#84 was a calculator writing a register.
+
+### The standing recommendation, unchanged by any of the above
+
+Add REACH to the main-program dispatch (13823) as an **arm against the current build**, using #84's
+existing sham/forced machinery as controls. It is the one intervention this entire read produced that
+is (a) one line, (b) targets a mechanism the codebase already built and believes it has, and (c) makes
+a falsifiable prediction: **the carrier estimator should stop returning null.** If it still returns null
+with routing removed *and* the economy corrected, the neutrality is genuinely about expression content
+and the grammar is the thing to attack.
