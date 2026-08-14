@@ -7115,3 +7115,66 @@ when a confirmatory arm is worth most. The **-8 arm** is now running: it complet
 contrast (the widest the substrate permits), and a real channel effect should show the OPPOSITE sign on
 the opposite rail. If -8 mirrors +8, the pipe carries and the generator is the target. If -8 is null or
 same-signed, the +8 result is an artifact and the mechanism is inert.
+
+### #89b RESULT — the escalation design was VOID, and the effect does not survive proper specification
+
+45/45 on the -8 rail, zero loop errors.
+
+| contrast (REACH_MAIN=1 throughout) | estimate | SE | ratio | sign |
+|---|---|---|---|---|
+| +8 vs 0, dAmp | +0.05520 | 0.02807 | 1.97 SE | 32/44 (z=2.86) |
+| **-8 vs 0, dAmp** | **+0.03907** | 0.03031 | 1.29 SE | **24/44 (z=0.45)** |
+| **+8 vs -8, dAmp** | **-0.00262** | 0.03144 | **0.08 SE** | 19/45 |
+
+**The -8 rail is the SAME sign as +8, not the mirror image.** Per the pre-registered rule that reads as
+"the +8 result is an artifact" — but the rule's premise was wrong, and that is the more important finding.
+
+### The design error, owned
+
+The emit is `vmActions[|di|%7] += clamp(_out, ±2) * k * 0.2`, where **`k` is the instruction's own
+immediate**, initialised by mutation as `(Math.random()-0.5)*0.6` — **random sign**. So:
+
+- `+8` -> `+2 * k * 0.2` -> U(-0.12, +0.12)
+- `-8` -> `-2 * k * 0.2` -> U(-0.12, +0.12)
+
+**Identical distributions.** The atom's sign is multiplied by a random-signed coefficient before it
+reaches an actuator. **The ±8 contrast could not have shown mirroring even with a perfectly working
+channel**, and the 0.08 SE on `+8 vs -8` is not evidence of absence — it is the arithmetic working as
+specified. I designed a discriminator that cannot discriminate, pre-registered it, and only caught it by
+asking why a result was *so* exactly null.
+
+### What the arms actually test, and the correct estimator
+
+±8 are the **same treatment** (non-zero magnitude at the actuator) measured twice on the same seeds.
+Averaging them per seed and contrasting against zero cargo:
+
+| POOLED, cargo magnitude > 0 vs cargo = 0 | value |
+|---|---|
+| estimate | **+0.04714** |
+| SE | 0.02621 |
+| ratio | **1.80 SE** |
+| 95% CI | **[-0.0042, +0.0985]** — includes zero |
+| sign | 27/44 (z=1.36) |
+
+**Not established.** The +8 arm's 1.97 SE / 32-of-44 was the more favourable of two measurements of one
+treatment; specified properly the answer is 1.80 SE with an interval spanning zero.
+
+### Where this leaves the question, stated without dressing
+
+**Falsifier 1 is UNRESOLVED, not answered.** After #84 (stopped), #89 (+8) and #89b (-8), the honest
+statement is: forcing maximal cargo through a demonstrably working actuator channel shifts carrier
+amplitude by about +0.047 with a confidence interval that includes zero. The pipe *may* carry. 45 seeds
+cannot say.
+
+**Two routes, both specific:**
+1. **Power.** SE 0.0262 needs ~4x the seeds for a 3 SE verdict — roughly 180 seeds per arm, ~14 core-hours.
+2. **Better specification, and this is the cheaper and better one.** Emit `clamp(_out)*0.2` **without the
+   `k` multiplier** at the REACH site. Then +8 and -8 genuinely differ, the sign question becomes
+   answerable, and the contrast tests what it was always meant to test. The current design is confounded
+   by an evolvable random-signed coefficient sitting between the cargo and the actuator.
+
+**Method note.** Three of this session's designs have now failed not on their statistics but on their
+*premises*: #85's frequency-dependence discriminator needed two knobs rather than one; the "REACH never
+fires" claim was a universal from four seeds; and this one built its headline contrast on a sign
+difference the substrate erases. Pre-registration protects against moving the goalposts. It does not
+protect against a goalpost that was never connected to the pitch.
