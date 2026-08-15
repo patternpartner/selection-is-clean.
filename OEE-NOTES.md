@@ -7600,3 +7600,45 @@ Knob ON: `{"n":221,"pos":229745.475612,...}` — different within 10 generations
 - **SECONDARY (what it buys, not the test):** `atomsMultiOp > 0`, and a lower constant-atom fraction.
 - **FALSIFIER for the whole line of work:** if depth rises and the atom bank still fills with constants
   and dead entries, then depth was not the constraint and the generator is the problem on its own terms.
+
+### The control case: the one integer gene that DOES grow in the wild
+
+`tendDims` — the number of heritable trait axes — is the counter-example that makes the diagnosis
+specific rather than a general complaint about mutation:
+
+| world | gen 1 | gen 1 | gen 2 | gen 2 | gen 2 | gen 2 | gen 3 | **gen 104** |
+|---|---|---|---|---|---|---|---|---|
+| tendDims | 6 | 7 | 5 | 6 | 7 | 8 | 6 | **16** (= `DIMS_MAX`) |
+
+It moves in young worlds and reaches the substrate ceiling in the old one. And it is the one integer
+gene in the genome that **never passes through `Math.round(maybe(...))`**. Its two writers are:
+
+```js
+genome.tendDims=__cl((genome.tendDims||5)+(Math.random()<0.5?1:-1),2,DIMS_MAX);   // 12761: literal +/-1
+if(tick%_si===0 && DIMS<_cap && nicheOccupancy()>=_thr) setDims(DIMS+1);          // 20283: earned
+```
+
+A literal `+/-1` step, and an occupancy-earned ratchet. Neither can be swallowed by a rounding.
+`__DIMS_SAT` caps the earned path at 9, so the climb from 9 to 16 in the gen104 world came from the
+`+/-1` walk — the exact idiom `intMaybe` restores to the other eight genes. **The pattern that works is
+already in this codebase; the frozen genes simply don't use it.**
+
+### Other things only the live data could say
+
+- **`lp[].bud === 0` on all 94 lineage rows across all eight worlds**, including 104 generations and
+  86,245 ticks. Cluster-level budding — one of the five claimed levels of selection — is not merely rare
+  in the wild, it has never been caught happening. Meanwhile `speciation` events fire constantly
+  (`{parent:6968, child:8042, dist:1.244}`) and the gen104 world reports **142 lineages at the
+  generation boundary while only 2 are alive**, holding 276 and 14 particles.
+- **The gen104 world went fully extinct and came back.** Its epoch row at t=50000 reads
+  `[50000, 0, 0, 3, 0.005, 0, ...]` — zero population, fitness 0.005 — and by t=85000 it is back to 257
+  particles at fitness 0.502. 84 extinctions total.
+- **`ruleScale` is -2.33 at gen104** (1.0 in every young world). The rule scale went through zero and
+  came out the other side, which the sign-floor work in #85/#87 says should matter.
+- **Cross-world flow is real and one-directional.** Every world receives 5-10x what it emits
+  (e.g. 27 plasmids sent, 228 received), and the same peer id `mfwixayd` — the gen104 instance — appears
+  in four other worlds' peer tables emitting 152-183 of each packet type. One long-lived instance is
+  seeding the rest of the network.
+- **`cosmos_launch` is the single most common logged event** (57 of the 322 pooled log entries), running
+  roughly every 300 ticks at gen104, with daughter worlds dying at ages 180-900 and `imp` (what comes
+  back) at 0 in most of them.
