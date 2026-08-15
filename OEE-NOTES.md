@@ -8068,3 +8068,50 @@ session, and that count only exists because they were written first), and **mech
 than does-it-help tests**. `rendtest.js` is the model: 20,000 expressions through the real compiler,
 thirty seconds, no simulation, and it changed what shipped. This sensor audit is the second instance —
 also cheap, also decisive, and it stopped me shipping a divisor that would have left the sensor broken.
+
+### Salvage from the killed #96 arm — a confirmation and a correction
+
+The arm was killed at 8/32 completed (all the `INT_GENE_STEP=0` side). Eight seeds x 24,000 ticks,
+roughly 80 `mutateGenome` calls each. Reported because it settles two things.
+
+**Confirmed.** `uaMaxDepth` reads 1 in 8/8 seeds. So do `shadowScenarios` (5), `hgtMax` (2),
+`reflexDepth` (4), `clusterReflexAge` (5) and `clusterMinSize` (3) — zero distinct values across eight
+independent seeds. And **0 deep-grammar markers across all 170 headless atoms**, matching 0/163 live.
+
+**Correction to my own "eight frozen genes".** Two of the eight moved: `vmMaxInstructions` took three
+values (15, 16, 17) and `motifMemorySize` took two. Both have **magnitude 1**, which puts their step
+range at exactly `(-0.5, +0.5)` — the boundary. `mutationScale` is itself an evolvable gene, so as soon
+as it drifts above 1 the magnitude-1 genes become mobile, while everything at magnitude <= 0.8 stays
+locked. So the correct statement is not "eight genes are frozen" but:
+
+- **magnitude <= 0.8 — genuinely frozen** at any plausible scale, escapable only by a Cauchy tail draw:
+  `uaMaxDepth` (0.6), `shadowScenarios` (0.8), `hgtMax` (0.5), `reflexDepth` (0.5), `clusterMinSize` (0.5).
+- **magnitude 1 — on the knife edge**: `vmMaxInstructions`, `motifMemorySize`, `clusterReflexAge`. Frozen
+  at `scale = 1`, mobile once scale drifts up. `clusterReflexAge` happened not to move in these 8 seeds;
+  the other two did.
+
+The arithmetic behind the finding is unchanged; my enumeration of who it applies to was too broad.
+
+### An unexplained discrepancy between the instrument and the artwork
+
+The same salvage undercuts the strongest claim in #96, and I would rather say so than let it sit.
+
+| | constant-only atoms | |
+|---|---|---|
+| generator prediction (parameter-free) | 25.0% | |
+| **live artwork**, 163 atoms | **25.2%** | z = 0.05 |
+| **headless harness**, 170 atoms, 8 seeds | **11.8%** (20/170) | **z = -3.97** |
+
+The headless banks are strongly *depleted* of constants; the live banks match the generator exactly.
+
+That matters both ways. It means the "bank matches a random draw" result is **not** a foregone
+conclusion — in the harness, something does cull constant atoms, so the composition is capable of
+carrying a selection signature, and the live artwork's failure to show one is a real negative rather
+than a tautology. But it also means **my instrument and the artwork disagree about atom-bank composition
+at z = -4**, and I do not know why. Candidates I have not separated: the harness build carries knobs the
+live exports predate; bank sizes differ (16-25 headless against 3-108 live); the live worlds are peers on
+a network and the headless ones are not; bank turnover may differ with population size.
+
+Until that is explained, the honest reading of the #96 headline is narrower than I wrote it: **in the
+live artwork the bank is indistinguishable from a random draw, and in the harness it is not**, and the
+next thing worth an hour is finding out which of those two regimes is the anomaly.
