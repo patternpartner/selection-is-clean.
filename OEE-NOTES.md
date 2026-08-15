@@ -8005,3 +8005,66 @@ normalised by `sqrt(DIMS)`.
 0.054 -> **0.005** across its three epochs while population climbs 104 -> 163 -> 247. That is the state
 gen104 was in at t=20,000 (diversity 0.019, population 268) five epochs before it collapsed. If that tab
 is still open, it is the natural falsifier: it should crash.
+
+### The sensor audit: what the 60x actually costs, and why the obvious fix is wrong
+
+332 windows of 60 ticks, `SEED=11 TICKS=20000`, recording the sensor the VM reads
+(`selfModel.birthRate - selfModel.deathRate`) against the world's true population change over the same
+window.
+
+| | value |
+|---|---|
+| sensor, mean | **+12.74** |
+| sensor, range over 332 windows | **+5.1 to +21.7 — never negative, not once** |
+| true net flow, mean | -0.15 |
+| true net flow, range | -32 to +10, **negative in 56% of windows** |
+| r(sensor, true net flow) | **0.165** |
+| sensor sign agrees with true sign | **145/296 = 49.0%** |
+
+**The sensor is monotone positive in a world whose population is shrinking more often than it grows.**
+Any evolved program that reads it as "am I growing or shrinking" is told "growing", always, in every one
+of 332 windows. Its sign channel carries exactly nothing, and its magnitude channel carries r = 0.165.
+
+**And this is where the measurement earned its cost, because it changed the repair.** The obvious fix is
+to divide `birthRate` by 60 and be done. Measured, that gives:
+
+```
+r(births - 60*deaths, true net flow) = 0.174     (against 0.165 for the broken sensor)
+```
+
+**Almost no improvement.** The reason is visible in the audit: `deathsThisTick` at the sampled tick is a
+one-tick Poisson draw with mean 0.21, so it is nearly always 0 or 1. Scaling that by 60 amplifies
+sampling noise instead of estimating a rate. The units were only half the problem; the other half is that
+deaths are sampled on 1 tick in 60 while births are integrated over all 60.
+
+So the fix is not a divisor. `deathsThisWindow` accumulates deaths across the same window births are
+accumulated over — `applyEntropy` carries the tick's count into it before clearing, and it closes with
+the birth window in the `tick%60` block. `FLOW_UNITS`, default OFF.
+
+**Registering the prediction before the arm lands:** if the diagnosis is right, `FLOW_UNITS=1` should give
+a sensor that goes negative in roughly the 56% of windows where the population actually shrank, sign
+agreement well above 49%, and `errors.pop` in the low tens rather than -770. **The falsifier is r.** If
+correlation with true net flow stays near 0.17 after the fix, then the flow sensor is weak for reasons
+that have nothing to do with either counter, and the whole line — including the 60x — is a units bug with
+no behavioural consequence worth the change.
+
+### Relevant to the question of whether any of this testing is worth doing
+
+Six defects this session would change behaviour if fixed: negative `metabolicCost`, abstention charged as
+failure, eight integer genes that cannot mutate, rend expressions naming unbound variables, the 60x flow
+mismatch, the meta-layer holding-cost tax. **All six came from reading code and doing arithmetic. Not one
+came from an arm.** Meanwhile #87, #88, #90 and #94 spent hundreds of CPU-hours establishing that
+authored atoms confer no benefit — in a build where `uaMaxDepth` was arithmetically pinned at 1, so the
+grammar could only ever emit flat two-token expressions. Those arms measured a crippled mechanism and
+reported the crippling as a property of the design, and no number of seeds would have revealed it.
+
+The structural reason is #70, which I found myself and then ignored: the substrate makes inertness free,
+so "no effect" and "wired wrong" produce an identical null. In a system with that many silent-failure
+modes, a fitness comparison is the wrong instrument until the mechanism under test is known to fire.
+
+What survives as worth doing: **the fingerprint control** (it is what makes "knob OFF is bit-identical"
+a fact), **pre-registration** (its value is about me — ~10 stated expectations failed out of ~10 this
+session, and that count only exists because they were written first), and **mechanism-fires tests rather
+than does-it-help tests**. `rendtest.js` is the model: 20,000 expressions through the real compiler,
+thirty seconds, no simulation, and it changed what shipped. This sensor audit is the second instance —
+also cheap, also decisive, and it stopped me shipping a divisor that would have left the sensor broken.

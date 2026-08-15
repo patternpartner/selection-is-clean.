@@ -91,6 +91,7 @@ let __ABSTAIN_FREE=true; // #95: an abstaining atom is not charged a failed pred
 let __GRIP_SEED=false;
 let __INT_GENE_STEP=false; // #96: integer genes take a real step when their mutation fires (see intMaybe). Default OFF pending the arm.
 let __REND_VOCAB=false;   // #96: rend mutations draw from REND_VARS instead of the atom vocabulary. Default OFF pending the arm.
+let __FLOW_UNITS=false;   // #97: deathRate is accumulated over the same 60-tick window as birthRate. Default OFF pending the arm.
 // Highest alienGrip among a genome's BOUND atoms, tie-broken by uses so a bank with no scored atom
 // behaves exactly as before. Returns -1 if there is nothing bound.
 // Returns -1 unless some bound atom has ACTUAL grip (>= ALIEN_GRIP_MIN_ATTEMPTS attempts and a non-zero
@@ -6342,6 +6343,16 @@ const scaffoldField=new Float32Array(FIELD_W*FIELD_H); // morphogen scaffold lay
 const pEpigen=new Uint8Array(CAP);
 
 let deathsThisTick=0,birthsThisTick=0;
+// #97 — deathsThisWindow. MEASURED DEFECT: deathsThisTick is cleared at the top of applyEntropy on EVERY
+// tick, but birthsThisTick is cleared only inside the tick%60 self-model block, so it accumulates 60 ticks
+// of births. The self-model reads both and multiplies both by 60, which inflates birthRate 60x relative to
+// deathRate. Measured live in all eight exports (errors.pop -767..-1232 against populations of 100-280)
+// and reproduced headless (alive 213, predicted.pop 1115, birthRate 15.43, deathRate 0.375).
+// The naive repair — divide birthRate by 60 — does NOT work, and the audit is why: deathsThisTick at the
+// sampled tick is a one-tick Poisson draw with mean 0.21, so it is almost always 0 or 1, and scaling it by
+// 60 amplifies sampling noise rather than estimating a rate. Correlation with true net flow only moves
+// 0.165 -> 0.174 that way. Deaths have to be accumulated over the SAME window as births.
+let deathsThisWindow=0;
 let NprevTick=0; // Pe87: population from last tick, for POPULATION_RATE (op71) computation
 let field2TotalPrev=0; // Pe101: field2Total from last tick, for FIELD2_ENERGY_RATE (op85)
 // BIRTH QUEUE — births deferred to after interaction loop to avoid modifying arrays mid-iteration
@@ -13484,6 +13495,7 @@ function addBits(x,y,count,r,g,b,energy){for(let k=0;k<count;k++){if(bN>=MAX_BIT
 // ═══════════════════════════════════════
 function applyEntropy(){
   const deaths=[];
+  deathsThisWindow+=deathsThisTick;   // #97: carry the tick's deaths into the 60-tick window before clearing
   deathsThisTick=0;
   const densityCost=(genome.densityCostK||0.00003)*Math.max(0,N-(genome.densityFloor??100));
   // LEAP 12 + 14 (#53) — one local pass over the spatial grid does both jobs, because both are about
@@ -19744,6 +19756,7 @@ __ABSTAIN_FREE=(typeof globalThis==='undefined')||((globalThis.__ABSTAIN_FREE??1
 __CHILD_SIGN_FLOOR=(typeof globalThis==='undefined')||((globalThis.__CHILD_SIGN_FLOOR??1)|0)!==0; // #85 sign floors: default ON
 __INT_GENE_STEP=(typeof globalThis!=='undefined')&&((globalThis.__INT_GENE_STEP|0)===1); // #96: default OFF
 __REND_VOCAB=(typeof globalThis!=='undefined')&&((globalThis.__REND_VOCAB|0)===1);   // #96: default OFF
+__FLOW_UNITS=(typeof globalThis!=='undefined')&&((globalThis.__FLOW_UNITS|0)===1);   // #97: default OFF
 __FORAGE_ON=(typeof globalThis==='undefined')||((globalThis.__FORAGE_EYES??1)|0)!==0; // resolve FORAGE once; gates the resource-sense computation in uaSetEyes
 __DECIDE_ON=(typeof globalThis==='undefined')||((globalThis.__DECIDE??1)|0)!==0; // resolve DECISION GAIN once; gates confidence accrual + commitment scaling
 __DECIDE_REAL=(typeof globalThis==='undefined')||((globalThis.__DECIDE_REAL??1)|0)!==0; // resolve DECIDE-FROM-REAL once; gates real-winner physics adoption
@@ -20503,7 +20516,7 @@ function loop(){
     const _prevF2P142=selfModel.prevField2Peak!==undefined?selfModel.prevField2Peak:selfModel.field2Peak;
     selfModel.field2PeakMomentum=(selfModel.field2PeakMomentum||0)*0.8+(selfModel.field2Peak-_prevF2P142)*0.2;
     selfModel.prevField2Peak=selfModel.field2Peak;
-    selfModel.deathRate=selfModel.deathRate*0.9+deathsThisTick*0.1;
+    selfModel.deathRate=selfModel.deathRate*0.9+(__FLOW_UNITS?(deathsThisWindow+deathsThisTick):deathsThisTick)*0.1; // #97: same window as births
     selfModel.birthRate=selfModel.birthRate*0.9+birthsThisTick*0.1;
     // Pe137 Layer 126: churn momentum — rate of change of ecological turnover.
     selfModel.churnRate=((selfModel.birthRate||0)+(selfModel.deathRate||0))/2;
@@ -20769,7 +20782,7 @@ function loop(){
       // SELF_OBS_SCALE brings births into the same decade as packet counts so tanh can discriminate.
       selfObservable.count+=birthsThisTick/SELF_OBS_SCALE;
     }
-    deathsThisTick=0;birthsThisTick=0;
+    deathsThisTick=0;birthsThisTick=0;deathsThisWindow=0; // #97: the death window closes with the birth window
   }
 
   if(tick%Math.max(1,(genome.cadenceExtinct|0)||90)===0&&tick>300){if(checkExtinction())return}
