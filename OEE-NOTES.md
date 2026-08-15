@@ -8219,3 +8219,55 @@ surfaced only because the arm had a *quantitative* pre-registered target that th
 pass/fail falsifier alone would have called this a success and shipped it. The distinction that matters
 is not arm versus reading — it is whether the prediction is specific enough that being roughly right
 still counts as a miss.
+
+### #97 FINAL — the horizon fix, and the whole self-model result
+
+| | OFF | ON (units) | ON (units + horizon) |
+|---|---|---|---|
+| r(sensor, true net flow) | 0.165 | **0.453** | **0.453** |
+| sign agreement | 49.0% | **66.3%** | **66.3%** |
+| sensor negative in | 0.0% of windows | 50.3% | 50.3% |
+| true negative rate | 45.5% | 44.0% | 44.0% |
+| alive | 217 | 245 | 245 |
+| predicted.pop | 724.1 | 129.9 | **242.1** |
+| **errors.pop** | **-521.6** | +93.7 | **-0.9** |
+| errors.pop as % of population | **240.4%** | 38.2% | **0.4%** |
+
+**The self-model's population prediction goes from wrong by 2.4x the population to wrong by one
+individual.** And the three sensor rows are bit-for-bit unchanged between the two ON arms, which is the
+internal check that the horizon multiplier touched `predicted.pop` and nothing else — it cannot affect
+`birthRate - deathRate`, and it did not.
+
+Two separate defects in one expression, and the second was only reachable through the first:
+
+1. `birthsThisTick` accumulated over 60 ticks while `deathsThisTick` was cleared every tick, inflating
+   `birthRate` 60x relative to `deathRate`. This is what the five VM flow-sensor sites read.
+2. Once both are per-window, the `*60` extrapolation became wrong in the other direction, because the
+   prediction horizon is exactly one window.
+
+**Fingerprint control, all of today's index.html work:** `SEED=11 TICKS=3000` against
+`git show f710bd4:index.html` — the last commit before #96 — with every knob at its default:
+
+```
+pre-#96 build   {"n":213,"pos":211804.601525,"amp":254.136854,"lin":28775,"prog":2849,...}
+current build   {"n":213,"pos":211804.601525,"amp":254.136854,"lin":28775,"prog":2849,...}
+```
+
+**Bit-identical.** `INT_GENE_STEP`, `REND_VOCAB` and `FLOW_UNITS` are all dormant by default; nothing
+shipped today changes the artwork unless a knob is set.
+
+### Where #96 and #97 stand
+
+| knob | what it fixes | evidence | default |
+|---|---|---|---|
+| `CHILD_SIGN_FLOOR` (#85) | `metabolicCost` could go negative | measured | **ON** |
+| `ABSTAIN_FREE` (#95) | abstention charged as a failed prediction | measured | **ON** |
+| `INT_GENE_STEP` (#96) | 5 integer genes cannot mutate at all, 3 more on the knife edge | arithmetic + 8/8 seeds + 20k simulated runs | OFF |
+| `REND_VOCAB` (#96) | rend expressions name variables `rendCompile` never binds | 24.9% -> 99.5% survival, 20k expressions | OFF |
+| `FLOW_UNITS` (#97) | flow sensor never negative; self-model off by 240% of population | r 0.165 -> 0.453, errors.pop -521.6 -> -0.9 | OFF |
+
+The three OFF knobs each have a measured effect and a passing control. What they do not have is evidence
+about **whether the artwork is better with them on** — that is a different question from "is this
+component doing what it says", and it is the one every arm this session failed to answer. `FLOW_UNITS`
+has the strongest case for defaulting ON, because a sensor that is positive in 332 of 332 windows is not
+a design choice anyone made.
