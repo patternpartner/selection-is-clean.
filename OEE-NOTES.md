@@ -8174,3 +8174,48 @@ not another run — it was computing what the *broken* rule would predict and fi
 at z = 0.51. **Any measurement that disagrees with a parameter-free prediction should be tested against
 "my instrument is wrong" with the same rigour as against "the system is surprising", and the way to do
 that is to model the instrument's failure mode and see whether the data fits it better.**
+
+## #97 RESULT — `FLOW_UNITS`, against its pre-registration
+
+`SEED=11`, 20,000 ticks, 332 windows of 60 ticks, sensor recorded against the world's true population
+change over the same window.
+
+| | OFF | ON | pre-registered target |
+|---|---|---|---|
+| sensor mean | +12.74 | **-0.19** | (true mean -0.15) |
+| sensor range | +5.1 .. +21.7 | **-8.0 .. +5.7** | |
+| sensor negative in | **0.0%** of windows | **50.3%** | ~ the true rate |
+| true negative rate | 45.5% | 44.0% | |
+| sign agreement | 49.0% | **66.3%** | >> 49% |
+| **r(sensor, true net flow)** | **0.165** | **0.453** | **FALSIFIER: must beat ~0.17** |
+| errors.pop | -521.6 | +93.7 | "low tens" |
+
+**The falsifier is cleared decisively.** Correlation with true net flow went from 0.165 to **0.453** —
+nearly triple, and far past the 0.174 that the naive `/60` divisor produced. The sensor the five VM sites
+read went from *never negative in 332 windows* to negative in 50.3% of them against a true 44.0%, and
+from chance-level sign agreement to 66.3%. So the 60x was not a cosmetic units bug: the flow sense was
+carrying essentially no directional information and now carries a substantial amount.
+
+**And the prediction I got wrong, which the arm caught.** I predicted `errors.pop` would land "in the low
+tens". It landed at **+93.7** — the sign flipped and the magnitude overshot. The reason is a *second*
+unit error in the same line, which only became visible once the first was fixed:
+
+```js
+selfModel.predicted.pop = alive + selfModel.birthRate*60 - selfModel.deathRate*60;
+```
+
+The `*60` was correct only while both rates were per-tick. Under `FLOW_UNITS` both are accumulated over
+the same 60-tick window, and the prediction horizon **is** one window — so the multiplier should be 1.
+With it retained, a residual net flow of -1.9 per window is amplified to -114, and the predictor stops
+overshooting by 500 only to undershoot by 100. `alive + (birthRate - deathRate)` = 243.1 against
+`alive` = 245.
+
+Horizon fix applied under the same knob (`_flowH = __FLOW_UNITS ? 1 : 60`), re-measuring now.
+
+**Worth recording against my own argument earlier today.** I said the arms were mostly not useful in this
+codebase and that reading plus arithmetic had produced every real finding. This arm found something
+reading did not: the second-order error was invisible while the first-order one masked it, and it
+surfaced only because the arm had a *quantitative* pre-registered target that the result missed. A
+pass/fail falsifier alone would have called this a success and shipped it. The distinction that matters
+is not arm versus reading — it is whether the prediction is specific enough that being roughly right
+still counts as a miss.

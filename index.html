@@ -20593,7 +20593,13 @@ function loop(){
       selfModel.errors.clusters=selfModel.errors.clusters*0.7+(selfModel.clusterCount-selfModel.predicted.clusters)*0.3;
       selfModel.errors.diversity=selfModel.errors.diversity*0.7+(selfModel.diversity-selfModel.predicted.diversity)*0.3;
     }
-    selfModel.predicted.pop=alive+selfModel.birthRate*60-selfModel.deathRate*60;
+    // #97: the *60 was correct only while both rates were per-tick. Under FLOW_UNITS both are
+    // accumulated over the same 60-tick window and the prediction horizon IS one window, so the
+    // multiplier is 1. Measured: with the *60 retained, errors.pop went from -521 to +93.7 — the
+    // predictor stopped overshooting by 500 and started undershooting by 100, because a residual
+    // net flow of -1.9 per window was still being amplified 60x.
+    const _flowH=__FLOW_UNITS?1:60;
+    selfModel.predicted.pop=alive+selfModel.birthRate*_flowH-selfModel.deathRate*_flowH;
     selfModel.predicted.coherence=selfModel.avgCoherence+(genome.entrainRate-0.015)*0.5;
     selfModel.predicted.clusters=selfModel.clusterCount+(selfModel.diversity>0.3?0.5:-0.3);
     selfModel.predicted.diversity=selfModel.diversity;
