@@ -7871,3 +7871,137 @@ what it values, while its authored-atom layer produced a bank statistically indi
 random draw from its own generator. Whatever the credit layer is doing, it is doing something the atom
 layer is not. The structural difference is not subtle: the credit layer gets a dense signed scalar every
 tick on four fixed axes; the atom layer gets a sparse binary one on a bank that turns over.
+
+### CORRECTION, and a structural fact I should have established first
+
+Two things I stated earlier in this entry are wrong.
+
+**1. `na` and `nap` are not "sent" and "received".** `na` is `genome.netApplied` — incoming packets from
+peers that actually changed *this* world's state. `nap` is `genome.netAckApplied` — gossip-style
+acknowledgments that something *we* broadcast landed on someone else. They are not two directions of one
+count and the ratio between them means nothing. My line "every world receives 5-10x what it emits" is
+void. The correct reading: each world **absorbed** 10-23 migrants, 17-93 plasmids and 17-53 motifs, and
+separately collected 64-134 / 162-436 / 159-234 landing-acknowledgments for its own broadcasts.
+
+**2. These are not eight independent worlds. They are eight peers of one network.**
+
+| world | self id | peers it lists |
+|---|---|---|
+| gen2 t4628 | wn86cl7e | mfwixayd, 7qaumv4o, xcoft9zd, rlh1neaf, e4kbb13b |
+| gen3 t6333 | xcoft9zd | — |
+| gen1 t6464 | b5wlg175 | mfwixayd |
+| gen2 t10266 | 7qaumv4o | mfwixayd, 7qaumv4o, xcoft9zd, rlh1neaf, e4kbb13b |
+| gen1 t10654 | e4kbb13b | e4kbb13b, kc7hlp66 |
+| gen2 t12638 | rlh1neaf | — |
+| gen2 t16956 | kc7hlp66 | mfwixayd |
+| gen104 t86245 | mfwixayd | xcoft9zd, rlh1neaf, e4kbb13b, kc7hlp66, b5wlg175, wn86cl7e |
+
+**Every peer id that appears anywhere is also a self id in this set.** Eight simultaneously-open tabs on
+one BroadcastChannel, with the generation-104 instance in almost everyone's table. I ran cross-world
+statistics all afternoon before checking this.
+
+**What that invalidates, and what it does not:**
+
+- **Void as independent replication:** the cross-world correlations. The metaCredit pairwise r, the gate
+  profile agreement, "every mobile gene has moved by generation 1". Effective n is well under 8.
+- **Untouched:** the frozen-gene result. That is not an inference from eight samples — it is arithmetic
+  (a uniform step bounded by +/-0.3 against a rounding that needs 0.5), corroborated by 20,000
+  independent simulated runs. The eight worlds are illustration, not evidence.
+- **Untouched:** the 60x self-model defect. Arithmetic, plus a headless reproduction from a fresh seed.
+- **Untouched, and I checked rather than assumed:** the atom-bank result. **All 163 atom expressions are
+  distinct — not one is shared between any two of the eight peers.** Whatever else the network moves, it
+  does not move authored atoms, so those 163 are genuinely 163 independent draws, and 25.2% constants
+  against a parameter-free prediction of 25.0% stands.
+
+### The meta-layer: 126 attribution traces, 90.5% of them negative
+
+`mct` carries the attribution trace for each of 126 tracked meta-layer parameters — the `*Influence`
+gates that decide whether each sensory channel participates at all.
+
+| world | ticks | negative | positive | sum of traces |
+|---|---|---|---|---|
+| gen2 t4628 | 4,628 | 100 | 21 | -0.42 |
+| gen3 t6333 | 6,333 | 103 | 19 | -1.56 |
+| gen1 t6464 | 6,464 | 100 | 20 | -1.45 |
+| gen2 t10266 | 10,266 | 115 | 8 | -3.93 |
+| gen1 t10654 | 10,654 | 123 | 2 | -5.76 |
+| gen2 t12638 | 12,638 | 109 | 16 | -2.91 |
+| gen2 t16956 | 16,956 | 123 | 3 | -6.29 |
+| gen104 t86245 | 86,245 | 121 | 5 | -5.68 |
+
+**894 of 988 traces are negative (90.5%),** and the negative fraction rises with run length (82.6% at
+T=4,628 to ~97% by T=17,000; r = 0.65 against log T).
+
+The mechanism is in the source, deliberate, and documented:
+
+```js
+}else{
+  // No movement last cycle. HOLDING COST: ... bleed toward a small NEGATIVE target = this layer's
+  // carrying cost, so a layer that just sits there costing settles below the harmful threshold
+  const _carryTarget=-_holdRate*Math.abs(genome[p]||0);
+  e.trace+=(_carryTarget-e.trace)*0.02;
+}
+```
+
+A parameter that moved last cycle gets real attribution. A parameter that did not gets taxed toward a
+negative target at 2% per cycle. With 126 tracked parameters and a mutation rate near 0.06, **the tax
+fires on roughly 94% of parameters every cycle and the evidence fires on roughly 6%.** The design intends
+a self-tax that condemns freeloading layers; the ratio means nearly everything is condemned eventually,
+regardless of what it does. The trend with run length is what a constant drag against sparse evidence
+looks like.
+
+The gates themselves are not frozen — **105 of 106 have moved from their seeded values in every world,
+even at 4,628 ticks** — but they move mostly as a block: the between-world spread of each world's *mean*
+gate value (SD 0.144) is **twice** the within-world spread across the 106 gates (SD 0.072). By gen104,
+74 of 106 gates sit below 0.3 and one (`sphi67`, self-phase sensing) has reached exactly 0.
+
+### The shadow layer inverted over the long run
+
+`sb` holds the shadow-scenario bank with a credit trace per entry. In all seven short worlds the traces
+are mostly positive (0.04 to 0.199). **At generation 104 every trace is <= 0: -0.194, -0.054, -0.031, 0.**
+The scenarios the self-model selects have become anti-correlated with fitness improvement, and the bank
+has shrunk to 4 entries from 5-8. `decisionConfidence` reads 0.9653 against 1.0 in the young worlds —
+decaying, because it only rises on a positive trace, so the mechanism is responding, just slowly.
+
+### Three channels that show nothing at all across 154,184 live ticks
+
+- **The draw program is byte-identical in seven of eight worlds** — `[[1,8,7,0],[2,8,7,0],[0,8,4,0],[4,5,8,4]]`,
+  the seeded default. gen104 has three instructions instead of four, having lost one. In 86,245 ticks it
+  deleted an instruction and added nothing.
+- **No cluster program in any world contains a single authored-atom opcode.** 96 cluster programs across
+  the eight worlds, zero bound opcodes. The cluster-level VM has never once used the atom library.
+- **Every world has exactly one evolvable fitness sensor.** The layer whose comment reads "the system
+  discovers NEW things to value beyond the 4 designer axes" has discovered one thing, everywhere, and its
+  `realWeight` is at or below 0.03 in six worlds and **-0.147 at gen104** — lineage selection judging it
+  actively harmful. Its program did grow from 2 instructions to 7 over 104 generations; the growth bought
+  a more negative weight.
+
+### The one dynamical event in the dataset
+
+The gen104 epoch arc is not a plateau. Read as `[t, popMean, popPeak, extinctions, fitness, clusterPeak,
+atoms, adopted, mutRate, popMin, diversity, metabolicCost]`:
+
+- **t=5,000 to 20,000 — growth.** Population 116 to 268, fitness ~0.55, clusters 12 to 9.
+- **t=20,000 — diversity bottoms at 0.019 at the exact population peak.** A monoculture at maximum size.
+- **t=20,000 to 45,000 — decline.** Population 268 to 71, clusters 9 to 2.
+- **t=50,000 — total extinction.** `[50000, 0, 0, 3, 0.005, 0, 40, 17, 0.0557, 0, 0, ...]`.
+- **t=60,000 to 65,000 — thrashing.** 23 then 10 further extinctions, popMin 0 in both epochs,
+  metabolicCost at its floor of 0.000002.
+- **t=70,000 to 85,000 — a different world.** Population 120, 236, 263, 257. Diversity **0.886, 0.923,
+  1.0, 1.0** against a pre-crash range of 0.017 to 0.265.
+
+**The post-extinction world is an order of magnitude more diverse than the pre-extinction world, at
+comparable cluster counts and higher population, and it holds there for 15,000+ ticks.** At matched
+cluster count the comparison is 0.265 (t=40,000, 7 clusters) against 0.923 (t=75,000, 7 clusters).
+
+**Caveat I can bound but not eliminate:** `clusterDiversity` is a mean pairwise Euclidean distance over
+`DIMS` axes, clamped to 1. `tendDims` grew over this run, and the gen104 motif vectors are 15 components
+long, so the late epochs are measured in a higher-dimensional space than the early ones. Going from ~9 to
+15 axes inflates a fixed per-axis spread by about 1.29x. That cannot turn 0.03 into 1.0, but it means the
+true factor is somewhat below the raw 30x, and a clean version of this comparison needs diversity
+normalised by `sqrt(DIMS)`.
+
+**And the same signature is live in a second world right now.** gen2 t16956 reads diversity 0.084 ->
+0.054 -> **0.005** across its three epochs while population climbs 104 -> 163 -> 247. That is the state
+gen104 was in at t=20,000 (diversity 0.019, population 268) five epochs before it collapsed. If that tab
+is still open, it is the natural falsifier: it should crash.
