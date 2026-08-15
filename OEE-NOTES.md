@@ -7737,3 +7737,88 @@ quarters of every render mutation is a dead slot, and the quarter that lives is 
 | current, both knobs OFF | **identical** |
 | `REND_VOCAB=1` | **identical** (render-only, as predicted) |
 | `INT_GENE_STEP=1` | `{"n":221,"pos":229745.475612,"amp":278.240693,"lin":33033,"prog":2933,...}` |
+
+---
+
+## #97 — reading the exports for what they say, not for what I was already working on
+
+I mined the eight uploads for evidence about atoms because atoms were what I had in my hands. That was
+the wrong first pass. Read cold, the files say two things I had not been looking for, and one of them is
+the largest defect I have found in this codebase.
+
+### The self-model's population prediction is wrong by a factor of five, in every world
+
+`fe` carries the self-model's four prediction errors. Across all eight exports:
+
+| world | gen | errors.pop | errors.coherence | errors.clusters | errors.diversity |
+|---|---|---|---|---|---|
+| gen2 t4628 | 2 | **-1155.2** | -0.0029 | 0.738 | -0.0242 |
+| gen3 t6333 | 3 | **-1181.2** | 0.0146 | 0.996 | -0.0216 |
+| gen1 t6464 | 1 | **-766.9** | 0.0136 | 0.307 | -0.0193 |
+| gen2 t10266 | 2 | **-1232.5** | 0.0027 | -0.708 | -0.0136 |
+| gen1 t10654 | 1 | **-1065.7** | -0.0161 | -0.781 | -0.0051 |
+| gen2 t12638 | 2 | **-1035.1** | -0.0146 | 0.724 | -0.0586 |
+| gen2 t16956 | 2 | **-1020.4** | -0.0010 | 0.138 | -0.0083 |
+| gen104 t86245 | 104 | **-873.8** | 0.0008 | -0.517 | 0 |
+
+Coherence is predicted to three decimal places. Diversity to two. Clusters to within one. **Population is
+wrong by 767-1232 in worlds whose actual population is 100-280** — the model is predicting roughly 1100
+individuals while roughly 200 exist, and it does this in every world, at every age, with no drift.
+
+Reproduced headless on the first try, `SEED=11 TICKS=3000`:
+
+```
+alive 213   predicted.pop 1115.34   errors.pop -769.88
+birthRate 15.43   deathRate 0.375     (a 41:1 ratio in a population that is flat)
+errors.coherence 0.0015   predicted 0.8797 / actual 0.8802
+```
+
+### The mechanism: two counters on two different clocks, multiplied by the same 60
+
+```js
+13487:  deathsThisTick=0;                          // reset EVERY tick
+20418:  if(tick%60===0){                           // the whole self-model block
+20506:    selfModel.deathRate=selfModel.deathRate*0.9+deathsThisTick*0.1;
+20507:    selfModel.birthRate =selfModel.birthRate *0.9+birthsThisTick*0.1;
+20583:    selfModel.predicted.pop=alive+selfModel.birthRate*60-selfModel.deathRate*60;
+20772:    deathsThisTick=0;birthsThisTick=0;       // reset ONLY every 60 ticks
+  }
+```
+
+`deathsThisTick` is cleared at the top of the death pass on **every** tick, so when the self-model reads
+it, it holds **one tick** of deaths. `birthsThisTick` is cleared only at line 20772, which is inside the
+`tick%60` block, so it holds **sixty ticks** of births. Both are then multiplied by 60.
+
+**`birthRate` is inflated by exactly 60x relative to `deathRate`.** The arithmetic closes:
+`213 + 15.43*60 - 0.375*60 = 1116.3`, against a probed `predicted.pop` of 1115.34.
+
+The audit at `TICKS=3000` counted 903 births in 3000 ticks (0.30/tick) against 0.38 deaths per sampled
+tick — balanced, which is what a flat population requires. **Correction to my own first read of that
+audit:** I printed a line called "UNCOUNTED removals = 18.76/tick". That number is meaningless — it
+compares a 60-tick birth accumulator against deaths sampled on 1 tick in 60. There is no missing-death
+mystery. There is only the unit mismatch. The line 4962 comment describing both as "per-tick EMA-smoothed
+flow rates" is true of `deathRate` and false of `birthRate`.
+
+### Why this is worse than a broken statistic
+
+`birthRate` and `deathRate` are not confined to the self-model. Five VM sites hand the particles a
+population net-flow sense, and five more a churn sense:
+
+```
+10306, 15484, 16808, 18105, 22234:  const _net  = (selfModel.birthRate||0)-(selfModel.deathRate||0);
+10323, 15515, 16828, 18125, 22284:  const _churn= ((selfModel.birthRate||0)+(selfModel.deathRate||0))/2;
+```
+
+`_net` is `60b - d`, which is `60b` to within a rounding error. **The "is my population growing or
+shrinking" sensor the evolved programs can read is, in fact, a birth counter with the deaths scaled away
+to nothing.** In a flat population it reads about +15 and stays positive. `churnRate` reads ~7.9 where
+the true churn is ~0.34.
+
+This lands squarely on the thing I have spent the session concluding. #85-#95 kept finding channels that
+"measure near-inert" and I kept attributing it to the substrate making inertness free. Here is a channel
+that is not inert — it is *actively misinformative*, and it has been feeding both the self-model and the
+particles' world-sensing the whole time.
+
+I have not yet established how much this costs. The measurement that decides it is whether
+`birthRate - deathRate` carries any information about actual net flow, or only about births; that run is
+in progress and I will not claim either way before it lands.
