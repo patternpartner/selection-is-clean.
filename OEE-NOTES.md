@@ -7822,3 +7822,52 @@ particles' world-sensing the whole time.
 I have not yet established how much this costs. The measurement that decides it is whether
 `birthRate - deathRate` carries any information about actual net flow, or only about births; that run is
 in progress and I will not claim either way before it lands.
+
+### A hypothesis I formed and killed in the same pass
+
+Seeing `objWeights` at gen104 sit at `[0.169, 0.268, 0.1435, 0.505]` against a flat `[0.25]*4` in every
+young world, with `objCreditTrace` at `[0.073, -0.054, 0.127, 0.547]`, I reached for the obvious story:
+axis 3 is churn, `churnRate` is computed from the broken counter, therefore the system has learned to
+value a defect. It is a tidy story and it is wrong. The axis is built locally:
+
+```js
+const churn=clusters.filter(c=>c.persistAge<2).length/Math.max(1,clusters.length);
+const axes=[selfModel.stability||0, selfModel.diversity||0, selfModel.avgCoherence||0, churn];
+```
+
+That `churn` is the **fraction of clusters younger than 2 persist-ticks** — a bounded [0,1] cluster
+turnover ratio with no connection to `selfModel.churnRate`. The 60x defect propagates to the five VM
+sensor sites and to `churnMomentum`, and stops there. Recording it because the check took two minutes and
+the claim would have been the most quotable thing in this entry.
+
+### What the objective weights DO show, stated at the strength the data supports
+
+The four axes are `[stability, diversity, coherence, clusterTurnover]`. `objCreditTrace[i]` is an EMA of
+`sign(Δaxis) * sign(Δfitness)`, bounded [-1,1], updated per tick and nudging `objWeights[i]`.
+
+| world | ticks | objCreditTrace | largest axis |
+|---|---|---|---|
+| gen2 t4628 | 4,628 | [0.088, -0.022, -0.023, 0.057] | stability |
+| gen3 t6333 | 6,333 | [-0.035, -0.142, 0.040, 0.036] | diversity (neg) |
+| gen1 t6464 | 6,464 | [0.171, -0.050, -0.010, 0.024] | stability |
+| gen2 t10266 | 10,266 | [-0.006, -0.010, 0.050, 0.098] | turnover |
+| gen1 t10654 | 10,654 | [0.080, 0.099, -0.022, -0.002] | diversity |
+| gen2 t12638 | 12,638 | [0.005, 0.039, 0.173, 0.079] | coherence |
+| gen2 t16956 | 16,956 | [0.044, 0.214, 0.326, 0.083] | coherence |
+| **gen104 t86245** | **86,245** | **[0.073, -0.054, 0.127, 0.547]** | **turnover** |
+
+In the seven short worlds the traces are small (max 0.33) and the winning axis is scattered — which is
+what drift looks like. The one long world has a trace of 0.547, well outside that range, and its weights
+have moved correspondingly (half the fitness weight onto cluster turnover).
+
+**I cannot tell from n=1 whether that is learning or an EMA with 86,245 ticks to converge on a weak
+consistent signal.** Both produce a large trace. The test that separates them is whether the *same* axis
+wins across independent seeds at matched run length — drift scatters, structure agrees. That is worth
+running and I have not run it.
+
+What I can say without that test is a contrast within a single world. At generation 104, in the same
+86,245 ticks, this system's credit-assignment layer produced a large, directional, persistent change in
+what it values, while its authored-atom layer produced a bank statistically indistinguishable from a
+random draw from its own generator. Whatever the credit layer is doing, it is doing something the atom
+layer is not. The structural difference is not subtle: the credit layer gets a dense signed scalar every
+tick on four fixed axes; the atom layer gets a sparse binary one on a bank that turns over.
