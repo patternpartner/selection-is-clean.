@@ -62,7 +62,7 @@ globalThis.setTimeout=()=>0;globalThis.clearTimeout=()=>{};globalThis.setInterva
 // that cannot be turned off is not a control, so the plumbing goes in before any ablation claim does.
 // Same one-line form as harness-oee.js.
 if (process.env.COSMOS !== undefined) globalThis.__COSMOS = parseInt(process.env.COSMOS, 10);
-for (const kn of ['COSMOS_COST','COSMOS_CONTACT','COSMOS_MERGE','COSMOS_SENSE','COSMOS_AFFORD','ESCAPE_DEATH','ATOM_HERITABLE','MEME_TRANSFER','CHILD_SIGN_FLOOR','REACH_MAIN','REACH_NOK','SELF_PREDICT','ALIEN_SELECT','GRIP_SEED','ABSTAIN_FREE'])
+for (const kn of ['COSMOS_COST','COSMOS_CONTACT','COSMOS_MERGE','COSMOS_SENSE','COSMOS_AFFORD','ESCAPE_DEATH','ATOM_HERITABLE','MEME_TRANSFER','CHILD_SIGN_FLOOR','REACH_MAIN','REACH_NOK','SELF_PREDICT','ALIEN_SELECT','GRIP_SEED','ABSTAIN_FREE','INT_GENE_STEP'])
   if (process.env[kn] !== undefined) globalThis['__'+kn] = parseInt(process.env[kn], 10);
 let loopErrors=0,lastErr='';
 console.error=(...a)=>{const s=a.join(' ');if(/Loop error|Boot error|Watchdog/.test(s)){loopErrors++;lastErr=s.slice(0,160);}};
@@ -545,6 +545,27 @@ console.log(JSON.stringify({
   // filename is one rename away from an arm swap that no later check could catch.
   atomSham:(process.env.ATOM_SHAM|0)===1, atomForce:(process.env.ATOM_FORCE!==undefined?Number(process.env.ATOM_FORCE):null),
   nfdOff:(process.env.NFD_OFF|0)===1,
+  // #96 probe: the eight integer genes whose uniform mutation step could not clear Math.round(),
+  // plus the shape of the atom bank they gate. Read-only — no draws, no writes; the fingerprint
+  // control covers it. depthHist counts operators per expression, which is what uaMaxDepth buys.
+  intGenes:(function(){try{
+    const G=globalThis.genome; if(!G) return null;
+    const ua=Array.isArray(G.userAtoms)?G.userAtoms:[];
+    const ops=e=>{let n=0;for(let i=0;i<e.length;i++){const c=e[i];if(c==='+'||c==='-'||c==='*'||c==='/')n++;}return n;};
+    const isConst=e=>!/[A-Za-z_]/.test(String(e).replace(/Math\.\w+/g,''));
+    const dh={};let deep=0;
+    for(const a of ua){const d=ops(a.expression||'');dh[d]=(dh[d]||0)+1;if(d>1)deep++;}
+    return {gen:G.generation, tail:+(G.mutationTail||0),
+      uaMaxDepth:G.uaMaxDepth, vmMaxInstructions:G.vmMaxInstructions, shadowScenarios:G.shadowScenarios,
+      motifMemorySize:G.motifMemorySize, hgtMax:G.hgtMax, reflexDepth:G.reflexDepth,
+      clusterReflexAge:G.clusterReflexAge, clusterMinSize:G.clusterMinSize,
+      atoms:ua.length, atomsFailed:ua.filter(a=>a.failed).length,
+      atomsConst:ua.filter(a=>isConst(a.expression)).length,
+      atomsMultiOp:deep, depthHist:dh,
+      usesTotal:ua.reduce((s,a)=>s+(a.uses|0),0),
+      usesConst:ua.filter(a=>isConst(a.expression)).reduce((s,a)=>s+(a.uses|0),0),
+      bound:Array.isArray(G.boundOpcodes)?G.boundOpcodes.length:0};
+  }catch(e){return {err:String(e).slice(0,80)};}})(),
   fingerprint, posRange:globalThis.__posRange(), escape:globalThis.__escape(), escSeries:globalThis.__escSeries||null, boundSeries:globalThis.__boundSeries||null, deathLineages:globalThis.__deathLineages?globalThis.__deathLineages():null, opcodes:globalThis.__opcodes?globalThis.__opcodes():null, memeDiag:globalThis.__memeDiag?globalThis.__memeDiag():null, mutProbe:globalThis.__mutProbe?globalThis.__mutProbe():null, aliasProbe:globalThis.__aliasProbe?globalThis.__aliasProbe():null,
   loopErrors, lastErr, driverErr:globalThis.__driverErr||0,
   alive:globalThis.__aliveN(), kinds:globalThis.__kinds(),

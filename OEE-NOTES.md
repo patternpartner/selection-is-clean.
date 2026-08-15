@@ -7457,3 +7457,146 @@ exploitable structure.**
 The generator is not one hypothesis among several any more. It is what is left after the economy (#87),
 the wiring (#88), the carrier split (#85), and now the predictive channel have each been eliminated by
 measurement.
+
+---
+
+## #96 — eight uploaded live-artwork exports, and a gene that could never mutate
+
+Eight real browser runs, real peers, real reloads — generations 1, 1, 2, 2, 2, 2, 3 and **104**,
+totalling 154,184 ticks. This is the regime several comments in the source say only the live artwork can
+settle. All eight decode cleanly (`type:"selection-genome"`, v2, base64 `genome`).
+
+### First, a correction to my own headline
+
+My initial read of the pooled `alienPredict` counters was **191/593 = 32.2%, z = -8.66 vs chance**, and I
+called it catastrophically below chance. That z is wrong, and the error was mine: I used a **uniform 1/3
+null** on a target that is not uniform and against a predictor that abstains.
+
+The 41 `alien_predict` events that survive in the rolling event logs carry `{pred, actual, hit}`, so the
+null can be built from the data instead of assumed:
+
+- `actual` marginal: **-1:14, 0:5, +1:22** — outcomes are up-biased, not thirds.
+- `pred` marginal: **-1:6, 0:16, +1:19** — the predictor **abstains on 39% of its attempts.**
+- Under independence with those marginals, chance is **34.6%**, not 33.3%.
+
+And every cell matches independence almost exactly:
+
+| prediction | n | hits | observed | independence expects |
+|---|---|---|---|---|
+| pred = +1 | 19 | 10 | 52.6% | 53.7% |
+| pred = 0  | 16 | 2  | 12.5% | 12.2% |
+| pred = -1 | 6  | 1  | 16.7% | 34.1% (n=6) |
+
+Permutation test, 200k shuffles of `actual` against `pred`: **P(hits >= observed) = 0.73.**
+Pooled, 32.2% against the 34.6% independence null is **z = -1.23**, not -8.66.
+
+**Corrected conclusion: in the live artwork the predictive channel carries no information — it sits ON
+the null, not below it.** That agrees with the post-fix headless result (#95: 45.3%, z = -1.22) rather
+than contradicting it, which is the outcome I should have reached the first time by building the null
+from the marginals. Also worth recording: `ABSTAIN_FREE` (#95) removes 39% of live attempts from the
+denominator, moving the *reported* number 32.2% -> 44.0% while creating no skill (the abstain-free
+independence null is 49.0%). It is a scoring fix, not a fitness fix — but abstention was being charged as
+failure, so selection was rewarding atoms for committing rather than for being right.
+
+### The atom bank in the wild
+
+163 atoms across the eight worlds, 12,534 recorded uses.
+
+- **`failed: 0` on all 163.** The failure filter has never fired in a live run either.
+- **24% of atoms are pure constants** (no variable reference at all). At gen104 the constants take
+  **46% of all executions.**
+- **All 163 expressions are flat one-operator forms.** Not one composition, not one atom calling another.
+- gen104 has **108 atoms but only 96 bound-opcode slots**, with 6 slots duplicated — so **19 atoms are
+  unreachable** by construction, and **96 of 108 have zero uses.** Twelve atoms do all the work.
+- The single most-executed atom in the deepest live run (86,245 ticks, 104 generations, 2,370 uses) is
+  **`(-0.28)*(1.68)`** — a compile-time constant, -0.4704.
+
+### Why: `uaMaxDepth` is not an evolvable gene, it is a constant with a mutation call wrapped round it
+
+`uaMaxDepth` reads **1 in all eight worlds**, including the one at generation 104. The reason is
+arithmetic, not selection:
+
+```js
+genome.uaMaxDepth = __cl(Math.round(maybe(genome.uaMaxDepth||1, 1, UA_DEPTH_CAP, 0.6)), 1, UA_DEPTH_CAP);
+```
+
+`maybe` adds `tailDraw()*magnitude*scale`. The uniform branch of `tailDraw()` returns `rand-0.5`, so at
+the default `scale=1` and `magnitude=0.6` the step lies in **[-0.3, +0.3]**. `Math.round` needs
+**|step| >= 0.5**. The step can never reach it. **The gene cannot move — not rarely, never.** Only the
+Cauchy tail branch can, and `mutationTail` initialises to 0.
+
+Simulation of the operator with the live parameters (`rate≈0.06`, `scale≈1`, `tail=0`), 20,000 runs of
+104 generations each: **P(uaMaxDepth > 1) = 0.0%. Zero hits in 20,000.** Raise `tail` to 0.02 and it
+becomes 2.1%; raise `scale` to 3 and it becomes 54.9%. The freeze is entirely an artifact of the step
+size relative to the rounding.
+
+**This is a class defect, not one line.** Eight of the fourteen rounded integer genes are in the same
+regime at `scale=1`: `clusterMinSize`(0.5) `motifMemorySize`(1) `shadowScenarios`(0.8)
+`vmMaxInstructions`(1) `uaMaxDepth`(0.6) `hgtMax`(0.5) `reflexDepth`(0.5) `clusterReflexAge`(1).
+
+### The eight worlds are a natural experiment, and they confirm it
+
+Prediction stated before checking: genes with `magnitude >= 2` vary between worlds; genes in the frozen
+set are identical across the seven low-tail worlds, and any deviation is confined to the one world that
+evolved a substantial `mutationTail`.
+
+| gene | mag | values across the 8 worlds (gen 1 .. gen 104) |
+|---|---|---|
+| uaMaxDepth | 0.6 | 1, 1, 1, 1, 1, 1, 1, **1** |
+| reflexDepth | 0.5 | 4, 4, 4, 4, 4, 4, 4, **4** |
+| clusterReflexAge | 1 | 5, 5, 5, 5, 5, 5, 5, **5** |
+| vmMaxInstructions | 1 | 16, 16, 16, 16, 16, 16, 16, **13** |
+| shadowScenarios | 0.8 | 5, 5, 5, 5, 5, 5, 5, **4** |
+| hgtMax | 0.5 | 2, 2, 2, 2, 2, 2, 2, **3** |
+| motifMemorySize | 1 | 5, 5, **4**, 5, 5, 5, 5, 5 |
+| shadowHorizon | 8 | 50, 50, 48, 49, 50, 50, 58, 51 |
+| extinctionThresh | 2 | 5, 5, 5, 4, 4, 5, 4, 9 |
+| cadenceSelf | 2 | 30, 31, 31, 28, 30, 29, 31, 29 |
+| cadenceLineage | 12 | 600, 600, 600, 606, 603, 597, 600, 607 |
+
+Every mobile gene has moved by **generation 1**. Every frozen gene is identical across the seven low-tail
+worlds. The only deviations anywhere are in the `mutationTail=0.08` world (and `motifMemorySize` in the
+`tail=0.017` world) — the exact escape route the arithmetic predicts. `uaMaxDepth` did not move even
+there, because its magnitude of 0.6 demands the largest tail draw of the set.
+
+**Consequence, stated plainly.** `uaGenExpression()`'s recursive grammar — branching, composition,
+recurrence, atom-calls-atom — has been unreachable in every live run ever exported. The authored-atom
+layer has been drawing from a flat space of two-token expressions the whole time. Source comment at line
+447 ("HOW deep the system thinks is itself something it evolves") and at 12359 ("the system evolves how
+deeply it composes its own primitives") are both false as written.
+
+This also reframes #95. I concluded there that "the expressions `uaGenExpression` produces have no
+exploitable structure." That conclusion stands, but its scope was narrower than I stated: it is a
+verdict on **depth-1 expressions only**, because depth-1 is the only thing the generator has ever been
+allowed to emit.
+
+### The change: `intMaybe`
+
+```js
+function intMaybe(val,magnitude){
+  if(!__INT_GENE_STEP)return maybe(val,0,0,magnitude);
+  if(Math.random()>rate)return val;
+  const step=tailDraw()*magnitude*scale;
+  if(!isFinite(step))return val;
+  return val+(step>=0?Math.max(1,Math.round(step)):Math.min(-1,Math.round(step)));
+}
+```
+
+When the mutation fires it is quantised away from zero, so it is always a real move. `magnitude` still
+sets how far large draws go; it no longer decides whether any draw counts at all. All eight frozen genes
+are routed through it. `INT_GENE_STEP` defaults **OFF** pending the arm — this raises those genes'
+effective mutation rate from ~0 to `rate`, which is a large behavioural change and has to be earned.
+
+**Fingerprint control:** knob OFF, `SEED=11 TICKS=3000`, against `git show HEAD:index.html` —
+`{"n":213,"pos":211804.601525,"amp":254.136854,"lin":28775,"prog":2849,...}` on both. **Bit-identical.**
+Knob ON: `{"n":221,"pos":229745.475612,...}` — different within 10 generations, as it must be.
+
+### #96 PRE-REGISTRATION
+
+16 seeds x {INT_GENE_STEP=0, INT_GENE_STEP=1} x 24,000 ticks.
+
+- **PRIMARY:** does `uaMaxDepth` ever leave 1? Predicted **0/16 OFF** (the arithmetic says impossible
+  without a tail draw) and **a clear majority ON**.
+- **SECONDARY (what it buys, not the test):** `atomsMultiOp > 0`, and a lower constant-atom fraction.
+- **FALSIFIER for the whole line of work:** if depth rises and the atom bank still fills with constants
+  and dead entries, then depth was not the constraint and the generator is the problem on its own terms.

@@ -89,6 +89,7 @@ let __SELF_PREDICT=false; // resolved after the LIVE registry; SELF_PREDICT=1 en
 const SELF_OBS_SCALE=50; // #95: births/window ~1333 -> ~27, inside tanh(x/20)'s informative range
 let __ABSTAIN_FREE=true; // #95: an abstaining atom is not charged a failed prediction. ABSTAIN_FREE=0 = prior behaviour.
 let __GRIP_SEED=false;
+let __INT_GENE_STEP=false; // #96: integer genes take a real step when their mutation fires (see intMaybe). Default OFF pending the arm.
 // Highest alienGrip among a genome's BOUND atoms, tie-broken by uses so a bank with no scored atom
 // behaves exactly as before. Returns -1 if there is nothing bound.
 // Returns -1 unless some bound atom has ACTUAL grip (>= ALIEN_GRIP_MIN_ATTEMPTS attempts and a non-zero
@@ -11699,6 +11700,29 @@ function mutateGenome(){
     if(!isFinite(next))return val;
     return next;
   }
+  // #96 — integer-gene step. MEASURED DEFECT, not a tuning preference.
+  // Genes stored as integers are written as Math.round(maybe(v,...,magnitude)). The uniform branch
+  // of tailDraw() returns (rand-0.5), so a fired mutation moves the value by at most
+  // magnitude*scale/2. Whenever that is < 0.5 the round() swallows the whole step and the gene
+  // CANNOT change — not rarely, never. Seven of the fourteen rounded genes are in that regime at
+  // the default scale=1: clusterMinSize(0.5) motifMemorySize(1) shadowScenarios(0.8)
+  // vmMaxInstructions(1) uaMaxDepth(0.6) hgtMax(0.5) reflexDepth(0.5) clusterReflexAge(1).
+  // Only the Cauchy tail branch can move them, and mutationTail initialises to 0.
+  // Confirmed against 8 live-artwork exports (gen 1..104): every gene with magnitude>=2 varies
+  // between worlds by generation 1; every gene in the frozen set is bit-identical across the seven
+  // low-tail worlds, and the only deviations anywhere are in the one world that evolved
+  // mutationTail=0.08. uaMaxDepth reads 1 in all eight — so uaGenExpression()'s recursive grammar
+  // (branching, composition, atom-calls-atom) has never been reachable in a live run, and all 163
+  // live atoms are flat one-operator expressions, 24% of them pure constants.
+  // The fix: when the mutation fires, quantise the step away from zero so it is always a real move.
+  // magnitude still sets how FAR large draws go; it no longer gates whether any draw counts.
+  function intMaybe(val,magnitude){
+    if(!__INT_GENE_STEP)return maybe(val,0,0,magnitude);
+    if(Math.random()>rate)return val;
+    const step=tailDraw()*magnitude*scale;
+    if(!isFinite(step))return val;
+    return val+(step>=0?Math.max(1,Math.round(step)):Math.min(-1,Math.round(step)));
+  }
   // Gradient-biased version for physics parameters with a known shadow-nudge direction.
   // nudgeDir: ±1 direction from lastShadowNudgeDir, 0 = no prior signal.
   function gradMaybe(val,min,max,magnitude,nudgeDir){
@@ -12042,7 +12066,7 @@ function mutateGenome(){
 
   // LAYER 2: Perception mutations
   genome.clusterBondThresh=maybe(genome.clusterBondThresh,0.05,0.5,0.03);
-  genome.clusterMinSize=Math.max(1,Math.round(maybe(genome.clusterMinSize,2,8,0.5)));
+  genome.clusterMinSize=Math.max(1,Math.round(intMaybe(genome.clusterMinSize,0.5)));           // #96 frozen-gene set
   genome.ghostDecay=maybe(genome.ghostDecay,0.98,0.9999,0.003);
   genome.ghostAmpDrip=maybe(genome.ghostAmpDrip,0.00005,0.002,0.0002);
 
@@ -12320,12 +12344,12 @@ function mutateGenome(){
   genome.shadowHorizon=__cl(Math.round(maybe(genome.shadowHorizon,10,120,8)),2,500);
   genome.perturbScale=maybe(genome.perturbScale,0.2,3.0,0.2);
   genome.extinctionThresh=Math.max(1,Math.round(maybe(genome.extinctionThresh,2,20,2)));
-  genome.motifMemorySize=__cl(Math.round(maybe(genome.motifMemorySize,2,10,1)),1,40);
+  genome.motifMemorySize=__cl(Math.round(intMaybe(genome.motifMemorySize,1)),1,40);            // #96 frozen-gene set
   genome.culturalBias=maybe(genome.culturalBias,0.05,0.6,0.04);
 
   // Pe27 Layer 17: imagination bank cap and churn rate. The system decides how many
   // counterfactual futures to maintain and how aggressively to refresh them.
-  genome.shadowScenarios=__cl(Math.round(maybe(genome.shadowScenarios,3,SHADOW_SCENARIOS_MAX,0.8)),3,SHADOW_SCENARIOS_MAX);
+  genome.shadowScenarios=__cl(Math.round(intMaybe(genome.shadowScenarios,0.8)),3,SHADOW_SCENARIOS_MAX); // #96 frozen-gene set
   genome.shadowBankChurn=__cl(metaMaybe(genome.shadowBankChurn,0.06,'shadowBankChurn'),0,1);
   // Pe30b: explore rate evolvable, bounded [0.1,0.9] — see refill-loop note for why
   // the bounds are tighter than the [0,1] of other freed params.
@@ -12355,13 +12379,13 @@ function mutateGenome(){
     const _ng=genome.vmGain*Math.exp(tailDraw()*scale*0.5);
     if(Number.isFinite(_ng)&&_ng>1e-9)genome.vmGain=_ng;
   }
-  genome.vmMaxInstructions=__cl(Math.round(maybe(genome.vmMaxInstructions,6,20,1)),1,96); // UNLOCKED #7b: ceiling 48→96
-  genome.uaMaxDepth=__cl(Math.round(maybe(genome.uaMaxDepth||1,1,UA_DEPTH_CAP,0.6)),1,UA_DEPTH_CAP); // UNLOCKED #7b: the system evolves how deeply it composes its own primitives
+  genome.vmMaxInstructions=__cl(Math.round(intMaybe(genome.vmMaxInstructions,1)),1,96); // UNLOCKED #7b: ceiling 48→96 // #96 frozen-gene set
+  genome.uaMaxDepth=__cl(Math.round(intMaybe(genome.uaMaxDepth||1,0.6)),1,UA_DEPTH_CAP); // UNLOCKED #7b: the system evolves how deeply it composes its own primitives // #96: with the old operator this line could never return anything but 1
   genome.metabolicCost=__cl(maybe(genome.metabolicCost,0.000002,0.0002,0.00002),0.000002,0.0002); // #2 energy economy: no free lunch — cost stays positive (the negative-drift hole that euthanised selection is closed)
 
   // HGT parameter evolution
   genome.hgtRate=maybe(genome.hgtRate,0.01,0.5,0.04);
-  genome.hgtMax=__cl(Math.round(maybe(genome.hgtMax,1,4,0.5)),1,12);
+  genome.hgtMax=__cl(Math.round(intMaybe(genome.hgtMax,0.5)),1,12);                            // #96 frozen-gene set
   genome.hgtSpliceNoise=maybe(genome.hgtSpliceNoise,0.05,0.5,0.04);
 
   // Plasmid parameter evolution
@@ -12403,10 +12427,10 @@ function mutateGenome(){
   // reflexInfluence can go to 0 — killing the feedback loop — if it's not adaptive.
   // Or it can grow — deepening self-reference — if the system benefits.
   genome.reflexSampleRate=maybe(genome.reflexSampleRate,0.02,0.5,0.04);
-  genome.reflexDepth=__cl(Math.round(maybe(genome.reflexDepth,2,8,0.5)),1,REFLEX_DEPTH);
+  genome.reflexDepth=__cl(Math.round(intMaybe(genome.reflexDepth,0.5)),1,REFLEX_DEPTH);        // #96 frozen-gene set
   genome.reflexInfluence=maybe(genome.reflexInfluence,0,1.5,0.06);
   genome.reflexDecay=maybe(genome.reflexDecay,0.7,0.99,0.03);
-  genome.clusterReflexAge=Math.max(1,Math.round(maybe(genome.clusterReflexAge,2,15,1)));
+  genome.clusterReflexAge=Math.max(1,Math.round(intMaybe(genome.clusterReflexAge,1)));         // #96 frozen-gene set
   genome.clusterReflexWeight=maybe(genome.clusterReflexWeight,0,0.8,0.05);
   // Pe24 Layer 12: cluster genome self-read strength evolves alongside other reflex params
   if(genome.clusterGenomeReadStrength===undefined)genome.clusterGenomeReadStrength=0.05;
@@ -19693,6 +19717,7 @@ __SELF_PREDICT=(typeof globalThis!=='undefined')&&((globalThis.__SELF_PREDICT|0)
 __GRIP_SEED=(typeof globalThis!=='undefined')&&((globalThis.__GRIP_SEED|0)===1); // #93: default OFF
 __ABSTAIN_FREE=(typeof globalThis==='undefined')||((globalThis.__ABSTAIN_FREE??1)|0)!==0; // #95: default ON
 __CHILD_SIGN_FLOOR=(typeof globalThis==='undefined')||((globalThis.__CHILD_SIGN_FLOOR??1)|0)!==0; // #85 sign floors: default ON
+__INT_GENE_STEP=(typeof globalThis!=='undefined')&&((globalThis.__INT_GENE_STEP|0)===1); // #96: default OFF
 __FORAGE_ON=(typeof globalThis==='undefined')||((globalThis.__FORAGE_EYES??1)|0)!==0; // resolve FORAGE once; gates the resource-sense computation in uaSetEyes
 __DECIDE_ON=(typeof globalThis==='undefined')||((globalThis.__DECIDE??1)|0)!==0; // resolve DECISION GAIN once; gates confidence accrual + commitment scaling
 __DECIDE_REAL=(typeof globalThis==='undefined')||((globalThis.__DECIDE_REAL??1)|0)!==0; // resolve DECIDE-FROM-REAL once; gates real-winner physics adoption
