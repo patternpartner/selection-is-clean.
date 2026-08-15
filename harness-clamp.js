@@ -524,7 +524,11 @@ const driver=`
     // Their presence is proof that depth>1 ran; their absence is proof it did not.
     const DEEP=/\\?|(^|[^A-Za-z0-9_.])f\\(|Math\\.(min|max|atan2|hypot)\\(/; // NOTE: doubled backslashes — this line lives inside a template literal, which eats single ones
     const nparen=e=>{let n=0;for(let i=0;i<e.length;i++)if(e[i]==='(')n++;return n;};
-    const isConst=e=>!/[A-Za-z_]/.test(String(e).replace(/Math\.\w+/g,''));
+    // NOTE: doubled backslashes. This line lives inside a template literal, which eats single ones —
+    // \w is not a valid string escape and silently becomes a literal w, turning /Math\.\w+/ into
+    // /Math.w+/, which strips nothing. That exact slip produced the bogus "headless banks are depleted
+    // of constants at z=-4" reading in #96: only expressions with NO Math wrapper were counted.
+    const isConst=e=>!/[A-Za-z_]/.test(String(e).replace(/Math\\.\\w+/g,''));
     const dh={};let deep=0;
     for(const a of ua){const e=a.expression||'';const d=nparen(e);dh[d]=(dh[d]||0)+1;if(DEEP.test(e))deep++;}
     return {gen:G.generation, tail:+(G.mutationTail||0), tendDims:G.tendDims,

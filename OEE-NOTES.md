@@ -8115,3 +8115,62 @@ a network and the headless ones are not; bank turnover may differ with populatio
 Until that is explained, the honest reading of the #96 headline is narrower than I wrote it: **in the
 live artwork the bank is indistinguishable from a random draw, and in the harness it is not**, and the
 next thing worth an hour is finding out which of those two regimes is the anomaly.
+
+### RETRACTION — the anomalous regime was my probe
+
+The "headless banks are 11.8% constant against the live artwork's 25.2%, z = -3.97" result is **void**. It
+was an escaping bug in the instrument I wrote three hours earlier, and neither regime is anomalous.
+
+**The probe's classifier lives inside the driver template literal.** As written:
+
+```js
+const isConst=e=>!/[A-Za-z_]/.test(String(e).replace(/Math\.\w+/g,''));
+```
+
+`\w` is not a valid string escape, so the template literal silently drops the backslash and the regex
+that actually runs is **`/Math.w+/g`** — which strips nothing. Under that rule
+`(Math.sqrt(Math.abs(1.63)))*(Math.exp(0.93))`, a pure constant, is classified as a variable expression.
+Only expressions with no `Math` wrapper at all counted as constant.
+
+The broken rule has its own exact prediction: a leaf must be a bare number (p=0.5) *and* not
+function-wrapped (p=0.65), both leaves, so `(0.5*0.65)^2 = 10.6%`.
+
+| | |
+|---|---|
+| broken rule predicts | **10.6%** |
+| r96 salvage measured | **11.8%** (20/170), **z = 0.51** |
+
+**The salvage matches the broken classifier, not a depletion.** Corrected, both regimes agree with the
+generator at 25%, and #96's headline stands as originally written — with the live artwork now
+corroborated rather than contradicted by the harness.
+
+Two hypotheses were eliminated before I found it, and both were worth eliminating:
+
+- **The cull, ruled out by arithmetic.** It fires at `Math.random()<rate*0.1` and removes at most one
+  atom per firing. With `rate` ~0.06-0.12 and ~80 `mutateGenome` calls in 24,000 ticks, that is 0.5-1.0
+  culls per run — **at most ~8 atoms across all eight seeds**, against the 22 constants that would have
+  had to disappear. And `UA_BIRTH_FLOOR=0.28` gives ~22 births per run, so births (~176) and survivors
+  (170) already account for each other. Essentially nothing is removed in either regime; the live
+  exports agree, logging **zero `ua_cull` events across all eight worlds**.
+- **The harness PRNG, ruled out by measurement.** The isolated 25.0% used the real `Math.random`; the
+  harness substitutes a seeded mulberry32. Running the extracted generator under that PRNG: 25.1% and
+  25.2% at N=200,000, and 46/176 = 26.1% pooled over the eight seeds at run length. Clean.
+
+**This is the third time today the same trap has caught me** — a backtick inside a driver comment, then
+`\?` in the deep-grammar regex, now `\w` in the classifier. All three are the same failure: source
+written into a template literal, where the escape is consumed before it reaches the regex engine. The
+first two failed loudly (a `SyntaxError`, an `Invalid regular expression`). **This one failed silently
+and produced a plausible number**, which is why it survived long enough to reach the notebook and a
+commit message.
+
+Fixed in all three harnesses with doubled backslashes and a comment naming the trap. I swept every regex
+literal in the driver for the same pattern; this was the only one.
+
+**The methodological point, since it cuts against what I claimed earlier today.** I argued that reading
+and arithmetic beat arms in this codebase because arms cannot see silent failure. That is right, and it
+applies to my instruments exactly as it applies to the artwork: a probe that fails silently produces a
+number, the number is plausible, and it goes into the record as a finding. The check that caught this was
+not another run — it was computing what the *broken* rule would predict and finding that the data fit it
+at z = 0.51. **Any measurement that disagrees with a parameter-free prediction should be tested against
+"my instrument is wrong" with the same rigour as against "the system is surprising", and the way to do
+that is to model the instrument's failure mode and see whether the data fits it better.**
