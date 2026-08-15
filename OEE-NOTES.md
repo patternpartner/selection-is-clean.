@@ -7694,3 +7694,46 @@ evolved expressions sit side by side, the evolved ones are flatter, shorter, and
 
 Both facts have the same root: one generator, `uaMaxDepth` frozen at 1, wired into a channel whose
 compiler binds different names.
+
+### The rend fix, measured directly on the generator
+
+The rend generator and `rendCompile` are both pure, so this needs no simulation. 20,000 generated
+expressions per condition, each compiled with `rendCompile`'s real parameter list and called once:
+
+| condition | survive | die at runtime |
+|---|---|---|
+| **current default** | **24.9%** | 75.1% |
+| `REND_VOCAB=1` (rend draws from `t0..t3, amp, phase, col`) | **99.5%** | 0% |
+| `REND_VOCAB=1` at depth 3 | **99.0%** | 0% |
+| **`INT_GENE_STEP=1` alone, at depth 3** | **1.6%** | 98.4% |
+
+The 24.9% matches the predicted 25% to the digit — the survivors are exactly the constant-only
+expressions, as the vocabulary argument requires.
+
+**The last row is why the two fixes ship together.** Unfreezing depth without fixing the vocabulary takes
+the render channel from 25% alive to **1.6% alive**, because a deeper expression has more leaves and
+each one is another chance to name a variable `rendCompile` never binds. Had I shipped `INT_GENE_STEP`
+on its own and looked at the artwork, the palette would have gone dead and the obvious reading would have
+been "depth broke the render" — when the actual cause is a vocabulary mismatch that was already there,
+merely too rare to notice at depth 1.
+
+Depth 3 also exposed a *second* instance of the same mismatch: `f(...)`, the atom-call composition
+primitive, is bound by `uaCompile` and by nothing else, so a rend expression containing it is another
+guaranteed `ReferenceError`. With the rend vocabulary but composition still enabled, depth-3 survival was
+**55.7%**. `__uaNoCall` suppresses that branch for any channel that does not bind `f`, which takes it to
+99.0%. That defect was unreachable while depth was frozen — it becomes reachable the moment
+`INT_GENE_STEP` lands, which is the argument for fixing it in the same change rather than after.
+
+**Scope, stated honestly:** `rend` drives colour and size only. It cannot move the fingerprint, and the
+control confirms it — `REND_VOCAB=1` returns a bit-identical run. This is an **artwork-quality defect,
+not a selection defect.** What it costs is that the palette stops responding to the particle: three
+quarters of every render mutation is a dead slot, and the quarter that lives is a constant.
+
+**Controls for the whole of #96** (`SEED=11 TICKS=3000`, against `git show f710bd4:index.html`):
+
+| build | fingerprint |
+|---|---|
+| pre-#96 | `{"n":213,"pos":211804.601525,"amp":254.136854,"lin":28775,"prog":2849,...}` |
+| current, both knobs OFF | **identical** |
+| `REND_VOCAB=1` | **identical** (render-only, as predicted) |
+| `INT_GENE_STEP=1` | `{"n":221,"pos":229745.475612,"amp":278.240693,"lin":33033,"prog":2933,...}` |

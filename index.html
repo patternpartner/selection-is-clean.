@@ -90,6 +90,7 @@ const SELF_OBS_SCALE=50; // #95: births/window ~1333 -> ~27, inside tanh(x/20)'s
 let __ABSTAIN_FREE=true; // #95: an abstaining atom is not charged a failed prediction. ABSTAIN_FREE=0 = prior behaviour.
 let __GRIP_SEED=false;
 let __INT_GENE_STEP=false; // #96: integer genes take a real step when their mutation fires (see intMaybe). Default OFF pending the arm.
+let __REND_VOCAB=false;   // #96: rend mutations draw from REND_VARS instead of the atom vocabulary. Default OFF pending the arm.
 // Highest alienGrip among a genome's BOUND atoms, tie-broken by uses so a bank with no scored atom
 // behaves exactly as before. Returns -1 if there is nothing bound.
 // Returns -1 unless some bound atom has ACTUAL grip (>= ALIEN_GRIP_MIN_ATTEMPTS attempts and a non-zero
@@ -446,6 +447,8 @@ const UA_DEPTH_CAP=7; // LEAP 16 (#54): 4 -> 7, deeper authored expressions; com
 // optional func wrapper) — byte-for-byte the original term. depth>0 → may instead branch into a
 // parenthesised binary sub-expression, recursing with a smaller budget. The budget comes from the
 // genome (uaMaxDepth), so HOW deep the system thinks is itself something it evolves.
+let __uaVarPool=null; // #96: temporary leaf-vocabulary override, see uaGenTerm / rendGenExpression
+let __uaNoCall=false;  // #96: suppress the f(...) composition branch for channels that do not bind f
 function uaGenTerm(depth){
   depth=depth|0;
   if(depth>0){
@@ -466,10 +469,15 @@ function uaGenTerm(depth){
       const yes=uaGenTerm(depth-1),no=uaGenTerm(depth-1);
       return "((("+c1+")"+cmp+"("+c2+"))?("+yes+"):("+no+"))";
     }
-    if(roll<0.72){
+    if(roll<0.72&&!__uaNoCall){
       // UNLOCKED #10 — COMPOSITION. Call ANOTHER authored atom by index: f(idx,a,b). Primitives
       // build on primitives (subroutines / a self-grown function library). Recursion is bounded by
       // uaFuel in uaCall, so a cycle of atoms calling each other can't freeze the tab.
+      // #96: `f` is bound by uaCompile ONLY. A foreign channel (rend) that emits f(...) produces a
+      // guaranteed ReferenceError, so callers that swap the vocabulary suppress this branch too.
+      // Measured: with the rend vocabulary but composition still on, survival at depth 3 is 55.7%;
+      // suppressing it as well takes it to ~99%. The bug is only reachable once depth > 1 is, which
+      // is exactly what INT_GENE_STEP unlocks — so it gets fixed in the same change, not after.
       return "f("+uaGenTerm(depth-1)+","+uaGenTerm(depth-1)+","+uaGenTerm(depth-1)+")";
     }
     if(uaRich()&&roll<0.82){
@@ -479,7 +487,10 @@ function uaGenTerm(depth){
     }
   }
   const rich=uaRich();
-  const vars=rich?(uaForage()?USER_VARS.concat(USER_WORLD_VARS,USER_FORAGE_VARS):USER_VARS.concat(USER_WORLD_VARS)):USER_VARS;   // EYES (+FORAGE) expand the leaf pool
+  // #96: __uaVarPool lets a CALLER swap the leaf vocabulary for the duration of one generation.
+  // The atom channel leaves it null and behaves exactly as before; the rend channel sets it, because
+  // rendCompile binds a completely different parameter list (see rendGenExpression).
+  const vars=__uaVarPool||(rich?(uaForage()?USER_VARS.concat(USER_WORLD_VARS,USER_FORAGE_VARS):USER_VARS.concat(USER_WORLD_VARS)):USER_VARS);   // EYES (+FORAGE) expand the leaf pool
   const funcs=rich?USER_FUNCS_RICH:USER_FUNCS;                   // + round (quantize)
   const useFunc=Math.random()<0.35;
   const val=Math.random()<0.5
@@ -524,6 +535,20 @@ const REND_DEFAULTS=[
 ];
 function defaultRend(){
   return REND_DEFAULTS.map(e=>({expression:e,compiled:null,failed:false}));
+}
+// #96 — the rend channel's own vocabulary. MEASURED DEFECT: rend mutations were drawn from
+// uaGenExpression(), whose leaves are the ATOM parameter names (a b u c d m s nx ny t nb rl rd),
+// while rendCompile binds (t0 t1 t2 t3 amp phase col). The intersection is EMPTY, so any generated
+// rend expression containing a variable throws ReferenceError on first call and is flagged failed
+// forever. Only the pure-constant 25% survive — a palette that has stopped responding to the particle.
+// Live evidence (gen104 export): both mutation-replaced rend slots reference atom-only variables;
+// one is already flagged FAILED, the other (`(rl)/(a)`) fails the moment its slot is called. The two
+// untouched slots still hold the hand-written 5-operator seeds.
+const REND_VARS=["t0","t1","t2","t3","amp","phase","col"];
+function rendGenExpression(){
+  if(!__REND_VOCAB) return uaGenExpression();
+  const pv=__uaVarPool, pc=__uaNoCall; __uaVarPool=REND_VARS; __uaNoCall=true;
+  try{ return uaGenExpression(); } finally{ __uaVarPool=pv; __uaNoCall=pc; }
 }
 function rendCompile(atom){
   if(atom.compiled||atom.failed)return;
@@ -12762,7 +12787,7 @@ function mutateGenome(){
   }
   if(Math.random()<0.003){
     const ri=Math.floor(Math.random()*4);
-    genome.rend[ri]={expression:uaGenExpression(),compiled:null,failed:false};
+    genome.rend[ri]={expression:rendGenExpression(),compiled:null,failed:false}; // #96: rend has its own vocabulary
   }
   if(Math.random()<0.004){ // mutate the draw-program: add / drop / retype a primitive (neutral drift, rides selection like rend)
     const d=genome.draw||(genome.draw=defaultDraw()); const roll=Math.random();
@@ -19718,6 +19743,7 @@ __GRIP_SEED=(typeof globalThis!=='undefined')&&((globalThis.__GRIP_SEED|0)===1);
 __ABSTAIN_FREE=(typeof globalThis==='undefined')||((globalThis.__ABSTAIN_FREE??1)|0)!==0; // #95: default ON
 __CHILD_SIGN_FLOOR=(typeof globalThis==='undefined')||((globalThis.__CHILD_SIGN_FLOOR??1)|0)!==0; // #85 sign floors: default ON
 __INT_GENE_STEP=(typeof globalThis!=='undefined')&&((globalThis.__INT_GENE_STEP|0)===1); // #96: default OFF
+__REND_VOCAB=(typeof globalThis!=='undefined')&&((globalThis.__REND_VOCAB|0)===1);   // #96: default OFF
 __FORAGE_ON=(typeof globalThis==='undefined')||((globalThis.__FORAGE_EYES??1)|0)!==0; // resolve FORAGE once; gates the resource-sense computation in uaSetEyes
 __DECIDE_ON=(typeof globalThis==='undefined')||((globalThis.__DECIDE??1)|0)!==0; // resolve DECISION GAIN once; gates confidence accrual + commitment scaling
 __DECIDE_REAL=(typeof globalThis==='undefined')||((globalThis.__DECIDE_REAL??1)|0)!==0; // resolve DECIDE-FROM-REAL once; gates real-winner physics adoption
