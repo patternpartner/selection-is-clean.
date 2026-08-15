@@ -7642,3 +7642,55 @@ already in this codebase; the frozen genes simply don't use it.**
 - **`cosmos_launch` is the single most common logged event** (57 of the 322 pooled log entries), running
   roughly every 300 ticks at gen104, with daughter worlds dying at ages 180-900 and `imp` (what comes
   back) at 0 in most of them.
+
+### The strongest live result: the atom bank is a random draw from its own generator
+
+`uaGenTerm(0)` — the only branch reachable at `uaMaxDepth=1` — picks a variable with p=0.5 and a
+function wrapper with p=0.35, independently per leaf, two leaves per expression. Those constants are
+readable straight off the generator, so it makes a distribution prediction with no free parameters:
+
+| statistic | generator predicts | 163 live atoms | |
+|---|---|---|---|
+| constant-only expressions (no variable at all) | 25.0% | **25.2%** (41/163) | z = 0.05 |
+| function-wrapped leaves | 35.0% | **37.7%** (123/326) | |
+
+**After up to 104 generations, the surviving bank is statistically indistinguishable from a fresh random
+draw.** Any selection on atom content — even weak — would enrich the bank for world-sensing atoms over
+constants relative to the generator. At n=163 there is no enrichment to find. The bank is not an evolving
+library; it is a random-expression generator with a persistence buffer bolted on.
+
+This is what #80-#95 kept circling from inside the harness, stated directly from live data: the failure
+filter never fires (`failed:0` on all 163), the metabolic channel confers nothing (#87/#88), the
+predictive channel sits on the independence null (above), and now the bank's composition itself carries
+no signature of having been selected.
+
+It also sharpens the #96 falsifier. **If `INT_GENE_STEP` raises depth and the bank still matches the
+generator's unconditional distribution, depth was never the constraint** and the honest next move is at
+the generator, not at the mutation operator.
+
+### A second live defect: evolved render expressions are dead on arrival
+
+`genome.rend` gets its mutations from the same generator:
+
+```js
+if(Math.random()<0.003){ genome.rend[ri]={expression:uaGenExpression(),compiled:null,failed:false}; }
+```
+
+But the two channels do not share a vocabulary:
+
+- atom leaves: `a b u c d m s nx ny t nb rl rd` (`uaCompile` binds all 13)
+- rend params: `t0 t1 t2 t3 amp phase col` (`rendCompile` binds these 7)
+
+**The intersection is empty.** Any generated rend expression containing a variable throws
+`ReferenceError` on first call and is flagged `failed` forever. Only the pure-constant 25% survive — so
+**75% of rend mutations are dead on arrival**, and the 25% that live are constants, which is a palette
+that has stopped responding to the particle.
+
+The gen104 world shows exactly this. Two of its four rend slots still hold the hand-written seeds
+(`(Math.atan2(t1,t3)/Math.PI*180+180)`, 5 operators). The two that mutation has replaced are
+`(rd)*(0.99)` — already flagged **FAILED** — and `(rl)/(a)`, which references two atom-only variables and
+will fail the moment its slot is called. **In the one place in the live data where hand-authored and
+evolved expressions sit side by side, the evolved ones are flatter, shorter, and broken.**
+
+Both facts have the same root: one generator, `uaMaxDepth` frozen at 1, wired into a channel whose
+compiler binds different names.
