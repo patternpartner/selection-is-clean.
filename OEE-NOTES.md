@@ -8271,3 +8271,39 @@ about **whether the artwork is better with them on** — that is a different que
 component doing what it says", and it is the one every arm this session failed to answer. `FLOW_UNITS`
 has the strongest case for defaulting ON, because a sensor that is positive in 332 of 332 windows is not
 a design choice anyone made.
+
+### The provenance audit — the retraction confirmed without using the probe at all
+
+Seven seeds x 24,000 ticks, logging every expression at the three sites that put one into a bank and the
+one site that takes one out, then classifying the **raw logged strings in plain node** — outside any
+template literal, so the escaping trap cannot apply.
+
+| | |
+|---|---|
+| atoms **born** (`uaGenExpression` -> `genome.userAtoms.push`) | 151 |
+| of those, constant-only | **34 = 22.5%** — generator predicts 25.0%, **z = -0.70** |
+| atoms **culled** across all seven runs | **1** (non-constant) |
+| deep-grammar markers among all 151 born expressions | **0** |
+| births minus culls | 150 |
+| surviving bank total | **150 — exact match** |
+
+**`births - culls == survivors` exactly**, so nothing else adds to or removes from the global bank, and
+the surviving bank is therefore 34/150 = 22.7% constant. That is the generator rate. The corrected #96
+claim holds in both regimes, established this time from raw strings rather than from any classifier of
+mine.
+
+The audit also confirms the two eliminations independently: **one cull in seven 24,000-tick runs**, which
+is the arithmetic prediction of 0.5-1.0 per run, and it removed a non-constant atom. And **0 deep-grammar
+markers in the birth stream itself** — direct evidence that `uaMaxDepth=1` gates the generator, not just
+that deep atoms fail to survive.
+
+Incidentally measured: 151 germline seedings and **3,552 meme transfers** into *particle* genomes over
+the seven runs. Those never touch `genome.userAtoms`, which is why the identity above is exact — but it
+means there is substantial atom traffic between particle genomes in a headless run with no peers at all,
+a channel I have never measured.
+
+**And the audit caught the probe still lying.** These runs launched before I fixed the classifier, so
+their `intGenes.atomsConst` reported 20/150 = 13.3% — matching the *broken* rule's 10.6% prediction
+(z = 1.10) while the raw strings said 22.5%. A fresh run on the fixed build now agrees with the raw count
+exactly (4 born, 0 culled, 2 constant by both routes). The instrument is repaired and verified against
+ground truth rather than against itself.
