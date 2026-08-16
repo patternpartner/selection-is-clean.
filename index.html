@@ -86,7 +86,13 @@ let __SELF_PREDICT=false; // resolved after the LIVE registry; SELF_PREDICT=1 en
 // and then the newest/most-executed thing leaves it anyway — selection with no propagation.
 // GRIP_SEED=1 makes both routes prefer the highest-grip atom, so what the filter selects is what
 // spreads. Ships DORMANT.
+const SELF_OBS_SCALE=50; // #95: births/window ~1333 -> ~27, inside tanh(x/20)'s informative range
+let __ABSTAIN_FREE=true; // #95: an abstaining atom is not charged a failed prediction. ABSTAIN_FREE=0 = prior behaviour.
 let __GRIP_SEED=false;
+let __INT_GENE_STEP=false; // #96: integer genes take a real step when their mutation fires (see intMaybe). Default OFF pending the arm.
+let __REND_VOCAB=false;   // #96: rend mutations draw from REND_VARS instead of the atom vocabulary. Default OFF pending the arm.
+let __FLOW_UNITS=false;   // #97: deathRate is accumulated over the same 60-tick window as birthRate. Default OFF pending the arm.
+let __USE_PROTECT=false;  // #101: execution rank earns protection from the germline overwrite, weighted by genome.atomUseProtect. Default ON; the GENE seeds at 0 so behaviour is unchanged until selection moves it.
 // Highest alienGrip among a genome's BOUND atoms, tie-broken by uses so a bank with no scored atom
 // behaves exactly as before. Returns -1 if there is nothing bound.
 // Returns -1 unless some bound atom has ACTUAL grip (>= ALIEN_GRIP_MIN_ATTEMPTS attempts and a non-zero
@@ -443,6 +449,8 @@ const UA_DEPTH_CAP=7; // LEAP 16 (#54): 4 -> 7, deeper authored expressions; com
 // optional func wrapper) — byte-for-byte the original term. depth>0 → may instead branch into a
 // parenthesised binary sub-expression, recursing with a smaller budget. The budget comes from the
 // genome (uaMaxDepth), so HOW deep the system thinks is itself something it evolves.
+let __uaVarPool=null; // #96: temporary leaf-vocabulary override, see uaGenTerm / rendGenExpression
+let __uaNoCall=false;  // #96: suppress the f(...) composition branch for channels that do not bind f
 function uaGenTerm(depth){
   depth=depth|0;
   if(depth>0){
@@ -463,10 +471,15 @@ function uaGenTerm(depth){
       const yes=uaGenTerm(depth-1),no=uaGenTerm(depth-1);
       return "((("+c1+")"+cmp+"("+c2+"))?("+yes+"):("+no+"))";
     }
-    if(roll<0.72){
+    if(roll<0.72&&!__uaNoCall){
       // UNLOCKED #10 — COMPOSITION. Call ANOTHER authored atom by index: f(idx,a,b). Primitives
       // build on primitives (subroutines / a self-grown function library). Recursion is bounded by
       // uaFuel in uaCall, so a cycle of atoms calling each other can't freeze the tab.
+      // #96: `f` is bound by uaCompile ONLY. A foreign channel (rend) that emits f(...) produces a
+      // guaranteed ReferenceError, so callers that swap the vocabulary suppress this branch too.
+      // Measured: with the rend vocabulary but composition still on, survival at depth 3 is 55.7%;
+      // suppressing it as well takes it to ~99%. The bug is only reachable once depth > 1 is, which
+      // is exactly what INT_GENE_STEP unlocks — so it gets fixed in the same change, not after.
       return "f("+uaGenTerm(depth-1)+","+uaGenTerm(depth-1)+","+uaGenTerm(depth-1)+")";
     }
     if(uaRich()&&roll<0.82){
@@ -476,7 +489,10 @@ function uaGenTerm(depth){
     }
   }
   const rich=uaRich();
-  const vars=rich?(uaForage()?USER_VARS.concat(USER_WORLD_VARS,USER_FORAGE_VARS):USER_VARS.concat(USER_WORLD_VARS)):USER_VARS;   // EYES (+FORAGE) expand the leaf pool
+  // #96: __uaVarPool lets a CALLER swap the leaf vocabulary for the duration of one generation.
+  // The atom channel leaves it null and behaves exactly as before; the rend channel sets it, because
+  // rendCompile binds a completely different parameter list (see rendGenExpression).
+  const vars=__uaVarPool||(rich?(uaForage()?USER_VARS.concat(USER_WORLD_VARS,USER_FORAGE_VARS):USER_VARS.concat(USER_WORLD_VARS)):USER_VARS);   // EYES (+FORAGE) expand the leaf pool
   const funcs=rich?USER_FUNCS_RICH:USER_FUNCS;                   // + round (quantize)
   const useFunc=Math.random()<0.35;
   const val=Math.random()<0.5
@@ -521,6 +537,31 @@ const REND_DEFAULTS=[
 ];
 function defaultRend(){
   return REND_DEFAULTS.map(e=>({expression:e,compiled:null,failed:false}));
+}
+// #96 — the rend channel's own vocabulary. MEASURED DEFECT: rend mutations were drawn from
+// uaGenExpression(), whose leaves are the ATOM parameter names (a b u c d m s nx ny t nb rl rd),
+// while rendCompile binds (t0 t1 t2 t3 amp phase col). The intersection is EMPTY, so any generated
+// rend expression containing a variable throws ReferenceError on first call and is flagged failed
+// forever. Only the pure-constant 25% survive — a palette that has stopped responding to the particle.
+// Live evidence (gen104 export): both mutation-replaced rend slots reference atom-only variables;
+// one is already flagged FAILED, the other (`(rl)/(a)`) fails the moment its slot is called. The two
+// untouched slots still hold the hand-written 5-operator seeds.
+const REND_VARS=["t0","t1","t2","t3","amp","phase","col"];
+function rendGenExpression(){
+  if(!__REND_VOCAB) return uaGenExpression();
+  // Two different things were bundled in the first version of this function, and only one of them
+  // is a choice.
+  //   FACT: rendCompile binds (t0..t3, amp, phase, col) and does NOT bind `f`. An expression naming
+  //         `f` is a guaranteed ReferenceError in this scope. Suppressing it is not a ceiling on what
+  //         the channel may mean, it is the channel's scope. Not a gene — making it one would only
+  //         let a lineage evolve the right to emit code that cannot run.
+  //   CEILING: the depth. The first version borrowed genome.uaMaxDepth, so the colour language's
+  //         complexity was chained to the atom language's. That was mine, and it is now
+  //         genome.rendMaxDepth — the render channel evolves its own expressive depth.
+  const pv=__uaVarPool, pc=__uaNoCall, pd=genome.uaMaxDepth;
+  __uaVarPool=REND_VARS; __uaNoCall=true;
+  genome.uaMaxDepth=__cl(Math.round(finiteOr(genome.rendMaxDepth,1)),1,UA_DEPTH_CAP);
+  try{ return uaGenExpression(); } finally{ __uaVarPool=pv; __uaNoCall=pc; genome.uaMaxDepth=pd; }
 }
 function rendCompile(atom){
   if(atom.compiled||atom.failed)return;
@@ -5699,6 +5740,12 @@ let genome={
   uaMaxDepth:1,         // UNLOCKED #7b: nesting depth of self-authored atom expressions. 1 = the
                         // original grammar exactly (two terms, one binary op). Higher lets the
                         // system compose structurally richer primitives. Bounded by UA_DEPTH_CAP.
+  // #97: rendMaxDepth and intStepBias are DELIBERATELY not declared here. mutateChildGenome does
+  // `for(const k in g)` and draws Math.random() per numeric key on every birth, so declaring a gene
+  // shifts the RNG stream for the whole run whether or not anything reads it — which would destroy the
+  // exact-revert control. They are created lazily by mutateGenome under their own knob instead, and
+  // every reader supplies the default (rendMaxDepth->1, intStepBias->0). Once created they are ordinary
+  // heritable genes and the child path mutates them like any other.
   somaRepair:0.0,       // LEAP 23 (#56): heritable investment in maintenance. Amp spent here is amp not
                         // spent on offspring — the trade-off is the point. With it, live-fast/die-young
                         // and slow/long become distinct viable strategies rather than one dominating, and
@@ -6314,6 +6361,16 @@ const scaffoldField=new Float32Array(FIELD_W*FIELD_H); // morphogen scaffold lay
 const pEpigen=new Uint8Array(CAP);
 
 let deathsThisTick=0,birthsThisTick=0;
+// #97 — deathsThisWindow. MEASURED DEFECT: deathsThisTick is cleared at the top of applyEntropy on EVERY
+// tick, but birthsThisTick is cleared only inside the tick%60 self-model block, so it accumulates 60 ticks
+// of births. The self-model reads both and multiplies both by 60, which inflates birthRate 60x relative to
+// deathRate. Measured live in all eight exports (errors.pop -767..-1232 against populations of 100-280)
+// and reproduced headless (alive 213, predicted.pop 1115, birthRate 15.43, deathRate 0.375).
+// The naive repair — divide birthRate by 60 — does NOT work, and the audit is why: deathsThisTick at the
+// sampled tick is a one-tick Poisson draw with mean 0.21, so it is almost always 0 or 1, and scaling it by
+// 60 amplifies sampling noise rather than estimating a rate. Correlation with true net flow only moves
+// 0.165 -> 0.174 that way. Deaths have to be accumulated over the SAME window as births.
+let deathsThisWindow=0;
 let NprevTick=0; // Pe87: population from last tick, for POPULATION_RATE (op71) computation
 let field2TotalPrev=0; // Pe101: field2Total from last tick, for FIELD2_ENERGY_RATE (op85)
 // BIRTH QUEUE — births deferred to after interaction loop to avoid modifying arrays mid-iteration
@@ -6418,6 +6475,9 @@ function encodeGenome(){
     vm:genome.vmMaxInstructions,
     mtl:+(genome.mutationTail||0).toFixed(4), // UNLOCKED #6 search-distribution shape
     uad:genome.uaMaxDepth|0,                  // UNLOCKED #7b atom recursion depth
+    rmd:genome.rendMaxDepth===undefined?undefined:(genome.rendMaxDepth|0),                // #97: render-channel depth, its own gene (omitted if never created)
+    isb:genome.intStepBias===undefined?undefined:+(genome.intStepBias).toFixed(4),        // #97: integer-step forcing bias
+    aup:genome.atomUseProtect===undefined?undefined:+(genome.atomUseProtect).toFixed(4), // #101: use-rank overwrite protection
     tmr:+(genome.typeMutRate||0.02).toFixed(4), // UNLOCKED #7a caste-innovation rate
     td: genome.tendDims|0,
     oe:[genome.opnovStrength,genome.nicheBuildRate,genome.rqRate,genome.dimsSatThresh,genome.novStrength].map(v=>+(+v).toPrecision(4)), // #35 evolvable open-endedness engine dials (+ #39 novStrength at [4])
@@ -6690,6 +6750,9 @@ function decodeGenome(data){
     if(g.vm)genome.vmMaxInstructions=g.vm;
     if(typeof g.mtl==='number')genome.mutationTail=g.mtl;  // UNLOCKED #6 (absent in pre-unlock saves → sanitize defaults to 0)
     if(typeof g.uad==='number')genome.uaMaxDepth=g.uad|0;  // UNLOCKED #7b
+    if(typeof g.rmd==='number')genome.rendMaxDepth=g.rmd|0;      // #97
+    if(typeof g.isb==='number')genome.intStepBias=+g.isb;        // #97
+    if(typeof g.aup==='number')genome.atomUseProtect=+g.aup;     // #101
     if(typeof g.tmr==='number')genome.typeMutRate=g.tmr;   // UNLOCKED #7a
     if(g.ua)genome.userAtoms=g.ua.map(a=>({expression:a.expression,compiled:null,failed:!!a.failed,uses:a.uses|0,age:a.age|0,alienHits:a.alienHits|0,alienAttempts:a.alienAttempts|0}));
     if(typeof g.td==='number') genome.tendDims=__cl(g.td|0,2,DIMS_MAX);
@@ -6896,6 +6959,9 @@ function sanitizeGenome(){
   genome.vmGain=(Number.isFinite(genome.vmGain)&&genome.vmGain>0)?genome.vmGain:1;
   genome.mutationTail=__cl(finiteOr(genome.mutationTail,0),0,1);                          // UNLOCKED #6 (pre-unlock saves → 0 = old behavior)
   genome.uaMaxDepth=__cl(Math.round(finiteOr(genome.uaMaxDepth,1)),1,UA_DEPTH_CAP);        // UNLOCKED #7b
+  if(genome.rendMaxDepth!==undefined)genome.rendMaxDepth=__cl(Math.round(finiteOr(genome.rendMaxDepth,1)),1,UA_DEPTH_CAP); // #97: clamp if present, never create
+  if(genome.intStepBias!==undefined) genome.intStepBias =__cl(finiteOr(genome.intStepBias,0),0,1);                            // #97
+  if(genome.atomUseProtect!==undefined)genome.atomUseProtect=__cl(finiteOr(genome.atomUseProtect,0),0,1);       // #101
   genome.typeMutRate=__cl(finiteOr(genome.typeMutRate,0.02),0,1);                          // UNLOCKED #7a
   genome.fitnessSensors=Array.isArray(genome.fitnessSensors)?genome.fitnessSensors.filter(s=>s&&Array.isArray(s.program)).map(s=>({program:s.program.map(cleanInstruction),weight:finiteOr(s.weight,0),realWeight:finiteOr(s.realWeight,0),creditTrace:finiteOr(s.creditTrace,0),lastEmit:finiteOr(s.lastEmit,0),prevEmit:finiteOr(s.prevEmit,0)})):[{program:[[2,5,6,1.0],[4,6,0,1.0]],weight:0.1,realWeight:0,creditTrace:0,lastEmit:0,prevEmit:0}];
   if(genome.fitnessSensors.length===0)genome.fitnessSensors=[{program:[[2,5,6,1.0],[4,6,0,1.0]],weight:0.1,realWeight:0,creditTrace:0,lastEmit:0,prevEmit:0}];
@@ -11697,6 +11763,42 @@ function mutateGenome(){
     if(!isFinite(next))return val;
     return next;
   }
+  // #96 — integer-gene step. MEASURED DEFECT, not a tuning preference.
+  // Genes stored as integers are written as Math.round(maybe(v,...,magnitude)). The uniform branch
+  // of tailDraw() returns (rand-0.5), so a fired mutation moves the value by at most
+  // magnitude*scale/2. Whenever that is < 0.5 the round() swallows the whole step and the gene
+  // CANNOT change — not rarely, never. Seven of the fourteen rounded genes are in that regime at
+  // the default scale=1: clusterMinSize(0.5) motifMemorySize(1) shadowScenarios(0.8)
+  // vmMaxInstructions(1) uaMaxDepth(0.6) hgtMax(0.5) reflexDepth(0.5) clusterReflexAge(1).
+  // Only the Cauchy tail branch can move them, and mutationTail initialises to 0.
+  // Confirmed against 8 live-artwork exports (gen 1..104): every gene with magnitude>=2 varies
+  // between worlds by generation 1; every gene in the frozen set is bit-identical across the seven
+  // low-tail worlds, and the only deviations anywhere are in the one world that evolved
+  // mutationTail=0.08. uaMaxDepth reads 1 in all eight — so uaGenExpression()'s recursive grammar
+  // (branching, composition, atom-calls-atom) has never been reachable in a live run, and all 163
+  // live atoms are flat one-operator expressions, 24% of them pure constants.
+  // The fix: when the mutation fires, quantise the step away from zero so it is always a real move.
+  // magnitude still sets how FAR large draws go; it no longer gates whether any draw counts.
+  function intMaybe(val,magnitude){
+    if(!__INT_GENE_STEP)return maybe(val,0,0,magnitude);
+    if(Math.random()>rate)return val;
+    const step=tailDraw()*magnitude*scale;
+    if(!isFinite(step))return val;
+    // A minimum move of 1 is SUBSTRATE, not taste: an integer that moves by less than 1 does not move.
+    // But my first version forced |move|>=1 on every fired mutation, which silently inflates the
+    // effective step for these genes above whatever `magnitude` says — an authored constant sitting
+    // where this system puts a gene everywhere else.
+    // The unbiased quantiser is STOCHASTIC ROUNDING: a step of 0.3 moves by 1 with probability 0.3,
+    // so E[move] == step and `magnitude` means what it says. genome.intStepBias then interpolates
+    // toward the forced version, so a lineage that benefits from coarser integer search can buy it.
+    // 0 = pure stochastic rounding, 1 = always move (the behaviour I hard-coded).
+    const bias=__cl(finiteOr(genome.intStepBias,0),0,1);
+    const mag=Math.abs(step), sgn=step>=0?1:-1;
+    const floorPart=Math.floor(mag), frac=mag-floorPart;
+    let q=floorPart+(Math.random()<frac?1:0);
+    if(q===0&&Math.random()<bias)q=1;          // the evolvable forcing, on top of the unbiased draw
+    return q===0?val:val+sgn*q;
+  }
   // Gradient-biased version for physics parameters with a known shadow-nudge direction.
   // nudgeDir: ±1 direction from lastShadowNudgeDir, 0 = no prior signal.
   function gradMaybe(val,min,max,magnitude,nudgeDir){
@@ -12040,7 +12142,7 @@ function mutateGenome(){
 
   // LAYER 2: Perception mutations
   genome.clusterBondThresh=maybe(genome.clusterBondThresh,0.05,0.5,0.03);
-  genome.clusterMinSize=Math.max(1,Math.round(maybe(genome.clusterMinSize,2,8,0.5)));
+  genome.clusterMinSize=Math.max(1,Math.round(intMaybe(genome.clusterMinSize,0.5)));           // #96 frozen-gene set
   genome.ghostDecay=maybe(genome.ghostDecay,0.98,0.9999,0.003);
   genome.ghostAmpDrip=maybe(genome.ghostAmpDrip,0.00005,0.002,0.0002);
 
@@ -12318,12 +12420,12 @@ function mutateGenome(){
   genome.shadowHorizon=__cl(Math.round(maybe(genome.shadowHorizon,10,120,8)),2,500);
   genome.perturbScale=maybe(genome.perturbScale,0.2,3.0,0.2);
   genome.extinctionThresh=Math.max(1,Math.round(maybe(genome.extinctionThresh,2,20,2)));
-  genome.motifMemorySize=__cl(Math.round(maybe(genome.motifMemorySize,2,10,1)),1,40);
+  genome.motifMemorySize=__cl(Math.round(intMaybe(genome.motifMemorySize,1)),1,40);            // #96 frozen-gene set
   genome.culturalBias=maybe(genome.culturalBias,0.05,0.6,0.04);
 
   // Pe27 Layer 17: imagination bank cap and churn rate. The system decides how many
   // counterfactual futures to maintain and how aggressively to refresh them.
-  genome.shadowScenarios=__cl(Math.round(maybe(genome.shadowScenarios,3,SHADOW_SCENARIOS_MAX,0.8)),3,SHADOW_SCENARIOS_MAX);
+  genome.shadowScenarios=__cl(Math.round(intMaybe(genome.shadowScenarios,0.8)),3,SHADOW_SCENARIOS_MAX); // #96 frozen-gene set
   genome.shadowBankChurn=__cl(metaMaybe(genome.shadowBankChurn,0.06,'shadowBankChurn'),0,1);
   // Pe30b: explore rate evolvable, bounded [0.1,0.9] — see refill-loop note for why
   // the bounds are tighter than the [0,1] of other freed params.
@@ -12353,13 +12455,20 @@ function mutateGenome(){
     const _ng=genome.vmGain*Math.exp(tailDraw()*scale*0.5);
     if(Number.isFinite(_ng)&&_ng>1e-9)genome.vmGain=_ng;
   }
-  genome.vmMaxInstructions=__cl(Math.round(maybe(genome.vmMaxInstructions,6,20,1)),1,96); // UNLOCKED #7b: ceiling 48→96
-  genome.uaMaxDepth=__cl(Math.round(maybe(genome.uaMaxDepth||1,1,UA_DEPTH_CAP,0.6)),1,UA_DEPTH_CAP); // UNLOCKED #7b: the system evolves how deeply it composes its own primitives
+  genome.vmMaxInstructions=__cl(Math.round(intMaybe(genome.vmMaxInstructions,1)),1,96); // UNLOCKED #7b: ceiling 48→96 // #96 frozen-gene set
+  genome.uaMaxDepth=__cl(Math.round(intMaybe(genome.uaMaxDepth||1,0.6)),1,UA_DEPTH_CAP);
+  // Both new genes are read ONLY when their knob is on, so mutating them with the knob off would be
+  // pure RNG-stream pollution — and it would break the exact-revert control, since every draw shifts
+  // the shared stream (the same honesty the vmGain note above states). Gated, so forced-off stays
+  // bit-identical to the pre-#96 build while the default path carries live genes.
+  if(__REND_VOCAB)   genome.rendMaxDepth=__cl(Math.round(intMaybe(genome.rendMaxDepth||1,0.6)),1,UA_DEPTH_CAP); // #97: the render channel's own depth
+  if(__INT_GENE_STEP)genome.intStepBias=__cl(maybe(finiteOr(genome.intStepBias,0),0,1,0.15),0,1);               // #97: the forcing bias is itself evolved // UNLOCKED #7b: the system evolves how deeply it composes its own primitives // #96: with the old operator this line could never return anything but 1
+  if(__USE_PROTECT)  genome.atomUseProtect=__cl(maybe(finiteOr(genome.atomUseProtect,0),0,1,0.15),0,1);            // #101: how much execution rank protects an atom — the system's call, not mine
   genome.metabolicCost=__cl(maybe(genome.metabolicCost,0.000002,0.0002,0.00002),0.000002,0.0002); // #2 energy economy: no free lunch — cost stays positive (the negative-drift hole that euthanised selection is closed)
 
   // HGT parameter evolution
   genome.hgtRate=maybe(genome.hgtRate,0.01,0.5,0.04);
-  genome.hgtMax=__cl(Math.round(maybe(genome.hgtMax,1,4,0.5)),1,12);
+  genome.hgtMax=__cl(Math.round(intMaybe(genome.hgtMax,0.5)),1,12);                            // #96 frozen-gene set
   genome.hgtSpliceNoise=maybe(genome.hgtSpliceNoise,0.05,0.5,0.04);
 
   // Plasmid parameter evolution
@@ -12401,10 +12510,10 @@ function mutateGenome(){
   // reflexInfluence can go to 0 — killing the feedback loop — if it's not adaptive.
   // Or it can grow — deepening self-reference — if the system benefits.
   genome.reflexSampleRate=maybe(genome.reflexSampleRate,0.02,0.5,0.04);
-  genome.reflexDepth=__cl(Math.round(maybe(genome.reflexDepth,2,8,0.5)),1,REFLEX_DEPTH);
+  genome.reflexDepth=__cl(Math.round(intMaybe(genome.reflexDepth,0.5)),1,REFLEX_DEPTH);        // #96 frozen-gene set
   genome.reflexInfluence=maybe(genome.reflexInfluence,0,1.5,0.06);
   genome.reflexDecay=maybe(genome.reflexDecay,0.7,0.99,0.03);
-  genome.clusterReflexAge=Math.max(1,Math.round(maybe(genome.clusterReflexAge,2,15,1)));
+  genome.clusterReflexAge=Math.max(1,Math.round(intMaybe(genome.clusterReflexAge,1)));         // #96 frozen-gene set
   genome.clusterReflexWeight=maybe(genome.clusterReflexWeight,0,0.8,0.05);
   // Pe24 Layer 12: cluster genome self-read strength evolves alongside other reflex params
   if(genome.clusterGenomeReadStrength===undefined)genome.clusterGenomeReadStrength=0.05;
@@ -12489,9 +12598,35 @@ function mutateGenome(){
   // to its accuracy. At grip=0 (untested, unbound, or bad) this is byte-for-byte the old unconditional
   // rate*0.3. Gated __ALIEN_SELECT, default on, reversible.
   const _alienSelect=(typeof globalThis==='undefined')||((globalThis.__ALIEN_SELECT??1)|0)!==0;
+  // #101 — USE EARNS PROTECTION TOO.
+  // The overwrite above had exactly one brake, (1-grip), and grip is alienGrip: the predictive channel
+  // #95 measured at chance and #97 confirmed sits on the independence null in the live artwork. So the
+  // only thing that could save an atom from erasure was a score with no information in it.
+  // Meanwhile `uses` protects nothing — while #99 showed uses is emphatically NOT a dead counter: the
+  // meme-transfer channel sorts on it hard (median chosen atom 4,562 executions, max 138,685, zero
+  // zero-use picks in 3,125 transfers). The system already has a working use-based discriminator in one
+  // channel and the germline overwrite ignored it, so an atom executed 138,685 times carried the same
+  // per-cycle death sentence as one that had never run.
+  //
+  // HOW MUCH use should protect is NOT mine to fix. genome.atomUseProtect decides, seeded at 0 — which
+  // is byte-for-byte the prior behaviour — and evolves from there. Honest asymmetry, recorded rather
+  // than hidden: 0 is its own lower clamp, so it can only move up from the seed until it leaves the
+  // boundary (the same effect measured on intStepBias in #98, which moved in only 3 of 8 seeds).
+  //
+  // The strength term is RANK, not raw uses: the fraction of the bank strictly below this atom. That is
+  // scale-free by construction — no magic constant to go stale, and immune to the 138,685-use outlier
+  // that would wreck any fixed normaliser. Picking a scale by fiat is exactly what broke my #92
+  // observable (tanh(1333/20) saturated to 1.0 and destroyed the signal), so this one has no scale.
+  const _useProtect=__USE_PROTECT?__cl(finiteOr(genome.atomUseProtect,0),0,1):0;
+  let _uSorted=null;
+  if(_useProtect>0){ _uSorted=genome.userAtoms.map(a=>a.uses|0).sort((x,y)=>x-y); }
   for(const ua of genome.userAtoms){
     const grip=_alienSelect?alienGrip(ua):0;
-    if(Math.random()<rate*0.3*(1-grip)){
+    let _rank=0;
+    if(_uSorted&&_uSorted.length>1){ const u=ua.uses|0; let below=0;
+      for(const v of _uSorted){ if(v<u)below++; else break; }
+      _rank=below/(_uSorted.length-1); }
+    if(Math.random()<rate*0.3*(1-grip)*(1-_useProtect*_rank)){
       ua.expression=uaGenExpression();
       ua.compiled=null;
       ua.failed=false;
@@ -12736,7 +12871,7 @@ function mutateGenome(){
   }
   if(Math.random()<0.003){
     const ri=Math.floor(Math.random()*4);
-    genome.rend[ri]={expression:uaGenExpression(),compiled:null,failed:false};
+    genome.rend[ri]={expression:rendGenExpression(),compiled:null,failed:false}; // #96: rend has its own vocabulary
   }
   if(Math.random()<0.004){ // mutate the draw-program: add / drop / retype a primitive (neutral drift, rides selection like rend)
     const d=genome.draw||(genome.draw=defaultDraw()); const roll=Math.random();
@@ -13433,6 +13568,7 @@ function addBits(x,y,count,r,g,b,energy){for(let k=0;k<count;k++){if(bN>=MAX_BIT
 // ═══════════════════════════════════════
 function applyEntropy(){
   const deaths=[];
+  deathsThisWindow+=deathsThisTick;   // #97: carry the tick's deaths into the 60-tick window before clearing
   deathsThisTick=0;
   const densityCost=(genome.densityCostK||0.00003)*Math.max(0,N-(genome.densityFloor??100));
   // LEAP 12 + 14 (#53) — one local pass over the spatial grid does both jobs, because both are about
@@ -13692,6 +13828,21 @@ function runAlienPrediction(){
       uaCtxC=0;uaCtxD=0;uaCtxM=0;uaCtxNx=0;uaCtxNy=0;uaCtxT=Math.sin(tick*0.0011);uaCtxNb=0;uaCtxRl=0;uaCtxRd=0;
       const out=uaCall(atom, Math.tanh((baseline||0)/20), Math.tanh((recentPartial||0)/20));
       const direction=out>0.05?1:(out<-0.05?-1:0);
+      // ═══ #95 ABSTENTION IS NOT A FAILED PREDICTION ═════════════════════════════════════════════
+      // direction is THREE-valued: an atom whose output sits in [-0.05,+0.05] predicts 0, "no change".
+      // The outcome it is scored against is Math.sign(prevCount - baseline), which is essentially never
+      // exactly 0 — so a 0-prediction is STRUCTURALLY UNHITTABLE, and the scorer still charges it as an
+      // attempt on both genome.alienPredict and the atom's own alienAttempts. Measured (#94 partial,
+      // 16 runs): pooled skill 233/615 = 37.9%, z=-6.01 BELOW chance — consistent with ~24% of
+      // predictions being unhittable abstentions rather than with any anti-correlation.
+      // Consequence: alienGrip selected for OUTPUT MAGNITUDE (atoms loud enough to clear the dead zone),
+      // not for predictive skill. That is true of the original peer-scored design too, not only of the
+      // endogenous target added in #92.
+      // Fix: an abstaining atom simply does not place a bet. No pending prediction, no attempt charged,
+      // no miss recorded. Committed predictions are scored exactly as before.
+      // Gated ABSTAIN_FREE (default ON — this is a scoring-correctness fix, not a new mechanism;
+      // ABSTAIN_FREE=0 reproduces the prior behaviour for the A/B).
+      if(__ABSTAIN_FREE && direction===0) continue;
       pendingAlienPredictions.set(tab,{atomIdx:candidateAI,expression:atom.expression,direction,baseline,madeAtTick:tick,windowStartAtPrediction:po.windowStart});
     }
   }
@@ -19674,7 +19825,12 @@ __REACH_MAIN=(typeof globalThis!=='undefined')&&((globalThis.__REACH_MAIN|0)===1
 __REACH_NOK=(typeof globalThis!=='undefined')&&((globalThis.__REACH_NOK|0)===1); // #90 arm: default OFF
 __SELF_PREDICT=(typeof globalThis!=='undefined')&&((globalThis.__SELF_PREDICT|0)===1); // #92: default OFF
 __GRIP_SEED=(typeof globalThis!=='undefined')&&((globalThis.__GRIP_SEED|0)===1); // #93: default OFF
+__ABSTAIN_FREE=(typeof globalThis==='undefined')||((globalThis.__ABSTAIN_FREE??1)|0)!==0; // #95: default ON
 __CHILD_SIGN_FLOOR=(typeof globalThis==='undefined')||((globalThis.__CHILD_SIGN_FLOOR??1)|0)!==0; // #85 sign floors: default ON
+__INT_GENE_STEP=(typeof globalThis==='undefined')||((globalThis.__INT_GENE_STEP??1)|0)!==0; // #96: default ON. This is a REPAIR, not a treatment — the off-path exists as a CONTROL (and as the revert), not as a gate. Force off with INT_GENE_STEP=0
+__REND_VOCAB=(typeof globalThis==='undefined')||((globalThis.__REND_VOCAB??1)|0)!==0; // #96: default ON. This is a REPAIR, not a treatment — the off-path exists as a CONTROL (and as the revert), not as a gate. Force off with REND_VOCAB=0
+__FLOW_UNITS=(typeof globalThis==='undefined')||((globalThis.__FLOW_UNITS??1)|0)!==0; // #97: default ON. This is a REPAIR, not a treatment — the off-path exists as a CONTROL (and as the revert), not as a gate. Force off with FLOW_UNITS=0
+__USE_PROTECT=(typeof globalThis==='undefined')||((globalThis.__USE_PROTECT??1)|0)!==0; // #101: default ON — the capability exists; the gene decides whether it is used. Force off with USE_PROTECT=0
 __FORAGE_ON=(typeof globalThis==='undefined')||((globalThis.__FORAGE_EYES??1)|0)!==0; // resolve FORAGE once; gates the resource-sense computation in uaSetEyes
 __DECIDE_ON=(typeof globalThis==='undefined')||((globalThis.__DECIDE??1)|0)!==0; // resolve DECISION GAIN once; gates confidence accrual + commitment scaling
 __DECIDE_REAL=(typeof globalThis==='undefined')||((globalThis.__DECIDE_REAL??1)|0)!==0; // resolve DECIDE-FROM-REAL once; gates real-winner physics adoption
@@ -20434,7 +20590,7 @@ function loop(){
     const _prevF2P142=selfModel.prevField2Peak!==undefined?selfModel.prevField2Peak:selfModel.field2Peak;
     selfModel.field2PeakMomentum=(selfModel.field2PeakMomentum||0)*0.8+(selfModel.field2Peak-_prevF2P142)*0.2;
     selfModel.prevField2Peak=selfModel.field2Peak;
-    selfModel.deathRate=selfModel.deathRate*0.9+deathsThisTick*0.1;
+    selfModel.deathRate=selfModel.deathRate*0.9+(__FLOW_UNITS?(deathsThisWindow+deathsThisTick):deathsThisTick)*0.1; // #97: same window as births
     selfModel.birthRate=selfModel.birthRate*0.9+birthsThisTick*0.1;
     // Pe137 Layer 126: churn momentum — rate of change of ecological turnover.
     selfModel.churnRate=((selfModel.birthRate||0)+(selfModel.deathRate||0))/2;
@@ -20511,7 +20667,13 @@ function loop(){
       selfModel.errors.clusters=selfModel.errors.clusters*0.7+(selfModel.clusterCount-selfModel.predicted.clusters)*0.3;
       selfModel.errors.diversity=selfModel.errors.diversity*0.7+(selfModel.diversity-selfModel.predicted.diversity)*0.3;
     }
-    selfModel.predicted.pop=alive+selfModel.birthRate*60-selfModel.deathRate*60;
+    // #97: the *60 was correct only while both rates were per-tick. Under FLOW_UNITS both are
+    // accumulated over the same 60-tick window and the prediction horizon IS one window, so the
+    // multiplier is 1. Measured: with the *60 retained, errors.pop went from -521 to +93.7 — the
+    // predictor stopped overshooting by 500 and started undershooting by 100, because a residual
+    // net flow of -1.9 per window was still being amplified 60x.
+    const _flowH=__FLOW_UNITS?1:60;
+    selfModel.predicted.pop=alive+selfModel.birthRate*_flowH-selfModel.deathRate*_flowH;
     selfModel.predicted.coherence=selfModel.avgCoherence+(genome.entrainRate-0.015)*0.5;
     selfModel.predicted.clusters=selfModel.clusterCount+(selfModel.diversity>0.3?0.5:-0.3);
     selfModel.predicted.diversity=selfModel.diversity;
@@ -20690,9 +20852,17 @@ function loop(){
       if(!selfObservable) selfObservable={count:0,prevCount:0,windowStart:tick};
       if(tick-selfObservable.windowStart>=ALIEN_WINDOW){
         selfObservable.prevCount=selfObservable.count; selfObservable.count=0; selfObservable.windowStart=tick; }
-      selfObservable.count+=birthsThisTick;
+      // ═══ #95 SCALE. The atom is handed tanh(baseline/20) and tanh(recentPartial/20). That
+      // normalisation was written for the PEER observable — packet counts, tens per window — where tanh
+      // is informative. Raw births are ~1333 per ALIEN_WINDOW, and tanh(1333/20) === 1 EXACTLY, so both
+      // inputs saturated to 1.0 on every prediction and the atom received NO information: it emitted a
+      // constant, and a constant scored against a directionally-biased outcome lands BELOW chance.
+      // Measured before this fix: 233/615 = 37.9%, z=-6.01. That was my error in #92 — the endogenous
+      // target was correct in kind and wrong in scale.
+      // SELF_OBS_SCALE brings births into the same decade as packet counts so tanh can discriminate.
+      selfObservable.count+=birthsThisTick/SELF_OBS_SCALE;
     }
-    deathsThisTick=0;birthsThisTick=0;
+    deathsThisTick=0;birthsThisTick=0;deathsThisWindow=0; // #97: the death window closes with the birth window
   }
 
   if(tick%Math.max(1,(genome.cadenceExtinct|0)||90)===0&&tick>300){if(checkExtinction())return}

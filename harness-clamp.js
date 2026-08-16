@@ -62,7 +62,7 @@ globalThis.setTimeout=()=>0;globalThis.clearTimeout=()=>{};globalThis.setInterva
 // that cannot be turned off is not a control, so the plumbing goes in before any ablation claim does.
 // Same one-line form as harness-oee.js.
 if (process.env.COSMOS !== undefined) globalThis.__COSMOS = parseInt(process.env.COSMOS, 10);
-for (const kn of ['COSMOS_COST','COSMOS_CONTACT','COSMOS_MERGE','COSMOS_SENSE','COSMOS_AFFORD','ESCAPE_DEATH','ATOM_HERITABLE','MEME_TRANSFER','CHILD_SIGN_FLOOR','REACH_MAIN','REACH_NOK','SELF_PREDICT','ALIEN_SELECT','GRIP_SEED'])
+for (const kn of ['COSMOS_COST','COSMOS_CONTACT','COSMOS_MERGE','COSMOS_SENSE','COSMOS_AFFORD','ESCAPE_DEATH','ATOM_HERITABLE','MEME_TRANSFER','CHILD_SIGN_FLOOR','REACH_MAIN','REACH_NOK','SELF_PREDICT','ALIEN_SELECT','GRIP_SEED','ABSTAIN_FREE','INT_GENE_STEP','REND_VOCAB','FLOW_UNITS','USE_PROTECT'])
   if (process.env[kn] !== undefined) globalThis['__'+kn] = parseInt(process.env[kn], 10);
 let loopErrors=0,lastErr='';
 console.error=(...a)=>{const s=a.join(' ');if(/Loop error|Boot error|Watchdog/.test(s)){loopErrors++;lastErr=s.slice(0,160);}};
@@ -510,6 +510,41 @@ const driver=`
   globalThis.__deathLineages=function(){ try{ const o={};
     for(const k in __dLog){ const e=[]; for(const [l,n] of __dLog[k]) e.push([l,n]); o[k]=e; } return o;
   }catch(e){ return {error:String(e&&e.message||e)}; } };
+  // #96 probe: the eight integer genes whose uniform mutation step could not clear Math.round(),
+  // plus the shape of the atom bank they gate. Defined HERE, inside the driver, because genome is a
+  // lexical binding of the compiled module and is NOT on globalThis — the first version of this probe
+  // read globalThis.genome and silently returned null for every run.
+  // Read-only: no draws, no writes. The fingerprint control covers it.
+  globalThis.__intGenes=function(){ try{
+    const G=genome; if(!G) return null;
+    const ua=Array.isArray(G.userAtoms)?G.userAtoms:[];
+    // Counting +-*/ is WRONG here: a negative literal like (a)+(-0.19) carries a '-' that is not an
+    // operator, and at uaMaxDepth=1 that inflates the count to 2. Use the constructs uaGenTerm can
+    // ONLY emit on its depth>0 branches — ternary, atom-call f(), and the 2-arg HANDS functions.
+    // Their presence is proof that depth>1 ran; their absence is proof it did not.
+    const DEEP=/\\?|(^|[^A-Za-z0-9_.])f\\(|Math\\.(min|max|atan2|hypot)\\(/; // NOTE: doubled backslashes — this line lives inside a template literal, which eats single ones
+    const nparen=e=>{let n=0;for(let i=0;i<e.length;i++)if(e[i]==='(')n++;return n;};
+    // NOTE: doubled backslashes. This line lives inside a template literal, which eats single ones —
+    // \w is not a valid string escape and silently becomes a literal w, turning /Math\.\w+/ into
+    // /Math.w+/, which strips nothing. That exact slip produced the bogus "headless banks are depleted
+    // of constants at z=-4" reading in #96: only expressions with NO Math wrapper were counted.
+    const isConst=e=>!/[A-Za-z_]/.test(String(e).replace(/Math\\.\\w+/g,''));
+    const dh={};let deep=0;
+    for(const a of ua){const e=a.expression||'';const d=nparen(e);dh[d]=(dh[d]||0)+1;if(DEEP.test(e))deep++;}
+    return {gen:G.generation, tail:+(G.mutationTail||0), tendDims:G.tendDims,
+      rendMaxDepth:G.rendMaxDepth, intStepBias:+(G.intStepBias||0).toFixed(4),
+      atomUseProtect:+(G.atomUseProtect||0).toFixed(4),
+      uaMaxDepth:G.uaMaxDepth, vmMaxInstructions:G.vmMaxInstructions, shadowScenarios:G.shadowScenarios,
+      motifMemorySize:G.motifMemorySize, hgtMax:G.hgtMax, reflexDepth:G.reflexDepth,
+      clusterReflexAge:G.clusterReflexAge, clusterMinSize:G.clusterMinSize,
+      atoms:ua.length, atomsFailed:ua.filter(a=>a.failed).length,
+      atomsConst:ua.filter(a=>isConst(a.expression)).length,
+      atomsDeepGrammar:deep, parenHist:dh, maxLen:ua.reduce((s,a)=>Math.max(s,(a.expression||'').length),0),
+      usesTotal:ua.reduce((s,a)=>s+(a.uses|0),0),
+      usesConst:ua.filter(a=>isConst(a.expression)).reduce((s,a)=>s+(a.uses|0),0),
+      bound:Array.isArray(G.boundOpcodes)?G.boundOpcodes.length:0,
+      rend:(Array.isArray(G.rend)?G.rend.map(r=>({e:r.expression,f:!!r.failed})):null)};
+  }catch(e){return {err:String(e&&e.message||e).slice(0,120)};}};
   globalThis.__aliveN=function(){ try{ let a=0; for(let i=0;i<N;i++)if(palive[i])a++; return a; }catch(e){ return -1; } };
   globalThis.__kinds=function(){ try{ const b={}; for(let i=0;i<N;i++){ if(!palive[i])continue;
       const q=i*DIMS; let r=0; for(let d=0;d<3&&d<DIMS;d++){ let v=((tend[q+d]+1.2)/2.4*4)|0; v=v<0?0:v>3?3:v; r=r*4+v; } b[r]=1; }
@@ -545,6 +580,7 @@ console.log(JSON.stringify({
   // filename is one rename away from an arm swap that no later check could catch.
   atomSham:(process.env.ATOM_SHAM|0)===1, atomForce:(process.env.ATOM_FORCE!==undefined?Number(process.env.ATOM_FORCE):null),
   nfdOff:(process.env.NFD_OFF|0)===1,
+  intGenes:globalThis.__intGenes?globalThis.__intGenes():null,
   fingerprint, posRange:globalThis.__posRange(), escape:globalThis.__escape(), escSeries:globalThis.__escSeries||null, boundSeries:globalThis.__boundSeries||null, deathLineages:globalThis.__deathLineages?globalThis.__deathLineages():null, opcodes:globalThis.__opcodes?globalThis.__opcodes():null, memeDiag:globalThis.__memeDiag?globalThis.__memeDiag():null, mutProbe:globalThis.__mutProbe?globalThis.__mutProbe():null, aliasProbe:globalThis.__aliasProbe?globalThis.__aliasProbe():null,
   loopErrors, lastErr, driverErr:globalThis.__driverErr||0,
   alive:globalThis.__aliveN(), kinds:globalThis.__kinds(),

@@ -7397,3 +7397,1416 @@ population by seeding and horizontal transfer on the basis of that score.
 
 Every prior experiment in this file ran with links 2, 3 and 4 absent. **What #80–#91 measured was the
 output of an unfiltered generator with no path from filter to population — because there was no filter.**
+
+---
+
+## #95 — two defects in my own #92, and the filter turns out to have nothing to filter on
+
+#94 was killed at 16/90 when its diagnostic showed pooled prediction skill of **233/615 = 37.9%,
+z=-6.01 — significantly BELOW chance**. Measuring a filter that scores backwards is not worth 3.7 hours.
+Two defects, both introduced or exposed by #92.
+
+### Defect 1 — abstention was charged as a failed prediction (original, not mine)
+
+`direction` is THREE-valued: an atom outputting within [-0.05,+0.05] predicts 0, "no change". The outcome
+is `Math.sign(prevCount-baseline)`, essentially never exactly 0, so a 0-prediction is **structurally
+unhittable** — and the scorer charged it as an attempt anyway, on both `genome.alienPredict` and the
+atom's own `alienAttempts`. An atom that declines to commit was penalised for declining.
+
+`ABSTAIN_FREE` (default ON, a scoring-correctness fix) makes an abstaining atom place no bet at all.
+Measured effect: 54 -> 50 attempts, skill 42.6% -> 46.0% on one seed. **Real but small — abstentions were
+~7%, not the ~24% I predicted.** So this was not the main cause, and my stated hypothesis was wrong about
+the magnitude.
+
+### Defect 2 — I chose an observable whose SCALE destroyed the signal (mine, #92)
+
+The atom is handed `tanh(baseline/20)` and `tanh(recentPartial/20)`. That normalisation was written for
+the PEER observable — packet counts, tens per window — where tanh discriminates. **Raw births are ~1333
+per `ALIEN_WINDOW`, and `tanh(1333/20) === 1` EXACTLY.** Both inputs saturated to 1.0 on every prediction.
+
+**The atom received no information whatsoever.** It emitted a constant, and a constant scored against a
+directionally-biased outcome lands below chance. That is the whole of the -6.01.
+
+`SELF_OBS_SCALE=50` brings births into the same decade as packet counts. The endogenous target was right
+in kind and wrong in scale, and the scale error was mine.
+
+### After both fixes: the atoms predict AT chance, not above it
+
+4 seeds, 12000 ticks, `SELF_PREDICT=1 GRIP_SEED=1`:
+
+| | pooled skill | z |
+|---|---|---|
+| before fixes | 233/615 = **37.9%** | **-6.01** |
+| after fixes | 78/172 = **45.3%** | **-1.22** |
+
+The systematic artifact is gone. What remains is indistinguishable from coin-flipping. n=172 cannot
+exclude a small effect in either direction, but there is **no evidence the atoms carry predictive
+information about the population's own dynamics.**
+
+### What this means for #92/#93, stated plainly
+
+The filter now runs, and scores fairly, and **has nothing to filter on.** `alienGrip` is selecting among
+atoms that are all equally uninformative — it is selecting noise, exactly as the #94 analyser's own
+legend warned it might.
+
+**And that converges with the metabolic result.** #80–#90 found atoms confer no metabolic benefit, even
+with a direct actuator channel (#88). #95 finds they carry no predictive information either. **Two
+independent fitness channels, the same answer: the expressions `uaGenExpression` produces have no
+exploitable structure.**
+
+The generator is not one hypothesis among several any more. It is what is left after the economy (#87),
+the wiring (#88), the carrier split (#85), and now the predictive channel have each been eliminated by
+measurement.
+
+---
+
+## #96 — eight uploaded live-artwork exports, and a gene that could never mutate
+
+Eight real browser runs, real peers, real reloads — generations 1, 1, 2, 2, 2, 2, 3 and **104**,
+totalling 154,184 ticks. This is the regime several comments in the source say only the live artwork can
+settle. All eight decode cleanly (`type:"selection-genome"`, v2, base64 `genome`).
+
+### First, a correction to my own headline
+
+My initial read of the pooled `alienPredict` counters was **191/593 = 32.2%, z = -8.66 vs chance**, and I
+called it catastrophically below chance. That z is wrong, and the error was mine: I used a **uniform 1/3
+null** on a target that is not uniform and against a predictor that abstains.
+
+The 41 `alien_predict` events that survive in the rolling event logs carry `{pred, actual, hit}`, so the
+null can be built from the data instead of assumed:
+
+- `actual` marginal: **-1:14, 0:5, +1:22** — outcomes are up-biased, not thirds.
+- `pred` marginal: **-1:6, 0:16, +1:19** — the predictor **abstains on 39% of its attempts.**
+- Under independence with those marginals, chance is **34.6%**, not 33.3%.
+
+And every cell matches independence almost exactly:
+
+| prediction | n | hits | observed | independence expects |
+|---|---|---|---|---|
+| pred = +1 | 19 | 10 | 52.6% | 53.7% |
+| pred = 0  | 16 | 2  | 12.5% | 12.2% |
+| pred = -1 | 6  | 1  | 16.7% | 34.1% (n=6) |
+
+Permutation test, 200k shuffles of `actual` against `pred`: **P(hits >= observed) = 0.73.**
+Pooled, 32.2% against the 34.6% independence null is **z = -1.23**, not -8.66.
+
+**Corrected conclusion: in the live artwork the predictive channel carries no information — it sits ON
+the null, not below it.** That agrees with the post-fix headless result (#95: 45.3%, z = -1.22) rather
+than contradicting it, which is the outcome I should have reached the first time by building the null
+from the marginals. Also worth recording: `ABSTAIN_FREE` (#95) removes 39% of live attempts from the
+denominator, moving the *reported* number 32.2% -> 44.0% while creating no skill (the abstain-free
+independence null is 49.0%). It is a scoring fix, not a fitness fix — but abstention was being charged as
+failure, so selection was rewarding atoms for committing rather than for being right.
+
+### The atom bank in the wild
+
+163 atoms across the eight worlds, 12,534 recorded uses.
+
+- **`failed: 0` on all 163.** The failure filter has never fired in a live run either.
+- **24% of atoms are pure constants** (no variable reference at all). At gen104 the constants take
+  **46% of all executions.**
+- **All 163 expressions are flat one-operator forms.** Not one composition, not one atom calling another.
+- gen104 has **108 atoms but only 96 bound-opcode slots**, with 6 slots duplicated — so **19 atoms are
+  unreachable** by construction, and **96 of 108 have zero uses.** Twelve atoms do all the work.
+- The single most-executed atom in the deepest live run (86,245 ticks, 104 generations, 2,370 uses) is
+  **`(-0.28)*(1.68)`** — a compile-time constant, -0.4704.
+
+### Why: `uaMaxDepth` is not an evolvable gene, it is a constant with a mutation call wrapped round it
+
+`uaMaxDepth` reads **1 in all eight worlds**, including the one at generation 104. The reason is
+arithmetic, not selection:
+
+```js
+genome.uaMaxDepth = __cl(Math.round(maybe(genome.uaMaxDepth||1, 1, UA_DEPTH_CAP, 0.6)), 1, UA_DEPTH_CAP);
+```
+
+`maybe` adds `tailDraw()*magnitude*scale`. The uniform branch of `tailDraw()` returns `rand-0.5`, so at
+the default `scale=1` and `magnitude=0.6` the step lies in **[-0.3, +0.3]**. `Math.round` needs
+**|step| >= 0.5**. The step can never reach it. **The gene cannot move — not rarely, never.** Only the
+Cauchy tail branch can, and `mutationTail` initialises to 0.
+
+Simulation of the operator with the live parameters (`rate≈0.06`, `scale≈1`, `tail=0`), 20,000 runs of
+104 generations each: **P(uaMaxDepth > 1) = 0.0%. Zero hits in 20,000.** Raise `tail` to 0.02 and it
+becomes 2.1%; raise `scale` to 3 and it becomes 54.9%. The freeze is entirely an artifact of the step
+size relative to the rounding.
+
+**This is a class defect, not one line.** Eight of the fourteen rounded integer genes are in the same
+regime at `scale=1`: `clusterMinSize`(0.5) `motifMemorySize`(1) `shadowScenarios`(0.8)
+`vmMaxInstructions`(1) `uaMaxDepth`(0.6) `hgtMax`(0.5) `reflexDepth`(0.5) `clusterReflexAge`(1).
+
+### The eight worlds are a natural experiment, and they confirm it
+
+Prediction stated before checking: genes with `magnitude >= 2` vary between worlds; genes in the frozen
+set are identical across the seven low-tail worlds, and any deviation is confined to the one world that
+evolved a substantial `mutationTail`.
+
+| gene | mag | values across the 8 worlds (gen 1 .. gen 104) |
+|---|---|---|
+| uaMaxDepth | 0.6 | 1, 1, 1, 1, 1, 1, 1, **1** |
+| reflexDepth | 0.5 | 4, 4, 4, 4, 4, 4, 4, **4** |
+| clusterReflexAge | 1 | 5, 5, 5, 5, 5, 5, 5, **5** |
+| vmMaxInstructions | 1 | 16, 16, 16, 16, 16, 16, 16, **13** |
+| shadowScenarios | 0.8 | 5, 5, 5, 5, 5, 5, 5, **4** |
+| hgtMax | 0.5 | 2, 2, 2, 2, 2, 2, 2, **3** |
+| motifMemorySize | 1 | 5, 5, **4**, 5, 5, 5, 5, 5 |
+| shadowHorizon | 8 | 50, 50, 48, 49, 50, 50, 58, 51 |
+| extinctionThresh | 2 | 5, 5, 5, 4, 4, 5, 4, 9 |
+| cadenceSelf | 2 | 30, 31, 31, 28, 30, 29, 31, 29 |
+| cadenceLineage | 12 | 600, 600, 600, 606, 603, 597, 600, 607 |
+
+Every mobile gene has moved by **generation 1**. Every frozen gene is identical across the seven low-tail
+worlds. The only deviations anywhere are in the `mutationTail=0.08` world (and `motifMemorySize` in the
+`tail=0.017` world) — the exact escape route the arithmetic predicts. `uaMaxDepth` did not move even
+there, because its magnitude of 0.6 demands the largest tail draw of the set.
+
+**Consequence, stated plainly.** `uaGenExpression()`'s recursive grammar — branching, composition,
+recurrence, atom-calls-atom — has been unreachable in every live run ever exported. The authored-atom
+layer has been drawing from a flat space of two-token expressions the whole time. Source comment at line
+447 ("HOW deep the system thinks is itself something it evolves") and at 12359 ("the system evolves how
+deeply it composes its own primitives") are both false as written.
+
+This also reframes #95. I concluded there that "the expressions `uaGenExpression` produces have no
+exploitable structure." That conclusion stands, but its scope was narrower than I stated: it is a
+verdict on **depth-1 expressions only**, because depth-1 is the only thing the generator has ever been
+allowed to emit.
+
+### The change: `intMaybe`
+
+```js
+function intMaybe(val,magnitude){
+  if(!__INT_GENE_STEP)return maybe(val,0,0,magnitude);
+  if(Math.random()>rate)return val;
+  const step=tailDraw()*magnitude*scale;
+  if(!isFinite(step))return val;
+  return val+(step>=0?Math.max(1,Math.round(step)):Math.min(-1,Math.round(step)));
+}
+```
+
+When the mutation fires it is quantised away from zero, so it is always a real move. `magnitude` still
+sets how far large draws go; it no longer decides whether any draw counts at all. All eight frozen genes
+are routed through it. `INT_GENE_STEP` defaults **OFF** pending the arm — this raises those genes'
+effective mutation rate from ~0 to `rate`, which is a large behavioural change and has to be earned.
+
+**Fingerprint control:** knob OFF, `SEED=11 TICKS=3000`, against `git show HEAD:index.html` —
+`{"n":213,"pos":211804.601525,"amp":254.136854,"lin":28775,"prog":2849,...}` on both. **Bit-identical.**
+Knob ON: `{"n":221,"pos":229745.475612,...}` — different within 10 generations, as it must be.
+
+### #96 PRE-REGISTRATION
+
+16 seeds x {INT_GENE_STEP=0, INT_GENE_STEP=1} x 24,000 ticks.
+
+- **PRIMARY:** does `uaMaxDepth` ever leave 1? Predicted **0/16 OFF** (the arithmetic says impossible
+  without a tail draw) and **a clear majority ON**.
+- **SECONDARY (what it buys, not the test):** `atomsMultiOp > 0`, and a lower constant-atom fraction.
+- **FALSIFIER for the whole line of work:** if depth rises and the atom bank still fills with constants
+  and dead entries, then depth was not the constraint and the generator is the problem on its own terms.
+
+### The control case: the one integer gene that DOES grow in the wild
+
+`tendDims` — the number of heritable trait axes — is the counter-example that makes the diagnosis
+specific rather than a general complaint about mutation:
+
+| world | gen 1 | gen 1 | gen 2 | gen 2 | gen 2 | gen 2 | gen 3 | **gen 104** |
+|---|---|---|---|---|---|---|---|---|
+| tendDims | 6 | 7 | 5 | 6 | 7 | 8 | 6 | **16** (= `DIMS_MAX`) |
+
+It moves in young worlds and reaches the substrate ceiling in the old one. And it is the one integer
+gene in the genome that **never passes through `Math.round(maybe(...))`**. Its two writers are:
+
+```js
+genome.tendDims=__cl((genome.tendDims||5)+(Math.random()<0.5?1:-1),2,DIMS_MAX);   // 12761: literal +/-1
+if(tick%_si===0 && DIMS<_cap && nicheOccupancy()>=_thr) setDims(DIMS+1);          // 20283: earned
+```
+
+A literal `+/-1` step, and an occupancy-earned ratchet. Neither can be swallowed by a rounding.
+`__DIMS_SAT` caps the earned path at 9, so the climb from 9 to 16 in the gen104 world came from the
+`+/-1` walk — the exact idiom `intMaybe` restores to the other eight genes. **The pattern that works is
+already in this codebase; the frozen genes simply don't use it.**
+
+### Other things only the live data could say
+
+- **`lp[].bud === 0` on all 94 lineage rows across all eight worlds**, including 104 generations and
+  86,245 ticks. Cluster-level budding — one of the five claimed levels of selection — is not merely rare
+  in the wild, it has never been caught happening. Meanwhile `speciation` events fire constantly
+  (`{parent:6968, child:8042, dist:1.244}`) and the gen104 world reports **142 lineages at the
+  generation boundary while only 2 are alive**, holding 276 and 14 particles.
+- **The gen104 world went fully extinct and came back.** Its epoch row at t=50000 reads
+  `[50000, 0, 0, 3, 0.005, 0, ...]` — zero population, fitness 0.005 — and by t=85000 it is back to 257
+  particles at fitness 0.502. 84 extinctions total.
+- **`ruleScale` is -2.33 at gen104** (1.0 in every young world). The rule scale went through zero and
+  came out the other side, which the sign-floor work in #85/#87 says should matter.
+- **Cross-world flow is real and one-directional.** Every world receives 5-10x what it emits
+  (e.g. 27 plasmids sent, 228 received), and the same peer id `mfwixayd` — the gen104 instance — appears
+  in four other worlds' peer tables emitting 152-183 of each packet type. One long-lived instance is
+  seeding the rest of the network.
+- **`cosmos_launch` is the single most common logged event** (57 of the 322 pooled log entries), running
+  roughly every 300 ticks at gen104, with daughter worlds dying at ages 180-900 and `imp` (what comes
+  back) at 0 in most of them.
+
+### The strongest live result: the atom bank is a random draw from its own generator
+
+`uaGenTerm(0)` — the only branch reachable at `uaMaxDepth=1` — picks a variable with p=0.5 and a
+function wrapper with p=0.35, independently per leaf, two leaves per expression. Those constants are
+readable straight off the generator, so it makes a distribution prediction with no free parameters:
+
+| statistic | generator predicts | 163 live atoms | |
+|---|---|---|---|
+| constant-only expressions (no variable at all) | 25.0% | **25.2%** (41/163) | z = 0.05 |
+| function-wrapped leaves | 35.0% | **37.7%** (123/326) | |
+
+**After up to 104 generations, the surviving bank is statistically indistinguishable from a fresh random
+draw.** Any selection on atom content — even weak — would enrich the bank for world-sensing atoms over
+constants relative to the generator. At n=163 there is no enrichment to find. The bank is not an evolving
+library; it is a random-expression generator with a persistence buffer bolted on.
+
+This is what #80-#95 kept circling from inside the harness, stated directly from live data: the failure
+filter never fires (`failed:0` on all 163), the metabolic channel confers nothing (#87/#88), the
+predictive channel sits on the independence null (above), and now the bank's composition itself carries
+no signature of having been selected.
+
+It also sharpens the #96 falsifier. **If `INT_GENE_STEP` raises depth and the bank still matches the
+generator's unconditional distribution, depth was never the constraint** and the honest next move is at
+the generator, not at the mutation operator.
+
+### A second live defect: evolved render expressions are dead on arrival
+
+`genome.rend` gets its mutations from the same generator:
+
+```js
+if(Math.random()<0.003){ genome.rend[ri]={expression:uaGenExpression(),compiled:null,failed:false}; }
+```
+
+But the two channels do not share a vocabulary:
+
+- atom leaves: `a b u c d m s nx ny t nb rl rd` (`uaCompile` binds all 13)
+- rend params: `t0 t1 t2 t3 amp phase col` (`rendCompile` binds these 7)
+
+**The intersection is empty.** Any generated rend expression containing a variable throws
+`ReferenceError` on first call and is flagged `failed` forever. Only the pure-constant 25% survive — so
+**75% of rend mutations are dead on arrival**, and the 25% that live are constants, which is a palette
+that has stopped responding to the particle.
+
+The gen104 world shows exactly this. Two of its four rend slots still hold the hand-written seeds
+(`(Math.atan2(t1,t3)/Math.PI*180+180)`, 5 operators). The two that mutation has replaced are
+`(rd)*(0.99)` — already flagged **FAILED** — and `(rl)/(a)`, which references two atom-only variables and
+will fail the moment its slot is called. **In the one place in the live data where hand-authored and
+evolved expressions sit side by side, the evolved ones are flatter, shorter, and broken.**
+
+Both facts have the same root: one generator, `uaMaxDepth` frozen at 1, wired into a channel whose
+compiler binds different names.
+
+### The rend fix, measured directly on the generator
+
+The rend generator and `rendCompile` are both pure, so this needs no simulation. 20,000 generated
+expressions per condition, each compiled with `rendCompile`'s real parameter list and called once:
+
+| condition | survive | die at runtime |
+|---|---|---|
+| **current default** | **24.9%** | 75.1% |
+| `REND_VOCAB=1` (rend draws from `t0..t3, amp, phase, col`) | **99.5%** | 0% |
+| `REND_VOCAB=1` at depth 3 | **99.0%** | 0% |
+| **`INT_GENE_STEP=1` alone, at depth 3** | **1.6%** | 98.4% |
+
+The 24.9% matches the predicted 25% to the digit — the survivors are exactly the constant-only
+expressions, as the vocabulary argument requires.
+
+**The last row is why the two fixes ship together.** Unfreezing depth without fixing the vocabulary takes
+the render channel from 25% alive to **1.6% alive**, because a deeper expression has more leaves and
+each one is another chance to name a variable `rendCompile` never binds. Had I shipped `INT_GENE_STEP`
+on its own and looked at the artwork, the palette would have gone dead and the obvious reading would have
+been "depth broke the render" — when the actual cause is a vocabulary mismatch that was already there,
+merely too rare to notice at depth 1.
+
+Depth 3 also exposed a *second* instance of the same mismatch: `f(...)`, the atom-call composition
+primitive, is bound by `uaCompile` and by nothing else, so a rend expression containing it is another
+guaranteed `ReferenceError`. With the rend vocabulary but composition still enabled, depth-3 survival was
+**55.7%**. `__uaNoCall` suppresses that branch for any channel that does not bind `f`, which takes it to
+99.0%. That defect was unreachable while depth was frozen — it becomes reachable the moment
+`INT_GENE_STEP` lands, which is the argument for fixing it in the same change rather than after.
+
+**Scope, stated honestly:** `rend` drives colour and size only. It cannot move the fingerprint, and the
+control confirms it — `REND_VOCAB=1` returns a bit-identical run. This is an **artwork-quality defect,
+not a selection defect.** What it costs is that the palette stops responding to the particle: three
+quarters of every render mutation is a dead slot, and the quarter that lives is a constant.
+
+**Controls for the whole of #96** (`SEED=11 TICKS=3000`, against `git show f710bd4:index.html`):
+
+| build | fingerprint |
+|---|---|
+| pre-#96 | `{"n":213,"pos":211804.601525,"amp":254.136854,"lin":28775,"prog":2849,...}` |
+| current, both knobs OFF | **identical** |
+| `REND_VOCAB=1` | **identical** (render-only, as predicted) |
+| `INT_GENE_STEP=1` | `{"n":221,"pos":229745.475612,"amp":278.240693,"lin":33033,"prog":2933,...}` |
+
+---
+
+## #97 — reading the exports for what they say, not for what I was already working on
+
+I mined the eight uploads for evidence about atoms because atoms were what I had in my hands. That was
+the wrong first pass. Read cold, the files say two things I had not been looking for, and one of them is
+the largest defect I have found in this codebase.
+
+### The self-model's population prediction is wrong by a factor of five, in every world
+
+`fe` carries the self-model's four prediction errors. Across all eight exports:
+
+| world | gen | errors.pop | errors.coherence | errors.clusters | errors.diversity |
+|---|---|---|---|---|---|
+| gen2 t4628 | 2 | **-1155.2** | -0.0029 | 0.738 | -0.0242 |
+| gen3 t6333 | 3 | **-1181.2** | 0.0146 | 0.996 | -0.0216 |
+| gen1 t6464 | 1 | **-766.9** | 0.0136 | 0.307 | -0.0193 |
+| gen2 t10266 | 2 | **-1232.5** | 0.0027 | -0.708 | -0.0136 |
+| gen1 t10654 | 1 | **-1065.7** | -0.0161 | -0.781 | -0.0051 |
+| gen2 t12638 | 2 | **-1035.1** | -0.0146 | 0.724 | -0.0586 |
+| gen2 t16956 | 2 | **-1020.4** | -0.0010 | 0.138 | -0.0083 |
+| gen104 t86245 | 104 | **-873.8** | 0.0008 | -0.517 | 0 |
+
+Coherence is predicted to three decimal places. Diversity to two. Clusters to within one. **Population is
+wrong by 767-1232 in worlds whose actual population is 100-280** — the model is predicting roughly 1100
+individuals while roughly 200 exist, and it does this in every world, at every age, with no drift.
+
+Reproduced headless on the first try, `SEED=11 TICKS=3000`:
+
+```
+alive 213   predicted.pop 1115.34   errors.pop -769.88
+birthRate 15.43   deathRate 0.375     (a 41:1 ratio in a population that is flat)
+errors.coherence 0.0015   predicted 0.8797 / actual 0.8802
+```
+
+### The mechanism: two counters on two different clocks, multiplied by the same 60
+
+```js
+13487:  deathsThisTick=0;                          // reset EVERY tick
+20418:  if(tick%60===0){                           // the whole self-model block
+20506:    selfModel.deathRate=selfModel.deathRate*0.9+deathsThisTick*0.1;
+20507:    selfModel.birthRate =selfModel.birthRate *0.9+birthsThisTick*0.1;
+20583:    selfModel.predicted.pop=alive+selfModel.birthRate*60-selfModel.deathRate*60;
+20772:    deathsThisTick=0;birthsThisTick=0;       // reset ONLY every 60 ticks
+  }
+```
+
+`deathsThisTick` is cleared at the top of the death pass on **every** tick, so when the self-model reads
+it, it holds **one tick** of deaths. `birthsThisTick` is cleared only at line 20772, which is inside the
+`tick%60` block, so it holds **sixty ticks** of births. Both are then multiplied by 60.
+
+**`birthRate` is inflated by exactly 60x relative to `deathRate`.** The arithmetic closes:
+`213 + 15.43*60 - 0.375*60 = 1116.3`, against a probed `predicted.pop` of 1115.34.
+
+The audit at `TICKS=3000` counted 903 births in 3000 ticks (0.30/tick) against 0.38 deaths per sampled
+tick — balanced, which is what a flat population requires. **Correction to my own first read of that
+audit:** I printed a line called "UNCOUNTED removals = 18.76/tick". That number is meaningless — it
+compares a 60-tick birth accumulator against deaths sampled on 1 tick in 60. There is no missing-death
+mystery. There is only the unit mismatch. The line 4962 comment describing both as "per-tick EMA-smoothed
+flow rates" is true of `deathRate` and false of `birthRate`.
+
+### Why this is worse than a broken statistic
+
+`birthRate` and `deathRate` are not confined to the self-model. Five VM sites hand the particles a
+population net-flow sense, and five more a churn sense:
+
+```
+10306, 15484, 16808, 18105, 22234:  const _net  = (selfModel.birthRate||0)-(selfModel.deathRate||0);
+10323, 15515, 16828, 18125, 22284:  const _churn= ((selfModel.birthRate||0)+(selfModel.deathRate||0))/2;
+```
+
+`_net` is `60b - d`, which is `60b` to within a rounding error. **The "is my population growing or
+shrinking" sensor the evolved programs can read is, in fact, a birth counter with the deaths scaled away
+to nothing.** In a flat population it reads about +15 and stays positive. `churnRate` reads ~7.9 where
+the true churn is ~0.34.
+
+This lands squarely on the thing I have spent the session concluding. #85-#95 kept finding channels that
+"measure near-inert" and I kept attributing it to the substrate making inertness free. Here is a channel
+that is not inert — it is *actively misinformative*, and it has been feeding both the self-model and the
+particles' world-sensing the whole time.
+
+I have not yet established how much this costs. The measurement that decides it is whether
+`birthRate - deathRate` carries any information about actual net flow, or only about births; that run is
+in progress and I will not claim either way before it lands.
+
+### A hypothesis I formed and killed in the same pass
+
+Seeing `objWeights` at gen104 sit at `[0.169, 0.268, 0.1435, 0.505]` against a flat `[0.25]*4` in every
+young world, with `objCreditTrace` at `[0.073, -0.054, 0.127, 0.547]`, I reached for the obvious story:
+axis 3 is churn, `churnRate` is computed from the broken counter, therefore the system has learned to
+value a defect. It is a tidy story and it is wrong. The axis is built locally:
+
+```js
+const churn=clusters.filter(c=>c.persistAge<2).length/Math.max(1,clusters.length);
+const axes=[selfModel.stability||0, selfModel.diversity||0, selfModel.avgCoherence||0, churn];
+```
+
+That `churn` is the **fraction of clusters younger than 2 persist-ticks** — a bounded [0,1] cluster
+turnover ratio with no connection to `selfModel.churnRate`. The 60x defect propagates to the five VM
+sensor sites and to `churnMomentum`, and stops there. Recording it because the check took two minutes and
+the claim would have been the most quotable thing in this entry.
+
+### What the objective weights DO show, stated at the strength the data supports
+
+The four axes are `[stability, diversity, coherence, clusterTurnover]`. `objCreditTrace[i]` is an EMA of
+`sign(Δaxis) * sign(Δfitness)`, bounded [-1,1], updated per tick and nudging `objWeights[i]`.
+
+| world | ticks | objCreditTrace | largest axis |
+|---|---|---|---|
+| gen2 t4628 | 4,628 | [0.088, -0.022, -0.023, 0.057] | stability |
+| gen3 t6333 | 6,333 | [-0.035, -0.142, 0.040, 0.036] | diversity (neg) |
+| gen1 t6464 | 6,464 | [0.171, -0.050, -0.010, 0.024] | stability |
+| gen2 t10266 | 10,266 | [-0.006, -0.010, 0.050, 0.098] | turnover |
+| gen1 t10654 | 10,654 | [0.080, 0.099, -0.022, -0.002] | diversity |
+| gen2 t12638 | 12,638 | [0.005, 0.039, 0.173, 0.079] | coherence |
+| gen2 t16956 | 16,956 | [0.044, 0.214, 0.326, 0.083] | coherence |
+| **gen104 t86245** | **86,245** | **[0.073, -0.054, 0.127, 0.547]** | **turnover** |
+
+In the seven short worlds the traces are small (max 0.33) and the winning axis is scattered — which is
+what drift looks like. The one long world has a trace of 0.547, well outside that range, and its weights
+have moved correspondingly (half the fitness weight onto cluster turnover).
+
+**I cannot tell from n=1 whether that is learning or an EMA with 86,245 ticks to converge on a weak
+consistent signal.** Both produce a large trace. The test that separates them is whether the *same* axis
+wins across independent seeds at matched run length — drift scatters, structure agrees. That is worth
+running and I have not run it.
+
+What I can say without that test is a contrast within a single world. At generation 104, in the same
+86,245 ticks, this system's credit-assignment layer produced a large, directional, persistent change in
+what it values, while its authored-atom layer produced a bank statistically indistinguishable from a
+random draw from its own generator. Whatever the credit layer is doing, it is doing something the atom
+layer is not. The structural difference is not subtle: the credit layer gets a dense signed scalar every
+tick on four fixed axes; the atom layer gets a sparse binary one on a bank that turns over.
+
+### CORRECTION, and a structural fact I should have established first
+
+Two things I stated earlier in this entry are wrong.
+
+**1. `na` and `nap` are not "sent" and "received".** `na` is `genome.netApplied` — incoming packets from
+peers that actually changed *this* world's state. `nap` is `genome.netAckApplied` — gossip-style
+acknowledgments that something *we* broadcast landed on someone else. They are not two directions of one
+count and the ratio between them means nothing. My line "every world receives 5-10x what it emits" is
+void. The correct reading: each world **absorbed** 10-23 migrants, 17-93 plasmids and 17-53 motifs, and
+separately collected 64-134 / 162-436 / 159-234 landing-acknowledgments for its own broadcasts.
+
+**2. These are not eight independent worlds. They are eight peers of one network.**
+
+| world | self id | peers it lists |
+|---|---|---|
+| gen2 t4628 | wn86cl7e | mfwixayd, 7qaumv4o, xcoft9zd, rlh1neaf, e4kbb13b |
+| gen3 t6333 | xcoft9zd | — |
+| gen1 t6464 | b5wlg175 | mfwixayd |
+| gen2 t10266 | 7qaumv4o | mfwixayd, 7qaumv4o, xcoft9zd, rlh1neaf, e4kbb13b |
+| gen1 t10654 | e4kbb13b | e4kbb13b, kc7hlp66 |
+| gen2 t12638 | rlh1neaf | — |
+| gen2 t16956 | kc7hlp66 | mfwixayd |
+| gen104 t86245 | mfwixayd | xcoft9zd, rlh1neaf, e4kbb13b, kc7hlp66, b5wlg175, wn86cl7e |
+
+**Every peer id that appears anywhere is also a self id in this set.** Eight simultaneously-open tabs on
+one BroadcastChannel, with the generation-104 instance in almost everyone's table. I ran cross-world
+statistics all afternoon before checking this.
+
+**What that invalidates, and what it does not:**
+
+- **Void as independent replication:** the cross-world correlations. The metaCredit pairwise r, the gate
+  profile agreement, "every mobile gene has moved by generation 1". Effective n is well under 8.
+- **Untouched:** the frozen-gene result. That is not an inference from eight samples — it is arithmetic
+  (a uniform step bounded by +/-0.3 against a rounding that needs 0.5), corroborated by 20,000
+  independent simulated runs. The eight worlds are illustration, not evidence.
+- **Untouched:** the 60x self-model defect. Arithmetic, plus a headless reproduction from a fresh seed.
+- **Untouched, and I checked rather than assumed:** the atom-bank result. **All 163 atom expressions are
+  distinct — not one is shared between any two of the eight peers.** Whatever else the network moves, it
+  does not move authored atoms, so those 163 are genuinely 163 independent draws, and 25.2% constants
+  against a parameter-free prediction of 25.0% stands.
+
+### The meta-layer: 126 attribution traces, 90.5% of them negative
+
+`mct` carries the attribution trace for each of 126 tracked meta-layer parameters — the `*Influence`
+gates that decide whether each sensory channel participates at all.
+
+| world | ticks | negative | positive | sum of traces |
+|---|---|---|---|---|
+| gen2 t4628 | 4,628 | 100 | 21 | -0.42 |
+| gen3 t6333 | 6,333 | 103 | 19 | -1.56 |
+| gen1 t6464 | 6,464 | 100 | 20 | -1.45 |
+| gen2 t10266 | 10,266 | 115 | 8 | -3.93 |
+| gen1 t10654 | 10,654 | 123 | 2 | -5.76 |
+| gen2 t12638 | 12,638 | 109 | 16 | -2.91 |
+| gen2 t16956 | 16,956 | 123 | 3 | -6.29 |
+| gen104 t86245 | 86,245 | 121 | 5 | -5.68 |
+
+**894 of 988 traces are negative (90.5%),** and the negative fraction rises with run length (82.6% at
+T=4,628 to ~97% by T=17,000; r = 0.65 against log T).
+
+The mechanism is in the source, deliberate, and documented:
+
+```js
+}else{
+  // No movement last cycle. HOLDING COST: ... bleed toward a small NEGATIVE target = this layer's
+  // carrying cost, so a layer that just sits there costing settles below the harmful threshold
+  const _carryTarget=-_holdRate*Math.abs(genome[p]||0);
+  e.trace+=(_carryTarget-e.trace)*0.02;
+}
+```
+
+A parameter that moved last cycle gets real attribution. A parameter that did not gets taxed toward a
+negative target at 2% per cycle. With 126 tracked parameters and a mutation rate near 0.06, **the tax
+fires on roughly 94% of parameters every cycle and the evidence fires on roughly 6%.** The design intends
+a self-tax that condemns freeloading layers; the ratio means nearly everything is condemned eventually,
+regardless of what it does. The trend with run length is what a constant drag against sparse evidence
+looks like.
+
+The gates themselves are not frozen — **105 of 106 have moved from their seeded values in every world,
+even at 4,628 ticks** — but they move mostly as a block: the between-world spread of each world's *mean*
+gate value (SD 0.144) is **twice** the within-world spread across the 106 gates (SD 0.072). By gen104,
+74 of 106 gates sit below 0.3 and one (`sphi67`, self-phase sensing) has reached exactly 0.
+
+### The shadow layer inverted over the long run
+
+`sb` holds the shadow-scenario bank with a credit trace per entry. In all seven short worlds the traces
+are mostly positive (0.04 to 0.199). **At generation 104 every trace is <= 0: -0.194, -0.054, -0.031, 0.**
+The scenarios the self-model selects have become anti-correlated with fitness improvement, and the bank
+has shrunk to 4 entries from 5-8. `decisionConfidence` reads 0.9653 against 1.0 in the young worlds —
+decaying, because it only rises on a positive trace, so the mechanism is responding, just slowly.
+
+### Three channels that show nothing at all across 154,184 live ticks
+
+- **The draw program is byte-identical in seven of eight worlds** — `[[1,8,7,0],[2,8,7,0],[0,8,4,0],[4,5,8,4]]`,
+  the seeded default. gen104 has three instructions instead of four, having lost one. In 86,245 ticks it
+  deleted an instruction and added nothing.
+- **No cluster program in any world contains a single authored-atom opcode.** 96 cluster programs across
+  the eight worlds, zero bound opcodes. The cluster-level VM has never once used the atom library.
+- **Every world has exactly one evolvable fitness sensor.** The layer whose comment reads "the system
+  discovers NEW things to value beyond the 4 designer axes" has discovered one thing, everywhere, and its
+  `realWeight` is at or below 0.03 in six worlds and **-0.147 at gen104** — lineage selection judging it
+  actively harmful. Its program did grow from 2 instructions to 7 over 104 generations; the growth bought
+  a more negative weight.
+
+### The one dynamical event in the dataset
+
+The gen104 epoch arc is not a plateau. Read as `[t, popMean, popPeak, extinctions, fitness, clusterPeak,
+atoms, adopted, mutRate, popMin, diversity, metabolicCost]`:
+
+- **t=5,000 to 20,000 — growth.** Population 116 to 268, fitness ~0.55, clusters 12 to 9.
+- **t=20,000 — diversity bottoms at 0.019 at the exact population peak.** A monoculture at maximum size.
+- **t=20,000 to 45,000 — decline.** Population 268 to 71, clusters 9 to 2.
+- **t=50,000 — total extinction.** `[50000, 0, 0, 3, 0.005, 0, 40, 17, 0.0557, 0, 0, ...]`.
+- **t=60,000 to 65,000 — thrashing.** 23 then 10 further extinctions, popMin 0 in both epochs,
+  metabolicCost at its floor of 0.000002.
+- **t=70,000 to 85,000 — a different world.** Population 120, 236, 263, 257. Diversity **0.886, 0.923,
+  1.0, 1.0** against a pre-crash range of 0.017 to 0.265.
+
+**The post-extinction world is an order of magnitude more diverse than the pre-extinction world, at
+comparable cluster counts and higher population, and it holds there for 15,000+ ticks.** At matched
+cluster count the comparison is 0.265 (t=40,000, 7 clusters) against 0.923 (t=75,000, 7 clusters).
+
+**Caveat I can bound but not eliminate:** `clusterDiversity` is a mean pairwise Euclidean distance over
+`DIMS` axes, clamped to 1. `tendDims` grew over this run, and the gen104 motif vectors are 15 components
+long, so the late epochs are measured in a higher-dimensional space than the early ones. Going from ~9 to
+15 axes inflates a fixed per-axis spread by about 1.29x. That cannot turn 0.03 into 1.0, but it means the
+true factor is somewhat below the raw 30x, and a clean version of this comparison needs diversity
+normalised by `sqrt(DIMS)`.
+
+**And the same signature is live in a second world right now.** gen2 t16956 reads diversity 0.084 ->
+0.054 -> **0.005** across its three epochs while population climbs 104 -> 163 -> 247. That is the state
+gen104 was in at t=20,000 (diversity 0.019, population 268) five epochs before it collapsed. If that tab
+is still open, it is the natural falsifier: it should crash.
+
+### The sensor audit: what the 60x actually costs, and why the obvious fix is wrong
+
+332 windows of 60 ticks, `SEED=11 TICKS=20000`, recording the sensor the VM reads
+(`selfModel.birthRate - selfModel.deathRate`) against the world's true population change over the same
+window.
+
+| | value |
+|---|---|
+| sensor, mean | **+12.74** |
+| sensor, range over 332 windows | **+5.1 to +21.7 — never negative, not once** |
+| true net flow, mean | -0.15 |
+| true net flow, range | -32 to +10, **negative in 56% of windows** |
+| r(sensor, true net flow) | **0.165** |
+| sensor sign agrees with true sign | **145/296 = 49.0%** |
+
+**The sensor is monotone positive in a world whose population is shrinking more often than it grows.**
+Any evolved program that reads it as "am I growing or shrinking" is told "growing", always, in every one
+of 332 windows. Its sign channel carries exactly nothing, and its magnitude channel carries r = 0.165.
+
+**And this is where the measurement earned its cost, because it changed the repair.** The obvious fix is
+to divide `birthRate` by 60 and be done. Measured, that gives:
+
+```
+r(births - 60*deaths, true net flow) = 0.174     (against 0.165 for the broken sensor)
+```
+
+**Almost no improvement.** The reason is visible in the audit: `deathsThisTick` at the sampled tick is a
+one-tick Poisson draw with mean 0.21, so it is nearly always 0 or 1. Scaling that by 60 amplifies
+sampling noise instead of estimating a rate. The units were only half the problem; the other half is that
+deaths are sampled on 1 tick in 60 while births are integrated over all 60.
+
+So the fix is not a divisor. `deathsThisWindow` accumulates deaths across the same window births are
+accumulated over — `applyEntropy` carries the tick's count into it before clearing, and it closes with
+the birth window in the `tick%60` block. `FLOW_UNITS`, default OFF.
+
+**Registering the prediction before the arm lands:** if the diagnosis is right, `FLOW_UNITS=1` should give
+a sensor that goes negative in roughly the 56% of windows where the population actually shrank, sign
+agreement well above 49%, and `errors.pop` in the low tens rather than -770. **The falsifier is r.** If
+correlation with true net flow stays near 0.17 after the fix, then the flow sensor is weak for reasons
+that have nothing to do with either counter, and the whole line — including the 60x — is a units bug with
+no behavioural consequence worth the change.
+
+### Relevant to the question of whether any of this testing is worth doing
+
+Six defects this session would change behaviour if fixed: negative `metabolicCost`, abstention charged as
+failure, eight integer genes that cannot mutate, rend expressions naming unbound variables, the 60x flow
+mismatch, the meta-layer holding-cost tax. **All six came from reading code and doing arithmetic. Not one
+came from an arm.** Meanwhile #87, #88, #90 and #94 spent hundreds of CPU-hours establishing that
+authored atoms confer no benefit — in a build where `uaMaxDepth` was arithmetically pinned at 1, so the
+grammar could only ever emit flat two-token expressions. Those arms measured a crippled mechanism and
+reported the crippling as a property of the design, and no number of seeds would have revealed it.
+
+The structural reason is #70, which I found myself and then ignored: the substrate makes inertness free,
+so "no effect" and "wired wrong" produce an identical null. In a system with that many silent-failure
+modes, a fitness comparison is the wrong instrument until the mechanism under test is known to fire.
+
+What survives as worth doing: **the fingerprint control** (it is what makes "knob OFF is bit-identical"
+a fact), **pre-registration** (its value is about me — ~10 stated expectations failed out of ~10 this
+session, and that count only exists because they were written first), and **mechanism-fires tests rather
+than does-it-help tests**. `rendtest.js` is the model: 20,000 expressions through the real compiler,
+thirty seconds, no simulation, and it changed what shipped. This sensor audit is the second instance —
+also cheap, also decisive, and it stopped me shipping a divisor that would have left the sensor broken.
+
+### Salvage from the killed #96 arm — a confirmation and a correction
+
+The arm was killed at 8/32 completed (all the `INT_GENE_STEP=0` side). Eight seeds x 24,000 ticks,
+roughly 80 `mutateGenome` calls each. Reported because it settles two things.
+
+**Confirmed.** `uaMaxDepth` reads 1 in 8/8 seeds. So do `shadowScenarios` (5), `hgtMax` (2),
+`reflexDepth` (4), `clusterReflexAge` (5) and `clusterMinSize` (3) — zero distinct values across eight
+independent seeds. And **0 deep-grammar markers across all 170 headless atoms**, matching 0/163 live.
+
+**Correction to my own "eight frozen genes".** Two of the eight moved: `vmMaxInstructions` took three
+values (15, 16, 17) and `motifMemorySize` took two. Both have **magnitude 1**, which puts their step
+range at exactly `(-0.5, +0.5)` — the boundary. `mutationScale` is itself an evolvable gene, so as soon
+as it drifts above 1 the magnitude-1 genes become mobile, while everything at magnitude <= 0.8 stays
+locked. So the correct statement is not "eight genes are frozen" but:
+
+- **magnitude <= 0.8 — genuinely frozen** at any plausible scale, escapable only by a Cauchy tail draw:
+  `uaMaxDepth` (0.6), `shadowScenarios` (0.8), `hgtMax` (0.5), `reflexDepth` (0.5), `clusterMinSize` (0.5).
+- **magnitude 1 — on the knife edge**: `vmMaxInstructions`, `motifMemorySize`, `clusterReflexAge`. Frozen
+  at `scale = 1`, mobile once scale drifts up. `clusterReflexAge` happened not to move in these 8 seeds;
+  the other two did.
+
+The arithmetic behind the finding is unchanged; my enumeration of who it applies to was too broad.
+
+### An unexplained discrepancy between the instrument and the artwork
+
+The same salvage undercuts the strongest claim in #96, and I would rather say so than let it sit.
+
+| | constant-only atoms | |
+|---|---|---|
+| generator prediction (parameter-free) | 25.0% | |
+| **live artwork**, 163 atoms | **25.2%** | z = 0.05 |
+| **headless harness**, 170 atoms, 8 seeds | **11.8%** (20/170) | **z = -3.97** |
+
+The headless banks are strongly *depleted* of constants; the live banks match the generator exactly.
+
+That matters both ways. It means the "bank matches a random draw" result is **not** a foregone
+conclusion — in the harness, something does cull constant atoms, so the composition is capable of
+carrying a selection signature, and the live artwork's failure to show one is a real negative rather
+than a tautology. But it also means **my instrument and the artwork disagree about atom-bank composition
+at z = -4**, and I do not know why. Candidates I have not separated: the harness build carries knobs the
+live exports predate; bank sizes differ (16-25 headless against 3-108 live); the live worlds are peers on
+a network and the headless ones are not; bank turnover may differ with population size.
+
+Until that is explained, the honest reading of the #96 headline is narrower than I wrote it: **in the
+live artwork the bank is indistinguishable from a random draw, and in the harness it is not**, and the
+next thing worth an hour is finding out which of those two regimes is the anomaly.
+
+### RETRACTION — the anomalous regime was my probe
+
+The "headless banks are 11.8% constant against the live artwork's 25.2%, z = -3.97" result is **void**. It
+was an escaping bug in the instrument I wrote three hours earlier, and neither regime is anomalous.
+
+**The probe's classifier lives inside the driver template literal.** As written:
+
+```js
+const isConst=e=>!/[A-Za-z_]/.test(String(e).replace(/Math\.\w+/g,''));
+```
+
+`\w` is not a valid string escape, so the template literal silently drops the backslash and the regex
+that actually runs is **`/Math.w+/g`** — which strips nothing. Under that rule
+`(Math.sqrt(Math.abs(1.63)))*(Math.exp(0.93))`, a pure constant, is classified as a variable expression.
+Only expressions with no `Math` wrapper at all counted as constant.
+
+The broken rule has its own exact prediction: a leaf must be a bare number (p=0.5) *and* not
+function-wrapped (p=0.65), both leaves, so `(0.5*0.65)^2 = 10.6%`.
+
+| | |
+|---|---|
+| broken rule predicts | **10.6%** |
+| r96 salvage measured | **11.8%** (20/170), **z = 0.51** |
+
+**The salvage matches the broken classifier, not a depletion.** Corrected, both regimes agree with the
+generator at 25%, and #96's headline stands as originally written — with the live artwork now
+corroborated rather than contradicted by the harness.
+
+Two hypotheses were eliminated before I found it, and both were worth eliminating:
+
+- **The cull, ruled out by arithmetic.** It fires at `Math.random()<rate*0.1` and removes at most one
+  atom per firing. With `rate` ~0.06-0.12 and ~80 `mutateGenome` calls in 24,000 ticks, that is 0.5-1.0
+  culls per run — **at most ~8 atoms across all eight seeds**, against the 22 constants that would have
+  had to disappear. And `UA_BIRTH_FLOOR=0.28` gives ~22 births per run, so births (~176) and survivors
+  (170) already account for each other. Essentially nothing is removed in either regime; the live
+  exports agree, logging **zero `ua_cull` events across all eight worlds**.
+- **The harness PRNG, ruled out by measurement.** The isolated 25.0% used the real `Math.random`; the
+  harness substitutes a seeded mulberry32. Running the extracted generator under that PRNG: 25.1% and
+  25.2% at N=200,000, and 46/176 = 26.1% pooled over the eight seeds at run length. Clean.
+
+**This is the third time today the same trap has caught me** — a backtick inside a driver comment, then
+`\?` in the deep-grammar regex, now `\w` in the classifier. All three are the same failure: source
+written into a template literal, where the escape is consumed before it reaches the regex engine. The
+first two failed loudly (a `SyntaxError`, an `Invalid regular expression`). **This one failed silently
+and produced a plausible number**, which is why it survived long enough to reach the notebook and a
+commit message.
+
+Fixed in all three harnesses with doubled backslashes and a comment naming the trap. I swept every regex
+literal in the driver for the same pattern; this was the only one.
+
+**The methodological point, since it cuts against what I claimed earlier today.** I argued that reading
+and arithmetic beat arms in this codebase because arms cannot see silent failure. That is right, and it
+applies to my instruments exactly as it applies to the artwork: a probe that fails silently produces a
+number, the number is plausible, and it goes into the record as a finding. The check that caught this was
+not another run — it was computing what the *broken* rule would predict and finding that the data fit it
+at z = 0.51. **Any measurement that disagrees with a parameter-free prediction should be tested against
+"my instrument is wrong" with the same rigour as against "the system is surprising", and the way to do
+that is to model the instrument's failure mode and see whether the data fits it better.**
+
+## #97 RESULT — `FLOW_UNITS`, against its pre-registration
+
+`SEED=11`, 20,000 ticks, 332 windows of 60 ticks, sensor recorded against the world's true population
+change over the same window.
+
+| | OFF | ON | pre-registered target |
+|---|---|---|---|
+| sensor mean | +12.74 | **-0.19** | (true mean -0.15) |
+| sensor range | +5.1 .. +21.7 | **-8.0 .. +5.7** | |
+| sensor negative in | **0.0%** of windows | **50.3%** | ~ the true rate |
+| true negative rate | 45.5% | 44.0% | |
+| sign agreement | 49.0% | **66.3%** | >> 49% |
+| **r(sensor, true net flow)** | **0.165** | **0.453** | **FALSIFIER: must beat ~0.17** |
+| errors.pop | -521.6 | +93.7 | "low tens" |
+
+**The falsifier is cleared decisively.** Correlation with true net flow went from 0.165 to **0.453** —
+nearly triple, and far past the 0.174 that the naive `/60` divisor produced. The sensor the five VM sites
+read went from *never negative in 332 windows* to negative in 50.3% of them against a true 44.0%, and
+from chance-level sign agreement to 66.3%. So the 60x was not a cosmetic units bug: the flow sense was
+carrying essentially no directional information and now carries a substantial amount.
+
+**And the prediction I got wrong, which the arm caught.** I predicted `errors.pop` would land "in the low
+tens". It landed at **+93.7** — the sign flipped and the magnitude overshot. The reason is a *second*
+unit error in the same line, which only became visible once the first was fixed:
+
+```js
+selfModel.predicted.pop = alive + selfModel.birthRate*60 - selfModel.deathRate*60;
+```
+
+The `*60` was correct only while both rates were per-tick. Under `FLOW_UNITS` both are accumulated over
+the same 60-tick window, and the prediction horizon **is** one window — so the multiplier should be 1.
+With it retained, a residual net flow of -1.9 per window is amplified to -114, and the predictor stops
+overshooting by 500 only to undershoot by 100. `alive + (birthRate - deathRate)` = 243.1 against
+`alive` = 245.
+
+Horizon fix applied under the same knob (`_flowH = __FLOW_UNITS ? 1 : 60`), re-measuring now.
+
+**Worth recording against my own argument earlier today.** I said the arms were mostly not useful in this
+codebase and that reading plus arithmetic had produced every real finding. This arm found something
+reading did not: the second-order error was invisible while the first-order one masked it, and it
+surfaced only because the arm had a *quantitative* pre-registered target that the result missed. A
+pass/fail falsifier alone would have called this a success and shipped it. The distinction that matters
+is not arm versus reading — it is whether the prediction is specific enough that being roughly right
+still counts as a miss.
+
+### #97 FINAL — the horizon fix, and the whole self-model result
+
+| | OFF | ON (units) | ON (units + horizon) |
+|---|---|---|---|
+| r(sensor, true net flow) | 0.165 | **0.453** | **0.453** |
+| sign agreement | 49.0% | **66.3%** | **66.3%** |
+| sensor negative in | 0.0% of windows | 50.3% | 50.3% |
+| true negative rate | 45.5% | 44.0% | 44.0% |
+| alive | 217 | 245 | 245 |
+| predicted.pop | 724.1 | 129.9 | **242.1** |
+| **errors.pop** | **-521.6** | +93.7 | **-0.9** |
+| errors.pop as % of population | **240.4%** | 38.2% | **0.4%** |
+
+**The self-model's population prediction goes from wrong by 2.4x the population to wrong by one
+individual.** And the three sensor rows are bit-for-bit unchanged between the two ON arms, which is the
+internal check that the horizon multiplier touched `predicted.pop` and nothing else — it cannot affect
+`birthRate - deathRate`, and it did not.
+
+Two separate defects in one expression, and the second was only reachable through the first:
+
+1. `birthsThisTick` accumulated over 60 ticks while `deathsThisTick` was cleared every tick, inflating
+   `birthRate` 60x relative to `deathRate`. This is what the five VM flow-sensor sites read.
+2. Once both are per-window, the `*60` extrapolation became wrong in the other direction, because the
+   prediction horizon is exactly one window.
+
+**Fingerprint control, all of today's index.html work:** `SEED=11 TICKS=3000` against
+`git show f710bd4:index.html` — the last commit before #96 — with every knob at its default:
+
+```
+pre-#96 build   {"n":213,"pos":211804.601525,"amp":254.136854,"lin":28775,"prog":2849,...}
+current build   {"n":213,"pos":211804.601525,"amp":254.136854,"lin":28775,"prog":2849,...}
+```
+
+**Bit-identical.** `INT_GENE_STEP`, `REND_VOCAB` and `FLOW_UNITS` are all dormant by default; nothing
+shipped today changes the artwork unless a knob is set.
+
+### Where #96 and #97 stand
+
+| knob | what it fixes | evidence | default |
+|---|---|---|---|
+| `CHILD_SIGN_FLOOR` (#85) | `metabolicCost` could go negative | measured | **ON** |
+| `ABSTAIN_FREE` (#95) | abstention charged as a failed prediction | measured | **ON** |
+| `INT_GENE_STEP` (#96) | 5 integer genes cannot mutate at all, 3 more on the knife edge | arithmetic + 8/8 seeds + 20k simulated runs | OFF |
+| `REND_VOCAB` (#96) | rend expressions name variables `rendCompile` never binds | 24.9% -> 99.5% survival, 20k expressions | OFF |
+| `FLOW_UNITS` (#97) | flow sensor never negative; self-model off by 240% of population | r 0.165 -> 0.453, errors.pop -521.6 -> -0.9 | OFF |
+
+The three OFF knobs each have a measured effect and a passing control. What they do not have is evidence
+about **whether the artwork is better with them on** — that is a different question from "is this
+component doing what it says", and it is the one every arm this session failed to answer. `FLOW_UNITS`
+has the strongest case for defaulting ON, because a sensor that is positive in 332 of 332 windows is not
+a design choice anyone made.
+
+### The provenance audit — the retraction confirmed without using the probe at all
+
+All eight seeds x 24,000 ticks, logging every expression at the three sites that put one into a bank and
+the one site that takes one out, then classifying the **raw logged strings in plain node** — outside any
+template literal, so the escaping trap cannot apply.
+
+| | |
+|---|---|
+| atoms **born** (`uaGenExpression` -> `genome.userAtoms.push`) | 172 |
+| of those, constant-only | **39 = 22.7%** — generator predicts 25.0%, **z = -0.70** |
+| atoms **culled** across all eight runs | **2**, neither constant |
+| deep-grammar markers among all 172 born expressions | **0** |
+| births minus culls | 170 |
+| surviving bank total | **170 — exact match** |
+
+(An earlier version of this entry reported seven seeds and n=151. The last two runs finished after I read
+the directory; I had assumed they were lost to one of my own `pkill` sweeps. All eight completed, and the
+pooled numbers below are the full set. The conclusion is unchanged — z is identical to two decimals.)
+
+**`births - culls == survivors` exactly**, so nothing else adds to or removes from the global bank, and
+the surviving bank is therefore 39/170 = 22.9% constant. That is the generator rate. The corrected #96
+claim holds in both regimes, established this time from raw strings rather than from any classifier of
+mine.
+
+The audit also confirms the two eliminations independently: **two culls across eight 24,000-tick runs**,
+against the arithmetic prediction of 0.5-1.0 per run, and neither removed a constant. And **0 deep-grammar
+markers in the birth stream itself** — direct evidence that `uaMaxDepth=1` gates the generator, not just
+that deep atoms fail to survive.
+
+Incidentally measured: 172 germline seedings and **3,980 meme transfers** into *particle* genomes over
+the eight runs. Those never touch `genome.userAtoms`, which is why the identity above is exact — but it
+means there is substantial atom traffic between particle genomes in a headless run with no peers at all,
+a channel I have never measured.
+
+**And the audit caught the probe still lying.** These runs launched before I fixed the classifier, so
+their `intGenes.atomsConst` reported 13.3% — matching the *broken* rule's 10.6% prediction
+(z = 1.10) while the raw strings said 22.5%. A fresh run on the fixed build now agrees with the raw count
+exactly (4 born, 0 culled, 2 constant by both routes). The instrument is repaired and verified against
+ground truth rather than against itself.
+
+---
+
+## #98 — the switches were an authored ceiling, and I put one on a system built to refuse them
+
+Challenged on this and the challenge is correct. I conflated two decisions: **"this needs a switch"** (true —
+without an off-path I cannot prove a change is inert, and that proof is what makes any of this trustworthy)
+and **"this must default off"** (mine, unearned, and dressed as caution).
+
+Worse, the framing was wrong for *this* codebase specifically. The file spends thousands of comment-lines
+removing authored ceilings — "GLOVES OFF, no spring, no prior, no restoring force", "if the system wants a
+value of -47 or 12000, it gets one", "a lineage is free to buy any consequence it can survive". Into that I
+added three human-only gates. That is precisely the kind of ceiling the design exists to refuse, and I did
+not see it because I was managing my own risk of shipping something wrong rather than asking what the gate
+does to the system.
+
+**The distinction I should have drawn: repair versus treatment.**
+
+- `uaMaxDepth` is *documented as* an evolvable gene. The arithmetic took it away. Leaving `INT_GENE_STEP`
+  off does not preserve neutrality — it continues denying the system a gene its own design says it has.
+- The flow sensor read "growing" in 332 of 332 windows. That is not a neutral baseline, it is a falsehood
+  in the sensorium.
+- The render channel emitted guaranteed-`ReferenceError` code 75% of the time.
+
+None of those need an A/B before being fixed. **Counting deaths correctly is not a treatment arm.** My
+insistence on running one first was a category error wearing rigour as a costume.
+
+All three now default **ON**. The switches remain as controls and as the revert path, not as gates.
+
+### The authored constants inside the fixes, and which of them became genes
+
+Two constants were sitting where this system puts a gene everywhere else. Only one of them should be one.
+
+**`intMaybe`'s forced move — now a gene, and the mechanism was wrong too.** I had written
+`Math.max(1,Math.round(step))`, forcing every fired mutation to move at least 1. A minimum move of 1 is
+substrate (an integer that moves by less than 1 does not move), but *forcing* it silently inflates the
+effective step for these genes above whatever `magnitude` says. The unbiased quantiser is **stochastic
+rounding**: a step of 0.3 moves by 1 with probability 0.3, so `E[move] == step` and `magnitude` means what
+it says. `genome.intStepBias` (0..1) then interpolates toward the forced version, so a lineage that
+benefits from coarser integer search can buy it. My hard-coded behaviour is now the `bias=1` end of an
+evolvable range, and the honest default sits at the other end.
+
+**The `f(...)` suppression in the render channel — NOT a gene.** `rendCompile` binds
+`(t0..t3, amp, phase, col)` and does not bind `f`. An expression naming `f` is a guaranteed
+`ReferenceError` in that scope. Suppressing it is the channel's scope, not a ceiling on what it may mean —
+making it evolvable would only let a lineage evolve the right to emit code that cannot run.
+
+**But a real ceiling was hiding next to it — now `genome.rendMaxDepth`.** My first version borrowed
+`genome.uaMaxDepth` for the render channel, chaining the colour language's complexity to the atom
+language's. That coupling was mine and nothing in the design asks for it. The render channel now evolves
+its own depth.
+
+### Two things the control caught that I would otherwise have shipped
+
+**1. Declaring a genome key changes the whole trajectory, knob or no knob.** `mutateChildGenome` does
+`for(const k in g)` and draws `Math.random()` per numeric key **on every birth**. Adding
+`rendMaxDepth:1, intStepBias:0` to the genome literal therefore shifted the RNG stream for the entire run
+even with both knobs forced off, and the exact-revert control failed. Both genes are now created **lazily**
+by `mutateGenome` under their own knob, with every reader supplying the default; once created they are
+ordinary heritable genes and the child path mutates them like any other. This is a general fact about this
+codebase worth stating plainly: **there is no such thing as an inert new genome key.**
+
+**2. A control that cannot turn the knob off is not a control.** After fixing (1) the check still failed,
+by 0.0105 in a position sum of 211,804 — everything else identical. Bisecting my own diff showed the
+default-flip lines were responsible *even when the environment forced all three to 0*. The cause:
+`FLOW_UNITS` had never been added to `harness-clamp.js`'s env list (the edit that would have added it sat
+in a Python block whose assertion threw before the write). So `globalThis.__FLOW_UNITS` was `undefined`,
+the new default-ON read returned `true`, and the "forced off" arm was running with the knob **on**. The
+old default-OFF read returned `false` for `undefined`, which is exactly why this was invisible until the
+defaults flipped. **Flipping a default converts every missing plumbing entry from silently-correct to
+silently-wrong**, and the only reason I found it is that the fingerprint disagreed in the fifth
+significant figure instead of not at all.
+
+**Control after both fixes** (`SEED=11 TICKS=3000`, against `git show f710bd4:index.html`):
+
+```
+pre-#96                       {"n":213,"pos":211804.601525,"amp":254.136854,"lin":28775,"prog":2849,...}
+new build, knobs forced OFF   {"n":213,"pos":211804.601525,"amp":254.136854,"lin":28775,"prog":2849,...}   PASS
+new build, DEFAULT (on)       {"n":219,"pos":228159.399623,"amp":272.358384,"lin":34003,"prog":2829,...}   live
+```
+
+### #98 PRE-REGISTRATION — does the repaired gene actually move?
+
+Stochastic rounding makes `uaMaxDepth` mobile but not hot. Magnitude 0.6 at scale ~1 gives a uniform step
+in [-0.3,+0.3], so `E[|step|] = 0.15`, `P(move per fired mutation) = 0.15`, and at `rate ~= 0.06` over ~80
+`mutateGenome` calls in 24,000 ticks, **0.72 expected moves per run**.
+
+- **PREDICT:** `uaMaxDepth > 1` in roughly **half** of 8 seeds (P(at least one move) = 0.51).
+- **PREDICT:** `intStepBias` drifts off 0 in all 8 (it is mutated on every call that fires).
+- For contrast, my discarded forced-move version would have given **4.8 moves per run** — far too hot, and
+  that overreach is exactly what the gene now lets selection adjudicate instead of me.
+- **FALSIFIER:** 0/8 seeds move. That would mean stochastic rounding is too cold to unfreeze the gene in
+  practice, and the honest response is to say so rather than to reach for a bigger constant.
+
+## #98 RESULT — every frozen gene is mobile, and the recursive grammar has fired for the first time
+
+8 seeds x 24,000 ticks, all three repairs at their new defaults.
+
+| seed | uaMaxDepth | rendMaxDepth | intStepBias | atoms | **deep-grammar** | constant |
+|---|---|---|---|---|---|---|
+| 3 | **2** | 1 | 0 | 26 | **8** | 3 |
+| 7 | 1 | 1 | 0 | 26 | 0 | 8 |
+| 11 | 1 | 1 | 0.0675 | 22 | 0 | 5 |
+| 17 | 1 | 1 | 0 | 20 | 0 | 4 |
+| 23 | **2** | **2** | 0 | 15 | **6** | 1 |
+| 29 | **2** | 1 | 0.003 | 26 | **4** | 5 |
+| 31 | 1 | 1 | 0 | 24 | 0 | 12 |
+| 37 | **2** | 1 | 0.0239 | 29 | **14** | 2 |
+
+**All eight previously-frozen genes now move:**
+
+| gene | before (8/8 seeds identical) | after |
+|---|---|---|
+| uaMaxDepth | 1 | **[2,1,1,1,2,2,1,2]** |
+| vmMaxInstructions | 16 | [15,16,16,17,15,16,17,15] |
+| motifMemorySize | 5 | [5,5,6,5,5,5,6,4] |
+| clusterReflexAge | 5 | [4,5,4,4,6,5,5,6] |
+| clusterMinSize | 3 | [4,3,2,2,3,4,4,3] |
+| shadowScenarios | 5 | [6,5,5,5,5,6,5,5] |
+| hgtMax | 2 | [2,2,2,2,2,**4**,2,2] |
+| reflexDepth | 4 | [4,4,4,4,**3**,4,4,4] |
+
+**32 of 188 atoms now use the recursive grammar** — branching, `f(...)` atom-calls-atom, multi-argument
+functions. Across every live export (163 atoms) and every headless run before today (172 atoms), that
+count was **zero**. It is the first time `uaGenTerm`'s `depth>0` branches have executed in this project.
+
+### Against the pre-registration
+
+- **`uaMaxDepth > 1` in roughly half of 8 (P=0.51 from the arithmetic) — observed 4/8.** Correct. This
+  is, I think, the first prediction I have got right all session; the running count of failed stated
+  expectations stood at about ten out of ten.
+- **`intStepBias` off 0 in all 8 — observed 3/8. Failed.** One contributing cause I can name: the gene is
+  seeded at 0, which is its lower clamp, so every negative mutation is erased by `__cl(...,0,1)` and only
+  the upward half of the draws can register. That accounts for some of the gap but not obviously all of
+  it, and I am not going to reverse-engineer the rest into a story that fits.
+- **Falsifier (0/8 moving): not triggered.**
+
+### One thing that is mechanical, not selection
+
+The constant-only fraction falls in exactly the seeds that went deep — 1/15, 2/29, 3/26 against 4/20,
+5/22, 8/26, 12/24 at depth 1. That is arithmetic, not evidence of taste: at depth 2 an expression has up
+to four leaves, so P(all constant) drops from 0.25 to about 0.0625. Recording it because it is the kind
+of number that reads like a result and is not one.
+
+### What this does and does not establish
+
+It establishes that the repair works: the gene the design says is evolvable is now evolvable, and the
+grammar behind it is reachable. **It does not establish that any of it helps.** Every finding this
+session says the atom layer carries no measurable signal — but that verdict was always scoped to
+depth-1 expressions, because depth-1 was the only thing the generator could emit. This is the first
+build in which the question can be asked at all.
+
+The next honest measurement is the one #87-#94 kept failing to make for the wrong reason: whether atoms
+confer anything, run now on a build where the mechanism under test actually fires. That is a
+does-it-help question, which means it needs seeds and an arm, and by today's own lesson it is worth
+running only because the mechanism-fires question has now been answered first.
+
+### CORRECTION — "births minus culls equals survivors" was a coincidence of counts, not of content
+
+I reported that identity as proof that "nothing else adds to or removes from the global bank". It is not.
+Dumping the actual expressions on both sides of one run (seed 37, 24,000 ticks) shows:
+
+```
+born 29    culled 0    final bank 29        <- the counts still balance
+bank entries never logged as born : 9
+born entries absent from the bank : 9
+```
+
+**Nine atoms entered the global bank without passing the authoring site, and nine left it without being
+culled.** The count identity held because the flows happened to be equal, and I read a balanced ledger as
+a closed one. The three sites I instrumented are not the full set: `genome` is temporarily rebound to a
+particle's genome during VM execution (`genome=pGenome[i] ... finally{genome=_g}` at 19129/19188), so a
+push at the authoring site can land in a particle bank, and the germline/meme-transfer pushes can land in
+the global one. My audit assumed a boundary that the code does not have.
+
+**This also resolves the 14-vs-9 discrepancy, and neither number was wrong.** The probe counts
+deep-grammar atoms in the **final bank** (14); my log counts them among **births** (9). Both are correct
+counts of different populations. The pooled "32 of 188" I published mixed the two and is withdrawn; the
+per-seed bank figures in the #98 table are the bank population, which is the right denominator for "what
+the system ended up holding".
+
+**And there is something in the difference worth chasing.** Of the nine that arrived unlogged, **seven
+use the recursive grammar**. Of the nine that left, **none do** — they are all flat, mostly constants:
+
+```
+arrived  ((((-1.76)>=(m))?(-1.65):(1.75)))*(d)
+arrived  ((t)*(rd))-((((Math.exp(1.49))>=(-0.23))?(m):(m)))
+arrived  (Math.hypot(a,Math.tanh(-0.86)))/((ny)*(c))
+left     (Math.abs(d))/(0.14)
+left     (-1.68)/(0.96)
+left     (1.86)+(0.28)
+```
+
+That is a directional flow: deep in, flat out. **It is the first thing all session that looks like atom
+content being sorted rather than merely accumulated** — and it was invisible while the grammar was frozen,
+because when every atom is flat there is nothing for a sorting process to sort.
+
+**I am not claiming it is selection on depth.** At least two duller explanations fit and I have separated
+neither: `attemptMemeTransfer` deliberately picks the donor's **most-used** atom, so this may be sorting
+on use with depth merely correlated; and the donor genomes may simply have been running at a higher
+`uaMaxDepth`, in which case the inflow is deeper for the same reason a different generator setting
+produces different output. n=1 run.
+
+The measurement that separates them is cheap and mechanism-shaped: log the *source* of every atom
+entering the global bank alongside its depth and the donor's `uses`, and compare inflow depth against
+donor-uses rank. That is the next thing worth doing, and it is a does-this-fire question rather than a
+does-this-help one, which by today's standard is the right shape to run first.
+
+## #99 RESULT — the "deep in, flat out" flow was n=1 noise; the transfer channel sorts hard on USE
+
+6 seeds x 24,000 ticks, all repairs at their new defaults. Two independent instruments: a path-agnostic
+60-tick snapshot diff of the true global bank, and site hooks recording whether the *receiving* object is
+the global genome.
+
+### The phenomenon does not survive replication
+
+| | n | deep | rate |
+|---|---|---|---|
+| arrivals into the global bank | 224 | 45 | **20.1%** |
+| departures from it | 79 | 13 | **16.5%** |
+
+**z = 0.71.** The seed-37 result that looked like "deep in, flat out" — 7 of 9 arriving deep, 0 of 9
+leaving deep — was a single run, and at n=6 the asymmetry is gone. I flagged it as "the first thing all
+session that looks like atom content being sorted", with three caveats attached, and the caveats were the
+right instinct: it was noise. Two of the six seeds (41, 43) never reached depth 2 at all and contributed
+zero deep atoms in either direction.
+
+### H3 is dead, H2 is alive and strong, H1 is at best marginal
+
+- **H3 (donors are simply deeper): refuted outright.** Every one of the 3,125 meme-transfer donors had
+  `uaMaxDepth = 1`. Particle genomes never author deep atoms; the only deep atoms in circulation came
+  from the global germline seeding them outward.
+- **H2 (sorting on use): confirmed, and it is not subtle.** `attemptMemeTransfer` picks the donor's
+  most-used bound atom, and the median chosen atom had been executed **4,562 times** (max 138,685). Not
+  one of the 3,125 transfers picked a zero-use atom. This channel is a genuine, hard filter — just on
+  execution count, not on content.
+- **H1 (sorting on depth): marginal at best.** Chosen atoms were deep in 97/3,125 = 3.1% against a donor
+  bound-pool rate of 190/7,942 = 2.4%, **z = 2.12**. My analyser's threshold printed "depth-biased", and
+  I am overruling it. Given the number of comparisons I have run today and a session record of about one
+  correct prediction in eleven, a z of 2.1 on a secondary measure is suggestive and nothing more.
+
+**So the honest answer to the question I set: the flow is sorted, but on use, and there is no established
+depth effect.** Depth being weakly correlated with use is plausible — a deeper expression has more leaves
+touching more registers — but that is a hypothesis for a targeted test, not a finding.
+
+### One thing this test did NOT resolve, stated rather than buried
+
+The arrival/departure ledger still does not close, and my leading explanation was wrong.
+
+```
+authoring pushes into the GLOBAL bank   146
+arrivals detected by snapshot           224
+departures detected by snapshot          79
+culls                                     1
+meme transfers into the global bank       0   <- ALL 3,125 went to particle genomes
+germline seeds into the global bank       0   <- ALL 146 went to particle genomes
+```
+
+I had assumed the unlogged arrivals came in via meme transfer or germline seeding. **Neither writes to
+the global bank at all** — every one of those 3,271 events targeted a particle genome. So ~78 arrivals and
+~78 non-cull departures remain unattributed, and their near-equality suggests atoms leaving the global
+bank and returning rather than a one-way inflow. I do not know the mechanism. Candidates I have not
+tested: the extinction-rebirth path, whose own comment says the reborn world "inherits the dead world's
+germline — its atoms", and `sanitizeGenome`'s wholesale rebuild of `genome.userAtoms`.
+
+That is the next thing to chase, and it matters beyond bookkeeping: **a path that moves atoms into and out
+of the germline bank without passing the authoring site or the cull is a selection channel nobody has
+measured**, including me, across ninety-nine entries.
+
+## #100 — the unattributed write path is an overwrite, and it reframes the whole session
+
+The ~78 unattributed arrivals and departures in #99 are line 12599:
+
+```js
+for(const ua of genome.userAtoms){
+  const grip=_alienSelect?alienGrip(ua):0;
+  if(Math.random()<rate*0.3*(1-grip)){
+    ua.expression=uaGenExpression();   // wholesale replacement, in place
+    ua.compiled=null; ua.failed=false;
+    ua.uses=0;                         // and the execution record is erased with it
+    ua.alienHits=0; ua.alienAttempts=0;
+  }
+}
+```
+
+**Every atom in the bank is on a timer to have its expression thrown away and replaced with a fresh draw
+from the generator.** It produces one departure and one arrival with no push and no cull — exactly the
+equal-in/equal-out signature the #99 ledger could not attribute.
+
+### The arithmetic, from the source constants alone
+
+At `rate ~= 0.06` and `grip = 0`, the per-atom overwrite probability is `0.06*0.3 = 0.018` per
+`mutateGenome` call:
+
+| | |
+|---|---|
+| expected overwrites per 24,000-tick run (~80 calls, bank ~25) | **36** |
+| births in the same run (`UA_BIRTH_FLOOR = 0.28`/call) | **22** |
+| P(a given atom survives a 24,000-tick run un-overwritten) | **0.234** |
+| half-life of an expression | 39 calls ~ **11,500 ticks** |
+| P(an atom survives the gen104 live world's 595 calls) | **2e-5** |
+
+**The bank is re-randomised faster than it is filled.** And the gen104 world's 108 atoms are not a
+104-generation accumulation of anything — they are a snapshot of a pool that has been continuously
+re-drawn from `uaGenExpression()`.
+
+### This corrects my own headline finding — right conclusion, wrong reasoning
+
+In #96 I wrote: *"After up to 104 generations, the surviving bank is statistically indistinguishable from
+a fresh random draw... Any selection on atom content would enrich the bank for world-sensing atoms over
+constants. At n=163 there is no enrichment to find."* I presented 25.2% against a predicted 25.0% as
+**evidence of an absence of selection**.
+
+That reasoning is wrong. **The bank matches the generator because it IS the generator's output,
+continuously refreshed** — a mechanism guarantees the match, so the match cannot be evidence about
+selection either way. I measured a design constant and reported it as an empirical finding. The
+conclusion survives (nothing is accumulating in that bank) but the argument for it is now the overwrite,
+not the distribution.
+
+### The defect this exposes
+
+The overwrite has exactly one brake: `(1-grip)`, where `grip` is `alienGrip` — the predictive channel
+**#95 measured at chance**, and #97 confirmed sits on the independence null in the live artwork. So the
+sole thing that can protect an atom from erasure is a score with no information in it.
+
+Meanwhile `uses` protects nothing. And #99 established that `uses` is not a dead counter — the transfer
+channel sorts on it *hard*: median chosen atom 4,562 executions, max 138,685, zero zero-use picks out of
+3,125 transfers. **The system has a strong, working, use-based selector in one channel and the germline
+overwrite ignores it completely.** An atom executed 138,685 times carries the same 1.8%-per-cycle death
+sentence as one that has never run.
+
+That is the sharpest actionable target this session has produced, and unlike the atom-depth work it does
+not need a new mechanism — only for the overwrite's protection term to consult a signal that already
+demonstrably discriminates.
+
+Measurement in flight: the overwrite site is now hooked, so the predicted ~36/run and the ledger closing
+to zero unattributed events are both about to be checked rather than asserted.
+
+## #101 — use earns protection from the overwrite, and the system decides how much
+
+```js
+const _useProtect=__USE_PROTECT?__cl(finiteOr(genome.atomUseProtect,0),0,1):0;
+let _uSorted=null;
+if(_useProtect>0){ _uSorted=genome.userAtoms.map(a=>a.uses|0).sort((x,y)=>x-y); }
+for(const ua of genome.userAtoms){
+  const grip=_alienSelect?alienGrip(ua):0;
+  let _rank=0;                       // fraction of the bank strictly below this atom in executions
+  if(_uSorted&&_uSorted.length>1){ ... _rank=below/(_uSorted.length-1); }
+  if(Math.random()<rate*0.3*(1-grip)*(1-_useProtect*_rank)){
+```
+
+**Three decisions in this, and I am only entitled to one of them.**
+
+**Mine (a fact, not a choice): the strength term is RANK, not raw uses.** Rank is the fraction of the bank
+strictly below this atom in executions — scale-free by construction. There is no normalising constant to
+pick and therefore none to get wrong, and it is immune to the 138,685-use outlier that would wreck any
+fixed divisor. This is deliberate: choosing a scale by fiat is precisely what destroyed my #92 observable,
+where `tanh(1333/20)` saturated to exactly 1.0 and handed the atoms zero information. This term has no
+scale to saturate.
+
+**The system's: how much rank protects.** `genome.atomUseProtect`, [0,1], **seeded at 0 — byte-for-byte
+the prior behaviour** — and evolvable from there. I am not setting the strength, because whether execution
+count *should* buy immortality in a germline is exactly the sort of question this architecture exists to
+put to selection rather than to an author. At 0 the overwrite is blind as before; at 1 the most-executed
+atom in the bank is untouchable.
+
+**Recorded rather than hidden:** 0 is its own lower clamp, so the gene can only move upward until it
+leaves the boundary. That is the same asymmetry I measured on `intStepBias` in #98, where it left 0 in
+only 3 of 8 seeds. Seeding at 0 buys an exact-revert control at the cost of a one-way start, and I am
+naming the trade rather than pretending it isn't one.
+
+**Not a repair — and that distinction now cuts the other way.** #96/#97's fixes went to default-ON because
+a gene that cannot mutate and a sensor that reads a constant are broken, not chosen. This is different:
+the blind overwrite works as written, and its comment says protection is *earned*. Adding a second thing
+that earns it is a design change. So the capability ships on (`USE_PROTECT` default ON) while the gene
+that governs it sits at zero — the system gets the option, not the outcome. That is the shape the
+autonomy argument actually demands: not me flipping a behaviour on, but me removing my hand from which
+signals are allowed to matter.
+
+**The gene is created lazily under its knob**, per #98: declaring a genome key changes RNG consumption on
+every birth, because `mutateChildGenome` enumerates keys. Control to follow.
+
+### Why `uses` and not something new
+
+#99 measured it. The meme-transfer channel already sorts on `uses` **hard** — median chosen atom 4,562
+executions, max 138,685, and not one zero-use pick in 3,125 transfers. So `uses` is a signal this system
+demonstrably discriminates on in one place while the germline overwrite ignored it in another. No new
+mechanism, no new observable, no new scale: one existing working discriminator, connected to the one
+place that was throwing away its verdict.
+
+## #100 VERIFIED — the ledger closes exactly, and the measurement deflates my own #101 rationale
+
+6 seeds x 24,000 ticks with the overwrite site hooked.
+
+```
+IN : author pushes 146 + overwrites 78 = 224   vs arrivals detected   224   EXACT
+OUT: culls           1 + overwrites 78 =  79   vs departures detected  79   EXACT
+```
+
+**Every arrival and departure is now attributed.** The overwrite at 12599 was the whole of the missing
+path, and the #99 ledger closes to zero unexplained events. That also retires the "extinction rebirth /
+sanitizeGenome" candidates I named — neither was involved.
+
+**My arithmetic prediction was wrong by 2.8x** — I predicted ~36 overwrites per run, observed **13.0**.
+Two errors, both mine, both in the direction of overstating:
+
+- I used the **nominal** `mutationRate` of 0.06. The real rate is stress-modulated by `stabilityFactor`,
+  which sits near 0.7 in a stable run (`1 + (1-stability)*0.8 - stability*0.3`).
+- I used a **full** bank of 25. The bank grows from empty, so the run-average is ~12.5.
+
+Corrected: `0.042*0.3 * 80 calls * 12.5 atoms = 12.6/run` against 13.0 observed. The mechanism is exactly
+as described; my estimate of its magnitude was not.
+
+### And this is the part that matters — #101's motivating example does not occur
+
+I justified use-protection with: *"an atom executed 138,685 times carries the same 1.8%-per-cycle death
+sentence as one that has never run."* Measured, what the overwrite actually destroys:
+
+| | |
+|---|---|
+| median uses of an erased atom | **0** |
+| max uses of an erased atom | **711** |
+| erased atoms with >1000 uses | **0 / 78** |
+| erased atoms with 0 uses | **58 / 78** |
+| erased atoms where grip (the existing brake) was nonzero | **0 / 78** |
+
+**The overwrite is mostly erasing atoms that never ran.** The 138,685 figure was real but came from the
+*transfer* channel's donor pool — particle genomes — and I carried it across into a claim about the global
+germline bank without checking that the two populations are comparable. They are not: the largest use
+count the overwrite has ever destroyed here is 711.
+
+**So #101 is worth much less than I claimed for it.** It would engage on the 20 of 78 erasures that hit an
+atom with any uses at all — a quarter of them — not on a stream of heavily-proven primitives being thrown
+away. The mechanism is still pointed the right way (rank means the zero-use majority get rank 0 and stay
+fully exposed, exactly as they should), but I sold it on a case that the data does not contain.
+
+**And there is a deeper problem with it that I have not measured.** `uses` is incremented on whichever
+atom *object* `uaCall` receives, and VM execution runs almost entirely with `genome` rebound to a
+particle's genome — so a germline atom's `uses` counts only the rare calls made while the global genome
+is ambient. That would make global-bank `uses` a weak proxy for how much an expression actually executes
+in the population, which is uncomfortably close to the defect I was fixing: protecting on a signal that
+does not measure what it appears to measure. The live data is consistent with this — 96 of the gen104
+world's 108 atoms had zero uses.
+
+Before `atomUseProtect` is worth anything, that needs testing: **does a germline atom's `uses` correlate
+with how often its expression is executed across the population?** If not, #101 protects on noise and
+should be reverted or re-pointed at a counter that aggregates across the particle copies.
+
+## #101 RESULT — the gene moves, and the replication refutes my reading of #98
+
+8 seeds x 24,000 ticks, all knobs at defaults.
+
+| seed | atomUseProtect | intStepBias | uaMaxDepth | atoms | deep-grammar |
+|---|---|---|---|---|---|
+| 3 | 0.0518 | 0.0047 | 1 | 27 | 0 |
+| 7 | **0.1775** | 0 | 1 | 17 | 0 |
+| 11 | 0 | 0.1276 | 1 | 25 | 0 |
+| 17 | 0.0723 | 0.1468 | 1 | 25 | 0 |
+| 23 | 0.0507 | 0.0649 | 2 | 17 | 6 |
+| 29 | 0 | **0.8713** | **3** | 14 | **11** |
+| 31 | 0.0582 | 0.0051 | 1 | 19 | 0 |
+| 37 | **0.1561** | 0 | 2 | 23 | 13 |
+
+**`atomUseProtect` left zero in 6 of 8 seeds.** The system has taken the option — modestly: the largest
+value, 0.1775, buys the top-ranked atom an 18% reduction in its overwrite rate. It has not been handed
+immortality and has not chosen it.
+
+### The prediction failed, and the failure is the useful part
+
+I predicted **~3/8**, reasoning that `atomUseProtect` uses an operator identical to `intStepBias` — same
+magnitude 0.15, same [0,1] clamp, same seed at 0 — and that #98 measured `intStepBias` at 3/8. Observed
+6/8.
+
+**And `intStepBias` itself came back 6/8 in this very run**, against 3/8 in #98. Same gene, same operator,
+same clamp, different RNG stream. So the number I was replicating was never a structural constant:
+3/8 and 6/8 are both ordinary draws from a rate near 9/16 ~= 56%.
+
+**That retires a claim I made twice.** In #98 I read 3/8 as evidence that seeding a gene at its own lower
+clamp meaningfully suppresses its movement, and I repeated it when registering this prediction — including
+the line that "the system can only decide once the operator lets it off the floor". The boundary
+asymmetry is real arithmetic (negative draws at 0 are erased), but **its measured effect is not what I
+said**: these genes leave zero in a bit over half of 24,000-tick runs, not a third. I built an
+interpretation on one n=8 sample and then used it to predict a second n=8 sample of the same quantity.
+The replication is what caught it.
+
+### Seed 29 is the first sign of the handed-over freedom being used coherently
+
+`intStepBias` reached **0.8713** — near the top of its range, meaning integer mutations in that lineage
+almost always take a real step — and that seed is the only one to reach `uaMaxDepth = 3`, the deepest yet,
+with **11 of its 14 atoms using the recursive grammar**. The gene governing how integer genes move drove
+the gene governing expression depth further than any other run reached.
+
+I am not claiming selection favoured it. One seed, and a coarser integer operator raises the variance of
+every integer gene, so landing high on one of them is partly mechanical. But it is the first instance of
+a constant I removed becoming a value the system set for itself, with a visible downstream consequence —
+which is the thing the whole #98-#101 arc was for.
+
+**Also holding:** `uaMaxDepth > 1` in 3/8 here against 4/8 in #98 — consistent, and the pre-registered
+"roughly half" from the arithmetic survives its own replication where my other two predictions did not.
