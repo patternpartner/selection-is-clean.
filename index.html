@@ -93,6 +93,21 @@ let __INT_GENE_STEP=false; // #96: integer genes take a real step when their mut
 let __REND_VOCAB=false;   // #96: rend mutations draw from REND_VARS instead of the atom vocabulary. Default OFF pending the arm.
 let __FLOW_UNITS=false;   // #97: deathRate is accumulated over the same 60-tick window as birthRate. Default OFF pending the arm.
 let __USE_PROTECT=false;  // #101: execution rank earns protection from the germline overwrite, weighted by genome.atomUseProtect. Default ON; the GENE seeds at 0 so behaviour is unchanged until selection moves it.
+// #102: atomUseProtect's rank reads genome.userAtoms[i].uses — a per-OBJECT counter. #100/#101 measured
+// it near-zero on germline atoms (median 0, max 711 across the 78 erasures #100 VERIFIED sampled) because
+// uaCall fires overwhelmingly on PARTICLE-owned clones seeded with uses:0 (seedAtomIntoParticle 707-726,
+// attemptMemeTransfer 727-743), not the germline's own dormant copy — the 4,562/138,685-execution atoms
+// #99 found belong to a different population (particle bound-pools) entirely. #100 VERIFIED named this
+// directly: "does a germline atom's uses correlate with how often its expression is executed across the
+// population? If not, #101 protects on noise." This aggregates uaCall's execution count by atom
+// EXPRESSION — the same content-identity key seedAtomIntoParticle/attemptMemeTransfer already dedupe on —
+// across every genome, so the rank atomUseProtect spends its evolved weight on reflects what the
+// expression actually does out in the population, not how often the germline's own copy happened to be
+// ambient. Ships DORMANT: implemented and read through the source, not run through a harness this
+// session, so it is exactly the open question above, made answerable by an A/B against ATOM_USE_POP=0
+// rather than answered. Fully gated — byte-for-byte the #101 build when off. Force on with ATOM_USE_POP=1.
+let __ATOM_USE_POP=false;
+const __atomExprUses=new Map(); // population-wide execution count per atom expression; written only when __ATOM_USE_POP is on
 // Highest alienGrip among a genome's BOUND atoms, tie-broken by uses so a bank with no scored atom
 // behaves exactly as before. Returns -1 if there is nothing bound.
 // Returns -1 unless some bound atom has ACTUAL grip (>= ALIEN_GRIP_MIN_ATTEMPTS attempts and a non-zero
@@ -798,6 +813,10 @@ function uaCall(atom,a,b){
     const s=isFinite(atom.state)?atom.state:0;   // recurrent state = previous output
     const r=atom.compiled(a,b,u,uaCtxC,uaCtxD,uaCtxM,s,uaCallF,uaCtxNx,uaCtxNy,uaCtxT,uaCtxNb,uaCtxRl,uaCtxRd);
     atom.uses=prevUses+1;
+    if(__ATOM_USE_POP&&atom.expression){
+      if(__atomExprUses.size>5000)__atomExprUses.clear(); // bounded — a live counter, not an archive
+      __atomExprUses.set(atom.expression,(__atomExprUses.get(atom.expression)||0)+1);
+    }
     const out=isFinite(r)?Math.max(-8,Math.min(8,r)):0;
     atom.state=out;                              // persist for next tick → recurrence
     if(prevUses===0)recordEvent('ua_first_use',{expr:(atom.expression||'').slice(0,48)},1200);
@@ -12618,12 +12637,15 @@ function mutateGenome(){
   // that would wreck any fixed normaliser. Picking a scale by fiat is exactly what broke my #92
   // observable (tanh(1333/20) saturated to 1.0 and destroyed the signal), so this one has no scale.
   const _useProtect=__USE_PROTECT?__cl(finiteOr(genome.atomUseProtect,0),0,1):0;
+  // #102: which counter "uses" means here. Off (default): byte-for-byte #101 — the germline object's own
+  // .uses. On: the population-wide count keyed by expression (see __ATOM_USE_POP above).
+  const _ueRead=a=>__ATOM_USE_POP?(__atomExprUses.get(a.expression)||0):(a.uses|0);
   let _uSorted=null;
-  if(_useProtect>0){ _uSorted=genome.userAtoms.map(a=>a.uses|0).sort((x,y)=>x-y); }
+  if(_useProtect>0){ _uSorted=genome.userAtoms.map(_ueRead).sort((x,y)=>x-y); }
   for(const ua of genome.userAtoms){
     const grip=_alienSelect?alienGrip(ua):0;
     let _rank=0;
-    if(_uSorted&&_uSorted.length>1){ const u=ua.uses|0; let below=0;
+    if(_uSorted&&_uSorted.length>1){ const u=_ueRead(ua); let below=0;
       for(const v of _uSorted){ if(v<u)below++; else break; }
       _rank=below/(_uSorted.length-1); }
     if(Math.random()<rate*0.3*(1-grip)*(1-_useProtect*_rank)){
@@ -19831,6 +19853,7 @@ __INT_GENE_STEP=(typeof globalThis==='undefined')||((globalThis.__INT_GENE_STEP?
 __REND_VOCAB=(typeof globalThis==='undefined')||((globalThis.__REND_VOCAB??1)|0)!==0; // #96: default ON. This is a REPAIR, not a treatment — the off-path exists as a CONTROL (and as the revert), not as a gate. Force off with REND_VOCAB=0
 __FLOW_UNITS=(typeof globalThis==='undefined')||((globalThis.__FLOW_UNITS??1)|0)!==0; // #97: default ON. This is a REPAIR, not a treatment — the off-path exists as a CONTROL (and as the revert), not as a gate. Force off with FLOW_UNITS=0
 __USE_PROTECT=(typeof globalThis==='undefined')||((globalThis.__USE_PROTECT??1)|0)!==0; // #101: default ON — the capability exists; the gene decides whether it is used. Force off with USE_PROTECT=0
+__ATOM_USE_POP=(typeof globalThis!=='undefined')&&((globalThis.__ATOM_USE_POP|0)===1); // #102: default OFF — unverified swing, ships dormant. Force on with ATOM_USE_POP=1
 __FORAGE_ON=(typeof globalThis==='undefined')||((globalThis.__FORAGE_EYES??1)|0)!==0; // resolve FORAGE once; gates the resource-sense computation in uaSetEyes
 __DECIDE_ON=(typeof globalThis==='undefined')||((globalThis.__DECIDE??1)|0)!==0; // resolve DECISION GAIN once; gates confidence accrual + commitment scaling
 __DECIDE_REAL=(typeof globalThis==='undefined')||((globalThis.__DECIDE_REAL??1)|0)!==0; // resolve DECIDE-FROM-REAL once; gates real-winner physics adoption

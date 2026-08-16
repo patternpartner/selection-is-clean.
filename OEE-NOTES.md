@@ -8810,3 +8810,65 @@ which is the thing the whole #98-#101 arc was for.
 
 **Also holding:** `uaMaxDepth > 1` in 3/8 here against 4/8 in #98 — consistent, and the pre-registered
 "roughly half" from the arithmetic survives its own replication where my other two predictions did not.
+
+## #102 — atomUseProtect's rank now reads population-wide execution, gated and unmeasured
+
+Implemented from the source, not from a run. This session's task forbade harness use, so this entry
+breaks the pattern every prior one followed — no seeds, no table, no measured result — and says so rather
+than filling the gap with something that looks like one.
+
+### The defect this closes
+
+#100 VERIFIED left one question open before trusting #101 at all: *"does a germline atom's `uses`
+correlate with how often its expression is executed across the population? If not, #101 protects on
+noise."* Reading the code answers the mechanism half of that, if not the "does it matter" half:
+
+- `uaCall` (788) increments `atom.uses` on whichever **object** it was handed.
+- Every atom a particle carries is a **fresh clone** — `seedAtomIntoParticle` (707) and
+  `attemptMemeTransfer` (727) both push `{expression, uses:0, ...}`, a new object sharing only the
+  expression string with its germline source.
+- The germline's own copy of that expression only accrues `uses` while `genome` happens to be rebound to
+  the global genome during VM execution (19129/19188) — the rare case, not the typical one.
+
+So `genome.userAtoms[i].uses`, the field `atomUseProtect`'s rank was built on, is not "how much this
+expression runs" — it's "how much this specific object ran while it happened to be the ambient genome."
+#100's own numbers show the gap: 58 of 78 erased germline atoms had exactly 0 uses, max 711 — nowhere
+near the 4,562-median/138,685-max range #99 found on the *particle*-side transfer pool for the same kind
+of object. Different population, same field name.
+
+### What changed
+
+`__ATOM_USE_POP` (new knob, default OFF — declared alongside `__USE_PROTECT` in the flags block). When
+on: `uaCall` also increments a module-level `Map<expression, count>` (`__atomExprUses`), and the
+germline-overwrite rank computation (12620-12629) reads that map by `ua.expression` instead of `ua.uses`
+for both the sort array and the individual atom's position in it. Off (default): every read goes through
+the same `_ueRead` helper but it returns `a.uses|0` — byte-for-byte the #101 build, same as every other
+flag in this file when its default is "ships dormant."
+
+The map is capped at 5000 entries (cleared wholesale past that) so a long-running live session doesn't
+accumulate one entry per authored expression forever; this is a live counter of current population
+activity, not an archive, and clearing it periodically is the same shape as `opCum`'s EMA forgetting or
+the render layer's other cadenced resets — it loses history, not correctness.
+
+### Why this doesn't fully answer #100's question
+
+Content-identity is the same key `seedAtomIntoParticle`/`attemptMemeTransfer` already dedupe atoms on, so
+aggregating by expression is at minimum a strictly-better proxy for "how much does this computation run
+across the population" than a single object's counter — the population sum is definitionally what #100
+asked for. What it does NOT establish, because nothing here was run: whether protecting on that sum
+changes anything measurable — more atoms surviving to be judged is not the same as the surviving atoms
+being *better*, and every finding through #90 says the atom layer's fitness signal is faint enough that a
+retention-mechanics fix alone has not been enough to surface one. That is the next experiment, not this
+one: `ATOM_USE_POP=1` against `ATOM_USE_POP=0`, both with `USE_PROTECT` on and `atomUseProtect` given room
+to move, same shape as every arm in the #85-#101 arc.
+
+### Discipline note, named because it's the one this session was told to break
+
+Every entry from #80 through #101 paired a change with seeds before calling it anything more than
+"implemented." This one is a mechanism-level correction — read-verifiable (the object-vs-content-identity
+gap is there in the code, not inferred from a sample) — gated fully off by default so it changes nothing
+in the current build, and left exactly as untested as it is. The honest status is: **plausible fix for a
+named defect, zero seeds run, prediction not pre-registered because there's no run to pre-register
+against.** If the next session has harness access, `ATOM_USE_POP` is the knob and the #100/#101 arm
+structure (8 seeds, 24k ticks, `atomUseProtect` distribution + bank composition) is the test already on
+file to reuse.
