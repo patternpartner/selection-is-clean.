@@ -13188,6 +13188,32 @@ function checkExtinction(){
     genome.objCreditTrace=[0,0,0,0];
     genome.prevObjValues=[0,0,0,0];
     for(const s of genome.fitnessSensors){s.creditTrace=0;s.prevEmit=0;s.lastEmit=0;}
+    // #109: applyCreditAssignment's metaCredit (Pe37/38 — trace/traceSlow/conf per META_LAYER_PARAM,
+    // the thing atrophy in that same function reads) never got this same treatment, though it has the
+    // identical failure mode Pe25 names above: each entry's fitAtApply is a currentFitness SNAPSHOT
+    // taken whenever that param was last perturbed, consumed one mutation cycle later as
+    // dF=currentFitness-fitAtApply. If extinction lands in that one-cycle gap — and extinction fires
+    // mid-tick, with no reason to line up with mutation cycles — currentFitness has just been reset to
+    // 0 above while fitAtApply still holds the pre-collapse level, so dF is a huge, universally-negative
+    // artifact of the reset, not a real signal, for every param that had a perturbation in flight. Since
+    // attribution is SIGN-only ((pendingDelta>0?1:-1)*(dF>0?1:-1)), this doesn't spike any one trace to
+    // its clamp, but it does push every affected param's trace in a direction that has nothing to do
+    // with what it actually did — exactly the corruption Pe25's clears exist to prevent, just never
+    // extended to this sibling system. The probe mechanism has the same exposure through probeFitness:
+    // a probe in flight at extinction would read the post-reset currentFitness as "moved" (false-positive
+    // rescue) regardless of whether the probed value did anything.
+    // Deliberately narrower than the Pe25 clears above: this drops only the IN-FLIGHT snapshot
+    // (pendingDelta, probeState) that the fitness discontinuity would corrupt, not the accumulated
+    // trace/traceSlow/conf/peakValue themselves — those represent credit earned over many prior mutation
+    // cycles, and the PHOENIX rebirth already carries the dying lineage's germline forward on the same
+    // reasoning ("the ability to change, never a particular change"); wiping learned attribution history
+    // on every population bottleneck would throw that away for no reason connected to the actual bug.
+    if(genome.metaCredit&&typeof genome.metaCredit==='object'){
+      for(const p in genome.metaCredit){
+        const e=genome.metaCredit[p];if(!e)continue;
+        e.pendingDelta=0; e.probeState=0; e.probeWait=0;
+      }
+    }
     // Pe34 Layer 24: clear prediction-error accumulators; post-extinction the neighbor
     // model arrays will be stale references to particles that may not exist anymore.
     predictionErrorAccum=0;

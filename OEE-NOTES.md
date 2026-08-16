@@ -9225,3 +9225,64 @@ no NaN cascade). That rules out "this broke the build," not "this helps." The re
 returns: does any of the four `objWeights` dimensions actually move under sustained negative credit now
 that atrophy can reach it, and does retiring a harmful dimension change `currentFitness`'s trajectory or
 the diversity/stability readings it's built from.
+
+## #109 — extinction reset had a gap Pe25 already fixed for a sibling system, just not this one
+
+The "take the swing anyway" pattern continues: flagged as low-confidence last entry, investigated
+properly this time, and the mechanism turned out to be real and checkable by reading — not a coin flip.
+
+### The bug, traced rather than guessed
+
+`checkExtinction()` already clears `objCreditTrace`, `prevObjValues`, and each fitness sensor's
+`creditTrace`/`prevEmit`/`lastEmit` on rebirth, with the reason stated directly in the comment: "clear
+credit-trace state across extinction so the first post-extinction tick doesn't see a giant spurious
+fitness delta" (`currentFitness` resets to 0 on the same lines, and comparing pre-collapse fitness against
+that zero would read as a catastrophic outcome that has nothing to do with what was actually perturbed).
+
+`genome.metaCredit` — the trace/traceSlow/conf bookkeeping `applyCreditAssignment` uses for every
+`META_LAYER_PARAM`, and the thing #108's atrophy fix reads to decide what to retire — has the identical
+exposure and was never included in that clear. Its mechanism: `e.fitAtApply` snapshots `currentFitness`
+whenever a param is perturbed; one mutation cycle later, `dF=currentFitness-e.fitAtApply` is computed and
+its SIGN drives the attribution EMA. Extinction fires mid-tick, with no reason to land on a mutation-cycle
+boundary — so any param perturbed in the cycle immediately before a collapse has its `fitAtApply` sitting
+at the pre-collapse fitness level when the post-reset `currentFitness=0` gets compared against it one
+cycle later. `dF` is enormous and negative for every one of them, an artifact of the reset, not a
+measurement of anything real.
+
+Because attribution is sign-only (`(pendingDelta>0?1:-1)*(dF>0?1:-1)*_isoWeight`), this doesn't spike any
+single trace to its clamp in one event — but it does push every param that happened to have a perturbation
+in flight at extinction time in a direction determined by nothing but the reset, not by what that
+perturbation actually did. Repeated over however many extinctions a long-running session accumulates,
+that's recurring, correlated noise injected into the exact signal #108's atrophy decisions and every other
+`ATROPHY_SAFE` param's protection now depend on.
+
+A second, related exposure in the same object: `probeState`/`probeFitness` (the "kick a quiet param and
+see if fitness responds" mechanism, #40-#42). A probe in flight at extinction has its `probeFitness`
+snapshotted pre-collapse; checked against post-reset `currentFitness`, the huge apparent movement reads as
+`moved=true` — a false-positive rescue, keeping a probed value not because it earned it but because the
+population collapsed while nobody was looking.
+
+### The fix, and why it's narrower than Pe25's
+
+Added a clear alongside the existing Pe25 block: for every entry in `genome.metaCredit`, zero
+`pendingDelta` and abort any in-flight probe (`probeState=0; probeWait=0;`). Deliberately does NOT reset
+`trace`/`traceSlow`/`conf`/`peakValue` — those represent credit accumulated over many prior mutation
+cycles, which is a different kind of state than a snapshot about to be compared against a discontinuity.
+Wiping it on every population bottleneck would discard real, earned history for a reason that has nothing
+to do with the bug being fixed — and it would cut against the same PHOENIX reasoning already governing
+everything else about rebirth in this function ("this restores the ability to change, never a particular
+change... the reborn world inherits the dead world's germline"). Pe25's own clears are more total because
+`objCreditTrace` is a continuously-updated per-tick correlation, not a snapshot-then-compare system — a
+full wipe is the natural reset shape there. `metaCredit`'s failure mode is narrower (stale snapshot vs.
+a discontinuity), so the fix is narrower too.
+
+### Verification
+
+Syntax check, plus a 6000-tick smoke run — clean (zero loop errors, stable population), but it never
+triggered an actual extinction, so the new code path wasn't exercised live this session. The fix itself is
+three field assignments behind an existence guard in a `for...in` loop; I'm trusting the mechanism trace
+above rather than a live extinction to vouch for it, which is a real limit worth stating rather than
+implying more confidence than a clean boot actually earns. If harness access returns: force a population
+collapse (a short `extinctionThresh` or a hostile opening) and check that `metaCredit` entries with
+`pendingDelta!==0` at the moment of collapse read `dF` sanely on the next cycle rather than a fitness-reset
+artifact.
