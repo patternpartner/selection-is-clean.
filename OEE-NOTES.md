@@ -9644,3 +9644,85 @@ maintains atom-content diversity under the #112 inheritance pressure — is a li
 long-run one: it only bites once expressions have accumulated enough execution history for shares to
 diverge.
 
+---
+
+## #115 — ATOM-AWARE OBJECTIVES: let the objective generator see what the atoms do
+
+### The blind spot at the center of the machine
+
+This codebase has TWO mature, self-modifying subsystems, and until now they could not see each other.
+
+**The objective generator (Pe22–25).** `genome.fitnessSensors` is a population of little VM programs
+that compute functions of the organism's own macro-state (registers S0–S15: stability, coherence,
+cluster count, field energy, fitness slope, VM entropy, motif age, extinctions, HGT rate, volatility).
+A sensor whose emit correlates with fitness delta has its `realWeight` nudged up by the per-sensor
+credit machinery and becomes a REAL selection pressure. New sensors enter at `realWeight = 0` — they
+cannot declare themselves valuable, they have to *earn* participation by tracking something that
+co-moves with fitness. This is genuine endogenous objective generation: the system authors new
+dimensions of value and promotes the ones that turn out to matter. It is the closest thing in this
+project to open-endedness in *what is selected for*, not just in *what is selected*.
+
+**The atom system (#38–#114).** Self-authored code, now a genuine effector loop: atoms compute, REACH
+routes their output to actuators, credit correlates that output with fitness, and the whole #110–#114
+arc closed the persistence/inheritance/diversity loops around it.
+
+And S0–S15 contain **nothing about the atom system.** The objective generator computes over cluster
+counts and field energy and mutation rate — but it is structurally blind to the single richest
+behavioral signal in the organism. It literally cannot author an objective of the form "reward states
+where the authored-atom effectors are driving the actuators productively," because it has no register
+that reflects atom activity. The two most advanced parts of the machine were running in separate rooms.
+
+### The coupling
+
+Grow the sensor register bank from 16 to 18 and wire the atom subsystem into the two new registers:
+
+- **S16 = REACH firing rate per particle** — a smoothed EMA of how hard the authored-atom effectors
+  are actually driving actuators, normalized by live population.
+- **S17 = mean positive germline atom credit** — how much that driving is paying off on fitness,
+  read cheaply from the germline bank's own `creditTrace` values (a small array, no pool scan).
+
+Both EMAs advance only on the real sensor pass (once per tick); shadow passes read the held value, so a
+sensor's inputs stay consistent across the two passes and its credit signal stays meaningful.
+
+Now the objective generator can author a sensor that reads S16 or S17, and if valuing atom activity
+turns out to correlate with fitness improvement, the *existing* `realWeight`-earns-participation
+machinery promotes it to a real selection pressure — with no new anti-wireheading code, because the
+guard already exists: `realWeight` starts at 0 and only rises on fitness correlation. The system decides
+for itself whether "what the atoms are doing" is worth selecting for.
+
+### Why this is the OEE move, not just another mechanism
+
+#110–#114 make atoms good at the *current* objectives. That is adaptation — powerful, but bounded by a
+fixed target. #115 lets the *target* incorporate the atoms' own behavior: if the atom system discovers
+a productive behavior, the objective generator can notice, name it as a dimension of value, and select
+for MORE of it — which feeds back into what atoms are rewarded for authoring. That is a candidate
+open-ended loop in the strong sense: novelty in the genotype (atoms) can induce novelty in the
+objective (sensors), which induces new pressure on the genotype. Neither subsystem alone can run away;
+coupled, they can climb.
+
+### Correct-by-construction, and the honest limits
+
+The register-bank growth is byte-safe for control behavior by construction: indices below 16 mask
+identically under `%18` and `%16`; the two new Float32 slots initialize to 0; and when `__ATOM_OBJ` is
+off, the sensor mutator's address range stays 16, so no evolved sensor ever *reaches* S16/S17. A
+flag-off run is therefore identical to pre-#115 down to the sensor's arithmetic. Every touched literal
+(the S array, the per-sensor regs array, the copy loop, both `%` masks, the clamp loop, and all four
+register-address mutation ranges) was moved together, so there is no half-grown state.
+
+What is NOT guaranteed, and cannot be without a live run: that the coupling *does* anything. The atom
+signals only become non-trivial once atoms are authored, bound, firing REACH, and accumulating credit —
+exactly the long-horizon regime the whole arc depends on and the harness cannot reach. And because this
+swing touches the fitness pathway (the signal every other mechanism reads), it carries more risk than
+#110–#114, which only touched atom-local state. It is gated, reversible, and correct in the flag-off
+limit — but whether atom-aware objectives actually form and get promoted is the live-run question, and
+per this session's instruction it ships unmeasured, on the reasoning that the flag-off identity makes
+the downside a clean revert rather than a corruption.
+
+### Position in the arc
+
+#110–#114 built the atom effector loop and its exploration/exploitation balance — everything *within*
+the atom system and its selection. #115 breaks the atom system out of its own room: for the first time
+the part of the machine that decides *what fitness means* can see the part that *authors behavior*. If
+open-ended evolution needs the objective to keep moving as the genotype explores, this is the wire that
+lets it.
+
