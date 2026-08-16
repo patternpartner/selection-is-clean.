@@ -9446,3 +9446,76 @@ computes something" into "an expression that computes something AND carries a me
 computation was ever selected for." The first is neutral by construction (#80-#109 confirmed).
 Whether the second finally has grip is what only live running can tell.
 
+---
+
+## #112 — SUBTREE INHERITANCE: proven expressions become building blocks
+
+### The gap #110+#111 leave open
+
+#110 gives atoms individual credit. #111 pools that credit across the population by expression. But
+new atom AUTHORING is still random with respect to what's proven: `uaGenExpression` and `uaGenTerm`
+draw uniformly (with #107's evolvable structural weights) from the grammar's vocabulary, ignoring the
+pool completely. So even after the pool has learned that some expression is a great chemotactic sensor,
+the next new atom is authored from scratch with a random chance of rediscovering that structure.
+
+This is like a genetic algorithm with mutation but no crossover. The pool tells us which chunks work
+— but nothing splices those chunks into new expressions.
+
+### The mechanism
+
+`uaGenTerm`'s leaf path now rolls, before generating a fresh terminal, for a splice from the credit
+pool. If the roll succeeds and the pool has any positive-credit entries, sample one weighted by its
+credit and inline it as a parenthesised subterm.
+
+- Probability tapers with depth: `0.12 / (1 + depth)`. At the leaf level (depth 0) it's 12%; at
+  each recursion inward it halves and then some. This keeps most nesting shallow — a proven
+  expression spliced as a leaf inside a proven expression spliced as a leaf gets rare quickly.
+- Weighted sampling by `max(0, credit)`. Negative-credit expressions never propagate.
+- Size guard at 120 chars. A pool entry that's already huge falls through to the fresh-leaf path
+  instead of nesting a monster inside a tree.
+- Suppressed on the rend channel (`__uaVarPool` set). Pool entries are atom-channel content and
+  would compile to dangling references in rend's parameter list.
+- Depends on both `__UA_INHERIT` and `__EXPR_CREDIT` — pool has to exist and inheritance has to be on.
+
+### Why this is the natural completion of #110-#112
+
+- #110 asks: **does this atom work?** (per-lineage credit)
+- #111 asks: **does this expression work anywhere?** (population credit pool)
+- #112 asks: **do proven expressions get reused as parts of new expressions?** (grammar-level inheritance)
+
+Together they form a genetic-programming loop with content-addressed heritability: expressions get
+scored, scores accumulate across lineages, and high-scoring expressions become the substrate for new
+authoring. This is what "open-ended" needs — a ratchet where good structures accumulate and compose
+rather than being rediscovered from scratch each mutation cycle.
+
+### Risk
+
+The main risk is grammar collapse: if one expression becomes dominant in the pool, its credit
+outweighs all others and every new atom becomes a variant of that one. Two dampers:
+
+1. Pool credit moves slowly (0.05%/cycle blend from personal to pool). It takes many lineages
+   scoring in the same direction to move the pool meaningfully — so one lucky expression can't
+   dominate the pool overnight.
+2. Weighted sampling (not argmax): even the top-credit expression is only proportionally more
+   likely, not certain. Other proven expressions get proportional airtime, and fresh random
+   generation still handles most leaves at depth 0 (88%) and nearly all at deeper depths.
+
+If it turns out the dampers aren't enough, the flag is off with `UA_INHERIT=0` and the mechanism
+disappears without disturbing #110 or #111.
+
+### Verification
+
+300-tick smoke test: clean boot, zero loop errors, population stable (331→257), lineages growing
+(329→372), clusters forming (0→10). The inheritance path doesn't fire meaningfully in 300 ticks (no
+atoms authored yet), but the substrate is sound and — critically — the sample-then-inline logic ran
+without adding measurable overhead (12.5ms/ktick vs #111's 14.6ms/ktick suggests noise dominated).
+
+### Position in the arc
+
+#110-#112 form one coherent claim: **atoms become genuine effectors when the VALUE→ACTION→FITNESS
+loop is closed at all three levels — routing, persistence, and content**. #110 gives them the route
+and per-lineage persistence. #111 makes persistence a population-level asset by expression identity.
+#112 makes that asset feed BACK into new authoring, so proven structures aren't rediscovered from
+scratch. If the atom system was going to have grip, this is the configuration where it should show
+it. Whether it does is a live-run question, not a harness one.
+

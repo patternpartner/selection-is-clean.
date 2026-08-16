@@ -123,6 +123,7 @@ let __ATOM_USE_POP=true;
 let __ATOM_JITTER=true;
 let __ATOM_CREDIT=true; // #110: credit-assignment feedback for atom persistence. Atoms whose REACH output correlates with fitness improvement accumulate credit that protects them from the germline overwrite. Force off with ATOM_CREDIT=0
 let __EXPR_CREDIT=true; // #111: population-wide credit pool keyed by expression. An expression that scored well in ANY lineage carries evidence for every future carrier. Overwrite protection uses max(personal, pool); new atoms seed personal creditTrace from the pool. Force off with EXPR_CREDIT=0
+let __UA_INHERIT=true; // #112: grammar-level subtree inheritance from the credit pool. When uaGenTerm emits a leaf, occasionally splice in a whole proven expression from __atomExprCredit weighted by positive credit. Building blocks that worked propagate as building blocks. Force off with UA_INHERIT=0
 const __atomExprUses=new Map(); // population-wide execution count per atom expression; written only when __ATOM_USE_POP is on
 const __atomExprContrib=new Map(); // #110: per-expression REACH contribution accumulator; cleared each applyCreditAssignment cycle
 const __atomExprCredit=new Map(); // #111: population-wide credit-trace pool per expression; blended slowly from personal creditTrace at applyCreditAssignment time. Bounded ±1. Cleared on extinction.
@@ -541,6 +542,31 @@ function uaGenTerm(depth){
     }
   }
   const rich=uaRich();
+  // #112: SUBTREE INHERITANCE. Before falling through to a fresh leaf, roll for a splice from the
+  // credit pool. Suppressed on the rend channel (which has __uaVarPool set) since the pool is
+  // atom-channel content and would be dangling references in the rend parameter list.
+  // Probability tapers with depth: 12% at leaf depth 0, dropping as we go deeper, so a runaway
+  // authoring session that keeps rolling doesn't nest proven expressions inside proven expressions
+  // to string-length collapse. The pool's own eviction (weakest-half at 2000 entries) keeps the
+  // sampling distribution meaningful — noise gets pruned, high-signal expressions accumulate.
+  if(!__uaVarPool&&__UA_INHERIT&&__EXPR_CREDIT&&__atomExprCredit.size>0&&Math.random()<0.12/(1+Math.abs(depth))){
+    // Sample weighted by max(0, credit). Two-pass: sum weights, then pick.
+    let _wSum=0;
+    for(const c of __atomExprCredit.values()){ if(c>0)_wSum+=c; }
+    if(_wSum>0){
+      let _pick=Math.random()*_wSum;
+      for(const [_expr,_c] of __atomExprCredit){
+        if(_c<=0)continue;
+        _pick-=_c;
+        if(_pick<=0){
+          // Size guard: only inline if the spliced expression is under 120 chars, so we don't
+          // explode string length by nesting a huge expression as a leaf inside a deep tree.
+          if(_expr.length<120)return "("+_expr+")";
+          break; // too big — fall through to fresh leaf
+        }
+      }
+    }
+  }
   // #96: __uaVarPool lets a CALLER swap the leaf vocabulary for the duration of one generation.
   // The atom channel leaves it null and behaves exactly as before; the rend channel sets it, because
   // rendCompile binds a completely different parameter list (see rendGenExpression).
@@ -20122,6 +20148,7 @@ if(typeof globalThis!=='undefined'){
                __REACH_NOK:1,                                         // #110: REACH gain uses raw output, not k-scaled (was dormant #90). Decouples atom effect from the interaction coefficient so atoms act even outside tight pairs. Force off with REACH_NOK=0
                __ATOM_CREDIT:1,                                       // #110: CREDIT-ASSIGNMENT FEEDBACK FOR ATOMS — per-atom creditTrace correlates REACH contribution with fitness delta; positive credit earns overwrite protection (up to 70% reduction in replacement rate), negative credit accelerates replacement. Atoms that help survive; atoms that hurt get replaced. The grammar sees its own credit via the `cr` variable. Force off with ATOM_CREDIT=0
                __EXPR_CREDIT:1,                                       // #111: POPULATION-LEVEL CREDIT POOL — expression-keyed credit trace shared across all lineages, blended slowly from personal traces. An expression proven anywhere protects every carrier. New atoms (birth, meme-transfer, mutation-authoring) seed their personal creditTrace at 50% of the pool value, so re-authoring a proven expression doesn't restart from zero. Lamarckian selection at the expression level, using the same expression-identity bridge #102 established. Force off with EXPR_CREDIT=0
+               __UA_INHERIT:1,                                        // #112: SUBTREE INHERITANCE — the grammar's leaf generator occasionally splices a whole proven expression from the credit pool instead of emitting a fresh terminal, weighted by positive pool credit. Proven building blocks propagate as building blocks; genetic programming's crossover, but the "parents" are population-wide, credit-ranked, and content-addressed. Depth-tapered probability (12%/(1+depth)) and 120-char size guard prevent runaway string growth. Force off with UA_INHERIT=0
                __GROUP_COMMONS:1,                                   // GROUP SELECTION FOR THE COMMONS #40 — LIVE. Swing #36 found rqRate (the diversity-maintaining commons #28 needs) gets driven to 0 by individual selection and had to be FLOORED by fiat. This gives the existing cluster-bud lever (#33) a real countervailing force instead: colonies holding rqRate near the ceiling bud more. Headless smoke-clean (no crash/NaN across two runs) but cluster budding is too rare in a short harness window to get a verdict on the mechanism itself — same class of gap as #33 ("budding never fires there"). The live artwork, not more harness ticks, is what actually tests this. Force off with GROUP_COMMONS=0
                __MEME_TRANSFER:1,                                   // HORIZONTAL ATOM TRANSFER #41 — LIVE. Every prior route an authored atom spreads is vertical (parent→child, selfLearnFromBest, reload's sanitizeGenome splice). This adds a horizontal one: close contact lets a particle adopt a neighbour's most-PROVEN bound atom straight into its own genome — a second unit of selection, judged on cross-lineage spread, not host fitness. Headless-confirmed real (not a shared-seeding artifact): control run authored ZERO atoms population-wide in 8k ticks (nothing to inherit), yet with transfer on, the single atom that WAS born reached 410 carriers across 153 distinct lineages via 342 transfers — no vertical route could produce that. Force off with MEME_TRANSFER=0
                __CHAR_DISP:0 };                                     // character displacement #27 — DORMANT (default off): the matched A/B (seed 7, 6k) showed it NET-HARMFUL to diversity (entropyRatio 0.67 vs control 0.74; evenness 0.61 vs 0.70) — rate 0.0015 OVER-spaces lineages toward the trait-space edges instead of letting more coexist. Code+knob kept for a re-tune (gentler rate, or gate on same-niche-cell overlap not raw trait distance); force on with CHAR_DISP=1
@@ -20135,6 +20162,7 @@ __REACH_MAIN=(typeof globalThis==='undefined')||((globalThis.__REACH_MAIN??1)|0)
 __REACH_NOK=(typeof globalThis==='undefined')||((globalThis.__REACH_NOK??1)|0)!==0; // #110: default ON (was #90 dormant). Force off with REACH_NOK=0
 __ATOM_CREDIT=(typeof globalThis==='undefined')||((globalThis.__ATOM_CREDIT??1)|0)!==0; // #110: default ON. Force off with ATOM_CREDIT=0
 __EXPR_CREDIT=(typeof globalThis==='undefined')||((globalThis.__EXPR_CREDIT??1)|0)!==0; // #111: default ON. Force off with EXPR_CREDIT=0
+__UA_INHERIT=(typeof globalThis==='undefined')||((globalThis.__UA_INHERIT??1)|0)!==0; // #112: default ON. Force off with UA_INHERIT=0
 __SELF_PREDICT=(typeof globalThis!=='undefined')&&((globalThis.__SELF_PREDICT|0)===1); // #92: default OFF
 __GRIP_SEED=(typeof globalThis!=='undefined')&&((globalThis.__GRIP_SEED|0)===1); // #93: default OFF
 __ABSTAIN_FREE=(typeof globalThis==='undefined')||((globalThis.__ABSTAIN_FREE??1)|0)!==0; // #95: default ON
