@@ -100,13 +100,16 @@ let __USE_PROTECT=false;  // #101: execution rank earns protection from the germ
 // #99 found belong to a different population (particle bound-pools) entirely. #100 VERIFIED named this
 // directly: "does a germline atom's uses correlate with how often its expression is executed across the
 // population? If not, #101 protects on noise." This aggregates uaCall's execution count by atom
-// EXPRESSION — the same content-identity key seedAtomIntoParticle/attemptMemeTransfer already dedupe on —
-// across every genome, so the rank atomUseProtect spends its evolved weight on reflects what the
-// expression actually does out in the population, not how often the germline's own copy happened to be
-// ambient. Ships DORMANT: implemented and read through the source, not run through a harness this
-// session, so it is exactly the open question above, made answerable by an A/B against ATOM_USE_POP=0
-// rather than answered. Fully gated — byte-for-byte the #101 build when off. Force on with ATOM_USE_POP=1.
-let __ATOM_USE_POP=false;
+// EXPRESSION — the same content-identity key seedAtomIntoParticle/attemptMemeTransfer already dedupe on,
+// and the same signal attemptMemeTransfer's donor-selection already trusts, just summed across every
+// clone instead of read off one — so the rank atomUseProtect spends its evolved weight on reflects what
+// the expression actually does out in the population, not how often the germline's own copy happened to
+// be ambient. Default ON, same class as #96/#97/#98: reading an almost-always-zero counter by object
+// identity when clone-on-transfer breaks that identity is an accident of implementation, not a choice
+// anyone made — a REPAIR, not a treatment, on the same standard those three used to justify shipping ON
+// without a harness run in hand. No seeds run this session (none available); OEE-NOTES #102 records that
+// plainly. Force off with ATOM_USE_POP=0.
+let __ATOM_USE_POP=true;
 const __atomExprUses=new Map(); // population-wide execution count per atom expression; written only when __ATOM_USE_POP is on
 // Highest alienGrip among a genome's BOUND atoms, tie-broken by uses so a bank with no scored atom
 // behaves exactly as before. Returns -1 if there is nothing bound.
@@ -12637,8 +12640,9 @@ function mutateGenome(){
   // that would wreck any fixed normaliser. Picking a scale by fiat is exactly what broke my #92
   // observable (tanh(1333/20) saturated to 1.0 and destroyed the signal), so this one has no scale.
   const _useProtect=__USE_PROTECT?__cl(finiteOr(genome.atomUseProtect,0),0,1):0;
-  // #102: which counter "uses" means here. Off (default): byte-for-byte #101 — the germline object's own
-  // .uses. On: the population-wide count keyed by expression (see __ATOM_USE_POP above).
+  // #102: which counter "uses" means here. On (default): population-wide count keyed by expression
+  // (see __ATOM_USE_POP above). Off: byte-for-byte #101 — the germline object's own, near-always-zero,
+  // .uses — kept as the revert/control, not as the intended path.
   const _ueRead=a=>__ATOM_USE_POP?(__atomExprUses.get(a.expression)||0):(a.uses|0);
   let _uSorted=null;
   if(_useProtect>0){ _uSorted=genome.userAtoms.map(_ueRead).sort((x,y)=>x-y); }
@@ -19853,7 +19857,7 @@ __INT_GENE_STEP=(typeof globalThis==='undefined')||((globalThis.__INT_GENE_STEP?
 __REND_VOCAB=(typeof globalThis==='undefined')||((globalThis.__REND_VOCAB??1)|0)!==0; // #96: default ON. This is a REPAIR, not a treatment — the off-path exists as a CONTROL (and as the revert), not as a gate. Force off with REND_VOCAB=0
 __FLOW_UNITS=(typeof globalThis==='undefined')||((globalThis.__FLOW_UNITS??1)|0)!==0; // #97: default ON. This is a REPAIR, not a treatment — the off-path exists as a CONTROL (and as the revert), not as a gate. Force off with FLOW_UNITS=0
 __USE_PROTECT=(typeof globalThis==='undefined')||((globalThis.__USE_PROTECT??1)|0)!==0; // #101: default ON — the capability exists; the gene decides whether it is used. Force off with USE_PROTECT=0
-__ATOM_USE_POP=(typeof globalThis!=='undefined')&&((globalThis.__ATOM_USE_POP|0)===1); // #102: default OFF — unverified swing, ships dormant. Force on with ATOM_USE_POP=1
+__ATOM_USE_POP=(typeof globalThis==='undefined')||((globalThis.__ATOM_USE_POP??1)|0)!==0; // #102: default ON. This is a REPAIR, not a treatment — the off-path exists as a CONTROL (and as the revert), not as a gate. Force off with ATOM_USE_POP=0
 __FORAGE_ON=(typeof globalThis==='undefined')||((globalThis.__FORAGE_EYES??1)|0)!==0; // resolve FORAGE once; gates the resource-sense computation in uaSetEyes
 __DECIDE_ON=(typeof globalThis==='undefined')||((globalThis.__DECIDE??1)|0)!==0; // resolve DECISION GAIN once; gates confidence accrual + commitment scaling
 __DECIDE_REAL=(typeof globalThis==='undefined')||((globalThis.__DECIDE_REAL??1)|0)!==0; // resolve DECIDE-FROM-REAL once; gates real-winner physics adoption

@@ -8872,3 +8872,21 @@ named defect, zero seeds run, prediction not pre-registered because there's no r
 against.** If the next session has harness access, `ATOM_USE_POP` is the knob and the #100/#101 arm
 structure (8 seeds, 24k ticks, `atomUseProtect` distribution + bank composition) is the test already on
 file to reuse.
+
+### CORRECTION to #102 — shipped OFF first, that was the wrong call
+
+Wrote #102 gated default-OFF and called it a "treatment" pending an A/B, the same posture as an uncertain
+new mechanism. On reflection it isn't one. `atomUseProtect`'s rank reading a counter that's almost always
+zero because clone-on-transfer breaks object identity is the same shape as #96 (a gene erased on its own
+floor) and #97 (a 60-tick accumulator read as a 1-tick one): an implementation accident nobody chose,
+not a design decision under genuine uncertainty. Both of those shipped default ON on diagnosis alone, no
+harness run in hand, precisely on that distinction — measurement characterized the fix afterward, it
+didn't license it.
+
+Flipped `__ATOM_USE_POP` to default ON, `OFF` demoted to the control/revert path. Still true, and worth
+repeating rather than softening: no seeds were run this session, none were available, and "the counter now
+measures the right thing" is not the same claim as "protecting on it helps" — that second claim is still
+open, still needs `ATOM_USE_POP=1` vs `0` with `atomUseProtect` given room to move, same shape as every
+arm since #85. What changed is only which state that open question is asked from: the previous entry left
+the fix inert until someone manually flipped a flag nobody was going to flip; this one puts it in the path
+the live artwork actually runs.
