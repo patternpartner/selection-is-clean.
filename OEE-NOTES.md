@@ -8467,3 +8467,54 @@ The next honest measurement is the one #87-#94 kept failing to make for the wron
 confer anything, run now on a build where the mechanism under test actually fires. That is a
 does-it-help question, which means it needs seeds and an arm, and by today's own lesson it is worth
 running only because the mechanism-fires question has now been answered first.
+
+### CORRECTION — "births minus culls equals survivors" was a coincidence of counts, not of content
+
+I reported that identity as proof that "nothing else adds to or removes from the global bank". It is not.
+Dumping the actual expressions on both sides of one run (seed 37, 24,000 ticks) shows:
+
+```
+born 29    culled 0    final bank 29        <- the counts still balance
+bank entries never logged as born : 9
+born entries absent from the bank : 9
+```
+
+**Nine atoms entered the global bank without passing the authoring site, and nine left it without being
+culled.** The count identity held because the flows happened to be equal, and I read a balanced ledger as
+a closed one. The three sites I instrumented are not the full set: `genome` is temporarily rebound to a
+particle's genome during VM execution (`genome=pGenome[i] ... finally{genome=_g}` at 19129/19188), so a
+push at the authoring site can land in a particle bank, and the germline/meme-transfer pushes can land in
+the global one. My audit assumed a boundary that the code does not have.
+
+**This also resolves the 14-vs-9 discrepancy, and neither number was wrong.** The probe counts
+deep-grammar atoms in the **final bank** (14); my log counts them among **births** (9). Both are correct
+counts of different populations. The pooled "32 of 188" I published mixed the two and is withdrawn; the
+per-seed bank figures in the #98 table are the bank population, which is the right denominator for "what
+the system ended up holding".
+
+**And there is something in the difference worth chasing.** Of the nine that arrived unlogged, **seven
+use the recursive grammar**. Of the nine that left, **none do** — they are all flat, mostly constants:
+
+```
+arrived  ((((-1.76)>=(m))?(-1.65):(1.75)))*(d)
+arrived  ((t)*(rd))-((((Math.exp(1.49))>=(-0.23))?(m):(m)))
+arrived  (Math.hypot(a,Math.tanh(-0.86)))/((ny)*(c))
+left     (Math.abs(d))/(0.14)
+left     (-1.68)/(0.96)
+left     (1.86)+(0.28)
+```
+
+That is a directional flow: deep in, flat out. **It is the first thing all session that looks like atom
+content being sorted rather than merely accumulated** — and it was invisible while the grammar was frozen,
+because when every atom is flat there is nothing for a sorting process to sort.
+
+**I am not claiming it is selection on depth.** At least two duller explanations fit and I have separated
+neither: `attemptMemeTransfer` deliberately picks the donor's **most-used** atom, so this may be sorting
+on use with depth merely correlated; and the donor genomes may simply have been running at a higher
+`uaMaxDepth`, in which case the inflow is deeper for the same reason a different generator setting
+produces different output. n=1 run.
+
+The measurement that separates them is cheap and mechanism-shaped: log the *source* of every atom
+entering the global bank alongside its depth and the donor's `uses`, and compare inflow depth against
+donor-uses rank. That is the next thing worth doing, and it is a does-this-fire question rather than a
+does-this-help one, which by today's standard is the right shape to run first.
