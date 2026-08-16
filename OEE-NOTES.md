@@ -9519,3 +9519,61 @@ and per-lineage persistence. #111 makes persistence a population-level asset by 
 scratch. If the atom system was going to have grip, this is the configuration where it should show
 it. Whether it does is a live-run question, not a harness one.
 
+---
+
+## #113 — CREDIT-WEIGHTED MEME TRANSFER: route the horizontal channel by selection evidence
+
+### The one channel #110-#112 didn't route
+
+#110 gave atoms per-lineage credit and closed REACH → fitness → protection within a lineage.
+#111 pooled that credit across lineages by expression. #112 fed the pool into new authoring via
+grammar-level subtree inheritance. But `attemptMemeTransfer` — the horizontal atom-transfer channel
+from #41 that lets a particle receive its neighbour's most-proven atom directly into its own genome
+— still picks the donor's "best" atom by USES (or grip, if `__GRIP_SEED` is on).
+
+Uses counts executions. Grip counts prediction accuracy against alien registers. Neither counts
+selection evidence. An atom that ran 138,685 times but never helped fitness gets transferred; an atom
+that ran 100 times but pushed its lineage's fitness up every one of those times gets ignored. The
+horizontal channel is the one #110-#112 didn't touch.
+
+### The fix
+
+`attemptMemeTransfer` now applies a credit-aware override AFTER the uses/grip selection: if any
+donor atom has meaningful positive credit (either personal `creditTrace > 0.05` or pool credit
+`> 0.05`), pick the atom with the highest max(personal, pool) credit and transfer that one instead.
+
+The 0.05 floor is deliberate: it means "actual evidence, not noise." If no donor atom clears the
+floor (still the case in most short-run situations before credit converges), the transfer falls
+back to the uses/grip pick that #41 and #93 established. So the pre-#113 behaviour is preserved as
+the null case, and #113 only takes over when there's real evidence to steer by.
+
+### Why the currency ordering matters
+
+Uses is a symptom of the ATOM'S OWN behaviour (it ran because it was reachable and its output was
+consumed). Grip is a symptom of the ATOM'S predictive fit against the alien register it emits into.
+Credit is the only currency that measures the ATOM'S CONTRIBUTION to the ORGANISM'S fitness. The
+horizontal channel is the one place where a single scalar decides what expression jumps lineages,
+so it should ride the strongest currency available — and #110-#112 just made that currency exist.
+
+### Verification
+
+200-tick smoke test: clean boot, zero loop errors, population stable (329→281 particles), lineages
+growing (329→363), 10 clusters formed. As with #110-#112, the credit-driven path doesn't fire
+meaningfully in 200 ticks because no atoms have been authored, scored, and transferred yet — the
+substrate check is only that the added logic doesn't crash and doesn't measurably slow the tick
+(15.5ms/ktick, in line with the earlier baselines).
+
+### Position in the arc
+
+#110-#113 is the complete atom effector loop:
+- **#110**: route the value to action (REACH main-path) + per-lineage credit
+- **#111**: pool credit across lineages by expression
+- **#112**: pool credit feeds new authoring (subtree inheritance)
+- **#113**: pool credit feeds horizontal transfer (meme selection)
+
+Every atom-selection surface in the substrate — germline overwrite protection (#110+#111), meme
+transfer donor pick (#113), fresh authoring (#112), personal trace seeding on all creation paths
+(#111) — now uses the same currency: credit-assignment-derived evidence of contribution to fitness.
+Nothing left ignores it. If the atom system was going to become an OEE engine, this is the
+configuration where it should. Live-run verification is the only outstanding test.
+

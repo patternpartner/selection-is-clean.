@@ -887,6 +887,21 @@ function attemptMemeTransfer(recv,donor){
   // #93: transmit what the FILTER selected, not merely what ran most. Falls back to the uses-ranked
   // pick when no atom has been scored, so an unfiltered bank behaves exactly as before.
   if(__GRIP_SEED){ const _g=bestGripAtomIdx(donor); if(_g>=0)bestAI=_g; }
+  // #113: CREDIT-WEIGHTED SELECTION. Uses counts EXECUTIONS ("ran a lot"), grip counts PREDICTION
+  // ACCURACY, but credit — pool or personal — counts SELECTION EVIDENCE ("ran and helped fitness").
+  // When any donor atom has positive credit (either personal >0.05 or pool >0.05), override the
+  // above and pick the max-credit one. This routes the horizontal channel by the same currency
+  // #110-#112 route the vertical channels by.
+  if(__ATOM_CREDIT||__EXPR_CREDIT){
+    let _bestC=0.05, _cAI=-1;
+    for(const ai of donor.boundOpcodes){
+      const a=donor.userAtoms[ai]; if(!a||!a.expression)continue;
+      let _c=(__ATOM_CREDIT&&a.creditTrace>0)?a.creditTrace:0;
+      if(__EXPR_CREDIT){const _pc=__atomExprCredit.get(a.expression)||0; if(_pc>_c)_c=_pc;}
+      if(_c>_bestC){_bestC=_c; _cAI=ai;}
+    }
+    if(_cAI>=0)bestAI=_cAI;
+  }
   if(bestAI<0)return;
   const donorExpr=donor.userAtoms[bestAI].expression;
   if(!Array.isArray(recv.userAtoms))recv.userAtoms=[];
