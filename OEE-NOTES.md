@@ -8311,3 +8311,96 @@ their `intGenes.atomsConst` reported 13.3% — matching the *broken* rule's 10.6
 (z = 1.10) while the raw strings said 22.5%. A fresh run on the fixed build now agrees with the raw count
 exactly (4 born, 0 culled, 2 constant by both routes). The instrument is repaired and verified against
 ground truth rather than against itself.
+
+---
+
+## #98 — the switches were an authored ceiling, and I put one on a system built to refuse them
+
+Challenged on this and the challenge is correct. I conflated two decisions: **"this needs a switch"** (true —
+without an off-path I cannot prove a change is inert, and that proof is what makes any of this trustworthy)
+and **"this must default off"** (mine, unearned, and dressed as caution).
+
+Worse, the framing was wrong for *this* codebase specifically. The file spends thousands of comment-lines
+removing authored ceilings — "GLOVES OFF, no spring, no prior, no restoring force", "if the system wants a
+value of -47 or 12000, it gets one", "a lineage is free to buy any consequence it can survive". Into that I
+added three human-only gates. That is precisely the kind of ceiling the design exists to refuse, and I did
+not see it because I was managing my own risk of shipping something wrong rather than asking what the gate
+does to the system.
+
+**The distinction I should have drawn: repair versus treatment.**
+
+- `uaMaxDepth` is *documented as* an evolvable gene. The arithmetic took it away. Leaving `INT_GENE_STEP`
+  off does not preserve neutrality — it continues denying the system a gene its own design says it has.
+- The flow sensor read "growing" in 332 of 332 windows. That is not a neutral baseline, it is a falsehood
+  in the sensorium.
+- The render channel emitted guaranteed-`ReferenceError` code 75% of the time.
+
+None of those need an A/B before being fixed. **Counting deaths correctly is not a treatment arm.** My
+insistence on running one first was a category error wearing rigour as a costume.
+
+All three now default **ON**. The switches remain as controls and as the revert path, not as gates.
+
+### The authored constants inside the fixes, and which of them became genes
+
+Two constants were sitting where this system puts a gene everywhere else. Only one of them should be one.
+
+**`intMaybe`'s forced move — now a gene, and the mechanism was wrong too.** I had written
+`Math.max(1,Math.round(step))`, forcing every fired mutation to move at least 1. A minimum move of 1 is
+substrate (an integer that moves by less than 1 does not move), but *forcing* it silently inflates the
+effective step for these genes above whatever `magnitude` says. The unbiased quantiser is **stochastic
+rounding**: a step of 0.3 moves by 1 with probability 0.3, so `E[move] == step` and `magnitude` means what
+it says. `genome.intStepBias` (0..1) then interpolates toward the forced version, so a lineage that
+benefits from coarser integer search can buy it. My hard-coded behaviour is now the `bias=1` end of an
+evolvable range, and the honest default sits at the other end.
+
+**The `f(...)` suppression in the render channel — NOT a gene.** `rendCompile` binds
+`(t0..t3, amp, phase, col)` and does not bind `f`. An expression naming `f` is a guaranteed
+`ReferenceError` in that scope. Suppressing it is the channel's scope, not a ceiling on what it may mean —
+making it evolvable would only let a lineage evolve the right to emit code that cannot run.
+
+**But a real ceiling was hiding next to it — now `genome.rendMaxDepth`.** My first version borrowed
+`genome.uaMaxDepth` for the render channel, chaining the colour language's complexity to the atom
+language's. That coupling was mine and nothing in the design asks for it. The render channel now evolves
+its own depth.
+
+### Two things the control caught that I would otherwise have shipped
+
+**1. Declaring a genome key changes the whole trajectory, knob or no knob.** `mutateChildGenome` does
+`for(const k in g)` and draws `Math.random()` per numeric key **on every birth**. Adding
+`rendMaxDepth:1, intStepBias:0` to the genome literal therefore shifted the RNG stream for the entire run
+even with both knobs forced off, and the exact-revert control failed. Both genes are now created **lazily**
+by `mutateGenome` under their own knob, with every reader supplying the default; once created they are
+ordinary heritable genes and the child path mutates them like any other. This is a general fact about this
+codebase worth stating plainly: **there is no such thing as an inert new genome key.**
+
+**2. A control that cannot turn the knob off is not a control.** After fixing (1) the check still failed,
+by 0.0105 in a position sum of 211,804 — everything else identical. Bisecting my own diff showed the
+default-flip lines were responsible *even when the environment forced all three to 0*. The cause:
+`FLOW_UNITS` had never been added to `harness-clamp.js`'s env list (the edit that would have added it sat
+in a Python block whose assertion threw before the write). So `globalThis.__FLOW_UNITS` was `undefined`,
+the new default-ON read returned `true`, and the "forced off" arm was running with the knob **on**. The
+old default-OFF read returned `false` for `undefined`, which is exactly why this was invisible until the
+defaults flipped. **Flipping a default converts every missing plumbing entry from silently-correct to
+silently-wrong**, and the only reason I found it is that the fingerprint disagreed in the fifth
+significant figure instead of not at all.
+
+**Control after both fixes** (`SEED=11 TICKS=3000`, against `git show f710bd4:index.html`):
+
+```
+pre-#96                       {"n":213,"pos":211804.601525,"amp":254.136854,"lin":28775,"prog":2849,...}
+new build, knobs forced OFF   {"n":213,"pos":211804.601525,"amp":254.136854,"lin":28775,"prog":2849,...}   PASS
+new build, DEFAULT (on)       {"n":219,"pos":228159.399623,"amp":272.358384,"lin":34003,"prog":2829,...}   live
+```
+
+### #98 PRE-REGISTRATION — does the repaired gene actually move?
+
+Stochastic rounding makes `uaMaxDepth` mobile but not hot. Magnitude 0.6 at scale ~1 gives a uniform step
+in [-0.3,+0.3], so `E[|step|] = 0.15`, `P(move per fired mutation) = 0.15`, and at `rate ~= 0.06` over ~80
+`mutateGenome` calls in 24,000 ticks, **0.72 expected moves per run**.
+
+- **PREDICT:** `uaMaxDepth > 1` in roughly **half** of 8 seeds (P(at least one move) = 0.51).
+- **PREDICT:** `intStepBias` drifts off 0 in all 8 (it is mutated on every call that fires).
+- For contrast, my discarded forced-move version would have given **4.8 moves per run** — far too hot, and
+  that overreach is exactly what the gene now lets selection adjudicate instead of me.
+- **FALSIFIER:** 0/8 seeds move. That would mean stochastic rounding is too cold to unfreeze the gene in
+  practice, and the honest response is to say so rather than to reach for a bigger constant.

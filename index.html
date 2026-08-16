@@ -548,8 +548,19 @@ function defaultRend(){
 const REND_VARS=["t0","t1","t2","t3","amp","phase","col"];
 function rendGenExpression(){
   if(!__REND_VOCAB) return uaGenExpression();
-  const pv=__uaVarPool, pc=__uaNoCall; __uaVarPool=REND_VARS; __uaNoCall=true;
-  try{ return uaGenExpression(); } finally{ __uaVarPool=pv; __uaNoCall=pc; }
+  // Two different things were bundled in the first version of this function, and only one of them
+  // is a choice.
+  //   FACT: rendCompile binds (t0..t3, amp, phase, col) and does NOT bind `f`. An expression naming
+  //         `f` is a guaranteed ReferenceError in this scope. Suppressing it is not a ceiling on what
+  //         the channel may mean, it is the channel's scope. Not a gene — making it one would only
+  //         let a lineage evolve the right to emit code that cannot run.
+  //   CEILING: the depth. The first version borrowed genome.uaMaxDepth, so the colour language's
+  //         complexity was chained to the atom language's. That was mine, and it is now
+  //         genome.rendMaxDepth — the render channel evolves its own expressive depth.
+  const pv=__uaVarPool, pc=__uaNoCall, pd=genome.uaMaxDepth;
+  __uaVarPool=REND_VARS; __uaNoCall=true;
+  genome.uaMaxDepth=__cl(Math.round(finiteOr(genome.rendMaxDepth,1)),1,UA_DEPTH_CAP);
+  try{ return uaGenExpression(); } finally{ __uaVarPool=pv; __uaNoCall=pc; genome.uaMaxDepth=pd; }
 }
 function rendCompile(atom){
   if(atom.compiled||atom.failed)return;
@@ -5728,6 +5739,12 @@ let genome={
   uaMaxDepth:1,         // UNLOCKED #7b: nesting depth of self-authored atom expressions. 1 = the
                         // original grammar exactly (two terms, one binary op). Higher lets the
                         // system compose structurally richer primitives. Bounded by UA_DEPTH_CAP.
+  // #97: rendMaxDepth and intStepBias are DELIBERATELY not declared here. mutateChildGenome does
+  // `for(const k in g)` and draws Math.random() per numeric key on every birth, so declaring a gene
+  // shifts the RNG stream for the whole run whether or not anything reads it — which would destroy the
+  // exact-revert control. They are created lazily by mutateGenome under their own knob instead, and
+  // every reader supplies the default (rendMaxDepth->1, intStepBias->0). Once created they are ordinary
+  // heritable genes and the child path mutates them like any other.
   somaRepair:0.0,       // LEAP 23 (#56): heritable investment in maintenance. Amp spent here is amp not
                         // spent on offspring — the trade-off is the point. With it, live-fast/die-young
                         // and slow/long become distinct viable strategies rather than one dominating, and
@@ -6457,6 +6474,8 @@ function encodeGenome(){
     vm:genome.vmMaxInstructions,
     mtl:+(genome.mutationTail||0).toFixed(4), // UNLOCKED #6 search-distribution shape
     uad:genome.uaMaxDepth|0,                  // UNLOCKED #7b atom recursion depth
+    rmd:genome.rendMaxDepth===undefined?undefined:(genome.rendMaxDepth|0),                // #97: render-channel depth, its own gene (omitted if never created)
+    isb:genome.intStepBias===undefined?undefined:+(genome.intStepBias).toFixed(4),        // #97: integer-step forcing bias
     tmr:+(genome.typeMutRate||0.02).toFixed(4), // UNLOCKED #7a caste-innovation rate
     td: genome.tendDims|0,
     oe:[genome.opnovStrength,genome.nicheBuildRate,genome.rqRate,genome.dimsSatThresh,genome.novStrength].map(v=>+(+v).toPrecision(4)), // #35 evolvable open-endedness engine dials (+ #39 novStrength at [4])
@@ -6729,6 +6748,8 @@ function decodeGenome(data){
     if(g.vm)genome.vmMaxInstructions=g.vm;
     if(typeof g.mtl==='number')genome.mutationTail=g.mtl;  // UNLOCKED #6 (absent in pre-unlock saves → sanitize defaults to 0)
     if(typeof g.uad==='number')genome.uaMaxDepth=g.uad|0;  // UNLOCKED #7b
+    if(typeof g.rmd==='number')genome.rendMaxDepth=g.rmd|0;      // #97
+    if(typeof g.isb==='number')genome.intStepBias=+g.isb;        // #97
     if(typeof g.tmr==='number')genome.typeMutRate=g.tmr;   // UNLOCKED #7a
     if(g.ua)genome.userAtoms=g.ua.map(a=>({expression:a.expression,compiled:null,failed:!!a.failed,uses:a.uses|0,age:a.age|0,alienHits:a.alienHits|0,alienAttempts:a.alienAttempts|0}));
     if(typeof g.td==='number') genome.tendDims=__cl(g.td|0,2,DIMS_MAX);
@@ -6935,6 +6956,8 @@ function sanitizeGenome(){
   genome.vmGain=(Number.isFinite(genome.vmGain)&&genome.vmGain>0)?genome.vmGain:1;
   genome.mutationTail=__cl(finiteOr(genome.mutationTail,0),0,1);                          // UNLOCKED #6 (pre-unlock saves → 0 = old behavior)
   genome.uaMaxDepth=__cl(Math.round(finiteOr(genome.uaMaxDepth,1)),1,UA_DEPTH_CAP);        // UNLOCKED #7b
+  if(genome.rendMaxDepth!==undefined)genome.rendMaxDepth=__cl(Math.round(finiteOr(genome.rendMaxDepth,1)),1,UA_DEPTH_CAP); // #97: clamp if present, never create
+  if(genome.intStepBias!==undefined) genome.intStepBias =__cl(finiteOr(genome.intStepBias,0),0,1);                            // #97
   genome.typeMutRate=__cl(finiteOr(genome.typeMutRate,0.02),0,1);                          // UNLOCKED #7a
   genome.fitnessSensors=Array.isArray(genome.fitnessSensors)?genome.fitnessSensors.filter(s=>s&&Array.isArray(s.program)).map(s=>({program:s.program.map(cleanInstruction),weight:finiteOr(s.weight,0),realWeight:finiteOr(s.realWeight,0),creditTrace:finiteOr(s.creditTrace,0),lastEmit:finiteOr(s.lastEmit,0),prevEmit:finiteOr(s.prevEmit,0)})):[{program:[[2,5,6,1.0],[4,6,0,1.0]],weight:0.1,realWeight:0,creditTrace:0,lastEmit:0,prevEmit:0}];
   if(genome.fitnessSensors.length===0)genome.fitnessSensors=[{program:[[2,5,6,1.0],[4,6,0,1.0]],weight:0.1,realWeight:0,creditTrace:0,lastEmit:0,prevEmit:0}];
@@ -11757,7 +11780,20 @@ function mutateGenome(){
     if(Math.random()>rate)return val;
     const step=tailDraw()*magnitude*scale;
     if(!isFinite(step))return val;
-    return val+(step>=0?Math.max(1,Math.round(step)):Math.min(-1,Math.round(step)));
+    // A minimum move of 1 is SUBSTRATE, not taste: an integer that moves by less than 1 does not move.
+    // But my first version forced |move|>=1 on every fired mutation, which silently inflates the
+    // effective step for these genes above whatever `magnitude` says — an authored constant sitting
+    // where this system puts a gene everywhere else.
+    // The unbiased quantiser is STOCHASTIC ROUNDING: a step of 0.3 moves by 1 with probability 0.3,
+    // so E[move] == step and `magnitude` means what it says. genome.intStepBias then interpolates
+    // toward the forced version, so a lineage that benefits from coarser integer search can buy it.
+    // 0 = pure stochastic rounding, 1 = always move (the behaviour I hard-coded).
+    const bias=__cl(finiteOr(genome.intStepBias,0),0,1);
+    const mag=Math.abs(step), sgn=step>=0?1:-1;
+    const floorPart=Math.floor(mag), frac=mag-floorPart;
+    let q=floorPart+(Math.random()<frac?1:0);
+    if(q===0&&Math.random()<bias)q=1;          // the evolvable forcing, on top of the unbiased draw
+    return q===0?val:val+sgn*q;
   }
   // Gradient-biased version for physics parameters with a known shadow-nudge direction.
   // nudgeDir: ±1 direction from lastShadowNudgeDir, 0 = no prior signal.
@@ -12416,7 +12452,13 @@ function mutateGenome(){
     if(Number.isFinite(_ng)&&_ng>1e-9)genome.vmGain=_ng;
   }
   genome.vmMaxInstructions=__cl(Math.round(intMaybe(genome.vmMaxInstructions,1)),1,96); // UNLOCKED #7b: ceiling 48→96 // #96 frozen-gene set
-  genome.uaMaxDepth=__cl(Math.round(intMaybe(genome.uaMaxDepth||1,0.6)),1,UA_DEPTH_CAP); // UNLOCKED #7b: the system evolves how deeply it composes its own primitives // #96: with the old operator this line could never return anything but 1
+  genome.uaMaxDepth=__cl(Math.round(intMaybe(genome.uaMaxDepth||1,0.6)),1,UA_DEPTH_CAP);
+  // Both new genes are read ONLY when their knob is on, so mutating them with the knob off would be
+  // pure RNG-stream pollution — and it would break the exact-revert control, since every draw shifts
+  // the shared stream (the same honesty the vmGain note above states). Gated, so forced-off stays
+  // bit-identical to the pre-#96 build while the default path carries live genes.
+  if(__REND_VOCAB)   genome.rendMaxDepth=__cl(Math.round(intMaybe(genome.rendMaxDepth||1,0.6)),1,UA_DEPTH_CAP); // #97: the render channel's own depth
+  if(__INT_GENE_STEP)genome.intStepBias=__cl(maybe(finiteOr(genome.intStepBias,0),0,1,0.15),0,1);               // #97: the forcing bias is itself evolved // UNLOCKED #7b: the system evolves how deeply it composes its own primitives // #96: with the old operator this line could never return anything but 1
   genome.metabolicCost=__cl(maybe(genome.metabolicCost,0.000002,0.0002,0.00002),0.000002,0.0002); // #2 energy economy: no free lunch — cost stays positive (the negative-drift hole that euthanised selection is closed)
 
   // HGT parameter evolution
@@ -19754,9 +19796,9 @@ __SELF_PREDICT=(typeof globalThis!=='undefined')&&((globalThis.__SELF_PREDICT|0)
 __GRIP_SEED=(typeof globalThis!=='undefined')&&((globalThis.__GRIP_SEED|0)===1); // #93: default OFF
 __ABSTAIN_FREE=(typeof globalThis==='undefined')||((globalThis.__ABSTAIN_FREE??1)|0)!==0; // #95: default ON
 __CHILD_SIGN_FLOOR=(typeof globalThis==='undefined')||((globalThis.__CHILD_SIGN_FLOOR??1)|0)!==0; // #85 sign floors: default ON
-__INT_GENE_STEP=(typeof globalThis!=='undefined')&&((globalThis.__INT_GENE_STEP|0)===1); // #96: default OFF
-__REND_VOCAB=(typeof globalThis!=='undefined')&&((globalThis.__REND_VOCAB|0)===1);   // #96: default OFF
-__FLOW_UNITS=(typeof globalThis!=='undefined')&&((globalThis.__FLOW_UNITS|0)===1);   // #97: default OFF
+__INT_GENE_STEP=(typeof globalThis==='undefined')||((globalThis.__INT_GENE_STEP??1)|0)!==0; // #96: default ON. This is a REPAIR, not a treatment — the off-path exists as a CONTROL (and as the revert), not as a gate. Force off with INT_GENE_STEP=0
+__REND_VOCAB=(typeof globalThis==='undefined')||((globalThis.__REND_VOCAB??1)|0)!==0; // #96: default ON. This is a REPAIR, not a treatment — the off-path exists as a CONTROL (and as the revert), not as a gate. Force off with REND_VOCAB=0
+__FLOW_UNITS=(typeof globalThis==='undefined')||((globalThis.__FLOW_UNITS??1)|0)!==0; // #97: default ON. This is a REPAIR, not a treatment — the off-path exists as a CONTROL (and as the revert), not as a gate. Force off with FLOW_UNITS=0
 __FORAGE_ON=(typeof globalThis==='undefined')||((globalThis.__FORAGE_EYES??1)|0)!==0; // resolve FORAGE once; gates the resource-sense computation in uaSetEyes
 __DECIDE_ON=(typeof globalThis==='undefined')||((globalThis.__DECIDE??1)|0)!==0; // resolve DECISION GAIN once; gates confidence accrual + commitment scaling
 __DECIDE_REAL=(typeof globalThis==='undefined')||((globalThis.__DECIDE_REAL??1)|0)!==0; // resolve DECIDE-FROM-REAL once; gates real-winner physics adoption
