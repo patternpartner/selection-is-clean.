@@ -9577,3 +9577,70 @@ transfer donor pick (#113), fresh authoring (#112), personal trace seeding on al
 Nothing left ignores it. If the atom system was going to become an OEE engine, this is the
 configuration where it should. Live-run verification is the only outstanding test.
 
+---
+
+## #114 — NEGATIVE FREQUENCY-DEPENDENCE FOR THE ATOM BANK: the Red Queen applied to content
+
+### The risk #112 introduced, made concrete
+
+#112 splices proven expressions from the credit pool into new atoms, weighted by credit. I flagged the
+failure mode in that entry: if one expression dominates the pool, every new atom becomes a variant of
+it and the bank collapses to a monoculture. The two dampers I built (slow pool blend, weighted-not-argmax
+sampling) slow that collapse but don't oppose it — they're brakes, not a countervailing force.
+
+The whole ecological arc (#11–#38) already solved this exact problem for the population, and named the
+solution: **negative frequency-dependence**. #28's Red Queen ("kill the winner": common prey predated
+hard, rare protected) makes coexistence stable and *selects for divergence* — the single most productive
+diversity engine in this codebase. It had never been applied to the one replicator that carries meaning:
+atom content.
+
+### The mechanism
+
+The germline overwrite loop already computes a per-atom protection from credit
+(`max(personal, pool)`, capped 0.7). #114 adds a second, orthogonal protection term from *rarity*:
+
+1. Sum every expression's population-wide execution count (`__atomExprUses`, from #102) once per
+   `mutateGenome` call — the function fires ~18×/6000 ticks, so the O(map) sum is free.
+2. For each atom, its share = `uses(expr) / totalUses`. NFD protection = `clamp(1 - share*8, 0, 0.4)`,
+   applied **only** when `uses > 0`.
+3. Final protection = `max(creditProtection, nfdProtection)`. Overwrite rate multiplies by `(1 - prot)`.
+
+The `uses > 0` gate is the crux: this **never shields untested noise** — a freshly-authored, never-run
+expression has share 0 but also uses 0, so it gets no NFD protection and churns normally. Only
+expressions that are *actively executing but uncommon* get shielded. The population-dominant expression
+(high share) gets zero NFD shield and must survive on credit alone — which is exactly the outcome that
+prevents #112's monoculture: the more an expression takes over, the less protected it becomes, until
+divergent alternatives out-persist it.
+
+### Why max, not sum
+
+An atom survives if it is EITHER proven (credit) OR rare-and-active (NFD). This is quality-diversity
+stated as a persistence rule: keep the good and keep the different, and *especially* keep what is both.
+An atom that is rare AND accumulating credit — the signature of a genuine explorer that just found
+something — gets the maximum of two strong protections and is very hard to erase. That's the atom the
+whole #80–#113 arc was trying to preserve and never had a mechanism dedicated to.
+
+Summing the two would let a mediocre-but-common atom accumulate a large combined score from two
+half-signals; max keeps each protection honest — you earn it on one axis or the other, not by
+laundering weakness across both. The NFD cap (0.4) sits deliberately below the credit cap (0.7):
+proven-useful should always beat merely-rare, so rarity nudges diversity without overriding function.
+
+### Position in the arc
+
+#110–#113 built a fitness-credit loop: atoms that help the organism persist. That is pure *exploitation*
+— it drives the bank toward whatever currently works, which is the raw material of monoculture. #114 is
+the *exploration* counterweight, and it is not a bolt-on: it is the same negative-frequency-dependence
+that the ecological arc proved is THE diversity engine here, finally wired into the atom replicator. An
+OEE engine needs both hands — a ratchet that accumulates what works (#110–#113) and a force that keeps
+the alternatives alive so the ratchet has somewhere new to go (#114). This is the second hand.
+
+### Verification
+
+None run this session, by request — no harness. The change is: one summation before the existing
+overwrite loop, one clamped term inside it, one `max`, all behind `__ATOM_NFD` (default on, force off
+with `ATOM_NFD=0`). It reads only `__atomExprUses` (already maintained since #102) and touches no state
+other than the overwrite probability it was already computing. The mechanism's whole claim — that it
+maintains atom-content diversity under the #112 inheritance pressure — is a live-run question, and a
+long-run one: it only bites once expressions have accumulated enough execution history for shares to
+diverge.
+
