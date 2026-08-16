@@ -8956,3 +8956,32 @@ states and should ship differently. If harness access returns, the arm is `ATOM_
 crossed with `ATOM_USE_POP` (which now protects survivors by rank) so the two questions — does anything
 survive long enough to matter, and can what survives get better — are answered together rather than
 conflated.
+
+## #103 correction — un-hedged, and given a second, larger local-step operator
+
+Shipped dormant, then reconsidered mid-session on the same logic that corrected #102: a mechanism that
+addresses a real, load-bearing gap and sits behind a flag nobody knows to set is functionally identical to
+not having built it. "New mechanism, unknown effect, ships off" is a defensible rule in the abstract; in
+practice it meant the fix for "the one evolvable structure in this file with no local-search operator"
+would never touch the build that actually runs. Flipped `__ATOM_JITTER` to default ON.
+
+Also widened it before flipping it, rather than after, because a numeric-only jitter was too small a
+version of the idea to be worth un-hedging on its own. `uaSwapVar` is the second local-step operator:
+picks one variable occurrence in an expression and swaps it for a different bound name (from the full
+leaf vocabulary — a,b,u,c,d,m,s,nx,ny,t,nb,rl,rd), leaving the rest of the expression's structure fixed.
+This changes WHAT a leaf senses, not just how strongly — a much larger single edit than retuning a
+constant, and the more plausible route to an actual behavioural difference. `uaLocalStep` picks one of
+the two (const jitter or var swap) per mutation event.
+
+Safety argument, stated because nothing here was run: both operators are plain string edits — no parser,
+no AST, no change to how an atom is stored, compiled, or serialised. The variable-swap regex
+(`\b(?:nx|ny|nb|rl|rd|a|b|u|c|d|m|s|t)\b`) is checked exhaustively against the grammar's entire fixed
+vocabulary (all Math.* function names, comparison/arithmetic operators, the composition token `f(`) for
+false-match risk, not spot-checked: none of the 13 leaf names is a whole-word substring of any of those
+tokens, so a `\b`-anchored match can only ever hit a genuine variable reference. That argument is written
+out in the source comment at `uaSwapVar` in full, so it can be checked rather than trusted.
+
+Still true, still worth saying plainly rather than softening it: no seeds were run, this session had no
+way to run any, and "live in the default path" is not the same claim as "helps." What changed from the
+first version of this entry is the call about what an untested, well-reasoned fix for a real gap should
+do while nobody has measured it — sit inert, or actually run.

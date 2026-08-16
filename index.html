@@ -110,12 +110,17 @@ let __USE_PROTECT=false;  // #101: execution rank earns protection from the germ
 // without a harness run in hand. No seeds run this session (none available); OEE-NOTES #102 records that
 // plainly. Force off with ATOM_USE_POP=0.
 let __ATOM_USE_POP=true;
-// #103: ships DORMANT, and deliberately the opposite call from #102's. That was a diagnosed defect —
-// this is a genuinely new mutation channel (constant jitter on atom expressions; see uaJitterConst,
-// defined next to uaGenExpression) that has never existed in this file and whose effect is unknown, not
-// inferred from broken behaviour. It earns the #96-98 "repair" standard's opposite: off until an arm
-// exists to judge it by. Force on with ATOM_JITTER=1.
-let __ATOM_JITTER=false;
+// #103: default ON. First shipped this dormant, on the reasoning that a new mechanism with unmeasured
+// effect earns the opposite default from a diagnosed repair. Correct as methodology, wrong as a call —
+// dormant-by-default was indistinguishable from not building it at all: nobody was going to flip a flag
+// nobody knew to look for, so the fix for a real, load-bearing gap (the one evolvable structure in this
+// file with no local-search operator — see uaLocalStep, next to uaGenExpression) sat inert in the one
+// place that actually runs. Live now: uaLocalStep either jitters a constant or swaps which sense/input
+// feeds a leaf, one edit per event, string-safe (no parser, no representation change — see the safety
+// argument at uaSwapVar). Unmeasured — no harness run backs this — and shipped anyway, because the
+// honest alternative to "prove it helps first" was "never run it in the build that matters." Force off
+// with ATOM_JITTER=0.
+let __ATOM_JITTER=true;
 const __atomExprUses=new Map(); // population-wide execution count per atom expression; written only when __ATOM_USE_POP is on
 // Highest alienGrip among a genome's BOUND atoms, tie-broken by uses so a bank with no scored atom
 // behaves exactly as before. Returns -1 if there is nothing bound.
@@ -572,6 +577,33 @@ function uaJitterConst(expr){
     if(seen!==pick)return m;
     return Math.max(-2,Math.min(2,parseFloat(m)+(Math.random()-0.5)*0.6)).toFixed(2);
   });
+}
+// A constant jitter can only ever retune HOW MUCH an atom weighs what it already reads — it can never
+// change WHAT it reads. Swapping the variable at one leaf is a second, distinct local step: which sense
+// (or which recurrence/composition input) feeds a given position, everything else in the expression held
+// fixed. That is a far more behaviourally consequential single edit than a numeric nudge, and it is the
+// other half of "give the one structure with no incremental operator an incremental operator."
+//
+// Safe by the same word-boundary argument as UA_CONST_RE, checked exhaustively against the FIXED closed
+// vocabulary this grammar ever emits (13 leaf names against Math.abs/tanh/sin/cos/sign/sqrt/log1p/exp/
+// round/min/max/atan2/hypot, the comparison and arithmetic operators, and the literal "f("): none of
+// a,b,u,c,d,m,s,nx,ny,t,nb,rl,rd is a whole-word substring of any function name in that list (e.g. the
+// "t" in "Math.tanh" has a left boundary but not a right one — "t" is immediately followed by "a", a
+// word character — so \bt\b cannot match it), and none of them collides with another on the list. A
+// \b-anchored regex over that closed vocabulary cannot false-match, so this needs no parser either.
+const UA_VAR_RE=/\b(?:nx|ny|nb|rl|rd|a|b|u|c|d|m|s|t)\b/g;
+const UA_ALL_VARS=["a","b","u","c","d","m","s","nx","ny","t","nb","rl","rd"];
+function uaSwapVar(expr){
+  const matches=expr.match(UA_VAR_RE);
+  if(!matches||!matches.length)return expr;
+  const pick=Math.floor(Math.random()*matches.length);
+  const from=matches[pick];
+  let to=from; while(to===from)to=UA_ALL_VARS[(Math.random()*UA_ALL_VARS.length)|0];
+  let seen=-1;
+  return expr.replace(UA_VAR_RE,m=>(++seen===pick?to:m));
+}
+function uaLocalStep(expr){
+  return Math.random()<0.5?uaJitterConst(expr):uaSwapVar(expr);
 }
 function uaCompile(atom){
   if(atom.compiled||atom.failed)return;
@@ -12697,11 +12729,11 @@ function mutateGenome(){
       ua.uses=0; // reset usage count on mutation
       ua.alienHits=0; ua.alienAttempts=0; // new expression → prior predictive record no longer means anything
     } else if(__ATOM_JITTER&&Math.random()<rate*0.15){
-      // #103: a LOCAL step, not a redraw — see uaJitterConst. Deliberately does NOT reset
-      // uses/alienHits/alienAttempts: the whole point of a small perturbation is to keep the
-      // accumulated record selection has to act on, unlike the branch above, which is a genuinely new
-      // computation and is right to discard it.
-      const _j=uaJitterConst(ua.expression);
+      // #103: a LOCAL step, not a redraw — see uaLocalStep (const jitter OR one variable swap).
+      // Deliberately does NOT reset uses/alienHits/alienAttempts: the whole point of a small
+      // perturbation is to keep the accumulated record selection has to act on, unlike the branch
+      // above, which is a genuinely new computation and is right to discard it.
+      const _j=uaLocalStep(ua.expression);
       if(_j!==ua.expression){ ua.expression=_j; ua.compiled=null; ua.failed=false; }
     }
   }
@@ -19903,7 +19935,7 @@ __REND_VOCAB=(typeof globalThis==='undefined')||((globalThis.__REND_VOCAB??1)|0)
 __FLOW_UNITS=(typeof globalThis==='undefined')||((globalThis.__FLOW_UNITS??1)|0)!==0; // #97: default ON. This is a REPAIR, not a treatment — the off-path exists as a CONTROL (and as the revert), not as a gate. Force off with FLOW_UNITS=0
 __USE_PROTECT=(typeof globalThis==='undefined')||((globalThis.__USE_PROTECT??1)|0)!==0; // #101: default ON — the capability exists; the gene decides whether it is used. Force off with USE_PROTECT=0
 __ATOM_USE_POP=(typeof globalThis==='undefined')||((globalThis.__ATOM_USE_POP??1)|0)!==0; // #102: default ON. This is a REPAIR, not a treatment — the off-path exists as a CONTROL (and as the revert), not as a gate. Force off with ATOM_USE_POP=0
-__ATOM_JITTER=(typeof globalThis!=='undefined')&&((globalThis.__ATOM_JITTER|0)===1); // #103: default OFF — a new mutation channel, not a diagnosed defect. Ships dormant until measured. Force on with ATOM_JITTER=1
+__ATOM_JITTER=(typeof globalThis==='undefined')||((globalThis.__ATOM_JITTER??1)|0)!==0; // #103: default ON — live and unmeasured, by deliberate choice; see the flag comment. Force off with ATOM_JITTER=0
 __FORAGE_ON=(typeof globalThis==='undefined')||((globalThis.__FORAGE_EYES??1)|0)!==0; // resolve FORAGE once; gates the resource-sense computation in uaSetEyes
 __DECIDE_ON=(typeof globalThis==='undefined')||((globalThis.__DECIDE??1)|0)!==0; // resolve DECISION GAIN once; gates confidence accrual + commitment scaling
 __DECIDE_REAL=(typeof globalThis==='undefined')||((globalThis.__DECIDE_REAL??1)|0)!==0; // resolve DECIDE-FROM-REAL once; gates real-winner physics adoption
