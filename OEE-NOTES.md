@@ -8579,3 +8579,72 @@ germline — its atoms", and `sanitizeGenome`'s wholesale rebuild of `genome.use
 That is the next thing to chase, and it matters beyond bookkeeping: **a path that moves atoms into and out
 of the germline bank without passing the authoring site or the cull is a selection channel nobody has
 measured**, including me, across ninety-nine entries.
+
+## #100 — the unattributed write path is an overwrite, and it reframes the whole session
+
+The ~78 unattributed arrivals and departures in #99 are line 12599:
+
+```js
+for(const ua of genome.userAtoms){
+  const grip=_alienSelect?alienGrip(ua):0;
+  if(Math.random()<rate*0.3*(1-grip)){
+    ua.expression=uaGenExpression();   // wholesale replacement, in place
+    ua.compiled=null; ua.failed=false;
+    ua.uses=0;                         // and the execution record is erased with it
+    ua.alienHits=0; ua.alienAttempts=0;
+  }
+}
+```
+
+**Every atom in the bank is on a timer to have its expression thrown away and replaced with a fresh draw
+from the generator.** It produces one departure and one arrival with no push and no cull — exactly the
+equal-in/equal-out signature the #99 ledger could not attribute.
+
+### The arithmetic, from the source constants alone
+
+At `rate ~= 0.06` and `grip = 0`, the per-atom overwrite probability is `0.06*0.3 = 0.018` per
+`mutateGenome` call:
+
+| | |
+|---|---|
+| expected overwrites per 24,000-tick run (~80 calls, bank ~25) | **36** |
+| births in the same run (`UA_BIRTH_FLOOR = 0.28`/call) | **22** |
+| P(a given atom survives a 24,000-tick run un-overwritten) | **0.234** |
+| half-life of an expression | 39 calls ~ **11,500 ticks** |
+| P(an atom survives the gen104 live world's 595 calls) | **2e-5** |
+
+**The bank is re-randomised faster than it is filled.** And the gen104 world's 108 atoms are not a
+104-generation accumulation of anything — they are a snapshot of a pool that has been continuously
+re-drawn from `uaGenExpression()`.
+
+### This corrects my own headline finding — right conclusion, wrong reasoning
+
+In #96 I wrote: *"After up to 104 generations, the surviving bank is statistically indistinguishable from
+a fresh random draw... Any selection on atom content would enrich the bank for world-sensing atoms over
+constants. At n=163 there is no enrichment to find."* I presented 25.2% against a predicted 25.0% as
+**evidence of an absence of selection**.
+
+That reasoning is wrong. **The bank matches the generator because it IS the generator's output,
+continuously refreshed** — a mechanism guarantees the match, so the match cannot be evidence about
+selection either way. I measured a design constant and reported it as an empirical finding. The
+conclusion survives (nothing is accumulating in that bank) but the argument for it is now the overwrite,
+not the distribution.
+
+### The defect this exposes
+
+The overwrite has exactly one brake: `(1-grip)`, where `grip` is `alienGrip` — the predictive channel
+**#95 measured at chance**, and #97 confirmed sits on the independence null in the live artwork. So the
+sole thing that can protect an atom from erasure is a score with no information in it.
+
+Meanwhile `uses` protects nothing. And #99 established that `uses` is not a dead counter — the transfer
+channel sorts on it *hard*: median chosen atom 4,562 executions, max 138,685, zero zero-use picks out of
+3,125 transfers. **The system has a strong, working, use-based selector in one channel and the germline
+overwrite ignores it completely.** An atom executed 138,685 times carries the same 1.8%-per-cycle death
+sentence as one that has never run.
+
+That is the sharpest actionable target this session has produced, and unlike the atom-depth work it does
+not need a new mechanism — only for the overwrite's protection term to consult a signal that already
+demonstrably discriminates.
+
+Measurement in flight: the overwrite site is now hooked, so the predicted ~36/run and the ledger closing
+to zero unattributed events are both about to be checked rather than asserted.
