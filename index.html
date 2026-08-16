@@ -8707,7 +8707,18 @@ function attemptClusterBudding(){
           copy[3]+=(Math.random()-0.5)*0.2;
           copy[3]=Math.max(-2,Math.min(2,copy[3]));
         }
-        if(Math.random()<_effInnov*0.27)copy[0]=Math.floor(Math.random()*CORE_OPCODES); // full opcode space; Red Queen-boosted so arms-race lineages discover novel ops faster
+        // #104: was CORE_OPCODES — the comment already claimed "full opcode space" but the draw stopped
+        // short of it, excluding every bound (atom-authored) opcode from the one event genuinely
+        // structured to explore (scale=1.0, "full mutation magnitude", Red-Queen-boosted). The SAME kind
+        // of mutation on the SAME data (a cluster's vmProgram instruction opcode) already draws from the
+        // full OPCODE_COUNT at the per-tick maintenance site nine lines below LAYER 9 (~12928,
+        // `if(Math.random()<0.2)inst[0]=Math.floor(Math.random()*OPCODE_COUNT);`) — so budding, the
+        // bigger innovation event, was more restrictive than routine upkeep on the identical structure.
+        // No new dispatch needed: executeClusterVM already handles op>=CORE_OPCODES correctly (18547
+        // region), reading whichever atom bank is ambient at execution time, exactly as the particle VM
+        // does — that path has simply never been reachable from a bud until now. Matches its sibling
+        // site; not a new mechanism, so it isn't gated.
+        if(Math.random()<_effInnov*0.27)copy[0]=Math.floor(Math.random()*OPCODE_COUNT); // now genuinely the full opcode space, atoms included
         return copy;
       }),
       vmInfluence:Math.max(0.05,c.vmInfluence+(Math.random()-0.5)*0.1),

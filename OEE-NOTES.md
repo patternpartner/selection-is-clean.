@@ -8985,3 +8985,47 @@ Still true, still worth saying plainly rather than softening it: no seeds were r
 way to run any, and "live in the default path" is not the same claim as "helps." What changed from the
 first version of this entry is the call about what an untested, well-reasoned fix for a real gap should
 do while nobody has measured it — sit inert, or actually run.
+
+## #104 — cluster budding was locked out of the atom vocabulary its own maintenance mutation already uses
+
+Next weakest point after the atom-content arc (#100-#103): CODEMAP names, in passing, that cluster VMs
+"cannot acquire authored atoms by mutation — bound opcodes are outside the draw. Authored primitives are
+a particle-level phenomenon only," and never follows it up. Reading both cluster-mutation sites shows the
+claim is half true and the fixable half was a one-line inconsistency, not a design boundary.
+
+### The two sites disagree with each other
+
+- **Budding** (`vmProgram` construction on a new daughter cluster, ~8710): opcode-swap mutation drew from
+  `CORE_OPCODES` only — bound (atom) opcodes structurally unreachable. The inline comment already said
+  "full opcode space" — true when written, before bound opcodes existed as a category the draw needed to
+  cover; the code was never updated when that stopped being true.
+- **Per-tick maintenance** ("LAYER 9: CLUSTER VM MUTATION", ~12928, `if(Math.random()<rate*0.2)...` on
+  persistent clusters, `persistAge>=3`): opcode-swap on the SAME field of the SAME data structure — a
+  cluster's `vmProgram[ip][0]` — already draws from the full `OPCODE_COUNT`, atoms included.
+
+So an established cluster, ticking along, could already mutate its way into a bound opcode. Only the
+founding event of a NEW cluster lineage — budding, explicitly run at `scale=1.0`, "full mutation
+magnitude," Red-Queen-boosted specifically to help arms-race lineages "discover novel ops faster" — was
+denied the one category of op most worth discovering. The biggest-intended innovation event was the most
+restricted one.
+
+### Why this is safe to ship without a knob
+
+Not a new mechanism — the runtime already handles it. `executeClusterVM`'s bound-opcode dispatch (~18547,
+`if(op>=CORE_OPCODES&&op<CORE_OPCODES+MAX_BOUND_OPCODES){ const _bua=genome.userAtoms&&...; }`) is
+identical in shape to the particle VM's own dispatch and has been live and reachable via the per-tick path
+(12928) this whole time — this fix doesn't add a capability, it removes one site's block on reaching a
+capability that already exists and is already exercised elsewhere. `executeClusterVM(i,j,...)` runs with
+`genome` bound to particle `i`'s own genome (the same rebinding convention as every other VM dispatch in
+this file), so a bound-opcode instruction reaching a cluster program calls into a real, populated atom
+bank — not a dead lookup. Shipped as a plain fix (`CORE_OPCODES` → `OPCODE_COUNT` at the bud site), no
+flag: it aligns one site with its own sibling, which is a correctness change, not a treatment.
+
+### What's still open
+
+Unmeasured, as everything this session is. Whether cluster-level programs actually benefit from atom
+access any more than particle-level ones did (#83/#87's neutrality) is not implied either way by this fix
+— only that the channel is no longer closed at the one place it was. If a harness run happens, comparing
+cluster `vmProgram` opcode histograms pre/post this change (does bound-opcode content actually establish
+in budded lineages, given it can now arrive) is the natural first check, same shape as the "realised
+opcode histogram" instrument CODEMAP called for and never got for the particle side.
