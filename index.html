@@ -122,6 +122,10 @@ let __ATOM_USE_POP=true;
 // with ATOM_JITTER=0.
 let __ATOM_JITTER=true;
 const __atomExprUses=new Map(); // population-wide execution count per atom expression; written only when __ATOM_USE_POP is on
+// #107: gates lazy creation of genome.uaStructBias — see the mutateGenome site (~12586) and uaGenTerm
+// (below) for what it does. Default ON, same call as #101/#102/#103: a real, reasoned lever handed to
+// the system, live, not parked behind a flag nobody would set. Force off with UA_STRUCT=0.
+let __UA_STRUCT=true;
 // Highest alienGrip among a genome's BOUND atoms, tie-broken by uses so a bank with no scored atom
 // behaves exactly as before. Returns -1 if there is nothing bound.
 // Returns -1 unless some bound atom has ACTUAL grip (>= ALIEN_GRIP_MIN_ATTEMPTS attempts and a non-zero
@@ -484,13 +488,28 @@ function uaGenTerm(depth){
   depth=depth|0;
   if(depth>0){
     const roll=Math.random();
-    if(roll<0.45){
+    // #107: the four thresholds below were fixed constants (0.45/0.62/0.72/0.82) — the grammar's own
+    // production weights, as opposed to uaMaxDepth (how deep it may recurse), which has been evolvable
+    // since UNLOCKED #7b. genome.uaStructBias rescales the total probability mass given to ALL four
+    // structural branches at this level, preserving their existing RELATIVE proportions exactly (a
+    // lineage can make its grammar branch more or less eagerly at every level it's already allowed to
+    // reach; it cannot reorder which branch is favoured over the others). Defaults to 1 (finiteOr),
+    // reproducing the original constants exactly when the gene doesn't exist or sits at its neutral
+    // value. Capped short of 1 so a leaf stays reachable regardless — not a safety requirement (depth>0
+    // already bounds recursion on its own) but so "always branch" and "never branch" both stay
+    // reachable extremes rather than one collapsing to the other.
+    const _rich0=uaRich();
+    const _base0=_rich0?0.82:0.72;
+    const _sb=__cl(finiteOr((typeof genome!=='undefined'&&genome)?genome.uaStructBias:1,1),0.3,2.0);
+    const _scale0=Math.min(0.97,_base0*_sb)/_base0;
+    const _t1=0.45*_scale0, _t2=_t1+0.17*_scale0, _t3=_t2+0.10*_scale0, _t4=_t3+0.10*_scale0;
+    if(roll<_t1){
       // binary sub-expression (compositional growth)
       const a=uaGenTerm(depth-1),b=uaGenTerm(depth-1);
       const op=USER_OPS[(Math.random()*USER_OPS.length)|0];
       return "("+a+")"+op+"("+b+")";
     }
-    if(roll<0.62){
+    if(roll<_t2){
       // UNLOCKED #7b — CONTROL FLOW. A comparison gates which sub-expression is evaluated, so
       // authored code can BRANCH (decide), not only compute. It stays a pure expression (a
       // ternary — no loops), so the per-tick instruction budget is untouched and the isFinite
@@ -500,7 +519,7 @@ function uaGenTerm(depth){
       const yes=uaGenTerm(depth-1),no=uaGenTerm(depth-1);
       return "((("+c1+")"+cmp+"("+c2+"))?("+yes+"):("+no+"))";
     }
-    if(roll<0.72&&!__uaNoCall){
+    if(roll<_t3&&!__uaNoCall){
       // UNLOCKED #10 — COMPOSITION. Call ANOTHER authored atom by index: f(idx,a,b). Primitives
       // build on primitives (subroutines / a self-grown function library). Recursion is bounded by
       // uaFuel in uaCall, so a cycle of atoms calling each other can't freeze the tab.
@@ -511,7 +530,7 @@ function uaGenTerm(depth){
       // is exactly what INT_GENE_STEP unlocks — so it gets fixed in the same change, not after.
       return "f("+uaGenTerm(depth-1)+","+uaGenTerm(depth-1)+","+uaGenTerm(depth-1)+")";
     }
-    if(uaRich()&&roll<0.82){
+    if(_rich0&&roll<_t4){
       // HANDS — multi-arg function: min/max = SELECTION (threshold / piecewise), atan2 = DIRECTION, hypot = MAGNITUDE
       const bf=USER_BINFUNCS[(Math.random()*USER_BINFUNCS.length)|0];
       return bf+"("+uaGenTerm(depth-1)+","+uaGenTerm(depth-1)+")";
@@ -6585,6 +6604,7 @@ function encodeGenome(){
     rmd:genome.rendMaxDepth===undefined?undefined:(genome.rendMaxDepth|0),                // #97: render-channel depth, its own gene (omitted if never created)
     isb:genome.intStepBias===undefined?undefined:+(genome.intStepBias).toFixed(4),        // #97: integer-step forcing bias
     aup:genome.atomUseProtect===undefined?undefined:+(genome.atomUseProtect).toFixed(4), // #101: use-rank overwrite protection
+    usb:genome.uaStructBias===undefined?undefined:+(genome.uaStructBias).toFixed(4), // #107: atom-grammar structural-branch bias (omitted if never created)
     tmr:+(genome.typeMutRate||0.02).toFixed(4), // UNLOCKED #7a caste-innovation rate
     td: genome.tendDims|0,
     oe:[genome.opnovStrength,genome.nicheBuildRate,genome.rqRate,genome.dimsSatThresh,genome.novStrength].map(v=>+(+v).toPrecision(4)), // #35 evolvable open-endedness engine dials (+ #39 novStrength at [4])
@@ -6860,6 +6880,7 @@ function decodeGenome(data){
     if(typeof g.rmd==='number')genome.rendMaxDepth=g.rmd|0;      // #97
     if(typeof g.isb==='number')genome.intStepBias=+g.isb;        // #97
     if(typeof g.aup==='number')genome.atomUseProtect=+g.aup;     // #101
+    if(typeof g.usb==='number')genome.uaStructBias=+g.usb;       // #107
     if(typeof g.tmr==='number')genome.typeMutRate=g.tmr;   // UNLOCKED #7a
     if(g.ua)genome.userAtoms=g.ua.map(a=>({expression:a.expression,compiled:null,failed:!!a.failed,uses:a.uses|0,age:a.age|0,alienHits:a.alienHits|0,alienAttempts:a.alienAttempts|0}));
     if(typeof g.td==='number') genome.tendDims=__cl(g.td|0,2,DIMS_MAX);
@@ -12582,6 +12603,18 @@ function mutateGenome(){
   if(__REND_VOCAB)   genome.rendMaxDepth=__cl(Math.round(intMaybe(genome.rendMaxDepth||1,0.6)),1,UA_DEPTH_CAP); // #97: the render channel's own depth
   if(__INT_GENE_STEP)genome.intStepBias=__cl(maybe(finiteOr(genome.intStepBias,0),0,1,0.15),0,1);               // #97: the forcing bias is itself evolved // UNLOCKED #7b: the system evolves how deeply it composes its own primitives // #96: with the old operator this line could never return anything but 1
   if(__USE_PROTECT)  genome.atomUseProtect=__cl(maybe(finiteOr(genome.atomUseProtect,0),0,1,0.15),0,1);            // #101: how much execution rank protects an atom — the system's call, not mine
+  // #107: uaMaxDepth (above) is evolvable — HOW DEEP the grammar may recurse. The PRODUCTION WEIGHTS at
+  // each level (binary sub-expr 45% / ternary branch 17% / compose 10% / binary-func 10% / leaf ~18%,
+  // uaGenTerm) never were — fixed constants since the grammar was written, the one part of "how the
+  // system authors itself" the system was never given a hand on. uaStructBias scales the total mass
+  // given to ALL structural branches vs a leaf, preserving their existing relative proportions (see
+  // uaGenTerm) — not a new production rule, a dial on how eagerly the existing ones fire. No runaway
+  // risk to guard: depth is hard-bounded regardless (depth>0 gate + UA_DEPTH_CAP), so this can only
+  // change how much of that already-bounded budget gets spent on structure vs constants/vars at each
+  // level. Lazily created like rendMaxDepth/intStepBias/atomUseProtect, for the same reason (12578-81):
+  // declaring it in the genome literal would shift the RNG stream for every run whether or not anything
+  // reads it. Not gated dormant — same call as #101/#103: the system gets the option, live.
+  if(__UA_STRUCT)    genome.uaStructBias=__cl(maybe(finiteOr(genome.uaStructBias,1),0.3,2.0,0.05),0.3,2.0);         // #107: how eagerly the atom grammar branches — the system's call
   genome.metabolicCost=__cl(maybe(genome.metabolicCost,0.000002,0.0002,0.00002),0.000002,0.0002); // #2 energy economy: no free lunch — cost stays positive (the negative-drift hole that euthanised selection is closed)
 
   // HGT parameter evolution
@@ -19983,6 +20016,7 @@ __FLOW_UNITS=(typeof globalThis==='undefined')||((globalThis.__FLOW_UNITS??1)|0)
 __USE_PROTECT=(typeof globalThis==='undefined')||((globalThis.__USE_PROTECT??1)|0)!==0; // #101: default ON — the capability exists; the gene decides whether it is used. Force off with USE_PROTECT=0
 __ATOM_USE_POP=(typeof globalThis==='undefined')||((globalThis.__ATOM_USE_POP??1)|0)!==0; // #102: default ON. This is a REPAIR, not a treatment — the off-path exists as a CONTROL (and as the revert), not as a gate. Force off with ATOM_USE_POP=0
 __ATOM_JITTER=(typeof globalThis==='undefined')||((globalThis.__ATOM_JITTER??1)|0)!==0; // #103: default ON — live and unmeasured, by deliberate choice; see the flag comment. Force off with ATOM_JITTER=0
+__UA_STRUCT=(typeof globalThis==='undefined')||((globalThis.__UA_STRUCT??1)|0)!==0; // #107: default ON — live and unmeasured; see the flag comment. Force off with UA_STRUCT=0
 __FORAGE_ON=(typeof globalThis==='undefined')||((globalThis.__FORAGE_EYES??1)|0)!==0; // resolve FORAGE once; gates the resource-sense computation in uaSetEyes
 __DECIDE_ON=(typeof globalThis==='undefined')||((globalThis.__DECIDE??1)|0)!==0; // resolve DECISION GAIN once; gates confidence accrual + commitment scaling
 __DECIDE_REAL=(typeof globalThis==='undefined')||((globalThis.__DECIDE_REAL??1)|0)!==0; // resolve DECIDE-FROM-REAL once; gates real-winner physics adoption

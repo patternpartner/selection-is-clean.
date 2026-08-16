@@ -9104,3 +9104,50 @@ generator.
 
 No knob: this is a consistency fix on a control, not a new experimental arm, so it ships the way #104 and
 #105 did — plain and unconditional.
+
+## #107 — the grammar's own production weights were the one thing about it never handed to selection
+
+Different register from #102-#106: not a missing cost or a missing capability on an existing gene, but a
+gap in what's evolvable AT ALL. `uaMaxDepth` — how deep an atom expression may recurse — has been a gene
+since UNLOCKED #7b. The PRODUCTION WEIGHTS at each level of that recursion — P(binary sub-expression)=45%,
+P(ternary branch)=17%, P(compose via f(...))=10%, P(binary function)=10%, P(leaf)=~18% — were never
+anything but the four fixed constants `uaGenTerm` was written with. The system could evolve how FAR its
+own grammar reaches, never how it chooses to spend that reach at each step. This is the same category of
+gap #103 closed for expression CONTENT (redraw-only, no local step) and #104 closed for cluster opcode
+ACCESS — one more piece of "the grammar is the thing to attack" (#87) that nobody had separated out from
+the rest.
+
+### The fix
+
+`genome.uaStructBias`, evolvable [0.3, 2.0], defaulting to 1 (reproduces the four original constants
+exactly). Rescales the TOTAL probability mass given to all four structural branches at a recursion level,
+preserving their existing relative proportions — not a new production rule, a dial on how eagerly the
+existing four fire versus falling through to a leaf. Capped short of 1.0 so a leaf stays reachable at any
+setting and a leaf-heavy generator stays reachable too (down to ~75% leaf probability at the gene's floor,
+vs ~18-28% at neutral) — real range in both directions, not a one-way ratchet like the parameters #105
+just fixed.
+
+No runaway-recursion question to answer: `depth>0` already hard-gates every structural branch and
+`UA_DEPTH_CAP` bounds `uaMaxDepth` itself, so this changes only how much of an already-bounded budget gets
+spent on structure vs a leaf at each level the grammar was already allowed to reach — the safety property
+doesn't depend on where this gene sits.
+
+Wired exactly like `rendMaxDepth`/`intStepBias`/`atomUseProtect`: NOT declared in the genome literal (that
+would shift the RNG stream for every run whether or not anything reads it — the exact-revert-control
+concern #97 named for the same reason), lazily created by `mutateGenome` under a new knob, `__UA_STRUCT`,
+default ON. Not gated dormant: same call as #101/#102/#103 — a real, reasoned lever, live in the build
+that runs, not parked behind a flag nobody would set.
+
+One consequence worth naming rather than discovering later: because `rendGenExpression` calls into the
+same `uaGenTerm`, this gene shapes `rend`'s branching too — which is the CORRECT outcome given #106,
+not a side effect to worry about. `rend` stays matched to atoms in generator, mutation operator, AND now
+production-weight shaping; the two differ only in the one thing being isolated (an actuator channel).
+
+### What's still open
+
+Everything, as always this session — no seeds, no table. If a harness run happens, the natural first
+check is the same shape as #98's: does `uaStructBias` move off 1.0, and in which direction does selection
+push it (more structure, since composition/branching gives an atom more to work with; or less, since
+`vmMaxInstructions`/`metabolicCost` already tax program length and a heavier expression presumably costs
+more to evaluate even though `uaCall`'s fuel bound is per-CALL, not per-node)? Both directions have a
+story; only a run adjudicates.
