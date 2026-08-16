@@ -110,6 +110,12 @@ let __USE_PROTECT=false;  // #101: execution rank earns protection from the germ
 // without a harness run in hand. No seeds run this session (none available); OEE-NOTES #102 records that
 // plainly. Force off with ATOM_USE_POP=0.
 let __ATOM_USE_POP=true;
+// #103: ships DORMANT, and deliberately the opposite call from #102's. That was a diagnosed defect —
+// this is a genuinely new mutation channel (constant jitter on atom expressions; see uaJitterConst,
+// defined next to uaGenExpression) that has never existed in this file and whose effect is unknown, not
+// inferred from broken behaviour. It earns the #96-98 "repair" standard's opposite: off until an arm
+// exists to judge it by. Force on with ATOM_JITTER=1.
+let __ATOM_JITTER=false;
 const __atomExprUses=new Map(); // population-wide execution count per atom expression; written only when __ATOM_USE_POP is on
 // Highest alienGrip among a genome's BOUND atoms, tie-broken by uses so a bank with no scored atom
 // behaves exactly as before. Returns -1 if there is nothing bound.
@@ -534,6 +540,38 @@ function uaGenExpression(){
   const t2=uaGenTerm(d-1);
   const op=USER_OPS[(Math.random()*USER_OPS.length)|0];
   return "("+t1+")"+op+"("+t2+")";
+}
+// #103: uaGenExpression's mutation path always draws a wholly fresh expression — the one evolvable
+// structure in this file with no INCREMENTAL operator. Every other mutable structure here can take a
+// small step from its current state: VM programs get opcode/register swap, insert, delete (11580+);
+// genome scalars get an additive step (mutateChildGenome, "(|v|*0.12+0.02)"); cluster VMs bud with
+// mutation, not replacement. An atom's content cannot — "mutate" here IS "discard and redraw" (12656
+// below), so whatever structure a lineage's selection history might have started to favour is erased
+// along with whatever it hadn't. This is a candidate mechanism behind #87 (atom neutrality survives
+// correcting the economy AND the routing) that nothing in the #85-#102 arc names: not that the grammar
+// can't express anything useful, but that nothing in this file lets an evolving lineage refine what it
+// already has — only replace it outright or keep it unchanged.
+//
+// uaJitterConst is a small-step operator on the one part of an expression string that's safe to touch
+// without a parser: the numeric leaf constants uaGenTerm emits via `.toFixed(2)`. That format is the
+// ONLY source of digit-bearing tokens this grammar ever produces — vars are bare identifiers (USER_VARS
+// /USER_WORLD_VARS/USER_FORAGE_VARS), and USER_FUNCS/USER_BINFUNCS/USER_OPS/USER_CMP contain no digits
+// — so the regex below is exhaustive over this grammar's actual output, not a heuristic guess at one.
+// It perturbs ONE constant by up to ±0.3 (clamped to the leaf range, [-2,2]), leaving every branch,
+// composition and recursion untouched. Representation stays a plain string throughout: nothing about
+// compilation (uaCompile, below) or serialisation (export/import/archive all read atom.expression as a
+// string already) changes, so this carries none of the risk an actual AST rewrite would.
+const UA_CONST_RE=/-?\d+\.\d{2}/g;
+function uaJitterConst(expr){
+  const n=(expr.match(UA_CONST_RE)||[]).length;
+  if(!n)return expr;
+  const pick=Math.floor(Math.random()*n);
+  let seen=-1;
+  return expr.replace(UA_CONST_RE,m=>{
+    seen++;
+    if(seen!==pick)return m;
+    return Math.max(-2,Math.min(2,parseFloat(m)+(Math.random()-0.5)*0.6)).toFixed(2);
+  });
 }
 function uaCompile(atom){
   if(atom.compiled||atom.failed)return;
@@ -12658,6 +12696,13 @@ function mutateGenome(){
       ua.failed=false;
       ua.uses=0; // reset usage count on mutation
       ua.alienHits=0; ua.alienAttempts=0; // new expression → prior predictive record no longer means anything
+    } else if(__ATOM_JITTER&&Math.random()<rate*0.15){
+      // #103: a LOCAL step, not a redraw — see uaJitterConst. Deliberately does NOT reset
+      // uses/alienHits/alienAttempts: the whole point of a small perturbation is to keep the
+      // accumulated record selection has to act on, unlike the branch above, which is a genuinely new
+      // computation and is right to discard it.
+      const _j=uaJitterConst(ua.expression);
+      if(_j!==ua.expression){ ua.expression=_j; ua.compiled=null; ua.failed=false; }
     }
   }
   // Birth new atom. FIX (dead atom pipeline): births were throttled to ~0 in stable runs (rate
@@ -19858,6 +19903,7 @@ __REND_VOCAB=(typeof globalThis==='undefined')||((globalThis.__REND_VOCAB??1)|0)
 __FLOW_UNITS=(typeof globalThis==='undefined')||((globalThis.__FLOW_UNITS??1)|0)!==0; // #97: default ON. This is a REPAIR, not a treatment — the off-path exists as a CONTROL (and as the revert), not as a gate. Force off with FLOW_UNITS=0
 __USE_PROTECT=(typeof globalThis==='undefined')||((globalThis.__USE_PROTECT??1)|0)!==0; // #101: default ON — the capability exists; the gene decides whether it is used. Force off with USE_PROTECT=0
 __ATOM_USE_POP=(typeof globalThis==='undefined')||((globalThis.__ATOM_USE_POP??1)|0)!==0; // #102: default ON. This is a REPAIR, not a treatment — the off-path exists as a CONTROL (and as the revert), not as a gate. Force off with ATOM_USE_POP=0
+__ATOM_JITTER=(typeof globalThis!=='undefined')&&((globalThis.__ATOM_JITTER|0)===1); // #103: default OFF — a new mutation channel, not a diagnosed defect. Ships dormant until measured. Force on with ATOM_JITTER=1
 __FORAGE_ON=(typeof globalThis==='undefined')||((globalThis.__FORAGE_EYES??1)|0)!==0; // resolve FORAGE once; gates the resource-sense computation in uaSetEyes
 __DECIDE_ON=(typeof globalThis==='undefined')||((globalThis.__DECIDE??1)|0)!==0; // resolve DECISION GAIN once; gates confidence accrual + commitment scaling
 __DECIDE_REAL=(typeof globalThis==='undefined')||((globalThis.__DECIDE_REAL??1)|0)!==0; // resolve DECIDE-FROM-REAL once; gates real-winner physics adoption

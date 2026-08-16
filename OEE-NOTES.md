@@ -8890,3 +8890,69 @@ open, still needs `ATOM_USE_POP=1` vs `0` with `atomUseProtect` given room to mo
 arm since #85. What changed is only which state that open question is asked from: the previous entry left
 the fix inert until someone manually flipped a flag nobody was going to flip; this one puts it in the path
 the live artwork actually runs.
+
+## #103 — the atom grammar has no incremental mutation operator, and #102 alone doesn't reach it
+
+Not a line already on this document's own "next thing to chase" list. #100-#102 are about *retention* —
+which atoms survive the germline overwrite. This is about *content* — whether an atom that survives can
+ever get BETTER, as opposed to merely surviving unchanged or being discarded whole.
+
+### The gap, read rather than measured
+
+Every other evolvable structure in this file has a small-step mutation operator alongside its
+macro-mutation:
+
+| structure | small step | wholesale replacement |
+|---|---|---|
+| VM program | register/opcode swap, insert, delete (11580+) | — |
+| genome scalar | additive `\|v\|*0.12+0.02` (mutateChildGenome) | — |
+| cluster VM | inherited with per-instruction mutation on bud | — |
+| **atom expression** | **none** | `ua.expression=uaGenExpression()` (12656) — a wholly fresh draw |
+
+`uaGenTerm`/`uaGenExpression` are called exactly two ways: build a brand-new atom at birth, or replace an
+existing one's entire expression on "mutation." There is no operation between "unchanged" and "unrelated
+new expression drawn from the same grammar." Whatever a lineage's history might have started to shape —
+which sub-expression a selected-for atom actually used — is thrown away by the only mutation event that
+touches content at all.
+
+### Why this matters for the standing "content, not routing" hypothesis
+
+CODEMAP's #85-#90 arc landed on: *"If it still returns null with routing removed and the economy
+corrected, the neutrality is genuinely about expression content and the grammar is the thing to attack."*
+#87 found exactly that — neutrality survived the corrected economy. Nobody followed that thread to what
+"attack the grammar" would concretely mean. Combined with #100's separate finding that the germline bank
+is "re-randomised faster than it is filled" (median atom survives un-overwritten with P=0.234 per run),
+the two facts together say something neither says alone: even where an atom's output DOES reach an
+actuator, and even where it DOES survive a cycle, there was never a channel for that surviving atom's
+*content* to be refined by what it did right. It could only be kept as-is or thrown away whole. A search
+process with no local step and only "resample from the prior" as its variation operator is not really
+climbing anything — it's repeated independent draws, filtered.
+
+### What was built
+
+`uaJitterConst(expr)` (next to `uaGenExpression`, ~line 527): finds every numeric leaf constant in an
+atom's expression string — matched by `/-?\d+\.\d{2}/g`, which is exhaustive over this grammar's output
+because `.toFixed(2)` is the only source of digits it ever emits (vars are bare identifiers; every
+function/operator/comparison token is alphabetic or symbolic) — and perturbs one of them by up to ±0.3,
+clamped to the leaf range. No parser, no tree, no representation change: the atom stays a plain string
+exactly as before, so nothing about `uaCompile`, export/import, or archival serialisation is touched.
+
+Wired into `mutateGenome`'s atom loop as an `else if` alongside the existing full-regenerate branch,
+under a new knob `__ATOM_JITTER` — **default OFF**. Unlike #102, this is not a diagnosed defect; it is a
+mutation channel that has never existed in this file, with a genuinely unknown effect, so it gets the
+opposite default from #102 on the same standard: a *treatment* ships dormant until an arm judges it, the
+way `__GRIP_SEED`/`__MEME_TRANSFER`/`__REND_VOCAB` did before their own verdicts landed. Deliberately does
+NOT reset `uses`/`alienHits`/`alienAttempts` on a jitter, unlike a full regenerate — the entire point of a
+local step is that it keeps the record selection has already accumulated, rather than restarting it.
+
+### What this is not
+
+Not a claim that this fixes atom neutrality. Every finding through #90 says the fitness signal on atoms
+is faint-to-absent even when they act correctly; a local-search operator gives content something to climb
+IF there is a gradient to climb, it does not manufacture one. And it is read-verified, not run-verified —
+no seeds, no table, same standing as #102 before its own correction, except this one is left OFF rather
+than flipped ON, because "new mechanism, unknown effect" and "diagnosed defect" are different epistemic
+states and should ship differently. If harness access returns, the arm is `ATOM_JITTER=1` vs `0`, ideally
+crossed with `ATOM_USE_POP` (which now protects survivors by rank) so the two questions — does anything
+survive long enough to matter, and can what survives get better — are answered together rather than
+conflated.
