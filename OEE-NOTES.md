@@ -8758,3 +8758,55 @@ world's 108 atoms had zero uses.
 Before `atomUseProtect` is worth anything, that needs testing: **does a germline atom's `uses` correlate
 with how often its expression is executed across the population?** If not, #101 protects on noise and
 should be reverted or re-pointed at a counter that aggregates across the particle copies.
+
+## #101 RESULT — the gene moves, and the replication refutes my reading of #98
+
+8 seeds x 24,000 ticks, all knobs at defaults.
+
+| seed | atomUseProtect | intStepBias | uaMaxDepth | atoms | deep-grammar |
+|---|---|---|---|---|---|
+| 3 | 0.0518 | 0.0047 | 1 | 27 | 0 |
+| 7 | **0.1775** | 0 | 1 | 17 | 0 |
+| 11 | 0 | 0.1276 | 1 | 25 | 0 |
+| 17 | 0.0723 | 0.1468 | 1 | 25 | 0 |
+| 23 | 0.0507 | 0.0649 | 2 | 17 | 6 |
+| 29 | 0 | **0.8713** | **3** | 14 | **11** |
+| 31 | 0.0582 | 0.0051 | 1 | 19 | 0 |
+| 37 | **0.1561** | 0 | 2 | 23 | 13 |
+
+**`atomUseProtect` left zero in 6 of 8 seeds.** The system has taken the option — modestly: the largest
+value, 0.1775, buys the top-ranked atom an 18% reduction in its overwrite rate. It has not been handed
+immortality and has not chosen it.
+
+### The prediction failed, and the failure is the useful part
+
+I predicted **~3/8**, reasoning that `atomUseProtect` uses an operator identical to `intStepBias` — same
+magnitude 0.15, same [0,1] clamp, same seed at 0 — and that #98 measured `intStepBias` at 3/8. Observed
+6/8.
+
+**And `intStepBias` itself came back 6/8 in this very run**, against 3/8 in #98. Same gene, same operator,
+same clamp, different RNG stream. So the number I was replicating was never a structural constant:
+3/8 and 6/8 are both ordinary draws from a rate near 9/16 ~= 56%.
+
+**That retires a claim I made twice.** In #98 I read 3/8 as evidence that seeding a gene at its own lower
+clamp meaningfully suppresses its movement, and I repeated it when registering this prediction — including
+the line that "the system can only decide once the operator lets it off the floor". The boundary
+asymmetry is real arithmetic (negative draws at 0 are erased), but **its measured effect is not what I
+said**: these genes leave zero in a bit over half of 24,000-tick runs, not a third. I built an
+interpretation on one n=8 sample and then used it to predict a second n=8 sample of the same quantity.
+The replication is what caught it.
+
+### Seed 29 is the first sign of the handed-over freedom being used coherently
+
+`intStepBias` reached **0.8713** — near the top of its range, meaning integer mutations in that lineage
+almost always take a real step — and that seed is the only one to reach `uaMaxDepth = 3`, the deepest yet,
+with **11 of its 14 atoms using the recursive grammar**. The gene governing how integer genes move drove
+the gene governing expression depth further than any other run reached.
+
+I am not claiming selection favoured it. One seed, and a coarser integer operator raises the variance of
+every integer gene, so landing high on one of them is partly mechanical. But it is the first instance of
+a constant I removed becoming a value the system set for itself, with a visible downstream consequence —
+which is the thing the whole #98-#101 arc was for.
+
+**Also holding:** `uaMaxDepth > 1` in 3/8 here against 4/8 in #98 — consistent, and the pre-registered
+"roughly half" from the arithmetic survives its own replication where my other two predictions did not.
