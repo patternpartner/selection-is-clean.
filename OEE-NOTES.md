@@ -8648,3 +8648,55 @@ demonstrably discriminates.
 
 Measurement in flight: the overwrite site is now hooked, so the predicted ~36/run and the ledger closing
 to zero unattributed events are both about to be checked rather than asserted.
+
+## #101 — use earns protection from the overwrite, and the system decides how much
+
+```js
+const _useProtect=__USE_PROTECT?__cl(finiteOr(genome.atomUseProtect,0),0,1):0;
+let _uSorted=null;
+if(_useProtect>0){ _uSorted=genome.userAtoms.map(a=>a.uses|0).sort((x,y)=>x-y); }
+for(const ua of genome.userAtoms){
+  const grip=_alienSelect?alienGrip(ua):0;
+  let _rank=0;                       // fraction of the bank strictly below this atom in executions
+  if(_uSorted&&_uSorted.length>1){ ... _rank=below/(_uSorted.length-1); }
+  if(Math.random()<rate*0.3*(1-grip)*(1-_useProtect*_rank)){
+```
+
+**Three decisions in this, and I am only entitled to one of them.**
+
+**Mine (a fact, not a choice): the strength term is RANK, not raw uses.** Rank is the fraction of the bank
+strictly below this atom in executions — scale-free by construction. There is no normalising constant to
+pick and therefore none to get wrong, and it is immune to the 138,685-use outlier that would wreck any
+fixed divisor. This is deliberate: choosing a scale by fiat is precisely what destroyed my #92 observable,
+where `tanh(1333/20)` saturated to exactly 1.0 and handed the atoms zero information. This term has no
+scale to saturate.
+
+**The system's: how much rank protects.** `genome.atomUseProtect`, [0,1], **seeded at 0 — byte-for-byte
+the prior behaviour** — and evolvable from there. I am not setting the strength, because whether execution
+count *should* buy immortality in a germline is exactly the sort of question this architecture exists to
+put to selection rather than to an author. At 0 the overwrite is blind as before; at 1 the most-executed
+atom in the bank is untouchable.
+
+**Recorded rather than hidden:** 0 is its own lower clamp, so the gene can only move upward until it
+leaves the boundary. That is the same asymmetry I measured on `intStepBias` in #98, where it left 0 in
+only 3 of 8 seeds. Seeding at 0 buys an exact-revert control at the cost of a one-way start, and I am
+naming the trade rather than pretending it isn't one.
+
+**Not a repair — and that distinction now cuts the other way.** #96/#97's fixes went to default-ON because
+a gene that cannot mutate and a sensor that reads a constant are broken, not chosen. This is different:
+the blind overwrite works as written, and its comment says protection is *earned*. Adding a second thing
+that earns it is a design change. So the capability ships on (`USE_PROTECT` default ON) while the gene
+that governs it sits at zero — the system gets the option, not the outcome. That is the shape the
+autonomy argument actually demands: not me flipping a behaviour on, but me removing my hand from which
+signals are allowed to matter.
+
+**The gene is created lazily under its knob**, per #98: declaring a genome key changes RNG consumption on
+every birth, because `mutateChildGenome` enumerates keys. Control to follow.
+
+### Why `uses` and not something new
+
+#99 measured it. The meme-transfer channel already sorts on `uses` **hard** — median chosen atom 4,562
+executions, max 138,685, and not one zero-use pick in 3,125 transfers. So `uses` is a signal this system
+demonstrably discriminates on in one place while the germline overwrite ignored it in another. No new
+mechanism, no new observable, no new scale: one existing working discriminator, connected to the one
+place that was throwing away its verdict.

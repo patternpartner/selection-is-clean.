@@ -92,6 +92,7 @@ let __GRIP_SEED=false;
 let __INT_GENE_STEP=false; // #96: integer genes take a real step when their mutation fires (see intMaybe). Default OFF pending the arm.
 let __REND_VOCAB=false;   // #96: rend mutations draw from REND_VARS instead of the atom vocabulary. Default OFF pending the arm.
 let __FLOW_UNITS=false;   // #97: deathRate is accumulated over the same 60-tick window as birthRate. Default OFF pending the arm.
+let __USE_PROTECT=false;  // #101: execution rank earns protection from the germline overwrite, weighted by genome.atomUseProtect. Default ON; the GENE seeds at 0 so behaviour is unchanged until selection moves it.
 // Highest alienGrip among a genome's BOUND atoms, tie-broken by uses so a bank with no scored atom
 // behaves exactly as before. Returns -1 if there is nothing bound.
 // Returns -1 unless some bound atom has ACTUAL grip (>= ALIEN_GRIP_MIN_ATTEMPTS attempts and a non-zero
@@ -6476,6 +6477,7 @@ function encodeGenome(){
     uad:genome.uaMaxDepth|0,                  // UNLOCKED #7b atom recursion depth
     rmd:genome.rendMaxDepth===undefined?undefined:(genome.rendMaxDepth|0),                // #97: render-channel depth, its own gene (omitted if never created)
     isb:genome.intStepBias===undefined?undefined:+(genome.intStepBias).toFixed(4),        // #97: integer-step forcing bias
+    aup:genome.atomUseProtect===undefined?undefined:+(genome.atomUseProtect).toFixed(4), // #101: use-rank overwrite protection
     tmr:+(genome.typeMutRate||0.02).toFixed(4), // UNLOCKED #7a caste-innovation rate
     td: genome.tendDims|0,
     oe:[genome.opnovStrength,genome.nicheBuildRate,genome.rqRate,genome.dimsSatThresh,genome.novStrength].map(v=>+(+v).toPrecision(4)), // #35 evolvable open-endedness engine dials (+ #39 novStrength at [4])
@@ -6750,6 +6752,7 @@ function decodeGenome(data){
     if(typeof g.uad==='number')genome.uaMaxDepth=g.uad|0;  // UNLOCKED #7b
     if(typeof g.rmd==='number')genome.rendMaxDepth=g.rmd|0;      // #97
     if(typeof g.isb==='number')genome.intStepBias=+g.isb;        // #97
+    if(typeof g.aup==='number')genome.atomUseProtect=+g.aup;     // #101
     if(typeof g.tmr==='number')genome.typeMutRate=g.tmr;   // UNLOCKED #7a
     if(g.ua)genome.userAtoms=g.ua.map(a=>({expression:a.expression,compiled:null,failed:!!a.failed,uses:a.uses|0,age:a.age|0,alienHits:a.alienHits|0,alienAttempts:a.alienAttempts|0}));
     if(typeof g.td==='number') genome.tendDims=__cl(g.td|0,2,DIMS_MAX);
@@ -6958,6 +6961,7 @@ function sanitizeGenome(){
   genome.uaMaxDepth=__cl(Math.round(finiteOr(genome.uaMaxDepth,1)),1,UA_DEPTH_CAP);        // UNLOCKED #7b
   if(genome.rendMaxDepth!==undefined)genome.rendMaxDepth=__cl(Math.round(finiteOr(genome.rendMaxDepth,1)),1,UA_DEPTH_CAP); // #97: clamp if present, never create
   if(genome.intStepBias!==undefined) genome.intStepBias =__cl(finiteOr(genome.intStepBias,0),0,1);                            // #97
+  if(genome.atomUseProtect!==undefined)genome.atomUseProtect=__cl(finiteOr(genome.atomUseProtect,0),0,1);       // #101
   genome.typeMutRate=__cl(finiteOr(genome.typeMutRate,0.02),0,1);                          // UNLOCKED #7a
   genome.fitnessSensors=Array.isArray(genome.fitnessSensors)?genome.fitnessSensors.filter(s=>s&&Array.isArray(s.program)).map(s=>({program:s.program.map(cleanInstruction),weight:finiteOr(s.weight,0),realWeight:finiteOr(s.realWeight,0),creditTrace:finiteOr(s.creditTrace,0),lastEmit:finiteOr(s.lastEmit,0),prevEmit:finiteOr(s.prevEmit,0)})):[{program:[[2,5,6,1.0],[4,6,0,1.0]],weight:0.1,realWeight:0,creditTrace:0,lastEmit:0,prevEmit:0}];
   if(genome.fitnessSensors.length===0)genome.fitnessSensors=[{program:[[2,5,6,1.0],[4,6,0,1.0]],weight:0.1,realWeight:0,creditTrace:0,lastEmit:0,prevEmit:0}];
@@ -12459,6 +12463,7 @@ function mutateGenome(){
   // bit-identical to the pre-#96 build while the default path carries live genes.
   if(__REND_VOCAB)   genome.rendMaxDepth=__cl(Math.round(intMaybe(genome.rendMaxDepth||1,0.6)),1,UA_DEPTH_CAP); // #97: the render channel's own depth
   if(__INT_GENE_STEP)genome.intStepBias=__cl(maybe(finiteOr(genome.intStepBias,0),0,1,0.15),0,1);               // #97: the forcing bias is itself evolved // UNLOCKED #7b: the system evolves how deeply it composes its own primitives // #96: with the old operator this line could never return anything but 1
+  if(__USE_PROTECT)  genome.atomUseProtect=__cl(maybe(finiteOr(genome.atomUseProtect,0),0,1,0.15),0,1);            // #101: how much execution rank protects an atom — the system's call, not mine
   genome.metabolicCost=__cl(maybe(genome.metabolicCost,0.000002,0.0002,0.00002),0.000002,0.0002); // #2 energy economy: no free lunch — cost stays positive (the negative-drift hole that euthanised selection is closed)
 
   // HGT parameter evolution
@@ -12593,9 +12598,35 @@ function mutateGenome(){
   // to its accuracy. At grip=0 (untested, unbound, or bad) this is byte-for-byte the old unconditional
   // rate*0.3. Gated __ALIEN_SELECT, default on, reversible.
   const _alienSelect=(typeof globalThis==='undefined')||((globalThis.__ALIEN_SELECT??1)|0)!==0;
+  // #101 — USE EARNS PROTECTION TOO.
+  // The overwrite above had exactly one brake, (1-grip), and grip is alienGrip: the predictive channel
+  // #95 measured at chance and #97 confirmed sits on the independence null in the live artwork. So the
+  // only thing that could save an atom from erasure was a score with no information in it.
+  // Meanwhile `uses` protects nothing — while #99 showed uses is emphatically NOT a dead counter: the
+  // meme-transfer channel sorts on it hard (median chosen atom 4,562 executions, max 138,685, zero
+  // zero-use picks in 3,125 transfers). The system already has a working use-based discriminator in one
+  // channel and the germline overwrite ignored it, so an atom executed 138,685 times carried the same
+  // per-cycle death sentence as one that had never run.
+  //
+  // HOW MUCH use should protect is NOT mine to fix. genome.atomUseProtect decides, seeded at 0 — which
+  // is byte-for-byte the prior behaviour — and evolves from there. Honest asymmetry, recorded rather
+  // than hidden: 0 is its own lower clamp, so it can only move up from the seed until it leaves the
+  // boundary (the same effect measured on intStepBias in #98, which moved in only 3 of 8 seeds).
+  //
+  // The strength term is RANK, not raw uses: the fraction of the bank strictly below this atom. That is
+  // scale-free by construction — no magic constant to go stale, and immune to the 138,685-use outlier
+  // that would wreck any fixed normaliser. Picking a scale by fiat is exactly what broke my #92
+  // observable (tanh(1333/20) saturated to 1.0 and destroyed the signal), so this one has no scale.
+  const _useProtect=__USE_PROTECT?__cl(finiteOr(genome.atomUseProtect,0),0,1):0;
+  let _uSorted=null;
+  if(_useProtect>0){ _uSorted=genome.userAtoms.map(a=>a.uses|0).sort((x,y)=>x-y); }
   for(const ua of genome.userAtoms){
     const grip=_alienSelect?alienGrip(ua):0;
-    if(Math.random()<rate*0.3*(1-grip)){
+    let _rank=0;
+    if(_uSorted&&_uSorted.length>1){ const u=ua.uses|0; let below=0;
+      for(const v of _uSorted){ if(v<u)below++; else break; }
+      _rank=below/(_uSorted.length-1); }
+    if(Math.random()<rate*0.3*(1-grip)*(1-_useProtect*_rank)){
       ua.expression=uaGenExpression();
       ua.compiled=null;
       ua.failed=false;
@@ -19799,6 +19830,7 @@ __CHILD_SIGN_FLOOR=(typeof globalThis==='undefined')||((globalThis.__CHILD_SIGN_
 __INT_GENE_STEP=(typeof globalThis==='undefined')||((globalThis.__INT_GENE_STEP??1)|0)!==0; // #96: default ON. This is a REPAIR, not a treatment — the off-path exists as a CONTROL (and as the revert), not as a gate. Force off with INT_GENE_STEP=0
 __REND_VOCAB=(typeof globalThis==='undefined')||((globalThis.__REND_VOCAB??1)|0)!==0; // #96: default ON. This is a REPAIR, not a treatment — the off-path exists as a CONTROL (and as the revert), not as a gate. Force off with REND_VOCAB=0
 __FLOW_UNITS=(typeof globalThis==='undefined')||((globalThis.__FLOW_UNITS??1)|0)!==0; // #97: default ON. This is a REPAIR, not a treatment — the off-path exists as a CONTROL (and as the revert), not as a gate. Force off with FLOW_UNITS=0
+__USE_PROTECT=(typeof globalThis==='undefined')||((globalThis.__USE_PROTECT??1)|0)!==0; // #101: default ON — the capability exists; the gene decides whether it is used. Force off with USE_PROTECT=0
 __FORAGE_ON=(typeof globalThis==='undefined')||((globalThis.__FORAGE_EYES??1)|0)!==0; // resolve FORAGE once; gates the resource-sense computation in uaSetEyes
 __DECIDE_ON=(typeof globalThis==='undefined')||((globalThis.__DECIDE??1)|0)!==0; // resolve DECISION GAIN once; gates confidence accrual + commitment scaling
 __DECIDE_REAL=(typeof globalThis==='undefined')||((globalThis.__DECIDE_REAL??1)|0)!==0; // resolve DECIDE-FROM-REAL once; gates real-winner physics adoption

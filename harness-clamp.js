@@ -62,7 +62,7 @@ globalThis.setTimeout=()=>0;globalThis.clearTimeout=()=>{};globalThis.setInterva
 // that cannot be turned off is not a control, so the plumbing goes in before any ablation claim does.
 // Same one-line form as harness-oee.js.
 if (process.env.COSMOS !== undefined) globalThis.__COSMOS = parseInt(process.env.COSMOS, 10);
-for (const kn of ['COSMOS_COST','COSMOS_CONTACT','COSMOS_MERGE','COSMOS_SENSE','COSMOS_AFFORD','ESCAPE_DEATH','ATOM_HERITABLE','MEME_TRANSFER','CHILD_SIGN_FLOOR','REACH_MAIN','REACH_NOK','SELF_PREDICT','ALIEN_SELECT','GRIP_SEED','ABSTAIN_FREE','INT_GENE_STEP','REND_VOCAB','FLOW_UNITS'])
+for (const kn of ['COSMOS_COST','COSMOS_CONTACT','COSMOS_MERGE','COSMOS_SENSE','COSMOS_AFFORD','ESCAPE_DEATH','ATOM_HERITABLE','MEME_TRANSFER','CHILD_SIGN_FLOOR','REACH_MAIN','REACH_NOK','SELF_PREDICT','ALIEN_SELECT','GRIP_SEED','ABSTAIN_FREE','INT_GENE_STEP','REND_VOCAB','FLOW_UNITS','USE_PROTECT'])
   if (process.env[kn] !== undefined) globalThis['__'+kn] = parseInt(process.env[kn], 10);
 let loopErrors=0,lastErr='';
 console.error=(...a)=>{const s=a.join(' ');if(/Loop error|Boot error|Watchdog/.test(s)){loopErrors++;lastErr=s.slice(0,160);}};
@@ -533,6 +533,7 @@ const driver=`
     for(const a of ua){const e=a.expression||'';const d=nparen(e);dh[d]=(dh[d]||0)+1;if(DEEP.test(e))deep++;}
     return {gen:G.generation, tail:+(G.mutationTail||0), tendDims:G.tendDims,
       rendMaxDepth:G.rendMaxDepth, intStepBias:+(G.intStepBias||0).toFixed(4),
+      atomUseProtect:+(G.atomUseProtect||0).toFixed(4),
       uaMaxDepth:G.uaMaxDepth, vmMaxInstructions:G.vmMaxInstructions, shadowScenarios:G.shadowScenarios,
       motifMemorySize:G.motifMemorySize, hgtMax:G.hgtMax, reflexDepth:G.reflexDepth,
       clusterReflexAge:G.clusterReflexAge, clusterMinSize:G.clusterMinSize,
