@@ -9151,3 +9151,77 @@ push it (more structure, since composition/branching gives an atom more to work 
 `vmMaxInstructions`/`metabolicCost` already tax program length and a heavier expression presumably costs
 more to evaluate even though `uaCall`'s fuel bound is per-CALL, not per-node)? Both directions have a
 story; only a run adjudicates.
+
+## #108 — closed Pe130's own named-and-abandoned third step: atrophy can now actually retire a fitness dimension
+
+This is the "take the swing anyway" item — the one flagged last entry as too deep to fix cold, taken on
+explicit instruction to proceed without verification ability. Different in kind from #102-#107: not a
+sibling-asymmetry I found by grepping, but the literal, stated, unfinished half of a plan the codebase's
+own comments already describe.
+
+### What was actually there
+
+`genome.objWeights` (Layer 3) plus `fitnessSensors` (Layer 3b) are a real, staged attempt to let the
+system evolve WHAT it optimises for, not just how — documented across Pe22 through Pe35 as exactly that
+ambition. Tracing `currentFitness` (the output of this whole apparatus) to its actual consumers: it is a
+single global, population-level EMA. Every write site was checked; none touch `amp[i]`. It reaches
+individual particles only as a SENSED input (op91/92), the same channel as any other sensory layer —
+meaning the system's "what do I value" apparatus, despite the framing, was not a second selection channel.
+It was visible to the meta-attribution system (Pe129: readable via ATTR_QUERY, shown in the HUD `attr`
+tag) and even had a mirror-only integration (Pe130: perturbation-credit tracked in parallel with
+measurement-credit) — but the ACTUAL atrophy/retirement mechanism, the thing that would let a confidently-
+harmful value dimension actually be reduced or retired, silently no-opped on all four dimensions.
+
+### Why it no-opped, precisely
+
+`stabilityWeight`/`diversityWeight`/`coherenceWeight`/`churnWeight` are "virtual" — Pe130's own comment
+says so directly — they don't exist as `genome.stabilityWeight` etc.; the real storage is
+`genome.objWeights[0..3]`, addressed via `OBJ_WEIGHT_INDEX`. Pe130 built the snapshot/capture indirection
+for CREDIT TRACKING (so the trace correctly reflects what these dimensions do) but `applyCreditAssignment`'s
+atrophy block — peak-value tracking, holding-cost, harmful-decay, probe-injection, confirmed-dead-decay,
+five call sites — still read and wrote `genome[p]` directly. For the four virtuals that is
+`genome['stabilityWeight']`, which has never existed. `isFinite(undefined)` is `false`, so every guarded
+write in that block silently skipped them, regardless of what their (correctly-tracked) credit trace said.
+
+### The plan was already written down, and already half-abandoned
+
+Pe129's own comment: *"Pe130 will decide how to integrate — and integrate is the right word, not include.
+Once it does, Pe131 can add the four to ATROPHY_SAFE and close the loop: a base dimension whose
+contribution is confidently harmful could actually be retired."* Pe130 shipped. Pe131 — the actual closing
+step — did not: "Pe131" in the shipped codebase is SPATIAL_SPREAD_MOMENTUM, an unrelated sensor addition,
+and the fitness-integration closure the Pe129 comment predicted was simply never built under any name. The
+four dimensions sat mirror-only, visible but untouchable, for however many version numbers separate Pe130
+from wherever the file is now.
+
+### The fix
+
+`metaParamGet(p)`/`metaParamSet(p,v)` — Pe130's own existing indirection pattern (`OBJ_WEIGHT_PARAMS.has(p)
+? genome.objWeights[OBJ_WEIGHT_INDEX[p]] : genome[p]`), factored into two functions rather than
+re-typed inline five more times, and used at all five sites in `applyCreditAssignment`'s atrophy block that
+previously read/wrote `genome[p]` directly. Added the four virtuals to `ATROPHY_SAFE` — confirmed by
+reading the actual gate (`if(!ATROPHY_SAFE.has(p))continue;`) that membership means eligible-for-atrophy,
+not exempt-from-it, matching how `fitnessMirrorBias` itself already sits in that set with a comment saying
+atrophy "can retire it." No renormalization concern: checked whether `objWeights` still gets forced to
+sum=1 (Pe130's comment flags this as a risk) and found it does not — `sanitizeGenome` (7080) explicitly
+says "no force-positive, no sum=1 renormalization," and consumption normalises by `sum(abs(w))` at the
+point of use (20962) rather than constraining storage. So the anti-correlation risk Pe130's comment named
+doesn't apply to the current build; that caveat is stale, not live.
+
+### What this does NOT close
+
+The Pe130 comment names differential MUTATION RATE (`metaMutationBias`, protect-if-positive/explore-if-
+negative) as a separate thing the four should eventually participate in. `metaMaybe`, the function that
+applies that, is representation-agnostic already (takes `val` as a parameter rather than reading
+`genome[name]` internally) — but `objWeights`' own mutation site still uses plain unweighted perturbation,
+not `metaMaybe`. Left alone deliberately: it's a second, separable gap the source comments distinguish
+from atrophy, and folding it in now would be scope creep on an already-large, already-unverified change.
+
+### Verification, honestly scoped
+
+No measurement of whether this helps — that requires a run, and none is available. What was done: a
+syntax check, and a 3000-tick smoke run (`node harness.js`) confirming the build still boots, runs with
+zero loop errors, and produces a stable, non-diverging population trajectory (N and meanAmp both settle,
+no NaN cascade). That rules out "this broke the build," not "this helps." The real test, if harness access
+returns: does any of the four `objWeights` dimensions actually move under sustained negative credit now
+that atrophy can reach it, and does retiring a harmful dimension change `currentFitness`'s trajectory or
+the diversity/stability readings it's built from.

@@ -9507,6 +9507,20 @@ const META_LAYER_PARAMS=[
 // genome[p] directly as before.
 const OBJ_WEIGHT_PARAMS=new Set(['stabilityWeight','diversityWeight','coherenceWeight','churnWeight']);
 const OBJ_WEIGHT_INDEX={stabilityWeight:0,diversityWeight:1,coherenceWeight:2,churnWeight:3};
+// #108: Pe130's own indirection pattern (used at the snapshot/capture sites in mutateGenome, ~12213/
+// 13017), factored out so applyCreditAssignment's atrophy block (peak-tracking, holding-cost, harmful-
+// decay, probe-injection, confirmed-dead-decay — five call sites, ~11998-12093) can use it too. Pe130's
+// own comment named this as the unfinished half of a three-step plan ("Pe131 will add the four to
+// ATROPHY_SAFE and extend the atrophy mechanism to route through objWeights[i] — the closure of the
+// loop"). That third step never shipped: "Pe131" became SPATIAL_SPREAD_MOMENTUM, an unrelated sensor,
+// and the four virtuals stayed mirror-only — trace-tracked (visible in the attr tag, nudgeable by
+// metaMutationBias) but every genome[p] read/write in the actual atrophy/probe/holding-cost logic is
+// undefined for them, so that logic silently no-ops on all four regardless of what their credit trace
+// says. Reading genome[p] where p is one of the four literally reads `genome.stabilityWeight`, which
+// has never existed — the value lives at genome.objWeights[0]. This closes exactly the gap the source
+// comment already named, using the same helper the codebase's own working code already trusts.
+function metaParamGet(p){ return OBJ_WEIGHT_PARAMS.has(p)?genome.objWeights[OBJ_WEIGHT_INDEX[p]]:genome[p]; }
+function metaParamSet(p,v){ if(OBJ_WEIGHT_PARAMS.has(p))genome.objWeights[OBJ_WEIGHT_INDEX[p]]=v; else genome[p]=v; }
 // ═══ HOLDING COST — make carrying a meta-layer cost something, so dead weight becomes CONDEMNABLE ═══
 // The run data (gen1 t15128) showed the system evolved its atrophyRate to 0.42 (eager to prune) but pruned
 // nothing: 58% of layers parked at an identical ~0.42, every credit trace flat (max 0.08, none below the
@@ -9624,6 +9638,10 @@ const ATROPHY_SAFE=new Set([
   ,'fitnessMirrorBias'                 // Pe130 — the gate itself: if mirror integration doesn't earn its keep, atrophy can retire it
   ,'vitalMemoryInfluence'              // Pe145 — gate; vital memory orientation can be evolved away if it harms the lineage
   ,'repertoireDormancyInfluence'       // Pe146 — gate; if reading its own negative space doesn't help, atrophy retires it
+  ,'stabilityWeight'                   // #108 (closing Pe130's own named-and-deferred step): virtual, routes through metaParamGet/Set
+  ,'diversityWeight'                   // #108 — a base fitness dimension confidently harmful to currentFitness can now actually be retired
+  ,'coherenceWeight'                   // #108 — same
+  ,'churnWeight'                       // #108 — same
 ]);
 // Short HUD labels — keep the attribution tag compact.
 const META_LAYER_SHORT={
@@ -11995,7 +12013,7 @@ function mutateGenome(){
         // Pe42: track peak value — the param's value when it last correlated with a fitness
         // high. The directional probe uses this to aim toward "what worked" rather than +0.07.
         if(attribution>0&&currentFitness>(e.peakFitness||0)){
-          e.peakValue=genome[p];
+          e.peakValue=metaParamGet(p); // #108: was genome[p] — undefined for the four objWeight virtuals
           e.peakFitness=currentFitness;
         }
       }
@@ -12007,7 +12025,7 @@ function mutateGenome(){
       // they agree (confidence stays high → the verdict can fire). Self-limiting: target ∝ value, so as a
       // condemned param decays the pressure releases. A genome with low atrophyRate has ~0 tax (didn't choose
       // to prune). A layer that periodically earns positive credit (IF-branch above) is lifted back out.
-      const _carryTarget=-_holdRate*Math.abs(genome[p]||0);
+      const _carryTarget=-_holdRate*Math.abs(metaParamGet(p)||0); // #108: was genome[p]
       e.trace+=(_carryTarget-e.trace)*0.02;
       if(e.traceSlow!==undefined)e.traceSlow+=(_carryTarget-e.traceSlow)*0.01;
     }
@@ -12057,7 +12075,7 @@ function mutateGenome(){
         // Unchanged from Pe40 — this path was correct. Worse trace decays faster.
         const strength=aRate*(0.5+Math.abs(tSlow));
         const factor=__cl(1-strength,0,1);
-        if(isFinite(genome[p]))genome[p]*=factor;
+        {const _mv=metaParamGet(p);if(isFinite(_mv))metaParamSet(p,_mv*factor);} // #108: was genome[p] directly
         e.probeState=0; // a param that turned harmful abandons any in-flight probe
         _deadVerdict++; // the system judged this layer harmful dead weight
       }else if(quiet){
@@ -12072,13 +12090,15 @@ function mutateGenome(){
           // at 0.01 whose best recorded value was 0.3 gets probed toward 0.3:
           // "try going back to what worked." Falls back to +0.07 if no peak is
           // recorded yet (new param, or param that has never been in positive credit).
-          if(isFinite(genome[p])){
-            const pv=e.peakValue;
-            const cur=genome[p];
-            const probeStep=(pv!==undefined&&isFinite(pv)&&pv>cur+0.01)
-              ?__cl((pv-cur)*0.5,0.03,0.3)
-              :0.07;
-            genome[p]=cur+probeStep;
+          { // #108: was genome[p] directly at every step below
+            const cur=metaParamGet(p);
+            if(isFinite(cur)){
+              const pv=e.peakValue;
+              const probeStep=(pv!==undefined&&isFinite(pv)&&pv>cur+0.01)
+                ?__cl((pv-cur)*0.5,0.03,0.3)
+                :0.07;
+              metaParamSet(p,cur+probeStep);
+            }
           }
           e.probeState=1; e.probeWait=0; e.probeFitness=currentFitness;
         }else if(e.probeState===1){
@@ -12090,7 +12110,7 @@ function mutateGenome(){
             if(!moved){
               // Inert under a deliberate stimulus → genuinely dead. Decay licensed.
               const factor=__cl(1-aRate,0,1); // AUTONOMY: confirmed-dead decays at FULL rate (was half)
-              if(isFinite(genome[p]))genome[p]*=factor;
+              {const _mv=metaParamGet(p);if(isFinite(_mv))metaParamSet(p,_mv*factor);} // #108: was genome[p] directly
               _deadVerdict++; // the system probed and confirmed this layer dead weight
 
             }
