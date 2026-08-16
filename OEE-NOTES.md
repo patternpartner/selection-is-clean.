@@ -9726,3 +9726,56 @@ the part of the machine that decides *what fitness means* can see the part that 
 open-ended evolution needs the objective to keep moving as the genotype explores, this is the wire that
 lets it.
 
+---
+
+## #116 — FITNESS-TRAJECTORY SENSE: let atoms feel whether the organism is winning
+
+### Closing the other direction of #115's coupling
+
+#115 wired one direction of the atom↔fitness coupling: the objective generator can now *see* atom
+activity (registers S16/S17) and author objectives that value it. The symmetric wire is the other
+direction — letting atoms *see the objective's live result*. That is #116.
+
+Atoms already sense a lot: source registers (a,b), own use count (u), proximity/energy/caste (c,d,m),
+recurrent state (s), world position/clock/neighbour (nx,ny,t,nb), resource gradients (rl,rd), and — since
+#110 — their own credit trace (cr). But every one of those is *local* or *self*. None tells an atom how
+the **whole organism** is doing. `cr` comes closest, but `cr` is a slow EMA — "am I, this expression,
+generally helpful over the last ~hundred cycles." It is not "is the organism winning *right now*."
+
+### The `fr` variable
+
+#116 adds one grammar variable, `fr`, bound to a tanh-scaled read of the organism's current fitness
+trajectory (`currentFitness − prevSmoothedFitness`, published once per tick in `applyCreditAssignment`,
+squashed by `tanh(df·30)` into a sign-correct, bounded (−1,1) signal). An atom can now author behavior
+of the form `fr < 0 ? <do one thing> : <do another>` — react to the organism *collapsing* differently
+than to it *thriving*. This is the substrate for condition-dependent strategy: bet-hedging when losing,
+consolidation when winning, or any policy the grammar cares to compose over the macro-state.
+
+The distinction from `cr` is the whole point:
+- **`cr`** (slow, learned, per-expression): *"Does this computation tend to correlate with fitness gains?"*
+- **`fr`** (fast, live, organism-wide): *"Is the organism's fitness rising or falling this instant?"*
+
+An atom that combines them — `cr` for "I am a proven move" and `fr` for "and now is the moment to make
+it" — expresses something neither alone can: a proven behavior gated on the organism's live condition.
+
+### Correctness
+
+Same shape as the `cr` addition (#110), which is the precedent I copied deliberately: `fr` joins the leaf
+vocabulary (`USER_VARS`, `UA_ALL_VARS`, `UA_VAR_RE`) and the compiled parameter list (a 16th argument), and
+`uaCall` passes the live value. When `__ATOM_FRSENSE` is off, `__orgFitTraj` is held at 0, so `fr` is an
+inert constant-0 leaf — grammatically present (as `cr` is when credit is off) but carrying no information,
+which is exactly the control that isolates whether the *signal* matters versus merely having another leaf.
+The compiled signature and the single call site were moved together (both now 16 params); the rend channel's
+separate compile (its own `t0…col` parameter list) was left untouched. Extinction's fitness discontinuity is
+bounded by the `tanh` (saturates to ±1 for one tick) and already handled upstream by the #109
+`prevSmoothedFitness` reset.
+
+### Position in the arc
+
+#115 + #116 are a matched pair: the objective generator gains eyes on the atoms (#115), and the atoms
+gain eyes on the objective's live result (#116). Together they close a full bidirectional loop between
+the two self-modifying subsystems — the genotype can condition on the organism's success while the
+objective can condition on the genotype's behavior. That mutual visibility is the structural
+precondition for the open-ended climb the whole #110–#116 arc is reaching for; whether the climb
+actually happens remains, as always, a live-run question.
+

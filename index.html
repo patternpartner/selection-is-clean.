@@ -460,7 +460,7 @@ let FIELD_DIFFUSE=0.11;  // gentle spread — Pe22b: now genome-driven, can evol
 // This is the system's access to primitives that weren't in the opcode set
 // at design time. JS can generate JS; the genome now uses that fact.
 // ═══════════════════════════════════════
-const USER_VARS=["a","b","u","c","d","m","s","cr"]; // a,b=source regs; u=own use count; c=proximity,
+const USER_VARS=["a","b","u","c","d","m","s","cr","fr"]; // a,b=source regs; u=own use count; c=proximity,
                                            // d=energy, m=caste-match (#7a); s=own previous output; cr=own credit trace (#110)
                                            // (#10 recurrent state). The system authors primitives
                                            // that sense the world AND remember.
@@ -641,8 +641,8 @@ function uaJitterConst(expr){
 // "t" in "Math.tanh" has a left boundary but not a right one — "t" is immediately followed by "a", a
 // word character — so \bt\b cannot match it), and none of them collides with another on the list. A
 // \b-anchored regex over that closed vocabulary cannot false-match, so this needs no parser either.
-const UA_VAR_RE=/\b(?:nx|ny|nb|rl|rd|cr|a|b|u|c|d|m|s|t)\b/g;
-const UA_ALL_VARS=["a","b","u","c","d","m","s","cr","nx","ny","t","nb","rl","rd"];
+const UA_VAR_RE=/\b(?:nx|ny|nb|rl|rd|cr|fr|a|b|u|c|d|m|s|t)\b/g;
+const UA_ALL_VARS=["a","b","u","c","d","m","s","cr","fr","nx","ny","t","nb","rl","rd"];
 function uaSwapVar(expr,re,pool){
   re=re||UA_VAR_RE; pool=pool||UA_ALL_VARS;
   const matches=expr.match(re);
@@ -675,7 +675,7 @@ function uaCompile(atom){
   try{
     // Pe24: compiled function takes (a,b,u) — u is normalized self-usage count.
     // Old atoms with expressions only referencing a,b still compile fine; u is unused param.
-    atom.compiled=new Function("a","b","u","c","d","m","s","f","nx","ny","t","nb","rl","rd","cr","const r=("+atom.expression+");return isFinite(r)?r:0;");
+    atom.compiled=new Function("a","b","u","c","d","m","s","f","nx","ny","t","nb","rl","rd","cr","fr","const r=("+atom.expression+");return isFinite(r)?r:0;");
     atom.failed=false;
   }catch(e){
     atom.compiled=null;
@@ -828,6 +828,8 @@ let __REACH_ON=true; // +REACH cached flag (resolved after the LIVE registry); k
 let __reachFires=0; // telemetry: how many times an authored atom drove an actuator (sense→ACT firings)
 let __ATOM_OBJ=true; // #115: expose atom-system activity to the objective-generator's register bank (S16/S17), so the mature Pe22-25 sensor VM can author fitness dimensions that VALUE atom behaviour. New objectives still enter at realWeight 0 and must earn participation via fitness correlation. Force off with ATOM_OBJ=0
 let __reachFiresPrev=0, __reachRateEMA=0, __atomCreditEMA=0; // #115: EMAs feeding S16 (REACH firing rate/particle) and S17 (mean positive germline atom credit); advanced once/tick on the real sensor pass
+let __ATOM_FRSENSE=true; // #116: give atoms a live sense of the ORGANISM's fitness trajectory (the `fr` grammar variable). cr (own credit) is a slow learned "am I generally helpful"; fr is the fast "is the whole organism winning right now", so authored behaviour can respond to the organism's condition. Force off with ATOM_FRSENSE=0
+let __orgFitTraj=0; // #116: tanh-bounded organism fitness trajectory (currentFitness - prevSmoothed), updated once/tick in applyCreditAssignment; fed to atoms as `fr`. Stays 0 when __ATOM_FRSENSE is off
 let __ATOM_DURABLE=true; // +DURABILITY: preserve authored call-sites across self-adoption (resolved after LIVE registry)
 // ═══ SWING #41: MEME TRANSFER — authored atoms as a SECOND replicator, independent of genetic reproduction ═══
 // Every prior route an authored behaviour spreads by is VERTICAL (parent→child, selfLearnFromBest's carry,
@@ -971,7 +973,8 @@ function uaCall(atom,a,b){
     const u=Math.min(4,prevUses/100);
     const s=isFinite(atom.state)?atom.state:0;   // recurrent state = previous output
     const _cr=isFinite(atom.creditTrace)?atom.creditTrace:0; // #110: own credit trace
-    const r=atom.compiled(a,b,u,uaCtxC,uaCtxD,uaCtxM,s,uaCallF,uaCtxNx,uaCtxNy,uaCtxT,uaCtxNb,uaCtxRl,uaCtxRd,_cr);
+    const _fr=(__ATOM_FRSENSE&&isFinite(__orgFitTraj))?__orgFitTraj:0; // #116: organism fitness trajectory (0 when sense off)
+    const r=atom.compiled(a,b,u,uaCtxC,uaCtxD,uaCtxM,s,uaCallF,uaCtxNx,uaCtxNy,uaCtxT,uaCtxNb,uaCtxRl,uaCtxRd,_cr,_fr);
     atom.uses=prevUses+1;
     if(__ATOM_USE_POP&&atom.expression){
       if(__atomExprUses.size>5000)__atomExprUses.clear(); // bounded — a live counter, not an archive
@@ -10987,6 +10990,10 @@ function applyCreditAssignment(){
   const lr=__cl(genome.creditLearnRate||0,0,3);
   const df=currentFitness-(genome.prevSmoothedFitness||0);
   genome.prevSmoothedFitness=currentFitness;
+  // #116: publish the organism's fitness trajectory for the `fr` atom sense, once per tick, BEFORE the
+  // early return so atoms keep a live signal even when credit learning is off (lr===0). tanh keeps it in
+  // (-1,1) and sign-correct regardless of df's true scale; stays 0 when the sense is disabled.
+  __orgFitTraj=__ATOM_FRSENSE&&isFinite(df)?Math.tanh(df*30):0;
   if(lr===0||!isFinite(df)){if(__ATOM_CREDIT)__atomExprContrib.clear();return;}
   // Deadzone on fitness delta — tiny movements are noise, not signal.
   // Without this, sensors get random updates during quiescent periods.
@@ -20209,6 +20216,7 @@ if(typeof globalThis!=='undefined'){
                __UA_INHERIT:1,                                        // #112: SUBTREE INHERITANCE — the grammar's leaf generator occasionally splices a whole proven expression from the credit pool instead of emitting a fresh terminal, weighted by positive pool credit. Proven building blocks propagate as building blocks; genetic programming's crossover, but the "parents" are population-wide, credit-ranked, and content-addressed. Depth-tapered probability (12%/(1+depth)) and 120-char size guard prevent runaway string growth. Force off with UA_INHERIT=0
                __ATOM_NFD:1,                                          // #114: NEGATIVE FREQUENCY-DEPENDENCE for the atom bank — Red Queen #28 applied to CONTENT. A used-but-rare expression earns up to 0.4 overwrite protection; the population-dominant expression gets none and must survive on credit alone. Quality-diversity for the atom replicator: keep the good (credit) AND the different (rarity), combined via max. Directly counters the monoculture-collapse risk #112 introduces. Force off with ATOM_NFD=0
                __ATOM_OBJ:1,                                          // #115: ATOM-AWARE OBJECTIVES — expose the atom subsystem to the objective-generator's register bank (S16=REACH firing rate/particle, S17=mean germline atom credit), grown 16->18. The mature Pe22-25 sensor VM can now AUTHOR fitness dimensions that value atom behaviour and promote them to real selection pressures via the existing realWeight-earns-participation machinery (new objectives enter at realWeight 0, rise only on fitness correlation — the anti-wireheading guard already there). Connects the two most sophisticated subsystems: endogenous objective generation that can finally see, and reward, what the atoms do. Force off with ATOM_OBJ=0
+               __ATOM_FRSENSE:1,                                      // #116: FITNESS-TRAJECTORY SENSE — the `fr` grammar variable gives atoms a live read of the ORGANISM's fitness trajectory (tanh-bounded currentFitness delta). cr (#110) is the slow learned "am I generally helpful"; fr is the fast "is the whole organism winning right now", so authored behaviour can be conditional on the organism's condition (e.g. explore when collapsing, exploit when thriving). Completes the atom<->fitness coupling #115 opened: #115 lets objectives see atoms, #116 lets atoms see the objective's live result. Force off with ATOM_FRSENSE=0
                __GROUP_COMMONS:1,                                   // GROUP SELECTION FOR THE COMMONS #40 — LIVE. Swing #36 found rqRate (the diversity-maintaining commons #28 needs) gets driven to 0 by individual selection and had to be FLOORED by fiat. This gives the existing cluster-bud lever (#33) a real countervailing force instead: colonies holding rqRate near the ceiling bud more. Headless smoke-clean (no crash/NaN across two runs) but cluster budding is too rare in a short harness window to get a verdict on the mechanism itself — same class of gap as #33 ("budding never fires there"). The live artwork, not more harness ticks, is what actually tests this. Force off with GROUP_COMMONS=0
                __MEME_TRANSFER:1,                                   // HORIZONTAL ATOM TRANSFER #41 — LIVE. Every prior route an authored atom spreads is vertical (parent→child, selfLearnFromBest, reload's sanitizeGenome splice). This adds a horizontal one: close contact lets a particle adopt a neighbour's most-PROVEN bound atom straight into its own genome — a second unit of selection, judged on cross-lineage spread, not host fitness. Headless-confirmed real (not a shared-seeding artifact): control run authored ZERO atoms population-wide in 8k ticks (nothing to inherit), yet with transfer on, the single atom that WAS born reached 410 carriers across 153 distinct lineages via 342 transfers — no vertical route could produce that. Force off with MEME_TRANSFER=0
                __CHAR_DISP:0 };                                     // character displacement #27 — DORMANT (default off): the matched A/B (seed 7, 6k) showed it NET-HARMFUL to diversity (entropyRatio 0.67 vs control 0.74; evenness 0.61 vs 0.70) — rate 0.0015 OVER-spaces lineages toward the trait-space edges instead of letting more coexist. Code+knob kept for a re-tune (gentler rate, or gate on same-niche-cell overlap not raw trait distance); force on with CHAR_DISP=1
@@ -20225,6 +20233,7 @@ __EXPR_CREDIT=(typeof globalThis==='undefined')||((globalThis.__EXPR_CREDIT??1)|
 __UA_INHERIT=(typeof globalThis==='undefined')||((globalThis.__UA_INHERIT??1)|0)!==0; // #112: default ON. Force off with UA_INHERIT=0
 __ATOM_NFD=(typeof globalThis==='undefined')||((globalThis.__ATOM_NFD??1)|0)!==0; // #114: default ON. Force off with ATOM_NFD=0
 __ATOM_OBJ=(typeof globalThis==='undefined')||((globalThis.__ATOM_OBJ??1)|0)!==0; // #115: default ON. Force off with ATOM_OBJ=0
+__ATOM_FRSENSE=(typeof globalThis==='undefined')||((globalThis.__ATOM_FRSENSE??1)|0)!==0; // #116: default ON. Force off with ATOM_FRSENSE=0
 __SELF_PREDICT=(typeof globalThis!=='undefined')&&((globalThis.__SELF_PREDICT|0)===1); // #92: default OFF
 __GRIP_SEED=(typeof globalThis!=='undefined')&&((globalThis.__GRIP_SEED|0)===1); // #93: default OFF
 __ABSTAIN_FREE=(typeof globalThis==='undefined')||((globalThis.__ABSTAIN_FREE??1)|0)!==0; // #95: default ON
