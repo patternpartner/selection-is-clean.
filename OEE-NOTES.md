@@ -9370,3 +9370,79 @@ where all three conditions hold at once.
 The real test is the live artwork running long enough for the credit loop to converge — the same class
 of test the notebook consistently says only the live piece can deliver, not the harness.
 
+---
+
+## #111 — EXPRESSION-LEVEL CREDIT POOL: Lamarckian inheritance for atom content
+
+### The missing dimension in #110
+
+#110 gave each atom a personal `creditTrace` that correlates its REACH output with fitness delta.
+That's per-atom, per-lineage: an atom in lineage A that scores well gets protected in lineage A. But
+if lineage B independently authors the SAME expression — or receives it via meme transfer — lineage
+B's copy starts from zero and has to earn its protection all over again.
+
+This is wasteful in exactly the way the #102 population-wide use pool was wasteful before it existed.
+An expression's track record is a property of the EXPRESSION, not of any particular atom instance.
+The #102 bridge (`__atomExprUses` keyed by expression string) already established the pattern for
+sharing information across the population by expression identity. #111 does for credit what #102
+did for uses.
+
+### The mechanism
+
+**A pool.** `__atomExprCredit` is a Map: expression → credit trace, bounded ±1, population-wide.
+
+**Slow blend from personal to pool.** At the end of every `applyCreditAssignment` cycle, each atom
+whose personal trace was just updated bleeds a tiny fraction (0.05% per cycle) into the pool:
+`pool = pool*0.9995 + personal*0.0005`. The pool moves 200× slower than the personal trace's own EMA
+(1%), so pool credit only accumulates when an expression proves itself across MANY lineages, over MANY
+mutation cycles. A single lineage's lucky streak can't spike the pool — a shared truth about that
+expression, replicated across the population, can.
+
+**Overwrite protection uses the max.** The germline overwrite brake takes `max(personal, pool)` credit:
+`(1-clamp(max(personalCredit, poolCredit), 0, 0.7))`. Either lineage-local evidence or
+population-wide evidence is enough. This is deliberate: local evidence protects a new find in ONE
+lineage, population evidence protects a proven expression EVERYWHERE.
+
+**New atoms seed from the pool.** Every atom-creation site — birth (mutateGenome), overwrite
+(same function), meme transfer, particle seeding — checks the pool for the incoming expression and
+seeds the new atom's personal `creditTrace` at 50% of the pool value. A truly novel expression starts
+at 0. A re-authored expression with pool history starts with real evidence to defend itself. This is
+the Lamarckian ratchet: proven content propagates its history across lineages, so re-discovery isn't
+tax-free.
+
+**Bounded.** The pool caps at 2000 entries. When exceeded, the weakest half (by absolute credit) is
+evicted — the strong signals persist, the noise gets pruned. This prevents pathological grammar
+explosions from blowing memory.
+
+**Extinction clears the pool.** Same reasoning as the Pe25/#110 clears: a fitness discontinuity
+would corrupt every entry on the next credit-assignment cycle.
+
+### Why this matters for OEE
+
+Every prior atom mechanism was per-lineage. Meme transfer (#41) moved atoms horizontally but the
+receiver's evidence started from scratch. Even #102's population use pool measured EXECUTION, not
+SELECTION — it didn't distinguish "run a lot" from "run and helped." #111 is the first mechanism
+where SELECTION EVIDENCE is a population-wide resource, indexed by content.
+
+The theoretical case: if the same expression is truly a good chemotactic sensor, it should
+converge on high pool credit across many lineages independently discovering it. That converged pool
+credit then bootstraps every future re-discovery, so the population's atom bank moves toward genuinely
+proven content much faster than per-lineage learning could. And the failure mode is bounded — pool
+credit only rises with cross-lineage agreement, so a locally-lucky expression can't seed a wave of
+false positives.
+
+### Verification
+
+200-tick smoke run: clean boot, zero loop errors, population stable (329→282 particles, 18 clusters
+forming). The pool mechanism doesn't fire meaningfully in 200 ticks (needs fitness evaluation cycles
++ atom authoring + REACH fires), but the substrate is structurally sound. The real test — same as
+#110 — is the live artwork running long enough for cross-lineage credit to converge.
+
+### Position in the arc
+
+#110 closed the VALUE→ACTION→FITNESS loop within a lineage. #111 makes the resulting evidence
+INHERITABLE across lineages by content. Together they turn the atom system from "an expression that
+computes something" into "an expression that computes something AND carries a memory of whether that
+computation was ever selected for." The first is neutral by construction (#80-#109 confirmed).
+Whether the second finally has grip is what only live running can tell.
+

@@ -122,8 +122,10 @@ let __ATOM_USE_POP=true;
 // with ATOM_JITTER=0.
 let __ATOM_JITTER=true;
 let __ATOM_CREDIT=true; // #110: credit-assignment feedback for atom persistence. Atoms whose REACH output correlates with fitness improvement accumulate credit that protects them from the germline overwrite. Force off with ATOM_CREDIT=0
+let __EXPR_CREDIT=true; // #111: population-wide credit pool keyed by expression. An expression that scored well in ANY lineage carries evidence for every future carrier. Overwrite protection uses max(personal, pool); new atoms seed personal creditTrace from the pool. Force off with EXPR_CREDIT=0
 const __atomExprUses=new Map(); // population-wide execution count per atom expression; written only when __ATOM_USE_POP is on
 const __atomExprContrib=new Map(); // #110: per-expression REACH contribution accumulator; cleared each applyCreditAssignment cycle
+const __atomExprCredit=new Map(); // #111: population-wide credit-trace pool per expression; blended slowly from personal creditTrace at applyCreditAssignment time. Bounded ±1. Cleared on extinction.
 // #107: gates lazy creation of genome.uaStructBias — see the mutateGenome site (~12586) and uaGenTerm
 // (below) for what it does. Default ON, same call as #101/#102/#103: a real, reasoned lever handed to
 // the system, live, not parked behind a flag nobody would set. Force off with UA_STRUCT=0.
@@ -841,7 +843,9 @@ function seedAtomIntoParticle(atomIdx){
   if(!Array.isArray(_g.boundOpcodes))_g.boundOpcodes=[];
   for(const _ai of _g.boundOpcodes){ const _x=_g.userAtoms[_ai]; if(_x&&_x.expression===_a.expression)return; } // already carries it
   if(_g.boundOpcodes.length>=MAX_BOUND_OPCODES)return;
-  _g.userAtoms.push({expression:_a.expression,compiled:null,failed:false,uses:0,state:0,creditTrace:0}); // own copy — compiled is per-genome
+  // #111: seed personal creditTrace from the pool if this expression has a history elsewhere
+  const _seedC=__EXPR_CREDIT?(__atomExprCredit.get(_a.expression)||0)*0.5:0;
+  _g.userAtoms.push({expression:_a.expression,compiled:null,failed:false,uses:0,state:0,creditTrace:_seedC}); // own copy — compiled is per-genome
   _g.boundOpcodes.push(_g.userAtoms.length-1);
   const _op=CORE_OPCODES+_g.boundOpcodes.length-1;
   const _prog=pProg[_tgt]||_g.vmProgram, _cap=_g.vmMaxInstructions||16;
@@ -863,7 +867,9 @@ function attemptMemeTransfer(recv,donor){
   if(!Array.isArray(recv.boundOpcodes))recv.boundOpcodes=[];
   for(const ai of recv.boundOpcodes){ const a=recv.userAtoms[ai]; if(a&&a.expression===donorExpr)return; } // already carries it
   if(recv.boundOpcodes.length>=MAX_BOUND_OPCODES)return; // respect the substrate cap, same as germline authoring
-  recv.userAtoms.push({expression:donorExpr,compiled:null,failed:false,uses:0,state:0,creditTrace:0});
+  // #111: seed personal creditTrace from the pool if this expression has a history elsewhere
+  const _seedCT=__EXPR_CREDIT?(__atomExprCredit.get(donorExpr)||0)*0.5:0;
+  recv.userAtoms.push({expression:donorExpr,compiled:null,failed:false,uses:0,state:0,creditTrace:_seedCT});
   recv.boundOpcodes.push(recv.userAtoms.length-1);
   const cap=recv.vmMaxInstructions||16;
   if(recv.vmProgram.length<cap){ // germline-style single call-site splice, same shape as the #38-arc atom pipeline
@@ -11010,6 +11016,14 @@ function applyCreditAssignment(){
   // loop the #80-#103 arc left open — atom computes → REACH routes to action → action affects
   // fitness → credit protects the atom → atom persists → content is selected.
   if(__ATOM_CREDIT&&fitnessActive&&genome.userAtoms){
+    // #111: prune the population credit pool when it grows unbounded. Bounded to 2000 expressions —
+    // anything past that gets the weakest half evicted. Pool is population-wide so it can accumulate
+    // across many mutation cycles; cap prevents pathological grammar explosions from blowing memory.
+    if(__EXPR_CREDIT&&__atomExprCredit.size>2000){
+      const entries=[...__atomExprCredit.entries()].sort((a,b)=>Math.abs(b[1])-Math.abs(a[1]));
+      __atomExprCredit.clear();
+      for(let i=0;i<1000&&i<entries.length;i++)__atomExprCredit.set(entries[i][0],entries[i][1]);
+    }
     for(const ua of genome.userAtoms){
       if(!ua||!ua.expression)continue;
       const contrib=__atomExprContrib.get(ua.expression);
@@ -11017,6 +11031,16 @@ function applyCreditAssignment(){
       const cSign=contrib>0?1:-1;
       const ct=((ua.creditTrace||0)*0.99)+cSign*fSign*0.01;
       ua.creditTrace=ct>1?1:ct<-1?-1:ct;
+      // #111: bleed the personal trace into the population pool at 5% of the personal rate,
+      // so pool credit converges slowly across many lineages and doesn't spike from one lineage's
+      // lucky run. An expression that helps EVERY lineage that carries it accumulates strong pool
+      // credit; one that helps only ONE lineage stays flat in the pool while the personal trace does
+      // its own job of protecting that lineage's copy.
+      if(__EXPR_CREDIT){
+        const p=__atomExprCredit.get(ua.expression)||0;
+        const np=p*0.9995+ua.creditTrace*0.0005;
+        __atomExprCredit.set(ua.expression,np>1?1:np<-1?-1:np);
+      }
     }
   }
   if(__ATOM_CREDIT)__atomExprContrib.clear();
@@ -12823,14 +12847,25 @@ function mutateGenome(){
     if(_uSorted&&_uSorted.length>1){ const u=_ueRead(ua); let below=0;
       for(const v of _uSorted){ if(v<u)below++; else break; }
       _rank=below/(_uSorted.length-1); }
-    const _atomCr=(__ATOM_CREDIT&&ua.creditTrace>0)?ua.creditTrace:0; // #110: positive credit earns overwrite protection
+    // #110: positive personal credit earns overwrite protection
+    // #111: population-pool credit for this expression also counts — an expression proven elsewhere
+    // protects this copy even if this lineage hasn't scored it yet. Max of the two (rather than
+    // sum) keeps the protection bounded and honest: pool alone or personal alone is enough.
+    let _atomCr=0;
+    if(__ATOM_CREDIT&&ua.creditTrace>0)_atomCr=ua.creditTrace;
+    if(__EXPR_CREDIT){const _pc=__atomExprCredit.get(ua.expression)||0; if(_pc>_atomCr)_atomCr=_pc;}
     if(Math.random()<rate*0.3*(1-grip)*(1-_useProtect*_rank)*(1-__cl(_atomCr,0,0.7))){
-      ua.expression=uaGenExpression();
+      const _newExpr=uaGenExpression();
+      // #111: seed the new expression's personal creditTrace from the pool, if the pool has
+      // seen this expression before. New authoring lands on a proven prior at half strength;
+      // truly novel expressions still start at zero. This is the Lamarckian ratchet.
+      const _seedC=__EXPR_CREDIT?(__atomExprCredit.get(_newExpr)||0)*0.5:0;
+      ua.expression=_newExpr;
       ua.compiled=null;
       ua.failed=false;
       ua.uses=0; // reset usage count on mutation
       ua.alienHits=0; ua.alienAttempts=0; // new expression → prior predictive record no longer means anything
-      ua.creditTrace=0; // #110: new expression → prior credit no longer means anything
+      ua.creditTrace=_seedC; // #110+#111: prior credit is discarded, but seed from pool if available
     } else if(__ATOM_JITTER&&Math.random()<rate*0.15){
       // #103: a LOCAL step, not a redraw — see uaLocalStep (const jitter OR one variable swap).
       // Deliberately does NOT reset uses/alienHits/alienAttempts: the whole point of a small
@@ -12861,7 +12896,9 @@ function mutateGenome(){
   // needed fixing; authoring just had to happen often enough to be judged.
   if(Math.random()<(_atomFix?Math.max(UA_BIRTH_FLOOR,rate*0.15):rate*0.15)){
     const expression=uaGenExpression();
-    genome.userAtoms.push({expression,compiled:null,failed:false,uses:0,alienHits:0,alienAttempts:0,creditTrace:0});
+    // #111: seed personal creditTrace from the pool if this expression has a history elsewhere
+    const _seedCr=__EXPR_CREDIT?(__atomExprCredit.get(expression)||0)*0.5:0;
+    genome.userAtoms.push({expression,compiled:null,failed:false,uses:0,alienHits:0,alienAttempts:0,creditTrace:_seedCr});
     try{ if(typeof wireAtomCallSites==='function')wireAtomCallSites(); }catch(e){} // LEAP 21: reachable immediately, not at the next 120-tick boundary
     if(_atomFix){
       const bos=genome.boundOpcodes||(genome.boundOpcodes=[]);
@@ -13243,6 +13280,9 @@ function checkExtinction(){
     // produce a massive spurious delta that corrupts every atom's trace in one tick.
     if(__ATOM_CREDIT&&genome.userAtoms){for(const ua of genome.userAtoms){if(ua)ua.creditTrace=0;}}
     if(__ATOM_CREDIT)__atomExprContrib.clear();
+    // #111: extinction clears the expression-level pool too. Same rationale — the fitness
+    // discontinuity would corrupt every entry on the next credit-assignment cycle.
+    if(__EXPR_CREDIT)__atomExprCredit.clear();
     // Pe34 Layer 24: clear prediction-error accumulators; post-extinction the neighbor
     // model arrays will be stale references to particles that may not exist anymore.
     predictionErrorAccum=0;
@@ -20081,6 +20121,7 @@ if(typeof globalThis!=='undefined'){
                __REACH_MAIN:1,                                        // #110: REACH on the MAIN particle VM dispatch (was dormant #88). Every atom execution in the primary code path now drives actuators, not just the plasmid path. Force off with REACH_MAIN=0
                __REACH_NOK:1,                                         // #110: REACH gain uses raw output, not k-scaled (was dormant #90). Decouples atom effect from the interaction coefficient so atoms act even outside tight pairs. Force off with REACH_NOK=0
                __ATOM_CREDIT:1,                                       // #110: CREDIT-ASSIGNMENT FEEDBACK FOR ATOMS — per-atom creditTrace correlates REACH contribution with fitness delta; positive credit earns overwrite protection (up to 70% reduction in replacement rate), negative credit accelerates replacement. Atoms that help survive; atoms that hurt get replaced. The grammar sees its own credit via the `cr` variable. Force off with ATOM_CREDIT=0
+               __EXPR_CREDIT:1,                                       // #111: POPULATION-LEVEL CREDIT POOL — expression-keyed credit trace shared across all lineages, blended slowly from personal traces. An expression proven anywhere protects every carrier. New atoms (birth, meme-transfer, mutation-authoring) seed their personal creditTrace at 50% of the pool value, so re-authoring a proven expression doesn't restart from zero. Lamarckian selection at the expression level, using the same expression-identity bridge #102 established. Force off with EXPR_CREDIT=0
                __GROUP_COMMONS:1,                                   // GROUP SELECTION FOR THE COMMONS #40 — LIVE. Swing #36 found rqRate (the diversity-maintaining commons #28 needs) gets driven to 0 by individual selection and had to be FLOORED by fiat. This gives the existing cluster-bud lever (#33) a real countervailing force instead: colonies holding rqRate near the ceiling bud more. Headless smoke-clean (no crash/NaN across two runs) but cluster budding is too rare in a short harness window to get a verdict on the mechanism itself — same class of gap as #33 ("budding never fires there"). The live artwork, not more harness ticks, is what actually tests this. Force off with GROUP_COMMONS=0
                __MEME_TRANSFER:1,                                   // HORIZONTAL ATOM TRANSFER #41 — LIVE. Every prior route an authored atom spreads is vertical (parent→child, selfLearnFromBest, reload's sanitizeGenome splice). This adds a horizontal one: close contact lets a particle adopt a neighbour's most-PROVEN bound atom straight into its own genome — a second unit of selection, judged on cross-lineage spread, not host fitness. Headless-confirmed real (not a shared-seeding artifact): control run authored ZERO atoms population-wide in 8k ticks (nothing to inherit), yet with transfer on, the single atom that WAS born reached 410 carriers across 153 distinct lineages via 342 transfers — no vertical route could produce that. Force off with MEME_TRANSFER=0
                __CHAR_DISP:0 };                                     // character displacement #27 — DORMANT (default off): the matched A/B (seed 7, 6k) showed it NET-HARMFUL to diversity (entropyRatio 0.67 vs control 0.74; evenness 0.61 vs 0.70) — rate 0.0015 OVER-spaces lineages toward the trait-space edges instead of letting more coexist. Code+knob kept for a re-tune (gentler rate, or gate on same-niche-cell overlap not raw trait distance); force on with CHAR_DISP=1
@@ -20093,6 +20134,7 @@ __REACH_ON=(typeof globalThis==='undefined')||((globalThis.__REACH??1)|0)!==0; /
 __REACH_MAIN=(typeof globalThis==='undefined')||((globalThis.__REACH_MAIN??1)|0)!==0; // #110: default ON (was #88 dormant). Force off with REACH_MAIN=0
 __REACH_NOK=(typeof globalThis==='undefined')||((globalThis.__REACH_NOK??1)|0)!==0; // #110: default ON (was #90 dormant). Force off with REACH_NOK=0
 __ATOM_CREDIT=(typeof globalThis==='undefined')||((globalThis.__ATOM_CREDIT??1)|0)!==0; // #110: default ON. Force off with ATOM_CREDIT=0
+__EXPR_CREDIT=(typeof globalThis==='undefined')||((globalThis.__EXPR_CREDIT??1)|0)!==0; // #111: default ON. Force off with EXPR_CREDIT=0
 __SELF_PREDICT=(typeof globalThis!=='undefined')&&((globalThis.__SELF_PREDICT|0)===1); // #92: default OFF
 __GRIP_SEED=(typeof globalThis!=='undefined')&&((globalThis.__GRIP_SEED|0)===1); // #93: default OFF
 __ABSTAIN_FREE=(typeof globalThis==='undefined')||((globalThis.__ABSTAIN_FREE??1)|0)!==0; // #95: default ON
