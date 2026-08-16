@@ -13718,6 +13718,18 @@ function applyEntropy(){
     try{
       amp[i]-=genome.entropyBaseline*(pRarity[i]||1)*MODE_UPKEEP[pMode[i]]; // #57: a mode is a real bargain — HOLD is cheap to be, SURGE is expensive
       if(genome.somaRepair>0)amp[i]-=genome.somaRepair*SOMA_REPAIR_COST; // LEAP 23 (#56): maintenance is paid for, every tick
+      // #105: lifespanBias (5845) divides senescence hazard directly (13815: hazard /= lifespanBias) with
+      // NO cost term anywhere in the file — grep confirms its entire footprint is the field, its mutation
+      // (12549), and that one hazard line. Clamped [0.15,6.0], nothing rewards the low end, so a mature
+      // lineage should sit at 6.0 for free: the exact "no visible counter-pressure" pattern metabolicCost
+      // and deathThreshold had before CHILD_SIGN_FLOOR, on the one heritable senescence knob LEAP 23's own
+      // comment (1176) names as predating the somaRepair trade-off it was written to supply. Same fix,
+      // same shape as its neighbour on this very line: a flat, non-evolvable amp/tick charge — not a gene,
+      // so it can't be evolved away — scaled by how far above the neutral value (1.0) a lineage is buying
+      // protection, matched in magnitude to somaRepair's own max cost (5 units above baseline * 0.00008 =
+      // 0.0004/tick, against somaRepair's 0.6*0.00055 ≈ 0.00033/tick at its own max) so the two life-history
+      // investments compete on comparable terms rather than one being priced and the other free.
+      if(genome.lifespanBias>1)amp[i]-=(genome.lifespanBias-1)*0.00008;
       // LEAP 26 (#56) — A SECOND INCOME. Detritus pays trait-matched decomposers directly, as field
       // resource pays everyone else. A livelihood running on death cannot be monopolised by whatever
       // dominates the living economy, because that dominance is what SUPPLIES it.

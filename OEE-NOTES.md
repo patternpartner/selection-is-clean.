@@ -9029,3 +9029,48 @@ access any more than particle-level ones did (#83/#87's neutrality) is not impli
 cluster `vmProgram` opcode histograms pre/post this change (does bound-opcode content actually establish
 in budded lineages, given it can now arrive) is the natural first check, same shape as the "realised
 opcode histogram" instrument CODEMAP called for and never got for the particle side.
+
+## #105 — lifespanBias was the same free lunch metabolicCost and deathThreshold were, unfixed
+
+Next weakest point after the atom-content arc and cluster budding: CODEMAP's own table of individually-
+selected genome parameters flagged `lifespanBias` as having only an "implicit" compensating cost, distinct
+from `metabolicCost`/`deathThreshold`'s "none visible" — a hedge, not a clean finding, because nobody had
+actually traced it. Grepped its full footprint (4 hits: the field definition at 5845, its mutation at
+12549, one comment, and its single use at what is now ~13828): `_haz = ... * SENESCENCE_SCALE / _lb * ...`
+— the gene divides senescence hazard directly. There is no other site. "Implicit only" was, on inspection,
+"none" — the exact same shape as `metabolicCost` and `deathThreshold` before `CHILD_SIGN_FLOOR` gave them
+one, except this gene was never named in that fix and never got a structural cost of its own.
+
+Clamped `[0.15, 6.0]`, nothing anywhere rewards the low end, so a mature lineage should walk to 6.0 for
+free — six-fold hazard reduction, no price. LEAP 23's own comment, still in the source, names exactly this
+as the thing it was written to fix ("#51 gave this world ageing, but with no way to invest against it:
+every lineage ages on the same schedule and the only heritable knob is lifespanBias... a TRADE-OFF... is
+what turns live-fast/die-young and slow/long into distinct viable strategies rather than one being simply
+better"). LEAP 23 then built `somaRepair` — a second senescence-fighting gene with a real, structural,
+non-evolvable per-tick cost (`SOMA_REPAIR_COST`) — and left the original knob exactly as gameable as it
+found it. The trade-off it describes exists for the gene it built and not for the gene the comment opens
+by naming.
+
+### The fix
+
+One line, mirroring its neighbour exactly: `if(genome.lifespanBias>1)amp[i]-=(genome.lifespanBias-1)*0.00008;`,
+inserted directly beside the somaRepair cost charge it's modeled on. A flat constant, not a gene — the same
+reason every cost added since LEAP 9 is structural rather than evolvable ("a self-cost gene gets evolved to
+zero to dodge the bill"). Scaled from the neutral value (1.0, not 0 — this gene's baseline is doing nothing,
+unlike somaRepair's) so it only charges for the protection actually being bought. Magnitude matched to
+somaRepair's own maximum cost (≈0.00033-0.0004/tick at each gene's own clamp ceiling) so the two
+senescence investments compete on comparable terms instead of one being priced and the other free — that
+comparability, not the exact constant, is the thing I'm confident in; the constant itself is a first guess,
+not a fitted value, because nothing here was run.
+
+No knob: like #104, this is a correctness fix (closing a hole the codebase's own stated design already
+says should be closed) on a parameter never previously identified as having a cost, not a new mechanism —
+so it ships the way `CHILD_SIGN_FLOOR` did, live and unconditional.
+
+### What's still open
+
+Whether lifespanBias actually moves off 6.0 once it costs something — and whether it produces the
+r-vs-K diversity LEAP 23 wanted, the same open question `somaRepair` itself still carries — is unmeasured.
+The natural first check, if a harness run happens: dump the evolved distribution of `lifespanBias` under
+this fix against a matched control with the line reverted, same shape as the genome-parameter-bounds dump
+CODEMAP called for and this session still hasn't been able to run.
