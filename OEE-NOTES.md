@@ -9286,3 +9286,496 @@ implying more confidence than a clean boot actually earns. If harness access ret
 collapse (a short `extinctionThresh` or a hostile opening) and check that `metaCredit` entries with
 `pendingDelta!==0` at the moment of collapse read `dF` sanely on the next cycle rather than a fitness-reset
 artifact.
+
+---
+
+## #110 — ATOM EFFECTOR BRIDGE: credit-assignment closes the atom feedback loop
+
+### The problem the #80–#109 arc left open
+
+109 swings, and the atom system — the only replicator in this substrate that carries a VALUE rather than
+an ACTION — is still empirically neutral across every fitness channel tested. The CODEMAP names the
+architectural root: atoms write to registers, every other replicator (plasmid, program, cluster) writes
+to actuators. The credit-assignment system (`applyCreditAssignment`) already shows real learning —
+`objCreditTrace` at 0.547 — while atoms show nothing. Not because the grammar is weak or the pipeline
+is broken (swing #55 proved the pipeline WORKS: 423 invocations from a single authored primitive), but
+because atoms can compute all day and the result has no causal path to the organism's fate.
+
+REACH (#48) was supposed to be that path — atoms driving the VM's conserved actuators directly. But
+REACH_MAIN was shipped dormant (default-OFF, #88) and REACH_NOK was also dormant (#90), so the main
+particle dispatch — where the vast majority of atom executions happen — ran atoms as pure calculators.
+Only the plasmid path had REACH live. And even there, there was no feedback: an atom that drove
+actuators in a way that helped got overwritten at exactly the same rate as one that hurt.
+
+Three problems, one swing:
+1. **Routing**: REACH is off on the main path, so most atom executions are dead computations
+2. **Persistence**: The germline overwrite (rate*0.3) erases atoms faster than they can demonstrate value
+3. **Content**: The grammar has no way to sense its own track record, so it can't evolve toward what works
+
+### The intervention
+
+**Route: REACH default-ON everywhere.** `__REACH_MAIN=true` and `__REACH_NOK=true` — every atom
+execution in every dispatch site (main, plasmid, cluster, solo) now drives actuators. The gain is
+bounded (`clamp ±2, ×0.2`) and rides the existing conserved-energy physics, so this doesn't inject
+unconserved resources. NOK drops the random-signed interaction coefficient `k` from the gain so the
+atom's output sign is CAUSAL — `k` was aliasing it.
+
+**Persist: credit-modulated overwrite protection.** Each atom accumulates a `creditTrace` (EMA,
+range -1..+1) that correlates its REACH contribution with fitness delta. The correlation is computed
+per-tick inside `applyCreditAssignment`: every atom whose expression appears in the `__atomExprContrib`
+map (populated at each REACH fire) gets its trace updated as
+`trace = trace*0.99 + sign(contribution)*sign(fitnessDelta)*0.01`. Positive credit then reduces the
+germline overwrite probability by up to 70%: the replacement rate becomes
+`rate*0.3*(1-grip)*(1-useProtect*rank)*(1-clamp(creditTrace,0,0.7))`. An atom at creditTrace=0.7
+is 70% harder to overwrite than one at 0. Negative credit provides no protection — a harmful atom gets
+replaced at the full rate. The asymmetry is deliberate: the system should try everything, but hold onto
+what works.
+
+**Content: grammar senses own credit.** A new variable `cr` is added to the atom vocabulary
+(`USER_VARS`, `UA_ALL_VARS`, `UA_VAR_RE`, `uaCompile`). At call time, `cr = atom.creditTrace` — the
+atom's own accumulated credit score. This closes the content loop: an atom can condition its output on
+whether it's been helping or hurting. A grammar production that emits `cr>0 ? move_toward_food : 0`
+is now expressible — the atom can learn to trust its own track record.
+
+### Implementation details
+
+- `__atomExprContrib` (Map): accumulates signed REACH output per expression string across all dispatch
+  sites. Cleared at the end of each `applyCreditAssignment` call (and on early return).
+- Size guard: if the map exceeds 5000 entries, it's cleared pre-emptively at each dispatch site.
+  This prevents unbounded growth in pathological grammar explosions.
+- `creditTrace` initialised to 0 in all atom creation paths: birth (`mutateGenome`),
+  `seedAtomIntoParticle`, `attemptMemeTransfer`. Reset to 0 on expression overwrite.
+- Extinction handler clears all `creditTrace` values and the contrib map — same rationale as the Pe25
+  clears for `objCreditTrace`: a fitness discontinuity would produce a massive spurious delta.
+- All three flags (`__REACH_MAIN`, `__REACH_NOK`, `__ATOM_CREDIT`) registered in the LIVE block with
+  default-ON and resolved with the standard default-ON pattern. Each is individually forceable to 0.
+
+### Why this is bold
+
+Every prior swing in the #80–#109 arc touched one surface at a time — a grammar enrichment, an overwrite
+brake, a use counter, a jitter mechanism. Each was individually sound and collectively insufficient: the
+atom remained neutral because the VALUE→ACTION→FITNESS loop was never closed as a CIRCUIT. This swing
+closes all three gaps simultaneously: routing (REACH main-path), persistence (credit-modulated overwrite),
+and content (grammar self-awareness). The risk is that three simultaneous changes make attribution hard if
+something goes wrong. The upside is that the atom system has never had a fair trial — every prior test
+evaluated atoms that couldn't act, couldn't persist, and couldn't learn. This is the first configuration
+where all three conditions hold at once.
+
+### Verification
+
+100-tick smoke test: clean boot, zero loop errors, stable population (329→283 particles across 100 ticks,
+11 clusters forming). No NaN, no crash. The short run doesn't exercise the credit loop meaningfully
+(needs mutation cycles + fitness evaluation to fire), but the substrate is structurally sound.
+
+The real test is the live artwork running long enough for the credit loop to converge — the same class
+of test the notebook consistently says only the live piece can deliver, not the harness.
+
+---
+
+## #111 — EXPRESSION-LEVEL CREDIT POOL: Lamarckian inheritance for atom content
+
+### The missing dimension in #110
+
+#110 gave each atom a personal `creditTrace` that correlates its REACH output with fitness delta.
+That's per-atom, per-lineage: an atom in lineage A that scores well gets protected in lineage A. But
+if lineage B independently authors the SAME expression — or receives it via meme transfer — lineage
+B's copy starts from zero and has to earn its protection all over again.
+
+This is wasteful in exactly the way the #102 population-wide use pool was wasteful before it existed.
+An expression's track record is a property of the EXPRESSION, not of any particular atom instance.
+The #102 bridge (`__atomExprUses` keyed by expression string) already established the pattern for
+sharing information across the population by expression identity. #111 does for credit what #102
+did for uses.
+
+### The mechanism
+
+**A pool.** `__atomExprCredit` is a Map: expression → credit trace, bounded ±1, population-wide.
+
+**Slow blend from personal to pool.** At the end of every `applyCreditAssignment` cycle, each atom
+whose personal trace was just updated bleeds a tiny fraction (0.05% per cycle) into the pool:
+`pool = pool*0.9995 + personal*0.0005`. The pool moves 200× slower than the personal trace's own EMA
+(1%), so pool credit only accumulates when an expression proves itself across MANY lineages, over MANY
+mutation cycles. A single lineage's lucky streak can't spike the pool — a shared truth about that
+expression, replicated across the population, can.
+
+**Overwrite protection uses the max.** The germline overwrite brake takes `max(personal, pool)` credit:
+`(1-clamp(max(personalCredit, poolCredit), 0, 0.7))`. Either lineage-local evidence or
+population-wide evidence is enough. This is deliberate: local evidence protects a new find in ONE
+lineage, population evidence protects a proven expression EVERYWHERE.
+
+**New atoms seed from the pool.** Every atom-creation site — birth (mutateGenome), overwrite
+(same function), meme transfer, particle seeding — checks the pool for the incoming expression and
+seeds the new atom's personal `creditTrace` at 50% of the pool value. A truly novel expression starts
+at 0. A re-authored expression with pool history starts with real evidence to defend itself. This is
+the Lamarckian ratchet: proven content propagates its history across lineages, so re-discovery isn't
+tax-free.
+
+**Bounded.** The pool caps at 2000 entries. When exceeded, the weakest half (by absolute credit) is
+evicted — the strong signals persist, the noise gets pruned. This prevents pathological grammar
+explosions from blowing memory.
+
+**Extinction clears the pool.** Same reasoning as the Pe25/#110 clears: a fitness discontinuity
+would corrupt every entry on the next credit-assignment cycle.
+
+### Why this matters for OEE
+
+Every prior atom mechanism was per-lineage. Meme transfer (#41) moved atoms horizontally but the
+receiver's evidence started from scratch. Even #102's population use pool measured EXECUTION, not
+SELECTION — it didn't distinguish "run a lot" from "run and helped." #111 is the first mechanism
+where SELECTION EVIDENCE is a population-wide resource, indexed by content.
+
+The theoretical case: if the same expression is truly a good chemotactic sensor, it should
+converge on high pool credit across many lineages independently discovering it. That converged pool
+credit then bootstraps every future re-discovery, so the population's atom bank moves toward genuinely
+proven content much faster than per-lineage learning could. And the failure mode is bounded — pool
+credit only rises with cross-lineage agreement, so a locally-lucky expression can't seed a wave of
+false positives.
+
+### Verification
+
+200-tick smoke run: clean boot, zero loop errors, population stable (329→282 particles, 18 clusters
+forming). The pool mechanism doesn't fire meaningfully in 200 ticks (needs fitness evaluation cycles
++ atom authoring + REACH fires), but the substrate is structurally sound. The real test — same as
+#110 — is the live artwork running long enough for cross-lineage credit to converge.
+
+### Position in the arc
+
+#110 closed the VALUE→ACTION→FITNESS loop within a lineage. #111 makes the resulting evidence
+INHERITABLE across lineages by content. Together they turn the atom system from "an expression that
+computes something" into "an expression that computes something AND carries a memory of whether that
+computation was ever selected for." The first is neutral by construction (#80-#109 confirmed).
+Whether the second finally has grip is what only live running can tell.
+
+---
+
+## #112 — SUBTREE INHERITANCE: proven expressions become building blocks
+
+### The gap #110+#111 leave open
+
+#110 gives atoms individual credit. #111 pools that credit across the population by expression. But
+new atom AUTHORING is still random with respect to what's proven: `uaGenExpression` and `uaGenTerm`
+draw uniformly (with #107's evolvable structural weights) from the grammar's vocabulary, ignoring the
+pool completely. So even after the pool has learned that some expression is a great chemotactic sensor,
+the next new atom is authored from scratch with a random chance of rediscovering that structure.
+
+This is like a genetic algorithm with mutation but no crossover. The pool tells us which chunks work
+— but nothing splices those chunks into new expressions.
+
+### The mechanism
+
+`uaGenTerm`'s leaf path now rolls, before generating a fresh terminal, for a splice from the credit
+pool. If the roll succeeds and the pool has any positive-credit entries, sample one weighted by its
+credit and inline it as a parenthesised subterm.
+
+- Probability tapers with depth: `0.12 / (1 + depth)`. At the leaf level (depth 0) it's 12%; at
+  each recursion inward it halves and then some. This keeps most nesting shallow — a proven
+  expression spliced as a leaf inside a proven expression spliced as a leaf gets rare quickly.
+- Weighted sampling by `max(0, credit)`. Negative-credit expressions never propagate.
+- Size guard at 120 chars. A pool entry that's already huge falls through to the fresh-leaf path
+  instead of nesting a monster inside a tree.
+- Suppressed on the rend channel (`__uaVarPool` set). Pool entries are atom-channel content and
+  would compile to dangling references in rend's parameter list.
+- Depends on both `__UA_INHERIT` and `__EXPR_CREDIT` — pool has to exist and inheritance has to be on.
+
+### Why this is the natural completion of #110-#112
+
+- #110 asks: **does this atom work?** (per-lineage credit)
+- #111 asks: **does this expression work anywhere?** (population credit pool)
+- #112 asks: **do proven expressions get reused as parts of new expressions?** (grammar-level inheritance)
+
+Together they form a genetic-programming loop with content-addressed heritability: expressions get
+scored, scores accumulate across lineages, and high-scoring expressions become the substrate for new
+authoring. This is what "open-ended" needs — a ratchet where good structures accumulate and compose
+rather than being rediscovered from scratch each mutation cycle.
+
+### Risk
+
+The main risk is grammar collapse: if one expression becomes dominant in the pool, its credit
+outweighs all others and every new atom becomes a variant of that one. Two dampers:
+
+1. Pool credit moves slowly (0.05%/cycle blend from personal to pool). It takes many lineages
+   scoring in the same direction to move the pool meaningfully — so one lucky expression can't
+   dominate the pool overnight.
+2. Weighted sampling (not argmax): even the top-credit expression is only proportionally more
+   likely, not certain. Other proven expressions get proportional airtime, and fresh random
+   generation still handles most leaves at depth 0 (88%) and nearly all at deeper depths.
+
+If it turns out the dampers aren't enough, the flag is off with `UA_INHERIT=0` and the mechanism
+disappears without disturbing #110 or #111.
+
+### Verification
+
+300-tick smoke test: clean boot, zero loop errors, population stable (331→257), lineages growing
+(329→372), clusters forming (0→10). The inheritance path doesn't fire meaningfully in 300 ticks (no
+atoms authored yet), but the substrate is sound and — critically — the sample-then-inline logic ran
+without adding measurable overhead (12.5ms/ktick vs #111's 14.6ms/ktick suggests noise dominated).
+
+### Position in the arc
+
+#110-#112 form one coherent claim: **atoms become genuine effectors when the VALUE→ACTION→FITNESS
+loop is closed at all three levels — routing, persistence, and content**. #110 gives them the route
+and per-lineage persistence. #111 makes persistence a population-level asset by expression identity.
+#112 makes that asset feed BACK into new authoring, so proven structures aren't rediscovered from
+scratch. If the atom system was going to have grip, this is the configuration where it should show
+it. Whether it does is a live-run question, not a harness one.
+
+---
+
+## #113 — CREDIT-WEIGHTED MEME TRANSFER: route the horizontal channel by selection evidence
+
+### The one channel #110-#112 didn't route
+
+#110 gave atoms per-lineage credit and closed REACH → fitness → protection within a lineage.
+#111 pooled that credit across lineages by expression. #112 fed the pool into new authoring via
+grammar-level subtree inheritance. But `attemptMemeTransfer` — the horizontal atom-transfer channel
+from #41 that lets a particle receive its neighbour's most-proven atom directly into its own genome
+— still picks the donor's "best" atom by USES (or grip, if `__GRIP_SEED` is on).
+
+Uses counts executions. Grip counts prediction accuracy against alien registers. Neither counts
+selection evidence. An atom that ran 138,685 times but never helped fitness gets transferred; an atom
+that ran 100 times but pushed its lineage's fitness up every one of those times gets ignored. The
+horizontal channel is the one #110-#112 didn't touch.
+
+### The fix
+
+`attemptMemeTransfer` now applies a credit-aware override AFTER the uses/grip selection: if any
+donor atom has meaningful positive credit (either personal `creditTrace > 0.05` or pool credit
+`> 0.05`), pick the atom with the highest max(personal, pool) credit and transfer that one instead.
+
+The 0.05 floor is deliberate: it means "actual evidence, not noise." If no donor atom clears the
+floor (still the case in most short-run situations before credit converges), the transfer falls
+back to the uses/grip pick that #41 and #93 established. So the pre-#113 behaviour is preserved as
+the null case, and #113 only takes over when there's real evidence to steer by.
+
+### Why the currency ordering matters
+
+Uses is a symptom of the ATOM'S OWN behaviour (it ran because it was reachable and its output was
+consumed). Grip is a symptom of the ATOM'S predictive fit against the alien register it emits into.
+Credit is the only currency that measures the ATOM'S CONTRIBUTION to the ORGANISM'S fitness. The
+horizontal channel is the one place where a single scalar decides what expression jumps lineages,
+so it should ride the strongest currency available — and #110-#112 just made that currency exist.
+
+### Verification
+
+200-tick smoke test: clean boot, zero loop errors, population stable (329→281 particles), lineages
+growing (329→363), 10 clusters formed. As with #110-#112, the credit-driven path doesn't fire
+meaningfully in 200 ticks because no atoms have been authored, scored, and transferred yet — the
+substrate check is only that the added logic doesn't crash and doesn't measurably slow the tick
+(15.5ms/ktick, in line with the earlier baselines).
+
+### Position in the arc
+
+#110-#113 is the complete atom effector loop:
+- **#110**: route the value to action (REACH main-path) + per-lineage credit
+- **#111**: pool credit across lineages by expression
+- **#112**: pool credit feeds new authoring (subtree inheritance)
+- **#113**: pool credit feeds horizontal transfer (meme selection)
+
+Every atom-selection surface in the substrate — germline overwrite protection (#110+#111), meme
+transfer donor pick (#113), fresh authoring (#112), personal trace seeding on all creation paths
+(#111) — now uses the same currency: credit-assignment-derived evidence of contribution to fitness.
+Nothing left ignores it. If the atom system was going to become an OEE engine, this is the
+configuration where it should. Live-run verification is the only outstanding test.
+
+---
+
+## #114 — NEGATIVE FREQUENCY-DEPENDENCE FOR THE ATOM BANK: the Red Queen applied to content
+
+### The risk #112 introduced, made concrete
+
+#112 splices proven expressions from the credit pool into new atoms, weighted by credit. I flagged the
+failure mode in that entry: if one expression dominates the pool, every new atom becomes a variant of
+it and the bank collapses to a monoculture. The two dampers I built (slow pool blend, weighted-not-argmax
+sampling) slow that collapse but don't oppose it — they're brakes, not a countervailing force.
+
+The whole ecological arc (#11–#38) already solved this exact problem for the population, and named the
+solution: **negative frequency-dependence**. #28's Red Queen ("kill the winner": common prey predated
+hard, rare protected) makes coexistence stable and *selects for divergence* — the single most productive
+diversity engine in this codebase. It had never been applied to the one replicator that carries meaning:
+atom content.
+
+### The mechanism
+
+The germline overwrite loop already computes a per-atom protection from credit
+(`max(personal, pool)`, capped 0.7). #114 adds a second, orthogonal protection term from *rarity*:
+
+1. Sum every expression's population-wide execution count (`__atomExprUses`, from #102) once per
+   `mutateGenome` call — the function fires ~18×/6000 ticks, so the O(map) sum is free.
+2. For each atom, its share = `uses(expr) / totalUses`. NFD protection = `clamp(1 - share*8, 0, 0.4)`,
+   applied **only** when `uses > 0`.
+3. Final protection = `max(creditProtection, nfdProtection)`. Overwrite rate multiplies by `(1 - prot)`.
+
+The `uses > 0` gate is the crux: this **never shields untested noise** — a freshly-authored, never-run
+expression has share 0 but also uses 0, so it gets no NFD protection and churns normally. Only
+expressions that are *actively executing but uncommon* get shielded. The population-dominant expression
+(high share) gets zero NFD shield and must survive on credit alone — which is exactly the outcome that
+prevents #112's monoculture: the more an expression takes over, the less protected it becomes, until
+divergent alternatives out-persist it.
+
+### Why max, not sum
+
+An atom survives if it is EITHER proven (credit) OR rare-and-active (NFD). This is quality-diversity
+stated as a persistence rule: keep the good and keep the different, and *especially* keep what is both.
+An atom that is rare AND accumulating credit — the signature of a genuine explorer that just found
+something — gets the maximum of two strong protections and is very hard to erase. That's the atom the
+whole #80–#113 arc was trying to preserve and never had a mechanism dedicated to.
+
+Summing the two would let a mediocre-but-common atom accumulate a large combined score from two
+half-signals; max keeps each protection honest — you earn it on one axis or the other, not by
+laundering weakness across both. The NFD cap (0.4) sits deliberately below the credit cap (0.7):
+proven-useful should always beat merely-rare, so rarity nudges diversity without overriding function.
+
+### Position in the arc
+
+#110–#113 built a fitness-credit loop: atoms that help the organism persist. That is pure *exploitation*
+— it drives the bank toward whatever currently works, which is the raw material of monoculture. #114 is
+the *exploration* counterweight, and it is not a bolt-on: it is the same negative-frequency-dependence
+that the ecological arc proved is THE diversity engine here, finally wired into the atom replicator. An
+OEE engine needs both hands — a ratchet that accumulates what works (#110–#113) and a force that keeps
+the alternatives alive so the ratchet has somewhere new to go (#114). This is the second hand.
+
+### Verification
+
+None run this session, by request — no harness. The change is: one summation before the existing
+overwrite loop, one clamped term inside it, one `max`, all behind `__ATOM_NFD` (default on, force off
+with `ATOM_NFD=0`). It reads only `__atomExprUses` (already maintained since #102) and touches no state
+other than the overwrite probability it was already computing. The mechanism's whole claim — that it
+maintains atom-content diversity under the #112 inheritance pressure — is a live-run question, and a
+long-run one: it only bites once expressions have accumulated enough execution history for shares to
+diverge.
+
+---
+
+## #115 — ATOM-AWARE OBJECTIVES: let the objective generator see what the atoms do
+
+### The blind spot at the center of the machine
+
+This codebase has TWO mature, self-modifying subsystems, and until now they could not see each other.
+
+**The objective generator (Pe22–25).** `genome.fitnessSensors` is a population of little VM programs
+that compute functions of the organism's own macro-state (registers S0–S15: stability, coherence,
+cluster count, field energy, fitness slope, VM entropy, motif age, extinctions, HGT rate, volatility).
+A sensor whose emit correlates with fitness delta has its `realWeight` nudged up by the per-sensor
+credit machinery and becomes a REAL selection pressure. New sensors enter at `realWeight = 0` — they
+cannot declare themselves valuable, they have to *earn* participation by tracking something that
+co-moves with fitness. This is genuine endogenous objective generation: the system authors new
+dimensions of value and promotes the ones that turn out to matter. It is the closest thing in this
+project to open-endedness in *what is selected for*, not just in *what is selected*.
+
+**The atom system (#38–#114).** Self-authored code, now a genuine effector loop: atoms compute, REACH
+routes their output to actuators, credit correlates that output with fitness, and the whole #110–#114
+arc closed the persistence/inheritance/diversity loops around it.
+
+And S0–S15 contain **nothing about the atom system.** The objective generator computes over cluster
+counts and field energy and mutation rate — but it is structurally blind to the single richest
+behavioral signal in the organism. It literally cannot author an objective of the form "reward states
+where the authored-atom effectors are driving the actuators productively," because it has no register
+that reflects atom activity. The two most advanced parts of the machine were running in separate rooms.
+
+### The coupling
+
+Grow the sensor register bank from 16 to 18 and wire the atom subsystem into the two new registers:
+
+- **S16 = REACH firing rate per particle** — a smoothed EMA of how hard the authored-atom effectors
+  are actually driving actuators, normalized by live population.
+- **S17 = mean positive germline atom credit** — how much that driving is paying off on fitness,
+  read cheaply from the germline bank's own `creditTrace` values (a small array, no pool scan).
+
+Both EMAs advance only on the real sensor pass (once per tick); shadow passes read the held value, so a
+sensor's inputs stay consistent across the two passes and its credit signal stays meaningful.
+
+Now the objective generator can author a sensor that reads S16 or S17, and if valuing atom activity
+turns out to correlate with fitness improvement, the *existing* `realWeight`-earns-participation
+machinery promotes it to a real selection pressure — with no new anti-wireheading code, because the
+guard already exists: `realWeight` starts at 0 and only rises on fitness correlation. The system decides
+for itself whether "what the atoms are doing" is worth selecting for.
+
+### Why this is the OEE move, not just another mechanism
+
+#110–#114 make atoms good at the *current* objectives. That is adaptation — powerful, but bounded by a
+fixed target. #115 lets the *target* incorporate the atoms' own behavior: if the atom system discovers
+a productive behavior, the objective generator can notice, name it as a dimension of value, and select
+for MORE of it — which feeds back into what atoms are rewarded for authoring. That is a candidate
+open-ended loop in the strong sense: novelty in the genotype (atoms) can induce novelty in the
+objective (sensors), which induces new pressure on the genotype. Neither subsystem alone can run away;
+coupled, they can climb.
+
+### Correct-by-construction, and the honest limits
+
+The register-bank growth is byte-safe for control behavior by construction: indices below 16 mask
+identically under `%18` and `%16`; the two new Float32 slots initialize to 0; and when `__ATOM_OBJ` is
+off, the sensor mutator's address range stays 16, so no evolved sensor ever *reaches* S16/S17. A
+flag-off run is therefore identical to pre-#115 down to the sensor's arithmetic. Every touched literal
+(the S array, the per-sensor regs array, the copy loop, both `%` masks, the clamp loop, and all four
+register-address mutation ranges) was moved together, so there is no half-grown state.
+
+What is NOT guaranteed, and cannot be without a live run: that the coupling *does* anything. The atom
+signals only become non-trivial once atoms are authored, bound, firing REACH, and accumulating credit —
+exactly the long-horizon regime the whole arc depends on and the harness cannot reach. And because this
+swing touches the fitness pathway (the signal every other mechanism reads), it carries more risk than
+#110–#114, which only touched atom-local state. It is gated, reversible, and correct in the flag-off
+limit — but whether atom-aware objectives actually form and get promoted is the live-run question, and
+per this session's instruction it ships unmeasured, on the reasoning that the flag-off identity makes
+the downside a clean revert rather than a corruption.
+
+### Position in the arc
+
+#110–#114 built the atom effector loop and its exploration/exploitation balance — everything *within*
+the atom system and its selection. #115 breaks the atom system out of its own room: for the first time
+the part of the machine that decides *what fitness means* can see the part that *authors behavior*. If
+open-ended evolution needs the objective to keep moving as the genotype explores, this is the wire that
+lets it.
+
+---
+
+## #116 — FITNESS-TRAJECTORY SENSE: let atoms feel whether the organism is winning
+
+### Closing the other direction of #115's coupling
+
+#115 wired one direction of the atom↔fitness coupling: the objective generator can now *see* atom
+activity (registers S16/S17) and author objectives that value it. The symmetric wire is the other
+direction — letting atoms *see the objective's live result*. That is #116.
+
+Atoms already sense a lot: source registers (a,b), own use count (u), proximity/energy/caste (c,d,m),
+recurrent state (s), world position/clock/neighbour (nx,ny,t,nb), resource gradients (rl,rd), and — since
+#110 — their own credit trace (cr). But every one of those is *local* or *self*. None tells an atom how
+the **whole organism** is doing. `cr` comes closest, but `cr` is a slow EMA — "am I, this expression,
+generally helpful over the last ~hundred cycles." It is not "is the organism winning *right now*."
+
+### The `fr` variable
+
+#116 adds one grammar variable, `fr`, bound to a tanh-scaled read of the organism's current fitness
+trajectory (`currentFitness − prevSmoothedFitness`, published once per tick in `applyCreditAssignment`,
+squashed by `tanh(df·30)` into a sign-correct, bounded (−1,1) signal). An atom can now author behavior
+of the form `fr < 0 ? <do one thing> : <do another>` — react to the organism *collapsing* differently
+than to it *thriving*. This is the substrate for condition-dependent strategy: bet-hedging when losing,
+consolidation when winning, or any policy the grammar cares to compose over the macro-state.
+
+The distinction from `cr` is the whole point:
+- **`cr`** (slow, learned, per-expression): *"Does this computation tend to correlate with fitness gains?"*
+- **`fr`** (fast, live, organism-wide): *"Is the organism's fitness rising or falling this instant?"*
+
+An atom that combines them — `cr` for "I am a proven move" and `fr` for "and now is the moment to make
+it" — expresses something neither alone can: a proven behavior gated on the organism's live condition.
+
+### Correctness
+
+Same shape as the `cr` addition (#110), which is the precedent I copied deliberately: `fr` joins the leaf
+vocabulary (`USER_VARS`, `UA_ALL_VARS`, `UA_VAR_RE`) and the compiled parameter list (a 16th argument), and
+`uaCall` passes the live value. When `__ATOM_FRSENSE` is off, `__orgFitTraj` is held at 0, so `fr` is an
+inert constant-0 leaf — grammatically present (as `cr` is when credit is off) but carrying no information,
+which is exactly the control that isolates whether the *signal* matters versus merely having another leaf.
+The compiled signature and the single call site were moved together (both now 16 params); the rend channel's
+separate compile (its own `t0…col` parameter list) was left untouched. Extinction's fitness discontinuity is
+bounded by the `tanh` (saturates to ±1 for one tick) and already handled upstream by the #109
+`prevSmoothedFitness` reset.
+
+### Position in the arc
+
+#115 + #116 are a matched pair: the objective generator gains eyes on the atoms (#115), and the atoms
+gain eyes on the objective's live result (#116). Together they close a full bidirectional loop between
+the two self-modifying subsystems — the genotype can condition on the organism's success while the
+objective can condition on the genotype's behavior. That mutual visibility is the structural
+precondition for the open-ended climb the whole #110–#116 arc is reaching for; whether the climb
+actually happens remains, as always, a live-run question.
+
