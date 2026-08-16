@@ -593,17 +593,32 @@ function uaJitterConst(expr){
 // \b-anchored regex over that closed vocabulary cannot false-match, so this needs no parser either.
 const UA_VAR_RE=/\b(?:nx|ny|nb|rl|rd|a|b|u|c|d|m|s|t)\b/g;
 const UA_ALL_VARS=["a","b","u","c","d","m","s","nx","ny","t","nb","rl","rd"];
-function uaSwapVar(expr){
-  const matches=expr.match(UA_VAR_RE);
+function uaSwapVar(expr,re,pool){
+  re=re||UA_VAR_RE; pool=pool||UA_ALL_VARS;
+  const matches=expr.match(re);
   if(!matches||!matches.length)return expr;
   const pick=Math.floor(Math.random()*matches.length);
   const from=matches[pick];
-  let to=from; while(to===from)to=UA_ALL_VARS[(Math.random()*UA_ALL_VARS.length)|0];
+  let to=from; while(to===from)to=pool[(Math.random()*pool.length)|0];
   let seen=-1;
-  return expr.replace(UA_VAR_RE,m=>(++seen===pick?to:m));
+  return expr.replace(re,m=>(++seen===pick?to:m));
 }
 function uaLocalStep(expr){
   return Math.random()<0.5?uaJitterConst(expr):uaSwapVar(expr);
+}
+// #106: rend (the render palette) is the atom arc's own matched null control — same grammar
+// (uaGenTerm/uaGenExpression, see rendGenExpression above), causally inert by construction, kept
+// heritable and mutating specifically so it can be contrasted against atoms while holding the
+// generator constant (CODEMAP: "a perfect cargo-without-a-channel null"). #103 gave atoms a local-step
+// operator atoms never had; leaving rend on redraw-only would silently break the match — any future
+// comparison would differ in mutation OPERATOR as well as actuator channel, confounding exactly the
+// contrast rend exists to provide. Same safety argument as uaSwapVar: REND_VARS (t0,t1,t2,t3,amp,phase,
+// col) checked against the identical fixed function vocabulary for false-match risk — none of the seven
+// names is a whole-word substring of any Math.* function name (none contain digits or the substrings
+// "amp"/"phase"/"col" at all) — so \b-anchored swap is safe here for the same reason it is for atoms.
+const REND_VAR_RE=/\b(?:t0|t1|t2|t3|amp|phase|col)\b/g;
+function rendLocalStep(expr){
+  return Math.random()<0.5?uaJitterConst(expr):uaSwapVar(expr,REND_VAR_RE,REND_VARS);
 }
 function uaCompile(atom){
   if(atom.compiled||atom.failed)return;
@@ -12986,6 +13001,15 @@ function mutateGenome(){
   if(Math.random()<0.003){
     const ri=Math.floor(Math.random()*4);
     genome.rend[ri]={expression:rendGenExpression(),compiled:null,failed:false}; // #96: rend has its own vocabulary
+  } else if(Math.random()<0.0015){
+    // #106: local step, matching #103's atom operator — see rendLocalStep. Keeps rend a control matched
+    // to atoms in mutation shape, not just in generator; ratio to the redraw rate above (0.0015:0.003)
+    // mirrors the 0.15:0.3 ratio #103 used for atoms.
+    const ri=Math.floor(Math.random()*4);
+    if(genome.rend[ri]){
+      const _rj=rendLocalStep(genome.rend[ri].expression);
+      if(_rj!==genome.rend[ri].expression)genome.rend[ri]={expression:_rj,compiled:null,failed:false};
+    }
   }
   if(Math.random()<0.004){ // mutate the draw-program: add / drop / retype a primitive (neutral drift, rides selection like rend)
     const d=genome.draw||(genome.draw=defaultDraw()); const roll=Math.random();

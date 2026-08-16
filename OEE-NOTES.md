@@ -9074,3 +9074,33 @@ r-vs-K diversity LEAP 23 wanted, the same open question `somaRepair` itself stil
 The natural first check, if a harness run happens: dump the evolved distribution of `lifespanBias` under
 this fix against a matched control with the line reverted, same shape as the genome-parameter-bounds dump
 CODEMAP called for and this session still hasn't been able to run.
+
+## #106 — #103 quietly broke the atom arc's own null control; matched it back
+
+Not a freshly-discovered weak point in the simulation's evolutionary machinery — a weak point #103
+created in the project's own instrumentation, caught by asking "what else in this file shares the pattern
+I just fixed." `rend` (the render palette) is CODEMAP's documented matched null: same grammar as atoms
+(`uaGenExpression`, vocabulary swapped via `__uaVarPool`), causally inert by construction (writes only to
+rendering, confirmed dead-end), kept heritable and mutating specifically so atom dynamics can be
+contrasted against it while holding the generator constant — "cargo without a channel." Its value as a
+control depends on staying matched to atoms in everything except the one variable being isolated.
+
+#103 gave atoms a local-step mutation (`uaLocalStep`: constant jitter or variable swap) that `rend` did
+not get — `genome.rend[ri]=...` was still a flat 0.3%/cycle full redraw, nothing else. Left that way, any
+future atom-vs-rend comparison would differ in mutation OPERATOR as well as actuator presence, which
+confounds the exact contrast the control exists to make clean.
+
+### Fix
+
+`rendLocalStep`, mirroring `uaLocalStep` exactly: constant jitter (already vocabulary-agnostic, reused
+as-is) or a variable swap using `REND_VARS` (`t0,t1,t2,t3,amp,phase,col`) instead of the atom pool.
+`uaSwapVar` generalised to take an optional regex/pool pair rather than duplicated. Safety argument is the
+same exhaustive word-boundary check #103 used, re-run against the rend vocabulary specifically: none of
+the seven REND_VARS names is a substring of any Math.* function name this grammar can emit (none contain
+digits, and none contain "amp"/"phase"/"col" as substrings), so the `\b`-anchored swap can't false-match.
+Wired as an `else if` beside the existing redraw check, at 0.0015 against the redraw's 0.003 — the same
+1:2 ratio #103 used for atoms — so `rend`'s mutation-event shape now tracks atoms' rather than only its
+generator.
+
+No knob: this is a consistency fix on a control, not a new experimental arm, so it ships the way #104 and
+#105 did — plain and unconditional.
