@@ -8404,3 +8404,66 @@ in [-0.3,+0.3], so `E[|step|] = 0.15`, `P(move per fired mutation) = 0.15`, and 
   that overreach is exactly what the gene now lets selection adjudicate instead of me.
 - **FALSIFIER:** 0/8 seeds move. That would mean stochastic rounding is too cold to unfreeze the gene in
   practice, and the honest response is to say so rather than to reach for a bigger constant.
+
+## #98 RESULT — every frozen gene is mobile, and the recursive grammar has fired for the first time
+
+8 seeds x 24,000 ticks, all three repairs at their new defaults.
+
+| seed | uaMaxDepth | rendMaxDepth | intStepBias | atoms | **deep-grammar** | constant |
+|---|---|---|---|---|---|---|
+| 3 | **2** | 1 | 0 | 26 | **8** | 3 |
+| 7 | 1 | 1 | 0 | 26 | 0 | 8 |
+| 11 | 1 | 1 | 0.0675 | 22 | 0 | 5 |
+| 17 | 1 | 1 | 0 | 20 | 0 | 4 |
+| 23 | **2** | **2** | 0 | 15 | **6** | 1 |
+| 29 | **2** | 1 | 0.003 | 26 | **4** | 5 |
+| 31 | 1 | 1 | 0 | 24 | 0 | 12 |
+| 37 | **2** | 1 | 0.0239 | 29 | **14** | 2 |
+
+**All eight previously-frozen genes now move:**
+
+| gene | before (8/8 seeds identical) | after |
+|---|---|---|
+| uaMaxDepth | 1 | **[2,1,1,1,2,2,1,2]** |
+| vmMaxInstructions | 16 | [15,16,16,17,15,16,17,15] |
+| motifMemorySize | 5 | [5,5,6,5,5,5,6,4] |
+| clusterReflexAge | 5 | [4,5,4,4,6,5,5,6] |
+| clusterMinSize | 3 | [4,3,2,2,3,4,4,3] |
+| shadowScenarios | 5 | [6,5,5,5,5,6,5,5] |
+| hgtMax | 2 | [2,2,2,2,2,**4**,2,2] |
+| reflexDepth | 4 | [4,4,4,4,**3**,4,4,4] |
+
+**32 of 188 atoms now use the recursive grammar** — branching, `f(...)` atom-calls-atom, multi-argument
+functions. Across every live export (163 atoms) and every headless run before today (172 atoms), that
+count was **zero**. It is the first time `uaGenTerm`'s `depth>0` branches have executed in this project.
+
+### Against the pre-registration
+
+- **`uaMaxDepth > 1` in roughly half of 8 (P=0.51 from the arithmetic) — observed 4/8.** Correct. This
+  is, I think, the first prediction I have got right all session; the running count of failed stated
+  expectations stood at about ten out of ten.
+- **`intStepBias` off 0 in all 8 — observed 3/8. Failed.** One contributing cause I can name: the gene is
+  seeded at 0, which is its lower clamp, so every negative mutation is erased by `__cl(...,0,1)` and only
+  the upward half of the draws can register. That accounts for some of the gap but not obviously all of
+  it, and I am not going to reverse-engineer the rest into a story that fits.
+- **Falsifier (0/8 moving): not triggered.**
+
+### One thing that is mechanical, not selection
+
+The constant-only fraction falls in exactly the seeds that went deep — 1/15, 2/29, 3/26 against 4/20,
+5/22, 8/26, 12/24 at depth 1. That is arithmetic, not evidence of taste: at depth 2 an expression has up
+to four leaves, so P(all constant) drops from 0.25 to about 0.0625. Recording it because it is the kind
+of number that reads like a result and is not one.
+
+### What this does and does not establish
+
+It establishes that the repair works: the gene the design says is evolvable is now evolvable, and the
+grammar behind it is reachable. **It does not establish that any of it helps.** Every finding this
+session says the atom layer carries no measurable signal — but that verdict was always scoped to
+depth-1 expressions, because depth-1 was the only thing the generator could emit. This is the first
+build in which the question can be asked at all.
+
+The next honest measurement is the one #87-#94 kept failing to make for the wrong reason: whether atoms
+confer anything, run now on a build where the mechanism under test actually fires. That is a
+does-it-help question, which means it needs seeds and an arm, and by today's own lesson it is worth
+running only because the mechanism-fires question has now been answered first.
