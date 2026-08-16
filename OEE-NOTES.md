@@ -8700,3 +8700,61 @@ executions, max 138,685, and not one zero-use pick in 3,125 transfers. So `uses`
 demonstrably discriminates on in one place while the germline overwrite ignored it in another. No new
 mechanism, no new observable, no new scale: one existing working discriminator, connected to the one
 place that was throwing away its verdict.
+
+## #100 VERIFIED — the ledger closes exactly, and the measurement deflates my own #101 rationale
+
+6 seeds x 24,000 ticks with the overwrite site hooked.
+
+```
+IN : author pushes 146 + overwrites 78 = 224   vs arrivals detected   224   EXACT
+OUT: culls           1 + overwrites 78 =  79   vs departures detected  79   EXACT
+```
+
+**Every arrival and departure is now attributed.** The overwrite at 12599 was the whole of the missing
+path, and the #99 ledger closes to zero unexplained events. That also retires the "extinction rebirth /
+sanitizeGenome" candidates I named — neither was involved.
+
+**My arithmetic prediction was wrong by 2.8x** — I predicted ~36 overwrites per run, observed **13.0**.
+Two errors, both mine, both in the direction of overstating:
+
+- I used the **nominal** `mutationRate` of 0.06. The real rate is stress-modulated by `stabilityFactor`,
+  which sits near 0.7 in a stable run (`1 + (1-stability)*0.8 - stability*0.3`).
+- I used a **full** bank of 25. The bank grows from empty, so the run-average is ~12.5.
+
+Corrected: `0.042*0.3 * 80 calls * 12.5 atoms = 12.6/run` against 13.0 observed. The mechanism is exactly
+as described; my estimate of its magnitude was not.
+
+### And this is the part that matters — #101's motivating example does not occur
+
+I justified use-protection with: *"an atom executed 138,685 times carries the same 1.8%-per-cycle death
+sentence as one that has never run."* Measured, what the overwrite actually destroys:
+
+| | |
+|---|---|
+| median uses of an erased atom | **0** |
+| max uses of an erased atom | **711** |
+| erased atoms with >1000 uses | **0 / 78** |
+| erased atoms with 0 uses | **58 / 78** |
+| erased atoms where grip (the existing brake) was nonzero | **0 / 78** |
+
+**The overwrite is mostly erasing atoms that never ran.** The 138,685 figure was real but came from the
+*transfer* channel's donor pool — particle genomes — and I carried it across into a claim about the global
+germline bank without checking that the two populations are comparable. They are not: the largest use
+count the overwrite has ever destroyed here is 711.
+
+**So #101 is worth much less than I claimed for it.** It would engage on the 20 of 78 erasures that hit an
+atom with any uses at all — a quarter of them — not on a stream of heavily-proven primitives being thrown
+away. The mechanism is still pointed the right way (rank means the zero-use majority get rank 0 and stay
+fully exposed, exactly as they should), but I sold it on a case that the data does not contain.
+
+**And there is a deeper problem with it that I have not measured.** `uses` is incremented on whichever
+atom *object* `uaCall` receives, and VM execution runs almost entirely with `genome` rebound to a
+particle's genome — so a germline atom's `uses` counts only the rare calls made while the global genome
+is ambient. That would make global-bank `uses` a weak proxy for how much an expression actually executes
+in the population, which is uncomfortably close to the defect I was fixing: protecting on a signal that
+does not measure what it appears to measure. The live data is consistent with this — 96 of the gen104
+world's 108 atoms had zero uses.
+
+Before `atomUseProtect` is worth anything, that needs testing: **does a germline atom's `uses` correlate
+with how often its expression is executed across the population?** If not, #101 protects on noise and
+should be reverted or re-pointed at a counter that aggregates across the particle copies.
