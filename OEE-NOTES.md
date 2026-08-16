@@ -8518,3 +8518,64 @@ The measurement that separates them is cheap and mechanism-shaped: log the *sour
 entering the global bank alongside its depth and the donor's `uses`, and compare inflow depth against
 donor-uses rank. That is the next thing worth doing, and it is a does-this-fire question rather than a
 does-this-help one, which by today's standard is the right shape to run first.
+
+## #99 RESULT — the "deep in, flat out" flow was n=1 noise; the transfer channel sorts hard on USE
+
+6 seeds x 24,000 ticks, all repairs at their new defaults. Two independent instruments: a path-agnostic
+60-tick snapshot diff of the true global bank, and site hooks recording whether the *receiving* object is
+the global genome.
+
+### The phenomenon does not survive replication
+
+| | n | deep | rate |
+|---|---|---|---|
+| arrivals into the global bank | 224 | 45 | **20.1%** |
+| departures from it | 79 | 13 | **16.5%** |
+
+**z = 0.71.** The seed-37 result that looked like "deep in, flat out" — 7 of 9 arriving deep, 0 of 9
+leaving deep — was a single run, and at n=6 the asymmetry is gone. I flagged it as "the first thing all
+session that looks like atom content being sorted", with three caveats attached, and the caveats were the
+right instinct: it was noise. Two of the six seeds (41, 43) never reached depth 2 at all and contributed
+zero deep atoms in either direction.
+
+### H3 is dead, H2 is alive and strong, H1 is at best marginal
+
+- **H3 (donors are simply deeper): refuted outright.** Every one of the 3,125 meme-transfer donors had
+  `uaMaxDepth = 1`. Particle genomes never author deep atoms; the only deep atoms in circulation came
+  from the global germline seeding them outward.
+- **H2 (sorting on use): confirmed, and it is not subtle.** `attemptMemeTransfer` picks the donor's
+  most-used bound atom, and the median chosen atom had been executed **4,562 times** (max 138,685). Not
+  one of the 3,125 transfers picked a zero-use atom. This channel is a genuine, hard filter — just on
+  execution count, not on content.
+- **H1 (sorting on depth): marginal at best.** Chosen atoms were deep in 97/3,125 = 3.1% against a donor
+  bound-pool rate of 190/7,942 = 2.4%, **z = 2.12**. My analyser's threshold printed "depth-biased", and
+  I am overruling it. Given the number of comparisons I have run today and a session record of about one
+  correct prediction in eleven, a z of 2.1 on a secondary measure is suggestive and nothing more.
+
+**So the honest answer to the question I set: the flow is sorted, but on use, and there is no established
+depth effect.** Depth being weakly correlated with use is plausible — a deeper expression has more leaves
+touching more registers — but that is a hypothesis for a targeted test, not a finding.
+
+### One thing this test did NOT resolve, stated rather than buried
+
+The arrival/departure ledger still does not close, and my leading explanation was wrong.
+
+```
+authoring pushes into the GLOBAL bank   146
+arrivals detected by snapshot           224
+departures detected by snapshot          79
+culls                                     1
+meme transfers into the global bank       0   <- ALL 3,125 went to particle genomes
+germline seeds into the global bank       0   <- ALL 146 went to particle genomes
+```
+
+I had assumed the unlogged arrivals came in via meme transfer or germline seeding. **Neither writes to
+the global bank at all** — every one of those 3,271 events targeted a particle genome. So ~78 arrivals and
+~78 non-cull departures remain unattributed, and their near-equality suggests atoms leaving the global
+bank and returning rather than a one-way inflow. I do not know the mechanism. Candidates I have not
+tested: the extinction-rebirth path, whose own comment says the reborn world "inherits the dead world's
+germline — its atoms", and `sanitizeGenome`'s wholesale rebuild of `genome.userAtoms`.
+
+That is the next thing to chase, and it matters beyond bookkeeping: **a path that moves atoms into and out
+of the germline bank without passing the authoring site or the cull is a selection channel nobody has
+measured**, including me, across ninety-nine entries.
