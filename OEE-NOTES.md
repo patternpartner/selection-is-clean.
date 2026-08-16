@@ -9286,3 +9286,87 @@ implying more confidence than a clean boot actually earns. If harness access ret
 collapse (a short `extinctionThresh` or a hostile opening) and check that `metaCredit` entries with
 `pendingDelta!==0` at the moment of collapse read `dF` sanely on the next cycle rather than a fitness-reset
 artifact.
+
+---
+
+## #110 — ATOM EFFECTOR BRIDGE: credit-assignment closes the atom feedback loop
+
+### The problem the #80–#109 arc left open
+
+109 swings, and the atom system — the only replicator in this substrate that carries a VALUE rather than
+an ACTION — is still empirically neutral across every fitness channel tested. The CODEMAP names the
+architectural root: atoms write to registers, every other replicator (plasmid, program, cluster) writes
+to actuators. The credit-assignment system (`applyCreditAssignment`) already shows real learning —
+`objCreditTrace` at 0.547 — while atoms show nothing. Not because the grammar is weak or the pipeline
+is broken (swing #55 proved the pipeline WORKS: 423 invocations from a single authored primitive), but
+because atoms can compute all day and the result has no causal path to the organism's fate.
+
+REACH (#48) was supposed to be that path — atoms driving the VM's conserved actuators directly. But
+REACH_MAIN was shipped dormant (default-OFF, #88) and REACH_NOK was also dormant (#90), so the main
+particle dispatch — where the vast majority of atom executions happen — ran atoms as pure calculators.
+Only the plasmid path had REACH live. And even there, there was no feedback: an atom that drove
+actuators in a way that helped got overwritten at exactly the same rate as one that hurt.
+
+Three problems, one swing:
+1. **Routing**: REACH is off on the main path, so most atom executions are dead computations
+2. **Persistence**: The germline overwrite (rate*0.3) erases atoms faster than they can demonstrate value
+3. **Content**: The grammar has no way to sense its own track record, so it can't evolve toward what works
+
+### The intervention
+
+**Route: REACH default-ON everywhere.** `__REACH_MAIN=true` and `__REACH_NOK=true` — every atom
+execution in every dispatch site (main, plasmid, cluster, solo) now drives actuators. The gain is
+bounded (`clamp ±2, ×0.2`) and rides the existing conserved-energy physics, so this doesn't inject
+unconserved resources. NOK drops the random-signed interaction coefficient `k` from the gain so the
+atom's output sign is CAUSAL — `k` was aliasing it.
+
+**Persist: credit-modulated overwrite protection.** Each atom accumulates a `creditTrace` (EMA,
+range -1..+1) that correlates its REACH contribution with fitness delta. The correlation is computed
+per-tick inside `applyCreditAssignment`: every atom whose expression appears in the `__atomExprContrib`
+map (populated at each REACH fire) gets its trace updated as
+`trace = trace*0.99 + sign(contribution)*sign(fitnessDelta)*0.01`. Positive credit then reduces the
+germline overwrite probability by up to 70%: the replacement rate becomes
+`rate*0.3*(1-grip)*(1-useProtect*rank)*(1-clamp(creditTrace,0,0.7))`. An atom at creditTrace=0.7
+is 70% harder to overwrite than one at 0. Negative credit provides no protection — a harmful atom gets
+replaced at the full rate. The asymmetry is deliberate: the system should try everything, but hold onto
+what works.
+
+**Content: grammar senses own credit.** A new variable `cr` is added to the atom vocabulary
+(`USER_VARS`, `UA_ALL_VARS`, `UA_VAR_RE`, `uaCompile`). At call time, `cr = atom.creditTrace` — the
+atom's own accumulated credit score. This closes the content loop: an atom can condition its output on
+whether it's been helping or hurting. A grammar production that emits `cr>0 ? move_toward_food : 0`
+is now expressible — the atom can learn to trust its own track record.
+
+### Implementation details
+
+- `__atomExprContrib` (Map): accumulates signed REACH output per expression string across all dispatch
+  sites. Cleared at the end of each `applyCreditAssignment` call (and on early return).
+- Size guard: if the map exceeds 5000 entries, it's cleared pre-emptively at each dispatch site.
+  This prevents unbounded growth in pathological grammar explosions.
+- `creditTrace` initialised to 0 in all atom creation paths: birth (`mutateGenome`),
+  `seedAtomIntoParticle`, `attemptMemeTransfer`. Reset to 0 on expression overwrite.
+- Extinction handler clears all `creditTrace` values and the contrib map — same rationale as the Pe25
+  clears for `objCreditTrace`: a fitness discontinuity would produce a massive spurious delta.
+- All three flags (`__REACH_MAIN`, `__REACH_NOK`, `__ATOM_CREDIT`) registered in the LIVE block with
+  default-ON and resolved with the standard default-ON pattern. Each is individually forceable to 0.
+
+### Why this is bold
+
+Every prior swing in the #80–#109 arc touched one surface at a time — a grammar enrichment, an overwrite
+brake, a use counter, a jitter mechanism. Each was individually sound and collectively insufficient: the
+atom remained neutral because the VALUE→ACTION→FITNESS loop was never closed as a CIRCUIT. This swing
+closes all three gaps simultaneously: routing (REACH main-path), persistence (credit-modulated overwrite),
+and content (grammar self-awareness). The risk is that three simultaneous changes make attribution hard if
+something goes wrong. The upside is that the atom system has never had a fair trial — every prior test
+evaluated atoms that couldn't act, couldn't persist, and couldn't learn. This is the first configuration
+where all three conditions hold at once.
+
+### Verification
+
+100-tick smoke test: clean boot, zero loop errors, stable population (329→283 particles across 100 ticks,
+11 clusters forming). No NaN, no crash. The short run doesn't exercise the credit loop meaningfully
+(needs mutation cycles + fitness evaluation to fire), but the substrate is structurally sound.
+
+The real test is the live artwork running long enough for the credit loop to converge — the same class
+of test the notebook consistently says only the live piece can deliver, not the harness.
+
