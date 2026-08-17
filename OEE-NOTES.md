@@ -10091,3 +10091,66 @@ the bank toward the incumbent faster than #114's frequency-dependence can keep i
 refine-the-best versus keep-exploring — is exactly what the live artwork exists to adjudicate, and it
 ships as a bet, on by default, for that test.
 
+---
+
+## #122 — ELIGIBILITY TRACES: credit for what an atom did, not only what it did *this instant*
+
+### The same-tick assumption buried in the whole arc
+
+Every credit update in #110–#121 correlates an atom's contribution with **this tick's** fitness delta.
+`__atomExprContrib` accumulates each expression's signed REACH output during a tick; `applyCreditAssignment`
+reads it, updates credit by `sign(contrib) · direction`, and then **clears the map.** Next tick starts
+blank.
+
+That clear encodes an assumption that is almost never true: that an atom's effect on fitness lands on the
+same tick as the atom's action. Physical actuators do not work that way. An atom that nudges a particle
+toward richer resources moves it *this* tick; the amp income that movement earns arrives *over the next
+several* ticks, through the existing `localRes → amp` economy. By the time fitness reflects the atom's
+good decision, the map has been wiped and the atom that caused it has been forgotten. The credit system
+could only ever reward *instantaneous coincidence* between an atom firing and fitness moving — never the
+delayed consequence that most real behavior actually produces. Multi-step behavior — do X now, benefit
+three ticks later — was structurally uncreditable.
+
+### The standard fix
+
+This is exactly the problem eligibility traces solve in reinforcement learning (the λ in TD(λ)). Instead
+of clearing the contribution map each tick, **decay it** (×0.6). An expression that fired keeps a
+shrinking presence in the map for the next several ticks, and on each of those ticks it goes on being
+credited or debited as fitness moves in its wake. A fire at tick T is now eligible for the fitness
+changes at T, T+1, T+2, … with geometrically decreasing persistence — so an atom whose action pays off a
+few ticks later finally receives the credit for it. Near-zero residuals are pruned (floor 0.02) so the map
+stays bounded, on top of the existing 5000-entry cap at the REACH sites.
+
+One implementation detail worth stating because it shapes the tuning: atom credit here is **sign-based** —
+any nonzero residual grants a full-strength update, not a decay-scaled one (the residual keeps the
+expression *eligible*, it doesn't scale the nudge). So the length of the eligibility window is set by how
+fast the residual prunes, not by λ scaling the magnitude. That's why the prune floor (0.02) sits well
+above zero: it deliberately keeps the delayed-credit tail to roughly a half-dozen ticks rather than
+letting a single fire stay eligible for the ~25 ticks a tiny floor would allow. Short memory, not a long
+smear.
+
+### Correctness and risk
+
+Flag off, the map clears every tick and the behavior is byte-identical to pre-#122 — same-tick-only credit,
+exactly #110–#121. The sign rule is untouched; the *only* thing that changes is how long a contribution
+stays in the map before it decays away. Extinction still clears the map (the #109/#110 discontinuity
+guard), and the no-learning early return still clears it, so the trace resets cleanly at both boundaries.
+
+The speculative edge — and #122 is squarely in the speculative half of this session — is that eligibility
+widens *what* gets credited each tick: on any given tick, every recently-active expression, not just the
+ones that fired, receives a nudge in the current fitness direction. That is the mechanism's whole purpose
+(delayed attribution) and also its risk (more expressions credited per tick means more opportunity for a
+coincidental fitness swing to smear credit across atoms that happened to be recently active but weren't
+responsible). Whether the delayed-reward signal is worth that added blur is a dynamical question the
+flag-off proof cannot settle — it is precisely the kind of call the live artwork exists to make. Ships on
+by default, short-windowed, as a bet that crediting multi-step behavior is worth more than the noise it
+admits.
+
+### Position in the arc
+
+#120 (novelty) changed the *direction* credit points; #121 (reproduction) changed how atoms are
+*generated*; #122 changes the *temporal horizon* over which credit is assigned. All three push the atom
+subsystem further from "score an instantaneous coincidence against a fixed objective" toward "a population
+that varies, explores, and learns consequences that unfold over time" — which is the shape a system has to
+have before open-endedness is even on the table.
+

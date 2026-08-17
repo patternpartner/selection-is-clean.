@@ -131,6 +131,7 @@ const __atomExprCredit=new Map(); // #111: population-wide credit-trace pool per
 let __EXPR_CREDIT_POP=true; // #118: credit EVERY expression that fired REACH this tick directly into the pool, not only germline-mirrored ones. The population authors/runs far more atom diversity than the germline; this widens the credit funnel to the whole population. When on, replaces #111's germline personal->pool blend (germline atoms are already in the contrib map). Force off with EXPR_CREDIT_POP=0
 let __ATOM_CREDIT_VERT=true; // #119: carry atom creditTrace through VERTICAL inheritance (parent->child in mutateChildGenome), the primary heritability route #110/#111 left unwired. Child atoms seed at 50% of max(parent trace, pool credit). Force off with ATOM_CREDIT_VERT=0
 let __ATOM_REPRO=true; // #121: credit-biased atom reproduction. Half of atom births local-step the highest-credit atom (uaLocalStep) instead of a fresh random draw, founding a family of variants around a proven primitive — the refinement gradient pure-random authoring lacks. Force off with ATOM_REPRO=0
+let __ATOM_ELIGIBILITY=true; // #122: eligibility traces on atom contribution. Instead of clearing __atomExprContrib each tick, DECAY it (×0.7) so an atom that fired recently keeps earning credit for fitness changes over the next few ticks — TD(λ)-style delayed-reward credit, the thing needed to learn multi-step behaviour. Force off with ATOM_ELIGIBILITY=0
 // #107: gates lazy creation of genome.uaStructBias — see the mutateGenome site (~12586) and uaGenTerm
 // (below) for what it does. Default ON, same call as #101/#102/#103: a real, reasoned lever handed to
 // the system, live, not parked behind a flag nobody would set. Force off with UA_STRUCT=0.
@@ -11168,7 +11169,24 @@ function applyCreditAssignment(){
       __atomExprCredit.set(expr,np>1?1:np<-1?-1:np);
     }
   }
-  if(__ATOM_CREDIT)__atomExprContrib.clear();
+  // #122 ELIGIBILITY TRACE. Atom credit above correlates an expression's contribution with THIS tick's
+  // fitness delta only — but an atom's action at tick T typically moves fitness at T+k. Clearing the
+  // contrib map every tick threw away that delayed reward: an atom fired, fitness responded next tick,
+  // and the responsible atom was already forgotten. Instead of clearing, DECAY the map (×0.7) so a
+  // recent fire keeps a shrinking presence for several ticks and goes on being credited (or debited) as
+  // fitness moves in its wake — the standard TD(λ) eligibility trace, the mechanism that lets credit
+  // reach multi-step behaviour rather than only instantaneous coincidence. Near-zero entries are pruned
+  // so the map stays bounded (also capped at 5000 at the REACH sites). Off => clear each tick, the exact
+  // pre-#122 same-tick-only behaviour. Note the sign rule is unchanged; only the trace's LIFETIME grows.
+  // λ=0.6 with a 0.02 prune floor gives roughly a half-dozen-tick eligibility window: because atom credit
+  // is SIGN-based (any nonzero residual grants a full-strength nudge, not a decayed one), the window is set
+  // by how fast the residual prunes, not by λ scaling the update — so the floor is deliberately well above
+  // zero to keep the delayed-credit tail short rather than letting one fire stay eligible for dozens of ticks.
+  if(__ATOM_CREDIT){
+    if(__ATOM_ELIGIBILITY){
+      for(const [k,v] of __atomExprContrib){ const nv=v*0.6; if(nv<0.02&&nv>-0.02)__atomExprContrib.delete(k); else __atomExprContrib.set(k,nv); }
+    }else __atomExprContrib.clear();
+  }
 }
 
 function runShadowSim(){
@@ -20307,6 +20325,7 @@ if(typeof globalThis!=='undefined'){
                __ATOM_CREDIT_VERT:1,                                  // #119: VERTICAL CREDIT INHERITANCE — carry atom creditTrace through parent->child cloning (mutateChildGenome), the primary heritability route #110/#111 never wired (children reset every atom to 0, discarding the parent lineage's learned evidence). Child atoms seed at 50% of max(parent's own trace, population-pool credit) — a warm start that still re-earns full credit. Aligns the vertical channel with #111's Lamarckian seeding on the birth/transfer/seed channels. Force off with ATOM_CREDIT_VERT=0
                __ATOM_NOVELTY_CREDIT:1,                               // #120: NOVELTY-BLENDED ATOM CREDIT — the OEE exploration counterpart to #110-#119's pure-fitness exploitation. Blends the population-novelty trend (#39 archive) into the DIRECTION of atom credit, so an atom driving the organism into novel territory earns partial positive credit even against a fitness dip. Atom credit only; the objective generator's own credit stays pure-fitness. Mix is the evolvable germline dial genome.atomNoveltyMix, seeded ACTIVE (0.25). Bounded [-1,1] direction so update magnitudes are unchanged; flag/gene off == pure fitness. Force off with ATOM_NOVELTY_CREDIT=0
                __ATOM_REPRO:1,                                        // #121: CREDIT-BIASED ATOM REPRODUCTION — half of atom births local-step (uaLocalStep, #103's small-move operator) the highest-credit atom in the bank instead of drawing a fresh random expression, founding a family of near-variants around a proven primitive. Gives proven structure a refinement GRADIENT — the neighborhood-search pure-random authoring lacks — while the other half of births keeps exploring fresh. creditTrace seeds from the parent at 50%. Off / no proven atom yet => fresh authoring exactly as before. Force off with ATOM_REPRO=0
+               __ATOM_ELIGIBILITY:1,                                  // #122: ELIGIBILITY TRACES on atom credit — instead of clearing the contribution map each tick, decay it (×0.6, ~half-dozen-tick window) so an atom that fired recently keeps earning credit as fitness moves in its WAKE. TD(λ)-style delayed-reward attribution, the mechanism needed to credit multi-step behaviour rather than only same-tick coincidence. Sign rule unchanged; only the trace's lifetime grows. Off => same-tick-only, byte-identical to pre-#122. Force off with ATOM_ELIGIBILITY=0
                __UA_INHERIT:1,                                        // #112: SUBTREE INHERITANCE — the grammar's leaf generator occasionally splices a whole proven expression from the credit pool instead of emitting a fresh terminal, weighted by positive pool credit. Proven building blocks propagate as building blocks; genetic programming's crossover, but the "parents" are population-wide, credit-ranked, and content-addressed. Depth-tapered probability (12%/(1+depth)) and 120-char size guard prevent runaway string growth. Force off with UA_INHERIT=0
                __ATOM_NFD:1,                                          // #114: NEGATIVE FREQUENCY-DEPENDENCE for the atom bank — Red Queen #28 applied to CONTENT. A used-but-rare expression earns up to 0.4 overwrite protection; the population-dominant expression gets none and must survive on credit alone. Quality-diversity for the atom replicator: keep the good (credit) AND the different (rarity), combined via max. Directly counters the monoculture-collapse risk #112 introduces. Force off with ATOM_NFD=0
                __ATOM_OBJ:1,                                          // #115: ATOM-AWARE OBJECTIVES — expose the atom subsystem to the objective-generator's register bank (S16=REACH firing rate/particle, S17=mean germline atom credit), grown 16->18. The mature Pe22-25 sensor VM can now AUTHOR fitness dimensions that value atom behaviour and promote them to real selection pressures via the existing realWeight-earns-participation machinery (new objectives enter at realWeight 0, rise only on fitness correlation — the anti-wireheading guard already there). Connects the two most sophisticated subsystems: endogenous objective generation that can finally see, and reward, what the atoms do. Force off with ATOM_OBJ=0
@@ -20329,6 +20348,7 @@ __EXPR_CREDIT_POP=(typeof globalThis==='undefined')||((globalThis.__EXPR_CREDIT_
 __ATOM_CREDIT_VERT=(typeof globalThis==='undefined')||((globalThis.__ATOM_CREDIT_VERT??1)|0)!==0; // #119: default ON. Force off with ATOM_CREDIT_VERT=0
 __ATOM_NOVELTY_CREDIT=(typeof globalThis==='undefined')||((globalThis.__ATOM_NOVELTY_CREDIT??1)|0)!==0; // #120: default ON. Force off with ATOM_NOVELTY_CREDIT=0
 __ATOM_REPRO=(typeof globalThis==='undefined')||((globalThis.__ATOM_REPRO??1)|0)!==0; // #121: default ON. Force off with ATOM_REPRO=0
+__ATOM_ELIGIBILITY=(typeof globalThis==='undefined')||((globalThis.__ATOM_ELIGIBILITY??1)|0)!==0; // #122: default ON. Force off with ATOM_ELIGIBILITY=0
 __UA_INHERIT=(typeof globalThis==='undefined')||((globalThis.__UA_INHERIT??1)|0)!==0; // #112: default ON. Force off with UA_INHERIT=0
 __ATOM_NFD=(typeof globalThis==='undefined')||((globalThis.__ATOM_NFD??1)|0)!==0; // #114: default ON. Force off with ATOM_NFD=0
 __ATOM_OBJ=(typeof globalThis==='undefined')||((globalThis.__ATOM_OBJ??1)|0)!==0; // #115: default ON. Force off with ATOM_OBJ=0
