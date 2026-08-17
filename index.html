@@ -133,6 +133,7 @@ let __ATOM_CREDIT_VERT=true; // #119: carry atom creditTrace through VERTICAL in
 let __ATOM_REPRO=true; // #121: credit-biased atom reproduction. Half of atom births local-step the highest-credit atom (uaLocalStep) instead of a fresh random draw, founding a family of variants around a proven primitive — the refinement gradient pure-random authoring lacks. Force off with ATOM_REPRO=0
 let __ATOM_ELIGIBILITY=true; // #122: eligibility traces on atom contribution. Instead of clearing __atomExprContrib each tick, DECAY it (×0.7) so an atom that fired recently keeps earning credit for fitness changes over the next few ticks — TD(λ)-style delayed-reward credit, the thing needed to learn multi-step behaviour. Force off with ATOM_ELIGIBILITY=0
 let __ATOM_RECOMB=true; // #123: atom recombination. A fraction of credit-biased births (#121) COMBINE the two highest-credit atoms into a composite (A) op (B) instead of local-stepping one — crossover at the atom level, the complexity-jump source point mutation can't supply (#52). Length-capped at 160. Force off with ATOM_RECOMB=0
+let __DIMS_ATOM=true; // #125: MICRO->MACRO — a proven, diverse atom bank (credit×diversity EMAs) adds a small capped lift toward earning a new trait DIMENSION in the #25 ratchet, but only when ecological occupancy is already ≥60% of threshold (tips a near-miss, never bootstraps from monoculture). Atom-level open-endedness helping the world earn macro complexity. Force off with DIMS_ATOM=0
 // #107: gates lazy creation of genome.uaStructBias — see the mutateGenome site (~12586) and uaGenTerm
 // (below) for what it does. Default ON, same call as #101/#102/#103: a real, reasoned lever handed to
 // the system, live, not parked behind a flag nobody would set. Force off with UA_STRUCT=0.
@@ -20355,6 +20356,7 @@ if(typeof globalThis!=='undefined'){
                __ATOM_REPRO:1,                                        // #121: CREDIT-BIASED ATOM REPRODUCTION — half of atom births local-step (uaLocalStep, #103's small-move operator) the highest-credit atom in the bank instead of drawing a fresh random expression, founding a family of near-variants around a proven primitive. Gives proven structure a refinement GRADIENT — the neighborhood-search pure-random authoring lacks — while the other half of births keeps exploring fresh. creditTrace seeds from the parent at 50%. Off / no proven atom yet => fresh authoring exactly as before. Force off with ATOM_REPRO=0
                __ATOM_ELIGIBILITY:1,                                  // #122: ELIGIBILITY TRACES on atom credit — instead of clearing the contribution map each tick, decay it (×0.6, ~half-dozen-tick window) so an atom that fired recently keeps earning credit as fitness moves in its WAKE. TD(λ)-style delayed-reward attribution, the mechanism needed to credit multi-step behaviour rather than only same-tick coincidence. Sign rule unchanged; only the trace's lifetime grows. Off => same-tick-only, byte-identical to pre-#122. Force off with ATOM_ELIGIBILITY=0
                __ATOM_RECOMB:1,                                       // #123: ATOM RECOMBINATION — a fraction of #121's credit-biased births COMBINE the two highest-credit atoms into a composite (A) op (B) instead of local-stepping one. Point mutation only refines within a structure; recombination splices two proven HISTORIES — the complexity-jump source #52 says mutation cannot supply — assembling a bigger primitive from two that already work. Length-capped at 160 (the sanitize slice, so composites never truncate to invalid JS; also bounds runaway growth). creditTrace seeds from max(parents)*0.5. Force off with ATOM_RECOMB=0
+               __DIMS_ATOM:1,                                         // #125: ATOM-EARNED DIMENSIONALITY (micro->macro OEE) — a proven, diverse atom bank adds a small capped lift toward earning a new trait axis in the #25 dimensionality ratchet, but ONLY when ecological occupancy is already ≥60% of threshold (tips a near-miss, never bootstraps from monoculture) and riding atom CREDIT not raw diversity (so #121/#123 churn can't inflate it). Preserves #25's earned-growth invariant while letting atom-level open-endedness help the WORLD earn macro complexity. Force off with DIMS_ATOM=0
                __UA_INHERIT:1,                                        // #112: SUBTREE INHERITANCE — the grammar's leaf generator occasionally splices a whole proven expression from the credit pool instead of emitting a fresh terminal, weighted by positive pool credit. Proven building blocks propagate as building blocks; genetic programming's crossover, but the "parents" are population-wide, credit-ranked, and content-addressed. Depth-tapered probability (12%/(1+depth)) and 120-char size guard prevent runaway string growth. Force off with UA_INHERIT=0
                __ATOM_NFD:1,                                          // #114: NEGATIVE FREQUENCY-DEPENDENCE for the atom bank — Red Queen #28 applied to CONTENT. A used-but-rare expression earns up to 0.4 overwrite protection; the population-dominant expression gets none and must survive on credit alone. Quality-diversity for the atom replicator: keep the good (credit) AND the different (rarity), combined via max. Directly counters the monoculture-collapse risk #112 introduces. Force off with ATOM_NFD=0
                __ATOM_OBJ:1,                                          // #115/#124: ATOM-AWARE OBJECTIVES — expose the atom subsystem to the objective-generator's register bank (S16=REACH firing rate/particle, S17=mean germline atom credit, S18=atom-content diversity #124), grown 16->19. The mature Pe22-25 sensor VM can now AUTHOR fitness dimensions that value atom behaviour and promote them to real selection pressures via the existing realWeight-earns-participation machinery (new objectives enter at realWeight 0, rise only on fitness correlation — the anti-wireheading guard already there). Connects the two most sophisticated subsystems: endogenous objective generation that can finally see, and reward, what the atoms do. Force off with ATOM_OBJ=0
@@ -20379,6 +20381,7 @@ __ATOM_NOVELTY_CREDIT=(typeof globalThis==='undefined')||((globalThis.__ATOM_NOV
 __ATOM_REPRO=(typeof globalThis==='undefined')||((globalThis.__ATOM_REPRO??1)|0)!==0; // #121: default ON. Force off with ATOM_REPRO=0
 __ATOM_ELIGIBILITY=(typeof globalThis==='undefined')||((globalThis.__ATOM_ELIGIBILITY??1)|0)!==0; // #122: default ON. Force off with ATOM_ELIGIBILITY=0
 __ATOM_RECOMB=(typeof globalThis==='undefined')||((globalThis.__ATOM_RECOMB??1)|0)!==0; // #123: default ON. Force off with ATOM_RECOMB=0
+__DIMS_ATOM=(typeof globalThis==='undefined')||((globalThis.__DIMS_ATOM??1)|0)!==0; // #125: default ON. Force off with DIMS_ATOM=0
 __UA_INHERIT=(typeof globalThis==='undefined')||((globalThis.__UA_INHERIT??1)|0)!==0; // #112: default ON. Force off with UA_INHERIT=0
 __ATOM_NFD=(typeof globalThis==='undefined')||((globalThis.__ATOM_NFD??1)|0)!==0; // #114: default ON. Force off with ATOM_NFD=0
 __ATOM_OBJ=(typeof globalThis==='undefined')||((globalThis.__ATOM_OBJ??1)|0)!==0; // #115: default ON. Force off with ATOM_OBJ=0
@@ -20962,7 +20965,20 @@ function loop(){
   // success buys more room, more room is immediately ecological — is the open-ended board that grows itself.
   if(typeof globalThis!=='undefined'&&(globalThis.__DIMS_SAT|0)>0){ const _si=globalThis.__DIMS_SAT|0,
       _cap=Math.min(DIMS_MAX,(globalThis.__DIMS_SAT_CAP|0)||9), _thr=(globalThis.__DIMS_SAT_OCC|0)||(genome.dimsSatThresh|0)||24; // threshold evolvable (#35)
-    if(tick>1200&&tick%_si===0&&DIMS<_cap&&nicheOccupancy()>=_thr) setDims(DIMS+1); }
+    if(tick>1200&&tick%_si===0&&DIMS<_cap){
+      let _occ=nicheOccupancy();
+      // #125: ATOM-EARNED DIMENSIONALITY — the micro→macro OEE wire. #25 grows an axis only when ECOLOGICAL
+      // diversity is already rich (growth earned, never premature — the #16 blind-clock failure it fixed).
+      // #125 lets the atom subsystem's own open-endedness help EARN that growth: a PROVEN-and-DIVERSE atom
+      // bank (credit×diversity EMAs from the #115/#124 coupling) adds a small, capped lift to occupancy.
+      // Deliberately conservative to preserve #25's hard-won invariant — the lift applies ONLY when
+      // ecological occupancy is already ≥60% of threshold (atoms TIP a near-miss, never bootstrap growth
+      // from a monoculture), is capped at 20% of threshold, and rides atom CREDIT not raw diversity, so
+      // #121/#123's expression churn cannot inflate it — only atoms actually helping fitness count. Atom-
+      // level novelty thereby helps the WORLD earn a new dimension of complexity. Off (DIMS_ATOM=0) => pure #25.
+      if(__DIMS_ATOM && _occ>=_thr*0.6){ _occ += Math.min(_thr*0.2, __atomCreditEMA*__atomDivEMA*3); }
+      if(_occ>=_thr) setDims(DIMS+1);
+    } }
   flushNetworkEvents();
   smx+=(mx-smx)*.05;smy+=(my-smy)*.05;
   if(pulling){pStr=Math.min(pStr+.02,1);pDur++}else pStr*=.92;

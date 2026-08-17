@@ -10275,3 +10275,71 @@ produces. Atom diversity is now something the system can generate (#121/#123), p
 (#124), and — if it pays — deliberately pursue. The engine, and the reason to run it, are both the
 system's own.
 
+---
+
+## #125 — ATOM-EARNED DIMENSIONALITY: the micro→macro wire
+
+### The move #110–#124 never made
+
+Fifteen swings, and every one of them lived *inside* the atom subsystem or its immediate coupling to the
+objective generator. That was the right place to work — it is where the project's own history located the
+bottleneck — but it left the largest question of the whole session untouched: **does any of this matter to
+the world?** An atom bank that explores, varies, remembers, builds, and is valued by its own objectives is
+a beautiful engine, but if the organism and ecosystem around it cannot feel it, it is an engine turning a
+shaft connected to nothing. Open-endedness is a claim about the *system*, not about one of its
+subsystems.
+
+The project already has a macro-level open-endedness engine: the #25 dimensionality ratchet. Every 3000
+ticks it grows a new heritable trait axis — literally expands the dimensionality of the space life
+evolves in — but only when ecological diversity has already earned it (distinct occupied niche-cells past
+a threshold). The notes are rightly proud of that gate: it is what fixed #16's blind-clock failure, where
+axes were injected whether or not the board was full, washing out selection. Growth *earned*, never
+premature. That is the macro engine. Until now it could only be earned one way: by ecological occupancy.
+
+### The wire, and why it's conservative
+
+#125 lets the atom subsystem's open-endedness become a *second* way to earn macro growth — carefully, so
+it strengthens the ratchet's logic rather than breaking it. When the growth check fires, a **proven and
+diverse** atom bank (the product of the credit and diversity EMAs already maintained for #115/#124) adds a
+small lift to the occupancy count. Three guards keep it honest, and they are the whole design:
+
+1. **It can only tip a near-miss.** The lift applies only when ecological occupancy is already ≥ 60% of
+   threshold. In a monoculture — exactly the state #25's gate exists to refuse growth in — occupancy is
+   low, the lift never engages, and the ratchet behaves precisely as before. Atoms cannot bootstrap a new
+   dimension out of an empty board; they can only help a board that is *already most of the way there*
+   cross the line.
+2. **It is capped at 20% of threshold.** Even a maximally proven, maximally diverse atom bank shifts the
+   bar by at most a fifth. The ecological signal remains the overwhelming majority of what earns growth.
+3. **It rides atom CREDIT, not raw diversity.** This matters specifically because of #121 and #123: those
+   swings deliberately increase expression *churn*, so raw atom diversity can be high even when nothing is
+   working. Gating the lift on credit×diversity means only atoms that are *actually helping fitness*
+   contribute — churn alone earns nothing.
+
+Together these make #125 an *extension* of #25's earned-growth invariant, not a violation of it. This is
+the deliberate contrast with the swing I ruled out this session — making morphology matter — which would
+have destroyed a scientific control (the render channel's cargo-without-a-channel null). #125 touches a
+carefully-tuned subsystem too, but it preserves that subsystem's hard-won property instead of overturning
+it: growth is still earned, still refused in monoculture, still ecologically dominated — with one new,
+bounded, quality-gated path to earning it.
+
+### What it means if it fires
+
+When it does engage, the causal story is the one the whole session was reaching for: atoms author a
+diverse repertoire of behaviors that genuinely help (micro-level open-endedness), the ecosystem is already
+rich, and *together* they tip the world into growing a new dimension of trait space — which the all-dims
+niche geometry then makes selected-from-birth, opening room the next round of atom evolution can explore.
+Success at the smallest scale buys complexity at the largest, and that new complexity is immediately a
+place for more small-scale success to happen. That feedback — micro novelty earning macro room, macro room
+enabling micro novelty — is what an open-ended system is *made of*, and #125 is the single wire that lets
+the two engines this session built and inherited actually turn each other.
+
+### Honest status
+
+Flag off (`DIMS_ATOM=0`), the ratchet is pure #25. The construction is conservative by the three guards
+above and reads only EMAs that already exist. But this is the swing whose *effect* is hardest to reason
+about from the armchair, because it couples two complex subsystems across scales, and it ships — like
+everything since #110's clean boot — unrun. Whether the micro→macro wire produces a compounding climb or
+just occasionally nudges a dimension into being a little early is exactly the kind of whole-system question
+that only the running artwork can answer. It is, fittingly, the most OEE-shaped bet of the session, and the
+least provable without pressing play.
+
