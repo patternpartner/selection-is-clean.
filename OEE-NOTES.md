@@ -10154,3 +10154,70 @@ subsystem further from "score an instantaneous coincidence against a fixed objec
 that varies, explores, and learns consequences that unfold over time" — which is the shape a system has to
 have before open-endedness is even on the table.
 
+---
+
+## #123 — ATOM RECOMBINATION: splice two proven histories into one
+
+### What local variation can't do
+
+#121 gave a proven atom a family — near-variants made by local-stepping the best-credit atom. That is
+asexual reproduction with mutation, and it does one thing well: it *refines* a structure by searching its
+immediate neighborhood. But it can only ever refine *within* a structure. A local step to `(a*b)+cr` can
+jitter the constant or swap a variable; it cannot turn it into `((a*b)+cr) * (rd - nb)`. The one operation
+that assembles a *bigger* thing out of two smaller ones — recombination — was still missing from the atom
+bank entirely.
+
+This is not a minor omission, and the notebook has said so repeatedly in a different context. Every time
+this project has reached for the source of genuine novelty jumps, it has landed on the same answer:
+crossover of two distinct histories. #52's cross-lineage gene flow is annotated "two distinct histories
+spliced, a novelty source point mutation cannot supply"; #17 calls crossover "gene flow." The VM programs
+recombine, the lineages recombine — but the atoms, the one replicator this whole session has been trying
+to make matter, only ever mutated. They had asexual reproduction (#121) and no sex.
+
+### The mechanism
+
+Riding #121's machinery: the birth path already finds the highest-credit atom to reproduce. #123 extends
+the scan to find the top *two*, and a fraction (0.4) of credit-biased births now build a composite
+`(A) op (B)` from the two highest-credit atoms — a random arithmetic operator joining two expressions that
+have *each already proven themselves*. The child's `creditTrace` seeds from `max(parents)·0.5`. The other
+births stay local-step (refine) or fresh random (explore), so recombination is a third generative mode
+alongside the two #121 established, not a replacement.
+
+It is length-capped at 160 characters — deliberately the exact width of the `sanitizeGenome` slice, so a
+composite can never be truncated into unbalanced, invalid JS. That cap does double duty: it also bounds
+runaway growth, because a composite that reaches the ceiling can no longer be a recombination parent (the
+candidate would exceed 160 and fall back to local-step), so complexity climbs by assembling proven parts
+but plateaus at a bounded size rather than ballooning into megabyte expressions. Growth with a ceiling,
+which is the honest shape of every other bounded-but-open mechanism in this file.
+
+### Why it matters for open-endedness
+
+Open-endedness is not just sustained novelty; it is sustained *cumulative* novelty — new complexity built
+on top of old complexity, not a treadmill of equal-sized random variants. Mutation gives you a treadmill.
+Recombination of proven parts gives you a ladder: two atoms that each learned to do something useful can be
+fused into one that does both, or something neither did alone, and if the fusion works the credit
+machinery (#110–#122) keeps and propagates it, making it available as a part for the *next* fusion. That
+is the compositional ratchet major transitions run on, operating here at the smallest replicator in the
+system. #121 lets the bank climb a hill; #123 lets it stack hills.
+
+### Correctness and risk
+
+Flag off, or with fewer than two proven atoms, the birth path is exactly #121 (which off *its* flag is
+exactly pre-#121). A composite is always two already-valid expressions joined by an operator and wrapped
+in parentheses — syntactically valid by construction — and the 160 cap guarantees it survives sanitize
+intact, so no new failure mode is introduced at compile. The speculative risk is dynamical and specific:
+recombination could concentrate the bank around fusions of the current top two atoms faster than #114's
+frequency-dependence and #120's novelty credit keep it diverse, collapsing the very variety it's meant to
+compound. That balance — cumulative assembly versus premature convergence on the incumbent pair — is the
+live question, and like the rest of #120–#123 it ships on by default, bounded and reversible, for the
+artwork to answer.
+
+### The speculative arc, #120–#123
+
+Four swings, one thesis: make the atom bank a real evolutionary population. #120 gave it exploration
+(novelty credit), #121 heritable local variation (reproduction), #122 memory of delayed consequences
+(eligibility), and #123 recombination (cumulative assembly). Together they are the difference between a
+credit-scored bag of random guesses and a system that can, at least in principle, climb — vary, select,
+remember, and *build*. Whether it does is the one thing none of this can prove from the armchair; that
+verdict has only ever lived in the running artwork, and now there is a great deal more for it to run.
+
