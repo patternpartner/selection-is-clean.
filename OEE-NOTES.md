@@ -9963,3 +9963,75 @@ heritability graph, with no channel silently zeroing the signal the rest of the 
 building. As with the rest of this session's swings it ships unmeasured and correct in the flag-off limit;
 the live artwork is where continuity of credit across generations would actually show its effect.
 
+---
+
+## #120 — NOVELTY-BLENDED CREDIT: atoms that explore, not just exploit
+
+### The exploitation ceiling the whole arc was sitting under
+
+#110–#119 built a complete, continuous credit economy for atoms — routing, per-lineage credit, a
+population pool, inheritance both horizontal and vertical, diversity protection, evolvable authority. And
+every last piece of it points the same direction: **toward current fitness.** The credit sign is
+`sign(contribution) · sign(fitnessΔ)` everywhere. That is exploitation, top to bottom. It makes atoms
+good at what already works — which is exactly the process that, left alone, converges and stops. An
+optimizer with only an exploitation signal is not an open-ended system; it is a hill-climber that halts
+at the first peak it can hold.
+
+The OEE literature's answer to this is novelty search (Lehman & Stanley): reward behavioral divergence,
+not just objective performance, so the system keeps generating new things whether or not they immediately
+pay. This project already runs that idea at the trait level — the #39 historical novelty archive, with its
+receding-target gradient that "cannot saturate." But the atom credit channel, the newest and most
+elaborate selection surface in the system, had no access to it. Atoms were judged purely on fitness while
+the organism around them was being partly judged on novelty. #120 closes that mismatch.
+
+### The mechanism
+
+The #39 archive already computes `mNov` each cadence — the population's mean novelty, its mean
+trait-distance to the nearest archive entries. #120 records the **sign of that mean's trend** (`__novSign`
+∈ {−1, 0, +1}: is the population, on average, moving into more archive-novel territory than last
+cadence?) and holds it between cadences. Then, in `applyCreditAssignment`, the fitness direction that
+atom credit uses is blended with that novelty direction:
+
+```
+atomDir = (1 − mix)·sign(fitnessΔ) + mix·novSign
+```
+
+`mix` is `genome.atomNoveltyMix`, an evolvable germline dial seeded **active at 0.25** — a live
+novelty-seeking bet, not a capability parked at zero — and free to evolve up (a lineage that thrives by
+chasing novel behavior) or down (one that needs to lock in a fitness peak). Because `atomDir` is a blend
+of two ±1 signals it stays in [−1, 1], so every per-atom and pool update keeps the exact magnitude it had
+in #110/#118 — **only the direction shifts.** The concrete new behavior: an atom whose output co-moves
+with *rising novelty but falling fitness* — an explorer stepping off the current peak into new territory —
+now earns *partial positive* credit where before it earned full negative. That single sign change is the
+difference between a system that punishes all exploration and one that funds it.
+
+### Deliberately scoped to atoms
+
+The blend touches **atom credit only.** The objective generator's own credit — per-sensor `realWeight`,
+per-axis `objWeights` — stays pure fitness, untouched. Blending novelty into what the organism *values*
+(as opposed to how it credits its atoms) would be a different and much riskier change: it risks the
+system rewarding itself for novelty-by-fiat, the exact inflation trap the #38/#39 notes fought. Keeping
+#120 on the atom channel means novelty shapes which *behaviors atoms are encouraged to author*, while the
+organism's actual objectives remain earned against real fitness. Exploration in the generator, discipline
+in the objective.
+
+### Correctness and the honest risk
+
+The control limits are exact: with the flag off, the gene at 0, or no novelty trend yet
+(`__novSign === 0`), `atomDir` reduces to `sign(fitnessΔ)` and #110/#118 are recovered byte-for-byte. The
+update magnitudes are provably unchanged (blend of unit signs). The gene is serialized, deserialized,
+sanitized, and mutated exactly like #117's `reachGain`. So the *construction* is as safe as the earlier
+swings. What is genuinely less certain — and this is the speculative edge, named plainly — is the
+*dynamics*: novelty-blended credit is the first swing this session that deliberately points the credit
+signal somewhere other than fitness, and whether that produces open-ended exploration or just noisier
+selection is a real question no flag-off proof can answer. It is exactly the kind of call the notebook has
+always said only the live artwork can make, and it ships as a bet, seeded active, for that live test.
+
+### Position in the arc
+
+#110–#119 are the exploitation half of an open-ended engine: everything that makes atoms good at what
+works and propagates it. #120 is the exploration half, drawn from the project's own proven novelty engine
+rather than bolted on: it funds atoms that leave the peak. An open-ended system needs both, in tension,
+with the balance itself under selection (`atomNoveltyMix`). With #120 the atom subsystem finally has both
+hands — and the dial that sets how hard each one pulls is the system's to turn, not mine.
+

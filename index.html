@@ -833,6 +833,8 @@ let __ATOM_OBJ=true; // #115: expose atom-system activity to the objective-gener
 let __reachFiresPrev=0, __reachRateEMA=0, __atomCreditEMA=0; // #115: EMAs feeding S16 (REACH firing rate/particle) and S17 (mean positive germline atom credit); advanced once/tick on the real sensor pass
 let __ATOM_FRSENSE=true; // #116: give atoms a live sense of the ORGANISM's fitness trajectory (the `fr` grammar variable). cr (own credit) is a slow learned "am I generally helpful"; fr is the fast "is the whole organism winning right now", so authored behaviour can respond to the organism's condition. Force off with ATOM_FRSENSE=0
 let __orgFitTraj=0; // #116: tanh-bounded organism fitness trajectory (currentFitness - prevSmoothed), updated once/tick in applyCreditAssignment; fed to atoms as `fr`. Stays 0 when __ATOM_FRSENSE is off
+let __ATOM_NOVELTY_CREDIT=true; // #120: blend the NOVELTY trend into atom credit direction — atoms driving the organism toward novel territory (per the #39 archive) earn credit even against a fitness dip. The OEE exploration counterpart to the pure-fitness exploitation of #110-#119. Mix is the evolvable germline dial genome.atomNoveltyMix, seeded ACTIVE (0.25). Force off with ATOM_NOVELTY_CREDIT=0
+let __novSign=0, __prevMNov=0; // #120: sign of the recent population-mean-novelty trend (updated each NOV_CADENCE in the archive block) and its previous value; held between cadences and blended into atom credit every tick
 let __ATOM_DURABLE=true; // +DURABILITY: preserve authored call-sites across self-adoption (resolved after LIVE registry)
 // ═══ SWING #41: MEME TRANSFER — authored atoms as a SECOND replicator, independent of genetic reproduction ═══
 // Every prior route an authored behaviour spreads by is VERTICAL (parent→child, selfLearnFromBest's carry,
@@ -6675,6 +6677,7 @@ function encodeGenome(){
     aup:genome.atomUseProtect===undefined?undefined:+(genome.atomUseProtect).toFixed(4), // #101: use-rank overwrite protection
     usb:genome.uaStructBias===undefined?undefined:+(genome.uaStructBias).toFixed(4), // #107: atom-grammar structural-branch bias (omitted if never created)
     rg:genome.reachGain===undefined?undefined:+(genome.reachGain).toFixed(4), // #117: authored-atom actuator authority (omitted if never created)
+    anm:genome.atomNoveltyMix===undefined?undefined:+(genome.atomNoveltyMix).toFixed(4), // #120: novelty-vs-fitness weight on atom credit (omitted if never created)
     tmr:+(genome.typeMutRate||0.02).toFixed(4), // UNLOCKED #7a caste-innovation rate
     td: genome.tendDims|0,
     oe:[genome.opnovStrength,genome.nicheBuildRate,genome.rqRate,genome.dimsSatThresh,genome.novStrength].map(v=>+(+v).toPrecision(4)), // #35 evolvable open-endedness engine dials (+ #39 novStrength at [4])
@@ -6952,6 +6955,7 @@ function decodeGenome(data){
     if(typeof g.aup==='number')genome.atomUseProtect=+g.aup;     // #101
     if(typeof g.usb==='number')genome.uaStructBias=+g.usb;       // #107
     if(typeof g.rg==='number')genome.reachGain=+g.rg;            // #117
+    if(typeof g.anm==='number')genome.atomNoveltyMix=+g.anm;     // #120
     if(typeof g.tmr==='number')genome.typeMutRate=g.tmr;   // UNLOCKED #7a
     if(g.ua)genome.userAtoms=g.ua.map(a=>({expression:a.expression,compiled:null,failed:!!a.failed,uses:a.uses|0,age:a.age|0,alienHits:a.alienHits|0,alienAttempts:a.alienAttempts|0}));
     if(typeof g.td==='number') genome.tendDims=__cl(g.td|0,2,DIMS_MAX);
@@ -7162,6 +7166,7 @@ function sanitizeGenome(){
   if(genome.intStepBias!==undefined) genome.intStepBias =__cl(finiteOr(genome.intStepBias,0),0,1);                            // #97
   if(genome.atomUseProtect!==undefined)genome.atomUseProtect=__cl(finiteOr(genome.atomUseProtect,0),0,1);       // #101
   if(genome.reachGain!==undefined)   genome.reachGain=__cl(finiteOr(genome.reachGain,0.2),0,1);                 // #117
+  if(genome.atomNoveltyMix!==undefined)genome.atomNoveltyMix=__cl(finiteOr(genome.atomNoveltyMix,0.25),0,1);   // #120
   genome.typeMutRate=__cl(finiteOr(genome.typeMutRate,0.02),0,1);                          // UNLOCKED #7a
   genome.fitnessSensors=Array.isArray(genome.fitnessSensors)?genome.fitnessSensors.filter(s=>s&&Array.isArray(s.program)).map(s=>({program:s.program.map(cleanInstruction),weight:finiteOr(s.weight,0),realWeight:finiteOr(s.realWeight,0),creditTrace:finiteOr(s.creditTrace,0),lastEmit:finiteOr(s.lastEmit,0),prevEmit:finiteOr(s.prevEmit,0)})):[{program:[[2,5,6,1.0],[4,6,0,1.0]],weight:0.1,realWeight:0,creditTrace:0,lastEmit:0,prevEmit:0}];
   if(genome.fitnessSensors.length===0)genome.fitnessSensors=[{program:[[2,5,6,1.0],[4,6,0,1.0]],weight:0.1,realWeight:0,creditTrace:0,lastEmit:0,prevEmit:0}];
@@ -11015,6 +11020,17 @@ function applyCreditAssignment(){
   // Without this, sensors get random updates during quiescent periods.
   const fitnessActive=Math.abs(df)>1e-5;
   const fSign=df>0?1:df<0?-1:0;
+  // #120: novelty-blended credit DIRECTION for ATOMS ONLY. The objective-generator credit below
+  // (per-sensor realWeight, per-axis objWeights) stays PURE fitness — blending novelty into what the
+  // organism VALUES would be a different, riskier change. This blends the held population-novelty trend
+  // sign (__novSign, updated each NOV_CADENCE) into the fitness-direction sign that atom credit uses, by
+  // an evolvable germline mix seeded ACTIVE (0.25). Result stays in [-1,1] (blend of two ±1 signals), so
+  // the per-atom / pool update magnitudes are unchanged — only their DIRECTION shifts. When the mix is 0
+  // (gene off / flag off) or there is no novelty trend yet (__novSign===0), this is exactly fSign, so the
+  // #110/#118 behaviour is recovered byte-for-byte. An atom co-moving with rising novelty but falling
+  // fitness now earns partial POSITIVE credit instead of full negative — the exploration the arc lacked.
+  const _novMix=__ATOM_NOVELTY_CREDIT?__cl(finiteOr(genome.atomNoveltyMix,0.25),0,1):0;
+  const _atomDir=(_novMix>0&&__novSign!==0)?((1-_novMix)*fSign+_novMix*__novSign):fSign;
 
   // --- Per-sensor credit on realWeight ---
   // Sensors that move with fitness gain real-fitness participation; sensors
@@ -11115,7 +11131,7 @@ function applyCreditAssignment(){
       const contrib=__atomExprContrib.get(ua.expression);
       if(contrib===undefined||contrib===0)continue;
       const cSign=contrib>0?1:-1;
-      const ct=((ua.creditTrace||0)*0.99)+cSign*fSign*0.01;
+      const ct=((ua.creditTrace||0)*0.99)+cSign*_atomDir*0.01; // #120: novelty-blended direction (was fSign)
       ua.creditTrace=ct>1?1:ct<-1?-1:ct;
       // #111: bleed the personal trace into the population pool at 5% of the personal rate,
       // so pool credit converges slowly across many lineages and doesn't spike from one lineage's
@@ -11147,7 +11163,7 @@ function applyCreditAssignment(){
       if(!expr||contrib===0)continue;
       const cSign=contrib>0?1:-1;
       const p=__atomExprCredit.get(expr)||0;
-      const np=p*0.999+cSign*fSign*0.001;
+      const np=p*0.999+cSign*_atomDir*0.001; // #120: novelty-blended direction (was fSign)
       __atomExprCredit.set(expr,np>1?1:np<-1?-1:np);
     }
   }
@@ -12796,6 +12812,10 @@ function mutateGenome(){
   // gene tests: atom neutrality across the #80-#109 arc may be partly a gain capped too low by hand to
   // ever move fitness detectably — so hand the ceiling to selection instead of guessing it.
   if(__REACH_GAIN)   genome.reachGain=__cl(maybe(finiteOr(genome.reachGain,0.2),0,1,0.03),0,1);                     // #117: authored-atom actuator authority — the system's call, not mine
+  // #120: how much the NOVELTY trend, versus pure fitness, shapes atom credit. Seeded ACTIVE at 0.25 (a
+  // live novelty-seeking bet, not a capability parked at 0), evolving in [0,1] — a lineage that thrives
+  // by chasing novel behaviour can turn it up; one that needs to lock in a fitness peak can turn it down.
+  if(__ATOM_NOVELTY_CREDIT)genome.atomNoveltyMix=__cl(maybe(finiteOr(genome.atomNoveltyMix,0.25),0,1,0.03),0,1); // #120: novelty-vs-fitness weight on atom credit — the system's call
   genome.metabolicCost=__cl(maybe(genome.metabolicCost,0.000002,0.0002,0.00002),0.000002,0.0002); // #2 energy economy: no free lunch — cost stays positive (the negative-drift hole that euthanised selection is closed)
 
   // HGT parameter evolution
@@ -20260,6 +20280,7 @@ if(typeof globalThis!=='undefined'){
                __EXPR_CREDIT:1,                                       // #111: POPULATION-LEVEL CREDIT POOL — expression-keyed credit trace shared across all lineages, blended slowly from personal traces. An expression proven anywhere protects every carrier. New atoms (birth, meme-transfer, mutation-authoring) seed their personal creditTrace at 50% of the pool value, so re-authoring a proven expression doesn't restart from zero. Lamarckian selection at the expression level, using the same expression-identity bridge #102 established. Force off with EXPR_CREDIT=0
                __EXPR_CREDIT_POP:1,                                   // #118: POPULATION CREDIT FUNNEL — credit EVERY expression that fired REACH this tick directly into the pool, not only germline-mirrored ones. The population authors/runs vastly more atom diversity than the tiny germline bank, but until now a population atom's REACH contribution was discarded unless the germline carried the same string. Widens the funnel to the whole population (same sign(contrib)*fSign rule as #110, slow rate); replaces #111's germline-only blend when on. Force off with EXPR_CREDIT_POP=0
                __ATOM_CREDIT_VERT:1,                                  // #119: VERTICAL CREDIT INHERITANCE — carry atom creditTrace through parent->child cloning (mutateChildGenome), the primary heritability route #110/#111 never wired (children reset every atom to 0, discarding the parent lineage's learned evidence). Child atoms seed at 50% of max(parent's own trace, population-pool credit) — a warm start that still re-earns full credit. Aligns the vertical channel with #111's Lamarckian seeding on the birth/transfer/seed channels. Force off with ATOM_CREDIT_VERT=0
+               __ATOM_NOVELTY_CREDIT:1,                               // #120: NOVELTY-BLENDED ATOM CREDIT — the OEE exploration counterpart to #110-#119's pure-fitness exploitation. Blends the population-novelty trend (#39 archive) into the DIRECTION of atom credit, so an atom driving the organism into novel territory earns partial positive credit even against a fitness dip. Atom credit only; the objective generator's own credit stays pure-fitness. Mix is the evolvable germline dial genome.atomNoveltyMix, seeded ACTIVE (0.25). Bounded [-1,1] direction so update magnitudes are unchanged; flag/gene off == pure fitness. Force off with ATOM_NOVELTY_CREDIT=0
                __UA_INHERIT:1,                                        // #112: SUBTREE INHERITANCE — the grammar's leaf generator occasionally splices a whole proven expression from the credit pool instead of emitting a fresh terminal, weighted by positive pool credit. Proven building blocks propagate as building blocks; genetic programming's crossover, but the "parents" are population-wide, credit-ranked, and content-addressed. Depth-tapered probability (12%/(1+depth)) and 120-char size guard prevent runaway string growth. Force off with UA_INHERIT=0
                __ATOM_NFD:1,                                          // #114: NEGATIVE FREQUENCY-DEPENDENCE for the atom bank — Red Queen #28 applied to CONTENT. A used-but-rare expression earns up to 0.4 overwrite protection; the population-dominant expression gets none and must survive on credit alone. Quality-diversity for the atom replicator: keep the good (credit) AND the different (rarity), combined via max. Directly counters the monoculture-collapse risk #112 introduces. Force off with ATOM_NFD=0
                __ATOM_OBJ:1,                                          // #115: ATOM-AWARE OBJECTIVES — expose the atom subsystem to the objective-generator's register bank (S16=REACH firing rate/particle, S17=mean germline atom credit), grown 16->18. The mature Pe22-25 sensor VM can now AUTHOR fitness dimensions that value atom behaviour and promote them to real selection pressures via the existing realWeight-earns-participation machinery (new objectives enter at realWeight 0, rise only on fitness correlation — the anti-wireheading guard already there). Connects the two most sophisticated subsystems: endogenous objective generation that can finally see, and reward, what the atoms do. Force off with ATOM_OBJ=0
@@ -20280,6 +20301,7 @@ __ATOM_CREDIT=(typeof globalThis==='undefined')||((globalThis.__ATOM_CREDIT??1)|
 __EXPR_CREDIT=(typeof globalThis==='undefined')||((globalThis.__EXPR_CREDIT??1)|0)!==0; // #111: default ON. Force off with EXPR_CREDIT=0
 __EXPR_CREDIT_POP=(typeof globalThis==='undefined')||((globalThis.__EXPR_CREDIT_POP??1)|0)!==0; // #118: default ON. Force off with EXPR_CREDIT_POP=0
 __ATOM_CREDIT_VERT=(typeof globalThis==='undefined')||((globalThis.__ATOM_CREDIT_VERT??1)|0)!==0; // #119: default ON. Force off with ATOM_CREDIT_VERT=0
+__ATOM_NOVELTY_CREDIT=(typeof globalThis==='undefined')||((globalThis.__ATOM_NOVELTY_CREDIT??1)|0)!==0; // #120: default ON. Force off with ATOM_NOVELTY_CREDIT=0
 __UA_INHERIT=(typeof globalThis==='undefined')||((globalThis.__UA_INHERIT??1)|0)!==0; // #112: default ON. Force off with UA_INHERIT=0
 __ATOM_NFD=(typeof globalThis==='undefined')||((globalThis.__ATOM_NFD??1)|0)!==0; // #114: default ON. Force off with ATOM_NFD=0
 __ATOM_OBJ=(typeof globalThis==='undefined')||((globalThis.__ATOM_OBJ??1)|0)!==0; // #115: default ON. Force off with ATOM_OBJ=0
@@ -20816,6 +20838,10 @@ function loop(){
       let acc=0,cnt=0; for(let k=0;k<NOV_K;k++){ if(kd[k]<1e9){ acc+=Math.sqrt(kd[k]); cnt++; } }
       const nv=cnt?acc/cnt:1; pNov[_i]=nv; mNov+=nv; scored++; }
     mNov=scored?mNov/scored:0;
+    // #120: record the DIRECTION of the population-novelty trend for the atom-credit blend. dNov>0 means
+    // the population is, on average, moving into more archive-novel territory than last cadence; that sign
+    // is held until the next cadence and blended into atom credit every tick (see applyCreditAssignment).
+    { const _dNov=mNov-__prevMNov; __novSign=_dNov>1e-6?1:_dNov<-1e-6?-1:0; __prevMNov=mNov; }
     // 2) reward: BOUND-THEN-CENTRE (conserved/zero-sum, outlier-robust). The first cut centred the RAW
     //    novelty then bounded — so a few frontier explorers inflated the mean and slammed the established
     //    BULK to the −1 floor, taxing it into homogenisation (seed-7 A/B: occ 60→21, entropyRatio halved).
