@@ -128,6 +128,7 @@ let __ATOM_NFD=true; // #114: negative frequency-dependence on the atom bank (Re
 const __atomExprUses=new Map(); // population-wide execution count per atom expression; written only when __ATOM_USE_POP is on
 const __atomExprContrib=new Map(); // #110: per-expression REACH contribution accumulator; cleared each applyCreditAssignment cycle
 const __atomExprCredit=new Map(); // #111: population-wide credit-trace pool per expression; blended slowly from personal creditTrace at applyCreditAssignment time. Bounded ±1. Cleared on extinction.
+let __EXPR_CREDIT_POP=true; // #118: credit EVERY expression that fired REACH this tick directly into the pool, not only germline-mirrored ones. The population authors/runs far more atom diversity than the germline; this widens the credit funnel to the whole population. When on, replaces #111's germline personal->pool blend (germline atoms are already in the contrib map). Force off with EXPR_CREDIT_POP=0
 // #107: gates lazy creation of genome.uaStructBias — see the mutateGenome site (~12586) and uaGenTerm
 // (below) for what it does. Default ON, same call as #101/#102/#103: a real, reasoned lever handed to
 // the system, live, not parked behind a flag nobody would set. Force off with UA_STRUCT=0.
@@ -11110,11 +11111,33 @@ function applyCreditAssignment(){
       // lucky run. An expression that helps EVERY lineage that carries it accumulates strong pool
       // credit; one that helps only ONE lineage stays flat in the pool while the personal trace does
       // its own job of protecting that lineage's copy.
-      if(__EXPR_CREDIT){
+      // #118: when the population-wide funnel is on, this germline-only blend is REPLACED by the
+      // direct contrib->pool loop below (germline atoms already appear in __atomExprContrib, so
+      // crediting them here too would double-count). Off => #111's original germline blend stands.
+      if(__EXPR_CREDIT&&!__EXPR_CREDIT_POP){
         const p=__atomExprCredit.get(ua.expression)||0;
         const np=p*0.9995+ua.creditTrace*0.0005;
         __atomExprCredit.set(ua.expression,np>1?1:np<-1?-1:np);
       }
+    }
+  }
+  // #118 POPULATION CREDIT FUNNEL. The germline bank (genome.userAtoms) is a tiny fraction of the atom
+  // activity in the world — the population (pGenome[i].userAtoms) authors and fires vastly more. Until
+  // now, an expression's REACH contribution only reached the pool if the GERMLINE happened to carry that
+  // exact string; every other fired expression had its signed contribution computed into __atomExprContrib
+  // and then thrown away at the clear() below. This credits ALL of them: for every expression that fired
+  // this tick, nudge its pool trace by the SAME sign rule as the per-atom trace (#110), sign(contrib)*fSign,
+  // at a slow rate so the pool stays a cross-lineage asset that converges on agreement rather than thrashing
+  // on one tick's noise. Runs independent of the germline bank's contents, so a population that authors good
+  // atoms the germline never held still builds pool credit for them — which #112 (inheritance), #113
+  // (transfer) and #111 (seeding) then propagate back into the germline and across lineages.
+  if(__ATOM_CREDIT&&__EXPR_CREDIT&&__EXPR_CREDIT_POP&&fitnessActive){
+    for(const [expr,contrib] of __atomExprContrib){
+      if(!expr||contrib===0)continue;
+      const cSign=contrib>0?1:-1;
+      const p=__atomExprCredit.get(expr)||0;
+      const np=p*0.999+cSign*fSign*0.001;
+      __atomExprCredit.set(expr,np>1?1:np<-1?-1:np);
     }
   }
   if(__ATOM_CREDIT)__atomExprContrib.clear();
@@ -20224,6 +20247,7 @@ if(typeof globalThis!=='undefined'){
                __REACH_NOK:1,                                         // #110: REACH gain uses raw output, not k-scaled (was dormant #90). Decouples atom effect from the interaction coefficient so atoms act even outside tight pairs. Force off with REACH_NOK=0
                __ATOM_CREDIT:1,                                       // #110: CREDIT-ASSIGNMENT FEEDBACK FOR ATOMS — per-atom creditTrace correlates REACH contribution with fitness delta; positive credit earns overwrite protection (up to 70% reduction in replacement rate), negative credit accelerates replacement. Atoms that help survive; atoms that hurt get replaced. The grammar sees its own credit via the `cr` variable. Force off with ATOM_CREDIT=0
                __EXPR_CREDIT:1,                                       // #111: POPULATION-LEVEL CREDIT POOL — expression-keyed credit trace shared across all lineages, blended slowly from personal traces. An expression proven anywhere protects every carrier. New atoms (birth, meme-transfer, mutation-authoring) seed their personal creditTrace at 50% of the pool value, so re-authoring a proven expression doesn't restart from zero. Lamarckian selection at the expression level, using the same expression-identity bridge #102 established. Force off with EXPR_CREDIT=0
+               __EXPR_CREDIT_POP:1,                                   // #118: POPULATION CREDIT FUNNEL — credit EVERY expression that fired REACH this tick directly into the pool, not only germline-mirrored ones. The population authors/runs vastly more atom diversity than the tiny germline bank, but until now a population atom's REACH contribution was discarded unless the germline carried the same string. Widens the funnel to the whole population (same sign(contrib)*fSign rule as #110, slow rate); replaces #111's germline-only blend when on. Force off with EXPR_CREDIT_POP=0
                __UA_INHERIT:1,                                        // #112: SUBTREE INHERITANCE — the grammar's leaf generator occasionally splices a whole proven expression from the credit pool instead of emitting a fresh terminal, weighted by positive pool credit. Proven building blocks propagate as building blocks; genetic programming's crossover, but the "parents" are population-wide, credit-ranked, and content-addressed. Depth-tapered probability (12%/(1+depth)) and 120-char size guard prevent runaway string growth. Force off with UA_INHERIT=0
                __ATOM_NFD:1,                                          // #114: NEGATIVE FREQUENCY-DEPENDENCE for the atom bank — Red Queen #28 applied to CONTENT. A used-but-rare expression earns up to 0.4 overwrite protection; the population-dominant expression gets none and must survive on credit alone. Quality-diversity for the atom replicator: keep the good (credit) AND the different (rarity), combined via max. Directly counters the monoculture-collapse risk #112 introduces. Force off with ATOM_NFD=0
                __ATOM_OBJ:1,                                          // #115: ATOM-AWARE OBJECTIVES — expose the atom subsystem to the objective-generator's register bank (S16=REACH firing rate/particle, S17=mean germline atom credit), grown 16->18. The mature Pe22-25 sensor VM can now AUTHOR fitness dimensions that value atom behaviour and promote them to real selection pressures via the existing realWeight-earns-participation machinery (new objectives enter at realWeight 0, rise only on fitness correlation — the anti-wireheading guard already there). Connects the two most sophisticated subsystems: endogenous objective generation that can finally see, and reward, what the atoms do. Force off with ATOM_OBJ=0
@@ -20242,6 +20266,7 @@ __REACH_MAIN=(typeof globalThis==='undefined')||((globalThis.__REACH_MAIN??1)|0)
 __REACH_NOK=(typeof globalThis==='undefined')||((globalThis.__REACH_NOK??1)|0)!==0; // #110: default ON (was #90 dormant). Force off with REACH_NOK=0
 __ATOM_CREDIT=(typeof globalThis==='undefined')||((globalThis.__ATOM_CREDIT??1)|0)!==0; // #110: default ON. Force off with ATOM_CREDIT=0
 __EXPR_CREDIT=(typeof globalThis==='undefined')||((globalThis.__EXPR_CREDIT??1)|0)!==0; // #111: default ON. Force off with EXPR_CREDIT=0
+__EXPR_CREDIT_POP=(typeof globalThis==='undefined')||((globalThis.__EXPR_CREDIT_POP??1)|0)!==0; // #118: default ON. Force off with EXPR_CREDIT_POP=0
 __UA_INHERIT=(typeof globalThis==='undefined')||((globalThis.__UA_INHERIT??1)|0)!==0; // #112: default ON. Force off with UA_INHERIT=0
 __ATOM_NFD=(typeof globalThis==='undefined')||((globalThis.__ATOM_NFD??1)|0)!==0; // #114: default ON. Force off with ATOM_NFD=0
 __ATOM_OBJ=(typeof globalThis==='undefined')||((globalThis.__ATOM_OBJ??1)|0)!==0; // #115: default ON. Force off with ATOM_OBJ=0

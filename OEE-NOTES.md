@@ -9843,3 +9843,66 @@ conserved and clamped downstream, and the seed value reproduces the old behavior
 downside is bounded to lineages that *chose* to turn the knob up and will be selected against if it
 hurts. Shipped unmeasured per this session's instruction; the flag-off identity is the safety net.
 
+---
+
+## #118 — POPULATION CREDIT FUNNEL: credit every expression that fired, not just the germline's
+
+### The leak I built into #110–#111 without noticing
+
+The credit machinery has an asymmetry I only saw clearly after building #115–#117. Here is the shape of
+it. Every particle in the world runs REACH, and every REACH fire adds its signed contribution to
+`__atomExprContrib`, keyed by expression string — a genuinely population-wide accumulator. But the
+*consumer* of that accumulator, in `applyCreditAssignment`, iterates only `genome.userAtoms` — the
+**germline** bank. For each germline atom it looks up that atom's expression in the contrib map, updates
+the atom's personal trace, and (via #111) bleeds a little into the pool.
+
+Everything else in the map is thrown away. The germline bank is a tiny handful of atoms; the population
+(`pGenome[i].userAtoms` across hundreds of particles) authors and fires vastly more expression diversity.
+A population-authored atom whose expression genuinely helped fitness — pushed an actuator in a direction
+that co-moved with a fitness gain — had that contribution *computed* every tick and then discarded at the
+`clear()`, unless the germline happened to be carrying the exact same string. The pool, which #112
+(inheritance), #113 (transfer) and #111 (seeding) all read from to propagate proven content, was being
+fed almost entirely from the narrowest source of atom activity in the system.
+
+### The fix
+
+After the germline loop, iterate `__atomExprContrib` *itself* and nudge the pool trace for **every**
+expression that fired this tick:
+
+```
+for (const [expr, contrib] of __atomExprContrib) {
+  const cSign = contrib > 0 ? 1 : -1;
+  pool[expr] = clamp(pool[expr]*0.999 + cSign*fSign*0.001, -1, 1);
+}
+```
+
+The sign rule is identical to the per-atom trace (#110) — `sign(contribution) · sign(fitnessΔ)` — so an
+expression that drove actuators in a direction that co-moved with rising fitness gains pool credit, and
+one that co-moved with falling fitness loses it, regardless of which lineage (or how many) authored it.
+The rate is slow (0.001) on purpose, the same reasoning #111 gives: the pool should converge on
+cross-lineage *agreement*, not thrash on one tick's noise. Since germline atoms already appear in the
+contrib map (the germline fires REACH on the main path), this loop covers them too — so with the funnel
+on, #111's germline-only personal→pool blend is switched off to avoid double-counting, and the whole pool
+is now fed by one consistent population-wide rule. Flag off (`EXPR_CREDIT_POP=0`) restores #111's
+germline blend exactly.
+
+### Why it matters for the arc
+
+The pool is the spine of the Lamarckian half of this arc: #111 seeds new atoms from it, #112 splices
+high-pool-credit expressions into fresh authoring, #113 transfers by it, #114 protects rare-but-active
+content around it. All of that machinery was being fed through a straw. #118 opens the funnel to the
+whole population — which is where the real authoring volume, and therefore the real chance of discovering
+something worth propagating, actually lives. If the atom system is going to find a genuinely good
+building block, it will almost certainly find it *somewhere in the population* long before that exact
+expression appears in the germline; #118 is what lets the pool notice.
+
+### Risk and limits
+
+The one real cost is memory churn: the pool can now take up to `__atomExprContrib`'s cap (5000) of new
+expressions in a tick, so between the per-tick prune (bound 2000, evict to the strongest 1000) and this
+loop the map can transiently reach ~7k entries before the next tick prunes it — bounded, and cheap.
+Correctness-wise the sign rule is copied verbatim from the already-shipped per-atom path, so there is no
+new dynamics to get wrong beyond "more expressions, same rule." As with the rest of #110–#117 it ships
+unmeasured this session, correct in the flag-off limit, and the live artwork is the only place the widened
+funnel's effect can actually be seen.
+
