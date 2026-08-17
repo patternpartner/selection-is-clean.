@@ -10459,9 +10459,43 @@ for each state the exact off-limit). The scientifically useful cuts:
 - **Micro↔macro wire off:** `__DIMS_ATOM=0 __ATOM_WRSENSE=0` → the atom engine runs but is decoupled from
   world dimensionality; isolates whether the cross-scale loop does anything.
 
-The gene-level dials (`atomNoveltyMix` seeded 0.25, `reachGain` seeded 0.2) are the system's own A/B — if a
-bet is bad, selection should drive its dial down, and watching those genes move is itself evidence about
-whether each mechanism earns its place. That is the design throughout: not to force the answer, but to hand
-the levers to selection and to the live run, and to have written down, here, exactly what a watching human
-should look for when they finally press play.
+The gene-level dials (`atomNoveltyMix` seeded 0.25, `reachGain` seeded 0.2, `atomRecombRate` seeded 0.4)
+are the system's own A/B — if a bet is bad, selection should drive its dial down, and watching those genes
+move is itself evidence about whether each mechanism earns its place. That is the design throughout: not to
+force the answer, but to hand the levers to selection and to the live run, and to have written down, here,
+exactly what a watching human should look for when they finally press play.
+
+---
+
+## #127 — HAND THE SPECULATIVE CONSTANTS TO SELECTION: the recombine-vs-refine dial
+
+### The hypocrisy in my own arc
+
+The speculative swings #120–#123 each carry a constant I chose by hand: the novelty mix (fixed as a gene
+already, #120), the reproduction split (0.5), the eligibility decay (0.6), the recombination rate (0.4).
+Every one of those numbers is exactly the kind of fiat the project's whole ethos exists to refuse — the
+#107 note ("the one part of 'how the system authors itself' the system was never given a hand on"), the
+#117 note ("the system's call, not mine"). I spent sixteen swings preaching evolvable-not-fixed and then
+seeded the newest, least-understood mechanisms with hand-picked magic numbers.
+
+### The fix, and why this one first
+
+`genome.atomRecombRate` makes the most consequential of those — how often reproduction *recombines* two
+proven atoms (build) versus *local-steps* one (refine) — an evolvable trait, seeded at the #123 hand-set
+0.4 and evolving in [0, 0.9]. This is the explore/build balance of the atom bank's own reproduction, and
+handing it to selection is strictly better than my guess: a lineage that gains from assembling composites
+will see its rate climb; one that gains from polishing single primitives will see it fall; and *which*
+happens is itself the cleanest possible evidence about whether recombination (#123) earns its place —
+readable directly off the gene, exactly the "watch the dials" logic the arc guide above describes.
+
+It follows the verified `reachGain` (#117) pattern to the letter — lazily created, mutated only under
+`__ATOM_RECOMB` (RNG-stream purity for the control), serialized (`arr`), deserialized, sanitized, clamped
+on read — so it introduces no new mechanism, only removes a constant of mine and replaces it with a lever
+of the system's. Seeded at 0.4, the first run is identical to #123; from there the number stops being mine.
+
+The reproduction split (0.5) and eligibility decay (0.6) remain hand-set for now — the same treatment
+would suit them, and this entry is the note-to-self that they are next in line. But `atomRecombRate` is the
+one that most directly gates the arc's boldest claim (cumulative complexity via recombination), so it is
+the one worth handing over first: let selection, not me, decide how hard the atom bank reaches for
+composite complexity.
 
