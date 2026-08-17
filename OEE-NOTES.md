@@ -10221,3 +10221,57 @@ credit-scored bag of random guesses and a system that can, at least in principle
 remember, and *build*. Whether it does is the one thing none of this can prove from the armchair; that
 verdict has only ever lived in the running artwork, and now there is a great deal more for it to run.
 
+---
+
+## #124 — ATOM-CONTENT DIVERSITY AS AN OBJECTIVE: let the system decide diversity is worth wanting
+
+### From maintaining diversity to *valuing* it
+
+#114 keeps the atom bank diverse by fiat — negative frequency-dependence protects rare-but-active
+expressions, a hardcoded rule that opposes monoculture whether or not diversity is doing the organism any
+good. That is the right kind of safety net, but it is a rule *I* imposed, not something the system chose.
+The whole thrust of #115 was the opposite move: instead of hardcoding what the atoms should do, expose the
+atom subsystem to the objective generator and let *it* discover what is worth selecting for. #115 did that
+for atom *activity* (S16) and atom *credit* (S17). It left out the one signal most directly about
+open-endedness: how *varied* the atom bank is.
+
+### The signal
+
+#124 adds S18 to the objective generator's register bank (grown 16→19, the same construction as #115's
+16→18): the count of distinct expressions currently active across the population (`__atomExprUses.size`,
+O(1) to read), log-scaled and smoothed. Now a sensor can be authored that reads atom-content diversity,
+and if valuing a diverse atom bank turns out to correlate with fitness, the existing
+`realWeight`-earns-participation machinery promotes it into a real selection pressure — with, as always,
+the built-in anti-wireheading guard (new objectives enter at `realWeight = 0` and rise only on fitness
+correlation). "Keep authoring varied behaviour" can become an *earned* objective rather than only a
+hardcoded protection.
+
+### Why this is the OEE-relevant one
+
+Diversity of the replicator that carries meaning is close to the definition of open-endedness at the atom
+level — a system that keeps finding genuinely different things to do, not just more of one thing. #114
+prevents that diversity from collapsing; #124 lets the system come to *want* it, and to modulate how much
+it wants it against everything else it values, through the same selection process that tunes every other
+objective. The difference between a floor under diversity and a gradient pulling toward it is the
+difference between "don't let it die" and "reach for more of it" — and only the second is a driver.
+
+### Correctness
+
+Byte-safe in the control limit for exactly the reasons #115 was: register indices below 16 mask
+identically under %19 and %16; the new slot initializes to 0; and with `__ATOM_OBJ` off the sensor
+mutator's address range stays 16, so no evolved sensor ever reaches S16/S17/S18. Every register literal
+(the S array, the per-sensor regs, the copy loop, both masks, the clamp loop, and the mutation ranges) was
+moved to 19 together, verified by grep for stray 18s. #124 introduces no new flag — it rides `__ATOM_OBJ`,
+so it shares #115's single control and revert. As with #115 the coupling only *matters* once atoms are
+authored, varied, and firing, which is the long-horizon live regime the harness can't reach; the register
+plumbing is correct now, the effect is a live-run question.
+
+### Position
+
+This is the natural closing of the loop the speculative arc opened. #120–#123 made the atom bank an
+evolutionary population that explores, varies, remembers, and builds; #115/#116 wired it to the objective
+generator both ways; #124 lets that generator select for the very open-endedness the #120–#123 machinery
+produces. Atom diversity is now something the system can generate (#121/#123), protect (#114), sense
+(#124), and — if it pays — deliberately pursue. The engine, and the reason to run it, are both the
+system's own.
+
