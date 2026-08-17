@@ -9779,3 +9779,689 @@ objective can condition on the genotype's behavior. That mutual visibility is th
 precondition for the open-ended climb the whole #110–#116 arc is reaching for; whether the climb
 actually happens remains, as always, a live-run question.
 
+---
+
+## #117 — EVOLVABLE REACH GAIN: hand the atoms' authority ceiling to selection
+
+### A constant I'd been stepping over
+
+Every one of #110–#116 routed atom output through the same line, at four dispatch sites:
+
+```
+const _rv = clamp(_out, -2, 2) * (REACH_NOK ? 1 : k) * 0.2;
+vmActions[|di| % 7] += _rv;
+```
+
+That `0.2` is the REACH gain — how hard an authored atom's output pushes on a conserved actuator. It
+has been `0.2`, hand-set, since REACH shipped in #48. It is the single number that decides how much
+*authority* the entire atom subsystem has over the organism's physics, and it was chosen by fiat and
+never touched.
+
+This cuts directly against the project's own repeatedly-stated ethos. #107's note on making the grammar
+production weights evolvable puts it plainly: these were "the one part of 'how the system authors
+itself' the system was never given a hand on." The REACH gain is exactly that, one level down — the
+system authors behavior (atoms), routes it to actuators (REACH), but the *volume knob* on that whole
+channel is a constant no lineage can turn.
+
+### The hypothesis this gene tests
+
+The #80–#109 arc is a long, honest record of atom neutrality: the bank executes but does not detectably
+grip fitness, across every channel tested. The stories for *why* have been about routing (fixed in
+#110), persistence (#111, #114), content inheritance (#112), and credit (#110–#113). There is one more
+candidate that none of those addressed and that this gene isolates: **maybe the gain is simply too
+low.** At `0.2`, a clamped atom output of ±2 contributes at most ±0.4 to an actuator that is then folded
+into conserved physics with its own damping — possibly below the noise floor of anything selection can
+see. If so, every atom in the arc was shouting through a muted channel, and no amount of better content
+or credit would matter until the channel could open.
+
+I do not know if that is the reason. That is the point: I am not qualified to pick the gain, and neither
+is any fixed constant. `genome.reachGain` hands the ceiling to selection — seeded at exactly `0.2` (so
+the seed is byte-identical to every prior run), evolving in `[0, 1]`, which lets a lineage raise its
+atoms' authority up to 5× if that pays, or mute it toward 0 if atoms are hurting. Helpful atoms earn a
+louder channel; harmful atoms get turned down. The knob that was mine is now the system's.
+
+### Construction
+
+`reachGain` follows the exact pattern the codebase established for `atomUseProtect` (#101) and
+`uaStructBias` (#107): lazily created, mutated only when `__REACH_GAIN` is on (so a forced-off run never
+draws it and never perturbs the shared RNG stream — the bit-identical-control discipline the notes
+insist on), evolved by the standard `maybe(finiteOr(v, 0.2), 0, 1, 0.03)` step, and clamped on read. It
+is serialized (`rg`), deserialized, and sanitized alongside the other evolvable scalars, so it is
+heritable across save/reload like any other gene. At all four REACH sites the `* 0.2` became
+`* (REACH_GAIN && isFinite(genome.reachGain) ? genome.reachGain : 0.2)` — so with the flag off, or before
+the gene is ever created, the value is exactly `0.2` and behavior is unchanged.
+
+### Why this belongs in the arc, and its risk
+
+#110–#116 gave the atom channel everything *except* the authority to be heard: routing, credit,
+inheritance, diversity, and bidirectional visibility with the objective. #117 is the volume knob on all
+of it, and — unlike the others — it is under direct selection, self-regulating, and it tests a specific,
+falsifiable "maybe the whole arc was gain-limited" hypothesis. The risk is real and worth stating: a
+lineage that evolves a high gain gives its (possibly bad) atoms a much louder voice in its own physics,
+which could destabilize it — but that is precisely what selection adjudicates, the actuators remain
+conserved and clamped downstream, and the seed value reproduces the old behavior exactly, so the
+downside is bounded to lineages that *chose* to turn the knob up and will be selected against if it
+hurts. Shipped unmeasured per this session's instruction; the flag-off identity is the safety net.
+
+---
+
+## #118 — POPULATION CREDIT FUNNEL: credit every expression that fired, not just the germline's
+
+### The leak I built into #110–#111 without noticing
+
+The credit machinery has an asymmetry I only saw clearly after building #115–#117. Here is the shape of
+it. Every particle in the world runs REACH, and every REACH fire adds its signed contribution to
+`__atomExprContrib`, keyed by expression string — a genuinely population-wide accumulator. But the
+*consumer* of that accumulator, in `applyCreditAssignment`, iterates only `genome.userAtoms` — the
+**germline** bank. For each germline atom it looks up that atom's expression in the contrib map, updates
+the atom's personal trace, and (via #111) bleeds a little into the pool.
+
+Everything else in the map is thrown away. The germline bank is a tiny handful of atoms; the population
+(`pGenome[i].userAtoms` across hundreds of particles) authors and fires vastly more expression diversity.
+A population-authored atom whose expression genuinely helped fitness — pushed an actuator in a direction
+that co-moved with a fitness gain — had that contribution *computed* every tick and then discarded at the
+`clear()`, unless the germline happened to be carrying the exact same string. The pool, which #112
+(inheritance), #113 (transfer) and #111 (seeding) all read from to propagate proven content, was being
+fed almost entirely from the narrowest source of atom activity in the system.
+
+### The fix
+
+After the germline loop, iterate `__atomExprContrib` *itself* and nudge the pool trace for **every**
+expression that fired this tick:
+
+```
+for (const [expr, contrib] of __atomExprContrib) {
+  const cSign = contrib > 0 ? 1 : -1;
+  pool[expr] = clamp(pool[expr]*0.999 + cSign*fSign*0.001, -1, 1);
+}
+```
+
+The sign rule is identical to the per-atom trace (#110) — `sign(contribution) · sign(fitnessΔ)` — so an
+expression that drove actuators in a direction that co-moved with rising fitness gains pool credit, and
+one that co-moved with falling fitness loses it, regardless of which lineage (or how many) authored it.
+The rate is slow (0.001) on purpose, the same reasoning #111 gives: the pool should converge on
+cross-lineage *agreement*, not thrash on one tick's noise. Since germline atoms already appear in the
+contrib map (the germline fires REACH on the main path), this loop covers them too — so with the funnel
+on, #111's germline-only personal→pool blend is switched off to avoid double-counting, and the whole pool
+is now fed by one consistent population-wide rule. Flag off (`EXPR_CREDIT_POP=0`) restores #111's
+germline blend exactly.
+
+### Why it matters for the arc
+
+The pool is the spine of the Lamarckian half of this arc: #111 seeds new atoms from it, #112 splices
+high-pool-credit expressions into fresh authoring, #113 transfers by it, #114 protects rare-but-active
+content around it. All of that machinery was being fed through a straw. #118 opens the funnel to the
+whole population — which is where the real authoring volume, and therefore the real chance of discovering
+something worth propagating, actually lives. If the atom system is going to find a genuinely good
+building block, it will almost certainly find it *somewhere in the population* long before that exact
+expression appears in the germline; #118 is what lets the pool notice.
+
+### Risk and limits
+
+The one real cost is memory churn: the pool can now take up to `__atomExprContrib`'s cap (5000) of new
+expressions in a tick, so between the per-tick prune (bound 2000, evict to the strongest 1000) and this
+loop the map can transiently reach ~7k entries before the next tick prunes it — bounded, and cheap.
+Correctness-wise the sign rule is copied verbatim from the already-shipped per-atom path, so there is no
+new dynamics to get wrong beyond "more expressions, same rule." As with the rest of #110–#117 it ships
+unmeasured this session, correct in the flag-off limit, and the live artwork is the only place the widened
+funnel's effect can actually be seen.
+
+---
+
+## #119 — VERTICAL CREDIT INHERITANCE: the parent→child channel #110/#111 forgot
+
+### The gap found while wiring #118
+
+Tracing the credit funnel for #118 surfaced a hole in the most important place of all. `mutateChildGenome`
+— the function that builds a child genome from a parent, i.e. ordinary reproduction, the *primary*
+vertical heritability route in the whole system — clones the parent's atoms like this:
+
+```
+g.userAtoms = src.userAtoms.map(a => ({
+  expression: a.expression, compiled: null, failed: !!a.failed,
+  uses: 0, state: 0, alienHits: 0, alienAttempts: 0
+}));
+```
+
+No `creditTrace`. Every child begins with all its atoms at zero credit, discarding whatever the parent
+lineage learned about them. #111 carefully seeds credit from the population pool at the *birth*,
+*meme-transfer*, and *particle-seed* sites — but the single most-travelled inheritance path, parent to
+child, was never wired. The Lamarckian ratchet the arc is built on had a broken tooth exactly where the
+most copies are made.
+
+### Why this isn't the same as the reset just above it
+
+The line directly above deliberately resets `alienHits`/`alienAttempts`/`uses`, with a comment
+(from SWING #46) saying a new lineage should re-earn its own predictive track record. It would be easy to
+assume `creditTrace` belongs to that same "reset on clone" policy. It does not, and the distinction is
+the crux:
+
+- `alienHits`/`uses` are the **alien-grip** channel — an atom's predictive fit against an exogenous peer.
+  #95/#97 measured that channel at chance in the live artwork; #46's reasoning is that it's a per-lineage
+  record with no reason to transfer.
+- `creditTrace` is the **#110 fitness-contribution** channel — did this atom's REACH output co-move with
+  *this organism's* fitness. #111's entire thesis is that this evidence is a property of the expression's
+  content and *should* propagate. Resetting it on the vertical channel while seeding it on every other
+  channel isn't a policy, it's an oversight.
+
+### The fix
+
+Child atoms now seed `creditTrace` at 50% of the best evidence available — `max(parent's own trace,
+population-pool credit for that expression)` — so a child of a lineage whose atom proved useful starts
+warm, but at half strength, so it still has to re-earn full credit under its own selection. Identical in
+spirit and rate to #111's seeding on the other three channels; this just extends it to the one that was
+missed. Gated `__ATOM_CREDIT_VERT`, default on; off, the field seeds 0 and the behavior is exactly
+pre-#119.
+
+### Position in the arc
+
+Small, but it closes the arc's own internal inconsistency. After #119, *every* route by which an atom
+enters a genome — germline authoring (#111 seed), horizontal transfer (#111/#113), particle seeding
+(#111), and now vertical reproduction (#119) — carries the expression's accumulated credit forward. The
+Lamarckian propagation the #110–#118 machinery assumes is now actually continuous across the whole
+heritability graph, with no channel silently zeroing the signal the rest of the arc spends its effort
+building. As with the rest of this session's swings it ships unmeasured and correct in the flag-off limit;
+the live artwork is where continuity of credit across generations would actually show its effect.
+
+---
+
+## #120 — NOVELTY-BLENDED CREDIT: atoms that explore, not just exploit
+
+### The exploitation ceiling the whole arc was sitting under
+
+#110–#119 built a complete, continuous credit economy for atoms — routing, per-lineage credit, a
+population pool, inheritance both horizontal and vertical, diversity protection, evolvable authority. And
+every last piece of it points the same direction: **toward current fitness.** The credit sign is
+`sign(contribution) · sign(fitnessΔ)` everywhere. That is exploitation, top to bottom. It makes atoms
+good at what already works — which is exactly the process that, left alone, converges and stops. An
+optimizer with only an exploitation signal is not an open-ended system; it is a hill-climber that halts
+at the first peak it can hold.
+
+The OEE literature's answer to this is novelty search (Lehman & Stanley): reward behavioral divergence,
+not just objective performance, so the system keeps generating new things whether or not they immediately
+pay. This project already runs that idea at the trait level — the #39 historical novelty archive, with its
+receding-target gradient that "cannot saturate." But the atom credit channel, the newest and most
+elaborate selection surface in the system, had no access to it. Atoms were judged purely on fitness while
+the organism around them was being partly judged on novelty. #120 closes that mismatch.
+
+### The mechanism
+
+The #39 archive already computes `mNov` each cadence — the population's mean novelty, its mean
+trait-distance to the nearest archive entries. #120 records the **sign of that mean's trend** (`__novSign`
+∈ {−1, 0, +1}: is the population, on average, moving into more archive-novel territory than last
+cadence?) and holds it between cadences. Then, in `applyCreditAssignment`, the fitness direction that
+atom credit uses is blended with that novelty direction:
+
+```
+atomDir = (1 − mix)·sign(fitnessΔ) + mix·novSign
+```
+
+`mix` is `genome.atomNoveltyMix`, an evolvable germline dial seeded **active at 0.25** — a live
+novelty-seeking bet, not a capability parked at zero — and free to evolve up (a lineage that thrives by
+chasing novel behavior) or down (one that needs to lock in a fitness peak). Because `atomDir` is a blend
+of two ±1 signals it stays in [−1, 1], so every per-atom and pool update keeps the exact magnitude it had
+in #110/#118 — **only the direction shifts.** The concrete new behavior: an atom whose output co-moves
+with *rising novelty but falling fitness* — an explorer stepping off the current peak into new territory —
+now earns *partial positive* credit where before it earned full negative. That single sign change is the
+difference between a system that punishes all exploration and one that funds it.
+
+### Deliberately scoped to atoms
+
+The blend touches **atom credit only.** The objective generator's own credit — per-sensor `realWeight`,
+per-axis `objWeights` — stays pure fitness, untouched. Blending novelty into what the organism *values*
+(as opposed to how it credits its atoms) would be a different and much riskier change: it risks the
+system rewarding itself for novelty-by-fiat, the exact inflation trap the #38/#39 notes fought. Keeping
+#120 on the atom channel means novelty shapes which *behaviors atoms are encouraged to author*, while the
+organism's actual objectives remain earned against real fitness. Exploration in the generator, discipline
+in the objective.
+
+### Correctness and the honest risk
+
+The control limits are exact: with the flag off, the gene at 0, or no novelty trend yet
+(`__novSign === 0`), `atomDir` reduces to `sign(fitnessΔ)` and #110/#118 are recovered byte-for-byte. The
+update magnitudes are provably unchanged (blend of unit signs). The gene is serialized, deserialized,
+sanitized, and mutated exactly like #117's `reachGain`. So the *construction* is as safe as the earlier
+swings. What is genuinely less certain — and this is the speculative edge, named plainly — is the
+*dynamics*: novelty-blended credit is the first swing this session that deliberately points the credit
+signal somewhere other than fitness, and whether that produces open-ended exploration or just noisier
+selection is a real question no flag-off proof can answer. It is exactly the kind of call the notebook has
+always said only the live artwork can make, and it ships as a bet, seeded active, for that live test.
+
+### Position in the arc
+
+#110–#119 are the exploitation half of an open-ended engine: everything that makes atoms good at what
+works and propagates it. #120 is the exploration half, drawn from the project's own proven novelty engine
+rather than bolted on: it funds atoms that leave the peak. An open-ended system needs both, in tension,
+with the balance itself under selection (`atomNoveltyMix`). With #120 the atom subsystem finally has both
+hands — and the dial that sets how hard each one pulls is the system's to turn, not mine.
+
+---
+
+## #121 — CREDIT-BIASED ATOM REPRODUCTION: give a proven atom a family
+
+### Selection without a gradient
+
+Step back and look at how a new atom actually comes into being. `mutateGenome` draws a fresh expression
+from the grammar — `uaGenExpression()` — a genuinely random program over the vocabulary. That is the only
+source of new atoms. Everything the #110–#120 arc added operates on atoms *after* they exist: credit them
+(#110), pool the credit (#111), inherit it (#119), splice proven subtrees into future random draws (#112),
+protect the rare-and-active (#114), fund exploration (#120). But the birth itself is a blind jump.
+
+This leaves a specific, load-bearing hole. When the system finds a genuinely good atom — high credit, real
+grip on fitness — it has no way to *search that atom's neighborhood.* It can protect the atom from being
+overwritten, copy it to other lineages, and paste pieces of it into unrelated random programs, but it
+cannot ask the one question evolution normally lives on: "is there something slightly better right next to
+this?" A good structure, once found, is a fixed point. Selection can keep it or lose it; it cannot refine
+it. That is search by jumping, not by climbing — and climbing is where cumulative adaptation comes from.
+
+### The mechanism
+
+At the atom-birth site, half of births (when the bank holds an atom whose credit clears a small floor)
+now produce a **local variant of the highest-credit atom** instead of a fresh random draw. The variant is
+made with `uaLocalStep` — the exact small-move operator #103 introduced for perturbing existing atoms (a
+constant jitter or a single variable swap), applied here to found a *new* atom rather than to mutate one
+in place. Its `creditTrace` seeds from the parent at 50% (the #119 warm-start rule): a child of a proven
+atom starts with real evidence but still has to re-earn full credit under its own selection.
+
+The other half of births stay fresh random draws, so exploration of genuinely new structure never stops.
+The split is the whole point: **half climbing, half jumping.** A proven atom now founds a lineage of
+near-variants — a family spread across its local neighborhood — and the credit machinery already in place
+(protection, pool, propagation) sorts that family, keeping whichever variant grips hardest. The good atom
+stops being a fixed point and becomes the seed of a gradient.
+
+### Why it belongs with #120
+
+#120 and #121 are complementary halves of making the atom bank a real evolutionary population rather than
+a bag of independent random guesses. #120 changed what atoms are rewarded *for* (novelty as well as
+fitness); #121 changes how new atoms are *generated* (near a proven one, not only from scratch). Together
+they give the atom subsystem the two things a population needs to climb: variation that is *heritable and
+local* (so improvements compound) and selection that *funds exploration* (so it does not stall on the
+first peak). Neither alone suffices — local variation with pure-fitness credit just polishes one peak
+forever; novelty credit with only random births has nothing to refine what it discovers.
+
+### Correctness and risk
+
+Flag off, or before any atom clears the credit floor, the birth path is exactly `uaGenExpression()` with
+the #111 pool seed — byte-identical to pre-#121. The variant reuses `uaLocalStep` (already live since
+#103, already substrate-verified for compile/finiteness) and the #119 credit-seed rule, so no new
+expression-generation or credit machinery is introduced — only a new *choice of source* at one birth site.
+The genuine uncertainty, stated plainly, is dynamical and it is the same family of question as #120: does
+concentrating half of births around the current best accelerate cumulative refinement, or does it narrow
+the bank toward the incumbent faster than #114's frequency-dependence can keep it diverse? That balance —
+refine-the-best versus keep-exploring — is exactly what the live artwork exists to adjudicate, and it
+ships as a bet, on by default, for that test.
+
+---
+
+## #122 — ELIGIBILITY TRACES: credit for what an atom did, not only what it did *this instant*
+
+### The same-tick assumption buried in the whole arc
+
+Every credit update in #110–#121 correlates an atom's contribution with **this tick's** fitness delta.
+`__atomExprContrib` accumulates each expression's signed REACH output during a tick; `applyCreditAssignment`
+reads it, updates credit by `sign(contrib) · direction`, and then **clears the map.** Next tick starts
+blank.
+
+That clear encodes an assumption that is almost never true: that an atom's effect on fitness lands on the
+same tick as the atom's action. Physical actuators do not work that way. An atom that nudges a particle
+toward richer resources moves it *this* tick; the amp income that movement earns arrives *over the next
+several* ticks, through the existing `localRes → amp` economy. By the time fitness reflects the atom's
+good decision, the map has been wiped and the atom that caused it has been forgotten. The credit system
+could only ever reward *instantaneous coincidence* between an atom firing and fitness moving — never the
+delayed consequence that most real behavior actually produces. Multi-step behavior — do X now, benefit
+three ticks later — was structurally uncreditable.
+
+### The standard fix
+
+This is exactly the problem eligibility traces solve in reinforcement learning (the λ in TD(λ)). Instead
+of clearing the contribution map each tick, **decay it** (×0.6). An expression that fired keeps a
+shrinking presence in the map for the next several ticks, and on each of those ticks it goes on being
+credited or debited as fitness moves in its wake. A fire at tick T is now eligible for the fitness
+changes at T, T+1, T+2, … with geometrically decreasing persistence — so an atom whose action pays off a
+few ticks later finally receives the credit for it. Near-zero residuals are pruned (floor 0.02) so the map
+stays bounded, on top of the existing 5000-entry cap at the REACH sites.
+
+One implementation detail worth stating because it shapes the tuning: atom credit here is **sign-based** —
+any nonzero residual grants a full-strength update, not a decay-scaled one (the residual keeps the
+expression *eligible*, it doesn't scale the nudge). So the length of the eligibility window is set by how
+fast the residual prunes, not by λ scaling the magnitude. That's why the prune floor (0.02) sits well
+above zero: it deliberately keeps the delayed-credit tail to roughly a half-dozen ticks rather than
+letting a single fire stay eligible for the ~25 ticks a tiny floor would allow. Short memory, not a long
+smear.
+
+### Correctness and risk
+
+Flag off, the map clears every tick and the behavior is byte-identical to pre-#122 — same-tick-only credit,
+exactly #110–#121. The sign rule is untouched; the *only* thing that changes is how long a contribution
+stays in the map before it decays away. Extinction still clears the map (the #109/#110 discontinuity
+guard), and the no-learning early return still clears it, so the trace resets cleanly at both boundaries.
+
+The speculative edge — and #122 is squarely in the speculative half of this session — is that eligibility
+widens *what* gets credited each tick: on any given tick, every recently-active expression, not just the
+ones that fired, receives a nudge in the current fitness direction. That is the mechanism's whole purpose
+(delayed attribution) and also its risk (more expressions credited per tick means more opportunity for a
+coincidental fitness swing to smear credit across atoms that happened to be recently active but weren't
+responsible). Whether the delayed-reward signal is worth that added blur is a dynamical question the
+flag-off proof cannot settle — it is precisely the kind of call the live artwork exists to make. Ships on
+by default, short-windowed, as a bet that crediting multi-step behavior is worth more than the noise it
+admits.
+
+### Position in the arc
+
+#120 (novelty) changed the *direction* credit points; #121 (reproduction) changed how atoms are
+*generated*; #122 changes the *temporal horizon* over which credit is assigned. All three push the atom
+subsystem further from "score an instantaneous coincidence against a fixed objective" toward "a population
+that varies, explores, and learns consequences that unfold over time" — which is the shape a system has to
+have before open-endedness is even on the table.
+
+---
+
+## #123 — ATOM RECOMBINATION: splice two proven histories into one
+
+### What local variation can't do
+
+#121 gave a proven atom a family — near-variants made by local-stepping the best-credit atom. That is
+asexual reproduction with mutation, and it does one thing well: it *refines* a structure by searching its
+immediate neighborhood. But it can only ever refine *within* a structure. A local step to `(a*b)+cr` can
+jitter the constant or swap a variable; it cannot turn it into `((a*b)+cr) * (rd - nb)`. The one operation
+that assembles a *bigger* thing out of two smaller ones — recombination — was still missing from the atom
+bank entirely.
+
+This is not a minor omission, and the notebook has said so repeatedly in a different context. Every time
+this project has reached for the source of genuine novelty jumps, it has landed on the same answer:
+crossover of two distinct histories. #52's cross-lineage gene flow is annotated "two distinct histories
+spliced, a novelty source point mutation cannot supply"; #17 calls crossover "gene flow." The VM programs
+recombine, the lineages recombine — but the atoms, the one replicator this whole session has been trying
+to make matter, only ever mutated. They had asexual reproduction (#121) and no sex.
+
+### The mechanism
+
+Riding #121's machinery: the birth path already finds the highest-credit atom to reproduce. #123 extends
+the scan to find the top *two*, and a fraction (0.4) of credit-biased births now build a composite
+`(A) op (B)` from the two highest-credit atoms — a random arithmetic operator joining two expressions that
+have *each already proven themselves*. The child's `creditTrace` seeds from `max(parents)·0.5`. The other
+births stay local-step (refine) or fresh random (explore), so recombination is a third generative mode
+alongside the two #121 established, not a replacement.
+
+It is length-capped at 160 characters — deliberately the exact width of the `sanitizeGenome` slice, so a
+composite can never be truncated into unbalanced, invalid JS. That cap does double duty: it also bounds
+runaway growth, because a composite that reaches the ceiling can no longer be a recombination parent (the
+candidate would exceed 160 and fall back to local-step), so complexity climbs by assembling proven parts
+but plateaus at a bounded size rather than ballooning into megabyte expressions. Growth with a ceiling,
+which is the honest shape of every other bounded-but-open mechanism in this file.
+
+### Why it matters for open-endedness
+
+Open-endedness is not just sustained novelty; it is sustained *cumulative* novelty — new complexity built
+on top of old complexity, not a treadmill of equal-sized random variants. Mutation gives you a treadmill.
+Recombination of proven parts gives you a ladder: two atoms that each learned to do something useful can be
+fused into one that does both, or something neither did alone, and if the fusion works the credit
+machinery (#110–#122) keeps and propagates it, making it available as a part for the *next* fusion. That
+is the compositional ratchet major transitions run on, operating here at the smallest replicator in the
+system. #121 lets the bank climb a hill; #123 lets it stack hills.
+
+### Correctness and risk
+
+Flag off, or with fewer than two proven atoms, the birth path is exactly #121 (which off *its* flag is
+exactly pre-#121). A composite is always two already-valid expressions joined by an operator and wrapped
+in parentheses — syntactically valid by construction — and the 160 cap guarantees it survives sanitize
+intact, so no new failure mode is introduced at compile. The speculative risk is dynamical and specific:
+recombination could concentrate the bank around fusions of the current top two atoms faster than #114's
+frequency-dependence and #120's novelty credit keep it diverse, collapsing the very variety it's meant to
+compound. That balance — cumulative assembly versus premature convergence on the incumbent pair — is the
+live question, and like the rest of #120–#123 it ships on by default, bounded and reversible, for the
+artwork to answer.
+
+### The speculative arc, #120–#123
+
+Four swings, one thesis: make the atom bank a real evolutionary population. #120 gave it exploration
+(novelty credit), #121 heritable local variation (reproduction), #122 memory of delayed consequences
+(eligibility), and #123 recombination (cumulative assembly). Together they are the difference between a
+credit-scored bag of random guesses and a system that can, at least in principle, climb — vary, select,
+remember, and *build*. Whether it does is the one thing none of this can prove from the armchair; that
+verdict has only ever lived in the running artwork, and now there is a great deal more for it to run.
+
+---
+
+## #124 — ATOM-CONTENT DIVERSITY AS AN OBJECTIVE: let the system decide diversity is worth wanting
+
+### From maintaining diversity to *valuing* it
+
+#114 keeps the atom bank diverse by fiat — negative frequency-dependence protects rare-but-active
+expressions, a hardcoded rule that opposes monoculture whether or not diversity is doing the organism any
+good. That is the right kind of safety net, but it is a rule *I* imposed, not something the system chose.
+The whole thrust of #115 was the opposite move: instead of hardcoding what the atoms should do, expose the
+atom subsystem to the objective generator and let *it* discover what is worth selecting for. #115 did that
+for atom *activity* (S16) and atom *credit* (S17). It left out the one signal most directly about
+open-endedness: how *varied* the atom bank is.
+
+### The signal
+
+#124 adds S18 to the objective generator's register bank (grown 16→19, the same construction as #115's
+16→18): the count of distinct expressions currently active across the population (`__atomExprUses.size`,
+O(1) to read), log-scaled and smoothed. Now a sensor can be authored that reads atom-content diversity,
+and if valuing a diverse atom bank turns out to correlate with fitness, the existing
+`realWeight`-earns-participation machinery promotes it into a real selection pressure — with, as always,
+the built-in anti-wireheading guard (new objectives enter at `realWeight = 0` and rise only on fitness
+correlation). "Keep authoring varied behaviour" can become an *earned* objective rather than only a
+hardcoded protection.
+
+### Why this is the OEE-relevant one
+
+Diversity of the replicator that carries meaning is close to the definition of open-endedness at the atom
+level — a system that keeps finding genuinely different things to do, not just more of one thing. #114
+prevents that diversity from collapsing; #124 lets the system come to *want* it, and to modulate how much
+it wants it against everything else it values, through the same selection process that tunes every other
+objective. The difference between a floor under diversity and a gradient pulling toward it is the
+difference between "don't let it die" and "reach for more of it" — and only the second is a driver.
+
+### Correctness
+
+Byte-safe in the control limit for exactly the reasons #115 was: register indices below 16 mask
+identically under %19 and %16; the new slot initializes to 0; and with `__ATOM_OBJ` off the sensor
+mutator's address range stays 16, so no evolved sensor ever reaches S16/S17/S18. Every register literal
+(the S array, the per-sensor regs, the copy loop, both masks, the clamp loop, and the mutation ranges) was
+moved to 19 together, verified by grep for stray 18s. #124 introduces no new flag — it rides `__ATOM_OBJ`,
+so it shares #115's single control and revert. As with #115 the coupling only *matters* once atoms are
+authored, varied, and firing, which is the long-horizon live regime the harness can't reach; the register
+plumbing is correct now, the effect is a live-run question.
+
+### Position
+
+This is the natural closing of the loop the speculative arc opened. #120–#123 made the atom bank an
+evolutionary population that explores, varies, remembers, and builds; #115/#116 wired it to the objective
+generator both ways; #124 lets that generator select for the very open-endedness the #120–#123 machinery
+produces. Atom diversity is now something the system can generate (#121/#123), protect (#114), sense
+(#124), and — if it pays — deliberately pursue. The engine, and the reason to run it, are both the
+system's own.
+
+---
+
+## #125 — ATOM-EARNED DIMENSIONALITY: the micro→macro wire
+
+### The move #110–#124 never made
+
+Fifteen swings, and every one of them lived *inside* the atom subsystem or its immediate coupling to the
+objective generator. That was the right place to work — it is where the project's own history located the
+bottleneck — but it left the largest question of the whole session untouched: **does any of this matter to
+the world?** An atom bank that explores, varies, remembers, builds, and is valued by its own objectives is
+a beautiful engine, but if the organism and ecosystem around it cannot feel it, it is an engine turning a
+shaft connected to nothing. Open-endedness is a claim about the *system*, not about one of its
+subsystems.
+
+The project already has a macro-level open-endedness engine: the #25 dimensionality ratchet. Every 3000
+ticks it grows a new heritable trait axis — literally expands the dimensionality of the space life
+evolves in — but only when ecological diversity has already earned it (distinct occupied niche-cells past
+a threshold). The notes are rightly proud of that gate: it is what fixed #16's blind-clock failure, where
+axes were injected whether or not the board was full, washing out selection. Growth *earned*, never
+premature. That is the macro engine. Until now it could only be earned one way: by ecological occupancy.
+
+### The wire, and why it's conservative
+
+#125 lets the atom subsystem's open-endedness become a *second* way to earn macro growth — carefully, so
+it strengthens the ratchet's logic rather than breaking it. When the growth check fires, a **proven and
+diverse** atom bank (the product of the credit and diversity EMAs already maintained for #115/#124) adds a
+small lift to the occupancy count. Three guards keep it honest, and they are the whole design:
+
+1. **It can only tip a near-miss.** The lift applies only when ecological occupancy is already ≥ 60% of
+   threshold. In a monoculture — exactly the state #25's gate exists to refuse growth in — occupancy is
+   low, the lift never engages, and the ratchet behaves precisely as before. Atoms cannot bootstrap a new
+   dimension out of an empty board; they can only help a board that is *already most of the way there*
+   cross the line.
+2. **It is capped at 20% of threshold.** Even a maximally proven, maximally diverse atom bank shifts the
+   bar by at most a fifth. The ecological signal remains the overwhelming majority of what earns growth.
+3. **It rides atom CREDIT, not raw diversity.** This matters specifically because of #121 and #123: those
+   swings deliberately increase expression *churn*, so raw atom diversity can be high even when nothing is
+   working. Gating the lift on credit×diversity means only atoms that are *actually helping fitness*
+   contribute — churn alone earns nothing.
+
+Together these make #125 an *extension* of #25's earned-growth invariant, not a violation of it. This is
+the deliberate contrast with the swing I ruled out this session — making morphology matter — which would
+have destroyed a scientific control (the render channel's cargo-without-a-channel null). #125 touches a
+carefully-tuned subsystem too, but it preserves that subsystem's hard-won property instead of overturning
+it: growth is still earned, still refused in monoculture, still ecologically dominated — with one new,
+bounded, quality-gated path to earning it.
+
+### What it means if it fires
+
+When it does engage, the causal story is the one the whole session was reaching for: atoms author a
+diverse repertoire of behaviors that genuinely help (micro-level open-endedness), the ecosystem is already
+rich, and *together* they tip the world into growing a new dimension of trait space — which the all-dims
+niche geometry then makes selected-from-birth, opening room the next round of atom evolution can explore.
+Success at the smallest scale buys complexity at the largest, and that new complexity is immediately a
+place for more small-scale success to happen. That feedback — micro novelty earning macro room, macro room
+enabling micro novelty — is what an open-ended system is *made of*, and #125 is the single wire that lets
+the two engines this session built and inherited actually turn each other.
+
+### Honest status
+
+Flag off (`DIMS_ATOM=0`), the ratchet is pure #25. The construction is conservative by the three guards
+above and reads only EMAs that already exist. But this is the swing whose *effect* is hardest to reason
+about from the armchair, because it couples two complex subsystems across scales, and it ships — like
+everything since #110's clean boot — unrun. Whether the micro→macro wire produces a compounding climb or
+just occasionally nudges a dimension into being a little early is exactly the kind of whole-system question
+that only the running artwork can answer. It is, fittingly, the most OEE-shaped bet of the session, and the
+least provable without pressing play.
+
+---
+
+## #126 — WORLD-RICHNESS SENSE: close the micro↔macro loop the other way
+
+### One wire, both directions
+
+#125 sent a signal up: a proven, diverse atom bank helps the world earn a new trait dimension. That is
+half a loop, and a half-loop is not a feedback system — it is a lever. For the micro and macro engines to
+actually turn *each other* — the thing #125's own note said open-endedness is "made of" — the signal has
+to come back down too. The world's accumulated complexity has to be something the atoms can *feel*, so
+that the richer world their success built changes what they do next.
+
+This is the exact move #116 made for the atom↔fitness coupling. #115 let objectives see atoms; #116 let
+atoms see the fitness result. Here #125 let atoms grow the world's dimensionality; #126 lets atoms see it.
+Same shape, one level up.
+
+### The `wr` variable
+
+#126 adds one grammar variable, `wr`, bound to the normalized trait dimensionality (`DIMS`, mapped so the
+ratchet's operating range 3→9 spans 0→1). An atom can now condition its behavior on how complex the world
+currently is: `wr > 0.5 ? <one strategy> : <another>`. The construction is identical to `cr` (#110) and
+`fr` (#116) — a new leaf in the vocabulary, a 17th compiled parameter, the live value passed in `uaCall` —
+and identically safe: with `__ATOM_WRSENSE` off, `wr` is a constant 0, an inert leaf, exactly as `cr`/`fr`
+are when their senses are disabled.
+
+`wr` is a *slow* sense by design. Unlike `fr` (which moves every tick) or `cr` (a rolling EMA), DIMS
+changes only when the ratchet fires — rarely, and monotonically upward over a successful run. That is
+appropriate: it is not a control signal to react to tick-by-tick but a *context* — the standing
+complexity of the arena — that lineages can evolve to exploit differently as it accumulates. An atom bank
+in a 4-dimensional world and the same lineage's descendants in an 8-dimensional world it helped build can
+now, in principle, run different behavior from the same genome, because the genome can read which world it
+is in.
+
+### Why it completes the arc
+
+With #126 the two engines this session assembled are wired to each other in both directions. Atom-level
+open-endedness (the evolving population of #120–#124) earns macro complexity (#125); macro complexity is
+sensed back by the atoms (#126) and can reshape the micro behavior that earns the next increment. That is
+a closed feedback loop across scales — the structural precondition for a system where "success at the
+smallest scale buys complexity at the largest, and that complexity is immediately a place for more
+small-scale success." Whether the loop, once closed, actually *spins* — climbs rather than settles — is,
+as always and especially here, a question only the running artwork can answer. But the wiring for it to be
+*possible* is now, for the first time in this project, complete: atoms that sense, act, learn, vary,
+recombine, are valued, earn the world's growth, and feel it.
+
+---
+
+## ARC #110–#126 — map, and what to watch when it runs
+
+Seventeen swings in one session, none run past #110's clean boot. This is the reader's map — the shape of
+the arc, and, because "only the live artwork can tell" is the honest status of all of it, **concrete
+things to watch for** so the running piece can actually render a verdict rather than just a vibe.
+
+### The seventeen, in one line each
+
+**Foundation — atoms become effectors with a real credit economy**
+- **#110** REACH on everywhere + per-atom credit + `cr` self-sense — atoms drive actuators, credit correlates output with fitness.
+- **#111** population credit pool keyed by expression (Lamarckian) — proven anywhere protects everywhere.
+- **#112** subtree inheritance — proven expressions splice into new grammar draws (crossover, content-addressed).
+- **#113** credit-weighted meme transfer — the horizontal channel picks donors by credit.
+- **#114** atom-bank NFD — rare-but-active expressions protected (Red Queen on content), counters monoculture.
+- **#115** atom-aware objectives — the objective generator's registers see atom activity (S16) and credit (S17).
+- **#116** `fr` sense — atoms feel the organism's live fitness trajectory.
+- **#117** evolvable REACH gain (`reachGain`) — atom actuator authority handed to selection.
+- **#118** population credit funnel — every expression that fires is credited, not just germline-mirrored ones.
+- **#119** vertical credit inheritance — creditTrace carries through parent→child (the route #110/#111 missed).
+
+**Speculative core — the atom bank becomes an evolutionary population**
+- **#120** novelty-blended credit (`atomNoveltyMix`) — atoms earn credit for exploring, not only exploiting.
+- **#121** credit-biased reproduction — a proven atom founds a family of local variants.
+- **#122** eligibility traces — credit for delayed, multi-step consequences (TD(λ)).
+- **#123** recombination — combine two proven atoms into a composite (cumulative complexity).
+- **#124** atom-content diversity as a selectable objective (S18) — the system can *want* its own diversity.
+
+**Micro↔macro — wire the atom engine to the world**
+- **#125** atom-earned dimensionality (`__DIMS_ATOM`) — a proven, diverse bank helps earn a new trait axis, conservatively.
+- **#126** `wr` sense — atoms feel the world's accumulated dimensionality; closes the loop both ways.
+
+### What to watch — the ladder of evidence
+
+These are ordered: each rung only means something if the ones below it hold. Read them as the questions to
+ask the live artwork, roughly in this sequence.
+
+1. **Boot & stability.** Does it run without console errors, and does the population persist (not crash to
+   extinction loops)? This is the one thing #110's harness boot checked and #111–#126 have not — the first
+   real run is also the first parse/boot test of everything since. Watch this before trusting any of the below.
+2. **Atoms exist and fire.** `genome.userAtoms.length` climbs off zero and stays there; `__reachFires`
+   grows over time (atoms are actually driving actuators, not just being authored). If `__reachFires` stays
+   0, the whole effector arc is inert and nothing downstream matters.
+3. **Credit becomes non-trivial.** Some atoms' `creditTrace` move off 0 and *persist* with a sign — and the
+   pool `__atomExprCredit` fills with a spread of values, not all-zero. This is the signal the entire
+   #80–#109 arc never got. If credit stays flat, the loop is wired but not gripping.
+4. **Content persists and compounds.** Do specific expressions *survive* many mutation cycles (the pool
+   keeps the same high-credit strings), and do composite expressions from #123 appear and stick (longer
+   expressions with a proven substring)? Persistence of content is the difference between churn and memory.
+5. **Diversity holds under the reproduction pressure.** Distinct-expression count (`__atomExprUses.size`)
+   stays healthy rather than collapsing toward one dominant expression — the #114-vs-#121/#123 balance.
+   Collapse here is the most likely failure mode of the speculative half; it is directly observable.
+6. **The macro wire fires, earned.** `DIMS` grows during rich periods — and, the crucial control, it does
+   *not* grow during monoculture/collapse (that would mean #125's guards failed). Compare against a run
+   with `DIMS_ATOM=0`: if DIMS growth timing changes, atoms are reaching the world.
+
+### How to A/B any of it
+
+Every swing is a `globalThis` flag, default on, forced off by setting it to 0 before load (e.g.
+`__ATOM_NOVELTY_CREDIT=0`). Setting a flag off yields a byte-identical control for that swing (the notes
+for each state the exact off-limit). The scientifically useful cuts:
+
+- **Whole speculative half off:** `__ATOM_NOVELTY_CREDIT=0 __ATOM_REPRO=0 __ATOM_ELIGIBILITY=0 __ATOM_RECOMB=0`
+  → recovers the #110–#119 exploitation-only economy. If the population is healthier here, the speculative
+  bets are net-negative and should be dialed back via their evolvable mixes rather than forced.
+- **Whole atom arc off:** `__REACH_MAIN=0 __REACH_NOK=0` (plus `__ATOM_CREDIT=0`) → atoms revert to
+  calculators, the pre-#110 null the arc was trying to escape. The baseline every claim is measured against.
+- **Micro↔macro wire off:** `__DIMS_ATOM=0 __ATOM_WRSENSE=0` → the atom engine runs but is decoupled from
+  world dimensionality; isolates whether the cross-scale loop does anything.
+
+The gene-level dials (`atomNoveltyMix` seeded 0.25, `reachGain` seeded 0.2) are the system's own A/B — if a
+bet is bad, selection should drive its dial down, and watching those genes move is itself evidence about
+whether each mechanism earns its place. That is the design throughout: not to force the answer, but to hand
+the levers to selection and to the live run, and to have written down, here, exactly what a watching human
+should look for when they finally press play.
+
