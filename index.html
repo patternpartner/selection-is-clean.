@@ -466,7 +466,7 @@ let FIELD_DIFFUSE=0.11;  // gentle spread — Pe22b: now genome-driven, can evol
 // This is the system's access to primitives that weren't in the opcode set
 // at design time. JS can generate JS; the genome now uses that fact.
 // ═══════════════════════════════════════
-const USER_VARS=["a","b","u","c","d","m","s","cr","fr"]; // a,b=source regs; u=own use count; c=proximity,
+const USER_VARS=["a","b","u","c","d","m","s","cr","fr","wr"]; // a,b=source regs; u=own use count; c=proximity,
                                            // d=energy, m=caste-match (#7a); s=own previous output; cr=own credit trace (#110)
                                            // (#10 recurrent state). The system authors primitives
                                            // that sense the world AND remember.
@@ -647,8 +647,8 @@ function uaJitterConst(expr){
 // "t" in "Math.tanh" has a left boundary but not a right one — "t" is immediately followed by "a", a
 // word character — so \bt\b cannot match it), and none of them collides with another on the list. A
 // \b-anchored regex over that closed vocabulary cannot false-match, so this needs no parser either.
-const UA_VAR_RE=/\b(?:nx|ny|nb|rl|rd|cr|fr|a|b|u|c|d|m|s|t)\b/g;
-const UA_ALL_VARS=["a","b","u","c","d","m","s","cr","fr","nx","ny","t","nb","rl","rd"];
+const UA_VAR_RE=/\b(?:nx|ny|nb|rl|rd|cr|fr|wr|a|b|u|c|d|m|s|t)\b/g;
+const UA_ALL_VARS=["a","b","u","c","d","m","s","cr","fr","wr","nx","ny","t","nb","rl","rd"];
 function uaSwapVar(expr,re,pool){
   re=re||UA_VAR_RE; pool=pool||UA_ALL_VARS;
   const matches=expr.match(re);
@@ -681,7 +681,7 @@ function uaCompile(atom){
   try{
     // Pe24: compiled function takes (a,b,u) — u is normalized self-usage count.
     // Old atoms with expressions only referencing a,b still compile fine; u is unused param.
-    atom.compiled=new Function("a","b","u","c","d","m","s","f","nx","ny","t","nb","rl","rd","cr","fr","const r=("+atom.expression+");return isFinite(r)?r:0;");
+    atom.compiled=new Function("a","b","u","c","d","m","s","f","nx","ny","t","nb","rl","rd","cr","fr","wr","const r=("+atom.expression+");return isFinite(r)?r:0;");
     atom.failed=false;
   }catch(e){
     atom.compiled=null;
@@ -836,6 +836,7 @@ let __reachFires=0; // telemetry: how many times an authored atom drove an actua
 let __ATOM_OBJ=true; // #115: expose atom-system activity to the objective-generator's register bank (S16/S17), so the mature Pe22-25 sensor VM can author fitness dimensions that VALUE atom behaviour. New objectives still enter at realWeight 0 and must earn participation via fitness correlation. Force off with ATOM_OBJ=0
 let __reachFiresPrev=0, __reachRateEMA=0, __atomCreditEMA=0; // #115: EMAs feeding S16 (REACH firing rate/particle) and S17 (mean positive germline atom credit); advanced once/tick on the real sensor pass
 let __atomDivEMA=0; // #124: EMA feeding S18 — log-scaled count of distinct active atom expressions (atom-content diversity), advanced once/tick on the real sensor pass
+let __ATOM_WRSENSE=true; // #126: give atoms a sense of the WORLD's accumulated complexity — the `wr` grammar variable, the normalized trait dimensionality (DIMS). Closes the #125 loop macro->micro: atoms earn dimensions (#125) and now sense them, so behaviour can respond to the richer world their own success built. Force off with ATOM_WRSENSE=0
 let __ATOM_FRSENSE=true; // #116: give atoms a live sense of the ORGANISM's fitness trajectory (the `fr` grammar variable). cr (own credit) is a slow learned "am I generally helpful"; fr is the fast "is the whole organism winning right now", so authored behaviour can respond to the organism's condition. Force off with ATOM_FRSENSE=0
 let __orgFitTraj=0; // #116: tanh-bounded organism fitness trajectory (currentFitness - prevSmoothed), updated once/tick in applyCreditAssignment; fed to atoms as `fr`. Stays 0 when __ATOM_FRSENSE is off
 let __ATOM_NOVELTY_CREDIT=true; // #120: blend the NOVELTY trend into atom credit direction — atoms driving the organism toward novel territory (per the #39 archive) earn credit even against a fitness dip. The OEE exploration counterpart to the pure-fitness exploitation of #110-#119. Mix is the evolvable germline dial genome.atomNoveltyMix, seeded ACTIVE (0.25). Force off with ATOM_NOVELTY_CREDIT=0
@@ -984,7 +985,8 @@ function uaCall(atom,a,b){
     const s=isFinite(atom.state)?atom.state:0;   // recurrent state = previous output
     const _cr=isFinite(atom.creditTrace)?atom.creditTrace:0; // #110: own credit trace
     const _fr=(__ATOM_FRSENSE&&isFinite(__orgFitTraj))?__orgFitTraj:0; // #116: organism fitness trajectory (0 when sense off)
-    const r=atom.compiled(a,b,u,uaCtxC,uaCtxD,uaCtxM,s,uaCallF,uaCtxNx,uaCtxNy,uaCtxT,uaCtxNb,uaCtxRl,uaCtxRd,_cr,_fr);
+    const _wr=__ATOM_WRSENSE?Math.max(0,Math.min(1,(DIMS-3)/6)):0; // #126: world-richness — accumulated trait dimensionality (macro complexity the atom's own success helps grow, #125). 0 when sense off
+    const r=atom.compiled(a,b,u,uaCtxC,uaCtxD,uaCtxM,s,uaCallF,uaCtxNx,uaCtxNy,uaCtxT,uaCtxNb,uaCtxRl,uaCtxRd,_cr,_fr,_wr);
     atom.uses=prevUses+1;
     if(__ATOM_USE_POP&&atom.expression){
       if(__atomExprUses.size>5000)__atomExprUses.clear(); // bounded — a live counter, not an archive
@@ -20356,6 +20358,7 @@ if(typeof globalThis!=='undefined'){
                __ATOM_REPRO:1,                                        // #121: CREDIT-BIASED ATOM REPRODUCTION — half of atom births local-step (uaLocalStep, #103's small-move operator) the highest-credit atom in the bank instead of drawing a fresh random expression, founding a family of near-variants around a proven primitive. Gives proven structure a refinement GRADIENT — the neighborhood-search pure-random authoring lacks — while the other half of births keeps exploring fresh. creditTrace seeds from the parent at 50%. Off / no proven atom yet => fresh authoring exactly as before. Force off with ATOM_REPRO=0
                __ATOM_ELIGIBILITY:1,                                  // #122: ELIGIBILITY TRACES on atom credit — instead of clearing the contribution map each tick, decay it (×0.6, ~half-dozen-tick window) so an atom that fired recently keeps earning credit as fitness moves in its WAKE. TD(λ)-style delayed-reward attribution, the mechanism needed to credit multi-step behaviour rather than only same-tick coincidence. Sign rule unchanged; only the trace's lifetime grows. Off => same-tick-only, byte-identical to pre-#122. Force off with ATOM_ELIGIBILITY=0
                __ATOM_RECOMB:1,                                       // #123: ATOM RECOMBINATION — a fraction of #121's credit-biased births COMBINE the two highest-credit atoms into a composite (A) op (B) instead of local-stepping one. Point mutation only refines within a structure; recombination splices two proven HISTORIES — the complexity-jump source #52 says mutation cannot supply — assembling a bigger primitive from two that already work. Length-capped at 160 (the sanitize slice, so composites never truncate to invalid JS; also bounds runaway growth). creditTrace seeds from max(parents)*0.5. Force off with ATOM_RECOMB=0
+               __ATOM_WRSENSE:1,                                      // #126: WORLD-RICHNESS SENSE (macro->micro, the complement of #125) — the `wr` grammar variable gives atoms a read of the accumulated trait dimensionality (normalized DIMS), the macro complexity their own success helps grow (#125). Closes the micro<->macro loop both ways, as #116 did for atom<->fitness: an atom can now behave differently in a rich, high-dimensional world than in a sparse one. Force off with ATOM_WRSENSE=0
                __DIMS_ATOM:1,                                         // #125: ATOM-EARNED DIMENSIONALITY (micro->macro OEE) — a proven, diverse atom bank adds a small capped lift toward earning a new trait axis in the #25 dimensionality ratchet, but ONLY when ecological occupancy is already ≥60% of threshold (tips a near-miss, never bootstraps from monoculture) and riding atom CREDIT not raw diversity (so #121/#123 churn can't inflate it). Preserves #25's earned-growth invariant while letting atom-level open-endedness help the WORLD earn macro complexity. Force off with DIMS_ATOM=0
                __UA_INHERIT:1,                                        // #112: SUBTREE INHERITANCE — the grammar's leaf generator occasionally splices a whole proven expression from the credit pool instead of emitting a fresh terminal, weighted by positive pool credit. Proven building blocks propagate as building blocks; genetic programming's crossover, but the "parents" are population-wide, credit-ranked, and content-addressed. Depth-tapered probability (12%/(1+depth)) and 120-char size guard prevent runaway string growth. Force off with UA_INHERIT=0
                __ATOM_NFD:1,                                          // #114: NEGATIVE FREQUENCY-DEPENDENCE for the atom bank — Red Queen #28 applied to CONTENT. A used-but-rare expression earns up to 0.4 overwrite protection; the population-dominant expression gets none and must survive on credit alone. Quality-diversity for the atom replicator: keep the good (credit) AND the different (rarity), combined via max. Directly counters the monoculture-collapse risk #112 introduces. Force off with ATOM_NFD=0
@@ -20386,6 +20389,7 @@ __UA_INHERIT=(typeof globalThis==='undefined')||((globalThis.__UA_INHERIT??1)|0)
 __ATOM_NFD=(typeof globalThis==='undefined')||((globalThis.__ATOM_NFD??1)|0)!==0; // #114: default ON. Force off with ATOM_NFD=0
 __ATOM_OBJ=(typeof globalThis==='undefined')||((globalThis.__ATOM_OBJ??1)|0)!==0; // #115: default ON. Force off with ATOM_OBJ=0
 __ATOM_FRSENSE=(typeof globalThis==='undefined')||((globalThis.__ATOM_FRSENSE??1)|0)!==0; // #116: default ON. Force off with ATOM_FRSENSE=0
+__ATOM_WRSENSE=(typeof globalThis==='undefined')||((globalThis.__ATOM_WRSENSE??1)|0)!==0; // #126: default ON. Force off with ATOM_WRSENSE=0
 __REACH_GAIN=(typeof globalThis==='undefined')||((globalThis.__REACH_GAIN??1)|0)!==0; // #117: default ON. Force off with REACH_GAIN=0
 __SELF_PREDICT=(typeof globalThis!=='undefined')&&((globalThis.__SELF_PREDICT|0)===1); // #92: default OFF
 __GRIP_SEED=(typeof globalThis!=='undefined')&&((globalThis.__GRIP_SEED|0)===1); // #93: default OFF

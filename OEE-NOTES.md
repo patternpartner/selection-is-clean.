@@ -10343,3 +10343,125 @@ just occasionally nudges a dimension into being a little early is exactly the ki
 that only the running artwork can answer. It is, fittingly, the most OEE-shaped bet of the session, and the
 least provable without pressing play.
 
+---
+
+## #126 — WORLD-RICHNESS SENSE: close the micro↔macro loop the other way
+
+### One wire, both directions
+
+#125 sent a signal up: a proven, diverse atom bank helps the world earn a new trait dimension. That is
+half a loop, and a half-loop is not a feedback system — it is a lever. For the micro and macro engines to
+actually turn *each other* — the thing #125's own note said open-endedness is "made of" — the signal has
+to come back down too. The world's accumulated complexity has to be something the atoms can *feel*, so
+that the richer world their success built changes what they do next.
+
+This is the exact move #116 made for the atom↔fitness coupling. #115 let objectives see atoms; #116 let
+atoms see the fitness result. Here #125 let atoms grow the world's dimensionality; #126 lets atoms see it.
+Same shape, one level up.
+
+### The `wr` variable
+
+#126 adds one grammar variable, `wr`, bound to the normalized trait dimensionality (`DIMS`, mapped so the
+ratchet's operating range 3→9 spans 0→1). An atom can now condition its behavior on how complex the world
+currently is: `wr > 0.5 ? <one strategy> : <another>`. The construction is identical to `cr` (#110) and
+`fr` (#116) — a new leaf in the vocabulary, a 17th compiled parameter, the live value passed in `uaCall` —
+and identically safe: with `__ATOM_WRSENSE` off, `wr` is a constant 0, an inert leaf, exactly as `cr`/`fr`
+are when their senses are disabled.
+
+`wr` is a *slow* sense by design. Unlike `fr` (which moves every tick) or `cr` (a rolling EMA), DIMS
+changes only when the ratchet fires — rarely, and monotonically upward over a successful run. That is
+appropriate: it is not a control signal to react to tick-by-tick but a *context* — the standing
+complexity of the arena — that lineages can evolve to exploit differently as it accumulates. An atom bank
+in a 4-dimensional world and the same lineage's descendants in an 8-dimensional world it helped build can
+now, in principle, run different behavior from the same genome, because the genome can read which world it
+is in.
+
+### Why it completes the arc
+
+With #126 the two engines this session assembled are wired to each other in both directions. Atom-level
+open-endedness (the evolving population of #120–#124) earns macro complexity (#125); macro complexity is
+sensed back by the atoms (#126) and can reshape the micro behavior that earns the next increment. That is
+a closed feedback loop across scales — the structural precondition for a system where "success at the
+smallest scale buys complexity at the largest, and that complexity is immediately a place for more
+small-scale success." Whether the loop, once closed, actually *spins* — climbs rather than settles — is,
+as always and especially here, a question only the running artwork can answer. But the wiring for it to be
+*possible* is now, for the first time in this project, complete: atoms that sense, act, learn, vary,
+recombine, are valued, earn the world's growth, and feel it.
+
+---
+
+## ARC #110–#126 — map, and what to watch when it runs
+
+Seventeen swings in one session, none run past #110's clean boot. This is the reader's map — the shape of
+the arc, and, because "only the live artwork can tell" is the honest status of all of it, **concrete
+things to watch for** so the running piece can actually render a verdict rather than just a vibe.
+
+### The seventeen, in one line each
+
+**Foundation — atoms become effectors with a real credit economy**
+- **#110** REACH on everywhere + per-atom credit + `cr` self-sense — atoms drive actuators, credit correlates output with fitness.
+- **#111** population credit pool keyed by expression (Lamarckian) — proven anywhere protects everywhere.
+- **#112** subtree inheritance — proven expressions splice into new grammar draws (crossover, content-addressed).
+- **#113** credit-weighted meme transfer — the horizontal channel picks donors by credit.
+- **#114** atom-bank NFD — rare-but-active expressions protected (Red Queen on content), counters monoculture.
+- **#115** atom-aware objectives — the objective generator's registers see atom activity (S16) and credit (S17).
+- **#116** `fr` sense — atoms feel the organism's live fitness trajectory.
+- **#117** evolvable REACH gain (`reachGain`) — atom actuator authority handed to selection.
+- **#118** population credit funnel — every expression that fires is credited, not just germline-mirrored ones.
+- **#119** vertical credit inheritance — creditTrace carries through parent→child (the route #110/#111 missed).
+
+**Speculative core — the atom bank becomes an evolutionary population**
+- **#120** novelty-blended credit (`atomNoveltyMix`) — atoms earn credit for exploring, not only exploiting.
+- **#121** credit-biased reproduction — a proven atom founds a family of local variants.
+- **#122** eligibility traces — credit for delayed, multi-step consequences (TD(λ)).
+- **#123** recombination — combine two proven atoms into a composite (cumulative complexity).
+- **#124** atom-content diversity as a selectable objective (S18) — the system can *want* its own diversity.
+
+**Micro↔macro — wire the atom engine to the world**
+- **#125** atom-earned dimensionality (`__DIMS_ATOM`) — a proven, diverse bank helps earn a new trait axis, conservatively.
+- **#126** `wr` sense — atoms feel the world's accumulated dimensionality; closes the loop both ways.
+
+### What to watch — the ladder of evidence
+
+These are ordered: each rung only means something if the ones below it hold. Read them as the questions to
+ask the live artwork, roughly in this sequence.
+
+1. **Boot & stability.** Does it run without console errors, and does the population persist (not crash to
+   extinction loops)? This is the one thing #110's harness boot checked and #111–#126 have not — the first
+   real run is also the first parse/boot test of everything since. Watch this before trusting any of the below.
+2. **Atoms exist and fire.** `genome.userAtoms.length` climbs off zero and stays there; `__reachFires`
+   grows over time (atoms are actually driving actuators, not just being authored). If `__reachFires` stays
+   0, the whole effector arc is inert and nothing downstream matters.
+3. **Credit becomes non-trivial.** Some atoms' `creditTrace` move off 0 and *persist* with a sign — and the
+   pool `__atomExprCredit` fills with a spread of values, not all-zero. This is the signal the entire
+   #80–#109 arc never got. If credit stays flat, the loop is wired but not gripping.
+4. **Content persists and compounds.** Do specific expressions *survive* many mutation cycles (the pool
+   keeps the same high-credit strings), and do composite expressions from #123 appear and stick (longer
+   expressions with a proven substring)? Persistence of content is the difference between churn and memory.
+5. **Diversity holds under the reproduction pressure.** Distinct-expression count (`__atomExprUses.size`)
+   stays healthy rather than collapsing toward one dominant expression — the #114-vs-#121/#123 balance.
+   Collapse here is the most likely failure mode of the speculative half; it is directly observable.
+6. **The macro wire fires, earned.** `DIMS` grows during rich periods — and, the crucial control, it does
+   *not* grow during monoculture/collapse (that would mean #125's guards failed). Compare against a run
+   with `DIMS_ATOM=0`: if DIMS growth timing changes, atoms are reaching the world.
+
+### How to A/B any of it
+
+Every swing is a `globalThis` flag, default on, forced off by setting it to 0 before load (e.g.
+`__ATOM_NOVELTY_CREDIT=0`). Setting a flag off yields a byte-identical control for that swing (the notes
+for each state the exact off-limit). The scientifically useful cuts:
+
+- **Whole speculative half off:** `__ATOM_NOVELTY_CREDIT=0 __ATOM_REPRO=0 __ATOM_ELIGIBILITY=0 __ATOM_RECOMB=0`
+  → recovers the #110–#119 exploitation-only economy. If the population is healthier here, the speculative
+  bets are net-negative and should be dialed back via their evolvable mixes rather than forced.
+- **Whole atom arc off:** `__REACH_MAIN=0 __REACH_NOK=0` (plus `__ATOM_CREDIT=0`) → atoms revert to
+  calculators, the pre-#110 null the arc was trying to escape. The baseline every claim is measured against.
+- **Micro↔macro wire off:** `__DIMS_ATOM=0 __ATOM_WRSENSE=0` → the atom engine runs but is decoupled from
+  world dimensionality; isolates whether the cross-scale loop does anything.
+
+The gene-level dials (`atomNoveltyMix` seeded 0.25, `reachGain` seeded 0.2) are the system's own A/B — if a
+bet is bad, selection should drive its dial down, and watching those genes move is itself evidence about
+whether each mechanism earns its place. That is the design throughout: not to force the answer, but to hand
+the levers to selection and to the live run, and to have written down, here, exactly what a watching human
+should look for when they finally press play.
+
