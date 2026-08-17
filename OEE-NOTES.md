@@ -10499,3 +10499,44 @@ one that most directly gates the arc's boldest claim (cumulative complexity via 
 the one worth handing over first: let selection, not me, decide how hard the atom bank reaches for
 composite complexity.
 
+---
+
+## #128 — FINISH THE JOB: the last two hand-set dials go to selection
+
+#127 handed over the recombination rate and left an explicit note-to-self: the reproduction split and the
+eligibility decay are next in line. #128 is that follow-through. After it, **not one magic number I
+introduced across the entire #120–#123 speculative arc is still mine** — every explore/exploit/build/remember
+balance in the atom bank is an evolvable trait the system tunes for itself.
+
+Two genes, both on the verified `reachGain`/`atomRecombRate` pattern:
+
+- **`atomReproRate`** (seeded 0.5, range [0, 0.9]) — the split, at the moment of birth, between breeding a
+  proven atom (#121, exploit) and authoring a fresh random one (explore). A lineage that gains by refining
+  what it has drives it up; one that needs to keep discovering wholly new structure drives it down. At 0 it
+  is pure fresh authoring — exactly the pre-#121 behavior — so selection can walk the whole range from "never
+  reproduce, always explore" to "almost always reproduce," and the position it settles at *is* the answer to
+  whether credit-biased reproduction was worth adding.
+
+- **`atomEligDecay`** (seeded 0.6, range [0.3, 0.9]) — the eligibility-trace λ (#122): how long an atom's
+  action stays creditable for the fitness that follows it. A lineage whose payoffs land many ticks after the
+  action turns it up (longer memory); one whose effects are immediate turns it down. The prune floor stays a
+  fixed 0.02 — that is a substrate bound (keeps the map bounded), not a strategy, so it is rightly not
+  evolvable. Bounded away from 1 (or the trace would never prune) and away from 0 (or there'd be no
+  eligibility at all), so every value in range is a sane memory horizon.
+
+### Why finishing this matters more than it looks
+
+This isn't tidying. The through-line of the entire project — stated in #107, #117, and a dozen places — is
+that the system, not the author, should hold the levers on how it works, because a hand-picked constant is a
+hidden hypothesis the author can't see is wrong. I spent the speculative arc adding powerful mechanisms and
+smuggling my guesses in as their tuning. #128 removes the last of those guesses. What's left is cleaner in a
+way that matters for the science: every one of the four speculative behaviors (novelty, reproduction,
+eligibility, recombination) now exposes its own intensity as a gene, so when the artwork runs, the *genes
+themselves* become the readout of which bets selection keeps and which it abandons — the "watch the dials"
+evidence the arc guide describes, now available for all four, not just two. The mechanisms were the bet; the
+dials going to selection are how the bet reports its own result.
+
+With #128 the speculative arc is not just complete but *honest*: nothing in it is true by my fiat. It is all
+either substrate (the bounds and floors that keep it from breaking) or the system's own evolvable choice.
+That is the shape it should have had all along, and now does.
+
