@@ -9906,3 +9906,60 @@ new dynamics to get wrong beyond "more expressions, same rule." As with the rest
 unmeasured this session, correct in the flag-off limit, and the live artwork is the only place the widened
 funnel's effect can actually be seen.
 
+---
+
+## #119 — VERTICAL CREDIT INHERITANCE: the parent→child channel #110/#111 forgot
+
+### The gap found while wiring #118
+
+Tracing the credit funnel for #118 surfaced a hole in the most important place of all. `mutateChildGenome`
+— the function that builds a child genome from a parent, i.e. ordinary reproduction, the *primary*
+vertical heritability route in the whole system — clones the parent's atoms like this:
+
+```
+g.userAtoms = src.userAtoms.map(a => ({
+  expression: a.expression, compiled: null, failed: !!a.failed,
+  uses: 0, state: 0, alienHits: 0, alienAttempts: 0
+}));
+```
+
+No `creditTrace`. Every child begins with all its atoms at zero credit, discarding whatever the parent
+lineage learned about them. #111 carefully seeds credit from the population pool at the *birth*,
+*meme-transfer*, and *particle-seed* sites — but the single most-travelled inheritance path, parent to
+child, was never wired. The Lamarckian ratchet the arc is built on had a broken tooth exactly where the
+most copies are made.
+
+### Why this isn't the same as the reset just above it
+
+The line directly above deliberately resets `alienHits`/`alienAttempts`/`uses`, with a comment
+(from SWING #46) saying a new lineage should re-earn its own predictive track record. It would be easy to
+assume `creditTrace` belongs to that same "reset on clone" policy. It does not, and the distinction is
+the crux:
+
+- `alienHits`/`uses` are the **alien-grip** channel — an atom's predictive fit against an exogenous peer.
+  #95/#97 measured that channel at chance in the live artwork; #46's reasoning is that it's a per-lineage
+  record with no reason to transfer.
+- `creditTrace` is the **#110 fitness-contribution** channel — did this atom's REACH output co-move with
+  *this organism's* fitness. #111's entire thesis is that this evidence is a property of the expression's
+  content and *should* propagate. Resetting it on the vertical channel while seeding it on every other
+  channel isn't a policy, it's an oversight.
+
+### The fix
+
+Child atoms now seed `creditTrace` at 50% of the best evidence available — `max(parent's own trace,
+population-pool credit for that expression)` — so a child of a lineage whose atom proved useful starts
+warm, but at half strength, so it still has to re-earn full credit under its own selection. Identical in
+spirit and rate to #111's seeding on the other three channels; this just extends it to the one that was
+missed. Gated `__ATOM_CREDIT_VERT`, default on; off, the field seeds 0 and the behavior is exactly
+pre-#119.
+
+### Position in the arc
+
+Small, but it closes the arc's own internal inconsistency. After #119, *every* route by which an atom
+enters a genome — germline authoring (#111 seed), horizontal transfer (#111/#113), particle seeding
+(#111), and now vertical reproduction (#119) — carries the expression's accumulated credit forward. The
+Lamarckian propagation the #110–#118 machinery assumes is now actually continuous across the whole
+heritability graph, with no channel silently zeroing the signal the rest of the arc spends its effort
+building. As with the rest of this session's swings it ships unmeasured and correct in the flag-off limit;
+the live artwork is where continuity of credit across generations would actually show its effect.
+
