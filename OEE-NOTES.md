@@ -9779,3 +9779,67 @@ objective can condition on the genotype's behavior. That mutual visibility is th
 precondition for the open-ended climb the whole #110–#116 arc is reaching for; whether the climb
 actually happens remains, as always, a live-run question.
 
+---
+
+## #117 — EVOLVABLE REACH GAIN: hand the atoms' authority ceiling to selection
+
+### A constant I'd been stepping over
+
+Every one of #110–#116 routed atom output through the same line, at four dispatch sites:
+
+```
+const _rv = clamp(_out, -2, 2) * (REACH_NOK ? 1 : k) * 0.2;
+vmActions[|di| % 7] += _rv;
+```
+
+That `0.2` is the REACH gain — how hard an authored atom's output pushes on a conserved actuator. It
+has been `0.2`, hand-set, since REACH shipped in #48. It is the single number that decides how much
+*authority* the entire atom subsystem has over the organism's physics, and it was chosen by fiat and
+never touched.
+
+This cuts directly against the project's own repeatedly-stated ethos. #107's note on making the grammar
+production weights evolvable puts it plainly: these were "the one part of 'how the system authors
+itself' the system was never given a hand on." The REACH gain is exactly that, one level down — the
+system authors behavior (atoms), routes it to actuators (REACH), but the *volume knob* on that whole
+channel is a constant no lineage can turn.
+
+### The hypothesis this gene tests
+
+The #80–#109 arc is a long, honest record of atom neutrality: the bank executes but does not detectably
+grip fitness, across every channel tested. The stories for *why* have been about routing (fixed in
+#110), persistence (#111, #114), content inheritance (#112), and credit (#110–#113). There is one more
+candidate that none of those addressed and that this gene isolates: **maybe the gain is simply too
+low.** At `0.2`, a clamped atom output of ±2 contributes at most ±0.4 to an actuator that is then folded
+into conserved physics with its own damping — possibly below the noise floor of anything selection can
+see. If so, every atom in the arc was shouting through a muted channel, and no amount of better content
+or credit would matter until the channel could open.
+
+I do not know if that is the reason. That is the point: I am not qualified to pick the gain, and neither
+is any fixed constant. `genome.reachGain` hands the ceiling to selection — seeded at exactly `0.2` (so
+the seed is byte-identical to every prior run), evolving in `[0, 1]`, which lets a lineage raise its
+atoms' authority up to 5× if that pays, or mute it toward 0 if atoms are hurting. Helpful atoms earn a
+louder channel; harmful atoms get turned down. The knob that was mine is now the system's.
+
+### Construction
+
+`reachGain` follows the exact pattern the codebase established for `atomUseProtect` (#101) and
+`uaStructBias` (#107): lazily created, mutated only when `__REACH_GAIN` is on (so a forced-off run never
+draws it and never perturbs the shared RNG stream — the bit-identical-control discipline the notes
+insist on), evolved by the standard `maybe(finiteOr(v, 0.2), 0, 1, 0.03)` step, and clamped on read. It
+is serialized (`rg`), deserialized, and sanitized alongside the other evolvable scalars, so it is
+heritable across save/reload like any other gene. At all four REACH sites the `* 0.2` became
+`* (REACH_GAIN && isFinite(genome.reachGain) ? genome.reachGain : 0.2)` — so with the flag off, or before
+the gene is ever created, the value is exactly `0.2` and behavior is unchanged.
+
+### Why this belongs in the arc, and its risk
+
+#110–#116 gave the atom channel everything *except* the authority to be heard: routing, credit,
+inheritance, diversity, and bidirectional visibility with the objective. #117 is the volume knob on all
+of it, and — unlike the others — it is under direct selection, self-regulating, and it tests a specific,
+falsifiable "maybe the whole arc was gain-limited" hypothesis. The risk is real and worth stating: a
+lineage that evolves a high gain gives its (possibly bad) atoms a much louder voice in its own physics,
+which could destabilize it — but that is precisely what selection adjudicates, the actuators remain
+conserved and clamped downstream, and the seed value reproduces the old behavior exactly, so the
+downside is bounded to lineages that *chose* to turn the knob up and will be selected against if it
+hurts. Shipped unmeasured per this session's instruction; the flag-off identity is the safety net.
+

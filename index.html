@@ -824,6 +824,7 @@ let __DECIDE_REAL=true; // +DECIDE-FROM-REAL cached flag (resolved after the LIV
 let __CHILD_SIGN_FLOOR=true; // #85: floor sign-carrying genes in the CHILD mutation path; CHILD_SIGN_FLOOR=0 reproduces the prior build
 let __REACH_NOK=true; // #110: default ON (was #90 dormant). Drop the random-signed k so atom output sign is causal
 let __REACH_MAIN=true; // #110: default ON (was #88 dormant). Atoms become effectors on the main dispatch path
+let __REACH_GAIN=true; // #117: make the REACH actuator gain (fixed 0.2 by fiat since #48) an evolvable per-lineage trait, genome.reachGain — how much AUTHORITY authored atoms have over actuators. Seeded at 0.2 so the seed is byte-identical; helpful atoms can earn more authority, harmful ones less. Hypothesis: atom neutrality may partly be a gain capped too low to move fitness. Force off with REACH_GAIN=0
 let __REACH_ON=true; // +REACH cached flag (resolved after the LIVE registry); kept out of the per-instruction globalThis read path
 let __reachFires=0; // telemetry: how many times an authored atom drove an actuator (sense→ACT firings)
 let __ATOM_OBJ=true; // #115: expose atom-system activity to the objective-generator's register bank (S16/S17), so the mature Pe22-25 sensor VM can author fitness dimensions that VALUE atom behaviour. New objectives still enter at realWeight 0 and must earn participation via fitness correlation. Force off with ATOM_OBJ=0
@@ -6661,6 +6662,7 @@ function encodeGenome(){
     isb:genome.intStepBias===undefined?undefined:+(genome.intStepBias).toFixed(4),        // #97: integer-step forcing bias
     aup:genome.atomUseProtect===undefined?undefined:+(genome.atomUseProtect).toFixed(4), // #101: use-rank overwrite protection
     usb:genome.uaStructBias===undefined?undefined:+(genome.uaStructBias).toFixed(4), // #107: atom-grammar structural-branch bias (omitted if never created)
+    rg:genome.reachGain===undefined?undefined:+(genome.reachGain).toFixed(4), // #117: authored-atom actuator authority (omitted if never created)
     tmr:+(genome.typeMutRate||0.02).toFixed(4), // UNLOCKED #7a caste-innovation rate
     td: genome.tendDims|0,
     oe:[genome.opnovStrength,genome.nicheBuildRate,genome.rqRate,genome.dimsSatThresh,genome.novStrength].map(v=>+(+v).toPrecision(4)), // #35 evolvable open-endedness engine dials (+ #39 novStrength at [4])
@@ -6937,6 +6939,7 @@ function decodeGenome(data){
     if(typeof g.isb==='number')genome.intStepBias=+g.isb;        // #97
     if(typeof g.aup==='number')genome.atomUseProtect=+g.aup;     // #101
     if(typeof g.usb==='number')genome.uaStructBias=+g.usb;       // #107
+    if(typeof g.rg==='number')genome.reachGain=+g.rg;            // #117
     if(typeof g.tmr==='number')genome.typeMutRate=g.tmr;   // UNLOCKED #7a
     if(g.ua)genome.userAtoms=g.ua.map(a=>({expression:a.expression,compiled:null,failed:!!a.failed,uses:a.uses|0,age:a.age|0,alienHits:a.alienHits|0,alienAttempts:a.alienAttempts|0}));
     if(typeof g.td==='number') genome.tendDims=__cl(g.td|0,2,DIMS_MAX);
@@ -7146,6 +7149,7 @@ function sanitizeGenome(){
   if(genome.rendMaxDepth!==undefined)genome.rendMaxDepth=__cl(Math.round(finiteOr(genome.rendMaxDepth,1)),1,UA_DEPTH_CAP); // #97: clamp if present, never create
   if(genome.intStepBias!==undefined) genome.intStepBias =__cl(finiteOr(genome.intStepBias,0),0,1);                            // #97
   if(genome.atomUseProtect!==undefined)genome.atomUseProtect=__cl(finiteOr(genome.atomUseProtect,0),0,1);       // #101
+  if(genome.reachGain!==undefined)   genome.reachGain=__cl(finiteOr(genome.reachGain,0.2),0,1);                 // #117
   genome.typeMutRate=__cl(finiteOr(genome.typeMutRate,0.02),0,1);                          // UNLOCKED #7a
   genome.fitnessSensors=Array.isArray(genome.fitnessSensors)?genome.fitnessSensors.filter(s=>s&&Array.isArray(s.program)).map(s=>({program:s.program.map(cleanInstruction),weight:finiteOr(s.weight,0),realWeight:finiteOr(s.realWeight,0),creditTrace:finiteOr(s.creditTrace,0),lastEmit:finiteOr(s.lastEmit,0),prevEmit:finiteOr(s.prevEmit,0)})):[{program:[[2,5,6,1.0],[4,6,0,1.0]],weight:0.1,realWeight:0,creditTrace:0,lastEmit:0,prevEmit:0}];
   if(genome.fitnessSensors.length===0)genome.fitnessSensors=[{program:[[2,5,6,1.0],[4,6,0,1.0]],weight:0.1,realWeight:0,creditTrace:0,lastEmit:0,prevEmit:0}];
@@ -12751,6 +12755,13 @@ function mutateGenome(){
   // declaring it in the genome literal would shift the RNG stream for every run whether or not anything
   // reads it. Not gated dormant — same call as #101/#103: the system gets the option, live.
   if(__UA_STRUCT)    genome.uaStructBias=__cl(maybe(finiteOr(genome.uaStructBias,1),0.3,2.0,0.05),0.3,2.0);         // #107: how eagerly the atom grammar branches — the system's call
+  // #117: REACH actuator gain — how much authority authored atoms have over the conserved actuators.
+  // Fixed at 0.2 by fiat since REACH shipped (#48); now a lineage-level trait seeded at exactly that,
+  // evolving in [0,1] (up to 5× the old authority, or down toward mute). Lazily created and gated like
+  // the genes above, so a forced-off run never draws it and stays bit-identical. The hypothesis this
+  // gene tests: atom neutrality across the #80-#109 arc may be partly a gain capped too low by hand to
+  // ever move fitness detectably — so hand the ceiling to selection instead of guessing it.
+  if(__REACH_GAIN)   genome.reachGain=__cl(maybe(finiteOr(genome.reachGain,0.2),0,1,0.03),0,1);                     // #117: authored-atom actuator authority — the system's call, not mine
   genome.metabolicCost=__cl(maybe(genome.metabolicCost,0.000002,0.0002,0.00002),0.000002,0.0002); // #2 energy economy: no free lunch — cost stays positive (the negative-drift hole that euthanised selection is closed)
 
   // HGT parameter evolution
@@ -16438,7 +16449,7 @@ function executeVM(i,j,sim,d){
           // deterministic and sign-preserving, so ±8 is a genuine sign contrast. NOTE this also raises the
           // emit magnitude ~7x (mean |k|*0.4 ≈ 0.06 → flat 0.4): a new arm, not a matched correction.
           // REACH_NOK=0 reproduces the #88/#89 build exactly.
-          if(__REACH_MAIN){ const _rv110=Math.max(-2,Math.min(2,_out))*(__REACH_NOK?1:k)*0.2; vmActions[Math.abs(di)%7]+=_rv110; __reachFires++;
+          if(__REACH_MAIN){ const _rv110=Math.max(-2,Math.min(2,_out))*(__REACH_NOK?1:k)*(__REACH_GAIN&&isFinite(genome.reachGain)?genome.reachGain:0.2); vmActions[Math.abs(di)%7]+=_rv110; __reachFires++;
             if(__ATOM_CREDIT&&_bua.expression){if(__atomExprContrib.size>5000)__atomExprContrib.clear();__atomExprContrib.set(_bua.expression,(__atomExprContrib.get(_bua.expression)||0)+_rv110);} }
         }
       }
@@ -17546,7 +17557,7 @@ function executeVM(i,j,sim,d){
             // ACTION_EMIT opcode (case 4: vmActions[ch]+=val*k); bounded by clamp + 0.2 gain + the
             // existing influence/coefficients + the conserved-energy budget. Authored atoms become
             // EFFECTORS, not just calculators. Force off with __REACH=0.
-            if(__REACH_ON){ const _rv110p=Math.max(-2,Math.min(2,_out))*(__REACH_NOK?1:k)*0.2; vmActions[Math.abs(di)%7]+=_rv110p; __reachFires++;
+            if(__REACH_ON){ const _rv110p=Math.max(-2,Math.min(2,_out))*(__REACH_NOK?1:k)*(__REACH_GAIN&&isFinite(genome.reachGain)?genome.reachGain:0.2); vmActions[Math.abs(di)%7]+=_rv110p; __reachFires++;
               if(__ATOM_CREDIT&&_bua.expression){if(__atomExprContrib.size>5000)__atomExprContrib.clear();__atomExprContrib.set(_bua.expression,(__atomExprContrib.get(_bua.expression)||0)+_rv110p);} }
           }
         }
@@ -18838,7 +18849,7 @@ function executeClusterVM(i,j,sim,d){
       if(_bos&&_boi<_bos.length){
         const _bua=genome.userAtoms&&genome.userAtoms[_bos[_boi]];
         if(_bua){ const _out=uaCall(_bua,vmRegs[si],vmRegs[(si+1)%12]); vmRegs[di]=_out;
-          if(__REACH_ON){ const _rv110c=Math.max(-2,Math.min(2,_out))*(__REACH_NOK?1:k)*0.2; vmActions[Math.abs(di)%7]+=_rv110c; __reachFires++;
+          if(__REACH_ON){ const _rv110c=Math.max(-2,Math.min(2,_out))*(__REACH_NOK?1:k)*(__REACH_GAIN&&isFinite(genome.reachGain)?genome.reachGain:0.2); vmActions[Math.abs(di)%7]+=_rv110c; __reachFires++;
             if(__ATOM_CREDIT&&_bua.expression){if(__atomExprContrib.size>5000)__atomExprContrib.clear();__atomExprContrib.set(_bua.expression,(__atomExprContrib.get(_bua.expression)||0)+_rv110c);} }
         }
       }
@@ -19540,7 +19551,7 @@ function executeSoloVM(){
         if(_bos&&_boi<_bos.length){
           const _bua=genome.userAtoms&&genome.userAtoms[_bos[_boi]];
           if(_bua){ const _out=uaCall(_bua,vmRegs[si],vmRegs[(si+1)%12]); vmRegs[di]=_out;
-            if(__REACH_ON){ const _rv110s=Math.max(-2,Math.min(2,_out))*(__REACH_NOK?1:k)*0.2; vmActions[Math.abs(di)%7]+=_rv110s; __reachFires++;
+            if(__REACH_ON){ const _rv110s=Math.max(-2,Math.min(2,_out))*(__REACH_NOK?1:k)*(__REACH_GAIN&&isFinite(genome.reachGain)?genome.reachGain:0.2); vmActions[Math.abs(di)%7]+=_rv110s; __reachFires++;
               if(__ATOM_CREDIT&&_bua.expression){if(__atomExprContrib.size>5000)__atomExprContrib.clear();__atomExprContrib.set(_bua.expression,(__atomExprContrib.get(_bua.expression)||0)+_rv110s);} }
           }
         }
@@ -20217,6 +20228,7 @@ if(typeof globalThis!=='undefined'){
                __ATOM_NFD:1,                                          // #114: NEGATIVE FREQUENCY-DEPENDENCE for the atom bank — Red Queen #28 applied to CONTENT. A used-but-rare expression earns up to 0.4 overwrite protection; the population-dominant expression gets none and must survive on credit alone. Quality-diversity for the atom replicator: keep the good (credit) AND the different (rarity), combined via max. Directly counters the monoculture-collapse risk #112 introduces. Force off with ATOM_NFD=0
                __ATOM_OBJ:1,                                          // #115: ATOM-AWARE OBJECTIVES — expose the atom subsystem to the objective-generator's register bank (S16=REACH firing rate/particle, S17=mean germline atom credit), grown 16->18. The mature Pe22-25 sensor VM can now AUTHOR fitness dimensions that value atom behaviour and promote them to real selection pressures via the existing realWeight-earns-participation machinery (new objectives enter at realWeight 0, rise only on fitness correlation — the anti-wireheading guard already there). Connects the two most sophisticated subsystems: endogenous objective generation that can finally see, and reward, what the atoms do. Force off with ATOM_OBJ=0
                __ATOM_FRSENSE:1,                                      // #116: FITNESS-TRAJECTORY SENSE — the `fr` grammar variable gives atoms a live read of the ORGANISM's fitness trajectory (tanh-bounded currentFitness delta). cr (#110) is the slow learned "am I generally helpful"; fr is the fast "is the whole organism winning right now", so authored behaviour can be conditional on the organism's condition (e.g. explore when collapsing, exploit when thriving). Completes the atom<->fitness coupling #115 opened: #115 lets objectives see atoms, #116 lets atoms see the objective's live result. Force off with ATOM_FRSENSE=0
+               __REACH_GAIN:1,                                        // #117: EVOLVABLE REACH GAIN — the actuator gain authored atoms drive through was fixed at 0.2 by fiat since REACH (#48). Now genome.reachGain, a lineage-level trait seeded at 0.2 and evolving in [0,1] under selection: helpful atoms earn more actuator authority, harmful ones less. Tests the hypothesis that atom neutrality across #80-#109 was partly a hand-set gain too low to move fitness — hands the ceiling to selection instead of guessing it. Force off with REACH_GAIN=0
                __GROUP_COMMONS:1,                                   // GROUP SELECTION FOR THE COMMONS #40 — LIVE. Swing #36 found rqRate (the diversity-maintaining commons #28 needs) gets driven to 0 by individual selection and had to be FLOORED by fiat. This gives the existing cluster-bud lever (#33) a real countervailing force instead: colonies holding rqRate near the ceiling bud more. Headless smoke-clean (no crash/NaN across two runs) but cluster budding is too rare in a short harness window to get a verdict on the mechanism itself — same class of gap as #33 ("budding never fires there"). The live artwork, not more harness ticks, is what actually tests this. Force off with GROUP_COMMONS=0
                __MEME_TRANSFER:1,                                   // HORIZONTAL ATOM TRANSFER #41 — LIVE. Every prior route an authored atom spreads is vertical (parent→child, selfLearnFromBest, reload's sanitizeGenome splice). This adds a horizontal one: close contact lets a particle adopt a neighbour's most-PROVEN bound atom straight into its own genome — a second unit of selection, judged on cross-lineage spread, not host fitness. Headless-confirmed real (not a shared-seeding artifact): control run authored ZERO atoms population-wide in 8k ticks (nothing to inherit), yet with transfer on, the single atom that WAS born reached 410 carriers across 153 distinct lineages via 342 transfers — no vertical route could produce that. Force off with MEME_TRANSFER=0
                __CHAR_DISP:0 };                                     // character displacement #27 — DORMANT (default off): the matched A/B (seed 7, 6k) showed it NET-HARMFUL to diversity (entropyRatio 0.67 vs control 0.74; evenness 0.61 vs 0.70) — rate 0.0015 OVER-spaces lineages toward the trait-space edges instead of letting more coexist. Code+knob kept for a re-tune (gentler rate, or gate on same-niche-cell overlap not raw trait distance); force on with CHAR_DISP=1
@@ -20234,6 +20246,7 @@ __UA_INHERIT=(typeof globalThis==='undefined')||((globalThis.__UA_INHERIT??1)|0)
 __ATOM_NFD=(typeof globalThis==='undefined')||((globalThis.__ATOM_NFD??1)|0)!==0; // #114: default ON. Force off with ATOM_NFD=0
 __ATOM_OBJ=(typeof globalThis==='undefined')||((globalThis.__ATOM_OBJ??1)|0)!==0; // #115: default ON. Force off with ATOM_OBJ=0
 __ATOM_FRSENSE=(typeof globalThis==='undefined')||((globalThis.__ATOM_FRSENSE??1)|0)!==0; // #116: default ON. Force off with ATOM_FRSENSE=0
+__REACH_GAIN=(typeof globalThis==='undefined')||((globalThis.__REACH_GAIN??1)|0)!==0; // #117: default ON. Force off with REACH_GAIN=0
 __SELF_PREDICT=(typeof globalThis!=='undefined')&&((globalThis.__SELF_PREDICT|0)===1); // #92: default OFF
 __GRIP_SEED=(typeof globalThis!=='undefined')&&((globalThis.__GRIP_SEED|0)===1); // #93: default OFF
 __ABSTAIN_FREE=(typeof globalThis==='undefined')||((globalThis.__ABSTAIN_FREE??1)|0)!==0; // #95: default ON
