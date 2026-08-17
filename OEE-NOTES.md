@@ -10035,3 +10035,59 @@ rather than bolted on: it funds atoms that leave the peak. An open-ended system 
 with the balance itself under selection (`atomNoveltyMix`). With #120 the atom subsystem finally has both
 hands — and the dial that sets how hard each one pulls is the system's to turn, not mine.
 
+---
+
+## #121 — CREDIT-BIASED ATOM REPRODUCTION: give a proven atom a family
+
+### Selection without a gradient
+
+Step back and look at how a new atom actually comes into being. `mutateGenome` draws a fresh expression
+from the grammar — `uaGenExpression()` — a genuinely random program over the vocabulary. That is the only
+source of new atoms. Everything the #110–#120 arc added operates on atoms *after* they exist: credit them
+(#110), pool the credit (#111), inherit it (#119), splice proven subtrees into future random draws (#112),
+protect the rare-and-active (#114), fund exploration (#120). But the birth itself is a blind jump.
+
+This leaves a specific, load-bearing hole. When the system finds a genuinely good atom — high credit, real
+grip on fitness — it has no way to *search that atom's neighborhood.* It can protect the atom from being
+overwritten, copy it to other lineages, and paste pieces of it into unrelated random programs, but it
+cannot ask the one question evolution normally lives on: "is there something slightly better right next to
+this?" A good structure, once found, is a fixed point. Selection can keep it or lose it; it cannot refine
+it. That is search by jumping, not by climbing — and climbing is where cumulative adaptation comes from.
+
+### The mechanism
+
+At the atom-birth site, half of births (when the bank holds an atom whose credit clears a small floor)
+now produce a **local variant of the highest-credit atom** instead of a fresh random draw. The variant is
+made with `uaLocalStep` — the exact small-move operator #103 introduced for perturbing existing atoms (a
+constant jitter or a single variable swap), applied here to found a *new* atom rather than to mutate one
+in place. Its `creditTrace` seeds from the parent at 50% (the #119 warm-start rule): a child of a proven
+atom starts with real evidence but still has to re-earn full credit under its own selection.
+
+The other half of births stay fresh random draws, so exploration of genuinely new structure never stops.
+The split is the whole point: **half climbing, half jumping.** A proven atom now founds a lineage of
+near-variants — a family spread across its local neighborhood — and the credit machinery already in place
+(protection, pool, propagation) sorts that family, keeping whichever variant grips hardest. The good atom
+stops being a fixed point and becomes the seed of a gradient.
+
+### Why it belongs with #120
+
+#120 and #121 are complementary halves of making the atom bank a real evolutionary population rather than
+a bag of independent random guesses. #120 changed what atoms are rewarded *for* (novelty as well as
+fitness); #121 changes how new atoms are *generated* (near a proven one, not only from scratch). Together
+they give the atom subsystem the two things a population needs to climb: variation that is *heritable and
+local* (so improvements compound) and selection that *funds exploration* (so it does not stall on the
+first peak). Neither alone suffices — local variation with pure-fitness credit just polishes one peak
+forever; novelty credit with only random births has nothing to refine what it discovers.
+
+### Correctness and risk
+
+Flag off, or before any atom clears the credit floor, the birth path is exactly `uaGenExpression()` with
+the #111 pool seed — byte-identical to pre-#121. The variant reuses `uaLocalStep` (already live since
+#103, already substrate-verified for compile/finiteness) and the #119 credit-seed rule, so no new
+expression-generation or credit machinery is introduced — only a new *choice of source* at one birth site.
+The genuine uncertainty, stated plainly, is dynamical and it is the same family of question as #120: does
+concentrating half of births around the current best accelerate cumulative refinement, or does it narrow
+the bank toward the incumbent faster than #114's frequency-dependence can keep it diverse? That balance —
+refine-the-best versus keep-exploring — is exactly what the live artwork exists to adjudicate, and it
+ships as a bet, on by default, for that test.
+

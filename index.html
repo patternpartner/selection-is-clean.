@@ -130,6 +130,7 @@ const __atomExprContrib=new Map(); // #110: per-expression REACH contribution ac
 const __atomExprCredit=new Map(); // #111: population-wide credit-trace pool per expression; blended slowly from personal creditTrace at applyCreditAssignment time. Bounded ±1. Cleared on extinction.
 let __EXPR_CREDIT_POP=true; // #118: credit EVERY expression that fired REACH this tick directly into the pool, not only germline-mirrored ones. The population authors/runs far more atom diversity than the germline; this widens the credit funnel to the whole population. When on, replaces #111's germline personal->pool blend (germline atoms are already in the contrib map). Force off with EXPR_CREDIT_POP=0
 let __ATOM_CREDIT_VERT=true; // #119: carry atom creditTrace through VERTICAL inheritance (parent->child in mutateChildGenome), the primary heritability route #110/#111 left unwired. Child atoms seed at 50% of max(parent trace, pool credit). Force off with ATOM_CREDIT_VERT=0
+let __ATOM_REPRO=true; // #121: credit-biased atom reproduction. Half of atom births local-step the highest-credit atom (uaLocalStep) instead of a fresh random draw, founding a family of variants around a proven primitive — the refinement gradient pure-random authoring lacks. Force off with ATOM_REPRO=0
 // #107: gates lazy creation of genome.uaStructBias — see the mutateGenome site (~12586) and uaGenTerm
 // (below) for what it does. Default ON, same call as #101/#102/#103: a real, reasoned lever handed to
 // the system, live, not parked behind a flag nobody would set. Force off with UA_STRUCT=0.
@@ -13051,9 +13052,33 @@ function mutateGenome(){
   // bound=1 — four hundred and twenty-three invocations from a single primitive. Nothing downstream
   // needed fixing; authoring just had to happen often enough to be judged.
   if(Math.random()<(_atomFix?Math.max(UA_BIRTH_FLOOR,rate*0.15):rate*0.15)){
-    const expression=uaGenExpression();
-    // #111: seed personal creditTrace from the pool if this expression has a history elsewhere
-    const _seedCr=__EXPR_CREDIT?(__atomExprCredit.get(expression)||0)*0.5:0;
+    // #121: CREDIT-BIASED REPRODUCTION. Pure random authoring (uaGenExpression) can only JUMP — it has no
+    // way to refine a proven atom's neighbourhood, so a good structure, once found, has no gradient to
+    // climb; the arc can protect it (#114), inherit it (#111/#119) and splice it (#112), but never breed
+    // near-variants of it for selection to sort. Here, half of births (when the bank holds a genuinely
+    // proven atom) instead LOCAL-STEP the highest-credit atom's expression (uaLocalStep, the same
+    // small-move operator #103 gave existing atoms), founding a family of variants around a proven
+    // primitive. creditTrace seeds from the parent at 50% (warm start, re-earns full credit — same rule
+    // as #119). Off / no proven atom => fresh authoring exactly as before. Gated __ATOM_REPRO.
+    let expression, _seedCr;
+    let _reproParent=null, _reproCr=0.05;
+    if(__ATOM_REPRO&&genome.userAtoms.length>0&&Math.random()<0.5){
+      for(const _p of genome.userAtoms){
+        if(!_p||!_p.expression)continue;
+        let _c=(_p.creditTrace>0)?_p.creditTrace:0;
+        if(__EXPR_CREDIT){const _pc=__atomExprCredit.get(_p.expression)||0; if(_pc>_c)_c=_pc;}
+        if(_c>_reproCr){_reproCr=_c;_reproParent=_p;}
+      }
+    }
+    if(_reproParent){
+      const _v=(typeof uaLocalStep==='function')?uaLocalStep(_reproParent.expression):_reproParent.expression;
+      expression=(_v&&_v!==_reproParent.expression)?_v:_reproParent.expression;
+      _seedCr=_reproCr*0.5; // inherit half the proven parent's credit
+    }else{
+      expression=uaGenExpression();
+      // #111: seed personal creditTrace from the pool if this expression has a history elsewhere
+      _seedCr=__EXPR_CREDIT?(__atomExprCredit.get(expression)||0)*0.5:0;
+    }
     genome.userAtoms.push({expression,compiled:null,failed:false,uses:0,alienHits:0,alienAttempts:0,creditTrace:_seedCr});
     try{ if(typeof wireAtomCallSites==='function')wireAtomCallSites(); }catch(e){} // LEAP 21: reachable immediately, not at the next 120-tick boundary
     if(_atomFix){
@@ -20281,6 +20306,7 @@ if(typeof globalThis!=='undefined'){
                __EXPR_CREDIT_POP:1,                                   // #118: POPULATION CREDIT FUNNEL — credit EVERY expression that fired REACH this tick directly into the pool, not only germline-mirrored ones. The population authors/runs vastly more atom diversity than the tiny germline bank, but until now a population atom's REACH contribution was discarded unless the germline carried the same string. Widens the funnel to the whole population (same sign(contrib)*fSign rule as #110, slow rate); replaces #111's germline-only blend when on. Force off with EXPR_CREDIT_POP=0
                __ATOM_CREDIT_VERT:1,                                  // #119: VERTICAL CREDIT INHERITANCE — carry atom creditTrace through parent->child cloning (mutateChildGenome), the primary heritability route #110/#111 never wired (children reset every atom to 0, discarding the parent lineage's learned evidence). Child atoms seed at 50% of max(parent's own trace, population-pool credit) — a warm start that still re-earns full credit. Aligns the vertical channel with #111's Lamarckian seeding on the birth/transfer/seed channels. Force off with ATOM_CREDIT_VERT=0
                __ATOM_NOVELTY_CREDIT:1,                               // #120: NOVELTY-BLENDED ATOM CREDIT — the OEE exploration counterpart to #110-#119's pure-fitness exploitation. Blends the population-novelty trend (#39 archive) into the DIRECTION of atom credit, so an atom driving the organism into novel territory earns partial positive credit even against a fitness dip. Atom credit only; the objective generator's own credit stays pure-fitness. Mix is the evolvable germline dial genome.atomNoveltyMix, seeded ACTIVE (0.25). Bounded [-1,1] direction so update magnitudes are unchanged; flag/gene off == pure fitness. Force off with ATOM_NOVELTY_CREDIT=0
+               __ATOM_REPRO:1,                                        // #121: CREDIT-BIASED ATOM REPRODUCTION — half of atom births local-step (uaLocalStep, #103's small-move operator) the highest-credit atom in the bank instead of drawing a fresh random expression, founding a family of near-variants around a proven primitive. Gives proven structure a refinement GRADIENT — the neighborhood-search pure-random authoring lacks — while the other half of births keeps exploring fresh. creditTrace seeds from the parent at 50%. Off / no proven atom yet => fresh authoring exactly as before. Force off with ATOM_REPRO=0
                __UA_INHERIT:1,                                        // #112: SUBTREE INHERITANCE — the grammar's leaf generator occasionally splices a whole proven expression from the credit pool instead of emitting a fresh terminal, weighted by positive pool credit. Proven building blocks propagate as building blocks; genetic programming's crossover, but the "parents" are population-wide, credit-ranked, and content-addressed. Depth-tapered probability (12%/(1+depth)) and 120-char size guard prevent runaway string growth. Force off with UA_INHERIT=0
                __ATOM_NFD:1,                                          // #114: NEGATIVE FREQUENCY-DEPENDENCE for the atom bank — Red Queen #28 applied to CONTENT. A used-but-rare expression earns up to 0.4 overwrite protection; the population-dominant expression gets none and must survive on credit alone. Quality-diversity for the atom replicator: keep the good (credit) AND the different (rarity), combined via max. Directly counters the monoculture-collapse risk #112 introduces. Force off with ATOM_NFD=0
                __ATOM_OBJ:1,                                          // #115: ATOM-AWARE OBJECTIVES — expose the atom subsystem to the objective-generator's register bank (S16=REACH firing rate/particle, S17=mean germline atom credit), grown 16->18. The mature Pe22-25 sensor VM can now AUTHOR fitness dimensions that value atom behaviour and promote them to real selection pressures via the existing realWeight-earns-participation machinery (new objectives enter at realWeight 0, rise only on fitness correlation — the anti-wireheading guard already there). Connects the two most sophisticated subsystems: endogenous objective generation that can finally see, and reward, what the atoms do. Force off with ATOM_OBJ=0
@@ -20302,6 +20328,7 @@ __EXPR_CREDIT=(typeof globalThis==='undefined')||((globalThis.__EXPR_CREDIT??1)|
 __EXPR_CREDIT_POP=(typeof globalThis==='undefined')||((globalThis.__EXPR_CREDIT_POP??1)|0)!==0; // #118: default ON. Force off with EXPR_CREDIT_POP=0
 __ATOM_CREDIT_VERT=(typeof globalThis==='undefined')||((globalThis.__ATOM_CREDIT_VERT??1)|0)!==0; // #119: default ON. Force off with ATOM_CREDIT_VERT=0
 __ATOM_NOVELTY_CREDIT=(typeof globalThis==='undefined')||((globalThis.__ATOM_NOVELTY_CREDIT??1)|0)!==0; // #120: default ON. Force off with ATOM_NOVELTY_CREDIT=0
+__ATOM_REPRO=(typeof globalThis==='undefined')||((globalThis.__ATOM_REPRO??1)|0)!==0; // #121: default ON. Force off with ATOM_REPRO=0
 __UA_INHERIT=(typeof globalThis==='undefined')||((globalThis.__UA_INHERIT??1)|0)!==0; // #112: default ON. Force off with UA_INHERIT=0
 __ATOM_NFD=(typeof globalThis==='undefined')||((globalThis.__ATOM_NFD??1)|0)!==0; // #114: default ON. Force off with ATOM_NFD=0
 __ATOM_OBJ=(typeof globalThis==='undefined')||((globalThis.__ATOM_OBJ??1)|0)!==0; // #115: default ON. Force off with ATOM_OBJ=0
