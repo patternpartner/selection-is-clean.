@@ -6685,6 +6685,9 @@ function encodeGenome(){
     usb:genome.uaStructBias===undefined?undefined:+(genome.uaStructBias).toFixed(4), // #107: atom-grammar structural-branch bias (omitted if never created)
     rg:genome.reachGain===undefined?undefined:+(genome.reachGain).toFixed(4), // #117: authored-atom actuator authority (omitted if never created)
     anm:genome.atomNoveltyMix===undefined?undefined:+(genome.atomNoveltyMix).toFixed(4), // #120: novelty-vs-fitness weight on atom credit (omitted if never created)
+    arr:genome.atomRecombRate===undefined?undefined:+(genome.atomRecombRate).toFixed(4), // #127: recombine-vs-refine split (omitted if never created)
+    arp:genome.atomReproRate===undefined?undefined:+(genome.atomReproRate).toFixed(4), // #128: reproduce-vs-author split (omitted if never created)
+    aed:genome.atomEligDecay===undefined?undefined:+(genome.atomEligDecay).toFixed(4), // #128: eligibility decay λ (omitted if never created)
     tmr:+(genome.typeMutRate||0.02).toFixed(4), // UNLOCKED #7a caste-innovation rate
     td: genome.tendDims|0,
     oe:[genome.opnovStrength,genome.nicheBuildRate,genome.rqRate,genome.dimsSatThresh,genome.novStrength].map(v=>+(+v).toPrecision(4)), // #35 evolvable open-endedness engine dials (+ #39 novStrength at [4])
@@ -6963,6 +6966,9 @@ function decodeGenome(data){
     if(typeof g.usb==='number')genome.uaStructBias=+g.usb;       // #107
     if(typeof g.rg==='number')genome.reachGain=+g.rg;            // #117
     if(typeof g.anm==='number')genome.atomNoveltyMix=+g.anm;     // #120
+    if(typeof g.arr==='number')genome.atomRecombRate=+g.arr;     // #127
+    if(typeof g.arp==='number')genome.atomReproRate=+g.arp;      // #128
+    if(typeof g.aed==='number')genome.atomEligDecay=+g.aed;      // #128
     if(typeof g.tmr==='number')genome.typeMutRate=g.tmr;   // UNLOCKED #7a
     if(g.ua)genome.userAtoms=g.ua.map(a=>({expression:a.expression,compiled:null,failed:!!a.failed,uses:a.uses|0,age:a.age|0,alienHits:a.alienHits|0,alienAttempts:a.alienAttempts|0}));
     if(typeof g.td==='number') genome.tendDims=__cl(g.td|0,2,DIMS_MAX);
@@ -7174,6 +7180,9 @@ function sanitizeGenome(){
   if(genome.atomUseProtect!==undefined)genome.atomUseProtect=__cl(finiteOr(genome.atomUseProtect,0),0,1);       // #101
   if(genome.reachGain!==undefined)   genome.reachGain=__cl(finiteOr(genome.reachGain,0.2),0,1);                 // #117
   if(genome.atomNoveltyMix!==undefined)genome.atomNoveltyMix=__cl(finiteOr(genome.atomNoveltyMix,0.25),0,1);   // #120
+  if(genome.atomRecombRate!==undefined)genome.atomRecombRate=__cl(finiteOr(genome.atomRecombRate,0.4),0,0.9);  // #127
+  if(genome.atomReproRate!==undefined)genome.atomReproRate=__cl(finiteOr(genome.atomReproRate,0.5),0,0.9);     // #128
+  if(genome.atomEligDecay!==undefined)genome.atomEligDecay=__cl(finiteOr(genome.atomEligDecay,0.6),0.3,0.9);   // #128
   genome.typeMutRate=__cl(finiteOr(genome.typeMutRate,0.02),0,1);                          // UNLOCKED #7a
   genome.fitnessSensors=Array.isArray(genome.fitnessSensors)?genome.fitnessSensors.filter(s=>s&&Array.isArray(s.program)).map(s=>({program:s.program.map(cleanInstruction),weight:finiteOr(s.weight,0),realWeight:finiteOr(s.realWeight,0),creditTrace:finiteOr(s.creditTrace,0),lastEmit:finiteOr(s.lastEmit,0),prevEmit:finiteOr(s.prevEmit,0)})):[{program:[[2,5,6,1.0],[4,6,0,1.0]],weight:0.1,realWeight:0,creditTrace:0,lastEmit:0,prevEmit:0}];
   if(genome.fitnessSensors.length===0)genome.fitnessSensors=[{program:[[2,5,6,1.0],[4,6,0,1.0]],weight:0.1,realWeight:0,creditTrace:0,lastEmit:0,prevEmit:0}];
@@ -11197,7 +11206,12 @@ function applyCreditAssignment(){
   // zero to keep the delayed-credit tail short rather than letting one fire stay eligible for dozens of ticks.
   if(__ATOM_CREDIT){
     if(__ATOM_ELIGIBILITY){
-      for(const [k,v] of __atomExprContrib){ const nv=v*0.6; if(nv<0.02&&nv>-0.02)__atomExprContrib.delete(k); else __atomExprContrib.set(k,nv); }
+      // #128: the decay λ is genome.atomEligDecay — how long an atom's action stays eligible for the
+      // fitness that follows it. Seeded at #122's hand-set 0.6, evolving in [0.3,0.9]: a lineage whose
+      // payoffs land many ticks after the action turns it up (longer memory), one whose effects are
+      // immediate turns it down. The prune floor stays fixed at 0.02 (a substrate bound, not a strategy).
+      const _eligDecay=__cl(finiteOr(genome.atomEligDecay,0.6),0.3,0.9);
+      for(const [k,v] of __atomExprContrib){ const nv=v*_eligDecay; if(nv<0.02&&nv>-0.02)__atomExprContrib.delete(k); else __atomExprContrib.set(k,nv); }
     }else __atomExprContrib.clear();
   }
 }
@@ -12848,6 +12862,9 @@ function mutateGenome(){
   // live novelty-seeking bet, not a capability parked at 0), evolving in [0,1] — a lineage that thrives
   // by chasing novel behaviour can turn it up; one that needs to lock in a fitness peak can turn it down.
   if(__ATOM_NOVELTY_CREDIT)genome.atomNoveltyMix=__cl(maybe(finiteOr(genome.atomNoveltyMix,0.25),0,1,0.03),0,1); // #120: novelty-vs-fitness weight on atom credit — the system's call
+  if(__ATOM_RECOMB)  genome.atomRecombRate=__cl(maybe(finiteOr(genome.atomRecombRate,0.4),0,0.9,0.04),0,0.9);       // #127: recombine-vs-refine split — the system's own explore/build balance
+  if(__ATOM_REPRO)   genome.atomReproRate=__cl(maybe(finiteOr(genome.atomReproRate,0.5),0,0.9,0.04),0,0.9);         // #128: reproduce-proven vs author-fresh split — the system's exploit/explore at birth
+  if(__ATOM_ELIGIBILITY)genome.atomEligDecay=__cl(maybe(finiteOr(genome.atomEligDecay,0.6),0.3,0.9,0.03),0.3,0.9);  // #128: eligibility-trace decay λ — how long an action stays creditable
   genome.metabolicCost=__cl(maybe(genome.metabolicCost,0.000002,0.0002,0.00002),0.000002,0.0002); // #2 energy economy: no free lunch — cost stays positive (the negative-drift hole that euthanised selection is closed)
 
   // HGT parameter evolution
@@ -13094,7 +13111,12 @@ function mutateGenome(){
     let expression, _seedCr;
     let _reproParent=null, _reproCr=0.05;
     let _reproParent2=null, _reproCr2=0.05; // #123: second-best proven atom, for recombination
-    if(__ATOM_REPRO&&genome.userAtoms.length>0&&Math.random()<0.5){
+    // #128: the reproduce-a-proven-atom vs author-fresh split is genome.atomReproRate — the atom bank's
+    // own exploit/explore balance at the point of birth. Seeded at #121's hand-set 0.5, evolving in
+    // [0,0.9]: a lineage that gains by breeding its proven atoms turns it up, one that needs to keep
+    // discovering wholly new structure turns it down. At 0 it is pure fresh authoring, exactly pre-#121.
+    const _reproRate=__ATOM_REPRO?__cl(finiteOr(genome.atomReproRate,0.5),0,0.9):0;
+    if(__ATOM_REPRO&&genome.userAtoms.length>0&&Math.random()<_reproRate){
       for(const _p of genome.userAtoms){
         if(!_p||!_p.expression)continue;
         let _c=(_p.creditTrace>0)?_p.creditTrace:0;
@@ -13113,7 +13135,11 @@ function mutateGenome(){
       // so a composite never truncates to invalid JS) — past that it falls back to local-step, which also
       // bounds runaway growth: a composite that reaches the cap can no longer recombine, only refine.
       let _recombined=false;
-      if(__ATOM_RECOMB&&_reproParent2&&Math.random()<0.4){
+      // #127: the recombine-vs-refine split is genome.atomRecombRate — the system's own explore/build
+      // balance, seeded at the #123 hand-set 0.4 and evolving in [0,0.9]. A lineage that gains from
+      // assembling composites turns it up; one that gains from polishing a single primitive turns it down.
+      const _recombRate=__ATOM_RECOMB?__cl(finiteOr(genome.atomRecombRate,0.4),0,0.9):0;
+      if(__ATOM_RECOMB&&_reproParent2&&Math.random()<_recombRate){
         const _op=USER_OPS[(Math.random()*USER_OPS.length)|0];
         const _cand="("+_reproParent.expression+")"+_op+"("+_reproParent2.expression+")";
         if(_cand.length<=160){ expression=_cand; _seedCr=Math.max(_reproCr,_reproCr2)*0.5; _recombined=true; }
