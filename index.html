@@ -1411,7 +1411,8 @@ let modeSwitches=0;                 // telemetry: total SET_MODE transitions act
 // child "injects its constants as a PROPOSAL into the shadowScenarioBank ... A child universe can make an
 // argument. It cannot win one." That closed door is why the parent's laws stay fixed while everything above
 // them churns: no matter how good a daughter world's physics, it could only ever enter the parent's
-// imagination. #129 opens it, earned and guarded (see evolveShadowBank): a CHILD-sourced scenario that has
+// imagination. #129 opens it, earned and guarded (see evolveShadowBank): a COSMOS-sourced scenario — an
+// actual merged daughter universe (src:'cosmos'), NOT an ordinary childScenario bank offspring (src:'child') — that has
 // won repeatedly AND carries POSITIVE creditTrace (its regime measurably raised the parent's REAL fitness —
 // the Pe29 validation already tracks this) gets to step the parent's ACTUAL physics toward its proposal,
 // clamped to the same ranges as the shadow apply and a fraction per cycle. A one-off cannot move the world;
@@ -9965,8 +9966,12 @@ function evolveShadowBank(){
     }
   }
 
-  // #129: LET A CHILD UNIVERSE WIN THE ARGUMENT. Scan the bank for the strongest CHILD-sourced scenario
-  // that has EARNED the right to rewrite reality — sustained recent wins AND positive creditTrace (Pe29:
+  // #129: LET A CHILD UNIVERSE WIN THE ARGUMENT. Scan the bank for the strongest COSMOS-sourced scenario —
+  // i.e. an actual merged daughter universe (cosmosMerge tags these src:'cosmos'), NOT an ordinary
+  // childScenario bank offspring (those are src:'child'). #129-fix (Codex review): the guard originally
+  // keyed on 'child', which meant real cosmos proposals could never qualify while unrelated bank children
+  // could rewrite the laws — the opposite of the intended "a child universe can win" path.
+  // The qualifying scenario must have EARNED the right to rewrite reality — sustained recent wins AND positive creditTrace (Pe29:
   // fitness measurably ROSE during its tenure). If one qualifies, step the parent's actual physics toward
   // its proposal, using the SAME sc.{e,k,r,c,t}->param mapping and the SAME clamps as the shadow apply
   // (so it can never produce an out-of-range law), at COSMOS_LAW_AUTH strength — far above the perturbScale
@@ -9976,7 +9981,7 @@ function evolveShadowBank(){
   if(__COSMOS_LAW){
     let champ=null;
     for(const sc of bank){
-      if(sc.src!=='child')continue;
+      if(sc.src!=='cosmos')continue; // #129-fix: only ACTUAL merged daughter universes (src:'cosmos'), not ordinary childScenario offspring (src:'child')
       if((sc.wins||0)<COSMOS_LAW_WINS)continue;
       if((sc.creditTrace||0)<=COSMOS_LAW_CREDIT)continue;
       if(!champ||(sc.creditTrace||0)>(champ.creditTrace||0))champ=sc;
@@ -9988,7 +9993,7 @@ function evolveShadowBank(){
       genome.entrainRate   =__cl(genome.entrainRate   +champ.r*SCEN_APPLY.r*A,0.003,0.05);
       genome.creationCost  =__cl(genome.creationCost  +champ.c*SCEN_APPLY.c*A,0.1,0.6);
       genome.entrainThresh =__cl(genome.entrainThresh +champ.t*SCEN_APPLY.t*A,0.08,0.55);
-      recordEvent('law_rewrite',{src:'child',wins:champ.wins|0,credit:+(champ.creditTrace||0).toFixed(3)},1200);
+      recordEvent('law_rewrite',{src:'cosmos',wins:champ.wins|0,credit:+(champ.creditTrace||0).toFixed(3)},1200);
     }
   }
 
