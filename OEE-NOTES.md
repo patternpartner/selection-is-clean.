@@ -10540,3 +10540,74 @@ With #128 the speculative arc is not just complete but *honest*: nothing in it i
 either substrate (the bounds and floors that keep it from breaking) or the system's own evolvable choice.
 That is the shape it should have had all along, and now does.
 
+---
+
+## #129 — OPEN THE FRONTIERS: the walls were the bottleneck, not the engine
+
+### What three live snapshots showed
+
+gen 9 → gen 22 → gen 38 (t101k → t171k → t254k) traced a system that **radiated, then consolidated**:
+trait dimensionality climbed 12 → 14 → **16 and stopped** (hit `DIMS_MAX`); live lineages collapsed 12 → 5 →
+**3**, one alive 24,777 ticks holding ~77% of the population; the active-atom working set shrank 66 → 46 even
+as the reservoir grew to 226; peak fitness plateaued at 0.758 after gen 22. Underneath, the atom vocabulary
+kept churning — but churn without escape. The diagnosis wasn't a weak engine. It was a **closed arena**:
+every frontier that could have received an advancing edge had a hard wall, the system reached them, and did
+what bounded evolutionary systems do — optimized inward and crowned a winner.
+
+Two walls were pinned exactly at their ceiling at gen 38: `DIMS_MAX=16` (td=16) and `MAX_BOUND_OPCODES=96`
+(bo=96). A third was hidden: `NICHE_ND_DIMS=5` — trait axes above the fifth are ecologically *inert*
+(the code says so at L20507), so the world had grown eleven dimensions that make no niches. A fourth was a
+wall by explicit *design*: the cosmos note states a merging child universe "can make an argument. It cannot
+win one" — its physics could only ever enter the parent's imagination, never its laws.
+
+### The intervention — three frontiers opened, one wall left standing on purpose
+
+1. **`DIMS_MAX` 16 → 32.** Re-opens the earned-frontier growth ("descent reached the edge, the space gets
+   bigger", L23382) that ran out of room. It feeds the #39 novelty archive, whose target *recedes* over all
+   trait dimensions and never saturates — a non-closing engine that was starved of space. 2× on tend arrays.
+
+2. **`MAX_BOUND_OPCODES` 96 → 192.** The effector frontier — how many authored atoms can actually *drive*
+   behavior, not just sit in the bank. Maxed while the vocabulary grew to 226, so new primitives had nowhere
+   to plug in. (Ops now 236..427; the opFreq/opCum novelty arrays already gate `op<256`, so nothing
+   downstream changes.)
+
+3. **`__COSMOS_LAW` — a child universe can now win the argument.** The real swing. In `evolveShadowBank`, a
+   **child-sourced** scenario that has both *won repeatedly* (sustained, since wins decay) **and** carries
+   *positive `creditTrace`* — its regime measurably raised the parent's **real** fitness, the Pe29 validation
+   that already exists — gets to step the parent's actual physics toward its proposal. Same `sc.{e,k,r,c,t}`→
+   param mapping and clamps as the shadow apply (no out-of-range law reachable), at 15× the shadow-nudge but
+   still a fraction per cycle. A lucky one-off can't move the world; a daughter that *keeps being right*
+   reshapes it. This overturns the deliberate "cannot win one" wall — on merit, guarded by the exact
+   fitness-credit gate the design already trusts. It makes *evolving the laws* a live frontier, not just
+   *filling the fixed space*.
+
+**The wall I deliberately did NOT knock down: `NICHE_ND_DIMS=5`.** Tempting — it's the deepest ecological
+wall. But niche cells are `6^NICHE_ND_DIMS`: raising it explodes the cell arrays exponentially (5→7 is 280k
+cells), which is *why* the project's own design routes open-ended ecology through the biotic **Red Queen
+(#28)** — "biotic niches are not finite ... the chase never reaches an equilibrium" — already on. Cranking
+it would trade a working non-saturating engine for a memory blow-up. Finding a wall isn't a reason to remove
+it; this one is load-bearing.
+
+### Why this is the right layer
+
+#110–#128 tuned the *engine* — atoms, credit, reproduction, recombination — and three snapshots proved the
+engine was never the binding constraint at this scale. The system consolidated because it ran out of *arena*,
+not *drive*. #129 works on the arena: more trait-space for novelty to diverge into, more effector slots for
+the vocabulary to fill, and — deepest — the ability for nested worlds to rewrite the parent's laws when they
+earn it, so the *rules* can evolve rather than only the players within fixed rules. Open-endedness needs a
+frontier that recedes as it's reached; this hands the system three that now can, through the credit and
+earned-growth gates it already uses — nothing granted by fiat.
+
+### Verification and the honest risk
+
+Parse-clean; the two constant raises, the `__COSMOS_LAW` flag (declared, resolved, registry) and the
+credit-guarded rewrite hook all confirmed wired. Flag off (`COSMOS_LAW=0`) restores "children only propose"
+exactly; the constant raises are strict ceiling increases (the machinery already grows `DIMS` and binds atoms
+dynamically up to the ceiling). The real risk lives in `__COSMOS_LAW`: it lets an *external* proposer move the
+parent's core physics — the most consequential state in the system. The guards are the ones the design already
+trusts (child-source, sustained wins, positive real-fitness credit) plus hard clamps and a gradual step. But
+whether opening these frontiers produces a *second radiation* off the gen-38 winner, or just a slower approach
+to a larger closed optimum, is the open-ended question no static reasoning can settle. It ships as the boldest
+bet of the sequence — the one that stops tuning the creature and starts widening its world — for the live run
+to judge.
+
