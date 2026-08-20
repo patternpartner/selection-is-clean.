@@ -428,12 +428,12 @@ function gKey(x,y){return __cl((y/CELL)|0,0,gH-1)*gW+__cl((x/CELL)|0,0,gW-1)}
 // ADAPTIVE GENOME — the system's DNA
 // These values evolve. No human chooses the finals.
 // ═══════════════════════════════════════
-const DIMS_MAX=16;   // UNLOCKED (was 8): higher ceiling for evolvable tendDims. Memory floor, not taste.
+const DIMS_MAX=32;   // #129: 16 -> 32. gen38 hit the old 16 (td=16, AT CAP) and the world consolidated — the earned-frontier growth ("descent reached the edge, the space gets bigger", ~L23382) had nowhere left to go. Raising the ceiling re-opens the trait/novelty frontier the #39 archive feeds on (all-dims divergence, non-saturating). Sizes tend Float32 arrays; 2x memory, a floor not a taste. // was 16 (UNLOCKED from 8): higher ceiling for evolvable tendDims.
 let DIMS=5;
 const MEM_SIZE=8; // per-particle persistent memory. Particles become stateful agents.
 const MAX_PLASMID=4; // max instructions per particle's personal mobile DNA
 const PLASMID_SLOTS=MAX_PLASMID*4; // each instruction is [op,src,dst,k] = 4 values
-const MAX_BOUND_OPCODES=96; // LEAP 16 (#54): 32 -> 96. The authored-primitive namespace was a hard ceiling on standing complexity; the per-instruction toll regulates it now. Was: UNLOCKED #7b: was 16. Wider namespace for system-authored operations
+const MAX_BOUND_OPCODES=192; // #129: 96 -> 192. gen38 pinned the old 96 (bo=96, AT CAP) while the atom vocabulary kept growing (226 atoms) — the effector frontier (how many atoms can DRIVE behaviour, not just sit in the bank) was closed. Widen it so the still-growing vocabulary can integrate more primitives. Ops now 236..427; the opFreq/opCum novelty arrays already gate op<256 so high bound-ops behave as before. // was 96 (#54, from 32/16): the per-instruction toll regulates standing complexity, not this ceiling
                             // (bound opcodes 133..164 now). Dispatch is index-guarded and OPCODE_COUNT
                             // derives from this, so the boundary stays consistent everywhere.
 // CORE_OPCODES single-sources the franchise boundary: opcodes 0..CORE_OPCODES-1 are core
@@ -1407,6 +1407,19 @@ let modeSwitches=0;                 // telemetry: total SET_MODE transitions act
 // injects its constants as a PROPOSAL into the existing shadowScenarioBank (same shape and code path
 // as the Pe28 fossil injection), where the parent's own shadow sim, creditTrace and decisionConfidence
 // machinery are free to reject it. A child universe can make an argument. It cannot win one.
+// #129: LET A CHILD UNIVERSE WIN THE ARGUMENT. The note above states the design wall verbatim — a merging
+// child "injects its constants as a PROPOSAL into the shadowScenarioBank ... A child universe can make an
+// argument. It cannot win one." That closed door is why the parent's laws stay fixed while everything above
+// them churns: no matter how good a daughter world's physics, it could only ever enter the parent's
+// imagination. #129 opens it, earned and guarded (see evolveShadowBank): a CHILD-sourced scenario that has
+// won repeatedly AND carries POSITIVE creditTrace (its regime measurably raised the parent's REAL fitness —
+// the Pe29 validation already tracks this) gets to step the parent's ACTUAL physics toward its proposal,
+// clamped to the same ranges as the shadow apply and a fraction per cycle. A one-off cannot move the world;
+// a child that keeps being right reshapes it. Force off with COSMOS_LAW=0.
+let __COSMOS_LAW=true;
+const COSMOS_LAW_WINS=4;      // recent-wins bar a child scenario must clear (wins decay, so this means SUSTAINED winning)
+const COSMOS_LAW_CREDIT=0.1;  // positive-creditTrace bar — the child's laws must have RAISED real fitness, not just won shadow rounds
+const COSMOS_LAW_AUTH=15;     // authority of the rewrite step vs the perturbScale shadow-nudge — real, but gradual (many cycles to walk the laws)
 const COSMOS_MAX=6;                 // concurrent live children — bounds the whole layer's cost
 const COSMOS_CELLS=10;              // coarse cells a child may hold
 const COSMOS_TICKS=30;              // child ticks per parent cluster-cycle — the daughter has its own clock
@@ -9949,6 +9962,33 @@ function evolveShadowBank(){
         bank.splice(i,1);
         if(i<reservedIdx)reservedIdx--;
       }
+    }
+  }
+
+  // #129: LET A CHILD UNIVERSE WIN THE ARGUMENT. Scan the bank for the strongest CHILD-sourced scenario
+  // that has EARNED the right to rewrite reality — sustained recent wins AND positive creditTrace (Pe29:
+  // fitness measurably ROSE during its tenure). If one qualifies, step the parent's actual physics toward
+  // its proposal, using the SAME sc.{e,k,r,c,t}->param mapping and the SAME clamps as the shadow apply
+  // (so it can never produce an out-of-range law), at COSMOS_LAW_AUTH strength — far above the perturbScale
+  // shadow-nudge, but still a fraction per call, so a child that KEEPS being right walks the world over many
+  // cycles while a lucky one-off cannot. This is the door the design nailed shut ("cannot win one"), opened
+  // on merit. Off (COSMOS_LAW=0) => the bank behaves exactly as before; children only ever propose.
+  if(__COSMOS_LAW){
+    let champ=null;
+    for(const sc of bank){
+      if(sc.src!=='child')continue;
+      if((sc.wins||0)<COSMOS_LAW_WINS)continue;
+      if((sc.creditTrace||0)<=COSMOS_LAW_CREDIT)continue;
+      if(!champ||(sc.creditTrace||0)>(champ.creditTrace||0))champ=sc;
+    }
+    if(champ){
+      const A=COSMOS_LAW_AUTH;
+      genome.entropyBaseline=__cl(genome.entropyBaseline+champ.e*SCEN_APPLY.e*A,0.0001,0.003);
+      genome.entropyK      =__cl(genome.entropyK      +champ.k*SCEN_APPLY.k*A,0.00005,0.002);
+      genome.entrainRate   =__cl(genome.entrainRate   +champ.r*SCEN_APPLY.r*A,0.003,0.05);
+      genome.creationCost  =__cl(genome.creationCost  +champ.c*SCEN_APPLY.c*A,0.1,0.6);
+      genome.entrainThresh =__cl(genome.entrainThresh +champ.t*SCEN_APPLY.t*A,0.08,0.55);
+      recordEvent('law_rewrite',{src:'child',wins:champ.wins|0,credit:+(champ.creditTrace||0).toFixed(3)},1200);
     }
   }
 
@@ -20384,6 +20424,7 @@ if(typeof globalThis!=='undefined'){
                __ATOM_REPRO:1,                                        // #121: CREDIT-BIASED ATOM REPRODUCTION — half of atom births local-step (uaLocalStep, #103's small-move operator) the highest-credit atom in the bank instead of drawing a fresh random expression, founding a family of near-variants around a proven primitive. Gives proven structure a refinement GRADIENT — the neighborhood-search pure-random authoring lacks — while the other half of births keeps exploring fresh. creditTrace seeds from the parent at 50%. Off / no proven atom yet => fresh authoring exactly as before. Force off with ATOM_REPRO=0
                __ATOM_ELIGIBILITY:1,                                  // #122: ELIGIBILITY TRACES on atom credit — instead of clearing the contribution map each tick, decay it (×0.6, ~half-dozen-tick window) so an atom that fired recently keeps earning credit as fitness moves in its WAKE. TD(λ)-style delayed-reward attribution, the mechanism needed to credit multi-step behaviour rather than only same-tick coincidence. Sign rule unchanged; only the trace's lifetime grows. Off => same-tick-only, byte-identical to pre-#122. Force off with ATOM_ELIGIBILITY=0
                __ATOM_RECOMB:1,                                       // #123: ATOM RECOMBINATION — a fraction of #121's credit-biased births COMBINE the two highest-credit atoms into a composite (A) op (B) instead of local-stepping one. Point mutation only refines within a structure; recombination splices two proven HISTORIES — the complexity-jump source #52 says mutation cannot supply — assembling a bigger primitive from two that already work. Length-capped at 160 (the sanitize slice, so composites never truncate to invalid JS; also bounds runaway growth). creditTrace seeds from max(parents)*0.5. Force off with ATOM_RECOMB=0
+               __COSMOS_LAW:1,                                        // #129: CHILD UNIVERSES CAN WIN THE ARGUMENT — a child-cosmos physics proposal that both wins repeatedly in shadow-sim AND carries positive creditTrace (raised the parent's REAL fitness, Pe29-validated) steps the parent's ACTUAL physics toward it, clamped and gradual. Overturns the explicit "a child can make an argument, it cannot win one" design wall so evolving the LAWS becomes a live open frontier, not just filling the fixed space. Paired with DIMS_MAX 16->32 and MAX_BOUND_OPCODES 96->192 (both were AT CAP at gen38). Force off with COSMOS_LAW=0
                __ATOM_WRSENSE:1,                                      // #126: WORLD-RICHNESS SENSE (macro->micro, the complement of #125) — the `wr` grammar variable gives atoms a read of the accumulated trait dimensionality (normalized DIMS), the macro complexity their own success helps grow (#125). Closes the micro<->macro loop both ways, as #116 did for atom<->fitness: an atom can now behave differently in a rich, high-dimensional world than in a sparse one. Force off with ATOM_WRSENSE=0
                __DIMS_ATOM:1,                                         // #125: ATOM-EARNED DIMENSIONALITY (micro->macro OEE) — a proven, diverse atom bank adds a small capped lift toward earning a new trait axis in the #25 dimensionality ratchet, but ONLY when ecological occupancy is already ≥60% of threshold (tips a near-miss, never bootstraps from monoculture) and riding atom CREDIT not raw diversity (so #121/#123 churn can't inflate it). Preserves #25's earned-growth invariant while letting atom-level open-endedness help the WORLD earn macro complexity. Force off with DIMS_ATOM=0
                __UA_INHERIT:1,                                        // #112: SUBTREE INHERITANCE — the grammar's leaf generator occasionally splices a whole proven expression from the credit pool instead of emitting a fresh terminal, weighted by positive pool credit. Proven building blocks propagate as building blocks; genetic programming's crossover, but the "parents" are population-wide, credit-ranked, and content-addressed. Depth-tapered probability (12%/(1+depth)) and 120-char size guard prevent runaway string growth. Force off with UA_INHERIT=0
@@ -20416,6 +20457,7 @@ __ATOM_NFD=(typeof globalThis==='undefined')||((globalThis.__ATOM_NFD??1)|0)!==0
 __ATOM_OBJ=(typeof globalThis==='undefined')||((globalThis.__ATOM_OBJ??1)|0)!==0; // #115: default ON. Force off with ATOM_OBJ=0
 __ATOM_FRSENSE=(typeof globalThis==='undefined')||((globalThis.__ATOM_FRSENSE??1)|0)!==0; // #116: default ON. Force off with ATOM_FRSENSE=0
 __ATOM_WRSENSE=(typeof globalThis==='undefined')||((globalThis.__ATOM_WRSENSE??1)|0)!==0; // #126: default ON. Force off with ATOM_WRSENSE=0
+__COSMOS_LAW=(typeof globalThis==='undefined')||((globalThis.__COSMOS_LAW??1)|0)!==0; // #129: default ON. Force off with COSMOS_LAW=0
 __REACH_GAIN=(typeof globalThis==='undefined')||((globalThis.__REACH_GAIN??1)|0)!==0; // #117: default ON. Force off with REACH_GAIN=0
 __SELF_PREDICT=(typeof globalThis!=='undefined')&&((globalThis.__SELF_PREDICT|0)===1); // #92: default OFF
 __GRIP_SEED=(typeof globalThis!=='undefined')&&((globalThis.__GRIP_SEED|0)===1); // #93: default OFF
