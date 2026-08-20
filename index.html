@@ -6847,7 +6847,7 @@ function encodeGenome(){
     sb:Array.isArray(genome.shadowScenarioBank)?genome.shadowScenarioBank.map(sc=>[
       +sc.e.toFixed(3),+sc.k.toFixed(3),+sc.r.toFixed(3),+sc.c.toFixed(3),+sc.t.toFixed(3),
       sc.wins|0,sc.age|0,
-      sc.src==='seed'?0:sc.src==='child'?1:sc.src==='fossil'?3:2,
+      sc.src==='seed'?0:sc.src==='child'?1:sc.src==='fossil'?3:sc.src==='cosmos'?4:2, // #129-fix (Codex): persist 'cosmos' (4) distinctly so a merged daughter universe keeps its provenance across save/reload and can still qualify for COSMOS_LAW
       +(sc.creditTrace||0).toFixed(3),
       +(sc.f||0).toFixed(3),+(sc.p||0).toFixed(3),+(sc.a||0).toFixed(3),
       +(sc.tb||0).toFixed(3),+(sc.sp||0).toFixed(3),+(sc.sm||0).toFixed(3),+(sc.mp||0).toFixed(3)
@@ -7136,7 +7136,7 @@ function decodeGenome(data){
         e:finiteOr(a[0],0),k:finiteOr(a[1],0),r:finiteOr(a[2],0),
         c:finiteOr(a[3],0),t:finiteOr(a[4],0),
         wins:(a[5]|0),age:(a[6]|0),
-        src:['seed','child','random','fossil'][a[7]|0]||'random',
+        src:['seed','child','random','fossil','cosmos'][a[7]|0]||'random', // #129-fix (Codex): index 4='cosmos' round-trips daughter-universe provenance (legacy genomes lack index 4 and decode unchanged)
         creditTrace:finiteOr(a[8],0), // Pe29 — defaults to 0 for legacy genomes
         // Pe32: behavioral axes — default to 0 for legacy genomes (Pe31 behavior)
         f:finiteOr(a[9],0),p:finiteOr(a[10],0),a:finiteOr(a[11],0),
