@@ -53,6 +53,16 @@
     hash: location.hash || '', src:'engine.html'
   }, [off]);
 
+  // #reset is a one-shot: the sim clears the saved lineage on boot, then strips #reset from the
+  // URL so the NEXT reload doesn't wipe the newly evolved creature. The sim does that strip with
+  // history.replaceState — a no-op in the worker — so the shell, which owns the real URL, must do
+  // it here (mirroring loadGenome()). Without it, every reload of index.html#reset silently
+  // re-wipes the fresh lineage. We still forwarded the #reset hash to the worker above, so the
+  // one intended reset happens; we only stop it from repeating.
+  if ((location.hash || '').slice(1) === 'reset') {
+    try { history.replaceState(null, '', location.pathname || ' '); } catch(e){}
+  }
+
   // ── messages back from the worker ──────────────────────────────
   var lastStatus = 0;
   worker.onmessage = function(e){
