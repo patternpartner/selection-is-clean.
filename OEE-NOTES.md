@@ -10611,3 +10611,37 @@ to a larger closed optimum, is the open-ended question no static reasoning can s
 bet of the sequence — the one that stops tuning the creature and starts widening its world — for the live run
 to judge.
 
+
+---
+
+## Infrastructure — the worker becomes the front door (no science change)
+
+At the gen-94 cosmos-coherence breakthrough, a single tick grew heavy enough (192 bound atoms,
+DIMS=32, six daughter-universes living full 900-tick lives at coherence ~0.93) to block the phone's
+main thread — "Chrome isn't responding." Nothing in the creature was wrong; the organism had simply
+outgrown single-threaded phone execution, exactly as earlier iterations predicted it eventually would.
+
+**The move.** Run the *unchanged* simulation on a background thread so the page can never freeze,
+and make that the default the user already loads:
+
+- `index.html` is now a thin **shell**: it transfers an `OffscreenCanvas` to a `Worker`, forwards
+  input, owns the real `localStorage`, save/load buttons, and error surface.
+- `sim.worker.js` fetches the sim, pulls its `<script>`, and runs it under a small DOM/canvas shim
+  (the same idea `harness.js` uses headless). The simulation math is byte-for-byte the current code —
+  not a fork.
+- `engine.html` is the simulation itself (the file formerly named `index.html`), now the engine the
+  worker loads and the fallback page for browsers without `OffscreenCanvas`.
+
+**Why the rename.** The phone-only user merges a PR and opens their usual URL. Making the worker page
+*be* `index.html` means their normal path now loads the freeze-proof version with zero new steps.
+
+**The cross-tab metabolism panel.** That observer is a listen-only IIFE driven entirely by a
+`BroadcastChannel` — which crosses the worker↔main boundary. So the shell runs a *display-only copy of
+the sim's own observer* on the main thread (extracted from `engine.html` at load, one source of truth,
+no fork): it hears the worker's own universe plus any other open tabs and draws the panel with the
+sim's exact markup/CSS. Persistence into `genome.coupling` stays with the worker's copy; `TAB_ID/
+genome/tick` are passed undefined so the display copy's typeof-guarded persistence no-ops.
+
+**Guarantee.** This changes *where* the sim runs, never *what* it computes. Same genome format, same
+`localStorage` key, same physics. A browser lacking `OffscreenCanvas` is told to open `engine.html` and
+gets the identical simulation on the main thread.

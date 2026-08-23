@@ -121,9 +121,9 @@ self.addEventListener('message', async (e) => {
     if (d.genome) lsStore['selection_genome'] = d.genome;
     installShim(d.hash, d.dpr);
     try {
-      const html = await (await fetch(d.src || 'index.html', { cache: 'no-store' })).text();
+      const html = await (await fetch(d.src || 'engine.html', { cache: 'no-store' })).text();
       const m = html.match(/<script>([\s\S]*)<\/script>/);
-      if (!m) throw new Error('could not find <script> block in index.html');
+      if (!m) throw new Error('could not find <script> block in engine.html');
       // Append a tiny bridge so the message handler can reach the sim's genome codecs and
       // export/import logic, which live in the sim script's own scope (const/function there
       // don't leak otherwise). exportFile/importFile mirror index.html's own functions exactly,
