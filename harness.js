@@ -1,4 +1,4 @@
-// Headless harness for index.html — drives the simulation in Node with no browser.
+// Headless harness for engine.html — drives the simulation in Node with no browser.
 // Stubs the DOM/canvas/timer APIs, neutralizes the self-driving rAF loop,
 // then steps loop() a fixed number of ticks and samples the system's own state.
 const fs = require('fs');
@@ -78,7 +78,7 @@ console.error = (...a) => {
 console.warn = () => {};
 
 // ── Load + instrument the script ──────────────────────────────────
-const html = fs.readFileSync(__dirname + '/index.html', 'utf8');
+const html = fs.readFileSync(__dirname + '/engine.html', 'utf8');
 const code = html.match(/<script>([\s\S]*)<\/script>/)[1];
 
 const driver = `
