@@ -6106,6 +6106,33 @@ function downsampleEpochs(){
   }
   genome.epochs=out;
 }
+// ═══ OPEN-ENDEDNESS METER (#130) — a FAILABLE instrument, not a score ═══════════════════════════
+// The project's honest open question (and Grok's outside-view echo): fitness only oscillates in a
+// band, yet the system keeps generating coherent UNENCODED strategy (emit rates walking negative
+// through a clamp meant to hold them positive; a coordinated multi-channel mute; the sensorium
+// collapsing onto one channel during its best fitness). Neither "it climbs fitness" nor "it feels
+// alive" can settle whether that is open-ended. This logs the one statistic that can — Bedau-style
+// EVOLUTIONARY ACTIVITY on the self-authored atom pool:
+//   • an INNOVATION = a distinct atom-expression that reaches adoption (uses>0) for the first time
+//   • it is PERSISTENT only if still adopted OEE_PERSIST_LAG epochs later (it survived, wasn't churn)
+// The failable claim lives in the curves: if PERSISTENT innovation keeps climbing, the system is
+// still finding lasting new structure (the open-ended signature). If persistent flatlines while raw
+// innovation keeps churning, it is shuffling variants inside a bounded space — accretion, not OEE.
+// That plateau is a real possible outcome and the whole point: the meter can say "no". Evenness
+// tracks whether activity is spread (many contributors) or concentrated on a workhorse. Read-only on
+// sim state; writes only to genome.oee* (never read back by any dynamics), so evolution is
+// byte-identical whether this is on or off. Force off with OEE_METER=0.
+const OEE_PERSIST_LAG=3; // epochs (~15k ticks) an innovation must survive to count as persistent
+let __oeeSeen=null, __oeePending=null; // runtime-only: distinct-expression hashes + survival queue (reseeded on load)
+function __oeeHash(s){ let h=5381; s=s||''; for(let i=0;i<s.length;i++){ h=((h<<5)+h+s.charCodeAt(i))|0; } return h; }
+function downsampleOeeLog(){ // same fixed-size-forever scheme as downsampleEpochs, per-column
+  const e=genome.oeeLog,out=[];
+  for(let i=0;i<e.length;i+=2){ const a=e[i],b=e[i+1];
+    if(!b){out.push(a);break;}
+    out.push([ b[0], Math.max(a[1],b[1]), (a[2]|0)+(b[2]|0), (a[3]|0)+(b[3]|0), b[4], b[5], +(((a[6]+b[6])/2).toFixed(3)), Math.max(a[7],b[7]) ]);
+  }
+  genome.oeeLog=out;
+}
 function flushEpoch(acc){
   if(!acc||acc.n<=0)return;
   if(!Array.isArray(genome.epochs))genome.epochs=[];
@@ -6126,6 +6153,30 @@ function flushEpoch(acc){
     Number((+genome.metabolicCost||0).toPrecision(3))
   ]);
   while(genome.epochs.length>MAX_EPOCHS)downsampleEpochs();
+
+  // #130 OPEN-ENDEDNESS METER — see note above. Guarded, read-only on sim state, cheap (once/epoch).
+  if((typeof globalThis==='undefined')||((globalThis.__OEE_METER??1)|0)!==0){
+    if(!Array.isArray(genome.oeeLog))genome.oeeLog=[];
+    if(typeof genome.oeeNovel!=='number')genome.oeeNovel=0;
+    if(typeof genome.oeePersist!=='number')genome.oeePersist=0;
+    const epIdx=acc.idx+1, tickNow=epIdx*EPOCH_TICKS;
+    const adoptedHashes=new Set(); let aTot=0; const useList=[];
+    for(const a of atoms){ const u=a.uses|0; if(u>0){ const h=__oeeHash(a.expression); adoptedHashes.add(h); aTot+=u; useList.push(u); } }
+    const D=adoptedHashes.size;
+    // seed on first run / after reload so pre-existing atoms are not miscounted as fresh innovations
+    if(__oeeSeen===null){ __oeeSeen=new Set(adoptedHashes); __oeePending=[]; }
+    let newThisEpoch=0;
+    for(const h of adoptedHashes){ if(!__oeeSeen.has(h)){ __oeeSeen.add(h); __oeePending.push([h,epIdx]); genome.oeeNovel++; newThisEpoch++; } }
+    // resolve persistence for innovations old enough to judge (survived the lag ⇒ lasting, not churn)
+    let persistThisEpoch=0; const stillPending=[];
+    for(const pe of __oeePending){ if(epIdx-pe[1]>=OEE_PERSIST_LAG){ if(adoptedHashes.has(pe[0])){ genome.oeePersist++; persistThisEpoch++; } } else stillPending.push(pe); }
+    __oeePending=stillPending;
+    // evenness: Shannon entropy of the usage distribution, normalized — 1=spread, 0=one workhorse
+    let evenness=0;
+    if(D>=2&&aTot>0){ let H=0; for(const u of useList){ const p=u/aTot; if(p>0)H-=p*Math.log2(p); } evenness=H/Math.log2(D); }
+    genome.oeeLog.push([tickNow,D,newThisEpoch,persistThisEpoch,genome.oeeNovel|0,genome.oeePersist|0,+evenness.toFixed(3),Math.round(aTot/Math.max(1,D))]);
+    while(genome.oeeLog.length>MAX_EPOCHS)downsampleOeeLog();
+  }
 }
 // Called from the periodic (tick%600) block; samples are cheap and aggregate into
 // the current epoch, flushing the previous one when the epoch index advances.
@@ -6681,6 +6732,9 @@ function encodeGenome(){
     L:genome.lineage.slice(-4),
     E:(genome.eventLog||[]).slice(-EVENT_LOG_SIZE),
     EP:(genome.epochs||[]).slice(-MAX_EPOCHS),  // full-arc summary — spans the entire run
+    oL:(genome.oeeLog||[]).slice(-MAX_EPOCHS),  // #130 open-endedness meter: per-epoch activity log
+    oN:genome.oeeNovel|0,                        // #130 cumulative distinct innovations ever adopted
+    oP:genome.oeePersist|0,                      // #130 cumulative innovations that survived the lag
     AU:[genome.cadenceSelf,genome.cadenceExtinct,genome.cadenceShadow,genome.cadenceLineage,genome.densityFloor], // unlocked autonomy genes
     M:genome.stableMotifs.slice(-genome.motifMemorySize),
     x:genome.extinctions,pf:+(genome.peakFitness.toPrecision(3)),
@@ -6957,6 +7011,9 @@ function decodeGenome(data){
     genome.lineage=g.L||[];
     genome.eventLog=g.E||[];
     genome.epochs=Array.isArray(g.EP)?g.EP:[];
+    genome.oeeLog=Array.isArray(g.oL)?g.oL:[];   // #130 open-endedness meter (absent in pre-#130 saves → starts empty)
+    genome.oeeNovel=g.oN|0;
+    genome.oeePersist=g.oP|0;
     if(Array.isArray(g.AU)){[genome.cadenceSelf,genome.cadenceExtinct,genome.cadenceShadow,genome.cadenceLineage,genome.densityFloor]=g.AU;}
     if(!(genome.cadenceSelf>=1))genome.cadenceSelf=30;        // defaults for genomes saved before the unlock
     if(!(genome.cadenceExtinct>=1))genome.cadenceExtinct=90;
@@ -20430,6 +20487,7 @@ if(typeof globalThis!=='undefined'){
                __ATOM_ELIGIBILITY:1,                                  // #122: ELIGIBILITY TRACES on atom credit — instead of clearing the contribution map each tick, decay it (×0.6, ~half-dozen-tick window) so an atom that fired recently keeps earning credit as fitness moves in its WAKE. TD(λ)-style delayed-reward attribution, the mechanism needed to credit multi-step behaviour rather than only same-tick coincidence. Sign rule unchanged; only the trace's lifetime grows. Off => same-tick-only, byte-identical to pre-#122. Force off with ATOM_ELIGIBILITY=0
                __ATOM_RECOMB:1,                                       // #123: ATOM RECOMBINATION — a fraction of #121's credit-biased births COMBINE the two highest-credit atoms into a composite (A) op (B) instead of local-stepping one. Point mutation only refines within a structure; recombination splices two proven HISTORIES — the complexity-jump source #52 says mutation cannot supply — assembling a bigger primitive from two that already work. Length-capped at 160 (the sanitize slice, so composites never truncate to invalid JS; also bounds runaway growth). creditTrace seeds from max(parents)*0.5. Force off with ATOM_RECOMB=0
                __COSMOS_LAW:1,                                        // #129: CHILD UNIVERSES CAN WIN THE ARGUMENT — a child-cosmos physics proposal that both wins repeatedly in shadow-sim AND carries positive creditTrace (raised the parent's REAL fitness, Pe29-validated) steps the parent's ACTUAL physics toward it, clamped and gradual. Overturns the explicit "a child can make an argument, it cannot win one" design wall so evolving the LAWS becomes a live open frontier, not just filling the fixed space. Paired with DIMS_MAX 16->32 and MAX_BOUND_OPCODES 96->192 (both were AT CAP at gen38). Force off with COSMOS_LAW=0
+               __OEE_METER:1,                                        // #130: OPEN-ENDEDNESS METER — a FAILABLE instrument, not another engine. Logs Bedau-style evolutionary-activity stats on the self-authored atom pool once per epoch (see flushEpoch): distinct expressions reaching adoption (INNOVATIONS), and those still adopted OEE_PERSIST_LAG epochs later (PERSISTENT). The failable claim is the persistent-innovation curve — sustained climb = still finding lasting new structure (open-ended signature); a plateau while raw innovation churns = shuffling variants in a bounded space (accretion). Purely observational: read-only on sim state, writes only genome.oee* (never read back), so evolution is byte-identical on or off. Ships ON to start recording the number the run's been missing. Force off with OEE_METER=0
                __ATOM_WRSENSE:1,                                      // #126: WORLD-RICHNESS SENSE (macro->micro, the complement of #125) — the `wr` grammar variable gives atoms a read of the accumulated trait dimensionality (normalized DIMS), the macro complexity their own success helps grow (#125). Closes the micro<->macro loop both ways, as #116 did for atom<->fitness: an atom can now behave differently in a rich, high-dimensional world than in a sparse one. Force off with ATOM_WRSENSE=0
                __DIMS_ATOM:1,                                         // #125: ATOM-EARNED DIMENSIONALITY (micro->macro OEE) — a proven, diverse atom bank adds a small capped lift toward earning a new trait axis in the #25 dimensionality ratchet, but ONLY when ecological occupancy is already ≥60% of threshold (tips a near-miss, never bootstraps from monoculture) and riding atom CREDIT not raw diversity (so #121/#123 churn can't inflate it). Preserves #25's earned-growth invariant while letting atom-level open-endedness help the WORLD earn macro complexity. Force off with DIMS_ATOM=0
                __UA_INHERIT:1,                                        // #112: SUBTREE INHERITANCE — the grammar's leaf generator occasionally splices a whole proven expression from the credit pool instead of emitting a fresh terminal, weighted by positive pool credit. Proven building blocks propagate as building blocks; genetic programming's crossover, but the "parents" are population-wide, credit-ranked, and content-addressed. Depth-tapered probability (12%/(1+depth)) and 120-char size guard prevent runaway string growth. Force off with UA_INHERIT=0

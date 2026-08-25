@@ -10645,3 +10645,45 @@ genome/tick` are passed undefined so the display copy's typeof-guarded persisten
 **Guarantee.** This changes *where* the sim runs, never *what* it computes. Same genome format, same
 `localStorage` key, same physics. A browser lacking `OffscreenCanvas` is told to open `engine.html` and
 gets the identical simulation on the main thread.
+
+---
+
+## #130 — The Open-Endedness Meter: a failable instrument, not another engine
+
+Every layer #110–#129 tried to *cause* open-endedness. This one only tries to *measure* it — because the
+honest read (mine, and Grok's outside-view echo) is that we can't currently tell whether this system is
+open-ended or just a laboratory that fills whatever ceilings we hand it. Fitness only oscillates in a band
+(0.1–0.74 across the whole gen113 run); yet the system keeps generating coherent strategy nobody encoded —
+network emit-rates walking *negative through a clamp written to keep them positive*, a coordinated
+multi-channel mute with receptivity climbing the opposite way, the sensorium collapsing 76 of 106 channels
+onto one *during* its best fitness. Neither "it climbs fitness" (it doesn't) nor "it feels alive" (it does)
+can settle the question. The project has been read like a naturalist reads an animal because that was the
+only instrument available. #130 adds a number that can *fail*.
+
+**What it measures.** Bedau-style **evolutionary activity** on the self-authored atom pool, logged once per
+epoch in `flushEpoch`:
+- an **innovation** = a distinct atom-expression that reaches adoption (`uses>0`) for the first time;
+- it is **persistent** only if still adopted `OEE_PERSIST_LAG` (=3) epochs later — it survived, it wasn't churn.
+
+Per epoch it appends `[tick, D, newInnov, newPersist, cumNovel, cumPersist, evenness, meanActivity]` to
+`genome.oeeLog` (serialized as `oL`/`oN`/`oP`, downsampled on the same fixed-size-forever scheme as `EP`, so
+one export reconstructs the whole curve). `evenness` = normalized Shannon entropy of the usage distribution
+(1 = spread across many contributors, 0 = a single workhorse).
+
+**The failable claim lives in the persistent-innovation curve.** If `cumPersist` keeps climbing, the system
+is still finding *lasting* new structure — the open-ended signature. If `cumPersist` plateaus while `cumNovel`
+keeps churning, it is shuffling variants inside a bounded space — accretion, not open-endedness. That plateau
+is a real possible outcome, and stating it up front is the point: **the meter is allowed to say "no".** Given
+we've watched DIMS and the actuator bank sit pinned at their ceilings since gen38, a plateau is a live
+hypothesis, not a strawman.
+
+**Why it's safe.** Purely observational: it reads atom `uses`/`expression` once per epoch and writes only to
+`genome.oee*`, which no dynamics ever read back. Evolution is **byte-identical whether the meter is on or
+off** — verified by construction and by boot test. The seen-set is reseeded from the current atoms on load,
+so pre-existing atoms are never miscounted as fresh innovations (the cumulative counters carry the history).
+Ships ON to start recording; force off with `OEE_METER=0`.
+
+**Honest scope.** This is Bedau's activity statistic *without* the neutral-shadow baseline — the pass/fail
+here is "does persistent innovation plateau," not yet "does it exceed a non-selective null." The neutral
+shadow (the sharper adaptive-vs-drift test) is the honest Phase 2, once the raw curve has told us whether
+there's even anything above zero to explain. Build the number first; argue about the baseline once it exists.
