@@ -76,6 +76,11 @@ globalThis.setTimeout=()=>0;globalThis.clearTimeout=()=>{};globalThis.setInterva
 if (process.env.COSMOS !== undefined) globalThis.__COSMOS = parseInt(process.env.COSMOS, 10);
 for (const kn of ['COSMOS_COST','COSMOS_CONTACT','COSMOS_MERGE','COSMOS_SENSE','COSMOS_AFFORD'])
   if (process.env[kn] !== undefined) globalThis['__'+kn] = parseInt(process.env[kn], 10);
+// #131: the three dormant arms. Engine gates read globalThis.__NAME only, so without this line
+// they cannot be switched on from a harness at all (see harness-strip.js's note on controls).
+for (const kn of ['OPS_PARITY','OPNOV_FULL','REACH_SLOT8'])
+  if (process.env[kn] !== undefined) globalThis['__'+kn] = parseInt(process.env[kn], 10);
+
 let loopErrors=0,lastErr='';
 console.error=(...a)=>{const s=a.join(' ');if(/Loop error|Boot error|Watchdog/.test(s)){loopErrors++;lastErr=s.slice(0,160);}};
 console.warn=()=>{};

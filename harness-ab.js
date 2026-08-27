@@ -118,6 +118,11 @@ let loopErrors = 0, lastErr = '';
 console.error = (...a) => { const s = a.join(' '); if (/Loop error|Boot error|Watchdog/.test(s)) { loopErrors++; lastErr = s.slice(0, 160); } };
 console.warn = () => {};
 
+// #131: the three dormant arms. Engine gates read globalThis.__NAME only, so without this line
+// they cannot be switched on from a harness at all (see harness-strip.js's note on controls).
+for (const kn of ['OPS_PARITY','OPNOV_FULL','REACH_SLOT8'])
+  if (process.env[kn] !== undefined) globalThis['__'+kn] = parseInt(process.env[kn], 10);
+
 const html = fs.readFileSync(process.env.INDEX || (__dirname + '/engine.html'), 'utf8');
 const code = html.match(/<script>([\s\S]*)<\/script>/)[1];
 // ── A/B knobs ─────────────────────────────────────────────────────

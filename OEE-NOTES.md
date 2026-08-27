@@ -10765,8 +10765,22 @@ structural instead of an accident of birth-path ordering.
 
 Each is a real defect with a known correct form; each changes live behaviour when switched on. They
 ship **off**, with a bit-identical off-path, on the same footing as `MUTUALISM`/`RQ_TRAIT`/
-`GENO_PARASITE`. **Verified: with all three off, a seeded 9,000-tick run is identical to the pre-#131
-build; with each on, the run diverges — so the off-arm is inert and the arms are live.**
+`GENO_PARASITE`. **Verified: with all three off, a seeded 9,000-tick replay is identical to the
+pre-#131 build on two independent seeds.**
+
+A mistake of mine, caught by that same verification and worth recording because the repo already
+warns about it. The first liveness check reported all three arms INERT — and they were, because the
+engine resolves every gate from `globalThis.__NAME` and never from `process.env`, so a knob with no
+explicit plumbing line in a harness cannot be switched on at all. `harness-strip.js` states the rule
+outright: *"a knob that cannot be turned off is not a control, so the plumbing goes in before any
+ablation claim does."* I shipped three knobs without it. Plumbing added to `harness.js`,
+`harness-ab.js`, `harness-oee.js`, `harness-strip.js` and `harness-env.js`.
+
+Worth noting for whoever runs these: an unseeded rig cannot answer this question. `harness.js` uses a
+real clock and an unseeded RNG, so run-to-run population differences there are noise, not effect —
+which is exactly how I briefly mistook noise for confirmation before the seeded replay corrected it.
+`REACH_SLOT8` in particular shows nothing until bound opcodes exist, since the REACH block never
+executes before then; short runs will call it inert when it is only dormant.
 
 | knob | defect | why not default-on |
 |---|---|---|
