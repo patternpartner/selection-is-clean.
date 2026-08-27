@@ -13,7 +13,8 @@
 // the engine's native warmup counter sets, so whichever ran first would have silently starved the
 // other and the rig would have reported a real-looking zero.
 // What remains patched is only what is genuinely a MANIPULATION rather than a measurement: the
-// ABLATE gate condition, ARM1's sample-bar and cadence changes, and the PERSIST_REFLEX carry.
+// ABLATE gate condition and ARM1's sample-bar and cadence changes. PERSIST_REFLEX is retired too —
+// its fix became Swing #47 and is unconditional in the engine (see the note on the const below).
 // The counters are read from the engine's own object with REFLEX_DEBUG=1.
 const fs = require('fs');
 
