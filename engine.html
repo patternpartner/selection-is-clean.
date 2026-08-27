@@ -225,9 +225,19 @@ try{
   networkSend('hello');
 }catch(e){console.log('BroadcastChannel unavailable:',e.message);}
 
+const PEER_FORGET=3000; // ticks of silence after which a peer is dead to us — the same cutoff countPeers uses
 function countPeers(){
   let n=0;
-  for(const id in peerLastSeen){if(tick-peerLastSeen[id]<3000)n++}
+  // #131: EVICT, don't just skip. Both peer maps gained an entry per distinct msg.tab ever heard and
+  // never lost one, and msg.tab is a field the peer chooses — so a peer randomising it grew both maps
+  // without bound AND lengthened this linear scan, which runs every cadence. Eviction uses the exact
+  // cutoff this loop already applies, so the count returned here is unchanged by construction; the only
+  // thing dropped is state for a peer already being ignored. peerObservable is pruned in step, since a
+  // peer silent this long has no meaningful prevCount to carry into a fresh 180-tick window anyway.
+  for(const id in peerLastSeen){
+    if(tick-peerLastSeen[id]<PEER_FORGET)n++;
+    else { delete peerLastSeen[id]; peerObservable.delete(id); pendingAlienPredictions.delete(id); }
+  }
   networkPeers=n;
   return n;
 }
@@ -828,6 +838,39 @@ let __DECIDE_ON=true; // +DECISION cached flag (resolved after the LIVE registry
 //   Always-on baseline step from tick one (the bet is placed, not deferred); earned confidence amplifies it.
 let __DECIDE_REAL=true; // +DECIDE-FROM-REAL cached flag (resolved after the LIVE registry)
 let __CHILD_SIGN_FLOOR=true; // #85: floor sign-carrying genes in the CHILD mutation path; CHILD_SIGN_FLOOR=0 reproduces the prior build
+// #131 — FINISH THE PARITY SWEEP. This file states its own parity set repeatedly ("Full parity:
+// particle VM, plasmid VM, cluster VM, profiler") and every opcode through 231 honours it: each of the
+// other three dispatches implements the op, or explicitly NOPs it with a reason ("no partner", "no
+// cluster", "in profiler"). The sweep then stops. SET_MODE (232), READ_MODE (233) and PARTNER_MODE
+// (234) arrived with #57 and COSMOS_SENSE (235) with #59, and neither extended it — so 232..235 are
+// the ONE gap all three non-particle dispatches share, and the only instruction shape in the file with
+// no effect whatsoever: no case matches, and the bound-op guard below is op>=CORE_OPCODES(236), so the
+// instruction does not even zero its destination register the way the deliberate NOPs do.
+// This is not theoretical. Harvested from real broadcast material (bridge/experiments/harvest-cache):
+// 3,053 of 46,042 instructions — 6.6% — carry an opcode in 232..235, 1,742 of them COSMOS_SENSE. A
+// plasmid instruction carrying 232/233/235 is inert in the very VM that plasmid belongs to.
+// DEFAULT OFF, deliberately. Switching it on makes 6.6% of the standing instruction population live at
+// once, and a creature that evolved UNDER the inert regime has programs whose 232/233/235 slots were
+// free no-ops it may well be relying on. That is an arm to run against a saved genome, not a flip to
+// make on someone's behalf. Off, every case below breaks before touching anything, which is
+// bit-identical to the fall-through it replaces. Force on with OPS_PARITY=1.
+let __OPS_PARITY=false;
+// #131 — THE CLOSED ACTUATOR SLOT. vmActions is Float32Array(8) and every ordinary write site indexes
+// it Math.abs(dst)%8. The four REACH emits — the #110 wire that lets a self-authored atom DRIVE
+// behaviour rather than only be sensed — index %7, identically at all four. `di` is already
+// Math.abs(dst)%12, so %8 reaches every slot (0..3 doubled) while %7 reaches 0..6 only (0..4 doubled):
+// slot 7 is unreachable from the atom channel. Slot 7 is the write into tend[i*DIMS+4], the fifth
+// trait axis — the one the map calls "blank (system-discovered role)". Against this project's central
+// structural finding (ninety layers of sense against eight action slots), one of the eight being
+// closed to the one channel built for evolved code to ACT is worth knowing. OEE-NOTES #89b quotes the
+// %7 verbatim while dissecting this exact emit line and does not remark on it, so it reads as never
+// questioned rather than decided.
+// DEFAULT OFF. Flipping it redistributes every REACH emit AND opens a new actuator onto a trait axis
+// under selection — a live dynamics change with no matched control, which is precisely the shape this
+// project handles with an arm. If %7 turns out to be deliberate, this block is where to say so.
+// Force on with REACH_SLOT8=1.
+let __REACH_SLOT8=false;
+function reachSlot(di){ return Math.abs(di)%(__REACH_SLOT8?8:7); }
 let __REACH_NOK=true; // #110: default ON (was #90 dormant). Drop the random-signed k so atom output sign is causal
 let __REACH_MAIN=true; // #110: default ON (was #88 dormant). Atoms become effectors on the main dispatch path
 let __REACH_GAIN=true; // #117: make the REACH actuator gain (fixed 0.2 by fiat since #48) an evolvable per-lineage trait, genome.reachGain — how much AUTHORITY authored atoms have over actuators. Seeded at 0.2 so the seed is byte-identical; helpful atoms can earn more authority, harmful ones less. Hypothesis: atom neutrality may partly be a gain capped too low to move fitness. Force off with REACH_GAIN=0
@@ -6113,25 +6156,74 @@ function downsampleEpochs(){
 // collapsing onto one channel during its best fitness). Neither "it climbs fitness" nor "it feels
 // alive" can settle whether that is open-ended. This logs the one statistic that can — Bedau-style
 // EVOLUTIONARY ACTIVITY on the self-authored atom pool:
-//   • an INNOVATION = a distinct atom-expression that reaches adoption (uses>0) for the first time
-//   • it is PERSISTENT only if still adopted OEE_PERSIST_LAG epochs later (it survived, wasn't churn)
+//   • an INNOVATION = a distinct atom COMPUTATION that is EXECUTED for the first time
+//   • it is PERSISTENT only if still being executed OEE_PERSIST_LAG epochs later (it survived, wasn't churn)
+// #131 — v2 SEMANTICS. v1 (#130) counted an innovation as "a distinct expression STRING with uses>0",
+// and both halves of that were wrong in the same direction, so the meter could only ever say yes:
+//   (a) uaLocalStep (#103) jitters a constant or swaps a variable and DELIBERATELY keeps `uses`
+//       (13181 — "the whole point of a small perturbation is to keep the accumulated record").
+//       A one-character constant tweak on an adopted atom therefore minted a brand-new innovation
+//       with a non-zero use count attached, having never run. Measured on real broadcast material:
+//       6.6% of harvested instructions, and the redraw branch that DOES reset uses is discounted by
+//       grip/rank/credit/NFD while the jitter branch is a flat rate*0.15 — so in a mature, protected
+//       bank, jitter is the dominant way an expression string changes at all.
+//   (b) atom.uses never decays; it resets only on redraw. So "adopted" meant "has fired at least
+//       once, ever, since last redrawn" — persistence tested SLOT SURVIVAL, not continued use, and
+//       a dead-but-unoverwritten atom counted as persistent forever.
+// v2 fixes both at the source:
+//   • the unit is the CANONICAL expression — numeric literals normalised away (uaOeeKey), so
+//     "same computation, retuned constant" is not a new innovation while a structural or variable
+//     change still is. This is exactly the distinction between shuffling variants in a bounded
+//     space and finding new structure, which is the question the meter exists to answer.
+//   • adoption is a PER-EPOCH EXECUTION DELTA, not a lifetime counter: a computation is active in
+//     an epoch only if its execution count ROSE during that epoch. Persistence therefore means
+//     still being run, and meanActivity is a rate rather than a monotone lifetime total.
+// The plateau v1 could not produce is now reachable, which is the whole point of a failable meter.
+// Rows written before #131 are v1 and are NOT comparable; the exported oV field records which wrote them.
 // The failable claim lives in the curves: if PERSISTENT innovation keeps climbing, the system is
 // still finding lasting new structure (the open-ended signature). If persistent flatlines while raw
 // innovation keeps churning, it is shuffling variants inside a bounded space — accretion, not OEE.
 // That plateau is a real possible outcome and the whole point: the meter can say "no". Evenness
 // tracks whether activity is spread (many contributors) or concentrated on a workhorse. Read-only on
-// sim state; writes only to genome.oee* (never read back by any dynamics), so evolution is
-// byte-identical whether this is on or off. Force off with OEE_METER=0.
+// sim state; its counters live in module-level state that the genome object never sees (#131), so
+// evolution is byte-identical whether this is on or off. Force off with OEE_METER=0.
 const OEE_PERSIST_LAG=3; // epochs (~15k ticks) an innovation must survive to count as persistent
-let __oeeSeen=null, __oeePending=null; // runtime-only: distinct-expression hashes + survival queue (reseeded on load)
+const OEE_VER=2;         // #131: semantics version stamped into the genome; v1 rows are not comparable
+const OEE_SEEN_CAP=20000;// bound on the ever-seen set. Unbounded is what "distinct ever" wants, but this
+                         // runs forever on a phone; at the cap the meter STOPS counting and says so
+                         // (the exported oS field) rather than leaking or silently miscounting.
+let __oeeSeen=null, __oeePending=null, __oeeLastUses=null; // runtime-only; reseeded by resetOeeRuntime()
+// #131: the meter's OWN state lives here, NOT on the genome object. v1 hung oeeLog/oeeNovel/oeePersist
+// off `genome`, and mutateChildGenome walks a child with `for(const k in g)`, drawing one Math.random()
+// per numeric field — so two extra numeric fields would shift the RNG stream at every birth that
+// inherited them, and "byte-identical whether this is on or off" would be false.
+// MEASURED, and it is NOT: a seeded 9,000-tick A/B of the stock build with OEE_METER=1 vs 0 is
+// identical to the last digit. The reason is that cloneGenome(genome) — the only path that could carry
+// these fields into a child — is the FALLBACK taken when a birth has no parent genome, and instrumenting
+// it shows it firing exactly N times at boot seeding and never again. The germline fields are created
+// later, at the first epoch flush, so nothing ever inherits them. v1's claim holds.
+// It holds contingently, though: it depends on that fallback staying boot-only, which is not something
+// the meter controls or states. Moving the state here costs nothing and makes it structural — the meter
+// cannot reach the heritable object at all, whatever the birth paths do later. Serialised at encode.
+let oeeLog=[], oeeNovel=0, oeePersist=0, oeeVer=0, oeeSat=0;
 function __oeeHash(s){ let h=5381; s=s||''; for(let i=0;i<s.length;i++){ h=((h<<5)+h+s.charCodeAt(i))|0; } return h; }
+// #131: the meter's UNIT. Strip numeric literals so a uaJitterConst step is not a new computation,
+// while a variable swap or any structural change still is. The negative-lookbehind-by-prefix form
+// leaves digits inside identifiers alone (Math.log1p, Math.atan2 must not be mangled into collisions).
+function uaOeeKey(expr){ return __oeeHash(String(expr||'').replace(/(^|[^A-Za-z0-9_$.])-?\d+(?:\.\d+)?/g,'$1#')); }
+// #131: every entry point that swaps in a different creature must clear the runtime side of the meter,
+// or the new genome's atoms are diffed against the OLD creature's history. v1 declared this ("reseeded
+// on load") but no reset existed anywhere, so a mid-run import counted the incoming creature's whole
+// bank as fresh innovation on top of the oN restored from its file, and stale pending entries carried
+// the previous run's epoch indices (epIdx-pe[1] going negative, never resolving either way).
+function resetOeeRuntime(){ __oeeSeen=null; __oeePending=null; __oeeLastUses=null; }
 function downsampleOeeLog(){ // same fixed-size-forever scheme as downsampleEpochs, per-column
-  const e=genome.oeeLog,out=[];
+  const e=oeeLog,out=[];
   for(let i=0;i<e.length;i+=2){ const a=e[i],b=e[i+1];
     if(!b){out.push(a);break;}
     out.push([ b[0], Math.max(a[1],b[1]), (a[2]|0)+(b[2]|0), (a[3]|0)+(b[3]|0), b[4], b[5], +(((a[6]+b[6])/2).toFixed(3)), Math.max(a[7],b[7]) ]);
   }
-  genome.oeeLog=out;
+  oeeLog=out;
 }
 function flushEpoch(acc){
   if(!acc||acc.n<=0)return;
@@ -6156,26 +6248,49 @@ function flushEpoch(acc){
 
   // #130 OPEN-ENDEDNESS METER — see note above. Guarded, read-only on sim state, cheap (once/epoch).
   if((typeof globalThis==='undefined')||((globalThis.__OEE_METER??1)|0)!==0){
-    if(!Array.isArray(genome.oeeLog))genome.oeeLog=[];
-    if(typeof genome.oeeNovel!=='number')genome.oeeNovel=0;
-    if(typeof genome.oeePersist!=='number')genome.oeePersist=0;
+    if(!Array.isArray(oeeLog))oeeLog=[];
     const epIdx=acc.idx+1, tickNow=epIdx*EPOCH_TICKS;
-    const adoptedHashes=new Set(); let aTot=0; const useList=[];
-    for(const a of atoms){ const u=a.uses|0; if(u>0){ const h=__oeeHash(a.expression); adoptedHashes.add(h); aTot+=u; useList.push(u); } }
-    const D=adoptedHashes.size;
-    // seed on first run / after reload so pre-existing atoms are not miscounted as fresh innovations
-    if(__oeeSeen===null){ __oeeSeen=new Set(adoptedHashes); __oeePending=[]; }
+    oeeVer=OEE_VER;
+    // Lifetime execution total per CANONICAL computation, summed over every germline slot carrying it.
+    // Summing across slots matters: #121/#123 give a proven atom a family, so one computation can sit
+    // in several slots at once and a per-slot view would double-count it as several innovations.
+    const usesByKey=new Map();
+    for(const a of atoms){ const u=a.uses|0; if(u>0){ const k=uaOeeKey(a.expression); usesByKey.set(k,(usesByKey.get(k)||0)+u); } }
+    // First flush of this creature: adopt the current bank as history, never as innovation.
+    if(__oeeSeen===null){ __oeeSeen=new Set(usesByKey.keys()); __oeePending=[]; __oeeLastUses=usesByKey; }
+    // ACTIVE = executed DURING this epoch, measured as a RISE against this key's own previous total.
+    // A key seen for the first time is NOT active: it only gets a baseline. That matters because
+    // uaLocalStep's other branch swaps a VARIABLE, which is a genuine structural change AND therefore
+    // a new canonical key — but it inherits the replaced computation's `uses` wholesale, so crediting
+    // a first sighting by its lifetime count would hand it a free innovation for work the expression
+    // it replaced had done. There is no way to tell that apart from "ran u times this epoch", so the
+    // conservative reading wins: prove activity with a rise. `uses` resets to 0 on redraw (13173), so
+    // a fallen counter is a rewritten slot rather than negative activity — clamp at zero.
+    // COST, stated: a genuinely new computation is recognised one epoch (~5k ticks) after it starts
+    // running, and one that fires in a single epoch and never again is never counted at all. Both
+    // errors are in the direction of under-reporting, which is the right way for this meter to be
+    // wrong — it is here to be able to say no.
+    const active=new Set(); const deltas=[]; let dTot=0;
+    for(const [k,u] of usesByKey){
+      const prev=__oeeLastUses.get(k);
+      if(prev===undefined) continue;              // first sighting: baseline only, never activity
+      const d=u>prev?u-prev:0;
+      if(d>0){ active.add(k); deltas.push(d); dTot+=d; }
+    }
+    __oeeLastUses=usesByKey;              // bounded by the germline bank size, unlike __oeeSeen
+    const D=active.size;
     let newThisEpoch=0;
-    for(const h of adoptedHashes){ if(!__oeeSeen.has(h)){ __oeeSeen.add(h); __oeePending.push([h,epIdx]); genome.oeeNovel++; newThisEpoch++; } }
-    // resolve persistence for innovations old enough to judge (survived the lag ⇒ lasting, not churn)
+    if(__oeeSeen.size>=OEE_SEEN_CAP){ oeeSat=1; }   // stop counting rather than leak or lie
+    else for(const k of active){ if(!__oeeSeen.has(k)){ __oeeSeen.add(k); __oeePending.push([k,epIdx]); oeeNovel++; newThisEpoch++; } }
+    // resolve persistence: still BEING RUN after the lag, not merely still present in a slot
     let persistThisEpoch=0; const stillPending=[];
-    for(const pe of __oeePending){ if(epIdx-pe[1]>=OEE_PERSIST_LAG){ if(adoptedHashes.has(pe[0])){ genome.oeePersist++; persistThisEpoch++; } } else stillPending.push(pe); }
+    for(const pe of __oeePending){ if(epIdx-pe[1]>=OEE_PERSIST_LAG){ if(active.has(pe[0])){ oeePersist++; persistThisEpoch++; } } else stillPending.push(pe); }
     __oeePending=stillPending;
-    // evenness: Shannon entropy of the usage distribution, normalized — 1=spread, 0=one workhorse
+    // evenness over THIS EPOCH's activity — 1=spread across many contributors, 0=one workhorse
     let evenness=0;
-    if(D>=2&&aTot>0){ let H=0; for(const u of useList){ const p=u/aTot; if(p>0)H-=p*Math.log2(p); } evenness=H/Math.log2(D); }
-    genome.oeeLog.push([tickNow,D,newThisEpoch,persistThisEpoch,genome.oeeNovel|0,genome.oeePersist|0,+evenness.toFixed(3),Math.round(aTot/Math.max(1,D))]);
-    while(genome.oeeLog.length>MAX_EPOCHS)downsampleOeeLog();
+    if(D>=2&&dTot>0){ let H=0; for(const d of deltas){ const p=d/dTot; if(p>0)H-=p*Math.log2(p); } evenness=H/Math.log2(D); }
+    oeeLog.push([tickNow,D,newThisEpoch,persistThisEpoch,oeeNovel|0,oeePersist|0,+evenness.toFixed(3),Math.round(dTot/Math.max(1,D))]);
+    while(oeeLog.length>MAX_EPOCHS)downsampleOeeLog();
   }
 }
 // Called from the periodic (tick%600) block; samples are cheap and aggregate into
@@ -6732,9 +6847,11 @@ function encodeGenome(){
     L:genome.lineage.slice(-4),
     E:(genome.eventLog||[]).slice(-EVENT_LOG_SIZE),
     EP:(genome.epochs||[]).slice(-MAX_EPOCHS),  // full-arc summary — spans the entire run
-    oL:(genome.oeeLog||[]).slice(-MAX_EPOCHS),  // #130 open-endedness meter: per-epoch activity log
-    oN:genome.oeeNovel|0,                        // #130 cumulative distinct innovations ever adopted
-    oP:genome.oeePersist|0,                      // #130 cumulative innovations that survived the lag
+    oL:(oeeLog||[]).slice(-MAX_EPOCHS),         // #130 open-endedness meter: per-epoch activity log
+    oN:oeeNovel|0,                               // #130 cumulative distinct innovations ever executed
+    oP:oeePersist|0,                             // #130 cumulative innovations that survived the lag
+    oV:oeeVer|0,                                 // #131 which semantics wrote these rows (absent/0/1 = v1, not comparable)
+    oS:oeeSat|0,                                 // #131 1 once the ever-seen set hit OEE_SEEN_CAP and stopped counting
     AU:[genome.cadenceSelf,genome.cadenceExtinct,genome.cadenceShadow,genome.cadenceLineage,genome.densityFloor], // unlocked autonomy genes
     M:genome.stableMotifs.slice(-genome.motifMemorySize),
     x:genome.extinctions,pf:+(genome.peakFitness.toPrecision(3)),
@@ -7011,9 +7128,15 @@ function decodeGenome(data){
     genome.lineage=g.L||[];
     genome.eventLog=g.E||[];
     genome.epochs=Array.isArray(g.EP)?g.EP:[];
-    genome.oeeLog=Array.isArray(g.oL)?g.oL:[];   // #130 open-endedness meter (absent in pre-#130 saves → starts empty)
-    genome.oeeNovel=g.oN|0;
-    genome.oeePersist=g.oP|0;
+    oeeLog=Array.isArray(g.oL)?g.oL:[];          // #130 open-endedness meter (absent in pre-#130 saves → starts empty)
+    oeeNovel=g.oN|0;
+    oeePersist=g.oP|0;
+    oeeVer=g.oV|0;                               // #131: 0 means the stored rows were written by v1
+    oeeSat=g.oS|0;
+    // #131: this is the "load" the v1 comment promised and never performed. A different creature is
+    // now installed, so the meter's history must go with it — otherwise the incoming bank is diffed
+    // against the outgoing creature's seen-set and counted as fresh innovation on top of a restored oN.
+    resetOeeRuntime();
     if(Array.isArray(g.AU)){[genome.cadenceSelf,genome.cadenceExtinct,genome.cadenceShadow,genome.cadenceLineage,genome.densityFloor]=g.AU;}
     if(!(genome.cadenceSelf>=1))genome.cadenceSelf=30;        // defaults for genomes saved before the unlock
     if(!(genome.cadenceExtinct>=1))genome.cadenceExtinct=90;
@@ -10951,6 +11074,8 @@ function profileVM(){
         case 229:vmRegs[di]=0*(k||1);break; // PROB_SKIP profiler stub — NOP (no branching during profiling)
         case 230:vmRegs[di]=0*(k||1);break; // TICK_PHASE profiler stub — zero
         case 231:vmRegs[di]=0*(k||1);break; // CLUSTER_QUORUM profiler stub — zero (no cluster during profiling)
+        // #131 PARITY: the profiler has no particle index, so 232-235 stub to zero exactly as 231 does.
+        case 232:case 233:case 234:case 235:{if(!__OPS_PARITY)break;vmRegs[di]=0*(k||1);}break; // MODE/COSMOS profiler stubs
       }
       if(op>=CORE_OPCODES&&op<CORE_OPCODES+MAX_BOUND_OPCODES){
         const _bos=genome.boundOpcodes;
@@ -16705,7 +16830,7 @@ function executeVM(i,j,sim,d){
           // deterministic and sign-preserving, so ±8 is a genuine sign contrast. NOTE this also raises the
           // emit magnitude ~7x (mean |k|*0.4 ≈ 0.06 → flat 0.4): a new arm, not a matched correction.
           // REACH_NOK=0 reproduces the #88/#89 build exactly.
-          if(__REACH_MAIN){ const _rv110=Math.max(-2,Math.min(2,_out))*(__REACH_NOK?1:k)*(__REACH_GAIN&&isFinite(genome.reachGain)?genome.reachGain:0.2); vmActions[Math.abs(di)%7]+=_rv110; __reachFires++;
+          if(__REACH_MAIN){ const _rv110=Math.max(-2,Math.min(2,_out))*(__REACH_NOK?1:k)*(__REACH_GAIN&&isFinite(genome.reachGain)?genome.reachGain:0.2); vmActions[reachSlot(di)]+=_rv110; __reachFires++;
             if(__ATOM_CREDIT&&_bua.expression){if(__atomExprContrib.size>5000)__atomExprContrib.clear();__atomExprContrib.set(_bua.expression,(__atomExprContrib.get(_bua.expression)||0)+_rv110);} }
         }
       }
@@ -17800,6 +17925,16 @@ function executeVM(i,j,sim,d){
         case 229:{if(Math.random()>__cl(vmRegs[si]*k,0,1))ip++;vmRegs[di]=0;}break; // PROB_SKIP — full parity
         case 230:{const _tp230p=Math.max(1,Math.floor(Math.abs(k)));vmRegs[di]=(tick%_tp230p)/_tp230p;}break; // TICK_PHASE — full parity
         case 231:{const _cqcid231p=clusterID[i];if(_cqcid231p>=0){const _cqbit231p=1<<(Math.round(Math.abs(vmRegs[si]))&7);let _cqtot231p=0,_cqset231p=0;for(let _cqn231p=0;_cqn231p<N;_cqn231p++){if(clusterID[_cqn231p]===_cqcid231p){_cqtot231p++;if(pEpigen[_cqn231p]&_cqbit231p)_cqset231p++;}}vmRegs[di]=_cqtot231p>0?(_cqset231p/_cqtot231p)*k:0;}else{vmRegs[di]=0;}}break; // CLUSTER_QUORUM — full parity
+        // #131 PARITY: 232-235 mirror the particle VM (see the OPS_PARITY note at its declaration).
+        // Off => break before any state is touched, which is exactly the fall-through this replaces.
+        case 232:{if(!__OPS_PARITY)break;const _nmp=((Math.abs(Math.floor(vmRegs[si]))|0)%MODE_COUNT);
+          if(_nmp!==pMode[i]){const _cp=MODE_SWITCH_COST*(pProvision[i]>0?1:MODE_LOCK_MULT);
+            const _fpp=Math.min(pProvision[i],_cp);pProvision[i]-=_fpp;amp[i]-=(_cp-_fpp);
+            pMode[i]=_nmp;modeSwitches++;}
+          vmRegs[di]=_nmp*(k||1);}break; // SET_MODE — full parity, same amplitude price
+        case 233:{if(!__OPS_PARITY)break;vmRegs[di]=pMode[i]*(k||1);}break; // READ_MODE — full parity
+        case 234:{if(!__OPS_PARITY)break;vmRegs[di]=(j>=0&&j<N?pMode[j]:0)*(k||1);}break; // PARTNER_MODE — full parity
+        case 235:{if(!__OPS_PARITY)break;cosmosStats.senseReads++;vmRegs[di]=cosmosSenseFor(i)*(k||1);}break; // COSMOS_SENSE — full parity
       }
       if(op>=CORE_OPCODES&&op<CORE_OPCODES+MAX_BOUND_OPCODES){
         const _bos=genome.boundOpcodes;
@@ -17813,7 +17948,7 @@ function executeVM(i,j,sim,d){
             // ACTION_EMIT opcode (case 4: vmActions[ch]+=val*k); bounded by clamp + 0.2 gain + the
             // existing influence/coefficients + the conserved-energy budget. Authored atoms become
             // EFFECTORS, not just calculators. Force off with __REACH=0.
-            if(__REACH_ON){ const _rv110p=Math.max(-2,Math.min(2,_out))*(__REACH_NOK?1:k)*(__REACH_GAIN&&isFinite(genome.reachGain)?genome.reachGain:0.2); vmActions[Math.abs(di)%7]+=_rv110p; __reachFires++;
+            if(__REACH_ON){ const _rv110p=Math.max(-2,Math.min(2,_out))*(__REACH_NOK?1:k)*(__REACH_GAIN&&isFinite(genome.reachGain)?genome.reachGain:0.2); vmActions[reachSlot(di)]+=_rv110p; __reachFires++;
               if(__ATOM_CREDIT&&_bua.expression){if(__atomExprContrib.size>5000)__atomExprContrib.clear();__atomExprContrib.set(_bua.expression,(__atomExprContrib.get(_bua.expression)||0)+_rv110p);} }
           }
         }
@@ -19098,6 +19233,16 @@ function executeClusterVM(i,j,sim,d){
       case 229:{if(Math.random()>__cl(vmRegs[si]*k,0,1))ip++;vmRegs[di]=0;}break; // PROB_SKIP — full parity
       case 230:{const _tp230c=Math.max(1,Math.floor(Math.abs(k)));vmRegs[di]=(tick%_tp230c)/_tp230c;}break; // TICK_PHASE — full parity
       case 231:{const _cqcid231c=clusterID[i];if(_cqcid231c>=0){const _cqbit231c=1<<(Math.round(Math.abs(vmRegs[si]))&7);let _cqtot231c=0,_cqset231c=0;for(let _cqn231c=0;_cqn231c<N;_cqn231c++){if(clusterID[_cqn231c]===_cqcid231c){_cqtot231c++;if(pEpigen[_cqn231c]&_cqbit231c)_cqset231c++;}}vmRegs[di]=_cqtot231c>0?(_cqset231c/_cqtot231c)*k:0;}else{vmRegs[di]=0;}}break; // CLUSTER_QUORUM — full parity
+        // #131 PARITY: 232-235 mirror the particle VM (see the OPS_PARITY note at its declaration).
+        // Off => break before any state is touched, which is exactly the fall-through this replaces.
+        case 232:{if(!__OPS_PARITY)break;const _nmc=((Math.abs(Math.floor(vmRegs[si]))|0)%MODE_COUNT);
+          if(_nmc!==pMode[i]){const _cc=MODE_SWITCH_COST*(pProvision[i]>0?1:MODE_LOCK_MULT);
+            const _fpc=Math.min(pProvision[i],_cc);pProvision[i]-=_fpc;amp[i]-=(_cc-_fpc);
+            pMode[i]=_nmc;modeSwitches++;}
+          vmRegs[di]=_nmc*(k||1);}break; // SET_MODE — full parity, same amplitude price
+        case 233:{if(!__OPS_PARITY)break;vmRegs[di]=pMode[i]*(k||1);}break; // READ_MODE — full parity
+        case 234:{if(!__OPS_PARITY)break;vmRegs[di]=(j>=0&&j<N?pMode[j]:0)*(k||1);}break; // PARTNER_MODE — full parity
+        case 235:{if(!__OPS_PARITY)break;cosmosStats.senseReads++;vmRegs[di]=cosmosSenseFor(i)*(k||1);}break; // COSMOS_SENSE — full parity
     }
     if(op>=CORE_OPCODES&&op<CORE_OPCODES+MAX_BOUND_OPCODES){
       const _bos=genome.boundOpcodes;
@@ -19105,7 +19250,7 @@ function executeClusterVM(i,j,sim,d){
       if(_bos&&_boi<_bos.length){
         const _bua=genome.userAtoms&&genome.userAtoms[_bos[_boi]];
         if(_bua){ const _out=uaCall(_bua,vmRegs[si],vmRegs[(si+1)%12]); vmRegs[di]=_out;
-          if(__REACH_ON){ const _rv110c=Math.max(-2,Math.min(2,_out))*(__REACH_NOK?1:k)*(__REACH_GAIN&&isFinite(genome.reachGain)?genome.reachGain:0.2); vmActions[Math.abs(di)%7]+=_rv110c; __reachFires++;
+          if(__REACH_ON){ const _rv110c=Math.max(-2,Math.min(2,_out))*(__REACH_NOK?1:k)*(__REACH_GAIN&&isFinite(genome.reachGain)?genome.reachGain:0.2); vmActions[reachSlot(di)]+=_rv110c; __reachFires++;
             if(__ATOM_CREDIT&&_bua.expression){if(__atomExprContrib.size>5000)__atomExprContrib.clear();__atomExprContrib.set(_bua.expression,(__atomExprContrib.get(_bua.expression)||0)+_rv110c);} }
         }
       }
@@ -19800,6 +19945,16 @@ function executeSoloVM(){
         case 229:{if(Math.random()>__cl(vmRegs[si]*k,0,1))ip++;vmRegs[di]=0;}break; // PROB_SKIP — full parity
         case 230:{const _tp230s=Math.max(1,Math.floor(Math.abs(k)));vmRegs[di]=(tick%_tp230s)/_tp230s;}break; // TICK_PHASE — full parity
         case 231:{vmRegs[di]=0;}break; // CLUSTER_QUORUM — NOP in solo context (no cluster)
+        // #131 PARITY: 232-235 mirror the particle VM (see the OPS_PARITY note at its declaration).
+        // Off => break before any state is touched, which is exactly the fall-through this replaces.
+        case 232:{if(!__OPS_PARITY)break;const _nms=((Math.abs(Math.floor(vmRegs[si]))|0)%MODE_COUNT);
+          if(_nms!==pMode[i]){const _cs=MODE_SWITCH_COST*(pProvision[i]>0?1:MODE_LOCK_MULT);
+            const _fps=Math.min(pProvision[i],_cs);pProvision[i]-=_fps;amp[i]-=(_cs-_fps);
+            pMode[i]=_nms;modeSwitches++;}
+          vmRegs[di]=_nms*(k||1);}break; // SET_MODE — full parity, same amplitude price
+        case 233:{if(!__OPS_PARITY)break;vmRegs[di]=pMode[i]*(k||1);}break; // READ_MODE — full parity
+        case 234:{if(!__OPS_PARITY)break;vmRegs[di]=0;}break; // PARTNER_MODE — NOP in solo context (no partner), as op227/op231 already are
+        case 235:{if(!__OPS_PARITY)break;cosmosStats.senseReads++;vmRegs[di]=cosmosSenseFor(i)*(k||1);}break; // COSMOS_SENSE — full parity
       }
       if(op>=CORE_OPCODES&&op<CORE_OPCODES+MAX_BOUND_OPCODES){
         const _bos=genome.boundOpcodes;
@@ -19807,7 +19962,7 @@ function executeSoloVM(){
         if(_bos&&_boi<_bos.length){
           const _bua=genome.userAtoms&&genome.userAtoms[_bos[_boi]];
           if(_bua){ const _out=uaCall(_bua,vmRegs[si],vmRegs[(si+1)%12]); vmRegs[di]=_out;
-            if(__REACH_ON){ const _rv110s=Math.max(-2,Math.min(2,_out))*(__REACH_NOK?1:k)*(__REACH_GAIN&&isFinite(genome.reachGain)?genome.reachGain:0.2); vmActions[Math.abs(di)%7]+=_rv110s; __reachFires++;
+            if(__REACH_ON){ const _rv110s=Math.max(-2,Math.min(2,_out))*(__REACH_NOK?1:k)*(__REACH_GAIN&&isFinite(genome.reachGain)?genome.reachGain:0.2); vmActions[reachSlot(di)]+=_rv110s; __reachFires++;
               if(__ATOM_CREDIT&&_bua.expression){if(__atomExprContrib.size>5000)__atomExprContrib.clear();__atomExprContrib.set(_bua.expression,(__atomExprContrib.get(_bua.expression)||0)+_rv110s);} }
           }
         }
@@ -20391,9 +20546,29 @@ const cellTendCnt=new Int32Array(NICHE_ND_CELLS);
 nicheCellRes.fill(0.3);
 const pNicheRaw=new Float32Array(CAP);            // per-organism resource captured this tick
 const pDietBin=new Int16Array(CAP);               // per-organism diet channel this tick
-const opFreq=new Float32Array(256);               // opcode frequency among living programs
+// #131: sized to OPCODE_COUNT, not to a literal 256. The novelty ENGINE's reach is still governed by
+// OPNOV_SPAN below; a larger array is inert on its own (slots past the span are never written or read),
+// so this allocation change alone is behaviour-preserving.
+const opFreq=new Float32Array(OPCODE_COUNT);      // opcode frequency among living programs
 let opFreqTotal=0;
-const opCum=new Float32Array(256);                // swing #34: slow EMA of each opcode's usage SHARE over history (a never-explored opcode stays ≈0 → maximally novel; sustains pressure into the unused program space, not just current rarity)
+const opCum=new Float32Array(OPCODE_COUNT);       // swing #34: slow EMA of each opcode's usage SHARE over history (a never-explored opcode stays ≈0 → maximally novel; sustains pressure into the unused program space, not just current rarity)
+// #131 — THE NOVELTY ENGINE'S HORIZON. #34 rewards running opcodes the population has historically
+// under-explored, and its two arrays were Float32Array(256) with an op<256 guard and a literal 256 as
+// the "#opcodes" normaliser. That was the whole opcode space once. It is not now: CORE_OPCODES=236 and
+// #129 raised MAX_BOUND_OPCODES 96->192, so OPCODE_COUNT=428. Bound slots 0..19 land at ops 236..255
+// and are scored; slots 20..191 land at 256..427 and can neither register as explored NOR earn novelty
+// for exploring them. The engine can see 20 of 192 bound slots. The comment at MAX_BOUND_OPCODES says
+// the op<256 gate makes high bound-ops "behave as before", which is true and is why nothing crashes —
+// but "as before" already excluded 76 of the previous 96 slots, and #129's stated purpose was to
+// REOPEN the effector frontier because the atom vocabulary had outgrown it. The pressure meant to
+// populate that frontier stops at its first tenth. Measured on harvested material: 601 of 46,042
+// instructions (1.3%) sit at op>=256, across 22 distinct bound slots spanning 236..412 — the blind
+// region is genuinely occupied.
+// DEFAULT OFF. Widening the horizon makes every never-scored op maximally novel at once (opCum≈0 →
+// novelty≈1), which is a large, one-sided shift in a selection term, not a neutral correction. At 256
+// the span, the guard and the normaliser are all exactly what they were. Force on with OPNOV_FULL=1.
+let __OPNOV_FULL=false;
+function opnovSpan(){ return __OPNOV_FULL?OPCODE_COUNT:256; }
 for(let _b=0;_b<NICHE_BINS;_b++){ nicheAbiotic[_b]=NICHE_ABIOTIC*Math.pow(NICHE_TAPER,_b); nicheAbioticReal[_b]=NICHE_REAL_SUPPLY*Math.pow(NICHE_REAL_TAPER,_b); }
 nicheRes.fill(0.3);
 // Diet channel and specialisation half-width derive from the heritable tendency axis.
@@ -20487,7 +20662,7 @@ if(typeof globalThis!=='undefined'){
                __ATOM_ELIGIBILITY:1,                                  // #122: ELIGIBILITY TRACES on atom credit — instead of clearing the contribution map each tick, decay it (×0.6, ~half-dozen-tick window) so an atom that fired recently keeps earning credit as fitness moves in its WAKE. TD(λ)-style delayed-reward attribution, the mechanism needed to credit multi-step behaviour rather than only same-tick coincidence. Sign rule unchanged; only the trace's lifetime grows. Off => same-tick-only, byte-identical to pre-#122. Force off with ATOM_ELIGIBILITY=0
                __ATOM_RECOMB:1,                                       // #123: ATOM RECOMBINATION — a fraction of #121's credit-biased births COMBINE the two highest-credit atoms into a composite (A) op (B) instead of local-stepping one. Point mutation only refines within a structure; recombination splices two proven HISTORIES — the complexity-jump source #52 says mutation cannot supply — assembling a bigger primitive from two that already work. Length-capped at 160 (the sanitize slice, so composites never truncate to invalid JS; also bounds runaway growth). creditTrace seeds from max(parents)*0.5. Force off with ATOM_RECOMB=0
                __COSMOS_LAW:1,                                        // #129: CHILD UNIVERSES CAN WIN THE ARGUMENT — a child-cosmos physics proposal that both wins repeatedly in shadow-sim AND carries positive creditTrace (raised the parent's REAL fitness, Pe29-validated) steps the parent's ACTUAL physics toward it, clamped and gradual. Overturns the explicit "a child can make an argument, it cannot win one" design wall so evolving the LAWS becomes a live open frontier, not just filling the fixed space. Paired with DIMS_MAX 16->32 and MAX_BOUND_OPCODES 96->192 (both were AT CAP at gen38). Force off with COSMOS_LAW=0
-               __OEE_METER:1,                                        // #130: OPEN-ENDEDNESS METER — a FAILABLE instrument, not another engine. Logs Bedau-style evolutionary-activity stats on the self-authored atom pool once per epoch (see flushEpoch): distinct expressions reaching adoption (INNOVATIONS), and those still adopted OEE_PERSIST_LAG epochs later (PERSISTENT). The failable claim is the persistent-innovation curve — sustained climb = still finding lasting new structure (open-ended signature); a plateau while raw innovation churns = shuffling variants in a bounded space (accretion). Purely observational: read-only on sim state, writes only genome.oee* (never read back), so evolution is byte-identical on or off. Ships ON to start recording the number the run's been missing. Force off with OEE_METER=0
+               __OEE_METER:1,                                        // #130: OPEN-ENDEDNESS METER — a FAILABLE instrument, not another engine. Logs Bedau-style evolutionary-activity stats on the self-authored atom pool once per epoch (see flushEpoch): distinct expressions reaching adoption (INNOVATIONS), and those still adopted OEE_PERSIST_LAG epochs later (PERSISTENT). The failable claim is the persistent-innovation curve — sustained climb = still finding lasting new structure (open-ended signature); a plateau while raw innovation churns = shuffling variants in a bounded space (accretion). Purely observational: read-only on sim state, and since #131 its counters live OFF the genome object entirely (v1 hung them on `genome`, which cloneGenome spreads and mutateChildGenome walks with a Math.random() per numeric field — so the byte-identical claim depended on when those fields happened to be created rather than on the design). Ships ON. Force off with OEE_METER=0
                __ATOM_WRSENSE:1,                                      // #126: WORLD-RICHNESS SENSE (macro->micro, the complement of #125) — the `wr` grammar variable gives atoms a read of the accumulated trait dimensionality (normalized DIMS), the macro complexity their own success helps grow (#125). Closes the micro<->macro loop both ways, as #116 did for atom<->fitness: an atom can now behave differently in a rich, high-dimensional world than in a sparse one. Force off with ATOM_WRSENSE=0
                __DIMS_ATOM:1,                                         // #125: ATOM-EARNED DIMENSIONALITY (micro->macro OEE) — a proven, diverse atom bank adds a small capped lift toward earning a new trait axis in the #25 dimensionality ratchet, but ONLY when ecological occupancy is already ≥60% of threshold (tips a near-miss, never bootstraps from monoculture) and riding atom CREDIT not raw diversity (so #121/#123 churn can't inflate it). Preserves #25's earned-growth invariant while letting atom-level open-endedness help the WORLD earn macro complexity. Force off with DIMS_ATOM=0
                __UA_INHERIT:1,                                        // #112: SUBTREE INHERITANCE — the grammar's leaf generator occasionally splices a whole proven expression from the credit pool instead of emitting a fresh terminal, weighted by positive pool credit. Proven building blocks propagate as building blocks; genetic programming's crossover, but the "parents" are population-wide, credit-ranked, and content-addressed. Depth-tapered probability (12%/(1+depth)) and 120-char size guard prevent runaway string growth. Force off with UA_INHERIT=0
@@ -20524,6 +20699,11 @@ __COSMOS_LAW=(typeof globalThis==='undefined')||((globalThis.__COSMOS_LAW??1)|0)
 __REACH_GAIN=(typeof globalThis==='undefined')||((globalThis.__REACH_GAIN??1)|0)!==0; // #117: default ON. Force off with REACH_GAIN=0
 __SELF_PREDICT=(typeof globalThis!=='undefined')&&((globalThis.__SELF_PREDICT|0)===1); // #92: default OFF
 __GRIP_SEED=(typeof globalThis!=='undefined')&&((globalThis.__GRIP_SEED|0)===1); // #93: default OFF
+// #131 — three DORMANT arms. Each is a defect with a known correct form, and each moves live dynamics
+// when switched on, so each ships off with a bit-identical off-path, exactly as #32/#31/#37 do.
+__OPS_PARITY  =(typeof globalThis!=='undefined')&&((globalThis.__OPS_PARITY|0)===1);  // #131: opcodes 232-235 in the plasmid/cluster/solo/profiler dispatches. Default OFF. Force on with OPS_PARITY=1
+__OPNOV_FULL  =(typeof globalThis!=='undefined')&&((globalThis.__OPNOV_FULL|0)===1);  // #131: #34 novelty spans the full OPCODE_COUNT, not a literal 256. Default OFF. Force on with OPNOV_FULL=1
+__REACH_SLOT8 =(typeof globalThis!=='undefined')&&((globalThis.__REACH_SLOT8|0)===1); // #131: REACH emits reach actuator slot 7 (%8, the house convention) instead of %7. Default OFF. Force on with REACH_SLOT8=1
 __ABSTAIN_FREE=(typeof globalThis==='undefined')||((globalThis.__ABSTAIN_FREE??1)|0)!==0; // #95: default ON
 __CHILD_SIGN_FLOOR=(typeof globalThis==='undefined')||((globalThis.__CHILD_SIGN_FLOOR??1)|0)!==0; // #85 sign floors: default ON
 __INT_GENE_STEP=(typeof globalThis==='undefined')||((globalThis.__INT_GENE_STEP??1)|0)!==0; // #96: default ON. This is a REPAIR, not a treatment — the off-path exists as a CONTROL (and as the revert), not as a gate. Force off with INT_GENE_STEP=0
@@ -20906,14 +21086,15 @@ function applyNicheEconomy(){
   // novel. Stays MEAN-CENTRED (zero-sum): novelty cannot inflate amp by fiat (the #16/#22 ID-drift trap); it
   // only re-weights a fixed pool toward genotypic explorers, whom real selection then keeps or discards.
   if(NOV){
+    const _span=opnovSpan(); // #131: 256 (unchanged) or the full OPCODE_COUNT — see opnovSpan
     if(opFreqTotal===0 || tick%OPNOV_INTERVAL===0){ opFreq.fill(0); opFreqTotal=0;
       for(let i=0;i<N;i++){ if(!palive[i])continue; const pr=pProg[i]; if(!pr)continue;
-        for(let q=0;q<pr.length;q++){ const op=pr[q][0]|0; if(op>=0&&op<256){ opFreq[op]++; opFreqTotal++; } } }
-      if(opFreqTotal>0) for(let op=0;op<256;op++) opCum[op]=opCum[op]*0.98+(opFreq[op]/opFreqTotal)*0.02; } // history of usage share
+        for(let q=0;q<pr.length;q++){ const op=pr[q][0]|0; if(op>=0&&op<_span){ opFreq[op]++; opFreqTotal++; } } }
+      if(opFreqTotal>0) for(let op=0;op<_span;op++) opCum[op]=opCum[op]*0.98+(opFreq[op]/opFreqTotal)*0.02; } // history of usage share
     if(opFreqTotal>0){
       let sumNov=0, cnt=0;
       for(let i=0;i<N;i++){ if(!palive[i])continue; const pr=pProg[i]; let s=0,n=0;
-        if(pr) for(let q=0;q<pr.length;q++){ const op=pr[q][0]|0; if(op>=0&&op<256){ s+=1-Math.min(1,opCum[op]*256); n++; } } // opCum·256 = usage share ×#opcodes; rare/never-explored → ~0 → novelty ~1
+        if(pr) for(let q=0;q<pr.length;q++){ const op=pr[q][0]|0; if(op>=0&&op<_span){ s+=1-Math.min(1,opCum[op]*_span); n++; } } // opCum·span = usage share ×#opcodes in range; rare/never-explored → ~0 → novelty ~1
         const sc=n>0?s/n:0; pNicheRaw[i]=sc; sumNov+=sc; cnt++; } // reuse pNicheRaw as scratch (frontier already consumed it)
       const meanNov=cnt>0?sumNov/cnt:0;
       if(meanNov>1e-9){ const _ops=(genome.opnovStrength??OPNOV_STRENGTH); for(let i=0;i<N;i++){ if(!palive[i])continue; amp[i]+=_ops*Math.max(-1,Math.min(1, pNicheRaw[i]/meanNov-1)); } } // strength evolvable (#35)
@@ -23696,6 +23877,12 @@ boot();
     '#metabPanel .mpill{cursor:pointer;color:#c7c5ba;font-size:10px;letter-spacing:.05em}';
   function showPanel(){
     if(root)return;
+    // #131: no DOM, no panel. This observer runs at the very end of the script and calls syncVisual()
+    // -> showPanel() unconditionally, so a headless host without document.body threw at COMPILE time
+    // and took the whole simulation with it. Every rig had to stub document.body to work around it, and
+    // the ones written before this panel existed (bench-pairs, the five bridge experiments) simply
+    // broke. In a browser document.body always exists here, so this costs the artwork nothing.
+    if(!document.body||!document.head)return;
     try{collapsed=localStorage.getItem('metabCollapsed')==='1';}catch(_){}   // remember collapse choice across the frequent reloads
     if(!document.getElementById('metabStyle')){ const st=document.createElement('style'); st.id='metabStyle'; st.textContent=CSS; document.head.appendChild(st); }
     root=document.createElement('div'); root.id='metabPanel'; document.body.appendChild(root);
@@ -23709,7 +23896,7 @@ boot();
   let fc=0;
   setInterval(()=>{ const now=Date.now(); const L=sampleScope(now); if(visual&&root)draw(L,now); if(++fc%7===0)flush(); },450);
   window.addEventListener('hashchange',syncVisual); syncVisual(); flush();
-})();
+})();//__METAB_END__
 </script>
 </body>
 </html>
