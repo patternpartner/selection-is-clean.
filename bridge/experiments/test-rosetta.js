@@ -1,6 +1,6 @@
 const R = require('./rosetta.js');
 const fs = require('fs');
-const {motifs, plasmids} = JSON.parse(fs.readFileSync('/tmp/claude-0/-home-user-selection-is-clean-/09cec8ec-f0e4-5f9a-b966-ecedf109e3ac/scratchpad/pe-instructions-cache.json','utf8'));
+const {motifs, plasmids} = JSON.parse(fs.readFileSync(require('path').join(__dirname,'pe-instructions-cache.json'),'utf8'));
 const seqs = motifs.concat(plasmids);
 
 function pearson(xs,ys){ const n=xs.length,mx=xs.reduce((a,b)=>a+b,0)/n,my=ys.reduce((a,b)=>a+b,0)/n;

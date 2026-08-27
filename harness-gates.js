@@ -63,7 +63,7 @@ let loopErrors=0,lastErr='';
 console.error=(...a)=>{const s=a.join(' ');if(/Loop error|Boot error|Watchdog/.test(s)){loopErrors++;lastErr=s.slice(0,160);}};
 console.warn=()=>{};
 
-const html=fs.readFileSync(__dirname+'/index.html','utf8');
+const html=fs.readFileSync(process.env.INDEX||(__dirname+'/engine.html'),'utf8');
 let code=html.match(/<script>([\s\S]*)<\/script>/)[1];
 function patchOnce(find,repl,label){ patchExactly(find,repl,label,1); }
 // patchExactly asserts the EXPECTED number of matches rather than accepting whatever it finds. The
@@ -129,7 +129,7 @@ if((process.env.HOT|0)===1) patchOnce(
 // tag sets did not exist yet at boot, which is a different thing entirely and looked identical.
 // #70: the mint sites now carry a `src` tag, so this target string moved. patchExactly asserts the
 // count in both directions, so a stale target fails loudly rather than vanishing from the audit the
-// way the speciate_parent patch did in #67. Kept verbatim-synced with index.html.
+// way the speciate_parent patch did in #67. Kept verbatim-synced with engine.html.
 patchExactly("pLin[i]=(parentA>=0&&parentA<N)?pLin[parentA]:createLineage(0,'founder');",
   "pLin[i]=(parentA>=0&&parentA<N)?pLin[parentA]:(function(){const _v=createLineage(0,'founder');globalThis.__lineageMinted&&globalThis.__lineageMinted.add(_v);return _v;})();",
   'mint-founder',2);   // both spawn paths

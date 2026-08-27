@@ -2,9 +2,9 @@
 const fs = require('fs');
 function selfProxy(){const f=function(){return p};const p=new Proxy(f,{get(_t,prop){if(prop===Symbol.toPrimitive)return()=>0;if(prop==='width'||prop==='height')return 0;if(prop==='data')return new Uint8ClampedArray(4);return p},apply(){return p}});return p}
 const CTX=selfProxy();
-function makeEl(){return{getContext:()=>CTX,addEventListener(){},removeEventListener(){},set onclick(_){},set onchange(_){},click(){},style:{},width:1280,height:720,_text:'',get textContent(){return this._text},set textContent(v){this._text=v}}}
+function makeEl(){return{getContext:()=>CTX,addEventListener(){},removeEventListener(){},set onclick(_){},set onchange(_){},click(){},appendChild(){},removeChild(){},remove(){},setAttribute(){},classList:{add(){},remove(){},toggle(){},contains(){return false}},style:{},width:1280,height:720,_text:'',get textContent(){return this._text},set textContent(v){this._text=v}}}
 const ELS={};
-globalThis.document={getElementById:id=>(ELS[id]||(ELS[id]=makeEl())),createElement:()=>makeEl(),addEventListener(){},removeEventListener(){},get hidden(){return false}};
+globalThis.document={getElementById:id=>(ELS[id]||(ELS[id]=makeEl())),createElement:()=>makeEl(),querySelector:()=>null,addEventListener(){},removeEventListener(){},head:makeEl(),body:makeEl(),get hidden(){return false}};
 globalThis.window=globalThis;globalThis.addEventListener=()=>{};globalThis.removeEventListener=()=>{};
 globalThis.location={hash:'',pathname:'/',search:'',href:'http://x/'};globalThis.history={replaceState(){},pushState(){}};
 globalThis.localStorage={getItem:()=>null,setItem(){},removeItem(){}};
@@ -23,7 +23,7 @@ if(process.env.SEED){
 }
 globalThis.requestAnimationFrame=()=>0;globalThis.cancelAnimationFrame=()=>{};globalThis.setTimeout=()=>0;globalThis.clearTimeout=()=>{};globalThis.setInterval=()=>0;globalThis.clearInterval=()=>{};
 console.error=()=>{};console.warn=()=>{};
-const html=fs.readFileSync(process.env.INDEX||(__dirname+'/index.html'),'utf8');
+const html=fs.readFileSync(process.env.INDEX||(__dirname+'/engine.html'),'utf8');
 let code=html.match(/<script>([\s\S]*)<\/script>/)[1];
 // Instrument: count pairwise VM invocations (the two calls inside processGrid's pair loop).
 globalThis.__pairs=0;

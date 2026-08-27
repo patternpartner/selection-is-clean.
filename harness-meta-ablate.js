@@ -2,7 +2,7 @@
 //
 // The atrophy probe proved the 116-gene meta-influence layer is inert BY ATTRIBUTION (protected=0)
 // and net-inflates 4-5x despite the pruner. But inert-by-attribution is not the same as harmful:
-// before adding any pruning cost to index.html (a real new selection pressure), we must know whether
+// before adding any pruning cost to engine.html (a real new selection pressure), we must know whether
 // the inflation actually costs fitness or is harmless dead weight the system correctly ignores.
 //
 // Whole-layer ablation, same method as harness-ablate-bank: force every ATROPHY_SAFE influence param
@@ -35,7 +35,7 @@ let loopErrors=0,lastErr='';
 console.error=(...a)=>{const s=a.join(' ');if(/Loop error|Boot error|Watchdog/.test(s)){loopErrors++;lastErr=s.slice(0,160);}};
 console.warn=()=>{};
 
-const html=fs.readFileSync(__dirname+'/index.html','utf8');
+const html=fs.readFileSync(process.env.INDEX||(__dirname+'/engine.html'),'utf8');
 let code=html.match(/<script>([\s\S]*)<\/script>/)[1];
 function patchOnce(find,repl,label){const n=code.split(find).length-1;if(n!==1){console.log(JSON.stringify({error:`patch ${label} x${n}`}));process.exit(1);}code=code.replace(find,repl);}
 

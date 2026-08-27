@@ -9,10 +9,10 @@
 // harness-ablate-bank.js: pin (here, permanently gate-close) vs intact, from the SAME boot.
 //
 // Text-patches ONE line (verified unique against the current file before running) rather than adding
-// a new toggle to index.html — this studies an EXISTING, unmodified mechanism from outside it.
+// a new toggle to engine.html — this studies an EXISTING, unmodified mechanism from outside it.
 //
 // Env: SEEDS (default 11,13,17,19,23 — the project's standard 5-seed ablation set)
-//      TICKS (default 20000)  SAMPLE (default 1000)  CONC (default 3)  INDEX (path to index.html)
+//      TICKS (default 20000)  SAMPLE (default 1000)  CONC (default 3)  INDEX (path to engine.html)
 const { execFile } = require('child_process');
 const fs = require('fs');
 const path = require('path');
@@ -21,7 +21,7 @@ const SEEDS = (process.env.SEEDS || '11,13,17,19,23').split(',').map(s => s.trim
 const TICKS = process.env.TICKS || '20000';
 const SAMPLE = process.env.SAMPLE || '1000';
 const CONC = parseInt(process.env.CONC || '3', 10);
-const INDEX = process.env.INDEX || path.join(__dirname, 'index.html');
+const INDEX = process.env.INDEX || path.join(__dirname, 'engine.html');
 const LEAF = path.join(__dirname, 'harness-reflex-leaf.js');
 
 function run(env) {

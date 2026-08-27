@@ -18,14 +18,14 @@
 // producer/consumer read was likely structure that would have appeared from age/size alone.
 //
 // Env: SEEDS (comma list, matched pairs — default 11,13,17)  TICKS (default 15000)
-//      SAMPLE (ticks between samples, default 500)  INDEX (path to index.html, default ./index.html)
+//      SAMPLE (ticks between samples, default 500)  INDEX (path to engine.html, default ./engine.html)
 const path = require('path');
 const { Worker } = require('worker_threads');
 
 const SEEDS = (process.env.SEEDS || '11,13,17').split(',').map(s => parseInt(s.trim(), 10));
 const TICKS = parseInt(process.env.TICKS || '15000', 10);
 const SAMPLE = parseInt(process.env.SAMPLE || '500', 10);
-const INDEX = process.env.INDEX || path.join(__dirname, 'index.html');
+const INDEX = process.env.INDEX || path.join(__dirname, 'engine.html');
 const WORKER = path.join(__dirname, 'harness-coupling-worker.js');
 
 function runWorker(workerData) {

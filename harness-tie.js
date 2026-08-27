@@ -116,7 +116,7 @@ console.error = (...a) => {
 console.warn = () => {};
 
 // ── Load + instrument the script ──────────────────────────────────
-const html = fs.readFileSync(__dirname + '/index.html', 'utf8');
+const html = fs.readFileSync(process.env.INDEX || (__dirname + '/engine.html'), 'utf8');
 const code = html.match(/<script>([\s\S]*)<\/script>/)[1];
 
 const driver = `

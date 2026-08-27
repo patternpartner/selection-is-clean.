@@ -42,7 +42,7 @@ let loopErrors=0,lastErr='';
 console.error=(...a)=>{const s=a.join(' ');if(/Loop error|Boot error|Watchdog/.test(s)){loopErrors++;lastErr=s.slice(0,160);}};
 console.warn=()=>{};
 
-const html=fs.readFileSync(__dirname+'/index.html','utf8');
+const html=fs.readFileSync(process.env.INDEX||(__dirname+'/engine.html'),'utf8');
 let code=html.match(/<script>([\s\S]*)<\/script>/)[1];
 
 function patchOnce(find,repl,label){
@@ -59,14 +59,14 @@ patchOnce(
 
 // (Q1) Log the harmful-path cut.
 patchOnce(
-'        const strength=aRate*(0.5+Math.abs(tSlow));\n        const factor=__cl(1-strength,0,1);\n        if(isFinite(genome[p]))genome[p]*=factor;',
-'        const strength=aRate*(0.5+Math.abs(tSlow));\n        const factor=__cl(1-strength,0,1);\n        { const _from=genome[p]; if(isFinite(genome[p]))genome[p]*=factor; const _to=genome[p]; if(isFinite(_from)&&isFinite(_to)&&Math.abs(_from-_to)>1e-12){ globalThis.__atrCuts=globalThis.__atrCuts||[]; if(globalThis.__atrCuts.length<400)globalThis.__atrCuts.push({p,from:+_from.toPrecision(4),to:+_to.toPrecision(4),tick:(typeof tick!=="undefined"?tick:-1),path:"harmful"}); if(globalThis.__atrCensus&&globalThis.__atrCensus[p])globalThis.__atrCensus[p].cuts++; } }',
+'        const strength=aRate*(0.5+Math.abs(tSlow));\n        const factor=__cl(1-strength,0,1);\n        {const _mv=metaParamGet(p);if(isFinite(_mv))metaParamSet(p,_mv*factor);} // #108: was genome[p] directly',
+'        const strength=aRate*(0.5+Math.abs(tSlow));\n        const factor=__cl(1-strength,0,1);\n        { const _from=metaParamGet(p); if(isFinite(_from))metaParamSet(p,_from*factor); const _to=metaParamGet(p); if(isFinite(_from)&&isFinite(_to)&&Math.abs(_from-_to)>1e-12){ globalThis.__atrCuts=globalThis.__atrCuts||[]; if(globalThis.__atrCuts.length<400)globalThis.__atrCuts.push({p,from:+_from.toPrecision(4),to:+_to.toPrecision(4),tick:(typeof tick!=="undefined"?tick:-1),path:"harmful"}); if(globalThis.__atrCensus&&globalThis.__atrCensus[p])globalThis.__atrCensus[p].cuts++; } }',
 'harmful cut');
 
 // (Q1) Log the probe-confirmed-dead cut.
 patchOnce(
-'              const factor=__cl(1-aRate,0,1); // AUTONOMY: confirmed-dead decays at FULL rate (was half)\n              if(isFinite(genome[p]))genome[p]*=factor;',
-'              const factor=__cl(1-aRate,0,1); // AUTONOMY: confirmed-dead decays at FULL rate (was half)\n              { const _from=genome[p]; if(isFinite(genome[p]))genome[p]*=factor; const _to=genome[p]; if(isFinite(_from)&&isFinite(_to)&&Math.abs(_from-_to)>1e-12){ globalThis.__atrCuts=globalThis.__atrCuts||[]; if(globalThis.__atrCuts.length<400)globalThis.__atrCuts.push({p,from:+_from.toPrecision(4),to:+_to.toPrecision(4),tick:(typeof tick!=="undefined"?tick:-1),path:"probed"}); if(globalThis.__atrCensus&&globalThis.__atrCensus[p])globalThis.__atrCensus[p].cuts++; } }',
+'              const factor=__cl(1-aRate,0,1); // AUTONOMY: confirmed-dead decays at FULL rate (was half)\n              {const _mv=metaParamGet(p);if(isFinite(_mv))metaParamSet(p,_mv*factor);} // #108: was genome[p] directly',
+'              const factor=__cl(1-aRate,0,1); // AUTONOMY: confirmed-dead decays at FULL rate (was half)\n              { const _from=metaParamGet(p); if(isFinite(_from))metaParamSet(p,_from*factor); const _to=metaParamGet(p); if(isFinite(_from)&&isFinite(_to)&&Math.abs(_from-_to)>1e-12){ globalThis.__atrCuts=globalThis.__atrCuts||[]; if(globalThis.__atrCuts.length<400)globalThis.__atrCuts.push({p,from:+_from.toPrecision(4),to:+_to.toPrecision(4),tick:(typeof tick!=="undefined"?tick:-1),path:"probed"}); if(globalThis.__atrCensus&&globalThis.__atrCensus[p])globalThis.__atrCensus[p].cuts++; } }',
 'probed cut');
 
 const driver=`

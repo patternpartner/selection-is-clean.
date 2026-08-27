@@ -15,7 +15,7 @@
 // this project has ever produced. The arc has been measuring atoms on a fitness function they were not
 // designed for, while the one they WERE designed for has never been switched on.
 //
-// HOW. Two child processes, each booting the real index.html, with a BroadcastChannel shim that relays
+// HOW. Two child processes, each booting the real engine.html, with a BroadcastChannel shim that relays
 // over node IPC through this parent. Separate processes rather than one — the script writes flags and
 // DOM shims onto globalThis, so two instances in one process would collide. Separate processes are also
 // the faithful analogue of two browser tabs, which is what the network layer was written for.
@@ -70,7 +70,7 @@ if(process.env.BRIDGE_CHILD){
   console.error=(...a)=>{const s=a.join(' ');if(/Loop error|Boot error|Watchdog/.test(s))loopErrors++;};
   console.warn=()=>{};
 
-  const html=fs.readFileSync(path.join(__dirname,'index.html'),'utf8');
+  const html=fs.readFileSync(process.env.INDEX||path.join(__dirname,'engine.html'),'utf8');
   const code=html.match(/<script>([\s\S]*)<\/script>/)[1];
   const driver=`
 ;(function(){

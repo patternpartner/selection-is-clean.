@@ -1,6 +1,6 @@
 // Leaf worker for harness-ablate-reflex.js — one seed, one condition (intact/ablated), one process.
 // Same DOM/timer stubs as harness.js/harness-oee.js. ABLATE_REFLEX=1 permanently closes the
-// crw>0.001 gate at index.html's ONE reflexThreat/reflexTrend->vmRegs[4]/[5] write site (verified
+// crw>0.001 gate at engine.html's ONE reflexThreat/reflexTrend->vmRegs[4]/[5] write site (verified
 // unique against the current file by the orchestrator's own text before ever running this).
 const fs = require('fs');
 
@@ -95,7 +95,7 @@ console.error = (...a) => {
 };
 console.warn = () => {};
 
-const INDEX = process.env.INDEX || (__dirname + '/index.html');
+const INDEX = process.env.INDEX || (__dirname + '/engine.html');
 const html = fs.readFileSync(INDEX, 'utf8');
 let code = html.match(/<script>([\s\S]*)<\/script>/)[1];
 
@@ -109,7 +109,7 @@ const CADENCE = 'if(tick%60===0){\n    let alive=0,totalAmp=0,totalRes=0,';
 
 function patchOnce(src, find, repl, label) {
   const n = src.split(find).length - 1;
-  if (n !== 1) throw new Error(`patch target for ${label} found ${n} times, expected 1 — index.html has drifted`);
+  if (n !== 1) throw new Error(`patch target for ${label} found ${n} times, expected 1 — engine.html has drifted`);
   return src.replace(find, repl);
 }
 

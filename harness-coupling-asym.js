@@ -17,7 +17,7 @@
 // Env: PRODUCER_SEED (default 7 — the project's canonical authoring seed)
 //      MATURATION_TICKS (default 30000)  COUPLE_TICKS (default 15000)
 //      FRESH_SEEDS (comma list, matched pairs — default 11,13,17)
-//      SAMPLE (ticks between samples, default 750)  INDEX (path to index.html)
+//      SAMPLE (ticks between samples, default 750)  INDEX (path to engine.html)
 const path = require('path');
 const { Worker } = require('worker_threads');
 
@@ -26,7 +26,7 @@ const MATURATION_TICKS = parseInt(process.env.MATURATION_TICKS || '30000', 10);
 const COUPLE_TICKS = parseInt(process.env.COUPLE_TICKS || '15000', 10);
 const FRESH_SEEDS = (process.env.FRESH_SEEDS || '11,13,17').split(',').map(s => parseInt(s.trim(), 10));
 const SAMPLE = parseInt(process.env.SAMPLE || '750', 10);
-const INDEX = process.env.INDEX || path.join(__dirname, 'index.html');
+const INDEX = process.env.INDEX || path.join(__dirname, 'engine.html');
 const WORKER = path.join(__dirname, 'harness-coupling-worker.js');
 const PRODUCER_CHANNEL = 'exp-asym-producer';
 
