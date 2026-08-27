@@ -10709,7 +10709,11 @@ was a bad path. Anything measured between `c0cef11` and now was measured against
 Fixed, plus two rigs that were broken past the path: `harness-atrophy-probe`'s cut needles still
 expected `genome[p]*=factor`, which #108 replaced with `metaParamGet`/`metaParamSet`; `bench-pairs`'s
 DOM stub predated the metabolism panel. `smoke.sh` now boots every rig briefly — the check whose
-absence let this sit for four commits.
+absence let this sit for four commits. It has a wrinkle worth knowing: most rigs take their budget
+from `TICKS`, but a few define their own names and ignore it, and `harness-coupling-asym` matures a
+producer for `MATURATION_TICKS=30000` before any peer joins. Its first "failure" in the smoke pass was
+a 180-second timeout on a rig doing 45,000 ticks of real work, not a broken rig. `smoke.sh` now passes
+the per-rig budget names; **19 of 19 pass.**
 
 ### #130's meter counted a constant tweak as a persistent innovation
 

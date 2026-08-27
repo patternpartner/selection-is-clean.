@@ -22,9 +22,21 @@ RIGS=(oee-meter-test.js harness.js harness-ab.js harness-oee.js harness-strip.js
       harness-alien-ablate.js harness-ablate-reflex.js harness-reflex-leaf.js
       harness-bridge.js bench-pairs.js)
 
+# Most rigs take their budget from TICKS. A few define their own names and ignore it — pass those
+# too, or the rig runs its real workload and the smoke pass just times out. (harness-coupling-asym
+# matures a producer for 30,000 ticks before any peer joins; that is 45,000 ticks of work TICKS
+# never touches, which is exactly how it "failed" the first smoke run.)
+extra_env_for() {
+  case "$1" in
+    harness-coupling-asym.js) echo "MATURATION_TICKS=$TICKS COUPLE_TICKS=$TICKS FRESH_SEEDS=11" ;;
+    harness-ablate-reflex.js) echo "CONC=1" ;;
+    *) echo "" ;;
+  esac
+}
+
 for r in "${RIGS[@]}"; do
   printf '  %-26s ' "$r"
-  out=$(TICKS="$TICKS" SAMPLE="$TICKS" SWIN="$TICKS" timeout 180 node "$r" 2>&1)
+  out=$(env TICKS="$TICKS" SAMPLE="$TICKS" SWIN="$TICKS" $(extra_env_for "$r") timeout 180 node "$r" 2>&1)
   rc=$?
   # A rig can exit 0 and still be broken: several report a failed text patch as JSON on stdout.
   err=$(printf '%s' "$out" | grep -oiE '"error":"[^"]*"|^[A-Za-z]*Error: .*' | head -1)
