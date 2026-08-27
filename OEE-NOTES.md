@@ -10788,7 +10788,11 @@ build; with each on, the run diverges — so the off-arm is inert and the arms a
   copy, evaluated with `TAB_ID`/`genome`/`tick` undefined. Now bounded by a `//__METAB_END__` marker.
 - **Peer bookkeeping grew without bound** on `msg.tab`, a field the peer chooses, and `countPeers()`
   scanned it linearly every cadence. It now *evicts* at the same 3,000-tick cutoff the scan already
-  applied, so the returned count is unchanged by construction.
+  applied, so the returned count is unchanged. The two companion maps are pruned at the same point
+  because the alien-attribution loop already skips any peer quieter than `ALIEN_WINDOW*3` = 540 ticks
+  before reading either — 5.5× sooner — so everything dropped was already unreachable for scoring. One
+  difference, stated rather than glossed: a peer that vanishes for 3,000+ ticks and returns now starts
+  a clean observation window instead of carrying a stale count into its first baseline.
 - **`harness-reflex-leaf` was superseded, not just stale.** Every counter it text-injected had been
   promoted into `engine.html` behind `__REFLEX_DEBUG` under the same names, and its `PERSIST_REFLEX`
   fix had been adopted as Swing #47 (`clusterReflexes`). Two needles no longer matched — and behind

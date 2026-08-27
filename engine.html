@@ -230,10 +230,15 @@ function countPeers(){
   let n=0;
   // #131: EVICT, don't just skip. Both peer maps gained an entry per distinct msg.tab ever heard and
   // never lost one, and msg.tab is a field the peer chooses — so a peer randomising it grew both maps
-  // without bound AND lengthened this linear scan, which runs every cadence. Eviction uses the exact
-  // cutoff this loop already applies, so the count returned here is unchanged by construction; the only
-  // thing dropped is state for a peer already being ignored. peerObservable is pruned in step, since a
-  // peer silent this long has no meaningful prevCount to carry into a fresh 180-tick window anyway.
+  // without bound AND lengthened this linear scan, which runs every cadence.
+  // The cutoff is the one this loop already applies, so the count returned here is unchanged. The two
+  // companion maps are safe to prune at the same point because the alien-attribution loop skips any
+  // peer quieter than ALIEN_WINDOW*3 (540 ticks) before reading either — 5.5x sooner than this — so
+  // everything dropped here was already unreachable for scoring.
+  // One stated difference, not a claim of no-change: a peer that vanishes for 3000+ ticks and then
+  // RETURNS now starts a clean observation window (prevCount 0) instead of carrying a 3000-tick-stale
+  // count into its first baseline. That is the more defensible reading of "how active is this peer",
+  // but it is a difference, and it is the only one.
   for(const id in peerLastSeen){
     if(tick-peerLastSeen[id]<PEER_FORGET)n++;
     else { delete peerLastSeen[id]; peerObservable.delete(id); pendingAlienPredictions.delete(id); }
