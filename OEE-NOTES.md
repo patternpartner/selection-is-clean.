@@ -10769,8 +10769,13 @@ structural instead of an accident of birth-path ordering.
 
 Each is a real defect with a known correct form; each changes live behaviour when switched on. They
 ship **off**, with a bit-identical off-path, on the same footing as `MUTUALISM`/`RQ_TRAIT`/
-`GENO_PARASITE`. **Verified: with all three off, a seeded 9,000-tick replay is identical to the
-pre-#131 build on two independent seeds.**
+`GENO_PARASITE`.
+
+**Verified.** Off-arm: a seeded 9,000-tick replay at defaults is identical to the pre-#131 build on
+two independent seeds, and identical again at 12,000 ticks. On-arm, 12,000 ticks, seed 5, once the
+plumbing below was fixed: `OPS_PARITY` **LIVE**, `OPNOV_FULL` **LIVE**, `REACH_SLOT8` **LIVE**. So the
+off-path is inert and all three arms genuinely reach the mechanism they target — which is the
+precondition for running them, not a result about whether they help.
 
 A mistake of mine, caught by that same verification and worth recording because the repo already
 warns about it. The first liveness check reported all three arms INERT — and they were, because the
