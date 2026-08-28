@@ -7148,6 +7148,7 @@ function encodeGenome(){
     rg:genome.reachGain===undefined?undefined:+(genome.reachGain).toFixed(4), // #117: authored-atom actuator authority (omitted if never created)
     anm:genome.atomNoveltyMix===undefined?undefined:+(genome.atomNoveltyMix).toFixed(4), // #120: novelty-vs-fitness weight on atom credit (omitted if never created)
     ecr:+(finiteOr(genome.effectComposeRate,0.35)).toFixed(4), // #133 verb composition rate
+    esr:+(finiteOr(genome.effectSenseRate,0.25)).toFixed(4),   // #139 verb sense-gate rate — mirrors ecr exactly. Omitting it meant a lineage that had evolved its own act-when-I-notice balance reverted to the hand-set default on every save/load.
     arr:genome.atomRecombRate===undefined?undefined:+(genome.atomRecombRate).toFixed(4), // #127: recombine-vs-refine split (omitted if never created)
     arp:genome.atomReproRate===undefined?undefined:+(genome.atomReproRate).toFixed(4), // #128: reproduce-vs-author split (omitted if never created)
     aed:genome.atomEligDecay===undefined?undefined:+(genome.atomEligDecay).toFixed(4), // #128: eligibility decay λ (omitted if never created)
@@ -7159,7 +7160,7 @@ function encodeGenome(){
     bo: Array.isArray(genome.boundOpcodes)?genome.boundOpcodes.map(b=>b|0):[],
     co: CORE_OPCODES, // MIGRATION (review): stamp the opcode-boundary this save was written under, so a later CORE_OPCODES shift can remap saved bound-opcode programs on load
     ua:cleanAtoms,
-    ue:Array.isArray(genome.userEffects)?genome.userEffects.map(e=>({t:e.t|0,m:e.m|0,s:+(+e.s||0).toFixed(3),n:(e.nx===undefined?-1:e.nx|0),u:e.uses|0})):[], // #132 authored verbs (+#133 successor)
+    ue:Array.isArray(genome.userEffects)?genome.userEffects.map(e=>({t:e.t|0,m:e.m|0,s:+(+e.s||0).toFixed(3),n:(e.nx===undefined?-1:e.nx|0),a:(e.ax===undefined||e.ax===null?-1:e.ax|0),u:e.uses|0})):[], // #132 authored verbs (+#133 successor, +#139 sense gate). `a` travels with the verb because boundOpcodes travels in the same save, so the slot index still means the same atom on the other side — without it an exported creature came back having quietly forgotten every sense it had bound to an act.
     clr:+(genome.creditLearnRate||1).toFixed(4), // Pe25 Layer 15: evolvable learning rate
     dc:+(genome.decisionConfidence||0).toFixed(4), // swing #43: earned self-model commitment authority (persists across reload)
     gb:+(genome.gradientBias||0.3).toFixed(4),   // Pe26 Layer 16a: gradient bias
@@ -7440,6 +7441,7 @@ function decodeGenome(data){
     if(typeof g.rg==='number')genome.reachGain=+g.rg;            // #117
     if(typeof g.anm==='number')genome.atomNoveltyMix=+g.anm;     // #120
     if(typeof g.ecr==='number')genome.effectComposeRate=+g.ecr;  // #133
+    if(typeof g.esr==='number')genome.effectSenseRate=+g.esr;    // #139 (absent in pre-#139 saves -> the default, which is correct)
     if(typeof g.arr==='number')genome.atomRecombRate=+g.arr;     // #127
     if(typeof g.arp==='number')genome.atomReproRate=+g.arp;      // #128
     if(typeof g.aed==='number')genome.atomEligDecay=+g.aed;      // #128
@@ -7447,7 +7449,7 @@ function decodeGenome(data){
     if(g.ua)genome.userAtoms=g.ua.map(a=>({expression:a.expression,compiled:null,failed:!!a.failed,uses:a.uses|0,age:a.age|0,alienHits:a.alienHits|0,alienAttempts:a.alienAttempts|0}));
     // #132: a pre-#132 save has no `ue`, so the lineage simply starts with no verbs and authors its
     // own — the same way a pre-atom save starts with an empty bank rather than being rejected.
-    genome.userEffects=Array.isArray(g.ue)?g.ue.map(e=>({t:e.t|0,m:e.m|0,s:+e.s||0.5,nx:(e.n===undefined?-1:e.n|0),uses:e.u|0,creditTrace:0})):[];  // #133: pre-#133 saves have no successor -> uncomposed
+    genome.userEffects=Array.isArray(g.ue)?g.ue.map(e=>({t:e.t|0,m:e.m|0,s:+e.s||0.5,nx:(e.n===undefined?-1:e.n|0),ax:(e.a===undefined||e.a===null?-1:e.a|0),uses:e.u|0,creditTrace:0})):[];  // #133: pre-#133 saves have no successor -> uncomposed. #139: pre-#139 saves have no gate -> ungated, which is exactly the old behaviour.
     if(typeof g.td==='number') genome.tendDims=__cl(g.td|0,2,DIMS_MAX);
     if(Array.isArray(g.oe)){ // #35 evolvable engine dials (sanitizeGenome clamps + defaults any missing)
       if(typeof g.oe[0]==='number')genome.opnovStrength=g.oe[0];
@@ -7658,6 +7660,7 @@ function sanitizeGenome(){
   if(genome.reachGain!==undefined)   genome.reachGain=__cl(finiteOr(genome.reachGain,0.2),0,1);                 // #117
   if(genome.atomNoveltyMix!==undefined)genome.atomNoveltyMix=__cl(finiteOr(genome.atomNoveltyMix,0.25),0,1);   // #120
   genome.effectComposeRate=__cl(finiteOr(genome.effectComposeRate,0.35),0,0.9);                                // #133
+  genome.effectSenseRate=__cl(finiteOr(genome.effectSenseRate,0.25),0,0.9);                                   // #139
   if(genome.atomRecombRate!==undefined)genome.atomRecombRate=__cl(finiteOr(genome.atomRecombRate,0.4),0,0.9);  // #127
   if(genome.atomReproRate!==undefined)genome.atomReproRate=__cl(finiteOr(genome.atomReproRate,0.5),0,0.9);     // #128
   if(genome.atomEligDecay!==undefined)genome.atomEligDecay=__cl(finiteOr(genome.atomEligDecay,0.6),0.3,0.9);   // #128
