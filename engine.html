@@ -13477,8 +13477,11 @@ function mutateGenome(){
     // CULL — the least-used verb goes when the bank is full and a new one wants in. Same principle as
     // the atom overwrite: standing room is finite, so an unused verb is not free, it is occupying.
     if(fx.length>=MAX_USER_EFFECTS && Math.random()<rate*0.08){
-      let wi=0; for(let q=1;q<fx.length;q++) if((fx[q].uses|0)<(fx[wi].uses|0)) wi=q;
-      if((fx[wi].uses|0)===0) fx.splice(wi,1);
+      // #132b: judge by POPULATION use, not the germline's own counter — see __effectUses. A verb is
+      // "unused" only if no particle anywhere ran it; otherwise the oldest verb dies for being oldest.
+      const _u=e=>__effectUses[effectKey(e)]|0;
+      let wi=0; for(let q=1;q<fx.length;q++) if(_u(fx[q])<_u(fx[wi])) wi=q;
+      if(_u(fx[wi])===0) fx.splice(wi,1);
     }
     if(_atomFix){
       const bos=genome.boundOpcodes||(genome.boundOpcodes=[]);
@@ -14776,6 +14779,15 @@ const EFFECT_TARGETS=[
 ];
 const EFFECT_TARGET_COUNT=EFFECT_TARGETS.length;
 let __effectFires=0, __effectConserved=0, __effectSeeded=0;   // telemetry: how often authored verbs actually act
+// #132b — POPULATION-WIDE verb usage, keyed by verb identity (target,mode). The germline's own
+// userEffects[].uses is useless as a selection signal, for exactly the reason #102 found for atoms:
+// applyUserEffects runs with `genome` swapped to pGenome[i], so the PARTICLE copies accrue every use
+// and the germline bank sits at zero forever. Measured on a live 2,000-tick boot: 5,692 effect fires,
+// 1,940 of them conserved transfers, and germline `used` still 0 of 4. A cull reading germline uses
+// therefore sees all-zero, picks index 0 every time, and "cull the least used" silently becomes "cull
+// the OLDEST" — systematically destroying the earliest-authored verbs, which is worse than random.
+const __effectUses=new Int32Array(EFFECT_TARGET_COUNT*2);
+function effectKey(e){ return __cl(e.t|0,0,EFFECT_TARGET_COUNT-1)*2 + ((e.m|0)===1?1:0); }
 // Apply one authored verb. `amt` is the drive already scaled by influence and the effect's own scale.
 // CONSERVED mode never clamps AFTER the transfer — it clamps the AMOUNT to what both sides can afford,
 // so the sum is invariant to the last bit rather than approximately preserved. That distinction is the
@@ -14825,6 +14837,7 @@ function applyUserEffects(i,j,influence){
     const sc=isFinite(eff.s)?eff.s:0.5;
     applyUserEffect(eff,i,j,drive*influence*sc*EFFECT_GAIN,e);
     eff.uses=(eff.uses|0)+1;
+    __effectUses[effectKey(eff)]++;   // #132b: the population-level record the germline cull reads
   }
 }
 const vmActions=new Float32Array(8+MAX_USER_EFFECTS);

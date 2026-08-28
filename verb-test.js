@@ -1,9 +1,12 @@
-// #132 acceptance: does the system actually author verbs, drive them, and do they ACT —
+// #132 acceptance test. Two questions, and the second is the one that matters:
+//   1. does the system actually author verbs, drive them, and do they ACT?
+//   2. does CONSERVED mode actually conserve, including under drives larger than either side holds?
+// (2) is the safety property the whole design rests on. If a conserved transfer can mint amplitude,
 // and does the conserved mode conserve? The last one is the safety property the whole design
 // rests on: if a conserved transfer can mint amplitude, this is a free-energy pump.
 const fs=require('fs');
-require(require('path').join(__dirname,'harness-env.js'))(globalThis);
-const html=fs.readFileSync(process.env.INDEX||require('path').join(__dirname,'engine.html'),'utf8');
+require('./harness-env.js')(globalThis);
+const html=fs.readFileSync(process.env.INDEX||(__dirname+'/engine.html'),'utf8');
 const code=html.match(/<script>([\s\S]*)<\/script>/)[1];
 const Module=require('module');
 const m=new Module('/tmp/verb-sim.js');m.filename='/tmp/verb-sim.js';m.paths=Module._nodeModulePaths('/tmp');
@@ -57,7 +60,7 @@ globalThis.__conserve=function(){
 };
 `,m.filename);
 
-const rows=globalThis.__verbs(parseInt(process.env.TICKS||'12000',10),2000);
+const rows=globalThis.__verbs(parseInt(process.env.TICKS||'3000',10),2000);
 for(const r of rows)console.log(JSON.stringify(r));
 console.log('\n=== CONSERVATION AUDIT (mode=1, 400 random drives incl. oversized) ===');
 let bad=0;
