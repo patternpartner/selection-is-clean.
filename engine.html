@@ -6829,11 +6829,27 @@ function crossoverProg(progA,progB,cap){ fired('prog.crossover'); // single-poin
   if(!child.length)child.push([0,0,0,0]);
   return child;
 }
+// #140: THE WALK IS OVER GENES, AND THESE ARE NOT GENES. `for(const k in g)` takes every numeric
+// field on the genome, and three of them are the self's BOOKKEEPING rather than anything heritable:
+// totalTicks is the clock, generation is a counter, extinctions is a tally. A random walk on a clock
+// is a category error — it does not explore a range, it corrupts a record.
+// Reported honestly as LATENT: measured over 6,000 ticks, nothing reads these under the per-particle
+// repoint today. Event stamps come back perfectly ordered (0 out of order, 0 in the future) and the
+// lineage registry's birthTicks are sound, because recordEvent and the registry writes happen in the
+// self's context. What makes it worth closing anyway is that per-particle totalTicks sits at ~0 while
+// the clock reads 6,001 — so the DAY someone reads genome.totalTicks from inside the hot path, they
+// get a number near zero that has also been randomly walked, and nothing will announce it.
+// Same shape of narrowing as #85's sign floors, which this function already carries: "every numeric
+// field" was always too broad, and the exceptions have to be named.
+// This DOES shift the RNG stream (three fewer draws per birth), so seeded runs diverge from builds
+// before it. That is a change of baseline, not of behaviour.
+const CHILD_NOT_A_GENE=['totalTicks','generation','extinctions'];
 function mutateChildGenome(g){
   const rate=genome.mutationRate||0.06,scale=genome.mutationScale||1;
   // FULL divergence — gloves-off random walk on EVERY heritable scalar gene (relative step). Only
   // the crash floors (isFinite + the VM's own per-op clamps) remain; range is the system's to find.
   for(const k in g){
+    if(CHILD_NOT_A_GENE.indexOf(k)>=0)continue;   // #140: bookkeeping, not a gene
     const v=g[k];
     if(typeof v==='number'&&isFinite(v)&&Math.random()<rate){
       const nx=v+(Math.random()-0.5)*(Math.abs(v)*0.12+0.02)*scale;
