@@ -55,8 +55,9 @@ that looks authoritative and is not costs more than no map. `OEE-NOTES.md` is cu
 The four non-particle dispatches other than the sensor VM are the stated parity set — this file says
 "Full parity: particle VM, plasmid VM, cluster VM, profiler" at several opcode definitions. Ops
 **232–235** (SET_MODE/READ_MODE/PARTNER_MODE from #57, COSMOS_SENSE from #59) were the one gap all
-three shared and were inert in every dispatch but the particle VM until #131 added them behind
-`OPS_PARITY` (default OFF — see the knob's own note in engine.html for why).
+three shared and were inert in every dispatch but the particle VM until #131 implemented them. They
+carry no flag: whether they are worth keeping is selection's call, expressed the same way it is for
+every other opcode — by whether programs go on carrying them.
 
 `CORE_OPCODES=236`, `MAX_BOUND_OPCODES=192` (#129, was 96), `OPCODE_COUNT=428` (was 332),
 `DIMS_MAX=32` (#129, was 16), `CAP=1800`.
@@ -1351,8 +1352,9 @@ is equally likely to push either way regardless of what it reads.
 **The record above stops at #90; the engine is at #131.** #91–#130 are in OEE-NOTES.md only. #131 is a
 review pass: it repaired the measurement rig (17 of 18 files still loaded the retired `index.html`),
 rewrote the #130 open-endedness meter after finding it counted a constant-jitter as a persistent
-innovation, and landed three dormant arms — `OPS_PARITY`, `OPNOV_FULL`, `REACH_SLOT8` — for defects
-whose corrections move live dynamics. See OEE-NOTES.md #131.
+innovation, and repaired three defects outright: ops 232–235 now run in every dispatch, #34's novelty
+horizon spans the real opcode space, and the atom→actuator channel reaches all eight slots. None of the
+three carries a flag — selection already holds a finer dial on each. See OEE-NOTES.md #131.
 
 **Standing count of failed predictions this session: 10, three of them mine.** Three designs failed on
 their *premises* rather than their statistics (two-knob discriminator, "never fires" from n=4, sign

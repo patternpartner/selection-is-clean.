@@ -854,12 +854,14 @@ let __CHILD_SIGN_FLOOR=true; // #85: floor sign-carrying genes in the CHILD muta
 // This is not theoretical. Harvested from real broadcast material (bridge/experiments/harvest-cache):
 // 3,053 of 46,042 instructions — 6.6% — carry an opcode in 232..235, 1,742 of them COSMOS_SENSE. A
 // plasmid instruction carrying 232/233/235 is inert in the very VM that plasmid belongs to.
-// DEFAULT OFF, deliberately. Switching it on makes 6.6% of the standing instruction population live at
-// once, and a creature that evolved UNDER the inert regime has programs whose 232/233/235 slots were
-// free no-ops it may well be relying on. That is an arm to run against a saved genome, not a flip to
-// make on someone's behalf. Off, every case below breaks before touching anything, which is
-// bit-identical to the fall-through it replaces. Force on with OPS_PARITY=1.
-let __OPS_PARITY=false;
+// NO KNOB, deliberately. These are ordinary opcodes now, exactly like the 232 before them, and the
+// question of whether they are worth carrying belongs where every other opcode's does — to selection,
+// which answers it continuously by whether programs keep them. A designer switch on a defect is a dial
+// taken back OFF selection, which is the opposite of what #127 and #128 spent two swings doing. It also
+// would not have worked: the artwork is served as static pages and opened on a phone, where nothing
+// can set globalThis.__NAME, so "dormant behind a flag" means dead code forever rather than deferred.
+// The real risk is honest and unhedged — a creature that evolved UNDER the inert regime has programs
+// whose 232/233/235 slots were free no-ops it may be leaning on. Selection is what absorbs that.
 // #131 — THE CLOSED ACTUATOR SLOT. vmActions is Float32Array(8) and every ordinary write site indexes
 // it Math.abs(dst)%8. The four REACH emits — the #110 wire that lets a self-authored atom DRIVE
 // behaviour rather than only be sensed — index %7, identically at all four. `di` is already
@@ -870,11 +872,10 @@ let __OPS_PARITY=false;
 // closed to the one channel built for evolved code to ACT is worth knowing. OEE-NOTES #89b quotes the
 // %7 verbatim while dissecting this exact emit line and does not remark on it, so it reads as never
 // questioned rather than decided.
-// DEFAULT OFF. Flipping it redistributes every REACH emit AND opens a new actuator onto a trait axis
-// under selection — a live dynamics change with no matched control, which is precisely the shape this
-// project handles with an arm. If %7 turns out to be deliberate, this block is where to say so.
-// Force on with REACH_SLOT8=1.
-let __REACH_SLOT8=false;
+// NO KNOB. Selection's dial on this channel already exists and is finer than a boolean: genome.reachGain
+// (#117), evolvable, clamped [0,1], mutated every cycle. If reaching the eighth actuator turns out to
+// be harmful, the gain falls and the whole atom->actuator channel closes itself — continuously, per
+// lineage, without anyone deciding it once for everybody.
 function reachSlot(di){ return Math.abs(di)%8; }
 let __REACH_NOK=true; // #110: default ON (was #90 dormant). Drop the random-signed k so atom output sign is causal
 let __REACH_MAIN=true; // #110: default ON (was #88 dormant). Atoms become effectors on the main dispatch path
@@ -17930,8 +17931,8 @@ function executeVM(i,j,sim,d){
         case 229:{if(Math.random()>__cl(vmRegs[si]*k,0,1))ip++;vmRegs[di]=0;}break; // PROB_SKIP — full parity
         case 230:{const _tp230p=Math.max(1,Math.floor(Math.abs(k)));vmRegs[di]=(tick%_tp230p)/_tp230p;}break; // TICK_PHASE — full parity
         case 231:{const _cqcid231p=clusterID[i];if(_cqcid231p>=0){const _cqbit231p=1<<(Math.round(Math.abs(vmRegs[si]))&7);let _cqtot231p=0,_cqset231p=0;for(let _cqn231p=0;_cqn231p<N;_cqn231p++){if(clusterID[_cqn231p]===_cqcid231p){_cqtot231p++;if(pEpigen[_cqn231p]&_cqbit231p)_cqset231p++;}}vmRegs[di]=_cqtot231p>0?(_cqset231p/_cqtot231p)*k:0;}else{vmRegs[di]=0;}}break; // CLUSTER_QUORUM — full parity
-        // #131 PARITY: 232-235 mirror the particle VM (see the OPS_PARITY note at its declaration).
-        // Off => break before any state is touched, which is exactly the fall-through this replaces.
+        // #131 PARITY: 232-235 mirror the particle VM. Ordinary opcodes, no gate — see the note at
+        // the top of the file for why selection, not a flag, decides whether they are worth carrying.
         case 232:{const _nmp=((Math.abs(Math.floor(vmRegs[si]))|0)%MODE_COUNT);
           if(_nmp!==pMode[i]){const _cp=MODE_SWITCH_COST*(pProvision[i]>0?1:MODE_LOCK_MULT);
             const _fpp=Math.min(pProvision[i],_cp);pProvision[i]-=_fpp;amp[i]-=(_cp-_fpp);
@@ -19238,8 +19239,8 @@ function executeClusterVM(i,j,sim,d){
       case 229:{if(Math.random()>__cl(vmRegs[si]*k,0,1))ip++;vmRegs[di]=0;}break; // PROB_SKIP — full parity
       case 230:{const _tp230c=Math.max(1,Math.floor(Math.abs(k)));vmRegs[di]=(tick%_tp230c)/_tp230c;}break; // TICK_PHASE — full parity
       case 231:{const _cqcid231c=clusterID[i];if(_cqcid231c>=0){const _cqbit231c=1<<(Math.round(Math.abs(vmRegs[si]))&7);let _cqtot231c=0,_cqset231c=0;for(let _cqn231c=0;_cqn231c<N;_cqn231c++){if(clusterID[_cqn231c]===_cqcid231c){_cqtot231c++;if(pEpigen[_cqn231c]&_cqbit231c)_cqset231c++;}}vmRegs[di]=_cqtot231c>0?(_cqset231c/_cqtot231c)*k:0;}else{vmRegs[di]=0;}}break; // CLUSTER_QUORUM — full parity
-        // #131 PARITY: 232-235 mirror the particle VM (see the OPS_PARITY note at its declaration).
-        // Off => break before any state is touched, which is exactly the fall-through this replaces.
+        // #131 PARITY: 232-235 mirror the particle VM. Ordinary opcodes, no gate — see the note at
+        // the top of the file for why selection, not a flag, decides whether they are worth carrying.
         case 232:{const _nmc=((Math.abs(Math.floor(vmRegs[si]))|0)%MODE_COUNT);
           if(_nmc!==pMode[i]){const _cc=MODE_SWITCH_COST*(pProvision[i]>0?1:MODE_LOCK_MULT);
             const _fpc=Math.min(pProvision[i],_cc);pProvision[i]-=_fpc;amp[i]-=(_cc-_fpc);
@@ -19950,8 +19951,8 @@ function executeSoloVM(){
         case 229:{if(Math.random()>__cl(vmRegs[si]*k,0,1))ip++;vmRegs[di]=0;}break; // PROB_SKIP — full parity
         case 230:{const _tp230s=Math.max(1,Math.floor(Math.abs(k)));vmRegs[di]=(tick%_tp230s)/_tp230s;}break; // TICK_PHASE — full parity
         case 231:{vmRegs[di]=0;}break; // CLUSTER_QUORUM — NOP in solo context (no cluster)
-        // #131 PARITY: 232-235 mirror the particle VM (see the OPS_PARITY note at its declaration).
-        // Off => break before any state is touched, which is exactly the fall-through this replaces.
+        // #131 PARITY: 232-235 mirror the particle VM. Ordinary opcodes, no gate — see the note at
+        // the top of the file for why selection, not a flag, decides whether they are worth carrying.
         case 232:{const _nms=((Math.abs(Math.floor(vmRegs[si]))|0)%MODE_COUNT);
           if(_nms!==pMode[i]){const _cs=MODE_SWITCH_COST*(pProvision[i]>0?1:MODE_LOCK_MULT);
             const _fps=Math.min(pProvision[i],_cs);pProvision[i]-=_fps;amp[i]-=(_cs-_fps);
@@ -20569,10 +20570,10 @@ const opCum=new Float32Array(OPCODE_COUNT);       // swing #34: slow EMA of each
 // populate that frontier stops at its first tenth. Measured on harvested material: 601 of 46,042
 // instructions (1.3%) sit at op>=256, across 22 distinct bound slots spanning 236..412 — the blind
 // region is genuinely occupied.
-// DEFAULT OFF. Widening the horizon makes every never-scored op maximally novel at once (opCum≈0 →
-// novelty≈1), which is a large, one-sided shift in a selection term, not a neutral correction. At 256
-// the span, the guard and the normaliser are all exactly what they were. Force on with OPNOV_FULL=1.
-let __OPNOV_FULL=false;
+// NO KNOB. The 256 was a stale literal, never a design decision — it meant "the number of opcodes" and
+// stopped being true at #129. Selection's dial on this term is genome.opnovStrength, which is evolvable
+// and can go to zero; the width of an array is not something selection has an opinion about, so putting
+// a switch on it would only have moved the decision from the system back to a person.
 function opnovSpan(){ return OPCODE_COUNT; }
 for(let _b=0;_b<NICHE_BINS;_b++){ nicheAbiotic[_b]=NICHE_ABIOTIC*Math.pow(NICHE_TAPER,_b); nicheAbioticReal[_b]=NICHE_REAL_SUPPLY*Math.pow(NICHE_REAL_TAPER,_b); }
 nicheRes.fill(0.3);
@@ -20704,11 +20705,9 @@ __COSMOS_LAW=(typeof globalThis==='undefined')||((globalThis.__COSMOS_LAW??1)|0)
 __REACH_GAIN=(typeof globalThis==='undefined')||((globalThis.__REACH_GAIN??1)|0)!==0; // #117: default ON. Force off with REACH_GAIN=0
 __SELF_PREDICT=(typeof globalThis!=='undefined')&&((globalThis.__SELF_PREDICT|0)===1); // #92: default OFF
 __GRIP_SEED=(typeof globalThis!=='undefined')&&((globalThis.__GRIP_SEED|0)===1); // #93: default OFF
-// #131 — three DORMANT arms. Each is a defect with a known correct form, and each moves live dynamics
-// when switched on, so each ships off with a bit-identical off-path, exactly as #32/#31/#37 do.
-__OPS_PARITY  =(typeof globalThis!=='undefined')&&((globalThis.__OPS_PARITY|0)===1);  // #131: opcodes 232-235 in the plasmid/cluster/solo/profiler dispatches. Default OFF. Force on with OPS_PARITY=1
-__OPNOV_FULL  =(typeof globalThis!=='undefined')&&((globalThis.__OPNOV_FULL|0)===1);  // #131: #34 novelty spans the full OPCODE_COUNT, not a literal 256. Default OFF. Force on with OPNOV_FULL=1
-__REACH_SLOT8 =(typeof globalThis!=='undefined')&&((globalThis.__REACH_SLOT8|0)===1); // #131: REACH emits reach actuator slot 7 (%8, the house convention) instead of %7. Default OFF. Force on with REACH_SLOT8=1
+// #131 registers nothing here on purpose. Its three repairs (ops 232-235 in every dispatch, the #34
+// novelty horizon, the eighth REACH actuator) carry no flag: selection already holds a finer dial on
+// each — whether programs carry those opcodes, genome.opnovStrength, and genome.reachGain.
 __ABSTAIN_FREE=(typeof globalThis==='undefined')||((globalThis.__ABSTAIN_FREE??1)|0)!==0; // #95: default ON
 __CHILD_SIGN_FLOOR=(typeof globalThis==='undefined')||((globalThis.__CHILD_SIGN_FLOOR??1)|0)!==0; // #85 sign floors: default ON
 __INT_GENE_STEP=(typeof globalThis==='undefined')||((globalThis.__INT_GENE_STEP??1)|0)!==0; // #96: default ON. This is a REPAIR, not a treatment — the off-path exists as a CONTROL (and as the revert), not as a gate. Force off with INT_GENE_STEP=0

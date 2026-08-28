@@ -18,11 +18,15 @@ Math.random=function(){a|=0;a=a+0x6D2B79F5|0;let t=Math.imul(a^a>>>15,1|a);t=t+M
 g.requestAnimationFrame=()=>0;g.cancelAnimationFrame=()=>{};g.setTimeout=()=>0;g.clearTimeout=()=>{};g.setInterval=()=>0;g.clearInterval=()=>{};
 console.error=()=>{};console.warn=()=>{};};
 
-// #131 knob plumbing. The engine resolves every gate from globalThis.__NAME, never from process.env,
-// so a knob with no explicit env line here is unreachable from a harness — harness-strip.js states
-// the rule outright: "a knob that cannot be turned off is not a control, so the plumbing goes in
-// before any ablation claim does." These three landed dormant in #131 and need it to be runnable.
-module.exports.KNOBS = ['OPS_PARITY','OPNOV_FULL','REACH_SLOT8'];
+// Knob plumbing. The engine resolves every gate from globalThis.__NAME, never from process.env, so a
+// knob with no explicit env line is unreachable from a harness — harness-strip.js states the rule
+// outright: "a knob that cannot be turned off is not a control, so the plumbing goes in before any
+// ablation claim does."
+// #131's own repairs deliberately carry NO knob: selection already holds a finer dial on each (whether
+// programs keep ops 232-235, genome.opnovStrength, genome.reachGain). Listing them here would have
+// been worse than useless — an env var that silently does nothing is the same trap one level down.
+// What is listed is the set that is genuinely dormant AND genuinely togglable.
+module.exports.KNOBS = ['MUTUALISM','RQ_TRAIT','GENO_PARASITE','SELF_PREDICT','GRIP_SEED','MEME_TRANSFER'];
 module.exports.applyKnobs = function(g){
   for (const kn of module.exports.KNOBS)
     if (process.env[kn] !== undefined) g['__'+kn] = parseInt(process.env[kn], 10);

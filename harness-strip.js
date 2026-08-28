@@ -76,9 +76,11 @@ globalThis.setTimeout=()=>0;globalThis.clearTimeout=()=>{};globalThis.setInterva
 if (process.env.COSMOS !== undefined) globalThis.__COSMOS = parseInt(process.env.COSMOS, 10);
 for (const kn of ['COSMOS_COST','COSMOS_CONTACT','COSMOS_MERGE','COSMOS_SENSE','COSMOS_AFFORD'])
   if (process.env[kn] !== undefined) globalThis['__'+kn] = parseInt(process.env[kn], 10);
-// #131: the three dormant arms. Engine gates read globalThis.__NAME only, so without this line
-// they cannot be switched on from a harness at all (see harness-strip.js's note on controls).
-for (const kn of ['OPS_PARITY','OPNOV_FULL','REACH_SLOT8'])
+// Engine gates read globalThis.__NAME only, never process.env, so a knob without a line here cannot
+// be switched from a harness at all — harness-strip.js: "a knob that cannot be turned off is not a
+// control". #131's own repairs deliberately have no knob (selection holds those dials), so what is
+// plumbed here is the set that is genuinely dormant and genuinely togglable.
+for (const kn of ['MUTUALISM','RQ_TRAIT','GENO_PARASITE','SELF_PREDICT','GRIP_SEED','MEME_TRANSFER'])
   if (process.env[kn] !== undefined) globalThis['__'+kn] = parseInt(process.env[kn], 10);
 
 let loopErrors=0,lastErr='';

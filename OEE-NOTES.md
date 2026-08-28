@@ -10786,37 +10786,43 @@ It holds *contingently*, on the fallback staying boot-only, which is not somethi
 or states. The meter's state moved to module scope anyway: it costs nothing and makes the property
 structural instead of an accident of birth-path ordering.
 
-### Three dormant arms — defects whose corrections move dynamics
+### Three defects, repaired outright — and why none of them got a knob
 
-Each is a real defect with a known correct form; each changes live behaviour when switched on. They
-ship **off**, with a bit-identical off-path, on the same footing as `MUTUALISM`/`RQ_TRAIT`/
-`GENO_PARASITE`.
+I first shipped these three behind flags, default off, as arms to be run later. That was wrong twice
+over, and the correction is the most useful thing in this entry.
 
-**Verified.** Off-arm: a seeded 9,000-tick replay at defaults is identical to the pre-#131 build on
-two independent seeds, and identical again at 12,000 ticks. On-arm, 12,000 ticks, seed 5, once the
-plumbing below was fixed: `OPS_PARITY` **LIVE**, `OPNOV_FULL` **LIVE**, `REACH_SLOT8` **LIVE**. So the
-off-path is inert and all three arms genuinely reach the mechanism they target — which is the
-precondition for running them, not a result about whether they help.
+**Wrong on principle.** A designer switch on a *defect* is a dial taken back off selection. #127 and
+#128 spent two whole swings doing the opposite — handing the last hand-set constants to selection — and
+I quietly walked one back. Selection already holds a finer dial than a boolean on every one of these:
+whether programs keep carrying ops 232–235, `genome.opnovStrength`, and `genome.reachGain` (evolvable,
+clamped [0,1], mutated every cycle). If any of the three is harmful, the system turns it off itself,
+continuously and per lineage, without anyone deciding it once for everybody.
 
-A mistake of mine, caught by that same verification and worth recording because the repo already
-warns about it. The first liveness check reported all three arms INERT — and they were, because the
-engine resolves every gate from `globalThis.__NAME` and never from `process.env`, so a knob with no
-explicit plumbing line in a harness cannot be switched on at all. `harness-strip.js` states the rule
-outright: *"a knob that cannot be turned off is not a control, so the plumbing goes in before any
-ablation claim does."* I shipped three knobs without it. Plumbing added to `harness.js`,
-`harness-ab.js`, `harness-oee.js`, `harness-strip.js` and `harness-env.js`.
+**Wrong in practice.** The artwork is served as static pages and opened on a phone. Nothing there can
+set `globalThis.__NAME`. "Dormant behind a flag" does not mean *deferred* on this setup — it means
+**dead code forever**. I had filed three repairs in a drawer that has no handle.
 
-Worth noting for whoever runs these: an unseeded rig cannot answer this question. `harness.js` uses a
-real clock and an unseeded RNG, so run-to-run population differences there are noise, not effect —
-which is exactly how I briefly mistook noise for confirmation before the seeded replay corrected it.
-`REACH_SLOT8` in particular shows nothing until bound opcodes exist, since the REACH block never
-executes before then; short runs will call it inert when it is only dormant.
+So all three are now unconditional, and the plumbing I had added for them is removed rather than left
+as env vars that silently do nothing — which is the same trap one level down.
 
-| knob | defect | why not default-on |
+| repair | the defect | selection's dial |
 |---|---|---|
-| `OPS_PARITY` | ops 232–235 exist only in the pairwise VM. Every opcode through 231 is implemented or explicitly NOPed with a reason in the plasmid/cluster/solo/profiler dispatches; the sweep stopped when #57 and #59 added four more. With no `default:` and the bound guard at `op>=236`, they are the one instruction shape in the file that does nothing at all — not even zeroing its destination register the way the deliberate NOPs do. **6.6% of harvested instructions carry one** (1,742 of them COSMOS_SENSE); a plasmid instruction carrying 232/233/235 is inert in the VM that plasmid belongs to | switching it on makes 6.6% of the standing instruction population live at once, and a creature that evolved *under* the inert regime has programs whose 232/233/235 slots were free no-ops it may be leaning on. That is an arm to run against a saved genome, not a flip to make on someone's behalf |
-| `OPNOV_FULL` | #34's `opFreq`/`opCum` are sized 256 with an `op<256` guard and a literal `256` normaliser. `OPCODE_COUNT` is 428 since #129 doubled `MAX_BOUND_OPCODES`. Bound slots 0–19 are scored; **20–191 can neither register as explored nor earn novelty for exploring them** — the engine sees 20 of 192 slots. 601 of 46,042 harvested instructions sit in the blind region, across 22 distinct slots spanning 236–412 | widening it makes every never-scored op maximally novel at once (`opCum≈0` → novelty ≈1): a large one-sided shift in a selection term, not a neutral correction |
-| `REACH_SLOT8` | the four REACH emits index `vmActions` with `%7`; every ordinary write site uses `%8` and the array has 8 slots. `di` is `%12`, so `%7` reaches 0–6 only and doubles 0–4. **Slot 7 is unreachable from the atom channel** — and slot 7 is the write into `tend[i*DIMS+4]`, the axis the map calls "blank (system-discovered role)". Against this project's central finding — ninety layers of sense against eight action slots — one of the eight being closed to the one channel built for evolved code to *act* is worth knowing. #89b quotes the `%7` verbatim while dissecting this exact line and does not remark on it | flipping it redistributes every REACH emit *and* opens a new actuator onto a trait axis under selection. If `%7` is deliberate, the knob's comment is where to say so |
+| ops 232–235 in every dispatch | SET_MODE/READ_MODE/PARTNER_MODE (#57) and COSMOS_SENSE (#59) existed only in the pairwise VM. Every opcode through 231 is implemented or explicitly NOPed with a reason in the plasmid/cluster/solo/profiler dispatches; the sweep simply stopped when four more arrived. With no `default:` and the bound guard at `op>=236` they were the one instruction shape in the file that did nothing at all — not even zeroing its destination register the way the deliberate NOPs do. **6.6% of harvested instructions carry one** (1,742 of them COSMOS_SENSE) | whether programs keep carrying the opcode — identical to how every other opcode is judged |
+| #34 novelty horizon | `opFreq`/`opCum` were sized 256 with an `op<256` guard and a literal `256` normaliser. `OPCODE_COUNT` is 428 since #129 doubled `MAX_BOUND_OPCODES`, so the engine could score 20 of 192 bound slots. 601 of 46,042 harvested instructions sit in the blind region, across 22 slots spanning 236–412. The 256 was a stale literal meaning "the number of opcodes", never a decision | `genome.opnovStrength`, evolvable, can go to zero |
+| the eighth REACH actuator | the four REACH emits indexed `vmActions` with `%7` where every other write site uses `%8` and the array has 8 slots. `di` is `%12`, so `%7` reached 0–6 only. Slot 7 is the write into `tend[i*DIMS+4]` — the axis the map calls "blank (system-discovered role)" — so the one channel built for evolved code to *act* could not reach one of its eight actuators. #89b quotes the `%7` verbatim while dissecting this exact line and does not remark on it | `genome.reachGain` (#117), evolvable, clamped [0,1], mutated every cycle — if the eighth actuator is bad the gain closes the channel |
+
+**The honest risk, unhedged.** A creature that evolved *under* the inert regime has programs whose
+232/233/235 slots were free no-ops it may be leaning on, and turning them live changes what those
+programs do overnight. That is real. Selection is what absorbs it, and that is the point: the system
+gets to decide, continuously, rather than me deciding once from outside.
+
+**Verified.** Engine parses; `oee-meter-test.js` passes; and the deployed page was loaded in a real
+headless browser at phone viewport off the live GitHub Pages build — worker path, OffscreenCanvas, the
+lot — and comes up running (`t1200`, pop 204, 18 clusters, no page errors, error box hidden). That last
+check is worth more than the node syntax test it replaces, because it exercises exactly what a phone
+gets. Earlier seeded replays (off-arm identical on two seeds, each arm live at 12,000 ticks) were run
+while these were still flags; they establish that each repair reaches its mechanism, which is still
+what they establish now.
 
 ### Smaller repairs, applied
 
@@ -10857,6 +10863,6 @@ executes before then; short runs will call it inert when it is only dormant.
 written against a file ~1,100 lines shorter, and its running record still stops at #90. Re-deriving it
 is a real job and guessing at it would be worse than leaving the staleness visible.
 
-The three arms are unrun. Each needs a seeded A/B against a mature saved genome, and `OPS_PARITY` in
-particular should be run against a creature that evolved under the inert regime, since that is the
-population the change actually lands on.
+What is still unmeasured is whether each repair *helps*, which is a different question from whether it
+is correct. That wants a long run against a mature genome, and the population it lands on is one that
+evolved while these mechanisms were inert. The meter added here is the instrument for watching it.
