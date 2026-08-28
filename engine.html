@@ -273,6 +273,7 @@ const LIVENESS_DECLARED=[
   'shadow.sim','shadow.decide','self.learn','cluster.reflex','cluster.detect','cluster.persist',
   'alien.predict','niche.economy','dims.grow','cosmos.launch','cosmos.merge','cosmos.law',
   'genome.mutate','prog.crossover','prog.inherit','oee.flush','attention.field','world.signal',
+  'atom.cull',
 ];
 // NOT INSTRUMENTED, and deliberately absent rather than declared-and-silent: cladogenesis minting
 // (#17) has no single entry point I could identify with confidence. A census that reports "never"
@@ -292,6 +293,51 @@ function livenessCensus(minTicks){
   return {tick:(typeof tick!=='undefined'?tick:0), never, rare, live,
     neverCount:never.length, declared:LIVENESS_DECLARED.length,
     note:'never = this mechanism has not executed once. That is a fact about the run, not about the code.'};
+}
+// ═══ #137 — THE CROSSING CENSUS: did this structure ever REACH selection? ══════════════════════
+// The liveness census above asks "did this mechanism run". This asks the question that kept biting
+// after the answer was yes. FOUR times in one session the same bug appeared, each time in a new
+// mechanism, each time passing its own tests:
+//   #102  atom uses were counted on the germline, so credit measured a pool selection never saw
+//   #130  the OEE meter read a germline-only expression pool
+//   #132b the verb cull read a germline counter that is structurally always zero
+//   #133b composed verbs had their successor stripped on the way into the population — germline
+//         carried 1 composed verb, the population carried 0, across 283,782 fires
+// The shape is always identical. Structure is AUTHORED on `genome`; selection only ever sees
+// `pGenome[i]`. Anything that does not make the crossing is invisible no matter how well it works,
+// and it is invisible SILENTLY — the feature runs, its counters move, its tests pass.
+// A refactor would not have prevented this; each bug was in a different place for a different
+// reason. What catches all four, and catches the fifth without being told about it, is measuring
+// both sides and reporting the gap. A feature that is present on the germline and absent from the
+// population is STRANDED: authored, alive, and evolutionarily invisible.
+function __xCount(a){ return Array.isArray(a)?a.length:0; }
+function __xComposed(a){ if(!Array.isArray(a))return 0;
+  let n=0; for(const e of a) if(e&&(e.nx|0)>=0)n++; return n; }
+// Each row names one kind of structure and says how to count it on ONE germline genome and on ONE
+// population genome. Both readers take a genome object, so the two sides cannot silently drift into
+// counting different things — which is how #132b's always-zero counter survived review.
+const CROSSING_DECLARED=[
+  {name:'atom.bank',     read:g=>__xCount(g.userAtoms)},
+  {name:'atom.bound',    read:g=>__xCount(g.boundOpcodes)},
+  {name:'verb.bank',     read:g=>__xCount(g.userEffects)},
+  {name:'verb.composed', read:g=>__xComposed(g.userEffects)},
+];
+function crossingCensus(){
+  const rows=[];
+  for(const f of CROSSING_DECLARED){
+    let gN=0; try{ gN=f.read(genome)|0; }catch(_){}
+    let pN=0,carriers=0,alive=0;
+    for(let i=0;i<N;i++){
+      if(!palive[i]||!pGenome[i])continue; alive++;
+      let c=0; try{ c=f.read(pGenome[i])|0; }catch(_){}
+      if(c>0){ pN+=c; carriers++; }
+    }
+    rows.push({name:f.name, germline:gN, population:pN, carriers:carriers, alive:alive,
+               stranded:(gN>0&&pN===0)});
+  }
+  return {tick:(typeof tick!=='undefined'?tick:0), rows,
+    strandedCount:rows.filter(r=>r.stranded).length,
+    note:'stranded = present on the germline, absent from every living particle. Authored, and invisible to selection.'};
 }
 function networkBroadcast(){ fired('network.broadcast');
   if(!bc||N===0)return;
@@ -7296,7 +7342,7 @@ function decodeGenome(data){
       if(typeof g.oe[4]==='number')genome.novStrength=g.oe[4]; } // #39 (older exports lack oe[4] → sanitize defaults it)
     if(Array.isArray(g.rn)&&g.rn.length===4) genome.rend=g.rn.map(a=>({expression:a.e||'0',compiled:null,failed:!!a.f}));
     if(Array.isArray(g.dr)) genome.draw=sanitizeDraw(g.dr);
-    if(Array.isArray(g.bo)) genome.boundOpcodes=g.bo.map(n=>Math.max(0,n|0));
+    if(Array.isArray(g.bo)) genome.boundOpcodes=g.bo.map(n=>Math.max(-1,n|0));   // #137: preserve -1 tombstones; clamping them to 0 re-aimed an inert slot onto atom 0
     if(typeof g.clr==='number')genome.creditLearnRate=g.clr; // Pe25 Layer 15
     if(typeof g.dc==='number')genome.decisionConfidence=g.dc; // swing #43: restore earned commitment authority
     if(g.cpl&&typeof g.cpl==='object')genome.coupling=g.cpl; // restore coupling instrumentation so per-peer flows accumulate across reloads
@@ -8307,7 +8353,10 @@ function sanitizeGenome(){
   if(!genome.alienPredict||typeof genome.alienPredict!=='object')genome.alienPredict={attempts:0,hits:0};
   else{ const ap=genome.alienPredict; ap.attempts=finiteOr(ap.attempts,0)|0; ap.hits=finiteOr(ap.hits,0)|0; }
   if(!Array.isArray(genome.boundOpcodes)) genome.boundOpcodes=[];
-  genome.boundOpcodes=genome.boundOpcodes.filter(n=>typeof n==='number'&&n>=0).slice(0,MAX_BOUND_OPCODES);
+  // #137: -1 is a TOMBSTONE (an inert slot whose atom was culled), not corruption. Dropping it
+  // here would close the gap and renumber every opcode above it on a save/load round-trip,
+  // which is the renumbering the cull fix exists to prevent.
+  genome.boundOpcodes=genome.boundOpcodes.filter(n=>typeof n==='number'&&n>=-1).slice(0,MAX_BOUND_OPCODES);
   // DURABILITY across save/load: a reload restores boundOpcodes + vmProgram from the save, but the saved
   // program often has NO call-site for its bound atoms (gen4 export: 7 bound, 0 call-sites in V) — so a
   // reloaded run starts ORPHANED, atoms bound-but-disconnected, before anything can run. Re-establish one
@@ -13587,7 +13636,23 @@ function mutateGenome(){ fired('genome.mutate');
     }
     if(_atomFix){
       const bos=genome.boundOpcodes||(genome.boundOpcodes=[]);
-      if(bos.length<MAX_BOUND_OPCODES){
+      // #137: DO NOT BIND AN OPCODE TO AN ATOM THAT DOES NOT EXIST.
+      // This block sits OUTSIDE the birth branch above and `_atomFix` is effectively a constant, so
+      // it runs on EVERY mutateGenome call whether or not an atom was born — while the comment at
+      // the top of this section describes it as happening "on birth". With an empty bank
+      // `userAtoms.length-1` is -1, binding an opcode to nothing and then splicing a call-site into
+      // the germline program for it.
+      // Measured on the pre-fix build, 6,000 ticks x 6 seeds: exactly 18 binds per seed (matching
+      // the documented "mutateGenome runs only EIGHTEEN times"), of 108 total —
+      //     14 bound to nothing (-1)        13%
+      //     53 re-bound an already-bound atom 49%
+      //     41 genuinely new                 38%
+      // Only the first group is unambiguously wrong, and only it is changed here. The duplicates
+      // are left ALONE on purpose: a second opcode for an existing atom also splices a second
+      // call-site, which is reachability — the failure this file fought for several swings was
+      // atoms "bound but never called". Removing that by tidiness would be a behaviour change
+      // dressed as a fix, so it is recorded here and left for a measurement to judge.
+      if(bos.length<MAX_BOUND_OPCODES && genome.userAtoms.length>0){
         bos.push(genome.userAtoms.length-1);
         // #93: hand over the highest-grip atom rather than the newest, when the filter is running.
         { let _si=genome.userAtoms.length-1;
@@ -13626,9 +13691,32 @@ function mutateGenome(){ fired('genome.mutate');
         if((a.uses|0)===0&&(a.age|0)>UA_GRACE_AGE&&!(_alienSelectC&&alienGrip(a)>0)){removeIdx=i;break;}
       }
     }
-    if(removeIdx>=0){
+    if(removeIdx>=0){ fired('atom.cull');
       const removed=genome.userAtoms[removeIdx];
       genome.userAtoms.splice(removeIdx,1);
+      // #137: KEEP EVERY BOUND OPCODE POINTING AT THE ATOM IT WAS BOUND TO.
+      // An opcode's NUMBER is its POSITION here (op = CORE_OPCODES + k), and its MEANING is
+      // userAtoms[boundOpcodes[k]]. Splicing an atom out shifts every higher index down by one
+      // without telling this array, so a bound opcode would silently start computing a DIFFERENT
+      // expression underneath programs already selected for the old one.
+      // HONESTLY SCOPED: this is a LATENT defect, not an observed one. Instrumenting the pre-fix
+      // build for 6,000 ticks x 6 seeds recorded ZERO culls — the uses===0 && age>UA_GRACE_AGE
+      // condition never fired in any measured run, so the shift has never actually happened. It is
+      // fixed because the next change to the cull's conditions would fire it silently, not because
+      // a measurement caught it. (My first draft of this comment claimed measured dangling and a
+      // measured re-aim; both were wrong. The "dangling" slots were -1 from the bind bug below, and
+      // the "re-aim" was an atom mutating its own expression in place, which is evolution working.)
+      // The alien-prediction scorer already defends itself against this same shift by matching on
+      // expression ("culling/HGT can shift indices", ~14840); the reasoning was never applied to the
+      // array that decides what an opcode MEANS.
+      // Positions are held FIXED — splicing this array would renumber every opcode above it, which
+      // is the exact harm being prevented. The one slot whose atom died goes inert (-1); every
+      // dispatch guards with `if(_bua)`, so an inert slot is a no-op, not a crash.
+      const _bos=genome.boundOpcodes;
+      if(Array.isArray(_bos)) for(let k=0;k<_bos.length;k++){
+        if(_bos[k]===removeIdx) _bos[k]=-1;
+        else if(_bos[k]>removeIdx) _bos[k]--;
+      }
       recordEvent('ua_cull',{failed:!!removed.failed,n:genome.userAtoms.length},600);
     }
   }

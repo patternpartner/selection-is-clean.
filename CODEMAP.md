@@ -1,4 +1,4 @@
-# CODEMAP — engine.html (24,434 lines)
+# CODEMAP — engine.html (24,510 lines)
 
 A structural map of the simulation, built by reading the source rather than the notebook. Written to be
 durable: each region records what is THERE, with line anchors, so a later reader does not have to
@@ -14,9 +14,9 @@ Companion to OEE-NOTES.md, which records experiments. This records the machine t
 |---|---|
 | **file** | `engine.html` — the sim moved out of `index.html` in `c0cef11`; `index.html` is now the worker shell |
 | **last fully re-derived** | never — this map was written against `index.html` and has been patched, not rebuilt |
-| **prose current through** | **#90.** The engine is at **#136.** Roughly forty-five swings are undocumented here |
+| **prose current through** | **#90.** The engine is at **#137.** Roughly forty-six swings are undocumented here |
 | **verified as of #131** | the anchor table below, the opcode constants, the genome extent, and the census claims |
-| **added since, unmapped below** | **#132/#133** verb grammar (`EFFECT_TARGETS`, `applyUserEffect`, opcode 236) · **#134** liveness census (`LIVENESS_DECLARED`, `fired()`) · **#135** attention field (`attnField`, `attentionAt`, the `at` sense) · **#136** world signal (`updateWorldSignal`, `worldSignalSuppressed`). Grep the names; no line anchors yet |
+| **added since, unmapped below** | **#132/#133** verb grammar (`EFFECT_TARGETS`, `applyUserEffect`, opcode 236) · **#134** liveness census (`LIVENESS_DECLARED`, `fired()`) · **#135** attention field (`attnField`, `attentionAt`, the `at` sense) · **#136** world signal (`updateWorldSignal`, `worldSignalSuppressed`) · **#137** crossing census (`CROSSING_DECLARED`, `crossingCensus`). Grep the names; no line anchors yet |
 | **NOT verified** | every other inline line number in this file. They were written against a file ~1,100 lines shorter and around 500–900 lines of drift has accumulated unevenly — treat them as approximate, and grep for the quoted code instead |
 
 The map's own promise is that a later reader does not have to re-derive it, which only holds if the
@@ -28,6 +28,21 @@ real wall clock. `worldSignalSuppressed()` silences it whenever `process` exists
 Node rig — so seeded replays cannot depend on the time of day they ran. That detection is structural
 rather than opt-in on purpose: an audit found five seeded rigs that set no marker. Anything added
 here that reads the real world must go through the same guard.
+
+**Germline vs population (#137).** The single most repeated bug in this file's history. Structure is
+AUTHORED on the `genome` object; selection only ever sees `pGenome[i]`. Anything that does not make
+the crossing is invisible to selection no matter how well it works, and it fails SILENTLY — the
+feature runs, its counters move, its tests pass. It has happened four times (#102 atom uses, #130 the
+OEE pool, #132b the verb cull's counter, #133b composed verbs losing their successor). `crossingCensus()`
+now measures both sides for every kind of self-authored structure and reports anything STRANDED
+(present on the germline, absent from every living particle). `crossing-test.js` fails the build on it.
+If you add a fifth kind of authored structure, add a row to `CROSSING_DECLARED` in the same commit.
+
+**Bound opcodes (#137).** An opcode's NUMBER is its POSITION in `genome.boundOpcodes`
+(`op = CORE_OPCODES + k`); its MEANING is `genome.userAtoms[boundOpcodes[k]]`. Two consequences that
+are easy to miss: never splice `boundOpcodes` (it renumbers every opcode above the cut), and never
+shift `userAtoms` without remapping `boundOpcodes` alongside it. `-1` is a legitimate tombstone for a
+slot whose atom was culled, and every dispatch guards with `if(_bua)`, so an inert slot is a no-op.
 
 ---
 
