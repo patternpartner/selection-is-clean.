@@ -5,8 +5,8 @@
 // and does the conserved mode conserve? The last one is the safety property the whole design
 // rests on: if a conserved transfer can mint amplitude, this is a free-energy pump.
 const fs=require('fs');
-require('./harness-env.js')(globalThis);
-const html=fs.readFileSync(process.env.INDEX||(__dirname+'/engine.html'),'utf8');
+require(require('path').join(__dirname,'harness-env.js'))(globalThis);
+const html=fs.readFileSync(process.env.INDEX||require('path').join(__dirname,'engine.html'),'utf8');
 const code=html.match(/<script>([\s\S]*)<\/script>/)[1];
 const Module=require('module');
 const m=new Module('/tmp/verb-sim.js');m.filename='/tmp/verb-sim.js';m.paths=Module._nodeModulePaths('/tmp');
