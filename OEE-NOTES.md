@@ -10866,3 +10866,69 @@ is a real job and guessing at it would be worse than leaving the staleness visib
 What is still unmeasured is whether each repair *helps*, which is a different question from whether it
 is correct. That wants a long run against a mature genome, and the population it lands on is one that
 evolved while these mechanisms were inert. The meter added here is the instrument for watching it.
+
+---
+
+## #137 — what the crossing census found, and two claims of mine it refuted
+
+The census (`crossingCensus()`, `crossing-report.js`) measures every kind of self-authored structure
+on both sides of the germline/population split and reports anything **stranded**: present on
+`genome`, absent from every living particle. It exists because that split is the single most repeated
+bug in this file — #102, #130, #132b, #133b, four times, each in a different mechanism, each passing
+its own tests while being invisible to selection.
+
+**Found on first use: phantom bindings.** The bind block in `mutateGenome` sits outside the birth
+branch, so it ran on every call rather than per birth, and with an empty atom bank it bound an opcode
+to `userAtoms[-1]` and spliced a germline call-site for it. Instrumented over 6,000 ticks × 6 seeds:
+18 binds per seed (matching this file's own note that `mutateGenome` runs eighteen times), 108 total —
+**14 bound to nothing (13%)**, 53 re-bound an already-bound atom (49%), 41 genuinely new (38%).
+
+Only the first group was changed. Seeds 2 and 6, where no phantom bind ever fired, come back
+byte-identical after the fix, which bounds the blast radius to exactly the runs that had the bug.
+Seeds that did have it lost every inert slot and gained atom usage as those opcode slots and their
+call-sites went to real atoms: seed 1 342→972 uses, seed 3 297→1089, seed 5 189→324.
+
+The 49% duplicates were deliberately left alone. A second opcode for an existing atom also splices a
+second call-site, and "bound but never called" is a failure this file fought for several swings.
+Removing it as tidiness would be a behaviour change dressed as a fix.
+
+**Two things I claimed and measurement refuted.** My first draft of the fix asserted measured
+dangling (2,102 ticks) and a measured re-aim of a live opcode. Both were wrong. The "dangling" slots
+were the −1s from the bind bug, not from index drift; the "re-aim" was an atom mutating its own
+expression in place, which is evolution working exactly as designed. `crossing-test.js` therefore
+checks re-aiming by **atom object identity**, never by expression string, so that evolution cannot
+trip it.
+
+**A latent one, reported as latent.** The atom cull splices `userAtoms` without remapping
+`boundOpcodes`, which would silently re-aim every higher opcode. It is fixed (tombstone the dead slot,
+decrement higher indices, hold positions — splicing that array would renumber every opcode above the
+cut, which is the harm itself). But instrumenting the pre-fix build recorded **zero culls** across
+6,000 ticks × 6 seeds: the `uses===0 && age>UA_GRACE_AGE` condition never fires. `atom.cull` has since
+joined the liveness census, where it reads NEVER. The fix is insurance against the next edit to those
+conditions, not a repair of an observed failure.
+
+### The verb grammar is alive after all
+
+At 1,500 ticks `verb.compose`, `verb.chainLink` and `verb.conserved` all read NEVER, which looked like
+a fifth instance of the same decoration failure. At 6,000 ticks: `verb.fire` 40,648, `verb.conserved`
+19,285, `verb.chainLink` 8,820, `verb.compose` 10. The run was simply too short. Worth recording
+because the census's own legend says "never is a fact about THIS RUN" and this is the case that proves
+the warning earns its place — a short run nearly produced a false bug report.
+
+### Cosmos: the merge→law chain has never once executed
+
+`cosmos.launch` fires 19 times in 6,000 ticks; `cosmos.merge` and `cosmos.law` fire zero. This is not
+broken accounting. All 19 children **do** export (`everExported` 19, `fluxErr` ≈ 1e-5 against
+`fluxOut` 16.4, so conservation holds to five decimal places). They are profitable: `netNegDeaths` is
+0 and the 13 that died did so with a summed net of 12.24 — an average of **0.94 against a merge
+threshold of 1.2**. Live children sit at net 1.073 and 0.726.
+
+So children profit, and die at roughly 78% of what merging requires. An entire subsystem — merge,
+the scenario-bank proposal, and `cosmos.law` rewriting the physics constants — is unreachable in
+practice, and the criterion is checked only during a flux event while the child is alive, so thirteen
+profitable lifetimes proposed nothing.
+
+**Deliberately not changed.** Retuning `net > endow` until it fires would be me deciding the answer,
+and the standing rule here is that the system decides what to turn off, not the designer. Recorded as
+a measurement so the decision can be made on evidence rather than on my preference for seeing a
+mechanism run.
