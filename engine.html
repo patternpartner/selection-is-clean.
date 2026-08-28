@@ -283,7 +283,7 @@ const LIVENESS_DECLARED=[
   'shadow.sim','shadow.decide','self.learn','cluster.reflex','cluster.detect','cluster.persist',
   'alien.predict','niche.economy','dims.grow','cosmos.launch','cosmos.merge','cosmos.law',
   'genome.mutate','prog.crossover','prog.inherit','oee.flush','attention.field','world.signal',
-  'atom.cull','verb.senseBind','verb.senseFired',
+  'atom.cull','atom.evict','verb.senseBind','verb.senseFired',
 ];
 // NOT INSTRUMENTED, and deliberately absent rather than declared-and-silent: cladogenesis minting
 // (#17) has no single entry point I could identify with confidence. A census that reports "never"
@@ -320,6 +320,30 @@ function livenessCensus(minTicks){
 // reason. What catches all four, and catches the fifth without being told about it, is measuring
 // both sides and reporting the gap. A feature that is present on the germline and absent from the
 // population is STRANDED: authored, alive, and evolutionarily invisible.
+// #145: make room for one new atom, choosing the most defensibly dead. Priority order, and every
+// tier is a fact rather than a preference: (1) not bound to any opcode AND never executed, oldest
+// first — it cannot be called and never has been; (2) not bound, least-used; (3) if everything is
+// bound, the least-used bound atom. A bound atom is only ever taken when nothing else is available.
+// Returns the removed index, or -1 if it declined. The caller must apply the #137 remap.
+function pickAtomToEvict(){
+  const uas=genome.userAtoms; if(!Array.isArray(uas)||!uas.length)return -1;
+  const bos=Array.isArray(genome.boundOpcodes)?genome.boundOpcodes:[];
+  const bound=new Set(); for(const b of bos){ const i=b|0; if(i>=0)bound.add(i); }
+  let best=-1,bestKey=null;
+  const better=(k)=>bestKey===null||k[0]<bestKey[0]||(k[0]===bestKey[0]&&k[1]<bestKey[1])
+                 ||(k[0]===bestKey[0]&&k[1]===bestKey[1]&&k[2]>bestKey[2]);
+  for(let i=0;i<uas.length;i++){
+    const a=uas[i]; if(!a)continue;
+    if(__ALIEN_SELECT!==0&&typeof alienGrip==='function'){
+      try{ if(alienGrip(a)>0)continue; }catch(_){}   // real predictive record — same protection the cull gives
+    }
+    const tier=bound.has(i)?2:0;                     // unbound tiers first
+    const uses=a.uses|0;
+    const key=[tier+(uses>0?1:0), uses, a.age|0];    // tier, then least-used, then oldest
+    if(better(key)){ bestKey=key; best=i; }
+  }
+  return best;
+}
 function __xCount(a){ return Array.isArray(a)?a.length:0; }
 function __xComposed(a){ if(!Array.isArray(a))return 0;
   let n=0; for(const e of a) if(e&&(e.nx|0)>=0)n++; return n; }
@@ -645,6 +669,17 @@ const USER_BINFUNCS=["Math.min","Math.max","Math.atan2","Math.hypot"]; // HANDS 
 const USER_FUNCS_RICH=USER_FUNCS.concat(["Math.round"]); // + QUANTIZE
 function uaRich(){return (typeof globalThis==='undefined')||((globalThis.__RICH_GRAMMAR??1)|0)!==0;}
 function uaForage(){return (typeof globalThis==='undefined')||((globalThis.__FORAGE_EYES??1)|0)!==0;}
+// #145 — AN EXPRESSION THAT CAN BE AUTHORED MUST BE ONE THAT SURVIVES A ROUND TRIP.
+// sanitizeGenome has always done `expression.slice(0,160)` on load. Authoring never knew about that
+// number, and UA_DEPTH_CAP=7 permits up to 2^7 leaves, so live expressions ran to thousands of
+// characters and were then CUT MID-EXPRESSION on the next load — into unbalanced, uncompilable JS.
+// MEASURED ON THE REAL CREATURE (generation 5,405, 1,183,286 ticks), by loading its own export back
+// into this engine: 1,663 of 1,793 atoms came back truncated to exactly 160 characters, and
+// 1,671 of 1,793 — 93.2% — FAILED TO COMPILE. Only 122 survived. A creature could not be restored
+// from its own save file, and nothing anywhere said so.
+// The depth cap was described as bounding "compile cost / string length", and it does bound them —
+// just not to anything the serialiser can carry. This is the missing half.
+const UA_EXPR_MAX=160;   // the sanitiser's cap, now known to the authoring side as well
 const UA_DEPTH_CAP=7; // LEAP 16 (#54): 4 -> 7, deeper authored expressions; compile cost is bounded by the toll, not by fiat // substrate ceiling on authored-expression nesting — bounds compile cost / string length, NOT meaning
 // UNLOCKED #7b — RECURSIVE GRAMMAR. Was depth-1 ("two terms, one binary op"). Now the system
 // can compose structurally richer primitives it invents. depth<=0 → a leaf (var/constant,
@@ -754,10 +789,18 @@ function uaGenExpression(){ fired('atom.author');
   // can't author a megabyte expression — substrate floor, not a ceiling on what it can mean.
   const ud=(typeof genome!=='undefined'&&genome&&genome.uaMaxDepth>=1)?(genome.uaMaxDepth|0):1;
   const d=__cl(ud,1,UA_DEPTH_CAP);
-  const t1=uaGenTerm(d-1);
-  const t2=uaGenTerm(d-1);
-  const op=USER_OPS[(Math.random()*USER_OPS.length)|0];
-  return "("+t1+")"+op+"("+t2+")";
+  // #145: draw within the budget the save format can carry. Retry SHALLOWER rather than truncate —
+  // a cut expression is not a smaller expression, it is broken syntax, which is exactly the failure
+  // this is here to prevent. A depth-1 draw is tiny, so the loop terminates in a few attempts.
+  for(let dd=d; dd>=1; dd--){
+    for(let attempt=0; attempt<4; attempt++){
+      const t1=uaGenTerm(dd-1), t2=uaGenTerm(dd-1);
+      const op=USER_OPS[(Math.random()*USER_OPS.length)|0];
+      const e="("+t1+")"+op+"("+t2+")";
+      if(e.length<=UA_EXPR_MAX)return e;
+    }
+  }
+  return "(a)+(b)";   // last resort: valid, trivial, and never over budget
 }
 // #103: uaGenExpression's mutation path always draws a wholly fresh expression — the one evolvable
 // structure in this file with no INCREMENTAL operator. Every other mutable structure here can take a
@@ -817,7 +860,10 @@ function uaSwapVar(expr,re,pool){
   return expr.replace(re,m=>(++seen===pick?to:m));
 }
 function uaLocalStep(expr){
-  return Math.random()<0.5?uaJitterConst(expr):uaSwapVar(expr);
+  const v=Math.random()<0.5?uaJitterConst(expr):uaSwapVar(expr);
+  // #145: a jitter that pushes past the round-trip budget is not an improvement, it is a future
+  // truncation. Keep the original rather than author something the save cannot carry back.
+  return (typeof v==='string'&&v.length<=UA_EXPR_MAX)?v:expr;
 }
 // #106: rend (the render palette) is the atom arc's own matched null control — same grammar
 // (uaGenTerm/uaGenExpression, see rendGenExpression above), causally inert by construction, kept
@@ -1331,6 +1377,27 @@ const SENESCENCE_SCALE=0.00035;     // per-tick death hazard added per unit of (
 // a parentless spawn starts a new lineage by construction. No genealogy, so nothing heritable can be
 // selected, so no ratchet. Reseeding is now EMERGENCY ONLY. Above a small floor the population must be
 // maintained by descent or not at all.
+// #145 — THE ATOM BANK NEEDS A CEILING, WHICH IS THE ONE ITS TWO SIBLINGS ALREADY HAVE.
+// boundOpcodes is capped at MAX_BOUND_OPCODES, userEffects at MAX_USER_EFFECTS, and userAtoms at
+// nothing at all. Births fire at UA_BIRTH_FLOOR (0.28 per mutateGenome call); the cull ATTEMPTS at
+// rate*0.1 (~0.006) and removes at most one. That is roughly 47 births per cull attempt, so the bank
+// cannot help but grow forever.
+// MEASURED ON A REAL CREATURE, not a simulation — an exported genome at generation 5,405 and
+// 1,183,286 ticks:
+//     1,793 atoms, against 192 bindable slots
+//     1,695 of them (94.5%) with uses === 0, ages median 2,981, far past UA_GRACE_AGE
+//     1,586 (88.5%) neither bound nor ever used
+//     the atom bank alone was 3,695,097 of the genome's 4,027,972 characters — 91.7%
+// And the consequence is not untidiness. The autosave is
+// `if(g.length<500000) localStorage.setItem(...)`, so at 10.6x that cap this creature HAD SILENTLY
+// STOPPED SAVING ITSELF. It runs, it evolves, and it persists nothing; close the tab and it is gone.
+// No warning is possible from inside that line — it is a bare size check followed by a return.
+// So: a hard ceiling, evicting the genuinely dead first. This is not a judgement about which atoms
+// deserve to live — selection already has finer instruments than I do. It is the standing-room limit
+// that the verb bank has had since #132 and this one never got.
+const MAX_USER_ATOMS=512;           // 2.7x the bindable slots, so binding is never starved, while
+                                    // 512 x the 160-char sanitise cap keeps the save an order of
+                                    // magnitude under the 500,000 it must not cross.
 const UA_BIRTH_FLOOR=0.28;          // LEAP 22 (#55): ~5 authored primitives per 6k ticks instead of 0.36
 const UA_GRACE_AGE=12;              // LEAP 21 (#55): ageing cycles a new atom gets before the unused-cull can reach it
 const RESEED_FLOOR=90;              // above this, the world stops handing out free founders
@@ -8538,7 +8605,16 @@ function sanitizeGenome(){
     nx:(e.nx===undefined||(e.nx|0)<0||(e.nx|0)>=MAX_USER_EFFECTS)?-1:(e.nx|0),   // #133 successor slot, or -1
     ax:(e.ax===undefined||e.ax===null||(e.ax|0)<0||(e.ax|0)>=MAX_BOUND_OPCODES)?-1:(e.ax|0), // #139 sense slot, or -1. An imported save written before #139 has no ax and correctly reads as ungated.
     uses:e.uses|0, creditTrace:__cl(finiteOr(e.creditTrace,0),-1,1) })):[];
-  genome.userAtoms=Array.isArray(genome.userAtoms)?genome.userAtoms.filter(a=>a&&typeof a.expression==='string').map(a=>({expression:a.expression.slice(0,160),compiled:null,failed:!!a.failed,uses:a.uses|0,age:a.age|0,alienHits:a.alienHits|0,alienAttempts:a.alienAttempts|0})):[];
+  // #145: DROP an over-budget expression instead of slicing it. `slice(0,160)` turned a 7,000-character
+  // atom into a 160-character prefix with unbalanced parentheses — not a shorter computation but a
+  // syntax error, which then failed to compile and sat in the bank forever as dead weight. Measured on
+  // the real creature: 1,671 of 1,793 atoms arrived uncompilable this way. Dropping is the honest
+  // outcome — the atom genuinely cannot be represented in this format — and it shrinks a legacy save
+  // back under the size at which the autosave silently gives up.
+  genome.userAtoms=Array.isArray(genome.userAtoms)?genome.userAtoms
+    .filter(a=>a&&typeof a.expression==='string'&&a.expression.length<=UA_EXPR_MAX)
+    .slice(0,MAX_USER_ATOMS)
+    .map(a=>({expression:a.expression,compiled:null,failed:!!a.failed,uses:a.uses|0,age:a.age|0,alienHits:a.alienHits|0,alienAttempts:a.alienAttempts|0})):[];
   if(!Array.isArray(genome.rend)||genome.rend.length!==4) genome.rend=defaultRend();
   genome.draw=sanitizeDraw(genome.draw);
   genome.rend=genome.rend.map(a=>({expression:typeof a.expression==='string'?a.expression.slice(0,200):'0',compiled:null,failed:!!a.failed}));
@@ -13770,7 +13846,24 @@ function mutateGenome(){ fired('genome.mutate');
       // #111: seed personal creditTrace from the pool if this expression has a history elsewhere
       _seedCr=__EXPR_CREDIT?(__atomExprCredit.get(expression)||0)*0.5:0;
     }
-    genome.userAtoms.push({expression,compiled:null,failed:false,uses:0,alienHits:0,alienAttempts:0,creditTrace:_seedCr});
+    // #145: standing room is finite. At the ceiling, one atom makes way — chosen as the most
+    // defensibly dead (unbound and never executed, oldest first) — and every bound opcode is remapped
+    // by the SAME rule #137 established for the cull: positions are held fixed so no opcode is
+    // renumbered, the evicted atom's slot goes inert, and indices above it shift down by one.
+    if(genome.userAtoms.length>=MAX_USER_ATOMS){
+      const _ev=pickAtomToEvict();
+      if(_ev>=0){
+        genome.userAtoms.splice(_ev,1);
+        const _b=genome.boundOpcodes;
+        if(Array.isArray(_b)) for(let k=0;k<_b.length;k++){
+          if(_b[k]===_ev)_b[k]=-1; else if(_b[k]>_ev)_b[k]--;
+        }
+        fired('atom.evict');
+        recordEvent('ua_evict',{n:genome.userAtoms.length},600);
+      }
+    }
+    if(genome.userAtoms.length<MAX_USER_ATOMS)
+    genome.userAtoms.push({expression,compiled:null,failed:false,uses:0,age:0,alienHits:0,alienAttempts:0,creditTrace:_seedCr});
     // #142: RECORD THE BIRTH WHERE THE BIRTH HAPPENS. This line used to sit 112 lines further down,
     // outside the block that declares `expression` — so it did not log an atom birth, it threw
     // ReferenceError on every one, and mutateGenome died there. See the note at the old site.

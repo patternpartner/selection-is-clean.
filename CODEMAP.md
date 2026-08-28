@@ -14,7 +14,7 @@ Companion to OEE-NOTES.md, which records experiments. This records the machine t
 |---|---|
 | **file** | `engine.html` — the sim moved out of `index.html` in `c0cef11`; `index.html` is now the worker shell |
 | **last fully re-derived** | never — this map was written against `index.html` and has been patched, not rebuilt |
-| **prose current through** | **#90.** The engine is at **#144.** Roughly fifty-three swings are undocumented here |
+| **prose current through** | **#90.** The engine is at **#145.** Roughly fifty-four swings are undocumented here |
 | **verified as of #131** | the anchor table below, the opcode constants, the genome extent, and the census claims |
 | **added since, unmapped below** | **#132/#133** verb grammar (`EFFECT_TARGETS`, `applyUserEffect`, opcode 236) · **#134** liveness census (`LIVENESS_DECLARED`, `fired()`) · **#135** attention field (`attnField`, `attentionAt`, the `at` sense) · **#136** world signal (`updateWorldSignal`, `worldSignalSuppressed`) · **#137** crossing census (`CROSSING_DECLARED`, `crossingCensus`) · **#138** the diary (`theDiary`, `diaryPanel`) · **#139** sense-gated verbs (`verbGate`, `remapEffectAx`, `effectSenseRate`) · **#140** the crossings (`CHILD_NOT_A_GENE`, inherit/roundtrip tests) · **#141** migrant vocabulary (`MIGRANT_CARRIES_VOCAB`). Grep the names; no line anchors yet |
 | **NOT verified** | every other inline line number in this file. They were written against a file ~1,100 lines shorter and around 500–900 lines of drift has accumulated unevenly — treat them as approximate, and grep for the quoted code instead |
