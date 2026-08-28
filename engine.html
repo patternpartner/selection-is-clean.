@@ -5998,6 +5998,8 @@ let genome={
   // #132: the authored VERBS. Each is {t:target, m:conservation mode, s:scale} — what a verb writes
   // and whether it takes from a partner or only bounds itself. Grows and is culled like userAtoms.
   userEffects:[],
+  effectComposeRate:0.35,   // #133: how readily a verb points at a successor — the system's own
+                            // word-vs-sentence balance, evolvable like atomRecombRate (#127)
 
   // ═══ LAYER 6: RULES — Register-Based Virtual Machine ═══
   // When two particles interact, 4 registers are initialized from context.
@@ -6574,7 +6576,7 @@ function cloneGenome(src){
   // credit. Gated __ATOM_CREDIT_VERT; off => the field seeds 0, exactly the pre-#119 behaviour.
   // #132: verbs are heritable structure, cloned like the atom bank. uses resets — a child re-earns
   // its own record — while target/mode/scale, the evolved content, carry.
-  g.userEffects=Array.isArray(src.userEffects)?src.userEffects.map(e=>({t:e.t|0,m:e.m|0,s:+e.s||0.5,uses:0,creditTrace:(+e.creditTrace||0)*0.5})):[];
+  g.userEffects=Array.isArray(src.userEffects)?src.userEffects.map(e=>({t:e.t|0,m:e.m|0,s:+e.s||0.5,nx:(e.nx===undefined?-1:e.nx|0),uses:0,creditTrace:(+e.creditTrace||0)*0.5})):[];
   g.userAtoms=Array.isArray(src.userAtoms)?src.userAtoms.map(a=>{
     const _seedCr=__ATOM_CREDIT_VERT?Math.max(finiteOr(a.creditTrace,0),__EXPR_CREDIT?(__atomExprCredit.get(a.expression)||0):0)*0.5:0;
     return {expression:a.expression,compiled:null,failed:!!a.failed,uses:0,state:0,alienHits:0,alienAttempts:0,creditTrace:_seedCr};
@@ -6913,6 +6915,7 @@ function encodeGenome(){
     usb:genome.uaStructBias===undefined?undefined:+(genome.uaStructBias).toFixed(4), // #107: atom-grammar structural-branch bias (omitted if never created)
     rg:genome.reachGain===undefined?undefined:+(genome.reachGain).toFixed(4), // #117: authored-atom actuator authority (omitted if never created)
     anm:genome.atomNoveltyMix===undefined?undefined:+(genome.atomNoveltyMix).toFixed(4), // #120: novelty-vs-fitness weight on atom credit (omitted if never created)
+    ecr:+(finiteOr(genome.effectComposeRate,0.35)).toFixed(4), // #133 verb composition rate
     arr:genome.atomRecombRate===undefined?undefined:+(genome.atomRecombRate).toFixed(4), // #127: recombine-vs-refine split (omitted if never created)
     arp:genome.atomReproRate===undefined?undefined:+(genome.atomReproRate).toFixed(4), // #128: reproduce-vs-author split (omitted if never created)
     aed:genome.atomEligDecay===undefined?undefined:+(genome.atomEligDecay).toFixed(4), // #128: eligibility decay λ (omitted if never created)
@@ -6924,7 +6927,7 @@ function encodeGenome(){
     bo: Array.isArray(genome.boundOpcodes)?genome.boundOpcodes.map(b=>b|0):[],
     co: CORE_OPCODES, // MIGRATION (review): stamp the opcode-boundary this save was written under, so a later CORE_OPCODES shift can remap saved bound-opcode programs on load
     ua:cleanAtoms,
-    ue:Array.isArray(genome.userEffects)?genome.userEffects.map(e=>({t:e.t|0,m:e.m|0,s:+(+e.s||0).toFixed(3),u:e.uses|0})):[], // #132 authored verbs
+    ue:Array.isArray(genome.userEffects)?genome.userEffects.map(e=>({t:e.t|0,m:e.m|0,s:+(+e.s||0).toFixed(3),n:(e.nx===undefined?-1:e.nx|0),u:e.uses|0})):[], // #132 authored verbs (+#133 successor)
     clr:+(genome.creditLearnRate||1).toFixed(4), // Pe25 Layer 15: evolvable learning rate
     dc:+(genome.decisionConfidence||0).toFixed(4), // swing #43: earned self-model commitment authority (persists across reload)
     gb:+(genome.gradientBias||0.3).toFixed(4),   // Pe26 Layer 16a: gradient bias
@@ -7204,6 +7207,7 @@ function decodeGenome(data){
     if(typeof g.usb==='number')genome.uaStructBias=+g.usb;       // #107
     if(typeof g.rg==='number')genome.reachGain=+g.rg;            // #117
     if(typeof g.anm==='number')genome.atomNoveltyMix=+g.anm;     // #120
+    if(typeof g.ecr==='number')genome.effectComposeRate=+g.ecr;  // #133
     if(typeof g.arr==='number')genome.atomRecombRate=+g.arr;     // #127
     if(typeof g.arp==='number')genome.atomReproRate=+g.arp;      // #128
     if(typeof g.aed==='number')genome.atomEligDecay=+g.aed;      // #128
@@ -7211,7 +7215,7 @@ function decodeGenome(data){
     if(g.ua)genome.userAtoms=g.ua.map(a=>({expression:a.expression,compiled:null,failed:!!a.failed,uses:a.uses|0,age:a.age|0,alienHits:a.alienHits|0,alienAttempts:a.alienAttempts|0}));
     // #132: a pre-#132 save has no `ue`, so the lineage simply starts with no verbs and authors its
     // own — the same way a pre-atom save starts with an empty bank rather than being rejected.
-    genome.userEffects=Array.isArray(g.ue)?g.ue.map(e=>({t:e.t|0,m:e.m|0,s:+e.s||0.5,uses:e.u|0,creditTrace:0})):[];
+    genome.userEffects=Array.isArray(g.ue)?g.ue.map(e=>({t:e.t|0,m:e.m|0,s:+e.s||0.5,nx:(e.n===undefined?-1:e.n|0),uses:e.u|0,creditTrace:0})):[];  // #133: pre-#133 saves have no successor -> uncomposed
     if(typeof g.td==='number') genome.tendDims=__cl(g.td|0,2,DIMS_MAX);
     if(Array.isArray(g.oe)){ // #35 evolvable engine dials (sanitizeGenome clamps + defaults any missing)
       if(typeof g.oe[0]==='number')genome.opnovStrength=g.oe[0];
@@ -7421,6 +7425,7 @@ function sanitizeGenome(){
   if(genome.atomUseProtect!==undefined)genome.atomUseProtect=__cl(finiteOr(genome.atomUseProtect,0),0,1);       // #101
   if(genome.reachGain!==undefined)   genome.reachGain=__cl(finiteOr(genome.reachGain,0.2),0,1);                 // #117
   if(genome.atomNoveltyMix!==undefined)genome.atomNoveltyMix=__cl(finiteOr(genome.atomNoveltyMix,0.25),0,1);   // #120
+  genome.effectComposeRate=__cl(finiteOr(genome.effectComposeRate,0.35),0,0.9);                                // #133
   if(genome.atomRecombRate!==undefined)genome.atomRecombRate=__cl(finiteOr(genome.atomRecombRate,0.4),0,0.9);  // #127
   if(genome.atomReproRate!==undefined)genome.atomReproRate=__cl(finiteOr(genome.atomReproRate,0.5),0,0.9);     // #128
   if(genome.atomEligDecay!==undefined)genome.atomEligDecay=__cl(finiteOr(genome.atomEligDecay,0.6),0.3,0.9);   // #128
@@ -8206,6 +8211,7 @@ function sanitizeGenome(){
   genome.prevSmoothedFitness=finiteOr(genome.prevSmoothedFitness,0);
   genome.userEffects=Array.isArray(genome.userEffects)?genome.userEffects.filter(e=>e&&typeof e==='object').slice(0,MAX_USER_EFFECTS).map(e=>({
     t:__cl(e.t|0,0,EFFECT_TARGET_COUNT-1), m:(e.m|0)===1?1:0, s:__cl(finiteOr(e.s,0.5),0,1),
+    nx:(e.nx===undefined||(e.nx|0)<0||(e.nx|0)>=MAX_USER_EFFECTS)?-1:(e.nx|0),   // #133 successor slot, or -1
     uses:e.uses|0, creditTrace:__cl(finiteOr(e.creditTrace,0),-1,1) })):[];
   genome.userAtoms=Array.isArray(genome.userAtoms)?genome.userAtoms.filter(a=>a&&typeof a.expression==='string').map(a=>({expression:a.expression.slice(0,160),compiled:null,failed:!!a.failed,uses:a.uses|0,age:a.age|0,alienHits:a.alienHits|0,alienAttempts:a.alienAttempts|0})):[];
   if(!Array.isArray(genome.rend)||genome.rend.length!==4) genome.rend=defaultRend();
@@ -13142,6 +13148,7 @@ function mutateGenome(){
   // live novelty-seeking bet, not a capability parked at 0), evolving in [0,1] — a lineage that thrives
   // by chasing novel behaviour can turn it up; one that needs to lock in a fitness peak can turn it down.
   if(__ATOM_NOVELTY_CREDIT)genome.atomNoveltyMix=__cl(maybe(finiteOr(genome.atomNoveltyMix,0.25),0,1,0.03),0,1); // #120: novelty-vs-fitness weight on atom credit — the system's call
+  genome.effectComposeRate=__cl(maybe(finiteOr(genome.effectComposeRate,0.35),0,0.9,0.04),0,0.9);            // #133: verb composition rate — selection's dial on sentence length
   if(__ATOM_RECOMB)  genome.atomRecombRate=__cl(maybe(finiteOr(genome.atomRecombRate,0.4),0,0.9,0.04),0,0.9);       // #127: recombine-vs-refine split — the system's own explore/build balance
   if(__ATOM_REPRO)   genome.atomReproRate=__cl(maybe(finiteOr(genome.atomReproRate,0.5),0,0.9,0.04),0,0.9);         // #128: reproduce-proven vs author-fresh split — the system's exploit/explore at birth
   if(__ATOM_ELIGIBILITY)genome.atomEligDecay=__cl(maybe(finiteOr(genome.atomEligDecay,0.6),0.3,0.9,0.03),0.3,0.9);  // #128: eligibility-trace decay λ — how long an action stays creditable
@@ -13454,7 +13461,7 @@ function mutateGenome(){
     // verbs authored, zero emits. Same floor construction as UA_BIRTH_FLOOR, and the same conclusion:
     // authoring just has to happen often enough to be judged.
     if(fx.length<MAX_USER_EFFECTS && Math.random()<Math.max(EFFECT_BIRTH_FLOOR,rate*0.5)){
-      fx.push({t:(Math.random()*EFFECT_TARGET_COUNT)|0, m:Math.random()<0.5?1:0, s:0.2+Math.random()*0.6, uses:0, creditTrace:0});
+      fx.push({t:(Math.random()*EFFECT_TARGET_COUNT)|0, m:Math.random()<0.5?1:0, s:0.2+Math.random()*0.6, nx:-1, uses:0, creditTrace:0}); // #133: nx=-1, born uncomposed
       // REACHABILITY — splice a drive line for the new slot into the germline program, exactly as
       // sanitizeGenome does for a new bound opcode and wireAtomCallSites does for a new atom ("reachable
       // immediately, not at the next 120-tick boundary"). Without this the verb is stillborn: it would
@@ -13473,6 +13480,22 @@ function mutateGenome(){
       if(Math.random()<rate*0.30){ const v=e.s+(Math.random()-0.5)*0.25; e.s=__cl(isFinite(v)?v:0.5,0,1); }
       if(Math.random()<rate*0.10) e.m=e.m?0:1;                                    // flip conservation mode
       if(Math.random()<rate*0.06) e.t=(Math.random()*EFFECT_TARGET_COUNT)|0;      // retarget
+      // #133: COMPOSE — point at a successor, re-point, or break the link. This is the larger
+      // structural jump: it turns two verbs into one sentence. The RATE is genome.effectComposeRate,
+      // not a constant I picked — the same treatment #127 gave the atom side's recombine-vs-refine
+      // split (atomRecombRate, seeded 0.4). A lineage that gains from speaking in sentences turns it
+      // up; one that gains from single words turns it down.
+      // The gene is the probability DIRECTLY, not scaled by mutationRate, and that is measured rather
+      // than chosen: instrumenting the loop showed it is entered only ~7 times per 3,000 ticks, because
+      // mutateGenome itself fires a handful of times. Multiplying by rate (0.06) put composition at
+      // p≈0.02 per visit — 0.1 expected events per 3,000 ticks, invisible on any timescale a person
+      // watches, and far too rare for selection to get a grip on the gene at all. Two earlier attempts
+      // (rate*0.05, then rate*ecr) both produced exactly zero compositions in 6,000 ticks.
+      if(Math.random()<__cl(finiteOr(genome.effectComposeRate,0.35),0,0.9)){
+        const _c=fx.length;
+        e.nx = (_c>1 && Math.random()<0.7) ? ((Math.random()*_c)|0) : -1;
+        if(e.nx===fx.indexOf(e)) e.nx=-1;                                          // no self-loop
+      }
     }
     // CULL — the least-used verb goes when the bank is full and a new one wants in. Same principle as
     // the atom overwrite: standing room is finite, so an unused verb is not free, it is occupying.
@@ -14792,15 +14815,20 @@ function effectKey(e){ return __cl(e.t|0,0,EFFECT_TARGET_COUNT-1)*2 + ((e.m|0)==
 // CONSERVED mode never clamps AFTER the transfer — it clamps the AMOUNT to what both sides can afford,
 // so the sum is invariant to the last bit rather than approximately preserved. That distinction is the
 // whole reason this cannot become a free-energy pump.
+// #133: RETURNS THE REALISED AMOUNT — how much this verb actually moved, after every clamp and
+// affordability check. That number is the composition primitive (see applyUserEffects): a conserved
+// transfer that found an empty partner returns 0, so a successor keyed on it simply does not fire.
+// The conditional is not coded anywhere; it falls out of reporting the truth about what happened.
 function applyUserEffect(eff,i,j,amt,slot){
-  if(!eff||!isFinite(amt)||Math.abs(amt)<1e-7)return;
+  if(!eff||!isFinite(amt)||Math.abs(amt)<1e-7)return 0;
   const t=eff.t|0, conserved=(eff.m|0)===1 && j>=0 && j<N && EFFECT_TARGETS[t] && EFFECT_TARGETS[t].paired;
   const clampTo=(v,lo,hi)=>v<lo?lo:v>hi?hi:v;
+  let moved=0;
   // helper: move `a` units of a NON-NEGATIVE quantity from j to i, taking only what exists both ways
   const xferNonNeg=(arr,cap)=>{ let a=amt; if(a>0)a=Math.min(a,arr[j]); else a=Math.max(a,-arr[i]);
     if(cap!==undefined){ a=Math.min(a,cap-arr[i]); a=Math.max(a,arr[j]-cap); }
-    if(!isFinite(a)||a===0)return; arr[i]+=a; arr[j]-=a; __effectConserved++; };
-  const localNonNeg=(arr,hi)=>{ const v=arr[i]+amt; arr[i]=isFinite(v)?clampTo(v,0,hi):arr[i]; };
+    if(!isFinite(a)||a===0)return; arr[i]+=a; arr[j]-=a; __effectConserved++; moved=a; };
+  const localNonNeg=(arr,hi)=>{ const b0=arr[i]; const v=b0+amt; arr[i]=isFinite(v)?clampTo(v,0,hi):b0; moved=arr[i]-b0; };
   switch(t){
     case 0: conserved?xferNonNeg(amp,2):localNonNeg(amp,2); break;
     case 1: conserved?xferNonNeg(pProvision):localNonNeg(pProvision,4); break;
@@ -14810,34 +14838,78 @@ function applyUserEffect(eff,i,j,amt,slot){
       if(conserved&&bj>=0){ let a=amt;
         a=Math.min(a, 1.2-tend[bi]); a=Math.max(a, -1.2-tend[bi]);   // receiver stays in range
         a=Math.min(a, tend[bj]+1.2); a=Math.max(a, tend[bj]-1.2);    // donor stays in range
-        if(isFinite(a)&&a!==0){ tend[bi]+=a; tend[bj]-=a; __effectConserved++; }
-      } else { const v=tend[bi]+amt; tend[bi]=isFinite(v)?clampTo(v,-1.2,1.2):tend[bi]; }
+        if(isFinite(a)&&a!==0){ tend[bi]+=a; tend[bj]-=a; __effectConserved++; moved=a; }
+      } else { const b0=tend[bi]; const v=b0+amt; tend[bi]=isFinite(v)?clampTo(v,-1.2,1.2):b0; moved=tend[bi]-b0; }
       break; }
     case 7: {                                               // phase — conserved as a symmetric rotation
       if(conserved){ phase[i]+=amt; phase[j]-=amt; __effectConserved++; } else phase[i]+=amt;
-      break; }
+      moved=amt; break; }
     case 8: { const s=slot%MEM_SIZE, mi=i*MEM_SIZE+s;        // own memory
-      const v=pMem[mi]+amt; pMem[mi]=isFinite(v)?clampTo(v,-8,8):pMem[mi]; break; }
+      const b0=pMem[mi]; const v=b0+amt; pMem[mi]=isFinite(v)?clampTo(v,-8,8):b0; moved=pMem[mi]-b0; break; }
     case 9: {                                               // the shared field, at own position
       const fx=Math.floor(px[i]/(W/FIELD_W)), fy=Math.floor(py[i]/(H/FIELD_H));
       const fi=__cl(fy*FIELD_W+fx,0,FIELD_W*FIELD_H-1);
-      field[fi]=__cl(field[fi]+amt,0,2.5); break; }
-    case 10: mutPressureAccum+=amt*0.01; break;             // own mutability
+      const b0=field[fi]; field[fi]=__cl(b0+amt,0,2.5); moved=field[fi]-b0; break; }
+    case 10: mutPressureAccum+=amt*0.01; moved=amt*0.01; break; // own mutability
   }
   __effectFires++;
+  // #133 REALISED-AMOUNT DISCIPLINE. `moved` is measured as an after-minus-before delta, which is the
+  // honest thing to measure but is NOT automatically bounded by what was asked for: if the target was
+  // already outside its range when we arrived (another writer, a reload, an older clamp), the delta
+  // includes the correction of that pre-existing excursion. Handing THAT to a successor would let a
+  // chain emit more than it received — precisely the amplification the design claims is impossible.
+  // Caught by the chain audit in verb-test.js, which found amounts growing along a chain.
+  // A verb only ever reports what it actually moved OF WHAT IT ASKED FOR: same sign, no larger.
+  if(!isFinite(moved))return 0;
+  if(moved*amt<0)return 0;                                   // we only undid someone else's excursion
+  return Math.abs(moved)>Math.abs(amt)?amt:moved;
 }
 // Drain the authored drives after the eight built-ins have been applied. Shared by all three
 // writeback sites so a verb means the same thing paired, in a cluster, or alone.
+// ═══ #133 — VERBS THAT COMPOSE ═══════════════════════════════════════════════════════════════════
+// #132 gave the system eleven verbs it could author. Eleven verbs is a vocabulary; it is not a
+// language. The noun side crossed this line long ago — uaGenTerm nests, an atom can CALL another atom
+// via f(idx,a,b), and #123 splices two proven atoms into a composite. Verbs stayed flat: one drive,
+// one write, no way to say "and then".
+//
+// The composition primitive is the smallest one available, and it was already sitting there unused:
+// A VERB'S SUCCESSOR IS DRIVEN BY WHAT THE VERB ACTUALLY MOVED. Not by its drive — by its realised
+// amount, after every clamp and affordability check. Two consequences fall out for free:
+//
+//   • CONDITIONALITY. A conserved transfer that meets an empty partner moves 0 and returns 0, so its
+//     successor does not fire. "Take amplitude, and IF that worked, bleed their traits" is expressible
+//     without an if-statement existing anywhere in the verb grammar. The branch is the physics.
+//   • NON-AMPLIFICATION. Each link passes `moved` scaled by the successor's own scale, which is
+//     clamped to [0,1]. So |amount| is monotone non-increasing along a chain: a cycle cannot pump.
+//     This is why chains need no conservation audit of their own — they inherit #132's.
+//
+// A chain costs what instructions cost. Each additional link is charged genome.metabolicCost from the
+// carrier's amplitude, in the same currency the per-instruction toll uses, so chain LENGTH is priced
+// and selection decides how long a sentence is worth speaking. New verbs are born with nx=-1: not
+// composed. Composition has to be discovered, like every other structure here.
+const MAX_EFFECT_CHAIN=4;      // depth cap — the cycle guard; amounts also attenuate, so this is belt and braces
+let __effectChained=0;         // telemetry: links fired beyond the first
 function applyUserEffects(i,j,influence){
   const fx=genome.userEffects; if(!fx||!fx.length)return;
   const n=Math.min(fx.length,MAX_USER_EFFECTS);
+  const tollPerLink=Math.abs(isFinite(genome.metabolicCost)?genome.metabolicCost:2e-5);
   for(let e=0;e<n;e++){
     const drive=vmActions[EFFECT_SLOT0+e]; if(!drive)continue;
-    const eff=fx[e]; if(!eff)continue;
-    const sc=isFinite(eff.s)?eff.s:0.5;
-    applyUserEffect(eff,i,j,drive*influence*sc*EFFECT_GAIN,e);
-    eff.uses=(eff.uses|0)+1;
-    __effectUses[effectKey(eff)]++;   // #132b: the population-level record the germline cull reads
+    let idx=e, depth=0;
+    let amt=drive*influence*(isFinite(fx[e]&&fx[e].s)?fx[e].s:0.5)*EFFECT_GAIN;
+    while(idx>=0&&idx<n&&depth<MAX_EFFECT_CHAIN){
+      const eff=fx[idx]; if(!eff)break;
+      const moved=applyUserEffect(eff,i,j,amt,idx);
+      eff.uses=(eff.uses|0)+1;
+      __effectUses[effectKey(eff)]++;   // #132b: the population-level record the germline cull reads
+      const nx=eff.nx|0;
+      if(nx<0||nx>=n||nx===idx)break;               // no successor
+      if(!isFinite(moved)||moved===0)break;         // nothing moved => nothing follows. THIS is the branch.
+      const nxt=fx[nx]; if(!nxt)break;
+      amt=moved*(isFinite(nxt.s)?nxt.s:0.5);        // realised amount becomes the next drive, attenuated
+      amp[i]-=tollPerLink;                          // a longer sentence costs more to say
+      idx=nx; depth++; __effectChained++;
+    }
   }
 }
 const vmActions=new Float32Array(8+MAX_USER_EFFECTS);

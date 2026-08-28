@@ -20,12 +20,46 @@ m._compile(code+`
         verbs:fx.length,
         used:fx.filter(e=>(e.uses|0)>0).length,
         conservedVerbs:fx.filter(e=>e.m===1).length,
-        targets:fx.map(e=>EFFECT_TARGETS[e.t].n+(e.m?'*':'')).join(','),
+        targets:fx.map((e,ix)=>EFFECT_TARGETS[e.t].n+(e.m?'*':'')+((e.nx|0)>=0?('->'+e.nx):'')).join(','),
+        composed:fx.filter(e=>(e.nx|0)>=0).length, chainLinks:__effectChained,
         fires:__effectFires, conservedFires:__effectConserved,
         emitOps:(function(){let c=0;for(let i=0;i<N;i++){const p=pProg[i];if(!p)continue;for(const ins of p)if((ins[0]|0)===236)c++;}return c;})()
       });
     }
   }
+  return out;
+};
+// #133 CHAIN AUDIT — the two properties composition rests on.
+//   (1) NON-AMPLIFICATION: each link passes the REALISED amount scaled by a [0,1] gain, so |amount|
+//       must be monotone non-increasing along a chain. If it can grow, a cycle is a pump.
+//   (2) THE BRANCH: a link that moves nothing must stop the chain. That is the whole conditional —
+//       "and if that worked, then..." — and it must hold when a conserved transfer meets an empty partner.
+globalThis.__chain=function(){
+  const out=[];
+  const iAmp=EFFECT_TARGETS.findIndex(t=>t.n==='amp');
+  const i=0,j=1;
+  // (1) amounts must not grow along a chain, at any scale the genome can reach
+  let grew=false, links=0;
+  for(let trial=0;trial<200;trial++){
+    let amt=(Math.random()*2-1)*0.5, prev=Math.abs(amt);
+    amp[i]=1.0; amp[j]=1.0; pProvision[i]=1; pProvision[j]=1;
+    for(let d=0;d<8;d++){
+      const eff={t:(Math.random()*EFFECT_TARGET_COUNT)|0,m:Math.random()<0.5?1:0,s:Math.random(),nx:-1};
+      const moved=applyUserEffect(eff,i,j,amt,0);
+      const nextAmt=moved*Math.random();          // successor scale is always in [0,1]
+      if(Math.abs(nextAmt)>prev+1e-9){grew=true;}
+      prev=Math.abs(nextAmt); amt=nextAmt; links++;
+      if(amt===0)break;
+    }
+  }
+  out.push(['non-amplification',{grew, links}]);
+  // (2) a conserved take from an EMPTY partner must move nothing -> chain stops
+  amp[i]=0.5; amp[j]=0;
+  const movedFromEmpty=applyUserEffect({t:iAmp,m:1,s:1,nx:-1},i,j,0.3,0);
+  // and the same verb against a stocked partner must move something
+  amp[j]=0.9;
+  const movedFromStocked=applyUserEffect({t:iAmp,m:1,s:1,nx:-1},i,j,0.3,0);
+  out.push(['branch-on-failure',{fromEmpty:+movedFromEmpty.toFixed(6), fromStocked:+movedFromStocked.toFixed(6)}]);
   return out;
 };
 // CONSERVATION AUDIT — drive every paired target in conserved mode by hand and check the pair sum.
@@ -71,4 +105,15 @@ for(const [name,r] of globalThis.__conserve()){
   console.log('  '+(ok?'PASS ':'FAIL ')+name.padEnd(10)+' pair-sum drift '+r.sumDrift+'   moved '+r.moved+'   stayed valid: '+r.nonNeg);
 }
 console.log(bad? '\n'+bad+' FAILED' : '\nconservation holds on every paired target');
+
+console.log('\n=== CHAIN AUDIT (#133 composition) ===');
+for(const [name,r] of globalThis.__chain()){
+  let ok;
+  if(name==='non-amplification'){ ok = (r.grew===false) && r.links>100;
+    console.log('  '+(ok?'PASS ':'FAIL ')+name.padEnd(20)+' amount grew along a chain: '+r.grew+'   ('+r.links+' links exercised)'); }
+  else { ok = (r.fromEmpty===0) && (Math.abs(r.fromStocked)>0);
+    console.log('  '+(ok?'PASS ':'FAIL ')+name.padEnd(20)+' empty partner moved '+r.fromEmpty+' (stops chain)   stocked partner moved '+r.fromStocked); }
+  if(!ok)bad++;
+}
+console.log(bad? '\n'+bad+' FAILED' : '\nall verb properties hold');
 process.exit(bad?1:0);
