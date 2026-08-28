@@ -940,8 +940,27 @@ function seedEffectIntoParticle(effIdx){
   if(!Array.isArray(_g.userEffects))_g.userEffects=[];
   if(_g.userEffects.length>=MAX_USER_EFFECTS)return;
   for(const _x of _g.userEffects) if(_x&&_x.t===_e.t&&_x.m===_e.m)return;   // already carries this verb
-  _g.userEffects.push({t:_e.t|0,m:_e.m|0,s:+_e.s||0.5,uses:0,creditTrace:0});
+  // #133b: SEED THE WHOLE SENTENCE, NOT JUST THE FIRST WORD. This pushed nx:-1, which stripped the
+  // successor off every verb on its way into the population — so composed structure could never leave
+  // the germline. Measured: germline 1 composed verb, population 0, across every particle carrying a
+  // verb at all; 283,782 effect fires over 16,000 ticks and ZERO chain links, with every apply
+  // breaking on "no successor" rather than on a failed link.
+  // This is the FOURTH time this session the same split has bitten: #102 fixed it for atom uses,
+  // #130's meter read a germline-only pool, #132b's cull read a germline counter that is always zero,
+  // and now composition. Structure is authored in the germline; selection only ever sees the
+  // population. Anything that does not make the crossing is invisible to selection no matter how well
+  // it works. If the germline verb has a successor, its successor comes across with it and the link is
+  // remapped into the receiving particle's own indices.
+  const _srcNx=(_e.nx|0);
+  const _hasSucc=_srcNx>=0 && _srcNx<genome.userEffects.length && _srcNx!==effIdx
+                 && _g.userEffects.length+1<MAX_USER_EFFECTS;
+  _g.userEffects.push({t:_e.t|0,m:_e.m|0,s:+_e.s||0.5,nx:-1,uses:0,creditTrace:0});
   const _slot=_g.userEffects.length-1;
+  if(_hasSucc){
+    const _sv=genome.userEffects[_srcNx];
+    if(_sv){ _g.userEffects.push({t:_sv.t|0,m:_sv.m|0,s:+_sv.s||0.5,nx:-1,uses:0,creditTrace:0});
+      _g.userEffects[_slot].nx=_g.userEffects.length-1; }   // remap into the carrier's own bank
+  }
   const _prog=pProg[_tgt], _cap=_g.vmMaxInstructions||16;
   if(_prog&&_prog.length<_cap){
     _prog.splice((Math.random()*(_prog.length+1))|0,0,[236,(Math.random()*12)|0,_slot,(Math.random()-0.5)*0.6]);
@@ -11134,7 +11153,7 @@ function profileVM(){
         case 232:case 233:case 234:case 235:{vmRegs[di]=0*(k||1);}break; // MODE/COSMOS profiler stubs
         // #132 EFFECT_EMIT — the profiler has no world to write, so the drive accumulates and nothing
         // applies it, exactly as the other stubs here do. Parity without side effects.
-        case 236:{const _ei=Math.abs(dst)%MAX_USER_EFFECTS;vmActions[EFFECT_SLOT0+_ei]+=vmRegs[si]*k;}break; // EFFECT_EMIT profiler stub
+        case 236:{const _fxn=(genome.userEffects&&genome.userEffects.length)?Math.min(genome.userEffects.length,MAX_USER_EFFECTS):MAX_USER_EFFECTS;const _ei=Math.abs(dst)%_fxn;vmActions[EFFECT_SLOT0+_ei]+=vmRegs[si]*k;}break; // EFFECT_EMIT — #133b: index the bank that EXISTS; %MAX_USER_EFFECTS sent half of all emits to empty slots profiler stub
       }
       if(op>=CORE_OPCODES&&op<CORE_OPCODES+MAX_BOUND_OPCODES){
         const _bos=genome.boundOpcodes;
@@ -13495,6 +13514,12 @@ function mutateGenome(){
         const _c=fx.length;
         e.nx = (_c>1 && Math.random()<0.7) ? ((Math.random()*_c)|0) : -1;
         if(e.nx===fx.indexOf(e)) e.nx=-1;                                          // no self-loop
+        // #133b: a composition is a structural event, so it takes LEAP 35's route into the population
+        // exactly as a verb birth does. Without this, composing was a germline-only edit: the drift
+        // loop runs on `genome`, seeding only ever carried the newly-BORN verb (nx=-1 by construction),
+        // and mutateChildGenome walks numeric fields only — so no composed verb could ever reach a
+        // particle, and selection could not see composition at all however well it worked.
+        if((e.nx|0)>=0) seedEffectIntoParticle(fx.indexOf(e));
       }
     }
     // CULL — the least-used verb goes when the bank is full and a new one wants in. Same principle as
@@ -17081,7 +17106,7 @@ function executeVM(i,j,sim,d){
       case 235:{cosmosStats.senseReads++;vmRegs[di]=cosmosSenseFor(i)*(k||1);}break;
         // #132 EFFECT_EMIT — drive an AUTHORED VERB. Same shape as case 4 (the built-in actuator emit);
         // the difference is that what happens at the other end is evolved, not written here.
-        case 236:{const _ei=Math.abs(dst)%MAX_USER_EFFECTS;vmActions[EFFECT_SLOT0+_ei]+=vmRegs[si]*k;}break; // EFFECT_EMIT
+        case 236:{const _fxn=(genome.userEffects&&genome.userEffects.length)?Math.min(genome.userEffects.length,MAX_USER_EFFECTS):MAX_USER_EFFECTS;const _ei=Math.abs(dst)%_fxn;vmActions[EFFECT_SLOT0+_ei]+=vmRegs[si]*k;}break; // EFFECT_EMIT — #133b: index the bank that EXISTS; %MAX_USER_EFFECTS sent half of all emits to empty slots
       case 231:{const _cqcid231=clusterID[i];if(_cqcid231>=0){const _cqbit231=1<<(Math.round(Math.abs(vmRegs[si]))&7);let _cqtot231=0,_cqset231=0;for(let _cqn231=0;_cqn231<N;_cqn231++){if(clusterID[_cqn231]===_cqcid231){_cqtot231++;if(pEpigen[_cqn231]&_cqbit231)_cqset231++;}}vmRegs[di]=_cqtot231>0?(_cqset231/_cqtot231)*k:0;}else{vmRegs[di]=0;}}break; // CLUSTER_QUORUM — fraction of own cluster members with epigenetic bit (vmRegs[si]&7) set; O(N) scan; solitary returns 0. Enables quorum sensing; epigenetic voting; collective gene-expression switching; democratic phase coordination.
     }
     // BOUND-OPCODE BOUNDARY (Pe60-class fix, now single-sourced via CORE_OPCODES).
@@ -18221,7 +18246,7 @@ function executeVM(i,j,sim,d){
         case 235:{cosmosStats.senseReads++;vmRegs[di]=cosmosSenseFor(i)*(k||1);}break; // COSMOS_SENSE — full parity
         // #132 EFFECT_EMIT — drive an AUTHORED VERB. Same shape as case 4 (the built-in actuator emit);
         // the difference is that what happens at the other end is evolved, not written here.
-        case 236:{const _ei=Math.abs(dst)%MAX_USER_EFFECTS;vmActions[EFFECT_SLOT0+_ei]+=vmRegs[si]*k;}break; // EFFECT_EMIT
+        case 236:{const _fxn=(genome.userEffects&&genome.userEffects.length)?Math.min(genome.userEffects.length,MAX_USER_EFFECTS):MAX_USER_EFFECTS;const _ei=Math.abs(dst)%_fxn;vmActions[EFFECT_SLOT0+_ei]+=vmRegs[si]*k;}break; // EFFECT_EMIT — #133b: index the bank that EXISTS; %MAX_USER_EFFECTS sent half of all emits to empty slots
       }
       if(op>=CORE_OPCODES&&op<CORE_OPCODES+MAX_BOUND_OPCODES){
         const _bos=genome.boundOpcodes;
@@ -19533,7 +19558,7 @@ function executeClusterVM(i,j,sim,d){
         case 235:{cosmosStats.senseReads++;vmRegs[di]=cosmosSenseFor(i)*(k||1);}break; // COSMOS_SENSE — full parity
         // #132 EFFECT_EMIT — drive an AUTHORED VERB. Same shape as case 4 (the built-in actuator emit);
         // the difference is that what happens at the other end is evolved, not written here.
-        case 236:{const _ei=Math.abs(dst)%MAX_USER_EFFECTS;vmActions[EFFECT_SLOT0+_ei]+=vmRegs[si]*k;}break; // EFFECT_EMIT
+        case 236:{const _fxn=(genome.userEffects&&genome.userEffects.length)?Math.min(genome.userEffects.length,MAX_USER_EFFECTS):MAX_USER_EFFECTS;const _ei=Math.abs(dst)%_fxn;vmActions[EFFECT_SLOT0+_ei]+=vmRegs[si]*k;}break; // EFFECT_EMIT — #133b: index the bank that EXISTS; %MAX_USER_EFFECTS sent half of all emits to empty slots
     }
     if(op>=CORE_OPCODES&&op<CORE_OPCODES+MAX_BOUND_OPCODES){
       const _bos=genome.boundOpcodes;
@@ -20249,7 +20274,7 @@ function executeSoloVM(){
         case 235:{cosmosStats.senseReads++;vmRegs[di]=cosmosSenseFor(i)*(k||1);}break; // COSMOS_SENSE — full parity
         // #132 EFFECT_EMIT — drive an AUTHORED VERB. Same shape as case 4 (the built-in actuator emit);
         // the difference is that what happens at the other end is evolved, not written here.
-        case 236:{const _ei=Math.abs(dst)%MAX_USER_EFFECTS;vmActions[EFFECT_SLOT0+_ei]+=vmRegs[si]*k;}break; // EFFECT_EMIT
+        case 236:{const _fxn=(genome.userEffects&&genome.userEffects.length)?Math.min(genome.userEffects.length,MAX_USER_EFFECTS):MAX_USER_EFFECTS;const _ei=Math.abs(dst)%_fxn;vmActions[EFFECT_SLOT0+_ei]+=vmRegs[si]*k;}break; // EFFECT_EMIT — #133b: index the bank that EXISTS; %MAX_USER_EFFECTS sent half of all emits to empty slots
       }
       if(op>=CORE_OPCODES&&op<CORE_OPCODES+MAX_BOUND_OPCODES){
         const _bos=genome.boundOpcodes;
