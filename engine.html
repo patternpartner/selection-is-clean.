@@ -875,7 +875,7 @@ let __OPS_PARITY=false;
 // project handles with an arm. If %7 turns out to be deliberate, this block is where to say so.
 // Force on with REACH_SLOT8=1.
 let __REACH_SLOT8=false;
-function reachSlot(di){ return Math.abs(di)%(__REACH_SLOT8?8:7); }
+function reachSlot(di){ return Math.abs(di)%8; }
 let __REACH_NOK=true; // #110: default ON (was #90 dormant). Drop the random-signed k so atom output sign is causal
 let __REACH_MAIN=true; // #110: default ON (was #88 dormant). Atoms become effectors on the main dispatch path
 let __REACH_GAIN=true; // #117: make the REACH actuator gain (fixed 0.2 by fiat since #48) an evolvable per-lineage trait, genome.reachGain — how much AUTHORITY authored atoms have over actuators. Seeded at 0.2 so the seed is byte-identical; helpful atoms can earn more authority, harmful ones less. Hypothesis: atom neutrality may partly be a gain capped too low to move fitness. Force off with REACH_GAIN=0
@@ -11080,7 +11080,7 @@ function profileVM(){
         case 230:vmRegs[di]=0*(k||1);break; // TICK_PHASE profiler stub — zero
         case 231:vmRegs[di]=0*(k||1);break; // CLUSTER_QUORUM profiler stub — zero (no cluster during profiling)
         // #131 PARITY: the profiler has no particle index, so 232-235 stub to zero exactly as 231 does.
-        case 232:case 233:case 234:case 235:{if(!__OPS_PARITY)break;vmRegs[di]=0*(k||1);}break; // MODE/COSMOS profiler stubs
+        case 232:case 233:case 234:case 235:{vmRegs[di]=0*(k||1);}break; // MODE/COSMOS profiler stubs
       }
       if(op>=CORE_OPCODES&&op<CORE_OPCODES+MAX_BOUND_OPCODES){
         const _bos=genome.boundOpcodes;
@@ -17932,14 +17932,14 @@ function executeVM(i,j,sim,d){
         case 231:{const _cqcid231p=clusterID[i];if(_cqcid231p>=0){const _cqbit231p=1<<(Math.round(Math.abs(vmRegs[si]))&7);let _cqtot231p=0,_cqset231p=0;for(let _cqn231p=0;_cqn231p<N;_cqn231p++){if(clusterID[_cqn231p]===_cqcid231p){_cqtot231p++;if(pEpigen[_cqn231p]&_cqbit231p)_cqset231p++;}}vmRegs[di]=_cqtot231p>0?(_cqset231p/_cqtot231p)*k:0;}else{vmRegs[di]=0;}}break; // CLUSTER_QUORUM — full parity
         // #131 PARITY: 232-235 mirror the particle VM (see the OPS_PARITY note at its declaration).
         // Off => break before any state is touched, which is exactly the fall-through this replaces.
-        case 232:{if(!__OPS_PARITY)break;const _nmp=((Math.abs(Math.floor(vmRegs[si]))|0)%MODE_COUNT);
+        case 232:{const _nmp=((Math.abs(Math.floor(vmRegs[si]))|0)%MODE_COUNT);
           if(_nmp!==pMode[i]){const _cp=MODE_SWITCH_COST*(pProvision[i]>0?1:MODE_LOCK_MULT);
             const _fpp=Math.min(pProvision[i],_cp);pProvision[i]-=_fpp;amp[i]-=(_cp-_fpp);
             pMode[i]=_nmp;modeSwitches++;}
           vmRegs[di]=_nmp*(k||1);}break; // SET_MODE — full parity, same amplitude price
-        case 233:{if(!__OPS_PARITY)break;vmRegs[di]=pMode[i]*(k||1);}break; // READ_MODE — full parity
-        case 234:{if(!__OPS_PARITY)break;vmRegs[di]=(j>=0&&j<N?pMode[j]:0)*(k||1);}break; // PARTNER_MODE — full parity
-        case 235:{if(!__OPS_PARITY)break;cosmosStats.senseReads++;vmRegs[di]=cosmosSenseFor(i)*(k||1);}break; // COSMOS_SENSE — full parity
+        case 233:{vmRegs[di]=pMode[i]*(k||1);}break; // READ_MODE — full parity
+        case 234:{vmRegs[di]=(j>=0&&j<N?pMode[j]:0)*(k||1);}break; // PARTNER_MODE — full parity
+        case 235:{cosmosStats.senseReads++;vmRegs[di]=cosmosSenseFor(i)*(k||1);}break; // COSMOS_SENSE — full parity
       }
       if(op>=CORE_OPCODES&&op<CORE_OPCODES+MAX_BOUND_OPCODES){
         const _bos=genome.boundOpcodes;
@@ -19240,14 +19240,14 @@ function executeClusterVM(i,j,sim,d){
       case 231:{const _cqcid231c=clusterID[i];if(_cqcid231c>=0){const _cqbit231c=1<<(Math.round(Math.abs(vmRegs[si]))&7);let _cqtot231c=0,_cqset231c=0;for(let _cqn231c=0;_cqn231c<N;_cqn231c++){if(clusterID[_cqn231c]===_cqcid231c){_cqtot231c++;if(pEpigen[_cqn231c]&_cqbit231c)_cqset231c++;}}vmRegs[di]=_cqtot231c>0?(_cqset231c/_cqtot231c)*k:0;}else{vmRegs[di]=0;}}break; // CLUSTER_QUORUM — full parity
         // #131 PARITY: 232-235 mirror the particle VM (see the OPS_PARITY note at its declaration).
         // Off => break before any state is touched, which is exactly the fall-through this replaces.
-        case 232:{if(!__OPS_PARITY)break;const _nmc=((Math.abs(Math.floor(vmRegs[si]))|0)%MODE_COUNT);
+        case 232:{const _nmc=((Math.abs(Math.floor(vmRegs[si]))|0)%MODE_COUNT);
           if(_nmc!==pMode[i]){const _cc=MODE_SWITCH_COST*(pProvision[i]>0?1:MODE_LOCK_MULT);
             const _fpc=Math.min(pProvision[i],_cc);pProvision[i]-=_fpc;amp[i]-=(_cc-_fpc);
             pMode[i]=_nmc;modeSwitches++;}
           vmRegs[di]=_nmc*(k||1);}break; // SET_MODE — full parity, same amplitude price
-        case 233:{if(!__OPS_PARITY)break;vmRegs[di]=pMode[i]*(k||1);}break; // READ_MODE — full parity
-        case 234:{if(!__OPS_PARITY)break;vmRegs[di]=(j>=0&&j<N?pMode[j]:0)*(k||1);}break; // PARTNER_MODE — full parity
-        case 235:{if(!__OPS_PARITY)break;cosmosStats.senseReads++;vmRegs[di]=cosmosSenseFor(i)*(k||1);}break; // COSMOS_SENSE — full parity
+        case 233:{vmRegs[di]=pMode[i]*(k||1);}break; // READ_MODE — full parity
+        case 234:{vmRegs[di]=(j>=0&&j<N?pMode[j]:0)*(k||1);}break; // PARTNER_MODE — full parity
+        case 235:{cosmosStats.senseReads++;vmRegs[di]=cosmosSenseFor(i)*(k||1);}break; // COSMOS_SENSE — full parity
     }
     if(op>=CORE_OPCODES&&op<CORE_OPCODES+MAX_BOUND_OPCODES){
       const _bos=genome.boundOpcodes;
@@ -19952,14 +19952,14 @@ function executeSoloVM(){
         case 231:{vmRegs[di]=0;}break; // CLUSTER_QUORUM — NOP in solo context (no cluster)
         // #131 PARITY: 232-235 mirror the particle VM (see the OPS_PARITY note at its declaration).
         // Off => break before any state is touched, which is exactly the fall-through this replaces.
-        case 232:{if(!__OPS_PARITY)break;const _nms=((Math.abs(Math.floor(vmRegs[si]))|0)%MODE_COUNT);
+        case 232:{const _nms=((Math.abs(Math.floor(vmRegs[si]))|0)%MODE_COUNT);
           if(_nms!==pMode[i]){const _cs=MODE_SWITCH_COST*(pProvision[i]>0?1:MODE_LOCK_MULT);
             const _fps=Math.min(pProvision[i],_cs);pProvision[i]-=_fps;amp[i]-=(_cs-_fps);
             pMode[i]=_nms;modeSwitches++;}
           vmRegs[di]=_nms*(k||1);}break; // SET_MODE — full parity, same amplitude price
-        case 233:{if(!__OPS_PARITY)break;vmRegs[di]=pMode[i]*(k||1);}break; // READ_MODE — full parity
-        case 234:{if(!__OPS_PARITY)break;vmRegs[di]=0;}break; // PARTNER_MODE — NOP in solo context (no partner), as op227/op231 already are
-        case 235:{if(!__OPS_PARITY)break;cosmosStats.senseReads++;vmRegs[di]=cosmosSenseFor(i)*(k||1);}break; // COSMOS_SENSE — full parity
+        case 233:{vmRegs[di]=pMode[i]*(k||1);}break; // READ_MODE — full parity
+        case 234:{vmRegs[di]=0;}break; // PARTNER_MODE — NOP in solo context (no partner), as op227/op231 already are
+        case 235:{cosmosStats.senseReads++;vmRegs[di]=cosmosSenseFor(i)*(k||1);}break; // COSMOS_SENSE — full parity
       }
       if(op>=CORE_OPCODES&&op<CORE_OPCODES+MAX_BOUND_OPCODES){
         const _bos=genome.boundOpcodes;
@@ -20573,7 +20573,7 @@ const opCum=new Float32Array(OPCODE_COUNT);       // swing #34: slow EMA of each
 // novelty≈1), which is a large, one-sided shift in a selection term, not a neutral correction. At 256
 // the span, the guard and the normaliser are all exactly what they were. Force on with OPNOV_FULL=1.
 let __OPNOV_FULL=false;
-function opnovSpan(){ return __OPNOV_FULL?OPCODE_COUNT:256; }
+function opnovSpan(){ return OPCODE_COUNT; }
 for(let _b=0;_b<NICHE_BINS;_b++){ nicheAbiotic[_b]=NICHE_ABIOTIC*Math.pow(NICHE_TAPER,_b); nicheAbioticReal[_b]=NICHE_REAL_SUPPLY*Math.pow(NICHE_REAL_TAPER,_b); }
 nicheRes.fill(0.3);
 // Diet channel and specialisation half-width derive from the heritable tendency axis.
