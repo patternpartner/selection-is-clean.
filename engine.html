@@ -6550,13 +6550,16 @@ function theDiary(){
       P('What I am scored on sits where it has always sat, near '+f1.toFixed(2)+'. I move around inside that.');
   }
   // INVENTION — the part nobody wrote for it.
-  let atoms=0,adopted=0,verbs=0,composed=0,bound=0;
+  let atoms=0,adopted=0,verbs=0,composed=0,bound=0,sensed=0;
   try{ const A=genome.userAtoms||[]; atoms=A.length; adopted=A.filter(a=>(a.uses|0)>0).length;
        bound=(genome.boundOpcodes||[]).filter(i=>i>=0).length;
-       const V=genome.userEffects||[]; verbs=V.length; composed=V.filter(v=>v&&(v.nx|0)>=0).length; }catch(_){}
+       const V=genome.userEffects||[]; verbs=V.length; composed=V.filter(v=>v&&(v.nx|0)>=0).length;
+       sensed=V.filter(v=>v&&v.ax!==undefined&&v.ax!==null&&(v.ax|0)>=0).length; }catch(_){}
   if(atoms||verbs){
     if(atoms) P('I am carrying '+_dyN(atoms,'expression')+' I wrote myself; '+adopted+' of them have actually been run, and '+_dyN(bound,'opcode')+' point at one.');
     if(verbs) P('I have '+_dyN(verbs,'way')+' of reaching into the world'+(composed?', and '+composed+' of them hand off to another when they are done.':'.'));
+    // #139: the one that crosses substrates, so it gets its own sentence rather than a clause.
+    if(sensed) P(sensed+(sensed===1?' of those acts':' of those act')+' only when something I taught myself to notice says so. That is the two halves of me talking to each other.');
   } else {
     P('I have not invented anything yet. The machinery for it is there and has not fired.');
   }
