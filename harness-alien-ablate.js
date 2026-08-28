@@ -15,14 +15,14 @@
 // fitness, so a null there isn't evidence against it the way a null on meanAtomAge would be.
 //
 // Env: SEEDS (comma list, matched pairs — default 11,13,17,19)  TICKS (default 20000)
-//      SAMPLE (default 1000)  INDEX (path to index.html)
+//      SAMPLE (default 1000)  INDEX (path to engine.html)
 const path = require('path');
 const { Worker } = require('worker_threads');
 
 const SEEDS = (process.env.SEEDS || '11,13,17,19').split(',').map(s => parseInt(s.trim(), 10));
 const TICKS = parseInt(process.env.TICKS || '20000', 10);
 const SAMPLE = parseInt(process.env.SAMPLE || '1000', 10);
-const INDEX = process.env.INDEX || path.join(__dirname, 'index.html');
+const INDEX = process.env.INDEX || path.join(__dirname, 'engine.html');
 const WORKER = path.join(__dirname, 'harness-coupling-worker.js');
 const CHANNEL = 'exp-alien-ablate';
 

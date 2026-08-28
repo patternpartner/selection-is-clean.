@@ -10687,3 +10687,176 @@ Ships ON to start recording; force off with `OEE_METER=0`.
 here is "does persistent innovation plateau," not yet "does it exceed a non-selective null." The neutral
 shadow (the sharper adaptive-vs-drift test) is the honest Phase 2, once the raw curve has told us whether
 there's even anything above zero to explain. Build the number first; argue about the baseline once it exists.
+
+---
+
+## #131 — REVIEW PASS: the instrument was reporting yes because it could not report no
+
+A full read of the repository at `f8cf34a`, and the repairs that came out of it. No new engine. Two
+things got fixed outright, three landed as dormant arms, and one prediction of mine failed on
+measurement and is recorded as failed.
+
+### The rig had been dead for four commits
+
+`c0cef11` moved the simulation out of `index.html` into `engine.html` and left the worker shell behind
+at the old path. Only `harness.js` was repointed. **17 of the 18 rig files that name the source file
+still loaded the shell.** The failure was quiet in the worst way: the shell has a `<script>` block, so
+extraction succeeded and the module compiled, and what failed came afterward — `ReferenceError: N is
+not defined` for the rigs that step the loop, and `"patch target … found 0 times, expected 1 —
+index.html has drifted"` for the rigs that text-patch. That second message reads as *source* drift. It
+was a bad path. Anything measured between `c0cef11` and now was measured against a 152-line shell.
+
+Fixed, plus two rigs that were broken past the path: `harness-atrophy-probe`'s cut needles still
+expected `genome[p]*=factor`, which #108 replaced with `metaParamGet`/`metaParamSet`; `bench-pairs`'s
+DOM stub predated the metabolism panel. `smoke.sh` now boots every rig briefly — the check whose
+absence let this sit for four commits. It has a wrinkle worth knowing: most rigs take their budget
+from `TICKS`, but a few define their own names and ignore it, and `harness-coupling-asym` matures a
+producer for `MATURATION_TICKS=30000` before any peer joins. Its first "failure" in the smoke pass was
+a 180-second timeout on a rig doing 45,000 ticks of real work, not a broken rig. `smoke.sh` now passes
+the per-rig budget names; **19 of 19 pass.**
+
+### #130's meter counted a constant tweak as a persistent innovation
+
+The meter keyed an innovation on the exact expression string of any germline atom with `uses>0`. Two
+facts about the atom bank collide with that, both pushing the same way:
+
+- `uaLocalStep` (#103) jitters a constant or swaps a variable and **deliberately keeps `uses`** —
+  13181, *"the whole point of a small perturbation is to keep the accumulated record."* So a
+  one-character constant tweak on an adopted atom minted a brand-new innovation with a non-zero use
+  count already attached, **having never run**. The redraw branch that *does* reset `uses` is
+  discounted by grip, rank, credit and NFD protection; the jitter branch is a flat `rate*0.15`. In a
+  mature, well-protected bank, jitter is the dominant way an expression string changes at all.
+- `atom.uses` never decays. "Adopted" meant "has fired at least once, ever, since last redrawn", so
+  persistence tested **slot survival**, not continued use, and a dead-but-unoverwritten atom counted
+  as persistent indefinitely.
+
+Both curves the meter exists to *separate* were driven by the same trivial operator. The plateau that
+would have meant "accretion, not open-endedness" was not reachable. On real broadcast material, 6.6%
+of harvested instructions are in the affected range.
+
+**v2** fixes it at the source. The unit is the **canonical** expression — numeric literals normalised
+away (`uaOeeKey`), so retuning a constant is not a new computation while a variable swap or structural
+change still is; that is exactly the shuffling-variants-vs-new-structure line the meter exists to draw.
+And adoption is a **per-epoch execution delta**, not a lifetime counter, so persistence means still
+being run and `meanActivity` is a rate. `oeeVer` is stamped and exported as `oV`; **pre-#131 rows are
+v1 and are not comparable.** The ever-seen set is capped at 20,000 canonical keys and reports
+saturation (`oS`) rather than leaking on a device that runs this forever.
+
+**Verified against v1 on the same run.** Defaults are byte-identical in dynamics, so both builds
+replay the *same* seeded 30,000-tick evolution and every difference in the numbers is the instrument:
+
+| | v1 (pre-#131) | v2 (#131) |
+|---|---|---|
+| cumulative innovations at 30k | 5 | **2** |
+| `meanActivity` per epoch | 365 → 567 → 711 → 806 → 993 | 0 → 405 → 631 → 450 → **318** |
+
+Two things worth having checked. v2 is **not** silent — the obvious risk of tightening three things at
+once (canonical key, execution delta, first-sight baseline) was replacing "can only say yes" with "can
+only say no", which would look like a finding about the creature rather than a defect in the meter. It
+registers, at roughly 40% of v1's count on a bank of 24 atoms with 4 adopted. And `meanActivity` now
+moves in **both** directions instead of climbing monotonically, which is the lifetime-total-to-rate fix
+landing where you can see it. Both read `persist=0` at five epochs because the 3-epoch lag has not
+resolved for innovations first seen at epoch 3.
+
+Caveat on magnitude, not direction: this bank is young. The repo authors for `AUTH_TICKS=60000` before
+ablating and a mature bank is ~226 atoms, where the jitter branch fires far more often relative to the
+protection-discounted redraw branch. The gap between the two instruments should widen with bank size;
+that is an expectation, not a measurement.
+
+Separately: v1 promised the seen-set was *"reseeded on load"* and **no reset existed anywhere in the
+file**. A boot-time load was fine because nothing had flushed yet, but a mid-run import diffed the
+incoming creature's bank against the outgoing creature's history and counted it all as fresh
+innovation on top of a restored `oN`, while stale pending entries carried the previous run's epoch
+indices and could never resolve. `resetOeeRuntime()` now runs in `decodeGenome`.
+
+### A prediction of mine that failed
+
+I expected #130's *"evolution is byte-identical whether the meter is on or off"* to be false. The
+counters lived on `genome`; `cloneGenome` spreads that object into children and `mutateChildGenome`
+walks it with `for(const k in g)`, drawing one `Math.random()` per numeric field — so two extra fields
+should shift the RNG stream at every birth that inherits them.
+
+**It is true.** A seeded 9,000-tick A/B of the stock build, `OEE_METER=1` vs `0`, is identical to the
+last digit. Instrumenting the only path that could carry the fields into a child —
+`cloneGenome(genome)`, the fallback when a birth has no parent genome — shows it firing exactly N
+times at boot seeding and never again, and the germline fields are not created until the first epoch
+flush at tick 5000. Nothing ever inherits them. The claim holds.
+
+It holds *contingently*, on the fallback staying boot-only, which is not something the meter controls
+or states. The meter's state moved to module scope anyway: it costs nothing and makes the property
+structural instead of an accident of birth-path ordering.
+
+### Three dormant arms — defects whose corrections move dynamics
+
+Each is a real defect with a known correct form; each changes live behaviour when switched on. They
+ship **off**, with a bit-identical off-path, on the same footing as `MUTUALISM`/`RQ_TRAIT`/
+`GENO_PARASITE`.
+
+**Verified.** Off-arm: a seeded 9,000-tick replay at defaults is identical to the pre-#131 build on
+two independent seeds, and identical again at 12,000 ticks. On-arm, 12,000 ticks, seed 5, once the
+plumbing below was fixed: `OPS_PARITY` **LIVE**, `OPNOV_FULL` **LIVE**, `REACH_SLOT8` **LIVE**. So the
+off-path is inert and all three arms genuinely reach the mechanism they target — which is the
+precondition for running them, not a result about whether they help.
+
+A mistake of mine, caught by that same verification and worth recording because the repo already
+warns about it. The first liveness check reported all three arms INERT — and they were, because the
+engine resolves every gate from `globalThis.__NAME` and never from `process.env`, so a knob with no
+explicit plumbing line in a harness cannot be switched on at all. `harness-strip.js` states the rule
+outright: *"a knob that cannot be turned off is not a control, so the plumbing goes in before any
+ablation claim does."* I shipped three knobs without it. Plumbing added to `harness.js`,
+`harness-ab.js`, `harness-oee.js`, `harness-strip.js` and `harness-env.js`.
+
+Worth noting for whoever runs these: an unseeded rig cannot answer this question. `harness.js` uses a
+real clock and an unseeded RNG, so run-to-run population differences there are noise, not effect —
+which is exactly how I briefly mistook noise for confirmation before the seeded replay corrected it.
+`REACH_SLOT8` in particular shows nothing until bound opcodes exist, since the REACH block never
+executes before then; short runs will call it inert when it is only dormant.
+
+| knob | defect | why not default-on |
+|---|---|---|
+| `OPS_PARITY` | ops 232–235 exist only in the pairwise VM. Every opcode through 231 is implemented or explicitly NOPed with a reason in the plasmid/cluster/solo/profiler dispatches; the sweep stopped when #57 and #59 added four more. With no `default:` and the bound guard at `op>=236`, they are the one instruction shape in the file that does nothing at all — not even zeroing its destination register the way the deliberate NOPs do. **6.6% of harvested instructions carry one** (1,742 of them COSMOS_SENSE); a plasmid instruction carrying 232/233/235 is inert in the VM that plasmid belongs to | switching it on makes 6.6% of the standing instruction population live at once, and a creature that evolved *under* the inert regime has programs whose 232/233/235 slots were free no-ops it may be leaning on. That is an arm to run against a saved genome, not a flip to make on someone's behalf |
+| `OPNOV_FULL` | #34's `opFreq`/`opCum` are sized 256 with an `op<256` guard and a literal `256` normaliser. `OPCODE_COUNT` is 428 since #129 doubled `MAX_BOUND_OPCODES`. Bound slots 0–19 are scored; **20–191 can neither register as explored nor earn novelty for exploring them** — the engine sees 20 of 192 slots. 601 of 46,042 harvested instructions sit in the blind region, across 22 distinct slots spanning 236–412 | widening it makes every never-scored op maximally novel at once (`opCum≈0` → novelty ≈1): a large one-sided shift in a selection term, not a neutral correction |
+| `REACH_SLOT8` | the four REACH emits index `vmActions` with `%7`; every ordinary write site uses `%8` and the array has 8 slots. `di` is `%12`, so `%7` reaches 0–6 only and doubles 0–4. **Slot 7 is unreachable from the atom channel** — and slot 7 is the write into `tend[i*DIMS+4]`, the axis the map calls "blank (system-discovered role)". Against this project's central finding — ninety layers of sense against eight action slots — one of the eight being closed to the one channel built for evolved code to *act* is worth knowing. #89b quotes the `%7` verbatim while dissecting this exact line and does not remark on it | flipping it redistributes every REACH emit *and* opens a new actuator onto a trait axis under selection. If `%7` is deliberate, the knob's comment is where to say so |
+
+### Smaller repairs, applied
+
+- **`showPanel` builds DOM unguarded at boot.** `metabolismObserver` ends the script and calls
+  `syncVisual()` → `showPanel()` → `document.body.appendChild` unconditionally, so any headless host
+  without `document.body` threw at *compile* time and took the sim with it. Every rig had to stub
+  around it and the ones written before the panel existed simply broke. Guarded; in a browser
+  `document.body` always exists there, so the artwork is unaffected.
+- **The shell's observer extraction was greedy.** `index.html` matched
+  `/\(function metabolismObserver\(\)\{[\s\S]*\}\)\(\);/` against the fetched 1.6 MB file — running to
+  the *last* `})();` anywhere in it, correct only because the observer happens to be the final
+  statement. Appending one IIFE after it would have silently swallowed that code into the main-thread
+  copy, evaluated with `TAB_ID`/`genome`/`tick` undefined. Now bounded by a `//__METAB_END__` marker.
+- **Peer bookkeeping grew without bound** on `msg.tab`, a field the peer chooses, and `countPeers()`
+  scanned it linearly every cadence. It now *evicts* at the same 3,000-tick cutoff the scan already
+  applied, so the returned count is unchanged. The two companion maps are pruned at the same point
+  because the alien-attribution loop already skips any peer quieter than `ALIEN_WINDOW*3` = 540 ticks
+  before reading either — 5.5× sooner — so everything dropped was already unreachable for scoring. One
+  difference, stated rather than glossed: a peer that vanishes for 3,000+ ticks and returns now starts
+  a clean observation window instead of carrying a stale count into its first baseline.
+- **`harness-reflex-leaf` was superseded, not just stale.** Every counter it text-injected had been
+  promoted into `engine.html` behind `__REFLEX_DEBUG` under the same names, and its `PERSIST_REFLEX`
+  fix had been adopted as Swing #47 (`clusterReflexes`). Two needles no longer matched — and behind
+  that, the warmup patch keyed on `r.__warmed`, the *same flag* the engine's native counter sets, so
+  whichever ran first would have starved the other and the rig would have reported a real-looking
+  zero. It now reads `reflexDebugCounters` and patches only what is genuinely a manipulation (the
+  ABLATE gate condition, ARM1's bar and cadence). Live again: `ecvPassed≈396k`, `gateFires≈215k`,
+  `ucrWarmup=5` over 1,200 ticks — note `ucrWarmup` is **non-zero**, where the rig's own notes
+  recorded the puzzle as `ucrWarmup=0`.
+- **The bridge experiments all read a scratchpad from a session that no longer exists**, for files
+  checked into `bridge/`. Repointed; `harvest-cache.js` runs end to end again and produced the 46,042
+  instructions the percentages above are measured on.
+
+### What this pass did not do
+
+`CODEMAP.md` is patched, not rebuilt. Its constants, anchor table, and genome extent are verified as of
+#131 and it now carries a currency header saying so; every other inline line number in it is still
+written against a file ~1,100 lines shorter, and its running record still stops at #90. Re-deriving it
+is a real job and guessing at it would be worse than leaving the staleness visible.
+
+The three arms are unrun. Each needs a seeded A/B against a mature saved genome, and `OPS_PARITY` in
+particular should be run against a creature that evolved under the inert regime, since that is the
+population the change actually lands on.

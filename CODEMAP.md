@@ -1,10 +1,26 @@
-# CODEMAP — index.html (22,723 lines)
+# CODEMAP — engine.html (23,893 lines)
 
 A structural map of the simulation, built by reading the source rather than the notebook. Written to be
 durable: each region records what is THERE, with line anchors, so a later reader does not have to
 re-derive it. Claims are marked **[read]** when taken from code and **[inferred]** when reasoned from it.
 
 Companion to OEE-NOTES.md, which records experiments. This records the machine they run on.
+
+---
+
+## ⚠ CURRENCY — read this before trusting a line number
+
+| | |
+|---|---|
+| **file** | `engine.html` — the sim moved out of `index.html` in `c0cef11`; `index.html` is now the worker shell |
+| **last fully re-derived** | never — this map was written against `index.html` and has been patched, not rebuilt |
+| **prose current through** | **#90.** The engine is at **#131.** Roughly forty swings are undocumented here |
+| **verified as of #131** | the anchor table below, the opcode constants, the genome extent, and the census claims |
+| **NOT verified** | every other inline line number in this file. They were written against a file ~1,100 lines shorter and around 500–900 lines of drift has accumulated unevenly — treat them as approximate, and grep for the quoted code instead |
+
+The map's own promise is that a later reader does not have to re-derive it, which only holds if the
+staleness is visible. When the engine moves, either re-derive the anchors or update this block; a map
+that looks authoritative and is not costs more than no map. `OEE-NOTES.md` is current through #131.
 
 ---
 
@@ -16,18 +32,34 @@ Companion to OEE-NOTES.md, which records experiments. This records the machine t
 | 330–520 | **core constants + atom grammar** | world/opcode constants; `uaGenTerm`/`uaGenExpression` — the recursive grammar the system writes its own primitives in |
 | 520–730 | **atom runtime + horizontal transfer** | draw VM, atom sensory context (`uaSetEyes`), `seedAtomIntoParticle`, `attemptMemeTransfer`, `uaCall` |
 | 730–1260 | **economy** | energy pool, metabolism, senescence, seasons, provisioning, amplitude bounds |
-| **1262–5752** | **the genome** | ONE object literal. 188 evolvable fields grouped into ~129 numbered "LAYERS" |
+| **1601–6097** | **the genome** | ONE object literal. 188 evolvable fields grouped into ~129 numbered "LAYERS" (re-verified #131: still exactly 188 keys, no duplicates) |
 | 5752–6150 | genome tail, serialisation, export/import | |
 | 6146–7500 | per-particle self-model, mutual recognition, meta-fitness integration | |
 | 9739 / 10597 | shadow VM, sensor VM dispatch | |
-| 12000–13000 | `mutateGenome`, `cloneGenome` — the mutation operators | |
-| 13631+ | **`executeVM`** — the main pairwise particle VM | |
+| 6508 / 6546 / 12302 | `cloneGenome`, `mutateChildGenome`, `mutateGenome` — the mutation operators (verified #131) | |
+| 14626+ | **`executeVM`** — the main pairwise particle VM (verified #131) | |
 | 15829 / 17111 / 18666 | plasmid VM, cluster VM, solo-path VM | |
 | 18900+ | register writeback, action application, main loop, render, UI | |
 
-**Six `switch(op)` dispatches** at 9739, 10597, 13734, 15829, 17111, 18666 — named in harness-clamp.js as
-shadow, sensor, particle, plasmid, cluster, shadow2. `CORE_OPCODES=236`, `MAX_BOUND_OPCODES=96`,
-`OPCODE_COUNT=332`.
+**Six `switch(op)` dispatches** — verified at #131:
+
+| line | dispatch | core-opcode coverage |
+|---|---|---|
+| 10336 | **profiler** (`profileVM`, no particle index — stubs its inputs) | 224/236 |
+| 11223 | **fitness-sensor VM** — a *different* 5-opcode set over 19 registers, not this opcode space | n/a |
+| 14729 | **particle** (`executeVM`, the pairwise VM) | **236/236** |
+| 16843 | **plasmid** | 233/236 |
+| 18136 | **cluster** | 233/236 |
+| 19704 | **solo** | 137/236 |
+
+The four non-particle dispatches other than the sensor VM are the stated parity set — this file says
+"Full parity: particle VM, plasmid VM, cluster VM, profiler" at several opcode definitions. Ops
+**232–235** (SET_MODE/READ_MODE/PARTNER_MODE from #57, COSMOS_SENSE from #59) were the one gap all
+three shared and were inert in every dispatch but the particle VM until #131 added them behind
+`OPS_PARITY` (default OFF — see the knob's own note in engine.html for why).
+
+`CORE_OPCODES=236`, `MAX_BOUND_OPCODES=192` (#129, was 96), `OPCODE_COUNT=428` (was 332),
+`DIMS_MAX=32` (#129, was 16), `CAP=1800`.
 
 ---
 
@@ -171,7 +203,7 @@ write only to registers.**
 
 ### What that implies for the atom arc
 
-**[inferred, arithmetic]** Mutation draws opcodes uniformly from `[0, OPCODE_COUNT=332)`. Mean live
+**[inferred, arithmetic]** Mutation draws opcodes uniformly from `[0, OPCODE_COUNT=428)` (332 when this was written). Mean live
 program length is ~12 instructions (4338 instructions / 356 particles, from a run fingerprint). So:
 
 - P(a given instruction is an effector) ≈ 13/332 ≈ **3.9%**
@@ -1315,6 +1347,12 @@ is equally likely to push either way regardless of what it reads.
 | #89 | can the instrument see forced cargo? | +8: 1.97 SE — did not survive pooling |
 | #89b | ±8 sign contrast | **design void** — `k` erases sign. Pooled magnitude effect 1.80 SE, CI spans zero. |
 | #90 | sign contrast with `k` removed | *running* |
+
+**The record above stops at #90; the engine is at #131.** #91–#130 are in OEE-NOTES.md only. #131 is a
+review pass: it repaired the measurement rig (17 of 18 files still loaded the retired `index.html`),
+rewrote the #130 open-endedness meter after finding it counted a constant-jitter as a persistent
+innovation, and landed three dormant arms — `OPS_PARITY`, `OPNOV_FULL`, `REACH_SLOT8` — for defects
+whose corrections move live dynamics. See OEE-NOTES.md #131.
 
 **Standing count of failed predictions this session: 10, three of them mine.** Three designs failed on
 their *premises* rather than their statistics (two-knob discriminator, "never fires" from n=4, sign

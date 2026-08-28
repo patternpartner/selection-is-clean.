@@ -1,7 +1,21 @@
 // Leaf worker for harness-ablate-reflex.js — one seed, one condition (intact/ablated), one process.
 // Same DOM/timer stubs as harness.js/harness-oee.js. ABLATE_REFLEX=1 permanently closes the
-// crw>0.001 gate at index.html's ONE reflexThreat/reflexTrend->vmRegs[4]/[5] write site (verified
-// unique against the current file by the orchestrator's own text before ever running this).
+// crw>0.001 gate at engine.html's ONE reflexThreat/reflexTrend->vmRegs[4]/[5] write site (verified
+// unique against the current file before ever running this).
+//
+// #131 — MEASUREMENT NOW COMES FROM THE ENGINE, NOT FROM PATCHES. Every counter this rig used to
+// text-inject was later promoted into engine.html itself, behind __REFLEX_DEBUG, under the same
+// names: reflexDebugCounters.{ecvEntries,ecvNoCid,ecvNoCidx,ecvNoProg,ecvPassed,ucrCalls,
+// ucrNewReflex,ucrWarmup,gateFires,gateThreatZero,gateTrendZero,sumAbsThreatAddend,
+// sumAbsTrendAddend,sumAbsResidue4,sumAbsResidue5,nonzeroFirings,nonzeroFiringsReadable}.
+// Two of the six needles had stopped matching as a result, so the rig refused to start — and the
+// warmup patch had a worse failure waiting behind that one: it keyed on r.__warmed, the SAME flag
+// the engine's native warmup counter sets, so whichever ran first would have silently starved the
+// other and the rig would have reported a real-looking zero.
+// What remains patched is only what is genuinely a MANIPULATION rather than a measurement: the
+// ABLATE gate condition and ARM1's sample-bar and cadence changes. PERSIST_REFLEX is retired too —
+// its fix became Swing #47 and is unconditional in the engine (see the note on the const below).
+// The counters are read from the engine's own object with REFLEX_DEBUG=1.
 const fs = require('fs');
 
 const TICKS = parseInt(process.env.TICKS || '20000', 10);
@@ -12,15 +26,15 @@ const ABLATE = process.env.ABLATE_REFLEX === '1';
 // to 2, and quadruple the cadence that feeds it (tick%60 -> tick%15) — orthogonal to ABLATE_REFLEX,
 // so all four combinations (arm1 x {open,severed}) run through the same leaf.
 const ARM1 = process.env.ARM1 === '1';
-// PERSIST_REFLEX: the arm1 manipulation check (window shrunk to 2 samples, cadence quadrupled)
-// still came back ucrWarmup=0 — a deeper cause than window/cadence. trackClusterPersistence()
-// explicitly carries vmProgram/vmInfluence/fieldSignature/lineageID (and clusterGenome, separately)
-// forward across detection cycles via the clusterVMs map, but never .reflex — and detectClusters()
-// rebuilds `clusters` from scratch every cycle (clusters.length=0), so c.reflex is undefined at the
-// start of every updateClusterReflex() call for every cluster, no matter how long it's persisted by
-// hash-match. sizeHistory/coherenceHistory can never exceed length 1. Independent of ARM1 — a
-// different, deeper bottleneck than the one Fable's design targeted.
-const PERSIST_REFLEX = process.env.PERSIST_REFLEX === '1';
+// PERSIST_REFLEX: RETIRED (#131). This rig once patched in a reflex-persistence map because
+// trackClusterPersistence() carried vmProgram/lineage forward across detection cycles but never
+// .reflex, so sizeHistory/coherenceHistory could never exceed length 1 and the whole reflex signal
+// was stillborn. That fix was adopted into engine.html as Swing #47 — `clusterReflexes`, declared at
+// module scope, restored in trackClusterPersistence() and stored AFTER updateClusterReflex() updates
+// it, which is exactly the timing this rig worked out. It is unconditional there, so the patch has
+// nothing left to add and its needle no longer matches. The env var is accepted and ignored so any
+// stored invocation keeps working; the flag below records that persistence is now always on.
+const PERSIST_REFLEX = true; // native since Swing #47; no longer a treatment this rig can toggle
 
 function selfProxy() {
   const f = function () { return p; };
@@ -88,6 +102,10 @@ globalThis.clearTimeout = () => {};
 globalThis.setInterval = () => 0;
 globalThis.clearInterval = () => {};
 
+// #131: turn on the engine's own reflex instrumentation. __reflexDebugOn is a top-level const in
+// engine.html, resolved when the script compiles, so this must be set BEFORE m._compile below.
+globalThis.__REFLEX_DEBUG = 1;
+
 let loopErrors = 0, lastErr = '';
 console.error = (...a) => {
   const s = a.join(' ');
@@ -95,75 +113,38 @@ console.error = (...a) => {
 };
 console.warn = () => {};
 
-const INDEX = process.env.INDEX || (__dirname + '/index.html');
+const INDEX = process.env.INDEX || (__dirname + '/engine.html');
 const html = fs.readFileSync(INDEX, 'utf8');
 let code = html.match(/<script>([\s\S]*)<\/script>/)[1];
 
-const GATE_BLOCK = 'if(crw>0.001&&cl.reflexThreat!==undefined){\n    vmRegs[4]+=cl.reflexThreat*crw;\n    vmRegs[5]+=cl.reflexTrend*crw;\n  }';
-const ECV_GUARD = 'function executeClusterVM(i,j,sim,d){\n  const cid=clusterID[i];\n  if(cid<0)return;\n  const cIdx=cid<MAX_CLUSTERS?clusterByID[cid]:-1;\n  if(cIdx<0)return;\n  const cl=clusters[cIdx];\n  if(!cl||!cl.vmProgram)return;';
-const UCR_START = 'function updateClusterReflex(){';
-const UCR_NEWREFLEX = 'if(!c.reflex){';
+// Only the gate's CONDITION is patched now — the body around it is the engine's own instrumented
+// block and is left exactly as it ships.
+const GATE_COND = 'if(crw>0.001&&cl.reflexThreat!==undefined){';
 const SIZE_GATE = 'if(r.sizeHistory.length>=3){';
 const COH_GATE = 'if(r.coherenceHistory.length>=3){';
 const CADENCE = 'if(tick%60===0){\n    let alive=0,totalAmp=0,totalRes=0,';
 
 function patchOnce(src, find, repl, label) {
   const n = src.split(find).length - 1;
-  if (n !== 1) throw new Error(`patch target for ${label} found ${n} times, expected 1 — index.html has drifted`);
+  if (n !== 1) throw new Error(`patch target for ${label} found ${n} times, expected 1 — engine.html has drifted`);
   return src.replace(find, repl);
 }
 
 // Diagnostics are always instrumented (both ABLATE arms) — additive, doesn't change which branch
 // runs. The gate's OWN condition is what ABLATE flips; when false, the counters inside just never
 // increment (correctly reading zero), same as any other dead branch.
-const gateCond = ABLATE ? 'false&&cl.reflexThreat!==undefined' : 'crw>0.001&&cl.reflexThreat!==undefined';
+// ABLATE flips the gate's own condition; everything inside the block is the engine's, untouched.
+const gateCond = ABLATE ? 'if(false&&cl.reflexThreat!==undefined){' : GATE_COND;
 try {
-  code = patchOnce(code, ECV_GUARD,
-    'function executeClusterVM(i,j,sim,d){\n  globalThis.__ecvEntries=(globalThis.__ecvEntries||0)+1;\n  const cid=clusterID[i];\n  if(cid<0){globalThis.__ecvNoCid=(globalThis.__ecvNoCid||0)+1;return;}\n  const cIdx=cid<MAX_CLUSTERS?clusterByID[cid]:-1;\n  if(cIdx<0){globalThis.__ecvNoCidx=(globalThis.__ecvNoCidx||0)+1;return;}\n  const cl=clusters[cIdx];\n  if(!cl||!cl.vmProgram){globalThis.__ecvNoProg=(globalThis.__ecvNoProg||0)+1;return;}\n  globalThis.__ecvPassed=(globalThis.__ecvPassed||0)+1;',
-    'executeClusterVM guard');
-  code = patchOnce(code, UCR_START,
-    'function updateClusterReflex(){\n  globalThis.__ucrCalls=(globalThis.__ucrCalls||0)+1;',
-    'updateClusterReflex entry');
-  code = patchOnce(code, UCR_NEWREFLEX,
-    'globalThis.__ucrNewReflex=(globalThis.__ucrNewReflex||0)+1;if(!c.reflex){',
-    'updateClusterReflex new-reflex count');
-  // Warmup counter: fires once per cluster-reflex object, the first tick its history actually
-  // clears the sample bar (2 under ARM1, 3 at baseline) — "did the manipulation check pass".
-  const sizeThresh = ARM1 ? 2 : 3;
-  code = patchOnce(code, SIZE_GATE,
-    `if(r.sizeHistory.length>=${sizeThresh}){\n      if(!r.__warmed){r.__warmed=true;globalThis.__ucrWarmup=(globalThis.__ucrWarmup||0)+1;}`,
-    'sizeHistory threshold + warmup counter');
-  code = patchOnce(code, COH_GATE, `if(r.coherenceHistory.length>=${sizeThresh}){`, 'coherenceHistory threshold');
+  if (ABLATE) code = patchOnce(code, GATE_COND, gateCond, 'cluster-reflex gate condition');
   if (ARM1) {
+    // Manipulation check: does trend/cohesionTrend leave zero if the sample bar is lowered and the
+    // cadence that feeds it quadrupled? The engine's native warmup line sits immediately after the
+    // size gate and is carried through verbatim, so its ucrWarmup keeps counting against the NEW bar.
+    code = patchOnce(code, SIZE_GATE, 'if(r.sizeHistory.length>=2){', 'sizeHistory threshold');
+    code = patchOnce(code, COH_GATE, 'if(r.coherenceHistory.length>=2){', 'coherenceHistory threshold');
     code = patchOnce(code, CADENCE, 'if(tick%15===0){\n    let alive=0,totalAmp=0,totalRes=0,', 'updateClusterReflex cadence');
   }
-  if (PERSIST_REFLEX) {
-    // FIRST ATTEMPT (kept here as a documented dead end, not silently dropped): stuffing
-    // reflex into newVMs.set() inside trackClusterPersistence() looked right but has a timing
-    // bug — that store runs BEFORE updateClusterReflex() executes later in the same tick%60
-    // block, so it always captures last cycle's PRE-update value (undefined, on a cluster's
-    // first qualifying cycle) and never catches up. Fixed properly with a dedicated map that
-    // updateClusterReflex() itself writes to, AFTER updating r — correct timing, same pattern
-    // clusterVMs already uses for vmProgram, just written from the right side of the cycle.
-    code = patchOnce(code,
-      'let clusterVMs=new Map(); // persist per-cluster VM programs across detection cycles (keyed by hash)',
-      'let clusterVMs=new Map(); // persist per-cluster VM programs across detection cycles (keyed by hash)\nlet __clusterReflexes=new Map(); // PERSIST_REFLEX diagnostic: persist .reflex across cycles, written post-update',
-      'clusterReflexes map declaration');
-    code = patchOnce(code,
-      '      const prevVM=clusterVMs.get(bestMatch.hash);\n      if(prevVM){\n        c.vmProgram=prevVM.prog.map(inst=>[...inst]); // deep copy',
-      '      const __prevReflex=__clusterReflexes.get(bestMatch.hash);\n      if(__prevReflex)c.reflex=__prevReflex; // PERSIST_REFLEX: carry reflex state forward like vmProgram/lineage\n      const prevVM=clusterVMs.get(bestMatch.hash);\n      if(prevVM){\n        c.vmProgram=prevVM.prog.map(inst=>[...inst]); // deep copy',
-      'reflex restore in trackClusterPersistence');
-    code = patchOnce(code,
-      '    c.reflexTrend=r.trend;\n    c.reflexThreat=r.threatLevel;\n    c.reflexRecognition=r.selfRecognition;\n    c.reflexCohesion=r.cohesionTrend;\n  }\n}',
-      '    c.reflexTrend=r.trend;\n    c.reflexThreat=r.threatLevel;\n    c.reflexRecognition=r.selfRecognition;\n    c.reflexCohesion=r.cohesionTrend;\n    __clusterReflexes.set(c.hash,r); // PERSIST_REFLEX: store AFTER this cycle\'s update, correct timing\n  }\n}',
-      'reflex store after updateClusterReflex updates it');
-  }
-  // Gate block: addend logging (as before) + residue-before-injection + register-4/5-readability
-  // check for the rare nonzero firings (closes the 0.16% stitch — does anything downstream even
-  // read what got written, for the cases where it's not trivially zero at the source).
-  code = patchOnce(code, GATE_BLOCK,
-    `if(${gateCond}){\n    globalThis.__gateFires=(globalThis.__gateFires||0)+1;\n    if(cl.reflexThreat===0)globalThis.__gateThreatZero=(globalThis.__gateThreatZero||0)+1;\n    if(cl.reflexTrend===0)globalThis.__gateTrendZero=(globalThis.__gateTrendZero||0)+1;\n    globalThis.__sumAbsThreatAddend=(globalThis.__sumAbsThreatAddend||0)+Math.abs(cl.reflexThreat*crw);\n    globalThis.__sumAbsTrendAddend=(globalThis.__sumAbsTrendAddend||0)+Math.abs(cl.reflexTrend*crw);\n    globalThis.__sumAbsResidue4=(globalThis.__sumAbsResidue4||0)+Math.abs(vmRegs[4]);\n    globalThis.__sumAbsResidue5=(globalThis.__sumAbsResidue5||0)+Math.abs(vmRegs[5]);\n    if(cl.reflexThreat!==0||cl.reflexTrend!==0){\n      globalThis.__nonzeroFirings=(globalThis.__nonzeroFirings||0)+1;\n      let __r45=false;\n      if(cl.vmProgram){for(let __pi=0;__pi<cl.vmProgram.length;__pi++){const __inst=cl.vmProgram[__pi];if(!__inst)continue;if(Math.abs(__inst[1])%12===4||Math.abs(__inst[1])%12===5){__r45=true;break;}}}\n      if(__r45)globalThis.__nonzeroFiringsReadable=(globalThis.__nonzeroFiringsReadable||0)+1;\n    }\n    vmRegs[4]+=cl.reflexThreat*crw;\n    vmRegs[5]+=cl.reflexTrend*crw;\n  }`,
-    'gate block with addend/residue/readability logging');
 } catch (e) {
   console.log(JSON.stringify({ error: e.message, series: [] }));
   process.exit(1);
@@ -171,6 +152,10 @@ try {
 
 const driver = `
 ;(function(){
+  // #131: reflexDebugCounters is a module-scope const inside engine.html, so the outer harness
+  // scope cannot see it — the old patches wrote to globalThis, which is why reading it there used
+  // to work. Publish the live object (same reference, so it keeps updating as the run proceeds).
+  globalThis.__reflexCounters = (typeof reflexDebugCounters!=='undefined') ? reflexDebugCounters : null;
   function __binOf(i){
     if(typeof tendBin==='function'){ try{return tendBin(i);}catch(e){} }
     const b=i*DIMS; let r=0;
@@ -229,25 +214,10 @@ console.log(JSON.stringify({
   ablated: ABLATE, seed: process.env.SEED || null,
   loopErrors, lastErr, driverErr: globalThis.__driverErr || 0,
   crwFinal: S.length ? S[S.length - 1].crw : null,
-  arm1: ARM1, persistReflex: PERSIST_REFLEX,
+  arm1: ARM1, persistReflex: 'native (Swing #47)',
   diagnostics: {
-    ecvEntries: globalThis.__ecvEntries || 0,
-    ecvNoCid: globalThis.__ecvNoCid || 0,
-    ecvNoCidx: globalThis.__ecvNoCidx || 0,
-    ecvNoProg: globalThis.__ecvNoProg || 0,
-    ecvPassed: globalThis.__ecvPassed || 0,
-    ucrCalls: globalThis.__ucrCalls || 0,
-    ucrNewReflex: globalThis.__ucrNewReflex || 0,
-    ucrWarmup: globalThis.__ucrWarmup || 0,
-    gateFires: globalThis.__gateFires || 0,
-    gateThreatZero: globalThis.__gateThreatZero || 0,
-    gateTrendZero: globalThis.__gateTrendZero || 0,
-    sumAbsThreatAddend: globalThis.__sumAbsThreatAddend || 0,
-    sumAbsTrendAddend: globalThis.__sumAbsTrendAddend || 0,
-    sumAbsResidue4: globalThis.__sumAbsResidue4 || 0,
-    sumAbsResidue5: globalThis.__sumAbsResidue5 || 0,
-    nonzeroFirings: globalThis.__nonzeroFirings || 0,
-    nonzeroFiringsReadable: globalThis.__nonzeroFiringsReadable || 0
+    // #131: straight from the engine's own reflexDebugCounters (REFLEX_DEBUG=1), not from patches.
+    ...(globalThis.__reflexCounters || {})
   },
   series: S
 }));

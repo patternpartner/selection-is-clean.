@@ -124,13 +124,13 @@ console.error = (...a) => {
 console.warn = () => {};
 
 // ── Load + instrument the script ──────────────────────────────────
-const html = fs.readFileSync(__dirname + '/index.html', 'utf8');
+const html = fs.readFileSync(process.env.INDEX || (__dirname + '/engine.html'), 'utf8');
 let code = html.match(/<script>([\s\S]*)<\/script>/)[1];
 
 // AMP_CAP — same verified-unique patch as harness-oee.js, so the gauge can characterise the
 // distribution under a RAISED clamp, not just the shipped one. Default off = byte-identical code.
 const AMP_CAP = process.env.AMP_CAP !== undefined ? parseFloat(process.env.AMP_CAP) : 1.2;
-// CARRY_RATE — same verified-unique patch, for calibrating #50's rent without editing index.html.
+// CARRY_RATE — same verified-unique patch, for calibrating #50's rent without editing engine.html.
 if (process.env.CARRY_RATE !== undefined) {
   const cr = parseFloat(process.env.CARRY_RATE);
   const N2 = 'const AMP_CARRY_RATE=0.005;';

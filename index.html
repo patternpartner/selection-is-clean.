@@ -140,7 +140,12 @@
   (function(){
     try {
       fetch('engine.html', { cache:'no-store' }).then(function(r){ return r.text(); }).then(function(html){
-        var m = html.match(/\(function metabolismObserver\(\)\{[\s\S]*\}\)\(\);/);
+        // Bounded by an explicit end marker in engine.html. This used to be a GREEDY [\s\S]* with no
+        // terminator, so the match ran to the LAST `})();` anywhere in the 1.6 MB file — correct only
+        // because the observer happened to be the final statement in the script. Appending one IIFE
+        // after it would have silently swallowed that code into this main-thread copy too, evaluated
+        // with TAB_ID/genome/tick all undefined. Non-greedy to the marker, so ordering stops mattering.
+        var m = html.match(/\(function metabolismObserver\(\)\{[\s\S]*?\}\)\(\);\/\/__METAB_END__/);
         if (!m) return;
         (new Function('TAB_ID','genome','tick', m[0]))(undefined, undefined, undefined);
       }).catch(function(){});

@@ -5,10 +5,10 @@
 //                 the genome-authoring tier (atoms/opcodes/objWeights) MORE trials.
 //   AUTHOR_MULT   multiplier on the atom-birth and bound-opcode authoring probabilities
 //                 (default 1), to favour authoring specifically over other mutations.
-// All default to behavior identical to stock index.html (verified inert-at-defaults).
+// All default to behavior identical to stock engine.html (verified inert-at-defaults).
 //
 // Original header follows:
-// Open-endedness metrics harness for index.html.
+// Open-endedness metrics harness for engine.html.
 //
 // Drives the sim headless (same DOM/timer stubs as harness.js) but, instead of
 // just sampling population, computes metrics that bear on the actual question:
@@ -118,7 +118,12 @@ let loopErrors = 0, lastErr = '';
 console.error = (...a) => { const s = a.join(' '); if (/Loop error|Boot error|Watchdog/.test(s)) { loopErrors++; lastErr = s.slice(0, 160); } };
 console.warn = () => {};
 
-const html = fs.readFileSync(process.env.INDEX || (__dirname + '/index.html'), 'utf8');
+// #131: the three dormant arms. Engine gates read globalThis.__NAME only, so without this line
+// they cannot be switched on from a harness at all (see harness-strip.js's note on controls).
+for (const kn of ['OPS_PARITY','OPNOV_FULL','REACH_SLOT8'])
+  if (process.env[kn] !== undefined) globalThis['__'+kn] = parseInt(process.env[kn], 10);
+
+const html = fs.readFileSync(process.env.INDEX || (__dirname + '/engine.html'), 'utf8');
 const code = html.match(/<script>([\s\S]*)<\/script>/)[1];
 // ── A/B knobs ─────────────────────────────────────────────────────
 if (process.env.CAP_K) globalThis.__CAP_K = (process.env.CAP_K === 'inf' ? 1e9 : parseInt(process.env.CAP_K, 10));
@@ -353,7 +358,7 @@ const verdict = {
 };
 
 console.log(JSON.stringify({
-  config: { TICKS, SAMPLE, SEED: process.env.SEED || null, INDEX: process.env.INDEX || 'index.html', CAP_K: (globalThis.__CAP_K!==undefined?globalThis.__CAP_K:'native'), NFD_MULT: globalThis.__NFD_MULT, MUT_INTERVAL: (globalThis.__MUT_INTERVAL||'native'), AUTHOR_MULT: globalThis.__AUTHOR_MULT, WIRE_INJECT: globalThis.__WIRE_INJECT, WIRE_SEED: globalThis.__WIRE_SEED },
+  config: { TICKS, SAMPLE, SEED: process.env.SEED || null, INDEX: process.env.INDEX || 'engine.html', CAP_K: (globalThis.__CAP_K!==undefined?globalThis.__CAP_K:'native'), NFD_MULT: globalThis.__NFD_MULT, MUT_INTERVAL: (globalThis.__MUT_INTERVAL||'native'), AUTHOR_MULT: globalThis.__AUTHOR_MULT, WIRE_INJECT: globalThis.__WIRE_INJECT, WIRE_SEED: globalThis.__WIRE_SEED },
   timing_ms: { boot: tBoot - t0, run: tDone - tBoot, perKtick: +(((tDone - tBoot) / TICKS) * 1000).toFixed(1) },
   loopErrors, lastErr, driverErr: globalThis.__driverErr || 0,
   verdict,

@@ -10,7 +10,7 @@
 // documentation; a clamp that binds on most evaluations is the substrate overwriting an evolved value,
 // and every mutation in that direction is invisible to selection by construction.
 //
-// This is harness-side ONLY. index.html is untouched, so the artwork carries no cost on a phone —
+// This is harness-side ONLY. engine.html is untouched, so the artwork carries no cost on a phone —
 // the same reason harness-gates.js rewrites gate conditions here rather than shipping counters.
 //
 // Method: rewrite every `__cl(` CALL SITE (not the definition) to `__clS(<siteId>,` and define __clS
@@ -72,7 +72,7 @@ console.warn=()=>{};
 // economy (git show d6febcb:index.html). That answers the question the rig cannot: are the meta/bank
 // taxes visible in the economy the LIVE ARTWORK actually runs, or only on the instrument?
 
-const html=fs.readFileSync(process.env.INDEX||(__dirname+'/index.html'),'utf8');
+const html=fs.readFileSync(process.env.INDEX||(__dirname+'/engine.html'),'utf8');
 let code=html.match(/<script>([\s\S]*)<\/script>/)[1];
 
 // ── SITE REWRITE ────────────────────────────────────────────────────────────────────────────────
@@ -269,7 +269,7 @@ code = 'const __opAll=new Float64Array(6),__opMissN=new Float64Array(6),__opMiss
 // distribution can be tested against the distribution of all other deaths. If escape were heritable it
 // would concentrate in lineages; if it is a numerical excursion it is spread in proportion to exposure,
 // and other-cause deaths are the exposure proxy that needs no new per-tick accounting.
-// Harness-side, like the clamp rewrite: index.html carries none of this.
+// Harness-side, like the clamp rewrite: engine.html carries none of this.
 function patchExactly(find,repl,label,expected){
   const n=code.split(find).length-1;
   if(n!==expected){ console.log(JSON.stringify({error:'patch '+label+' x'+n+' expected '+expected})); process.exit(1); }
@@ -575,7 +575,7 @@ const byFrac =[...rows].filter(r=>r.calls>=1000).sort((a,b)=>b.bindFrac-a.bindFr
 const nanSites=rows.filter(r=>r.nan>0).sort((a,b)=>b.nan-a.nan).slice(0,TOP);
 
 console.log(JSON.stringify({
-  seed:process.env.SEED||null, ticks:TICKS, sampleWin:SWIN, index:process.env.INDEX||'index.html', nocount:NOCOUNT,
+  seed:process.env.SEED||null, ticks:TICKS, sampleWin:SWIN, index:process.env.INDEX||'engine.html', nocount:NOCOUNT,
   // #84: arms must be self-identifying in their own output. A batch of 36 files distinguished only by
   // filename is one rename away from an arm swap that no later check could catch.
   atomSham:(process.env.ATOM_SHAM|0)===1, atomForce:(process.env.ATOM_FORCE!==undefined?Number(process.env.ATOM_FORCE):null),

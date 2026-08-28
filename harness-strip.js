@@ -10,14 +10,14 @@
 // subsystems, separately and together, and asks whether the stripped system beats the full one on the metric the
 // whole #11-#39 arc was built to move. STRIP=none|meta|bank|both.
 //
-// This is not a proposed change to index.html. It is a measurement of how much of the accretion is load.
+// This is not a proposed change to engine.html. It is a measurement of how much of the accretion is load.
 //
 // (original header retained below — this file began as the meta-only ablation)
 // META-INFLUENCE ABLATION — is the inflated meta layer HARMFUL, or harmless free weight?
 //
 // The atrophy probe proved the 116-gene meta-influence layer is inert BY ATTRIBUTION (protected=0)
 // and net-inflates 4-5x despite the pruner. But inert-by-attribution is not the same as harmful:
-// before adding any pruning cost to index.html (a real new selection pressure), we must know whether
+// before adding any pruning cost to engine.html (a real new selection pressure), we must know whether
 // the inflation actually costs fitness or is harmless dead weight the system correctly ignores.
 //
 // Whole-layer ablation, same method as harness-ablate-bank: force every ATROPHY_SAFE influence param
@@ -76,6 +76,11 @@ globalThis.setTimeout=()=>0;globalThis.clearTimeout=()=>{};globalThis.setInterva
 if (process.env.COSMOS !== undefined) globalThis.__COSMOS = parseInt(process.env.COSMOS, 10);
 for (const kn of ['COSMOS_COST','COSMOS_CONTACT','COSMOS_MERGE','COSMOS_SENSE','COSMOS_AFFORD'])
   if (process.env[kn] !== undefined) globalThis['__'+kn] = parseInt(process.env[kn], 10);
+// #131: the three dormant arms. Engine gates read globalThis.__NAME only, so without this line
+// they cannot be switched on from a harness at all (see harness-strip.js's note on controls).
+for (const kn of ['OPS_PARITY','OPNOV_FULL','REACH_SLOT8'])
+  if (process.env[kn] !== undefined) globalThis['__'+kn] = parseInt(process.env[kn], 10);
+
 let loopErrors=0,lastErr='';
 console.error=(...a)=>{const s=a.join(' ');if(/Loop error|Boot error|Watchdog/.test(s)){loopErrors++;lastErr=s.slice(0,160);}};
 console.warn=()=>{};
@@ -83,7 +88,7 @@ console.warn=()=>{};
 // INDEX= lets the same strip arms run against a DIFFERENT build — specifically the pre-#49 clamped
 // economy (git show d6febcb:index.html). That answers the question the rig cannot: are the meta/bank
 // taxes visible in the economy the LIVE ARTWORK actually runs, or only on the instrument?
-const html=fs.readFileSync(process.env.INDEX||(__dirname+'/index.html'),'utf8');
+const html=fs.readFileSync(process.env.INDEX||(__dirname+'/engine.html'),'utf8');
 let code=html.match(/<script>([\s\S]*)<\/script>/)[1];
 function patchOnce(find,repl,label){const n=code.split(find).length-1;if(n!==1){console.log(JSON.stringify({error:`patch ${label} x${n}`}));process.exit(1);}code=code.replace(find,repl);}
 

@@ -9,9 +9,9 @@ const CHANNELS=[]; const PE_POSTS=[]; // capture packets addressed "to Pe" for v
 function selfProxy(){const f=function(){return p;};const p=new Proxy(f,{get(_t,pr){if(pr===Symbol.toPrimitive)return()=>0;if(pr==='width'||pr==='height')return 0;if(pr==='data')return new Uint8ClampedArray(4);return p;},apply(){return p;}});return p;}
 function installEnv(){
   const CTX=selfProxy();
-  function makeEl(){return {getContext:()=>CTX,addEventListener(){},removeEventListener(){},style:{},width:1280,height:720,_t:'',get textContent(){return this._t;},set textContent(v){this._t=v;},get innerHTML(){return this._t;},set innerHTML(v){this._t=v;},set onclick(_){},set onchange(_){},click(){}};}
+  function makeEl(){return {getContext:()=>CTX,addEventListener(){},removeEventListener(){},appendChild(){},removeChild(){},remove(){},setAttribute(){},classList:{add(){},remove(){},toggle(){},contains(){return false;}},style:{},width:1280,height:720,_t:'',get textContent(){return this._t;},set textContent(v){this._t=v;},get innerHTML(){return this._t;},set innerHTML(v){this._t=v;},set onclick(_){},set onchange(_){},click(){}};}
   const ELS={};
-  globalThis.document={getElementById:(id)=>(ELS[id]||(ELS[id]=makeEl())),createElement:()=>makeEl(),addEventListener(){},removeEventListener(){},get hidden(){return false;}};
+  globalThis.document={getElementById:(id)=>(ELS[id]||(ELS[id]=makeEl())),createElement:()=>makeEl(),querySelector:()=>null,addEventListener(){},removeEventListener(){},head:makeEl(),body:makeEl(),get hidden(){return false;}};
   globalThis.window=globalThis; globalThis.addEventListener=()=>{}; globalThis.removeEventListener=()=>{};
   globalThis.devicePixelRatio=1; globalThis.innerWidth=1280; globalThis.innerHeight=720;
   globalThis.performance={now:()=>Date.now()};
@@ -38,7 +38,7 @@ function loadFile(path, exposeName, exposeExpr){
   return globalThis[exposeName];
 }
 
-const DIR='/tmp/claude-0/-home-user-selection-is-clean-/09cec8ec-f0e4-5f9a-b966-ecedf109e3ac/scratchpad/';
+const DIR=require('path').join(__dirname,'..')+'/';
 const L=loadFile(DIR+'lsystem-growth.html','__L',
   '{speakStructure,drainBridgeQueue,develop,gesturesToLsys,lsysToGestures,peNativeToGestures,get population(){return population;},set population(v){population=v;},get tick(){return tick;},set tick(v){tick=v;},get qlen(){return bridgeJobQueue.length;}}');
 const C=loadFile(DIR+'chemistry-reactor.html','__C',

@@ -3,14 +3,14 @@
 // without re-paying the slow Pe boot each time.
 const fs = require('fs');
 const Module = require('module');
-const CACHE = '/tmp/claude-0/-home-user-selection-is-clean-/09cec8ec-f0e4-5f9a-b966-ecedf109e3ac/scratchpad/pe-instructions-cache.json';
+const CACHE = require('path').join(__dirname,'pe-instructions-cache.json');
 
 function selfProxy(){ const f=function(){return p;}; const p=new Proxy(f,{get(_t,pr){if(pr===Symbol.toPrimitive)return()=>0;if(pr==='width'||pr==='height')return 0;if(pr==='data')return new Uint8ClampedArray(4);return p;},apply(){return p;}}); return p; }
 function installEnv(captured){
   const CTX=selfProxy();
-  function makeEl(){return {getContext:()=>CTX,addEventListener(){},removeEventListener(){},style:{},width:1280,height:720,_text:'',get textContent(){return this._text;},set textContent(v){this._text=v;},get innerHTML(){return this._text;},set innerHTML(v){this._text=v;},set onclick(_){},set onchange(_){},click(){}};}
+  function makeEl(){return {getContext:()=>CTX,addEventListener(){},removeEventListener(){},appendChild(){},removeChild(){},remove(){},setAttribute(){},classList:{add(){},remove(){},toggle(){},contains(){return false;}},style:{},width:1280,height:720,_text:'',get textContent(){return this._text;},set textContent(v){this._text=v;},get innerHTML(){return this._text;},set innerHTML(v){this._text=v;},set onclick(_){},set onchange(_){},click(){}};}
   const ELS={};
-  globalThis.document={getElementById:(id)=>(ELS[id]||(ELS[id]=makeEl())),createElement:()=>makeEl(),addEventListener(){},removeEventListener(){},get hidden(){return false;}};
+  globalThis.document={getElementById:(id)=>(ELS[id]||(ELS[id]=makeEl())),createElement:()=>makeEl(),querySelector:()=>null,addEventListener(){},removeEventListener(){},head:makeEl(),body:makeEl(),get hidden(){return false;}};
   globalThis.window=globalThis; globalThis.addEventListener=()=>{}; globalThis.removeEventListener=()=>{};
   globalThis.devicePixelRatio=1; globalThis.innerWidth=1280; globalThis.innerHeight=720;
   globalThis.performance={now:()=>Date.now()};
@@ -26,7 +26,7 @@ function installEnv(captured){
 
 const captured=[];
 installEnv(captured);
-const html=fs.readFileSync('/home/user/selection-is-clean./index.html','utf8');
+const html=fs.readFileSync(require('path').join(__dirname,'..','..','engine.html'),'utf8');
 const code=html.match(/<script>([\s\S]*)<\/script>/)[1].replace(/scheduleNext\(\);?\s*$/,'');
 const m=new Module('/tmp/pe-sim.js'); m.filename='/tmp/pe-sim.js'; m.paths=Module._nodeModulePaths('/tmp');
 m._compile(code+';globalThis.__loop=loop;globalThis.__setRates=function(){genome.netMigrantRate=1;genome.netPlasmidRate=1;genome.netMotifRate=1;genome.netInscribeRate=0;};',m.filename);

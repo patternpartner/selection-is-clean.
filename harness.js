@@ -78,6 +78,11 @@ console.error = (...a) => {
 console.warn = () => {};
 
 // ── Load + instrument the script ──────────────────────────────────
+// #131: the three dormant arms. Engine gates read globalThis.__NAME only, so without this line
+// they cannot be switched on from a harness at all (see harness-strip.js's note on controls).
+for (const kn of ['OPS_PARITY','OPNOV_FULL','REACH_SLOT8'])
+  if (process.env[kn] !== undefined) globalThis['__'+kn] = parseInt(process.env[kn], 10);
+
 const html = fs.readFileSync(__dirname + '/engine.html', 'utf8');
 const code = html.match(/<script>([\s\S]*)<\/script>/)[1];
 

@@ -1,4 +1,4 @@
-// Open-endedness metrics harness for index.html.
+// Open-endedness metrics harness for engine.html.
 //
 // Drives the sim headless (same DOM/timer stubs as harness.js) but, instead of
 // just sampling population, computes metrics that bear on the actual question:
@@ -121,6 +121,10 @@ console.warn = () => {};
 //                      a combinatorial count instead of a 1-D handful. nicheOcc = occupied cells.
 //   NICHE_LOCAL=1      (with NICHE_NDIM=1) swing #14: per-cell crowding cost — each niche gets a
 //                      LOCAL carrying capacity, so overflow spreads to other cells (real per-niche competition).
+// #131: the three dormant arms. Engine gates read globalThis.__NAME only, so without this line
+// they cannot be switched on from a harness at all (see harness-strip.js's note on controls).
+for (const kn of ['OPS_PARITY','OPNOV_FULL','REACH_SLOT8'])
+  if (process.env[kn] !== undefined) globalThis['__'+kn] = parseInt(process.env[kn], 10);
 if (process.env.NICHE_NDIM !== undefined) globalThis.__NICHE_NDIM = parseInt(process.env.NICHE_NDIM, 10);
 if (process.env.NICHE_LOCAL !== undefined) globalThis.__NICHE_LOCAL = parseInt(process.env.NICHE_LOCAL, 10);
 // swing #15 synthesis + retention knobs:
@@ -176,7 +180,7 @@ for (const k of ['SPATIAL_TEND','ALLO_SHUF','ALLO_K']) if (process.env[k] !== un
 // stays the strict success bar; cascadeCount = same-cell mints that LATER reach a distinct home cell.
 if (process.env.MINT_GATE !== undefined) globalThis.__MINT_GATE = String(process.env.MINT_GATE);
 
-const html = fs.readFileSync(process.env.INDEX || (__dirname + '/index.html'), 'utf8');
+const html = fs.readFileSync(process.env.INDEX || (__dirname + '/engine.html'), 'utf8');
 const code = html.match(/<script>([\s\S]*)<\/script>/)[1];
 
 // ── Metrics driver (runs in module scope → sees all sim globals) ──
@@ -671,7 +675,7 @@ const driver = `
 // vigor sensors saturate even though the physics does not. Named so it is not mistaken for a clean
 // "the cap is gone" condition.
 //
-// Default OFF — with AMP_CAP unset the code string is byte-identical to index.html, so every
+// Default OFF — with AMP_CAP unset the code string is byte-identical to engine.html, so every
 // pre-existing result in the record remains reproducible from this harness unchanged.
 let code2 = code;
 if (process.env.AMP_CAP !== undefined) {
@@ -899,7 +903,7 @@ const verdict = {
 };
 
 console.log(JSON.stringify({
-  config: { TICKS, SAMPLE, SEED: process.env.SEED || null, INDEX: process.env.INDEX || 'index.html' },
+  config: { TICKS, SAMPLE, SEED: process.env.SEED || null, INDEX: process.env.INDEX || 'engine.html' },
   timing_ms: { boot: tBoot - t0, run: tDone - tBoot, perKtick: +(((tDone - tBoot) / TICKS) * 1000).toFixed(1) },
   loopErrors, lastErr, driverErr: globalThis.__driverErr || 0,
   ablation: process.env.ABLATE ? { mode: process.env.ABLATE, idx: ablateIdx, expr: ablateExpr, pinnedNeutralised: ablatedCount } : null,
