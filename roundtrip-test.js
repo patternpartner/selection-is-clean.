@@ -29,12 +29,14 @@ m._compile(code+`
     {t:5,m:0,s:0.40,nx:-1,ax:-1,uses:2,creditTrace:0} // plain
   ];
   genome.effectSenseRate=0.42; genome.effectComposeRate=0.61;
+  genome.somaRepair=0.37; genome.lifespanBias=2.75;   // #139c: life-history, evolvable since #51/#56
 
   const before={
     atoms:genome.userAtoms.map(a=>a.expression),
     bound:genome.boundOpcodes.slice(),
     verbs:genome.userEffects.map(e=>[e.t,e.m,+e.s.toFixed(3),e.nx,e.ax]),
     senseRate:genome.effectSenseRate, composeRate:genome.effectComposeRate,
+    soma:genome.somaRepair, lifespan:genome.lifespanBias,
   };
   const blob=encodeGenome();
   out.encodes = typeof blob==='string' && blob.length>10;
@@ -42,6 +44,7 @@ m._compile(code+`
   // wipe, then decode the blob back over the top
   genome.userAtoms=[]; genome.boundOpcodes=[]; genome.userEffects=[];
   genome.effectSenseRate=0; genome.effectComposeRate=0;
+  genome.somaRepair=0; genome.lifespanBias=1;
   out.decodes = decodeGenome(blob)===true;
 
   const after={
@@ -50,6 +53,7 @@ m._compile(code+`
     verbs:(genome.userEffects||[]).map(e=>[e.t,e.m,+(+e.s).toFixed(3),
       (e.nx===undefined?-1:e.nx|0),(e.ax===undefined||e.ax===null?-1:e.ax|0)]),
     senseRate:genome.effectSenseRate, composeRate:genome.effectComposeRate,
+    soma:genome.somaRepair, lifespan:genome.lifespanBias,
   };
   const eq=(a,b)=>JSON.stringify(a)===JSON.stringify(b);
   out.atomsSurvive       = eq(before.atoms, after.atoms);
@@ -58,7 +62,10 @@ m._compile(code+`
   out.senseGatesSurvive  = eq(before.verbs.map(v=>v[4]),        after.verbs.map(v=>v[4]));
   out.structuralRatesSurvive = Math.abs(after.senseRate-before.senseRate)<1e-6
                             && Math.abs(after.composeRate-before.composeRate)<1e-6;
-  out.detail={before:before.verbs, after:after.verbs, boundBefore:before.bound, boundAfter:after.bound};
+  out.lifeHistorySurvives = Math.abs(after.soma-before.soma)<1e-3
+                         && Math.abs(after.lifespan-before.lifespan)<1e-3;
+  out.detail={before:before.verbs, after:after.verbs, boundBefore:before.bound, boundAfter:after.bound,
+              soma:[before.soma,after.soma], lifespan:[before.lifespan,after.lifespan]};
   return out;
 };`, m.filename);
 
@@ -71,11 +78,13 @@ const checks=[
   ['verbsSurvive','verbs survive with target, mode, scale and successor'],
   ['senseGatesSurvive','sense gates survive — the field this test was written for'],
   ['structuralRatesSurvive','the genes governing composition and sensing survive'],
+  ['lifeHistorySurvives','somaRepair and lifespanBias survive — evolved since #51/#56, saved since #139c'],
 ];
 let bad=0;
 for(const [k,d] of checks){ const ok=r[k]===true; if(!ok)bad++;
   console.log('  '+(ok?'PASS ':'FAIL ')+k.padEnd(26)+d); }
 console.log('\n  verbs  before '+JSON.stringify(r.detail.before)+'\n         after  '+JSON.stringify(r.detail.after));
 console.log('  bound  before '+JSON.stringify(r.detail.boundBefore)+'   after '+JSON.stringify(r.detail.boundAfter));
+console.log('  soma '+JSON.stringify(r.detail.soma)+'   lifespanBias '+JSON.stringify(r.detail.lifespan));
 console.log(bad? '\n'+bad+' FAILED' : '\na saved creature comes back whole');
 process.exit(bad?1:0);

@@ -7148,6 +7148,13 @@ function encodeGenome(){
     rg:genome.reachGain===undefined?undefined:+(genome.reachGain).toFixed(4), // #117: authored-atom actuator authority (omitted if never created)
     anm:genome.atomNoveltyMix===undefined?undefined:+(genome.atomNoveltyMix).toFixed(4), // #120: novelty-vs-fitness weight on atom credit (omitted if never created)
     ecr:+(finiteOr(genome.effectComposeRate,0.35)).toFixed(4), // #133 verb composition rate
+    // #139c: two life-history genes that mutateGenome has always evolved (13347 — "selection owns the
+    // lifespan set-point") and encodeGenome has never written. somaRepair is charged every tick and
+    // lifespanBias divides the senescence hazard, so a lineage that had bought itself a long careful
+    // life reverted to the hand-set defaults (0.0 and 1.0) on every save/load — and on a phone, where
+    // save/load IS the continuity, that meant they were never really heritable at all.
+    sr:+(finiteOr(genome.somaRepair,0)).toFixed(4),            // LEAP 23 (#56)
+    lb:+(finiteOr(genome.lifespanBias,1)).toFixed(4),          // LEAP 1 (#51)
     esr:+(finiteOr(genome.effectSenseRate,0.25)).toFixed(4),   // #139 verb sense-gate rate — mirrors ecr exactly. Omitting it meant a lineage that had evolved its own act-when-I-notice balance reverted to the hand-set default on every save/load.
     arr:genome.atomRecombRate===undefined?undefined:+(genome.atomRecombRate).toFixed(4), // #127: recombine-vs-refine split (omitted if never created)
     arp:genome.atomReproRate===undefined?undefined:+(genome.atomReproRate).toFixed(4), // #128: reproduce-vs-author split (omitted if never created)
@@ -7441,6 +7448,8 @@ function decodeGenome(data){
     if(typeof g.rg==='number')genome.reachGain=+g.rg;            // #117
     if(typeof g.anm==='number')genome.atomNoveltyMix=+g.anm;     // #120
     if(typeof g.ecr==='number')genome.effectComposeRate=+g.ecr;  // #133
+    if(typeof g.sr==='number')genome.somaRepair=+g.sr;           // #139c (absent in older saves -> the default)
+    if(typeof g.lb==='number')genome.lifespanBias=+g.lb;         // #139c
     if(typeof g.esr==='number')genome.effectSenseRate=+g.esr;    // #139 (absent in pre-#139 saves -> the default, which is correct)
     if(typeof g.arr==='number')genome.atomRecombRate=+g.arr;     // #127
     if(typeof g.arp==='number')genome.atomReproRate=+g.arp;      // #128
@@ -7661,6 +7670,8 @@ function sanitizeGenome(){
   if(genome.atomNoveltyMix!==undefined)genome.atomNoveltyMix=__cl(finiteOr(genome.atomNoveltyMix,0.25),0,1);   // #120
   genome.effectComposeRate=__cl(finiteOr(genome.effectComposeRate,0.35),0,0.9);                                // #133
   genome.effectSenseRate=__cl(finiteOr(genome.effectSenseRate,0.25),0,0.9);                                   // #139
+  genome.somaRepair=__cl(finiteOr(genome.somaRepair,0),0,SOMA_REPAIR_MAX);                                    // #139c: same bounds mutateGenome uses
+  genome.lifespanBias=__cl(finiteOr(genome.lifespanBias,1),0.15,6.0);                                         // #139c
   if(genome.atomRecombRate!==undefined)genome.atomRecombRate=__cl(finiteOr(genome.atomRecombRate,0.4),0,0.9);  // #127
   if(genome.atomReproRate!==undefined)genome.atomReproRate=__cl(finiteOr(genome.atomReproRate,0.5),0,0.9);     // #128
   if(genome.atomEligDecay!==undefined)genome.atomEligDecay=__cl(finiteOr(genome.atomEligDecay,0.6),0.3,0.9);   // #128
