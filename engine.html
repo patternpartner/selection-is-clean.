@@ -210,7 +210,7 @@ function handleNetworkMessage(raw){
     _po.count++;
   }
   if(!validNetworkPayload(msg.type,msg.data)){netStats.bad++;return}
-  if(msg.type==='migrant')queueNetworkPacket(incomingMigrants,msg.data,NET_QUEUE_LIMITS.migrant,'migrant');
+  if(msg.type==='migrant'){fired('network.migrantAccepted');queueNetworkPacket(incomingMigrants,msg.data,NET_QUEUE_LIMITS.migrant,'migrant');}
   else if(msg.type==='plasmid')queueNetworkPacket(incomingPlasmids,msg.data,NET_QUEUE_LIMITS.plasmid,'plasmid');
   else if(msg.type==='motif')queueNetworkPacket(incomingMotifs,msg.data,NET_QUEUE_LIMITS.motif,'motif');
   else if(msg.type==='inscription')queueNetworkPacket(incomingInscriptions,msg.data,NET_QUEUE_LIMITS.inscription,'inscription');
@@ -248,7 +248,52 @@ function countPeers(){
 }
 
 // ═══ BROADCAST — send pieces of our population to other tabs ═══
-function networkBroadcast(){
+// ═══ #134 — LIVENESS CENSUS: does this mechanism actually HAPPEN? ═══════════════════════════════
+// A hundred and thirty-odd swings have been added to this file and there has never been a way to ask
+// the cheapest possible question of any of them: has it EVER RUN. Not "did it help" — that needs
+// seeds and controls and is expensive. Just: did it occur, once, ever.
+// The question earns its place. In a single session three mechanisms written THAT DAY turned out to
+// be decorative — they parsed, passed their property tests, and never executed: verb composition
+// twice (the rate was too low to fire, then composed verbs never crossed into the population), and
+// the atom-credit crossing before it. Two more were already known: the meta-influence layer is inert
+// by attribution, and alien prediction is bit-identical when stripped in a single tab because there
+// are no peers to predict. The pattern is not rare. It is the default failure of an additive system.
+// So: every instrumented mechanism calls fired('name') on its real execution path. Anything that
+// never calls it has never happened, and says so. This is the system's immune response to
+// decoration, and it is deliberately the FIRST thing built in this batch so that everything after it
+// is checked by it automatically.
+const __liveness=Object.create(null);          // name -> times fired, this session
+const __livenessFirst=Object.create(null);     // name -> tick of first firing
+// Declared up front so a mechanism that NEVER fires is still reported. A name that only appears when
+// it runs cannot answer the question — absence has to be visible, which is the whole point.
+const LIVENESS_DECLARED=[
+  'network.broadcast','network.receive','network.migrantAccepted','meme.transfer',
+  'atom.author','atom.seedIntoParticle','atom.credit','expr.recombine',
+  'verb.author','verb.compose','verb.seedIntoParticle','verb.fire','verb.chainLink','verb.conserved',
+  'shadow.sim','shadow.decide','self.learn','cluster.reflex','cluster.detect','cluster.persist',
+  'alien.predict','niche.economy','dims.grow','cosmos.launch','cosmos.merge','cosmos.law',
+  'genome.mutate','prog.crossover','prog.inherit','oee.flush','attention.field','world.signal',
+];
+// NOT INSTRUMENTED, and deliberately absent rather than declared-and-silent: cladogenesis minting
+// (#17) has no single entry point I could identify with confidence. A census that reports "never"
+// for a mechanism nobody wired is worse than no census — it manufactures a finding out of my own
+// omission. If you add a name here, wire it in the same commit.
+for(const _n of LIVENESS_DECLARED){ __liveness[_n]=0; }
+function fired(name){ if(__liveness[name]===undefined)__liveness[name]=0;
+  if(__liveness[name]===0)__livenessFirst[name]=(typeof tick!=='undefined'?tick:0);
+  __liveness[name]++; }
+// The census itself: what has never happened, and what happened so rarely it may as well not have.
+function livenessCensus(minTicks){
+  const never=[],rare=[],live=[];
+  for(const n of Object.keys(__liveness).sort()){
+    const c=__liveness[n];
+    if(c===0)never.push(n); else if(c<5)rare.push(n+':'+c); else live.push(n+':'+c);
+  }
+  return {tick:(typeof tick!=='undefined'?tick:0), never, rare, live,
+    neverCount:never.length, declared:LIVENESS_DECLARED.length,
+    note:'never = this mechanism has not executed once. That is a fact about the run, not about the code.'};
+}
+function networkBroadcast(){ fired('network.broadcast');
   if(!bc||N===0)return;
   // Migrant: send a random alive particle as a full packet
   if(Math.random()<genome.netMigrantRate){
@@ -333,7 +378,7 @@ function xenoImpact(sx,sy){
 }
 
 // ═══ RECEIVE — integrate incoming packets into our population ═══
-function networkReceive(){
+function networkReceive(){ fired('network.receive');
   const rec=genome.netReceptivity||0;
   if(rec<=0){
     // still drain the queues so they don't fill up
@@ -606,7 +651,7 @@ function uaGenTerm(depth){
   }
   return val;
 }
-function uaGenExpression(){
+function uaGenExpression(){ fired('atom.author');
   // Depth budget from the genome (UNLOCKED #7b). uaMaxDepth=1 (default) → uaGenTerm(0) twice →
   // exactly the original single-binary-op grammar. Clamped to UA_DEPTH_CAP so a runaway gene
   // can't author a megabyte expression — substrate floor, not a ceiling on what it can mean.
@@ -929,7 +974,7 @@ const MEME_RATE=0.004;      // per-qualifying-interaction transfer probability; 
 // here. ONE particle out of a few hundred is a foothold, not a takeover: if the verb pays, its lineage
 // spreads it; if not, it dies with that particle. The 11067 note's warning about forcing new code into
 // living programs (it collapses diversity) is why this is one particle and not all of them.
-function seedEffectIntoParticle(effIdx){
+function seedEffectIntoParticle(effIdx){ fired('verb.seedIntoParticle');
   const _e=genome.userEffects&&genome.userEffects[effIdx]; if(!_e)return;
   let _n=0; for(let k=0;k<N;k++)if(palive[k]&&pGenome[k])_n++;
   if(!_n)return;
@@ -971,7 +1016,7 @@ function seedEffectIntoParticle(effIdx){
   }
   __effectSeeded++;
 }
-function seedAtomIntoParticle(atomIdx){
+function seedAtomIntoParticle(atomIdx){ fired('atom.seedIntoParticle');
   if(!__ATOM_HERITABLE)return;
   const _a=genome.userAtoms&&genome.userAtoms[atomIdx]; if(!_a)return;
   let _n=0; for(let k=0;k<N;k++)if(palive[k]&&pGenome[k])_n++;
@@ -993,7 +1038,7 @@ function seedAtomIntoParticle(atomIdx){
   if(_prog&&_prog.length<_cap)_prog.splice((Math.random()*(_prog.length+1))|0,0,[_op,(Math.random()*12)|0,(Math.random()*12)|0,(Math.random()-0.5)*0.6]);
   __atomSeeded++;
 }
-function attemptMemeTransfer(recv,donor){
+function attemptMemeTransfer(recv,donor){ fired('meme.transfer');
   if(!recv||!donor||!Array.isArray(donor.userAtoms)||!Array.isArray(donor.boundOpcodes)||!donor.boundOpcodes.length)return;
   // pick the donor's most-PROVEN bound atom (highest uses) — transmit what has actually been selected for,
   // not a fresh untested one; "proven" is the same currency the durability fix (#39-adjacent) judges atoms by.
@@ -6311,7 +6356,7 @@ function flushEpoch(acc){
   if((typeof globalThis==='undefined')||((globalThis.__OEE_METER??1)|0)!==0){
     if(!Array.isArray(oeeLog))oeeLog=[];
     const epIdx=acc.idx+1, tickNow=epIdx*EPOCH_TICKS;
-    oeeVer=OEE_VER;
+    oeeVer=OEE_VER; fired('oee.flush');
     // Lifetime execution total per CANONICAL computation, summed over every germline slot carrying it.
     // Summing across slots matters: #121/#123 give a proven atom a family, so one computation can sit
     // in several slots at once and a per-slot view would double-count it as several innovations.
@@ -6506,7 +6551,7 @@ function cloneProg(p){
   for(let i=0;i<p.length;i++){const ins=p[i]||[0,0,0,0];out[i]=[ins[0]|0,ins[1]|0,ins[2]|0,+ins[3]||0];}
   return out;
 }
-function inheritProg(parentProg,inheritedCap){ // child = copy of parent's program + birth mutation (rate from the self's genes)
+function inheritProg(parentProg,inheritedCap){ fired('prog.inherit'); // child = copy of parent's program + birth mutation (rate from the self's genes)
   const p=cloneProg((Array.isArray(parentProg)&&parentProg.length)?parentProg:genome.vmProgram);
   const rate=genome.mutationRate||0.06,scale=genome.mutationScale||1,cap=inheritedCap||(genome.vmMaxInstructions||16);
   for(let i=0;i<p.length;i++){
@@ -6523,7 +6568,7 @@ function inheritProg(parentProg,inheritedCap){ // child = copy of parent's progr
   if(!p.length)p.push([0,0,0,0]);
   return p;
 }
-function selfLearnFromBest(){ // the population's best discovery flows back into the reflective baseline
+function selfLearnFromBest(){ fired('self.learn'); // the population's best discovery flows back into the reflective baseline
   let best=-1,bestAmp=-1e9;
   for(let i=0;i<N;i++){if(palive[i]&&pProg[i]&&amp[i]>bestAmp){bestAmp=amp[i];best=i;}}
   if(best>=0&&pProg[best]&&pProg[best].length){
@@ -6546,7 +6591,7 @@ function selfLearnFromBest(){ // the population's best discovery flows back into
 // adopts its PHYSICS, so the self tracks the whole realized winner instead of a caricatured 7-knob imagination.
 // The population is the faithful self-test; this decides from it. See the __DECIDE_REAL note for rationale.
 const DECIDE_PHYS_AXES=[["entropyBaseline",0.0001,0.003],["entropyK",0.00005,0.002],["entrainRate",0.003,0.05],["creationCost",0.1,0.6],["entrainThresh",0.08,0.55]];
-function decideFromRealWinner(){
+function decideFromRealWinner(){ fired('shadow.decide');
   if(!__DECIDE_REAL)return;
   let best=-1,bestAmp=-1e9;
   for(let i=0;i<N;i++){ if(palive[i]&&pGenome[i]&&amp[i]>bestAmp){bestAmp=amp[i];best=i;} }
@@ -6607,7 +6652,7 @@ function cloneGenome(src){
   // they are the self's bookkeeping, read-only in the per-particle hot path, never cloned per birth.
   return g;
 }
-function crossoverProg(progA,progB,cap){ // single-point crossover: prefix from A, suffix from B; cap = parent A's evolved vmMaxInstructions
+function crossoverProg(progA,progB,cap){ fired('prog.crossover'); // single-point crossover: prefix from A, suffix from B; cap = parent A's evolved vmMaxInstructions
   if(!progA||!progB||progA.length<2||progB.length<2)return progA;
   const cut=1+Math.floor(Math.random()*(progA.length-1));
   const bStart=Math.floor(Math.random()*Math.max(1,progB.length));
@@ -6914,6 +6959,7 @@ function encodeGenome(){
     oL:(oeeLog||[]).slice(-MAX_EPOCHS),         // #130 open-endedness meter: per-epoch activity log
     oN:oeeNovel|0,                               // #130 cumulative distinct innovations ever executed
     oP:oeePersist|0,                             // #130 cumulative innovations that survived the lag
+    lv:(function(){try{const c=livenessCensus();return {n:c.never,r:c.rare.length,l:c.live.length,t:c.tick};}catch(e){return null;}})(), // #134 liveness census: which mechanisms have never run
     oV:oeeVer|0,                                 // #131 which semantics wrote these rows (absent/0/1 = v1, not comparable)
     oS:oeeSat|0,                                 // #131 1 once the ever-seen set hit OEE_SEEN_CAP and stopped counting
     AU:[genome.cadenceSelf,genome.cadenceExtinct,genome.cadenceShadow,genome.cadenceLineage,genome.densityFloor], // unlocked autonomy genes
@@ -8677,7 +8723,7 @@ function buildClusterLookup(){
   }
 }
 
-function detectClusters(){
+function detectClusters(){ fired('cluster.detect');
   // Flood-fill on spatial grid using resonance bonds
   clusterID.fill(-1);
   let cid=0;
@@ -8779,7 +8825,7 @@ function clusterHash(t,coh,size){
   return h;
 }
 
-function trackClusterPersistence(){
+function trackClusterPersistence(){ fired('cluster.persist');
   // Match current clusters to previous by spatial proximity + tendency similarity
   const newAge=new Map();
   const newVMs=new Map();
@@ -9384,6 +9430,7 @@ function attemptCosmosLaunch(){
     child.log={e:phys.e,k:phys.k,r:phys.r,c:phys.c,t:phys.t,endow:+endow.toFixed(3),members:n,gain:+gain.toPrecision(4),
                oldGate:oldGate?1:0,afford:+affordable.toFixed(3),csize:c.size,ccoh:+c.coherence.toFixed(3),cage:c.persistAge|0,
                inh:{e,k,r,c:cc,t:tt},exported:0,imported:0,age:0,peakCoh:0,peakMass:2,alive:1};
+    fired('cosmos.launch');
     if(cosmosLaunchLog.length<COSMOS_LOG_MAX)cosmosLaunchLog.push(child.log);
     cosmosChildren.push(child);
     cosmosStats.launches++;
@@ -9548,7 +9595,7 @@ function cosmosFlux(ch){
 // own in the scenario bank's units and pushed into that bank, which is the structure this file already
 // uses to hold foreign physics proposals accountable (Pe27 wins, Pe29 creditTrace, #43 confidence).
 // If the proposal is bad the parent's existing machinery evicts it. Nothing here touches genome physics.
-function cosmosMerge(ch,net){
+function cosmosMerge(ch,net){ fired('cosmos.merge');
   ch.merged=true;
   if(!cosmosMergeOn())return; // __COSMOS_MERGE=0 isolates the scenario-bank proposal
   try{
@@ -10248,7 +10295,7 @@ function evolveShadowBank(){
       genome.entrainRate   =__cl(genome.entrainRate   +champ.r*SCEN_APPLY.r*A,0.003,0.05);
       genome.creationCost  =__cl(genome.creationCost  +champ.c*SCEN_APPLY.c*A,0.1,0.6);
       genome.entrainThresh =__cl(genome.entrainThresh +champ.t*SCEN_APPLY.t*A,0.08,0.55);
-      recordEvent('law_rewrite',{src:'cosmos',wins:champ.wins|0,credit:+(champ.creditTrace||0).toFixed(3)},1200);
+      fired('cosmos.law'); recordEvent('law_rewrite',{src:'cosmos',wins:champ.wins|0,credit:+(champ.creditTrace||0).toFixed(3)},1200);
     }
   }
 
@@ -11336,7 +11383,7 @@ function evaluateSensors(useRealWeight){
 // of accumulated correlation. The nudge per tick is small enough that lineage
 // selection still adjudicates long-haul predictive vs. spuriously-correlated.
 // creditLearnRate=0 reduces this to a no-op (Pe24 behavior recovered exactly).
-function applyCreditAssignment(){
+function applyCreditAssignment(){ fired('atom.credit');
   const lr=__cl(genome.creditLearnRate||0,0,3);
   const df=currentFitness-(genome.prevSmoothedFitness||0);
   genome.prevSmoothedFitness=currentFitness;
@@ -11521,7 +11568,7 @@ function applyCreditAssignment(){
   }
 }
 
-function runShadowSim(){
+function runShadowSim(){ fired('shadow.sim');
   if(clusters.length<2)return;
 
   // ═══ A. TRUE CLUSTER GRAPH FORK ═══
@@ -12387,7 +12434,7 @@ function wireAtomCallSites(){
   }catch(e){}
 }
 
-function mutateGenome(){
+function mutateGenome(){ fired('genome.mutate');
   // Pe22b: substrate physics — defensive defaults for old genomes
   // (the actual mutation happens further down, after `rate` and `maybe` exist)
   if(genome.fieldDecay===undefined)genome.fieldDecay=0.982;
@@ -13448,7 +13495,7 @@ function mutateGenome(){
       if(__ATOM_RECOMB&&_reproParent2&&Math.random()<_recombRate){
         const _op=USER_OPS[(Math.random()*USER_OPS.length)|0];
         const _cand="("+_reproParent.expression+")"+_op+"("+_reproParent2.expression+")";
-        if(_cand.length<=160){ expression=_cand; _seedCr=Math.max(_reproCr,_reproCr2)*0.5; _recombined=true; }
+        if(_cand.length<=160){ expression=_cand; _seedCr=Math.max(_reproCr,_reproCr2)*0.5; _recombined=true; fired('expr.recombine'); }
       }
       if(!_recombined){
         const _v=(typeof uaLocalStep==='function')?uaLocalStep(_reproParent.expression):_reproParent.expression;
@@ -13481,6 +13528,7 @@ function mutateGenome(){
     // authoring just has to happen often enough to be judged.
     if(fx.length<MAX_USER_EFFECTS && Math.random()<Math.max(EFFECT_BIRTH_FLOOR,rate*0.5)){
       fx.push({t:(Math.random()*EFFECT_TARGET_COUNT)|0, m:Math.random()<0.5?1:0, s:0.2+Math.random()*0.6, nx:-1, uses:0, creditTrace:0}); // #133: nx=-1, born uncomposed
+      fired('verb.author');
       // REACHABILITY — splice a drive line for the new slot into the germline program, exactly as
       // sanitizeGenome does for a new bound opcode and wireAtomCallSites does for a new atom ("reachable
       // immediately, not at the next 120-tick boundary"). Without this the verb is stillborn: it would
@@ -13519,7 +13567,7 @@ function mutateGenome(){
         // loop runs on `genome`, seeding only ever carried the newly-BORN verb (nx=-1 by construction),
         // and mutateChildGenome walks numeric fields only — so no composed verb could ever reach a
         // particle, and selection could not see composition at all however well it worked.
-        if((e.nx|0)>=0) seedEffectIntoParticle(fx.indexOf(e));
+        if((e.nx|0)>=0){ fired('verb.compose'); seedEffectIntoParticle(fx.indexOf(e)); }
       }
     }
     // CULL — the least-used verb goes when the bank is full and a new one wants in. Same principle as
@@ -14157,7 +14205,7 @@ function updateParticleReflex(){
   }
 }
 
-function updateClusterReflex(){
+function updateClusterReflex(){ fired('cluster.reflex');
   if(__reflexDebugOn)reflexDebugCounters.ucrCalls++;
   const minAge=genome.clusterReflexAge||5;
 
@@ -14708,7 +14756,7 @@ function alienGrip(a){
 //   (2) FORMING now sometimes tests a random bound atom instead of always the highest-`uses` incumbent
 //       — otherwise only whatever the (already proven-inert) internal route favours would ever get a
 //       shot at the alien channel, and the new currency could never discover anything the old one hadn't.
-function runAlienPrediction(){
+function runAlienPrediction(){ fired('alien.predict');
   if(!genome.alienPredict)genome.alienPredict={attempts:0,hits:0};
   const bos=genome.boundOpcodes,uas=genome.userAtoms;
   if(!bos||!bos.length||!uas||!uas.length)return; // nothing to predict WITH yet — no atoms bound
@@ -14927,13 +14975,14 @@ function applyUserEffects(i,j,influence){
       const moved=applyUserEffect(eff,i,j,amt,idx);
       eff.uses=(eff.uses|0)+1;
       __effectUses[effectKey(eff)]++;   // #132b: the population-level record the germline cull reads
+      fired('verb.fire'); if(moved!==0&&(eff.m|0)===1)fired('verb.conserved');
       const nx=eff.nx|0;
       if(nx<0||nx>=n||nx===idx)break;               // no successor
       if(!isFinite(moved)||moved===0)break;         // nothing moved => nothing follows. THIS is the branch.
       const nxt=fx[nx]; if(!nxt)break;
       amt=moved*(isFinite(nxt.s)?nxt.s:0.5);        // realised amount becomes the next drive, attenuated
       amp[i]-=tollPerLink;                          // a longer sentence costs more to say
-      idx=nx; depth++; __effectChained++;
+      idx=nx; depth++; __effectChained++; fired('verb.chainLink');
     }
   }
 }
@@ -21256,7 +21305,7 @@ function nicheDriftSupply(){ const total=NICHE_REAL_SUPPLY*NICHE_BINS; let sum=0
     nicheSupplyNow[b]=v; sum+=v; }
   if(sum>0){ const s=total/sum; for(let b=0;b<NICHE_BINS;b++) nicheSupplyNow[b]*=s; } }
 
-function applyNicheEconomy(){
+function applyNicheEconomy(){ fired('niche.economy');
   // Opt-in: every lever defaults OFF so stock index.html is byte-for-byte unchanged. Set the
   // matching global to 1 to enable (the headless harness exposes these as env knobs). Graded but
   // not yet a clean break of the ceiling — see OEE-NOTES.md — so it ships dormant, not adopted.
@@ -21449,7 +21498,7 @@ function nicheOccupancy(thresh){
 // instead of waiting on slow mutation against the homogenisers. `tend` is the ONLY array strided by
 // the live DIMS, so this is genuinely surgical.
 const DIMS_GROW_SPREAD=0.5;          // default half-range of values seeded onto a newly opened axis (override: __DIMS_SPREAD)
-function setDims(newD){
+function setDims(newD){ fired('dims.grow');
   newD=Math.max(2,Math.min(DIMS_MAX,newD|0)); const oldD=DIMS; if(newD===oldD) return;
   const sp=(typeof globalThis!=='undefined'&&globalThis.__DIMS_SPREAD!==undefined)?+globalThis.__DIMS_SPREAD:DIMS_GROW_SPREAD;
   const hi=N>0?N:0; const snap=tend.slice(0,hi*oldD); // snapshot old layout (alive slots are packed 0..N-1)
