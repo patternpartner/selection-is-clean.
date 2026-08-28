@@ -12,6 +12,8 @@ g.localStorage={getItem:()=>null,setItem(){},removeItem(){}};
 g.navigator={userAgent:'node',hardwareConcurrency:4,wakeLock:null};
 g.BroadcastChannel=class{constructor(){}postMessage(){}addEventListener(){}close(){}set onmessage(_){}};
 g.fetch=()=>new Promise(()=>{});g.devicePixelRatio=1;g.innerWidth=1280;g.innerHeight=720;
+g.__DETERMINISTIC=1;   // #136: silence real-world signal (wall clock, device motion) — a seeded
+                       // replay must not depend on what time of day it was run.
 g.__detMs=0;g.performance={now:()=>g.__detMs};
 let a=(parseInt(process.env.SEED||'1',10)|0)>>>0;
 Math.random=function(){a|=0;a=a+0x6D2B79F5|0;let t=Math.imul(a^a>>>15,1|a);t=t+Math.imul(t^t>>>7,61|t)^t;return((t^t>>>14)>>>0)/4294967296;};

@@ -20951,6 +20951,84 @@ const pDietBin=new Int16Array(CAP);               // per-organism diet channel t
 // pays no penalty beyond the ground it stands on being ordinary.
 // ATTENTION_GAIN is deliberately small: the aim is a gradient a lineage can evolve INTO over
 // thousands of ticks, not a spotlight that reshapes the world in a second.
+// ═══ #136 — AN ENVIRONMENT NOBODY AUTHORED ═══════════════════════════════════════════════════════
+// Every swing for a hundred and thirty-five iterations added more DESIGNED world: fields, niches,
+// resource economies, predation graphs, seasons on a sine wave. All of it written by someone, all of
+// it therefore bounded by what someone thought of. The seasonal cycle is the clearest case — a
+// perfect sinusoid on a 2,500-tick period, which is exactly the kind of environment an organism can
+// solve completely and then stop having anything to adapt to.
+//
+// This lets the real world in. Not as decoration: as TERRAIN, with structure neither of us designed
+// and neither of us fully understands.
+//   • DIURNAL — the actual hour where the person is. A phone opened at 7am and again at 11pm gives
+//     the creature a genuine 24-hour cycle it did not evolve inside a sine wave.
+//   • CADENCE  — the real wall-clock interval between ticks, which on a phone carries the device's
+//     thermal throttling, the browser's backgrounding, other apps competing. Weather with causes
+//     outside this file entirely.
+//   • MOTION   — device acceleration where permitted. A world that is different when carried.
+// All three are folded into the same `_season` term the sunlight influx already uses, so this does
+// not add a new economy — it makes the EXISTING one honest, replacing part of a designed sine with
+// signal that has real structure. WORLD_SIGNAL_WEIGHT bounds their combined authority so the world
+// cannot be starved by an unusual reading, and every source degrades to its neutral value when
+// unavailable. A headless run, or a browser that refuses the sensor, is exactly the old sine wave.
+const WORLD_SIGNAL_WEIGHT=0.30;   // max fraction of the seasonal swing that real signal may claim
+let __wsDiurnal=0;                // -1..1, actual local time of day
+let __wsCadence=0;                // -1..1, how fast real time is passing per tick vs its own baseline
+let __wsMotion=0;                 //  0..1, device movement where permitted
+let __wsMotionOn=false, __wsLastT=0, __wsCadEMA=0, __wsAny=false;
+try{
+  if(typeof window!=='undefined'&&typeof window.addEventListener==='function'){
+    window.addEventListener('devicemotion',function(e){
+      try{ const a=e&&(e.accelerationIncludingGravity||e.acceleration); if(!a)return;
+        const mag=Math.abs(a.x||0)+Math.abs(a.y||0)+Math.abs(a.z||0);
+        // strip gravity's ~9.8 baseline and normalise; EMA so a single jolt is not the whole climate
+        const excess=Math.max(0,Math.min(1,(Math.abs(mag-9.8))/12));
+        __wsMotion += (excess-__wsMotion)*0.05; __wsMotionOn=true;
+      }catch(_){}
+    },{passive:true});
+  }
+}catch(_){}
+// DETERMINISM GUARD. This is the one mechanism in the file whose input is the actual wall clock, and
+// that is fatal to a seeded replay: `new Date()` works perfectly well in Node, so without this an A/B
+// run would silently depend on WHAT TIME OF DAY IT WAS RUN, and every off-arm-identical claim this
+// project makes would quietly stop being true. Caught before shipping, not after.
+// THREE detections, and the third is the one that actually holds. The first two are opt-in markers:
+// an explicit __DETERMINISTIC (harness-env.js sets it) and the deterministic-clock counter __detMs
+// that the seeded harnesses install. Both are exactly as good as everyone's memory — an audit of the
+// rigs found FIVE that boot the sim under a SEED and set neither (harness.js, harness-coupling.js,
+// harness-coupling-asym.js, harness-alien-ablate.js, harness-ablate-reflex.js), so on those the
+// results would silently have started depending on what time of day they ran.
+// The third detection is structural instead of remembered: every harness in this repo is Node, and
+// the only place this simulation is really lived in is a browser. That is the distinction we want,
+// and it cannot be forgotten when someone adds rig number twenty-four.
+// __FORCE_WORLD_SIGNAL exists solely so worldsignal-test.js can lift the guard and prove the term is
+// live rather than permanently neutral — without it the guard would be untestable, which is its own
+// kind of decoration.
+function worldSignalSuppressed(){
+  if(typeof globalThis==='undefined')return true;
+  if(globalThis.__FORCE_WORLD_SIGNAL)return false;
+  if(!!globalThis.__DETERMINISTIC || globalThis.__detMs!==undefined)return true;
+  return (typeof process!=='undefined' && !!(process.versions && process.versions.node));
+}
+function updateWorldSignal(){
+  if(worldSignalSuppressed()){ __wsDiurnal=0; __wsCadence=0; __wsMotion=0; __wsMotionOn=false; return; }
+  // DIURNAL — real local hour, as a smooth cycle. Available everywhere Date is.
+  try{ const d=new Date(); const h=d.getHours()+d.getMinutes()/60;
+       __wsDiurnal=Math.sin(2*Math.PI*(h-6)/24); __wsAny=true; }catch(_){ __wsDiurnal=0; }
+  // CADENCE — real elapsed ms per tick against its own slow baseline. Fast device / foreground -> >0.
+  try{ const now=(typeof performance!=='undefined'&&performance.now)?performance.now():Date.now();
+       if(__wsLastT>0){ const dt=Math.max(0.1,Math.min(500,now-__wsLastT));
+         __wsCadEMA = __wsCadEMA>0 ? __wsCadEMA+(dt-__wsCadEMA)*0.01 : dt;
+         __wsCadence=Math.max(-1,Math.min(1,(__wsCadEMA-dt)/Math.max(1,__wsCadEMA))); }
+       __wsLastT=now; }catch(_){ __wsCadence=0; }
+  if(__wsAny||__wsMotionOn)fired('world.signal');
+}
+// Combined into the seasonal term. Neutral (0) when nothing real is available, which is why a
+// headless harness reproduces the old sine wave exactly.
+function worldSignalSeasonBias(){
+  const v=(__wsDiurnal*0.5)+(__wsCadence*0.3)+((__wsMotionOn?__wsMotion:0)*0.2);
+  return isFinite(v)?Math.max(-1,Math.min(1,v)):0;
+}
 const attnField=new Float32Array(FIELD_W*FIELD_H);
 const ATTN_DEPOSIT=0.06;    // per tick under the pointer
 const ATTN_DECAY=0.985;     // attention fades; a place you looked at once is not looked at forever
@@ -21619,7 +21697,14 @@ function loop(){
   const frameStart=lastLoopTime;
   tick++;
   genome.totalTicks++;
-  const _season=1+SEASON_AMPLITUDE*Math.sin(2*Math.PI*tick/SEASON_PERIOD); // feast/famine cycle
+  updateWorldSignal();   // #136: read the real world before deciding what the sunlight is
+  // #136: the seasonal swing is now part designed sine, part real signal. WORLD_SIGNAL_WEIGHT bounds
+  // how much authority the unauthored part may claim; with no real signal available every term is 0
+  // and this reduces to exactly the old sinusoid, which is what a headless run reproduces.
+  const _wsB=worldSignalSeasonBias();
+  const _season=1+SEASON_AMPLITUDE*(
+      (1-WORLD_SIGNAL_WEIGHT)*Math.sin(2*Math.PI*tick/SEASON_PERIOD)
+    +  WORLD_SIGNAL_WEIGHT*_wsB); // feast/famine cycle, no longer solvable by learning one period
   worldEnergy=Math.min(WORLD_ENERGY_MAX,worldEnergy+WORLD_ENERGY_REGEN*_season); // conserved-budget influx ("sunlight"), now seasonal
   // #135: upkeep is now charged PER PARTICLE and discounted by the attention on the ground it
   // stands on. With no pointer anywhere, attentionAt() is 0 everywhere and this sums to exactly
