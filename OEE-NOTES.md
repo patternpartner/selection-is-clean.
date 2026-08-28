@@ -10931,11 +10931,38 @@ average net of 0.94 against a threshold of 1.2) were a snapshot of a young run, 
 failure. The accounting was never in doubt — `everExported` was 19/19 and `fluxErr` ≈ 1e-5 against
 `fluxOut` 16.4, so conservation holds to five decimal places — but the conclusion I drew from it was.
 
-**What is still genuinely zero at 25,000 ticks:** `cosmos.law` and `atom.cull`. `cosmos.law` is now
-the more interesting of the two, because it sits DOWNSTREAM of a mechanism that demonstrably fires:
-five children have pushed physics proposals into the scenario bank and none has ever won enough
-authority to rewrite a constant. That is a real question about the bank's champion criterion rather
-than about whether the plumbing works. `atom.cull` remains zero at every horizon measured.
+**What is still genuinely zero at 25,000 ticks:** `cosmos.law` and `atom.cull`.
+
+### cosmos.law: the door is open, and merit has not been demonstrated
+
+Instrumented at 30,000 ticks, tracking every cosmos-sourced scenario that enters the shadow bank:
+
+| | |
+|---|---|
+| merges | 16 |
+| cosmos scenarios ever in the bank | 2 |
+| max `wins` reached | **24.99** — against a bar of 4 |
+| slot-ticks spent above the wins bar | 22,846 |
+| max `creditTrace` reached | **0.0767** — against a bar of 0.1 |
+| slot-ticks spent above the credit bar | **0** |
+
+So the gate is not dead, and it is not merely slow. It is gated on ONE of its two conditions. The
+wins bar is cleared six times over and held there for most of the run; the credit bar is never
+touched.
+
+That is the design working rather than failing. `creditTrace` only moves for the scenario matching
+`lastShadowWinnerFingerprint`, updating as `trace*0.99 + sign(Δfitness)*0.01` — an EMA whose fixed
+point is `2p-1` for a fraction `p` of favourable updates. A trace of 0.0767 means p ≈ 0.538: the
+child universe's physics is associated with fitness rising about 54% of the time, barely better than
+a coin. The 0.1 bar asks for ≈0.55. The daughter universes are winning shadow rounds convincingly and
+have not yet shown that their laws actually RAISE real fitness, which is precisely the distinction
+`COSMOS_LAW_CREDIT` exists to enforce — #129 opened this door "on merit", and merit is being withheld
+by 23%.
+
+**Deliberately not retuned.** Moving the bar to 0.075 would light the mechanism up tomorrow and would
+be me deciding that a coin-flip-plus-4% deserves to rewrite the physics. The standing rule here is
+that the system decides what to turn off, and this is the system declining, with evidence, on a
+criterion someone wrote down in advance. Recorded so the decision can be made on the numbers.
 
 ### The lesson worth keeping
 
