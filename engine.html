@@ -178,7 +178,17 @@ function validNetworkPayload(type,data){
       Array.isArray(data.tend)&&data.tend.length<=NET_DIMS&&data.tend.every(v=>finitePacketNumber(v,-8,8))&&
       (!data.mem||(Array.isArray(data.mem)&&data.mem.length<=NET_MEM_SIZE&&data.mem.every(v=>finitePacketNumber(v,-16,16))))&&
       (!data.plasmid||(Array.isArray(data.plasmid)&&data.plasmid.length<=NET_MAX_PLASMID&&data.plasmid.every(validInstruction)))&&
-      finitePacketNumber(data.amp,-2,4)&&finitePacketNumber(data.phase,-64,64);
+      finitePacketNumber(data.amp,-2,4)&&finitePacketNumber(data.phase,-64,64)&&
+      // #141: the vocabulary rides along, and is validated like everything else on the wire. `prog`
+      // was and remains coerced rather than validated on the receive side (r[0]|0 on a bad row is 0,
+      // inside a try/catch) — these are validated up front because a bad expression string is not
+      // coerced into anything, it is compiled.
+      (!data.ua||(Array.isArray(data.ua)&&data.ua.length<=MIGRANT_VOCAB_MAX&&
+        data.ua.every(x=>typeof x==='string'&&x.length<=160)))&&
+      (!data.ue||(Array.isArray(data.ue)&&data.ue.length<=MAX_USER_EFFECTS&&
+        data.ue.every(e=>e&&typeof e==='object'&&finitePacketNumber(e.t,0,64)&&
+          finitePacketNumber(e.m,0,1)&&finitePacketNumber(e.s,-4,4)&&
+          finitePacketNumber(e.n,-1,64)&&finitePacketNumber(e.a,-1,256))));
   }
   if(type==='plasmid')return Array.isArray(data)&&data.length<=NET_MAX_PLASMID&&data.every(validInstruction);
   if(type==='motif')return Array.isArray(data)&&data.length<=8&&data.every(validInstruction);
@@ -365,7 +375,22 @@ function networkBroadcast(){ fired('network.broadcast');
       // LEAP 25 (#56) — send the emigrant's PROGRAM with it. Without this the receive-side change is
       // hollow: a migrant would arrive expecting heredity that was never transmitted.
       const _mprog=(MIGRANT_CARRIES_PROGRAM&&pProg[idx])?pProg[idx].slice(0,48).map(r=>[r[0]|0,r[1]|0,r[2]|0,+(+r[3]).toFixed(4)]):null;
-      networkSend('migrant',{nx:px[idx]/W,ny:py[idx]/H,tend:t,mem:m,plasmid:plas,amp:amp[idx],phase:phase[idx],prog:_mprog});
+      // #141: the vocabulary that program speaks, in bound-slot order.
+      let _mua=null,_mue=null;
+      const _mg=pGenome[idx];
+      if(MIGRANT_CARRIES_VOCAB&&_mg){
+        const _bos=Array.isArray(_mg.boundOpcodes)?_mg.boundOpcodes:[];
+        const _uas=Array.isArray(_mg.userAtoms)?_mg.userAtoms:[];
+        _mua=[];
+        for(let k=0;k<_bos.length&&k<MIGRANT_VOCAB_MAX;k++){
+          const _bi=_bos[k]|0, _a=_bi>=0?_uas[_bi]:null;
+          _mua.push(_a&&typeof _a.expression==='string'?_a.expression.slice(0,160):'');
+        }
+        const _fx=Array.isArray(_mg.userEffects)?_mg.userEffects:[];
+        _mue=_fx.slice(0,MAX_USER_EFFECTS).map(e=>({t:e.t|0,m:(e.m|0)===1?1:0,s:+(+e.s||0.5).toFixed(3),
+          n:(e.nx===undefined?-1:e.nx|0), a:(e.ax===undefined||e.ax===null?-1:e.ax|0)}));
+      }
+      networkSend('migrant',{nx:px[idx]/W,ny:py[idx]/H,tend:t,mem:m,plasmid:plas,amp:amp[idx],phase:phase[idx],prog:_mprog,ua:_mua,ue:_mue});
     }
   }
   // Plasmid package: pick a random particle's plasmid and broadcast
@@ -458,6 +483,29 @@ function networkReceive(){ fired('network.receive');
       // establish here — gene flow between universes rather than immigration of blanks.
       if(MIGRANT_CARRIES_PROGRAM&&Array.isArray(m.prog)&&m.prog.length){
         try{ pProg[newIdx]=m.prog.slice(0,48).map(r=>[r[0]|0,r[1]|0,r[2]|0,+r[3]||0]); }catch(e){}
+      }
+      // #141: install the vocabulary the program speaks, so its opcodes mean here what they meant
+      // there. addParticle gave this migrant a clone of OUR genome (parentless spawn), so without
+      // this its foreign program indexes our banks — a stranger reading our dictionary.
+      if(MIGRANT_CARRIES_VOCAB&&pGenome[newIdx]){
+        try{
+          const _g=pGenome[newIdx];
+          if(Array.isArray(m.ua)){
+            _g.userAtoms=[]; _g.boundOpcodes=[];
+            for(let k=0;k<m.ua.length&&k<MIGRANT_VOCAB_MAX;k++){
+              const _ex=m.ua[k];
+              if(typeof _ex==='string'&&_ex.length){
+                _g.userAtoms.push({expression:_ex,compiled:null,failed:false,uses:0,state:0,creditTrace:0});
+                _g.boundOpcodes.push(_g.userAtoms.length-1);
+              } else _g.boundOpcodes.push(-1);   // keep slot k aligned with the sender's slot k
+            }
+          }
+          if(Array.isArray(m.ue)){
+            _g.userEffects=m.ue.slice(0,MAX_USER_EFFECTS).map(e=>({t:e.t|0,m:(e.m|0)===1?1:0,
+              s:+e.s||0.5, nx:(e.n===undefined?-1:e.n|0),
+              ax:(e.a===undefined||e.a===null?-1:e.a|0), uses:0, creditTrace:0}));
+          }
+        }catch(e){}
       }
       for(let mm=0;mm<MEM_SIZE&&mm<(m.mem?m.mem.length:0);mm++){
         pMem[newIdx*MEM_SIZE+mm]=m.mem[mm];
@@ -1524,6 +1572,20 @@ const GENO_NFD_BOOST=2.4;           // multiplier on #37's original strength, wh
 // foreign lineage with real evolutionary history behind it can establish here. This is gene flow between
 // universes rather than immigration of blanks.
 const MIGRANT_CARRIES_PROGRAM=1;
+// #141 — AND ITS VOCABULARY. LEAP 25 sent the program and stopped there, but a program is not
+// self-contained: opcodes at CORE_OPCODES+k call the sender's BOUND ATOMS, and opcode 236 emits into
+// the sender's VERB slots. Those are indices into banks that did not travel. A migrant therefore
+// landed speaking its own sentences into somebody else's dictionary — opcode CORE_OPCODES+3 meant
+// "my atom X" at home and meant "whatever you happen to have in slot 3" on arrival. That is the same
+// re-aiming #137 fixed inside one genome, happening across tabs, and LEAP 25's own words are the
+// argument for closing it: "a migrant would arrive expecting heredity that was never transmitted."
+// The atoms are sent IN BOUND-SLOT ORDER, so slot k denotes the same computation on both sides and
+// the sender's program keeps its meaning. A slot whose atom is missing or tombstoned travels as ''
+// and lands as a -1 tombstone, which preserves the alignment of every slot above it.
+const MIGRANT_CARRIES_VOCAB=1;
+const MIGRANT_VOCAB_MAX=24;   // bounded: 24 expressions x 160 chars is a few KB on the wire, and a
+                              // program that reaches past it finds tombstones, which the dispatches
+                              // already guard with `if(_bua)`. Degrades, never breaks.
 
 // LEAP 26 — A SECOND INCOME. Death deposits detritus and op146 can harvest it, but harvesting requires an
 // evolved program to discover the opcode, so the decomposer niche is reachable only by luck. Detritus now

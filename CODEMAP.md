@@ -1,4 +1,4 @@
-# CODEMAP — engine.html (24,742 lines)
+# CODEMAP — engine.html (24,800 lines)
 
 A structural map of the simulation, built by reading the source rather than the notebook. Written to be
 durable: each region records what is THERE, with line anchors, so a later reader does not have to
@@ -14,9 +14,9 @@ Companion to OEE-NOTES.md, which records experiments. This records the machine t
 |---|---|
 | **file** | `engine.html` — the sim moved out of `index.html` in `c0cef11`; `index.html` is now the worker shell |
 | **last fully re-derived** | never — this map was written against `index.html` and has been patched, not rebuilt |
-| **prose current through** | **#90.** The engine is at **#140.** Roughly forty-nine swings are undocumented here |
+| **prose current through** | **#90.** The engine is at **#141.** Roughly fifty swings are undocumented here |
 | **verified as of #131** | the anchor table below, the opcode constants, the genome extent, and the census claims |
-| **added since, unmapped below** | **#132/#133** verb grammar (`EFFECT_TARGETS`, `applyUserEffect`, opcode 236) · **#134** liveness census (`LIVENESS_DECLARED`, `fired()`) · **#135** attention field (`attnField`, `attentionAt`, the `at` sense) · **#136** world signal (`updateWorldSignal`, `worldSignalSuppressed`) · **#137** crossing census (`CROSSING_DECLARED`, `crossingCensus`) · **#138** the diary (`theDiary`, `diaryPanel`) · **#139** sense-gated verbs (`verbGate`, `remapEffectAx`, `effectSenseRate`) · **#140** the three crossings (`CHILD_NOT_A_GENE`, inherit/roundtrip tests). Grep the names; no line anchors yet |
+| **added since, unmapped below** | **#132/#133** verb grammar (`EFFECT_TARGETS`, `applyUserEffect`, opcode 236) · **#134** liveness census (`LIVENESS_DECLARED`, `fired()`) · **#135** attention field (`attnField`, `attentionAt`, the `at` sense) · **#136** world signal (`updateWorldSignal`, `worldSignalSuppressed`) · **#137** crossing census (`CROSSING_DECLARED`, `crossingCensus`) · **#138** the diary (`theDiary`, `diaryPanel`) · **#139** sense-gated verbs (`verbGate`, `remapEffectAx`, `effectSenseRate`) · **#140** the crossings (`CHILD_NOT_A_GENE`, inherit/roundtrip tests) · **#141** migrant vocabulary (`MIGRANT_CARRIES_VOCAB`). Grep the names; no line anchors yet |
 | **NOT verified** | every other inline line number in this file. They were written against a file ~1,100 lines shorter and around 500–900 lines of drift has accumulated unevenly — treat them as approximate, and grep for the quoted code instead |
 
 The map's own promise is that a later reader does not have to re-derive it, which only holds if the
@@ -47,11 +47,19 @@ and each has a rig that fails the build:
 | germline → population | authored, never selected on | `crossing-test.js` |
 | parent → child | shared by reference, so a lineage cannot diverge it | `inherit-test.js` |
 | save → load | works until you press save | `roundtrip-test.js` |
+| tab → tab | the program travels, the vocabulary it speaks does not | `migrant-test.js` |
 
 `cloneGenome` does `{...src}` — scalars by value, **objects by reference**. Deep-copying the heritable
 structures is a manual list; anything left off it is silently shared by the whole population. The
 self's journals (eventLog, epochs, lineage, metaCredit, shadowScenarioBank) are shared *deliberately*
 and `inherit-test.js` asserts that too, so moving one across is a decision rather than an accident.
+
+An opcode's meaning is an INDEX into a bank, so every one of these crossings is really the same
+question: does slot *k* still mean the same thing on the other side? `#137` answered it for an atom
+cull, `#139` for a sense gate seeded into a particle, `#141` for a migrant crossing tabs. Two
+strategies, and which one applies depends on whether the bank travels: match by **expression** when
+the destination has its own bank (`remapEffectAx`), preserve **slot order** when you are shipping the
+bank itself (the migrant packet).
 
 **Bound opcodes (#137).** An opcode's NUMBER is its POSITION in `genome.boundOpcodes`
 (`op = CORE_OPCODES + k`); its MEANING is `genome.userAtoms[boundOpcodes[k]]`. Two consequences that
