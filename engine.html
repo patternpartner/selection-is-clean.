@@ -24506,13 +24506,19 @@ function loop(){
     _hud+=`${fpmi141Tag}${f2pmi142Tag}${pcfmi143Tag}${dissTag}`;
     // Pe144: constraint satisfaction HUD tag
 
-    genEl.textContent=_hud;
+    // #144: MAKE #cleanart MEAN WHAT IT SAYS. It gated the metabolism panel and the diary and left the
+    // two canvas-and-DOM readouts alone, which is most of what is actually on screen — measured on a
+    // 390x844 phone, #gen alone carries 2,788 characters across 430 of 844 pixels: half the viewport,
+    // over the picture. So on a phone there was no way to look at the artwork by itself. The default
+    // is deliberately unchanged; this only completes the flag that already existed.
+    if(__cleanArt()){ if(genEl.textContent)genEl.textContent=''; }
+    else genEl.textContent=_hud;
   }
 
   const renderEvery=N>1000?4:N>500?3:N>200?2:1;
   if(tabVisible&&__turboLeft===0&&tick%renderEvery===0){
     render();
-    renderDashboard();
+    if(!__cleanArt())renderDashboard();   // #144: cleanart means the art, not the art plus the readouts
   }
   replenish();
   let birthsProcessed=0;
@@ -24582,6 +24588,20 @@ document.addEventListener('visibilitychange',()=>{
 });
 // TURBO: run extra sim ticks per animation frame (#turbo=N in the URL, 1-64).
 // Sub-ticks skip render/dashboard; the simulation itself is byte-identical per tick.
+// #144: one reader for the clean-art hash, so the canvas dashboard and the DOM HUD cannot disagree.
+// LATCHED AT FIRST READ, and that is not an optimisation — saveGenome() does
+// `history.replaceState(null,'','#'+encodeGenome())`, so the URL hash is OVERWRITTEN by the serialised
+// genome at the first autosave. Every hash flag this file has is therefore only readable for the first
+// few hundred ticks; #nometab and #nodiary survive purely because their panels latch the value at load
+// and never look again. A per-frame reader (which is what I wrote first) sees the flag vanish mid-run
+// and turns the HUD back on by itself.
+// A real hashchange still updates it, since replaceState does not fire that event — so a person
+// toggling the flag by hand is honoured, while the autosave clobber is not mistaken for one.
+let __cleanArtLatch=null;
+function __cleanArtRead(){ try{ return /cleanart|nohud|no-hud/i.test(location.hash||''); }catch(_){ return false; } }
+function __cleanArt(){ if(__cleanArtLatch===null)__cleanArtLatch=__cleanArtRead(); return __cleanArtLatch; }
+try{ if(typeof window!=='undefined'&&window.addEventListener)
+  window.addEventListener('hashchange',function(){ __cleanArtLatch=__cleanArtRead(); }); }catch(_){}
 function __readTurbo(){const m=(location.hash||'').match(/turbo=(\d+)/);const v=m?parseInt(m[1],10):1;return Math.max(1,Math.min(64,v||1));}
 let TURBO=__readTurbo();
 addEventListener('hashchange',()=>{TURBO=__readTurbo();});

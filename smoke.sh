@@ -16,7 +16,7 @@ pass=0; fail=0; failed=()
 
 # oee-meter-test.js asserts the #131 meter semantics; the rest step the sim directly. harness-ablate/-ablate-bank shell out to harness-oee and
 # harness-coupling-worker is a worker module, so all three are covered transitively.
-RIGS=(oee-meter-test.js verb-test.js attention-test.js worldsignal-test.js crossing-test.js crossing-report.js sense-test.js roundtrip-test.js inherit-test.js migrant-test.js noerror-test.js rarepath-test.js diary.js liveness-report.js harness.js harness-ab.js harness-oee.js harness-strip.js harness-clamp.js harness-stream.js
+RIGS=(oee-meter-test.js verb-test.js attention-test.js worldsignal-test.js crossing-test.js crossing-report.js sense-test.js roundtrip-test.js inherit-test.js migrant-test.js noerror-test.js rarepath-test.js browser-test.js diary.js liveness-report.js harness.js harness-ab.js harness-oee.js harness-strip.js harness-clamp.js harness-stream.js
       harness-tie.js harness-gates.js harness-meta-ablate.js harness-saturation.js
       harness-atrophy-probe.js harness-coupling.js harness-coupling-asym.js
       harness-alien-ablate.js harness-ablate-reflex.js harness-reflex-leaf.js
@@ -30,6 +30,9 @@ extra_env_for() {
   case "$1" in
     harness-coupling-asym.js) echo "MATURATION_TICKS=$TICKS COUPLE_TICKS=$TICKS FRESH_SEEDS=11" ;;
     harness-ablate-reflex.js) echo "CONC=1" ;;
+    # browser-test.js measures wall-clock seconds in a real browser, not ticks; the smoke pass gives
+    # it a short window and it skips itself entirely when playwright-core is not installed.
+    browser-test.js) echo "SECS=8" ;;
     *) echo "" ;;
   esac
 }

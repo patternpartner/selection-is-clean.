@@ -7,3 +7,6 @@ bridge/experiments/pe-instructions-cache.json
 # ablation experiment scratch logs
 scratch-bankablate.*
 bankablate.err
+
+# browser-test.js needs playwright-core (npm install playwright-core); the module is not vendored
+node_modules/
