@@ -68,7 +68,7 @@ function lateMean(s, key) {
     return {
       arm: jobs[i].arm, seed: jobs[i].seed,
       bootErr: r.bootErr || null,
-      loopErrors: r.loopErrors || 0, driverErr: r.driverErr || 0,
+      loopErrors: r.loopErrors || 0, lastErr: r.lastErr || null, driverErr: r.driverErr || 0,
       meanAmp_late: +lateMean(s, 'meanAmp').toFixed(4),
       diversityHbits_late: +lateMean(s, 'diversityHbits').toFixed(3),
       diversityEvenness_late: +lateMean(s, 'diversityEvenness').toFixed(3),

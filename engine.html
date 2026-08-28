@@ -13771,6 +13771,10 @@ function mutateGenome(){ fired('genome.mutate');
       _seedCr=__EXPR_CREDIT?(__atomExprCredit.get(expression)||0)*0.5:0;
     }
     genome.userAtoms.push({expression,compiled:null,failed:false,uses:0,alienHits:0,alienAttempts:0,creditTrace:_seedCr});
+    // #142: RECORD THE BIRTH WHERE THE BIRTH HAPPENS. This line used to sit 112 lines further down,
+    // outside the block that declares `expression` — so it did not log an atom birth, it threw
+    // ReferenceError on every one, and mutateGenome died there. See the note at the old site.
+    recordEvent('ua_birth',{expr:String(expression).slice(0,48),n:genome.userAtoms.length},600);
     try{ if(typeof wireAtomCallSites==='function')wireAtomCallSites(); }catch(e){} // LEAP 21: reachable immediately, not at the next 120-tick boundary
   }
 
@@ -13884,7 +13888,19 @@ function mutateGenome(){ fired('genome.mutate');
         }
       }
     }
-    recordEvent('ua_birth',{expr:expression.slice(0,48),n:genome.userAtoms.length},600);
+    // #142: `recordEvent('ua_birth', {expr: expression...})` used to be HERE, and `expression` is a
+    // `let` inside a block that closes 112 lines above this point — so it was not out of date, it was
+    // out of SCOPE, and every execution threw ReferenceError: expression is not defined.
+    // What that cost, which is far more than a missing log line: mutateGenome ABORTED here on every
+    // tick that authored an atom, so roughly 270 lines of it never ran on exactly the ticks where the
+    // most had just changed — the atom cull, atom ageing, the behavioural-gradient layer, and the
+    // whole tail of the function. Worse, the throw propagated to loop()'s catch, which runs a recovery
+    // path that does `birthQueue.length=0` — so authoring an atom silently DISCARDED every pending
+    // particle birth in that tick and painted "runtime recovered" into the HUD.
+    // Every rig swallows loop errors with `try{loop()}catch(e){}`, so nothing ever said a word. It
+    // surfaced only because harness-coupling counts console.error, captured the text in `lastErr`, and
+    // then dropped that field before reporting — three layers of quiet. The line now lives beside the
+    // push it describes.
   }
   // Cull atoms that are failed (invalid JS) or proven unused.
   // "Proven unused" = been alive for a mutation cycle with zero uses.
