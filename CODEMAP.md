@@ -14,7 +14,7 @@ Companion to OEE-NOTES.md, which records experiments. This records the machine t
 |---|---|
 | **file** | `engine.html` — the sim moved out of `index.html` in `c0cef11`; `index.html` is now the worker shell |
 | **last fully re-derived** | never — this map was written against `index.html` and has been patched, not rebuilt |
-| **prose current through** | **#90.** The engine is at **#142.** Roughly fifty-one swings are undocumented here |
+| **prose current through** | **#90.** The engine is at **#143.** Roughly fifty-two swings are undocumented here |
 | **verified as of #131** | the anchor table below, the opcode constants, the genome extent, and the census claims |
 | **added since, unmapped below** | **#132/#133** verb grammar (`EFFECT_TARGETS`, `applyUserEffect`, opcode 236) · **#134** liveness census (`LIVENESS_DECLARED`, `fired()`) · **#135** attention field (`attnField`, `attentionAt`, the `at` sense) · **#136** world signal (`updateWorldSignal`, `worldSignalSuppressed`) · **#137** crossing census (`CROSSING_DECLARED`, `crossingCensus`) · **#138** the diary (`theDiary`, `diaryPanel`) · **#139** sense-gated verbs (`verbGate`, `remapEffectAx`, `effectSenseRate`) · **#140** the crossings (`CHILD_NOT_A_GENE`, inherit/roundtrip tests) · **#141** migrant vocabulary (`MIGRANT_CARRIES_VOCAB`). Grep the names; no line anchors yet |
 | **NOT verified** | every other inline line number in this file. They were written against a file ~1,100 lines shorter and around 500–900 lines of drift has accumulated unevenly — treat them as approximate, and grep for the quoted code instead |
@@ -54,6 +54,12 @@ means an engine that throws on every tick still passes all of them. `noerror-tes
 that does not swallow, and it drives the rare paths (forced authoring) rather than waiting for them —
 #142 threw on every atom birth and a 3,000-tick run still went green by luck, because no birth
 happened to land in the window. If you add a rig, it may swallow; something must not.
+
+**Rarity is not safety** (#143). The liveness census names which paths are rare or never seen, and
+those are exactly where a #142 can sit unexecuted for months. `rarepath-test.js` takes that list and
+DRIVES each one — constructing its preconditions and invoking it — rather than waiting for it. That
+is how `atom.cull` was executed for the first time, which is also the first execution of #137's
+boundOpcodes remap inside it.
 
 `cloneGenome` does `{...src}` — scalars by value, **objects by reference**. Deep-copying the heritable
 structures is a manual list; anything left off it is silently shared by the whole population. The
