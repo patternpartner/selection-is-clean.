@@ -16,7 +16,7 @@ pass=0; fail=0; failed=()
 
 # oee-meter-test.js asserts the #131 meter semantics; the rest step the sim directly. harness-ablate/-ablate-bank shell out to harness-oee and
 # harness-coupling-worker is a worker module, so all three are covered transitively.
-RIGS=(oee-meter-test.js harness.js harness-ab.js harness-oee.js harness-strip.js harness-clamp.js harness-stream.js
+RIGS=(oee-meter-test.js verb-test.js harness.js harness-ab.js harness-oee.js harness-strip.js harness-clamp.js harness-stream.js
       harness-tie.js harness-gates.js harness-meta-ablate.js harness-saturation.js
       harness-atrophy-probe.js harness-coupling.js harness-coupling-asym.js
       harness-alien-ablate.js harness-ablate-reflex.js harness-reflex-leaf.js

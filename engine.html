@@ -456,7 +456,7 @@ const MAX_BOUND_OPCODES=192; // #129: 96 -> 192. gen38 pinned the old 96 (bo=96,
 // Bumping CORE_OPCODES is the ONLY edit needed to add a core opcode — the bound guards
 // (op>=CORE_OPCODES) and OPCODE_COUNT derive from it, so a boundary typo can no longer
 // orphan an opcode or collide a core op with a bound slot (the Pe60 / op142-class bug).
-const CORE_OPCODES=236; // #59: 235 -> 236, admitting COSMOS_SENSE (235) — the state of the daughter worlds this lineage launched, as data. Was: // #57: 232 -> 235, admitting SET_MODE (232), READ_MODE (233), PARTNER_MODE (234) — the first categorical decision evolved code can make here. Was: // 0..231 core — op208-211 velocity I/O, op212-216 inhibitor/resistance mechanics, op217-219 oscillator direct control, op220-231 scaffold morphogenesis + genomic self-inspection + reproductive autonomy + cluster quorum sensing
+const CORE_OPCODES=237; // #132: 236 -> 237, admitting EFFECT_EMIT (236) — the drive line for an AUTHORED VERB, the first opcode whose CONSEQUENCE is evolved rather than hand-written. Was: // #59: 235 -> 236, admitting COSMOS_SENSE (235) — the state of the daughter worlds this lineage launched, as data. Was: // #57: 232 -> 235, admitting SET_MODE (232), READ_MODE (233), PARTNER_MODE (234) — the first categorical decision evolved code can make here. Was: // 0..231 core — op208-211 velocity I/O, op212-216 inhibitor/resistance mechanics, op217-219 oscillator direct control, op220-231 scaffold morphogenesis + genomic self-inspection + reproductive autonomy + cluster quorum sensing
                         // 0..132 core — op132 SEASON_PHASE: perceive the current feast/famine cycle position
                         // 0..131 core — op131 ENERGY_STRESS: the system perceives conserved-budget scarcity
                         // 0..130 core — OPENED THE SWITCH: op128 READ_OWN_CASTE, op129 READ_PARTNER_CASTE,
@@ -921,6 +921,37 @@ const MEME_RATE=0.004;      // per-qualifying-interaction transfer probability; 
 // particles aliased at 1200 ticks, so the divergence is rare — rare is not never, and this costs nothing.)
 // Bounded by construction: mutateGenome runs ~18 times per 6000 ticks, so this fires at most ~36 times
 // in a 12000-tick run. One injection per authored atom, into one particle.
+// #132 — hand a newly authored VERB to one live particle, mirroring seedAtomIntoParticle exactly.
+// This is the step that took three measurements to find. A verb born on the germline is unreachable:
+// genome.vmProgram is a RECORD of the winner (6487 copies it FROM the best particle), not a source, and
+// particle verb banks start empty, so splicing there wrote into a buffer the population overwrites.
+// Atoms already solved this — "hand it to one live particle" (LEAP 35 / #80) — and the same route works
+// here. ONE particle out of a few hundred is a foothold, not a takeover: if the verb pays, its lineage
+// spreads it; if not, it dies with that particle. The 11067 note's warning about forcing new code into
+// living programs (it collapses diversity) is why this is one particle and not all of them.
+function seedEffectIntoParticle(effIdx){
+  const _e=genome.userEffects&&genome.userEffects[effIdx]; if(!_e)return;
+  let _n=0; for(let k=0;k<N;k++)if(palive[k]&&pGenome[k])_n++;
+  if(!_n)return;
+  let _t=(Math.random()*_n)|0, _tgt=-1;
+  for(let k=0;k<N;k++){ if(!palive[k]||!pGenome[k])continue; if(_t--===0){_tgt=k;break;} }
+  if(_tgt<0)return;
+  const _g=pGenome[_tgt];
+  if(!Array.isArray(_g.userEffects))_g.userEffects=[];
+  if(_g.userEffects.length>=MAX_USER_EFFECTS)return;
+  for(const _x of _g.userEffects) if(_x&&_x.t===_e.t&&_x.m===_e.m)return;   // already carries this verb
+  _g.userEffects.push({t:_e.t|0,m:_e.m|0,s:+_e.s||0.5,uses:0,creditTrace:0});
+  const _slot=_g.userEffects.length-1;
+  const _prog=pProg[_tgt], _cap=_g.vmMaxInstructions||16;
+  if(_prog&&_prog.length<_cap){
+    _prog.splice((Math.random()*(_prog.length+1))|0,0,[236,(Math.random()*12)|0,_slot,(Math.random()-0.5)*0.6]);
+  } else if(_prog&&_prog.length){
+    // at cap: aim one point mutation rather than give up. Mutation overwrites opcodes here constantly;
+    // this is the same edit with a purpose, and it costs the carrier one instruction to find out.
+    _prog[(Math.random()*_prog.length)|0]=[236,(Math.random()*12)|0,_slot,(Math.random()-0.5)*0.6];
+  }
+  __effectSeeded++;
+}
 function seedAtomIntoParticle(atomIdx){
   if(!__ATOM_HERITABLE)return;
   const _a=genome.userAtoms&&genome.userAtoms[atomIdx]; if(!_a)return;
@@ -5964,6 +5995,9 @@ let genome={
   // Accessed via opcode 22. This is how the system writes new primitives
   // that weren't in the opcode set at design time. ═══
   userAtoms:[],
+  // #132: the authored VERBS. Each is {t:target, m:conservation mode, s:scale} — what a verb writes
+  // and whether it takes from a partner or only bounds itself. Grows and is culled like userAtoms.
+  userEffects:[],
 
   // ═══ LAYER 6: RULES — Register-Based Virtual Machine ═══
   // When two particles interact, 4 registers are initialized from context.
@@ -6538,6 +6572,9 @@ function cloneGenome(src){
   // what the parent lineage learned. Seed at 50% of the best evidence available (the parent's own trace
   // OR the population pool, whichever is higher), so the child gets a warm start but still re-earns full
   // credit. Gated __ATOM_CREDIT_VERT; off => the field seeds 0, exactly the pre-#119 behaviour.
+  // #132: verbs are heritable structure, cloned like the atom bank. uses resets — a child re-earns
+  // its own record — while target/mode/scale, the evolved content, carry.
+  g.userEffects=Array.isArray(src.userEffects)?src.userEffects.map(e=>({t:e.t|0,m:e.m|0,s:+e.s||0.5,uses:0,creditTrace:(+e.creditTrace||0)*0.5})):[];
   g.userAtoms=Array.isArray(src.userAtoms)?src.userAtoms.map(a=>{
     const _seedCr=__ATOM_CREDIT_VERT?Math.max(finiteOr(a.creditTrace,0),__EXPR_CREDIT?(__atomExprCredit.get(a.expression)||0):0)*0.5:0;
     return {expression:a.expression,compiled:null,failed:!!a.failed,uses:0,state:0,alienHits:0,alienAttempts:0,creditTrace:_seedCr};
@@ -6887,6 +6924,7 @@ function encodeGenome(){
     bo: Array.isArray(genome.boundOpcodes)?genome.boundOpcodes.map(b=>b|0):[],
     co: CORE_OPCODES, // MIGRATION (review): stamp the opcode-boundary this save was written under, so a later CORE_OPCODES shift can remap saved bound-opcode programs on load
     ua:cleanAtoms,
+    ue:Array.isArray(genome.userEffects)?genome.userEffects.map(e=>({t:e.t|0,m:e.m|0,s:+(+e.s||0).toFixed(3),u:e.uses|0})):[], // #132 authored verbs
     clr:+(genome.creditLearnRate||1).toFixed(4), // Pe25 Layer 15: evolvable learning rate
     dc:+(genome.decisionConfidence||0).toFixed(4), // swing #43: earned self-model commitment authority (persists across reload)
     gb:+(genome.gradientBias||0.3).toFixed(4),   // Pe26 Layer 16a: gradient bias
@@ -7171,6 +7209,9 @@ function decodeGenome(data){
     if(typeof g.aed==='number')genome.atomEligDecay=+g.aed;      // #128
     if(typeof g.tmr==='number')genome.typeMutRate=g.tmr;   // UNLOCKED #7a
     if(g.ua)genome.userAtoms=g.ua.map(a=>({expression:a.expression,compiled:null,failed:!!a.failed,uses:a.uses|0,age:a.age|0,alienHits:a.alienHits|0,alienAttempts:a.alienAttempts|0}));
+    // #132: a pre-#132 save has no `ue`, so the lineage simply starts with no verbs and authors its
+    // own — the same way a pre-atom save starts with an empty bank rather than being rejected.
+    genome.userEffects=Array.isArray(g.ue)?g.ue.map(e=>({t:e.t|0,m:e.m|0,s:+e.s||0.5,uses:e.u|0,creditTrace:0})):[];
     if(typeof g.td==='number') genome.tendDims=__cl(g.td|0,2,DIMS_MAX);
     if(Array.isArray(g.oe)){ // #35 evolvable engine dials (sanitizeGenome clamps + defaults any missing)
       if(typeof g.oe[0]==='number')genome.opnovStrength=g.oe[0];
@@ -8163,6 +8204,9 @@ function sanitizeGenome(){
   if(!Array.isArray(genome.prevObjValues)||genome.prevObjValues.length<4)genome.prevObjValues=[0,0,0,0];
   genome.prevObjValues=genome.prevObjValues.slice(0,4).map(v=>finiteOr(v,0));
   genome.prevSmoothedFitness=finiteOr(genome.prevSmoothedFitness,0);
+  genome.userEffects=Array.isArray(genome.userEffects)?genome.userEffects.filter(e=>e&&typeof e==='object').slice(0,MAX_USER_EFFECTS).map(e=>({
+    t:__cl(e.t|0,0,EFFECT_TARGET_COUNT-1), m:(e.m|0)===1?1:0, s:__cl(finiteOr(e.s,0.5),0,1),
+    uses:e.uses|0, creditTrace:__cl(finiteOr(e.creditTrace,0),-1,1) })):[];
   genome.userAtoms=Array.isArray(genome.userAtoms)?genome.userAtoms.filter(a=>a&&typeof a.expression==='string').map(a=>({expression:a.expression.slice(0,160),compiled:null,failed:!!a.failed,uses:a.uses|0,age:a.age|0,alienHits:a.alienHits|0,alienAttempts:a.alienAttempts|0})):[];
   if(!Array.isArray(genome.rend)||genome.rend.length!==4) genome.rend=defaultRend();
   genome.draw=sanitizeDraw(genome.draw);
@@ -10340,7 +10384,7 @@ function profileVM(){
   for(const t of tests){
     vmRegs[0]=t.sim;vmRegs[1]=t.align;vmRegs[2]=t.prox;vmRegs[3]=t.energy;
     for(let r=4;r<12;r++)vmRegs[r]=0; // no particle memory in profiler
-    vmActions[0]=0;vmActions[1]=0;vmActions[2]=0;vmActions[3]=0;vmActions[4]=0;vmActions[5]=0;vmActions[6]=0;vmActions[7]=0;
+    vmActions.fill(0); // #132: clears the authored-verb drives (8..15) as well as the eight built-ins
 
     const prog=genome.vmProgram;
     const nInst=Math.min(prog.length,genome.vmMaxInstructions);
@@ -11082,6 +11126,9 @@ function profileVM(){
         case 231:vmRegs[di]=0*(k||1);break; // CLUSTER_QUORUM profiler stub — zero (no cluster during profiling)
         // #131 PARITY: the profiler has no particle index, so 232-235 stub to zero exactly as 231 does.
         case 232:case 233:case 234:case 235:{vmRegs[di]=0*(k||1);}break; // MODE/COSMOS profiler stubs
+        // #132 EFFECT_EMIT — the profiler has no world to write, so the drive accumulates and nothing
+        // applies it, exactly as the other stubs here do. Parity without side effects.
+        case 236:{const _ei=Math.abs(dst)%MAX_USER_EFFECTS;vmActions[EFFECT_SLOT0+_ei]+=vmRegs[si]*k;}break; // EFFECT_EMIT profiler stub
       }
       if(op>=CORE_OPCODES&&op<CORE_OPCODES+MAX_BOUND_OPCODES){
         const _bos=genome.boundOpcodes;
@@ -13389,6 +13436,50 @@ function mutateGenome(){
     }
     genome.userAtoms.push({expression,compiled:null,failed:false,uses:0,alienHits:0,alienAttempts:0,creditTrace:_seedCr});
     try{ if(typeof wireAtomCallSites==='function')wireAtomCallSites(); }catch(e){} // LEAP 21: reachable immediately, not at the next 120-tick boundary
+  }
+
+  // ═══ #132 — the VERB bank: birth, drift, and culling ═══════════════════════════════════════════
+  // Deliberately the same shape as the atom bank above, because a verb is the same kind of thing: a
+  // small heritable structure that costs something to drive and is kept only if it earns it. What it
+  // is NOT is a knob — nothing here decides whether authored verbs are good, only whether THIS one
+  // survived. A verb nobody emits into accrues no uses and gets overwritten by the next birth.
+  if(!Array.isArray(genome.userEffects))genome.userEffects=[];
+  {
+    const fx=genome.userEffects;
+    // BIRTH — an empty alphabet slot is filled at the same cadence atoms are authored. The first verb
+    // a lineage owns is a random (target, mode, scale): selection has to discover what it is FOR.
+    // BIRTH RATE — floored, for the reason LEAP 22 (#55) measured and wrote down: mutateGenome runs
+    // only ~18 times per 6k ticks, so a rate-scaled probability is "a coin landing tails, not a toll".
+    // My first cut used rate*0.5 and reproduced the dead-atom pipeline exactly — 12,000 ticks, zero
+    // verbs authored, zero emits. Same floor construction as UA_BIRTH_FLOOR, and the same conclusion:
+    // authoring just has to happen often enough to be judged.
+    if(fx.length<MAX_USER_EFFECTS && Math.random()<Math.max(EFFECT_BIRTH_FLOOR,rate*0.5)){
+      fx.push({t:(Math.random()*EFFECT_TARGET_COUNT)|0, m:Math.random()<0.5?1:0, s:0.2+Math.random()*0.6, uses:0, creditTrace:0});
+      // REACHABILITY — splice a drive line for the new slot into the germline program, exactly as
+      // sanitizeGenome does for a new bound opcode and wireAtomCallSites does for a new atom ("reachable
+      // immediately, not at the next 120-tick boundary"). Without this the verb is stillborn: it would
+      // need a bank entry AND a 1-in-429 opcode draw to co-occur, and measurement said what that means —
+      // 12,000 ticks, zero verbs, zero emits. Reachable is not the same as favoured. Selection still
+      // decides whether the instruction survives the next mutation, and an undriven verb still gets culled.
+      const _vp=genome.vmProgram, _cap=genome.vmMaxInstructions||16;
+      if(Array.isArray(_vp)&&_vp.length<_cap){
+        _vp.splice((Math.random()*(_vp.length+1))|0,0,[236,(Math.random()*12)|0,fx.length-1,(Math.random()-0.5)*0.6]);
+      }
+      seedEffectIntoParticle(fx.length-1);   // LEAP 35's route: hand it to one live particle
+    }
+    // DRIFT — the two evolved choices move independently, and the scale moves most often. Retargeting
+    // is the rarest because it is the largest jump: the same drive line suddenly writes somewhere else.
+    for(const e of fx){
+      if(Math.random()<rate*0.30){ const v=e.s+(Math.random()-0.5)*0.25; e.s=__cl(isFinite(v)?v:0.5,0,1); }
+      if(Math.random()<rate*0.10) e.m=e.m?0:1;                                    // flip conservation mode
+      if(Math.random()<rate*0.06) e.t=(Math.random()*EFFECT_TARGET_COUNT)|0;      // retarget
+    }
+    // CULL — the least-used verb goes when the bank is full and a new one wants in. Same principle as
+    // the atom overwrite: standing room is finite, so an unused verb is not free, it is occupying.
+    if(fx.length>=MAX_USER_EFFECTS && Math.random()<rate*0.08){
+      let wi=0; for(let q=1;q<fx.length;q++) if((fx[q].uses|0)<(fx[wi].uses|0)) wi=q;
+      if((fx[wi].uses|0)===0) fx.splice(wi,1);
+    }
     if(_atomFix){
       const bos=genome.boundOpcodes||(genome.boundOpcodes=[]);
       if(bos.length<MAX_BOUND_OPCODES){
@@ -14637,7 +14728,106 @@ function runAlienPrediction(){
 
 // ═══ LAYER 6: REGISTER-BASED VIRTUAL MACHINE ═══
 const vmRegs=new Float32Array(12);
-const vmActions=new Float32Array(8);
+// ═══ #132 — A GRAMMAR FOR VERBS ═══════════════════════════════════════════════════════════════════
+// This system has authored its own NOUNS for a hundred swings: uaGenTerm composes expressions from a
+// bounded alphabet, they get bound as opcodes, and selection keeps the ones that earn their keep. It
+// has never been able to author a VERB. The motor vocabulary has been these eight since early on —
+// push, shift, give, bleed, beget, mark, loosen, reach — hand-written, while some ninety layers of
+// perception were built on top of them. CODEMAP names the consequence: sensory dimensionality vastly
+// exceeds motor dimensionality, so most evolved sensitivity has no channel to become behaviour.
+//
+// An authored verb here is exactly two evolved choices, and the second is the load-bearing one:
+//   • a TARGET — which world quantity it writes, drawn from a bounded alphabet, the same way
+//     USER_VARS bounds what a sense may read. Eleven of them, against ~16 sense variables: the
+//     symmetry is the point.
+//   • a CONSERVATION MODE — LOCAL (a bounded write to yourself) or CONSERVED (what you take, your
+//     partner loses, exactly). Slot 2 (`give`) has always worked the second way and it is why
+//     amplitude cannot be minted from nothing.
+// Without that second field this would be a cheat code: evolution would immediately author "add to my
+// own amplitude" and the world would die of free energy. With it, an authored verb can only bound or
+// REDISTRIBUTE — and a conserved transfer with an evolved target is structurally a new kind of TRADE.
+// The system gets to invent economies, not just pokes.
+//
+// The magnitude is not authored here, because it already is: the VM computes it and emits it through
+// opcode EFFECT_EMIT, exactly as the eight built-ins take theirs from vmActions[0..7]. Atoms feeding
+// registers feeding an emit IS the "as a function of what". No second grammar is needed.
+//
+// No knob. Whether a verb is worth carrying is selection's call, made the way it is for every atom:
+// the effect costs instructions to drive, and the bank is overwritten under the same use/credit
+// pressure. If authored verbs are useless the emits are purged and this is inert.
+const MAX_USER_EFFECTS=8;              // authored verb slots
+const EFFECT_SLOT0=8;                  // vmActions[8 .. 8+MAX_USER_EFFECTS-1] are the authored drives
+const EFFECT_GAIN=0.01;                // base authority of an authored verb, before its evolved scale
+const EFFECT_BIRTH_FLOOR=0.28;         // mirrors UA_BIRTH_FLOOR — see the birth site for why a floor
+// target alphabet. `paired` = the quantity exists on both partners, so CONSERVED mode is meaningful;
+// unpaired targets fall back to LOCAL rather than pretending to conserve against nothing.
+const EFFECT_TARGETS=[
+  {n:'amp',      paired:true },
+  {n:'provision',paired:true },
+  {n:'localRes', paired:true },
+  {n:'tend0',    paired:true },
+  {n:'tend1',    paired:true },
+  {n:'tend2',    paired:true },
+  {n:'tend3',    paired:true },
+  {n:'phase',    paired:true },
+  {n:'mem',      paired:false},
+  {n:'field',    paired:false},
+  {n:'mutpress', paired:false},
+];
+const EFFECT_TARGET_COUNT=EFFECT_TARGETS.length;
+let __effectFires=0, __effectConserved=0, __effectSeeded=0;   // telemetry: how often authored verbs actually act
+// Apply one authored verb. `amt` is the drive already scaled by influence and the effect's own scale.
+// CONSERVED mode never clamps AFTER the transfer — it clamps the AMOUNT to what both sides can afford,
+// so the sum is invariant to the last bit rather than approximately preserved. That distinction is the
+// whole reason this cannot become a free-energy pump.
+function applyUserEffect(eff,i,j,amt,slot){
+  if(!eff||!isFinite(amt)||Math.abs(amt)<1e-7)return;
+  const t=eff.t|0, conserved=(eff.m|0)===1 && j>=0 && j<N && EFFECT_TARGETS[t] && EFFECT_TARGETS[t].paired;
+  const clampTo=(v,lo,hi)=>v<lo?lo:v>hi?hi:v;
+  // helper: move `a` units of a NON-NEGATIVE quantity from j to i, taking only what exists both ways
+  const xferNonNeg=(arr,cap)=>{ let a=amt; if(a>0)a=Math.min(a,arr[j]); else a=Math.max(a,-arr[i]);
+    if(cap!==undefined){ a=Math.min(a,cap-arr[i]); a=Math.max(a,arr[j]-cap); }
+    if(!isFinite(a)||a===0)return; arr[i]+=a; arr[j]-=a; __effectConserved++; };
+  const localNonNeg=(arr,hi)=>{ const v=arr[i]+amt; arr[i]=isFinite(v)?clampTo(v,0,hi):arr[i]; };
+  switch(t){
+    case 0: conserved?xferNonNeg(amp,2):localNonNeg(amp,2); break;
+    case 1: conserved?xferNonNeg(pProvision):localNonNeg(pProvision,4); break;
+    case 2: conserved?xferNonNeg(localRes):localNonNeg(localRes,4); break;
+    case 3: case 4: case 5: case 6: {                       // trait axes — signed, house clamp ±1.2
+      const d=t-3; if(d>=DIMS)break; const bi=i*DIMS+d, bj=j>=0?j*DIMS+d:-1;
+      if(conserved&&bj>=0){ let a=amt;
+        a=Math.min(a, 1.2-tend[bi]); a=Math.max(a, -1.2-tend[bi]);   // receiver stays in range
+        a=Math.min(a, tend[bj]+1.2); a=Math.max(a, tend[bj]-1.2);    // donor stays in range
+        if(isFinite(a)&&a!==0){ tend[bi]+=a; tend[bj]-=a; __effectConserved++; }
+      } else { const v=tend[bi]+amt; tend[bi]=isFinite(v)?clampTo(v,-1.2,1.2):tend[bi]; }
+      break; }
+    case 7: {                                               // phase — conserved as a symmetric rotation
+      if(conserved){ phase[i]+=amt; phase[j]-=amt; __effectConserved++; } else phase[i]+=amt;
+      break; }
+    case 8: { const s=slot%MEM_SIZE, mi=i*MEM_SIZE+s;        // own memory
+      const v=pMem[mi]+amt; pMem[mi]=isFinite(v)?clampTo(v,-8,8):pMem[mi]; break; }
+    case 9: {                                               // the shared field, at own position
+      const fx=Math.floor(px[i]/(W/FIELD_W)), fy=Math.floor(py[i]/(H/FIELD_H));
+      const fi=__cl(fy*FIELD_W+fx,0,FIELD_W*FIELD_H-1);
+      field[fi]=__cl(field[fi]+amt,0,2.5); break; }
+    case 10: mutPressureAccum+=amt*0.01; break;             // own mutability
+  }
+  __effectFires++;
+}
+// Drain the authored drives after the eight built-ins have been applied. Shared by all three
+// writeback sites so a verb means the same thing paired, in a cluster, or alone.
+function applyUserEffects(i,j,influence){
+  const fx=genome.userEffects; if(!fx||!fx.length)return;
+  const n=Math.min(fx.length,MAX_USER_EFFECTS);
+  for(let e=0;e<n;e++){
+    const drive=vmActions[EFFECT_SLOT0+e]; if(!drive)continue;
+    const eff=fx[e]; if(!eff)continue;
+    const sc=isFinite(eff.s)?eff.s:0.5;
+    applyUserEffect(eff,i,j,drive*influence*sc*EFFECT_GAIN,e);
+    eff.uses=(eff.uses|0)+1;
+  }
+}
+const vmActions=new Float32Array(8+MAX_USER_EFFECTS);
 
 function executeVM(i,j,sim,d){
   if(d>CELL||d<0.5)return;
@@ -14716,7 +14906,7 @@ function executeVM(i,j,sim,d){
   pMem[i*MEM_SIZE+6]=localRes[i]*4;
   pMem[i*MEM_SIZE+7]=Math.min(5,page[i]/250);
 
-  vmActions[0]=0;vmActions[1]=0;vmActions[2]=0;vmActions[3]=0;vmActions[4]=0;vmActions[5]=0;vmActions[6]=0;vmActions[7]=0;
+  vmActions.fill(0); // #132: clears the authored-verb drives (8..15) as well as the eight built-ins
 
   const prog=pProg[i]||genome.vmProgram;  // UNLOCKED #9: this particle runs ITS lineage's program
   const nInst=Math.min(prog.length,genome.vmMaxInstructions);
@@ -16804,6 +16994,9 @@ function executeVM(i,j,sim,d){
       // this case decides anything; whether a program conditions on having living descendants at the
       // level of physics is for selection to work out.
       case 235:{cosmosStats.senseReads++;vmRegs[di]=cosmosSenseFor(i)*(k||1);}break;
+        // #132 EFFECT_EMIT — drive an AUTHORED VERB. Same shape as case 4 (the built-in actuator emit);
+        // the difference is that what happens at the other end is evolved, not written here.
+        case 236:{const _ei=Math.abs(dst)%MAX_USER_EFFECTS;vmActions[EFFECT_SLOT0+_ei]+=vmRegs[si]*k;}break; // EFFECT_EMIT
       case 231:{const _cqcid231=clusterID[i];if(_cqcid231>=0){const _cqbit231=1<<(Math.round(Math.abs(vmRegs[si]))&7);let _cqtot231=0,_cqset231=0;for(let _cqn231=0;_cqn231<N;_cqn231++){if(clusterID[_cqn231]===_cqcid231){_cqtot231++;if(pEpigen[_cqn231]&_cqbit231)_cqset231++;}}vmRegs[di]=_cqtot231>0?(_cqset231/_cqtot231)*k:0;}else{vmRegs[di]=0;}}break; // CLUSTER_QUORUM — fraction of own cluster members with epigenetic bit (vmRegs[si]&7) set; O(N) scan; solitary returns 0. Enables quorum sensing; epigenetic voting; collective gene-expression switching; democratic phase coordination.
     }
     // BOUND-OPCODE BOUNDARY (Pe60-class fix, now single-sourced via CORE_OPCODES).
@@ -17941,6 +18134,9 @@ function executeVM(i,j,sim,d){
         case 233:{vmRegs[di]=pMode[i]*(k||1);}break; // READ_MODE — full parity
         case 234:{vmRegs[di]=(j>=0&&j<N?pMode[j]:0)*(k||1);}break; // PARTNER_MODE — full parity
         case 235:{cosmosStats.senseReads++;vmRegs[di]=cosmosSenseFor(i)*(k||1);}break; // COSMOS_SENSE — full parity
+        // #132 EFFECT_EMIT — drive an AUTHORED VERB. Same shape as case 4 (the built-in actuator emit);
+        // the difference is that what happens at the other end is evolved, not written here.
+        case 236:{const _ei=Math.abs(dst)%MAX_USER_EFFECTS;vmActions[EFFECT_SLOT0+_ei]+=vmRegs[si]*k;}break; // EFFECT_EMIT
       }
       if(op>=CORE_OPCODES&&op<CORE_OPCODES+MAX_BOUND_OPCODES){
         const _bos=genome.boundOpcodes;
@@ -18046,6 +18242,7 @@ function executeVM(i,j,sim,d){
   }
 
   mutPressureAccum+=vmActions[6]*influence*0.0001;
+  applyUserEffects(i,j,influence);   // #132: the authored verbs, after the eight built-ins
 
   if(DIMS>4){ tend[i*DIMS+4]+=vmActions[7]*influence*0.01; { const _v4=tend[i*DIMS+4]; tend[i*DIMS+4]=Number.isFinite(_v4)?Math.max(-1,Math.min(1,_v4)):0; } }
 }
@@ -18140,7 +18337,7 @@ function executeClusterVM(i,j,sim,d){
     for(let r=8;r<=11;r++){const _v=vmRegs[r];vmRegs[r]=Number.isFinite(_v)?Math.max(-8,Math.min(8,_v)):0;}
   }
 
-  vmActions[0]=0;vmActions[1]=0;vmActions[2]=0;vmActions[3]=0;vmActions[4]=0;vmActions[5]=0;vmActions[6]=0;vmActions[7]=0;
+  vmActions.fill(0); // #132: clears the authored-verb drives (8..15) as well as the eight built-ins
 
   const prog=cl.vmProgram;
   const nInst=Math.min(prog.length,MAX_CLUSTER_VM);
@@ -19249,6 +19446,9 @@ function executeClusterVM(i,j,sim,d){
         case 233:{vmRegs[di]=pMode[i]*(k||1);}break; // READ_MODE — full parity
         case 234:{vmRegs[di]=(j>=0&&j<N?pMode[j]:0)*(k||1);}break; // PARTNER_MODE — full parity
         case 235:{cosmosStats.senseReads++;vmRegs[di]=cosmosSenseFor(i)*(k||1);}break; // COSMOS_SENSE — full parity
+        // #132 EFFECT_EMIT — drive an AUTHORED VERB. Same shape as case 4 (the built-in actuator emit);
+        // the difference is that what happens at the other end is evolved, not written here.
+        case 236:{const _ei=Math.abs(dst)%MAX_USER_EFFECTS;vmActions[EFFECT_SLOT0+_ei]+=vmRegs[si]*k;}break; // EFFECT_EMIT
     }
     if(op>=CORE_OPCODES&&op<CORE_OPCODES+MAX_BOUND_OPCODES){
       const _bos=genome.boundOpcodes;
@@ -19318,6 +19518,7 @@ function executeClusterVM(i,j,sim,d){
   }
 
   mutPressureAccum+=vmActions[6]*influence*0.00008;
+  applyUserEffects(i,j,influence);   // #132: authored verbs, cluster path — same meaning as paired
 
   if(DIMS>4){ tend[i*DIMS+4]+=vmActions[7]*influence*0.01; { const _v4=tend[i*DIMS+4]; tend[i*DIMS+4]=Number.isFinite(_v4)?Math.max(-1,Math.min(1,_v4)):0; } }
 
@@ -19711,7 +19912,7 @@ function executeSoloVM(){
       for(let r=6;r<=9;r++){const _v=vmRegs[r];vmRegs[r]=Number.isFinite(_v)?(_v<-8?-8:_v>8?8:_v):0;}
     }
 
-    vmActions[0]=0;vmActions[1]=0;vmActions[2]=0;vmActions[3]=0;vmActions[4]=0;vmActions[5]=0;vmActions[6]=0;vmActions[7]=0;
+    vmActions.fill(0); // #132: clears the authored-verb drives (8..15) as well as the eight built-ins
 
     for(let ip=0,_ss=0;ip<nInst&&_ss<nInst*2;ip++,_ss++){
       const inst=prog[ip];if(!inst)continue;
@@ -19961,6 +20162,9 @@ function executeSoloVM(){
         case 233:{vmRegs[di]=pMode[i]*(k||1);}break; // READ_MODE — full parity
         case 234:{vmRegs[di]=0;}break; // PARTNER_MODE — NOP in solo context (no partner), as op227/op231 already are
         case 235:{cosmosStats.senseReads++;vmRegs[di]=cosmosSenseFor(i)*(k||1);}break; // COSMOS_SENSE — full parity
+        // #132 EFFECT_EMIT — drive an AUTHORED VERB. Same shape as case 4 (the built-in actuator emit);
+        // the difference is that what happens at the other end is evolved, not written here.
+        case 236:{const _ei=Math.abs(dst)%MAX_USER_EFFECTS;vmActions[EFFECT_SLOT0+_ei]+=vmRegs[si]*k;}break; // EFFECT_EMIT
       }
       if(op>=CORE_OPCODES&&op<CORE_OPCODES+MAX_BOUND_OPCODES){
         const _bos=genome.boundOpcodes;
@@ -19982,6 +20186,9 @@ function executeSoloVM(){
     vy[i]+=vmActions[1]*soloInfluence*0.5;
     if(DIMS>4){ tend[i*DIMS+4]+=vmActions[7]*soloInfluence*0.01; { const _v4=tend[i*DIMS+4]; tend[i*DIMS+4]=Number.isFinite(_v4)?Math.max(-1,Math.min(1,_v4)):0; } }
     mutPressureAccum+=vmActions[6]*soloInfluence*0.00005;
+    applyUserEffects(i,-1,soloInfluence); // #132: authored verbs, solo path. j=-1, so CONSERVED mode
+                                          // has no partner to trade with and falls back to LOCAL —
+                                          // the same honesty op227/op231 already use in solo context.
     }finally{genome=_selfG;}
   }
 }
