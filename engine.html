@@ -273,7 +273,7 @@ const LIVENESS_DECLARED=[
   'shadow.sim','shadow.decide','self.learn','cluster.reflex','cluster.detect','cluster.persist',
   'alien.predict','niche.economy','dims.grow','cosmos.launch','cosmos.merge','cosmos.law',
   'genome.mutate','prog.crossover','prog.inherit','oee.flush','attention.field','world.signal',
-  'atom.cull',
+  'atom.cull','verb.senseBind','verb.senseFired',
 ];
 // NOT INSTRUMENTED, and deliberately absent rather than declared-and-silent: cladogenesis minting
 // (#17) has no single entry point I could identify with confidence. A census that reports "never"
@@ -313,6 +313,8 @@ function livenessCensus(minTicks){
 function __xCount(a){ return Array.isArray(a)?a.length:0; }
 function __xComposed(a){ if(!Array.isArray(a))return 0;
   let n=0; for(const e of a) if(e&&(e.nx|0)>=0)n++; return n; }
+function __xSensed(a){ if(!Array.isArray(a))return 0;
+  let n=0; for(const e of a) if(e&&e.ax!==undefined&&e.ax!==null&&(e.ax|0)>=0)n++; return n; }
 // Each row names one kind of structure and says how to count it on ONE germline genome and on ONE
 // population genome. Both readers take a genome object, so the two sides cannot silently drift into
 // counting different things — which is how #132b's always-zero counter survived review.
@@ -321,6 +323,7 @@ const CROSSING_DECLARED=[
   {name:'atom.bound',    read:g=>__xCount(g.boundOpcodes)},
   {name:'verb.bank',     read:g=>__xCount(g.userEffects)},
   {name:'verb.composed', read:g=>__xComposed(g.userEffects)},
+  {name:'verb.sensed',   read:g=>__xSensed(g.userEffects)},   // #139: CODEMAP's rule — a new kind of authored structure gets a census row in the same commit
 ];
 function crossingCensus(){
   const rows=[];
@@ -1021,6 +1024,29 @@ const MEME_RATE=0.004;      // per-qualifying-interaction transfer probability; 
 // here. ONE particle out of a few hundred is a foothold, not a takeover: if the verb pays, its lineage
 // spreads it; if not, it dies with that particle. The 11067 note's warning about forcing new code into
 // living programs (it collapses diversity) is why this is one particle and not all of them.
+// #139: CARRY THE SENSE ACROSS BY EXPRESSION, NEVER BY INDEX. `ax` is a slot number in ONE genome's
+// bound-opcode array, and the receiving particle's array is a different array with different contents
+// — copying the number across would point the gate at whatever atom happens to sit in that slot,
+// which is precisely the re-aiming #137 fixed for opcodes. So the germline's atom is resolved to its
+// EXPRESSION and the carrier is searched for the same computation; no match means the verb crosses
+// ungated (-1) rather than wrongly gated. This is the same discipline the alien-prediction scorer
+// already uses ("match the expression too — a mismatch is a safe no-op, not a silent mis-credit").
+function remapEffectAx(srcEff,dstG){
+  const sax=(srcEff&&srcEff.ax!==undefined&&srcEff.ax!==null)?(srcEff.ax|0):-1;
+  if(sax<0)return -1;
+  const sbos=genome.boundOpcodes, suas=genome.userAtoms;
+  if(!Array.isArray(sbos)||sax>=sbos.length)return -1;
+  const sbi=sbos[sax]|0; if(sbi<0)return -1;
+  const satom=suas&&suas[sbi]; if(!satom||typeof satom.expression!=='string')return -1;
+  const dbos=dstG&&dstG.boundOpcodes, duas=dstG&&dstG.userAtoms;
+  if(!Array.isArray(dbos)||!Array.isArray(duas))return -1;
+  for(let q=0;q<dbos.length;q++){
+    const bi=dbos[q]|0; if(bi<0)continue;
+    const a=duas[bi];
+    if(a&&a.expression===satom.expression)return q;
+  }
+  return -1;
+}
 function seedEffectIntoParticle(effIdx){ fired('verb.seedIntoParticle');
   const _e=genome.userEffects&&genome.userEffects[effIdx]; if(!_e)return;
   let _n=0; for(let k=0;k<N;k++)if(palive[k]&&pGenome[k])_n++;
@@ -1046,11 +1072,11 @@ function seedEffectIntoParticle(effIdx){ fired('verb.seedIntoParticle');
   const _srcNx=(_e.nx|0);
   const _hasSucc=_srcNx>=0 && _srcNx<genome.userEffects.length && _srcNx!==effIdx
                  && _g.userEffects.length+1<MAX_USER_EFFECTS;
-  _g.userEffects.push({t:_e.t|0,m:_e.m|0,s:+_e.s||0.5,nx:-1,uses:0,creditTrace:0});
+  _g.userEffects.push({t:_e.t|0,m:_e.m|0,s:+_e.s||0.5,nx:-1,ax:remapEffectAx(_e,_g),uses:0,creditTrace:0});
   const _slot=_g.userEffects.length-1;
   if(_hasSucc){
     const _sv=genome.userEffects[_srcNx];
-    if(_sv){ _g.userEffects.push({t:_sv.t|0,m:_sv.m|0,s:+_sv.s||0.5,nx:-1,uses:0,creditTrace:0});
+    if(_sv){ _g.userEffects.push({t:_sv.t|0,m:_sv.m|0,s:+_sv.s||0.5,nx:-1,ax:remapEffectAx(_sv,_g),uses:0,creditTrace:0});
       _g.userEffects[_slot].nx=_g.userEffects.length-1; }   // remap into the carrier's own bank
   }
   const _prog=pProg[_tgt], _cap=_g.vmMaxInstructions||16;
@@ -6116,6 +6142,12 @@ let genome={
   userEffects:[],
   effectComposeRate:0.35,   // #133: how readily a verb points at a successor — the system's own
                             // word-vs-sentence balance, evolvable like atomRecombRate (#127)
+  effectSenseRate:0.25,     // #139: how readily a verb binds one of the lineage's own authored
+                            // expressions as a gate on itself — its act-on-a-schedule vs
+                            // act-when-I-notice-something balance. Same treatment as the two above:
+                            // the gene IS the probability, not a rate-scaled fraction of it, because
+                            // #133 measured that scaling by mutationRate makes a structural jump
+                            // invisible on any timescale selection can grip.
 
   // ═══ LAYER 6: RULES — Register-Based Virtual Machine ═══
   // When two particles interact, 4 registers are initialized from context.
@@ -6772,7 +6804,7 @@ function cloneGenome(src){
   // credit. Gated __ATOM_CREDIT_VERT; off => the field seeds 0, exactly the pre-#119 behaviour.
   // #132: verbs are heritable structure, cloned like the atom bank. uses resets — a child re-earns
   // its own record — while target/mode/scale, the evolved content, carry.
-  g.userEffects=Array.isArray(src.userEffects)?src.userEffects.map(e=>({t:e.t|0,m:e.m|0,s:+e.s||0.5,nx:(e.nx===undefined?-1:e.nx|0),uses:0,creditTrace:(+e.creditTrace||0)*0.5})):[];
+  g.userEffects=Array.isArray(src.userEffects)?src.userEffects.map(e=>({t:e.t|0,m:e.m|0,s:+e.s||0.5,nx:(e.nx===undefined?-1:e.nx|0),ax:(e.ax===undefined||e.ax===null?-1:e.ax|0),uses:0,creditTrace:(+e.creditTrace||0)*0.5})):[];   // #139: ax is a slot in THIS lineage's own bound-opcode array, and a clone copies that array too, so the index stays meaningful here
   g.userAtoms=Array.isArray(src.userAtoms)?src.userAtoms.map(a=>{
     const _seedCr=__ATOM_CREDIT_VERT?Math.max(finiteOr(a.creditTrace,0),__EXPR_CREDIT?(__atomExprCredit.get(a.expression)||0):0)*0.5:0;
     return {expression:a.expression,compiled:null,failed:!!a.failed,uses:0,state:0,alienHits:0,alienAttempts:0,creditTrace:_seedCr};
@@ -8409,6 +8441,7 @@ function sanitizeGenome(){
   genome.userEffects=Array.isArray(genome.userEffects)?genome.userEffects.filter(e=>e&&typeof e==='object').slice(0,MAX_USER_EFFECTS).map(e=>({
     t:__cl(e.t|0,0,EFFECT_TARGET_COUNT-1), m:(e.m|0)===1?1:0, s:__cl(finiteOr(e.s,0.5),0,1),
     nx:(e.nx===undefined||(e.nx|0)<0||(e.nx|0)>=MAX_USER_EFFECTS)?-1:(e.nx|0),   // #133 successor slot, or -1
+    ax:(e.ax===undefined||e.ax===null||(e.ax|0)<0||(e.ax|0)>=MAX_BOUND_OPCODES)?-1:(e.ax|0), // #139 sense slot, or -1. An imported save written before #139 has no ax and correctly reads as ungated.
     uses:e.uses|0, creditTrace:__cl(finiteOr(e.creditTrace,0),-1,1) })):[];
   genome.userAtoms=Array.isArray(genome.userAtoms)?genome.userAtoms.filter(a=>a&&typeof a.expression==='string').map(a=>({expression:a.expression.slice(0,160),compiled:null,failed:!!a.failed,uses:a.uses|0,age:a.age|0,alienHits:a.alienHits|0,alienAttempts:a.alienAttempts|0})):[];
   if(!Array.isArray(genome.rend)||genome.rend.length!==4) genome.rend=defaultRend();
@@ -13662,7 +13695,7 @@ function mutateGenome(){ fired('genome.mutate');
     // verbs authored, zero emits. Same floor construction as UA_BIRTH_FLOOR, and the same conclusion:
     // authoring just has to happen often enough to be judged.
     if(fx.length<MAX_USER_EFFECTS && Math.random()<Math.max(EFFECT_BIRTH_FLOOR,rate*0.5)){
-      fx.push({t:(Math.random()*EFFECT_TARGET_COUNT)|0, m:Math.random()<0.5?1:0, s:0.2+Math.random()*0.6, nx:-1, uses:0, creditTrace:0}); // #133: nx=-1, born uncomposed
+      fx.push({t:(Math.random()*EFFECT_TARGET_COUNT)|0, m:Math.random()<0.5?1:0, s:0.2+Math.random()*0.6, nx:-1, ax:-1, uses:0, creditTrace:0}); // #133: nx=-1, born uncomposed. #139: ax=-1, born ungated — a verb has to earn a sense the same way it earns a successor
       fired('verb.author');
       // REACHABILITY — splice a drive line for the new slot into the germline program, exactly as
       // sanitizeGenome does for a new bound opcode and wireAtomCallSites does for a new atom ("reachable
@@ -13693,6 +13726,18 @@ function mutateGenome(){ fired('genome.mutate');
       // p≈0.02 per visit — 0.1 expected events per 3,000 ticks, invisible on any timescale a person
       // watches, and far too rare for selection to get a grip on the gene at all. Two earlier attempts
       // (rate*0.05, then rate*ecr) both produced exactly zero compositions in 6,000 ticks.
+      // #139: BIND A SENSE TO THIS ACT — the third structural jump, and the only one that crosses
+      // substrates. Rarer than retargeting because it is the largest: the verb stops firing at a fixed
+      // scale and starts asking one of the lineage's own authored expressions whether to fire at all.
+      // Unbinding is on the same draw, so a gate that costs more than it earns can be dropped.
+      // Seeded into a particle for the same reason composition is (#133b): the drift loop runs on the
+      // germline, and a structural edit that never crosses cannot be selected for.
+      if(Math.random()<__cl(finiteOr(genome.effectSenseRate,0.25),0,0.9)){
+        const _bn=Array.isArray(genome.boundOpcodes)?genome.boundOpcodes.length:0;
+        const _prev=(e.ax===undefined||e.ax===null)?-1:(e.ax|0);
+        e.ax=(_bn>0&&Math.random()<0.6)?((Math.random()*_bn)|0):-1;
+        if((e.ax|0)>=0&&(e.ax|0)!==_prev){ fired('verb.senseBind'); seedEffectIntoParticle(fx.indexOf(e)); }
+      }
       if(Math.random()<__cl(finiteOr(genome.effectComposeRate,0.35),0,0.9)){
         const _c=fx.length;
         e.nx = (_c>1 && Math.random()<0.7) ? ((Math.random()*_c)|0) : -1;
@@ -15134,6 +15179,35 @@ function applyUserEffect(eff,i,j,amt,slot){
 // carrier's amplitude, in the same currency the per-instruction toll uses, so chain LENGTH is priced
 // and selection decides how long a sentence is worth speaking. New verbs are born with nx=-1: not
 // composed. Composition has to be discovered, like every other structure here.
+// ═══ #139 — A SENSE BOUND TO AN ACT: the two invention systems compose ═════════════════════════
+// This file evolves two kinds of self-authored structure and they have never been able to touch.
+// ATOMS write expressions — they SENSE, and their output has nowhere to go but a register. VERBS act
+// on the world — they ACT, at a fixed scale `s` that drifts but cannot respond to anything. So the
+// creature could invent a way of noticing something, and invent a way of doing something, and had no
+// way to say "do that WHEN this".
+// `ax` is that sentence. A verb may point at one of its carrier's own bound opcodes; the atom there
+// is called with the amount being proposed and the actor's own energy, and its output becomes a GATE
+// on the act. Composition across substrates, not just within one.
+// THREE THINGS KEEP THIS SAFE, and they are why the gate is a gate rather than a gain:
+//   • the squash is (0,1) — a sense can only ever WITHHOLD an act, never amplify one. Nothing here
+//     can raise the authority a verb already had, so no energetic claim in this file changes.
+//   • every failure returns 1, i.e. exactly the old behaviour: no atom, dead slot, tombstoned bind,
+//     non-finite output, missing field on an imported save. `ax` absent means -1, so every genome
+//     written before this existed behaves identically.
+//   • it reads `genome`, which the VM callers have already repointed to the CARRIER (see the
+//     try/finally around executeVM), so the atom consulted is the actor's own — never the germline's.
+function verbGate(eff,i,amt){
+  const ax=(eff&&eff.ax!==undefined&&eff.ax!==null)?(eff.ax|0):-1;
+  if(ax<0)return 1;
+  const bos=genome.boundOpcodes; if(!Array.isArray(bos)||ax>=bos.length)return 1;
+  const bi=bos[ax]|0; if(bi<0)return 1;                      // #137 tombstone: the atom was culled
+  const uas=genome.userAtoms; const atom=uas&&uas[bi]; if(!atom)return 1;
+  const v=uaCall(atom,amt,(i>=0&&i<N)?amp[i]:0);
+  fired('verb.senseFired');   // a sense was actually consulted before an act — the crossing, executing
+  if(!isFinite(v))return 1;
+  const g=1/(1+Math.exp(-v));
+  return isFinite(g)?g:1;
+}
 const MAX_EFFECT_CHAIN=4;      // depth cap — the cycle guard; amounts also attenuate, so this is belt and braces
 let __effectChained=0;         // telemetry: links fired beyond the first
 function applyUserEffects(i,j,influence){
@@ -15146,7 +15220,11 @@ function applyUserEffects(i,j,influence){
     let amt=drive*influence*(isFinite(fx[e]&&fx[e].s)?fx[e].s:0.5)*EFFECT_GAIN;
     while(idx>=0&&idx<n&&depth<MAX_EFFECT_CHAIN){
       const eff=fx[idx]; if(!eff)break;
-      const moved=applyUserEffect(eff,i,j,amt,idx);
+      // #139: the gate is applied HERE rather than where amt is first computed, so it covers the head
+      // of the sentence and every link of it by the same rule. A withheld link moves 0, and the chain
+      // then stops on the existing "nothing moved => nothing follows" branch — no new control flow.
+      const _g139=verbGate(eff,i,amt);
+      const moved=applyUserEffect(eff,i,j,_g139===1?amt:amt*_g139,idx);
       eff.uses=(eff.uses|0)+1;
       __effectUses[effectKey(eff)]++;   // #132b: the population-level record the germline cull reads
       fired('verb.fire'); if(moved!==0&&(eff.m|0)===1)fired('verb.conserved');
