@@ -20,5 +20,11 @@ console.log('  declared '+c.declared+'   live '+c.live.length+'   rare '+c.rare.
 if(c.live.length){ console.log('  RAN'); for(const x of c.live) console.log('    '+x); }
 if(c.rare.length){ console.log('\n  BARELY RAN (<5 times in the whole run)'); for(const x of c.rare) console.log('    '+x); }
 if(c.never.length){ console.log('\n  NEVER RAN'); for(const x of c.never) console.log('    '+pad(x,28)+'  <- decorative in this condition'); }
-console.log('\n  "never" is a fact about THIS RUN, not proof the code is dead: a mechanism may need');
-console.log('  peers (network/alien), a mature bank, or a longer run. It is the question, not the verdict.');
+console.log('\n  "never" is a fact about THIS RUN, not proof the code is dead. Three honest reasons a');
+console.log('  mechanism can read zero here:');
+console.log('    - it needs PEERS      network.migrantAccepted, alien.predict — one process has none');
+console.log('    - it needs a PERSON   attention.field (#135) only fires when someone is actually looking,');
+console.log('                          so headless it is correctly zero and attention-test.js proves it works');
+console.log('    - it needs TIME       a mature atom bank, or more ticks than this run had');
+console.log('  Anything left over after those is the interesting kind of zero. It is the question, not');
+console.log('  the verdict — but nothing was even asking before.');

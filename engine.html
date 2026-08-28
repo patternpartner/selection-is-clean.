@@ -526,7 +526,7 @@ let FIELD_DIFFUSE=0.11;  // gentle spread — Pe22b: now genome-driven, can evol
 // This is the system's access to primitives that weren't in the opcode set
 // at design time. JS can generate JS; the genome now uses that fact.
 // ═══════════════════════════════════════
-const USER_VARS=["a","b","u","c","d","m","s","cr","fr","wr"]; // a,b=source regs; u=own use count; c=proximity,
+const USER_VARS=["a","b","u","c","d","m","s","cr","fr","wr","at"]; // #135: `at` = attention here (0 = unobserved) // a,b=source regs; u=own use count; c=proximity,
                                            // d=energy, m=caste-match (#7a); s=own previous output; cr=own credit trace (#110)
                                            // (#10 recurrent state). The system authors primitives
                                            // that sense the world AND remember.
@@ -707,8 +707,8 @@ function uaJitterConst(expr){
 // "t" in "Math.tanh" has a left boundary but not a right one — "t" is immediately followed by "a", a
 // word character — so \bt\b cannot match it), and none of them collides with another on the list. A
 // \b-anchored regex over that closed vocabulary cannot false-match, so this needs no parser either.
-const UA_VAR_RE=/\b(?:nx|ny|nb|rl|rd|cr|fr|wr|a|b|u|c|d|m|s|t)\b/g;
-const UA_ALL_VARS=["a","b","u","c","d","m","s","cr","fr","wr","nx","ny","t","nb","rl","rd"];
+const UA_VAR_RE=/\b(?:nx|ny|nb|rl|rd|cr|fr|wr|at|a|b|u|c|d|m|s|t)\b/g; // #135: `at` before the single letters, or the alternation would match `a` first
+const UA_ALL_VARS=["a","b","u","c","d","m","s","cr","fr","wr","at","nx","ny","t","nb","rl","rd"]; // #135: +at
 function uaSwapVar(expr,re,pool){
   re=re||UA_VAR_RE; pool=pool||UA_ALL_VARS;
   const matches=expr.match(re);
@@ -741,7 +741,7 @@ function uaCompile(atom){
   try{
     // Pe24: compiled function takes (a,b,u) — u is normalized self-usage count.
     // Old atoms with expressions only referencing a,b still compile fine; u is unused param.
-    atom.compiled=new Function("a","b","u","c","d","m","s","f","nx","ny","t","nb","rl","rd","cr","fr","wr","const r=("+atom.expression+");return isFinite(r)?r:0;");
+    atom.compiled=new Function("a","b","u","c","d","m","s","f","nx","ny","t","nb","rl","rd","cr","fr","wr","at","const r=("+atom.expression+");return isFinite(r)?r:0;"); // #135: +at
     atom.failed=false;
   }catch(e){
     atom.compiled=null;
@@ -861,6 +861,7 @@ function runDrawProgram(i){
 // UNLOCKED #7a/#7b — context fed to system-authored atoms (set per-VM-tick; finite & bounded).
 // c=proximity, d=energy, m=caste-match. Read by uaCall below so the 9 call sites stay untouched.
 let uaCtxC=0,uaCtxD=0,uaCtxM=0,uaCtxNx=0,uaCtxNy=0,uaCtxT=0,uaCtxNb=0; // +EYES: position, slow clock, neighbour signal
+let uaCtxAt=0; // #135: attention at this particle's position — the sense of being watched
 // +FORAGE EYES (swing #42): a RESOURCE sense whose geometry matches an EXISTING actuator, so authorship can grip.
 //   rl = own local field level (∈[0,1]) — "am I in food?"; rd = field(partner)−field(self) (∈[-1,1]) — "is my
 //   partner toward more food?". rd aligns with the force actuator (vmActions[0] pushes along the partner axis),
@@ -1083,6 +1084,7 @@ function attemptMemeTransfer(recv,donor){ fired('meme.transfer');
 // EYES — set the world-sensing context for atom i (partner j, or -1 if solo). All finite by construction:
 // positions are finite Float32 / W,H>0; t is a bounded slow clock; nb is the partner's clamped amplitude.
 function uaSetEyes(i,j){
+  uaCtxAt = attentionAt(i);   // #135: how strongly this spot is being looked at
   uaCtxNx = (typeof W==='number'&&W>0) ? px[i]/W : 0;
   uaCtxNy = (typeof H==='number'&&H>0) ? py[i]/H : 0;
   uaCtxT  = Math.sin(tick*0.0011);                                   // slow clock ∈ [-1,1] → authored rhythm
@@ -1130,7 +1132,7 @@ function uaCall(atom,a,b){
     const _cr=isFinite(atom.creditTrace)?atom.creditTrace:0; // #110: own credit trace
     const _fr=(__ATOM_FRSENSE&&isFinite(__orgFitTraj))?__orgFitTraj:0; // #116: organism fitness trajectory (0 when sense off)
     const _wr=__ATOM_WRSENSE?Math.max(0,Math.min(1,(DIMS-3)/6)):0; // #126: world-richness — accumulated trait dimensionality (macro complexity the atom's own success helps grow, #125). 0 when sense off
-    const r=atom.compiled(a,b,u,uaCtxC,uaCtxD,uaCtxM,s,uaCallF,uaCtxNx,uaCtxNy,uaCtxT,uaCtxNb,uaCtxRl,uaCtxRd,_cr,_fr,_wr);
+    const r=atom.compiled(a,b,u,uaCtxC,uaCtxD,uaCtxM,s,uaCallF,uaCtxNx,uaCtxNy,uaCtxT,uaCtxNb,uaCtxRl,uaCtxRd,_cr,_fr,_wr,uaCtxAt); // #135: +at
     atom.uses=prevUses+1;
     if(__ATOM_USE_POP&&atom.expression){
       if(__atomExprUses.size>5000)__atomExprUses.clear(); // bounded — a live counter, not an archive
@@ -1170,6 +1172,10 @@ const DEATH_ENERGY_RETURN=0.5;  // fraction of a birth's cost recovered when a p
 // pins a real carrying capacity (≈ REGEN/METABOLIC_ENERGY_DRAW) well below CAP; birth-gating
 // alone only slowed the climb, because well-fed sparse particles almost never died.
 const METABOLIC_ENERGY_DRAW=0.0004; // per-living-particle per-tick upkeep; carrying capacity ≈ REGEN/this
+// #135: upkeep under attention. Looked-at ground is cheaper to stand on — a gradient, not a score.
+// Nothing is awarded; the cost of living is simply lower where the eye rests, exactly how every
+// other resource here works. A lineage is free to ignore it and pays nothing but ordinary rent.
+function attnUpkeep(i){ return METABOLIC_ENERGY_DRAW*(1-ATTENTION_GAIN*Math.min(1,attentionAt(i))); }
 const STARVE_DRAIN=0.04;            // max amplitude lost per tick when the world cannot feed the population
 // Seasons: a constant influx produces a perfectly smooth equilibrium with NO scarcity, so a
 // scarcity-sensor has nothing to sense and resource-aware restraint can never be selected.
@@ -14802,7 +14808,7 @@ function runAlienPrediction(){ fired('alien.predict');
       const atom=uas[candidateAI];
       if(!atom)continue;
       const baseline=po.prevCount, recentPartial=po.count; // only "trend so far" signal honestly available
-      uaCtxC=0;uaCtxD=0;uaCtxM=0;uaCtxNx=0;uaCtxNy=0;uaCtxT=Math.sin(tick*0.0011);uaCtxNb=0;uaCtxRl=0;uaCtxRd=0;
+      uaCtxC=0;uaCtxD=0;uaCtxM=0;uaCtxNx=0;uaCtxNy=0;uaCtxT=Math.sin(tick*0.0011);uaCtxNb=0;uaCtxRl=0;uaCtxRd=0;uaCtxAt=0;
       const out=uaCall(atom, Math.tanh((baseline||0)/20), Math.tanh((recentPartial||0)/20));
       const direction=out>0.05?1:(out<-0.05?-1:0);
       // ═══ #95 ABSTENTION IS NOT A FAILED PREDICTION ═════════════════════════════════════════════
@@ -20921,6 +20927,70 @@ const pDietBin=new Int16Array(CAP);               // per-organism diet channel t
 // #131: sized to OPCODE_COUNT, not to a literal 256. The novelty ENGINE's reach is still governed by
 // OPNOV_SPAN below; a larger array is inert on its own (slots past the span are never written or read),
 // so this allocation change alone is behaviour-preserving.
+// ═══ #135 — ATTENTION AS A PHYSICAL LAW ══════════════════════════════════════════════════════════
+// The single most important fact about this world is that a person is looking at it, on a phone, and
+// the world has never been able to tell. It has ninety-odd layers of perception — its own fitness
+// momentum, a partner's age, the coherence of its cluster, the state of daughter universes — and no
+// sense whatsoever of being watched. Touch already enters, but only as a FORCE (`pulling`): the
+// creature gets pushed, it does not perceive. Attention was outside the physics.
+//
+// Here it is inside. A gaze field over the same FIELD_W x FIELD_H grid the world already uses,
+// deposited where the pointer rests, diffusing and decaying like every other field here. Two effects,
+// and the second is the one that matters:
+//
+//   • A SENSE. Attention is readable by evolved code — a grammar variable (`at`) and a core opcode —
+//     so an atom can compute with it and a verb can act on it. Just data, like every other sense: the
+//     system decides what, if anything, being looked at MEANS.
+//   • A GRADIENT. Looked-at ground is metabolically richer. Not a score, not a fitness bonus — a
+//     cheaper cost of living in the places your eye rests, which is exactly how every other resource
+//     in this world works.
+//
+// The consequence is the point: what survives is partly what holds you. Selection has been blind to
+// the observer for a hundred and thirty swings; now the observer is weather. This is not
+// gamification — nothing scores you, and a creature that ignores attention entirely is free to, and
+// pays no penalty beyond the ground it stands on being ordinary.
+// ATTENTION_GAIN is deliberately small: the aim is a gradient a lineage can evolve INTO over
+// thousands of ticks, not a spotlight that reshapes the world in a second.
+const attnField=new Float32Array(FIELD_W*FIELD_H);
+const ATTN_DEPOSIT=0.06;    // per tick under the pointer
+const ATTN_DECAY=0.985;     // attention fades; a place you looked at once is not looked at forever
+const ATTN_DIFFUSE=0.08;    // eyes are not pixels — a soft blob, not a point
+const ATTN_MAX=1.5;
+const ATTENTION_GAIN=0.35;  // how much cheaper life is under full attention (fraction of upkeep)
+let __attnPresent=0;        // 1 while the pointer is on the canvas, EMA'd so it decays on release
+let attnPeak=0;             // telemetry / HUD
+const _attnTmp=new Float32Array(FIELD_W*FIELD_H);
+function updateAttentionField(){
+  // deposit where the smoothed pointer rests. mx starts at -9e3 (never touched), which lands far
+  // outside the grid, so an untouched world simply has no attention anywhere — the honest default.
+  const inside = smx>0 && smy>0 && smx<W && smy<H;
+  __attnPresent += ((inside?1:0) - __attnPresent)*0.05;
+  if(inside){
+    const ax=Math.floor(smx/(W/FIELD_W)), ay=Math.floor(smy/(H/FIELD_H));
+    const ai=__cl(ay*FIELD_W+ax,0,FIELD_W*FIELD_H-1);
+    attnField[ai]=Math.min(ATTN_MAX, attnField[ai]+ATTN_DEPOSIT);
+    fired('attention.field');
+  }
+  // diffuse + decay, same shape as the resource field's own update
+  let peak=0;
+  for(let y=0;y<FIELD_H;y++)for(let x=0;x<FIELD_W;x++){
+    const i0=y*FIELD_W+x; const c=attnField[i0];
+    const l=attnField[y*FIELD_W+(x>0?x-1:x)], r=attnField[y*FIELD_W+(x<FIELD_W-1?x+1:x)];
+    const u=attnField[(y>0?y-1:y)*FIELD_W+x], d=attnField[(y<FIELD_H-1?y+1:y)*FIELD_W+x];
+    let v=(c+((l+r+u+d)*0.25-c)*ATTN_DIFFUSE)*ATTN_DECAY;
+    if(!isFinite(v))v=0;
+    _attnTmp[i0]=v; if(v>peak)peak=v;
+  }
+  attnField.set(_attnTmp);
+  attnPeak=peak;
+}
+// What a particle standing here feels. 0 = unobserved ground.
+function attentionAt(i){
+  if(!(W>0&&H>0))return 0;
+  const ax=Math.floor(px[i]/(W/FIELD_W)), ay=Math.floor(py[i]/(H/FIELD_H));
+  const v=attnField[__cl(ay*FIELD_W+ax,0,FIELD_W*FIELD_H-1)];
+  return isFinite(v)?v:0;
+}
 const opFreq=new Float32Array(OPCODE_COUNT);      // opcode frequency among living programs
 let opFreqTotal=0;
 const opCum=new Float32Array(OPCODE_COUNT);       // swing #34: slow EMA of each opcode's usage SHARE over history (a never-explored opcode stays ≈0 → maximally novel; sustains pressure into the unused program space, not just current rarity)
@@ -21551,7 +21621,12 @@ function loop(){
   genome.totalTicks++;
   const _season=1+SEASON_AMPLITUDE*Math.sin(2*Math.PI*tick/SEASON_PERIOD); // feast/famine cycle
   worldEnergy=Math.min(WORLD_ENERGY_MAX,worldEnergy+WORLD_ENERGY_REGEN*_season); // conserved-budget influx ("sunlight"), now seasonal
-  { const _md=N*METABOLIC_ENERGY_DRAW; energyAdequacy=_md>0?Math.min(1,worldEnergy/_md):1; worldEnergy=Math.max(0,worldEnergy-_md); } // metabolism takes first claim; reproduction gets the surplus
+  // #135: upkeep is now charged PER PARTICLE and discounted by the attention on the ground it
+  // stands on. With no pointer anywhere, attentionAt() is 0 everywhere and this sums to exactly
+  // N*METABOLIC_ENERGY_DRAW — the previous behaviour, unchanged, which is the honest default for
+  // a world nobody is looking at.
+  { let _md=0; for(let i=0;i<N;i++){ if(!palive[i])continue; _md+=attnUpkeep(i); }
+    energyAdequacy=_md>0?Math.min(1,worldEnergy/_md):1; worldEnergy=Math.max(0,worldEnergy-_md); } // metabolism takes first claim; reproduction gets the surplus
   { tHist.fill(0); for(let _i=0;_i<N;_i++){ if(palive[_i]) tHist[tendBin(_i)]++; }
     const _mean=N/TCELLS;
     for(let _i=0;_i<N;_i++){ if(!palive[_i])continue; const _bc=tHist[tendBin(_i)];
@@ -21667,6 +21742,7 @@ function loop(){
     } }
   flushNetworkEvents();
   smx+=(mx-smx)*.05;smy+=(my-smy)*.05;
+  updateAttentionField();   // #135: attention is part of the world's physics now
   if(pulling){pStr=Math.min(pStr+.02,1);pDur++}else pStr*=.92;
 
   const absPd=ABSENCE_BASE+Math.sin(tick*0.0007)*180+(Math.sin(tick*0.00031)*90)|0;
