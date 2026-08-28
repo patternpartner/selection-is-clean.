@@ -10742,6 +10742,27 @@ being run and `meanActivity` is a rate. `oeeVer` is stamped and exported as `oV`
 v1 and are not comparable.** The ever-seen set is capped at 20,000 canonical keys and reports
 saturation (`oS`) rather than leaking on a device that runs this forever.
 
+**Verified against v1 on the same run.** Defaults are byte-identical in dynamics, so both builds
+replay the *same* seeded 30,000-tick evolution and every difference in the numbers is the instrument:
+
+| | v1 (pre-#131) | v2 (#131) |
+|---|---|---|
+| cumulative innovations at 30k | 5 | **2** |
+| `meanActivity` per epoch | 365 → 567 → 711 → 806 → 993 | 0 → 405 → 631 → 450 → **318** |
+
+Two things worth having checked. v2 is **not** silent — the obvious risk of tightening three things at
+once (canonical key, execution delta, first-sight baseline) was replacing "can only say yes" with "can
+only say no", which would look like a finding about the creature rather than a defect in the meter. It
+registers, at roughly 40% of v1's count on a bank of 24 atoms with 4 adopted. And `meanActivity` now
+moves in **both** directions instead of climbing monotonically, which is the lifetime-total-to-rate fix
+landing where you can see it. Both read `persist=0` at five epochs because the 3-epoch lag has not
+resolved for innovations first seen at epoch 3.
+
+Caveat on magnitude, not direction: this bank is young. The repo authors for `AUTH_TICKS=60000` before
+ablating and a mature bank is ~226 atoms, where the jitter branch fires far more often relative to the
+protection-discounted redraw branch. The gap between the two instruments should widen with bank size;
+that is an expectation, not a measurement.
+
 Separately: v1 promised the seen-set was *"reseeded on load"* and **no reset existed anywhere in the
 file**. A boot-time load was fine because nothing had flushed yet, but a mid-run import diffed the
 incoming creature's bank against the outgoing creature's history and counted it all as fresh
