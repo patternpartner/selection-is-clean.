@@ -1,4 +1,4 @@
-# CODEMAP — engine.html (24,510 lines)
+# CODEMAP — engine.html (24,611 lines)
 
 A structural map of the simulation, built by reading the source rather than the notebook. Written to be
 durable: each region records what is THERE, with line anchors, so a later reader does not have to
@@ -14,9 +14,9 @@ Companion to OEE-NOTES.md, which records experiments. This records the machine t
 |---|---|
 | **file** | `engine.html` — the sim moved out of `index.html` in `c0cef11`; `index.html` is now the worker shell |
 | **last fully re-derived** | never — this map was written against `index.html` and has been patched, not rebuilt |
-| **prose current through** | **#90.** The engine is at **#137.** Roughly forty-six swings are undocumented here |
+| **prose current through** | **#90.** The engine is at **#138.** Roughly forty-seven swings are undocumented here |
 | **verified as of #131** | the anchor table below, the opcode constants, the genome extent, and the census claims |
-| **added since, unmapped below** | **#132/#133** verb grammar (`EFFECT_TARGETS`, `applyUserEffect`, opcode 236) · **#134** liveness census (`LIVENESS_DECLARED`, `fired()`) · **#135** attention field (`attnField`, `attentionAt`, the `at` sense) · **#136** world signal (`updateWorldSignal`, `worldSignalSuppressed`) · **#137** crossing census (`CROSSING_DECLARED`, `crossingCensus`). Grep the names; no line anchors yet |
+| **added since, unmapped below** | **#132/#133** verb grammar (`EFFECT_TARGETS`, `applyUserEffect`, opcode 236) · **#134** liveness census (`LIVENESS_DECLARED`, `fired()`) · **#135** attention field (`attnField`, `attentionAt`, the `at` sense) · **#136** world signal (`updateWorldSignal`, `worldSignalSuppressed`) · **#137** crossing census (`CROSSING_DECLARED`, `crossingCensus`) · **#138** the diary (`theDiary`, `diaryPanel`). Grep the names; no line anchors yet |
 | **NOT verified** | every other inline line number in this file. They were written against a file ~1,100 lines shorter and around 500–900 lines of drift has accumulated unevenly — treat them as approximate, and grep for the quoted code instead |
 
 The map's own promise is that a later reader does not have to re-derive it, which only holds if the
@@ -43,6 +43,11 @@ If you add a fifth kind of authored structure, add a row to `CROSSING_DECLARED` 
 are easy to miss: never splice `boundOpcodes` (it renumbers every opcode above the cut), and never
 shift `userAtoms` without remapping `boundOpcodes` alongside it. `-1` is a legitimate tombstone for a
 slot whose atom was culled, and every dispatch guards with `if(_bua)`, so an inert slot is a no-op.
+
+**Two IIFEs after the script (#138).** `index.html` extracts the metabolism observer with a
+non-greedy regex anchored to `//__METAB_END__`. The diary panel is appended AFTER that marker and
+ends at `//__DIARY_END__`; both are guarded on `document.body` so a headless rig cannot be taken down
+by them. Anything else appended down there must keep its own end marker and the same guard.
 
 ---
 

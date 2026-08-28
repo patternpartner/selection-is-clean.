@@ -10915,20 +10915,37 @@ a fifth instance of the same decoration failure. At 6,000 ticks: `verb.fire` 40,
 because the census's own legend says "never is a fact about THIS RUN" and this is the case that proves
 the warning earns its place — a short run nearly produced a false bug report.
 
-### Cosmos: the merge→law chain has never once executed
+### Cosmos: not dead, just slower than I was looking — and one real zero left
 
-`cosmos.launch` fires 19 times in 6,000 ticks; `cosmos.merge` and `cosmos.law` fire zero. This is not
-broken accounting. All 19 children **do** export (`everExported` 19, `fluxErr` ≈ 1e-5 against
-`fluxOut` 16.4, so conservation holds to five decimal places). They are profitable: `netNegDeaths` is
-0 and the 13 that died did so with a summed net of 12.24 — an average of **0.94 against a merge
-threshold of 1.2**. Live children sit at net 1.073 and 0.726.
+**This section originally claimed the merge→law chain "has never once executed" and was "unreachable
+in practice". That was wrong, and it was wrong for the same reason the verb grammar looked dead: I
+judged it on a 6,000-tick run.**
 
-So children profit, and die at roughly 78% of what merging requires. An entire subsystem — merge,
-the scenario-bank proposal, and `cosmos.law` rewriting the physics constants — is unreachable in
-practice, and the criterion is checked only during a flux event while the child is alive, so thirteen
-profitable lifetimes proposed nothing.
+At 6,000 ticks: `cosmos.launch` 19, `cosmos.merge` 0, `cosmos.law` 0.
+At 25,000 ticks: `cosmos.launch` **191**, `cosmos.merge` **5**, `cosmos.law` still 0.
+`expr.recombine`, also zero at 6,000, fires **twice** by 25,000 (it needs an atom birth, and there
+are only 24 in the whole run).
 
-**Deliberately not changed.** Retuning `net > endow` until it fires would be me deciding the answer,
-and the standing rule here is that the system decides what to turn off, not the designer. Recorded as
-a measurement so the decision can be made on evidence rather than on my preference for seeing a
-mechanism run.
+So children do eventually clear the `net > endow` threshold; the 6,000-tick numbers (13 deaths at an
+average net of 0.94 against a threshold of 1.2) were a snapshot of a young run, not a calibration
+failure. The accounting was never in doubt — `everExported` was 19/19 and `fluxErr` ≈ 1e-5 against
+`fluxOut` 16.4, so conservation holds to five decimal places — but the conclusion I drew from it was.
+
+**What is still genuinely zero at 25,000 ticks:** `cosmos.law` and `atom.cull`. `cosmos.law` is now
+the more interesting of the two, because it sits DOWNSTREAM of a mechanism that demonstrably fires:
+five children have pushed physics proposals into the scenario bank and none has ever won enough
+authority to rewrite a constant. That is a real question about the bank's champion criterion rather
+than about whether the plumbing works. `atom.cull` remains zero at every horizon measured.
+
+### The lesson worth keeping
+
+Three times in this one session a mechanism read NEVER and was alive: the verb grammar (dead at 1,500,
+40,648 fires at 6,000), cosmos merge (dead at 6,000, five merges at 25,000), and expression
+recombination (same). Each time the first reading was mine and each time it was a run-length artifact.
+
+The census legend already says "never is a fact about THIS RUN, not proof the code is dead" — that
+sentence has now earned its place three times over, against its own author. **A liveness zero is a
+question about the run before it is a question about the code, and the first thing to try is more
+ticks.** The counterexample that keeps this from being a rule about nothing is the phantom-binding
+bug above: that one was real, it was found by measuring both sides rather than by watching a counter
+stay at zero, and no amount of extra ticks would have made it correct.

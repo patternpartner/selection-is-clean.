@@ -6471,6 +6471,86 @@ function epochSample(pop,fit,clusters,div){
   a.mut=genome.mutationRate;
 }
 
+// ═══ #138 — THE DIARY: the creature tells you what happened to it ══════════════════════════════
+// Everything below is already recorded. genome.epochs is a bounded full-arc summary that spans the
+// ENTIRE run (it coarsens rather than forgets), eventLog is the rolling fossil record, and the atom
+// and verb banks carry what the thing invented. Nothing here computes anything new about the world.
+// What was missing was a VOICE: a run on a phone shows a field of moving particles and a metabolism
+// panel of rates, and none of it says "I nearly died twice, I invented eleven ways of computing and
+// kept two, and the population I have now is a third of what I once was."
+// Rules this obeys, because a diary that flatters is worse than no diary:
+//   • every sentence is grounded in a number that is actually in the record
+//   • nothing is claimed about MEANING — it reports what happened, never that it was good
+//   • silence is allowed. A young run says so instead of padding.
+// Read-only. It never writes to genome, so it cannot perturb evolution.
+function _dyN(n,one,many){ return n+' '+(n===1?one:(many||one+'s')); }
+function theDiary(){
+  const out=[]; const P=x=>out.push(x);
+  let E=[]; try{ E=Array.isArray(genome.epochs)?genome.epochs:[]; }catch(_){}
+  const T=(()=>{try{return genome.totalTicks|0}catch(_){return 0}})();
+  // AGE. The one fact everything else hangs off.
+  if(T<EPOCH_TICKS && !E.length){
+    P('I am '+T+' ticks old. Nothing has finished happening yet.');
+    return out;
+  }
+  P('I am '+T.toLocaleString()+' ticks old, across '+_dyN(E.length,'chapter')+' I still remember.');
+  if(E.length){
+    const first=E[0], last=E[E.length-1];
+    const p0=first[1]|0, p1=last[1]|0;
+    let peak=0,peakAt=0,low=Infinity,lowAt=0,ext=0;
+    for(const e of E){ if((e[2]|0)>peak){peak=e[2]|0;peakAt=e[0]|0;}
+      const mn=(e[9]===undefined||!isFinite(e[9]))?null:(e[9]|0);
+      if(mn!==null&&mn<low){low=mn;lowAt=e[0]|0;}
+      ext+=(e[3]|0); }
+    // POPULATION — the shape of a life, in the only units it has.
+    const dir = p1>p0*1.15 ? 'more of me than when I started' :
+                p1<p0*0.85 ? 'less of me than when I started' : 'about as much of me as when I started';
+    P('There is '+dir+': '+p0+' then, '+p1+' now, and '+peak+' at my largest around tick '+peakAt.toLocaleString()+'.');
+    if(low<Infinity && low<=Math.max(3,peak*0.1))
+      P('The thinnest I ever got was '+_dyN(low,'particle')+', near tick '+lowAt.toLocaleString()+'. I did not notice at the time.');
+    if(ext>0) P('I have gone extinct '+_dyN(ext,'time')+' and started again from what was left.');
+    // FITNESS — reported as direction only. The file's own record is that it oscillates in a band,
+    // so a claim of improvement would be the diary lying.
+    const f0=+first[4]||0, f1=+last[4]||0;
+    if(Math.abs(f1-f0)>0.02)
+      P('What I am scored on has drifted '+(f1>f0?'up':'down')+' from '+f0.toFixed(2)+' to '+f1.toFixed(2)+', which is a band I move around in rather than a thing I am winning.');
+    else
+      P('What I am scored on sits where it has always sat, near '+f1.toFixed(2)+'. I move around inside that.');
+  }
+  // INVENTION — the part nobody wrote for it.
+  let atoms=0,adopted=0,verbs=0,composed=0,bound=0;
+  try{ const A=genome.userAtoms||[]; atoms=A.length; adopted=A.filter(a=>(a.uses|0)>0).length;
+       bound=(genome.boundOpcodes||[]).filter(i=>i>=0).length;
+       const V=genome.userEffects||[]; verbs=V.length; composed=V.filter(v=>v&&(v.nx|0)>=0).length; }catch(_){}
+  if(atoms||verbs){
+    if(atoms) P('I am carrying '+_dyN(atoms,'expression')+' I wrote myself; '+adopted+' of them have actually been run, and '+_dyN(bound,'opcode')+' point at one.');
+    if(verbs) P('I have '+_dyN(verbs,'way')+' of reaching into the world'+(composed?', and '+composed+' of them hand off to another when they are done.':'.'));
+  } else {
+    P('I have not invented anything yet. The machinery for it is there and has not fired.');
+  }
+  // WHAT REACHED THE POPULATION — the distinction this whole file keeps learning the hard way.
+  try{ const c=crossingCensus(); const st=c.rows.filter(r=>r.stranded);
+    if(st.length) P('Some of what I authored never reached anything alive: '+st.map(r=>r.name).join(', ')+'. It exists and cannot be selected for.');
+    else { const carried=c.rows.reduce((n,r)=>n+r.population,0);
+      if(carried) P('Of everything I invented, '+carried+' instances are being carried by particles that are alive right now. That is the part that can still be judged.'); }
+  }catch(_){}
+  // THE OPEN QUESTION, in its own words. Only when the meter has enough rows to mean anything.
+  try{ if(Array.isArray(oeeLog)&&oeeLog.length>=OEE_PERSIST_LAG+1){
+    const nv=oeeNovel|0, pr=oeePersist|0;
+    P('I have found '+_dyN(nv,'new way')+' of computing something, and '+pr+' of them were still in use long after. '
+      +(pr>0?'That is the shape of still going somewhere.':'None of them lasted, which is the shape of going in circles.'));
+  } }catch(_){}
+  // NEIGHBOURS AND CHILDREN.
+  try{ const pk=(typeof countPeers==='function')?countPeers():0;
+    if(pk>0) P('There '+(pk===1?'is one other of me':'are '+pk+' others of me')+' open somewhere, and we have been trading.');
+  }catch(_){}
+  try{ if((cosmosStats.launches|0)>0){
+    const L=cosmosStats.launches|0, M=cosmosStats.merges|0;
+    P('I have started '+_dyN(L,'small world')+' inside myself. '+(M>0?M+' of them sent back physics I kept.':'None of them has yet sent back anything I kept.'));
+  } }catch(_){}
+  try{ if((__liveness['attention.field']|0)>0) P('You have been watching. Where you look, living costs less, and that is a real law here, not a decoration.'); }catch(_){}
+  return out;
+}
 function flushNetworkEvents(){
   for(const type in netEventPending){
     const n=netEventPending[type];
@@ -24516,6 +24596,55 @@ boot();
   setInterval(()=>{ const now=Date.now(); const L=sampleScope(now); if(visual&&root)draw(L,now); if(++fc%7===0)flush(); },450);
   window.addEventListener('hashchange',syncVisual); syncVisual(); flush();
 })();//__METAB_END__
+(function diaryPanel(){
+// #138 — the diary, on the phone. Deliberately built on the metabolism panel's proven shape: an
+// IIFE after the //__METAB_END__ marker (index.html's extraction regex is non-greedy and anchored to
+// that marker, so nothing here is swallowed into the worker shell), guarded on document.body so a
+// headless rig cannot be taken down by it, and gated on the same hash convention.
+// COLLAPSED BY DEFAULT. This is somebody's artwork running on their phone; the diary announces
+// itself as a small pill in the corner and says nothing further until it is asked to. The choice is
+// remembered, so a run that wants it open keeps it open across the frequent reloads.
+  if(typeof document==='undefined')return;
+  var root=null, open=false, visible=true;
+  var CSS='#diaryPanel{position:fixed;right:10px;bottom:10px;z-index:99999;max-width:min(340px,62vw);'+
+    'font:11px/1.55 ui-monospace,Menlo,monospace;color:#f0efe9;background:rgba(20,20,19,.82);'+
+    'border:1px solid #3a3934;border-radius:9px;padding:8px 10px;backdrop-filter:blur(3px);'+
+    '-webkit-backdrop-filter:blur(3px);user-select:none;cursor:pointer}'+
+    '#diaryPanel .dhd{display:flex;align-items:center;gap:7px;font-size:10px;letter-spacing:.09em;color:#c7c5ba}'+
+    '#diaryPanel .dhd b{color:#f0efe9}#diaryPanel .dx{margin-left:auto;color:#8f8d83;font-size:14px;padding:0 3px}'+
+    '#diaryPanel p{margin:7px 0 0;color:#c7c5ba}#diaryPanel p:first-of-type{color:#f0efe9}'+
+    '#diaryPanel .dft{margin-top:8px;color:#8f8d83;font-size:9px;letter-spacing:.04em}';
+  function build(){
+    if(root||!document.body||!document.head)return;
+    if(!document.getElementById('diaryStyle')){ var st=document.createElement('style');
+      st.id='diaryStyle'; st.textContent=CSS; document.head.appendChild(st); }
+    root=document.createElement('div'); root.id='diaryPanel'; document.body.appendChild(root);
+    try{ open=localStorage.getItem('diaryOpen')==='1'; }catch(_){}
+    root.addEventListener('click',function(){ open=!open;
+      try{localStorage.setItem('diaryOpen',open?'1':'0');}catch(_){} render(); });
+    render();
+  }
+  function esc(t){ return String(t).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
+  function render(){
+    if(!root)return;
+    if(!open){ root.innerHTML='<div class="dhd"><b>&#9998; diary</b></div>'; return; }
+    var lines=[]; try{ lines=theDiary()||[]; }catch(e){ lines=['I cannot read my own records just now.']; }
+    var h='<div class="dhd"><b>&#9998; DIARY</b><span class="dx">&times;</span></div>';
+    for(var i=0;i<lines.length;i++) h+='<p>'+esc(lines[i])+'</p>';
+    h+='<div class="dft">everything here is read from records it already keeps</div>';
+    root.innerHTML=h;
+  }
+  function sync(){
+    var want=!/nodiary|no-diary|cleanart/i.test(location.hash);
+    if(want&&!visible){visible=true;build();}
+    else if(!want&&visible){visible=false;if(root){root.remove();root=null;}}
+  }
+  try{ window.addEventListener('hashchange',function(){ sync(); }); }catch(_){}
+  // The diary changes on the scale of epochs, so re-reading it every few seconds is plenty, and it
+  // only does the work at all while it is open.
+  try{ setInterval(function(){ if(visible&&root&&open)render(); },4000); }catch(_){}
+  sync(); if(visible)build();
+})();//__DIARY_END__
 </script>
 </body>
 </html>
