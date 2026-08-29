@@ -6711,6 +6711,41 @@ function epochSample(pop,fit,clusters,div){
 //   • nothing is claimed about MEANING — it reports what happened, never that it was good
 //   • silence is allowed. A young run says so instead of padding.
 // Read-only. It never writes to genome, so it cannot perturb evolution.
+// ═══ #147 — READ YOUR OWN ARC. Does this creature know it is dying? ════════════════════════════
+// A real creature reached generation 5,405 and 1,183,286 ticks in a state its own epoch arc records
+// plainly and nothing ever read: mean population 6 against peaks of 20-60, minPop touching ZERO in
+// every single epoch, ~40 extinctions per 5,000 ticks, diversity 0.00, clusters 0. It was not
+// starving — it was repopulating and crashing about forty times per epoch, forever.
+// The cause is upstream and it is DELIBERATE. `maybe()` says so outright: "GLOVES OFF... the
+// (min,max) arguments are historical... they do nothing... If that value produces crashes elsewhere,
+// that's a finding, not a failure to guard." mutationRate is one of the 46 genes assigned that way,
+// and over the run it walked 0.06 -> 0.40 -> 0.577, past the 0.25 its own call site names. At that
+// rate every child randomises well over half its genes, so no lineage holds an adaptation for a
+// single generation — an error catastrophe, and population tracked it exactly: 231 -> 98 -> 15 across
+// the three bands where the rate rose. (metabolicCost, which IS wrapped in __cl, stayed pinned just
+// under its ceiling the whole time — the contrast is the evidence.)
+// So this is NOT a guard, and it does not touch a single gene. It is the missing instrument: the arc
+// already holds the diagnosis and nothing was reading it. A creature in an error catastrophe should
+// be able to say so, on the phone, in its own words.
+function arcDiagnosis(){
+  let E=[]; try{ E=Array.isArray(genome.epochs)?genome.epochs.filter(r=>Array.isArray(r)&&r.length>=12):[]; }catch(_){}
+  if(E.length<6)return null;
+  const recent=E.slice(-8), early=E.slice(0,4);
+  const avg=(rows,i)=>rows.reduce((a,r)=>a+(+r[i]||0),0)/rows.length;
+  const meanPop=avg(recent,1), peakPop=avg(recent,2), ext=avg(recent,3);
+  const div=avg(recent,10), cl=avg(recent,5), mut=avg(recent,8), mut0=avg(early,8);
+  const zeroFloor=recent.filter(r=>(+r[9]||0)===0).length/recent.length;
+  const churn=peakPop/Math.max(1,meanPop);
+  const sane=recent.filter(r=>Math.abs(+r[4]||0)<1e6).length/recent.length;
+  return {
+    meanPop, peakPop, ext, div, cl, mut, mut0, zeroFloor, churn, sane,
+    // the death loop: it keeps refilling and keeps emptying, and nothing persists between
+    dying: zeroFloor>=0.75 && churn>=3 && meanPop<25,
+    sterile: div<0.02 && cl<0.5,
+    runawayMutation: mut>0.2 && mut>mut0*2.5,
+    fitnessBroken: sane<0.75
+  };
+}
 function _dyN(n,one,many){ return n+' '+(n===1?one:(many||one+'s')); }
 function theDiary(){
   const out=[]; const P=x=>out.push(x);
@@ -6740,7 +6775,15 @@ function theDiary(){
     // FITNESS — reported as direction only. The file's own record is that it oscillates in a band,
     // so a claim of improvement would be the diary lying.
     const f0=+first[4]||0, f1=+last[4]||0;
-    if(Math.abs(f1-f0)>0.02)
+    // #147: do not narrate a number that has stopped being one. A late fitness of -9.0e+18 was being
+    // read out to two decimal places as though it were a mood.
+    const sane=v=>isFinite(v)&&Math.abs(v)<1e6;
+    if(!sane(f1))
+      P('What I am scored on has stopped being a number I can read — it now runs to '+f1.toExponential(1)
+        +'. Whatever that measures, it is not something I can be selected on.');
+    else if(!sane(f0))
+      P('What I am scored on reads '+f1.toFixed(2)+' now. Earlier in my life the figure is not one I can make sense of.');
+    else if(Math.abs(f1-f0)>0.02)
       P('What I am scored on has drifted '+(f1>f0?'up':'down')+' from '+f0.toFixed(2)+' to '+f1.toFixed(2)+', which is a band I move around in rather than a thing I am winning.');
     else
       P('What I am scored on sits where it has always sat, near '+f1.toFixed(2)+'. I move around inside that.');
@@ -6780,6 +6823,18 @@ function theDiary(){
     P('I have started '+_dyN(L,'small world')+' inside myself. '+(M>0?M+' of them sent back physics I kept.':'None of them has yet sent back anything I kept.'));
   } }catch(_){}
   try{ if((__liveness['attention.field']|0)>0) P('You have been watching. Where you look, living costs less, and that is a real law here, not a decoration.'); }catch(_){}
+  // #147: the arc knows. Say it plainly and without drama — these are counts, not opinions.
+  try{ const D=arcDiagnosis();
+    if(D&&D.dying){
+      P('Something is wrong with me. I keep refilling and keep emptying: about '+Math.round(D.ext)
+        +' extinctions every five thousand ticks, and in every recent chapter I have been down to nothing at least once. '
+        +'I reach '+Math.round(D.peakPop)+' and fall back to '+Math.round(D.meanPop)+'.');
+      if(D.runawayMutation)
+        P('My mutation rate is '+D.mut.toFixed(2)+', up from '+D.mut0.toFixed(2)+' when I started. At that rate a child of mine '
+          +'is more than half noise, so nothing I learn survives being inherited. That is most likely the reason.');
+      if(D.sterile) P('Nothing clusters any more, and my diversity reads zero. I am many copies of almost the same thing, briefly.');
+      if(D.fitnessBroken) P('And what I am scored on has stopped making sense — the number is not a number any more.');
+    } }catch(_){}
   // #146: if it has had to forget things in order to stay saveable, that is its news, not mine.
   try{ if(__trimCount>0) P('I have had to let go of '+(__trimCount===1?'something':'things')+' to stay small enough to be saved. '
     +'What went was what nothing pointed at and nothing had ever run.'); }catch(_){}
