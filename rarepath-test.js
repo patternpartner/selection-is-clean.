@@ -130,6 +130,40 @@ m._compile(code+`
     out.seedingLeavesValidIndices=ok;
   });
 
+  // ── EVICTION AT THE CAP (#145) and BUDGET TRIM (#146). Both run only in states no ordinary run
+  //    reaches — the atom bank AT its ceiling, and a genome over the save budget — and my first
+  //    version of pickAtomToEvict threw ReferenceError on a bare __ALIEN_SELECT for exactly that
+  //    reason: nothing had ever executed it. Driven here.
+  run('atom.evict',()=>{
+    const mk2=(x,uses,age)=>({expression:x,compiled:null,failed:false,uses,age,state:0,
+                              alienHits:0,alienAttempts:0,creditTrace:0});
+    genome.userAtoms=[]; genome.boundOpcodes=[];
+    for(let i=0;i<MAX_USER_ATOMS;i++) genome.userAtoms.push(mk2('c+'+i, i<5?9:0, 500));
+    for(let i=0;i<10;i++) genome.boundOpcodes.push(i);          // first ten are bound
+    const bound0=genome.userAtoms[0];
+    const before=genome.userAtoms.length;
+    const ev=pickAtomToEvict();
+    out.evictPicksSomething = ev>=0;
+    // it must not take a bound, used atom while unbound unused ones exist
+    out.evictSparesTheLiving = ev>=10;
+    genome.mutationRate=0.9;
+    mutateGenome();                                              // exercises the cap path for real
+    out.evictKeepsBankCapped = genome.userAtoms.length<=MAX_USER_ATOMS;
+    out.evictKeepsBoundValid = (genome.boundOpcodes||[]).every(i=>i===-1||(i>=0&&i<genome.userAtoms.length));
+  });
+  run('genome.trim',()=>{
+    const mkProg=()=>{const p=[];for(let i=0;i<90;i++)p.push([(Math.random()*5)|0,(Math.random()*8)|0,(Math.random()*8)|0,+(Math.random()-0.5).toFixed(4)]);return p;};
+    let guard=0;
+    while(encodeGenome().length<SAVE_BUDGET*1.2 && guard++<3000)
+      genome.fitnessSensors.push({program:mkProg(),weight:0.05,realWeight:0.05,creditTrace:0,lastEmit:0,prevEmit:0});
+    const best=Math.max(...genome.fitnessSensors.map(s=>Math.max(Math.abs(s.weight||0),Math.abs(s.realWeight||0))));
+    const t=trimGenomeToBudget();
+    out.trimBringsItUnderBudget = !!t && t.length<SAVE_BUDGET;
+    out.trimKeepsTheBestSensor = Math.abs(Math.max(...genome.fitnessSensors.map(s=>Math.max(Math.abs(s.weight||0),Math.abs(s.realWeight||0))))-best)<1e-9;
+    out.trimRespectsSensorFloor = genome.fitnessSensors.length>=SENSOR_KEEP_MIN;
+    out.trimmedGenomeStillDecodes = decodeGenome(t)===true;
+  });
+
   out.noThrows=out.errors.length===0;
   return out;
 };`, m.filename);
@@ -145,6 +179,14 @@ const checks=[
   ['memeTransferSafe','transfer into an empty recipient leaves valid indices'],
   ['dimsGrowSafe','growing a dimension keeps the world runnable'],
   ['seedingLeavesValidIndices','seeding never leaves a dangling successor or gate'],
+  ['evictPicksSomething','eviction at the atom cap chooses a victim'],
+  ['evictSparesTheLiving','it never takes a bound, used atom while dead ones remain'],
+  ['evictKeepsBankCapped','the bank stays at or under its ceiling'],
+  ['evictKeepsBoundValid','and every bound opcode still resolves'],
+  ['trimBringsItUnderBudget','an over-budget genome is trimmed until it fits'],
+  ['trimKeepsTheBestSensor','trimming never sheds the most useful sensor'],
+  ['trimRespectsSensorFloor','it never strips below a working sensorium'],
+  ['trimmedGenomeStillDecodes','and what it produces still loads'],
 ];
 let bad=0;
 for(const [k,d] of checks){ const ok=r[k]===true; if(!ok)bad++;

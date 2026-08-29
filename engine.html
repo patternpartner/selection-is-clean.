@@ -283,7 +283,7 @@ const LIVENESS_DECLARED=[
   'shadow.sim','shadow.decide','self.learn','cluster.reflex','cluster.detect','cluster.persist',
   'alien.predict','niche.economy','dims.grow','cosmos.launch','cosmos.merge','cosmos.law',
   'genome.mutate','prog.crossover','prog.inherit','oee.flush','attention.field','world.signal',
-  'atom.cull','atom.evict','verb.senseBind','verb.senseFired',
+  'atom.cull','atom.evict','genome.trim','verb.senseBind','verb.senseFired',
 ];
 // NOT INSTRUMENTED, and deliberately absent rather than declared-and-silent: cladogenesis minting
 // (#17) has no single entry point I could identify with confidence. A census that reports "never"
@@ -334,9 +334,13 @@ function pickAtomToEvict(){
                  ||(k[0]===bestKey[0]&&k[1]===bestKey[1]&&k[2]>bestKey[2]);
   for(let i=0;i<uas.length;i++){
     const a=uas[i]; if(!a)continue;
-    if(__ALIEN_SELECT!==0&&typeof alienGrip==='function'){
-      try{ if(alienGrip(a)>0)continue; }catch(_){}   // real predictive record — same protection the cull gives
-    }
+    // #146: read the gate the way every other site does. My first version referenced a bare
+    // __ALIEN_SELECT, which is not a declared identifier — the engine reads it off globalThis — so
+    // this threw ReferenceError. It never showed up because pickAtomToEvict only runs when the bank
+    // is AT the 512 cap, which no test had reached: the exact rare-path trap #143 exists to catch,
+    // in code I wrote one commit after writing that rig.
+    try{ const _as=(typeof globalThis==='undefined')||((globalThis.__ALIEN_SELECT??1)|0)!==0;
+      if(_as&&typeof alienGrip==='function'&&alienGrip(a)>0)continue; }catch(_){}
     const tier=bound.has(i)?2:0;                     // unbound tiers first
     const uses=a.uses|0;
     const key=[tier+(uses>0?1:0), uses, a.age|0];    // tier, then least-used, then oldest
@@ -1395,6 +1399,69 @@ const SENESCENCE_SCALE=0.00035;     // per-tick death hazard added per unit of (
 // So: a hard ceiling, evicting the genuinely dead first. This is not a judgement about which atoms
 // deserve to live — selection already has finer instruments than I do. It is the standing-room limit
 // that the verb bank has had since #132 and this one never got.
+// ═══ #146 — THE SAVE BUDGET IS NOT A SUGGESTION, AND FAILING IT MUST NOT BE SILENT ═════════════
+// Everything that grows in this file eventually arrives at one line:
+//     try{ const g=encodeGenome(); if(g.length<500000) localStorage.setItem(...) }catch(e){}
+// A bare size check with no else, inside a swallowing catch. Past that size the creature runs,
+// evolves, and persists nothing — which is how a real one reached generation 5,405 and 1,183,286
+// ticks while saving none of it (#145).
+// #145 capped the two structures that were over budget THEN. This is the general form, because the
+// next unbounded thing will not announce itself either — and there already is one. Measured on that
+// same creature after the #145 rescue: fitnessSensors is 84.5% of what remains, 104 of them, and
+// EVERY ONE is uncullable. Sensor death requires utility < 0.03 and the minimum observed utility is
+// 0.0403, clustered just above the bar. Births continue at rate*0.03 forever. The comment above that
+// birth ("Pe22e: no hard cap on count. The system can evolve as many dimensions of value as it can
+// sustain") is a deliberate design choice and I am not overruling it — a lineage that can pay for a
+// hundred senses is entitled to them. What it cannot be allowed to do is quietly stop existing.
+// So: when the genome will not fit, shed the most defensibly dead structure until it does, and SAY SO.
+// Order is strictly least-alive first, and a creature is never trimmed below a working core.
+const SAVE_BUDGET=500000;          // the number that line has always used
+const SAVE_TRIM_FLOOR=0.92;        // trim to comfortably inside it, not to the edge
+const SENSOR_KEEP_MIN=8;           // never strip a lineage below a working sensorium
+let __trimCount=0, __lastTrimTick=-1;
+function trimGenomeToBudget(){
+  let blob; try{ blob=encodeGenome(); }catch(_){ return null; }
+  if(blob.length<SAVE_BUDGET)return blob;
+  const target=SAVE_BUDGET*SAVE_TRIM_FLOOR;
+  fired('genome.trim');
+  const startLen=blob.length;
+  // SHED IN BATCHES, AND RE-MEASURE BETWEEN THEM. The first version shed one item and re-encoded
+  // after each — which on a phone means serialising a half-megabyte genome hundreds of times, and
+  // worse, it burned its whole iteration budget on dead ATOMS (512 of them are about 25KB in total)
+  // before ever reaching the SENSORS that were actually 84% of the file. Caught by rarepath-test.js
+  // driving it, not by reading it.
+  // Order is still least-alive first; the batch only changes how often we stop to look.
+  const shedOneAtom=()=>{
+    const uas=genome.userAtoms;
+    if(!Array.isArray(uas)||!uas.length)return false;
+    const ev=pickAtomToEvict(); if(ev<0)return false;
+    const a=uas[ev];
+    const bos=Array.isArray(genome.boundOpcodes)?genome.boundOpcodes:[];
+    if(!a||(a.uses|0)||bos.some(b=>(b|0)===ev))return false;   // only the unbound and never-run
+    uas.splice(ev,1);
+    for(let k=0;k<bos.length;k++){ if(bos[k]===ev)bos[k]=-1; else if(bos[k]>ev)bos[k]--; }
+    return true;
+  };
+  const shedOneSensor=()=>{
+    const fx=genome.fitnessSensors;
+    if(!Array.isArray(fx)||fx.length<=SENSOR_KEEP_MIN)return false;
+    const u=s2=>Math.max(Math.abs(s2&&s2.weight||0),Math.abs(s2&&s2.realWeight||0));
+    let wi=0; for(let i=1;i<fx.length;i++) if(u(fx[i])<u(fx[wi])) wi=i;
+    fx.splice(wi,1); return true;
+  };
+  let rounds=0;
+  while(blob.length>target && rounds++<64){
+    let shed=0;
+    for(let i=0;i<16 && shedOneAtom();i++) shed++;        // dead atoms first, in a batch
+    if(shed===0) for(let i=0;i<16 && shedOneSensor();i++) shed++;   // then the least useful senses
+    if(shed===0)break;                                    // nothing left that is safe to drop
+    try{ blob=encodeGenome(); }catch(_){ return null; }
+  }
+  __trimCount++; __lastTrimTick=(typeof tick!=='undefined')?tick:0;
+  recordEvent('genome_trim',{from:startLen,to:blob.length,
+    atoms:(genome.userAtoms||[]).length,sensors:(genome.fitnessSensors||[]).length},0);
+  return blob;
+}
 const MAX_USER_ATOMS=512;           // 2.7x the bindable slots, so binding is never starved, while
                                     // 512 x the 160-char sanitise cap keeps the save an order of
                                     // magnitude under the 500,000 it must not cross.
@@ -6713,6 +6780,9 @@ function theDiary(){
     P('I have started '+_dyN(L,'small world')+' inside myself. '+(M>0?M+' of them sent back physics I kept.':'None of them has yet sent back anything I kept.'));
   } }catch(_){}
   try{ if((__liveness['attention.field']|0)>0) P('You have been watching. Where you look, living costs less, and that is a real law here, not a decoration.'); }catch(_){}
+  // #146: if it has had to forget things in order to stay saveable, that is its news, not mine.
+  try{ if(__trimCount>0) P('I have had to let go of '+(__trimCount===1?'something':'things')+' to stay small enough to be saved. '
+    +'What went was what nothing pointed at and nothing had ever run.'); }catch(_){}
   return out;
 }
 function flushNetworkEvents(){
@@ -14281,7 +14351,7 @@ function archiveGenome(){
   genomeArchive.push(snapshot);
   if(genomeArchive.length>ARCHIVE_SIZE)genomeArchive.shift();
   // PERSIST TO LOCALSTORAGE — survives page close
-  try{const g=encodeGenome();if(g.length<500000)localStorage.setItem('selection_genome',g)}catch(e){}
+  try{const g=trimGenomeToBudget();if(g&&g.length<SAVE_BUDGET)localStorage.setItem('selection_genome',g)}catch(e){}   // #146: trim to fit rather than silently skip
 }
 
 function checkExtinction(){
@@ -14314,7 +14384,7 @@ function checkExtinction(){
     recordEvent('extinction',{alive,fit:+currentFitness.toFixed(3),mut:+genome.mutationRate.toFixed(3),cause:evoDead?'evolvability':'population',sinceBoot:tick});
 
     genome.generation++;
-    try{const g2=encodeGenome();if(g2.length<500000)localStorage.setItem('selection_genome',g2)}catch(e){}
+    try{const g2=trimGenomeToBudget();if(g2&&g2.length<SAVE_BUDGET)localStorage.setItem('selection_genome',g2)}catch(e){}   // #146
     N=0;
     const n=Math.min(300,(W*H/3000)|0);
 
