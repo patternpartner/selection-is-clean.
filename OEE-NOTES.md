@@ -10976,3 +10976,100 @@ question about the run before it is a question about the code, and the first thi
 ticks.** The counterexample that keeps this from being a rule about nothing is the phantom-binding
 bug above: that one was real, it was found by measuring both sides rather than by watching a counter
 stay at zero, and no amount of extra ticks would have made it correct.
+
+---
+
+## #148 — the death loop, the accidental brake, and a standing decision not to clamp
+
+A real creature was exported at generation 5,405 and 1,183,286 ticks, in a state its own epoch arc
+records plainly and nothing had ever read.
+
+### What the arc says
+
+| ticks | meanPop | minPop | ext/epoch | clusters | diversity | **mutationRate** | metabolicCost |
+|---|---|---|---|---|---|---|---|
+| 10k–160k | 188 | 111 | 2 | 6.2 | 0.27 | **0.042** | 4.4e-05 |
+| 335k–475k | 231 | 117 | 110 | 2.8 | 0.09 | **0.062** | 1.1e-04 |
+| 485k–635k | 98 | 54 | 42 | 6.4 | 0.30 | **0.401** | 1.4e-04 |
+| 645k–795k | 15 | **0** | 115 | 5.2 | 0.08 | **0.577** | 2.0e-04 |
+| 1070k–1180k | 7 | **0** | 40 | **0** | **0.00** | **0.576** | 1.9e-04 |
+
+It is not starving. `peakPop` still reaches 20–60 inside every epoch while `meanPop` sits at 6 — it
+repopulates and crashes roughly forty times per 5,000 ticks, and `minPop` touches zero in every recent
+epoch. `metabolicCost` rose FIRST (12× by 330k) and the population survived it at 231. What tracked
+the collapse was `mutationRate`: 0.062 → 0.401 → 0.577 against population 231 → 98 → 15 in the same
+three bands. Clusters reach zero at 575k and never return. Fitness diverges from 695k (worst 5.5e+24);
+in the last band only 43% of epochs record a finite one.
+
+At 0.577 a child randomises well over half its genes, so no lineage holds an adaptation for one
+generation. That is an error catastrophe, and it is the end state of a design choice, not a defect.
+
+### It is not a bug, and the creature's own data proves the distinction
+
+`mutationRate` is assigned through `maybe(val,min,max,magnitude)`, whose comment states outright:
+*"GLOVES OFF … The (min,max) arguments are historical — retained so callers don't break, but they do
+nothing … If that value produces crashes elsewhere, that's a finding, not a failure to guard."*
+
+46 of the 63 genes assigned that way carry declared bounds that do nothing; the other 17 are wrapped
+in `__cl` and genuinely clamped. The cleanest possible confirmation is in this creature: `metabolicCost`
+IS `__cl`-wrapped and sat pinned just under its 0.0002 ceiling for the entire run, while `mutationRate`
+walked to 2.3× the 0.25 its own call site names. **The clamped gene held; the unclamped one escaped.**
+
+I came within one edit of "fixing" this. Clamping those 46 would have overruled an explicit, documented
+decision — the same error as retuning `COSMOS_LAW_CREDIT` to make `cosmos.law` fire.
+
+### A bug was acting as the brake, and repairing it removed the brake
+
+The arc holds `mutationRate` flat at 0.576 for sixteen epochs, then exactly 0.250 from tick 1,165,000
+onward. That drop was already in the exported file; both the pre-session build and current main load it
+at 0.25 identically, so no change of mine caused it.
+
+`checkExtinction` does:
+
+```js
+const savedRate=genome.mutationRate;                          // 0.576
+genome.mutationRate=renewed?Math.min(0.25,savedRate*2):(…);   // → 0.25, the "burst"
+mutateGenome();                                               // NOT wrapped in try/catch
+genome.mutationRate=renewed?savedRate:(…);                    // restore to 0.576
+```
+
+Before #142, `mutateGenome` threw `ReferenceError: expression is not defined` on every atom birth. The
+throw escapes between the set and the restore, so the restore never runs and the rate stays at the
+burst value. Measured over 40 forced extinctions per build:
+
+| build | threw | pinned at 0.25 | restored to 0.576 |
+|---|---|---|---|
+| pre-session | 40/40 | **27/40** | 0 |
+| current main | 0/40 | 0 | **40/40** |
+
+(The other 13 are `maybe()` firing on 0.25 before the throw and nudging it off the exact value.)
+
+Note also that when `savedRate > 0.125` the burst's own cap makes it a REDUCTION rather than a burst —
+`Math.min(0.25, 1.152) = 0.25` — so the line the author wrote already expresses a belief that 0.25 is a
+sane ceiling for a mutation burst. The next line then discards it.
+
+**So the system had found a boundary, and it found it through a crash. #142 repaired the crash and
+removed the brake.** That is a side effect of a correctness fix, not a decision, and it is recorded
+here as such.
+
+### STANDING DECISION: the rate stays free
+
+Offered the one-line change that would let the extinction be the boundary the burst's own cap implies —
+`genome.mutationRate = renewed ? Math.min(savedRate, 0.25) : …` — the author declined: *"leave the rate
+free and let the loop run on."*
+
+**Do not clamp `mutationRate`. Do not make `maybe()` honour its bounds.** Both are live experimental
+conditions, deliberately chosen, and this note exists so a later reader does not helpfully undo them.
+
+### Registered prediction, so the next run can refute it
+
+With #142 fixed, the accidental brake is gone. On the current build, from this creature's state:
+
+1. `mutationRate` returns to ~0.576 within a few extinctions and does not settle at 0.25 again.
+2. The loop continues: `minPop` 0 every epoch, ~40 extinctions per epoch, diversity ~0, clusters ~0.
+3. It does NOT spontaneously recover, because at 0.577 nothing heritable survives a generation.
+
+If (1) holds and (2) does not — if it recovers at full rate — then the mutation rate is not the binding
+constraint and this whole reading is wrong. That is the falsifiable half, and it is the interesting
+outcome. `arcDiagnosis()` (#147) now reports the signature, and the diary says it on the phone, so the
+answer is readable from the device it runs on rather than from an export.
