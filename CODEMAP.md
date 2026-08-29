@@ -49,6 +49,7 @@ and each has a rig that fails the build:
 | save → load | works until you press save | `roundtrip-test.js` |
 | tab → tab | the program travels, the vocabulary it speaks does not | `migrant-test.js` |
 | tab → tab, on the wire | the packet is BUILT fine and REJECTED on arrival | `collective-test.js` |
+| finger → button | the control is visible, and cannot be pressed | `collective-test.js` (real touch tap → file) |
 
 **The wire's limits must be READ from the engine, never restated (#153).** The fifth crossing above is
 its own bug class and it took until #153 to notice, because it fails on the RECEIVE side, in silence:
@@ -105,14 +106,33 @@ non-greedy regex anchored to `//__METAB_END__`. The diary panel is appended AFTE
 ends at `//__DIARY_END__`; both are guarded on `document.body` so a headless rig cannot be taken down
 by them. Anything else appended down there must keep its own end marker and the same guard.
 
-**The field is a page, and a page has its own bugs (#150/#153).** `index.html` lays a transparent
+**The field is a page, and a page has its own bugs (#150/#153/#154).** `index.html` lays a transparent
 `.tap` div over every cell so one tap opens that universe. #150 opened a cell by toggling CSS classes
 and never hid that overlay, so the opened universe's own save and load buttons stayed covered —
 visible, and dead to every tap. Reported from a phone; invisible to thirty-four rigs, because no rig
-had ever asked what a tap at those coordinates actually LANDS on. `collective-test.js` asks, with
-`document.elementFromPoint`, in both directions (closed it must hit the overlay, or the check proves
-nothing). The general lesson is the #144 one again: the shell is part of the artwork, and a rig that
-only boots the engine cannot see it.
+had ever asked what a tap at those coordinates actually LANDS on.
+
+#153 fixed that overlay and asserted it with `document.elementFromPoint`, which was still the wrong
+question. In the GRID the tap target is SUPPOSED to win — opening the universe is the only thing a tap
+there can mean — so a button rendered in a grid cell can be seen and never pressed no matter what the
+overlay does. Nine cells, eighteen buttons, none of them doing what they looked like they did. #154's
+answer is that a grid cell is a TAB and renders no controls at all: `universe.html` hides `#gio` when
+`window.self !== window.top` (defaulting to hidden, so there is no race and no first paint with them
+visible), and the field turns them on through `__field.controls(true)` when it opens a cell. A
+standalone `universe.html` is not framed and is untouched.
+
+The assertion moved with it, and this is the durable part: `collective-test.js` no longer asks where a
+tap lands, it opens a universe and TAPS THE SAVE BUTTON WITH A REAL TOUCH in a `hasTouch` phone
+context, requiring a downloaded file named `selection_gen<n>_t<n>.json`. Nothing short of that
+distinguishes "the tap reaches the iframe" from "the button does its job" — the headless click worked
+throughout both bugs. Same #144 lesson again: the shell is part of the artwork, and a rig that only
+boots the engine cannot see it.
+
+**Tap targets are a correctness property here (#154).** The buttons were 11px type in 25px boxes eight
+pixels off the bottom of the viewport — which on a phone is where the browser toolbar and the Android
+gesture bar live. They are now ~40px tall and lifted by `env(safe-area-inset-bottom)`, and
+`universe.html`'s viewport meta carries `viewport-fit=cover` so that inset is non-zero. This costs
+nothing in a field because a field does not render them.
 
 **The field API (#152/#153).** `universe.html` exposes `window.__field` — `ready` / `save` / `load` /
 `pull` / `feed` / `stat` — and that is the whole surface `index.html` has on a universe. Every call is

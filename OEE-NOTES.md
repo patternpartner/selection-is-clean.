@@ -11159,3 +11159,36 @@ implied — plasmid and motif transfer were, and they were transferring only the
 The falsifiable half: if a field of nine shows no more atom-bank convergence between neighbours than
 before this fix, then plasmid/motif transfer carries nothing that matters and the whole channel is
 migrants or nothing.
+
+
+---
+
+## #154 — a grid cell is a tab
+
+> *"i dont think the save and loads are working on the individual universes. my thought are we dont
+> actually need save or load buttons on main screen. maybe just a tab for each universe that you tap
+> to then make that universe full screen… then when you do open an individual one as a full screen the
+> save a load buttons should work inside"*
+
+Right diagnosis, and the fix is the one proposed. #153 had removed the overlay from an OPENED cell,
+which was a real bug and is fixed. But in the GRID the overlay is supposed to win — opening the
+universe is the only thing a tap there can mean — so the buttons in a grid cell could be seen and
+never pressed, and each pair ate about a sixth of its cell. Eighteen controls that lie.
+
+So a grid cell renders no controls at all. `universe.html` hides them whenever it is framed, defaulting
+to hidden so there is no race and no first paint with them showing; the field switches them on through
+`__field.controls(true)` when it opens a cell, and off again on the way back. Standalone
+`universe.html` is unaffected.
+
+**Two things this session got wrong about how to test a button.** First, a headless *click* on the save
+button produced a file throughout BOTH bugs — mouse click, touch tap, in the field and standalone. A
+rig that clicks proves nothing about a control that cannot be reached. Second, #153's replacement —
+`document.elementFromPoint` at the button's coordinates — answered "does a tap here reach the iframe",
+which is not the same question as "can this control be operated", and in the grid the right answer to
+the first question was *no* by design. The check now opens a universe and taps its save button with a
+real touch in a `hasTouch` phone context, and requires a file to come out.
+
+**Tap size is a correctness property on this device.** The buttons were 11px type in 25px-tall boxes
+eight pixels off the bottom edge of the viewport — where a phone browser's own toolbar and the Android
+gesture bar sit. Now ~40px tall and lifted by `env(safe-area-inset-bottom)`, with `viewport-fit=cover`
+on `universe.html` so that inset is non-zero. Free, because a field does not render them.

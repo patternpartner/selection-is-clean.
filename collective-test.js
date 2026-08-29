@@ -51,7 +51,11 @@ const server=http.createServer((req,res)=>{
   await new Promise(r=>server.listen(0,'127.0.0.1',r));
   const base='http://127.0.0.1:'+server.address().port;
   const browser = await chromium.launch({ executablePath: EXE, args:['--no-sandbox','--disable-dev-shm-usage'] });
-  const ctx = await browser.newContext({ viewport:{width:412,height:915}, deviceScaleFactor:2 });
+  // A phone context, because that is the device this ships to: real touch events (so the save button
+  // is tapped rather than clicked) and downloads accepted (so pressing it can be shown to produce a
+  // file rather than merely to be reachable).
+  const ctx = await browser.newContext({ viewport:{width:412,height:915}, deviceScaleFactor:2,
+                                         hasTouch:true, isMobile:true, acceptDownloads:true });
   const page = await ctx.newPage();
   const pageErrors=[];
   page.on('pageerror', e => pageErrors.push(String((e&&e.message)||e).slice(0,200)));
@@ -70,28 +74,43 @@ const server=http.createServer((req,res)=>{
     lastIsCollective: !!document.querySelector('.cell:last-child.collective'),
   }));
 
-  // ── 1. does a tap on the open universe's save button reach the frame? ────────────────────────
-  // Ask the frame where its own 💾 button is, translate to page coordinates, and read what the top
-  // document says is at that point — closed, then open. Nothing is clicked: elementFromPoint is
-  // exactly the question a tap asks, without the side effect of a download.
-  const tap = await page.evaluate(async () => {
-    const cell = document.querySelector('.cell');
-    const fr   = cell.firstChild;
-    const btn  = fr.contentDocument && fr.contentDocument.getElementById('gexp');
-    if (!btn) return { err:'no #gexp in the frame' };
-    const at = () => { const fb=fr.getBoundingClientRect(), bb=btn.getBoundingClientRect();
-      return { x: fb.left+bb.left+bb.width/2, y: fb.top+bb.top+bb.height/2 }; };
-    const name = el => !el ? 'null' : (el.className||el.tagName).toString();
-    let p = at();
-    const closed = name(document.elementFromPoint(p.x,p.y));
-    cell.querySelector('.tap').click();                 // open it, the way a finger would
-    await new Promise(r=>setTimeout(r,400));
-    p = at();                                           // the frame moved — re-measure
-    const opened = name(document.elementFromPoint(p.x,p.y));
-    const back = document.getElementById('back'); if(back) back.click();
-    await new Promise(r=>setTimeout(r,300));
-    return { closed, opened, btnW: btn.getBoundingClientRect().width };
+  // ── 1. the controls: absent in the grid, present and WORKING in an opened universe ───────────
+  // This is the check that has been wrong twice. #150 left the field's transparent tap target over
+  // an opened cell, so its save and load buttons were visible and dead — reported from a phone,
+  // missed by thirty-four rigs, because no rig had ever asked what a tap at those coordinates lands
+  // on. #153 fixed that and asserted it with document.elementFromPoint, which was still the wrong
+  // question: in the GRID the tap target is supposed to win, so a button rendered there could be
+  // seen and never pressed. It looked broken because it was, as an affordance.
+  // So the grid renders no controls at all, and the assertion is no longer about hit-testing: open a
+  // universe and TAP ITS SAVE BUTTON WITH A REAL TOUCH, and require a file to come out. Nothing
+  // short of that distinguishes "the tap reaches the iframe" from "the button does its job".
+  const gridControls = await page.evaluate(() => {
+    const vis = [];
+    for (const c of document.querySelectorAll('.cell')) {
+      try { const g = c.firstChild.contentDocument.getElementById('gio');
+            vis.push(!!g && !g.hidden && g.getBoundingClientRect().height > 0); }
+      catch(e){ vis.push('err'); }
+    }
+    return vis;
   });
+  const opened = await page.evaluate(async () => {
+    document.querySelector('.cell .tap').click();        // open it, the way a finger would
+    await new Promise(r=>setTimeout(r,500));
+    const fr = document.querySelector('.cell.on').firstChild;
+    const g  = fr.contentDocument.getElementById('gio');
+    const bb = fr.contentDocument.getElementById('gexp').getBoundingClientRect();
+    const fb = fr.getBoundingClientRect();
+    return { shown: !!g && !g.hidden, h: bb.height,
+             x: fb.left+bb.left+bb.width/2, y: fb.top+bb.top+bb.height/2 };
+  });
+  let saved = null;
+  try {
+    const [dl] = await Promise.all([ page.waitForEvent('download',{timeout:12000}),
+                                     page.touchscreen.tap(opened.x, opened.y) ]);
+    saved = dl.suggestedFilename();
+  } catch(e){ saved = null; }
+  await page.evaluate(async () => { const b=document.getElementById('back'); if(b)b.click();
+    await new Promise(r=>setTimeout(r,300)); });
 
   // ── 1b. the hash options still mean what the header says ────────────────────────────────────
   // A lineage link (/#<genome>) is the one shape that MUST keep working forever — every link anyone
@@ -174,8 +193,9 @@ const server=http.createServer((req,res)=>{
   const out = {
     fieldHasCollective:  shape.cells===NI+1 && shape.collectives===1 && shape.lastIsCollective,
     everyUniverseAnswers: rows.length===shape.cells,
-    tapCheckIsMeaningful: tap.closed==='tap',
-    buttonsReachableWhenOpen: tap.opened==='IFRAME',
+    noControlsInTheGrid:  gridControls.length>0 && gridControls.every(v=>v===false),
+    controlsWhenOpened:   opened.shown===true && opened.h>=36,
+    saveActuallySaves:    /^selection_gen\d+_t\d+\.json$/.test(String(saved||'')),
     collectiveIsASink:   !!coll && acc(coll) > maxIndiv * 2 && acc(coll) > 20,
     nothingIsRejected:   rows.length>0 && rows.every(r=>(r.s.bad|0)===0),
     collectiveStillAlive: !!coll && (coll.s.N|0) > 0 && (coll.s.tick|0) > 100,
@@ -197,8 +217,9 @@ const server=http.createServer((req,res)=>{
   const checks=[
     ['fieldHasCollective','the field is n individuals plus one collective, last'],
     ['everyUniverseAnswers','every frame exposes the field API'],
-    ['tapCheckIsMeaningful','closed, a tap at the save button hits the overlay (so the next check counts)'],
-    ['buttonsReachableWhenOpen','open, that same tap reaches the universe — the #150 dead-button bug'],
+    ['noControlsInTheGrid','in the grid a cell is a tab — no buttons that cannot be pressed'],
+    ['controlsWhenOpened','opening a universe gives it its buttons, at a size a thumb can hit'],
+    ['saveActuallySaves','and a REAL TOUCH TAP on save produces a file'],
     ['collectiveIsASink','the collective takes in far more migrants than any individual'],
     ['nothingIsRejected','every packet on the wire validates — the wire\'s limits match the engine\'s'],
     ['collectiveStillAlive','it survives being fed from every world at once'],
@@ -213,7 +234,8 @@ const server=http.createServer((req,res)=>{
   for(const [k,d] of checks){ const ok=out[k]===true; if(!ok)bad++;
     console.log('  '+(ok?'PASS ':'FAIL ')+k.padEnd(28)+d); }
   for(const e of [...new Set(pageErrors)]) console.log('    pageerror: '+e);
-  console.log('\n  tap at the save button: closed -> '+tap.closed+', open -> '+tap.opened+(tap.err?(' ('+tap.err+')'):''));
+  console.log('\n  controls: grid '+JSON.stringify(gridControls)+'  opened shown='+opened.shown
+    +' height='+Math.round(opened.h)+'px  tap-to-save -> '+(saved||'NO FILE'));
   for(const r of rows) console.log('  '+(r.collective?'COLLECTIVE':'universe  ')
     +'  gen '+String(r.s.gen).padStart(4)+'  tick '+String(r.s.tick).padStart(6)
     +'  N '+String(r.s.N).padStart(4)+'  atoms '+String(r.s.atoms).padStart(4)

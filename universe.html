@@ -2,14 +2,21 @@
 <html lang="en">
 <head>
 <meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
 <title>Selection</title>
 <style>
   html,body{margin:0;padding:0;height:100%;background:#000;overflow:hidden;touch-action:none;font-family:monospace}
   #c{display:block;width:100vw;height:100vh;background:#000}
   #gen{position:fixed;left:6px;top:4px;color:#8fb;font-size:11px;z-index:5;white-space:pre;pointer-events:none;text-shadow:0 0 3px #000}
-  #gio{position:fixed;right:8px;bottom:8px;z-index:6;display:flex;gap:6px}
-  #gio button{font:11px monospace;background:#122;color:#8fb;border:1px solid #275;border-radius:5px;padding:5px 8px}
+  /* #154 — A TAP TARGET YOU CAN ACTUALLY HIT. These were 11px type in 25px-tall boxes eight pixels
+     off the bottom edge of the viewport, which on a phone is where the browser's own toolbar and the
+     Android gesture bar live. Now ~40px tall and lifted clear of the safe-area inset. They cost
+     nothing in a field, because in a field they are not rendered at all (see below). */
+  #gio{position:fixed;right:10px;z-index:6;display:flex;gap:8px;
+       bottom:calc(14px + env(safe-area-inset-bottom, 0px))}
+  #gio button{font:13px monospace;background:#122;color:#8fb;border:1px solid #275;border-radius:7px;
+              padding:11px 14px}
+  #gio[hidden]{display:none}
   #gfile{display:none}
   #err{position:fixed;left:8px;right:8px;top:40%;z-index:9;color:#f88;background:#200;border:1px solid #522;
         border-radius:8px;padding:12px;font-size:13px;white-space:pre-wrap;display:none}
@@ -26,6 +33,20 @@
   var canvas = document.getElementById('c');
   var genEl  = document.getElementById('gen');
   var errEl  = document.getElementById('err');
+  var gioEl  = document.getElementById('gio');
+
+  // ═══ #154 — NO CONTROLS IN A FIELD ══════════════════════════════════════════════════════════
+  // A field lays a transparent tap target over every cell, so in the grid these buttons could be
+  // SEEN but never PRESSED: the tap opened the universe instead of saving it. #153 fixed the overlay
+  // covering them once a universe was open, which was a real bug, but left the deeper one — in the
+  // grid they were an affordance that lied. Nine cells, eighteen buttons, none of them doing what
+  // they looked like they did, and each pair eating a sixth of its cell.
+  // So: framed means no controls. The cell is a tab; you tap it, it opens, and THEN it has its
+  // buttons — the field turns them on through __field.controls() and off again when you go back.
+  // Defaulting to hidden rather than being switched off by the parent means there is no race and no
+  // first paint with them visible. A standalone universe.html is not framed and is untouched.
+  var FRAMED = false; try { FRAMED = (window.self !== window.top); } catch(e){ FRAMED = true; }
+  if (FRAMED && gioEl) gioEl.hidden = true;
   function fail(msg){ errEl.style.display='block'; errEl.textContent = msg; }
 
   // ── feature check ──────────────────────────────────────────────
@@ -107,7 +128,9 @@
     pull:  function(){ return ask('pull', null); },
     feed:  function(packet){ try { worker.postMessage({ type:'feed', packet:packet }); } catch(e){} },
     // The sim's own receive-side counters. Arrivals, not sends.
-    stat:  function(){ return ask('stat', null); }
+    stat:  function(){ return ask('stat', null); },
+    // #154: show this universe's save/load buttons. The field calls this when it opens a cell.
+    controls: function(show){ if (gioEl) gioEl.hidden = !show; }
   };
 
   worker.onmessage = function(e){
