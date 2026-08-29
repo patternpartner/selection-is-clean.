@@ -22,7 +22,20 @@ self.onerror = (msg, src, line, col, err) => {
 
 let offscreen = null;      // the OffscreenCanvas transferred from the main thread
 let started = false;
+// #150: LISTS, not single slots. This was `handlers[ev] = fn`, so every addEventListener for an event
+// name SILENTLY REPLACED the one before it and only the last registration survived. engine.html
+// registers FOUR hashchange listeners (the clean-art latch, the turbo reader, the metabolism panel
+// and the diary) and two click listeners, so in worker mode three of the four were simply gone —
+// which is why turning a universe's HUD back on did nothing: the latch's listener had been
+// overwritten by the diary's. A shim that quietly drops listeners is worse than one that has none,
+// because everything still appears to register.
 const inputHandlers = { window: {}, document: {} }; // captured addEventListener callbacks, by event name
+function addHandler(bag, ev, fn) { (bag[ev] || (bag[ev] = [])).push(fn); }
+function removeHandler(bag, ev, fn) {
+  const a = bag[ev]; if (!a) return;
+  if (!fn) { delete bag[ev]; return; }
+  const i = a.indexOf(fn); if (i >= 0) a.splice(i, 1);
+}
 const lsStore = Object.create(null);                // localStorage shim backing store
 
 // ── the shim: everything the sim script touches at load/run time that a worker lacks ──
@@ -59,8 +72,8 @@ function installShim(initHash, dpr) {
     getElementById(id) { return els[id] || (els[id] = (id === 'c' ? off : stubEl(id))); },
     createElement() { return stubEl('_created'); },
     querySelector() { return null },
-    addEventListener(ev, fn) { inputHandlers.document[ev] = fn; },
-    removeEventListener(ev) { delete inputHandlers.document[ev]; },
+    addEventListener(ev, fn) { addHandler(inputHandlers.document, ev, fn); },
+    removeEventListener(ev, fn) { removeHandler(inputHandlers.document, ev, fn); },
     head: stubEl('head'), body: stubEl('body'),
     get hidden() { return false; },     // worker never "hidden"; main drives visibility if needed
   };
@@ -73,9 +86,9 @@ function installShim(initHash, dpr) {
   // The sim calls window.addEventListener for input/lifecycle; capture those too.
   self.addEventListener = (ev, fn) => {
     if (ev === 'message') { self.addEventListener__real(ev, fn); return; } // keep the real message pump
-    inputHandlers.window[ev] = fn;
+    addHandler(inputHandlers.window, ev, fn);
   };
-  self.removeEventListener = (ev) => { delete inputHandlers.window[ev]; };
+  self.removeEventListener = (ev, fn) => { removeHandler(inputHandlers.window, ev, fn); };
 
   // rAF is absent in workers. Self-schedule as fast as the worker can while yielding to the
   // message queue between ticks (so input/persistence messages get processed). The sim runs
@@ -105,9 +118,15 @@ function installShim(initHash, dpr) {
 // document.addEventListener OR window.addEventListener for a given event, so try both.
 function dispatchInput(ev, detail) {
   const e = Object.assign({ preventDefault() {}, stopPropagation() {}, target: offscreen }, detail);
-  const fd = inputHandlers.document[ev], fw = inputHandlers.window[ev];
-  if (fd) try { fd(e); } catch (_) {}
-  if (fw && fw !== fd) try { fw(e); } catch (_) {}
+  const seen = [];
+  const run = (list) => { if (!list) return;
+    for (const fn of list.slice()) {           // slice: a handler may register or remove another
+      if (seen.indexOf(fn) >= 0) continue;     // the same function on both window and document fires once
+      seen.push(fn);
+      try { fn(e); } catch (_) {}
+    } };
+  run(inputHandlers.document[ev]);
+  run(inputHandlers.window[ev]);
 }
 
 self.addEventListener('message', async (e) => {
@@ -149,6 +168,19 @@ self.addEventListener('message', async (e) => {
   }
 
   if (d.type === 'input') { dispatchInput(d.event, d.detail || {}); return; }
+
+  // #150 — A LIVE HASH. The hash was sent once at init and never again, so anything the engine gates
+  // on it (#cleanart, #turbo) was frozen at whatever the frame loaded with. The field needs to turn a
+  // universe's instruments on and off while it runs, without a reload — a reload would drop the
+  // lineage back to the shared localStorage slot, which is a DIFFERENT universe's genome.
+  // Redefine location (the init shim declares it configurable for exactly this) and then fire the
+  // engine's own captured hashchange listener, so __cleanArt() and __readTurbo() re-read normally.
+  if (d.type === 'hash') {
+    try { Object.defineProperty(self, 'location',
+      { value: { hash: d.hash || '', pathname: '/', search: '', href: 'about:worker' }, configurable: true }); } catch (_) {}
+    dispatchInput('hashchange', {});
+    return;
+  }
 
   if (d.type === 'export') {
     let file = null; try { file = self.__api && self.__api.exportFile ? self.__api.exportFile() : null; } catch (_) {}

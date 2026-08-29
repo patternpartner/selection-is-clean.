@@ -47,6 +47,12 @@
   // ── hand the canvas to the worker and start the sim there ──
   var off = canvas.transferControlToOffscreen();
   var worker = new Worker('sim.worker.js');
+  // #150: keep the worker's view of the hash current. Without this the sim reads the hash once at
+  // boot; the metabolism panel (which runs out here on the main thread) would honour a change while
+  // the HUD inside the worker would not, so the two would disagree about whether they are hidden.
+  addEventListener('hashchange', function(){
+    try { worker.postMessage({ type:'hash', hash: location.hash || '' }); } catch(e){}
+  });
   worker.postMessage({
     type:'init', canvas:off, w:bufW(), h:bufH(), dpr:1,
     genome: (stored && stored.length>10) ? stored : null,
