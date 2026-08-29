@@ -11192,3 +11192,95 @@ real touch in a `hasTouch` phone context, and requires a file to come out.
 eight pixels off the bottom edge of the viewport — where a phone browser's own toolbar and the Android
 gesture bar sit. Now ~40px tall and lifted by `env(safe-area-inset-bottom)`, with `viewport-fit=cover`
 on `universe.html` so that inset is non-zero. Free, because a field does not render them.
+
+---
+
+## #153/#154 FIELD MEASUREMENT — the first real-device export of the collective
+
+`selection_gen26_t48985.json`, exported 2026-08-29T22:41Z from the phone. Generation 26, 48,985 ticks,
+nine universes on the channel. This is the **collective's own** export, and it is the first evidence
+from the device that any of #153 does what it was built to do.
+
+### It is the collective, confirmed from the receive side
+
+`genome.coupling` is written by the metabolism observer, which counts `applied` acks — a peer
+announcing that a packet actually changed its sim state. So these are ARRIVALS, self-reported, not
+sends:
+
+| tab | migrants that landed | emitted (all kinds) |
+|---|---|---|
+| **s6qfqjtz (self — the collective)** | **12,016** | **105 (the lowest of the nine)** |
+| the other eight | 219 – 257 each | 120 – 170 each |
+
+A **47–55x sink**, and the smallest emitter in the field. Eight in, one out, exactly as designed, and
+measured by an instrument that had nothing to do with building it. Nine tabs seen; `liveCount` 6.
+
+### The wire fix was load-bearing, in this creature, today
+
+`tendDims` is **9**. The engine starts at `DIMS=5`; the #25 ratchet has earned this world four more.
+The pre-#153 wire bounded a migrant's tendency vector at 5. Tested directly against both rules with
+a packet this genome actually builds:
+
+```
+a migrant it builds, TODAY     : ACCEPTED
+the same migrant, before #153  : REJECTED
+```
+
+And its germline VM is 18 instructions, **14 of them on opcodes above 64** (239, 169, 233, 395, 363,
+235, 343). Every one of those was un-transmittable inside a plasmid or motif before the opcode bound
+was lifted. This is not a hypothetical repair: the creature had already grown past the limit.
+
+### Set against the death loop
+
+The gen-5405 creature that prompted #145–#147 is the control, and this is the counterexample.
+
+| | gen 5405 (the loop) | gen 26 (this) |
+|---|---|---|
+| extinctions | ~40 per epoch | **0, every epoch, all 49k ticks** |
+| minimum population | 0 every epoch | never below 61 |
+| mutation rate | pinned 0.577 | **moves: .0601 .069 .069 .0775 .0775 .0705 .0763 .0757** |
+| atom bank | 1,793 atoms, ~5% ever executed | 39 atoms, **33 adopted (85%)**, 0 failed |
+| expression length | 93% failed to recompile on load | mean 63, max 145, cap 160 |
+
+The mutation-rate row is the direct answer to the question this notebook could not answer in August:
+*can a healthy creature adjust its own rate?* It does, continuously, in both directions, and it stays
+inside a narrow band. 0.577 was not the system choosing a rate. It was the system unable to.
+
+No cull, no eviction, no genome trim has ever fired (`lv.n`) — nothing is near any ceiling.
+
+### Something happened at tick 30,000
+
+| epoch | popMean | popPeak | clusterPeak | diversity | metabolicCost |
+|---|---|---|---|---|---|
+| 25,000 | 121 | 154 | 5 | 0.106 | 1.45e-5 |
+| **30,000** | **226** | **464** | **24** | **0.165** | 2.78e-5 |
+| 45,000 | 347 | 496 | 19 | 0.105 | 3.93e-5 |
+
+Cluster peak 5 → 24, population tripled, and the OEE meter logged its **only four novel computations
+of the entire run** in that same epoch. It did not decay: 15,000 ticks later the world is still three
+times its old size. Metabolic cost roughly doubled across the run, which is what the complexity costs.
+
+### Two honest negatives
+
+**Novelty 4, persistence 0 — but the meter could not have scored it.** Epoch **40,000 is missing from
+both tables**. `MAX_EPOCHS` is 200 and only 8 rows exist, so this is not downsampling: `flushEpoch`
+returned early on `acc.n<=0`, meaning **no sample was taken in an entire 5,000-tick epoch** — the
+frame stalled. `OEE_PERSIST_LAG` is 3 epochs, so the four innovations born at epoch 6 had to be
+active at epoch 9 to count, and epoch 9 is the one right after the stall, with D=0 active
+computations. (The merge rule keeps `max(D)`, so the zeros are real, not merge artifacts.)
+**Recorded as an instrument limitation, not an innovation failure: the OEE meter cannot score
+persistence across a starved epoch.** That is a defect worth fixing before trusting a 0 from it.
+
+**alienGrip is scoring at chance.** Whole-genome alien prediction: **655 hits in 1,317 attempts =
+49.7%**. For a binary direction call, expectation under the null is 658.5 with sd 18.1 — the observed
+value is within 0.2 sd of a coin. The best individual atoms are no better once n is large enough to
+matter (163/324 = 50%, 142/273 = 52%). #92 widened this filter's reach on the argument that it almost
+never ran; it now runs constantly, and it is not distinguishing anything. **The atom bank's only
+content filter is, at this sample size, a coin.** That bears directly on #93's premise that what the
+filter selects should be what propagates.
+
+### The stall is also a product signal
+
+Three of nine peers were 16 seconds silent at export, `liveCount` 6 of 9, and one epoch was starved
+outright. Nine workers on an eight-core phone may be over-subscribed. If the field degrades, the
+universe that must not starve is the collective — it is the only one whose input is everyone.
