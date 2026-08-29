@@ -23,6 +23,24 @@
   Twice the speed per universe, and it scales with CORES — it saturates at 8 above only because that
   box has 4. A phone with 8 cores should hold four near full speed.
 
+  HOW MANY. Measured at a 412x915 phone viewport, worker mode, 45s each, on a FOUR-CORE machine:
+
+      universes   ticks/sec each   ticks/sec total   panel sees   heap
+          4           40.1             160.3             4         6 MB
+          6           26.7             160.3             6         7 MB
+          8           20.0             160.0             7  <--     8 MB
+
+  Total throughput is PINNED at 160/sec regardless of N, so past four you are not buying simulated
+  time — you are buying PEERS with each universe's clock. That is the trade this page exists to make:
+  a collapsed universe needs foreign genomes far more than it needs its own ticks.
+  At eight on four cores the scheduler stopped being fair (1200/600/600/600/1202/600/1200/1200) and
+  one universe fell out of the peer window — the panel read SEVEN, not eight. A universe running at
+  half speed broadcasts half as often and goes stale to the others.
+  THE DEFAULT IS EIGHT ANYWAY, chosen deliberately, because the target device has EIGHT cores and
+  worker mode scales with cores — the unfairness above is most likely an artifact of measuring on
+  four. The check costs nothing: tap any universe and read the metabolism panel. "8 univs" means the
+  field is fully connected; fewer means drop to /#n=6, which measured even and fully peered.
+
   WHY MORE THAN ONE AT ALL. Peering already worked across two tabs — same origin, fixed channel name
   — but only the VISIBLE tab runs at speed: the engine falls back to setTimeout(loop,67) when
   document.hidden and browsers clamp background timers to about 1/sec. So two tabs meant one universe
@@ -31,8 +49,9 @@
   firing: 9 migrants in 40s at two universes, 32 at four, 60 at six. Trading tracks the number of
   PAIRS, so it grows quadratically while each clock slows only linearly.
 
-      /                 four universes
+      /                 eight universes
       /#n=2             two
+      /#n=4             four
       /#n=6             six
       /#n=4,hud         put the HUD back on every frame (a field is clean by default)
 
@@ -74,7 +93,7 @@
   var n, clean=false, passHash='';
   if(isOptions){
     var m=raw.match(/n=(\d+)/);
-    n = m ? parseInt(m[1],10) : 4;                 // four is the default the field exists for
+    n = m ? parseInt(m[1],10) : 8;                 // eight, by the author's call — see HOW MANY below
     if(!(n>=1)) n=4;
     if(n>8) n=8;                                   // not a hard limit; past the core count the
                                                    // universes only slow each other down
