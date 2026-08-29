@@ -1,0 +1,157 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
+<title>Selection</title>
+<style>
+  html,body{margin:0;padding:0;height:100%;background:#000;overflow:hidden;touch-action:none;font-family:monospace}
+  #c{display:block;width:100vw;height:100vh;background:#000}
+  #gen{position:fixed;left:6px;top:4px;color:#8fb;font-size:11px;z-index:5;white-space:pre;pointer-events:none;text-shadow:0 0 3px #000}
+  #gio{position:fixed;right:8px;bottom:8px;z-index:6;display:flex;gap:6px}
+  #gio button{font:11px monospace;background:#122;color:#8fb;border:1px solid #275;border-radius:5px;padding:5px 8px}
+  #gfile{display:none}
+  #err{position:fixed;left:8px;right:8px;top:40%;z-index:9;color:#f88;background:#200;border:1px solid #522;
+        border-radius:8px;padding:12px;font-size:13px;white-space:pre-wrap;display:none}
+</style>
+</head>
+<body>
+<div id="gen">booting…</div>
+<div id="gio"><button id="gexp">💾 save</button><button id="gimp">📂 load</button><input type="file" id="gfile" accept=".json"></div>
+<canvas id="c"></canvas>
+<div id="err"></div>
+<script>
+(function(){
+  'use strict';
+  var canvas = document.getElementById('c');
+  var genEl  = document.getElementById('gen');
+  var errEl  = document.getElementById('err');
+  function fail(msg){ errEl.style.display='block'; errEl.textContent = msg; }
+
+  // ── feature check ──────────────────────────────────────────────
+  if (typeof Worker === 'undefined' || typeof OffscreenCanvas === 'undefined' || !canvas.transferControlToOffscreen) {
+    fail("This device's browser doesn't support the background-worker mode (OffscreenCanvas).\n\nOpen engine.html instead — it runs the same simulation on the main thread.");
+    genEl.textContent = 'unsupported';
+    return;
+  }
+
+  // ── size the drawing buffer 1:1 with the viewport (matches index.html's resize()) ──
+  function bufW(){ return Math.max(1, window.innerWidth|0); }
+  function bufH(){ return Math.max(1, window.innerHeight|0); }
+  canvas.width = bufW(); canvas.height = bufH();
+
+  // ── load any saved genome BEFORE the worker boots, so the sim's synchronous boot read finds it ──
+  var stored = null;
+  try { stored = localStorage.getItem('selection_genome'); } catch(e){}
+
+  // ── hand the canvas to the worker and start the sim there ──
+  var off = canvas.transferControlToOffscreen();
+  var worker = new Worker('sim.worker.js');
+  worker.postMessage({
+    type:'init', canvas:off, w:bufW(), h:bufH(), dpr:1,
+    genome: (stored && stored.length>10) ? stored : null,
+    hash: location.hash || '', src:'engine.html'
+  }, [off]);
+
+  // #reset is a one-shot: the sim clears the saved lineage on boot, then strips #reset from the
+  // URL so the NEXT reload doesn't wipe the newly evolved creature. The sim does that strip with
+  // history.replaceState — a no-op in the worker — so the shell, which owns the real URL, must do
+  // it here (mirroring loadGenome()). Without it, every reload of index.html#reset silently
+  // re-wipes the fresh lineage. We still forwarded the #reset hash to the worker above, so the
+  // one intended reset happens; we only stop it from repeating.
+  if ((location.hash || '').slice(1) === 'reset') {
+    try { history.replaceState(null, '', location.pathname || ' '); } catch(e){}
+  }
+
+  // ── messages back from the worker ──────────────────────────────
+  var lastStatus = 0;
+  worker.onmessage = function(e){
+    var d = e.data || {};
+    if (d.type === 'status'){ genEl.textContent = d.text; return; }
+    if (d.type === 'ready'){ return; }
+    if (d.type === 'persist'){
+      try { if (d.value === null) localStorage.removeItem(d.key); else localStorage.setItem(d.key, d.value); } catch(ex){}
+      return;
+    }
+    if (d.type === 'export'){
+      if (!d.file){ fail('export failed (sim not ready?)'); return; }
+      try {
+        var blob = new Blob([d.file.data], {type:'application/json'});
+        var a = document.createElement('a');
+        a.href = URL.createObjectURL(blob); a.download = d.file.filename; a.click();
+        setTimeout(function(){ URL.revokeObjectURL(a.href); }, 4000);
+      } catch(ex){ fail('download failed: '+ex.message); }
+      return;
+    }
+    if (d.type === 'import-result'){ if (!d.ok) fail('import failed — file not a valid genome'); return; }
+    if (d.type === 'error'){
+      fail('Simulation error:\n' + (d.message||'') + (d.line?(' (line '+d.line+')'):'') + (d.stack?('\n\n'+d.stack):''));
+      return;
+    }
+  };
+  worker.onerror = function(e){ fail('Worker error: ' + (e.message||e.filename||'unknown') + (e.lineno?(' :'+e.lineno):'')); };
+
+  // ── forward input to the worker ────────────────────────────────
+  function post(ev, detail){ worker.postMessage({ type:'input', event:ev, detail:detail }); }
+  function mouseDetail(e){ return { clientX:e.clientX, clientY:e.clientY, button:e.button, buttons:e.buttons }; }
+  function touchDetail(e){
+    var t = (e.touches && e.touches[0]) || (e.changedTouches && e.changedTouches[0]) || {clientX:0,clientY:0};
+    var pack = function(list){ var a=[],i; if(!list) return a; for(i=0;i<list.length;i++) a.push({clientX:list[i].clientX, clientY:list[i].clientY}); return a; };
+    return { clientX:t.clientX, clientY:t.clientY, touches:pack(e.touches), changedTouches:pack(e.changedTouches) };
+  }
+  window.addEventListener('mousemove', function(e){ post('mousemove', mouseDetail(e)); });
+  window.addEventListener('mousedown', function(e){ post('mousedown', mouseDetail(e)); });
+  window.addEventListener('mouseup',   function(e){ post('mouseup',   mouseDetail(e)); });
+  window.addEventListener('keydown',   function(e){ post('keydown', { key:e.key, code:e.code, keyCode:e.keyCode }); });
+  // Only swallow/forward touches that land on the canvas. Touches on the save/load
+  // buttons must pass through untouched, or preventDefault cancels their tap.
+  function onCanvas(e){ return e.target === canvas; }
+  window.addEventListener('touchstart',function(e){ if(onCanvas(e)){ e.preventDefault(); post('touchstart', touchDetail(e)); } }, {passive:false});
+  window.addEventListener('touchmove', function(e){ if(onCanvas(e)){ e.preventDefault(); post('touchmove',  touchDetail(e)); } }, {passive:false});
+  window.addEventListener('touchend',  function(e){ if(onCanvas(e)){ post('touchend',  touchDetail(e)); } }, {passive:false});
+
+  // ── resize: worker owns the drawing buffer now, so just tell it the new size ──
+  var rT = 0;
+  window.addEventListener('resize', function(){
+    clearTimeout(rT);
+    rT = setTimeout(function(){ worker.postMessage({ type:'resize', w:bufW(), h:bufH() }); }, 150);
+  });
+
+  // ── save / load buttons (the sim's own DOM handlers don't run on this path) ──
+  document.getElementById('gexp').onclick = function(){ worker.postMessage({ type:'export' }); };
+  document.getElementById('gimp').onclick = function(){ document.getElementById('gfile').click(); };
+  document.getElementById('gfile').onchange = function(e){
+    var f = e.target.files && e.target.files[0]; if (!f) return;
+    var r = new FileReader();
+    r.onload = function(ev){ worker.postMessage({ type:'import', data: String(ev.target.result).trim() }); };
+    r.readAsText(f);
+  };
+
+  // ── cross-tab METABOLISM panel ─────────────────────────────────
+  // The sim's own metabolism observer builds its corner panel from the DOM, but the sim now
+  // runs in the worker (no DOM there), so the panel can't render itself. That observer is
+  // LISTEN-ONLY and driven entirely by a BroadcastChannel — which crosses the worker↔main
+  // boundary — so we run a DISPLAY-ONLY copy of the sim's *exact* observer here on the main
+  // thread. It hears the worker's own universe plus any other open tabs and draws the panel
+  // with the sim's own markup/CSS (one source of truth, no fork). Persistence into
+  // genome.coupling stays with the worker's copy; TAB_ID/genome/tick are passed as undefined
+  // so this copy's typeof-guarded persistence no-ops and its "you" self-tag just resolves to
+  // the peer id. Honors #nometab / #cleanart like the original.
+  (function(){
+    try {
+      fetch('engine.html', { cache:'no-store' }).then(function(r){ return r.text(); }).then(function(html){
+        // Bounded by an explicit end marker in engine.html. This used to be a GREEDY [\s\S]* with no
+        // terminator, so the match ran to the LAST `})();` anywhere in the 1.6 MB file — correct only
+        // because the observer happened to be the final statement in the script. Appending one IIFE
+        // after it would have silently swallowed that code into this main-thread copy too, evaluated
+        // with TAB_ID/genome/tick all undefined. Non-greedy to the marker, so ordering stops mattering.
+        var m = html.match(/\(function metabolismObserver\(\)\{[\s\S]*?\}\)\(\);\/\/__METAB_END__/);
+        if (!m) return;
+        (new Function('TAB_ID','genome','tick', m[0]))(undefined, undefined, undefined);
+      }).catch(function(){});
+    } catch(e){}
+  })();
+})();
+</script>
+</body>
+</html>

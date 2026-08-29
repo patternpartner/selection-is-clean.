@@ -12,7 +12,7 @@ Companion to OEE-NOTES.md, which records experiments. This records the machine t
 
 | | |
 |---|---|
-| **file** | `engine.html` — the sim moved out of `index.html` in `c0cef11`; `index.html` is now the worker shell |
+| **file** | `engine.html` — the sim moved out of `index.html` in `c0cef11`. Since **#149** the pages are: `index.html` = THE FIELD (a grid of iframes, four universes by default), `universe.html` = the single worker shell (what `index.html` used to be), `engine.html` = the simulation itself, still runnable on its own |
 | **last fully re-derived** | never — this map was written against `index.html` and has been patched, not rebuilt |
 | **prose current through** | **#90.** The engine is at **#146.** Roughly fifty-five swings are undocumented here |
 | **verified as of #131** | the anchor table below, the opcode constants, the genome extent, and the census claims |
@@ -79,7 +79,7 @@ are easy to miss: never splice `boundOpcodes` (it renumbers every opcode above t
 shift `userAtoms` without remapping `boundOpcodes` alongside it. `-1` is a legitimate tombstone for a
 slot whose atom was culled, and every dispatch guards with `if(_bua)`, so an inert slot is a no-op.
 
-**Two IIFEs after the script (#138).** `index.html` extracts the metabolism observer with a
+**Two IIFEs after the script (#138).** `universe.html` extracts the metabolism observer with a
 non-greedy regex anchored to `//__METAB_END__`. The diary panel is appended AFTER that marker and
 ends at `//__DIARY_END__`; both are guarded on `document.body` so a headless rig cannot be taken down
 by them. Anything else appended down there must keep its own end marker and the same guard.

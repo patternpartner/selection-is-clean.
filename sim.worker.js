@@ -1,11 +1,11 @@
-// sim.worker.js — runs the EXISTING simulation (index.html's script) on a background thread.
+// sim.worker.js — runs the EXISTING simulation (engine.html's script) on a background thread.
 //
 // Why this exists: the simulation is single-threaded and, as the creature grows richer
 // (deep atoms, DIMS=32, a coherent cosmos of 6 daughter-worlds), a single tick got heavy
 // enough to block the main thread on a phone -> "Chrome isn't responding". A Web Worker
 // runs the sim off the main thread: it can take as long as it likes per tick and the PAGE
 // never freezes. The simulation math is byte-for-byte the current code — we do not fork it,
-// we fetch index.html, pull out its <script>, and run it here under a small DOM/canvas shim
+// we fetch engine.html, pull out its <script>, and run it here under a small DOM/canvas shim
 // (the same idea harness.js uses to run it headless).
 //
 // Provenance: the move to a worker was predicted several iterations ago as the eventual
@@ -126,7 +126,7 @@ self.addEventListener('message', async (e) => {
       if (!m) throw new Error('could not find <script> block in engine.html');
       // Append a tiny bridge so the message handler can reach the sim's genome codecs and
       // export/import logic, which live in the sim script's own scope (const/function there
-      // don't leak otherwise). exportFile/importFile mirror index.html's own functions exactly,
+      // don't leak otherwise). exportFile/importFile mirror engine.html's own functions exactly,
       // minus the DOM download/FileReader (those live on the main thread on this path).
       const bridge = '\n;try{self.__api={};' +
         'self.__api.exportFile=function(){try{return {data:JSON.stringify({type:"selection-genome",version:2,exportedAt:new Date().toISOString(),genome:encodeGenome()},null,2),filename:"selection_gen"+genome.generation+"_t"+genome.totalTicks+".json"};}catch(e){return null;}};' +
