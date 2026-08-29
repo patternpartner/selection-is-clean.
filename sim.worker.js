@@ -150,6 +150,32 @@ self.addEventListener('message', async (e) => {
       const bridge = '\n;try{self.__api={};' +
         'self.__api.exportFile=function(){try{return {data:JSON.stringify({type:"selection-genome",version:2,exportedAt:new Date().toISOString(),genome:encodeGenome()},null,2),filename:"selection_gen"+genome.generation+"_t"+genome.totalTicks+".json"};}catch(e){return null;}};' +
         'self.__api.importFile=function(txt){try{if(decodeGenome(txt)){N=0;var n=Math.min(300,(W*H/3000)|0);for(var i=0;i<n;i++)addParticle(Math.random()*W,Math.random()*H,randomTendency(),false);saveGenome();return true;}}catch(e){}return false;};' +
+        // #153 — THE RELAY. Two calls, both of which the sim already makes to itself on the wire.
+        // pullMigrant builds the SAME packet networkBroadcast would have sent (buildMigrantPacket,
+        // one source of truth) and stamps the SAME envelope (netPacket: real TAB_ID, real tick), but
+        // hands it back instead of broadcasting it. feedPacket puts a packet through the sim's own
+        // handleNetworkMessage — the same door every BroadcastChannel message comes through, so
+        // validNetworkPayload, the queue limits, the peer bookkeeping and the tab===TAB_ID self-drop
+        // all still apply. Nothing here can inject anything a peer could not have sent, because the
+        // packet WAS built by a peer. The field uses these to point one universe's emigrants at one
+        // recipient rather than at everybody.
+        'self.__api.pullMigrant=function(){try{var d=buildMigrantPacket();return d?netPacket("migrant",d):null;}catch(e){return null;}};' +
+        'self.__api.feedPacket=function(p){try{handleNetworkMessage(p);return true;}catch(e){return false;}};' +
+        // A few numbers off the sim's own counters. The field is nine worlds behind nine worker
+        // boundaries; without this the only way to know whether a relayed migrant LANDED was to
+        // believe the relay's own bookkeeping, which counts sends, not arrivals. netStats and
+        // __liveness are written by the engine on the receive side, so they are arrivals.
+        'self.__api.stat=function(){try{return {tick:tick,N:N,gen:genome.generation,totalTicks:genome.totalTicks|0,' +
+          'peers:(typeof countPeers==="function"?countPeers():-1),' +
+          'recv:netStats.received,accepted:netStats.accepted,bad:netStats.bad,dropped:netStats.dropped,' +
+          'migrantAccepted:(typeof __liveness!=="undefined"?(__liveness["network.migrantAccepted"]|0):-1),' +
+          'atoms:(genome.userAtoms||[]).length,' +
+          // A fingerprint of THIS universe's germline. Three continuously-drifting float genes; two
+          // universes that share a genome share this string exactly, and two that merely resemble
+          // each other do not. It is what tells "the collective fed them" apart from "the collective
+          // overwrote them".
+          'fp:[genome.mutationRate,genome.netMigrantRate,genome.netPlasmidRate].map(function(v){return (+v||0).toPrecision(12);}).join("/")' +
+          '};}catch(e){return null;}};' +
         '}catch(_){}';
       // Run the sim in a fresh function scope with the shimmed globals in place.
       (new Function(m[1] + bridge))();
@@ -184,13 +210,33 @@ self.addEventListener('message', async (e) => {
 
   if (d.type === 'export') {
     let file = null; try { file = self.__api && self.__api.exportFile ? self.__api.exportFile() : null; } catch (_) {}
-    self.postMessage({ type: 'export', file });
+    self.postMessage({ type: 'export', rid: d.rid, file });
     return;
   }
 
   if (d.type === 'import') {
     let ok = false; try { if (self.__api && self.__api.importFile) ok = self.__api.importFile(d.data); } catch (_) {}
-    self.postMessage({ type: 'import-result', ok });
+    self.postMessage({ type: 'import-result', rid: d.rid, ok });
+    return;
+  }
+
+  // #153 — the collective relay. `pull` is a request/reply and carries the caller's rid back so a
+  // reply can never be matched to the wrong ask; `feed` is fire-and-forget (a migrant that doesn't
+  // arrive is a migrant that didn't arrive — the wire drops them too).
+  if (d.type === 'pull') {
+    let packet = null; try { packet = self.__api && self.__api.pullMigrant ? self.__api.pullMigrant() : null; } catch (_) {}
+    self.postMessage({ type: 'pulled', rid: d.rid, packet });
+    return;
+  }
+
+  if (d.type === 'feed') {
+    try { if (self.__api && self.__api.feedPacket) self.__api.feedPacket(d.packet); } catch (_) {}
+    return;
+  }
+
+  if (d.type === 'stat') {
+    let stat = null; try { stat = self.__api && self.__api.stat ? self.__api.stat() : null; } catch (_) {}
+    self.postMessage({ type: 'stat', rid: d.rid, stat });
     return;
   }
 });

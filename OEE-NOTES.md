@@ -11073,3 +11073,89 @@ If (1) holds and (2) does not — if it recovers at full rate — then the mutat
 constraint and this whole reading is wrong. That is the falsifiable half, and it is the interesting
 outcome. `arcDiagnosis()` (#147) now reports the signature, and the diary says it on the phone, so the
 answer is readable from the device it runs on rather than from an export.
+
+---
+
+## #153 — THE COLLECTIVE UNIVERSE, and four things the wire had been silently eating
+
+### What was asked for
+
+> *"i noted on my phone theres room for a 9th universe. maybe we make that universe fed by all the
+> others. so rather than a universal save and load button we just have a 9th universe thats essentially
+> the collective universe. saving that essentially saves the collective without homogenising the
+> individual but also means that collective then feeds back into the individuals as a broadcast"*
+
+#152 had given the field one save button that wrote all N genomes into one file. It worked and it was
+the wrong shape: the collective was a FILE FORMAT, not a thing that lives, and loading one back meant
+deciding from the outside which universe got which lineage. The ninth cell replaces it.
+
+### What it is
+
+An ordinary universe running the same engine, in the same kind of worker, peering on the same channel.
+What makes it collective is one shell-level relay in `index.html`: every second it takes ONE EMIGRANT
+out of each of the eight and hands it to the ninth; every fourth second it takes one out of the ninth
+and hands it back to ONE individual, round-robin. Eight in, one out.
+
+Measured, 412x915 phone viewport, nine universes, 30s: the collective took **517 migrants** against the
+individuals' 25–32 — a ~17x sink — and every universe saw all eight peers, which the #151 note had been
+unsure of at eight on a four-core box.
+
+**Why this is not homogenisation, and how that is tested rather than asserted.** The unit of exchange
+is a MIGRANT — one particle, with its program and its vocabulary — not a genome. Nothing is
+overwritten. `collective-test.js` seeds the collective's own slot with a 777,777-tick lineage, reloads,
+and lets the relay run for twelve seconds: the collective comes back carrying it and **no individual
+does**. That is the user's constraint, tested directly rather than through a proxy. (Two earlier
+versions of that check asked whether the individuals had DIVERGED — by generation, then by a germline
+fingerprint — and both failed at short runs for the same reason: half a minute after a common boot they
+genuinely have not, `mutateGenome` having not yet fired once. The checks had no signal and were
+measuring the clock rather than the mechanism.)
+
+### The four things that were being eaten
+
+Building the relay meant pulling migrants on demand, which meant a rig could finally count arrivals
+instead of sends. It failed on its first run, and not because of the relay.
+
+`validNetworkPayload` rejects a bad packet and `netStats.bad` counts it. **Nothing anywhere reads
+`netStats.bad`.** So four separate mismatches between what the engine SENDS and what the wire ACCEPTS
+had been discarding real traffic for as long as they had existed, on every peer, in complete silence:
+
+| what | measured loss | why it is the worst possible bias |
+|---|---|---|
+| opcode bounded at ±64, space runs to 429 | 2 of 25 motifs, 2 of 2 plasmids | excludes every authored atom (236..427) and `EFFECT_EMIT` — the two most evolved structures here were the two horizontal transfer could not carry |
+| tendency length bounded at 5, `DIMS_MAX` is 32 | none seen (DIMS was still 5) | the first universe to earn a sixth trait dimension becomes permanently unable to emigrate — the further a world gets, the more completely it is cut off |
+| `phase` bounded at ±64, grows without bound | 3 of 200 migrants | a particle passes ±64 after ~1,500 ticks alive and can never emigrate again. The wire was selecting against the SURVIVORS |
+| position bounded at ±0.25 of a world | 6 of 1,600 migrants | the whole organism — program, vocabulary and all — discarded because its donor was off the left edge |
+
+The fixes are asymmetric on purpose. The two bounds that were simply STALE are now read from the
+engine's own constants (`DIMS_MAX`, `MEM_SIZE`, `MAX_PLASMID`, `netMaxOpcode()`) rather than restated,
+because a restated constant is a constant that goes stale and nothing tells you which one has. The two
+values that genuinely exceed their declared range are brought inside it on send: `phase` by modulo,
+which is lossless (every consumer reads phase through cos/sin, and the one that reads it raw gets
+exactly the range a fresh particle occupies), and memory and position by clamp, which is lossy in one
+number and is still obviously right — the alternative was losing the entire organism.
+
+`collective-test.js` now holds `netStats.bad === 0` on every universe. That assertion, not the fix, is
+the durable part: it fails the next time a ceiling moves without the wire following.
+
+### The dead buttons
+
+Reported from the phone: *"the individual load and save buttons arent working."* Two causes, both mine.
+
+The field lays a transparent `.tap` div over every cell so one tap opens that universe. #150 opened a
+cell by toggling CSS classes and **never hid that overlay**, so the opened universe's own save and load
+buttons stayed covered — visible, and dead to every tap. Thirty-four rigs missed it because no rig had
+ever asked what a tap at those coordinates actually lands on. `collective-test.js` asks, with
+`document.elementFromPoint`, and checks both directions so the check cannot pass vacuously.
+
+Second: #152's field API matched a worker reply to a request by "is a field promise outstanding?",
+so any export reply arriving while one was pending was swallowed by it — and the 60-second field
+autosave meant one often was. Replies now carry back the request id they were asked with.
+
+### Registered prediction
+
+The opcode fix opens horizontal transfer to authored atoms and verbs for the first time. If atom-level
+material now crosses between universes, `network.migrantAccepted` was never the bottleneck the census
+implied — plasmid and motif transfer were, and they were transferring only the pre-#132 opcode space.
+The falsifiable half: if a field of nine shows no more atom-bank convergence between neighbours than
+before this fix, then plasmid/motif transfer carries nothing that matters and the whole channel is
+migrants or nothing.

@@ -16,7 +16,7 @@ pass=0; fail=0; failed=()
 
 # oee-meter-test.js asserts the #131 meter semantics; the rest step the sim directly. harness-ablate/-ablate-bank shell out to harness-oee and
 # harness-coupling-worker is a worker module, so all three are covered transitively.
-RIGS=(oee-meter-test.js verb-test.js attention-test.js worldsignal-test.js crossing-test.js crossing-report.js sense-test.js roundtrip-test.js inherit-test.js migrant-test.js noerror-test.js rarepath-test.js browser-test.js persistence-test.js diary.js liveness-report.js harness.js harness-ab.js harness-oee.js harness-strip.js harness-clamp.js harness-stream.js
+RIGS=(oee-meter-test.js verb-test.js attention-test.js worldsignal-test.js crossing-test.js crossing-report.js sense-test.js roundtrip-test.js inherit-test.js migrant-test.js noerror-test.js rarepath-test.js browser-test.js collective-test.js persistence-test.js diary.js liveness-report.js harness.js harness-ab.js harness-oee.js harness-strip.js harness-clamp.js harness-stream.js
       harness-tie.js harness-gates.js harness-meta-ablate.js harness-saturation.js
       harness-atrophy-probe.js harness-coupling.js harness-coupling-asym.js
       harness-alien-ablate.js harness-ablate-reflex.js harness-reflex-leaf.js
@@ -33,6 +33,10 @@ extra_env_for() {
     # browser-test.js measures wall-clock seconds in a real browser, not ticks; the smoke pass gives
     # it a short window and it skips itself entirely when playwright-core is not installed.
     browser-test.js) echo "SECS=8" ;;
+    # collective-test.js runs NINE universes and then RELOADS the page, so it needs enough wall-clock
+    # for the relay to move a measurable number of migrants and for restoreCollective's 1200ms timer
+    # to fire twice. Below about 20s the sink check has too few packets to be meaningful.
+    collective-test.js) echo "SECS=22" ;;
     *) echo "" ;;
   esac
 }

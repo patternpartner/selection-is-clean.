@@ -77,29 +77,60 @@
   // rather than eight copies of whichever universe happened to write to localStorage last.
   // Deliberately small: read this universe's genome, put a genome into it, and tell me when the sim
   // is up. Everything else stays where it is.
-  var fieldExport=null, fieldImport=null, isReady=false, readyWaiters=[];
+  // #153 fixed a real breakage this API caused. The first version matched a reply to a request by
+  // "is a field promise outstanding?", so ANY export reply that arrived while one was pending was
+  // swallowed by it — and the 60-second field autosave meant one was pending fairly often. Tapping
+  // this universe's own 💾 could hand its file to the autosave and never download anything. Replies
+  // now carry back the rid they were asked with (the worker echoes it), so a field ask and a button
+  // press can never be confused for each other no matter how they interleave.
+  var fieldWaiters={}, ridSeq=0, isReady=false, readyWaiters=[];
+  function ask(kind, extra){
+    return new Promise(function(r){
+      var rid = 'f'+(++ridSeq);
+      fieldWaiters[rid] = r;
+      var m = { type:kind, rid:rid };
+      for (var k in extra) m[k] = extra[k];
+      worker.postMessage(m);
+    });
+  }
+  function settle(rid, value){
+    if (rid === undefined || rid === null) return false;
+    var r = fieldWaiters[rid]; if (!r) return false;
+    delete fieldWaiters[rid]; r(value); return true;
+  }
   window.__field = {
     ready: function(){ return isReady ? Promise.resolve() : new Promise(function(r){ readyWaiters.push(r); }); },
-    save:  function(){ return new Promise(function(r){
-             if (fieldExport) { r(null); return; }          // one at a time; a second ask gets nothing
-             fieldExport = r; worker.postMessage({ type:'export' }); }); },
-    load:  function(data){ return new Promise(function(r){
-             if (fieldImport) { r(false); return; }
-             fieldImport = r; worker.postMessage({ type:'import', data:String(data) }); }); }
+    save:  function(){ return ask('export', null); },
+    load:  function(data){ return ask('import', { data:String(data) }); },
+    // #153 — the collective relay. pull() takes one emigrant out of this universe without putting it
+    // on the wire; feed(packet) puts one in, through the sim's own network door.
+    pull:  function(){ return ask('pull', null); },
+    feed:  function(packet){ try { worker.postMessage({ type:'feed', packet:packet }); } catch(e){} },
+    // The sim's own receive-side counters. Arrivals, not sends.
+    stat:  function(){ return ask('stat', null); }
   };
 
   worker.onmessage = function(e){
     var d = e.data || {};
     if (d.type === 'status'){ genEl.textContent = d.text; return; }
-    if (d.type === 'ready'){ isReady=true; while(readyWaiters.length) readyWaiters.shift()(); return; }
+    if (d.type === 'ready'){
+      isReady=true;
+      // #153: clear the placeholder. In clean mode (#cleanart, which is every frame of a field) the
+      // engine never writes the HUD, so nothing ever replaced "booting…" and nine frames sat there
+      // claiming to be booting for as long as the page was open. It only ever meant "no status yet".
+      if (genEl && genEl.textContent === 'booting…') genEl.textContent = '';
+      while(readyWaiters.length) readyWaiters.shift()(); return;
+    }
     if (d.type === 'persist'){
       try { if (d.value === null) localStorage.removeItem(d.key); else localStorage.setItem(d.key, d.value); } catch(ex){}
       return;
     }
+    if (d.type === 'pulled'){ settle(d.rid, d.packet || null); return; }
+    if (d.type === 'stat'){ settle(d.rid, d.stat || null); return; }
     if (d.type === 'export'){
-      // #152: a field-level save asks for the DATA, not a download. Only a click on this universe's
-      // own save button should put a file on the device.
-      if (fieldExport){ var r=fieldExport; fieldExport=null; r(d.file ? d.file.data : null); return; }
+      // A field-level save asks for the DATA, not a download. Only a click on this universe's own
+      // save button (which carries no rid) should put a file on the device.
+      if (settle(d.rid, d.file ? d.file.data : null)) return;
       if (!d.file){ fail('export failed (sim not ready?)'); return; }
       try {
         var blob = new Blob([d.file.data], {type:'application/json'});
@@ -110,7 +141,7 @@
       return;
     }
     if (d.type === 'import-result'){
-      if (fieldImport){ var ri=fieldImport; fieldImport=null; ri(!!d.ok); return; }
+      if (settle(d.rid, !!d.ok)) return;
       if (!d.ok) fail('import failed — file not a valid genome'); return; }
     if (d.type === 'error'){
       fail('Simulation error:\n' + (d.message||'') + (d.line?(' (line '+d.line+')'):'') + (d.stack?('\n\n'+d.stack):''));

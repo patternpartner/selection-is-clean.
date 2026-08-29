@@ -12,11 +12,11 @@ Companion to OEE-NOTES.md, which records experiments. This records the machine t
 
 | | |
 |---|---|
-| **file** | `engine.html` — the sim moved out of `index.html` in `c0cef11`. Since **#149** the pages are: `index.html` = THE FIELD (a grid of iframes, four universes by default), `universe.html` = the single worker shell (what `index.html` used to be), `engine.html` = the simulation itself, still runnable on its own |
+| **file** | `engine.html` — the sim moved out of `index.html` in `c0cef11`. Since **#149** the pages are: `index.html` = THE FIELD, `universe.html` = the single worker shell (what `index.html` used to be), `engine.html` = the simulation itself, still runnable on its own. Since **#153** the field is EIGHT INDIVIDUALS PLUS A COLLECTIVE (nine iframes, nine workers); the ninth is an ordinary universe whose input is the other eight |
 | **last fully re-derived** | never — this map was written against `index.html` and has been patched, not rebuilt |
-| **prose current through** | **#90.** The engine is at **#146.** Roughly fifty-five swings are undocumented here |
+| **prose current through** | **#90.** The engine is at **#153.** Roughly sixty swings are undocumented here |
 | **verified as of #131** | the anchor table below, the opcode constants, the genome extent, and the census claims |
-| **added since, unmapped below** | **#132/#133** verb grammar (`EFFECT_TARGETS`, `applyUserEffect`, opcode 236) · **#134** liveness census (`LIVENESS_DECLARED`, `fired()`) · **#135** attention field (`attnField`, `attentionAt`, the `at` sense) · **#136** world signal (`updateWorldSignal`, `worldSignalSuppressed`) · **#137** crossing census (`CROSSING_DECLARED`, `crossingCensus`) · **#138** the diary (`theDiary`, `diaryPanel`) · **#139** sense-gated verbs (`verbGate`, `remapEffectAx`, `effectSenseRate`) · **#140** the crossings (`CHILD_NOT_A_GENE`, inherit/roundtrip tests) · **#141** migrant vocabulary (`MIGRANT_CARRIES_VOCAB`). Grep the names; no line anchors yet |
+| **added since, unmapped below** | **#132/#133** verb grammar (`EFFECT_TARGETS`, `applyUserEffect`, opcode 236) · **#134** liveness census (`LIVENESS_DECLARED`, `fired()`) · **#135** attention field (`attnField`, `attentionAt`, the `at` sense) · **#136** world signal (`updateWorldSignal`, `worldSignalSuppressed`) · **#137** crossing census (`CROSSING_DECLARED`, `crossingCensus`) · **#138** the diary (`theDiary`, `diaryPanel`) · **#139** sense-gated verbs (`verbGate`, `remapEffectAx`, `effectSenseRate`) · **#140** the crossings (`CHILD_NOT_A_GENE`, inherit/roundtrip tests) · **#141** migrant vocabulary (`MIGRANT_CARRIES_VOCAB`) · **#153** the migrant packet extracted (`buildMigrantPacket`) and the wire's limits derived rather than restated (`netMaxOpcode`). Grep the names; no line anchors yet |
 | **NOT verified** | every other inline line number in this file. They were written against a file ~1,100 lines shorter and around 500–900 lines of drift has accumulated unevenly — treat them as approximate, and grep for the quoted code instead |
 
 The map's own promise is that a later reader does not have to re-derive it, which only holds if the
@@ -48,6 +48,27 @@ and each has a rig that fails the build:
 | parent → child | shared by reference, so a lineage cannot diverge it | `inherit-test.js` |
 | save → load | works until you press save | `roundtrip-test.js` |
 | tab → tab | the program travels, the vocabulary it speaks does not | `migrant-test.js` |
+| tab → tab, on the wire | the packet is BUILT fine and REJECTED on arrival | `collective-test.js` |
+
+**The wire's limits must be READ from the engine, never restated (#153).** The fifth crossing above is
+its own bug class and it took until #153 to notice, because it fails on the RECEIVE side, in silence:
+`validNetworkPayload` rejects the packet, `netStats.bad` counts it, and nothing anywhere reads
+`netStats.bad`. Three of its four bounds had gone stale against ceilings that moved underneath them:
+
+| the bound | what it said | what the engine does | who was lost |
+|---|---|---|---|
+| `validInstruction` op | ±64 | opcodes run 0..429 (`CORE_OPCODES` 237 + `MAX_BOUND_OPCODES` 192) | every plasmid or motif using an authored atom (236..427) or `EFFECT_EMIT` (236) — the two most evolved things here were the two horizontal transfer could not carry |
+| tendency length | 5 | `let DIMS=5`, and the #25 ratchet grows it to `DIMS_MAX=32` | a universe that earned a sixth trait dimension became permanently unable to emigrate |
+| `phase` | ±64 | `phase[i]+=freq[i]` every tick and never wraps | any particle alive more than ~1,500 ticks — the survivors, precisely |
+| memory size | 8 | `MEM_SIZE` is 8 | nobody. Which is the point: nothing tells you which of a set of copied numbers has drifted |
+
+So none of them are copied now — `validNetworkPayload` reads `DIMS_MAX` / `MEM_SIZE` / `MAX_PLASMID` /
+`netMaxOpcode()` directly, and `buildMigrantPacket` brings its own packet inside the protocol before
+sending it (phase by modulo, which is lossless because every consumer reads phase through cos/sin;
+memory and position by clamp, because losing one register beats losing the whole organism).
+`collective-test.js` holds `netStats.bad === 0` on every universe, which is what keeps this honest the
+next time a ceiling moves. Measured before the fix, on the live channel: 2 of 25 motifs, 2 of 2
+plasmids, 3 of 200 migrants for phase and 6 of 1,600 for position.
 
 **Every rig swallows loop errors** (`try{ loop(); }catch(e){}`), which is right for a measurement but
 means an engine that throws on every tick still passes all of them. `noerror-test.js` is the one rig
@@ -83,6 +104,22 @@ slot whose atom was culled, and every dispatch guards with `if(_bua)`, so an ine
 non-greedy regex anchored to `//__METAB_END__`. The diary panel is appended AFTER that marker and
 ends at `//__DIARY_END__`; both are guarded on `document.body` so a headless rig cannot be taken down
 by them. Anything else appended down there must keep its own end marker and the same guard.
+
+**The field is a page, and a page has its own bugs (#150/#153).** `index.html` lays a transparent
+`.tap` div over every cell so one tap opens that universe. #150 opened a cell by toggling CSS classes
+and never hid that overlay, so the opened universe's own save and load buttons stayed covered —
+visible, and dead to every tap. Reported from a phone; invisible to thirty-four rigs, because no rig
+had ever asked what a tap at those coordinates actually LANDS on. `collective-test.js` asks, with
+`document.elementFromPoint`, in both directions (closed it must hit the overlay, or the check proves
+nothing). The general lesson is the #144 one again: the shell is part of the artwork, and a rig that
+only boots the engine cannot see it.
+
+**The field API (#152/#153).** `universe.html` exposes `window.__field` — `ready` / `save` / `load` /
+`pull` / `feed` / `stat` — and that is the whole surface `index.html` has on a universe. Every call is
+a `postMessage` round trip matched by a REQUEST ID the worker echoes back. #152 matched replies by "is
+a field promise outstanding?" instead, so any export reply arriving while one was pending got
+swallowed by it, and the 60-second field autosave meant one often was: tapping a universe's own save
+could hand its file to the autosave and download nothing. If you add a call here, give it an rid.
 
 **Which genome is `genome`? (#139)** During VM execution the global `genome` is REPOINTED to the
 acting particle's own genome and restored in a `finally` — see the wrapper around `executeVM` /

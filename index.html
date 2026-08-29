@@ -3,7 +3,7 @@
 <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover">
 <title>Selection</title>
 <!--
-  THE FIELD — several universes per window, trading.
+  THE FIELD — eight universes trading, and a ninth that is made of all of them.
 
   WHAT MOVED. This file used to be the single worker shell; that is now universe.html, unchanged.
   This is a grid of iframes of it. engine.html is untouched and still runs one universe on the main
@@ -33,36 +33,54 @@
   Total throughput is PINNED at 160/sec regardless of N, so past four you are not buying simulated
   time — you are buying PEERS with each universe's clock. That is the trade this page exists to make:
   a collapsed universe needs foreign genomes far more than it needs its own ticks.
-  At eight on four cores the scheduler stopped being fair (1200/600/600/600/1202/600/1200/1200) and
-  one universe fell out of the peer window — the panel read SEVEN, not eight. A universe running at
-  half speed broadcasts half as often and goes stale to the others.
-  THE DEFAULT IS EIGHT ANYWAY, chosen deliberately, because the target device has EIGHT cores and
-  worker mode scales with cores — the unfairness above is most likely an artifact of measuring on
-  four. The check costs nothing: tap any universe and read the metabolism panel. "8 univs" means the
-  field is fully connected; fewer means drop to /#n=6, which measured even and fully peered.
+  THE DEFAULT IS EIGHT INDIVIDUALS plus the collective, chosen deliberately, because the target device
+  has EIGHT cores and worker mode scales with cores. The check costs nothing: tap any universe and
+  read the metabolism panel. "9 univs" means the field is fully connected; fewer means drop to /#n=6.
 
-  WHY MORE THAN ONE AT ALL. Peering already worked across two tabs — same origin, fixed channel name
-  — but only the VISIBLE tab runs at speed: the engine falls back to setTimeout(loop,67) when
-  document.hidden and browsers clamp background timers to about 1/sec. So two tabs meant one universe
-  at ~50 ticks/sec and one at ~1. Here every frame is visible. network.migrantAccepted, which reads
-  NEVER in every single-process census in this repo because a lone universe has no peers, starts
-  firing: 9 migrants in 40s at two universes, 32 at four, 60 at six. Trading tracks the number of
-  PAIRS, so it grows quadratically while each clock slows only linearly.
+  ═══ #153 — THE COLLECTIVE UNIVERSE ═══════════════════════════════════════════════════════════════
+  #152 gave the field one save button that wrote all N genomes into one file. It worked, and it was
+  the wrong shape: a file is a thing you have to remember to press, and the moment you load one back
+  you have decided from the outside which universe gets which lineage. The collective was a FILE
+  FORMAT, not a thing that lives.
 
-      /                 eight universes
-      /#n=2             two
-      /#n=4             four
-      /#n=6             six
+  So the last cell is a universe. Not a summary of the others, not a merge of their genomes — a real
+  ninth world running the same engine, whose input is the other eight. Every second the field takes
+  ONE EMIGRANT out of each individual and hands it to the collective; four times slower, it takes one
+  out of the collective and hands it back to one individual, round-robin. Eight in, one out: the
+  collective is a sink eight times over, which is what makes it a mixing vessel rather than a ninth
+  peer.
+
+  WHY THIS DOES NOT HOMOGENISE. The unit of exchange is a MIGRANT — one particle, with its program
+  and its vocabulary — not a genome. Nothing is overwritten. An individual that receives a collective
+  emigrant has gained one immigrant among a few hundred residents, and its own selection decides
+  within a few thousand ticks whether that lineage leaves descendants. The eight stay eight. What
+  the collective accumulates is what SURVIVED being sent from eight different worlds.
+  (The #152 field save did the opposite: it wrote whole genomes over whole genomes. That is the
+  homogenising move, and it is gone.)
+
+  WHY THE PACKETS ARE REAL. pull() calls the engine's own buildMigrantPacket() and stamps the
+  engine's own netPacket() envelope — the identical object networkBroadcast would have put on the
+  wire, with the source universe's real TAB_ID. feed() puts it through the recipient's own
+  handleNetworkMessage(). validNetworkPayload, the queue caps, the peer bookkeeping and the
+  tab===TAB_ID self-drop all still apply. The relay cannot inject anything a peer could not have
+  sent, because a peer built it. All the field changes is WHO HEARS IT.
+
+  SAVING. The collective's own 💾 button saves the collective, which is the point: one file, one
+  lineage, the distilled thing. It also autosaves to its own localStorage slot (selection_collective)
+  every 60 seconds and comes back into the collective — and only the collective — on reload, so the
+  eight individuals keep sharing the engine's single slot exactly as they always have and the
+  collective's lineage can never be overwritten by whichever individual wrote last.
+
+      /                 eight universes and the collective
+      /#n=2             two and the collective
+      /#n=4             four and the collective
+      /#n=6             six and the collective
+      /#solo            no collective, no relay — just the individuals
       /#n=4,hud         put the HUD back on every frame (a field is clean by default)
 
   TAP a universe to open it full size with its instruments on; tap 'field' (or Escape) to go back.
   Nothing reloads either way — the others keep running and trading while you look.
       /#<genome>        ONE universe loaded from that lineage — old saved links keep working
-
-  NOT SOLVED HERE: every universe autosaves to the same fixed localStorage key, so they overwrite
-  each other's stored lineage. Live trading is unaffected (BroadcastChannel, not storage) but only
-  one lineage survives a reload. The same collision already existed for two tabs; it is louder with
-  four, and fixing it means changing the engine's save key, which is a separate decision.
 -->
 <style>
   html,body{margin:0;padding:0;height:100%;background:#000;overflow:hidden;touch-action:none}
@@ -70,45 +88,45 @@
   .cell{position:relative;min-width:0;min-height:0}
   iframe{border:0;width:100%;height:100%;display:block;background:#000}
   /* The tap target sits OVER the frame so one tap always lands on the field rather than on whatever
-     the engine has drawn there. It is removed while a universe is open, so its own controls
-     (save, load, the panels) work normally. */
+     the engine has drawn there. #153: it is HIDDEN while a universe is open. It used not to be —
+     open() only toggled classes — so the overlay went on covering the opened cell and quietly ate
+     every tap meant for that universe's own save and load buttons. They were visible and dead. */
   .tap{position:absolute;inset:0;background:transparent;cursor:pointer}
+  #grid.open .cell.on .tap{display:none}
   /* Open: this cell covers the whole grid. Nothing is reloaded — the others keep running underneath. */
   #grid.open .cell{display:none}
   #grid.open .cell.on{display:block;grid-column:1/-1;grid-row:1/-1}
+  .cell.collective{outline:1px solid #2f6;outline-offset:-1px}
+  .cell.collective .badge{position:absolute;left:3px;top:3px;z-index:2;pointer-events:none;
+        font:9px/1 ui-monospace,Menlo,monospace;color:#8fb;background:rgba(0,20,12,.7);
+        border-radius:4px;padding:3px 5px;letter-spacing:.5px}
+  #grid.open .cell.collective .badge{font-size:11px;left:8px;top:8px}
   #back{position:fixed;left:8px;top:8px;z-index:9;display:none;
         font:12px/1 ui-monospace,Menlo,monospace;color:#cfe;background:rgba(10,14,16,.82);
         border:1px solid #2a4a44;border-radius:7px;padding:8px 11px}
   #grid.open ~ #back{display:block}
-  #fio{position:fixed;left:8px;bottom:8px;z-index:9;display:flex;gap:6px;align-items:center}
-  #grid.open ~ #fio{display:none}
-  #fio button{font:11px ui-monospace,Menlo,monospace;background:rgba(10,20,18,.85);color:#8fb;
-              border:1px solid #275;border-radius:6px;padding:6px 9px}
-  #fio input{display:none}
-  #fmsg{font:10px ui-monospace,Menlo,monospace;color:#7a8;max-width:46vw}
+  /* The collective says what it is taking in, on itself. This used to be a fixed panel at the
+     bottom-left of the PAGE, where it sat on top of the last cell's own save button. */
+  #fmsg{display:none}
 </style>
 <div id="grid"></div>
 <div id="back">&#8592; field</div>
-<div id="fio">
-  <button id="fsave" title="save every universe into one file">&#128190; field</button>
-  <button id="fload" title="restore a whole field">&#128193; field</button>
-  <input type="file" id="ffile" accept=".json">
-  <span id="fmsg"></span>
-</div>
+<div id="fmsg"></div>
 <script>
 (function(){
   'use strict';
   var raw=(location.hash||'').replace(/^#/,'');
   // A saved lineage is a long opaque blob. Anything that is not one of our own options is treated as
   // a genome and gets a single universe, so every link anyone has ever saved still opens its world.
-  var isOptions = raw==='' || /^(n=\d+|clean|cleanart|hud)(,(n=\d+|clean|cleanart|hud))*$/.test(raw);
-  var n, clean=false, passHash='';
+  var isOptions = raw==='' || /^(n=\d+|clean|cleanart|hud|solo)(,(n=\d+|clean|cleanart|hud|solo))*$/.test(raw);
+  var n, clean=false, passHash='', wantCollective=false;
   if(isOptions){
     var m=raw.match(/n=(\d+)/);
-    n = m ? parseInt(m[1],10) : 8;                 // eight, by the author's call — see HOW MANY below
+    n = m ? parseInt(m[1],10) : 8;                 // eight INDIVIDUALS, by the author's call
     if(!(n>=1)) n=4;
     if(n>8) n=8;                                   // not a hard limit; past the core count the
                                                    // universes only slow each other down
+    wantCollective = n>1 && !/(^|,)solo(,|$)/.test(raw);
     // CLEAN BY DEFAULT WHEN THERE IS MORE THAN ONE. #144 measured the HUD at 2,788 characters over
     // half a full phone screen; in a quarter-screen frame it is roughly twice the frame. Rendered
     // four-up it buries the artwork entirely, and four metabolism panels is four of everything.
@@ -117,29 +135,34 @@
   } else {
     n=1; passHash='#'+raw;                         // a lineage, opened by itself
   }
-  var cols=Math.ceil(Math.sqrt(n));
+  var total=n+(wantCollective?1:0);
+  var cols=Math.ceil(Math.sqrt(total));
   var grid=document.getElementById('grid');
   grid.style.gridTemplateColumns='repeat('+cols+',1fr)';
-  var frag=document.createDocumentFragment(), cells=[];
-  for(var i=0;i<n;i++){
-    var cell=document.createElement('div'); cell.className='cell';
+  var frag=document.createDocumentFragment(), cells=[], collectiveCell=null;
+  for(var i=0;i<total;i++){
+    var isColl = wantCollective && i===total-1;
+    var cell=document.createElement('div'); cell.className='cell'+(isColl?' collective':'');
     var f=document.createElement('iframe');
     f.src='universe.html'+(passHash||(clean?'#cleanart':''));
-    f.title='Universe '+(i+1);
+    f.title=isColl?'The collective':('Universe '+(i+1));
     f.setAttribute('allow','autoplay');
     cell.appendChild(f);
-    if(n>1){ var t=document.createElement('div'); t.className='tap'; cell.appendChild(t); }
+    if(isColl){ var b=document.createElement('div'); b.className='badge'; b.textContent='collective'; cell.appendChild(b); }
+    if(total>1){ var t=document.createElement('div'); t.className='tap'; cell.appendChild(t); }
     frag.appendChild(cell); cells.push(cell);
+    if(isColl) collectiveCell=cell;
   }
   grid.appendChild(frag);
+  var individuals=cells.slice(0, wantCollective?cells.length-1:cells.length);
 
   // #150 — TAP A UNIVERSE TO LOOK INSIDE IT.
-  // A field is clean because four HUDs at quarter-size are unreadable (#144 measured the HUD at half
+  // A field is clean because eight HUDs at ninth-size are unreadable (#144 measured the HUD at half
   // a FULL phone screen). But clean should not mean unavailable: the instruments are the point of the
   // thing. Tapping opens one universe to full size AND turns its own readouts back on by clearing its
   // hash — which the metabolism panel (main thread) and the HUD (inside the worker, via the #150
-  // forward) both honour live. NOTHING RELOADS: the other three keep running and keep trading, and
-  // the opened one keeps the lineage it has been growing. A reload would drop it back to the shared
+  // forward) both honour live. NOTHING RELOADS: the others keep running and keep trading, and the
+  // opened one keeps the lineage it has been growing. A reload would drop it back to the shared
   // localStorage slot, which by then holds some other universe's genome.
   var openCell=null;
   function setFrameHash(cell,h){
@@ -165,110 +188,79 @@
     if(!t||t.className!=='tap')return;
     open(t.parentNode);
   });
-  // ═══ #152 — ONE SAVE FOR THE WHOLE FIELD ════════════════════════════════════════════════════
-  // Eight universes, eight save buttons, and every one of them writing to the SAME localStorage key —
-  // so a reload restored eight copies of whichever universe wrote last, and the diversity that makes
-  // this a collective was thrown away every time. Worse, the winner was decided by write FREQUENCY,
-  // and a universe in a death loop saves on every extinction: measured, a dying lineage writes 6.8
-  // times per 1,000 ticks against a healthy one's 1.0. The field was inheriting from whoever was
-  // failing loudest.
-  // So: keep them individual, and save the collective. One file, one localStorage slot, N genomes —
-  // and on load each universe gets its OWN lineage back. The field resumes as a field.
-  // Nothing in engine.html changes; this is all shell-level, through the small API in universe.html.
-  var FIELD_KEY='selection_field';
-  function msg(t){ var el=document.getElementById('fmsg'); if(el)el.textContent=t||''; }
-  function frameApi(cell){ try{ return cell.firstChild.contentWindow.__field||null; }catch(e){ return null; } }
-
-  function collect(){                         // every universe's genome, in grid order
-    return Promise.all(cells.map(function(c){
-      var a=frameApi(c); if(!a) return Promise.resolve(null);
-      return a.save().catch(function(){ return null; });
-    }));
-  }
-  function fieldBlob(list){
-    return JSON.stringify({ type:'selection-field', version:1,
-      exportedAt:new Date().toISOString(), n:list.length,
-      universes:list.map(function(g){ return { genome:g }; }) });
-  }
-
-  document.getElementById('fsave').addEventListener('click',function(){
-    msg('collecting…');
-    collect().then(function(list){
-      var got=list.filter(Boolean).length;
-      if(!got){ msg('nothing to save yet'); return; }
-      var data=fieldBlob(list);
-      try{
-        var a=document.createElement('a');
-        a.href=URL.createObjectURL(new Blob([data],{type:'application/json'}));
-        a.download='selection_field_'+got+'x_'+Date.now()+'.json'; a.click();
-        setTimeout(function(){ URL.revokeObjectURL(a.href); },4000);
-        msg('saved '+got+' universes');
-      }catch(e){ msg('save failed: '+e.message); }
-    });
-  });
-
-  document.getElementById('fload').addEventListener('click',function(){ document.getElementById('ffile').click(); });
-  document.getElementById('ffile').addEventListener('change',function(e){
-    var f=e.target.files&&e.target.files[0]; if(!f)return;
-    var r=new FileReader();
-    r.onload=function(ev){ distribute(String(ev.target.result)); };
-    r.readAsText(f); e.target.value='';
-  });
-
-  // Hand universe i its own lineage. A field file feeds each frame separately; a plain single-genome
-  // file is given to every frame, which is the old behaviour and still a reasonable thing to want.
-  function distribute(text){
-    var parsed=null; try{ parsed=JSON.parse(text); }catch(_){}
-    var list=null;
-    if(parsed&&parsed.type==='selection-field'&&Array.isArray(parsed.universes))
-      list=parsed.universes.map(function(u){ return u&&u.genome; });
-    else list=cells.map(function(){ return text; });          // one genome, everyone gets it
-    msg('loading…');
-    var jobs=cells.map(function(c,i){
-      var g=list[i%list.length]; if(!g) return Promise.resolve(false);
-      var a=frameApi(c); if(!a) return Promise.resolve(false);
-      return a.load(g).catch(function(){ return false; });
-    });
-    Promise.all(jobs).then(function(res){
-      var ok=res.filter(Boolean).length;
-      msg(ok? ('loaded into '+ok+' universes') : 'load failed');
-    });
-  }
-
-  // AUTOSAVE THE FIELD. The engine's own autosave still runs per-universe into the single shared key;
-  // this is a second, collective slot on top of it, so a reload can restore all N. localStorage is
-  // finite (about 5MB) and a mature genome runs to a few hundred KB, so this stores as many as fit,
-  // newest first, and says how many it kept rather than failing silently — the exact failure mode
-  // #145 found in the engine's own save.
-  function fieldAutosave(){
-    collect().then(function(list){
-      var got=list.filter(Boolean); if(!got.length) return;
-      for(var keep=got.length; keep>=1; keep--){
-        try{ localStorage.setItem(FIELD_KEY, fieldBlob(got.slice(0,keep))); 
-             if(keep<got.length) msg('field autosave kept '+keep+'/'+got.length+' (storage full)');
-             return; }
-        catch(e){ /* quota — try fewer */ }
-      }
-      msg('field autosave failed (storage full)');
-    }).catch(function(){});
-  }
-
-  // On boot, if a field was stored, give each universe its own lineage back once its sim is up.
-  function restoreField(){
-    var stored=null; try{ stored=localStorage.getItem(FIELD_KEY); }catch(_){}
-    if(!stored||stored.length<20) return;
-    Promise.all(cells.map(function(c){ var a=frameApi(c); return a? a.ready() : Promise.resolve(); }))
-      .then(function(){ distribute(stored); });
-  }
-  if(n>1 && !passHash){
-    // A field only restores a field. A single universe, or a lineage link, is left exactly alone.
-    setTimeout(restoreField, 1200);
-    setInterval(fieldAutosave, 60000);
-  } else {
-    var fio=document.getElementById('fio'); if(fio)fio.style.display='none';
-  }
-
   document.getElementById('back').addEventListener('click',function(e){ e.stopPropagation(); close(); });
   addEventListener('keydown',function(e){ if(e.key==='Escape')close(); });
+
+  // ═══ #153 — THE COLLECTIVE ══════════════════════════════════════════════════════════════════
+  var msgEl=document.getElementById('fmsg');
+  // Write the field's readout into the COLLECTIVE'S OWN BADGE rather than a panel floating over
+  // whichever cell happens to be bottom-left. It reads as a label on the thing it describes, and it
+  // grows with the cell when you open it.
+  var badgeEl=null;
+  function msg(t){
+    if(!badgeEl && collectiveCell) badgeEl=collectiveCell.querySelector('.badge');
+    if(badgeEl) badgeEl.textContent = t ? ('collective '+t) : 'collective';
+    if(msgEl) msgEl.textContent=t||'';
+  }
+  function api(cell){ try{ return cell.firstChild.contentWindow.__field||null; }catch(e){ return null; } }
+
+  if(!wantCollective){ if(msgEl) msgEl.style.display='none'; return; }
+
+  var COLLECT_MS=1000;      // one emigrant out of each individual, per cycle
+  var RETURN_EVERY=4;       // ...and one out of the collective every 4th cycle, to ONE individual
+  var COLL_KEY='selection_collective';
+  var cycles=0, inCount=0, outCount=0, returnTo=0;
+
+  // Eight in, one out. A pull that comes back null (a universe with no eligible particle — early
+  // boot, or a collapse) is simply a cycle where that world had nobody to send, which is true and
+  // is the same thing networkBroadcast would have done.
+  function relay(){
+    var coll=api(collectiveCell); if(!coll) return;
+    cycles++;
+    for(var i=0;i<individuals.length;i++){
+      var a=api(individuals[i]); if(!a) continue;
+      a.pull().then(function(p){ if(p){ coll.feed(p); inCount++; } }).catch(function(){});
+    }
+    if(cycles%RETURN_EVERY===0 && individuals.length){
+      var target=api(individuals[returnTo%individuals.length]); returnTo++;
+      if(target) coll.pull().then(function(p){ if(p){ target.feed(p); outCount++; } }).catch(function(){});
+    }
+    if(cycles%5===0) msg('\u2190'+inCount+' \u2192'+outCount);
+  }
+
+  // THE COLLECTIVE'S OWN SLOT. The engine autosaves every universe into one shared localStorage key
+  // and reads it back on boot, so on a reload the collective would come up as a copy of whichever
+  // individual wrote last — the distilled lineage overwritten by an arbitrary one. This is a second
+  // slot that only the collective writes and only the collective reads.
+  function collectiveAutosave(){
+    var coll=api(collectiveCell); if(!coll) return;
+    coll.save().then(function(data){
+      if(!data) return;
+      try{ localStorage.setItem(COLL_KEY,data); }
+      catch(e){ msg('\u2014 storage full'); }
+    }).catch(function(){});
+  }
+  // Nothing in here may be one-shot. The whole collective — the relay, the autosave, the restore —
+  // hangs off this call, and a phone that had not finished loading the ninth iframe by the time it
+  // ran would have got a field with a ninth universe in it that was not fed by anything, silently
+  // and for the rest of the session. So it waits for the frame instead of asking once.
+  var startTries=0;
+  function restoreCollective(){
+    var stored=null; try{ stored=localStorage.getItem(COLL_KEY); }catch(_){}
+    var coll=api(collectiveCell);
+    if(!coll){ if(++startTries<100) setTimeout(restoreCollective,300); return; }
+    coll.ready().then(function(){
+      if(stored&&stored.length>20) return coll.load(stored);
+      return false;
+    }).then(function(){
+      setInterval(relay, COLLECT_MS);
+      // The first write comes early. A phone tab that is opened, looked at, and closed inside a
+      // minute would otherwise store nothing at all, and the whole point of the collective is that
+      // it is the thing that accumulates.
+      setTimeout(collectiveAutosave, 20000);
+      setInterval(collectiveAutosave, 60000);
+    }).catch(function(){ setInterval(relay, COLLECT_MS); });
+  }
+  setTimeout(restoreCollective, 1200);
 })();
 </script>

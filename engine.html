@@ -38,7 +38,32 @@ const TAB_ID=Math.random().toString(36).slice(2,10);
 const NET_PROTOCOL_VERSION=1;
 const NETWORK_CHANNEL='selection-pe-network';
 const NET_QUEUE_LIMITS={migrant:20,plasmid:10,motif:10,inscription:20};
-const NET_DIMS=5,NET_MEM_SIZE=8,NET_MAX_PLASMID=4; // mirrors core constants for early validation
+// #153 — THE WIRE'S LIMITS ARE THE ENGINE'S LIMITS, AND ARE NOW READ FROM THEM.
+// This line used to RESTATE three ceilings — "mirrors core constants for early validation" — and a
+// restated constant is a constant that goes stale. All three had, and every one of them was silently
+// throwing away real traffic on every peer:
+//
+//   the dims cap       DIMS is `let DIMS=5` and the #25 ratchet GROWS it, to DIMS_MAX=32. A migrant
+//                      carries DIMS tendency values, so the first time a universe earned a sixth
+//                      trait dimension, every migrant it sent from then on was rejected by everyone
+//                      — permanently, and most severely for the worlds that had got furthest.
+//   op in +/-64        validInstruction bounds an instruction's OPCODE at 64. The opcode space is
+//                      0..429 (CORE_OPCODES=237 plus MAX_BOUND_OPCODES=192, #129). So plasmids and
+//                      motifs could only cross the wire if every instruction used an opcode below
+//                      64 — which excludes EFFECT_EMIT (236, the drive line of an authored verb) and
+//                      every bound user atom (236..427). The two most evolved things in this engine
+//                      were the two things horizontal transfer could not carry. Sniffed on the live
+//                      channel: 2 of 25 motifs and 2 of 2 plasmids rejected — opcodes 234, 236, 200, 150.
+//   inscription op     the same bound on the same kind of value, same consequence.
+//
+// The memory-size cap was the one that was still correct (MEM_SIZE is 8 and does not move) — which is
+// exactly the point: nothing tells you which of a set of copied numbers has drifted. So none of them
+// are copied now. DIMS_MAX/MEM_SIZE/MAX_PLASMID/CORE_OPCODES/MAX_BOUND_OPCODES are declared further
+// down this same script scope; validNetworkPayload only ever runs from a BroadcastChannel message,
+// which is a task and therefore always after evaluation finishes, so reading them here is safe.
+// The bound stays a REAL bound — a peer that is not one of ours still cannot send an opcode this
+// engine has no case for. It is just the right one now.
+function netMaxOpcode(){ return CORE_OPCODES+MAX_BOUND_OPCODES; }
 let bc=null;
 const incomingMigrants=[];     // particle packets received from other tabs
 const incomingPlasmids=[];     // plasmid packages received
@@ -167,17 +192,19 @@ function networkSend(type,data){
 }
 function finitePacketNumber(v,min,max){return typeof v==='number'&&isFinite(v)&&v>=min&&v<=max}
 function validInstruction(inst){
+  // inst = [op, src, dst, k]. Only inst[0] is an OPCODE; src/dst index a 12-register file and k is a
+  // parameter the engine's own PROG_GROW clamps to +/-2, so those three bounds were never the problem.
   return Array.isArray(inst)&&inst.length>=4&&
-    finitePacketNumber(inst[0],-64,64)&&finitePacketNumber(inst[1],-64,64)&&
+    finitePacketNumber(inst[0],-64,netMaxOpcode())&&finitePacketNumber(inst[1],-64,64)&&
     finitePacketNumber(inst[2],-64,64)&&finitePacketNumber(inst[3],-16,16);
 }
 function validNetworkPayload(type,data){
   if(type==='hello'||type==='hello-reply')return true;
   if(type==='migrant'){
     return data&&finitePacketNumber(data.nx,-0.25,1.25)&&finitePacketNumber(data.ny,-0.25,1.25)&&
-      Array.isArray(data.tend)&&data.tend.length<=NET_DIMS&&data.tend.every(v=>finitePacketNumber(v,-8,8))&&
-      (!data.mem||(Array.isArray(data.mem)&&data.mem.length<=NET_MEM_SIZE&&data.mem.every(v=>finitePacketNumber(v,-16,16))))&&
-      (!data.plasmid||(Array.isArray(data.plasmid)&&data.plasmid.length<=NET_MAX_PLASMID&&data.plasmid.every(validInstruction)))&&
+      Array.isArray(data.tend)&&data.tend.length<=DIMS_MAX&&data.tend.every(v=>finitePacketNumber(v,-8,8))&&
+      (!data.mem||(Array.isArray(data.mem)&&data.mem.length<=MEM_SIZE&&data.mem.every(v=>finitePacketNumber(v,-16,16))))&&
+      (!data.plasmid||(Array.isArray(data.plasmid)&&data.plasmid.length<=MAX_PLASMID&&data.plasmid.every(validInstruction)))&&
       finitePacketNumber(data.amp,-2,4)&&finitePacketNumber(data.phase,-64,64)&&
       // #141: the vocabulary rides along, and is validated like everything else on the wire. `prog`
       // was and remains coerced rather than validated on the receive side (r[0]|0 on a bad row is 0,
@@ -190,9 +217,9 @@ function validNetworkPayload(type,data){
           finitePacketNumber(e.m,0,1)&&finitePacketNumber(e.s,-4,4)&&
           finitePacketNumber(e.n,-1,64)&&finitePacketNumber(e.a,-1,256))));
   }
-  if(type==='plasmid')return Array.isArray(data)&&data.length<=NET_MAX_PLASMID&&data.every(validInstruction);
+  if(type==='plasmid')return Array.isArray(data)&&data.length<=MAX_PLASMID&&data.every(validInstruction);
   if(type==='motif')return Array.isArray(data)&&data.length<=8&&data.every(validInstruction);
-  if(type==='inscription')return data&&finitePacketNumber(data.op,-64,64)&&finitePacketNumber(data.A,-16,16)&&finitePacketNumber(data.B,-16,16)&&finitePacketNumber(data.str,0,2);
+  if(type==='inscription')return data&&finitePacketNumber(data.op,-64,netMaxOpcode())&&finitePacketNumber(data.A,-16,16)&&finitePacketNumber(data.B,-16,16)&&finitePacketNumber(data.str,0,2);
   // 'applied' — a peer's own acknowledgment that a packet it received (from us or anyone else on the
   // channel) actually changed ITS sim state. Not a request/reply pair (no packet IDs — BroadcastChannel
   // is multicast, there's no single "the other end" to address); just a gossip-style announcement any
@@ -380,16 +407,23 @@ function crossingCensus(){
     strandedCount:rows.filter(r=>r.stranded).length,
     note:'stranded = present on the germline, absent from every living particle. Authored, and invisible to selection.'};
 }
-function networkBroadcast(){ fired('network.broadcast');
-  if(!bc||N===0)return;
-  // Migrant: send a random alive particle as a full packet
-  if(Math.random()<genome.netMigrantRate){
-    let idx=-1;
-    for(let tries=0;tries<10;tries++){
-      const pick=(Math.random()*N)|0;
-      if(palive[pick]&&amp[pick]>0.2){idx=pick;break;}
-    }
-    if(idx>=0){
+// #153 — THE MIGRANT PACKET, BUILT IN ONE PLACE.
+// This body used to live inline inside networkBroadcast, which meant the ONLY way to get a migrant
+// out of a universe was to win a genome.netMigrantRate coin flip and broadcast it to every peer at
+// once. The collective universe (index.html) needs to PULL one on demand and hand it to a single
+// recipient, and a copy of these thirty lines in the worker shim would be a second source of truth
+// for the wire format — exactly the fork that #141's `ua` field would have silently broken.
+// So: extracted verbatim, no behaviour change. networkBroadcast still decides WHETHER to send; this
+// decides WHAT is sent. Returns null when there is no eligible particle.
+function buildMigrantPacket(){
+  if(N===0)return null;
+  let idx=-1;
+  for(let tries=0;tries<10;tries++){
+    const pick=(Math.random()*N)|0;
+    if(palive[pick]&&amp[pick]>0.2){idx=pick;break;}
+  }
+  if(idx<0)return null;
+  {
       const t=new Array(DIMS);
       for(let dd=0;dd<DIMS;dd++)t[dd]=tend[idx*DIMS+dd];
       const m=new Array(MEM_SIZE);
@@ -418,8 +452,48 @@ function networkBroadcast(){ fired('network.broadcast');
         _mue=_fx.slice(0,MAX_USER_EFFECTS).map(e=>({t:e.t|0,m:(e.m|0)===1?1:0,s:+(+e.s||0.5).toFixed(3),
           n:(e.nx===undefined?-1:e.nx|0), a:(e.ax===undefined||e.ax===null?-1:e.ax|0)}));
       }
-      networkSend('migrant',{nx:px[idx]/W,ny:py[idx]/H,tend:t,mem:m,plasmid:plas,amp:amp[idx],phase:phase[idx],prog:_mprog,ua:_mua,ue:_mue});
-    }
+      // #153 — SEND A PACKET THE PROTOCOL ACCEPTS. Measured in a real browser, 200 pulled migrants:
+      // FOUR were rejected by validNetworkPayload on arrival — three for phase, one for a memory
+      // register — and had been for as long as this has existed, silently, on every peer. netStats.bad
+      // counted them and nothing read it.
+      //
+      // PHASE is the serious one, and the bias is systematic rather than random. phase[i] += freq[i]
+      // every tick with freq in [0.02,0.06] and NEVER wraps (see the note at op51: "phase[i] is
+      // unbounded — it wraps mod 2π but the raw value grows without bound"), while the wire declares
+      // ±64. So a particle crosses the wire's limit after roughly 1,500-3,000 ticks of being alive and
+      // from then on CANNOT EMIGRATE — not "rarely", never. The wire was quietly selecting against
+      // exactly the long-lived survivors you would most want to send. Modulo is lossless here: every
+      // consumer of a received phase reads it through cos/sin (op51/op52, cluster coherence, R1), and
+      // the one that reads it raw — the draw program — gets a value in [0,2π), which is precisely the
+      // range addParticle gives a fresh particle. The migrant now arrives looking like a particle
+      // instead of not arriving.
+      //
+      // MEM is a clamp, and a clamp is a loss, so it is worth saying why: the VM can write anything to
+      // a memory register and the wire declares ±16. The choice is not "clamp or send faithfully", it
+      // is "clamp one register, or drop the whole organism — program, vocabulary and all". Clamping
+      // keeps the migrant. Widening the protocol instead would weaken the same check against a peer
+      // that is not one of ours, which is the one thing it exists for.
+      // POSITION is the third one, and the cheapest to be sure about: nx/ny are px/W and py/H, a
+      // particle can be off the edge of its own world, and the wire allows a quarter-world margin.
+      // Measured over 1,600 pulled migrants: 6 were off-field (as far as nx=-0.60) and the WHOLE
+      // organism was discarded for it. A migrant's arrival coordinate is a hint at best — it is
+      // landing in a different world, of a different size, and the engine's own receive path already
+      // scatters the xenoImpact that accompanies it to a random point. Clamping a hint to keep a
+      // lineage is not a trade that needs thinking about.
+      const _cl=(v,lo,hi)=>!isFinite(v)?lo:(v<lo?lo:(v>hi?hi:v));
+      const _TAU=Math.PI*2;
+      let _ph=phase[idx]%_TAU; if(!isFinite(_ph))_ph=0; if(_ph<0)_ph+=_TAU;
+      for(let mm=0;mm<m.length;mm++) m[mm]=_cl(m[mm],-16,16);
+      return {nx:_cl(px[idx]/W,-0.25,1.25),ny:_cl(py[idx]/H,-0.25,1.25),tend:t,mem:m,plasmid:plas,
+        amp:_cl(amp[idx],-2,4),phase:_ph,prog:_mprog,ua:_mua,ue:_mue};
+  }
+}
+function networkBroadcast(){ fired('network.broadcast');
+  if(!bc||N===0)return;
+  // Migrant: send a random alive particle as a full packet
+  if(Math.random()<genome.netMigrantRate){
+    const _mp=buildMigrantPacket();
+    if(_mp)networkSend('migrant',_mp);
   }
   // Plasmid package: pick a random particle's plasmid and broadcast
   if(Math.random()<genome.netPlasmidRate){
