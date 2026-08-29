@@ -71,15 +71,35 @@
 
   // ── messages back from the worker ──────────────────────────────
   var lastStatus = 0;
+  // ═══ #152 — THE FIELD API ═══════════════════════════════════════════════════════════════════
+  // Eight universes on one page are eight bodies of one thing. The field (index.html) uses these to
+  // save all of them into ONE file and hand each its own lineage back, so a reload restores a FIELD
+  // rather than eight copies of whichever universe happened to write to localStorage last.
+  // Deliberately small: read this universe's genome, put a genome into it, and tell me when the sim
+  // is up. Everything else stays where it is.
+  var fieldExport=null, fieldImport=null, isReady=false, readyWaiters=[];
+  window.__field = {
+    ready: function(){ return isReady ? Promise.resolve() : new Promise(function(r){ readyWaiters.push(r); }); },
+    save:  function(){ return new Promise(function(r){
+             if (fieldExport) { r(null); return; }          // one at a time; a second ask gets nothing
+             fieldExport = r; worker.postMessage({ type:'export' }); }); },
+    load:  function(data){ return new Promise(function(r){
+             if (fieldImport) { r(false); return; }
+             fieldImport = r; worker.postMessage({ type:'import', data:String(data) }); }); }
+  };
+
   worker.onmessage = function(e){
     var d = e.data || {};
     if (d.type === 'status'){ genEl.textContent = d.text; return; }
-    if (d.type === 'ready'){ return; }
+    if (d.type === 'ready'){ isReady=true; while(readyWaiters.length) readyWaiters.shift()(); return; }
     if (d.type === 'persist'){
       try { if (d.value === null) localStorage.removeItem(d.key); else localStorage.setItem(d.key, d.value); } catch(ex){}
       return;
     }
     if (d.type === 'export'){
+      // #152: a field-level save asks for the DATA, not a download. Only a click on this universe's
+      // own save button should put a file on the device.
+      if (fieldExport){ var r=fieldExport; fieldExport=null; r(d.file ? d.file.data : null); return; }
       if (!d.file){ fail('export failed (sim not ready?)'); return; }
       try {
         var blob = new Blob([d.file.data], {type:'application/json'});
@@ -89,7 +109,9 @@
       } catch(ex){ fail('download failed: '+ex.message); }
       return;
     }
-    if (d.type === 'import-result'){ if (!d.ok) fail('import failed — file not a valid genome'); return; }
+    if (d.type === 'import-result'){
+      if (fieldImport){ var ri=fieldImport; fieldImport=null; ri(!!d.ok); return; }
+      if (!d.ok) fail('import failed — file not a valid genome'); return; }
     if (d.type === 'error'){
       fail('Simulation error:\n' + (d.message||'') + (d.line?(' (line '+d.line+')'):'') + (d.stack?('\n\n'+d.stack):''));
       return;

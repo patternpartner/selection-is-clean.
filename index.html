@@ -80,9 +80,21 @@
         font:12px/1 ui-monospace,Menlo,monospace;color:#cfe;background:rgba(10,14,16,.82);
         border:1px solid #2a4a44;border-radius:7px;padding:8px 11px}
   #grid.open ~ #back{display:block}
+  #fio{position:fixed;left:8px;bottom:8px;z-index:9;display:flex;gap:6px;align-items:center}
+  #grid.open ~ #fio{display:none}
+  #fio button{font:11px ui-monospace,Menlo,monospace;background:rgba(10,20,18,.85);color:#8fb;
+              border:1px solid #275;border-radius:6px;padding:6px 9px}
+  #fio input{display:none}
+  #fmsg{font:10px ui-monospace,Menlo,monospace;color:#7a8;max-width:46vw}
 </style>
 <div id="grid"></div>
 <div id="back">&#8592; field</div>
+<div id="fio">
+  <button id="fsave" title="save every universe into one file">&#128190; field</button>
+  <button id="fload" title="restore a whole field">&#128193; field</button>
+  <input type="file" id="ffile" accept=".json">
+  <span id="fmsg"></span>
+</div>
 <script>
 (function(){
   'use strict';
@@ -153,6 +165,109 @@
     if(!t||t.className!=='tap')return;
     open(t.parentNode);
   });
+  // ═══ #152 — ONE SAVE FOR THE WHOLE FIELD ════════════════════════════════════════════════════
+  // Eight universes, eight save buttons, and every one of them writing to the SAME localStorage key —
+  // so a reload restored eight copies of whichever universe wrote last, and the diversity that makes
+  // this a collective was thrown away every time. Worse, the winner was decided by write FREQUENCY,
+  // and a universe in a death loop saves on every extinction: measured, a dying lineage writes 6.8
+  // times per 1,000 ticks against a healthy one's 1.0. The field was inheriting from whoever was
+  // failing loudest.
+  // So: keep them individual, and save the collective. One file, one localStorage slot, N genomes —
+  // and on load each universe gets its OWN lineage back. The field resumes as a field.
+  // Nothing in engine.html changes; this is all shell-level, through the small API in universe.html.
+  var FIELD_KEY='selection_field';
+  function msg(t){ var el=document.getElementById('fmsg'); if(el)el.textContent=t||''; }
+  function frameApi(cell){ try{ return cell.firstChild.contentWindow.__field||null; }catch(e){ return null; } }
+
+  function collect(){                         // every universe's genome, in grid order
+    return Promise.all(cells.map(function(c){
+      var a=frameApi(c); if(!a) return Promise.resolve(null);
+      return a.save().catch(function(){ return null; });
+    }));
+  }
+  function fieldBlob(list){
+    return JSON.stringify({ type:'selection-field', version:1,
+      exportedAt:new Date().toISOString(), n:list.length,
+      universes:list.map(function(g){ return { genome:g }; }) });
+  }
+
+  document.getElementById('fsave').addEventListener('click',function(){
+    msg('collecting…');
+    collect().then(function(list){
+      var got=list.filter(Boolean).length;
+      if(!got){ msg('nothing to save yet'); return; }
+      var data=fieldBlob(list);
+      try{
+        var a=document.createElement('a');
+        a.href=URL.createObjectURL(new Blob([data],{type:'application/json'}));
+        a.download='selection_field_'+got+'x_'+Date.now()+'.json'; a.click();
+        setTimeout(function(){ URL.revokeObjectURL(a.href); },4000);
+        msg('saved '+got+' universes');
+      }catch(e){ msg('save failed: '+e.message); }
+    });
+  });
+
+  document.getElementById('fload').addEventListener('click',function(){ document.getElementById('ffile').click(); });
+  document.getElementById('ffile').addEventListener('change',function(e){
+    var f=e.target.files&&e.target.files[0]; if(!f)return;
+    var r=new FileReader();
+    r.onload=function(ev){ distribute(String(ev.target.result)); };
+    r.readAsText(f); e.target.value='';
+  });
+
+  // Hand universe i its own lineage. A field file feeds each frame separately; a plain single-genome
+  // file is given to every frame, which is the old behaviour and still a reasonable thing to want.
+  function distribute(text){
+    var parsed=null; try{ parsed=JSON.parse(text); }catch(_){}
+    var list=null;
+    if(parsed&&parsed.type==='selection-field'&&Array.isArray(parsed.universes))
+      list=parsed.universes.map(function(u){ return u&&u.genome; });
+    else list=cells.map(function(){ return text; });          // one genome, everyone gets it
+    msg('loading…');
+    var jobs=cells.map(function(c,i){
+      var g=list[i%list.length]; if(!g) return Promise.resolve(false);
+      var a=frameApi(c); if(!a) return Promise.resolve(false);
+      return a.load(g).catch(function(){ return false; });
+    });
+    Promise.all(jobs).then(function(res){
+      var ok=res.filter(Boolean).length;
+      msg(ok? ('loaded into '+ok+' universes') : 'load failed');
+    });
+  }
+
+  // AUTOSAVE THE FIELD. The engine's own autosave still runs per-universe into the single shared key;
+  // this is a second, collective slot on top of it, so a reload can restore all N. localStorage is
+  // finite (about 5MB) and a mature genome runs to a few hundred KB, so this stores as many as fit,
+  // newest first, and says how many it kept rather than failing silently — the exact failure mode
+  // #145 found in the engine's own save.
+  function fieldAutosave(){
+    collect().then(function(list){
+      var got=list.filter(Boolean); if(!got.length) return;
+      for(var keep=got.length; keep>=1; keep--){
+        try{ localStorage.setItem(FIELD_KEY, fieldBlob(got.slice(0,keep))); 
+             if(keep<got.length) msg('field autosave kept '+keep+'/'+got.length+' (storage full)');
+             return; }
+        catch(e){ /* quota — try fewer */ }
+      }
+      msg('field autosave failed (storage full)');
+    }).catch(function(){});
+  }
+
+  // On boot, if a field was stored, give each universe its own lineage back once its sim is up.
+  function restoreField(){
+    var stored=null; try{ stored=localStorage.getItem(FIELD_KEY); }catch(_){}
+    if(!stored||stored.length<20) return;
+    Promise.all(cells.map(function(c){ var a=frameApi(c); return a? a.ready() : Promise.resolve(); }))
+      .then(function(){ distribute(stored); });
+  }
+  if(n>1 && !passHash){
+    // A field only restores a field. A single universe, or a lineage link, is left exactly alone.
+    setTimeout(restoreField, 1200);
+    setInterval(fieldAutosave, 60000);
+  } else {
+    var fio=document.getElementById('fio'); if(fio)fio.style.display='none';
+  }
+
   document.getElementById('back').addEventListener('click',function(e){ e.stopPropagation(); close(); });
   addEventListener('keydown',function(e){ if(e.key==='Escape')close(); });
 })();
