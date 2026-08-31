@@ -14,7 +14,7 @@ Companion to OEE-NOTES.md, which records experiments. This records the machine t
 |---|---|
 | **file** | `engine.html` — the sim moved out of `index.html` in `c0cef11`. Since **#149** the pages are: `index.html` = THE FIELD, `universe.html` = the single worker shell (what `index.html` used to be), `engine.html` = the simulation itself, still runnable on its own. Since **#153** the field is EIGHT INDIVIDUALS PLUS A COLLECTIVE (nine iframes, nine workers); the ninth is an ordinary universe whose input is the other eight |
 | **last fully re-derived** | never — this map was written against `index.html` and has been patched, not rebuilt |
-| **prose current through** | **#90.** The engine is at **#155.** Roughly sixty swings are undocumented here |
+| **prose current through** | **#90.** The engine is at **#156.** Roughly sixty swings are undocumented here |
 | **verified as of #131** | the anchor table below, the opcode constants, the genome extent, and the census claims |
 | **added since, unmapped below** | **#132/#133** verb grammar (`EFFECT_TARGETS`, `applyUserEffect`, opcode 236) · **#134** liveness census (`LIVENESS_DECLARED`, `fired()`) · **#135** attention field (`attnField`, `attentionAt`, the `at` sense) · **#136** world signal (`updateWorldSignal`, `worldSignalSuppressed`) · **#137** crossing census (`CROSSING_DECLARED`, `crossingCensus`) · **#138** the diary (`theDiary`, `diaryPanel`) · **#139** sense-gated verbs (`verbGate`, `remapEffectAx`, `effectSenseRate`) · **#140** the crossings (`CHILD_NOT_A_GENE`, inherit/roundtrip tests) · **#141** migrant vocabulary (`MIGRANT_CARRIES_VOCAB`) · **#153** the migrant packet extracted (`buildMigrantPacket`) and the wire's limits derived rather than restated (`netMaxOpcode`). Grep the names; no line anchors yet |
 | **NOT verified** | every other inline line number in this file. They were written against a file ~1,100 lines shorter and around 500–900 lines of drift has accumulated unevenly — treat them as approximate, and grep for the quoted code instead |
@@ -94,6 +94,19 @@ cull, `#139` for a sense gate seeded into a particle, `#141` for a migrant cross
 strategies, and which one applies depends on whether the bank travels: match by **expression** when
 the destination has its own bank (`remapEffectAx`), preserve **slot order** when you are shipping the
 bank itself (the migrant packet).
+
+**The OEE meter's memory (#156).** `oeeLog`/`oeeNovel`/`oeePersist` were serialised; the three
+structures they are derived from (`__oeeSeen`, `__oeeLastUses`, `__oeePending`) were not, so every
+reload adopted the bank as history and recorded activity of ZERO — and on a phone that reloads often,
+every flush was a first flush. All three now ride in the save (`oLU`/`oPD`/`oSN`, with `oTR` declaring
+a truncated seen-set) and are restored on decode instead of reset. **D = -1 means UNMEASURED, not
+zero**; anything reading column 1 of `oeeLog` must treat negatives as unknown. The meter's state stays
+off `genome` — #131's reason still holds. Under budget pressure the seen-set is shed BEFORE any atom.
+If you add a counter derived from runtime state, serialise what it is derived from, not just the count.
+
+**Two places splice the atom bank (#155/#156).** The cull and `trimGenomeToBudget`. Both must remap
+`boundOpcodes` AND `opStacks`; both now call `remapChainsForRemoval()`. #155 taught only the first and
+the second was silently wrong for a day. A third splice site must call it too.
 
 **Chained slots (#155).** A slot may hold more than one atom: `boundOpcodes[k]` is the head,
 `genome.opStacks[k]` (sparse, absent when empty) holds the rest, and each link takes the previous

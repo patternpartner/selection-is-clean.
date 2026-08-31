@@ -1439,6 +1439,22 @@ function growAtomChain(g,atomIdx){
   fired('atom.chain');
   return true;
 }
+// Every chain holds indices into genome.userAtoms, so ANY splice of that array must shift them.
+// Unlike boundOpcodes a stack POSITION carries no opcode number, so the dead atom is DROPPED rather
+// than tombstoned — a -1 here would just be a link the chain skips forever.
+// #156: shared, because there are TWO splice sites (the cull and the save-budget trimmer) and #155
+// only taught one of them. Whoever adds a third gets this for free.
+function remapChainsForRemoval(removeIdx){
+  const os=genome.opStacks; if(!os)return;
+  for(const k in os){
+    const st=os[k]; if(!Array.isArray(st))continue;
+    const out=[];
+    for(let q=0;q<st.length;q++){ const v=st[q]|0;
+      if(v===removeIdx) continue;
+      out.push(v>removeIdx?v-1:v); }
+    if(out.length) os[k]=out; else delete os[k];
+  }
+}
 // Total chained atoms BEYOND the heads, for the instructions this program actually runs. What the
 // creature is billed for; a stack on a slot no instruction calls is free because it never runs.
 function stackToll(prog,nInst){
@@ -1596,6 +1612,19 @@ function trimGenomeToBudget(){
   const target=SAVE_BUDGET*SAVE_TRIM_FLOOR;
   fired('genome.trim');
   const startLen=blob.length;
+  // #156: THE INSTRUMENT PAYS FIRST. The meter's seen-set is bookkeeping ABOUT the creature; the atom
+  // bank is the creature. Shedding a real atom to make room for a record of atoms would be exactly
+  // backwards, so the seen-set is halved (oldest first — a JS Set keeps insertion order) before a
+  // single atom is considered, and the truncation is declared through oeeTrunc so novelty is marked
+  // soft rather than quietly inflated. Only ever reached on a save already over budget.
+  try{
+    while(__oeeSeen && __oeeSeen.size>64 && blob.length>=target){
+      const keep=[...__oeeSeen].slice(-(__oeeSeen.size>>1));
+      __oeeSeen=new Set(keep); oeeTrunc=1;
+      try{ blob=encodeGenome(); }catch(_){ break; }
+    }
+    if(blob.length<target) return blob;
+  }catch(_){}
   // SHED IN BATCHES, AND RE-MEASURE BETWEEN THEM. The first version shed one item and re-encoded
   // after each — which on a phone means serialising a half-megabyte genome hundreds of times, and
   // worse, it burned its whole iteration budget on dead ATOMS (512 of them are about 25KB in total)
@@ -1611,6 +1640,12 @@ function trimGenomeToBudget(){
     if(!a||(a.uses|0)||bos.some(b=>(b|0)===ev))return false;   // only the unbound and never-run
     uas.splice(ev,1);
     for(let k=0;k<bos.length;k++){ if(bos[k]===ev)bos[k]=-1; else if(bos[k]>ev)bos[k]--; }
+    // #156: this is the SECOND place that splices the atom bank, and #155 only taught the first one
+    // (the cull) about chains. An atom shed here would have shifted every higher index without telling
+    // opStacks, so a chain would silently start computing a different expression — the exact harm #137
+    // records for boundOpcodes, in the exact same shape, one function along. Found by reading the
+    // trimmer while fixing the meter, not by a failing test; chain-test.js now drives this path too.
+    remapChainsForRemoval(ev);
     return true;
   };
   const shedOneSensor=()=>{
@@ -6763,6 +6798,33 @@ let __oeeSeen=null, __oeePending=null, __oeeLastUses=null; // runtime-only; rese
 // the meter controls or states. Moving the state here costs nothing and makes it structural — the meter
 // cannot reach the heritable object at all, whatever the birth paths do later. Serialised at encode.
 let oeeLog=[], oeeNovel=0, oeePersist=0, oeeVer=0, oeeSat=0;
+// ═══ #156 — THE METER MUST REMEMBER ACROSS A RELOAD ═════════════════════════════════════════════
+// Until now the three structures the count is DERIVED from were runtime-only, and said so. The log
+// and the counters were serialised; the working memory was not. So every reload hit the
+// `if(__oeeSeen===null)` branch below, which by design adopts the whole bank as history and records
+// activity of ZERO. On a phone that reloads more often than every 5,000 ticks, every flush is a first
+// flush, and D is 0 forever.
+// MEASURED, on two real exports of the same creature 20,000 ticks apart: germline atom executions went
+// 13,007 -> 26,306, nine of the ten atoms present in both rose, one by 14x — and oeeLog reported D=0,
+// no computation active, five times running. The instrument said nothing happened while the thing it
+// measures doubled. #130 was built so this project could say no; it had been saying no about itself.
+//
+// WHAT IS CARRIED, and what it costs. __oeeLastUses is the one that fixes D and it is nearly free:
+// one entry per atom in the bank, bounded by MAX_USER_ATOMS, ~750 characters at this creature's size
+// against a 500,000 budget. __oeePending is smaller still. __oeeSeen is the expensive one — "every
+// distinct computation ever" is unbounded by nature, and at the 20,000 runtime cap it would be 44% of
+// the save on its own, which is precisely the unbounded growth #145/#146 had to cut out of userAtoms.
+// So it is saved with its OWN, much lower cap, keeping the most RECENT keys (a JS Set preserves
+// insertion order, so the tail is the recent end) — and when that truncates, oeeTrunc says so, because
+// a forgotten key can be counted novel a second time and the honest thing is to mark the number soft
+// rather than quietly inflate it.
+// Deliberately still NOT on `genome`: #131 moved this state off the heritable object because
+// mutateChildGenome walks a child with `for(const k in g)` drawing one Math.random() per numeric
+// field, so a field there shifts the RNG stream at every birth. Serialising from module scope keeps
+// that property — the meter still cannot reach the heritable object at all.
+const OEE_SEEN_SAVE_CAP=2000;   // ~22KB worst case, 4% of SAVE_BUDGET; a creature accumulates roughly
+                                // 44 new canonical keys per 20,000 ticks, so this covers a very long life
+let oeeTrunc=0;                 // 1 once the saved seen-set has been cut; novelty may over-count after
 function __oeeHash(s){ let h=5381; s=s||''; for(let i=0;i<s.length;i++){ h=((h<<5)+h+s.charCodeAt(i))|0; } return h; }
 // #131: the meter's UNIT. Strip numeric literals so a uaJitterConst step is not a new computation,
 // while a variable swap or any structural change still is. The negative-lookbehind-by-prefix form
@@ -6814,7 +6876,12 @@ function flushEpoch(acc){
     const usesByKey=new Map();
     for(const a of atoms){ const u=a.uses|0; if(u>0){ const k=uaOeeKey(a.expression); usesByKey.set(k,(usesByKey.get(k)||0)+u); } }
     // First flush of this creature: adopt the current bank as history, never as innovation.
-    if(__oeeSeen===null){ __oeeSeen=new Set(usesByKey.keys()); __oeePending=[]; __oeeLastUses=usesByKey; }
+    // #156: a flush with no prior history cannot measure activity — there is nothing to diff against.
+    // It used to write D=0 here, which reads as "nothing was active" and is a different claim entirely.
+    // It now writes -1, which readers take as UNMEASURED. With the working memory carried in the save
+    // this is reached only on a creature's genuine first flush, or on a pre-#156 save that has none.
+    let __unmeasured=false;
+    if(__oeeSeen===null){ __oeeSeen=new Set(usesByKey.keys()); __oeePending=[]; __oeeLastUses=usesByKey; __unmeasured=true; }
     // ACTIVE = executed DURING this epoch, measured as a RISE against this key's own previous total.
     // A key seen for the first time is NOT active: it only gets a baseline. That matters because
     // uaLocalStep's other branch swaps a VARIABLE, which is a genuine structural change AND therefore
@@ -6846,7 +6913,7 @@ function flushEpoch(acc){
     // evenness over THIS EPOCH's activity — 1=spread across many contributors, 0=one workhorse
     let evenness=0;
     if(D>=2&&dTot>0){ let H=0; for(const d of deltas){ const p=d/dTot; if(p>0)H-=p*Math.log2(p); } evenness=H/Math.log2(D); }
-    oeeLog.push([tickNow,D,newThisEpoch,persistThisEpoch,oeeNovel|0,oeePersist|0,+evenness.toFixed(3),Math.round(dTot/Math.max(1,D))]);
+    oeeLog.push([tickNow,__unmeasured?-1:D,newThisEpoch,persistThisEpoch,oeeNovel|0,oeePersist|0,+evenness.toFixed(3),Math.round(dTot/Math.max(1,D))]);
     while(oeeLog.length>MAX_EPOCHS)downsampleOeeLog();
   }
 }
@@ -6980,10 +7047,24 @@ function theDiary(){
       if(carried) P('Of everything I invented, '+carried+' instances are being carried by particles that are alive right now. That is the part that can still be judged.'); }
   }catch(_){}
   // THE OPEN QUESTION, in its own words. Only when the meter has enough rows to mean anything.
+  // #156: the meter can now tell "none lasted" apart from "I could not tell". Before this, its working
+  // memory was wiped by every reload and it reported no activity at all, so this sentence would have
+  // said "going in circles" about a creature whose atom executions had doubled. It must not claim more
+  // than it measured: an unmeasured epoch reads -1, and a truncated seen-set makes the novelty count
+  // soft rather than exact.
   try{ if(Array.isArray(oeeLog)&&oeeLog.length>=OEE_PERSIST_LAG+1){
     const nv=oeeNovel|0, pr=oeePersist|0;
-    P('I have found '+_dyN(nv,'new way')+' of computing something, and '+pr+' of them were still in use long after. '
-      +(pr>0?'That is the shape of still going somewhere.':'None of them lasted, which is the shape of going in circles.'));
+    const measured=oeeLog.filter(r=>Array.isArray(r)&&(r[1]|0)>=0).length;
+    const blind=oeeLog.length-measured;
+    if(measured<OEE_PERSIST_LAG+1){
+      P('I have a meter for whether I am still finding new ways to compute, and it has not been running '
+        +'long enough to say anything. That is worth knowing too.');
+    } else {
+      P('I have found '+_dyN(nv,'new way')+(oeeTrunc?' or so':'')+' of computing something, and '+pr
+        +' of them were still in use long after. '
+        +(pr>0?'That is the shape of still going somewhere.':'None of them lasted, which is the shape of going in circles.')
+        +(blind?' There '+(blind===1?'was one stretch':'were '+blind+' stretches')+' I could not measure at all.':''));
+    }
   } }catch(_){}
   // NEIGHBOURS AND CHILDREN.
   try{ const pk=(typeof countPeers==='function')?countPeers():0;
@@ -7579,6 +7660,16 @@ function encodeGenome(){
     lv:(function(){try{const c=livenessCensus();return {n:c.never,r:c.rare.length,l:c.live.length,t:c.tick};}catch(e){return null;}})(), // #134 liveness census: which mechanisms have never run
     oV:oeeVer|0,                                 // #131 which semantics wrote these rows (absent/0/1 = v1, not comparable)
     oS:oeeSat|0,                                 // #131 1 once the ever-seen set hit OEE_SEEN_CAP and stopped counting
+    // #156 the meter's WORKING MEMORY, without which every reload resets D to "nothing happened".
+    // oLU is the one that matters and is bounded by the atom bank; oSN is capped separately and its
+    // truncation is declared rather than hidden.
+    oLU:(function(){ const m=__oeeLastUses; if(!m||!m.size)return null;
+      const a=[]; for(const [k,v] of m) a.push(k|0,v|0); return a; })(),
+    oPD:(function(){ const p=__oeePending; if(!Array.isArray(p)||!p.length)return null;
+      return p.map(e=>[e[0]|0,e[1]|0]); })(),
+    oSN:(function(){ const st=__oeeSeen; if(!st||!st.size)return null;
+      const a=[...st]; return a.length>OEE_SEEN_SAVE_CAP?a.slice(-OEE_SEEN_SAVE_CAP):a; })(),
+    oTR:(function(){ const st=__oeeSeen; return (oeeTrunc||(st&&st.size>OEE_SEEN_SAVE_CAP))?1:0; })(),
     AU:[genome.cadenceSelf,genome.cadenceExtinct,genome.cadenceShadow,genome.cadenceLineage,genome.densityFloor], // unlocked autonomy genes
     M:genome.stableMotifs.slice(-genome.motifMemorySize),
     x:genome.extinctions,pf:+(genome.peakFitness.toPrecision(3)),
@@ -7878,7 +7969,26 @@ function decodeGenome(data){
     // #131: this is the "load" the v1 comment promised and never performed. A different creature is
     // now installed, so the meter's history must go with it — otherwise the incoming bank is diffed
     // against the outgoing creature's seen-set and counted as fresh innovation on top of a restored oN.
+    // #156 completes it. #131 could only CLEAR the working memory, because nothing carried it; now the
+    // save does, so the incoming creature's OWN history is installed with it. That is strictly what
+    // #131 wanted — the meter follows the creature — and it is what stops D reading 0 after a reload.
+    // A pre-#156 save has none of these fields and still gets the clean reset, which is correct: its
+    // history was never recorded, and the next flush will say UNMEASURED rather than zero.
     resetOeeRuntime();
+    oeeTrunc=g.oTR|0;
+    if(Array.isArray(g.oLU)&&g.oLU.length>=2){
+      __oeeLastUses=new Map();
+      for(let i=0;i+1<g.oLU.length;i+=2) __oeeLastUses.set(g.oLU[i]|0,g.oLU[i+1]|0);
+    }
+    if(Array.isArray(g.oSN)&&g.oSN.length){
+      __oeeSeen=new Set(g.oSN.map(x=>x|0));
+      __oeePending=[];
+      if(Array.isArray(g.oPD)) for(const e of g.oPD){ if(Array.isArray(e)&&e.length>=2) __oeePending.push([e[0]|0,e[1]|0]); }
+    }
+    // Both halves or neither: a seen-set without lastUses would count novelty against real history
+    // while still reporting activity of zero, which is the worst of both readings.
+    if(__oeeSeen&&!__oeeLastUses) __oeeLastUses=new Map();
+    if(__oeeLastUses&&!__oeeSeen){ __oeeLastUses=null; }
     if(Array.isArray(g.AU)){[genome.cadenceSelf,genome.cadenceExtinct,genome.cadenceShadow,genome.cadenceLineage,genome.densityFloor]=g.AU;}
     if(!(genome.cadenceSelf>=1))genome.cadenceSelf=30;        // defaults for genomes saved before the unlock
     if(!(genome.cadenceExtinct>=1))genome.cadenceExtinct=90;
@@ -14379,18 +14489,10 @@ function mutateGenome(){ fired('genome.mutate');
         if(_bos[k]===removeIdx) _bos[k]=-1;
         else if(_bos[k]>removeIdx) _bos[k]--;
       }
-      // #155: the chains hold indices into the same array and shift with it. Unlike boundOpcodes a
-      // stack POSITION carries no opcode number, so the dead atom is DROPPED rather than tombstoned —
-      // keeping a -1 here would just be a link the chain has to skip forever.
-      const _os=genome.opStacks;
-      if(_os) for(const _k in _os){
-        const _st=_os[_k]; if(!Array.isArray(_st))continue;
-        const _out=[];
-        for(let _q=0;_q<_st.length;_q++){ const _v=_st[_q]|0;
-          if(_v===removeIdx) continue;
-          _out.push(_v>removeIdx?_v-1:_v); }
-        if(_out.length) _os[_k]=_out; else delete _os[_k];
-      }
+      // #155: the chains hold indices into the same array and shift with it. #156 moved this into
+      // remapChainsForRemoval so the budget trimmer — the other place that splices the bank — cannot
+      // diverge from it.
+      remapChainsForRemoval(removeIdx);
       recordEvent('ua_cull',{failed:!!removed.failed,n:genome.userAtoms.length},600);
     }
   }

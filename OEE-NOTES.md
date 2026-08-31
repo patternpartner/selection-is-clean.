@@ -11420,3 +11420,79 @@ form at the cap and are then consistently shed, or if creatures past the cap sho
 diversity change against creatures held below it, then the ceiling was never the constraint and the
 17-instruction program was the whole story. `atom.chained` in the crossing census is the counter to
 watch, and unlike the OEE meter it is derived from the genome itself, so it survives a reload.
+
+
+---
+
+## #156 — THE METER REMEMBERS
+
+The correction two entries above established that #130's open-endedness meter had been measuring
+nothing for this creature's whole life. This fixes it.
+
+### The fix
+
+`oeeLog`, `oeeNovel` and `oeePersist` were serialised. The three structures they are DERIVED from —
+`__oeeSeen`, `__oeeLastUses`, `__oeePending` — were not, and their own comment said so
+("runtime-only"). Every reload therefore hit `if(__oeeSeen===null)`, which adopts the bank as history
+and records activity of zero by design. They are now carried in the save and restored on decode.
+
+`__oeeLastUses` is the one that actually fixes D, and it is nearly free: one entry per atom, bounded by
+`MAX_USER_ATOMS`, about 750 characters at this creature's size. `__oeeSeen` is the expensive one —
+"every distinct computation ever" is unbounded by nature and at the 20,000 runtime cap would be 44% of
+the save alone, which is the exact unbounded growth #145/#146 had to cut out of `userAtoms`. It gets
+its own much lower save cap (`OEE_SEEN_SAVE_CAP=2000`, ~4% of budget) keeping the most RECENT keys, and
+when that cuts, `oeeTrunc` says so — a forgotten key can be counted novel a second time, and the honest
+move is to mark the number soft rather than quietly inflate it.
+
+**A first flush now records -1, not 0.** Those are different claims: "I could not measure" versus
+"nothing was active", and conflating them is what let the meter report silence about a doubling.
+
+**The instrument pays the save budget before the creature does.** `trimGenomeToBudget` halves the
+seen-set — oldest first — before it will consider shedding a single atom. Shedding a real atom to make
+room for a record of atoms is exactly backwards.
+
+**Still not on `genome`.** #131 moved this state off the heritable object because `mutateChildGenome`
+walks a child with `for(const k in g)` drawing one `Math.random()` per numeric field, so a field there
+shifts the RNG stream at every birth. Serialising from module scope keeps that property intact.
+
+### Measured on the real creature
+
+The gen-47 export, run 6,000 ticks, saved, the runtime wiped exactly as a page reload wipes it, decoded
+and run again:
+
+```
+meter memory restored after reload : true   (seen 45, lastUses 46)
+D in the last four epochs          : [0, -1, 8, 6]
+save size                          : 28,936 chars of a 500,000 budget
+```
+
+That sequence is the whole fix. The `0` is the last row carried in from the author's actual save,
+written by the broken build. The `-1` is the first flush after load, honestly marked unmeasured because
+that old save carries no history. Then **8 and 6** — eight distinct computations active in one epoch,
+six in the next, on the same creature that reported zero five epochs running.
+
+The save grew from 20,611 to 28,936 characters: about 8KB for the meter's memory, 5.8% of budget, and
+bounded.
+
+Persistence still reads 0 here, and that is **not** yet evidence of anything: `OEE_PERSIST_LAG` is 3
+epochs (~15,000 ticks) and this run was 6,000. `meter-test.js` proves the mechanism resolves; the real
+creature needs a longer run before that number means what it says. Recorded so the next reader does not
+mistake an untested zero for a measured one — which is the mistake this whole thread has been about.
+
+### And a #155 bug this found
+
+`trimGenomeToBudget` splices the atom bank and remaps `boundOpcodes`. It is the SECOND place that does
+that, and #155 only taught the first one (the cull) about chains — so an atom shed under budget
+pressure would have shifted every higher index without telling `opStacks`, and a chain would silently
+have started computing a different expression. The exact harm #137 records for bound opcodes, in the
+same shape, one function along, introduced by me yesterday and found by reading the trimmer while
+fixing something else. Both sites now call one shared `remapChainsForRemoval()`, so a third splice site
+gets it for free.
+
+### The diary can now tell the difference
+
+Its open-endedness sentence used to say "none of them lasted, which is the shape of going in circles"
+whenever persistence read 0 — which, on the broken meter, it would have said about a creature whose
+atom executions had doubled. It now separates "not enough measured epochs to say anything", "none
+lasted", and how many stretches it could not measure at all, and says "or so" when the seen-set was
+truncated. The artwork should not claim more than its instrument measured.
