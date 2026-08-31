@@ -11284,3 +11284,54 @@ filter selects should be what propagates.
 Three of nine peers were 16 seconds silent at export, `liveCount` 6 of 9, and one epoch was starved
 outright. Nine workers on an eight-core phone may be over-subscribed. If the field degrades, the
 universe that must not starve is the collective — it is the only one whose input is everyone.
+
+---
+
+## THE OEE METER HAS BEEN MEASURING NOTHING — correcting the #153 field note
+
+Yesterday's entry recorded "novelty 4, persistence 0" and guessed the 0 might be a starvation
+artifact. A second export 20,000 ticks later (gen 47, t 68,983, same lineage) settles it: the meter is
+broken, and has been for this creature's whole life.
+
+**The evidence.** Between the two exports, germline atom executions went **13,007 → 26,306**. Nine of
+the ten atoms present in both rose, one by 14x (164 → 2,350). The bank grew 39 → 54 with 87% adopted
+and none failed. Over those same epochs `oeeLog` reports **D = 0 — no computation active — five times
+running.** The instrument says nothing happened while the thing it measures doubled.
+
+**The cause, from the source.** Line 6655:
+
+    let __oeeSeen=null, __oeePending=null, __oeeLastUses=null; // runtime-only; reseeded by resetOeeRuntime()
+
+Runtime-only. `encodeGenome` carries `oL`, `oN`, `oP`, `oV`, `oS` — the log and the counters — but not
+the three structures the count is DERIVED from. So every reload wipes the meter's memory, and the next
+flush hits `if(__oeeSeen===null){ ...adopt the bank as history... }`, which by design records activity
+of zero. On a phone that reloads more often than every 5,000 ticks, **every flush is a first flush**,
+and D is 0 forever. The four novel computations ever recorded were caught inside one unusually long
+uninterrupted session.
+
+This is the same failure class as the wire bounds and the germline/population crossings: a mechanism
+that runs, keeps counters, passes its tests, and measures nothing. #130 was written so this project
+could say no. It has been saying no about itself.
+
+**Not fixed here, because the fix is a decision, not a repair.** Persisting `__oeeSeen` means writing
+every canonical expression ever executed into the save — the exact unbounded growth #145/#146 had to
+cut out of `userAtoms`. Options, cheapest first: persist only `__oeeLastUses` (bounded by bank size,
+restores rise-detection) and accept that novelty undercounts across reloads; or persist a bounded
+digest of `__oeeSeen` (hashes, capped, LRU); or leave it and mark every D value written after a reload
+as unmeasured rather than zero. The last one costs nothing and stops the meter lying.
+
+### Other readings from gen 47
+
+- **Still the collective.** 11,330 migrants landed against 32–105 for the other eight this session.
+- **Still zero extinctions**, now across 11 epochs and 69,000 ticks. The first one is still the real test.
+- **`boundOpcodes` is at 187 of MAX_BOUND_OPCODES = 192.** It gained 48 slots in 20,000 ticks, so on
+  trend it hits the ceiling within about 2,000 ticks. #129 raised this from 96 precisely because gen38
+  pinned at 96 "while the atom vocabulary kept growing — the effector frontier was closed." This
+  creature is about to arrive at the same wall one size up, with a bank of 54 still growing. Recorded,
+  not raised: where the ceiling sits is the author's call, and hitting it is data.
+- **It breathes on a ~15k cycle.** Expansion at 30k (clusters 5→24), consolidation at 35k, expansion at
+  45k, a deep trough at 50k (one cluster, diversity 0, the run's lowest fitness at 0.265), recovery at
+  55k, expansion again at 60k (popPeak 483, 19 clusters). Twice now, same shape.
+- **Mutation rate still free and still in band**: 0.0757 → 0.0684. Eleven epochs, never outside
+  0.060–0.078.
+- **alienGrip still a coin**: 954/1878 = 50.8%, on a bigger sample than yesterday's 49.7%.
