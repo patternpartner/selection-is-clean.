@@ -310,7 +310,7 @@ const LIVENESS_DECLARED=[
   'shadow.sim','shadow.decide','self.learn','cluster.reflex','cluster.detect','cluster.persist',
   'alien.predict','niche.economy','dims.grow','cosmos.launch','cosmos.merge','cosmos.law',
   'genome.mutate','prog.crossover','prog.inherit','oee.flush','attention.field','world.signal',
-  'atom.cull','atom.evict','genome.trim','verb.senseBind','verb.senseFired',
+  'atom.cull','atom.evict','atom.chain','genome.trim','verb.senseBind','verb.senseFired',
 ];
 // NOT INSTRUMENTED, and deliberately absent rather than declared-and-silent: cladogenesis minting
 // (#17) has no single entry point I could identify with confidence. A census that reports "never"
@@ -389,6 +389,12 @@ const CROSSING_DECLARED=[
   {name:'verb.bank',     read:g=>__xCount(g.userEffects)},
   {name:'verb.composed', read:g=>__xComposed(g.userEffects)},
   {name:'verb.sensed',   read:g=>__xSensed(g.userEffects)},   // #139: CODEMAP's rule — a new kind of authored structure gets a census row in the same commit
+  // #155: the chains. Same rule. This row is the one that would have caught the bug if cloneGenome's
+  // `{...src}` had been left to share one opStacks object across the whole population: the germline
+  // count would read high and the population count would read IDENTICAL rather than divergent. It
+  // counts links, not slots — a slot with three chained atoms is three pieces of authored structure.
+  {name:'atom.chained',  read:g=>{ const o=g&&g.opStacks; if(!o)return 0; let n=0;
+                                   for(const k in o){ const v=o[k]; if(Array.isArray(v)) n+=v.length; } return n; }},
 ];
 function crossingCensus(){
   const rows=[];
@@ -1356,6 +1362,97 @@ function uaSetEyes(i,j){
 // freezing the tab — substrate, not preference. Output is clamped finite, so state can't diverge.
 const UA_FUEL=64;
 let uaFuel=0,uaDepth=0;
+// ═══ #155 — A BOUND SLOT MAY HOLD A CHAIN ═══════════════════════════════════════════════════════
+// THE PROBLEM, measured on a live creature (gen 47, t 68,983): 54 atoms in the bank, 187 of 192 slots
+// taken and filling at ~2.4 per 1,000 ticks, and — the part that actually bites — a germline program
+// FULL at 17 of 17 instructions. Even with slots to spare the creature can only call seventeen things
+// per pass. Authoring keeps running; there is nowhere to put what it makes. That is a bank filling up
+// with words the grammar has no room to say.
+//
+// So a slot stops being one atom and becomes a CHAIN: boundOpcodes[k] is still the head, and
+// genome.opStacks[k] holds the rest. The head takes the instruction's two registers; every atom after
+// it takes THE PREVIOUS ATOM'S OUTPUT as its first argument and the same second register. One opcode
+// becomes f3(f2(f1(a,b),b),b) — depth the flat instruction list cannot reach at any length.
+//
+// WHY A PARALLEL ARRAY rather than making boundOpcodes an array of arrays: boundOpcodes is read at five
+// dispatch sites, encoded, decoded, sanitised, cloned, remapped by the cull, and shipped on the migrant
+// wire in slot order. Changing its element type touches every one of those and every save ever written.
+// A sparse companion changes none of them: an old save has no opStacks and behaves exactly as before,
+// and `if(_bua)` still guards the head.
+//
+// PRICED PER ATOM, deliberately. #54 replaced hard complexity ceilings with a metabolic toll, and if a
+// stack of ten ran for one instruction's fee that toll would stop pricing depth — complexity would go
+// free and selection would lose its grip on it. Each chained atom is billed at the same BASE rate one
+// more instruction would have cost (see applyVM's totalCost), and exempt from the over-length surcharge
+// on exactly the reasoning #54 used to exempt op22: an atom call is the opposite of bloat. So stacking
+// is cost-NEUTRAL against spreading the same atoms over separate instructions. It buys no discount. All
+// it removes is the structural ceiling — the limit becomes what the creature can afford, which is
+// evolvable, instead of a number in this file, which is not.
+//
+// uaCall's own uaFuel budget (64 invocations per top-level entry) already bounds the whole chain, so a
+// deep stack cannot freeze the tab.
+const MAX_STACK_DEPTH=8;   // per slot; the toll is the real regulator, this only bounds the save
+function uaChain(head,slot,a,b){
+  let out=uaCall(head,a,b);
+  const os=genome.opStacks;
+  if(os){
+    const st=os[slot];
+    if(st&&st.length){
+      const uas=genome.userAtoms;
+      for(let s=0;s<st.length;s++){ const nx=uas&&uas[st[s]|0]; if(nx) out=uaCall(nx,out,b); }
+    }
+  }
+  return out;
+}
+// WHERE A NEW ATOM GOES WHEN THE SLOTS ARE GONE. Authoring must never dead-end: before #155 the bind
+// sites simply did nothing once boundOpcodes hit MAX_BOUND_OPCODES, so a creature past the cap kept
+// writing atoms into a bank that could no longer name any of them.
+// The chain is attached to a slot the PROGRAM ACTUALLY CALLS wherever one exists. That is not a
+// preference, it is #93's measured lesson: an atom bound to a slot no instruction reaches is never
+// executed, and this file spent several swings measuring uaCalls at 0 for exactly that reason. A stack
+// on an uncalled slot would be the same mistake with more steps. Falls back to any slot when the
+// program calls none, so the route still exists on a degenerate program.
+// Returns true if it attached.
+function growAtomChain(g,atomIdx){
+  if(!g||!Array.isArray(g.boundOpcodes)||!g.boundOpcodes.length)return false;
+  const nb=g.boundOpcodes.length;
+  const called=[];
+  const prog=Array.isArray(g.vmProgram)?g.vmProgram:[];
+  for(let q=0;q<prog.length;q++){
+    const inst=prog[q]; if(!inst)continue;
+    const op=inst[0]|0;
+    if(op>=CORE_OPCODES&&op<CORE_OPCODES+nb) called.push(op-CORE_OPCODES);
+  }
+  if(!g.opStacks) g.opStacks={};
+  // Prefer a called slot with room; otherwise any slot with room.
+  const pool=called.length?called:null;
+  const pick=(list)=>{
+    const open=[];
+    if(list){ for(const k of list){ const st=g.opStacks[k]; if(!st||st.length<MAX_STACK_DEPTH) open.push(k); } }
+    else { for(let k=0;k<nb;k++){ const st=g.opStacks[k]; if(!st||st.length<MAX_STACK_DEPTH) open.push(k); } }
+    return open.length?open[(Math.random()*open.length)|0]:-1;
+  };
+  let slot=pick(pool);
+  if(slot<0) slot=pick(null);
+  if(slot<0) return false;                       // every slot at depth — the toll has won, stop
+  (g.opStacks[slot]||(g.opStacks[slot]=[])).push(atomIdx|0);
+  fired('atom.chain');
+  return true;
+}
+// Total chained atoms BEYOND the heads, for the instructions this program actually runs. What the
+// creature is billed for; a stack on a slot no instruction calls is free because it never runs.
+function stackToll(prog,nInst){
+  const os=genome.opStacks; if(!os) return 0;
+  let d=0;
+  for(let q=0;q<nInst;q++){
+    const inst=prog[q]; if(!inst) continue;
+    const op=inst[0]|0;
+    if(op>=CORE_OPCODES&&op<CORE_OPCODES+MAX_BOUND_OPCODES){
+      const st=os[op-CORE_OPCODES]; if(st&&st.length) d+=st.length;
+    }
+  }
+  return d;
+}
 function uaCallF(idx,a,b){             // exposed to authored atoms as f(idx,a,b)
   const list=genome.userAtoms;
   if(!list||!list.length||uaFuel<=0)return 0;
@@ -7123,6 +7220,15 @@ function cloneGenome(src){
   g.objCreditTrace=Array.isArray(src.objCreditTrace)?src.objCreditTrace.slice():[0,0,0,0];
   g.prevObjValues=Array.isArray(src.prevObjValues)?src.prevObjValues.slice():[0,0,0,0];
   g.boundOpcodes=Array.isArray(src.boundOpcodes)?src.boundOpcodes.slice():[];
+  // #155: opStacks is heritable structure and must be deep-copied like every other. `{...src}` copies
+  // objects BY REFERENCE, so without this line one stack object would be SHARED by the whole population
+  // and no lineage could ever diverge its chains — the single most repeated bug in this file's history
+  // (#102, #130, #132b, #133b). The inner arrays are copied too, or the slices alias.
+  g.opStacks=null;
+  if(src.opStacks&&typeof src.opStacks==='object'){
+    g.opStacks={};
+    for(const k in src.opStacks){ const v=src.opStacks[k]; if(Array.isArray(v)&&v.length) g.opStacks[k]=v.slice(); }
+  }
   g.vmProgram=cloneProg(src.vmProgram);
   // alienHits/alienAttempts reset on clone, same as uses — a new lineage re-earns its own predictive
   // track record rather than inheriting the parent's (see SWING #46: ALIEN GRIP).
@@ -7509,6 +7615,11 @@ function encodeGenome(){
     rn: Array.isArray(genome.rend)?genome.rend.map(a=>({e:a.expression,f:!!a.failed})):null,
     dr: Array.isArray(genome.draw)?genome.draw.map(o=>o.slice()):null,
     bo: Array.isArray(genome.boundOpcodes)?genome.boundOpcodes.map(b=>b|0):[],
+    // #155 the chains. Sparse: only slots that actually hold one. Serialised in the SAME commit that
+    // adds them, because #139 shipped a sense gate that no save carried and it was invisible for days.
+    os: (function(){ const o=genome.opStacks; if(!o)return null; const out={}; let any=false;
+      for(const k in o){ const v=o[k]; if(Array.isArray(v)&&v.length){ out[k]=v.map(x=>x|0); any=true; } }
+      return any?out:null; })(),
     co: CORE_OPCODES, // MIGRATION (review): stamp the opcode-boundary this save was written under, so a later CORE_OPCODES shift can remap saved bound-opcode programs on load
     ua:cleanAtoms,
     ue:Array.isArray(genome.userEffects)?genome.userEffects.map(e=>({t:e.t|0,m:e.m|0,s:+(+e.s||0).toFixed(3),n:(e.nx===undefined?-1:e.nx|0),a:(e.ax===undefined||e.ax===null?-1:e.ax|0),u:e.uses|0})):[], // #132 authored verbs (+#133 successor, +#139 sense gate). `a` travels with the verb because boundOpcodes travels in the same save, so the slot index still means the same atom on the other side — without it an exported creature came back having quietly forgotten every sense it had bound to an act.
@@ -7813,6 +7924,13 @@ function decodeGenome(data){
     if(Array.isArray(g.rn)&&g.rn.length===4) genome.rend=g.rn.map(a=>({expression:a.e||'0',compiled:null,failed:!!a.f}));
     if(Array.isArray(g.dr)) genome.draw=sanitizeDraw(g.dr);
     if(Array.isArray(g.bo)) genome.boundOpcodes=g.bo.map(n=>Math.max(-1,n|0));   // #137: preserve -1 tombstones; clamping them to 0 re-aimed an inert slot onto atom 0
+    // #155: absent in every pre-#155 save, which is exactly right — no opStacks means every slot is a
+    // single atom, the behaviour those creatures were selected under.
+    genome.opStacks=null;
+    if(g.os&&typeof g.os==='object'){
+      genome.opStacks={};
+      for(const k in g.os){ const v=g.os[k]; if(Array.isArray(v)&&v.length) genome.opStacks[k]=v.map(x=>x|0); }
+    }
     if(typeof g.clr==='number')genome.creditLearnRate=g.clr; // Pe25 Layer 15
     if(typeof g.dc==='number')genome.decisionConfidence=g.dc; // swing #43: restore earned commitment authority
     if(g.cpl&&typeof g.cpl==='object')genome.coupling=g.cpl; // restore coupling instrumentation so per-peer flows accumulate across reloads
@@ -8840,6 +8958,19 @@ function sanitizeGenome(){
   // here would close the gap and renumber every opcode above it on a save/load round-trip,
   // which is the renumbering the cull fix exists to prevent.
   genome.boundOpcodes=genome.boundOpcodes.filter(n=>typeof n==='number'&&n>=-1).slice(0,MAX_BOUND_OPCODES);
+  // #155: a chain may only point at atoms that EXIST and only to a bounded depth. An index past the end
+  // of the bank is dropped, not clamped — clamping would silently re-aim a link onto atom 0, the exact
+  // harm #137 records for boundOpcodes tombstones.
+  if(genome.opStacks&&typeof genome.opStacks==='object'){
+    const _n=(genome.userAtoms||[]).length, _clean={};
+    for(const k in genome.opStacks){
+      const slot=k|0; if(slot<0||slot>=MAX_BOUND_OPCODES) continue;
+      const v=genome.opStacks[k]; if(!Array.isArray(v)) continue;
+      const keep=v.map(x=>x|0).filter(x=>x>=0&&x<_n).slice(0,MAX_STACK_DEPTH);
+      if(keep.length) _clean[slot]=keep;
+    }
+    genome.opStacks=Object.keys(_clean).length?_clean:null;
+  } else genome.opStacks=null;
   // DURABILITY across save/load: a reload restores boundOpcodes + vmProgram from the save, but the saved
   // program often has NO call-site for its bound atoms (gen4 export: 7 bound, 0 call-sites in V) — so a
   // reloaded run starts ORPHANED, atoms bound-but-disconnected, before anything can run. Re-establish one
@@ -11745,7 +11876,7 @@ function profileVM(){
         const _boi=op-CORE_OPCODES;
         if(_bos&&_boi<_bos.length){
           const _bua=genome.userAtoms&&genome.userAtoms[_bos[_boi]];
-          if(_bua) vmRegs[di]=uaCall(_bua,vmRegs[si],vmRegs[(si+1)%12]);
+          if(_bua) vmRegs[di]=uaChain(_bua,_boi,vmRegs[si],vmRegs[(si+1)%12]);
         }
       }
       for(let r=0;r<12;r++){const _v=vmRegs[r];vmRegs[r]=Number.isFinite(_v)?(_v<-8?-8:_v>8?8:_v):0;}
@@ -14168,7 +14299,10 @@ function mutateGenome(){ fired('genome.mutate');
       // call-site, which is reachability — the failure this file fought for several swings was
       // atoms "bound but never called". Removing that by tidiness would be a behaviour change
       // dressed as a fix, so it is recorded here and left for a measurement to judge.
-      if(bos.length<MAX_BOUND_OPCODES && genome.userAtoms.length>0){
+      // #155: past the cap, the new atom joins a CHAIN instead of being thrown away.
+      if(bos.length>=MAX_BOUND_OPCODES && genome.userAtoms.length>0){
+        growAtomChain(genome,genome.userAtoms.length-1);
+      } else if(bos.length<MAX_BOUND_OPCODES && genome.userAtoms.length>0){
         bos.push(genome.userAtoms.length-1);
         // #93: hand over the highest-grip atom rather than the newest, when the filter is running.
         { let _si=genome.userAtoms.length-1;
@@ -14244,6 +14378,18 @@ function mutateGenome(){ fired('genome.mutate');
       if(Array.isArray(_bos)) for(let k=0;k<_bos.length;k++){
         if(_bos[k]===removeIdx) _bos[k]=-1;
         else if(_bos[k]>removeIdx) _bos[k]--;
+      }
+      // #155: the chains hold indices into the same array and shift with it. Unlike boundOpcodes a
+      // stack POSITION carries no opcode number, so the dead atom is DROPPED rather than tombstoned —
+      // keeping a -1 here would just be a link the chain has to skip forever.
+      const _os=genome.opStacks;
+      if(_os) for(const _k in _os){
+        const _st=_os[_k]; if(!Array.isArray(_st))continue;
+        const _out=[];
+        for(let _q=0;_q<_st.length;_q++){ const _v=_st[_q]|0;
+          if(_v===removeIdx) continue;
+          _out.push(_v>removeIdx?_v-1:_v); }
+        if(_out.length) _os[_k]=_out; else delete _os[_k];
       }
       recordEvent('ua_cull',{failed:!!removed.failed,n:genome.userAtoms.length},600);
     }
@@ -14436,7 +14582,10 @@ function mutateGenome(){ fired('genome.mutate');
     const uas=genome.userAtoms||[];
     const bos=genome.boundOpcodes||(genome.boundOpcodes=[]);
     const roll=Math.random();
-    if(roll<0.4&&bos.length<MAX_BOUND_OPCODES&&uas.length>0){
+    if(roll<0.4&&bos.length>=MAX_BOUND_OPCODES&&uas.length>0){
+      // #155: same route, past the cap. Deepens an existing slot rather than doing nothing.
+      growAtomChain(genome,Math.floor(Math.random()*uas.length));
+    } else if(roll<0.4&&bos.length<MAX_BOUND_OPCODES&&uas.length>0){
       bos.push(Math.floor(Math.random()*uas.length));
       // WIRING: when a bound opcode is authored, splice ONE call-site into the global
       // program so the new primitive is actually REACHABLE by executing programs. Without
@@ -15738,7 +15887,11 @@ function executeVM(i,j,sim,d){
   for(let _q=0;_q<nInst;_q++){ const _in=prog[_q]; if(_in&&_in[0]===22)_atomCalls++; }
   const _billable=nInst-_atomCalls;
   const _over16=_billable>SOFT_PROG_LEN?(_billable-SOFT_PROG_LEN):0;
-  const totalCost=(nInst+_over16*(COMPLEXITY_TOLL-1))*genome.metabolicCost;
+  // #155: every atom chained onto a slot this program calls is billed at the BASE instruction rate —
+  // exactly what one more instruction would have cost — and exempt from the over-length surcharge, on
+  // the same reasoning that exempts op22 above. Stacking buys reach, never a discount.
+  const _stack=stackToll(prog,nInst);
+  const totalCost=(nInst+_stack+_over16*(COMPLEXITY_TOLL-1))*genome.metabolicCost;
   amp[i]-=totalCost;amp[j]-=totalCost;
 
   for(let ip=0,_vs=0;ip<nInst&&_vs<nInst*2;ip++,_vs++){
@@ -17826,7 +17979,7 @@ function executeVM(i,j,sim,d){
       const _boi=op-CORE_OPCODES;
       if(_bos&&_boi<_bos.length){
         const _bua=genome.userAtoms&&genome.userAtoms[_bos[_boi]];
-        if(_bua){ const _out=uaCall(_bua,vmRegs[si],vmRegs[(si+1)%12]); vmRegs[di]=_out;
+        if(_bua){ const _out=uaChain(_bua,_boi,vmRegs[si],vmRegs[(si+1)%12]); vmRegs[di]=_out;
           // ═══ #88 REACH ON THE MAIN PATH ═══════════════════════════════════════════════════════
           // __REACH (16937) makes authored atoms drive actuators — "Atoms become EFFECTORS, not just
           // calculators" — but it is wired at ONE of five bound-opcode dispatch sites, and that site is
@@ -18957,7 +19110,7 @@ function executeVM(i,j,sim,d){
         const _boi=op-CORE_OPCODES;
         if(_bos&&_boi<_bos.length){
           const _bua=genome.userAtoms&&genome.userAtoms[_bos[_boi]];
-          if(_bua){ const _out=uaCall(_bua,vmRegs[si],vmRegs[(si+1)%12]); vmRegs[di]=_out;
+          if(_bua){ const _out=uaChain(_bua,_boi,vmRegs[si],vmRegs[(si+1)%12]); vmRegs[di]=_out;
             // REACH — close sense→compute→ACT: the atom's output drives one of the VM's EXISTING,
             // already-conserved actuators directly (vmActions: 0=force, 2=ampTransfer[conserved],
             // 3=tendBleed[clamped], 4=spawnDrive, 5=signal, 6=mutPressure). Same emit semantics as the
@@ -20269,7 +20422,7 @@ function executeClusterVM(i,j,sim,d){
       const _boi=op-CORE_OPCODES;
       if(_bos&&_boi<_bos.length){
         const _bua=genome.userAtoms&&genome.userAtoms[_bos[_boi]];
-        if(_bua){ const _out=uaCall(_bua,vmRegs[si],vmRegs[(si+1)%12]); vmRegs[di]=_out;
+        if(_bua){ const _out=uaChain(_bua,_boi,vmRegs[si],vmRegs[(si+1)%12]); vmRegs[di]=_out;
           if(__REACH_ON){ const _rv110c=Math.max(-2,Math.min(2,_out))*(__REACH_NOK?1:k)*(__REACH_GAIN&&isFinite(genome.reachGain)?genome.reachGain:0.2); vmActions[reachSlot(di)]+=_rv110c; __reachFires++;
             if(__ATOM_CREDIT&&_bua.expression){if(__atomExprContrib.size>5000)__atomExprContrib.clear();__atomExprContrib.set(_bua.expression,(__atomExprContrib.get(_bua.expression)||0)+_rv110c);} }
         }
@@ -20985,7 +21138,7 @@ function executeSoloVM(){
         const _boi=op-CORE_OPCODES;
         if(_bos&&_boi<_bos.length){
           const _bua=genome.userAtoms&&genome.userAtoms[_bos[_boi]];
-          if(_bua){ const _out=uaCall(_bua,vmRegs[si],vmRegs[(si+1)%12]); vmRegs[di]=_out;
+          if(_bua){ const _out=uaChain(_bua,_boi,vmRegs[si],vmRegs[(si+1)%12]); vmRegs[di]=_out;
             if(__REACH_ON){ const _rv110s=Math.max(-2,Math.min(2,_out))*(__REACH_NOK?1:k)*(__REACH_GAIN&&isFinite(genome.reachGain)?genome.reachGain:0.2); vmActions[reachSlot(di)]+=_rv110s; __reachFires++;
               if(__ATOM_CREDIT&&_bua.expression){if(__atomExprContrib.size>5000)__atomExprContrib.clear();__atomExprContrib.set(_bua.expression,(__atomExprContrib.get(_bua.expression)||0)+_rv110s);} }
           }

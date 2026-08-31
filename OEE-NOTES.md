@@ -11335,3 +11335,88 @@ as unmeasured rather than zero. The last one costs nothing and stops the meter l
 - **Mutation rate still free and still in band**: 0.0757 → 0.0684. Eleven epochs, never outside
   0.060–0.078.
 - **alienGrip still a coin**: 954/1878 = 50.8%, on a bigger sample than yesterday's 49.7%.
+
+
+---
+
+## #155 — A BOUND SLOT MAY HOLD A CHAIN
+
+Proposed by the author, from the gen-47 reading:
+
+> *"ok so we need to stack the atoms..each slot can have as many as the system invents. perhaps we then
+> offer something it can then do with them. if they are stacking them and filling them up and they have
+> no where to go thereafter it seems a waste"*
+
+Correct diagnosis. The measurement behind it: gen 47 had **187 of 192 slots** taken and filling at ~2.4
+per 1,000 ticks, 54 atoms in the bank, and — the part that actually bites — a germline program **full
+at 17 of 17 instructions**. Even with slots to spare the creature could only call seventeen things per
+pass. Authoring kept running with nowhere to put what it made.
+
+### What it is
+
+`boundOpcodes[k]` is still the head. `genome.opStacks[k]` holds the rest. The head takes the
+instruction's two registers; every atom after it takes **the previous atom's output** as its first
+argument and the same second register. One opcode becomes `f3(f2(f1(a,b),b),b)` — depth the flat
+instruction list cannot reach at any length. Past the cap, a newly authored atom joins a chain instead
+of vanishing, on a slot **the program actually calls** (#93's measured lesson: an atom bound to an
+unreachable slot is never executed, and this file spent several swings reading uaCalls at 0 for exactly
+that).
+
+A parallel sparse array rather than making `boundOpcodes` an array-of-arrays, because that array is
+read at five dispatch sites, encoded, decoded, sanitised, cloned, remapped by the cull, and shipped on
+the migrant wire in slot order. A companion changes none of them, and a pre-#155 save has no
+`opStacks` and behaves exactly as it always did.
+
+### Priced per atom, and why that was the real decision
+
+Offered the choice between charging a stack like one instruction or like ten, the author chose ten.
+That is the answer that keeps #54 intact: #54 replaced hard complexity ceilings with a metabolic toll,
+and a stack of ten running for one instruction's fee would stop that toll pricing depth — complexity
+would go free and selection would lose its grip on it. Each chained atom is billed at the same **base**
+rate one more instruction would have cost, and exempt from the over-length surcharge on exactly the
+reasoning #54 used to exempt op22 ("an atom call-site is the opposite of bloat").
+
+So stacking is **cost-neutral** against spreading the same atoms over separate instructions. It buys no
+discount. All it removes is the structural ceiling: the limit becomes what the creature can afford,
+which is evolvable, instead of a number in this file, which is not. A chain on a slot no instruction
+calls costs nothing, because it never runs.
+
+### Measured on the real creature
+
+The gen-47 export loaded and run 4,000 ticks on this build:
+
+```
+on load    : slots 187/192   atoms 54   chain links 0
++4,000     : slots 192/192   atoms 54   chain links 4
+links in the population: 4, across 2 living particles
+particles sharing the germline opStacks object: 0
+```
+
+It filled its last five slots, hit the cap, and started chaining. Before this change those four atoms
+would have been authored and dropped on the floor.
+
+That last line is the one that matters. `cloneGenome` does `{...src}` — objects **by reference** — so
+without a deep copy one `opStacks` object would have been shared by the entire population and no
+lineage could ever have diverged its chains. That is the single most repeated bug in this file's
+history (#102, #130, #132b, #133b) and it would have been silent: the feature runs, the counters move,
+the tests pass. `atom.chained` is now a `CROSSING_DECLARED` row, per CODEMAP's rule, and it is the row
+that would have caught it — germline high, population identical rather than divergent.
+
+### The rig, and why it had to be written
+
+`crossing-test.js` prints `atom.chained g0/p0` and passes. It is not wrong: a fresh creature reaches
+about six slots in three thousand ticks, so every existing rig runs the pre-#155 path and reports green
+while the whole feature sits unexecuted. That is #143's trap verbatim — *rarity is not safety*.
+`chain-test.js` constructs the precondition instead of waiting for it: fill the slots, then author.
+Nineteen checks covering the four crossings plus the two things #155 actually claims — that the chain
+**computes** (`f2(f1(a,b),b)`, and order changes the answer, so a stack stored-but-never-applied fails)
+and that it is **priced** (n links cost n instructions; an uncalled chain costs nothing).
+
+### Registered prediction
+
+If depth is worth anything, chained slots should be *retained* — a creature that pays per link and
+keeps paying is one where selection judged the chain worth its toll. The falsifiable half: if chains
+form at the cap and are then consistently shed, or if creatures past the cap show no fitness or
+diversity change against creatures held below it, then the ceiling was never the constraint and the
+17-instruction program was the whole story. `atom.chained` in the crossing census is the counter to
+watch, and unlike the OEE meter it is derived from the genome itself, so it survives a reload.

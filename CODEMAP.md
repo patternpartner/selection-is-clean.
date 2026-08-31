@@ -14,7 +14,7 @@ Companion to OEE-NOTES.md, which records experiments. This records the machine t
 |---|---|
 | **file** | `engine.html` — the sim moved out of `index.html` in `c0cef11`. Since **#149** the pages are: `index.html` = THE FIELD, `universe.html` = the single worker shell (what `index.html` used to be), `engine.html` = the simulation itself, still runnable on its own. Since **#153** the field is EIGHT INDIVIDUALS PLUS A COLLECTIVE (nine iframes, nine workers); the ninth is an ordinary universe whose input is the other eight |
 | **last fully re-derived** | never — this map was written against `index.html` and has been patched, not rebuilt |
-| **prose current through** | **#90.** The engine is at **#153.** Roughly sixty swings are undocumented here |
+| **prose current through** | **#90.** The engine is at **#155.** Roughly sixty swings are undocumented here |
 | **verified as of #131** | the anchor table below, the opcode constants, the genome extent, and the census claims |
 | **added since, unmapped below** | **#132/#133** verb grammar (`EFFECT_TARGETS`, `applyUserEffect`, opcode 236) · **#134** liveness census (`LIVENESS_DECLARED`, `fired()`) · **#135** attention field (`attnField`, `attentionAt`, the `at` sense) · **#136** world signal (`updateWorldSignal`, `worldSignalSuppressed`) · **#137** crossing census (`CROSSING_DECLARED`, `crossingCensus`) · **#138** the diary (`theDiary`, `diaryPanel`) · **#139** sense-gated verbs (`verbGate`, `remapEffectAx`, `effectSenseRate`) · **#140** the crossings (`CHILD_NOT_A_GENE`, inherit/roundtrip tests) · **#141** migrant vocabulary (`MIGRANT_CARRIES_VOCAB`) · **#153** the migrant packet extracted (`buildMigrantPacket`) and the wire's limits derived rather than restated (`netMaxOpcode`). Grep the names; no line anchors yet |
 | **NOT verified** | every other inline line number in this file. They were written against a file ~1,100 lines shorter and around 500–900 lines of drift has accumulated unevenly — treat them as approximate, and grep for the quoted code instead |
@@ -94,6 +94,17 @@ cull, `#139` for a sense gate seeded into a particle, `#141` for a migrant cross
 strategies, and which one applies depends on whether the bank travels: match by **expression** when
 the destination has its own bank (`remapEffectAx`), preserve **slot order** when you are shipping the
 bank itself (the migrant packet).
+
+**Chained slots (#155).** A slot may hold more than one atom: `boundOpcodes[k]` is the head,
+`genome.opStacks[k]` (sparse, absent when empty) holds the rest, and each link takes the previous
+link's OUTPUT as its first argument. Five dispatch sites go through `uaChain()` — one helper, so a
+sixth site cannot silently run the old semantics. Growth happens only at `MAX_BOUND_OPCODES`, via
+`growAtomChain()`, onto a slot the program actually calls. Billed per link at the base instruction rate
+in `stackToll()`, exempt from the over-length surcharge like op22. `opStacks` is heritable structure:
+deep-copied in `cloneGenome` (inner arrays too), shifted by the cull (dropping the dead link rather
+than tombstoning it — a stack position carries no opcode number), serialised as `os`, and censused as
+`atom.chained`. Absent from every pre-#155 save, which is correct. `chain-test.js` drives it, because
+no other rig ever reaches the cap.
 
 **Bound opcodes (#137).** An opcode's NUMBER is its POSITION in `genome.boundOpcodes`
 (`op = CORE_OPCODES + k`); its MEANING is `genome.userAtoms[boundOpcodes[k]]`. Two consequences that
