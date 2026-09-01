@@ -20,14 +20,32 @@
 // "does a creature held at rate X accumulate persistent computations", NOT "does the evolved rate
 // matter". Those are different questions and this rig answers only the first.
 //
+// FIRST RUN WAS UNDERPOWERED, and it is recorded here rather than quietly re-run. Twelve creatures
+// from scratch at 40,000 ticks produced meanD 1.3-2.8 and 2-7 novel computations each, against the
+// live field's 24-39 and 24-44. With ~4 novel events per run and a 3-epoch lag out of 7 epochs,
+// persistence could not have appeared at ANY rate, and it did not. That is a null from a rig with no
+// power, not evidence about mutation. The run was sized by ticks without checking it would generate
+// enough events to measure — the same error class this notebook keeps recording, one level up.
+//
+// SEED_FROM fixes it: start every arm from the SAME mature genome, so all twelve begin in the state
+// where novelty is actually happening, and the only difference between them is the pinned rate and
+// the PRNG stream. That is what a controlled experiment looks like here.
+//
 //   RATE=0.06 SEED=1 TICKS=40000 node harness-mutrate.js
+//   RATE=0.06 SEED=1 TICKS=40000 SEED_FROM=/path/to/genome.json node harness-mutrate.js
 const fs=require('fs'), path=require('path');
 require(path.join(__dirname,'harness-env.js'))(globalThis);
 const code=fs.readFileSync(path.join(__dirname,'engine.html'),'utf8').match(/<script>([\s\S]*)<\/script>/)[1];
 const Module=require('module');
 const m=new Module('/tmp/mr.js'); m.filename='/tmp/mr.js'; m.paths=Module._nodeModulePaths('/tmp');
 m._compile(code+`
-;globalThis.__run=function(ticks,rate){
+;globalThis.__seedFrom=function(txt){
+  if(!decodeGenome(txt))return false;
+  N=0; const n=Math.min(300,(W*H/3000)|0);
+  for(let i=0;i<n;i++) addParticle(Math.random()*W,Math.random()*H,randomTendency(),false);
+  return true;
+};
+globalThis.__run=function(ticks,rate){
   for(let s=0;s<ticks;s++){
     globalThis.__detMs+=5;
     genome.mutationRate=rate;          // the intervention: pinned, every tick
@@ -48,6 +66,11 @@ m._compile(code+`
 };`,'/tmp/mr.js');
 const RATE=parseFloat(process.env.RATE||'0.06');
 const TICKS=parseInt(process.env.TICKS||'40000',10);
+if(process.env.SEED_FROM){
+  const ok=globalThis.__seedFrom(fs.readFileSync(process.env.SEED_FROM,'utf8'));
+  if(!ok){ console.log(JSON.stringify({error:'seed genome failed to load'})); process.exit(1); }
+}
 const r=globalThis.__run(TICKS,RATE);
+r.seededFrom=process.env.SEED_FROM?path.basename(process.env.SEED_FROM):null;
 r.rate=RATE; r.seed=parseInt(process.env.SEED||'1',10);
 console.log(JSON.stringify(r));
