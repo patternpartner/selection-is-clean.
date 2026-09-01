@@ -11848,3 +11848,87 @@ believe it is free.
 A real fix would be a finer grid so dense regions subdivide, but `CELL` is tied to the interaction
 radius (the +/-1 cell sweep assumes `CELL >= iR`), so shrinking it changes what can interact with what.
 That is a physics decision, not an optimization, and it is the author's to make.
+
+---
+
+## THE VERDICT LANDED — and it kills my "the collective is losing" reading
+
+`selection_gen89_t138319.json`, the collective, 28,914 ticks on from gen 73.
+
+### The registered prediction hit on the exact tick
+
+At gen 73 the collective had 20 novelties pending at epoch indices 19–21, current epoch 21, lag 3, so
+I recorded that **the first persistence verdict fell due at tick 110,000**. The ladder:
+
+```
+tick     D   new  persisted   novelCum  persistCum
+105000   26    3      0          24         0
+110000   36   12      1          36         1     <- exactly there
+115000   38   10      8          46         9
+120000   41   11      2          57        11
+125000   51   14      5          71        16
+130000   45    9      6          80        22
+135000   33    7      5          87        27
+```
+
+**Novel 24 → 87. Persisted 0 → 27.** #130's question — do innovations last — is answered affirmatively
+on the device, by the instrument that could not answer it three days ago.
+
+### The correction: I read a climbing number as a settled one. Again.
+
+The field measurement had the collective at novel 24 against the individuals' 28–44 and persistence 0
+against u7's 12, and I wrote that it was **last in the field** and that "the migrant flood is not
+buying open-endedness, it may be costing it," with a migration-load mechanism and a registered
+prediction attached.
+
+That reading does not survive. The collective was at 109,405 ticks when u7 was at 117,168 — 1.5 epochs
+behind — and novelty was climbing at roughly 20 points per 8,000 ticks at the time. **The entire gap I
+"found" is about one tick-count difference.** I compared two numbers mid-ascent as though they had
+settled.
+
+That is the FOURTH instance of the same error in this session, and the pattern is worth naming since it
+is mine and not the artwork's: the OEE meter's zeros (a broken instrument read as a result), the
+underpowered experiment (a null read as an answer), "freeze" for a process at 99.8% CPU (a word chosen
+before the mechanism was known), and now this. Every one is the same shape — **taking a reading before
+establishing that the reading had stopped moving.**
+
+The migration-load hypothesis is therefore **untested, not refuted**. Its supporting observation has
+evaporated. The field has since shrunk to 2 universes (see below), which is a natural version of the
+"slow the relay" experiment, and persistence rose — but that is confounded with simply having more
+ticks, so it settles nothing either way. If it is to be tested it needs the controlled version.
+
+### The collective is in good health
+
+```
+extinctions      0, at 138,319 ticks and 27 epochs
+atoms            86, of which 78 adopted (91%)
+chain links      86 -> 150
+D per epoch      peaked at 51
+evenness         0.667 -> 0.859 -> 0.716
+mean uses per    1022 -> 266 -> 426 -> 300 -> 224 -> 198 -> 197
+save             42,780 of a 500,000 budget
+```
+
+The evenness and mean-uses columns together say something the totals do not: work is spreading across
+MORE computations each used LESS, rather than concentrating on a workhorse. Evenness near 0.86 is close
+to fully spread. That is the shape open-endedness is supposed to have.
+
+**A tension worth recording rather than smoothing.** This universe's `mutationRate` drifted UP over the
+same window, 0.0656 → 0.0831, past the whole field's range — while persistence rose 0 → 27. The
+controlled experiment found the opposite direction (lower rate, more persistence, r = -0.881). These do
+not strictly contradict: the experiment compared ARMS at a fixed moment, this compares ONE universe
+across time while everything else also changed. But it is the first datum pointing the other way and it
+should not be quietly dropped.
+
+### The field has shrunk to two
+
+The metabolism record tracked 9 peers at gen 73 and tracks **2** at gen 89, both live at ~200ms. The
+other seven were pruned after 60s unheard. So the collective is currently being fed by one individual,
+not eight. Worth the author knowing — the nine-universe field is not what is running now.
+
+### The stalls did not recur
+
+Epoch gaps are identical in both exports (35k→45k, 60k→75k, 80k→95k) with **no new ones** in the
+110k–138k window. Whatever condensed a universe earlier did not happen this session — consistent with
+the clustering explanation, since this run's population stayed spread (popMean 138–247, popMin 88–185,
+never near zero).
