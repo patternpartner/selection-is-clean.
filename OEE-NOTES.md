@@ -11689,3 +11689,88 @@ its save is 57,388 characters against ~33,500. Extinction bursts drive authoring
 authored atom somewhere to go, so a collapsing creature's save now grows faster than it used to. It did
 not cause the collapse — those atoms were being authored before #155 and simply discarded — but the
 cost is real and worth watching against the 500,000 budget.
+
+---
+
+## THE INTERVENTION — does mutation rate cause persistence? Yes.
+
+The field showed low `mutationRate` correlating with #130's persistence count at r = -0.712 (n=8), and
+I refused to believe it for four reasons — one universe drove the whole thing, 93% of the outcome had
+not resolved, the nine trade so they are not independent draws, and above all **nobody set those
+rates**, so mutation rate was entangled with everything that evolved beside it. Only an intervention
+separates that. `harness-mutrate.js` is the intervention.
+
+### The first run was underpowered, and that is recorded rather than buried
+
+Twelve creatures from scratch, 40,000 ticks: **zero persistence at every rate**. Not an answer. Those
+runs produced meanD 1.3–2.8 and 2–7 novel computations each, against the live field's 24–39 and 24–44.
+With ~4 novel events and a 3-epoch lag out of 7 epochs, persistence could not have appeared at any
+rate. I sized the run by TICKS without checking it would generate enough EVENTS to detect the thing —
+the same error class this notebook keeps recording, one level up, in my own experiment design.
+
+One real finding survived it, and it **corrects a claim I made after the field measurement**. Those
+twelve had no peers (the network is stubbed headless) and produced no chains at all. Set beside the
+field: solo gives meanD ~2 and novel ~4; in the field it is 24–39 and 24–44; the collective, taking
+50–100x the migrant flow, gives 26–31 and 24 — the field's lowest. **Trading is not costing
+open-endedness, it is most of where open-endedness comes from.** "The firehose may be costing the
+collective" holds only WITHIN the field, at the top end. The shape is a curve with an optimum the
+collective may be past, not "connection hurts."
+
+### The real run: every arm from the same mature genome
+
+`SEED_FROM=u1.json` — all arms start from one healthy field universe at 109,945 ticks, so they begin
+where novelty is actually happening and differ only in the pinned rate and the PRNG stream. 40,000
+ticks each, ending at 149,945.
+
+| rate | n | **persisted** | novel | stick-rate | extinctions | fitness |
+|---|---|---|---|---|---|---|
+| 0.03 | 4 | **25.5 ± 3.0** | 57.3 ± 5.9 | 0.445 | 0 | 0.758 |
+| 0.06 | 4 | **22.5 ± 0.6** | 68.0 ± 4.1 | 0.332 | 0 | 0.790 |
+| 0.12 | 3 | **17.0 ± 2.0** | 82.0 ± 15.5 | 0.211 | 0 | 0.791 |
+
+```
+rate vs persisted : r = -0.881,  n = 11,  t = -5.58, df = 9
+rate vs novel     : r = +0.784
+0.03 range [23..29]   0.12 range [15..19]   — 12 of 12 pairwise comparisons agree, no overlap
+```
+
+**Persistence falls monotonically as mutation rises. Novelty rises.** Higher mutation finds ~43% more
+new computations and keeps less than half as many of them proportionally. That is the
+exploration/exploitation trade, measured in this system for the first time.
+
+**The pre-registered confound did not happen.** I said beforehand that if high rates simply killed the
+creature, any persistence difference would be "a dead thing can't persist anything." Zero extinctions
+in every arm, fitness 0.72–0.83 across all three rates, population 258–325. Nothing was killed. The
+effect is not survivorship.
+
+And the field signal was pointing at something real after all: u7's evolved rate was 0.0297, which is
+the 0.03 arm, and u7 held the field's highest persistence. The field EVIDENCE was inadequate — I was
+right about that — but the thing it pointed at survives a controlled test.
+
+### What this does not show, stated plainly
+
+**Part of the effect may be definitional, and this is the caveat that matters most.** The meter's unit
+is a canonical expression key with numeric literals stripped, so a constant jitter does not change it
+but a structural edit does. A higher mutation rate rewrites structure more often, so by construction it
+produces fewer "same computation still running later" events. Some of the slope is that.
+
+What argues against it being ONLY that: novelty and persistence move in OPPOSITE directions (57→82
+while 25→17). Pure churn would inflate both counts together. The informative number is the stick-rate,
+0.445 → 0.332 → 0.211 — at high mutation the system generates more and retains proportionally less
+than half. That is a trade, not an artifact. But the definitional component is real and a cleaner test
+would score persistence on something the mutation operator cannot rewrite.
+
+Also bounded: the rate is PINNED every tick, which suppresses the post-extinction burst (#148); the
+runs are solo, with no migrant traffic; and every arm descends from ONE genome (u1). A different
+founder could give different slopes.
+
+### An unexplained anomaly, recorded
+
+One run (rate 0.12, seed 4) ran **7 hours 47 minutes at 99.8% CPU** and never finished, against 15–40
+minutes for the other eleven. Killed; the three completed 0.12 runs agree tightly ([15..19]) so it does
+not change the result. But a 15x slowdown in one arm is not nothing — on the phone that is a frozen
+universe, which is exactly the symptom behind the epoch gaps at #153/#156. Rate 0.12 is the arm that
+authors hardest, and the seed-3 run reached `links 192`, the most chains of any run. A plausible
+hypothesis is deep chains making `uaChain` expensive under heavy authoring; `UA_FUEL` bounds
+invocations per top-level call, so that is not obviously sufficient. **Unresolved, and named so it is
+not forgotten** — it may be the cause of the stalls seen on the device.
