@@ -11496,3 +11496,86 @@ whenever persistence read 0 — which, on the broken meter, it would have said a
 atom executions had doubled. It now separates "not enough measured epochs to say anything", "none
 lasted", and how many stretches it could not measure at all, and says "or so" when the seen-set was
 truncated. The artwork should not claim more than its instrument measured.
+
+---
+
+## #155/#156 ACCEPTANCE — gen 73, t 109,405, from the phone
+
+`selection_gen73_t109405.json`, exported 2026-09-01T00:50Z, running the shipped build. Both changes
+fired and both are measurable. This is the first time #130's meter has produced a number that means
+anything.
+
+### The meter is alive
+
+The D column (distinct computations active in that epoch), across this creature's whole life:
+
+```
+ 5,000 – 60,000    0  0  5  0  11  11  0  0  0  0  0      <- the broken build, eleven epochs
+75,000            -1                                      <- first flush on the new build: UNMEASURED
+80,000            30
+95,000            26
+100,000           31
+105,000           26
+```
+
+Thirty distinct computations active per epoch, with mean executions per computation running 269, 584,
+**1,022**, 266 — against **zero for the entire prior life of the creature**. Nothing about the creature
+changed at tick 75,000. The instrument started working.
+
+The `-1` is the honest part. That flush had no history to diff against, because the save it loaded was
+written by the broken build. It says so instead of writing 0, which is the distinction the whole fix
+turns on.
+
+Novelty went **4 → 24**. Not a burst of invention — twenty of those were found in the last 25,000 ticks
+by a meter that could finally see. The first four were found in one unusually long uninterrupted
+session back at epoch 6, and their pending entries were lost to reloads before #156, so those four can
+never resolve. Recorded rather than quietly dropped.
+
+### "Persistence 0" now means something specific
+
+It still reads 0, and this is the difference the fix bought:
+
+```
+pending novelties : 20, at epoch indices 19, 20, 21
+current epoch     : 21
+OEE_PERSIST_LAG   : 3
+ripe for a verdict: 0
+```
+
+Before, `oeePersist 0` was noise — the meter could not have scored persistence if it wanted to. Now it
+is a queue with twenty candidates in it, none of them old enough yet, and **the first verdict falls due
+at tick 110,000** — about 600 ticks past this export. The next save from this creature answers the
+question the notebook has been asking since #130.
+
+### #155 caught what would have hit the floor
+
+```
+boundOpcodes : 192/192   (was 187 at gen 47)
+chain links  : 86, across 35 slots
+depth        : {1 link: 18 slots, 2: 7, 3: 2, 5: 4, 6: 2, 8: 2}
+atoms        : 54 -> 72
+```
+
+It hit the wall, and **86 atoms went into chains instead of being dropped**. It is not merely absorbing
+overflow either: the depth histogram has a real tail, and **two slots are already at MAX_STACK_DEPTH=8**.
+That is the same shape as the 192 wall one level down, and it is recorded, not raised — where the
+ceiling sits is the author's call and arriving at it is data.
+
+The #155 prediction was that if depth is worth anything, chained slots should be RETAINED. 86 links
+retained over ~40,000 ticks, with depth accumulating rather than staying flat, is consistent with that.
+It is not proof: there is no control arm here, and retention under a per-atom toll is suggestive rather
+than decisive. A creature held below the cap, run alongside, would settle it.
+
+### The rest
+
+- **Zero extinctions, still**, now across 109,405 ticks and 21 epochs. The first one remains the real test.
+- **`tendDims` 9 → 10.** It earned another trait dimension. Under the pre-#153 wire that alone would
+  have made every migrant it sends unacceptable to every peer, permanently.
+- **Mutation rate still free and still in band**: .0757 .0684 .0627 .0581 .0611 .0656 .0656 — moving in
+  both directions, now drifting slightly down. Twenty-one epochs, never outside 0.058–0.078.
+- **Save 33,580 chars of a 500,000 budget** (6.7%), carrying the chains and the meter's memory. The
+  seen-set has 65 keys and has never truncated, so novelty is exact rather than soft.
+- **Epoch gaps remain** (65k, 70k, 85k, 90k have no row). `flushEpoch` bails on `acc.n<=0`, so those
+  epochs took no sample at all — a stalled frame, or a lineage reloaded from a save at a different
+  tick. Nine universes on an eight-core phone, as flagged at #153. The meter no longer reports these
+  as zeros; they are simply absent, which is the correct representation of an epoch that did not happen.
