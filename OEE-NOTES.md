@@ -11579,3 +11579,113 @@ than decisive. A creature held below the cap, run alongside, would settle it.
   epochs took no sample at all — a stalled frame, or a lineage reloaded from a save at a different
   tick. Nine universes on an eight-core phone, as flagged at #153. The meter no longer reports these
   as zeros; they are simply absent, which is the correct representation of an epoch that did not happen.
+
+---
+
+## THE WHOLE FIELD, MEASURED — nine universes, one moment, 2026-09-01
+
+Eight individuals plus the collective, exported together at ~105–130k ticks each. The first time this
+project has had a control arm. Four findings, one of which cuts against something I built.
+
+### 1. They are still individual. Measured, finally.
+
+#153 claimed migrants share material without merging creatures, and until now that was only ever tested
+with a synthetic marker in a rig. Germline atom expressions shared between pairs, real field:
+
+```
+        u1   u2   u3   u4   u5   u6   u7   u8  COLL
+u1       -  31%  21%   0%  19%  28%  18%  19%  21%
+u2     31%   -   27%   0%  24%  26%  19%  21%  20%
+u5     18%  22%  14%   0%   -   18%  12%  14%  12%
+u7     16%  16%  16%   0%  11%  20%   -   12%  13%
+COLL   21%  19%  18%   0%  13%  15%  15%  14%   -
+```
+
+**Seventy-five to eighty-nine percent of each universe's vocabulary is its own.** And the evolved
+physics is not shared at all: `mutationRate` spans 0.0297 (u7) to 0.0764 (u5) — a 2.6x range — across
+creatures trading continuously for 110,000 ticks. Nine bodies, not one. The claim holds.
+
+### 2. Persistence resolved. The answer is YES.
+
+#130 was built to ask whether innovations last, and for its entire existence it answered 0 because it
+could not measure (see #156). With the meter fixed and enough ticks past the lag:
+
+| | novel | **persisted** | pending |
+|---|---|---|---|
+| u7 | 44 | **12** | 18 |
+| u5 | 43 | **2** | 35 |
+| u8 | 40 | **2** | 33 |
+| u1 u2 u3 u6 COLL | 24–31 | 0 | 20–27 |
+
+Twelve of u7's forty-four novel computations were **still being executed three epochs after they first
+appeared**. That is the first affirmative answer this notebook has ever recorded to the question it was
+built around. "None of them lasted, which is the shape of going in circles" was a statement about a
+broken instrument, not about the artwork.
+
+u7 is the standout on both persistence (12) and lowest mutation rate (0.0297, against a field median of
+0.058). The tempting story is that low mutation preserves what is found. **I do not have the evidence
+for that**: u5 has the field's HIGHEST mutation rate (0.0764) and persisted 2, while u6 has a low rate
+(0.0467) and persisted 0. n=9, no monotone relationship, and the others still have 20–35 candidates
+pending that may yet resolve. Recorded as an open question with a named next measurement, not a result.
+
+### 3. The collective is NOT ahead — and this cuts against #153
+
+Everything I concluded from the gen-73 collective generalises, because it turns out to be typical:
+all nine hit 192/192 slots, chain links 78–108 (collective 86, mid-range), tendDims 10 for seven of
+nine, D active 24–39 for everyone.
+
+But that is the problem. The collective takes **fifty to a hundred times** the migrants of any
+individual, and on the measure the field exists to improve it is **last**:
+
+```
+novel:  u7 44   u5 43   u8 40   u6 31   u3 30   u1 29   u2 28   |   COLL 24
+persisted:                     u7 12   u5 2   u8 2   |   COLL 0
+```
+
+Lowest novelty of all nine, zero persistence, and the second-lowest tick count despite running the
+whole time — because processing that firehose costs it its own clock. **The migrant flood is not
+buying open-endedness. It may be costing it.**
+
+A plausible mechanism, well known outside this project: migration load. Constant immigration swamps
+local lineages before they can establish, so nothing stays put long enough to persist. That would
+predict exactly this — high intake, high turnover, low persistence. It is a hypothesis, not a result:
+one collective, one field, one moment.
+
+**Registered prediction, falsifiable:** slow the relay (fewer emigrants pulled per second) and the
+collective's persistence should RISE toward the individuals'. If it does not, migration load is the
+wrong explanation and the collective is simply paying for its clock. Either answer is worth having, and
+the relay rate is one constant in `index.html`.
+
+### 4. u4 turned its own broadcast off, and died
+
+One of the eight is dying as this was exported, and it is the clearest thing in the dataset.
+
+```
+generation 434, extinctions 356, atoms 168 (36% adopted), chain links 481
+netMigrantRate  -0.03363      <- NEGATIVE
+netPlasmidRate  -0.0008153    <- NEGATIVE
+epochs 110k..125k: popMean 3, 3, 0, 0    popPeak 13, 10, 0, 0    fitness 0.001 .. 0.014
+```
+
+Both send-rates are negative, and every emission site is `if(Math.random() < rate)`. A negative rate is
+never true. **u4 has stopped emitting migrants and plasmids entirely** — while still absorbing normally
+(109,056 migrants applied, the same as every healthy universe's ~109,000). It became a pure taker.
+
+It is also the only universe with **0% atom overlap with anyone**: its 168-atom bank is entirely its
+own, 64% of it never executed, growing while the population sits at zero.
+
+This is **#148's standing decision, observed for the first time**. `maybe()` is deliberately gloves-off
+and does not honour its bounds, on the author's explicit instruction — *"system needs to decide to turn
+them off. not me."* One of nine universes decided to turn its own broadcasting off. The mechanism did
+exactly what it was left free to do.
+
+What I cannot say from one snapshot is the ORDER. Whether cutting itself off caused the collapse, or
+356 extinctions drove the rate negative on the way down, is not visible here. Both are plausible and
+the honest position is that they are not distinguished. What IS notable, for a project about
+collectives: the universe that only takes and never gives is the one that died. n=1.
+
+**Note on #155 and a dying creature.** u4 holds 481 chain links against the healthy median of 88, and
+its save is 57,388 characters against ~33,500. Extinction bursts drive authoring, and #155 gives every
+authored atom somewhere to go, so a collapsing creature's save now grows faster than it used to. It did
+not cause the collapse — those atoms were being authored before #155 and simply discarded — but the
+cost is real and worth watching against the 500,000 budget.
