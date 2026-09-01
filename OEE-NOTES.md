@@ -11774,3 +11774,77 @@ authors hardest, and the seed-3 run reached `links 192`, the most chains of any 
 hypothesis is deep chains making `uaChain` expensive under heavy authoring; `UA_FUEL` bounds
 invocations per top-level call, so that is not obviously sufficient. **Unresolved, and named so it is
 not forgotten** — it may be the cause of the stalls seen on the device.
+
+---
+
+## THE 7h47m RUN WAS NOT A FREEZE — it was a universe condensing
+
+Recorded at the end of the mutation-rate experiment as an unexplained anomaly, and chased down after
+the author pushed back on the word "freeze". They were right to: **99.8% CPU is not frozen, it is
+spinning**, and those are different failures with different causes.
+
+### It is a progressive slowdown, and it compounds
+
+Reproduced exactly (RATE=0.12 SEED=4, seeded from u1), with per-tick timing:
+
+```
+s=2000   95 ticks/s
+s=3500   29 ticks/s
+s=4500   17 ticks/s
+s=6500   12 ticks/s      no single tick ever exceeded 2 seconds
+```
+
+Nothing hangs. Every tick simply costs more than the last, and 8x slower over 6,500 ticks compounds
+into 7h47m across 40,000. A hang would have shown as one enormous tick; this is a curve.
+
+### The cause: the universe CLUSTERED
+
+`processGrid` is 33.6% of CPU (self time, so the loop body itself, not its callees). It walks each
+particle's 3x3 grid neighbourhood, so its cost is the sum of local densities — quadratic in how tightly
+packed the world is, not linear in how many particles there are. Measured:
+
+| tick | alive | cells occupied | biggest cell | scan per particle | ms/100 ticks |
+|---|---|---|---|---|---|
+| 1500 | 202 | 161 | 6 | 4 | 1,775 |
+| 3000 | 93 | 39 | 23 | 31 | 2,245 |
+| 6000 | 246 | 37 | 32 | **62** | 7,559 |
+
+**The population did not grow — it condensed.** 202 particles across 161 cells became 246 across 37.
+Scan work per particle went 4 -> 62, a 15x rise, and the wall clock followed. A universe that evolves
+into a tight clump becomes quadratically more expensive to simulate. That is physics, not a defect.
+
+**This is very likely the cause of the epoch gaps on the device** (#153, #156): the universes that go
+quiet are not stalled frames, they are universes that have condensed and slowed. That reframes the
+"nine workers on eight cores" reading — the scheduler may be fine and the WORLD may be the load.
+
+### What it is NOT
+
+Two hypotheses I held, both wrong, both killed by the profile:
+
+- **Atom compilation: 0.0%.** I expected `cloneGenome` setting `compiled:null` to force constant
+  recompilation under high mutation. It does not register at all.
+- **My #155 chains: `stackToll` is 0.4%.** `uaCall` + `uaChain` together are 16%, which is the atom
+  machinery doing its job, and chain links grew only 88 -> 104 across the run. #155 did not cause this.
+
+### The optimization I did NOT ship
+
+The obvious fix looked free. `INTERACTION_CAP` is **10**, so a particle interacts with at most ten
+neighbours per tick while scanning up to **117** — roughly 91% of the scan cannot produce an
+interaction. Breaking out of the loop once `pIntCount[i] >= _capK` looked like a pure no-op win.
+
+**It is not.** Reading the whole loop body to the end:
+
+```js
+          if(d<minD*1.3&&d>0)interferenceCreate(i,j);   // <- OUTSIDE the cap gate
+        }
+        j=pnext[j];
+```
+
+`interferenceCreate` fires for very close pairs **regardless of the interaction budget**. A particle
+that has spent its ten still makes interference. Early-exiting would silently delete those events and
+change the physics. Not shipped, and recorded here so the next reader does not rediscover the idea and
+believe it is free.
+
+A real fix would be a finer grid so dense regions subdivide, but `CELL` is tied to the interaction
+radius (the +/-1 cell sweep assumes `CELL >= iR`), so shrinking it changes what can interact with what.
+That is a physics decision, not an optimization, and it is the author's to make.
