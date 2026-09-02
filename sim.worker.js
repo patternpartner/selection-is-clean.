@@ -182,6 +182,27 @@ self.addEventListener('message', async (e) => {
           'if(dt<1)dt=1; if(dt>600)dt=600;' +
           'if(!(Math.random()<1-Math.pow(1-Math.min(1,r),dt)))return null;' +
           'var d=buildMigrantPacket();return d?netPacket("migrant",d):null;}catch(e){return null;}};' +
+        'self.__api.census=function(){var o={};try{' +
+          'o.N=N;o.CAP=CAP;' +
+          'var pg=0,pa=0,pl=0,pp=0;' +
+          'for(var i=0;i<CAP;i++){var g=pGenome[i];if(!g)continue;pg++;' +
+            'if(g.userAtoms)pa+=g.userAtoms.length;' +
+            'if(g.opStacks){for(var k in g.opStacks)pl+=g.opStacks[k].length;}' +
+            'if(g.boundOpcodes)pp+=g.boundOpcodes.length;}' +
+          'o.pGenomes=pg;o.pAtomsTotal=pa;o.pChainLinks=pl;o.pBoundSlots=pp;' +
+          'o.germAtoms=(genome.userAtoms||[]).length;' +
+          'o.archive=(typeof genomeArchive!=="undefined"&&genomeArchive)?genomeArchive.length:-1;' +
+          'o.eventLog=(genome.eventLog||[]).length;o.epochs=(genome.epochs||[]).length;' +
+          'o.oeeSeen=(typeof __oeeSeen!=="undefined"&&__oeeSeen)?__oeeSeen.size:-1;' +
+          'o.oeeLast=(typeof __oeeLastUses!=="undefined"&&__oeeLastUses)?__oeeLastUses.size:-1;' +
+          'o.uaCode=(typeof __uaCode!=="undefined")?__uaCode.size:-1;' +
+          'o.exprUses=(typeof __atomExprUses!=="undefined")?__atomExprUses.size:-1;' +
+          'o.exprContrib=(typeof __atomExprContrib!=="undefined")?__atomExprContrib.size:-1;' +
+          'o.exprCredit=(typeof __atomExprCredit!=="undefined")?__atomExprCredit.size:-1;' +
+          'o.clusters=(typeof clusters!=="undefined"&&clusters)?clusters.length:-1;' +
+          'o.peers=(typeof peerLastSeen!=="undefined")?Object.keys(peerLastSeen).length:-1;' +
+          'o.ticks=genome.totalTicks|0;' +
+        '}catch(e){o.err=String(e&&e.message);}return o;};' +
         'self.__api.setGene=function(k,v){try{if(typeof genome[k]!=="number"||typeof v!=="number")return false;genome[k]=v;return true;}catch(e){return false;}};' +
         'self.__api.feedPacket=function(p){try{handleNetworkMessage(p);return true;}catch(e){return false;}};' +
         // A few numbers off the sim's own counters. The field is nine worlds behind nine worker
@@ -299,6 +320,16 @@ self.addEventListener('message', async (e) => {
     let ran = false;
     try { if (typeof gc === 'function') { gc(); ran = true; } } catch (_) {}
     self.postMessage({ type: 'gc-result', rid: d.rid, ran });
+    return;
+  }
+
+  // Diagnostic: COUNT THE LIVE STRUCTURES. Forced collection freed nothing, so the field's memory is
+  // live objects, and four hypotheses about which ones have now been wrong. This stops guessing:
+  // sample the counts, run, sample again, and read what actually grew.
+  if (d.type === 'census') {
+    let c = null;
+    try { c = self.__api && self.__api.census ? self.__api.census() : null; } catch (e) { c = { err:String(e&&e.message) }; }
+    self.postMessage({ type: 'census-result', rid: d.rid, census: c });
     return;
   }
 

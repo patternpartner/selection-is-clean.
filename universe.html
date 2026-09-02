@@ -131,6 +131,7 @@
     stat:  function(){ return ask('stat', null); },
     heapForTest: function(){ return ask('heap', null); },
     gcForTest:   function(){ return ask('gc', null); },
+    censusForTest: function(){ return ask('census', null); },
     // #158: test-only. Lets collective-test.js drive the evolved-silence case directly.
     setGeneForTest: function(gene,value){ return ask('setgene', { gene:String(gene), value:+value }); },
     // #154: show this universe's save/load buttons. The field calls this when it opens a cell.
@@ -156,6 +157,7 @@
     if (d.type === 'stat'){ settle(d.rid, d.stat || null); return; }
     if (d.type === 'heap-result'){ settle(d.rid, d.heap || null); return; }
     if (d.type === 'gc-result'){ settle(d.rid, !!d.ran); return; }
+    if (d.type === 'census-result'){ settle(d.rid, d.census || null); return; }
     if (d.type === 'setgene-result'){ settle(d.rid, !!d.ok); return; }
     if (d.type === 'export'){
       // A field-level save asks for the DATA, not a download. Only a click on this universe's own
