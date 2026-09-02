@@ -270,14 +270,23 @@ self.addEventListener('message', async (e) => {
     return;
   }
 
-  // Diagnostic: this worker's own JS heap. There is no way to read a worker's isolate from the page,
-  // and twice now the field's memory has been hypothesised about instead of measured.
+  // Diagnostic: this worker's own memory. There is no way to read a worker's isolate from the page,
+  // and the field's memory had been hypothesised about repeatedly and measured never.
+  // performance.memory is NOT available in a Worker — it is a Chrome main-thread-only extension, and
+  // the first version of this hook used it and silently returned null for every universe. The
+  // standard API that DOES work here is measureUserAgentSpecificMemory(), which is async and needs a
+  // secure context; it reports the whole isolate including detached objects.
   if (d.type === 'heap') {
-    let h=null;
-    try { if (typeof performance!=='undefined' && performance.memory)
-      h={ used:Math.round(performance.memory.usedJSHeapSize/1048576),
-          total:Math.round(performance.memory.totalJSHeapSize/1048576) }; } catch (_) {}
-    self.postMessage({ type: 'heap-result', rid: d.rid, heap: h });
+    const reply = (h, how) => { try { self.postMessage({ type:'heap-result', rid:d.rid, heap:h, how }); }catch(_){} };
+    try {
+      if (typeof performance !== 'undefined' && performance.measureUserAgentSpecificMemory) {
+        performance.measureUserAgentSpecificMemory()
+          .then(r => reply({ bytes:r.bytes, mb:Math.round(r.bytes/1048576) }, 'measureUserAgentSpecificMemory'))
+          .catch(e => reply(null, 'measure failed: '+((e&&e.message)||e)));
+        return;
+      }
+    } catch (_) {}
+    reply(null, 'no worker-visible memory API');
     return;
   }
 
