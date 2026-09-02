@@ -270,6 +270,17 @@ self.addEventListener('message', async (e) => {
     return;
   }
 
+  // Diagnostic: this worker's own JS heap. There is no way to read a worker's isolate from the page,
+  // and twice now the field's memory has been hypothesised about instead of measured.
+  if (d.type === 'heap') {
+    let h=null;
+    try { if (typeof performance!=='undefined' && performance.memory)
+      h={ used:Math.round(performance.memory.usedJSHeapSize/1048576),
+          total:Math.round(performance.memory.totalJSHeapSize/1048576) }; } catch (_) {}
+    self.postMessage({ type: 'heap-result', rid: d.rid, heap: h });
+    return;
+  }
+
   if (d.type === 'stat') {
     let stat = null; try { stat = self.__api && self.__api.stat ? self.__api.stat() : null; } catch (_) {}
     self.postMessage({ type: 'stat', rid: d.rid, stat });
