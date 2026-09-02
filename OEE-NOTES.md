@@ -12086,3 +12086,75 @@ the codec AND poisoning the population that carries it) is untested and is recor
 
 Where the character came from is also unknown. Nothing recorded it. #157's damage report and this
 wire check together mean the next one names itself instead of vanishing.
+
+---
+
+## CAN A FIELD RESCUE A COLLAPSED LINEAGE? No.
+
+The author asked what would happen if the gen-5405 creature — the oldest thing this project has grown,
+1,183,286 ticks, 5,019 extinctions — were loaded back into the multiverse. It was run as the
+COLLECTIVE of a live 8-universe field, which is the maximum-inbound seat: the relay pulls from all
+eight and feeds it, and since #158 respects its evolved silence it can contribute nothing back, so
+there is no contamination path. The rescue attempt with the risk engineered out.
+
+### What it looks like on arrival in today's build
+
+```
+5.29 MB file loads cleanly, encodeGenome succeeds, 423,232 chars out (85% of SAVE_BUDGET)
+atoms 1,793 -> 160     of which 8 have ever run
+dims 32 (DIMS_MAX)     mutationRate 0.25
+netMigrantRate  -0.1112      netPlasmidRate  -0.1007      <- BOTH NEGATIVE
+```
+
+**It had evolved into complete network silence, exactly as u4 did.** Two independent lineages — one at
+1.18M ticks and one at 130k — both converged on negative send rates, became pure takers, and died.
+That is a pattern with two instances rather than an anecdote, and it makes `netMigrantRate` going
+negative the earliest warning sign this system has. Whether the silence causes the collapse or is a
+symptom of it remains undistinguished.
+
+### The result
+
+```
+ min   COLLECTIVE: ticks     N   gen   atoms  migrantsIn  errs  |  individuals N (mean)
+   0        1183288    16  5406     160           8     0       |   68
+   1        1184756     4  5415     163          69     0       |   88
+   3        1187542    23  5439     169         188     0       |  119
+   5        1190345   114  5464     169         273     0       |  161
+   6        1191660    10  5475     172         299     0       |  174
+```
+
+**69 generations in 8,372 ticks — one death every ~121 ticks.** Population bounces between 4 and 23
+with one spike to 114 that collapsed within a minute. Historically it died every 236 ticks, so it is
+now dying at roughly TWICE its old rate.
+
+**It was receiving.** 299 migrants arrived and the bank grew 160 → 172. The material got in and got
+incorporated. It simply could not hold anything: its own physics resets the world before an immigrant
+lineage can establish.
+
+**The field never noticed.** The eight individuals climbed 68 → 174 throughout. A collapsed lineage in
+the collective seat neither helped nor harmed them, which is what #158's gating was for.
+
+### What this settles
+
+**The collective can pass material. It cannot fix physics.** A lineage whose own genes are killing it
+is not saved by being fed, no matter how much. That is a real boundary on what this whole design can
+do, and it is worth having measured rather than assumed — the collective was built on the premise that
+a collapsed universe "needs foreign genomes far more than it needs its own ticks" (#149). It needs
+them, and they are not sufficient.
+
+**`errs 0` throughout.** #157's caught-tick counter never moved, so this death loop is genuine
+population collapse and not a runtime exception. That rules out — for this creature at least — the
+theory I was chasing about the field's 300k-tick failure.
+
+**And today's build makes it worse.** It arrives having lost 91% of its atom bank, because #145 DROPS
+over-length expressions rather than truncating them. That fix is correct — a cut expression is broken
+syntax, not a smaller one — but it means this creature can never be restored to what it was. Its 1,633
+dropped atoms are gone, and it is dying faster now than it did originally because it arrives crippled.
+A repair that is right in general can still be a loss for the one specimen that motivated it.
+
+### Not attempted, and why
+
+Loading it into one of the eight INDIVIDUALS would be a real risk: they share one `selection_genome`
+key, so the first autosave from the universe carrying it hands it to all eight on the next reload
+(#159's monoculture). One collapsed lineage becomes eight. The collective's separate slot is the only
+safe place to try anything like this.
