@@ -159,7 +159,30 @@ self.addEventListener('message', async (e) => {
         // all still apply. Nothing here can inject anything a peer could not have sent, because the
         // packet WAS built by a peer. The field uses these to point one universe's emigrants at one
         // recipient rather than at everybody.
-        'self.__api.pullMigrant=function(){try{var d=buildMigrantPacket();return d?netPacket("migrant",d):null;}catch(e){return null;}};' +
+        // #158: THE RELAY IS A ROUTER, NOT A SOURCE. #153's own comment said "all the field changes
+        // is WHO HEARS IT" — and then skipped the gate that decides whether anything is said at all.
+        // networkBroadcast emits only when Math.random() < genome.netMigrantRate. This pulled
+        // unconditionally, once per second, so a universe that had evolved its rate to ZERO OR BELOW
+        // was still being milked. Measured on the device: u4 had netMigrantRate -0.03363, meaning it
+        // had stopped broadcasting entirely, and the relay kept taking a migrant out of it every
+        // second and feeding it to the collective, which feeds material back to the others.
+        // That is this code overriding a decision selection made — against the one standing rule this
+        // project has ("the system needs to decide to turn them off, not me", #148) — and a plausible
+        // route for one universe's collapse to circulate through the field.
+        // Same coin, same gene. A silent universe now contributes nothing, which is what silence means.
+        // The rate is PER TICK; the relay asks once per second. Gating naively on the same number
+        // would make the relay fire 20-60x rarer than the universe's own broadcasting, which is a
+        // throttle, not a translation. So ask the real question: "would you have broadcast at least
+        // once since I last asked?" — one roll per elapsed tick, i.e. 1-(1-r)^dt. A rate at or below
+        // zero gives zero however long the gap, which is the whole point.
+        'self.__lastPull=0;' +
+        'self.__api.pullMigrant=function(){try{' +
+          'var r=+genome.netMigrantRate; if(!(r>0)){self.__lastPull=tick;return null;}' +
+          'var dt=tick-self.__lastPull; self.__lastPull=tick;' +
+          'if(dt<1)dt=1; if(dt>600)dt=600;' +
+          'if(!(Math.random()<1-Math.pow(1-Math.min(1,r),dt)))return null;' +
+          'var d=buildMigrantPacket();return d?netPacket("migrant",d):null;}catch(e){return null;}};' +
+        'self.__api.setGene=function(k,v){try{if(typeof genome[k]!=="number"||typeof v!=="number")return false;genome[k]=v;return true;}catch(e){return false;}};' +
         'self.__api.feedPacket=function(p){try{handleNetworkMessage(p);return true;}catch(e){return false;}};' +
         // A few numbers off the sim's own counters. The field is nine worlds behind nine worker
         // boundaries; without this the only way to know whether a relayed migrant LANDED was to
@@ -235,6 +258,15 @@ self.addEventListener('message', async (e) => {
 
   if (d.type === 'feed') {
     try { if (self.__api && self.__api.feedPacket) self.__api.feedPacket(d.packet); } catch (_) {}
+    return;
+  }
+
+  // #158: set one numeric gene, so a rig can DRIVE the silence case instead of waiting ~100,000
+  // ticks for a universe to evolve into it (#143: rarity is not safety). Numeric scalars only.
+  if (d.type === 'setgene') {
+    let ok=false;
+    try { if (self.__api && self.__api.setGene) ok = self.__api.setGene(d.gene, d.value); } catch (_) {}
+    self.postMessage({ type: 'setgene-result', rid: d.rid, ok });
     return;
   }
 

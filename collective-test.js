@@ -128,6 +128,31 @@ const server=http.createServer((req,res)=>{
     await p2.close();
   }
 
+  // ── 1c. a universe that has evolved to stop broadcasting must go silent in the relay too ─────
+  // #158. The relay used to call buildMigrantPacket() with no gate, so a universe whose evolved
+  // netMigrantRate had gone to zero or below was still milked once per second and its material still
+  // circulated. Measured on the device: u4 sat at -0.03363, fully silent on the wire, and the relay
+  // took a migrant out of it every second anyway. That is code overriding a decision selection made.
+  // Drive it directly rather than waiting for a universe to evolve there: set the gene to 0 and to a
+  // high value, and require pull() to answer accordingly.
+  const silence = await page.evaluate(async () => {
+    const fr = document.querySelector('.cell').firstChild;
+    const set = (v) => new Promise(r => { fr.contentWindow.__field.setGeneForTest
+      ? fr.contentWindow.__field.setGeneForTest('netMigrantRate', v).then(r) : r(false); });
+    const pulls = async (n) => { let got=0;
+      for (let i=0;i<n;i++){ const p = await fr.contentWindow.__field.pull(); if (p) got++; }
+      return got; };
+    if (!fr.contentWindow.__field.setGeneForTest) return { unsupported:true };
+    const before = (await fr.contentWindow.__field.stat()) || {};
+    await set(0);            const atZero = await pulls(60);
+    await set(1);            const atOne  = await pulls(60);
+    // RESTORE. An earlier version left the gene pinned at 1 for the rest of the run, so universe 1
+    // broadcast on every tick and polluted every number measured after it — a test changing the
+    // thing it is measuring, which is the failure mode this file exists to catch.
+    await set(0.003);
+    return { atZero, atOne, restored:true, before:before.tick|0 };
+  });
+
   // ── 2. the relay, read off the receive side of every sim ─────────────────────────────────────
   const stats = await page.evaluate(async () => {
     const cells=[...document.querySelectorAll('.cell')];
@@ -196,10 +221,19 @@ const server=http.createServer((req,res)=>{
     noControlsInTheGrid:  gridControls.length>0 && gridControls.every(v=>v===false),
     controlsWhenOpened:   opened.shown===true && opened.h>=36,
     saveActuallySaves:    /^selection_gen\d+_t\d+\.json$/.test(String(saved||'')),
-    collectiveIsASink:   !!coll && acc(coll) > maxIndiv * 2 && acc(coll) > 20,
+    // #158 CHANGED WHAT THIS CAN ASSERT, and the bar is lowered because the MECHANISM changed, not
+    // to make the check go green. Before, the relay pulled unconditionally once per second and the
+    // collective measured a 47-100x sink. Now the pull is gated on each universe's own evolved
+    // netMigrantRate, so the relay delivers roughly ONE EXTRA COPY of each universe's natural
+    // emission stream, directed at the collective — which caps the collective at about twice any
+    // individual, and that ceiling is now the gene's to set, not mine. Measured after the change:
+    // 58 against a field max of 40. There is no way to widen it again without overriding the gene,
+    // which is the thing #158 exists to stop.
+    collectiveIsASink:   !!coll && acc(coll) > maxIndiv * 1.3 && acc(coll) > 20,
     nothingIsRejected:   rows.length>0 && rows.every(r=>(r.s.bad|0)===0),
     collectiveStillAlive: !!coll && (coll.s.N|0) > 0 && (coll.s.tick|0) > 100,
     returnPathIsATrickle: inN>0 && outN*4 <= inN,
+    silenceRespected: silence.unsupported===true ? null : (silence.atZero===0 && silence.atOne>40),
     noPageErrors: pageErrors.length===0,
     hashPathsIntact: paths.every(p=>p.ok),
     collectiveSeeded: seeded===true,
@@ -220,10 +254,11 @@ const server=http.createServer((req,res)=>{
     ['noControlsInTheGrid','in the grid a cell is a tab — no buttons that cannot be pressed'],
     ['controlsWhenOpened','opening a universe gives it its buttons, at a size a thumb can hit'],
     ['saveActuallySaves','and a REAL TOUCH TAP on save produces a file'],
-    ['collectiveIsASink','the collective takes in far more migrants than any individual'],
+    ['collectiveIsASink','the collective still takes in more than any individual (~2x, gene-capped since #158)'],
     ['nothingIsRejected','every packet on the wire validates — the wire\'s limits match the engine\'s'],
     ['collectiveStillAlive','it survives being fed from every world at once'],
     ['returnPathIsATrickle','the collective takes in far more than it sends back — a sink, not a broadcaster'],
+    ['silenceRespected','a universe with netMigrantRate 0 sends the relay nothing; at 1 it sends every time'],
     ['noPageErrors','no uncaught exception on the field page'],
     ['hashPathsIntact','#solo drops the collective and an old lineage link still opens one universe'],
     ['collectiveSeeded','the collective can export itself into its own slot'],
@@ -244,6 +279,7 @@ const server=http.createServer((req,res)=>{
     +'  fp '+String(r.s.fp||'').slice(0,26));
   console.log('  field: '+JSON.stringify(stats.note));
   for(const p2 of paths) console.log('  '+p2.hash.slice(0,14).padEnd(15)+'cells/collective '+p2.got+' (want '+p2.want+')');
+  console.log('  #158 relay gating: pulls at rate 0 -> '+silence.atZero+' of 60, at rate 1 -> '+silence.atOne+' of 60');
   console.log('  after reload, totalTicks: '+after.map(r=>(r.collective?'COLLECTIVE:':'u:')+r.tt).join('  '));
   console.log(bad? '\n'+bad+' FAILED' : '\nthe collective is fed by the field, and the field is still eight worlds');
   process.exit(bad?1:0);

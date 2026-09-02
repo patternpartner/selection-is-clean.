@@ -12006,3 +12006,83 @@ was right, which is this file's own failure mode turned on itself. Recorded in t
 — that is precisely the hole this closes. The next occurrence will name itself on the frame and carry
 the message in the save. Worth watching for: the message, the tick, and whether it correlates with the
 clustering slowdown, since a condensing universe is also the one doing the most work per tick.
+
+
+---
+
+## #159 — ONE ODD CHARACTER STOPS A CREATURE SAVING, AND THE ROOT CAUSE CAME FROM THE AUTHOR'S QUESTION
+
+Two puzzles, asked as one message:
+
+> *"how come the collective universe was still running even after all the others appeared to stop? how
+> come the save buttons stopped working but the loads were?"*
+
+The second question is the diagnosis. I had spent the previous exchange proposing structural causes for
+the 198,000-tick loss — #157's placement of the autosave, the save budget, the death loop — and all of
+them were plausible and none was demonstrated. **The asymmetry was the evidence, and it was handed to
+me.** Save broken, load fine, is not a symptom of any of those. It names exactly one thing.
+
+```js
+return btoa(JSON.stringify(g));   // encodeGenome
+const g=JSON.parse(atob(data));   // decodeGenome
+```
+
+`btoa` throws `InvalidCharacterError` on any character above U+00FF. `atob` encodes nothing and cannot
+fail that way. So a single non-Latin-1 character anywhere in the genome does this:
+
+| path | what happens |
+|---|---|
+| `archiveGenome` → `trimGenomeToBudget` → `encodeGenome` | throws, caught by a silent `catch(e){}`, **no autosave, forever** |
+| `exportFile` → `encodeGenome` (the save BUTTON) | throws, returns null, **the button does nothing** |
+| `decodeGenome` → `atob` (the load BUTTON) | untouched, **still works perfectly** |
+
+The creature keeps evolving, keeps ticking, keeps drawing. It simply stops being able to write itself
+down. That is 300,000 ticks displayed with 198,000 stored, and it is the same class as #145 — a
+persistence failure that leaves every visible sign of health intact.
+
+### And the collective survived because of the shared save slot
+
+The eight individuals all boot from the ONE shared `selection_genome` key, so after any reload they are
+**clones of whichever universe wrote last**. If that genome carries the bad character, all eight are
+broken identically and at once. The collective reads its own slot (`selection_collective`, #153), so it
+is the only universe in the field carrying a different creature — and the only one that could still
+save. The author's first question answers itself once the second one is understood.
+
+Recorded plainly because it revises something agreed earlier: the shared slot was called "a good thing,
+not a bug", and it is — it is what makes the field one organism across reloads. It is also a
+monoculture, and a monoculture shares its defects perfectly. The collective's separate slot is the only
+genetic firebreak the field has.
+
+### Fixed at three levels, not one
+
+**The codec.** `__b64enc`/`__b64dec` handle UTF-8 properly, and are **byte-identical to btoa/atob for
+pure ASCII**, so every save ever written still reads. Chunked through `String.fromCharCode.apply` so a
+large genome does not blow the stack.
+
+**The wire.** `validNetworkPayload` checked an incoming atom expression's LENGTH and never its CONTENT.
+An expression is compiled with `new Function` and base64'd into every future save, so one character
+arriving in one migrant's vocabulary could permanently disable saving in whichever universe accepted
+it — and then spread. Now bounded to printable ASCII. Exactly #153's class: the wire accepting what the
+engine cannot handle.
+
+**The bank.** `sanitizeGenome` drops any expression outside that set, so a character already stored
+cannot survive a load.
+
+**And my own #157 addition, which had the same hole.** The caught-tick message is serialised into the
+genome and an exception message can contain anything — including a quoted fragment of an atom
+expression. It is stripped to printable ASCII before being kept. I introduced that risk two commits
+ago while fixing a different silent-save bug.
+
+### What this does and does not settle
+
+It explains the save failure, the button asymmetry and the collective's survival, and it is
+demonstrated rather than argued: `codec-test.js` shows raw `btoa` still throwing on the string,
+the new codec round-tripping it, the wire refusing it, and the sanitiser dropping it. Twelve checks.
+
+It does **not** explain generation 2,300. That remains ~2,107 extinctions at one death every 142 ticks,
+which is a death loop and a separate matter — and possibly a separate cause, since a universe that
+cannot save is not thereby made to die. Whether the two share a root (a bad expression both breaking
+the codec AND poisoning the population that carries it) is untested and is recorded as open.
+
+Where the character came from is also unknown. Nothing recorded it. #157's damage report and this
+wire check together mean the next one names itself instead of vanishing.

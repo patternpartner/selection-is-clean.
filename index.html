@@ -255,9 +255,11 @@
   var COLL_KEY='selection_collective';
   var cycles=0, inCount=0, outCount=0, returnTo=0;
 
-  // Eight in, one out. A pull that comes back null (a universe with no eligible particle — early
-  // boot, or a collapse) is simply a cycle where that world had nobody to send, which is true and
-  // is the same thing networkBroadcast would have done.
+  // Eight in, one out. A pull that comes back null is a cycle where that world sent nothing — either
+  // it had no eligible particle, or (#158) its own evolved netMigrantRate said not to speak. Both are
+  // the same answer networkBroadcast would have given, which is the point: the relay decides who
+  // HEARS a migrant, never whether one is made. A universe that evolves its way to silence goes
+  // silent here too.
   function relay(){
     var coll=api(collectiveCell); if(!coll) return;
     cycles++;

@@ -14,7 +14,7 @@ Companion to OEE-NOTES.md, which records experiments. This records the machine t
 |---|---|
 | **file** | `engine.html` — the sim moved out of `index.html` in `c0cef11`. Since **#149** the pages are: `index.html` = THE FIELD, `universe.html` = the single worker shell (what `index.html` used to be), `engine.html` = the simulation itself, still runnable on its own. Since **#153** the field is EIGHT INDIVIDUALS PLUS A COLLECTIVE (nine iframes, nine workers); the ninth is an ordinary universe whose input is the other eight |
 | **last fully re-derived** | never — this map was written against `index.html` and has been patched, not rebuilt |
-| **prose current through** | **#90.** The engine is at **#157.** Roughly sixty swings are undocumented here |
+| **prose current through** | **#90.** The engine is at **#159.** Roughly sixty swings are undocumented here |
 | **verified as of #131** | the anchor table below, the opcode constants, the genome extent, and the census claims |
 | **added since, unmapped below** | **#132/#133** verb grammar (`EFFECT_TARGETS`, `applyUserEffect`, opcode 236) · **#134** liveness census (`LIVENESS_DECLARED`, `fired()`) · **#135** attention field (`attnField`, `attentionAt`, the `at` sense) · **#136** world signal (`updateWorldSignal`, `worldSignalSuppressed`) · **#137** crossing census (`CROSSING_DECLARED`, `crossingCensus`) · **#138** the diary (`theDiary`, `diaryPanel`) · **#139** sense-gated verbs (`verbGate`, `remapEffectAx`, `effectSenseRate`) · **#140** the crossings (`CHILD_NOT_A_GENE`, inherit/roundtrip tests) · **#141** migrant vocabulary (`MIGRANT_CARRIES_VOCAB`) · **#153** the migrant packet extracted (`buildMigrantPacket`) and the wire's limits derived rather than restated (`netMaxOpcode`). Grep the names; no line anchors yet |
 | **NOT verified** | every other inline line number in this file. They were written against a file ~1,100 lines shorter and around 500–900 lines of drift has accumulated unevenly — treat them as approximate, and grep for the quoted code instead |
@@ -94,6 +94,21 @@ cull, `#139` for a sense gate seeded into a particle, `#141` for a migrant cross
 strategies, and which one applies depends on whether the bank travels: match by **expression** when
 the destination has its own bank (`remapEffectAx`), preserve **slot order** when you are shipping the
 bank itself (the migrant packet).
+
+**The genome codec is UTF-8 safe, and expressions are ASCII-bounded (#159).** `encodeGenome` used raw
+`btoa`, which throws on any character above U+00FF, while `decodeGenome` used `atob`, which cannot fail
+that way. One odd character anywhere in the genome therefore killed the autosave AND the save button
+while leaving the load button working — the asymmetry that identified it. Use `__b64enc`/`__b64dec`
+(byte-identical to btoa/atob for ASCII, so old saves still read). Atom expressions are bounded to
+printable ASCII by `uaExprSafe`/`UA_EXPR_SAFE` at three points: the wire (`validNetworkPayload`, which
+checked length but never content), the bank (`sanitizeGenome`), and #157's caught-tick message. **Any
+new string that reaches the genome must pass the same guard** — it will be base64'd into every future
+save and, for expressions, compiled with `new Function`.
+
+**The shared save slot is a monoculture (#159).** The eight individuals boot from one
+`selection_genome` key, so after a reload they are clones of whichever wrote last, and a defect in that
+genome breaks all eight identically. The collective's own slot (`selection_collective`) is the field's
+only genetic firebreak — which is why it was the one universe still running.
 
 **Nothing that must happen may live downstream of a throw (#157).** `loop()` increments `tick` and
 `genome.totalTicks` as its first statements inside a big try, so an exception anywhere in the body

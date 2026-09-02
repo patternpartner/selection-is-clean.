@@ -129,6 +129,8 @@
     feed:  function(packet){ try { worker.postMessage({ type:'feed', packet:packet }); } catch(e){} },
     // The sim's own receive-side counters. Arrivals, not sends.
     stat:  function(){ return ask('stat', null); },
+    // #158: test-only. Lets collective-test.js drive the evolved-silence case directly.
+    setGeneForTest: function(gene,value){ return ask('setgene', { gene:String(gene), value:+value }); },
     // #154: show this universe's save/load buttons. The field calls this when it opens a cell.
     controls: function(show){ if (gioEl) gioEl.hidden = !show; }
   };
@@ -150,6 +152,7 @@
     }
     if (d.type === 'pulled'){ settle(d.rid, d.packet || null); return; }
     if (d.type === 'stat'){ settle(d.rid, d.stat || null); return; }
+    if (d.type === 'setgene-result'){ settle(d.rid, !!d.ok); return; }
     if (d.type === 'export'){
       // A field-level save asks for the DATA, not a download. Only a click on this universe's own
       // save button (which carries no rid) should put a file on the device.

@@ -210,8 +210,12 @@ function validNetworkPayload(type,data){
       // was and remains coerced rather than validated on the receive side (r[0]|0 on a bad row is 0,
       // inside a try/catch) — these are validated up front because a bad expression string is not
       // coerced into anything, it is compiled.
+      // #159: length was checked, CONTENT was not. An expression is compiled with new Function AND
+      // base64-encoded into every future save, so one character outside printable ASCII arriving on
+      // the wire could permanently disable saving in the universe that accepted it. Same class as
+      // #153's stale bounds: the wire accepting what the engine cannot handle.
       (!data.ua||(Array.isArray(data.ua)&&data.ua.length<=MIGRANT_VOCAB_MAX&&
-        data.ua.every(x=>typeof x==='string'&&x.length<=160)))&&
+        data.ua.every(x=>typeof x==='string'&&x.length<=160&&UA_EXPR_SAFE.test(x))))&&
       (!data.ue||(Array.isArray(data.ue)&&data.ue.length<=MAX_USER_EFFECTS&&
         data.ue.every(e=>e&&typeof e==='object'&&finitePacketNumber(e.t,0,64)&&
           finitePacketNumber(e.m,0,1)&&finitePacketNumber(e.s,-4,4)&&
@@ -7867,7 +7871,7 @@ function encodeGenome(){
     scw:+(genome.scenarioCreditWeight||0).toFixed(3), // Pe29 Layer 19
     ser:+(genome.shadowExploreRate||0.5).toFixed(3) // Pe30b: explore rate
   };
-  return btoa(JSON.stringify(g));
+  return __b64enc(JSON.stringify(g));
 }
 
 function decodeGenome(data){
@@ -7877,7 +7881,7 @@ function decodeGenome(data){
       const wrapper=JSON.parse(data);
       data=wrapper.genome||wrapper.data||'';
     }
-    const g=JSON.parse(atob(data));
+    const g=JSON.parse(__b64dec(data));
     if(g.p){
       [genome.entropyBaseline,genome.entropyK,genome.entrainRate,genome.entrainThresh,
        genome.creationCost,genome.creationThresh,genome.destructThresh,genome.tendencyBleed,
@@ -9047,7 +9051,9 @@ function sanitizeGenome(){
   // outcome — the atom genuinely cannot be represented in this format — and it shrinks a legacy save
   // back under the size at which the autosave silently gives up.
   genome.userAtoms=Array.isArray(genome.userAtoms)?genome.userAtoms
-    .filter(a=>a&&typeof a.expression==='string'&&a.expression.length<=UA_EXPR_MAX)
+    // #159: also drop anything outside printable ASCII — see __b64enc. A single such character
+    // anywhere in the bank makes the whole genome unsaveable, so it must not survive a sanitise pass.
+    .filter(a=>a&&uaExprSafe(a.expression))
     .slice(0,MAX_USER_ATOMS)
     .map(a=>({expression:a.expression,compiled:null,failed:!!a.failed,uses:a.uses|0,age:a.age|0,alienHits:a.alienHits|0,alienAttempts:a.alienAttempts|0})):[];
   if(!Array.isArray(genome.rend)||genome.rend.length!==4) genome.rend=defaultRend();
@@ -9154,6 +9160,38 @@ function sanitizeGenome(){
   // Pe29 Layer 19: scenario credit weight default
   genome.scenarioCreditWeight=__cl(finiteOr(genome.scenarioCreditWeight,0.4),0,1);
 }
+
+// ═══ #159 — btoa THROWS ON ONE ODD CHARACTER, AND atob DOES NOT ════════════════════════════════
+// Reported from the device as two separate puzzles: the autosave stopped while the simulation kept
+// running, and the SAVE button did nothing while the LOAD button still worked. They are one bug.
+// encodeGenome ended `return btoa(JSON.stringify(g))`. btoa throws InvalidCharacterError on any
+// character above U+00FF. decodeGenome uses atob, which encodes nothing and therefore cannot fail
+// that way. So a single non-Latin-1 character anywhere in the genome — one atom expression carried in
+// by a migrant is enough — PERMANENTLY DISABLES SAVING while leaving loading perfectly intact:
+//   archiveGenome -> trimGenomeToBudget -> encodeGenome   throws, caught by a silent catch, no save
+//   exportFile    -> encodeGenome                          throws, returns null, the button does nothing
+//   decodeGenome  -> atob                                  unaffected
+// That is the asymmetry exactly as described, and it is why the creature could keep evolving to
+// 300,000 ticks while its last stored state stayed at 198,000.
+// These two are byte-identical to btoa/atob for pure ASCII, so every save ever written still reads.
+function __b64enc(str){
+  const u=new TextEncoder().encode(str);
+  let bin='';
+  const CH=0x8000;                       // chunked: fromCharCode.apply blows the stack on a big array
+  for(let i=0;i<u.length;i+=CH) bin+=String.fromCharCode.apply(null,u.subarray(i,i+CH));
+  return btoa(bin);
+}
+function __b64dec(b64){
+  const bin=atob(b64);
+  const u=new Uint8Array(bin.length);
+  for(let i=0;i<bin.length;i++) u[i]=bin.charCodeAt(i);
+  return new TextDecoder().decode(u);
+}
+// The character set an authored expression may use. It is compiled with new Function, so this is a
+// safety bound as much as an encoding one — and it is the guard that stops the above from ever
+// happening again at the source rather than only surviving it.
+const UA_EXPR_SAFE=/^[\x20-\x7E]*$/;
+function uaExprSafe(e){ return typeof e==='string' && e.length<=UA_EXPR_MAX && UA_EXPR_SAFE.test(e); }
 
 function saveGenome(){
   const hash=encodeGenome();
@@ -25140,7 +25178,10 @@ function loop(){
     // for..in drawing one Math.random per numeric field), and an error counter must not change the
     // simulation it is counting.
     __loopErrors++;
-    __loopErrLast=(e&&e.message?String(e.message):'unknown').slice(0,160);
+    // #159: this string is serialised into the genome, so it goes through the same base64 that
+    // btoa used to choke on. An exception message can contain anything at all — including a quoted
+    // fragment of an atom expression — so it is stripped to printable ASCII before being kept.
+    __loopErrLast=(e&&e.message?String(e.message):'unknown').replace(/[^\x20-\x7E]/g,'?').slice(0,160);
     __loopErrTick=genome.totalTicks|0;
     try{
       genEl.textContent='runtime recovered: '+__loopErrLast;
