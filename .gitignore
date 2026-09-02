@@ -10,3 +10,7 @@ bankablate.err
 
 # browser-test.js needs playwright-core (npm install playwright-core); the module is not vendored
 node_modules/
+
+# scratch diagnostics — one-off measurement scripts, never part of the artwork.
+# _heap2.js got committed by an unguarded `git add -A` while a background run had it on disk.
+_*.js
