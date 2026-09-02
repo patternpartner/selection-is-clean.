@@ -105,10 +105,21 @@ checked length but never content), the bank (`sanitizeGenome`), and #157's caugh
 new string that reaches the genome must pass the same guard** — it will be base64'd into every future
 save and, for expressions, compiled with `new Function`.
 
-**The shared save slot is a monoculture (#159).** The eight individuals boot from one
-`selection_genome` key, so after a reload they are clones of whichever wrote last, and a defect in that
-genome breaks all eight identically. The collective's own slot (`selection_collective`) is the field's
-only genetic firebreak — which is why it was the one universe still running.
+**The shared save slot is a monoculture, and the collective is NOT a firebreak (#159, corrected).**
+ALL NINE universes — the collective included — run the same engine, and that engine autosaves to the
+one `selection_genome` key every 900 ticks (`archiveGenome`) and again on every extinction. They all
+boot from it too. So after a reload every universe is a clone of whichever wrote last, and a defect in
+that genome breaks all nine identically.
+
+The collective's own slot (`selection_collective`) is written and restored by `index.html`, and it only
+governs what gets **restored into** the collective at ~1200ms after boot. It does nothing to stop the
+collective's engine **writing** to the shared key like everyone else. The asymmetry runs one way:
+it stops the collective INHERITING from an individual, not DONATING to all of them.
+
+I claimed the opposite while advising on a risky import — that the collective "physically cannot
+overwrite the eight" — and it was demonstrated false within minutes: a 1.18M-tick creature loaded into
+the collective seat appeared in every tab on the next reload. **There is currently no safe place to
+import a genome into a running field.** Anything loaded anywhere reaches everything within 900 ticks.
 
 **Nothing that must happen may live downstream of a throw (#157).** `loop()` increments `tick` and
 `genome.totalTicks` as its first statements inside a big try, so an exception anywhere in the body
