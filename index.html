@@ -100,6 +100,11 @@
   #grid.open .cell{display:none}
   #grid.open .cell.on{display:block;grid-column:1/-1;grid-row:1/-1}
   .cell.collective{outline:1px solid #2f6;outline-offset:-1px}
+  /* #157: a universe that is catching exceptions is dim, not obviously broken. Say it out loud. */
+  .cell.erroring{outline:2px solid #e44;outline-offset:-2px}
+  .errbadge{position:absolute;left:3px;bottom:3px;z-index:3;pointer-events:none;
+        font:9px/1.2 ui-monospace,Menlo,monospace;color:#fbb;background:rgba(60,0,0,.82);
+        border-radius:4px;padding:3px 5px;max-width:94%}
   .cell.collective .badge{position:absolute;left:3px;top:3px;z-index:2;pointer-events:none;
         font:9px/1 ui-monospace,Menlo,monospace;color:#8fb;background:rgba(0,20,12,.7);
         border-radius:4px;padding:3px 5px;letter-spacing:.5px}
@@ -214,6 +219,36 @@
   function api(cell){ try{ return cell.firstChild.contentWindow.__field||null; }catch(e){ return null; } }
 
   if(!wantCollective){ if(msgEl) msgEl.style.display='none'; return; }
+
+  // ═══ #157 — A UNIVERSE THAT IS QUIETLY FAILING MUST SAY SO ══════════════════════════════════
+  // The field runs every universe with #cleanart, which hides the HUD — and the HUD was the ONLY
+  // place a caught tick was reported. So a universe could throw on every tick, keep counting, stop
+  // saving, and look merely dim. That is exactly what happened: 300,000 ticks, blank frames, and a
+  // reload that came back at 198,000. Nothing about the field showed it.
+  // Every 10 seconds each universe is asked for its caught-tick count, and any that is above zero
+  // gets a red outline and a label. Cheap, and it turns a silent failure into a visible one without
+  // switching the instruments back on.
+  var errBadges={};
+  function checkErrors(){
+    cells.forEach(function(c,i){
+      var a=api(c); if(!a||!a.stat) return;
+      a.stat().then(function(s){
+        if(!s) return;
+        var n=s.errs|0;
+        if(n>0){
+          c.classList.add('erroring');
+          var b=errBadges[i];
+          if(!b){ b=document.createElement('div'); b.className='errbadge'; c.appendChild(b); errBadges[i]=b; }
+          b.textContent='\u26a0 '+n+' caught'+(s.errMsg?(': '+String(s.errMsg).slice(0,60)):'');
+        } else if(c.classList.contains('erroring')){
+          c.classList.remove('erroring');
+          if(errBadges[i]){ errBadges[i].remove(); delete errBadges[i]; }
+        }
+      }).catch(function(){});
+    });
+  }
+  setInterval(checkErrors, 10000);
+  setTimeout(checkErrors, 4000);
 
   var COLLECT_MS=1000;      // one emigrant out of each individual, per cycle
   var RETURN_EVERY=4;       // ...and one out of the collective every 4th cycle, to ONE individual

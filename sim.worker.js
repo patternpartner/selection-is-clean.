@@ -170,6 +170,10 @@ self.addEventListener('message', async (e) => {
           'recv:netStats.received,accepted:netStats.accepted,bad:netStats.bad,dropped:netStats.dropped,' +
           'migrantAccepted:(typeof __liveness!=="undefined"?(__liveness["network.migrantAccepted"]|0):-1),' +
           'atoms:(genome.userAtoms||[]).length,' +
+          // #157: the field needs to see a universe that is silently failing. The HUD is hidden in a
+          // field by design, so this is the only channel that can carry it out.
+          'errs:(typeof __loopErrors!=="undefined"?__loopErrors|0:0),' +
+          'errMsg:(typeof __loopErrLast!=="undefined"?String(__loopErrLast||""):""),' +
           // A fingerprint of THIS universe's germline. Three continuously-drifting float genes; two
           // universes that share a genome share this string exactly, and two that merely resemble
           // each other do not. It is what tells "the collective fed them" apart from "the collective

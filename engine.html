@@ -6798,6 +6798,10 @@ let __oeeSeen=null, __oeePending=null, __oeeLastUses=null; // runtime-only; rese
 // the meter controls or states. Moving the state here costs nothing and makes it structural — the meter
 // cannot reach the heritable object at all, whatever the birth paths do later. Serialised at encode.
 let oeeLog=[], oeeNovel=0, oeePersist=0, oeeVer=0, oeeSat=0;
+// #157: caught-tick counters. Module scope, never on `genome` — see the note in loop()'s catch.
+// Serialised so a creature carries its own damage report across a reload, and exposed through the
+// worker's stat bridge so the FIELD can mark a universe that is quietly failing.
+let __loopErrors=0, __loopErrLast='', __loopErrTick=0;
 // ═══ #156 — THE METER MUST REMEMBER ACROSS A RELOAD ═════════════════════════════════════════════
 // Until now the three structures the count is DERIVED from were runtime-only, and said so. The log
 // and the counters were serialised; the working memory was not. So every reload hit the
@@ -7659,6 +7663,9 @@ function encodeGenome(){
     oP:oeePersist|0,                             // #130 cumulative innovations that survived the lag
     lv:(function(){try{const c=livenessCensus();return {n:c.never,r:c.rare.length,l:c.live.length,t:c.tick};}catch(e){return null;}})(), // #134 liveness census: which mechanisms have never run
     oV:oeeVer|0,                                 // #131 which semantics wrote these rows (absent/0/1 = v1, not comparable)
+    lpE:__loopErrors|0,                          // #157 how many ticks this creature has caught
+    lpM:__loopErrLast||'',                       // ...and what the last one said
+    lpT:__loopErrTick|0,                         // ...and when
     oS:oeeSat|0,                                 // #131 1 once the ever-seen set hit OEE_SEEN_CAP and stopped counting
     // #156 the meter's WORKING MEMORY, without which every reload resets D to "nothing happened".
     // oLU is the one that matters and is bounded by the atom bank; oSN is capped separately and its
@@ -7966,6 +7973,7 @@ function decodeGenome(data){
     oeePersist=g.oP|0;
     oeeVer=g.oV|0;                               // #131: 0 means the stored rows were written by v1
     oeeSat=g.oS|0;
+    __loopErrors=g.lpE|0; __loopErrLast=typeof g.lpM==='string'?g.lpM:''; __loopErrTick=g.lpT|0;
     // #131: this is the "load" the v1 comment promised and never performed. A different creature is
     // now installed, so the meter's history must go with it — otherwise the incoming bank is diffed
     // against the outgoing creature's seen-set and counted as fresh innovation on top of a restored oN.
@@ -23218,7 +23226,8 @@ function loop(){
 
   if(tick%10===0)peakBondThisTick*=0.8;
 
-  if(tick%900===0&&tick>900)archiveGenome();
+  // #157: the periodic autosave USED TO LIVE HERE, in the middle of the try block. See loop()'s
+  // finally — it now runs there, so a throw upstream can no longer silently stop the creature saving.
 
   if(tick%60===0){
     if(currentFitness>genome.peakFitness)genome.peakFitness=currentFitness;
@@ -25116,13 +25125,38 @@ function loop(){
   NprevTick=N; // Pe87: snapshot N for POPULATION_RATE next tick
   }catch(e){
     console.error('Loop error:',e.message,e.stack);
-    genEl.textContent='runtime recovered: '+(e&&e.message?e.message:'unknown');
-    genEl.style.color='rgba(255,120,120,0.75)';
+    // ═══ #157 — A CAUGHT TICK MUST STILL BE COUNTED, AND MUST STILL BE VISIBLE ═════════════════
+    // Reported from the device: the field reached 300,000 ticks, the individual universes went
+    // almost blank, and a reload came back at 198,000. Everything after that tick was gone.
+    // The cause is the SHAPE of this function, not any one bug. `tick++` and `genome.totalTicks++`
+    // are the first statements inside the try, and the only autosave sat several hundred lines
+    // later inside the same try. So any exception in between left the clock advancing and the
+    // creature never saving — running, ageing, and persisting nothing, for 100,000 ticks.
+    // The single warning was this line, written into the HUD. A field runs every universe with
+    // #cleanart, which HIDES the HUD (#144). The one signal that would have shown it is switched
+    // off by the field's own design, so the failure was silent by construction.
+    // Counted here, on module scope rather than on `genome`: #131 established that a numeric field
+    // on the heritable object shifts the RNG stream at every birth (mutateChildGenome walks it with
+    // for..in drawing one Math.random per numeric field), and an error counter must not change the
+    // simulation it is counting.
+    __loopErrors++;
+    __loopErrLast=(e&&e.message?String(e.message):'unknown').slice(0,160);
+    __loopErrTick=genome.totalTicks|0;
+    try{
+      genEl.textContent='runtime recovered: '+__loopErrLast;
+      genEl.style.color='rgba(255,120,120,0.75)';
+    }catch(_){}
     birthQueue.length=0;
     for(let i=0;i<N;i++){
       if(isNaN(amp[i]))amp[i]=0.3;
       if(isNaN(px[i])||isNaN(py[i])){px[i]=Math.random()*W;py[i]=Math.random()*H}
     }
+  }finally{
+    // #157: THE SAVE LIVES HERE NOW. A tick that threw still has a valid germline — the genome is
+    // independent scalars and arrays, not a half-written structure — and a slightly stale save beats
+    // no save at all, which is what the old placement produced. Its own try/catch, because
+    // encodeGenome throwing must not take the loop down with it.
+    if(tick%900===0&&tick>900){ try{ archiveGenome(); }catch(_){} }
   }
   scheduleNext();
 }

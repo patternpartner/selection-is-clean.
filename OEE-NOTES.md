@@ -11932,3 +11932,77 @@ Epoch gaps are identical in both exports (35k→45k, 60k→75k, 80k→95k) with 
 110k–138k window. Whatever condensed a universe earlier did not happen this session — consistent with
 the clustering explanation, since this run's population stayed spread (popMean 138–247, popMin 88–185,
 never near zero).
+
+
+---
+
+## #157 — THE AUTOSAVE LIVED DOWNSTREAM OF THE THROW
+
+Reported from the device: *"the autosave stopped working. it got to 300k ticks and all of the
+universes were almost blank other than the collective. when i went back into github and selected pages
+it went back to 198k ticks."*
+
+Three symptoms, one cause, and it is the shape of `loop()` rather than any single bug.
+
+```js
+function loop(){ try{
+    tick++; genome.totalTicks++;                    // the clock advances FIRST
+    ... several hundred lines ...
+    if(tick%900===0&&tick>900) archiveGenome();     // the ONLY autosave, downstream
+  }catch(e){ genEl.textContent='runtime recovered: '+e.message; }   // the ONLY warning
+}
+```
+
+**Any exception anywhere in between leaves the creature running, ageing, and persisting nothing.** The
+tick counter and the lineage clock have already incremented; the save never runs. That is 300,000 ticks
+displayed, a reload at 198,000, and every universe dim because the physics downstream of the throw
+never executed either.
+
+And it was **silent by construction**. The single warning is written into the HUD, and a field runs
+every universe with `#cleanart`, which hides the HUD (#144). The one signal that would have shown this
+is switched off by the field's own design. #142 was the identical bug class and was caught only because
+the author could SEE the message on a single universe.
+
+Ruled out first, by measurement rather than reasoning: the save budget. The collective grows about 239
+characters per 1,000 ticks (25,185 → 32,084 JSON between gen 73 and gen 89), so it would not reach
+`SAVE_BUDGET` until roughly tick **1,575,000**. A collapsing universe grows only 43% faster. Size was
+never the problem this time.
+
+### The fix is structural, not a patch on one bug
+
+**The save moved into a `finally`.** A tick that threw still has a valid germline — the genome is
+independent scalars and arrays, not a half-written structure — and a slightly stale save beats no save
+at all, which is what the old placement produced. It carries its own try/catch so `encodeGenome`
+throwing cannot take the loop down.
+
+**Caught ticks are counted** (`__loopErrors`, the message, and the tick it happened at), serialised so
+a creature carries its own damage report across a reload. On module scope, never on `genome`: #131
+established that a numeric field there shifts the RNG stream at every birth, and an error counter must
+not change the simulation it is counting.
+
+**The field can see it now.** The count and message ride out through the worker's `stat` bridge, and
+`index.html` polls every 10 seconds and puts a red outline plus a `⚠ N caught` label on any universe
+above zero. That turns a silent failure into a visible one without switching the instruments back on —
+which is the actual gap, since the field hides the HUD on purpose.
+
+### The rig tests the structure, not the bug
+
+`autosave-test.js` does not test any particular exception, because the next one will be different. It
+injects a throw into the middle of the tick — after the counters advance, where the real failure lives
+— and requires the save to happen anyway:
+
+```
+healthy run: 1 save.  while EVERY tick threw: 2 saves, 1,900 caught ticks, clock +1,900
+last error kept: "injected: expression is not defined"
+```
+
+(The first version of that check ran 1,100 ticks, saw zero saves and failed. The guard is
+`tick%900===0 && tick>900`, so the first save lands at tick 1,800 — the test was wrong and the engine
+was right, which is this file's own failure mode turned on itself. Recorded in the rig.)
+
+### What is still unknown
+
+**What was actually throwing.** There is no repro and no captured message, because nothing recorded one
+— that is precisely the hole this closes. The next occurrence will name itself on the frame and carry
+the message in the save. Worth watching for: the message, the tick, and whether it correlates with the
+clustering slowdown, since a condensing universe is also the one doing the most work per tick.
