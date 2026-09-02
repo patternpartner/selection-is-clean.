@@ -967,17 +967,59 @@ const REND_VAR_RE=/\b(?:t0|t1|t2|t3|amp|phase|col)\b/g;
 function rendLocalStep(expr){
   return Math.random()<0.5?uaJitterConst(expr):uaSwapVar(expr,REND_VAR_RE,REND_VARS);
 }
+// ═══ #161 — ONE COMPILED FUNCTION PER EXPRESSION, NOT PER PARTICLE ═════════════════════════════
+// THE MEASUREMENT THAT FOUND THIS: a field of nine universes sat at ~1.9 GB of process memory and the
+// phone killed the tab. The author's observation is what located it — "it works fine if it's a younger
+// lineage" — because the cost scales with the ATOM BANK, not the universe count.
+//
+// The compiled function is PURE: every input is a parameter, nothing closes over particle state. But
+// it was cached on the atom OBJECT, and cloneGenome gives every particle its own atom objects with
+// compiled:null. So every particle compiled its own private copy of every atom it used. Same
+// expression, same code, compiled once per carrier:
+//
+//     young lineage:    5 atoms x 150 particles  =    750 compilations
+//     mature lineage: 160 atoms x 150 particles  = 24,000 compilations, per universe, x9
+//
+// Each `new Function` costs V8 a SharedFunctionInfo, bytecode, a Code object and feedback vectors —
+// low kilobytes each, and that product is where the gigabyte went.
+//
+// Keyed by expression instead. Safe because the function is pure, because `compiled` is only ever
+// CALLED and never compared by identity, and because the two sites that mutate an expression already
+// null `compiled` — so the next compile looks up the NEW string and gets the right code. Identical
+// results, no RNG involvement, nothing about the simulation changes except how many times V8 is asked
+// to compile the same text.
+// Bounded, and evicted oldest-first: expressions churn as atoms mutate, so an unbounded cache would
+// just relocate the leak. A Map preserves insertion order, so the front is the stale end.
+const __uaCode=new Map();          // expression -> compiled fn, or false if it failed to compile
+const UA_CODE_CAP=2000;
 function uaCompile(atom){
   if(atom.compiled||atom.failed)return;
+  const _e=atom.expression;
+  const _hit=__uaCode.get(_e);
+  if(_hit!==undefined){                       // someone already paid for this exact text
+    if(_hit===false){ atom.compiled=null; atom.failed=true; }
+    else { atom.compiled=_hit; atom.failed=false; }
+    return;
+  }
   try{
     // Pe24: compiled function takes (a,b,u) — u is normalized self-usage count.
     // Old atoms with expressions only referencing a,b still compile fine; u is unused param.
-    atom.compiled=new Function("a","b","u","c","d","m","s","f","nx","ny","t","nb","rl","rd","cr","fr","wr","at","const r=("+atom.expression+");return isFinite(r)?r:0;"); // #135: +at
+    const _fn=new Function("a","b","u","c","d","m","s","f","nx","ny","t","nb","rl","rd","cr","fr","wr","at","const r=("+atom.expression+");return isFinite(r)?r:0;"); // #135: +at
+    __uaCache(_e,_fn);
+    atom.compiled=_fn;
     atom.failed=false;
   }catch(e){
-    atom.compiled=null;
+    __uaCache(_e,false);                      // remember the failure too — a bad expression is retried
+    atom.compiled=null;                       // by every carrier otherwise, and throwing is not cheap
     atom.failed=true;
   }
+}
+function __uaCache(k,v){
+  if(__uaCode.size>=UA_CODE_CAP){
+    let drop=__uaCode.size>>1;                // shed the oldest half rather than one at a time
+    for(const key of __uaCode.keys()){ __uaCode.delete(key); if(--drop<=0)break; }
+  }
+  __uaCode.set(k,v);
 }
 const REND_DEFAULTS=[
   "(Math.atan2(t1,t3)/Math.PI*180+180)",
