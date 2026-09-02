@@ -12,7 +12,7 @@ Companion to OEE-NOTES.md, which records experiments. This records the machine t
 
 | | |
 |---|---|
-| **file** | `engine.html` — the sim moved out of `index.html` in `c0cef11`. Since **#149** the pages are: `index.html` = THE FIELD, `universe.html` = the single worker shell (what `index.html` used to be), `engine.html` = the simulation itself, still runnable on its own. Since **#153** the field is EIGHT INDIVIDUALS PLUS A COLLECTIVE (nine iframes, nine workers); the ninth is an ordinary universe whose input is the other eight |
+| **file** | `engine.html` — the sim moved out of `index.html` in `c0cef11`. Since **#149** the pages are: `index.html` = THE FIELD, `universe.html` = the single worker shell (what `index.html` used to be), `engine.html` = the simulation itself, still runnable on its own. Since **#153** the field is EIGHT INDIVIDUALS PLUS A COLLECTIVE (nine iframes); the ninth is an ordinary universe whose input is the other eight. Since **#162** those nine iframes share a SMALL POOL OF WORKERS (one per core, max 4) rather than owning one each |
 | **last fully re-derived** | never — this map was written against `index.html` and has been patched, not rebuilt |
 | **prose current through** | **#90.** The engine is at **#159.** Roughly sixty swings are undocumented here |
 | **verified as of #131** | the anchor table below, the opcode constants, the genome extent, and the census claims |
@@ -196,8 +196,57 @@ gesture bar live. They are now ~40px tall and lifted by `env(safe-area-inset-bot
 `universe.html`'s viewport meta carries `viewport-fit=cover` so that inset is non-zero. This costs
 nothing in a field because a field does not render them.
 
+**A shell is no longer a worker (#162).** This is the biggest structural change to the field since
+#149, and it came out of a memory measurement rather than a design idea. Nine universes used to mean
+nine workers, and a worker means a **V8 ISOLATE**. Measured (OEE-NOTES, "where the field's memory
+actually goes"): nine copies of the engine source cost 316 MB, compiling them added 31, booting them
+added 12, and RUNNING them added 1,077. The field's memory was never the data and never the code — it
+is per-isolate heap slack, headroom V8 grants each isolate because each allocates hard every tick.
+Nine universes packed into three workers ran the same simulation for 815 MB instead of 1,309, with
+slightly MORE throughput. A control (three shells, nine isolates: 1,381 MB) rules out the frames.
+
+So `index.html` hands each cell a POOL SLOT in its query string (`universe.html?pool=<run>x<slot>`),
+cells sharing a slot open the same `SharedWorker`, and a worker hosts **one universe per connection**.
+The message protocol is unchanged: a `MessagePort` behaves exactly as the dedicated worker did, which
+is why `universe.html`'s whole `__field` layer needed two edited lines and nothing else.
+
+Three things about this are load-bearing:
+
+- **The engine was already re-entrant, by construction rather than by design.** The boot is
+  `new Function(src)()`, so a second call builds a second scope with its own `genome`, its own typed
+  arrays and its own loop. The only thing standing between one call and two was that the SHIM lived on
+  the global — one `offscreen`, one `lsStore`, one `self.document`, one `self.__api`.
+- **The shim is now passed as ARGUMENTS, not installed on the global.** `sim.worker.js` compiles the
+  engine as `new Function('window','document','localStorage','location','history', …, src)` and calls
+  it with that universe's own shims; parameters shadow the globals for the length of the engine's
+  body. No `with` (which would deoptimise the whole hot loop), no source rewriting, no name mangling.
+  If you add a global the engine reads, add it to `ENGINE_PARAMS` — or two universes will share it.
+  One engine line had to change for this: `resize()` read a bare `innerWidth`, which cannot be
+  per-instance; it reads `window.innerWidth` now, a no-op on the main thread.
+- **A SharedWorker outlives the document that made it.** It dies only when its LAST PORT closes, so on
+  a reload the new page can connect to a worker still running the old page's universes — nine zombie
+  loops per refresh that nothing can see or stop. The pool name therefore carries a nonce minted once
+  per page load (`POOL_RUN`), so a reload gets clean workers and the old one is reaped. `pool-test.js`
+  asserts this the only way it can be observed from outside: every universe announces itself on the
+  BroadcastChannel, so a zombie is a peer nobody built. Three reloads, still eight peers.
+
+`#nopool` gives every cell its own slot — the pre-#162 layout, kept for comparison — and `#pool=N`
+forces a count. A browser without `SharedWorker`, and a standalone `universe.html` with no slot at
+all, fall back to a dedicated worker silently: a field that quietly costs more memory is still a
+field, whereas a field that refuses to start is nothing.
+
+**The field has two ceilings and they pull opposite ways (#162).** Worth keeping in mind before
+changing the pool rule. Memory is per-ISOLATE, so it falls as universes are packed into fewer workers.
+Throughput is per-CORE — total ticks across the whole field are flat from about four workers onward no
+matter how many universes run — so it falls as universes are packed into fewer workers too. Nine
+universes on nine workers was the worst point on both curves at once. The rule (`min(total, min(4,
+hardwareConcurrency))`) is where they cross, and it can never make a small field worse: three
+universes still get three workers. "8 is slow" was always the core-count ceiling, not the memory one;
+the two had been conflated.
+
 **The field API (#152/#153).** `universe.html` exposes `window.__field` — `ready` / `save` / `load` /
-`pull` / `feed` / `stat` — and that is the whole surface `index.html` has on a universe. Every call is
+`pull` / `feed` / `stat` / `controls`, plus the `*ForTest` diagnostics — and that is the whole surface
+`index.html` has on a universe. Every call is
 a `postMessage` round trip matched by a REQUEST ID the worker echoes back. #152 matched replies by "is
 a field promise outstanding?" instead, so any export reply arriving while one was pending got
 swallowed by it, and the 60-second field autosave meant one often was: tapping a universe's own save

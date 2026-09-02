@@ -12303,3 +12303,43 @@ Nine universes on nine workers is the worst point on both curves at once: it pay
 AND oversubscribes the cores. Packing them onto roughly one worker per core pays neither penalty. That
 is the shape the author described from the other direction — "stacks underneath, what you see on top
 is just the surface of what's running underneath" — reached here from the memory side.
+
+### #162 — as shipped
+
+A shell no longer means a worker. `index.html` hands each cell a pool slot in its query string, cells
+sharing a slot open the same `SharedWorker`, and a worker hosts one universe per connection. The
+message protocol did not change at all — a `MessagePort` behaves exactly as the dedicated worker did —
+so `universe.html` needed two edited lines. What did change is `sim.worker.js`: every shim that used
+to be a module-level singleton (one `offscreen`, one `lsStore`, one `self.document`, one `self.__api`)
+is now per-universe and passed to the engine **as function arguments**, which shadow the globals for
+the length of the engine's own body. No `with` — that would deoptimise the entire hot loop — no source
+rewriting, no name mangling. Exactly one engine line had to move: `resize()` read a bare `innerWidth`,
+which cannot be per-instance, and now reads `window.innerWidth`.
+
+The same field, same page, same nine universes, measured on the shipped code:
+
+```
+layout                 RSS@30s   RSS@150s   particles    ticks   universes ticking
+#nopool (pre-#162)       930       1378        1108    30979           9
+default (#162)           655        895        1134    31287           9
+```
+
+**-35% memory, with MORE particles alive and MORE ticks.** Not a trade.
+
+`pool-test.js` (24 checks) holds the parts that used to be true for free and now have to be arranged:
+each universe's own canvas, size and location; two universes in one isolate not sharing a germline
+(set a gene in one, its worker-mate's fingerprint must not move); the drawing still reaching the page
+from a shared worker; a browser with no `SharedWorker` still running the whole field; a standalone
+`universe.html` untouched.
+
+The check worth keeping is the last one. **A SharedWorker outlives the document that made it** — it
+dies only when its last port closes — so on a reload the new page can join a worker still running the
+old page's universes: nine zombie loops per refresh, invisible to everything on the page. The pool
+name carries a nonce minted once per page load so the old worker is reaped instead. That is asserted
+through the only channel that can see it: every universe announces itself on the BroadcastChannel, so
+a zombie is a peer nobody built. Three reloads, still eight peers.
+
+**What this does and does not buy.** It buys headroom, not speed: the throughput ceiling is unchanged,
+because it was always the cores. Nine universes now cost what six used to, which is what makes the
+next question — how many universes the phone can actually hold, and what goes underneath them —
+worth asking with numbers rather than guesses.

@@ -67,7 +67,33 @@
 
   // ── hand the canvas to the worker and start the sim there ──
   var off = canvas.transferControlToOffscreen();
-  var worker = new Worker('sim.worker.js');
+
+  // ═══ #162 — SEVERAL UNIVERSES PER WORKER ═══════════════════════════════════════════════════
+  // A shell used to mean a worker, and a worker means a V8 ISOLATE. That was the whole of the
+  // field's memory problem: measured, nine universes on nine workers cost 1,309 MB and the same
+  // nine on three workers cost 815 MB, with slightly MORE throughput, because the memory is
+  // per-isolate heap slack rather than anything the simulation owns (OEE-NOTES, "where the field's
+  // memory actually goes"). A control ruled out the frames: three shells with nine isolates still
+  // cost 1,381 MB.
+  //
+  // So the field hands each cell a POOL SLOT in its query string, and cells sharing a slot share a
+  // SharedWorker — one connection each, one universe each, the same message protocol as before.
+  // Nothing else about a universe changes: it still owns its canvas, its genome, its localStorage
+  // writes and its buttons.
+  //
+  // No slot (a standalone universe.html) or no SharedWorker (the browser lacks it, or it throws)
+  // falls back to a dedicated Worker, which is exactly the old behaviour: one worker, one universe.
+  // The fallback is silent by design — a field that quietly costs more memory is still a field,
+  // whereas a field that refuses to start is nothing.
+  var POOL = (function(){ try { var m=(location.search||'').match(/[?&]pool=([A-Za-z0-9_-]{1,32})/); return m?m[1]:null; } catch(e){ return null; } })();
+  var shared = null, worker = null;
+  if (POOL && typeof SharedWorker !== 'undefined') {
+    try {
+      shared = new SharedWorker('sim.worker.js', { name: 'selection-pe-pool-' + POOL });
+      worker = shared.port; worker.start();
+    } catch(e) { shared = null; worker = null; }
+  }
+  if (!worker) worker = new Worker('sim.worker.js');
   // #150: keep the worker's view of the hash current. Without this the sim reads the hash once at
   // boot; the metabolism panel (which runs out here on the main thread) would honour a change while
   // the HUD inside the worker would not, so the two would disagree about whether they are hidden.
@@ -180,7 +206,10 @@
       return;
     }
   };
-  worker.onerror = function(e){ fail('Worker error: ' + (e.message||e.filename||'unknown') + (e.lineno?(' :'+e.lineno):'')); };
+  // A MessagePort has no onerror, so on the pooled path the error channel is the SharedWorker
+  // itself. Both end in the same fail() the dedicated path used.
+  var onWorkerError = function(e){ fail('Worker error: ' + (e.message||e.filename||'unknown') + (e.lineno?(' :'+e.lineno):'')); };
+  if (shared) shared.onerror = onWorkerError; else worker.onerror = onWorkerError;
 
   // ── forward input to the worker ────────────────────────────────
   function post(ev, detail){ worker.postMessage({ type:'input', event:ev, detail:detail }); }
