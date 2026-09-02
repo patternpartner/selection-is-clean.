@@ -12158,3 +12158,148 @@ Loading it into one of the eight INDIVIDUALS would be a real risk: they share on
 key, so the first autosave from the universe carrying it hands it to all eight on the next reload
 (#159's monoculture). One collapsed lineage becomes eight. The collective's separate slot is the only
 safe place to try anything like this.
+
+## WHERE THE FIELD'S MEMORY ACTUALLY GOES — nine isolates, not nine simulations
+
+The field on the author's phone kept throwing the tab back to the homescreen. #149 had sized the field
+from a main-thread heap reading, which misses the workers entirely — i.e. it missed the simulation. So
+the real question was never answered: what does a universe cost?
+
+This section is the whole investigation including the parts I got wrong, because the wrong turns are
+the useful part. **Five hypotheses died before the right one, and the fifth was mine and confident.**
+
+### The five that died
+
+1. **"The old creature is heavier."** Measured: the 5.29 MB genome's field ran *lighter* than the
+   young one (1801 MB vs 1931 MB). Not it.
+2. **"Per-particle atom compilation."** Compilation is lazy and only 8 atoms ever run. Not it.
+3. **"A leak."** One universe alone plateaus flat at ~365 MB from t=128s to t=308s. A leak does not
+   plateau. Not it.
+4. **"GC starvation."** Forced `gc()` in all nine workers freed **-33 MB**. Not it.
+5. **"Nine isolates each compiling a 25,000-line engine."** This one I stated to the author with a
+   mechanism attached, flagged as untested. It was wrong, and the ladder below is what killed it.
+
+There is also a sixth error of method that recurred throughout: **reading a rising edge as a trend.**
+The field's memory is a sawtooth — 702 · 1294 · 1652 · 2389 · 2801 · **1854** MB. Sampled at one
+instant it can be read as "does not plateau", which is what I did.
+
+### The ladder — separating the engine from the loop
+
+Four arms, nine universes each, all running the real `engine.html`. Each arm adds exactly one thing to
+the arm below it, so the step between two arms is the cost of that one thing.
+
+```
+arm       RSS@20s  RSS@80s  RSS@200s   step over arm below
+SOURCE       340      313       316            9 copies of the 1.77 MB source, never compiled
+COMPILE      373      344       347   +31 MB   new Function(source) x9
+BOOT         455      355       359   +12 MB   called once; globals, arrays, population; zero ticks
+REAL         795     1089      1436   +1077 MB the loop runs
+```
+
+**The entire code story is 43 MB.** Nine independent compilations of a 25,000-line file cost 31 MB,
+not a gigabyte, and V8's lazy compilation never became the slow bleed I predicted. 96% of the field's
+memory is allocated by ticking.
+
+That also retires the fix I had already named to the author — splitting the script into a real `.js`
+loaded by `<script src>` and `importScripts()` so the browser's code cache is shared. It would have
+bought at most 31 MB, and probably less: a code cache saves compile *time*; the bytecode objects still
+live once per isolate.
+
+### The count curve — it was never per-universe
+
+`index.html` caps `n` at 8. The rig served a copy with the cap lifted, so we could see past the edge
+without shipping anything.
+
+```
+universes  cells  RSS@30s  RSS@150s  particles  ticks   MB/cell  MB per 100 particles
+        1      1      322       353        243   5874      353        145.3
+        2      3      502       698        551  19414      233        126.7
+        4      5      650       869        621  23187      174        139.9
+        8      9      851      1283        981  26687      143        130.8
+       12     13     1058      1723       1103  28117      133        156.2
+       16     17     1177      2702       1365  27832      159        197.9
+       24     25     1507      2479       2243  27886       99        110.5
+```
+
+**MB per cell falls from 353 to 99. MB per 100 particles does not move.** (The 197.9 at n=16 is the
+sawtooth caught near a peak; the spread 110–198 is exactly the ±20% oscillation measured above.) Nine
+universes are not expensive because they are nine. They are expensive because nine cells hold about a
+thousand particles — roughly **1.4 MB per living particle.**
+
+And the second finding here matters more than the first: **total tick throughput is flat from n=4
+onward** — 23,187 / 26,687 / 28,117 / 27,832 / 27,886 ticks per 150s regardless of how many universes
+are running. One universe alone gets 5,874. The field saturates the cores at about four workers, and
+every universe after that divides the same CPU: at 24 universes each runs at ~7 ticks/second instead
+of ~39. **"8 is slow" is a core-count fact, not a memory fact.** They are two different ceilings and
+they had been conflated.
+
+24 universes ran. It did not fall over.
+
+### The answer — heap slack, nine times over
+
+If the memory is allocation-driven rather than data, it should follow V8's heap *shape*, and a launch
+flag changes that without touching a line of the simulation.
+
+```
+arm                          RSS@30s   RSS@150s   particles    ticks
+default                          841       1302         903    25481
+young gen 1 MB                   667       1053         890    23365
+young gen 2 MB                   739       1162         910    25009
+old gen capped 128 MB            729        920        1039    23769
+young 1 MB + old 128 MB          633        717         951    23690
+```
+
+**1,302 MB → 717 MB, with MORE particles alive (951 vs 903) and 7% fewer ticks.** Nothing about the
+simulation changed; only how much headroom V8 was allowed to keep.
+
+So the field's memory was never data and never code. It is **heap slack**: nine separate V8 isolates,
+each allocating hard every tick, each independently granted generous room to breathe. That single
+mechanism explains every observation at once — `gc()` freeing nothing (a semispace reservation is not
+garbage), the census finding almost nothing live (there was almost nothing to find), the sawtooth, and
+a per-universe cost that barely moves.
+
+Those flags do not exist on a phone. But the mechanism names the fix that does: **the slack is
+per-isolate, so fewer isolates means less slack.**
+
+### Nine universes, three ways
+
+The engine turned out to be re-entrant already, by construction rather than by design: the worker boots
+it with `new Function(src)()`, and a second call builds a second scope with its own `genome`, its own
+typed arrays and its own loop. Every arm below runs NINE universes at an identical canvas size, so only
+the isolate count changes.
+
+```
+layout                     RSS@30s  RSS@150s  universes  particles   ticks
+9 workers x 1 universe        789      1309          9        881   23969
+3 workers x 3 universes       655       815          9        946   24793
+1 worker  x 9 universes       445       567          9        863   11629
+```
+
+**Three workers: 38% less memory, slightly MORE throughput, more particles alive.** One worker is
+cheaper still but halves the ticks, because one worker is one core. Memory wants few isolates,
+throughput wants one per core, and the two curves cross at about the core count.
+
+**Control.** The 3x3 arm also had three iframes instead of nine, so the win could have been the shells
+rather than the isolates. Holding iframes at three and putting the nine universes back into nine
+isolates:
+
+```
+3 iframes x 3 workers x 1 universe (9 isolates, 3 shells)   1381 MB
+                    compare: 9 workers / 9 shells           1309 MB
+                             3 workers / 3 shells            815 MB
+```
+
+Three shells with nine isolates costs the nine-isolate figure. **It is the isolates. The iframes are
+nearly free.**
+
+### What this leaves
+
+The ceiling on the field was never one thing. It is two, and they pull in opposite directions:
+
+- **Memory** is per-isolate slack. It falls as universes are packed into fewer workers.
+- **Throughput** is per-core. It falls as universes are packed into fewer workers.
+
+Nine universes on nine workers is the worst point on both curves at once: it pays nine lots of slack
+AND oversubscribes the cores. Packing them onto roughly one worker per core pays neither penalty. That
+is the shape the author described from the other direction — "stacks underneath, what you see on top
+is just the surface of what's running underneath" — reached here from the memory side.
