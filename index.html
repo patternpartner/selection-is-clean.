@@ -126,7 +126,24 @@
   var raw=(location.hash||'').replace(/^#/,'');
   // A saved lineage is a long opaque blob. Anything that is not one of our own options is treated as
   // a genome and gets a single universe, so every link anyone has ever saved still opens its world.
-  var isOptions = raw==='' || /^(n=\d+|clean|cleanart|hud|solo)(,(n=\d+|clean|cleanart|hud|solo))*$/.test(raw);
+  // ═══ #160 — THE FIELD NEEDS A WAY OUT ═══════════════════════════════════════════════════════
+  // Reported: a heavy genome loaded into the field made the phone kill the tab, and because every
+  // universe boots from the same stored lineage, EVERY RELOAD LOADED IT AGAIN AND DIED AGAIN. There
+  // was no escape from inside the artwork. `universe.html#reset` clears the shared key, but not the
+  // collective's own slot, so the collective dragged the same creature back on the next boot — and
+  // `index.html#reset` did not work at all: "reset" was not in the options list below, so the field
+  // treated it as a GENOME and tried to decode the word.
+  // /#reset now clears BOTH keys and starts a clean field. It is the one thing the artwork must
+  // always be able to do: let go of what it is holding.
+  var isOptions = raw==='' || /^(n=\d+|clean|cleanart|hud|solo|reset)(,(n=\d+|clean|cleanart|hud|solo|reset))*$/.test(raw);
+  if(isOptions && /(^|,)reset(,|$)/.test(raw)){
+    try{ localStorage.removeItem('selection_genome'); }catch(e){}
+    try{ localStorage.removeItem('selection_collective'); }catch(e){}
+    // Strip it so the NEXT reload does not wipe the fresh field too — the same one-shot rule
+    // universe.html already applies to its own #reset.
+    try{ history.replaceState(null,'',location.pathname||' '); }catch(e){}
+    raw=raw.replace(/(^|,)reset(?=,|$)/,'').replace(/^,/,'');
+  }
   var n, clean=false, passHash='', wantCollective=false;
   if(isOptions){
     var m=raw.match(/n=(\d+)/);
