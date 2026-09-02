@@ -290,6 +290,18 @@ self.addEventListener('message', async (e) => {
     return;
   }
 
+  // Diagnostic: force a collection in THIS worker's isolate, when the browser was launched with
+  // --js-flags=--expose-gc. The question it answers cannot be answered any other way: is the field's
+  // memory LIVE DATA or UNCOLLECTED GARBAGE? Measure RSS, collect everywhere, measure again. If it
+  // falls, the allocation rate is outrunning the collector; if it holds, the data is real and the
+  // only lever is making less of it. Absent the flag this reports ran:false and changes nothing.
+  if (d.type === 'gc') {
+    let ran = false;
+    try { if (typeof gc === 'function') { gc(); ran = true; } } catch (_) {}
+    self.postMessage({ type: 'gc-result', rid: d.rid, ran });
+    return;
+  }
+
   if (d.type === 'stat') {
     let stat = null; try { stat = self.__api && self.__api.stat ? self.__api.stat() : null; } catch (_) {}
     self.postMessage({ type: 'stat', rid: d.rid, stat });
