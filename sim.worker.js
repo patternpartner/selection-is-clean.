@@ -130,6 +130,9 @@ const BRIDGE =
   '__inst.api.stat=function(){try{return {tick:tick,N:N,gen:genome.generation,totalTicks:genome.totalTicks|0,' +
     'peers:(typeof countPeers==="function"?countPeers():-1),' +
     'recv:netStats.received,accepted:netStats.accepted,bad:netStats.bad,dropped:netStats.dropped,' +
+    // #163: heritable packets refused because the sender's clock had run far ahead of ours. A
+    // universe running at parity never sees this move; a paced one is meant to.
+    'paced:(netStats.paced|0),' +
     'migrantAccepted:(typeof __liveness!=="undefined"?(__liveness["network.migrantAccepted"]|0):-1),' +
     'atoms:(genome.userAtoms||[]).length,' +
     // #157: the field needs to see a universe that is silently failing. The HUD is hidden in a

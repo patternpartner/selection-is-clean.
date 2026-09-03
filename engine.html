@@ -71,7 +71,45 @@ const incomingMotifs=[];       // VM motif fragments received
 const incomingInscriptions=[]; // cell program packets received
 let networkPeers=0;            // how many other tabs we're hearing from
 const peerLastSeen={};         // peer id → last tick we heard from them
-const netStats={sent:0,received:0,accepted:0,dropped:0,bad:0,lastType:''};
+const netStats={sent:0,received:0,accepted:0,dropped:0,bad:0,paced:0,lastType:''};
+// ═══ #163 — PACE MEANS ALLOPATRY, AND THE CLOCK MUST NOT OVERRIDE THE GENE ═══════════════════
+// The simulation runs on a TICK clock. The network runs on a WALL clock. Measured by pacing one
+// cell of a nine-universe field: a universe ticking 11.3x slower took in 11.8x as many migrants
+// PER TICK OF ITS OWN LIFE, and one ticking 60.2x slower took in 61.8x. Linear, one for one, no
+// ceiling — at pace 2000 that universe took 1.49 immigrants per tick against a native birth cap of
+// five, and held the LARGEST population in the field while ticking sixty times less. Its population
+// was being fed by the field rather than by itself.
+//
+// This is #158's bug on the other side of the wire. netReceptivity is the gene that decides how
+// much a universe takes in, and it gates each PACKET — so the same gene value means sixty times
+// more immigration at sixty times the pace. The clock silently overriding a decision selection
+// made is the one thing this project's standing rule forbids.
+//
+// THE INVARIANT: a universe should hear the same amount PER TICK OF ITS OWN LIFE however slowly it
+// runs. A deeply paced universe is therefore nearly cut off — and that is the point, not a side
+// effect. Pace becomes allopatry: worlds underneath drift alone and diverge, and surface as
+// genuinely different creatures rather than as copies of the consensus above them.
+//
+// THE NORMALISATION IS ON THE WIRE ALREADY. Every packet is stamped `born` — the SENDER's tick.
+// So a recipient can compare how many of its own ticks passed against how many of the sender's did,
+// and accept that fraction. At parity the ratio is 1 and this changes nothing, which is the whole
+// design constraint: no reference constant, no machine-dependent tuning, no behaviour change for a
+// field that is not paced. Sums rather than per-packet ratios, because several packets can arrive
+// inside one tick of a slow universe and a per-pair ratio would read 0 for all but the first.
+const peerClock=new Map();     // peer id → {theirs,mine,sm,st}: their last tick, ours, and decayed sums
+const PEER_CLOCK_DECAY=0.99;
+function peerTickRatio(tab,born){
+  if(!(born>=0))return 1;                       // a sender that does not stamp its clock is never gated
+  const r=peerClock.get(tab);
+  if(!r){ peerClock.set(tab,{theirs:born,mine:tick,sm:0,st:0}); return 1; }
+  const dTheirs=born-r.theirs, dMine=tick-r.mine;
+  r.theirs=born; r.mine=tick;
+  // dTheirs<=0 means the peer restarted or reordered; learn nothing from it rather than guess.
+  if(dTheirs>0&&dMine>=0){ r.sm=r.sm*PEER_CLOCK_DECAY+dMine; r.st=r.st*PEER_CLOCK_DECAY+dTheirs; }
+  if(!(r.st>0))return 1;
+  const p=r.sm/r.st;
+  return p>=1?1:(p>0?p:0);                      // never a BOOST: running fast does not invent packets
+}
 const netEventPending={migrant:0,plasmid:0,motif:0,inscription:0};
 
 // ═══ ALIEN ATTRIBUTION — the reflective self forms a theory of the OTHER substrates on the
@@ -251,6 +289,12 @@ function handleNetworkMessage(raw){
     _po.count++;
   }
   if(!validNetworkPayload(msg.type,msg.data)){netStats.bad++;return}
+  // #163: heritable material only. hello/hello-reply/applied are bookkeeping — throttling those
+  // would corrupt peer counting, which is how a universe knows it is not alone.
+  if(msg.type==='migrant'||msg.type==='plasmid'||msg.type==='motif'||msg.type==='inscription'){
+    const _cr=peerTickRatio(msg.tab||'unknown',msg.born|0);
+    if(_cr<1&&Math.random()>=_cr){netStats.paced++;return}
+  }
   if(msg.type==='migrant'){fired('network.migrantAccepted');queueNetworkPacket(incomingMigrants,msg.data,NET_QUEUE_LIMITS.migrant,'migrant');}
   else if(msg.type==='plasmid')queueNetworkPacket(incomingPlasmids,msg.data,NET_QUEUE_LIMITS.plasmid,'plasmid');
   else if(msg.type==='motif')queueNetworkPacket(incomingMotifs,msg.data,NET_QUEUE_LIMITS.motif,'motif');
@@ -282,7 +326,7 @@ function countPeers(){
   // but it is a difference, and it is the only one.
   for(const id in peerLastSeen){
     if(tick-peerLastSeen[id]<PEER_FORGET)n++;
-    else { delete peerLastSeen[id]; peerObservable.delete(id); pendingAlienPredictions.delete(id); }
+    else { delete peerLastSeen[id]; peerObservable.delete(id); pendingAlienPredictions.delete(id); peerClock.delete(id); }
   }
   networkPeers=n;
   return n;

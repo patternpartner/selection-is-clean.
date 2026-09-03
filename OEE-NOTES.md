@@ -12404,13 +12404,44 @@ this project's standing rule forbids ("the system needs to decide to turn them o
 found the identical shape on the send side: the relay was pulling at a rate `netMigrantRate` had never
 chosen, and the fix was to ask the question in the gene's own units.
 
-Not yet fixed, and deliberately so — the mechanism is established but the right bound is not. A cap on
-applications per tick is the shape (the natural anchor is the native birth cap already in the loop:
-immigration should not structurally outpace a universe's own reproduction). The value needs one more
-measurement, because a cap loose enough never to throttle a healthy burst may be too loose to bind at
-the depth a real stack would run at. Shipping a number I cannot defend would be the same mistake as
-the "8 MB heap" sizing in #149.
+### The fix: pace means allopatry
 
-**What is safe today:** pace is shipped and asserted (`pace-test.js`), and nothing in the field uses
-it yet. The hazard above only appears when something is actually paced, so the flag is available for
-experiment while the receive side is still wall-clock.
+Put to the author as a fork rather than a bug, because the two repairs make different artworks. Either
+a slow universe hears the same amount PER TICK OF ITS OWN LIFE as a fast one — in which case a deeply
+paced universe is nearly cut off, drifts alone and diverges — or it stays bathed in the field's
+wall-clock traffic and converges on the consensus above it. The author chose isolation. **Pace is
+allopatry.** Worlds underneath become genuinely different creatures rather than copies, which is the
+same thing the collective and #159's monoculture work have been fighting for from the other end.
+
+**The normalisation was already on the wire.** Every packet is stamped `born` — the SENDER's tick. So
+a recipient compares how many of its own ticks passed against how many of the sender's did and accepts
+that fraction. No reference constant, no machine-dependent tuning, nothing to calibrate — which was
+the whole reason a per-tick integer cap was the wrong instrument. It could never have restored the
+invariant: healthy immigration is 0.023 per tick, so any cap loose enough not to throttle a burst is
+forty times too loose to bind at depth.
+
+Sums with decay rather than per-packet ratios, because several packets can arrive inside one tick of a
+slow universe and a per-pair ratio would read zero for all but the first. Heritable types only —
+throttling hello/applied would corrupt peer counting, which is how a universe knows it is not alone.
+And clamped at 1: running fast does not invent packets.
+
+```
+one cell paced to 2000ms, 150s, WITH the gate
+cell      ticks     N   migrantsAccepted   clockRefused   accepted per 1000 own ticks
+0 SLOW        74    58                  4            346                          54.1
+1           4984    98                 91              1                          18.3
+...
+slow universe ticked 60.8x slower and took in 2.4x as many per own tick   (was 61.8x)
+```
+
+**61.8x → 2.4x**, and the residual is startup rather than steady state: first contact with a peer has
+no clock history to compare against and is never gated, so eight peers buy eight free packets, of
+which four landed. Over hours that allowance vanishes. Its population fell 151 → 58, which is the
+result and not a cost — it is living on its own reproduction now instead of on the field's runoff.
+
+**It is not a perfect no-op at parity, and should not be.** The unpaced universes refused 1–10 packets
+each, because their tick rates genuinely differ by about 15% (4,256 to 4,988 over the same 150s). The
+gate trims in proportion to real difference, which is the invariant working, not an error term. But it
+is the property most worth guarding, so `pool-test.js` now asserts that refusals stay under a quarter
+of what lands in a field where nothing is paced: if that ever goes red, an unpaced field has started
+throttling itself, which would present as the network quietly dying rather than as a bug here.

@@ -84,6 +84,17 @@ const statAll = (page) => page.evaluate(async () => {
     ck('universes still find each other on the wire', live.every(s => s.peers > 1),
        'peers ' + live.map(s => s.peers).join(','));
 
+    // #163 MUST BE A NEAR NO-OP AT PARITY. The clock gate refuses heritable packets from a peer
+    // whose tick has run ahead of ours, which is what makes pace mean isolation. Nothing here is
+    // paced, so the only spread is the natural one between universes of different populations
+    // (measured ~15%), and the refusals must stay a small fraction of what lands. If this check
+    // ever goes red, an unpaced field has started throttling itself — which would look like the
+    // network quietly dying rather than like a bug in this gate.
+    const refused = live.reduce((a, s) => a + (s.paced | 0), 0);
+    const landed  = live.reduce((a, s) => a + (s.migrantAccepted | 0), 0);
+    ck('the clock gate barely fires in an unpaced field', landed > 0 && refused < landed * 0.25,
+       refused + ' refused vs ' + landed + ' accepted');
+
     // each universe's canvas is its own, and cell-sized rather than viewport-sized
     const sizes = await page.evaluate(() => [...document.querySelectorAll('.cell')].map(c => {
       try { const cv = c.firstChild.contentWindow.document.getElementById('c'); return cv.width + 'x' + cv.height; }
