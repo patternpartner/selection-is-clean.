@@ -44,7 +44,7 @@ const readAll = page => page.evaluate(async () => {
 
   // ── the cube ──────────────────────────────────────────────────────────────────────────────
   {
-    const ctx = await browser.newContext({ viewport: { width: 412, height: 915 }, hasTouch: true });
+    const ctx = await browser.newContext({ viewport: { width: 412, height: 915 }, hasTouch: true, acceptDownloads: true });
     const page = await ctx.newPage();
     const errs = []; page.on('pageerror', e => errs.push(e.message));
     await page.goto(base + '/#n=8,layers=2,turn=0', { waitUntil: 'load' });  // turn=0: this rig turns it by hand
@@ -164,6 +164,28 @@ const readAll = page => page.evaluate(async () => {
     const t1 = await tickSample();
     ck('NO universe was rebooted by a rotation', t1.every((v, i) => v >= t0[i]),
        t1.filter((v, i) => v < t0[i]).length + ' went backwards');
+
+    // ═══ #168 — HARVEST ═════════════════════════════════════════════════════════════════════
+    // The only way a long run produces anything comparable. A universe's own save button lives on an
+    // OPENED surface cell, and the layers have no controls at all — so without this, eight hours
+    // yields a counter saying eighteen things were alive, which is what you knew before you started.
+    // Every universe, labelled by where it lives, in one file.
+    const dl = page.waitForEvent('download', { timeout: 180000 });
+    await page.locator('#harvest').tap();
+    let file = null;
+    try { const d = await dl; const fp = require('path').join(require('os').tmpdir(), 'lt_harvest.json');
+          await d.saveAs(fp); file = JSON.parse(fs.readFileSync(fp, 'utf8')); } catch (e) {}
+    ck('harvest produces a file', !!(file && file.type === 'selection-field'), file && file.type);
+    ck('it holds every universe in the cube', !!file && file.universes.length === 27,
+       file && file.universes.length);
+    ck('every one of them carried a genome out',
+       !!file && file.universes.filter(u => u.genome).length === 27,
+       file && file.universes.filter(u => u.genome).length + '/27');
+    const at = {}; if (file) file.universes.forEach(u => { const k = String(u.at).split('/')[0]; at[k] = (at[k] || 0) + 1; });
+    ck('and says where each one lived',
+       at.surface === 8 && at.collective === 1 && at.layer1 === 9 && at.layer2 === 9, JSON.stringify(at));
+    ck('a harvested layer records the pace and darkness it ran at',
+       !!file && file.universes.filter(u => /layer2/.test(u.at)).every(u => u.pace > 0 && u.dark === true));
 
     ck('no uncaught page errors with layers', errs.length === 0, errs.slice(0, 2).join(' | '));
     await ctx.close();

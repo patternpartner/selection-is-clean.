@@ -115,6 +115,11 @@
         border-radius:5px;padding:5px 7px;letter-spacing:.3px;display:none}
   #depth b{color:#dfe;font-weight:normal}
   #depth .now{color:#7fd4a8}
+  /* #168 — HARVEST. The only way to compare a layer against the surface after a long run. */
+  #harvest{position:fixed;left:8px;bottom:8px;z-index:9;cursor:pointer;display:none;
+        font:10px/1 ui-monospace,Menlo,monospace;color:#cfe;background:rgba(10,14,16,.86);
+        border:1px solid #2a4a44;border-radius:7px;padding:9px 12px}
+  #harvest.busy{color:#8fb;border-color:#2f6}
   iframe{border:0;width:100%;height:100%;display:block;background:#000}
   /* The tap target sits OVER the frame so one tap always lands on the field rather than on whatever
      the engine has drawn there. #153: it is HIDDEN while a universe is open. It used not to be —
@@ -146,6 +151,7 @@
 <div id="grid"></div>
 <div id="below"></div>
 <div id="depth"></div>
+<div id="harvest">harvest</div>
 <div id="back">&#8592; field</div>
 <div id="fmsg"></div>
 <script>
@@ -417,6 +423,73 @@
     if(LAYERS>0&&TURN>0) turnTimer=setInterval(function(){ if(!openCell) rotate(face+1); },TURN*1000);
   }
 
+  // ═══ #168 — HARVEST ════════════════════════════════════════════════════════════════════════
+  // One tap takes every universe in the field — the surface AND every layer under it — and puts them
+  // in a single file.
+  //
+  // Without this a long run produces nothing comparable. A universe's own save button lives on an
+  // OPENED surface cell (#154), and the layers have no controls at all: after eight hours you could
+  // read the counter and learn that eighteen things were alive, which is the same thing you knew
+  // before you started. The question the layers exist to answer — does a world that ticks slowly and
+  // trades freely end up somewhere the surface did not — needs the genomes side by side.
+  //
+  // Sequential, not parallel: encodeGenome on a mature creature is not cheap (SAVE_BUDGET is half a
+  // million characters) and twenty-seven at once on four workers would stall the field for as long
+  // as it took. A paced universe answers with up to its own pace in latency, because the message is
+  // handled between its ticks — which is why the button reports progress rather than appearing hung.
+  var harvestEl=document.getElementById('harvest');
+  function harvestOne(frame){
+    return new Promise(function(res){
+      var done=false, fin=function(v){ if(!done){ done=true; res(v); } };
+      setTimeout(function(){ fin(null); }, 20000);      // a universe that will not answer is recorded as null
+      try{
+        var w=frame.contentWindow, a=w&&w.__field;
+        if(!a){ fin(null); return; }
+        Promise.all([a.save(), a.stat()]).then(function(r){
+          var txt=r[0], st=r[1]||{};
+          var g=null; try{ g=JSON.parse(txt).genome; }catch(e){ g=null; }
+          fin(g?{ genome:g, ticks:st.totalTicks|0, gen:st.gen|0, N:st.N|0,
+                  atoms:st.atoms|0, pace:st.pace|0, dark:!!st.dark, fp:st.fp||'' }:null);
+        }, function(){ fin(null); });
+      }catch(e){ fin(null); }
+    });
+  }
+  async function harvest(){
+    if(harvestEl.classList.contains('busy'))return;
+    harvestEl.classList.add('busy');
+    var frames=[], where=[];
+    for(var i=0;i<cells.length;i++){
+      frames.push(cells[i].firstChild);
+      where.push(wantCollective&&i===cells.length-1?'collective':('surface/'+i));
+    }
+    for(var j=0;j<deep.length;j++){
+      frames.push(deep[j]);
+      where.push('layer'+(Math.floor(j/total)+1)+'/'+(j%total));
+    }
+    var out={ type:'selection-field', version:1, exportedAt:new Date().toISOString(),
+              hash:location.hash||'', universes:[] }, got=0;
+    for(var k=0;k<frames.length;k++){
+      harvestEl.textContent='harvest '+(k+1)+'/'+frames.length;
+      var one=await harvestOne(frames[k]);
+      if(one){ one.at=where[k]; out.universes.push(one); got++; }
+      else out.universes.push({ at:where[k], genome:null, note:'no answer' });
+    }
+    try{
+      var blob=new Blob([JSON.stringify(out)],{type:'application/json'});
+      var a=document.createElement('a');
+      a.href=URL.createObjectURL(blob);
+      a.download='selection_field_'+got+'of'+frames.length+'_'+Date.now()+'.json';
+      a.click();
+      setTimeout(function(){ URL.revokeObjectURL(a.href); },8000);
+      harvestEl.textContent='harvested '+got+'/'+frames.length;
+    }catch(e){ harvestEl.textContent='harvest failed'; }
+    setTimeout(function(){ harvestEl.classList.remove('busy'); harvestEl.textContent='harvest'; },6000);
+  }
+  if(total>1){
+    harvestEl.style.display='block';
+    harvestEl.addEventListener('click',function(e){ e.stopPropagation(); harvest(); });
+  }
+
   // A readout for the part you cannot see, and the handle that turns it.
   if(LAYERS>0){
     depthEl.style.display='block';
@@ -485,6 +558,11 @@
   }
   function open(cell){
     openCell=cell;
+    // #168: get out of the way. This button sits bottom-left, which is where an OPENED universe's own
+    // save and load buttons are — the exact geometry of #150 and #154, where a control covered a
+    // control and eighteen buttons could be seen and never pressed. A field-level control has no
+    // business being on screen while you are inside one universe.
+    harvestEl.style.display='none';
     for(var i=0;i<cells.length;i++) cells[i].classList.toggle('on',cells[i]===cell);
     grid.classList.add('open');
     setFrameHash(cell,'');                      // instruments on
@@ -498,6 +576,7 @@
     grid.classList.remove('open');
     for(var i=0;i<cells.length;i++) cells[i].classList.remove('on');
     openCell=null;
+    if(total>1) harvestEl.style.display='block';
     allocate(null);                             // everybody back to full
   }
   grid.addEventListener('click',function(e){

@@ -12645,3 +12645,65 @@ the API call after it is only there to make it immediate.
 
 `layers-test.js` now runs 30 checks, four of them on the flags after a rotation, including that
 exactly nine of the twenty-seven are lit at any moment.
+
+## #168 — HARVEST, and can the cube survive a night
+
+The author is running it overnight. Two things had to be true first, and only one of them was.
+
+### It plateaus
+
+```
+27 universes, rotating every 120s
+ min    RSS    surfaceTicks  deepTicks   alive   errs   face
+   2   1287           24690       3758    27/27      0   layer 1
+   6   1464           29849      49278    27/27      0   surface
+  12   1656           51538      87712    27/27      0   surface
+  16   1634           68647     108313    27/27      0   layer 2
+  20   1900           86263     129266    27/27      0   layer 1
+  24   1886           92820     160372    27/27      0   surface
+  26   1730          105089     165837    27/27      0   layer 1
+```
+
+From minute 12 it oscillates between roughly 1630 and 1900 rather than climbing — **and that is LOWER
+than the nine-universe field before #162, which sawtoothed 1854 to 2801.** Twenty-seven universes now
+sit under the ceiling nine used to breach. 27/27 answering and zero caught errors throughout.
+
+The other number in that table is the budget circulating. Deep ticks (165,837) have overtaken surface
+ticks (105,089), because eighteen of the twenty-seven live below and the face rotates. Without #167
+the surface would have taken nearly all of it.
+
+### The morning would have been empty
+
+The thing that was NOT true: nothing could get a deep universe's genome out. A universe's own save
+button lives on an OPENED SURFACE CELL (#154), and the layers have no controls at all. Eight hours
+would have produced a counter saying eighteen things were alive — which is what you knew before you
+started, and exactly the failure I named a section ago as building capacity faster than we use it.
+
+`harvest` takes every universe in the field — surface, collective and every layer — and puts them in
+one file, each labelled with where it lived and the pace and darkness it ran at:
+
+```
+selection_field_27of27_<t>.json     369 KB
+  by layer: {"surface":8,"collective":1,"layer1":9,"layer2":9}
+  surface/0   ticks 835  N 126  pace 0    dark false   14,048 chars
+  layer2/0    ticks  55  N  36  pace 800  dark true    13,356 chars
+```
+
+Sequential rather than parallel: `encodeGenome` on a mature creature is not cheap and twenty-seven at
+once on four workers would stall the field for as long as it took. A paced universe answers with up to
+its own pace in latency, because its messages are handled between its ticks, so the button counts
+progress instead of appearing hung. A universe that will not answer within twenty seconds is recorded
+as a null rather than losing the whole harvest.
+
+**And it hides itself when a universe is open**, because it sits bottom-left, which is exactly where an
+opened universe's own save and load buttons are. That is the geometry of #150 and #154 — a control
+covering a control, eighteen buttons that could be seen and never pressed — and it would have been the
+third time.
+
+### What the run is for
+
+The question the layers exist to answer: **does a world that ticks slowly and trades freely end up
+somewhere the surface did not?** Two harvests — one now, one in the morning — make that answerable
+rather than arguable. If the layers diverge, it is the most interesting result this project has had.
+If all twenty-seven converge, that is important too, and it points straight at the shared
+`selection_genome` slot that every universe still writes to.
