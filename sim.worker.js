@@ -122,6 +122,12 @@ const BRIDGE =
     'o.ticks=genome.totalTicks|0;' +
   '}catch(e){o.err=String(e&&e.message);}return o;};' +
   '__inst.api.setGene=function(k,v){try{if(typeof genome[k]!=="number"||typeof v!=="number")return false;genome[k]=v;return true;}catch(e){return false;}};' +
+  // #164: set this universe's PACE live, without touching its hash. The hash route would work — the
+  // engine re-reads pace on hashchange — but the hash is the CREATURE's (#cleanart, #turbo, and
+  // whatever saveGenome has overwritten it with by the first autosave), and the field has no
+  // business rewriting it to say something about the viewer. PACE is a plain `let` in the engine's
+  // scope and the bridge runs in that scope, so this assigns the real one.
+  '__inst.api.setPace=function(ms){try{var v=+ms;if(!isFinite(v))return false;PACE=Math.max(0,Math.min(5000,v|0));return true;}catch(e){return false;}};' +
   '__inst.api.feedPacket=function(p){try{handleNetworkMessage(p);return true;}catch(e){return false;}};' +
   // A few numbers off the sim's own counters. The field is nine worlds behind worker
   // boundaries; without this the only way to know whether a relayed migrant LANDED was to
@@ -351,6 +357,13 @@ Universe.prototype.handle = function (d) {
   if (d.type === 'pull') {
     let packet = null; try { packet = api() && api().pullMigrant ? api().pullMigrant() : null; } catch (_) {}
     this.post({ type: 'pulled', rid: d.rid, packet });
+    return;
+  }
+
+  // #164 — THE FIELD ALLOCATES ITS OWN BUDGET. Fire and forget, like `feed`: a pace that does not
+  // arrive is a universe still running at the speed it had, which is the safe direction to fail in.
+  if (d.type === 'pace') {
+    try { if (api() && api().setPace) api().setPace(d.ms); } catch (_) {}
     return;
   }
 

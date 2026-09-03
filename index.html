@@ -79,6 +79,7 @@
       /#n=4,hud         put the HUD back on every frame (a field is clean by default)
       /#pool=2          pack the universes onto exactly two workers (default: one per core, max 4)
       /#nopool          one worker per universe, the pre-#162 layout — for comparison, and costs more
+      /#bgpace=400      how hard to slow the OTHER universes while one is open (default 200ms, 0 = off)
 
   TAP a universe to open it full size, with its instruments AND its save/load buttons on; tap 'field'
   (or Escape) to go back. Nothing reloads either way — the others keep running and trading while you
@@ -137,7 +138,7 @@
   // treated it as a GENOME and tried to decode the word.
   // /#reset now clears BOTH keys and starts a clean field. It is the one thing the artwork must
   // always be able to do: let go of what it is holding.
-  var OPT = '(n=\\d+|pool=\\d+|nopool|clean|cleanart|hud|solo|reset)';
+  var OPT = '(n=\\d+|pool=\\d+|nopool|bgpace=\\d+|clean|cleanart|hud|solo|reset)';
   var isOptions = raw==='' || new RegExp('^'+OPT+'(,'+OPT+')*$').test(raw);
   if(isOptions && /(^|,)reset(,|$)/.test(raw)){
     try{ localStorage.removeItem('selection_genome'); }catch(e){}
@@ -184,6 +185,27 @@
   // So the pool name carries a nonce minted once per page load. Every cell in THIS load shares it
   // and pools together; a reload mints a new one, gets clean workers, and the old worker's last
   // port closes with nobody left to keep it alive, so the browser reaps it and its universes.
+  // ═══ #164 — LOOKING AT A UNIVERSE WAKES IT UP ═══════════════════════════════════════════════
+  // The field's tick budget is FIXED — four workers buy about five times one universe and that is
+  // the whole phone — so the only lever past a handful of universes is who gets the ticks.
+  //
+  // The trap is that slowing everything down is not allocation, it is just loss: a field where every
+  // cell is paced runs slower and nobody is better off. Pace only pays when the budget it frees goes
+  // somewhere. So nothing is paced while you are looking at the whole field — that is today's
+  // behaviour exactly — and the moment you open ONE universe, the other eight stand down and hand
+  // their ticks to it. Tapping a cell stops meaning "make this bigger" and starts meaning "wake this
+  // up", which is what the instruments were always for.
+  //
+  // 200ms is five ticks a second for a universe nobody is looking at, against roughly twenty-three
+  // in a full field. #bgpace=0 turns the whole thing off and every cell runs flat out always.
+  //
+  // Worth knowing, because it is a real consequence and not a side effect: #163 makes a paced
+  // universe ISOLATED as well as slow — it accepts migrants in proportion to its own clock, so the
+  // eight that stand down also stop taking much in while you look at the ninth. Over the seconds or
+  // minutes of actually looking at something that is nothing; it would matter if a cell were left
+  // open for hours, and that is the case to watch.
+  var BGPACE = (function(){ var m=raw.match(/bgpace=(\d+)/); var v=m?parseInt(m[1],10):200;
+                            return Math.max(0,Math.min(5000,isFinite(v)?v:200)); })();
   var POOL_RUN = Math.random().toString(36).slice(2,10);
   var pool;
   var pm = raw.match(/pool=(\d+)/);
@@ -231,12 +253,35 @@
   // save/load buttons are not rendered there, because the tap target sits over them and opening the
   // universe is the only thing a tap in the grid can mean. Open it and it gets its buttons.
   function controls(cell,show){ var a=api(cell); if(a&&a.controls) a.controls(show); }
+  // #164: hand the field's ticks to whichever universe is being looked at — but only the ticks it
+  // can actually use.
+  //
+  // The first version of this stood ALL eight others down, and measured: the open cell went from
+  // 16.2 to 52.8 ticks/second while the field's total fell from 189 to 90. It gained 36 and the
+  // others gave up 136. That is not allocation, it is mostly waste — one universe runs on ONE
+  // worker, so it cannot absorb four workers' worth however much they stand aside.
+  //
+  // Only a universe SHARING THE OPEN ONE'S WORKER is competing with it for anything (#162: cells
+  // are packed onto a pool of SharedWorkers, and a worker is one thread). So stand down that
+  // worker's other cells and leave the rest of the field running at full speed. The open universe
+  // still gets its thread to itself; the six or seven universes on other workers never notice.
+  function slotOf(cell){ var i=cells.indexOf(cell); return i<0?-1:(i%pool); }
+  function allocate(focus){
+    if(!BGPACE)return;
+    var slot = focus ? slotOf(focus) : -1;
+    for(var i=0;i<cells.length;i++){
+      var a=api(cells[i]); if(!a||!a.pace)continue;
+      var standDown = !!focus && cells[i]!==focus && (i%pool)===slot;
+      try{ a.pace(standDown ? BGPACE : 0); }catch(e){}
+    }
+  }
   function open(cell){
     openCell=cell;
     for(var i=0;i<cells.length;i++) cells[i].classList.toggle('on',cells[i]===cell);
     grid.classList.add('open');
     setFrameHash(cell,'');                      // instruments on
     controls(cell,true);
+    allocate(cell);                             // the other eight stand down
   }
   function close(){
     if(!openCell)return;
@@ -245,6 +290,7 @@
     grid.classList.remove('open');
     for(var i=0;i<cells.length;i++) cells[i].classList.remove('on');
     openCell=null;
+    allocate(null);                             // everybody back to full
   }
   grid.addEventListener('click',function(e){
     if(openCell)return;                          // inside an open universe, its own controls win

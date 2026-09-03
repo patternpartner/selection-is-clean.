@@ -153,6 +153,10 @@
     // on the wire; feed(packet) puts one in, through the sim's own network door.
     pull:  function(){ return ask('pull', null); },
     feed:  function(packet){ try { worker.postMessage({ type:'feed', packet:packet }); } catch(e){} },
+    // #164: how fast this universe is allowed to run, in minimum milliseconds between ticks.
+    // 0 is flat out. Fire and forget — a pace that does not arrive leaves the universe at the speed
+    // it already had, which is the safe direction to fail in.
+    pace:  function(ms){ try { worker.postMessage({ type:'pace', ms:+ms||0 }); } catch(e){} },
     // The sim's own receive-side counters. Arrivals, not sends.
     stat:  function(){ return ask('stat', null); },
     heapForTest: function(){ return ask('heap', null); },

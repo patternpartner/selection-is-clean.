@@ -61,7 +61,7 @@ const statAll = (page) => page.evaluate(async () => {
 
   // ── the pooled field ──────────────────────────────────────────────────────────────────────
   {
-    const ctx = await browser.newContext({ viewport: { width: 412, height: 915 } });
+    const ctx = await browser.newContext({ viewport: { width: 412, height: 915 }, hasTouch: true });
     const page = await ctx.newPage();
     const errs = []; page.on('pageerror', e => errs.push(e.message));
     await page.goto(base + '/#n=8', { waitUntil: 'load' });
@@ -84,15 +84,18 @@ const statAll = (page) => page.evaluate(async () => {
     ck('universes still find each other on the wire', live.every(s => s.peers > 1),
        'peers ' + live.map(s => s.peers).join(','));
 
-    // #163 MUST BE A NEAR NO-OP AT PARITY. The clock gate refuses heritable packets from a peer
-    // whose tick has run ahead of ours, which is what makes pace mean isolation. Nothing here is
-    // paced, so the only spread is the natural one between universes of different populations
-    // (measured ~15%), and the refusals must stay a small fraction of what lands. If this check
-    // ever goes red, an unpaced field has started throttling itself — which would look like the
-    // network quietly dying rather than like a bug in this gate.
+    // #163 MUST NOT FIRE AT ALL IN AN UNPACED FIELD, and this check is the reason the rule is
+    // "only a universe that was deliberately slowed". The first version gated on the raw clock
+    // ratio, and this check caught it: an unpaced field refused 14% of its own heritable traffic at
+    // 25 seconds, 35% at 60, 58% at 150 and still climbing — because universes NEVER run at parity.
+    // Their tick rates diverge as their populations do (measured spread 1938 to 3860 at 150s), so
+    // the invariant was working perfectly on the wrong question and quietly halving gene flow into
+    // whichever universe carried the most particles. Natural speed variation is ecology; this system
+    // has evolved under it since it had a network. Only PACE is imposed from outside, and only pace
+    // is gated. Nothing here is paced, so the count must be zero — not small, zero.
     const refused = live.reduce((a, s) => a + (s.paced | 0), 0);
     const landed  = live.reduce((a, s) => a + (s.migrantAccepted | 0), 0);
-    ck('the clock gate barely fires in an unpaced field', landed > 0 && refused < landed * 0.25,
+    ck('the clock gate does not fire in an unpaced field', landed > 0 && refused === 0,
        refused + ' refused vs ' + landed + ' accepted');
 
     // each universe's canvas is its own, and cell-sized rather than viewport-sized
@@ -140,6 +143,40 @@ const statAll = (page) => page.evaluate(async () => {
     ck('a pooled universe can still export its genome',
        typeof file === 'string' && /"type":\s*"selection-genome"/.test(file) && file.length > 500,
        typeof file === 'string' ? (file.length + ' chars') : String(file));
+
+    // ═══ #164 — OPENING A UNIVERSE HANDS IT ITS WORKER ══════════════════════════════════════
+    // Only cells SHARING the open one's worker stand down; the rest of the field is untouched. The
+    // first version stood all eight down and measured the open cell gaining 36 ticks/s while the
+    // field lost 136 — one universe cannot absorb four workers' worth. This asserts the corrected
+    // shape: worker-mates slow, non-mates do not.
+    {
+      const sample = async () => await page.evaluate(async () => { const o = [];
+        for (const c of document.querySelectorAll('.cell')) {
+          try { const a = c.firstChild.contentWindow.__field; const st = a ? await a.stat() : null;
+                o.push(st ? st.totalTicks | 0 : 0); } catch (e) { o.push(0); } } return o; });
+      await page.locator('.cell').first().locator('.tap').tap();
+      await page.waitForTimeout(1500);
+      const t0 = await sample();
+      await page.waitForTimeout(Math.max(10000, SETTLE / 2));
+      const t1 = await sample();
+      const d = t0.map((v, i) => t1[i] - v);
+      const slot = i => i % (new Set(srcs.map(x => (x.match(/pool=([^#&]*)/) || [])[1])).size);
+      const mates = d.filter((_, i) => i > 0 && slot(i) === slot(0));
+      const others = d.filter((_, i) => i > 0 && slot(i) !== slot(0));
+      const mean = a => a.length ? a.reduce((x, y) => x + y, 0) / a.length : 0;
+      ck('the open universe outruns its worker-mates', mates.length > 0 && d[0] > mean(mates) * 1.5,
+         'open ' + d[0] + ' vs mates ' + mates.join(','));
+      ck('universes on OTHER workers are left alone', others.length > 0 && mean(others) > mean(mates) * 1.5,
+         'others mean ' + Math.round(mean(others)) + ' vs mates mean ' + Math.round(mean(mates)));
+      await page.locator('#back').tap().catch(() => {});
+      await page.waitForTimeout(1500);
+      const r0 = await sample();
+      await page.waitForTimeout(Math.max(8000, SETTLE / 3));
+      const r1 = await sample();
+      const back = r0.map((v, i) => r1[i] - v).filter((_, i) => i > 0 && slot(i) === slot(0));
+      ck('closing it puts the worker-mates back to full', back.every(v => v > 0) &&
+         mean(back) > mean(mates) * 1.5, 'mates after close ' + back.join(','));
+    }
 
     ck('no uncaught page errors in the pooled field', errs.length === 0, errs.slice(0, 2).join(' | '));
     await ctx.close();

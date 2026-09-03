@@ -98,6 +98,20 @@ const netStats={sent:0,received:0,accepted:0,dropped:0,bad:0,paced:0,lastType:''
 // inside one tick of a slow universe and a per-pair ratio would read 0 for all but the first.
 const peerClock=new Map();     // peer id → {theirs,mine,sm,st}: their last tick, ours, and decayed sums
 const PEER_CLOCK_DECAY=0.99;
+// Do not act on a weak estimate. A ratio built from one or two packets is mostly noise, and a field
+// is at its noisiest in its first half-minute — universes boot at different moments with different
+// populations, so their tick rates genuinely differ by around 45% before anything settles. Measured:
+// without this warm-up an UNPACED nine-universe field refused 38% of its own heritable traffic in the
+// first 25 seconds, falling to 1-10% once it settled. The invariant was working correctly on a bad
+// estimate, which is still the wrong thing to do. ~400 of a peer's ticks is roughly ten packets from
+// them before this gate is allowed an opinion about their clock.
+const PEER_CLOCK_WARMUP=400;
+// PACE lives with the scheduler 25,000 lines below, but the clock gate above reads it, and a `let`
+// read before its declaration is a ReferenceError rather than undefined — `typeof` does not save you
+// from a temporal dead zone either. Network messages arrive asynchronously so they cannot land
+// mid-script in practice, but "in practice" is not a guarantee to hang a receive path on. Declared
+// here, assigned by __readPace() where the scheduler sets it up.
+let PACE=0;
 function peerTickRatio(tab,born){
   if(!(born>=0))return 1;                       // a sender that does not stamp its clock is never gated
   const r=peerClock.get(tab);
@@ -106,7 +120,23 @@ function peerTickRatio(tab,born){
   r.theirs=born; r.mine=tick;
   // dTheirs<=0 means the peer restarted or reordered; learn nothing from it rather than guess.
   if(dTheirs>0&&dMine>=0){ r.sm=r.sm*PEER_CLOCK_DECAY+dMine; r.st=r.st*PEER_CLOCK_DECAY+dTheirs; }
-  if(!(r.st>0))return 1;
+  if(!(r.st>=PEER_CLOCK_WARMUP))return 1;
+  // ONLY A UNIVERSE THAT WAS DELIBERATELY SLOWED IS ISOLATED BY IT. Everything above measures the
+  // clock difference; this decides when to act on it, and the answer is: only when the difference
+  // is something the FIELD did, never when it is something the creature did.
+  //
+  // Measured, and it corrected me: an unpaced nine-universe field does not run at parity and never
+  // settles into it. Tick rates diverge as populations diverge — 1938 against 3860 at 150 seconds,
+  // a spread of 99% and still widening — so acting on the raw ratio refused 58% of the ordinary
+  // field's heritable traffic, rising, having refused 14% at 25 seconds. That is the invariant
+  // working correctly on the wrong question. Natural speed variation is ECOLOGY: this system has
+  // evolved under it since there was a network at all, and halving gene flow into whichever
+  // universe happens to carry the biggest population is a change nobody asked for.
+  //
+  // Pace is different in kind. It is imposed from outside — by the field handing an open universe
+  // its worker, or by a stack running deep — and it is exactly the case where the clock would
+  // otherwise override netReceptivity. So gate on it and on nothing else.
+  if(!(PACE>0))return 1;
   const p=r.sm/r.st;
   return p>=1?1:(p>0?p:0);                      // never a BOOST: running fast does not invent packets
 }
@@ -25335,7 +25365,7 @@ addEventListener('hashchange',()=>{TURBO=__readTurbo();});
 // saveGenome() overwrites the URL hash with the serialised genome at the first autosave, so every
 // flag in this file is only legible for the first few hundred ticks (see __cleanArt).
 function __readPace(){const m=(location.hash||'').match(/pace=(\d+)/);const v=m?parseInt(m[1],10):0;return Math.max(0,Math.min(5000,v||0));}
-let PACE=__readPace();
+PACE=__readPace();   // declared up with the clock gate that reads it
 addEventListener('hashchange',()=>{PACE=__readPace();});
 let __turboLeft=0;
 function scheduleNext(){

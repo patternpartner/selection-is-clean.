@@ -12439,9 +12439,68 @@ no clock history to compare against and is never gated, so eight peers buy eight
 which four landed. Over hours that allowance vanishes. Its population fell 151 → 58, which is the
 result and not a cost — it is living on its own reproduction now instead of on the field's runoff.
 
-**It is not a perfect no-op at parity, and should not be.** The unpaced universes refused 1–10 packets
-each, because their tick rates genuinely differ by about 15% (4,256 to 4,988 over the same 150s). The
-gate trims in proportion to real difference, which is the invariant working, not an error term. But it
-is the property most worth guarding, so `pool-test.js` now asserts that refusals stay under a quarter
-of what lands in a field where nothing is paced: if that ever goes red, an unpaced field has started
-throttling itself, which would present as the network quietly dying rather than as a bug here.
+### CORRECTION — I gated the wrong thing, and the rig caught it
+
+I wrote above that the gate "is not a perfect no-op at parity, and should not be", on the grounds that
+unpaced universes refused only 1–10 packets each. **That reading was wrong, and so was the design it
+justified.** Those were the FAST cells in a run where one cell was paced — the low counters by
+construction. The check I had just added to `pool-test.js` went red intermittently, which is what
+forced the real measurement:
+
+```
+UNPACED field — nothing paced at all
+  t= 25s   accepted   91   refused   13   = 14%   tick spread  454-730  (61%)
+  t= 60s   accepted  210   refused   73   = 35%   tick spread  907-1622 (79%)
+  t=150s   accepted  560   refused  324   = 58%   tick spread 1938-3860 (99%)
+```
+
+**Parity does not exist and never settles into existing.** Universes drift to two-to-one different tick
+rates as their populations diverge, and the raw-ratio gate was faithfully refusing 58% of the ordinary
+field's gene flow, still climbing. The invariant was working perfectly on the wrong question.
+
+The distinction the first version missed: **natural speed variation is ECOLOGY** — this system has
+evolved under it since it had a network, and halving gene flow into whichever universe happens to
+carry the most particles is a change nobody asked for. **Pace is imposed from outside**, by the field
+handing an open universe its worker or by a stack running deep, and it is the only case where the
+clock would otherwise override `netReceptivity`. So the gate now fires only when `PACE>0`. Measured
+after: **0% refused at 25s, 60s and 150s across a 55% natural tick spread** — a true no-op — while a
+paced universe stays isolated.
+
+`pool-test.js` asserts zero now rather than "small", which is the assertion that would have caught
+this on the first run instead of the third.
+
+**The residual on the paced side is adaptation lag, not steady state.** The clock estimate is a decayed
+sum, so a universe that has just been paced keeps accepting at close to its old rate while the estimate
+swings over — about two minutes. Measured at pace 2000: 11.6x the per-own-tick immigration over a 150s
+window, **3.7x over 420s**, converging as the fixed warm-up allowance dilutes. For the field's
+open-a-cell use that lag is a feature — a few seconds of looking at a universe should not perturb its
+neighbours' ecology. For a stack paced for hours it is irrelevant.
+
+### #164 — the field allocates its own budget
+
+Nothing is paced while you are looking at the whole field: that is today's behaviour exactly, because
+**slowing everything down is not allocation, it is loss.** Open one universe and it runs flat out while
+the others stand down — but only the ones that were actually competing with it.
+
+That qualification is the whole of the second attempt. The first version stood ALL eight others down:
+
+```
+phase              cell 0    other eight (mean)    field total
+in the grid         16.2                  21.6          189.2
+cell 0 OPEN         52.8                   4.6           89.6      <- total COLLAPSED
+```
+
+Cell 0 gained 36 ticks/second and the others gave up 136. One universe runs on ONE worker (#162), so
+it cannot absorb four workers' worth however far they stand aside; the rest was simply thrown away.
+Standing down only the open cell's WORKER-MATES:
+
+```
+phase              cell 0    other eight (mean)    field total
+in the grid         15.0                  19.0          167.1
+cell 0 OPEN         40.8                  17.3          178.8      <- total held
+back to the grid    15.0                  15.8          141.5
+```
+
+**Cell 0 nearly triples and the field's total does not drop.** Tapping a cell stops meaning "make this
+bigger" and starts meaning "wake this up". (The 141.5 on return is drift — populations grow and ticks
+get dearer over a four-minute run. Cell 0 returning to exactly 15.0 is the clean signal.)
