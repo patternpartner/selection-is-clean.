@@ -12343,3 +12343,74 @@ a zombie is a peer nobody built. Three reloads, still eight peers.
 because it was always the cores. Nine universes now cost what six used to, which is what makes the
 next question — how many universes the phone can actually hold, and what goes underneath them —
 worth asking with numbers rather than guesses.
+
+## THE TICK CEILING, AND THE BUG UNDERNEATH IT (#163)
+
+#162 bought headroom, not speed. The throughput ceiling was never touched by it and never could be:
+one universe alone gets 39 ticks/second, the whole nine-universe field gets 208. **Four workers buy
+about five times one universe, and that is the entire phone.** There is no arrangement in which
+twenty-four universes all run at 39. So the question stops being "how do we get more ticks" and
+becomes "who gets them" — which is the better question, because it is the one the author had already
+answered from the other direction: what you see on top is the surface of what is running underneath.
+
+### Drawing is 40% of it
+
+```
+nine universes, 120s, with and without the draw
+arm              ticks   particles   ticks per particle
+draws (shipped)    28917        1236                 23.4
+no draw            48592        1229                 39.5
+```
+
+**A universe with no cell ticks 1.68x faster than one with a cell.** The cheapest thing this field can
+run is a universe nobody is looking at — which is exactly what a stack underneath is made of. Combined
+with the #162 finding that memory tracks PARTICLES and not universes (MB per cell fell 353 → 99 across
+a 1-to-24 sweep while MB per 100 particles never moved), twenty-seven small worlds underneath cost
+about what nine larger ones cost on the surface. The stack is affordable on both axes.
+
+### PACE
+
+`#pace=N` is a floor on the milliseconds between ticks — the inverse of `#turbo=N`, for the same
+reason, pointed the other way. It is a RATE CAP rather than a share of a budget, which matters: it
+needs no central scheduler, it is local to the universe carrying it, and ticks nobody claims flow to
+whoever wants them.
+
+A paced universe is not a damaged one. Everything this creature is measured in is ticks — generation,
+totalTicks, epochs, the meter — so a universe at a tenth of the pace is not smaller or worse, it is
+YOUNGER. Two ticks a second is 170,000 ticks a day, against a most-mature-ever lineage of 1.18M.
+
+### And the bug it exposed — #158's bug, on the other side of the wire
+
+The simulation runs on a TICK clock. The network runs on a WALL clock. `networkReceive()` drains the
+entire migrant queue every tick, and the queue fills from the BroadcastChannel between ticks. So the
+slower a universe runs, the more foreign material it absorbs per tick of its own life. Measured, twice,
+by pacing one cell of a nine-universe field and leaving the rest flat out:
+
+```
+pace  300ms:  slow universe ticked 11.3x slower, took in 11.8x as many migrants per own tick
+pace 2000ms:  slow universe ticked 60.2x slower, took in 61.8x as many migrants per own tick
+```
+
+**Linear, one-for-one, with no ceiling reached.** At pace 2000 that universe takes 1.49 immigrants per
+tick against a native birth cap of five (`birthsProcessed<5`) — about 30% of its entire reproductive
+throughput arriving from outside every tick, against 0.4% for its neighbours. And it held the LARGEST
+population in the field while ticking sixty times less. Its population was being fed by the field
+rather than by itself.
+
+This is exactly #158 again. `netReceptivity` is the gene that decides how much a universe takes in,
+and it gates each PACKET (`Math.random()>rec`) — so the same gene value means sixty times more
+immigration at sixty times the pace. **The clock silently overrides the gene**, which is the one thing
+this project's standing rule forbids ("the system needs to decide to turn them off, not me"). #158
+found the identical shape on the send side: the relay was pulling at a rate `netMigrantRate` had never
+chosen, and the fix was to ask the question in the gene's own units.
+
+Not yet fixed, and deliberately so — the mechanism is established but the right bound is not. A cap on
+applications per tick is the shape (the natural anchor is the native birth cap already in the loop:
+immigration should not structurally outpace a universe's own reproduction). The value needs one more
+measurement, because a cap loose enough never to throttle a healthy burst may be too loose to bind at
+the depth a real stack would run at. Shipping a number I cannot defend would be the same mistake as
+the "8 MB heap" sizing in #149.
+
+**What is safe today:** pace is shipped and asserted (`pace-test.js`), and nothing in the field uses
+it yet. The hazard above only appears when something is actually paced, so the flag is available for
+experiment while the receive side is still wall-clock.

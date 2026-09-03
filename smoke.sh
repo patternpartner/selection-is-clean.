@@ -16,7 +16,7 @@ pass=0; fail=0; failed=()
 
 # oee-meter-test.js asserts the #131 meter semantics; the rest step the sim directly. harness-ablate/-ablate-bank shell out to harness-oee and
 # harness-coupling-worker is a worker module, so all three are covered transitively.
-RIGS=(oee-meter-test.js verb-test.js attention-test.js worldsignal-test.js crossing-test.js crossing-report.js sense-test.js roundtrip-test.js inherit-test.js migrant-test.js noerror-test.js rarepath-test.js chain-test.js meter-test.js autosave-test.js codec-test.js browser-test.js collective-test.js pool-test.js persistence-test.js diary.js liveness-report.js harness.js harness-ab.js harness-oee.js harness-strip.js harness-clamp.js harness-stream.js
+RIGS=(oee-meter-test.js verb-test.js attention-test.js worldsignal-test.js crossing-test.js crossing-report.js sense-test.js roundtrip-test.js inherit-test.js migrant-test.js noerror-test.js rarepath-test.js chain-test.js meter-test.js autosave-test.js codec-test.js browser-test.js collective-test.js pool-test.js pace-test.js persistence-test.js diary.js liveness-report.js harness.js harness-ab.js harness-oee.js harness-strip.js harness-clamp.js harness-stream.js
       harness-tie.js harness-gates.js harness-meta-ablate.js harness-saturation.js
       harness-atrophy-probe.js harness-coupling.js harness-coupling-asym.js
       harness-alien-ablate.js harness-ablate-reflex.js harness-reflex-leaf.js
@@ -42,6 +42,9 @@ extra_env_for() {
     # off SECS, so the smoke pass gets the whole shape in about a minute; run it bare for the full
     # 25-second-per-section version.
     pool-test.js) echo "SECS=14" ;;
+    # pace-test.js boots two universes back to back and compares their tick counts; the assertion is
+    # a rate, so it needs enough wall-clock either side of the pace floor to be meaningful.
+    pace-test.js) echo "SECS=16" ;;
     *) echo "" ;;
   esac
 }

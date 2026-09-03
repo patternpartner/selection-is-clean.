@@ -25273,14 +25273,37 @@ try{ if(typeof window!=='undefined'&&window.addEventListener)
 function __readTurbo(){const m=(location.hash||'').match(/turbo=(\d+)/);const v=m?parseInt(m[1],10):1;return Math.max(1,Math.min(64,v||1));}
 let TURBO=__readTurbo();
 addEventListener('hashchange',()=>{TURBO=__readTurbo();});
+// PACE (#163) — a floor on the milliseconds between ticks. #pace=0 (the default) is the old
+// behaviour: run as fast as the machine allows. #pace=500 is a universe that lives at two ticks a
+// second and hands the rest of the machine to everybody else.
+//
+// This is the inverse of TURBO and it exists for the same reason TURBO does, pointed the other way.
+// The field's tick budget is FIXED — measured, four workers buy about five times one universe and
+// that is the whole phone — so past a handful of universes the only question left is who gets the
+// ticks. Pace is the answer as a RATE CAP rather than a share: it needs no central scheduler, it is
+// local to the universe that carries it, and budget nobody claims flows to whoever wants it.
+//
+// A paced universe is not a damaged one. Everything this creature is measured in is ticks —
+// generation, totalTicks, epochs, the meter — so a universe at a tenth of the pace is not smaller
+// or worse, it is YOUNGER. 2 ticks/second is still 170,000 ticks a day.
+//
+// Read once at load like TURBO, and re-read on a real hashchange. It cannot be read per frame:
+// saveGenome() overwrites the URL hash with the serialised genome at the first autosave, so every
+// flag in this file is only legible for the first few hundred ticks (see __cleanArt).
+function __readPace(){const m=(location.hash||'').match(/pace=(\d+)/);const v=m?parseInt(m[1],10):0;return Math.max(0,Math.min(5000,v||0));}
+let PACE=__readPace();
+addEventListener('hashchange',()=>{PACE=__readPace();});
 let __turboLeft=0;
 function scheduleNext(){
   if(__turboLeft>0){__turboLeft--;loop();return;}
   if(tabVisible){
     __turboLeft=TURBO-1;
-    requestAnimationFrame(loop);
+    // PACE and TURBO are not opposites to be resolved — turbo runs its sub-ticks back to back and
+    // the pace applies to the group, so #turbo=8,pace=1000 is eight ticks a second in bursts.
+    if(PACE>0)setTimeout(loop,PACE);
+    else requestAnimationFrame(loop);
   }else{
-    setTimeout(loop,67);
+    setTimeout(loop,Math.max(67,PACE));
   }
 }
 
