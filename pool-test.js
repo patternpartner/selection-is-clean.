@@ -84,18 +84,18 @@ const statAll = (page) => page.evaluate(async () => {
     ck('universes still find each other on the wire', live.every(s => s.peers > 1),
        'peers ' + live.map(s => s.peers).join(','));
 
-    // #163 MUST NOT FIRE AT ALL IN AN UNPACED FIELD, and this check is the reason the rule is
-    // "only a universe that was deliberately slowed". The first version gated on the raw clock
-    // ratio, and this check caught it: an unpaced field refused 14% of its own heritable traffic at
-    // 25 seconds, 35% at 60, 58% at 150 and still climbing — because universes NEVER run at parity.
-    // Their tick rates diverge as their populations do (measured spread 1938 to 3860 at 150s), so
-    // the invariant was working perfectly on the wrong question and quietly halving gene flow into
-    // whichever universe carried the most particles. Natural speed variation is ecology; this system
-    // has evolved under it since it had a network. Only PACE is imposed from outside, and only pace
-    // is gated. Nothing here is paced, so the count must be zero — not small, zero.
+    // THE BROADCAST IS DUAL AND STAYS DUAL (#166). The clock gate exists, is measured and is tested,
+    // and NOTHING in the shipped field turns it on: a universe that is slow, or out of sight, still
+    // hears its neighbours. Two findings put it here. Gating on the raw clock ratio refused 58% of
+    // an ordinary field's gene flow because universes never run at parity — their tick rates diverge
+    // as their populations do. And gating on pace, which was the narrowed version, made the layers
+    // underneath deaf, when the only thing that should distinguish a layer from the surface is that
+    // you cannot see it. netReceptivity is an evolvable gene; a universe that is taking in more than
+    // it can digest can turn itself down, and that decision is selection's rather than mine (#148).
+    // So: zero refusals here, and zero is also what a field with layers must show.
     const refused = live.reduce((a, s) => a + (s.paced | 0), 0);
     const landed  = live.reduce((a, s) => a + (s.migrantAccepted | 0), 0);
-    ck('the clock gate does not fire in an unpaced field', landed > 0 && refused === 0,
+    ck('nothing in the field refuses its neighbours', landed > 0 && refused === 0,
        refused + ' refused vs ' + landed + ' accepted');
 
     // each universe's canvas is its own, and cell-sized rather than viewport-sized

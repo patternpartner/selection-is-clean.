@@ -112,6 +112,8 @@ const PEER_CLOCK_WARMUP=400;
 // mid-script in practice, but "in practice" is not a guarantee to hang a receive path on. Declared
 // here, assigned by __readPace() where the scheduler sets it up.
 let PACE=0;
+let DARK=false;    // #165: same reason PACE is declared here — the loop reads it far below its use
+let ISOLATE=false; // #166: opt-in allopatry. Off in every shipped path; see peerTickRatio.
 function peerTickRatio(tab,born){
   if(!(born>=0))return 1;                       // a sender that does not stamp its clock is never gated
   const r=peerClock.get(tab);
@@ -121,22 +123,37 @@ function peerTickRatio(tab,born){
   // dTheirs<=0 means the peer restarted or reordered; learn nothing from it rather than guess.
   if(dTheirs>0&&dMine>=0){ r.sm=r.sm*PEER_CLOCK_DECAY+dMine; r.st=r.st*PEER_CLOCK_DECAY+dTheirs; }
   if(!(r.st>=PEER_CLOCK_WARMUP))return 1;
-  // ONLY A UNIVERSE THAT WAS DELIBERATELY SLOWED IS ISOLATED BY IT. Everything above measures the
-  // clock difference; this decides when to act on it, and the answer is: only when the difference
-  // is something the FIELD did, never when it is something the creature did.
+  // OFF BY DEFAULT. THE BROADCAST IS DUAL AND STAYS DUAL.
   //
-  // Measured, and it corrected me: an unpaced nine-universe field does not run at parity and never
-  // settles into it. Tick rates diverge as populations diverge — 1938 against 3860 at 150 seconds,
-  // a spread of 99% and still widening — so acting on the raw ratio refused 58% of the ordinary
-  // field's heritable traffic, rising, having refused 14% at 25 seconds. That is the invariant
-  // working correctly on the wrong question. Natural speed variation is ECOLOGY: this system has
-  // evolved under it since there was a network at all, and halving gene flow into whichever
-  // universe happens to carry the biggest population is a change nobody asked for.
+  // Two things had to be learned to get this line right, and the second one overturned the first.
   //
-  // Pace is different in kind. It is imposed from outside — by the field handing an open universe
-  // its worker, or by a stack running deep — and it is exactly the case where the clock would
-  // otherwise override netReceptivity. So gate on it and on nothing else.
-  if(!(PACE>0))return 1;
+  // First: an unpaced field does not run at parity and never settles into it — tick rates diverge as
+  // populations diverge (1938 against 3860 at 150 seconds, a spread of 99% and still widening). So
+  // acting on the raw clock ratio refused 58% of the ordinary field's heritable traffic, rising, and
+  // that was the invariant working correctly on the wrong question. Natural speed variation is
+  // ECOLOGY; this system has evolved under it since it had a network. That narrowed the gate to
+  // deliberate pace.
+  //
+  // Then the author's call, and it is the better argument: a layer underneath is an ordinary
+  // universe that happens not to be visible. The only difference between the surface and the depths
+  // is that you cannot SEE the depths — not what they hear, not what they say. The broadcast is dual
+  // in both directions and stays that way.
+  //
+  // The reasoning that beats mine is the project's own standing rule (#148, "the system needs to
+  // decide to turn them off, not me"). netReceptivity is an EVOLVABLE GENE. A universe that is
+  // taking in more than it can digest can turn itself down, and that is selection's job. My gate was
+  // me deciding on the population's behalf that it should not be flooded — a decision that belongs
+  // to the thing being flooded. A changed immigration rate is an environment, and environments
+  // change; the clock-override argument that motivated this only holds if the gene CANNOT respond,
+  // and it can.
+  //
+  // Kept, not deleted, because the mechanism is measured and tested and deliberate allopatry is a
+  // real experiment somebody may want to run: #isolate turns it on, and nothing in the shipped field
+  // sets it. The cost it would buy back, for whoever runs that experiment: at pace 2000 a universe
+  // takes in about 60x as many migrants per tick of its own life, and in the one long measurement
+  // available its population became the largest in the field while being fed by its neighbours
+  // rather than by its own reproduction.
+  if(!ISOLATE)return 1;
   const p=r.sm/r.st;
   return p>=1?1:(p>0?p:0);                      // never a BOOST: running fast does not invent packets
 }
@@ -25230,7 +25247,12 @@ function loop(){
   }
 
   const renderEvery=N>1000?4:N>500?3:N>200?2:1;
-  if(tabVisible&&__turboLeft===0&&tick%renderEvery===0){
+  // #165 — DARK. A universe in an inner layer has no cell and nobody looking at it, so every pixel it
+  // draws is thrown away. Measured: drawing is 40% of the field's tick budget, so a dark universe
+  // ticks 1.68x faster than a lit one — which makes the cheapest thing this whole field can run a
+  // world nobody is watching. That is what the layers underneath are made of.
+  // The sim is byte-identical either way; only the canvas goes unused.
+  if(!DARK&&tabVisible&&__turboLeft===0&&tick%renderEvery===0){
     render();
     if(!__cleanArt())renderDashboard();   // #144: cleanart means the art, not the art plus the readouts
   }
@@ -25367,6 +25389,17 @@ addEventListener('hashchange',()=>{TURBO=__readTurbo();});
 function __readPace(){const m=(location.hash||'').match(/pace=(\d+)/);const v=m?parseInt(m[1],10):0;return Math.max(0,Math.min(5000,v||0));}
 PACE=__readPace();   // declared up with the clock gate that reads it
 addEventListener('hashchange',()=>{PACE=__readPace();});
+// #165: #dark — run the simulation and draw nothing. Latched like PACE and re-read on a real
+// hashchange, and settable live through the field API, because whether a universe is being looked at
+// is a fact about the viewer that can change without the creature changing at all.
+function __readDark(){ try{ return /(^|[#,])dark(,|$)/.test(location.hash||''); }catch(_){ return false; } }
+DARK=__readDark();
+addEventListener('hashchange',()=>{DARK=__readDark();});
+// #166: opt-in isolation. A universe only stops hearing its neighbours if somebody explicitly asks
+// for that experiment; being slow, or being out of sight, does not make a universe deaf.
+function __readIsolate(){ try{ return /(^|[#,])isolate(,|$)/.test(location.hash||''); }catch(_){ return false; } }
+ISOLATE=__readIsolate();
+addEventListener('hashchange',()=>{ISOLATE=__readIsolate();});
 let __turboLeft=0;
 function scheduleNext(){
   if(__turboLeft>0){__turboLeft--;loop();return;}

@@ -80,6 +80,9 @@
       /#pool=2          pack the universes onto exactly two workers (default: one per core, max 4)
       /#nopool          one worker per universe, the pre-#162 layout — for comparison, and costs more
       /#bgpace=400      how hard to slow the OTHER universes while one is open (default 200ms, 0 = off)
+      /#layers=2        TWO INNER LAYERS underneath the surface — universes with no cell, drawing
+                        nothing, running slow, trading on the same wire. /#layers=2 with the default
+                        nine on top is twenty-seven universes: a cube, one face of which you can see.
 
   TAP a universe to open it full size, with its instruments AND its save/load buttons on; tap 'field'
   (or Escape) to go back. Nothing reloads either way — the others keep running and trading while you
@@ -92,6 +95,15 @@
   html,body{margin:0;padding:0;height:100%;background:#000;overflow:hidden;touch-action:none}
   #grid{display:grid;height:100%;width:100%;gap:1px;background:#191a1c}
   .cell{position:relative;min-width:0;min-height:0}
+  /* #165 — THE INNER LAYERS. Universes with no cell. They must still be LAID OUT, because a frame
+     with no layout reports innerWidth 0 and the engine would size its world to a single pixel — so
+     they are given a real cell's dimensions and moved off-screen, not display:none. They draw
+     nothing anyway (#dark), so the only thing left off-screen is a canvas nobody writes to. */
+  #below{position:fixed;left:-20000px;top:0;width:1px;height:1px;overflow:hidden;pointer-events:none}
+  #below .deep{position:absolute;top:0}
+  #depth{position:fixed;right:8px;bottom:8px;z-index:9;pointer-events:none;
+        font:9px/1.3 ui-monospace,Menlo,monospace;color:#9bd;background:rgba(8,12,18,.78);
+        border-radius:5px;padding:4px 6px;letter-spacing:.3px;display:none}
   iframe{border:0;width:100%;height:100%;display:block;background:#000}
   /* The tap target sits OVER the frame so one tap always lands on the field rather than on whatever
      the engine has drawn there. #153: it is HIDDEN while a universe is open. It used not to be —
@@ -121,6 +133,8 @@
   #fmsg{display:none}
 </style>
 <div id="grid"></div>
+<div id="below"></div>
+<div id="depth"></div>
 <div id="back">&#8592; field</div>
 <div id="fmsg"></div>
 <script>
@@ -138,7 +152,7 @@
   // treated it as a GENOME and tried to decode the word.
   // /#reset now clears BOTH keys and starts a clean field. It is the one thing the artwork must
   // always be able to do: let go of what it is holding.
-  var OPT = '(n=\\d+|pool=\\d+|nopool|bgpace=\\d+|clean|cleanart|hud|solo|reset)';
+  var OPT = '(n=\\d+|pool=\\d+|nopool|bgpace=\\d+|layers=\\d+|deeppace=\\d+|clean|cleanart|hud|solo|reset)';
   var isOptions = raw==='' || new RegExp('^'+OPT+'(,'+OPT+')*$').test(raw);
   if(isOptions && /(^|,)reset(,|$)/.test(raw)){
     try{ localStorage.removeItem('selection_genome'); }catch(e){}
@@ -206,12 +220,38 @@
   // open for hours, and that is the case to watch.
   var BGPACE = (function(){ var m=raw.match(/bgpace=(\d+)/); var v=m?parseInt(m[1],10):200;
                             return Math.max(0,Math.min(5000,isFinite(v)?v:200)); })();
+  // ═══ #165 — LAYERS ═════════════════════════════════════════════════════════════════════════
+  // What you see is one face. `#layers=K` puts K more layers of the same count underneath: universes
+  // with no cell, drawing nothing, running slow, on the same wire as everything above them.
+  //
+  // NOTHING SURFACES BY BEING TAPPED. The network is already the surfacing mechanism, and the
+  // asymmetry that makes it work fell out of #163 rather than being designed: a paced universe still
+  // BROADCASTS — networkBroadcast is per tick and gated per tick, so a slow world speaks slowly
+  // rather than not at all — while the #163 receive gate is keyed to the RECEIVER's own pace, so a
+  // surface universe, being unpaced, refuses nothing. The layers below are therefore SOURCES:
+  // isolated enough to drift into something of their own, still audible upward. The top takes up
+  // what is happening underneath without anybody asking it to.
+  //
+  // They are the cheapest thing this field can run. Drawing is 40% of a tick (measured), so a dark
+  // universe ticks 1.68x faster than a lit one, and memory tracks PARTICLES rather than universes
+  // (#162), so a small world underneath costs a fraction of a cell on top. The isolates are already
+  // paid for: a deep universe is another CONNECTION to a worker that exists, not another worker.
+  //
+  // Deeper is slower — DEEPPACE milliseconds per layer, compounding. At the default that is 400ms
+  // for the first layer down and 800 for the second: two and a half ticks a second, and one and a
+  // quarter. In the creature's own units, which are ticks and not seconds, that is still 100,000+
+  // ticks a day for something nobody is watching.
+  var LAYERS = (function(){ var m=raw.match(/layers=(\d+)/); var v=m?parseInt(m[1],10):0;
+                            return Math.max(0,Math.min(8,isFinite(v)?v:0)); })();
+  var DEEPPACE = (function(){ var m=raw.match(/deeppace=(\d+)/); var v=m?parseInt(m[1],10):400;
+                              return Math.max(50,Math.min(5000,isFinite(v)?v:400)); })();
   var POOL_RUN = Math.random().toString(36).slice(2,10);
   var pool;
   var pm = raw.match(/pool=(\d+)/);
-  if (/(^|,)nopool(,|$)/.test(raw)) pool = total;                    // the pre-#162 layout, for comparison
-  else if (pm) pool = Math.max(1, Math.min(total, parseInt(pm[1],10)||1));
-  else pool = Math.max(1, Math.min(total, Math.min(4, (navigator.hardwareConcurrency||4))));
+  var everything = total * (1 + LAYERS);        // #165: the surface plus every layer under it
+  if (/(^|,)nopool(,|$)/.test(raw)) pool = everything;               // the pre-#162 layout, for comparison
+  else if (pm) pool = Math.max(1, Math.min(everything, parseInt(pm[1],10)||1));
+  else pool = Math.max(1, Math.min(everything, Math.min(4, (navigator.hardwareConcurrency||4))));
 
   var cols=Math.ceil(Math.sqrt(total));
   var grid=document.getElementById('grid');
@@ -235,6 +275,54 @@
   }
   grid.appendChild(frag);
   var individuals=cells.slice(0, wantCollective?cells.length-1:cells.length);
+
+  // ── build the layers underneath ───────────────────────────────────────────────────────────────
+  // Sized like a surface cell so each deep universe gets a real world rather than a one-pixel one,
+  // and parked off-screen rather than display:none for the same reason: a frame with no layout
+  // reports innerWidth 0. #dark means it never draws into the canvas it has.
+  var below=document.getElementById('below'), deep=[], deepFrag=document.createDocumentFragment();
+  if(LAYERS>0){
+    var cw=Math.max(80, Math.round(window.innerWidth/cols)),
+        ch=Math.max(80, Math.round(window.innerHeight/Math.ceil(total/cols)));
+    for(var L=1;L<=LAYERS;L++){
+      for(var k=0;k<total;k++){
+        var d=document.createElement('iframe');
+        d.className='deep';
+        d.style.width=cw+'px'; d.style.height=ch+'px';
+        d.style.left=((L-1)*total+k)*(cw+4)+'px';       // laid out side by side, all of it off-screen
+        var slot=(cells.length+(L-1)*total+k)%pool;      // deep universes join the SAME worker pool
+        d.src='universe.html?pool='+POOL_RUN+'x'+slot+'#cleanart,dark,pace='+(DEEPPACE*L);
+        d.title='Layer '+L+', universe '+(k+1);
+        deepFrag.appendChild(d); deep.push(d);
+      }
+    }
+    below.appendChild(deepFrag);
+  }
+
+  // A readout for the part you cannot see. Eighteen invisible universes with no way to tell whether
+  // they are alive is not an artwork, it is a rumour — this is the only instrument the layers have.
+  var depthEl=document.getElementById('depth');
+  if(LAYERS>0){
+    depthEl.style.display='block';
+    depthEl.textContent=deep.length+' below';
+    setInterval(function(){
+      var alive=0,ticks=0,pop=0,errs=0,pending=deep.length;
+      if(!pending)return;
+      deep.forEach(function(f){
+        var done=false;
+        var fin=function(){ if(done)return; done=true; if(--pending===0){
+          depthEl.textContent=alive+'/'+deep.length+' below · '+(ticks>9999?(Math.round(ticks/1000)+'k'):ticks)
+            +' ticks · '+pop+' alive'+(errs?(' · '+errs+' erroring'):''); } };
+        try{
+          var a=f.contentWindow&&f.contentWindow.__field;
+          if(!a){ fin(); return; }
+          var t=setTimeout(fin,2500);
+          a.stat().then(function(st){ clearTimeout(t);
+            if(st){ alive++; ticks+=st.totalTicks|0; pop+=st.N|0; if(st.errs>0)errs++; } fin(); },fin);
+        }catch(e){ fin(); }
+      });
+    },5000);
+  }
 
   // #150 — TAP A UNIVERSE TO LOOK INSIDE IT.
   // A field is clean because eight HUDs at ninth-size are unreadable (#144 measured the HUD at half

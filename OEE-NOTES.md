@@ -12504,3 +12504,79 @@ back to the grid    15.0                  15.8          141.5
 **Cell 0 nearly triples and the field's total does not drop.** Tapping a cell stops meaning "make this
 bigger" and starts meaning "wake this up". (The 141.5 on return is drift — populations grow and ticks
 get dearer over a four-minute run. Cell 0 returning to exactly 15.0 is the clean signal.)
+
+## #165/#166 — THE CUBE. What you see is one face.
+
+The author's shape, in their words: layers, almost like a Rubik's cube — the top is the surface, and
+what is underneath reaches it because everything is broadcasting. `#layers=K` puts K more layers of
+the same count under the visible nine. `/#n=8,layers=2` is twenty-seven universes.
+
+A layer is an ordinary universe that happens not to be visible. It has no cell, it draws nothing
+(`#dark`), it runs slow (`#pace`, compounding with depth), and it is on the same wire as everything
+above it. **Nothing surfaces by being tapped** — the network was already the surfacing mechanism.
+
+### The two things that made it affordable were already measured
+
+Drawing is 40% of a tick, so a universe nobody is looking at ticks **1.68x faster** than one in a
+cell — the cheapest thing this field can run is a world nobody is watching. And memory tracks
+PARTICLES rather than universes (#162), while a deep universe is another CONNECTION to a worker that
+already exists rather than another isolate. Measured on the shipped build:
+
+```
+hash            universes  surfaceTicks  deepTicks  surfMigr  deepMigr  deepPop   RSS   peers
+#n=8                  9+0         33810          0       790         0        0   970       8
+#n=8,layers=2        9+18         30238       5335      1049      2101     1951  1243      26
+      deep ticks: 390 385 391 372 391 385 391 372 391 | 208 210 203 209 208 209 203 209 208
+```
+
+**Eighteen more universes for 273 MB — about 15 MB each, against ~106 MB for a cell on the surface.**
+Layer 1 and layer 2 sit at almost exactly 2:1, matching their paces. The surface pays 11% of its
+ticks for the whole of the world underneath it.
+
+### THE CORRECTION THAT MATTERS: the broadcast is dual, and I had broken it
+
+The first version of this ran the layers deaf, and did not say so. #163's clock gate refused incoming
+material in proportion to how slow a universe was, so anything paced — the layers, and any cell
+standing down under #164 — stopped hearing its neighbours. I had even described that as the design:
+"the layers below are therefore SOURCES: isolated enough to drift into something of their own, still
+audible upward."
+
+The author's correction: the bottom hears the top as well. The broadcast is dual and stays dual. The
+only difference between the surface and the depths is that you cannot SEE the depths.
+
+**And the argument for it beats mine, on this project's own standing rule.** `netReceptivity` is an
+EVOLVABLE GENE. A universe taking in more than it can digest can turn itself down, and that decision
+belongs to the thing being flooded — "the system needs to decide to turn them off, not me" (#148). My
+gate was me making that decision on the population's behalf. The clock-override argument that
+motivated #163 only holds if the gene cannot respond to the changed rate, and it can: a changed
+immigration rate is an environment, and environments change.
+
+Measured, the same field with the layers as full participants:
+
+```
+surface migrant inflow   790 -> 1049   (+33%)
+depths taking in                 2101
+refused on clock grounds            0
+dropped, queue full                 0   anywhere
+```
+
+The top does take up what is happening underneath, and it does so BECAUSE the depths are ordinary
+participants rather than despite it.
+
+The mechanism is kept, not deleted — it is measured and tested, and deliberate allopatry is a real
+experiment somebody may want to run. `#isolate` turns it on and **nothing in the shipped field sets
+it.** For whoever runs that experiment, the cost it buys back: at pace 2000 a universe takes in about
+60x as many migrants per tick of its own life, and in the one long measurement available its
+population became the largest in the field while being fed by its neighbours rather than by its own
+reproduction. That is the risk the gate was for, and it is now selection's problem rather than mine.
+
+### An instrument for the part you cannot see
+
+Eighteen invisible universes with no way to tell whether they are alive is not an artwork, it is a
+rumour. A small readout in the corner reports how many are answering, their total ticks, their total
+population, and how many are catching exceptions. It is the only instrument the layers have.
+
+`layers-test.js`: 20 checks — the cube builds, everything ticks, deeper is slower by the ratio its
+pace sets, every universe sees all 26 others, material moves in BOTH directions, nobody refuses a
+neighbour, a dark universe outruns a lit one (1,645 ticks against 940), and a field with no `layers=`
+has nothing underneath it at all.

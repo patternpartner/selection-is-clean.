@@ -12,7 +12,7 @@ Companion to OEE-NOTES.md, which records experiments. This records the machine t
 
 | | |
 |---|---|
-| **file** | `engine.html` — the sim moved out of `index.html` in `c0cef11`. Since **#149** the pages are: `index.html` = THE FIELD, `universe.html` = the single worker shell (what `index.html` used to be), `engine.html` = the simulation itself, still runnable on its own. Since **#153** the field is EIGHT INDIVIDUALS PLUS A COLLECTIVE (nine iframes); the ninth is an ordinary universe whose input is the other eight. Since **#162** those nine iframes share a SMALL POOL OF WORKERS (one per core, max 4) rather than owning one each |
+| **file** | `engine.html` — the sim moved out of `index.html` in `c0cef11`. Since **#149** the pages are: `index.html` = THE FIELD, `universe.html` = the single worker shell (what `index.html` used to be), `engine.html` = the simulation itself, still runnable on its own. Since **#153** the field is EIGHT INDIVIDUALS PLUS A COLLECTIVE (nine iframes); the ninth is an ordinary universe whose input is the other eight. Since **#162** those nine iframes share a SMALL POOL OF WORKERS (one per core, max 4) rather than owning one each. Since **#165** `/#layers=K` puts K more layers of the same count UNDERNEATH: universes with no cell, drawing nothing, running slow, on the same wire — `/#n=8,layers=2` is twenty-seven |
 | **last fully re-derived** | never — this map was written against `index.html` and has been patched, not rebuilt |
 | **prose current through** | **#90.** The engine is at **#159.** Roughly sixty swings are undocumented here |
 | **verified as of #131** | the anchor table below, the opcode constants, the genome extent, and the census claims |
@@ -243,6 +243,38 @@ universes on nine workers was the worst point on both curves at once. The rule (
 hardwareConcurrency))`) is where they cross, and it can never make a small field worse: three
 universes still get three workers. "8 is slow" was always the core-count ceiling, not the memory one;
 the two had been conflated.
+
+**The cube (#165/#166).** `#layers=K` builds K layers of `total` universes under the visible field.
+A layer is an ORDINARY universe that happens not to be visible: no cell, `#dark` so it never draws,
+`#pace` compounding with depth, same BroadcastChannel as everything above it. Three things make it
+work, and all three were measured before it was built:
+
+- **Drawing is 40% of a tick**, so a dark universe runs 1.68x faster than a lit one. The cheapest
+  thing this field can run is a world nobody is watching.
+- **Memory tracks particles, not universes** (#162), and a deep universe is another CONNECTION to a
+  worker that already exists rather than another isolate. Measured: 18 extra universes for 273 MB,
+  ~15 MB each against ~106 MB for a surface cell.
+- **The network was already the surfacing mechanism.** Nothing surfaces by being tapped.
+
+Deep frames are laid out OFF-SCREEN rather than `display:none`, and that is load-bearing: a frame with
+no layout reports `innerWidth` 0, and the engine would size its whole world to a single pixel. They
+are given a real cell's dimensions and moved to `left:-20000px`. They never paint anyway.
+
+**The broadcast is dual, and the first version broke it (#166).** #163's clock gate refused incoming
+material in proportion to how slow a universe ran, so anything paced — every layer, and any cell
+standing down under #164 — stopped hearing its neighbours, and nothing said so. The author's rule is
+that the ONLY difference between the surface and the depths is that you cannot see the depths. The
+argument for it beats the one for the gate on this project's own terms: `netReceptivity` is an
+evolvable gene, so a universe taking in more than it can digest can turn itself down, and that
+decision belongs to the thing being flooded (#148). The clock-override worry only holds if the gene
+cannot respond to a changed rate, and it can. Measured after: surface migrant inflow 790 → 1049, with
+zero refusals and zero queue drops anywhere. `#isolate` keeps the mechanism available for a
+deliberate allopatry experiment; **nothing in the shipped field sets it.**
+
+If you add a universe that is not in `cells`, remember what does NOT reach it: the #153 relay walks
+`individuals`, and `checkErrors` walks `cells`. The layers participate purely through the wire, which
+is the point, but it means the `#depth` readout is their only instrument — eighteen invisible
+universes with no way to tell whether they are alive is a rumour, not an artwork.
 
 **The field API (#152/#153).** `universe.html` exposes `window.__field` — `ready` / `save` / `load` /
 `pull` / `feed` / `stat` / `controls`, plus the `*ForTest` diagnostics — and that is the whole surface
