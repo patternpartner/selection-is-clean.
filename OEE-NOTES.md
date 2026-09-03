@@ -12580,3 +12580,68 @@ population, and how many are catching exceptions. It is the only instrument the 
 pace sets, every universe sees all 26 others, material moves in BOTH directions, nobody refuses a
 neighbour, a dark universe outruns a lit one (1,645 ticks against 940), and a field with no `layers=`
 has nothing underneath it at all.
+
+## #167 — TURNING THE CUBE
+
+#165 built eighteen universes you could not see and gave you a counter. The author's question was the
+obvious one and I had no answer to it: **how do you get to see what the layers underneath are doing?**
+You could not. That is a rumour, not an artwork.
+
+Tap the readout and a layer comes to the face — laid out over the grid, lit, at full pace — while the
+layer it replaced goes dark and slow. Tap through and back round to the surface.
+
+**The author's reading of it is better than the one it was built for.** "Rotating the cube means all
+layers get a chance." The face is not merely what you can SEE: it is what runs lit and unpaced while
+everything else runs dark and slow, so turning the cube is how the tick budget CIRCULATES. Left on one
+face, that face takes everything and the rest starve — and a field on a phone is left running for
+hours with nobody turning it. So it turns itself: `#turn=N` seconds per face, default 300, `#turn=0`
+to leave it wherever you put it. A tap always turns it immediately and re-arms the clock.
+
+```
+SURFACE up   surface 21.7 t/s   L1  2.2   L2  1.2
+LAYER 1 up   surface  2.5 t/s   L1 13.0   L2  1.2
+LAYER 2 up   surface  2.2 t/s   L1  2.2   L2 21.3
+BACK ROUND   surface 17.6 t/s   L1  2.2   L2  1.2
+```
+
+### NOTHING IS REPARENTED, and that is the constraint everything bends around
+
+**Moving an iframe in the DOM RELOADS it.** A rotation that reparented frames would reboot each
+universe from the shared localStorage slot and destroy the lineage it had been growing — the same trap
+#150 named for why opening a cell must never reload. So a rotation only ever restyles and re-flags
+frames where they already sit: the deep frames were always complete universes with real canvases,
+merely dark and off-screen. The grid goes `visibility:hidden`, never `display:none`, for the same
+reason.
+
+That failure would have looked FINE — nine lit universes, ticking, populated, and every one of them
+newborn. So `layers-test.js` samples every universe's `totalTicks` before the first rotation and after
+the last, and requires that no number ever went down.
+
+### THE BUG, AND THE HABIT THAT ALMOST BURIED IT
+
+The rig said `the layer it replaced stood down — old face 201 vs new face 199`. **I had already seen
+this in a scratch run and written it off as a transition.** It was not.
+
+A universe can be paced two ways: the HASH, which the engine re-reads on every `hashchange`, and the
+field API. The rotation set them to disagree — hash `#cleanart,dark` (no `pace=` token) plus an API
+call to `pace(400)` — and the hashchange arrived last, read the token-free hash as pace 0, and undid
+it. The surface went dark and **kept running flat out**, so turning the cube ADDED a lit face instead
+of moving one. Twenty-seven universes would have cost more to look at than to ignore.
+
+Probing the flags directly is what settled it in one run:
+
+```
+after rotating to layer 1, BEFORE the fix        after
+  surf: 0D 0D 0D ...   dark, pace 0                surf: 400D 400D ...
+  L1:   0-  0-  ...    correct                     L1:   0-   0-   ...
+  L2:   800D ...       correct                     L2:   800D 800D ...
+```
+
+Two things came out of it worth keeping. `stat` now reports a universe's own `pace` and `dark`, so the
+field can **assert what it asked for rather than infer it from a tick rate** — a rate is noisy enough
+to argue with, a flag is not, and that is exactly how I talked myself out of this the first time. And
+the rule: whenever the field changes one of these flags, every flag it cares about goes in the hash;
+the API call after it is only there to make it immediate.
+
+`layers-test.js` now runs 30 checks, four of them on the flags after a rotation, including that
+exactly nine of the twenty-seven are lit at any moment.

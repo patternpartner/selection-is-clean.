@@ -83,6 +83,7 @@
       /#layers=2        TWO INNER LAYERS underneath the surface — universes with no cell, drawing
                         nothing, running slow, trading on the same wire. /#layers=2 with the default
                         nine on top is twenty-seven universes: a cube, one face of which you can see.
+      /#turn=600        seconds each face gets before the cube turns itself (default 300, 0 = never)
 
   TAP a universe to open it full size, with its instruments AND its save/load buttons on; tap 'field'
   (or Escape) to go back. Nothing reloads either way — the others keep running and trading while you
@@ -101,9 +102,19 @@
      nothing anyway (#dark), so the only thing left off-screen is a canvas nobody writes to. */
   #below{position:fixed;left:-20000px;top:0;width:1px;height:1px;overflow:hidden;pointer-events:none}
   #below .deep{position:absolute;top:0}
-  #depth{position:fixed;right:8px;bottom:8px;z-index:9;pointer-events:none;
+  /* ROTATED (#167): the container comes to the front and the chosen layer's frames are laid out over
+     the grid. An iframe CANNOT be reparented — moving one in the DOM reloads it, which would reboot
+     that universe from storage and destroy the lineage it has been growing — so a rotation is done
+     entirely by repositioning and re-lighting frames where they already are. */
+  #below.front{left:0;top:0;width:100%;height:100%;overflow:visible;pointer-events:auto;
+        z-index:4;background:#191a1c}
+  #below.front .deep{display:none}
+  #below.front .deep.face{display:block}
+  #depth{position:fixed;right:8px;bottom:8px;z-index:9;cursor:pointer;
         font:9px/1.3 ui-monospace,Menlo,monospace;color:#9bd;background:rgba(8,12,18,.78);
-        border-radius:5px;padding:4px 6px;letter-spacing:.3px;display:none}
+        border-radius:5px;padding:5px 7px;letter-spacing:.3px;display:none}
+  #depth b{color:#dfe;font-weight:normal}
+  #depth .now{color:#7fd4a8}
   iframe{border:0;width:100%;height:100%;display:block;background:#000}
   /* The tap target sits OVER the frame so one tap always lands on the field rather than on whatever
      the engine has drawn there. #153: it is HIDDEN while a universe is open. It used not to be —
@@ -152,7 +163,7 @@
   // treated it as a GENOME and tried to decode the word.
   // /#reset now clears BOTH keys and starts a clean field. It is the one thing the artwork must
   // always be able to do: let go of what it is holding.
-  var OPT = '(n=\\d+|pool=\\d+|nopool|bgpace=\\d+|layers=\\d+|deeppace=\\d+|clean|cleanart|hud|solo|reset)';
+  var OPT = '(n=\\d+|pool=\\d+|nopool|bgpace=\\d+|layers=\\d+|deeppace=\\d+|turn=\\d+|clean|cleanart|hud|solo|reset)';
   var isOptions = raw==='' || new RegExp('^'+OPT+'(,'+OPT+')*$').test(raw);
   if(isOptions && /(^|,)reset(,|$)/.test(raw)){
     try{ localStorage.removeItem('selection_genome'); }catch(e){}
@@ -281,9 +292,9 @@
   // and parked off-screen rather than display:none for the same reason: a frame with no layout
   // reports innerWidth 0. #dark means it never draws into the canvas it has.
   var below=document.getElementById('below'), deep=[], deepFrag=document.createDocumentFragment();
+  var cw=Math.max(80, Math.round(window.innerWidth/cols)),
+      ch=Math.max(80, Math.round(window.innerHeight/Math.ceil(total/cols)));
   if(LAYERS>0){
-    var cw=Math.max(80, Math.round(window.innerWidth/cols)),
-        ch=Math.max(80, Math.round(window.innerHeight/Math.ceil(total/cols)));
     for(var L=1;L<=LAYERS;L++){
       for(var k=0;k<total;k++){
         var d=document.createElement('iframe');
@@ -299,20 +310,129 @@
     below.appendChild(deepFrag);
   }
 
-  // A readout for the part you cannot see. Eighteen invisible universes with no way to tell whether
-  // they are alive is not an artwork, it is a rumour — this is the only instrument the layers have.
+  // ═══ #167 — ROTATE THE CUBE ════════════════════════════════════════════════════════════════
+  // A rumour is not an artwork. #165 built eighteen universes you could not see and gave you a
+  // counter, which says they are alive and nothing else. This turns the cube: tap the readout and a
+  // layer comes to the face — laid out over the grid, lit, and running at full pace, while the layer
+  // it replaced goes dark and slow. Tap through the layers and back to the surface.
+  //
+  // NOTHING IS REPARENTED, and that is the constraint the whole design bends around: moving an
+  // iframe in the DOM RELOADS it, which reboots that universe from the shared localStorage slot and
+  // destroys the lineage it has been growing — the same trap #150 named for why opening a cell must
+  // never reload. So a rotation only ever restyles and re-flags frames where they already sit. The
+  // deep frames are complete universes with real canvases; they were merely dark and off-screen.
+  //
+  // Only the face is lit. A layer that is not being looked at pays neither its render (40% of a
+  // tick) nor a full pace, which is what keeps twenty-seven universes affordable while you look at
+  // any nine of them.
   var depthEl=document.getElementById('depth');
+  var face=0;                                     // 0 = the surface, 1..LAYERS = a layer below
+  function layerFrames(L){ return deep.slice((L-1)*total, L*total); }
+  function light(f,on,L){
+    try{
+      f.classList.toggle('face',on);
+      if(on){ f.style.left=''; f.style.top=''; }
+      else  { f.style.left=(((L-1)*total+deep.indexOf(f)%total)*(cw+4))+'px'; f.style.top='0'; }
+      var w=f.contentWindow, a=w&&w.__field;
+      // #dark rides the hash (the engine re-reads it on hashchange); pace goes through the API.
+      var h='#cleanart'+(on?'':',dark,pace='+(DEEPPACE*L));
+      if((w.location.hash||'')!==h) w.location.hash=h;
+      if(a&&a.pace) a.pace(on?0:DEEPPACE*L);
+    }catch(e){}
+  }
+  // The SURFACE also stops drawing when it is not the face. `visibility:hidden` hides a frame from
+  // the viewer, not from the engine inside it — the sim goes on painting an OffscreenCanvas nobody
+  // will ever composite, which is the 40% of a tick that #165 exists to stop paying. So the surface
+  // is darkened and paced exactly like a layer when a layer is in front of it. Without this, turning
+  // the cube would ADD a lit face rather than move one, and twenty-seven universes would cost more
+  // to look at than to ignore.
+  // THE HASH IS THE SOURCE OF TRUTH FOR BOTH FLAGS, and getting that wrong cost a real bug that the
+  // rig caught and I had already waved off as a transition. A universe can be paced two ways — the
+  // hash, which the engine RE-READS on every hashchange, and the field API. Set them to disagree and
+  // the hashchange wins, because it arrives last: this wrote '#cleanart,dark' (no pace token) and
+  // then called pace(400), and the hashchange handler read the token-free hash as pace 0 and undid
+  // it. The surface went dark and kept running flat out, so turning the cube ADDED a face instead of
+  // moving one. Whenever the field changes one of these flags, every flag it cares about goes in the
+  // hash — the API call after it is then only there to make it immediate.
+  function lightSurface(on){
+    var h='#cleanart'+(on?'':',dark,pace='+DEEPPACE);
+    for(var i=0;i<cells.length;i++){
+      try{
+        var w=cells[i].firstChild.contentWindow, a=w&&w.__field;
+        if((w.location.hash||'')!==h) w.location.hash=h;
+        if(a&&a.pace) a.pace(on?0:DEEPPACE);
+      }catch(e){}
+    }
+  }
+  function rotate(to){
+    if(!LAYERS)return;
+    to=((to%(LAYERS+1))+(LAYERS+1))%(LAYERS+1);
+    if(to===face)return;
+    // put the outgoing layer back to sleep
+    if(face>0) layerFrames(face).forEach(function(f){ light(f,false,face); });
+    face=to;
+    if(face===0){
+      below.classList.remove('front');
+      grid.style.visibility='';
+      lightSurface(true);
+      allocate(null);                             // the surface takes its ticks back
+    }else{
+      lightSurface(false);                        // the face moves; it does not multiply
+      // lay this layer out over the grid, in the same shape the surface has
+      var fs=layerFrames(face);
+      fs.forEach(function(f,i){
+        f.style.width=Math.floor(window.innerWidth/cols)+'px';
+        f.style.height=Math.floor(window.innerHeight/Math.ceil(total/cols))+'px';
+        f.style.left=((i%cols)*Math.floor(window.innerWidth/cols))+'px';
+        f.style.top=(Math.floor(i/cols)*Math.floor(window.innerHeight/Math.ceil(total/cols)))+'px';
+        light(f,true,face);
+      });
+      below.classList.add('front');
+      grid.style.visibility='hidden';             // hidden, NOT display:none — the surface keeps running
+    }
+    paint();
+  }
+  function paint(){
+    if(!LAYERS)return;
+    depthEl.innerHTML = (face===0?'<span class="now">surface</span>':'<span class="now">layer '+face+'</span>')
+      + ' · <b>'+deep.length+'</b> below · tap to turn';
+  }
+
+  // ── AND IT TURNS ON ITS OWN ───────────────────────────────────────────────────────────────
+  // The author's read, which is better than the one this was built for: rotating means all layers
+  // get a chance. The face is not just what you can SEE, it is what runs lit and at full pace while
+  // everything else runs dark and slow — so turning the cube is how the tick budget CIRCULATES.
+  // Left on one face, that face takes everything and the rest starve; and a field on a phone is left
+  // running for hours with nobody turning it.
+  //
+  // So it turns itself, slowly. #turn=N sets the seconds per face (default 300 — five minutes, long
+  // enough that it reads as a slow object rather than a slideshow); #turn=0 stops it and leaves the
+  // cube wherever you put it. A tap always turns it immediately and restarts the clock, so the hand
+  // beats the timer.
+  var TURN = (function(){ var m=raw.match(/turn=(\d+)/); var v=m?parseInt(m[1],10):300;
+                          return Math.max(0,Math.min(86400,isFinite(v)?v:300)); })();
+  var turnTimer=null;
+  function armTurn(){
+    if(turnTimer){ clearInterval(turnTimer); turnTimer=null; }
+    if(LAYERS>0&&TURN>0) turnTimer=setInterval(function(){ if(!openCell) rotate(face+1); },TURN*1000);
+  }
+
+  // A readout for the part you cannot see, and the handle that turns it.
   if(LAYERS>0){
     depthEl.style.display='block';
-    depthEl.textContent=deep.length+' below';
+    paint();
+    armTurn();
+    depthEl.addEventListener('click',function(e){ e.stopPropagation(); rotate(face+1); armTurn(); });
     setInterval(function(){
       var alive=0,ticks=0,pop=0,errs=0,pending=deep.length;
       if(!pending)return;
       deep.forEach(function(f){
         var done=false;
         var fin=function(){ if(done)return; done=true; if(--pending===0){
-          depthEl.textContent=alive+'/'+deep.length+' below · '+(ticks>9999?(Math.round(ticks/1000)+'k'):ticks)
-            +' ticks · '+pop+' alive'+(errs?(' · '+errs+' erroring'):''); } };
+          depthEl.innerHTML = (face===0?'<span class="now">surface</span>':'<span class="now">layer '+face+'</span>')
+            + ' · <b>'+alive+'/'+deep.length+'</b> below · '
+            + (ticks>9999?(Math.round(ticks/1000)+'k'):ticks) + ' ticks · ' + pop + ' alive'
+            + (errs?(' · '+errs+' erroring'):'') + ' · tap to turn'; } };
         try{
           var a=f.contentWindow&&f.contentWindow.__field;
           if(!a){ fin(); return; }

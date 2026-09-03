@@ -271,6 +271,22 @@ cannot respond to a changed rate, and it can. Measured after: surface migrant in
 zero refusals and zero queue drops anywhere. `#isolate` keeps the mechanism available for a
 deliberate allopatry experiment; **nothing in the shipped field sets it.**
 
+**Turning the cube (#167).** Tapping the depth readout brings a layer to the face; `#turn=N` turns it
+on its own every N seconds (default 300). The face is what runs LIT and at full pace while everything
+else is dark and slow, so rotation is how the tick budget circulates rather than the top nine always
+winning. Two rules, both learned the hard way:
+
+- **Never reparent a frame.** Moving an iframe in the DOM reloads it, which reboots that universe from
+  the shared storage slot and destroys its lineage — and the failure would look fine, because nine
+  newborn universes tick and paint exactly like nine old ones. A rotation only restyles and re-flags
+  frames in place; the grid goes `visibility:hidden`, never `display:none`. `layers-test.js` samples
+  `totalTicks` before and after and requires no number ever went down.
+- **The hash is the source of truth for `pace` and `dark`.** The engine re-reads both on every
+  `hashchange`, so a hash that disagrees with an API call wins, because it arrives last. #167 shipped
+  broken exactly here: hash `#cleanart,dark` plus `pace(400)` left the surface dark and running flat
+  out, so turning the cube added a face instead of moving one. `stat` reports `pace` and `dark` now so
+  the field asserts what it asked for instead of inferring it from a tick rate.
+
 If you add a universe that is not in `cells`, remember what does NOT reach it: the #153 relay walks
 `individuals`, and `checkErrors` walks `cells`. The layers participate purely through the wire, which
 is the point, but it means the `#depth` readout is their only instrument — eighteen invisible

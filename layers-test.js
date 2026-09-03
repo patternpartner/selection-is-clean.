@@ -44,10 +44,10 @@ const readAll = page => page.evaluate(async () => {
 
   // ── the cube ──────────────────────────────────────────────────────────────────────────────
   {
-    const ctx = await browser.newContext({ viewport: { width: 412, height: 915 } });
+    const ctx = await browser.newContext({ viewport: { width: 412, height: 915 }, hasTouch: true });
     const page = await ctx.newPage();
     const errs = []; page.on('pageerror', e => errs.push(e.message));
-    await page.goto(base + '/#n=8,layers=2', { waitUntil: 'load' });
+    await page.goto(base + '/#n=8,layers=2,turn=0', { waitUntil: 'load' });  // turn=0: this rig turns it by hand
     await page.waitForTimeout(SECS * 1000);
     const { surface, deep, depthText } = await readAll(page);
 
@@ -86,6 +86,85 @@ const readAll = page => page.evaluate(async () => {
     ck('the depths are alive, not merely present', liveD.every(s => (s.N | 0) > 0),
        liveD.map(s => s.N | 0).slice(0, 4).join(',') + '...');
     ck('the readout says what is underneath', /\d+\/18 below/.test(depthText), depthText);
+
+    // ═══ #167 — TURNING THE CUBE ════════════════════════════════════════════════════════════
+    // The face is not just what you can see: it is what runs LIT and at full pace while everything
+    // else runs dark and slow. So turning the cube is how the tick budget circulates, and every
+    // layer gets its turn instead of the top nine always winning.
+    //
+    // The check that matters most is the last one. An iframe cannot be reparented — moving one in
+    // the DOM reloads it, which would reboot that universe from the shared storage slot and destroy
+    // the lineage it has been growing. A rotation that quietly did that would look FINE: nine lit
+    // universes, ticking, populated, and every one of them newborn. So: ticks may never go down.
+    const tickSample = async () => {
+      const r = await readAll(page);
+      return r.surface.concat(r.deep).map(x => (x && x.totalTicks) | 0);
+    };
+    const t0 = await tickSample();
+    const shape = () => page.evaluate(() => ({
+      front: document.getElementById('below').classList.contains('front'),
+      faces: document.querySelectorAll('#below .deep.face').length,
+      gridHidden: document.getElementById('grid').style.visibility === 'hidden',
+      txt: document.getElementById('depth').textContent }));
+
+    const s0 = await shape();
+    ck('the surface is the face to begin with', !s0.front && s0.faces === 0 && /surface/.test(s0.txt), s0.txt.trim());
+
+    await page.locator('#depth').tap();
+    await page.waitForTimeout(2500);
+    const s1 = await shape();
+    ck('one tap brings a layer to the face', s1.front && s1.faces === 9, 'faces ' + s1.faces);
+    ck('and the surface goes behind it', s1.gridHidden === true);
+    ck('the readout says which face is up', /layer 1/.test(s1.txt), s1.txt.trim());
+
+    // the new face must actually be running, not merely visible
+    const a = await tickSample();
+    await page.waitForTimeout(Math.max(12000, SECS * 300));
+    const b = await tickSample();
+    const rate = b.map((v, i) => v - a[i]);
+    const faceRate = rate.slice(9, 18), deepRate = rate.slice(18);
+    const mn = arr => arr.length ? arr.reduce((x, y) => x + y, 0) / arr.length : 0;
+    ck('the face that came up is the one now running', mn(faceRate) > mn(deepRate) * 2,
+       'face ' + Math.round(mn(faceRate)) + ' vs the layer still under it ' + Math.round(mn(deepRate)));
+
+    // ASSERT THE FLAGS, NOT THE RATE. This check failed on a real bug and I nearly dismissed it as a
+    // transition: the surface went dark but its PACE stayed 0, so turning the cube ADDED a lit face
+    // instead of moving one. A universe can be paced two ways — the hash, which the engine re-reads
+    // on every hashchange, and the field API — and the field had set them to disagree, so the
+    // hashchange arrived last and undid the API call. A tick rate is noisy enough to argue with; a
+    // flag is not, which is why this reads the flags now.
+    const flags = await page.evaluate(async () => {
+      const grab = async el => { try { const a = el.contentWindow && el.contentWindow.__field;
+        const s = a ? await a.stat() : null; return s ? { pace: s.pace | 0, dark: !!s.dark } : null;
+      } catch (e) { return null; } };
+      const surf = [], dp = [];
+      for (const c of document.querySelectorAll('.cell')) surf.push(await grab(c.firstChild));
+      for (const d of document.querySelectorAll('#below .deep')) dp.push(await grab(d));
+      return { surf, L1: dp.slice(0, 9), L2: dp.slice(9) };
+    });
+    ck('the layer it replaced went dark AND slow',
+       flags.surf.every(f => f && f.dark === true && f.pace > 0),
+       'surface ' + flags.surf.map(f => f ? (f.pace + (f.dark ? 'D' : '-')) : '?').join(' '));
+    ck('the new face is lit AND at full pace',
+       flags.L1.every(f => f && f.dark === false && f.pace === 0),
+       'layer 1 ' + flags.L1.map(f => f ? (f.pace + (f.dark ? 'D' : '-')) : '?').join(' '));
+    ck('the layer still underneath is untouched',
+       flags.L2.every(f => f && f.dark === true && f.pace > 0),
+       'layer 2 ' + flags.L2.map(f => f ? (f.pace + (f.dark ? 'D' : '-')) : '?').join(' '));
+    ck('exactly one face is lit at a time',
+       flags.surf.concat(flags.L1, flags.L2).filter(f => f && !f.dark).length === 9,
+       flags.surf.concat(flags.L1, flags.L2).filter(f => f && !f.dark).length + ' lit');
+
+    await page.locator('#depth').tap(); await page.waitForTimeout(2000);
+    await page.locator('#depth').tap(); await page.waitForTimeout(2500);
+    const s3 = await shape();
+    ck('turning through the layers comes back to the surface',
+       !s3.front && s3.faces === 0 && /surface/.test(s3.txt), s3.txt.trim());
+
+    const t1 = await tickSample();
+    ck('NO universe was rebooted by a rotation', t1.every((v, i) => v >= t0[i]),
+       t1.filter((v, i) => v < t0[i]).length + ' went backwards');
+
     ck('no uncaught page errors with layers', errs.length === 0, errs.slice(0, 2).join(' | '));
     await ctx.close();
   }

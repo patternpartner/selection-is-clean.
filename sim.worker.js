@@ -139,6 +139,9 @@ const BRIDGE =
     // #163: heritable packets refused because the sender's clock had run far ahead of ours. A
     // universe running at parity never sees this move; a paced one is meant to.
     'paced:(netStats.paced|0),' +
+    // #167: report the universe's OWN pace and darkness, so the field can assert what it asked for
+    // rather than infer it from a tick rate. A rate is noisy; a flag is not.
+    'pace:(typeof PACE!=="undefined"?PACE|0:0),dark:(typeof DARK!=="undefined"?!!DARK:false),' +
     'migrantAccepted:(typeof __liveness!=="undefined"?(__liveness["network.migrantAccepted"]|0):-1),' +
     'atoms:(genome.userAtoms||[]).length,' +
     // #157: the field needs to see a universe that is silently failing. The HUD is hidden in a
