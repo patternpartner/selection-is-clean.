@@ -80,9 +80,14 @@
       /#pool=2          pack the universes onto exactly two workers (default: one per core, max 4)
       /#nopool          one worker per universe, the pre-#162 layout — for comparison, and costs more
       /#bgpace=400      how hard to slow the OTHER universes while one is open (default 200ms, 0 = off)
-      /#layers=2        TWO INNER LAYERS underneath the surface — universes with no cell, drawing
-                        nothing, running slow, trading on the same wire. /#layers=2 with the default
-                        nine on top is twenty-seven universes: a cube, one face of which you can see.
+      /                 THE CUBE — no hash needed. Nine universes on the face and layers under
+                        them, drawing nothing, running slow, trading on the same wire. It turns
+                        itself every five minutes so every layer gets its turn at the front.
+                        DEPTH adapts to the device, the cube does not: two layers (27 universes,
+                        ~1750 MB) on a machine reporting 8GB, one (18) on 4GB or on a browser that
+                        will not say. A phone with 6GB reports 4, because it rounds down.
+      /#layers=2        force the full depth on a device that under-reports
+      /#layers=0        no layers at all — just the nine (~895 MB)
       /#turn=600        seconds each face gets before the cube turns itself (default 300, 0 = never)
 
   TAP a universe to open it full size, with its instruments AND its save/load buttons on; tap 'field'
@@ -258,8 +263,31 @@
   // for the first layer down and 800 for the second: two and a half ticks a second, and one and a
   // quarter. In the creature's own units, which are ticks and not seconds, that is still 100,000+
   // ticks a day for something nobody is watching.
-  var LAYERS = (function(){ var m=raw.match(/layers=(\d+)/); var v=m?parseInt(m[1],10):0;
-                            return Math.max(0,Math.min(8,isFinite(v)?v:0)); })();
+  // THE LINK IS THE CUBE. Open the page, get twenty-seven universes: nine on the face and two layers
+  // underneath. No hash, no flag, no device sniffing — the author's rule, and it is the right one.
+  // A piece of work you have to remember a URL to see is not shipped, and the first version of this
+  // shipped exactly that way: the layers were opt-in, a bare GitHub Pages link carried no hash, and a
+  // twenty-one hour overnight run came back as nine universes with nothing underneath them.
+  //
+  // I had then made the depth conditional on navigator.deviceMemory, which was the same mistake in a
+  // more defensible coat — an added measure between the link and the thing. Gone.
+  //
+  // The cost, so it is written down rather than discovered: measured, twenty-seven universes plateau
+  // around 1,750 MB against ~895 for nine. #layers=1 is eighteen and #layers=0 is the old nine, both
+  // one edit away if a device will not hold it.
+  var LAYERS = (function(){
+    var m=raw.match(/layers=(\d+)/);
+    if(m){ var v=parseInt(m[1],10); return Math.max(0,Math.min(8,isFinite(v)?v:2)); }
+    // No hash, so the DEPTH adapts and the cube does not. navigator.deviceMemory is quantised and
+    // rounded DOWN to a power of two, so a 6GB phone reports 4 and a desktop reports 8. A browser
+    // that will not say (Safari does not implement it) is treated as capable-but-unknown and gets
+    // one layer, because the machines that withhold it are mostly desktops. Only a device that
+    // explicitly reports under 4GB gets nothing underneath — at that size eighteen universes would
+    // not survive, and half a cube that dies is worse than nine that live.
+    var gb=navigator.deviceMemory;
+    if(gb===undefined||gb===null) return 1;
+    return (+gb)>=8?2:((+gb)>=4?1:0);
+  })();
   var DEEPPACE = (function(){ var m=raw.match(/deeppace=(\d+)/); var v=m?parseInt(m[1],10):400;
                               return Math.max(50,Math.min(5000,isFinite(v)?v:400)); })();
   var POOL_RUN = Math.random().toString(36).slice(2,10);

@@ -212,18 +212,50 @@ const readAll = page => page.evaluate(async () => {
     ck('a dark universe keeps a population', (dark.N | 0) > 0, 'N ' + dark.N);
   }
 
-  // ── no layers means no layers ─────────────────────────────────────────────────────────────
-  {
+  // ── THE LINK IS THE CUBE ──────────────────────────────────────────────────────────────────
+  // This check exists because the first version failed it silently and cost a night. The layers were
+  // opt-in, a bare GitHub Pages link carries no hash, and a twenty-one hour run came back as nine
+  // universes with nothing underneath. Nothing in the app said anything was missing — it just ran
+  // the old field perfectly. A bare url must BE the cube, with no flag and no condition.
+  const bare = async (hash, gb) => {
     const ctx = await browser.newContext({ viewport: { width: 412, height: 915 } });
+    if (gb !== 'real') await ctx.addInitScript(g => { try {
+      if (g === null) { delete navigator.deviceMemory;
+        Object.defineProperty(navigator, 'deviceMemory', { get: () => undefined, configurable: true }); }
+      else Object.defineProperty(navigator, 'deviceMemory', { get: () => g, configurable: true });
+    } catch (e) {} }, gb === undefined ? null : gb);
     const page = await ctx.newPage();
-    await page.goto(base + '/#n=8', { waitUntil: 'load' });
-    await page.waitForTimeout(8000);
-    const n = await page.evaluate(() => ({
+    const errs = []; page.on('pageerror', e => errs.push(e.message));
+    await page.goto(base + '/' + (hash || ''), { waitUntil: 'load' });
+    await page.waitForTimeout(4000);
+    const r = await page.evaluate(() => ({
+      cells: document.querySelectorAll('.cell').length,
       deep: document.querySelectorAll('#below .deep').length,
       shown: (document.getElementById('depth') || {}).style.display }));
-    ck('the default field has nothing underneath it', n.deep === 0, n.deep);
-    ck('and does not show a depth readout', n.shown !== 'block', String(n.shown));
-    await ctx.close();
+    r.errs = errs; await ctx.close(); return r;
+  };
+  {
+    // A bare url must be the cube on anything that can hold one — no hash, ever. Only the DEPTH
+    // adapts, and the rung that matters is 4, which is what the author's 6GB phone reports.
+    const big = await bare('', 8);
+    ck('a bare url on an 8GB machine is the full cube', big.cells === 9 && big.deep === 18,
+       big.cells + '+' + big.deep);
+    ck('and it shows the depth readout without being asked', big.shown === 'block', String(big.shown));
+    ck('no page errors on a bare url', big.errs.length === 0, big.errs.slice(0, 2).join(' | '));
+    const phone = await bare('', 4);
+    ck('a bare url on a 6GB phone (it reports 4) is still a cube', phone.cells === 9 && phone.deep === 9,
+       phone.cells + '+' + phone.deep);
+    const quiet = await bare('', undefined);
+    ck('a browser that will not report its memory still gets a cube', quiet.deep === 9, quiet.deep);
+    const small = await bare('', 2);
+    ck('a genuinely small device gets the nine and nothing under them', small.deep === 0, small.deep);
+    const forced = await bare('#layers=2', 4);
+    ck('#layers=2 forces full depth on a device that under-reports', forced.deep === 18, forced.deep);
+    const off = await bare('#layers=0', 8);
+    ck('#layers=0 gives the old nine', off.deep === 0 && off.shown !== 'block', off.deep);
+    const four = await bare('#n=4', 8);
+    ck('an explicit count still gets its layers', four.cells === 5 && four.deep === 10,
+       four.cells + '+' + four.deep);
   }
 
   console.log('\n  ' + pass + ' passed, ' + fail + ' failed');

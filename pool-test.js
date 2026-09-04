@@ -221,12 +221,20 @@ const statAll = (page) => page.evaluate(async () => {
     const page = await ctx.newPage();
     await page.goto(base + '/#n=8', { waitUntil: 'load' });
     await page.waitForTimeout(RELOAD);
+    // DERIVE the expected peer count, never hardcode it. This used to assert "eight", and then the
+    // bare url became the whole cube (#169) and a correct field reported twenty-six — the rig failed
+    // on a change that was entirely right. What it is actually testing is that a RELOAD does not
+    // accumulate universes, so the number to beat is however many this page built, not a constant.
+    const built = await page.evaluate(() => document.querySelectorAll('.cell').length
+                                          + document.querySelectorAll('#below .deep').length);
     const first = (await statAll(page)).filter(Boolean).map(s => s.peers);
     for (let i = 0; i < 3; i++) { await page.reload({ waitUntil: 'load' }); await page.waitForTimeout(RELOAD); }
     const after = (await statAll(page)).filter(Boolean).map(s => s.peers);
     const worst = Math.max.apply(null, after.concat([0]));
-    ck('one load sees eight peers', Math.max.apply(null, first.concat([0])) <= 9, 'peers ' + first.join(','));
-    ck('three reloads later it still sees eight, not thirty-two', worst <= 9, 'peers ' + after.join(','));
+    ck('one load sees exactly the universes it built', Math.max.apply(null, first.concat([0])) <= built,
+       'peers ' + first[0] + ' of ' + built + ' built');
+    ck('three reloads later it still does, not four times as many', worst <= built,
+       'peers ' + worst + ' of ' + built + ' built');
     await ctx.close();
   }
 

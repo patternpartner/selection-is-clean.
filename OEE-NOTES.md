@@ -12707,3 +12707,69 @@ somewhere the surface did not?** Two harvests — one now, one in the morning �
 rather than arguable. If the layers diverge, it is the most interesting result this project has had.
 If all twenty-seven converge, that is important too, and it points straight at the shared
 `selection_genome` slot that every universe still writes to.
+
+## #169 — THE LINK IS THE CUBE
+
+The overnight run came back as **nine universes with nothing underneath**. Twenty-one hours, and the
+thing it was meant to test was not running.
+
+Not a bug in any code that ran. The harvest files say it exactly:
+
+```
+BEFORE  hash= ''   n= 9
+AFTER   hash= ''   n= 9
+```
+
+The layers were opt-in behind `#layers=2`, and a GitHub Pages link carries no hash. The author
+restarted from Pages, got the field, and the field ran the old nine perfectly all night. **Nothing
+anywhere said anything was missing.** That is the worst shape a defect can have: no error, no warning,
+a correct-looking run, and the question you were asking simply not asked.
+
+It was mine, and specifically it was a handover failure — the URL was one line near the end of a long
+message rather than the thing that could not be missed.
+
+**The fix is that a bare url IS the cube.** No hash, no flag.
+
+I first made the depth conditional on `navigator.deviceMemory` with a floor of zero, which the author
+named immediately as the same mistake in a better coat — an added measure standing between the link
+and the thing. The correction that stuck: the CUBE does not adapt, only its DEPTH does. Two layers on
+a machine reporting 8GB, one on 4GB or on a browser that will not say (Safari does not implement it,
+and the machines that withhold it are mostly desktops), and only a device explicitly reporting under
+4GB gets nothing underneath — at that size eighteen universes would not survive, and half a cube that
+dies is worse than nine that live. **A 6GB phone reports 4, because it rounds down to a power of two.**
+
+### The rig failed on a change that was entirely right
+
+`pool-test.js` went red: `one load sees eight peers — peers 26`. It had hardcoded eight. What it is
+actually testing is that a RELOAD does not accumulate zombie universes, and the number to beat is
+however many the page built, not a constant. It derives that from the DOM now.
+
+Worth keeping as a habit: an assertion that names a number the system chose will fail every time the
+system chooses differently, and it fails looking exactly like a regression.
+
+### What the lost night still told us
+
+The nine-universe run was not wasted. 21 hours, ~80,000 ticks per universe, all nine alive:
+
+```
+ universe         T    gen    N  atoms |  mutationRate    netMigrantRate
+ surface/0    80933     11  189     81 |  0.0596713       0.01404687
+ surface/1    80986     11  230     81 |  0.0554          0.01261907
+ surface/7    81162     11  125     81 |  0.0537946       0.01355897
+ collective   83107     35    1     81 |  0.0711600       0.00329396
+ (all nine started identical: 0.06 / 0.003 / 0.004)
+```
+
+- **They diverged.** Nine universes that began with the same germline ended with nine different ones.
+  The shared `selection_genome` slot did not homogenise them over 21 hours, which is the opposite of
+  what I feared and worth knowing before building anything to fix it.
+- **The individuals evolved their send rate UP** — 0.003 to ~0.013, four-fold — and the collective did
+  not (0.0033). The sink does not need to speak.
+- **Atom banks are near-identical in SIZE** (79-82 each) and **near-disjoint in CONTENT**: pairwise
+  Jaccard 0.33-0.66 between individuals, 283 distinct expressions across the field, and **none shared
+  by all nine**. The toll fixes how many atoms a lineage can hold; it does not fix which.
+- **The collective is in trouble**: generation 35 against 11-12, so roughly three times the death
+  rate, and down to a single particle. Being fed by everybody is not the same as thriving.
+
+That last one deserves a proper run rather than a footnote, and it is now the second time the
+collective has ended a long run collapsed.
