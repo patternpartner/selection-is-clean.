@@ -114,6 +114,23 @@ const readAll = page => page.evaluate(async () => {
     await page.waitForTimeout(2500);
     const s1 = await shape();
     ck('one tap brings a layer to the face', s1.front && s1.faces === 9, 'faces ' + s1.faces);
+
+    // AND THEY MUST BE LAID OUT, not merely present. The first version of the rotation positioned
+    // the nine face frames and then called light(), which cleared left and top on every one — so all
+    // nine stacked in the corner and the screen went black. Every check here passed: the class was
+    // right, the ticks were right, the flags were right. Nobody asked WHERE anything was.
+    const geom = await page.evaluate(() => [...document.querySelectorAll('#below .deep.face')]
+      .map(f => { const r = f.getBoundingClientRect();
+                  return { x: Math.round(r.x), y: Math.round(r.y), w: Math.round(r.width), h: Math.round(r.height) }; }));
+    const spots = new Set(geom.map(g => g.x + ',' + g.y));
+    ck('the face is laid out, not stacked in one corner', spots.size === geom.length,
+       spots.size + ' distinct positions for ' + geom.length + ' frames');
+    ck('every frame on the face has real size', geom.every(g => g.w > 40 && g.h > 40),
+       geom[0] ? (geom[0].w + 'x' + geom[0].h) : 'none');
+    const covered = geom.reduce((a, g) => a + g.w * g.h, 0);
+    const screen = await page.evaluate(() => window.innerWidth * window.innerHeight);
+    ck('and the face covers the viewport', covered > screen * 0.8,
+       Math.round(covered * 100 / screen) + '% of the screen');
     ck('and the surface goes behind it', s1.gridHidden === true);
     ck('the readout says which face is up', /layer 1/.test(s1.txt), s1.txt.trim());
 

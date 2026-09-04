@@ -12836,3 +12836,46 @@ What finally worked was reading what each slot ACTUALLY HOLDS — decode the sav
 `T`, compare against that universe's tick count sampled right after boot — and then checking that no
 other slot's saved value explains it better. `slot-test.js` does that, and `#reset` now clears every
 `selection_*` key rather than the two it used to know about.
+
+## #171 — THE CUBE TURNED, AND NINE UNIVERSES LANDED ON TOP OF EACH OTHER
+
+Reported from the phone, as a screenshot: one small cell in the top-left corner and the rest of the
+screen black, with the readout saying `layer 1 · 3/9 below · tap to turn`. The cube HAD turned itself,
+on schedule, and drawn the whole layer into a single 137x305 rectangle.
+
+```js
+fs.forEach(function(f,i){
+  f.style.left = ((i%cols)*Math.floor(window.innerWidth/cols))+'px';   // rotate() places it
+  ...
+  light(f,true,face);                                                  // ...and light() clears it
+});
+
+function light(f,on,L){
+  f.classList.toggle('face',on);
+  if(on){ f.style.left=''; f.style.top=''; }        // <-- undoes its own caller
+```
+
+`rotate()` laid the nine frames out in a grid and then called `light()`, which promptly wiped `left`
+and `top` on every one of them. All nine stacked at the same spot. Placement belongs to whoever is
+arranging the layout; `light()` now only says lit-or-dark and how fast.
+
+**Every check in `layers-test.js` passed while this was broken.** The face class was right — nine
+frames had it. The tick rates were right — the face ran at ~21/s and the rest idled. The pace and dark
+flags were right, all four of them, added two commits earlier precisely because "assert the flag, not
+the rate" had caught a bug. Not one of them asked WHERE anything was, so the rig watched a black
+screen and called it correct.
+
+The check that would have caught it is embarrassingly simple, and is in now: read the bounding boxes.
+Nine distinct positions, every frame bigger than 40x40, and together covering more than 80% of the
+viewport. Measured after the fix: 9 distinct positions, 137x305 each, 100% of the screen.
+
+The habit worth keeping from this: **a rig that only asks about state will not notice geometry.** Every
+assertion in that file was about what the universes were DOING. A person looking at the phone saw the
+answer in a quarter of a second.
+
+### Also: the depth readout was calling healthy universes dead
+
+`3/9 below` in that same screenshot. The readout gives each universe 2.5 seconds to answer a `stat()`
+and counts silence as absent — but a universe answers between its own ticks, and with a whole layer
+lit and running the field is busy enough that a paced universe can miss that window. Raised to 7
+seconds. Nothing was wrong with those six universes; the instrument was impatient.

@@ -384,11 +384,15 @@
   var depthEl=document.getElementById('depth');
   var face=0;                                     // 0 = the surface, 1..LAYERS = a layer below
   function layerFrames(L){ return deep.slice((L-1)*total, L*total); }
+  // WHAT THIS DOES NOT DO IS POSITION THE FRAME. It used to, and it undid its own caller: rotate()
+  // laid the nine face frames out in a grid and then called this, which promptly cleared left and
+  // top on every one of them. All nine stacked at the same spot — one visible cell in the corner and
+  // the rest of the screen black. The rig did not catch it because it asserted the FACE CLASS and
+  // the tick rates, both of which were perfectly correct, and never asked where anything was.
+  // Placement belongs to whoever is arranging the layout; this only says lit-or-dark and how fast.
   function light(f,on,L){
     try{
       f.classList.toggle('face',on);
-      if(on){ f.style.left=''; f.style.top=''; }
-      else  { f.style.left=(((L-1)*total+deep.indexOf(f)%total)*(cw+4))+'px'; f.style.top='0'; }
       var w=f.contentWindow, a=w&&w.__field;
       // #dark rides the hash (the engine re-reads it on hashchange); pace goes through the API.
       var h='#cleanart'+(on?'':',dark,pace='+(DEEPPACE*L));
@@ -559,7 +563,8 @@
         try{
           var a=f.contentWindow&&f.contentWindow.__field;
           if(!a){ fin(); return; }
-          var t=setTimeout(fin,2500);
+          var t=setTimeout(fin,7000);   // a paced universe answers between its own ticks; 2.5s
+                                        // called healthy universes dead whenever the field was busy
           a.stat().then(function(st){ clearTimeout(t);
             if(st){ alive++; ticks+=st.totalTicks|0; pop+=st.N|0; if(st.errs>0)errs++; } fin(); },fin);
         }catch(e){ fin(); }
