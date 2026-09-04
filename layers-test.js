@@ -85,7 +85,7 @@ const readAll = page => page.evaluate(async () => {
 
     ck('the depths are alive, not merely present', liveD.every(s => (s.N | 0) > 0),
        liveD.map(s => s.N | 0).slice(0, 4).join(',') + '...');
-    ck('the readout says what is underneath', /\d+\/18 below/.test(depthText), depthText);
+    ck('the readout says what is out of sight', /\d+\/18 out of sight/.test(depthText), depthText);
 
     // ═══ #167 — TURNING THE CUBE ════════════════════════════════════════════════════════════
     // The face is not just what you can see: it is what runs LIT and at full pace while everything
@@ -133,6 +133,13 @@ const readAll = page => page.evaluate(async () => {
        Math.round(covered * 100 / screen) + '% of the screen');
     ck('and the surface goes behind it', s1.gridHidden === true);
     ck('the readout says which face is up', /layer 1/.test(s1.txt), s1.txt.trim());
+    // AND IT COUNTS THE OTHER SIDE. On the surface that is the 18 below; on layer 1 it is the 9
+    // surface cells plus the 9 in layer 2 — never the nine you are looking at, which is what it
+    // used to do while still calling them "below".
+    await page.waitForTimeout(6000);
+    const s1b = await shape();
+    ck('and counts what is hidden, not what is on the face', /\b18 out of sight/.test(s1b.txt),
+       s1b.txt.trim());
 
     // the new face must actually be running, not merely visible
     const a = await tickSample();

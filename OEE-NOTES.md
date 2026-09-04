@@ -12879,3 +12879,44 @@ answer in a quarter of a second.
 and counts silence as absent — but a universe answers between its own ticks, and with a whole layer
 lit and running the field is busy enough that a paced universe can miss that window. Raised to 7
 seconds. Nothing was wrong with those six universes; the instrument was impatient.
+
+## #172 — "THE 33K TICKS — THAT'S WHAT'S GOING ON UNDERNEATH?" No. It was the face.
+
+The readout polled the layer frames and said "below" whatever was showing. On the surface that is
+right. The moment a layer comes up it is describing the nine universes you are LOOKING AT and calling
+them hidden.
+
+The harvest taken at that moment says it plainly:
+
+```
+  surface/*    pace 400   dark True     <- these are the ones out of sight
+  layer1/*     pace 0     dark False    <- these are the face
+
+  SURFACE (9): ticks 44599   alive  893
+  LAYER 1 (9): ticks 34738   alive  928   <- what the readout was counting
+  WHOLE FIELD: ticks 79337   alive 1821
+```
+
+The number was correct and the label was backwards, which is the worse of the two failures: nothing
+looked wrong. It now takes everything that is NOT the current face — the layers when you are on the
+surface, the surface plus any other layer when you are on one — and says "out of sight" rather than
+"below", because which side is below depends on where the cube has turned to.
+
+**Reported by the author from the phone, again**, and that is now three interface faults in a row
+found by a person looking at the thing (dead save buttons in #150/#154, nine universes stacked in one
+corner in #171, this). The rigs are good at what universes are DOING and blind to what the field is
+SAYING about them. Worth remembering the next time a check passes and something still looks wrong.
+
+### And the run itself, at the same moment
+
+```
+  where        ticks  gen    N  atoms       18 universes, ~40 minutes in
+  surface/6     6534    3  116      4       whole field: 79,337 ticks, 1,821 particles alive
+  surface/4     5374    2   70      6       atoms are appearing — 0 to 6 per universe
+  layer1/7      3746    1  161      2       generations 1 to 3
+```
+
+The surface carries more ticks than layer 1 (44.6k against 34.7k) because it held the face for the
+first stretch; the gap is the rotation doing its job rather than an imbalance. Atom banks have started
+to fill, which on the 21-hour run took considerably longer to reach — worth watching whether the
+faster start holds.

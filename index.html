@@ -455,7 +455,7 @@
   function paint(){
     if(!LAYERS)return;
     depthEl.innerHTML = (face===0?'<span class="now">surface</span>':'<span class="now">layer '+face+'</span>')
-      + ' · <b>'+deep.length+'</b> below · tap to turn';
+      + ' · <b>'+(face===0?deep.length:(cells.length+deep.length-total))+'</b> out of sight · tap to turn';
   }
 
   // ── AND IT TURNS ON ITS OWN ───────────────────────────────────────────────────────────────
@@ -550,14 +550,28 @@
     paint();
     armTurn();
     depthEl.addEventListener('click',function(e){ e.stopPropagation(); rotate(face+1); armTurn(); });
+    // WHAT IT COUNTS FOLLOWS THE FACE. This polled the layer frames and said "below" whatever was
+    // showing, so the moment a layer came up it was describing the nine universes you were LOOKING
+    // AT and calling them hidden. Reported from the phone as "the 33k ticks — that's what's going on
+    // underneath?", and no: it was the total for the face itself.
+    // The readout is here to describe the part you CANNOT see, so it now takes everything that is
+    // not the current face — the layers when you are on the surface, and the surface plus any other
+    // layer when you are on one.
+    function hidden(){
+      var out=[];
+      if(face!==0) for(var i=0;i<cells.length;i++) out.push(cells[i].firstChild);
+      for(var L=1;L<=LAYERS;L++) if(L!==face) out=out.concat(layerFrames(L));
+      return out;
+    }
     setInterval(function(){
-      var alive=0,ticks=0,pop=0,errs=0,pending=deep.length;
+      var watch=hidden();
+      var alive=0,ticks=0,pop=0,errs=0,pending=watch.length;
       if(!pending)return;
-      deep.forEach(function(f){
+      watch.forEach(function(f){
         var done=false;
         var fin=function(){ if(done)return; done=true; if(--pending===0){
           depthEl.innerHTML = (face===0?'<span class="now">surface</span>':'<span class="now">layer '+face+'</span>')
-            + ' · <b>'+alive+'/'+deep.length+'</b> below · '
+            + ' · <b>'+alive+'/'+watch.length+'</b> out of sight · '
             + (ticks>9999?(Math.round(ticks/1000)+'k'):ticks) + ' ticks · ' + pop + ' alive'
             + (errs?(' · '+errs+' erroring'):'') + ' · tap to turn'; } };
         try{
