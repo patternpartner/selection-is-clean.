@@ -210,6 +210,17 @@ const readAll = page => page.evaluate(async () => {
        at.surface === 8 && at.collective === 1 && at.layer1 === 9 && at.layer2 === 9, JSON.stringify(at));
     ck('a harvested layer records the pace and darkness it ran at',
        !!file && file.universes.filter(u => /layer2/.test(u.at)).every(u => u.pace > 0 && u.dark === true));
+    // #173: and the wire, because "are they talking to each other?" is half of what a field does and
+    // a harvest could not answer it — the file recorded what each universe WAS and nothing about
+    // what it had taken in.
+    ck('and what it has taken in from the others',
+       !!file && file.universes.filter(u => u.genome).every(u =>
+         typeof u.peers === 'number' && typeof u.migrantsIn === 'number' && typeof u.recv === 'number'),
+       file && JSON.stringify({ peers: file.universes[0].peers, recv: file.universes[0].recv,
+                                migrantsIn: file.universes[0].migrantsIn }));
+    ck('and the field really was talking during the run',
+       !!file && file.universes.filter(u => u.genome).some(u => u.peers > 1),
+       file && 'peers ' + file.universes.filter(u => u.genome).map(u => u.peers).slice(0, 4).join(','));
 
     ck('no uncaught page errors with layers', errs.length === 0, errs.slice(0, 2).join(' | '));
     await ctx.close();

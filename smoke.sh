@@ -52,7 +52,7 @@ extra_env_for() {
     # slot-test.js must wait for the engine's FIRST autosave, which is at tick 1800 — about 90
     # seconds at ~20 ticks/s. Below that there is nothing saved to restore and the rig would be
     # testing an empty store.
-    slot-test.js) echo "SECS=110" ;;
+    slot-test.js) echo "SECS=150" ;;
     *) echo "" ;;
   esac
 }

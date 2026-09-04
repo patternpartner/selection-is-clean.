@@ -502,8 +502,16 @@
         Promise.all([a.save(), a.stat()]).then(function(r){
           var txt=r[0], st=r[1]||{};
           var g=null; try{ g=JSON.parse(txt).genome; }catch(e){ g=null; }
+          // #173: and what it has taken IN. "Are the tabs definitely communicating when I am not
+          // clicking on them?" could not be answered from a harvest file — it recorded what each
+          // universe WAS and nothing about the wire, so the only way to check was to decode every
+          // genome by hand. A harvest is the record of a run; the network is half of what a field
+          // does, and it was the half that was missing.
           fin(g?{ genome:g, ticks:st.totalTicks|0, gen:st.gen|0, N:st.N|0,
-                  atoms:st.atoms|0, pace:st.pace|0, dark:!!st.dark, fp:st.fp||'' }:null);
+                  atoms:st.atoms|0, pace:st.pace|0, dark:!!st.dark, fp:st.fp||'',
+                  peers:st.peers|0, recv:st.recv|0, accepted:st.accepted|0,
+                  migrantsIn:st.migrantAccepted|0, bad:st.bad|0, dropped:st.dropped|0,
+                  clockRefused:st.paced|0, errs:st.errs|0 }:null);
         }, function(){ fin(null); });
       }catch(e){ fin(null); }
     });

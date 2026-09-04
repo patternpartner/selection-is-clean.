@@ -12920,3 +12920,79 @@ The surface carries more ticks than layer 1 (44.6k against 34.7k) because it hel
 first stretch; the gap is the rotation doing its job rather than an imbalance. Atom banks have started
 to fill, which on the 21-hour run took considerably longer to reach — worth watching whether the
 faster start holds.
+
+## THE FIRST CUBE RUN — 8.8 hours, 18 universes
+
+```
+  where          ticks   gen    N  atoms   migrantsIn  plasmids  motifs
+  surface/0      34554    13   72     27          772       540     828
+  surface/7      33326    30   68     19          793       551     774
+  collective     29959    12   89     33          991       451     649
+  layer1/1       24497    39   54     32          489       354     572
+  layer1/5       21749     7   20     21          504       349     501
+
+  SURFACE (9): 288,853 ticks   715 alive   228 atoms
+  LAYER 1 (9): 188,500 ticks   648 alive   182 atoms
+  FIELD:       477,353 ticks  1363 alive   410 atoms   18 of 18 distinct germlines
+```
+
+**It held.** All eighteen alive, none flattened, none lost. First long run at this scale.
+
+### Are they talking without anyone watching? Emphatically
+
+`genome.netApplied` counts foreign material that LANDED and was incorporated — not packets sent.
+
+```
+  FIELD: 11,530 migrants · 8,245 plasmids · 11,380 motifs taken in from other universes
+         194,656 acknowledgements that this universe's own material landed somewhere else
+  every universe received foreign material: True   (including all nine underneath)
+```
+
+The question came from the phone — "are the tabs definitely communicating outwith my clicking on an
+individual universe?" — and **a harvest file could not answer it.** It recorded what each universe WAS
+and nothing about the wire, so the only way to check was to decode all eighteen genomes by hand. The
+harvest now carries peers/recv/accepted/migrantsIn/bad/dropped/clockRefused/errs. The network is half
+of what a field does and it was the half the record omitted.
+
+### The number that matters, and the comparison I nearly got wrong
+
+```
+novelty per 10,000 ticks        novel   persisted
+21h nine-universe run           11.01       3.118
+8.8h cube run                    1.78       0.048
+   surface                       2.56       0.097
+   layer 1                       1.01       0.000
+```
+
+**Throw out the cross-run comparison.** The 21-hour field booted from a mature creature carrying ~80
+atoms; this one started from nothing. A creature with a rich repertoire has more to be novel WITH, and
+normalising per tick does not fix that. I nearly reported a 6x collapse in novelty as a finding about
+the cube.
+
+**The within-run comparison is clean** — same field, same age, same seed, same wire. The depths make
+2.5x less novelty per tick than the surface and have persisted NOTHING: zero, across nine universes
+and 188,500 ticks. And that understates it, because the layers are younger in ticks and novelty per
+tick should be higher when young.
+
+So the first answer to the question the layers exist for: **being underneath does change a universe,
+and so far it makes it less inventive rather than more.** Two candidates worth separating before
+believing it — pace (a paced universe takes in more foreign material per tick of its own life, which
+#166 deliberately left symmetric) and population (two layer universes are down at N=20). The
+experiment that separates them is paced-and-hidden against hidden-but-unpaced.
+
+### A correction to the 21-hour analysis
+
+I reported "283 distinct atom expressions, none shared by all nine" as evidence of divergence. It
+measures **inheritance**, not convergence. That field booted from one shared bank and drifted apart,
+so the overlap was leftover ancestry — 719 atoms, 283 distinct, 436 shared. This run has 400 atoms
+across eighteen universes and **zero** overlap, not because it diverged harder but because it started
+from nothing and a germline never receives another universe's atom. Jaccard was answering a different
+question than the one I asked it.
+
+### And a rig that failed on correct code, again
+
+`slot-test.js` asserted all nine universes had saved. The engine's first autosave is at tick 1800, so
+how many have saved inside the rig's window is a number the MACHINE picks: under load three fell short
+and the check went red on code that was completely correct. Same shape as "one load sees eight peers"
+two commits earlier. It now asserts the property actually under test — every universe that HAD saved
+came back carrying its own genome — plus a floor so a field where nothing persists still fails.
