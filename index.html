@@ -177,8 +177,16 @@
   var OPT = '(n=\\d+|pool=\\d+|nopool|bgpace=\\d+|layers=\\d+|deeppace=\\d+|turn=\\d+|clean|cleanart|hud|solo|reset)';
   var isOptions = raw==='' || new RegExp('^'+OPT+'(,'+OPT+')*$').test(raw);
   if(isOptions && /(^|,)reset(,|$)/.test(raw)){
-    try{ localStorage.removeItem('selection_genome'); }catch(e){}
-    try{ localStorage.removeItem('selection_collective'); }catch(e){}
+    // #170: every universe has its own slot now, so a reset that only cleared two keys would leave
+    // most of the field carrying its old lineage — a "reset" that resets a quarter of the thing.
+    try{
+      var doomed=[];
+      for(var ri=0;ri<localStorage.length;ri++){
+        var rk=localStorage.key(ri);
+        if(rk&&rk.indexOf('selection_')===0) doomed.push(rk);
+      }
+      for(var rj=0;rj<doomed.length;rj++) localStorage.removeItem(doomed[rj]);
+    }catch(e){}
     // Strip it so the NEXT reload does not wipe the fresh field too — the same one-shot rule
     // universe.html already applies to its own #reset.
     try{ history.replaceState(null,'',location.pathname||' '); }catch(e){}
@@ -186,7 +194,12 @@
   }
   var n, clean=false, passHash='', wantCollective=false;
   if(isOptions){
-    var m=raw.match(/n=(\d+)/);
+    // ANCHOR IT. `n=` unanchored matches inside other options: `turn=0` contains "n=0", so
+    // /#turn=0 silently built a FOUR-universe field (n=0 -> the !(n>=1) fallback) and /#turn=600
+    // asked for six hundred. Found because a storage rig came back with five cells when it should
+    // have had nine, which I nearly read as a bug in the storage. Every option here is a
+    // comma-separated token, so every option's pattern must say so.
+    var m=raw.match(/(?:^|,)n=(\d+)/);
     n = m ? parseInt(m[1],10) : 8;                 // eight INDIVIDUALS, by the author's call
     if(!(n>=1)) n=4;
     if(n>8) n=8;                                   // not a hard limit; past the core count the
@@ -240,7 +253,7 @@
   // eight that stand down also stop taking much in while you look at the ninth. Over the seconds or
   // minutes of actually looking at something that is nothing; it would matter if a cell were left
   // open for hours, and that is the case to watch.
-  var BGPACE = (function(){ var m=raw.match(/bgpace=(\d+)/); var v=m?parseInt(m[1],10):200;
+  var BGPACE = (function(){ var m=raw.match(/(?:^|,)bgpace=(\d+)/); var v=m?parseInt(m[1],10):200;
                             return Math.max(0,Math.min(5000,isFinite(v)?v:200)); })();
   // ═══ #165 — LAYERS ═════════════════════════════════════════════════════════════════════════
   // What you see is one face. `#layers=K` puts K more layers of the same count underneath: universes
@@ -276,7 +289,7 @@
   // around 1,750 MB against ~895 for nine. #layers=1 is eighteen and #layers=0 is the old nine, both
   // one edit away if a device will not hold it.
   var LAYERS = (function(){
-    var m=raw.match(/layers=(\d+)/);
+    var m=raw.match(/(?:^|,)layers=(\d+)/);
     if(m){ var v=parseInt(m[1],10); return Math.max(0,Math.min(8,isFinite(v)?v:2)); }
     // No hash, so the DEPTH adapts and the cube does not. navigator.deviceMemory is quantised and
     // rounded DOWN to a power of two, so a 6GB phone reports 4 and a desktop reports 8. A browser
@@ -288,11 +301,11 @@
     if(gb===undefined||gb===null) return 1;
     return (+gb)>=8?2:((+gb)>=4?1:0);
   })();
-  var DEEPPACE = (function(){ var m=raw.match(/deeppace=(\d+)/); var v=m?parseInt(m[1],10):400;
+  var DEEPPACE = (function(){ var m=raw.match(/(?:^|,)deeppace=(\d+)/); var v=m?parseInt(m[1],10):400;
                               return Math.max(50,Math.min(5000,isFinite(v)?v:400)); })();
   var POOL_RUN = Math.random().toString(36).slice(2,10);
   var pool;
-  var pm = raw.match(/pool=(\d+)/);
+  var pm = raw.match(/(?:^|,)pool=(\d+)/);
   var everything = total * (1 + LAYERS);        // #165: the surface plus every layer under it
   if (/(^|,)nopool(,|$)/.test(raw)) pool = everything;               // the pre-#162 layout, for comparison
   else if (pm) pool = Math.max(1, Math.min(everything, parseInt(pm[1],10)||1));
@@ -309,7 +322,13 @@
     // Cells sharing a slot share one SharedWorker, one connection and one universe each. The slot
     // rides in the QUERY string, not the hash: the hash is forwarded verbatim into the engine and
     // every flag it carries is the creature's, not the field's.
-    f.src='universe.html?pool='+POOL_RUN+'x'+(i%pool)+(passHash||(clean?'#cleanart':''));
+    // #170: and its own storage slot, so a reload continues this universe's lineage instead of
+    // handing every cell whichever one autosaved last. The collective keeps the key it already had
+    // (#153 gave it one precisely because the shared key kept overwriting it), which is now just the
+    // general case rather than a special one.
+    f.src='universe.html?pool='+POOL_RUN+'x'+(i%pool)
+         +'&slot='+(isColl?'collective':('u'+i))
+         +(passHash||(clean?'#cleanart':''));
     f.title=isColl?'The collective':('Universe '+(i+1));
     f.setAttribute('allow','autoplay');
     cell.appendChild(f);
@@ -335,8 +354,11 @@
         d.className='deep';
         d.style.width=cw+'px'; d.style.height=ch+'px';
         d.style.left=((L-1)*total+k)*(cw+4)+'px';       // laid out side by side, all of it off-screen
-        var slot=(cells.length+(L-1)*total+k)%pool;      // deep universes join the SAME worker pool
-        d.src='universe.html?pool='+POOL_RUN+'x'+slot+'#cleanart,dark,pace='+(DEEPPACE*L);
+        // Two different "slots" meet on this line, so they are named apart: which WORKER this
+        // universe shares (#162) and which STORAGE key holds its lineage (#170).
+        var poolSlot=(cells.length+(L-1)*total+k)%pool;
+        d.src='universe.html?pool='+POOL_RUN+'x'+poolSlot+'&slot=L'+L+'_'+k
+             +'#cleanart,dark,pace='+(DEEPPACE*L);
         d.title='Layer '+L+', universe '+(k+1);
         deepFrag.appendChild(d); deep.push(d);
       }
@@ -443,7 +465,7 @@
   // enough that it reads as a slow object rather than a slideshow); #turn=0 stops it and leaves the
   // cube wherever you put it. A tap always turns it immediately and restarts the clock, so the hand
   // beats the timer.
-  var TURN = (function(){ var m=raw.match(/turn=(\d+)/); var v=m?parseInt(m[1],10):300;
+  var TURN = (function(){ var m=raw.match(/(?:^|,)turn=(\d+)/); var v=m?parseInt(m[1],10):300;
                           return Math.max(0,Math.min(86400,isFinite(v)?v:300)); })();
   var turnTimer=null;
   function armTurn(){
@@ -663,7 +685,6 @@
 
   var COLLECT_MS=1000;      // one emigrant out of each individual, per cycle
   var RETURN_EVERY=4;       // ...and one out of the collective every 4th cycle, to ONE individual
-  var COLL_KEY='selection_collective';
   var cycles=0, inCount=0, outCount=0, returnTo=0;
 
   // Eight in, one out. A pull that comes back null is a cycle where that world sent nothing — either
@@ -689,34 +710,24 @@
   // and reads it back on boot, so on a reload the collective would come up as a copy of whichever
   // individual wrote last — the distilled lineage overwritten by an arbitrary one. This is a second
   // slot that only the collective writes and only the collective reads.
-  function collectiveAutosave(){
-    var coll=api(collectiveCell); if(!coll) return;
-    coll.save().then(function(data){
-      if(!data) return;
-      try{ localStorage.setItem(COLL_KEY,data); }
-      catch(e){ msg('\u2014 storage full'); }
-    }).catch(function(){});
-  }
   // Nothing in here may be one-shot. The whole collective — the relay, the autosave, the restore —
   // hangs off this call, and a phone that had not finished loading the ninth iframe by the time it
   // ran would have got a field with a ninth universe in it that was not fed by anything, silently
   // and for the rest of the session. So it waits for the frame instead of asking once.
   var startTries=0;
+  // #170: the loading and the saving are gone from here, because they are no longer special. The
+  // collective's frame now carries slot=collective and reads and writes selection_collective itself,
+  // exactly as every other universe reads and writes its own — which is what #153's bespoke slot was
+  // reaching for when the engine still had only one key to share. What is left is the part that was
+  // never about storage: waiting for the ninth frame before starting the relay. That wait is still
+  // load-bearing and must not become one-shot, because a phone that had not finished loading the
+  // collective when this ran would get a field whose ninth universe is fed by nothing, silently and
+  // for the rest of the session.
   function restoreCollective(){
-    var stored=null; try{ stored=localStorage.getItem(COLL_KEY); }catch(_){}
     var coll=api(collectiveCell);
     if(!coll){ if(++startTries<100) setTimeout(restoreCollective,300); return; }
-    coll.ready().then(function(){
-      if(stored&&stored.length>20) return coll.load(stored);
-      return false;
-    }).then(function(){
-      setInterval(relay, COLLECT_MS);
-      // The first write comes early. A phone tab that is opened, looked at, and closed inside a
-      // minute would otherwise store nothing at all, and the whole point of the collective is that
-      // it is the thing that accumulates.
-      setTimeout(collectiveAutosave, 20000);
-      setInterval(collectiveAutosave, 60000);
-    }).catch(function(){ setInterval(relay, COLLECT_MS); });
+    coll.ready().then(function(){ setInterval(relay, COLLECT_MS); })
+                .catch(function(){ setInterval(relay, COLLECT_MS); });
   }
   setTimeout(restoreCollective, 1200);
 })();

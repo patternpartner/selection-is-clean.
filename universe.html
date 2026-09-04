@@ -61,9 +61,36 @@
   function bufH(){ return Math.max(1, window.innerHeight|0); }
   canvas.width = bufW(); canvas.height = bufH();
 
+  // ═══ #170 — THIS UNIVERSE'S OWN SLOT ═══════════════════════════════════════════════════════
+  // The engine has always autosaved to ONE localStorage key and read it back on boot, because it was
+  // written when one universe meant one page. In a field it means every universe boots as a copy of
+  // whichever one autosaved last — so a reload FLATTENS the field into a single lineage.
+  //
+  // Measured on the author's 21-hour overnight run: nine universes started from an identical germline
+  // and ended with nine different ones (mutation rates spread 0.049-0.071, 283 distinct atom
+  // expressions, NONE shared by all nine). All of that divergence is destroyed by a refresh. It is
+  // why no run this project has ever done has accumulated across a reload, and why the collective
+  // needed a bespoke second slot (#153) just to survive being one of nine.
+  //
+  // The field now hands each frame a slot name in its query string, and the frame keeps its lineage
+  // under `selection_<slot>`. The engine is untouched: it still says 'selection_genome', and the
+  // mapping happens here, at the one place that knows which universe this is.
+  //
+  // FIRST BOOT FALLS BACK TO THE SHARED KEY, which is the migration: everybody starts from the
+  // creature that is already in there and diverges from it, rather than every slot starting empty
+  // and throwing away whatever the field had been growing. A standalone universe.html has no slot
+  // and is completely unchanged.
+  var SLOT = (function(){ try { var m=(location.search||'').match(/[?&]slot=([A-Za-z0-9_]{1,24})/);
+                                return m?m[1]:null; } catch(e){ return null; } })();
+  var GKEY = SLOT ? ('selection_'+SLOT) : 'selection_genome';
+
   // ── load any saved genome BEFORE the worker boots, so the sim's synchronous boot read finds it ──
   var stored = null;
-  try { stored = localStorage.getItem('selection_genome'); } catch(e){}
+  try {
+    stored = localStorage.getItem(GKEY);
+    if ((!stored || stored.length <= 10) && GKEY !== 'selection_genome')
+      stored = localStorage.getItem('selection_genome');   // first boot in this slot
+  } catch(e){}
 
   // ── hand the canvas to the worker and start the sim there ──
   var off = canvas.transferControlToOffscreen();
@@ -180,7 +207,10 @@
       while(readyWaiters.length) readyWaiters.shift()(); return;
     }
     if (d.type === 'persist'){
-      try { if (d.value === null) localStorage.removeItem(d.key); else localStorage.setItem(d.key, d.value); } catch(ex){}
+      // #170: the engine only ever names its own key. Redirect that one to this universe's slot;
+      // anything else it might store passes through untouched.
+      var k = (d.key === 'selection_genome') ? GKEY : d.key;
+      try { if (d.value === null) localStorage.removeItem(k); else localStorage.setItem(k, d.value); } catch(ex){}
       return;
     }
     if (d.type === 'pulled'){ settle(d.rid, d.packet || null); return; }

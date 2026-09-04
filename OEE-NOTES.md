@@ -12773,3 +12773,66 @@ The nine-universe run was not wasted. 21 hours, ~80,000 ticks per universe, all 
 
 That last one deserves a proper run rather than a footnote, and it is now the second time the
 collective has ended a long run collapsed.
+
+## #170 — EVERY UNIVERSE KEEPS ITS OWN LINEAGE
+
+The engine has always autosaved to ONE localStorage key and read it back on boot, because it was
+written when one universe meant one page. In a field that means **a refresh flattens everything**:
+every universe comes up as a copy of whichever one wrote last.
+
+The 21-hour run is what made the cost concrete. Nine universes started from an identical germline and
+ended with nine different ones — mutation rates spread 0.049 to 0.071, 283 distinct atom expressions,
+**none shared by all nine** — and a single reload would have thrown all of it away. That is why no run
+this project has ever done accumulated across a restart, and why the collective needed a bespoke
+second slot (#153) just to survive being one of nine.
+
+The field now hands each frame a slot name in its query string and the frame keeps its lineage under
+`selection_<slot>`. The engine is untouched — it still says `selection_genome`, and the mapping
+happens in `universe.html`, the one place that knows which universe this is. **First boot in a slot
+falls back to the shared key**, which is the migration: everybody starts from the creature already in
+there and diverges from it, rather than every slot starting empty and discarding what the field had
+grown. A standalone `universe.html` has no slot and is unchanged.
+
+The collective's bespoke autosave and restore are gone, because they are now the general case. What
+stayed is the part that was never about storage: waiting for the ninth frame before starting the
+relay, which is still load-bearing and still must not be one-shot.
+
+```
+slot        savedT   afterBoot   drift   verdict
+u0            2700        2890     190   its own
+u1            3600        3882     282   its own
+u3            3600        3882     282   its own
+collective    2700        2893     193   its own
+                                          9 own, 0 wrong
+```
+
+Saved values land on exact multiples of 900 — the engine's autosave cadence — which is the tell that
+each universe is reading its own key rather than a shared one.
+
+### `#turn=0` was quietly building a four-universe field
+
+Found while chasing this, and it had nothing to do with storage. The universe count is parsed with
+`/n=(\d+)/`, unanchored — and **`turn=0` contains `n=0`**, so `#turn=0` gave `n=0`, fell through the
+`!(n>=1)` guard to 4, and built five cells instead of nine. `#turn=600` asked for six hundred. Every
+option here is a comma-separated token, so every option's pattern now says so: `(?:^|,)`.
+
+It surfaced as a rig returning five cells when it should have had nine, which I first read as a bug in
+the storage I was testing. The lesson is the ordinary one: a wrong number in a rig is as likely to be
+upstream of the thing you are testing as in it.
+
+### Three wrong ways to test this, all of which I wrote
+
+1. **By fingerprint.** `fp` is three continuously-drifting genes, so it moves in the seconds after a
+   reload whether or not the lineage was restored. It reports "changed" for a perfect restore.
+2. **By nearest tick count.** These universes sit within two ticks of each other, so "closest match"
+   is noise wearing a verdict. It reported 14 of 18 universes as having loaded somebody else's genome
+   when every one of them was correct.
+3. **By navigating to `#reset`.** Going from `/#layers=0` to `/#reset` changes only the fragment,
+   which is a SAME-DOCUMENT navigation: `index.html` never re-runs and the reset never fires. The
+   check reported the reset broken when it had simply never been called. A query change forces a real
+   load.
+
+What finally worked was reading what each slot ACTUALLY HOLDS — decode the saved genome, take its own
+`T`, compare against that universe's tick count sampled right after boot — and then checking that no
+other slot's saved value explains it better. `slot-test.js` does that, and `#reset` now clears every
+`selection_*` key rather than the two it used to know about.
