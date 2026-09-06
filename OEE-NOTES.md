@@ -12996,3 +12996,68 @@ how many have saved inside the rig's window is a number the MACHINE picks: under
 and the check went red on code that was completely correct. Same shape as "one load sees eight peers"
 two commits earlier. It now asserts the property actually under test — every universe that HAD saved
 came back carrying its own genome — plus a floor so a field where nothing persists still fails.
+
+## THE CUBE AT 44.7 HOURS — 0.28 CONFIRMED, AND THE DEPTH FINDING WITHDRAWN
+
+```
+  FIELD: 1,031,103 ticks · 1,235 particles · 911 atoms · 18/18 distinct germlines · 0 caught errors
+  SURFACE (9): 613,776 ticks   696 alive   528 atoms   generations 22-240
+  LAYER 1 (9): 417,327 ticks   539 alive   383 atoms   generations 15-55
+```
+
+Eighteen universes, forty-five hours, over a million ticks, nothing lost.
+
+### The persistence ratio is a structural constant
+
+```
+run                              atoms/univ  ticks/univ  ratio  novel/10k  pers/10k
+21h nine-universe (mature seed)          81       80903  0.283      11.01      3.118
+cube @ 8.8h                              23       26520  0.031       1.78      0.048
+cube @ 44.7h                             51       57284  0.267       6.28      1.689
+```
+
+**0.267 against 0.283**, on configurations with almost nothing in common: nine universes booted from a
+mature creature, against eighteen started from nothing with half of them paced and drawing nothing.
+The 8.8h reading of 0.031 was the newborn-field artifact it was flagged as, and the trajectory
+(0.031 → 0.267 as banks went 23 → 51 atoms) shows the ratio tracking maturity and converging on ~0.28.
+
+That makes 0.28 the most robust number this project has. It is the bar: a change that does not move it
+did not do anything.
+
+### WITHDRAWN: "being underneath makes a universe less inventive"
+
+Reported at 8.8 hours on a 2.5x gap in novelty per tick and zero persistence in the depths. With
+mature banks it does not hold.
+
+```
+MATCHED BAND (38-56 atoms)      atoms   ticks   novel/10k  pers/10k  ratio
+  surface  (n=7)                 49.7   64487        6.47     2.242  0.337
+  layer 1  (n=8)                 43.8   46865        5.76     1.433  0.252
+
+atom-bank size vs novelty/10k:  r = +0.480
+being a layer  vs novelty/10k:  r = -0.324     (n=18; neither is decisive)
+```
+
+The gap fell from 2.5x to 1.19x, the layers still carry 38% fewer ticks even inside the matched band,
+and bank size predicts novelty better than depth does. The single cleanest refutation: **the
+best-persisting universe in the field is a layer** — `layer1/3` at ratio 0.579 against a surface mean
+of 0.337.
+
+So: being hidden and paced does not damage a universe. It makes it YOUNGER, and younger was the whole
+of what I measured. The architecture is doing what it claimed — the depths are ordinary universes that
+happen to be out of sight, on a slower clock.
+
+**This is the fourth time this session that a reading taken before something stopped moving turned out
+to be about age rather than about the thing being tested.** The others: the collective "losing" (it
+was 7,763 ticks behind), the memory "not plateauing" (a sawtooth), and the 8.8h novelty "collapse"
+(a newborn field). The rule that keeps earning its place: **before attributing a difference to a
+treatment, check whether the two arms are the same age.**
+
+### Two universes worth watching
+
+`surface/7` — the biggest atom bank in the field at 97, generation 240, novelty 8.29 per 10k, and a
+persistence ratio of **0.042**. It invents constantly and keeps almost nothing. Whether that is a
+pathology or a strategy is not something the meter can say.
+
+`layer1/6` — 49 atoms, novelty 2.26 per 10k, **zero** persisted. The one genuinely quiet universe in
+the field, and the only remaining candidate for a real depth effect.
