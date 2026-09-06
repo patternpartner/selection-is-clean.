@@ -13061,3 +13061,67 @@ pathology or a strategy is not something the meter can say.
 
 `layer1/6` — 49 atoms, novelty 2.26 per 10k, **zero** persisted. The one genuinely quiet universe in
 the field, and the only remaining candidate for a real depth effect.
+
+## #174 — THE ALPHABET STOPS BEING FIXED
+
+Every atom this system has ever written is a composition over **eighteen symbols**:
+
+```js
+new Function("a","b","u","c","d","m","s","f","nx","ny","t","nb","rl","rd","cr","fr","wr","at", …)
+```
+
+A universe with 97 atoms in its bank still had exactly eighteen things it could refer to. The atoms,
+the chains, the plasmids, the whole self-authoring layer — all recombination inside a vocabulary we
+chose and the creature could never touch.
+
+**That is the best available explanation for the one number this project cannot move.** Persistence
+ratio 0.283 on nine universes from a mature seed; 0.267 on eighteen from nothing with half of them
+paced and dark. A fixed generative grammar sampled at a steady rate is exactly what produces a stable
+ratio like that. An open-ended system should not have one.
+
+`ya`..`yh` carry the previous outputs of the atoms bound to opcode slots 0–7. The alphabet is eight
+symbols wider, but the width is not the point: **what `ya` MEANS is an evolved function the lineage
+wrote for itself**, and it changes when selection puts a different atom in slot 0. The grammar opens
+rather than widens.
+
+The value stored is what the SLOT yields — after the chain, not the head. A rig caught that: a chained
+slot computes f2(f1(a,b),b), and that is what the VM receives, so storing the head would have made
+`ya` name a value nothing else in the system ever sees.
+
+### Two of the code's own warnings, obeyed
+
+**Digit-free names.** `uaJitterConst` — the only small-step operator atoms have — works by a regex that
+is exhaustive over this grammar *only because* variables are bare identifiers and `.toFixed(2)`
+constants are the sole source of digits. `y0` would have silently broken it and nothing would have
+reported it. `voice-test.js` now asserts the invariant directly: 200 jitters of
+`((ya)+(1.25))*((yh)-(0.50))` move zero variables.
+
+**No recursion.** `ya`..`yh` read a stored value from earlier in the tick. They never call anything, so
+`uaFuel` and `uaDepth` are untouched and an atom referring to its own slot is a read, not a loop.
+
+### And a clamp that was redundant AND wrong
+
+I bounded the stored voice at ±16, reasoning that an atom's output reaching another atom's input is a
+feedback path. The rig read **8** where it expected 12, and the reason is one line already in
+`uaCall`:
+
+```js
+const out=isFinite(r)?Math.max(-8,Math.min(8,r)):0;
+```
+
+**Every atom output in this system has been bounded to ±8 since long before this change.** My guard
+could never fire, and it advertised 16 as the limit when the real limit is 8. A redundant safety check
+that states the wrong number is worse than none — the next person reads 16 and believes it. Removed.
+
+`voice-test.js`: 15 checks. Backward compatibility is one of them, and it is the one that would hurt
+most — every saved creature's expressions predate `ya`..`yh` and must compile unchanged under the
+wider signature, or every genome in the field is bricked.
+
+### What this is, honestly
+
+An experiment with a prediction and a way to be wrong. **If 0.28 is the signature of a fixed grammar,
+it should move now.** If it comes back at 0.28 after the banks mature, the ceiling is somewhere else
+and this was the wrong wall — which is worth knowing and is exactly as informative.
+
+The measurement to make: persistence ratio, at comparable atom-bank size, before and after. The
+baseline is 0.283 / 0.267 at 51–81 atoms per universe.

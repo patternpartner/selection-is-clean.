@@ -842,6 +842,34 @@ const USER_OPS=["+","-","*","/"]; // UNLOCKED #7b: division added; the final isF
 //           neighbour signal (the interaction partner's amplitude). The engine can now read the WORLD, not just
 //           itself, so authored code can be a function of environment + others — the substrate for sense→act behaviour.
 // All finite-safe by construction (positions/sin/clamped-amp) + the existing isFinite guard in uaCompile.
+// ═══ #174 — THE ALPHABET STOPS BEING FIXED ═══════════════════════════════════════════════════
+// Every atom this system has ever written is a composition over EIGHTEEN symbols. A universe with 97
+// atoms in its bank still had exactly eighteen things it could refer to; everything downstream was
+// recombination inside a vocabulary we chose and it could never touch.
+//
+// That is the most likely explanation for the one number this project cannot move. Measured across
+// configurations with almost nothing in common — nine universes from a mature seed, eighteen from
+// nothing with half of them paced and dark — the fraction of novelty that PERSISTS comes out at
+// 0.283, 0.267. A fixed generative grammar sampled at a steady rate is exactly what produces a
+// stable ratio like that. An open-ended system should not have one.
+//
+// So: eight more senses, and their MEANING is the creature's own. ya..yh carry the previous outputs
+// of the atoms bound to opcode slots 0-7. Those slots are heritable and selection already shapes
+// which atom sits in each, so what `ya` MEANS is an evolved function the lineage wrote for itself.
+// The alphabet is still eighteen-plus-eight wide, but eight of its symbols now change meaning as the
+// creature rewrites itself. That is the grammar opening rather than widening.
+//
+// TWO CONSTRAINTS THIS DESIGN OBEYS, both from the code's own warnings:
+//   · digit-free names. uaJitterConst's regex is exhaustive over this grammar only because vars are
+//     bare identifiers and `.toFixed(2)` constants are the sole source of digits. `y0` would have
+//     silently broken the one small-step operator atoms have.
+//   · no recursion. ya..yh read a STORED value from earlier in the tick, never call anything, so
+//     uaFuel and uaDepth are untouched and an atom referring to itself is a read, not a loop.
+// The stored values are clamped: an atom's output feeding another atom's input is a feedback path,
+// and this is the only place to stop it running away.
+const USER_SELF_VARS=["ya","yb","yc","yd","ye","yf","yg","yh"];
+const UA_VOICE=8;   // outputs are already bounded to ±8 by uaCall; see the note in uaChain
+const __uaVoice=new Float32Array(UA_VOICE);
 const USER_WORLD_VARS=["nx","ny","t","nb"]; // EYES — appended to the var pool when rich grammar is on
 const USER_FORAGE_VARS=["rl","rd"]; // FORAGE EYES — resource senses; appended when rich grammar AND forage are on
 const USER_BINFUNCS=["Math.min","Math.max","Math.atan2","Math.hypot"]; // HANDS — 2-arg functions
@@ -948,7 +976,9 @@ function uaGenTerm(depth){
   // #96: __uaVarPool lets a CALLER swap the leaf vocabulary for the duration of one generation.
   // The atom channel leaves it null and behaves exactly as before; the rend channel sets it, because
   // rendCompile binds a completely different parameter list (see rendGenExpression).
-  const vars=__uaVarPool||(rich?(uaForage()?USER_VARS.concat(USER_WORLD_VARS,USER_FORAGE_VARS):USER_VARS.concat(USER_WORLD_VARS)):USER_VARS);   // EYES (+FORAGE) expand the leaf pool
+  // #174: USER_SELF_VARS goes on every atom-channel pool. __uaVarPool is the rend channel, which
+  // binds a completely different parameter list and must not see these.
+  const vars=__uaVarPool||(rich?(uaForage()?USER_VARS.concat(USER_WORLD_VARS,USER_FORAGE_VARS,USER_SELF_VARS):USER_VARS.concat(USER_WORLD_VARS,USER_SELF_VARS)):USER_VARS.concat(USER_SELF_VARS));   // EYES (+FORAGE) expand the leaf pool
   const funcs=rich?USER_FUNCS_RICH:USER_FUNCS;                   // + round (quantize)
   const useFunc=Math.random()<0.35;
   const val=Math.random()<0.5
@@ -1026,8 +1056,8 @@ function uaJitterConst(expr){
 // "t" in "Math.tanh" has a left boundary but not a right one — "t" is immediately followed by "a", a
 // word character — so \bt\b cannot match it), and none of them collides with another on the list. A
 // \b-anchored regex over that closed vocabulary cannot false-match, so this needs no parser either.
-const UA_VAR_RE=/\b(?:nx|ny|nb|rl|rd|cr|fr|wr|at|a|b|u|c|d|m|s|t)\b/g; // #135: `at` before the single letters, or the alternation would match `a` first
-const UA_ALL_VARS=["a","b","u","c","d","m","s","cr","fr","wr","at","nx","ny","t","nb","rl","rd"]; // #135: +at
+const UA_VAR_RE=/\b(?:ya|yb|yc|yd|ye|yf|yg|yh|nx|ny|nb|rl|rd|cr|fr|wr|at|a|b|u|c|d|m|s|t)\b/g; // #135: `at` before the single letters, or the alternation would match `a` first. #174: ya..yh first for the same reason
+const UA_ALL_VARS=["a","b","u","c","d","m","s","cr","fr","wr","at","nx","ny","t","nb","rl","rd","ya","yb","yc","yd","ye","yf","yg","yh"]; // #135: +at  #174: +the creature's own voices
 function uaSwapVar(expr,re,pool){
   re=re||UA_VAR_RE; pool=pool||UA_ALL_VARS;
   const matches=expr.match(re);
@@ -1095,7 +1125,7 @@ function uaCompile(atom){
   try{
     // Pe24: compiled function takes (a,b,u) — u is normalized self-usage count.
     // Old atoms with expressions only referencing a,b still compile fine; u is unused param.
-    const _fn=new Function("a","b","u","c","d","m","s","f","nx","ny","t","nb","rl","rd","cr","fr","wr","at","const r=("+atom.expression+");return isFinite(r)?r:0;"); // #135: +at
+    const _fn=new Function("a","b","u","c","d","m","s","f","nx","ny","t","nb","rl","rd","cr","fr","wr","at","ya","yb","yc","yd","ye","yf","yg","yh","const r=("+atom.expression+");return isFinite(r)?r:0;"); // #135: +at  #174: +ya..yh. Older expressions never mention them and compile unchanged, so every saved creature still loads.
     __uaCache(_e,_fn);
     atom.compiled=_fn;
     atom.failed=false;
@@ -1539,6 +1569,21 @@ function uaChain(head,slot,a,b){
       for(let s=0;s<st.length;s++){ const nx=uas&&uas[st[s]|0]; if(nx) out=uaCall(nx,out,b); }
     }
   }
+  // #174: the first eight bound slots are the creature's VOICES — whatever selection has put in slot
+  // 0 is what `ya` means, for every atom in this universe, until selection puts something else there.
+  //
+  // AFTER the chain, not before. The first version stored the HEAD's output and a rig caught it: a
+  // slot with a chain on it yields f2(f1(a,b),b), and that — what the VM actually receives — is what
+  // the slot MEANS. Storing the head would have made `ya` name a value nothing else ever sees, and
+  // #155's whole point is that a slot can be more than one atom deep.
+  //
+  // NO CLAMP HERE, and the first version had one. Feeding an atom's output into another atom's input
+  // is a feedback path, so I bounded it at ±16 — and the rig reported 8 where it expected 12. uaCall
+  // ALREADY ends `Math.max(-8,Math.min(8,r))`: every atom output in this system has been bounded to
+  // ±8 since long before this change, so the guard could never fire and its number was wrong about
+  // the real bound anyway. A redundant safety check that advertises the wrong limit is worse than
+  // none, because the next person reads 16 and believes it.
+  if(slot>=0&&slot<UA_VOICE)__uaVoice[slot]=out;
   return out;
 }
 // WHERE A NEW ATOM GOES WHEN THE SLOTS ARE GONE. Authoring must never dead-end: before #155 the bind
@@ -1626,7 +1671,8 @@ function uaCall(atom,a,b){
     const _cr=isFinite(atom.creditTrace)?atom.creditTrace:0; // #110: own credit trace
     const _fr=(__ATOM_FRSENSE&&isFinite(__orgFitTraj))?__orgFitTraj:0; // #116: organism fitness trajectory (0 when sense off)
     const _wr=__ATOM_WRSENSE?Math.max(0,Math.min(1,(DIMS-3)/6)):0; // #126: world-richness — accumulated trait dimensionality (macro complexity the atom's own success helps grow, #125). 0 when sense off
-    const r=atom.compiled(a,b,u,uaCtxC,uaCtxD,uaCtxM,s,uaCallF,uaCtxNx,uaCtxNy,uaCtxT,uaCtxNb,uaCtxRl,uaCtxRd,_cr,_fr,_wr,uaCtxAt); // #135: +at
+    const r=atom.compiled(a,b,u,uaCtxC,uaCtxD,uaCtxM,s,uaCallF,uaCtxNx,uaCtxNy,uaCtxT,uaCtxNb,uaCtxRl,uaCtxRd,_cr,_fr,_wr,uaCtxAt,
+      __uaVoice[0],__uaVoice[1],__uaVoice[2],__uaVoice[3],__uaVoice[4],__uaVoice[5],__uaVoice[6],__uaVoice[7]); // #135: +at  #174: +the voices
     atom.uses=prevUses+1;
     if(__ATOM_USE_POP&&atom.expression){
       if(__atomExprUses.size>5000)__atomExprUses.clear(); // bounded — a live counter, not an archive
