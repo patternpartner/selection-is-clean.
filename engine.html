@@ -853,8 +853,8 @@ const USER_OPS=["+","-","*","/"]; // UNLOCKED #7b: division added; the final isF
 // 0.283, 0.267. A fixed generative grammar sampled at a steady rate is exactly what produces a
 // stable ratio like that. An open-ended system should not have one.
 //
-// So: eight more senses, and their MEANING is the creature's own. ya..yh carry the previous outputs
-// of the atoms bound to opcode slots 0-7. Those slots are heritable and selection already shapes
+// So: eight more senses, and their MEANING is the creature's own. ya..yh carry the outputs SO FAR
+// IN THIS PROGRAM RUN of the atoms bound to opcode slots 0-7. Those slots are heritable and selection already shapes
 // which atom sits in each, so what `ya` MEANS is an evolved function the lineage wrote for itself.
 // The alphabet is still eighteen-plus-eight wide, but eight of its symbols now change meaning as the
 // creature rewrites itself. That is the grammar opening rather than widening.
@@ -863,13 +863,37 @@ const USER_OPS=["+","-","*","/"]; // UNLOCKED #7b: division added; the final isF
 //   · digit-free names. uaJitterConst's regex is exhaustive over this grammar only because vars are
 //     bare identifiers and `.toFixed(2)` constants are the sole source of digits. `y0` would have
 //     silently broken the one small-step operator atoms have.
-//   · no recursion. ya..yh read a STORED value from earlier in the tick, never call anything, so
-//     uaFuel and uaDepth are untouched and an atom referring to itself is a read, not a loop.
-// The stored values are clamped: an atom's output feeding another atom's input is a feedback path,
-// and this is the only place to stop it running away.
+//   · no recursion. ya..yh read a STORED value from earlier in the SAME PROGRAM RUN (#175 scoped
+//     it; #174 as shipped had no scope at all), never call anything, so uaFuel and uaDepth are
+//     untouched and an atom referring to itself is a read, not a loop.
+// The stored values need no clamp of their own: uaCall already ends every atom output with
+// Math.max(-8,Math.min(8,r)), so the feedback path is bounded before it is ever stored. #174's
+// first draft added a second clamp at ±16 here and a rig caught it advertising the wrong bound.
 const USER_SELF_VARS=["ya","yb","yc","yd","ye","yf","yg","yh"];
 const UA_VOICE=8;   // outputs are already bounded to ±8 by uaCall; see the note in uaChain
 const __uaVoice=new Float32Array(UA_VOICE);
+// #175 — A VOICE THAT ANY CREATURE CAN OVERWRITE IS NOT A VOICE, IT IS A ROOM TONE.
+// uaVoiceScope: __uaVoice is cleared at the top of EVERY program entry, so ya..yh only ever carry a
+// value some atom in THIS run of THIS program put there earlier. Five entry points reset it:
+// executeVM, executeClusterVM, executeSoloVM, profileVM, and the #95 prediction call. The first three
+// clear UNCONDITIONALLY, above their own guards, because a rig that passes only because the function
+// early-returned proves nothing — voice-test caught exactly that on executeClusterVM.
+//
+// #174 shipped this array without that rule and the array was never cleared at all. So `ya` did not
+// read "what my slot-0 atom said" — it read whatever the LAST atom to touch slot 0 left there, in any
+// organism, in any encounter, possibly in a previous tick. The comment above claimed the first; the
+// code did the second.
+//
+// This is not a tidiness fix, it is what the 93.1h harvest measured. Across 18 universes the share of
+// a universe's atoms that reference ya..yh correlated with its persistence ratio at r = -0.675 — the
+// strongest correlation in that data, and pointing the WRONG WAY from #174's prediction. An atom whose
+// output depends on population order cannot repeat itself, and an atom that cannot repeat itself
+// cannot be selected for. #174 did not give creatures a new sense; it gave them a noise source, and
+// selection duly threw away every lineage that listened to it.
+//
+// The cost is eight float writes per program entry, which is nothing next to a VM run. The gain is
+// that ya..yh become what they were advertised as: composition across instructions, deterministic
+// given the same inputs, and therefore selectable.
 const USER_WORLD_VARS=["nx","ny","t","nb"]; // EYES — appended to the var pool when rich grammar is on
 const USER_FORAGE_VARS=["rl","rd"]; // FORAGE EYES — resource senses; appended when rich grammar AND forage are on
 const USER_BINFUNCS=["Math.min","Math.max","Math.atan2","Math.hypot"]; // HANDS — 2-arg functions
@@ -11461,6 +11485,7 @@ function profileVM(){
     vmRegs[0]=t.sim;vmRegs[1]=t.align;vmRegs[2]=t.prox;vmRegs[3]=t.energy;
     for(let r=4;r<12;r++)vmRegs[r]=0; // no particle memory in profiler
     vmActions.fill(0); // #132: clears the authored-verb drives (8..15) as well as the eight built-ins
+    __uaVoice.fill(0);   // #175: a program starts with silent voices — see uaVoiceScope
 
     const prog=genome.vmProgram;
     const nInst=Math.min(prog.length,genome.vmMaxInstructions);
@@ -15901,6 +15926,7 @@ function runAlienPrediction(){ fired('alien.predict');
       if(!atom)continue;
       const baseline=po.prevCount, recentPartial=po.count; // only "trend so far" signal honestly available
       uaCtxC=0;uaCtxD=0;uaCtxM=0;uaCtxNx=0;uaCtxNy=0;uaCtxT=Math.sin(tick*0.0011);uaCtxNb=0;uaCtxRl=0;uaCtxRd=0;uaCtxAt=0;
+      __uaVoice.fill(0);   // #175: a program starts with silent voices — see uaVoiceScope
       const out=uaCall(atom, Math.tanh((baseline||0)/20), Math.tanh((recentPartial||0)/20));
       const direction=out>0.05?1:(out<-0.05?-1:0);
       // ═══ #95 ABSTENTION IS NOT A FAILED PREDICTION ═════════════════════════════════════════════
@@ -16120,6 +16146,7 @@ function applyUserEffects(i,j,influence){
 const vmActions=new Float32Array(8+MAX_USER_EFFECTS);
 
 function executeVM(i,j,sim,d){
+  __uaVoice.fill(0);   // #175: a program starts with silent voices — see uaVoiceScope
   if(d>CELL||d<0.5)return;
   const proximity=1-d/CELL;
   const phaseAlign=Math.cos(phase[i]-phase[j]);
@@ -19567,6 +19594,7 @@ const reflexDebugCounters={ecvEntries:0,ecvNoCid:0,ecvNoCidx:0,ecvNoProg:0,ecvPa
   nonzeroFirings:0,nonzeroFiringsReadable:0};
 
 function executeClusterVM(i,j,sim,d){
+  __uaVoice.fill(0);   // #175: a program starts with silent voices — see uaVoiceScope
   if(__reflexDebugOn)reflexDebugCounters.ecvEntries++;
   const cid=clusterID[i];
   if(cid<0){if(__reflexDebugOn)reflexDebugCounters.ecvNoCid++;return;}
@@ -21182,6 +21210,7 @@ function executeSoloVM(){
     const _selfG=genome;genome=pGenome[i]||genome; try{ // UNLOCKED #9 FULL + FIX (review): install the lineage's FULL genome BEFORE sizing the solo VM — otherwise nInst/soloInfluence used the global baseline, so a lineage that evolved its own vmMaxInstructions / vmInfluence / ruleScale never ran solo under its own parameters
     const prog=pProg[i]||genome.vmProgram;  // UNLOCKED #9: isolated particle runs its own program too
     const nInst=Math.min(prog.length,genome.vmMaxInstructions);
+    __uaVoice.fill(0);   // #175: a program starts with silent voices — see uaVoiceScope
     if(nInst===0)continue;
     const soloInfluence=genome.vmInfluence*genome.ruleScale*0.0005*(genome.vmGain||1); // per-particle now (was hoisted out of the loop on the global genome — review); #48: evolvable gain
     uaCtxC=0;uaCtxD=amp[i];uaCtxM=0; uaSetEyes(i,-1); // solo atom context (no partner → caste-match 0; +EYES)

@@ -157,6 +157,19 @@ than tombstoning it — a stack position carries no opcode number), serialised a
 `atom.chained`. Absent from every pre-#155 save, which is correct. `chain-test.js` drives it, because
 no other rig ever reaches the cap.
 
+**The voices (#174, scoped by #175).** `ya`..`yh` read `__uaVoice[0..7]`, which `uaChain` fills with
+what slots 0-7 YIELD — the chain's answer, not the head's. The array is **scoped to one program run**.
+Five sites clear it: `executeVM`, `executeClusterVM` and `executeSoloVM` clear unconditionally at
+entry, above their own guards; `profileVM` clears per test case; the #95 prediction call clears before
+its bare `uaCall`. A sixth program entry must clear too, or its atoms read a previous program's
+values. #174 shipped with no clear anywhere, which meant `ya` did not mean "what my slot-0 atom said"
+but "whatever the last atom to touch slot 0 left there, in any organism, possibly last tick" — and the
+93.1h harvest measured the cost: the share of a universe's atoms referencing `ya`..`yh` correlated
+with its persistence ratio at **r = -0.675**, the strongest correlation in that data and pointing the
+wrong way. An atom whose output depends on population order cannot repeat itself, and selection
+discards what cannot repeat. No clamp lives here: `uaCall` already ends every atom output with
+`Math.max(-8,Math.min(8,r))`.
+
 **Bound opcodes (#137).** An opcode's NUMBER is its POSITION in `genome.boundOpcodes`
 (`op = CORE_OPCODES + k`); its MEANING is `genome.userAtoms[boundOpcodes[k]]`. Two consequences that
 are easy to miss: never splice `boundOpcodes` (it renumbers every opcode above the cut), and never

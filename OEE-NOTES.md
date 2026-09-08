@@ -13125,3 +13125,113 @@ and this was the wrong wall — which is worth knowing and is exactly as informa
 
 The measurement to make: persistence ratio, at comparable atom-bank size, before and after. The
 baseline is 0.283 / 0.267 at 51–81 atoms per universe.
+
+---
+
+## The answer came back, and it was no. (93.1h harvest, 18 universes)
+
+I said this was an experiment with a way to be wrong. It was wrong. Recording it that way.
+
+The prediction: if 0.28 is the signature of a fixed grammar, widening the grammar should move it.
+
+```
+run                          atoms/univ  ticks/univ   novel  persisted   RATIO
+21h nine-universe                  81       80903      802        227    0.283
+cube 44.7h  (before #174)          51       57284      666        178    0.267
+cube 93.1h  (after  #174)          70       77892     1300        395    0.304
+```
+
+Matched on bank size (60-105 atoms), which is the only comparison that controls for the age confound
+that has caught me four times in this file:
+
+```
+21h nine-universe    n= 9   mean 0.283   sd 0.007
+cube after #174      n=13   mean 0.291   sd 0.115
+```
+
+**The mean did not move.** 0.291 against 0.283 is nothing. By the criterion I wrote down before
+looking, the alphabet was the wrong wall.
+
+The new vocabulary is definitely being used — 361 of the field's 1266 atoms reference a self-written
+sense (28.5%), and every one of the eighteen universes has some. So this is not "the feature never
+reached the field."
+
+### The variance is the real result, and it points the other way
+
+`sd 0.007 → 0.115`. Something in the cube run genuinely spread these universes out. Ranking the
+candidates by correlation with a universe's persistence ratio:
+
+```
+ratio vs ticks ............... r = +0.170
+ratio vs atom-bank size ...... r = -0.415
+ratio vs being a layer ....... r = -0.252
+ratio vs SHARE USING ya..yh .. r = -0.675     <-- the strongest, and backwards
+```
+
+```
+layer1/6    98 atoms   58% using a voice   ratio 0.062
+surface/0  102 atoms   48%                 ratio 0.224
+surface/3   78 atoms   13%                 ratio 0.447
+surface/4   68 atoms   16%                 ratio 0.522
+```
+
+The universes that took up the new senses hardest are the ones whose novelty persists least. And the
+age control does not rescue it this time — within the same age band, atoms using a voice are used
+*less*:
+
+```
+                          n     mean age   mean uses
+with a self-written sense  361      114        310.8
+only the fixed 18          905      132        550.2
+  age 0-300                354                 295.0   |  880   516.0
+  age 300-1500               7                1108.7   |   25  1753.3
+```
+
+Caveat I am not going to bury: the two runs differ in more than #174 (nine mature-seeded universes
+versus eighteen from nothing, half of them paced and dark), so the variance change is confounded. The
+r = -0.675 is *within* the 93.1h run, so it is not.
+
+### Why: #174 shipped a noise source, not a sense
+
+Reading the code with that number in hand found it in about a minute. `__uaVoice` is one global
+`Float32Array(8)`. It was written by `uaChain` and **cleared nowhere**. There is one array for the
+whole universe, and the VM runs organisms one after another.
+
+So `ya` never meant "what my slot-0 atom said". It meant *whatever the last atom to touch slot 0 left
+there — in any organism, in any encounter, possibly in a previous tick*. The doc comment claimed the
+first; the code did the second, and I wrote both.
+
+That is exactly the shape of thing selection must throw away. An atom reading `ya` produces a
+different answer depending on population order, which changes every time anything is born or dies. It
+cannot repeat itself, so it cannot be selected for, so lineages that listened to it lost. **The
+measured -0.675 is not evidence against giving creatures new senses. It is evidence that this was not
+a sense.**
+
+### #175 — the voices are scoped to one program run
+
+`__uaVoice.fill(0)` at every program entry: `executeVM`, `executeClusterVM`, `executeSoloVM`
+unconditionally above their own guards, `profileVM` per test case, and the #95 prediction call. Now
+`ya` carries only what an atom in *this* run of *this* program put there — composition across
+instructions, deterministic given the same inputs, and therefore selectable. Cost is eight float
+writes per program entry, against a whole VM run.
+
+`voice-test.js` is 20 checks now. Five of them are new, and one caught a real hole immediately:
+`executeClusterVM`'s reset was originally placed after its guards, so the probe passed only because
+the function had early-returned without running anything. A rig that passes because the code did
+nothing is the failure mode that let nine universes stack in one corner while every check went green.
+The reset moved above the guards and the probe now means what it says.
+
+### The prediction this time
+
+Weaker than last time's, deliberately, because I have now been wrong about the ceiling twice.
+
+If -0.675 is the noise explanation, the correlation should **weaken toward zero** in the next run at
+comparable bank size. It does not need to go positive for #175 to be right; voices only have to stop
+being actively harmful before anything can be learned about whether they help.
+
+If the correlation is *still* strongly negative once the voices are deterministic, then atoms reading
+other atoms is itself the bad idea — a coupling that makes lineages fragile rather than expressive —
+and the honest move is to take `ya`..`yh` back out rather than keep patching them.
+
+The persistence ratio at matched bank size stays the headline number either way. Baseline to beat:
+**0.283 / 0.267 / 0.291**.

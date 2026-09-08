@@ -114,6 +114,26 @@ m._compile(code+`
             outOfRangeTouched:before.some((v,i)=>v!==after[i])};
   });
 
+  // #175 — SCOPE. The voices must be silent at the top of every program entry. Poison the array with
+  // a sentinel, call an entry point, and the sentinel must be gone from every slot: an entry that
+  // forgot to clear would leave the untouched slots still holding it. This is the property that makes
+  // ya..yh selectable at all — without it ya reads whatever the last atom in any other organism
+  // left there, which no lineage can reproduce and selection can only discard.
+  out.scope=run('scope',()=>{
+    const S=7.77, res={};
+    const probe=(name,fn)=>{
+      __uaVoice.fill(S);
+      try{ fn(); }catch(e){ res[name]='threw: '+((e&&e.message)||String(e)).slice(0,80); return; }
+      res[name]=Array.from(__uaVoice).filter(v=>Math.abs(v-S)<1e-6).length;   // slots still poisoned
+    };
+    probe('profileVM',   ()=>profileVM());
+    probe('executeSoloVM',()=>executeSoloVM());
+    probe('executeVM',   ()=>executeVM(0,1,0.5,10));
+    probe('executeClusterVM',()=>executeClusterVM(0,1,0.5,10));
+    __uaVoice.fill(0);
+    return res;
+  });
+
   // the whole loop must still run with the wider signature in the hot path
   out.loopOk=run('loopOk',()=>{
     const t0=tick; for(let s=0;s<200;s++){ globalThis.__detMs+=5; loop(); }
@@ -145,6 +165,14 @@ ck('a chained slot voices what the CHAIN yields, not the head',
    r.fills && r.fills.chained===8 && r.fills.normal===6,
    r.fills && ('unchained slot stored '+r.fills.normal+', chained slot stored '+r.fills.chained));
 ck('a slot past the voices writes nothing', r.fills && r.fills.outOfRangeTouched===false);
+const sc=r.scope||{};
+for(const entry of ['profileVM','executeSoloVM','executeVM','executeClusterVM'])
+  ck('#175: '+entry+' starts a program with silent voices', sc[entry]===0,
+     sc[entry]===0?'all 8 slots cleared':('left '+sc[entry]+' slot(s) poisoned'));
+const nResets=(code.match(/__uaVoice\.fill\(0\)/g)||[]).length;
+ck('#175: every program entry carries the reset', nResets===5,
+   nResets+' resets in engine.html (profileVM, executeVM, executeClusterVM, executeSoloVM, #95 prediction)');
+
 ck('the loop still runs with the wider signature', r.loopOk && r.loopOk.ran>=200,
    r.loopOk && (r.loopOk.ran+' ticks, N '+r.loopOk.N+', atoms '+r.loopOk.atoms));
 ck('no errors thrown anywhere', r.errors.length===0, r.errors.join(' | '));
