@@ -237,6 +237,16 @@ let __UA_INHERIT=true; // #112: grammar-level subtree inheritance from the credi
 let __ATOM_NFD=true; // #114: negative frequency-dependence on the atom bank (Red Queen #28 applied to CONTENT). A used-but-RARE expression earns overwrite protection; the population-dominant expression loses its diversity shield and must survive on credit alone. Counters the #112 monoculture-collapse risk and maintains standing diversity in the replicator that carries meaning. Force off with ATOM_NFD=0
 const __atomExprUses=new Map(); // population-wide execution count per atom expression; written only when __ATOM_USE_POP is on
 const __atomExprContrib=new Map(); // #110: per-expression REACH contribution accumulator; cleared each applyCreditAssignment cycle
+// #177 — WHEN IS A ZERO IN __atomExprUses AN ANSWER, AND WHEN IS IT JUST AN EMPTY MAP?
+// The map above is a LIVE COUNTER, not an archive: it is wiped whole once it exceeds 5000 entries.
+// For one moment after that wipe every expression in the system reads zero, and a cull that treated
+// zero as "idle" would, at that moment, consider the entire bank disposable. So record WHEN the wipe
+// happened and refuse to read idleness out of a window too young to have recorded anything.
+// This is the OEE meter's rule (`D = -1 means UNMEASURED, not zero`) applied to a second instrument:
+// an absence of evidence has to be distinguishable from evidence of absence, or the first thing the
+// measurement does is lie at exactly the moment it is least able to tell.
+let __atomUseWindowStart=0;
+const ATOM_IDLE_WINDOW=2000;   // ticks of accumulated window before a zero counts as "has not run"
 const __atomExprCredit=new Map(); // #111: population-wide credit-trace pool per expression; blended slowly from personal creditTrace at applyCreditAssignment time. Bounded ±1. Cleared on extinction.
 let __EXPR_CREDIT_POP=true; // #118: credit EVERY expression that fired REACH this tick directly into the pool, not only germline-mirrored ones. The population authors/runs far more atom diversity than the germline; this widens the credit funnel to the whole population. When on, replaces #111's germline personal->pool blend (germline atoms are already in the contrib map). Force off with EXPR_CREDIT_POP=0
 let __ATOM_CREDIT_VERT=true; // #119: carry atom creditTrace through VERTICAL inheritance (parent->child in mutateChildGenome), the primary heritability route #110/#111 left unwired. Child atoms seed at 50% of max(parent trace, pool credit). Force off with ATOM_CREDIT_VERT=0
@@ -405,7 +415,7 @@ const LIVENESS_DECLARED=[
   'shadow.sim','shadow.decide','self.learn','cluster.reflex','cluster.detect','cluster.persist',
   'alien.predict','niche.economy','dims.grow','cosmos.launch','cosmos.merge','cosmos.law',
   'genome.mutate','prog.crossover','prog.inherit','oee.flush','attention.field','world.signal',
-  'atom.cull','atom.evict','atom.chain','genome.trim','verb.senseBind','verb.senseFired',
+  'atom.cull','atom.cull.idle','atom.evict','atom.chain','genome.trim','verb.senseBind','verb.senseFired',
 ];
 // NOT INSTRUMENTED, and deliberately absent rather than declared-and-silent: cladogenesis minting
 // (#17) has no single entry point I could identify with confidence. A census that reports "never"
@@ -1729,7 +1739,7 @@ function uaCall(atom,a,b){
       __uaVoice[0],__uaVoice[1],__uaVoice[2],__uaVoice[3],__uaVoice[4],__uaVoice[5],__uaVoice[6],__uaVoice[7]); // #135: +at  #174: +the voices
     atom.uses=prevUses+1;
     if(__ATOM_USE_POP&&atom.expression){
-      if(__atomExprUses.size>5000)__atomExprUses.clear(); // bounded — a live counter, not an archive
+      if(__atomExprUses.size>5000){__atomExprUses.clear();__atomUseWindowStart=tick;} // bounded — a live counter, not an archive; #177 stamps the wipe
       __atomExprUses.set(atom.expression,(__atomExprUses.get(atom.expression)||0)+1);
     }
     const out=isFinite(r)?Math.max(-8,Math.min(8,r)):0;
@@ -7938,6 +7948,7 @@ function encodeGenome(){
     rmd:genome.rendMaxDepth===undefined?undefined:(genome.rendMaxDepth|0),                // #97: render-channel depth, its own gene (omitted if never created)
     isb:genome.intStepBias===undefined?undefined:+(genome.intStepBias).toFixed(4),        // #97: integer-step forcing bias
     aup:genome.atomUseProtect===undefined?undefined:+(genome.atomUseProtect).toFixed(4), // #101: use-rank overwrite protection
+    ait:genome.atomIdleTolerance===undefined?undefined:+(genome.atomIdleTolerance).toFixed(4), // #177: willingness to release an idle atom
     usb:genome.uaStructBias===undefined?undefined:+(genome.uaStructBias).toFixed(4), // #107: atom-grammar structural-branch bias (omitted if never created)
     rg:genome.reachGain===undefined?undefined:+(genome.reachGain).toFixed(4), // #117: authored-atom actuator authority (omitted if never created)
     anm:genome.atomNoveltyMix===undefined?undefined:+(genome.atomNoveltyMix).toFixed(4), // #120: novelty-vs-fitness weight on atom credit (omitted if never created)
@@ -8264,6 +8275,7 @@ function decodeGenome(data){
     if(typeof g.rmd==='number')genome.rendMaxDepth=g.rmd|0;      // #97
     if(typeof g.isb==='number')genome.intStepBias=+g.isb;        // #97
     if(typeof g.aup==='number')genome.atomUseProtect=+g.aup;     // #101
+    if(typeof g.ait==='number')genome.atomIdleTolerance=+g.ait;  // #177 (absent in pre-#177 saves → undefined → reads 0 → the old cull, which is the correct inheritance)
     if(typeof g.usb==='number')genome.uaStructBias=+g.usb;       // #107
     if(typeof g.rg==='number')genome.reachGain=+g.rg;            // #117
     if(typeof g.anm==='number')genome.atomNoveltyMix=+g.anm;     // #120
@@ -8493,6 +8505,7 @@ function sanitizeGenome(){
   if(genome.rendMaxDepth!==undefined)genome.rendMaxDepth=__cl(Math.round(finiteOr(genome.rendMaxDepth,1)),1,UA_DEPTH_CAP); // #97: clamp if present, never create
   if(genome.intStepBias!==undefined) genome.intStepBias =__cl(finiteOr(genome.intStepBias,0),0,1);                            // #97
   if(genome.atomUseProtect!==undefined)genome.atomUseProtect=__cl(finiteOr(genome.atomUseProtect,0),0,1);       // #101
+  if(genome.atomIdleTolerance!==undefined)genome.atomIdleTolerance=__cl(finiteOr(genome.atomIdleTolerance,0),0,1); // #177
   if(genome.reachGain!==undefined)   genome.reachGain=__cl(finiteOr(genome.reachGain,0.2),0,1);                 // #117
   if(genome.atomNoveltyMix!==undefined)genome.atomNoveltyMix=__cl(finiteOr(genome.atomNoveltyMix,0.25),0,1);   // #120
   genome.effectComposeRate=__cl(finiteOr(genome.effectComposeRate,0.35),0,0.9);                                // #133
@@ -14263,6 +14276,7 @@ function mutateGenome(){ fired('genome.mutate');
   if(__REND_VOCAB)   genome.rendMaxDepth=__cl(Math.round(intMaybe(genome.rendMaxDepth||1,0.6)),1,UA_DEPTH_CAP); // #97: the render channel's own depth
   if(__INT_GENE_STEP)genome.intStepBias=__cl(maybe(finiteOr(genome.intStepBias,0),0,1,0.15),0,1);               // #97: the forcing bias is itself evolved // UNLOCKED #7b: the system evolves how deeply it composes its own primitives // #96: with the old operator this line could never return anything but 1
   if(__USE_PROTECT)  genome.atomUseProtect=__cl(maybe(finiteOr(genome.atomUseProtect,0),0,1,0.15),0,1);            // #101: how much execution rank protects an atom — the system's call, not mine
+  genome.atomIdleTolerance=__cl(maybe(finiteOr(genome.atomIdleTolerance,0),0,1,0.15),0,1);                          // #177: how willing this lineage is to release an atom nothing has run — seeded at 0 (= the pre-#177 cull exactly), lazily created like atomUseProtect for the same RNG-stream reason
   // #107: uaMaxDepth (above) is evolvable — HOW DEEP the grammar may recurse. The PRODUCTION WEIGHTS at
   // each level (binary sub-expr 45% / ternary branch 17% / compose 10% / binary-func 10% / leaf ~18%,
   // uaGenTerm) never were — fixed constants since the grammar was written, the one part of "how the
@@ -14739,8 +14753,8 @@ function mutateGenome(){ fired('genome.mutate');
     for(let i=0;i<genome.userAtoms.length;i++){
       if(genome.userAtoms[i].failed){removeIdx=i;break;}
     }
+    const _alienSelectC=(typeof globalThis==='undefined')||((globalThis.__ALIEN_SELECT??1)|0)!==0;
     if(removeIdx<0){
-      const _alienSelectC=(typeof globalThis==='undefined')||((globalThis.__ALIEN_SELECT??1)|0)!==0;
       for(let i=0;i<genome.userAtoms.length;i++){
         const a=genome.userAtoms[i];
         // "unused" only by the (proven fitness-inert) uses route — an atom with real alien grip is
@@ -14754,6 +14768,60 @@ function mutateGenome(){ fired('genome.mutate');
         // wave 3 won occasionally (27 uses) and wave 4 never does. A primitive now gets a real trial
         // before it can be judged unused.
         if((a.uses|0)===0&&(a.age|0)>UA_GRACE_AGE&&!(_alienSelectC&&alienGrip(a)>0)){removeIdx=i;break;}
+      }
+    }
+    // ═══ #177 — AN ATOM USED ONCE WAS IMMORTAL, AND NOTHING COULD DECIDE OTHERWISE ══════════════
+    // The pass above is the whole cull, and its condition is `uses===0`. One execution, ever, and an
+    // atom can never be removed again — however long it has since sat unreachable. That is not the
+    // system choosing to keep it. There was no path by which anything could choose otherwise.
+    //
+    // MEASURED, over 1,183,286 ticks in one archived solo run: bank 8 -> 1,793 atoms while the
+    // population went 202 -> 6, extinctions 0 -> 41 per epoch, diversity 0.19 -> 0.00, and 7,999
+    // innovations of which ELEVEN persisted. The current field shows the same signs 8x earlier
+    // (atoms +176%, fitness -4%, population -5% within one run). The bank is a ratchet that only
+    // turns one way, and this is where the pawl is.
+    //
+    // So: give the lineage a dial and let selection set it. atomIdleTolerance seeds at 0 and at 0
+    // this branch is skipped entirely, so a genome reading 0 gets byte-for-byte the cull above.
+    // That is the revert, and it is why there is no flag here and nothing is dormant.
+    //
+    // It is NOT a promise that a lineage seeded at 0 stays there: mutateGenome mutates this gene
+    // earlier in the same call that reaches this cull, so the value the cull reads is already one
+    // step away from the seed. Same deal as atomUseProtect (#101), which seeded at 0 and has spread
+    // to 0..0.785 across the eighteen live universes. The seed sets where selection starts, not
+    // where it stays. idle-test pins mutationScale to 0 to test the invariant rather than the drift.
+    //
+    // If releasing idle atoms costs fitness the gene goes to 0 and stays; if it pays, it rises.
+    // That is the whole point and I am not going to pick the number.
+    //
+    // WHICH COUNTER. Not `a.uses`. That is the germline object's own counter and #102 established
+    // it is near-meaningless — clones reset it to 0, so it accrues only when the germline genome is
+    // itself the running one, which (profileVM every 100 ticks) makes it closer to "did the profiler
+    // touch this" than to "is anything using this". The population-wide, expression-keyed
+    // __atomExprUses is the counter #102 built for exactly this question, and it is a live window
+    // rather than a lifetime total — which is what an IDLE test needs and a lifetime total cannot
+    // give.
+    //
+    // WHAT IS PROTECTED. Everything the overwrite path already protects, by the same readings:
+    // alien grip (#46 — exogenous predictive work opcode-22 never sees), personal credit (#110) and
+    // pool credit (#111). An atom that has earned anything is never idle-culled, at any tolerance.
+    // Grace (#55) still applies: a young atom cannot be judged at all.
+    if(removeIdx<0){
+      const _tol=__cl(finiteOr(genome.atomIdleTolerance,0),0,1);
+      // A zero read out of a window too young to have recorded anything is not evidence of idleness.
+      const _trust=__ATOM_USE_POP&&(tick-__atomUseWindowStart)>ATOM_IDLE_WINDOW;
+      if(_tol>0&&_trust){
+        for(let i=0;i<genome.userAtoms.length;i++){
+          const a=genome.userAtoms[i];
+          if((a.age|0)<=UA_GRACE_AGE)continue;
+          if((__atomExprUses.get(a.expression)||0)!==0)continue;      // ran this window, population-wide
+          if(_alienSelectC&&alienGrip(a)>0)continue;
+          let _cr=0;
+          if(__ATOM_CREDIT&&a.creditTrace>0)_cr=a.creditTrace;
+          if(__EXPR_CREDIT){const _pc=__atomExprCredit.get(a.expression)||0; if(_pc>_cr)_cr=_pc;}
+          if(_cr>0)continue;                                          // proven work is never idle-culled
+          if(Math.random()<_tol){ fired('atom.cull.idle'); removeIdx=i; break; }
+        }
       }
     }
     if(removeIdx>=0){ fired('atom.cull');

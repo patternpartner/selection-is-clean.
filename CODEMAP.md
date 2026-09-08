@@ -182,6 +182,19 @@ the germline program in the 93.1h harvest names only 1-9 distinct authored opcod
 43-104 atoms, and that count cannot be trusted as the population's: `pGenome[i]` runs a drifted
 program, which is the #102/#132b trap. Deliberately NOT a `CROSSING_DECLARED` row — see the note there.
 
+**The atom cull, and the one dial on it (#177).** The cull removes a failed atom, else an atom with
+`uses === 0 && age > UA_GRACE_AGE`, else — and only if `genome.atomIdleTolerance > 0` — an atom that
+has not executed anywhere in the population this window. Three things about that third branch. It
+reads `__atomExprUses` (population-wide, expression-keyed, #102), never the germline object's `.uses`,
+which clones reset and `profileVM` inflates. It refuses to read idleness out of a window younger than
+`ATOM_IDLE_WINDOW` ticks since the map was last wiped — a zero in a fresh window is UNMEASURED, the
+same rule as `D = -1` in the OEE meter. And it honours every protection the overwrite path honours:
+alien grip (#46), personal credit (#110), pool credit (#111), and grace (#55). The gene seeds at 0,
+where the branch is skipped entirely and the cull is byte-for-byte pre-#177 — but a lineage seeded at
+0 does not stay there, because mutateGenome mutates this gene earlier in the same call that reaches
+the cull. `idle-test.js` pins `mutationScale` to 0 to test the invariant rather than the drift; without
+that pin the tolerance-0 condition reads non-zero and looks like a bug in the engine.
+
 **Bound opcodes (#137).** An opcode's NUMBER is its POSITION in `genome.boundOpcodes`
 (`op = CORE_OPCODES + k`); its MEANING is `genome.userAtoms[boundOpcodes[k]]`. Two consequences that
 are easy to miss: never splice `boundOpcodes` (it renumbers every opcode above the cut), and never

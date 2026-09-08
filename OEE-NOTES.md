@@ -13343,3 +13343,83 @@ many times a universe crashed. `surface/7`'s epoch trace shows exactly that — 
 `uses === 0 && age > UA_GRACE_AGE`. One use makes an atom permanent, whether or not any program can
 still reach it. That is a design fact, not a defect, and it is the mechanism behind the +176%
 bank growth against -4% fitness within this run.
+
+---
+
+## #177 — the cull becomes a decision instead of a ratchet
+
+The cull's only condition was `uses === 0`. One execution, ever, and an atom could never be removed
+again — however long it had since sat unreachable. That is not the system choosing to keep it. There
+was no path by which anything could choose otherwise.
+
+What that produces, measured over 1,183,286 ticks in the one archived solo run:
+
+```
+                t=50k    t=150k   t=400k   t=1000k  t=1150k
+population        61       187      172        5        7
+fitness         0.411    0.559    0.363    0.010    0.000
+atoms             41       133      312     1399     1715
+diversity       0.135    0.219    0.424    0.000    0.000
+extinctions/ep     2         0        0       42       41
+```
+
+It peaked at 150,000 ticks and spent the next million declining, while the bank went 8 → 1,793.
+7,999 innovations; **eleven** persisted, none in the last forty epochs. The current field shows the
+same signs eight times earlier — atoms +176%, fitness −4%, population −5% inside one run.
+
+### What #177 does
+
+`atomIdleTolerance`, a gene in [0,1], seeded at 0. At 0 the new branch is skipped entirely and the
+cull is byte-for-byte what it was. Above 0 it will release, with that probability, an atom that:
+
+- has not executed **anywhere in the population** this window, read from `__atomExprUses` — the
+  expression-keyed counter #102 built for exactly this question. Not `a.uses`: clones reset that to 0
+  and `profileVM` inflates it, so the germline counter is closer to "did the profiler touch this"
+  than to "is anything using this";
+- is past grace (#55);
+- holds no alien grip (#46), no personal credit (#110), and no pool credit (#111). Anything that has
+  earned something is never idle-culled, at any tolerance.
+
+I am not picking the number. If releasing idle atoms costs fitness the gene goes to 0 and stays. If
+it pays, it rises. `atomUseProtect` is the precedent: seeded at 0 by #101, and across the eighteen
+live universes it now reads 0, 0.034, 0.057, 0.073, 0.090, 0.091, 0.121, 0.160, 0.185, 0.226, 0.254,
+0.279, 0.319, 0.438, 0.447, 0.785 — a gene of this shape does move.
+
+### An absence of evidence is not evidence of absence
+
+`__atomExprUses` is a live counter, wiped whole above 5,000 entries. For one moment after that wipe
+every expression in the system reads zero, and a cull reading zero as "idle" would consider the
+entire bank disposable at exactly the moment it knows least. So the wipe is stamped and idleness is
+unreadable until `ATOM_IDLE_WINDOW` ticks have accumulated. This is the OEE meter's `D = -1 means
+UNMEASURED` rule applied to a second instrument.
+
+### Three things the rig caught, all mine
+
+`idle-test.js` is 15 checks, and its first three runs were all wrong in ways that would have
+certified a broken feature:
+
+1. **It measured bank size.** `mutateGenome` also BIRTHS atoms, so a net size delta is the sum of two
+   mechanisms; the probe read *−12 atoms removed*. It counts the cull's own liveness fires now.
+2. **It ran the genome to death.** `mutationRate` is itself mutated by every call, so after 15,000
+   probe calls it had random-walked to ~0 and every condition read 0 — including ones that must fire.
+   Pinned now.
+3. **It set the gene and then called the function that mutates the gene.** So the cull read a
+   tolerance one step away from the one under test, and the tolerance-0 condition reported 3 releases
+   — which looks exactly like a broken revert. `mutationScale = 0` pins it.
+
+That third one also corrected the claim in my own comment. Seeding at 0 does not keep a lineage at 0;
+it sets where selection starts, not where it stays. The code said otherwise before the rig disagreed.
+
+### The prediction
+
+Weakest of the three I have written down in this sequence, because I have been wrong about the
+ceiling twice and this is the third swing at the same wall.
+
+At the next harvest: `ait` should be **spread across the eighteen universes**, not pinned at 0 — that
+is the minimum bar, and if it fails, the gene is frozen and nothing below matters. If it spreads and
+bank growth flattens while persistence holds or rises, releasing idle structure is worth doing. If it
+spreads *downward* toward 0 while banks keep inflating, then the bank is not the cost and I have been
+looking at a symptom for two swings. Both outcomes are worth the run.
+
+`#176`'s reach log arrives in the same harvest, so for the first time the two questions — how much of
+the bank runs, and whether releasing the rest helps — get answered against each other.
