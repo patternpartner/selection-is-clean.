@@ -170,6 +170,18 @@ wrong way. An atom whose output depends on population order cannot repeat itself
 discards what cannot repeat. No clamp lives here: `uaCall` already ends every atom output with
 `Math.max(-8,Math.min(8,r))`.
 
+**How much of the bank actually runs (#176).** `__opReach` is one bit per bound slot, set in
+`uaChain` — the same single funnel the chains use, so a sixth dispatch site cannot escape it — counted
+and cleared once per epoch into `__opReachLog` and saved as `RCH` = `[tickEnd, slotsExecuted,
+bankSize]`. `profileVM` is excluded via `__profiling`; it runs the germline program every 100 ticks to
+price instructions, and counting that would mark every slot the germline names whether or not a
+creature executed it. The log lives OFF the genome for #131's reason (cloneGenome spreads the genome
+and mutateChildGenome randomises numeric fields in it), and a pre-#176 save restores an EMPTY log, not
+a zero-filled one — "never measured" must not be able to look like "measured zero". It exists because
+the germline program in the 93.1h harvest names only 1-9 distinct authored opcodes against banks of
+43-104 atoms, and that count cannot be trusted as the population's: `pGenome[i]` runs a drifted
+program, which is the #102/#132b trap. Deliberately NOT a `CROSSING_DECLARED` row — see the note there.
+
 **Bound opcodes (#137).** An opcode's NUMBER is its POSITION in `genome.boundOpcodes`
 (`op = CORE_OPCODES + k`); its MEANING is `genome.userAtoms[boundOpcodes[k]]`. Two consequences that
 are easy to miss: never splice `boundOpcodes` (it renumbers every opcode above the cut), and never

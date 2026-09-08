@@ -13235,3 +13235,111 @@ and the honest move is to take `ya`..`yh` back out rather than keep patching the
 
 The persistence ratio at matched bank size stays the headline number either way. Baseline to beat:
 **0.283 / 0.267 / 0.291**.
+
+---
+
+## The full read of the 93.1h harvest — everything, not just the part I changed
+
+Seven field harvests exist now. This is what all of them say together.
+
+### Keep the save
+
+Every trend that matters is going the right way, across the whole sequence of runs:
+
+```
+harvest                       univ   ticks/u  atoms/u   persistence   meanFit   meanPop
+9of9   (mature seed)             9     80903     80.7         0.283     0.357     131.6
+18of18 (cube, 4.4h)             18      4408      3.1             -     0.261      41.5
+18of18 (cube, 26.5h)            18     26520     22.8         0.031     0.408      79.9
+18of18 (cube, 44.7h)            18     57284     50.6         0.267     0.415      72.3
+18of18 (cube, 93.1h)            18     77892     70.3         0.304     0.432      80.3
+```
+
+Within the current run, discovery is **accelerating**, not plateauing. New innovations per epoch,
+first half versus second half of each universe's own history, in all eighteen:
+
+```
+surface/0  3.1→13.6    surface/7  4.5→11.2    layer1/1  4.6→10.0    layer1/6  3.0→13.2
+```
+
+Nothing is saturated: the open-endedness meter's ever-seen set has a 20,000 cap and the largest
+universe has logged 147 innovations. `seenCapHit 0` and `truncated 0` in all eighteen. Zero errors,
+zero dropped messages, zero refused clocks, zero failed atoms across 1,266 atoms.
+
+Generations range 19 to 250. `surface/7` has survived a full extinction (population 0 at t=75,000)
+and come back to 132. That history is not reproducible from a fresh boot, and it is the only
+long-lived state this project has.
+
+Starting over would also destroy the one clean test of #175 — the same universes, the same banks,
+before and after the voices became deterministic.
+
+### The ceiling is not the alphabet. It is the sentence.
+
+**All 18 universes sit exactly at their own evolved program-length cap.** `vmMaxInstructions` has
+diverged to 6, 10, 13, 13, 14, 14, 14, 15, 15, 16, 16, 17, 17, 17, 18, 18, 18, 20 — #96 unfroze that
+gene and it is visibly moving — and in every single universe the program is exactly that long. The
+cap is binding everywhere, all the time.
+
+**The bound-opcode array is full too**: 167 to 192 of 192 slots filled, 14 of 18 at the hard cap.
+New atoms can only reach a program by joining a chain (#155's fallback) on a slot the program calls.
+
+And of the instructions that exist, **9.5% name an authored atom** — 133 of 1,395 across germline and
+cluster programs. Per universe, the germline program names between **one and nine** distinct authored
+opcodes. `surface/7` has 104 atoms, 179 filled slots, a 6-instruction program, and names **one**.
+
+So the system authors a large library and opens a small number of its pages. #174 widened the
+alphabet each page is written in. That was never the binding constraint.
+
+### But I cannot yet say how small, and that matters
+
+That count uses the GERMLINE program. The population runs `pGenome[i]`, whose program has drifted
+from the germline's by mutation, so the union over 100 live creatures reaches more slots than the
+germline names. **#102 and #132b are this file's most-repeated lesson and both were exactly this
+mistake.** The germline figure is a floor of unknown tightness.
+
+Two things this harvest simply cannot see, and neither is a finding about the system:
+
+- **Verb firing.** All 144 authored verbs read `uses: 0`. That is documented behaviour, not death:
+  #132b established that `applyUserEffects` runs with `genome` swapped to `pGenome[i]`, so the
+  particle copies accrue every use and the germline bank sits at zero forever. The real record is
+  `__effectUses`, which is not serialised.
+- **Population-level atom reach**, for the same reason.
+
+### #176 — measure the reach instead of asserting it
+
+One bit per bound slot, set in `uaChain`. That is the single funnel all five dispatch sites already
+go through (#155), so the instrument cannot miss a site or double-count one. Counted and cleared per
+epoch, logged as `[tickEnd, slotsExecuted, bankSize]`, saved as `RCH`.
+
+`profileVM` is excluded — it runs the germline program every 100 ticks against a fixed battery to
+price instructions, and counting it would mark every slot the germline names whether or not any
+creature ever executed it, which is exactly the number this exists to check.
+
+Instrument state lives off the genome, per #131's rule and its reason: `cloneGenome` spreads the
+genome and `mutateChildGenome` walks it with a `Math.random()` per numeric field, so a counter parked
+there is mutated by the thing it measures.
+
+A pre-#176 save comes back with an EMPTY log, not a zero-filled one. `reach-test.js` asserts that
+specifically: turning "never measured" into "measured zero" would put a fabricated flat line under
+the first real reading.
+
+### Other things the full read turned up
+
+**Universes model each other well above chance.** Alien prediction — a universe's own authored atoms
+predicting another substrate's near-future behaviour — is 39,362 hits in 84,540 attempts, **46.6%**
+against 33% for a three-way call, and it holds between 41.9% and 47.7% in every one of the eighteen.
+This is the strongest positive result in the dataset and it has never been the headline.
+
+**All four transfer channels are live.** Applied counts across the field: motif 38,562, migrant
+38,726, plasmid 29,031, inscription 6,111. Bud counts run 16,824–21,687 per universe.
+
+**Bigger bank, worse population.** Final bank size against population change: r = -0.658; against
+fitness change: r = -0.474. But this is confounded and I am not claiming causation: banks are
+germline state that survives extinction and populations are not, so a large bank partly records how
+many times a universe crashed. `surface/7`'s epoch trace shows exactly that — the atom count climbs
+79 → 87 → 95 straight through the epochs where its population went 15 → 0 → 26.
+
+**The bank never shrinks once an atom has been used once.** The cull takes only atoms with
+`uses === 0 && age > UA_GRACE_AGE`. One use makes an atom permanent, whether or not any program can
+still reach it. That is a design fact, not a defect, and it is the mechanism behind the +176%
+bank growth against -4% fitness within this run.

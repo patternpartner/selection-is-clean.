@@ -488,6 +488,10 @@ const CROSSING_DECLARED=[
   // `{...src}` had been left to share one opStacks object across the whole population: the germline
   // count would read high and the population count would read IDENTICAL rather than divergent. It
   // counts links, not slots — a slot with three chained atoms is three pieces of authored structure.
+  // #176's reach bitmap is deliberately NOT a row here. Every reader in this table takes a genome so
+  // the germline and population sides cannot drift into counting different things; __opReach is one
+  // global execution record with no germline/population sides to compare, so a row for it would
+  // report the same number twice and look like agreement. It is logged per epoch instead (RCH).
   {name:'atom.chained',  read:g=>{ const o=g&&g.opStacks; if(!o)return 0; let n=0;
                                    for(const k in o){ const v=o[k]; if(Array.isArray(v)) n+=v.length; } return n; }},
 ];
@@ -894,6 +898,31 @@ const __uaVoice=new Float32Array(UA_VOICE);
 // The cost is eight float writes per program entry, which is nothing next to a VM run. The gain is
 // that ya..yh become what they were advertised as: composition across instructions, deterministic
 // given the same inputs, and therefore selectable.
+// ═══ #176 — HOW MUCH OF THE BANK ACTUALLY RUNS ═══════════════════════════════════════════════
+// The 93.1h harvest says every universe has 167-192 of its 192 bound-opcode slots filled and a
+// germline program pinned at its own evolved length cap, naming between ONE and NINE distinct
+// authored opcodes. Read literally that means a universe with 104 atoms executes three of them.
+//
+// But that reading uses the GERMLINE program, and #102/#132b are this file's most-repeated lesson:
+// the population runs pGenome[i], whose program has drifted from the germline's, so the union over
+// a live population reaches more slots than the germline names. The germline number is a floor of
+// unknown tightness, and no honest claim about "the bank is 12% reachable" can be made from a save
+// that does not record what the POPULATION ran.
+//
+// So record it. One bit per bound slot, set in uaChain — the single funnel all five dispatch sites
+// already go through (#155), so this cannot miss a site or double-count one. Counted and cleared
+// once per epoch, logged as [tickEnd, slotsExecuted, bankSize].
+//
+// Instrument state, so it lives OFF the genome — #131's rule, and its reason: cloneGenome spreads
+// the genome and mutateChildGenome walks it with a Math.random() per numeric field, so a counter
+// parked there is silently mutated by the thing it is measuring.
+//
+// profileVM is EXCLUDED. It runs the germline program every 100 ticks against a fixed test battery
+// to price instructions; counting it would mark every slot the germline names whether or not any
+// creature alive ever executed it, which is precisely the number this is here to check.
+const __opReach=new Uint8Array(MAX_BOUND_OPCODES);
+let __opReachLog=[];
+let __profiling=false;
 const USER_WORLD_VARS=["nx","ny","t","nb"]; // EYES — appended to the var pool when rich grammar is on
 const USER_FORAGE_VARS=["rl","rd"]; // FORAGE EYES — resource senses; appended when rich grammar AND forage are on
 const USER_BINFUNCS=["Math.min","Math.max","Math.atan2","Math.hypot"]; // HANDS — 2-arg functions
@@ -1608,6 +1637,7 @@ function uaChain(head,slot,a,b){
   // the real bound anyway. A redundant safety check that advertises the wrong limit is worse than
   // none, because the next person reads 16 and believes it.
   if(slot>=0&&slot<UA_VOICE)__uaVoice[slot]=out;
+  if(!__profiling&&slot>=0&&slot<MAX_BOUND_OPCODES)__opReach[slot]=1;   // #176
   return out;
 }
 // WHERE A NEW ATOM GOES WHEN THE SLOTS ARE GONE. Authoring must never dead-end: before #155 the bind
@@ -7075,6 +7105,14 @@ function flushEpoch(acc){
     Number((+genome.metabolicCost||0).toPrecision(3))
   ]);
   while(genome.epochs.length>MAX_EPOCHS)downsampleEpochs();
+  // #176: distinct bound slots any creature actually EXECUTED this epoch, against the bank it had.
+  // Downsampled by keeping every other row, not by slicing the oldest — the same reason epochs are:
+  // the interesting shape is the whole arc, and the early epochs are where reach was highest.
+  {
+    let reached=0; for(let k=0;k<__opReach.length;k++) if(__opReach[k]){reached++;__opReach[k]=0;}
+    __opReachLog.push([(acc.idx+1)*EPOCH_TICKS,reached,atoms.length]);
+    while(__opReachLog.length>MAX_EPOCHS)__opReachLog=__opReachLog.filter((_,i)=>i%2===0);
+  }
 
   // #130 OPEN-ENDEDNESS METER — see note above. Guarded, read-only on sim state, cheap (once/epoch).
   if((typeof globalThis==='undefined')||((globalThis.__OEE_METER??1)|0)!==0){
@@ -7866,6 +7904,7 @@ function encodeGenome(){
     E:(genome.eventLog||[]).slice(-EVENT_LOG_SIZE),
     EP:(genome.epochs||[]).slice(-MAX_EPOCHS),  // full-arc summary — spans the entire run
     oL:(oeeLog||[]).slice(-MAX_EPOCHS),         // #130 open-endedness meter: per-epoch activity log
+    RCH:(__opReachLog||[]).slice(-MAX_EPOCHS),  // #176 [tickEnd, boundSlotsExecuted, bankSize] per epoch
     oN:oeeNovel|0,                               // #130 cumulative distinct innovations ever executed
     oP:oeePersist|0,                             // #130 cumulative innovations that survived the lag
     lv:(function(){try{const c=livenessCensus();return {n:c.never,r:c.rare.length,l:c.live.length,t:c.tick};}catch(e){return null;}})(), // #134 liveness census: which mechanisms have never run
@@ -8176,6 +8215,7 @@ function decodeGenome(data){
     genome.eventLog=g.E||[];
     genome.epochs=Array.isArray(g.EP)?g.EP:[];
     oeeLog=Array.isArray(g.oL)?g.oL:[];          // #130 open-endedness meter (absent in pre-#130 saves → starts empty)
+    __opReachLog=Array.isArray(g.RCH)?g.RCH:[];  // #176 (absent in pre-#176 saves → starts empty, which is honest: it was never measured)
     oeeNovel=g.oN|0;
     oeePersist=g.oP|0;
     oeeVer=g.oV|0;                               // #131: 0 means the stored rows were written by v1
@@ -11465,6 +11505,8 @@ function topScenarioSnapshot(){
 // average action coefficients. The shadow sim reads these
 // instead of running the full VM. The system models its own behaviour.
 function profileVM(){
+  __profiling=true;   // #176: pricing is not execution
+  try{
   // 9 standardised test scenarios covering the interaction space
   const tests=[
     {sim:0.9, align:0.9, prox:0.9, energy:0.8},  // close, similar, aligned, strong
@@ -12256,6 +12298,7 @@ function profileVM(){
   vmPhenotype.mutPressure=totals[6]/n;
   vmPhenotype.avgCost=totalInst*genome.metabolicCost/n;
   vmPhenotype.lastProfileTick=genome.totalTicks;
+  }finally{ __profiling=false; }   // #176: restored on every exit, early return included
 }
 
 // ═══ LAYER 11: META-SENSING (Pe23) ═══
