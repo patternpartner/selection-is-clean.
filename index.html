@@ -492,14 +492,26 @@
   // as it took. A paced universe answers with up to its own pace in latency, because the message is
   // handled between its ticks — which is why the button reports progress rather than appearing hung.
   var harvestEl=document.getElementById('harvest');
+  // #178 — WHY A UNIVERSE DID NOT ANSWER.
+  // layer1/6 came back 'no answer' in the 17of18 harvest and the file could not say whether it had
+  // died, hung, thrown, or merely been slow — three very different things, and the one universe whose
+  // population was collapsing in the previous harvest is exactly the one you most want a reason for.
+  // Every failure below reported the same null, because Promise.all rejects as one and the catch
+  // could not tell a save() that threw from a frame that was never there.
+  // Costs nothing and is the difference between a diagnosis and a shrug.
   function harvestOne(frame){
     return new Promise(function(res){
-      var done=false, fin=function(v){ if(!done){ done=true; res(v); } };
+      var done=false, why='', t0=Date.now();
+      var fin=function(v){ if(!done){ done=true; res(v===null?{__why:why||'timeout after 20s',
+                                                              __ms:Date.now()-t0}:v); } };
       setTimeout(function(){ fin(null); }, 20000);      // a universe that will not answer is recorded as null
       try{
         var w=frame.contentWindow, a=w&&w.__field;
-        if(!a){ fin(null); return; }
-        Promise.all([a.save(), a.stat()]).then(function(r){
+        if(!a){ why=w?'frame has no __field (universe not booted)':'frame has no contentWindow'; fin(null); return; }
+        Promise.all([a.save(), a.stat()])['catch'](function(e){
+          why='save/stat rejected: '+((e&&e.message)||String(e)).slice(0,120);
+          throw e;
+        }).then(function(r){
           var txt=r[0], st=r[1]||{};
           var g=null; try{ g=JSON.parse(txt).genome; }catch(e){ g=null; }
           // #173: and what it has taken IN. "Are the tabs definitely communicating when I am not
@@ -513,7 +525,7 @@
                   migrantsIn:st.migrantAccepted|0, bad:st.bad|0, dropped:st.dropped|0,
                   clockRefused:st.paced|0, errs:st.errs|0 }:null);
         }, function(){ fin(null); });
-      }catch(e){ fin(null); }
+      }catch(e){ if(!why)why='threw: '+((e&&e.message)||String(e)).slice(0,120); fin(null); }
     });
   }
   async function harvest(){
@@ -533,8 +545,9 @@
     for(var k=0;k<frames.length;k++){
       harvestEl.textContent='harvest '+(k+1)+'/'+frames.length;
       var one=await harvestOne(frames[k]);
-      if(one){ one.at=where[k]; out.universes.push(one); got++; }
-      else out.universes.push({ at:where[k], genome:null, note:'no answer' });
+      if(one&&!one.__why){ one.at=where[k]; out.universes.push(one); got++; }
+      else out.universes.push({ at:where[k], genome:null, note:'no answer',
+                                why:(one&&one.__why)||'unknown', ms:(one&&one.__ms)||0 });
     }
     try{
       var blob=new Blob([JSON.stringify(out)],{type:'application/json'});

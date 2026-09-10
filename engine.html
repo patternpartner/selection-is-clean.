@@ -7119,8 +7119,29 @@ function flushEpoch(acc){
   // Downsampled by keeping every other row, not by slicing the oldest — the same reason epochs are:
   // the interesting shape is the whole arc, and the early epochs are where reach was highest.
   {
-    let reached=0; for(let k=0;k<__opReach.length;k++) if(__opReach[k]){reached++;__opReach[k]=0;}
-    __opReachLog.push([(acc.idx+1)*EPOCH_TICKS,reached,atoms.length]);
+    // #178: SLOTS ARE NOT ATOMS, and the first version of this log only counted slots. Measured on
+    // the first harvest that carried it: 51 slots executing per epoch against banks of 88 atoms,
+    // which reads as 58% of the bank until you notice that three universes reported MORE slots than
+    // they had atoms. boundOpcodes aliases — 190 filled slots point at ~54 distinct atoms, 3.46:1
+    // field-wide — so 51 slots is at most 51 atoms and nearer 15. The ratio I published off the
+    // three-column row was ill-formed, and the fourth column is the number the question was always
+    // about: how much of the BANK runs.
+    //
+    // Counted against the GERMLINE's boundOpcodes/opStacks, because that is what the save carries.
+    // The population executed these slots under pGenome[i], whose arrays are clones of these and
+    // drift by mutation, so this is an approximation — a good one (boundOpcodes is copied whole by
+    // cloneGenome and only mutates a slot at a time) but an approximation, and saying so is cheaper
+    // than the next person assuming otherwise.
+    let reached=0; const hit=new Set();
+    const _bo=genome.boundOpcodes, _os=genome.opStacks;
+    for(let k=0;k<__opReach.length;k++) if(__opReach[k]){
+      reached++; __opReach[k]=0;
+      if(_bo&&k<_bo.length&&_bo[k]>=0){
+        hit.add(_bo[k]);
+        const st=_os&&_os[k]; if(Array.isArray(st)) for(const x of st) hit.add(x|0);
+      }
+    }
+    __opReachLog.push([(acc.idx+1)*EPOCH_TICKS,reached,atoms.length,hit.size]);
     while(__opReachLog.length>MAX_EPOCHS)__opReachLog=__opReachLog.filter((_,i)=>i%2===0);
   }
 
@@ -7914,7 +7935,7 @@ function encodeGenome(){
     E:(genome.eventLog||[]).slice(-EVENT_LOG_SIZE),
     EP:(genome.epochs||[]).slice(-MAX_EPOCHS),  // full-arc summary — spans the entire run
     oL:(oeeLog||[]).slice(-MAX_EPOCHS),         // #130 open-endedness meter: per-epoch activity log
-    RCH:(__opReachLog||[]).slice(-MAX_EPOCHS),  // #176 [tickEnd, boundSlotsExecuted, bankSize] per epoch
+    RCH:(__opReachLog||[]).slice(-MAX_EPOCHS),  // #176 [tickEnd, boundSlotsExecuted, bankSize] +#178 [, distinctAtomsReached] per epoch; pre-#178 rows are 3 long and stay that way
     oN:oeeNovel|0,                               // #130 cumulative distinct innovations ever executed
     oP:oeePersist|0,                             // #130 cumulative innovations that survived the lag
     lv:(function(){try{const c=livenessCensus();return {n:c.never,r:c.rare.length,l:c.live.length,t:c.tick};}catch(e){return null;}})(), // #134 liveness census: which mechanisms have never run

@@ -13423,3 +13423,103 @@ looking at a symptom for two swings. Both outcomes are worth the run.
 
 `#176`'s reach log arrives in the same harvest, so for the first time the two questions — how much of
 the bank runs, and whether releasing the rest helps — get answered against each other.
+
+---
+
+## The 17-of-18 harvest — all three predictions answered, one of them against me
+
+48.1 hours after the last one. `RCH` and `ait` present in all seventeen, so #175/#176/#177 reached the
+phone. Zero errors, zero drops, zero refused clocks.
+
+### The field is the healthiest it has ever been
+
+```
+                    93.1h harvest    this harvest
+ticks/universe             77,892         104,693
+live population              97.1           124.0
+atoms/universe               70.3            91.5
+fitness                     0.432           0.463
+extinctions/epoch            0.61            0.00
+persistence ratio           0.304           0.349   <- highest recorded
+```
+
+0.283 → 0.267 → 0.304 → **0.349**. The number this project could not move has now moved twice.
+
+### #175 — met, and about a third of it was the missing universe
+
+Prediction: the −0.675 correlation between a universe's share of atoms using `ya`..`yh` and its
+persistence should weaken toward zero.
+
+```
+BEFORE, all 18                  r = -0.645
+BEFORE, layer1/6 removed        r = -0.502   <- the like-for-like baseline
+AFTER  (layer1/6 absent)        r = -0.259
+```
+
+`layer1/6` did not answer this harvest, and it was the extreme point last time — yFrac 0.58,
+persistence 0.062. Dropping it from the baseline is the only fair comparison, and against that the
+correlation still roughly halved. Meanwhile the creatures are using the voices MORE (mean share
+0.28 → 0.42) and persisting MORE (0.308 → 0.352). The deterministic voices are being taken up rather
+than avoided. Prediction met, with a third of the headline number attributable to the absence.
+
+(The baseline here reads −0.645 where I previously published −0.675; both are the same data through
+slightly different scripts. −0.645 is the one computed by the same code as the new figure, which is
+the comparison that means anything.)
+
+### #176 — the answer, and the ill-formed ratio I published from it
+
+Measured, population-wide: **~51 bound slots execute per epoch** against banks of ~88 atoms. My
+germline-program estimate had been "1 to 9 named opcodes", so that floor was loose by roughly six
+times, as the note that shipped it said it might be.
+
+But 51/88 is not 58% of the bank, and the tell was in the table: three universes reported running MORE
+slots than they had atoms. `boundOpcodes` **aliases** — 190 filled slots point at ~54 distinct atoms,
+**3.46:1 field-wide**. So 51 slots is at most 51 atoms and nearer 15, which is ~17% of the bank and
+close to the germline estimate I thought had just been overturned.
+
+The three-column row could not tell me which. That is a gap I built. #178 adds the fourth column —
+distinct atoms behind the slots that ran — counted against the germline's `boundOpcodes`/`opStacks`,
+which is an approximation (the population ran clones of those arrays) and is labelled as one.
+
+### #177 — the gene moved. Nothing else is established.
+
+Minimum bar was that `ait` be spread rather than pinned at 0. It is:
+
+```
+0, 0, 0, 0, 0, 0, 0.022, 0.033, 0.033, 0.040, 0.053, 0.067, 0.070, 0.082, 0.082, 0.108, 0.727
+```
+
+Eleven of seventeen off zero. The gene is live.
+
+Everything beyond that fails its own robustness check. `ait` against bank growth looks like
+**r = +0.900** — a strong POSITIVE, the opposite of the mechanism's purpose. It is one point:
+
+```
+pearson,  all 17                r = +0.900
+spearman, all 17              rho = +0.311
+pearson,  collective removed    r = +0.250
+spearman, collective removed  rho = +0.174
+```
+
+`collective` sits at ait 0.727 with +74 atoms and drags the whole line. Controlling for mutation rate
+changes nothing (partial r = +0.906), so it is not that either — it is simply one universe.
+
+And the liveness census in every save lists `atom.cull.idle` as never fired — which proves nothing,
+because the census is **2.5% the age of the run**. `tick` resets on reload while `totalTicks` does
+not, so these censuses are ~2,500 ticks old, in which the expected number of culls of ANY kind is
+**0.05**. `atom.cull` itself also reads never. A mechanism that has not fired in a window too short to
+contain it is not a broken mechanism, and reading that table as a verdict would have been the same
+error as reading the verbs' `uses: 0`.
+
+So: #177 is live and unfalsified, not confirmed. What it needs is a run long enough for the cull to
+fire, and a census old enough to record it.
+
+### #178 — and a universe that went quiet without saying why
+
+`layer1/6` came back `no answer`, which is a 20-second timeout on `save()+stat()`. The file could not
+say whether it had died, hung, thrown, or merely been slow — and `Promise.all` rejects as one, so a
+save that threw was indistinguishable from a frame that was never there. The one universe whose
+population was collapsing in the previous harvest is exactly the one you most want a reason for.
+
+The harvest now records `why` and `ms` on a universe that does not answer. It costs nothing and it is
+the difference between a diagnosis and a shrug.

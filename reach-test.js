@@ -122,11 +122,21 @@ ck('a live run executes at least one bound slot', L.marked>0,
 ck('and it does NOT mark every slot it has bound', L.marked<Math.max(2,L.bound),
    L.marked+' of '+L.bound+' filled slots ran');
 ck('the epoch log grew', L.rows1>L.rows0, (L.rows1-L.rows0)+' rows added: '+JSON.stringify(L.log));
-ck('each row is [tickEnd, slotsExecuted, bankSize]',
-   Array.isArray(L.log)&&L.log.length>0&&L.log.every(x=>x.length===3&&x[0]>0&&x[1]>=0&&x[2]>=0));
+ck('each row is [tickEnd, slotsExecuted, bankSize, atomsReached] (#178)',
+   Array.isArray(L.log)&&L.log.length>0&&L.log.every(x=>x.length===4&&x[0]>0&&x[1]>=0&&x[2]>=0&&x[3]>=0),
+   JSON.stringify(L.log));
+// SLOTS ARE NOT ATOMS. boundOpcodes aliases ~3.5:1 in the live field, which is why the three-column
+// version reported three universes running MORE slots than they had atoms. The atom count can never
+// exceed the bank, and can never exceed the slots that ran plus the chain links hanging off them.
+ck('#178: atoms reached never exceeds the bank', L.log.every(x=>x[3]<=x[2]),
+   JSON.stringify(L.log.map(x=>x[3]+'/'+x[2])));
+ck('#178: and it is not just a copy of the slot count', L.log.some(x=>x[3]!==x[1])||L.log.every(x=>x[1]===0),
+   'slots '+JSON.stringify(L.log.map(x=>x[1]))+'  atoms '+JSON.stringify(L.log.map(x=>x[3])));
 ck('the log is written into the save', Array.isArray(R.saved)&&R.saved.length===2, JSON.stringify(R.saved));
 ck('and read back out of it', Array.isArray(R.afterNew)&&R.afterNew.length===2&&R.afterNew[1][1]===4,
    JSON.stringify(R.afterNew));
+ck('pre-#178 three-column rows survive a round trip unchanged',
+   Array.isArray(R.afterNew)&&R.afterNew.every(x=>x.length===3), JSON.stringify(R.afterNew));
 ck('a pre-#176 save comes back EMPTY, not zero-filled',
    Array.isArray(R.afterOld)&&R.afterOld.length===0, JSON.stringify(R.afterOld));
 ck('no errors thrown anywhere', r.errors.length===0, r.errors.join(' | '));

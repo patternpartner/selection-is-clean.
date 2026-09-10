@@ -195,6 +195,14 @@ where the branch is skipped entirely and the cull is byte-for-byte pre-#177 — 
 the cull. `idle-test.js` pins `mutationScale` to 0 to test the invariant rather than the drift; without
 that pin the tolerance-0 condition reads non-zero and looks like a bug in the engine.
 
+**RCH rows are four wide since #178.** `[tickEnd, slotsExecuted, bankSize, distinctAtomsReached]`.
+The fourth column exists because SLOTS ARE NOT ATOMS: `boundOpcodes` aliases at ~3.46:1 in the live
+field (190 filled slots -> ~54 distinct atoms), so the three-column version reported three universes
+executing more slots than they owned atoms, and any "share of the bank" computed from it is
+ill-formed. Atoms are counted against the GERMLINE's `boundOpcodes`/`opStacks` — the population ran
+clones of those, so it is an approximation, a close one, and labelled as one. Pre-#178 rows are three
+long and stay three long; anything reading this array must handle both widths.
+
 **Bound opcodes (#137).** An opcode's NUMBER is its POSITION in `genome.boundOpcodes`
 (`op = CORE_OPCODES + k`); its MEANING is `genome.userAtoms[boundOpcodes[k]]`. Two consequences that
 are easy to miss: never splice `boundOpcodes` (it renumbers every opcode above the cut), and never
