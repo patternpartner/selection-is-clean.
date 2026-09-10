@@ -203,6 +203,17 @@ ill-formed. Atoms are counted against the GERMLINE's `boundOpcodes`/`opStacks` �
 clones of those, so it is an approximation, a close one, and labelled as one. Pre-#178 rows are three
 long and stay three long; anything reading this array must handle both widths.
 
+**Three wire functions, and why they exist (#52, #57, #179).** `wireAtomCallSites` (op22),
+`wireModeOpcodes` (op232-234) and `wireEffectCallSites` (op236) all splice an opcode into LIVING
+programs (`pProg`) every 120 ticks, each skipping a program that already has one. They exist because a
+brand-new opcode only enters a program if mutation happens to draw it, and a program seeded from the
+base genome contains no reference to it — measured three times now: atoms (45k ticks, 3 authored, 3
+bound, uses 0), SET_MODE (inherited-bias distribution identical to current-mode, digit for digit), and
+verbs (**0 of 1,424 instructions in a live seventeen-universe field carried op236, so no verb could
+ever fire**). Adding a new opcode that authored structure depends on means adding a fourth of these,
+or the structure is unreachable and the census will read "never" forever. Note `wireEffectCallSites`
+indexes the bank that EXISTS, not `MAX_USER_EFFECTS` — #133b's bug.
+
 **Bound opcodes (#137).** An opcode's NUMBER is its POSITION in `genome.boundOpcodes`
 (`op = CORE_OPCODES + k`); its MEANING is `genome.userAtoms[boundOpcodes[k]]`. Two consequences that
 are easy to miss: never splice `boundOpcodes` (it renumbers every opcode above the cut), and never

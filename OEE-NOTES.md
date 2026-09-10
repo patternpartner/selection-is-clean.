@@ -13523,3 +13523,93 @@ population was collapsing in the previous harvest is exactly the one you most wa
 
 The harvest now records `why` and `ms` on a universe that does not answer. It costs nothing and it is
 the difference between a diagnosis and a shrug.
+
+---
+
+## The full read of the 17-of-18 harvest — what else is in there
+
+### layer1/6 is alive. The harvest could not reach it.
+
+It came back `no answer`, and I had no way to tell death from a stuck save. The peer maps settle it:
+an id belonging to none of the seventeen that answered — `oqry6hzt` — appears in **16 of 17** peer
+tables with **2,035 units of traffic**. A universe that is emitting into the field is running. What
+failed was `save()`, not the simulation.
+
+### The verbs have never been reachable. Not rare — zero.
+
+Across every germline program, every cluster program and every fitness-sensor program in all
+seventeen universes — **1,424 instructions — the number carrying opcode 236 is ZERO.**
+
+Opcode 236 is `EFFECT_EMIT`, and it is the only writer of `vmActions[EFFECT_SLOT0+k]`.
+`applyUserEffects` opens with `const drive=vmActions[EFFECT_SLOT0+e]; if(!drive)continue;`. No 236,
+no drive, no verb. Every universe carries its full eight verbs — inherited, cloned, transferred by
+HGT, carried through three census rows — permanently unfired.
+
+The liveness census agrees from the other side: `verb.fire` never fired in 15 of 17, `verb.conserved`
+and `verb.chainLink` and `verb.senseFired` in 16 of 17, `verb.author` in all 17 (banks are full at
+`MAX_USER_EFFECTS`, so authoring correctly stops).
+
+This is LEAP 7 (#52) and #57 one replicator over, and both stated the reason in advance: *"a brand-new
+opcode only enters a program if mutation happens to draw it, and programs seeded from the base genome
+contain no reference to it."* 236 of ~429 opcodes is a 0.23% draw per mutated instruction. 0 of 1,424
+is exactly what that predicts.
+
+**#179** takes their fix — `wireEffectCallSites`, mirroring `wireAtomCallSites` and `wireModeOpcodes`
+line for line, at the same 120-tick cadence. It decides nothing about verbs: a wired instruction lives
+in `pProg` under the same mutation and the same selection as every other instruction, and if driving a
+verb costs more than it returns, the lineage loses it. What it removes is the impossibility. **The
+system could not choose against verbs either, because it was never able to run one.**
+
+`dst` indexes the bank that EXISTS, not `MAX_USER_EFFECTS` — #133b paid for that lesson once already.
+
+Measured before shipping: 20,873 verb fires and 9,547 conserved transfers in 1,500 ticks where there
+had been none, with population stable (196–262) and **zero extinctions** across two 6,000-tick runs.
+A perfectly clean verbs-off control was not obtainable from outside the module — emptying the germline
+bank does not empty the population's, because `genome` is repointed to `pGenome[i]` in the hot path —
+so the honest claim is "no collapse under heavy firing", not "measured against a pure control".
+
+### #96 worked, and this is the first run big enough to show it
+
+The #96 note recorded the defect it fixed: *"uaMaxDepth reads 1 in all eight — so uaGenExpression()'s
+recursive grammar has never been reachable in a live run, and all 163 live atoms are flat
+one-operator expressions."*
+
+Now: `uaMaxDepth` reads 1,1,1,2,2,2,2,2,2,3,3,3,3,4,4,5 across the field. Mean parenthesis depth
+**4.13**, maximum **13**. And **18.1% of atoms (281 of 1,555) call another atom** through the `f(...)`
+form — the composition path that had never once been reachable. The grammar is genuinely recursive
+now.
+
+Thirteen atoms sit at the 160-character serialisation cap (0.8%), which is #145's territory and worth
+watching but not yet a problem.
+
+### The field has a shape, and the collective is a sink
+
+The peer tables give the actual topology rather than totals:
+
+```
+                absorbed  emitted   net
+collective          2779       67   -2712
+surface/7           1450      244   -1206
+surface/1           1489     2855   +1366
+layer1/7           1219     2437   +1218
+layer1/8           1237     1816    +579
+```
+
+`collective` takes in 2,779 and emits 67 — a near-pure sink, which is at least consistent with its
+name. `surface/1` and `layer1/7` are the field's exporters. This is not something I designed or
+predicted; it is what eighteen peers settled into.
+
+### The render channel is healthy, and I checked before saying otherwise
+
+Every universe has exactly four render atoms and **58 of 68 are still the original seed**, which looks
+frozen. It is not: the bank is fixed at four by design (`genome.rend.length!==4 → defaultRend()`), the
+overwrite path at 15048 is live, `rendMaxDepth` has evolved to 1–5, and ten atoms across the field
+have been rewritten. Four channels, occasionally re-authored. Working as built.
+
+The same check saved a second false alarm: `rendGenExpression` appears to overwrite `genome.uaMaxDepth`
+with the render gene, but it saves and restores it in a `finally`. Correct.
+
+### Fitness sensors are small
+
+28 across the whole field, 1–4 per universe, programs of 1–9 instructions (mean 3.1). `surface/7`
+carries four — the most structurally advanced universe by several measures, again.

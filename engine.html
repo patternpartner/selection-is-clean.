@@ -415,7 +415,7 @@ const LIVENESS_DECLARED=[
   'shadow.sim','shadow.decide','self.learn','cluster.reflex','cluster.detect','cluster.persist',
   'alien.predict','niche.economy','dims.grow','cosmos.launch','cosmos.merge','cosmos.law',
   'genome.mutate','prog.crossover','prog.inherit','oee.flush','attention.field','world.signal',
-  'atom.cull','atom.cull.idle','atom.evict','atom.chain','genome.trim','verb.senseBind','verb.senseFired',
+  'atom.cull','atom.cull.idle','atom.evict','atom.chain','genome.trim','verb.wire','verb.senseBind','verb.senseFired',
 ];
 // NOT INSTRUMENTED, and deliberately absent rather than declared-and-silent: cladogenesis minting
 // (#17) has no single entry point I could identify with confidence. A census that reports "never"
@@ -13540,6 +13540,51 @@ function wireAtomCallSites(){
   }catch(e){}
 }
 
+// ═══ #179 — THE VERBS WERE NEVER REACHABLE ══════════════════════════════════════════════════════
+// MEASURED, in the 17-of-18 harvest: across every germline program, every cluster program and every
+// fitness-sensor program in all seventeen universes — 1,424 instructions — the number carrying
+// opcode 236 is ZERO. Not rare. None.
+//
+// Opcode 236 is EFFECT_EMIT, and it is the ONLY writer of vmActions[EFFECT_SLOT0+k]. applyUserEffects
+// opens with `const drive=vmActions[EFFECT_SLOT0+e]; if(!drive)continue;`. No 236, no drive, no verb.
+// So the entire authored-verb arc — #132 authoring, #133 successor composition, #133b's index fix,
+// #139's sense gate, the HGT carry, three census rows — hangs off an opcode that no inherited program
+// in the field has ever contained. Every universe carries its full eight verbs, permanently, unfired.
+//
+// This is LEAP 7 (#52) and #57, one replicator over, and both of those said the reason out loud: "a
+// brand-new opcode only enters a program if mutation happens to draw it, and programs seeded from the
+// base genome contain no reference to it." 236 of ~429 opcodes is a ~0.23% draw per mutated
+// instruction. The measured 0/1424 is exactly what that predicts.
+//
+// The fix is theirs too: put it in front of living code so selection can judge whether the verbs are
+// worth anything. This decides NOTHING about verbs — a wired instruction is in pProg, under the same
+// mutation and the same selection as every other instruction, and if driving a verb costs more than
+// it returns the lineage loses it. What it removes is the impossibility. The system could not choose
+// against verbs either, because it was never able to run one.
+//
+// dst indexes the bank that EXISTS, not MAX_USER_EFFECTS — #133b already paid for that lesson once,
+// when %MAX_USER_EFFECTS sent half of all emits to empty slots.
+const EFFECT_WIRE_RATE=0.02;        // per-cycle chance a living program gains an EFFECT_EMIT site
+function wireEffectCallSites(){
+  try{
+    const fx=genome.userEffects;
+    if(!fx||!fx.length)return;
+    const n=Math.min(fx.length,MAX_USER_EFFECTS);
+    for(let i=0;i<N;i++){
+      if(!palive[i]||!pProg[i])continue;
+      if(Math.random()>EFFECT_WIRE_RATE)continue;
+      const pr=pProg[i];
+      let has=false; for(let q=0;q<pr.length;q++) if(pr[q][0]===236){has=true;break;}
+      if(has)continue;
+      const cap=Math.min((genome.vmMaxInstructions||16),48);
+      const inst=[236,(Math.random()*12)|0,(Math.random()*n)|0,Math.random()*2-1];
+      if(pr.length<cap) pr.splice((Math.random()*(pr.length+1))|0,0,inst);
+      else pr[(Math.random()*pr.length)|0]=inst;
+      fired('verb.wire');
+    }
+  }catch(e){}
+}
+
 function mutateGenome(){ fired('genome.mutate');
   // Pe22b: substrate physics — defensive defaults for old genomes
   // (the actual mutation happens further down, after `rate` and `maybe` exist)
@@ -25478,6 +25523,7 @@ function loop(){
   if(birthQueue.length>20)birthQueue.length=0;
   if(tick%45===0)compact();
   if(tick%120===0)wireAtomCallSites(); // LEAP 7 (#52): authored atoms reach living programs
+  if(tick%120===0)wireEffectCallSites(); // #179: and authored VERBS do too — 0 of 1,424 instructions in the field carried EFFECT_EMIT
   if(tick%150===0)wireModeOpcodes();   // #57 fix: the mode decision reaches living programs
   if(tick%150===0)wireCosmosOpcode();  // #59: COSMOS_SENSE reaches living programs — wired at birth of the layer, not two waves later
   // LEAP 15 (#53) — a GENERATION is the population having wholly replaced its founders. genome.generation
