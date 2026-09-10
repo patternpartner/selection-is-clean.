@@ -13613,3 +13613,288 @@ with the render gene, but it saves and restores it in a `finally`. Correct.
 
 28 across the whole field, 1–4 per universe, programs of 1–9 instructions (mean 3.1). `surface/7`
 carries four — the most structurally advanced universe by several measures, again.
+
+---
+
+## #180 — THE GRAMMAR BECOMES A GENE
+
+### The thing that was still fixed
+
+#174 said it plainly and then only did half of it: *"Every atom this system has ever written is a
+composition over EIGHTEEN symbols. A universe with 97 atoms in its bank still had exactly eighteen
+things it could refer to."* Its answer — `ya`..`yh`, eight symbols whose MEANING the lineage writes —
+opened the alphabet's meaning and left its SHAPE exactly where it had been since the grammar was
+written:
+
+- four structural production rules with hand-set weights (0.45 binary / 0.17 ternary / 0.10 compose /
+  0.10 binary-func, a leaf otherwise) — #180 adds a fifth, the authored operator,
+- a leaf pool of twenty-five symbols sampled **uniformly**, forever, by every lineage,
+- an operator set of four arithmetic ops and four HANDS functions, chosen once by a person.
+
+#107 handed over exactly one scalar and recorded its own limit in the same breath: `uaStructBias`
+scales the whole structural block and *"cannot reorder which branch is favoured over the others."*
+
+So the honest statement of where this system stood: the CONTENTS were open — atoms, verbs, chains,
+programs, credit, dimensions, universes — and the RULES those contents are written under were not.
+That is the boundary between an open-ended content search and an open-ended substrate, and it is the
+one the request that prompted this swing named as highest leverage.
+
+### What #180 makes heritable
+
+**`genome.uaProdW`** — the five production weights, independently. A lineage can become one that
+BRANCHES rather than one that COMPOSES, which #107's single scalar could not express. Seeded
+`[1,1,1,1,1]`, which reproduces the pre-#180 thresholds byte for byte.
+
+**`genome.uaVarW`** — one weight per leaf symbol, indexed by NAME (the pool's composition depends on
+two knobs, so a positional vector would silently mean different things in different configurations —
+the same class of bug as an opcode index meaning different things across a crossing). Weight 0 is a
+symbol this lineage has stopped speaking. There is deliberately **no floor**: "this creature does not
+read the clock" is a strategy, not a broken invariant of the #85 kind. Nothing here is a price.
+
+**`genome.uaOps`** — up to eight **authored binary operators**, named `qa`..`qh`. This is the
+substrate step. The operator set was the last part of the atom language with no evolutionary route
+into it, which is why it is here rather than a ninth fixed function.
+
+### Why an invented operator is not just a subtree by another name
+
+Compression. `UA_DEPTH_CAP` bounds nesting at 7 and `UA_EXPR_MAX` bounds the serialisable string at
+160 characters — and #145 measured, on a real creature at generation 5,405, what happens when
+authoring ignores the second of those: **1,671 of 1,793 atoms failed to compile after a round trip.**
+So an expression's budget is genuinely finite and cannot be widened by fiat.
+
+```
+qa(nx,ny)                                          10 characters, one leaf pair
+0.31*Math.atan2(nx,ny)+0.69*Math.hypot(nx,ny)      45 characters, a whole depth level
+```
+
+A lineage authoring an operator is buying itself a shorter way to say something it has found worth
+saying. That is the only way to get more meaning out of a budget that cannot grow.
+
+### The meta-language is small on purpose
+
+A descriptor is five numbers and never a string, so nothing here is compiled, parsed, or evaluated as
+text — no `new Function`, no new failure mode, no new attack surface on the wire. Two forms:
+
+```
+BLEND   k*A(x,y) + (1-k)*B(x,y)        an operator interpolated between two operators
+GATE    (x cmp y) ? A(x,y) : B(x,y)    an operator that decides which operator it is
+```
+
+`A`/`B` index `UA_PRIM` (the four arithmetic ops plus min/max/atan2/hypot), `cmp` indexes `USER_CMP`.
+Every index is masked (`&7`, `&3`) rather than clamped, so a drifted or wire-borne descriptor cannot
+index off the end; every reachable one is total and finite by construction. `grammar-test.js` sweeps
+all 4,096 combinations against eight nasty inputs including `1e300`, `NaN`, `Infinity` and `0/0`:
+**0 non-finite, 0 outside `uaCall`'s ±8.**
+
+### Late binding is the property everything else rests on
+
+`qa` resolves through the CARRIER's bank at call time — the hot path has already repointed `genome` to
+`pGenome[i]`. Three consequences, all load-bearing:
+
+- redefining slot 0 changes what every atom naming `qa` computes **without recompiling any of them**.
+  That is #174's "the alphabet changes meaning as the creature rewrites itself", one level down from
+  senses to operators.
+- #161's expression-keyed compile cache stays correct, because the TEXT is unchanged. The 1.9 GB leak
+  that fix was for cannot come back through this door.
+- an expression naming `qa` **can never fail to compile or run** — not on a peer, not at bank size 0,
+  not after a release. An empty slot falls back to `UA_PRIM[slot]`, so the symbol always means
+  something. That is why it is a fallback and not a zero: the fifth crossing fails on the RECEIVE side
+  in silence (#153), and an undefined symbol arriving on the wire is exactly how it would fail here.
+
+### Four things this swing needed that it did not have, and three of them were found by measuring
+
+**1. THE VOCABULARY DID NOT TRAVEL. `atom.ops` germline 5, population 0 — STRANDED.**
+
+This swing's own crossing row caught it on the first long run, which is the sixth time this exact bug
+has appeared in this file in a sixth mechanism (#102, #130, #132b, #133b, #155's near-miss). And the
+cause was not the one CODEMAP warns about: `cloneGenome` copies the bank perfectly. The population's
+genomes were cloned **before the germline had a bank**, and nothing afterwards handed one across.
+Atoms have `seedAtomIntoParticle` for exactly this. Operators had nothing.
+
+`carryOpsForExpr(srcG,dstG,expr)` now runs wherever an atom's TEXT crosses into a genome that did not
+write it: germline seeding, horizontal transfer, and the migrant receive. It is #141's rule ("the
+program travels, the vocabulary it speaks does not") stated for the inside of a universe rather than
+the wire. **Non-destructive** — a destination slot already defined is left alone, because overwriting
+it silently redefines every atom the RESIDENT already had naming that slot, which is #137's harm one
+bank over. Between an immigrant that means something slightly different and a resident whose existing
+atoms change meaning underneath it, the resident wins.
+
+Measured after: germline 5 operators, **population 95 of 227 living particles**, and `atom.ops` no
+longer stranded. `verb.sensed` still is — that is a pre-existing #139 gap, confirmed against the
+unmodified engine at the same tick count, and not mine.
+
+**2. AND AN OPERATOR NOBODY CAN NAME IS AN OPERATOR NOBODY CAN JUDGE.**
+
+Counting the draws: `mutateGenome` runs ~18 times per 6,000 ticks and authors ~5 atoms in that
+window; the top-level operator form fires on about a tenth of authoring draws. Expected
+operator-naming atoms per 6,000 ticks: **~0.4**. Observed in the run that found this: **zero**, with
+five operators standing and paying rent.
+
+That is #179's arithmetic to the digit — a 0.23% draw producing 0 of 1,424 instructions — and this
+file has now written the answer down twice, in LEAP 22 (#55) for the atom pipeline and in #179 for the
+verbs. So `uaWireOpIntoBank` wires an operator in at birth, once. It decides nothing: the atom that
+comes to name it lives under the same overwrite, cull, credit and selection pressure as every other
+atom, and a lineage that cannot afford the operator loses the atom naming it and then the operator
+itself to the unreferenced release. What is removed is the impossibility.
+
+Two routes, and the second exists because the first is closed on exactly the universes that need it
+most: a young bank's atoms are all flat `(t1)op(t2)` with leaf terms, so **nothing in it has a binary
+head to swap** — the HANDS branch needs `depth>0` and `uaMaxDepth` starts at 1. Edit a head where one
+exists; author one fresh atom where none does.
+
+**3. AND AN EXISTING ATOM COULD NEVER ADOPT ONE EITHER.**
+
+Every route into `qa..qh` ran through FRESH authoring, so an operator could only be adopted by an atom
+that did not exist yet. `uaLocalStep` — the small-step operator #103 added precisely because "mutate"
+meant "discard and redraw" — now has a third move: swap one binary HEAD (`Math.min(` / `qc(` / …) for
+another. Safe by `uaSwapVar`'s own argument one token up: every name in that closed set is followed by
+`(` and takes exactly two comma-separated arguments, so the substitution preserves arity and balance
+without a parser. `f(` is excluded — three arguments. **Reversible**, so it is a step and not a
+ratchet: the pool holds the built-ins as well, and a lineage that adopted `qc` can drop back to
+`Math.hypot` next step and let selection sort them. Measured: 251 of 600 head swaps land on an
+authored operator with a three-operator bank, 600 of 600 still compile, and an expression with no
+binary head comes back untouched 200 of 200 times.
+
+**4. AND THE RIG WAS TESTING ITS OWN SETUP.**
+
+`grammar-test.js` reported "the bank crosses into the population: population 390" and passed, while a
+real 6,000-tick run measured population **zero** and the census called it stranded. The wire section
+earlier in the same rig installs a bank into every living `pGenome` by hand to build a migrant packet,
+and the later check read that. It now wipes the population's banks before the live section. A rig that
+passes on its own fixture is worse than no rig, because it certifies the thing it never looked at.
+
+### Measured: five seeds, 25,000 ticks each, gates on against gates off
+
+```
+seed  mode    fit     extinctions  gen  atoms  ops  atomsNaming  opEvaluations
+  1   off    0.647        0          3    21    0        0                 0
+  1   on     0.537       26         32    27    8       12        13,175,350
+  5   off    0.669        0          2    21    0        0                 0
+  5   on     0.635        0          2    20    8       12        66,541,954
+  7   off    0.645        0          3    25    0        0                 0
+  7   on     0.677        0          2    27    7        9        19,396,278
+ 11   off    0.684        0          2    29    0        0                 0
+ 11   on     0.675        0          3    27    8       23        81,017,277
+ 13   off    0.641        1          4    20    0        0                 0
+ 13   on     0.653        0          1    23    8        2        20,371,918
+```
+
+The layer is unambiguously LIVE: every arm authors a full or near-full bank, every arm's expressions
+come to name operators, and 8-81 million operator evaluations happen per run. On the population side,
+sampled while alive: **every living particle that has a bank carries one** — seed 13 on, 342 operators
+across 291 of 291 carriers; seed 5 on, 370 across 181 of 181. `atom.opFallback` is **zero in every
+clean run**, which is the cheap prediction met: no expression is outliving the operator it names.
+`atom.opCull` fires 1-10 times per run, so the release path is real and not decorative.
+
+Fitness, excluding seed 1: **0.660 on, 0.660 off** over the same four seeds. Population means are
+comparable (231-241 on, 241-249 off). Grammars genuinely drift — `uaProdW` lands between 0.60 and
+1.25, `uaVarW` standard deviation reaches 0.157-0.350 against a seed of 0, and one seed drove a
+symbol's weight down to 0.13.
+
+### And seed 1 destabilised, and the decomposition says it is an INTERACTION
+
+Seed 1 with everything on went through **26 extinctions** where the control had none. That is the one
+bad result here and it does not get buried. Splitting the layer on the same seed:
+
+```
+seed 1        extinctions  gen   fit    popMean
+off                  0      3   0.647     —
+weights only         0      1   0.644    256      (UA_OPS=0)
+operators only       0      1   0.627    228      (UA_PROD=0, UA_VARW=0)
+everything on       26     32   0.537     —
+```
+
+**Neither half alone does it.** So this is not the rent, and it is not the operator bank: it is the
+two together, on one seed in five, and I do not have a mechanism for it. The plausible story — the
+weight genes drift what the grammar samples while the operator bank churns what those samples mean,
+and the variance of what an atom computes goes up enough to occasionally tip a marginal population
+into the extinction/reseed cycle — is a story, not a measurement, and it is labelled as one.
+
+Two things keep this from being a reason not to ship. Extinction in this engine is not terminal:
+generation 32 means the world reseeded 26 times and was still running. And the layer has three
+independent knobs, so the combination that did this is exactly the combination that can be taken
+apart — `UA_OPS=0` and `UA_VARW=0` are each a clean exact revert, verified by
+`grammar-test.js` holding all-ones weights to the identical RNG stream as no weights at all.
+
+What would settle it: the same five seeds at 100,000 ticks, and seed 1 at intermediate knob
+combinations. Neither is in this commit.
+
+### The price, and the one number nobody has measured
+
+`UA_OP_RENT` = **0.25 instruction-equivalents per DEFINED slot per interaction**, billed in `executeVM`
+beside `stackToll` and exempt from the over-length surcharge for the same reason op22 and the chain
+toll are: inventing an operator buys reach, never a discount.
+
+Use is deliberately **not** metered. An operator is arithmetic inside an atom, and arithmetic inside an
+atom has never been priced in this engine; metering it would cost more than it computes and would
+price the invented operators above the built-ins they are literally made of, which is #54's "three
+leaps strangling a fourth" set up to happen a fifth time. The rent falls on STANDING structure, which
+is where bloat would be, and the eight-slot cap bounds it absolutely: a full bank costs about two
+instructions against a typical program of sixteen.
+
+0.25 is a judgement. It is the only hand-set number in #180 and it is labelled as one in the code as
+well as here, because the next reader should not have to guess which constants were measured.
+
+### What this cannot say, and what would falsify it
+
+**The persistence ratio is not measurable from here.** The number this swing is aimed at — 0.283,
+0.267, 0.304, 0.349 across four harvests — comes from the live field over hours. A headless
+25,000-tick single universe produces 4–5 epochs and `oeeNovel` in the single digits, with
+`oeePersist` at 0 in every arm including the controls. **No claim about 0.28 can be made from these
+runs and none is made.** The next cube harvest is the measurement.
+
+**And the honest state of the hypothesis #180 inherits, because it is worse than the headline
+numbers suggest.** The sequence 0.283 → 0.267 → 0.304 → 0.349 is real but it is not four readings of
+one experiment. #174's own prediction was tested and **failed**: matched on bank size — the only
+comparison that controls the age confound this file has been caught by four times — the mean went
+0.283 (n=9) to 0.291 (n=13, sd 0.115). The 93.1h note records the verdict in its own words: *"The mean
+did not move. By the criterion I wrote down before looking, the alphabet was the wrong wall."* What
+DID move was the variance, sd 0.007 → 0.115, and the strongest correlate of a universe's ratio was
+the share of its atoms using the new senses at **r = -0.675, pointing the wrong way** — which #175
+then diagnosed as a real bug (the voices were an unscoped noise source, so an atom listening to them
+could not repeat itself and selection duly discarded it). 0.349 is the highest recorded reading and it
+came after that repair, un-matched for bank size.
+
+So #180 is not the third try at a hypothesis that has been working. It is the first try at the part of
+the hypothesis #174 never tested. #174 changed what the symbols MEAN; the sampling distribution over
+them stayed exactly as fixed as it had always been, which is the specific thing "a fixed grammar
+sampled at a steady rate produces a stable ratio" is about. #180 makes the distribution itself evolve.
+
+**Stated so it can fail:** if the fixed-grammar explanation survives, then (i) the bank-size-MATCHED
+mean should move this time, where #174's did not, and (ii) a universe's ratio should track how far its
+grammar has drifted from the seed — `uaVarW` standard deviation and `OPS` defined-slot count against
+the per-universe ratio. If the matched mean sits at ~0.29 again with `uaVarW` spread wide and operator
+banks full, the grammar was never the wall and two swings will have said so. That is a result, and it
+would be worth more than a third variation on the same guess.
+
+**A second, cheaper prediction.** `atom.opFallback` should stay at or near zero in a healthy field. A
+rising fallback count means expressions are outliving the operators they name — the release path
+running ahead of the carriage path — and that is a mechanism failure this layer can have and nothing
+else in the file would report.
+
+### What is NOT in this swing
+
+The request that prompted it named six fronts in order and called the first the highest leverage. This
+is the first, and only the first:
+
+- **evolve the interpreter and the grammar** — done, as above, for the atom grammar's weights,
+  alphabet and operator set. NOT done: the core opcode dispatch table, and the "compiler evolution"
+  path that rewrites the expression compiler. Both are reachable from here — a `uaOps` descriptor is
+  already a tiny interpreted instruction set — but neither is in this commit, and a claim that the
+  interpreter is evolvable would be false. What is evolvable is the ATOM language's operator set.
+- **major transitions as first-class events** (cluster developmental programs, evolvable
+  particle/cluster boundary, new levels of selection with their own genome and credit channel) — not
+  started.
+- **co-evolving physics** (lineage-deposited field types, local law modification, rare law mutations)
+  — not started. #129 `COSMOS_LAW` is the closest thing already present and it moves existing
+  constants rather than adding new ones.
+- **the measurement loop closed** (particles authoring their own diagnostic expressions, promoted if
+  predictive; open-endedness metrics as evolvable selective pressures) — not started. Note that
+  #95/#97's alien-prediction channel is the same idea measured at chance, twice, so this front has a
+  known null to beat rather than an open field.
+- **hierarchical multi-universe structure** (persistent daughter universes with modified physics,
+  universe-level evolvable migration, law-carrying plasmids between worlds) — not started.
+
+Doing all six in one commit would have meant six layers each with the shallow instrumentation that
+this one file has been bitten by six times. The stranding row and the reachability count above are
+what one layer's worth of care costs, and both of them found real bugs in the first afternoon.

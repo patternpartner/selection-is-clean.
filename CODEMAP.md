@@ -16,6 +16,7 @@ Companion to OEE-NOTES.md, which records experiments. This records the machine t
 | **last fully re-derived** | never — this map was written against `index.html` and has been patched, not rebuilt |
 | **prose current through** | **#90.** The engine is at **#159.** Roughly sixty swings are undocumented here |
 | **verified as of #131** | the anchor table below, the opcode constants, the genome extent, and the census claims |
+| **#180 note** | the atom grammar's production weights, leaf-symbol weights and OPERATOR SET are heritable as of #180 — `genome.uaProdW` / `uaVarW` / `uaOps`, and the symbols `qa`..`qh`. See "The grammar is a gene now" below. Anything that reasons about "the alphabet" as a constant is stale |
 | **added since, unmapped below** | **#132/#133** verb grammar (`EFFECT_TARGETS`, `applyUserEffect`, opcode 236) · **#134** liveness census (`LIVENESS_DECLARED`, `fired()`) · **#135** attention field (`attnField`, `attentionAt`, the `at` sense) · **#136** world signal (`updateWorldSignal`, `worldSignalSuppressed`) · **#137** crossing census (`CROSSING_DECLARED`, `crossingCensus`) · **#138** the diary (`theDiary`, `diaryPanel`) · **#139** sense-gated verbs (`verbGate`, `remapEffectAx`, `effectSenseRate`) · **#140** the crossings (`CHILD_NOT_A_GENE`, inherit/roundtrip tests) · **#141** migrant vocabulary (`MIGRANT_CARRIES_VOCAB`) · **#153** the migrant packet extracted (`buildMigrantPacket`) and the wire's limits derived rather than restated (`netMaxOpcode`). Grep the names; no line anchors yet |
 | **NOT verified** | every other inline line number in this file. They were written against a file ~1,100 lines shorter and around 500–900 lines of drift has accumulated unevenly — treat them as approximate, and grep for the quoted code instead |
 
@@ -213,6 +214,80 @@ verbs (**0 of 1,424 instructions in a live seventeen-universe field carried op23
 ever fire**). Adding a new opcode that authored structure depends on means adding a fourth of these,
 or the structure is unreachable and the census will read "never" forever. Note `wireEffectCallSites`
 indexes the bank that EXISTS, not `MAX_USER_EFFECTS` — #133b's bug.
+
+**The grammar is a gene now (#180).** Three heritable structures, all lazily created under their own
+gate so a run with the gates down creates nothing, draws no extra `Math.random()`, and reproduces the
+pre-#180 engine exactly.
+
+| | what it is | default | bound |
+|---|---|---|---|
+| `genome.uaProdW` | the FIVE production weights `uaGenTerm` rolls against, independently | `[1,1,1,1,1]` = the pre-#180 thresholds | `[0,3]` each, block still capped at 0.97 so a leaf stays reachable |
+| `genome.uaVarW` | one weight per leaf symbol, indexed by NAME through `UA_VAR_IX` | all 1 = the uniform draw | `[0,4]`, no floor — a specialised sensorium is a strategy, not a broken invariant |
+| `genome.uaOps` | up to 8 authored binary operators, named `qa`..`qh` | absent = every symbol falls back to `UA_PRIM[slot]` | `UA_OPBANK` slots, `UA_OP_RENT` each per interaction |
+
+An operator is a five-number descriptor and NEVER a string: `{p,a,b,k,c}` is either
+`k*A(x,y)+(1-k)*B(x,y)` (blend) or `(x cmp y)?A(x,y):B(x,y)` (gate), with `a`/`b` indexing `UA_PRIM`
+(the four arithmetic ops plus the four HANDS functions) and `c` indexing `USER_CMP`. Nothing here is
+compiled or parsed, every index is masked with `&7`/`&3` rather than clamped, and `uaOpEval` ends
+`isFinite(v)?v:0` — so no reachable descriptor, drifted or wire-borne, can produce a non-finite value
+or index off the end. `grammar-test.js` sweeps all 4,096 combinations against eight nasty inputs.
+
+**`qa` is LATE-BOUND, and that is the property everything else rests on.** It resolves through the
+CARRIER's bank at call time (the hot path has already repointed `genome` to `pGenome[i]`), so:
+redefining a slot changes what every atom naming it computes *without recompiling any of them*;
+#161's expression-keyed compile cache stays correct because the text never changes; and an expression
+naming `qa` can never fail to compile or run — an empty slot degrades to `UA_PRIM[slot]` and
+`__uaOpFallbacks` counts it. A released slot is NULLED, never spliced: slot POSITION is the contract,
+exactly as it is for `boundOpcodes` (#137), so `qa` means slot 0 in every clone, save and migrant.
+
+**Four things #180 needed that it did not have, three of them found by measurement, not by reading:**
+
+1. **The vocabulary travels with the word (`carryOpsForExpr`).** The crossing row said germline 5,
+   population 0 — `atom.ops` STRANDED, the sixth appearance of this file's most repeated bug.
+   `cloneGenome` copies the bank correctly and that was never the issue: the population's genomes were
+   cloned BEFORE the germline had one. Atoms have `seedAtomIntoParticle` for this; operators had
+   nothing. Now, wherever an atom's TEXT crosses into a genome that did not write it —
+   `seedAtomIntoParticle`, `attemptMemeTransfer`, the migrant receive — the operators it names cross
+   with it. **Non-destructive**: a destination slot already defined is left alone, because overwriting
+   it silently redefines the resident's own atoms.
+2. **Reachable at birth (`uaWireOpIntoBank`).** Counting the draws gave ~0.4 operator-naming atoms per
+   6,000 ticks; the run measured zero, with five operators standing and paying rent. That is #179's
+   arithmetic again, so it takes #179's answer: one atom in the germline bank comes to name the new
+   operator at birth, once, and then lives under ordinary selection. TWO routes, because a young
+   bank's atoms are all flat `(t1)op(t2)` and have no binary head to edit — swap a head where one
+   exists, author one fresh atom where none does.
+3. **Adoption after birth (`uaSwapBinHead`).** `uaLocalStep` has a third move: swap one binary HEAD
+   (`Math.min(` / `qc(` / …) for another. Safe by `uaSwapVar`'s argument one token up — every name in
+   that closed set is followed by `(` and takes exactly two comma-separated arguments, so the
+   substitution preserves arity and balance without a parser. `f(` is excluded: three arguments.
+   Reversible, so it is a step and not a ratchet. The split is gated, so `UA_OPS=0` is byte-for-byte
+   #103's two-way choice on the same single draw.
+4. **The top-level form in `uaGenExpression`.** `uaGenTerm`'s structural branches all require
+   `depth>0` and every universe starts at `uaMaxDepth=1`, so the term-level branch alone would have
+   been unreachable from birth. Both routes exist for the same #179 reason.
+
+Naming obeys #174's two rules and `grammar-test.js` holds both: digit-free (or `uaJitterConst`'s regex
+stops being exhaustive over this grammar), and no false match against `UA_VAR_RE` (in `qa` the 'a' has
+a word character to its left, so `\ba\b` cannot reach it). `UA_OP_RE` is the `/g` counting copy and
+`UA_OP_TEST` the bare testing one — a shared stateful `lastIndex` is its own bug class.
+
+**The price.** `UA_OP_RENT` = 0.25 instruction-equivalents per DEFINED slot per interaction, billed in
+`executeVM` beside `stackToll` and exempt from the over-length surcharge for the same reason op22 and
+the chain toll are. Use is NOT metered — an operator is arithmetic inside an atom, and metering it
+would price the invented ops above the built-ins they are made of, which is #54's "three leaps
+strangling a fourth" waiting to happen. Rent falls on standing structure, which is where bloat would
+be, and the 8-slot cap bounds it absolutely. 0.25 is the one hand-set number in #180 and is labelled
+as such in the code.
+
+**Instruments, shipped in the same commit as the layer.** Two crossing rows (`atom.ops` = did the bank
+cross at all; `atom.opRef` = does anything NAME one — the row that would have caught #179 a swing
+early), seven liveness names (`atom.opAuthor/opDrift/opCull/opWire/opCarry/opFire/opFallback`), and a
+per-epoch log `__uaOpLog` saved as `OPS` = `[tickEnd, definedSlots, evaluations, atomsNamingAnOperator]`,
+downsampled and restored on the same rules as `RCH`. `atom.opFire` and `atom.opFallback` come in
+through **`firedN(name,n)`**, a batching sibling of `fired()` added by #180: an operator runs inside
+somebody else's arithmetic, and a census call there would cost more than the arithmetic. `firedN`
+keeps the first-firing tick stamp, so nothing reading `__liveness` needs to know which route a name
+came in by.
 
 **Bound opcodes (#137).** An opcode's NUMBER is its POSITION in `genome.boundOpcodes`
 (`op = CORE_OPCODES + k`); its MEANING is `genome.userAtoms[boundOpcodes[k]]`. Two consequences that

@@ -258,6 +258,16 @@ let __DIMS_ATOM=true; // #125: MICRO->MACRO — a proven, diverse atom bank (cre
 // (below) for what it does. Default ON, same call as #101/#102/#103: a real, reasoned lever handed to
 // the system, live, not parked behind a flag nobody would set. Force off with UA_STRUCT=0.
 let __UA_STRUCT=true;
+// ═══ #180 — THE GRAMMAR BECOMES A GENE: three knobs, one frontier ═══════════════════════════════
+// #107 handed over ONE scalar and its own note records the limit: uaStructBias "cannot reorder which
+// branch is favoured over the others". Everything else about how this system writes — the five
+// production weights, which leaf symbols it draws, and the operator set itself — was ours, fixed at
+// the moment the grammar was written, and no lineage had any route into it. These three gates open
+// those three things. See the block above uaGenTerm for the design and why the meta-language is small.
+// All default ON, the same call as #101/#103/#107: a reasoned lever handed to the system, live.
+let __UA_PROD=true;  // #180: five INDEPENDENT production weights (genome.uaProdW). Force off with UA_PROD=0
+let __UA_VARW=true;  // #180: a heritable weight per leaf symbol (genome.uaVarW) — which senses this lineage speaks. Force off with UA_VARW=0
+let __UA_OPS=true;   // #180: the authored-operator bank, qa..qh (genome.uaOps). Force off with UA_OPS=0
 // Highest alienGrip among a genome's BOUND atoms, tie-broken by uses so a bank with no scored atom
 // behaves exactly as before. Returns -1 if there is nothing bound.
 // Returns -1 unless some bound atom has ACTUAL grip (>= ALIEN_GRIP_MIN_ATTEMPTS attempts and a non-zero
@@ -314,7 +324,18 @@ function validNetworkPayload(type,data){
       (!data.ue||(Array.isArray(data.ue)&&data.ue.length<=MAX_USER_EFFECTS&&
         data.ue.every(e=>e&&typeof e==='object'&&finitePacketNumber(e.t,0,64)&&
           finitePacketNumber(e.m,0,1)&&finitePacketNumber(e.s,-4,4)&&
-          finitePacketNumber(e.n,-1,64)&&finitePacketNumber(e.a,-1,256))));
+          finitePacketNumber(e.n,-1,64)&&finitePacketNumber(e.a,-1,256))))&&
+      // #180: the operator bank, validated like everything else on the wire. Bounds are READ from
+      // the engine rather than restated (#153's rule: three of the four migrant bounds had gone stale
+      // against ceilings that moved underneath them, and the packets died silently on the far side).
+      // A row is either 0 — a released slot, which must keep its position — or [p,a,b,k,c]. Every
+      // field is an index into a fixed table, so a hostile peer's worst case is an operator we would
+      // have authored ourselves; there is no string here and therefore nothing to compile.
+      (!data.uo||(Array.isArray(data.uo)&&data.uo.length<=UA_OPBANK&&
+        data.uo.every(r=>r===0||(Array.isArray(r)&&r.length>=5&&
+          finitePacketNumber(r[0],0,1)&&finitePacketNumber(r[1],0,UA_PRIM.length-1)&&
+          finitePacketNumber(r[2],0,UA_PRIM.length-1)&&finitePacketNumber(r[3],0,1)&&
+          finitePacketNumber(r[4],0,UA_CMPF.length-1)))));
   }
   if(type==='plasmid')return Array.isArray(data)&&data.length<=MAX_PLASMID&&data.every(validInstruction);
   if(type==='motif')return Array.isArray(data)&&data.length<=8&&data.every(validInstruction);
@@ -416,6 +437,12 @@ const LIVENESS_DECLARED=[
   'alien.predict','niche.economy','dims.grow','cosmos.launch','cosmos.merge','cosmos.law',
   'genome.mutate','prog.crossover','prog.inherit','oee.flush','attention.field','world.signal',
   'atom.cull','atom.cull.idle','atom.evict','atom.chain','genome.trim','verb.wire','verb.senseBind','verb.senseFired',
+  // #180: the grammar's own layer, declared in the same commit as the layer. atom.opFire and
+  // atom.opFallback are batched through firedN from flushEpoch rather than called per evaluation —
+  // an operator runs inside somebody else's arithmetic, and a census call there would cost more than
+  // the arithmetic does. atom.opFallback reading nonzero means expressions have outlived the
+  // operators they name, which is the one thing about late binding worth watching.
+  'atom.opAuthor','atom.opDrift','atom.opCull','atom.opFire','atom.opFallback','atom.opWire','atom.opCarry',
 ];
 // NOT INSTRUMENTED, and deliberately absent rather than declared-and-silent: cladogenesis minting
 // (#17) has no single entry point I could identify with confidence. A census that reports "never"
@@ -425,6 +452,20 @@ for(const _n of LIVENESS_DECLARED){ __liveness[_n]=0; }
 function fired(name){ if(__liveness[name]===undefined)__liveness[name]=0;
   if(__liveness[name]===0)__livenessFirst[name]=(typeof tick!=='undefined'?tick:0);
   __liveness[name]++; }
+// #180: the same census contribution, in a batch. A mechanism on a path too hot to call fired() from
+// counts itself in a plain integer and hands the total over once per epoch. Identical bookkeeping —
+// including the first-firing tick stamp, which is what makes the census able to say WHEN rather than
+// only whether — so nothing that reads __liveness has to know which route a name came in by.
+// Deliberately NOT implemented by having fired() delegate here: fired() sits on genuinely hot paths
+// (verb.fire ran 20,873 times in 1,500 ticks in #179's measurement) and it keeps its own three lines
+// rather than paying for an argument and a guard it does not need.
+// `+n` and not `n|0`: a mature bank evaluates its operators hundreds of thousands of times per epoch
+// and an int32 truncation would eventually wrap a census count NEGATIVE, which is the one thing an
+// instrument must never do quietly.
+function firedN(name,n){ n=+n; if(!(n>0))return;
+  if(__liveness[name]===undefined)__liveness[name]=0;
+  if(__liveness[name]===0)__livenessFirst[name]=(typeof tick!=='undefined'?tick:0);
+  __liveness[name]+=n; }
 // The census itself: what has never happened, and what happened so rarely it may as well not have.
 function livenessCensus(minTicks){
   const never=[],rare=[],live=[];
@@ -504,6 +545,16 @@ const CROSSING_DECLARED=[
   // report the same number twice and look like agreement. It is logged per epoch instead (RCH).
   {name:'atom.chained',  read:g=>{ const o=g&&g.opStacks; if(!o)return 0; let n=0;
                                    for(const k in o){ const v=o[k]; if(Array.isArray(v)) n+=v.length; } return n; }},
+  // #180: CODEMAP's rule — a new kind of authored structure gets a census row in the same commit.
+  // TWO rows, because this layer has two ways to be stranded and they are different bugs:
+  //   atom.ops    the bank crossed at all. Germline > 0, population 0 => cloneGenome shares or drops it.
+  //   atom.opRef  anything NAMES an operator. This is the row that would have caught #179 a swing
+  //               early: verbs crossed perfectly — full banks, three census rows, inherited, cloned,
+  //               HGT-carried — and were never once REACHABLE, because no program carried opcode 236.
+  //               A bank that crosses and is never referenced is authored, alive, and mute.
+  {name:'atom.ops',      read:g=>{ const b=g&&g.uaOps; if(!Array.isArray(b))return 0; let n=0;
+                                   for(let k=0;k<UA_OPBANK;k++) if(b[k])n++; return n; }},
+  {name:'atom.opRef',    read:g=>uaOpRefs(g)},
 ];
 function crossingCensus(){
   const rows=[];
@@ -553,7 +604,7 @@ function buildMigrantPacket(){
       // hollow: a migrant would arrive expecting heredity that was never transmitted.
       const _mprog=(MIGRANT_CARRIES_PROGRAM&&pProg[idx])?pProg[idx].slice(0,48).map(r=>[r[0]|0,r[1]|0,r[2]|0,+(+r[3]).toFixed(4)]):null;
       // #141: the vocabulary that program speaks, in bound-slot order.
-      let _mua=null,_mue=null;
+      let _mua=null,_mue=null,_muo=null;   // #180: +the operator bank
       const _mg=pGenome[idx];
       if(MIGRANT_CARRIES_VOCAB&&_mg){
         const _bos=Array.isArray(_mg.boundOpcodes)?_mg.boundOpcodes:[];
@@ -566,6 +617,18 @@ function buildMigrantPacket(){
         const _fx=Array.isArray(_mg.userEffects)?_mg.userEffects:[];
         _mue=_fx.slice(0,MAX_USER_EFFECTS).map(e=>({t:e.t|0,m:(e.m|0)===1?1:0,s:+(+e.s||0.5).toFixed(3),
           n:(e.nx===undefined?-1:e.nx|0), a:(e.ax===undefined||e.ax===null?-1:e.ax|0)}));
+        // #180 — AND THE OPERATORS THAT VOCABULARY IS WRITTEN IN. #141's bug, one level down: a
+        // migrant's expressions travel, and if its qa..qh do not, `qa` silently means the RECIPIENT's
+        // slot 0 — "a stranger reading our dictionary", where the dictionary is now the operator set
+        // rather than the atom set. CODEMAP's rule picks the strategy: preserve SLOT ORDER, because
+        // here the bank itself is what is being shipped. A released slot travels as 0 and keeps its
+        // position, so an expression naming qc still finds qc.
+        // Failing to send this would not have thrown anything anywhere: uaOpEval falls back to
+        // UA_PRIM, the atom computes something plausible, and the lineage arrives subtly lobotomised.
+        // That is exactly the silence #153 wrote three paragraphs about.
+        const _uob=Array.isArray(_mg.uaOps)?_mg.uaOps:null;
+        if(_uob){ _muo=[]; for(let _k=0;_k<UA_OPBANK;_k++){ const _d=_uob[_k];
+          _muo.push(_d?[_d.p|0,(_d.a|0)&7,(_d.b|0)&7,+(+finiteOr(_d.k,0.5)).toFixed(3),(_d.c|0)&3]:0); } }
       }
       // #153 — SEND A PACKET THE PROTOCOL ACCEPTS. Measured in a real browser, 200 pulled migrants:
       // FOUR were rejected by validNetworkPayload on arrival — three for phase, one for a memory
@@ -600,7 +663,7 @@ function buildMigrantPacket(){
       let _ph=phase[idx]%_TAU; if(!isFinite(_ph))_ph=0; if(_ph<0)_ph+=_TAU;
       for(let mm=0;mm<m.length;mm++) m[mm]=_cl(m[mm],-16,16);
       return {nx:_cl(px[idx]/W,-0.25,1.25),ny:_cl(py[idx]/H,-0.25,1.25),tend:t,mem:m,plasmid:plas,
-        amp:_cl(amp[idx],-2,4),phase:_ph,prog:_mprog,ua:_mua,ue:_mue};
+        amp:_cl(amp[idx],-2,4),phase:_ph,prog:_mprog,ua:_mua,ue:_mue,uo:_muo};
   }
 }
 function networkBroadcast(){ fired('network.broadcast');
@@ -721,6 +784,15 @@ function networkReceive(){ fired('network.receive');
             _g.userEffects=m.ue.slice(0,MAX_USER_EFFECTS).map(e=>({t:e.t|0,m:(e.m|0)===1?1:0,
               s:+e.s||0.5, nx:(e.n===undefined?-1:e.n|0),
               ax:(e.a===undefined||e.a===null?-1:e.a|0), uses:0, creditTrace:0}));
+          }
+          // #180: install the operator bank in SLOT ORDER, so the migrant's qa is the migrant's qa.
+          // age resets: the grace clock is a fact about how long this bank has sat unreferenced HERE,
+          // and a freshly landed lineage has not had a chance to be judged yet.
+          if(Array.isArray(m.uo)){
+            _g.uaOps=[];
+            for(let _k=0;_k<UA_OPBANK;_k++){ const _r=m.uo[_k];
+              _g.uaOps[_k]=Array.isArray(_r)?{p:(_r[0]|0)===1?1:0,a:(_r[1]|0)&7,b:(_r[2]|0)&7,
+                                              k:isFinite(+_r[3])?+_r[3]:0.5,c:(_r[4]|0)&3,age:0}:null; }
           }
         }catch(e){}
       }
@@ -937,6 +1009,154 @@ const USER_WORLD_VARS=["nx","ny","t","nb"]; // EYES — appended to the var pool
 const USER_FORAGE_VARS=["rl","rd"]; // FORAGE EYES — resource senses; appended when rich grammar AND forage are on
 const USER_BINFUNCS=["Math.min","Math.max","Math.atan2","Math.hypot"]; // HANDS — 2-arg functions
 const USER_FUNCS_RICH=USER_FUNCS.concat(["Math.round"]); // + QUANTIZE
+// ═══ #180 — THE OPERATOR SET STOPS BEING FIXED ══════════════════════════════════════════════════
+// #174 opened the alphabet's MEANING — ya..yh name whatever atom selection put in slots 0-7, so eight
+// symbols change meaning as the creature rewrites itself. It left the alphabet's SHAPE alone: five
+// production rules with hand-set weights, a leaf pool sampled uniformly, and an operator set of four
+// arithmetic ops plus four HANDS functions, all of them constants since the grammar was written.
+//
+// This is the operator half. Up to eight AUTHORED BINARY OPERATORS, named qa..qh, each assembled by a
+// bounded meta-language out of primitives that already exist. It is the last part of the atom language
+// with no evolutionary route into it, which is why it is here rather than a ninth fixed function.
+//
+// WHY AN INVENTED OPERATOR IS NOT JUST A SUBTREE BY ANOTHER NAME: COMPRESSION. UA_DEPTH_CAP bounds
+// nesting at 7 and UA_EXPR_MAX bounds the serialisable string at 160 characters — #145 measured, on a
+// real creature, what happens when authoring ignores the second of those: 1,671 of 1,793 atoms failed
+// to compile after a round trip. So an expression's budget is genuinely finite. `qa(nx,ny)` spends ten
+// characters and one leaf pair. The composition it can stand for —
+// `0.31*Math.atan2(nx,ny)+0.69*Math.hypot(nx,ny)` — spends forty-five and a whole depth level. A
+// lineage authoring an operator is buying itself a shorter way to say something it has found worth
+// saying, which is the only way to get MORE meaning out of a budget that cannot grow.
+//
+// THE META-LANGUAGE IS DELIBERATELY SMALL, and small in a specific way: linear combinations and gated
+// versions of existing ops, nothing else. A descriptor is five numbers and NEVER a string, so nothing
+// here is compiled, parsed, or evaluated as text — no new Function, no new failure mode, no new attack
+// surface on the wire. Two forms:
+//     BLEND   k*A(x,y) + (1-k)*B(x,y)         — an operator interpolated between two operators
+//     GATE    (x cmp y) ? A(x,y) : B(x,y)     — an operator that decides which operator it is
+// A and B index UA_PRIM (the four arithmetic ops and the four HANDS functions), cmp indexes USER_CMP.
+// Every reachable descriptor is therefore total and finite by construction, and the isFinite guard
+// below is belt to that braces rather than the only thing between this and a NaN in the physics.
+//
+// LATE BINDING, WHICH IS THE PROPERTY THAT MAKES THE WHOLE THING SAFE. `qa` resolves through the
+// CARRIER's bank at call time; it is not baked in at compile time. Three consequences, all load-bearing:
+//   · redefining slot 0 changes what every atom naming `qa` computes without recompiling any of them.
+//     That is #174's "the alphabet changes meaning as the creature rewrites itself", one level down
+//     from senses to operators — the grammar opening rather than widening.
+//   · #161's expression-keyed compile cache stays correct, because the TEXT is unchanged. The 1.9 GB
+//     leak that fix was for cannot come back through this door.
+//   · an expression naming `qa` can never fail to compile or run — not on a peer, not at bank size 0,
+//     not after a cull. An empty slot falls back to UA_PRIM[slot], so the symbol ALWAYS means
+//     something. That is why this is a fallback rather than a zero: the fifth crossing (tab -> tab)
+//     fails on the RECEIVE side in silence (#153), and an undefined symbol arriving on the wire is
+//     precisely how it would fail here.
+const UA_PRIM=[
+  (x,y)=>x+y, (x,y)=>x-y, (x,y)=>x*y, (x,y)=>x/y,                                     // the four USER_OPS
+  (x,y)=>Math.min(x,y), (x,y)=>Math.max(x,y), (x,y)=>Math.atan2(x,y), (x,y)=>Math.hypot(x,y) // the four HANDS
+];
+const UA_CMPF=[(x,y)=>x<y,(x,y)=>x>y,(x,y)=>x<=y,(x,y)=>x>=y];  // parallel to USER_CMP, same order, so a descriptor's `c` reads the same on both sides
+const UA_OPBANK=8;          // qa..qh. A HARD cap: the invented-operator bank cannot bloat, only churn
+const UA_OP_BASE=0.10;      // this branch's base production mass — the same price as a built-in binary function, because that is what it is
+const UA_OP_GRACE=3;        // mutateGenome cycles before an unreferenced slot may be released (see the bank loop)
+const UA_OP_BIRTH_FLOOR=0.28; // LEAP 22 (#55)'s number, for LEAP 22's reason: mutateGenome runs ~18x per 6k ticks, so a rate-scaled probability is a coin landing tails, not a toll
+const UA_OP_RENT=0.25;      // instruction-equivalents per DEFINED slot per interaction — see the billing site in executeVM. The one hand-set number in #180 that nothing has measured, and it is named here so the next reader knows it is a guess
+// TWO NAMING CONSTRAINTS, both inherited from #174 and both checked rather than assumed:
+//   · digit-free. uaJitterConst's regex is exhaustive over this grammar only because `.toFixed(2)`
+//     constants are the sole source of digit-bearing tokens. `q0` would have silently broken the one
+//     small-step operator atoms have, exactly as `y0` would have.
+//   · no false match against UA_VAR_RE. In `qa` the 'a' has a word character immediately to its left,
+//     so \ba\b cannot match it, and 'q' appears in no other name this grammar emits. Same argument
+//     #174 made for ya..yh, and voice-test/grammar-test both hold it.
+const USER_OP_NAMES=["qa","qb","qc","qd","qe","qf","qg","qh"];
+const UA_OP_RE=/\b(?:qa|qb|qc|qd|qe|qf|qg|qh)\b/g;   // for COUNTING (stateful lastIndex — never .test() with this one)
+const UA_OP_TEST=/\b(?:qa|qb|qc|qd|qe|qf|qg|qh)\b/;  // for TESTING
+// Instrument state, and it lives OFF the genome — #131's rule and its reason: cloneGenome spreads the
+// genome and mutateChildGenome walks it with a Math.random() per numeric field, so a counter parked
+// there is silently mutated by the very thing it is measuring.
+let __uaOpFires=0;       // authored-operator evaluations since the last epoch flush
+let __uaOpFallbacks=0;   // times a named slot was empty and degraded to UA_PRIM — a nonzero here means expressions outlived the operators they name
+let __uaOpLog=[];        // per epoch: [tickEnd, definedSlots, evaluations, atomsNamingAnOperator]
+function uaOpEval(slot,x,y){
+  x=+x; y=+y;
+  if(!isFinite(x))x=0; if(!isFinite(y))y=0;
+  const bank=(typeof genome!=='undefined'&&genome)?genome.uaOps:null;
+  const d=(Array.isArray(bank)&&bank[slot])?bank[slot]:null;
+  // THE FALLBACK, not a zero. See the note above: this is the one line that makes `qa` total across
+  // every one of the five crossings, and returning 0 instead would have made a migrant's expressions
+  // silently mean nothing rather than mean something plainer.
+  if(!d){ __uaOpFallbacks++; const v0=UA_PRIM[slot&7](x,y); return isFinite(v0)?v0:0; }
+  __uaOpFires++;
+  const A=UA_PRIM[(d.a|0)&7], B=UA_PRIM[(d.b|0)&7];   // &7 rather than a clamp: any integer lands in range, so a drifted or wire-borne index cannot index off the end
+  let v;
+  if((d.p|0)===1) v=UA_CMPF[(d.c|0)&3](x,y)?A(x,y):B(x,y);
+  else { const k=isFinite(d.k)?(d.k<0?0:(d.k>1?1:d.k)):0.5; v=k*A(x,y)+(1-k)*B(x,y); }
+  return isFinite(v)?v:0;
+}
+// Bound into every compiled atom as qa..qh. Module-level consts, so uaCall passes eight existing
+// references and allocates nothing per call — the same reason `f` is uaCallF and not a closure.
+const uaOpQA=(x,y)=>uaOpEval(0,x,y), uaOpQB=(x,y)=>uaOpEval(1,x,y), uaOpQC=(x,y)=>uaOpEval(2,x,y), uaOpQD=(x,y)=>uaOpEval(3,x,y);
+const uaOpQE=(x,y)=>uaOpEval(4,x,y), uaOpQF=(x,y)=>uaOpEval(5,x,y), uaOpQG=(x,y)=>uaOpEval(6,x,y), uaOpQH=(x,y)=>uaOpEval(7,x,y);
+function uaOpCount(g){
+  const b=((g||((typeof genome!=='undefined')?genome:null))||{}).uaOps;
+  if(!Array.isArray(b))return 0;
+  let n=0; for(let k=0;k<UA_OPBANK;k++) if(b[k])n++; return n;
+}
+// WHAT COUNTS AS USE, for a thing with no uses counter. An operator is arithmetic inside somebody
+// else's expression; metering each evaluation per-slot would cost more than the arithmetic does. What
+// it has instead is REFERENCES — how many atoms in this bank actually name it. That is the honest
+// analogue of `uses`, it is exactly what the rent is being paid for, and it is one scan of the bank.
+function uaOpRefs(g){
+  const gg=g||((typeof genome!=='undefined')?genome:null);
+  const uas=gg&&gg.userAtoms; if(!Array.isArray(uas))return 0;
+  let n=0; for(const a of uas) if(a&&typeof a.expression==='string'&&UA_OP_TEST.test(a.expression))n++;
+  return n;
+}
+function uaOpSlotRefs(g){
+  const out=[0,0,0,0,0,0,0,0];
+  const gg=g||((typeof genome!=='undefined')?genome:null);
+  const uas=gg&&gg.userAtoms; if(!Array.isArray(uas))return out;
+  for(const a of uas){
+    if(!a||typeof a.expression!=='string')continue;
+    const ms=a.expression.match(UA_OP_RE); if(!ms)continue;
+    for(const m of ms){ const k=USER_OP_NAMES.indexOf(m); if(k>=0)out[k]++; }
+  }
+  return out;
+}
+function uaOpPick(g){                     // one uniform draw over the DEFINED slots; -1 if the bank is empty
+  const b=((g||((typeof genome!=='undefined')?genome:null))||{}).uaOps;
+  if(!Array.isArray(b))return -1;
+  const live=[]; for(let k=0;k<UA_OPBANK;k++) if(b[k])live.push(k);
+  return live.length?live[(Math.random()*live.length)|0]:-1;
+}
+function uaOpDraw(){ return {p:Math.random()<0.5?1:0, a:(Math.random()*8)|0, b:(Math.random()*8)|0,
+                             k:+Math.random().toFixed(3), c:(Math.random()*4)|0, age:0}; }
+// ONE small move, which is #103's rule and #103's reason: the one evolvable structure in this file
+// with no incremental operator was atom content, where "mutate" meant "discard and redraw", so
+// whatever structure selection had started to favour was erased along with whatever it had not. An
+// operator bank born with redraw-only mutation would repeat that exactly.
+function uaOpStep(d){
+  if(!d)return d;
+  const r=Math.random();
+  if(r<0.40)      d.k=__cl(finiteOr(d.k,0.5)+(Math.random()-0.5)*0.3,0,1);   // retune the blend
+  else if(r<0.60) d.a=(Math.random()*8)|0;                                   // swap one operand op
+  else if(r<0.80) d.b=(Math.random()*8)|0;
+  else if(r<0.92) d.c=(Math.random()*4)|0;                                   // re-aim the gate
+  else            d.p=(d.p|0)===1?0:1;                                       // blend <-> gate
+  return d;
+}
+function uaOpClean(d){
+  if(!d||typeof d!=='object')return null;
+  return {p:(d.p|0)===1?1:0, a:(d.a|0)&7, b:(d.b|0)&7,
+          k:__cl(finiteOr(d.k,0.5),0,1), c:(d.c|0)&3, age:Math.max(0,d.age|0)};
+}
+// The five production weights, defaulted so that every reader gets [1,1,1,1,1] when the gene has
+// never been created — which reproduces the pre-#180 distribution exactly. See uaGenTerm.
+function uaProdW(){
+  const w=(typeof genome!=='undefined'&&genome)?genome.uaProdW:null;
+  if(!__UA_PROD||!Array.isArray(w)||w.length<5)return [1,1,1,1,1];
+  return w;
+}
+function uaProdAt(i){ const v=uaProdW()[i]; return (typeof v==='number'&&isFinite(v)&&v>0)?(v>3?3:v):0; }
 function uaRich(){return (typeof globalThis==='undefined')||((globalThis.__RICH_GRAMMAR??1)|0)!==0;}
 function uaForage(){return (typeof globalThis==='undefined')||((globalThis.__FORAGE_EYES??1)|0)!==0;}
 // #145 — AN EXPRESSION THAT CAN BE AUTHORED MUST BE ONE THAT SURVIVES A ROUND TRIP.
@@ -973,10 +1193,23 @@ function uaGenTerm(depth){
     // already bounds recursion on its own) but so "always branch" and "never branch" both stay
     // reachable extremes rather than one collapsing to the other.
     const _rich0=uaRich();
-    const _base0=_rich0?0.82:0.72;
     const _sb=__cl(finiteOr((typeof genome!=='undefined'&&genome)?genome.uaStructBias:1,1),0.3,2.0);
-    const _scale0=Math.min(0.97,_base0*_sb)/_base0;
-    const _t1=0.45*_scale0, _t2=_t1+0.17*_scale0, _t3=_t2+0.10*_scale0, _t4=_t3+0.10*_scale0;
+    // #180 — THE PRODUCTION WEIGHTS THEMSELVES. Each branch's base mass is now scaled by its OWN
+    // heritable weight before uaStructBias scales the block. #107 could make a lineage branch more or
+    // less eagerly; it explicitly "cannot reorder which branch is favoured over the others". This can:
+    // a lineage may become one that BRANCHES rather than one that COMPOSES, or one that leans on the
+    // operators it invented over the ones it was given.
+    // [1,1,1,1,1] — the default every reader gets when the gene has never been created — reproduces
+    // the pre-#180 thresholds byte for byte, including the fifth branch, whose mass is zero until the
+    // lineage has actually authored an operator.
+    const _m1=0.45*uaProdAt(0), _m2=0.17*uaProdAt(1), _m3=0.10*uaProdAt(2), _m4=(_rich0?0.10:0)*uaProdAt(3);
+    const _m5=(__UA_OPS&&!__uaNoCall&&uaOpCount()>0)?UA_OP_BASE*uaProdAt(4):0;
+    const _sum=_m1+_m2+_m3+_m4+_m5;
+    // The 0.97 ceiling is #107's, unchanged and for #107's reason: a leaf must stay reachable, so that
+    // "always branch" and "never branch" are both reachable extremes rather than one swallowing the
+    // other. It is not a safety requirement — depth>0 already bounds recursion on its own.
+    const _scale0=_sum>0?Math.min(0.97,_sum*_sb)/_sum:0;
+    const _t1=_m1*_scale0, _t2=_t1+_m2*_scale0, _t3=_t2+_m3*_scale0, _t4=_t3+_m4*_scale0, _t5=_t4+_m5*_scale0;
     if(roll<_t1){
       // binary sub-expression (compositional growth)
       const a=uaGenTerm(depth-1),b=uaGenTerm(depth-1);
@@ -1008,6 +1241,15 @@ function uaGenTerm(depth){
       // HANDS — multi-arg function: min/max = SELECTION (threshold / piecewise), atan2 = DIRECTION, hypot = MAGNITUDE
       const bf=USER_BINFUNCS[(Math.random()*USER_BINFUNCS.length)|0];
       return bf+"("+uaGenTerm(depth-1)+","+uaGenTerm(depth-1)+")";
+    }
+    if(roll<_t5){
+      // #180 — AN OPERATOR THIS LINEAGE INVENTED. _m5 is already zero unless the channel binds qa..qh
+      // and the bank holds at least one, so reaching here means there is something to name.
+      // Suppressed on the rend channel by the same FACT/CEILING distinction #96 drew for `f`:
+      // rendCompile binds neither, so emitting one there is a guaranteed ReferenceError. That is the
+      // channel's scope, not a ceiling on what it may mean, and so it is not a gene.
+      const _qk=uaOpPick();
+      if(_qk>=0) return USER_OP_NAMES[_qk]+"("+uaGenTerm(depth-1)+","+uaGenTerm(depth-1)+")";
     }
   }
   const rich=uaRich();
@@ -1045,7 +1287,7 @@ function uaGenTerm(depth){
   const funcs=rich?USER_FUNCS_RICH:USER_FUNCS;                   // + round (quantize)
   const useFunc=Math.random()<0.35;
   const val=Math.random()<0.5
-    ? vars[(Math.random()*vars.length)|0]
+    ? uaPickVar(vars)                                  // #180: weighted by genome.uaVarW — see uaPickVar
     : (Math.random()*4-2).toFixed(2);
   if(useFunc){
     const fn=funcs[(Math.random()*funcs.length)|0];
@@ -1067,8 +1309,24 @@ function uaGenExpression(){ fired('atom.author');
   for(let dd=d; dd>=1; dd--){
     for(let attempt=0; attempt<4; attempt++){
       const t1=uaGenTerm(dd-1), t2=uaGenTerm(dd-1);
-      const op=USER_OPS[(Math.random()*USER_OPS.length)|0];
-      const e="("+t1+")"+op+"("+t2+")";
+      let e;
+      // #180 — AND REACHABILITY IS THE WHOLE RISK, so the top-level form gets the branch too.
+      // uaGenTerm's structural branches ALL require depth>0, and a fresh universe starts at
+      // uaMaxDepth=1, which calls uaGenTerm(0) twice. So without this line qa..qh would be
+      // unreachable until uaMaxDepth happened to evolve above 1 — and #179 is what that costs:
+      // opcode 236 was 0.23% of the mutation draw and appeared in ZERO of 1,424 live instructions
+      // across seventeen universes, so "the system can choose against verbs" was never true. It
+      // could not run one. A capability that is open in principle and closed in practice is the
+      // local maximum this swing exists to leave, not a version of leaving it.
+      // The draw is taken ONLY when the bank is non-empty, so an unauthored universe's RNG stream
+      // is untouched and the exact-revert control survives.
+      if(__UA_OPS&&!__uaNoCall&&uaOpCount()>0&&Math.random()<__cl(UA_OP_BASE*uaProdAt(4),0,0.9)){
+        const _qk=uaOpPick();
+        e=(_qk>=0?USER_OP_NAMES[_qk]:"Math.min")+"("+t1+","+t2+")";
+      } else {
+        const op=USER_OPS[(Math.random()*USER_OPS.length)|0];
+        e="("+t1+")"+op+"("+t2+")";
+      }
       if(e.length<=UA_EXPR_MAX)return e;
     }
   }
@@ -1121,6 +1379,45 @@ function uaJitterConst(expr){
 // \b-anchored regex over that closed vocabulary cannot false-match, so this needs no parser either.
 const UA_VAR_RE=/\b(?:ya|yb|yc|yd|ye|yf|yg|yh|nx|ny|nb|rl|rd|cr|fr|wr|at|a|b|u|c|d|m|s|t)\b/g; // #135: `at` before the single letters, or the alternation would match `a` first. #174: ya..yh first for the same reason
 const UA_ALL_VARS=["a","b","u","c","d","m","s","cr","fr","wr","at","nx","ny","t","nb","rl","rd","ya","yb","yc","yd","ye","yf","yg","yh"]; // #135: +at  #174: +the creature's own voices
+// ═══ #180 — WHICH SYMBOLS THIS LINEAGE SPEAKS ══════════════════════════════════════════════════
+// The leaf pool has always been drawn UNIFORMLY. Every atom in every universe therefore sampled the
+// twenty-five senses with exactly the probability we chose, forever, no matter what any of them was
+// worth to that lineage. genome.uaVarW is one weight per symbol: zero is a sense this lineage has
+// stopped speaking, high is one it has specialised in.
+//
+// There is no floor and there deliberately is not one. "This creature does not read the clock" is a
+// real strategy — a specialised sensorium is what a niche looks like from the inside — not a broken
+// invariant of the #85 kind, where a price crossing zero inverts into a subsidy. Nothing here is a
+// price. The bound is [0,4] because that is a range, not a guard.
+//
+// INDEXED BY NAME, NOT BY POSITION. The pool that reaches uaGenTerm is assembled at call time and its
+// composition depends on two knobs (uaRich, uaForage) — so a positional weight vector would silently
+// mean different things in different configurations, which is the same class of bug as an opcode index
+// meaning different things on two sides of a crossing. UA_VAR_IX resolves by name; anything not on the
+// canonical list (the rend channel's own vocabulary) weighs 1, i.e. uniform, i.e. unchanged.
+//
+// EXACTLY ONE Math.random() DRAW on both paths, weighted or not. The uniform fallback below is not a
+// convenience — it is what keeps the RNG stream identical when the gene has never been created, which
+// is what makes UA_VARW=0 a true exact-revert control rather than an approximate one. At all-ones the
+// weighted pick and the uniform pick agree everywhere except a measure-zero boundary.
+const UA_VAR_IX=(function(){ const m=Object.create(null); for(let i=0;i<UA_ALL_VARS.length;i++)m[UA_ALL_VARS[i]]=i; return m; })();
+function uaVarWeight(w,name){
+  const ix=UA_VAR_IX[name];
+  if(ix===undefined)return 1;                       // not a canonical leaf (rend channel) — unweighted
+  const v=w[ix];
+  return (typeof v==='number'&&isFinite(v)&&v>0)?v:0;
+}
+function uaPickVar(vars){
+  const r=Math.random();
+  if(!__UA_VARW||__uaVarPool)return vars[(r*vars.length)|0];
+  const w=(typeof genome!=='undefined'&&genome)?genome.uaVarW:null;
+  if(!Array.isArray(w))return vars[(r*vars.length)|0];
+  let sum=0; for(let i=0;i<vars.length;i++)sum+=uaVarWeight(w,vars[i]);
+  if(!(sum>0))return vars[(r*vars.length)|0];       // a lineage that zeroed EVERY symbol still has to say something
+  let pick=r*sum;
+  for(let i=0;i<vars.length;i++){ pick-=uaVarWeight(w,vars[i]); if(pick<=0)return vars[i]; }
+  return vars[vars.length-1];
+}
 function uaSwapVar(expr,re,pool){
   re=re||UA_VAR_RE; pool=pool||UA_ALL_VARS;
   const matches=expr.match(re);
@@ -1131,8 +1428,150 @@ function uaSwapVar(expr,re,pool){
   let seen=-1;
   return expr.replace(re,m=>(++seen===pick?to:m));
 }
+// ═══ #180 — HOW AN EXISTING ATOM ADOPTS AN INVENTED OPERATOR ════════════════════════════════════
+// THE GAP THIS CLOSES, and grammar-test.js found it rather than reasoning finding it: a universe
+// authored four operators in 3,000 ticks and ZERO atoms named one. Every path into qa..qh ran through
+// FRESH authoring — uaGenExpression's draw — so an operator could only ever be adopted by an atom
+// that did not exist yet, at roughly a ten percent rate, against an atom bank that turns over slowly.
+// A mature lineage would have invented eight operators and gone on speaking without them.
+//
+// That is #179 arriving a swing early, and by the same route: opcode 236 was reachable in principle
+// (0.23% of the mutation draw) and appeared in ZERO of 1,424 live instructions. "The system can
+// choose against it" is only true once the system can run it. So the fix is #179's fix — make the
+// capability reachable from where the population actually is — not a bigger draw probability.
+//
+// SWAPPING A BINARY HEAD IS A SAFE PARSER-FREE EDIT, by exactly uaSwapVar's argument one token up.
+// Every name in this closed set is followed by `(` and takes precisely two comma-separated arguments:
+// the four HANDS functions are 2-arg by definition (USER_BINFUNCS) and qa..qh are 2-arg by
+// construction (uaOpEval). So substituting one head for another preserves arity, balance and
+// validity without knowing anything about what is inside the parentheses. Nothing else in this
+// grammar emits `NAME(` with two arguments — `f(` takes three and is deliberately excluded, since
+// swapping it would drop an argument and change the expression's shape rather than its meaning.
+//
+// REVERSIBLE, which is the property that makes it an evolutionary step rather than a ratchet. The
+// pool contains the built-ins as well as the authored operators, so a lineage that adopted qc can
+// drop back to Math.hypot on the next step and selection gets to sort them against each other.
+const UA_BINHEAD_RE=/\b(?:Math\.min|Math\.max|Math\.atan2|Math\.hypot|qa|qb|qc|qd|qe|qf|qg|qh)\(/g;
+const UA_BINHEAD_TEST=/\b(?:Math\.min|Math\.max|Math\.atan2|Math\.hypot|qa|qb|qc|qd|qe|qf|qg|qh)\(/;  // the same set, without /g — a stateful lastIndex on a shared regex is its own bug class
+function uaSwapBinHead(expr){
+  if(!__UA_OPS)return expr;
+  const ms=expr.match(UA_BINHEAD_RE);
+  if(!ms||!ms.length)return expr;
+  // The replacement pool is the built-ins plus whatever THIS lineage has actually authored. An empty
+  // bank leaves the pool at the four built-ins, which is a legal step and a no-op net of the draw.
+  const pool=USER_BINFUNCS.slice();
+  const bank=(typeof genome!=='undefined'&&genome)?genome.uaOps:null;
+  if(Array.isArray(bank)) for(let k=0;k<UA_OPBANK;k++) if(bank[k])pool.push(USER_OP_NAMES[k]);
+  const pick=Math.floor(Math.random()*ms.length);
+  const to=pool[(Math.random()*pool.length)|0]+"(";
+  let seen=-1;
+  return expr.replace(UA_BINHEAD_RE,m=>(++seen===pick?to:m));
+}
+// ═══ #180 — THE VOCABULARY TRAVELS WITH THE WORD ════════════════════════════════════════════════
+// MEASURED, by this swing's own crossing row, on the first long run: germline 5 operators, population
+// 0. `atom.ops` came back STRANDED — authored, alive, and evolutionarily invisible — which is the
+// single most repeated bug in this file's history (#102, #130, #132b, #133b) arriving for the sixth
+// time in a sixth mechanism. cloneGenome copies the bank correctly, and that was never the problem:
+// the population's genomes were cloned BEFORE the germline had a bank, and nothing afterwards hands
+// one across. Atoms have seedAtomIntoParticle for exactly this and operators had nothing.
+//
+// So the operators ride with the expression that needs them, which is #141's rule ("the program
+// travels, the vocabulary it speaks does not") stated for the inside of a universe rather than the
+// wire. Called at every point where an atom's TEXT crosses into a genome that did not write it.
+//
+// NON-DESTRUCTIVE, and this is the one real decision here. A destination slot that is already defined
+// is LEFT ALONE, even though that means the arriving expression's `qa` will mean the resident's qa
+// rather than the sender's. The alternative — overwrite — silently redefines every atom the RESIDENT
+// already had naming that slot, which is #137's harm exactly. Between an immigrant that means
+// something slightly different and a resident whose existing atoms quietly change meaning underneath
+// it, the resident wins. Same late-binding trade `ya` has made since #174.
+function carryOpsForExpr(srcG,dstG,expr){
+  if(!__UA_OPS||!srcG||!dstG||typeof expr!=='string')return 0;
+  const src=srcG.uaOps; if(!Array.isArray(src))return 0;
+  const ms=expr.match(UA_OP_RE); if(!ms)return 0;
+  if(!Array.isArray(dstG.uaOps))dstG.uaOps=[];
+  let n=0;
+  for(const nm of ms){
+    const k=USER_OP_NAMES.indexOf(nm); if(k<0)continue;
+    const d=src[k]; if(!d)continue;
+    if(dstG.uaOps[k])continue;                        // the resident already speaks this slot
+    dstG.uaOps[k]={p:d.p|0,a:(d.a|0)&7,b:(d.b|0)&7,k:finiteOr(d.k,0.5),c:(d.c|0)&3,age:0};
+    n++;
+  }
+  if(n)fired('atom.opCarry');
+  return n;
+}
+// ═══ #180 — AND AN OPERATOR NOBODY CAN NAME IS AN OPERATOR NOBODY CAN JUDGE ══════════════════════
+// The second half of the same measurement. Counting the draws: mutateGenome runs ~18 times per 6,000
+// ticks and authors ~5 atoms in that window; the top-level operator form fires on about a tenth of
+// authoring draws. Expected operator-naming atoms per 6,000 ticks: roughly 0.4. Observed in the run
+// that found this: ZERO, with five operators standing and paying rent.
+//
+// That is #179's arithmetic to the digit — a 0.23% draw producing 0 of 1,424 — and this file has now
+// written the answer down twice: LEAP 22 (#55) for the atom pipeline ("on birth, immediately BIND the
+// atom and splice ONE GERMLINE call-site so the new primitive is reachable and selection can actually
+// judge it on a fair field") and #179 for the verbs. So an operator wires itself in at birth, once.
+//
+// It DECIDES NOTHING. One atom in the germline bank comes to name the new operator, and that atom
+// lives under the same overwrite, cull, credit and selection pressure as every other atom in the
+// bank — a lineage that cannot afford the operator loses the atom naming it, and then the operator
+// itself to the unreferenced release. What this removes is the impossibility, not the choice.
+//
+// TWO ROUTES, and the second one exists because the first is closed on exactly the universes that
+// need it most. A young bank's atoms are all `(t1)op(t2)` with leaf terms, so NOTHING in it has a
+// binary head to swap — the HANDS branch needs depth>0 and uaMaxDepth starts at 1. So when there is
+// nothing to edit, author something there is: one fresh atom whose top-level form is this operator,
+// through the same uaGenTerm the grammar always uses.
+function uaWireOpIntoBank(slot){
+  if(!__UA_OPS)return false;
+  const uas=genome.userAtoms; if(!Array.isArray(uas))return false;
+  const nm=USER_OP_NAMES[slot]; if(!nm)return false;
+  // (a) an existing atom with a binary head — the least invasive edit available, and reversible by
+  // the ordinary local step that made it possible.
+  const cand=[];
+  for(let i=0;i<uas.length;i++){ const a=uas[i];
+    if(a&&typeof a.expression==='string'&&UA_BINHEAD_TEST.test(a.expression))cand.push(i); }
+  if(cand.length){
+    const a=uas[cand[(Math.random()*cand.length)|0]];
+    let seen=-1;
+    const v=a.expression.replace(UA_BINHEAD_RE,mm=>(++seen===0?nm+"(":mm));
+    if(v!==a.expression&&v.length<=UA_EXPR_MAX){
+      a.expression=v; a.compiled=null; a.failed=false;
+      fired('atom.opWire');
+      return true;
+    }
+  }
+  // (b) nothing to edit — author one. Bound and call-sited by the same two lines the atom-birth
+  // block ends with, so this reaches the VM on the same terms every other authored atom does.
+  if(uas.length>=MAX_USER_ATOMS)return false;
+  const _d=__cl(Math.round(finiteOr(genome.uaMaxDepth,1)),1,UA_DEPTH_CAP);
+  const e=nm+"("+uaGenTerm(_d-1)+","+uaGenTerm(_d-1)+")";
+  if(e.length>UA_EXPR_MAX)return false;
+  uas.push({expression:e,compiled:null,failed:false,uses:0,age:0,alienHits:0,alienAttempts:0,creditTrace:0});
+  const _bos=genome.boundOpcodes;
+  if(Array.isArray(_bos)&&_bos.length<MAX_BOUND_OPCODES){
+    _bos.push(uas.length-1);
+    seedAtomIntoParticle(uas.length-1);              // and across the first crossing, like any other atom
+    if(Array.isArray(genome.vmProgram)&&genome.vmProgram.length<genome.vmMaxInstructions)
+      genome.vmProgram.splice((Math.random()*(genome.vmProgram.length+1))|0,0,
+        [CORE_OPCODES+_bos.length-1,(Math.random()*12)|0,(Math.random()*12)|0,(Math.random()-0.5)*0.6]);
+  } else if(uas.length>0) growAtomChain(genome,uas.length-1);
+  fired('atom.opWire');
+  try{ if(typeof wireAtomCallSites==='function')wireAtomCallSites(); }catch(_){}
+  return true;
+}
 function uaLocalStep(expr){
-  const v=Math.random()<0.5?uaJitterConst(expr):uaSwapVar(expr);
+  // #180: three small moves now, not two — and the third is the whole reason a mature lineage can
+  // adopt an operator at all. The split is gated, so UA_OPS=0 is byte-for-byte #103's two-way choice
+  // on the same single draw, and the exact-revert control this file keeps insisting on survives.
+  // NOTE what the third branch does when the bank is empty: it swaps one BUILT-IN head for another
+  // (Math.hypot -> Math.min). That is not an accident of the pool, it is the same kind of step
+  // uaSwapVar makes one token down — which sense feeds this position, held everything else fixed —
+  // applied to the operator position instead of the leaf. It was simply never available before.
+  let v;
+  if(__UA_OPS){ const r=Math.random();
+    v=r<0.45?uaJitterConst(expr):(r<0.90?uaSwapVar(expr):uaSwapBinHead(expr)); }
+  else v=Math.random()<0.5?uaJitterConst(expr):uaSwapVar(expr);
   // #145: a jitter that pushes past the round-trip budget is not an improvement, it is a future
   // truncation. Keep the original rather than author something the save cannot carry back.
   return (typeof v==='string'&&v.length<=UA_EXPR_MAX)?v:expr;
@@ -1188,7 +1627,7 @@ function uaCompile(atom){
   try{
     // Pe24: compiled function takes (a,b,u) — u is normalized self-usage count.
     // Old atoms with expressions only referencing a,b still compile fine; u is unused param.
-    const _fn=new Function("a","b","u","c","d","m","s","f","nx","ny","t","nb","rl","rd","cr","fr","wr","at","ya","yb","yc","yd","ye","yf","yg","yh","const r=("+atom.expression+");return isFinite(r)?r:0;"); // #135: +at  #174: +ya..yh. Older expressions never mention them and compile unchanged, so every saved creature still loads.
+    const _fn=new Function("a","b","u","c","d","m","s","f","nx","ny","t","nb","rl","rd","cr","fr","wr","at","ya","yb","yc","yd","ye","yf","yg","yh","qa","qb","qc","qd","qe","qf","qg","qh","const r=("+atom.expression+");return isFinite(r)?r:0;"); // #135: +at  #174: +ya..yh  #180: +qa..qh, the lineage's own operators. Older expressions never mention any of them and compile unchanged, so every saved creature still loads — the one failure here would brick every genome in the field, and grammar-test holds it.
     __uaCache(_e,_fn);
     atom.compiled=_fn;
     atom.failed=false;
@@ -1514,6 +1953,7 @@ function seedAtomIntoParticle(atomIdx){ fired('atom.seedIntoParticle');
   const _seedC=__EXPR_CREDIT?(__atomExprCredit.get(_a.expression)||0)*0.5:0;
   _g.userAtoms.push({expression:_a.expression,compiled:null,failed:false,uses:0,state:0,creditTrace:_seedC}); // own copy — compiled is per-genome
   _g.boundOpcodes.push(_g.userAtoms.length-1);
+  carryOpsForExpr(genome,_g,_a.expression);   // #180: the operators this expression speaks cross with it, or the carrier reads a plainer dictionary and nothing says so
   const _op=CORE_OPCODES+_g.boundOpcodes.length-1;
   const _prog=pProg[_tgt]||_g.vmProgram, _cap=_g.vmMaxInstructions||16;
   if(_prog&&_prog.length<_cap)_prog.splice((Math.random()*(_prog.length+1))|0,0,[_op,(Math.random()*12)|0,(Math.random()*12)|0,(Math.random()-0.5)*0.6]);
@@ -1553,6 +1993,7 @@ function attemptMemeTransfer(recv,donor){ fired('meme.transfer');
   const _seedCT=__EXPR_CREDIT?(__atomExprCredit.get(donorExpr)||0)*0.5:0;
   recv.userAtoms.push({expression:donorExpr,compiled:null,failed:false,uses:0,state:0,creditTrace:_seedCT});
   recv.boundOpcodes.push(recv.userAtoms.length-1);
+  carryOpsForExpr(donor,recv,donorExpr);      // #180: horizontal transfer carries the vocabulary too — same rule, second route
   const cap=recv.vmMaxInstructions||16;
   if(recv.vmProgram.length<cap){ // germline-style single call-site splice, same shape as the #38-arc atom pipeline
     recv.vmProgram.splice((Math.random()*(recv.vmProgram.length+1))|0,0,
@@ -1736,7 +2177,8 @@ function uaCall(atom,a,b){
     const _fr=(__ATOM_FRSENSE&&isFinite(__orgFitTraj))?__orgFitTraj:0; // #116: organism fitness trajectory (0 when sense off)
     const _wr=__ATOM_WRSENSE?Math.max(0,Math.min(1,(DIMS-3)/6)):0; // #126: world-richness — accumulated trait dimensionality (macro complexity the atom's own success helps grow, #125). 0 when sense off
     const r=atom.compiled(a,b,u,uaCtxC,uaCtxD,uaCtxM,s,uaCallF,uaCtxNx,uaCtxNy,uaCtxT,uaCtxNb,uaCtxRl,uaCtxRd,_cr,_fr,_wr,uaCtxAt,
-      __uaVoice[0],__uaVoice[1],__uaVoice[2],__uaVoice[3],__uaVoice[4],__uaVoice[5],__uaVoice[6],__uaVoice[7]); // #135: +at  #174: +the voices
+      __uaVoice[0],__uaVoice[1],__uaVoice[2],__uaVoice[3],__uaVoice[4],__uaVoice[5],__uaVoice[6],__uaVoice[7],
+      uaOpQA,uaOpQB,uaOpQC,uaOpQD,uaOpQE,uaOpQF,uaOpQG,uaOpQH); // #135: +at  #174: +the voices  #180: +the operators. Eight existing module-level references, so this allocates nothing per call
     atom.uses=prevUses+1;
     if(__ATOM_USE_POP&&atom.expression){
       if(__atomExprUses.size>5000){__atomExprUses.clear();__atomUseWindowStart=tick;} // bounded — a live counter, not an archive; #177 stamps the wipe
@@ -7144,6 +7586,17 @@ function flushEpoch(acc){
     __opReachLog.push([(acc.idx+1)*EPOCH_TICKS,reached,atoms.length,hit.size]);
     while(__opReachLog.length>MAX_EPOCHS)__opReachLog=__opReachLog.filter((_,i)=>i%2===0);
   }
+  // #180: the operator bank's instrument, on the same rule and downsampled the same way. Four
+  // columns, and the fourth is the one that matters: definedSlots says the lineage AUTHORED
+  // operators, atomsNamingAnOperator says its expressions actually SPEAK them. #179's whole finding
+  // was the gap between those two sentences, so the row records both rather than making the next
+  // reader infer one from the other.
+  {
+    firedN('atom.opFire',__uaOpFires); firedN('atom.opFallback',__uaOpFallbacks);
+    __uaOpLog.push([(acc.idx+1)*EPOCH_TICKS,uaOpCount(genome),__uaOpFires,uaOpRefs(genome)]);
+    __uaOpFires=0; __uaOpFallbacks=0;
+    while(__uaOpLog.length>MAX_EPOCHS)__uaOpLog=__uaOpLog.filter((_,i)=>i%2===0);
+  }
 
   // #130 OPEN-ENDEDNESS METER — see note above. Guarded, read-only on sim state, cheap (once/epoch).
   if((typeof globalThis==='undefined')||((globalThis.__OEE_METER??1)|0)!==0){
@@ -7590,6 +8043,18 @@ function cloneGenome(src){
     g.opStacks={};
     for(const k in src.opStacks){ const v=src.opStacks[k]; if(Array.isArray(v)&&v.length) g.opStacks[k]=v.slice(); }
   }
+  // #180: THE GRAMMAR IS HERITABLE STRUCTURE AND MUST BE DEEP-COPIED like everything above it.
+  // `{...src}` copies objects BY REFERENCE, so without these three lines one production-weight array,
+  // one vocabulary-weight array and one operator bank would be SHARED by the entire population, and no
+  // lineage could ever diverge its own grammar — the single most repeated bug in this file's history
+  // (#102, #130, #132b, #133b, and #155's opStacks two lines up). The failure mode is the quiet one:
+  // every counter moves, every test passes, and selection has nothing to act on.
+  // `age` CARRIES rather than resetting, unlike an atom's `uses`. It is not a record of success to be
+  // re-earned; it is the grace clock that stops birth and release from racing, and a child whose
+  // operator has been unreferenced for ten cycles inherits that fact.
+  g.uaProdW=Array.isArray(src.uaProdW)?src.uaProdW.slice():src.uaProdW;
+  g.uaVarW=Array.isArray(src.uaVarW)?src.uaVarW.slice():src.uaVarW;
+  g.uaOps=Array.isArray(src.uaOps)?src.uaOps.map(d=>d?{p:d.p|0,a:d.a|0,b:d.b|0,k:finiteOr(d.k,0.5),c:d.c|0,age:d.age|0}:null):src.uaOps;
   g.vmProgram=cloneProg(src.vmProgram);
   // alienHits/alienAttempts reset on clone, same as uses — a new lineage re-earns its own predictive
   // track record rather than inheriting the parent's (see SWING #46: ALIEN GRIP).
@@ -7672,6 +8137,18 @@ function mutateChildGenome(g){
   }
   g.vmProgram=inheritProg(g.vmProgram,g.vmMaxInstructions||16); // pass evolved cap so lineages that evolved larger programs don't have children truncated to the global default
   if(Array.isArray(g.objWeights))for(let i=0;i<4;i++)if(Math.random()<rate){const nx=g.objWeights[i]+(Math.random()-0.5)*0.06*scale;if(isFinite(nx))g.objWeights[i]=nx;}
+  // #180 — THE SECOND CROSSING. The walk above only touches NUMERIC fields, and all three of #180's
+  // structures are arrays, so without these lines the grammar would be germline-only: authored on
+  // `genome`, cloned identically into every child forever, and never diverged by the population that
+  // selection actually operates on. That is the parent->child failure inherit-test.js exists to catch,
+  // and it is silent — the arrays are present, they are heritable, and they are frozen.
+  // Steps are deliberately smaller than the germline's: a birth is a small move, a mutateGenome cycle
+  // (~every 333 ticks) is a large one.
+  if(Array.isArray(g.uaProdW))for(let i=0;i<g.uaProdW.length;i++)if(Math.random()<rate){
+    const nx=finiteOr(g.uaProdW[i],1)+(Math.random()-0.5)*0.2*scale; if(isFinite(nx))g.uaProdW[i]=__cl(nx,0,3); }
+  if(Array.isArray(g.uaVarW))for(let i=0;i<g.uaVarW.length;i++)if(Math.random()<rate){
+    const nx=finiteOr(g.uaVarW[i],1)+(Math.random()-0.5)*0.3*scale; if(isFinite(nx))g.uaVarW[i]=__cl(nx,0,4); }
+  if(Array.isArray(g.uaOps))for(let i=0;i<g.uaOps.length;i++)if(g.uaOps[i]&&Math.random()<rate)uaOpStep(g.uaOps[i]);
   return g;
 }
 const field=new Float32Array(FIELD_W*FIELD_H); // shared resource/signal field — writable environment
@@ -7936,6 +8413,7 @@ function encodeGenome(){
     EP:(genome.epochs||[]).slice(-MAX_EPOCHS),  // full-arc summary — spans the entire run
     oL:(oeeLog||[]).slice(-MAX_EPOCHS),         // #130 open-endedness meter: per-epoch activity log
     RCH:(__opReachLog||[]).slice(-MAX_EPOCHS),  // #176 [tickEnd, boundSlotsExecuted, bankSize] +#178 [, distinctAtomsReached] per epoch; pre-#178 rows are 3 long and stay that way
+    OPS:(__uaOpLog||[]).slice(-MAX_EPOCHS),     // #180 [tickEnd, definedSlots, evaluations, atomsNamingAnOperator] per epoch — the operator bank's own instrument, shipped in the same commit as the bank because a layer with no instrument is a layer nobody can falsify
     oN:oeeNovel|0,                               // #130 cumulative distinct innovations ever executed
     oP:oeePersist|0,                             // #130 cumulative innovations that survived the lag
     lv:(function(){try{const c=livenessCensus();return {n:c.never,r:c.rare.length,l:c.live.length,t:c.tick};}catch(e){return null;}})(), // #134 liveness census: which mechanisms have never run
@@ -7971,6 +8449,14 @@ function encodeGenome(){
     aup:genome.atomUseProtect===undefined?undefined:+(genome.atomUseProtect).toFixed(4), // #101: use-rank overwrite protection
     ait:genome.atomIdleTolerance===undefined?undefined:+(genome.atomIdleTolerance).toFixed(4), // #177: willingness to release an idle atom
     usb:genome.uaStructBias===undefined?undefined:+(genome.uaStructBias).toFixed(4), // #107: atom-grammar structural-branch bias (omitted if never created)
+    // #180: the grammar itself. Omitted when never created, so a run with the gates off writes a
+    // pre-#180 save byte for byte. An operator is five numbers plus its grace clock, written as a
+    // fixed-order array rather than an object — the bank is at most eight rows, and slot POSITION is
+    // the contract (`qa` is slot 0 in every expression naming it), so a released slot writes 0 and
+    // keeps its place instead of collapsing the ones after it.
+    upw:Array.isArray(genome.uaProdW)?genome.uaProdW.map(v=>+(+v).toFixed(3)):undefined,
+    uvw:Array.isArray(genome.uaVarW)?genome.uaVarW.map(v=>+(+v).toFixed(3)):undefined,
+    uop:Array.isArray(genome.uaOps)?genome.uaOps.map(d=>d?[d.p|0,(d.a|0)&7,(d.b|0)&7,+(+finiteOr(d.k,0.5)).toFixed(3),(d.c|0)&3,d.age|0]:0):undefined,
     rg:genome.reachGain===undefined?undefined:+(genome.reachGain).toFixed(4), // #117: authored-atom actuator authority (omitted if never created)
     anm:genome.atomNoveltyMix===undefined?undefined:+(genome.atomNoveltyMix).toFixed(4), // #120: novelty-vs-fitness weight on atom credit (omitted if never created)
     ecr:+(finiteOr(genome.effectComposeRate,0.35)).toFixed(4), // #133 verb composition rate
@@ -8248,6 +8734,7 @@ function decodeGenome(data){
     genome.epochs=Array.isArray(g.EP)?g.EP:[];
     oeeLog=Array.isArray(g.oL)?g.oL:[];          // #130 open-endedness meter (absent in pre-#130 saves → starts empty)
     __opReachLog=Array.isArray(g.RCH)?g.RCH:[];  // #176 (absent in pre-#176 saves → starts empty, which is honest: it was never measured)
+    __uaOpLog=Array.isArray(g.OPS)?g.OPS:[];     // #180 (same rule: absent means never measured, not measured as zero)
     oeeNovel=g.oN|0;
     oeePersist=g.oP|0;
     oeeVer=g.oV|0;                               // #131: 0 means the stored rows were written by v1
@@ -8298,6 +8785,10 @@ function decodeGenome(data){
     if(typeof g.aup==='number')genome.atomUseProtect=+g.aup;     // #101
     if(typeof g.ait==='number')genome.atomIdleTolerance=+g.ait;  // #177 (absent in pre-#177 saves → undefined → reads 0 → the old cull, which is the correct inheritance)
     if(typeof g.usb==='number')genome.uaStructBias=+g.usb;       // #107
+    // #180 (absent in pre-#180 saves → left undefined → every reader's default → the pre-#180 engine)
+    if(Array.isArray(g.upw))genome.uaProdW=g.upw.map(v=>+v);
+    if(Array.isArray(g.uvw))genome.uaVarW=g.uvw.map(v=>+v);
+    if(Array.isArray(g.uop))genome.uaOps=g.uop.map(r=>Array.isArray(r)?{p:(r[0]|0)===1?1:0,a:(r[1]|0)&7,b:(r[2]|0)&7,k:isFinite(+r[3])?+r[3]:0.5,c:(r[4]|0)&3,age:r[5]|0}:null);  // `isFinite(+k)?:0.5` and not `+k||0`: a blend weight of exactly ZERO is meaningful (pure B), so a missing field must not be able to arrive looking like one
     if(typeof g.rg==='number')genome.reachGain=+g.rg;            // #117
     if(typeof g.anm==='number')genome.atomNoveltyMix=+g.anm;     // #120
     if(typeof g.ecr==='number')genome.effectComposeRate=+g.ecr;  // #133
@@ -8533,6 +9024,27 @@ function sanitizeGenome(){
   genome.effectSenseRate=__cl(finiteOr(genome.effectSenseRate,0.25),0,0.9);                                   // #139
   genome.somaRepair=__cl(finiteOr(genome.somaRepair,0),0,SOMA_REPAIR_MAX);                                    // #139c: same bounds mutateGenome uses
   genome.lifespanBias=__cl(finiteOr(genome.lifespanBias,1),0.15,6.0);                                         // #139c
+  // #180 — the third crossing (save -> load). CLAMP IF PRESENT, NEVER CREATE: the same rule #97 set
+  // for rendMaxDepth, and for the same reason — creating a gene here would shift the RNG stream for
+  // every run that ever loaded a save. Missing means "this lineage never evolved a grammar", and the
+  // readers' defaults ([1,1,1,1,1], uniform, empty bank) reproduce the pre-#180 engine exactly, which
+  // is the correct inheritance for a pre-#180 save.
+  // The `while(...push(1))` tails are forward-compat, not padding: if a later swing adds a sense to
+  // UA_ALL_VARS, every existing save extends with the NEUTRAL weight rather than dropping the new
+  // symbol out of the alphabet or reading undefined as zero.
+  if(genome.uaProdW!==undefined){
+    genome.uaProdW=(Array.isArray(genome.uaProdW)?genome.uaProdW:[]).slice(0,5).map(v=>__cl(finiteOr(v,1),0,3));
+    while(genome.uaProdW.length<5)genome.uaProdW.push(1);
+  }
+  if(genome.uaVarW!==undefined){
+    const _vn=UA_ALL_VARS.length;
+    genome.uaVarW=(Array.isArray(genome.uaVarW)?genome.uaVarW:[]).slice(0,_vn).map(v=>__cl(finiteOr(v,1),0,4));
+    while(genome.uaVarW.length<_vn)genome.uaVarW.push(1);
+  }
+  if(genome.uaOps!==undefined){
+    const _ob=Array.isArray(genome.uaOps)?genome.uaOps:[];
+    genome.uaOps=[]; for(let _k=0;_k<UA_OPBANK;_k++)genome.uaOps[_k]=uaOpClean(_ob[_k]);   // slot order is the contract — position is preserved, holes stay holes
+  }
   if(genome.atomRecombRate!==undefined)genome.atomRecombRate=__cl(finiteOr(genome.atomRecombRate,0.4),0,0.9);  // #127
   if(genome.atomReproRate!==undefined)genome.atomReproRate=__cl(finiteOr(genome.atomReproRate,0.5),0,0.9);     // #128
   if(genome.atomEligDecay!==undefined)genome.atomEligDecay=__cl(finiteOr(genome.atomEligDecay,0.6),0.3,0.9);   // #128
@@ -14355,6 +14867,24 @@ function mutateGenome(){ fired('genome.mutate');
   // declaring it in the genome literal would shift the RNG stream for every run whether or not anything
   // reads it. Not gated dormant — same call as #101/#103: the system gets the option, live.
   if(__UA_STRUCT)    genome.uaStructBias=__cl(maybe(finiteOr(genome.uaStructBias,1),0.3,2.0,0.05),0.3,2.0);         // #107: how eagerly the atom grammar branches — the system's call
+  // #180: and the FIVE weights uaStructBias can only scale as a block. Lazily created for #97's
+  // reason, which is the same reason rendMaxDepth/intStepBias/atomUseProtect/uaStructBias are:
+  // declaring them in the genome literal would shift the RNG stream for every run whether or not
+  // anything reads them, and that would destroy the exact-revert control this file keeps insisting on.
+  // Seeded all-ones — the pre-#180 distribution exactly — and free from there.
+  if(__UA_PROD){
+    if(!Array.isArray(genome.uaProdW)||genome.uaProdW.length!==5)genome.uaProdW=[1,1,1,1,1];
+    for(let _k=0;_k<5;_k++) if(Math.random()<rate)
+      genome.uaProdW[_k]=__cl(finiteOr(genome.uaProdW[_k],1)+(Math.random()-0.5)*0.3*scale,0,3);
+  }
+  // #180: one weight per leaf symbol — which of its twenty-five senses this lineage actually speaks.
+  // Seeded all-ones, which IS the uniform draw uaGenTerm has always made, so a run that never mutates
+  // these authors exactly what it authored before.
+  if(__UA_VARW){
+    if(!Array.isArray(genome.uaVarW)||genome.uaVarW.length!==UA_ALL_VARS.length)genome.uaVarW=UA_ALL_VARS.map(()=>1);
+    for(let _k=0;_k<genome.uaVarW.length;_k++) if(Math.random()<rate)
+      genome.uaVarW[_k]=__cl(finiteOr(genome.uaVarW[_k],1)+(Math.random()-0.5)*0.4*scale,0,4);
+  }
   // #117: REACH actuator gain — how much authority authored atoms have over the conserved actuators.
   // Fixed at 0.2 by fiat since REACH shipped (#48); now a lineage-level trait seeded at exactly that,
   // evolving in [0,1] (up to 5× the old authority, or down toward mute). Lazily created and gated like
@@ -14682,6 +15212,50 @@ function mutateGenome(){ fired('genome.mutate');
     // ReferenceError on every one, and mutateGenome died there. See the note at the old site.
     recordEvent('ua_birth',{expr:String(expression).slice(0,48),n:genome.userAtoms.length},600);
     try{ if(typeof wireAtomCallSites==='function')wireAtomCallSites(); }catch(e){} // LEAP 21: reachable immediately, not at the next 120-tick boundary
+  }
+
+  // ═══ #180 — THE OPERATOR BANK: birth, drift, and release ══════════════════════════════════════
+  // Deliberately the same shape as the atom bank above and the verb bank below, because it is the same
+  // kind of thing: a small heritable structure that costs rent and is kept only if it earns it. What
+  // it is NOT is a knob — nothing here decides whether invented operators are good, only whether THIS
+  // one survived. See the block above uaOpEval for what a descriptor may be.
+  //
+  // BIRTH IS FLOORED, for the reason LEAP 22 (#55) measured and #132 restated after repeating the
+  // mistake: mutateGenome runs about eighteen times per 6,000 ticks, so a rate-scaled probability is
+  // not a toll, it is a coin landing tails. #55's own words — "a 2% floor on an event that happens 18
+  // times is not a floor, it is a rounding error". At 0.28 a universe authors its first operator in
+  // the first few thousand ticks, which is what makes the rest of this measurable at all.
+  //
+  // RELEASE IS ON REFERENCES, not on a uses counter, and uaOpRefs explains why there is no counter.
+  // GRACE exists because birth and release would otherwise race: a newly authored operator has zero
+  // references BY CONSTRUCTION — the grammar cannot emit a symbol before the slot exists — so without
+  // UA_OP_GRACE cycles of protection the bank could never hold anything long enough to be named. The
+  // atom cull's age>2 is the same guard for the same reason.
+  //
+  // A RELEASED SLOT IS NULLED, NOT SPLICED. Slot identity is the whole contract: `qa` means slot 0 in
+  // every expression that has ever named it, in this genome and in every clone and migrant of it.
+  // Splicing would renumber the bank underneath live expressions — #137's lesson, one bank over.
+  if(__UA_OPS){
+    if(!Array.isArray(genome.uaOps))genome.uaOps=[];
+    const _oref=uaOpSlotRefs(genome);
+    let _odef=0; for(let _k=0;_k<UA_OPBANK;_k++) if(genome.uaOps[_k])_odef++;
+    for(let _k=0;_k<UA_OPBANK;_k++){
+      const _d=genome.uaOps[_k]; if(!_d)continue;
+      _d.age=(_d.age|0)+1;
+      if(Math.random()<rate*0.3){ uaOpStep(_d); fired('atom.opDrift'); }
+      else if(_oref[_k]===0&&(_d.age|0)>UA_OP_GRACE&&Math.random()<rate*0.5){
+        genome.uaOps[_k]=null; _odef--; fired('atom.opCull');
+        recordEvent('uaop_release',{slot:_k,n:_odef},600);
+      }
+    }
+    if(_odef<UA_OPBANK&&Math.random()<Math.max(UA_OP_BIRTH_FLOOR,rate*0.15)){
+      for(let _k=0;_k<UA_OPBANK;_k++) if(!genome.uaOps[_k]){
+        genome.uaOps[_k]=uaOpDraw(); fired('atom.opAuthor'); _odef++;
+        recordEvent('uaop_birth',{slot:_k,n:_odef},600);
+        uaWireOpIntoBank(_k);   // #180: reachable at birth, not at the next rare draw — see the note there
+        break;
+      }
+    }
   }
 
   // ═══ #132 — the VERB bank: birth, drift, and culling ═══════════════════════════════════════════
@@ -16422,7 +16996,22 @@ function executeVM(i,j,sim,d){
   // exactly what one more instruction would have cost — and exempt from the over-length surcharge, on
   // the same reasoning that exempts op22 above. Stacking buys reach, never a discount.
   const _stack=stackToll(prog,nInst);
-  const totalCost=(nInst+_stack+_over16*(COMPLEXITY_TOLL-1))*genome.metabolicCost;
+  // #180 — STANDING RENT ON INVENTED MACHINERY, which is the hard cost on complexity this layer
+  // ships with rather than after. An authored operator is NOT billed per evaluation: it is arithmetic
+  // inside an atom, and arithmetic inside an atom has never been metered here — metering it would
+  // cost more than it computes and would price the invented ops above the built-in ones they are made
+  // of, which is #54's "three leaps strangling a fourth" waiting to happen. What is billed is the
+  // BANK: each DEFINED slot, every interaction, whether or not anything names it. That puts the cost
+  // exactly where bloat would be — on standing structure — and it means an operator nothing speaks is
+  // a pure drain that selection can see. Same exemption from the over-length surcharge that op22 and
+  // the chain toll get, and the same sentence justifies it: inventing an operator buys reach, never
+  // a discount.
+  // UA_OP_RENT is a quarter of an instruction because standing structure is cheaper than running
+  // structure but must not be free; a full bank of eight then costs about two instructions against a
+  // typical program of sixteen. That ratio is a judgement, it is the only unmeasured number in #180,
+  // and it is named as one here and in the notes rather than buried.
+  const _opRent=__UA_OPS?uaOpCount()*UA_OP_RENT:0;
+  const totalCost=(nInst+_stack+_opRent+_over16*(COMPLEXITY_TOLL-1))*genome.metabolicCost;
   amp[i]-=totalCost;amp[j]-=totalCost;
 
   for(let ip=0,_vs=0;ip<nInst&&_vs<nInst*2;ip++,_vs++){
@@ -22570,6 +23159,9 @@ __USE_PROTECT=(typeof globalThis==='undefined')||((globalThis.__USE_PROTECT??1)|
 __ATOM_USE_POP=(typeof globalThis==='undefined')||((globalThis.__ATOM_USE_POP??1)|0)!==0; // #102: default ON. This is a REPAIR, not a treatment — the off-path exists as a CONTROL (and as the revert), not as a gate. Force off with ATOM_USE_POP=0
 __ATOM_JITTER=(typeof globalThis==='undefined')||((globalThis.__ATOM_JITTER??1)|0)!==0; // #103: default ON — live and unmeasured, by deliberate choice; see the flag comment. Force off with ATOM_JITTER=0
 __UA_STRUCT=(typeof globalThis==='undefined')||((globalThis.__UA_STRUCT??1)|0)!==0; // #107: default ON — live and unmeasured; see the flag comment. Force off with UA_STRUCT=0
+__UA_PROD=(typeof globalThis==='undefined')||((globalThis.__UA_PROD??1)|0)!==0;   // #180: default ON. Force off with UA_PROD=0
+__UA_VARW=(typeof globalThis==='undefined')||((globalThis.__UA_VARW??1)|0)!==0;   // #180: default ON. Force off with UA_VARW=0
+__UA_OPS=(typeof globalThis==='undefined')||((globalThis.__UA_OPS??1)|0)!==0;     // #180: default ON. Force off with UA_OPS=0 — and OFF is a true exact-revert, not an approximation: with the gate down no gene is created, no array exists, no extra Math.random() is drawn on any path, and the grammar's thresholds are the pre-#180 constants
 __FORAGE_ON=(typeof globalThis==='undefined')||((globalThis.__FORAGE_EYES??1)|0)!==0; // resolve FORAGE once; gates the resource-sense computation in uaSetEyes
 __DECIDE_ON=(typeof globalThis==='undefined')||((globalThis.__DECIDE??1)|0)!==0; // resolve DECISION GAIN once; gates confidence accrual + commitment scaling
 __DECIDE_REAL=(typeof globalThis==='undefined')||((globalThis.__DECIDE_REAL??1)|0)!==0; // resolve DECIDE-FROM-REAL once; gates real-winner physics adoption
