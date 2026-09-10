@@ -1778,3 +1778,80 @@ three carries a flag — selection already holds a finer dial on each. See OEE-N
 **Standing count of failed predictions this session: 10, three of them mine.** Three designs failed on
 their *premises* rather than their statistics (two-knob discriminator, "never fires" from n=4, sign
 contrast through a sign-erasing coefficient).
+
+---
+
+## THE SUBSTRATE LAYERS (#181-#186)
+
+#180 made the atom grammar heritable. #181-#185 do the same to the four remaining places the rules
+were constants; #186 is the batch's own repairs. Every layer follows the same contract, and the
+contract is the thing to read before touching any of them: **a gene lazily created under its own
+knob, seeded at the value that reproduces the previous engine, clamped in sanitizeGenome (clamp if
+present, never create), written to the save only when it exists, deep-copied in cloneGenome, given a
+CROSSING_DECLARED row, given LIVENESS_DECLARED names, and charged rent on the executeVM billing line
+if it is standing structure.**
+
+| layer | genes | knob | rent |
+|---|---|---|---|
+| #181 compiler output stage | `uaFoldMode` 0-3, `uaFoldK` | `UA_FOLD` | `UA_FOLD_RENT` 0.5 while non-default |
+| #182 major transitions | cluster `repro`/`alloc`/`allocRate`/`credit`, `autonomyCede` | `XION`, `XION_LEVELS` | none — allocation is conserved, not consumed |
+| #183 physics | `cellScale`, `rxSelf`, `rxCross` + `LAW_DECLARED` | `PHYS`, `LAWMUT` | amplitude, charged per law proposal |
+| #184 measurement loop | `probes[4]`, `oeeW[4]` | `PROBE`, `OEE_BONUS` | `PROBE_RENT` 0.15 per PROMOTED probe |
+| #185 meta-population | `demeCount`, `demeFlow`, `netLawRate`, `netLawReceptivity` | `DEME`, `UPLASMID` | none |
+
+**The fold is part of the compiled code's identity (#181).** `__uaCode` is keyed by expression text
+because the compiled function is pure — that is what #161's 1.9 GB fix rests on. A heritable wrapper
+breaks it, so the key is `expression + uaFoldKey(mode,k)`. Anything that adds a second compile-time
+genome dependency must extend that key or two lineages will share one function.
+
+**`ATTENTION_GAIN` is a `let` and must stay one.** `LAW_DECLARED` names it as a mutable law; as a
+`const` its setter threw into the law machinery's own try/catch and the row silently never worked.
+Two of the three rows write the GENOME as well as the global (`fieldDecay`, `fieldDiffuse`) because
+those are re-derived in sanitizeGenome AND mutateGenome — a law that writes only the live value is
+undone within a few hundred ticks and the probation verdict measures a constant that already snapped
+back. `substrate-test` checks every row is settable and restores.
+
+**`cellScale` narrows only, [0.4, 1.0], and the ceiling is not a preference.** The neighbour grid is
+built on `CELL` and never offers a pair further apart, so a scale above 1 would be a gene whose upper
+half does nothing — variance spent for no signal.
+
+**Promoted probes only (#184).** `pa`..`pd` are on `UA_ALL_VARS` (last, for `UA_VAR_RE`'s
+order-sensitivity, the same rule as `ya`..`yh` and `qa`..`qh`) but the GENERATOR is offered only the
+promoted ones. An unpromoted probe's symbol reads a constant zero and filling the alphabet with those
+is #179's failure in its purest form. A probe's record (`n`/`hit`) survives a save — a reload that
+dropped it would silently demote every earned sense — but an outstanding claim (`pendTick`) does not,
+because it belongs to the timeline that made it.
+
+**Deme tags are DERIVED from position, never stored.** That is what makes allopatry reconnectable:
+lowering `demeCount` merges the pools on the next tick with nothing to migrate or garbage-collect.
+The barrier gates reproduction (both spawn sites) and horizontal transfer, NOT interaction.
+
+### #186 — the germline-to-population crossing, stated generally
+
+The bug the crossing rows caught for the seventh time, and the general form, because it will happen
+again to whoever adds the next gene:
+
+> `genome` is the self and `mutateGenome` authors on it. `pGenome[i]` descends from
+> `pGenome[parent]`. The only routes from the germline to the population are a parentless spawn (a
+> seed or a post-extinction reboot) and the explicit seeding functions. **So a gene created on the
+> germline after the population exists reaches that population only when the world dies** — and in a
+> healthy world, which does not die, the two diverge permanently.
+
+`seedSubstrateIntoParticle()` is that route for #181-#185's genes, called once per `mutateGenome`,
+into ONE random living particle. Adding a gene to any of those layers means adding a line there.
+The probe bank crosses WITHOUT its record, deliberately: a promotion is earned against a particular
+carrier's fitness history, and handing a fresh carrier someone else's hit rate is the one way that
+mechanism could lie.
+
+**And a bank that crosses still has to be EXERCISED.** `scoreProbes` runs in the self's context, so
+the first version scored the germline and nothing else — every population probe crossed and
+accumulated zero claims. One random carrier per tick is now scored with `genome` repointed and
+restored in a `finally` (`uaCall`, `uaCompile` and `probePromoted` all read the ambient genome).
+That is #102's lesson — "credit measured a pool selection never saw" — in a fifth mechanism.
+
+**Two instrument defects worth remembering as patterns.** `level.vanished` fired on the STATE rather
+than the transition (146 times in 12,000 ticks, because `forest` reads 0 most of a run) — a census
+that reports a constant as an event is worse than no census. And `xion.fuse` fired 296 times in a run
+where `xion.bud` and `xion.fission` fired zero, because fusion faced a weaker gate than division:
+**a mode comparison where the modes face different gates is a subsidy, not a comparison**, and
+selection would have read it as fusion being better rather than cheaper.

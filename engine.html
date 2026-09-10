@@ -268,6 +268,72 @@ let __UA_STRUCT=true;
 let __UA_PROD=true;  // #180: five INDEPENDENT production weights (genome.uaProdW). Force off with UA_PROD=0
 let __UA_VARW=true;  // #180: a heritable weight per leaf symbol (genome.uaVarW) — which senses this lineage speaks. Force off with UA_VARW=0
 let __UA_OPS=true;   // #180: the authored-operator bank, qa..qh (genome.uaOps). Force off with UA_OPS=0
+let __UA_FOLD=true;  // #181: the COMPILER's output stage is heritable (genome.uaFoldMode/uaFoldK) - see uaFoldBody. Force off with UA_FOLD=0
+// === #182 - MAJOR TRANSITIONS AS FIRST-CLASS, EVOLVABLE EVENTS =================================
+// This engine has had clusters since Pe22 and they were always an AGGREGATE: a flood-fill over
+// proximity, handed a program and a few heritable dials. Three things were missing before a cluster
+// could be an INDIVIDUAL rather than a statistic, and all three are what "major transition" means:
+//   - it must reproduce in a mode of its own choosing, not only by the one route we wrote (budding);
+//   - it must allocate resource among its parts by a rule that is itself heritable;
+//   - and the BOUNDARY must be porous - a particle must be able to surrender autonomy to it, and
+//     take it back, under selection rather than by fiat.
+// Plus the instrument: which levels currently exist, how long they persist, and a credit channel per
+// level, so a new level of selection appearing is something the file can SAY rather than assume.
+let __XION=true;      // #182: cluster reproduction modes, heritable allocation, porous autonomy. Force off with XION=0
+let __XION_LEVELS=true; // #182: the level census and per-level credit channel. Force off with XION_LEVELS=0
+// === #183 - THE PHYSICS CO-EVOLVES ==============================================================
+// Three things were fixed by fiat and are the hardest ceiling in this engine, because no amount of
+// content evolution can get past a constant:
+//   - the INTERACTION RADIUS. CELL=55 decides who can ever affect whom. A lineage that would do
+//     better as a long-range sensor or a tight cell had no way to become one.
+//   - the FIELD's own chemistry. There are six fields and every one of them decays and diffuses at a
+//     rate the file chose; a lineage can write INTO them and cannot change what happens next.
+//   - and the GLOBAL constants, which nothing has ever been able to touch, including #129's
+//     COSMOS_LAW, which moves values inside ranges we set rather than proposing new ones.
+// #183 opens all three, in ascending order of how much they can break:
+//   genome.cellScale     per-lineage interaction radius, applied where CELL is read for that particle
+//   genome.rxSelf/rxCross  a two-channel reaction coefficient pair - the lineage's own local chemistry
+//   attemptLawMutation() a RARE, COSTLY, GLOBAL perturbation of one declared constant, which the
+//                        whole world is then selected on and which REVERTS if viability drops
+// The third is the one that needs the guard rail, and it has one: a law mutation is a proposal held
+// on probation against a measured population window, and a proposal that loses is undone.
+let __PHYS=true;      // #183: per-lineage interaction radius and local chemistry. Force off with PHYS=0
+let __LAWMUT=true;    // #183: rare global law mutations on probation. Force off with LAWMUT=0
+// === #184 - THE MEASUREMENT LOOP CLOSES ========================================================
+// This engine has excellent instruments and every one of them is MINE. Liveness, crossing, reach,
+// the OEE meter, grip, the level census - all authored by the author, all fixed. A system that can
+// invent new kinds of entity and cannot invent a way to LOOK at itself is still being watched from
+// outside, which is the last place the substrate is closed.
+// Two halves, and they are different mechanisms:
+//   PROBES  a lineage authors short diagnostic expressions in its own grammar, each scored against
+//           what actually happens NEXT. A probe that predicts gets PROMOTED into the sensing set -
+//           its output becomes a live grammar symbol (pa..pd) that every atom can then read. That is
+//           the system growing its own senses out of its own successful predictions.
+//   BONUS   the open-endedness proxies stop being read-only. Each has an EVOLVABLE weight by which
+//           it contributes to fitness, seeded at zero, and the population discovers which of them
+//           correlate with its own survival. The metric is not hard-coded as a target; the WEIGHT on
+//           each candidate metric is a gene, which is the difference between selecting for novelty
+//           and letting a lineage decide whether novelty is worth anything to it.
+let __PROBE=true;     // #184: self-authored diagnostics promoted into the grammar (pa..pd). Force off with PROBE=0
+let __OEE_BONUS=true; // #184: evolvable weights on the open-endedness proxies. Force off with OEE_BONUS=0
+// === #185 - THE FIELD OF TABS BECOMES A META-POPULATION ========================================
+// The tab network is the most powerful thing in this engine and it is structurally FLAT: nine or
+// twenty-seven universes on one channel, every one of them a peer of every other, all of them
+// sharing one gene pool through migration. Three things were missing before that field could be a
+// meta-population rather than a set of parallel runs:
+//   DEMES     isolation INSIDE a universe. Allopatry needs a barrier, and there was none - every
+//             particle could breed with every other, so a universe could only ever hold one gene
+//             pool no matter how large it got. A heritable deme count plus a heritable inter-deme
+//             migration rate gives real allopatry that can LATER RECONNECT, because the migration
+//             rate is a gene and can rise again.
+//   ISOLATION receptivity at the universe level was one number (netReceptivity) applied to every
+//             kind of packet. A universe could not be open to migrants and closed to law changes,
+//             which is precisely the distinction that matters once laws can travel.
+//   PLASMIDS  a packet type that carries LAWS and GRAMMARS rather than programs. This is the
+//             universe-level analogue of the plasmids particles already trade, and it is what makes
+//             the field a population of worlds: a world can inherit another world's physics.
+let __DEME=true;      // #185: heritable isolation inside a universe. Force off with DEME=0
+let __UPLASMID=true;  // #185: universe-level plasmids carrying laws and operator banks. Force off with UPLASMID=0
 // Highest alienGrip among a genome's BOUND atoms, tie-broken by uses so a bank with no scored atom
 // behaves exactly as before. Returns -1 if there is nothing bound.
 // Returns -1 unless some bound atom has ACTUAL grip (>= ALIEN_GRIP_MIN_ATTEMPTS attempts and a non-zero
@@ -331,11 +397,36 @@ function validNetworkPayload(type,data){
       // A row is either 0 — a released slot, which must keep its position — or [p,a,b,k,c]. Every
       // field is an index into a fixed table, so a hostile peer's worst case is an operator we would
       // have authored ourselves; there is no string here and therefore nothing to compile.
+      // #181: the compiler stage, bounds READ from the engine (#153's rule) rather than restated
+      (!data.fd||(Array.isArray(data.fd)&&data.fd.length>=2&&
+        finitePacketNumber(data.fd[0],0,UA_FOLD_MODES-1)&&finitePacketNumber(data.fd[1],0.05,8)))&&
       (!data.uo||(Array.isArray(data.uo)&&data.uo.length<=UA_OPBANK&&
         data.uo.every(r=>r===0||(Array.isArray(r)&&r.length>=5&&
           finitePacketNumber(r[0],0,1)&&finitePacketNumber(r[1],0,UA_PRIM.length-1)&&
           finitePacketNumber(r[2],0,UA_PRIM.length-1)&&finitePacketNumber(r[3],0,1)&&
           finitePacketNumber(r[4],0,UA_CMPF.length-1)))));
+  }
+  // === #185 - THE UNIVERSE-LEVEL PLASMID ========================================================
+  // Particles have traded plasmids since Pe22. This is the same idea one level up: a packet that
+  // carries a WORLD's laws and a world's operator bank rather than a program. It is what makes the
+  // field a population of worlds instead of a set of parallel runs - a universe can inherit another
+  // universe's physics, and a physics that works can spread across the field faster than any world
+  // could rediscover it.
+  // Every bound is READ from the engine (#153's rule), every field is an index or a bounded scalar,
+  // and there is no string anywhere in it - so the worst a hostile peer can send is a law this world
+  // could have proposed itself and an operator bank it could have authored itself.
+  if(type==='uplasmid'){
+    return data&&typeof data==='object'&&
+      (!data.law||(Array.isArray(data.law)&&data.law.length>=2&&
+        finitePacketNumber(data.law[0],0,LAW_DECLARED.length-1)&&
+        typeof data.law[1]==='number'&&isFinite(data.law[1])))&&
+      (!data.ops||(Array.isArray(data.ops)&&data.ops.length<=UA_OPBANK&&
+        data.ops.every(r=>r===0||(Array.isArray(r)&&r.length>=5&&
+          finitePacketNumber(r[0],0,1)&&finitePacketNumber(r[1],0,UA_PRIM.length-1)&&
+          finitePacketNumber(r[2],0,UA_PRIM.length-1)&&finitePacketNumber(r[3],0,1)&&
+          finitePacketNumber(r[4],0,UA_CMPF.length-1)))))&&
+      (!data.fold||(Array.isArray(data.fold)&&data.fold.length>=2&&
+        finitePacketNumber(data.fold[0],0,UA_FOLD_MODES-1)&&finitePacketNumber(data.fold[1],0.05,8)));
   }
   if(type==='plasmid')return Array.isArray(data)&&data.length<=MAX_PLASMID&&data.every(validInstruction);
   if(type==='motif')return Array.isArray(data)&&data.length<=8&&data.every(validInstruction);
@@ -377,6 +468,50 @@ function handleNetworkMessage(raw){
   else if(msg.type==='plasmid')queueNetworkPacket(incomingPlasmids,msg.data,NET_QUEUE_LIMITS.plasmid,'plasmid');
   else if(msg.type==='motif')queueNetworkPacket(incomingMotifs,msg.data,NET_QUEUE_LIMITS.motif,'motif');
   else if(msg.type==='inscription')queueNetworkPacket(incomingInscriptions,msg.data,NET_QUEUE_LIMITS.inscription,'inscription');
+  // === #185 - THE UNIVERSE-LEVEL PLASMID, RECEIVED ==============================================
+  // Gated by genome.netLawReceptivity, which is a SEPARATE gene from netReceptivity, and that
+  // separation is the point: a world could not previously be open to migrants and closed to law
+  // changes, and once laws can travel those are very different decisions. Seeded LOW (0.05) because
+  // adopting a stranger's physics is the largest single thing that can happen to a world, and a
+  // world that takes every offer is a world with no physics of its own.
+  // Applied immediately rather than queued: there is nothing per-particle to schedule, and a law
+  // adopted here goes on probation exactly like a home-grown proposal, so a bad import is reverted
+  // by the same machinery that reverts a bad mutation. Isolation is EVOLVABLE, not enforced.
+  else if(msg.type==='uplasmid'){
+    if(!__UPLASMID){ /* dropped: the layer is off */ }
+    else if(Math.random()>=__cl(finiteOr(genome.netLawReceptivity,0.05),0,1)){ fired('uplasmid.refused'); }
+    else {
+      const d=msg.data||{};
+      try{
+        if(Array.isArray(d.law)&&!__lawTrial){
+          const row=LAW_DECLARED[d.law[0]|0];
+          if(row){ const from=+row.get(), to=__cl(+d.law[1],row.lo,row.hi);
+            if(isFinite(from)&&isFinite(to)&&to!==from){
+              row.set(to);
+              __lawTrial={idx:d.law[0]|0,from,to,startTick:tick|0,baseline:lawMean(),sum:0,n:0};
+              fired('uplasmid.law');
+              recordEvent('law_import',{law:row.name,from:+from.toPrecision(4),to:+to.toPrecision(4)},0);
+            } }
+        }
+        // The operator bank arrives NON-DESTRUCTIVELY, by exactly carryOpsForExpr's rule and for
+        // exactly its reason: an occupied slot is left alone, because overwriting it would silently
+        // redefine every atom in this world that already names it.
+        if(Array.isArray(d.ops)&&__UA_OPS){
+          if(!Array.isArray(genome.uaOps))genome.uaOps=[];
+          let _took=0;
+          for(let k=0;k<UA_OPBANK;k++){
+            const r=d.ops[k]; if(!Array.isArray(r))continue;
+            if(genome.uaOps[k])continue;
+            genome.uaOps[k]={p:(r[0]|0)===1?1:0,a:(r[1]|0)&7,b:(r[2]|0)&7,
+                             k:isFinite(+r[3])?+r[3]:0.5,c:(r[4]|0)&3,age:0};
+            _took++;
+          }
+          if(_took){ fired('uplasmid.grammar');
+            recordEvent('grammar_import',{slots:_took},600); }
+        }
+      }catch(e){}
+    }
+  }
   else if(msg.type==='hello')networkSend('hello-reply');
   else if(msg.type==='applied'){ // a peer (any peer — another Selection tab, φ, anything) says OUR broadcast (or someone's) actually landed
     if(genome.netAckApplied&&typeof genome.netAckApplied==='object'&&genome.netAckApplied[msg.data.kind]!==undefined)genome.netAckApplied[msg.data.kind]++;
@@ -443,6 +578,19 @@ const LIVENESS_DECLARED=[
   // the arithmetic does. atom.opFallback reading nonzero means expressions have outlived the
   // operators they name, which is the one thing about late binding worth watching.
   'atom.opAuthor','atom.opDrift','atom.opCull','atom.opFire','atom.opFallback','atom.opWire','atom.opCarry',
+  'compiler.fold','compiler.foldStep',   // #181
+  // #182: the transition layer. xion.bud is the pre-#182 route now that it is one mode among three,
+  // and it is declared so that a run where NO collective ever divides is visible as such.
+  'xion.bud','xion.fission','xion.fuse','xion.allocate','xion.credit','level.appeared','level.vanished',
+  // #183: cosmos.law already existed and now actually fires - it is a PROPOSAL, and the two verdicts
+  // are declared beside it so a run where every law was reverted is distinguishable from one where
+  // none was ever proposed.
+  'phys.reaction','cosmos.lawKept','cosmos.lawRevert',
+  'probe.author','probe.drift','probe.claim','probe.promote','oee.bonus',   // #184
+  // #185: deme.gate fires whenever a cross-deme pairing is CONSIDERED and deme.blocked when one is
+  // refused, so "the barrier exists but never bites" and "there is no barrier" are distinguishable.
+  'deme.gate','deme.blocked','uplasmid.send','uplasmid.refused','uplasmid.law','uplasmid.grammar',
+  'substrate.seed',   // #186
 ];
 // NOT INSTRUMENTED, and deliberately absent rather than declared-and-silent: cladogenesis minting
 // (#17) has no single entry point I could identify with confidence. A census that reports "never"
@@ -555,6 +703,33 @@ const CROSSING_DECLARED=[
   {name:'atom.ops',      read:g=>{ const b=g&&g.uaOps; if(!Array.isArray(b))return 0; let n=0;
                                    for(let k=0;k<UA_OPBANK;k++) if(b[k])n++; return n; }},
   {name:'atom.opRef',    read:g=>uaOpRefs(g)},
+  // #181: the compiler stage is authored structure like any other, and it has the same way of being
+  // stranded - a germline that has switched substrate while every living particle still compiles the
+  // default one is a lineage whose most consequential change reached nothing.
+  {name:'atom.fold',     read:g=>uaFoldMode(g)>0?1:0},
+  // #182: the particle's half of the boundary contract. Counted as DEVIATION from the neutral 0.5,
+  // because the interesting question is not whether the field exists but whether any living lineage
+  // has actually moved it - a population sitting at exactly the seed value is a population for which
+  // this gene has never been selected on, and that reads as 0 here rather than as adoption.
+  {name:'xion.cede',     read:g=>{ const v=finiteOr(g&&g.autonomyCede,0.5); return Math.abs(v-0.5)>0.02?1:0; }},
+  // #183: same construction as xion.cede and the same reason - deviation from the neutral seed, so a
+  // population that has never been selected on its own physics reads 0 rather than reading adoption.
+  {name:'phys.reach',    read:g=>{ const v=finiteOr(g&&g.cellScale,1); return Math.abs(v-1)>0.02?1:0; }},
+  {name:'phys.chem',     read:g=>((finiteOr(g&&g.rxSelf,0)>0.01?1:0)+(finiteOr(g&&g.rxCross,0)>0.01?1:0))},
+  // #184: two rows for the same reason #180 needed two. probe.bank says the instruments crossed;
+  // probe.promoted says any of them EARNED anything, which is the claim that can be false while the
+  // first is true - a population full of probes that never predict is a measurement layer that
+  // exists and measures nothing.
+  {name:'probe.bank',    read:g=>{ const b=g&&g.probes; if(!Array.isArray(b))return 0;
+                                   let n=0; for(const pr of b) if(pr)n++; return n; }},
+  {name:'probe.promoted',read:g=>probeCount(g)},
+  {name:'oee.weighted',  read:g=>{ const w=g&&g.oeeW; if(!Array.isArray(w))return 0;
+                                   let n=0; for(const v of w) if(finiteOr(v,0)>0.02)n++; return n; }},
+  // #185: deviation from the neutral seed, like xion.cede and phys.reach - a world at one deme with
+  // full flow has no structure, and that reads 0 here rather than reading as adoption.
+  {name:'deme.split',    read:g=>{ const k=Math.round(finiteOr(g&&g.demeCount,1));
+                                   const f=finiteOr(g&&g.demeFlow,1);
+                                   return (k>1&&f<0.98)?1:0; }},
 ];
 function crossingCensus(){
   const rows=[];
@@ -604,7 +779,7 @@ function buildMigrantPacket(){
       // hollow: a migrant would arrive expecting heredity that was never transmitted.
       const _mprog=(MIGRANT_CARRIES_PROGRAM&&pProg[idx])?pProg[idx].slice(0,48).map(r=>[r[0]|0,r[1]|0,r[2]|0,+(+r[3]).toFixed(4)]):null;
       // #141: the vocabulary that program speaks, in bound-slot order.
-      let _mua=null,_mue=null,_muo=null;   // #180: +the operator bank
+      let _mua=null,_mue=null,_muo=null,_mfd=null;   // #180: +the operator bank  #181: +the compiler stage
       const _mg=pGenome[idx];
       if(MIGRANT_CARRIES_VOCAB&&_mg){
         const _bos=Array.isArray(_mg.boundOpcodes)?_mg.boundOpcodes:[];
@@ -626,6 +801,10 @@ function buildMigrantPacket(){
         // Failing to send this would not have thrown anything anywhere: uaOpEval falls back to
         // UA_PRIM, the atom computes something plausible, and the lineage arrives subtly lobotomised.
         // That is exactly the silence #153 wrote three paragraphs about.
+        // #181: and the COMPILER the vocabulary was written for. An expression compiled under a
+        // saturating substrate and re-compiled under a plain one is a different computation, so the
+        // stage crosses the wire with the expressions exactly as the operators do.
+        _mfd=[uaFoldMode(_mg),uaFoldK(_mg)];
         const _uob=Array.isArray(_mg.uaOps)?_mg.uaOps:null;
         if(_uob){ _muo=[]; for(let _k=0;_k<UA_OPBANK;_k++){ const _d=_uob[_k];
           _muo.push(_d?[_d.p|0,(_d.a|0)&7,(_d.b|0)&7,+(+finiteOr(_d.k,0.5)).toFixed(3),(_d.c|0)&3]:0); } }
@@ -663,7 +842,7 @@ function buildMigrantPacket(){
       let _ph=phase[idx]%_TAU; if(!isFinite(_ph))_ph=0; if(_ph<0)_ph+=_TAU;
       for(let mm=0;mm<m.length;mm++) m[mm]=_cl(m[mm],-16,16);
       return {nx:_cl(px[idx]/W,-0.25,1.25),ny:_cl(py[idx]/H,-0.25,1.25),tend:t,mem:m,plasmid:plas,
-        amp:_cl(amp[idx],-2,4),phase:_ph,prog:_mprog,ua:_mua,ue:_mue,uo:_muo};
+        amp:_cl(amp[idx],-2,4),phase:_ph,prog:_mprog,ua:_mua,ue:_mue,uo:_muo,fd:_mfd};
   }
 }
 function networkBroadcast(){ fired('network.broadcast');
@@ -672,6 +851,27 @@ function networkBroadcast(){ fired('network.broadcast');
   if(Math.random()<genome.netMigrantRate){
     const _mp=buildMigrantPacket();
     if(_mp)networkSend('migrant',_mp);
+  }
+  // === #185 - THE UNIVERSE-LEVEL PLASMID, SENT ==================================================
+  // Rare and heritable, like every other broadcast rate here. What it carries is not a program: it
+  // is this world's most recently KEPT law (one that survived probation, so the sender is offering
+  // something it has already paid to test) plus its operator bank and compiler stage. A receiving
+  // world can adopt physics that another world proved viable, which is inheritance at the level of
+  // the world - the thing that makes a field of tabs a meta-population.
+  // Only a KEPT law is offered. Broadcasting a proposal still on probation would spread a law before
+  // anything had survived it, which is the opposite of what the probation is for.
+  if(__UPLASMID&&Math.random()<__cl(finiteOr(genome.netLawRate,0.001),0,0.02)){
+    let _kept=null;
+    for(let k=__lawLog.length-1;k>=0;k--) if(__lawLog[k]&&__lawLog[k][4]===1){ _kept=__lawLog[k]; break; }
+    const _pk={};
+    if(_kept){ const _li=LAW_DECLARED.findIndex(r=>r.name===_kept[1]);
+      if(_li>=0)_pk.law=[_li,+_kept[3]]; }
+    if(Array.isArray(genome.uaOps)){
+      _pk.ops=[]; for(let k=0;k<UA_OPBANK;k++){ const d=genome.uaOps[k];
+        _pk.ops.push(d?[d.p|0,(d.a|0)&7,(d.b|0)&7,+(+finiteOr(d.k,0.5)).toFixed(3),(d.c|0)&3]:0); }
+    }
+    _pk.fold=[uaFoldMode(),uaFoldK()];
+    if(_pk.law||_pk.ops){ networkSend('uplasmid',_pk); fired('uplasmid.send'); }
   }
   // Plasmid package: pick a random particle's plasmid and broadcast
   if(Math.random()<genome.netPlasmidRate){
@@ -788,6 +988,10 @@ function networkReceive(){ fired('network.receive');
           // #180: install the operator bank in SLOT ORDER, so the migrant's qa is the migrant's qa.
           // age resets: the grace clock is a fact about how long this bank has sat unreferenced HERE,
           // and a freshly landed lineage has not had a chance to be judged yet.
+          if(Array.isArray(m.fd)){
+            _g.uaFoldMode=((m.fd[0]|0)%UA_FOLD_MODES+UA_FOLD_MODES)%UA_FOLD_MODES;
+            _g.uaFoldK=__cl(finiteOr(+m.fd[1],1),0.05,8);
+          }
           if(Array.isArray(m.uo)){
             _g.uaOps=[];
             for(let _k=0;_k<UA_OPBANK;_k++){ const _r=m.uo[_k];
@@ -901,6 +1105,134 @@ const FIELD_H=40;
 let FIELD_DECAY=0.982;   // natural fade — Pe22b: now genome-driven, can evolve
 let FIELD_DIFFUSE=0.11;  // gentle spread — Pe22b: now genome-driven, can evolve
 
+// === #183 - LAW MUTATION: the world proposes a new constant and is judged on it ================
+// The declared set is deliberately SMALL and every entry is a rate or a scale with a known-safe
+// range, because a law mutation that can reach an array bound or a loop count is not a law mutation,
+// it is a crash. Each row names the global, its probation range, and its ORIGINAL value - the value
+// the world reverts to if the proposal loses, which is what makes this a proposal rather than drift.
+//
+// HOW IT IS JUDGED, and this is the part that makes it selection rather than vandalism: on proposal
+// the engine records the mean live population over the preceding window. The law then runs for
+// LAW_PROBATION ticks. If the mean population over the probation is below LAW_VIABLE times the
+// pre-proposal mean, the law is REVERTED and the attempt is recorded as failed. If it holds, the new
+// value stays and becomes the value a future proposal perturbs. That is "subject the whole world to
+// selection on whether the new law is viable", with the population as the fitness function, because
+// the population is the only thing at this level that can die.
+//
+// COSTLY, as required: proposing one charges every living particle LAW_COST of its amplitude. A world
+// that proposes constantly starves, which is the brake on the rate rather than a hard-coded cadence.
+const LAW_DECLARED=[
+  // FIELD_DECAY and FIELD_DIFFUSE are re-derived from the genome in TWO places (sanitizeGenome and
+  // mutateGenome), so their setters write the GENOME as well as the global. A law that only wrote the
+  // live value would be undone within a few hundred ticks and the probation verdict would be
+  // measuring a constant that had already snapped back - the same class of silent no-op as a germline
+  // structure that never crosses into the population.
+  {name:'FIELD_DECAY',   get:()=>FIELD_DECAY,
+   set:v=>{FIELD_DECAY=v; if(typeof genome!=='undefined'&&genome)genome.fieldDecay=v;},   lo:0.90, hi:0.999},
+  {name:'FIELD_DIFFUSE', get:()=>FIELD_DIFFUSE,
+   set:v=>{FIELD_DIFFUSE=v; if(typeof genome!=='undefined'&&genome)genome.fieldDiffuse=v;}, lo:0.0, hi:0.24},
+  // ATTENTION_GAIN has no genome shadow, so the global is the whole of it.
+  {name:'ATTENTION_GAIN',get:()=>ATTENTION_GAIN,set:v=>{ATTENTION_GAIN=v;},lo:0.0,  hi:0.9},
+];
+const LAW_RATE=0.00004;      // per-tick proposal chance - about one proposal per 25,000 ticks per world
+const LAW_PROBATION=4000;    // ticks a proposal runs before it is judged
+const LAW_VIABLE=0.7;        // fraction of the pre-proposal population mean the world must hold
+const LAW_COST=0.04;         // amplitude every living particle pays for a proposal
+const LAW_WINDOW=600;        // ticks of population history the pre-proposal mean is taken over
+let __lawPop=[];             // rolling population samples
+let __lawTrial=null;         // {idx, from, to, startTick, baseline, sum, n}
+let __lawLog=[];             // [tick, name, from, to, verdict] - 1 kept, 0 reverted
+function lawSamplePop(){
+  if(!__LAWMUT)return;
+  let a=0; for(let i=0;i<N;i++) if(palive[i])a++;
+  __lawPop.push(a); if(__lawPop.length>LAW_WINDOW)__lawPop.shift();
+  if(__lawTrial){ __lawTrial.sum+=a; __lawTrial.n++; }
+}
+function lawMean(){ if(!__lawPop.length)return 0; let s=0; for(const v of __lawPop)s+=v; return s/__lawPop.length; }
+// === #185 - DEMES: allopatry that can reconnect =================================================
+// A deme tag is derived, not stored: a particle's deme is a function of WHERE IT IS, so the barrier
+// is spatial and a particle that moves changes deme. That choice is deliberate and it is what makes
+// this reconnectable - no per-particle tag has to be migrated, merged, or garbage-collected, and
+// lowering the deme count merges the pools automatically on the next tick.
+//
+// genome.demeCount is how many sub-populations this world is divided into (1 = the pre-#185 engine,
+// one pool). genome.demeFlow is how permeable the barriers are: at 1 the barrier does nothing, at 0
+// a cross-deme pairing cannot breed at all. BOTH are genes, so a universe can fragment its own gene
+// pool, let the fragments diverge, and then reconnect them - which is the actual mechanism behind
+// most of the radiations in the record, and something this engine could not previously express.
+//
+// The barrier applies to REPRODUCTION and to horizontal transfer, not to interaction. Particles in
+// different demes still push each other around and still compete for the same field, because a
+// barrier to gene flow is not a wall - that distinction is the whole difference between allopatry
+// and two separate simulations.
+const DEME_MAX=6;
+function demeCount(g){
+  if(!__DEME)return 1;
+  const gg=g||((typeof genome!=='undefined')?genome:null);
+  return __cl(Math.round(finiteOr(gg&&gg.demeCount,1)),1,DEME_MAX);
+}
+function demeFlow(g){
+  const gg=g||((typeof genome!=='undefined')?genome:null);
+  return __cl(finiteOr(gg&&gg.demeFlow,1),0,1);
+}
+// Derived from position, on a stripe grid. Stripes rather than a checkerboard because a stripe is
+// contiguous: a deme has an interior, which is what lets it hold a distinct pool at all.
+function demeOf(i){
+  const k=demeCount();
+  if(k<=1)return 0;
+  const f=px[i]/Math.max(1,W);
+  return __cl(Math.floor(f*k),0,k-1);
+}
+// The gate. Returns true if these two may exchange genes. Same deme is always yes; cross-deme is a
+// coin weighted by demeFlow, so the barrier is SOFT at every value except exactly 0 - the same
+// reinforcement shape __SPEC.assort uses, and for the same reason: a hard barrier manufactures
+// species by fiat, a soft one lets selection decide how strong the barrier should be.
+function demeAllows(i,j){
+  if(!__DEME)return true;
+  const k=demeCount();
+  if(k<=1)return true;
+  if(demeOf(i)===demeOf(j))return true;
+  const f=demeFlow();
+  if(f>=1)return true;
+  fired('deme.gate');
+  if(Math.random()<f)return true;
+  fired('deme.blocked');
+  return false;
+}
+function attemptLawMutation(){
+  if(!__LAWMUT)return;
+  lawSamplePop();
+  // A trial in progress is judged before any new one can start. One law on probation at a time, so a
+  // verdict is always attributable to one change - the same reason this file insists on matched A/Bs.
+  if(__lawTrial){
+    if((tick-__lawTrial.startTick)<LAW_PROBATION)return;
+    const held=__lawTrial.n?(__lawTrial.sum/__lawTrial.n):0;
+    const row=LAW_DECLARED[__lawTrial.idx];
+    const ok=held>=__lawTrial.baseline*LAW_VIABLE;
+    if(!ok){ try{ row.set(__lawTrial.from); }catch(_){} fired('cosmos.lawRevert'); }
+    else fired('cosmos.lawKept');
+    __lawLog.push([tick|0,row.name,+__lawTrial.from.toPrecision(4),+__lawTrial.to.toPrecision(4),ok?1:0]);
+    while(__lawLog.length>40)__lawLog.shift();
+    recordEvent('law_verdict',{law:row.name,to:+__lawTrial.to.toPrecision(4),
+      base:Math.round(__lawTrial.baseline),held:Math.round(held),kept:ok?1:0},0);
+    __lawTrial=null;
+    return;
+  }
+  if(__lawPop.length<LAW_WINDOW)return;          // no baseline yet - a proposal with nothing to judge it against is not a proposal
+  if(Math.random()>=LAW_RATE)return;
+  const idx=(Math.random()*LAW_DECLARED.length)|0;
+  const row=LAW_DECLARED[idx];
+  let from=0; try{ from=+row.get(); }catch(_){ return; }
+  if(!isFinite(from))return;
+  const span=(row.hi-row.lo);
+  const to=__cl(from+(Math.random()-0.5)*span*0.35,row.lo,row.hi);
+  if(!isFinite(to)||to===from)return;
+  try{ row.set(to); }catch(_){ return; }
+  for(let i=0;i<N;i++) if(palive[i]) amp[i]*=(1-LAW_COST);   // the world pays for its own proposal
+  __lawTrial={idx,from,to,startTick:tick|0,baseline:lawMean(),sum:0,n:0};
+  fired('cosmos.law');
+  recordEvent('law_propose',{law:row.name,from:+from.toPrecision(4),to:+to.toPrecision(4)},0);
+}
 // ═══════════════════════════════════════
 // Pe22f: USER ATOMS — the system writes its own primitives
 // Expression strings stored in the genome, compiled on demand via Function().
@@ -1151,6 +1483,146 @@ function uaOpClean(d){
 }
 // The five production weights, defaulted so that every reader gets [1,1,1,1,1] when the gene has
 // never been created — which reproduces the pre-#180 distribution exactly. See uaGenTerm.
+// === #184 - PROBES: EXPRESSIONS THAT EARN THEIR WAY INTO THE ALPHABET ===========================
+// A probe is an ordinary authored expression with one extra thing attached: a claim. It is evaluated
+// now, its value is remembered, and LAG ticks later it is scored against what the organism's fitness
+// actually did. A probe whose sign has been right more often than chance over a minimum sample is
+// PROMOTED - its live output is bound to a grammar symbol, pa..pd, which every atom in the lineage
+// can then read as a leaf.
+//
+// WHY THIS IS NOT THE ALIEN CHANNEL AGAIN, and it matters, because #95/#97 measured that one at
+// chance TWICE and this file does not get to forget it. The alien channel scored atoms against a
+// coupled PEER's future packet rate - a target the genome cannot causally influence, which is what
+// made it a clean test and also what made it nearly unlearnable. A probe is scored against the
+// carrier's OWN fitness trajectory, which the carrier can influence, so a probe can be right by
+// being causal as well as by being correlated. That is a weaker epistemic claim and a much stronger
+// evolutionary one: a self-fulfilling prediction is still a useful sense.
+//
+// PROMOTION IS THE POINT. Without it a probe is a fifth credit channel; with it, a successful
+// measurement becomes part of the substrate that later measurements are written in, which is the only
+// version of "let the system invent its own instruments" that actually compounds.
+// Digit-free names, checked against UA_VAR_RE by the same argument as ya..yh and qa..qh: in `pa` the
+// 'a' has a word character to its left, so \ba\b cannot reach it, and 'p' begins no other name here.
+const PROBE_MAX=4;
+const PROBE_NAMES=["pa","pb","pc","pd"];
+const PROBE_LAG=40;             // ticks between a probe's reading and the outcome it is scored against
+const PROBE_MIN_SAMPLE=8;       // scored attempts before a hit rate means anything
+const PROBE_PROMOTE=0.60;       // hit rate above which a probe's output becomes a live symbol
+const PROBE_RENT=0.15;          // instruction-equivalents per interaction per PROMOTED probe
+const PROBE_RE=/\b(?:pa|pb|pc|pd)\b/g;
+const PROBE_TEST=/\b(?:pa|pb|pc|pd)\b/;
+const __probeOut=new Float32Array(PROBE_MAX);   // this tick's readings, bound as pa..pd
+let __probeFires=0, __probePromoted=0;
+// Instrument state off the genome (#131), like every counter added since.
+function probeBank(g){
+  const gg=g||((typeof genome!=='undefined')?genome:null);
+  const b=gg&&gg.probes;
+  return Array.isArray(b)?b:null;
+}
+function probeHitRate(pr){
+  const n=pr&&(pr.n|0);
+  return (n>=PROBE_MIN_SAMPLE)?((pr.hit|0)/n):0;
+}
+function probePromoted(pr){ return probeHitRate(pr)>=PROBE_PROMOTE; }
+function probeCount(g){
+  if(!__PROBE)return 0;   // #186: the knob has to reach every reader, or the rent and the census keep charging for a layer that is off
+  const b=probeBank(g); if(!b)return 0;
+  let n=0; for(const pr of b) if(pr&&probePromoted(pr))n++; return n;
+}
+function probeDraw(){
+  // Drawn from the lineage's OWN grammar, which is the whole point: as #180's weights and operators
+  // drift, so does the language this system writes its instruments in.
+  return {expression:uaGenExpression(),compiled:null,failed:false,
+          n:0,hit:0,pending:-1,pendTick:-1,pendFit:0,age:0};
+}
+// Evaluated once per organism tick, before the atoms that may read them. Reading a probe is a plain
+// stored read, exactly like ya..yh - no recursion, no fuel, and therefore no new halting question.
+function updateProbes(){
+  if(!__PROBE){ __probeOut.fill(0); return; }
+  const b=probeBank(); if(!b){ __probeOut.fill(0); return; }
+  for(let k=0;k<PROBE_MAX;k++){
+    const pr=b[k];
+    if(!pr||!probePromoted(pr)){ __probeOut[k]=0; continue; }
+    // A promoted probe's value is its last reading, which scoreProbes wrote. Recomputing it here
+    // would evaluate the same expression twice per tick for no gain.
+    __probeOut[k]=isFinite(pr.pending)?__cl(pr.pending,-8,8):0;
+  }
+}
+// The claim and the verdict. Called on the organism cadence, not per interaction: a probe predicts
+// where the ORGANISM is going, and per-pair scoring would be scoring noise.
+function scoreProbes(fitNow){
+  if(!__PROBE)return;
+  const b=probeBank(); if(!b)return;
+  const now=(typeof tick!=='undefined')?tick:0;
+  for(let k=0;k<PROBE_MAX;k++){
+    const pr=b[k]; if(!pr||typeof pr.expression!=='string')continue;
+    pr.age=(pr.age|0)+1;
+    // VERDICT on the outstanding claim, if it is due.
+    if(pr.pendTick>=0&&(now-pr.pendTick)>=PROBE_LAG){
+      const moved=fitNow-pr.pendFit;
+      const claimed=pr.pending;
+      // The claim is a SIGN claim and nothing more. A probe does not have to get the magnitude right;
+      // it has to be right about the direction, which is the weakest claim that is still falsifiable
+      // and the only one a single scalar can honestly make.
+      if(Math.abs(moved)>1e-6&&Math.abs(claimed)>1e-6){
+        pr.n=(pr.n|0)+1;
+        if((claimed>0)===(moved>0))pr.hit=(pr.hit|0)+1;
+      }
+      pr.pendTick=-1;
+    }
+    // NEW CLAIM, if none is outstanding.
+    if(pr.pendTick<0){
+      if(!pr.compiled&&!pr.failed)uaCompile(pr);
+      if(pr.failed)continue;
+      let v=0;
+      try{ v=uaCall(pr,__probeOut[0],__probeOut[1]); }catch(_){ pr.failed=true; continue; }
+      pr.pending=isFinite(v)?v:0;
+      pr.pendTick=now; pr.pendFit=fitNow;
+      __probeFires++;
+      fired('probe.claim');
+    }
+  }
+  let promoted=0; for(const pr of b) if(pr&&probePromoted(pr))promoted++;
+  if(promoted>__probePromoted){ fired('probe.promote'); }
+  __probePromoted=promoted;
+}
+// === #184 - THE OPEN-ENDEDNESS PROXIES BECOME SELECTABLE, WITHOUT BEING TARGETS ================
+// Four candidate proxies, each a number this engine already computes about its own open-endedness,
+// and each with its OWN evolvable weight seeded at ZERO. At the seed the term contributes nothing and
+// the engine is byte-for-byte pre-#184; a lineage that gains by attending to one of them can raise
+// its weight, and one that does not, does not.
+// The distinction the request drew is the one that matters here: the metric is NOT hard-coded as a
+// selective target. What is evolvable is how much each candidate proxy is worth to a lineage, so the
+// population discovers which proxies correlate with its own survival rather than being told. A
+// wireheading path would be a proxy a lineage can inflate without doing the thing - which is why
+// every one of these four is read from POPULATION-wide or world-wide state that no single genome
+// controls, and why the total is bounded before it reaches fitness.
+const OEE_PROXY_N=4;
+const OEE_BONUS_CAP=0.08;   // hard bound on the summed contribution, whatever the weights evolve to
+function oeeProxies(){
+  // 0: reachable bank diversity - distinct expressions actually executing, normalised
+  let d0=0; try{ d0=__cl(__atomExprUses.size/400,0,1); }catch(_){}
+  // 1: novelty persistence - the OEE meter's own ratio, which is the number four harvests have chased
+  let d1=0; try{ d1=(oeeNovel|0)>0?__cl((oeePersist|0)/(oeeNovel|0),0,1):0; }catch(_){}
+  // 2: cross-level information flow - how many levels of organisation are currently present
+  let d2=0; try{ d2=__cl((levelCensus().levelsPresent-1)/3,0,1); }catch(_){}
+  // 3: grammar drift - how far this lineage's own alphabet has moved from the seed
+  let d3=0; try{ const w=genome.uaVarW;
+    if(Array.isArray(w)&&w.length){ let m=0; for(const v of w)m+=Math.abs(finiteOr(v,1)-1);
+      d3=__cl(m/w.length,0,1); } }catch(_){}
+  return [d0,d1,d2,d3];
+}
+function oeeBonus(){
+  if(!__OEE_BONUS)return 0;
+  const w=genome&&genome.oeeW;
+  if(!Array.isArray(w)||w.length<OEE_PROXY_N)return 0;
+  const p=oeeProxies();
+  let sum=0;
+  for(let k=0;k<OEE_PROXY_N;k++) sum+=__cl(finiteOr(w[k],0),0,1)*p[k];
+  const v=__cl(sum/OEE_PROXY_N,0,1)*OEE_BONUS_CAP;
+  if(v>0)fired('oee.bonus');
+  return v;
+}
 function uaProdW(){
   const w=(typeof genome!=='undefined'&&genome)?genome.uaProdW:null;
   if(!__UA_PROD||!Array.isArray(w)||w.length<5)return [1,1,1,1,1];
@@ -1283,7 +1755,17 @@ function uaGenTerm(depth){
   // rendCompile binds a completely different parameter list (see rendGenExpression).
   // #174: USER_SELF_VARS goes on every atom-channel pool. __uaVarPool is the rend channel, which
   // binds a completely different parameter list and must not see these.
-  const vars=__uaVarPool||(rich?(uaForage()?USER_VARS.concat(USER_WORLD_VARS,USER_FORAGE_VARS,USER_SELF_VARS):USER_VARS.concat(USER_WORLD_VARS,USER_SELF_VARS)):USER_VARS.concat(USER_SELF_VARS));   // EYES (+FORAGE) expand the leaf pool
+  let vars=__uaVarPool||(rich?(uaForage()?USER_VARS.concat(USER_WORLD_VARS,USER_FORAGE_VARS,USER_SELF_VARS):USER_VARS.concat(USER_WORLD_VARS,USER_SELF_VARS)):USER_VARS.concat(USER_SELF_VARS));   // EYES (+FORAGE) expand the leaf pool
+  // #184: and the probes this lineage has actually PROMOTED. Only the promoted ones: an unpromoted
+  // probe's symbol reads a constant zero, and offering those to the generator would widen the
+  // alphabet with dead letters - "open in principle and closed in practice" is the exact failure
+  // #179 measured, and a symbol that always reads 0 is its purest form.
+  if(__PROBE&&!__uaVarPool){
+    const _pb=probeBank();
+    if(_pb){ const _add=[];
+      for(let k=0;k<PROBE_MAX;k++){ const pr=_pb[k]; if(pr&&probePromoted(pr))_add.push(PROBE_NAMES[k]); }
+      if(_add.length)vars=vars.concat(_add); }
+  }
   const funcs=rich?USER_FUNCS_RICH:USER_FUNCS;                   // + round (quantize)
   const useFunc=Math.random()<0.35;
   const val=Math.random()<0.5
@@ -1377,8 +1859,12 @@ function uaJitterConst(expr){
 // "t" in "Math.tanh" has a left boundary but not a right one — "t" is immediately followed by "a", a
 // word character — so \bt\b cannot match it), and none of them collides with another on the list. A
 // \b-anchored regex over that closed vocabulary cannot false-match, so this needs no parser either.
-const UA_VAR_RE=/\b(?:ya|yb|yc|yd|ye|yf|yg|yh|nx|ny|nb|rl|rd|cr|fr|wr|at|a|b|u|c|d|m|s|t)\b/g; // #135: `at` before the single letters, or the alternation would match `a` first. #174: ya..yh first for the same reason
-const UA_ALL_VARS=["a","b","u","c","d","m","s","cr","fr","wr","at","nx","ny","t","nb","rl","rd","ya","yb","yc","yd","ye","yf","yg","yh"]; // #135: +at  #174: +the creature's own voices
+const UA_VAR_RE=/\b(?:ya|yb|yc|yd|ye|yf|yg|yh|pa|pb|pc|pd|nx|ny|nb|rl|rd|cr|fr|wr|at|a|b|u|c|d|m|s|t)\b/g; // #135: `at` before the single letters, or the alternation would match `a` first. #174: ya..yh first for the same reason
+// #184: pa..pd are appended LAST, for #135's and #174's reason restated: UA_VAR_RE's alternation is
+// order-sensitive, and a two-character name must precede the single letters or `a` matches first.
+// They are on the canonical list because a PROMOTED probe is a sense like any other - the whole point
+// of promotion is that the grammar can then compose with it, which requires uaSwapVar to reach it.
+const UA_ALL_VARS=["a","b","u","c","d","m","s","cr","fr","wr","at","nx","ny","t","nb","rl","rd","ya","yb","yc","yd","ye","yf","yg","yh","pa","pb","pc","pd"]; // #135: +at  #174: +the creature's own voices
 // ═══ #180 — WHICH SYMBOLS THIS LINEAGE SPEAKS ══════════════════════════════════════════════════
 // The leaf pool has always been drawn UNIFORMLY. Every atom in every universe therefore sampled the
 // twenty-five senses with exactly the probability we chose, forever, no matter what any of them was
@@ -1615,9 +2101,69 @@ function rendLocalStep(expr){
 // just relocate the leak. A Map preserves insertion order, so the front is the stale end.
 const __uaCode=new Map();          // expression -> compiled fn, or false if it failed to compile
 const UA_CODE_CAP=2000;
+// === #181 - THE COMPILER'S OUTPUT STAGE IS HERITABLE ==========================================
+// #180 handed over the grammar: which rules fire, which symbols are legal, and what the operators
+// mean. It did not touch the one line every authored expression in this engine has always been
+// wrapped in - `const r=(<expr>); return isFinite(r)?r:0;` - which is the compiler, not the language.
+//
+// That line is a design decision made once: atom outputs are RAW, linear, unbounded until uaCall's
+// clamp. A lineage cannot say "my primitives are saturating", or "my primitives are discrete", or
+// "my primitives are one-sided". Those are properties of a computational SUBSTRATE, not of any one
+// expression, and no expression can express them, because every expression is wrapped the same way.
+//
+// So the wrapper becomes two genes. Four output stages, each a total, finite transform assembled
+// INTO THE FUNCTION BODY AT COMPILE TIME:
+//
+//   0  PLAIN       r                          the pre-#181 compiler, exactly
+//   1  SATURATING  8*tanh(r*k/8)              range compression; a lineage whose primitives never spike
+//   2  DISCRETE    round(r/k)*k               quantised states; a lineage that computes in steps
+//   3  ONE-SIDED   r>0 ? r : r*k              leaky rectification; a lineage with a sign asymmetry
+//
+// This is deliberately the SMALL version of "rewrite part of the compiler". It is not a dispatch
+// table rewrite and it is not arbitrary code generation: the stage is one of four, the parameter is
+// one float, and every combination is finite for every input, checked exhaustively by the rig. The
+// larger version - lineages emitting their own wrapper source - would hand `new Function` a string a
+// genome wrote, and the whole meta-language discipline in #180 exists to avoid exactly that: what is
+// evolved here stays NUMERIC, so nothing a genome produced is ever compiled as text.
+//
+// THE CACHE KEY IS THE REAL HAZARD, and #161 is why. `__uaCode` is keyed by expression TEXT because
+// the compiled function is pure - every input a parameter, nothing closed over. A heritable wrapper
+// breaks that: two lineages with different folds compile the same text to different functions, and a
+// text-keyed cache would hand the second lineage the first one's compiler. So the key carries the
+// fold, and a lineage that changes its fold recompiles rather than inheriting a stranger's substrate.
+//
+// AND IT PAYS A TAX UNTIL IT PAYS. UA_FOLD_RENT is charged per interaction while the stage is
+// non-default, on the same billing line as the operator rent and for the same reason: a substrate
+// change is standing complexity, cheap to acquire and expensive to be wrong about, so it costs from
+// the moment it exists rather than from the moment it hurts.
+const UA_FOLD_MODES=4;
+const UA_FOLD_RENT=0.5;   // instruction-equivalents per interaction while the stage is non-default. Twice the operator rent, because this changes EVERY primitive the lineage owns rather than adding one
+function uaFoldMode(g){
+  if(!__UA_FOLD)return 0;
+  const gg=g||((typeof genome!=='undefined')?genome:null);
+  const m=gg?Math.round(finiteOr(gg.uaFoldMode,0)):0;
+  return ((m%UA_FOLD_MODES)+UA_FOLD_MODES)%UA_FOLD_MODES;
+}
+function uaFoldK(g){
+  const gg=g||((typeof genome!=='undefined')?genome:null);
+  return __cl(finiteOr(gg&&gg.uaFoldK,1),0.05,8);
+}
+// The compiler's tail, assembled from the genes. Every branch leaves `r` finite for finite input and
+// the isFinite guard still follows it, so a fold can never widen what an atom is allowed to return.
+function uaFoldBody(mode,k){
+  const K=(+k).toFixed(4);
+  switch(mode|0){
+    case 1: return "r=8*Math.tanh(r*"+K+"/8);";
+    case 2: return "r=Math.round(r/"+K+")*"+K+";";
+    case 3: return "r=r>0?r:r*"+K+";";
+    default: return "";
+  }
+}
+function uaFoldKey(mode,k){ return (mode|0)===0?"":(" f"+(mode|0)+":"+(+k).toFixed(4)); }
 function uaCompile(atom){
   if(atom.compiled||atom.failed)return;
-  const _e=atom.expression;
+  const _fm=uaFoldMode(), _fk=uaFoldK();
+  const _e=atom.expression+uaFoldKey(_fm,_fk);   // #181: the fold is part of the identity of the compiled code
   const _hit=__uaCode.get(_e);
   if(_hit!==undefined){                       // someone already paid for this exact text
     if(_hit===false){ atom.compiled=null; atom.failed=true; }
@@ -1627,7 +2173,8 @@ function uaCompile(atom){
   try{
     // Pe24: compiled function takes (a,b,u) — u is normalized self-usage count.
     // Old atoms with expressions only referencing a,b still compile fine; u is unused param.
-    const _fn=new Function("a","b","u","c","d","m","s","f","nx","ny","t","nb","rl","rd","cr","fr","wr","at","ya","yb","yc","yd","ye","yf","yg","yh","qa","qb","qc","qd","qe","qf","qg","qh","const r=("+atom.expression+");return isFinite(r)?r:0;"); // #135: +at  #174: +ya..yh  #180: +qa..qh, the lineage's own operators. Older expressions never mention any of them and compile unchanged, so every saved creature still loads — the one failure here would brick every genome in the field, and grammar-test holds it.
+    const _fn=new Function("a","b","u","c","d","m","s","f","nx","ny","t","nb","rl","rd","cr","fr","wr","at","ya","yb","yc","yd","ye","yf","yg","yh","qa","qb","qc","qd","qe","qf","qg","qh","pa","pb","pc","pd","let r=("+atom.expression+");"+uaFoldBody(_fm,_fk)+"return isFinite(r)?r:0;");
+    if(_fm!==0)fired('compiler.fold'); // #135: +at  #174: +ya..yh  #180: +qa..qh, the lineage's own operators. Older expressions never mention any of them and compile unchanged, so every saved creature still loads — the one failure here would brick every genome in the field, and grammar-test holds it.
     __uaCache(_e,_fn);
     atom.compiled=_fn;
     atom.failed=false;
@@ -1936,6 +2483,54 @@ function seedEffectIntoParticle(effIdx){ fired('verb.seedIntoParticle');
   }
   __effectSeeded++;
 }
+// === #186 - THE SUBSTRATE GENES CROSS THE SAME WAY EVERYTHING ELSE DOES ========================
+// MEASURED, by the crossing rows added in the same batch as the genes: atom.fold germline 1 /
+// population 0, probe.bank 4/0, oee.weighted 2/0, on a 12,000-tick run with zero extinctions. The
+// SEVENTH appearance of this file's most repeated bug, and the third time in two days.
+//
+// AND THE REASON IS WORTH WRITING DOWN PROPERLY, because "cloneGenome forgot a field" is the wrong
+// diagnosis and I reached for it first. cloneGenome copies all of these correctly. The problem is
+// structural and it applies to EVERY germline scalar this engine has ever added:
+//   - `genome` is the SELF. mutateGenome authors on it.
+//   - `pGenome[i]` descends from `pGenome[parent]`, not from `genome`.
+//   - the only routes from one to the other are a parentless spawn (a seed or a post-extinction
+//     reboot) and the explicit seeding functions.
+// So a gene created on the germline after the population exists reaches that population only when
+// the world dies. This run had zero extinctions, which is the healthy case, and in the healthy case
+// the germline and the population diverge permanently.
+//
+// One particle, chosen at random, for the same reason LEAP 35 (#80) and #132 give: a foothold is not
+// a takeover. If the substrate change pays, its lineage spreads it; if not, it dies with that
+// particle. Forcing it into every genome would be the "collapses diversity" failure the 11067 note
+// warns about, and it would also make the crossing row meaningless - it would read full adoption
+// whether or not anything had selected for it.
+function seedSubstrateIntoParticle(){
+  if(!(N>0))return false;
+  let _n=0; for(let k=0;k<N;k++) if(palive[k]&&pGenome[k])_n++;
+  if(!_n)return false;
+  let _t=(Math.random()*_n)|0, _tgt=-1;
+  for(let k=0;k<N;k++){ if(!palive[k]||!pGenome[k])continue; if(_t--===0){_tgt=k;break;} }
+  if(_tgt<0)return false;
+  const g=pGenome[_tgt];
+  // #181 the compiler stage, #182 the boundary, #183 the physics, #185 the population structure -
+  // plain scalars, copied by value.
+  if(genome.uaFoldMode!==undefined){ g.uaFoldMode=genome.uaFoldMode; g.uaFoldK=genome.uaFoldK; }
+  if(genome.autonomyCede!==undefined)g.autonomyCede=genome.autonomyCede;
+  if(genome.cellScale!==undefined)g.cellScale=genome.cellScale;
+  if(genome.rxSelf!==undefined)g.rxSelf=genome.rxSelf;
+  if(genome.rxCross!==undefined)g.rxCross=genome.rxCross;
+  if(genome.demeCount!==undefined){ g.demeCount=genome.demeCount; g.demeFlow=genome.demeFlow; }
+  if(genome.netLawRate!==undefined){ g.netLawRate=genome.netLawRate; g.netLawReceptivity=genome.netLawReceptivity; }
+  // #184 the proxy weights and the probe bank. The probe bank is copied WITHOUT its record: a
+  // promotion is earned against a particular carrier's fitness history, and handing a fresh carrier
+  // someone else's hit rate would let it inherit a promotion it never earned - the one way this
+  // mechanism could lie, and the same rule the probe drift path already obeys.
+  if(Array.isArray(genome.oeeW))g.oeeW=genome.oeeW.slice();
+  if(Array.isArray(genome.probes))g.probes=genome.probes.map(pr=>pr?{expression:pr.expression,
+    compiled:null,failed:false,n:0,hit:0,pending:0,pendTick:-1,pendFit:0,age:0}:null);
+  fired('substrate.seed');
+  return true;
+}
 function seedAtomIntoParticle(atomIdx){ fired('atom.seedIntoParticle');
   if(!__ATOM_HERITABLE)return;
   const _a=genome.userAtoms&&genome.userAtoms[atomIdx]; if(!_a)return;
@@ -1960,6 +2555,10 @@ function seedAtomIntoParticle(atomIdx){ fired('atom.seedIntoParticle');
   __atomSeeded++;
 }
 function attemptMemeTransfer(recv,donor){ fired('meme.transfer');
+  // #185: horizontal transfer is gene flow too, and a barrier that stops sex while letting atoms
+  // cross would not isolate anything - #41's own measurement is that one atom reached 410 carriers
+  // across 153 lineages through this route alone. The caller passes genomes rather than indices, so
+  // the gate is applied at the call site (see the attemptMemeTransfer invocation in executeVM).
   if(!recv||!donor||!Array.isArray(donor.userAtoms)||!Array.isArray(donor.boundOpcodes)||!donor.boundOpcodes.length)return;
   // pick the donor's most-PROVEN bound atom (highest uses) — transmit what has actually been selected for,
   // not a fresh untested one; "proven" is the same currency the durability fix (#39-adjacent) judges atoms by.
@@ -2178,7 +2777,8 @@ function uaCall(atom,a,b){
     const _wr=__ATOM_WRSENSE?Math.max(0,Math.min(1,(DIMS-3)/6)):0; // #126: world-richness — accumulated trait dimensionality (macro complexity the atom's own success helps grow, #125). 0 when sense off
     const r=atom.compiled(a,b,u,uaCtxC,uaCtxD,uaCtxM,s,uaCallF,uaCtxNx,uaCtxNy,uaCtxT,uaCtxNb,uaCtxRl,uaCtxRd,_cr,_fr,_wr,uaCtxAt,
       __uaVoice[0],__uaVoice[1],__uaVoice[2],__uaVoice[3],__uaVoice[4],__uaVoice[5],__uaVoice[6],__uaVoice[7],
-      uaOpQA,uaOpQB,uaOpQC,uaOpQD,uaOpQE,uaOpQF,uaOpQG,uaOpQH); // #135: +at  #174: +the voices  #180: +the operators. Eight existing module-level references, so this allocates nothing per call
+      uaOpQA,uaOpQB,uaOpQC,uaOpQD,uaOpQE,uaOpQF,uaOpQG,uaOpQH,
+      __probeOut[0],__probeOut[1],__probeOut[2],__probeOut[3]); // #135: +at  #174: +the voices  #180: +the operators  #184: +the probes this lineage promoted. A plain stored read, like the voices - no recursion, no fuel, no new halting question. Zero for an unpromoted slot, so an atom naming pa before anything earned it reads a constant rather than failing. Eight existing module-level references, so this allocates nothing per call
     atom.uses=prevUses+1;
     if(__ATOM_USE_POP&&atom.expression){
       if(__atomExprUses.size>5000){__atomExprUses.clear();__atomUseWindowStart=tick;} // bounded — a live counter, not an archive; #177 stamps the wipe
@@ -7591,6 +8191,14 @@ function flushEpoch(acc){
   // operators, atomsNamingAnOperator says its expressions actually SPEAK them. #179's whole finding
   // was the gap between those two sentences, so the row records both rather than making the next
   // reader infer one from the other.
+  // #182: which levels of organisation existed this epoch. Same rules as RCH and OPS - instrument
+  // state off the genome, downsampled by keeping every other row, absent in older saves rather than
+  // zero-filled. This is the row that makes "a new level of selection appeared" a readable claim.
+  if(__XION_LEVELS){
+    const _lc=levelCensus();
+    __levelLog.push([(acc.idx+1)*EPOCH_TICKS].concat(_lc.rows.map(r=>r.count)));
+    while(__levelLog.length>MAX_EPOCHS)__levelLog=__levelLog.filter((_,i)=>i%2===0);
+  }
   {
     firedN('atom.opFire',__uaOpFires); firedN('atom.opFallback',__uaOpFallbacks);
     __uaOpLog.push([(acc.idx+1)*EPOCH_TICKS,uaOpCount(genome),__uaOpFires,uaOpRefs(genome)]);
@@ -8052,6 +8660,14 @@ function cloneGenome(src){
   // `age` CARRIES rather than resetting, unlike an atom's `uses`. It is not a record of success to be
   // re-earned; it is the grace clock that stops birth and release from racing, and a child whose
   // operator has been unreferenced for ten cycles inherits that fact.
+  // #184: the probe bank and the proxy weights are heritable structure and get deep-copied like
+  // everything else here. The probe's RECORD carries - a child inherits its parent's promoted senses,
+  // which is what makes a promotion worth anything across generations - but `compiled` is per-genome
+  // because the compiler stage (#181) is too, and `pendTick` resets because an outstanding claim
+  // belongs to the parent's timeline and would be judged against the child's fitness.
+  g.probes=Array.isArray(src.probes)?src.probes.map(pr=>pr?{expression:pr.expression,compiled:null,
+    failed:!!pr.failed,n:pr.n|0,hit:pr.hit|0,pending:finiteOr(pr.pending,0),pendTick:-1,pendFit:0,age:pr.age|0}:null):src.probes;
+  g.oeeW=Array.isArray(src.oeeW)?src.oeeW.slice():src.oeeW;
   g.uaProdW=Array.isArray(src.uaProdW)?src.uaProdW.slice():src.uaProdW;
   g.uaVarW=Array.isArray(src.uaVarW)?src.uaVarW.slice():src.uaVarW;
   g.uaOps=Array.isArray(src.uaOps)?src.uaOps.map(d=>d?{p:d.p|0,a:d.a|0,b:d.b|0,k:finiteOr(d.k,0.5),c:d.c|0,age:d.age|0}:null):src.uaOps;
@@ -8149,6 +8765,12 @@ function mutateChildGenome(g){
   if(Array.isArray(g.uaVarW))for(let i=0;i<g.uaVarW.length;i++)if(Math.random()<rate){
     const nx=finiteOr(g.uaVarW[i],1)+(Math.random()-0.5)*0.3*scale; if(isFinite(nx))g.uaVarW[i]=__cl(nx,0,4); }
   if(Array.isArray(g.uaOps))for(let i=0;i<g.uaOps.length;i++)if(g.uaOps[i]&&Math.random()<rate)uaOpStep(g.uaOps[i]);
+  // #184: the proxy weights diverge in the child like objWeights do. The probe bank does NOT drift
+  // here on purpose - a probe is scored over PROBE_LAG ticks and a bank rewritten at every birth
+  // would never accumulate a sample large enough for PROBE_MIN_SAMPLE to mean anything. Drift happens
+  // on the mutateGenome cadence instead, which is slow enough for a claim to be judged.
+  if(Array.isArray(g.oeeW))for(let i=0;i<g.oeeW.length;i++)if(Math.random()<rate){
+    const nx=finiteOr(g.oeeW[i],0)+(Math.random()-0.5)*0.12*scale; if(isFinite(nx))g.oeeW[i]=__cl(nx,0,1); }
   return g;
 }
 const field=new Float32Array(FIELD_W*FIELD_H); // shared resource/signal field — writable environment
@@ -8413,6 +9035,7 @@ function encodeGenome(){
     EP:(genome.epochs||[]).slice(-MAX_EPOCHS),  // full-arc summary — spans the entire run
     oL:(oeeLog||[]).slice(-MAX_EPOCHS),         // #130 open-endedness meter: per-epoch activity log
     RCH:(__opReachLog||[]).slice(-MAX_EPOCHS),  // #176 [tickEnd, boundSlotsExecuted, bankSize] +#178 [, distinctAtomsReached] per epoch; pre-#178 rows are 3 long and stay that way
+    LVL:(__levelLog||[]).slice(-MAX_EPOCHS),    // #182 [tickEnd, particles, clusters, towers, forests] per epoch - LEVEL_DECLARED order
     OPS:(__uaOpLog||[]).slice(-MAX_EPOCHS),     // #180 [tickEnd, definedSlots, evaluations, atomsNamingAnOperator] per epoch — the operator bank's own instrument, shipped in the same commit as the bank because a layer with no instrument is a layer nobody can falsify
     oN:oeeNovel|0,                               // #130 cumulative distinct innovations ever executed
     oP:oeePersist|0,                             // #130 cumulative innovations that survived the lag
@@ -8454,6 +9077,22 @@ function encodeGenome(){
     // fixed-order array rather than an object — the bank is at most eight rows, and slot POSITION is
     // the contract (`qa` is slot 0 in every expression naming it), so a released slot writes 0 and
     // keeps its place instead of collapsing the ones after it.
+    // #184: the probe bank. `hit`/`n` travel because a promotion has to survive a reload - a save that
+    // dropped the record would silently demote every sense the lineage had earned, and the atoms
+    // naming those symbols would come back reading zero.
+    prb:Array.isArray(genome.probes)?genome.probes.map(pr=>pr?[String(pr.expression).slice(0,UA_EXPR_MAX),pr.n|0,pr.hit|0]:0):undefined,
+    oew:Array.isArray(genome.oeeW)?genome.oeeW.map(v=>+(+v).toFixed(4)):undefined,
+    dmc:genome.demeCount===undefined?undefined:(genome.demeCount|0),              // #185 internal population structure
+    dmf:genome.demeFlow===undefined?undefined:+(+genome.demeFlow).toFixed(4),
+    nlr:genome.netLawRate===undefined?undefined:+(+genome.netLawRate).toFixed(5),
+    nlx:genome.netLawReceptivity===undefined?undefined:+(+genome.netLawReceptivity).toFixed(4),
+    csc:genome.cellScale===undefined?undefined:+(+genome.cellScale).toFixed(4),   // #183 per-lineage interaction radius
+    rxs:genome.rxSelf===undefined?undefined:+(+genome.rxSelf).toFixed(4),         // #183 local chemistry
+    rxc:genome.rxCross===undefined?undefined:+(+genome.rxCross).toFixed(4),
+    LAW:(__lawLog||[]).slice(-40),                                                // #183 [tick, law, from, to, kept] - the world's own legislative record
+    ace:genome.autonomyCede===undefined?undefined:+(+genome.autonomyCede).toFixed(4), // #182 how much this lineage cedes to its collective
+    ufm:genome.uaFoldMode===undefined?undefined:(Math.round(genome.uaFoldMode)|0),   // #181 compiler output stage
+    ufk:genome.uaFoldK===undefined?undefined:+(+genome.uaFoldK).toFixed(4),
     upw:Array.isArray(genome.uaProdW)?genome.uaProdW.map(v=>+(+v).toFixed(3)):undefined,
     uvw:Array.isArray(genome.uaVarW)?genome.uaVarW.map(v=>+(+v).toFixed(3)):undefined,
     uop:Array.isArray(genome.uaOps)?genome.uaOps.map(d=>d?[d.p|0,(d.a|0)&7,(d.b|0)&7,+(+finiteOr(d.k,0.5)).toFixed(3),(d.c|0)&3,d.age|0]:0):undefined,
@@ -8734,6 +9373,7 @@ function decodeGenome(data){
     genome.epochs=Array.isArray(g.EP)?g.EP:[];
     oeeLog=Array.isArray(g.oL)?g.oL:[];          // #130 open-endedness meter (absent in pre-#130 saves → starts empty)
     __opReachLog=Array.isArray(g.RCH)?g.RCH:[];  // #176 (absent in pre-#176 saves → starts empty, which is honest: it was never measured)
+    __levelLog=Array.isArray(g.LVL)?g.LVL:[];    // #182
     __uaOpLog=Array.isArray(g.OPS)?g.OPS:[];     // #180 (same rule: absent means never measured, not measured as zero)
     oeeNovel=g.oN|0;
     oeePersist=g.oP|0;
@@ -8786,6 +9426,20 @@ function decodeGenome(data){
     if(typeof g.ait==='number')genome.atomIdleTolerance=+g.ait;  // #177 (absent in pre-#177 saves → undefined → reads 0 → the old cull, which is the correct inheritance)
     if(typeof g.usb==='number')genome.uaStructBias=+g.usb;       // #107
     // #180 (absent in pre-#180 saves → left undefined → every reader's default → the pre-#180 engine)
+    if(Array.isArray(g.prb))genome.probes=g.prb.map(r=>Array.isArray(r)?{expression:String(r[0]),compiled:null,
+      failed:false,n:r[1]|0,hit:r[2]|0,pending:0,pendTick:-1,pendFit:0,age:0}:null);   // #184
+    if(Array.isArray(g.oew))genome.oeeW=g.oew.map(v=>+v);
+    if(typeof g.dmc==='number')genome.demeCount=g.dmc|0;              // #185
+    if(typeof g.dmf==='number')genome.demeFlow=+g.dmf;
+    if(typeof g.nlr==='number')genome.netLawRate=+g.nlr;
+    if(typeof g.nlx==='number')genome.netLawReceptivity=+g.nlx;
+    if(typeof g.csc==='number')genome.cellScale=+g.csc;        // #183
+    if(typeof g.rxs==='number')genome.rxSelf=+g.rxs;
+    if(typeof g.rxc==='number')genome.rxCross=+g.rxc;
+    if(Array.isArray(g.LAW))__lawLog=g.LAW;                    // #183 (absent -> no legislative history, which is honest: none was recorded)
+    if(typeof g.ace==='number')genome.autonomyCede=+g.ace;     // #182 (absent -> undefined -> reads 0.5 -> the pre-#182 boundary)
+    if(typeof g.ufm==='number')genome.uaFoldMode=g.ufm|0;      // #181 (absent -> undefined -> mode 0 -> the pre-#181 compiler)
+    if(typeof g.ufk==='number')genome.uaFoldK=+g.ufk;
     if(Array.isArray(g.upw))genome.uaProdW=g.upw.map(v=>+v);
     if(Array.isArray(g.uvw))genome.uaVarW=g.uvw.map(v=>+v);
     if(Array.isArray(g.uop))genome.uaOps=g.uop.map(r=>Array.isArray(r)?{p:(r[0]|0)===1?1:0,a:(r[1]|0)&7,b:(r[2]|0)&7,k:isFinite(+r[3])?+r[3]:0.5,c:(r[4]|0)&3,age:r[5]|0}:null);  // `isFinite(+k)?:0.5` and not `+k||0`: a blend weight of exactly ZERO is meaningful (pure B), so a missing field must not be able to arrive looking like one
@@ -9032,6 +9686,36 @@ function sanitizeGenome(){
   // The `while(...push(1))` tails are forward-compat, not padding: if a later swing adds a sense to
   // UA_ALL_VARS, every existing save extends with the NEUTRAL weight rather than dropping the new
   // symbol out of the alphabet or reading undefined as zero.
+  // #181: clamp if present, never create - the same rule as every #180 field below.
+  // The mode is ROUNDED here as well as read through uaFoldMode, because mutateChildGenome walks
+  // every numeric field with a continuous step and would otherwise leave a mode of 1.37 in the save.
+  // #184: clamp if present, never create. A probe with an unsafe expression is DROPPED rather than
+  // repaired, for #159's reason - a probe is compiled with new Function and base64'd into every
+  // future save, so one character outside printable ASCII would disable saving in this universe.
+  if(genome.probes!==undefined){
+    const _pb=Array.isArray(genome.probes)?genome.probes:[];
+    genome.probes=[];
+    for(let _k=0;_k<PROBE_MAX;_k++){
+      const pr=_pb[_k];
+      genome.probes[_k]=(pr&&uaExprSafe(pr.expression))?{expression:pr.expression,compiled:null,
+        failed:!!pr.failed,n:Math.max(0,pr.n|0),hit:__cl(pr.hit|0,0,Math.max(0,pr.n|0)),
+        pending:finiteOr(pr.pending,0),pendTick:-1,pendFit:0,age:Math.max(0,pr.age|0)}:null;
+    }
+  }
+  if(genome.oeeW!==undefined){
+    genome.oeeW=(Array.isArray(genome.oeeW)?genome.oeeW:[]).slice(0,OEE_PROXY_N).map(v=>__cl(finiteOr(v,0),0,1));
+    while(genome.oeeW.length<OEE_PROXY_N)genome.oeeW.push(0);
+  }
+  if(genome.demeCount!==undefined)genome.demeCount=__cl(Math.round(finiteOr(genome.demeCount,1)),1,DEME_MAX); // #185
+  if(genome.demeFlow!==undefined)genome.demeFlow=__cl(finiteOr(genome.demeFlow,1),0,1);
+  if(genome.netLawRate!==undefined)genome.netLawRate=__cl(finiteOr(genome.netLawRate,0.001),0,0.02);
+  if(genome.netLawReceptivity!==undefined)genome.netLawReceptivity=__cl(finiteOr(genome.netLawReceptivity,0.05),0,1);
+  if(genome.cellScale!==undefined)genome.cellScale=__cl(finiteOr(genome.cellScale,1),0.4,1);   // #183
+  if(genome.rxSelf!==undefined)   genome.rxSelf=__cl(finiteOr(genome.rxSelf,0),0,0.6);
+  if(genome.rxCross!==undefined)  genome.rxCross=__cl(finiteOr(genome.rxCross,0),0,0.6);
+  if(genome.autonomyCede!==undefined)genome.autonomyCede=__cl(finiteOr(genome.autonomyCede,0.5),0,1); // #182
+  if(genome.uaFoldMode!==undefined)genome.uaFoldMode=((Math.round(finiteOr(genome.uaFoldMode,0))%UA_FOLD_MODES)+UA_FOLD_MODES)%UA_FOLD_MODES;
+  if(genome.uaFoldK!==undefined)   genome.uaFoldK=__cl(finiteOr(genome.uaFoldK,1),0.05,8);
   if(genome.uaProdW!==undefined){
     genome.uaProdW=(Array.isArray(genome.uaProdW)?genome.uaProdW:[]).slice(0,5).map(v=>__cl(finiteOr(v,1),0,3));
     while(genome.uaProdW.length<5)genome.uaProdW.push(1);
@@ -10177,6 +10861,25 @@ function seedClusterGenome(){
     // selection should push launchDrive DOWN over a run; if contact is worth its price it should hold
     // or rise. That is a payout test the mechanism performs on itself, rather than one I assert.
     launchDrive:0.2+Math.random()*0.8,      // 0.2..1.0
+    // === #182 - HOW THIS COLLECTIVE REPRODUCES, AND HOW IT FEEDS ITSELF =======================
+    // repro: 0 BUD (the pre-#182 route - a small daughter leaves, parent persists), 1 FISSION (the
+    // collective splits near-evenly and neither half is the parent), 2 FUSION-SEEKING (it does not
+    // divide at all; it drifts toward the nearest cluster and merges). These are the three modes
+    // multicellular life actually uses, and which one a lineage uses is now its own to evolve rather
+    // than the one route the code happened to contain.
+    // alloc: 0 EVEN, 1 TO-THE-STRONGEST, 2 TO-THE-WEAKEST. A CONSERVED redistribution among members
+    // (see allocateWithinClusters) - the sum is preserved exactly, so no allocation rule can mint
+    // amplitude and none of this is wireheadable. What differs is whether the collective behaves like
+    // a market, a monarchy, or a welfare state, and those have genuinely different survival profiles
+    // under the same scarcity.
+    repro:(Math.random()*3)|0,
+    alloc:(Math.random()*3)|0,
+    allocRate:0.02+Math.random()*0.06,      // fraction of the gap moved per cycle
+    // The collective's OWN credit trace - a currency in the cluster's units, not the particle's.
+    // Earned by persisting and by growing, spent as a bias on reproduction. #182's "when a new level
+    // stabilizes, give it its own genome and its own credit channel": the genome is this object, and
+    // this is the channel.
+    credit:0,
   };
 }
 function mutateClusterGenome(parent,scale){
@@ -10187,6 +10890,17 @@ function mutateClusterGenome(parent,scale){
     innovationRate:__cl(parent.innovationRate+(Math.random()-0.5)*scale*0.15,0.01,0.8),
     metabolicBias:__cl(parent.metabolicBias+(Math.random()-0.5)*scale*0.05,0.6,0.99),
     launchDrive:__cl(finiteOr(parent.launchDrive,0.6)+(Math.random()-0.5)*scale*0.3,0,2), // WAVE 8 (#59)
+    // #182: the mode moves ONE STEP, never redrawn - #103's rule, at the level of the collective.
+    // A jump from budding straight to fusion-seeking discards whatever the lineage had learned about
+    // dividing, which is exactly the "discard and redraw" failure #103 was written about.
+    repro:(function(){ const r=(parent.repro|0)%3;
+      return Math.random()<scale*0.25?((r+(Math.random()<0.5?1:2))%3):r; })(),
+    alloc:(function(){ const a=(parent.alloc|0)%3;
+      return Math.random()<scale*0.25?((a+(Math.random()<0.5?1:2))%3):a; })(),
+    allocRate:__cl(finiteOr(parent.allocRate,0.04)+(Math.random()-0.5)*scale*0.03,0,0.25),
+    // Credit HALVES across a cluster generation - a warm start that has to be re-earned, the same
+    // rule #119 set for atom credit crossing a particle birth.
+    credit:finiteOr(parent.credit,0)*0.5,
   };
 }
 let clusterByID=new Int16Array(0); // fast lookup: clusterByID[cid] = index into clusters[]
@@ -10593,6 +11307,176 @@ const GROUP_ROLE_GAIN=0.5;   // swing #33: max bud-chance bonus for a maximally 
 const GROUP_ROLE_NORM=6;     // swing #33: distinct niche-cells (minus 1) at which the role bonus saturates
 const GROUP_COMMONS_GAIN=0.5; // swing #40: max bud-chance bonus for a colony that holds rqRate at the ceiling of its evolvable range
 const RQ_FLOOR_REF=0.05,RQ_CEIL_REF=0.15; // must track sanitizeGenome's rqRate clamp bounds (#36's floor/ceiling)
+// === #182 - A COLLECTIVE THAT FEEDS ITSELF BY A RULE OF ITS OWN =================================
+// CONSERVED BY CONSTRUCTION, and that is the whole design. The rule moves amplitude BETWEEN members
+// and the sum over members is preserved TO FLOAT32 PRECISION - `amp` is a Float32Array, so the honest
+// bound is around 1e-7 on a cluster sum of order 1, and substrate-test measures it rather than taking
+// the word of this comment. (The first version of this note said "exactly" and the rig caught it at
+// 1.0e-7. A conservation claim that is only nearly true is exactly the kind of thing this file has
+// had to go back and re-measure, so the number is stated instead of the adverb.) What matters is the
+// direction of the error: it is bounded rounding, not a leak, so no allocation rule can mint energy
+// and none of this is wireheadable. What differs between the three modes is the DISTRIBUTION a collective maintains
+// internally, which is a real strategic difference under scarcity and not a fitness knob:
+//   0 EVEN            pull every member toward the cluster mean       (a body)
+//   1 TO-THE-STRONGEST push amplitude up the gradient                 (a market)
+//   2 TO-THE-WEAKEST   push amplitude down the gradient               (a welfare state)
+// Mode 0 is NOT the pre-#182 behaviour: before this, clusters did not redistribute at all. There is
+// no "old" mode to default to, so the gene is seeded RANDOMLY at cluster birth rather than at a
+// neutral value, and __XION=0 is what reproduces the pre-#182 engine.
+function allocateWithinClusters(){
+  if(!__XION)return;
+  for(const c of clusters){
+    if(!c||c.size<3)continue;
+    const cg=c.clusterGenome; if(!cg)continue;
+    const rate=__cl(finiteOr(cg.allocRate,0.04),0,0.25); if(rate<=0)continue;
+    const mode=(cg.alloc|0)%3;
+    // gather members and their mean
+    const mem=[]; let sum=0;
+    for(let i=0;i<N;i++){ if(palive[i]&&clusterID[i]===c.id){ mem.push(i); sum+=amp[i]; } }
+    const n=mem.length; if(n<3)continue;
+    const mean=sum/n;
+    // Each member's signed distance from the mean is the ONLY quantity any mode uses, and every mode
+    // is a scalar multiple of it, which is what makes conservation automatic: sum(amp-mean)===0.
+    let moved=0;
+    for(const i of mem){
+      const dev=amp[i]-mean;
+      let delta;
+      if(mode===0)      delta=-dev*rate;          // toward the mean
+      else if(mode===1) delta= dev*rate;          // away from the mean, upward for the strong
+      else              delta=-dev*rate*2;        // past the mean - the weak overshoot the strong
+      amp[i]+=delta; moved+=Math.abs(delta);
+    }
+    // Renormalise once against drift from the mode-2 overshoot. Once, not to convergence: a second
+    // pass cannot beat float32 rounding on a Float32Array, so it would buy nothing and cost a loop.
+    let after=0; for(const i of mem)after+=amp[i];
+    const err=(sum-after)/n;
+    if(isFinite(err)&&err!==0) for(const i of mem) amp[i]+=err;
+    for(const i of mem) if(!(amp[i]>=-2)) amp[i]=0;   // a mode that drives a member negative kills it, as any starvation does
+    if(moved>0)fired('xion.allocate');
+  }
+}
+// === #182 - FUSION: the reproduction mode that is not reproduction ==============================
+// A cluster whose repro gene reads 2 does not divide. It drifts toward the nearest cluster and, on
+// contact, MERGES - its members are relabelled into the other collective and the two cluster genomes
+// are blended. That is the transition running in the other direction, and it belongs here for the
+// same reason budding does: whether a lineage of collectives gets larger by splitting or by joining
+// is a strategy, and this engine could previously only express one of the two.
+// Merging is deliberately CHEAP to attempt and IRREVERSIBLE once it happens, which is what makes it
+// selectable: a lineage that fuses indiscriminately loses its own identity and its credit trace with
+// it, so the gene has a real cost as well as a real payoff.
+const XION_FUSE_DIST=2.2;     // in CELL units - contact range for a merge
+function attemptClusterFusion(){
+  if(!__XION||clusters.length<2)return;
+  for(let ci=0;ci<clusters.length;ci++){
+    const c=clusters[ci]; if(!c||c.size<CBUD_MIN_SIZE)continue;
+    const cg=c.clusterGenome; if(!cg||((cg.repro|0)%3)!==2)continue;
+    // #186: THE SAME GATES BUDDING FACES. Measured: xion.fuse 296, xion.bud 0, xion.fission 0 over
+    // 12,000 ticks, because fusion asked only for size>=3 while division asks for CBUD_MIN_SIZE
+    // members AND CBUD_MIN_AGE cycles of persistence. Selection would have read that as fusion
+    // being the better strategy when it was only the cheaper one to attempt. A mode comparison
+    // where the modes do not face comparable gates is a subsidy, not a comparison.
+    if(c.persistAge<Math.min(finiteOr(cg.budThreshold,8),CBUD_MIN_AGE))continue;
+    // nearest OTHER cluster
+    let best=-1,bestD=Infinity;
+    for(let cj=0;cj<clusters.length;cj++){
+      if(cj===ci)continue; const o=clusters[cj]; if(!o||o.size<2)continue;
+      const dx=o.cx-c.cx,dy=o.cy-c.cy,dd=dx*dx+dy*dy;
+      if(dd<bestD){bestD=dd;best=cj;}
+    }
+    if(best<0)continue;
+    const o=clusters[best];
+    const dist=Math.sqrt(bestD);
+    if(dist>CELL*XION_FUSE_DIST){
+      // not in contact - drift toward it. This is the only thing a fusion-seeker does most cycles,
+      // and it is a real behavioural difference: a fusion lineage is a lineage that moves.
+      const ux=(o.cx-c.cx)/Math.max(1e-6,dist), uy=(o.cy-c.cy)/Math.max(1e-6,dist);
+      for(let i=0;i<N;i++) if(palive[i]&&clusterID[i]===c.id){ vx[i]+=ux*0.004; vy[i]+=uy*0.004; }
+      continue;
+    }
+    // CONTACT - relabel members into the other collective and blend the genomes.
+    let n=0;
+    for(let i=0;i<N;i++) if(palive[i]&&clusterID[i]===c.id){ clusterID[i]=o.id; n++; }
+    if(!n)continue;
+    const og=o.clusterGenome||(o.clusterGenome=seedClusterGenome());
+    const w=n/Math.max(1,n+o.size);
+    const mix=(a,b)=>finiteOr(a,0)*(1-w)+finiteOr(b,0)*w;
+    og.budRate=mix(og.budRate,cg.budRate);
+    og.budThreshold=mix(og.budThreshold,cg.budThreshold);
+    og.splitFraction=mix(og.splitFraction,cg.splitFraction);
+    og.innovationRate=mix(og.innovationRate,cg.innovationRate);
+    og.metabolicBias=mix(og.metabolicBias,cg.metabolicBias);
+    og.allocRate=mix(og.allocRate,cg.allocRate);
+    // The credit ADDS rather than blending: two collectives' earned histories join, which is the
+    // one advantage fusion has over division and the reason the gene can pay at all.
+    og.credit=__cl(finiteOr(og.credit,0)+finiteOr(cg.credit,0),-4,4);
+    // Discrete genes do not average. The larger contributor's mode wins, so a merge does not invent
+    // a mode neither parent had.
+    if(w>0.5){ og.repro=cg.repro|0; og.alloc=cg.alloc|0; }
+    o.size+=n; c.size=0;
+    fired('xion.fuse');
+    recordEvent('xion_fuse',{into:o.id,members:n},900);
+  }
+}
+// === #182 - THE COLLECTIVE'S OWN CREDIT CHANNEL =================================================
+// Particles have amp. Atoms have creditTrace. Verbs have uses. Clusters had NOTHING - their
+// reproduction was driven entirely by instantaneous state (coherence, territory, field richness), so
+// a collective that had persisted for two hundred cycles and one that formed last cycle were judged
+// identically. A level of selection with no memory of its own success is not really a level.
+// Earned by PERSISTING and by GROWING, both of which are things only a collective can do; decayed so
+// it is a trace and not a tally; bounded so it can bias reproduction without dominating it.
+const XION_CREDIT_DECAY=0.97;
+function updateClusterCredit(){
+  if(!__XION)return;
+  for(const c of clusters){
+    if(!c)continue;
+    const cg=c.clusterGenome; if(!cg)continue;
+    const prev=finiteOr(cg.credit,0);
+    const grew=(c.size-(finiteOr(c.prevSize,c.size)))/Math.max(3,c.size);
+    const held=c.persistAge>0?0.02:0;
+    cg.credit=__cl(prev*XION_CREDIT_DECAY+held+__cl(grew,-0.2,0.2),-4,4);
+    c.prevSize=c.size;
+    if(cg.credit>0.1)fired('xion.credit');
+  }
+}
+// === #182 - WHICH LEVELS EXIST RIGHT NOW ========================================================
+// The instrument, and the reason it is in the same commit as the mechanism: "select for new levels of
+// selection appearing and disappearing" is not a claim anything in this file could previously have
+// checked. Four levels are declared, each with a reader that returns how many INDIVIDUALS exist at
+// that level and how long the oldest one has persisted. A level with count 0 has not appeared; a
+// level whose count was positive and is now 0 has disappeared, and the log records both.
+// Declared up front like LIVENESS_DECLARED and for the identical reason - a level that never appears
+// must be visible as an absence rather than a missing row.
+const LEVEL_DECLARED=[
+  {name:'particle', read:()=>{ let n=0; for(let i=0;i<N;i++) if(palive[i])n++; return {n,age:0}; }},
+  {name:'cluster',  read:()=>{ let n=0,a=0; for(const c of clusters) if(c&&c.size>=2){n++; if(c.persistAge>a)a=c.persistAge;} return {n,age:a}; }},
+  {name:'tower',    read:()=>{ let n=0,a=0; try{ for(const f of hierTower) for(const u of f){ if(u&&u.reg>=0.5){n++; if((u.level|0)>a)a=u.level|0;} } }catch(_){} return {n,age:a}; }},
+  {name:'forest',   read:()=>{ let n=0,a=0; try{ for(const v of _forestReg.values()) if(v>=0.4)n++; a=_forestReg.size; }catch(_){} return {n,age:a}; }},
+];
+let __levelSeen=Object.create(null);    // name -> highest count ever observed
+let __levelLast=Object.create(null);    // #186: name -> count at the PREVIOUS census, so appeared/vanished fire on the transition
+let __levelLog=[];                      // per epoch: [tickEnd, ...counts in LEVEL_DECLARED order]
+function levelCensus(){
+  const rows=[];
+  for(const L of LEVEL_DECLARED){
+    let r={n:0,age:0}; try{ r=L.read()||r; }catch(_){}
+    const seen=__levelSeen[L.name]|0;
+    const last=(__levelLast[L.name]===undefined)?-1:(__levelLast[L.name]|0);
+    // #186: fire on the TRANSITION, not on the state. The first version fired level.vanished on
+    // every census where a level read zero, which for `forest` (0 for most of a run) was 146 times
+    // in 12,000 ticks - a census that says "a level of organisation has been lost" a hundred and
+    // forty-six times is not reporting an event, it is reporting a constant.
+    if(r.n>seen)__levelSeen[L.name]=r.n;
+    if(last>=0){
+      if(last===0&&r.n>0)fired('level.appeared');
+      if(last>0&&r.n===0)fired('level.vanished');
+    } else if(r.n>0)fired('level.appeared');   // first census: a level that is already here has appeared
+    __levelLast[L.name]=r.n|0;
+    rows.push({name:L.name,count:r.n|0,age:r.age|0,peak:Math.max(seen,r.n|0)});
+  }
+  return {tick:(typeof tick!=='undefined'?tick:0), rows,
+    levelsPresent:rows.filter(r=>r.count>0).length,
+    note:'count 0 with peak > 0 means this level of organisation existed and has gone. That is a fact about the run.'};
+}
 function attemptClusterBudding(){
   if(clusters.length>=MAX_CLUSTERS-2)return; // leave room
   // Snapshot cluster count — don't iterate over newly budded clusters
@@ -10602,6 +11486,17 @@ function attemptClusterBudding(){
     const c=clusters[ci];
     // Pe22f: cluster genome drives budding dynamics. Designer constants become evolvable.
     const cg=c.clusterGenome||(c.clusterGenome=seedClusterGenome());
+    // #182: WHICH MODE OF REPRODUCTION THIS COLLECTIVE USES.
+    //   2 FUSION-SEEKING never divides - attemptClusterFusion drives it instead, so it leaves here.
+    //   1 FISSION splits near-evenly and neither half is the parent (see the fission block below).
+    //   0 BUD is the pre-#182 route, unchanged.
+    const _xmode=__XION?((cg.repro|0)%3):0;
+    if(_xmode===2)continue;
+    // And the collective's own earned credit biases its reproduction, which is what having a credit
+    // channel is FOR. Bounded to a factor of two either way: a persistent, growing collective
+    // reproduces more readily than a newly formed one of identical instantaneous state, and nothing
+    // here can make reproduction free.
+    const _xcred=__XION?__cl(1+finiteOr(cg.credit,0)*0.25,0.5,2):1;
     // LEAP 17 (#54) — the size gate was the binding constraint and it is why the record states cluster
     // budding "never fires in headless runs" (#33's A/B came back HARNESS-INVISIBLE for exactly this).
     // Waves 1-2 changed the substrate: colonies now form and hold. Lowered to CBUD_MIN_SIZE so the major
@@ -10660,7 +11555,7 @@ function attemptClusterBudding(){
       _commonsMean=_rqN?_rqSum/_rqN:RQ_FLOOR_REF;
       commonsBonus=GROUP_COMMONS_GAIN*__cl((_commonsMean-RQ_FLOOR_REF)/(RQ_CEIL_REF-RQ_FLOOR_REF),0,1);
     }
-    const budChance=(territoryScore+fieldBonus+roleBonus+commonsBonus)*0.008*cg.budRate;
+    const budChance=(territoryScore+fieldBonus+roleBonus+commonsBonus)*0.008*cg.budRate*_xcred;
     if(Math.random()>budChance)continue;
 
     // Find bud direction — prefer direction with unclaimed territory
@@ -10682,7 +11577,9 @@ function attemptClusterBudding(){
     const by=__cl(c.cy+Math.sin(bestAngle)*budDist,CELL,H-CELL);
 
     // Select particles to move — those on the side of the cluster facing the bud direction
-    const splitFraction=cg.splitFraction; // Pe22f: split fraction now heritable
+    // #182: FISSION splits near-evenly. The gene still shapes it - splitFraction is pulled halfway
+    // toward 0.5 rather than replaced - so a fission lineage retains a heritable asymmetry.
+    const splitFraction=_xmode===1?__cl((cg.splitFraction+0.5)*0.5,0.35,0.65):cg.splitFraction; // Pe22f: split fraction now heritable
     const targetSplit=Math.floor(c.size*splitFraction);
     const budded=[];
 
@@ -10745,6 +11642,19 @@ function attemptClusterBudding(){
     // Pe22f: daughter's cluster genome is a mutated copy of parent's.
     // Budding is a speciation event — scale=1.0 is the full mutation magnitude.
     const daughterCG=mutateClusterGenome(cg,1.0);
+    // #182: under FISSION the parent is not the parent. Its hash is reissued so
+    // trackClusterPersistence cannot match it forward, its persistAge resets, and its genome is
+    // mutated too - so BOTH halves are daughters and the lineage has genuinely divided rather than
+    // shed a piece. That difference is the whole point of the mode: budding keeps an incumbent,
+    // fission does not, and which of those a lineage of collectives does is now heritable.
+    if(_xmode===1){
+      c.hash='fis_'+Math.random().toString(36).slice(2,8)+'_'+genome.totalTicks;
+      c.persistAge=1;
+      c.clusterGenome=mutateClusterGenome(cg,1.0);
+      c.lineageID=createLineage(c.lineageID,'bud');
+      fired('xion.fission');
+      recordEvent('xion_fission',{id:c.id,size:c.size},900);
+    } else fired('xion.bud');
 
     const daughter={
       id:clusters.length,
@@ -14872,6 +15782,96 @@ function mutateGenome(){ fired('genome.mutate');
   // declaring them in the genome literal would shift the RNG stream for every run whether or not
   // anything reads them, and that would destroy the exact-revert control this file keeps insisting on.
   // Seeded all-ones — the pre-#180 distribution exactly — and free from there.
+  // #181: the compiler's output stage. Lazily created for #97's reason like every gene above it, and
+  // seeded at mode 0 / k 1 - which IS the pre-#181 compiler, so a lineage that never mutates these
+  // compiles exactly what it always compiled. The mode moves ONE STEP at a time rather than being
+  // redrawn: switching substrate is the largest single change available to a lineage in this file,
+  // and #103's whole lesson is that a structure with no incremental operator cannot be refined.
+  // #182: how much of itself this lineage hands to the collective it stands in. Seeded at 0.5, which
+  // is exactly the pre-#182 cluster authority (see executeClusterVM), and free in [0,1] from there.
+  // Lazily created for #97's reason like every gene around it.
+  // #183: the lineage's own physics. All three seeded at the values that reproduce the pre-#183
+  // engine exactly (reach 1.0, no reaction), lazily created for #97's reason.
+  // === #184 - THE PROBE BANK: birth, drift, and the loss of a claim ============================
+  // Same shape as the atom, verb and operator banks, because it is the same kind of thing. Two
+  // differences that matter:
+  //   BIRTH IS FLOORED, for LEAP 22 (#55)'s reason, restated for the fourth time in this file:
+  //   mutateGenome runs about eighteen times per 6,000 ticks, so a rate-scaled probability is a coin
+  //   landing tails. A probe bank that never fills is a measurement layer that never measures.
+  //   AND A PROBE THAT DRIFTS LOSES ITS RECORD. Unlike an atom's local step, which deliberately keeps
+  //   `uses` because a small perturbation is still the same computation, a probe's hit rate is a claim
+  //   about a specific expression. Change the expression and the old record is a claim about something
+  //   else, so n and hit reset. Keeping them would let a lineage inherit a promotion it never earned,
+  //   which is the one way this mechanism could lie.
+  if(__PROBE){
+    if(!Array.isArray(genome.probes))genome.probes=[];
+    for(let _k=0;_k<PROBE_MAX;_k++){
+      const _pr=genome.probes[_k]; if(!_pr)continue;
+      // A PROMOTED probe is protected from drift: it is load-bearing - atoms in this lineage may be
+      // naming its symbol - and rewriting it under them is #137's harm in the measurement layer.
+      if(probePromoted(_pr))continue;
+      if(Math.random()<rate*0.3){
+        const _e=uaGenExpression();
+        if(_e!==_pr.expression){ _pr.expression=_e; _pr.compiled=null; _pr.failed=false;
+          _pr.n=0; _pr.hit=0; _pr.pendTick=-1; fired('probe.drift'); }
+      }
+    }
+    let _pdef=0; for(let _k=0;_k<PROBE_MAX;_k++) if(genome.probes[_k])_pdef++;
+    if(_pdef<PROBE_MAX&&Math.random()<Math.max(UA_OP_BIRTH_FLOOR,rate*0.15)){
+      for(let _k=0;_k<PROBE_MAX;_k++) if(!genome.probes[_k]){
+        genome.probes[_k]=probeDraw(); fired('probe.author');
+        recordEvent('probe_birth',{slot:_k,n:_pdef+1},600); break; }
+    }
+  }
+  // #184: and the weights on the open-endedness proxies. Seeded at ZERO - the bonus contributes
+  // nothing at the seed and the engine is pre-#184 exactly - and free in [0,1]. This is the gene that
+  // makes the difference between selecting FOR novelty (which would be a target we chose) and letting
+  // a lineage decide whether novelty is worth anything to it.
+  if(__OEE_BONUS){
+    if(!Array.isArray(genome.oeeW)||genome.oeeW.length!==OEE_PROXY_N)genome.oeeW=new Array(OEE_PROXY_N).fill(0);
+    for(let _k=0;_k<OEE_PROXY_N;_k++) if(Math.random()<rate)
+      genome.oeeW[_k]=__cl(finiteOr(genome.oeeW[_k],0)+(Math.random()-0.5)*0.2*scale,0,1);
+  }
+  // #185: the universe's own population structure and its openness to other universes' physics.
+  // demeCount seeds at 1 (one pool = the pre-#185 engine) and demeFlow at 1 (no barrier), so an
+  // unmutated world is unchanged. netLawReceptivity seeds LOW - see the receive site.
+  if(__DEME){
+    if(genome.demeCount===undefined)genome.demeCount=1;
+    if(genome.demeFlow===undefined)genome.demeFlow=1;
+    genome.demeCount=__cl(Math.round(intMaybe(genome.demeCount||1,0.5)),1,DEME_MAX);
+    genome.demeFlow=__cl(finiteOr(genome.demeFlow,1)+(Math.random()<rate?(Math.random()-0.5)*0.25*scale:0),0,1);
+  }
+  if(__UPLASMID){
+    if(genome.netLawRate===undefined)genome.netLawRate=0.001;
+    if(genome.netLawReceptivity===undefined)genome.netLawReceptivity=0.05;
+    genome.netLawRate=maybe(genome.netLawRate,0,0.02,0.002);
+    genome.netLawReceptivity=maybe(genome.netLawReceptivity,0,1,0.05);
+  }
+  if(__PHYS){
+    if(genome.cellScale===undefined)genome.cellScale=1;
+    if(genome.rxSelf===undefined)genome.rxSelf=0;
+    if(genome.rxCross===undefined)genome.rxCross=0;
+    genome.cellScale=__cl(finiteOr(genome.cellScale,1)+(Math.random()<rate?(Math.random()-0.5)*0.12*scale:0),0.4,1);
+    genome.rxSelf=__cl(finiteOr(genome.rxSelf,0)+(Math.random()<rate?(Math.random()-0.5)*0.1*scale:0),0,0.6);
+    genome.rxCross=__cl(finiteOr(genome.rxCross,0)+(Math.random()<rate?(Math.random()-0.5)*0.1*scale:0),0,0.6);
+  }
+  if(__XION){
+    if(genome.autonomyCede===undefined)genome.autonomyCede=0.5;
+    genome.autonomyCede=__cl(finiteOr(genome.autonomyCede,0.5)+(Math.random()<rate?(Math.random()-0.5)*0.18*scale:0),0,1);
+  }
+  if(__UA_FOLD){
+    if(genome.uaFoldMode===undefined)genome.uaFoldMode=0;
+    if(genome.uaFoldK===undefined)genome.uaFoldK=1;
+    if(Math.random()<rate*0.25){
+      genome.uaFoldMode=(((genome.uaFoldMode|0)+(Math.random()<0.5?1:UA_FOLD_MODES-1))%UA_FOLD_MODES);
+      fired('compiler.foldStep');
+    }
+    genome.uaFoldK=__cl(finiteOr(genome.uaFoldK,1)+(Math.random()<rate?(Math.random()-0.5)*0.4*scale:0),0.05,8);
+  }
+  // #186: and hand the whole substrate to ONE living particle, so the genes above can actually be
+  // selected on. Without this line every gene added in #181-#185 is authored, alive, and
+  // evolutionarily invisible in any world healthy enough not to go extinct.
+  if(typeof seedSubstrateIntoParticle==='function')seedSubstrateIntoParticle();
   if(__UA_PROD){
     if(!Array.isArray(genome.uaProdW)||genome.uaProdW.length!==5)genome.uaProdW=[1,1,1,1,1];
     for(let _k=0;_k<5;_k++) if(Math.random()<rate)
@@ -16898,8 +17898,22 @@ const vmActions=new Float32Array(8+MAX_USER_EFFECTS);
 
 function executeVM(i,j,sim,d){
   __uaVoice.fill(0);   // #175: a program starts with silent voices — see uaVoiceScope
-  if(d>CELL||d<0.5)return;
-  const proximity=1-d/CELL;
+  // === #183 - THE INTERACTION RADIUS IS A GENE ==================================================
+  // CELL=55 has decided who can affect whom since this file was written, and it is the most
+  // consequential constant in the engine: it sets the neighbourhood, and therefore the selection
+  // structure, for every mechanism above it. genome.cellScale is this lineage's own reach.
+  //
+  // THE BOUND IS [0.4, 1.0] AND THE UPPER END IS NOT A CHOICE. The neighbour grid is built on CELL,
+  // so it never offers a pair further apart than CELL in the first place; a scale above 1 would be a
+  // gene whose upper half silently does nothing, which is the worst kind of gene - selection spends
+  // real variance on it and gets no signal back. So this narrows only, and says so. A lineage can
+  // become a tight cell that interacts with almost nobody (0.4 is a 16x smaller neighbourhood by
+  // area) and pays for it in isolation; it cannot reach further than the substrate permits.
+  // Seeded at 1.0, so an unmutated lineage is byte-for-byte pre-#183.
+  const _cs=__PHYS?__cl(finiteOr(genome.cellScale,1),0.4,1):1;
+  const _reach=CELL*_cs;
+  if(d>_reach||d<0.5)return;
+  const proximity=1-d/_reach;
   const phaseAlign=Math.cos(phase[i]-phase[j]);
   const energy=(amp[i]+amp[j])*0.5;
   // LEAP 27 (#56) — THE CONSEQUENCE RETRIAL. #48 handed vmGain to selection unbounded and selection drove
@@ -16927,7 +17941,7 @@ function executeVM(i,j,sim,d){
   // so the control IS the historical baseline, which is what #66's protocol compares against. The stream
   // divergence in the treatment arm is inherent to adding a mechanism, not an artifact of the knob.
   if(__MEME_ON&&proximity>MEME_PROX_THRESH&&Math.random()<MEME_RATE){
-    if(__ATOM_HERITABLE){ if(pGenome[i]&&pGenome[j])attemptMemeTransfer(pGenome[i],pGenome[j]); }
+    if(__ATOM_HERITABLE){ if(pGenome[i]&&pGenome[j])(demeAllows(i,j)?attemptMemeTransfer(pGenome[i],pGenome[j]):undefined); }
     else if(pGenome[j]) attemptMemeTransfer(genome,pGenome[j]);
   }
 
@@ -17011,7 +18025,16 @@ function executeVM(i,j,sim,d){
   // typical program of sixteen. That ratio is a judgement, it is the only unmeasured number in #180,
   // and it is named as one here and in the notes rather than buried.
   const _opRent=__UA_OPS?uaOpCount()*UA_OP_RENT:0;
-  const totalCost=(nInst+_stack+_opRent+_over16*(COMPLEXITY_TOLL-1))*genome.metabolicCost;
+  // #181: and the compiler stage pays too, while it is non-default. "A slow, costly compiler-evolution
+  // path" is the request this answers, and the cost is the whole reason it is a path rather than a
+  // free switch: a lineage that changes what every one of its primitives MEANS should be paying for
+  // that from the first tick, not from the tick it turns out to have been wrong.
+  const _foldRent=uaFoldMode()>0?UA_FOLD_RENT:0;
+  // #184: and a PROMOTED probe. Only promoted ones pay - an unpromoted probe is a claim being tested
+  // and testing has to be cheap or nothing gets tested, while a promoted probe is a live sense every
+  // atom in the lineage can read, which is standing machinery and pays like the rest of it.
+  const _probeRent=__PROBE?probeCount()*PROBE_RENT:0;
+  const totalCost=(nInst+_stack+_opRent+_foldRent+_probeRent+_over16*(COMPLEXITY_TOLL-1))*genome.metabolicCost;
   amp[i]-=totalCost;amp[j]-=totalCost;
 
   for(let ip=0,_vs=0;ip<nInst&&_vs<nInst*2;ip++,_vs++){
@@ -17029,7 +18052,24 @@ function executeVM(i,j,sim,d){
       case 6:vmRegs[di]=pMem[i*MEM_SIZE+(Math.abs(src)%MEM_SIZE)];break;
       case 7:pMem[i*MEM_SIZE+(Math.abs(dst)%MEM_SIZE)]=vmRegs[si];break;
       case 8:{const fx8=Math.floor(px[i]/(W/FIELD_W)),fy8=Math.floor(py[i]/(H/FIELD_H));const fi8=__cl(fy8*FIELD_W+fx8,0,FIELD_W*FIELD_H-1);vmRegs[di]=field[fi8];}break;
-      case 9:{const wx9=Math.floor(px[i]/(W/FIELD_W)),wy9=Math.floor(py[i]/(H/FIELD_H));const wi9=__cl(wy9*FIELD_W+wx9,0,FIELD_W*FIELD_H-1);field[wi9]+=vmRegs[si]*k;field[wi9]=__cl(field[wi9],0,2.5);stampField(wi9,getParticleSig(i),Math.abs(vmRegs[si]*k));}break;
+      case 9:{const wx9=Math.floor(px[i]/(W/FIELD_W)),wy9=Math.floor(py[i]/(H/FIELD_H));const wi9=__cl(wy9*FIELD_W+wx9,0,FIELD_W*FIELD_H-1);const _dep9=vmRegs[si]*k;field[wi9]+=_dep9;field[wi9]=__cl(field[wi9],0,2.5);stampField(wi9,getParticleSig(i),Math.abs(_dep9));
+        // === #183 - THE LINEAGE CHOOSES WHAT ITS DEPOSITS TURN INTO =============================
+        // A particle could always write into the resource field. What happened NEXT was ours: decay,
+        // diffusion, and nothing else. These two genes make the deposit a REACTION - a fraction of
+        // what is written also appears in the detrital and inhibitor channels, and the fractions are
+        // heritable. That is genuine niche construction with a chemistry the lineage evolved: a
+        // lineage can become one whose activity fertilises the ground behind it (rxSelf high), one
+        // that poisons its own neighbourhood against competitors (rxCross high), or neither.
+        // Both seeded at 0, which is exactly the pre-#183 deposit, and both bounded well under the
+        // primary deposit so no reaction can outproduce the resource that drives it - the fields have
+        // their own hard clamps underneath this, so the worst an evolved chemistry can do is saturate
+        // a cell it was already allowed to saturate.
+        if(__PHYS){
+          const _rs=__cl(finiteOr(genome.rxSelf,0),0,0.6), _rc=__cl(finiteOr(genome.rxCross,0),0,0.6);
+          if(_rs>0){ detritalField[wi9]=Math.min(3,detritalField[wi9]+Math.abs(_dep9)*_rs); fired('phys.reaction'); }
+          if(_rc>0){ inhibitorField[wi9]=Math.min(2.5,inhibitorField[wi9]+Math.abs(_dep9)*_rc); fired('phys.reaction'); }
+        }
+      }break;
       case 10:{if(clusterID[i]>=0){const cIdx10=clusterID[i]<MAX_CLUSTERS?clusterByID[clusterID[i]]:-1;if(cIdx10>=0){const c=clusters[cIdx10];const cfx=Math.floor(c.cx/(W/FIELD_W)),cfy=Math.floor(c.cy/(H/FIELD_H));const cfi=__cl(cfy*FIELD_W+cfx,0,FIELD_W*FIELD_H-1);field[cfi]+=vmRegs[si]*k;field[cfi]=__cl(field[cfi],0,2.5);stampField(cfi,c.fieldSignature,Math.abs(vmRegs[si]*k));}}}break;
       case 11:{const slot=Math.abs(dst)%2;pBroadcast[i*2+slot]=vmRegs[si]*k;}break;
       case 12:{const slot2=Math.abs(src)%2;vmRegs[di]=pBroadcast[j*2+slot2];}break;
@@ -20301,6 +21341,11 @@ function executeVM(i,j,sim,d){
 
   if(vmActions[4]*influence>0.0002&&Math.random()<0.002&&N<CAP){
     _specSpawnSim(sim);
+    // #185: and the DEME barrier, which is a different kind of isolation from __SPEC.assort above it.
+    // That one gates on trait similarity - divergence causes the barrier. This one gates on SPACE -
+    // the barrier causes the divergence, which is what allopatry is and what this engine could not
+    // express. Both are soft, both are genes, and a lineage can have neither, either or both.
+    if(!demeAllows(i,j)){ } else
     if(__SPEC.assort&&!specAssortAccept(i,j,sim)){ _specReject(i); } else { // pre-zygotic isolation: refuse to pair across a trait gap
     const cx=(px[i]+px[j])*0.5,cy=(py[i]+py[j])*0.5;
     const nt=new Float32Array(DIMS);
@@ -20373,7 +21418,20 @@ function executeClusterVM(i,j,sim,d){
   const proximity=1-d/CELL;
   const phaseAlign=Math.cos(phase[i]-phase[j]);
   const energy=(amp[i]+amp[j])*0.5;
-  const influence=cl.vmInfluence*genome.ruleScale*0.0015*(genome.vmGain||1); // #48: evolvable gain
+  // === #182 - THE BOUNDARY IS POROUS, AND IT IS A GENE ==========================================
+  // A particle in a cluster ran the cluster's program at the cluster's chosen influence and had no
+  // say in it. That is the boundary being drawn by us: membership was a spatial fact with a fixed
+  // consequence. genome.autonomyCede is the particle lineage's own half of the contract - how much
+  // of its behaviour it hands to the collective it happens to be standing in.
+  //   0.0  fully autonomous. The cluster's program does not move it at all.
+  //   0.5  the pre-#182 arrangement, which is why that is the seed value: at 0.5 the scale below is
+  //        1.0 and this line is byte-for-byte what it was.
+  //   1.0  somatic. The collective's program drives it at twice the old authority.
+  // The gene runs BOTH WAYS under ordinary mutation, so surrendering autonomy and reclaiming it are
+  // the same mechanism read in two directions, and neither is privileged by the code. This is the
+  // thing that makes a major transition reversible, which real ones are.
+  const _cede=__XION?__cl(finiteOr(genome.autonomyCede,0.5),0,1)*2:1;
+  const influence=cl.vmInfluence*genome.ruleScale*0.0015*(genome.vmGain||1)*_cede; // #48: evolvable gain  #182: x the carrier's own surrender
 
   uaCtxC=proximity;uaCtxD=energy;uaCtxM=(pType[i]===pType[j])?1:-1; uaSetEyes(i,j); // UNLOCKED #7a/#7b: atom context (+EYES)
 
@@ -21585,6 +22643,11 @@ function executeClusterVM(i,j,sim,d){
 
   if(vmActions[4]*influence>0.0002&&Math.random()<0.001&&N<CAP){
     _specSpawnSim(sim);
+    // #185: and the DEME barrier, which is a different kind of isolation from __SPEC.assort above it.
+    // That one gates on trait similarity - divergence causes the barrier. This one gates on SPACE -
+    // the barrier causes the divergence, which is what allopatry is and what this engine could not
+    // express. Both are soft, both are genes, and a lineage can have neither, either or both.
+    if(!demeAllows(i,j)){ } else
     if(__SPEC.assort&&!specAssortAccept(i,j,sim)){ _specReject(i); } else { // pre-zygotic isolation: refuse to pair across a trait gap
     const cx=(px[i]+px[j])*0.5,cy=(py[i]+py[j])*0.5;
     const nt=new Float32Array(DIMS);
@@ -22962,7 +24025,7 @@ const ATTN_DEPOSIT=0.06;    // per tick under the pointer
 const ATTN_DECAY=0.985;     // attention fades; a place you looked at once is not looked at forever
 const ATTN_DIFFUSE=0.08;    // eyes are not pixels — a soft blob, not a point
 const ATTN_MAX=1.5;
-const ATTENTION_GAIN=0.35;  // how much cheaper life is under full attention (fraction of upkeep)
+let ATTENTION_GAIN=0.35;  // how much cheaper life is under full attention (fraction of upkeep) // #183: `let`, not `const` - LAW_DECLARED names this as a mutable law, and a row whose setter throws would be caught by its own try/catch and never work. A declared law that cannot be assigned is worse than an undeclared one
 let __attnPresent=0;        // 1 while the pointer is on the canvas, EMA'd so it decays on release
 let attnPeak=0;             // telemetry / HUD
 const _attnTmp=new Float32Array(FIELD_W*FIELD_H);
@@ -23162,6 +24225,15 @@ __UA_STRUCT=(typeof globalThis==='undefined')||((globalThis.__UA_STRUCT??1)|0)!=
 __UA_PROD=(typeof globalThis==='undefined')||((globalThis.__UA_PROD??1)|0)!==0;   // #180: default ON. Force off with UA_PROD=0
 __UA_VARW=(typeof globalThis==='undefined')||((globalThis.__UA_VARW??1)|0)!==0;   // #180: default ON. Force off with UA_VARW=0
 __UA_OPS=(typeof globalThis==='undefined')||((globalThis.__UA_OPS??1)|0)!==0;     // #180: default ON. Force off with UA_OPS=0 — and OFF is a true exact-revert, not an approximation: with the gate down no gene is created, no array exists, no extra Math.random() is drawn on any path, and the grammar's thresholds are the pre-#180 constants
+__UA_FOLD=(typeof globalThis==='undefined')||((globalThis.__UA_FOLD??1)|0)!==0; // #181: default ON. Force off with UA_FOLD=0 - mode 0 is the pre-#181 compiler byte for byte
+__XION=(typeof globalThis==='undefined')||((globalThis.__XION??1)|0)!==0;               // #182: default ON. Force off with XION=0 - reproduction returns to budding-only, no allocation, and the cluster boundary returns to fixed authority
+__XION_LEVELS=(typeof globalThis==='undefined')||((globalThis.__XION_LEVELS??1)|0)!==0; // #182: default ON. Force off with XION_LEVELS=0 - the census stops running; the mechanisms do not
+__PHYS=(typeof globalThis==='undefined')||((globalThis.__PHYS??1)|0)!==0;       // #183: default ON. Force off with PHYS=0 - reach returns to CELL and deposits stop reacting
+__LAWMUT=(typeof globalThis==='undefined')||((globalThis.__LAWMUT??1)|0)!==0;   // #183: default ON. Force off with LAWMUT=0 - no proposal is ever made and the globals never move
+__PROBE=(typeof globalThis==='undefined')||((globalThis.__PROBE??1)|0)!==0;         // #184: default ON. Force off with PROBE=0 - no probe is authored, pa..pd read 0 and are never offered to the generator
+__OEE_BONUS=(typeof globalThis==='undefined')||((globalThis.__OEE_BONUS??1)|0)!==0; // #184: default ON, and it is a NO-OP at the seeded weights: the weights start at zero, so this changes nothing until a lineage moves one
+__DEME=(typeof globalThis==='undefined')||((globalThis.__DEME??1)|0)!==0;         // #185: default ON, and a NO-OP at the seeded genes: demeCount 1 means one pool, which is the pre-#185 engine
+__UPLASMID=(typeof globalThis==='undefined')||((globalThis.__UPLASMID??1)|0)!==0; // #185: default ON. Force off with UPLASMID=0 - no world offers or accepts another world's physics
 __FORAGE_ON=(typeof globalThis==='undefined')||((globalThis.__FORAGE_EYES??1)|0)!==0; // resolve FORAGE once; gates the resource-sense computation in uaSetEyes
 __DECIDE_ON=(typeof globalThis==='undefined')||((globalThis.__DECIDE??1)|0)!==0; // resolve DECISION GAIN once; gates confidence accrual + commitment scaling
 __DECIDE_REAL=(typeof globalThis==='undefined')||((globalThis.__DECIDE_REAL??1)|0)!==0; // resolve DECIDE-FROM-REAL once; gates real-winner physics adoption
@@ -23629,6 +24701,11 @@ function loop(){
   tick++;
   genome.totalTicks++;
   updateWorldSignal();   // #136: read the real world before deciding what the sunlight is
+  // #183: the world's own legislature. One proposal on probation at a time; the population is the
+  // fitness function, because the population is the only thing at this level that can die. Called
+  // every tick because it samples the population every tick - the proposal itself is rare (LAW_RATE),
+  // and the sampling is what gives a verdict something to be a verdict about.
+  attemptLawMutation();
   // #136: the seasonal swing is now part designed sine, part real signal. WORLD_SIGNAL_WEIGHT bounds
   // how much authority the unauthored part may claim; with no real signal available every term is 0
   // and this reduces to exactly the old sinusoid, which is what a headless run reproduces.
@@ -23974,7 +25051,11 @@ function loop(){
     const _rcN=clusters.length;
     for(let _ri=0;_ri<_rcN;_ri++){const _rca=clusters[_ri];if(!_rca||_rca.size<1)continue;for(let _rj=_ri+1;_rj<_rcN;_rj++){const _rcb=clusters[_rj];if(!_rcb||_rcb.size<1)continue;if(_rca.lineageID===_rcb.lineageID)continue;const _rdx=_rca.cx-_rcb.cx,_rdy=_rca.cy-_rcb.cy;if(_rdx*_rdx+_rdy*_rdy>CELL*CELL*36)continue;const _rpA=new Set((_rca.vmProgram||[]).map(x=>x[0]));const _rpB=new Set((_rcb.vmProgram||[]).map(x=>x[0]));let _rint=0;for(const _rop of _rpA)if(_rpB.has(_rop))_rint++;const _run=_rpA.size+_rpB.size-_rint;const _rd=_run>0?1-_rint/_run:0;if(_rd>(_rca.rivalDissim||0))_rca.rivalDissim=_rd;if(_rd>(_rcb.rivalDissim||0))_rcb.rivalDissim=_rd;}}
     }
+    updateClusterCredit();      // #182: the collective's own currency, before it is spent on reproduction
+    allocateWithinClusters();   // #182: and how it feeds its parts - conserved, so never a subsidy
     attemptClusterBudding();
+    attemptClusterFusion();     // #182: the transition running the other way
+    if(__XION_LEVELS)levelCensus();  // #182: which levels of organisation exist right now
     attemptCosmosLaunch(); // WAVE 8 (#59): eligible clusters may found daughter WORLDS — reproduction one level above the colony
     updateCosmos();        // WAVE 8 (#59): each live child runs COSMOS_TICKS of its own time under its own constants, and most of them die
     updateHomeostatStack(); // RECURSIVE TOWER: clusters bind into super-units into higher units, each a slower homeostat regulating the floor below — open stack, no coded ceiling
@@ -24180,7 +25261,14 @@ function loop(){
       (clusters.filter(c=>c.persistAge<2).length/Math.max(1,clusters.length))*w[3]+
       realSensorScore*realSensorWeight+
       predictionQuality*relW)/(wT+realSensorWeight+relW+RETENTION_WEIGHT);
-    if(Number.isFinite(fitness)) currentFitness=currentFitness*0.9+fitness*0.1; // guard: the EMA is a one-way NaN trap — a single non-finite sample would poison currentFitness forever (HUD, op91/op92 self-fitness sensors, credit-assignment). Skip a bad sample instead.
+    // #184: the open-endedness bonus, added to the composite BEFORE the EMA so it moves the same
+    // number every other selective pressure moves. Bounded at OEE_BONUS_CAP whatever the weights
+    // evolve to, and zero at the seeded weights, so a lineage that never touches these genes is
+    // selected exactly as it was pre-#184. Every proxy is read from population- or world-wide state
+    // no single genome controls, which is what keeps it from being a wireheading path.
+    const _oeeB=__OEE_BONUS?oeeBonus():0;
+    const fitnessWithBonus=fitness+_oeeB;
+    if(Number.isFinite(fitnessWithBonus)) currentFitness=currentFitness*0.9+fitnessWithBonus*0.1; // guard: the EMA is a one-way NaN trap — a single non-finite sample would poison currentFitness forever (HUD, op91/op92 self-fitness sensors, credit-assignment). Skip a bad sample instead.
     // Pe108 Layer 97: derive smoothed velocity from per-tick currentFitness delta.
     // EMA factor 0.85/0.15 — slightly more responsive than currentFitness itself, so the
     // VM sees direction changes a bit before they're fully reflected in the level reading.
@@ -24190,6 +25278,37 @@ function loop(){
     fitnessVelocity=fitnessVelocity*0.85+(currentFitness-prevCurrentFitness)*0.15;
     prevCurrentFitness=currentFitness;
     fitnessSamples++;
+    // #184: the probes claim and are judged here, on the ORGANISM's cadence, against the number they
+    // are predicting. Scoring per interaction would be scoring noise; scoring here is scoring the
+    // thing the probe actually claimed something about.
+    if(__PROBE){
+      scoreProbes(currentFitness);
+      // === #186 - AND THE POPULATION'S PROBES GET SCORED TOO =====================================
+      // scoreProbes runs in the SELF's context, so the first version scored `genome` and nothing
+      // else: every population probe crossed correctly, accumulated zero scored claims, and could
+      // never reach PROBE_MIN_SAMPLE. probe.promoted read germline 1 / population 0 and stayed
+      // there. That is #102 in a new mechanism - "credit measured a pool selection never saw".
+      //
+      // ONE PARTICLE PER TICK, not all of them. Four uaCalls per living particle per tick would be
+      // the most expensive thing in the engine, and it would not buy accuracy: a probe needs
+      // PROBE_MIN_SAMPLE claims spread over PROBE_LAG-tick intervals, so sampling one carrier per
+      // tick gives every bank in the population a real chance to accumulate a record without the
+      // per-tick cost scaling with N. This is #118's population funnel, same shape, same reason.
+      //
+      // The repoint is the standard one and it is RESTORED IN A FINALLY, because uaCall, uaCompile
+      // and probePromoted all read the ambient `genome` - leaving it pointed at a particle would
+      // hand the rest of the tick a stranger's substrate.
+      if(N>0){
+        const _pk=(Math.random()*N)|0;
+        if(palive[_pk]&&pGenome[_pk]&&Array.isArray(pGenome[_pk].probes)){
+          const _sg=genome;
+          genome=pGenome[_pk];
+          try{ scoreProbes(currentFitness); }catch(_){}
+          finally{ genome=_sg; }
+        }
+      }
+      updateProbes();
+    }
     applyCreditAssignment(); // Pe25 Layer 15: nudge weights toward predictive components
 
     if(genome.stableMotifs.length>0&&clusters.length>0){

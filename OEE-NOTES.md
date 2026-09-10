@@ -13898,3 +13898,220 @@ is the first, and only the first:
 Doing all six in one commit would have meant six layers each with the shallow instrumentation that
 this one file has been bitten by six times. The stranding row and the reachability count above are
 what one layer's worth of care costs, and both of them found real bugs in the first afternoon.
+
+---
+
+## #181-#186 — THE REST OF THE SUBSTRATE
+
+#180 made the atom grammar a gene and stopped there, and the notes for it named the five fronts it
+had not touched. This batch takes all five. The instruction was to build them rather than measure
+each one to exhaustion, on the grounds that the live field is the real test and that test-after-test
+is not the point — so what follows is what was built, what the structural instruments said, and what
+is explicitly unmeasured.
+
+### #181 — the compiler's output stage
+
+Every authored expression in this engine has always been wrapped in one line:
+`const r=(<expr>); return isFinite(r)?r:0;`. That is the compiler, not the language, and it encodes a
+design decision made once: atom outputs are raw, linear, unbounded until `uaCall`'s clamp. A lineage
+could not say *my primitives are saturating*, or *discrete*, or *one-sided* — those are properties of
+a computational substrate, and no expression can express them because every expression is wrapped
+identically.
+
+Two genes, four stages, assembled into the function body at compile time:
+
+```
+0  PLAIN       r                     the pre-#181 compiler
+1  SATURATING  8*tanh(r*k/8)
+2  DISCRETE    round(r/k)*k
+3  ONE-SIDED   r>0 ? r : r*k
+```
+
+Numeric, never text: the meta-language discipline from #180 holds, so nothing a genome produced is
+ever compiled as a string. **The cache was the real hazard.** `__uaCode` is keyed by expression text
+because the compiled function is pure — #161's 1.9 GB fix depends on that — and a heritable wrapper
+breaks it: two lineages with different folds compile the same text to different functions. The key
+carries the fold. `substrate-test` holds it: `(a)+(b)` at 3,3 reads 6 plain, 8 quantised to steps of
+4, and 6 plain again, with distinct compiled functions.
+
+Costed at `UA_FOLD_RENT` = 0.5 instruction-equivalents while non-default — twice the operator rent,
+because this changes every primitive the lineage owns rather than adding one. That is the "slow,
+costly compiler-evolution path" answered.
+
+### #182 — major transitions as first-class events
+
+Clusters have existed since Pe22 and were an *aggregate*: a flood-fill handed a program and a few
+dials. Three things were missing before one could be an individual.
+
+**Reproduction mode** is now a cluster gene: 0 BUD (a daughter leaves, the parent persists), 1 FISSION
+(near-even split, and the parent's hash is reissued so *neither* half is the parent), 2 FUSION-SEEKING
+(it does not divide — it drifts toward the nearest cluster and merges, blending genomes and *adding*
+credit). Those are the three modes multicellular life actually uses, and this engine could previously
+express one.
+
+**Allocation** is a second cluster gene — EVEN, TO-THE-STRONGEST, TO-THE-WEAKEST — a redistribution
+among members conserved to float32 precision. Measured: drift 1.0e-7 on a cluster sum of ~5, with the
+spread moving 1.1 → 0.88 under EVEN and 1.1 → 1.32 under TO-THE-STRONGEST. The engine's first version
+of that comment said "exactly" and the rig caught it; the number is in the comment now instead of the
+adverb.
+
+**The boundary is porous and it is a gene.** `genome.autonomyCede` scales how much of a particle's
+behaviour its cluster's program drives — 0 autonomous, 0.5 the pre-#182 arrangement, 1.0 somatic. It
+mutates in both directions, so surrendering autonomy and reclaiming it are one mechanism read two
+ways, which is what makes a major transition reversible. Real ones are.
+
+Plus the instruments: `LEVEL_DECLARED` (particle / cluster / tower / forest), a `level.appeared` and
+`level.vanished` pair, an `LVL` epoch log, and a cluster credit channel earned by persisting and
+growing — because a level of selection with no memory of its own success is not really a level.
+
+### #183 — the physics co-evolves
+
+Three constants opened, in ascending order of how much they can break.
+
+`genome.cellScale` is the interaction radius, per lineage. **The bound is [0.4, 1.0] and the upper end
+is not a choice**: the neighbour grid is built on CELL and never offers a wider pair, so a scale above
+1 would be a gene whose upper half silently does nothing — selection spending real variance for no
+signal. It narrows only, and says so.
+
+`genome.rxSelf` / `rxCross` are the lineage's own chemistry: a fraction of every field deposit also
+appears in the detrital and inhibitor channels, and the fractions are heritable. A lineage can become
+one that fertilises the ground behind it, or one that poisons its neighbourhood against competitors.
+
+And **law mutation on probation**. Three declared globals with ranges; a proposal charges every living
+particle 4% of its amplitude, runs for 4,000 ticks, and is **reverted** if the mean population falls
+below 70% of the pre-proposal mean. One law on probation at a time, so a verdict is attributable. That
+is the whole world being selected on whether its new law is viable, with the population as the fitness
+function because the population is the only thing at that level that can die.
+
+Two bugs found while building it, both of the "declared but inert" kind this file keeps paying for:
+`ATTENTION_GAIN` was a `const`, so its setter threw into its own try/catch and the law would never
+have worked — it is a `let` now, and the rig checks every row is actually settable. And `FIELD_DECAY`
+/ `FIELD_DIFFUSE` are re-derived from the genome in two places, so a law that wrote only the global
+would have been undone within a few hundred ticks and the probation verdict would have measured a
+constant that had already snapped back. Those setters write the genome too.
+
+### #184 — the measurement loop closes
+
+Every instrument in this engine was mine. A system that can invent new kinds of entity and cannot
+invent a way to look at itself is still being watched from outside.
+
+A **probe** is an authored expression with a claim attached: evaluated now, scored 40 ticks later
+against what the organism's fitness actually did. A probe whose *sign* has been right more than 60%
+of the time over at least 8 scored claims is **promoted** — its output becomes a live grammar symbol
+(`pa`..`pd`) that every atom in the lineage can read as a leaf. Promotion is the point: without it a
+probe is a fifth credit channel, and with it a successful measurement becomes part of the substrate
+later measurements are written in.
+
+Why this is not the alien channel again, which #95/#97 measured at chance *twice*: that one scored
+against a coupled peer's future packet rate — a target the genome cannot causally influence, which is
+what made it clean and what made it nearly unlearnable. A probe is scored against the carrier's own
+fitness trajectory, which the carrier *can* influence, so a probe can be right by being causal as
+well as by being correlated. A weaker epistemic claim and a much stronger evolutionary one: a
+self-fulfilling prediction is still a useful sense.
+
+Only promoted probes join the leaf pool. An unpromoted probe's symbol reads a constant zero, and
+offering those to the generator would widen the alphabet with dead letters — which is #179's failure
+in its purest form. Rig: 0 of 300 draws name an unpromoted probe, 14 of 400 name a promoted one.
+
+And the **open-endedness proxies stop being read-only**. Four candidates — reachable bank diversity,
+the meter's own persistence ratio, how many levels of organisation are present, and how far this
+lineage's alphabet has drifted from the seed — each with an evolvable weight seeded at **zero**. The
+metric is not hard-coded as a target; the weight on each candidate is a gene, which is the difference
+between selecting for novelty and letting a lineage decide whether novelty is worth anything to it.
+Every proxy reads population- or world-wide state no single genome controls, and the summed
+contribution is capped at 0.08 whatever the weights become.
+
+### #185 — the field of tabs becomes a meta-population
+
+`genome.demeCount` divides a universe into sub-populations and `genome.demeFlow` sets how permeable
+the barriers are. The tag is **derived from position, not stored**, which is what makes it
+reconnectable: lowering the count merges the pools on the next tick, with nothing to migrate or
+garbage-collect. The barrier applies to reproduction and horizontal transfer, not to interaction —
+particles in different demes still compete for the same field, because a barrier to gene flow is not
+a wall, and that distinction is the difference between allopatry and two separate simulations.
+
+This is a different isolation from the `__SPEC.assort` gate above it: that one gates on trait
+similarity, so divergence causes the barrier; this gates on space, so the barrier causes the
+divergence. Both are soft, both are genes, and a lineage can have neither, either or both.
+
+And a **universe-level plasmid**: a packet carrying a world's most recently KEPT law plus its operator
+bank and compiler stage. Only a kept law is offered — broadcasting a proposal still on probation
+would spread a law before anything had survived it. Receipt is gated by `netLawReceptivity`, a
+*separate* gene from `netReceptivity`, seeded low at 0.05, because a world could not previously be
+open to migrants and closed to law changes and once laws travel those are very different decisions.
+An imported law goes on probation exactly like a home-grown one, so a bad import is reverted by the
+same machinery. Isolation is evolvable, not enforced.
+
+### #186 — what the instruments said, which was that three of these were stranded
+
+The crossing rows added alongside the genes did their job on the first 12,000-tick run:
+
+```
+atom.fold      germline 1 / population 0     STRANDED
+probe.bank     germline 4 / population 0     STRANDED
+oee.weighted   germline 2 / population 0     STRANDED
+```
+
+The **seventh** appearance of this file's most repeated bug, and the third in two days. And "cloneGenome
+forgot a field" is the wrong diagnosis — cloneGenome copies all of them correctly. The problem is
+structural and applies to every germline scalar this engine has ever added: `genome` is the self,
+`pGenome[i]` descends from `pGenome[parent]`, and the only routes between them are a parentless spawn
+and the explicit seeding functions. **A gene created on the germline after the population exists
+reaches that population only when the world dies.** This run had zero extinctions — the healthy case —
+and in the healthy case the germline and the population diverge permanently.
+
+`seedSubstrateIntoParticle()` hands the whole substrate to one living particle per mutateGenome call.
+One, not all: a foothold is not a takeover, and forcing it into every genome would also make the
+crossing row meaningless — it would read full adoption whether or not anything had selected for it.
+After: `atom.fold` 1/8, `xion.cede` 1/20, `phys.reach` 1/15, `phys.chem` 2/92, `probe.bank` 4/76,
+`oee.weighted` 3/65, `deme.split` 1/5.
+
+**And then the probes were crossing and never being scored.** `scoreProbes` runs in the self's
+context, so it scored `genome` and nothing else: every population probe crossed correctly, accumulated
+zero claims, and could never reach the minimum sample. `probe.promoted` read 1/0 and stayed there.
+That is #102 in a new mechanism — "credit measured a pool selection never saw". One random carrier per
+tick is scored with the genome repointed (restored in a `finally`, because `uaCall`, `uaCompile` and
+`probePromoted` all read the ambient genome). #118's population funnel, same shape, same reason.
+
+Two instrument defects, also found by running it:
+
+- `level.vanished` fired **146 times in 12,000 ticks**, because it fired on the *state* rather than
+  the *transition*: `forest` reads 0 for most of a run, and a census that says "a level of
+  organisation has been lost" a hundred and forty-six times is reporting a constant, not an event.
+- `xion.fuse` fired **296 times in the same run where `xion.bud` and `xion.fission` fired zero**,
+  because fusion asked only for size ≥ 3 while division asks for `CBUD_MIN_SIZE` members *and*
+  `CBUD_MIN_AGE` cycles of persistence. Selection would have read that as fusion being the better
+  strategy when it was only the cheaper one to attempt. A mode comparison where the modes face
+  different gates is a subsidy, not a comparison. Fusion faces the same gates now, and its rate fell
+  296 → 63.
+
+### What these runs do and do not say
+
+**Do:** the layers execute. Over 12,000 ticks with everything on — 219 alive, **zero extinctions**,
+fitness 0.68, save round-trips clean. `xion.allocate` 1,630, `xion.credit` 693, `xion.fuse` 63,
+`probe.claim` 546, `probe.promote` 3, `oee.bonus` 116, `uplasmid.send` 10, `compiler.foldStep` 1, one
+law proposal kept (`FIELD_DIFFUSE` 0.110 → 0.126, held its population, kept). Every new gene has a
+census row and every row is non-zero on both sides bar one.
+
+**Do not:** nothing here is an A/B. There is no gate-off control for any of the five layers, no
+seed sweep, and no claim about fitness, population or the persistence ratio — the layers were built to
+be run in the field, and #180's own notes already establish that the persistence ratio is not
+measurable from a headless single universe at all. The knobs exist (`UA_FOLD`, `XION`, `XION_LEVELS`,
+`PHYS`, `LAWMUT`, `PROBE`, `OEE_BONUS`, `DEME`, `UPLASMID`) and each off-path is checked by the rig,
+so the controls are available to whoever wants them.
+
+**Still never fired in a headless run, and honestly rare rather than dead:** `xion.bud` /
+`xion.fission` (cluster budding has never fired in headless runs — #33's A/B came back
+harness-invisible for exactly this, and #54 wrote it down), `phys.reaction` (needs op9 to execute),
+`deme.gate` (needs `demeCount` to step off 1, which `intMaybe` does stochastically at ~1 expected move
+per 12,000 ticks), and the three `uplasmid` receive paths (a headless single universe has no peers).
+Reading that list as a verdict would be the verbs' `uses: 0` mistake a third time.
+
+**One row is still stranded and it is the honest kind.** `probe.promoted` reads germline 1 /
+population 0: population banks are seeded *without* their records on purpose — inheriting a stranger's
+hit rate would let a carrier claim a promotion it never earned, which is the one way this mechanism
+could lie — so a population probe has to earn 8 scored claims and a 60% hit rate from scratch. At
+12,000 ticks that is reachable and rare. `verb.sensed` is also stranded and is a pre-existing #139
+gap, confirmed against the unmodified engine at the same tick count.
+
+`substrate-test.js`: 53 checks. `grammar-test.js`: 79.
