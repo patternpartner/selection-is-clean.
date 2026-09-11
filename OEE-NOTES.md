@@ -15535,3 +15535,116 @@ value is clamped to the row's own bounds and the local probation judges it like 
 named here rather than discovered later.
 
 `substrate-test.js`: 175 checks, 7 of them #197's.
+
+## #198 — THE NEIGHBOURHOOD BECOMES A FUNCTION OF PLACE
+
+#189 made a medium's neighbourhood a gene, #194 made its grain a gene, #190 made the *particles'*
+metric a gene. None of them touched the thing that makes a lattice a lattice: **a stencil is a list of
+offsets, and a list of offsets is translation-invariant.** Every cell has the same neighbourhood,
+necessarily, because the neighbourhood is defined *relative to* the cell rather than *at* it. That —
+not resolution, not anisotropy — is the difference between a lattice and a graph, and it was the
+remaining spatial closure.
+
+A rule now carries two **warp expressions**, `wx` and `wy`, written in the ordinary atom grammar and
+evaluated per cell. Every tap is displaced by their value there:
+
+```
+sx = cx + tap.dx + wx(cell)          sy = cy + tap.dy + wy(cell)
+```
+
+Read straight off the lattice, with a delta function and a single zero-offset tap, so the cell that
+ends up holding the spike names the cell it sampled:
+
+```
+no warp                    samples its own cell          0 of 1600 cells differ from WARP=0
+wx = 2                     every cell samples +2         two cells in different rows both read 2
+wx = ny*6                  row 2 samples 0 cells over
+                           row 34 samples 5 cells over   <- no list of offsets can do this
+wx = a*1                   two cells in one column holding 0 and 3 sample 0 and 2 cells over
+wx = 1000                  clamped to 7 = CHANNEL_OFFSET_MAX
+```
+
+The third line is the whole swing. Two cells, one medium, one stencil, **different neighbourhoods**.
+The fourth is the one I did not expect to get for free: **the geometry of the space is a function of
+its own contents**, so a concentration bends the flow around itself, and that is not a topology I
+enumerated — it is whatever the grammar can say, and the grammar's weights, alphabet, operators and
+compiler stage are themselves already evolvable. Same move #188 made for chemistry, applied to
+adjacency.
+
+### Why expressions and not a graph
+
+A sparse adjacency list is the textbook answer and it would have cost a new storage type, a new
+mutation operator, a new serialisation and a new wire format — for a space of topologies still bounded
+by what the list can hold. Two expressions over dense storage give a per-cell adjacency, which *is* a
+graph, at the price of two evaluations per cell, and they inherit every piece of machinery the grammar
+already has.
+
+### Arity was re-examined and the #189 rejection stands
+
+I went back to it because a vector field's components must mix under rotation, which looked like the
+thing cross-channel coupling could not do. It is not: a rule for channel `a` can read `kb`, so
+`ka' = ka·cos − kb·sin` is expressible today. Checked rather than re-litigated.
+
+### #175 in a new pass, where it would have been invisible
+
+`uaCall` writes its output back to `atom.state` as a recurrence. A warp evaluated through it would
+therefore make a cell's neighbourhood depend on **the cell evaluated before it**, and the whole medium
+would be order-dependent — the defect #175 measured at r = −0.675, in a place no existing rig looks.
+`state` is zeroed before every call, and the rig checks it by asserting a warp naming the recurrent
+symbol displaces by exactly the same amount at two unrelated cells.
+
+### Two rig defects, and the second is the one worth keeping
+
+**The first probe could not have worked.** It loaded a 0–39 gradient and read the sampled column out
+of the cell's value. `uaCall` clamps its output to ±8 and the lattice write clamps to
+`CHANNEL_CLAMP = 3`, so every cell read 3 and four checks failed on a probe that was wrong rather than
+a mechanism that was. A delta function stays inside both clamps.
+
+**And then the probe measured somebody else's medium.** #196 made the governing rule a draw from the
+living *carriers*, with the germline only as fallback — so setting `genome.channels` and calling
+`updateChannels` does not run the rule you just set whenever any particle happens to carry that slot.
+Four checks failed on that and **one passed spuriously**, which is the worse half. The block now
+clears the carriers and *asserts that the germline governed*, so it cannot drift back.
+
+That is a new failure mode created by #196 two commits ago, and it will bite every future rig that
+sets a channel rule directly. It is now the first check in the block.
+
+### Live
+
+```
+12,000 ticks, WARP off -> on
+  channel.warpStep        —  ->  86 / 49
+  channel.warped          —  ->  23,902 / 21,040    warps that actually displaced a neighbourhood
+  channel.warp        g0/p0  ->  g0/p132 / g0/p50   population carriers with a place-dependent adjacency
+  alive  176  ->  268 / 242
+  fitness 0.727 -> 0.600 / 0.644
+  nothing stranded, save round-trips, 0 extinctions
+```
+
+Both liveness names fire — `warpStep` alone would mean lineages evolving expressions that round to
+zero at every cell, which is #179's shape and would have read as a working mechanism.
+
+The germline ends unwarped in both seeds while 132 and 50 population genomes carry a warp: the same
+`g0/pN` signature as #191's reach and #192's clock. The population diverged, the self did not.
+
+### What it costs
+
+Fitness is down about 13% with warping on, and population is up. That is the rent being paid: two
+expression evaluations per cell, priced by `CHANNEL_WARP_RENT` — which, since #197, is itself a law
+the world can propose to change. This is the first layer built after the brakes became evolvable, so
+it is the first one whose price the system can argue with.
+
+### What this does NOT show
+
+That a warped medium is *better*. It shows the adjacency is reachable, priced, heritable, crosses all
+seven rebuild sites and the wire, and displaces tens of thousands of neighbourhoods per run. Whether
+a lineage that bends its own space out-competes one that does not is what `channel.warp`'s population
+count against fitness will answer over more than two seeds.
+
+### Still closed after #198
+
+`CAP`; the **core** opcode dispatch table; the four organisational levels; the particles' own
+continuous space and the position→cell map (the warp bends a medium's adjacency, not the map from a
+position to a cell); and one world per tab.
+
+`substrate-test.js`: 192 checks, 17 of them #198's. `smoke.sh`: 49 ok, 0 failing.

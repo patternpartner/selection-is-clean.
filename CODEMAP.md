@@ -2156,8 +2156,8 @@ every carrier of that slot, so a finer grain needs a bigger lattice — one line
 a medium others are standing in. That conflict has no arbiter here short of #183's law probation. The
 cost is small: 20 pixels is already finer than a particle can resolve.
 
-**THE SIX-PLACE REBUILD RULE — READ THIS BEFORE ADDING A FIELD TO ANY BANKED STRUCTURE.** A channel
-rule is rebuilt from a key list in **six** places: `seedSubstrateIntoParticle`, `cloneGenome`,
+**THE SEVEN-PLACE REBUILD RULE — READ THIS BEFORE ADDING A FIELD TO ANY BANKED STRUCTURE.** A channel
+rule is rebuilt from a key list in **seven** places (see #198 for the current list): `seedSubstrateIntoParticle`, `cloneGenome`,
 `sanitizeGenome`, `decodeGenome`, `encodeGenome`, and (since #195) the horizontal-transfer copy. Each silently DELETES every key it does not name. A
 new field must be added to all five. #194 got four of them and the fifth was the germline→population
 crossing, so `channel.grain` read **germline 2 / population 0 — STRANDED** on a live run while every
@@ -2307,6 +2307,52 @@ Measured: the economy moves in BOTH directions (`UA_OP_RENT` 0.250 → 0.162 kep
 0.288 kept), which is exactly what a payer-set price could never do. `cosmos.brake` counts price
 trials as distinct from the three physics laws. `cosmos.lawRevert` has not yet fired in a live run —
 the brake on the brake is checked in the rig and has not had to bite in the wild.
+
+### #198 — the neighbourhood becomes a function of place
+
+A channel rule carries `wx` and `wy`: expression strings in the ordinary atom grammar, evaluated PER
+CELL, displacing every tap of the stencil at that cell. Absent → translation-invariant → the original
+tap arithmetic, checked at 0 of 1600 cells differing from `WARP=0`. Knob `WARP`.
+
+**WHY THIS IS THE SPATIAL OPENING AND RESOLUTION WAS NOT.** A stencil is a list of OFFSETS, so every
+cell has the same neighbourhood by construction. #189 (stencil), #194 (grain) and #190 (particle
+metric) all left that standing. `wx = ny*6` gives row 2 and row 34 different neighbourhoods in the
+same medium; `wx = a*1` makes the geometry a function of the medium's own CONTENTS. Neither is a
+topology anyone enumerated — the space of them is whatever the grammar can say, and the grammar is
+already evolvable (#180, #181).
+
+**ARITY IS STILL REJECTED and #189's note is correct as written** — re-examined here because
+component mixing under rotation looked like the gap, but a rule for channel `a` can read `kb`, so
+`ka' = ka·cos − kb·sin` is expressible today.
+
+**ZERO `state` BEFORE EVERY WARP CALL.** `uaCall` writes its output back to `atom.state` as a
+recurrence, so a warp through it makes a cell's neighbourhood depend on the cell evaluated BEFORE it
+and the medium becomes order-dependent — #175's defect in a pass no existing rig looks at. The
+compiled holders (`__wxa`, `__wya`) live OFF the serialised record and are created on demand, so all
+the rebuild sites drop them automatically; only the expression strings travel.
+
+**THE CONTEXT IS ESTABLISHED BEFORE THE TAP LOOP** in both the fine and coarse paths — the warp reads
+`nx`, `ny`, the fields and `ka..kd`. Moving those lines up changes nothing the rule sees. In the
+coarse path the warp is in BLOCKS, like the taps: a medium cannot warp finer than its own grain.
+
+**THE REBUILD RULE IS NOW SEVEN PLACES, PLUS THE WIRE.** A channel rule is rebuilt from a key list in
+`seedSubstrateIntoParticle`, `cloneGenome`, `sanitizeGenome`, `decodeGenome`, `encodeGenome`, #195's
+transfer copy, and #196's wire install — plus the wire payload build and its validator. `wx`/`wy` are
+elements 7 and 8 of the `chn` row; a shorter row reads as unwarped, which is what a pre-#198 save and
+a pre-#198 peer both mean. The validator gives them `ua`'s treatment (length bound + `UA_EXPR_SAFE`)
+and **`UA_EXPR_SAFE` is a BYTE filter, not a parser** — a printable hostile expression passes it and
+is caught downstream by `uaCompile`'s try/catch, which is where it belongs. A rig asserting the wire
+rejects `evil()` is asserting something that was never going to happen.
+
+**A RIG THAT SETS `genome.channels` MUST CLEAR THE POPULATION'S BANKS FIRST.** Since #196 the
+governing rule is drawn from living carriers with the germline only as fallback, so a block that sets
+the germline's rule and calls `updateChannels` is measuring somebody else's medium whenever any
+particle carries that slot. This cost four failing checks and — worse — one spuriously passing one.
+`out.warp` clears the carriers and then asserts the germline governed.
+
+Rent: `CHANNEL_WARP_RENT` per warped medium, scaled by the same cell count #194 scales the base rent
+by, and it is a LAW (#197) rather than a constant — #198 is the first layer built after the brakes
+became evolvable, so its price is the first one the system can argue with.
 
 ### #186 — the germline-to-population crossing, stated generally
 

@@ -586,6 +586,102 @@ let __GRAIN=true;   // #194: a medium's grain is a gene. Force off with GRAIN=0
 let __CHANXFER=true;   // #195: invented chemistry spreads horizontally. Force off with CHANXFER=0
 let __CHANGOV=true;    // #196: the governing chemistry is drawn from the population. Force off with CHANGOV=0 to restore the germline-only rule every run before this one used
 let __BRAKES=true;     // #197: the prices and the probation are world laws. Force off with BRAKES=0 to pin every brake at the value this file was written with
+// === #198 - THE NEIGHBOURHOOD BECOMES A FUNCTION OF PLACE ======================================
+// #189 made the neighbourhood a gene, #194 made its grain a gene, #190 made the PARTICLES' metric a
+// gene. What none of them touched is that a stencil is a list of OFFSETS, and a list of offsets is
+// TRANSLATION-INVARIANT: every cell in a medium has the same neighbourhood, necessarily, because the
+// neighbourhood is defined relative to the cell rather than at it. That is the difference between a
+// lattice and a graph, and it is the remaining spatial closure - not the resolution, which #194
+// opened, and not anisotropy, which a stencil already expresses.
+//
+// A rule now carries two WARP EXPRESSIONS, wx and wy, written in the ordinary atom grammar and
+// evaluated PER CELL. Every tap of the stencil is displaced by their value at that cell:
+//
+//   sx = cx + tap.dx + wx(cell)        sy = cy + tap.dy + wy(cell)
+//
+// Constant expressions reproduce a translation-invariant stencil exactly. Anything else does not:
+//   wx = round(ny*3)              a SHEAR - adjacency depends on where you are
+//   wx = sin(ny*6)*3              a periodic warp, long-range in places and local in others
+//   wx = a*3                      STATE-DEPENDENT ADJACENCY: the medium's geometry depends on what is
+//                                 IN it, so a concentration bends the flow around itself
+// The last one is the one that could not be reached before by any combination of #189's taps, #194's
+// grain and #190's metric, and it is not a topology I enumerated - it is whatever the grammar can
+// say, and the grammar's weights, alphabet, operators and compiler stage are themselves already
+// evolvable (#180, #181). Same move #188 made for chemistry, applied to adjacency.
+//
+// WHY EXPRESSIONS AND NOT A GRAPH. A sparse adjacency list is the textbook answer and it would have
+// cost a new storage type, a new mutation operator, a new serialisation and a new wire format, for a
+// space of topologies still bounded by what the list can hold. Two expressions over dense storage
+// give a per-cell adjacency - which is a graph - at the price of two evaluations per cell, and they
+// inherit every piece of machinery the grammar already has.
+//
+// ARITY WAS RE-EXAMINED HERE AND THE #189 REJECTION STANDS. A vector field's components must mix
+// under rotation, which looked like the thing cross-channel coupling could not do - but a rule for
+// channel a can read kb, so `ka' = ka*cos - kb*sin` is expressible today. Checked rather than
+// re-litigated; the note in CODEMAP is correct as written.
+let __WARP=true;   // #198: a medium's adjacency is a function of place. Force off with WARP=0
+let CHANNEL_WARP_RENT=0.25;   // per warped medium per interaction - two expression evaluations per cell is real work. A law, like every other price since #197
+let __chanWarped=0;           // instrument state off the genome (#131); drained per epoch
+// The warp's compiled holders live OFF the serialised record, created on demand, so the six rebuild
+// sites drop them automatically and only the expression strings travel. uaCall needs an atom-shaped
+// object, and `state` is zeroed before every call: uaCall writes its output back to atom.state as a
+// recurrence, and a recurrence here would make a cell's neighbourhood depend on the cell evaluated
+// BEFORE it - #175's defect exactly, in a new pass, where it would have been invisible and would
+// have made the whole medium order-dependent.
+function chanWarpHolder(rule,which){
+  const key=which==='x'?'__wxa':'__wya';
+  const expr=which==='x'?rule.wx:rule.wy;
+  if(typeof expr!=='string'||!expr)return null;
+  let h=rule[key];
+  if(!h||h.expression!==expr){
+    h={expression:expr,compiled:null,failed:false,uses:0,state:0,creditTrace:0,age:0,
+       alienHits:0,alienAttempts:0};
+    rule[key]=h;
+  }
+  if(h.failed)return null;
+  return h;
+}
+function chanWarped(rule){
+  return (__WARP&&rule&&((typeof rule.wx==='string'&&rule.wx)||(typeof rule.wy==='string'&&rule.wy)))?1:0;
+}
+function __xWarped(a){ if(!Array.isArray(a))return 0;
+  let n=0; for(const r of a) n+=chanWarped(r); return n; }
+// Evaluate one warp component at the current cell. `here` is the cell's own value, so `a` in the
+// expression is the medium's state at this cell - which is what makes state-dependent adjacency
+// sayable. Rounded and clamped to the same bound a tap offset obeys, because an adjacency that can
+// reach an arbitrary distance is not a warped neighbourhood, it is a random one.
+function chanWarpAt(rule,which,here){
+  const h=chanWarpHolder(rule,which);
+  if(!h)return 0;
+  h.state=0;                        // see the note at chanWarpHolder - no recurrence across cells
+  let v=0;
+  try{ v=uaCall(h,here,0); }catch(_){ h.failed=true; return 0; }
+  if(!isFinite(v))return 0;
+  const o=Math.round(__cl(v,-CHANNEL_OFFSET_MAX,CHANNEL_OFFSET_MAX));
+  if(o!==0)__chanWarped++;
+  return o;
+}
+// #103: an incremental operator. Authors a warp if there is none, drifts it locally if there is, and
+// can DROP it - which is the mechanism turning itself off, and the rent is what makes dropping pay.
+function chanWarpStep(rule){
+  if(!__WARP||!rule)return false;
+  const roll=Math.random();
+  const has=(typeof rule.wx==='string'&&rule.wx)||(typeof rule.wy==='string'&&rule.wy);
+  if(!has){
+    if(Math.random()<0.5)rule.wx=uaGenExpression(); else rule.wy=uaGenExpression();
+    rule.__wxa=null; rule.__wya=null;
+    fired('channel.warpStep');
+    return true;
+  }
+  if(roll<0.18){ rule.wx=null; rule.wy=null; rule.__wxa=null; rule.__wya=null; }   // drop it
+  else if(roll<0.45){ const w=(typeof rule.wx==='string'&&rule.wx)?rule.wx:uaGenExpression();
+    rule.wx=uaLocalStep(w); rule.__wxa=null; }
+  else if(roll<0.72){ const w=(typeof rule.wy==='string'&&rule.wy)?rule.wy:uaGenExpression();
+    rule.wy=uaLocalStep(w); rule.__wya=null; }
+  else { const t=rule.wx; rule.wx=rule.wy; rule.wy=t; rule.__wxa=null; rule.__wya=null; }   // swap the axes
+  fired('channel.warpStep');
+  return true;
+}
 let CHANXFER_COST=0.004;   // donor amplitude per transfer - a conjugation is work
 let __chanXfers=0, __chanXferSensed=0, __chanXferDeclined=0;   // instrument state off the genome (#131); drained per epoch
 // THE RATE BELONGS TO THE RULE, NOT TO THE HOST, and that is the second correction this swing took
@@ -752,7 +848,12 @@ function validNetworkPayload(type,data){
               finitePacketNumber(t[2],-8,8))))&&
           finitePacketNumber(r[3],0,1)&&finitePacketNumber(r[4],1,CHANNEL_CAD_MAX)&&
           (r[5]===undefined||finitePacketNumber(r[5],1,FIELD_W))&&
-          (r[6]===undefined||finitePacketNumber(r[6],0,0.01))))))&&
+          (r[6]===undefined||finitePacketNumber(r[6],0,0.01))&&
+          // #198: the warp expressions. TWO MORE STRINGS ON THE WIRE, so they get `ua`'s exact
+          // treatment - length bound and UA_EXPR_SAFE - and 0 is the legal "no warp" marker, which
+          // is what every pre-#198 peer sends by sending nothing.
+          (r[7]===undefined||r[7]===0||(typeof r[7]==='string'&&r[7].length<=UA_EXPR_MAX&&UA_EXPR_SAFE.test(r[7])))&&
+          (r[8]===undefined||r[8]===0||(typeof r[8]==='string'&&r[8].length<=UA_EXPR_MAX&&UA_EXPR_SAFE.test(r[8])))))))&&
       (!data.uo||(Array.isArray(data.uo)&&data.uo.length<=UA_OPBANK&&
         data.uo.every(r=>r===0||(Array.isArray(r)&&r.length>=5&&
           finitePacketNumber(r[0],0,1)&&finitePacketNumber(r[1],0,UA_PRIM.length-1)&&
@@ -993,6 +1094,10 @@ const LIVENESS_DECLARED=[
   // that were the only things #183 could propose. cosmos.law counts all of them; this one says the
   // economy itself moved.
   'cosmos.brake',
+  // #198: warpStep is the adjacency moving; channel.warped is a warp that actually DISPLACED a
+  // neighbourhood. The first without the second means lineages evolving expressions that round to
+  // zero at every cell, which is #179's shape and would read as a working mechanism.
+  'channel.warpStep','channel.warped',
 ];
 // NOT INSTRUMENTED, and deliberately absent rather than declared-and-silent: cladogenesis minting
 // (#17) has no single entry point I could identify with confidence. A census that reports "never"
@@ -1166,6 +1271,9 @@ const CROSSING_DECLARED=[
   // #194: how many of this genome's media are COARSER than the lattice they live on? Deviation from
   // the seed, like every row since #188 - a bank at grain 40 has never been selected on its scale.
   {name:'channel.grain', read:g=>__xGrained(g&&g.channels)},
+  // #198: how many of this genome's media have an adjacency that varies from cell to cell? Deviation
+  // from a translation-invariant stencil, the same construction as every row since #188.
+  {name:'channel.warp',  read:g=>__xWarped(g&&g.channels)},
   {name:'channel.sensed',read:g=>{ const b=chanBank(g), uas=g&&g.userAtoms;
                                    if(!Array.isArray(b)||!Array.isArray(uas))return 0;
                                    let n=0;
@@ -1260,7 +1368,9 @@ function buildMigrantPacket(){
             _mch.push((r&&typeof r.expr==='string')?
               [String(r.expr).slice(0,UA_EXPR_MAX),r.age|0,
                (Array.isArray(r.st)?r.st.map(t=>[t[0]|0,t[1]|0,+(+t[2]).toFixed(3)]):null),
-               r.wrap|0,chanCad(r)|0,chanRes(r)|0,+chanRuleXfer(r).toFixed(5)]:0); }
+               r.wrap|0,chanCad(r)|0,chanRes(r)|0,+chanRuleXfer(r).toFixed(5),
+               (typeof r.wx==='string'&&r.wx)?String(r.wx).slice(0,UA_EXPR_MAX):0,
+               (typeof r.wy==='string'&&r.wy)?String(r.wy).slice(0,UA_EXPR_MAX):0]:0); }
         }
         _mue=_fx.slice(0,MAX_USER_EFFECTS).map(e=>({t:e.t|0,m:(e.m|0)===1?1:0,s:+(+e.s||0.5).toFixed(3),
           n:(e.nx===undefined?-1:e.nx|0), a:(e.ax===undefined||e.ax===null?-1:e.ax|0),
@@ -1484,7 +1594,9 @@ function networkReceive(){ fired('network.receive');
                 wrap:(r[3]|0)===1?1:0,
                 cad:__cl(Math.round(finiteOr(r[4],1)),1,CHANNEL_CAD_MAX),
                 res:chanRes({res:r[5]}),
-                xfer:chanRuleXfer({xfer:r[6]})}:null);
+                xfer:chanRuleXfer({xfer:r[6]}),
+                wx:(typeof r[7]==='string'&&r[7])?r[7]:null,   // #198
+                wy:(typeof r[8]==='string'&&r[8])?r[8]:null}:null);
             }
             fired('channel.wireLand');
           }
@@ -1668,6 +1780,7 @@ const LAW_DECLARED=[
   {name:'LAW_PROBATION', get:()=>LAW_PROBATION, set:v=>{LAW_PROBATION=Math.max(200,Math.round(v));}, lo:200, hi:20000},
   {name:'LAW_COST',      get:()=>LAW_COST,      set:v=>{LAW_COST=v;},      lo:0.0, hi:0.25},
   {name:'LAW_RATE',      get:()=>LAW_RATE,      set:v=>{LAW_RATE=v;},      lo:0.0, hi:0.004},
+  {name:'CHANNEL_WARP_RENT',get:()=>CHANNEL_WARP_RENT,set:v=>{CHANNEL_WARP_RENT=v;},lo:0.0,hi:1.0},  // #198
 ];
 // === #197 - AND THE RATE HAD TO MOVE WITH THE TABLE =============================================
 // The law table went from THREE entries to sixteen in this commit. At the old rate - one proposal per
@@ -3115,7 +3228,8 @@ function seedSubstrateIntoParticle(){
      // the same way through sanitizeGenome's rebuild, and #133b's successor through
      // seedEffectIntoParticle. A channel rule is now rebuilt in FIVE places - here, cloneGenome,
      // sanitizeGenome, decodeGenome and encodeGenome - and a new field has to be added to all five.
-     wrap:r.wrap|0,cad:r.cad|0,res:__GRAIN?chanRes(r):FIELD_W,xfer:chanRuleXfer(r)}:null);   // #195
+     wrap:r.wrap|0,cad:r.cad|0,res:__GRAIN?chanRes(r):FIELD_W,xfer:chanRuleXfer(r),
+     wx:(typeof r.wx==='string'&&r.wx)?r.wx:null, wy:(typeof r.wy==='string'&&r.wy)?r.wy:null}:null);   // #195 +#198 the warp
   // AND ONE ATOM THAT SENSES ONE, because a chemistry nothing perceives is what channel.sensed is
   // there to warn about. MEASURED: after the wire-at-allocation hand-off was added, channel.bank
   // crossed at 4/86 and channel.sensed still read 3/0 - because the wire fires only at ALLOCATION
@@ -8838,6 +8952,7 @@ function flushEpoch(acc){
     firedN('reach.beyondRing',__reachBeyond); __reachBeyond=0;   // #191
     firedN('tick.skipped',__tickSkips); __tickSkips=0;           // #192
     firedN('channel.coarse',__chanCoarse); __chanCoarse=0;       // #194
+    firedN('channel.warped',__chanWarped); __chanWarped=0;       // #198
     firedN('channel.govPop',__chanGovPop); __chanGovPop=0;       // #196
     firedN('channel.govSelf',__chanGovSelf); __chanGovSelf=0;
     firedN('channel.xfer',__chanXfers); __chanXfers=0;           // #195
@@ -9336,7 +9451,8 @@ function cloneGenome(src){
     // ever diverge its own space - the seventh instance of the bug this file keeps re-learning.
     {expr:r.expr,compiled:null,failed:!!r.failed,age:r.age|0,uses:0,
      st:Array.isArray(r.st)?r.st.map(t=>[t[0]|0,t[1]|0,finiteOr(t[2],0)]):null,
-     wrap:r.wrap|0,cad:r.cad|0,res:__GRAIN?chanRes(r):FIELD_W,xfer:chanRuleXfer(r)}:null):src.channels;   // #195: the element's infectiousness is heritable down the line as well as sideways   // #194: the grain crosses with the chemistry - a child whose medium is a different SIZE has a different medium
+     wrap:r.wrap|0,cad:r.cad|0,res:__GRAIN?chanRes(r):FIELD_W,xfer:chanRuleXfer(r),
+     wx:(typeof r.wx==='string'&&r.wx)?r.wx:null, wy:(typeof r.wy==='string'&&r.wy)?r.wy:null}:null):src.channels;   // #198: the warp is heritable; the compiled holders are not and are dropped here on purpose   // #195: the element's infectiousness is heritable down the line as well as sideways   // #194: the grain crosses with the chemistry - a child whose medium is a different SIZE has a different medium
   g.probes=Array.isArray(src.probes)?src.probes.map(pr=>pr?{expression:pr.expression,compiled:null,
     failed:!!pr.failed,n:pr.n|0,hit:pr.hit|0,pending:finiteOr(pr.pending,0),pendTick:-1,pendFit:0,age:pr.age|0}:null):src.probes;
   g.oeeW=Array.isArray(src.oeeW)?src.oeeW.slice():src.oeeW;
@@ -9483,6 +9599,7 @@ function mutateChildGenome(g){
     if(Math.random()<rate*0.5)chanFormStep(_r);
     if(__GRAIN&&Math.random()<rate*0.5)chanGrainStep(_r);
     if(__CHANXFER&&Math.random()<rate*0.5)chanXferStep(_r);   // #195: on the fast route, like the form and the grain
+    if(__WARP&&Math.random()<rate*0.35)chanWarpStep(_r);      // #198: and the adjacency, same route and same reason
   }
   // === #195 - AND THE BRAKE RUNS AT THE SAME SPEED AS THE INFECTION ==============================
   // MEASURED, and it is the finding that made this necessary rather than nice: with transfer working,
@@ -10079,6 +10196,7 @@ const __chanBlk=new Float64Array(FIELD_W*FIELD_H);   // scratch for block means;
 function chanUpdateCoarse(k,rule,L,res,st,wrap){
   const bs=chanBlock(res);            // fine cells per block side
   const nt=st.length;
+  const warped=__WARP&&chanWarped(rule)===1;   // #198
   // 1. block means of the PREVIOUS state
   for(let by=0;by<res;by++)for(let bx=0;bx<res;bx++){
     let sum=0;
@@ -10091,19 +10209,11 @@ function chanUpdateCoarse(k,rule,L,res,st,wrap){
   for(let by=0;by<res;by++){
     for(let bx=0;bx<res;bx++){
       const here=__chanBlk[by*res+bx];
-      let mean=0;
-      for(let t=0;t<nt;t++){
-        const tp=st[t];
-        let sx=bx+(tp[0]|0), sy=by+(tp[1]|0);
-        if(wrap){ sx=((sx%res)+res)%res; sy=((sy%res)+res)%res; }
-        else { sx=sx<0?0:(sx>=res?res-1:sx); sy=sy<0?0:(sy>=res?res-1:sy); }
-        mean+=__chanBlk[sy*res+sx]*tp[2];
-      }
-      if(!isFinite(mean))mean=0;
       // The ambient context is read at the block's CENTRE fine cell. A block does not have one value
       // of `field` or `attn` - it covers many - and the centre is the honest single sample: an average
       // would have made the coarse rule read a smoother world than the fine one, which is a second
       // behavioural difference riding along on a gene that is supposed to be about scale alone.
+      // #198: established before the taps, for the fine loop's reason - the warp reads it.
       const ccx=bx*bs+(bs>>1), ccy=by*bs+(bs>>1);
       const cc=__cl(ccy*FIELD_W+ccx,0,FIELD_W*FIELD_H-1);
       uaCtxC=field[cc]||0; uaCtxD=detritalField[cc]||0; uaCtxM=inhibitorField[cc]||0;
@@ -10112,6 +10222,19 @@ function chanUpdateCoarse(k,rule,L,res,st,wrap){
         const OL=__channels[o];
         __chanOut[o]=(o===k)?here:(OL?(isFinite(OL[cc])?OL[cc]:0):0);
       }
+      // #198: THE WARP IS IN BLOCKS HERE, like the taps. A coarse medium cannot warp finer than its
+      // own grain any more than it can aim finer than it - the two bounds are the same bound.
+      const wpx=warped?chanWarpAt(rule,'x',here):0;
+      const wpy=warped?chanWarpAt(rule,'y',here):0;
+      let mean=0;
+      for(let t=0;t<nt;t++){
+        const tp=st[t];
+        let sx=bx+(tp[0]|0)+wpx, sy=by+(tp[1]|0)+wpy;
+        if(wrap){ sx=((sx%res)+res)%res; sy=((sy%res)+res)%res; }
+        else { sx=sx<0?0:(sx>=res?res-1:sx); sy=sy<0?0:(sy>=res?res-1:sy); }
+        mean+=__chanBlk[sy*res+sx]*tp[2];
+      }
+      if(!isFinite(mean))mean=0;
       let v=0;
       try{ v=uaCall(rule,here,mean); }catch(_){ rule.failed=true; return; }
       const out=isFinite(v)?__cl(v,-CHANNEL_CLAMP,CHANNEL_CLAMP):0;
@@ -10155,6 +10278,7 @@ function updateChannels(){
     // #189: THE NEIGHBOURHOOD IS THIS CHANNEL'S OWN. Hoisted out of the cell loop because a stencil
     // is a property of the medium, not of the cell.
     const _st=chanStencil(rule), _wrap=chanWrap(rule), _nt=_st.length;
+    const _warped=__WARP&&chanWarped(rule)===1;   // #198: hoisted - a warp is a property of the medium, not of the cell
     // #194: A COARSE MEDIUM RUNS ITS OWN LOOP, and the fine path below is left byte-for-byte as it
     // was rather than generalised into a res===FIELD_W special case. That is the same exactness
     // guarantee #190's metDist and #193's emitApply give: at the seeded grain this is not an
@@ -10181,26 +10305,33 @@ function updateChannels(){
         // The evolved stencil. NOT normalised by tap count - see the note at CHANNEL_STENCIL_SEED:
         // dividing here would force every kernel to be an average and delete the gradient and
         // advection cases, which are the two that a 4-neighbour mean provably cannot reach.
+        // #198: THE CELL'S CONTEXT IS ESTABLISHED BEFORE THE TAPS, not after, because the warp
+        // expressions read it. Moving these six lines up changes nothing the rule sees - the rule is
+        // still called below with the same values - and it is what lets a neighbourhood depend on
+        // where it is and on what is in it.
+        uaCtxC=field[c]||0; uaCtxD=detritalField[c]||0; uaCtxM=inhibitorField[c]||0;
+        uaCtxNx=cx/FIELD_W; uaCtxNy=cy/FIELD_H; uaCtxNb=0; uaCtxAt=attnField[c]||0;
+        for(let _o=0;_o<CHANNEL_MAX;_o++){
+          const OL=__channels[_o];
+          __chanOut[_o]=(_o===k)?here:(OL?(isFinite(OL[c])?OL[c]:0):0);
+        }
+        const _wpx=_warped?chanWarpAt(rule,'x',here):0;
+        const _wpy=_warped?chanWarpAt(rule,'y',here):0;
         let mean=0;
         for(let _t=0;_t<_nt;_t++){
           const _tp=_st[_t];
-          let _sx=cx+(_tp[0]|0), _sy=cy+(_tp[1]|0);
+          let _sx=cx+(_tp[0]|0)+_wpx, _sy=cy+(_tp[1]|0)+_wpy;
           if(_wrap){ _sx=((_sx%FIELD_W)+FIELD_W)%FIELD_W; _sy=((_sy%FIELD_H)+FIELD_H)%FIELD_H; }
           else { _sx=_sx<0?0:(_sx>=FIELD_W?FIELD_W-1:_sx); _sy=_sy<0?0:(_sy>=FIELD_H?FIELD_H-1:_sy); }
           mean+=__chanTmp[_sy*FIELD_W+_sx]*_tp[2];
         }
         if(!isFinite(mean))mean=0;
-        uaCtxC=field[c]||0; uaCtxD=detritalField[c]||0; uaCtxM=inhibitorField[c]||0;
-        uaCtxNx=cx/FIELD_W; uaCtxNy=cy/FIELD_H; uaCtxNb=0; uaCtxAt=attnField[c]||0;
-        // CROSS-CHANNEL COUPLING, and this is the line that makes it real rather than advertised.
-        // ka..kd inside a channel rule read the OTHER channels AT THIS CELL - so `(ka)-(kb)` is an
-        // activator-inhibitor pair and the system can evolve a genuine reaction-diffusion chemistry
-        // rather than four independent decays. The first version left __chanOut holding some
-        // particle's readings from the last interaction, which made this both wrong and unrepeatable.
-        for(let _o=0;_o<CHANNEL_MAX;_o++){
-          const OL=__channels[_o];
-          __chanOut[_o]=(_o===k)?here:(OL?(isFinite(OL[c])?OL[c]:0):0);
-        }
+        // CROSS-CHANNEL COUPLING is established above, with the rest of the cell's context, so that
+        // the warp expressions can read ka..kd too. ka..kd inside a channel rule read the OTHER
+        // channels AT THIS CELL - so `(ka)-(kb)` is an activator-inhibitor pair and the system can
+        // evolve a genuine reaction-diffusion chemistry rather than four independent decays. The
+        // first version left __chanOut holding some particle's readings from the last interaction,
+        // which made this both wrong and unrepeatable.
         // The rule's answer IS the cell's new value. Not a delta: a rule that wants to conserve says
         // so, and a rule that wants to decay says so, rather than either being built in.
         let v=0;
@@ -10500,7 +10631,9 @@ function encodeGenome(){
     chn:Array.isArray(genome.channels)?genome.channels.map(r=>(r&&typeof r.expr==='string')?
       [String(r.expr).slice(0,UA_EXPR_MAX),r.age|0,
        (Array.isArray(r.st)?r.st.map(t=>[t[0]|0,t[1]|0,+(+t[2]).toFixed(3)]):null),r.wrap|0,r.cad|0,
-       chanRes(r)|0,+chanRuleXfer(r).toFixed(5)]:0):undefined,   // #195 element 6   // #194 the grain is element 5; a pre-#194 row is 5 long and reads undefined -> FIELD_W, which IS what that save meant  // #188 the chemistry, not the chemicals - a lattice is world state and is not saved with the genome
+       chanRes(r)|0,+chanRuleXfer(r).toFixed(5),
+       (typeof r.wx==='string'&&r.wx)?String(r.wx).slice(0,UA_EXPR_MAX):0,
+       (typeof r.wy==='string'&&r.wy)?String(r.wy).slice(0,UA_EXPR_MAX):0]:0):undefined,   // #195 element 6, #198 elements 7 and 8   // #194 the grain is element 5; a pre-#194 row is 5 long and reads undefined -> FIELD_W, which IS what that save meant  // #188 the chemistry, not the chemicals - a lattice is world state and is not saved with the genome
     prb:Array.isArray(genome.probes)?genome.probes.map(pr=>pr?[String(pr.expression).slice(0,UA_EXPR_MAX),pr.n|0,pr.hit|0]:0):undefined,
     oew:Array.isArray(genome.oeeW)?genome.oeeW.map(v=>+(+v).toFixed(4)):undefined,
     dmc:genome.demeCount===undefined?undefined:(genome.demeCount|0),              // #185 internal population structure
@@ -10861,7 +10994,9 @@ function decodeGenome(data){
     if(Array.isArray(g.chn))genome.channels=g.chn.map(r=>Array.isArray(r)?{expr:String(r[0]),compiled:null,failed:false,age:r[1]|0,uses:0,
       st:Array.isArray(r[2])?r[2]:null, wrap:r[3]|0, cad:r[4]|0,
       res:(typeof r[5]==='number')?(r[5]|0):FIELD_W,
-      xfer:(typeof r[6]==='number')?+r[6]:0}:null);   // #195 (absent -> 0 -> not contagious, which is what a pre-#195 save meant)   // #194  // #188 +#189 the form. A pre-#189 row is 2 long: st/wrap/cad read undefined and the readers supply the seeded form, which IS what that save meant
+      xfer:(typeof r[6]==='number')?+r[6]:0,
+      wx:(typeof r[7]==='string'&&r[7])?r[7]:null,
+      wy:(typeof r[8]==='string'&&r[8])?r[8]:null}:null);   // #195 element 6, #198 elements 7-8 (absent -> null -> translation-invariant, which is what a pre-#198 save meant)   // #194  // #188 +#189 the form. A pre-#189 row is 2 long: st/wrap/cad read undefined and the readers supply the seeded form, which IS what that save meant
     if(Array.isArray(g.prb))genome.probes=g.prb.map(r=>Array.isArray(r)?{expression:String(r[0]),compiled:null,
       failed:false,n:r[1]|0,hit:r[2]|0,pending:0,pendTick:-1,pendFit:0,age:0}:null);   // #184
     if(Array.isArray(g.oew))genome.oeeW=g.oew.map(v=>+v);
@@ -11169,7 +11304,13 @@ function sanitizeGenome(){
         res:chanRes(r),
         // #195: and the element's own rate, clamped in the same rebuild for #194's reason - this map
         // DELETES every key it does not name, and #194's grain was STRANDED for exactly that.
-        xfer:chanRuleXfer(r)}:null;
+        xfer:chanRuleXfer(r),
+        // #198: the warp expressions, through the same safety gate the chemistry uses. A rule whose
+        // warp is not uaExprSafe loses the warp and keeps the chemistry - the medium degrades to a
+        // translation-invariant one rather than being dropped, which is the milder of the two
+        // failures and the one that keeps a reload from deleting a lineage's whole medium.
+        wx:(typeof r.wx==='string'&&r.wx&&uaExprSafe(r.wx))?r.wx:null,
+        wy:(typeof r.wy==='string'&&r.wy&&uaExprSafe(r.wy))?r.wy:null}:null;
     }
   }
   if(genome.probes!==undefined){
@@ -17366,6 +17507,12 @@ function mutateGenome(){ fired('genome.mutate');
         // medium computes, what "next to" means in it, and how big a place is, are three independent
         // things and a lineage should be able to move any one without disturbing the others.
         chanGrainStep(_r);
+      } else if(__WARP&&Math.random()<rate*0.25){
+        // #198: and the ADJACENCY on a fifth draw. What a medium computes, what "next to" means in
+        // it, how big a place is, how infectious it is, and now WHERE next-to points from each cell -
+        // five independent things, five independent draws, so selection can move any one of them
+        // without a second change riding along.
+        chanWarpStep(_r);
       } else if(__CHANXFER&&Math.random()<rate*0.25){
         // #195: and its INFECTIOUSNESS on a fourth. This one is not the lineage's trait even though
         // the lineage's mutation machinery is what moves it - the number lives on the rule and is
@@ -19733,7 +19880,11 @@ function executeVM(i,j,sim,d){
         // floored. The TAP rent is NOT scaled - a tap is a lookup per evaluation either way, and
         // scaling it twice would have double-counted the same saving.
         const _g=__GRAIN?Math.max(CHANNEL_RES_FLOOR,Math.pow(chanRes(_r)/FIELD_W,2)):1;
-        _chanRent+=CHANNEL_RENT*_g+Math.max(0,chanTaps(_r)-4)*CHANNEL_TAP_RENT;
+        // #198: a warped medium evaluates two expressions per cell, and pays for it scaled by the
+        // same cell count the base rent uses - a coarse warped medium is cheap for the same reason a
+        // coarse medium is.
+        _chanRent+=CHANNEL_RENT*_g+Math.max(0,chanTaps(_r)-4)*CHANNEL_TAP_RENT
+                   +(chanWarped(_r)?CHANNEL_WARP_RENT*_g:0);
       } } }
   const totalCost=(nInst+_stack+_opRent+_foldRent+_probeRent+_chanRent+_metRent+_reachRent+_emitRent+_over16*(COMPLEXITY_TOLL-1))*genome.metabolicCost;
   amp[i]-=totalCost;amp[j]-=totalCost;
@@ -23070,7 +23221,12 @@ function executeVM(i,j,sim,d){
                    // AND ITS OWN INFECTIOUSNESS TRAVELS WITH IT. Without this line the rate would be
                    // authored and unheritable: every copy would start at zero and the element could
                    // not be selected at all, which is the whole point of moving the rate onto it.
-                   xfer:chanRuleXfer(_src)};
+                   xfer:chanRuleXfer(_src),
+                   // #198: and its adjacency. A medium that arrives computing the same thing on a
+                   // different neighbourhood is a different medium, which is the same argument the
+                   // form and the grain already travel on.
+                   wx:(typeof _src.wx==='string'&&_src.wx)?_src.wx:null,
+                   wy:(typeof _src.wy==='string'&&_src.wy)?_src.wy:null};
           amp[i]-=CHANXFER_COST;              // the donor pays; see the note at CHANXFER_COST
           __chanXfers++;
           if(chanSensesSlot(_rg,_k))__chanXferSensed++;
@@ -26080,6 +26236,7 @@ __GRAIN=(typeof globalThis==='undefined')||((globalThis.__GRAIN??1)|0)!==0;   //
 __CHANXFER=(typeof globalThis==='undefined')||((globalThis.__CHANXFER??1)|0)!==0;   // #195: default ON, and a NO-OP at the seeded gene: chanRuleXfer reads 0 for every rule, the gate short-circuits before any draw, so an unmutated lineage is bit-identical
 __CHANGOV=(typeof globalThis==='undefined')||((globalThis.__CHANGOV??1)|0)!==0;   // #196: default ON. Off restores the pre-#196 behaviour exactly - chanGoverning returns the self's rule and takes no draw
 __BRAKES=(typeof globalThis==='undefined')||((globalThis.__BRAKES??1)|0)!==0;   // #197: default ON. Off restricts law mutation to the original three physics laws, so every price stays at the constant this file was written with
+__WARP=(typeof globalThis==='undefined')||((globalThis.__WARP??1)|0)!==0;   // #198: default ON, and a NO-OP with no warp expression: chanWarpAt returns 0 without evaluating anything, so an unwarped medium takes the original tap arithmetic
 __REACH=(typeof globalThis==='undefined')||((globalThis.__REACH_SWEEP??1)|0)!==0;   // #191: default ON. Force off with REACH_SWEEP=0 - the sweep returns to +/-1 ring, the reach to the germline's value, and the dedup to `j>i`, which is the pre-#191 engine exactly. Deliberately NOT named REACH: __REACH_ON is a different, pre-existing gate and colliding on that name is how a knob silently stops being a control
 __FORAGE_ON=(typeof globalThis==='undefined')||((globalThis.__FORAGE_EYES??1)|0)!==0; // resolve FORAGE once; gates the resource-sense computation in uaSetEyes
 __DECIDE_ON=(typeof globalThis==='undefined')||((globalThis.__DECIDE??1)|0)!==0; // resolve DECISION GAIN once; gates confidence accrual + commitment scaling

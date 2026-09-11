@@ -1167,6 +1167,172 @@ m._compile(code+`
             names:LAW_DECLARED.map(r=>r.name)};
   });
 
+  // -- #198  THE NEIGHBOURHOOD BECOMES A FUNCTION OF PLACE ---------------------------------------
+  // A stencil is a list of OFFSETS, so every cell of a medium has the same neighbourhood - that is
+  // what makes a lattice a lattice rather than a graph, and it is the spatial closure #189, #190 and
+  // #194 all left standing. These read the adjacency DIRECTLY rather than reading the gene back: the
+  // lattice is loaded with a gradient and one tap of weight 1, so the value a cell ends up holding
+  // IS the index of the cell it sampled. Everything below is that one measurement.
+  out.warp=run('warp',()=>{
+    const saveCh=genome.channels, saveTick=tick;
+    // AND THE POPULATION'S BANKS ARE CLEARED, or this block measures somebody else's medium. #196
+    // made the governing rule a draw from the living CARRIERS, with the germline only as fallback -
+    // so setting genome.channels and calling updateChannels does not run the rule you just set
+    // whenever any particle happens to carry that slot. Four checks here failed on exactly that and
+    // one PASSED spuriously, which is the worse half. Clearing the carriers puts chanGoverning on its
+    // fallback path, which is a real path and the only one that makes this probe attributable.
+    const rule=(wx,wy,res)=>{
+      for(let q=0;q<N;q++) if(pGenome[q])pGenome[q].channels=null;
+      genome.channels=[{expr:'(b)+(0.00)',compiled:null,failed:false,age:1,
+      uses:0,st:[[0,0,1]],wrap:0,cad:1,res:res||FIELD_W,xfer:0,wx:wx||null,wy:wy||null},null,null,null]; };
+    // A DELTA FUNCTION, NOT A GRADIENT, and the reason is worth keeping: the first version of this
+    // block loaded a 0..39 ramp and read the sampled column straight out of the cell's value. It
+    // cannot work - uaCall clamps its output to +/-8 and the lattice write clamps to CHANNEL_CLAMP=3,
+    // so every cell read 3 and four checks failed on a probe that was wrong rather than on a
+    // mechanism that was. One spike of value 1 stays inside both clamps, and WHERE the spike lands
+    // after one update is the displacement, read off the lattice rather than off the gene.
+    const spike=(sx,sy)=>{ const L=chanLattice(0); L.fill(0); L[sy*FIELD_W+sx]=1; return L; };
+    const step=()=>{ tick=CHANNEL_CADENCE; updateChannels(); };
+    const at=(cx,cy)=>chanLattice(0)[cy*FIELD_W+cx];
+    // the cell that now holds the spike sampled the spike's column, so spikeX - foundX is the warp
+    const shiftOnRow=(sx,sy)=>{ const L=chanLattice(0); let best=-1,bv=1e-6;
+      for(let cx=0;cx<FIELD_W;cx++){ const v=L[sy*FIELD_W+cx]; if(v>bv){bv=v;best=cx;} }
+      return best<0?null:(sx-best); };
+
+    // 1. NO WARP IS THE ORIGINAL ARITHMETIC. Same rule, same start, WARP on with no expression
+    //    against WARP off entirely - compared cell by cell, not approximately.
+    rule(null,null); spike(20,20); step();
+    const plain=Array.from(chanLattice(0));
+    const svw=__WARP; __WARP=false;
+    rule(null,null); spike(20,20); step();
+    const off=Array.from(chanLattice(0));
+    __WARP=svw;
+    let differ=0; for(let q=0;q<plain.length;q++) if(plain[q]!==off[q])differ++;
+    const selfRead=(shiftOnRow(20,20)===0);   // a zero-offset tap samples its own cell
+
+    // 2. A CONSTANT WARP displaces the whole neighbourhood - a stencil shift, and the control that
+    //    says the mechanism reaches the tap arithmetic at all
+    rule('(2.00)+(0.00)',null); spike(20,20); step();
+    const constShift=shiftOnRow(20,20);
+    rule('(2.00)+(0.00)',null); spike(10,30); step();
+    const constShift2=shiftOnRow(10,30);
+
+    // 3. A POSITION-DEPENDENT WARP IS THE WHOLE POINT: the same medium, the same stencil, and two
+    //    cells whose neighbourhoods point at DIFFERENT relative offsets. No list of offsets can do
+    //    this, however long the list.
+    rule('(ny)*(6.00)',null);
+    spike(20,2);  step(); const shearLo=shiftOnRow(20,2);
+    rule('(ny)*(6.00)',null);
+    spike(20,34); step(); const shearHi=shiftOnRow(20,34);
+
+    // 4. STATE-DEPENDENT ADJACENCY: the medium's geometry depends on what is IN it. Two identical
+    //    cells with different contents sample different neighbours.
+    // Two probe cells in the same column. Their OWN contents set their warp, so they sample
+    // different neighbours: the one holding 0 samples itself, the one holding 3 samples three cells
+    // over - where something different has been placed.
+    rule('(a)*(1.00)',null);
+    { const L=chanLattice(0); L.fill(0);
+      L[5*FIELD_W+20]=0;  L[5*FIELD_W+23]=2;
+      L[6*FIELD_W+20]=3;  L[6*FIELD_W+23]=2; }
+    step();
+    const stateA=at(20,5), stateB=at(20,6);
+
+    // 5. BOUNDED. An expression that asks for a thousand cells away gets CHANNEL_OFFSET_MAX.
+    rule('(1000.00)+(0.00)',null); spike(20,20); step();
+    const huge=shiftOnRow(20,20);
+    // and every cell stays finite and in band under an explosive warp on an explosive rule
+    genome.channels[0].expr='((a)+(b))*(3.00)';
+    genome.channels[0].compiled=null;
+    { const L=chanLattice(0); L.fill(1.5); }
+    for(let q=0;q<6;q++){ tick=(q+1)*CHANNEL_CADENCE; updateChannels(); }
+    let over=0,nf=0; for(const v of chanLattice(0)){ if(!isFinite(v))nf++; else if(Math.abs(v)>CHANNEL_CLAMP+1e-6)over++; }
+
+    // 6. NO RECURRENCE ACROSS CELLS (#175). uaCall writes its output back to atom.state, so a warp
+    //    naming the recurrent-state symbol would make a cell's neighbourhood depend on the cell evaluated BEFORE it and the
+    //    whole medium would be order-dependent. state is zeroed before every call, so it reads 0.
+    rule('(s)+(4.00)',null); spike(20,20); step(); const sA=shiftOnRow(20,20);
+    rule('(s)+(4.00)',null); spike(9,31);  step(); const sB=shiftOnRow(9,31);
+    const sIsZero=(sA===4&&sB===4);
+
+    // 7. THE STEP (#103): incremental, authors, drifts, and can DROP
+    const wr={expr:'(a)',wx:null,wy:null};
+    let authored=0, dropped=0, moved=0;
+    for(let q=0;q<600;q++){
+      const had=chanWarped(wr)===1;
+      chanWarpStep(wr);
+      const has=chanWarped(wr)===1;
+      if(!had&&has)authored++;
+      if(had&&!has)dropped++;
+      if(had&&has)moved++;
+    }
+    // 8. RENT
+    rule('(2.00)+(0.00)',null);
+    const rentOf=()=>{ let t=0; const b=chanBank();
+      for(let k=0;k<CHANNEL_MAX;k++){ const _r=b[k]; if(_r&&typeof _r.expr==='string'){
+        const g=__GRAIN?Math.max(CHANNEL_RES_FLOOR,Math.pow(chanRes(_r)/FIELD_W,2)):1;
+        t+=CHANNEL_RENT*g+(chanWarped(_r)?CHANNEL_WARP_RENT*g:0); } } return +t.toFixed(4); };
+    const rentWarped=rentOf();
+    rule(null,null);
+    const rentPlain=rentOf();
+    rule('(2.00)+(0.00)',null,5);
+    const rentCoarse=rentOf();
+
+    // and the probe says so rather than assuming it: with the carriers cleared the germline must be
+    // the rule that governed, or every number above is about a medium this block never set.
+    const governedBySelf=(function(){ const sv=__chanGovSelf; chanGoverning(0);
+      const used=__chanGovSelf>sv; __chanGovSelf=sv; return used; })();
+    genome.channels=saveCh; tick=saveTick;
+    return {governedBySelf,differ,selfRead,constShift,constShift2,shearLo,shearHi,stateA,stateB,huge,over,nf,sIsZero,
+            authored,dropped,moved,rentWarped,rentPlain,rentCoarse,cap:CHANNEL_OFFSET_MAX};
+  });
+
+  out.warpCross=run('warpCross',()=>{
+    genome.channels=[{expr:'(a)*(0.9)',compiled:null,failed:false,age:2,uses:1,st:[[1,0,0.5]],
+                      wrap:0,cad:2,res:20,xfer:0.003,wx:'(ny)*(3.00)',wy:'(nx)*(2.00)'},null,null,null];
+    const blob=encodeGenome();
+    genome.channels=undefined;
+    decodeGenome(blob); sanitizeGenome();
+    const r0=genome.channels&&genome.channels[0];
+    const saved=!!r0&&r0.wx==='(ny)*(3.00)'&&r0.wy==='(nx)*(2.00)'&&chanRes(r0)===20;
+    // a pre-#198 row is seven long and must read as translation-invariant
+    const legacy=chanWarped({expr:'(a)',st:[[0,0,1]]})===0;
+    genome.channels=[{expr:'(a)*(0.9)',compiled:null,failed:false,age:2,uses:1,st:[[1,0,0.5]],
+                      wrap:0,cad:2,res:20,xfer:0.003,wx:'(ny)*(3.00)',wy:'(nx)*(2.00)'},null,null,null];
+    // the compiled holder must NOT be shared with a clone, or one medium's warp compiles into another
+    chanWarpAt(genome.channels[0],'x',0.5);
+    const c=cloneGenome(genome);
+    const shared={row:c.channels[0]===genome.channels[0],
+                  holder:c.channels[0].__wxa!==undefined&&c.channels[0].__wxa===genome.channels[0].__wxa,
+                  carried:c.channels[0].wx==='(ny)*(3.00)'};
+    let childMoved=0;
+    for(let q=0;q<400;q++){ const g=cloneGenome(genome); mutateChildGenome(g);
+      const rr=g.channels&&g.channels[0];
+      if(rr&&(rr.wx!=='(ny)*(3.00)'||rr.wy!=='(nx)*(2.00)'))childMoved++; }
+    for(let k=0;k<N;k++) if(palive[k]&&pGenome[k])pGenome[k].channels=null;
+    seedSubstrateIntoParticle();
+    let carriers=0;
+    for(let k=0;k<N;k++){ const g=pGenome[k];
+      if(palive[k]&&g&&Array.isArray(g.channels))for(const rr of g.channels)
+        if(rr&&rr.wx==='(ny)*(3.00)')carriers++; }
+    const pay={nx:0.5,ny:0.5,tend:[0,0,0],mem:[],plasmid:[],amp:1,phase:0,ua:[],
+               chn:[['(a)*(0.9)',2,[[1,0,0.5]],0,2,20,0.003,'(ny)*(3.00)','(nx)*(2.00)'],0,0,0]};
+    const wireOk=validNetworkPayload('migrant',pay)===true;
+    const wireBad=[
+      // NOT 'evil()' - UA_EXPR_SAFE is a BYTE filter (printable ASCII), not a parser, so any
+      // pronounceable string passes it and the first version of this check asserted a rejection that
+      // was never going to happen. What the wire can actually refuse is a non-string, an over-length
+      // string, and a byte outside the printable range; a hostile but printable expression is caught
+      // downstream by uaCompile's try/catch, which is where it belongs.
+      {...pay,chn:[['(a)',2,null,0,1,40,0,'bad\u0001byte',0],0,0,0]},
+      {...pay,chn:[['(a)',2,null,0,1,40,0,{},0],0,0,0]},
+      {...pay,chn:[['(a)',2,null,0,1,40,0,'x'.repeat(UA_EXPR_MAX+40),0],0,0,0]},
+    ].every(x=>validNetworkPayload('migrant',x)===false);
+    const wireAbsent=validNetworkPayload('migrant',{...pay,chn:[['(a)',2,null,0,1,40,0],0,0,0]})===true;
+    const cen=crossingCensus();
+    return {saved,legacy,shared,childMoved,carriers,wireOk,wireBad,wireAbsent,
+            row:cen.rows.some(x=>x.name==='channel.warp')};
+  });
+
   // ── THE CROSSINGS: every new gene must survive a save and diverge in a child ────────────────
   out.cross=run('cross',()=>{
     genome.uaFoldMode=2; genome.uaFoldK=3.25; genome.autonomyCede=0.8;
@@ -1667,6 +1833,51 @@ ck('#197 the proposal rate moved with the table', BK.reach &&
    BK.reach.verdictCap+' verdicts — the binding constraint is the probation, not the rate, because one law is on trial at a time');
 ck('#197 BRAKES=0 pins the table back to the original three', BK.offSpan===3,
    'so every measurement taken before the prices became evolvable is still comparable');
+
+// #198
+const WP=r.warp||{};
+ck('#198 the probe measures the medium it set', WP.governedBySelf===true,
+   '#196 draws the governing rule from the living carriers, so a block that sets genome.channels and does not clear them is measuring somebody else\'s medium — four checks here failed on that and one passed spuriously');
+ck('#198 no warp is the ORIGINAL tap arithmetic, cell for cell', WP.differ===0 && WP.selfRead===true,
+   WP.differ+' of 1600 cells differed between WARP=1 with no expression and WARP=0 — and a zero-offset tap samples its own cell, which is the measurement everything below rests on');
+ck('#198 a constant warp displaces the whole neighbourhood', WP.constShift===2 && WP.constShift2===2,
+   'two cells in different rows and columns both sample '+WP.constShift+' and '+WP.constShift2+
+   ' cells over — a uniform shift, which is all a stencil could ever have expressed');
+ck('#198 A POSITION-DEPENDENT WARP GIVES TWO CELLS DIFFERENT NEIGHBOURHOODS',
+   WP.shearLo!==undefined && WP.shearHi!==undefined && WP.shearLo!==WP.shearHi,
+   'row 2 samples '+WP.shearLo+' cells over and row 34 samples '+WP.shearHi+
+   ' — no list of offsets can do this however long the list, and that is the whole difference between a lattice and a graph');
+ck('#198 and adjacency can depend on what is IN the medium',
+   WP.stateA!==undefined && WP.stateB!==undefined && WP.stateA!==WP.stateB,
+   'two cells in the same column holding different values sample columns '+WP.stateA+' and '+WP.stateB+
+   ' — the geometry of the space is a function of its own contents');
+ck('#198 a warp cannot reach past the tap bound', WP.huge===WP.cap,
+   'an expression asking for 1000 cells away gets '+WP.huge+' (CHANNEL_OFFSET_MAX = '+WP.cap+
+   ') — an adjacency that can reach anywhere is not a warped neighbourhood, it is a random one');
+ck('#198 and a warped medium stays bounded under an explosive rule', WP.over===0 && WP.nf===0,
+   WP.over+' out of bound, '+WP.nf+' non-finite');
+ck('#198 NO RECURRENCE ACROSS CELLS — the warp reads s as 0 every time', WP.sIsZero===true,
+   'uaCall writes its output back to atom.state, so without zeroing it a cell\'s neighbourhood would depend on the cell evaluated before it and the whole medium would be order-dependent — #175 in a new pass, where it would have been invisible');
+ck('#198 the warp authors, drifts and can DROP itself',
+   WP.authored>0 && WP.dropped>0 && WP.moved>0,
+   WP.authored+' authored, '+WP.moved+' drifted, '+WP.dropped+' dropped — dropping is the mechanism turning itself off, and the rent is what makes dropping pay');
+ck('#198 a warped medium pays rent, an unwarped one does not, and a coarse one pays less',
+   WP.rentWarped>WP.rentPlain && WP.rentPlain>0 && WP.rentCoarse<WP.rentWarped,
+   'warped '+WP.rentWarped+', plain '+WP.rentPlain+', coarse+warped '+WP.rentCoarse+
+   ' — two expression evaluations per cell, scaled by the same cell count #194 scales the base rent by');
+const WX=r.warpCross||{};
+ck('#198 save -> load: the adjacency travels with the medium', WX.saved===true);
+ck('#198 a pre-#198 row reads as translation-invariant', WX.legacy===true);
+ck('#198 cloneGenome carries the expressions and shares no compiled holder',
+   WX.shared && !WX.shared.row && !WX.shared.holder && WX.shared.carried===true,
+   'the holders are created on demand off the serialised record, so the six rebuild sites drop them automatically — sharing one would compile one medium\'s warp into another');
+ck('#198 parent -> child: the adjacency diverges', WX.childMoved>0, WX.childMoved+'/400');
+ck('#198 germline -> population: it crosses with the medium', WX.carriers>0,
+   (WX.carriers||0)+' carrier(s) after one seeding — the seventh place a channel rule is rebuilt');
+ck('#198 the wire carries it, rejects garbage, and still accepts a pre-#198 peer',
+   WX.wireOk===true && WX.wireBad===true && WX.wireAbsent===true,
+   'good '+WX.wireOk+', rejects '+WX.wireBad+', absent-is-legal '+WX.wireAbsent);
+ck('#198 and it has a census row', WX.row===true);
 
 // the crossings
 const CR=r.cross||{};
