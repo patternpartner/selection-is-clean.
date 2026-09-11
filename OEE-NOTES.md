@@ -15012,3 +15012,189 @@ chose — it is a geometry, in a frame the lineage picks, and the list is now th
 rather than the places.
 
 `substrate-test.js`: 131 checks, 20 of them #193's. `smoke.sh`: 49 ok, 0 failing.
+
+## #194 — THE GRAIN OF A MEDIUM, and a row that went STRANDED for the fourth time in the same way
+
+#188's closing paragraph named this and both #189 and #193 restated it without moving it:
+
+> "a channel is still a SCALAR field on the same 40x40 lattice... no change to what a 'cell' is. That
+> is the remaining ceiling and it is a real one."
+
+#189 opened three of the four things it listed — the neighbourhood (stencil), the manifold (wrap) and
+the timescale (cadence). The fourth was the **grain**, and the grain is the one that decides what
+spatial scale a lineage's chemistry can coordinate at. At 40×40 on an 800×800 world a cell is 20
+pixels, a few particle-widths, so **every medium in this engine has been a local medium — not by
+choice but because there was no way to say otherwise.** A lineage could not evolve a broadcast.
+
+`res` is a channel rule's grain: how many cells per side it addresses its own lattice at, from
+`CHANNEL_RES_SET = [5,8,10,20,40]`. Seeded 40, which is every previous run.
+
+### Block-uniform storage is what makes the rest free
+
+A coarse medium stores its value redundantly across the `FIELD_W/res` fine cells of each block. That
+one decision means:
+
+- `chanRead` needs **no change** — a fine read already returns the medium's own value;
+- #193's emission stencil needs **no change** — it simply cannot aim finer than the grain, which is
+  physically right rather than a limitation to apologise for;
+- and the update loop iterates **blocks**, so a coarse medium is cheaper to run, not dearer.
+
+```
+0 cells of 1600 differed between GRAIN=1 at res=40 and GRAIN=0
+0 cells disagreed with their block at res=5
+64/64 fine cells carry a write, and a reader at the far corner of the block reads it back
+```
+
+The first line is the exactness guarantee: at the seeded grain `updateChannels` takes the original
+fine loop **verbatim**, not a `res===FIELD_W` special case of a general one.
+
+### What coarsening actually buys
+
+```
+one advection update, stencil [[1,0,1]], rule (b)*(0.999)
+  grain 40   centroid displaced 1.0 cell
+  grain  5   centroid displaced 4.5 cells
+```
+
+The stencil's offsets are read in **blocks**, so "next to" means next to *at the medium's own scale*.
+One step at grain 5 moves the medium a fifth of the world, and no fine-grained kernel reaches that in
+one update however it is shaped. The same chemistry at a different scale is a different signal:
+gradient-following becomes quorum-sensing with no new opcode.
+
+### A write lands in a MEDIUM cell, not a lattice cell
+
+This is the decision that could most easily have been made wrong. At a coarse grain the same value
+goes to the whole block rather than `amt/n` to each fine cell. Splitting would have made a coarse
+medium swallow every deposit by `(FIELD_W/res)²` — up to 64× — so the gene would have read as *become
+deaf*, which is not what a grain is. The medium's unit of place is its own cell, and raising one of
+its cells by `amt` is what the verb asked for.
+
+### The rent runs the other way, on purpose
+
+```
+CHANNEL_RENT share by grain
+  40   0.600
+  20   0.150
+   5   0.090   (the floor: 0.15 of full rent)
+```
+
+A coarse medium genuinely costs less CPU — `res²` rule evaluations instead of `FIELD_W²` — so it
+costs less rent, floored because the lattice, the compile and the sense symbol do not coarsen away.
+**This is the only rent in the file a lineage can reduce by changing a gene**, and that is deliberate:
+*"keep a hard, measurable cost on complexity"* has to cut both ways or it is a ratchet.
+
+### Coarsen only, and why
+
+The lattice is `FIELD_W × FIELD_H` of **world state shared by every carrier of that slot**, so a finer
+grain would need a bigger lattice — one lineage's gene reallocating a medium other lineages are
+standing in. That is a cross-lineage conflict this design does not have, and #183's law-mutation
+probation is the only machinery here that could arbitrate it. What is given up is small and
+measurable: 20 pixels is already finer than anything a particle can resolve, so the interesting axis
+was always toward coarse. Saying which direction is closed beats the next reader measuring it.
+
+### And it went STRANDED — for the fourth time, by the same mechanism
+
+Seed 2, 12,000 ticks, everything else passing:
+
+```
+channel.grain   germline 2 / population 0     STRANDED
+```
+
+The germline coarsened two media and **not one carrier ever received the fact.**
+`seedSubstrateIntoParticle` rebuilds a channel rule from a key list — `expr, age, st, wrap, cad` — and
+silently deletes every key it does not name. Which is:
+
+- #133b, where `seedEffectIntoParticle` stripped a verb's successor on the way into the population;
+- #193, one commit ago, where `sanitizeGenome`'s verb rebuild deleted the emission stencil;
+- and now this.
+
+**A channel rule is rebuilt in FIVE places** — `seedSubstrateIntoParticle`, `cloneGenome`,
+`sanitizeGenome`, `decodeGenome` and `encodeGenome` — and a new field has to be added to all five. Four
+of the five were right; the fifth is the germline→population crossing, which is the one no unit test
+was watching. After the fix:
+
+```
+channel.grain   germline 1 / population 7
+```
+
+and `substrate-test` now has the check that would have caught it: wipe the population banks, seed
+once, and count carriers whose medium reads the germline's grain.
+
+### Live
+
+```
+12,000 ticks, two seeds
+  channel.coarse     215 / 94        coarse lattice passes that actually ran
+  channel.grainStep    4 /  2        the gene moving
+  channel.formStep     8 /  7        #189's stencil, which used to read 0-1
+  channel.grain      g0/p0 / g1/p7
+  crossing-test at 8,000 ticks: channel.grain germline 1 / population 6
+```
+
+`channel.formStep` going from 0–1 to 7–8 per run is **#189 being repaired by #192's rule**: its
+stencil could only ever be reshaped on the germline, which is ~38 draws per run at rate 0.05. The
+child route fixes the form and the grain together. The chemistry *expression* deliberately stays
+germline-only — it is drawn from the grammar, and redrawing it at every birth would outrun any
+selection on it, the same reason #184's probe bank does not drift there.
+
+### What this does NOT show, and one number that says why
+
+`channel.grainStep` fired 4 and 2 times in 12,000 ticks. That is thin, and the reason is not #194's
+operator: `channel.bank` reads **germline 4 / population 10–24**, so only ten to twenty-four genomes
+in a population of two hundred hold a channel rule at all, and the child route can only step a medium
+a child actually has. **#194's reachability is bounded by #188's crossing rate, not by its own
+mutation rate** — and the honest response to that is to say so rather than to raise a constant until
+the number looks better.
+
+No claim that a coarse medium is *favoured*. The grain reaches the population, is priced, crosses all
+five rebuilds and runs a real coarse physics pass. Whether a broadcast beats a whisper is the question
+the row now makes answerable.
+
+### A sharper reading of STRANDED itself
+
+Chasing `channel.grain` turned up something about the instrument rather than the mechanism.
+`crossing-test` at TICKS=8000 is **red on committed HEAD too** — and on a different row:
+
+```
+current engine   phys.reach   germline 1 / population 0
+HEAD (#193)      verb.sensed  germline 4 / population 0   AND   phys.chem germline 1 / population 0
+```
+
+Both red, neither the same. Which rows read stranded varies run to run, because **a point-in-time
+count cannot distinguish "never crossed" from "crossed and was selected away."** That is #187's
+lesson — the one that moved `probe.promoted` out of the crossing table — and it applies to more rows
+than `probe.promoted`. The STRANDED flag is sound *early*, before anything has had time to be removed,
+which is exactly the regime `smoke.sh` runs it in at TICKS=40. At 8,000 ticks it is a snapshot of
+population composition wearing a build failure's clothes. Recorded here rather than acted on: changing
+the row semantics is its own swing, and CODEMAP already warns anyone raising that budget.
+
+### And a second instrument defect, the same shape as the first
+
+`slot-test` went red on a check that asks whether nine browser tabs are "at different points in their
+lives" — implemented as `new Set(saved T values).size > 1`. `T` only **moves at an autosave boundary**,
+every 900 ticks, so the check was asking whether the nine tabs happened to land on *different*
+boundaries, which is a fact about how the machine scheduled them:
+
+```
+#193's engine   three tabs at 1800, six at 2700   ->  PASSES
+#194's engine   all nine reached 2700             ->  FAILS
+```
+
+Nothing about either engine's storage differs. And the rig's own comment ten lines above names this
+exact shape — *"an assertion naming a number the system picked"* — having fixed the neighbouring check
+for it and not this one. What the check MEANS is that each slot holds its own genome rather than one
+shared one, so it now compares a **hash of the whole saved blob**, which differs whenever the genomes
+do and is not a number the machine picks. Nine distinct fingerprints, nine of nine own genomes
+restored, at three different `T` values — which is now diagnostic detail rather than the assertion.
+
+(Changing `savedSlots` to return `{T, fp, n}` then broke its downstream consumer, which compared the
+object to a number and reported all nine slots WRONG with `[object Object]` in the message. Fixed in
+the same pass, and noted because changing a helper's return shape is a change to every reader of it.)
+
+### Still closed after #194
+
+The position→cell map itself (a cell is still a square, and the map from a position to one is still
+`floor(px/fw)`); `CAP`; the **core** opcode dispatch table; the four organisational levels; and one
+world per tab.
+
+`substrate-test.js`: 148 checks, 17 of them #194's. `slot-test.js`: 9 ok. `smoke.sh`: 49 ok, 0 failing.

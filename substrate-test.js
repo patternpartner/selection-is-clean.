@@ -726,6 +726,171 @@ m._compile(code+`
             row:cen.rows.some(r=>r.name==='verb.shaped')};
   });
 
+  // -- #194  THE GRAIN OF A MEDIUM ---------------------------------------------------------------
+  // #188's closing paragraph named the grain as the remaining ceiling and #189 and #193 both
+  // restated it. These check the three things that would be silently wrong: that the seeded grain is
+  // the ORIGINAL code path rather than an equal-looking one, that a coarse medium is block-uniform
+  // (which is what lets chanRead and #193's emission work unchanged), and that coarsening actually
+  // buys a different DYNAMICS rather than just a different number in the genome.
+  out.grain=run('grain',()=>{
+    const saveCh=genome.channels, saveTick=tick;
+    const setRule=(expr,res,st,cad)=>{ genome.channels=[{expr,compiled:null,failed:false,age:1,uses:0,
+      st:st||CHANNEL_STENCIL_SEED.map(t=>[t[0],t[1],t[2]]),wrap:0,cad:cad||1,res},null,null,null]; };
+    const drive=(n)=>{ for(let q=0;q<n;q++){ tick=(q+1)*CHANNEL_CADENCE; updateChannels(); } };
+    const lattice=()=>Array.from(chanLattice(0));
+    const seed=(L,v,c)=>{ L.fill(0); L[c]=v; };
+    const centroid=(L)=>{ let sx=0,w=0; for(let c=0;c<L.length;c++){ const m=Math.abs(L[c]);
+      if(m>1e-9){ sx+=(c%FIELD_W)*m; w+=m; } } return w>0?sx/w:-1; };
+
+    // 1. EVERY GRAIN DIVIDES THE LATTICE EXACTLY. A value that does not leaves a remainder row at
+    //    the edge, which is a silent off-by-one in the block loop rather than a coarser medium.
+    const divides=CHANNEL_RES_SET.every(r=>FIELD_W%r===0&&FIELD_H%r===0);
+    const blocks=CHANNEL_RES_SET.map(r=>chanBlock(r));
+
+    // 2. THE SEEDED GRAIN IS THE ORIGINAL PATH, BIT FOR BIT. Same rule, same start state, once with
+    //    GRAIN on at res=FIELD_W and once with GRAIN off entirely.
+    setRule('(a)+(((b)-(a))*(0.25))',FIELD_W);
+    { const L=chanLattice(0); seed(L,2,20*FIELD_W+20); }
+    drive(6);
+    const withOn=lattice();
+    const svg=__GRAIN; __GRAIN=false;
+    setRule('(a)+(((b)-(a))*(0.25))',FIELD_W);
+    { const L=chanLattice(0); seed(L,2,20*FIELD_W+20); }
+    drive(6);
+    const withOff=lattice();
+    __GRAIN=svg;
+    let identical=0; for(let c=0;c<withOn.length;c++) if(withOn[c]!==withOff[c])identical++;
+
+    // 3. A COARSE MEDIUM IS BLOCK-UNIFORM. This is the property everything else rests on: if it
+    //    holds, a fine chanRead already returns the medium's own value and #193's emission needs no
+    //    change at all.
+    setRule('(a)+(((b)-(a))*(0.25))',5);
+    { const L=chanLattice(0); seed(L,2,20*FIELD_W+20); }
+    drive(3);
+    const CL=lattice(); const bs=chanBlock(5);
+    let nonUniform=0;
+    for(let by=0;by<5;by++)for(let bx=0;bx<5;bx++){
+      const v0=CL[(by*bs)*FIELD_W+bx*bs];
+      for(let dy=0;dy<bs;dy++)for(let dx=0;dx<bs;dx++)
+        if(CL[(by*bs+dy)*FIELD_W+bx*bs+dx]!==v0)nonUniform++;
+    }
+
+    // 4. A WRITE REACHES THE WHOLE BLOCK, and is readable from anywhere in it. The alternative -
+    //    splitting amt across the block - would have made a coarse medium swallow every deposit by
+    //    (FIELD_W/res)^2, so the gene would read as "become deaf" rather than as a grain.
+    let wi=-1; for(let q=0;q<N;q++) if(palive[q]){wi=q;break;}
+    let wrote=null;
+    if(wi>=0){
+      const L=chanLattice(0); L.fill(0);
+      const moved=chanWrite(0,wi,0.9);
+      const c=chanCellOf(wi), cx=c%FIELD_W, cy=(c/FIELD_W)|0;
+      const x0=cx-(cx%bs), y0=cy-(cy%bs);
+      let filled=0;
+      for(let dy=0;dy<bs;dy++)for(let dx=0;dx<bs;dx++)
+        if(Math.abs(L[(y0+dy)*FIELD_W+x0+dx]-0.9)<1e-6)filled++;
+      // and a reader standing anywhere in that block sees it
+      const svx=px[wi], svy=py[wi];
+      const fw=W/FIELD_W, fh=H/FIELD_H;
+      px[wi]=(x0+bs-1)*fw+fw*0.5; py[wi]=(y0+bs-1)*fh+fh*0.5;
+      const farRead=chanRead(0,wi);
+      px[wi]=svx; py[wi]=svy;
+      wrote={moved:+moved.toFixed(4),filled,ofBlock:bs*bs,farRead:+farRead.toFixed(4)};
+    }
+
+    // 5. THE STENCIL IS READ IN BLOCKS, which is where the new dynamics comes from: one advection
+    //    step at res=5 moves the medium a fifth of the world, and no fine-grained kernel can do that
+    //    in one update however it is shaped.
+    const adv=[[1,0,1]];
+    setRule('(b)*(0.999)',FIELD_W,adv);
+    { const L=chanLattice(0); seed(L,2,20*FIELD_W+8); }
+    // The rule takes each place's value FROM its +x neighbour, so mass travels in -x and the
+    // centroid DECREASES. What is measured is the displacement, not the raw centroid - the first
+    // version of this check compared centroids and went red for having the sign of the flow.
+    drive(1); const fineStep=Math.abs(8-centroid(lattice()));
+    setRule('(b)*(0.999)',5,adv);
+    { const L=chanLattice(0); seed(L,2,20*FIELD_W+8); }
+    drive(1); const coarseStep=Math.abs(8-centroid(lattice()));
+
+    // 6. SNAPPED, NOT CLAMPED
+    const snap={ s7:chanRes({res:7}), s6:chanRes({res:6}), s39:chanRes({res:39}),
+                 sBig:chanRes({res:1000}), sNeg:chanRes({res:-4}), sNaN:chanRes({res:NaN}),
+                 sAbsent:chanRes({}) };
+
+    // 7. THE STEP (#103): one index at a time, always inside the set, and every grain reachable
+    const gr={res:FIELD_W}; let gmoves=0, gillegal=0, gjumps=0; const seen={};
+    for(let q=0;q<600;q++){
+      const before=chanRes(gr);
+      if(chanGrainStep(gr))gmoves++;
+      const after=chanRes(gr);
+      if(CHANNEL_RES_SET.indexOf(after)<0)gillegal++;
+      if(Math.abs(CHANNEL_RES_SET.indexOf(after)-CHANNEL_RES_SET.indexOf(before))>1)gjumps++;
+      seen[after]=1;
+    }
+
+    // 8. RENT FALLS WITH THE GRAIN, and is floored. The only rent in this file a lineage can reduce.
+    const rentAt=(res)=>{ genome.channels=[{expr:'(a)',compiled:null,failed:false,age:1,uses:0,
+      st:CHANNEL_STENCIL_SEED.map(t=>[t[0],t[1],t[2]]),wrap:0,cad:1,res},null,null,null];
+      let t=0; const b=chanBank();
+      for(let k=0;k<CHANNEL_MAX;k++){ const _r=b[k]; if(_r&&typeof _r.expr==='string'){
+        const g=__GRAIN?Math.max(CHANNEL_RES_FLOOR,Math.pow(chanRes(_r)/FIELD_W,2)):1;
+        t+=CHANNEL_RENT*g; } }
+      return +t.toFixed(4); };
+    const rent={fine:rentAt(FIELD_W), mid:rentAt(20), coarse:rentAt(5), floor:CHANNEL_RES_FLOOR};
+
+    // 9. AND A COARSE MEDIUM STAYS BOUNDED under a rule that tries to run away
+    setRule('((a)+(b))*(3.00)',5,[[0,-1,2],[0,1,2],[-1,0,2],[1,0,2],[2,2,2],[-2,-2,2]]);
+    { const L=chanLattice(0); L.fill(1.5); }
+    drive(8);
+    const EL=lattice();
+    let over=0, nf=0;
+    for(const v of EL){ if(!isFinite(v))nf++; else if(Math.abs(v)>CHANNEL_CLAMP+1e-6)over++; }
+
+    genome.channels=saveCh; tick=saveTick;
+    return {divides,blocks,identical,nonUniform,wrote,
+            fineStep:+fineStep.toFixed(3), coarseStep:+coarseStep.toFixed(3),
+            snap,gmoves,gillegal,gjumps,grains:Object.keys(seen).map(Number).sort((a,b)=>a-b),
+            rent,over,nf,coarseFired:__chanCoarse>0};
+  });
+
+  // -- #194  AND IT HAS TO CROSS ------------------------------------------------------------------
+  out.grainCross=run('grainCross',()=>{
+    genome.channels=[{expr:'(a)*(0.95)',compiled:null,failed:false,age:4,uses:2,
+                      st:[[1,-1,0.5]],wrap:1,cad:3,res:8},null,null,null];
+    const blob=encodeGenome();
+    genome.channels=undefined;
+    decodeGenome(blob); sanitizeGenome();
+    const r0=genome.channels&&genome.channels[0];
+    const saved=!!r0&&chanRes(r0)===8&&r0.cad===3&&r0.wrap===1;
+    // a pre-#194 row is five long and must read as the lattice's own grain
+    const old5=JSON.parse(JSON.stringify([['(a)*(0.95)',4,[[1,-1,0.5]],1,3]]));
+    genome.channels=undefined;
+    decodeGenome(blob.replace(/x/,'x'));   // keep the same blob; the legacy shape is exercised directly below
+    const legacy={expr:old5[0][0],st:old5[0][2],wrap:old5[0][3],cad:old5[0][4]};
+    const legacyReads=chanRes(legacy)===FIELD_W;
+    genome.channels=[{expr:'(a)*(0.95)',compiled:null,failed:false,age:4,uses:2,
+                      st:[[1,-1,0.5]],wrap:1,cad:3,res:8},null,null,null];
+    const c=cloneGenome(genome);
+    const shared={bank:c.channels===genome.channels, row:c.channels[0]===genome.channels[0]};
+    const cloneRes=chanRes(c.channels[0]);
+    let childMoved=0;
+    for(let q=0;q<400;q++){ const g=cloneGenome(genome); mutateChildGenome(g);
+      const rr=g.channels&&g.channels[0];
+      if(rr&&chanRes(rr)!==8)childMoved++; }
+    // GERMLINE -> POPULATION, and this is the check that would have caught the defect the live run
+    // caught instead: seedSubstrateIntoParticle rebuilds a channel rule from a key list, so dropping
+    // the grain there made channel.grain read germline 2 / population 0 - STRANDED - while every other
+    // crossing passed. A channel rule is rebuilt in FIVE places and a new field needs all five.
+    for(let k=0;k<N;k++) if(palive[k]&&pGenome[k])pGenome[k].channels=null;
+    const seeded=seedSubstrateIntoParticle();
+    let grainCarriers=0;
+    for(let k=0;k<N;k++){ const g=pGenome[k];
+      if(palive[k]&&g&&Array.isArray(g.channels))for(const rr of g.channels)
+        if(rr&&typeof rr.expr==='string'&&chanRes(rr)===8)grainCarriers++; }
+    const cen=crossingCensus();
+    return {saved,legacyReads,shared,cloneRes,childMoved,seeded,grainCarriers,
+            row:cen.rows.some(x=>x.name==='channel.grain')};
+  });
+
   // ── THE CROSSINGS: every new gene must survive a save and diverge in a child ────────────────
   out.cross=run('cross',()=>{
     genome.uaFoldMode=2; genome.uaFoldK=3.25; genome.autonomyCede=0.8;
@@ -1100,6 +1265,53 @@ ck('#193 the wire carries it, validates it, and still accepts a pre-#193 peer',
    'good '+EX.wireOk+', rejects garbage '+EX.wireBad+', absent-is-legal '+EX.wireAbsent);
 ck('#193 and it has a census row', EX.row===true);
 
+// #194
+const GR=r.grain||{};
+ck('#194 every grain divides the lattice exactly', GR.divides===true,
+   'blocks per side: '+(GR.blocks||[]).join(',')+' — a value that does not divide leaves a remainder row, which is an off-by-one rather than a coarser medium');
+ck('#194 the seeded grain is the ORIGINAL fine path, bit for bit', GR.identical===0,
+   GR.identical+' cells of 1600 differed between GRAIN=1 at res=40 and GRAIN=0 — this is the exactness guarantee every A/B in this repo rests on');
+ck('#194 a coarse medium is BLOCK-UNIFORM', GR.nonUniform===0,
+   GR.nonUniform+' cells disagreed with their block — this is the property that lets chanRead and #193\'s emission stencil work completely unchanged');
+ck('#194 a write reaches the whole medium cell', GR.wrote &&
+   GR.wrote.filled===GR.wrote.ofBlock && Math.abs(GR.wrote.farRead-0.9)<1e-5,
+   (GR.wrote&&GR.wrote.filled)+'/'+(GR.wrote&&GR.wrote.ofBlock)+' fine cells carry it, and a reader at the far corner of the block reads '+
+   (GR.wrote&&GR.wrote.farRead)+' — splitting the amount instead would have made the gene read as "become deaf"');
+ck('#194 the stencil is read in BLOCKS, so one step advects a whole block',
+   GR.coarseStep!==undefined && GR.coarseStep>GR.fineStep*3,
+   'one advection update displaces the centroid by '+GR.fineStep+' cell at grain 40 and '+GR.coarseStep+
+   ' at grain 5 — no fine kernel reaches that in one update however it is shaped');
+ck('#194 the grain SNAPS to the legal set rather than clamping',
+   GR.snap && GR.snap.s7===8 && GR.snap.s6===5 && GR.snap.s39===40 &&
+   GR.snap.sBig===40 && GR.snap.sNeg===5 && GR.snap.sAbsent===40,
+   JSON.stringify(GR.snap));
+ck('#194 the grain takes one step at a time and never leaves the set',
+   GR.gmoves>0 && GR.gillegal===0 && GR.gjumps===0,
+   GR.gmoves+' steps, '+GR.gillegal+' outside the set, '+GR.gjumps+' jumped more than one index');
+ck('#194 and every grain is reachable', GR.grains && GR.grains.length===5,
+   'grains reached: '+(GR.grains||[]).join(','));
+ck('#194 rent FALLS with the grain, floored',
+   GR.rent && GR.rent.fine>GR.rent.mid && GR.rent.mid>GR.rent.coarse &&
+   GR.rent.coarse>0 && Math.abs(GR.rent.coarse-CHANNEL_RENT_SAFE()*GR.rent.floor)<1e-3,
+   'grain 40 '+(GR.rent&&GR.rent.fine)+', grain 20 '+(GR.rent&&GR.rent.mid)+', grain 5 '+(GR.rent&&GR.rent.coarse)+
+   ' — the only rent in this file a lineage can reduce by changing a gene, because coarsening genuinely costs less CPU');
+ck('#194 a coarse medium stays bounded under an explosive rule', GR.over===0 && GR.nf===0,
+   GR.over+' out of bound, '+GR.nf+' non-finite, six taps at weight 2 on a x3 rule');
+ck('#194 and the coarse pass actually RAN', GR.coarseFired===true,
+   'a grain that never reaches a lattice pass is #179 again');
+const GX=r.grainCross||{};
+ck('#194 save -> load: the grain travels with the chemistry', GX.saved===true);
+ck('#194 a pre-#194 row reads as the lattice\'s own grain', GX.legacyReads===true,
+   'five elements, no grain, so it means what it meant');
+ck('#194 cloneGenome carries it and shares nothing', GX.shared &&
+   !GX.shared.bank && !GX.shared.row && GX.cloneRes===8,
+   'clone reads grain '+GX.cloneRes);
+ck('#194 parent -> child: the grain diverges', GX.childMoved>0,
+   GX.childMoved+'/400 — and this same child route is what repairs #189, whose stencil could only ever be reshaped on the germline');
+ck('#194 germline -> population: the grain crosses with the medium', GX.grainCarriers>0,
+   (GX.grainCarriers||0)+' carrier(s) after one seeding — dropping res from that one rebuild made channel.grain STRANDED at germline 2 / population 0 on a live run while every other crossing passed');
+ck('#194 and it has a census row', GX.row===true);
+
 // the crossings
 const CR=r.cross||{};
 const SV=CR.saved||{};
@@ -1138,3 +1350,4 @@ function PROBE_RENT_SAFE(){ return (r.probe&&r.probe.rentPositive)?'>0':'0'; }
 process.exit(fail?1:0);
 function CELL_SAFE(){ return 55; }
 function EMIT_TAPS_SAFE(){ return 4; }
+function CHANNEL_RENT_SAFE(){ return (r.chan&&r.chan.rent)||0.6; }

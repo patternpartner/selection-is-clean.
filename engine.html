@@ -501,6 +501,48 @@ function particleActive(i){
 // rather than wrapping. Depositing against a wall piles up at the wall, which is what a box does.
 // The magnitude invariant is unaffected: the same total is written, some of it twice into one cell.
 let __EMIT=true;   // #193: authored verbs get an evolvable emission geometry. Force off with EMIT=0
+// === #194 - THE GRAIN OF A MEDIUM ==============================================================
+// #188 named this ceiling in its own closing paragraph and #189 and #193 both restated it without
+// moving it: "a channel is still a SCALAR field on the same 40x40 lattice... no change to what a
+// 'cell' is. That is the remaining ceiling and it is a real one."
+//
+// #189 opened three of the four things it listed - the neighbourhood (stencil), the manifold (wrap)
+// and the timescale (cadence). The fourth was the GRAIN, and the grain is the one that decides what
+// SPATIAL SCALE a lineage's chemistry can coordinate at. At 40x40 on an 800x800 world a cell is 20
+// pixels, which is a few particle-widths: every medium in this engine has been a LOCAL medium,
+// necessarily, because there was no way to say otherwise. A lineage could not evolve a broadcast.
+//
+// `res` is a channel rule's grain: how many cells per side it addresses its own lattice at. Seeded
+// 40, which is every previous run. Coarsen it to 5 and a cell is 160 pixels - a fifth of the world -
+// so one deposit reaches everything in that quadrant and diffusion crosses the world in a handful of
+// steps. The same chemistry, at a different scale, is a different signal: gradient-following becomes
+// quorum-sensing without a single new opcode.
+//
+// THE IMPLEMENTATION IS A BLOCK-UNIFORM LATTICE, and that choice is what makes everything else free.
+// A coarse medium stores its value redundantly across the FIELD_W/res fine cells of each block, so:
+//   chanRead needs NO change - a fine read already returns the medium's own value;
+//   #193's emission stencil needs NO change - it just cannot aim finer than the grain, which is
+//     physically right rather than a limitation to apologise for;
+//   and the update loop iterates BLOCKS, so a coarse medium is cheaper to run, not dearer.
+// That last point is the honest pricing and it runs the opposite way to every other rent in this
+// file: coarsening genuinely costs less CPU, so the rent scales with the cell count and a lineage can
+// buy a cheaper medium by giving up resolution. "Keep a hard, measurable cost on complexity" cuts
+// both ways, and this is the direction it cuts here.
+//
+// COARSEN ONLY, and the reason is worth stating rather than discovering. The lattice is FIELD_W x
+// FIELD_H of world state shared by every carrier of that slot, so a FINER grain would need a bigger
+// lattice, which means one lineage's gene reallocating a medium other lineages are standing in. That
+// is a cross-lineage conflict this design does not have and #183's law-mutation probation is the only
+// machinery in the file that could arbitrate it. What is given up is small and measurable: 20 pixels
+// is already finer than anything a particle can resolve, so the interesting axis was always toward
+// coarse. Saying which direction is closed, and why, beats the next reader measuring it.
+let __GRAIN=true;   // #194: a medium's grain is a gene. Force off with GRAIN=0
+// EVERY VALUE DIVIDES FIELD_W EXACTLY, so a block is a whole number of cells and there is no
+// remainder row hiding at the edge of the lattice. 40/5=8, 40/8=5, 40/10=4, 40/20=2, 40/40=1.
+const CHANNEL_RES_SET=[5,8,10,20,40];
+const CHANNEL_RES_FLOOR=0.15;   // the fraction of CHANNEL_RENT a medium pays however coarse it gets - the lattice, the compile and the sense symbol are fixed costs and do not coarsen away
+let __chanCoarse=0;             // instrument state off the genome (#131); drained per epoch through firedN
+
 const EMIT_TAPS_MAX=4;     // four taps is enough for a dipole, a ring quadrant, or a three-cell smear. Bounded because every tap is a write and writes are the expensive half of a verb
 const EMIT_OFFSET_MAX=3;   // +/-3 cells. The channel READ stencil (#189) reaches 7; an emission reaches less on purpose - a creature should be able to act further than it can feel only if it evolves to, and that is #191's reach gene, not this one
 const EMIT_TAP_RENT=0.3;   // instruction-equivalents per tap BEYOND the first, on the executeVM billing line. Twice CHANNEL_TAP_RENT because a tap here is a write, not a read
@@ -804,6 +846,9 @@ const LIVENESS_DECLARED=[
   // a write - which is #179's shape, and the reason all three are named rather than just the first.
   'emit.formStep',
   'emit.spread','emit.selfFrame',
+  // #194: grainStep is the gene moving; channel.coarse is a coarse update actually RUNNING. The
+  // first without the second would mean lineages evolving a scale that never reaches a lattice pass.
+  'channel.grainStep','channel.coarse',
 ];
 // NOT INSTRUMENTED, and deliberately absent rather than declared-and-silent: cladogenesis minting
 // (#17) has no single entry point I could identify with confidence. A census that reports "never"
@@ -974,6 +1019,9 @@ const CROSSING_DECLARED=[
   {name:'channel.form',  read:g=>{ const b=chanBank(g); if(!Array.isArray(b))return 0;
                                    let n=0; for(let k=0;k<CHANNEL_MAX;k++){ const r=b[k];
                                      if(r&&typeof r.expr==='string'&&chanFormMoved(r))n++; } return n; }},
+  // #194: how many of this genome's media are COARSER than the lattice they live on? Deviation from
+  // the seed, like every row since #188 - a bank at grain 40 has never been selected on its scale.
+  {name:'channel.grain', read:g=>__xGrained(g&&g.channels)},
   {name:'channel.sensed',read:g=>{ const b=chanBank(g), uas=g&&g.userAtoms;
                                    if(!Array.isArray(b)||!Array.isArray(uas))return 0;
                                    let n=0;
@@ -2820,7 +2868,14 @@ function seedSubstrateIntoParticle(){
   if(Array.isArray(genome.channels))g.channels=genome.channels.map(r=>(r&&typeof r.expr==='string')?
     {expr:r.expr,compiled:null,failed:false,age:r.age|0,uses:0,
      st:Array.isArray(r.st)?r.st.map(t=>[t[0]|0,t[1]|0,finiteOr(t[2],0)]):null,
-     wrap:r.wrap|0,cad:r.cad|0}:null);
+     // #194: AND THE GRAIN. Dropping it here made channel.grain read germline 2 / population 0 -
+     // STRANDED - on a 12,000-tick run: the germline coarsened two media and not one carrier ever
+     // received the fact, because this map rebuilds the rule from a key list and silently deletes
+     // every key it does not name. That is the FOURTH time in two commits: #193's verb stencil went
+     // the same way through sanitizeGenome's rebuild, and #133b's successor through
+     // seedEffectIntoParticle. A channel rule is now rebuilt in FIVE places - here, cloneGenome,
+     // sanitizeGenome, decodeGenome and encodeGenome - and a new field has to be added to all five.
+     wrap:r.wrap|0,cad:r.cad|0,res:__GRAIN?chanRes(r):FIELD_W}:null);
   // AND ONE ATOM THAT SENSES ONE, because a chemistry nothing perceives is what channel.sensed is
   // there to warn about. MEASURED: after the wire-at-allocation hand-off was added, channel.bank
   // crossed at 4/86 and channel.sensed still read 3/0 - because the wire fires only at ALLOCATION
@@ -8542,6 +8597,7 @@ function flushEpoch(acc){
     firedN('metric.applied',__metApplied); __metApplied=0;   // #190
     firedN('reach.beyondRing',__reachBeyond); __reachBeyond=0;   // #191
     firedN('tick.skipped',__tickSkips); __tickSkips=0;           // #192
+    firedN('channel.coarse',__chanCoarse); __chanCoarse=0;       // #194
     firedN('emit.spread',__emitSpread); __emitSpread=0;          // #193 - batched, a verb can fire thousands of times per epoch
     firedN('emit.selfFrame',__emitSelfFrame); __emitSelfFrame=0;
     // #187: the promotion count, germline and population, on the same row as the operator bank -
@@ -9033,7 +9089,7 @@ function cloneGenome(src){
     // ever diverge its own space - the seventh instance of the bug this file keeps re-learning.
     {expr:r.expr,compiled:null,failed:!!r.failed,age:r.age|0,uses:0,
      st:Array.isArray(r.st)?r.st.map(t=>[t[0]|0,t[1]|0,finiteOr(t[2],0)]):null,
-     wrap:r.wrap|0,cad:r.cad|0}:null):src.channels;
+     wrap:r.wrap|0,cad:r.cad|0,res:__GRAIN?chanRes(r):FIELD_W}:null):src.channels;   // #194: the grain crosses with the chemistry - a child whose medium is a different SIZE has a different medium
   g.probes=Array.isArray(src.probes)?src.probes.map(pr=>pr?{expression:pr.expression,compiled:null,
     failed:!!pr.failed,n:pr.n|0,hit:pr.hit|0,pending:finiteOr(pr.pending,0),pendTick:-1,pendFit:0,age:pr.age|0}:null):src.probes;
   g.oeeW=Array.isArray(src.oeeW)?src.oeeW.slice():src.oeeW;
@@ -9168,6 +9224,18 @@ function mutateChildGenome(g){
   // only be reshaped on the germline is a structure the population cannot diverge, and a population
   // that cannot diverge a structure is a population selection cannot use it on.
   if(__EMIT&&Array.isArray(g.userEffects))for(const e of g.userEffects) if(e&&Math.random()<rate*0.5)emitFormStep(e);
+  // #194: and the MEDIUM's form and grain step in the child too, which also REPAIRS #189. Measured:
+  // channel.formStep fired 0 or 1 times per 12,000-tick run and channel.form read germline 0-1 /
+  // population 0-2, because a stencil could only ever be reshaped on the germline - ~38 draws per run
+  // at rate 0.05, #192's ceiling exactly. The chemistry EXPRESSION deliberately stays germline-only:
+  // it is drawn from the grammar, and a redraw at every birth would outrun any selection on it, which
+  // is the same reason #184's probe bank does not drift here. Form and grain are small bounded steps
+  // and belong on the fast route.
+  if(__CHANNEL&&Array.isArray(g.channels))for(const _r of g.channels){
+    if(!_r||typeof _r.expr!=='string')continue;
+    if(Math.random()<rate*0.5)chanFormStep(_r);
+    if(__GRAIN&&Math.random()<rate*0.5)chanGrainStep(_r);
+  }
   // #184: the proxy weights diverge in the child like objWeights do. The probe bank does NOT drift
   // here on purpose - a probe is scored over PROBE_LAG ticks and a bank rewritten at every birth
   // would never accumulate a sample large enough for PROBE_MIN_SAMPLE to mean anything. Drift happens
@@ -9376,6 +9444,35 @@ function chanStencil(rule){
   return st;
 }
 function chanWrap(rule){ return (rule&&(rule.wrap|0)===1)?1:0; }
+// #194: the grain. Snapped to the legal set rather than clamped to its ends, because a value between
+// two grains is not a coarser grain - it is a lattice with a remainder row, and that is a silent
+// off-by-one in the block loop rather than a slightly different medium.
+function chanRes(rule){
+  if(!__GRAIN)return FIELD_W;
+  const v=Math.round(finiteOr(rule&&rule.res,FIELD_W));
+  let best=FIELD_W, bd=Infinity;
+  for(const r of CHANNEL_RES_SET){ const d=Math.abs(r-v); if(d<bd){ bd=d; best=r; } }
+  return best;
+}
+function chanBlock(res){ return Math.max(1,(FIELD_W/res)|0); }   // fine cells per block side
+// Is this medium coarser than the lattice it lives on? Deviation from the seed, same construction as
+// every census row since #188.
+function chanGrained(rule){ return (__GRAIN&&rule&&typeof rule.expr==='string'&&chanRes(rule)!==FIELD_W)?1:0; }
+function __xGrained(a){ if(!Array.isArray(a))return 0;
+  let n=0; for(const r of a) n+=chanGrained(r); return n; }
+// #103: one step along the set, not a redraw. A jump from 40 to 5 discards everything the lineage
+// learned about operating at 40, and the two are 64x apart in cell count.
+function chanGrainStep(rule){
+  if(!__GRAIN||!rule)return false;
+  const cur=chanRes(rule);
+  let ix=CHANNEL_RES_SET.indexOf(cur); if(ix<0)ix=CHANNEL_RES_SET.length-1;
+  const nx=__cl(ix+(Math.random()<0.5?-1:1),0,CHANNEL_RES_SET.length-1);
+  if(nx===ix)return false;
+  rule.res=CHANNEL_RES_SET[nx];
+  fired('channel.grainStep');
+  return true;
+}
+
 function chanCad(rule){ return __cl(Math.round(finiteOr(rule&&rule.cad,1)),1,CHANNEL_CAD_MAX); }
 function chanTaps(rule){ return chanStencil(rule).length; }
 // Is this channel's FORM still the seeded one? Used by the census row: a bank full of channels that
@@ -9485,7 +9582,21 @@ function chanWrite(k,i,amt,cell){
   const c=(cell===undefined)?chanCellOf(i):__cl(cell|0,0,FIELD_W*FIELD_H-1);
   const before=L[c];
   const after=__cl(before+amt,-CHANNEL_CLAMP,CHANNEL_CLAMP);
-  L[c]=isFinite(after)?after:0;
+  // #194: A WRITE LANDS IN A MEDIUM CELL, and at a coarse grain a medium cell is a block of fine
+  // ones holding one value redundantly. So the same value goes to the whole block rather than amt/n
+  // to each: the medium's unit of place is its OWN cell, and raising one of its cells by amt is what
+  // the verb asked for. Splitting amt across the block would have made a coarse medium swallow every
+  // deposit by a factor of (FIELD_W/res)^2 - the gene would have read as "become deaf", which is not
+  // what a grain is. The realised delta is one cell's, which is the block's, which is the medium's.
+  const val=isFinite(after)?after:0;
+  const res=chanRes(b[k]);
+  if(res!==FIELD_W){
+    const bs=chanBlock(res);
+    const cx=c%FIELD_W, cy=(c/FIELD_W)|0;
+    const x0=(cx-(cx%bs)), y0=(cy-(cy%bs));
+    for(let dy=0;dy<bs;dy++){ const row=(y0+dy)*FIELD_W;
+      for(let dx=0;dx<bs;dx++) L[row+x0+dx]=val; }
+  } else L[c]=val;
   __chanWrites++;
   fired('channel.write');
   return L[c]-before;
@@ -9616,6 +9727,62 @@ function __xShaped(a){ if(!Array.isArray(a))return 0;
 //   what makes a genuine reaction-diffusion system rather than four independent decays.
 //
 // Clamped at every step, run on a cadence, and the whole pass is skipped for an unallocated slot.
+// === #194 - THE COARSE UPDATE ==================================================================
+// One pass over res x res BLOCKS instead of FIELD_W x FIELD_H cells. A block's value is the mean of
+// the fine cells it covers, the stencil's offsets are read in BLOCKS (so "next to" means next to at
+// the medium's own scale, which is the whole point), and the answer is written to every fine cell of
+// the block - which is what keeps chanRead and #193's emission working unchanged.
+//
+// THE BLOCK MEANS ARE PRECOMPUTED, not recomputed per tap. res x res blocks x up to six taps, each
+// needing a mean over (FIELD_W/res)^2 cells, is the same total work as the fine loop when done once
+// and (FIELD_W/res)^2 times too much when done per tap. At res=5 that is the difference between 25
+// and 1,600 mean computations.
+const __chanBlk=new Float64Array(FIELD_W*FIELD_H);   // scratch for block means; res^2 <= FIELD_W^2 always
+function chanUpdateCoarse(k,rule,L,res,st,wrap){
+  const bs=chanBlock(res);            // fine cells per block side
+  const nt=st.length;
+  // 1. block means of the PREVIOUS state
+  for(let by=0;by<res;by++)for(let bx=0;bx<res;bx++){
+    let sum=0;
+    const y0=by*bs, x0=bx*bs;
+    for(let dy=0;dy<bs;dy++){ const row=(y0+dy)*FIELD_W;
+      for(let dx=0;dx<bs;dx++){ const v=__chanTmp[row+x0+dx]; sum+=isFinite(v)?v:0; } }
+    __chanBlk[by*res+bx]=sum/(bs*bs);
+  }
+  // 2. one rule evaluation per block, written back over the whole block
+  for(let by=0;by<res;by++){
+    for(let bx=0;bx<res;bx++){
+      const here=__chanBlk[by*res+bx];
+      let mean=0;
+      for(let t=0;t<nt;t++){
+        const tp=st[t];
+        let sx=bx+(tp[0]|0), sy=by+(tp[1]|0);
+        if(wrap){ sx=((sx%res)+res)%res; sy=((sy%res)+res)%res; }
+        else { sx=sx<0?0:(sx>=res?res-1:sx); sy=sy<0?0:(sy>=res?res-1:sy); }
+        mean+=__chanBlk[sy*res+sx]*tp[2];
+      }
+      if(!isFinite(mean))mean=0;
+      // The ambient context is read at the block's CENTRE fine cell. A block does not have one value
+      // of `field` or `attn` - it covers many - and the centre is the honest single sample: an average
+      // would have made the coarse rule read a smoother world than the fine one, which is a second
+      // behavioural difference riding along on a gene that is supposed to be about scale alone.
+      const ccx=bx*bs+(bs>>1), ccy=by*bs+(bs>>1);
+      const cc=__cl(ccy*FIELD_W+ccx,0,FIELD_W*FIELD_H-1);
+      uaCtxC=field[cc]||0; uaCtxD=detritalField[cc]||0; uaCtxM=inhibitorField[cc]||0;
+      uaCtxNx=bx/res; uaCtxNy=by/res; uaCtxNb=0; uaCtxAt=attnField[cc]||0;
+      for(let o=0;o<CHANNEL_MAX;o++){
+        const OL=__channels[o];
+        __chanOut[o]=(o===k)?here:(OL?(isFinite(OL[cc])?OL[cc]:0):0);
+      }
+      let v=0;
+      try{ v=uaCall(rule,here,mean); }catch(_){ rule.failed=true; return; }
+      const out=isFinite(v)?__cl(v,-CHANNEL_CLAMP,CHANNEL_CLAMP):0;
+      const y0=by*bs, x0=bx*bs;
+      for(let dy=0;dy<bs;dy++){ const row=(y0+dy)*FIELD_W;
+        for(let dx=0;dx<bs;dx++) L[row+x0+dx]=out; }
+    }
+  }
+}
 function updateChannels(){
   if(!__CHANNEL)return;
   const b=chanBank(); if(!b)return;
@@ -9648,6 +9815,25 @@ function updateChannels(){
     // #189: THE NEIGHBOURHOOD IS THIS CHANNEL'S OWN. Hoisted out of the cell loop because a stencil
     // is a property of the medium, not of the cell.
     const _st=chanStencil(rule), _wrap=chanWrap(rule), _nt=_st.length;
+    // #194: A COARSE MEDIUM RUNS ITS OWN LOOP, and the fine path below is left byte-for-byte as it
+    // was rather than generalised into a res===FIELD_W special case. That is the same exactness
+    // guarantee #190's metDist and #193's emitApply give: at the seeded grain this is not an
+    // equal-looking computation, it is the identical one, so GRAIN=0 and an unmutated medium are
+    // bit-identical and every A/B in this repo still holds.
+    const _res=chanRes(rule);
+    if(_res!==FIELD_W){
+      __chanCoarse++;
+      chanUpdateCoarse(k,rule,L,_res,_st,_wrap);
+      uaCtxC=_pc;uaCtxD=_pd;uaCtxM=_pm;uaCtxNx=_pnx;uaCtxNy=_pny;uaCtxNb=_pnb;uaCtxAt=_pat;
+      uaCtxRl=_prl;uaCtxRd=_prd;
+      for(let _r=0;_r<UA_VOICE;_r++)__uaVoice[_r]=_pv[_r];
+      for(let _r=0;_r<PROBE_MAX;_r++)__probeOut[_r]=_pp[_r];
+      for(let _r=0;_r<CHANNEL_MAX;_r++)__chanOut[_r]=_pk[_r];
+      rule.uses=(rule.uses|0)+1;
+      __chanUpdates++;
+      fired('channel.update');
+      continue;
+    }
     for(let cy=0;cy<FIELD_H;cy++){
       for(let cx=0;cx<FIELD_W;cx++){
         const c=cy*FIELD_W+cx;
@@ -9973,7 +10159,8 @@ function encodeGenome(){
     mtr:genome.metRot===undefined?undefined:+(+genome.metRot).toFixed(5),
     chn:Array.isArray(genome.channels)?genome.channels.map(r=>(r&&typeof r.expr==='string')?
       [String(r.expr).slice(0,UA_EXPR_MAX),r.age|0,
-       (Array.isArray(r.st)?r.st.map(t=>[t[0]|0,t[1]|0,+(+t[2]).toFixed(3)]):null),r.wrap|0,r.cad|0]:0):undefined,  // #188 the chemistry, not the chemicals - a lattice is world state and is not saved with the genome
+       (Array.isArray(r.st)?r.st.map(t=>[t[0]|0,t[1]|0,+(+t[2]).toFixed(3)]):null),r.wrap|0,r.cad|0,
+       chanRes(r)|0]:0):undefined,   // #194 the grain is element 5; a pre-#194 row is 5 long and reads undefined -> FIELD_W, which IS what that save meant  // #188 the chemistry, not the chemicals - a lattice is world state and is not saved with the genome
     prb:Array.isArray(genome.probes)?genome.probes.map(pr=>pr?[String(pr.expression).slice(0,UA_EXPR_MAX),pr.n|0,pr.hit|0]:0):undefined,
     oew:Array.isArray(genome.oeeW)?genome.oeeW.map(v=>+(+v).toFixed(4)):undefined,
     dmc:genome.demeCount===undefined?undefined:(genome.demeCount|0),              // #185 internal population structure
@@ -10332,7 +10519,8 @@ function decodeGenome(data){
     if(typeof g.mtx==='number')genome.metAx=+g.mtx;
     if(typeof g.mtr==='number')genome.metRot=+g.mtr;
     if(Array.isArray(g.chn))genome.channels=g.chn.map(r=>Array.isArray(r)?{expr:String(r[0]),compiled:null,failed:false,age:r[1]|0,uses:0,
-      st:Array.isArray(r[2])?r[2]:null, wrap:r[3]|0, cad:r[4]|0}:null);  // #188 +#189 the form. A pre-#189 row is 2 long: st/wrap/cad read undefined and the readers supply the seeded form, which IS what that save meant
+      st:Array.isArray(r[2])?r[2]:null, wrap:r[3]|0, cad:r[4]|0,
+      res:(typeof r[5]==='number')?(r[5]|0):FIELD_W}:null);   // #194  // #188 +#189 the form. A pre-#189 row is 2 long: st/wrap/cad read undefined and the readers supply the seeded form, which IS what that save meant
     if(Array.isArray(g.prb))genome.probes=g.prb.map(r=>Array.isArray(r)?{expression:String(r[0]),compiled:null,
       failed:false,n:r[1]|0,hit:r[2]|0,pending:0,pendTick:-1,pendFit:0,age:0}:null);   // #184
     if(Array.isArray(g.oew))genome.oeeW=g.oew.map(v=>+v);
@@ -10634,7 +10822,10 @@ function sanitizeGenome(){
       genome.channels[_k]=(r&&uaExprSafe(r.expr))?{expr:r.expr,compiled:null,failed:!!r.failed,
         age:Math.max(0,r.age|0),uses:Math.max(0,r.uses|0),
         st:chanStencilClean(r.st),wrap:(r.wrap|0)===1?1:0,
-        cad:__cl(Math.round(finiteOr(r.cad,1)),1,CHANNEL_CAD_MAX)}:null;
+        cad:__cl(Math.round(finiteOr(r.cad,1)),1,CHANNEL_CAD_MAX),
+        // #194: SNAPPED, not clamped, and set HERE because this map is a rebuild that deletes every
+        // key it does not name - #193 lost its verb stencil to the identical pattern one commit ago.
+        res:chanRes(r)}:null;
     }
   }
   if(genome.probes!==undefined){
@@ -16826,6 +17017,11 @@ function mutateGenome(){ fired('genome.mutate');
         // either without disturbing the other. Folding them into one draw would have made a stencil
         // change and a chemistry change indistinguishable to selection.
         chanFormStep(_r);
+      } else if(__GRAIN&&Math.random()<rate*0.25){
+        // #194: and the GRAIN drifts on a third draw. Same argument as #189's one line up: what a
+        // medium computes, what "next to" means in it, and how big a place is, are three independent
+        // things and a lineage should be able to move any one without disturbing the others.
+        chanGrainStep(_r);
       } else if((_r.age|0)>UA_OP_GRACE*2){
         let _sensed=false;
         const _uas=Array.isArray(genome.userAtoms)?genome.userAtoms:[];
@@ -16843,7 +17039,7 @@ function mutateGenome(){ fired('genome.mutate');
         // #189: allocated with the SEEDED form - the four-neighbour mean on a clamped plane at the
         // base cadence - so a new medium starts as #188's and evolves its own space from there.
         genome.channels[_k]={expr:uaGenExpression(),compiled:null,failed:false,age:0,uses:0,
-                             st:CHANNEL_STENCIL_SEED.map(t=>[t[0],t[1],t[2]]),wrap:0,cad:1};
+                             st:CHANNEL_STENCIL_SEED.map(t=>[t[0],t[1],t[2]]),wrap:0,cad:1,res:FIELD_W};   // #194: allocated at the lattice's own grain, and coarsens from there
         fired('channel.alloc');
         recordEvent('chan_alloc',{slot:_k,expr:String(genome.channels[_k].expr).slice(0,48)},600);
         // #179's rule, fifth application: a medium nothing can sense or act into is unreachable, so
@@ -19166,10 +19362,21 @@ function executeVM(i,j,sim,d){
   let _reachRent=0;
   if(__REACH){ const _rr=__cl(finiteOr(genome.interactionRadius,55),10,CELL*REACH_RINGS_MAX)/CELL;
     _reachRent=REACH_RENT*Math.max(0,_rr*_rr-1); }
+  // #194: and the rent now scales with the CELL COUNT rather than per allocated slot. A coarse medium
+  // genuinely costs less CPU - res^2 rule evaluations instead of FIELD_W^2 - so it costs less rent,
+  // with a floor because the lattice, the compile and the sense symbol do not coarsen away. This is
+  // the only rent in the file that a lineage can REDUCE by changing a gene, and that is deliberate:
+  // "keep a hard, measurable cost on complexity" has to cut both ways or it is a ratchet.
   let _chanRent=0;
   if(__CHANNEL){ const _cb=chanBank();
     if(_cb) for(let _k=0;_k<CHANNEL_MAX;_k++){ const _r=_cb[_k];
-      if(_r&&typeof _r.expr==='string') _chanRent+=CHANNEL_RENT+Math.max(0,chanTaps(_r)-4)*CHANNEL_TAP_RENT; } }
+      if(_r&&typeof _r.expr==='string'){
+        // #194: the medium's share of CHANNEL_RENT is its cell count as a fraction of the lattice's,
+        // floored. The TAP rent is NOT scaled - a tap is a lookup per evaluation either way, and
+        // scaling it twice would have double-counted the same saving.
+        const _g=__GRAIN?Math.max(CHANNEL_RES_FLOOR,Math.pow(chanRes(_r)/FIELD_W,2)):1;
+        _chanRent+=CHANNEL_RENT*_g+Math.max(0,chanTaps(_r)-4)*CHANNEL_TAP_RENT;
+      } } }
   const totalCost=(nInst+_stack+_opRent+_foldRent+_probeRent+_chanRent+_metRent+_reachRent+_emitRent+_over16*(COMPLEXITY_TOLL-1))*genome.metabolicCost;
   amp[i]-=totalCost;amp[j]-=totalCost;
 
@@ -25417,6 +25624,7 @@ __CHANNEL=(typeof globalThis==='undefined')||((globalThis.__CHANNEL??1)|0)!==0; 
 __METRIC=(typeof globalThis==='undefined')||((globalThis.__METRIC??1)|0)!==0;   // #190: default ON, and a NO-OP at the seeded genes: metDist takes the hypot fast path at (2,1,0), so an unmutated lineage is bit-identical
 __STIME=(typeof globalThis==='undefined')||((globalThis.__STIME??1)|0)!==0;   // #192: default ON, and a NO-OP at the seeded genes: rate 1 means every tick, so an unmutated lineage is in lockstep exactly as before
 __EMIT=(typeof globalThis==='undefined')||((globalThis.__EMIT??1)|0)!==0;   // #193: default ON, and a NO-OP at the seeded shape: no stencil means emitApply takes the null path and calls the original single-cell write, so an unshaped lineage is bit-identical
+__GRAIN=(typeof globalThis==='undefined')||((globalThis.__GRAIN??1)|0)!==0;   // #194: default ON, and a NO-OP at the seeded grain: chanRes returns FIELD_W, updateChannels takes the original fine loop, chanWrite writes the one cell
 __REACH=(typeof globalThis==='undefined')||((globalThis.__REACH_SWEEP??1)|0)!==0;   // #191: default ON. Force off with REACH_SWEEP=0 - the sweep returns to +/-1 ring, the reach to the germline's value, and the dedup to `j>i`, which is the pre-#191 engine exactly. Deliberately NOT named REACH: __REACH_ON is a different, pre-existing gate and colliding on that name is how a knob silently stops being a control
 __FORAGE_ON=(typeof globalThis==='undefined')||((globalThis.__FORAGE_EYES??1)|0)!==0; // resolve FORAGE once; gates the resource-sense computation in uaSetEyes
 __DECIDE_ON=(typeof globalThis==='undefined')||((globalThis.__DECIDE??1)|0)!==0; // resolve DECISION GAIN once; gates confidence accrual + commitment scaling

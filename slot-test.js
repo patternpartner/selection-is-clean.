@@ -44,8 +44,15 @@ const savedSlots = page => page.evaluate(() => {
     try {
       let raw = localStorage.getItem(k);
       if (raw[0] === '{') { const w = JSON.parse(raw); raw = w.genome || w.data || ''; }
-      out[k.replace('selection_', '')] = JSON.parse(b2s(raw)).T | 0;
-    } catch (e) { out[k.replace('selection_', '')] = -1; }
+      const txt = b2s(raw);
+      // T is the saved tick count, which only MOVES at an autosave boundary (every 900 ticks), so it
+      // is far too coarse to ask "are these nine universes different" with. fp is a cheap rolling
+      // hash of the whole saved blob: it differs whenever the genomes differ at all. See the check
+      // that uses it for why that distinction went red on completely correct code.
+      let h = 2166136261 >>> 0;
+      for (let i = 0; i < txt.length; i++) { h ^= txt.charCodeAt(i); h = Math.imul(h, 16777619) >>> 0; }
+      out[k.replace('selection_', '')] = { T: JSON.parse(txt).T | 0, fp: h >>> 0, n: txt.length };
+    } catch (e) { out[k.replace('selection_', '')] = { T: -1, fp: -1, n: 0 }; }
   }
   return out;
 });
@@ -94,8 +101,18 @@ const liveTicks = page => page.evaluate(async () => {
      keys.length > 0 && !('genome' in saved) && keys.every(k => names.indexOf(k) >= 0),
      keys.sort().join(' '));
   ck('most of the field got far enough to save', keys.length >= 5, keys.length + '/9 saved');
-  ck('their saved genomes are at different points in their lives',
-     new Set(Object.values(saved)).size > 1, JSON.stringify(saved));
+  // THE SAME FAILURE SHAPE THE COMMENT ABOVE NAMES, in the check right next to it. This asked whether
+  // the nine saved T values differed - and T only moves every 900 ticks, so it was asking whether the
+  // nine tabs happened to land on DIFFERENT autosave boundaries, which is a fact about how the machine
+  // scheduled them. Measured: on #193's engine three tabs sat at 1800 and six at 2700 and it passed;
+  // on #194's all nine reached 2700 and it failed, with nothing about either engine's storage
+  // different. What it MEANS to check is that each slot holds its own genome rather than one shared
+  // one, so it now compares a hash of the whole saved blob - which differs whenever the genomes do,
+  // and is not a number the machine picks.
+  const fps = Object.values(saved).map(v => v.fp);
+  ck('their saved genomes are genuinely different genomes',
+     new Set(fps).size === fps.length,
+     Object.entries(saved).map(([k, v]) => k + '(T' + v.T + ' #' + v.fp.toString(16).slice(0, 6) + ')').join(' '));
 
   await page.reload({ waitUntil: 'load' });
   await page.waitForTimeout(9000);
@@ -104,11 +121,16 @@ const liveTicks = page => page.evaluate(async () => {
   let own = 0, wrong = 0, unsaved = 0;
   const detail = [];
   for (const [slot, t] of after) {
-    const sv = saved[slot];
-    if (sv === undefined) { unsaved++; detail.push(slot + '=nosave'); continue; }
+    // savedSlots now returns {T, fp, n} per slot rather than a bare T (see the check above), so this
+    // reads .T. It compared the object directly for one commit and every slot came back "WRONG" with
+    // [object Object] in the diagnostic - a reminder that changing a helper's return shape is a change
+    // to every consumer of it.
+    const svr = saved[slot];
+    if (svr === undefined) { unsaved++; detail.push(slot + '=nosave'); continue; }
+    const sv = svr.T;
     const drift = t - sv;
     const plausible = drift >= 0 && drift < 4000;
-    const better = Object.keys(saved).some(k => k !== slot && Math.abs(t - saved[k]) < Math.abs(drift));
+    const better = Object.keys(saved).some(k => k !== slot && Math.abs(t - saved[k].T) < Math.abs(drift));
     if (plausible && !better) { own++; detail.push(slot + '(' + sv + '->' + t + ')'); }
     else { wrong++; detail.push(slot + '=WRONG(' + sv + '->' + t + ')'); }
   }

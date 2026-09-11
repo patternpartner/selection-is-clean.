@@ -2120,6 +2120,71 @@ which is what takes `verb.shaped` to 386 population carriers.
 `emitFormStep`'s shrink branch profitable and lets the mechanism turn itself off under selection
 rather than only under a knob.
 
+### #194 — the grain of a medium, and the five-place rebuild rule
+
+A channel rule carries `res`: how many cells per side it addresses its own lattice at, from
+`CHANNEL_RES_SET = [5,8,10,20,40]` — **every value divides `FIELD_W` exactly**, so a block is a whole
+number of cells and there is no remainder row at the edge. Seeded `FIELD_W`. Knob `GRAIN`.
+`chanRes` **SNAPS** to the set rather than clamping: a value between two grains is not a coarser
+grain, it is a lattice with a remainder, which is an off-by-one in the block loop.
+
+**THE STORAGE IS BLOCK-UNIFORM and that is what makes everything else free.** A coarse medium holds
+its value redundantly across the `FIELD_W/res` fine cells of each block, so `chanRead` needs no change
+(a fine read already returns the medium's value) and #193's emission stencil needs no change (it
+simply cannot aim finer than the grain). Do not "optimise" this into a sparse coarse array — three
+call sites depend on the redundancy.
+
+**`chanUpdateCoarse` is a separate function and the fine loop is left byte-for-byte as it was.** At
+`res===FIELD_W` `updateChannels` takes the original path, not a special case of a general one — the
+same exactness guarantee `metDist` (#190) and `emitApply` (#193) give, and `substrate-test` holds it
+at 0 of 1600 cells differing against `GRAIN=0`. Block means are **precomputed once** into `__chanBlk`,
+not recomputed per stencil tap; per-tap would be `(FIELD_W/res)²` times too much work.
+
+**A WRITE LANDS IN A MEDIUM CELL, NOT A LATTICE CELL.** `chanWrite` puts the same value across the
+whole block. Splitting `amt` across it would make a coarse medium swallow every deposit by up to 64×,
+so the gene would read as "become deaf" rather than as a grain. The realised delta is one cell's,
+which is the block's, which is the medium's.
+
+**THE RENT RUNS DOWNWARD.** A medium's share of `CHANNEL_RENT` scales as `(res/FIELD_W)²`, floored at
+`CHANNEL_RES_FLOOR`, because a coarse medium genuinely costs less CPU. This is the only rent in the
+file a lineage can REDUCE by changing a gene — deliberate, because a cost on complexity that cannot be
+paid down is a ratchet. The TAP rent is not scaled: a tap is a lookup per evaluation either way, and
+scaling both would double-count the same saving.
+
+**COARSEN ONLY, and the reason is structural rather than lazy.** The lattice is world state shared by
+every carrier of that slot, so a finer grain needs a bigger lattice — one lineage's gene reallocating
+a medium others are standing in. That conflict has no arbiter here short of #183's law probation. The
+cost is small: 20 pixels is already finer than a particle can resolve.
+
+**THE FIVE-PLACE REBUILD RULE — READ THIS BEFORE ADDING A FIELD TO ANY BANKED STRUCTURE.** A channel
+rule is rebuilt from a key list in **five** places: `seedSubstrateIntoParticle`, `cloneGenome`,
+`sanitizeGenome`, `decodeGenome`, `encodeGenome`. Each silently DELETES every key it does not name. A
+new field must be added to all five. #194 got four of them and the fifth was the germline→population
+crossing, so `channel.grain` read **germline 2 / population 0 — STRANDED** on a live run while every
+other crossing passed. This is the fourth instance of the same shape: #133b (`seedEffectIntoParticle`
+stripping a verb's successor), #193 (`sanitizeGenome` deleting the emission stencil), and this one.
+A verb record has the same five-place structure. `substrate-test` now checks the seeding route
+explicitly for both.
+
+**#189 IS REPAIRED HERE, not just extended.** `chanFormStep` and `chanGrainStep` now also step in
+`mutateChildGenome`, because a stencil that can only be reshaped on the germline gets ~38 draws per
+12,000 ticks (#192's ceiling). Measured: `channel.formStep` went from 0–1 per run to 7–8. The
+chemistry EXPRESSION deliberately stays germline-only — it is drawn from the grammar and a redraw at
+every birth would outrun selection on it, the same reason #184's probe bank does not drift there.
+
+**REACHABILITY IS BOUND BY #188, NOT BY #194.** `channel.grainStep` fires 2–4 times per 12,000 ticks
+because `channel.bank` crosses to only 10–24 genomes of ~200, and the child route can only step a
+medium a child actually has. Raising #194's own rate would not move that. If you want this layer
+exercised harder, the thing to fix is the channel bank's crossing rate.
+
+**AND A NOTE ON STRANDED ITSELF, found while chasing the above.** `crossing-test` at TICKS=8000 is red
+on #193's committed HEAD as well (`verb.sensed` 4/0 and `phys.chem` 1/0) and red on a *different* row
+after #194 (`phys.reach` 1/0). Which rows read stranded varies run to run, because a point-in-time
+count cannot distinguish "never crossed" from "crossed and was selected away" — #187's lesson, which
+moved `probe.promoted` out of the table, applying to more rows than `probe.promoted`. The flag is
+sound early, before anything has been selected away, which is the regime `smoke.sh` uses at TICKS=40.
+Anyone raising that budget should expect this and should decide the row's semantics first.
+
 ### #186 — the germline-to-population crossing, stated generally
 
 The bug the crossing rows caught for the seventh time, and the general form, because it will happen
