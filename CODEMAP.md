@@ -2269,6 +2269,45 @@ not by a red test. When a mechanism's comment asserts a behaviour ("a migrant ar
 chemistry"), that assertion is a test that has not been written yet. Two of them were false. If you
 add a layer here, check what the layer's own prose claims and make a rig own it.
 
+### #197 — the brakes are laws: the prices and the probation become evolvable
+
+Every price is now a row in `LAW_DECLARED`: `CHANNEL_RENT`, `CHANNEL_TAP_RENT`, `EMIT_TAP_RENT`,
+`MET_RENT`, `REACH_RENT`, `UA_OP_RENT`, `PROBE_RENT`, `CHANXFER_COST`, `COMPLEXITY_TOLL` — plus the
+three that decide when the world gets stopped: `LAW_VIABLE`, `LAW_PROBATION`, `LAW_COST`, and
+`LAW_RATE`. All of them were `const` and are now `let`. Knob `BRAKES`; off pins the table to the
+original three physics laws (`LAW_BASE_LAWS`), so every measurement taken before #197 is comparable.
+
+**A PRICE MUST NOT BE A GENOME GENE, and this is the trap to remember.** Rent is paid BY the lineage,
+so `genome.rentScale` is not a brake whose strength evolves — it is an off switch every lineage
+reaches for on the first mutation, and it sweeps with nothing opposing it. A price is only a price if
+the payer cannot set it. The law machinery is the right vehicle because a change there is proposed by
+the WORLD, runs a probation, and is reverted if the world cannot hold its population.
+
+**THE SELF-REFERENCE IS CLOSED AT THE TRIAL, NOT AT THE BOUND.** `LAW_VIABLE` is itself a law, so a
+proposal to set it to 0 installs 0 and would then be judged by the 0 it just installed — passing by
+construction, and handing the mechanism a one-step way to stop reverting anything with no verdict at
+all. `__lawTrial` captures `viable` and `probation` **at proposal time** and the verdict uses those.
+The same capture is on the IMPORTED law path (#185's uplasmid) or a peer sending a `LAW_VIABLE` change
+walks through the same hole. **If you add a law that affects judging, capture it in the trial.**
+
+`LAW_VIABLE.lo` is 0 deliberately — no safe floor. A world can evolve to stop reverting, and one that
+will not reverse a bad law dies; that is the world-level verdict.
+
+**THE TABLE GREW FROM 3 TO 16, SO THE RATE HAD TO MOVE WITH IT** — at the old `LAW_RATE` a given brake
+would be proposed once per ~400,000 ticks (#179's shape). `LAW_RATE` 0.00004 → 0.0006 and
+`LAW_PROBATION` 4000 → 1200. The binding constraint is the probation, not the rate: one law is on
+trial at a time, so at most `floor(window / LAW_PROBATION)` verdicts can land. Both are laws, so a
+world that finds short probations give bad verdicts can raise them back.
+
+**AND #185's UPLASMID NOW CARRIES ECONOMIES.** The law table holds the prices, so a peer can push a
+price change into your world — #185's stated purpose arriving somewhere neither swing intended.
+Clamped to the row's bounds and judged by the local probation. Left open on purpose.
+
+Measured: the economy moves in BOTH directions (`UA_OP_RENT` 0.250 → 0.162 kept, `PROBE_RENT` 0.150 →
+0.288 kept), which is exactly what a payer-set price could never do. `cosmos.brake` counts price
+trials as distinct from the three physics laws. `cosmos.lawRevert` has not yet fired in a live run —
+the brake on the brake is checked in the rig and has not had to bite in the wild.
+
 ### #186 — the germline-to-population crossing, stated generally
 
 The bug the crossing rows caught for the seventh time, and the general form, because it will happen

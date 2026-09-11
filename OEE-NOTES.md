@@ -15455,3 +15455,83 @@ system evolves what it does and never what things cost or when it gets stopped. 
 swing.
 
 `substrate-test.js`: 168 checks, 6 of them #196's. `migrant-test.js`: 10 checks, 6 of them #196's.
+
+## #197 — THE BRAKES ARE LAWS, and the free lunch that nearly shipped
+
+Every price in this economy was a constant I chose: `CHANNEL_RENT`, `CHANNEL_TAP_RENT`,
+`EMIT_TAP_RENT`, `MET_RENT`, `REACH_RENT`, `UA_OP_RENT`, `PROBE_RENT`, `CHANXFER_COST`,
+`COMPLEXITY_TOLL`, plus the three that decide when the world gets stopped — `LAW_VIABLE`,
+`LAW_PROBATION`, `LAW_COST`. The system evolved **what it does** and never what things cost or when
+it gets stopped, so the one thing that could never be selected on was the selection pressure itself.
+
+### The free lunch, named because it is the obvious version
+
+`genome.rentScale` is not a brake whose strength evolves. **Rent is paid BY the lineage**, so a
+per-genome price multiplier is an off switch every lineage reaches for on the first mutation, and it
+sweeps in a few hundred ticks with nothing opposing it. A price is only a price if the payer cannot
+set it.
+
+So the prices go through #183's law machinery instead, where a change is **proposed by the world**,
+runs a probation, and is reverted if the world cannot hold its population. The cost of cheapening a
+price is paid in whatever that price was preventing.
+
+### The self-reference, which is the part that could have been silently broken
+
+`LAW_VIABLE` is now itself a law. So a proposal to set it to 0 installs 0 and then — without care —
+would be judged by the 0 it just installed, and pass by construction. **The mechanism would have
+handed itself a one-step way to stop reverting anything, with no verdict at all.**
+
+The trial captures the judging threshold and the probation length **at proposal time**. Checked
+directly: a world holding 10 of a baseline 100 under a freshly installed `LAW_VIABLE = 0` is still
+reverted. The same capture was added to the *imported* law path (#185's uplasmid), where a peer that
+also sent a `LAW_VIABLE` change could otherwise have walked through the same hole.
+
+`LAW_VIABLE`'s lower bound is **0**, not a safe floor. Putting a floor under it would be me keeping
+the brake I had just claimed to hand over. A world can evolve to stop reverting, and a world that will
+not reverse a bad law dies — which is the world-level verdict, and extinction here is data.
+
+### The table grew, so the rate had to
+
+The law table went from **three entries to sixteen**. At the old rate — one proposal per 25,000 ticks,
+then a 1-in-16 pick — a given brake would be proposed about once per 400,000 ticks. That is #179's
+shape, and I have now found it in five consecutive swings by not checking for it.
+
+And the binding constraint is the **probation**, not the rate: one law is on trial at a time, so a
+12,000-tick run can hold at most `floor(12000 / LAW_PROBATION)` verdicts however often proposals are
+drawn. Both defaults moved — `LAW_RATE` 0.00004 → 0.0006, `LAW_PROBATION` 4000 → 1200 — and **both
+are themselves laws**, so a world that finds short probations produce bad verdicts can evolve them
+back up. That is the only honest way to set a number whose right value I do not know.
+
+### The economy actually moved, and not in one direction
+
+```
+12,000 ticks, BRAKES on
+  seed 1   UA_OP_RENT   0.250 -> 0.162   kept     the world made its own operators 35% cheaper
+           MET_RENT     0.200 -> 0.195   kept
+  seed 2   EMIT_TAP_RENT 0.300 -> 0.323  kept
+           PROBE_RENT    0.150 -> 0.288  kept     and nearly doubled the price of a probe
+  cosmos.brake 3 and 2 proposals; cosmos.law 4 and 3; cosmos.lawKept 4 and 3
+  alive 250 / 206 against 192 with BRAKES off; fitness 0.678 / 0.692 against 0.678
+```
+
+**It raises prices as well as lowering them.** That is the whole difference between a law and a
+genome gene: a payer-set price would have gone to zero and stayed there, and this one went up for
+probes and down for operators in the same engine. The layer is cost-neutral on population and
+fitness.
+
+### What this does NOT show
+
+`cosmos.lawRevert` did not fire once. Every verdict in these runs was *kept*, because a proposal moves
+a price by at most 35% of its span and the world absorbs that. So the brake on the brake exists and
+has been checked directly in the rig, and it has not yet had to bite in a live run. A run long enough
+to see a price driven to a value the world cannot survive is what would test it, and two 12,000-tick
+seeds are not that.
+
+And the consequence worth stating plainly, because it arrived somewhere it was not designed for:
+**#185's uplasmid now carries economies, not just physics.** The law table holds the prices, so a peer
+can push a price change into your world. That is #185's own stated purpose ("a world can inherit
+another world's physics") extended by #197 without either swing intending it. It is left open — the
+value is clamped to the row's own bounds and the local probation judges it like any other — and it is
+named here rather than discovered later.
+
+`substrate-test.js`: 175 checks, 7 of them #197's.

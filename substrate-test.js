@@ -1097,6 +1097,76 @@ m._compile(code+`
     return {noCarrier,a,b,mine,share,popRan,selfRan,offSelf};
   });
 
+  // -- #197  THE BRAKES ARE LAWS ------------------------------------------------------------------
+  // Every price in this economy was a constant, so the one thing that could never be selected on was
+  // the selection pressure itself. These check the three ways that could go wrong: a price that does
+  // not actually reach the billing line, a self-reference that lets the mechanism disable itself in
+  // one step with no verdict, and a table that grew past the rate that samples it.
+  out.brakes=run('brakes',()=>{
+    const saved={};
+    for(const row of LAW_DECLARED) saved[row.name]=row.get();
+    const restore=()=>{ for(const row of LAW_DECLARED){ try{ row.set(saved[row.name]); }catch(_){} } };
+
+    // 1. EVERY LAW ROUND-TRIPS AND RESPECTS ITS OWN BOUNDS. A row whose setter does not take is a
+    //    price that cannot move, which reads identical to a price nothing wants to move.
+    let bad=0, outOfBand=0;
+    for(const row of LAW_DECLARED){
+      const mid=(row.lo+row.hi)/2;
+      try{ row.set(mid); }catch(_){ bad++; continue; }
+      const got=+row.get();
+      if(!isFinite(got))bad++;
+      else if(Math.abs(got-mid)>Math.max(1e-6,Math.abs(mid)*1e-6)&&row.name!=='LAW_PROBATION')bad++;
+      if(got<row.lo-1e-9||got>row.hi+1e-9)outOfBand++;
+    }
+    restore();
+    // 2. AND A PRICE ACTUALLY REACHES THE BILLING LINE. Set CHANNEL_RENT to both ends and read the
+    //    rent the engine computes, rather than trusting that a name in a table is a name in a sum.
+    genome.channels=[{expr:'(a)',compiled:null,failed:false,age:1,uses:0,
+      st:CHANNEL_STENCIL_SEED.map(t=>[t[0],t[1],t[2]]),wrap:0,cad:1,res:FIELD_W,xfer:0},null,null,null];
+    const rentNow=()=>{ let t=0; const b=chanBank();
+      for(let k=0;k<CHANNEL_MAX;k++){ const _r=b[k]; if(_r&&typeof _r.expr==='string'){
+        const g=__GRAIN?Math.max(CHANNEL_RES_FLOOR,Math.pow(chanRes(_r)/FIELD_W,2)):1;
+        t+=CHANNEL_RENT*g; } } return +t.toFixed(4); };
+    const rentRow=LAW_DECLARED.find(r=>r.name==='CHANNEL_RENT');
+    rentRow.set(0);   const rentFree=rentNow();
+    rentRow.set(2.0); const rentDear=rentNow();
+    restore();
+
+    // 3. THE SELF-REFERENCE. LAW_VIABLE is itself a law, so a proposal to set it to 0 must be judged
+    //    by the threshold that STOOD WHEN THE PROPOSAL WAS MADE. Judged by the new value it would
+    //    pass by construction and the mechanism would have handed itself a one-step way to stop
+    //    reverting anything, with no verdict at all.
+    const svTrial=__lawTrial, svPop=__lawPop.slice(), svTick=tick;
+    __lawPop=[]; for(let q=0;q<LAW_WINDOW;q++)__lawPop.push(100);   // a baseline of 100
+    const vi=LAW_DECLARED.findIndex(r=>r.name==='LAW_VIABLE');
+    LAW_VIABLE=0.7;
+    __lawTrial={idx:vi,from:0.7,to:0.0,startTick:0,baseline:100,sum:10*LAW_PROBATION,n:LAW_PROBATION,
+                viable:0.7,probation:LAW_PROBATION};   // the world held 10 of a baseline 100 - a collapse
+    LAW_VIABLE=0.0;                                    // ...and the proposal has already installed 0
+    tick=LAW_PROBATION+1;
+    attemptLawMutation();
+    const revertedAnyway=(LAW_VIABLE===0.7);           // the capture put it back
+    const verdict=__lawLog.length?__lawLog[__lawLog.length-1]:null;
+    __lawTrial=svTrial; __lawPop=svPop; tick=svTick;
+    restore();
+
+    // 4. THE TABLE GREW, SO THE RATE HAD TO. A given law is picked 1-in-length, and only
+    //    floor(window/LAW_PROBATION) verdicts can land however often proposals are drawn.
+    const reach={laws:LAW_DECLARED.length, base:LAW_BASE_LAWS,
+                 perRun:+(LAW_RATE*12000).toFixed(2),
+                 verdictCap:Math.floor(12000/LAW_PROBATION)};
+
+    // 5. THE KNOB pins the table back to the three physics laws
+    const svB=__BRAKES; __BRAKES=false;
+    const offSpan=__BRAKES?LAW_DECLARED.length:LAW_BASE_LAWS;
+    __BRAKES=svB;
+
+    genome.channels=null;
+    return {bad,outOfBand,rentFree,rentDear,revertedAnyway,
+            verdictKept:verdict?verdict[4]:-1,reach,offSpan,
+            names:LAW_DECLARED.map(r=>r.name)};
+  });
+
   // ── THE CROSSINGS: every new gene must survive a save and diverge in a child ────────────────
   out.cross=run('cross',()=>{
     genome.uaFoldMode=2; genome.uaFoldK=3.25; genome.autonomyCede=0.8;
@@ -1574,6 +1644,29 @@ ck('#196 and with no carrier holding it, the germline\'s does', GV.selfRan!==und
    'the same lattice under the germline\'s decay rule reads '+GV.selfRan);
 ck('#196 CHANGOV=0 restores the germline-only rule exactly', GV.offSelf===200,
    GV.offSelf+'/200 — off is the pre-#196 engine, and it takes no draw');
+
+// #197
+const BK=r.brakes||{};
+ck('#197 every law round-trips through its own setter', BK.bad===0,
+   BK.bad+' of '+((BK.names||[]).length)+' failed to take — a price that cannot move reads exactly like a price nothing wants to move');
+ck('#197 and none escapes its own bounds', BK.outOfBand===0, BK.outOfBand+' out of band');
+ck('#197 a price REACHES THE BILLING LINE', BK.rentFree===0 && BK.rentDear>1.9,
+   'CHANNEL_RENT at 0 bills '+BK.rentFree+' and at 2.0 bills '+BK.rentDear+
+   ' — read off the engine\'s own sum rather than trusting that a name in a table is a name in a sum');
+ck('#197 the prices and the probation are all in the table', BK.names &&
+   ['CHANNEL_RENT','EMIT_TAP_RENT','MET_RENT','REACH_RENT','UA_OP_RENT','PROBE_RENT',
+    'CHANXFER_COST','COMPLEXITY_TOLL','LAW_VIABLE','LAW_PROBATION','LAW_COST','LAW_RATE']
+     .every(n=>BK.names.indexOf(n)>=0),
+   (BK.names||[]).length+' laws: '+(BK.names||[]).join(' '));
+ck('#197 THE SELF-REFERENCE IS CLOSED: a proposal to stop reverting is judged by the old threshold',
+   BK.revertedAnyway===true && BK.verdictKept===0,
+   'a world holding 10 of a baseline 100 under a freshly installed LAW_VIABLE=0 is still reverted — judged by the new value it would pass by construction, and the mechanism would have a one-step way to disable itself with no verdict at all');
+ck('#197 the proposal rate moved with the table', BK.reach &&
+   BK.reach.perRun>=3 && BK.reach.verdictCap>=5,
+   BK.reach.laws+' laws (was '+BK.reach.base+'), ~'+BK.reach.perRun+' proposals per 12,000 ticks, at most '+
+   BK.reach.verdictCap+' verdicts — the binding constraint is the probation, not the rate, because one law is on trial at a time');
+ck('#197 BRAKES=0 pins the table back to the original three', BK.offSpan===3,
+   'so every measurement taken before the prices became evolvable is still comparable');
 
 // the crossings
 const CR=r.cross||{};

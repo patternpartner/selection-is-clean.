@@ -585,7 +585,8 @@ let __GRAIN=true;   // #194: a medium's grain is a gene. Force off with GRAIN=0
 // weight its carrier can release after the grace period. The mechanism turns itself off at both ends.
 let __CHANXFER=true;   // #195: invented chemistry spreads horizontally. Force off with CHANXFER=0
 let __CHANGOV=true;    // #196: the governing chemistry is drawn from the population. Force off with CHANGOV=0 to restore the germline-only rule every run before this one used
-const CHANXFER_COST=0.004;   // donor amplitude per transfer - a conjugation is work
+let __BRAKES=true;     // #197: the prices and the probation are world laws. Force off with BRAKES=0 to pin every brake at the value this file was written with
+let CHANXFER_COST=0.004;   // donor amplitude per transfer - a conjugation is work
 let __chanXfers=0, __chanXferSensed=0, __chanXferDeclined=0;   // instrument state off the genome (#131); drained per epoch
 // THE RATE BELONGS TO THE RULE, NOT TO THE HOST, and that is the second correction this swing took
 // from a live run rather than from reasoning. The first version made `chanXferRate` a genome scalar -
@@ -647,14 +648,14 @@ let __chanCoarse=0;             // instrument state off the genome (#131); drain
 
 const EMIT_TAPS_MAX=4;     // four taps is enough for a dipole, a ring quadrant, or a three-cell smear. Bounded because every tap is a write and writes are the expensive half of a verb
 const EMIT_OFFSET_MAX=3;   // +/-3 cells. The channel READ stencil (#189) reaches 7; an emission reaches less on purpose - a creature should be able to act further than it can feel only if it evolves to, and that is #191's reach gene, not this one
-const EMIT_TAP_RENT=0.3;   // instruction-equivalents per tap BEYOND the first, on the executeVM billing line. Twice CHANNEL_TAP_RENT because a tap here is a write, not a read
+let EMIT_TAP_RENT=0.3;   // instruction-equivalents per tap BEYOND the first, on the executeVM billing line. Twice CHANNEL_TAP_RENT because a tap here is a write, not a read
 let __emitSpread=0, __emitSelfFrame=0;   // instrument state off the genome (#131); drained per epoch through firedN
 // THE RING CAP IS DERIVED, NOT CHOSEN. mutateGenome evolves interactionRadius over [25,120], so
 // ceil(120/CELL) = 3 rings covers the gene's ENTIRE declared range and nothing beyond it. That is a
 // better justification than any constant I could have picked: the substrate now reaches exactly as
 // far as the gene was always allowed to ask for, and not one bin further.
 const REACH_RINGS_MAX=3;
-const REACH_RENT=0.5;   // per unit of AREA beyond the default disc - see the billing note. Area, not radius, because that is what the sweep actually costs
+let REACH_RENT=0.5;   // per unit of AREA beyond the default disc - see the billing note. Area, not radius, because that is what the sweep actually costs
 function reachOf(i){
   if(!__REACH)return Math.max(10,finiteOr((typeof genome!=='undefined'&&genome)?genome.interactionRadius:55,55));
   const g=(typeof pGenome!=='undefined'&&pGenome[i])?pGenome[i]:((typeof genome!=='undefined')?genome:null);
@@ -840,7 +841,18 @@ function handleNetworkMessage(raw){
           if(row){ const from=+row.get(), to=__cl(+d.law[1],row.lo,row.hi);
             if(isFinite(from)&&isFinite(to)&&to!==from){
               row.set(to);
-              __lawTrial={idx:d.law[0]|0,from,to,startTick:tick|0,baseline:lawMean(),sum:0,n:0};
+              // #197: an IMPORTED trial captures the judging threshold and the probation length the
+              // same way a locally proposed one does. Without this an imported law would be judged by
+              // whatever LAW_VIABLE happens to be when the verdict lands, which is the self-reference
+              // hole closed at the local proposal site - and a peer that also sent a LAW_VIABLE
+              // change could walk through it.
+              // AND NOTE WHAT #197 DOES TO THIS PATH: the law table now holds the prices, so a peer
+              // can push an ECONOMY into your world, not just a physics. That is #185's own stated
+              // purpose ("a world can inherit another world's physics") arriving somewhere it was not
+              // designed for, and it is left open deliberately - the value is clamped to the row's
+              // own bounds and the probation judges it here like any other.
+              __lawTrial={idx:d.law[0]|0,from,to,startTick:tick|0,baseline:lawMean(),sum:0,n:0,
+                          viable:LAW_VIABLE,probation:LAW_PROBATION};
               fired('uplasmid.law');
               recordEvent('law_import',{law:row.name,from:+from.toPrecision(4),to:+to.toPrecision(4)},0);
             } }
@@ -977,6 +989,10 @@ const LIVENESS_DECLARED=[
   // the state #195 exists to end - so the ratio is the honest readout of whether carriage is effect.
   'channel.govPop','channel.govSelf',
   'channel.wireLand',   // #196: a chemistry arrived from another tab - the fifth crossing, open since #188
+  // #197: a PRICE or a PROBATION PARAMETER went on trial, as distinct from the three physics laws
+  // that were the only things #183 could propose. cosmos.law counts all of them; this one says the
+  // economy itself moved.
+  'cosmos.brake',
 ];
 // NOT INSTRUMENTED, and deliberately absent rather than declared-and-silent: cladogenesis minting
 // (#17) has no single entry point I could identify with confidence. A census that reports "never"
@@ -1620,12 +1636,56 @@ const LAW_DECLARED=[
    set:v=>{FIELD_DIFFUSE=v; if(typeof genome!=='undefined'&&genome)genome.fieldDiffuse=v;}, lo:0.0, hi:0.24},
   // ATTENTION_GAIN has no genome shadow, so the global is the whole of it.
   {name:'ATTENTION_GAIN',get:()=>ATTENTION_GAIN,set:v=>{ATTENTION_GAIN=v;},lo:0.0,  hi:0.9},
+  // === #197 - THE BRAKES ARE LAWS NOW ==========================================================
+  // Every price in this economy was a constant I chose. The system evolved WHAT it does and never
+  // what things cost or when it gets stopped, so the only thing that could not be selected on was the
+  // selection pressure itself.
+  //
+  // WHY A WORLD LAW AND NOT A GENOME GENE, because the obvious version is a free lunch and would have
+  // shipped as one: rent is paid BY the lineage, so `genome.rentScale` is not a brake whose strength
+  // evolves - it is an off switch every lineage reaches for on the first mutation, and it would sweep
+  // in a few hundred ticks with nothing opposing it. A price is only a price if the payer cannot set
+  // it. So the prices go through #183's law machinery, where a change is PROPOSED by the world, runs
+  // a probation, and is reverted if the world cannot hold its population - which means the cost of
+  // cheapening a price is paid in whatever the price was preventing.
+  {name:'CHANNEL_RENT',  get:()=>CHANNEL_RENT,  set:v=>{CHANNEL_RENT=v;},  lo:0.0, hi:2.0},
+  {name:'CHANNEL_TAP_RENT',get:()=>CHANNEL_TAP_RENT,set:v=>{CHANNEL_TAP_RENT=v;},lo:0.0,hi:0.5},
+  {name:'EMIT_TAP_RENT', get:()=>EMIT_TAP_RENT, set:v=>{EMIT_TAP_RENT=v;}, lo:0.0, hi:1.5},
+  {name:'MET_RENT',      get:()=>MET_RENT,      set:v=>{MET_RENT=v;},      lo:0.0, hi:1.0},
+  {name:'REACH_RENT',    get:()=>REACH_RENT,    set:v=>{REACH_RENT=v;},    lo:0.0, hi:2.0},
+  {name:'UA_OP_RENT',    get:()=>UA_OP_RENT,    set:v=>{UA_OP_RENT=v;},    lo:0.0, hi:1.0},
+  {name:'PROBE_RENT',    get:()=>PROBE_RENT,    set:v=>{PROBE_RENT=v;},    lo:0.0, hi:0.8},
+  {name:'CHANXFER_COST', get:()=>CHANXFER_COST, set:v=>{CHANXFER_COST=v;}, lo:0.0, hi:0.05},
+  {name:'COMPLEXITY_TOLL',get:()=>COMPLEXITY_TOLL,set:v=>{COMPLEXITY_TOLL=v;},lo:1.0,hi:6.0},
+  // AND THE BRAKE ON THE BRAKE. These three decide how willing this world is to keep a risky law: how
+  // long a proposal runs before judgement, how much population loss counts as failure, and what a
+  // proposal costs to make. A world can evolve LAW_VIABLE toward 0 and stop reverting anything, and
+  // that is deliberate rather than an oversight - a world that will not reverse a bad law dies, and
+  // dying is the world-level verdict. Collapse is data here, not a failure to be prevented.
+  // LAW_VIABLE's lower bound is 0, not a safe floor: putting a floor under it would be me keeping the
+  // brake I just claimed to hand over.
+  {name:'LAW_VIABLE',    get:()=>LAW_VIABLE,    set:v=>{LAW_VIABLE=v;},    lo:0.0, hi:1.0},
+  {name:'LAW_PROBATION', get:()=>LAW_PROBATION, set:v=>{LAW_PROBATION=Math.max(200,Math.round(v));}, lo:200, hi:20000},
+  {name:'LAW_COST',      get:()=>LAW_COST,      set:v=>{LAW_COST=v;},      lo:0.0, hi:0.25},
+  {name:'LAW_RATE',      get:()=>LAW_RATE,      set:v=>{LAW_RATE=v;},      lo:0.0, hi:0.004},
 ];
-const LAW_RATE=0.00004;      // per-tick proposal chance - about one proposal per 25,000 ticks per world
-const LAW_PROBATION=4000;    // ticks a proposal runs before it is judged
-const LAW_VIABLE=0.7;        // fraction of the pre-proposal population mean the world must hold
-const LAW_COST=0.04;         // amplitude every living particle pays for a proposal
+// === #197 - AND THE RATE HAD TO MOVE WITH THE TABLE =============================================
+// The law table went from THREE entries to sixteen in this commit. At the old rate - one proposal per
+// 25,000 ticks, then a 1-in-16 pick - a given brake would be proposed about once per 400,000 ticks,
+// which is #179's shape exactly: a capability open in principle and closed in practice, and I have
+// now found that shape in five consecutive swings by not checking for it.
+//
+// AND THE BINDING CONSTRAINT IS THE PROBATION, NOT THE RATE. One law is on trial at a time, so a
+// 12,000-tick run can hold at most floor(12000/LAW_PROBATION) verdicts however often proposals are
+// drawn. At the old 4,000 that is three. Both defaults move, and both are themselves laws, so a world
+// that finds short probations produce bad verdicts can evolve them back up - which is the only
+// honest way to set a number whose right value I do not know.
+let LAW_RATE=0.0006;       // per-tick proposal chance - about one proposal per 1,700 ticks per world
+let LAW_PROBATION=1200;    // ticks a proposal runs before it is judged
+let LAW_VIABLE=0.7;        // fraction of the pre-proposal population mean the world must hold
+let LAW_COST=0.04;         // amplitude every living particle pays for a proposal
 const LAW_WINDOW=600;        // ticks of population history the pre-proposal mean is taken over
+const LAW_BASE_LAWS=3;       // #197: the three laws that existed before the prices joined the table - see the pick site
 let __lawPop=[];             // rolling population samples
 let __lawTrial=null;         // {idx, from, to, startTick, baseline, sum, n}
 let __lawLog=[];             // [tick, name, from, to, verdict] - 1 kept, 0 reverted
@@ -1692,10 +1752,15 @@ function attemptLawMutation(){
   // A trial in progress is judged before any new one can start. One law on probation at a time, so a
   // verdict is always attributable to one change - the same reason this file insists on matched A/Bs.
   if(__lawTrial){
-    if((tick-__lawTrial.startTick)<LAW_PROBATION)return;
+    if((tick-__lawTrial.startTick)<(__lawTrial.probation!==undefined?__lawTrial.probation:LAW_PROBATION))return;
     const held=__lawTrial.n?(__lawTrial.sum/__lawTrial.n):0;
     const row=LAW_DECLARED[__lawTrial.idx];
-    const ok=held>=__lawTrial.baseline*LAW_VIABLE;
+    // #197: JUDGED BY THE THRESHOLD THAT STOOD WHEN THE PROPOSAL WAS MADE, not by the current one.
+    // LAW_VIABLE is itself a law now, so without this a proposal to set it to 0 would be judged by
+    // the 0 it had just installed and would pass by construction - the mechanism would have handed
+    // itself a way to disable itself in one step with no verdict at all. Captured at proposal time,
+    // the same discipline the baseline population already follows and for the same reason.
+    const ok=held>=__lawTrial.baseline*(__lawTrial.viable!==undefined?__lawTrial.viable:LAW_VIABLE);
     if(!ok){ try{ row.set(__lawTrial.from); }catch(_){} fired('cosmos.lawRevert'); }
     else fired('cosmos.lawKept');
     __lawLog.push([tick|0,row.name,+__lawTrial.from.toPrecision(4),+__lawTrial.to.toPrecision(4),ok?1:0]);
@@ -1707,7 +1772,10 @@ function attemptLawMutation(){
   }
   if(__lawPop.length<LAW_WINDOW)return;          // no baseline yet - a proposal with nothing to judge it against is not a proposal
   if(Math.random()>=LAW_RATE)return;
-  const idx=(Math.random()*LAW_DECLARED.length)|0;
+  // #197: with BRAKES off the table is the pre-#197 three, so a run can be compared against every
+  // measurement taken before the prices became evolvable.
+  const _span=__BRAKES?LAW_DECLARED.length:LAW_BASE_LAWS;
+  const idx=(Math.random()*_span)|0;
   const row=LAW_DECLARED[idx];
   let from=0; try{ from=+row.get(); }catch(_){ return; }
   if(!isFinite(from))return;
@@ -1716,7 +1784,9 @@ function attemptLawMutation(){
   if(!isFinite(to)||to===from)return;
   try{ row.set(to); }catch(_){ return; }
   for(let i=0;i<N;i++) if(palive[i]) amp[i]*=(1-LAW_COST);   // the world pays for its own proposal
-  __lawTrial={idx,from,to,startTick:tick|0,baseline:lawMean(),sum:0,n:0};
+  if(idx>=LAW_BASE_LAWS)fired('cosmos.brake');   // #197
+  __lawTrial={idx,from,to,startTick:tick|0,baseline:lawMean(),sum:0,n:0,
+              viable:LAW_VIABLE,probation:LAW_PROBATION};   // #197: both captured at proposal time - see the verdict site
   fired('cosmos.law');
   recordEvent('law_propose',{law:row.name,from:+from.toPrecision(4),to:+to.toPrecision(4)},0);
 }
@@ -1878,7 +1948,7 @@ const UA_OPBANK=8;          // qa..qh. A HARD cap: the invented-operator bank ca
 const UA_OP_BASE=0.10;      // this branch's base production mass — the same price as a built-in binary function, because that is what it is
 const UA_OP_GRACE=3;        // mutateGenome cycles before an unreferenced slot may be released (see the bank loop)
 const UA_OP_BIRTH_FLOOR=0.28; // LEAP 22 (#55)'s number, for LEAP 22's reason: mutateGenome runs ~18x per 6k ticks, so a rate-scaled probability is a coin landing tails, not a toll
-const UA_OP_RENT=0.25;      // instruction-equivalents per DEFINED slot per interaction — see the billing site in executeVM. The one hand-set number in #180 that nothing has measured, and it is named here so the next reader knows it is a guess
+let UA_OP_RENT=0.25;      // instruction-equivalents per DEFINED slot per interaction — see the billing site in executeVM. The one hand-set number in #180 that nothing has measured, and it is named here so the next reader knows it is a guess
 // TWO NAMING CONSTRAINTS, both inherited from #174 and both checked rather than assumed:
 //   · digit-free. uaJitterConst's regex is exhaustive over this grammar only because `.toFixed(2)`
 //     constants are the sole source of digit-bearing tokens. `q0` would have silently broken the one
@@ -1995,7 +2065,7 @@ const PROBE_NAMES=["pa","pb","pc","pd"];
 const PROBE_LAG=40;             // ticks between a probe's reading and the outcome it is scored against
 const PROBE_MIN_SAMPLE=8;       // scored attempts before a hit rate means anything
 const PROBE_PROMOTE=0.60;       // hit rate above which a probe's output becomes a live symbol
-const PROBE_RENT=0.15;          // instruction-equivalents per interaction per PROMOTED probe
+let PROBE_RENT=0.15;          // instruction-equivalents per interaction per PROMOTED probe
 const PROBE_RE=/\b(?:pa|pb|pc|pd)\b/g;
 const PROBE_TEST=/\b(?:pa|pb|pc|pd)\b/;
 const __probeOut=new Float32Array(PROBE_MAX);   // this tick's readings, bound as pa..pd
@@ -3694,7 +3764,7 @@ let lastGenTick=0;
 // already charges per instruction, and that single term is the ONLY mechanism in this codebase that ever
 // produced self-organised structure (opcodes concentrated onto a 5-op core with no pruner at all). So the
 // ceiling comes off and the bill goes up: complexity is affordable exactly to the extent it pays.
-const COMPLEXITY_TOLL=2.2;          // multiplier on per-instruction cost beyond the old ceiling
+let COMPLEXITY_TOLL=2.2;          // multiplier on per-instruction cost beyond the old ceiling
 const SOFT_PROG_LEN=16;             // the historical cap, now the point where the toll starts
 
 // LEAP 17 — THE MAJOR TRANSITION, MADE TO FIRE. Cluster budding exists and the record states flatly that
@@ -9545,7 +9615,7 @@ const CHANNEL_RE=/\b(?:ka|kb|kc|kd)\b/g;
 const CHANNEL_TEST=/\b(?:ka|kb|kc|kd)\b/;
 const CHANNEL_CADENCE=12;      // ticks between lattice updates. 4 x 1600 cells / 12 = ~530 cell-evaluations per tick, which is the price of the whole mechanism
 const CHANNEL_CLAMP=3;         // every channel value is bounded, whatever an evolved rule computes
-const CHANNEL_RENT=0.6;        // instruction-equivalents per ALLOCATED channel per interaction - the dearest rent in the file, because a channel is a lattice and a chemistry, not a symbol
+let CHANNEL_RENT=0.6;        // instruction-equivalents per ALLOCATED channel per interaction - the dearest rent in the file, because a channel is a lattice and a chemistry, not a symbol
 // === #189 - THE FORM OF THE SPACE ==============================================================
 // #188's own note named what it left closed: "a scalar per cell, a neighbourhood mean, a cadence".
 // Three of those four are opened here. The fourth is not, and the reason is worth more than the
@@ -9615,7 +9685,7 @@ const CHANNEL_RENT=0.6;        // instruction-equivalents per ALLOCATED channel 
 // pairs simply never offered, so it is CLIPPED at the grid radius rather than honoured. The evolved
 // metric reshapes within the Euclidean candidate set. Saying so is cheaper than the next reader
 // measuring a p=4 lineage and wondering why its corners are missing.
-const MET_RENT=0.2;      // instruction-equivalents per interaction while the metric is non-default. Two Math.pow per pair is a real cost and is priced; the Euclidean fast path pays nothing
+let MET_RENT=0.2;      // instruction-equivalents per interaction while the metric is non-default. Two Math.pow per pair is a real cost and is priced; the Euclidean fast path pays nothing
 let __metApplied=0;      // instrument state off the genome (#131); drained per epoch through firedN
 let __reachBeyond=0;     // #191: pairs discovered past one grid ring - the count that says whether the widened sweep is doing anything
 function metP(g){ const gg=g||((typeof genome!=='undefined')?genome:null);
@@ -9653,7 +9723,7 @@ function metDist(dx,dy,g){
 const CHANNEL_STENCIL_MAX=6;   // taps per stencil. Each tap is a read per cell per update, so this is the cost knob
 const CHANNEL_OFFSET_MAX=7;    // |dx|,|dy| bound. A genuine remaining bound: a radius-20 stencil is 1,600 reads per cell
 const CHANNEL_CAD_MAX=8;       // cadence multiplier ceiling - a channel may run up to 8x slower than the base
-const CHANNEL_TAP_RENT=0.08;   // per tap beyond the default four, on top of CHANNEL_RENT. An elaborate neighbourhood is elaborate machinery and is priced as such
+let CHANNEL_TAP_RENT=0.08;   // per tap beyond the default four, on top of CHANNEL_RENT. An elaborate neighbourhood is elaborate machinery and is priced as such
 // The seed IS #188: the four-neighbour mean on a clamped plane at the base cadence. A channel that
 // never mutates its form behaves byte-for-byte as it did before this swing.
 const CHANNEL_STENCIL_SEED=[[0,-1,0.25],[0,1,0.25],[-1,0,0.25],[1,0,0.25]];
@@ -26009,6 +26079,7 @@ __EMIT=(typeof globalThis==='undefined')||((globalThis.__EMIT??1)|0)!==0;   // #
 __GRAIN=(typeof globalThis==='undefined')||((globalThis.__GRAIN??1)|0)!==0;   // #194: default ON, and a NO-OP at the seeded grain: chanRes returns FIELD_W, updateChannels takes the original fine loop, chanWrite writes the one cell
 __CHANXFER=(typeof globalThis==='undefined')||((globalThis.__CHANXFER??1)|0)!==0;   // #195: default ON, and a NO-OP at the seeded gene: chanRuleXfer reads 0 for every rule, the gate short-circuits before any draw, so an unmutated lineage is bit-identical
 __CHANGOV=(typeof globalThis==='undefined')||((globalThis.__CHANGOV??1)|0)!==0;   // #196: default ON. Off restores the pre-#196 behaviour exactly - chanGoverning returns the self's rule and takes no draw
+__BRAKES=(typeof globalThis==='undefined')||((globalThis.__BRAKES??1)|0)!==0;   // #197: default ON. Off restricts law mutation to the original three physics laws, so every price stays at the constant this file was written with
 __REACH=(typeof globalThis==='undefined')||((globalThis.__REACH_SWEEP??1)|0)!==0;   // #191: default ON. Force off with REACH_SWEEP=0 - the sweep returns to +/-1 ring, the reach to the germline's value, and the dedup to `j>i`, which is the pre-#191 engine exactly. Deliberately NOT named REACH: __REACH_ON is a different, pre-existing gate and colliding on that name is how a knob silently stops being a control
 __FORAGE_ON=(typeof globalThis==='undefined')||((globalThis.__FORAGE_EYES??1)|0)!==0; // resolve FORAGE once; gates the resource-sense computation in uaSetEyes
 __DECIDE_ON=(typeof globalThis==='undefined')||((globalThis.__DECIDE??1)|0)!==0; // resolve DECISION GAIN once; gates confidence accrual + commitment scaling
