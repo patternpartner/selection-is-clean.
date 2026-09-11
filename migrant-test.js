@@ -53,7 +53,16 @@ m._compile(code+`
     prog:[[CORE_OPCODES+2,0,0,0.5]],
     ua:['MIG0','','MIG2'],                                  // slot 1 deliberately empty
     ue:[{t:3,m:1,s:0.7,n:-1,a:2}]});                        // gate on bound slot 2 -> 'MIG2'
-  genome.netRecvRate=1;
+  // MAKE THE LANDING CERTAIN, and read the gate's name from the engine rather than restating it.
+  // This line used to say genome.netRecvRate=1, and netRecvRate appears ZERO times in engine.html:
+  // the gate networkReceive actually applies is "if(Math.random()>genome.netReceptivity)continue".
+  // So the setup was a coin flip on whatever the germline's receptivity happened to be, and the
+  // migrant landed by luck. On committed HEAD this rig's setup FAILS at TICKS=20, 30, 80, 100 and
+  // 200 and passes at 40, 50 and 60; smoke.sh runs it at 40, which is why nobody saw it. Any commit
+  // that shifts the RNG stream - every new mutation operator does - flips those, and the commit gets
+  // the blame for a setup that was never deterministic. #153's rule, one level over: read the bound
+  // from the engine, never restate it.
+  genome.netReceptivity=1;
   networkReceive();
   let idx=-1; for(let k=before;k<N;k++) if(palive[k]&&pGenome[k]){idx=k;break;}
   if(idx<0)return {err:'migrant did not land'};

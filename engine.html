@@ -406,6 +406,60 @@ let __METRIC=true;   // #190: the interaction metric is a lineage trait. Force o
 // genes become real for the price of one change: interactionRadius itself, #183's cellScale (which
 // can stop being narrows-only on the world side), and #190's metric past p=2.
 let __REACH=true;   // #191: the neighbour sweep follows each particle's own reach. Force off with REACH_SWEEP=0 (name kept distinct from the pre-existing __REACH_ON)
+// === #192 - SUBJECTIVE TIME ====================================================================
+// The last piece of shared, unevolvable structure in this engine: every living particle is processed
+// once per tick, in lockstep, forever. #185 gave lineages spatial isolation (demes), #190 gave them
+// perceptual isolation (orthogonal metrics). This gives them TEMPORAL isolation, which is the third
+// independent axis of niche separation and the only one that was still impossible.
+//
+// Two genes. `tickRate` is how many ticks pass between this lineage's beats; `tickPhase` is WHICH of
+// those ticks it beats on. A particle acts when ((tick + phase) % rate) === 0. Seeded (1, 0), which
+// is every tick, which is the pre-#192 engine exactly.
+//
+// AND BOTH PARTICLES MUST BE ACTIVE TO INTERACT, which is the whole mechanism rather than a detail.
+// An inactive particle is between beats: it is not there to be met. So two lineages at rate 2 with
+// phases 0 and 1 NEVER interact, however densely they share the ground. Temporal separation with no
+// spatial cost, which nothing in this engine could previously express.
+// The structure that falls out is worth stating because I did not design it: a rate-1 lineage is a
+// GENERALIST - active every tick, so it meets everyone - while a rate-k lineage meets only the
+// subset whose beats coincide with its own. Specialisation in time, with generalists paying for it
+// by being present for every encounter and every cost.
+//
+// WHY THIS IS NOT A WIREHEAD, which was the first thing to check. "Go slow" must not mean "become
+// immortal and cheap". It does not, because slowing scales DOWN both sides of the ledger: a slow
+// particle pays 1/rate of the per-tick upkeep AND takes 1/rate of the interaction opportunities that
+// are its income. The same organism on a stretched timeline is neutral by construction. What makes
+// rate a real decision is that THE WORLD DOES NOT SLOW DOWN WITH IT - a slow particle is less
+// responsive to a changing field, misses more encounters, and is out of step with more partners.
+// So the optimum is environment-dependent rather than monotone, which is what a strategy is:
+// cheapness wins when the world is poor and crowded, presence wins when it is rich.
+//
+// WHAT IS DELIBERATELY NOT SKIPPED: death, ageing, movement, and field physics. A slow particle
+// still drifts, still senesces and still starves. Skipping those would have made rate a longevity
+// gene, and a longevity gene with no cost is exactly the runaway #85's sign floors exist to prevent.
+let __STIME=true;   // #192: per-lineage subjective time. Force off with STIME=0
+const TICK_RATE_MAX=6;   // a lineage may beat as rarely as one tick in six. Bounded because a world where nothing is co-active is a world with no selection in it, not an interesting one
+let __tickSkips=0;       // instrument state off the genome (#131) - beats declined, drained per epoch
+function tickRateOf(g){
+  if(!__STIME)return 1;
+  const gg=g||((typeof genome!=='undefined')?genome:null);
+  return __cl(Math.round(finiteOr(gg&&gg.tickRate,1)),1,TICK_RATE_MAX);
+}
+function tickPhaseOf(g,rate){
+  const gg=g||((typeof genome!=='undefined')?genome:null);
+  const r=rate||tickRateOf(gg);
+  const ph=Math.round(finiteOr(gg&&gg.tickPhase,0));
+  return ((ph%r)+r)%r;
+}
+// Is this particle on one of its own beats this tick? Reads the CARRIER's genome, not the self's -
+// #191 is one commit old and its whole finding was a per-lineage gene read from the germline.
+function particleActive(i){
+  if(!__STIME)return true;
+  const g=(typeof pGenome!=='undefined'&&pGenome[i])?pGenome[i]:((typeof genome!=='undefined')?genome:null);
+  const r=tickRateOf(g);
+  if(r<=1)return true;
+  return (((tick+tickPhaseOf(g,r))%r)===0);
+}
 // THE RING CAP IS DERIVED, NOT CHOSEN. mutateGenome evolves interactionRadius over [25,120], so
 // ceil(120/CELL) = 3 rings covers the gene's ENTIRE declared range and nothing beyond it. That is a
 // better justification than any constant I could have picked: the substrate now reaches exactly as
@@ -687,6 +741,10 @@ const LIVENESS_DECLARED=[
   // beyond one grid ring. A run where this never fires is a run where no lineage bought any reach,
   // which is a finding; a run where it fires is the gene working for the first time.
   'reach.beyondRing',
+  // #192: rateStep and phaseStep are the gene moving; tick.skipped is the mechanism BITING, batched
+  // through firedN because a skip happens per particle per tick. A run where the first two fire and
+  // the third does not would mean lineages are evolving clocks that never actually decline a beat.
+  'tick.rateStep','tick.phaseStep','tick.skipped',
 ];
 // NOT INSTRUMENTED, and deliberately absent rather than declared-and-silent: cladogenesis minting
 // (#17) has no single entry point I could identify with confidence. A census that reports "never"
@@ -840,6 +898,10 @@ const CROSSING_DECLARED=[
   // gene has been in the genome literal for forty swings while being unreadable by the population
   // and unreachable past 55 - so "is it varying, and does the population carry that variation" is
   // exactly the question nobody could previously ask.
+  // #192: does this lineage beat on its own clock? Deviation from rate 1, the same construction the
+  // rows around it use. Phase alone is not counted - a phase under rate 1 is meaningless, and
+  // counting it would report adoption for a population that is still in lockstep.
+  {name:'tick.moved',    read:g=>tickRateOf(g)>1?1:0},
   {name:'reach.moved',   read:g=>Math.abs(finiteOr(g&&g.interactionRadius,55)-55)>1?1:0},
   {name:'metric.moved',  read:g=>metMoved(g)?1:0},
   {name:'channel.bank',  read:g=>chanAllocated(g)},
@@ -2660,6 +2722,7 @@ function seedSubstrateIntoParticle(){
   // plain scalars, copied by value.
   if(genome.uaFoldMode!==undefined){ g.uaFoldMode=genome.uaFoldMode; g.uaFoldK=genome.uaFoldK; }
   if(genome.autonomyCede!==undefined)g.autonomyCede=genome.autonomyCede;
+  if(genome.tickRate!==undefined){ g.tickRate=genome.tickRate; g.tickPhase=genome.tickPhase; }       // #192
   if(genome.metP!==undefined){ g.metP=genome.metP; g.metAx=genome.metAx; g.metRot=genome.metRot; }   // #190
   if(genome.cellScale!==undefined)g.cellScale=genome.cellScale;
   if(genome.rxSelf!==undefined)g.rxSelf=genome.rxSelf;
@@ -8397,6 +8460,7 @@ function flushEpoch(acc){
     firedN('atom.opFire',__uaOpFires); firedN('atom.opFallback',__uaOpFallbacks);
     firedN('metric.applied',__metApplied); __metApplied=0;   // #190
     firedN('reach.beyondRing',__reachBeyond); __reachBeyond=0;   // #191
+    firedN('tick.skipped',__tickSkips); __tickSkips=0;           // #192
     // #187: the promotion count, germline and population, on the same row as the operator bank -
     // moved here from CROSSING_DECLARED, where "not yet earned" read as "stranded". Counted over the
     // living population rather than the germline alone, because the germline is one carrier out of
@@ -8942,12 +9006,36 @@ function crossoverProg(progA,progB,cap){ fired('prog.crossover'); // single-poin
 // This DOES shift the RNG stream (three fewer draws per birth), so seeded runs diverge from builds
 // before it. That is a change of baseline, not of behaviour.
 const CHILD_NOT_A_GENE=['totalTicks','generation','extinctions'];
+// === #192 - A DISCRETE GENE NEEDS A DISCRETE OPERATOR ON THE CHILD ROUTE TOO ====================
+// MEASURED DEFECT, and it is a worse shape than #179's: 12,000 ticks with #192 live gave
+// tick.rateStep 0, tick.phaseStep 0, tick.skipped 0, and tick.moved germline 0 / population 0. The
+// layer was authored, declared, priced, seeded and COMPLETELY DEAD - and not because the mutation
+// never fired. Because the mutation that fires CANNOT MOVE THE GENE.
+//
+// mutateChildGenome's walk is the fast route into the population: it runs at every birth, hundreds
+// of times per run, against mutateGenome's ~38 calls in 12,000 ticks. It nudges every numeric field
+// by v +/- (|v|*0.12+0.02)*scale, which at tickRate=1 is a step of at most 0.07 against a gene whose
+// next legal value is 2. tickRateOf rounds, so every one of those hundreds of mutations was a no-op
+// BY CONSTRUCTION. #191's interactionRadius is the control: a CONTINUOUS gene on this same route
+// went from an unmoved germline to 32 moved population carriers in one run. The route works. The
+// operator did not fit the gene.
+//
+// THE GENERAL RULE, stated here because the next discrete gene will land in the same hole: a gene
+// whose meaning is an INTEGER cannot be evolved by a continuous nudge, and it must be kept OUT of
+// the continuous walk as well as given its own step - otherwise fractional drift accumulates where
+// nothing reads it and two children at 1.49 and 1.51 behave completely differently while reporting
+// as the same gene. Enrolment is per gene, not automatic: #181's uaFoldMode (a cycle of 4, already
+// crossing at 6 population carriers through the seeding route) and #185's demeCount are in the same
+// position and are NOT enrolled here, because neither is dead and demeCount's step changes a spatial
+// partition that interacts with position - that is its own swing's question, not this one's.
+const CHILD_DISCRETE=['tickRate','tickPhase'];   // #192: integer-valued, so the walk below would only ever add invisible noise
 function mutateChildGenome(g){
   const rate=genome.mutationRate||0.06,scale=genome.mutationScale||1;
   // FULL divergence — gloves-off random walk on EVERY heritable scalar gene (relative step). Only
   // the crash floors (isFinite + the VM's own per-op clamps) remain; range is the system's to find.
   for(const k in g){
     if(CHILD_NOT_A_GENE.indexOf(k)>=0)continue;   // #140: bookkeeping, not a gene
+    if(CHILD_DISCRETE.indexOf(k)>=0)continue;     // #192: integer gene, stepped discretely below
     const v=g[k];
     if(typeof v==='number'&&isFinite(v)&&Math.random()<rate){
       const nx=v+(Math.random()-0.5)*(Math.abs(v)*0.12+0.02)*scale;
@@ -8993,6 +9081,38 @@ function mutateChildGenome(g){
   // on the mutateGenome cadence instead, which is slow enough for a claim to be judged.
   if(Array.isArray(g.oeeW))for(let i=0;i<g.oeeW.length;i++)if(Math.random()<rate){
     const nx=finiteOr(g.oeeW[i],0)+(Math.random()-0.5)*0.12*scale; if(isFinite(nx))g.oeeW[i]=__cl(nx,0,1); }
+  // #192: THE CLOCK, stepped discretely, on the route that actually fires. Shape matches the
+  // germline's deliberately: +/-1 with CLAMPING, so the mutational process is symmetric in the
+  // interior and LAZY at the two ends rather than reflecting off them. Lazy means leaving rate 1
+  // takes two draws on average instead of one, i.e. a mild mutational bias toward the lockstep
+  // default - which is the conservative direction for a layer this new, and the alternative (draw
+  // only from the legal directions) would have replaced an unbiased operator with one that pushes
+  // every lineage off the default whether selection wanted it or not.
+  // The genes are created here if absent, with the pre-#192 values, and that draws no randomness -
+  // so STIME=0 is still an exact-revert control (#97's rule) and a population that predates the
+  // germline's gene is not left permanently outside the mechanism.
+  if(__STIME){
+    if(g.tickRate===undefined)g.tickRate=1;
+    if(g.tickPhase===undefined)g.tickPhase=0;
+    if(Math.random()<rate){
+      const _o=__cl(Math.round(finiteOr(g.tickRate,1)),1,TICK_RATE_MAX);
+      const _n=__cl(_o+(Math.random()<0.5?1:-1),1,TICK_RATE_MAX);
+      // the phase is REDRAWN on a rate change, not carried: a phase of 2 means something different
+      // under rate 3 than under rate 4, so carrying it would make the gene's value depend on its
+      // history rather than on its state
+      if(_n!==_o){ g.tickRate=_n; g.tickPhase=(Math.random()*_n)|0; fired('tick.rateStep'); }
+    } else if(Math.random()<rate){
+      const _r=__cl(Math.round(finiteOr(g.tickRate,1)),1,TICK_RATE_MAX);
+      // a phase step at rate 1 is meaningless (everything is mod 1), so it is not offered - offering
+      // it would spend draws on a gene that cannot mean anything yet
+      if(_r>1){ g.tickPhase=(Math.random()*_r)|0; fired('tick.phaseStep'); }
+    }
+    // sanitizeGenome never runs on a child, so the reduction has to happen here or a child can carry
+    // a phase that does not exist under its own rate
+    const _r2=__cl(Math.round(finiteOr(g.tickRate,1)),1,TICK_RATE_MAX);
+    g.tickRate=_r2;
+    g.tickPhase=((Math.round(finiteOr(g.tickPhase,0))%_r2)+_r2)%_r2;
+  }
   return g;
 }
 const field=new Float32Array(FIELD_W*FIELD_H); // shared resource/signal field — writable environment
@@ -9640,6 +9760,8 @@ function encodeGenome(){
     // would restore a medium that computes the same thing in a different space, which is a different
     // medium - and pre-#189 rows are 2 long and load with the seeded form, which is correct for a
     // save written before a channel had a form to record.
+    tkr:genome.tickRate===undefined?undefined:(Math.round(genome.tickRate)|0),    // #192 subjective time
+    tkf:genome.tickPhase===undefined?undefined:(Math.round(genome.tickPhase)|0),
     mtp:genome.metP===undefined?undefined:+(+genome.metP).toFixed(4),      // #190 the metric: exponent, anisotropy, orientation
     mtx:genome.metAx===undefined?undefined:+(+genome.metAx).toFixed(4),
     mtr:genome.metRot===undefined?undefined:+(+genome.metRot).toFixed(5),
@@ -9993,6 +10115,8 @@ function decodeGenome(data){
     if(typeof g.ait==='number')genome.atomIdleTolerance=+g.ait;  // #177 (absent in pre-#177 saves → undefined → reads 0 → the old cull, which is the correct inheritance)
     if(typeof g.usb==='number')genome.uaStructBias=+g.usb;       // #107
     // #180 (absent in pre-#180 saves → left undefined → every reader's default → the pre-#180 engine)
+    if(typeof g.tkr==='number')genome.tickRate=g.tkr|0;     // #192 (absent -> undefined -> rate 1 -> every tick, which is what a pre-#192 save meant)
+    if(typeof g.tkf==='number')genome.tickPhase=g.tkf|0;
     if(typeof g.mtp==='number')genome.metP=+g.mtp;      // #190 (absent -> undefined -> reads Euclidean, which is what a pre-#190 save meant)
     if(typeof g.mtx==='number')genome.metAx=+g.mtx;
     if(typeof g.mtr==='number')genome.metRot=+g.mtr;
@@ -10275,6 +10399,14 @@ function sanitizeGenome(){
   // and the sweep now covers ceil(120/CELL)=3 rings, so the clamp here is the same number from the
   // other side. If either moves, both move - a gene whose range exceeds its substrate's reach is the
   // defect #191 exists to fix, and leaving the two numbers independent would let it come back.
+  // #192: clamp both, and REDUCE the phase into the rate. A saved phase of 4 under a rate of 2 is
+  // not illegal, it is ambiguous - it means beat 0, and storing it as 4 makes two genomes that behave
+  // identically compare as different, which is how a census row starts lying.
+  if(genome.tickRate!==undefined||genome.tickPhase!==undefined){
+    const _r=__cl(Math.round(finiteOr(genome.tickRate,1)),1,TICK_RATE_MAX);
+    genome.tickRate=_r;
+    genome.tickPhase=((Math.round(finiteOr(genome.tickPhase,0))%_r)+_r)%_r;
+  }
   genome.interactionRadius=__cl(finiteOr(genome.interactionRadius,55),10,CELL*REACH_RINGS_MAX);
   if(genome.metP!==undefined)  genome.metP=__cl(finiteOr(genome.metP,2),0.5,4);
   if(genome.metAx!==undefined) genome.metAx=__cl(finiteOr(genome.metAx,1),0.25,4);
@@ -16416,6 +16548,23 @@ function mutateGenome(){ fired('genome.mutate');
   // metRot is deliberately NOT clamped to a range - a rotation is periodic, so any real value is a
   // legal orientation and a clamp would create two artificial attractors at the ends of the range.
   // It is the only gene in this file with no bounds, and that is a property of the quantity.
+  // #192: subjective time. Seeded (1,0) = every tick = the pre-#192 engine. The rate steps by ONE
+  // (#103's rule: a jump from beating every tick to every sixth discards everything the lineage knew
+  // about being present), and the phase is redrawn whenever the rate changes, because a phase only
+  // means anything relative to a rate - a phase of 3 under rate 2 is a phase of 1, and carrying the
+  // stale number across would make the gene's value depend on its history rather than its state.
+  if(__STIME){
+    if(genome.tickRate===undefined)genome.tickRate=1;
+    if(genome.tickPhase===undefined)genome.tickPhase=0;
+    if(Math.random()<rate*0.5){
+      const _old=tickRateOf(genome);
+      const _new=__cl(_old+(Math.random()<0.5?1:-1),1,TICK_RATE_MAX);
+      if(_new!==_old){ genome.tickRate=_new; genome.tickPhase=(Math.random()*_new)|0; fired('tick.rateStep'); }
+    } else if(Math.random()<rate*0.5){
+      const _r=tickRateOf(genome);
+      if(_r>1){ genome.tickPhase=(Math.random()*_r)|0; fired('tick.phaseStep'); }
+    }
+  }
   if(__METRIC){
     if(genome.metP===undefined)genome.metP=2;
     if(genome.metAx===undefined)genome.metAx=1;
@@ -23771,6 +23920,7 @@ function updateParticles(){
 function executeSoloVM(){
   for(let i=0;i<N;i++){
     if(!palive[i])continue;
+    if(__STIME&&!particleActive(i)){ __tickSkips++; continue; }   // #192: between beats, a particle does not run its program alone either
     const _selfG=genome;genome=pGenome[i]||genome; try{ // UNLOCKED #9 FULL + FIX (review): install the lineage's FULL genome BEFORE sizing the solo VM — otherwise nInst/soloInfluence used the global baseline, so a lineage that evolved its own vmMaxInstructions / vmInfluence / ruleScale never ran solo under its own parameters
     const prog=pProg[i]||genome.vmProgram;  // UNLOCKED #9: isolated particle runs its own program too
     const nInst=Math.min(prog.length,genome.vmMaxInstructions);
@@ -24090,6 +24240,10 @@ function processGrid(){
   for(let i=0;i<N;i++){
     if(!palive[i])continue;
     const gx=(px[i]/CELL)|0,gy=(py[i]/CELL)|0;
+    // #192: a particle between its own beats is not there to be met. Skipping at the OUTER loop
+    // means it neither initiates nor is offered as a candidate, which is what makes the isolation
+    // symmetric - an inactive particle is absent, not merely passive.
+    if(__STIME&&!particleActive(i)){ __tickSkips++; continue; }
     // #191: this particle's OWN reach, from its OWN genome, and a sweep wide enough to honour it.
     const _rI=reachOf(i), _rings=__REACH?reachRings(_rI):1;
     for(let dy=-_rings;dy<=_rings;dy++)for(let dx=-_rings;dx<=_rings;dx++){
@@ -24111,7 +24265,7 @@ function processGrid(){
         // Exactly once in every case, and WHETHER a pair happens no longer depends on who was
         // allocated first. Each particle sweeps its own radius, so each pays for its own reach and
         // no lineage can impose its sweep cost on the world.
-        if(j!==i&&palive[j]&&palive[i]){
+        if(j!==i&&palive[j]&&palive[i]&&(!__STIME||particleActive(j))){
           const ddx=px[i]-px[j],ddy=py[i]-py[j],d2=ddx*ddx+ddy*ddy,d=Math.sqrt(d2),minD=pSz[i]+pSz[j];
           const _rJ=reachOf(j);
           const iR=_rI;
@@ -25009,6 +25163,7 @@ __DEME=(typeof globalThis==='undefined')||((globalThis.__DEME??1)|0)!==0;       
 __UPLASMID=(typeof globalThis==='undefined')||((globalThis.__UPLASMID??1)|0)!==0; // #185: default ON. Force off with UPLASMID=0 - no world offers or accepts another world's physics
 __CHANNEL=(typeof globalThis==='undefined')||((globalThis.__CHANNEL??1)|0)!==0;   // #188: default ON. Force off with CHANNEL=0 - no lattice is allocated, ka..kd read 0 and are never offered to the generator, and the four chan targets no-op
 __METRIC=(typeof globalThis==='undefined')||((globalThis.__METRIC??1)|0)!==0;   // #190: default ON, and a NO-OP at the seeded genes: metDist takes the hypot fast path at (2,1,0), so an unmutated lineage is bit-identical
+__STIME=(typeof globalThis==='undefined')||((globalThis.__STIME??1)|0)!==0;   // #192: default ON, and a NO-OP at the seeded genes: rate 1 means every tick, so an unmutated lineage is in lockstep exactly as before
 __REACH=(typeof globalThis==='undefined')||((globalThis.__REACH_SWEEP??1)|0)!==0;   // #191: default ON. Force off with REACH_SWEEP=0 - the sweep returns to +/-1 ring, the reach to the germline's value, and the dedup to `j>i`, which is the pre-#191 engine exactly. Deliberately NOT named REACH: __REACH_ON is a different, pre-existing gate and colliding on that name is how a knob silently stops being a control
 __FORAGE_ON=(typeof globalThis==='undefined')||((globalThis.__FORAGE_EYES??1)|0)!==0; // resolve FORAGE once; gates the resource-sense computation in uaSetEyes
 __DECIDE_ON=(typeof globalThis==='undefined')||((globalThis.__DECIDE??1)|0)!==0; // resolve DECISION GAIN once; gates confidence accrual + commitment scaling
@@ -25498,7 +25653,12 @@ function loop(){
   // stands on. With no pointer anywhere, attentionAt() is 0 everywhere and this sums to exactly
   // N*METABOLIC_ENERGY_DRAW — the previous behaviour, unchanged, which is the honest default for
   // a world nobody is looking at.
-  { let _md=0; for(let i=0;i<N;i++){ if(!palive[i])continue; _md+=attnUpkeep(i); }
+  // #192: a slow particle pays 1/rate of the per-tick upkeep. THIS IS THE LINE THAT STOPS `tickRate`
+  // BEING A WIREHEAD - without it, slowing down would reduce a particle's costs and its income by
+  // different factors and "go slow" would be a free win. With it, the same organism on a stretched
+  // timeline is neutral by construction, and the only thing that makes rate a decision is that the
+  // WORLD does not slow down too.
+  { let _md=0; for(let i=0;i<N;i++){ if(!palive[i])continue; _md+=attnUpkeep(i)/(__STIME?tickRateOf(pGenome[i]):1); }
     energyAdequacy=_md>0?Math.min(1,worldEnergy/_md):1; worldEnergy=Math.max(0,worldEnergy-_md); } // metabolism takes first claim; reproduction gets the surplus
   { tHist.fill(0); for(let _i=0;_i<N;_i++){ if(palive[_i]) tHist[tendBin(_i)]++; }
     const _mean=N/TCELLS;

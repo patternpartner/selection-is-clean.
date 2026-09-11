@@ -1,4 +1,4 @@
-// #181-#186 acceptance test — THE SUBSTRATE ITSELF.
+// #181-#192 acceptance test — THE SUBSTRATE ITSELF.
 //
 // #180 made the atom grammar a gene. This batch takes the same move to the four remaining places the
 // rules of the game were still constants:
@@ -8,6 +8,13 @@
 //   #184  the MEASUREMENT LOOP - self-authored probes promoted into the grammar, and evolvable
 //         weights on the open-endedness proxies
 //   #185  the META-POPULATION - demes inside a universe, and plasmids carrying laws between them
+// and then, as each of those turned out to leave the NEXT thing closed and say so:
+//   #188  the CHANNEL BANK - a medium a lineage invents, and an action nobody enumerated
+//   #189  the FORM of that medium's space - stencil, manifold and timescale
+//   #190  what DISTANCE means - the interaction metric as a lineage trait
+//   #191  the sweep follows the reach - and interactionRadius starts working after forty swings
+//   #192  SUBJECTIVE TIME - the global tick becomes a lineage trait, and with it the rule that a
+//         discrete gene needs a discrete operator on the route that actually fires
 //
 // This rig checks the things that would be silently wrong, in the order they would hurt:
 //   1. TOTALITY AND BOUNDEDNESS. Every fold, every allocation mode, every law in range must produce
@@ -263,14 +270,51 @@ m._compile(code+`
     uaSetEyes(i,-1);
     const at=mk('(ka)+(0.00)'); uaCompile(at);
     const safe=at.failed?'FAILED':uaCall(at,0,0);
-    // and the generator must not offer an unallocated channel
+    // and the generator must not offer an unallocated channel.
+    //
+    // #112's CREDIT POOL IS A SECOND ROUTE INTO THE ALPHABET, and this check found it by going red
+    // when #192 shifted the RNG stream: with the pool live, uaGenTerm splices whole proven
+    // expressions as leaves, and a spliced expression from a lineage that USED to hold a channel
+    // still names it. 16 of 300 draws named ka with an empty bank, and none of them came through the
+    // pool gate below - they came through history. That is not #188's gate leaking. Filtering
+    // spliced subtrees by current allocation would be a change to #112 (and a bad one: it would make
+    // an inherited building block's legality depend on the inheritor's bank rather than on whether
+    // it works). So the pool route is measured separately, immediately below, and the gate is
+    // measured with the pool suppressed so it measures the gate.
+    const svInh=__UA_INHERIT; __UA_INHERIT=false;
     let offeredEarly=0; for(let q=0;q<300;q++) if(CHANNEL_TEST.test(uaGenExpression()))offeredEarly++;
     genome.channels=saveCh;
     let offeredNow=0; for(let q=0;q<400;q++) if(CHANNEL_TEST.test(uaGenExpression()))offeredNow++;
+    __UA_INHERIT=svInh;
+    // THE POOL ROUTE, and the property that makes it harmless rather than a bug: a spliced channel
+    // name with nothing allocated must still COMPILE and read a finite number. chanRead answers 0
+    // for an unallocated slot, so the symbol is a constant zero - dead weight the lineage pays rent
+    // on and selection can remove, which is a different thing from broken syntax.
+    // AND THE POOL IS SEEDED RATHER THAN WAITED FOR (#143/#178: drive the rare path, do not hope for
+    // it). At 40 ticks - which is what smoke.sh runs this rig at - the credit pool is EMPTY, so a
+    // check that merely asserts a splice happened passes only in a developed world and goes red in
+    // the suite for a reason that has nothing to do with the mechanism. One known channel-bearing
+    // entry goes in, the measurement runs, and the pool is put back exactly as it was.
+    genome.channels=[null,null,null,null];
+    const svPool=Array.from(__atomExprCredit.entries());
+    __atomExprCredit.clear(); __atomExprCredit.set('(ka)+(kb)',5);
+    let spliced=0, splicedBad=0;
+    for(let q=0;q<400;q++){
+      const e=uaGenExpression();
+      if(!CHANNEL_TEST.test(e))continue;
+      spliced++;
+      const a2=mk(e); uaCompile(a2);
+      if(a2.failed){ splicedBad++; continue; }
+      const v=uaCall(a2,0.3,-0.4);
+      if(!isFinite(v))splicedBad++;
+    }
+    __atomExprCredit.clear();
+    for(const [pk,pv] of svPool)__atomExprCredit.set(pk,pv);
+    genome.channels=saveCh;
     // the four targets exist and name the bank
     const tgts=EFFECT_TARGETS.map(x=>x.n).filter(n=>/^chan[0-3]$/.test(n));
     return {moved:+moved.toFixed(4),landed:+landed.toFixed(4),noop,read:+read.toFixed(4),safe,
-            offeredEarly,offeredNow,tgts:tgts.length,rent:CHANNEL_RENT};
+            offeredEarly,offeredNow,spliced,splicedBad,tgts:tgts.length,rent:CHANNEL_RENT};
   });
 
   // ── #189  THE FORM OF THE SPACE ──────────────────────────────────────────────────────────────
@@ -432,6 +476,17 @@ m._compile(code+`
 
   // ── #191  AND END TO END: a partner past one grid ring is actually FOUND ─────────────────────
   out.reachLive=run('reachLive',()=>{
+    // THE WORLD IS PUT BACK AFTERWARDS, and that is not tidiness. This block needs an empty world to
+    // measure one pair, and it empties it by writing palive[k]=false directly - which is NOT how
+    // death happens in the engine, so clusters, towers and the forest registry are left holding
+    // members that no longer exist. Every later block then runs on that, and out.live regrows a
+    // whole population from two founders inside corrupt cluster state: measured at 8ms/tick rising
+    // to 61ms/tick over 900 ticks, against a steady 12ms/tick for the same engine driven normally.
+    // A rig that quietly costs 5x what the thing it measures costs is a rig that will be blamed on
+    // whatever commit happens to push it over a CI timeout.
+    const svAlive=Array.from(palive);
+    const svAmp=Array.from(amp);
+    const svX=Array.from(px), svY=Array.from(py);
     const setup=(reach)=>{
       for(let k=0;k<N;k++)palive[k]=false;
       palive[0]=true; palive[1]=true;
@@ -453,7 +508,81 @@ m._compile(code+`
     const offVal=reachOf(0);
     __REACH=sv;
     const onVal=reachOf(0);
+    // AND PUT THE WORLD BACK. The setup above leaves particles 0 and 1 as the only survivors with
+    // reach 120, and a child inherits its parent's reach - so out.live regrows a whole population on
+    // a 3-ring sweep (49 cells per particle instead of 9). That is not wrong, it is just not a world
+    // anyone has, and it made this rig 10x slower the moment #192 shifted the stream into a run that
+    // reached CAP. A rig whose cost depends on which branch the RNG took is a rig that will time out
+    // in CI for a reason nobody can reproduce.
+    genome.interactionRadius=55;
+    for(const q of [0,1]) if(pGenome[q])pGenome[q].interactionRadius=55;
+    for(let k=0;k<N;k++){ palive[k]=svAlive[k]; amp[k]=svAmp[k]; px[k]=svX[k]; py[k]=svY[k]; }
     return {short,long,offVal,onVal};
+  });
+
+  // -- #192  SUBJECTIVE TIME -------------------------------------------------------------------
+  // The claim is not "particles can be slow". It is that two lineages can share ground and NEVER
+  // meet, because an inactive particle is absent rather than passive. Checks 1 and 2 are the same
+  // question asked twice on purpose: 1 is the arithmetic the design rests on, 2 is whether the
+  // engine's own predicate agrees with it for real particles carrying real genes. #179's whole
+  // lesson was a capability that was true in principle and false in the code.
+  out.time=run('time',()=>{
+    const beats=(rr,ph,n)=>{ let c=0; for(let t=0;t<n;t++) if(((t+ph)%rr)===0)c++; return c; };
+    const co=(r1,p1,r2,p2,n)=>{ let c=0; for(let t=0;t<n;t++) if(((t+p1)%r1)===0&&((t+p2)%r2)===0)c++; return c; };
+    const sched={r1:beats(1,0,600), r2:beats(2,0,600), r3:beats(3,0,600), r6:beats(6,0,600),
+                 disjoint2:co(2,0,2,1,600), disjoint3:co(3,0,3,1,600),
+                 generalist:co(1,0,3,2,600), sameRateSamePhase:co(2,0,2,0,600)};
+    for(const q of [0,1]) if(!pGenome[q])pGenome[q]={...genome};
+    pGenome[0].tickRate=2; pGenome[0].tickPhase=0;
+    pGenome[1].tickRate=2; pGenome[1].tickPhase=1;
+    const svA0=palive[0], svA1=palive[1];
+    palive[0]=true; palive[1]=true;
+    // tick is driven FORWARD from where it is, never wound back to 0: epoch logs, probe claims and
+    // use-windows all stamp it, and a clock that goes backwards is a needless thing to hand them.
+    // The schedule is phase-relative, so the arithmetic is identical either way.
+    const saveTick=tick;
+    let a=0,b=0,both=0;
+    for(let t=0;t<400;t++){ tick=saveTick+t; const A=particleActive(0), B=particleActive(1);
+      if(A)a++; if(B)b++; if(A&&B)both++; }
+    // THE LEDGER. Slowing scales BOTH sides or it is a wirehead: a rate-k particle must pay 1/k of
+    // the per-tick upkeep, so the same organism on a stretched timeline is neutral by construction.
+    const draw=(rr)=>{ pGenome[0].tickRate=rr; return attnUpkeep(0)/(__STIME?tickRateOf(pGenome[0]):1); };
+    const fast=draw(1), slow=draw(4);
+    const ratio=slow>0?fast/slow:0;
+    pGenome[0].tickRate=1; pGenome[0].tickPhase=0;
+    pGenome[1].tickRate=1; pGenome[1].tickPhase=0;
+    // The phase is REDUCED into the rate, not merely clamped - phase 5 under rate 2 IS phase 1, and
+    // storing 5 makes two genomes that behave identically compare as different.
+    genome.tickRate=2; genome.tickPhase=5; sanitizeGenome();
+    const red={r:genome.tickRate,p:genome.tickPhase};
+    genome.tickRate=9; genome.tickPhase=-3; sanitizeGenome();
+    const clamped={r:genome.tickRate,p:genome.tickPhase};
+    genome.tickRate=1; genome.tickPhase=0;
+    // #103: an incremental operator, not a redraw. And the phase must stay legal FOR ITS RATE at
+    // every step, which is why the rate step redraws it.
+    const g={tickRate:1,tickPhase:0};
+    let moves=0,jumps=0,illegal=0; const seen={};
+    for(let i=0;i<800;i++){
+      const before=tickRateOf(g);
+      const nr=__cl(before+(Math.random()<0.5?1:-1),1,TICK_RATE_MAX);
+      if(nr!==before){ g.tickRate=nr; g.tickPhase=(Math.random()*nr)|0; moves++;
+        if(Math.abs(nr-before)>1)jumps++; }
+      seen[g.tickRate]=1;
+      if(g.tickPhase>=g.tickRate||g.tickPhase<0)illegal++;
+    }
+    pGenome[0].tickRate=5; pGenome[0].tickPhase=3;
+    const sv=__STIME; __STIME=false;
+    let offAlways=true;
+    for(let t=0;t<50;t++){ tick=saveTick+t; if(!particleActive(0))offAlways=false; }
+    __STIME=sv;
+    let onSometimes=false;
+    for(let t=0;t<50;t++){ tick=saveTick+t; if(!particleActive(0))onSometimes=true; }
+    tick=saveTick; pGenome[0].tickRate=1; pGenome[0].tickPhase=0;
+    palive[0]=svA0; palive[1]=svA1;   // and the world goes back, for out.reachLive's reason
+    return {sched,a,b,both,n:400,fast:+fast.toExponential(3),slow:+slow.toExponential(3),
+            ratio:+ratio.toFixed(3),red,clamped,cap:TICK_RATE_MAX,
+            moves,jumps,illegal,rates:Object.keys(seen).map(Number).sort((x,y)=>x-y),
+            offAlways,onSometimes};
   });
 
   // ── THE CROSSINGS: every new gene must survive a save and diverge in a child ────────────────
@@ -463,6 +592,7 @@ m._compile(code+`
     genome.demeCount=3; genome.demeFlow=0.25;
     genome.netLawRate=0.007; genome.netLawReceptivity=0.6;
     genome.metP=1.35; genome.metAx=2.6; genome.metRot=0.9;
+    genome.tickRate=3; genome.tickPhase=2;
     genome.oeeW=[0.2,0.4,0.6,0.8];
     genome.channels=[{expr:'(a)+(((b)-(a))*(0.25))',compiled:null,failed:false,age:7,uses:3,
                       st:[[-3,1,0.75],[2,-2,-0.5]],wrap:1,cad:5},null,
@@ -471,7 +601,7 @@ m._compile(code+`
     const blob=encodeGenome();
     const wipe=['uaFoldMode','uaFoldK','autonomyCede','cellScale','rxSelf','rxCross','demeCount',
                 'demeFlow','netLawRate','netLawReceptivity','oeeW','probes','channels',
-                'metP','metAx','metRot'];
+                'metP','metAx','metRot','tickRate','tickPhase'];
     for(const k of wipe)genome[k]=undefined;
     decodeGenome(blob); sanitizeGenome();
     const eq=(x,y)=>Math.abs(x-y)<1e-3;
@@ -482,6 +612,8 @@ m._compile(code+`
       deme:genome.demeCount===3&&eq(genome.demeFlow,0.25),
       net:eq(genome.netLawRate,0.007)&&eq(genome.netLawReceptivity,0.6),
       metric:eq(genome.metP,1.35)&&eq(genome.metAx,2.6)&&eq(genome.metRot,0.9),   // #190
+      // #192: a clock that does not survive a reload is a lineage that silently rejoins the lockstep
+      stime:genome.tickRate===3&&genome.tickPhase===2,
       oeeW:Array.isArray(genome.oeeW)&&eq(genome.oeeW[3],0.8),
       // a probe's RECORD must survive, or a reload silently demotes every earned sense
       probe:Array.isArray(genome.probes)&&genome.probes[0]&&genome.probes[0].n===11&&genome.probes[0].hit===9,
@@ -525,7 +657,7 @@ m._compile(code+`
     return {saved,shared,childMoved,seeded,carriers,
             rows:['atom.fold','xion.cede','phys.reach','phys.chem','probe.bank',
                   'oee.weighted','deme.split','channel.bank','channel.sensed','channel.form',
-                  'metric.moved','reach.moved'].filter(n=>names.indexOf(n)<0),
+                  'metric.moved','reach.moved','tick.moved'].filter(n=>names.indexOf(n)<0),
             promotedNotACrossingRow:names.indexOf('probe.promoted')<0};
   });
 
@@ -542,6 +674,9 @@ m._compile(code+`
     genome.oeeW=[1,1,1,1]; r.bonusOff=oeeBonus()===0; __OEE_BONUS=sb;
     const spr=__PROBE; __PROBE=false;
     r.probeOff=probeCount()===0; __PROBE=spr;
+    const stm=__STIME; __STIME=false;
+    genome.tickRate=4; r.timeOff=tickRateOf(genome)===1; __STIME=stm;
+    genome.tickRate=1; genome.tickPhase=0;
     const sx=__XION; __XION=false;
     genome.autonomyCede=1; r.xionOff=true; __XION=sx; genome.autonomyCede=0.5;
     return r;
@@ -648,8 +783,13 @@ ck('#188 a write into an unallocated slot is a no-op', CI.noop===0,
    'so EFFECT_TARGETS can grow without invalidating any existing verb');
 ck('#188 an atom naming ka with nothing allocated still compiles and reads 0', CI.safe===0,
    'read '+CI.safe);
-ck('#188 an UNALLOCATED channel is never offered to the generator', CI.offeredEarly===0,
+ck('#188 the ALLOCATION GATE never offers an unallocated channel', CI.offeredEarly===0,
    CI.offeredEarly+'/300 — a dead letter is #179 wearing a new name');
+// and the other route in, which this rig found by going red rather than by anyone reasoning about it
+ck('#112 the credit pool CAN name a channel a lineage no longer holds', CI.spliced>0,
+   CI.spliced+'/400 draws named one with an empty bank — a spliced building block carries the vocabulary of the lineage that proved it, and filtering that by the inheritor\'s bank would break what #112 is for');
+ck('#112 and every one of them still compiles and reads finite', CI.splicedBad===0,
+   CI.splicedBad+' of '+CI.spliced+' failed — an unallocated symbol is a constant zero the lineage pays rent on, which selection can remove; broken syntax it could not');
 ck('#188 an allocated one is', CI.offeredNow>0, CI.offeredNow+'/400');
 ck('#188 four effect targets index the bank', CI.tgts===4);
 ck('#188 an allocated channel pays the dearest rent in the file', CI.rent>0,
@@ -729,10 +869,41 @@ ck('#190 two lineages can share a region and stop perceiving each other',
    'same anisotropy, orthogonal orientation: each admits ~'+IV.a+'/'+IV.total+' pairs and only '+IV.both+
    ' are admitted by BOTH — '+((IV.overlap||0)*100).toFixed(1)+'% overlap, against Euclidean\'s '+IV.euclid);
 
+// #192
+const TI=r.time||{};
+const TS=TI.sched||{};
+ck('#192 a rate-k lineage beats exactly 1/k of the time',
+   TS.r1===600 && TS.r2===300 && TS.r3===200 && TS.r6===100,
+   'over 600 ticks: '+TS.r1+', '+TS.r2+', '+TS.r3+', '+TS.r6);
+ck('#192 same rate, different phase: they NEVER meet',
+   TS.disjoint2===0 && TS.disjoint3===0,
+   'co-active ticks out of 600: '+TS.disjoint2+' at rate 2, '+TS.disjoint3+' at rate 3 — temporal isolation with no spatial cost, which is the entire point of the layer');
+ck('#192 and a rate-1 generalist still meets everyone',
+   TS.generalist===200 && TS.sameRateSamePhase===300,
+   'a generalist catches all 200 of a rate-3 lineage\'s beats — specialisation in time has a real cost on the other side');
+ck('#192 the ENGINE agrees with the arithmetic for real genomes',
+   TI.a===200 && TI.b===200 && TI.both===0,
+   'particleActive over '+TI.n+' ticks: '+TI.a+' and '+TI.b+' active, '+TI.both+' co-active — #179 was a capability true in principle and false in the code');
+ck('#192 slowing scales the LEDGER too — rate 4 pays a quarter of the upkeep',
+   Math.abs(TI.ratio-4)<0.01,
+   'fast '+TI.fast+' against slow '+TI.slow+', ratio '+TI.ratio+' — this is the line that stops tickRate being "go slow, live forever"');
+ck('#192 the phase is REDUCED into the rate, not just clamped',
+   TI.red && TI.red.r===2 && TI.red.p===1,
+   'phase 5 under rate 2 stored as '+(TI.red&&TI.red.p)+' — 5 and 1 are the same behaviour and must compare equal');
+ck('#192 and the rate is capped', TI.clamped && TI.clamped.r===TI.cap,
+   'rate 9 -> '+(TI.clamped&&TI.clamped.r)+', phase -3 -> '+(TI.clamped&&TI.clamped.p));
+ck('#192 the clock takes a small step and the phase is always legal for it',
+   TI.moves>0 && TI.jumps===0 && TI.illegal===0,
+   TI.moves+'/800 moved, '+TI.jumps+' jumped more than one, '+TI.illegal+' left the phase out of range');
+ck('#192 and every rate is reachable', TI.rates && TI.rates.length===TI.cap,
+   'rates reached: '+(TI.rates||[]).join(','));
+ck('#192 STIME=0 is a true revert', TI.offAlways===true && TI.onSometimes===true && r.revert && r.revert.timeOff===true,
+   'off: always active. on: sometimes not.');
+
 // the crossings
 const CR=r.cross||{};
 const SV=CR.saved||{};
-for(const k of ['fold','cede','phys','deme','net','oeeW','probe','claimCleared','chan','form','metric'])
+for(const k of ['fold','cede','phys','deme','net','oeeW','probe','claimCleared','chan','form','metric','stime'])
   ck('save -> load: '+k, SV[k]===true);
 ck('cloneGenome shares none of it', CR.shared && !CR.shared.oeeW && !CR.shared.probes && !CR.shared.probe0 && !CR.shared.chan && !CR.shared.chan0 && !CR.shared.chanSt && !CR.shared.chanTap,
    CR.shared && JSON.stringify(CR.shared));
@@ -740,7 +911,7 @@ ck('parent -> child: the proxy weights diverge', CR.childMoved>0, CR.childMoved+
 ck('germline -> population: the substrate actually crosses', CR.seeded===true && CR.carriers>0,
    CR.carriers+' carrier(s) after one seeding - the bug the crossing rows caught seven times');
 ck('every new gene has a census row', CR.rows && CR.rows.length===0,
-   CR.rows && CR.rows.length?('missing: '+CR.rows.join(' ')):'all twelve present');
+   CR.rows && CR.rows.length?('missing: '+CR.rows.join(' ')):'all thirteen present');
 // #187: and the one that must NOT be a crossing row. A promotion is an earned outcome, not authored
 // structure, so "germline 1 / population 0" is the normal state of a young world - it was reported as
 // STRANDED and made crossing-test red for something that is not a defect. It is logged per epoch now.

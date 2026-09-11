@@ -1944,8 +1944,9 @@ what #182's levels are built from. The consequence worth knowing: two lineages w
 oriented metrics share a region and admit mostly-disjoint neighbourhoods (measured: 30.8% overlap
 against Euclidean's near-total), which is ecological separation by PERCEPTION rather than position.
 
-**STILL CLOSED after #190:** the lattice resolution, the position->cell map, and the global tick.
-(The grid's candidate radius was closed too and is opened by #191, below.)
+**STILL CLOSED after #190:** the lattice resolution and the position->cell map. (The grid's candidate
+radius was closed too and is opened by #191, below; the global tick was the third and is opened by
+#192.)
 
 ### #191 — the sweep follows the reach, and `interactionRadius` starts working
 
@@ -1982,6 +1983,79 @@ is a different pre-existing gate and colliding on that name is how a knob stops 
 **This unlocks three genes for one change:** `interactionRadius`, #183's `cellScale` (the world side
 need no longer be narrows-only) and #190's metric past p=2. The caveats stated in both of those
 swings are now removable rather than restated.
+
+### #192 — the tick becomes a lineage trait, and the rule for every discrete gene after it
+
+`tickRate` (1..`TICK_RATE_MAX`=6) is how many ticks pass between a lineage's beats; `tickPhase`
+(0..rate-1) is which of them it beats on. `particleActive(i)` is
+`((tick + phase) % rate) === 0`, read from **`pGenome[i]`**, and it gates three sites: the outer pair
+loop, the inner candidate test, and `executeSoloVM`. Seeded (1, 0) = every tick = the pre-#192
+engine. Knob `STIME`.
+
+**BOTH PARTICLES MUST BE ACTIVE TO INTERACT, and the outer-loop skip is load-bearing.** An inactive
+particle is *absent*, not idle — it neither initiates nor is offered as a candidate. That is what
+makes two lineages at the same rate with opposite phases **never** interact (measured: 0 co-active
+ticks in 600, for rate 2 and rate 3), which is temporal isolation at no spatial cost. It is the third
+niche axis after #185's demes and #190's metrics. Do not "optimise" the skip down to the inner test
+only: that would make an inactive particle a passive partner instead of an absent one, and the
+isolation would stop being symmetric.
+
+**THE 1/rate UPKEEP DIVISION IS WHAT STOPS THIS BEING A WIREHEAD.** `attnUpkeep(i)` is divided by
+`tickRateOf(pGenome[i])` on the metabolic line. Without it, slowing down would scale a particle's
+costs and its income by different factors and "go slow" would be a free win. With it, the same
+organism on a stretched timeline is neutral by construction, and the only thing that makes rate a
+decision is that the world does not slow down with it. Measured 4.000× at rate 4. **If you touch the
+metabolic line, keep the division.**
+
+**DELIBERATELY NOT SKIPPED:** death, ageing, movement, field physics. Skipping those would make
+`tickRate` a longevity gene, and an uncosted longevity gene is the runaway #85's sign floors exist to
+prevent.
+
+`tickPhase` is **reduced into** the rate, not clamped — phase 5 under rate 2 *is* phase 1, and storing
+5 would make two genomes that behave identically compare as different. Done in `sanitizeGenome` for
+the germline and inline in `mutateChildGenome` for children, which `sanitizeGenome` never sees.
+
+**A DISCRETE GENE NEEDS A DISCRETE OPERATOR, AND `CHILD_DISCRETE` IS WHERE IT GOES.** This layer
+shipped dead and the instrument read healthy, which is why it is stated here as a rule rather than a
+war story. `mutateChildGenome`'s generic walk nudges every numeric field by
+`v ± (|v|*0.12+0.02)*scale`. At `tickRate = 1` that is a step of at most **0.07** against a gene whose
+next legal value is **2**, and `tickRateOf` rounds — so hundreds of mutations per run fired on this
+gene and every one was a **no-op by construction**. Measured before: `tick.rateStep` 0,
+`tick.skipped` 0, `tick.moved` 0/0 in 12,000 ticks. After adding the ±1 step: 124, 437,852, and
+germline 0 / population 31.
+
+So: **a gene whose meaning is an integer must be listed in `CHILD_DISCRETE` (excluding it from the
+continuous walk) and given its own ±1 step.** Both halves. Without the exclusion, fractional drift
+accumulates where nothing reads it and two children at 1.49 and 1.51 behave completely differently
+while reporting as the same gene. Enrolment is per gene: #181's `uaFoldMode` and #185's `demeCount`
+are in the same position and are deliberately not enrolled (the first is not dead; the second's step
+changes a spatial partition that interacts with position).
+
+The step is ±1 with **clamping**, matching the germline's, so the process is symmetric in the interior
+and lazy at the ends — leaving rate 1 takes two draws instead of one, a mild bias toward the lockstep
+default. Drawing only from the legal directions would push every lineage off the default whether
+selection wanted it or not.
+
+**THE GERMLINE CADENCE IS A REACHABILITY CEILING, and it applies to every layer in #181-#192.**
+`mutateGenome` runs **38 times in 12,000 ticks** at an effective rate near **0.05**. Any mechanism
+gated on one `Math.random()<rate*k` inside it has an expected count **under one per run**. Measured:
+`compiler.foldStep` 2, `channel.formStep` 0-1, `probe.drift` 0-1, `cosmos.law` 0-1, `xion.fission` 0-1,
+`uplasmid.law` 0. Those are not dead mechanisms — they are sampled below the resolution of a single
+run, so **"never fired" on a germline-cadence mechanism carries almost no information**. A layer that
+wants to be selected on needs a route that fires at reproduction. #192 is the first one here to use it
+for a discrete gene.
+
+Cost: measured within noise (3,000 ticks, 34.5s on / 34.2s off, same population and cluster
+trajectory). Temporal isolation costs one modulo per particle per tick.
+
+**Two rig rules this swing established.** (1) `substrate-test`'s destructive blocks (`reachLive`,
+`time`) now **snapshot and restore `palive`/`amp`/`px`/`py`** — writing `palive[k]=false` is not how
+death happens here, so clusters, towers and the forest registry kept members that no longer existed
+and every later block ran on that (measured 8ms/tick → 61ms/tick over 900 ticks against a steady
+12ms/tick). (2) #188's allocation-gate check is measured with **`__UA_INHERIT` suppressed**, because
+#112's credit pool is a second, legitimate route into the alphabet: a spliced building block carries
+the vocabulary of the lineage that *proved* it, not the bank of the one that inherits it. Both facts
+are asserted separately; do not "fix" #112 to filter by the inheritor's bank.
 
 ### #186 — the germline-to-population crossing, stated generally
 

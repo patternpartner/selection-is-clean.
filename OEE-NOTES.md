@@ -14637,3 +14637,209 @@ row had nothing to be stranded about. The pre-existing gap is still there and is
 question. A rig passing because a mechanism did not fire is not a rig passing.
 
 `substrate-test.js`: 98 checks, 7 of them #191's. `smoke.sh`: 49 ok, 0 failing.
+
+## #192 — SUBJECTIVE TIME, and a gene that could be mutated but not moved
+
+#191's closing note left three things closed: the lattice resolution, the position→cell map, and
+**the global tick**. The tick was the last piece of shared, unevolvable structure in this engine —
+every living particle processed once per tick, in lockstep, forever — and it is the interesting one
+of the three, because #185 gave lineages spatial isolation (demes) and #190 gave them perceptual
+isolation (orthogonal metrics), and temporal isolation is the third independent axis and the only one
+that was still impossible to express.
+
+Two genes. `tickRate` is how many ticks pass between this lineage's beats; `tickPhase` is which of
+those ticks it beats on. A particle acts when `((tick + phase) % rate) === 0`. Seeded `(1, 0)`, which
+is every tick, which is the pre-#192 engine exactly.
+
+### The mechanism is "an inactive particle is absent", not "an inactive particle is idle"
+
+Both particles must be active to interact, and the skip happens at the **outer** pair loop as well as
+in the inner candidate test, so a particle between beats neither initiates nor is offered. That is
+what makes the isolation symmetric, and it is the whole layer rather than an implementation detail:
+
+```
+two lineages, same rate, opposite phase, 600 ticks
+  rate 2, phases 0 and 1      co-active ticks:  0
+  rate 3, phases 0 and 1      co-active ticks:  0
+```
+
+Zero. Two lineages can share ground at any density and never once meet. Nothing in this engine could
+previously express that without also moving them apart.
+
+The structure that falls out is worth stating because I did not design it: a rate-1 lineage is a
+**generalist** — active every tick, so it meets everyone, including all 200 beats of a rate-3
+neighbour — while a rate-*k* lineage meets only the subset whose beats coincide with its own.
+Specialisation in time, with the generalist paying for it by being present for every encounter and
+every cost.
+
+### Why it is not a wirehead
+
+"Go slow" must not mean "become immortal and cheap". It does not, because slowing scales **both**
+sides of the ledger: a slow particle takes 1/rate of the interaction opportunities that are its
+income, and pays 1/rate of the per-tick upkeep.
+
+```
+attnUpkeep per tick, same particle, same genes
+  rate 1   0.0004
+  rate 4   0.0001        ratio 4.000
+```
+
+The same organism on a stretched timeline is neutral by construction. What makes rate a real decision
+is that **the world does not slow down with it** — a slow particle is less responsive to a changing
+field, misses more encounters, and is out of step with more partners. So the optimum is
+environment-dependent rather than monotone, which is what a strategy is.
+
+Deliberately **not** skipped: death, ageing, movement, field physics. A slow particle still drifts,
+still senesces, still starves. Skipping those would have made `tickRate` a longevity gene, and a
+longevity gene with no cost is the runaway #85's sign floors exist to prevent.
+
+### And then the live run said the layer was dead
+
+```
+12,000 ticks, one seed
+  tick.rateStep     0
+  tick.phaseStep    0
+  tick.skipped      0
+  tick.moved        germline 0 / population 0
+  germline (rate, phase)   (1, 0)
+```
+
+Authored, declared, priced, seeded, crossing-rowed, and **completely dead** — #179's shape again, one
+swing after I quoted #179 at myself twice while building this. So it got measured rather than
+theorised:
+
+```
+mutateGenome calls in 12,000 ticks        38
+effective mutation rate (mean)            0.0494   [0.0431, 0.0809]
+expected germline rate steps              0.469
+observed                                  0        consistent with the expectation
+```
+
+The germline route cannot deliver this gene. **0.5 expected events per run is not a mechanism, it is
+a lottery ticket.** But the *other* route — `mutateChildGenome`, which runs at every birth, hundreds
+of times per run — was already touching `tickRate`, and that turned out to be worse than not touching
+it:
+
+> The child walk nudges every numeric field by `v ± (|v|*0.12+0.02)*scale`. At `tickRate = 1` that is
+> a step of at most **0.07**, against a gene whose next legal value is **2**. `tickRateOf` rounds. So
+> hundreds of mutations fired on this gene, every one of them a **no-op by construction**.
+
+This is a worse failure than "the draw never fired", because the instrument that would normally catch
+it reads *healthy*: the gene is present, heritable, in range, and being mutated. The control is
+sitting right next to it — #191's `interactionRadius`, a **continuous** gene on the same route, went
+from an unmoved germline to 32 moved population carriers in one run (94 in the run below). **The
+route works. The operator did not fit the gene.**
+
+### The general rule, because the next discrete gene will land in the same hole
+
+`CHILD_DISCRETE` names the genes whose meaning is an integer. They are excluded from the continuous
+walk and given their own ±1 step in `mutateChildGenome`. Both halves matter: without the exclusion,
+fractional drift accumulates where nothing reads it, and two children at 1.49 and 1.51 behave
+completely differently while reporting as the same gene.
+
+Enrolment is per gene, not automatic. #181's `uaFoldMode` (a cycle of four, crossing at 6–19
+population carriers through the seeding route) and #185's `demeCount` are in the same position and
+are **not** enrolled here — the first is not dead, and the second's step changes a spatial partition
+that interacts with position, which is its own swing's question.
+
+The step keeps the germline's shape: ±1 with **clamping**, so the mutational process is symmetric in
+the interior and *lazy* at the two ends rather than reflecting off them. Lazy means leaving rate 1
+takes two draws on average instead of one — a mild mutational bias toward the lockstep default, which
+is the conservative direction for a layer this new. Drawing only from the legal directions would have
+replaced an unbiased operator with one that pushes every lineage off the default whether selection
+wanted it or not.
+
+### After the fix
+
+```
+12,000 ticks, same seed
+  tick.rateStep       124
+  tick.phaseStep       38
+  tick.skipped    437,852        ~7% of particle-beats declined
+  tick.moved      germline 0 / population 31
+  alive 256, extinctions 0, fitness 0.711, save round-trips, NOTHING stranded
+```
+
+Thirty-one population genomes beating on their own clock out of 256. The 437,852 figure checks
+against the carriers rather than being taken on faith: 31/256 is 12% of the population, at a mean
+rate of roughly 2–3 each declining half to two-thirds of their beats, over both the pair loop and the
+solo VM — which lands where it landed.
+
+### The layer is free
+
+```
+3,000 ticks, one seed, same stream
+  STIME=1    34.5s total,  population 258 → 217,  clusters 19 → 13
+  STIME=0    34.2s total,  population 253 → 216,  clusters 19 → 14
+```
+
+Within noise on both cost and trajectory. Temporal isolation costs one modulo per particle per tick
+and buys a niche axis.
+
+### What this does NOT show
+
+The germline never left rate 1 in either run, so the row reads **germline 0 / population 31** — the
+population diverged while the self did not, exactly as #191's reach did. That is a claim that a
+non-unit clock is **reachable, priced, heritable and selected on**. It is *not* a claim that one is
+favoured. Whether the world is ever poor and crowded enough for cheapness to beat presence is the
+question the row now makes answerable, and it is not answered.
+
+### Three defects found on the way, none of them #192's
+
+**#112's credit pool is a second route into the alphabet.** `substrate-test`'s "#188 never offers an
+unallocated channel" check went red at 16/300 the moment #192 shifted the RNG stream. It is not a
+leak in #188's gate: `uaGenTerm` splices whole proven expressions from `__atomExprCredit` as leaves,
+and a spliced building block carries the vocabulary of the lineage that **proved** it, not the bank
+of the lineage that inherits it. Filtering that by the inheritor's allocation would break what #112 is
+for. Every one of those expressions still compiles and reads finite — an unallocated symbol is a
+constant zero the lineage pays rent on and selection can remove, which is a different thing from
+broken syntax. So the gate is now measured with the pool suppressed and the pool route is measured
+separately, with both facts asserted.
+
+**`out.reachLive` was emptying the world by writing `palive[k]=false`,** which is not how death
+happens in this engine: clusters, towers and the forest registry kept members that no longer existed,
+every later block ran on that, and `out.live` regrew a population from two founders inside it.
+Measured at **8ms/tick rising to 61ms/tick over 900 ticks, against a steady 12ms/tick** for the same
+engine driven normally — which is how this rig went from 120s to a CI timeout, and it would have been
+blamed on whichever commit happened to push it over. The world is snapshotted and restored now, in
+both that block and `out.time`.
+
+### The germline cadence is a substrate-wide reachability ceiling
+
+This is the reusable finding, and it is bigger than #192. `mutateGenome` runs **38 times in 12,000
+ticks** at an effective rate near **0.05**. So *any* mechanism gated on a single `Math.random()<rate*k`
+inside it has an expected count **under one per run**. Measured in the same runs:
+
+```
+compiler.foldStep   2      channel.formStep   0-1
+probe.drift       0-1      cosmos.law         0-1
+xion.fission      0-1      uplasmid.law         0
+```
+
+None of those are dead mechanisms. They are mechanisms **sampled below the resolution of a single
+run** — which means "never fired" on a germline-cadence mechanism carries almost no information, and
+a layer that wants to be selected on needs a route that fires at reproduction, not at self-mutation.
+#192 is the first layer in this file to use the child route for a discrete gene. It should not be the
+last.
+
+### Still closed after #192
+
+The lattice resolution (40×40) and the position→cell map; `CAP`; the **core** opcode dispatch table
+(#180 opened the user operators, not the VM's own franchise); `EFFECT_TARGETS` beyond the four channel
+slots; the four organisational levels (particle → cluster → tower → forest are authored, and #182
+gave them credit channels rather than membership); and the fact that there is one world per tab.
+
+**`migrant-test` has been setting a gene that does not exist.** Its setup said
+`genome.netRecvRate = 1` to make receipt certain. `netRecvRate` appears **zero times in
+engine.html**; the gate `networkReceive` actually applies is
+`if (Math.random() > genome.netReceptivity) continue`. So the migrant landed by luck on whatever the
+germline's receptivity happened to be, and the rig's *setup* — not its subject — was a coin flip on
+the RNG stream. Measured on committed HEAD: the setup fails at TICKS=20, 30, 80, 100 and 200 and
+passes at 40, 50 and 60. `smoke.sh` runs it at 40, which is why it has never been seen; #192's stream
+shift moved 40 into the failing set and the rig went red for a reason that had nothing to do with
+#192. One line (`genome.netReceptivity = 1`) makes it pass at every tick count on both engines. This
+is #153's rule one level over — **read the bound from the engine, never restate it** — and the same
+lesson as #175: a result that cannot be repeated cannot be attributed.
+
+`substrate-test.js`: 111 checks, 11 of them #192's (plus 2 for #112's pool route).
+`smoke.sh`: 49 ok, 0 failing.
