@@ -341,12 +341,67 @@ m._compile(code+`
             tapRent:CHANNEL_TAP_RENT};
   });
 
+  // ── #190  WHAT DISTANCE MEANS ────────────────────────────────────────────────────────────────
+  // The last thing #188 and #189 did not touch. These check the metric by GEOMETRY - by measuring
+  // the unit ball - rather than by reading the genes back, and the last of them checks the only
+  // consequence that matters: two lineages sharing a region can stop perceiving each other.
+  out.metric=run('metric',()=>{
+    const G=(p,ax,rot)=>({metP:p,metAx:ax,metRot:rot});
+    // THE SEEDED METRIC MUST BE hypot BIT FOR BIT, not approximately. Every A/B in this repo rests
+    // on an unmutated lineage being identical rather than equal, and metDist's fast path is what
+    // makes that true instead of hoping a p=2 pow agrees with a sqrt.
+    let diff=0;
+    for(let i=0;i<400;i++){ const dx=(Math.random()-0.5)*120, dy=(Math.random()-0.5)*120;
+      if(metDist(dx,dy,G(2,1,0))!==Math.hypot(dx,dy))diff++; }
+    // THE SHAPES, measured by bisecting for the unit ball's reach in three directions.
+    const reach=(g,ang)=>{ let lo=0,hi=8;
+      for(let k=0;k<40;k++){ const mid=(lo+hi)/2;
+        if(metDist(Math.cos(ang)*mid,Math.sin(ang)*mid,g)<=1)lo=mid; else hi=mid; }
+      return +lo.toFixed(3); };
+    const probe=(g)=>({axis:reach(g,0),diag:reach(g,Math.PI/4),perp:reach(g,Math.PI/2)});
+    const euclid=probe(G(2,1,0)), taxi=probe(G(1,1,0)), cheby=probe(G(4,1,0)),
+          wide=probe(G(2,2,0)), rotated=probe(G(2,2,Math.PI/2));
+    // SANITY across the whole legal range: finite, non-negative, symmetric in the displacement's
+    // sign, and zero at zero (or the self-distance gate breaks).
+    let bad=0,asym=0;
+    const gs=[G(0.5,0.25,0),G(4,4,1.1),G(1,1,3),G(2.7,0.4,-2.2),G(0.5,4,0.7)];
+    const vs=[[0,0],[1,0],[0,1],[-3,7],[1e6,-1e6],[1e-9,1e-9],[-40,40]];
+    for(const g of gs)for(const [dx,dy] of vs){
+      const a=metDist(dx,dy,g), b=metDist(-dx,-dy,g);
+      if(!isFinite(a)||a<0)bad++;
+      if(Math.abs(a-b)>1e-9)asym++;
+    }
+    const zero=metDist(0,0,G(1.3,2.2,0.4));
+    // THE KNOB IS A TRUE REVERT: the same genes must give hypot exactly when the layer is off.
+    const sv=__METRIC; __METRIC=false;
+    const offVal=metDist(3,4,G(1,4,1.0));
+    __METRIC=sv;
+    const onVal=metDist(3,4,G(1,4,1.0));
+    return {diff,euclid,taxi,cheby,wide,rotated,bad,asym,zero,offVal,onVal};
+  });
+
+  // ── #190  AND THE CONSEQUENCE: SEPARATION BY PERCEPTION ─────────────────────────────────────
+  // The thing no amount of content evolution could produce. Two lineages with the same anisotropy
+  // and orthogonal orientation occupy the same region and admit mostly-disjoint neighbourhoods, so
+  // they are ecologically separated without being spatially separated at all.
+  out.invisible=run('invisible',()=>{
+    const G=(p,ax,rot)=>({metP:p,metAx:ax,metRot:rot});
+    const pts=[];
+    for(let i=0;i<4000;i++) pts.push([(Math.random()-0.5)*2*CELL,(Math.random()-0.5)*2*CELL]);
+    const admit=(g)=>{ let n=0; for(const t of pts) if(metDist(t[0],t[1],g)<=CELL)n++; return n; };
+    const A=G(2,3.2,0), B=G(2,3.2,Math.PI/2);
+    let both=0; for(const t of pts) if(metDist(t[0],t[1],A)<=CELL&&metDist(t[0],t[1],B)<=CELL)both++;
+    const a=admit(A), b=admit(B);
+    return {total:pts.length,a,b,both,overlap:+(both/Math.max(1,a)).toFixed(3),euclid:admit(G(2,1,0))};
+  });
+
   // ── THE CROSSINGS: every new gene must survive a save and diverge in a child ────────────────
   out.cross=run('cross',()=>{
     genome.uaFoldMode=2; genome.uaFoldK=3.25; genome.autonomyCede=0.8;
     genome.cellScale=0.55; genome.rxSelf=0.3; genome.rxCross=0.45;
     genome.demeCount=3; genome.demeFlow=0.25;
     genome.netLawRate=0.007; genome.netLawReceptivity=0.6;
+    genome.metP=1.35; genome.metAx=2.6; genome.metRot=0.9;
     genome.oeeW=[0.2,0.4,0.6,0.8];
     genome.channels=[{expr:'(a)+(((b)-(a))*(0.25))',compiled:null,failed:false,age:7,uses:3,
                       st:[[-3,1,0.75],[2,-2,-0.5]],wrap:1,cad:5},null,
@@ -354,7 +409,8 @@ m._compile(code+`
     genome.probes=[{expression:'(a)+(b)',compiled:null,failed:false,n:11,hit:9,pending:0,pendTick:5,pendFit:1,age:3},null,null,null];
     const blob=encodeGenome();
     const wipe=['uaFoldMode','uaFoldK','autonomyCede','cellScale','rxSelf','rxCross','demeCount',
-                'demeFlow','netLawRate','netLawReceptivity','oeeW','probes','channels'];
+                'demeFlow','netLawRate','netLawReceptivity','oeeW','probes','channels',
+                'metP','metAx','metRot'];
     for(const k of wipe)genome[k]=undefined;
     decodeGenome(blob); sanitizeGenome();
     const eq=(x,y)=>Math.abs(x-y)<1e-3;
@@ -364,6 +420,7 @@ m._compile(code+`
       phys:eq(genome.cellScale,0.55)&&eq(genome.rxSelf,0.3)&&eq(genome.rxCross,0.45),
       deme:genome.demeCount===3&&eq(genome.demeFlow,0.25),
       net:eq(genome.netLawRate,0.007)&&eq(genome.netLawReceptivity,0.6),
+      metric:eq(genome.metP,1.35)&&eq(genome.metAx,2.6)&&eq(genome.metRot,0.9),   // #190
       oeeW:Array.isArray(genome.oeeW)&&eq(genome.oeeW[3],0.8),
       // a probe's RECORD must survive, or a reload silently demotes every earned sense
       probe:Array.isArray(genome.probes)&&genome.probes[0]&&genome.probes[0].n===11&&genome.probes[0].hit===9,
@@ -406,7 +463,8 @@ m._compile(code+`
     const names=cen.rows.map(r=>r.name);
     return {saved,shared,childMoved,seeded,carriers,
             rows:['atom.fold','xion.cede','phys.reach','phys.chem','probe.bank',
-                  'oee.weighted','deme.split','channel.bank','channel.sensed','channel.form'].filter(n=>names.indexOf(n)<0),
+                  'oee.weighted','deme.split','channel.bank','channel.sensed','channel.form',
+                  'metric.moved'].filter(n=>names.indexOf(n)<0),
             promotedNotACrossingRow:names.indexOf('probe.promoted')<0};
   });
 
@@ -563,10 +621,35 @@ ck('#189 the seeded form reads as UNMOVED and a changed one as moved',
 ck('#189 a bigger neighbourhood costs more', FS.tapRent>0,
    'CHANNEL_TAP_RENT = '+FS.tapRent+' per tap beyond the seeded four — which is what makes SHRINKING a stencil profitable');
 
+// #190
+const M=r.metric||{};
+ck('#190 the seeded metric IS Math.hypot, bit for bit', M.diff===0,
+   M.diff+'/400 differed — the fast path is the exactness guarantee, not an optimisation');
+ck('#190 Euclidean is a circle', M.euclid && M.euclid.axis===1 && M.euclid.diag===1 && M.euclid.perp===1);
+ck('#190 p=1 is a DIAMOND — diagonals become farther', M.taxi && M.taxi.diag<M.taxi.axis*0.8,
+   'axis '+(M.taxi&&M.taxi.axis)+', diagonal '+(M.taxi&&M.taxi.diag));
+ck('#190 p=4 bulges toward a SQUARE', M.cheby && M.cheby.diag>M.cheby.axis*1.1,
+   'axis '+(M.cheby&&M.cheby.axis)+', diagonal '+(M.cheby&&M.cheby.diag));
+ck('#190 anisotropy is an ELLIPSE and preserves area',
+   M.wide && Math.abs(M.wide.axis*M.wide.perp-1)<0.01,
+   'axis '+(M.wide&&M.wide.axis)+' x perp '+(M.wide&&M.wide.perp)+' = 1 — reach is reshaped, not inflated (cellScale is the reach gene)');
+ck('#190 and rotation TURNS it', M.rotated && Math.abs(M.rotated.axis-(M.wide&&M.wide.perp))<0.01,
+   'the same ellipse at 90 degrees: axis '+(M.rotated&&M.rotated.axis)+', perp '+(M.rotated&&M.rotated.perp));
+ck('#190 every legal metric is finite, non-negative and sign-symmetric', M.bad===0 && M.asym===0,
+   M.bad+' bad, '+M.asym+' asymmetric across 35 cases');
+ck('#190 and zero at zero', M.zero===0, 'or the self-distance gate breaks');
+ck('#190 METRIC=0 is a true revert', M.offVal===5 && Math.abs(M.onVal-5)>0.01,
+   'the same genes give '+M.offVal+' off and '+(M.onVal||0).toFixed(2)+' on');
+const IV=r.invisible||{};
+ck('#190 two lineages can share a region and stop perceiving each other',
+   IV.overlap!==undefined && IV.overlap<0.5,
+   'same anisotropy, orthogonal orientation: each admits ~'+IV.a+'/'+IV.total+' pairs and only '+IV.both+
+   ' are admitted by BOTH — '+((IV.overlap||0)*100).toFixed(1)+'% overlap, against Euclidean\'s '+IV.euclid);
+
 // the crossings
 const CR=r.cross||{};
 const SV=CR.saved||{};
-for(const k of ['fold','cede','phys','deme','net','oeeW','probe','claimCleared','chan','form'])
+for(const k of ['fold','cede','phys','deme','net','oeeW','probe','claimCleared','chan','form','metric'])
   ck('save -> load: '+k, SV[k]===true);
 ck('cloneGenome shares none of it', CR.shared && !CR.shared.oeeW && !CR.shared.probes && !CR.shared.probe0 && !CR.shared.chan && !CR.shared.chan0 && !CR.shared.chanSt && !CR.shared.chanTap,
    CR.shared && JSON.stringify(CR.shared));
@@ -574,7 +657,7 @@ ck('parent -> child: the proxy weights diverge', CR.childMoved>0, CR.childMoved+
 ck('germline -> population: the substrate actually crosses', CR.seeded===true && CR.carriers>0,
    CR.carriers+' carrier(s) after one seeding - the bug the crossing rows caught seven times');
 ck('every new gene has a census row', CR.rows && CR.rows.length===0,
-   CR.rows && CR.rows.length?('missing: '+CR.rows.join(' ')):'all ten present');
+   CR.rows && CR.rows.length?('missing: '+CR.rows.join(' ')):'all eleven present');
 // #187: and the one that must NOT be a crossing row. A promotion is an earned outcome, not authored
 // structure, so "germline 1 / population 0" is the normal state of a young world - it was reported as
 // STRANDED and made crossing-test red for something that is not a defect. It is logged per epoch now.

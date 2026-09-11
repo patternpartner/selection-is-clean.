@@ -1900,11 +1900,53 @@ at the price of `ka`..`kd` meaning one thing in an atom and another in a channel
 confusion is the class of defect this file has paid for seven times; it bought nothing selection
 cannot already reach.
 
-**WHAT IS STILL CLOSED.** The RESOLUTION (40x40), the fact that a cell is a square of a regular grid,
-the particles' own continuous space and the position->cell map, and the global tick. A channel's
-coupling structure is its own; the lattice it is drawn on is not. And nothing a lineage evolves can
-change what DISTANCE means to a particle — the particles' space is still Euclidean 2D with a fixed
-metric, which neither #188 nor #189 touches.
+**WHAT IS STILL CLOSED after #189.** The RESOLUTION (40x40), the fact that a cell is a square of a
+regular grid, the particles' own continuous space and the position->cell map, and the global tick. A
+channel's coupling structure is its own; the lattice it is drawn on is not.
+
+### #190 — the interaction metric is a lineage trait
+
+`metP` (Minkowski exponent, [0.5,4]), `metAx` (anisotropy, [0.25,4]) and `metRot` (rotation,
+UNBOUNDED - a rotation is periodic, so a clamp would create two artificial attractors; sanitizeGenome
+WRAPS it into [0,2pi) instead). Seeded (2,1,0). `metDist(dx,dy,g)` rotates, scales the two axes, then
+takes the p-norm.
+
+**THE FAST PATH IS THE EXACTNESS GUARANTEE, not an optimisation.** At (2,1,0) `metDist` returns
+`Math.hypot` itself rather than a p=2 pow that is merely close - 0 of 400 random displacements differ,
+bit for bit. That is what makes an unmutated genome IDENTICAL and not approximately equal, which every
+A/B here depends on. Do not "simplify" that branch away.
+
+**ANISOTROPY IS AREA-PRESERVING** (`dx*ax`, `dy/ax`) so `metAx` reshapes reach without inflating it.
+`genome.cellScale` (#183) is already the reach gene; two genes pulling on one quantity is how a
+measurement stops being interpretable.
+
+| shape | axis | diag | perp | |
+|---|---|---|---|---|
+| (2,1,0) | 1.0 | 1.0 | 1.0 | a circle |
+| (1,1,0) | 1.0 | 0.707 | 1.0 | a diamond - diagonals become FARTHER |
+| (4,1,0) | 1.0 | 1.189 | 1.0 | bulges toward a square |
+| (2,2,0) | 0.5 | 0.686 | 2.0 | an ellipse, area 1 |
+| (2,2,pi/2) | 2.0 | 0.686 | 0.5 | the same ellipse, turned |
+
+**ONE SITE ONLY.** A metric belongs to a PERCEIVER, so `_dm` is computed inside the `_drv` repoint in
+the pair loop and passed to `entrain`, `executeVM` and `executeClusterVM`. Everything outside that
+block keeps the Euclidean `d` - not laziness: outside it there is no single perceiver, and picking one
+would restore the lower-array-index artifact the `_drv` coin exists to remove. The asymmetry is
+already solved by that coin: each particle's metric governs ~half its encounters.
+
+**THE BOUND is #183's, restated.** The neighbour grid supplies candidates within a EUCLIDEAN `CELL`
+radius, so a metric whose unit ball reaches past it (p>2 diagonals, large `ax` long axis) has those
+pairs never offered and is CLIPPED there. The metric reshapes within the Euclidean candidate set.
+
+**WHAT THIS REACHES,** and it is most of the engine: the interaction gate, `proximity` (every atom's
+`c`), force and transfer scaling, entrainment, and through the flood-fill WHAT A CLUSTER IS - hence
+what #182's levels are built from. The consequence worth knowing: two lineages with orthogonally
+oriented metrics share a region and admit mostly-disjoint neighbourhoods (measured: 30.8% overlap
+against Euclidean's near-total), which is ecological separation by PERCEPTION rather than position.
+
+**STILL CLOSED after #190:** the lattice resolution, the grid's Euclidean candidate radius, the
+position->cell map, and the global tick. Distance is now a lineage trait; the coordinate system it is
+computed in is not.
 
 ### #186 — the germline-to-population crossing, stated generally
 

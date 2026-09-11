@@ -357,6 +357,24 @@ let __UPLASMID=true;  // #185: universe-level plasmids carrying laws and operato
 // real one. What moves is that the space of chemistries is no longer a list I wrote - it is whatever
 // the atom grammar can express, and the atom grammar is the thing #180 opened.
 let __CHANNEL=true;   // #188: lineage-allocated media with evolved reaction rules. Force off with CHANNEL=0
+// === #190 - WHAT DISTANCE MEANS ================================================================
+// #189's closing note named the last thing neither it nor #188 touched: "nothing a lineage evolves
+// can change what DISTANCE means to a particle - the particles' space is still Euclidean 2D with a
+// fixed metric." #188 and #189 opened the media and the spaces those media live on. This opens the
+// space the PARTICLES live in, which is the one that decides who can affect whom at all.
+//
+// Three genes make the metric a lineage trait: a Minkowski exponent, an axis anisotropy, and a
+// rotation. Seeded at (2, 1, 0), which is exactly `Math.hypot` and takes a fast path that is
+// bit-identical to the pre-#190 engine rather than merely equal to it.
+//
+// WHY THIS IS THE INTERESTING ONE. Everything downstream of distance is everything: the interaction
+// gate, `proximity` (which reaches every atom as `c`), the force and transfer scaling, phase
+// entrainment, and - through the flood-fill - WHAT A CLUSTER IS, and therefore what #182's higher
+// levels are built out of. And the consequence that no amount of content evolution could produce:
+// TWO LINEAGES WITH ORTHOGONALLY ORIENTED METRICS CAN OCCUPY THE SAME REGION AND BE NEARLY INVISIBLE
+// TO EACH OTHER. That is ecological separation by PERCEPTION rather than by position - a niche axis
+// that does not exist in a world with one metric.
+let __METRIC=true;   // #190: the interaction metric is a lineage trait. Force off with METRIC=0
 // Highest alienGrip among a genome's BOUND atoms, tie-broken by uses so a bank with no scored atom
 // behaves exactly as before. Returns -1 if there is nothing bound.
 // Returns -1 unless some bound atom has ACTUAL grip (>= ALIEN_GRIP_MIN_ATTEMPTS attempts and a non-zero
@@ -619,6 +637,9 @@ const LIVENESS_DECLARED=[
   // medium and never sensed or acted on it is visible as such rather than inferred.
   'channel.alloc','channel.drift','channel.release','channel.update','channel.write','channel.wire',
   'channel.formStep',   // #189: the neighbourhood, the manifold or the timescale took a step
+  // #190: batched through firedN from flushEpoch - a metric is applied per pair interaction, which is
+  // far too hot for a census call, exactly as atom.opFire is.
+  'metric.applied',
 ];
 // NOT INSTRUMENTED, and deliberately absent rather than declared-and-silent: cladogenesis minting
 // (#17) has no single entry point I could identify with confidence. A census that reports "never"
@@ -765,6 +786,10 @@ const CROSSING_DECLARED=[
   // #188: two rows, on the pattern #180 established. channel.bank says the chemistry crossed;
   // channel.sensed says any atom in this genome actually NAMES a medium - the row that would catch
   // the case where a lineage carries four invented media and perceives none of them.
+  // #190: has this lineage's SPACE moved? Deviation from Euclidean, the same construction the four
+  // rows around it use - a population sitting at (2,1,0) has never been selected on its geometry,
+  // and that reads 0 rather than reading adoption.
+  {name:'metric.moved',  read:g=>metMoved(g)?1:0},
   {name:'channel.bank',  read:g=>chanAllocated(g)},
   // #189: has this lineage's SPACE moved? Deviation from the seeded form, on the same construction
   // as xion.cede and phys.reach: a bank whose channels all still couple like #188's has never been
@@ -2583,6 +2608,7 @@ function seedSubstrateIntoParticle(){
   // plain scalars, copied by value.
   if(genome.uaFoldMode!==undefined){ g.uaFoldMode=genome.uaFoldMode; g.uaFoldK=genome.uaFoldK; }
   if(genome.autonomyCede!==undefined)g.autonomyCede=genome.autonomyCede;
+  if(genome.metP!==undefined){ g.metP=genome.metP; g.metAx=genome.metAx; g.metRot=genome.metRot; }   // #190
   if(genome.cellScale!==undefined)g.cellScale=genome.cellScale;
   if(genome.rxSelf!==undefined)g.rxSelf=genome.rxSelf;
   if(genome.rxCross!==undefined)g.rxCross=genome.rxCross;
@@ -8317,6 +8343,7 @@ function flushEpoch(acc){
   }
   {
     firedN('atom.opFire',__uaOpFires); firedN('atom.opFallback',__uaOpFallbacks);
+    firedN('metric.applied',__metApplied); __metApplied=0;   // #190
     // #187: the promotion count, germline and population, on the same row as the operator bank -
     // moved here from CROSSING_DECLARED, where "not yet earned" read as "stranded". Counted over the
     // living population rather than the germline alone, because the germline is one carrier out of
@@ -9011,6 +9038,64 @@ const CHANNEL_RENT=0.6;        // instruction-equivalents per ALLOCATED channel 
 // the fact that a cell is a square of a regular grid, the particles' own continuous space and the
 // position->cell map that indexes into it, and the global tick. A channel's coupling structure is now
 // its own; the lattice it is drawn on is not.
+// === #190 - THE METRIC =========================================================================
+// distance(dx,dy) under this lineage's own norm. The displacement is ROTATED, then SCALED on its two
+// axes, then reduced by a Minkowski p-norm:
+//
+//   p = 2, ax = 1, rot = 0     Euclidean. The fast path below returns Math.hypot exactly.
+//   p -> 1                     taxicab: diagonals become FARTHER, so a particle's neighbourhood is
+//                              a diamond and its corner-neighbours fall outside reach.
+//   p -> large                 Chebyshev-ish: a SQUARE neighbourhood, diagonals as near as axials.
+//   ax != 1                    anisotropy - an elliptical neighbourhood. A lineage that interacts
+//                              along a line rather than across a disc.
+//   rot != 0                   an ORIENTED lineage, and the reason this matters: two lineages whose
+//                              ellipses are orthogonal share a region and barely perceive each other.
+//
+// AREA-PRESERVING ANISOTROPY. dx scales by `ax` and dy by 1/`ax`, so the unit ball keeps its area and
+// anisotropy RESHAPES reach without inflating or deflating it. Scaling one axis alone would have made
+// `ax` a reach gene wearing a shape gene's name, and genome.cellScale (#183) is already the reach
+// gene - two genes pulling on one quantity is how a measurement becomes uninterpretable.
+//
+// THE BOUND, and it is the same one #183 stated for cellScale rather than a new one: the neighbour
+// grid offers CANDIDATE pairs within a EUCLIDEAN radius of CELL. A metric whose unit ball extends
+// beyond that ball - p > 2 along the diagonals, or a large `ax` along its long axis - has those
+// pairs simply never offered, so it is CLIPPED at the grid radius rather than honoured. The evolved
+// metric reshapes within the Euclidean candidate set. Saying so is cheaper than the next reader
+// measuring a p=4 lineage and wondering why its corners are missing.
+const MET_RENT=0.2;      // instruction-equivalents per interaction while the metric is non-default. Two Math.pow per pair is a real cost and is priced; the Euclidean fast path pays nothing
+let __metApplied=0;      // instrument state off the genome (#131); drained per epoch through firedN
+function metP(g){ const gg=g||((typeof genome!=='undefined')?genome:null);
+  return __cl(finiteOr(gg&&gg.metP,2),0.5,4); }
+function metAx(g){ const gg=g||((typeof genome!=='undefined')?genome:null);
+  return __cl(finiteOr(gg&&gg.metAx,1),0.25,4); }
+function metRot(g){ const gg=g||((typeof genome!=='undefined')?genome:null);
+  const r=finiteOr(gg&&gg.metRot,0); return isFinite(r)?r:0; }
+// Is this lineage's metric still Euclidean? Used by the census row and to decide the fast path, on
+// the same "deviation from the seed" construction as xion.cede, phys.reach and channel.form.
+function metMoved(g){
+  if(!__METRIC)return false;
+  return Math.abs(metP(g)-2)>1e-6||Math.abs(metAx(g)-1)>1e-6||Math.abs(metRot(g))>1e-6;
+}
+// THE FAST PATH IS ALSO THE EXACTNESS GUARANTEE. An unmutated lineage does not take a p-norm with
+// p=2 and hope the floating point agrees with hypot - it takes hypot. That is what makes METRIC=0
+// and an unmutated genome bit-identical rather than approximately equal, which every A/B in this
+// repo depends on.
+function metDist(dx,dy,g){
+  if(!__METRIC)return Math.hypot(dx,dy);
+  const p=metP(g), ax=metAx(g), rot=metRot(g);
+  if(Math.abs(p-2)<1e-6&&Math.abs(ax-1)<1e-6&&Math.abs(rot)<1e-6)return Math.hypot(dx,dy);
+  let u=dx,v=dy;
+  if(rot!==0){ const cs=Math.cos(rot), sn=Math.sin(rot); u=dx*cs+dy*sn; v=-dx*sn+dy*cs; }
+  u=Math.abs(u*ax); v=Math.abs(v/ax);
+  __metApplied++;
+  // p exactly 1 and exactly 2 are worth their own branches: they are the two a lineage is most
+  // likely to sit on and both are cheaper than a pow.
+  let r;
+  if(Math.abs(p-1)<1e-6)      r=u+v;
+  else if(Math.abs(p-2)<1e-6) r=Math.sqrt(u*u+v*v);
+  else                        r=Math.pow(Math.pow(u,p)+Math.pow(v,p),1/p);
+  return isFinite(r)?r:Math.hypot(dx,dy);
+}
 const CHANNEL_STENCIL_MAX=6;   // taps per stencil. Each tap is a read per cell per update, so this is the cost knob
 const CHANNEL_OFFSET_MAX=7;    // |dx|,|dy| bound. A genuine remaining bound: a radius-20 stencil is 1,600 reads per cell
 const CHANNEL_CAD_MAX=8;       // cadence multiplier ceiling - a channel may run up to 8x slower than the base
@@ -9501,6 +9586,9 @@ function encodeGenome(){
     // would restore a medium that computes the same thing in a different space, which is a different
     // medium - and pre-#189 rows are 2 long and load with the seeded form, which is correct for a
     // save written before a channel had a form to record.
+    mtp:genome.metP===undefined?undefined:+(+genome.metP).toFixed(4),      // #190 the metric: exponent, anisotropy, orientation
+    mtx:genome.metAx===undefined?undefined:+(+genome.metAx).toFixed(4),
+    mtr:genome.metRot===undefined?undefined:+(+genome.metRot).toFixed(5),
     chn:Array.isArray(genome.channels)?genome.channels.map(r=>(r&&typeof r.expr==='string')?
       [String(r.expr).slice(0,UA_EXPR_MAX),r.age|0,
        (Array.isArray(r.st)?r.st.map(t=>[t[0]|0,t[1]|0,+(+t[2]).toFixed(3)]):null),r.wrap|0,r.cad|0]:0):undefined,  // #188 the chemistry, not the chemicals - a lattice is world state and is not saved with the genome
@@ -9851,6 +9939,9 @@ function decodeGenome(data){
     if(typeof g.ait==='number')genome.atomIdleTolerance=+g.ait;  // #177 (absent in pre-#177 saves → undefined → reads 0 → the old cull, which is the correct inheritance)
     if(typeof g.usb==='number')genome.uaStructBias=+g.usb;       // #107
     // #180 (absent in pre-#180 saves → left undefined → every reader's default → the pre-#180 engine)
+    if(typeof g.mtp==='number')genome.metP=+g.mtp;      // #190 (absent -> undefined -> reads Euclidean, which is what a pre-#190 save meant)
+    if(typeof g.mtx==='number')genome.metAx=+g.mtx;
+    if(typeof g.mtr==='number')genome.metRot=+g.mtr;
     if(Array.isArray(g.chn))genome.channels=g.chn.map(r=>Array.isArray(r)?{expr:String(r[0]),compiled:null,failed:false,age:r[1]|0,uses:0,
       st:Array.isArray(r[2])?r[2]:null, wrap:r[3]|0, cad:r[4]|0}:null);  // #188 +#189 the form. A pre-#189 row is 2 long: st/wrap/cad read undefined and the readers supply the seeded form, which IS what that save meant
     if(Array.isArray(g.prb))genome.probes=g.prb.map(r=>Array.isArray(r)?{expression:String(r[0]),compiled:null,
@@ -10123,6 +10214,13 @@ function sanitizeGenome(){
   // repaired - #159's reason, and sharper here than for an atom: a channel rule is compiled AND
   // base64'd into every save AND run over 1,600 cells, so one bad character would disable saving and
   // burn the lattice pass at the same time.
+  // #190: clamp if present, never create. metRot is wrapped into [0, 2pi) rather than clamped - the
+  // quantity is periodic, and a save that accumulated a rotation of 40 radians means the same
+  // orientation as one at 40 mod 2pi while being far harder to read.
+  if(genome.metP!==undefined)  genome.metP=__cl(finiteOr(genome.metP,2),0.5,4);
+  if(genome.metAx!==undefined) genome.metAx=__cl(finiteOr(genome.metAx,1),0.25,4);
+  if(genome.metRot!==undefined){ const _TAU=Math.PI*2; let _r=finiteOr(genome.metRot,0)%_TAU;
+    if(_r<0)_r+=_TAU; genome.metRot=_r; }
   if(genome.channels!==undefined){
     const _cb=Array.isArray(genome.channels)?genome.channels:[];
     genome.channels=[];
@@ -16254,6 +16352,19 @@ function mutateGenome(){ fired('genome.mutate');
   // it (no verb targets chan0) - and either alone is survivable. A medium is only useless when both
   // are true, so both are checked, and the lattice is left behind to decay rather than zeroed: a
   // medium does not vanish because nothing is maintaining it.
+  // #190: the metric. Seeded (2,1,0) = Euclidean, which takes metDist's fast path and is therefore
+  // bit-identical rather than merely equal. Lazily created for #97's reason like every gene here.
+  // metRot is deliberately NOT clamped to a range - a rotation is periodic, so any real value is a
+  // legal orientation and a clamp would create two artificial attractors at the ends of the range.
+  // It is the only gene in this file with no bounds, and that is a property of the quantity.
+  if(__METRIC){
+    if(genome.metP===undefined)genome.metP=2;
+    if(genome.metAx===undefined)genome.metAx=1;
+    if(genome.metRot===undefined)genome.metRot=0;
+    genome.metP=__cl(finiteOr(genome.metP,2)+(Math.random()<rate?(Math.random()-0.5)*0.3*scale:0),0.5,4);
+    genome.metAx=__cl(finiteOr(genome.metAx,1)+(Math.random()<rate?(Math.random()-0.5)*0.3*scale:0),0.25,4);
+    if(Math.random()<rate)genome.metRot=finiteOr(genome.metRot,0)+(Math.random()-0.5)*0.5*scale;
+  }
   if(__CHANNEL){
     if(!Array.isArray(genome.channels))genome.channels=[];
     const _fx=Array.isArray(genome.userEffects)?genome.userEffects:[];
@@ -18581,11 +18692,15 @@ function executeVM(i,j,sim,d){
   // per update, so a six-tap stencil is half again the work of the seeded four - and the surcharge is
   // what makes SHRINKING a stencil a move selection can profit from, rather than a strictly
   // dominated one. Priced against the seeded four so #188's form is exactly CHANNEL_RENT.
+  // #190: a non-Euclidean metric costs two transcendentals per interaction and is priced for it. The
+  // Euclidean fast path pays nothing, so this is a charge for having left Euclidean rather than a
+  // charge for existing - which is the right shape: the default should not subsidise the departure.
+  const _metRent=metMoved()?MET_RENT:0;
   let _chanRent=0;
   if(__CHANNEL){ const _cb=chanBank();
     if(_cb) for(let _k=0;_k<CHANNEL_MAX;_k++){ const _r=_cb[_k];
       if(_r&&typeof _r.expr==='string') _chanRent+=CHANNEL_RENT+Math.max(0,chanTaps(_r)-4)*CHANNEL_TAP_RENT; } }
-  const totalCost=(nInst+_stack+_opRent+_foldRent+_probeRent+_chanRent+_over16*(COMPLEXITY_TOLL-1))*genome.metabolicCost;
+  const totalCost=(nInst+_stack+_opRent+_foldRent+_probeRent+_chanRent+_metRent+_over16*(COMPLEXITY_TOLL-1))*genome.metabolicCost;
   amp[i]-=totalCost;amp[j]-=totalCost;
 
   for(let ip=0,_vs=0;ip<nInst&&_vs<nInst*2;ip++,_vs++){
@@ -23948,9 +24063,23 @@ function processGrid(){
              let _sppD=0;for(let _spk=0;_spk<_sppN;_spk++)if(_sppA[_spk]&&_sppB[_spk]&&_sppA[_spk][0]!==_sppB[_spk][0])_sppD++;
              const _spGate=(_sppN===0||_sppD<_sppN*0.75)&&(!__SPEC.gate||pLin[_drv]===pLin[_oth]); // ≥75% opcode mismatch = behavioral isolation; #17 also suppresses entrainment across lineage ids when isolating
              const _g=genome;genome=pGenome[_drv]||genome;try{
-              if(_spGate)entrain(_drv,_oth,sim,d); // suppressed between behaviorally isolated lineages
-              executeVM(_drv,_oth,sim,d);
-              executeClusterVM(_drv,_oth,sim,d);
+              // === #190 - THE DISTANCE IS THE DRIVER'S ==================================
+              // A metric is a property of a PERCEIVER, so it is computed exactly here - after the
+              // repoint that establishes which genome governs this exchange - and nowhere else.
+              // Everything OUTSIDE this block (the localRes gain, MODE_REACH, the neighbour count)
+              // keeps the Euclidean `d`, and that is not laziness: outside the block there is no
+              // single perceiver whose metric it could be, and picking one would be the
+              // lower-array-index artifact this very line was written to remove.
+              //
+              // AND THE ASYMMETRY IS ALREADY SOLVED, by the coin above rather than by anything #190
+              // adds. `_drv` is an unbiased draw, so each particle's metric governs about half its
+              // encounters: a taxicab lineage perceives a diamond in half of them and its Euclidean
+              // partner perceives a disc in the other half. That is genuine per-perceiver geometry
+              // with no arbitrary tie-break, and it falls out of a decision made long before this.
+              const _dm=__METRIC?metDist(px[_oth]-px[_drv],py[_oth]-py[_drv]):d;
+              if(_spGate)entrain(_drv,_oth,sim,_dm); // suppressed between behaviorally isolated lineages
+              executeVM(_drv,_oth,sim,_dm);
+              executeClusterVM(_drv,_oth,sim,_dm);
             }finally{genome=_g;}}
             // Pe31 Layer 21: update neighbor models during interaction.
             // Both i models j, and j models i — recognition is mutual.
@@ -24786,6 +24915,7 @@ __OEE_BONUS=(typeof globalThis==='undefined')||((globalThis.__OEE_BONUS??1)|0)!=
 __DEME=(typeof globalThis==='undefined')||((globalThis.__DEME??1)|0)!==0;         // #185: default ON, and a NO-OP at the seeded genes: demeCount 1 means one pool, which is the pre-#185 engine
 __UPLASMID=(typeof globalThis==='undefined')||((globalThis.__UPLASMID??1)|0)!==0; // #185: default ON. Force off with UPLASMID=0 - no world offers or accepts another world's physics
 __CHANNEL=(typeof globalThis==='undefined')||((globalThis.__CHANNEL??1)|0)!==0;   // #188: default ON. Force off with CHANNEL=0 - no lattice is allocated, ka..kd read 0 and are never offered to the generator, and the four chan targets no-op
+__METRIC=(typeof globalThis==='undefined')||((globalThis.__METRIC??1)|0)!==0;   // #190: default ON, and a NO-OP at the seeded genes: metDist takes the hypot fast path at (2,1,0), so an unmutated lineage is bit-identical
 __FORAGE_ON=(typeof globalThis==='undefined')||((globalThis.__FORAGE_EYES??1)|0)!==0; // resolve FORAGE once; gates the resource-sense computation in uaSetEyes
 __DECIDE_ON=(typeof globalThis==='undefined')||((globalThis.__DECIDE??1)|0)!==0; // resolve DECISION GAIN once; gates confidence accrual + commitment scaling
 __DECIDE_REAL=(typeof globalThis==='undefined')||((globalThis.__DECIDE_REAL??1)|0)!==0; // resolve DECIDE-FROM-REAL once; gates real-winner physics adoption

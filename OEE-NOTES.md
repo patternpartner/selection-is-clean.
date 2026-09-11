@@ -14401,3 +14401,123 @@ That run was otherwise the healthiest yet: 203 alive, zero extinctions, save rou
 `channel.sensed` 1/89, `probe.bank` 4/365, `oee.weighted` 2/185.
 
 `substrate-test.js`: 80 checks, 11 of them #189's.
+
+---
+
+## #190 — WHAT DISTANCE MEANS
+
+#189's closing note named the last thing neither it nor #188 had touched: *"nothing a lineage evolves
+can change what DISTANCE means to a particle — the particles' space is still Euclidean 2D with a fixed
+metric."* #188 opened the media; #189 opened the spaces those media live on. This opens the space the
+**particles** live in, which is the one that decides who can affect whom at all.
+
+Three genes: a Minkowski exponent `metP`, an area-preserving anisotropy `metAx`, and a rotation
+`metRot`. Seeded `(2, 1, 0)`.
+
+### Why this one is the interesting one
+
+Everything downstream of distance is everything. The interaction gate. `proximity`, which reaches
+every atom in the system as `c`. The force and transfer scaling. Phase entrainment. And — through the
+flood-fill — **what a cluster is**, and therefore what #182's higher levels are built out of.
+
+And the consequence no amount of content evolution could produce: **two lineages with orthogonally
+oriented metrics can occupy the same region and be nearly invisible to each other.** That is
+ecological separation by *perception* rather than by position — a niche axis that does not exist in a
+world with one metric.
+
+Measured, on 4,000 displacements inside the interaction radius, two lineages with identical anisotropy
+and orthogonal orientation:
+
+```
+each admits          ~1,236 of 4,000 pairs
+admitted by BOTH        381              30.8% overlap
+Euclidean admits      3,153
+```
+
+They share the region completely and perceive mostly-disjoint neighbourhoods.
+
+### The shapes, measured rather than asserted
+
+The unit ball's reach, found by bisection in three directions:
+
+```
+                  axis    diagonal   perpendicular
+Euclidean          1.0      1.0          1.0        a circle
+p = 1              1.0      0.707        1.0        a DIAMOND - diagonals become farther
+p = 4              1.0      1.189        1.0        bulges toward a SQUARE
+ax = 2             0.5      0.686        2.0        an ELLIPSE - and 0.5 x 2.0 = 1
+ax = 2, rot = pi/2 2.0      0.686        0.5        the same ellipse, TURNED
+```
+
+**Anisotropy is area-preserving on purpose.** `dx` scales by `ax` and `dy` by `1/ax`, so the unit ball
+keeps its area and `ax` reshapes reach without inflating it. Scaling one axis alone would have made
+`ax` a reach gene wearing a shape gene's name — and `genome.cellScale` (#183) is already the reach
+gene. Two genes pulling on one quantity is how a measurement becomes uninterpretable.
+
+### The exactness guarantee, and why it is a fast path
+
+The seeded metric does not take a p-norm with p=2 and hope the floating point agrees with `hypot`. It
+**takes `hypot`.** Measured: 0 of 400 random displacements differ, bit for bit. That is what makes
+`METRIC=0` and an unmutated genome *identical* rather than *approximately equal*, which every A/B in
+this repo depends on. `METRIC=0` with a deliberately extreme genome `(1, 4, 1.0)` returns exactly
+5.000 for (3,4) where the same genes on return 20.04.
+
+Also checked across the whole legal range: finite, non-negative, symmetric in the displacement's sign,
+and zero at zero — 35 cases, 0 violations. `metRot` is the only gene in this file with **no bounds**,
+and that is a property of the quantity: a rotation is periodic, so every real value is a legal
+orientation and a clamp would create two artificial attractors at the ends of a range. `sanitizeGenome`
+wraps it into `[0, 2π)` rather than clamping it.
+
+### One site, and the asymmetry was already solved
+
+A metric is a property of a **perceiver**, so it is computed exactly where a perceiver is established
+— inside the `_drv` repoint — and nowhere else. Everything outside that block (the `localRes` gain,
+`MODE_REACH`, the neighbour count) keeps the Euclidean `d`, and that is not laziness: outside the
+block there is no single perceiver whose metric it could be, and picking one would reintroduce the
+lower-array-index artifact that the `_drv` coin was written to remove.
+
+And the asymmetry falls out of a decision made long before #190. `_drv` is an **unbiased coin**, so
+each particle's metric governs about half its encounters: a taxicab lineage perceives a diamond in
+half of them and its Euclidean partner perceives a disc in the other half. Genuine per-perceiver
+geometry, with no arbitrary tie-break, from machinery that was already there.
+
+### The bound, which is #183's rather than a new one
+
+The neighbour grid offers **candidate** pairs within a **Euclidean** radius of `CELL`. A metric whose
+unit ball extends beyond that ball — p > 2 along the diagonals, or a large `ax` along its long axis —
+has those pairs simply never offered, so it is **clipped at the grid radius** rather than honoured. The
+evolved metric reshapes within the Euclidean candidate set. Saying so is cheaper than the next reader
+measuring a p=4 lineage and wondering where its corners went.
+
+Costed at `MET_RENT` = 0.2 per interaction while non-default — two transcendentals per pair is a real
+cost. The Euclidean fast path pays nothing, so this is a charge for having *left* Euclidean rather
+than for existing, which is the right shape: the default should not subsidise the departure.
+
+### Not measured
+
+No A/B against `METRIC=0`, no seed sweep, no claim about fitness or persistence. The *shapes* above
+are **constructed, not evolved** — they show the metric can produce diamonds, squares, oriented
+ellipses and perceptual separation, not that a lineage found any particular one useful.
+
+**But unlike `channel.form`, the metric does move on its own in a headless window, and I predicted
+otherwise.** I wrote "`metric.moved` reads 0/0 for the same arithmetic reason `channel.form` does"
+before the run came back, reasoning by analogy. The run refutes it:
+
+```
+metric.moved            germline 1 / population 38
+the germline's metric   p 2.163,  ax 0.935,  rot -0.429 rad  (about -24.6 degrees)
+metric.applied          245,093 interactions governed by a non-Euclidean metric
+```
+
+The analogy was wrong because the arithmetic is different: three plain scalar genes each mutated at
+`rate` per cycle is a much larger target than one channel's form drifting at `rate*0.25`. An oriented
+lineage arose in 12,000 ticks without being asked to. What is *not* shown is that the orientation
+paid for itself — 38 carriers is a foothold, not a fixation, and `MET_RENT` is being charged the whole
+time. That is the question for the field, and `metric.moved` against the persistence ratio is what
+will answer it.
+
+Population 227, zero extinctions, fitness 0.624, save round-trips clean, and **nothing stranded on any
+row** — `xion.cede` 1/37, `phys.reach` 1/40, `phys.chem` 0/24, `probe.bank` 4/149, `metric.moved`
+1/38, `channel.bank` 4/90, `channel.sensed` 4/59, `oee.weighted` 3/66.
+
+`substrate-test.js`: 91 checks, 11 of them #190's.
