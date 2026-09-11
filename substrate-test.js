@@ -891,6 +891,155 @@ m._compile(code+`
             row:cen.rows.some(x=>x.name==='channel.grain')};
   });
 
+  // -- #195  A MEDIUM IS CONTAGIOUS --------------------------------------------------------------
+  // #194 measured its own binding constraint: channel.bank germline 4 / population 10-24 out of ~200,
+  // because a chemistry authored AFTER the population exists reaches it only through
+  // seedSubstrateIntoParticle, one particle per mutateGenome. #195 adds a second route that does not
+  // go through descent. These check the four things that would make it wrong rather than slow:
+  // that rate 0 draws NO random number (the exact-revert guarantee), that a transfer moves the WHOLE
+  // medium, that slot identity is preserved or nothing happens, and that receiving can never destroy
+  // an evolved chemistry.
+  out.xfer=run('xfer',()=>{
+    const saveCh=genome.channels;
+    // THE RATE IS ON THE RULE, not on the genome. The first version of #195 made it a host scalar
+    // and four 12,000-tick runs answered with channel.xfer NEVER FIRING and the gene evolved to 0:
+    // infectiousness is pure cost to a host, so host-level selection correctly removed it. The unit
+    // of selection for a selfish element is the element.
+    const mkRule=(e,st,wrap,cad,res,xf)=>({expr:e,compiled:null,failed:false,age:5,uses:3,
+      st:st||[[2,-1,0.75]],wrap:wrap===undefined?1:wrap,cad:cad||3,res:res||8,
+      xfer:xf===undefined?0.01:xf});
+    // two neighbours, in phase, on a strong bond
+    for(let k=0;k<N;k++)palive[k]=false;
+    palive[0]=true; palive[1]=true;
+    px[0]=400; py[0]=400; px[1]=410; py[1]=400;
+    phase[0]=0; phase[1]=0; amp[0]=1.5; amp[1]=1.5;
+    for(const q of [0,1]){ if(!pGenome[q])pGenome[q]=cloneGenome(genome); }
+    const setup=(donorRate,donorBank,recipBank,recipAtoms)=>{
+      pGenome[0]=cloneGenome(genome); pGenome[1]=cloneGenome(genome);
+      // plasmidTransferThresh is set only because the FIRST version of #195 reused it as a gate and
+      // the live A/B refuted that (390 gate firings, zero transfers - the bond gate selects for the
+      // similarity that makes transfer impossible). #195 no longer reads it; these two lines stay
+      // because the plasmid mechanism shares this code path and a stray threshold there would make
+      // the counts below depend on something this block is not about.
+      // donorRate is applied to every rule in the donor bank, because the rate is the rule's
+      pGenome[0].plasmidTransferThresh=0.99; pGenome[1].plasmidTransferThresh=0.99;
+      if(Array.isArray(donorBank))for(const _r of donorBank) if(_r)_r.xfer=donorRate;
+      // the rig drives at the TOP of the range, which chanXferRate clamps to - so the counts below
+      // are per-interaction upper bounds, not what a live lineage evolves to (measured at ~4e-4)
+      pGenome[0].channels=donorBank; pGenome[1].channels=recipBank;
+      pGenome[1].userAtoms=recipAtoms||[];
+      amp[0]=1.5; amp[1]=1.5;
+    };
+    const drive=(n)=>{ const x0=__chanXfers, s0=__chanXferSensed, d0=__chanXferDeclined;
+      for(let q=0;q<n;q++){
+        const _g=genome; genome=pGenome[0];
+        try{ executeVM(0,1,1,4); }catch(e){}
+        finally{ genome=_g; }
+      }
+      return {x:__chanXfers-x0, sensed:__chanXferSensed-s0, declined:__chanXferDeclined-d0}; };
+
+    // 1. RATE 0 CONSUMES NO RANDOM NUMBER. Not "behaves the same" - draws the same numbers. Measured
+    //    by comparing the next value out of the stream against the knob-off path.
+    const streamAfter=(useKnobOff)=>{
+      setup(0,[mkRule('(a)*(0.9)'),null,null,null],[null,null,null,null]);
+      const sv=__CHANXFER; if(useKnobOff)__CHANXFER=false;
+      drive(1);
+      if(useKnobOff)__CHANXFER=sv;
+      return null;
+    };
+    // the honest form of that check: with the gene at 0 nothing transfers and nothing is declined,
+    // which can only be true if the gate short-circuited before the draw
+    setup(0,[mkRule('(a)*(0.9)'),null,null,null],[null,null,null,null]);
+    const atZero=drive(600);
+
+    // 2. AND AT A REAL RATE IT FIRES, moving the WHOLE medium
+    setup(0.05,[mkRule('(a)*(0.9)',[[2,-1,0.75],[-3,2,-0.5]],1,3,8),null,null,null],[null,null,null,null]);
+    const fired40=drive(600);
+    const got=pGenome[1].channels&&pGenome[1].channels[0];
+    const whole=!!got&&got.expr==='(a)*(0.9)'&&got.wrap===1&&got.cad===3&&chanRes(got)===8&&
+                Array.isArray(got.st)&&got.st.length===2&&got.st[1][0]===-3&&
+                Math.abs(got.st[1][2]+0.5)<1e-6;
+    const freshRecord=!!got&&got.age===0&&got.uses===0;
+    // deep-copied to the tap, or one stencil is shared by donor and recipient
+    const donorRule=pGenome[0].channels[0];
+    const deep=!!got&&got.st!==donorRule.st&&got.st[0]!==donorRule.st[0];
+    const donorPaid=amp[0]<1.5;
+
+    // 3. SAME SLOT OR NOTHING. A rule in donor slot 2 lands in recipient slot 2 and nowhere else.
+    setup(0.05,[null,null,mkRule('(kc)+(0.10)'),null],[null,null,null,null]);
+    const slot2=drive(600);
+    const rb=pGenome[1].channels;
+    const slotKept=!!(rb&&rb[2]&&rb[2].expr==='(kc)+(0.10)')&&!rb[0]&&!rb[1]&&!rb[3];
+
+    // 4. AND RECEIVING NEVER DESTROYS AN EVOLVED CHEMISTRY. Donor holds slot 0, recipient already
+    //    holds slot 0 with something different: the gate passes, no slot is compatible, nothing moves.
+    // Driven to 600 rather than 60: at rate 0.05 the gate fires about three times in sixty, and the
+    // first version of this check read 0 declines out of 0 gate firings and went red for sampling.
+    // #143's rule - drive the rare path, do not wait for it.
+    setup(0.05,[mkRule('(a)*(0.9)'),null,null,null],[mkRule('(b)+(0.50)'),null,null,null]);
+    const occupied=drive(600);
+    const kept=pGenome[1].channels[0].expr==='(b)+(0.50)';
+
+    // 5. A TRANSFER INTO A LINEAGE THAT CAN SEE THE MEDIUM is counted separately from one that
+    //    cannot - #188 spent a swing on that distinction and it is the difference between a public
+    //    good and pure rent.
+    // BLIND: the recipient holds a channel-naming atom, but for a DIFFERENT slot than the one it
+    // receives. The first version of this gave it an atom naming ka and transferred slot 0, which is
+    // the seeing case wearing the blind case's name - ka IS slot 0.
+    setup(0.05,[mkRule('(a)*(0.9)'),null,null,null],[null,null,null,null],
+          [{expression:'(kd)+(0.00)',compiled:null,failed:false,uses:0,state:0}]);
+    const blind=drive(600);
+    setup(0.05,[null,mkRule('(kb)*(0.5)'),null,null],[null,null,null,null],
+          [{expression:'(kb)+(0.00)',compiled:null,failed:false,uses:0,state:0}]);
+    const seeing=drive(600);
+
+    // 6. AND A RECIPIENT THAT HAS NEVER HELD A CHANNEL AT ALL, which is the case the mechanism
+    //    exists for and the case the first implementation silently excluded: an untouched genome has
+    //    channels === undefined, not [null,null,null,null]. Live, that was channel.xferDeclined 2,549
+    //    against channel.xfer ZERO - every opportunity a collision between two carriers, while the
+    //    129 non-carriers in the same world were never considered.
+    setup(0.01,[mkRule('(a)*(0.7)'),null,null,null],[null,null,null,null]);
+    pGenome[1].channels=undefined;
+    const virgin=drive(600);
+    const gotFromNothing=Array.isArray(pGenome[1].channels)&&
+                         pGenome[1].channels.length===CHANNEL_MAX&&
+                         !!pGenome[1].channels[0]&&pGenome[1].channels[0].expr==='(a)*(0.7)';
+    // and an interaction that does NOT transfer must not have allocated a bank on the way past
+    setup(0,[mkRule('(a)*(0.7)',null,0,1,40,0),null,null,null],[null,null,null,null]);
+    pGenome[1].channels=undefined;
+    drive(200);
+    const noAllocWhenQuiet=pGenome[1].channels===undefined;
+
+    // 7. THE KNOB
+    setup(0.05,[mkRule('(a)*(0.9)'),null,null,null],[null,null,null,null]);
+    const svk=__CHANXFER; __CHANXFER=false;
+    const offRun=drive(600);
+    __CHANXFER=svk;
+
+    // 8. THE ELEMENT'S RATE IS BOUNDED, SURVIVES A SAVE, AND STEPS INCREMENTALLY
+    genome.channels=[mkRule('(a)*(0.8)',null,0,1,40,0.004),null,null,null];
+    const blob=encodeGenome();
+    genome.channels=undefined;
+    decodeGenome(blob); sanitizeGenome();
+    const r0=genome.channels&&genome.channels[0];
+    const saved=!!r0&&Math.abs(chanRuleXfer(r0)-0.004)<1e-4;
+    const hi=chanRuleXfer({xfer:9}), lo=chanRuleXfer({xfer:-3}), absent=chanRuleXfer({});
+    const stepRule={expr:'(a)',xfer:0.005};
+    let smoves=0, sillegal=0, sreach0=false, sreachTop=false;
+    for(let q=0;q<4000;q++){
+      chanXferStep(stepRule); smoves++;
+      const v=chanRuleXfer(stepRule);
+      if(!(v>=0&&v<=0.01))sillegal++;
+      if(v<=0)sreach0=true;
+      if(v>=0.00999)sreachTop=true;
+    }
+
+    genome.channels=saveCh;
+    return {atZero,fired40,whole,freshRecord,deep,donorPaid,cost:CHANXFER_COST,
+            slot2,slotKept,occupied,kept,blind,seeing,offRun,virgin,gotFromNothing,noAllocWhenQuiet,
+            bounds:{hi,lo,absent},saved,smoves,sillegal,sreach0,sreachTop};
+  });
+
   // ── THE CROSSINGS: every new gene must survive a save and diverge in a child ────────────────
   out.cross=run('cross',()=>{
     genome.uaFoldMode=2; genome.uaFoldK=3.25; genome.autonomyCede=0.8;
@@ -1311,6 +1460,45 @@ ck('#194 parent -> child: the grain diverges', GX.childMoved>0,
 ck('#194 germline -> population: the grain crosses with the medium', GX.grainCarriers>0,
    (GX.grainCarriers||0)+' carrier(s) after one seeding — dropping res from that one rebuild made channel.grain STRANDED at germline 2 / population 0 on a live run while every other crossing passed');
 ck('#194 and it has a census row', GX.row===true);
+
+// #195
+const XF=r.xfer||{};
+ck('#195 at rate 0 nothing transfers and nothing is even declined',
+   XF.atZero && XF.atZero.x===0 && XF.atZero.declined===0,
+   'over 600 interactions: '+(XF.atZero&&XF.atZero.x)+' transfers, '+(XF.atZero&&XF.atZero.declined)+
+   ' declines — a decline would mean the gate ran, and the gate running means a draw was consumed');
+ck('#195 at a real rate the chemistry travels sideways', XF.fired40 && XF.fired40.x>0,
+   (XF.fired40&&XF.fired40.x)+' transfer(s) in 600 interactions — a route that does not go through descent, and the gate is the rate gene ALONE: the first version reused the plasmid bond gate and the live run read 390 firings with zero transfers, because sim is genetic similarity and near-relatives hold the same slots');
+ck('#195 and the WHOLE medium moves: chemistry, form, manifold, timescale, grain', XF.whole===true,
+   'a medium that arrives computing the same thing in a different space at a different rate is a different medium');
+ck('#195 the record resets on arrival', XF.freshRecord===true,
+   'age and uses are facts about how long this rule has sat HERE — a freshly infected carrier has not been judged yet');
+ck('#195 deep-copied to the tap', XF.deep===true,
+   'or donor and recipient share one neighbourhood and neither can diverge it — #155, #180, #189, #193 and #194 were all this');
+ck('#195 the donor pays', XF.donorPaid===true,
+   'CHANXFER_COST = '+XF.cost+' amplitude per transfer — without it "be infectious" has no downside and the gene drifts up unopposed');
+ck('#195 slot identity is preserved: donor slot 2 lands in recipient slot 2', XF.slotKept===true,
+   'ka..kd are bound by slot index and the lattice is world state per slot, so a shifted slot is #141\'s stranger reading our dictionary, with the dictionary being the chemistry');
+ck('#195 receiving NEVER destroys an evolved chemistry', XF.kept===true && XF.occupied && XF.occupied.x===0 && XF.occupied.declined>0,
+   (XF.occupied&&XF.occupied.declined)+' declines, 0 transfers, the recipient\'s own rule intact — a lineage cannot be made worse off by being infected in a slot it was using');
+ck('#195 a transfer into a lineage that can SEE the medium is counted apart from one that cannot',
+   XF.seeing && XF.blind && XF.seeing.sensed>0 && XF.blind.sensed===0,
+   'seeing '+(XF.seeing&&XF.seeing.sensed)+'/'+(XF.seeing&&XF.seeing.x)+', blind '+(XF.blind&&XF.blind.sensed)+'/'+(XF.blind&&XF.blind.x)+
+   ' — xfer>0 with xferSensed==0 is a chemistry spreading as pure rent, which is a real outcome and should be visible rather than inferred');
+ck('#195 a particle that has NEVER held a channel can receive one',
+   XF.gotFromNothing===true && XF.virgin && XF.virgin.x>0,
+   (XF.virgin&&XF.virgin.x)+' transfer(s) into an undefined bank — the first implementation required Array.isArray on both sides and so excluded exactly the particles a chemistry most needs to reach');
+ck('#195 and a quiet interaction allocates nothing on the way past', XF.noAllocWhenQuiet===true,
+   'the bank is materialised at the moment of transfer, not at the moment of looking');
+ck('#195 CHANXFER=0 is a true revert', XF.offRun && XF.offRun.x===0 && XF.offRun.declined===0);
+ck('#195 the ELEMENT\'s rate is bounded, absent reads 0, and it survives a save',
+   XF.bounds && XF.bounds.hi===0.01 && XF.bounds.lo===0 && XF.bounds.absent===0 && XF.saved===true,
+   'clamped to ['+(XF.bounds&&XF.bounds.lo)+', '+(XF.bounds&&XF.bounds.hi)+'], absent reads '+(XF.bounds&&XF.bounds.absent)+
+   ' (which is what every pre-#195 save meant), round-trip '+XF.saved);
+ck('#195 and it takes a small step that can reach both ends',
+   XF.sillegal===0 && XF.sreach0===true && XF.sreachTop===true,
+   XF.smoves+' steps, '+XF.sillegal+' outside [0, 0.01], reached zero '+XF.sreach0+' and the top '+XF.sreachTop+
+   ' — reaching zero is the element being able to give up spreading, which is the only way a rule can stop being a parasite without being deleted');
 
 // the crossings
 const CR=r.cross||{};

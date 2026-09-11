@@ -15198,3 +15198,162 @@ The position→cell map itself (a cell is still a square, and the map from a pos
 world per tab.
 
 `substrate-test.js`: 148 checks, 17 of them #194's. `slot-test.js`: 9 ok. `smoke.sh`: 49 ok, 0 failing.
+
+## #195 — A MEDIUM IS CONTAGIOUS, and six live refutations on the way there
+
+#194 ended by naming its own binding constraint with a number:
+
+```
+channel.bank   germline 4 / population 10-24     out of ~200 alive
+```
+
+So #188's media, #189's forms and #194's grains were all real, all priced, all crossing — and all
+reaching five to twelve percent of the genomes selection actually operates on.
+
+**The cause is #186 and no constant fixes it.** Atoms reach everyone (`atom.bank` germline 8 /
+population 331) because they were in the germline *before* the population existed, so every particle
+descends from a carrier. Channels are authored **late** — `channel.alloc` fires three or four times
+in 12,000 ticks — and the only route in is `seedSubstrateIntoParticle`, one random living particle per
+`mutateGenome`. Thirty-eight seedings against two hundred particles with turnover is exactly the
+ten-to-twenty-four observed. **Structure authored before the population is universal; structure
+authored after it is rare.** That is a property of descent.
+
+So: a second route that does not go through descent. A chemistry passes from one particle to another
+on contact, carrying its rule, form, manifold, timescale and grain, into the **same slot index or not
+at all** (`ka..kd` are bound by index and the lattice is world state per slot, so a shifted slot is
+#141's stranger reading our dictionary with the dictionary being the chemistry), and never over an
+occupied slot (so being infected cannot destroy an evolved chemistry).
+
+### This swing was wrong six times and the live runs said so every time
+
+Worth recording in order, because the errors are more instructive than the mechanism:
+
+**1. The gate selected for the thing that makes transfer impossible.** I reused the plasmid gate
+verbatim — `bondStrength = sim * phaseAlign` over `plasmidTransferThresh`.
+
+```
+12,000 ticks:   channel.xferDeclined 390,   channel.xfer ZERO
+```
+
+`sim` is genetic similarity, so a high bond means near-relatives, and near-relatives hold the **same
+slots** — every compatible-slot scan came back empty. The precondition for transfer is complementarity
+and the gate was filtering for identity. It is also the wrong biology, which was the clue I should
+have taken first: horizontal transfer matters precisely because it moves genes *between* strains.
+Descent already spreads a chemistry within a lineage.
+
+**2. Infectiousness as a HOST gene is pure cost, and selection removed it.**
+
+```
+four runs:   channel.xfer NEVER FIRED,   the gene evolved to 0 or 8e-5 of a [0, 0.01] range
+```
+
+No rate would have fixed this. A donor pays amplitude, hands a competitor a working chemistry, and
+gains nothing. Selection was right. **I had built a selfish genetic element and then asked the host to
+want it.** The rate moved onto the rule, where it travels with every copy — the element is the unit of
+selection, and this is the first mechanism in this file whose unit of selection is smaller than a
+particle.
+
+**3. The recipients who most needed a chemistry were the ones the guard excluded.** The scan required
+`Array.isArray` on **both** banks, and a particle that has never held a channel has
+`channels === undefined`, not `[null,null,null,null]`.
+
+```
+channel.xferDeclined 2,549,   channel.xfer ZERO
+```
+
+Every opportunity a collision between two carriers, while the 129 non-carriers in the same world were
+never considered. The only plain mistake of the six.
+
+**4. The scan broke at the first compatible slot regardless of that rule's rate**, so a rate-0 rule in
+slot 0 shadowed a contagious rule in slot 3 forever.
+
+```
+channel.xferDeclined 16,464,   channel.xfer ZERO
+```
+
+It now picks the **most contagious** compatible slot: the element competes to be the one that moves.
+
+**5. A trait with no variation at birth is not a trait selection can act on.** New rules were born at
+`xfer = 0`, so every element had to rediscover mobility through a walk that gets about two steps per
+run (#192's germline ceiling). Rules crept to 2.5e-4 and nothing transferred. Born with
+`Math.random()*0.01` instead — inside the knob, so the exact-revert control is untouched.
+
+**6. And then it worked, and the brake turned out not to exist.**
+
+```
+channel.xfer 784,   channel.bank population 21 -> 987 of a maximum 1,000
+channel.xferSensed 5 of 784
+```
+
+Ninety-nine percent of transfers landed in lineages that could not perceive what they had received:
+the media swept the world as pure `CHANNEL_RENT`. #188 already has the right criterion for dropping a
+useless medium — not sensed, not acted into, past the grace period — but that release runs in
+`mutateGenome`, about thirty-eight times per run and **only on the self**. Infection was
+per-interaction and release was germline-only. That is not selection choosing a parasite; it is
+selection never getting a vote.
+
+So the same criterion now runs at birth cadence on the carrier's own bank — and *that* exposed the
+sixth error: **`age` was incremented only in the germline drift loop**, so a transferred rule, which
+arrives at age 0, sat at age 0 forever in every population carrier. The brake was gated on a clock
+that never ran. `channel.shed` read 2 against 750 transfers; with the clock ticking it reads 43.
+
+> **A release criterion with an unreachable precondition is not a slow brake. It is no brake, and from
+> the outside it reads exactly like a slow one.**
+
+### Where it landed
+
+```
+12,000 ticks, two seeds, CHANXFER off -> on
+                  seed 1                    seed 2
+  channel.bank    g3/p21   ->  g4/p1050     g4/p24   ->  g3/p573
+  channel.sensed  g1/p17   ->  g3/p271      g4/p8    ->  g2/p275
+  channel.form    g2/p14   ->  g1/p56       g0/p1    ->  g1/p141
+  channel.xfer         —   ->  778               —   ->  435
+  channel.shed         —   ->  43                —   ->  11
+  fitness         0.658    ->  0.564        0.688    ->  0.774
+  alive           214      ->  265          165      ->  201
+```
+
+#194's bottleneck is gone: invented media reach essentially the whole population instead of a tenth
+of it, and with them #189's forms (14 → 56, 1 → 141 carriers) and #194's grains. The layers built in
+the four previous swings are now selectable across the population that selection operates on, which
+was the entire point.
+
+### What this costs, stated rather than buried
+
+**It sweeps.** `channel.bank` at population 1,050 with 265 alive and four slots is near-total
+saturation: almost every particle holds almost every medium. So the variance in *whether* a lineage
+has a chemistry is gone, and what remains is variance in the chemistry's content — which is what
+#188/#189/#194 are about, but it is a real change in the world's character and not a side effect.
+
+**Transfer is still overwhelmingly parasitic.** `channel.xferSensed` is 6 of 778 and 62 of 435: most
+arrivals land where nothing can perceive them. `channel.shed` (43, 11) is real but runs at a few
+percent of the infection rate. The asymmetry is smaller than it was by a factor of twenty and it has
+not been closed.
+
+**Fitness moved in both directions** — down 14% in one seed, up 12% in the other. Not a wash and not a
+result; two seeds is two seeds.
+
+The single lever for anyone who wants a slower sweep is the birth draw at allocation
+(`Math.random()*0.01`). It is deliberately not tuned down here: a mechanism that does not fire is the
+failure this whole session has been repairing, and the honest thing is to ship it firing and say what
+firing looks like.
+
+### What this does NOT show
+
+That contagious media are *good*. It shows they are reachable, priced at both ends, heritable in the
+element, and that they solve the crossing bottleneck #194 measured. Whether a chemistry that spreads
+is worth carrying is what `channel.xferSensed` against `channel.shed` will answer over more seeds
+than two.
+
+### And crossing-test at 2,500 ticks, which is the #194 note repeating itself
+
+`verb.bank germline 1 / population 0` — STRANDED, on a row #195 does not touch. This is the third
+different row to read stranded in three consecutive swings at realistic tick counts (#194:
+`phys.reach` here and `verb.sensed`/`phys.chem` on HEAD), and it is the same cause each time: a
+point-in-time count cannot distinguish "never crossed" from "crossed and was selected away". The row
+that catches #195's actual subject reads `channel.bank germline 1 / population 99` in the same run —
+transfer working at 2,500 ticks, against ten to twenty-four before. `smoke.sh` runs the rig at
+TICKS=40, before anything can be selected away, and passes 49 of 49.
+
+`substrate-test.js`: 162 checks, 14 of them #195's. `smoke.sh`: 49 ok, 0 failing.

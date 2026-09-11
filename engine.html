@@ -537,6 +537,107 @@ let __EMIT=true;   // #193: authored verbs get an evolvable emission geometry. F
 // is already finer than anything a particle can resolve, so the interesting axis was always toward
 // coarse. Saying which direction is closed, and why, beats the next reader measuring it.
 let __GRAIN=true;   // #194: a medium's grain is a gene. Force off with GRAIN=0
+// === #195 - A MEDIUM IS CONTAGIOUS =============================================================
+// #194 ended by naming its own binding constraint, with a number rather than a feeling:
+//
+//   channel.bank   germline 4 / population 10-24     out of a population of ~200
+//
+// So #188's media, #189's forms and #194's grains are all real, all priced, all crossing - and all
+// reaching five to twelve percent of the genomes selection actually operates on. A capability that
+// reaches a twentieth of the population is ninety-five percent closed in practice, which is #179's
+// argument and #191's, in a third place.
+//
+// THE CAUSE IS #186, and it is not a rate that needs raising. Atoms reach EVERYONE (atom.bank
+// germline 8 / population 331) because they were in the germline before the population existed, so
+// every particle descends from a carrier. Channels are authored LATE - channel.alloc fires three or
+// four times in 12,000 ticks, at whatever moment the draw lands - and the only route in is
+// seedSubstrateIntoParticle, one random living particle per mutateGenome. Thirty-eight seedings
+// against two hundred particles with turnover is exactly the ten to twenty-four observed. Structure
+// authored before the population is universal; structure authored after it is rare. That is a
+// property of descent, and no constant in this file fixes it.
+//
+// What fixes it is a SECOND ROUTE that does not go through descent: horizontal transfer. A chemistry
+// can pass from one particle to another on a strong bond, so a medium spreads through a living
+// population faster than a lineage can grow. The machinery already exists and is already evolvable -
+// particles have traded plasmid instructions since Pe22, on exactly this gate
+// (bondStrength > plasmidTransferThresh, probability plasmidTransferRate) - so #195 adds a rate gene
+// and a copy, not a mechanism.
+//
+// AND THIS IS NOT A PLUMBING FIX WEARING A SWING'S CLOTHES, because making the crossing rate a GENE
+// rather than a constant opens something that was previously inexpressible: a chemistry can now be a
+// PUBLIC GOOD or a SELFISH ELEMENT. A rule that helps its host spreads by helping it; a rule that
+// merely spreads well also spreads, and its recipients pay CHANNEL_RENT for a medium they may not
+// sense. Infectiousness and usefulness become separable traits under separate selection, which is the
+// whole of horizontal gene transfer's interest and none of it was sayable here before.
+//
+// SLOT IDENTITY IS PRESERVED OR THE TRANSFER DOES NOT HAPPEN. A rule can only move into the SAME slot
+// index it occupied in the donor, and only if that slot is empty in the recipient. Both halves matter:
+// ka..kd are bound by slot index and the lattice is world state per slot, so donor slot 2 landing in
+// recipient slot 0 would make every kc-reading atom read a different medium - #141's "a stranger
+// reading our dictionary" with the dictionary being the chemistry. And refusing to overwrite means
+// receiving can never destroy an evolved chemistry, so a lineage cannot be made worse off by being
+// infected in a slot it was using.
+//
+// THE DONOR PAYS. Without a cost, "be infectious" has no downside and the gene drifts up unopposed -
+// a runaway, not a strategy. CHANXFER_COST comes off the donor's amplitude per transfer, in the same
+// currency the per-instruction toll uses. The recipient pays too, automatically and without a new
+// line: CHANNEL_RENT already bills per allocated rule, so an unsensed transferred medium is dead
+// weight its carrier can release after the grace period. The mechanism turns itself off at both ends.
+let __CHANXFER=true;   // #195: invented chemistry spreads horizontally. Force off with CHANXFER=0
+const CHANXFER_COST=0.004;   // donor amplitude per transfer - a conjugation is work
+let __chanXfers=0, __chanXferSensed=0, __chanXferDeclined=0;   // instrument state off the genome (#131); drained per epoch
+// THE RATE BELONGS TO THE RULE, NOT TO THE HOST, and that is the second correction this swing took
+// from a live run rather than from reasoning. The first version made `chanXferRate` a genome scalar -
+// "how infectious is this lineage" - and four 12,000-tick runs answered:
+//
+//   channel.xfer NEVER FIRED, and the gene evolved to 0 or 8e-5 out of a [0, 0.01] range
+//
+// It is not a reachability problem and no rate would have fixed it. A HOST gene for infectiousness is
+// pure cost to its carrier: the donor pays amplitude, hands a competitor a working chemistry, and
+// gains nothing. Selection correctly drove it to zero. I had built a selfish genetic element and then
+// asked the host to want it.
+//
+// Real horizontal transfer is not driven by the host. A plasmid spreads because COPIES OF IT spread -
+// the element is the unit of selection, and the host's preference does not enter. So the rate lives on
+// the channel rule, travels with it on transfer, and is selected at the level of the rule: a chemistry
+// that spreads becomes more numerous, whatever its carriers would have preferred. That is a new level
+// of selection in this engine rather than a new parameter on an old one, and it is the first mechanism
+// here whose unit of selection is smaller than a particle.
+//
+// THE BRAKE WAS ALREADY BUILT. A spreading rule that its recipient can neither sense nor act into is
+// pure CHANNEL_RENT, and #188's release path drops exactly that rule after the grace period
+// (!sensed && !acted && age > UA_OP_GRACE*2). So the dynamic is: parasitic chemistries spread and are
+// purged, useful ones spread and are kept. Nothing new was needed to oppose the runaway - the
+// mechanism that opposes it is the one that has been there since #188.
+//
+// SEEDED ZERO, AND THAT IS THE EXACT-REVERT GUARANTEE rather than a shy default. At rate 0 the gate
+// short-circuits BEFORE any Math.random(), so an unmutated lineage does not merely behave the same -
+// it draws the same numbers, and every A/B in this repo still holds.
+function chanRuleXfer(rule){
+  if(!__CHANXFER)return 0;
+  return __cl(finiteOr(rule&&rule.xfer,0),0,0.01);
+}
+// #103: one small step on the rule's own infectiousness, in the same drift chain as its chemistry,
+// form and grain. A fourth independent thing a lineage can move without disturbing the other three.
+function chanXferStep(rule){
+  if(!__CHANXFER||!rule)return false;
+  const v=chanRuleXfer(rule)+(Math.random()-0.5)*0.002;
+  rule.xfer=__cl(isFinite(v)?v:0,0,0.01);
+  fired('channel.xferStep');
+  return true;
+}
+// Does this genome already have an atom that names slot k? A transfer into a lineage that can SEE the
+// medium is a different event from one into a lineage that cannot, and #188 spent a whole swing on
+// exactly that distinction ("a genome with a medium it cannot perceive pays rent for nothing"), so
+// the two are counted separately rather than summed.
+function chanSensesSlot(g,k){
+  const uas=g&&g.userAtoms;
+  if(!Array.isArray(uas))return false;
+  const nm=CHANNEL_NAMES[k];
+  for(const a of uas) if(a&&typeof a.expression==='string'&&a.expression.indexOf(nm)>=0)return true;
+  return false;
+}
+
 // EVERY VALUE DIVIDES FIELD_W EXACTLY, so a block is a whole number of cells and there is no
 // remainder row hiding at the edge of the lattice. 40/5=8, 40/8=5, 40/10=4, 40/20=2, 40/40=1.
 const CHANNEL_RES_SET=[5,8,10,20,40];
@@ -849,6 +950,11 @@ const LIVENESS_DECLARED=[
   // #194: grainStep is the gene moving; channel.coarse is a coarse update actually RUNNING. The
   // first without the second would mean lineages evolving a scale that never reaches a lattice pass.
   'channel.grainStep','channel.coarse',
+  // #195: xfer is the route firing; xferSensed is a transfer into a lineage that can actually PERCEIVE
+  // the medium it just received; xferDeclined is the gate passing and no compatible slot existing.
+  // All three named because the interesting failure is xfer>0 with xferSensed==0 - a chemistry
+  // spreading as pure rent, which is a real outcome and should be visible rather than inferred.
+  'channel.xfer','channel.xferSensed','channel.xferDeclined','channel.xferStep','channel.shed',
 ];
 // NOT INSTRUMENTED, and deliberately absent rather than declared-and-silent: cladogenesis minting
 // (#17) has no single entry point I could identify with confidence. A census that reports "never"
@@ -2875,7 +2981,7 @@ function seedSubstrateIntoParticle(){
      // the same way through sanitizeGenome's rebuild, and #133b's successor through
      // seedEffectIntoParticle. A channel rule is now rebuilt in FIVE places - here, cloneGenome,
      // sanitizeGenome, decodeGenome and encodeGenome - and a new field has to be added to all five.
-     wrap:r.wrap|0,cad:r.cad|0,res:__GRAIN?chanRes(r):FIELD_W}:null);
+     wrap:r.wrap|0,cad:r.cad|0,res:__GRAIN?chanRes(r):FIELD_W,xfer:chanRuleXfer(r)}:null);   // #195
   // AND ONE ATOM THAT SENSES ONE, because a chemistry nothing perceives is what channel.sensed is
   // there to warn about. MEASURED: after the wire-at-allocation hand-off was added, channel.bank
   // crossed at 4/86 and channel.sensed still read 3/0 - because the wire fires only at ALLOCATION
@@ -8598,6 +8704,9 @@ function flushEpoch(acc){
     firedN('reach.beyondRing',__reachBeyond); __reachBeyond=0;   // #191
     firedN('tick.skipped',__tickSkips); __tickSkips=0;           // #192
     firedN('channel.coarse',__chanCoarse); __chanCoarse=0;       // #194
+    firedN('channel.xfer',__chanXfers); __chanXfers=0;           // #195
+    firedN('channel.xferSensed',__chanXferSensed); __chanXferSensed=0;
+    firedN('channel.xferDeclined',__chanXferDeclined); __chanXferDeclined=0;
     firedN('emit.spread',__emitSpread); __emitSpread=0;          // #193 - batched, a verb can fire thousands of times per epoch
     firedN('emit.selfFrame',__emitSelfFrame); __emitSelfFrame=0;
     // #187: the promotion count, germline and population, on the same row as the operator bank -
@@ -9089,7 +9198,7 @@ function cloneGenome(src){
     // ever diverge its own space - the seventh instance of the bug this file keeps re-learning.
     {expr:r.expr,compiled:null,failed:!!r.failed,age:r.age|0,uses:0,
      st:Array.isArray(r.st)?r.st.map(t=>[t[0]|0,t[1]|0,finiteOr(t[2],0)]):null,
-     wrap:r.wrap|0,cad:r.cad|0,res:__GRAIN?chanRes(r):FIELD_W}:null):src.channels;   // #194: the grain crosses with the chemistry - a child whose medium is a different SIZE has a different medium
+     wrap:r.wrap|0,cad:r.cad|0,res:__GRAIN?chanRes(r):FIELD_W,xfer:chanRuleXfer(r)}:null):src.channels;   // #195: the element's infectiousness is heritable down the line as well as sideways   // #194: the grain crosses with the chemistry - a child whose medium is a different SIZE has a different medium
   g.probes=Array.isArray(src.probes)?src.probes.map(pr=>pr?{expression:pr.expression,compiled:null,
     failed:!!pr.failed,n:pr.n|0,hit:pr.hit|0,pending:finiteOr(pr.pending,0),pendTick:-1,pendFit:0,age:pr.age|0}:null):src.probes;
   g.oeeW=Array.isArray(src.oeeW)?src.oeeW.slice():src.oeeW;
@@ -9235,6 +9344,48 @@ function mutateChildGenome(g){
     if(!_r||typeof _r.expr!=='string')continue;
     if(Math.random()<rate*0.5)chanFormStep(_r);
     if(__GRAIN&&Math.random()<rate*0.5)chanGrainStep(_r);
+    if(__CHANXFER&&Math.random()<rate*0.5)chanXferStep(_r);   // #195: on the fast route, like the form and the grain
+  }
+  // === #195 - AND THE BRAKE RUNS AT THE SAME SPEED AS THE INFECTION ==============================
+  // MEASURED, and it is the finding that made this necessary rather than nice: with transfer working,
+  // channel.bank went from population 21 to population 987 out of a maximum of 1,000 - every particle
+  // holding every slot - and channel.xferSensed was 5 of 784. Ninety-nine percent of transfers landed
+  // in lineages that could not perceive what they had just received. The media swept the world as
+  // pure CHANNEL_RENT.
+  //
+  // #188 already has the right criterion for dropping a useless medium - not sensed by any atom, not
+  // acted into by any verb, past the grace period - but that release runs in mutateGenome, which
+  // fires about thirty-eight times per run AND only on the self. So infection was per-interaction and
+  // release was germline-only: a fast process against a slow one, and the fast one wins regardless of
+  // what it is worth. That is not selection choosing a parasite, it is selection never getting a vote.
+  //
+  // The same criterion, at birth cadence, on the carrier's own bank. A child drops an inherited
+  // medium it can neither sense nor act into. So a chemistry that spreads and is USED is kept, and
+  // one that spreads and is merely carried is shed about as fast as it arrives - which is the
+  // difference between a mutualist and a parasite being decided by the population rather than by me.
+  if(__CHANXFER&&Array.isArray(g.channels)){
+    const _uas=Array.isArray(g.userAtoms)?g.userAtoms:[];
+    const _fx=Array.isArray(g.userEffects)?g.userEffects:[];
+    for(let _k=0;_k<CHANNEL_MAX;_k++){
+      const _r=g.channels[_k];
+      if(!_r||typeof _r.expr!=='string')continue;
+      // AND THE GRACE CLOCK HAS TO TICK HERE, which is why this line is an increment and not just a
+      // test. `age` was incremented only in mutateGenome's drift loop - the GERMLINE's bank - so a
+      // transferred rule, which arrives at age 0, sat at age 0 forever in every population carrier.
+      // The brake was gated on a clock that never ran: measured at channel.shed 2 against
+      // channel.xfer 750. A release criterion with an unreachable precondition is not a slow brake,
+      // it is no brake, and it reads exactly like a slow one from the outside.
+      _r.age=(_r.age|0)+1;
+      if((_r.age|0)<=UA_OP_GRACE)continue;            // the grace clock, halved from the germline path: a birth is a smaller unit of time than a mutateGenome cycle
+      let _sensed=false;
+      const _nm=CHANNEL_NAMES[_k];
+      for(const _a of _uas){ if(_a&&typeof _a.expression==='string'&&_a.expression.indexOf(_nm)>=0){_sensed=true;break;} }
+      if(_sensed)continue;
+      let _acted=false;
+      for(const _e of _fx){ if(_e&&(_e.t|0)===(11+_k)){_acted=true;break;} }
+      if(_acted)continue;
+      if(Math.random()<rate*2){ g.channels[_k]=null; fired('channel.shed'); }
+    }
   }
   // #184: the proxy weights diverge in the child like objWeights do. The probe bank does NOT drift
   // here on purpose - a probe is scored over PROBE_LAG ticks and a bank rewritten at every birth
@@ -10160,7 +10311,7 @@ function encodeGenome(){
     chn:Array.isArray(genome.channels)?genome.channels.map(r=>(r&&typeof r.expr==='string')?
       [String(r.expr).slice(0,UA_EXPR_MAX),r.age|0,
        (Array.isArray(r.st)?r.st.map(t=>[t[0]|0,t[1]|0,+(+t[2]).toFixed(3)]):null),r.wrap|0,r.cad|0,
-       chanRes(r)|0]:0):undefined,   // #194 the grain is element 5; a pre-#194 row is 5 long and reads undefined -> FIELD_W, which IS what that save meant  // #188 the chemistry, not the chemicals - a lattice is world state and is not saved with the genome
+       chanRes(r)|0,+chanRuleXfer(r).toFixed(5)]:0):undefined,   // #195 element 6   // #194 the grain is element 5; a pre-#194 row is 5 long and reads undefined -> FIELD_W, which IS what that save meant  // #188 the chemistry, not the chemicals - a lattice is world state and is not saved with the genome
     prb:Array.isArray(genome.probes)?genome.probes.map(pr=>pr?[String(pr.expression).slice(0,UA_EXPR_MAX),pr.n|0,pr.hit|0]:0):undefined,
     oew:Array.isArray(genome.oeeW)?genome.oeeW.map(v=>+(+v).toFixed(4)):undefined,
     dmc:genome.demeCount===undefined?undefined:(genome.demeCount|0),              // #185 internal population structure
@@ -10520,7 +10671,8 @@ function decodeGenome(data){
     if(typeof g.mtr==='number')genome.metRot=+g.mtr;
     if(Array.isArray(g.chn))genome.channels=g.chn.map(r=>Array.isArray(r)?{expr:String(r[0]),compiled:null,failed:false,age:r[1]|0,uses:0,
       st:Array.isArray(r[2])?r[2]:null, wrap:r[3]|0, cad:r[4]|0,
-      res:(typeof r[5]==='number')?(r[5]|0):FIELD_W}:null);   // #194  // #188 +#189 the form. A pre-#189 row is 2 long: st/wrap/cad read undefined and the readers supply the seeded form, which IS what that save meant
+      res:(typeof r[5]==='number')?(r[5]|0):FIELD_W,
+      xfer:(typeof r[6]==='number')?+r[6]:0}:null);   // #195 (absent -> 0 -> not contagious, which is what a pre-#195 save meant)   // #194  // #188 +#189 the form. A pre-#189 row is 2 long: st/wrap/cad read undefined and the readers supply the seeded form, which IS what that save meant
     if(Array.isArray(g.prb))genome.probes=g.prb.map(r=>Array.isArray(r)?{expression:String(r[0]),compiled:null,
       failed:false,n:r[1]|0,hit:r[2]|0,pending:0,pendTick:-1,pendFit:0,age:0}:null);   // #184
     if(Array.isArray(g.oew))genome.oeeW=g.oew.map(v=>+v);
@@ -10825,7 +10977,10 @@ function sanitizeGenome(){
         cad:__cl(Math.round(finiteOr(r.cad,1)),1,CHANNEL_CAD_MAX),
         // #194: SNAPPED, not clamped, and set HERE because this map is a rebuild that deletes every
         // key it does not name - #193 lost its verb stencil to the identical pattern one commit ago.
-        res:chanRes(r)}:null;
+        res:chanRes(r),
+        // #195: and the element's own rate, clamped in the same rebuild for #194's reason - this map
+        // DELETES every key it does not name, and #194's grain was STRANDED for exactly that.
+        xfer:chanRuleXfer(r)}:null;
     }
   }
   if(genome.probes!==undefined){
@@ -17022,6 +17177,11 @@ function mutateGenome(){ fired('genome.mutate');
         // medium computes, what "next to" means in it, and how big a place is, are three independent
         // things and a lineage should be able to move any one without disturbing the others.
         chanGrainStep(_r);
+      } else if(__CHANXFER&&Math.random()<rate*0.25){
+        // #195: and its INFECTIOUSNESS on a fourth. This one is not the lineage's trait even though
+        // the lineage's mutation machinery is what moves it - the number lives on the rule and is
+        // selected by which rules end up numerous, which is a different level from the three above.
+        chanXferStep(_r);
       } else if((_r.age|0)>UA_OP_GRACE*2){
         let _sensed=false;
         const _uas=Array.isArray(genome.userAtoms)?genome.userAtoms:[];
@@ -17039,7 +17199,16 @@ function mutateGenome(){ fired('genome.mutate');
         // #189: allocated with the SEEDED form - the four-neighbour mean on a clamped plane at the
         // base cadence - so a new medium starts as #188's and evolves its own space from there.
         genome.channels[_k]={expr:uaGenExpression(),compiled:null,failed:false,age:0,uses:0,
-                             st:CHANNEL_STENCIL_SEED.map(t=>[t[0],t[1],t[2]]),wrap:0,cad:1,res:FIELD_W};   // #194: allocated at the lattice's own grain, and coarsens from there
+                             st:CHANNEL_STENCIL_SEED.map(t=>[t[0],t[1],t[2]]),wrap:0,cad:1,res:FIELD_W,
+                             // #195: BORN WITH VARIATION IN ITS MOBILITY, not at zero. Born at zero,
+                             // every element has to rediscover mobility through a walk that gets
+                             // about two steps per 12,000 ticks (#192's germline ceiling), and the
+                             // live runs said exactly that: rules crept to 2.5e-4 and nothing ever
+                             // transferred. A trait with no variation at birth is not a trait
+                             // selection can act on - it is #179's shape wearing a rate's clothes.
+                             // The draw is inside the CHANNEL_XFER knob, so the exact-revert control
+                             // is unaffected.
+                             xfer:__CHANXFER?Math.random()*0.01:0};   // #194: allocated at the lattice's own grain, and coarsens from there
         fired('channel.alloc');
         recordEvent('chan_alloc',{slot:_k,expr:String(genome.channels[_k].expr).slice(0,48)},600);
         // #179's rule, fifth application: a medium nothing can sense or act into is unreachable, so
@@ -22631,6 +22800,100 @@ function executeVM(i,j,sim,d){
   }
 
   const bondStrength=sim*phaseAlign;
+  // === #195 - THE CHEMISTRY TRAVELS SIDEWAYS ===================================================
+  // `i` is the DRIVER here (the call site is executeVM(_drv,_oth,...)) and `genome` is already
+  // repointed to pGenome[i], so the donor is the driver, the rate read is the donor's own, and no
+  // extra coin is drawn to decide who gives - which is what keeps the rate-0 path bit-identical.
+  // NO BOND GATE, AND THAT IS A CORRECTION RATHER THAN A SIMPLIFICATION. The first version reused
+  // the plasmid gate verbatim - bondStrength = sim * phaseAlign above plasmidTransferThresh - and the
+  // live A/B refuted it outright:
+  //
+  //   12,000 ticks, CHANXFER=1:  channel.xferDeclined 390, channel.xfer ZERO
+  //
+  // Three hundred and ninety gate firings and not one transfer, because THE GATE SELECTS FOR THE VERY
+  // SIMILARITY THAT MAKES TRANSFER IMPOSSIBLE. `sim` is genetic similarity, so a high bond means the
+  // two particles are near-relatives, and near-relatives hold the SAME channel slots - so every
+  // compatible-slot scan came back empty. The precondition for transfer is complementarity and the
+  // gate was filtering for identity. That is not a tuning problem; the mechanism could essentially
+  // never fire.
+  //
+  // It is also the wrong biology, which is the clue I should have taken first: horizontal transfer
+  // matters precisely because it moves genes BETWEEN strains. Descent already spreads a chemistry
+  // within a lineage. The only thing transfer adds is the crossing that descent cannot make, and
+  // requiring similarity removes exactly that.
+  //
+  // So the gate is the rate gene and nothing else. The pair is already in contact - we are inside
+  // executeVM for an interacting pair - and the costs are already real at both ends (the donor pays
+  // amplitude, the recipient pays CHANNEL_RENT for a medium it may not sense), so promiscuity is
+  // priced rather than forbidden.
+  if(__CHANXFER){
+    const _dg=(typeof pGenome!=='undefined')?pGenome[i]:null;
+    const _rg=(typeof pGenome!=='undefined')?pGenome[j]:null;
+    const _db=_dg&&_dg.channels;
+    // A RECIPIENT WITH NO BANK AT ALL IS THE POINT, NOT AN EXCLUSION. The first cut required
+    // Array.isArray on BOTH banks, and a particle that has never held a channel has
+    // pGenome[k].channels === undefined rather than [null,null,null,null] - so the guard excluded
+    // exactly the particles a chemistry most needs to reach. MEASURED: channel.xferDeclined 2,549
+    // with channel.xfer at ZERO, every opportunity a slot collision between two carriers, while the
+    // 129 non-carriers in the same world were never even considered. Third live refutation this
+    // swing, and the only one that was a plain mistake rather than a design error.
+    // The array is materialised lazily, at the moment of transfer, so an interaction that does not
+    // transfer allocates nothing.
+    let _rb=(_rg&&Array.isArray(_rg.channels))?_rg.channels:null;
+    if(Array.isArray(_db)&&_rg){
+      // THE SCAN COMES BEFORE THE COIN, because the rate belongs to the RULE and there is no rate to
+      // read until a transferable rule is identified. SAME SLOT OR NOTHING, in slot order rather than
+      // drawn, so the transfer is a function of the two banks and not of a third random number.
+      // THE MOST CONTAGIOUS COMPATIBLE SLOT, not the first one. Breaking at the first compatible slot
+      // let a rate-0 rule in slot 0 shadow a contagious rule in slot 3 forever - measured as
+      // channel.xferDeclined 16,464 with channel.xfer still at ZERO, because the scan kept handing
+      // the coin a rule that did not want to spread. The element competes to be the one that moves,
+      // which is the whole idea of putting the rate on the element.
+      let _k=-1, _keen=false, _best=-1;
+      for(let _q=0;_q<CHANNEL_MAX;_q++){
+        const _dr=_db[_q];
+        if(!_dr||typeof _dr.expr!=='string')continue;
+        const _rr=chanRuleXfer(_dr);
+        if(_rr>0)_keen=true;                 // this rule WANTS to spread - see the decline note below
+        if(_rb&&_rb[_q]&&typeof _rb[_q].expr==='string')continue;   // that slot is taken here
+        if(_rr>_best){ _best=_rr; _k=_q; }
+      }
+      // A DECLINE MEANS "A CONTAGIOUS RULE MET A FULL SLOT", not "a scan came back empty". Two
+      // narrowings, both to keep the number readable: a donor with an empty bank has nothing to give,
+      // and a donor whose rules all sit at rate 0 was never going to transfer anything, so neither is
+      // a decline. Without the second one this counter fires on EVERY interaction between a carrier
+      // and a full-slot partner - measured 600 of 600 in the rig - and buries channel.xfer under
+      // opportunities that were never taken.
+      if(_k<0){ if(_keen)__chanXferDeclined++; }
+      else {
+        const _xr=chanRuleXfer(_db[_k]);
+        if(_xr>0&&Math.random()<_xr){
+          if(!_rb){ _rb=[]; for(let _q=0;_q<CHANNEL_MAX;_q++)_rb.push(null); _rg.channels=_rb; }
+          const _src=_db[_k];
+          // The whole medium: chemistry, form, manifold, timescale and grain. Deep-copied to the tap
+          // for the reason #189, #193 and #194 each re-learned - a shared stencil is one
+          // neighbourhood for the whole population. age and uses reset: the grace clock is a fact
+          // about how long this rule has sat unreferenced HERE, and a freshly infected carrier has
+          // not had a chance to be judged.
+          _rb[_k]={expr:_src.expr,compiled:null,failed:false,age:0,uses:0,
+                   st:Array.isArray(_src.st)?_src.st.map(t=>[t[0]|0,t[1]|0,finiteOr(t[2],0)]):null,
+                   wrap:_src.wrap|0,cad:_src.cad|0,res:__GRAIN?chanRes(_src):FIELD_W,
+                   // AND ITS OWN INFECTIOUSNESS TRAVELS WITH IT. Without this line the rate would be
+                   // authored and unheritable: every copy would start at zero and the element could
+                   // not be selected at all, which is the whole point of moving the rate onto it.
+                   xfer:chanRuleXfer(_src)};
+          amp[i]-=CHANXFER_COST;              // the donor pays; see the note at CHANXFER_COST
+          __chanXfers++;
+          if(chanSensesSlot(_rg,_k))__chanXferSensed++;
+          if(flashN<MAX_FLASHES){
+            flashX1[flashN]=px[i];flashY1[flashN]=py[i];
+            flashX2[flashN]=px[j];flashY2[flashN]=py[j];
+            flashAge[flashN]=0; flashN++;
+          }
+        }
+      }
+    }
+  }
   if(bondStrength>genome.plasmidTransferThresh&&Math.random()<genome.plasmidTransferRate){
     const donor=Math.random()<0.5?i:j;
     const recip=donor===i?j:i;
@@ -25625,6 +25888,7 @@ __METRIC=(typeof globalThis==='undefined')||((globalThis.__METRIC??1)|0)!==0;   
 __STIME=(typeof globalThis==='undefined')||((globalThis.__STIME??1)|0)!==0;   // #192: default ON, and a NO-OP at the seeded genes: rate 1 means every tick, so an unmutated lineage is in lockstep exactly as before
 __EMIT=(typeof globalThis==='undefined')||((globalThis.__EMIT??1)|0)!==0;   // #193: default ON, and a NO-OP at the seeded shape: no stencil means emitApply takes the null path and calls the original single-cell write, so an unshaped lineage is bit-identical
 __GRAIN=(typeof globalThis==='undefined')||((globalThis.__GRAIN??1)|0)!==0;   // #194: default ON, and a NO-OP at the seeded grain: chanRes returns FIELD_W, updateChannels takes the original fine loop, chanWrite writes the one cell
+__CHANXFER=(typeof globalThis==='undefined')||((globalThis.__CHANXFER??1)|0)!==0;   // #195: default ON, and a NO-OP at the seeded gene: chanRuleXfer reads 0 for every rule, the gate short-circuits before any draw, so an unmutated lineage is bit-identical
 __REACH=(typeof globalThis==='undefined')||((globalThis.__REACH_SWEEP??1)|0)!==0;   // #191: default ON. Force off with REACH_SWEEP=0 - the sweep returns to +/-1 ring, the reach to the germline's value, and the dedup to `j>i`, which is the pre-#191 engine exactly. Deliberately NOT named REACH: __REACH_ON is a different, pre-existing gate and colliding on that name is how a knob silently stops being a control
 __FORAGE_ON=(typeof globalThis==='undefined')||((globalThis.__FORAGE_EYES??1)|0)!==0; // resolve FORAGE once; gates the resource-sense computation in uaSetEyes
 __DECIDE_ON=(typeof globalThis==='undefined')||((globalThis.__DECIDE??1)|0)!==0; // resolve DECISION GAIN once; gates confidence accrual + commitment scaling

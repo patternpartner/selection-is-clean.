@@ -2156,9 +2156,9 @@ every carrier of that slot, so a finer grain needs a bigger lattice — one line
 a medium others are standing in. That conflict has no arbiter here short of #183's law probation. The
 cost is small: 20 pixels is already finer than a particle can resolve.
 
-**THE FIVE-PLACE REBUILD RULE — READ THIS BEFORE ADDING A FIELD TO ANY BANKED STRUCTURE.** A channel
-rule is rebuilt from a key list in **five** places: `seedSubstrateIntoParticle`, `cloneGenome`,
-`sanitizeGenome`, `decodeGenome`, `encodeGenome`. Each silently DELETES every key it does not name. A
+**THE SIX-PLACE REBUILD RULE — READ THIS BEFORE ADDING A FIELD TO ANY BANKED STRUCTURE.** A channel
+rule is rebuilt from a key list in **six** places: `seedSubstrateIntoParticle`, `cloneGenome`,
+`sanitizeGenome`, `decodeGenome`, `encodeGenome`, and (since #195) the horizontal-transfer copy. Each silently DELETES every key it does not name. A
 new field must be added to all five. #194 got four of them and the fifth was the germline→population
 crossing, so `channel.grain` read **germline 2 / population 0 — STRANDED** on a live run while every
 other crossing passed. This is the fourth instance of the same shape: #133b (`seedEffectIntoParticle`
@@ -2184,6 +2184,56 @@ count cannot distinguish "never crossed" from "crossed and was selected away" �
 moved `probe.promoted` out of the table, applying to more rows than `probe.promoted`. The flag is
 sound early, before anything has been selected away, which is the regime `smoke.sh` uses at TICKS=40.
 Anyone raising that budget should expect this and should decide the row's semantics first.
+
+### #195 — a medium is contagious: horizontal transfer of invented chemistry
+
+A channel rule can pass from one particle to another on contact, carrying its whole medium (`expr`,
+`st`, `wrap`, `cad`, `res`) into the **same slot index or not at all**, and never over an occupied
+slot. Knob `CHANXFER`. Fires inside `executeVM`, where `i` is the driver and `genome` is already
+`pGenome[i]`, so the donor is the driver and no extra coin decides who gives.
+
+**THE RATE IS ON THE RULE (`rule.xfer`), NOT ON THE GENOME, and do not move it back.** A host gene for
+infectiousness is pure cost to its carrier — the donor pays amplitude and hands a competitor a working
+chemistry — and four 12,000-tick runs had `channel.xfer` NEVER firing with the gene evolved to 0.
+Selection was right. The element is the unit of selection for a selfish element; `chanRuleXfer` reads
+the rule, the rate travels with every copy, and this is the first mechanism in the file whose unit of
+selection is smaller than a particle.
+
+**NO BOND GATE.** The first version reused the plasmid gate (`sim * phaseAlign > plasmidTransferThresh`)
+and measured 390 gate firings with zero transfers: `sim` is genetic similarity, near-relatives hold the
+same slots, so the gate selected for the identity that makes transfer impossible. Transfer's whole
+value is the crossing descent cannot make. The gate is the element's rate and nothing else; both ends
+already pay (donor `CHANXFER_COST` amplitude, recipient `CHANNEL_RENT`).
+
+**THE SCAN PICKS THE MOST CONTAGIOUS COMPATIBLE SLOT**, not the first — a rate-0 rule in slot 0 shadowed
+a contagious rule in slot 3 forever (16,464 declines, zero transfers). And **a recipient with no bank at
+all is the point, not an exclusion**: an untouched genome has `channels === undefined`, not
+`[null,null,null,null]`, and requiring `Array.isArray` on both sides excluded exactly the particles a
+chemistry most needs to reach (2,549 declines, zero transfers). The array is materialised at the moment
+of transfer, so a quiet interaction allocates nothing.
+
+**NEW RULES ARE BORN WITH VARIATION IN MOBILITY** (`Math.random()*0.01` at allocation, inside the knob).
+Born at zero, every element had to rediscover mobility through a walk that gets ~2 steps per run
+(#192's germline ceiling) — rules crept to 2.5e-4 and nothing moved. A trait with no variation at birth
+is not a trait selection can act on.
+
+**AND THE BRAKE HAS TO RUN AT THE INFECTION'S SPEED.** #188's release criterion (not sensed, not acted
+into, past grace) runs in `mutateGenome` — ~38 times a run, and only on the self — while infection is
+per-interaction. That asymmetry is not selection choosing a parasite, it is selection never getting a
+vote. The same criterion now runs in `mutateChildGenome` on the carrier's own bank (`channel.shed`).
+**That exposed a second defect worth remembering: `age` was incremented only in the germline drift
+loop**, so a transferred rule, which arrives at age 0, sat at age 0 forever in every population carrier
+and was never eligible to shed. `channel.shed` read 2 against 750 transfers; with the clock ticking, 43.
+*A release criterion with an unreachable precondition is not a slow brake — it is no brake, and from the
+outside it reads exactly like a slow one.*
+
+**WHAT IT DOES TO A WORLD, measured, so nobody has to discover it:** `channel.bank` goes from population
+10–24 to 573–1,050 (of a maximum of 4 × alive). Invented media stop being rare and become close to
+universal, which is what unblocks #189's forms and #194's grains (form carriers 14 → 56 and 1 → 141)
+and was the point — but it is a real change in character, not a side effect. `channel.xferSensed` is 6
+of 778 and 62 of 435, so most arrivals still land where nothing can perceive them. The single lever for
+a slower sweep is the birth draw at allocation; it is deliberately not tuned down, because a mechanism
+that does not fire is worse than one whose consequences are visible.
 
 ### #186 — the germline-to-population crossing, stated generally
 
