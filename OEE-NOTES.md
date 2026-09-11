@@ -14153,3 +14153,134 @@ a pre-existing issue this commit did not cause and has not diagnosed.
 After the fix, at 2,500 ticks: every row this batch added reads non-zero on both sides
 (`atom.ops` 2/5, `atom.opRef` 1/5, `probe.bank` 2/9, `oee.weighted` 1/4) or 0/0 with nothing authored
 yet, and `verb.sensed` is the only stranded row left.
+
+---
+
+## #188 — THE CHANNEL BANK: the two ceilings were one ceiling
+
+### The diagnosis, which was right, and sharper than mine
+
+Put against #180–#185: *a fixed core opcode franchise and a fixed set of field types form a ceiling
+because they define a closed alphabet of possible actions and a closed set of environmental media.*
+Everything the system can do or sense must ultimately be expressed in those two inventories, so the
+expansions so far are openings *within* a closed substrate rather than openings *of* it. The analogy
+offered was the exact one: evolution able to invent new genes and regulatory networks, never a new
+kind of molecular machinery or a new chemistry of interaction.
+
+The file agrees, in its own lists. `EFFECT_TARGETS` is **eleven entries a person typed**. There are
+**fifteen-plus hand-declared `Float32Array` lattices**, each with a hand-written update rule in the
+loop and a hand-written sense opcode beside it. Atoms, operators, folds, verbs, probes and grammar
+weights all compose *over* those two lists.
+
+And they turn out to be **one ceiling seen from two sides**: everything any program can read or write
+is an entry in a list, and every list entry got a hand-written update rule and a hand-written opcode.
+So one mechanism opens both.
+
+### What a channel is
+
+Four lattices, allocated by lineages. Each carries a **reaction rule written as an expression in the
+lineage's own atom grammar** — compiled by the ordinary compiler, so it inherits #181's evolved fold
+and #161's cache. No new symbols were invented for the rule; the cell's state is handed to it through
+the parameter list the grammar already has:
+
+```
+a      this cell's current value
+b      the 4-neighbour mean     — so (b)-(a) IS the discrete Laplacian: diffusion is EXPRESSIBLE,
+                                  not imposed, which is the whole difference between a medium and a setting
+c,d,m  the resource / detrital / inhibitor fields here
+nx,ny  normalised cell position     t  the slow clock     s  the rule's own previous output
+ka..kd the OTHER channels at this cell — cross-channel coupling, so an activator-inhibitor pair is
+       expressible and a genuine reaction-diffusion chemistry can evolve rather than four decays
+```
+
+The rule's answer **is** the cell's new value, not a delta: a rule that wants to conserve says so, and
+one that wants to decay says so, rather than either being built in.
+
+**Sensed** through new grammar symbols `ka`..`kd`, so atoms can perceive the modality their lineage
+invented. **Acted on** through four new `EFFECT_TARGETS` rows that index the bank — and that is the
+opcode half of the ceiling, because every target above those four has a `case` in `applyUserEffect`
+saying what happens to the quantity, while what happens to a channel after a verb writes into it is an
+expression a lineage wrote. The verb is enumerated; its consequence is not.
+
+### What actually evolved
+
+Twelve thousand ticks, one seed, nothing seeded by hand:
+
+```
+(Math.log1p(Math.abs(0.93)))/(nx)
+(Math.hypot(-0.76,ka))/(qb(Math.round(at),Math...
+qa((Math.cos(-0.74))/(ka),(yf)/(ny))
+(Math.atan2(Math.exp(kb),0.51))-((0.61)/(t))
+```
+
+Four chemistries, none of which is a rule I wrote or could have listed. Two of them call `qa`/`qb` —
+**operators the lineage invented in #180** — and three read `ka`/`kb`, so they are coupled to each
+other. That is the property worth having: the chemistry is written in the same language the creatures
+are, so as the grammar opens the space of chemistries opens with it.
+
+2,206 lattice passes and 24,621 verb writes into invented media in that run; 208–252 alive, **zero
+extinctions**, save round-trips clean.
+
+### Three defects, and the third one took instrumenting rather than guessing
+
+**1. The lattice pass was not scoped — #175's bug in a new pass.** The first version set `c/d/m/nx/ny`
+and left `rl`, `rd`, the voices, the probes and the channel readings holding whatever the last
+*particle interaction* had put in them. The chemistries that run actually named `rd`, `yd`, `yc` and
+`nb` — so three of four rules were reading residue from an arbitrary organism in an arbitrary order.
+#175 already wrote down what that costs (*"an atom whose output depends on population order cannot
+repeat itself, and an atom that cannot repeat itself cannot be selected for"*, measured at r = −0.675
+against persistence). A chemistry that cannot repeat itself is worse than a useless one: it is a noise
+source wired into the world's own physics. Every piece of ambient context is now saved, set or zeroed,
+and restored — and `ka`..`kd` inside a rule now read the other channels **at that cell**, which is
+what made the cross-channel coupling real rather than advertised.
+
+**2. A rewritten germline atom never crossed.** `channel.sensed` read germline 2 / population 0. The
+reachability hook rewrites an *existing* germline atom to name the new medium, and the only route a
+germline atom takes into the population is `seedAtomIntoParticle`, called at atom **birth** — so a
+rewritten atom had no hand-off. #186's structural lesson arriving one mechanism later.
+
+**3. And then the two halves were crossing to different particles.** Still 0 after the fix, and this
+one I had guessed at twice, so I instrumented instead. The numbers: **75 population genomes held
+channel rules, 46 held a sensing atom, and the row — which asks for both in ONE genome — read zero.**
+`seedSubstrateIntoParticle` handed the rules to one random particle and then called
+`seedAtomIntoParticle`, which chose its own random particle for the atom. Two things that only mean
+something together were crossing independently: a genome with a medium it cannot perceive pays rent
+for nothing, and one that perceives a medium it does not have reads a constant zero. They travel
+together now — #141's rule (*"the vocabulary travels with the program"*) applied to a chemistry and
+the sense for it. After: `channel.bank` 1/39, `channel.sensed` 0/39, population ahead of germline.
+
+### The price, and the bound
+
+`CHANNEL_RENT` = 0.6 instruction-equivalents per allocated channel — the dearest rent in the file,
+because a medium is a lattice *and* a chemistry running over 1,600 cells on a cadence, not a symbol.
+`CHANNEL_MAX` = 4 and `CHANNEL_CADENCE` = 12, so the whole mechanism costs about 530 cell-evaluations
+per tick at full allocation. Every value is clamped to `CHANNEL_CLAMP`: the rig runs `(a)*(8.00)` — an
+explicitly explosive rule — from a full lattice for six cadences and measures **0 cells out of bound**,
+which matters more here than for an atom, because a runaway chemistry is a runaway *world* and there
+is no `uaCall` clamp standing behind the lattice.
+
+Release is on **reads and writes together**: an operator dies when nothing names it, but a channel has
+two ways to be dead — nothing senses it, nothing acts into it — and either alone is survivable. The
+lattice is left behind to decay rather than zeroed, which is the honest physics: a medium does not
+vanish because nothing is maintaining it.
+
+### What is still closed, stated plainly
+
+A channel is a **scalar field on the same 40×40 lattice, updated on a fixed cadence**. No vector
+fields, no new spatial topology, no new dimensionality, no change to what a cell is, no change to the
+neighbourhood relation. **That is the remaining ceiling and it is a real one.**
+
+What moved is narrower than "the ceiling is gone" and larger than a parameter: the inventory stopped
+being **enumerated** and became **generated**. A lineage can now create a medium whose chemistry no
+one wrote and no one could have listed, sense it, act into it, and pay for it — and the space that
+chemistry is drawn from is whatever the atom grammar can express, which is the thing #180 and #181
+made evolvable. The honest framing is that the closed list became a generated space, and the new
+ceiling is the *form* of that space: a scalar per cell, a neighbourhood mean, a cadence.
+
+**Not measured:** no A/B against `CHANNEL=0`, no seed sweep, no claim about fitness or persistence.
+One seed, 12,000 ticks, watched for liveness and crossings only. `channel.release` has never fired in
+a headless run (it needs a channel to survive `UA_OP_GRACE*2` cycles unsensed and unacted-on, which
+the allocation-time wiring makes rare by construction) and reading that as a verdict would be the
+verbs' `uses: 0` mistake a fourth time.
+
+`substrate-test.js`: 68 checks, 13 of them #188's.

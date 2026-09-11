@@ -334,6 +334,29 @@ let __OEE_BONUS=true; // #184: evolvable weights on the open-endedness proxies. 
 //             the field a population of worlds: a world can inherit another world's physics.
 let __DEME=true;      // #185: heritable isolation inside a universe. Force off with DEME=0
 let __UPLASMID=true;  // #185: universe-level plasmids carrying laws and operator banks. Force off with UPLASMID=0
+// === #188 - THE CHANNEL BANK: a medium a lineage invents, and an action nobody enumerated =======
+// The two ceilings named against #180-#185 are ONE ceiling seen from two sides, and the lists in this
+// file say so: EFFECT_TARGETS is eleven entries a person typed, and there are fifteen hand-declared
+// Float32Array lattices, each with a hand-written update rule and a hand-written sense opcode beside
+// it. Everything any program can ever READ or WRITE is an entry in one of those two lists. Atoms,
+// operators, folds, verbs, probes and grammar weights all compose OVER them. So the system could
+// invent new genes and new regulatory logic and never a new chemistry - which is exactly the
+// diagnosis, and it is right.
+// #188 makes the inventory GENERATED instead of ENUMERATED. A lineage allocates a channel - a real
+// lattice - and writes its REACTION RULE as an expression in its own atom grammar. Then:
+//   the rule is not on any list, and could not be listed, because it is drawn from a grammar whose
+//     weights, alphabet, operators and compiler stage are themselves already evolvable (#180/#181);
+//   the channel is SENSED through new grammar symbols ka..kd, so atoms can perceive the modality
+//     their lineage invented;
+//   and it is ACTED ON through EFFECT_TARGETS entries that index the bank, so an authored verb's
+//     consequence is a chemistry no one wrote - which is the opcode half of the ceiling, because what
+//     EFFECT_EMIT into channel k MEANS is now evolved rather than switch-cased.
+// WHAT THIS DOES NOT DO, stated here rather than discovered later: a channel is still a SCALAR field
+// on the same 40x40 lattice, updated on a fixed cadence. No vector fields, no new spatial topology,
+// no new dimensionality, no change to what a "cell" is. That is the remaining ceiling and it is a
+// real one. What moves is that the space of chemistries is no longer a list I wrote - it is whatever
+// the atom grammar can express, and the atom grammar is the thing #180 opened.
+let __CHANNEL=true;   // #188: lineage-allocated media with evolved reaction rules. Force off with CHANNEL=0
 // Highest alienGrip among a genome's BOUND atoms, tie-broken by uses so a bank with no scored atom
 // behaves exactly as before. Returns -1 if there is nothing bound.
 // Returns -1 unless some bound atom has ACTUAL grip (>= ALIEN_GRIP_MIN_ATTEMPTS attempts and a non-zero
@@ -591,6 +614,10 @@ const LIVENESS_DECLARED=[
   // refused, so "the barrier exists but never bites" and "there is no barrier" are distinguishable.
   'deme.gate','deme.blocked','uplasmid.send','uplasmid.refused','uplasmid.law','uplasmid.grammar',
   'substrate.seed',   // #186
+  // #188: channel.update is the lattice pass, channel.write a verb acting into a medium, and
+  // channel.wire the reachability hook. All five declared so a run where a lineage allocated a
+  // medium and never sensed or acted on it is visible as such rather than inferred.
+  'channel.alloc','channel.drift','channel.release','channel.update','channel.write','channel.wire',
 ];
 // NOT INSTRUMENTED, and deliberately absent rather than declared-and-silent: cladogenesis minting
 // (#17) has no single entry point I could identify with confidence. A census that reports "never"
@@ -734,6 +761,16 @@ const CROSSING_DECLARED=[
   // epoch instead (see the OPS/probe block in flushEpoch) with a liveness name of its own.
   // This is the rule CODEMAP already states for __opReach, applied a second time: a quantity with
   // no germline/population sides to compare does not belong in a table that compares them.
+  // #188: two rows, on the pattern #180 established. channel.bank says the chemistry crossed;
+  // channel.sensed says any atom in this genome actually NAMES a medium - the row that would catch
+  // the case where a lineage carries four invented media and perceives none of them.
+  {name:'channel.bank',  read:g=>chanAllocated(g)},
+  {name:'channel.sensed',read:g=>{ const b=chanBank(g), uas=g&&g.userAtoms;
+                                   if(!Array.isArray(b)||!Array.isArray(uas))return 0;
+                                   let n=0;
+                                   for(let k=0;k<CHANNEL_MAX;k++){ if(!b[k]||typeof b[k].expr!=='string')continue;
+                                     for(const a of uas) if(a&&typeof a.expression==='string'&&a.expression.indexOf(CHANNEL_NAMES[k])>=0){n++;break;} }
+                                   return n; }},
   {name:'oee.weighted',  read:g=>{ const w=g&&g.oeeW; if(!Array.isArray(w))return 0;
                                    let n=0; for(const v of w) if(finiteOr(v,0)>0.02)n++; return n; }},
   // #185: deviation from the neutral seed, like xion.cede and phys.reach - a world at one deme with
@@ -1777,6 +1814,15 @@ function uaGenTerm(depth){
       for(let k=0;k<PROBE_MAX;k++){ const pr=_pb[k]; if(pr&&probePromoted(pr))_add.push(PROBE_NAMES[k]); }
       if(_add.length)vars=vars.concat(_add); }
   }
+  // #188: and the channels this lineage has ALLOCATED. Same rule as the probes and for the same
+  // reason: an unallocated channel's symbol reads a constant zero, and a generator offered dead
+  // letters is #179's failure wearing a new name.
+  if(__CHANNEL&&!__uaVarPool){
+    const _cb=chanBank();
+    if(_cb){ const _cadd=[];
+      for(let k=0;k<CHANNEL_MAX;k++){ const r=_cb[k]; if(r&&typeof r.expr==='string')_cadd.push(CHANNEL_NAMES[k]); }
+      if(_cadd.length)vars=vars.concat(_cadd); }
+  }
   const funcs=rich?USER_FUNCS_RICH:USER_FUNCS;                   // + round (quantize)
   const useFunc=Math.random()<0.35;
   const val=Math.random()<0.5
@@ -1870,12 +1916,15 @@ function uaJitterConst(expr){
 // "t" in "Math.tanh" has a left boundary but not a right one — "t" is immediately followed by "a", a
 // word character — so \bt\b cannot match it), and none of them collides with another on the list. A
 // \b-anchored regex over that closed vocabulary cannot false-match, so this needs no parser either.
-const UA_VAR_RE=/\b(?:ya|yb|yc|yd|ye|yf|yg|yh|pa|pb|pc|pd|nx|ny|nb|rl|rd|cr|fr|wr|at|a|b|u|c|d|m|s|t)\b/g; // #135: `at` before the single letters, or the alternation would match `a` first. #174: ya..yh first for the same reason
+const UA_VAR_RE=/\b(?:ya|yb|yc|yd|ye|yf|yg|yh|pa|pb|pc|pd|ka|kb|kc|kd|nx|ny|nb|rl|rd|cr|fr|wr|at|a|b|u|c|d|m|s|t)\b/g; // #135: `at` before the single letters, or the alternation would match `a` first. #174: ya..yh first for the same reason
 // #184: pa..pd are appended LAST, for #135's and #174's reason restated: UA_VAR_RE's alternation is
 // order-sensitive, and a two-character name must precede the single letters or `a` matches first.
 // They are on the canonical list because a PROMOTED probe is a sense like any other - the whole point
 // of promotion is that the grammar can then compose with it, which requires uaSwapVar to reach it.
-const UA_ALL_VARS=["a","b","u","c","d","m","s","cr","fr","wr","at","nx","ny","t","nb","rl","rd","ya","yb","yc","yd","ye","yf","yg","yh","pa","pb","pc","pd"]; // #135: +at  #174: +the creature's own voices
+// #188: ka..kd read the channels this lineage ALLOCATED - a modality it invented, sensed. Appended
+// after pa..pd for the same order-sensitivity reason (#135, #174, #184): a two-character name must
+// precede the single letters in UA_VAR_RE's alternation or `a` matches first.
+const UA_ALL_VARS=["a","b","u","c","d","m","s","cr","fr","wr","at","nx","ny","t","nb","rl","rd","ya","yb","yc","yd","ye","yf","yg","yh","pa","pb","pc","pd","ka","kb","kc","kd"]; // #135: +at  #174: +the creature's own voices
 // ═══ #180 — WHICH SYMBOLS THIS LINEAGE SPEAKS ══════════════════════════════════════════════════
 // The leaf pool has always been drawn UNIFORMLY. Every atom in every universe therefore sampled the
 // twenty-five senses with exactly the probability we chose, forever, no matter what any of them was
@@ -2184,7 +2233,7 @@ function uaCompile(atom){
   try{
     // Pe24: compiled function takes (a,b,u) — u is normalized self-usage count.
     // Old atoms with expressions only referencing a,b still compile fine; u is unused param.
-    const _fn=new Function("a","b","u","c","d","m","s","f","nx","ny","t","nb","rl","rd","cr","fr","wr","at","ya","yb","yc","yd","ye","yf","yg","yh","qa","qb","qc","qd","qe","qf","qg","qh","pa","pb","pc","pd","let r=("+atom.expression+");"+uaFoldBody(_fm,_fk)+"return isFinite(r)?r:0;");
+    const _fn=new Function("a","b","u","c","d","m","s","f","nx","ny","t","nb","rl","rd","cr","fr","wr","at","ya","yb","yc","yd","ye","yf","yg","yh","qa","qb","qc","qd","qe","qf","qg","qh","pa","pb","pc","pd","ka","kb","kc","kd","let r=("+atom.expression+");"+uaFoldBody(_fm,_fk)+"return isFinite(r)?r:0;");
     if(_fm!==0)fired('compiler.fold'); // #135: +at  #174: +ya..yh  #180: +qa..qh, the lineage's own operators. Older expressions never mention any of them and compile unchanged, so every saved creature still loads — the one failure here would brick every genome in the field, and grammar-test holds it.
     __uaCache(_e,_fn);
     atom.compiled=_fn;
@@ -2536,19 +2585,59 @@ function seedSubstrateIntoParticle(){
   // promotion is earned against a particular carrier's fitness history, and handing a fresh carrier
   // someone else's hit rate would let it inherit a promotion it never earned - the one way this
   // mechanism could lie, and the same rule the probe drift path already obeys.
+  // #188: the chemistry crosses through the same route as everything else in #181-#185, or it is
+  // stranded by exactly the mechanism #186 had to write down. `uses` resets; the lattice is the
+  // universe's and is already there.
+  if(Array.isArray(genome.channels))g.channels=genome.channels.map(r=>(r&&typeof r.expr==='string')?
+    {expr:r.expr,compiled:null,failed:false,age:r.age|0,uses:0}:null);
+  // AND ONE ATOM THAT SENSES ONE, because a chemistry nothing perceives is what channel.sensed is
+  // there to warn about. MEASURED: after the wire-at-allocation hand-off was added, channel.bank
+  // crossed at 4/86 and channel.sensed still read 3/0 - because the wire fires only at ALLOCATION
+  // (8 times in 12,000 ticks, each into one particle of ~242), while the substrate genes cross on
+  // every mutateGenome call (~36). Eight one-particle seedings is not selection removing the sensing
+  // atoms, it is sampling never establishing them, and the two are indistinguishable from the row.
+  // This is the same argument #186 made about the substrate genes and the same one that put fusion
+  // behind budding's gates: a crossing route that fires eight times cannot be compared against one
+  // that fires thirty-six. Equalise the rate, then let selection have the question.
+  if(__CHANNEL&&Array.isArray(genome.channels)&&Array.isArray(genome.userAtoms)){
+    const _names=[];
+    for(let k=0;k<CHANNEL_MAX;k++){ const r=genome.channels[k];
+      if(r&&typeof r.expr==='string')_names.push(CHANNEL_NAMES[k]); }
+    if(_names.length){
+      for(let ai=0;ai<genome.userAtoms.length;ai++){
+        const a=genome.userAtoms[ai];
+        if(!a||typeof a.expression!=='string')continue;
+        let hits=false;
+        for(const nm of _names) if(a.expression.indexOf(nm)>=0){hits=true;break;}
+        if(hits){ seedAtomIntoParticle(ai,_tgt); break; }   // THE SAME particle that just received the rules - see the note on seedAtomIntoParticle
+      }
+    }
+  }
   if(Array.isArray(genome.oeeW))g.oeeW=genome.oeeW.slice();
   if(Array.isArray(genome.probes))g.probes=genome.probes.map(pr=>pr?{expression:pr.expression,
     compiled:null,failed:false,n:0,hit:0,pending:0,pendTick:-1,pendFit:0,age:0}:null);
   fired('substrate.seed');
   return true;
 }
-function seedAtomIntoParticle(atomIdx){ fired('atom.seedIntoParticle');
+// #188: `into` is optional and picks a SPECIFIC carrier. It exists because two things that only mean
+// something together were crossing independently: seedSubstrateIntoParticle handed a lineage's
+// channel RULES to one random particle and then called this, which chose its own random particle for
+// the atom that SENSES them. Measured at 12,000 ticks: 75 population genomes held rules, 46 held a
+// sensing atom, and channel.sensed - which asks for both in ONE genome - read zero. A genome with a
+// medium it cannot perceive pays rent for nothing, and one that perceives a medium it does not have
+// reads a constant zero. They have to travel together, which is #141's rule ("the vocabulary travels
+// with the program") applied to a chemistry and the sense for it.
+function seedAtomIntoParticle(atomIdx,into){ fired('atom.seedIntoParticle');
   if(!__ATOM_HERITABLE)return;
   const _a=genome.userAtoms&&genome.userAtoms[atomIdx]; if(!_a)return;
-  let _n=0; for(let k=0;k<N;k++)if(palive[k]&&pGenome[k])_n++;
-  if(!_n)return;
-  let _t=(Math.random()*_n)|0, _tgt=-1;
-  for(let k=0;k<N;k++){ if(!palive[k]||!pGenome[k])continue; if(_t--===0){_tgt=k;break;} }
+  let _tgt=-1;
+  if(into!==undefined&&into>=0&&into<N&&palive[into]&&pGenome[into]){ _tgt=into; }
+  else {
+    let _n=0; for(let k=0;k<N;k++)if(palive[k]&&pGenome[k])_n++;
+    if(!_n)return;
+    let _t=(Math.random()*_n)|0;
+    for(let k=0;k<N;k++){ if(!palive[k]||!pGenome[k])continue; if(_t--===0){_tgt=k;break;} }
+  }
   if(_tgt<0)return;
   const _g=pGenome[_tgt];
   if(!Array.isArray(_g.userAtoms))_g.userAtoms=[];
@@ -2615,6 +2704,12 @@ function attemptMemeTransfer(recv,donor){ fired('meme.transfer');
 // EYES — set the world-sensing context for atom i (partner j, or -1 if solo). All finite by construction:
 // positions are finite Float32 / W,H>0; t is a bounded slow clock; nb is the partner's clamped amplitude.
 function uaSetEyes(i,j){
+  // #188: what the media this lineage invented read AT THIS PARTICLE'S CELL. Four array lookups when
+  // any channel is allocated and four zero-writes when none is, so a universe that has never evolved
+  // a medium pays almost nothing. Filled here rather than in uaCall because every atom in one
+  // interaction shares the same cell, exactly as nx/ny and the forage senses do.
+  if(__CHANNEL){ for(let _k=0;_k<CHANNEL_MAX;_k++)__chanOut[_k]=chanRead(_k,i); }
+  else __chanOut.fill(0);
   uaCtxAt = attentionAt(i);   // #135: how strongly this spot is being looked at
   uaCtxNx = (typeof W==='number'&&W>0) ? px[i]/W : 0;
   uaCtxNy = (typeof H==='number'&&H>0) ? py[i]/H : 0;
@@ -2789,7 +2884,8 @@ function uaCall(atom,a,b){
     const r=atom.compiled(a,b,u,uaCtxC,uaCtxD,uaCtxM,s,uaCallF,uaCtxNx,uaCtxNy,uaCtxT,uaCtxNb,uaCtxRl,uaCtxRd,_cr,_fr,_wr,uaCtxAt,
       __uaVoice[0],__uaVoice[1],__uaVoice[2],__uaVoice[3],__uaVoice[4],__uaVoice[5],__uaVoice[6],__uaVoice[7],
       uaOpQA,uaOpQB,uaOpQC,uaOpQD,uaOpQE,uaOpQF,uaOpQG,uaOpQH,
-      __probeOut[0],__probeOut[1],__probeOut[2],__probeOut[3]); // #135: +at  #174: +the voices  #180: +the operators  #184: +the probes this lineage promoted. A plain stored read, like the voices - no recursion, no fuel, no new halting question. Zero for an unpromoted slot, so an atom naming pa before anything earned it reads a constant rather than failing. Eight existing module-level references, so this allocates nothing per call
+      __probeOut[0],__probeOut[1],__probeOut[2],__probeOut[3],
+      __chanOut[0],__chanOut[1],__chanOut[2],__chanOut[3]); // #135: +at  #174: +the voices  #180: +the operators  #184: +the probes  #188: +the media this lineage invented this lineage promoted. A plain stored read, like the voices - no recursion, no fuel, no new halting question. Zero for an unpromoted slot, so an atom naming pa before anything earned it reads a constant rather than failing. Eight existing module-level references, so this allocates nothing per call
     atom.uses=prevUses+1;
     if(__ATOM_USE_POP&&atom.expression){
       if(__atomExprUses.size>5000){__atomExprUses.clear();__atomUseWindowStart=tick;} // bounded — a live counter, not an archive; #177 stamps the wipe
@@ -8220,6 +8316,11 @@ function flushEpoch(acc){
       _prPop+=probeCount(pGenome[i]); } }
     __uaOpLog.push([(acc.idx+1)*EPOCH_TICKS,uaOpCount(genome),__uaOpFires,uaOpRefs(genome),
                     probeCount(genome),_prPop]);
+    // #188: the media, on their own log rather than a seventh column - the operator row is already
+    // six wide and a reader has enough widths to handle.
+    __chanLog.push([(acc.idx+1)*EPOCH_TICKS,chanAllocated(genome),__chanUpdates,__chanWrites]);
+    __chanUpdates=0; __chanWrites=0;
+    while(__chanLog.length>MAX_EPOCHS)__chanLog=__chanLog.filter((_,i)=>i%2===0);
     __uaOpFires=0; __uaOpFallbacks=0;
     while(__uaOpLog.length>MAX_EPOCHS)__uaOpLog=__uaOpLog.filter((_,i)=>i%2===0);
   }
@@ -8683,6 +8784,12 @@ function cloneGenome(src){
   // which is what makes a promotion worth anything across generations - but `compiled` is per-genome
   // because the compiler stage (#181) is too, and `pendTick` resets because an outstanding claim
   // belongs to the parent's timeline and would be judged against the child's fitness.
+  // #188: the chemistry crosses; the chemicals do not. A channel's RULE is genome and is deep-copied
+  // like every other authored structure here. Its LATTICE is world state and belongs to the universe,
+  // not to any lineage - which is why a migrant arrives with a chemistry and an empty medium.
+  // `uses` resets, as it does for atoms and verbs: a child re-earns its own record.
+  g.channels=Array.isArray(src.channels)?src.channels.map(r=>(r&&typeof r.expr==='string')?
+    {expr:r.expr,compiled:null,failed:!!r.failed,age:r.age|0,uses:0}:null):src.channels;
   g.probes=Array.isArray(src.probes)?src.probes.map(pr=>pr?{expression:pr.expression,compiled:null,
     failed:!!pr.failed,n:pr.n|0,hit:pr.hit|0,pending:finiteOr(pr.pending,0),pendTick:-1,pendFit:0,age:pr.age|0}:null):src.probes;
   g.oeeW=Array.isArray(src.oeeW)?src.oeeW.slice():src.oeeW;
@@ -8830,6 +8937,151 @@ const forestField=new Float32Array(FIELD_W*FIELD_H); // meta-org field: bridge-c
 const crystalField=new Float32Array(FIELD_W*FIELD_H); // crystal phase: precipitates at persistent high-coherence cluster sites; changes local physics; read by CRYSTAL_SENSE (op143)
 const detritalField=new Float32Array(FIELD_W*FIELD_H); // dead-matter nutrient pool: biomass deposited on particle death; read by DETRITAL_SENSE (op145), harvested by DETRITAL_HARVEST (op146); trophic cascade substrate
 const signalField=new Float32Array(FIELD_W*FIELD_H); // volatile pheromone layer: particle-emitted signals that decay each tick (~half-life 5 ticks); enables alarm cascades, trail following, territory marking, chemical communication between lineages
+
+// === #188 - THE CHANNEL BANK ====================================================================
+// Four lattices, allocated by lineages, each governed by an authored expression. The contents are
+// WORLD STATE and do not cross a genome boundary; the RULES are genome and cross like the operator
+// bank does. That split matters: a migrant brings its chemistry, not its chemicals.
+const CHANNEL_MAX=4;
+const CHANNEL_NAMES=["ka","kb","kc","kd"];   // digit-free, and 'k' begins no other name this grammar emits - checked against UA_VAR_RE by #174's argument
+const CHANNEL_RE=/\b(?:ka|kb|kc|kd)\b/g;
+const CHANNEL_TEST=/\b(?:ka|kb|kc|kd)\b/;
+const CHANNEL_CADENCE=12;      // ticks between lattice updates. 4 x 1600 cells / 12 = ~530 cell-evaluations per tick, which is the price of the whole mechanism
+const CHANNEL_CLAMP=3;         // every channel value is bounded, whatever an evolved rule computes
+const CHANNEL_RENT=0.6;        // instruction-equivalents per ALLOCATED channel per interaction - the dearest rent in the file, because a channel is a lattice and a chemistry, not a symbol
+const CHANNEL_BIRTH_FLOOR=0.12; // lower than UA_OP_BIRTH_FLOOR: a medium is a much larger commitment than an operator, so allocation is rarer even though mutateGenome runs ~18x per 6k ticks
+const __channels=[];           // the lattices themselves - allocated lazily, never freed, reused when a rule is released
+for(let _k=0;_k<CHANNEL_MAX;_k++)__channels.push(null);
+const __chanTmp=new Float32Array(FIELD_W*FIELD_H);
+const __chanOut=new Float32Array(CHANNEL_MAX);   // #188: the CURRENT interaction's channel readings, bound into every compiled atom as ka..kd. Declared here rather than beside uaSetEyes, which sits six thousand lines above CHANNEL_MAX - a top-level `const` read before its own declaration is a TDZ error rather than a hoist, and the first version of this line was exactly that.
+let __chanUpdates=0, __chanWrites=0;
+let __chanLog=[];              // per epoch: [tickEnd, allocated, latticeUpdates, verbWrites]
+function chanBank(g){
+  const gg=g||((typeof genome!=='undefined')?genome:null);
+  const b=gg&&gg.channels;
+  return Array.isArray(b)?b:null;
+}
+function chanAllocated(g){
+  if(!__CHANNEL)return 0;
+  const b=chanBank(g); if(!b)return 0;
+  let n=0; for(let k=0;k<CHANNEL_MAX;k++) if(b[k]&&typeof b[k].expr==='string')n++; return n;
+}
+// The lattice for slot k, created on first use. Allocation is lazy so a universe that never evolves a
+// channel never pays the 6.4KB, and the array is never freed - a released rule leaves a decaying
+// lattice behind, which is the honest physics: a medium does not vanish because nothing maintains it.
+function chanLattice(k){
+  if(k<0||k>=CHANNEL_MAX)return null;
+  if(!__channels[k])__channels[k]=new Float32Array(FIELD_W*FIELD_H);
+  return __channels[k];
+}
+function chanCellOf(i){
+  const fw=W/FIELD_W, fh=H/FIELD_H;
+  const cx=__cl(Math.floor(px[i]/fw),0,FIELD_W-1), cy=__cl(Math.floor(py[i]/fh),0,FIELD_H-1);
+  return cy*FIELD_W+cx;
+}
+// Read, for the ka..kd grammar symbols. Zero for an unallocated slot, so an expression naming a
+// channel its lineage never invented is a constant rather than a failure - the same totality rule
+// uaOpEval follows, and for the same crossing reason.
+function chanRead(k,i){
+  if(!__CHANNEL)return 0;
+  const b=chanBank(); if(!b||!b[k]||typeof b[k].expr!=='string')return 0;
+  const L=__channels[k]; if(!L)return 0;
+  const v=L[chanCellOf(i)];
+  return isFinite(v)?v:0;
+}
+// Write, for the EFFECT_TARGETS entries. Bounded, and it counts itself so a channel nothing writes
+// into is distinguishable from a channel nothing reads.
+function chanWrite(k,i,amt){
+  if(!__CHANNEL)return 0;
+  const b=chanBank(); if(!b||!b[k]||typeof b[k].expr!=='string')return 0;
+  const L=chanLattice(k); if(!L)return 0;
+  const c=chanCellOf(i);
+  const before=L[c];
+  const after=__cl(before+amt,-CHANNEL_CLAMP,CHANNEL_CLAMP);
+  L[c]=isFinite(after)?after:0;
+  __chanWrites++;
+  fired('channel.write');
+  return L[c]-before;
+}
+// === #188 - AND THE CHEMISTRY IS WRITTEN IN THE SAME LANGUAGE THE CREATURES ARE =================
+// This is the part that makes the inventory generated rather than enumerated. The rule is an ordinary
+// authored expression, compiled by the ordinary compiler (so it inherits #181's evolved fold and
+// #161's cache), and the cell's state is handed to it through the parameter list the grammar already
+// has. No new symbols were invented for the rule, which is the point: a lineage writes its chemistry
+// with the same vocabulary it writes its senses in, so as the grammar opens, so does the chemistry.
+//
+//   a   this cell's current value
+//   b   the 4-neighbour mean  (a rule using (b)-(a) has discovered the Laplacian; diffusion is
+//       expressible but not imposed, which is the difference between a medium and a setting)
+//   c   the primary resource field here          d   the detrital pool here
+//   m   the inhibitor here                       s   the rule's own previous output (recurrence)
+//   nx,ny  normalised cell position              t   the slow clock
+//   and ka..kd, so one channel's rule may read ANOTHER channel - cross-channel coupling, which is
+//   what makes a genuine reaction-diffusion system rather than four independent decays.
+//
+// Clamped at every step, run on a cadence, and the whole pass is skipped for an unallocated slot.
+function updateChannels(){
+  if(!__CHANNEL)return;
+  const b=chanBank(); if(!b)return;
+  if((tick%CHANNEL_CADENCE)!==0)return;
+  for(let k=0;k<CHANNEL_MAX;k++){
+    const rule=b[k]; if(!rule||typeof rule.expr!=='string')continue;
+    const L=chanLattice(k); if(!L)continue;
+    if(!rule.compiled&&!rule.failed){
+      // compiled as an atom, through the atom compiler, so the fold and the cache both apply
+      const holder={expression:rule.expr,compiled:null,failed:false};
+      uaCompile(holder);
+      rule.compiled=holder.compiled; rule.failed=holder.failed;
+    }
+    if(rule.failed||!rule.compiled)continue;
+    __chanTmp.set(L);
+    // SAVE EVERY PIECE OF AMBIENT ATOM CONTEXT, not just the pieces this rule is expected to use.
+    // #175's lesson, in a new pass: the grammar can emit ANY of these symbols, so any of them left
+    // holding a previous interaction's residue makes the chemistry depend on population order.
+    const _pc=uaCtxC,_pd=uaCtxD,_pm=uaCtxM,_pnx=uaCtxNx,_pny=uaCtxNy,_pnb=uaCtxNb,_pat=uaCtxAt,
+          _prl=uaCtxRl,_prd=uaCtxRd;
+    const _pv=Array.from(__uaVoice), _pp=Array.from(__probeOut), _pk=Array.from(__chanOut);
+    // A cell is not an organism. The particle-relative senses have no meaning here and are zeroed
+    // rather than left stale: a rule naming `rd` (a partner-relative resource gradient) is naming
+    // something a lattice cell does not have, and it should read a defined zero, not a stranger.
+    uaCtxRl=0; uaCtxRd=0; __uaVoice.fill(0); __probeOut.fill(0);
+    for(let cy=0;cy<FIELD_H;cy++){
+      for(let cx=0;cx<FIELD_W;cx++){
+        const c=cy*FIELD_W+cx;
+        const here=__chanTmp[c];
+        // 4-neighbour mean, edges clamped (the lattice does not wrap anywhere else in this file)
+        const n=__chanTmp[(cy>0?cy-1:cy)*FIELD_W+cx], sN=__chanTmp[(cy<FIELD_H-1?cy+1:cy)*FIELD_W+cx];
+        const wv=__chanTmp[cy*FIELD_W+(cx>0?cx-1:cx)], ev=__chanTmp[cy*FIELD_W+(cx<FIELD_W-1?cx+1:cx)];
+        const mean=(n+sN+wv+ev)*0.25;
+        uaCtxC=field[c]||0; uaCtxD=detritalField[c]||0; uaCtxM=inhibitorField[c]||0;
+        uaCtxNx=cx/FIELD_W; uaCtxNy=cy/FIELD_H; uaCtxNb=0; uaCtxAt=attnField[c]||0;
+        // CROSS-CHANNEL COUPLING, and this is the line that makes it real rather than advertised.
+        // ka..kd inside a channel rule read the OTHER channels AT THIS CELL - so `(ka)-(kb)` is an
+        // activator-inhibitor pair and the system can evolve a genuine reaction-diffusion chemistry
+        // rather than four independent decays. The first version left __chanOut holding some
+        // particle's readings from the last interaction, which made this both wrong and unrepeatable.
+        for(let _o=0;_o<CHANNEL_MAX;_o++){
+          const OL=__channels[_o];
+          __chanOut[_o]=(_o===k)?here:(OL?(isFinite(OL[c])?OL[c]:0):0);
+        }
+        // The rule's answer IS the cell's new value. Not a delta: a rule that wants to conserve says
+        // so, and a rule that wants to decay says so, rather than either being built in.
+        let v=0;
+        try{ v=uaCall(rule,here,mean); }catch(_){ rule.failed=true; break; }
+        L[c]=isFinite(v)?__cl(v,-CHANNEL_CLAMP,CHANNEL_CLAMP):0;
+      }
+      if(rule.failed)break;
+    }
+    uaCtxC=_pc;uaCtxD=_pd;uaCtxM=_pm;uaCtxNx=_pnx;uaCtxNy=_pny;uaCtxNb=_pnb;uaCtxAt=_pat;
+    uaCtxRl=_prl;uaCtxRd=_prd;
+    for(let _r=0;_r<UA_VOICE;_r++)__uaVoice[_r]=_pv[_r];
+    for(let _r=0;_r<PROBE_MAX;_r++)__probeOut[_r]=_pp[_r];
+    for(let _r=0;_r<CHANNEL_MAX;_r++)__chanOut[_r]=_pk[_r];
+    rule.uses=(rule.uses|0)+1;
+    __chanUpdates++;
+    fired('channel.update');
+  }
+}
 const cellProgOp=new Uint8Array(FIELD_W*FIELD_H);    // opcode: which transformation this cell runs
 const cellProgA=new Float32Array(FIELD_W*FIELD_H);   // parameter A
 const cellProgB=new Float32Array(FIELD_W*FIELD_H);   // parameter B
@@ -9054,6 +9306,7 @@ function encodeGenome(){
     oL:(oeeLog||[]).slice(-MAX_EPOCHS),         // #130 open-endedness meter: per-epoch activity log
     RCH:(__opReachLog||[]).slice(-MAX_EPOCHS),  // #176 [tickEnd, boundSlotsExecuted, bankSize] +#178 [, distinctAtomsReached] per epoch; pre-#178 rows are 3 long and stay that way
     LVL:(__levelLog||[]).slice(-MAX_EPOCHS),    // #182 [tickEnd, particles, clusters, towers, forests] per epoch - LEVEL_DECLARED order
+    CHN:(__chanLog||[]).slice(-MAX_EPOCHS),     // #188 [tickEnd, allocatedChannels, latticeUpdates, verbWrites] per epoch
     OPS:(__uaOpLog||[]).slice(-MAX_EPOCHS),     // #180 [tickEnd, definedSlots, evaluations, atomsNamingAnOperator] +#187 [, germlinePromotedProbes, populationPromotedProbes] per epoch. Pre-#187 rows are 4 long and stay that way; anything reading this must handle both widths, the same rule RCH carries since #178 — the operator bank's own instrument, shipped in the same commit as the bank because a layer with no instrument is a layer nobody can falsify
     oN:oeeNovel|0,                               // #130 cumulative distinct innovations ever executed
     oP:oeePersist|0,                             // #130 cumulative innovations that survived the lag
@@ -9098,6 +9351,7 @@ function encodeGenome(){
     // #184: the probe bank. `hit`/`n` travel because a promotion has to survive a reload - a save that
     // dropped the record would silently demote every sense the lineage had earned, and the atoms
     // naming those symbols would come back reading zero.
+    chn:Array.isArray(genome.channels)?genome.channels.map(r=>(r&&typeof r.expr==='string')?[String(r.expr).slice(0,UA_EXPR_MAX),r.age|0]:0):undefined,  // #188 the chemistry, not the chemicals - a lattice is world state and is not saved with the genome
     prb:Array.isArray(genome.probes)?genome.probes.map(pr=>pr?[String(pr.expression).slice(0,UA_EXPR_MAX),pr.n|0,pr.hit|0]:0):undefined,
     oew:Array.isArray(genome.oeeW)?genome.oeeW.map(v=>+(+v).toFixed(4)):undefined,
     dmc:genome.demeCount===undefined?undefined:(genome.demeCount|0),              // #185 internal population structure
@@ -9392,6 +9646,7 @@ function decodeGenome(data){
     oeeLog=Array.isArray(g.oL)?g.oL:[];          // #130 open-endedness meter (absent in pre-#130 saves → starts empty)
     __opReachLog=Array.isArray(g.RCH)?g.RCH:[];  // #176 (absent in pre-#176 saves → starts empty, which is honest: it was never measured)
     __levelLog=Array.isArray(g.LVL)?g.LVL:[];    // #182
+    __chanLog=Array.isArray(g.CHN)?g.CHN:[];     // #188
     __uaOpLog=Array.isArray(g.OPS)?g.OPS:[];     // #180 (same rule: absent means never measured, not measured as zero)
     oeeNovel=g.oN|0;
     oeePersist=g.oP|0;
@@ -9444,6 +9699,7 @@ function decodeGenome(data){
     if(typeof g.ait==='number')genome.atomIdleTolerance=+g.ait;  // #177 (absent in pre-#177 saves → undefined → reads 0 → the old cull, which is the correct inheritance)
     if(typeof g.usb==='number')genome.uaStructBias=+g.usb;       // #107
     // #180 (absent in pre-#180 saves → left undefined → every reader's default → the pre-#180 engine)
+    if(Array.isArray(g.chn))genome.channels=g.chn.map(r=>Array.isArray(r)?{expr:String(r[0]),compiled:null,failed:false,age:r[1]|0,uses:0}:null);  // #188
     if(Array.isArray(g.prb))genome.probes=g.prb.map(r=>Array.isArray(r)?{expression:String(r[0]),compiled:null,
       failed:false,n:r[1]|0,hit:r[2]|0,pending:0,pendTick:-1,pendFit:0,age:0}:null);   // #184
     if(Array.isArray(g.oew))genome.oeeW=g.oew.map(v=>+v);
@@ -9710,6 +9966,19 @@ function sanitizeGenome(){
   // #184: clamp if present, never create. A probe with an unsafe expression is DROPPED rather than
   // repaired, for #159's reason - a probe is compiled with new Function and base64'd into every
   // future save, so one character outside printable ASCII would disable saving in this universe.
+  // #188: clamp if present, never create. A rule with an unsafe expression is DROPPED rather than
+  // repaired - #159's reason, and sharper here than for an atom: a channel rule is compiled AND
+  // base64'd into every save AND run over 1,600 cells, so one bad character would disable saving and
+  // burn the lattice pass at the same time.
+  if(genome.channels!==undefined){
+    const _cb=Array.isArray(genome.channels)?genome.channels:[];
+    genome.channels=[];
+    for(let _k=0;_k<CHANNEL_MAX;_k++){
+      const r=_cb[_k];
+      genome.channels[_k]=(r&&uaExprSafe(r.expr))?{expr:r.expr,compiled:null,failed:!!r.failed,
+        age:Math.max(0,r.age|0),uses:Math.max(0,r.uses|0)}:null;
+    }
+  }
   if(genome.probes!==undefined){
     const _pb=Array.isArray(genome.probes)?genome.probes:[];
     genome.probes=[];
@@ -15821,6 +16090,76 @@ function mutateGenome(){ fired('genome.mutate');
   //   about a specific expression. Change the expression and the old record is a claim about something
   //   else, so n and hit reset. Keeping them would let a lineage inherit a promotion it never earned,
   //   which is the one way this mechanism could lie.
+  // === #188 - ALLOCATING A MEDIUM ==============================================================
+  // The rarest and dearest thing a lineage can do here. Allocation is floored (#55's reason, four
+  // mechanisms on) but at a third of the operator floor, because a channel is a lattice plus a
+  // chemistry rather than a symbol, and it pays CHANNEL_RENT for as long as it exists.
+  // RELEASE IS ON READS AND WRITES TOGETHER. An operator is released when nothing NAMES it; a
+  // channel has two ways of being dead - nothing senses it (no atom names ka) and nothing acts into
+  // it (no verb targets chan0) - and either alone is survivable. A medium is only useless when both
+  // are true, so both are checked, and the lattice is left behind to decay rather than zeroed: a
+  // medium does not vanish because nothing is maintaining it.
+  if(__CHANNEL){
+    if(!Array.isArray(genome.channels))genome.channels=[];
+    const _fx=Array.isArray(genome.userEffects)?genome.userEffects:[];
+    let _calloc=0;
+    for(let _k=0;_k<CHANNEL_MAX;_k++){
+      const _r=genome.channels[_k];
+      if(!_r||typeof _r.expr!=='string')continue;
+      _calloc++;
+      _r.age=(_r.age|0)+1;
+      // DRIFT - a local step on the chemistry, #103's rule. A redraw would discard whatever the
+      // lineage's selection history had started to favour about how its medium behaves.
+      if(Math.random()<rate*0.25){
+        const _v=uaLocalStep(_r.expr);
+        if(_v!==_r.expr){ _r.expr=_v; _r.compiled=null; _r.failed=false; fired('channel.drift'); }
+      } else if((_r.age|0)>UA_OP_GRACE*2){
+        let _sensed=false;
+        const _uas=Array.isArray(genome.userAtoms)?genome.userAtoms:[];
+        for(const _a of _uas){ if(_a&&typeof _a.expression==='string'&&_a.expression.indexOf(CHANNEL_NAMES[_k])>=0){_sensed=true;break;} }
+        let _acted=false;
+        for(const _e of _fx){ if(_e&&(_e.t|0)===(11+_k)){_acted=true;break;} }
+        if(!_sensed&&!_acted&&Math.random()<rate*0.4){
+          genome.channels[_k]=null; _calloc--; fired('channel.release');
+          recordEvent('chan_release',{slot:_k},900);
+        }
+      }
+    }
+    if(_calloc<CHANNEL_MAX&&Math.random()<Math.max(CHANNEL_BIRTH_FLOOR,rate*0.1)){
+      for(let _k=0;_k<CHANNEL_MAX;_k++) if(!genome.channels[_k]||typeof genome.channels[_k].expr!=='string'){
+        genome.channels[_k]={expr:uaGenExpression(),compiled:null,failed:false,age:0,uses:0};
+        fired('channel.alloc');
+        recordEvent('chan_alloc',{slot:_k,expr:String(genome.channels[_k].expr).slice(0,48)},600);
+        // #179's rule, fifth application: a medium nothing can sense or act into is unreachable, so
+        // wire BOTH halves at allocation. One germline atom comes to name it, and one verb is aimed
+        // at it - each then living under ordinary selection like any other atom or verb.
+        try{
+          const _uas=genome.userAtoms;
+          if(Array.isArray(_uas)&&_uas.length){
+            const _pi=(Math.random()*_uas.length)|0;
+            const _pick=_uas[_pi];
+            if(_pick&&typeof _pick.expression==='string'){
+              const _nv=uaSwapVar(_pick.expression,UA_VAR_RE,[CHANNEL_NAMES[_k]]);
+              if(_nv!==_pick.expression&&_nv.length<=UA_EXPR_MAX){
+                _pick.expression=_nv; _pick.compiled=null; _pick.failed=false; fired('channel.wire');
+                // AND ACROSS THE FIRST CROSSING. channel.sensed read germline 2 / population 0 on the
+                // first live run, because the only route a germline atom takes into the population is
+                // seedAtomIntoParticle and that is called at atom BIRTH - a REWRITTEN atom never
+                // crossed. #186's structural lesson, arriving one mechanism later: a change made on
+                // the germline after the population exists needs its own hand-off, every time.
+                seedAtomIntoParticle(_pi);
+              }
+            }
+          }
+          if(Array.isArray(genome.userEffects)&&genome.userEffects.length){
+            const _ve=genome.userEffects[(Math.random()*genome.userEffects.length)|0];
+            if(_ve){ _ve.t=11+_k; fired('channel.wire'); }
+          }
+        }catch(_){}
+        break;
+      }
+    }
+  }
   if(__PROBE){
     if(!Array.isArray(genome.probes))genome.probes=[];
     for(let _k=0;_k<PROBE_MAX;_k++){
@@ -17765,6 +18104,20 @@ const EFFECT_TARGETS=[
   {n:'mem',      paired:false},
   {n:'field',    paired:false},
   {n:'mutpress', paired:false},
+  // === #188 - FOUR TARGETS WHOSE CONSEQUENCE IS NOT IN THIS FILE ===============================
+  // Every target above this line has a `case` in applyUserEffect that says what happens to the
+  // quantity: amp is bounded at 2, a trait axis is clamped to +/-1.2, phase rotates. What happens to
+  // a CHANNEL after a verb writes into it is `updateChannels`, running an expression a lineage
+  // wrote. So these four rows are the same kind of thing as the eleven above them from the verb's
+  // side, and a completely different kind of thing from the world's: the verb is enumerated, its
+  // consequence is not.
+  // Not `paired`: a channel is a place, not a possession, so there is no conserved transfer between
+  // two particles to define. A verb writes into the cell it is standing in, which is how every other
+  // field write in this engine works.
+  {n:'chan0',    paired:false},
+  {n:'chan1',    paired:false},
+  {n:'chan2',    paired:false},
+  {n:'chan3',    paired:false},
 ];
 const EFFECT_TARGET_COUNT=EFFECT_TARGETS.length;
 let __effectFires=0, __effectConserved=0, __effectSeeded=0;   // telemetry: how often authored verbs actually act
@@ -17817,6 +18170,10 @@ function applyUserEffect(eff,i,j,amt,slot){
       const fi=__cl(fy*FIELD_W+fx,0,FIELD_W*FIELD_H-1);
       const b0=field[fi]; field[fi]=__cl(b0+amt,0,2.5); moved=field[fi]-b0; break; }
     case 10: mutPressureAccum+=amt*0.01; moved=amt*0.01; break; // own mutability
+    // #188: write into a channel this lineage allocated. A no-op when the slot holds no rule, which
+    // is what keeps the target total: a verb aimed at a medium the lineage never invented does
+    // nothing rather than failing, so EFFECT_TARGETS can grow without any verb becoming invalid.
+    case 11: case 12: case 13: case 14: moved=chanWrite(t-11,i,amt*0.4); break;
   }
   __effectFires++;
   // #133 REALISED-AMOUNT DISCIPLINE. `moved` is measured as an after-minus-before delta, which is the
@@ -18052,7 +18409,12 @@ function executeVM(i,j,sim,d){
   // and testing has to be cheap or nothing gets tested, while a promoted probe is a live sense every
   // atom in the lineage can read, which is standing machinery and pays like the rest of it.
   const _probeRent=__PROBE?probeCount()*PROBE_RENT:0;
-  const totalCost=(nInst+_stack+_opRent+_foldRent+_probeRent+_over16*(COMPLEXITY_TOLL-1))*genome.metabolicCost;
+  // #188: and the dearest rent in the file, per ALLOCATED channel. A medium is a lattice plus a
+  // chemistry that runs over 1,600 cells on a cadence, so it is the largest standing commitment a
+  // lineage can make and it is priced that way. A channel that earns nothing is a heavy drain, which
+  // is exactly what makes allocating one a decision rather than a free win.
+  const _chanRent=__CHANNEL?chanAllocated()*CHANNEL_RENT:0;
+  const totalCost=(nInst+_stack+_opRent+_foldRent+_probeRent+_chanRent+_over16*(COMPLEXITY_TOLL-1))*genome.metabolicCost;
   amp[i]-=totalCost;amp[j]-=totalCost;
 
   for(let ip=0,_vs=0;ip<nInst&&_vs<nInst*2;ip++,_vs++){
@@ -24252,6 +24614,7 @@ __PROBE=(typeof globalThis==='undefined')||((globalThis.__PROBE??1)|0)!==0;     
 __OEE_BONUS=(typeof globalThis==='undefined')||((globalThis.__OEE_BONUS??1)|0)!==0; // #184: default ON, and it is a NO-OP at the seeded weights: the weights start at zero, so this changes nothing until a lineage moves one
 __DEME=(typeof globalThis==='undefined')||((globalThis.__DEME??1)|0)!==0;         // #185: default ON, and a NO-OP at the seeded genes: demeCount 1 means one pool, which is the pre-#185 engine
 __UPLASMID=(typeof globalThis==='undefined')||((globalThis.__UPLASMID??1)|0)!==0; // #185: default ON. Force off with UPLASMID=0 - no world offers or accepts another world's physics
+__CHANNEL=(typeof globalThis==='undefined')||((globalThis.__CHANNEL??1)|0)!==0;   // #188: default ON. Force off with CHANNEL=0 - no lattice is allocated, ka..kd read 0 and are never offered to the generator, and the four chan targets no-op
 __FORAGE_ON=(typeof globalThis==='undefined')||((globalThis.__FORAGE_EYES??1)|0)!==0; // resolve FORAGE once; gates the resource-sense computation in uaSetEyes
 __DECIDE_ON=(typeof globalThis==='undefined')||((globalThis.__DECIDE??1)|0)!==0; // resolve DECISION GAIN once; gates confidence accrual + commitment scaling
 __DECIDE_REAL=(typeof globalThis==='undefined')||((globalThis.__DECIDE_REAL??1)|0)!==0; // resolve DECIDE-FROM-REAL once; gates real-winner physics adoption
@@ -24724,6 +25087,10 @@ function loop(){
   // every tick because it samples the population every tick - the proposal itself is rare (LAW_RATE),
   // and the sampling is what gives a verdict something to be a verdict about.
   attemptLawMutation();
+  // #188: the invented media update on their own cadence, before the interactions that read them.
+  // Skipped entirely on a tick that is not a multiple of CHANNEL_CADENCE, and on every tick for a
+  // universe that has never allocated one.
+  updateChannels();
   // #136: the seasonal swing is now part designed sine, part real signal. WORLD_SIGNAL_WEIGHT bounds
   // how much authority the unauthored part may claim; with no real signal available every term is 0
   // and this reduces to exactly the old sinusoid, which is what a headless run reproduces.

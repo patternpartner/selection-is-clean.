@@ -212,6 +212,67 @@ m._compile(code+`
     }};
   });
 
+  // ── #188  A MEDIUM A LINEAGE INVENTED ────────────────────────────────────────────────────────
+  // The two ceilings #180-#185 did not touch: EFFECT_TARGETS was eleven entries a person typed, and
+  // every field was a hand-declared lattice with a hand-written update rule. This checks that the
+  // inventory is now GENERATED - that a chemistry nobody wrote can run, be sensed, be acted into,
+  // and stay bounded while doing it.
+  out.chan=run('chan',()=>{
+    genome.channels=[{expr:'(a)+(((b)-(a))*(0.25))',compiled:null,failed:false,age:0,uses:0},
+                     null,null,null];
+    // 1. THE LATTICE UPDATES, and the rule is the thing that decides how. This rule IS diffusion -
+    //    a+(mean-a)*k is the discrete Laplacian - but nothing in the engine imposed that shape; it
+    //    is expressible in the grammar, which is the whole difference between a medium and a setting.
+    const L=chanLattice(0);
+    L.fill(0); L[20*FIELD_W+20]=3;            // a single spike
+    const before=Array.from(L).reduce((x,y)=>x+y,0);
+    let ran=0;
+    for(let t=0;t<CHANNEL_CADENCE*4;t++){ globalThis.__detMs+=5; const u0=__liveness['channel.update']|0;
+      try{loop();}catch(e){} if((__liveness['channel.update']|0)>u0)ran++; }
+    let spread=0, mx=-Infinity, nonFinite=0;
+    for(let c=0;c<L.length;c++){ if(!isFinite(L[c]))nonFinite++; if(L[c]>0.001)spread++; if(L[c]>mx)mx=L[c]; }
+    // 2. IT IS BOUNDED whatever the rule computes. A runaway chemistry is a runaway WORLD, not a
+    //    runaway expression - there is no uaCall clamp protecting the lattice, only CHANNEL_CLAMP.
+    genome.channels[0]={expr:'(a)*(8.00)',compiled:null,failed:false,age:0,uses:0};   // explosive on purpose
+    L.fill(1);
+    for(let t=0;t<CHANNEL_CADENCE*6;t++){ globalThis.__detMs+=5; try{loop();}catch(e){} }
+    let over=0; for(let c=0;c<L.length;c++) if(!(L[c]>=-CHANNEL_CLAMP&&L[c]<=CHANNEL_CLAMP))over++;
+    return {ran,spread,mx:+mx.toFixed(3),nonFinite,over,clamp:CHANNEL_CLAMP,
+            latticeIsNotGenome:(function(){ try{ const b=encodeGenome();
+              return b.indexOf('"chn"')>=0||JSON.parse(Buffer.from(b,'base64').toString('utf8')).chn!==undefined; }catch(e){ return 'threw'; } })()};
+  });
+
+  out.chanIO=run('chanIO',()=>{
+    genome.channels=[{expr:'(a)+(0.00)',compiled:null,failed:false,age:0,uses:0},
+                     {expr:'(a)+(0.00)',compiled:null,failed:false,age:0,uses:0},null,null];
+    // WRITE: a verb aimed at chan0 must move the lattice at the actor's own cell
+    let i=-1; for(let k=0;k<N;k++) if(palive[k]){i=k;break;}
+    if(i<0)return {noParticle:true};
+    const L=chanLattice(0); L.fill(0);
+    const moved=chanWrite(0,i,0.7);
+    const cell=chanCellOf(i);
+    const landed=L[cell];
+    // and a write into an UNALLOCATED slot must be a no-op, so EFFECT_TARGETS can grow without any
+    // existing verb becoming invalid
+    const noop=chanWrite(2,i,0.7);
+    // READ: ka must see it
+    const read=chanRead(0,i);
+    // an atom naming ka with NOTHING allocated still compiles and reads 0
+    const saveCh=genome.channels;
+    genome.channels=[null,null,null,null];
+    uaSetEyes(i,-1);
+    const at=mk('(ka)+(0.00)'); uaCompile(at);
+    const safe=at.failed?'FAILED':uaCall(at,0,0);
+    // and the generator must not offer an unallocated channel
+    let offeredEarly=0; for(let q=0;q<300;q++) if(CHANNEL_TEST.test(uaGenExpression()))offeredEarly++;
+    genome.channels=saveCh;
+    let offeredNow=0; for(let q=0;q<400;q++) if(CHANNEL_TEST.test(uaGenExpression()))offeredNow++;
+    // the four targets exist and name the bank
+    const tgts=EFFECT_TARGETS.map(x=>x.n).filter(n=>/^chan[0-3]$/.test(n));
+    return {moved:+moved.toFixed(4),landed:+landed.toFixed(4),noop,read:+read.toFixed(4),safe,
+            offeredEarly,offeredNow,tgts:tgts.length,rent:CHANNEL_RENT};
+  });
+
   // ── THE CROSSINGS: every new gene must survive a save and diverge in a child ────────────────
   out.cross=run('cross',()=>{
     genome.uaFoldMode=2; genome.uaFoldK=3.25; genome.autonomyCede=0.8;
@@ -219,10 +280,12 @@ m._compile(code+`
     genome.demeCount=3; genome.demeFlow=0.25;
     genome.netLawRate=0.007; genome.netLawReceptivity=0.6;
     genome.oeeW=[0.2,0.4,0.6,0.8];
+    genome.channels=[{expr:'(a)+(((b)-(a))*(0.25))',compiled:null,failed:false,age:7,uses:3},null,
+                     {expr:'(ka)-(kb)',compiled:null,failed:false,age:2,uses:1},null];
     genome.probes=[{expression:'(a)+(b)',compiled:null,failed:false,n:11,hit:9,pending:0,pendTick:5,pendFit:1,age:3},null,null,null];
     const blob=encodeGenome();
     const wipe=['uaFoldMode','uaFoldK','autonomyCede','cellScale','rxSelf','rxCross','demeCount',
-                'demeFlow','netLawRate','netLawReceptivity','oeeW','probes'];
+                'demeFlow','netLawRate','netLawReceptivity','oeeW','probes','channels'];
     for(const k of wipe)genome[k]=undefined;
     decodeGenome(blob); sanitizeGenome();
     const eq=(x,y)=>Math.abs(x-y)<1e-3;
@@ -237,11 +300,18 @@ m._compile(code+`
       probe:Array.isArray(genome.probes)&&genome.probes[0]&&genome.probes[0].n===11&&genome.probes[0].hit===9,
       // and an outstanding claim must NOT survive - it belongs to the timeline that made it
       claimCleared:Array.isArray(genome.probes)&&genome.probes[0]&&genome.probes[0].pendTick===-1,
+      // #188: the chemistry survives, holes and all, and the uses counter resets like every other record here
+      chan:Array.isArray(genome.channels)&&genome.channels.length===CHANNEL_MAX&&
+           !!genome.channels[0]&&genome.channels[0].expr==='(a)+(((b)-(a))*(0.25))'&&
+           genome.channels[0].age===7&&genome.channels[0].uses===0&&
+           !genome.channels[1]&&!!genome.channels[2]&&genome.channels[2].expr==='(ka)-(kb)',
     };
     // clone: no shared references
     const c=cloneGenome(genome);
     const shared={oeeW:c.oeeW===genome.oeeW, probes:c.probes===genome.probes,
-                  probe0:c.probes&&c.probes[0]===genome.probes[0]};
+                  probe0:c.probes&&c.probes[0]===genome.probes[0],
+                  chan:c.channels===genome.channels,
+                  chan0:c.channels&&c.channels[0]===genome.channels[0]};
     // child: the proxy weights must be able to diverge
     let childMoved=0;
     for(let i=0;i<200;i++){ const g=cloneGenome(genome); g.oeeW=[0.5,0.5,0.5,0.5];
@@ -255,7 +325,7 @@ m._compile(code+`
     const names=cen.rows.map(r=>r.name);
     return {saved,shared,childMoved,seeded,carriers,
             rows:['atom.fold','xion.cede','phys.reach','phys.chem','probe.bank',
-                  'oee.weighted','deme.split'].filter(n=>names.indexOf(n)<0),
+                  'oee.weighted','deme.split','channel.bank','channel.sensed'].filter(n=>names.indexOf(n)<0),
             promotedNotACrossingRow:names.indexOf('probe.promoted')<0};
   });
 
@@ -359,18 +429,44 @@ const RJ=W.rejects||{};
 for(const k of ['lawIndex','opIndex','foldMode','foldK','tooMany'])
   ck('#185 and rejects a bad one: '+k, RJ[k]===false);
 
+// #188
+const CH=r.chan||{};
+ck('#188 an evolved chemistry actually runs over the lattice', CH.ran>0,
+   CH.ran+' lattice passes in 4 cadences');
+ck('#188 and a rule that expresses the Laplacian diffuses a spike',
+   CH.spread>1, 'a single spike of 3 reached '+CH.spread+' cells, peak now '+CH.mx);
+ck('#188 every cell stays finite', CH.nonFinite===0, CH.nonFinite+' non-finite');
+ck('#188 an EXPLOSIVE rule is still bounded by CHANNEL_CLAMP', CH.over===0,
+   '(a)*(8.00) run 6 cadences from a full lattice: '+CH.over+' cells outside ±'+CH.clamp);
+ck('#188 the chemistry is saved and the chemicals are not', CH.latticeIsNotGenome===true,
+   'the rule is in the genome; the lattice is world state');
+const CI=r.chanIO||{};
+ck('#188 a verb writes into a medium at its own cell', CI.landed>0 && CI.moved>0,
+   'moved '+CI.moved+', lattice now '+CI.landed);
+ck('#188 and ka reads it back', CI.read>0, 'ka = '+CI.read);
+ck('#188 a write into an unallocated slot is a no-op', CI.noop===0,
+   'so EFFECT_TARGETS can grow without invalidating any existing verb');
+ck('#188 an atom naming ka with nothing allocated still compiles and reads 0', CI.safe===0,
+   'read '+CI.safe);
+ck('#188 an UNALLOCATED channel is never offered to the generator', CI.offeredEarly===0,
+   CI.offeredEarly+'/300 — a dead letter is #179 wearing a new name');
+ck('#188 an allocated one is', CI.offeredNow>0, CI.offeredNow+'/400');
+ck('#188 four effect targets index the bank', CI.tgts===4);
+ck('#188 an allocated channel pays the dearest rent in the file', CI.rent>0,
+   'CHANNEL_RENT = '+CI.rent+' instruction-equivalents per allocated channel');
+
 // the crossings
 const CR=r.cross||{};
 const SV=CR.saved||{};
-for(const k of ['fold','cede','phys','deme','net','oeeW','probe','claimCleared'])
+for(const k of ['fold','cede','phys','deme','net','oeeW','probe','claimCleared','chan'])
   ck('save -> load: '+k, SV[k]===true);
-ck('cloneGenome shares none of it', CR.shared && !CR.shared.oeeW && !CR.shared.probes && !CR.shared.probe0,
+ck('cloneGenome shares none of it', CR.shared && !CR.shared.oeeW && !CR.shared.probes && !CR.shared.probe0 && !CR.shared.chan && !CR.shared.chan0,
    CR.shared && JSON.stringify(CR.shared));
 ck('parent -> child: the proxy weights diverge', CR.childMoved>0, CR.childMoved+'/200');
 ck('germline -> population: the substrate actually crosses', CR.seeded===true && CR.carriers>0,
    CR.carriers+' carrier(s) after one seeding - the bug the crossing rows caught seven times');
 ck('every new gene has a census row', CR.rows && CR.rows.length===0,
-   CR.rows && CR.rows.length?('missing: '+CR.rows.join(' ')):'all seven present');
+   CR.rows && CR.rows.length?('missing: '+CR.rows.join(' ')):'all nine present');
 // #187: and the one that must NOT be a crossing row. A promotion is an earned outcome, not authored
 // structure, so "germline 1 / population 0" is the normal state of a young world - it was reported as
 // STRANDED and made crossing-test red for something that is not a defect. It is logged per epoch now.

@@ -1826,6 +1826,56 @@ because it belongs to the timeline that made it.
 lowering `demeCount` merges the pools on the next tick with nothing to migrate or garbage-collect.
 The barrier gates reproduction (both spawn sites) and horizontal transfer, NOT interaction.
 
+### #188 — the channel bank, and why it is one mechanism for two ceilings
+
+`EFFECT_TARGETS` was eleven entries a person typed and there are fifteen-plus hand-declared lattices,
+each with a hand-written update rule and a hand-written sense opcode. Those are **one closure seen
+from two sides**: everything any program can read or write is an entry in a list, and every entry got
+a rule and an opcode written by hand. So one mechanism opens both.
+
+A **channel** is one of `CHANNEL_MAX`=4 lattices, allocated by a lineage, whose **reaction rule is an
+expression in that lineage's own atom grammar** — compiled by `uaCompile`, so it inherits #181's fold
+and #161's cache. The cell's state reaches it through the parameter list the grammar already has:
+`a` = this cell, `b` = the 4-neighbour mean (so `(b)-(a)` IS the discrete Laplacian — diffusion is
+*expressible*, not imposed), `c`/`d`/`m` = resource/detrital/inhibitor here, `nx`/`ny`/`t`/`s`, and
+`ka`..`kd` = **the other channels at this cell**, which is what makes reaction-diffusion possible
+rather than four independent decays. The rule's answer IS the new cell value, not a delta.
+
+| | |
+|---|---|
+| sensed by | `ka`..`kd` grammar symbols — but only for ALLOCATED slots (#179's dead-letter rule) |
+| acted on by | `EFFECT_TARGETS` rows 11-14, `case 11..14` in `applyUserEffect` -> `chanWrite` |
+| lives in | `genome.channels[k] = {expr, compiled, failed, age, uses}` — the RULE is genome |
+| does NOT live in | the lattice. `__channels[k]` is WORLD STATE and is not saved with the genome |
+| costs | `CHANNEL_RENT` 0.6/allocated channel/interaction — the dearest rent in the file |
+| bounded by | `CHANNEL_CLAMP` on every cell, `CHANNEL_CADENCE`=12, `CHANNEL_MAX`=4 |
+| knob | `CHANNEL` |
+
+**The chemistry crosses; the chemicals do not.** A migrant and a `uplasmid` carry rules, so a lineage
+arrives with a chemistry and an empty medium. That split is deliberate and is why `cloneGenome`
+deep-copies `channels` while `__channels` is untouched by any genome operation.
+
+**A runaway chemistry is a runaway WORLD.** There is no `uaCall` clamp standing behind the lattice the
+way there is behind an atom's return value — `CHANNEL_CLAMP` is the only thing there. `substrate-test`
+runs `(a)*(8.00)` from a full lattice for six cadences and asserts 0 cells out of bound. Anything that
+writes a channel must clamp at the write.
+
+**The lattice pass must be FULLY SCOPED, and the first version was not.** It set `c/d/m/nx/ny` and
+left `rl`, `rd`, `__uaVoice`, `__probeOut` and `__chanOut` holding the last particle interaction's
+values — and the chemistries that evolved named `rd`, `yd`, `yc`. That is #175's bug in a new pass: a
+rule reading population-order residue cannot repeat itself and cannot be selected for. `updateChannels`
+now saves, sets-or-zeroes, and restores every piece of ambient atom context. **Any future pass that
+calls `uaCall` outside a particle interaction owes the same discipline.**
+
+**Release is on reads AND writes.** An operator dies when nothing NAMES it; a channel has two ways to
+be dead (nothing senses it, nothing acts into it) and either alone is survivable, so both are checked.
+The lattice is left to decay rather than zeroed — a medium does not vanish because nothing maintains it.
+
+**WHAT IS STILL CLOSED.** A channel is a scalar field on the same 40x40 lattice on a fixed cadence.
+No vector fields, no new topology, no new dimensionality, no change to what a cell or a neighbourhood
+is. The inventory stopped being ENUMERATED and became GENERATED; the *form* of the generated space is
+the new ceiling, and it is a real one.
+
 ### #186 — the germline-to-population crossing, stated generally
 
 The bug the crossing rows caught for the seventh time, and the general form, because it will happen
@@ -1839,6 +1889,15 @@ again to whoever adds the next gene:
 
 `seedSubstrateIntoParticle()` is that route for #181-#185's genes, called once per `mutateGenome`,
 into ONE random living particle. Adding a gene to any of those layers means adding a line there.
+
+**And two things that only mean something together must cross to the SAME particle (#188).**
+`seedAtomIntoParticle(atomIdx, into)` takes an optional carrier for exactly this reason. Measured:
+75 population genomes held channel rules, 46 held a sensing atom, and `channel.sensed` — which asks
+for both in ONE genome — read zero, because the two hand-offs each picked their own random target. A
+genome with a medium it cannot perceive pays rent for nothing; one that perceives a medium it does not
+have reads a constant zero. #141's rule ("the vocabulary travels with the program") applies to a
+chemistry and the sense for it, and this one took instrumenting rather than reasoning — two guesses
+missed it.
 The probe bank crosses WITHOUT its record, deliberately: a promotion is earned against a particular
 carrier's fitness history, and handing a fresh carrier someone else's hit rate is the one way that
 mechanism could lie.

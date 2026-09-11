@@ -170,8 +170,18 @@ for(const entry of ['profileVM','executeSoloVM','executeVM','executeClusterVM'])
   ck('#175: '+entry+' starts a program with silent voices', sc[entry]===0,
      sc[entry]===0?'all 8 slots cleared':('left '+sc[entry]+' slot(s) poisoned'));
 const nResets=(code.match(/__uaVoice\.fill\(0\)/g)||[]).length;
-ck('#175: every program entry carries the reset', nResets===5,
-   nResets+' resets in engine.html (profileVM, executeVM, executeClusterVM, executeSoloVM, #95 prediction)');
+ck('#175: every program entry carries the reset', nResets===6,
+   nResets+' resets in engine.html (profileVM, executeVM, executeClusterVM, executeSoloVM, #95 prediction, #188 updateChannels)');
+// WHY SIX AND NOT FIVE. #188's lattice pass calls uaCall outside any particle interaction, which
+// makes it a program entry in every sense that matters here - and its first version did NOT clear the
+// voices, so the chemistries it evolved (which named yd and yc) were reading residue from an
+// arbitrary organism in an arbitrary order. That is precisely the defect #175 exists to prevent, and
+// this count is what flagged the new site for review rather than letting it through. The number is
+// deliberately a constant and not a pattern: it should fail, and be read, every time a sixth, seventh
+// or eighth context starts running atoms.
+const nChanScope=(code.match(/uaCtxRl=0; uaCtxRd=0; __uaVoice\.fill\(0\); __probeOut\.fill\(0\);/g)||[]).length;
+ck('#188: the lattice pass zeroes the particle-relative senses too', nChanScope===1,
+   'a cell has no partner, no forage gradient and no voices — those read a defined zero, not a stranger');
 
 ck('the loop still runs with the wider signature', r.loopOk && r.loopOk.ran>=200,
    r.loopOk && (r.loopOk.ran+' ticks, N '+r.loopOk.N+', atoms '+r.loopOk.atoms));
