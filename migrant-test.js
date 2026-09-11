@@ -36,6 +36,19 @@ m._compile(code+`
   const badVerb={...good, ue:[{t:1,m:0,s:0.5,n:-1,a:'nope'}]};
   out.rejectsBadVocab = [tooMany,tooLong,notString,badVerb]
         .every(p=>validNetworkPayload('migrant',p)===false);
+  // #196: the chemistry on the wire. Bounds are READ from the engine's own constants (#153).
+  const goodChn={...good, chn:[['(a)*(0.9)',3,[[2,-1,0.5]],1,3,8,0.004],0,['(ka)-(kb)',1,null,0,1,40,0],0]};
+  out.acceptsChemistry = validNetworkPayload('migrant',goodChn)===true;
+  out.acceptsNoChemistry = validNetworkPayload('migrant',good)===true;   // a pre-#196 peer still lands
+  out.rejectsBadChemistry = [
+    {...good, chn:[['(a)*(0.9)',0,null,0,1,40,0]].concat(new Array(CHANNEL_MAX).fill(0))},  // too many rows
+    {...good, chn:[['x'.repeat(UA_EXPR_MAX+1),0,null,0,1,40,0]]},                           // expression over budget
+    {...good, chn:[[{evil:1},0,null,0,1,40,0]]},                                            // not a string
+    {...good, chn:[['(a)',0,[[99,0,1]],0,1,40,0]]},                                         // tap off the end
+    {...good, chn:[['(a)',0,null,0,999,40,0]]},                                             // cadence past the cap
+    {...good, chn:[['(a)',0,null,0,1,40,5]]},                                               // infectiousness past the cap
+    {...good, chn:'nope'},
+  ].every(p=>validNetworkPayload('migrant',p)===false);
 
   // build a HOST bank that is deliberately different, so a wrong index cannot accidentally be right
   genome.userAtoms=[{expression:'HOST0',compiled:null,failed:false,uses:0,state:0},
@@ -52,7 +65,8 @@ m._compile(code+`
   incomingMigrants.push({nx:0.5,ny:0.5,tend:[0.1,0.2,0.3],mem:[],plasmid:[],amp:1,phase:0,
     prog:[[CORE_OPCODES+2,0,0,0.5]],
     ua:['MIG0','','MIG2'],                                  // slot 1 deliberately empty
-    ue:[{t:3,m:1,s:0.7,n:-1,a:2}]});                        // gate on bound slot 2 -> 'MIG2'
+    ue:[{t:3,m:1,s:0.7,n:-1,a:2}],                          // gate on bound slot 2 -> 'MIG2'
+    chn:[['(a)*(0.9)',3,[[2,-1,0.5]],1,3,8,0.004],0,['(ka)-(kb)',1,null,0,1,40,0],0]});   // #196: slots 1 and 3 deliberately empty
   // MAKE THE LANDING CERTAIN, and read the gate's name from the engine rather than restating it.
   // This line used to say genome.netRecvRate=1, and netRecvRate appears ZERO times in engine.html:
   // the gate networkReceive actually applies is "if(Math.random()>genome.netReceptivity)continue".
@@ -73,6 +87,17 @@ m._compile(code+`
   out.missingSlotKeepsItsPlace = g.boundOpcodes[1]===-1 && slot(1)===null;
   const v=(g.userEffects||[])[0];
   out.senseGateSurvivesTheHop = !!v && (v.ax|0)===2 && slot(v.ax|0)==='MIG2' && v.t===3 && (v.m|0)===1;
+  // #196: the chemistry landed, IN SLOT ORDER, with an empty slot keeping its position - ka..kd are
+  // bound by index, so a shifted chemistry is #141's stranger reading our dictionary one substrate
+  // over. age and uses reset because both are facts about how long a rule has sat HERE, and the
+  // LATTICE is not sent and could not be: it is the receiving universe's world state.
+  const cb=g.channels||[];
+  const cr=k=>(cb[k]&&typeof cb[k].expr==='string')?cb[k]:null;
+  out.chemistryTravels = !!cr(0) && cr(0).expr==='(a)*(0.9)' && cr(0).wrap===1 && cr(0).cad===3 &&
+                         chanRes(cr(0))===8 && Math.abs(chanRuleXfer(cr(0))-0.004)<1e-5 &&
+                         Array.isArray(cr(0).st) && cr(0).st.length===1 && cr(0).st[0][0]===2;
+  out.chemistrySlotOrder = !cr(1) && !!cr(2) && cr(2).expr==='(ka)-(kb)' && !cr(3);
+  out.chemistryRecordResets = !!cr(0) && cr(0).age===0 && cr(0).uses===0;
   // (5) the host must be untouched
   out.hostBankUntouched = JSON.stringify(genome.userAtoms.map(a=>a.expression))===JSON.stringify(hostAtomsBefore)
                        && JSON.stringify(genome.boundOpcodes)===JSON.stringify(hostBoundBefore)
@@ -91,6 +116,16 @@ const checks=[
   ['missingSlotKeepsItsPlace','an absent atom lands as a tombstone, not a shift'],
   ['senseGateSurvivesTheHop','a #139 sense gate still points at its own atom after the hop'],
   ['hostBankUntouched','the host’s own bank is not disturbed by the arrival'],
+  // #196 — THE FIFTH CROSSING, open from #188 until now. The payload carried atoms, verbs, operators
+  // and the compiler stage and NO channel rule ever left a tab, while #188's own comment claimed "a
+  // migrant arrives with a chemistry and an empty medium". Four swings of invented media that could
+  // not cross a tab boundary, and no rig owned the question so nothing went red.
+  ['acceptsChemistry','a well-formed chemistry is accepted on the wire'],
+  ['acceptsNoChemistry','and a pre-#196 peer that sends none still lands'],
+  ['rejectsBadChemistry','oversized, overlong, non-string, off-lattice and over-cap chemistries are rejected'],
+  ['chemistryTravels','the medium lands as itself: form, manifold, timescale, grain, infectiousness'],
+  ['chemistrySlotOrder','in slot order, an empty slot keeping its position'],
+  ['chemistryRecordResets','with the record reset and the lattice left behind'],
 ];
 let bad=0;
 for(const [k,d] of checks){ const ok=r[k]===true; if(!ok)bad++;

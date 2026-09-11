@@ -1040,6 +1040,63 @@ m._compile(code+`
             bounds:{hi,lo,absent},saved,smoves,sillegal,sreach0,sreachTop};
   });
 
+  // -- #196  WHOSE CHEMISTRY ACTUALLY RUNS -------------------------------------------------------
+  // For eight swings updateChannels read chanBank() with the ambient genome, which is the SELF's, so
+  // only the germline's rule ever computed anything. Every population copy - deep-copied, seeded,
+  // saved, rented, and as of #195 spread to a thousand carriers - was INERT, and channel.bank's
+  // population count was measuring carriage rather than effect. The last check here is the one that
+  // matters: it asks the LATTICE which rule ran, not the census.
+  out.gov=run('gov',()=>{
+    const saveCh=genome.channels, saveTick=tick;
+    const mk=(e)=>({expr:e,compiled:null,failed:false,age:1,uses:0,
+      st:CHANNEL_STENCIL_SEED.map(t=>[t[0],t[1],t[2]]),wrap:0,cad:1,res:FIELD_W,xfer:0});
+    // a small, fully known population
+    for(let k=0;k<N;k++)palive[k]=false;
+    const live=[0,1,2,3];
+    for(const q of live){ palive[q]=true; px[q]=200+q*40; py[q]=200; amp[q]=1;
+                          pGenome[q]=cloneGenome(genome); pGenome[q].channels=[null,null,null,null]; }
+    genome.channels=[mk('(a)*(0.00)'),null,null,null];            // the SELF says: decay to nothing
+
+    // 1. NO CARRIER -> the germline governs. A universe whose population has not received a
+    //    chemistry still runs the one it authored.
+    let selfWins=0;
+    for(let q=0;q<200;q++){ const g=chanGoverning(0); if(g&&g.expr==='(a)*(0.00)')selfWins++; }
+    const noCarrier=selfWins;
+
+    // 2. CARRIERS GOVERN. Three hold rule A, one holds rule B, none holds the germline's - so the
+    //    germline should never be drawn, and A should govern about three times as often as B.
+    for(const q of [0,1,2]) pGenome[q].channels=[mk('(a)+(0.10)'),null,null,null];
+    pGenome[3].channels=[mk('(a)+(0.90)'),null,null,null];
+    let a=0,b=0,mine=0;
+    for(let q=0;q<4000;q++){ const g=chanGoverning(0);
+      if(!g)continue;
+      if(g.expr==='(a)+(0.10)')a++; else if(g.expr==='(a)+(0.90)')b++; else mine++; }
+    const share=(a+b)>0?+(a/(a+b)).toFixed(3):-1;
+
+    // 3. AND THE LATTICE AGREES WITH THE CENSUS. The germline says decay to zero; every carrier says
+    //    hold at 0.9. Drive the real update loop and ask the lattice which rule ran. This is the
+    //    check that would have failed for eight swings.
+    for(const q of live) pGenome[q].channels=[mk('(0.90)+((a)*(0.00))'),null,null,null];
+    { const L=chanLattice(0); L.fill(0); }
+    for(let q=0;q<4;q++){ tick=(q+1)*CHANNEL_CADENCE; updateChannels(); }
+    const popRan=+chanLattice(0)[20*FIELD_W+20].toFixed(3);
+    // and with the population's rule removed, the germline's decay is what runs
+    for(const q of live) pGenome[q].channels=[null,null,null,null];
+    { const L=chanLattice(0); L.fill(0.9); }
+    for(let q=0;q<4;q++){ tick=(q+5)*CHANNEL_CADENCE; updateChannels(); }
+    const selfRan=+chanLattice(0)[20*FIELD_W+20].toFixed(3);
+
+    // 4. THE KNOB restores the pre-#196 engine: the self's rule, every time, and no draw taken
+    for(const q of live) pGenome[q].channels=[mk('(a)+(0.10)'),null,null,null];
+    const sv=__CHANGOV; __CHANGOV=false;
+    let offSelf=0;
+    for(let q=0;q<200;q++){ const g=chanGoverning(0); if(g&&g.expr==='(a)*(0.00)')offSelf++; }
+    __CHANGOV=sv;
+
+    genome.channels=saveCh; tick=saveTick;
+    return {noCarrier,a,b,mine,share,popRan,selfRan,offSelf};
+  });
+
   // ── THE CROSSINGS: every new gene must survive a save and diverge in a child ────────────────
   out.cross=run('cross',()=>{
     genome.uaFoldMode=2; genome.uaFoldK=3.25; genome.autonomyCede=0.8;
@@ -1499,6 +1556,24 @@ ck('#195 and it takes a small step that can reach both ends',
    XF.sillegal===0 && XF.sreach0===true && XF.sreachTop===true,
    XF.smoves+' steps, '+XF.sillegal+' outside [0, 0.01], reached zero '+XF.sreach0+' and the top '+XF.sreachTop+
    ' — reaching zero is the element being able to give up spreading, which is the only way a rule can stop being a parasite without being deleted');
+
+// #196
+const GV=r.gov||{};
+ck('#196 with no carrier the germline governs', GV.noCarrier===200,
+   GV.noCarrier+'/200 — a universe whose population has not received a chemistry still runs the one it authored');
+ck('#196 with carriers, the germline is NEVER drawn', GV.mine===0,
+   GV.mine+' draws returned the self out of '+((GV.a||0)+(GV.b||0)+(GV.mine||0))+
+   ' — for eight swings this number was all of them');
+ck('#196 and numerosity is the selective quantity', GV.share!==undefined && Math.abs(GV.share-0.75)<0.03,
+   'three carriers of one rule against one of another governs '+((GV.share||0)*100).toFixed(1)+
+   '% of updates — which is what makes descent and #195\'s transfer change what the world computes rather than only who carries what');
+ck('#196 THE LATTICE AGREES: the population\'s rule is what ran', GV.popRan!==undefined && GV.popRan>0.8,
+   'the germline says decay to zero and every carrier says hold at 0.9; the lattice reads '+GV.popRan+
+   ' — this is the check that would have failed for eight swings');
+ck('#196 and with no carrier holding it, the germline\'s does', GV.selfRan!==undefined && GV.selfRan<0.1,
+   'the same lattice under the germline\'s decay rule reads '+GV.selfRan);
+ck('#196 CHANGOV=0 restores the germline-only rule exactly', GV.offSelf===200,
+   GV.offSelf+'/200 — off is the pre-#196 engine, and it takes no draw');
 
 // the crossings
 const CR=r.cross||{};

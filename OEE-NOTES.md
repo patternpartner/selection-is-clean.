@@ -15315,9 +15315,14 @@ that never ran. `channel.shed` read 2 against 750 transfers; with the clock tick
 ```
 
 #194's bottleneck is gone: invented media reach essentially the whole population instead of a tenth
-of it, and with them #189's forms (14 → 56, 1 → 141 carriers) and #194's grains. The layers built in
-the four previous swings are now selectable across the population that selection operates on, which
-was the entire point.
+of it, and with them #189's forms (14 → 56, 1 → 141 carriers) and #194's grains.
+
+> **CORRECTION (#196).** The sentence that stood here — that the four previous swings' layers "are now
+> selectable across the population that selection operates on" — was wrong. `updateChannels` read the
+> SELF's bank, so every population copy was inert: carried, rented, spread, and computing nothing.
+> `channel.bank` population 1,050 was measuring carriage, not effect. #196 draws the governing rule
+> from the living carriers, which is what makes the sentence true; until that commit it was not.
+> The reach numbers above are correct as counts of carriage.
 
 ### What this costs, stated rather than buried
 
@@ -15357,3 +15362,96 @@ transfer working at 2,500 ticks, against ten to twenty-four before. `smoke.sh` r
 TICKS=40, before anything can be selected away, and passes 49 of 49.
 
 `substrate-test.js`: 162 checks, 14 of them #195's. `smoke.sh`: 49 ok, 0 failing.
+
+## #196 — TWO THINGS THAT WERE NEVER TRUE, and a correction to #195
+
+This swing opened nothing. It closed two gaps between what the instruments reported and what the
+engine did, both found by auditing rather than by a failing test, and one of them makes the previous
+commit's claim wrong.
+
+### 1. Only the germline's chemistry ever ran
+
+`updateChannels()` is called once per tick from the main loop with the ambient genome, which is the
+**self's**. So `chanBank()` there is the germline's bank, and since #188 the only reaction rule that
+has ever computed anything is the self's.
+
+Every population copy was **inert**. Carried, deep-copied, seeded, saved, reloaded, shed, rented, and
+as of #195 spread horizontally to a thousand carriers — and computing nothing.
+
+**So #195's note is wrong, and this is the correction.** It says the media "reach essentially the
+whole population" and that the four previous swings' layers "are now selectable across the
+population". A carried rule that never runs is not selectable on its content. `channel.bank`
+germline 4 / population 1,050 was measuring **carriage**, not effect, and I read it as effect.
+
+It is the same defect this file has now found five times, each in a new mechanism — #102 (atom uses
+counted on the germline), #130 (the OEE meter read a germline-only pool), #132b (the verb cull read a
+germline counter), #133b (composed verbs stripped on the way into the population), #184 (probes scored
+only in the self's context). The shape never changes: **a quantity that is nominally per-lineage and
+is always read from the germline.**
+
+**One rule per slot is necessary and that is not what was wrong.** The lattice is world state; two
+carriers holding different rules for slot 0 cannot both compute slot 0. #188 chose correctly that a
+medium belongs to the universe. What was never chosen, and never written down, is that the one rule
+should be the *self's forever regardless of who carries what*.
+
+`chanGoverning(k)` now draws the governing rule from the living carriers, one draw per channel
+update — #102's own repair pattern — with the germline as fallback when nobody holds that slot. So
+**numerosity is the selective quantity**, and descent and #195's transfer both change what the world's
+chemistry *is* rather than only who carries a copy of it.
+
+```
+three carriers of one rule against one of another
+  governs 74.4% of updates          (proportionality, 4,000 draws)
+  the germline drawn 0 times of 4,000
+and the lattice agrees with the census:
+  germline says decay to 0, every carrier says hold at 0.9  ->  lattice reads 0.9
+  no carrier holding it, germline's decay runs              ->  lattice reads 0.0
+```
+
+That last pair is the check that would have failed for eight swings, and it asks the **lattice** which
+rule ran rather than asking the census.
+
+### 2. No chemistry had ever crossed a tab boundary
+
+THE FIVE CROSSINGS are germline→population, parent→child, save→load, tab→tab, and
+tab→tab-on-the-wire. The migrant payload carried `ua` (atoms), `ue` (verbs, with #193's emission
+stencils), `uo` (operators) and `fd` (the compiler stage). **Not the chemistry.** #188's own comment
+says:
+
+> "the lattice is world state and belongs to the universe, not to any lineage — which is why a
+> migrant arrives with a chemistry and an empty medium"
+
+It arrived with **no chemistry at all**, and that sentence has been false since the day it was
+written. #188's media, #189's forms, #194's grains and #195's element rates all failed the fifth
+crossing, for eight swings, and nothing went red because **no rig owned the question**.
+
+`chn` now rides the migrant payload in the save's own row shape — one format for a chemistry, not two
+— validated on the wire with every bound READ from the engine (#153: `CHANNEL_MAX`, `UA_EXPR_MAX`,
+`UA_EXPR_SAFE`, `CHANNEL_STENCIL_MAX`, `CHANNEL_OFFSET_MAX`, `CHANNEL_CAD_MAX`, `FIELD_W`, the
+infectiousness cap), installed in **slot order** with an empty slot keeping its position, clamped
+again on arrival, and with `age`/`uses` reset. The lattice is not sent and could not be: it is the
+receiving universe's world state. So a migrant now genuinely does arrive with a chemistry and an empty
+medium.
+
+`migrant-test` owns the question now: seven malformed shapes rejected, a pre-#196 peer that sends no
+chemistry still lands, and the medium arrives as itself — form, manifold, timescale, grain,
+infectiousness.
+
+### What this says about the posture
+
+Both defects were found by reading the code against its own comments, not by a test going red and not
+by pushing harder. Neither is a stability problem in the sense of "the layers are noisy and need to
+settle" — the layers were *partly false*, and building topology or kernel evolution on top of a
+channel system where carriage is not effect would have given the new layer the same falsity one level
+up.
+
+But the corollary cuts the other way too, and it is the honest reading: **the sequencing rule
+"stabilize before opening" was worth less than it was given.** What was needed was an audit, which
+costs an afternoon, not a stabilization period. The real remaining ceiling is not that the layers are
+unsettled — it is that **every price in this economy is a constant I chose**: `CHANNEL_RENT`,
+`EMIT_TAP_RENT`, `MET_RENT`, `REACH_RENT`, `CHANXFER_COST`, `COMPLEXITY_TOLL`, the 70%-of-baseline
+viability threshold that reverts a law mutation, the grace period before a medium can be shed. The
+system evolves what it does and never what things cost or when it gets stopped. That is the next
+swing.
+
+`substrate-test.js`: 168 checks, 6 of them #196's. `migrant-test.js`: 10 checks, 6 of them #196's.

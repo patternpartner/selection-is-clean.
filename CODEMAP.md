@@ -2235,6 +2235,40 @@ of 778 and 62 of 435, so most arrivals still land where nothing can perceive the
 a slower sweep is the birth draw at allocation; it is deliberately not tuned down, because a mechanism
 that does not fire is worse than one whose consequences are visible.
 
+### #196 — whose chemistry runs, and the chemistry on the wire
+
+**`updateChannels` DOES NOT READ `chanBank()` ANY MORE, and do not put it back.** It is called once
+per tick from the main loop with the ambient genome, which is the self's — so from #188 to #196 the
+only reaction rule that ever computed anything was the germline's, and every population copy was
+INERT. `channel.bank`'s population count was measuring carriage, not effect (and #195's note said
+otherwise; corrected there). Same shape as #102, #130, #132b, #133b and #184: a quantity that is
+nominally per-lineage and is always read from the germline.
+
+`chanGoverning(k)` draws the governing rule from the living carriers of slot k — one two-pass weighted
+draw per channel update, not per cell — with the germline as fallback when nobody holds that slot.
+**Every field of the medium comes from the governing rule, including the cadence**, which is why the
+draw happens BEFORE the modulo rather than after it. Knob `CHANGOV`; off restores the germline-only
+rule exactly and takes no draw.
+
+One rule per slot is necessary — the lattice is world state and two carriers cannot both compute slot
+0 — so the fix is not "let every carrier run its own". What changed is only WHICH one, and the answer
+is now numerosity, which is what makes descent and #195's transfer change what the world computes
+rather than only who carries a copy.
+
+**THE FIFTH CROSSING WAS OPEN FROM #188 TO #196.** The migrant payload carried `ua`, `ue`, `uo` and
+`fd` and no channel rule had ever left a tab, while #188's own comment claimed "a migrant arrives with
+a chemistry and an empty medium". Four swings of invented media failing tab→tab, and nothing went red
+because no rig owned the question. `chn` now rides the payload in **the save's own row shape** —
+`[expr, age, st, wrap, cad, res, xfer]`, one format for a chemistry rather than two — validated with
+every bound READ from the engine (#153), installed in SLOT ORDER with an empty slot keeping its
+position (ka..kd are index-bound), clamped again on arrival, `age`/`uses` reset. The lattice is not
+sent and could not be. `migrant-test` owns this now.
+
+**THE AUDIT RULE THIS ESTABLISHES.** Both defects were found by reading code against its own comments,
+not by a red test. When a mechanism's comment asserts a behaviour ("a migrant arrives with a
+chemistry"), that assertion is a test that has not been written yet. Two of them were false. If you
+add a layer here, check what the layer's own prose claims and make a rig own it.
+
 ### #186 — the germline-to-population crossing, stated generally
 
 The bug the crossing rows caught for the seventh time, and the general form, because it will happen

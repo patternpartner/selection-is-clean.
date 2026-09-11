@@ -584,6 +584,7 @@ let __GRAIN=true;   // #194: a medium's grain is a gene. Force off with GRAIN=0
 // line: CHANNEL_RENT already bills per allocated rule, so an unsensed transferred medium is dead
 // weight its carrier can release after the grace period. The mechanism turns itself off at both ends.
 let __CHANXFER=true;   // #195: invented chemistry spreads horizontally. Force off with CHANXFER=0
+let __CHANGOV=true;    // #196: the governing chemistry is drawn from the population. Force off with CHANGOV=0 to restore the germline-only rule every run before this one used
 const CHANXFER_COST=0.004;   // donor amplitude per transfer - a conjugation is work
 let __chanXfers=0, __chanXferSensed=0, __chanXferDeclined=0;   // instrument state off the genome (#131); drained per epoch
 // THE RATE BELONGS TO THE RULE, NOT TO THE HOST, and that is the second correction this swing took
@@ -735,6 +736,22 @@ function validNetworkPayload(type,data){
       // #181: the compiler stage, bounds READ from the engine (#153's rule) rather than restated
       (!data.fd||(Array.isArray(data.fd)&&data.fd.length>=2&&
         finitePacketNumber(data.fd[0],0,UA_FOLD_MODES-1)&&finitePacketNumber(data.fd[1],0.05,8)))&&
+      // #196: the chemistry. It is the only part of this payload that carries an EXPRESSION besides
+      // `ua`, so it gets `ua`'s exact treatment - length bound and UA_EXPR_SAFE - and every other
+      // bound is READ from the engine's own constants rather than restated (#153, the rule three of
+      // the four original migrant bounds broke by going stale).
+      (!data.chn||(Array.isArray(data.chn)&&data.chn.length<=CHANNEL_MAX&&
+        data.chn.every(r=>r===0||(Array.isArray(r)&&r.length>=5&&
+          typeof r[0]==='string'&&r[0].length<=UA_EXPR_MAX&&UA_EXPR_SAFE.test(r[0])&&
+          finitePacketNumber(r[1],0,1e9)&&
+          (r[2]===null||r[2]===undefined||(Array.isArray(r[2])&&r[2].length<=CHANNEL_STENCIL_MAX&&
+            r[2].every(t=>Array.isArray(t)&&t.length>=3&&
+              finitePacketNumber(t[0],-CHANNEL_OFFSET_MAX,CHANNEL_OFFSET_MAX)&&
+              finitePacketNumber(t[1],-CHANNEL_OFFSET_MAX,CHANNEL_OFFSET_MAX)&&
+              finitePacketNumber(t[2],-8,8))))&&
+          finitePacketNumber(r[3],0,1)&&finitePacketNumber(r[4],1,CHANNEL_CAD_MAX)&&
+          (r[5]===undefined||finitePacketNumber(r[5],1,FIELD_W))&&
+          (r[6]===undefined||finitePacketNumber(r[6],0,0.01))))))&&
       (!data.uo||(Array.isArray(data.uo)&&data.uo.length<=UA_OPBANK&&
         data.uo.every(r=>r===0||(Array.isArray(r)&&r.length>=5&&
           finitePacketNumber(r[0],0,1)&&finitePacketNumber(r[1],0,UA_PRIM.length-1)&&
@@ -955,6 +972,11 @@ const LIVENESS_DECLARED=[
   // All three named because the interesting failure is xfer>0 with xferSensed==0 - a chemistry
   // spreading as pure rent, which is a real outcome and should be visible rather than inferred.
   'channel.xfer','channel.xferSensed','channel.xferDeclined','channel.xferStep','channel.shed',
+  // #196: govPop is a medium governed by a rule drawn from the POPULATION; govSelf is the germline
+  // fallback. govSelf alone across a whole run would mean no carrier ever held a chemistry, which is
+  // the state #195 exists to end - so the ratio is the honest readout of whether carriage is effect.
+  'channel.govPop','channel.govSelf',
+  'channel.wireLand',   // #196: a chemistry arrived from another tab - the fifth crossing, open since #188
 ];
 // NOT INSTRUMENTED, and deliberately absent rather than declared-and-silent: cladogenesis minting
 // (#17) has no single entry point I could identify with confidence. A census that reports "never"
@@ -1190,7 +1212,7 @@ function buildMigrantPacket(){
       // hollow: a migrant would arrive expecting heredity that was never transmitted.
       const _mprog=(MIGRANT_CARRIES_PROGRAM&&pProg[idx])?pProg[idx].slice(0,48).map(r=>[r[0]|0,r[1]|0,r[2]|0,+(+r[3]).toFixed(4)]):null;
       // #141: the vocabulary that program speaks, in bound-slot order.
-      let _mua=null,_mue=null,_muo=null,_mfd=null;   // #180: +the operator bank  #181: +the compiler stage
+      let _mua=null,_mue=null,_muo=null,_mfd=null,_mch=null;   // #180: +the operator bank  #181: +the compiler stage  #196: +the chemistry
       const _mg=pGenome[idx];
       if(MIGRANT_CARRIES_VOCAB&&_mg){
         const _bos=Array.isArray(_mg.boundOpcodes)?_mg.boundOpcodes:[];
@@ -1205,6 +1227,25 @@ function buildMigrantPacket(){
         // the same computation at both ends; a verb that arrives writing in a different place is the
         // same failure on the act side. `st` is an array of small integer/number triples - no string,
         // nothing to compile, and the wire validates its bounds below rather than trusting them.
+        // === #196 - AND ITS CHEMISTRY, WHICH HAS NEVER CROSSED A TAB BOUNDARY =====================
+        // THE FIFTH CROSSING WAS OPEN FOR EIGHT SWINGS. #188's own note says "a migrant arrives with
+        // a chemistry and an empty medium" and that was never true: the payload carried ua, ue, uo
+        // and fd, and no channel rule has ever left a tab. So #188's media, #189's forms, #194's
+        // grains and #195's element rates all failed tab->tab, the crossing THE FIVE CROSSINGS names
+        // and this file's whole discipline is built around, and nothing measured it because no rig
+        // owned the question.
+        // Same row shape as the SAVE format rather than a second encoding - one format for the
+        // chemistry, so a field added to a rule has one shape to learn and not two. A 0 row is an
+        // empty slot and KEEPS ITS POSITION, because ka..kd are bound by index (#141's rule, the same
+        // one ua and uo follow).
+        const _mcb=Array.isArray(_mg.channels)?_mg.channels:null;
+        if(_mcb){ _mch=[];
+          for(let k=0;k<CHANNEL_MAX;k++){ const r=_mcb[k];
+            _mch.push((r&&typeof r.expr==='string')?
+              [String(r.expr).slice(0,UA_EXPR_MAX),r.age|0,
+               (Array.isArray(r.st)?r.st.map(t=>[t[0]|0,t[1]|0,+(+t[2]).toFixed(3)]):null),
+               r.wrap|0,chanCad(r)|0,chanRes(r)|0,+chanRuleXfer(r).toFixed(5)]:0); }
+        }
         _mue=_fx.slice(0,MAX_USER_EFFECTS).map(e=>({t:e.t|0,m:(e.m|0)===1?1:0,s:+(+e.s||0.5).toFixed(3),
           n:(e.nx===undefined?-1:e.nx|0), a:(e.ax===undefined||e.ax===null?-1:e.ax|0),
           st:Array.isArray(e.st)&&e.st.length?e.st.slice(0,EMIT_TAPS_MAX).map(t=>[t[0]|0,t[1]|0,+(+t[2]||0).toFixed(3)]):undefined,
@@ -1259,7 +1300,7 @@ function buildMigrantPacket(){
       let _ph=phase[idx]%_TAU; if(!isFinite(_ph))_ph=0; if(_ph<0)_ph+=_TAU;
       for(let mm=0;mm<m.length;mm++) m[mm]=_cl(m[mm],-16,16);
       return {nx:_cl(px[idx]/W,-0.25,1.25),ny:_cl(py[idx]/H,-0.25,1.25),tend:t,mem:m,plasmid:plas,
-        amp:_cl(amp[idx],-2,4),phase:_ph,prog:_mprog,ua:_mua,ue:_mue,uo:_muo,fd:_mfd};
+        amp:_cl(amp[idx],-2,4),phase:_ph,prog:_mprog,ua:_mua,ue:_mue,uo:_muo,fd:_mfd,chn:_mch};
   }
 }
 function networkBroadcast(){ fired('network.broadcast');
@@ -1407,6 +1448,29 @@ function networkReceive(){ fired('network.receive');
               st:Array.isArray(e.st)&&e.st.length?e.st.slice(0,EMIT_TAPS_MAX).map(t=>Array.isArray(t)?
                 [__cl(t[0]|0,-EMIT_OFFSET_MAX,EMIT_OFFSET_MAX),__cl(t[1]|0,-EMIT_OFFSET_MAX,EMIT_OFFSET_MAX),__cl(finiteOr(+t[2],0),-2,2)]:[0,0,0]):null,
               fr:(e.fr|0)===1?1:0}));
+          }
+          // #196: install the chemistry in SLOT ORDER, for ka..kd's reason. The LATTICE is not sent
+          // and could not be - it is the receiving universe's world state - so the migrant genuinely
+          // does now arrive with a chemistry and an empty medium, which is what #188 claimed all
+          // along. age and uses reset: both are facts about how long this rule has sat HERE.
+          // Everything is clamped on arrival as well as validated on the wire, because a packet from
+          // an older or hostile peer is not the thing the lattice pass should be discovering.
+          if(Array.isArray(m.chn)){
+            _g.channels=[];
+            for(let k=0;k<CHANNEL_MAX;k++){
+              const r=m.chn[k];
+              _g.channels.push((r&&Array.isArray(r)&&typeof r[0]==='string')?{
+                expr:r[0],compiled:null,failed:false,age:0,uses:0,
+                st:Array.isArray(r[2])?r[2].slice(0,CHANNEL_STENCIL_MAX).map(t=>[
+                  __cl(t[0]|0,-CHANNEL_OFFSET_MAX,CHANNEL_OFFSET_MAX),
+                  __cl(t[1]|0,-CHANNEL_OFFSET_MAX,CHANNEL_OFFSET_MAX),
+                  __cl(finiteOr(+t[2],0),-8,8)]):null,
+                wrap:(r[3]|0)===1?1:0,
+                cad:__cl(Math.round(finiteOr(r[4],1)),1,CHANNEL_CAD_MAX),
+                res:chanRes({res:r[5]}),
+                xfer:chanRuleXfer({xfer:r[6]})}:null);
+            }
+            fired('channel.wireLand');
           }
           // #180: install the operator bank in SLOT ORDER, so the migrant's qa is the migrant's qa.
           // age resets: the grace clock is a fact about how long this bank has sat unreferenced HERE,
@@ -8704,6 +8768,8 @@ function flushEpoch(acc){
     firedN('reach.beyondRing',__reachBeyond); __reachBeyond=0;   // #191
     firedN('tick.skipped',__tickSkips); __tickSkips=0;           // #192
     firedN('channel.coarse',__chanCoarse); __chanCoarse=0;       // #194
+    firedN('channel.govPop',__chanGovPop); __chanGovPop=0;       // #196
+    firedN('channel.govSelf',__chanGovSelf); __chanGovSelf=0;
     firedN('channel.xfer',__chanXfers); __chanXfers=0;           // #195
     firedN('channel.xferSensed',__chanXferSensed); __chanXferSensed=0;
     firedN('channel.xferDeclined',__chanXferDeclined); __chanXferDeclined=0;
@@ -9191,6 +9257,8 @@ function cloneGenome(src){
   // #188: the chemistry crosses; the chemicals do not. A channel's RULE is genome and is deep-copied
   // like every other authored structure here. Its LATTICE is world state and belongs to the universe,
   // not to any lineage - which is why a migrant arrives with a chemistry and an empty medium.
+  // (#196: that sentence was FALSE from #188 until #196 wired chn into the migrant payload. The
+  // chemistry had never crossed a tab boundary at all - see the note at the payload build.)
   // `uses` resets, as it does for atoms and verbs: a child re-earns its own record.
   g.channels=Array.isArray(src.channels)?src.channels.map(r=>(r&&typeof r.expr==='string')?
     // #189: the FORM is deep-copied with the chemistry. The stencil is an array of arrays, so a
@@ -9608,6 +9676,55 @@ function chanRes(rule){
 function chanBlock(res){ return Math.max(1,(FIELD_W/res)|0); }   // fine cells per block side
 // Is this medium coarser than the lattice it lives on? Deviation from the seed, same construction as
 // every census row since #188.
+// === #196 - WHOSE CHEMISTRY ACTUALLY RUNS ======================================================
+// MEASURED, by reading updateChannels rather than by reasoning: it is called once per tick from the
+// main loop with the ambient genome, which is the SELF's. So `chanBank()` there is the germline's
+// bank, and for eight swings the only reaction rule that has ever computed anything is the self's.
+//
+// Every population copy was INERT. Carried, deep-copied, seeded, saved, reloaded, shed, rented, and
+// as of #195 spread horizontally to a thousand carriers - and computing nothing. channel.bank's
+// population count was measuring CARRIAGE, not effect, and I read it as effect one commit ago:
+// #195's note says the media "reach essentially the whole population" and that the four previous
+// swings' layers "are now selectable across the population". A carried rule that never runs is not
+// selectable on its content. That claim was wrong and this comment is where it gets corrected.
+//
+// It is the same defect this file has now found five times, each in a new mechanism: #102 (atom uses
+// counted on the germline), #130 (the OEE meter read a germline-only pool), #132b (the verb cull read
+// a germline counter), #133b (composed verbs stripped on the way into the population), #184 (probes
+// scored only in the self's context). The shape never changes: a quantity that is nominally
+// per-lineage and is always read from the germline.
+//
+// WHY ONE RULE PER SLOT IS NECESSARY, so the fix is not "let every carrier run its own": the lattice
+// is WORLD STATE. Two carriers holding different rules for slot 0 cannot both compute slot 0 - the
+// cell would have two next values. #188 chose correctly that a medium belongs to the universe. What
+// it did not choose, and what was never written down, is that the one rule should be the SELF's
+// forever regardless of who carries what.
+//
+// So: the governing rule is sampled from the living carriers, one draw per channel update. That is
+// #102's own repair pattern (sample one carrier, repoint, restore) and it makes NUMEROSITY the
+// selective quantity - a rule held by nine tenths of the population governs nine tenths of the time.
+// Descent and #195's transfer both change who is numerous, so both now change what the world's
+// chemistry IS, which is what they were always described as doing.
+// The germline is the fallback when no living particle carries that slot, so a universe whose
+// population has not yet received a chemistry still runs the one it authored.
+let __chanGovPop=0, __chanGovSelf=0;   // instrument state off the genome (#131); drained per epoch
+function chanGoverning(k){
+  const self=chanBank();
+  const mine=(self&&self[k]&&typeof self[k].expr==='string')?self[k]:null;
+  if(!__CHANGOV){ __chanGovSelf++; return mine; }
+  if(typeof pGenome==='undefined'||typeof palive==='undefined'){ __chanGovSelf++; return mine; }
+  // one pass to count, one to pick: the same two-pass weighted draw uaPickVar and the credit pool use,
+  // and it costs one traversal per channel per CADENCE ticks rather than per cell
+  let n=0;
+  for(let i=0;i<N;i++){ if(!palive[i])continue; const g=pGenome[i];
+    const b=g&&g.channels; if(b&&b[k]&&typeof b[k].expr==='string')n++; }
+  if(n===0){ __chanGovSelf++; return mine; }
+  let pick=(Math.random()*n)|0;
+  for(let i=0;i<N;i++){ if(!palive[i])continue; const g=pGenome[i];
+    const b=g&&g.channels; if(!(b&&b[k]&&typeof b[k].expr==='string'))continue;
+    if(pick--===0){ __chanGovPop++; return b[k]; } }
+  __chanGovSelf++; return mine;
+}
 function chanGrained(rule){ return (__GRAIN&&rule&&typeof rule.expr==='string'&&chanRes(rule)!==FIELD_W)?1:0; }
 function __xGrained(a){ if(!Array.isArray(a))return 0;
   let n=0; for(const r of a) n+=chanGrained(r); return n; }
@@ -9936,13 +10053,15 @@ function chanUpdateCoarse(k,rule,L,res,st,wrap){
 }
 function updateChannels(){
   if(!__CHANNEL)return;
-  const b=chanBank(); if(!b)return;
   // #189: the cadence is PER CHANNEL now, so the early return moves inside the loop. Four modulo
   // checks on a tick where nothing is due, against one before - which buys media that run at
   // different rates in the same world, and that is how a slow substrate under a fast signal is
   // expressible at all.
   for(let k=0;k<CHANNEL_MAX;k++){
-    const rule=b[k]; if(!rule||typeof rule.expr!=='string')continue;
+    // #196: the rule that governs this medium is drawn from its living carriers, not read from the
+    // self. See chanGoverning - every field of the medium comes from the governing rule, including
+    // the cadence, which is why the draw happens before the modulo rather than after it.
+    const rule=chanGoverning(k); if(!rule||typeof rule.expr!=='string')continue;
     if((tick%(CHANNEL_CADENCE*chanCad(rule)))!==0)continue;
     const L=chanLattice(k); if(!L)continue;
     if(!rule.compiled&&!rule.failed){
@@ -25889,6 +26008,7 @@ __STIME=(typeof globalThis==='undefined')||((globalThis.__STIME??1)|0)!==0;   //
 __EMIT=(typeof globalThis==='undefined')||((globalThis.__EMIT??1)|0)!==0;   // #193: default ON, and a NO-OP at the seeded shape: no stencil means emitApply takes the null path and calls the original single-cell write, so an unshaped lineage is bit-identical
 __GRAIN=(typeof globalThis==='undefined')||((globalThis.__GRAIN??1)|0)!==0;   // #194: default ON, and a NO-OP at the seeded grain: chanRes returns FIELD_W, updateChannels takes the original fine loop, chanWrite writes the one cell
 __CHANXFER=(typeof globalThis==='undefined')||((globalThis.__CHANXFER??1)|0)!==0;   // #195: default ON, and a NO-OP at the seeded gene: chanRuleXfer reads 0 for every rule, the gate short-circuits before any draw, so an unmutated lineage is bit-identical
+__CHANGOV=(typeof globalThis==='undefined')||((globalThis.__CHANGOV??1)|0)!==0;   // #196: default ON. Off restores the pre-#196 behaviour exactly - chanGoverning returns the self's rule and takes no draw
 __REACH=(typeof globalThis==='undefined')||((globalThis.__REACH_SWEEP??1)|0)!==0;   // #191: default ON. Force off with REACH_SWEEP=0 - the sweep returns to +/-1 ring, the reach to the germline's value, and the dedup to `j>i`, which is the pre-#191 engine exactly. Deliberately NOT named REACH: __REACH_ON is a different, pre-existing gate and colliding on that name is how a knob silently stops being a control
 __FORAGE_ON=(typeof globalThis==='undefined')||((globalThis.__FORAGE_EYES??1)|0)!==0; // resolve FORAGE once; gates the resource-sense computation in uaSetEyes
 __DECIDE_ON=(typeof globalThis==='undefined')||((globalThis.__DECIDE??1)|0)!==0; // resolve DECISION GAIN once; gates confidence accrual + commitment scaling
