@@ -273,6 +273,74 @@ m._compile(code+`
             offeredEarly,offeredNow,tgts:tgts.length,rent:CHANNEL_RENT};
   });
 
+  // ── #189  THE FORM OF THE SPACE ──────────────────────────────────────────────────────────────
+  // #188 left "a scalar per cell, a neighbourhood mean, a cadence" closed and said so. These check
+  // that three of those are now the lineage's, and they check it by DYNAMICS rather than by reading
+  // the gene back: the question is not whether a stencil is stored, it is whether a stencil buys a
+  // class of behaviour a four-neighbour mean provably cannot reach.
+  out.form=run('form',()=>{
+    const centroid=(L)=>{ let sx=0,w=0;
+      for(let y=0;y<FIELD_H;y++)for(let x=0;x<FIELD_W;x++){const v=L[y*FIELD_W+x]; if(v>0.001){sx+=x*v;w+=v;}}
+      return w>0?+(sx/w).toFixed(2):null; };
+    const runForm=(st,wrap,expr,steps)=>{
+      genome.channels=[{expr:expr,compiled:null,failed:false,age:0,uses:0,st:st,wrap:wrap,cad:1},null,null,null];
+      const L=chanLattice(0); L.fill(0); L[20*FIELD_W+20]=4;
+      for(let t=0;t<steps*CHANNEL_CADENCE;t++){ globalThis.__detMs+=5; try{loop();}catch(e){} }
+      return centroid(L); };
+    // THE SEEDED FORM is a symmetric mean: the blob spreads and does NOT travel.
+    const mean=runForm(CHANNEL_STENCIL_SEED.map(t=>[t[0],t[1],t[2]]),0,'(b)+(0.00)',6);
+    // AN OFFSET STENCIL, same chemistry: the mass MOVES. This is advection, and it is the property
+    // that makes a stencil a change of form rather than a change of parameter - no symmetric kernel
+    // of any weighting produces directed transport.
+    const advect=runForm([[-1,0,1.0]],0,'(b)+(0.00)',6);
+    // THE SAME ON A TORUS: it leaves one edge and arrives at the other. 20 + 30 = 50, mod 40 = 10.
+    const torus=runForm([[-1,0,1.0]],1,'(b)+(0.00)',30);
+    // A SIGNED STENCIL SUMMING TO ZERO is a derivative. On a linear ramp its answer is a CONSTANT;
+    // a mean's answer would be the ramp again.
+    genome.channels=[{expr:'(b)+(0.00)',compiled:null,failed:false,age:0,uses:0,
+                      st:[[-1,0,1.0],[1,0,-1.0]],wrap:0,cad:1},null,null,null];
+    const G=chanLattice(0); G.fill(0);
+    for(let y=0;y<FIELD_H;y++)for(let x=0;x<FIELD_W;x++)G[y*FIELD_W+x]=x*0.05;
+    for(let t=0;t<CHANNEL_CADENCE;t++){ globalThis.__detMs+=5; try{loop();}catch(e){} }
+    let gmn=Infinity,gmx=-Infinity;
+    for(let y=1;y<FIELD_H-1;y++)for(let x=2;x<FIELD_W-2;x++){const v=G[y*FIELD_W+x]; if(v<gmn)gmn=v; if(v>gmx)gmx=v;}
+    // CADENCE: a 4x channel updates a quarter as often.
+    genome.channels=[{expr:'(a)+(0.10)',compiled:null,failed:false,age:0,uses:0,st:null,wrap:0,cad:1},
+                     {expr:'(a)+(0.10)',compiled:null,failed:false,age:0,uses:0,st:null,wrap:0,cad:4},null,null];
+    chanLattice(0).fill(0); chanLattice(1).fill(0);
+    for(let t=0;t<CHANNEL_CADENCE*8;t++){ globalThis.__detMs+=5; try{loop();}catch(e){} }
+    const fast=+chanLattice(0)[100].toFixed(3), slow=+chanLattice(1)[100].toFixed(3);
+    // AND BOUNDED WHATEVER THE FORM: six taps at max weight, explosive rule, on a torus.
+    genome.channels=[{expr:'(b)*(2.00)',compiled:null,failed:false,age:0,uses:0,
+      st:[[-1,0,2],[1,0,2],[0,-1,2],[0,1,2],[2,2,2],[-2,-2,2]],wrap:1,cad:1},null,null,null];
+    const B=chanLattice(0); B.fill(1);
+    for(let t=0;t<CHANNEL_CADENCE*8;t++){ globalThis.__detMs+=5; try{loop();}catch(e){} }
+    let over=0,nf=0; for(let c=0;c<B.length;c++){ if(!isFinite(B[c]))nf++; if(!(B[c]>=-CHANNEL_CLAMP&&B[c]<=CHANNEL_CLAMP))over++; }
+    return {mean,advect,torus,gmn:+gmn.toFixed(4),gmx:+gmx.toFixed(4),fast,slow,over,nf};
+  });
+
+  // ── #189  AND THE FORM TAKES SMALL, LEGAL STEPS ─────────────────────────────────────────────
+  out.formStep=run('formStep',()=>{
+    const r={expr:'(a)+(0.00)',st:CHANNEL_STENCIL_SEED.map(t=>[t[0],t[1],t[2]]),wrap:0,cad:1};
+    let moved=0,illegal=0,wraps=0,cads=0; const sizes={};
+    for(let i=0;i<600;i++){
+      const before=JSON.stringify([r.st,r.wrap,r.cad]);
+      chanFormStep(r);
+      if(JSON.stringify([r.st,r.wrap,r.cad])!==before)moved++;
+      if(r.wrap)wraps++; if(r.cad!==1)cads++;
+      sizes[r.st.length]=1;
+      for(const t of r.st) if(Math.abs(t[0])>CHANNEL_OFFSET_MAX||Math.abs(t[1])>CHANNEL_OFFSET_MAX||Math.abs(t[2])>2)illegal++;
+      if(r.st.length>CHANNEL_STENCIL_MAX||r.st.length<1)illegal++;
+    }
+    // the seeded form must read as NOT moved, or the census row reports adoption for a bank that has
+    // never been selected on
+    const seeded={expr:'x',st:CHANNEL_STENCIL_SEED.map(t=>[t[0],t[1],t[2]]),wrap:0,cad:1};
+    return {moved,illegal,wraps,cads,sizes:Object.keys(sizes).map(Number).sort((a,b)=>a-b),
+            seededReadsUnmoved:chanFormMoved(seeded)===false,
+            movedReadsMoved:chanFormMoved({expr:'x',st:[[2,0,1]],wrap:0,cad:1})===true,
+            tapRent:CHANNEL_TAP_RENT};
+  });
+
   // ── THE CROSSINGS: every new gene must survive a save and diverge in a child ────────────────
   out.cross=run('cross',()=>{
     genome.uaFoldMode=2; genome.uaFoldK=3.25; genome.autonomyCede=0.8;
@@ -280,8 +348,9 @@ m._compile(code+`
     genome.demeCount=3; genome.demeFlow=0.25;
     genome.netLawRate=0.007; genome.netLawReceptivity=0.6;
     genome.oeeW=[0.2,0.4,0.6,0.8];
-    genome.channels=[{expr:'(a)+(((b)-(a))*(0.25))',compiled:null,failed:false,age:7,uses:3},null,
-                     {expr:'(ka)-(kb)',compiled:null,failed:false,age:2,uses:1},null];
+    genome.channels=[{expr:'(a)+(((b)-(a))*(0.25))',compiled:null,failed:false,age:7,uses:3,
+                      st:[[-3,1,0.75],[2,-2,-0.5]],wrap:1,cad:5},null,
+                     {expr:'(ka)-(kb)',compiled:null,failed:false,age:2,uses:1,st:null,wrap:0,cad:1},null];
     genome.probes=[{expression:'(a)+(b)',compiled:null,failed:false,n:11,hit:9,pending:0,pendTick:5,pendFit:1,age:3},null,null,null];
     const blob=encodeGenome();
     const wipe=['uaFoldMode','uaFoldK','autonomyCede','cellScale','rxSelf','rxCross','demeCount',
@@ -305,13 +374,25 @@ m._compile(code+`
            !!genome.channels[0]&&genome.channels[0].expr==='(a)+(((b)-(a))*(0.25))'&&
            genome.channels[0].age===7&&genome.channels[0].uses===0&&
            !genome.channels[1]&&!!genome.channels[2]&&genome.channels[2].expr==='(ka)-(kb)',
+      // #189: the FORM travels with the chemistry, or a save restores a medium that computes the
+      // same thing in a different space - which is a different medium
+      form:Array.isArray(genome.channels)&&!!genome.channels[0]&&
+           Array.isArray(genome.channels[0].st)&&genome.channels[0].st.length===2&&
+           genome.channels[0].st[0][0]===-3&&genome.channels[0].st[0][1]===1&&
+           Math.abs(genome.channels[0].st[0][2]-0.75)<1e-6&&
+           genome.channels[0].wrap===1&&genome.channels[0].cad===5,
     };
     // clone: no shared references
     const c=cloneGenome(genome);
     const shared={oeeW:c.oeeW===genome.oeeW, probes:c.probes===genome.probes,
                   probe0:c.probes&&c.probes[0]===genome.probes[0],
                   chan:c.channels===genome.channels,
-                  chan0:c.channels&&c.channels[0]===genome.channels[0]};
+                  chan0:c.channels&&c.channels[0]===genome.channels[0],
+                  // #189: the stencil is an array of arrays - a shallow copy would share one
+                  // neighbourhood across the whole population and no lineage could diverge its space
+                  chanSt:c.channels&&c.channels[0]&&c.channels[0].st===genome.channels[0].st,
+                  chanTap:c.channels&&c.channels[0]&&Array.isArray(c.channels[0].st)&&
+                          c.channels[0].st[0]===genome.channels[0].st[0]};
     // child: the proxy weights must be able to diverge
     let childMoved=0;
     for(let i=0;i<200;i++){ const g=cloneGenome(genome); g.oeeW=[0.5,0.5,0.5,0.5];
@@ -325,7 +406,7 @@ m._compile(code+`
     const names=cen.rows.map(r=>r.name);
     return {saved,shared,childMoved,seeded,carriers,
             rows:['atom.fold','xion.cede','phys.reach','phys.chem','probe.bank',
-                  'oee.weighted','deme.split','channel.bank','channel.sensed'].filter(n=>names.indexOf(n)<0),
+                  'oee.weighted','deme.split','channel.bank','channel.sensed','channel.form'].filter(n=>names.indexOf(n)<0),
             promotedNotACrossingRow:names.indexOf('probe.promoted')<0};
   });
 
@@ -455,18 +536,45 @@ ck('#188 four effect targets index the bank', CI.tgts===4);
 ck('#188 an allocated channel pays the dearest rent in the file', CI.rent>0,
    'CHANNEL_RENT = '+CI.rent+' instruction-equivalents per allocated channel');
 
+// #189
+const FM=r.form||{};
+ck('#189 the seeded form diffuses and does NOT transport', FM.mean===20,
+   'a symmetric mean leaves the centroid at '+FM.mean);
+ck('#189 an OFFSET stencil advects — the medium moves', FM.advect>FM.mean+3,
+   'centroid '+FM.mean+' -> '+FM.advect+' under the same chemistry: directed transport, which no symmetric kernel produces');
+ck('#189 wrap=1 makes it a torus', FM.torus!==null && FM.torus<FM.mean,
+   'after 30 updates the mass is at '+FM.torus+' — 20+30 = 50, mod 40 = 10: it left one edge and arrived at the other');
+ck('#189 a signed stencil is a DERIVATIVE, not an average',
+   FM.gmx!==undefined && Math.abs(FM.gmx-FM.gmn)<0.01,
+   'on a linear ramp the answer is flat at '+FM.gmn+' — a mean would have reproduced the ramp');
+ck('#189 cadence is per channel', FM.fast>FM.slow*3,
+   'base '+FM.fast+' against a 4x channel at '+FM.slow);
+ck('#189 and every form stays bounded', FM.over===0 && FM.nf===0,
+   'six taps at max weight, explosive rule, on a torus: '+FM.over+' out of bound, '+FM.nf+' non-finite');
+const FS=r.formStep||{};
+ck('#189 the form takes a small step rather than being redrawn', FS.moved>0 && FS.illegal===0,
+   FS.moved+'/600 steps moved something, '+FS.illegal+' illegal');
+ck('#189 and reaches every stencil size', FS.sizes && FS.sizes.length>2,
+   'sizes reached: '+(FS.sizes||[]).join(','));
+ck('#189 the manifold and the timescale are both reachable', FS.wraps>0 && FS.cads>0);
+ck('#189 the seeded form reads as UNMOVED and a changed one as moved',
+   FS.seededReadsUnmoved===true && FS.movedReadsMoved===true,
+   'or the census reports adoption for a bank nothing has selected on');
+ck('#189 a bigger neighbourhood costs more', FS.tapRent>0,
+   'CHANNEL_TAP_RENT = '+FS.tapRent+' per tap beyond the seeded four — which is what makes SHRINKING a stencil profitable');
+
 // the crossings
 const CR=r.cross||{};
 const SV=CR.saved||{};
-for(const k of ['fold','cede','phys','deme','net','oeeW','probe','claimCleared','chan'])
+for(const k of ['fold','cede','phys','deme','net','oeeW','probe','claimCleared','chan','form'])
   ck('save -> load: '+k, SV[k]===true);
-ck('cloneGenome shares none of it', CR.shared && !CR.shared.oeeW && !CR.shared.probes && !CR.shared.probe0 && !CR.shared.chan && !CR.shared.chan0,
+ck('cloneGenome shares none of it', CR.shared && !CR.shared.oeeW && !CR.shared.probes && !CR.shared.probe0 && !CR.shared.chan && !CR.shared.chan0 && !CR.shared.chanSt && !CR.shared.chanTap,
    CR.shared && JSON.stringify(CR.shared));
 ck('parent -> child: the proxy weights diverge', CR.childMoved>0, CR.childMoved+'/200');
 ck('germline -> population: the substrate actually crosses', CR.seeded===true && CR.carriers>0,
    CR.carriers+' carrier(s) after one seeding - the bug the crossing rows caught seven times');
 ck('every new gene has a census row', CR.rows && CR.rows.length===0,
-   CR.rows && CR.rows.length?('missing: '+CR.rows.join(' ')):'all nine present');
+   CR.rows && CR.rows.length?('missing: '+CR.rows.join(' ')):'all ten present');
 // #187: and the one that must NOT be a crossing row. A promotion is an earned outcome, not authored
 // structure, so "germline 1 / population 0" is the normal state of a young world - it was reported as
 // STRANDED and made crossing-test red for something that is not a defect. It is logged per epoch now.

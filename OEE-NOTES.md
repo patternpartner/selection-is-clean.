@@ -14284,3 +14284,120 @@ the allocation-time wiring makes rare by construction) and reading that as a ver
 verbs' `uses: 0` mistake a fourth time.
 
 `substrate-test.js`: 68 checks, 13 of them #188's.
+
+---
+
+## #189 — THE FORM OF THE SPACE
+
+#188's own closing paragraph named what it left fixed: *"a scalar per cell, a neighbourhood mean, a
+cadence"*. Three of those four are opened here. The fourth is not, and the reason turned out to be
+worth more than the mechanism would have been.
+
+### Arity was considered and rejected, and that is the more useful half
+
+A vector field was on #188's list of what stayed closed, and building one would have been wrong,
+because **#188 already shipped the thing that makes it redundant**. Cross-channel coupling means three
+scalar channels whose rules read `ka`/`kb`/`kc` *are* a three-component field — evolved component by
+component, already. What a dedicated arity gene would add is a shared stencil and cadence across
+components: a convenience, not a capability. And it would cost the one thing this file can least
+afford — `ka`..`kd` meaning one thing inside an atom and another inside a channel rule. Symbol
+confusion is precisely the class of defect that has cost this file seven repeats of one bug.
+
+So: no arity gene. Selection can already reach every vector field it could have expressed.
+
+### The neighbourhood is the one that matters
+
+`(n+s+e+w)*0.25` is a hand-written answer to the question *what does "next to" mean*, and everything a
+medium could ever do was downstream of it. A symmetric average can only ever produce diffusion-like
+behaviour, however elaborate the chemistry stirring it.
+
+A **stencil** — an evolved list of `(dx, dy, weight)` taps — changes what the rule's `b` means, and
+with it the class of dynamics reachable at all:
+
+| stencil | `b` becomes | dynamics |
+|---|---|---|
+| symmetric, sums to 1 | a mean | diffusion — #188 exactly |
+| signed, sums to 0 | a **derivative** | gradients |
+| offset, sums to 1 | a **shifted average** | **advection — the medium moves** |
+| unequal on the two axes | anisotropic coupling | a medium with a grain |
+| large offsets on a torus | non-local coupling | at offset 7 on a 40-wide lattice, a sixth of the world |
+
+**The weights are not normalised, and that is the point rather than an oversight.** Dividing by the
+tap count would force every stencil to be an average and delete the gradient and advection cases in
+one line. A lineage that wants a mean evolves weights summing to one; one that wants a derivative
+evolves weights summing to zero. Which of those a medium *is* is now its own.
+
+### Measured, by dynamics rather than by reading the gene back
+
+The question is not whether a stencil is stored. It is whether a stencil buys behaviour a
+four-neighbour mean provably cannot reach.
+
+```
+seeded (symmetric mean)   blob centroid 20.0 -> 20.0     spreads, does not travel
+offset [[-1,0,1.0]]       blob centroid 20.0 -> 26.0     ADVECTION, same chemistry
+same, wrap=1, 30 updates  blob centroid 20.0 -> 10.0     20+30 = 50, mod 40 = 10
+signed [[-1,0,1],[1,0,-1]] on a linear ramp: flat at -0.1 everywhere
+                                                         a DERIVATIVE. A mean would have
+                                                         reproduced the ramp.
+cad=1 vs cad=4            0.80 vs 0.20                   exactly a quarter of the updates
+6 taps @ max weight, explosive rule, torus, 8 cadences:   0 out of bound, 0 non-finite
+```
+
+The advection row is the one that settles it. Identical chemistry, identical clamp, identical
+cadence — only the neighbourhood differs — and the mass *travels*, one cell per update, exactly as the
+−1 offset predicts. Directed transport is not something a symmetric kernel produces at any weighting,
+so this is a change of form and not a change of parameter.
+
+The torus row is the second one. The blob leaves one edge and arrives at the other, at exactly the
+predicted cell. A pattern that would have piled against a boundary instead circulates: **per channel,
+so one universe can hold media living on different manifolds at once** — something the particles' own
+space cannot do.
+
+### The rest of the discipline
+
+The form drifts on **its own draw**, separate from the chemistry's: what a medium computes and what
+"next to" means in it are two independent things, and folding them into one draw would have made a
+stencil change and a chemistry change indistinguishable to selection. Steps are small (#103's rule at
+the level of a space): retune one weight, move one tap, grow the stencil, shrink it, flip the
+manifold, step the timescale. 593 of 600 steps moved something, 0 illegal, every stencil size 1–6
+reached, wrap and cadence both exercised.
+
+Rent scales with tap count beyond the seeded four, which is what makes **shrinking** a stencil
+something selection can profit from rather than a strictly dominated move. The seeded form costs
+exactly `CHANNEL_RENT`, so #188's behaviour is exactly #188's price.
+
+The stencil is an array of arrays, so `cloneGenome` deep-copies the taps as well as the list —
+without that, one neighbourhood would be shared across the whole population and no lineage could
+diverge its own space. Seventh instance of the bug this file keeps re-learning; caught this time by
+writing the deep copy first and asserting it in the rig rather than by a census row after the fact.
+
+A pre-#189 save has 2-long channel rows; `st`/`wrap`/`cad` read undefined and the readers supply the
+seeded form, which **is** what that save meant.
+
+### What is still fixed
+
+The **resolution** (40×40). The fact that a cell is a square of a regular grid. The particles' own
+continuous space and the position→cell map that indexes into it. The global tick.
+
+A channel's *coupling structure* is now its own; the lattice it is drawn on is not. Resolution was
+considered and left: a per-channel resolution needs interpolation on every read and write, and the
+particles' space — which is what a channel is ultimately *for* — would still be the one they live in.
+That is a real remaining bound and it is where this points next, along with the thing neither #188 nor
+#189 touches: **the particles' own space is still Euclidean 2D with a fixed metric**, and nothing a
+lineage evolves can change what distance means to a particle.
+
+**Not measured, and one number that matters.** No A/B against `CHANNEL=0`, no seed sweep, no claim
+about fitness or persistence. The dynamics above are **constructed rather than evolved** — they show
+the form *can* produce advection, derivatives and toroidal transport, not that any lineage has evolved
+one that does. And on the 12,000-tick live run, `channel.form` read **0/0**: form drift fires at
+`rate*0.25` against ~36 `mutateGenome` calls with one channel allocated, so the expected number of
+form steps in that window is about half of one. Rare, not dead — `channel.formStep` is driven
+directly by the rig (593 of 600 steps) rather than waited for, which is #143's rule and the only
+honest way to report a path this rare. The live field over hours is where a form actually evolves, and
+the `CHN` log's fifth column is what will say whether one did.
+
+That run was otherwise the healthiest yet: 203 alive, zero extinctions, save round-trips clean, and
+**every crossing row non-zero on both sides with nothing stranded at all** — `channel.bank` 1/89,
+`channel.sensed` 1/89, `probe.bank` 4/365, `oee.weighted` 2/185.
+
+`substrate-test.js`: 80 checks, 11 of them #189's.

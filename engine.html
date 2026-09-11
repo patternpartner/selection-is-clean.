@@ -618,6 +618,7 @@ const LIVENESS_DECLARED=[
   // channel.wire the reachability hook. All five declared so a run where a lineage allocated a
   // medium and never sensed or acted on it is visible as such rather than inferred.
   'channel.alloc','channel.drift','channel.release','channel.update','channel.write','channel.wire',
+  'channel.formStep',   // #189: the neighbourhood, the manifold or the timescale took a step
 ];
 // NOT INSTRUMENTED, and deliberately absent rather than declared-and-silent: cladogenesis minting
 // (#17) has no single entry point I could identify with confidence. A census that reports "never"
@@ -765,6 +766,12 @@ const CROSSING_DECLARED=[
   // channel.sensed says any atom in this genome actually NAMES a medium - the row that would catch
   // the case where a lineage carries four invented media and perceives none of them.
   {name:'channel.bank',  read:g=>chanAllocated(g)},
+  // #189: has this lineage's SPACE moved? Deviation from the seeded form, on the same construction
+  // as xion.cede and phys.reach: a bank whose channels all still couple like #188's has never been
+  // selected on its form, and that reads 0 rather than reading adoption.
+  {name:'channel.form',  read:g=>{ const b=chanBank(g); if(!Array.isArray(b))return 0;
+                                   let n=0; for(let k=0;k<CHANNEL_MAX;k++){ const r=b[k];
+                                     if(r&&typeof r.expr==='string'&&chanFormMoved(r))n++; } return n; }},
   {name:'channel.sensed',read:g=>{ const b=chanBank(g), uas=g&&g.userAtoms;
                                    if(!Array.isArray(b)||!Array.isArray(uas))return 0;
                                    let n=0;
@@ -2589,7 +2596,9 @@ function seedSubstrateIntoParticle(){
   // stranded by exactly the mechanism #186 had to write down. `uses` resets; the lattice is the
   // universe's and is already there.
   if(Array.isArray(genome.channels))g.channels=genome.channels.map(r=>(r&&typeof r.expr==='string')?
-    {expr:r.expr,compiled:null,failed:false,age:r.age|0,uses:0}:null);
+    {expr:r.expr,compiled:null,failed:false,age:r.age|0,uses:0,
+     st:Array.isArray(r.st)?r.st.map(t=>[t[0]|0,t[1]|0,finiteOr(t[2],0)]):null,
+     wrap:r.wrap|0,cad:r.cad|0}:null);
   // AND ONE ATOM THAT SENSES ONE, because a chemistry nothing perceives is what channel.sensed is
   // there to warn about. MEASURED: after the wire-at-allocation hand-off was added, channel.bank
   // crossed at 4/86 and channel.sensed still read 3/0 - because the wire fires only at ALLOCATION
@@ -8318,7 +8327,10 @@ function flushEpoch(acc){
                     probeCount(genome),_prPop]);
     // #188: the media, on their own log rather than a seventh column - the operator row is already
     // six wide and a reader has enough widths to handle.
-    __chanLog.push([(acc.idx+1)*EPOCH_TICKS,chanAllocated(genome),__chanUpdates,__chanWrites]);
+    let _cform=0; if(__CHANNEL){ const _cb=chanBank(genome);
+      if(_cb) for(let _k=0;_k<CHANNEL_MAX;_k++){ const _r=_cb[_k];
+        if(_r&&typeof _r.expr==='string'&&chanFormMoved(_r))_cform++; } }
+    __chanLog.push([(acc.idx+1)*EPOCH_TICKS,chanAllocated(genome),__chanUpdates,__chanWrites,_cform]);
     __chanUpdates=0; __chanWrites=0;
     while(__chanLog.length>MAX_EPOCHS)__chanLog=__chanLog.filter((_,i)=>i%2===0);
     __uaOpFires=0; __uaOpFallbacks=0;
@@ -8789,7 +8801,12 @@ function cloneGenome(src){
   // not to any lineage - which is why a migrant arrives with a chemistry and an empty medium.
   // `uses` resets, as it does for atoms and verbs: a child re-earns its own record.
   g.channels=Array.isArray(src.channels)?src.channels.map(r=>(r&&typeof r.expr==='string')?
-    {expr:r.expr,compiled:null,failed:!!r.failed,age:r.age|0,uses:0}:null):src.channels;
+    // #189: the FORM is deep-copied with the chemistry. The stencil is an array of arrays, so a
+    // shallow copy would share one neighbourhood across the whole population and no lineage could
+    // ever diverge its own space - the seventh instance of the bug this file keeps re-learning.
+    {expr:r.expr,compiled:null,failed:!!r.failed,age:r.age|0,uses:0,
+     st:Array.isArray(r.st)?r.st.map(t=>[t[0]|0,t[1]|0,finiteOr(t[2],0)]):null,
+     wrap:r.wrap|0,cad:r.cad|0}:null):src.channels;
   g.probes=Array.isArray(src.probes)?src.probes.map(pr=>pr?{expression:pr.expression,compiled:null,
     failed:!!pr.failed,n:pr.n|0,hit:pr.hit|0,pending:finiteOr(pr.pending,0),pendTick:-1,pendFit:0,age:pr.age|0}:null):src.probes;
   g.oeeW=Array.isArray(src.oeeW)?src.oeeW.slice():src.oeeW;
@@ -8949,6 +8966,120 @@ const CHANNEL_TEST=/\b(?:ka|kb|kc|kd)\b/;
 const CHANNEL_CADENCE=12;      // ticks between lattice updates. 4 x 1600 cells / 12 = ~530 cell-evaluations per tick, which is the price of the whole mechanism
 const CHANNEL_CLAMP=3;         // every channel value is bounded, whatever an evolved rule computes
 const CHANNEL_RENT=0.6;        // instruction-equivalents per ALLOCATED channel per interaction - the dearest rent in the file, because a channel is a lattice and a chemistry, not a symbol
+// === #189 - THE FORM OF THE SPACE ==============================================================
+// #188's own note named what it left closed: "a scalar per cell, a neighbourhood mean, a cadence".
+// Three of those four are opened here. The fourth is not, and the reason is worth more than the
+// mechanism would have been - see ARITY below.
+//
+// THE NEIGHBOURHOOD IS THE BIG ONE, because it is the thing that decides what "next to" means.
+// `(n+s+e+w)*0.25` is a hand-written answer to that question, and everything a medium could ever do
+// was downstream of it: a symmetric average can only ever produce diffusion-like behaviour, however
+// elaborate the chemistry stirring it. A STENCIL - an evolved list of (dx,dy,weight) taps - changes
+// what the rule's `b` MEANS, and with it the class of dynamics that is reachable at all:
+//   symmetric, summing to 1     a mean. `(b)-(a)` is the discrete Laplacian: diffusion. #188 exactly.
+//   signed, summing to 0        a DERIVATIVE. `(b)` is a directional gradient.
+//   offset, summing to 1        a SHIFTED average: the medium moves. That is ADVECTION - directed
+//                               transport - and no symmetric kernel of any weighting can produce it.
+//   unequal on the two axes     anisotropy: a medium with a grain.
+//   large offsets on a torus    non-local coupling. At CHANNEL_OFFSET_MAX=7 on a 40-wide lattice a
+//                               tap reaches a sixth of the world, which is a different space from
+//                               one where influence is strictly local.
+// THE WEIGHTS ARE NOT NORMALISED, and that is the whole point rather than an oversight. Dividing by
+// the tap count would force every stencil to be an average and delete the gradient and advection
+// cases in one line. A lineage that wants a mean evolves weights that sum to one; a lineage that
+// wants a derivative evolves weights that sum to zero. Which of those a medium is, is now its own.
+//
+// THE MANIFOLD. `wrap` switches a channel between a bounded plane (edge-clamped, #188's behaviour)
+// and a TORUS. That is not a parameter of the medium, it is the topology it lives on - a pattern
+// that would pile up against an edge instead circulates. Per channel, so one universe can hold media
+// living on different manifolds at once, which the particles' own space cannot do.
+//
+// THE TIMESCALE. `cad` multiplies the base cadence per channel. Different media running at different
+// rates is how multi-scale pattern formation works at all - a slow substrate under a fast signal -
+// and it doubles as a cost lever the lineage holds itself: a slower channel is a cheaper channel.
+//
+// ARITY: CONSIDERED AND REJECTED, and this is the more useful half of the answer. A vector field was
+// on #188's own list of what stayed closed, and building it would have been wrong, because #188
+// already shipped the thing that makes it redundant: cross-channel coupling. Three scalar channels
+// whose rules read ka/kb/kc ARE a three-component field, evolved component by component, already.
+// What a dedicated arity gene would add is a SHARED stencil and cadence across components - a
+// convenience, not a capability - at the price of making ka..kd mean one thing inside an atom and
+// another inside a channel rule. The symbol confusion is exactly the class of thing this file keeps
+// paying for, and it would have bought nothing selection cannot already reach.
+//
+// AND WHAT IS STILL FIXED, so the next reader does not have to re-derive it: the RESOLUTION (40x40),
+// the fact that a cell is a square of a regular grid, the particles' own continuous space and the
+// position->cell map that indexes into it, and the global tick. A channel's coupling structure is now
+// its own; the lattice it is drawn on is not.
+const CHANNEL_STENCIL_MAX=6;   // taps per stencil. Each tap is a read per cell per update, so this is the cost knob
+const CHANNEL_OFFSET_MAX=7;    // |dx|,|dy| bound. A genuine remaining bound: a radius-20 stencil is 1,600 reads per cell
+const CHANNEL_CAD_MAX=8;       // cadence multiplier ceiling - a channel may run up to 8x slower than the base
+const CHANNEL_TAP_RENT=0.08;   // per tap beyond the default four, on top of CHANNEL_RENT. An elaborate neighbourhood is elaborate machinery and is priced as such
+// The seed IS #188: the four-neighbour mean on a clamped plane at the base cadence. A channel that
+// never mutates its form behaves byte-for-byte as it did before this swing.
+const CHANNEL_STENCIL_SEED=[[0,-1,0.25],[0,1,0.25],[-1,0,0.25],[1,0,0.25]];
+function chanStencil(rule){
+  const st=rule&&rule.st;
+  if(!Array.isArray(st)||!st.length)return CHANNEL_STENCIL_SEED;
+  return st;
+}
+function chanWrap(rule){ return (rule&&(rule.wrap|0)===1)?1:0; }
+function chanCad(rule){ return __cl(Math.round(finiteOr(rule&&rule.cad,1)),1,CHANNEL_CAD_MAX); }
+function chanTaps(rule){ return chanStencil(rule).length; }
+// Is this channel's FORM still the seeded one? Used by the census row: a bank full of channels that
+// all still couple like #188 is a bank whose form has never been selected on, and that should read as
+// "not yet" rather than as adoption - the same construction xion.cede and phys.reach use.
+function chanFormMoved(rule){
+  if(!rule)return false;
+  if(chanWrap(rule)||chanCad(rule)!==1)return true;
+  const st=chanStencil(rule);
+  if(st===CHANNEL_STENCIL_SEED)return false;
+  if(st.length!==CHANNEL_STENCIL_SEED.length)return true;
+  for(let i=0;i<st.length;i++){
+    const a=st[i],b2=CHANNEL_STENCIL_SEED[i];
+    if((a[0]|0)!==b2[0]||(a[1]|0)!==b2[1]||Math.abs(finiteOr(a[2],0)-b2[2])>1e-6)return true;
+  }
+  return false;
+}
+function chanStencilClean(st){
+  if(!Array.isArray(st)||!st.length)return null;
+  const out=[];
+  for(let i=0;i<st.length&&out.length<CHANNEL_STENCIL_MAX;i++){
+    const t=st[i]; if(!Array.isArray(t)||t.length<3)continue;
+    out.push([__cl(Math.round(finiteOr(t[0],0)),-CHANNEL_OFFSET_MAX,CHANNEL_OFFSET_MAX),
+              __cl(Math.round(finiteOr(t[1],0)),-CHANNEL_OFFSET_MAX,CHANNEL_OFFSET_MAX),
+              +__cl(finiteOr(t[2],0),-2,2).toFixed(3)]);
+  }
+  return out.length?out:null;
+}
+// ONE small move, #103's rule at the level of a space. A stencil redrawn wholesale would discard
+// whatever a lineage's selection history had found out about how its medium should couple, which is
+// the same argument that gave atoms uaLocalStep and operators uaOpStep.
+function chanFormStep(rule){
+  if(!rule)return false;
+  const st=chanStencil(rule).map(t=>[t[0]|0,t[1]|0,finiteOr(t[2],0)]);
+  const r=Math.random();
+  if(r<0.34){                                        // retune one tap's weight
+    const i=(Math.random()*st.length)|0;
+    st[i][2]=+__cl(st[i][2]+(Math.random()-0.5)*0.3,-2,2).toFixed(3);
+  } else if(r<0.58){                                 // move one tap - this is what makes a mean into a gradient
+    const i=(Math.random()*st.length)|0, ax=Math.random()<0.5?0:1;
+    st[i][ax]=__cl(st[i][ax]+(Math.random()<0.5?1:-1),-CHANNEL_OFFSET_MAX,CHANNEL_OFFSET_MAX);
+  } else if(r<0.74&&st.length<CHANNEL_STENCIL_MAX){  // grow the neighbourhood
+    st.push([__cl(((Math.random()*5)|0)-2,-CHANNEL_OFFSET_MAX,CHANNEL_OFFSET_MAX),
+             __cl(((Math.random()*5)|0)-2,-CHANNEL_OFFSET_MAX,CHANNEL_OFFSET_MAX),
+             +((Math.random()-0.5)*0.6).toFixed(3)]);
+  } else if(r<0.86&&st.length>1){                    // shrink it - and this is how a stencil gets CHEAPER
+    st.splice((Math.random()*st.length)|0,1);
+  } else if(r<0.94){                                 // flip the manifold
+    rule.wrap=chanWrap(rule)?0:1;
+  } else {                                           // step the timescale
+    rule.cad=__cl(chanCad(rule)+(Math.random()<0.5?1:-1),1,CHANNEL_CAD_MAX);
+  }
+  rule.st=st;
+  fired('channel.formStep');
+  return true;
+}
 const CHANNEL_BIRTH_FLOOR=0.12; // lower than UA_OP_BIRTH_FLOOR: a medium is a much larger commitment than an operator, so allocation is rarer even though mutateGenome runs ~18x per 6k ticks
 const __channels=[];           // the lattices themselves - allocated lazily, never freed, reused when a rule is released
 for(let _k=0;_k<CHANNEL_MAX;_k++)__channels.push(null);
@@ -9023,9 +9154,13 @@ function chanWrite(k,i,amt){
 function updateChannels(){
   if(!__CHANNEL)return;
   const b=chanBank(); if(!b)return;
-  if((tick%CHANNEL_CADENCE)!==0)return;
+  // #189: the cadence is PER CHANNEL now, so the early return moves inside the loop. Four modulo
+  // checks on a tick where nothing is due, against one before - which buys media that run at
+  // different rates in the same world, and that is how a slow substrate under a fast signal is
+  // expressible at all.
   for(let k=0;k<CHANNEL_MAX;k++){
     const rule=b[k]; if(!rule||typeof rule.expr!=='string')continue;
+    if((tick%(CHANNEL_CADENCE*chanCad(rule)))!==0)continue;
     const L=chanLattice(k); if(!L)continue;
     if(!rule.compiled&&!rule.failed){
       // compiled as an atom, through the atom compiler, so the fold and the cache both apply
@@ -9045,14 +9180,25 @@ function updateChannels(){
     // rather than left stale: a rule naming `rd` (a partner-relative resource gradient) is naming
     // something a lattice cell does not have, and it should read a defined zero, not a stranger.
     uaCtxRl=0; uaCtxRd=0; __uaVoice.fill(0); __probeOut.fill(0);
+    // #189: THE NEIGHBOURHOOD IS THIS CHANNEL'S OWN. Hoisted out of the cell loop because a stencil
+    // is a property of the medium, not of the cell.
+    const _st=chanStencil(rule), _wrap=chanWrap(rule), _nt=_st.length;
     for(let cy=0;cy<FIELD_H;cy++){
       for(let cx=0;cx<FIELD_W;cx++){
         const c=cy*FIELD_W+cx;
         const here=__chanTmp[c];
-        // 4-neighbour mean, edges clamped (the lattice does not wrap anywhere else in this file)
-        const n=__chanTmp[(cy>0?cy-1:cy)*FIELD_W+cx], sN=__chanTmp[(cy<FIELD_H-1?cy+1:cy)*FIELD_W+cx];
-        const wv=__chanTmp[cy*FIELD_W+(cx>0?cx-1:cx)], ev=__chanTmp[cy*FIELD_W+(cx<FIELD_W-1?cx+1:cx)];
-        const mean=(n+sN+wv+ev)*0.25;
+        // The evolved stencil. NOT normalised by tap count - see the note at CHANNEL_STENCIL_SEED:
+        // dividing here would force every kernel to be an average and delete the gradient and
+        // advection cases, which are the two that a 4-neighbour mean provably cannot reach.
+        let mean=0;
+        for(let _t=0;_t<_nt;_t++){
+          const _tp=_st[_t];
+          let _sx=cx+(_tp[0]|0), _sy=cy+(_tp[1]|0);
+          if(_wrap){ _sx=((_sx%FIELD_W)+FIELD_W)%FIELD_W; _sy=((_sy%FIELD_H)+FIELD_H)%FIELD_H; }
+          else { _sx=_sx<0?0:(_sx>=FIELD_W?FIELD_W-1:_sx); _sy=_sy<0?0:(_sy>=FIELD_H?FIELD_H-1:_sy); }
+          mean+=__chanTmp[_sy*FIELD_W+_sx]*_tp[2];
+        }
+        if(!isFinite(mean))mean=0;
         uaCtxC=field[c]||0; uaCtxD=detritalField[c]||0; uaCtxM=inhibitorField[c]||0;
         uaCtxNx=cx/FIELD_W; uaCtxNy=cy/FIELD_H; uaCtxNb=0; uaCtxAt=attnField[c]||0;
         // CROSS-CHANNEL COUPLING, and this is the line that makes it real rather than advertised.
@@ -9306,7 +9452,7 @@ function encodeGenome(){
     oL:(oeeLog||[]).slice(-MAX_EPOCHS),         // #130 open-endedness meter: per-epoch activity log
     RCH:(__opReachLog||[]).slice(-MAX_EPOCHS),  // #176 [tickEnd, boundSlotsExecuted, bankSize] +#178 [, distinctAtomsReached] per epoch; pre-#178 rows are 3 long and stay that way
     LVL:(__levelLog||[]).slice(-MAX_EPOCHS),    // #182 [tickEnd, particles, clusters, towers, forests] per epoch - LEVEL_DECLARED order
-    CHN:(__chanLog||[]).slice(-MAX_EPOCHS),     // #188 [tickEnd, allocatedChannels, latticeUpdates, verbWrites] per epoch
+    CHN:(__chanLog||[]).slice(-MAX_EPOCHS),     // #188 [tickEnd, allocatedChannels, latticeUpdates, verbWrites] +#189 [, channelsWhoseFormMoved] per epoch. Pre-#189 rows are 4 long and stay that way
     OPS:(__uaOpLog||[]).slice(-MAX_EPOCHS),     // #180 [tickEnd, definedSlots, evaluations, atomsNamingAnOperator] +#187 [, germlinePromotedProbes, populationPromotedProbes] per epoch. Pre-#187 rows are 4 long and stay that way; anything reading this must handle both widths, the same rule RCH carries since #178 — the operator bank's own instrument, shipped in the same commit as the bank because a layer with no instrument is a layer nobody can falsify
     oN:oeeNovel|0,                               // #130 cumulative distinct innovations ever executed
     oP:oeePersist|0,                             // #130 cumulative innovations that survived the lag
@@ -9351,7 +9497,13 @@ function encodeGenome(){
     // #184: the probe bank. `hit`/`n` travel because a promotion has to survive a reload - a save that
     // dropped the record would silently demote every sense the lineage had earned, and the atoms
     // naming those symbols would come back reading zero.
-    chn:Array.isArray(genome.channels)?genome.channels.map(r=>(r&&typeof r.expr==='string')?[String(r.expr).slice(0,UA_EXPR_MAX),r.age|0]:0):undefined,  // #188 the chemistry, not the chemicals - a lattice is world state and is not saved with the genome
+    // #189: the form travels with the chemistry. A save that carried the rule and not the stencil
+    // would restore a medium that computes the same thing in a different space, which is a different
+    // medium - and pre-#189 rows are 2 long and load with the seeded form, which is correct for a
+    // save written before a channel had a form to record.
+    chn:Array.isArray(genome.channels)?genome.channels.map(r=>(r&&typeof r.expr==='string')?
+      [String(r.expr).slice(0,UA_EXPR_MAX),r.age|0,
+       (Array.isArray(r.st)?r.st.map(t=>[t[0]|0,t[1]|0,+(+t[2]).toFixed(3)]):null),r.wrap|0,r.cad|0]:0):undefined,  // #188 the chemistry, not the chemicals - a lattice is world state and is not saved with the genome
     prb:Array.isArray(genome.probes)?genome.probes.map(pr=>pr?[String(pr.expression).slice(0,UA_EXPR_MAX),pr.n|0,pr.hit|0]:0):undefined,
     oew:Array.isArray(genome.oeeW)?genome.oeeW.map(v=>+(+v).toFixed(4)):undefined,
     dmc:genome.demeCount===undefined?undefined:(genome.demeCount|0),              // #185 internal population structure
@@ -9699,7 +9851,8 @@ function decodeGenome(data){
     if(typeof g.ait==='number')genome.atomIdleTolerance=+g.ait;  // #177 (absent in pre-#177 saves → undefined → reads 0 → the old cull, which is the correct inheritance)
     if(typeof g.usb==='number')genome.uaStructBias=+g.usb;       // #107
     // #180 (absent in pre-#180 saves → left undefined → every reader's default → the pre-#180 engine)
-    if(Array.isArray(g.chn))genome.channels=g.chn.map(r=>Array.isArray(r)?{expr:String(r[0]),compiled:null,failed:false,age:r[1]|0,uses:0}:null);  // #188
+    if(Array.isArray(g.chn))genome.channels=g.chn.map(r=>Array.isArray(r)?{expr:String(r[0]),compiled:null,failed:false,age:r[1]|0,uses:0,
+      st:Array.isArray(r[2])?r[2]:null, wrap:r[3]|0, cad:r[4]|0}:null);  // #188 +#189 the form. A pre-#189 row is 2 long: st/wrap/cad read undefined and the readers supply the seeded form, which IS what that save meant
     if(Array.isArray(g.prb))genome.probes=g.prb.map(r=>Array.isArray(r)?{expression:String(r[0]),compiled:null,
       failed:false,n:r[1]|0,hit:r[2]|0,pending:0,pendTick:-1,pendFit:0,age:0}:null);   // #184
     if(Array.isArray(g.oew))genome.oeeW=g.oew.map(v=>+v);
@@ -9976,7 +10129,9 @@ function sanitizeGenome(){
     for(let _k=0;_k<CHANNEL_MAX;_k++){
       const r=_cb[_k];
       genome.channels[_k]=(r&&uaExprSafe(r.expr))?{expr:r.expr,compiled:null,failed:!!r.failed,
-        age:Math.max(0,r.age|0),uses:Math.max(0,r.uses|0)}:null;
+        age:Math.max(0,r.age|0),uses:Math.max(0,r.uses|0),
+        st:chanStencilClean(r.st),wrap:(r.wrap|0)===1?1:0,
+        cad:__cl(Math.round(finiteOr(r.cad,1)),1,CHANNEL_CAD_MAX)}:null;
     }
   }
   if(genome.probes!==undefined){
@@ -16113,6 +16268,12 @@ function mutateGenome(){ fired('genome.mutate');
       if(Math.random()<rate*0.25){
         const _v=uaLocalStep(_r.expr);
         if(_v!==_r.expr){ _r.expr=_v; _r.compiled=null; _r.failed=false; fired('channel.drift'); }
+      } else if(Math.random()<rate*0.25){
+        // #189: and the FORM drifts on its own draw, separately from the chemistry. Two independent
+        // things - what the medium computes, and what "next to" means in it - and a lineage can move
+        // either without disturbing the other. Folding them into one draw would have made a stencil
+        // change and a chemistry change indistinguishable to selection.
+        chanFormStep(_r);
       } else if((_r.age|0)>UA_OP_GRACE*2){
         let _sensed=false;
         const _uas=Array.isArray(genome.userAtoms)?genome.userAtoms:[];
@@ -16127,7 +16288,10 @@ function mutateGenome(){ fired('genome.mutate');
     }
     if(_calloc<CHANNEL_MAX&&Math.random()<Math.max(CHANNEL_BIRTH_FLOOR,rate*0.1)){
       for(let _k=0;_k<CHANNEL_MAX;_k++) if(!genome.channels[_k]||typeof genome.channels[_k].expr!=='string'){
-        genome.channels[_k]={expr:uaGenExpression(),compiled:null,failed:false,age:0,uses:0};
+        // #189: allocated with the SEEDED form - the four-neighbour mean on a clamped plane at the
+        // base cadence - so a new medium starts as #188's and evolves its own space from there.
+        genome.channels[_k]={expr:uaGenExpression(),compiled:null,failed:false,age:0,uses:0,
+                             st:CHANNEL_STENCIL_SEED.map(t=>[t[0],t[1],t[2]]),wrap:0,cad:1};
         fired('channel.alloc');
         recordEvent('chan_alloc',{slot:_k,expr:String(genome.channels[_k].expr).slice(0,48)},600);
         // #179's rule, fifth application: a medium nothing can sense or act into is unreachable, so
@@ -18413,7 +18577,14 @@ function executeVM(i,j,sim,d){
   // chemistry that runs over 1,600 cells on a cadence, so it is the largest standing commitment a
   // lineage can make and it is priced that way. A channel that earns nothing is a heavy drain, which
   // is exactly what makes allocating one a decision rather than a free win.
-  const _chanRent=__CHANNEL?chanAllocated()*CHANNEL_RENT:0;
+  // #189: and an elaborate neighbourhood costs more than a plain one. Each tap is a read per cell
+  // per update, so a six-tap stencil is half again the work of the seeded four - and the surcharge is
+  // what makes SHRINKING a stencil a move selection can profit from, rather than a strictly
+  // dominated one. Priced against the seeded four so #188's form is exactly CHANNEL_RENT.
+  let _chanRent=0;
+  if(__CHANNEL){ const _cb=chanBank();
+    if(_cb) for(let _k=0;_k<CHANNEL_MAX;_k++){ const _r=_cb[_k];
+      if(_r&&typeof _r.expr==='string') _chanRent+=CHANNEL_RENT+Math.max(0,chanTaps(_r)-4)*CHANNEL_TAP_RENT; } }
   const totalCost=(nInst+_stack+_opRent+_foldRent+_probeRent+_chanRent+_over16*(COMPLEXITY_TOLL-1))*genome.metabolicCost;
   amp[i]-=totalCost;amp[j]-=totalCost;
 

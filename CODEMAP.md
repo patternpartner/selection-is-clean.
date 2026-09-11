@@ -1871,10 +1871,40 @@ calls `uaCall` outside a particle interaction owes the same discipline.**
 be dead (nothing senses it, nothing acts into it) and either alone is survivable, so both are checked.
 The lattice is left to decay rather than zeroed — a medium does not vanish because nothing maintains it.
 
-**WHAT IS STILL CLOSED.** A channel is a scalar field on the same 40x40 lattice on a fixed cadence.
-No vector fields, no new topology, no new dimensionality, no change to what a cell or a neighbourhood
-is. The inventory stopped being ENUMERATED and became GENERATED; the *form* of the generated space is
-the new ceiling, and it is a real one.
+**THE FORM IS A GENE TOO, SINCE #189.** Each channel rule additionally carries `st` (a stencil: up to
+`CHANNEL_STENCIL_MAX` taps of `[dx,dy,weight]`, offsets bounded by `CHANNEL_OFFSET_MAX`), `wrap`
+(0 = clamped plane, 1 = torus) and `cad` (cadence multiplier, 1..`CHANNEL_CAD_MAX`). All three seed to
+#188's behaviour exactly, so an unmutated channel is byte-for-byte what it was.
+
+The stencil redefines what the rule's `b` MEANS, and that is a change of form rather than parameter:
+symmetric-summing-to-1 is a mean (diffusion), signed-summing-to-0 is a DERIVATIVE, and OFFSET-summing-
+to-1 is a shifted average, which is ADVECTION — directed transport, which no symmetric kernel produces
+at any weighting. Measured in `substrate-test`: identical chemistry, centroid 20.0 -> 20.0 under the
+seeded mean and 20.0 -> 26.0 under `[[-1,0,1.0]]`; with `wrap=1` it reaches 10.0 after 30 updates
+(20+30 = 50, mod 40).
+
+**THE WEIGHTS ARE DELIBERATELY NOT NORMALISED.** Dividing by tap count would force every stencil to be
+an average and delete the gradient and advection cases in one line. Do not "fix" this.
+
+The form drifts on its OWN draw, separate from the chemistry's — two independent things, and one draw
+would make a stencil change and a chemistry change indistinguishable to selection. Rent scales with
+taps beyond the seeded four (`CHANNEL_TAP_RENT`), which is what makes SHRINKING a stencil profitable
+rather than strictly dominated. `st` is an array of arrays: `cloneGenome` copies the taps as well as
+the list, or one neighbourhood is shared population-wide. Pre-#189 saves have 2-long `chn` rows and
+load with the seeded form, which is what they meant.
+
+**ARITY WAS CONSIDERED AND REJECTED (#189), and the reasoning is reusable.** A vector field is already
+expressible: cross-channel coupling means three scalar channels reading `ka`/`kb`/`kc` ARE a
+three-component field. A dedicated arity gene would add a shared stencil/cadence — a convenience —
+at the price of `ka`..`kd` meaning one thing in an atom and another in a channel rule. Symbol
+confusion is the class of defect this file has paid for seven times; it bought nothing selection
+cannot already reach.
+
+**WHAT IS STILL CLOSED.** The RESOLUTION (40x40), the fact that a cell is a square of a regular grid,
+the particles' own continuous space and the position->cell map, and the global tick. A channel's
+coupling structure is its own; the lattice it is drawn on is not. And nothing a lineage evolves can
+change what DISTANCE means to a particle — the particles' space is still Euclidean 2D with a fixed
+metric, which neither #188 nor #189 touches.
 
 ### #186 — the germline-to-population crossing, stated generally
 
