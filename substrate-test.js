@@ -254,8 +254,9 @@ m._compile(code+`
     const cen=crossingCensus();
     const names=cen.rows.map(r=>r.name);
     return {saved,shared,childMoved,seeded,carriers,
-            rows:['atom.fold','xion.cede','phys.reach','phys.chem','probe.bank','probe.promoted',
-                  'oee.weighted','deme.split'].filter(n=>names.indexOf(n)<0)};
+            rows:['atom.fold','xion.cede','phys.reach','phys.chem','probe.bank',
+                  'oee.weighted','deme.split'].filter(n=>names.indexOf(n)<0),
+            promotedNotACrossingRow:names.indexOf('probe.promoted')<0};
   });
 
   // ── THE REVERT: every layer's knob must actually turn it off ─────────────────────────────────
@@ -369,7 +370,12 @@ ck('parent -> child: the proxy weights diverge', CR.childMoved>0, CR.childMoved+
 ck('germline -> population: the substrate actually crosses', CR.seeded===true && CR.carriers>0,
    CR.carriers+' carrier(s) after one seeding - the bug the crossing rows caught seven times');
 ck('every new gene has a census row', CR.rows && CR.rows.length===0,
-   CR.rows && CR.rows.length?('missing: '+CR.rows.join(' ')):'all eight present');
+   CR.rows && CR.rows.length?('missing: '+CR.rows.join(' ')):'all seven present');
+// #187: and the one that must NOT be a crossing row. A promotion is an earned outcome, not authored
+// structure, so "germline 1 / population 0" is the normal state of a young world - it was reported as
+// STRANDED and made crossing-test red for something that is not a defect. It is logged per epoch now.
+ck('#187 probe.promoted is NOT a crossing row', CR.promotedNotACrossingRow===true,
+   'an earned outcome cannot be stranded — probe.bank already answers the crossing question');
 
 // the reverts
 const RV=r.revert||{};

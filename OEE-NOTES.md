@@ -14115,3 +14115,41 @@ could lie — so a population probe has to earn 8 scored claims and a 60% hit ra
 gap, confirmed against the unmodified engine at the same tick count.
 
 `substrate-test.js`: 53 checks. `grammar-test.js`: 79.
+
+### #187 — probe.promoted was the wrong shape for a crossing row, and crossing-test was already red
+
+Found by running the rigs against the file as it exists on `main` rather than trusting that the
+commit graph implied it. `grammar-test` (79) and `substrate-test` (53) both passed. `crossing-test`
+**failed**, at `TICKS=2500`, with two stranded rows.
+
+**One of them was mine and it should never have been a row.** The census defines STRANDED as "present
+on the germline, absent from every living particle" — authored and evolutionarily invisible. A
+promotion is not authored structure; it is an EARNED OUTCOME. A population probe has to accumulate
+`PROBE_MIN_SAMPLE` scored claims at `PROBE_LAG` ticks apart and clear `PROBE_PROMOTE` **from
+scratch**, because `seedSubstrateIntoParticle` deliberately withholds the parent's record — handing a
+fresh carrier someone else's hit rate is the one way that mechanism could lie. So germline 1 /
+population 0 is the *normal* state of a young world, and the row reported it as a build failure.
+
+`probe.bank` already answers the crossing question — it read 2/9 in the same census the other row
+failed on. The promotion count moves to the `OPS` epoch log instead, germline and population side by
+side, with `probe.promote` keeping its liveness name. This is the rule CODEMAP already states for
+`__opReach` ("a quantity with no germline/population sides to compare does not belong in a table that
+compares them") applied a second time, by me, one commit after writing the row.
+
+**The other one is not mine, and it was there before #180.** `verb.sensed` reads germline 2 /
+population 0, and the same rig against the unmodified #179 engine at the same tick count reads
+`verb.sensed g2/p0` and fails identically. So **`crossing-test` has been red at realistic tick counts
+since before this work**, on a documented #139 consequence: `remapEffectAx` matches a verb's sense
+gate ACROSS genomes by expression and returns -1 when the recipient carries no atom with the same
+text, so a sensed verb crosses ungated by design. Whether that is a bug or the correct conservative
+behaviour is #139's question, not this batch's, and it is left alone rather than papered over.
+
+**And the reason nobody noticed: `smoke.sh` runs `crossing-test` at `TICKS=40`.** Forty ticks is
+before any verb has a sense gate, so the row reads 0/0 and the check passes. The suite's "0 failing"
+is therefore true at the smoke budget and not at the budget the rig was designed for. That gap is
+recorded here rather than closed by raising the budget, because raising it would turn the build red on
+a pre-existing issue this commit did not cause and has not diagnosed.
+
+After the fix, at 2,500 ticks: every row this batch added reads non-zero on both sides
+(`atom.ops` 2/5, `atom.opRef` 1/5, `probe.bank` 2/9, `oee.weighted` 1/4) or 0/0 with nothing authored
+yet, and `verb.sensed` is the only stranded row left.

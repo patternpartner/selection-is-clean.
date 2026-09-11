@@ -722,7 +722,18 @@ const CROSSING_DECLARED=[
   // exists and measures nothing.
   {name:'probe.bank',    read:g=>{ const b=g&&g.probes; if(!Array.isArray(b))return 0;
                                    let n=0; for(const pr of b) if(pr)n++; return n; }},
-  {name:'probe.promoted',read:g=>probeCount(g)},
+  // #187: probe.promoted WAS a row here and it was the wrong shape. The census defines STRANDED as
+  // "present on the germline, absent from every living particle" - authored and evolutionarily
+  // invisible. A promotion is not authored structure, it is an EARNED OUTCOME: a population probe
+  // must accumulate PROBE_MIN_SAMPLE scored claims at PROBE_LAG ticks apart and clear
+  // PROBE_PROMOTE, from scratch, because the seeding path deliberately withholds the parent's
+  // record (see seedSubstrateIntoParticle - inheriting a hit rate would let a carrier claim a
+  // promotion it never earned). So germline 1 / population 0 is the NORMAL state of a young world
+  // and the row reported it as a build failure. `probe.bank` already answers the crossing question -
+  // it read 2/9 in the same census that this row failed on - and the promotion count is logged per
+  // epoch instead (see the OPS/probe block in flushEpoch) with a liveness name of its own.
+  // This is the rule CODEMAP already states for __opReach, applied a second time: a quantity with
+  // no germline/population sides to compare does not belong in a table that compares them.
   {name:'oee.weighted',  read:g=>{ const w=g&&g.oeeW; if(!Array.isArray(w))return 0;
                                    let n=0; for(const v of w) if(finiteOr(v,0)>0.02)n++; return n; }},
   // #185: deviation from the neutral seed, like xion.cede and phys.reach - a world at one deme with
@@ -8201,7 +8212,14 @@ function flushEpoch(acc){
   }
   {
     firedN('atom.opFire',__uaOpFires); firedN('atom.opFallback',__uaOpFallbacks);
-    __uaOpLog.push([(acc.idx+1)*EPOCH_TICKS,uaOpCount(genome),__uaOpFires,uaOpRefs(genome)]);
+    // #187: the promotion count, germline and population, on the same row as the operator bank -
+    // moved here from CROSSING_DECLARED, where "not yet earned" read as "stranded". Counted over the
+    // living population rather than the germline alone, because the germline is one carrier out of
+    // a few hundred and #102's lesson is that the germline number is a floor of unknown tightness.
+    let _prPop=0; if(__PROBE){ for(let i=0;i<N;i++){ if(!palive[i]||!pGenome[i])continue;
+      _prPop+=probeCount(pGenome[i]); } }
+    __uaOpLog.push([(acc.idx+1)*EPOCH_TICKS,uaOpCount(genome),__uaOpFires,uaOpRefs(genome),
+                    probeCount(genome),_prPop]);
     __uaOpFires=0; __uaOpFallbacks=0;
     while(__uaOpLog.length>MAX_EPOCHS)__uaOpLog=__uaOpLog.filter((_,i)=>i%2===0);
   }
@@ -9036,7 +9054,7 @@ function encodeGenome(){
     oL:(oeeLog||[]).slice(-MAX_EPOCHS),         // #130 open-endedness meter: per-epoch activity log
     RCH:(__opReachLog||[]).slice(-MAX_EPOCHS),  // #176 [tickEnd, boundSlotsExecuted, bankSize] +#178 [, distinctAtomsReached] per epoch; pre-#178 rows are 3 long and stay that way
     LVL:(__levelLog||[]).slice(-MAX_EPOCHS),    // #182 [tickEnd, particles, clusters, towers, forests] per epoch - LEVEL_DECLARED order
-    OPS:(__uaOpLog||[]).slice(-MAX_EPOCHS),     // #180 [tickEnd, definedSlots, evaluations, atomsNamingAnOperator] per epoch — the operator bank's own instrument, shipped in the same commit as the bank because a layer with no instrument is a layer nobody can falsify
+    OPS:(__uaOpLog||[]).slice(-MAX_EPOCHS),     // #180 [tickEnd, definedSlots, evaluations, atomsNamingAnOperator] +#187 [, germlinePromotedProbes, populationPromotedProbes] per epoch. Pre-#187 rows are 4 long and stay that way; anything reading this must handle both widths, the same rule RCH carries since #178 — the operator bank's own instrument, shipped in the same commit as the bank because a layer with no instrument is a layer nobody can falsify
     oN:oeeNovel|0,                               // #130 cumulative distinct innovations ever executed
     oP:oeePersist|0,                             // #130 cumulative innovations that survived the lag
     lv:(function(){try{const c=livenessCensus();return {n:c.never,r:c.rare.length,l:c.live.length,t:c.tick};}catch(e){return null;}})(), // #134 liveness census: which mechanisms have never run

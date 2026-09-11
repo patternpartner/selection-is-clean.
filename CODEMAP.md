@@ -1849,6 +1849,23 @@ accumulated zero claims. One random carrier per tick is now scored with `genome`
 restored in a `finally` (`uaCall`, `uaCompile` and `probePromoted` all read the ambient genome).
 That is #102's lesson — "credit measured a pool selection never saw" — in a fifth mechanism.
 
+**Not every quantity belongs in the crossing table (#187).** `probe.promoted` was a
+`CROSSING_DECLARED` row for one commit and should not have been. STRANDED means "authored and
+evolutionarily invisible"; a promotion is an EARNED OUTCOME, and a population probe earns one from
+scratch because the seeding path withholds the parent's record on purpose. So germline 1 / population
+0 is the normal state of a young world and the row reported it as a build failure. `probe.bank`
+answers the crossing question; the promotion count lives in the `OPS` epoch log (columns 5 and 6,
+germline and population — pre-#187 rows are 4 long and stay that way). Same rule the `__opReach` note
+above already states, and worth restating because it was broken the commit after it was written.
+
+**`crossing-test` is RED at realistic tick counts, and has been since before #180.** `verb.sensed`
+reads germline 2 / population 0 at `TICKS=2500` on the unmodified #179 engine as well as on current
+head: `remapEffectAx` matches a verb's sense gate across genomes BY EXPRESSION and returns -1 when the
+recipient carries no atom with the same text, so a sensed verb crosses ungated by design (#139's own
+note says so). `smoke.sh` runs the rig at `TICKS=40`, which is before any verb has a gate, so the row
+reads 0/0 and the suite passes. **"smoke.sh: 0 failing" means 0 failing at forty ticks.** Anyone
+raising that budget should expect this row and should decide #139's question first.
+
 **Two instrument defects worth remembering as patterns.** `level.vanished` fired on the STATE rather
 than the transition (146 times in 12,000 ticks, because `forest` reads 0 most of a run) — a census
 that reports a constant as an event is worse than no census. And `xion.fuse` fired 296 times in a run
