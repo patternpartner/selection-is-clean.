@@ -1944,9 +1944,44 @@ what #182's levels are built from. The consequence worth knowing: two lineages w
 oriented metrics share a region and admit mostly-disjoint neighbourhoods (measured: 30.8% overlap
 against Euclidean's near-total), which is ecological separation by PERCEPTION rather than position.
 
-**STILL CLOSED after #190:** the lattice resolution, the grid's Euclidean candidate radius, the
-position->cell map, and the global tick. Distance is now a lineage trait; the coordinate system it is
-computed in is not.
+**STILL CLOSED after #190:** the lattice resolution, the position->cell map, and the global tick.
+(The grid's candidate radius was closed too and is opened by #191, below.)
+
+### #191 — the sweep follows the reach, and `interactionRadius` starts working
+
+**READ THIS BEFORE TOUCHING THE PAIR LOOP.** `interactionRadius` has been in the genome literal since
+long before any of this, labelled "FREED: System evolves its own social distance", and was false two
+ways: (1) `mutateGenome` evolves it over [25,120] while the sweep scanned +/-1 bin of CELL=55, so more
+than half the range found partners only by grid-alignment luck - the artifact LEAP 31 (#58) named and
+declined to fix; (2) it was read from the GERMLINE inside the outer pair loop, before the `_drv`
+repoint, so every particle used the self's value regardless of its own lineage - #102's pattern in the
+quantity that decides who can interact at all.
+
+Now: sweep is `+/-reachRings(reach)` rings, reach comes from `pGenome[i]` via `reachOf(i)`, and the
+dedup is **symmetric**.
+
+**THE DEDUP IS THE DANGEROUS PART.** `j>i` is a correct dedup only while every particle has the same
+reach; once reaches differ, a pair only the HIGHER-indexed particle can reach is discovered while
+scanning it and then thrown away - #58's artifact one level up. The guard is now
+`_mine && (!_theirs || i<j)`: only-i at i, only-j at j, both at the lower index. Exactly once, and
+WHETHER a pair happens no longer depends on allocation order. `substrate-test` checks all 275
+reach/distance combinations for double-counting and loss, and 80 for order dependence. **Do not
+"simplify" this back to `j>i`.**
+
+**THE RING CAP IS DERIVED.** `REACH_RINGS_MAX = 3` because `ceil(120/CELL) = 3` covers the gene's
+whole declared range and nothing beyond. `sanitizeGenome` clamps the gene to `CELL*REACH_RINGS_MAX` -
+the same number from the other side. If either moves, both move, or the defect returns.
+
+**RENT IS AREA, NOT RADIUS** (`REACH_RENT * (r/CELL)^2 - 1`), zero at the default 55. Each particle
+sweeps its own radius and is billed for its own area, which is what stops a widened sweep being a
+tragedy of the commons.
+
+The knob is `REACH_SWEEP`, resolved into `__REACH` - deliberately NOT `REACH`, because `__REACH_ON`
+is a different pre-existing gate and colliding on that name is how a knob stops being a control.
+
+**This unlocks three genes for one change:** `interactionRadius`, #183's `cellScale` (the world side
+need no longer be narrows-only) and #190's metric past p=2. The caveats stated in both of those
+swings are now removable rather than restated.
 
 ### #186 — the germline-to-population crossing, stated generally
 

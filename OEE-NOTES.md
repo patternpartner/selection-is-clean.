@@ -14521,3 +14521,119 @@ row** — `xion.cede` 1/37, `phys.reach` 1/40, `phys.chem` 0/24, `probe.bank` 4/
 1/38, `channel.bank` 4/90, `channel.sensed` 4/59, `oee.weighted` 3/66.
 
 `substrate-test.js`: 91 checks, 11 of them #190's.
+
+---
+
+## #191 — THE SWEEP FOLLOWS THE REACH, and a gene that has been lying since it was written
+
+#183 said `cellScale` "narrows only" and said why. #190 said a p>2 metric is "clipped at the grid
+radius" and said why. Both caveats point at one line, and **LEAP 31 (#58) named it exactly and
+declined to fix it** — correctly, at the time:
+
+> *"Deliberately NOT applied to the `d<iR` cutoff: the grid sweep scans only ±1 cell of CELL=55, so a
+> widened cutoff would find long-range partners only when grid alignment happened to allow it — a
+> positional artifact dressed as physics."*
+
+Right diagnosis. But the gene it disables has been in the genome literal the whole time,
+advertising something untrue:
+
+```js
+interactionRadius:55,   // FREED: was CELL=55. System evolves its own social distance.
+```
+
+**That has been false in two independent ways, and both are this file's own signature failures.**
+
+**1. Most of the range was unreachable.** `mutateGenome` evolves it over `[25,120]` while the sweep
+scanned ±1 bin of CELL=55. Everything above 55 — **more than half the declared range** — found a
+partner only when grid alignment happened to allow it. #58's artifact, live, for forty swings, in a
+gene whose whole purpose was to be free.
+
+**2. It was read from the germline.** `genome.interactionRadius` is evaluated in the outer pair loop,
+*before* the `_drv` repoint, so every particle in the world used **the self's** social distance no
+matter what its own lineage had evolved. That is #102 exactly — a per-lineage gene that never varies
+per lineage — in the one quantity that decides who can interact at all.
+
+So "the system evolves its own social distance" was not an unused capability. It was a capability that
+**did not exist, twice over**. That is the eighth instance of the germline/population pattern and the
+first one I found by reading a comment rather than by a census row.
+
+### The fix, and the part that would have been silently catastrophic
+
+The sweep is now `±ceil(reach/CELL)` rings, the reach is read from `pGenome[i]`, and — the delicate
+part — **pair discovery had to become symmetric.** The old guard was `j>i`, which is a correct dedup
+only while every particle has the same reach. Once reaches differ it becomes a *new* positional
+artifact of exactly #58's kind, one level up: if only the higher-indexed particle can reach, the pair
+is discovered while scanning *it*, and `j>i` throws it away. A long-reaching lineage would have had
+its reach honoured against higher-indexed partners and silently not against lower ones.
+
+The replacement is `_mine && (!_theirs || i<j)`:
+
+```
+only i reaches   -> handled at i
+only j reaches   -> handled at j
+both reach       -> handled at the lower index
+```
+
+Exactly once in every case, and *whether* a pair happens no longer depends on who was allocated
+first. Checked exhaustively over 275 reach/distance combinations: **0 double-counted, 0 lost.** A sum
+of two is double physics and a sum of zero is a lost partner, and neither announces itself. Plus 80
+combinations checked for allocation-order dependence: **0 differ.**
+
+### The ring cap is derived, not chosen
+
+`REACH_RINGS_MAX = 3`, because `ceil(120/CELL) = 3` covers the gene's **entire declared range and
+nothing beyond it**. That is a better justification than any constant I could have picked: the
+substrate now reaches exactly as far as the gene was always allowed to ask for, and not one bin
+further. `sanitizeGenome` clamps the gene to `CELL*REACH_RINGS_MAX` — the same number from the other
+side, so if either moves both move and the defect cannot quietly return.
+
+### End to end
+
+```
+two particles, 1.6 x CELL apart, nothing else alive
+  reach 55   ->  0 pairs past one ring,  0 interactions    (as before)
+  reach 120  ->  1 pair past one ring,   2 interactions    (the gene working, first time)
+```
+
+### Priced as area, because that is what it costs
+
+`REACH_RENT` scales as **r², not r**: a particle reaching twice as far searches four times the bins
+and offers four times the candidates. Zero at the default 55, so a lineage that never moves its social
+distance pays nothing for having one. And this is what keeps the widened sweep from being a tragedy of
+the commons — **each particle sweeps its own radius and is billed for its own area**, so no lineage can
+make the world slower for everyone without paying for it itself.
+
+`MODE_REACH`'s falloff also now uses each side's own reach, which is what LEAP 31 said it wanted —
+*"each side reads its OWN reach"* — and could not have, because it read the germline's for both.
+
+`__REACH` is deliberately **not** named `REACH`: `__REACH_ON` is a different, pre-existing gate, and
+colliding on that name is how a knob silently stops being a control.
+
+### What this unlocks elsewhere
+
+Three genes become real for the price of one change: `interactionRadius` itself, #183's `cellScale`
+(the world side can stop being narrows-only), and #190's metric past p=2. The two caveats I had to
+state in those swings are now removable rather than restated.
+
+### The live run
+
+```
+12,000 ticks, one seed, nothing seeded by hand
+  reach.moved          germline 1 / population 80     the gene varying per lineage, first time
+  reach.beyondRing     8,502                          pairs the pre-#191 sweep could not offer
+  germline reach       50.1                           drifted DOWN from 55, which is a choice too
+  metric.applied       446,698
+  alive 188, extinctions 0, fitness 0.622, save round-trips clean, NOTHING stranded
+```
+
+Eighty population genomes carrying a social distance of their own, and eight and a half thousand
+interactions that could not previously have happened. Note the germline drifted *down* to 50.1 — a
+shorter reach is cheaper, and the rent is real, so "evolve a longer reach" is not the only thing this
+gene can now say. That asymmetry is the point of pricing it as area.
+
+**One thing I am NOT claiming.** `crossing-test` passed on this run with `verb.sensed` reading 0/0,
+and that is not #191 fixing #139 — it is that no sense-gated verb arose in this seed's window, so the
+row had nothing to be stranded about. The pre-existing gap is still there and is still #139's
+question. A rig passing because a mechanism did not fire is not a rig passing.
+
+`substrate-test.js`: 98 checks, 7 of them #191's. `smoke.sh`: 49 ok, 0 failing.

@@ -375,6 +375,49 @@ let __CHANNEL=true;   // #188: lineage-allocated media with evolved reaction rul
 // TO EACH OTHER. That is ecological separation by PERCEPTION rather than by position - a niche axis
 // that does not exist in a world with one metric.
 let __METRIC=true;   // #190: the interaction metric is a lineage trait. Force off with METRIC=0
+// === #191 - THE SWEEP FOLLOWS THE REACH ========================================================
+// #183 said cellScale "narrows only" and said why. #190 said a p>2 metric is "clipped at the grid
+// radius" and said why. Both caveats point at one line, and LEAP 31 (#58) named it exactly and
+// declined to fix it, correctly, at the time:
+//
+//   "Deliberately NOT applied to the `d<iR` cutoff: the grid sweep scans only +/-1 cell of CELL=55,
+//    so a widened cutoff would find long-range partners only when grid alignment happened to allow
+//    it - a positional artifact dressed as physics."
+//
+// That is the right diagnosis and the wrong thing to leave standing, because the gene it disables
+// has been in the genome literal since before any of this, advertising something untrue:
+//
+//   interactionRadius:55,   // FREED: was CELL=55. System evolves its own social distance.
+//
+// It has been false in TWO independent ways for that entire time, and both are this file's own
+// most-repeated failure shapes:
+//   1. THE RANGE IS MOSTLY UNREACHABLE. mutateGenome evolves it over [25,120] while the sweep is
+//      +/-1 bin of CELL=55. Everything above 55 - more than half the declared range - finds a
+//      partner only when grid alignment happens to allow it. #58's artifact, live, for forty swings.
+//   2. IT IS READ FROM THE GERMLINE. `genome.interactionRadius` is evaluated in the outer pair loop,
+//      BEFORE the _drv repoint, so every particle in the world uses the SELF's social distance no
+//      matter what its own lineage evolved. That is #102 exactly - "a per-lineage gene that never
+//      varies per lineage" - in the one quantity that decides who can interact at all.
+// So "the system evolves its own social distance" was not a capability that went unused. It was a
+// capability that did not exist, twice over.
+//
+// #191 widens the sweep to follow the reach, reads the reach from the CARRIER, and makes pair
+// discovery symmetric so that a long-reaching particle is not at the mercy of array order. Three
+// genes become real for the price of one change: interactionRadius itself, #183's cellScale (which
+// can stop being narrows-only on the world side), and #190's metric past p=2.
+let __REACH=true;   // #191: the neighbour sweep follows each particle's own reach. Force off with REACH_SWEEP=0 (name kept distinct from the pre-existing __REACH_ON)
+// THE RING CAP IS DERIVED, NOT CHOSEN. mutateGenome evolves interactionRadius over [25,120], so
+// ceil(120/CELL) = 3 rings covers the gene's ENTIRE declared range and nothing beyond it. That is a
+// better justification than any constant I could have picked: the substrate now reaches exactly as
+// far as the gene was always allowed to ask for, and not one bin further.
+const REACH_RINGS_MAX=3;
+const REACH_RENT=0.5;   // per unit of AREA beyond the default disc - see the billing note. Area, not radius, because that is what the sweep actually costs
+function reachOf(i){
+  if(!__REACH)return Math.max(10,finiteOr((typeof genome!=='undefined'&&genome)?genome.interactionRadius:55,55));
+  const g=(typeof pGenome!=='undefined'&&pGenome[i])?pGenome[i]:((typeof genome!=='undefined')?genome:null);
+  return __cl(finiteOr(g&&g.interactionRadius,55),10,CELL*REACH_RINGS_MAX);
+}
+function reachRings(r){ return __cl(Math.ceil(r/CELL),1,REACH_RINGS_MAX); }
 // Highest alienGrip among a genome's BOUND atoms, tie-broken by uses so a bank with no scored atom
 // behaves exactly as before. Returns -1 if there is nothing bound.
 // Returns -1 unless some bound atom has ACTUAL grip (>= ALIEN_GRIP_MIN_ATTEMPTS attempts and a non-zero
@@ -640,6 +683,10 @@ const LIVENESS_DECLARED=[
   // #190: batched through firedN from flushEpoch - a metric is applied per pair interaction, which is
   // far too hot for a census call, exactly as atom.opFire is.
   'metric.applied',
+  // #191: fires when a pair is discovered that the pre-#191 sweep could not have found - a partner
+  // beyond one grid ring. A run where this never fires is a run where no lineage bought any reach,
+  // which is a finding; a run where it fires is the gene working for the first time.
+  'reach.beyondRing',
 ];
 // NOT INSTRUMENTED, and deliberately absent rather than declared-and-silent: cladogenesis minting
 // (#17) has no single entry point I could identify with confidence. A census that reports "never"
@@ -789,6 +836,11 @@ const CROSSING_DECLARED=[
   // #190: has this lineage's SPACE moved? Deviation from Euclidean, the same construction the four
   // rows around it use - a population sitting at (2,1,0) has never been selected on its geometry,
   // and that reads 0 rather than reading adoption.
+  // #191: has this lineage moved its social distance off the default? The row exists because the
+  // gene has been in the genome literal for forty swings while being unreadable by the population
+  // and unreachable past 55 - so "is it varying, and does the population carry that variation" is
+  // exactly the question nobody could previously ask.
+  {name:'reach.moved',   read:g=>Math.abs(finiteOr(g&&g.interactionRadius,55)-55)>1?1:0},
   {name:'metric.moved',  read:g=>metMoved(g)?1:0},
   {name:'channel.bank',  read:g=>chanAllocated(g)},
   // #189: has this lineage's SPACE moved? Deviation from the seeded form, on the same construction
@@ -8344,6 +8396,7 @@ function flushEpoch(acc){
   {
     firedN('atom.opFire',__uaOpFires); firedN('atom.opFallback',__uaOpFallbacks);
     firedN('metric.applied',__metApplied); __metApplied=0;   // #190
+    firedN('reach.beyondRing',__reachBeyond); __reachBeyond=0;   // #191
     // #187: the promotion count, germline and population, on the same row as the operator bank -
     // moved here from CROSSING_DECLARED, where "not yet earned" read as "stranded". Counted over the
     // living population rather than the germline alone, because the germline is one carrier out of
@@ -9064,6 +9117,7 @@ const CHANNEL_RENT=0.6;        // instruction-equivalents per ALLOCATED channel 
 // measuring a p=4 lineage and wondering why its corners are missing.
 const MET_RENT=0.2;      // instruction-equivalents per interaction while the metric is non-default. Two Math.pow per pair is a real cost and is priced; the Euclidean fast path pays nothing
 let __metApplied=0;      // instrument state off the genome (#131); drained per epoch through firedN
+let __reachBeyond=0;     // #191: pairs discovered past one grid ring - the count that says whether the widened sweep is doing anything
 function metP(g){ const gg=g||((typeof genome!=='undefined')?genome:null);
   return __cl(finiteOr(gg&&gg.metP,2),0.5,4); }
 function metAx(g){ const gg=g||((typeof genome!=='undefined')?genome:null);
@@ -10217,6 +10271,11 @@ function sanitizeGenome(){
   // #190: clamp if present, never create. metRot is wrapped into [0, 2pi) rather than clamped - the
   // quantity is periodic, and a save that accumulated a rotation of 40 radians means the same
   // orientation as one at 40 mod 2pi while being far harder to read.
+  // #191: the gene's range and the sweep's reach must AGREE. mutateGenome evolves this over [25,120]
+  // and the sweep now covers ceil(120/CELL)=3 rings, so the clamp here is the same number from the
+  // other side. If either moves, both move - a gene whose range exceeds its substrate's reach is the
+  // defect #191 exists to fix, and leaving the two numbers independent would let it come back.
+  genome.interactionRadius=__cl(finiteOr(genome.interactionRadius,55),10,CELL*REACH_RINGS_MAX);
   if(genome.metP!==undefined)  genome.metP=__cl(finiteOr(genome.metP,2),0.5,4);
   if(genome.metAx!==undefined) genome.metAx=__cl(finiteOr(genome.metAx,1),0.25,4);
   if(genome.metRot!==undefined){ const _TAU=Math.PI*2; let _r=finiteOr(genome.metRot,0)%_TAU;
@@ -18696,11 +18755,21 @@ function executeVM(i,j,sim,d){
   // Euclidean fast path pays nothing, so this is a charge for having left Euclidean rather than a
   // charge for existing - which is the right shape: the default should not subsidise the departure.
   const _metRent=metMoved()?MET_RENT:0;
+  // #191: AREA, not radius. The sweep's cost scales as r^2 - a particle reaching 2x as far searches
+  // four times the bins and offers four times the candidates - so the rent scales as r^2 too, which
+  // is the only pricing under which a long reach is a decision rather than a free win. Zero at the
+  // default 55, so a lineage that never moves its social distance pays nothing for having one.
+  // This is also what keeps the widened sweep from being a tragedy of the commons: each particle
+  // sweeps its own radius and is billed for its own area, so no lineage can make the world slower
+  // for everyone else without paying for it itself.
+  let _reachRent=0;
+  if(__REACH){ const _rr=__cl(finiteOr(genome.interactionRadius,55),10,CELL*REACH_RINGS_MAX)/CELL;
+    _reachRent=REACH_RENT*Math.max(0,_rr*_rr-1); }
   let _chanRent=0;
   if(__CHANNEL){ const _cb=chanBank();
     if(_cb) for(let _k=0;_k<CHANNEL_MAX;_k++){ const _r=_cb[_k];
       if(_r&&typeof _r.expr==='string') _chanRent+=CHANNEL_RENT+Math.max(0,chanTaps(_r)-4)*CHANNEL_TAP_RENT; } }
-  const totalCost=(nInst+_stack+_opRent+_foldRent+_probeRent+_chanRent+_metRent+_over16*(COMPLEXITY_TOLL-1))*genome.metabolicCost;
+  const totalCost=(nInst+_stack+_opRent+_foldRent+_probeRent+_chanRent+_metRent+_reachRent+_over16*(COMPLEXITY_TOLL-1))*genome.metabolicCost;
   amp[i]-=totalCost;amp[j]-=totalCost;
 
   for(let ip=0,_vs=0;ip<nInst&&_vs<nInst*2;ip++,_vs++){
@@ -24021,15 +24090,35 @@ function processGrid(){
   for(let i=0;i<N;i++){
     if(!palive[i])continue;
     const gx=(px[i]/CELL)|0,gy=(py[i]/CELL)|0;
-    for(let dy=-1;dy<=1;dy++)for(let dx=-1;dx<=1;dx++){
+    // #191: this particle's OWN reach, from its OWN genome, and a sweep wide enough to honour it.
+    const _rI=reachOf(i), _rings=__REACH?reachRings(_rI):1;
+    for(let dy=-_rings;dy<=_rings;dy++)for(let dx=-_rings;dx<=_rings;dx++){
       const nnx=gx+dx,nny=gy+dy;
       if(nnx<0||nny<0||nnx>=gW||nny>=gH)continue;
       let j=grid[nny*gW+nnx];
       let _lc=0;while(j>=0&&j<CAP&&_lc++<CAP){
-        if(j>i&&palive[j]&&palive[i]){
+        // === #191 - SYMMETRIC PAIR DISCOVERY ======================================================
+        // The old guard was `j>i`, which is a correct dedup only while every particle has the SAME
+        // reach. Once reaches differ it becomes a new positional artifact of exactly #58's kind, one
+        // level up: if only the higher-indexed particle can reach, the pair is discovered while
+        // scanning IT, and `j>i` then throws it away. A long-reaching lineage would have had its
+        // reach honoured against higher-indexed partners and silently not against lower ones.
+        //
+        // The condition below is the dedup that does not care about array order:
+        //   only i reaches   -> handled at i            (d >= _rJ is true)
+        //   only j reaches   -> handled at j            (i is the far one there)
+        //   both reach       -> handled at the lower index
+        // Exactly once in every case, and WHETHER a pair happens no longer depends on who was
+        // allocated first. Each particle sweeps its own radius, so each pays for its own reach and
+        // no lineage can impose its sweep cost on the world.
+        if(j!==i&&palive[j]&&palive[i]){
           const ddx=px[i]-px[j],ddy=py[i]-py[j],d2=ddx*ddx+ddy*ddy,d=Math.sqrt(d2),minD=pSz[i]+pSz[j];
-          const iR=Math.max(10,genome.interactionRadius||55);
-          if(d<iR&&d>0&&pIntCount[i]<_capK&&pIntCount[j]<_capK){
+          const _rJ=reachOf(j);
+          const iR=_rI;
+          const _mine=d<_rI, _theirs=d<_rJ;
+          const _owns=__REACH?(_mine&&(!_theirs||i<j)):(j>i&&d<iR);
+          if(_owns&&d>0&&pIntCount[i]<_capK&&pIntCount[j]<_capK){
+            if(__REACH&&d>CELL)__reachBeyond++;   // #191: a pair the pre-#191 sweep could not have offered
             pIntCount[i]++;pIntCount[j]++;
             const sim=tendSim(i,j);
             const pa=Math.cos(phase[i]-phase[j]);
@@ -24052,8 +24141,12 @@ function processGrid(){
             // the thing this record has spent forty swings learning to distrust. A rare mode now earns
             // more per encounter simply by being rare, at the moment of the encounter itself.
             const _gain=Math.max(0,sim*pa)*((pMode[i]===pMode[j])?MODE_SAME_GAIN:MODE_DIFF_GAIN);
-            localRes[i]+=_gain*Math.max(0,1-d/(iR*MODE_REACH[pMode[i]]));
-            localRes[j]+=_gain*Math.max(0,1-d/(iR*MODE_REACH[pMode[j]]));
+            // #191: each side's falloff now uses ITS OWN reach, which is what LEAP 31 said it wanted
+            // and could not have: "It is also asymmetric: each side reads its OWN reach." It read the
+            // germline's for both, so the asymmetry it described was between the two MODE_REACH
+            // multipliers and never between the two lineages' evolved radii.
+            localRes[i]+=_gain*Math.max(0,1-d/(_rI*MODE_REACH[pMode[i]]));
+            localRes[j]+=_gain*Math.max(0,1-d/(_rJ*MODE_REACH[pMode[j]]));
             // Pe51 Layer 40: count neighbors within interaction radius for density sensing
             if(pNeighborCount[i]<127)pNeighborCount[i]++;
             if(pNeighborCount[j]<127)pNeighborCount[j]++;
@@ -24916,6 +25009,7 @@ __DEME=(typeof globalThis==='undefined')||((globalThis.__DEME??1)|0)!==0;       
 __UPLASMID=(typeof globalThis==='undefined')||((globalThis.__UPLASMID??1)|0)!==0; // #185: default ON. Force off with UPLASMID=0 - no world offers or accepts another world's physics
 __CHANNEL=(typeof globalThis==='undefined')||((globalThis.__CHANNEL??1)|0)!==0;   // #188: default ON. Force off with CHANNEL=0 - no lattice is allocated, ka..kd read 0 and are never offered to the generator, and the four chan targets no-op
 __METRIC=(typeof globalThis==='undefined')||((globalThis.__METRIC??1)|0)!==0;   // #190: default ON, and a NO-OP at the seeded genes: metDist takes the hypot fast path at (2,1,0), so an unmutated lineage is bit-identical
+__REACH=(typeof globalThis==='undefined')||((globalThis.__REACH_SWEEP??1)|0)!==0;   // #191: default ON. Force off with REACH_SWEEP=0 - the sweep returns to +/-1 ring, the reach to the germline's value, and the dedup to `j>i`, which is the pre-#191 engine exactly. Deliberately NOT named REACH: __REACH_ON is a different, pre-existing gate and colliding on that name is how a knob silently stops being a control
 __FORAGE_ON=(typeof globalThis==='undefined')||((globalThis.__FORAGE_EYES??1)|0)!==0; // resolve FORAGE once; gates the resource-sense computation in uaSetEyes
 __DECIDE_ON=(typeof globalThis==='undefined')||((globalThis.__DECIDE??1)|0)!==0; // resolve DECISION GAIN once; gates confidence accrual + commitment scaling
 __DECIDE_REAL=(typeof globalThis==='undefined')||((globalThis.__DECIDE_REAL??1)|0)!==0; // resolve DECIDE-FROM-REAL once; gates real-winner physics adoption

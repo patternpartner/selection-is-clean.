@@ -395,6 +395,67 @@ m._compile(code+`
     return {total:pts.length,a,b,both,overlap:+(both/Math.max(1,a)).toFixed(3),euclid:admit(G(2,1,0))};
   });
 
+  // ── #191  THE SWEEP FOLLOWS THE REACH ────────────────────────────────────────────────────────
+  // interactionRadius has been in the genome literal since before any of this, saying "System
+  // evolves its own social distance", and it was false two ways: mutateGenome evolves it over
+  // [25,120] while the sweep scanned +/-1 bin of CELL=55, and it was READ FROM THE GERMLINE inside
+  // the pair loop so no lineage ever varied it. The first check below is the one that would be
+  // silently catastrophic - a dedup that is wrong in either direction is either double physics or
+  // lost pairs, and neither announces itself.
+  out.reach=run('reach',()=>{
+    // THE DEDUP, EXHAUSTIVELY. The predicate is mine AND (NOT theirs OR i<j): over every reach and
+    // distances the two orderings of one pair must sum to EXACTLY ONE when either side can reach,
+    // and zero when neither can. Sum 2 is the interaction happening twice; sum 0 is a lost partner.
+    const owns=(d,rI,rJ,iLess)=>{ const mine=d<rI, theirs=d<rJ; return (mine&&(!theirs||iLess))?1:0; };
+    let twice=0,none=0,total=0;
+    for(const rI of [20,55,80,120,165])for(const rJ of [20,55,80,120,165])
+      for(const d of [5,19,30,54,56,79,100,119,130,164,200]){
+        total++;
+        const sum=owns(d,rI,rJ,true)+owns(d,rJ,rI,false);
+        const reachable=(d<rI||d<rJ)?1:0;
+        if(reachable&&sum===2)twice++;
+        if(reachable&&sum===0)none++;
+        if(!reachable&&sum!==0)twice++;
+      }
+    // AND IT MUST NOT DEPEND ON ALLOCATION ORDER, which is the artifact #58 named one level down.
+    let differs=0,n2=0;
+    for(const rI of [20,55,80,120])for(const rJ of [20,55,80,120])for(const d of [10,40,70,100,150]){
+      const asIJ=owns(d,rI,rJ,true)+owns(d,rJ,rI,false);
+      const asJI=owns(d,rJ,rI,true)+owns(d,rI,rJ,false);
+      n2++; if(asIJ!==asJI)differs++;
+    }
+    // THE RING CAP IS DERIVED: it must cover the gene's whole declared range and nothing beyond it.
+    const rings={atDefault:reachRings(55), atGeneMax:reachRings(120), cap:REACH_RINGS_MAX,
+                 geneMaxNeeds:Math.ceil(120/CELL)};
+    return {total,twice,none,n2,differs,rings};
+  });
+
+  // ── #191  AND END TO END: a partner past one grid ring is actually FOUND ─────────────────────
+  out.reachLive=run('reachLive',()=>{
+    const setup=(reach)=>{
+      for(let k=0;k<N;k++)palive[k]=false;
+      palive[0]=true; palive[1]=true;
+      px[0]=400; py[0]=400; px[1]=400+CELL*1.6; py[1]=400;
+      amp[0]=1; amp[1]=1;
+      for(const q of [0,1]){ if(!pGenome[q])pGenome[q]={...genome}; pGenome[q].interactionRadius=reach; }
+      genome.interactionRadius=55;
+      pIntCount[0]=0; pIntCount[1]=0;
+      const before=__reachBeyond;
+      globalThis.__detMs+=5; try{loop();}catch(e){}
+      return {beyond:__reachBeyond-before, ints:pIntCount[0]+pIntCount[1]};
+    };
+    const short=setup(55), long=setup(120);
+    // and the knob must restore BOTH broken behaviours: the germline read and the narrow sweep
+    const sv=__REACH; __REACH=false;
+    genome.interactionRadius=99;
+    if(!pGenome[0])pGenome[0]={...genome};
+    pGenome[0].interactionRadius=20;
+    const offVal=reachOf(0);
+    __REACH=sv;
+    const onVal=reachOf(0);
+    return {short,long,offVal,onVal};
+  });
+
   // ── THE CROSSINGS: every new gene must survive a save and diverge in a child ────────────────
   out.cross=run('cross',()=>{
     genome.uaFoldMode=2; genome.uaFoldK=3.25; genome.autonomyCede=0.8;
@@ -464,7 +525,7 @@ m._compile(code+`
     return {saved,shared,childMoved,seeded,carriers,
             rows:['atom.fold','xion.cede','phys.reach','phys.chem','probe.bank',
                   'oee.weighted','deme.split','channel.bank','channel.sensed','channel.form',
-                  'metric.moved'].filter(n=>names.indexOf(n)<0),
+                  'metric.moved','reach.moved'].filter(n=>names.indexOf(n)<0),
             promotedNotACrossingRow:names.indexOf('probe.promoted')<0};
   });
 
@@ -621,6 +682,28 @@ ck('#189 the seeded form reads as UNMOVED and a changed one as moved',
 ck('#189 a bigger neighbourhood costs more', FS.tapRent>0,
    'CHANNEL_TAP_RENT = '+FS.tapRent+' per tap beyond the seeded four — which is what makes SHRINKING a stencil profitable');
 
+// #191
+const RE=r.reach||{};
+ck('#191 the dedup fires EXACTLY ONCE per pair, over every reach combination',
+   RE.twice===0 && RE.none===0,
+   RE.total+' combinations: '+RE.twice+' double-counted, '+RE.none+' lost — sum 2 is double physics, sum 0 is a lost partner, and neither announces itself');
+ck('#191 and whether a pair happens does not depend on allocation order', RE.differs===0,
+   RE.n2+' combinations, '+RE.differs+' differ — #58 named this artifact one level down');
+ck('#191 the ring cap is DERIVED from the gene, not chosen',
+   RE.rings && RE.rings.cap===RE.rings.geneMaxNeeds && RE.rings.atGeneMax===RE.rings.cap,
+   'the gene evolves to 120, ceil(120/'+(RE.rings&&CELL_SAFE())+') = '+(RE.rings&&RE.rings.geneMaxNeeds)+
+   ' rings, cap is '+(RE.rings&&RE.rings.cap)+' — the substrate reaches exactly as far as the gene was always allowed to ask');
+const RL=r.reachLive||{};
+ck('#191 a default-reach pair 1.6 cells apart is NOT found — as before',
+   RL.short && RL.short.beyond===0 && RL.short.ints===0);
+ck('#191 and a long-reach pair at the same distance IS',
+   RL.long && RL.long.beyond>0 && RL.long.ints>0,
+   'reach 120: '+(RL.long&&RL.long.beyond)+' pair(s) past one ring, '+(RL.long&&RL.long.ints)+
+   ' interactions — the gene working for the first time since it was written');
+ck('#191 REACH_SWEEP=0 restores the germline read', RL.offVal===99,
+   'off reads the self\'s 99; on reads the carrier\'s '+RL.onVal);
+ck('#191 and on reads the CARRIER', RL.onVal===20);
+
 // #190
 const M=r.metric||{};
 ck('#190 the seeded metric IS Math.hypot, bit for bit', M.diff===0,
@@ -657,7 +740,7 @@ ck('parent -> child: the proxy weights diverge', CR.childMoved>0, CR.childMoved+
 ck('germline -> population: the substrate actually crosses', CR.seeded===true && CR.carriers>0,
    CR.carriers+' carrier(s) after one seeding - the bug the crossing rows caught seven times');
 ck('every new gene has a census row', CR.rows && CR.rows.length===0,
-   CR.rows && CR.rows.length?('missing: '+CR.rows.join(' ')):'all eleven present');
+   CR.rows && CR.rows.length?('missing: '+CR.rows.join(' ')):'all twelve present');
 // #187: and the one that must NOT be a crossing row. A promotion is an earned outcome, not authored
 // structure, so "germline 1 / population 0" is the normal state of a young world - it was reported as
 // STRANDED and made crossing-test red for something that is not a defect. It is logged per epoch now.
@@ -682,3 +765,4 @@ console.log('\n  '+pass+' passed, '+fail+' failed');
 function UA_FOLD_MODES_SAFE(){ try{ return 4; }catch(e){ return '?'; } }
 function PROBE_RENT_SAFE(){ return (r.probe&&r.probe.rentPositive)?'>0':'0'; }
 process.exit(fail?1:0);
+function CELL_SAFE(){ return 55; }
