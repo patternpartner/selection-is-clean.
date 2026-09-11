@@ -2057,6 +2057,69 @@ and every later block ran on that (measured 8ms/tick → 61ms/tick over 900 tick
 the vocabulary of the lineage that *proved* it, not the bank of the one that inherits it. Both facts
 are asserted separately; do not "fix" #112 to filter by the inheritor's bank.
 
+### #193 — the shape of an act: an authored verb gets an emission geometry
+
+Each verb in `genome.userEffects` carries `st` (an emission stencil: up to `EMIT_TAPS_MAX`=4 taps of
+`[dx,dy,w]` at integer CELL offsets bounded by `EMIT_OFFSET_MAX`=3) and `fr` (frame: 0 world, 1 the
+actor's own direction of travel). Absent `st` means one tap underfoot in the world frame — the
+pre-#193 engine, on the same code path. Knob `EMIT`.
+
+**THE MAGNITUDE INVARIANT IS THE WHOLE THING. DO NOT TOUCH IT.** `emitApply` divides the weights by
+their **ABSOLUTE** sum, so the total written is `|amt|` however many taps there are. If four taps each
+wrote `amt`, growing a stencil would be a free 4× on every act — a gene that routes around #132's
+conserved mode and #133's realised-amount discipline at once. `substrate-test` checks 24 shape/amount
+combinations (worst error: 0). Absolute sum rather than signed sum is deliberate: it is what keeps a
+**dipole** (+1 ahead, −1 behind — move a medium rather than add to it) reachable, where signed
+normalisation divides by zero.
+
+**`emitApply(v,i,amt,base,fn)` TAKES THE BASE CELL FROM ITS CALLER.** An unshaped verb returns
+`fn(base,amt)` — the caller's own original single-cell write, not a one-tap reimplementation of it.
+That is what makes `EMIT=0` and an unshaped lineage bit-identical rather than approximately equal.
+#153's rule applied to a cell index: read the site's answer, do not restate it.
+
+**A SHAPE ONLY MEANS ANYTHING ON A TARGET THAT IS A PLACE.** `emitPlaceTarget(t)` is true for the
+field (9) and the channel bank (11–14) and false for everything else: `amp`, `provision`, trait axes,
+`phase`, `mem` and `mutpress` are possessions, and "two cells to the left" is not a thing you can say
+about somebody's amplitude. It gates three things together — the write path, the `verb.shaped` census
+row, and the rent. Caught live: the first run read `verb.shaped 8/295` with two of the eight verbs
+aimed at `mem` and `phase`, i.e. the row reporting adoption for a geometry that cannot act, and the
+rent charging for taps that never become writes.
+
+**THE FRAME HAS A REAL BOUNDARY.** `fr=1` rotates the offsets by the actor's velocity, which is what
+makes "lay a trail ahead of me" expressible from one stencil. A particle with speed below 1e-4 has no
+"ahead" and keeps the world frame — do not replace that with an arbitrary axis; it would be inventing
+a heading the physics does not have.
+
+Offsets **clamp**, they do not wrap: the world is a box (walls at `px<8` push back), not a torus. Two
+taps landing in the same edge cell is fine — the magnitude invariant is unaffected.
+
+**`chanWrite(k,i,amt,cell)` gained an optional cell** (defaults to the actor's own, so every pre-#193
+caller is unchanged). Note `__chanWrites` and `channel.write` now count **cells written, not verbs
+fired** — a four-tap verb reports four.
+
+**`sanitizeGenome` REBUILDS each verb, it does not clamp one.** It constructs a fresh object from a
+fixed key list, so any field added to a verb anywhere else — the decoder, the wire, the clone — is
+silently DELETED the first time it runs, and `decodeGenome` calls it itself. #193 lost its stencil to
+exactly this: encoder wrote `st`, decoder read `st`, round-trip still failed. **If you add a field to
+a verb, add it to that rebuild in the same edit.** The stencil's clamp lives there and nowhere else.
+
+**Four crossings, all of which needed their own edit.** `cloneGenome` deep-copies to the TAP (an array
+of arrays — #155's opStacks, #180's operator bank and #189's channel stencil were all this same
+shallow copy). `seedEffectIntoParticle` carries `st`/`fr` on BOTH pushes, its own and the successor's
+— #133b's bug was exactly this path stripping a field. The wire carries it with bounds READ from
+`EMIT_TAPS_MAX`/`EMIT_OFFSET_MAX` (#153), absent being legal so a pre-#193 peer still lands. And the
+save carries it through the rebuild above.
+
+**Two mutation routes, on purpose.** Germline reshape uses a FLOOR (`EMIT_FORM_FLOOR`), the
+construction #55 established for verb birth and #192 re-measured: `mutateGenome` runs ~38 times per
+12,000 ticks at rate ≈0.05, so a rate-scaled probability there is a coin landing tails. And the shape
+steps in `mutateChildGenome` beside #180's operator bank, because that route fires at every birth —
+which is what takes `verb.shaped` to 386 population carriers.
+
+`EMIT_TAP_RENT` bills per tap beyond the first (zero for an unshaped bank), which is what makes
+`emitFormStep`'s shrink branch profitable and lets the mechanism turn itself off under selection
+rather than only under a knob.
+
 ### #186 — the germline-to-population crossing, stated generally
 
 The bug the crossing rows caught for the seventh time, and the general form, because it will happen

@@ -14843,3 +14843,172 @@ lesson as #175: a result that cannot be repeated cannot be attributed.
 
 `substrate-test.js`: 111 checks, 11 of them #192's (plus 2 for #112's pool route).
 `smoke.sh`: 49 ok, 0 failing.
+
+## #193 — THE SHAPE OF AN ACT
+
+#188's own note named this ceiling from the other side and got it exactly right:
+
+> "EFFECT_TARGETS is eleven entries a person typed... everything any program can ever READ or WRITE is
+> an entry in one of those two lists."
+
+#188 and #189 dissolved the READ side — a lineage invents a medium, writes its chemistry in its own
+grammar, and evolves the stencil its cells read through. The WRITE side never moved. Every
+field-valued act in this engine landed in exactly one place:
+
+```
+case 9:  const fx=Math.floor(px[i]/(W/FIELD_W)), fy=...   // the cell the actor is standing in
+chanWrite(k,i,amt) -> chanCellOf(i)                       // the cell the actor is standing in
+```
+
+So a lineage could invent **what** it emits and had no way to say **where**. That is not a small gap.
+A trail, a territory mark, a wall and a gradient are all *the same emission with different geometry*,
+and not one of the four is expressible while every write lands underfoot. Stigmergy — the entire class
+of behaviour where organisms coordinate by modifying a shared medium — needs the emission to have a
+shape.
+
+#193 gives each authored verb an **emission stencil**: up to four taps at integer cell offsets with
+signed weights, plus a **frame** bit. Seeded absent, which means one tap at (0,0) weight 1, which is
+the pre-#193 engine *on the same code path* rather than an equal-looking one.
+
+### The invariant everything else rests on
+
+A stencil **divides** an act. It must never multiply one. If four taps each wrote `amt`, growing a
+stencil would be a free 4× on every emission — a gene that routes around #132's conserved mode and
+#133's realised-amount discipline at the same time. So weights are divided by their **absolute** sum:
+
+```
+24 shape/amount combinations — 1 to 4 taps, signed weights, offsets to the bound
+  worst magnitude error   0.000000
+```
+
+Exactly zero, not "within tolerance". And the divisor is the absolute sum rather than the signed sum
+for a reason worth stating, because signed normalisation would have looked more natural and quietly
+deleted the most interesting shape available:
+
+```
+dipole [[2,0,+1],[-2,0,-1]], amt 0.6
+  magnitude written   0.600      paid in full
+  net moved           0.000      deposit in front, withdraw behind
+```
+
+A dipole is a lineage that *moves* a medium rather than adding to it. Under signed normalisation its
+divisor is zero and it is unreachable.
+
+### The frame is where the new behaviour actually comes from
+
+In the world frame a stencil is a fixed pattern — useful, but a lineage cannot lay a trail with it,
+because "ahead" is not a direction the world knows. In the actor's frame the offsets rotate with its
+velocity, so **one** stencil means "in front of me" for every particle carrying it, whichever way it
+happens to be going:
+
+```
+the same stencil [[2,0,1]], frame=self
+  travelling one way    writes at cell 822
+  travelling the other  writes at cell 818
+  standing still        writes underfoot, exactly where the world frame would have put it
+```
+
+That last line is a real semantic boundary rather than a fallback: **a stencil's meaning depends on
+whether its carrier is going anywhere.** A particle with no velocity has no "ahead", and picking an
+arbitrary axis for it would have been inventing a heading the physics does not have.
+
+### The space is a box, not a torus
+
+The walls at `px<8` push back, so offsets **clamp** rather than wrap. Depositing against a wall piles
+up at the wall, which is what a box does — and the magnitude invariant survives two taps landing in
+the same edge cell (measured: 1 cell, magnitude 0.5 of 0.5).
+
+### A shape only means anything on a target that is a place
+
+`amp`, `provision`, a trait axis, `phase`, `mem` and `mutpress` are **possessions** — of the actor or
+of the pair — and "two cells to the left" is not a thing you can say about somebody's amplitude. Only
+the field (9) and the lineage's own channels (11–14) are lattices, so `emitPlaceTarget` gates three
+things at once: the write path, the census row, and the rent.
+
+This was caught by reading the first live run's output rather than by reasoning. The row read
+`verb.shaped germline 8 / population 295` — all eight germline verbs shaped. Two of those eight were
+aimed at `mem` and `phase`, where the stencil is inert. **A census row that reports adoption for a
+geometry that cannot act is the exact failure every row added since #188 was written to avoid**, and
+the rent was charging for taps that never became writes, which is selection paying for nothing. With
+the predicate in place the same class of run reads `germline 4 / population 386`: four *real* shapes,
+and the other four verbs correctly reading as unshaped.
+
+### Live
+
+```
+12,000 ticks, one seed, nothing seeded by hand
+  emit.formStep        84
+  emit.selfFrame   54,773        acts rotated into the actor's own direction of travel
+  emit.spread       7,965        acts that landed on more than one cell
+  verb.shaped      germline 4 / population 386
+  alive 255, extinctions 0, fitness 0.678, save round-trips, NOTHING stranded
+```
+
+All three liveness names fire, which is the question that mattered: `formStep` alone would mean
+lineages were evolving geometries that never reach a write, and that is #179's shape. The germline's
+own bank at the end of that run:
+
+```
+t13  st [[-2,-3,0.76]]              self frame   a channel write, behind and to one side
+t9   st [[ 2, 3,1.30]]              world frame  the shared field, two cells over
+t14  st [[-2, 2,1.00]]              self frame
+t11  st [[ 3,-3,1.00]]              world frame
+t12, t14, t3                        unshaped — still emitting underfoot
+```
+
+Three hundred and eighty-six population genomes emitting somewhere other than where they stand.
+
+`crossing-test` at 2,500 ticks: all four properties PASS, `verb.shaped germline 1 / population 2`.
+
+### Rent, and the mechanism turning itself off
+
+`EMIT_TAP_RENT` is charged per tap **beyond the first**, so an unshaped bank pays nothing — a charge
+for having a geometry, not a charge for existing. It is twice `CHANNEL_TAP_RENT` because a tap here is
+a *write*, not a read. And the rent is what makes `emitFormStep`'s shrink branch profitable: measured
+10 steps in 900 that took a stencil back down to writing underfoot, including all the way back to
+`null`. A shape that cannot be undone is a ratchet.
+
+### Reachability, using #192's finding in the commit after it
+
+Two routes, both deliberate. The germline reshape uses a **floor** (`EMIT_FORM_FLOOR`), which is the
+construction #55 already established in this file for verb birth and #192 re-measured from the other
+end: `mutateGenome` runs ~38 times in 12,000 ticks at an effective rate near 0.05, so a rate-scaled
+probability there is "a coin landing tails, not a toll". And the shape steps **in the child**,
+alongside #180's operator bank, because that route fires at every birth. `verb.shaped` reaching 386
+carriers is the child route working; the germline's own 4 is the floor working.
+
+The shape also crosses the two routes a verb has always had, and both needed the same edit #133b
+needed: `seedEffectIntoParticle` pushes a fresh object, and so does its successor path, so a verb
+seeded without its geometry is a verb that *writes somewhere else*. And it travels the wire with
+bounds **read from the engine** (#153), with an absent stencil legal so a pre-#193 peer still lands.
+
+### One defect worth remembering as a pattern
+
+**`sanitizeGenome` REBUILDS each verb rather than clamping it**, constructing a fresh object from a
+fixed key list — so any field added to a verb anywhere else in the file (the decoder, the wire, the
+clone) is silently *deleted* the first time it runs, and `decodeGenome` calls it itself. #193 lost its
+stencil to exactly that: the encoder wrote `st`, the decoder read `st`, and the save round-trip check
+still failed because a rebuild two hundred lines away dropped it. The clamp now lives in that rebuild
+and nowhere else, with a note at the site saying so. **If you add a field to a verb, add it there in
+the same edit.**
+
+### What this does NOT show
+
+That any of these shapes is *favoured*. 386 carriers is reach, not preference: the stencil steps in
+the child at every birth, so a population will carry shapes whether or not they earn anything. The
+measurement that would answer the real question — does a lineage with a self-framed forward deposit
+out-compete one emitting underfoot in the same world — is not in this swing.
+
+And `verb.sensed` appeared as STRANDED in one of the two 12,000-tick runs of this pair and not in the
+other. That is #139's known gap (documented in CODEMAP since #141) behaving exactly as documented:
+stream-dependent, pre-existing, and nothing #193 touched.
+
+### Still closed after #193
+
+The lattice resolution (40×40) and the position→cell map; `CAP`; the **core** opcode dispatch table
+(#180 opened the user operators, not the VM's own franchise); the four organisational levels; and one
+world per tab. What moved is that the destination of an act is no longer one of fifteen places I
+chose — it is a geometry, in a frame the lineage picks, and the list is now the *kinds* of place
+rather than the places.
+
+`substrate-test.js`: 131 checks, 20 of them #193's. `smoke.sh`: 49 ok, 0 failing.

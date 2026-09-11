@@ -460,6 +460,51 @@ function particleActive(i){
   if(r<=1)return true;
   return (((tick+tickPhaseOf(g,r))%r)===0);
 }
+// === #193 - THE SHAPE OF AN ACT ================================================================
+// #188's own note named this ceiling from the other side and got it exactly right: "EFFECT_TARGETS is
+// eleven entries a person typed... everything any program can ever READ or WRITE is an entry in one of
+// those two lists." #188 and #189 dissolved the READ side - a lineage invents a medium, writes its
+// chemistry in its own grammar, and evolves the stencil its cells read through. The WRITE side did not
+// move. Every field-valued act in this engine still lands in exactly one place:
+//
+//   case 9:  const fx=Math.floor(px[i]/(W/FIELD_W)), fy=...   // the cell the actor is standing in
+//   chanWrite(k,i,amt) -> chanCellOf(i)                       // the cell the actor is standing in
+//
+// So a lineage can invent WHAT it emits and cannot say WHERE. It has no way to deposit ahead of
+// itself, or behind, or in a ring. That is not a small gap: a trail, a territory mark, a wall and a
+// gradient are all THE SAME EMISSION with different geometry, and none of the four is expressible
+// while every write lands underfoot. Stigmergy - the whole class of behaviour where organisms
+// coordinate by modifying a shared medium - needs the emission to have a shape.
+//
+// #193 gives each authored verb an EMISSION STENCIL: up to four taps at integer cell offsets with
+// signed weights, and a FRAME bit saying whether those offsets are read in the world's axes or in the
+// actor's own direction of travel. Seeded absent, which means one tap at (0,0) weight 1, which is the
+// pre-#193 engine on the same code path rather than an equal-looking one.
+//
+// THE MAGNITUDE IS CONSERVED AND THAT IS THE LOAD-BEARING INVARIANT. Weights are divided by their
+// ABSOLUTE sum, so the total written is |amt| however many taps there are. Without that, growing a
+// stencil would multiply every act by its tap count - a free-energy pump, and precisely the thing
+// #132's conserved mode and #133's realised-amount discipline exist to prevent. Dividing by the
+// absolute sum rather than the signed sum is what still permits a DIPOLE (+1 ahead, -1 behind:
+// deposit in front, withdraw from behind, net zero, magnitude paid in full), which is the most
+// interesting shape available and would be unreachable under signed normalisation.
+//
+// THE FRAME IS WHERE THE NEW BEHAVIOUR ACTUALLY COMES FROM. In the world frame a stencil is a fixed
+// pattern - useful, but a lineage cannot lay a trail with it, because "ahead" is not a direction the
+// world knows. In the actor's frame the offsets rotate with its velocity, so ONE stencil means
+// "in front of me" for every particle carrying it, whichever way it happens to be going. A particle
+// that is not moving has no "ahead", so it falls back to the world frame rather than picking an
+// arbitrary axis - stated here because it is a real semantic boundary, not an implementation detail:
+// a stencil's meaning depends on whether its carrier is going anywhere.
+//
+// THE SPACE IS A BOX, NOT A TORUS (the walls at px<8 push back), so offsets CLAMP to the lattice
+// rather than wrapping. Depositing against a wall piles up at the wall, which is what a box does.
+// The magnitude invariant is unaffected: the same total is written, some of it twice into one cell.
+let __EMIT=true;   // #193: authored verbs get an evolvable emission geometry. Force off with EMIT=0
+const EMIT_TAPS_MAX=4;     // four taps is enough for a dipole, a ring quadrant, or a three-cell smear. Bounded because every tap is a write and writes are the expensive half of a verb
+const EMIT_OFFSET_MAX=3;   // +/-3 cells. The channel READ stencil (#189) reaches 7; an emission reaches less on purpose - a creature should be able to act further than it can feel only if it evolves to, and that is #191's reach gene, not this one
+const EMIT_TAP_RENT=0.3;   // instruction-equivalents per tap BEYOND the first, on the executeVM billing line. Twice CHANNEL_TAP_RENT because a tap here is a write, not a read
+let __emitSpread=0, __emitSelfFrame=0;   // instrument state off the genome (#131); drained per epoch through firedN
 // THE RING CAP IS DERIVED, NOT CHOSEN. mutateGenome evolves interactionRadius over [25,120], so
 // ceil(120/CELL) = 3 rings covers the gene's ENTIRE declared range and nothing beyond it. That is a
 // better justification than any constant I could have picked: the substrate now reaches exactly as
@@ -528,7 +573,16 @@ function validNetworkPayload(type,data){
       (!data.ue||(Array.isArray(data.ue)&&data.ue.length<=MAX_USER_EFFECTS&&
         data.ue.every(e=>e&&typeof e==='object'&&finitePacketNumber(e.t,0,64)&&
           finitePacketNumber(e.m,0,1)&&finitePacketNumber(e.s,-4,4)&&
-          finitePacketNumber(e.n,-1,64)&&finitePacketNumber(e.a,-1,256))))&&
+          finitePacketNumber(e.n,-1,64)&&finitePacketNumber(e.a,-1,256)&&
+          // #193: the emission stencil. Bounds READ from the engine (EMIT_TAPS_MAX, EMIT_OFFSET_MAX)
+          // rather than restated, which is #153's rule and the reason three of the four migrant bounds
+          // had gone stale before. Absent is legal and means "underfoot", which is every pre-#193 peer.
+          (e.st===undefined||e.st===null||(Array.isArray(e.st)&&e.st.length<=EMIT_TAPS_MAX&&
+            e.st.every(t=>Array.isArray(t)&&t.length>=3&&
+              finitePacketNumber(t[0],-EMIT_OFFSET_MAX,EMIT_OFFSET_MAX)&&
+              finitePacketNumber(t[1],-EMIT_OFFSET_MAX,EMIT_OFFSET_MAX)&&
+              finitePacketNumber(t[2],-2,2))))&&
+          (e.fr===undefined||finitePacketNumber(e.fr,0,1)))))&&
       // #180: the operator bank, validated like everything else on the wire. Bounds are READ from
       // the engine rather than restated (#153's rule: three of the four migrant bounds had gone stale
       // against ceilings that moved underneath them, and the packets died silently on the far side).
@@ -745,6 +799,11 @@ const LIVENESS_DECLARED=[
   // through firedN because a skip happens per particle per tick. A run where the first two fire and
   // the third does not would mean lineages are evolving clocks that never actually decline a beat.
   'tick.rateStep','tick.phaseStep','tick.skipped',
+  // #193: formStep is the shape moving; spread and selfFrame are the mechanism BITING. A run where
+  // the first fires and the other two do not means lineages are evolving geometries that never reach
+  // a write - which is #179's shape, and the reason all three are named rather than just the first.
+  'emit.formStep',
+  'emit.spread','emit.selfFrame',
 ];
 // NOT INSTRUMENTED, and deliberately absent rather than declared-and-silent: cladogenesis minting
 // (#17) has no single entry point I could identify with confidence. A census that reports "never"
@@ -837,6 +896,10 @@ const CROSSING_DECLARED=[
   {name:'verb.bank',     read:g=>__xCount(g.userEffects)},
   {name:'verb.composed', read:g=>__xComposed(g.userEffects)},
   {name:'verb.sensed',   read:g=>__xSensed(g.userEffects)},   // #139: CODEMAP's rule — a new kind of authored structure gets a census row in the same commit
+  // #193: how many of this genome's verbs emit somewhere other than underfoot? Deviation from the
+  // seed, like every row added since #188 - a bank of unshaped verbs reads 0 rather than reading
+  // adoption for a geometry nothing has selected on.
+  {name:'verb.shaped',   read:g=>__xShaped(g.userEffects)},
   // #155: the chains. Same rule. This row is the one that would have caught the bug if cloneGenome's
   // `{...src}` had been left to share one opStacks object across the whole population: the germline
   // count would read high and the population count would read IDENTICAL rather than divergent. It
@@ -984,8 +1047,14 @@ function buildMigrantPacket(){
           _mua.push(_a&&typeof _a.expression==='string'?_a.expression.slice(0,160):'');
         }
         const _fx=Array.isArray(_mg.userEffects)?_mg.userEffects:[];
+        // #193: THE SHAPE TRAVELS WITH THE ACT. #141's whole property is that bound slot k denotes
+        // the same computation at both ends; a verb that arrives writing in a different place is the
+        // same failure on the act side. `st` is an array of small integer/number triples - no string,
+        // nothing to compile, and the wire validates its bounds below rather than trusting them.
         _mue=_fx.slice(0,MAX_USER_EFFECTS).map(e=>({t:e.t|0,m:(e.m|0)===1?1:0,s:+(+e.s||0.5).toFixed(3),
-          n:(e.nx===undefined?-1:e.nx|0), a:(e.ax===undefined||e.ax===null?-1:e.ax|0)}));
+          n:(e.nx===undefined?-1:e.nx|0), a:(e.ax===undefined||e.ax===null?-1:e.ax|0),
+          st:Array.isArray(e.st)&&e.st.length?e.st.slice(0,EMIT_TAPS_MAX).map(t=>[t[0]|0,t[1]|0,+(+t[2]||0).toFixed(3)]):undefined,
+          fr:(e.fr|0)===1?1:undefined}));
         // #180 — AND THE OPERATORS THAT VOCABULARY IS WRITTEN IN. #141's bug, one level down: a
         // migrant's expressions travel, and if its qa..qh do not, `qa` silently means the RECIPIENT's
         // slot 0 — "a stranger reading our dictionary", where the dictionary is now the operator set
@@ -1177,7 +1246,13 @@ function networkReceive(){ fired('network.receive');
           if(Array.isArray(m.ue)){
             _g.userEffects=m.ue.slice(0,MAX_USER_EFFECTS).map(e=>({t:e.t|0,m:(e.m|0)===1?1:0,
               s:+e.s||0.5, nx:(e.n===undefined?-1:e.n|0),
-              ax:(e.a===undefined||e.a===null?-1:e.a|0), uses:0, creditTrace:0}));
+              ax:(e.a===undefined||e.a===null?-1:e.a|0), uses:0, creditTrace:0,
+              // #193: and it lands where it meant to land. Clamped on arrival as well as validated on
+              // the wire - a packet from an older or hostile peer is not the thing the write path
+              // should be discovering.
+              st:Array.isArray(e.st)&&e.st.length?e.st.slice(0,EMIT_TAPS_MAX).map(t=>Array.isArray(t)?
+                [__cl(t[0]|0,-EMIT_OFFSET_MAX,EMIT_OFFSET_MAX),__cl(t[1]|0,-EMIT_OFFSET_MAX,EMIT_OFFSET_MAX),__cl(finiteOr(+t[2],0),-2,2)]:[0,0,0]):null,
+              fr:(e.fr|0)===1?1:0}));
           }
           // #180: install the operator bank in SLOT ORDER, so the migrant's qa is the migrant's qa.
           // age resets: the grace clock is a fact about how long this bank has sat unreferenced HERE,
@@ -2672,11 +2747,17 @@ function seedEffectIntoParticle(effIdx){ fired('verb.seedIntoParticle');
   const _srcNx=(_e.nx|0);
   const _hasSucc=_srcNx>=0 && _srcNx<genome.userEffects.length && _srcNx!==effIdx
                  && _g.userEffects.length+1<MAX_USER_EFFECTS;
-  _g.userEffects.push({t:_e.t|0,m:_e.m|0,s:+_e.s||0.5,nx:-1,ax:remapEffectAx(_e,_g),uses:0,creditTrace:0});
+  // #193: THE SHAPE COMES ACROSS WITH THE ACT, for #133b's reason one paragraph up. A verb seeded
+  // without its emission geometry is a different verb - it writes in a different place - and the
+  // germline would have read "shaped" while every carrier read "underfoot", which is the exact
+  // germline/population split this comment block exists to describe. Deep-copied to the tap.
+  _g.userEffects.push({t:_e.t|0,m:_e.m|0,s:+_e.s||0.5,nx:-1,ax:remapEffectAx(_e,_g),uses:0,creditTrace:0,
+    st:Array.isArray(_e.st)?_e.st.map(t=>Array.isArray(t)?[t[0]|0,t[1]|0,+t[2]||0]:[0,0,0]):null, fr:(_e.fr|0)===1?1:0});
   const _slot=_g.userEffects.length-1;
   if(_hasSucc){
     const _sv=genome.userEffects[_srcNx];
-    if(_sv){ _g.userEffects.push({t:_sv.t|0,m:_sv.m|0,s:+_sv.s||0.5,nx:-1,ax:remapEffectAx(_sv,_g),uses:0,creditTrace:0});
+    if(_sv){ _g.userEffects.push({t:_sv.t|0,m:_sv.m|0,s:+_sv.s||0.5,nx:-1,ax:remapEffectAx(_sv,_g),uses:0,creditTrace:0,
+      st:Array.isArray(_sv.st)?_sv.st.map(t=>Array.isArray(t)?[t[0]|0,t[1]|0,+t[2]||0]:[0,0,0]):null, fr:(_sv.fr|0)===1?1:0});   // #193: the successor keeps its shape too
       _g.userEffects[_slot].nx=_g.userEffects.length-1; }   // remap into the carrier's own bank
   }
   const _prog=pProg[_tgt], _cap=_g.vmMaxInstructions||16;
@@ -8461,6 +8542,8 @@ function flushEpoch(acc){
     firedN('metric.applied',__metApplied); __metApplied=0;   // #190
     firedN('reach.beyondRing',__reachBeyond); __reachBeyond=0;   // #191
     firedN('tick.skipped',__tickSkips); __tickSkips=0;           // #192
+    firedN('emit.spread',__emitSpread); __emitSpread=0;          // #193 - batched, a verb can fire thousands of times per epoch
+    firedN('emit.selfFrame',__emitSelfFrame); __emitSelfFrame=0;
     // #187: the promotion count, germline and population, on the same row as the operator bank -
     // moved here from CROSSING_DECLARED, where "not yet earned" read as "stranded". Counted over the
     // living population rather than the germline alone, because the germline is one carrier out of
@@ -8969,7 +9052,11 @@ function cloneGenome(src){
   // credit. Gated __ATOM_CREDIT_VERT; off => the field seeds 0, exactly the pre-#119 behaviour.
   // #132: verbs are heritable structure, cloned like the atom bank. uses resets — a child re-earns
   // its own record — while target/mode/scale, the evolved content, carry.
-  g.userEffects=Array.isArray(src.userEffects)?src.userEffects.map(e=>({t:e.t|0,m:e.m|0,s:+e.s||0.5,nx:(e.nx===undefined?-1:e.nx|0),ax:(e.ax===undefined||e.ax===null?-1:e.ax|0),uses:0,creditTrace:(+e.creditTrace||0)*0.5})):[];   // #139: ax is a slot in THIS lineage's own bound-opcode array, and a clone copies that array too, so the index stays meaningful here
+  // #193: the emission stencil is an array of arrays and is deep-copied to the TAP, or one shape is
+  // shared by the whole population and no lineage can diverge where its acts land - #155's opStacks,
+  // #180's operator bank and #189's channel stencil, for the fourth time.
+  g.userEffects=Array.isArray(src.userEffects)?src.userEffects.map(e=>({t:e.t|0,m:e.m|0,s:+e.s||0.5,nx:(e.nx===undefined?-1:e.nx|0),ax:(e.ax===undefined||e.ax===null?-1:e.ax|0),uses:0,creditTrace:(+e.creditTrace||0)*0.5,
+    st:Array.isArray(e.st)?e.st.map(t=>Array.isArray(t)?[t[0]|0,t[1]|0,+t[2]||0]:[0,0,0]):null, fr:(e.fr|0)===1?1:0})):[];   // #139: ax is a slot in THIS lineage's own bound-opcode array, and a clone copies that array too, so the index stays meaningful here
   g.userAtoms=Array.isArray(src.userAtoms)?src.userAtoms.map(a=>{
     const _seedCr=__ATOM_CREDIT_VERT?Math.max(finiteOr(a.creditTrace,0),__EXPR_CREDIT?(__atomExprCredit.get(a.expression)||0):0)*0.5:0;
     return {expression:a.expression,compiled:null,failed:!!a.failed,uses:0,state:0,alienHits:0,alienAttempts:0,creditTrace:_seedCr};
@@ -9075,6 +9162,12 @@ function mutateChildGenome(g){
   if(Array.isArray(g.uaVarW))for(let i=0;i<g.uaVarW.length;i++)if(Math.random()<rate){
     const nx=finiteOr(g.uaVarW[i],1)+(Math.random()-0.5)*0.3*scale; if(isFinite(nx))g.uaVarW[i]=__cl(nx,0,4); }
   if(Array.isArray(g.uaOps))for(let i=0;i<g.uaOps.length;i++)if(g.uaOps[i]&&Math.random()<rate)uaOpStep(g.uaOps[i]);
+  // #193: and the emission shape steps in the child, exactly as #180's operator bank does one line up.
+  // This is #192's finding applied in the same commit it was written: the germline route fires ~38
+  // times per run and the birth route once, while THIS one fires at every birth. A structure that can
+  // only be reshaped on the germline is a structure the population cannot diverge, and a population
+  // that cannot diverge a structure is a population selection cannot use it on.
+  if(__EMIT&&Array.isArray(g.userEffects))for(const e of g.userEffects) if(e&&Math.random()<rate*0.5)emitFormStep(e);
   // #184: the proxy weights diverge in the child like objWeights do. The probe bank does NOT drift
   // here on purpose - a probe is scored over PROBE_LAG ticks and a bank rewritten at every birth
   // would never accumulate a sample large enough for PROBE_MIN_SAMPLE to mean anything. Drift happens
@@ -9381,11 +9474,15 @@ function chanRead(k,i){
 }
 // Write, for the EFFECT_TARGETS entries. Bounded, and it counts itself so a channel nothing writes
 // into is distinguishable from a channel nothing reads.
-function chanWrite(k,i,amt){
+// #193: `cell` is optional and defaults to the actor's own, so every pre-#193 caller is unchanged.
+// Note that __chanWrites and channel.write count CELLS written, not verbs fired - a shaped verb with
+// four taps reports four. That is the honest reading of the counter's name and it is worth saying,
+// because the same number meant "verbs fired" for every run before this one.
+function chanWrite(k,i,amt,cell){
   if(!__CHANNEL)return 0;
   const b=chanBank(); if(!b||!b[k]||typeof b[k].expr!=='string')return 0;
   const L=chanLattice(k); if(!L)return 0;
-  const c=chanCellOf(i);
+  const c=(cell===undefined)?chanCellOf(i):__cl(cell|0,0,FIELD_W*FIELD_H-1);
   const before=L[c];
   const after=__cl(before+amt,-CHANNEL_CLAMP,CHANNEL_CLAMP);
   L[c]=isFinite(after)?after:0;
@@ -9393,6 +9490,115 @@ function chanWrite(k,i,amt){
   fired('channel.write');
   return L[c]-before;
 }
+// === #193 - WHERE AN ACT LANDS =================================================================
+// The stencil, if this verb has one. Absent/empty/all-zero reads as null, and null takes the original
+// single-cell path below rather than a one-tap version of the general one - which is what makes
+// EMIT=0 and an unshaped verb BIT-IDENTICAL to the pre-#193 engine rather than merely equal to it.
+function emitStencil(v){
+  if(!__EMIT)return null;
+  const st=v&&v.st;
+  if(!Array.isArray(st)||!st.length)return null;
+  let sum=0; for(const t of st){ if(Array.isArray(t)){ const w=+t[2]; if(isFinite(w))sum+=Math.abs(w); } }
+  return sum>0?st:null;
+}
+// AND THE SHAPE ONLY MEANS ANYTHING ON A TARGET THAT IS A PLACE. amp, provision, a trait axis, phase,
+// mem and mutpress are POSSESSIONS - of the actor or of the pair - and "two cells to the left" is not
+// a thing you can say about somebody's amplitude. Only the field (9) and the lineage's own channels
+// (11..14) are lattices, so only those read the stencil. Stated as a predicate rather than left
+// implicit because two things depend on it: the census row must not report adoption for a geometry
+// that cannot act (the failure every row added since #188 was written to avoid), and the rent must
+// not charge for taps that never become writes - selection paying for nothing is noise in the
+// economy, and this file has spent whole swings tracking noise like that down.
+function emitPlaceTarget(t){ const k=t|0; return k===9||(k>=11&&k<=14); }
+function emitTapCount(v){ const st=emitStencil(v); return st?st.length:0; }
+// How many taps does this whole bank carry beyond the one every verb gets free? Billed in executeVM.
+function emitRentOf(g){
+  if(!__EMIT)return 0;
+  const fx=(g||((typeof genome!=='undefined')?genome:null));
+  const b=fx&&fx.userEffects; if(!Array.isArray(b))return 0;
+  let n=0; for(const e of b){ if(!e||!emitPlaceTarget(e.t))continue; const c=emitTapCount(e); if(c>1)n+=c-1; }
+  return n;
+}
+// Cell index `ox,oy` cells away from particle i's own cell, clamped to the lattice. Offsets are
+// CELLS, not pixels, because the thing being written is a lattice and a sub-cell offset would round
+// to no offset at all - a gene that silently does nothing is the failure this file keeps measuring.
+function emitCellAt(i,ox,oy){
+  const fw=W/FIELD_W, fh=H/FIELD_H;
+  const cx=__cl(Math.floor(px[i]/fw)+Math.round(ox),0,FIELD_W-1);
+  const cy=__cl(Math.floor(py[i]/fh)+Math.round(oy),0,FIELD_H-1);
+  return cy*FIELD_W+cx;
+}
+// Distribute `amt` over this verb's stencil and return the total realised. `base` is the cell the
+// unshaped verb would have written, computed by the caller in its own original expression, so the
+// default path is unchanged code rather than a re-derivation of it (#153's rule applied to a cell
+// index: read the site's own answer, do not restate it).
+function emitApply(v,i,amt,base,fn){
+  const st=emitStencil(v);
+  if(st===null)return fn(base,amt);
+  let sum=0; for(const t of st){ if(Array.isArray(t)){ const w=+t[2]; if(isFinite(w))sum+=Math.abs(w); } }
+  if(!(sum>0))return fn(base,amt);
+  let ux=1,uy=0;
+  if((v.fr|0)===1){
+    const sp=Math.hypot(vx[i],vy[i]);
+    if(sp>1e-4){ ux=vx[i]/sp; uy=vy[i]/sp; __emitSelfFrame++; }   // a standing particle has no "ahead" and keeps the world frame
+  }
+  let moved=0, taps=0;
+  for(const t of st){
+    if(!Array.isArray(t))continue;
+    const w=+t[2]; if(!isFinite(w)||w===0)continue;
+    const dx=__cl(t[0]|0,-EMIT_OFFSET_MAX,EMIT_OFFSET_MAX), dy=__cl(t[1]|0,-EMIT_OFFSET_MAX,EMIT_OFFSET_MAX);
+    const r=fn(emitCellAt(i,dx*ux-dy*uy,dx*uy+dy*ux),amt*(w/sum));
+    if(isFinite(r))moved+=r;
+    taps++;
+  }
+  if(taps>1)__emitSpread++;
+  return moved;
+}
+// #103: an INCREMENTAL operator, not a redraw. Same five moves #189's chanFormStep offers, for the
+// same reason: a lineage that has found a useful shape should be able to adjust it without losing it.
+function emitFormStep(v){
+  if(!__EMIT||!v)return false;
+  if(!Array.isArray(v.st)||!v.st.length){
+    // BIRTH of a shape. The first tap is a DISPLACEMENT of the existing single write, not an addition
+    // to it, so a verb that gains a stencil starts by emitting the same amount somewhere else - a move,
+    // which selection can judge against staying put. Starting with two taps would have made "gain a
+    // shape" and "gain a second tap" one indivisible event.
+    const d=()=>((Math.random()*(EMIT_OFFSET_MAX*2+1))|0)-EMIT_OFFSET_MAX;
+    let ox=d(), oy=d();
+    if(ox===0&&oy===0)ox=Math.random()<0.5?-1:1;
+    v.st=[[ox,oy,1]];
+    if(v.fr===undefined)v.fr=0;
+    fired('emit.formStep');
+    return true;
+  }
+  const st=v.st, roll=Math.random();
+  if(roll<0.30){                                        // retune one weight
+    const k=(Math.random()*st.length)|0;
+    const w=+st[k][2]+(Math.random()-0.5)*0.6;
+    st[k][2]=__cl(isFinite(w)?w:1,-2,2);
+  } else if(roll<0.55){                                 // move one tap
+    const k=(Math.random()*st.length)|0;
+    st[k][0]=__cl((st[k][0]|0)+(Math.random()<0.5?-1:1),-EMIT_OFFSET_MAX,EMIT_OFFSET_MAX);
+    st[k][1]=__cl((st[k][1]|0)+(Math.random()<0.5?-1:1),-EMIT_OFFSET_MAX,EMIT_OFFSET_MAX);
+  } else if(roll<0.72){                                 // grow
+    if(st.length<EMIT_TAPS_MAX){
+      const d=()=>((Math.random()*(EMIT_OFFSET_MAX*2+1))|0)-EMIT_OFFSET_MAX;
+      st.push([d(),d(),(Math.random()-0.5)*2]);
+    }
+  } else if(roll<0.86){                                 // shrink - and this is what makes a shape reversible
+    if(st.length>1)st.splice((Math.random()*st.length)|0,1);
+    else v.st=null;                                     // back to emitting underfoot, the mechanism turning itself off
+  } else {                                              // change frame: world <-> the actor's own direction of travel
+    v.fr=(v.fr|0)===1?0:1;
+  }
+  fired('emit.formStep');
+  return true;
+}
+// Has this verb's emission been shaped? Deviation from "one tap underfoot, world frame", the same
+// construction every census row added since #188 uses.
+function emitShaped(v){ return (v&&emitPlaceTarget(v.t)&&emitStencil(v)!==null)?1:0; }
+function __xShaped(a){ if(!Array.isArray(a))return 0;
+  let n=0; for(const e of a) n+=emitShaped(e); return n; }
 // === #188 - AND THE CHEMISTRY IS WRITTEN IN THE SAME LANGUAGE THE CREATURES ARE =================
 // This is the part that makes the inventory generated rather than enumerated. The rule is an ordinary
 // authored expression, compiled by the ordinary compiler (so it inherits #181's evolved fold and
@@ -9811,7 +10017,12 @@ function encodeGenome(){
       return any?out:null; })(),
     co: CORE_OPCODES, // MIGRATION (review): stamp the opcode-boundary this save was written under, so a later CORE_OPCODES shift can remap saved bound-opcode programs on load
     ua:cleanAtoms,
-    ue:Array.isArray(genome.userEffects)?genome.userEffects.map(e=>({t:e.t|0,m:e.m|0,s:+(+e.s||0).toFixed(3),n:(e.nx===undefined?-1:e.nx|0),a:(e.ax===undefined||e.ax===null?-1:e.ax|0),u:e.uses|0})):[], // #132 authored verbs (+#133 successor, +#139 sense gate). `a` travels with the verb because boundOpcodes travels in the same save, so the slot index still means the same atom on the other side — without it an exported creature came back having quietly forgotten every sense it had bound to an act.
+    ue:Array.isArray(genome.userEffects)?genome.userEffects.map(e=>({t:e.t|0,m:e.m|0,s:+(+e.s||0).toFixed(3),n:(e.nx===undefined?-1:e.nx|0),a:(e.ax===undefined||e.ax===null?-1:e.ax|0),u:e.uses|0,
+      // #193: WHERE the act lands travels with WHAT it does, or a reload restores a verb that emits in
+      // a different place - which is a different verb. Absent on a pre-#193 save, which decodes to no
+      // stencil, which is one tap underfoot: exactly what that save meant.
+      st:Array.isArray(e.st)&&e.st.length?e.st.slice(0,EMIT_TAPS_MAX).map(t=>[t[0]|0,t[1]|0,+(+t[2]||0).toFixed(3)]):undefined,
+      fr:(e.fr|0)===1?1:undefined})):[], // #132 authored verbs (+#133 successor, +#139 sense gate). `a` travels with the verb because boundOpcodes travels in the same save, so the slot index still means the same atom on the other side — without it an exported creature came back having quietly forgotten every sense it had bound to an act.
     clr:+(genome.creditLearnRate||1).toFixed(4), // Pe25 Layer 15: evolvable learning rate
     dc:+(genome.decisionConfidence||0).toFixed(4), // swing #43: earned self-model commitment authority (persists across reload)
     gb:+(genome.gradientBias||0.3).toFixed(4),   // Pe26 Layer 16a: gradient bias
@@ -10152,7 +10363,10 @@ function decodeGenome(data){
     if(g.ua)genome.userAtoms=g.ua.map(a=>({expression:a.expression,compiled:null,failed:!!a.failed,uses:a.uses|0,age:a.age|0,alienHits:a.alienHits|0,alienAttempts:a.alienAttempts|0}));
     // #132: a pre-#132 save has no `ue`, so the lineage simply starts with no verbs and authors its
     // own — the same way a pre-atom save starts with an empty bank rather than being rejected.
-    genome.userEffects=Array.isArray(g.ue)?g.ue.map(e=>({t:e.t|0,m:e.m|0,s:+e.s||0.5,nx:(e.n===undefined?-1:e.n|0),ax:(e.a===undefined||e.a===null?-1:e.a|0),uses:e.u|0,creditTrace:0})):[];  // #133: pre-#133 saves have no successor -> uncomposed. #139: pre-#139 saves have no gate -> ungated, which is exactly the old behaviour.
+    genome.userEffects=Array.isArray(g.ue)?g.ue.map(e=>({t:e.t|0,m:e.m|0,s:+e.s||0.5,nx:(e.n===undefined?-1:e.n|0),ax:(e.a===undefined||e.a===null?-1:e.a|0),uses:e.u|0,creditTrace:0,
+      // #193: absent -> null -> one tap underfoot in the world frame, which is what a pre-#193 save meant
+      st:Array.isArray(e.st)&&e.st.length?e.st.slice(0,EMIT_TAPS_MAX).map(t=>Array.isArray(t)?[t[0]|0,t[1]|0,+t[2]||0]:[0,0,0]):null,
+      fr:(e.fr|0)===1?1:0})):[];  // #133: pre-#133 saves have no successor -> uncomposed. #139: pre-#139 saves have no gate -> ungated, which is exactly the old behaviour.
     if(typeof g.td==='number') genome.tendDims=__cl(g.td|0,2,DIMS_MAX);
     if(Array.isArray(g.oe)){ // #35 evolvable engine dials (sanitizeGenome clamps + defaults any missing)
       if(typeof g.oe[0]==='number')genome.opnovStrength=g.oe[0];
@@ -11247,7 +11461,26 @@ function sanitizeGenome(){
     t:__cl(e.t|0,0,EFFECT_TARGET_COUNT-1), m:(e.m|0)===1?1:0, s:__cl(finiteOr(e.s,0.5),0,1),
     nx:(e.nx===undefined||(e.nx|0)<0||(e.nx|0)>=MAX_USER_EFFECTS)?-1:(e.nx|0),   // #133 successor slot, or -1
     ax:(e.ax===undefined||e.ax===null||(e.ax|0)<0||(e.ax|0)>=MAX_BOUND_OPCODES)?-1:(e.ax|0), // #139 sense slot, or -1. An imported save written before #139 has no ax and correctly reads as ungated.
-    uses:e.uses|0, creditTrace:__cl(finiteOr(e.creditTrace,0),-1,1) })):[];
+    uses:e.uses|0, creditTrace:__cl(finiteOr(e.creditTrace,0),-1,1),
+    // === #193 - AND THE EMISSION STENCIL, CLAMPED HERE AND NOWHERE ELSE =========================
+    // THIS MAP IS A REBUILD, NOT A CLAMP: it constructs a fresh object and every key it does not name
+    // is DELETED. So a field added to a verb anywhere else in this file - the decoder, the wire, the
+    // clone - silently vanishes the first time sanitizeGenome runs, which decodeGenome calls itself.
+    // #193 lost its stencil to exactly that and the save round-trip check caught it. If you add a
+    // field to a verb, add it HERE in the same edit.
+    // Absent/empty reads as null, which is one tap underfoot in the world frame - what every pre-#193
+    // save meant. Bounds are the engine's own constants, so if EMIT_OFFSET_MAX moves this moves.
+    st:(Array.isArray(e.st)&&e.st.length)?(function(){
+      const _o=[];
+      for(const _t of e.st.slice(0,EMIT_TAPS_MAX)){
+        if(!Array.isArray(_t))continue;
+        _o.push([__cl(_t[0]|0,-EMIT_OFFSET_MAX,EMIT_OFFSET_MAX),
+                 __cl(_t[1]|0,-EMIT_OFFSET_MAX,EMIT_OFFSET_MAX),
+                 __cl(finiteOr(+_t[2],0),-2,2)]);
+      }
+      return _o.length?_o:null;
+    })():null,
+    fr:(e.fr|0)===1?1:0 })):[];
   // #145: DROP an over-budget expression instead of slicing it. `slice(0,160)` turned a 7,000-character
   // atom into a 160-character prefix with unbalanced parentheses — not a shorter computation but a
   // syntax error, which then failed to compile and sat in the bank forever as dead weight. Measured on
@@ -17134,6 +17367,12 @@ function mutateGenome(){ fired('genome.mutate');
       if(Math.random()<rate*0.30){ const v=e.s+(Math.random()-0.5)*0.25; e.s=__cl(isFinite(v)?v:0.5,0,1); }
       if(Math.random()<rate*0.10) e.m=e.m?0:1;                                    // flip conservation mode
       if(Math.random()<rate*0.06) e.t=(Math.random()*EFFECT_TARGET_COUNT)|0;      // retarget
+      // #193: RESHAPE THE EMISSION. Floored for the reason stated eight lines up and re-measured in
+      // #192: mutateGenome runs ~38 times in 12,000 ticks at an effective rate near 0.05, so a
+      // rate-scaled probability here would be 0.5 expected events per run - a coin landing tails, not
+      // a toll. EMIT_FORM_FLOOR is EFFECT_BIRTH_FLOOR's argument applied to the shape rather than the
+      // birth, because a shape nothing ever draws is exactly as unselectable as a verb nothing authors.
+      if(__EMIT&&Math.random()<Math.max(EMIT_FORM_FLOOR,rate*0.4)) emitFormStep(e);
       // #133: COMPOSE — point at a successor, re-point, or break the link. This is the larger
       // structural jump: it turns two verbs into one sentence. The RATE is genome.effectComposeRate,
       // not a constant I picked — the same treatment #127 gave the atom side's recombine-vs-refine
@@ -18573,6 +18812,7 @@ const MAX_USER_EFFECTS=8;              // authored verb slots
 const EFFECT_SLOT0=8;                  // vmActions[8 .. 8+MAX_USER_EFFECTS-1] are the authored drives
 const EFFECT_GAIN=0.01;                // base authority of an authored verb, before its evolved scale
 const EFFECT_BIRTH_FLOOR=0.28;         // mirrors UA_BIRTH_FLOOR — see the birth site for why a floor
+const EMIT_FORM_FLOOR=0.22;            // #193: same argument, applied to the SHAPE of an act rather than to its birth
 // target alphabet. `paired` = the quantity exists on both partners, so CONSERVED mode is meaningful;
 // unpaired targets fall back to LOCAL rather than pretending to conserve against nothing.
 const EFFECT_TARGETS=[
@@ -18651,12 +18891,19 @@ function applyUserEffect(eff,i,j,amt,slot){
     case 9: {                                               // the shared field, at own position
       const fx=Math.floor(px[i]/(W/FIELD_W)), fy=Math.floor(py[i]/(H/FIELD_H));
       const fi=__cl(fy*FIELD_W+fx,0,FIELD_W*FIELD_H-1);
-      const b0=field[fi]; field[fi]=__cl(b0+amt,0,2.5); moved=field[fi]-b0; break; }
+      // #193: ...and at whatever other cells this verb's emission stencil names. An unshaped verb
+      // takes emitApply's null path, which calls this same closure once on `fi` - the original write,
+      // not a one-tap reimplementation of it.
+      moved=emitApply(eff,i,amt,fi,(c,a)=>{ const b0=field[c]; field[c]=__cl(b0+a,0,2.5); return field[c]-b0; });
+      break; }
     case 10: mutPressureAccum+=amt*0.01; moved=amt*0.01; break; // own mutability
     // #188: write into a channel this lineage allocated. A no-op when the slot holds no rule, which
     // is what keeps the target total: a verb aimed at a medium the lineage never invented does
     // nothing rather than failing, so EFFECT_TARGETS can grow without any verb becoming invalid.
-    case 11: case 12: case 13: case 14: moved=chanWrite(t-11,i,amt*0.4); break;
+    case 11: case 12: case 13: case 14: {
+      const _ck=t-11;   // #193: the same emission geometry applies to a lineage's own media
+      moved=emitApply(eff,i,amt*0.4,chanCellOf(i),(c,a)=>chanWrite(_ck,i,a,c));
+      break; }
   }
   __effectFires++;
   // #133 REALISED-AMOUNT DISCIPLINE. `moved` is measured as an after-minus-before delta, which is the
@@ -18904,6 +19151,11 @@ function executeVM(i,j,sim,d){
   // Euclidean fast path pays nothing, so this is a charge for having left Euclidean rather than a
   // charge for existing - which is the right shape: the default should not subsidise the departure.
   const _metRent=metMoved()?MET_RENT:0;
+  // #193: every tap beyond the first is an extra write into a lattice, and it is priced like one. Zero
+  // for an unshaped bank, so this is a charge for having a geometry rather than a charge for existing
+  // - and it is what makes SHRINKING a stencil profitable, which is what lets the mechanism turn
+  // itself off under selection rather than only under a knob.
+  const _emitRent=EMIT_TAP_RENT*emitRentOf();
   // #191: AREA, not radius. The sweep's cost scales as r^2 - a particle reaching 2x as far searches
   // four times the bins and offers four times the candidates - so the rent scales as r^2 too, which
   // is the only pricing under which a long reach is a decision rather than a free win. Zero at the
@@ -18918,7 +19170,7 @@ function executeVM(i,j,sim,d){
   if(__CHANNEL){ const _cb=chanBank();
     if(_cb) for(let _k=0;_k<CHANNEL_MAX;_k++){ const _r=_cb[_k];
       if(_r&&typeof _r.expr==='string') _chanRent+=CHANNEL_RENT+Math.max(0,chanTaps(_r)-4)*CHANNEL_TAP_RENT; } }
-  const totalCost=(nInst+_stack+_opRent+_foldRent+_probeRent+_chanRent+_metRent+_reachRent+_over16*(COMPLEXITY_TOLL-1))*genome.metabolicCost;
+  const totalCost=(nInst+_stack+_opRent+_foldRent+_probeRent+_chanRent+_metRent+_reachRent+_emitRent+_over16*(COMPLEXITY_TOLL-1))*genome.metabolicCost;
   amp[i]-=totalCost;amp[j]-=totalCost;
 
   for(let ip=0,_vs=0;ip<nInst&&_vs<nInst*2;ip++,_vs++){
@@ -25164,6 +25416,7 @@ __UPLASMID=(typeof globalThis==='undefined')||((globalThis.__UPLASMID??1)|0)!==0
 __CHANNEL=(typeof globalThis==='undefined')||((globalThis.__CHANNEL??1)|0)!==0;   // #188: default ON. Force off with CHANNEL=0 - no lattice is allocated, ka..kd read 0 and are never offered to the generator, and the four chan targets no-op
 __METRIC=(typeof globalThis==='undefined')||((globalThis.__METRIC??1)|0)!==0;   // #190: default ON, and a NO-OP at the seeded genes: metDist takes the hypot fast path at (2,1,0), so an unmutated lineage is bit-identical
 __STIME=(typeof globalThis==='undefined')||((globalThis.__STIME??1)|0)!==0;   // #192: default ON, and a NO-OP at the seeded genes: rate 1 means every tick, so an unmutated lineage is in lockstep exactly as before
+__EMIT=(typeof globalThis==='undefined')||((globalThis.__EMIT??1)|0)!==0;   // #193: default ON, and a NO-OP at the seeded shape: no stencil means emitApply takes the null path and calls the original single-cell write, so an unshaped lineage is bit-identical
 __REACH=(typeof globalThis==='undefined')||((globalThis.__REACH_SWEEP??1)|0)!==0;   // #191: default ON. Force off with REACH_SWEEP=0 - the sweep returns to +/-1 ring, the reach to the germline's value, and the dedup to `j>i`, which is the pre-#191 engine exactly. Deliberately NOT named REACH: __REACH_ON is a different, pre-existing gate and colliding on that name is how a knob silently stops being a control
 __FORAGE_ON=(typeof globalThis==='undefined')||((globalThis.__FORAGE_EYES??1)|0)!==0; // resolve FORAGE once; gates the resource-sense computation in uaSetEyes
 __DECIDE_ON=(typeof globalThis==='undefined')||((globalThis.__DECIDE??1)|0)!==0; // resolve DECISION GAIN once; gates confidence accrual + commitment scaling

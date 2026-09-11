@@ -585,6 +585,147 @@ m._compile(code+`
             offAlways,onSometimes};
   });
 
+  // -- #193  THE SHAPE OF AN ACT ----------------------------------------------------------------
+  // The one invariant everything else rests on is MAGNITUDE CONSERVATION. A stencil divides an
+  // emission; it must never multiply one. If four taps each wrote the whole amount, growing a stencil would be a
+  // free 4x on every act, and #132's conserved mode and #133's realised-amount discipline would both
+  // be routed around by a gene. So the first check is the pump check, and it is the one that would
+  // matter if every other check here passed.
+  out.emit=run('emit',()=>{
+    // a lone particle, mid-field, on a pre-filled lattice so BOTH signs have room to move
+    for(let k=0;k<N;k++)palive[k]=false;
+    palive[0]=true; px[0]=W*0.5; py[0]=H*0.5; vx[0]=0; vy[0]=0;
+    if(!pGenome[0])pGenome[0]={...genome};
+    const cellOfSelf=()=>{ const fw=W/FIELD_W,fh=H/FIELD_H;
+      return __cl(Math.floor(py[0]/fh),0,FIELD_H-1)*FIELD_W+__cl(Math.floor(px[0]/fw),0,FIELD_W-1); };
+    const probe=(st,fr,amt)=>{
+      field.fill(1.0);
+      const before=Array.from(field);
+      const eff={t:9,m:0,s:1,nx:-1,ax:-1,uses:0,creditTrace:0,st,fr};
+      const moved=applyUserEffect(eff,0,-1,amt,0);
+      let mag=0, signed=0, cells=[];
+      for(let c=0;c<field.length;c++){ const d=field[c]-before[c];
+        if(Math.abs(d)>1e-6){ mag+=Math.abs(d); signed+=d; cells.push(c); } }
+      return {moved:+moved.toFixed(6), mag:+mag.toFixed(5), signed:+signed.toFixed(5), cells};
+    };
+    // 1. CONSERVATION over every tap count and a spread of signed weights
+    let worst=0, n=0;
+    const shapes=[
+      [[0,0,1]], [[1,0,1]], [[1,0,1],[-1,0,1]], [[1,0,1],[-1,0,-1]],
+      [[1,1,0.3],[-1,-1,0.7]], [[2,0,1],[0,2,1],[-2,0,1],[0,-2,1]],
+      [[1,0,2],[0,1,-0.5],[3,3,0.1]], [[3,3,1],[-3,-3,-1],[3,-3,0.5],[-3,3,-0.5]],
+    ];
+    for(const st of shapes)for(const amt of [0.4,-0.4,0.9]){
+      const r=probe(st,0,amt); n++;
+      worst=Math.max(worst,Math.abs(r.mag-Math.abs(amt)));
+    }
+    // 2. AND THE UNSHAPED VERB IS THE ORIGINAL WRITE - one cell, underfoot, full amount
+    const plain=probe(null,0,0.5);
+    // 3. A DIPOLE: full magnitude paid, net zero moved. Unreachable under signed normalisation, which
+    //    is why the divisor is the ABSOLUTE sum.
+    const dip=probe([[2,0,1],[-2,0,-1]],0,0.6);
+    // 4. THE FRAME. The same stencil on two particles travelling in opposite directions must write to
+    //    opposite sides of them. This is where "lay a trail ahead of me" comes from and nothing else
+    //    in this engine can express it.
+    vx[0]=1; vy[0]=0;  const fwd=probe([[2,0,1]],1,0.5);
+    vx[0]=-1; vy[0]=0; const back=probe([[2,0,1]],1,0.5);
+    vx[0]=0; vy[0]=0;  const still=probe([[2,0,1]],1,0.5);   // no heading -> world frame
+    const world=probe([[2,0,1]],0,0.5);
+    // 5. THE WALL. The space is a box, so offsets CLAMP - and the magnitude invariant has to survive
+    //    two taps landing in the same edge cell.
+    px[0]=4; py[0]=4;
+    const corner=probe([[-3,0,1],[-2,0,1]],0,0.5);
+    px[0]=W*0.5; py[0]=H*0.5;
+    // 6. THE STEP (#103): incremental, bounded, reaches every tap count, and can turn itself back off
+    const v={t:9,m:0,s:1,nx:-1,ax:-1,uses:0,creditTrace:0,st:null,fr:0};
+    let moves=0, illegal=0, frames=0, backToNull=0; const sizes={};
+    for(let q=0;q<900;q++){
+      const wasNull=!Array.isArray(v.st);
+      const f0=v.fr|0;
+      emitFormStep(v); moves++;
+      if((v.fr|0)!==f0)frames++;
+      if(Array.isArray(v.st)){
+        sizes[v.st.length]=1;
+        if(v.st.length>EMIT_TAPS_MAX)illegal++;
+        for(const t of v.st){
+          if(!(t[0]>=-EMIT_OFFSET_MAX&&t[0]<=EMIT_OFFSET_MAX))illegal++;
+          if(!(t[1]>=-EMIT_OFFSET_MAX&&t[1]<=EMIT_OFFSET_MAX))illegal++;
+          if(!isFinite(t[2])||Math.abs(t[2])>2)illegal++;
+        }
+      } else if(!wasNull) backToNull++;
+    }
+    // 7. RENT, and the knob
+    const svFx=genome.userEffects;
+    genome.userEffects=[{t:9,m:0,s:1,nx:-1,ax:-1,uses:0,creditTrace:0,st:[[1,0,1],[2,0,1],[3,0,1]],fr:0}];
+    const rentShaped=emitRentOf(genome);
+    genome.userEffects=[{t:9,m:0,s:1,nx:-1,ax:-1,uses:0,creditTrace:0,st:null,fr:0}];
+    const rentPlain=emitRentOf(genome);
+    genome.userEffects=svFx;
+    // AND A SHAPE ON A POSSESSION IS INERT, uncounted and unbilled. "Two cells left" is not a thing
+    // you can say about somebody's amplitude, so target 0 must ignore the stencil entirely - and the
+    // census row and the rent must agree with the write path rather than reporting a geometry that
+    // cannot act.
+    const memVerb={t:8,m:0,s:1,nx:-1,ax:-1,uses:0,creditTrace:0,st:[[2,0,1],[3,0,1]],fr:1};
+    const inert={shaped:emitShaped(memVerb), place:emitPlaceTarget(8), placeField:emitPlaceTarget(9),
+                 placeChan:emitPlaceTarget(13)};
+    { const svf=genome.userEffects; genome.userEffects=[memVerb];
+      inert.rent=emitRentOf(genome); genome.userEffects=svf; }
+    const sv=__EMIT; __EMIT=false;
+    const off=probe([[2,0,1]],0,0.5);
+    __EMIT=sv;
+    return {n,worst:+worst.toFixed(6), plain, dip, fwd, back, still, world, corner,
+            moves, illegal, frames, backToNull, sizes:Object.keys(sizes).map(Number).sort((a,b)=>a-b),
+            rentShaped, rentPlain, tapRent:EMIT_TAP_RENT, off, inert,
+            selfFrameFired:__emitSelfFrame>0, spreadFired:__emitSpread>0};
+  });
+
+  // -- #193  AND IT HAS TO CROSS ------------------------------------------------------------------
+  out.emitCross=run('emitCross',()=>{
+    const mk1=()=>({t:11,m:0,s:0.7,nx:-1,ax:-1,uses:3,creditTrace:0.2,st:[[2,-1,0.8],[-2,1,-0.4]],fr:1});
+    genome.userEffects=[mk1()];
+    genome.channels=[{expr:'(a)*(0.9)',compiled:null,failed:false,age:1,uses:0,st:null,wrap:0,cad:1},null,null,null];
+    // save -> load
+    const blob=encodeGenome();
+    genome.userEffects=[];
+    decodeGenome(blob); sanitizeGenome();
+    const e0=genome.userEffects&&genome.userEffects[0];
+    const saved=!!e0&&Array.isArray(e0.st)&&e0.st.length===2&&e0.st[0][0]===2&&e0.st[0][1]===-1&&
+                Math.abs(e0.st[0][2]-0.8)<1e-3&&(e0.fr|0)===1;
+    // clone -> no shared reference, to the TAP
+    const c=cloneGenome(genome);
+    const shared={bank:c.userEffects===genome.userEffects,
+                  verb:c.userEffects[0]===genome.userEffects[0],
+                  st:c.userEffects[0].st===genome.userEffects[0].st,
+                  tap:c.userEffects[0].st[0]===genome.userEffects[0].st[0]};
+    // child -> the shape diverges
+    let childMoved=0;
+    for(let q=0;q<300;q++){ const g=cloneGenome(genome); mutateChildGenome(g);
+      const t0=g.userEffects&&g.userEffects[0];
+      if(!t0||!Array.isArray(t0.st)||t0.st.length!==2||
+         t0.st[0][0]!==2||t0.st[0][1]!==-1||Math.abs(t0.st[0][2]-0.8)>1e-6||(t0.fr|0)!==1)childMoved++; }
+    // germline -> population
+    let carriers=0;
+    for(let k=0;k<N;k++) if(palive[k]&&pGenome[k])pGenome[k].userEffects=[];
+    seedEffectIntoParticle(0);
+    for(let k=0;k<N;k++){ const g=pGenome[k];
+      if(palive[k]&&g&&Array.isArray(g.userEffects))for(const e of g.userEffects)
+        if(e&&Array.isArray(e.st)&&e.st.length===2)carriers++; }
+    // the wire: a shape that does not survive the hop is a verb that lands somewhere else (#141)
+    const pay={nx:0.5,ny:0.5,tend:[0,0,0],mem:[],plasmid:[],amp:1,phase:0,ua:[],
+               ue:[{t:11,m:0,s:0.7,n:-1,a:-1,st:[[2,-1,0.8]],fr:1}]};
+    const wireOk=validNetworkPayload('migrant',pay)===true;
+    const wireBad=[
+      {...pay,ue:[{t:11,m:0,s:0.7,n:-1,a:-1,st:[[99,0,1]]}]},                     // offset off the end
+      {...pay,ue:[{t:11,m:0,s:0.7,n:-1,a:-1,st:new Array(EMIT_TAPS_MAX+1).fill([0,0,1])}]},
+      {...pay,ue:[{t:11,m:0,s:0.7,n:-1,a:-1,st:[[0,0,'x']]}]},
+      {...pay,ue:[{t:11,m:0,s:0.7,n:-1,a:-1,st:'nope'}]},
+    ].every(x=>validNetworkPayload('migrant',x)===false);
+    const wireAbsent=validNetworkPayload('migrant',{...pay,ue:[{t:11,m:0,s:0.7,n:-1,a:-1}]})===true;
+    const cen=crossingCensus();
+    return {saved,shared,childMoved,carriers,wireOk,wireBad,wireAbsent,
+            row:cen.rows.some(r=>r.name==='verb.shaped')};
+  });
+
   // ── THE CROSSINGS: every new gene must survive a save and diverge in a child ────────────────
   out.cross=run('cross',()=>{
     genome.uaFoldMode=2; genome.uaFoldK=3.25; genome.autonomyCede=0.8;
@@ -900,6 +1041,65 @@ ck('#192 and every rate is reachable', TI.rates && TI.rates.length===TI.cap,
 ck('#192 STIME=0 is a true revert', TI.offAlways===true && TI.onSometimes===true && r.revert && r.revert.timeOff===true,
    'off: always active. on: sometimes not.');
 
+// #193
+const EM=r.emit||{};
+ck('#193 an emission stencil DIVIDES an act, it never multiplies one',
+   EM.worst!==undefined && EM.worst<2e-5,
+   EM.n+' shape/amount combinations, worst magnitude error '+EM.worst+
+   ' — four taps each writing the full amount would be a free 4x on every act, and a gene that routes around #132 and #133 at once');
+ck('#193 an UNSHAPED verb is the original single write', EM.plain &&
+   EM.plain.cells && EM.plain.cells.length===1 && Math.abs(EM.plain.mag-0.5)<1e-5,
+   'wrote '+(EM.plain&&EM.plain.cells&&EM.plain.cells.length)+' cell(s), magnitude '+(EM.plain&&EM.plain.mag));
+ck('#193 a DIPOLE is expressible: full magnitude paid, net zero moved',
+   EM.dip && EM.dip.cells.length===2 && Math.abs(EM.dip.mag-0.6)<1e-5 && Math.abs(EM.dip.signed)<1e-5,
+   'magnitude '+(EM.dip&&EM.dip.mag)+', signed '+(EM.dip&&EM.dip.signed)+
+   ' — deposit in front and withdraw behind, which signed normalisation would have made unreachable');
+ck('#193 the SELF FRAME turns the stencil with the actor',
+   EM.fwd && EM.back && EM.fwd.cells[0]!==EM.back.cells[0] &&
+   (EM.fwd.cells[0]-EM.back.cells[0])===4,
+   'travelling one way it writes at cell '+(EM.fwd&&EM.fwd.cells[0])+', the other way at '+
+   (EM.back&&EM.back.cells[0])+' — two cells either side, from ONE stencil. This is what "lay a trail ahead of me" needs');
+ck('#193 a standing particle has no "ahead" and keeps the world frame',
+   EM.still && EM.world && EM.still.cells[0]===EM.world.cells[0],
+   'a stencil\'s meaning depends on whether its carrier is going anywhere, and that is a real boundary rather than a fallback');
+ck('#193 the space is a box, so offsets clamp — and the magnitude still balances',
+   EM.corner && EM.corner.cells.length===1 && Math.abs(EM.corner.mag-0.5)<1e-5,
+   'two taps into the same wall cell: '+(EM.corner&&EM.corner.cells.length)+' cell, magnitude '+(EM.corner&&EM.corner.mag));
+ck('#193 the shape takes a small step and never leaves its bounds',
+   EM.moves>0 && EM.illegal===0, EM.moves+' steps, '+EM.illegal+' illegal');
+ck('#193 and reaches every tap count', EM.sizes && EM.sizes.length===EMIT_TAPS_SAFE(),
+   'tap counts reached: '+(EM.sizes||[]).join(','));
+ck('#193 the mechanism can turn ITSELF off', EM.backToNull>0,
+   EM.backToNull+' steps shrank a stencil back to writing underfoot — a shape that cannot be undone is a ratchet, and the rent makes undoing it profitable');
+ck('#193 and the frame is reachable', EM.frames>0, EM.frames+' frame flips');
+ck('#193 a shaped bank pays rent per extra tap, an unshaped one pays nothing',
+   EM.rentShaped===2 && EM.rentPlain===0,
+   'three taps bills '+EM.rentShaped+' beyond the free one, unshaped bills '+EM.rentPlain+
+   ' (EMIT_TAP_RENT = '+EM.tapRent+' instruction-equivalents each)');
+ck('#193 a shape on a POSSESSION is inert, uncounted and unbilled',
+   EM.inert && EM.inert.shaped===0 && EM.inert.rent===0 &&
+   EM.inert.place===false && EM.inert.placeField===true && EM.inert.placeChan===true,
+   'a two-tap stencil on a mem verb counts '+(EM.inert&&EM.inert.shaped)+' and bills '+(EM.inert&&EM.inert.rent)+
+   ' — a census row that reports adoption for a geometry that cannot act is the failure every row since #188 was written to avoid');
+ck('#193 EMIT=0 is a true revert', EM.off && EM.off.cells.length===1 &&
+   EM.off.cells[0]===(EM.world&&EM.world.cells[0])-2,
+   'off writes underfoot, on writes two cells away');
+ck('#193 both halves of the mechanism actually bit', EM.spreadFired===true && EM.selfFrameFired===true,
+   'emit.spread and emit.selfFrame both fired — a geometry that never reaches a write is #179 again');
+const EX=r.emitCross||{};
+ck('#193 save -> load: the shape travels with the act', EX.saved===true,
+   'a reload that restores a verb emitting in a different place has restored a different verb');
+ck('#193 cloneGenome deep-copies to the TAP', EX.shared &&
+   !EX.shared.bank && !EX.shared.verb && !EX.shared.st && !EX.shared.tap,
+   EX.shared && JSON.stringify(EX.shared)+' — #155, #180 and #189 were all this same shallow copy');
+ck('#193 parent -> child: the shape diverges', EX.childMoved>0, EX.childMoved+'/300');
+ck('#193 germline -> population: the shape crosses with the verb', EX.carriers>0,
+   EX.carriers+' carrier(s) after one seeding — #133b stripped the successor on this exact path');
+ck('#193 the wire carries it, validates it, and still accepts a pre-#193 peer',
+   EX.wireOk===true && EX.wireBad===true && EX.wireAbsent===true,
+   'good '+EX.wireOk+', rejects garbage '+EX.wireBad+', absent-is-legal '+EX.wireAbsent);
+ck('#193 and it has a census row', EX.row===true);
+
 // the crossings
 const CR=r.cross||{};
 const SV=CR.saved||{};
@@ -937,3 +1137,4 @@ function UA_FOLD_MODES_SAFE(){ try{ return 4; }catch(e){ return '?'; } }
 function PROBE_RENT_SAFE(){ return (r.probe&&r.probe.rentPositive)?'>0':'0'; }
 process.exit(fail?1:0);
 function CELL_SAFE(){ return 55; }
+function EMIT_TAPS_SAFE(){ return 4; }
