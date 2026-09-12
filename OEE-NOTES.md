@@ -16252,6 +16252,40 @@ state where it produces only clones, and no census row in this file would say so
 census asks whether structure reaches the population; nothing asks whether the child path is still
 capable of moving anything.
 
+### AND THEN THE INSTRUMENT, because naming a blind spot is not closing it
+
+The paragraph above ended "nothing asks whether the child path is still capable of moving anything."
+That is now `child.frozen`.
+
+```
+a live rate (0.06)     106/200 children moved    child.varied 200   child.frozen 0
+a negative rate          0/200                   child.varied   0   child.frozen 200
+a rate of exactly 0    114/200                   child.varied 200   child.frozen 0
+```
+
+**The asymmetry in the third row is the whole finding.** `rate = genome.mutationRate || 0.06` coerces
+zero back to the default, so **a lineage cannot switch variation off by reaching zero** — the code's
+own fallback treats 0 as "unset", not as "off". Only the interval *below* zero freezes it, and nothing
+in the engine treats that interval as meaningful. It is reachable solely because the meta walk is
+additive and unclamped. A lineage does not choose to stop varying; it falls off the end of a number
+line.
+
+**Not clamped, on #158's precedent**, and the precedent is exact: that swing found a universe at
+`netMigrantRate` −0.03363, fully silent on the wire, and honoured it as a decision selection had made
+rather than overriding it (#148: "the system needs to decide to turn them off, not me"). A world that
+has stopped varying loses to one that has not, and that is the verdict. What was missing was never a
+brake — it was the ability to see the state at all.
+
+Verified by construction rather than by assumption: **every** gate in `mutateChildGenome` is a
+`Math.random() < rate` test or a multiple of one — the generic scalar walk, `objWeights`, `uaProdW`,
+`uaVarW`, `uaOps`, `userEffects`, all four channel-form steps, the shed, `oeeW`, and both discrete
+steps. Read line by line before the instrument was written, because "a mechanism's comment asserting
+a behaviour is a test nobody has written" is this file's own rule and I was about to assert one.
+
+Five checks, and `child.frozen` is declared beside `child.varied` so a run where **neither** fires is
+distinguishable from both — that case means nothing was ever born, which is a third state and a
+different bug.
+
 The rig's own fix is narrower: `out.selfwriteReach` now pins `mutationRate` and `mutationScale` to
 their entry values for the duration of both loops. Two reasons, and the second matters more — a block
 must not change what a later block measures, and the accumulation claim would otherwise have been
@@ -16317,10 +16351,10 @@ growing itself from nine to twelve because its own creatures paid for it. The sy
 landed on **g3** — the first free index — which is the collision fix working, and the germline crossed
 byte-exact.
 
-`substrate-test.js`: 233 checks, 19 of them this swing's (14 for the founding layer, 2 for the
-`uaSwapVar` guard, 2 asserting a channel probe owns the medium it measures, and the pair that
-replaced `#199`'s mis-scoped double-insert row), at **233/233 on both trajectories at the full
-budget and at 900 ticks**. `slot-test.js`: 15, five of them new, with four pre-#201 assertions rescoped
+`substrate-test.js`: 238 checks, 24 of them this swing's — 14 for the founding layer, 2 for the
+`uaSwapVar` guard, 2 asserting a channel probe owns the medium it measures, the pair that replaced
+`#199`'s mis-scoped double-insert row, and 5 for whether the child path can still move anything at
+all. 238/238 at 900 ticks; the full-budget pair on both trajectories is the closing gate. `slot-test.js`: 15, five of them new, with four pre-#201 assertions rescoped
 because they were written when the field was a fixed nine — one of them, the restore check, was
 reporting four universes as carrying the wrong genome because a grown daughter's saved tick count
 "explained" a built universe's better than its own did. `smoke.sh` gives `slot-test` 360 seconds
