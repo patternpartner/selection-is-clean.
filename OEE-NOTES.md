@@ -16178,8 +16178,16 @@ pre-#201 engine (278bcc9)                  230     210       4
 --- after the out.chan / out.form fix below ---
 #201 engine, FOUND=1                       232     232       0
 #201 engine, FOUND=1, TICKS=900            232     232       0
-#201 engine, FOUND=0  (control)            232     231       1
+#201 engine, FOUND=0  (control)            232     231       1   <- #199's row, fixed below
+--- after #199's row was fixed too ---
+#201 engine, FOUND=0                       233     233       0
+#201 engine, FOUND=1                       233     233       0
+#201 engine, FOUND=1, TICKS=900            233     233       0
 ```
+
+**That last block is the first time this suite has been fully green at the full budget on both
+trajectories** — and getting there meant fixing four rig defects and none of the engine, which is the
+whole lesson of the swing restated as a number.
 
 **And "four budget-sensitive rows on HEAD" was wrong**, which is worth leaving on the record because I
 built a caveat on it. Three of those four were not budget-sensitive at all — they were the
@@ -16192,7 +16200,8 @@ likely to exist. What is left is **exactly one** genuinely trajectory-dependent 
                                    red on committed HEAD at 4000 too
 ```
 
-So it predates #201, it is not a budget effect, and it inverts with the trajectory.
+So it predated #201, it was not a budget effect, and it inverted with the trajectory — and it is
+fixed below, which leaves **no red row at any budget on either trajectory**.
 
 ### #199's row: THE CHECK WAS WRONG THREE WAYS, AND THE ENGINE WAS FINE
 
@@ -16308,9 +16317,10 @@ growing itself from nine to twelve because its own creatures paid for it. The sy
 landed on **g3** — the first free index — which is the collision fix working, and the germline crossed
 byte-exact.
 
-`substrate-test.js`: 232 checks, 18 of them this swing's (14 for the founding layer, 2 for the
-`uaSwapVar` guard, 2 asserting a channel probe owns the medium it measures), and 232/232 at both
-budgets with founding on. `slot-test.js`: 15, five of them new, with four pre-#201 assertions rescoped
+`substrate-test.js`: 233 checks, 19 of them this swing's (14 for the founding layer, 2 for the
+`uaSwapVar` guard, 2 asserting a channel probe owns the medium it measures, and the pair that
+replaced `#199`'s mis-scoped double-insert row), at **233/233 on both trajectories at the full
+budget and at 900 ticks**. `slot-test.js`: 15, five of them new, with four pre-#201 assertions rescoped
 because they were written when the field was a fixed nine — one of them, the restore check, was
 reporting four universes as carrying the wrong genome because a grown daughter's saved tick count
 "explained" a built universe's better than its own did. `smoke.sh` gives `slot-test` 360 seconds
