@@ -65,7 +65,7 @@ const liveTicks = page => page.evaluate(async () => {
       return [s, r ? (r.totalTicks | 0) : -1]; } catch (e) { return [s, -1]; } };
   const o = [];
   for (const c of document.querySelectorAll('.cell')) o.push(await one(c.firstChild));
-  for (const d of document.querySelectorAll('#below .deep')) o.push(await one(d));
+  for (const d of document.querySelectorAll('#below .deep, #below .grown')) o.push(await one(d));
   return o;
 });
 
@@ -200,11 +200,11 @@ const liveTicks = page => page.evaluate(async () => {
   }, sentBlob);
   await p201.waitForTimeout(1500);
   const grown = await p201.evaluate(() => ({
-    slots: [...document.querySelectorAll('#below .deep')]
+    slots: [...document.querySelectorAll('#below .deep, #below .grown')]
       .map(d => (d.getAttribute('src') || '').match(/[?&]slot=(g\d+)/))
       .filter(Boolean).map(m => m[1]),
     stored: Object.keys(localStorage).filter(k => /^selection_g\d+$/.test(k)),
-    mine: (function(){ const f = [...document.querySelectorAll('#below .deep')]
+    mine: (function(){ const f = [...document.querySelectorAll('#below .deep, #below .grown')]
         .map(d => (d.getAttribute('src') || '').match(/[?&]slot=(g\d+)/)).filter(Boolean);
       return f.length === 1 ? localStorage.getItem('selection_' + f[0][1]) : null; })(),
     readout: (document.getElementById('grown') || {}).textContent || '' }));
@@ -229,7 +229,7 @@ const liveTicks = page => page.evaluate(async () => {
   let grownTicks = -9;
   for (let t = 0; t < 12; t++) {
     grownTicks = await p201.evaluate(async (want) => {
-      for (const d of document.querySelectorAll('#below .deep')) {
+      for (const d of document.querySelectorAll('#below .deep, #below .grown')) {
         if (!(d.getAttribute('src') || '').includes('slot=' + want)) continue;
         try { const a = d.contentWindow && d.contentWindow.__field; if (!a) return -1;
           const r = await Promise.race([a.stat(), new Promise(z => setTimeout(() => z(null), 4000))]);
@@ -255,7 +255,7 @@ const liveTicks = page => page.evaluate(async () => {
     .postMessage({ v: 1, tab: 'rig201b', born: 0, type: 'found', data: { g: 'QUFB', t: 1 } }); });
   await off.waitForTimeout(1000);
   const offState = await off.evaluate(() => ({
-    frames: [...document.querySelectorAll('#below .deep')]
+    frames: [...document.querySelectorAll('#below .deep, #below .grown')]
       .filter(d => /[?&]slot=g\d+/.test(d.getAttribute('src') || '')).length,
     readout: (document.getElementById('grown') || {}).textContent || '' }));
   ck('#201 #nofound adopts nothing and still counts what it heard',

@@ -107,6 +107,14 @@
      nothing anyway (#dark), so the only thing left off-screen is a canvas nobody writes to. */
   #below{position:fixed;left:-20000px;top:0;width:1px;height:1px;overflow:hidden;pointer-events:none}
   #below .deep{position:absolute;top:0}
+  /* #201 — A GROWN UNIVERSE IS NOT A LAYER FRAME, and it needs its own class to say so. It was
+     given .deep, because .deep is what "off-screen, parked in #below" looks like — and that broke
+     every DOM query that used .deep to MEAN "a layer frame". layers-test counted nineteen universes
+     underneath a two-layer cube and reported the cube broken; the rotation checks failed behind it
+     for the same reason. Same styling, different name, so #below .deep still means exactly what it
+     meant before this swing. No .face rule: a grown universe is never the face. */
+  #below .grown{position:absolute;top:0}
+  #below.front .grown{display:none}
   /* ROTATED (#167): the container comes to the front and the chosen layer's frames are laid out over
      the grid. An iframe CANNOT be reparented — moving one in the DOM reloads it, which would reboot
      that universe from storage and destroy the lineage it has been growing — so a rotation is done
@@ -470,7 +478,7 @@
     catch(e){ grownRefused++; grownSeq--; paintGrown(); return; }
     grownLast = now;
     var g = document.createElement('iframe');
-    g.className = 'deep';
+    g.className = 'grown';   // NOT 'deep' — see the CSS note; .deep means "a layer frame" to several rigs
     g.style.width = cw+'px'; g.style.height = ch+'px';
     // Parked past the layers, on the same off-screen row.
     g.style.left = ((LAYERS*total) + grown.length) * (cw+4) + 'px';
