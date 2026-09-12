@@ -1490,10 +1490,27 @@ m._compile(code+`
     // program carrying one legitimate copy. What "converges on nothing but the new opcode" actually
     // predicts is that copies PILE UP WITH RUN LENGTH - so run four times as long and see whether
     // the peak moves. It does not, and that needs no threshold anybody had to pick.
+    // THE META-MUTATION GENES ARE PINNED, and that is not tidiness - it is what makes the loop above
+    // mean anything and what stops it wrecking the blocks below.
+    //
+    // genome.mutationRate is walked by mutateGenome's own meta layer and is NOT clamped ("range is
+    // the system's to find"). Measured over 1,500 calls: 0.0601 -> -0.4086. And a NEGATIVE rate
+    // makes every Math.random()<rate test in mutateChildGenome false, so the child path stops
+    // mutating ANYTHING - 41 of 200 children moved their proxy weights before the loop and 0 after.
+    // Two consequences, both mine to fix here:
+    //   - out.cross runs after this block and measures exactly that child path. Raising this loop
+    //     from 60 calls to 1,200 froze it and turned "the proxy weights diverge" red. A block must
+    //     not change the thing a later block measures.
+    //   - the accumulation claim itself would have been hollow: "copies do not pile up between call
+    //     300 and call 1,200" is worth nothing if mutation stopped at call 400.
+    // So both genes are held at their entry values for the duration and left there. The block is
+    // testing the seeder and Pe39's transfer, not the meta-mutation walk.
+    const svRate=genome.mutationRate, svScale=genome.mutationScale;
     let germSeeded=0, popSeeded=0, maxCount=0, maxAt300=0, seedWhileHeld=0, lenAtPeak=0;
     let prevSeed=__liveness['vm.selfWriteSeed']|0;
     for(let q=0;q<1200;q++){
       const heldBefore=cnt()>0;
+      genome.mutationRate=svRate; genome.mutationScale=svScale;
       mutateGenome();
       const g=cnt(), sd=__liveness['vm.selfWriteSeed']|0;
       if(sd>prevSeed&&heldBefore)seedWhileHeld+=(sd-prevSeed);
@@ -1512,9 +1529,18 @@ m._compile(code+`
     genome.dissolutionWeight=0; genome.gradientUpstreamBias=0;
     genome.vmProgram=[[10,0,1,0.5],[11,2,3,-0.5]];
     let maxNoXfer=0;
-    for(let q=0;q<300;q++){ mutateGenome(); const g=cnt(); if(g>maxNoXfer)maxNoXfer=g; }
+    for(let q=0;q<300;q++){ genome.mutationRate=svRate; genome.mutationScale=svScale;
+      mutateGenome(); const g=cnt(); if(g>maxNoXfer)maxNoXfer=g; }
     genome.dissolutionWeight=svDw; genome.gradientUpstreamBias=svUb;
-    return {germSeeded,popSeeded,maxCount,maxAt300,lenAtPeak,maxNoXfer,seedWhileHeld};
+    genome.mutationRate=svRate; genome.mutationScale=svScale;
+    // and report what the walk WOULD have done, because it is a real finding about the engine
+    const rateFroze=(function(){ const a=genome.mutationRate;
+      for(let q=0;q<1200;q++)mutateGenome();
+      const drifted=genome.mutationRate;
+      genome.mutationRate=a; genome.mutationScale=svScale;
+      return +drifted.toFixed(4); })();
+    return {germSeeded,popSeeded,maxCount,maxAt300,lenAtPeak,maxNoXfer,seedWhileHeld,rateFroze,
+            rateKept:(genome.mutationRate===svRate)};
   });
 
   // -- uaSwapVar TERMINATES ----------------------------------------------------------------------
