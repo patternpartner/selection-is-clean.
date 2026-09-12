@@ -16106,6 +16106,54 @@ nobody had run the other two.
 WAVE 8 therefore runs a handful of times in a long run. Whether a bar that almost nothing clears is a
 selective filter or a dead end is a real question; it is named here, not answered here.
 
+### THE BUG THIS SWING ACTUALLY FOUND, and it was not #201's
+
+`substrate-test.js` at its default budget ran **four hours** on this engine without finishing. The
+same rig on the pre-#201 engine completed in about fifteen minutes, and the same rig on this engine
+with `FOUND=0` completed normally — so the first reading was that #201 had broken something. It had
+not. It had walked into a hang that every engine in this repository has carried since #188.
+
+```
+V8 --prof, 171,011 samples taken while the rig sat in mutateGenome:
+   39.4%   JS: *uaSwapVar
+   10.3%   Builtin: StringEqual
+    5.3%   Builtin: KeyedLoadIC
+```
+
+```js
+let to=from; while(to===from)to=pool[(Math.random()*pool.length)|0];
+```
+
+A rejection sampler with no exit. It terminates only if the pool contains something other than
+`from` — and **#188's channel-wiring path calls it with a pool of exactly one name**:
+
+```js
+const _nv=uaSwapVar(_pick.expression,UA_VAR_RE,[CHANNEL_NAMES[_k]]);
+```
+
+So the first time `mutateGenome` picks an atom that *already names that channel*, and the variable
+occurrence it draws is that name, `from === pool[0]` and the germline author never returns. Not a
+slow path — the engine stops. Reproduced in two lines on committed HEAD:
+
+```
+uaSwapVar('(ka)+(1.5)', UA_VAR_RE, ['ka'])
+  pre-fix engine   killed at an 8-second timeout
+  fixed engine     returns the expression unchanged, 0 ms
+```
+
+The guard keeps the rejection sampler and bounds it at 64 draws, then returns the expression
+unchanged. **Every run that used to work is bit-identical** — the draw count is unchanged whenever a
+different value exists — and the no-op return is exactly what the call site already tests for
+(`if(_nv!==_pick.expression)`). `substrate-test` now carries two checks for it.
+
+**What this says about the method, which is the part worth keeping.** Nothing #201 added is anywhere
+near `uaSwapVar`. All it did was move the trajectory, and a state #188 could always have reached
+became reachable. Thirteen swings of rigs, `smoke.sh` at 49 green, and a hang sat in the germline
+author the whole time — because **a rig that runs one trajectory tests one trajectory.** The three-seed
+runs in this entry exist for the same reason and caught the `cosmos.merge` over-claim the same way.
+The cheapest general lesson: an unbounded rejection sampler anywhere in this file is a hang waiting
+for a caller to narrow its pool, and #188 narrowed one to a single element without noticing.
+
 ### Still closed after #201
 
 `CAP` (an allocator bound, and the file already says it is not an ecological limit); the instruction
@@ -16116,5 +16164,21 @@ every other one, because BroadcastChannel is flat multicast with no peer list �
 its neighbours, and a founded daughter is born adjacent to everybody); and the fact that a universe
 cannot *end* another universe, only found one.
 
-`substrate-test.js`: 228 checks, 14 of them #201's. `slot-test.js` gains five. `smoke.sh`: 49 ok, 0
-failing.
+### And what "green" means for this rig
+
+The baseline is worth stating, because I had been quoting a single budget as if it were the suite's
+verdict. Committed HEAD, unmodified, `substrate-test.js`:
+
+```
+TICKS=900     212 passed, 2 failed    two #189 rows
+TICKS=4000    210 passed, 4 failed    those two, plus #189 wrap=1 and #199 never-double-inserted
+```
+
+Four budget-sensitive rows on HEAD, not two. So "`substrate-test` is green" has only ever meant green
+at the budget it was run at — the same caveat `CODEMAP` already records for `crossing-test` and for
+`smoke.sh`'s forty ticks. #201 adds 16 checks (14 for the founding layer, 2 for the `uaSwapVar`
+guard) and does not change which pre-existing rows are red.
+
+`substrate-test.js`: 230 checks, 16 of them this swing's. `slot-test.js` gains five and had four
+pre-#201 assertions rescoped, because they were written when the field was a fixed nine. `smoke.sh`:
+49 ok, 0 failing at forty ticks.

@@ -2506,6 +2506,30 @@ be taken *before* `attemptFound`.
 `__founds` is deliberately NOT in the genome — the daughter boots from her parent's blob and would
 otherwise be born with the budget spent — so a reload restores a world's founding budget.
 
+### uaSwapVar — AN UNBOUNDED REJECTION SAMPLER IS A HANG (fixed with #201, caused by #188)
+
+```js
+let to=from; while(to===from)to=pool[(Math.random()*pool.length)|0];   // never exits on a pool of one
+```
+
+`uaSwapVar(expr, re, pool)` drew a replacement variable by rejection and had **no exit when the pool
+cannot offer anything other than `from`**. #188's channel-wiring path in `mutateGenome` calls it with
+`[CHANNEL_NAMES[_k]]` — a pool of ONE — so an atom that already names that channel freezes the
+germline author. Not slow: stopped. Reproduce on any engine before this one with
+`uaSwapVar('(ka)+(1.5)', UA_VAR_RE, ['ka'])`.
+
+Found the expensive way: `substrate-test` at its default budget ran **four hours** on the #201 engine,
+completed normally with `FOUND=0`, and `--prof` put **39% of 171,011 samples** in this function.
+Nothing #201 added is on this path — it moved the trajectory into a state #188 could always have
+reached. **A rig that runs one trajectory tests one trajectory**, which is also how the `cosmos.merge`
+figure in the same swing got over-claimed from a single seed.
+
+The sampler is kept and bounded at 64 draws, then returns `expr` unchanged. Draw counts are unchanged
+whenever a different value exists, so every previously-working run is bit-identical, and the no-op
+return is what the call site already tests (`if(_nv!==_pick.expression)`). Two checks in
+`substrate-test`. **If you add a caller that narrows a pool, or another rejection sampler anywhere in
+this file, bound it.**
+
 ### #186 — the germline-to-population crossing, stated generally
 
 The bug the crossing rows caught for the seventh time, and the general form, because it will happen

@@ -1441,6 +1441,29 @@ m._compile(code+`
     return {germSeeded,popSeeded,germDupes};
   });
 
+  // -- uaSwapVar TERMINATES ----------------------------------------------------------------------
+  // A HANG, not a slow path, and every engine up to this one carried it. uaSwapVar drew a
+  // replacement with an unbounded rejection sampler - while(to===from) - which cannot exit when the
+  // pool has nothing else to offer, and #188's channel-wiring path calls it with a pool of exactly
+  // ONE name. So an atom that already named that channel froze the germline author.
+  //
+  // FOUND BY #201 AND CAUSED BY #188: this rig ran FOUR HOURS at its default budget on the #201
+  // engine without finishing, completed normally with FOUND=0, and the V8 profiler put 39% of all
+  // samples in uaSwapVar. Nothing #201 added is on that path - it moved the trajectory into a state
+  // #188 could always have reached. That is worth a check of its own, because the next swing to
+  // move a trajectory would have found it again the same expensive way.
+  out.swapvar=run('swapvar',()=>{
+    const ch=CHANNEL_NAMES[0];
+    const t0=Date.now();
+    // the exact shape mutateGenome produces: a one-element pool holding a name the atom already uses
+    const noop=uaSwapVar('('+ch+')+(1.5)',UA_VAR_RE,[ch]);
+    const ms=Date.now()-t0;
+    // and the cases that always worked must be untouched
+    const swapped=uaSwapVar('(kb)+(1.5)',UA_VAR_RE,[ch]);
+    let moved=0; for(let q=0;q<200;q++) if(uaSwapVar('(ka)*(kb)')!=='(ka)*(kb)')moved++;
+    return {noop:(noop==='('+ch+')+(1.5)'), ms, swapped, swapOk:(swapped==='('+ch+')+(1.5)'), moved};
+  });
+
   // -- #200  THE WORKING MEMORY, AND WHAT COUNTS AS A LEVEL ---------------------------------------
   out.regs=run('regs',()=>{
     // 1. THE MASK IS THE MECHANISM. At regCount=3 the source fields 0,3,6,9 must ALIAS onto one
@@ -2335,6 +2358,14 @@ ck('every new gene has a census row', CR.rows && CR.rows.length===0,
 // STRANDED and made crossing-test red for something that is not a defect. It is logged per epoch now.
 ck('#187 probe.promoted is NOT a crossing row', CR.promotedNotACrossingRow===true,
    'an earned outcome cannot be stranded — probe.bank already answers the crossing question');
+
+// uaSwapVar termination — a pre-existing hang (#188) that #201's trajectory reached
+const SWV=r.swapvar||{};
+ck('uaSwapVar TERMINATES when the pool cannot offer anything else',
+   SWV.noop===true && SWV.ms!==undefined && SWV.ms<1000,
+   'returned unchanged in '+SWV.ms+'ms. On every engine before this one the same call NEVER RETURNS: while(to===from) is a rejection sampler with no exit, and #188 calls it with a one-element pool, so an atom already naming that channel freezes the germline author. Found by #201 (four hours in substrate-test, 39% of profiler samples here), caused by #188');
+ck('uaSwapVar still swaps when the pool CAN offer something', SWV.swapOk===true && SWV.moved===200,
+   SWV.swapped+', and '+SWV.moved+'/200 default-pool draws moved — the guard draws exactly as before whenever a different value exists, so every run that used to work is bit-identical');
 
 // #201
 const FD=r.found||{};

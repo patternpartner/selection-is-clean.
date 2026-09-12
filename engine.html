@@ -2840,7 +2840,27 @@ function uaSwapVar(expr,re,pool){
   if(!matches||!matches.length)return expr;
   const pick=Math.floor(Math.random()*matches.length);
   const from=matches[pick];
-  let to=from; while(to===from)to=pool[(Math.random()*pool.length)|0];
+  // BOUNDED, AND IT WAS NOT. This read `while(to===from)to=pool[...]` - a rejection sampler with no
+  // exit when the pool cannot offer anything else, i.e. AN INFINITE LOOP, and one that #188 made
+  // reachable by construction: the channel-wiring path in mutateGenome calls this with a pool of
+  // exactly ONE name (`[CHANNEL_NAMES[_k]]`), so the moment it picks an atom that ALREADY names
+  // that channel, and the occurrence it draws IS that name, the engine stops responding. Not a
+  // slow path - a hang, inside mutateGenome, inside the germline author.
+  //
+  // FOUND BY #201, CAUSED BY #188. substrate-test at its default budget ran 4 HOURS without
+  // finishing on the #201 engine and completed normally with FOUND=0; the V8 profiler put 39% of
+  // all samples in this function and 10% in StringEqual. Nothing #201 added is on this path - it
+  // moved the trajectory into a state #188 could always have reached, which is the whole argument
+  // for why a rig that only runs one trajectory is not evidence of much. Every engine before this
+  // one carries the same loop.
+  //
+  // The guard draws EXACTLY as before whenever a different value exists, so every run that used to
+  // work is bit-identical; it only stops drawing when the pool has nothing else to give, and then
+  // returns the expression unchanged - a no-op mutation, which is precisely what the call sites
+  // already test for (`if(_nv!==_pick.expression)`).
+  let to=from, guard=0;
+  while(to===from&&guard++<64)to=pool[(Math.random()*pool.length)|0];
+  if(to===from)return expr;
   let seen=-1;
   return expr.replace(re,m=>(++seen===pick?to:m));
 }

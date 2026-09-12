@@ -81,10 +81,24 @@ const liveTicks = page => page.evaluate(async () => {
   await page.goto(base + '/#layers=0', { waitUntil: 'load' });
   await page.waitForTimeout(WARM * 1000);
 
+  // #201 — THE FIELD IS NO LONGER A FIXED NINE, and every count below had to learn that. During
+  // the warm-up the nine universes found real peers of their own, on their own, and the shell
+  // adopts them: this rig has seen the page come back with twelve. So "built" and "grown" are
+  // separated here, and every pre-#201 assertion is scoped to the BUILT nine — which is what each
+  // of them was always about. The grown ones are reported rather than asserted on, because how
+  // many appear in 150 seconds is a fact about the machine's speed, and this rig's own history is
+  // a list of assertions that named a number the machine picked.
+  const BUILT = x => /^(u\d+|collective)$/.test(x);
+  const GROWN = x => /^g\d+$/.test(x);
   const before = await liveTicks(page);
-  ck('the field is running', before.filter(x => x[1] > 0).length === 9, before.filter(x => x[1] > 0).length + '/9');
-  ck('every universe was given its own slot name',
-     before.every(x => /^(u\d+|collective)$/.test(x[0])), before.map(x => x[0]).join(' '));
+  const builtBefore = before.filter(x => BUILT(x[0]));
+  const grownBefore = before.filter(x => GROWN(x[0]));
+  ck('the field is running', builtBefore.filter(x => x[1] > 0).length === 9,
+     builtBefore.filter(x => x[1] > 0).length + '/9 built' +
+     (grownBefore.length ? (', and the field GREW ' + grownBefore.length + ' more on its own: ' +
+       grownBefore.map(x => x[0] + '(' + x[1] + ')').join(' ')) : ', none grown in this window'));
+  ck('every universe has its own slot name, built or grown',
+     before.every(x => BUILT(x[0]) || GROWN(x[0])), before.map(x => x[0]).join(' '));
 
   // WHAT IS UNDER TEST is that a saved universe comes back as ITSELF — not that all nine manage to
   // save inside the rig's window. The engine's first autosave is at tick 1800, so how many have
@@ -94,13 +108,22 @@ const liveTicks = page => page.evaluate(async () => {
   // system picked. So: the keys must be PER-SLOT and never the shared one, a healthy majority must
   // have saved (a field where nothing persists is still a failure), and the restore check below
   // judges only the ones that actually had something to restore.
-  const saved = await savedSlots(page);
+  const savedAll = await savedSlots(page);
+  // Scoped to the built universes. A grown one has not been RESTORED from anything — it was
+  // founded — so it does not belong in a check about whether a save round-trips, and leaving it in
+  // broke that check in two ways at once: it added candidate T values to the nearest-match test
+  // (a daughter saved at T2880 "explained" u1's 2877 better than u1's own T2700 did, and four
+  // universes were reported as carrying the wrong genome), and it put keys in the count that have
+  // no frame to come back in.
+  const saved = {}; for (const k of Object.keys(savedAll)) if (BUILT(k)) saved[k] = savedAll[k];
+  const grownSaved = Object.keys(savedAll).filter(GROWN);
   const keys = Object.keys(saved);
   const names = before.map(x => x[0]);
   ck('every key written is a per-universe slot, never the shared one',
      keys.length > 0 && !('genome' in saved) && keys.every(k => names.indexOf(k) >= 0),
      keys.sort().join(' '));
-  ck('most of the field got far enough to save', keys.length >= 5, keys.length + '/9 saved');
+  ck('most of the field got far enough to save', keys.length >= 5,
+     keys.length + '/9 built saved' + (grownSaved.length ? (', plus ' + grownSaved.length + ' grown: ' + grownSaved.join(' ')) : ''));
   // THE SAME FAILURE SHAPE THE COMMENT ABOVE NAMES, in the check right next to it. This asked whether
   // the nine saved T values differed - and T only moves every 900 ticks, so it was asking whether the
   // nine tabs happened to land on DIFFERENT autosave boundaries, which is a fact about how the machine
@@ -120,7 +143,7 @@ const liveTicks = page => page.evaluate(async () => {
 
   let own = 0, wrong = 0, unsaved = 0;
   const detail = [];
-  for (const [slot, t] of after) {
+  for (const [slot, t] of after.filter(x => BUILT(x[0]))) {
     // savedSlots now returns {T, fp, n} per slot rather than a bare T (see the check above), so this
     // reads .T. It compared the object directly for one commit and every slot came back "WRONG" with
     // [object Object] in the diagnostic - a reminder that changing a helper's return shape is a change

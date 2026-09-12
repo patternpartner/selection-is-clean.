@@ -445,7 +445,22 @@
     // blob that does not fit is refused here rather than half-written.
     if (typeof blob!=='string' || !blob.length || blob.length>FOUND_BLOB_MAX){ grownRefused++; paintGrown(); return; }
     if (!/^[\x20-\x7E]*$/.test(blob)){ grownRefused++; paintGrown(); return; }
-    var slot = 'g' + (grownSeq++);
+    // THE FIRST FREE INDEX, SCANNED AT ADOPTION TIME, not a per-page counter. A counter is what this
+    // line was, and slot-test caught what that costs: two shells on the same origin — two tabs of
+    // the field, or the same tab before and after a reload — both start at zero, both name their
+    // first daughter g0, and the second WRITES OVER the first daughter's lineage. That is #170's
+    // bug exactly ("every universe boots as a copy of whichever one autosaved last"), reintroduced
+    // one level up by the mechanism that creates universes. Measured in the rig: g0 came back
+    // holding 300 ticks where a daughter founded two minutes earlier should have held thousands.
+    // An index is never reused once taken, even if that universe's frame is gone, because reusing
+    // it would hand a new daughter somebody else's germline — which is the same harm again.
+    var slot = null;
+    for (var gi = 0; gi < 4096; gi++) {
+      try { if (localStorage.getItem('selection_g' + gi) === null) { slot = 'g' + gi; break; } }
+      catch (e) { break; }
+    }
+    if (slot === null) { grownRefused++; paintGrown(); return; }
+    grownSeq++;
     // STORE FIRST, FRAME SECOND. A frame created against a slot with nothing in it falls back to the
     // shared 'selection_genome' key (universe.html's first-boot migration) and would boot from
     // whichever universe autosaved last — a daughter that is not its founder's daughter, silently.
