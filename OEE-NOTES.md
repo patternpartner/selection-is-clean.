@@ -16212,3 +16212,29 @@ because they were written when the field was a fixed nine — one of them, the r
 reporting four universes as carrying the wrong genome because a grown daughter's saved tick count
 "explained" a built universe's better than its own did. `smoke.sh` gives `slot-test` 360 seconds
 instead of 180, because the rig outgrew the timeout and was being killed and reported as broken.
+
+### And the suite was NOT green when I first said it was
+
+I wrote "49 ok, 0 failing" into this entry before running it. It came back **47 ok, 2 failing**, and
+one of the two was a real defect of mine that no headless rig could have caught:
+
+```
+layers-test.js
+  FAIL  two layers of nine run underneath        19
+  FAIL  every universe underneath is ticking     19/18
+  FAIL  the face that came up is the one now running
+  FAIL  NO universe was rebooted by a rotation
+```
+
+#201 gave a grown frame `className='deep'`, because `.deep` is what "off-screen, parked in `#below`"
+looks like in this file. But **several rigs use `.deep` to MEAN "a layer frame"** — so a nineteenth
+universe appeared underneath a two-layer cube, the cube was reported broken, and three rotation
+checks failed behind the count. One class carrying two meanings, and I only saw the one I wanted.
+Grown frames have their own class now, identical styling, and `#below .deep` means what it meant
+before this swing. `layers-test`: 49 passed, 0 failed.
+
+The other, `collective-test`'s `saveActuallySaves`, passed on a re-run (`tap-to-save ->
+selection_gen0_t349.json`) with 14 of its 15 siblings having passed in the failing run too. It is a
+real-touch-tap-produces-a-file check and the failing run was under full-suite load with four other
+jobs on four cores. Timing, on the evidence — though one passing re-run is evidence and not proof,
+and it is written down here rather than waved away.
