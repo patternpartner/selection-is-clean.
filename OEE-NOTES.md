@@ -16167,19 +16167,36 @@ cannot *end* another universe, only found one.
 ### And what "green" means for this rig
 
 I had been quoting a single budget as if it were the suite's verdict, so here is the whole matrix.
-Same rig, 230 checks, `TICKS=4000` unless stated:
+`TICKS=4000` unless stated:
 
 ```
-pre-#201 engine (278bcc9)          210 passed,  4 failed
-#201 engine, FOUND=0  (control)    226 passed,  4 failed   <- the SAME four rows
-#201 engine, FOUND=1               224 passed,  6 failed
-#201 engine, FOUND=1, TICKS=900    228 passed,  2 failed
+                                        checks  passed  failed
+pre-#201 engine (278bcc9)                  230     210       4
+#201 engine, FOUND=0  (control)            230     226       4   <- the SAME four rows
+#201 engine, FOUND=1                       230     224       6
+#201 engine, FOUND=1, TICKS=900            230     228       2
+--- after the out.chan / out.form fix below ---
+#201 engine, FOUND=1                       232     232       0
+#201 engine, FOUND=1, TICKS=900            232     232       0
+#201 engine, FOUND=0  (control)            232     231       1
 ```
 
-**Four budget-sensitive rows on committed HEAD, not two.** At 900 ticks two `#189` rows fail; at 4,000
-those two plus `#189 wrap=1` and `#199 never-double-inserted`. So "`substrate-test` is green" has only
-ever meant green at the budget it was run at — the caveat `CODEMAP` already records for
-`crossing-test` and for `smoke.sh`'s forty ticks.
+**And "four budget-sensitive rows on HEAD" was wrong**, which is worth leaving on the record because I
+built a caveat on it. Three of those four were not budget-sensitive at all — they were the
+measuring-somebody-else's-chemistry defect fixed below, and a longer run only made a carrier more
+likely to exist. What is left is **exactly one** genuinely trajectory-dependent row:
+
+```
+#199 and never double-inserted     FOUND=0 @4000: 46 programs took a second copy
+                                   FOUND=1 @4000: passes
+                                   red on committed HEAD at 4000 too
+```
+
+So it predates #201, it is not a budget effect, and it inverts with the trajectory — which makes it
+the same class as the two defects this swing already paid for and the obvious next thing to look at.
+Named, not repaired here. "`substrate-test` is green" still means green at the budget AND trajectory
+it was run at, which is the caveat `CODEMAP` records for `crossing-test` and for `smoke.sh`'s forty
+ticks — it is just no longer hiding three real bugs.
 
 **And three rows were trajectory-dependent, which the control established.** With founding on,
 `#188 Laplacian`, `#189 seeded-form-diffuses` and `#189 offset-stencil-advects` failed while
@@ -16200,8 +16217,10 @@ the run, and these two are eleventh and thirteenth of thirty-six, with `out.gov`
 The result is larger than the three rows the control had identified:
 
 ```
-TICKS=900, before   228 passed, 2 failed    #189 signed-stencil, #189 cadence
-TICKS=900, after    232 passed, 0 failed
+TICKS=900,  before   228 passed, 2 failed    #189 signed-stencil, #189 cadence
+TICKS=900,  after    232 passed, 0 failed
+TICKS=4000, before   224 passed, 6 failed
+TICKS=4000, after    232 passed, 0 failed    <- the budget where all six were red
 ```
 
 **Three of the six repaired rows were red on committed HEAD at EVERY budget** — `wrap=1 makes it a
@@ -16235,12 +16254,15 @@ growing itself from nine to twelve because its own creatures paid for it. The sy
 landed on **g3** — the first free index — which is the collision fix working, and the germline crossed
 byte-exact.
 
-`substrate-test.js`: 230 checks, 16 of them this swing's (14 for the founding layer, 2 for the
-`uaSwapVar` guard). `slot-test.js`: 15, five of them new, with four pre-#201 assertions rescoped
+`substrate-test.js`: 232 checks, 18 of them this swing's (14 for the founding layer, 2 for the
+`uaSwapVar` guard, 2 asserting a channel probe owns the medium it measures), and 232/232 at both
+budgets with founding on. `slot-test.js`: 15, five of them new, with four pre-#201 assertions rescoped
 because they were written when the field was a fixed nine — one of them, the restore check, was
 reporting four universes as carrying the wrong genome because a grown daughter's saved tick count
 "explained" a built universe's better than its own did. `smoke.sh` gives `slot-test` 360 seconds
 instead of 180, because the rig outgrew the timeout and was being killed and reported as broken.
+Closing suite run, nothing else competing: **49 ok, 0 failing** — measured this time, after the two
+it caught (below) were fixed.
 
 ### And the suite was NOT green when I first said it was
 
