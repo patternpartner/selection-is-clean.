@@ -15648,3 +15648,120 @@ continuous space and the position→cell map (the warp bends a medium's adjacenc
 position to a cell); and one world per tab.
 
 `substrate-test.js`: 192 checks, 17 of them #198's. `smoke.sh`: 49 ok, 0 failing.
+
+## #199 — THE PROGRAM CAN REVISE ITSELF, and the kernel was far more open than the brief assumed
+
+The brief said the interpreter's fundamental verbs are a human-written list and that without opening
+them "the system can invent new chemistries and new geometries of action, but it cannot invent new
+kinds of computation." I went to check before designing. What already existed:
+
+| capability | where |
+|---|---|
+| authored **register→register** operations | bound opcodes call `uaChain(atom, slot, vmRegs[si], vmRegs[(si+1)%12])` and write `vmRegs[di]` |
+| authored sensing primitives | #184 probes `pa..pd`, #188 channels `ka..kd`, #174 voices `ya..yh` |
+| authored binary operators | #180 `qa..qh` |
+| conditional execution | op229 `PROB_SKIP` — and its `clamp(vmRegs[si]*k, 0, 1)` **saturates**, so driving the product past 1 or below 0 is a deterministic branch |
+| self-inspection of own code | op223 `GENOME_OP_AT`, op224 `GENOME_K_AT` |
+| self-extension | op144 `PROG_GROW` appends a drifted copy of an instruction |
+| program-level horizontal transfer | op179 `HGT_DONATE`, op225 `PROG_LATERAL_COPY` |
+
+**My first design premise was simply false.** I had planned to "let authored expressions read the
+register file" — they already do; a bound atom is a register transformation, not a sense leaf. Had I
+built on that premise I would have shipped a feature that already existed and written a note claiming
+an opening.
+
+So "a human-written list" was true of the *list* and not of what a lineage can compute with it. What
+is genuinely closed is narrower and sharper:
+
+> **Every self-modification is APPEND, WHOLE-REPLACE, or DONATE-TO-ANOTHER. Nothing can EDIT
+> instruction N of its own program in place. The only editor of existing code is `inheritProg`'s
+> random birth mutation — which is MY mutation operator, not the lineage's.**
+
+That is the same shape as #197. The prices were mine until the world could propose them; the code
+editor was mine until a program could revise itself. A lineage that can write one field of one
+instruction can author its own revision policy — read an opcode with op223, decide, write it back —
+which is within-lifetime learning by code revision, and a mutation operator under selection rather
+than one I chose.
+
+### Opcode 429, and why not 237
+
+Adding a core opcode means incrementing `CORE_OPCODES`, and the bound-opcode base *is*
+`CORE_OPCODES` — so every bound slot in every saved genome would re-aim by one. That is #137's
+defect, the one this file keeps a census row for, arriving silently in every load.
+
+So `OP_SELFWRITE = CORE_OPCODES + MAX_BOUND_OPCODES = 429`, which `netMaxOpcode()` already returns,
+which `validInstruction` already admits, and which **today falls through every dispatch as an inert
+no-op**. Nothing moves; a previously dead address wakes up. It is written as `237+192` literals on
+purpose so that a moved constant is a red build rather than a silent slide onto a live opcode, and the
+rig asserts it equals `CORE_OPCODES+MAX_BOUND_OPCODES`.
+
+### The safety rail that is a guarantee rather than a hope
+
+One field of one instruction, masked so **nothing illegal can be constructed** — the same guarantee
+`validInstruction` gives the wire:
+
+```
+4,000 fuzzed calls — NaN, ±Infinity, ±1e9, absurd indices and fields
+  4,000 writes landed
+      0 rows failed validInstruction
+      0 calls touched more than one instruction
+      0 changed the program's length
+```
+
+That is what makes "lightest viability tax" safe to actually mean. The tax is amplitude
+(`SELFWRITE_COST`, **a law** since #197, so the world can propose what self-revision costs) and the
+filter is whether the rewritten program still works — not a validity check I own.
+
+No growth: the index is taken modulo the program's own length. op144 is already the extender and its
+cap is the evolved `vmMaxInstructions`; two mechanisms growing one array by different rules is how a
+cap stops meaning anything.
+
+### Wired at three sites, and deliberately not a fourth
+
+Both dispatch paths in `executeVM` and the one in `executeSoloVM` — a particle that could only revise
+itself when it happened to have a partner would be an arbitrary restriction. **Not** the cluster VM: a
+cluster program writing `pProg[i]` would be a cluster editing a *member's* code, which is a different
+mechanism with a different owner.
+
+### Reachability, because #179 is the reason this gets a seeding line
+
+429 is one address in 430. #179 measured opcode 236 in **zero of 1,424 live instructions** across
+seventeen universes when left to the mutation draw. Left alone this would have been measured as dead
+and I would have written "the program can revise itself" about a capability no program ever addressed.
+So it is spliced at a floor rate into the germline program and into one living particle — #132's route
+for verb birth, #179's for `EFFECT_EMIT` — and never double-inserted, which is #179's third check and
+the reason every program does not converge on nothing but the new opcode.
+
+### Live
+
+```
+12,000 ticks, SELFWRITE off -> on
+  vm.selfWrite            —  ->  2,410 / 8,297      instructions rewritten by the programs running them
+  vm.selfWriteRefused     —  ->  25 / 437           the cost gate biting
+  vm.selfWriteSeed        —  ->  1 / 2
+  alive    253  ->  186 / 212
+  fitness  0.616 -> 0.681 / 0.651
+  nothing stranded, save round-trips, 0 extinctions
+```
+
+Thousands of self-revisions per run. And **fitness is up in both seeds** — the first layer in this arc
+where the measured direction is positive on both. I am not claiming that as a result: n = 2, the
+populations are smaller, and a smaller fitter population is exactly what you would also see from a
+mechanism that culls the unlucky. It is the first thing in nine swings worth running a proper arm on.
+
+### What this does NOT show
+
+That any lineage evolved a *useful* revision policy. `vm.selfWrite` counts writes, not writes that
+helped. A program rewriting its own instructions at random is a program mutating itself, which is
+what `inheritProg` already did — the difference is that the *policy* is now addressable by evolved
+code, and nothing here demonstrates that any lineage has found a policy rather than noise. The
+measurement that would show it is a lineage whose written field correlates with its own op223 reads,
+and that is not in this swing.
+
+### Still closed after #199
+
+`CAP`; the four organisational levels (particle → cluster → tower → forest are authored, and #182 gave
+them credit channels rather than membership); the particles' own continuous space and the
+position→cell map; the register file's size and the instruction format's arity; and one world per tab.
+
+`substrate-test.js`: 203 checks, 11 of them #199's. `smoke.sh`: 49 ok, 0 failing.

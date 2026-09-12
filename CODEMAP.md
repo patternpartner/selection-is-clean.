@@ -2354,6 +2354,52 @@ Rent: `CHANNEL_WARP_RENT` per warped medium, scaled by the same cell count #194 
 by, and it is a LAW (#197) rather than a constant — #198 is the first layer built after the brakes
 became evolvable, so its price is the first one the system can argue with.
 
+### #199 — the program can revise itself (opcode 429)
+
+**READ THIS BEFORE ADDING A CORE OPCODE.** `OP_SELFWRITE = 237+192 = 429`, i.e.
+`CORE_OPCODES + MAX_BOUND_OPCODES`, and it is NOT a new core opcode on purpose. Incrementing
+`CORE_OPCODES` shifts the bound-opcode base, so every bound slot in every saved genome re-aims by one
+— #137's defect arriving silently in every load. 429 is already returned by `netMaxOpcode()`, already
+admitted by `validInstruction`, and until #199 fell through every dispatch as an inert no-op. The
+constant is written as literals so a moved `CORE_OPCODES` is a red build (`substrate-test` asserts
+the identity) rather than a silent slide onto a live opcode.
+
+**WHAT WAS ACTUALLY CLOSED, because the kernel is far more open than it looks.** Before writing
+anything: bound opcodes already call `uaChain(atom, slot, vmRegs[si], vmRegs[(si+1)%12])` and write
+`vmRegs[di]`, so authored expressions are ALREADY register→register transformations, not sense
+leaves; op229 `PROB_SKIP`'s clamp saturates, so a deterministic branch is already reachable; op223/224
+read own code; op144 appends to it; op179/225 move it between particles. The one thing missing was an
+EDIT of an existing instruction — so the only editor of existing code was `inheritProg`'s random birth
+mutation, which is the author's operator and not the lineage's. Same shape as #197: the prices were
+mine until the world could propose them.
+
+**THE MASK IS THE SAFETY RAIL AND IT IS A GUARANTEE.** `vmSelfWrite` writes ONE field of ONE
+instruction: op → `[0, netMaxOpcode()]`, src/dst → `[0,11]`, k → ±2 (PROG_GROW's bound). Checked with
+4,000 fuzzed calls (NaN, ±Infinity, ±1e9, absurd indices) — 0 rows fail `validInstruction`, 0 calls
+touch more than one row, 0 change the length. A program cannot write itself into a state the VM
+cannot run, which is what lets the viability tax be amplitude rather than a validity check.
+**NO GROWTH**: the index is modulo the program's own length. op144 is the extender and its cap is the
+evolved `vmMaxInstructions`; two mechanisms growing one array by different rules is how a cap stops
+meaning anything.
+
+Operands come from the instruction format as it is: `vmRegs[si]` = target index, `vmRegs[(si+1)%12]` =
+value, `|k| mod 4` = field, `vmRegs[di]` ← 1/0. Cramped, but widening the format would change every
+saved program's row shape. The op field is written as `|v|*64` because a register holds a small number
+and the opcode space is 430 wide.
+
+**WIRED AT THREE SITES, NOT FOUR.** Both `executeVM` paths and `executeSoloVM` — a particle that could
+only revise itself when it had a partner would be arbitrary. NOT `executeClusterVM`: a cluster program
+writing `pProg[i]` is a cluster editing a MEMBER's code, a different mechanism with a different owner.
+
+**IT IS SEEDED, for #179's reason.** 429 is one address in 430, and #179 measured opcode 236 in zero
+of 1,424 live instructions when left to the draw. `mutateGenome` splices it into the germline program
+and into one living particle at a floor rate, and skips programs that already carry it (#179's third
+check — without it every program converges on the new opcode). Live: `vm.selfWrite` 2,410 / 8,297 per
+12,000 ticks.
+
+`SELFWRITE_COST` is a LAW (#197), so the world can propose what self-revision costs. Knob `SELFWRITE`;
+off, 429 is the inert no-op it has been for every program ever run.
+
 ### #186 — the germline-to-population crossing, stated generally
 
 The bug the crossing rows caught for the seventh time, and the general form, because it will happen

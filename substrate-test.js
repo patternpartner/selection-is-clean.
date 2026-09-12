@@ -1333,6 +1333,114 @@ m._compile(code+`
             row:cen.rows.some(x=>x.name==='channel.warp')};
   });
 
+  // -- #199  THE PROGRAM CAN REVISE ITSELF --------------------------------------------------------
+  // Every self-modification this VM had was APPEND (op144), WHOLE-REPLACE (op225) or
+  // DONATE-TO-ANOTHER (op179). Nothing could edit instruction N of its own program, so the only
+  // editor of existing code was inheritProg's random birth mutation - the author's operator, not the
+  // lineage's. These check the three things that would make opening that unsafe rather than merely
+  // new: an opcode that collides with a live one, a write that can construct an instruction the VM
+  // cannot run, and an address nothing ever reaches.
+  out.selfwrite=run('selfwrite',()=>{
+    // 1. THE ADDRESS. The comment at OP_SELFWRITE says 237+192 is written as literals so a moved
+    //    constant is a red build rather than a silent slide into a live opcode. This is that check.
+    const addr={op:OP_SELFWRITE, derived:CORE_OPCODES+MAX_BOUND_OPCODES,
+                aboveBound:OP_SELFWRITE>=CORE_OPCODES+MAX_BOUND_OPCODES,
+                wireAdmits:validInstruction([OP_SELFWRITE,0,1,0.5]),
+                netMax:netMaxOpcode()};
+
+    // a live particle with amplitude to spend, and a program of known shape
+    let pi=-1; for(let q=0;q<N;q++) if(palive[q]){pi=q;break;}
+    const mkProg=()=>[[10,0,1,0.5],[11,2,3,-0.5],[12,4,5,1.0],[OP_SELFWRITE,6,7,0.25]];
+
+    // 2. EACH FIELD IS WRITABLE AND MASKED. Called directly, which is the honest unit - the
+    //    end-to-end dispatch is checked separately below.
+    const fieldTest=(field,val)=>{ const pr=mkProg(); amp[pi]=2;
+      const okv=vmSelfWrite(pi,pr,pr.length,1,val,field);
+      return {ok:okv,row:pr[1].slice(0,4)}; };
+    const fOp=fieldTest(0,0.5), fSrc=fieldTest(1,7.2), fDst=fieldTest(2,9.8), fK=fieldTest(3,1.4);
+
+    // 3. NOTHING ILLEGAL CAN BE CONSTRUCTED. This is the check that matters: fuzz the value and the
+    //    field hard and assert validInstruction over every row afterwards. The guarantee has to be
+    //    the same one the WIRE gets, or a program can write itself into a state the VM cannot run and
+    //    the failure surfaces somewhere unrelated.
+    let illegal=0, lenChanged=0, wrote=0;
+    for(let q=0;q<4000;q++){
+      const pr=mkProg(); const n0=pr.length; amp[pi]=2;
+      const vals=[1e9,-1e9,NaN,Infinity,-Infinity,0,1e-9,-3.7,12345.678,1/3];
+      const v=vals[(Math.random()*vals.length)|0]*(Math.random()<0.5?1:-1);
+      wrote+=vmSelfWrite(pi,pr,pr.length,Math.random()*1e6-5e5,v,Math.random()*1e6);
+      if(pr.length!==n0)lenChanged++;
+      for(const row of pr) if(!validInstruction(row))illegal++;
+    }
+
+    // 4. THE TARGET WRAPS INTO THE PROGRAM'S OWN LENGTH. An index of a million must not reach past
+    //    the end, and a negative one must not reach before the start.
+    let outside=0;
+    for(let q=0;q<800;q++){
+      const pr=mkProg(); amp[pi]=2;
+      const before=pr.map(r=>r.slice(0,4));
+      vmSelfWrite(pi,pr,pr.length,(Math.random()-0.5)*1e7,0.5,0);
+      let touched=0; for(let z=0;z<pr.length;z++) if(pr[z].join()!==before[z].join())touched++;
+      if(touched>1)outside++;
+    }
+
+    // 5. NO GROWTH. op144 is the extender and its cap is the evolved vmMaxInstructions; two
+    //    mechanisms growing the same array by different rules is how a cap stops meaning anything.
+    const growProg=mkProg(); amp[pi]=50;
+    for(let q=0;q<500;q++)vmSelfWrite(pi,growProg,growProg.length,q,0.4,q%4);
+    const noGrowth=(growProg.length===4);
+
+    // 6. THE COST IS PAID, AND AN EXHAUSTED PARTICLE IS REFUSED
+    const pr6=mkProg(); amp[pi]=1.0;
+    const a0=amp[pi]; vmSelfWrite(pi,pr6,pr6.length,0,0.5,3); const paid=+(a0-amp[pi]).toFixed(5);
+    amp[pi]=SELFWRITE_COST*0.5;
+    const r0=__selfWriteRefused;
+    const brokeOk=vmSelfWrite(pi,pr6,pr6.length,0,0.5,3)===0 && __selfWriteRefused>r0;
+    amp[pi]=2;
+
+    // 7. END TO END THROUGH THE DISPATCH. The unit above proves the helper; this proves the opcode
+    //    is wired to it, which is the half #179 found missing for EFFECT_EMIT.
+    const svProg=pProg[pi];
+    pProg[pi]=[[OP_SELFWRITE,0,1,0.75],[10,2,3,0.5]];
+    const w0=__selfWrites;
+    const svg=genome; genome=pGenome[pi]||genome;
+    try{ for(let q=0;q<40;q++) executeSoloVM(); }catch(e){}
+    finally{ genome=svg; }
+    const endToEnd=__selfWrites>w0;
+    pProg[pi]=svProg;
+
+    // 8. THE KNOB
+    const svs=__SELFWRITE; __SELFWRITE=false;
+    const prOff=mkProg(); amp[pi]=2;
+    const offRefused=vmSelfWrite(pi,prOff,prOff.length,1,0.5,0)===0 &&
+                     prOff[1].join()===[11,2,3,-0.5].join();
+    __SELFWRITE=svs;
+
+    // 9. AND THE COST IS A LAW (#197), not a constant
+    const isLaw=LAW_DECLARED.some(r=>r.name==='SELFWRITE_COST');
+
+    return {addr,fOp,fSrc,fDst,fK,illegal,lenChanged,wrote,outside,noGrowth,
+            paid,cost:SELFWRITE_COST,brokeOk,endToEnd,offRefused,isLaw};
+  });
+
+  out.selfwriteReach=run('selfwriteReach',()=>{
+    // #179's lesson is the whole reason this block exists: 429 is one address in 430, so left to
+    // mutation it would be measured as dead. The seeding must put it in the germline program AND in
+    // a living particle, and must not double-insert.
+    genome.vmProgram=[[10,0,1,0.5],[11,2,3,-0.5]];
+    for(let q=0;q<N;q++) if(palive[q]&&pProg[q])pProg[q]=[[10,0,1,0.5]];
+    let germSeeded=0, popSeeded=0, germDupes=0;
+    for(let q=0;q<60;q++){
+      mutateGenome();
+      const g=(genome.vmProgram||[]).filter(r=>r&&(r[0]|0)===OP_SELFWRITE).length;
+      if(g>0)germSeeded=1;
+      if(g>1)germDupes++;
+    }
+    for(let q=0;q<N;q++){ const pp=pProg[q];
+      if(palive[q]&&pp&&pp.some(r=>r&&(r[0]|0)===OP_SELFWRITE))popSeeded++; }
+    return {germSeeded,popSeeded,germDupes};
+  });
+
   // ── THE CROSSINGS: every new gene must survive a save and diverge in a child ────────────────
   out.cross=run('cross',()=>{
     genome.uaFoldMode=2; genome.uaFoldK=3.25; genome.autonomyCede=0.8;
@@ -1878,6 +1986,40 @@ ck('#198 the wire carries it, rejects garbage, and still accepts a pre-#198 peer
    WX.wireOk===true && WX.wireBad===true && WX.wireAbsent===true,
    'good '+WX.wireOk+', rejects '+WX.wireBad+', absent-is-legal '+WX.wireAbsent);
 ck('#198 and it has a census row', WX.row===true);
+
+// #199
+const SW=r.selfwrite||{};
+const AD=SW.addr||{};
+ck('#199 the opcode is 429 and has not drifted into a live one',
+   AD.op===AD.derived && AD.op===429 && AD.wireAdmits===true,
+   'OP_SELFWRITE = '+AD.op+', CORE_OPCODES+MAX_BOUND_OPCODES = '+AD.derived+', netMaxOpcode = '+AD.netMax+
+   ' — written as literals so a moved constant is a red build rather than a silent slide onto a live opcode, because incrementing CORE_OPCODES would re-aim every bound slot in every saved genome (#137)');
+ck('#199 each instruction field is writable', SW.fOp && SW.fSrc && SW.fDst && SW.fK &&
+   SW.fOp.ok===1 && SW.fSrc.ok===1 && SW.fDst.ok===1 && SW.fK.ok===1,
+   'op -> '+JSON.stringify(SW.fOp&&SW.fOp.row)+', src -> '+JSON.stringify(SW.fSrc&&SW.fSrc.row)+
+   ', dst -> '+JSON.stringify(SW.fDst&&SW.fDst.row)+', k -> '+JSON.stringify(SW.fK&&SW.fK.row));
+ck('#199 NOTHING ILLEGAL CAN BE CONSTRUCTED', SW.illegal===0 && SW.wrote>0,
+   SW.wrote+' writes from 4,000 fuzzed calls (NaN, +/-Infinity, +/-1e9, absurd indices and fields) and '+
+   SW.illegal+' rows failed validInstruction — the guarantee has to be the WIRE\'s guarantee, or a program writes itself into a state the VM cannot run and the failure surfaces somewhere unrelated');
+ck('#199 a write touches exactly one instruction', SW.outside===0 && SW.lenChanged===0,
+   SW.outside+' calls touched more than one row, '+SW.lenChanged+' changed the length');
+ck('#199 and it never grows the program', SW.noGrowth===true,
+   '500 writes leave the length at 4 — op144 is the extender and its cap is the evolved vmMaxInstructions; two mechanisms growing one array by different rules is how a cap stops meaning anything');
+ck('#199 the write is paid for, and an exhausted particle is refused',
+   Math.abs(SW.paid-SW.cost)<1e-6 && SW.brokeOk===true,
+   'SELFWRITE_COST = '+SW.cost+' amplitude, charged '+SW.paid+', and a particle below it is refused');
+ck('#199 END TO END: the opcode is actually wired to the helper', SW.endToEnd===true,
+   'the unit checks prove the helper; this proves the dispatch — which is the half #179 found missing for EFFECT_EMIT across 1,424 live instructions');
+ck('#199 SELFWRITE=0 is a true revert', SW.offRefused===true,
+   'off, opcode 429 is the inert no-op it was before this commit — which it has been for every program ever run, because nothing dispatched it');
+ck('#199 and its price is a LAW, not a constant', SW.isLaw===true,
+   'the second layer built after #197, so the world can propose what self-revision costs');
+const SR=r.selfwriteReach||{};
+ck('#199 the address is REACHED: seeded into the germline and into the population',
+   SR.germSeeded===1 && SR.popSeeded>0,
+   'germline '+SR.germSeeded+', '+SR.popSeeded+' population carrier(s) — 429 is one address in 430, and #179 measured opcode 236 in ZERO of 1,424 live instructions when left to the draw');
+ck('#199 and never double-inserted', SR.germDupes===0,
+   SR.germDupes+' programs took a second copy — #179\'s third check, learned there: without it every program converges on nothing but the new opcode');
 
 // the crossings
 const CR=r.cross||{};

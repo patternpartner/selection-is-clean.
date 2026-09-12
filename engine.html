@@ -620,6 +620,77 @@ let __BRAKES=true;     // #197: the prices and the probation are world laws. For
 // channel a can read kb, so `ka' = ka*cos - kb*sin` is expressible today. Checked rather than
 // re-litigated; the note in CODEMAP is correct as written.
 let __WARP=true;   // #198: a medium's adjacency is a function of place. Force off with WARP=0
+// === #199 - THE PROGRAM CAN REVISE ITSELF ======================================================
+// I went looking for the kernel's closure and found the kernel far more open than I expected. Before
+// writing a line, what already existed:
+//
+//   authored register->register operations   bound opcodes call uaChain(atom, slot, vmRegs[si],
+//                                            vmRegs[(si+1)%12]) and write vmRegs[di] - so an authored
+//                                            expression is ALREADY a register transformation, not a
+//                                            sense leaf. My first design premise was simply false.
+//   authored sensing primitives              #184's probes (pa..pd), #188's channels (ka..kd),
+//                                            #174's voices (ya..yh)
+//   authored binary operators                #180's qa..qh
+//   conditional execution                    op229 PROB_SKIP skips the next instruction with
+//                                            probability clamp(vmRegs[si]*k, 0, 1) - and that clamp
+//                                            SATURATES, so driving the product past 1 or below 0 is a
+//                                            deterministic branch. A conditional is already reachable.
+//   self-inspection                          op223/224 read own opcodes and constants
+//   self-extension                           op144 PROG_GROW appends a drifted copy of an instruction
+//   program-level horizontal transfer        op179 HGT_DONATE, op225 PROG_LATERAL_COPY
+//
+// So "the interpreter's fundamental verbs are a human-written list" was true of the LIST and not of
+// what a lineage can compute with it. What is genuinely closed is narrower and sharper:
+//
+//   EVERY SELF-MODIFICATION IS APPEND, WHOLE-REPLACE, OR DONATE-TO-ANOTHER. Nothing can EDIT
+//   instruction N of its own program in place. The only editor of existing code is inheritProg's
+//   random birth mutation - which is MY mutation operator, not the lineage's.
+//
+// That is the same shape as #197. The prices were mine until the world could propose them; the code
+// editor is mine until a program can revise itself. A lineage that can write one field of one
+// instruction can author its own revision policy: read an opcode with op223, decide, write it back -
+// within-lifetime learning by code revision, and a mutation operator under selection rather than one
+// I chose.
+//
+// OPCODE 429 AND WHY IT IS NOT 237. Adding a core opcode means incrementing CORE_OPCODES, and the
+// bound-opcode base is CORE_OPCODES - so every bound slot in every saved genome would re-aim by one.
+// That is #137's defect, the one this file has a whole census row for, and it would arrive silently
+// in every load. So SELFWRITE takes CORE_OPCODES + MAX_BOUND_OPCODES = 429, which
+// netMaxOpcode() already returns, which validInstruction already admits, and which today falls
+// through every dispatch as an inert no-op. Nothing moves; a previously dead address wakes up.
+let __SELFWRITE=true;   // #199: a program can rewrite one field of one of its own instructions. Force off with SELFWRITE=0
+// OP_SELFWRITE is declared beside CORE_OPCODES rather than here: a top-level const read before its
+// own declaration is a TDZ error, not a hoist, and CORE_OPCODES is declared a thousand lines below
+// this narrative. Third time this file has caught that - see __chanOut (#188) and TICK_RATE_MAX.
+let SELFWRITE_COST=0.012;   // amplitude per successful write. A law since #197, so the world can argue with it
+let __selfWrites=0, __selfWriteRefused=0;   // instrument state off the genome (#131); drained per epoch
+// ONE FIELD OF ONE INSTRUCTION, MASKED SO NOTHING ILLEGAL CAN BE CONSTRUCTED. The guarantee is the
+// same one validInstruction gives the wire: op into [0, netMaxOpcode()], the register indices into the
+// 12-register file, k into the same +/-2 PROG_GROW uses. A program cannot write itself into a state
+// the VM cannot run, which is what makes "lightest viability tax" safe to actually mean - the tax is
+// amplitude and the filter is whether the rewritten program still works, not a validity check I own.
+// NO GROWTH: the index is taken modulo the program's OWN length, so this edits and never extends.
+// op144 is already the extender and its cap is the evolved vmMaxInstructions; two mechanisms growing
+// the same array by different rules is how a cap stops meaning anything.
+function vmSelfWrite(i,prog,nInst,idxRaw,valRaw,fieldRaw){
+  if(!__SELFWRITE||!prog||!nInst){ __selfWriteRefused++; return 0; }
+  if(!(amp[i]>SELFWRITE_COST)){ __selfWriteRefused++; return 0; }   // a rewrite is work and an exhausted particle cannot do it
+  const n=Math.min(prog.length,nInst);
+  if(n<=0){ __selfWriteRefused++; return 0; }
+  const idx=((Math.floor(Math.abs(idxRaw))|0)%n+n)%n;
+  const row=prog[idx];
+  if(!Array.isArray(row)||row.length<4){ __selfWriteRefused++; return 0; }
+  const field=(Math.floor(Math.abs(fieldRaw))|0)%4;
+  const v=isFinite(valRaw)?valRaw:0;
+  if(field===0)      row[0]=__cl(Math.round(Math.abs(v)*64),0,netMaxOpcode())|0;   // scaled: a register holds a small number and an opcode space is 430 wide, so |v|*64 spans it from the range a register actually occupies
+  else if(field===1) row[1]=__cl(Math.round(Math.abs(v)),0,11)|0;
+  else if(field===2) row[2]=__cl(Math.round(Math.abs(v)),0,11)|0;
+  else               row[3]=__cl(v,-2,2);
+  amp[i]-=SELFWRITE_COST;
+  __selfWrites++;
+  fired('vm.selfWrite');
+  return 1;
+}
 let CHANNEL_WARP_RENT=0.25;   // per warped medium per interaction - two expression evaluations per cell is real work. A law, like every other price since #197
 let __chanWarped=0;           // instrument state off the genome (#131); drained per epoch
 // The warp's compiled holders live OFF the serialised record, created on demand, so the six rebuild
@@ -1098,6 +1169,10 @@ const LIVENESS_DECLARED=[
   // neighbourhood. The first without the second means lineages evolving expressions that round to
   // zero at every cell, which is #179's shape and would read as a working mechanism.
   'channel.warpStep','channel.warped',
+  // #199: selfWrite is a program editing itself; selfWriteRefused is the opcode reached with nothing
+  // to edit or nothing to pay with. Both named, because refused-only across a whole run would mean
+  // the address woke up and the mechanism still never ran.
+  'vm.selfWrite','vm.selfWriteRefused','vm.selfWriteSeed',
 ];
 // NOT INSTRUMENTED, and deliberately absent rather than declared-and-silent: cladogenesis minting
 // (#17) has no single entry point I could identify with confidence. A census that reports "never"
@@ -1706,6 +1781,11 @@ const MAX_BOUND_OPCODES=192; // #129: 96 -> 192. gen38 pinned the old 96 (bo=96,
 // Bumping CORE_OPCODES is the ONLY edit needed to add a core opcode — the bound guards
 // (op>=CORE_OPCODES) and OPCODE_COUNT derive from it, so a boundary typo can no longer
 // orphan an opcode or collide a core op with a bound slot (the Pe60 / op142-class bug).
+const OP_SELFWRITE=237+192;   // #199: CORE_OPCODES + MAX_BOUND_OPCODES = 429. Written as literals on
+                              // purpose - if either constant ever moves, this line must be revisited
+                              // deliberately rather than following it silently into a live opcode. The
+                              // rig asserts it equals CORE_OPCODES+MAX_BOUND_OPCODES, so a drift is a
+                              // red build and not a mystery. See the #199 narrative for why not 237.
 const CORE_OPCODES=237; // #132: 236 -> 237, admitting EFFECT_EMIT (236) — the drive line for an AUTHORED VERB, the first opcode whose CONSEQUENCE is evolved rather than hand-written. Was: // #59: 235 -> 236, admitting COSMOS_SENSE (235) — the state of the daughter worlds this lineage launched, as data. Was: // #57: 232 -> 235, admitting SET_MODE (232), READ_MODE (233), PARTNER_MODE (234) — the first categorical decision evolved code can make here. Was: // 0..231 core — op208-211 velocity I/O, op212-216 inhibitor/resistance mechanics, op217-219 oscillator direct control, op220-231 scaffold morphogenesis + genomic self-inspection + reproductive autonomy + cluster quorum sensing
                         // 0..132 core — op132 SEASON_PHASE: perceive the current feast/famine cycle position
                         // 0..131 core — op131 ENERGY_STRESS: the system perceives conserved-budget scarcity
@@ -1781,6 +1861,7 @@ const LAW_DECLARED=[
   {name:'LAW_COST',      get:()=>LAW_COST,      set:v=>{LAW_COST=v;},      lo:0.0, hi:0.25},
   {name:'LAW_RATE',      get:()=>LAW_RATE,      set:v=>{LAW_RATE=v;},      lo:0.0, hi:0.004},
   {name:'CHANNEL_WARP_RENT',get:()=>CHANNEL_WARP_RENT,set:v=>{CHANNEL_WARP_RENT=v;},lo:0.0,hi:1.0},  // #198
+  {name:'SELFWRITE_COST',get:()=>SELFWRITE_COST,set:v=>{SELFWRITE_COST=v;},lo:0.0,hi:0.08},           // #199
 ];
 // === #197 - AND THE RATE HAD TO MOVE WITH THE TABLE =============================================
 // The law table went from THREE entries to sixteen in this commit. At the old rate - one proposal per
@@ -8952,6 +9033,7 @@ function flushEpoch(acc){
     firedN('reach.beyondRing',__reachBeyond); __reachBeyond=0;   // #191
     firedN('tick.skipped',__tickSkips); __tickSkips=0;           // #192
     firedN('channel.coarse',__chanCoarse); __chanCoarse=0;       // #194
+    firedN('vm.selfWriteRefused',__selfWriteRefused); __selfWriteRefused=0;   // #199
     firedN('channel.warped',__chanWarped); __chanWarped=0;       // #198
     firedN('channel.govPop',__chanGovPop); __chanGovPop=0;       // #196
     firedN('channel.govSelf',__chanGovSelf); __chanGovSelf=0;
@@ -17642,6 +17724,41 @@ function mutateGenome(){ fired('genome.mutate');
     }
     genome.uaFoldK=__cl(finiteOr(genome.uaFoldK,1)+(Math.random()<rate?(Math.random()-0.5)*0.4*scale:0),0.05,8);
   }
+  // === #199 - AND THE ADDRESS HAS TO BE REACHED ================================================
+  // #179's whole finding, and the reason this gets a seeding line rather than trust: opcode 236 was
+  // 0.23% of the mutation draw and appeared in ZERO of 1,424 live instructions across seventeen
+  // universes. 429 is one address in 430. Left to mutation it would be measured as dead and I would
+  // have written "the program can revise itself" about a capability no program ever addressed.
+  // So it is spliced, at a floor rate, into the germline program and into one living particle - the
+  // same route #132 gave verb birth and #179 gave EFFECT_EMIT. Reachable is not favoured: the
+  // instruction competes with every other for program length under the same toll, and a lineage that
+  // rewrites itself badly dies of it. Already-carrying programs are left alone, or every program
+  // converges on nothing but SELFWRITE (#179's third check, learned there).
+  if(__SELFWRITE&&Math.random()<Math.max(0.22,rate*0.5)){
+    const _mk=()=>[OP_SELFWRITE,(Math.random()*12)|0,(Math.random()*12)|0,(Math.random()-0.5)*3];
+    const _sp=genome.vmProgram, _scap=genome.vmMaxInstructions||16;
+    let _has=false;
+    if(Array.isArray(_sp))for(const _r of _sp) if(_r&&(_r[0]|0)===OP_SELFWRITE){_has=true;break;}
+    if(Array.isArray(_sp)&&!_has&&_sp.length<_scap){
+      _sp.splice((Math.random()*(_sp.length+1))|0,0,_mk());
+      fired('vm.selfWriteSeed');
+    }
+    // and into one live particle, or the germline learns to revise itself and the population cannot
+    let _n=0; for(let _q=0;_q<N;_q++) if(palive[_q]&&pProg[_q])_n++;
+    if(_n){
+      let _t=(Math.random()*_n)|0, _tg=-1;
+      for(let _q=0;_q<N;_q++){ if(!palive[_q]||!pProg[_q])continue; if(_t--===0){_tg=_q;break;} }
+      if(_tg>=0){
+        const _pp=pProg[_tg];
+        let _ph=false; for(const _r of _pp) if(_r&&(_r[0]|0)===OP_SELFWRITE){_ph=true;break;}
+        const _pcap=(pGenome[_tg]&&pGenome[_tg].vmMaxInstructions)||16;
+        if(!_ph){
+          if(_pp.length<_pcap)_pp.splice((Math.random()*(_pp.length+1))|0,0,_mk());
+          else if(_pp.length)_pp[(Math.random()*_pp.length)|0]=_mk();
+        }
+      }
+    }
+  }
   // #186: and hand the whole substrate to ONE living particle, so the genes above can actually be
   // selected on. Without this line every gene added in #181-#185 is authored, alive, and
   // evolutionarily invisible in any world healthy enough not to go extinct.
@@ -21978,6 +22095,14 @@ function executeVM(i,j,sim,d){
         case 236:{const _fxn=(genome.userEffects&&genome.userEffects.length)?Math.min(genome.userEffects.length,MAX_USER_EFFECTS):MAX_USER_EFFECTS;const _ei=Math.abs(dst)%_fxn;vmActions[EFFECT_SLOT0+_ei]+=vmRegs[si]*k;}break; // EFFECT_EMIT — #133b: index the bank that EXISTS; %MAX_USER_EFFECTS sent half of all emits to empty slots
       case 231:{const _cqcid231=clusterID[i];if(_cqcid231>=0){const _cqbit231=1<<(Math.round(Math.abs(vmRegs[si]))&7);let _cqtot231=0,_cqset231=0;for(let _cqn231=0;_cqn231<N;_cqn231++){if(clusterID[_cqn231]===_cqcid231){_cqtot231++;if(pEpigen[_cqn231]&_cqbit231)_cqset231++;}}vmRegs[di]=_cqtot231>0?(_cqset231/_cqtot231)*k:0;}else{vmRegs[di]=0;}}break; // CLUSTER_QUORUM — fraction of own cluster members with epigenetic bit (vmRegs[si]&7) set; O(N) scan; solitary returns 0. Enables quorum sensing; epigenetic voting; collective gene-expression switching; democratic phase coordination.
     }
+    // === #199 - SELFWRITE. Handled here rather than as a switch case because 429 sits ABOVE the
+    // bound-opcode range, so it never reaches the switch above and never collides with a core op.
+    // The three operands come out of the instruction format as it already is: the source register
+    // holds the target index, its neighbour holds the value, and |k| selects the field. Cramped, but
+    // the format is the format - widening it would change every saved program's row shape.
+    if(op===OP_SELFWRITE){
+      vmRegs[di]=vmSelfWrite(i,prog,nInst,vmRegs[si],vmRegs[(si+1)%12],k)*(k||1);
+    }
     // BOUND-OPCODE BOUNDARY (Pe60-class fix, now single-sourced via CORE_OPCODES).
     // History: the guard once read op>=126 (boi=op-126), which (a) collided with core
     // op126 VITAL_ALIGNMENT — case 126 ran, then boundOpcodes[0] clobbered vmRegs[di] —
@@ -23117,6 +23242,8 @@ function executeVM(i,j,sim,d){
         // the difference is that what happens at the other end is evolved, not written here.
         case 236:{const _fxn=(genome.userEffects&&genome.userEffects.length)?Math.min(genome.userEffects.length,MAX_USER_EFFECTS):MAX_USER_EFFECTS;const _ei=Math.abs(dst)%_fxn;vmActions[EFFECT_SLOT0+_ei]+=vmRegs[si]*k;}break; // EFFECT_EMIT — #133b: index the bank that EXISTS; %MAX_USER_EFFECTS sent half of all emits to empty slots
       }
+      // #199 - full parity, the same reason every op here has a twin
+      if(op===OP_SELFWRITE){ vmRegs[di]=vmSelfWrite(i,prog,nInst,vmRegs[si],vmRegs[(si+1)%12],k)*(k||1); }
       if(op>=CORE_OPCODES&&op<CORE_OPCODES+MAX_BOUND_OPCODES){
         const _bos=genome.boundOpcodes;
         const _boi=op-CORE_OPCODES;
@@ -25270,6 +25397,12 @@ function executeSoloVM(){
         // the difference is that what happens at the other end is evolved, not written here.
         case 236:{const _fxn=(genome.userEffects&&genome.userEffects.length)?Math.min(genome.userEffects.length,MAX_USER_EFFECTS):MAX_USER_EFFECTS;const _ei=Math.abs(dst)%_fxn;vmActions[EFFECT_SLOT0+_ei]+=vmRegs[si]*k;}break; // EFFECT_EMIT — #133b: index the bank that EXISTS; %MAX_USER_EFFECTS sent half of all emits to empty slots
       }
+      // #199 - the SOLO path too. A particle that can only revise itself when it happens to have a
+      // partner is an arbitrary restriction: executeSoloVM is where an isolated particle runs its
+      // program, and revision is a thing done to oneself. The CLUSTER VM is deliberately NOT given
+      // this - a cluster program writing pProg[i] would be a cluster editing a MEMBER's code, which
+      // is a different mechanism with a different owner and belongs to its own swing if ever.
+      if(op===OP_SELFWRITE){ vmRegs[di]=vmSelfWrite(i,prog,nInst,vmRegs[si],vmRegs[(si+1)%12],k)*(k||1); }
       if(op>=CORE_OPCODES&&op<CORE_OPCODES+MAX_BOUND_OPCODES){
         const _bos=genome.boundOpcodes;
         const _boi=op-CORE_OPCODES;
@@ -26237,6 +26370,7 @@ __CHANXFER=(typeof globalThis==='undefined')||((globalThis.__CHANXFER??1)|0)!==0
 __CHANGOV=(typeof globalThis==='undefined')||((globalThis.__CHANGOV??1)|0)!==0;   // #196: default ON. Off restores the pre-#196 behaviour exactly - chanGoverning returns the self's rule and takes no draw
 __BRAKES=(typeof globalThis==='undefined')||((globalThis.__BRAKES??1)|0)!==0;   // #197: default ON. Off restricts law mutation to the original three physics laws, so every price stays at the constant this file was written with
 __WARP=(typeof globalThis==='undefined')||((globalThis.__WARP??1)|0)!==0;   // #198: default ON, and a NO-OP with no warp expression: chanWarpAt returns 0 without evaluating anything, so an unwarped medium takes the original tap arithmetic
+__SELFWRITE=(typeof globalThis==='undefined')||((globalThis.__SELFWRITE??1)|0)!==0;   // #199: default ON, and a NO-OP for any program that does not carry opcode 429 - which before this commit was every program, because 429 fell through every dispatch
 __REACH=(typeof globalThis==='undefined')||((globalThis.__REACH_SWEEP??1)|0)!==0;   // #191: default ON. Force off with REACH_SWEEP=0 - the sweep returns to +/-1 ring, the reach to the germline's value, and the dedup to `j>i`, which is the pre-#191 engine exactly. Deliberately NOT named REACH: __REACH_ON is a different, pre-existing gate and colliding on that name is how a knob silently stops being a control
 __FORAGE_ON=(typeof globalThis==='undefined')||((globalThis.__FORAGE_EYES??1)|0)!==0; // resolve FORAGE once; gates the resource-sense computation in uaSetEyes
 __DECIDE_ON=(typeof globalThis==='undefined')||((globalThis.__DECIDE??1)|0)!==0; // resolve DECISION GAIN once; gates confidence accrual + commitment scaling
