@@ -16233,8 +16233,36 @@ checks failed behind the count. One class carrying two meanings, and I only saw 
 Grown frames have their own class now, identical styling, and `#below .deep` means what it meant
 before this swing. `layers-test`: 49 passed, 0 failed.
 
-The other, `collective-test`'s `saveActuallySaves`, passed on a re-run (`tap-to-save ->
-selection_gen0_t349.json`) with 14 of its 15 siblings having passed in the failing run too. It is a
-real-touch-tap-produces-a-file check and the failing run was under full-suite load with four other
-jobs on four cores. Timing, on the evidence — though one passing re-run is evidence and not proof,
-and it is written down here rather than waved away.
+### And a READOUT ATE THE SAVE BUTTON
+
+`collective-test`'s `saveActuallySaves` failed, and I called it timing on the strength of one passing
+re-run. It was not timing. Measured properly, three solo runs per tree:
+
+```
+#201 tree        3/3 fail    tap-to-save -> NO FILE
+pre-#201 tree    3/3 pass    selection_gen0_t636.json  t633  t615
+```
+
+A real regression in the one control the artwork must never lose. `#grown` - #201's little "3 grown .
+1 refused" badge - is `position:fixed; right:8px; bottom:30px; z-index:9` **on the parent page**. An
+opened universe's save button (`#gio` in `universe.html`) is `position:fixed; right:10px; bottom:14px`
+*inside the iframe* and about 40px tall, so its centre lands at roughly `bottom:34px` - directly under
+the badge. The badge had no `pointer-events:none`, so it sat above the iframe and swallowed every tap
+on save.
+
+`#depth`, two rows below it, is deliberately not transparent to taps: it is the handle that turns the
+cube. `#grown` reports a number and nothing else, so it must never take one. One line.
+
+**This is the rig's own founding story happening again.** `collective-test`'s header records #150:
+"opened a cell by toggling CSS classes and never hid that overlay, so its save and load buttons were
+visible and dead - reported from a phone." Fourteen of fifteen checks passed in the failing run; the
+only one that caught it is the one that performs a *real touch tap and waits for a file*. Neither the
+DOM assertions nor the headless suite could have: the button was present, the right size, and not
+hidden. It was simply unreachable.
+
+Two lessons, both cheap and both already paid for once:
+- **Every new fixed-position overlay in this field needs `pointer-events:none` unless it is a
+  control.** There are now four (`#depth`, `#harvest`, `#grown`, `#back`) and only one of them may
+  take a tap where a universe's own buttons live.
+- **"Passed on a re-run" is not a diagnosis.** I wrote flakiness into the notes off a single
+  observation and it was wrong; three runs per tree took ten minutes and gave the actual answer.
