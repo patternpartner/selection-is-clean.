@@ -16183,6 +16183,10 @@ pre-#201 engine (278bcc9)                  230     210       4
 #201 engine, FOUND=0                       233     233       0
 #201 engine, FOUND=1                       233     233       0
 #201 engine, FOUND=1, TICKS=900            233     233       0
+--- with the child-path instrument added ---
+#201 engine, FOUND=0                       238     238       0
+#201 engine, FOUND=1                       238     238       0
+#201 engine, FOUND=1, TICKS=900            238     238       0
 ```
 
 **That last block is the first time this suite has been fully green at the full budget on both
@@ -16354,7 +16358,7 @@ byte-exact.
 `substrate-test.js`: 238 checks, 24 of them this swing's — 14 for the founding layer, 2 for the
 `uaSwapVar` guard, 2 asserting a channel probe owns the medium it measures, the pair that replaced
 `#199`'s mis-scoped double-insert row, and 5 for whether the child path can still move anything at
-all. 238/238 at 900 ticks; the full-budget pair on both trajectories is the closing gate. `slot-test.js`: 15, five of them new, with four pre-#201 assertions rescoped
+all. **238/238 at 900 ticks and at the full budget on both trajectories.** `slot-test.js`: 15, five of them new, with four pre-#201 assertions rescoped
 because they were written when the field was a fixed nine — one of them, the restore check, was
 reporting four universes as carrying the wrong genome because a grown daughter's saved tick count
 "explained" a built universe's better than its own did. `smoke.sh` gives `slot-test` 360 seconds
