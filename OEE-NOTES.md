@@ -16192,9 +16192,63 @@ likely to exist. What is left is **exactly one** genuinely trajectory-dependent 
                                    red on committed HEAD at 4000 too
 ```
 
-So it predates #201, it is not a budget effect, and it inverts with the trajectory — which makes it
-the same class as the two defects this swing already paid for and the obvious next thing to look at.
-Named, not repaired here. "`substrate-test` is green" still means green at the budget AND trajectory
+So it predates #201, it is not a budget effect, and it inverts with the trajectory.
+
+### #199's row: THE CHECK WAS WRONG THREE WAYS, AND THE ENGINE WAS FINE
+
+`#199 and never double-inserted` read the germline program's TOTAL count of opcode 429 after a full
+`mutateGenome()` and called any count above one a double-insertion by the seeder. Measured:
+
+```
+seedWhileHeld  0    the seeder NEVER fires with a copy already present (300 calls)
+maxCount       2    and it PLATEAUS there from about call 20 — it does not run away
+maxNoXfer      1    with dissolutionWeight and gradientUpstreamBias zeroed, never above 1
+```
+
+1. **It blamed the seeder for copies it did not insert.** The seeding line is guarded (`!_has`) and
+   never fired with a copy held. The second copy arrives through **Pe39's dissolution motif
+   injection**, which splices a random instruction out of a high-quality fossil's program —
+   horizontal instruction transfer, doing exactly what it exists to do. Silencing the two transfer
+   genes is what proves it.
+2. **It counted iterations, not insertions.** `if(g>1)germDupes++` inside a 60-call loop means one
+   transfer at call 13 is counted 46 times. "46 programs took a second copy" was one event.
+3. **It tested the wrong claim.** `#179`'s worry was *convergence* — "every program converges on
+   nothing but the new opcode". A count above one is not convergence; accumulation is.
+
+Replaced by two rows, each sharper: the guard isolated so it cannot pass by accident, and convergence
+tested as accumulation (peak at 150 calls against peak at 600) so there is **no threshold anybody had
+to pick**. My first attempt at the second one used a 25% share bound — and 25% is exactly 1 copy in a
+4-instruction program, so it sat on its own edge. That is the same uncalibrated-absolute mistake the
+row exists to correct, made while correcting it.
+
+### AND THE ENGINE FINDING THAT FELL OUT OF IT: a negative mutation rate freezes every child
+
+Fixing that row raised the block from 60 `mutateGenome()` calls to 1,200, and `out.cross` runs after
+it. `parent -> child: the proxy weights diverge` went to **0/200**. The cause is not the rig:
+
+```
+before 1,500 mutateGenome calls   mutationRate  0.0601   41/200 children moved oeeW
+after                             mutationRate -0.4086    0/200
+```
+
+`genome.mutationRate` is walked by `mutateGenome`'s own meta layer and is **not clamped** — "range is
+the system's to find" — so it drifts negative. And `mutateChildGenome` gates every single gene on
+`Math.random() < rate`, so **below zero nothing moves at all: every child is an exact clone.** Not one
+gene, not one layer — the whole child path, silently.
+
+This is the same shape as `#158`'s `netMigrantRate` at −0.03363 meaning a universe had gone
+permanently silent, which this project deliberately honoured as a decision selection made. So it is
+named here and not clamped. But it is worth stating plainly what it means: **a lineage can enter a
+state where it produces only clones, and no census row in this file would say so.** The crossing
+census asks whether structure reaches the population; nothing asks whether the child path is still
+capable of moving anything.
+
+The rig's own fix is narrower: `out.selfwriteReach` now pins `mutationRate` and `mutationScale` to
+their entry values for the duration of both loops. Two reasons, and the second matters more — a block
+must not change what a later block measures, and the accumulation claim would otherwise have been
+hollow, since "copies do not pile up between call 150 and call 600" is worth nothing if mutation
+froze at call 400. It also came back down from 1,200 calls to 600: the count plateaus by call 13, so
+the longer pair bought nothing and cost the suite 1,500 germline mutations on every run. "`substrate-test` is green" still means green at the budget AND trajectory
 it was run at, which is the caveat `CODEMAP` records for `crossing-test` and for `smoke.sh`'s forty
 ticks — it is just no longer hiding three real bugs.
 

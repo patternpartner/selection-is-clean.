@@ -1489,7 +1489,9 @@ m._compile(code+`
     // 25%, so the bound landed exactly on its own edge and would have gone red on a 3-instruction
     // program carrying one legitimate copy. What "converges on nothing but the new opcode" actually
     // predicts is that copies PILE UP WITH RUN LENGTH - so run four times as long and see whether
-    // the peak moves. It does not, and that needs no threshold anybody had to pick.
+    // the peak moves. It does not, and that needs no threshold anybody had to pick. 150 against
+    // 600 rather than 300 against 1,200: the count reaches its plateau by about call 13, so the
+    // longer pair bought nothing and cost the suite 1,500 germline mutations on every run.
     // THE META-MUTATION GENES ARE PINNED, and that is not tidiness - it is what makes the loop above
     // mean anything and what stops it wrecking the blocks below.
     //
@@ -1508,7 +1510,7 @@ m._compile(code+`
     const svRate=genome.mutationRate, svScale=genome.mutationScale;
     let germSeeded=0, popSeeded=0, maxCount=0, maxAt300=0, seedWhileHeld=0, lenAtPeak=0;
     let prevSeed=__liveness['vm.selfWriteSeed']|0;
-    for(let q=0;q<1200;q++){
+    for(let q=0;q<600;q++){
       const heldBefore=cnt()>0;
       genome.mutationRate=svRate; genome.mutationScale=svScale;
       mutateGenome();
@@ -1517,7 +1519,7 @@ m._compile(code+`
       prevSeed=sd;
       if(g>0)germSeeded=1;
       if(g>maxCount){ maxCount=g; lenAtPeak=(genome.vmProgram||[]).length; }
-      if(q===299)maxAt300=maxCount;
+      if(q===149)maxAt300=maxCount;
     }
     for(let q=0;q<N;q++){ const pp=pProg[q];
       if(palive[q]&&pp&&pp.some(r=>r&&(r[0]|0)===OP_SELFWRITE))popSeeded++; }
@@ -1529,17 +1531,11 @@ m._compile(code+`
     genome.dissolutionWeight=0; genome.gradientUpstreamBias=0;
     genome.vmProgram=[[10,0,1,0.5],[11,2,3,-0.5]];
     let maxNoXfer=0;
-    for(let q=0;q<300;q++){ genome.mutationRate=svRate; genome.mutationScale=svScale;
+    for(let q=0;q<150;q++){ genome.mutationRate=svRate; genome.mutationScale=svScale;
       mutateGenome(); const g=cnt(); if(g>maxNoXfer)maxNoXfer=g; }
     genome.dissolutionWeight=svDw; genome.gradientUpstreamBias=svUb;
     genome.mutationRate=svRate; genome.mutationScale=svScale;
-    // and report what the walk WOULD have done, because it is a real finding about the engine
-    const rateFroze=(function(){ const a=genome.mutationRate;
-      for(let q=0;q<1200;q++)mutateGenome();
-      const drifted=genome.mutationRate;
-      genome.mutationRate=a; genome.mutationScale=svScale;
-      return +drifted.toFixed(4); })();
-    return {germSeeded,popSeeded,maxCount,maxAt300,lenAtPeak,maxNoXfer,seedWhileHeld,rateFroze,
+    return {germSeeded,popSeeded,maxCount,maxAt300,lenAtPeak,maxNoXfer,seedWhileHeld,
             rateKept:(genome.mutationRate===svRate)};
   });
 
@@ -2418,9 +2414,9 @@ ck('#199 the address is REACHED: seeded into the germline and into the populatio
    SR.germSeeded===1 && SR.popSeeded>0,
    'germline '+SR.germSeeded+', '+SR.popSeeded+' population carrier(s) — 429 is one address in 430, and #179 measured opcode 236 in ZERO of 1,424 live instructions when left to the draw');
 ck('#199 THE SEEDER never adds a second copy', SR.maxNoXfer===1 && SR.seedWhileHeld===0,
-   'with Pe39\'s instruction transfer silenced the count never exceeds '+SR.maxNoXfer+' across 300 mutateGenome calls, and the seeder fired with a copy already present '+SR.seedWhileHeld+' times. THE OLD ROW blamed the seeder for copies it did not insert: it read the program\'s TOTAL count, which also counts a SELFWRITE arriving by dissolution motif injection — horizontal instruction transfer, doing exactly what it is for — and it counted ITERATIONS IN A DUPLICATED STATE rather than insertions, so one transfer at call 13 read as "46 programs took a second copy"');
+   'with Pe39\'s instruction transfer silenced the count never exceeds '+SR.maxNoXfer+' across 150 mutateGenome calls, and the seeder fired with a copy already present '+SR.seedWhileHeld+' times. THE OLD ROW blamed the seeder for copies it did not insert: it read the program\'s TOTAL count, which also counts a SELFWRITE arriving by dissolution motif injection — horizontal instruction transfer, doing exactly what it is for — and it counted ITERATIONS IN A DUPLICATED STATE rather than insertions, so one transfer at call 13 read as "46 programs took a second copy"');
 ck('#199 and the copies do not ACCUMULATE with run length', SR.maxCount<=SR.maxAt300+1,
-   'peak '+SR.maxAt300+' copies after 300 mutateGenome calls and '+SR.maxCount+' after 1,200 (program length '+SR.lenAtPeak+' at the peak) — #179\'s worry was convergence, "every program converges on nothing but the new opcode", which predicts copies PILING UP with run length. Tested as accumulation rather than against a share threshold: the first version of this row used 25%, which is exactly 1 copy in a 4-instruction program, so it sat on its own edge — the same uncalibrated-absolute mistake this block exists to correct');
+   'peak '+SR.maxAt300+' copies after 150 mutateGenome calls and '+SR.maxCount+' after 600 (program length '+SR.lenAtPeak+' at the peak) — #179\'s worry was convergence, "every program converges on nothing but the new opcode", which predicts copies PILING UP with run length. Tested as accumulation rather than against a share threshold: the first version of this row used 25%, which is exactly 1 copy in a 4-instruction program, so it sat on its own edge — the same uncalibrated-absolute mistake this block exists to correct');
 
 // #200a
 const RG=r.regs||{};
