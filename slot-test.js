@@ -204,14 +204,22 @@ const liveTicks = page => page.evaluate(async () => {
       .map(d => (d.getAttribute('src') || '').match(/[?&]slot=(g\d+)/))
       .filter(Boolean).map(m => m[1]),
     stored: Object.keys(localStorage).filter(k => /^selection_g\d+$/.test(k)),
-    g0: localStorage.getItem('selection_g0'),
+    mine: (function(){ const f = [...document.querySelectorAll('#below .deep')]
+        .map(d => (d.getAttribute('src') || '').match(/[?&]slot=(g\d+)/)).filter(Boolean);
+      return f.length === 1 ? localStorage.getItem('selection_' + f[0][1]) : null; })(),
     readout: (document.getElementById('grown') || {}).textContent || '' }));
+  // NOT 'g0'. The shell takes the first FREE index, which is the whole point of that fix — and on
+  // this context selection_g0 is usually already taken by a daughter the nine-universe page founded
+  // for real during the warm-up. Asserting the name would be asserting that no sibling got there
+  // first; what matters is that exactly one universe was grown HERE and that its slot holds the
+  // germline this rig sent.
+  const mySlot = grown.slots.length === 1 ? grown.slots[0] : null;
   ck('#201 a founding on the wire opens a REAL new universe',
-     grown.slots.length === 1 && grown.slots[0] === 'g0',
-     'grown slots: [' + grown.slots.join(' ') + '] — the shell names the slot from its own counter, so nothing on the channel can name a storage key or collide with a built one');
+     mySlot !== null && /^g\d+$/.test(mySlot),
+     'grown slot: [' + grown.slots.join(' ') + '] — the shell names it from the first free index, so nothing on the channel can name a storage key, collide with a built one, or overwrite a sibling daughter');
   ck('#201 the daughter is stored under the germline it was founded from',
-     grown.stored.length === 1 && grown.g0 === sentBlob && !!sentBlob,
-     grown.stored.join(' ') + ', ' + (sentBlob || '').length + ' bytes');
+     !!mySlot && !!sentBlob && grown.mine === sentBlob,
+     'slot ' + mySlot + ' holds ' + ((grown.mine || '').length) + ' of ' + (sentBlob || '').length + ' bytes sent; grown keys present: ' + grown.stored.join(' '));
   ck('#201 the minimum gap refuses the second founding',
      /1 grown/.test(grown.readout) && /1 refused/.test(grown.readout) && /2 founded/.test(grown.readout),
      JSON.stringify(grown.readout));
@@ -220,15 +228,15 @@ const liveTicks = page => page.evaluate(async () => {
   // fixed twenty-second wait for a universe that usually answers in four is budget spent on nothing.
   let grownTicks = -9;
   for (let t = 0; t < 12; t++) {
-    grownTicks = await p201.evaluate(async () => {
+    grownTicks = await p201.evaluate(async (want) => {
       for (const d of document.querySelectorAll('#below .deep')) {
-        if (!/[?&]slot=g0/.test(d.getAttribute('src') || '')) continue;
+        if (!(d.getAttribute('src') || '').includes('slot=' + want)) continue;
         try { const a = d.contentWindow && d.contentWindow.__field; if (!a) return -1;
           const r = await Promise.race([a.stat(), new Promise(z => setTimeout(() => z(null), 4000))]);
           return r ? (r.totalTicks | 0) : -2; } catch (e) { return -3; }
       }
       return -4;
-    });
+    }, mySlot);
     if (grownTicks > 0) break;
     await p201.waitForTimeout(2000);
   }

@@ -1649,6 +1649,11 @@ m._compile(code+`
       Math.random=sv.rnd; globalThis.__FOUND=sv.on; };
     const sent=[];
     bc={postMessage:(p)=>{sent.push(p)}};
+    // FORCE THE KNOB ON. This block INHERITED the ambient __FOUND, so a run with FOUND=0 in the
+    // environment reported six of these checks as failures of the mechanism when they were failures
+    // of the switch being off - which is exactly the confusion the knob exists to avoid. A block
+    // that tests a mechanism turns that mechanism on itself; sv.on already carries it back.
+    globalThis.__FOUND=1;
     const drive=(v)=>{ let n=0; for(const c of clusters){ if(!c)continue;
       c.clusterGenome=c.clusterGenome||seedClusterGenome();
       c.clusterGenome.foundDrive=v; n++; } return n; };
