@@ -1464,18 +1464,57 @@ m._compile(code+`
     // #179's lesson is the whole reason this block exists: 429 is one address in 430, so left to
     // mutation it would be measured as dead. The seeding must put it in the germline program AND in
     // a living particle, and must not double-insert.
+    //
+    // THE DOUBLE-INSERT CHECK WAS MIS-SCOPED, AND IT WAS RED FOR IT. It read the germline program's
+    // TOTAL count of the opcode after a full mutateGenome() and called any count above one a
+    // double-insertion by the seeder. But mutateGenome also runs Pe39's DISSOLUTION MOTIF
+    // INJECTION, which splices a random instruction out of a high-quality fossil's program - a
+    // horizontal instruction transfer whose entire purpose is to copy instructions between
+    // lineages. When the fossil's picked instruction is a SELFWRITE and the germline already holds
+    // one, the count reaches two, and nothing the seeder did is wrong. Measured over 300 calls:
+    //
+    //   seedWhileHeld  0   the seeder NEVER fires with a copy already present
+    //   maxCount       2   and it PLATEAUS there from about call 20 - it does not run away
+    //   maxNoXfer      1   with dissolutionWeight and gradientUpstreamBias zeroed, never above 1
+    //
+    // The old row also counted ITERATIONS IN A DUPLICATED STATE rather than insertions, so one
+    // transfer at call 13 was reported as "46 programs took a second copy". It is replaced by two
+    // checks that are each sharper than it was: the guard, isolated so it cannot pass by accident,
+    // and #179's actual worry - convergence - stated as a share of the program.
     genome.vmProgram=[[10,0,1,0.5],[11,2,3,-0.5]];
     for(let q=0;q<N;q++) if(palive[q]&&pProg[q])pProg[q]=[[10,0,1,0.5]];
-    let germSeeded=0, popSeeded=0, germDupes=0;
-    for(let q=0;q<60;q++){
+    const cnt=()=>(genome.vmProgram||[]).filter(r=>r&&(r[0]|0)===OP_SELFWRITE).length;
+    // CONVERGENCE IS AN ACCUMULATION CLAIM, so it is tested as one. A share threshold was the first
+    // version and it was the same sin this block is fixing: 1 copy in a 4-instruction program is
+    // 25%, so the bound landed exactly on its own edge and would have gone red on a 3-instruction
+    // program carrying one legitimate copy. What "converges on nothing but the new opcode" actually
+    // predicts is that copies PILE UP WITH RUN LENGTH - so run four times as long and see whether
+    // the peak moves. It does not, and that needs no threshold anybody had to pick.
+    let germSeeded=0, popSeeded=0, maxCount=0, maxAt300=0, seedWhileHeld=0, lenAtPeak=0;
+    let prevSeed=__liveness['vm.selfWriteSeed']|0;
+    for(let q=0;q<1200;q++){
+      const heldBefore=cnt()>0;
       mutateGenome();
-      const g=(genome.vmProgram||[]).filter(r=>r&&(r[0]|0)===OP_SELFWRITE).length;
+      const g=cnt(), sd=__liveness['vm.selfWriteSeed']|0;
+      if(sd>prevSeed&&heldBefore)seedWhileHeld+=(sd-prevSeed);
+      prevSeed=sd;
       if(g>0)germSeeded=1;
-      if(g>1)germDupes++;
+      if(g>maxCount){ maxCount=g; lenAtPeak=(genome.vmProgram||[]).length; }
+      if(q===299)maxAt300=maxCount;
     }
     for(let q=0;q<N;q++){ const pp=pProg[q];
       if(palive[q]&&pp&&pp.some(r=>r&&(r[0]|0)===OP_SELFWRITE))popSeeded++; }
-    return {germSeeded,popSeeded,germDupes};
+    // THE GUARD, ISOLATED. Silence the two transfer paths and the count cannot exceed one, because
+    // the seeder is the only thing left that can add it. This is the claim the old row was making,
+    // and it is now deterministic rather than a statistic over however often the seeder happened to
+    // fire. Both genes are restored.
+    const svDw=genome.dissolutionWeight, svUb=genome.gradientUpstreamBias;
+    genome.dissolutionWeight=0; genome.gradientUpstreamBias=0;
+    genome.vmProgram=[[10,0,1,0.5],[11,2,3,-0.5]];
+    let maxNoXfer=0;
+    for(let q=0;q<300;q++){ mutateGenome(); const g=cnt(); if(g>maxNoXfer)maxNoXfer=g; }
+    genome.dissolutionWeight=svDw; genome.gradientUpstreamBias=svUb;
+    return {germSeeded,popSeeded,maxCount,maxAt300,lenAtPeak,maxNoXfer,seedWhileHeld};
   });
 
   // -- uaSwapVar TERMINATES ----------------------------------------------------------------------
@@ -2352,8 +2391,10 @@ const SR=r.selfwriteReach||{};
 ck('#199 the address is REACHED: seeded into the germline and into the population',
    SR.germSeeded===1 && SR.popSeeded>0,
    'germline '+SR.germSeeded+', '+SR.popSeeded+' population carrier(s) — 429 is one address in 430, and #179 measured opcode 236 in ZERO of 1,424 live instructions when left to the draw');
-ck('#199 and never double-inserted', SR.germDupes===0,
-   SR.germDupes+' programs took a second copy — #179\'s third check, learned there: without it every program converges on nothing but the new opcode');
+ck('#199 THE SEEDER never adds a second copy', SR.maxNoXfer===1 && SR.seedWhileHeld===0,
+   'with Pe39\'s instruction transfer silenced the count never exceeds '+SR.maxNoXfer+' across 300 mutateGenome calls, and the seeder fired with a copy already present '+SR.seedWhileHeld+' times. THE OLD ROW blamed the seeder for copies it did not insert: it read the program\'s TOTAL count, which also counts a SELFWRITE arriving by dissolution motif injection — horizontal instruction transfer, doing exactly what it is for — and it counted ITERATIONS IN A DUPLICATED STATE rather than insertions, so one transfer at call 13 read as "46 programs took a second copy"');
+ck('#199 and the copies do not ACCUMULATE with run length', SR.maxCount<=SR.maxAt300+1,
+   'peak '+SR.maxAt300+' copies after 300 mutateGenome calls and '+SR.maxCount+' after 1,200 (program length '+SR.lenAtPeak+' at the peak) — #179\'s worry was convergence, "every program converges on nothing but the new opcode", which predicts copies PILING UP with run length. Tested as accumulation rather than against a share threshold: the first version of this row used 25%, which is exactly 1 copy in a 4-instruction program, so it sat on its own edge — the same uncalibrated-absolute mistake this block exists to correct');
 
 // #200a
 const RG=r.regs||{};
