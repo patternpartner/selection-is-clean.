@@ -1611,9 +1611,11 @@ m._compile(code+`
   // ── #201 — A DAUGHTER UNIVERSE GRADUATES FROM SHADOW TO PEER ─────────────────────────────────
   // The failure this block exists to catch is the one this project has shipped six times: a
   // mechanism that reads alive in every census and never runs. #201's obvious hook was cosmosMerge
-  // — a shadow child that exported more than its endowment — and that event fires ZERO times in
-  // 6,000 ticks on this build (3 launches, 0 merges). A version built on it would have passed
-  // every structural check here and founded nothing, ever.
+  // - a shadow child that exported more than its endowment - and that event is RARE rather than
+  // dead, which is the same failure arrived at by a different route. Measured: 0 merges across
+  // 20,000 ticks of the pre-#201 engine (118 launches), and 1, 1 and 3 merges across 12,000 ticks
+  // of this one on three seeds (33, 42 and 64 launches). A version built on it would have passed
+  // every structural check here and founded a handful of times in a long run at best.
   out.found=run('found',()=>{
     const sv={NEED:FOUND_NEED,COST:FOUND_COST,CD:FOUND_COOLDOWN,RATE:FOUND_RATE,MAX:FOUND_MAX,
               last:__foundLast,n:__founds,ref:__foundRefused,seen:__foundSeen,bc:bc,tk:tick,
@@ -2341,7 +2343,7 @@ ck('#201 foundDrive is seeded on every cluster and drifts in a daughter',
    FD.childMoved+'/200 mutated children moved it — a CLUSTER trait like launchDrive, so it has no crossing row: crossingCensus compares a germline against particle genomes and this has neither side');
 ck('#201 A UNIVERSE ACTUALLY FOUNDS ONE — the packet is built and sent',
    FD.built===1 && FD.wellFormed===true,
-   FD.built+' packet(s). THE CHECK THIS SWING TURNS ON: the obvious hook (cosmosMerge) fires 0 times in 6,000 ticks on this build, so #201 built on it would have passed every other check here and never once run');
+   FD.built+' packet(s). THE CHECK THIS SWING TURNS ON: the obvious hook (cosmosMerge) fires 1-3 times per 12,000 ticks and 0 times across 20,000 on the pre-#201 engine, so #201 built on it would have passed every other check here and founded a handful of times at best');
 ck('#201 and the wire accepts what the engine sends', FD.accepted===true);
 ck('#201 what crosses is THIS WORLD’S OWN GERMLINE, byte for byte',
    FD.isOwnGermline===true && FD.decodes===true,

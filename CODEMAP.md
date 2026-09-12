@@ -2446,13 +2446,17 @@ needed to be integral. If you add an integer-feeling law, do not round it in the
 `trimGenomeToBudget()` blob as a `found` packet; `index.html` writes it into a slot it names itself
 and opens a universe on it. Knob `FOUND`; `#nofound` / `#foundcap=N` on the shell.
 
-**IT IS NOT HOOKED TO `cosmosMerge`, AND THAT IS A MEASUREMENT, NOT A PREFERENCE.** `cosmos.merge`
-fires **0 times in 20,000 ticks** (118 launches; endowment 1.2 every time, best net 1.096 against a
-bar of `net > endow`). The whole return path of WAVE 8 has never run on this build. Gating the field's
-only universe-level reproduction on it would have shipped the seventh dead-but-declared mechanism of
-this arc. The gate is #61's instead — **eligibility is affordability and nothing else** — at about 4x
-the shadow launch's price. Measured live: 1 founding by tick 4,740, 4 by 20,000, 229 refusals at the
-price.
+**IT IS NOT HOOKED TO `cosmosMerge`, AND THAT IS A MEASUREMENT, NOT A PREFERENCE.** `cosmos.merge` is
+**rare, not dead** — 0 merges across 20,000 ticks of the pre-#201 engine (118 launches), and 1, 1 and
+3 across 12,000 ticks of this one on three seeds (33, 42, 64 launches). Endowment is 1.2 every time
+and the bar is `net = exported − imported > endow`; the best child in the long run managed 1.096. So
+gating the field's only universe-level reproduction there would fire one to three times per 12,000
+ticks at best and **not at all** across a whole long run — the seventh dead-but-declared mechanism of
+this arc, reached by rarity rather than by a dead branch. (The first version of this note said "has
+never run", from the 20,000-tick run alone; the three seeds refuted it and the correction stands
+here.) The gate is #61's instead — **eligibility is affordability and nothing else** — at about 4x the
+shadow launch's price, and it delivers 3 foundings per 12,000 ticks in all three seeds, first between
+tick 4,260 and 6,840, with 229–778 refusals at the price.
 
 **ONE GENE, FIVE LAWS.** `foundDrive` is a CLUSTER gene (beside `launchDrive`, in
 `seedClusterGenome`/`mutateClusterGenome`) — so it has **no `CROSSING_DECLARED` row**, because that

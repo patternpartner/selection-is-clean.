@@ -1294,8 +1294,9 @@ const LIVENESS_DECLARED=[
   // three different bugs.
   //   cosmos.found         a universe founded a real peer. Zero across a run means the price is
   //                        unreachable or the gate never draws - the failure this file has shipped
-  //                        six times, and the reason this mechanism is NOT hooked to cosmos.merge
-  //                        (which fires 0 times in 6,000 ticks on this build).
+  //                        six times, and the reason this mechanism is NOT hooked to cosmos.merge,
+  //                        which is rare rather than dead - 1 to 3 merges per 12,000 ticks across
+  //                        three seeds, and 0 across 20,000 ticks of the pre-#201 engine.
   //   cosmos.foundRefused  the draw got as far as the price and could not pay it. Refused-only is
   //                        a working decision layer sitting behind an unaffordable brake, which is
   //                        a completely different finding from never drawing at all.
@@ -4456,12 +4457,21 @@ let cosmosStats={launches:0,deaths:0,everExported:0,fluxTicksOut:0,merges:0,ageS
 // is a dead world); this is the other half of it.
 //
 // WHY IT IS NOT HOOKED TO cosmosMerge, which was the obvious hook and which I built against
-// first: cosmos.merge fires 0 times in 6,000 ticks on this build (3 launches, 0 merges — a child
-// must export more than its endowment through cosmosFlux and almost none does). Gating the only
-// real reproduction event in the file on that would have shipped the exact failure this project
-// has hit six times in six swings: a mechanism that reads alive in every census and never runs.
+// first: cosmos.merge is RARE, not dead, and the difference matters enough to state properly. A
+// child must export more than its endowment through cosmosFlux and almost none does. Measured:
+//
+//   pre-#201 engine, seed 1, 20,000 ticks    118 launches    0 merges
+//   this engine,     seed 1, 12,000 ticks     33 launches    1 merge
+//   this engine,     seed 2, 12,000 ticks     42 launches    1 merge
+//   this engine,     seed 3, 12,000 ticks     64 launches    3 merges
+//
+// So roughly 3-5% of shadow children ever merge, one to three events per 12,000 ticks, and none
+// at all in the one long run available. A universe-level reproduction gated there would fire a
+// handful of times in a long run at best and not at all at worst — which is the failure this
+// project has hit six times in six swings, arrived at by rarity rather than by a dead branch.
 // The gate is #61's instead — ELIGIBILITY IS AFFORDABILITY — which is the same gate the shadow
-// launch uses, at a price an order of magnitude larger.
+// launch uses, at a price an order of magnitude larger. It delivers 3 foundings per 12,000 ticks
+// in all three seeds, first between tick 4,260 and 6,840.
 //
 // PRICES ARE LAWS, NOT GENES (#197). A price the payer sets is an off switch, and `foundDrive`
 // below is the payer. So every brake here — what founding costs, how long between foundings, how

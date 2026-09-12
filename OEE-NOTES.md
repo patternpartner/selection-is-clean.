@@ -15921,22 +15921,34 @@ once it has exported more than it was founded with. A daughter world graduating 
 reads beautifully. So I measured it before writing it:
 
 ```
-20,000 ticks, seed 1:   cosmos launches 118    cosmos MERGES 0
-                        endowment 1.2 every time; best exported 1.242, against
-                        net = exported - imported > endow as the bar
+pre-#201 engine, seed 1, 20,000 ticks   118 launches    0 merges
+this engine,     seed 1, 12,000 ticks    33 launches    1 merge
+this engine,     seed 2, 12,000 ticks    42 launches    1 merge
+this engine,     seed 3, 12,000 ticks    64 launches    3 merges
+                 endowment 1.2 every time; in the 20,000-tick run the best child
+                 exported 1.242 and imported 0.146, so its net was 1.096 against
+                 a bar of net = exported - imported > endow
 ```
 
-**Zero merges in twenty thousand ticks.** 118 children, none of them ever cleared the bar; the closest
-exported 1.242 and imported 0.146, so its net was 1.096 against an endowment of 1.2. `cosmos.merge` is
-a declared liveness name that reads 0 on this build, which means the shadow scenario-bank proposal
-path — the entire return path of WAVE 8 — has never run. That is a finding in its own right and it is
-recorded here rather than fixed inside this commit, because fixing it is a different swing with a
-different argument.
+**Rare, not dead — and I wrote "dead" first.** The 20,000-tick figure came in before the three-seed
+runs and I stated it as "`cosmos.merge` has never run on this build," which the seeds refute: about
+3–5% of shadow children do clear the bar, one to three events per 12,000 ticks. The correction is here
+rather than quietly folded in, because this file's whole method is that a measured claim outranks a
+confident one — including mine, one swing later.
 
-What it settles for #201 is the design. Hooking the field's only universe-level reproduction event to
-`cosmosMerge` would have shipped, for the seventh time in this arc, **a mechanism that reads alive in
-every census and never runs.** So the gate is #61's instead — *eligibility is affordability and
-nothing else* — which is the gate the shadow launch already uses, at a price about four times larger.
+What it settles for #201 is unchanged, and is if anything sharper stated correctly. A universe-level
+reproduction event gated on `cosmosMerge` would fire **one to three times in twelve thousand ticks at
+best and not at all at worst** — that 20,000-tick run is a whole long run in which the field would
+never once have grown. So the gate is #61's instead — *eligibility is affordability and nothing else*
+— which is the gate the shadow launch already uses, at a price about four times larger, and which
+delivers 3 foundings per 12,000 ticks in **all three** seeds:
+
+```
+seed   first founding   foundings   refused at the price   clusters at end
+  1        4,740            3               229                  4
+  2        6,840            3               778                  4
+  3        4,260            3               274                  3
+```
 
 ### What it costs and who decides
 
@@ -15955,15 +15967,21 @@ real brake only as a law the payer cannot set. A world can still walk them all t
 bounds start at 0 and `FOUND_MAX` reaches 16 — and flood the channel with daughters; the probation
 reverts that only if the world cannot hold its own population. Fragmentation is the data.
 
-Measured on the engine's own path, seed 1:
+Measured on the engine's own path:
 
 ```
- 6,000 ticks    1 founding (first at 4,740)     218 refusals at the price
-20,000 ticks    4 foundings (the FOUND_MAX cap) 229 refusals    blob 18,860 bytes
+seed 1,  6,000 ticks    1 founding  (first at 4,740)     218 refusals at the price
+seed 1, 20,000 ticks    4 foundings (hits FOUND_MAX)     229 refusals   blob 18,860 bytes
+seed 1, 12,000 ticks    3 foundings (first at 4,740)     229 refusals
+seed 2, 12,000 ticks    3 foundings (first at 6,840)     778 refusals
+seed 3, 12,000 ticks    3 foundings (first at 4,260)     274 refusals
 ```
 
-Alive, and the binding constraint is affordability rather than the cooldown — which is the shape a
-price should have.
+Alive in every seed, and **the binding constraint is affordability rather than the cooldown** — 229 to
+778 draws reached the price and could not pay it, which is the shape a price should have. Seed 2 is
+the one to read twice: nearly four times the refusals and the latest first founding, in the run with
+the largest surviving population (297 alive against 194 and 161). A bigger field is not automatically
+a richer one per cluster.
 
 ### Nothing is charged until the packet is on the wire
 
@@ -16067,12 +16085,26 @@ for the daughter's sake — the blob she boots from is her parent's germline, an
 inside it would have her born with the budget already spent — but it does mean the lifetime cap is a
 per-session cap in practice. The shell's adoption cap is unaffected.
 
-**The drive trend is an instrument, not yet a result.** `foundDrive` is the cheapest honest test this
-layer has: founding costs amplitude now and pays this world nothing it will ever collect, so if the
-price buys nothing, cluster selection should push the trait down. One seed at 20,000 ticks moved the
-population mean from 0.6 (seeded) to 0.702. One seed is an anecdote.
+**The drive trend is an instrument, and it currently reads noise.** `foundDrive` is the cheapest
+honest test this layer has: founding costs amplitude now and pays this world nothing it will ever
+collect, so if the price buys nothing, cluster selection should push the trait down. Three seeds at
+12,000 ticks, against a seeded population mean of 0.6:
 
-**`cosmos.merge` reads 0 and is left reading 0.** Named here, not repaired here.
+```
+seed 1   0.603  0.631  0.653  0.578  0.673   -> 0.660
+seed 2   0.590  0.612  0.528  0.668  0.508   -> 0.483
+seed 3   0.728  0.641  0.740  0.930  0.513   -> 0.451
+```
+
+Two of three end below the seed mean and one above, none of the traces is monotone, and the end means
+are taken over three or four surviving clusters. **There is no signal here in either direction**, and
+saying so is the point of having built the instrument — a run that ended at 0.702 on one seed, which
+is what the first 20,000-tick measurement showed, would have read as mild selection FOR founding if
+nobody had run the other two.
+
+**`cosmos.merge` is left where it is.** Roughly 3–5% of shadow children merge and the return path of
+WAVE 8 therefore runs a handful of times in a long run. Whether a bar that almost nothing clears is a
+selective filter or a dead end is a real question; it is named here, not answered here.
 
 ### Still closed after #201
 
