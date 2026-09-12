@@ -625,7 +625,7 @@ let __WARP=true;   // #198: a medium's adjacency is a function of place. Force o
 // writing a line, what already existed:
 //
 //   authored register->register operations   bound opcodes call uaChain(atom, slot, vmRegs[si],
-//                                            vmRegs[(si+1)%12]) and write vmRegs[di] - so an authored
+//                                            vmRegs[(si+1)%__vmRC]) and write vmRegs[di] - so an authored
 //                                            expression is ALREADY a register transformation, not a
 //                                            sense leaf. My first design premise was simply false.
 //   authored sensing primitives              #184's probes (pa..pd), #188's channels (ka..kd),
@@ -659,6 +659,79 @@ let __WARP=true;   // #198: a medium's adjacency is a function of place. Force o
 // netMaxOpcode() already returns, which validInstruction already admits, and which today falls
 // through every dispatch as an inert no-op. Nothing moves; a previously dead address wakes up.
 let __SELFWRITE=true;   // #199: a program can rewrite one field of one of its own instructions. Force off with SELFWRITE=0
+// === #200a - THE WORKING MEMORY IS A GENE ======================================================
+// vmRegs has been a Float32Array(12) since this file was written, and `Math.abs(src)%12` at five
+// dispatch sites is the whole of a program's addressable state. Twelve is not a derived number; it is
+// a number somebody typed, and it decides how much a program can HOLD - which is the one quantity
+// that bounds what any evolved program can compute regardless of how open its opcodes are. #199 gave
+// a program the ability to revise its own instructions; this gives it a say in how much it can
+// remember while doing so.
+//
+// BOTH DIRECTIONS, unlike #183's cellScale and #194's grain, and that is worth noting because those
+// two had to narrow only for structural reasons this one does not have: the array is allocated once
+// at VM_REGS_MAX and never per-execution, so a wider file costs nothing to provide. Seeded at 12,
+// which is bit-identical to every run before this.
+//
+// A NARROW FILE IS NOT A WEAKER ONE, it is a different machine: `si` and `di` are masked modulo the
+// count, so at 3 registers the six source fields 0,3,6,9 and 1,4 ALIAS onto the same three slots. A
+// program in a tight file is forced to reuse state, which is compression, and compression is where
+// structure comes from. A wide file lets a program keep more intermediate values alive at once. Both
+// are strategies and neither is obviously better, which is exactly the shape a gene should have.
+//
+// NO RENT, and the reason is that there is nothing to charge for: the array exists either way, and a
+// register read is one array access whatever the count. Every other layer in this arc got a rent
+// because it bought CPU or memory with a gene; this one buys neither. Pricing it anyway would have
+// been a toll I invented to look consistent.
+//
+// THE CLUSTER VM KEEPS TWELVE. It runs a cluster's program, not a particle's, and its register count
+// is not a property of any lineage - giving it a gene would mean deciding whose. Named here so the
+// asymmetry is a decision and not an oversight.
+let __REGS=true;   // #200a: per-lineage register file size. Force off with REGS=0
+// === #200b - WHAT COUNTS AS A HIGHER LEVEL ======================================================
+// The hierarchy is particle -> cluster -> tower -> forest: four tiers, hand-written. The obvious
+// reading of "the four levels are authored" is to add a fifth, recursively, and I am NOT doing that,
+// because the live census says why:
+//
+//   levelCensus, typical 12,000-tick run:   particle 250   cluster 7-20   tower 0-2   forest 0
+//
+// A fifth level built on top of a fourth that reads ZERO is a dead layer with a census row, which is
+// the failure this whole arc has been correcting. The question is not "why are there four tiers" but
+// "why do the top two barely exist", and the answer is that the thresholds deciding whether a group
+// COUNTS as a tower or a forest are constants I chose:
+//
+//   bridgeField > 0.3        how strong a bridge must be for two tower tops to be connected at all
+//   group size >= 2          how many members a group needs before it is a group
+//   u.reg >= 0.5             how consolidated a tower must be to be recognised as one
+//   v >= 0.4                 how cohesive a forest must be to be recognised as one
+//   cohesion += ...*0.04     how fast a group consolidates toward being recognised
+//
+// So what an individual IS, at every level above the particle, was my call. These five become laws:
+// the world proposes them, the probation judges them, and #197's machinery decides whether a world
+// that recognises higher levels more readily holds its population. If that populates the top tiers,
+// a fifth level becomes worth building; if it does not, the answer is that this world's physics does
+// not support towers and no amount of extra tiers would have changed it. Either way it is a
+// measurement rather than a construction.
+//
+// AND THE THRESHOLDS GATE THE MECHANISM, NOT ONLY THE REPORT. Two of the five (tower.reg,
+// forest.reg) appear only in LEVEL_DECLARED's readers, so making just those evolvable would evolve
+// the CENSUS - which is the defect this file has found five times and would have found a sixth. The
+// other three gate formation itself, in the forest union-find, and they are why these are worth
+// opening: the recognition thresholds decide what is COUNTED, and the formation gates decide what
+// EXISTS. Both, or neither.
+let __LEVELS=true;   // #200b: what counts as a higher-level individual. Force off with LEVELS=0
+let LEVEL_BRIDGE_MIN=0.3;    // bridge strength for two tower tops to be connected
+let LEVEL_GROUP_MIN=2;       // members before a group is a group. NOT constrained to an integer - it is a >= bound, see the law row
+let LEVEL_TOWER_REG=0.5;     // consolidation for a tower to be recognised
+let LEVEL_FOREST_REG=0.4;    // cohesion for a forest to be recognised
+let LEVEL_COHERE_RATE=0.04;  // how fast a group consolidates toward recognition
+const VM_REGS_MAX=24;       // the allocation. Wider costs nothing; the bound exists so a mask is always meaningful
+const VM_REGS_DEFAULT=12;   // what this file was written with, and what the cluster VM and every unmutated lineage use
+let __vmRC=VM_REGS_DEFAULT; // set once per program execution from the ambient (carrier's) genome - see the dispatch sites
+function vmRegCount(g){
+  if(!__REGS)return VM_REGS_DEFAULT;
+  const gg=g||((typeof genome!=='undefined')?genome:null);
+  return __cl(Math.round(finiteOr(gg&&gg.regCount,VM_REGS_DEFAULT)),2,VM_REGS_MAX);
+}
 // OP_SELFWRITE is declared beside CORE_OPCODES rather than here: a top-level const read before its
 // own declaration is a TDZ error, not a hoist, and CORE_OPCODES is declared a thousand lines below
 // this narrative. Third time this file has caught that - see __chanOut (#188) and TICK_RATE_MAX.
@@ -1173,6 +1246,7 @@ const LIVENESS_DECLARED=[
   // to edit or nothing to pay with. Both named, because refused-only across a whole run would mean
   // the address woke up and the mechanism still never ran.
   'vm.selfWrite','vm.selfWriteRefused','vm.selfWriteSeed',
+  'vm.regStep',   // #200a
 ];
 // NOT INSTRUMENTED, and deliberately absent rather than declared-and-silent: cladogenesis minting
 // (#17) has no single entry point I could identify with confidence. A census that reports "never"
@@ -1333,6 +1407,9 @@ const CROSSING_DECLARED=[
   // #192: does this lineage beat on its own clock? Deviation from rate 1, the same construction the
   // rows around it use. Phase alone is not counted - a phase under rate 1 is meaningless, and
   // counting it would report adoption for a population that is still in lockstep.
+  // #200a: has this lineage changed how much it can hold? Deviation from the twelve this file was
+  // written with, the same construction as every row since #188.
+  {name:'vm.regs',       read:g=>vmRegCount(g)!==VM_REGS_DEFAULT?1:0},
   {name:'tick.moved',    read:g=>tickRateOf(g)>1?1:0},
   {name:'reach.moved',   read:g=>Math.abs(finiteOr(g&&g.interactionRadius,55)-55)>1?1:0},
   {name:'metric.moved',  read:g=>metMoved(g)?1:0},
@@ -1857,11 +1934,29 @@ const LAW_DECLARED=[
   // LAW_VIABLE's lower bound is 0, not a safe floor: putting a floor under it would be me keeping the
   // brake I just claimed to hand over.
   {name:'LAW_VIABLE',    get:()=>LAW_VIABLE,    set:v=>{LAW_VIABLE=v;},    lo:0.0, hi:1.0},
-  {name:'LAW_PROBATION', get:()=>LAW_PROBATION, set:v=>{LAW_PROBATION=Math.max(200,Math.round(v));}, lo:200, hi:20000},
+  // #200: the rounding came off here too, and this one was a LATENT DEFECT from #197 that #183's
+  // settability rig let through by luck: its probe is from+(hi-lo)*0.1, which for [200, 20000] is
+  // 2180 - an integer, so Math.round was a no-op and the row read settable. LEVEL_GROUP_MIN's range
+  // made the same probe land on 2.6 and the defect surfaced. A probation length is compared with
+  // `tick - start >= p`, so a fractional one is perfectly meaningful.
+  {name:'LAW_PROBATION', get:()=>LAW_PROBATION, set:v=>{LAW_PROBATION=Math.max(200,v);}, lo:200, hi:20000},
   {name:'LAW_COST',      get:()=>LAW_COST,      set:v=>{LAW_COST=v;},      lo:0.0, hi:0.25},
   {name:'LAW_RATE',      get:()=>LAW_RATE,      set:v=>{LAW_RATE=v;},      lo:0.0, hi:0.004},
   {name:'CHANNEL_WARP_RENT',get:()=>CHANNEL_WARP_RENT,set:v=>{CHANNEL_WARP_RENT=v;},lo:0.0,hi:1.0},  // #198
   {name:'SELFWRITE_COST',get:()=>SELFWRITE_COST,set:v=>{SELFWRITE_COST=v;},lo:0.0,hi:0.08},           // #199
+  // #200b: what counts as a higher-level individual. The first laws in this table that change what
+  // the world's OBSERVABLES mean rather than what its physics does - which is why both the formation
+  // gates and the recognition thresholds are here, and not only the ones the census reads.
+  {name:'LEVEL_BRIDGE_MIN',get:()=>LEVEL_BRIDGE_MIN,set:v=>{LEVEL_BRIDGE_MIN=v;},lo:0.02,hi:0.9},
+  // NOT ROUNDED, and #183's settability rig is why. A row whose setter rounds cannot satisfy
+  // set(x); get()===x for a fractional x, so it reads as NOT-SETTABLE - and it should, because a
+  // rounding setter silently discards what the probation proposed. A membership threshold is a
+  // COMPARISON bound (size >= 2.6 counts a three-member group and not a two-member one), so it never
+  // needed to be an integer; the rounding was a reflex.
+  {name:'LEVEL_GROUP_MIN',get:()=>LEVEL_GROUP_MIN,set:v=>{LEVEL_GROUP_MIN=Math.max(2,v);},lo:2,hi:8},
+  {name:'LEVEL_TOWER_REG',get:()=>LEVEL_TOWER_REG,set:v=>{LEVEL_TOWER_REG=v;},lo:0.05,hi:0.95},
+  {name:'LEVEL_FOREST_REG',get:()=>LEVEL_FOREST_REG,set:v=>{LEVEL_FOREST_REG=v;},lo:0.05,hi:0.95},
+  {name:'LEVEL_COHERE_RATE',get:()=>LEVEL_COHERE_RATE,set:v=>{LEVEL_COHERE_RATE=v;},lo:0.005,hi:0.30},
 ];
 // === #197 - AND THE RATE HAD TO MOVE WITH THE TABLE =============================================
 // The law table went from THREE entries to sixteen in this commit. At the old rate - one proposal per
@@ -3285,6 +3380,7 @@ function seedSubstrateIntoParticle(){
   // plain scalars, copied by value.
   if(genome.uaFoldMode!==undefined){ g.uaFoldMode=genome.uaFoldMode; g.uaFoldK=genome.uaFoldK; }
   if(genome.autonomyCede!==undefined)g.autonomyCede=genome.autonomyCede;
+  if(genome.regCount!==undefined)g.regCount=genome.regCount;                                          // #200a
   if(genome.tickRate!==undefined){ g.tickRate=genome.tickRate; g.tickPhase=genome.tickPhase; }       // #192
   if(genome.metP!==undefined){ g.metP=genome.metP; g.metAx=genome.metAx; g.metRot=genome.metRot; }   // #190
   if(genome.cellScale!==undefined)g.cellScale=genome.cellScale;
@@ -9616,7 +9712,7 @@ const CHILD_NOT_A_GENE=['totalTicks','generation','extinctions'];
 // crossing at 6 population carriers through the seeding route) and #185's demeCount are in the same
 // position and are NOT enrolled here, because neither is dead and demeCount's step changes a spatial
 // partition that interacts with position - that is its own swing's question, not this one's.
-const CHILD_DISCRETE=['tickRate','tickPhase'];   // #192: integer-valued, so the walk below would only ever add invisible noise
+const CHILD_DISCRETE=['tickRate','tickPhase','regCount'];   // #200a: regCount joins for #192's reason - an integer gene walked continuously is a gene that cannot move   // #192: integer-valued, so the walk below would only ever add invisible noise
 function mutateChildGenome(g){
   const rate=genome.mutationRate||0.06,scale=genome.mutationScale||1;
   // FULL divergence — gloves-off random walk on EVERY heritable scalar gene (relative step). Only
@@ -9740,6 +9836,16 @@ function mutateChildGenome(g){
   // The genes are created here if absent, with the pre-#192 values, and that draws no randomness -
   // so STIME=0 is still an exact-revert control (#97's rule) and a population that predates the
   // germline's gene is not left permanently outside the mechanism.
+  // #200a: and the discrete step on the fast route, beside the clock's
+  if(__REGS){
+    if(g.regCount===undefined)g.regCount=VM_REGS_DEFAULT;
+    if(Math.random()<rate){
+      const _o=__cl(Math.round(finiteOr(g.regCount,VM_REGS_DEFAULT)),2,VM_REGS_MAX);
+      const _n=__cl(_o+(Math.random()<0.5?1:-1),2,VM_REGS_MAX);
+      if(_n!==_o){ g.regCount=_n; fired('vm.regStep'); }
+    }
+    g.regCount=__cl(Math.round(finiteOr(g.regCount,VM_REGS_DEFAULT)),2,VM_REGS_MAX);
+  }
   if(__STIME){
     if(g.tickRate===undefined)g.tickRate=1;
     if(g.tickPhase===undefined)g.tickPhase=0;
@@ -10705,6 +10811,7 @@ function encodeGenome(){
     // would restore a medium that computes the same thing in a different space, which is a different
     // medium - and pre-#189 rows are 2 long and load with the seeded form, which is correct for a
     // save written before a channel had a form to record.
+    rgc:genome.regCount===undefined?undefined:(Math.round(genome.regCount)|0),   // #200a working memory
     tkr:genome.tickRate===undefined?undefined:(Math.round(genome.tickRate)|0),    // #192 subjective time
     tkf:genome.tickPhase===undefined?undefined:(Math.round(genome.tickPhase)|0),
     mtp:genome.metP===undefined?undefined:+(+genome.metP).toFixed(4),      // #190 the metric: exponent, anisotropy, orientation
@@ -11068,6 +11175,7 @@ function decodeGenome(data){
     if(typeof g.ait==='number')genome.atomIdleTolerance=+g.ait;  // #177 (absent in pre-#177 saves → undefined → reads 0 → the old cull, which is the correct inheritance)
     if(typeof g.usb==='number')genome.uaStructBias=+g.usb;       // #107
     // #180 (absent in pre-#180 saves → left undefined → every reader's default → the pre-#180 engine)
+    if(typeof g.rgc==='number')genome.regCount=g.rgc|0;    // #200a (absent -> 12, which is what a pre-#200 save meant)
     if(typeof g.tkr==='number')genome.tickRate=g.tkr|0;     // #192 (absent -> undefined -> rate 1 -> every tick, which is what a pre-#192 save meant)
     if(typeof g.tkf==='number')genome.tickPhase=g.tkf|0;
     if(typeof g.mtp==='number')genome.metP=+g.mtp;      // #190 (absent -> undefined -> reads Euclidean, which is what a pre-#190 save meant)
@@ -11362,6 +11470,7 @@ function sanitizeGenome(){
   // #192: clamp both, and REDUCE the phase into the rate. A saved phase of 4 under a rate of 2 is
   // not illegal, it is ambiguous - it means beat 0, and storing it as 4 makes two genomes that behave
   // identically compare as different, which is how a census row starts lying.
+  if(genome.regCount!==undefined)genome.regCount=__cl(Math.round(finiteOr(genome.regCount,VM_REGS_DEFAULT)),2,VM_REGS_MAX);   // #200a
   if(genome.tickRate!==undefined||genome.tickPhase!==undefined){
     const _r=__cl(Math.round(finiteOr(genome.tickRate,1)),1,TICK_RATE_MAX);
     genome.tickRate=_r;
@@ -13170,9 +13279,11 @@ function updateClusterCredit(){
 // must be visible as an absence rather than a missing row.
 const LEVEL_DECLARED=[
   {name:'particle', read:()=>{ let n=0; for(let i=0;i<N;i++) if(palive[i])n++; return {n,age:0}; }},
-  {name:'cluster',  read:()=>{ let n=0,a=0; for(const c of clusters) if(c&&c.size>=2){n++; if(c.persistAge>a)a=c.persistAge;} return {n,age:a}; }},
-  {name:'tower',    read:()=>{ let n=0,a=0; try{ for(const f of hierTower) for(const u of f){ if(u&&u.reg>=0.5){n++; if((u.level|0)>a)a=u.level|0;} } }catch(_){} return {n,age:a}; }},
-  {name:'forest',   read:()=>{ let n=0,a=0; try{ for(const v of _forestReg.values()) if(v>=0.4)n++; a=_forestReg.size; }catch(_){} return {n,age:a}; }},
+  // #200b: the thresholds are laws now - see the note at LEVEL_BRIDGE_MIN. What counts as an
+  // individual above the particle is the world's call, not a constant in this list.
+  {name:'cluster',  read:()=>{ const m=__LEVELS?LEVEL_GROUP_MIN:2; let n=0,a=0; for(const c of clusters) if(c&&c.size>=m){n++; if(c.persistAge>a)a=c.persistAge;} return {n,age:a}; }},
+  {name:'tower',    read:()=>{ const t=__LEVELS?LEVEL_TOWER_REG:0.5; let n=0,a=0; try{ for(const f of hierTower) for(const u of f){ if(u&&u.reg>=t){n++; if((u.level|0)>a)a=u.level|0;} } }catch(_){} return {n,age:a}; }},
+  {name:'forest',   read:()=>{ const t=__LEVELS?LEVEL_FOREST_REG:0.4; let n=0,a=0; try{ for(const v of _forestReg.values()) if(v>=t)n++; a=_forestReg.size; }catch(_){} return {n,age:a}; }},
 ];
 let __levelSeen=Object.create(null);    // name -> highest count ever observed
 let __levelLast=Object.create(null);    // #186: name -> count at the PREVIOUS census, so appeared/vanished fire on the transition
@@ -14709,6 +14820,7 @@ function profileVM(){
 
     const prog=genome.vmProgram;
     const nInst=Math.min(prog.length,genome.vmMaxInstructions);
+    __vmRC=VM_REGS_DEFAULT;   // #200a: the cluster VM and the profiler are not any lineage's machine - see the note at VM_REGS_MAX
 
     for(let ip=0,_prs=0;ip<nInst&&_prs<nInst*2;ip++,_prs++){
       const inst=prog[ip];if(!inst)continue;
@@ -15456,10 +15568,10 @@ function profileVM(){
         const _boi=op-CORE_OPCODES;
         if(_bos&&_boi<_bos.length){
           const _bua=genome.userAtoms&&genome.userAtoms[_bos[_boi]];
-          if(_bua) vmRegs[di]=uaChain(_bua,_boi,vmRegs[si],vmRegs[(si+1)%12]);
+          if(_bua) vmRegs[di]=uaChain(_bua,_boi,vmRegs[si],vmRegs[(si+1)%__vmRC]);
         }
       }
-      for(let r=0;r<12;r++){const _v=vmRegs[r];vmRegs[r]=Number.isFinite(_v)?(_v<-8?-8:_v>8?8:_v):0;}
+      for(let r=0;r<VM_REGS_MAX;r++){const _v=vmRegs[r];vmRegs[r]=Number.isFinite(_v)?(_v<-8?-8:_v>8?8:_v):0;}
     }
 
     for(let a=0;a<7;a++)totals[a]+=vmActions[a];
@@ -17544,6 +17656,16 @@ function mutateGenome(){ fired('genome.mutate');
   // about being present), and the phase is redrawn whenever the rate changes, because a phase only
   // means anything relative to a rate - a phase of 3 under rate 2 is a phase of 1, and carrying the
   // stale number across would make the gene's value depend on its history rather than its state.
+  // #200a: the register file. DISCRETE, so it gets a discrete operator and is kept out of the
+  // continuous child walk - #192's finding, which cost that swing a dead layer before it was found.
+  if(__REGS){
+    if(genome.regCount===undefined)genome.regCount=VM_REGS_DEFAULT;
+    if(Math.random()<rate*0.5){
+      const _o=vmRegCount(genome);
+      const _n=__cl(_o+(Math.random()<0.5?1:-1),2,VM_REGS_MAX);
+      if(_n!==_o){ genome.regCount=_n; fired('vm.regStep'); }
+    }
+  }
   if(__STIME){
     if(genome.tickRate===undefined)genome.tickRate=1;
     if(genome.tickPhase===undefined)genome.tickPhase=0;
@@ -19598,7 +19720,7 @@ function runAlienPrediction(){ fired('alien.predict');
 }
 
 // ═══ LAYER 6: REGISTER-BASED VIRTUAL MACHINE ═══
-const vmRegs=new Float32Array(12);
+const vmRegs=new Float32Array(VM_REGS_MAX);   // #200a: allocated at the max; __vmRC masks how much of it a lineage addresses
 // ═══ #132 — A GRAMMAR FOR VERBS ═══════════════════════════════════════════════════════════════════
 // This system has authored its own NOUNS for a hundred swings: uaGenTerm composes expressions from a
 // bounded alphabet, they get bound as opcodes, and selection keeps the ones that earn their keep. It
@@ -19915,6 +20037,7 @@ function executeVM(i,j,sim,d){
 
   const prog=pProg[i]||genome.vmProgram;  // UNLOCKED #9: this particle runs ITS lineage's program
   const nInst=Math.min(prog.length,genome.vmMaxInstructions);
+  __vmRC=vmRegCount();   // #200a: the ambient genome is the CARRIER's here (post-repoint), so the file size is the carrier's
 
   // LEAP 16 (#54) — complexity is affordable exactly to the extent it pays. The ceilings that bounded
   // standing complexity are replaced by a progressive toll: instructions beyond the historical cap cost
@@ -20009,7 +20132,7 @@ function executeVM(i,j,sim,d){
   for(let ip=0,_vs=0;ip<nInst&&_vs<nInst*2;ip++,_vs++){
     const inst=prog[ip];if(!inst)continue;
     const [op,src,dst,_k0]=inst; const k=Number.isFinite(_k0)?_k0:0; // NaN-FIX: k is an evolvable instruction immediate; a NaN here flows through case-4 (vmActions+=vmRegs*k) past the register clamp into amp/tend and poisons the fitness EMA.
-    const si=Math.abs(src)%12,di=Math.abs(dst)%12;
+    const si=Math.abs(src)%__vmRC,di=Math.abs(dst)%__vmRC;   // #200a
 
     switch(op){
       case 0:vmRegs[di]=vmRegs[si];break;
@@ -20117,7 +20240,7 @@ function executeVM(i,j,sim,d){
         const uas=genome.userAtoms;
         if(uas&&uas.length>0){
           const uIdx=Math.abs(Math.floor(k))%uas.length;
-          vmRegs[di]=uaCall(uas[uIdx],vmRegs[si],vmRegs[(si+1)%12]);
+          vmRegs[di]=uaCall(uas[uIdx],vmRegs[si],vmRegs[(si+1)%__vmRC]);
         }
       }break;
       case 23:{
@@ -22101,7 +22224,7 @@ function executeVM(i,j,sim,d){
     // holds the target index, its neighbour holds the value, and |k| selects the field. Cramped, but
     // the format is the format - widening it would change every saved program's row shape.
     if(op===OP_SELFWRITE){
-      vmRegs[di]=vmSelfWrite(i,prog,nInst,vmRegs[si],vmRegs[(si+1)%12],k)*(k||1);
+      vmRegs[di]=vmSelfWrite(i,prog,nInst,vmRegs[si],vmRegs[(si+1)%__vmRC],k)*(k||1);
     }
     // BOUND-OPCODE BOUNDARY (Pe60-class fix, now single-sourced via CORE_OPCODES).
     // History: the guard once read op>=126 (boi=op-126), which (a) collided with core
@@ -22116,7 +22239,7 @@ function executeVM(i,j,sim,d){
       const _boi=op-CORE_OPCODES;
       if(_bos&&_boi<_bos.length){
         const _bua=genome.userAtoms&&genome.userAtoms[_bos[_boi]];
-        if(_bua){ const _out=uaChain(_bua,_boi,vmRegs[si],vmRegs[(si+1)%12]); vmRegs[di]=_out;
+        if(_bua){ const _out=uaChain(_bua,_boi,vmRegs[si],vmRegs[(si+1)%__vmRC]); vmRegs[di]=_out;
           // ═══ #88 REACH ON THE MAIN PATH ═══════════════════════════════════════════════════════
           // __REACH (16937) makes authored atoms drive actuators — "Atoms become EFFECTORS, not just
           // calculators" — but it is wired at ONE of five bound-opcode dispatch sites, and that site is
@@ -22138,7 +22261,7 @@ function executeVM(i,j,sim,d){
         }
       }
     }
-    for(let r=0;r<12;r++){const _v=vmRegs[r];vmRegs[r]=Number.isFinite(_v)?(_v<-8?-8:_v>8?8:_v):0;}
+    for(let r=0;r<VM_REGS_MAX;r++){const _v=vmRegs[r];vmRegs[r]=Number.isFinite(_v)?(_v<-8?-8:_v>8?8:_v):0;}
   }
 
   const bond=sim*phaseAlign*proximity;
@@ -22152,7 +22275,7 @@ function executeVM(i,j,sim,d){
       const src=pPlasmid[pBase+ip*4+1]|0;
       const dst=pPlasmid[pBase+ip*4+2]|0;
       const k=pPlasmid[pBase+ip*4+3];
-      const si=Math.abs(src)%12,di=Math.abs(dst)%12;
+      const si=Math.abs(src)%__vmRC,di=Math.abs(dst)%__vmRC;   // #200a
       switch(op){
         case 0:vmRegs[di]=vmRegs[si];break;
         case 1:vmRegs[di]+=vmRegs[si]*k;break;
@@ -22221,7 +22344,7 @@ function executeVM(i,j,sim,d){
           const uas=genome.userAtoms;
           if(uas&&uas.length>0){
             const uIdx=Math.abs(Math.floor(k))%uas.length;
-            vmRegs[di]=uaCall(uas[uIdx],vmRegs[si],vmRegs[(si+1)%12]);
+            vmRegs[di]=uaCall(uas[uIdx],vmRegs[si],vmRegs[(si+1)%__vmRC]);
           }
         }break;
         case 24:{
@@ -23243,13 +23366,13 @@ function executeVM(i,j,sim,d){
         case 236:{const _fxn=(genome.userEffects&&genome.userEffects.length)?Math.min(genome.userEffects.length,MAX_USER_EFFECTS):MAX_USER_EFFECTS;const _ei=Math.abs(dst)%_fxn;vmActions[EFFECT_SLOT0+_ei]+=vmRegs[si]*k;}break; // EFFECT_EMIT — #133b: index the bank that EXISTS; %MAX_USER_EFFECTS sent half of all emits to empty slots
       }
       // #199 - full parity, the same reason every op here has a twin
-      if(op===OP_SELFWRITE){ vmRegs[di]=vmSelfWrite(i,prog,nInst,vmRegs[si],vmRegs[(si+1)%12],k)*(k||1); }
+      if(op===OP_SELFWRITE){ vmRegs[di]=vmSelfWrite(i,prog,nInst,vmRegs[si],vmRegs[(si+1)%__vmRC],k)*(k||1); }
       if(op>=CORE_OPCODES&&op<CORE_OPCODES+MAX_BOUND_OPCODES){
         const _bos=genome.boundOpcodes;
         const _boi=op-CORE_OPCODES;
         if(_bos&&_boi<_bos.length){
           const _bua=genome.userAtoms&&genome.userAtoms[_bos[_boi]];
-          if(_bua){ const _out=uaChain(_bua,_boi,vmRegs[si],vmRegs[(si+1)%12]); vmRegs[di]=_out;
+          if(_bua){ const _out=uaChain(_bua,_boi,vmRegs[si],vmRegs[(si+1)%__vmRC]); vmRegs[di]=_out;
             // REACH — close sense→compute→ACT: the atom's output drives one of the VM's EXISTING,
             // already-conserved actuators directly (vmActions: 0=force, 2=ampTransfer[conserved],
             // 3=tendBleed[clamped], 4=spawnDrive, 5=signal, 6=mutPressure). Same emit semantics as the
@@ -23261,7 +23384,7 @@ function executeVM(i,j,sim,d){
           }
         }
       }
-      for(let r=0;r<12;r++){const _v=vmRegs[r];vmRegs[r]=Number.isFinite(_v)?(_v<-8?-8:_v>8?8:_v):0;}
+      for(let r=0;r<VM_REGS_MAX;r++){const _v=vmRegs[r];vmRegs[r]=Number.isFinite(_v)?(_v<-8?-8:_v>8?8:_v):0;}
     }
     amp[i]-=nPi*genome.metabolicCost*0.5;
   }
@@ -23565,6 +23688,7 @@ function executeClusterVM(i,j,sim,d){
 
   const prog=cl.vmProgram;
   const nInst=Math.min(prog.length,MAX_CLUSTER_VM);
+  __vmRC=VM_REGS_DEFAULT;   // #200a: the cluster VM and the profiler are not any lineage's machine - see the note at VM_REGS_MAX
 
   for(let ip=0,_cs=0;ip<nInst&&_cs<nInst*2;ip++,_cs++){
     const inst=prog[ip];if(!inst)continue;
@@ -23638,7 +23762,7 @@ function executeClusterVM(i,j,sim,d){
         const uas=genome.userAtoms;
         if(uas&&uas.length>0){
           const uIdx=Math.abs(Math.floor(k))%uas.length;
-          vmRegs[di]=uaCall(uas[uIdx],vmRegs[si],vmRegs[(si+1)%12]);
+          vmRegs[di]=uaCall(uas[uIdx],vmRegs[si],vmRegs[(si+1)%__vmRC]);
         }
       }break;
       case 24:{
@@ -24679,13 +24803,13 @@ function executeClusterVM(i,j,sim,d){
       const _boi=op-CORE_OPCODES;
       if(_bos&&_boi<_bos.length){
         const _bua=genome.userAtoms&&genome.userAtoms[_bos[_boi]];
-        if(_bua){ const _out=uaChain(_bua,_boi,vmRegs[si],vmRegs[(si+1)%12]); vmRegs[di]=_out;
+        if(_bua){ const _out=uaChain(_bua,_boi,vmRegs[si],vmRegs[(si+1)%__vmRC]); vmRegs[di]=_out;
           if(__REACH_ON){ const _rv110c=Math.max(-2,Math.min(2,_out))*(__REACH_NOK?1:k)*(__REACH_GAIN&&isFinite(genome.reachGain)?genome.reachGain:0.2); vmActions[reachSlot(di)]+=_rv110c; __reachFires++;
             if(__ATOM_CREDIT&&_bua.expression){if(__atomExprContrib.size>5000)__atomExprContrib.clear();__atomExprContrib.set(_bua.expression,(__atomExprContrib.get(_bua.expression)||0)+_rv110c);} }
         }
       }
     }
-    for(let r=0;r<12;r++){const _v=vmRegs[r];vmRegs[r]=Number.isFinite(_v)?(_v<-8?-8:_v>8?8:_v):0;}
+    for(let r=0;r<VM_REGS_MAX;r++){const _v=vmRegs[r];vmRegs[r]=Number.isFinite(_v)?(_v<-8?-8:_v>8?8:_v):0;}
   }
 
   const ddx=px[j]-px[i],ddy=py[j]-py[i];
@@ -25118,6 +25242,7 @@ function executeSoloVM(){
     const _selfG=genome;genome=pGenome[i]||genome; try{ // UNLOCKED #9 FULL + FIX (review): install the lineage's FULL genome BEFORE sizing the solo VM — otherwise nInst/soloInfluence used the global baseline, so a lineage that evolved its own vmMaxInstructions / vmInfluence / ruleScale never ran solo under its own parameters
     const prog=pProg[i]||genome.vmProgram;  // UNLOCKED #9: isolated particle runs its own program too
     const nInst=Math.min(prog.length,genome.vmMaxInstructions);
+    __vmRC=vmRegCount();   // #200a: the ambient genome is the CARRIER's here (post-repoint), so the file size is the carrier's
     __uaVoice.fill(0);   // #175: a program starts with silent voices — see uaVoiceScope
     if(nInst===0)continue;
     const soloInfluence=genome.vmInfluence*genome.ruleScale*0.0005*(genome.vmGain||1); // per-particle now (was hoisted out of the loop on the global genome — review); #48: evolvable gain
@@ -25148,7 +25273,7 @@ function executeSoloVM(){
     for(let ip=0,_ss=0;ip<nInst&&_ss<nInst*2;ip++,_ss++){
       const inst=prog[ip];if(!inst)continue;
       const [op,src,dst,_k0]=inst; const k=Number.isFinite(_k0)?_k0:0; // NaN-FIX: k is an evolvable instruction immediate; a NaN here flows through case-4 (vmActions+=vmRegs*k) past the register clamp into amp/tend and poisons the fitness EMA.
-      const si=Math.abs(src)%12,di=Math.abs(dst)%12;
+      const si=Math.abs(src)%__vmRC,di=Math.abs(dst)%__vmRC;   // #200a
       switch(op){
         case 0:vmRegs[di]=vmRegs[si];break;
         case 1:vmRegs[di]+=vmRegs[si]*k;break;
@@ -25212,7 +25337,7 @@ function executeSoloVM(){
           const uas=genome.userAtoms;
           if(uas&&uas.length>0){
             const uIdx=Math.abs(Math.floor(k))%uas.length;
-            vmRegs[di]=uaCall(uas[uIdx],vmRegs[si],vmRegs[(si+1)%12]);
+            vmRegs[di]=uaCall(uas[uIdx],vmRegs[si],vmRegs[(si+1)%__vmRC]);
           }
         }break;
         case 46:{
@@ -25402,19 +25527,19 @@ function executeSoloVM(){
       // program, and revision is a thing done to oneself. The CLUSTER VM is deliberately NOT given
       // this - a cluster program writing pProg[i] would be a cluster editing a MEMBER's code, which
       // is a different mechanism with a different owner and belongs to its own swing if ever.
-      if(op===OP_SELFWRITE){ vmRegs[di]=vmSelfWrite(i,prog,nInst,vmRegs[si],vmRegs[(si+1)%12],k)*(k||1); }
+      if(op===OP_SELFWRITE){ vmRegs[di]=vmSelfWrite(i,prog,nInst,vmRegs[si],vmRegs[(si+1)%__vmRC],k)*(k||1); }
       if(op>=CORE_OPCODES&&op<CORE_OPCODES+MAX_BOUND_OPCODES){
         const _bos=genome.boundOpcodes;
         const _boi=op-CORE_OPCODES;
         if(_bos&&_boi<_bos.length){
           const _bua=genome.userAtoms&&genome.userAtoms[_bos[_boi]];
-          if(_bua){ const _out=uaChain(_bua,_boi,vmRegs[si],vmRegs[(si+1)%12]); vmRegs[di]=_out;
+          if(_bua){ const _out=uaChain(_bua,_boi,vmRegs[si],vmRegs[(si+1)%__vmRC]); vmRegs[di]=_out;
             if(__REACH_ON){ const _rv110s=Math.max(-2,Math.min(2,_out))*(__REACH_NOK?1:k)*(__REACH_GAIN&&isFinite(genome.reachGain)?genome.reachGain:0.2); vmActions[reachSlot(di)]+=_rv110s; __reachFires++;
               if(__ATOM_CREDIT&&_bua.expression){if(__atomExprContrib.size>5000)__atomExprContrib.clear();__atomExprContrib.set(_bua.expression,(__atomExprContrib.get(_bua.expression)||0)+_rv110s);} }
           }
         }
       }
-      for(let r=0;r<12;r++){const _v=vmRegs[r];vmRegs[r]=Number.isFinite(_v)?(_v<-8?-8:_v>8?8:_v):0;}
+      for(let r=0;r<VM_REGS_MAX;r++){const _v=vmRegs[r];vmRegs[r]=Number.isFinite(_v)?(_v<-8?-8:_v>8?8:_v):0;}
     }
 
     for(let m=0;m<MEM_SIZE;m++)pMem[i*MEM_SIZE+m]=vmRegs[4+m];
@@ -26371,6 +26496,8 @@ __CHANGOV=(typeof globalThis==='undefined')||((globalThis.__CHANGOV??1)|0)!==0; 
 __BRAKES=(typeof globalThis==='undefined')||((globalThis.__BRAKES??1)|0)!==0;   // #197: default ON. Off restricts law mutation to the original three physics laws, so every price stays at the constant this file was written with
 __WARP=(typeof globalThis==='undefined')||((globalThis.__WARP??1)|0)!==0;   // #198: default ON, and a NO-OP with no warp expression: chanWarpAt returns 0 without evaluating anything, so an unwarped medium takes the original tap arithmetic
 __SELFWRITE=(typeof globalThis==='undefined')||((globalThis.__SELFWRITE??1)|0)!==0;   // #199: default ON, and a NO-OP for any program that does not carry opcode 429 - which before this commit was every program, because 429 fell through every dispatch
+__REGS=(typeof globalThis==='undefined')||((globalThis.__REGS??1)|0)!==0;   // #200a: default ON, and a NO-OP at the seeded 12 - vmRegCount returns VM_REGS_DEFAULT and every mask is the %12 it always was
+__LEVELS=(typeof globalThis==='undefined')||((globalThis.__LEVELS??1)|0)!==0;   // #200b: default ON, and a NO-OP at the seeded values - every gate falls back to the literal it was
 __REACH=(typeof globalThis==='undefined')||((globalThis.__REACH_SWEEP??1)|0)!==0;   // #191: default ON. Force off with REACH_SWEEP=0 - the sweep returns to +/-1 ring, the reach to the germline's value, and the dedup to `j>i`, which is the pre-#191 engine exactly. Deliberately NOT named REACH: __REACH_ON is a different, pre-existing gate and colliding on that name is how a knob silently stops being a control
 __FORAGE_ON=(typeof globalThis==='undefined')||((globalThis.__FORAGE_EYES??1)|0)!==0; // resolve FORAGE once; gates the resource-sense computation in uaSetEyes
 __DECIDE_ON=(typeof globalThis==='undefined')||((globalThis.__DECIDE??1)|0)!==0; // resolve DECISION GAIN once; gates confidence accrual + commitment scaling
@@ -27219,7 +27346,7 @@ function loop(){
     {for(let _ri=0;_ri<N;_ri++){if(!palive[_ri])continue;const _rcid=clusterID[_ri];if(_rcid<0||_rcid>=MAX_CLUSTERS)continue;if(clusterFloorLevel[_rcid]>prevClusterFloorLevel[_rcid]&&clusterFloorLevel[_rcid]>0){localRes[_ri]=Math.min(2,localRes[_ri]+0.12*clusterFloorLevel[_rcid]);}}}prevClusterFloorLevel.set(clusterFloorLevel); // COMPLEXITY RATCHET: particles whose cluster rose to a higher tower floor this cycle gain an integration energy bonus — building complexity is selectively rewarded, making regression costly at the population level
     {densityField.fill(0);for(let _di=0;_di<N;_di++){if(!palive[_di])continue;const _ddfx=__cl(Math.floor(px[_di]/(W/FIELD_W)),0,FIELD_W-1),_ddfy=__cl(Math.floor(py[_di]/(H/FIELD_H)),0,FIELD_H-1);if(densityField[_ddfy*FIELD_W+_ddfx]<250)densityField[_ddfy*FIELD_W+_ddfx]++;}} // DENSITY MAP: particle count per field cell — LOCAL_DENSITY (op141) reads this in O(1); cost is one O(N) scan per 60 ticks
     {const _nfdMap=new Map();for(let _ni=0;_ni<N;_ni++){if(!palive[_ni])continue;const _np=pProg[_ni];if(!_np||_np.length<1)continue;const _nk=(_np[0][0]||0)*1000+(_np[1]?(_np[1][0]||0):0);_nfdMap.set(_nk,(_nfdMap.get(_nk)||0)+1);}let _nfdTotal=0;for(const v of _nfdMap.values())_nfdTotal+=v;if(_nfdTotal>0){for(let _ni=0;_ni<N;_ni++){if(!palive[_ni])continue;const _np=pProg[_ni];if(!_np||_np.length<1)continue;const _nk=(_np[0][0]||0)*1000+(_np[1]?(_np[1][0]||0):0);const _freq=(_nfdMap.get(_nk)||0)/_nfdTotal;if(_freq>0.15)localRes[_ni]=Math.max(0,localRes[_ni]*Math.max(0.75,1-_freq*0.35));}}} // NFD (negative frequency dependence): common behavioral phenotypes (first-2-opcode signature) are penalized — rare strategies gain advantage, preventing monoculture fixation and sustaining behavioral diversity
-    {forestField.fill(0);if(hierTower.length>=1){const _ftop=hierTower[hierTower.length-1];const _fn=_ftop.length;if(_fn>=2){const _fpar=new Int32Array(_fn);for(let i=0;i<_fn;i++)_fpar[i]=i;const _ffind=x=>{while(_fpar[x]!==x){_fpar[x]=_fpar[_fpar[x]];x=_fpar[x];}return x;};const _fW=W/FIELD_W,_fH=H/FIELD_H;for(let i=0;i<_fn;i++){for(let j=i+1;j<_fn;j++){const _fxi=__cl(Math.floor(_ftop[i].cx/_fW),0,FIELD_W-1),_fyi=__cl(Math.floor(_ftop[i].cy/_fH),0,FIELD_H-1);const _fxj=__cl(Math.floor(_ftop[j].cx/_fW),0,FIELD_W-1),_fyj=__cl(Math.floor(_ftop[j].cy/_fH),0,FIELD_H-1);const _fmx=__cl(Math.round((_fxi+_fxj)/2),0,FIELD_W-1),_fmy=__cl(Math.round((_fyi+_fyj)/2),0,FIELD_H-1);if(bridgeField[_fmy*FIELD_W+_fmx]>0.3){const _fa=_ffind(i),_fb=_ffind(j);if(_fa!==_fb)_fpar[_fa]=_fb;}}}const _fgroups=new Map();for(let i=0;i<_fn;i++){const r=_ffind(i);if(!_fgroups.has(r))_fgroups.set(r,[]);_fgroups.get(r).push(i);}for(const _fidxs of _fgroups.values()){if(_fidxs.length<2)continue;let _fcx=0,_fcy=0;for(const idx of _fidxs){_fcx+=_ftop[idx].cx;_fcy+=_ftop[idx].cy;}_fcx/=_fidxs.length;_fcy/=_fidxs.length;const _ffkey=Math.round(_fcx/CELL)+'|'+Math.round(_fcy/CELL);if(!_forestBirth.has(_ffkey))_forestBirth.set(_ffkey,tick);const _ffold=_forestReg.has(_ffkey)?_forestReg.get(_ffkey):0.3;const _ffnew=Math.min(1,_ffold+(_fidxs.length/Math.max(1,_fn))*0.04);_forestReg.set(_ffkey,_ffnew);_forestAge.set(_ffkey,tick);const _fW2=W/FIELD_W,_fH2=H/FIELD_H;for(const idx of _fidxs){const _fsx=__cl(Math.floor(_ftop[idx].cx/_fW2),0,FIELD_W-1),_fsy=__cl(Math.floor(_ftop[idx].cy/_fH2),0,FIELD_H-1);forestField[_fsy*FIELD_W+_fsx]=Math.min(1,forestField[_fsy*FIELD_W+_fsx]+_ffnew);}}if(_forestReg.size>500){const _fcut=tick-300;for(const k of [..._forestAge.keys()]){if((_forestAge.get(k)||0)<_fcut){_forestReg.delete(k);_forestAge.delete(k);_forestBirth.delete(k);}}}}}}  // FOREST META-LEVEL: bridge-connected tower tops (bridgeField>0.3 at midpoint) form forest groups via union-find; forest cohesion integrates slowly (0.04/60-tick rate); forestField substrate stamped for FOREST_SENSE (op142) — a 4th organizational level above cluster→tower→forest
+    {forestField.fill(0);if(hierTower.length>=1){const _ftop=hierTower[hierTower.length-1];const _fn=_ftop.length;if(_fn>=2){const _fpar=new Int32Array(_fn);for(let i=0;i<_fn;i++)_fpar[i]=i;const _ffind=x=>{while(_fpar[x]!==x){_fpar[x]=_fpar[_fpar[x]];x=_fpar[x];}return x;};const _fW=W/FIELD_W,_fH=H/FIELD_H;for(let i=0;i<_fn;i++){for(let j=i+1;j<_fn;j++){const _fxi=__cl(Math.floor(_ftop[i].cx/_fW),0,FIELD_W-1),_fyi=__cl(Math.floor(_ftop[i].cy/_fH),0,FIELD_H-1);const _fxj=__cl(Math.floor(_ftop[j].cx/_fW),0,FIELD_W-1),_fyj=__cl(Math.floor(_ftop[j].cy/_fH),0,FIELD_H-1);const _fmx=__cl(Math.round((_fxi+_fxj)/2),0,FIELD_W-1),_fmy=__cl(Math.round((_fyi+_fyj)/2),0,FIELD_H-1);if(bridgeField[_fmy*FIELD_W+_fmx]>(__LEVELS?LEVEL_BRIDGE_MIN:0.3)){const _fa=_ffind(i),_fb=_ffind(j);if(_fa!==_fb)_fpar[_fa]=_fb;}}}const _fgroups=new Map();for(let i=0;i<_fn;i++){const r=_ffind(i);if(!_fgroups.has(r))_fgroups.set(r,[]);_fgroups.get(r).push(i);}for(const _fidxs of _fgroups.values()){if(_fidxs.length<(__LEVELS?LEVEL_GROUP_MIN:2))continue;let _fcx=0,_fcy=0;for(const idx of _fidxs){_fcx+=_ftop[idx].cx;_fcy+=_ftop[idx].cy;}_fcx/=_fidxs.length;_fcy/=_fidxs.length;const _ffkey=Math.round(_fcx/CELL)+'|'+Math.round(_fcy/CELL);if(!_forestBirth.has(_ffkey))_forestBirth.set(_ffkey,tick);const _ffold=_forestReg.has(_ffkey)?_forestReg.get(_ffkey):0.3;const _ffnew=Math.min(1,_ffold+(_fidxs.length/Math.max(1,_fn))*(__LEVELS?LEVEL_COHERE_RATE:0.04));_forestReg.set(_ffkey,_ffnew);_forestAge.set(_ffkey,tick);const _fW2=W/FIELD_W,_fH2=H/FIELD_H;for(const idx of _fidxs){const _fsx=__cl(Math.floor(_ftop[idx].cx/_fW2),0,FIELD_W-1),_fsy=__cl(Math.floor(_ftop[idx].cy/_fH2),0,FIELD_H-1);forestField[_fsy*FIELD_W+_fsx]=Math.min(1,forestField[_fsy*FIELD_W+_fsx]+_ffnew);}}if(_forestReg.size>500){const _fcut=tick-300;for(const k of [..._forestAge.keys()]){if((_forestAge.get(k)||0)<_fcut){_forestReg.delete(k);_forestAge.delete(k);_forestBirth.delete(k);}}}}}}  // FOREST META-LEVEL: bridge-connected tower tops (bridgeField>0.3 at midpoint) form forest groups via union-find; forest cohesion integrates slowly (0.04/60-tick rate); forestField substrate stamped for FOREST_SENSE (op142) — a 4th organizational level above cluster→tower→forest
     {const _ffbW=W/FIELD_W,_ffbH=H/FIELD_H;for(let _ffbi=0;_ffbi<N;_ffbi++){if(!palive[_ffbi])continue;const _ffbx=__cl(Math.floor(px[_ffbi]/_ffbW),0,FIELD_W-1),_ffby=__cl(Math.floor(py[_ffbi]/_ffbH),0,FIELD_H-1);const _ffbv=forestField[_ffby*FIELD_W+_ffbx];if(_ffbv>0.2)localRes[_ffbi]=Math.min(2,localRes[_ffbi]+_ffbv*0.07);}} // FOREST FITNESS: particles in dense forest alliances gain localRes — 4th-tier structure is selectively advantageous, not just perceivable; selection now drives forest formation directly
     rebuildFieldLineageCache();
     selfModel.clusterCount=clusters.length;

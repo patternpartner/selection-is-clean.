@@ -2400,6 +2400,45 @@ check — without it every program converges on the new opcode). Live: `vm.selfW
 `SELFWRITE_COST` is a LAW (#197), so the world can propose what self-revision costs. Knob `SELFWRITE`;
 off, 429 is the inert no-op it has been for every program ever run.
 
+### #200 — the register file is a gene; what counts as a level is a law
+
+**#200a.** `genome.regCount` in [2, `VM_REGS_MAX`=24], seeded `VM_REGS_DEFAULT`=12. `__vmRC` is set
+once per program execution from the AMBIENT genome (the carrier's, post-repoint) and every `si`/`di`
+mask and every `(si+1)` neighbour read goes through it. `vmRegs` is allocated at the max and the clamp
+loops cover the whole allocation, not the addressed part. Knob `REGS`.
+
+**A NARROW FILE IS A DIFFERENT MACHINE, NOT A WEAKER ONE** — at 3 registers the source fields 0,3,6,9
+alias onto one slot, so a tight file forces state reuse. **NO RENT**, deliberately: the array exists
+either way and a register read is one access whatever the count; every other layer in this arc pays
+rent because its gene buys CPU or memory, and this one buys neither.
+
+`regCount` is in `CHILD_DISCRETE` with a ±1 step on both the germline and child routes — #192's
+finding applied at design time rather than after a dead run. **The `%12` sites that are NOT register
+masks were left alone** (`chemistryTable[op%12]`, `cellProgOp`, the `tend` dimension walk); only the
+five `si`/`di` derivations and the neighbour reads moved. The CLUSTER VM and `profileVM` keep 12: they
+are not any lineage's machine, so giving them a gene would mean deciding whose.
+
+**#200b.** Five constants that decided what counts as a higher-level individual are now laws:
+`LEVEL_BRIDGE_MIN`, `LEVEL_GROUP_MIN`, `LEVEL_TOWER_REG`, `LEVEL_FOREST_REG`, `LEVEL_COHERE_RATE`.
+Knob `LEVELS`.
+
+**NO FIFTH LEVEL, AND THAT IS THE POINT.** The live census reads tower 0–5 and forest 0, so a
+recursive fifth tier would be a dead layer with a census row. The question is why the top two barely
+exist, and the answer was that the recognition thresholds were mine. **The FORMATION gates are in
+there too, not only the two the census reads** — otherwise this would have been evolving the census,
+which is the defect this file has found five times.
+
+**`LEVELS=0` gates the READS, not the law rows.** The globals still drift under probation because the
+rows are in `LAW_DECLARED` regardless, so a knob-off run can report an evolved threshold that nothing
+used. The rig asserts the gates ignore it; do not read the live value as evidence the knob failed.
+
+**AND A LAW SETTER MUST NOT ROUND.** #183's settability rig probes `from + (hi−lo)*0.1` and asserts
+`get() === set()`. `LEVEL_GROUP_MIN` rounded and failed it correctly — a rounding setter silently
+discards what the probation proposed. **`LAW_PROBATION` (#197) had the identical defect and passed by
+luck**, because its range makes that probe land on an integer. Both roundings removed; a membership
+threshold is a `>=` bound and a probation length is compared with `tick − start >= p`, so neither
+needed to be integral. If you add an integer-feeling law, do not round it in the setter.
+
 ### #186 — the germline-to-population crossing, stated generally
 
 The bug the crossing rows caught for the seventh time, and the general form, because it will happen

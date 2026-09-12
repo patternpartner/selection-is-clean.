@@ -15765,3 +15765,132 @@ them credit channels rather than membership); the particles' own continuous spac
 position→cell map; the register file's size and the instruction format's arity; and one world per tab.
 
 `substrate-test.js`: 203 checks, 11 of them #199's. `smoke.sh`: 49 ok, 0 failing.
+
+## #200 — THE WORKING MEMORY, AND WHAT COUNTS AS A LEVEL
+
+Two openings, one commit, because they are independent and neither needed staging.
+
+### #200a — the register file is a gene
+
+`vmRegs` has been a `Float32Array(12)` since this file was written, and `Math.abs(src)%12` at five
+dispatch sites is the whole of a program's addressable state. Twelve is not a derived number. It
+decides **how much a program can hold**, which bounds what any evolved program can compute regardless
+of how open its opcodes are — #199 let a program revise its own instructions; this gives it a say in
+how much it can remember while doing so.
+
+`genome.regCount` in [2, 24], seeded 12 (bit-identical to every run before this). Both directions,
+unlike #183's `cellScale` and #194's grain, because the array is allocated once at `VM_REGS_MAX` and
+never per execution — a wider file costs nothing to provide.
+
+**A narrow file is a different machine, not a weaker one**, and the rig checks the mask bites:
+
+```
+regCount  3   the 24 source fields reach  3 registers
+regCount 12                               12
+regCount 24                               24
+```
+
+At 3 registers the source fields 0, 3, 6, 9 **alias onto one slot**. A program in a tight file is
+forced to reuse state, which is compression, and compression is where structure comes from. A wide
+file keeps more intermediates alive. Both are strategies.
+
+**No rent, and that is a decision rather than an omission.** The array exists either way and a
+register read is one array access whatever the count. Every other layer in this arc got a rent because
+a gene bought CPU or memory; this one buys neither, and pricing it anyway would have been a toll
+invented to look consistent.
+
+`regCount` went straight into `CHILD_DISCRETE` with a ±1 step on both routes — **#192's finding
+applied at the design stage instead of after a dead run.** That swing cost a whole cycle to an integer
+gene walked continuously; this one did not.
+
+The cluster VM keeps twelve. It runs a cluster's program, not a particle's, so its register count is
+not any lineage's property and giving it a gene would mean deciding whose.
+
+### #200b — what counts as a higher-level individual
+
+The obvious reading of "the four levels are authored" is to add a fifth, recursively. **I am not
+doing that, and the live census is why:**
+
+```
+typical 12,000-tick run:   particle 193-214   cluster 6-10   tower 0-5   forest 0
+```
+
+A fifth level on top of a fourth that reads zero is a dead layer with a census row — the failure this
+whole arc has been correcting. The question is not why there are four tiers but why the top two barely
+exist, and the answer is that the thresholds deciding whether a group *counts* were constants I chose.
+Five of them are now laws:
+
+```
+LEVEL_BRIDGE_MIN    0.3    how strong a bridge must be for two tower tops to connect at all
+LEVEL_GROUP_MIN     2      how many members before a group is a group
+LEVEL_TOWER_REG     0.5    how consolidated a tower must be to be recognised
+LEVEL_FOREST_REG    0.4    how cohesive a forest must be to be recognised
+LEVEL_COHERE_RATE   0.04   how fast a group consolidates toward recognition
+```
+
+**And the gates, not only the report.** Two of the five appear solely in `LEVEL_DECLARED`'s readers,
+so making just those evolvable would have been evolving the **census** — the defect this file has now
+found five times and would have found a sixth. The other three gate formation itself inside the forest
+union-find. Both, or neither.
+
+So what an individual *is*, above the particle, is the world's call: the world proposes, the probation
+judges, and #197's machinery decides whether a world that recognises higher levels more readily holds
+its population. If that populates the top tiers, a fifth level becomes worth building. If it does not,
+the answer is that this world's physics does not support towers and no number of extra tiers would
+have changed it. Either way it is a measurement instead of a construction.
+
+### A latent defect in #197, found by #183's rig
+
+`LEVEL_GROUP_MIN` failed `#183 every declared law is actually settable`. That rig probes
+`from + (hi−lo)*0.1` and asserts `get() === set()`, and my setter rounded — so a fractional proposal
+came back changed and the row read NOT-SETTABLE. **It should.** A rounding setter silently discards
+what the probation proposed.
+
+And `LAW_PROBATION` from #197 has the identical defect and **passed by luck**: its range makes that
+probe land on 2180, an integer, so the `Math.round` was a no-op. `LEVEL_GROUP_MIN`'s range made it land
+on 2.6 and the defect surfaced. Both roundings are gone — a membership threshold is a `>=` bound and a
+probation length is compared with `tick − start >= p`, so neither needed to be an integer. The
+rounding was a reflex.
+
+I also removed my own exclusion of `LAW_PROBATION` from #197's settability check. An exclusion that is
+no longer needed is a silently weakened check.
+
+### Live
+
+```
+12,000 ticks
+  regCount        germline 12 -> 14 in one seed; vm.regs germline 0 / population 21 at 3,000 ticks
+  LEVEL_GROUP_MIN 2 -> 3.032    PROPOSED AND KEPT — the world raised what counts as a cluster
+  LEVEL_COHERE_RATE 0.04 -> 0.0875 kept
+  LAW_RATE        0.0006 -> 0.0001 kept — the world SLOWED ITS OWN LAW MUTATION RATE by six times
+  alive 193-214, 0 extinctions, saves round-trip, nothing stranded beyond verb.sensed
+```
+
+`LAW_RATE` is the one worth sitting with. #197 made the brakes evolvable and the first thing a world
+did with that was **brake less often** — it reduced the rate at which it proposes changes to itself,
+and held its population while doing so. That is a world evolving to be more conservative, chosen
+rather than imposed, and it is the opposite of what I would have predicted from "let collapse be the
+filter."
+
+### Two honest caveats
+
+**`tower:5` in one seed and `tower:0` in the other two** is not attributable to #200b. The seed where
+`LEVEL_COHERE_RATE` doubled is one of the seeds where towers read zero. Three runs cannot separate a
+threshold effect from seed variation, and the whole point of making these laws was to find out — which
+needs an arm, not an anecdote.
+
+**`LEVELS=0` stops the gates READING the laws; it does not stop the law rows moving.** The globals
+still drift under probation because the rows are in `LAW_DECLARED` either way, so a knob-off run can
+report an evolved `LEVEL_GROUP_MIN` that nothing used. The rig checks the thing that matters (a raised
+minimum has no effect with the knob off); the live readout is misleading and is noted here rather than
+left to be discovered.
+
+### Still closed after #200
+
+`CAP` (an allocator bound, and the file already says it is not an ecological limit); the instruction
+format's arity — `[op,src,dst,k]` — because widening the row changes every saved program's shape;
+**the order of execution within a tick**, which is array order and would need a per-tick sort to make
+evolvable, so it is named rather than faked; the particles' own continuous space and the position→cell
+map; and one world per tab.
+
+`substrate-test.js`: 214 checks, 11 of them #200's. `smoke.sh`: 49 ok, 0 failing.

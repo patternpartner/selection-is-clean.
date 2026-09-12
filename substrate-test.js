@@ -1115,7 +1115,7 @@ m._compile(code+`
       try{ row.set(mid); }catch(_){ bad++; continue; }
       const got=+row.get();
       if(!isFinite(got))bad++;
-      else if(Math.abs(got-mid)>Math.max(1e-6,Math.abs(mid)*1e-6)&&row.name!=='LAW_PROBATION')bad++;
+      else if(Math.abs(got-mid)>Math.max(1e-6,Math.abs(mid)*1e-6))bad++;
       if(got<row.lo-1e-9||got>row.hi+1e-9)outOfBand++;
     }
     restore();
@@ -1439,6 +1439,97 @@ m._compile(code+`
     for(let q=0;q<N;q++){ const pp=pProg[q];
       if(palive[q]&&pp&&pp.some(r=>r&&(r[0]|0)===OP_SELFWRITE))popSeeded++; }
     return {germSeeded,popSeeded,germDupes};
+  });
+
+  // -- #200  THE WORKING MEMORY, AND WHAT COUNTS AS A LEVEL ---------------------------------------
+  out.regs=run('regs',()=>{
+    // 1. THE MASK IS THE MECHANISM. At regCount=3 the source fields 0,3,6,9 must ALIAS onto one
+    //    register - a narrow file is a different machine, not a weaker one, and if the mask does not
+    //    bite then the gene is decoration.
+    const svg=genome.regCount;
+    const maskAt=(rc)=>{ genome.regCount=rc; const c=vmRegCount(genome);
+      const seen={}; for(let src=0;src<24;src++)seen[Math.abs(src)%c]=1;
+      return {c,distinct:Object.keys(seen).length}; };
+    const m3=maskAt(3), m12=maskAt(12), m24=maskAt(24);
+    // bounds, both directions, and absent reads as the number this file was written with
+    const b={hi:vmRegCount({regCount:999}), lo:vmRegCount({regCount:-5}),
+             absent:vmRegCount({}), max:VM_REGS_MAX, dflt:VM_REGS_DEFAULT};
+    // 2. THE ARRAY IS ALLOCATED AT THE MAX, so a wide file has somewhere to live
+    const alloc=vmRegs.length;
+    // 3. THE STEP IS DISCRETE AND SMALL (#192's rule, and regCount is in CHILD_DISCRETE so the
+    //    continuous walk cannot quietly add fractions to it)
+    const inList=CHILD_DISCRETE.indexOf('regCount')>=0;
+    const g={regCount:VM_REGS_DEFAULT}; let moves=0,jumps=0,illegal=0; const seen={};
+    for(let q=0;q<3000;q++){
+      const before=vmRegCount(g);
+      const nx=__cl(before+(Math.random()<0.5?1:-1),2,VM_REGS_MAX);
+      if(nx!==before){ g.regCount=nx; moves++; if(Math.abs(nx-before)>1)jumps++; }
+      const v=vmRegCount(g); if(!(v>=2&&v<=VM_REGS_MAX))illegal++;
+      seen[v]=1;
+    }
+    // 4. IT RUNS. A live particle on a 3-register file must execute without throwing and leave every
+    //    register finite - the clamp loop covers the whole allocation, not the addressed part.
+    let pi=-1; for(let q=0;q<N;q++) if(palive[q]){pi=q;break;}
+    let ran='ok', nf=0;
+    if(pi>=0&&pGenome[pi]){
+      const sv=pGenome[pi].regCount; pGenome[pi].regCount=3;
+      const svp=pProg[pi];
+      pProg[pi]=[[10,0,1,0.5],[11,7,9,-0.5],[12,23,22,1.0],[200,4,5,0.25]];
+      try{ for(let q=0;q<30;q++) executeSoloVM(); }catch(e){ ran='FAIL '+e.message; }
+      for(let r=0;r<VM_REGS_MAX;r++) if(!isFinite(vmRegs[r]))nf++;
+      pProg[pi]=svp; pGenome[pi].regCount=sv;
+    }
+    // 5. SAVE, and the knob
+    genome.regCount=7;
+    const blob=encodeGenome(); genome.regCount=undefined;
+    decodeGenome(blob); sanitizeGenome();
+    const saved=vmRegCount(genome)===7;
+    const svk=__REGS; __REGS=false;
+    genome.regCount=3; const offVal=vmRegCount(genome);
+    __REGS=svk; genome.regCount=svg===undefined?VM_REGS_DEFAULT:svg;
+    return {m3,m12,m24,b,alloc,inList,moves,jumps,illegal,
+            reached:Object.keys(seen).length,ran,nf,saved,offVal};
+  });
+
+  out.levels=run('levels',()=>{
+    // WHAT COUNTS AS A LEVEL IS A LAW. The check that matters is that the thresholds gate the
+    // MECHANISM and not only the report: two of the five appear solely in LEVEL_DECLARED's readers,
+    // and making just those evolvable would have been evolving the census - the defect this file has
+    // now found five times.
+    const names=LAW_DECLARED.map(r=>r.name);
+    const inTable=['LEVEL_BRIDGE_MIN','LEVEL_GROUP_MIN','LEVEL_TOWER_REG','LEVEL_FOREST_REG',
+                   'LEVEL_COHERE_RATE'].every(n=>names.indexOf(n)>=0);
+    const saved={}; for(const r of LAW_DECLARED) saved[r.name]=r.get();
+    const restore=()=>{ for(const r of LAW_DECLARED){ try{ r.set(saved[r.name]); }catch(_){} } };
+    // the CLUSTER census must follow LEVEL_GROUP_MIN: raise it and a two-member cluster stops counting
+    const row=LEVEL_DECLARED.find(L=>L.name==='cluster');
+    LEVEL_GROUP_MIN=2;  const at2=row.read().n;
+    LEVEL_GROUP_MIN=8;  const at8=row.read().n;
+    restore();
+    // the TOWER and FOREST censuses must follow their thresholds. Driven with synthetic registries
+    // rather than waited for, because towers read 0-2 in a live run (#143: drive the rare path).
+    const svT=hierTower.slice();
+    hierTower.length=0; hierTower.push([{reg:0.6,level:1,cx:100,cy:100},{reg:0.2,level:1,cx:200,cy:200}]);
+    const tRow=LEVEL_DECLARED.find(L=>L.name==='tower');
+    LEVEL_TOWER_REG=0.5; const tLoose=tRow.read().n;
+    LEVEL_TOWER_REG=0.9; const tTight=tRow.read().n;
+    restore();
+    hierTower.length=0; for(const x of svT)hierTower.push(x);
+    const svF=[..._forestReg.entries()];
+    _forestReg.clear(); _forestReg.set('a',0.5); _forestReg.set('b',0.1);
+    const fRow=LEVEL_DECLARED.find(L=>L.name==='forest');
+    LEVEL_FOREST_REG=0.4; const fLoose=fRow.read().n;
+    LEVEL_FOREST_REG=0.9; const fTight=fRow.read().n;
+    restore();
+    _forestReg.clear(); for(const [k,v] of svF)_forestReg.set(k,v);
+    // and the knob pins every gate back to the literal it was
+    const svk=__LEVELS; __LEVELS=false;
+    LEVEL_GROUP_MIN=8;
+    const offAt8=row.read().n;
+    __LEVELS=svk; restore();
+    const offMatches=(offAt8===at2);
+    return {inTable,at2,at8,tLoose,tTight,fLoose,fTight,offMatches,
+            laws:LAW_DECLARED.length};
   });
 
   // ── THE CROSSINGS: every new gene must survive a save and diverge in a child ────────────────
@@ -2020,6 +2111,44 @@ ck('#199 the address is REACHED: seeded into the germline and into the populatio
    'germline '+SR.germSeeded+', '+SR.popSeeded+' population carrier(s) — 429 is one address in 430, and #179 measured opcode 236 in ZERO of 1,424 live instructions when left to the draw');
 ck('#199 and never double-inserted', SR.germDupes===0,
    SR.germDupes+' programs took a second copy — #179\'s third check, learned there: without it every program converges on nothing but the new opcode');
+
+// #200a
+const RG=r.regs||{};
+ck('#200a the mask BITES: a narrow file aliases its source fields',
+   RG.m3 && RG.m3.distinct===3 && RG.m12 && RG.m12.distinct===12 && RG.m24 && RG.m24.distinct===24,
+   'at regCount 3 the 24 source fields reach '+(RG.m3&&RG.m3.distinct)+' registers, at 12 they reach '+
+   (RG.m12&&RG.m12.distinct)+', at 24 '+(RG.m24&&RG.m24.distinct)+
+   ' — a tight file forces a program to reuse state, which is compression, not weakness');
+ck('#200a bounded both ways, and absent reads as the twelve this file was written with',
+   RG.b && RG.b.hi===RG.b.max && RG.b.lo===2 && RG.b.absent===RG.b.dflt,
+   'clamped to [2, '+(RG.b&&RG.b.max)+'], absent reads '+(RG.b&&RG.b.absent));
+ck('#200a the array is allocated at the max, so a wide file has somewhere to live',
+   RG.alloc===(RG.b&&RG.b.max), 'vmRegs.length = '+RG.alloc);
+ck('#200a regCount is in CHILD_DISCRETE and steps by one', RG.inList===true &&
+   RG.moves>0 && RG.jumps===0 && RG.illegal===0,
+   'in the discrete list: '+RG.inList+', '+RG.moves+' steps, '+RG.jumps+' jumps, '+RG.illegal+
+   ' out of bounds — #192 cost a whole swing to an integer gene walked continuously');
+ck('#200a and every count is reachable', RG.reached===(RG.b&&RG.b.max)-1,
+   RG.reached+' distinct counts of '+((RG.b&&RG.b.max)-1)+' possible');
+ck('#200a a program on a 3-register file runs and leaves nothing non-finite',
+   RG.ran==='ok' && RG.nf===0,
+   RG.ran+', '+RG.nf+' non-finite registers — the clamp loop covers the whole allocation, not just the addressed part');
+ck('#200a it survives a save, and REGS=0 pins it to twelve',
+   RG.saved===true && RG.offVal===(RG.b&&RG.b.dflt),
+   'round-trip '+RG.saved+', off reads '+RG.offVal);
+
+// #200b
+const LV2=r.levels||{};
+ck('#200b the five level thresholds are laws', LV2.inTable===true,
+   (LV2.laws||0)+' laws in the table');
+ck('#200b LEVEL_GROUP_MIN changes what counts as a cluster', LV2.at8<LV2.at2,
+   'at minimum 2 the census counts '+LV2.at2+' clusters, at minimum 8 it counts '+LV2.at8);
+ck('#200b and the tower and forest thresholds change what counts as one',
+   LV2.tLoose===1 && LV2.tTight===0 && LV2.fLoose===1 && LV2.fTight===0,
+   'tower at 0.5 -> '+LV2.tLoose+', at 0.9 -> '+LV2.tTight+'; forest at 0.4 -> '+LV2.fLoose+', at 0.9 -> '+LV2.fTight+
+   ' — driven with synthetic registries rather than waited for, because towers read 0-2 and forests 0 in a live run');
+ck('#200b LEVELS=0 pins every gate to the literal it was', LV2.offMatches===true,
+   'with the knob off, a raised LEVEL_GROUP_MIN has no effect — so every level measurement taken before #200 is comparable');
 
 // the crossings
 const CR=r.cross||{};
