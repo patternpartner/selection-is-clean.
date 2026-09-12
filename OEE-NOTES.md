@@ -16260,9 +16260,24 @@ only one that caught it is the one that performs a *real touch tap and waits for
 DOM assertions nor the headless suite could have: the button was present, the right size, and not
 hidden. It was simply unreachable.
 
-Two lessons, both cheap and both already paid for once:
-- **Every new fixed-position overlay in this field needs `pointer-events:none` unless it is a
-  control.** There are now four (`#depth`, `#harvest`, `#grown`, `#back`) and only one of them may
-  take a tap where a universe's own buttons live.
-- **"Passed on a re-run" is not a diagnosis.** I wrote flakiness into the notes off a single
-  observation and it was wrong; three runs per tree took ten minutes and gave the actual answer.
+**And the file had already written this lesson down.** Four lines above where I put `#grown`, in
+`index.html`:
+
+> *The collective says what it is taking in, on itself. This used to be a fixed panel at the
+> bottom-left of the PAGE, where it sat on top of the last cell's own save button.*
+
+That is `#fmsg`, moved for exactly this reason at exactly this spot in the layout. I added a new fixed
+overlay four lines below the comment recording the mistake, and made the mistake.
+
+Three lessons, all cheap, all already paid for once:
+- **A fixed overlay in the shell is over a universe's own controls unless it is proven otherwise.**
+  Of the four (`#depth`, `#harvest`, `#grown`, `#back`), three are controls and are meant to take a
+  tap; `#grown` is the only pure readout, and it was the only one sitting where `#gio` lives —
+  `#depth`'s top edge stops at about 27px and the save button's centre is at 34px, which is the
+  margin the whole thing turned on.
+- **"Passed on a re-run" is not a diagnosis.** I wrote flakiness into these notes off a single
+  observation and it was wrong. Three runs per tree took ten minutes and gave the real answer.
+- **Only a rig that presses the button can find this.** After the fix: save file produced 4/4 on this
+  tree, 3/3 on the pre-#201 tree. Fully green 3/4 here against 2/3 there — so `collective-test` also
+  carries a roughly one-in-three intermittent check of its own, on BOTH trees, which is named here
+  and left alone.
