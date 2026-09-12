@@ -142,14 +142,105 @@ const liveTicks = page => page.evaluate(async () => {
   console.log('        ' + detail.join('  '));
   ck('no uncaught page errors', errs.length === 0, errs.slice(0, 2).join(' | '));
 
+  // ═══ #201 — THE FIELD GROWS A UNIVERSE ══════════════════════════════════════════════════════
+  // Everything above this line is about nine universes the PAGE built. This is about one the page
+  // did not build: a universe founded by a peer, on the same BroadcastChannel every migrant
+  // crosses, adopted by the shell into a slot the shell names.
+  //
+  // ON ITS OWN PAGE, and that is not tidiness. BroadcastChannel is multicast with no peer list, so
+  // a founding posted while the nine-universe page is still open is adopted by THAT page too — and
+  // every assertion below about how many universes were grown would be measuring two shells at
+  // once. The field is closed first and a one-universe page opened in its place.
+  //
+  // The packet is posted rather than waited for. A real founding needs a cluster rich enough to
+  // raise FOUND_NEED, which on this build arrives around tick 4,700 — four minutes of rig time with
+  // no guarantee. What is under test here is the ADOPTION side: that a well-formed founding
+  // produces a real universe in a fresh slot, that the shell names that slot itself, and that the
+  // brakes hold. That the engine EMITS such a packet is substrate-test.js's job, and it measures it
+  // on the engine's own path rather than on a stand-in.
+  //
+  // The germline sent is a REAL one lifted out of a sibling's slot, so the daughter has to boot from
+  // it: a grown universe that cannot answer stat() is not a universe.
+  const donorKey = 'selection_' + Object.keys(saved)[0];
+  const sentBlob = await page.evaluate(k => localStorage.getItem(k), donorKey);
+  await page.close();
+
+  const p201 = await ctx.newPage();
+  const errs201 = []; p201.on('pageerror', e => errs201.push(e.message));
+  await p201.goto(base + '/?g=1#layers=0,n=1', { waitUntil: 'load' });
+  await p201.waitForTimeout(1000);
+  await p201.evaluate(b => {
+    const ch = new BroadcastChannel('selection-pe-network');
+    ch.postMessage({ v: 1, tab: 'rig201', born: 0, type: 'found', data: { g: b, t: 1, d: 0.5, n: 4 } });
+    // ...and a second immediately behind it, which the minimum gap must refuse.
+    ch.postMessage({ v: 1, tab: 'rig201', born: 0, type: 'found', data: { g: b, t: 2, d: 0.5, n: 4 } });
+  }, sentBlob);
+  await p201.waitForTimeout(1500);
+  const grown = await p201.evaluate(() => ({
+    slots: [...document.querySelectorAll('#below .deep')]
+      .map(d => (d.getAttribute('src') || '').match(/[?&]slot=(g\d+)/))
+      .filter(Boolean).map(m => m[1]),
+    stored: Object.keys(localStorage).filter(k => /^selection_g\d+$/.test(k)),
+    g0: localStorage.getItem('selection_g0'),
+    readout: (document.getElementById('grown') || {}).textContent || '' }));
+  ck('#201 a founding on the wire opens a REAL new universe',
+     grown.slots.length === 1 && grown.slots[0] === 'g0',
+     'grown slots: [' + grown.slots.join(' ') + '] — the shell names the slot from its own counter, so nothing on the channel can name a storage key or collide with a built one');
+  ck('#201 the daughter is stored under the germline it was founded from',
+     grown.stored.length === 1 && grown.g0 === sentBlob && !!sentBlob,
+     grown.stored.join(' ') + ', ' + (sentBlob || '').length + ' bytes');
+  ck('#201 the minimum gap refuses the second founding',
+     /1 grown/.test(grown.readout) && /1 refused/.test(grown.readout) && /2 founded/.test(grown.readout),
+     JSON.stringify(grown.readout));
+  // AND IT IS ACTUALLY RUNNING. A frame with a src is not a universe; a frame whose __field answers
+  // is. POLLED rather than slept on: this rig already sits close to smoke.sh's per-rig timeout and a
+  // fixed twenty-second wait for a universe that usually answers in four is budget spent on nothing.
+  let grownTicks = -9;
+  for (let t = 0; t < 12; t++) {
+    grownTicks = await p201.evaluate(async () => {
+      for (const d of document.querySelectorAll('#below .deep')) {
+        if (!/[?&]slot=g0/.test(d.getAttribute('src') || '')) continue;
+        try { const a = d.contentWindow && d.contentWindow.__field; if (!a) return -1;
+          const r = await Promise.race([a.stat(), new Promise(z => setTimeout(() => z(null), 4000))]);
+          return r ? (r.totalTicks | 0) : -2; } catch (e) { return -3; }
+      }
+      return -4;
+    });
+    if (grownTicks > 0) break;
+    await p201.waitForTimeout(2000);
+  }
+  ck('#201 and the grown universe is running its own lineage', grownTicks > 0,
+     grownTicks + ' ticks — founded from a sibling germline, booted into its own slot, its own worker and its own place on the channel');
+  ck('#201 no uncaught page errors while growing', errs201.length === 0, errs201.slice(0, 2).join(' | '));
+  await p201.close();
+
+  // THE FORCE-OFF PATH, on its own load for the same multicast reason. #nofound must adopt nothing
+  // and still COUNT, because "the field stopped growing" and "nothing ever founded" are different
+  // facts and only one of them is about the creatures.
+  const off = await ctx.newPage();
+  await off.goto(base + '/?off=1#layers=0,n=1,nofound', { waitUntil: 'load' });
+  await off.waitForTimeout(1000);
+  await off.evaluate(() => { new BroadcastChannel('selection-pe-network')
+    .postMessage({ v: 1, tab: 'rig201b', born: 0, type: 'found', data: { g: 'QUFB', t: 1 } }); });
+  await off.waitForTimeout(1000);
+  const offState = await off.evaluate(() => ({
+    frames: [...document.querySelectorAll('#below .deep')]
+      .filter(d => /[?&]slot=g\d+/.test(d.getAttribute('src') || '')).length,
+    readout: (document.getElementById('grown') || {}).textContent || '' }));
+  ck('#201 #nofound adopts nothing and still counts what it heard',
+     offState.frames === 0 && /0 grown/.test(offState.readout) && /1 founded/.test(offState.readout),
+     JSON.stringify(offState));
+  await off.close();
+
+  const rp = await ctx.newPage();
   // #reset must now clear EVERY slot, not the two keys it used to know about.
   // A DIFFERENT QUERY, not just a different hash. Going from '/#layers=0' to '/#reset' changes
   // only the fragment, which is a same-document navigation: index.html never re-runs and the reset
   // never fires. The first version of this check did exactly that and reported the code broken.
-  await page.goto(base + '/?r=1#reset', { waitUntil: 'load' });
-  await page.waitForTimeout(3000);
-  const left = await page.evaluate(() => Object.keys(localStorage).filter(k => k.indexOf('selection_') === 0).length);
-  ck('#reset clears every slot in the field', left === 0, left + ' left');
+  await rp.goto(base + '/?r=1#reset', { waitUntil: 'load' });
+  await rp.waitForTimeout(3000);
+  const left = await rp.evaluate(() => Object.keys(localStorage).filter(k => k.indexOf('selection_') === 0).length);
+  ck('#reset clears every slot in the field, grown ones included', left === 0, left + ' left');
 
   console.log('\n  ' + pass + ' passed, ' + fail + ' failed');
   await browser.close(); server.close();

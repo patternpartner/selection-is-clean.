@@ -157,7 +157,13 @@ function peerTickRatio(tab,born){
   const p=r.sm/r.st;
   return p>=1?1:(p>0?p:0);                      // never a BOOST: running fast does not invent packets
 }
-const netEventPending={migrant:0,plasmid:0,motif:0,inscription:0};
+// #201: `found` has no QUEUE and therefore no entry in NET_QUEUE_LIMITS - nothing on the engine
+// side consumes one. It is addressed to the field shell, which owns the slot namespace; a peer
+// engine only COUNTS it, so a founding is visible to every world on the wire without any world
+// being able to overwrite another's lineage by sending one. It still gets a pending counter, so
+// the epoch log carries net_found beside net_migrant and a field where nobody ever founded is
+// distinguishable from one where the packets never arrived.
+const netEventPending={migrant:0,plasmid:0,motif:0,inscription:0,found:0};
 
 // ═══ ALIEN ATTRIBUTION — the reflective self forms a theory of the OTHER substrates on the
 // bridge, not just itself ═══
@@ -1026,6 +1032,31 @@ function validNetworkPayload(type,data){
       (!data.fold||(Array.isArray(data.fold)&&data.fold.length>=2&&
         finitePacketNumber(data.fold[0],0,UA_FOLD_MODES-1)&&finitePacketNumber(data.fold[1],0.05,8)));
   }
+  // === #201 - A PEER FOUNDED A UNIVERSE =========================================================
+  // The heaviest payload on this channel by an order of magnitude: a whole germline, base64 of the
+  // same JSON this world autosaves. Three things bound it, and none of them is restated from
+  // memory (#153's rule - three of the four original migrant bounds had gone stale against
+  // ceilings that moved underneath them):
+  //   SAVE_BUDGET      read from the engine. A blob this world could not itself save is a blob no
+  //                    daughter could be founded from, so the wire's limit is the saver's limit.
+  //   UA_EXPR_SAFE     the same BYTE filter every expression on this channel passes. encodeGenome
+  //                    returns __b64enc(JSON.stringify(...)), which is printable ASCII by
+  //                    construction, so a blob carrying anything else did not come from an
+  //                    encodeGenome and is refused before it reaches a decoder.
+  //   the decoders     and this is the one that actually matters. Nothing in THIS engine installs
+  //                    a `found` blob - see handleNetworkMessage. The only thing that acts on one
+  //                    is the field shell, and what it does with it is hand it to a fresh
+  //                    universe.html, which runs it through decodeGenomeSafe and sanitizeGenome
+  //                    exactly as it would a blob out of localStorage. A hostile peer's best case
+  //                    is therefore founding a universe that boots from a genome this engine
+  //                    would have accepted from its own save file.
+  if(type==='found'){
+    return !!data&&typeof data==='object'&&typeof data.g==='string'&&
+      data.g.length>0&&data.g.length<SAVE_BUDGET&&UA_EXPR_SAFE.test(data.g)&&
+      finitePacketNumber(data.t,0,1e12)&&
+      (data.d===undefined||finitePacketNumber(data.d,0,2))&&
+      (data.n===undefined||finitePacketNumber(data.n,0,1e6));
+  }
   if(type==='plasmid')return Array.isArray(data)&&data.length<=MAX_PLASMID&&data.every(validInstruction);
   if(type==='motif')return Array.isArray(data)&&data.length<=8&&data.every(validInstruction);
   if(type==='inscription')return data&&finitePacketNumber(data.op,-64,netMaxOpcode())&&finitePacketNumber(data.A,-16,16)&&finitePacketNumber(data.B,-16,16)&&finitePacketNumber(data.str,0,2);
@@ -1066,6 +1097,18 @@ function handleNetworkMessage(raw){
   else if(msg.type==='plasmid')queueNetworkPacket(incomingPlasmids,msg.data,NET_QUEUE_LIMITS.plasmid,'plasmid');
   else if(msg.type==='motif')queueNetworkPacket(incomingMotifs,msg.data,NET_QUEUE_LIMITS.motif,'motif');
   else if(msg.type==='inscription')queueNetworkPacket(incomingInscriptions,msg.data,NET_QUEUE_LIMITS.inscription,'inscription');
+  // #201: COUNTED, NOT INSTALLED, and the asymmetry is the whole security model of this packet. A
+  // world that adopted a stranger's entire germline on arrival would not be a peer, it would be
+  // overwritten - every crossing above this line carries a PART of a creature for exactly that
+  // reason. So a peer engine learns only that somewhere on this channel a world reproduced, which
+  // is a real observable (it is how a universe knows the field is growing) and costs nothing it
+  // could be harmed by. The blob is acted on by the field shell alone, which assigns the slot
+  // itself and boots a NEW universe from it rather than changing any existing one.
+  // Deliberately NOT paced by peerTickRatio: pacing throttles heritable material by how fast the
+  // sender's clock runs, and the only consumer of this packet is a shell that has no clock to be
+  // paced against. Pacing it would corrupt the count without changing what the field does.
+  else if(msg.type==='found'){ __foundSeen++; fired('cosmos.foundSeen');
+    if(netEventPending.found!==undefined)netEventPending.found++; }
   // === #185 - THE UNIVERSE-LEVEL PLASMID, RECEIVED ==============================================
   // Gated by genome.netLawReceptivity, which is a SEPARATE gene from netReceptivity, and that
   // separation is the point: a world could not previously be open to migrants and closed to law
@@ -1247,6 +1290,19 @@ const LIVENESS_DECLARED=[
   // the address woke up and the mechanism still never ran.
   'vm.selfWrite','vm.selfWriteRefused','vm.selfWriteSeed',
   'vm.regStep',   // #200a
+  // #201: three names, because this layer has three distinct ways of being dead and they are
+  // three different bugs.
+  //   cosmos.found         a universe founded a real peer. Zero across a run means the price is
+  //                        unreachable or the gate never draws - the failure this file has shipped
+  //                        six times, and the reason this mechanism is NOT hooked to cosmos.merge
+  //                        (which fires 0 times in 6,000 ticks on this build).
+  //   cosmos.foundRefused  the draw got as far as the price and could not pay it. Refused-only is
+  //                        a working decision layer sitting behind an unaffordable brake, which is
+  //                        a completely different finding from never drawing at all.
+  //   cosmos.foundSeen     a founding by SOMEBODY ELSE arrived on the wire. This is the row that
+  //                        separates "this world never founded" from "the packet never crossed",
+  //                        and it is the only one of the three a single-tab run cannot raise.
+  'cosmos.found','cosmos.foundRefused','cosmos.foundSeen',
 ];
 // NOT INSTRUMENTED, and deliberately absent rather than declared-and-silent: cladogenesis minting
 // (#17) has no single entry point I could identify with confidence. A census that reports "never"
@@ -1957,6 +2013,21 @@ const LAW_DECLARED=[
   {name:'LEVEL_TOWER_REG',get:()=>LEVEL_TOWER_REG,set:v=>{LEVEL_TOWER_REG=v;},lo:0.05,hi:0.95},
   {name:'LEVEL_FOREST_REG',get:()=>LEVEL_FOREST_REG,set:v=>{LEVEL_FOREST_REG=v;},lo:0.05,hi:0.95},
   {name:'LEVEL_COHERE_RATE',get:()=>LEVEL_COHERE_RATE,set:v=>{LEVEL_COHERE_RATE=v;},lo:0.005,hi:0.30},
+  // #201: WHAT IT COSTS THIS WORLD TO MAKE ANOTHER ONE. Five rows, because #197's argument applies
+  // hardest here: founding is paid for by the founders, so every one of these would be an off
+  // switch as a genome gene and is a real brake only as a law the payer cannot set. The lower
+  // bounds are 0 and the upper bounds are generous on purpose - a world that walks FOUND_NEED to
+  // zero and FOUND_MAX to sixteen will flood the channel with daughters and discover what a field
+  // of clones does to it, and the probation will revert that only if it cannot hold its own
+  // population. Fragmentation is the data, not the failure.
+  // FOUND_MAX is a COUNT compared with `__founds >= FOUND_MAX`, so it is not rounded here: #200
+  // established that a rounding setter cannot satisfy set(x); get()===x and reads as NOT-SETTABLE
+  // in #183's rig, and a fractional ceiling on a >= comparison means exactly what it says.
+  {name:'FOUND_NEED',    get:()=>FOUND_NEED,    set:v=>{FOUND_NEED=v;},    lo:0.0, hi:40},
+  {name:'FOUND_COST',    get:()=>FOUND_COST,    set:v=>{FOUND_COST=v;},    lo:0.0, hi:1.0},
+  {name:'FOUND_COOLDOWN',get:()=>FOUND_COOLDOWN,set:v=>{FOUND_COOLDOWN=v;},lo:0.0, hi:40000},
+  {name:'FOUND_RATE',    get:()=>FOUND_RATE,    set:v=>{FOUND_RATE=v;},    lo:0.0, hi:1.0},
+  {name:'FOUND_MAX',     get:()=>FOUND_MAX,     set:v=>{FOUND_MAX=v;},     lo:0.0, hi:16},
 ];
 // === #197 - AND THE RATE HAD TO MOVE WITH THE TABLE =============================================
 // The law table went from THREE entries to sixteen in this commit. At the old rate - one proposal per
@@ -4363,6 +4434,70 @@ let cosmosLaunchLog=[];
 let cosmosStats={launches:0,deaths:0,everExported:0,fluxTicksOut:0,merges:0,ageSum:0,ageN:0,peakCohSum:0,senseReads:0,senseHits:0,
   // #60 boundary accounting. fluxErr is the assay that can falsify the wave's central claim.
   fluxOut:0,fluxIn:0,fluxErr:0,fluxErrMax:0,parasites:0,netAtDeath:0,netNegDeaths:0};
+// ═══ #201 — A DAUGHTER UNIVERSE GRADUATES FROM SHADOW TO PEER ═══════════════════════════════
+// WAVE 8 (#59) let a cluster found a daughter WORLD, and that world was a simulation inside this
+// one: ten coarse cells, its own constants, its own clock, and a life that ends at
+// COSMOS_MAX_AGE without ever having been a universe. Everything above it in this file — the
+// crossings, the wire, the law machinery — is about the OTHER kind of world, the one running in
+// another tab with its own genome, its own population and its own save slot. Those two kinds of
+// daughter have never been the same kind of thing, and the count of the second kind has always
+// been set by whoever opened the page. Nine universes because index.html builds nine iframes.
+//
+// This is the promotion. A cluster that can pay founds a REAL peer: the world encodes its own
+// germline, broadcasts it on the same BroadcastChannel every other packet crosses, and the field
+// shell — which owns the slot namespace, so nothing on the wire can name a storage key — writes
+// that germline into a fresh slot and opens a universe on it. The daughter boots with its
+// founder's genome, takes its own worker, autosaves its own lineage, and from its first tick is
+// an ordinary peer: it sends and receives migrants, plasmids, motifs and laws like anybody else.
+//
+// WHAT THIS ACTUALLY OPENS is the one number the field never had a say in: HOW MANY WORLDS THERE
+// ARE. Population size at the universe level stops being a property of the page and becomes a
+// variable the universes move. Extinction was already possible (a tab whose population hits zero
+// is a dead world); this is the other half of it.
+//
+// WHY IT IS NOT HOOKED TO cosmosMerge, which was the obvious hook and which I built against
+// first: cosmos.merge fires 0 times in 6,000 ticks on this build (3 launches, 0 merges — a child
+// must export more than its endowment through cosmosFlux and almost none does). Gating the only
+// real reproduction event in the file on that would have shipped the exact failure this project
+// has hit six times in six swings: a mechanism that reads alive in every census and never runs.
+// The gate is #61's instead — ELIGIBILITY IS AFFORDABILITY — which is the same gate the shadow
+// launch uses, at a price an order of magnitude larger.
+//
+// PRICES ARE LAWS, NOT GENES (#197). A price the payer sets is an off switch, and `foundDrive`
+// below is the payer. So every brake here — what founding costs, how long between foundings, how
+// many a world gets, how likely an affordable cluster is to take it — is a row in LAW_DECLARED,
+// proposed by the world, run on probation, and reverted only if the world cannot hold its
+// population. A world that evolves these toward zero cost and unlimited count will flood the
+// field and find out what that does to it. That is the experiment, not a bug to be prevented.
+//
+// Force off with FOUND=0 (this side) or #nofound on the field shell (the adoption side). FOUND=0
+// is an EXACT revert of the RNG STREAM and not merely of the behaviour: attemptFound returns
+// before its first random draw, and the two draws the new cluster gene would otherwise take -
+// its seed and its child step - are themselves conditional on the knob. Verified against the
+// pre-#201 engine at 3,000 ticks: identical population, amplitude, positions, mutation rate,
+// atom bank and event log, and with BRAKES=0 the saved genome is identical to the byte except
+// for three new names in the never-fired list, which is the declaration and not state.
+// THE ONE THING FOUND=0 DOES NOT RESTORE is which law a probation happens to draw: LAW_DECLARED
+// went from 21 rows to 26, so the SAME random number indexes a different row. Measured - at tick
+// 601 the pre-#201 engine proposes LAW_RATE and this one proposes LEVEL_BRIDGE_MIN, from the
+// same stream, with the same verdict arithmetic (base 247, held 220, kept). That is true of
+// every swing since #183 that added a law, it is what BRAKES=0 pins, and it is stated here
+// because "exact revert" has meant three different things in this file's history.
+// Defaults ON, read from globalThis on every call rather than resolved once at boot - the
+// cosmosMergeOn pattern rather than the __BRAKES one, because both the rigs and the shell need to
+// flip it mid-run. There is deliberately no backing let __FOUND declaration: an unread knob
+// variable is the same trap as a declared-but-unfired liveness name.
+function foundOn(){return (typeof globalThis==='undefined')||((globalThis.__FOUND??1)|0)!==0}
+let FOUND_NEED=8;          // amp a founding cluster must raise. COSMOS_ENDOW_CAP/COSMOS_ENDOW_YIELD is 2.18, so a real peer costs ~4x a shadow one
+let FOUND_COST=0.25;       // fraction of each member's amp collected toward it
+let FOUND_COOLDOWN=2400;   // parent ticks between foundings by this world
+let FOUND_RATE=0.5;        // per-cycle chance an affordable cluster founds, x its heritable foundDrive
+let FOUND_MAX=4;           // most peers one universe may found in one life
+let __foundLast=-1e9;      // tick of the last successful founding
+let __founds=0;            // peers this world has founded
+let __foundRefused=0;      // draws that reached the price and could not pay it
+let __foundSeen=0;         // foundings by OTHER worlds observed on the wire
+let __foundLastLen=0;      // size of the last germline actually sent
 let worldEnergy=WORLD_ENERGY_MAX;
 let energyAdequacy=1;               // fraction of this tick's metabolic demand the pool could meet
 // NEGATIVE FREQUENCY-DEPENDENCE — the engine of novelty. Without it, selection is purely
@@ -12692,6 +12827,21 @@ function seedClusterGenome(){
     // selection should push launchDrive DOWN over a run; if contact is worth its price it should hold
     // or rise. That is a payout test the mechanism performs on itself, rather than one I assert.
     launchDrive:0.2+Math.random()*0.8,      // 0.2..1.0
+    // #201 — and the propensity to found a REAL peer universe, which is the same decision one level
+    // up. Deliberately a SEPARATE trait from launchDrive rather than a reuse of it: a shadow child
+    // costs ~2.2 amp and dies at COSMOS_MAX_AGE, a peer costs FOUND_NEED and outlives its founder,
+    // so a lineage that is eager to do the first has said nothing about whether it should do the
+    // second. Seeded on the same range for the same reason launchDrive is: it is the cheapest
+    // honest instrument this layer has. Founding costs amplitude now and pays back nothing this
+    // world will ever collect, so if the price buys nothing, cluster-level selection pushes
+    // foundDrive DOWN across a run; if being in a larger field is worth it, it holds or rises.
+    // DRAWN ONLY WHEN THE LAYER IS ON, which is not fussiness: an unconditional draw here shifts
+    // every later random number in the run, so FOUND=0 would have reverted the BEHAVIOUR while
+    // still moving the trajectory - measured against HEAD at 3,000 ticks before this line went in,
+    // amp 215.96 vs 208.95 and a different genome fingerprint on a knob that is supposed to mean
+    // "the engine before #201". With the knob off the trait exists at the same neutral value for
+    // everybody and nothing reads it, so the run is bit-identical to the pre-#201 engine.
+    foundDrive:foundOn()?(0.2+Math.random()*0.8):0.6,   // 0.2..1.0
     // === #182 - HOW THIS COLLECTIVE REPRODUCES, AND HOW IT FEEDS ITSELF =======================
     // repro: 0 BUD (the pre-#182 route - a small daughter leaves, parent persists), 1 FISSION (the
     // collective splits near-evenly and neither half is the parent), 2 FUSION-SEEKING (it does not
@@ -12721,6 +12871,8 @@ function mutateClusterGenome(parent,scale){
     innovationRate:__cl(parent.innovationRate+(Math.random()-0.5)*scale*0.15,0.01,0.8),
     metabolicBias:__cl(parent.metabolicBias+(Math.random()-0.5)*scale*0.05,0.6,0.99),
     launchDrive:__cl(finiteOr(parent.launchDrive,0.6)+(Math.random()-0.5)*scale*0.3,0,2), // WAVE 8 (#59)
+    foundDrive:foundOn()?__cl(finiteOr(parent.foundDrive,0.6)+(Math.random()-0.5)*scale*0.3,0,2)
+                        :finiteOr(parent.foundDrive,0.6),   // #201 - same reason as the seed: no draw with the knob off
     // #182: the mode moves ONE STEP, never redrawn - #103's rule, at the level of the collective.
     // A jump from budding straight to fusion-seeking discards whatever the lineage had learned about
     // dividing, which is exactly the "discard and redraw" failure #103 was written about.
@@ -13792,6 +13944,62 @@ function attemptCosmosLaunch(){
     cosmosChildren.push(child);
     cosmosStats.launches++;
     recordEvent('cosmos_launch',{sz:c.size,coh:+c.coherence.toFixed(2),dr:+drive.toFixed(2),e:+phys.e.toExponential(1),live:cosmosChildren.length},240);
+  }
+}
+
+// === #201 - FOUNDING A REAL PEER ==============================================================
+// Same shape as attemptCosmosLaunch above, deliberately: founding a shadow world and founding a
+// real one are the same act at two levels, and the only honest differences are the price, the
+// cooldown, and the fact that the daughter does not die at COSMOS_MAX_AGE.
+//
+// ORDER OF OPERATIONS IS LEAD BY ONE RULE: nothing is charged until the packet is actually on the
+// wire. The first version charged the founders and then called networkSend, which returns false
+// with no channel - so a headless run, or a universe opened with the network unavailable, would
+// have destroyed FOUND_NEED of amplitude per attempt and founded nothing. That is #61's "leak
+// wearing a cost" in a new place, and it is avoided here by building the germline and sending it
+// first. The price is still real: it is paid by the members of the cluster that decided to pay.
+//
+// WHAT CROSSES is trimGenomeToBudget() - the same blob this world autosaves, trimmed by the same
+// trimmer, so a daughter is founded from a germline that is known to fit in a save slot. The
+// daughter is therefore a CLONE at birth and diverges by its own mutation from its first tick,
+// which is what reproduction without recombination looks like. It also inherits this world's
+// shadow scenario bank, so any cosmos proposal that did merge crosses with it.
+function attemptFound(){
+  if(!foundOn())return;                                   // FOUND=0: not one random draw, an exact revert
+  if(__founds>=FOUND_MAX)return;
+  if(tick-__foundLast<FOUND_COOLDOWN)return;
+  for(const c of clusters){
+    if(!c)continue;
+    const cg=c.clusterGenome||(c.clusterGenome=seedClusterGenome());
+    const drive=finiteOr(cg.foundDrive,0.6);
+    // Decision first, so an unaffordable attempt costs one random draw and not an O(N) member scan
+    // - attemptCosmosLaunch's note, and it matters more here because this runs every cluster cycle.
+    if(drive<=0||Math.random()>FOUND_RATE*drive)continue;
+    // ELIGIBILITY IS AFFORDABILITY (#61). No size, coherence or age criterion: those are designer
+    // opinions about which clusters are the RIGHT KIND to found a world, and #61 removed exactly
+    // that gate from the layer below after measuring what it cost.
+    let affordable=0,n=0;
+    for(let i=0;i<N;i++){ if(!palive[i]||clusterID[i]!==c.id)continue; n++;
+      affordable+=Math.max(0,amp[i])*FOUND_COST; }
+    if(affordable<FOUND_NEED){ __foundRefused++; fired('cosmos.foundRefused'); continue; }
+    let blob=null; try{ blob=trimGenomeToBudget(); }catch(_){ blob=null; }
+    if(!blob||!blob.length||blob.length>=SAVE_BUDGET){ __foundRefused++; fired('cosmos.foundRefused'); continue; }
+    if(!networkSend('found',{g:blob,t:tick|0,d:+drive.toFixed(3),n:n|0})){
+      __foundRefused++; fired('cosmos.foundRefused'); continue; }
+    // PAID ONLY NOW, and only up to what was needed. Charging every member FOUND_COST
+    // unconditionally and capping afterwards is the leak #61 measured in the layer below: it
+    // annihilates the surplus and scales the loss with the size of the launcher, which is a
+    // repeated superlinear tax on precisely the clusters that hold standing diversity.
+    let raised=0;
+    for(let i=0;i<N&&raised<FOUND_NEED;i++){
+      if(!palive[i]||clusterID[i]!==c.id)continue;
+      const spend=Math.min(Math.max(0,amp[i])*FOUND_COST,FOUND_NEED-raised);
+      amp[i]-=spend; raised+=spend;
+    }
+    __founds++; __foundLast=tick; __foundLastLen=blob.length;
+    fired('cosmos.found');
+    recordEvent('cosmos_found',{n,paid:+raised.toFixed(2),dr:+drive.toFixed(2),len:blob.length,seq:__founds},600);
+    return;   // one founding per cooldown, whatever else is affordable this cycle
   }
 }
 
@@ -27331,6 +27539,7 @@ function loop(){
     attemptClusterFusion();     // #182: the transition running the other way
     if(__XION_LEVELS)levelCensus();  // #182: which levels of organisation exist right now
     attemptCosmosLaunch(); // WAVE 8 (#59): eligible clusters may found daughter WORLDS — reproduction one level above the colony
+    attemptFound();        // #201: and an affordable cluster may found a REAL peer universe — the same act, one level further up
     updateCosmos();        // WAVE 8 (#59): each live child runs COSMOS_TICKS of its own time under its own constants, and most of them die
     updateHomeostatStack(); // RECURSIVE TOWER: clusters bind into super-units into higher units, each a slower homeostat regulating the floor below — open stack, no coded ceiling
     updateBridges(); // BRIDGE LAYER: lateral connections between separate sub-tower tops — material accumulates at bridge midpoints, seeding new towers from the bridge rather than from initialisation

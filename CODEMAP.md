@@ -2439,6 +2439,69 @@ luck**, because its range makes that probe land on an integer. Both roundings re
 threshold is a `>=` bound and a probation length is compared with `tick − start >= p`, so neither
 needed to be integral. If you add an integer-feeling law, do not round it in the setter.
 
+### #201 — a universe founds a real peer (the `found` packet)
+
+**The first mechanism in this file whose effect is OUTSIDE the universe that runs it.** `attemptFound`
+(beside `attemptCosmosLaunch`, called from the same cluster cycle) broadcasts this world's own
+`trimGenomeToBudget()` blob as a `found` packet; `index.html` writes it into a slot it names itself
+and opens a universe on it. Knob `FOUND`; `#nofound` / `#foundcap=N` on the shell.
+
+**IT IS NOT HOOKED TO `cosmosMerge`, AND THAT IS A MEASUREMENT, NOT A PREFERENCE.** `cosmos.merge`
+fires **0 times in 20,000 ticks** (118 launches; endowment 1.2 every time, best net 1.096 against a
+bar of `net > endow`). The whole return path of WAVE 8 has never run on this build. Gating the field's
+only universe-level reproduction on it would have shipped the seventh dead-but-declared mechanism of
+this arc. The gate is #61's instead — **eligibility is affordability and nothing else** — at about 4x
+the shadow launch's price. Measured live: 1 founding by tick 4,740, 4 by 20,000, 229 refusals at the
+price.
+
+**ONE GENE, FIVE LAWS.** `foundDrive` is a CLUSTER gene (beside `launchDrive`, in
+`seedClusterGenome`/`mutateClusterGenome`) — so it has **no `CROSSING_DECLARED` row**, because that
+table compares a germline against particle genomes and a cluster trait has neither side (#187's rule,
+same as `probe.promoted` and `__opReach`). Every PRICE is a law: `FOUND_NEED`, `FOUND_COST`,
+`FOUND_COOLDOWN`, `FOUND_RATE`, `FOUND_MAX`. #197's argument bites hardest here — founding is paid by
+the founders, so any of those as a genome gene would be an off switch on the first mutation.
+
+**BUILD, SEND, *THEN* CHARGE.** `networkSend` returns false with no channel, so charging first meant
+every headless attempt destroyed `FOUND_NEED` of amplitude and founded nothing — #61's
+leak-wearing-a-cost in a new place. `substrate-test` asserts the no-wire case directly; do not reorder
+these three steps.
+
+**THE ENGINE COUNTS A `found`; ONLY THE SHELL ACTS ON ONE.** No queue and no `NET_QUEUE_LIMITS` entry,
+because nothing engine-side consumes it — a world that installed a stranger's whole germline would be
+overwritten, not joined, which is why every other crossing carries a *part* of a creature. Not paced
+by `peerTickRatio` either: the only consumer is a shell with no clock to pace against.
+
+**THE SHELL OWNS THE SLOT NAMESPACE.** The packet carries a germline and nothing else that is acted
+on — no slot name, no key, no URL. Names come from a counter in `index.html` (`g0`, `g1`, …) that no
+built frame uses, so the worst a hostile packet can do is boot a universe from a genome, through the
+same `decodeGenomeSafe`/`sanitizeGenome` a reload uses. Wire bounds are READ, not restated (#153):
+`SAVE_BUDGET` from the engine, `UA_EXPR_SAFE` as the byte filter.
+
+**GROWN FRAMES GO IN THEIR OWN ARRAY, NOT `deep`.** `layerFrames()` slices `deep` by `(L-1)*total`;
+one extra element re-aims every rotation. They are parked under the layers rather than added to the
+grid because an iframe cannot be reparented and both the column count and the rotate arithmetic are
+computed from `total` at load (#167). **The shell's cap is the MACHINE's brake**, unlike the five
+engine-side laws — and the listener runs even at cap 0 so `#nofound` still counts what it heard.
+
+**A NEW GENE'S DRAW MUST BE UNDER THE KNOB.** `foundDrive`'s seed and child step are both wrapped in
+`foundOn()`. Unguarded, the extra `Math.random()` shifted the whole stream and `FOUND=0` diverged from
+the pre-#201 engine (amp 215.9622 → 208.9516) while reverting the behaviour perfectly. Guarded, the
+two engines are identical key for key. **The one thing `FOUND=0` does NOT restore** is which law a
+probation draws: `LAW_DECLARED` went 21 → 26 rows, so the same random number indexes a different row
+(tick 601: `LAW_RATE` vs `LEVEL_BRIDGE_MIN`, same verdict arithmetic). True of every swing since #183
+that added a law; `BRAKES=0` pins it, and under `BRAKES=0` the two are identical to the byte bar three
+new never-fired names.
+
+**TWO RIG ASSERTIONS THAT WERE WRONG BEFORE THEY WERE RIGHT.** (1) "Not installed" cannot mean a
+byte-identical genome: the genome carries a liveness snapshot, so `cosmos.foundSeen` firing *should*
+move a name from the never-list — the check compares every key except `lv`. (2) The blob on the wire
+is the germline **as it was when the decision was made**; a successful founding calls `recordEvent`,
+which pushes into `genome.eventLog`, which `encodeGenome` serialises, so the comparison snapshot must
+be taken *before* `attemptFound`.
+
+`__founds` is deliberately NOT in the genome — the daughter boots from her parent's blob and would
+otherwise be born with the budget spent — so a reload restores a world's founding budget.
+
 ### #186 — the germline-to-population crossing, stated generally
 
 The bug the crossing rows caught for the seventh time, and the general form, because it will happen

@@ -120,6 +120,13 @@
         border-radius:5px;padding:5px 7px;letter-spacing:.3px;display:none}
   #depth b{color:#dfe;font-weight:normal}
   #depth .now{color:#7fd4a8}
+  /* #201 — universes this field GREW rather than built. Its own readout, deliberately separate from
+     #depth: that one describes the cube, which has a fixed shape, and this one describes a count
+     that changes while you are looking at it. */
+  #grown{position:fixed;right:8px;bottom:30px;z-index:9;display:none;
+        font:9px/1.3 ui-monospace,Menlo,monospace;color:#d9b;background:rgba(18,8,14,.78);
+        border-radius:5px;padding:5px 7px;letter-spacing:.3px}
+  #grown b{color:#fde;font-weight:normal}
   /* #168 — HARVEST. The only way to compare a layer against the surface after a long run. */
   #harvest{position:fixed;left:8px;bottom:8px;z-index:9;cursor:pointer;display:none;
         font:10px/1 ui-monospace,Menlo,monospace;color:#cfe;background:rgba(10,14,16,.86);
@@ -156,6 +163,7 @@
 <div id="grid"></div>
 <div id="below"></div>
 <div id="depth"></div>
+<div id="grown"></div>
 <div id="harvest">harvest</div>
 <div id="back">&#8592; field</div>
 <div id="fmsg"></div>
@@ -174,7 +182,7 @@
   // treated it as a GENOME and tried to decode the word.
   // /#reset now clears BOTH keys and starts a clean field. It is the one thing the artwork must
   // always be able to do: let go of what it is holding.
-  var OPT = '(n=\\d+|pool=\\d+|nopool|bgpace=\\d+|layers=\\d+|deeppace=\\d+|turn=\\d+|clean|cleanart|hud|solo|reset)';
+  var OPT = '(n=\\d+|pool=\\d+|nopool|bgpace=\\d+|layers=\\d+|deeppace=\\d+|turn=\\d+|foundcap=\\d+|nofound|clean|cleanart|hud|solo|reset)';
   var isOptions = raw==='' || new RegExp('^'+OPT+'(,'+OPT+')*$').test(raw);
   if(isOptions && /(^|,)reset(,|$)/.test(raw)){
     // #170: every universe has its own slot now, so a reset that only cleared two keys would leave
@@ -365,6 +373,116 @@
     }
     below.appendChild(deepFrag);
   }
+
+  // ═══ #201 — THE FIELD GROWS ITS OWN UNIVERSES ═════════════════════════════════════════════════
+  // Every universe on this page exists because the loop above built it. Nine because the default is
+  // nine; eighteen more if the device can hold them. That number has never been anything but a
+  // property of the PAGE — the one quantity in a field of open-ended systems that nothing inside
+  // them could move.
+  //
+  // The engine (#201) now broadcasts a `found` packet when a cluster pays FOUND_NEED to reproduce
+  // its whole world. This is the half that makes it real: the field listens on the same
+  // BroadcastChannel every universe already talks on, and when a founding arrives it opens a NEW
+  // universe on it — own iframe, own worker, own storage slot, own lineage, an ordinary peer from
+  // its first tick.
+  //
+  // THE SHELL OWNS THE SLOT NAMESPACE, and that is the whole of the trust model. A packet carries a
+  // germline and NOTHING ELSE that is acted on: not a slot name, not a key, not a URL. The name is
+  // assigned here, from a counter here, in a namespace ('g0', 'g1', …) that no built frame uses. So
+  // the worst a hostile packet can do is cause a universe to boot from a genome — which is the same
+  // thing universe.html does with whatever is in localStorage on every reload, through the same
+  // decodeGenomeSafe and sanitizeGenome.
+  //
+  // WHERE THEY GO. Underneath, beside the layers, dark and paced — for the reason #167 gives at
+  // length: an iframe CANNOT be reparented, and the grid's column count and the rotate machinery's
+  // index arithmetic are both computed from `total` at load. Appending a tenth cell to a
+  // three-column grid reflows all nine and breaks `cells.length` for the cube. A grown universe is
+  // real in every way that matters to the field — it sends and receives migrants, plasmids, motifs,
+  // laws and foundings of its own — it simply is not on the face. They are kept in their OWN array
+  // rather than pushed into `deep`, because layerFrames() slices `deep` by (L-1)*total and one
+  // extra element would re-aim every rotation.
+  //
+  // THE CAP IS THE MACHINE'S, NOT THE WORLD'S. Every brake on the engine side of this is a law the
+  // universe evolves (FOUND_NEED, FOUND_COST, FOUND_COOLDOWN, FOUND_RATE, FOUND_MAX), and a world
+  // that walks them to zero is allowed to try to flood the channel. This one is different in kind:
+  // a phone with forty live workers does not produce interesting data, it produces a dead tab. So
+  // the shell holds a hard adoption cap and a minimum gap, both overridable — #foundcap=N (0..24, 0
+  // turns adoption off entirely) and #nofound, which is the same as foundcap=0 and reads better.
+  // Measured on this build: one universe founds about once per 6,000 ticks once it can afford to,
+  // so nine of them saturate a cap of four within a few minutes and everything after that is
+  // refused. The refusal count is on the readout, because "the field stopped growing" and "nothing
+  // ever founded" are different facts and only one of them is about the creatures.
+  var FOUND_CAP = (function(){
+    var m = raw.match(/(?:^|,)foundcap=(\d+)/);
+    if (/(^|,)nofound(,|$)/.test(raw)) return 0;
+    if (m) return Math.max(0, Math.min(24, parseInt(m[1],10)||0));
+    // Same reading as LAYERS: a device that explicitly reports little memory gets none, one that
+    // withholds the figure is treated as capable-but-unknown.
+    var gb = navigator.deviceMemory;
+    if (gb===undefined || gb===null) return 3;
+    return (+gb)>=8 ? 4 : ((+gb)>=4 ? 2 : 0);
+  })();
+  var FOUND_GAP_MS = 15000;      // minimum wall-clock gap between adoptions, so a burst is not nine at once
+  var FOUND_BLOB_MAX = 300000;   // the engine's own SAVE_BUDGET is 500000; this is tighter because a
+                                 // field already holds a slot per universe and localStorage is ~5MB
+  var grownEl = document.getElementById('grown');
+  var grown = [], grownSeq = 0, grownLast = 0, grownRefused = 0, grownSeen = 0;
+
+  function paintGrown(){
+    if(!grownSeen) return;
+    grownEl.style.display='block';
+    grownEl.innerHTML = '<b>'+grown.length+'</b> grown'
+      + (grownRefused ? (' · '+grownRefused+' refused') : '')
+      + ' · '+grownSeen+' founded';
+  }
+
+  function adoptFounding(blob){
+    grownSeen++;
+    var now = Date.now();
+    if (FOUND_CAP<=0 || grown.length>=FOUND_CAP || (now-grownLast)<FOUND_GAP_MS){ grownRefused++; paintGrown(); return; }
+    // The shell's own validation, and it is not a second opinion on the engine's — the engine
+    // validated what it would put ON the wire and this validates what it will put in STORAGE. A
+    // blob that does not fit is refused here rather than half-written.
+    if (typeof blob!=='string' || !blob.length || blob.length>FOUND_BLOB_MAX){ grownRefused++; paintGrown(); return; }
+    if (!/^[\x20-\x7E]*$/.test(blob)){ grownRefused++; paintGrown(); return; }
+    var slot = 'g' + (grownSeq++);
+    // STORE FIRST, FRAME SECOND. A frame created against a slot with nothing in it falls back to the
+    // shared 'selection_genome' key (universe.html's first-boot migration) and would boot from
+    // whichever universe autosaved last — a daughter that is not its founder's daughter, silently.
+    // So a storage failure refuses the adoption outright rather than opening a universe that lies
+    // about where it came from.
+    try { localStorage.setItem('selection_'+slot, blob); }
+    catch(e){ grownRefused++; grownSeq--; paintGrown(); return; }
+    grownLast = now;
+    var g = document.createElement('iframe');
+    g.className = 'deep';
+    g.style.width = cw+'px'; g.style.height = ch+'px';
+    // Parked past the layers, on the same off-screen row.
+    g.style.left = ((LAYERS*total) + grown.length) * (cw+4) + 'px';
+    g.src = 'universe.html?pool='+POOL_RUN+'x'+((everything+grown.length)%pool)+'&slot='+slot
+          + '#cleanart,dark,pace='+DEEPPACE;
+    g.title = 'Grown universe '+slot;
+    below.appendChild(g);
+    grown.push(g);
+    paintGrown();
+  }
+
+  // One listener for the whole field. BroadcastChannel is multicast with no peer list, which is why
+  // adding universes to it costs nothing and needs nobody's permission — the same property #201
+  // relies on in the engine.
+  // The listener is installed even at cap 0: adoptFounding counts every founding it sees before it
+  // checks the cap, so #nofound gives a field that reports what its universes are doing without
+  // acting on it. That is the difference between a brake and a blindfold.
+  try {
+    var fbc = new BroadcastChannel('selection-pe-network');
+    fbc.onmessage = function(ev){
+      var msg = ev && ev.data;
+      if (!msg || typeof msg!=='object' || msg.type!=='found') return;
+      var d = msg.data;
+      if (!d || typeof d!=='object') return;
+      adoptFounding(d.g);
+    };
+  } catch(e){}
 
   // ═══ #167 — ROTATE THE CUBE ════════════════════════════════════════════════════════════════
   // A rumour is not an artwork. #165 built eighteen universes you could not see and gave you a

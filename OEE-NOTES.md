@@ -15894,3 +15894,195 @@ evolvable, so it is named rather than faked; the particles' own continuous space
 map; and one world per tab.
 
 `substrate-test.js`: 214 checks, 11 of them #200's. `smoke.sh`: 49 ok, 0 failing.
+
+
+---
+
+## #201 — A DAUGHTER UNIVERSE GRADUATES FROM SHADOW TO PEER
+
+Every entry above this one opens something *inside* a universe. This opens the number of universes.
+
+Nine worlds run in this field because `index.html` builds nine iframes. Eighteen more underneath if
+the device reports enough memory. That number has never been anything but a property of the page —
+the one quantity in a field of open-ended systems that nothing inside them could move. A universe
+could evolve its physics, its chemistry, its grammar, its geometry, its clock, its register file and
+the prices it charges itself, and it could not cause a second universe to exist.
+
+It can now. A cluster that can pay broadcasts its own germline as a `found` packet on the same
+BroadcastChannel every migrant already crosses; the field shell hears it, writes that germline into a
+slot it names itself, and opens a universe on it. The daughter takes its own worker, autosaves its own
+lineage, and from its first tick is an ordinary peer — sending and receiving migrants, plasmids,
+motifs, laws and foundings of its own.
+
+### The hook I built first was dead, and measuring it is the whole swing
+
+The obvious place for this was `cosmosMerge` — WAVE 8's shadow child, which "proposes its physics"
+once it has exported more than it was founded with. A daughter world graduating from shadow to real
+reads beautifully. So I measured it before writing it:
+
+```
+20,000 ticks, seed 1:   cosmos launches 118    cosmos MERGES 0
+                        endowment 1.2 every time; best exported 1.242, against
+                        net = exported - imported > endow as the bar
+```
+
+**Zero merges in twenty thousand ticks.** 118 children, none of them ever cleared the bar; the closest
+exported 1.242 and imported 0.146, so its net was 1.096 against an endowment of 1.2. `cosmos.merge` is
+a declared liveness name that reads 0 on this build, which means the shadow scenario-bank proposal
+path — the entire return path of WAVE 8 — has never run. That is a finding in its own right and it is
+recorded here rather than fixed inside this commit, because fixing it is a different swing with a
+different argument.
+
+What it settles for #201 is the design. Hooking the field's only universe-level reproduction event to
+`cosmosMerge` would have shipped, for the seventh time in this arc, **a mechanism that reads alive in
+every census and never runs.** So the gate is #61's instead — *eligibility is affordability and
+nothing else* — which is the gate the shadow launch already uses, at a price about four times larger.
+
+### What it costs and who decides
+
+```
+foundDrive      cluster gene, 0.2..1.0 seeded, drifting under mutateClusterGenome
+FOUND_RATE      per-cycle chance an affordable cluster founds, x foundDrive       law
+FOUND_NEED      amp the cluster must raise (COSMOS_ENDOW_CAP/YIELD is 2.18)       law
+FOUND_COST      fraction of each member's amp collected toward it                 law
+FOUND_COOLDOWN  parent ticks between foundings by this world                      law
+FOUND_MAX       peers one universe may found in one life                          law
+```
+
+**One gene, five laws, and the split is #197's rule applied where it bites hardest.** Founding is paid
+for by the founders, so every one of those five would be an *off switch* as a genome gene and is a
+real brake only as a law the payer cannot set. A world can still walk them all toward zero — the
+bounds start at 0 and `FOUND_MAX` reaches 16 — and flood the channel with daughters; the probation
+reverts that only if the world cannot hold its own population. Fragmentation is the data.
+
+Measured on the engine's own path, seed 1:
+
+```
+ 6,000 ticks    1 founding (first at 4,740)     218 refusals at the price
+20,000 ticks    4 foundings (the FOUND_MAX cap) 229 refusals    blob 18,860 bytes
+```
+
+Alive, and the binding constraint is affordability rather than the cooldown — which is the shape a
+price should have.
+
+### Nothing is charged until the packet is on the wire
+
+The first version charged the founders and *then* called `networkSend`, which returns false when there
+is no channel — a headless run, or a browser where `BroadcastChannel` threw. Every attempt in that
+state would have destroyed `FOUND_NEED` of amplitude and founded nothing: **#61's leak-wearing-a-cost,
+in a new place, on the same layer.** The order is germline, send, charge, and `substrate-test` asserts
+the no-wire case explicitly rather than trusting the ordering to stay put.
+
+### The engine COUNTS a founding; only the shell ACTS on one
+
+`found` is the first packet type with no queue and no entry in `NET_QUEUE_LIMITS`, because nothing on
+the engine side consumes one. A peer that adopted a stranger's whole germline on arrival would not be
+a peer, it would be **overwritten** — every crossing above this one carries a *part* of a creature for
+exactly that reason. So a peer engine learns only that somewhere on the channel a world reproduced,
+which is a real observable and costs it nothing.
+
+The shell is the only thing that acts on the blob, and **the shell owns the slot namespace.** A packet
+carries a germline and nothing else that is acted on: no slot name, no key, no URL. The name comes
+from a counter in `index.html`, in a namespace (`g0`, `g1`, …) no built frame uses. The worst a
+hostile packet can do is cause a universe to boot from a genome — which is what `universe.html` does
+with whatever is in `localStorage` on every reload, through the same `decodeGenomeSafe` and
+`sanitizeGenome`.
+
+Three bounds on the wire, none of them restated from memory (#153): `SAVE_BUDGET` read from the engine
+(a blob this world could not save is a blob no daughter could be founded from), `UA_EXPR_SAFE` as the
+byte filter every expression on this channel already passes, and the decoders themselves.
+
+### The cap in the shell is the machine's, not the world's
+
+Every brake on the engine side is a law the universe evolves. The shell's is different in kind: a
+phone running forty live workers does not produce interesting data, it produces a dead tab. So
+`index.html` holds a hard adoption cap (4 on a capable device, 2 on a small one, `#foundcap=N` to
+override, `#nofound` to refuse everything) and a 15-second minimum gap. **The listener runs even at
+cap 0**, counting every founding it hears before it checks the cap, so `#nofound` gives a field that
+reports what its universes are doing without acting on it — a brake and not a blindfold.
+
+Grown universes are parked under the layers rather than added to the grid, for #167's reason: an
+iframe cannot be reparented, and the grid's column count and the rotate machinery's index arithmetic
+are both computed from `total` at load. They are kept in their own array rather than pushed into
+`deep`, because `layerFrames()` slices `deep` by `(L-1)*total` and one extra element would re-aim
+every rotation.
+
+### FOUND=0, stated exactly, because "exact revert" has meant three things in this file
+
+`attemptFound` returns before its first random draw, and the two draws the new cluster gene would
+otherwise take — its seed and its child step — are **themselves conditional on the knob**. That second
+part was not in the first version, and the measurement is why:
+
+```
+                                   alive   amp       positions    atoms
+pre-#201 engine                     196   215.9622   214042.46      4
+#201 with FOUND=0, gene unguarded   196   208.9516   220487.872     2     <- diverged
+#201 with FOUND=0, gene guarded     196   215.9622   214042.46      4     <- identical
+```
+
+An unconditional `Math.random()` in `seedClusterGenome` shifts every later number in the run, so the
+knob would have reverted the behaviour while still moving the trajectory. With the guard, the saved
+genome is identical key for key — **and one thing is not:**
+
+```
+tick  601   pre-#201 proposes LAW_RATE 0.0006 -> 0.0007953
+            #201     proposes LEVEL_BRIDGE_MIN 0.3 -> 0.343
+            same random number, same verdict arithmetic (base 247, held 220, kept)
+```
+
+`LAW_DECLARED` went from 21 rows to 26, so the same draw indexes a different row. That is true of
+every swing since #183 that added a law, it is what `BRAKES=0` pins, and with `BRAKES=0` on both sides
+the two engines are identical to the byte except for three new names in the never-fired list — which
+is the declaration, not state.
+
+### Three liveness names, because this layer has three ways of being dead
+
+```
+cosmos.found         a universe founded a real peer
+cosmos.foundRefused  the draw reached the price and could not pay it
+cosmos.foundSeen     a founding by somebody else arrived on the wire
+```
+
+Never-fired, priced-out, and heard-from-a-peer are three different findings, and only the third can
+distinguish "this world never founded" from "the packet never crossed". `foundDrive` gets **no
+crossing row**, deliberately: `crossingCensus` compares a germline against particle genomes and a
+cluster trait has neither side — the same rule #187 established for `probe.promoted` and `__opReach`.
+
+### Two checks in the rigs that were wrong before they were right
+
+**A byte-identical genome is the wrong assertion for "not installed".** The genome carries a liveness
+snapshot, so `cosmos.foundSeen` firing moves that name from the never-list to the rare-list — a
+byte-identical blob would have meant the instrument *failed* to record the arrival. The check compares
+every key except `lv`.
+
+**And the packet is the germline as it was when the decision was made.** A successful founding calls
+`recordEvent`, which pushes into `genome.eventLog`, which `encodeGenome` serialises — so comparing the
+blob on the wire against an encode taken afterwards compares it against a genome that has since been
+told about the founding. The first version of that check read as a corrupted packet.
+
+### Caveats
+
+**`__founds` is not in the genome, so a reload restores a world's founding budget.** That is deliberate
+for the daughter's sake — the blob she boots from is her parent's germline, and a founding counter
+inside it would have her born with the budget already spent — but it does mean the lifetime cap is a
+per-session cap in practice. The shell's adoption cap is unaffected.
+
+**The drive trend is an instrument, not yet a result.** `foundDrive` is the cheapest honest test this
+layer has: founding costs amplitude now and pays this world nothing it will ever collect, so if the
+price buys nothing, cluster selection should push the trait down. One seed at 20,000 ticks moved the
+population mean from 0.6 (seeded) to 0.702. One seed is an anecdote.
+
+**`cosmos.merge` reads 0 and is left reading 0.** Named here, not repaired here.
+
+### Still closed after #201
+
+`CAP` (an allocator bound, and the file already says it is not an ecological limit); the instruction
+format's arity — `[op,src,dst,k]` — because widening the row changes every saved program's shape; the
+order of execution within a tick, which is array order and would need a per-tick sort; the particles'
+own continuous space and the position→cell map; the topology of the field itself (every universe hears
+every other one, because BroadcastChannel is flat multicast with no peer list — a world cannot choose
+its neighbours, and a founded daughter is born adjacent to everybody); and the fact that a universe
+cannot *end* another universe, only found one.
+
+`substrate-test.js`: 228 checks, 14 of them #201's. `slot-test.js` gains five. `smoke.sh`: 49 ok, 0
+failing.

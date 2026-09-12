@@ -1608,6 +1608,172 @@ m._compile(code+`
             promotedNotACrossingRow:names.indexOf('probe.promoted')<0};
   });
 
+  // ── #201 — A DAUGHTER UNIVERSE GRADUATES FROM SHADOW TO PEER ─────────────────────────────────
+  // The failure this block exists to catch is the one this project has shipped six times: a
+  // mechanism that reads alive in every census and never runs. #201's obvious hook was cosmosMerge
+  // — a shadow child that exported more than its endowment — and that event fires ZERO times in
+  // 6,000 ticks on this build (3 launches, 0 merges). A version built on it would have passed
+  // every structural check here and founded nothing, ever.
+  out.found=run('found',()=>{
+    const sv={NEED:FOUND_NEED,COST:FOUND_COST,CD:FOUND_COOLDOWN,RATE:FOUND_RATE,MAX:FOUND_MAX,
+              last:__foundLast,n:__founds,ref:__foundRefused,seen:__foundSeen,bc:bc,tk:tick,
+              rnd:Math.random,on:globalThis.__FOUND};
+    const restore=()=>{ FOUND_NEED=sv.NEED; FOUND_COST=sv.COST; FOUND_COOLDOWN=sv.CD;
+      FOUND_RATE=sv.RATE; FOUND_MAX=sv.MAX; __foundLast=sv.last; __founds=sv.n;
+      __foundRefused=sv.ref; __foundSeen=sv.seen; bc=sv.bc; tick=sv.tk;
+      Math.random=sv.rnd; globalThis.__FOUND=sv.on; };
+    const sent=[];
+    bc={postMessage:(p)=>{sent.push(p)}};
+    const drive=(v)=>{ let n=0; for(const c of clusters){ if(!c)continue;
+      c.clusterGenome=c.clusterGenome||seedClusterGenome();
+      c.clusterGenome.foundDrive=v; n++; } return n; };
+    const ampOf=()=>{ let t=0; for(let i=0;i<N;i++) if(palive[i])t+=Math.max(0,amp[i]); return t; };
+
+    // 0. THE GENE. A CLUSTER-level trait, like launchDrive, so it deliberately has no crossing row:
+    //    crossingCensus compares a germline against the particle genomes, and this has neither
+    //    side. It gets what launchDrive gets instead — seeded on every cluster, and drifting
+    //    through mutateClusterGenome when a cluster reproduces.
+    const seedHas=typeof seedClusterGenome().foundDrive==='number';
+    let childMoved=0;
+    { const par=seedClusterGenome(); par.foundDrive=0.5;
+      for(let q=0;q<200;q++){ const kid=mutateClusterGenome(par,1);
+        if(Math.abs(finiteOr(kid.foundDrive,0.5)-0.5)>1e-9)childMoved++; } }
+    const clustersSeeded=drive(1);
+
+    // 1. IT FIRES, and what it sends is a packet the wire accepts and a genome a decoder can read.
+    FOUND_NEED=0; FOUND_COST=0.25; FOUND_COOLDOWN=0; FOUND_RATE=1; FOUND_MAX=99;
+    __founds=0; __foundLast=-1e9; sent.length=0;
+    // CAPTURED BEFORE THE CALL, and that ordering is the finding this line encodes: a successful
+    // founding calls recordEvent, which pushes into genome.eventLog, which encodeGenome serialises.
+    // So the blob on the wire is this world's germline AS IT WAS WHEN THE DECISION WAS MADE, and
+    // comparing against an encode taken afterwards compares against a genome that has since been
+    // told about the founding. The first version of this check did exactly that and read as a
+    // corrupted packet.
+    let preBlob=null; try{ preBlob=trimGenomeToBudget(); }catch(_){}
+    attemptFound();
+    const built=sent.length;
+    const pkt=sent.length?sent[0]:null;
+    const wellFormed=!!(pkt&&pkt.type==='found'&&pkt.data&&typeof pkt.data.g==='string'&&pkt.data.g.length>0);
+    const accepted=wellFormed?(validNetworkPayload('found',pkt.data)===true):false;
+    // IT IS THIS WORLD'S OWN GERMLINE and not some other string: byte-identical to what the
+    // autosaver would have written this tick, which is the only claim that makes a daughter a
+    // daughter rather than a fresh universe with a nice comment above it.
+    let isOwnGermline=false, decodes=false, blobLen=0;
+    if(wellFormed){ blobLen=pkt.data.g.length;
+      isOwnGermline=(pkt.data.g===preBlob);
+      try{ const j=JSON.parse(__b64dec(pkt.data.g)); decodes=!!(j&&j.z===2&&Array.isArray(j.p)); }catch(_){} }
+
+    // 2 & 3. THE PRICE. Built as a SCENARIO rather than read off the run, and the reason is a
+    //    measurement: at the point this block runs the rig's own field holds 4 live particles and
+    //    detectClusters returns nothing, so a check that asked the live population to pay was
+    //    measuring how healthy the rig happened to be and not whether anybody is billed. So one
+    //    cluster of known size and known wealth is installed, both halves of the price are measured
+    //    against it, and every array touched is put back.
+    const svClusters=clusters.slice();
+    const payIdx=[]; for(let i=0;i<N&&payIdx.length<6;i++) payIdx.push(i);
+    const svCID=payIdx.map(i=>clusterID[i]), svAmp=payIdx.map(i=>amp[i]), svAlive=payIdx.map(i=>palive[i]);
+    const PAY_ID=777, PAY_AMP=4;
+    for(const i of payIdx){ clusterID[i]=PAY_ID; amp[i]=PAY_AMP; palive[i]=true; }
+    clusters.length=0; clusters.push({id:PAY_ID,size:payIdx.length,coherence:1,persistAge:99,
+                                      clusterGenome:seedClusterGenome()});
+    const payN=payIdx.length;
+    const need=Math.max(0.01,payN*PAY_AMP*FOUND_COST*0.5);
+
+    FOUND_NEED=need; __founds=0; __foundLast=-1e9; sent.length=0;
+    drive(1);
+    const ampBefore=ampOf();
+    attemptFound();
+    const paidSent=sent.length;
+    const paid=+(ampBefore-ampOf()).toFixed(4);
+    const paidWanted=+need.toFixed(4);
+
+    // 3. AND NOTHING IS CHARGED WHEN THE PACKET CANNOT GO. networkSend returns false with no
+    //    channel - a headless run, or a browser where BroadcastChannel threw. The first version of
+    //    attemptFound charged the founders and THEN sent, so every attempt in that state destroyed
+    //    FOUND_NEED of amplitude and founded nothing: #61's leak-wearing-a-cost, in a new place.
+    for(const i of payIdx) amp[i]=PAY_AMP;
+    bc=null; FOUND_NEED=need; __founds=0; __foundLast=-1e9;
+    const refBefore=__foundRefused, ampNoWire=ampOf();
+    drive(1); attemptFound();
+    const noWireCharged=+(ampNoWire-ampOf()).toFixed(4);
+    const noWireRefused=__foundRefused>refBefore;
+    const noWireFounded=__founds;
+    bc={postMessage:(p)=>{sent.push(p)}};
+
+    clusters.length=0; for(const c of svClusters) clusters.push(c);
+    for(let q=0;q<payIdx.length;q++){ clusterID[payIdx[q]]=svCID[q]; amp[payIdx[q]]=svAmp[q]; palive[payIdx[q]]=svAlive[q]; }
+
+    // 4. THE TWO BRAKES BITE. Cooldown and lifetime cap, each on its own.
+    FOUND_NEED=0; FOUND_COOLDOWN=5000; __founds=0; __foundLast=tick; sent.length=0;
+    drive(1); attemptFound();
+    const cooldownHeld=(sent.length===0);
+    FOUND_COOLDOWN=0; FOUND_MAX=0; __founds=0; __foundLast=-1e9; sent.length=0;
+    drive(1); attemptFound();
+    const capHeld=(sent.length===0);
+
+    // 5. THE REVERT, and it is the strong form: FOUND=0 must take no random draw either, so the
+    //    knob restores the RNG STREAM and not merely the behaviour. #192 and #196 both needed this
+    //    said out loud, because a knob that still draws moves every later trajectory in the run.
+    FOUND_MAX=99; FOUND_NEED=0; FOUND_COOLDOWN=0; __founds=0; __foundLast=-1e9; sent.length=0;
+    globalThis.__FOUND=0;
+    let draws=0; Math.random=function(){ draws++; return sv.rnd(); };
+    drive(1); const drawsAfterSetup=draws;
+    attemptFound();
+    const offDraws=draws-drawsAfterSetup;
+    const offSent=sent.length;
+    Math.random=sv.rnd; globalThis.__FOUND=sv.on;
+
+    // 6. RECEIVED, COUNTED, AND NOT INSTALLED. The whole trust model of this packet: a peer that
+    //    adopted a stranger's germline on arrival would be overwritten rather than joined. The
+    //    engine only counts; the field shell is the only thing that acts on the blob, and what it
+    //    does with it is boot a NEW universe.
+    const seenBefore=__foundSeen;
+    const before={mut:genome.mutationRate,gen:genome.generation,blob:null};
+    try{ before.blob=encodeGenome(); }catch(_){}
+    const foreign=__b64enc(JSON.stringify({z:2,p:[9,9,9,9,9,9,9,9,9,9,9]}));
+    handleNetworkMessage({v:NET_PROTOCOL_VERSION,tab:'notme201',born:0,type:'found',
+                          data:{g:foreign,t:1,d:0.5,n:3}});
+    const seenRose=(__foundSeen===seenBefore+1);
+    // EVERY KEY EXCEPT lv. The genome carries a LIVENESS SNAPSHOT, and cosmos.foundSeen firing
+    // moves that name from the never-list to the rare-list — so a byte-identical blob would have
+    // meant the instrument did not record the arrival, which is the opposite of what this is
+    // checking. The claim is that the CREATURE is untouched: physics, atoms, verbs, program,
+    // channels, bank, every gene. The first version of this check asserted byte-identity and went
+    // red on its own instrument working.
+    let sameBlob=false, changedKeys=[];
+    try{
+      const A=JSON.parse(__b64dec(before.blob)), B=JSON.parse(__b64dec(encodeGenome()));
+      for(const k in A) if(k!=='lv'&&JSON.stringify(A[k])!==JSON.stringify(B[k]))changedKeys.push(k);
+      for(const k in B) if(!(k in A))changedKeys.push('+'+k);
+      sameBlob=(changedKeys.length===0);
+    }catch(_){}
+    const sameMut=(genome.mutationRate===before.mut&&genome.generation===before.gen);
+    const unchanged=sameBlob&&sameMut;
+
+    // 7. THE VALIDATOR. What it must refuse, stated as bytes rather than as intent — UA_EXPR_SAFE
+    //    is a BYTE filter, not a parser, and #198 shipped a check that asserted an impossible
+    //    rejection because I forgot that. So: a non-printable byte, an over-budget blob, a missing
+    //    blob, and a wrong type.
+    const rej={
+      nonPrintable:validNetworkPayload('found',{g:'AAA'+String.fromCharCode(7)+'AAA',t:1})===false,
+      tooLong:validNetworkPayload('found',{g:'A'.repeat(SAVE_BUDGET+1),t:1})===false,
+      empty:validNetworkPayload('found',{g:'',t:1})===false,
+      notString:validNetworkPayload('found',{g:{},t:1})===false,
+      badTick:validNetworkPayload('found',{g:'AAA',t:-1})===false,
+      badDrive:validNetworkPayload('found',{g:'AAA',t:1,d:99})===false,
+      plainOk:validNetworkPayload('found',{g:'AAA',t:1})===true,
+    };
+
+    restore();
+    return {seedHas,childMoved,clustersSeeded,built,wellFormed,accepted,isOwnGermline,decodes,blobLen,
+            paidSent,paid,paidWanted,payN,changedKeys,noWireCharged,noWireRefused,noWireFounded,cooldownHeld,capHeld,
+            offDraws,offSent,seenRose,unchanged,sameBlob,sameMut,rej,
+            laws:LAW_DECLARED.map(r=>r.name).filter(n=>n.indexOf('FOUND_')===0),
+            live:['cosmos.found','cosmos.foundRefused','cosmos.foundSeen']
+                   .filter(n=>LIVENESS_DECLARED.indexOf(n)<0),
+            pending:netEventPending.found!==undefined};
+  });
+
   // ── THE REVERT: every layer's knob must actually turn it off ─────────────────────────────────
   out.revert=run('revert',()=>{
     const r={};
@@ -2167,6 +2333,44 @@ ck('every new gene has a census row', CR.rows && CR.rows.length===0,
 // STRANDED and made crossing-test red for something that is not a defect. It is logged per epoch now.
 ck('#187 probe.promoted is NOT a crossing row', CR.promotedNotACrossingRow===true,
    'an earned outcome cannot be stranded — probe.bank already answers the crossing question');
+
+// #201
+const FD=r.found||{};
+ck('#201 foundDrive is seeded on every cluster and drifts in a daughter',
+   FD.seedHas===true && FD.childMoved>=190,
+   FD.childMoved+'/200 mutated children moved it — a CLUSTER trait like launchDrive, so it has no crossing row: crossingCensus compares a germline against particle genomes and this has neither side');
+ck('#201 A UNIVERSE ACTUALLY FOUNDS ONE — the packet is built and sent',
+   FD.built===1 && FD.wellFormed===true,
+   FD.built+' packet(s). THE CHECK THIS SWING TURNS ON: the obvious hook (cosmosMerge) fires 0 times in 6,000 ticks on this build, so #201 built on it would have passed every other check here and never once run');
+ck('#201 and the wire accepts what the engine sends', FD.accepted===true);
+ck('#201 what crosses is THIS WORLD’S OWN GERMLINE, byte for byte',
+   FD.isOwnGermline===true && FD.decodes===true,
+   FD.blobLen+' bytes, identical to what the autosaver would write this tick and parsing back to a z:2 genome — the claim that makes a daughter a daughter rather than a fresh universe with a nice comment over it');
+ck('#201 the founders pay', FD.paidSent===1 && FD.paid>=FD.paidWanted*0.95 && FD.paid<=FD.paidWanted*1.05,
+   'FOUND_NEED '+FD.paidWanted+' against '+FD.payN+' members holding 4 each, the field lost '+FD.paid+
+   ' of live amplitude — charged only up to what was needed, which is #61’s lesson about a cost that annihilates the surplus');
+ck('#201 AND NOTHING IS CHARGED WHEN THE PACKET CANNOT GO',
+   FD.noWireCharged===0 && FD.noWireRefused===true && FD.noWireFounded===0,
+   'with no channel the founders lost '+FD.noWireCharged+' — the first version charged and then sent, so every headless attempt destroyed FOUND_NEED of amplitude and founded nothing');
+ck('#201 the cooldown holds', FD.cooldownHeld===true);
+ck('#201 the lifetime cap holds', FD.capHeld===true);
+ck('#201 FOUND=0 is an exact revert — not one random draw',
+   FD.offSent===0 && FD.offDraws===0,
+   FD.offDraws+' draws with the knob off, so the RNG stream is restored and not merely the behaviour');
+ck('#201 a founding arriving from a peer is COUNTED AND NOT INSTALLED',
+   FD.seenRose===true && FD.unchanged===true,
+   'counted, and '+((FD.changedKeys||[]).length)+' genome keys changed besides the liveness snapshot — ' +
+   'the whole trust model of this packet: a world that adopted a stranger’s whole germline on arrival would be overwritten rather than joined, so the engine counts and the field shell — which owns the slot namespace — is the only thing that acts on the blob');
+ck('#201 the validator refuses what it must, stated as BYTES',
+   FD.rej && FD.rej.nonPrintable && FD.rej.tooLong && FD.rej.empty && FD.rej.notString &&
+   FD.rej.badTick && FD.rej.badDrive && FD.rej.plainOk,
+   FD.rej && JSON.stringify(FD.rej));
+ck('#201 every brake on founding is a LAW, not a gene',
+   FD.laws && FD.laws.length===5,
+   (FD.laws||[]).join(' ')+' — a price the payer sets is an off switch (#197), and the payer here is the founding cluster');
+ck('#201 all three liveness names are declared', FD.live && FD.live.length===0,
+   FD.live && FD.live.length?('missing: '+FD.live.join(' ')):'found / foundRefused / foundSeen — never-fired, priced-out and heard-from-a-peer are three different findings');
+ck('#201 the epoch log carries net_found', FD.pending===true);
 
 // the reverts
 const RV=r.revert||{};
