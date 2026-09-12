@@ -16181,13 +16181,42 @@ those two plus `#189 wrap=1` and `#199 never-double-inserted`. So "`substrate-te
 ever meant green at the budget it was run at — the caveat `CODEMAP` already records for
 `crossing-test` and for `smoke.sh`'s forty ticks.
 
-**And three rows are trajectory-dependent, which the control is what establishes.** With founding on,
-`#188 Laplacian`, `#189 seeded-form-diffuses` and `#189 offset-stencil-advects` fail while
-`#199 never-double-inserted` starts passing; with `FOUND=0` on the same engine the failure set is
-byte-for-byte the baseline's. Those blocks do not clear live carriers, so on a mature trajectory they
-measure a *carrier's* chemistry rather than the one they set — the `#196` governing-rule trap the
-`#198` entry already describes, and the same shape as the `uaSwapVar` hang one layer up. Named here,
-not repaired here.
+**And three rows were trajectory-dependent, which the control established.** With founding on,
+`#188 Laplacian`, `#189 seeded-form-diffuses` and `#189 offset-stencil-advects` failed while
+`#199 never-double-inserted` started passing; with `FOUND=0` on the same engine the failure set was
+byte-for-byte the baseline's. Those blocks did not clear live carriers, so on a mature trajectory
+they measured a *carrier's* chemistry rather than the one they set — the `#196` governing-rule trap
+the `#198` entry already describes, and the same shape as the `uaSwapVar` hang one layer up.
+
+### FIXED, AND IT WAS NOT ONLY THE TRAJECTORY-DEPENDENT ONES
+
+`out.chan` and `out.form` now save the population's channel banks, clear them **every tick of every
+stepping loop** — once at the top is not enough, because `loop()` reproduces and a newborn is seeded
+with a bank, so carriers reappear mid-run — assert `governedBySelf` before reading anything, and put
+the banks back afterwards. That last part is new: `#198`'s block nulls the carriers for the rest of
+the run, and these two are eleventh and thirteenth of thirty-six, with `out.gov`, `out.xfer` and
+`out.grainCross` all needing real carriers further down.
+
+The result is larger than the three rows the control had identified:
+
+```
+TICKS=900, before   228 passed, 2 failed    #189 signed-stencil, #189 cadence
+TICKS=900, after    232 passed, 0 failed
+```
+
+**Three of the six repaired rows were red on committed HEAD at EVERY budget** — `wrap=1 makes it a
+torus`, `a signed stencil is a DERIVATIVE`, `cadence is per channel`. I had been calling those
+"budget-sensitive rows on HEAD" and building a whole caveat around them. They were not sensitive to
+the budget; they were **wrong about whose medium they were measuring**, and a longer run just made a
+carrier more likely to exist. The torus check reported "the mass is at null" — no mass anywhere on
+the row it was reading — and now reports 10, which is exactly the `20 + 30 = 50, mod 40` its own
+comment predicted.
+
+So the honest count of what this defect cost: six red checks across two blocks, three of them
+permanently red and papered over in these notes as a property of the rig rather than a bug in it.
+`#198` found this, fixed it locally, wrote it down, and the two older blocks carrying the same defect
+were never revisited — which is the same shape as `#188` leaving an unbounded sampler for `#201` to
+walk into.
 
 ### The browser rig is the one that mattered
 

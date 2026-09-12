@@ -224,7 +224,35 @@ m._compile(code+`
   // every field was a hand-declared lattice with a hand-written update rule. This checks that the
   // inventory is now GENERATED - that a chemistry nobody wrote can run, be sensed, be acted into,
   // and stay bounded while doing it.
+  // ── #189-fix: A CHANNEL PROBE MUST OWN THE MEDIUM IT MEASURES ────────────────────────────────
+  // #196 made the governing rule a WEIGHTED DRAW FROM THE LIVING CARRIERS, with the germline only
+  // as a fallback. So assigning genome.channels and then calling loop() does NOT run the rule you just
+  // set the moment any particle happens to carry that slot - it runs a stranger's chemistry, on
+  // your lattice, and reports the answer as yours. #198 hit this and fixed it inside its own block;
+  // out.chan and out.form were left carrying it, which is why six of their checks were red at
+  // TICKS=4000 on a founding trajectory and green at TICKS=900 (no mature carriers yet) - and why
+  // three of the six were ALSO red on the pre-#201 engine. A probe whose answer depends on whether
+  // somebody else happened to evolve a medium is not a probe.
+  //
+  // Two parts, because clearing once is not enough: loop() REPRODUCES, and a newborn is seeded with
+  // a channel bank, so carriers reappear mid-run. govSelfOnly() is therefore called every tick of
+  // every stepping loop, not once at the top.
+  //
+  // And the banks are SAVED AND PUT BACK, which #198's block does not do - it nulls them for the
+  // rest of the run. These two blocks are eleventh and thirteenth of thirty-six, and out.gov,
+  // out.xfer and out.grainCross all need real carriers further down.
+  const chanCarrierSave=()=>{ const sv=new Array(CAP);
+    for(let q=0;q<CAP;q++){ const g=pGenome[q]; sv[q]=g?g.channels:undefined; } return sv; };
+  const chanCarrierRestore=(sv)=>{ for(let q=0;q<CAP;q++){ const g=pGenome[q];
+    if(g&&sv[q]!==undefined)g.channels=sv[q]; } };
+  const govSelfOnly=()=>{ for(let q=0;q<CAP;q++){ const g=pGenome[q]; if(g&&g.channels)g.channels=null; } };
+  // Did the germline actually govern? Asked, not assumed - #198's rule, and the reason one of its
+  // checks passed SPURIOUSLY before it started asking.
+  const governedBySelfNow=(k)=>{ const sv=__chanGovSelf; chanGoverning(k||0);
+    const used=__chanGovSelf>sv; __chanGovSelf=sv; return used; };
+
   out.chan=run('chan',()=>{
+    const carriers=chanCarrierSave(); govSelfOnly();
     genome.channels=[{expr:'(a)+(((b)-(a))*(0.25))',compiled:null,failed:false,age:0,uses:0},
                      null,null,null];
     // 1. THE LATTICE UPDATES, and the rule is the thing that decides how. This rule IS diffusion -
@@ -234,17 +262,21 @@ m._compile(code+`
     L.fill(0); L[20*FIELD_W+20]=3;            // a single spike
     const before=Array.from(L).reduce((x,y)=>x+y,0);
     let ran=0;
-    for(let t=0;t<CHANNEL_CADENCE*4;t++){ globalThis.__detMs+=5; const u0=__liveness['channel.update']|0;
+    for(let t=0;t<CHANNEL_CADENCE*4;t++){ globalThis.__detMs+=5; govSelfOnly(); const u0=__liveness['channel.update']|0;
       try{loop();}catch(e){} if((__liveness['channel.update']|0)>u0)ran++; }
+    const govSelf1=governedBySelfNow(0);
     let spread=0, mx=-Infinity, nonFinite=0;
     for(let c=0;c<L.length;c++){ if(!isFinite(L[c]))nonFinite++; if(L[c]>0.001)spread++; if(L[c]>mx)mx=L[c]; }
     // 2. IT IS BOUNDED whatever the rule computes. A runaway chemistry is a runaway WORLD, not a
     //    runaway expression - there is no uaCall clamp protecting the lattice, only CHANNEL_CLAMP.
     genome.channels[0]={expr:'(a)*(8.00)',compiled:null,failed:false,age:0,uses:0};   // explosive on purpose
     L.fill(1);
-    for(let t=0;t<CHANNEL_CADENCE*6;t++){ globalThis.__detMs+=5; try{loop();}catch(e){} }
+    for(let t=0;t<CHANNEL_CADENCE*6;t++){ globalThis.__detMs+=5; govSelfOnly(); try{loop();}catch(e){} }
     let over=0; for(let c=0;c<L.length;c++) if(!(L[c]>=-CHANNEL_CLAMP&&L[c]<=CHANNEL_CLAMP))over++;
+    const govSelf2=governedBySelfNow(0);
+    chanCarrierRestore(carriers);
     return {ran,spread,mx:+mx.toFixed(3),nonFinite,over,clamp:CHANNEL_CLAMP,
+            govSelf:(govSelf1&&govSelf2),
             latticeIsNotGenome:(function(){ try{ const b=encodeGenome();
               return b.indexOf('"chn"')>=0||JSON.parse(Buffer.from(b,'base64').toString('utf8')).chn!==undefined; }catch(e){ return 'threw'; } })()};
   });
@@ -323,13 +355,14 @@ m._compile(code+`
   // the gene back: the question is not whether a stencil is stored, it is whether a stencil buys a
   // class of behaviour a four-neighbour mean provably cannot reach.
   out.form=run('form',()=>{
+    const carriers=chanCarrierSave(); govSelfOnly();
     const centroid=(L)=>{ let sx=0,w=0;
       for(let y=0;y<FIELD_H;y++)for(let x=0;x<FIELD_W;x++){const v=L[y*FIELD_W+x]; if(v>0.001){sx+=x*v;w+=v;}}
       return w>0?+(sx/w).toFixed(2):null; };
     const runForm=(st,wrap,expr,steps)=>{
       genome.channels=[{expr:expr,compiled:null,failed:false,age:0,uses:0,st:st,wrap:wrap,cad:1},null,null,null];
       const L=chanLattice(0); L.fill(0); L[20*FIELD_W+20]=4;
-      for(let t=0;t<steps*CHANNEL_CADENCE;t++){ globalThis.__detMs+=5; try{loop();}catch(e){} }
+      for(let t=0;t<steps*CHANNEL_CADENCE;t++){ globalThis.__detMs+=5; govSelfOnly(); try{loop();}catch(e){} }
       return centroid(L); };
     // THE SEEDED FORM is a symmetric mean: the blob spreads and does NOT travel.
     const mean=runForm(CHANNEL_STENCIL_SEED.map(t=>[t[0],t[1],t[2]]),0,'(b)+(0.00)',6);
@@ -345,22 +378,26 @@ m._compile(code+`
                       st:[[-1,0,1.0],[1,0,-1.0]],wrap:0,cad:1},null,null,null];
     const G=chanLattice(0); G.fill(0);
     for(let y=0;y<FIELD_H;y++)for(let x=0;x<FIELD_W;x++)G[y*FIELD_W+x]=x*0.05;
-    for(let t=0;t<CHANNEL_CADENCE;t++){ globalThis.__detMs+=5; try{loop();}catch(e){} }
+    for(let t=0;t<CHANNEL_CADENCE;t++){ globalThis.__detMs+=5; govSelfOnly(); try{loop();}catch(e){} }
     let gmn=Infinity,gmx=-Infinity;
     for(let y=1;y<FIELD_H-1;y++)for(let x=2;x<FIELD_W-2;x++){const v=G[y*FIELD_W+x]; if(v<gmn)gmn=v; if(v>gmx)gmx=v;}
     // CADENCE: a 4x channel updates a quarter as often.
     genome.channels=[{expr:'(a)+(0.10)',compiled:null,failed:false,age:0,uses:0,st:null,wrap:0,cad:1},
                      {expr:'(a)+(0.10)',compiled:null,failed:false,age:0,uses:0,st:null,wrap:0,cad:4},null,null];
     chanLattice(0).fill(0); chanLattice(1).fill(0);
-    for(let t=0;t<CHANNEL_CADENCE*8;t++){ globalThis.__detMs+=5; try{loop();}catch(e){} }
+    for(let t=0;t<CHANNEL_CADENCE*8;t++){ globalThis.__detMs+=5; govSelfOnly(); try{loop();}catch(e){} }
     const fast=+chanLattice(0)[100].toFixed(3), slow=+chanLattice(1)[100].toFixed(3);
+    // BOTH SLOTS, because the cadence check compares two channels and #196 draws per slot.
+    const govSelfCad=(governedBySelfNow(0)&&governedBySelfNow(1));
     // AND BOUNDED WHATEVER THE FORM: six taps at max weight, explosive rule, on a torus.
     genome.channels=[{expr:'(b)*(2.00)',compiled:null,failed:false,age:0,uses:0,
       st:[[-1,0,2],[1,0,2],[0,-1,2],[0,1,2],[2,2,2],[-2,-2,2]],wrap:1,cad:1},null,null,null];
     const B=chanLattice(0); B.fill(1);
-    for(let t=0;t<CHANNEL_CADENCE*8;t++){ globalThis.__detMs+=5; try{loop();}catch(e){} }
+    for(let t=0;t<CHANNEL_CADENCE*8;t++){ globalThis.__detMs+=5; govSelfOnly(); try{loop();}catch(e){} }
     let over=0,nf=0; for(let c=0;c<B.length;c++){ if(!isFinite(B[c]))nf++; if(!(B[c]>=-CHANNEL_CLAMP&&B[c]<=CHANNEL_CLAMP))over++; }
-    return {mean,advect,torus,gmn:+gmn.toFixed(4),gmx:+gmx.toFixed(4),fast,slow,over,nf};
+    const govSelf=(governedBySelfNow(0)&&govSelfCad);
+    chanCarrierRestore(carriers);
+    return {mean,advect,torus,gmn:+gmn.toFixed(4),gmx:+gmx.toFixed(4),fast,slow,over,nf,govSelf};
   });
 
   // ── #189  AND THE FORM TAKES SMALL, LEGAL STEPS ─────────────────────────────────────────────
@@ -1937,9 +1974,19 @@ ck('#188 an allocated one is', CI.offeredNow>0, CI.offeredNow+'/400');
 ck('#188 four effect targets index the bank', CI.tgts===4);
 ck('#188 an allocated channel pays the dearest rent in the file', CI.rent>0,
    'CHANNEL_RENT = '+CI.rent+' instruction-equivalents per allocated channel');
+ck('#188 the lattice probe owns the medium it measures', CH.govSelf===true,
+   'same fix as #189\'s: carriers cleared every tick and the germline asserted as the governing rule, so the diffusion and boundedness numbers above are about the chemistry this block set');
 
 // #189
 const FM=r.form||{};
+// FIRST, and it gates the meaning of everything under it. #196 draws the governing rule from the
+// living carriers, so a block that sets genome.channels and runs the sim measures a STRANGER'S
+// chemistry on its own lattice the moment any particle carries that slot. Six checks across
+// out.chan and out.form were red at TICKS=4000 and green at TICKS=900 for exactly that reason --
+// no mature carriers yet at 900 -- and three of the six were red on the pre-#201 engine too. #198
+// learned this inside its own block and these two were left carrying it.
+ck('#189 the probe owns the medium it measures', FM.govSelf===true,
+   'with the carriers cleared every tick, the germline must be the rule that governed -- otherwise every number below is about a medium this block never set');
 ck('#189 the seeded form diffuses and does NOT transport', FM.mean===20,
    'a symmetric mean leaves the centroid at '+FM.mean);
 ck('#189 an OFFSET stencil advects — the medium moves', FM.advect>FM.mean+3,
