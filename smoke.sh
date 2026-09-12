@@ -57,9 +57,22 @@ extra_env_for() {
   esac
 }
 
+# Most rigs are well inside three minutes. A couple are not, and a rig that gets killed reports as
+# broken — which is worse than a slow suite, because it looks like a real failure.
+# #201: slot-test waits 150 seconds for the engine's first autosave (see above), then reloads the
+# field, then opens a one-universe page to exercise the adoption path and gives the grown universe
+# time to boot from cold. That is comfortably past 180 and it was passing standalone while the smoke
+# pass called it dead.
+timeout_for() {
+  case "$1" in
+    slot-test.js) echo 360 ;;
+    *) echo 180 ;;
+  esac
+}
+
 for r in "${RIGS[@]}"; do
   printf '  %-26s ' "$r"
-  out=$(env TICKS="$TICKS" SAMPLE="$TICKS" SWIN="$TICKS" $(extra_env_for "$r") timeout 180 node "$r" 2>&1)
+  out=$(env TICKS="$TICKS" SAMPLE="$TICKS" SWIN="$TICKS" $(extra_env_for "$r") timeout "$(timeout_for "$r")" node "$r" 2>&1)
   rc=$?
   # A rig can exit 0 and still be broken: several report a failed text patch as JSON on stdout.
   err=$(printf '%s' "$out" | grep -oiE '"error":"[^"]*"|^[A-Za-z]*Error: .*' | head -1)

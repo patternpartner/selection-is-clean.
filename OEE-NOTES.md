@@ -16166,19 +16166,49 @@ cannot *end* another universe, only found one.
 
 ### And what "green" means for this rig
 
-The baseline is worth stating, because I had been quoting a single budget as if it were the suite's
-verdict. Committed HEAD, unmodified, `substrate-test.js`:
+I had been quoting a single budget as if it were the suite's verdict, so here is the whole matrix.
+Same rig, 230 checks, `TICKS=4000` unless stated:
 
 ```
-TICKS=900     212 passed, 2 failed    two #189 rows
-TICKS=4000    210 passed, 4 failed    those two, plus #189 wrap=1 and #199 never-double-inserted
+pre-#201 engine (278bcc9)          210 passed,  4 failed
+#201 engine, FOUND=0  (control)    226 passed,  4 failed   <- the SAME four rows
+#201 engine, FOUND=1               224 passed,  6 failed
+#201 engine, FOUND=1, TICKS=900    228 passed,  2 failed
 ```
 
-Four budget-sensitive rows on HEAD, not two. So "`substrate-test` is green" has only ever meant green
-at the budget it was run at — the same caveat `CODEMAP` already records for `crossing-test` and for
-`smoke.sh`'s forty ticks. #201 adds 16 checks (14 for the founding layer, 2 for the `uaSwapVar`
-guard) and does not change which pre-existing rows are red.
+**Four budget-sensitive rows on committed HEAD, not two.** At 900 ticks two `#189` rows fail; at 4,000
+those two plus `#189 wrap=1` and `#199 never-double-inserted`. So "`substrate-test` is green" has only
+ever meant green at the budget it was run at — the caveat `CODEMAP` already records for
+`crossing-test` and for `smoke.sh`'s forty ticks.
 
-`substrate-test.js`: 230 checks, 16 of them this swing's. `slot-test.js` gains five and had four
-pre-#201 assertions rescoped, because they were written when the field was a fixed nine. `smoke.sh`:
-49 ok, 0 failing at forty ticks.
+**And three rows are trajectory-dependent, which the control is what establishes.** With founding on,
+`#188 Laplacian`, `#189 seeded-form-diffuses` and `#189 offset-stencil-advects` fail while
+`#199 never-double-inserted` starts passing; with `FOUND=0` on the same engine the failure set is
+byte-for-byte the baseline's. Those blocks do not clear live carriers, so on a mature trajectory they
+measure a *carrier's* chemistry rather than the one they set — the `#196` governing-rule trap the
+`#198` entry already describes, and the same shape as the `uaSwapVar` hang one layer up. Named here,
+not repaired here.
+
+### The browser rig is the one that mattered
+
+```
+slot-test.js, SECS=150                                       15 passed, 0 failed
+  the field is running   9/9 built, and the field GREW 3 more on its own: g0(599) g1(859) g2(861)
+  #201 a founding on the wire opens a REAL new universe   grown slot: [g3]
+  #201 the daughter is stored under the germline it was founded from   g3 holds 16352 of 16352 bytes
+  #201 and the grown universe is running its own lineage   1804 ticks
+  every universe that HAD saved came back carrying its own genome   9 own, 0 wrong
+```
+
+**Nine universes founded three real peers of their own inside a 150-second warm-up, unprompted.** That
+line is the swing: not the synthetic packet the rig posts to exercise the adoption path, but the field
+growing itself from nine to twelve because its own creatures paid for it. The synthetic founding then
+landed on **g3** — the first free index — which is the collision fix working, and the germline crossed
+byte-exact.
+
+`substrate-test.js`: 230 checks, 16 of them this swing's (14 for the founding layer, 2 for the
+`uaSwapVar` guard). `slot-test.js`: 15, five of them new, with four pre-#201 assertions rescoped
+because they were written when the field was a fixed nine — one of them, the restore check, was
+reporting four universes as carrying the wrong genome because a grown daughter's saved tick count
+"explained" a built universe's better than its own did. `smoke.sh` gives `slot-test` 360 seconds
+instead of 180, because the rig outgrew the timeout and was being killed and reported as broken.
