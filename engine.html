@@ -1304,6 +1304,13 @@ const LIVENESS_DECLARED=[
   //                        separates "this world never founded" from "the packet never crossed",
   //                        and it is the only one of the three a single-tab run cannot raise.
   'cosmos.found','cosmos.foundRefused','cosmos.foundSeen',
+  // THE CHILD PATH'S OWN PULSE. Every gate in mutateChildGenome is a Math.random()<rate test, so a
+  // negative germline mutationRate - which the unclamped meta walk reaches on its own - freezes the
+  // whole route and every child becomes an exact clone. child.frozen is the only thing in this file
+  // that can say so; see the note at the top of mutateChildGenome for why it is instrumented rather
+  // than clamped. varied-only across a run is the healthy state, frozen-only is a world that has
+  // stopped varying, and NEITHER firing means nothing was ever born.
+  'child.varied','child.frozen',
 ];
 // NOT INSTRUMENTED, and deliberately absent rather than declared-and-silent: cladogenesis minting
 // (#17) has no single entry point I could identify with confidence. A census that reports "never"
@@ -9880,6 +9887,34 @@ const CHILD_NOT_A_GENE=['totalTicks','generation','extinctions'];
 const CHILD_DISCRETE=['tickRate','tickPhase','regCount'];   // #200a: regCount joins for #192's reason - an integer gene walked continuously is a gene that cannot move   // #192: integer-valued, so the walk below would only ever add invisible noise
 function mutateChildGenome(g){
   const rate=genome.mutationRate||0.06,scale=genome.mutationScale||1;
+  // === CAN THIS BIRTH VARY AT ALL? ==============================================================
+  // EVERY path in this function is gated on Math.random()<rate or a multiple of it - the generic
+  // scalar walk, objWeights, uaProdW, uaVarW, uaOps, userEffects, all four channel-form steps, the
+  // shed, oeeW, and both discrete steps. Checked line by line, not assumed. So a rate at or below
+  // zero does not mutate LESS; it mutates NOTHING, and every child is an exact clone of its parent.
+  //
+  // AND THE RATE GETS THERE ON ITS OWN. genome.mutationRate is walked by mutateGenome's meta layer
+  // and is deliberately unclamped ("range is the system's to find"), so it drifts negative:
+  // measured 0.0601 -> -0.4086 over 1,500 germline mutations, and the child path went from 41 of
+  // 200 children moving their proxy weights to 0 of 200.
+  //
+  // EXACTLY NEGATIVE, not zero, and the default-or fallback is why: 0 || 0.06 is 0.06, so zero is
+  // coerced back to the default and a lineage cannot switch variation off by reaching zero. Only
+  // the interval below zero - which nothing in the code treats as meaningful and which the walk
+  // reaches by accident - actually freezes it. That asymmetry is the whole finding.
+  //
+  // NOT CLAMPED HERE, on #158's precedent: that swing found a universe at netMigrantRate -0.03363,
+  // fully silent on the wire, and honoured it as a decision selection had made rather than
+  // overriding it ("the system needs to decide to turn them off, not me", #148). A world that has
+  // stopped varying is a world that will lose to one that has not, and that is the verdict.
+  //
+  // WHAT WAS MISSING WAS THE INSTRUMENT. Nothing in this file could report it. The crossing census
+  // asks whether authored structure REACHES the population; no row asks whether the route is still
+  // capable of MOVING anything, so a lineage producing nothing but clones reads as perfectly
+  // healthy in every census here. child.frozen is that row. It is the inverse of the failure this
+  // project keeps finding - not a mechanism that is alive in the census and computes nothing, but
+  // one that computes nothing and the census cannot see it.
+  if(rate>0)fired('child.varied'); else fired('child.frozen');
   // FULL divergence — gloves-off random walk on EVERY heritable scalar gene (relative step). Only
   // the crash floors (isFinite + the VM's own per-op clamps) remain; range is the system's to find.
   for(const k in g){

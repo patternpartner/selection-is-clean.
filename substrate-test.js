@@ -1902,6 +1902,43 @@ m._compile(code+`
             pending:netEventPending.found!==undefined};
   });
 
+  // ── CAN THE CHILD PATH STILL MOVE ANYTHING? ─────────────────────────────────────────────────
+  // The inverse of the failure this project keeps finding. Usually a mechanism reads alive in the
+  // census and computes nothing; here the child path can compute nothing and NO census in the file
+  // could say so. Every gate in mutateChildGenome is a Math.random()<rate test on the germline's
+  // mutationRate, which the meta walk drifts negative on its own - so a lineage can end up
+  // producing only exact clones while every crossing row still reads healthy.
+  out.childVary=run('childVary',()=>{
+    const svRate=genome.mutationRate;
+    const probe=(rate)=>{
+      genome.mutationRate=rate;
+      const v0=__liveness['child.varied']|0, f0=__liveness['child.frozen']|0;
+      let moved=0;
+      for(let i=0;i<200;i++){
+        const g=cloneGenome(genome);
+        g.oeeW=[0.5,0.5,0.5,0.5]; g.objWeights=[0.5,0.5,0.5,0.5];
+        const before=JSON.stringify([g.oeeW,g.objWeights,g.entropyK,g.creationCost,g.regCount,g.tickRate]);
+        mutateChildGenome(g);
+        if(JSON.stringify([g.oeeW,g.objWeights,g.entropyK,g.creationCost,g.regCount,g.tickRate])!==before)moved++;
+      }
+      return {moved, varied:(__liveness['child.varied']|0)-v0, frozen:(__liveness['child.frozen']|0)-f0};
+    };
+    // 1. A LIVE RATE moves children and fires varied, never frozen.
+    const live=probe(0.06);
+    // 2. A NEGATIVE RATE moves NOTHING - and it is the whole route, not one gene. This is the state
+    //    the unclamped meta walk reaches by itself (measured 0.0601 -> -0.4086 over 1,500 calls).
+    const frozen=probe(-0.4086);
+    // 3. AND ZERO IS NOT FROZEN, which is the asymmetry worth pinning: rate = mutationRate || 0.06
+    //    coerces 0 back to the default, so a lineage cannot switch variation off by reaching zero.
+    //    Only the interval BELOW zero does it, and nothing in the engine treats that as meaningful.
+    const atZero=probe(0);
+    genome.mutationRate=svRate;
+    return {liveMoved:live.moved, liveVaried:live.varied, liveFrozen:live.frozen,
+            frozenMoved:frozen.moved, frozenFrozen:frozen.frozen, frozenVaried:frozen.varied,
+            zeroMoved:atZero.moved, zeroFrozen:atZero.frozen,
+            declared:['child.varied','child.frozen'].filter(n=>LIVENESS_DECLARED.indexOf(n)<0)};
+  });
+
   // ── THE REVERT: every layer's knob must actually turn it off ─────────────────────────────────
   out.revert=run('revert',()=>{
     const r={};
@@ -2519,6 +2556,18 @@ ck('#201 every brake on founding is a LAW, not a gene',
 ck('#201 all three liveness names are declared', FD.live && FD.live.length===0,
    FD.live && FD.live.length?('missing: '+FD.live.join(' ')):'found / foundRefused / foundSeen — never-fired, priced-out and heard-from-a-peer are three different findings');
 ck('#201 the epoch log carries net_found', FD.pending===true);
+
+// can the child path still move anything
+const CV=r.childVary||{};
+ck('a live rate moves children, and says so', CV.liveMoved>0 && CV.liveVaried===200 && CV.liveFrozen===0,
+   CV.liveMoved+'/200 children moved at rate 0.06, child.varied fired '+CV.liveVaried+' times and child.frozen '+CV.liveFrozen);
+ck('A NEGATIVE RATE FREEZES THE WHOLE CHILD PATH', CV.frozenMoved===0 && CV.frozenFrozen===200,
+   CV.frozenMoved+'/200 moved at rate -0.4086 — every gate in mutateChildGenome is a Math.random()<rate test, so below zero nothing moves and every child is an exact clone. The meta walk reaches this on its own: 0.0601 -> -0.4086 over 1,500 germline mutations');
+ck('and child.frozen is the only thing in the file that can SAY so', CV.frozenFrozen===200 && CV.frozenVaried===0,
+   'the crossing census asks whether structure REACHES the population; nothing asked whether the route could still MOVE anything, so a lineage producing only clones read as healthy everywhere');
+ck('zero is NOT frozen — the default-or coerces it back', CV.zeroMoved>0 && CV.zeroFrozen===0,
+   CV.zeroMoved+'/200 moved at rate 0, because rate = mutationRate || 0.06 turns 0 into 0.06. A lineage cannot switch variation off by reaching zero; only the interval BELOW zero does it, which nothing in the engine treats as meaningful and the walk reaches by accident. That asymmetry is the finding');
+ck('both names are declared', CV.declared && CV.declared.length===0, (CV.declared||[]).join(' '));
 
 // the reverts
 const RV=r.revert||{};
