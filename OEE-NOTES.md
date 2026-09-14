@@ -16434,3 +16434,97 @@ Three lessons, all cheap, all already paid for once:
   tree, 3/3 on the pre-#201 tree. Fully green 3/4 here against 2/3 there — so `collective-test` also
   carries a roughly one-in-three intermittent check of its own, on BOTH trees, which is named here
   and left alone.
+
+
+---
+
+## #202 — WHO A WORLD LETS IN, NOT JUST HOW MANY
+
+Prompted by a workspace the author relayed from Grok: a shell that gives each universe its own
+BroadcastChannel and routes them through a hub. The idea in it is right and the implementation is the
+inverse of what this engine needs — the router forwards every leaf packet to the hub and every hub
+packet to every leaf, unconditionally, so it is a star in the wiring and a full mesh in behaviour.
+Every universe still hears every other one. What it did was point at the axis.
+
+#185's own note says receptivity "was one number applied to every kind of packet" and splits it by
+KIND. **It is still one number applied to every SOURCE.** A world can be open to migrants and closed
+to laws; it cannot be open to one neighbour and closed to another. #201 made the *number* of
+universes endogenous and left every one of them equidistant from every other.
+
+### The obvious version cannot work
+
+A preference over PEERS cannot be a gene. A peer is an eight-character random string that differs
+next run, so a per-peer weight has nothing stable to attach to — it cannot survive a reload, let
+alone cross into a daughter world. **Topology keyed on identity is not heritable in this field.** So
+it is keyed on what ARRIVES instead: every migrant carries its tendency vector, the receiving world
+knows its own mean, and the cosine between them is an identity-free measure of "how like us is this".
+
+```
+netAssort  +1   accept the similar       assortative — isolation, and the classic precondition
+                                         for divergence without a spatial barrier
+            0   accept uniformly         the pre-#202 engine, exactly
+           -1   accept the dissimilar    disassortative — outbreeding
+```
+
+**Measured before it was built**, because a gate with nothing to discriminate on is this project's
+most repeated failure. Cosine of an outgoing migrant against its own world's mean, 200 packets:
+
+```
+seed 1   min -0.87   Q1 -0.35   med +0.10   Q3 +0.43   max +0.71
+seed 2   min -0.70   Q1 -0.20   med +0.00   Q3 +0.16   max +0.79
+```
+
+Nearly the full range, so an assortative world and a disassortative one take genuinely different
+subsets of the same traffic. On a symmetric 400-packet corpus at receptivity 1: +1 takes 200 like and
+0 unlike; −1 takes the mirror.
+
+### A claim I made in a comment and the rig refuted
+
+I wrote that the gate "redistributes rather than throttles" — that preferring one end costs no
+volume, so selection on *who* is not confounded with selection on *how much*. **It is only true below
+saturation.** A probability cannot exceed 1, so once `rec*(1+|assort|)` passes 1 the preferred half
+can no longer gain to offset the dispreferred half falling to zero:
+
+```
+receptivity 1.0     neutral 400    assort +1  200    assort -1  200
+receptivity 0.5     neutral 200    assort +1  200    assort -1  200
+```
+
+At the seeded 0.5 nothing clamps and the totals match exactly. At 1.0 a preference **necessarily**
+costs half the inflow — that is arithmetic, not a design choice, and no functional form avoids it.
+So selection on `netAssort` is confounded with selection on inflow in any world that has evolved
+`netReceptivity` near 1, and clean in one that has not. Both regimes are asserted, and the engine
+note now says so instead of claiming the general case.
+
+### And I repeated my own documented mistake, twice, in one swing
+
+**`ASSORT=0` was not an exact revert, for two separate reasons I had already written down.**
+
+```
+                                        alive   amp       mut
+pre-#202 engine                           205   203.5003  0.06
+#202, ASSORT=0, gene in the literal       211   207.9775  0.060018
+#202, ASSORT=0, lazily created            205   203.5003  0.06
+```
+
+The first was `maybe(genome.netAssort, …)` in `mutateGenome` — it draws a random number whether or
+not it moves the value, so the knob reverted the behaviour while still shifting the stream. **That is
+#201's `foundDrive` trap exactly**, which I fixed there and wrote into these notes one entry above.
+
+The second was subtler and is the more useful one. Putting `netAssort:0` in the genome literal was
+enough on its own, because **`mutateChildGenome` iterates every numeric key on the genome and draws
+one random number per key** — a gene that merely EXISTS costs a draw at every birth. The fix is the
+contract `CODEMAP` has stated since #181 and I walked straight past: *a gene lazily created under its
+own knob*, clamped **if present, never created**, and written to the save only when it exists. With
+that, the only difference across the whole saved genome is one new name in the never-fired list.
+
+The general form, worth having stated once: **in this engine, adding a gene is not free even when its
+layer is off.** Existence costs draws.
+
+### Still closed after #202
+
+A world can now choose *what kind* of neighbour it listens to, but not *which* one — two worlds
+sending identical-looking migrants are still indistinguishable to it, and nothing keys on a peer's
+history with us. Reciprocity, reputation and directed refusal are all still closed, and all of them
+need a stable peer identity this field does not have. The wire itself is still flat multicast: a
+world can ignore, but it cannot be unreachable.

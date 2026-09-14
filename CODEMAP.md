@@ -2506,6 +2506,32 @@ be taken *before* `attemptFound`.
 `__founds` is deliberately NOT in the genome — the daughter boots from her parent's blob and would
 otherwise be born with the budget spent — so a reload restores a world's founding budget.
 
+### #202 — assortative receptivity (`netAssort`)
+
+`netReceptivity` is one number applied to every SOURCE. #185 split receptivity by packet KIND and
+left the source axis closed. #202 keys migrant acceptance on the cosine between the arrival's
+tendency and the receiving world's own mean: `p = rec*(1 + netAssort*sim)`, clamped to [0,1], on the
+SAME single random draw that was already there. `netAssort` in [−1,+1]: +1 assortative (isolation),
+0 the pre-#202 gate exactly, −1 disassortative. Knob `ASSORT`.
+
+**A PREFERENCE OVER PEERS CANNOT BE A GENE**, which is why it is keyed on content. A peer id is an
+eight-character random string that differs next run, so per-peer weights cannot survive a reload or
+cross into a daughter. Topology keyed on identity is not heritable here.
+
+**REDISTRIBUTION HOLDS ONLY BELOW SATURATION.** A probability cannot exceed 1, so once
+`rec*(1+|assort|)` > 1 the preferred half cannot gain to offset the dispreferred half reaching zero.
+At rec 0.5 the totals match the neutral case exactly; at rec 1.0 a preference costs half the inflow.
+Selection on `netAssort` is therefore confounded with selection on inflow for a world that has
+evolved `netReceptivity` near 1. The engine note claimed the general case until the rig refuted it.
+
+**ADDING A GENE IS NOT FREE EVEN WHEN ITS LAYER IS OFF** — the lesson to carry. `mutateChildGenome`
+iterates every numeric key on the genome and draws one random number per key, so a gene that merely
+EXISTS costs a draw at every birth and shifts the whole stream. `netAssort:0` in the genome literal
+was enough to make `ASSORT=0` diverge (211 alive against 205 at 2,000 ticks). It is **lazily created
+under its own knob**, clamped *if present, never created*, and written to the save only when it
+exists — the contract this map has stated since #181. `maybe()` in `mutateGenome` is gated on
+`assortOn()` too, which is #201's `foundDrive` trap repeated one swing later.
+
 ### uaSwapVar — AN UNBOUNDED REJECTION SAMPLER IS A HANG (fixed with #201, caused by #188)
 
 ```js

@@ -1311,6 +1311,11 @@ const LIVENESS_DECLARED=[
   // than clamped. varied-only across a run is the healthy state, frozen-only is a world that has
   // stopped varying, and NEITHER firing means nothing was ever born.
   'child.varied','child.frozen',
+  // #202: a migrant was scored and the threshold MOVED off netReceptivity. Not "the gene is
+  // non-zero" - that would read alive on a world whose every arrival happened to score zero
+  // similarity. This fires only where the decision actually differed from the uniform one, which is
+  // the only reading that separates a working preference from a declared one.
+  'net.assortBiased',
 ];
 // NOT INSTRUMENTED, and deliberately absent rather than declared-and-silent: cladogenesis minting
 // (#17) has no single entry point I could identify with confidence. A census that reports "never"
@@ -1731,9 +1736,76 @@ function xenoImpact(sx,sy){
   }catch(e){}
 }
 
+// === #202 - WHO A WORLD LETS IN, NOT JUST HOW MANY =============================================
+// #185's own note says receptivity "was one number applied to every kind of packet" and splits it by
+// KIND. It is still one number applied to every SOURCE. A world can be open to migrants and closed
+// to laws; it cannot be open to one neighbour and closed to another. That is the last thing about
+// the field that no world has any say in - #201 made the NUMBER of universes endogenous and left
+// every one of them equidistant from every other.
+//
+// THE OBVIOUS VERSION DOES NOT WORK, and it is worth saying why: a preference over PEERS cannot be a
+// gene. A peer is an eight-character random string that is different next run, so a per-peer weight
+// has nothing stable to attach to and could not be inherited across a reload, let alone into a
+// daughter world. Topology keyed on identity is not heritable in this field.
+//
+// SO IT IS KEYED ON WHAT ARRIVES INSTEAD. Every migrant carries its tendency vector, and the
+// receiving world knows its own mean. The cosine between them is a heritable, identity-free measure
+// of "how like us is this", and a world evolves which end of it to prefer:
+//
+//   netAssort  +1   accept the similar        assortative - isolation, and the classic precondition
+//                                             for divergence without a spatial barrier
+//               0   accept uniformly          the pre-#202 engine, exactly
+//              -1   accept the dissimilar     disassortative - outbreeding, hybrid vigour
+//
+// MEASURED BEFORE IT WAS BUILT, because a gate with nothing to discriminate on is this project's
+// most repeated failure. Cosine of an outgoing migrant against its own world's mean, 200 packets:
+//
+//   seed 1   min -0.87   Q1 -0.35   med +0.10   Q3 +0.43   max +0.71
+//   seed 2   min -0.70   Q1 -0.20   med +0.00   Q3 +0.16   max +0.79
+//
+// Nearly the full range. An assortative world and a disassortative one accept genuinely different
+// subsets of the same traffic; this is not a knob that rounds to no-op.
+//
+// IT REDISTRIBUTES RATHER THAN THROTTLES - BELOW SATURATION, AND ONLY THERE. p = rec*(1+assort*sim),
+// so on a corpus whose similarities average near zero the mean acceptance stays at rec whichever end
+// the world prefers, and a run can tell "this world became choosy" from "this world stopped
+// listening". netReceptivity remains the volume.
+//
+// THE CLAMP BREAKS THAT AT HIGH rec, and the first version of this note claimed otherwise. A
+// probability cannot exceed 1, so once rec*(1+|assort|) passes 1 the preferred half can no longer
+// gain to offset the dispreferred half falling to 0. Measured at rec=1 on a symmetric 400-packet
+// corpus: neutral takes 400, assort +1 takes 200, assort -1 takes 200. At saturation a preference
+// NECESSARILY costs volume - that is arithmetic, not a design choice, and no functional form avoids
+// it. At the seeded rec=0.5 the totals match the neutral case exactly.
+//
+// So selection on netAssort is confounded with selection on inflow for any world that has evolved
+// netReceptivity near 1, and is clean for one that has not. Stated here rather than discovered
+// later, and substrate-test asserts both regimes.
+//
+// ONE RANDOM DRAW, the same one that was already there. At netAssort 0 the multiplier is exactly 1
+// and the stream is bit-identical to the pre-#202 engine. Force off with ASSORT=0.
+function assortOn(){return (typeof globalThis==='undefined')||((globalThis.__ASSORT??1)|0)!==0}
+// The world's own mean tendency, computed ONCE per receive rather than per migrant - it is O(N) and
+// the queue can hold twenty.
+function worldMeanTend(){
+  const out=new Float64Array(DIMS); let n=0;
+  for(let i=0;i<N;i++){ if(!palive[i])continue; n++;
+    for(let d=0;d<DIMS;d++)out[d]+=tend[i*DIMS_MAX+d]; }
+  if(n>0)for(let d=0;d<DIMS;d++)out[d]/=n;
+  return out;
+}
+function tendCosine(a,mean){
+  let dp=0,na=0,nb=0;
+  for(let d=0;d<DIMS;d++){ const x=+a[d]||0, y=mean[d]; dp+=x*y; na+=x*x; nb+=y*y; }
+  const q=Math.sqrt(na*nb);
+  return q>1e-9?__cl(dp/q,-1,1):0;   // an undefined direction is NOT a preference either way
+}
+
 // ═══ RECEIVE — integrate incoming packets into our population ═══
 function networkReceive(){ fired('network.receive');
   const rec=genome.netReceptivity||0;
+  const _as=assortOn()?__cl(finiteOr(genome.netAssort,0),-1,1):0;   // #202
+  const _mean=_as!==0?worldMeanTend():null;                          // not computed when it cannot matter
   if(rec<=0){
     // still drain the queues so they don't fill up
     incomingMigrants.length=0;
@@ -1745,7 +1817,15 @@ function networkReceive(){ fired('network.receive');
   // Migrants — spawn new particles at the received position with received state
   while(incomingMigrants.length>0){
     const m=incomingMigrants.shift();
-    if(Math.random()>rec)continue;
+    // #202: the same single draw, against a threshold this world has a say in. At netAssort 0 the
+    // multiplier is 1 and this line is character-for-character the old decision.
+    let _p=rec;
+    if(_as!==0&&_mean&&Array.isArray(m.tend)){
+      const _sim=tendCosine(m.tend,_mean);
+      _p=__cl(rec*(1+_as*_sim),0,1);
+      if(_p!==rec)fired('net.assortBiased');
+    }
+    if(Math.random()>_p)continue;
     if(N>=CAP)break;
     const nx=m.nx*W,ny=m.ny*H;
     const t=new Float32Array(DIMS);
@@ -9036,6 +9116,13 @@ let genome={
   netMotifRate:0.005,       // chance per tick to broadcast a VM motif fragment
   netInscribeRate:0.004,    // chance per tick to broadcast an inscribed cell program
   netReceptivity:0.5,       // 0..1 probability of accepting incoming packets (evolvable isolation)
+  // #202's netAssort is deliberately NOT here. It is LAZILY CREATED under its own knob, which is the
+  // contract CODEMAP states for every gene since #181 - "a gene lazily created under its own knob,
+  // seeded at the value that reproduces the previous engine" - and I wrote it into the literal first
+  // and had to be caught by a probe. mutateChildGenome iterates EVERY numeric key on the genome and
+  // draws one random number per key, so a gene that merely EXISTS costs a draw at every birth and
+  // shifts the whole stream. Measured with it in the literal: 211 alive against 205 at 2,000 ticks
+  // with ASSORT=0, which is supposed to be the old engine exactly. See networkReceive and mutateGenome.
 
   // ═══ LAYER 10: REFLEXIVITY — the system models itself from inside ═══
   // Particles track their own state trajectory and adjust behaviour via reflexInfluence — a separate
@@ -10917,6 +11004,10 @@ function encodeGenome(){
     C:genome.chemistryTable,
     // Network coupling
     n:[genome.netMigrantRate,genome.netPlasmidRate,genome.netMotifRate,genome.netInscribeRate,genome.netReceptivity].map(v=>+(v.toPrecision(4))),
+    // #202: its OWN key, not a sixth element of n — a shared array grown by one decodes short into
+    // every older save's destructure, and sbc/scw/ser all took their own key for exactly that. Written
+    // ONLY when the gene exists, so a world that has never run the layer saves what it always saved.
+    ...(genome.netAssort===undefined?{}:{nas:+genome.netAssort.toFixed(4)}),
     // Network EFFECT telemetry (cumulative, this lineage's save-history): how many incoming packets from
     // ANY peer on the channel actually changed sim state, broken down by type. See sanitizeGenome note.
     na:genome.netApplied,
@@ -11269,6 +11360,7 @@ function decodeGenome(data){
     if(g.C)genome.chemistryTable=g.C;
     if(g.n){
       [genome.netMigrantRate,genome.netPlasmidRate,genome.netMotifRate,genome.netInscribeRate,genome.netReceptivity]=g.n;
+    if(typeof g.nas==='number')genome.netAssort=g.nas;   // #202; absent in every pre-#202 save, and sanitizeGenome defaults it to 0 = the old behaviour
     }
     if(g.na&&typeof g.na==='object'){
       genome.netApplied={migrant:g.na.migrant|0,plasmid:g.na.plasmid|0,motif:g.na.motif|0,inscription:g.na.inscription|0};
@@ -12634,6 +12726,9 @@ function sanitizeGenome(){
   genome.netMotifRate=finiteOr(genome.netMotifRate,0.005);
   genome.netInscribeRate=finiteOr(genome.netInscribeRate,0.004);
   genome.netReceptivity=__cl(finiteOr(genome.netReceptivity,0.5),0,1);
+  // #202: CLAMP IF PRESENT, NEVER CREATE - the same contract as every gene since #181. Creating it
+  // here would put it on the genome of a world running with ASSORT=0 and cost a draw per birth.
+  if(genome.netAssort!==undefined)genome.netAssort=__cl(finiteOr(genome.netAssort,0),-1,1);
   // Pe27 Layer 17: shadow scenario bank — must exist, must have at least 3 valid entries.
   if(!Array.isArray(genome.shadowScenarioBank)||genome.shadowScenarioBank.length<3){
     genome.shadowScenarioBank=seedShadowBank();
@@ -18212,6 +18307,15 @@ function mutateGenome(){ fired('genome.mutate');
   genome.netMotifRate=maybe(genome.netMotifRate,0,0.02,0.002);
   genome.netInscribeRate=maybe(genome.netInscribeRate,0,0.02,0.002);
   genome.netReceptivity=maybe(genome.netReceptivity,0,1,0.08);
+  // CREATED AND DRAWN ONLY WHEN THE LAYER IS ON, and I made this exact mistake in #201 and wrote it down.
+  // maybe() takes a random number whether or not it moves the value, so an unguarded call here
+  // shifts every later draw in the run and ASSORT=0 reverts the BEHAVIOUR while still moving the
+  // trajectory. Measured before the guard: 186 alive against 209, amp 195.97 against 214.79 at
+  // 3,000 ticks. With it, the run is the pre-#202 engine.
+  if(assortOn()){
+    if(genome.netAssort===undefined)genome.netAssort=0;
+    genome.netAssort=maybe(genome.netAssort,-1,1,0.08);   // #202: BOTH directions - see networkReceive
+  }
 
   // ═══ AUTONOMY PARAMETER MUTATION ═══
   genome.mutationInterval=maybe(genome.mutationInterval,60,1200,40);

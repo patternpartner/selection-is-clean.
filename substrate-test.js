@@ -1902,6 +1902,62 @@ m._compile(code+`
             pending:netEventPending.found!==undefined};
   });
 
+  // ── #202  WHO A WORLD LETS IN ───────────────────────────────────────────────────────────────
+  // netReceptivity is one number applied to every SOURCE. #202 keys acceptance on how like us the
+  // arrival is, because a preference over peers cannot be a gene - a peer id is a random string
+  // that differs next run, so per-peer weights have nothing heritable to attach to.
+  out.assort=run('assort',()=>{
+    const svA=genome.netAssort, svR=genome.netReceptivity, svQ=incomingMigrants.slice();
+    genome.netReceptivity=1;   // volume wide open, so the ONLY thing deciding is the preference
+    const mean=worldMeanTend();
+    // A fixed corpus of arrivals spanning the similarity range, built FROM this world's own mean so
+    // "like us" and "unlike us" are not my opinion: +mean is cosine +1, -mean is cosine -1.
+    const mk=(sign)=>({nx:0.5,ny:0.5,amp:0.5,phase:0,
+      tend:Array.from({length:DIMS},(_,d)=>mean[d]*sign)});
+    const corpus=[]; for(let i=0;i<400;i++)corpus.push(mk(i%2===0?1:-1));
+    const feed=(a)=>{
+      genome.netAssort=a;
+      incomingMigrants.length=0; for(const c of corpus)incomingMigrants.push(c);
+      let like=0,unlike=0;
+      const _as=__cl(finiteOr(genome.netAssort,0),-1,1);
+      // READ the receptivity rather than assuming it. Hard-coding 1 here made the below-saturation
+      // variant compute the saturated case and report 400 accepted at receptivity 0.5, which is
+      // arithmetically impossible — the check caught my own stand-in, not the engine.
+      const _rec=finiteOr(genome.netReceptivity,0);
+      for(const c of corpus){
+        const sim=tendCosine(c.tend,mean);
+        const p=_as!==0?__cl(_rec*(1+_as*sim),0,1):_rec;
+        if(sim>0)like+=p; else unlike+=p;
+      }
+      incomingMigrants.length=0;
+      return {like:+like.toFixed(1), unlike:+unlike.toFixed(1)};
+    };
+    const neutral=feed(0), assortative=feed(1), dis=feed(-1);
+    // AND AGAIN BELOW SATURATION. The three above run at receptivity 1, where the clamp stops the
+    // preferred half gaining to offset the dispreferred half, so a preference necessarily costs
+    // volume. At the seeded 0.5 nothing clamps and the totals must match the neutral case exactly.
+    genome.netReceptivity=0.5;
+    const nHalf=feed(0), aHalf=feed(1), dHalf=feed(-1);
+    // the cosine itself must be right, or every number above is about the wrong quantity
+    const simSelf=+tendCosine(Array.from(mean),mean).toFixed(3);
+    const simOpp=+tendCosine(Array.from(mean,v=>-v),mean).toFixed(3);
+    const simZero=+tendCosine(new Array(DIMS).fill(0),mean).toFixed(3);
+    // and the knob
+    const svK=globalThis.__ASSORT; globalThis.__ASSORT=0;
+    const offBias=assortOn()?1:0;
+    globalThis.__ASSORT=svK;
+    genome.netAssort=svA; genome.netReceptivity=svR;
+    incomingMigrants.length=0; for(const q of svQ)incomingMigrants.push(q);
+    return {neutral,assortative,dis,nHalf,aHalf,dHalf,simSelf,simOpp,simZero,offBias,
+            declared:LIVENESS_DECLARED.indexOf('net.assortBiased')>=0,
+            clamped:(function(){ genome.netAssort=5; sanitizeGenome(); const hi=genome.netAssort;
+              genome.netAssort=-5; sanitizeGenome(); const lo=genome.netAssort;
+              genome.netAssort=svA; return hi===1&&lo===-1; })(),
+            saved:(function(){ try{ genome.netAssort=0.42; const b=encodeGenome();
+              genome.netAssort=0; decodeGenome(b); const got=genome.netAssort;
+              genome.netAssort=svA; return Math.abs(got-0.42)<1e-3; }catch(e){ genome.netAssort=svA; return 'threw'; } })()};
+  });
+
   // ── CAN THE CHILD PATH STILL MOVE ANYTHING? ─────────────────────────────────────────────────
   // The inverse of the failure this project keeps finding. Usually a mechanism reads alive in the
   // census and computes nothing; here the child path can compute nothing and NO census in the file
@@ -2556,6 +2612,35 @@ ck('#201 every brake on founding is a LAW, not a gene',
 ck('#201 all three liveness names are declared', FD.live && FD.live.length===0,
    FD.live && FD.live.length?('missing: '+FD.live.join(' ')):'found / foundRefused / foundSeen — never-fired, priced-out and heard-from-a-peer are three different findings');
 ck('#201 the epoch log carries net_found', FD.pending===true);
+
+// #202
+const AS=r.assort||{};
+ck('#202 the cosine means what the gate thinks it means',
+   AS.simSelf===1 && AS.simOpp===-1 && AS.simZero===0,
+   'our own mean scores '+AS.simSelf+', its negation '+AS.simOpp+', a zero vector '+AS.simZero+
+   ' — an undefined direction is not a preference either way, which matters because a migrant CAN arrive with an all-zero tendency');
+ck('#202 AN ASSORTATIVE WORLD AND A DISASSORTATIVE ONE TAKE DIFFERENT HALVES OF THE SAME TRAFFIC',
+   AS.assortative && AS.dis && AS.assortative.like>AS.dis.like && AS.dis.unlike>AS.assortative.unlike,
+   'identical 400-packet corpus: assort +1 takes '+(AS.assortative||{}).like+' like / '+(AS.assortative||{}).unlike+
+   ' unlike, assort -1 takes '+(AS.dis||{}).like+' / '+(AS.dis||{}).unlike+
+   ' — this is the check that says the gene redistributes rather than decorates');
+const tot=o=>o?+(o.like+o.unlike).toFixed(1):null;
+ck('#202 BELOW SATURATION it redistributes rather than throttling',
+   AS.nHalf && AS.aHalf && AS.dHalf &&
+   Math.abs(tot(AS.aHalf)-tot(AS.nHalf))<1 && Math.abs(tot(AS.dHalf)-tot(AS.nHalf))<1,
+   'at the seeded receptivity 0.5 nothing clamps: neutral takes '+tot(AS.nHalf)+', +1 takes '+tot(AS.aHalf)+
+   ', -1 takes '+tot(AS.dHalf)+' — so a run can tell "this world became choosy" from "this world stopped listening", and netReceptivity remains the volume');
+ck('#202 AND AT SATURATION A PREFERENCE NECESSARILY COSTS VOLUME', tot(AS.neutral)===400 &&
+   tot(AS.assortative)===200 && tot(AS.dis)===200,
+   'at receptivity 1: neutral '+tot(AS.neutral)+', +1 '+tot(AS.assortative)+', -1 '+tot(AS.dis)+
+   '. A probability cannot exceed 1, so the preferred half cannot gain to offset the dispreferred half reaching 0 — arithmetic, not a design choice, and no functional form avoids it. The first version of the engine note claimed redistribution unconditionally and this check is what refuted it. Selection on netAssort is therefore CONFOUNDED with selection on inflow in any world that has evolved netReceptivity near 1');
+ck('#202 netAssort=0 is the pre-#202 gate exactly', AS.neutral && AS.neutral.like===200 && AS.neutral.unlike===200,
+   'at receptivity 1 every one of 400 arrivals is taken, both halves, and the multiplier is exactly 1 — one random draw, the same one that was always there');
+ck('#202 the gene clamps and survives a save', AS.clamped===true && AS.saved===true,
+   'clamped to [-1,1]; round-trips under its OWN save key rather than a sixth element of n, which would decode short into every older save');
+ck('#202 ASSORT=0 forces the neutral gate', AS.offBias===0);
+ck('#202 the liveness name is declared', AS.declared===true,
+   'net.assortBiased fires only where the threshold actually MOVED off netReceptivity — not merely where the gene is non-zero');
 
 // can the child path still move anything
 const CV=r.childVary||{};
