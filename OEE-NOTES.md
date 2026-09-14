@@ -16541,3 +16541,81 @@ sending identical-looking migrants are still indistinguishable to it, and nothin
 history with us. Reciprocity, reputation and directed refusal are all still closed, and all of them
 need a stable peer identity this field does not have. The wire itself is still flat multicast: a
 world can ignore, but it cannot be unreachable.
+
+
+---
+
+## #203 — THE ECONOMY THAT GATES NINETY-NINE PERCENT OF REPRODUCTION
+
+Asked to open whatever is still closed, I went looking for the largest closed thing rather than the
+next one on the list. I expected it to be execution order within a tick — my own notes name it and
+dismiss it as needing a per-tick sort. It is not. It is the energy economy, and the measurement is
+the entry.
+
+### What was measured
+
+Instrumenting the birth gate directly, 3,000 ticks, two seeds:
+
+```
+birth attempts                                    96,173        91,068
+refused for lack of world energy                  95,240 (99%)  90,139 (99%)
+ticks the pool held less than one birth's cost      84.6%         83.8%
+minimum pool                                          0             0
+```
+
+**Ninety-nine percent of reproduction in this world is refused by an empty shared pool, and the pool
+is empty most of the time.** Every layer this project has spent two hundred swings opening — grammar,
+chemistry, geometry, subjective time, self-revision, founding — operates downstream of a gate that no
+lineage has ever had any say in. Whatever selection has been doing here, it has been doing it inside
+a fixed economy.
+
+And the constants were mine:
+
+```
+BIRTH_ENERGY_COST    1      what a birth draws from the world
+WORLD_ENERGY_MAX     80     the pool ceiling
+WORLD_ENERGY_REGEN   0.2    the influx
+DEATH_ENERGY_RETURN  0.5    what a death gives back
+```
+
+`WORLD_ENERGY_REGEN`'s own comment reads *"sets the sustainable birth flux (→ carrying capacity well
+below CAP)"*. It knew it was the carrying capacity. It was 0.2 because I picked 0.2.
+
+### Laws, not genes
+
+#197's argument settles it without restating: a birth cost paid BY the lineage is an off switch
+reached on the first mutation. All four go through the world-law machinery — proposed by the world,
+run on probation, reverted if the world cannot hold its population. A world can walk the cost to its
+floor and discover what an unbounded population does to it, or starve the pool and discover what
+nothing does. Both are verdicts.
+
+Only `BIRTH_ENERGY_COST` has a floor above zero (0.01), and not for safety: a free birth makes the
+pool meaningless rather than cheap, which is a different mechanism rather than an extreme of this
+one. `WORLD_ENERGY_REGEN` runs to 0 — a world that has decided to stop having children.
+
+### The instrument matters as much as the laws
+
+`birth.paid` and `birth.refused`, fired on **both** reproduction paths (`addParticle` and
+`addCompound`). The ratio is this world's reproductive pressure, and on the seeded constants it runs
+at about 1:100.
+
+It is worth being blunt about what this means: **the single largest quantity in this engine was
+invisible.** Not mis-measured — unmeasured. No census row, no epoch log, no liveness name reported
+that ninety-nine percent of everything the population tried to do reproductively was failing at one
+line. The crossing census asks whether authored structure reaches the population; the liveness census
+asks whether mechanisms fire; nothing asked whether the world could afford what it was attempting.
+
+### What I did NOT open, and why
+
+Execution order within a tick. The birth call sits inside a pair loop scanning ascending, drawing
+from that empty pool, so whoever is reached first when the pool refills breeds. Measured, reproductive
+success varies about **180-fold across index deciles** (17.9% in the lowest well-sampled band, 0.1%
+in the middle). Array position is currently one of the strongest selective forces in the simulation
+and it is not heritable, not selected, and not visible.
+
+But I cannot yet separate **order** from **composition** — different index bands hold different kinds
+of particle, since `addParticle` appends and index therefore tracks age. Those demand different fixes.
+The decisive test is to permute the scan order and see whether the skew follows the permutation or
+stays with the particles, and that test is a swing of its own. Reordering the hottest loop in the
+engine on a half-diagnosed mechanism is precisely the move that cost this session five separate
+retractions. It is recorded here with its numbers so the next pass starts from evidence.

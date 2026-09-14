@@ -1902,6 +1902,42 @@ m._compile(code+`
             pending:netEventPending.found!==undefined};
   });
 
+  // ── #203  THE ECONOMY THAT GATES REPRODUCTION ───────────────────────────────────────────────
+  // Measured before it was opened: 99% of birth attempts are refused for lack of world energy and
+  // the pool holds less than one birth's cost on 85% of ticks. Everything the lineages evolve runs
+  // downstream of that gate, and nothing could see it.
+  out.econ=run('econ',()=>{
+    const sv={c:BIRTH_ENERGY_COST,m:WORLD_ENERGY_MAX,r:WORLD_ENERGY_REGEN,d:DEATH_ENERGY_RETURN,e:worldEnergy};
+    const row=(n)=>LAW_DECLARED.find(x=>x.name===n);
+    const names=['BIRTH_ENERGY_COST','WORLD_ENERGY_MAX','WORLD_ENERGY_REGEN','DEATH_ENERGY_RETURN'];
+    const inTable=names.filter(n=>!row(n));
+    // 1. THE GATE ACTUALLY READS THE LAW. Not "the row is settable" - #197's rig already checks
+    //    that for every row. This asks whether the BIRTH PATH bills what the law says.
+    const bill=(cost,pool)=>{
+      BIRTH_ENERGY_COST=cost; worldEnergy=pool;
+      const p0=__liveness['birth.paid']|0, r0=__liveness['birth.refused']|0;
+      let live=-1; for(let q=0;q<N;q++) if(palive[q]){live=q;break;}
+      if(live<0)return null;
+      const before=worldEnergy;
+      const idx=addParticle(px[live],py[live],new Float32Array(DIMS),false,live,-1);
+      const drew=+(before-worldEnergy).toFixed(4);
+      if(idx>=0){ palive[idx]=false; N=Math.max(0,N-1); }   // undo the spawn, not the accounting
+      return {made:idx>=0, drew,
+              paid:(__liveness['birth.paid']|0)-p0, refused:(__liveness['birth.refused']|0)-r0};
+    };
+    const cheap=bill(0.25,10);      // a world that has made children cheap
+    const dear=bill(8,10);          // and one that has made them dear
+    const broke=bill(1,0.5);        // and one whose pool cannot cover a single birth
+    // 2. THE INSTRUMENT SEPARATES THE TWO OUTCOMES, which is the whole point of adding it.
+    const counted=!!(cheap&&dear&&broke&&cheap.paid===1&&cheap.refused===0&&
+                     broke.paid===0&&broke.refused===1);
+    BIRTH_ENERGY_COST=sv.c; WORLD_ENERGY_MAX=sv.m; WORLD_ENERGY_REGEN=sv.r;
+    DEATH_ENERGY_RETURN=sv.d; worldEnergy=sv.e;
+    return {inTable, cheap, dear, broke, counted,
+            declared:['birth.paid','birth.refused'].filter(n=>LIVENESS_DECLARED.indexOf(n)<0),
+            laws:LAW_DECLARED.length};
+  });
+
   // ── #202  WHO A WORLD LETS IN ───────────────────────────────────────────────────────────────
   // netReceptivity is one number applied to every SOURCE. #202 keys acceptance on how like us the
   // arrival is, because a preference over peers cannot be a gene - a peer id is a random string
@@ -2612,6 +2648,21 @@ ck('#201 every brake on founding is a LAW, not a gene',
 ck('#201 all three liveness names are declared', FD.live && FD.live.length===0,
    FD.live && FD.live.length?('missing: '+FD.live.join(' ')):'found / foundRefused / foundSeen — never-fired, priced-out and heard-from-a-peer are three different findings');
 ck('#201 the epoch log carries net_found', FD.pending===true);
+
+// #203
+const EC=r.econ||{};
+ck('#203 the four numbers that gate 99% of reproduction are LAWS',
+   EC.inTable && EC.inTable.length===0,
+   (EC.inTable||[]).length?('missing: '+EC.inTable.join(' ')):'BIRTH_ENERGY_COST, WORLD_ENERGY_MAX, WORLD_ENERGY_REGEN, DEATH_ENERGY_RETURN — #197 made the rents evolvable and left the economy fixed; measured, the economy is what actually decides who reproduces');
+ck('#203 THE BIRTH PATH BILLS WHAT THE LAW SAYS', EC.cheap && EC.dear &&
+   EC.cheap.drew===0.25 && EC.dear.drew===8,
+   'a birth drew '+(EC.cheap||{}).drew+' at BIRTH_ENERGY_COST 0.25 and '+(EC.dear||{}).drew+
+   ' at 8 — read off the pool, not off the table, because a settable row is not the same as a row anything reads');
+ck('#203 and an empty pool refuses the birth', EC.broke && EC.broke.made===false && EC.broke.drew===0,
+   'pool 0.5 against a cost of 1: no particle made, nothing drawn');
+ck('#203 the engine can finally SEE its own birth economy', EC.counted===true,
+   'birth.paid fires on the one that went through and birth.refused on the one that did not. Ninety-nine percent of this world\'s reproductive attempts fail at that line and no census row, epoch log or liveness name said so — the largest silent quantity in the file');
+ck('#203 both names are declared', EC.declared && EC.declared.length===0, (EC.declared||[]).join(' '));
 
 // #202
 const AS=r.assort||{};

@@ -2506,6 +2506,30 @@ be taken *before* `attemptFound`.
 `__founds` is deliberately NOT in the genome — the daughter boots from her parent's blob and would
 otherwise be born with the budget spent — so a reload restores a world's founding budget.
 
+### #203 — the birth economy is four laws, and it was invisible
+
+`BIRTH_ENERGY_COST`, `WORLD_ENERGY_MAX`, `WORLD_ENERGY_REGEN`, `DEATH_ENERGY_RETURN` were `const` and
+are now rows in `LAW_DECLARED`. **#197 made the rents evolvable and left the economy fixed; the
+economy is what actually decides who reproduces.** Measured over 3,000 ticks on two seeds by
+instrumenting the gate: **99% of birth attempts are refused for lack of world energy**, and the pool
+holds less than one birth's cost on **85% of ticks**. Everything the lineages evolve runs downstream
+of that.
+
+`birth.paid` / `birth.refused` fire on **both** reproduction paths — `addParticle` AND `addCompound`.
+Their ratio is the world's reproductive pressure (~1:100 on the seeded constants). Before this it was
+unmeasured: the largest quantity in the engine and no row anywhere reported it.
+
+Only `BIRTH_ENERGY_COST` floors above zero (0.01), because a free birth makes the pool meaningless
+rather than cheap. `WORLD_ENERGY_REGEN` runs to 0 — a world that has stopped having children.
+
+**STILL OPEN, with numbers, deliberately not fixed here.** The birth call sits inside a pair loop
+scanning `i` ascending against that empty pool, so whoever is reached first when it refills breeds.
+Reproductive success varies **~180×** across index deciles (17.9% low, 0.1% middle). Array position is
+one of the strongest selective forces in the file and is neither heritable nor visible. It is NOT
+known whether that is *order* (scan position) or *composition* (index tracks age, since `addParticle`
+appends) — the decisive test is permuting the scan order and seeing whether the skew follows. Do that
+before touching the loop.
+
 ### #202 — assortative receptivity (`netAssort`)
 
 `netReceptivity` is one number applied to every SOURCE. #185 split receptivity by packet KIND and
