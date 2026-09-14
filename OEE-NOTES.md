@@ -16521,6 +16521,19 @@ that, the only difference across the whole saved genome is one new name in the n
 The general form, worth having stated once: **in this engine, adding a gene is not free even when its
 layer is off.** Existence costs draws.
 
+### Verified
+
+```
+                                   checks  passed  failed
+TICKS=900,  ASSORT=1 FOUND=1          246     246       0
+TICKS=4000, ASSORT=1 FOUND=1          246     246       0
+TICKS=4000, ASSORT=0 FOUND=0          246     246       0
+```
+
+`substrate-test.js`: 246 checks, 32 of them this session's. Eight are #202's — the cosine's meaning,
+the two-halves contrast, redistribution below saturation, the volume cost at saturation, the neutral
+gate, clamp-and-save, the knob, and the declared name.
+
 ### Still closed after #202
 
 A world can now choose *what kind* of neighbour it listens to, but not *which* one — two worlds
