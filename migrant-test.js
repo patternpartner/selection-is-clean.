@@ -30,8 +30,10 @@ m._compile(code+`
   const good={nx:0.5,ny:0.5,tend:[0,0,0],mem:[],plasmid:[],amp:1,phase:0,
               ua:['c+1','','d*2'], ue:[{t:1,m:0,s:0.5,n:-1,a:2}]};
   out.acceptsGoodVocab = validNetworkPayload('migrant',good)===true;
-  const tooMany={...good, ua:new Array(MIGRANT_VOCAB_MAX+1).fill('x')};
-  const tooLong={...good, ua:['y'.repeat(161)]};
+  // #204: the filler and the overlong string are LEGAL expressions, so each of these rows still
+  // fails on the bound it is named for rather than on the shape guard getting there first.
+  const tooMany={...good, ua:new Array(MIGRANT_VOCAB_MAX+1).fill('a')};
+  const tooLong={...good, ua:['a+'.repeat(81)+'a']};   // 163 chars, every one of them legal
   const notString={...good, ua:[{evil:1}]};
   const badVerb={...good, ue:[{t:1,m:0,s:0.5,n:-1,a:'nope'}]};
   out.rejectsBadVocab = [tooMany,tooLong,notString,badVerb]
@@ -51,9 +53,13 @@ m._compile(code+`
   ].every(p=>validNetworkPayload('migrant',p)===false);
 
   // build a HOST bank that is deliberately different, so a wrong index cannot accidentally be right
-  genome.userAtoms=[{expression:'HOST0',compiled:null,failed:false,uses:0,state:0},
-                    {expression:'HOST1',compiled:null,failed:false,uses:0,state:0},
-                    {expression:'HOST2',compiled:null,failed:false,uses:0,state:0}];
+  // #204: the markers are legal EXPRESSIONS now, not opaque sentinels. They were 'HOST0'/'MIG0',
+  // which read well and are not things this grammar can author, so once the wire started checking
+  // shape as well as bytes the whole vocabulary tombstoned and this rig blamed the ordering. They
+  // remain deliberately different from each other, which is the only property the check needs.
+  genome.userAtoms=[{expression:'(a)+(1)',compiled:null,failed:false,uses:0,state:0},
+                    {expression:'(a)+(2)',compiled:null,failed:false,uses:0,state:0},
+                    {expression:'(a)+(3)',compiled:null,failed:false,uses:0,state:0}];
   genome.boundOpcodes=[0,1,2];
   genome.userEffects=[{t:7,m:0,s:0.9,nx:-1,ax:0,uses:0,creditTrace:0}];
   const hostAtomsBefore=genome.userAtoms.map(a=>a.expression);
@@ -64,8 +70,8 @@ m._compile(code+`
   incomingMigrants.length=0;
   incomingMigrants.push({nx:0.5,ny:0.5,tend:[0.1,0.2,0.3],mem:[],plasmid:[],amp:1,phase:0,
     prog:[[CORE_OPCODES+2,0,0,0.5]],
-    ua:['MIG0','','MIG2'],                                  // slot 1 deliberately empty
-    ue:[{t:3,m:1,s:0.7,n:-1,a:2}],                          // gate on bound slot 2 -> 'MIG2'
+    ua:['(d)*(2)','','(c)-(1)'],                            // slot 1 deliberately empty
+    ue:[{t:3,m:1,s:0.7,n:-1,a:2}],                          // gate on bound slot 2 -> '(c)-(1)'
     chn:[['(a)*(0.9)',3,[[2,-1,0.5]],1,3,8,0.004],0,['(ka)-(kb)',1,null,0,1,40,0],0]});   // #196: slots 1 and 3 deliberately empty
   // MAKE THE LANDING CERTAIN, and read the gate's name from the engine rather than restating it.
   // This line used to say genome.netRecvRate=1, and netRecvRate appears ZERO times in engine.html:
@@ -83,10 +89,10 @@ m._compile(code+`
   const g=pGenome[idx];
   const slot=k=>{ const bi=(g.boundOpcodes||[])[k]; return (bi===undefined||bi<0)?null:
                   ((g.userAtoms||[])[bi]||{}).expression; };
-  out.vocabularyTravelsInOrder = slot(0)==='MIG0' && slot(2)==='MIG2';
+  out.vocabularyTravelsInOrder = slot(0)==='(d)*(2)' && slot(2)==='(c)-(1)';
   out.missingSlotKeepsItsPlace = g.boundOpcodes[1]===-1 && slot(1)===null;
   const v=(g.userEffects||[])[0];
-  out.senseGateSurvivesTheHop = !!v && (v.ax|0)===2 && slot(v.ax|0)==='MIG2' && v.t===3 && (v.m|0)===1;
+  out.senseGateSurvivesTheHop = !!v && (v.ax|0)===2 && slot(v.ax|0)==='(c)-(1)' && v.t===3 && (v.m|0)===1;
   // #196: the chemistry landed, IN SLOT ORDER, with an empty slot keeping its position - ka..kd are
   // bound by index, so a shifted chemistry is #141's stranger reading our dictionary one substrate
   // over. age and uses reset because both are facts about how long a rule has sat HERE, and the

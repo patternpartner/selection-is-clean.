@@ -960,7 +960,7 @@ function validNetworkPayload(type,data){
       // the wire could permanently disable saving in the universe that accepted it. Same class as
       // #153's stale bounds: the wire accepting what the engine cannot handle.
       (!data.ua||(Array.isArray(data.ua)&&data.ua.length<=MIGRANT_VOCAB_MAX&&
-        data.ua.every(x=>typeof x==='string'&&x.length<=160&&UA_EXPR_SAFE.test(x))))&&
+        data.ua.every(uaExprSafe)))&&   // #204: the length bound is UA_EXPR_MAX's to state, not this line's — it said 160 here and had no way of noticing if that ever stopped being true
       (!data.ue||(Array.isArray(data.ue)&&data.ue.length<=MAX_USER_EFFECTS&&
         data.ue.every(e=>e&&typeof e==='object'&&finitePacketNumber(e.t,0,64)&&
           finitePacketNumber(e.m,0,1)&&finitePacketNumber(e.s,-4,4)&&
@@ -989,7 +989,7 @@ function validNetworkPayload(type,data){
       // the four original migrant bounds broke by going stale).
       (!data.chn||(Array.isArray(data.chn)&&data.chn.length<=CHANNEL_MAX&&
         data.chn.every(r=>r===0||(Array.isArray(r)&&r.length>=5&&
-          typeof r[0]==='string'&&r[0].length<=UA_EXPR_MAX&&UA_EXPR_SAFE.test(r[0])&&
+          uaExprSafe(r[0])&&
           finitePacketNumber(r[1],0,1e9)&&
           (r[2]===null||r[2]===undefined||(Array.isArray(r[2])&&r[2].length<=CHANNEL_STENCIL_MAX&&
             r[2].every(t=>Array.isArray(t)&&t.length>=3&&
@@ -1002,8 +1002,8 @@ function validNetworkPayload(type,data){
           // #198: the warp expressions. TWO MORE STRINGS ON THE WIRE, so they get `ua`'s exact
           // treatment - length bound and UA_EXPR_SAFE - and 0 is the legal "no warp" marker, which
           // is what every pre-#198 peer sends by sending nothing.
-          (r[7]===undefined||r[7]===0||(typeof r[7]==='string'&&r[7].length<=UA_EXPR_MAX&&UA_EXPR_SAFE.test(r[7])))&&
-          (r[8]===undefined||r[8]===0||(typeof r[8]==='string'&&r[8].length<=UA_EXPR_MAX&&UA_EXPR_SAFE.test(r[8])))))))&&
+          (r[7]===undefined||r[7]===0||uaExprSafe(r[7]))&&
+          (r[8]===undefined||r[8]===0||uaExprSafe(r[8]))))))&&
       (!data.uo||(Array.isArray(data.uo)&&data.uo.length<=UA_OPBANK&&
         data.uo.every(r=>r===0||(Array.isArray(r)&&r.length>=5&&
           finitePacketNumber(r[0],0,1)&&finitePacketNumber(r[1],0,UA_PRIM.length-1)&&
@@ -1039,7 +1039,10 @@ function validNetworkPayload(type,data){
   // ceilings that moved underneath them):
   //   SAVE_BUDGET      read from the engine. A blob this world could not itself save is a blob no
   //                    daughter could be founded from, so the wire's limit is the saver's limit.
-  //   UA_EXPR_SAFE     the same BYTE filter every expression on this channel passes. encodeGenome
+  //   UA_EXPR_SAFE     the BYTE filter, and deliberately only that. #204 gave expressions a second,
+  //                    grammar-shaped guard on top of it; a blob is not an expression - it is
+  //                    base64 of a whole germline - so the byte filter is the whole of what it
+  //                    needs here, and the decoders below are what bound its CONTENT. encodeGenome
   //                    returns __b64enc(JSON.stringify(...)), which is printable ASCII by
   //                    construction, so a blob carrying anything else did not come from an
   //                    encodeGenome and is refused before it reaches a decoder.
@@ -1859,7 +1862,11 @@ function networkReceive(){ fired('network.receive');
             _g.userAtoms=[]; _g.boundOpcodes=[];
             for(let k=0;k<m.ua.length&&k<MIGRANT_VOCAB_MAX;k++){
               const _ex=m.ua[k];
-              if(typeof _ex==='string'&&_ex.length){
+              // #204: checked on arrival as well as on the wire, which is #193's rule and its exact
+              // reason - a packet from an older or hostile peer is not the thing the write path
+              // should be discovering. A slot that fails is a tombstone, not a shift, so the
+              // sender's slot k keeps meaning our slot k.
+              if(uaExprSafe(_ex)&&_ex.length){
                 _g.userAtoms.push({expression:_ex,compiled:null,failed:false,uses:0,state:0,creditTrace:0});
                 _g.boundOpcodes.push(_g.userAtoms.length-1);
               } else _g.boundOpcodes.push(-1);   // keep slot k aligned with the sender's slot k
@@ -12828,7 +12835,78 @@ function __b64dec(b64){
 // safety bound as much as an encoding one — and it is the guard that stops the above from ever
 // happening again at the source rather than only surviving it.
 const UA_EXPR_SAFE=/^[\x20-\x7E]*$/;
-function uaExprSafe(e){ return typeof e==='string' && e.length<=UA_EXPR_MAX && UA_EXPR_SAFE.test(e); }
+// === #204 - THE WIRE MAY ONLY CARRY EXPRESSIONS THIS GRAMMAR COULD HAVE AUTHORED ================
+// UA_EXPR_SAFE is a BYTE filter. It was written for #159, whose failure was a non-ASCII character
+// arriving on the wire and permanently breaking the save format, and for that it is exactly right.
+// It was never a grammar, and four call sites had come to lean on it as though it were one.
+//
+// What the authoring side guarantees and the receiving side did not: every expression this engine
+// creates comes out of uaGenTerm, which draws operators from USER_OPS/USER_CMP, function names from
+// USER_FUNCS_RICH/USER_BINFUNCS and leaves from the var tables - a closed alphabet with no
+// statement, no assignment and, as UNLOCKED #7b says of the ternary branch in its own words, "no
+// loops", which is why the per-tick instruction budget is allowed to ignore atom evaluation.
+// A migrant's vocabulary is the one route by which text the local grammar CANNOT produce reaches
+// new Function: validNetworkPayload checked length and bytes, absorbMigrant stored the string, and
+// uaCompile compiled it. Measured: the 24 characters of an immediately-invoked function expression
+// wrapping a for(;;) pass the byte filter and compile. Nothing evolved could author that, so the
+// engine was accepting from a peer a class of program it does not itself have a way to write.
+//
+// AN ALLOWLIST, AND IT IS READ FROM THE GENERATOR RATHER THAN RESTATED. That is #153's rule and the
+// reason three of the four original migrant bounds went stale against ceilings that moved underneath
+// them. The lexicon is the union of every table uaGenTerm samples from plus the words appearing in
+// the engine's own shipped defaults, so a future symbol is legal on the wire the moment the grammar
+// can emit it, with nothing here to update and nothing to forget to update.
+//
+// WHAT THIS IS NOT. It is not a capability sandbox. BroadcastChannel is same-origin, so anything
+// able to send on it is already executing in this page and does not need a migrant packet to do
+// harm. This restores an invariant - the wire carries the language, not a superset of it - so that
+// a forked, older or simply buggy peer cannot hand this universe a construct its own compiler was
+// designed on the assumption of never seeing.
+let __uaLexicon=null;
+const UA_EXPR_CHARS=/^[A-Za-z0-9 .,()?:<>=+\-*/]*$/;   // the grammar's punctuation, and no more: no brace, no bracket, no semicolon, no quote of any kind
+const UA_EXPR_WORD=/[A-Za-z][A-Za-z0-9.]*/g;           // stateful lastIndex — reset before every use, on UA_OP_RE's precedent
+function uaLexicon(){
+  if(__uaLexicon)return __uaLexicon;
+  // Built lazily, not at module scope: these tables are declared across three thousand lines and
+  // CHANNEL_NAMES lands well after this point in the file. Every caller runs long after boot, which
+  // is the same argument validNetworkPayload already makes about the constants it reads.
+  const s=new Set(["f"]);   // #10's composition call. Bound by uaCompile alone and fuelled by uaFuel, so recursion through it terminates
+  const add=function(a){ if(Array.isArray(a)) for(const n of a) if(typeof n==='string'&&n)s.add(n); };
+  add(typeof USER_VARS!=='undefined'?USER_VARS:null);
+  add(typeof USER_WORLD_VARS!=='undefined'?USER_WORLD_VARS:null);
+  add(typeof USER_FORAGE_VARS!=='undefined'?USER_FORAGE_VARS:null);
+  add(typeof USER_SELF_VARS!=='undefined'?USER_SELF_VARS:null);
+  add(typeof PROBE_NAMES!=='undefined'?PROBE_NAMES:null);
+  add(typeof CHANNEL_NAMES!=='undefined'?CHANNEL_NAMES:null);
+  add(typeof USER_OP_NAMES!=='undefined'?USER_OP_NAMES:null);
+  add(typeof USER_FUNCS_RICH!=='undefined'?USER_FUNCS_RICH:null);
+  add(typeof USER_BINFUNCS!=='undefined'?USER_BINFUNCS:null);
+  add(typeof REND_VARS!=='undefined'?REND_VARS:null);
+  // The shipped draw programs are authored by hand and name Math.PI, which no table above carries.
+  // Harvested rather than listed for the same reason as everything else here.
+  if(typeof REND_DEFAULTS!=='undefined'&&Array.isArray(REND_DEFAULTS)){
+    const w=REND_DEFAULTS.join(',').match(UA_EXPR_WORD)||[]; add(w); }
+  __uaLexicon=s; return s;
+}
+function uaExprShape(e){
+  if(typeof e!=='string')return false;
+  if(!UA_EXPR_CHARS.test(e))return false;
+  // Every '=' must be the tail of a comparison. This is the line that costs an arrow function its
+  // arrow: USER_CMP emits '<=' and '>=' and nothing else in the grammar ever produces the character.
+  if(/(^|[^<>])=/.test(e))return false;
+  // No two of '*' and '/' may touch. That is three things at once - exponentiation, a line comment
+  // and a block comment - and the third is the one worth the line: a comment lets the text the
+  // COMPILER sees differ from the text this function checked, which is the shape every guard of
+  // this kind is eventually defeated by. The binary branch parenthesises both operands, so the
+  // generator puts a bracket on each side of every operator it emits and can never produce a pair.
+  if(/[*\/]{2}/.test(e))return false;
+  const lex=uaLexicon();
+  UA_EXPR_WORD.lastIndex=0;
+  let mm;
+  while((mm=UA_EXPR_WORD.exec(e))!==null){ if(!lex.has(mm[0])){ UA_EXPR_WORD.lastIndex=0; return false; } }
+  return true;
+}
+function uaExprSafe(e){ return typeof e==='string' && e.length<=UA_EXPR_MAX && UA_EXPR_SAFE.test(e) && uaExprShape(e); }
 
 function saveGenome(){
   const hash=encodeGenome();
