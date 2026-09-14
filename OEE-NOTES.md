@@ -16605,6 +16605,51 @@ that ninety-nine percent of everything the population tried to do reproductively
 line. The crossing census asks whether authored structure reaches the population; the liveness census
 asks whether mechanisms fire; nothing asked whether the world could afford what it was attempting.
 
+### AND THE LAWS I JUST ADDED ARE, IN PRACTICE, NEARLY UNREACHABLE
+
+The long run says so, and it qualifies everything above it. 12,000 ticks with the economy evolvable:
+
+```
+refused 99.7%   (99.9% with BRAKES=0 — the ratio holds at four times the budget)
+BIRTH_ENERGY_COST 1, WORLD_ENERGY_REGEN 0.2, WORLD_ENERGY_MAX 80, DEATH_ENERGY_RETURN 0.5
+economy laws proposed:  NONE
+```
+
+Not one of the four was ever put on trial. That is not bad luck, it is arithmetic:
+
+```
+LAW_RATE 0.0006, LAW_PROBATION 1200, table 32 rows
+
+proposals per 12,000 ticks                  7.2
+verdict slots (one trial at a time)          10
+expected proposals of the four new rows      7.2 x 4/32 = 0.9
+```
+
+An expected count under one, and zero observed. **The law table has outgrown the machinery that walks
+it, and I am the one who grew it** — #201 added five rows and #203 four, taking it from 21 to 32 and
+diluting every pre-existing law by a third in the process. This is #179's reachability finding one
+level up: a capability open in principle and closed in practice. #197's own rig even printed the
+shape ("the binding constraint is the probation, not the rate, because one law is on trial at a
+time") and I added nine rows since without revisiting it.
+
+**The structural tension is real and does not have a free fix.** A trustworthy verdict needs a long
+probation; a large table needs many verdicts; one-at-a-time multiplies them. Thirty-two rows at 1,200
+ticks is 38,400 ticks to try everything once, and that is the floor. Running trials concurrently
+would break attribution, which is exactly why they are serial.
+
+**But it is not closed, and that is the interesting part.** `LAW_RATE` and `LAW_PROBATION` are
+themselves rows in this table. A world can evolve its proposal rate up to 0.004 and its probation
+down to 200, which together would give roughly 48 proposals against 60 slots per 12,000 ticks — more
+than enough to exercise all 32. So the ceiling is a **bootstrapping problem rather than a wall**: a
+world needs law trials in order to buy faster law trials, and at the seeded rate it gets about seven
+per 12,000 ticks to spend on that bet. Whether any world finds that move is an empirical question
+nobody has asked, and it is a better one than anything I would have invented.
+
+What this means for #203 honestly: the economy is now *expressible* as something a world can change,
+and is not yet something a world will change on any timescale I have measured. The instrument
+(`birth.paid` / `birth.refused`) is immediately real; the laws are a capability waiting on a
+throughput problem that predates them.
+
 ### What I did NOT open, and why
 
 Execution order within a tick. The birth call sits inside a pair loop scanning ascending, drawing

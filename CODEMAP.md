@@ -2522,6 +2522,16 @@ unmeasured: the largest quantity in the engine and no row anywhere reported it.
 Only `BIRTH_ENERGY_COST` floors above zero (0.01), because a free birth makes the pool meaningless
 rather than cheap. `WORLD_ENERGY_REGEN` runs to 0 — a world that has stopped having children.
 
+**THE LAW TABLE HAS OUTGROWN ITS MACHINERY, and #201/#203 are what grew it** (21 rows → 32). At
+`LAW_RATE` 0.0006 and `LAW_PROBATION` 1200 the system makes ~7 proposals per 12,000 ticks against 10
+serial verdict slots, so a given row is tried about once per 50,000 ticks and the four economy laws
+were proposed ZERO times in a 12,000-tick run (expected 0.9). #179's reachability problem one level
+up. No free fix: a trustworthy verdict needs a long probation, a large table needs many verdicts, and
+concurrent trials would break attribution — which is why they are serial. **Not closed, though:**
+`LAW_RATE` and `LAW_PROBATION` are themselves rows, so a world can buy its own throughput (0.004 rate
+against a 200 probation ≈ 48 proposals / 60 slots). It is a bootstrapping problem — you need trials to
+buy trials. Before adding another law row, check this ratio.
+
 **STILL OPEN, with numbers, deliberately not fixed here.** The birth call sits inside a pair loop
 scanning `i` ascending against that empty pool, so whoever is reached first when it refills breeds.
 Reproductive success varies **~180×** across index deciles (17.9% low, 0.1% middle). Array position is
