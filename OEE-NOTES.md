@@ -17765,3 +17765,68 @@ each costs:
 
 Option 3 is the one that matches how this file has answered the same question before. It is still not
 mine to take unasked, because it adds machinery rather than unblocking it.
+
+## #215 — THE CULTURAL LAYER GETS A DIAL, NOT A PRESSURE
+
+`#214` recorded the decision and declined to take it. Taken now, on the author's instruction to stop
+asking. The reasoning is preserved rather than the deference.
+
+```js
+motifKeepBias = 0   pure recency. shift(). Bit-for-bit the pre-#215 path.
+motifKeepBias = 1   always drop the lowest-quality motif.
+in between          that probability of judging by quality, else by age.
+```
+
+Seeded at 0, lazily created (`#181`), clamped if present and never created by the clamp, saved only
+when it exists — so an old save inherits pure recency, which is the correct inheritance. Four sites
+copying `atomIdleTolerance`'s pattern exactly: the `maybe()` line, encode as `mkb`, decode, sanitize.
+
+**What I did NOT do**: hardcode *"drop the lowest `s*c`"*. That is a human choosing the shape of a
+selection pressure, the class `#148` and `#197` reserve. The dial goes in; the lineage sets it.
+
+**What I DID choose, stated rather than buried**: quality is `s*c`. See `#216` — the rationale I gave
+for it was wrong within the hour.
+
+**The `#208` lesson is built in.** `atomIdleTolerance` sat behind a door opening once per 20,000 ticks
+so its drift carried no information. This dial is read on EVERY eviction. Reachable by construction.
+
+**The knob gates the gene's CREATION, not its effect**, because a gene that merely exists costs one
+`Math.random()` per birth in `mutateChildGenome`'s key walk (`#181`). `MOTIF_SELECT=0` therefore
+reproduces the pre-`#215` random stream, not merely the pre-`#215` behaviour.
+
+### Wired, reachable, and never exercised
+
+```
+arm      motifKeepBias   evictAge   evictQuality
+on/1          0             22           0
+on/2          0             20           0
+on/3        0.034            8           0
+off/1-3    null (gene never created — the control is clean)   32/13/18   0
+```
+
+Seeded at 0 and drifting at magnitude 0.15 over ~2.4 `maybe()` fires per 12,000 ticks, two seeds sit
+at exactly 0 and one at 0.034, where 8 evictions gives 0.27 expected quality-evictions. So zero is
+unsurprising — **and it means the branch I added to `engine.html` had never actually run.** An
+untested branch is a liability whatever the measurement says.
+
+### Forced, with a witness on the CHOICE rather than the firing
+
+`MOTIF_BIAS` forces the dial every tick. The witness is patched onto the engine's own splice line
+rather than reimplementing the rule, so it cannot agree with a bug by sharing it.
+
+```
+mkb=1, 6,000 ticks, seed 1:  evictQuality 6, evictAge 0, errors 0
+witness: 6 checks, 6 correct, 0 ties — the true minimum s*c was spliced every time
+```
+
+Counting that a branch fired is not the same as checking it picked right, and this project has
+shipped a mechanism that fired and did the wrong thing before.
+
+### And the hang check, because #188 was a four-hour hang in this same function
+
+`while(genome.stableMotifs.length>genome.motifMemorySize)motifEvict();` is a new while-driven removal
+inside `mutateGenome`, which is where `uaSwapVar`'s unbounded rejection sampler hung for four hours.
+Checked, not assumed: line 18147 clamps `motifMemorySize` to `[1,40]` and runs BEFORE the loop, so it
+only spins while `length > 1`, where `motifEvict` always removes exactly one element. At `length===1`
+the quality branch is skipped (`M.length>1` fails) and `shift()` takes the only motif. If
+`stableMotifs` were ever undefined, `undefined > 1` is false and the loop exits.
