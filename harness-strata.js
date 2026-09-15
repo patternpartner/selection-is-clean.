@@ -372,6 +372,14 @@ const driver=`
       motifKeepBias:(genome.motifKeepBias===undefined?null:+genome.motifKeepBias.toFixed(5)),
       motifBank:(genome.stableMotifs||[]).map(m=>({s:m.s,c:m.c,q:+(((+m.s||0)*(+m.c||0)).toFixed(3))})),
       motifEvictAge:__liveness['motif.evictAge']|0, motifEvictQuality:__liveness['motif.evictQuality']|0,
+      // #216n: HOW MANY CHANCES DID THE DIAL GET? motifKeepBias and atomIdleTolerance are germline
+      // genes moved only by mutateGenome(), so a dial sitting at its seed value after a run says
+      // nothing on its own — it has to be read against the number of mutation cycles that ran and
+      // the rate each one drew at. Without these two numbers "the gene never moved" and "the gene
+      // was never offered a move" are the same observation, and they are completely different
+      // findings (#205's uaMaxDepth was the second one wearing the first one's clothes).
+      genomeMutations:__liveness['genome.mutate']|0,
+      mutationRate:+(+genome.mutationRate||0).toFixed(5),
       atomUseProtect:(genome.atomUseProtect===undefined?null:+genome.atomUseProtect.toFixed(5)),
       clusterGenomeEntries:(typeof clusterGenomes!=='undefined')?clusterGenomes.size:-1,
       clusterGenomeSeenEntries:(typeof clusterGenomeSeen!=='undefined')?clusterGenomeSeen.size:-1,

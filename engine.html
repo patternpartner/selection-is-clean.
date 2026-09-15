@@ -18192,7 +18192,7 @@ function mutateGenome(){ fired('genome.mutate');
   // #215: gated on the knob, not merely defaulted, because a gene that merely EXISTS costs one
   // Math.random() per birth in mutateChildGenome's key walk (#181). Creating it unconditionally
   // would make __MOTIF_SELECT=0 a different random stream rather than a control.
-  if(motifSelOn())genome.motifKeepBias=__cl(maybe(finiteOr(genome.motifKeepBias,0),0,1,0.15),0,1);                          // #177: how willing this lineage is to release an atom nothing has run — seeded at 0 (= the pre-#177 cull exactly), lazily created like atomUseProtect for the same RNG-stream reason
+  if(motifSelOn())genome.motifKeepBias=__cl(maybe(finiteOr(genome.motifKeepBias,0),0,1,0.15),0,1);                          // #215: how willing this lineage is to drop the WORST motif rather than the OLDEST — seeded at 0, which is shift() and bit-for-bit the pre-#215 behaviour. (#216n: this trailing comment read "how willing this lineage is to release an atom nothing has run", which is #177's description of atomIdleTolerance on the line ABOVE, copy-pasted onto #215's gene. In a file whose rule is to read the comment before the function, a comment describing a different gene is worse than no comment.)
   // #107: uaMaxDepth (above) is evolvable — HOW DEEP the grammar may recurse. The PRODUCTION WEIGHTS at
   // each level (binary sub-expr 45% / ternary branch 17% / compose 10% / binary-func 10% / leaf ~18%,
   // uaGenTerm) never were — fixed constants since the grammar was written, the one part of "how the
