@@ -2501,9 +2501,21 @@ ck('#195 a transfer into a lineage that can SEE the medium is counted apart from
    XF.seeing && XF.blind && XF.seeing.sensed>0 && XF.blind.sensed===0,
    'seeing '+(XF.seeing&&XF.seeing.sensed)+'/'+(XF.seeing&&XF.seeing.x)+', blind '+(XF.blind&&XF.blind.sensed)+'/'+(XF.blind&&XF.blind.x)+
    ' — xfer>0 with xferSensed==0 is a chemistry spreading as pure rent, which is a real outcome and should be visible rather than inferred');
+// #216e: THIS ROW PRINTED ONE OF THE THREE NUMBERS IT MEASURES, AND THE OTHER TWO ARE THE DIAGNOSIS.
+// drive() returns {x, sensed, declined}. Its sibling rows above print two of them; this one printed
+// only x, so a zero said "no transfer" without saying whether there had been anything to transfer.
+// Those are opposite findings:
+//   declined high, x 0  -> opportunities existed and the coin never landed. At rate 0.01 clamped by
+//                          chanRuleXfer to exactly 0.01, over 600 calls, P(x=0) is 0.99^600 = 0.24%.
+//   declined 0,    x 0  -> NO opportunity ever occurred, which is a state dependency and is the
+//                          original #195 bug (live: 2,549 declines against zero transfers) returning.
+// Printed now, because a row that goes red should say which of those it is without needing a bisect.
 ck('#195 a particle that has NEVER held a channel can receive one',
    XF.gotFromNothing===true && XF.virgin && XF.virgin.x>0,
-   (XF.virgin&&XF.virgin.x)+' transfer(s) into an undefined bank — the first implementation required Array.isArray on both sides and so excluded exactly the particles a chemistry most needs to reach');
+   (XF.virgin&&XF.virgin.x)+' transfer(s) into an undefined bank, '+(XF.virgin&&XF.virgin.declined)+
+   ' decline(s), '+(XF.virgin&&XF.virgin.sensed)+' sensed, over 600 interactions at the clamped rate ceiling 0.01'+
+   ' (P(zero | an opportunity every call) = 0.24%) — the first implementation required Array.isArray on both sides'+
+   ' and so excluded exactly the particles a chemistry most needs to reach');
 ck('#195 and a quiet interaction allocates nothing on the way past', XF.noAllocWhenQuiet===true,
    'the bank is materialised at the moment of transfer, not at the moment of looking');
 ck('#195 CHANXFER=0 is a true revert', XF.offRun && XF.offRun.x===0 && XF.offRun.declined===0);

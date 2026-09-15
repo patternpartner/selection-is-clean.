@@ -17992,3 +17992,30 @@ fails on some seeds in BOTH arms, which would make it the third mis-scoped asser
 and would mean the fix is to give the presence claim the power its siblings have rather than to
 attribute anything to `FOUND`. If instead it fails on every seed with `FOUND=0` and none without,
 founding is genuinely load-bearing for channel transfer and that is a real finding about the engine.
+
+### #216e — the diagnostic I added, and the reading of it I retracted inside ten minutes
+
+The `#195` virgin row printed one of the three numbers it measures. `drive()` returns
+`{x, sensed, declined}`; its siblings in the same block print two, this one printed only `x`. So a
+zero said *"no transfer"* without saying whether there had been anything to transfer. Printed now,
+because a row that goes red should say which case it is without needing a bisect.
+
+First reading under `FOUND=0 TICKS=900`: **0 transfers, 0 declines, 0 sensed** — and I read that as
+*"no opportunity ever occurred"*, a state dependency, the original `#195` bug returning.
+
+**Wrong, and structurally wrong rather than unluckily wrong.** A decline requires
+`_keen && _k<0`. For a virgin recipient `_rb` is `null`, so the *"that slot is taken here"* check
+never fires, so `_k` is always 0 and **never negative**. Declines are impossible on this path by
+construction. `0 declines` carries no information here at all. And the sibling rows PASSED in that
+same run — `seeing.sensed>0` and `occupied.declined>0` — so the block was plainly being reached.
+
+So `x=0` is the coin after all: `_k=0`, `_xr=0.01` (clamped to exactly the ceiling by
+`chanRuleXfer`), 600 calls, **P(zero) = 0.99^600 = 0.24%**. Which puts `#216d`'s registered
+prediction back in play and takes my state-dependency reading out of it.
+
+**Two lessons, and the second is the one worth keeping.** A counter that is structurally zero on a
+path is not a measurement of that path — the same shape as `#210`'s Proxy, which cannot tell a
+by-name read from an enumeration. And: *I built a diagnostic and mis-read it before the run that
+motivated it had even finished.* The instrument was right and the inference from it was not, for the
+third time this session (`#207` a store named from one consumer, `#216` a distribution named from
+its filtered tail, this one a path diagnosed from a counter that cannot fire on it).
