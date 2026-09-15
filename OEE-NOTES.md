@@ -17444,3 +17444,56 @@ before anyone counts draws again. `fitnessHistory` is an array, so it costs only
 
 Two of the four were biased toward the comfortable answer and two toward the alarming one, which is
 the only reassuring thing about the sequence.
+
+## #210 — THE DYNAMIC READ CENSUS: A READ SITE IS NOT A READ, AND A READ IS NOT A NAME
+
+`#209` is static by design — no budget, no trajectory — and says of itself that it gives a floor.
+`#208` showed why that matters: `atomIdleTolerance` is LIVE by the static census and its read site was
+evaluated **zero times in 36,000 ticks**, because it sits behind a door that opens once per 20,000.
+`#208` established that for one gene with a bespoke sole-blocker audit. `harness-reads.js` does it for
+all 191 at once, by wrapping the genome in a counting Proxy.
+
+### The rebinding, which would have made this silently wrong
+
+The engine repoints the ambient `genome` at a PARTICLE's genome in five places — `applyMetabolism`,
+`executeSoloVM`, the field-driver block, `scoreProbes` — and restores it in a `finally`. A wrapper
+installed once at boot would be swapped out for an unwrapped object for the duration of every one of
+those blocks, **which is most of the per-particle work in the engine**, and every read inside them
+would go uncounted. Each swap is wrapped; `__wrapG` is idempotent and target-stable, so the restores
+hand back the same wrapper rather than double-wrapping. Identity is safe to proxy here because
+`engine.html` contains no `genome===` or `genome!==` comparison — checked before building, not after.
+
+### The result, and it agrees with the static census exactly
+
+```
+run              ticks    extinctions   read at least once   never read this run
+seed 1            3000         0            188 / 191        maxSensors, sensorMaxInst, fitnessHistory
+seed 2            3000         0            188 / 191        the same three
+seed 3            3000         0            188 / 191        the same three
+seed 1           12000        23            191 / 191        none
+```
+
+Three independent seeds land on exactly `#209`'s INERT set. **So the `#208` class — a read site that
+exists and is never reached — is an outlier, not a pattern.** That is the second independent
+refutation of `#208b`'s sweeping warning, from a method sharing no machinery with the first.
+
+Traffic at 12,000 ticks: `boundOpcodes` 18.9M, `userAtoms` 16.8M, `userEffects` 16.2M,
+`metabolicCost` 13.7M, `ruleScale` 9.4M, `vmGain` 9.2M, `neighborModelUpdateRate` 8.4M,
+`vmInfluence` 6.3M. And **85 properties read off the genome that are not keys of the literal** — the
+lazily created genes of `#181` and the runtime fields.
+
+### But 191/191 is a puzzle, and it is a limit of the instrument rather than a finding
+
+`maxSensors` and `sensorMaxInst` have **zero occurrences anywhere in `engine.html`** — `#209`
+established that statically, by reading every line. So whatever read them at 12,000 ticks did not
+name them. **A Proxy cannot distinguish a by-name read from a generic enumeration** (`for(const k in
+g)`, a spread, `Object.assign`), and the engine has several such walks over genomes; the file
+documents `mutateChildGenome`'s own at `for(const k in g)`, which draws one `Math.random()` per
+numeric key on every birth.
+
+So the two rigs answer two different questions and neither answers the third:
+
+- **static (`#209`)** — is this gene NAMED anywhere outside the genome's own machinery?
+- **dynamic (`#210`)** — is this gene TOUCHED while the world runs?
+- **neither** — does anything CONDITION on it? That is `#208`'s question, and it still costs a
+  bespoke audit per gene.

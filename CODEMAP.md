@@ -2769,3 +2769,29 @@ Measured consequences, and they are what `#206` and `#207` were really seeing:
 So the atom bank's two removers are behind one coin flip, and the second is behind the first.
 `harness-strata.js` reports `cullGate.{doorEvals, entered, meanDoorProb, ticksPerEntryIfLinear,
 outer, atomEvals, tolMax}` — `outer` and `atomEvals` at 0 with `doorEvals` non-zero is the signature.
+
+## Reading the genome — three questions, three answers, three rigs
+
+| question | rig | method | answer (191 keys) |
+|---|---|---|---|
+| is the gene NAMED outside the genome's machinery? | `harness-orphans.js` (#209) | static, no budget | LIVE 181, META_ONLY 7, INERT 3 |
+| is the gene TOUCHED while the world runs? | `harness-reads.js` (#210) | counting Proxy on `genome` | 188/191 at 3,000 ticks (3 seeds), 191/191 at 12,000 with extinctions |
+| does anything CONDITION on it? | bespoke, per gene | sole-blocker audit | only done for the atom cull (#208) |
+
+Neither census answers the third question, and that is the useful thing to know about them.
+
+**`harness-reads.js` and the five rebinding sites.** The ambient `genome` is repointed at a particle's
+genome in `applyMetabolism` (19968), `executeSoloVM` (25749), the field-driver block (26144) and
+`scoreProbes` (28087), each restored in a `finally`. A wrapper installed only at boot misses every
+read inside those blocks — most of the per-particle work in the engine. All five swaps are wrapped and
+`__wrapG` is idempotent and target-stable. Safe because `engine.html` has no `genome===`/`!==`.
+
+**`harness-orphans.js` attribution.** Spans run from a column-zero `function` declaration to the next
+column-zero `}`; nested helpers (`maybe`, `metaMaybe`, `tailDraw` inside `mutateGenome`) are indented
+and so belong to their parent. Brace counting does NOT work here — strings, regexes and template
+literals carry braces. The rig self-checks against three hand-verified sites (`checkExtinction`:19259,
+`mutateGenome`:18040, `collectClusterUpstream`:17191) and refuses to print if attribution misses one.
+
+**A Proxy cannot see a name.** All 191 keys read at 12,000 ticks includes `maxSensors` and
+`sensorMaxInst`, which have zero occurrences anywhere in the file — so a generic enumeration
+(`for(const k in g)`, spread, `Object.assign`) reads them. `WATCH=` captures a stack on first read.
