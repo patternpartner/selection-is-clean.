@@ -1040,9 +1040,22 @@ m._compile(code+`
     //    channels === undefined, not [null,null,null,null]. Live, that was channel.xferDeclined 2,549
     //    against channel.xfer ZERO - every opportunity a collision between two carriers, while the
     //    129 non-carriers in the same world were never considered.
+    // #216g: DRIVEN 3,000 TIMES, NOT 600, AND THE REASON IS POWER RATHER THAN PATIENCE.
+    // This is the only sub-case whose assertion needs a RARE event: the siblings assert declined>0
+    // or sensed>0, which happen on nearly every call, while this one asserts x>0 and at most ONE
+    // transfer is possible (the first fills the only free slot, after which _k goes -1 and every
+    // later call declines). Measured over eight runs: 1 transfer at call 11, 22, 27, 121, 137, 149
+    // and 291 -- mean ~108, so p is about 0.0093. At 600 draws P(zero) = 0.99^600 = 0.24%, and a
+    // trajectory that lands there is DETERMINISTIC, not flaky: SEED=1 with FOUND=0 failed this row in
+    // two separate batches. At 3,000 draws P(zero) is 9e-14.
+    //
+    // AND THE RATE IS NOT THE LEVER, WHICH I GOT WRONG FIRST. I read this case's setup(0.01) against
+    // the siblings' setup(0.05) and called it five times under-powered. chanRuleXfer clamps to
+    // [0, 0.01], so 0.05 arrives as 0.01 and every sub-case in this block runs at the same effective
+    // rate. Raising the number here would have changed nothing at all.
     setup(0.01,[mkRule('(a)*(0.7)'),null,null,null],[null,null,null,null]);
     pGenome[1].channels=undefined;
-    const virgin=drive(600);
+    const virgin=drive(3000);
     const gotFromNothing=Array.isArray(pGenome[1].channels)&&
                          pGenome[1].channels.length===CHANNEL_MAX&&
                          !!pGenome[1].channels[0]&&pGenome[1].channels[0].expr==='(a)*(0.7)';
@@ -2513,8 +2526,8 @@ ck('#195 a transfer into a lineage that can SEE the medium is counted apart from
 ck('#195 a particle that has NEVER held a channel can receive one',
    XF.gotFromNothing===true && XF.virgin && XF.virgin.x>0,
    (XF.virgin&&XF.virgin.x)+' transfer(s) into an undefined bank, '+(XF.virgin&&XF.virgin.declined)+
-   ' decline(s), '+(XF.virgin&&XF.virgin.sensed)+' sensed, over 600 interactions at the clamped rate ceiling 0.01'+
-   ' (P(zero | an opportunity every call) = 0.24%) — the first implementation required Array.isArray on both sides'+
+   ' decline(s), '+(XF.virgin&&XF.virgin.sensed)+' sensed, over 3,000 interactions at the clamped rate ceiling 0.01'+
+   ' (P(zero) = 9e-14; at the old 600 it was 0.24% and SEED=1 FOUND=0 landed there deterministically) — the first implementation required Array.isArray on both sides'+
    ' and so excluded exactly the particles a chemistry most needs to reach');
 ck('#195 and a quiet interaction allocates nothing on the way past', XF.noAllocWhenQuiet===true,
    'the bank is materialised at the moment of transfer, not at the moment of looking');
