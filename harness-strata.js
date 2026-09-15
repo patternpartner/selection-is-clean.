@@ -62,6 +62,11 @@ globalThis.__detMs=0;globalThis.performance={now:()=>globalThis.__detMs};
 if(process.env.SEED){let a=(parseInt(process.env.SEED,10)|0)>>>0;Math.random=function(){a=(a+0x6D2B79F5)|0;let t=Math.imul(a^a>>>15,1|a);t=(t+Math.imul(t^t>>>7,61|t))^t;return ((t^t>>>14)>>>0)/4294967296;};}
 globalThis.requestAnimationFrame=()=>0;globalThis.cancelAnimationFrame=()=>{};
 globalThis.setTimeout=()=>0;globalThis.clearTimeout=()=>{};globalThis.setInterval=()=>0;globalThis.clearInterval=()=>{};
+// #212 control arm. __CG_TTL=0 disables clusterGenomes eviction entirely, which is the pre-#212
+// engine exactly. The two arms are compared on a fingerprint over live particle state, because a
+// prune that touches only unreachable entries must come back BIT-IDENTICAL, and this project's
+// standard is to show that rather than argue it.
+if(process.env.CG_TTL!==undefined)globalThis.__CG_TTL=parseInt(process.env.CG_TTL,10);
 let loopErrors=0,lastErr='';
 console.error=(...a)=>{const s=a.join(' ');if(/Loop error|Boot error|Watchdog/.test(s)){loopErrors++;lastErr=s.slice(0,160);}};
 console.warn=()=>{};
@@ -265,6 +270,9 @@ const driver=`
       atomIdleTolerance:(genome.atomIdleTolerance===undefined?null:+genome.atomIdleTolerance.toFixed(5)),
       atomUseProtect:(genome.atomUseProtect===undefined?null:+genome.atomUseProtect.toFixed(5)),
       clusterGenomeEntries:(typeof clusterGenomes!=='undefined')?clusterGenomes.size:-1,
+      clusterGenomeSeenEntries:(typeof clusterGenomeSeen!=='undefined')?clusterGenomeSeen.size:-1,
+      cgTTL:(typeof CLUSTER_GENOME_TTL!=='undefined')?CLUSTER_GENOME_TTL:-1,
+      cgEvicted:__liveness['cluster.cgEvict']|0,
       clustersNow:(typeof clusters!=='undefined')?clusters.length:-1,
       extinctions:genome.extinctions|0, generation:genome.generation|0, totalTicks:genome.totalTicks|0 };
   }catch(e){ return {error:String(e&&e.message||e)}; } };

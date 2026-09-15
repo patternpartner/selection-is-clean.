@@ -1324,6 +1324,11 @@ const LIVENESS_DECLARED=[
   // Refused reading zero is a world that has made children free; paid reading zero is one that has
   // stopped having them. Both are reachable now that the four constants are laws.
   'birth.paid','birth.refused',
+  // #212: clusterGenomes was the one carry-forward store that never let go -- ~1,000 entries against
+  // 6-11 live clusters, and a measured working set exactly one detection cycle deep. This fires when
+  // an entry ages past the horizon. Reading zero on a long run means either the horizon never binds
+  // or the prune is not wired; the Map's size is reported beside it so the two are distinguishable.
+  'cluster.cgEvict',
 ];
 // NOT INSTRUMENTED, and deliberately absent rather than declared-and-silent: cladogenesis minting
 // (#17) has no single entry point I could identify with confidence. A census that reports "never"
@@ -13086,7 +13091,40 @@ let clusterFossils=new Map(); // hash → {e,k,r,c,t,creditTrace} birth-time sce
 // second level of selection — particles-within-clusters still evolve via
 // the global genome, AND clusters-among-clusters evolve via the clusterGenome.
 // ═══════════════════════════════════════
-let clusterGenomes=new Map(); // hash → {budRate, budThreshold, splitFraction, innovationRate, metabolicBias}
+let clusterGenomes=new Map(); // hash -> {budRate, budThreshold, splitFraction, innovationRate, metabolicBias}
+// #212: AND IT WAS THE ONLY ONE OF THE FOUR THAT NEVER LET GO.
+//
+// trackClusterPersistence carries four things across detection cycles. Three of them --
+// clusterAge, clusterVMs, clusterFossils -- are rebuilt into a fresh Map each cycle and swapped in
+// (see "clusterFossils=newFossils; // Pe30: drop fossils of clusters that no longer exist"), so they
+// are bounded by construction and hold only clusters that currently exist. clusterGenomes sets into
+// the SAME Map forever. There is no delete, no clear and no cap anywhere in this file.
+//
+// MEASURED (#207, three seeds, 12,000 ticks): 1,623 / 2,707 / 2,069 writes leave 972 / 1,006 / 1,037
+// entries against SIX TO ELEVEN live clusters. About 99% of the Map is clusters that no longer exist.
+//
+// AND IT IS NOT A DORMANT MEMORY, which was the reading worth ruling out before touching it. The Map
+// has exactly one read site -- a newly detected cluster matching a previous one BY HASH inherits its
+// genome -- so a dead entry could in principle wake if a similar cluster re-forms. It does not. Every
+// write was timestamped and every hit's age recorded: across 2,681 reads on three seeds the MAXIMUM
+// hit age is 60 ticks, which is exactly one detection cycle (detectClusters runs inside
+// if(tick%60===0)). Not once did the store return an entry older than the immediately preceding
+// cycle. The working set is one cycle deep and everything behind it is unreachable.
+//
+// WHY A TTL AND NOT THE SWAP THE OTHER THREE USE. The swap is the idiom here and it would be
+// tidier, but it is not provably neutral: a daughter cluster's genome is written at BUD time from
+// outside this function, and a swap would discard that write in the window before the daughter is
+// first detected. A last-touch horizon keeps that case intact and can be PROVEN neutral rather than
+// argued -- __CG_TTL=0 disables eviction entirely, and the two arms are compared on a fingerprint
+// over live particle state, not on a summary.
+//
+// THIS DOES ADD A CONSTANT, which #211 argued against doing. The distinction: 480 ticks is a
+// garbage-collection horizon at EIGHT TIMES the longest read ever observed, not a behavioural
+// parameter. It cannot change what the system is able to do, only how much dead memory it carries
+// while doing it. If a cluster ever does inherit across more than eight cycles, cluster.cgEvict and
+// the fingerprint control will both say so.
+let clusterGenomeSeen=new Map(); // hash -> tick last written or read
+const CLUSTER_GENOME_TTL=(typeof globalThis!=='undefined'&&globalThis.__CG_TTL!==undefined)?(globalThis.__CG_TTL|0):480;
 function seedClusterGenome(){
   return{
     budRate:0.6+Math.random()*0.8,          // multiplier on bud chance (0.6..1.4)
@@ -13462,6 +13500,7 @@ function trackClusterPersistence(){ fired('cluster.persist');
       // Carry cluster-level heritable traits across detection cycles,
       // with occasional drift mutation so lineages diverge over time.
       const prevCG=clusterGenomes.get(bestMatch.hash);
+      if(prevCG)clusterGenomeSeen.set(bestMatch.hash,tick);   // #212: a read keeps an entry alive
       if(prevCG){
         if(Math.random()<0.04){
           c.clusterGenome=mutateClusterGenome(prevCG,0.3); // small drift
@@ -13486,12 +13525,21 @@ function trackClusterPersistence(){ fired('cluster.persist');
     }
     // Store this cluster's VM, signature, lineage, AND clusterGenome for next cycle
     newVMs.set(c.hash,{prog:c.vmProgram.map(inst=>[...inst]),inf:c.vmInfluence,sig:Array.from(c.fieldSignature||[0,0,0]),lineage:c.lineageID});
-    clusterGenomes.set(c.hash,c.clusterGenome);
+    clusterGenomes.set(c.hash,c.clusterGenome); clusterGenomeSeen.set(c.hash,tick);   // #212
     if(c.scenarioFossil)newFossils.set(c.hash,c.scenarioFossil);
   }
   clusterAge=newAge;
   clusterVMs=newVMs;
   clusterFossils=newFossils; // Pe30: drop fossils of clusters that no longer exist
+  // #212: and clusterGenomes lets go too, on a last-touch horizon rather than a swap -- see the
+  // declaration for why. Entries are pruned here, in the same place the other three are dropped, so
+  // all four carry-forward stores end a cycle by the same rule read in the same place.
+  if(CLUSTER_GENOME_TTL>0&&clusterGenomeSeen.size>0){
+    const _cut=tick-CLUSTER_GENOME_TTL;
+    for(const [_h,_t] of clusterGenomeSeen){
+      if(_t<_cut){ clusterGenomeSeen.delete(_h); if(clusterGenomes.delete(_h))fired('cluster.cgEvict'); }
+    }
+  }
   prevClusters.length=0;
 
   // Pe39 Layer 28: detect dissolved clusters.
@@ -13962,7 +14010,7 @@ function attemptClusterBudding(){
     };
 
     clusters.push(daughter);
-    clusterGenomes.set(daughter.hash,daughterCG);
+    clusterGenomes.set(daughter.hash,daughterCG); clusterGenomeSeen.set(daughter.hash,tick);   // #212
     if(daughter.scenarioFossil)clusterFossils.set(daughter.hash,daughter.scenarioFossil);
 
     // TERRITORY SEEDING — stamp a small footprint at the bud site
