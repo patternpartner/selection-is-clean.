@@ -2529,10 +2529,28 @@ ck('#194 the grain takes one step at a time and never leaves the set',
    GR.gmoves+' steps, '+GR.gillegal+' outside the set, '+GR.gjumps+' jumped more than one index');
 ck('#194 and every grain is reachable', GR.grains && GR.grains.length===5,
    'grains reached: '+(GR.grains||[]).join(','));
+// #216k: COMPARED AS A RATIO, BECAUSE THE ABSOLUTE WAS A STALE LITERAL.
+// This asserted Math.abs(rent.coarse - CHANNEL_RENT_SAFE()*rent.floor) < 1e-3, and
+// CHANNEL_RENT_SAFE() is a rig-local helper that falls back to a hardcoded 0.6 — correct when
+// CHANNEL_RENT SEEDED at 0.6. CHANNEL_RENT is a LAW, so it drifts: at the default budget on SEED=4
+// and SEED=5 it had reached 0.6595, giving 0.6*0.15 = 0.09 against an actual 0.0989, a gap of 8.9e-3
+// against a 1e-3 tolerance.
+//
+// #216j swept for exactly this disease and reported "the class has one member". THAT SWEEP WAS TOO
+// NARROW and the claim was already pushed: it searched for tolerance comparisons NAMING a law
+// constant, and this one names a helper with the stale literal hidden inside it. The real class is
+// any rig expectation derived from a number that was a constant when it was written and is a law now.
+//
+// The fix is better than refreshing the constant. The row's own claim is a RATIO — coarsening costs
+// less in proportion to the block area, floored — so it can be asserted against the rig's OWN fine
+// measurement and needs no knowledge of the law's value at all. rent.fine is grain 40, where the
+// block factor is 1, so rent.fine IS the live CHANNEL_RENT whatever it has drifted to.
 ck('#194 rent FALLS with the grain, floored',
    GR.rent && GR.rent.fine>GR.rent.mid && GR.rent.mid>GR.rent.coarse &&
-   GR.rent.coarse>0 && Math.abs(GR.rent.coarse-CHANNEL_RENT_SAFE()*GR.rent.floor)<1e-3,
+   GR.rent.coarse>0 && Math.abs(GR.rent.coarse-GR.rent.fine*GR.rent.floor)<1e-6*Math.max(1,GR.rent.fine),
    'grain 40 '+(GR.rent&&GR.rent.fine)+', grain 20 '+(GR.rent&&GR.rent.mid)+', grain 5 '+(GR.rent&&GR.rent.coarse)+
+   ' — coarse/fine = '+(GR.rent?(GR.rent.coarse/GR.rent.fine).toFixed(6):'?')+' against a floor of '+(GR.rent&&GR.rent.floor)+
+   ', asserted as a ratio against this run\'s own fine measurement rather than against a remembered 0.6 (#216k)'+
    ' — the only rent in this file a lineage can reduce by changing a gene, because coarsening genuinely costs less CPU');
 ck('#194 a coarse medium stays bounded under an explosive rule', GR.over===0 && GR.nf===0,
    GR.over+' out of bound, '+GR.nf+' non-finite, six taps at weight 2 on a x3 rule');
