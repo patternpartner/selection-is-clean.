@@ -99,6 +99,42 @@ globalThis.__cullAtom=function(grace,used,alien,credit){ const C=globalThis.__CG
   const n=(grace?1:0)+(used?1:0)+(alien?1:0)+(credit?1:0);
   if(n===0)C.noneBlocked++;
   else if(n===1){ if(grace)C.soleGrace++; else if(used)C.soleUsed++; else if(alien)C.soleAlien++; else C.soleCredit++; } };
+// #216: IS CLUSTER COHERENCE A LIVE DISCRIMINATOR, OR IS IT SATURATED?
+//
+// #215's forced arm printed the motif bank and every entry read c = 1, 1, 1, 1, 0.96. That voids my
+// own rationale for scoring quality as s*c rather than s+c, but the bigger question is not about
+// motifs. coherence is the mean resultant length of member phases, and the engine asserts TWICE in
+// its own comments that it is orthogonal to size -- "A cluster of 30 with coherence=0.2 (big but
+// scattered) is very different from a cluster of 8 with coherence=0.9" (6782) and "ORTHOGONAL TO
+// op62 (size): 30 members at coherence=0.2 != 8 members at coherence=0.9" (21785).
+//
+// If it is saturated near 1 in practice, that declared orthogonality is false and several live gates
+// are effectively constants: the cosmos launch gate (c.coherence >= COSMOS_LAUNCH_COH, 14186),
+// collectClusterUpstream's qualification (c.coherence < 0.45 rejects, 17191), the territory score
+// (c.avgAmp*0.5 + c.coherence*0.35, 13832) and the dissolution fossil quality (13565).
+//
+// Measured at the point of COMPUTATION, so every cluster is counted rather than only the ones that
+// pass the motif filter (persistAge>5 && size>5) -- which is the sampling error that would make a
+// saturated reading look like a saturated variable. Binned by size too, because the claim under test
+// is specifically that the two are independent.
+// belowUpstreamGate and belowLaunchGate are counted DIRECTLY against the real thresholds. The first
+// version derived them from the histogram with a bins[4]*0.5 fudge for the 0.45 boundary, which is
+// an approximation reported as a number -- the precise error this arc keeps catching in other
+// people's code and had no business committing in its own.
+globalThis.__COH={n:0,sum:0,min:Infinity,max:-Infinity,bins:new Array(10).fill(0),bySize:{},belowUpstreamGate:0,ge0p9:0};
+globalThis.__coh=function(v,n){ const C=globalThis.__COH;
+  if(!(v>=0&&v<=1))return;
+  C.n++; C.sum+=v; if(v<C.min)C.min=v; if(v>C.max)C.max=v;
+  let b=Math.floor(v*10); if(b>9)b=9; C.bins[b]++;
+  if(v<0.45)C.belowUpstreamGate++;   // collectClusterUpstream rejects below this (17191)
+  if(v>=0.9)C.ge0p9++;
+  const band=n<5?'lt5':n<10?'5-9':n<20?'10-19':n<40?'20-39':'40plus';
+  const e=C.bySize[band]||(C.bySize[band]={n:0,sum:0,min:Infinity,max:-Infinity});
+  e.n++; e.sum+=v; if(v<e.min)e.min=v; if(v>e.max)e.max=v;
+};
+globalThis.__COHE={n:0,sum:0,min:Infinity,max:-Infinity,ge0p9:0};
+globalThis.__cohElig=function(v,n){ const C=globalThis.__COHE;
+  if(!(v>=0&&v<=1))return; C.n++; C.sum+=v; if(v<C.min)C.min=v; if(v>C.max)C.max=v; if(v>=0.9)C.ge0p9++; };
 globalThis.__cgNote=function(h,t){ try{ globalThis.__cgTick.set(h,t); }catch(e){} };
 globalThis.__cgRead=function(h,t,hit){ try{
   globalThis.__S['cg.get']=(globalThis.__S['cg.get']||0)+1;
@@ -145,6 +181,15 @@ patch("    M.splice(wi,1); fired('motif.evictQuality'); return;",
       "     const qw=(+M[wi].s||0)*(+M[wi].c||0); if(qw===mn)W.correct++; if(n>1)W.ties++;}\n" +
       "    M.splice(wi,1); fired('motif.evictQuality'); return;",
       'mkb.witness');
+// THE COMPARISON THAT SETTLES IT. Coherence measured at the point of computation covers EVERY
+// cluster; coherence measured where a motif is minted covers only those passing persistAge>5 &&
+// size>5. If the second is tight and the first is wide, the variable is fine and the MOTIF BANK is a
+// biased sample of it -- which is what I generalised from when I called coherence saturated, and is
+// the same error as #207 naming a store from one of its four consumers.
+patch("          const motif={t:c.tendency.map(v=>+(v.toFixed(3))),s:c.size,c:+(c.coherence.toFixed(2)),age:c.persistAge};",
+      "          const motif={t:c.tendency.map(v=>+(v.toFixed(3))),s:c.size,c:+(c.coherence.toFixed(2)),age:c.persistAge};\n" +
+      "          globalThis.__cohElig(c.coherence,c.size);",
+      'coherence.eligible');
 patch("if(!isDupe){genome.stableMotifs.push(motif);",
       "if(!isDupe){globalThis.__bump('motif.push');genome.stableMotifs.push(motif);",
       'motif.push');
@@ -228,6 +273,9 @@ const cgDeletes=(code.match(/clusterGenomes\.(delete|clear)\(/g)||[]).length;
 // HASH inherits its genome. So a dead entry is not gone, it is dormant -- it wakes if a cluster with
 // that hash re-forms. Whether that ever happens, and how far back it reaches, is the whole question
 // for this layer, and it is measurable: record the tick of every write and the age of every hit.
+patch("      phCoh=Math.sqrt(sinSum*sinSum+cosSum*cosSum)/n;",
+      "      phCoh=Math.sqrt(sinSum*sinSum+cosSum*cosSum)/n; globalThis.__coh(phCoh,n);",
+      'coherence.compute');
 patch("clusterGenomes.set(c.hash,c.clusterGenome);",
       "globalThis.__cgNote(c.hash,tick),clusterGenomes.set(c.hash,c.clusterGenome);",'cg.set.cluster');
 patch("clusterGenomes.set(daughter.hash,daughterCG);",
@@ -409,6 +457,19 @@ console.log(JSON.stringify({
             arrivedByWire:S['atom.insert.wire']|0, arrivedBySeed:S['atom.insert.seed']|0,
             arrivedByHGT:S['atom.insert.hgt']|0},
   births:{paid:L('birth.paid'),refused:L('birth.refused')},
+  coherence:(function(){ const C=globalThis.__COH; if(!C.n)return {n:0};
+    const bySize={}; for(const k in C.bySize){ const e=C.bySize[k];
+      bySize[k]={n:e.n, mean:+(e.sum/e.n).toFixed(4), min:+e.min.toFixed(4), max:+e.max.toFixed(4)}; }
+    return { n:C.n, mean:+(C.sum/C.n).toFixed(4), min:+C.min.toFixed(4), max:+C.max.toFixed(4),
+             // bins[i] counts coherence in [i/10,(i+1)/10). If the mass is all in bins 8-9 the
+             // variable is saturated and every gate that reads it is a constant.
+             bins:C.bins, fracAtOrAbove0p9:+(C.ge0p9/C.n).toFixed(4),
+             fracBelowUpstreamGate0p45:+(C.belowUpstreamGate/C.n).toFixed(4),
+             bySize };
+  })(),
+  coherenceMotifEligible:(function(){ const C=globalThis.__COHE; if(!C.n)return {n:0};
+    return {n:C.n, mean:+(C.sum/C.n).toFixed(4), min:+C.min.toFixed(4), max:+C.max.toFixed(4),
+            fracAtOrAbove0p9:+(C.ge0p9/C.n).toFixed(4)}; })(),
   mkbWitness:globalThis.__mkbWitness,
   loopErrors,lastErr,driverErr:globalThis.__driverErr||0
 },null,1));
