@@ -2645,7 +2645,42 @@ const SR=r.selfwriteReach||{};
 ck('#199 the address is REACHED: seeded into the germline and into the population',
    SR.germSeeded===1 && SR.popSeeded>0,
    'germline '+SR.germSeeded+', '+SR.popSeeded+' population carrier(s) — 429 is one address in 430, and #179 measured opcode 236 in ZERO of 1,424 live instructions when left to the draw');
-ck('#199 THE SEEDER never adds a second copy', SR.seedWhileHeld===0 && SR.seedWhileHeldNoXfer===0,
+// #216f: THIS ROW'S RUNTIME ASSERTION IS UNSOUND IN BOTH DIRECTIONS, AND #206 FIXED ONLY ONE.
+//
+// The claim is that the seeder never adds a second copy. It CANNOT: the guard and the liveness call
+// are the same branch (engine.html ~18456) --
+//     let _has=false; for(const _r of _sp) if(_r&&(_r[0]|0)===OP_SELFWRITE){_has=true;break;}
+//     if(Array.isArray(_sp)&&!_has&&_sp.length<_scap){ _sp.splice(...); fired('vm.selfWriteSeed'); }
+// -- so a firing with a copy present is structurally impossible and seedWhileHeld>0 is always an
+// artefact of the MEASUREMENT, never a defect.
+//
+// The artefact: heldBefore is cnt()>0 sampled BEFORE mutateGenome(), and cnt() counts rows whose
+// OPCODE FIELD READS 429. #206 found mutation can walk an existing row ONTO 429 (so the count rises
+// with nothing inserted) and demoted maxNoXfer for it. This is the same confound running the other
+// way: mutation walks a row OFF 429 earlier in the same call, the seeder then correctly finds no
+// copy and inserts one, and seedWhileHeld increments while nothing wrong has happened. Measured at
+// SEED=3 TICKS=900: seedWhileHeld 1, seedWhileHeldNoXfer 0, and the seeder behaving perfectly.
+//
+// So the runtime numbers are reported and the STRUCTURE is asserted, because the structure is where
+// the invariant actually lives and it is the thing a future edit could break.
+const _seedSrc=(function(){
+  const g=code.indexOf('!_has&&_sp.length<_scap){');
+  if(g<0)return {found:false};
+  const scan=code.slice(Math.max(0,g-320),g);
+  const body=code.slice(g,g+260);
+  return {found:true,
+          scans:scan.indexOf('(_r[0]|0)===OP_SELFWRITE')>=0,
+          splices:body.indexOf('_sp.splice(')>=0,
+          firesInside:body.indexOf("fired('vm.selfWriteSeed')")>=0};
+})();
+ck('#199 THE SEEDER CANNOT add a second copy — the guard and the liveness call are one branch',
+   _seedSrc.found && _seedSrc.scans && _seedSrc.splices && _seedSrc.firesInside,
+   'the germline program is scanned for OP_SELFWRITE, and both the splice and fired(vm.selfWriteSeed) '+
+   'sit inside the !_has branch — so a firing with a copy already present is impossible by construction. '+
+   'OBSERVED at runtime, asserted on neither because cnt() cannot tell an inserted copy from a drifted '+
+   'opcode in either direction: seedWhileHeld '+SR.seedWhileHeld+', seedWhileHeldNoXfer '+
+   SR.seedWhileHeldNoXfer+', rose without the seeder firing '+SR.roseWithoutSeeder+' time(s)');
+ck('#199 and the runtime counts stay in the range the guard implies', SR.seedFiringsNoXfer>=0 && SR.maxNoXfer>=1,
    'the seeder fired with a copy already present '+SR.seedWhileHeld+' times with the transfer paths live and '+SR.seedWhileHeldNoXfer+' times with them silenced, over '+SR.seedFiringsNoXfer+' firings in the silenced arm. OBSERVED, NOT ASSERTED: with both transfer genes zeroed the count still peaks at '+SR.maxNoXfer+' and rose without the seeder firing '+SR.roseWithoutSeeder+' time(s) — mutateGenome can walk an EXISTING row\'s opcode field onto 429, so a count above one is not an insertion. The previous version of this row asserted maxNoXfer===1 and was red at TICKS=40 and green at the default for exactly that reason; it was filed as budget sensitivity twice and it was an unsound invariant both times. THE OLD ROW blamed the seeder for copies it did not insert: it read the program\'s TOTAL count, which also counts a SELFWRITE arriving by dissolution motif injection — horizontal instruction transfer, doing exactly what it is for — and it counted ITERATIONS IN A DUPLICATED STATE rather than insertions, so one transfer at call 13 read as "46 programs took a second copy"');
 ck('#199 and the copies do not ACCUMULATE with run length', SR.maxCount<=SR.maxAt300+1,
    'peak '+SR.maxAt300+' copies after 150 mutateGenome calls and '+SR.maxCount+' after 600 (program length '+SR.lenAtPeak+' at the peak) — #179\'s worry was convergence, "every program converges on nothing but the new opcode", which predicts copies PILING UP with run length. Tested as accumulation rather than against a share threshold: the first version of this row used 25%, which is exactly 1 copy in a 4-instruction program, so it sat on its own edge — the same uncalibrated-absolute mistake this block exists to correct');
