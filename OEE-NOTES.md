@@ -18019,3 +18019,80 @@ by-name read from an enumeration. And: *I built a diagnostic and mis-read it bef
 motivated it had even finished.* The instrument was right and the inference from it was not, for the
 third time this session (`#207` a store named from one consumer, `#216` a distribution named from
 its filtered tail, this one a path diagnosed from a counter that cannot fire on it).
+
+## #216f–i — FOUR FLICKERING ROWS, FOUR DIFFERENT WAYS OF ASSERTING THE WRONG THING
+
+Plumbing `FOUND` (`#216d`) turned the acceptance rig from one trajectory into eight, and the suite
+immediately stopped being green. Four seeds on both arms at `TICKS=900`: **three of eight runs had a
+red row, and the row was different each time.**
+
+```
+off/1   #195 virgin transfer — 0 transfers
+off/3   #199 seeder — "fired with a copy already present 1 times"
+on/4    #189 wrap=1 torus — "the mass is at null"
+```
+
+**So `FOUND` is exonerated** — `#216d`'s registered prediction (fails on some seeds in BOTH arms) was
+right about the pattern and wrong about the row. And the larger fact: *"257/257 at `TICKS=900`" had
+always been a statement about one trajectory, not about the tree.*
+
+Each of the four turned out to be a different species of the same disease.
+
+### `#199` seeder — asserting something structurally impossible
+
+The guard and the liveness call are **the same branch** (engine.html ~18456): the program is scanned
+for `OP_SELFWRITE`, and both the splice and `fired('vm.selfWriteSeed')` sit inside `!_has`. **The
+seeder cannot fire with a copy present**, so `seedWhileHeld>0` is always a measurement artefact.
+
+The artefact is `#206`'s confound running backwards. `heldBefore` is `cnt()>0`, and `cnt()` counts
+rows whose OPCODE FIELD READS 429. `#206` found drift walks a row ONTO 429 and demoted `maxNoXfer`
+for it; here drift walks one OFF 429 in the same call, the seeder correctly finds nothing and
+inserts, and the counter increments over perfect behaviour. **`cnt()` is unsound in both directions
+and I fixed one.** The row now asserts the STRUCTURE, read out of `engine.html`'s source text.
+
+### `#195` virgin transfer — 42 calls short, not unlucky
+
+Eight runs gave 1 transfer each with 309–589 declines, so the first success lands at call 11, 22, 27,
+121, 137, 149 or 291 — mean ~108, p ≈ 0.0093. At 600 draws P(zero) = 0.24%, and a trajectory landing
+there is **deterministic, not flaky**: `SEED=1 FOUND=0` failed in two separate batches. Driven 3,000
+times now; on that exact trajectory **the transfer lands at call 642**. The old budget stopped 42
+calls short.
+
+*And the rate was not the lever, which I asserted twice before checking.* `chanRuleXfer` clamps to
+`[0, 0.01]`, so the siblings' `setup(0.05)` arrives as 0.01 and every sub-case runs at the same
+effective rate. My "five times under-powered" reading was wrong in a commit message and a notes entry.
+
+### `#189` torus — measuring whether a mutation cycle had fired
+
+Traced instead of guessed. `max|L|` every 5th step: `4,4,3,3,3,3,3,3,3,3` then **0 for 62 samples** —
+a cliff at engine step ~50, not a leak. Then recorded the rule at the end against the one installed:
+
+```
+INSTALLED   {"expr":"(b)+(0.00)",  "st":"[[-1,0,1]]", wrap:1, cad:1}
+AT END      {"expr":"(yc)+(0.00)", "st":"[[-1,0,1]]", wrap:1, cad:1}
+```
+
+Stencil untouched, **expression drifted `b` → `yc`**. `yc` is not the tap value, so it evaluates to 0
+and the lattice fills with zeros. `mutateGenome` rewrote the channel rule mid-measurement. The torus
+drives 30 cadence-windows; `mean` and `advect` drive 6 and finish first, which is why only this row
+went red. **The engine was correct throughout.** Fixed by re-installing the rule every step.
+
+**This is the second half of `CLAUDE.md`'s `#196` trap**, now recorded there: that note covers living
+CARRIERS overriding the germline rule, and this adds that the GERMLINE rule itself drifts on any run
+long enough for `mutateGenome` to fire. `govSelfOnly()` every step handles the carriers; only
+re-installing handles the drift.
+
+### The result, and the method note
+
+**Eight of eight runs at 258/0** — four seeds, both `FOUND` arms, no failures. That was never true
+before today.
+
+And one thing about how the last of the four was found, because it is the opposite of the other
+three. I traced first (*when* does the mass go — cliff or ramp?), then recorded state (*what* does
+the rule hold?), and named the mechanism only once both answers were in hand. The other three I named
+a mechanism first and the instrument refuted me within one run each time: `#207` named a store from
+one of four consumers, `#216` named a distribution from its filtered tail, `#216e` diagnosed a path
+from a counter that cannot fire on it, `#216h` read the wrong `centroid`'s contract and inferred an
+explosion from an empty lattice. **Four wrong mechanisms, all caught by measurement, none of which
+would have been reached by reading the code harder.** The trace-then-state order cost about the same
+effort and produced the answer directly.
