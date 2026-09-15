@@ -78,15 +78,27 @@ for(let i=0;i<lines.length;i++){
 }
 function fnOf(ln){ for(const [a,b,n] of spans) if(ln>=a&&ln<=b) return n; return '(top level)'; }
 
-// SELF-CHECK. Three sites this session read by hand, each in a named function. If the attribution
-// cannot place them, every number below is void and the rig says so instead of printing a table.
+// SELF-CHECK, KEYED ON SOURCE TEXT RATHER THAN LINE NUMBERS.
+//
+// The first version pinned three hand-verified LINE NUMBERS. It did its job -- when #211 and #212
+// added comment blocks to engine.html, every line below them shifted and the rig refused to print a
+// table rather than misattribute silently. But refusing on every future edit to an unrelated part of
+// the file is a guard that cries wolf, and a guard that cries wolf gets deleted by whoever is tired
+// of it. So the anchors are now the distinctive SOURCE TEXT of each site: they move with the file,
+// and they still fail loudly if the attribution itself breaks.
 const SELFCHECK=[
-  {line:19259, fn:'checkExtinction', what:'alive<genome.extinctionThresh'},
-  {line:18040, fn:'mutateGenome',    what:'genome.extinctionThresh=Math.max(1,Math.round(maybe(...)))'},
-  {line:17191, fn:'collectClusterUpstream', what:'the upward channel'}
+  {find:'alive<genome.extinctionThresh',                   fn:'checkExtinction'},
+  {find:'genome.extinctionThresh=Math.max(1,Math.round(',  fn:'mutateGenome'},
+  {find:'function collectClusterUpstream(',                fn:'collectClusterUpstream'}
 ];
-const scFails=SELFCHECK.filter(c=>fnOf(c.line-1)!==c.fn)
-  .map(c=>'line '+c.line+' ('+c.what+') attributed to '+fnOf(c.line-1)+', expected '+c.fn);
+const scFails=[];
+for(const c of SELFCHECK){
+  let ln=-1;
+  for(let i=0;i<lines.length;i++) if(lines[i].indexOf(c.find)>=0){ ln=i; break; }
+  if(ln<0){ scFails.push('anchor text not found in engine.html: '+c.find); continue; }
+  const got=fnOf(ln);
+  if(got!==c.fn) scFails.push(JSON.stringify(c.find)+' at line '+(ln+1)+' attributed to '+got+', expected '+c.fn);
+}
 if(scFails.length){ console.log(JSON.stringify({error:'ATTRIBUTION SELF-CHECK FAILED',scFails},null,1)); process.exit(1); }
 
 // TWO KINDS OF READ, AND LUMPING THEM WAS THE FOURTH THING THIS RIG GOT WRONG.

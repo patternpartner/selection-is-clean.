@@ -17599,3 +17599,28 @@ Same live-particle fingerprint, same population, same cluster count, with **97% 
 The prune draws no randomness, so the only way the arms could diverge is a read that would have hit
 now missing and calling `seedClusterGenome()` — which draws. Bit-identical therefore means *no read
 was affected*, which is the entire claim.
+
+### #212b — the gate, and the guard that cried wolf at me
+
+`substrate-test` **257/257 at all four budgets** on the `#211`+`#212` engine: default, `TICKS=900`,
+`FOUND=0`, and the `TICKS=40` smoke budget.
+
+`smoke.sh` came back **51 ok, 1 failing — `harness-orphans.js`**, my own rig, and the failure was the
+`#209` self-check doing exactly what it was built for:
+
+```
+ATTRIBUTION SELF-CHECK FAILED
+  line 19259 (alive<genome.extinctionThresh) attributed to mutateGenome, expected checkExtinction
+  line 17191 (the upward channel) attributed to updateField, expected collectClusterUpstream
+```
+
+`#211` and `#212` added comment blocks to `engine.html` and every line below them shifted. The rig
+refused to print a table rather than misattribute silently, which is the whole reason it exists.
+
+**But it was pinned to the wrong thing.** Hardcoded LINE NUMBERS mean the guard fires on any edit
+anywhere above them, including edits with nothing to do with attribution — and a guard that cries wolf
+gets deleted by whoever is tired of it. The anchors are now the distinctive SOURCE TEXT of each site
+(`alive<genome.extinctionThresh`, `genome.extinctionThresh=Math.max(1,Math.round(`, and
+`function collectClusterUpstream(`). They move with the file and still fail loudly if the attribution
+itself breaks. Re-run: 191 keys, LIVE 181 / META_ONLY 7 / INERT 3 — unchanged, as it should be, since
+nothing about which genes are named changed.
