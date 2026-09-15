@@ -136,6 +136,15 @@ function patch(anchor,replacement,label,expect){
 // sites with motifEvict(), which fires the engine's own motif.evictAge / motif.evictQuality names.
 // A rig-side counter for an event the engine now declares is two sources of truth for one number,
 // and the declared one wins. Creation is still counted here because no liveness name covers it.
+// The witness itself: at the moment motifEvict decides by quality, check that the index it is about
+// to splice really is the minimum s*c. Placed on the engine's own line rather than reimplementing the
+// rule here, so the check cannot agree with a bug by sharing it.
+patch("    M.splice(wi,1); fired('motif.evictQuality'); return;",
+      "    {const W=globalThis.__mkbWitness; W.checks++; let mn=Infinity,n=0;\n" +
+      "     for(let j=0;j<M.length;j++){const q=(+M[j].s||0)*(+M[j].c||0); if(q<mn){mn=q;n=1;} else if(q===mn)n++;}\n" +
+      "     const qw=(+M[wi].s||0)*(+M[wi].c||0); if(qw===mn)W.correct++; if(n>1)W.ties++;}\n" +
+      "    M.splice(wi,1); fired('motif.evictQuality'); return;",
+      'mkb.witness');
 patch("if(!isDupe){genome.stableMotifs.push(motif);",
       "if(!isDupe){globalThis.__bump('motif.push');genome.stableMotifs.push(motif);",
       'motif.push');
@@ -271,7 +280,17 @@ patch("        const motif=genome.stableMotifs[Math.random()*genome.stableMotifs
 const Module=require('module');
 const driver=`
 (function(){
+  // #215: FORCE THE DIAL. The gene is seeded at 0 and drifts slowly, so across three seeds and 36,000
+  // ticks motif.evictQuality fired ZERO times -- the branch was wired, reachable, and never actually
+  // executed. An untested branch in engine.html is a liability whatever the measurement says, so
+  // MOTIF_BIAS forces motifKeepBias every tick and the run reports whether the right motif went.
+  globalThis.__forcedMKB=(process.env.MOTIF_BIAS!==undefined)?Number(process.env.MOTIF_BIAS):null;
+  // Witness: before each eviction, record whether the motif the engine is about to drop is in fact
+  // the lowest s*c in the bank. Counting that the branch FIRED is not the same as checking it picked
+  // correctly, and this project has shipped a mechanism that fired and did the wrong thing before.
+  globalThis.__mkbWitness={checks:0,correct:0,ties:0};
   globalThis.__run=function(n){ for(let s=0;s<n;s++){ globalThis.__detMs+=5;
+    if(globalThis.__forcedMKB!==null){ try{ genome.motifKeepBias=globalThis.__forcedMKB; }catch(e){} }
     try{loop();}catch(e){ globalThis.__driverErr=(globalThis.__driverErr||0)+1; } } };
   // Read from INSIDE the compiled module: __liveness, the death tallies and the genome are lexical
   // bindings of this module and are not on globalThis. Reading them from the harness file returns
@@ -297,6 +316,7 @@ const driver=`
       motifs:(genome.stableMotifs||[]).length, motifCap:genome.motifMemorySize,
       atomIdleTolerance:(genome.atomIdleTolerance===undefined?null:+genome.atomIdleTolerance.toFixed(5)),
       motifKeepBias:(genome.motifKeepBias===undefined?null:+genome.motifKeepBias.toFixed(5)),
+      motifBank:(genome.stableMotifs||[]).map(m=>({s:m.s,c:m.c,q:+(((+m.s||0)*(+m.c||0)).toFixed(3))})),
       motifEvictAge:__liveness['motif.evictAge']|0, motifEvictQuality:__liveness['motif.evictQuality']|0,
       atomUseProtect:(genome.atomUseProtect===undefined?null:+genome.atomUseProtect.toFixed(5)),
       clusterGenomeEntries:(typeof clusterGenomes!=='undefined')?clusterGenomes.size:-1,
@@ -389,5 +409,6 @@ console.log(JSON.stringify({
             arrivedByWire:S['atom.insert.wire']|0, arrivedBySeed:S['atom.insert.seed']|0,
             arrivedByHGT:S['atom.insert.hgt']|0},
   births:{paid:L('birth.paid'),refused:L('birth.refused')},
+  mkbWitness:globalThis.__mkbWitness,
   loopErrors,lastErr,driverErr:globalThis.__driverErr||0
 },null,1));
