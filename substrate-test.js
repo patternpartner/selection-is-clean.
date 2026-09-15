@@ -1492,7 +1492,17 @@ m._compile(code+`
 
     // 6. THE COST IS PAID, AND AN EXHAUSTED PARTICLE IS REFUSED
     const pr6=mkProg(); amp[pi]=1.0;
-    const a0=amp[pi]; vmSelfWrite(pi,pr6,pr6.length,0,0.5,3); const paid=+(a0-amp[pi]).toFixed(5);
+    // #216j: COMPARED RAW, DISPLAYED ROUNDED. This was +(a0-amp[pi]).toFixed(5) and the row asserted
+    // Math.abs(paid-cost)<1e-6 against the UNROUNDED cost — a rounding granularity of up to 5e-6
+    // tested against a 1e-6 tolerance, which fails structurally whenever the cost's sixth decimal is
+    // far enough from zero. It survived only while SELFWRITE_COST sat on a short decimal, and #203
+    // made that price a LAW, so it drifts: at the default budget on SEED=3 the law had reached
+    // 0.005343089135363699, round5 gave 0.00534, and the gap was 3.09e-6.
+    // amp is a Float32Array, so the raw difference carries about 1e-7 of representation error at the
+    // amplitudes used here — comfortably inside 1e-6, which is why the tolerance itself is fine and
+    // the rounding was the whole defect.
+    const a0=amp[pi]; vmSelfWrite(pi,pr6,pr6.length,0,0.5,3);
+    const paidRaw=a0-amp[pi], paid=+paidRaw.toFixed(8);
     amp[pi]=SELFWRITE_COST*0.5;
     const r0=__selfWriteRefused;
     const brokeOk=vmSelfWrite(pi,pr6,pr6.length,0,0.5,3)===0 && __selfWriteRefused>r0;
@@ -1520,7 +1530,7 @@ m._compile(code+`
     const isLaw=LAW_DECLARED.some(r=>r.name==='SELFWRITE_COST');
 
     return {addr,fOp,fSrc,fDst,fK,illegal,lenChanged,wrote,outside,noGrowth,
-            paid,cost:SELFWRITE_COST,brokeOk,endToEnd,offRefused,isLaw};
+            paid,paidRaw,cost:SELFWRITE_COST,brokeOk,endToEnd,offRefused,isLaw};
   });
 
   out.selfwriteReach=run('selfwriteReach',()=>{
@@ -2697,8 +2707,11 @@ ck('#199 a write touches exactly one instruction', SW.outside===0 && SW.lenChang
 ck('#199 and it never grows the program', SW.noGrowth===true,
    '500 writes leave the length at 4 — op144 is the extender and its cap is the evolved vmMaxInstructions; two mechanisms growing one array by different rules is how a cap stops meaning anything');
 ck('#199 the write is paid for, and an exhausted particle is refused',
-   Math.abs(SW.paid-SW.cost)<1e-6 && SW.brokeOk===true,
-   'SELFWRITE_COST = '+SW.cost+' amplitude, charged '+SW.paid+', and a particle below it is refused');
+   Math.abs(SW.paidRaw-SW.cost)<1e-6 && SW.brokeOk===true,
+   'SELFWRITE_COST = '+SW.cost+' amplitude, charged '+SW.paid+' (compared raw, |paid-cost| = '+
+   (SW.paidRaw===undefined?'?':Math.abs(SW.paidRaw-SW.cost).toExponential(2))+
+   '), and a particle below it is refused — the price is a LAW since #203, so it drifts to arbitrary decimals'+
+   ' and a rounded comparison fails structurally (#216j)');
 ck('#199 END TO END: the opcode is actually wired to the helper', SW.endToEnd===true,
    'the unit checks prove the helper; this proves the dispatch — which is the half #179 found missing for EFFECT_EMIT across 1,424 live instructions');
 ck('#199 SELFWRITE=0 is a true revert', SW.offRefused===true,
