@@ -17378,3 +17378,69 @@ control, is consistent with drift until the READ is instrumented.*
 `ait` difference BETWEEN arms (0.038–0.070 against 0, 0, 0) is not attributable to selection on `ait`
 and is not claimed. n=3, unpaired after divergence. What is claimed is the within-control observation:
 the dial drifts while `tolMax` is 0.
+
+## #209 — THE ORPHAN-GENE CENSUS, AND IT REFUTES THE WARNING I COMMITTED ONE ENTRY AGO
+
+`#208b` ended with a sweeping claim: *"every spread-across-universes figure in this file, including
+the `atomUseProtect` 0..0.785 I cited as the control, is consistent with drift until the READ is
+instrumented."* Leaving that as a warning would have been the exact failure the warning is about, so
+`harness-orphans.js` checks it. **The strong form is wrong.**
+
+### Three classes, measured statically over all 191 genome keys
+
+```
+LIVE       181   read somewhere outside all genome machinery — it touches what the world does
+META_ONLY    7   read only inside mutateGenome — it shapes how the lineage searches, not what it is
+INERT        3   read by nothing but encode / decode / sanitize / clone
+```
+
+**181 of 191 genes have a read site in the world.** So "consistent with drift" was an overclaim and it
+is withdrawn. What survives is the weak form, and it is still the useful one: **a read site existing
+is not the read being reachable.** `atomIdleTolerance` is LIVE by this census — it has a read site —
+and `#208` measured that site sitting behind three gates and evaluated zero times in 36,000 ticks.
+A static census gives a floor, not a verdict.
+
+### META_ONLY is a real category and lumping it in was an error the rig made first
+
+`atrophyRate`, `metaSignalPrev`, `mutationTail`, `motifMemorySize`, `effectComposeRate`,
+`effectSenseRate`, `chemistryMutRate`. Read only by the mutation operator. The first classification
+called these orphans, which labelled **`mutationTail`** — the gene deciding whether the search
+distribution is uniform or heavy-tailed — as inert. They act on the SEARCH rather than the phenotype,
+which is a different place to act, not a lesser one. Splitting them out is the fix.
+
+### INERT, all three
+
+```
+maxSensors       0 occurrences anywhere   "Pe22e: retained for save-file compatibility; no longer enforced"
+sensorMaxInst    0 occurrences anywhere   same comment, same line
+fitnessHistory   0 occurrences anywhere   undocumented
+```
+
+The first two are a **declared** decision, sitting in the literal with the reason attached — the
+`CLAUDE.md` third-trap check paying off again, and they are not a defect to fix. They do carry one
+measurable cost: both are numbers, and `mutateChildGenome` draws one `Math.random()` per numeric
+genome key at every birth (#181's lazy-gene contract), so save-file compatibility costs two draws per
+birth — about 6,600 per 12,000 ticks at the observed birth rate. Trivial, real, and worth knowing
+before anyone counts draws again. `fitnessHistory` is an array, so it costs only save space.
+
+### FOUR instrument errors before a number was trustworthy, and they are the entry
+
+1. **Nearest preceding declaration at any indent.** `mutateGenome` declares `maybe()`, `metaMaybe()`
+   and `tailDraw()` inside itself, so occurrences after those were attributed to the nested helper,
+   which is not plumbing, and the gene read LIVE. **Biased toward finding nothing.** It gave itself
+   away as `effectSenseRate` reporting a read "in `metaMaybe` at line 18806" — 1,100 lines past
+   `metaMaybe`'s own declaration.
+2. **Brace depth from column zero.** Braces inside strings, regexes, template literals and comments
+   are not brace depth, so a span never closed and one function absorbed the rest of the file.
+   **Biased the other way**: 165 of 191 reported as orphans, including `extinctionThresh`, whose read
+   at line 19259 I had read by hand an hour earlier. *A result that contradicts something already
+   verified by hand is the instrument failing, not a finding* — and the rig now carries a
+   **self-check** on three hand-verified sites that refuses to print a table if attribution misses
+   any of them.
+3. **Column-zero terminator**, which is what this file's style actually guarantees: top-level
+   functions open at column zero and close with `}` at column zero; nested helpers are indented. No
+   brace counting, nothing a string can confuse. This one passes the self-check.
+4. **Lumping the mutation operator in with serialisation**, above.
+
+Two of the four were biased toward the comfortable answer and two toward the alarming one, which is
+the only reassuring thing about the sequence.
