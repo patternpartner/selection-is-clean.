@@ -151,11 +151,18 @@ globalThis.__cohElig=function(v,n){ const C=globalThis.__COHE;
 // before its number was published rather than after.
 globalThis.__geneTrace={};
 globalThis.__geneStep=function(name,before,raw,after){ try{
-  const T=globalThis.__geneTrace, g=T[name]||(T[name]={offers:0,fired:0,clampedToFloor:0,clampedToCeil:0,moved:0,wastedAtBound:0,final:0,firstMoveAtOffer:-1});
+  const T=globalThis.__geneTrace, g=T[name]||(T[name]={offers:0,fired:0,clampedToFloor:0,clampedToCeil:0,moved:0,wastedAtBound:0,final:0,maxSeen:0,ticksAtZero:0,firstMoveAtOffer:-1});
   g.offers++;
   if(raw!==before){ g.fired++; if(raw<0)g.clampedToFloor++; else if(raw>1)g.clampedToCeil++; }
   if(after!==before){ g.moved++; if(g.firstMoveAtOffer<0)g.firstMoveAtOffer=g.offers; }
   g.wastedAtBound=g.fired-g.moved;
+  // #216r: final alone cannot answer "did this gene ever reach a working value". A gene that rose and
+  // was clamped back reads final 0, identically to one that never moved — seed 3's atomUseProtect did
+  // exactly that (moved 2, final 0). maxSeen is the reachability number; ticksAtZero is how much of
+  // the run the dial spent switched off, which is what decides whether the mechanism behind it has
+  // any effect on what a viewer actually sees.
+  if(after>g.maxSeen)g.maxSeen=after;
+  if(after===0)g.ticksAtZero++;
   g.final=after;
 }catch(e){} };
 globalThis.__cgNote=function(h,t){ try{ globalThis.__cgTick.set(h,t); }catch(e){} };
