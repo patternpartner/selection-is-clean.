@@ -17062,15 +17062,17 @@ distance and an unbiased walk. Name it after what was observed.
 
 ### The control, which is what makes the trap arm mean anything
 
-`TRAP=0 CAD=73`, same canvas, same seeds, nothing forced. Seed 2 at 9,000 ticks:
+`TRAP=0 CAD=73`, same canvas, same seeds, nothing forced. 9,000 ticks:
 
 ```
-checks   deaths   generation   threshold at end   peak population   peak between checks
-  115       0          1              4                 285              87 – 285
+seed   checks   deaths   generation   threshold at end   peak population
+  1      118       0          1              5                 325
+  2      115       0          1              4                 285
+  3      119       0          1              5                 279
 ```
 
-**Zero deaths in 115 checks.** The 73-tick cadence is not the problem and neither is the tile: an
-unforced world at the same settings never crosses its own death line once, holds 285 particles, and
-finishes at generation 1. So the trap arm's 117–124 consecutive deaths are attributable to the forced
-threshold and to nothing else in the arm. (Seed 2 reported here; 1 and 3 were still running at commit
-time and are added below if they disagree.)
+**Zero deaths in 352 checks across three seeds.** The 73-tick cadence is not the problem and neither
+is the tile: an unforced world at the same settings never crosses its own death line once, holds
+279–325 particles, and finishes at generation 1 with the threshold still sitting where it started.
+So the trap arm's 117–124 CONSECUTIVE deaths are attributable to the forced threshold and to nothing
+else in the arm — which is what a control is for, and this one is unanimous.
