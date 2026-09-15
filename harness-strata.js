@@ -1,0 +1,162 @@
+// WHERE DOES SELECTION TERMINATE? (#206) — A CENSUS OF EVERY PERSISTENCE LAYER
+//
+// #205 ended on a sentence that turned out to be the interesting one: in surface/6, "the thing that
+// would be selected against survives every death it causes". The population dies; the germline, the
+// atom bank, the cultural memory and the threshold gene all ride through. So this system is not one
+// replicator with one mortality boundary. It is a stack of them, each with its own rule for what gets
+// removed, and "the system selected X" is underspecified until you say AT WHICH LAYER.
+//
+// THE TEST, and it is a sharp one. A layer can only be a unit of selection if something REMOVES its
+// occupants DIFFERENTIALLY -- conditional on a trait of the thing removed. So classify every removal
+// site in the engine into exactly one of three kinds:
+//
+//   CONDITIONAL    removal depends on a property of the individual (age, uses, credit, amplitude).
+//                  This is selection. Count it.
+//   UNCONDITIONAL  removal depends only on position or on a cap -- a FIFO shift, a ring buffer, a
+//                  wholesale reset. Variance is destroyed, not sorted. This is DRIFT WITH A CEILING,
+//                  and it is invisible in an export because the layer still looks like it is turning
+//                  over.
+//   NONE           nothing ever removes anything. The layer only grows. No selection is possible at
+//                  it, whatever the rest of the file says about it.
+//
+// Then the number that answers the question is, per layer, conditional removals divided by creations.
+// Where that ratio is zero, selection has terminated BELOW that layer.
+//
+// WHY A CENSUS AND NOT AN ABLATION. Every layer here is already declared and already runs. The claim
+// under test is not "does this code execute" but "does executing it sort anything", and a count of
+// removals by kind answers that directly. Where a removal path exists but never fires, that is the
+// #205/uaMaxDepth situation again -- declared, exercised on paper, never reached -- and it shows up
+// here as a conditional site with a count of zero, which is a different reading from a site that is
+// absent. Both are reported; they are not merged.
+//
+// HARNESS-SIDE ONLY. engine.html is not modified. Counters are added by source rewrite at named
+// anchors, every one of which is asserted to appear exactly once, so a refactor that moves a site
+// fails this rig loudly instead of silently reporting a zero.
+//
+// Env: SEED  TICKS (default 12000)
+const fs=require('fs');
+const TICKS=parseInt(process.env.TICKS||'12000',10);
+
+function selfProxy(){const f=function(){return p;};const p=new Proxy(f,{get(_t,prop){if(prop===Symbol.toPrimitive)return()=>0;if(prop==='width'||prop==='height')return 0;if(prop==='data')return new Uint8ClampedArray(4);return p;},apply(){return p;}});return p;}
+const CTX=selfProxy();
+function makeEl(){return {getContext:()=>CTX,addEventListener(){},removeEventListener(){},set onclick(_){},set onchange(_){},click(){},appendChild(){},removeChild(){},remove(){},classList:{add(){},remove(){},toggle(){},contains(){return false;}},style:{},width:1,height:1,_text:'',get textContent(){return this._text;},set textContent(v){this._text=v;}};}
+const ELS={};
+globalThis.document={getElementById:(id)=>(ELS[id]||(ELS[id]=makeEl())),createElement:()=>makeEl(),addEventListener(){},removeEventListener(){},head:makeEl(),body:makeEl(),get hidden(){return false;}};
+globalThis.window=globalThis;globalThis.addEventListener=()=>{};globalThis.removeEventListener=()=>{};
+globalThis.location={hash:'',pathname:'/',search:'',href:'http://x/'};globalThis.history={replaceState(){},pushState(){}};
+globalThis.localStorage={getItem:()=>null,setItem(){},removeItem(){}};
+globalThis.navigator={userAgent:'node',hardwareConcurrency:4,wakeLock:null};
+globalThis.BroadcastChannel=class{constructor(){}postMessage(){}addEventListener(){}close(){}set onmessage(_){}};
+globalThis.fetch=()=>new Promise(()=>{});globalThis.devicePixelRatio=1;
+globalThis.innerWidth=1280;globalThis.innerHeight=720;
+globalThis.__detMs=0;globalThis.performance={now:()=>globalThis.__detMs};
+if(process.env.SEED){let a=(parseInt(process.env.SEED,10)|0)>>>0;Math.random=function(){a=(a+0x6D2B79F5)|0;let t=Math.imul(a^a>>>15,1|a);t=(t+Math.imul(t^t>>>7,61|t))^t;return ((t^t>>>14)>>>0)/4294967296;};}
+globalThis.requestAnimationFrame=()=>0;globalThis.cancelAnimationFrame=()=>{};
+globalThis.setTimeout=()=>0;globalThis.clearTimeout=()=>{};globalThis.setInterval=()=>0;globalThis.clearInterval=()=>{};
+let loopErrors=0,lastErr='';
+console.error=(...a)=>{const s=a.join(' ');if(/Loop error|Boot error|Watchdog/.test(s)){loopErrors++;lastErr=s.slice(0,160);}};
+console.warn=()=>{};
+
+const html=fs.readFileSync(__dirname+'/engine.html','utf8');
+let code=html.match(/<script>([\s\S]*)<\/script>/)[1];
+
+globalThis.__S={};
+function bump(k){ globalThis.__S[k]=(globalThis.__S[k]||0)+1; }
+globalThis.__bump=bump;
+
+// Every anchor is asserted exactly once. A rig that silently reports zero because a site moved is
+// worse than no rig: it reads as a finding.
+const fails=[];
+function patch(anchor,replacement,label,expect){
+  const n=code.split(anchor).length-1;
+  if(n!==(expect===undefined?1:expect)){ fails.push(label+': expected '+(expect===undefined?1:expect)+' site(s), found '+n); return; }
+  code=code.split(anchor).join(replacement);
+}
+
+// ── MOTIF LAYER. Creation is a push; removal is shift(), which is FIFO and reads nothing about the
+// motif it drops. If that is the only removal path, the cultural layer cannot be selected at all --
+// it can only be aged out, which sorts by arrival order and by nothing else.
+patch("while(genome.stableMotifs.length>genome.motifMemorySize)genome.stableMotifs.shift();",
+      "while(genome.stableMotifs.length>genome.motifMemorySize){globalThis.__bump('motif.shift');genome.stableMotifs.shift();}",
+      'motif.shift.cap');
+patch("if(!isDupe){genome.stableMotifs.push(motif);if(genome.stableMotifs.length>5)genome.stableMotifs.shift();",
+      "if(!isDupe){globalThis.__bump('motif.push');genome.stableMotifs.push(motif);if(genome.stableMotifs.length>5){globalThis.__bump('motif.shift');genome.stableMotifs.shift();}",
+      'motif.push');
+
+// ── CLUSTER-GENOME LAYER. clusterGenomes is a Map keyed by cluster hash that carries a cluster's
+// evolved parameters across detection cycles. The engine's own comment at its declaration says
+// "Selection: clusters that bud successfully propagate their clusterGenome". So the ENTRIES are the
+// unit. The question this rig exists to settle is whether anything ever takes one out.
+patch("clusterGenomes.set(","globalThis.__bump('cg.set'),clusterGenomes.set(",'cg.set',2);
+
+const cgDeletes=(code.match(/clusterGenomes\.(delete|clear)\(/g)||[]).length;
+
+const Module=require('module');
+const driver=`
+(function(){
+  globalThis.__run=function(n){ for(let s=0;s<n;s++){ globalThis.__detMs+=5;
+    try{loop();}catch(e){ globalThis.__driverErr=(globalThis.__driverErr||0)+1; } } };
+  // Read from INSIDE the compiled module: __liveness, the death tallies and the genome are lexical
+  // bindings of this module and are not on globalThis. Reading them from the harness file returns
+  // undefined, silently -- the exact trap harness-clamp records for its own probe.
+  globalThis.__L=function(k){ try{ return __liveness[k]|0; }catch(e){ return -1; } };
+  globalThis.__deaths=function(){ try{ return {
+    escape:(typeof deathsByEscape!=='undefined')?deathsByEscape:-1,
+    physics:(typeof deathsByPhysics!=='undefined')?deathsByPhysics:-1,
+    age:(typeof deathsByAge!=='undefined')?deathsByAge:-1 }; }catch(e){ return {error:String(e)}; } };
+  globalThis.__state=function(){ try{ let alive=0; for(let i=0;i<N;i++)if(palive[i])alive++;
+    return { alive, atoms:(genome.userAtoms||[]).length, maxAtoms:(typeof MAX_USER_ATOMS!=='undefined')?MAX_USER_ATOMS:-1,
+      motifs:(genome.stableMotifs||[]).length, motifCap:genome.motifMemorySize,
+      clusterGenomeEntries:(typeof clusterGenomes!=='undefined')?clusterGenomes.size:-1,
+      clustersNow:(typeof clusters!=='undefined')?clusters.length:-1,
+      extinctions:genome.extinctions|0, generation:genome.generation|0, totalTicks:genome.totalTicks|0 };
+  }catch(e){ return {error:String(e&&e.message||e)}; } };
+})();
+`;
+if(fails.length){ console.log(JSON.stringify({error:'ANCHORS',fails},null,1)); process.exit(1); }
+const m=new Module(__dirname+'/strata-sim.js');m.filename=__dirname+'/strata-sim.js';m.paths=Module._nodeModulePaths(__dirname);
+try{ m._compile(code+driver,m.filename); }catch(e){ console.log(JSON.stringify({error:'BOOT: '+e.message}));process.exit(1); }
+globalThis.__run(TICKS);
+
+const L=globalThis.__L, S=globalThis.__S, st=globalThis.__state(), d=globalThis.__deaths();
+const deathsTotal=(d.escape|0)+(d.physics|0)+(d.age|0);
+
+// kind: 'conditional' (a trait of the individual decides), 'unconditional' (position or a cap decides),
+// 'none' (no removal path exists in the source at all).
+const layers=[
+ { layer:'particle', created:L('birth.paid'), removals:[
+     {site:'death (escape/physics/age)', kind:'conditional', n:deathsTotal} ] },
+ { layer:'atom', created:L('atom.author'), removals:[
+     {site:'evict at MAX_USER_ATOMS (pickAtomToEvict)', kind:'conditional', n:L('atom.evict')},
+     {site:'idle cull', kind:'conditional', n:L('atom.cull')} ] },
+ { layer:'opcode slot', created:L('atom.opAuthor'), removals:[
+     {site:'opCull', kind:'conditional', n:L('atom.opCull')} ] },
+ { layer:'motif (cultural memory)', created:S['motif.push']|0, removals:[
+     {site:'shift() past motifMemorySize', kind:'unconditional', n:S['motif.shift']|0} ] },
+ { layer:'cluster genome', created:S['cg.set']|0, removals:
+     cgDeletes===0 ? [{site:'(no delete or clear exists in engine.html)', kind:'none', n:0}]
+                   : [{site:'delete/clear', kind:'unknown', n:-1}] },
+ { layer:'germline (this universe)', created:1, removals:[
+     {site:'extinction reseeds FROM the germline (saveGenome after N=0)', kind:'unconditional', n:st.extinctions} ] },
+ { layer:'universe', created:L('cosmos.found')+L('cosmos.launch'), removals:[
+     {site:'cosmos.merge', kind:'conditional', n:L('cosmos.merge')} ] },
+];
+for(const x of layers){
+  x.conditionalRemovals=x.removals.filter(r=>r.kind==='conditional').reduce((a,r)=>a+Math.max(0,r.n),0);
+  x.selectionRatio = x.created>0 ? +(x.conditionalRemovals/x.created).toFixed(5) : null;
+  // The verdict is deliberately blunt. A layer with creations and zero conditional removals is not
+  // "weakly selected"; nothing at that layer has been sorted even once in this run.
+  x.verdict = x.created===0 ? 'nothing created'
+            : x.conditionalRemovals>0 ? 'SELECTED'
+            : x.removals.some(r=>r.kind==='unconditional'&&r.n>0) ? 'turnover, but UNCONDITIONAL'
+            : 'NO REMOVAL AT ALL';
+}
+console.log(JSON.stringify({
+  arm:{seed:process.env.SEED||null,ticks:TICKS},
+  state:st, deaths:d, clusterGenomeDeleteSitesInSource:cgDeletes,
+  layers,
+  cosmos:{launch:L('cosmos.launch'),found:L('cosmos.found'),merge:L('cosmos.merge'),foundRefused:L('cosmos.foundRefused')},
+  atomCullIdleFirings:L('atom.cull.idle'),
+  births:{paid:L('birth.paid'),refused:L('birth.refused')},
+  loopErrors,lastErr,driverErr:globalThis.__driverErr||0
+},null,1));

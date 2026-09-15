@@ -1527,15 +1527,38 @@ m._compile(code+`
     // the seeder is the only thing left that can add it. This is the claim the old row was making,
     // and it is now deterministic rather than a statistic over however often the seeder happened to
     // fire. Both genes are restored.
+    // CORRECTION (#206). The line below used to assert maxNoXfer===1, and it was RED AT THE SMOKE
+    // BUDGET on every build back past this block's own commit, while passing at the default. The
+    // budget was not the cause. The assertion was unsound: it said "with both transfer paths
+    // silenced the seeder is the only thing that can add a 429", and that is false. cnt() counts
+    // ROWS WHOSE OPCODE FIELD READS 429, and mutateGenome's opcode mutation can walk an EXISTING
+    // row's op onto 429 without anything having been inserted at all. One address in 430 is
+    // unlikely per draw and certain enough over 150 calls x however many rows, so whether it
+    // happens is a property of the trajectory - which is exactly why it moved with the budget and
+    // why "budget sensitivity" was the wrong diagnosis twice.
+    //
+    // So the arm keeps its instrument and drops its bad assertion. seedWhileHeldNoXfer counts what
+    // the row actually claims - the SEEDER firing with a copy already present - read from the
+    // seeder's own liveness name, which cannot be confused with an opcode that drifted into range.
+    // maxNoXfer is still reported, as an observation. When it exceeds 1 while seedWhileHeldNoXfer
+    // is 0, that is not a failure: it is the fourth path making itself visible.
     const svDw=genome.dissolutionWeight, svUb=genome.gradientUpstreamBias;
     genome.dissolutionWeight=0; genome.gradientUpstreamBias=0;
     genome.vmProgram=[[10,0,1,0.5],[11,2,3,-0.5]];
-    let maxNoXfer=0;
+    let maxNoXfer=0, seedWhileHeldNoXfer=0, seedFiringsNoXfer=0, roseWithoutSeeder=0;
+    let prevSeedN=__liveness['vm.selfWriteSeed']|0, prevCntN=cnt();
     for(let q=0;q<150;q++){ genome.mutationRate=svRate; genome.mutationScale=svScale;
-      mutateGenome(); const g=cnt(); if(g>maxNoXfer)maxNoXfer=g; }
+      const heldBeforeN=prevCntN>0;
+      mutateGenome();
+      const g=cnt(), sdN=__liveness['vm.selfWriteSeed']|0;
+      if(sdN>prevSeedN){ seedFiringsNoXfer+=(sdN-prevSeedN); if(heldBeforeN)seedWhileHeldNoXfer+=(sdN-prevSeedN); }
+      else if(g>prevCntN) roseWithoutSeeder++;   // the count went up and the seeder did not fire
+      prevSeedN=sdN; prevCntN=g;
+      if(g>maxNoXfer)maxNoXfer=g; }
     genome.dissolutionWeight=svDw; genome.gradientUpstreamBias=svUb;
     genome.mutationRate=svRate; genome.mutationScale=svScale;
     return {germSeeded,popSeeded,maxCount,maxAt300,lenAtPeak,maxNoXfer,seedWhileHeld,
+            seedWhileHeldNoXfer,seedFiringsNoXfer,roseWithoutSeeder,
             rateKept:(genome.mutationRate===svRate)};
   });
 
@@ -2605,8 +2628,8 @@ const SR=r.selfwriteReach||{};
 ck('#199 the address is REACHED: seeded into the germline and into the population',
    SR.germSeeded===1 && SR.popSeeded>0,
    'germline '+SR.germSeeded+', '+SR.popSeeded+' population carrier(s) — 429 is one address in 430, and #179 measured opcode 236 in ZERO of 1,424 live instructions when left to the draw');
-ck('#199 THE SEEDER never adds a second copy', SR.maxNoXfer===1 && SR.seedWhileHeld===0,
-   'with Pe39\'s instruction transfer silenced the count never exceeds '+SR.maxNoXfer+' across 150 mutateGenome calls, and the seeder fired with a copy already present '+SR.seedWhileHeld+' times. THE OLD ROW blamed the seeder for copies it did not insert: it read the program\'s TOTAL count, which also counts a SELFWRITE arriving by dissolution motif injection — horizontal instruction transfer, doing exactly what it is for — and it counted ITERATIONS IN A DUPLICATED STATE rather than insertions, so one transfer at call 13 read as "46 programs took a second copy"');
+ck('#199 THE SEEDER never adds a second copy', SR.seedWhileHeld===0 && SR.seedWhileHeldNoXfer===0,
+   'the seeder fired with a copy already present '+SR.seedWhileHeld+' times with the transfer paths live and '+SR.seedWhileHeldNoXfer+' times with them silenced, over '+SR.seedFiringsNoXfer+' firings in the silenced arm. OBSERVED, NOT ASSERTED: with both transfer genes zeroed the count still peaks at '+SR.maxNoXfer+' and rose without the seeder firing '+SR.roseWithoutSeeder+' time(s) — mutateGenome can walk an EXISTING row\'s opcode field onto 429, so a count above one is not an insertion. The previous version of this row asserted maxNoXfer===1 and was red at TICKS=40 and green at the default for exactly that reason; it was filed as budget sensitivity twice and it was an unsound invariant both times. THE OLD ROW blamed the seeder for copies it did not insert: it read the program\'s TOTAL count, which also counts a SELFWRITE arriving by dissolution motif injection — horizontal instruction transfer, doing exactly what it is for — and it counted ITERATIONS IN A DUPLICATED STATE rather than insertions, so one transfer at call 13 read as "46 programs took a second copy"');
 ck('#199 and the copies do not ACCUMULATE with run length', SR.maxCount<=SR.maxAt300+1,
    'peak '+SR.maxAt300+' copies after 150 mutateGenome calls and '+SR.maxCount+' after 600 (program length '+SR.lenAtPeak+' at the peak) — #179\'s worry was convergence, "every program converges on nothing but the new opcode", which predicts copies PILING UP with run length. Tested as accumulation rather than against a share threshold: the first version of this row used 25%, which is exactly 1 copy in a 4-instruction program, so it sat on its own edge — the same uncalibrated-absolute mistake this block exists to correct');
 
