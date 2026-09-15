@@ -61,6 +61,16 @@ const html=fs.readFileSync(__dirname+'/engine.html','utf8');
 let code=html.match(/<script>([\s\S]*)<\/script>/)[1];
 
 globalThis.__S={};
+// Crossing bookkeeping. Kept on globalThis and called FROM the compiled module, because tick and the
+// cluster hashes are lexical bindings there and cannot be read from this file.
+globalThis.__cgTick=new Map();   // hash -> tick it was last written
+globalThis.__cgAges=[];          // age in ticks of every get() that HIT
+globalThis.__cgNote=function(h,t){ try{ globalThis.__cgTick.set(h,t); }catch(e){} };
+globalThis.__cgRead=function(h,t,hit){ try{
+  globalThis.__S['cg.get']=(globalThis.__S['cg.get']||0)+1;
+  if(hit){ globalThis.__S['cg.hit']=(globalThis.__S['cg.hit']||0)+1;
+    const w=globalThis.__cgTick.get(h); if(w!==undefined)globalThis.__cgAges.push(t-w); }
+}catch(e){} };
 function bump(k){ globalThis.__S[k]=(globalThis.__S[k]||0)+1; }
 globalThis.__bump=bump;
 
@@ -110,6 +120,38 @@ patch("recv.userAtoms.push({expression:donorExpr,compiled:null,failed:false,uses
 patch("clusterGenomes.set(","globalThis.__bump('cg.set'),clusterGenomes.set(",'cg.set',2);
 
 const cgDeletes=(code.match(/clusterGenomes\.(delete|clear)\(/g)||[]).length;
+
+// ── THE CROSSING CENSUS (#207). #206 said where selection terminates. This says whether anything
+// accumulated ABOVE that line can ever get back below it, into the one layer where removal is
+// conditional. A store that only fills is dead weight; a store that is READ BACK is memory, and the
+// number that separates them is not the size of the store but the AGE of the entries that get read.
+//
+// clusterGenomes has exactly one read site: a newly detected cluster that matches a previous one BY
+// HASH inherits its genome. So a dead entry is not gone, it is dormant -- it wakes if a cluster with
+// that hash re-forms. Whether that ever happens, and how far back it reaches, is the whole question
+// for this layer, and it is measurable: record the tick of every write and the age of every hit.
+patch("clusterGenomes.set(c.hash,c.clusterGenome);",
+      "globalThis.__cgNote(c.hash,tick),clusterGenomes.set(c.hash,c.clusterGenome);",'cg.set.cluster');
+patch("clusterGenomes.set(daughter.hash,daughterCG);",
+      "globalThis.__cgNote(daughter.hash,tick),clusterGenomes.set(daughter.hash,daughterCG);",'cg.set.daughter');
+patch("      const prevCG=clusterGenomes.get(bestMatch.hash);",
+      "      const prevCG=clusterGenomes.get(bestMatch.hash); globalThis.__cgRead(bestMatch.hash,tick,prevCG!==undefined);",
+      'cg.get');
+
+// The upward channel, the one crossing in this engine explicitly built for the job: qualifying
+// clusters donate a VM motif into a buffer, and the buffer is drained into the GLOBAL vmProgram. Both
+// ends are counted, because a buffer that fills and never drains is the same shape of finding as a
+// store that fills and is never read.
+patch("      clusterUpstreamBuffer.push({","      globalThis.__bump('up.push'),clusterUpstreamBuffer.push({",'up.push');
+patch("    const upstream=clusterUpstreamBuffer.shift();",
+      "    globalThis.__bump('up.drain'); const upstream=clusterUpstreamBuffer.shift();",'up.drain');
+
+// Motif -> particle. At extinction, culturalBias of the reseed is drawn from stableMotifs, so the
+// cultural layer's content DOES reach the layer where death is conditional. What it cannot do is
+// carry the verdict back: the motif's own removal stays FIFO whatever becomes of its descendants.
+patch("        const motif=genome.stableMotifs[Math.random()*genome.stableMotifs.length|0];\n        const tv=new Float32Array(DIMS);\n        for(let d=0;d<DIMS;d++)tv[d]=motif.t[d]+(Math.random()-0.5)*0.2;",
+      "        globalThis.__bump('motif.toParticle'); const motif=genome.stableMotifs[Math.random()*genome.stableMotifs.length|0];\n        const tv=new Float32Array(DIMS);\n        for(let d=0;d<DIMS;d++)tv[d]=motif.t[d]+(Math.random()-0.5)*0.2;",
+      'motif.toParticle');
 
 const Module=require('module');
 const driver=`
@@ -174,6 +216,19 @@ for(const x of layers){
 console.log(JSON.stringify({
   arm:{seed:process.env.SEED||null,ticks:TICKS},
   state:st, deaths:d, clusterGenomeDeleteSitesInSource:cgDeletes,
+  crossings:(function(){
+    const srt=[...(globalThis.__cgAges||[])].sort((x,y)=>x-y);
+    return {
+      clusterGenome:{ reads:S['cg.get']|0, hits:S['cg.hit']|0, writes:S['cg.set']|0,
+        hitFrac:(S['cg.get']|0)?+((S['cg.hit']|0)/(S['cg.get']|0)).toFixed(4):0,
+        hitAgeTicks:{ n:srt.length, min:srt.length?srt[0]:null,
+          median:srt.length?srt[srt.length>>1]:null, max:srt.length?srt[srt.length-1]:null,
+          overA1000Ticks:srt.filter(v=>v>1000).length } },
+      clusterUpstream:{ donated:S['up.push']|0, drainedIntoGlobalVM:S['up.drain']|0 },
+      motifToParticle:S['motif.toParticle']|0,
+      atomToParticle:S['atom.insert.seed']|0
+    };
+  })(),
   layers,
   cosmos:{launch:L('cosmos.launch'),found:L('cosmos.found'),merge:L('cosmos.merge'),foundRefused:L('cosmos.foundRefused')},
   atomCullIdleFirings:L('atom.cull.idle'),
