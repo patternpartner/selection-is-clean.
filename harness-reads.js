@@ -56,13 +56,25 @@ console.warn=()=>{};
 // change what the child path mutates. Identity is safe to proxy here: engine.html contains no
 // genome===/!== comparison (checked), so nothing can tell the wrapper from the object.
 globalThis.__R=Object.create(null);
+// WHERE DOES A GENE WITH NO NAMED READ SITE GET READ FROM?
+// At 12,000 ticks with extinctions, all 191 keys read at least once -- including maxSensors and
+// sensorMaxInst, which #209 found have ZERO occurrences anywhere in engine.html. A Proxy cannot tell
+// a by-name read from a generic enumeration (for(const k in g), a spread, Object.assign), and the
+// engine has several such walks over genomes. Rather than assume which one, capture a stack on the
+// FIRST read of each watched key. It fires once per key, so it costs nothing, and it turns "probably
+// an enumeration" into a line number.
+const WATCH=new Set((process.env.WATCH||'maxSensors,sensorMaxInst,fitnessHistory').split(',').map(x=>x.trim()).filter(Boolean));
+globalThis.__firstRead=Object.create(null);
 const WRAPPED=new WeakSet();
 const PROXIES=new WeakMap();
 globalThis.__wrapG=function(g){
   if(!g||typeof g!=='object')return g;
   if(WRAPPED.has(g))return g;                 // already a wrapper
   const had=PROXIES.get(g); if(had)return had; // same target, same wrapper — so the restores are stable
-  const p=new Proxy(g,{ get(t,k,r){ if(typeof k==='string')globalThis.__R[k]=(globalThis.__R[k]||0)+1; return Reflect.get(t,k,r); } });
+  const p=new Proxy(g,{ get(t,k,r){ if(typeof k==='string'){ globalThis.__R[k]=(globalThis.__R[k]||0)+1;
+    if(WATCH.has(k)&&!globalThis.__firstRead[k]){
+      const st=(new Error()).stack||''; globalThis.__firstRead[k]=st.split('\n').slice(1,5).map(x=>x.trim()).join(' | ').slice(0,400);
+    } } return Reflect.get(t,k,r); } });
   WRAPPED.add(p); PROXIES.set(g,p); return p;
 };
 
@@ -130,5 +142,8 @@ console.log(JSON.stringify({
   // Properties read off the genome that are NOT keys of the literal — lazily created genes (#181),
   // and a cheap check that the wrapper is seeing real traffic rather than nothing.
   nonLiteralPropsRead:nonKeyReads,
+  // Stack at the FIRST read of each watched key — the answer to how a gene with no named read
+  // site in the source gets read at all.
+  firstReadOfWatched:globalThis.__firstRead,
   loopErrors,lastErr,driverErr:globalThis.__driverErr||0
 },null,1));
