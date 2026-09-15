@@ -14,10 +14,21 @@ git checkout main && git merge --ff-only <branch> && git push -u origin main
 
 ## Before you push
 
-- `node substrate-test.js` — the acceptance rig. **Green means green AT THE BUDGET AND ON THE
-  TRAJECTORY IT RAN.** Run it at `TICKS=900` and at the default, and with `FOUND=0` as well as on:
-  four rows have been red on HEAD at one budget and green at another, and three of those turned out
-  to be real bugs hiding behind "budget sensitivity".
+- `node substrate-test.js` — the acceptance rig. **Green means green AT THE BUDGET, ON THE
+  TRAJECTORY, AND ON THE SEED IT RAN.** Run it at `TICKS=900`, at the default, at `TICKS=40` (what
+  `smoke.sh` uses), and with `FOUND=0` as well as on: six rows have been red at one budget and green
+  at another, and four of those turned out to be real bugs hiding behind "budget sensitivity".
+- **SEED matters and the rig defaults to `SEED=1`.** `harness-env.js` seeds `Math.random` from
+  `SEED||'1'`, so a single run is one trajectory, not the rig's verdict. `#216c` found a row that
+  passes on 5 of 6 seeds at `TICKS=40` and fails on the sixth — and `smoke.sh` only ever runs seed 1,
+  so the suite had been passing on which seed happened to land where. If a row goes red, run
+  `SEED=1..6` before believing either the failure or the fix.
+- **`FOUND=0` only became a real arm in `#216d`.** Nothing read `process.env.FOUND`: the engine reads
+  `globalThis.__FOUND`, `FOUND` was absent from `harness-env.js`'s `KNOBS`, and `substrate-test` did
+  not call `applyKnobs` at all. So the instruction above was, for its whole life, asking for the same
+  run twice. Both are fixed. **The general rule, which this file broke in its own setup steps: an env
+  var with no line in `KNOBS` and no `applyKnobs` call is not a control, it is a no-op that reads
+  like one.**
 - `./smoke.sh` — boots every rig briefly. `slot-test`, `layers-test` and `collective-test` drive a
   real browser and are the only things that catch anything about the field's layout or its controls.
 - A single run is not a measurement. Three seeds, or say out loud that it is one seed.

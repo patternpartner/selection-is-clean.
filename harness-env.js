@@ -32,7 +32,15 @@ console.error=()=>{};console.warn=()=>{};};
 // the paragraph above describes. It cost a bisect: substrate-test went red at TICKS=40 and the
 // knob-off control that would have separated a real defect from a random-stream shift could not be
 // run from a harness at all. Plumbed now.
-module.exports.KNOBS = ['MUTUALISM','RQ_TRAIT','GENO_PARASITE','SELF_PREDICT','GRIP_SEED','MEME_TRANSFER','MOTIF_SELECT'];
+// #216d: FOUND joins the list, and it is the oldest instance of this bug in the project.
+// CLAUDE.md instructs every session to run the acceptance rig "with FOUND=0 as well as on".
+// NOTHING read process.env.FOUND. The engine reads globalThis.__FOUND via foundOn() (engine.html
+// 4662), FOUND was absent from this list, and substrate-test did not call applyKnobs at all until
+// #216b. So FOUND=0 node substrate-test.js was byte-identical to node substrate-test.js, and every
+// session that followed the front-page instruction ran the same thing twice believing it had a
+// control. The rule this file states about harness knobs was being broken by the project's own
+// setup instructions.
+module.exports.KNOBS = ['MUTUALISM','RQ_TRAIT','GENO_PARASITE','SELF_PREDICT','GRIP_SEED','MEME_TRANSFER','MOTIF_SELECT','FOUND'];
 module.exports.applyKnobs = function(g){
   for (const kn of module.exports.KNOBS)
     if (process.env[kn] !== undefined) g['__'+kn] = parseInt(process.env[kn], 10);
