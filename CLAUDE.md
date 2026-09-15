@@ -39,6 +39,15 @@ git checkout main && git merge --ff-only <branch> && git push -u origin main
   background mechanism survived. If a batch comes back with empty files and nothing in `ps`, that
   is what happened — the runs did not fail, they were reaped. **Stage long batches and write a
   `.done` marker per stage**, so a reap tells you which stage died instead of losing the lot.
+- **Do not run `smoke.sh` while long `node` jobs are going.** `pool-test`, `slot-test`,
+  `collective-test` and `layers-test` drive a real browser and assert THROUGHPUT — "the mates got
+  back to full", "most of the field got far enough to save", "the grown universe is running its own
+  lineage". Under CPU contention those degrade and the suite reports failures that are not in the
+  code. Measured: `smoke.sh` came back **50 ok / 2 failing** with three 120k-tick `harness-strata`
+  runs alongside it, and `pool-test` (28/0) and `slot-test` (15/0) both passed on a quiet machine
+  minutes later with byte-identical code — green, red, green. **Establish it that way rather than
+  assuming it**: re-run the failing test alone before calling anything contention, because the same
+  symptom is what a real regression in the field's layout looks like.
 - **Never `kill`/`pkill` on a pattern that can match your own shell.** `ps ... | xargs kill` and
   `pkill -f "timeout 900 node substrate-test"` have both taken out the session's own process
   (exit 144) and every sibling run with it. Kill explicit PIDs you have just listed and checked.
