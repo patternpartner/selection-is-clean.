@@ -28,7 +28,11 @@ console.error=()=>{};console.warn=()=>{};};
 // programs keep ops 232-235, genome.opnovStrength, genome.reachGain). Listing them here would have
 // been worse than useless — an env var that silently does nothing is the same trap one level down.
 // What is listed is the set that is genuinely dormant AND genuinely togglable.
-module.exports.KNOBS = ['MUTUALISM','RQ_TRAIT','GENO_PARASITE','SELF_PREDICT','GRIP_SEED','MEME_TRANSFER'];
+// #215 added a gene (motifKeepBias) and its knob and did NOT list it here, which is the exact gap
+// the paragraph above describes. It cost a bisect: substrate-test went red at TICKS=40 and the
+// knob-off control that would have separated a real defect from a random-stream shift could not be
+// run from a harness at all. Plumbed now.
+module.exports.KNOBS = ['MUTUALISM','RQ_TRAIT','GENO_PARASITE','SELF_PREDICT','GRIP_SEED','MEME_TRANSFER','MOTIF_SELECT'];
 module.exports.applyKnobs = function(g){
   for (const kn of module.exports.KNOBS)
     if (process.env[kn] !== undefined) g['__'+kn] = parseInt(process.env[kn], 10);

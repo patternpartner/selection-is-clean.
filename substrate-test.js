@@ -31,6 +31,11 @@
 // Exits non-zero on any failure.   node substrate-test.js
 const fs=require('fs'), path=require('path');
 require(path.join(__dirname,'harness-env.js'))(globalThis);
+// #216b: and apply the knob list. The shim alone stubs the browser APIs; applyKnobs is what makes
+// globalThis.__NAME settable from the environment, and without it every knob in harness-env's
+// KNOBS list is unreachable from this rig -- which is how #215 shipped a gene whose control arm
+// could not be run here. No-op unless one of those env vars is actually set.
+require(path.join(__dirname,'harness-env.js')).applyKnobs(globalThis);
 const code=fs.readFileSync(process.env.INDEX||path.join(__dirname,'engine.html'),'utf8')
   .match(/<script>([\s\S]*)<\/script>/)[1];
 const Module=require('module');
