@@ -20,7 +20,7 @@ RIGS=(oee-meter-test.js verb-test.js attention-test.js worldsignal-test.js cross
       harness-tie.js harness-gates.js harness-meta-ablate.js harness-saturation.js
       harness-atrophy-probe.js harness-coupling.js harness-coupling-asym.js
       harness-alien-ablate.js harness-ablate-reflex.js harness-reflex-leaf.js
-      harness-bridge.js bench-pairs.js)
+      harness-bridge.js harness-attractor.js bench-pairs.js)
 
 # Most rigs take their budget from TICKS. A few define their own names and ignore it — pass those
 # too, or the rig runs its real workload and the smoke pass just times out. (harness-coupling-asym
