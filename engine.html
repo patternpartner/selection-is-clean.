@@ -18899,7 +18899,37 @@ function mutateGenome(){ fired('genome.mutate');
   }
   // Cull atoms that are failed (invalid JS) or proven unused.
   // "Proven unused" = been alive for a mutation cycle with zero uses.
-  if(genome.userAtoms.length>0&&Math.random()<rate*0.1){
+  //
+  // #211: THE rate*0.1 COIN IS GONE, AND THIS IS THE ONLY LINE THE #205-#210 ARC CHANGED.
+  //
+  // It read Math.random()<rate*0.1 with rate ~ 0.06, so the whole removal path opened with
+  // probability ~0.005 on a line mutateGenome reaches about forty times per 12,000 ticks. Measured
+  // (#208, three seeds): one entry per 20,000-63,000 ticks, and the idle cull's four conditions
+  // evaluated ZERO times in 36,000 ticks. atomIdleTolerance was never read at all.
+  //
+  // WHY REMOVING IT IS NOT PICKING THE NUMBER #148 RESERVED. The standing decision above this block
+  // says: "give the lineage a dial and let selection set it ... If releasing idle atoms costs fitness
+  // the gene goes to 0 and stays; if it pays, it rises. That is the whole point and I am not going to
+  // pick the number." The number being reserved is atomIdleTolerance, and that gene is untouched and
+  // still free. The coin sat UPSTREAM of it and meant the dial was never consulted. A dial behind a
+  // door that opens once per 20,000 ticks is not a decision the system gets to make. Deleting the
+  // coin is what lets the reserved decision actually happen.
+  //
+  // AND IT REMOVES A CONSTANT RATHER THAN ADDING ONE. The cadence is now genome.mutationInterval,
+  // which is a gene; the willingness is atomIdleTolerance, which is a gene; the protections are
+  // grace, population-wide uses, alien grip and credit, all measured per atom. Nothing here is a
+  // number a human chose. The coin was the last one and it is the one going.
+  //
+  // COST, which is what a 0.1 guard is usually for: this scan is O(userAtoms), and the bank runs at
+  // 9-18 against a cap of 512 (#206). Ten comparisons per mutation cycle, about forty cycles per
+  // 12,000 ticks. The guard was protecting nothing.
+  //
+  // WHAT ELSE THIS OPENS, stated because it is not only the idle path: the block scans for a FAILED
+  // atom (one whose expression does not compile) before it reaches the idle cull, and that scan was
+  // behind the same coin. Failed atoms will now be cleared on the next mutation cycle rather than
+  // after ~50,000 ticks. #208b measured the failed scan consuming most entries when the door was
+  // forced open, so this is the larger immediate effect and it is deliberate.
+  if(genome.userAtoms.length>0){
     // Find one to remove: prefer failed, then unused-and-aged
     let removeIdx=-1;
     for(let i=0;i<genome.userAtoms.length;i++){

@@ -77,8 +77,9 @@ globalThis.__cgAges=[];          // age in ticks of every get() that HIT
 // Sole-blocker tallies for the idle cull. Kept on globalThis and called from inside the module.
 globalThis.__CG={doorEvals:0,entered:0,doorProbSum:0,emptyBank:0,outer:0,tolZero:0,noTrust:0,bothBlocked:0,bothOpen:0,tolMax:0,winMax:0,
                  atomEvals:0,grace:0,used:0,alien:0,credit:0,soleGrace:0,soleUsed:0,soleAlien:0,soleCredit:0,noneBlocked:0};
+globalThis.CULLDOOR_P=CULLDOOR;
 globalThis.__cullDoor=function(nAtoms,rate){ const C=globalThis.__CG;
-  C.doorEvals++; C.doorProbSum+=Math.max(0,rate*0.1); if(!(nAtoms>0))C.emptyBank++; };
+  C.doorEvals++; C.doorProbSum+=Math.min(1,Math.max(0,globalThis.CULLDOOR_P)); if(!(nAtoms>0))C.emptyBank++; };
 globalThis.__cullGate=function(tol,usePop,winAge,winNeed){ const C=globalThis.__CG;
   C.outer++; if(tol>C.tolMax)C.tolMax=tol; if(winAge>C.winMax)C.winMax=winAge;
   const tolOk=tol>0, trustOk=(usePop===1)&&(winAge>winNeed);
@@ -172,17 +173,21 @@ patch("recv.userAtoms.push({expression:donorExpr,compiled:null,failed:false,uses
 //             in principle keep resetting the clock and never accumulate 2,000 ticks of window.
 //             Sole blocker => the silence is structural and choice never gets a say.
 //   per-atom  grace age, population-wide uses, alien grip, credit.
-// THE OUTER DOOR, which turned out to be the whole answer. The first version of this audit
-// instrumented the tolerance gate and the trust window and got outer:0 -- the block they live in was
-// never entered at all in 3,000 ticks. Everything below them is downstream of one coin flip:
+// THE OUTER DOOR — RETIRED IN #211, AND THIS RIG'S ANCHOR GUARD IS WHAT CAUGHT IT.
+// The first version of this audit instrumented the tolerance gate and the trust window and got
+// outer:0 -- the block they live in was never entered at all. Everything below them was downstream of
 //   if(genome.userAtoms.length>0 && Math.random() < rate*0.1)
-// with rate = genome.mutationRate * stabilityFactor, about 0.06. So the door opens with probability
-// ~0.006 on a path mutateGenome visits roughly forty times per 12,000 ticks. Counting the evaluation
-// separately from the entry is the only way to tell "the conditions were consulted and refused" from
-// "the conditions were never consulted".
-patch("  if(genome.userAtoms.length>0&&Math.random()<rate*0.1){",
-      "  globalThis.__cullDoor(genome.userAtoms.length,rate*"+CULLDOOR+");\n" +
-      "  if(genome.userAtoms.length>0&&Math.random()<rate*0.1*"+CULLDOOR+"){ globalThis.__CG.entered++;",
+// with rate about 0.06, so the door opened with probability ~0.005 on a path mutateGenome visits
+// roughly forty times per 12,000 ticks: one entry per 20,000-63,000 ticks, measured on three seeds.
+// #211 deleted that coin. The line is now unconditional on anything but the bank being non-empty.
+//
+// CULLDOOR survives the change with a new meaning, which is the useful one now: it is the ENTRY
+// PROBABILITY, 1 by default (the shipped engine). Setting CULLDOOR=0.005 re-closes the door to
+// roughly where it was, so the pre-#211 behaviour stays runnable as a control arm rather than only
+// existing in git history.
+patch("  if(genome.userAtoms.length>0){",
+      "  globalThis.__cullDoor(genome.userAtoms.length,rate);\n" +
+      "  if(genome.userAtoms.length>0&&(" + CULLDOOR + ">=1||Math.random()<" + CULLDOOR + ")){ globalThis.__CG.entered++;",
       'cull.door');
 patch("      const _tol=__cl(finiteOr(genome.atomIdleTolerance,0),0,1);",
       "      const _tol=__cl(finiteOr(genome.atomIdleTolerance,0),0,1);\n" +
