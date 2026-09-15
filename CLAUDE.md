@@ -32,6 +32,16 @@ git checkout main && git merge --ff-only <branch> && git push -u origin main
 - `./smoke.sh` — boots every rig briefly. `slot-test`, `layers-test` and `collective-test` drive a
   real browser and are the only things that catch anything about the field's layout or its controls.
 - A single run is not a measurement. Three seeds, or say out loud that it is one seed.
+- **The rig takes minutes and long runs get reaped.** `substrate-test` runs several minutes per
+  budget and `smoke.sh` longer; in the hosted sessions this project is developed in, shell jobs
+  backgrounded with `setsid nohup ... &` were repeatedly killed mid-flight, leaving zero-byte
+  outputs and a flag file that never appears. Runs launched through the agent harness's own
+  background mechanism survived. If a batch comes back with empty files and nothing in `ps`, that
+  is what happened — the runs did not fail, they were reaped. **Stage long batches and write a
+  `.done` marker per stage**, so a reap tells you which stage died instead of losing the lot.
+- **Never `kill`/`pkill` on a pattern that can match your own shell.** `ps ... | xargs kill` and
+  `pkill -f "timeout 900 node substrate-test"` have both taken out the session's own process
+  (exit 144) and every sibling run with it. Kill explicit PIDs you have just listed and checked.
 
 ## Three traps this repo has paid for repeatedly
 
