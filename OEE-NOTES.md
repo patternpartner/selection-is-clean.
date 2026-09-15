@@ -17076,3 +17076,103 @@ is the tile: an unforced world at the same settings never crosses its own death 
 279–325 particles, and finishes at generation 1 with the threshold still sitting where it started.
 So the trap arm's 117–124 CONSECUTIVE deaths are attributable to the forced threshold and to nothing
 else in the arm — which is what a control is for, and this one is unanimous.
+
+## #206 — WHERE DOES SELECTION TERMINATE? A CENSUS OF EVERY PERSISTENCE LAYER
+
+`#205` ended on a sentence that turned out to be the door: in `surface/6`, *"the thing that would be
+selected against survives every death it causes."* That is not a fact about one broken universe. It
+says this system is not one replicator with one mortality boundary — it is a **stack** of them, each
+with its own rule for what gets removed, and **"the system selected X" is underspecified until you
+say at which layer.**
+
+### The test, which is sharper than it sounds
+
+A layer can only be a unit of selection if something removes its occupants **differentially**. So
+classify every removal site in `engine.html` into exactly one of three kinds:
+
+- **CONDITIONAL** — removal depends on a property of the individual (age, uses, credit, amplitude).
+  This is selection.
+- **UNCONDITIONAL** — removal depends only on position or on a cap: a FIFO `shift()`, a ring buffer,
+  a wholesale reset. **Variance is destroyed, not sorted.** In an export this is indistinguishable
+  from selection, because the layer still looks like it is turning over.
+- **NONE** — nothing ever removes anything. The layer only grows.
+
+Then *conditional removals ÷ creations* per layer says where selection stops. `harness-strata.js`,
+three seeds, 12,000 ticks, engine untouched.
+
+### The table
+
+```
+layer                      created (s1/s2/s3)   conditional removals   verdict
+particle                    3648  3059  3030       6930    31    21    SELECTED
+atom (germline bank)          18    10     9          1     0     0    effectively none
+opcode slot                   12     7     5          4     1     2    SELECTED, rare
+motif (cultural memory)       22    20    24          0     0     0    turnover, UNCONDITIONAL
+cluster genome              1623  2707  2069          0     0     0    NO REMOVAL AT ALL
+germline (this universe)       1     1     1          0     0     0    a population of one
+universe                      38    36    53          2     5     1    SELECTED, rare
+```
+
+**Selection terminates at the particle layer.** Above it sit four layers, three of which have no
+working removal at all, and a fourth that works at roughly one event per 4,000 ticks.
+
+### Layer by layer, and the three that are dead
+
+**particle — alive and busy.** Deaths are conditional on escape, physics and age. The accounting
+closes: seed 1 shows 6,930 deaths against 3,648 energy-gated births, and the gap is exactly the 23
+extinctions reseeding ~300 each. (`created` counts `birth.paid` — the reproductive path — not
+reseeds, which is why the two columns are not meant to balance on their own.)
+
+**atom bank — two conditional removal paths, both UNREACHED.** The bank ends at 18/10/9 atoms against
+`MAX_USER_ATOMS = 512`, so `pickAtomToEvict` sits behind a ceiling **twenty-eight times** the observed
+bank size and can essentially never fire. The idle cull fired **0 times on all three seeds** — which
+reproduces, on a different rig at twice the budget, the engine's own note that instrumenting it for
+"6,000 ticks x 6 seeds recorded ZERO culls". This is the cleanest instance in the file of the
+**REACHABLE** rung: declared, exercised (the condition is evaluated every cycle), never reached.
+
+**motif — turnover without selection.** Created 22/20/24 against a cap of 5–8, so fifteen to nineteen
+motifs were dropped per seed, every one of them by `shift()`. **Cultural memory sorts by arrival
+order and by nothing else.** A reader of an export would see a live, turning-over cultural layer.
+
+**cluster genome — no removal exists.** 1,623/2,707/2,069 `set` calls leave 972/1,006/1,037 entries
+against **6–11 live clusters**, and `engine.html` contains **zero** `clusterGenomes.delete` or
+`.clear` sites. About 99% of the Map is clusters that no longer exist. Its own declaration comment
+reads *"Selection: clusters that bud successfully propagate their clusterGenome"* — propagation is
+implemented; the other half of selection is not.
+
+**germline, within one universe — a population of one.** There is no variance to sort. Extinction
+reseeds *from* it (`saveGenome()` after `N=0`), so it is not even a removal. Germline selection is
+only possible BETWEEN universes.
+
+**universe — selection exists, and it is rare.** 38/36/53 created against 2/5/1 merges, with founding
+refused 356/538/371 times. So the layer where germline variants could be sorted is running at about
+one sorting event per four thousand ticks.
+
+### What this says about `surface/6`, and it is the whole point
+
+`extinctionThresh` is a germline gene. The germline layer is the **widest part of the dead zone** —
+no variance within a universe, and the only machinery that could sort it lives one level up and fires
+about once per 4,000 ticks. So `#205`'s measurement (net threshold movement of −12/+3/+1 over ~120
+extinctions, indistinguishable from no selection) was not a surprising result about that gene. It is
+what this table predicts for **every** germline gene. `surface/6` is not a universe that went wrong.
+It is a universe that made the dead zone visible.
+
+### And a caveat about atom provenance that changes the shape of the atom layer
+
+```
+seed   expressions authored   inserted into germline   arrived by HGT   seeded into particles
+ 1            570                      18                   132                 59
+ 2            167                      10                   142                 41
+ 3            113                       9                   317                 72
+```
+
+**Atoms enter genomes by transfer far more often than by germline authoring** — 132–317 by horizontal
+transfer against 9–18 authored into the germline bank. So the bank is not mainly a record of what a
+lineage invented. Any claim of the form "this universe evolved these atoms" has to survive that ratio
+first.
+
+**Instrument correction, recorded because it was nearly published.** The rig's first run read
+`fired('atom.author')` as the creation event and reported 570 creations against a bank holding 18.
+`atom.author` sits at the top of `uaGenExpression()`, which GENERATES an expression; the layer's
+creation event is the push into `genome.userAtoms`. An order of magnitude, and it would have made the
+atom layer's ratio meaningless. Now counted at all four push sites, split by provenance.

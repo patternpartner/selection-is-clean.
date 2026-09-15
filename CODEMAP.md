@@ -2694,3 +2694,33 @@ whole content of #205.
 the achievable population — that was the wrong hypothesis and the rig killed it), `TRAP=<n>` absolute
 or `TRAPREL=<d>` relative to the run's own peak, `CAD=<n>`, `CLAMP=1` (make `maybe()` honour its
 declared bounds — an instrument arm, never an engine change), `TRAPAT`, `TICKS`, `SEED`.
+
+## The persistence stack — seven layers, and selection reaches two of them
+
+Measured by `harness-strata.js` (#206), three seeds, 12,000 ticks. Every removal site is classified
+CONDITIONAL (a trait of the individual decides — selection), UNCONDITIONAL (position or a cap decides
+— variance destroyed, not sorted) or NONE.
+
+| layer | where | removal | verdict |
+|---|---|---|---|
+| particle | `palive[i]=0`, 20039/20059/20097 | escape / physics / age | **SELECTED** |
+| atom bank | `genome.userAtoms`, push 18715 | `pickAtomToEvict` 18702 (needs 512), idle cull 18979 | declared, **unreached** |
+| opcode slot | `genome.uaOps`, 18759 | `atom.opCull` 18753 | SELECTED, rare |
+| motif | `genome.stableMotifs`, 28172 | `shift()` 18057 + 28172 | **FIFO only** |
+| cluster genome | `clusterGenomes` Map, 13089 | **none in source** | **NO REMOVAL** |
+| germline | `genome`, `saveGenome()` 19357 | extinction reseeds FROM it | population of one |
+| universe | `cosmos.launch` / `cosmos.found` | `cosmos.merge` | SELECTED, ~1 per 4,000 ticks |
+
+Three facts worth carrying:
+
+- **`MAX_USER_ATOMS` is 512 and the bank runs at 9–18.** The eviction path is behind a ceiling
+  twenty-eight times the observed size. The idle cull fires zero times — the engine's own comment at
+  18979 says the same thing from a different rig ("6,000 ticks x 6 seeds recorded ZERO culls").
+- **`clusterGenomes` only grows.** 972–1,037 entries against 6–11 live clusters; no `delete`, no
+  `clear`, no cap anywhere in `engine.html`. Its declaration comment claims selection over cluster
+  genomes; propagation is implemented and removal is not.
+- **Atoms arrive by transfer more often than by authoring**: 132–317 by HGT against 9–18 authored
+  into the germline bank. "This universe evolved these atoms" has to survive that ratio.
+
+`harness-strata.js` asserts every rewrite anchor appears an exact number of times, so a refactor that
+moves a site fails the rig loudly instead of reporting a zero that reads as a finding.
