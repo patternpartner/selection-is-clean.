@@ -3,6 +3,34 @@
 An open-ended-evolution artwork. `engine.html` is one universe; `universe.html` is a Web Worker
 shell around it; `index.html` is a field of them; `metabolism.html` is the panel.
 
+## What this is for, and what would count as progress
+
+The artwork is the claim that novelty keeps arriving. Everything else in this file is machinery for
+not fooling yourself about that, and machinery is not the subject. **A session that ends with a
+greener rig and an unchanged universe has not moved the work**, however much it found — and `#216`
+is the standing example: seven unsound rows fixed, seven real defects, four engine lines changed.
+That batch was worth doing. A second one exactly like it would not be.
+
+So before you push, be able to answer *what moved in the universe, and against which number*. Green
+is not that number. Green says the instrument is honest; it says nothing about the thing measured.
+
+**The dependent variable went missing, and this is where it went.** Entry `#11` reports
+`entropyRatio 0.44 -> 0.69`, `kinds 5.0 -> 10.8`, `collapsing: yes` — hard, comparable, and failing
+in a way that pointed somewhere. By `#216` the reported figure is `259/0` across 21 seed-and-budget
+arms, which is a measurement of the rig. The swap happened gradually and nobody chose it. **If the
+headline number in your entry is a pass count, you are reporting on the wrong artifact.**
+
+- `node harness-variance.js` — how many of the 191 genome keys actually hold more than one value
+  across the living population, and whether that variance is retained over the run. Selection needs
+  variance; a gene read a million times a tick and held at one value is a constant wearing a gene's
+  name. `#209` asks whether a gene is read and `#210` whether it was read this run; **neither asks
+  whether it moves**, which is the question selection cares about. Multi-seed, zero draws consumed.
+- A verdict about diversity is a verdict about a HORIZON (`#66`: every diversity result in that
+  session was measuring a transient). Say the budget out loud or the claim has no scope.
+- **Variance is not selection.** Drift produces variance too, and `#209` warns that every
+  spread-across-universes figure this project has cited is consistent with drift until the read is
+  instrumented. The census reports raw material, not sorting. Do not upgrade one to the other.
+
 ## Branching
 
 **Always update `main`.** Work on whatever feature branch the session designates, but do not leave

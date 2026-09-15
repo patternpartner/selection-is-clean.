@@ -18591,3 +18591,132 @@ population again — of germlines, one per universe — and `index.html` is wher
 one, and resumes above it.** The three engine changes in this batch did not extend selection upward;
 they filled in the layers between the particle and the universe that were populations all along and
 had no sorting in them.
+
+## #217 — THE VARIANCE CENSUS: A READ IS NOT A MOVE
+
+`#209` classified all 191 genome keys statically (does a read site exist outside the genome's own
+plumbing?) and `#210` dynamically (was it read in this run?). Both measure whether the engine LOOKS
+at a gene. **Neither measures whether the gene has anything to look at.** Selection sorts variance;
+a gene read a million times a tick and held at one value by every living particle is a constant
+wearing a gene's name, and it will pass both censuses.
+
+`CODEMAP` states the suspicion twice — *"'evolvable' often means 'will sit at a bound'"*, *"most are
+inert"* — and `#216p` paid for a bespoke audit to answer it for ONE gene. This answers it for all of
+them, and it is the number this project stopped reporting.
+
+### Method, and the three things it refuses to do
+
+Read off the LIVING POPULATION, never the germline. Structure is authored on `genome` and selection
+only ever sees `pGenome[i]`; the germline figure is printed alongside only so the two can be seen to
+disagree. **It draws nothing** (CLAUDE.md trap 4): every figure is a property read on a plain
+object, no engine function is called to observe state, so the census cannot move the trajectory it
+reports on. Keys are parsed from the `let genome={` literal rather than listed, so a gene added later
+shows up as unexamined rather than as absent. Clamp bounds are read out of `sanitizeGenome`; a bound
+that is an identifier (`DIMS_MAX`, `SOMA_REPAIR_MAX`) is left unknown rather than guessed, and no
+PINNED verdict is offered for those keys.
+
+### The confound, found at 40 ticks, before any of the real runs
+
+The first run reported **173 of 191 VARYING** and it means almost nothing: the population is SEEDED
+with variance at boot, and all 173 varied at sample zero. Nothing had evolved. A single-sample
+"distinct > 1" is a statement about the seeding, not about the run.
+
+The quantity that is not confounded by seeding is what happens to that variance over time, so the
+rig samples a trajectory and reports variance RETAINED. And the retention ratio needed its own check
+before it could be believed — if `distinct` simply equalled the headcount, the ratio would be
+measuring population size with extra steps. It does not: at 169 living particles the typical VARYING
+gene holds **10 to 25** distinct values, 0 of 176 are saturated, and 175 of 176 sit below 0.9x the
+headcount. `distinct` is tracking the number of distinct LINEAGE variants, which is the same
+quantity `#11` called `kinds`.
+
+### Result — six seeds, TICKS=3000
+
+```
+seed  alive0->aliveN   VARY SWEPT PIN FLAT   retention   pop    per capita
+  1    329->169         176    0   0   15      0.782    0.514     1.523
+  2    329->190         176    0   0   15      0.796    0.578     1.379
+  3    329->198         176    0   0   15      0.874    0.602     1.453
+  4    329->181         175    0   0   16      0.843    0.550     1.532
+  5    329->201         176    0   0   15      0.840    0.611     1.375
+  6    329->201         176    0   0   15      0.809    0.611     1.324
+```
+
+**CODEMAP's prediction does not reproduce. Zero genes are pinned at a clamp bound, on 6 of 6 seeds.**
+That claim has been sitting in the map as an observation about the system's character and at this
+budget it is simply not what the population does.
+
+**Variance per capita RISES.** Variance falls to ~0.82 while the population falls to ~0.58: the
+world is losing particles faster than it is losing kinds. Whatever is killing particles here is not
+sorting them onto one genotype.
+
+**Zero SWEPT on every seed** — no gene lost all its variance. So there is no completed sweep at this
+budget either, which is the other half of the same reading: raw material is neither being exhausted
+nor being concentrated.
+
+**Three keys GAINED variance during the run**: `userAtoms` (6/6), `boundOpcodes` (6/6), `userEffects`
+(5/6). Those are the self-authoring layer coming online — they boot empty and identical in every
+particle, so they are the only keys here whose variance was earned rather than seeded.
+
+### The 15 FLAT keys, decomposed — and most of them are correct
+
+Identical on all six seeds, so this is structure and not trajectory. `inherit-test.js` classifies 15
+of the 191 keys (`MUST_OWN` 10, `MUST_SHARE` 5) and its own header says why that matters: *"a manual
+list is a thing you forget."* The census walks all 191 and the FLAT set lands in three groups:
+
+- **Eight are deliberate.** `lineage`, `eventLog`, `epochs`, `metaCredit`, `shadowScenarioBank` are
+  `inherit-test`'s `MUST_SHARE` — the self's bookkeeping, asserted shared on purpose. `generation`,
+  `totalTicks`, `extinctions` are `CHILD_NOT_A_GENE` (`#140`). FLAT is the correct reading of all
+  eight and nothing is wrong with them.
+- **Four are owned but have never diverged.** `fitnessSensors`, `objCreditTrace`, `prevObjValues`,
+  `rend` are in `MUST_OWN` and are genuinely deep-copied — measured by reference identity, 243 of
+  243 living particles hold their own object. They are FLAT on CONTENT, not on ownership. The
+  crossing works; nothing has used it yet at this budget.
+- **Three are in neither list**: `fitnessHistory`, `stableMotifs`, `chemistryTable`.
+
+### `chemistryTable` — evolvable, and a population of one
+
+Taken to the end because the first two readings of it were wrong and the third is measured.
+
+`cloneGenome` does `{...src}` and then deep-copies eight structures by hand with a comment calling
+reference-sharing *"the single most repeated bug in this file's history"*. `chemistryTable` is not
+one of the eight. Measured by reference identity: **169 of 169 living particles point at the
+germline's table object.**
+
+The first reading — a fresh instance of `#102`/`#130`/`#132b`/`#133b`/`#155` — was wrong, and the
+cheap test that would have settled it is whether anything mutates it. The second reading, that
+nothing does and the sharing is therefore harmless, was also wrong: `mutateGenome` mutates the
+recipes in place at `chemistryMutRate` (engine.html ~17810), and it fires. The digest over a
+3000-tick run:
+
+```
+t=1     SAME as boot        t=1801  CHANGED (len 276)
+t=601   SAME as boot        t=2401  CHANGED (len 272)
+t=1201  CHANGED (len 280)   t=3001  CHANGED (len 273)
+```
+
+So the chemistry evolves, and **it evolves for every particle at once**. There is exactly one
+chemistry in a universe at any moment; two variants never coexist; nothing can prefer one to the
+other. `CODEMAP` records it as *"Evolvable chemistry ... Mutates at chemistryMutRate 0.02"*, which
+is true about mutation and silent about selection.
+
+**This is `#216q`'s result arriving at a layer its table does not list.** That entry concluded that
+selection terminates at every layer whose population size is one. The chemistry is such a layer, and
+unlike the germline it does not have to be: the fix is one line in `cloneGenome` alongside the eight
+that are already there. **Not filed as a defect and not fixed here**, because whether chemistry
+SHOULD be per-lineage is a design question about the artwork — a shared table is a shared world, and
+an owned one is 169 private physics. The notes have never mentioned `chemistryTable` in 18,000
+lines, so there is no standing decision to consult, and inventing one inside a measurement entry is
+how `#205` happened.
+
+### What this does NOT claim
+
+**Variance is not selection.** Drift produces variance too — `#209`'s own warning is that every
+spread-across-universes figure this project has cited is consistent with drift until the read is
+instrumented, and this census does not instrument the read. It reports raw material. Whether
+anything is sorting that material is the next question and this rig does not answer it.
+
+**And every number here is scoped to TICKS=3000.** `#66` is the standing lesson: every diversity
+verdict in that session was measuring a transient. FLAT means "did not move in 3000 ticks on this
+seed", not "cannot move" — a gene whose operator fires once per 10k ticks is FLAT here and live at
+30k. A 20,000-tick arm on three seeds is running and will be appended; until it lands, the
+per-capita rise above is a claim about the first 3000 ticks and nothing longer.
