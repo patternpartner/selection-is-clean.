@@ -18096,3 +18096,51 @@ from a counter that cannot fire on it, `#216h` read the wrong `centroid`'s contr
 explosion from an empty lattice. **Four wrong mechanisms, all caught by measurement, none of which
 would have been reached by reading the code harder.** The trace-then-state order cost about the same
 effort and produced the answer directly.
+
+### #216j — a rounded comparison that `#203` turned into a bomb with a long fuse
+
+Fifth flickering row, found once the default budget was also run across seeds:
+
+```
+#199 the write is paid for   SELFWRITE_COST = 0.005343089135363699, charged 0.00534
+```
+
+The rig computed `paid = +(a0-amp[pi]).toFixed(5)` and asserted `Math.abs(paid-cost) < 1e-6` against
+the **unrounded** cost. **A rounding granularity of up to 5e-6 tested against a 1e-6 tolerance**,
+which fails structurally whenever the cost's sixth decimal is far enough from zero — most values.
+
+It survived because `SELFWRITE_COST` used to sit on a short decimal. **`#203` made that price a LAW**,
+so it drifts to arbitrary decimals, and the row became unsound at that moment. Nobody saw it because
+the law had not drifted far enough yet, and because until `#216d` the rig only ever ran one
+trajectory.
+
+Compared raw now, displayed rounded: `|paid-cost| = 9.57e-9` on that seed. `amp` is a `Float32Array`,
+so the raw difference carries about 1e-8 of representation error at these amplitudes — **the 1e-6
+tolerance was always fine and the rounding was the whole defect.**
+
+**And the class was swept rather than left as a claim.** `#197` and `#203` moved twenty constants
+into the law machinery so the world can price itself, and every rig assertion comparing against one
+of them at fixed precision is the same bomb. Searched all twenty: exactly one other tolerance
+comparison exists (`CHANNEL_RENT` at line 2534, `1e-3`), and `rentAt` returns raw float64 with no
+rounding on either side, so it is sound. **The class has one member and it is fixed.**
+
+### Where the rig stands, and what changed about it
+
+```
+TICKS=900   four seeds x both FOUND arms       8/8 at 258/0
+TICKS=40    six seeds                          6/6 at 258/0
+default     six seeds                          running
+smoke.sh                                       52 ok, 0 failing
+```
+
+Five rows were red at some budget-and-seed when this started and none were engine bugs. Every one was
+an assertion measuring something other than its name:
+
+- **`#216c` census** — asserted population survival under a name about the census.
+- **`#216f` seeder** — asserted something structurally impossible, on a counter unsound in both
+  directions where `#206` had fixed one.
+- **`#216g` virgin** — a presence assertion 42 calls short of the event.
+- **`#216i` torus** — measured whether a mutation cycle had fired.
+- **`#216j` selfwrite** — compared a rounded value against an unrounded law.
+
+**The rig was never testing the engine as badly as it was testing itself.**
