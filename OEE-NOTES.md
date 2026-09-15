@@ -17889,3 +17889,70 @@ witness: 29 checks, 29 correct, 1 tie — the true minimum s*c spliced every tim
 And in the unforced arms the dial still reads 0 / 0 / 0.034 with `evictQuality` at zero. The
 mechanism is correct, reachable, and **so far unexercised by the system's own choice** — which is the
 honest state of it and not a defect.
+
+## #216c — TWO ASSERTIONS THAT TESTED SOMETHING OTHER THAN THEIR NAME, AND A CONTROL ARM THAT NEVER EXISTED
+
+`#215` turned `substrate-test` red at `TICKS=40` — 256/1, *"the level census reports the levels
+present: particle:0"* — while default, `TICKS=900` and `FOUND=0` were all green. That is the
+budget-sensitivity pattern `CLAUDE.md` warns about, where three of four such rows were real bugs.
+
+### The bisect, and then the control that could not be run
+
+```
+fd71846  #211 cull door        95 alive   257/257
+41452b0  #212 clusterGenomes   95 alive   257/257
+794e697  #215 motifKeepBias     0 alive   256/1
+```
+
+Mine. And then the control arm could not be run at all, because `#215` added a gene and a knob and
+never listed `MOTIF_SELECT` in `harness-env.js`'s `KNOBS` — the exact gap that file's own comment
+describes: *"a knob with no explicit env line is unreachable from a harness … a knob that cannot be
+turned off is not a control, so the plumbing goes in before any ablation claim does."*
+
+**And `substrate-test` never called `applyKnobs` at all**, so every knob in that list was unreachable
+from the acceptance rig, not just mine. Both fixed.
+
+### With the control runnable, `#215` is exonerated and the ROW is the defect
+
+```
+                                              alive after the 1,500-tick block
+MOTIF_SELECT=0  (gene never created)                    95      257/257
+default         (gene created, sitting at 0)             0      256/1
+```
+
+`motifEvict` at bias 0 is behaviourally identical to `shift()` and draws nothing. The difference is
+the single extra `Math.random()` from the gene's own `maybe()` line shifting the trajectory.
+
+**Six seeds, both arms, `TICKS=40`:**
+
+```
+gene present   5 of 6 survive   seed 1 dies
+gene absent    4 of 6 survive   seeds 3 and 6 die
+```
+
+**It fails on BOTH arms and MORE OFTEN without `#215`.** `smoke.sh` runs seed 1 only, so the suite
+had been passing on which seed happened to land where, and `#215` moved seed 1 into the failing set
+without making anything worse.
+
+### The row asserted population survival under a name about the census
+
+`levelCensus` counts particles, clusters, towers and forests. With zero particles it correctly
+reports nothing present — the machinery worked, there was nothing to count. So `present>=1` was
+really *"did the population survive 1,500 ticks after this file spent 2,800 lines battering the
+genome"*. **Same shape as `#206`'s seeder row: an assertion testing something other than what it
+claims, red at one budget and green at another for exactly that reason.** Two of these in one
+session, both mine, both found by the budget discipline rather than by reading the code.
+
+It now asserts what the name says — the census returns its four rows — plus the one safe implication:
+if anything is alive, at least one level must be present. The `alive` count and the six-seed survival
+rate ride in the message, so a run that dies is **visible rather than silent**. All six seeds at
+`TICKS=40` are now 257/257, seed 1 included, with its death still printed.
+
+### And `FOUND=0` has never been a control either
+
+`CLAUDE.md` instructs every session to run the acceptance rig *"with `FOUND=0` as well as on"*.
+**Nothing in this repository reads `process.env.FOUND`.** The engine reads `globalThis.__FOUND`
+(`foundOn()`, 4662), `FOUND` is absent from `KNOBS`, and until `#216b` `substrate-test` did not call
+`applyKnobs`. So `FOUND=0 node substrate-test.js` has been byte-identical to `node substrate-test.js`,
+and every session that followed the instruction ran the same thing twice believing it had a control.
+The project's front page instructs an arm that does not exist.
