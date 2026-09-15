@@ -2724,3 +2724,25 @@ Three facts worth carrying:
 
 `harness-strata.js` asserts every rewrite anchor appears an exact number of times, so a refactor that
 moves a site fails the rig loudly instead of reporting a zero that reads as a finding.
+
+## The crossings (#207) — which layer can reach which, and in what direction
+
+| crossing | site | rate (12k ticks, 3 seeds) | conditional? |
+|---|---|---|---|
+| `clusterGenomes` -> live cluster | `.get(bestMatch.hash)` 13464 | 916/823/942 reads, **max hit age 60 ticks** | n/a — one cycle deep |
+| cluster VM -> global `vmProgram` | `collectClusterUpstream` 17191, drain 17970 | donated 15/19/21, drained 15/11/13 | **YES** — quality-sorted |
+| `stableMotifs` -> reseeded particle | extinction reseed 19284 | 1981 / 0 / 0 | no — uniform draw |
+| atom bank -> particle program | `seedAtomIntoParticle` 3647 | 59 / 41 / 72 | no |
+| `creditTrace` -> atom removal | computed 16232, read by cull 18968 | **computed 41, consumer fired 0** | the wire is unterminated |
+
+Two things to carry:
+
+- **`clusterGenomes` is one detection cycle deep.** `detectClusters()` is inside `if(tick%60===0)`
+  (27725/27828), and across 2,681 reads the store never once returned an entry older than 60 ticks.
+  Its declaration says "carries forward across detection cycles" — singular, as it turns out.
+- **`stableMotifs` is only read on reseed.** A universe with no extinctions never touches its own
+  cultural memory: 1,981 crossings in the seed with 23 extinctions, zero in the two with none.
+
+Direction is the finding. Every crossing moves content DOWN into the layer where removal is
+conditional; none carries the verdict back UP. `collectClusterUpstream` is the sole exception and
+fires about once per 700 ticks.

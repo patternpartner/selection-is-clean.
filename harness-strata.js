@@ -232,6 +232,13 @@ console.log(JSON.stringify({
   layers,
   cosmos:{launch:L('cosmos.launch'),found:L('cosmos.found'),merge:L('cosmos.merge'),foundRefused:L('cosmos.foundRefused')},
   atomCullIdleFirings:L('atom.cull.idle'),
+  // THE FEEDBACK SIGNAL AND ITS CONSUMER, side by side. applyCreditAssignment computes per-atom
+  // creditTrace -- the one quantity in this engine that carries a VERDICT from the layer where
+  // selection happens back up to the atom bank. The idle cull is the thing that reads it and acts.
+  // Printing the producer next to the consumer is the whole point: a signal computed thousands of
+  // times whose only consumer fires zero times is not a weak selection pressure, it is an
+  // unterminated wire.
+  creditLoop:{ signalComputed:L('atom.credit'), consumerFired:L('atom.cull.idle')+L('atom.cull') },
   // Reported beside the layer row, not inside it: uaGenExpression() calls are NOT bank insertions.
   atomFlow:{expressionsAuthored:L('atom.author'), insertedGermline:S['atom.insert.germline']|0,
             arrivedByWire:S['atom.insert.wire']|0, arrivedBySeed:S['atom.insert.seed']|0,

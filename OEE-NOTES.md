@@ -17176,3 +17176,86 @@ first.
 `atom.author` sits at the top of `uaGenExpression()`, which GENERATES an expression; the layer's
 creation event is the push into `genome.userAtoms`. An order of magnitude, and it would have made the
 atom layer's ratio meaningless. Now counted at all four push sites, split by provenance.
+
+## #207 — THE CROSSING CENSUS: EVERY DOWNWARD PATH WORKS, AND NOTHING COMES BACK UP
+
+`#206` said where selection terminates. The follow-on, put well from outside: *"Can information
+accumulated at one layer eventually become exposed to selection at another?"* That is measurable, so
+it was measured. Three seeds, 12,000 ticks, `harness-strata.js`, engine untouched.
+
+**The number that separates a memory from a leak is not the size of the store. It is the AGE of the
+entries that get read back.**
+
+### `clusterGenomes` is a one-cycle carry-over wearing the costume of a memory
+
+It has exactly **one** read site: a newly detected cluster that matches a previous one BY HASH
+inherits its genome. So every write was timestamped and every hit's age recorded.
+
+```
+seed   reads   hits   hit rate   writes   entries   hit age min/median/max   hits older than 1000 ticks
+  1     916     916      100%     1623      972            0 / 60 / 60                   0
+  2     823     823      100%     2707     1006            0 / 60 / 60                   0
+  3     942     942      100%     2069     1037            0 / 60 / 60                   0
+```
+
+`detectClusters()` runs inside `if(tick%60===0)`. **The maximum hit age is 60 ticks on all three
+seeds — exactly one detection cycle — across 2,681 reads.** Not once did the store return an entry
+older than the immediately preceding cycle.
+
+So the effective depth is **one cycle**, and the ~1,000 entries a long run accumulates are
+unreachable from the moment the next cycle begins. This is a **third category** beside `#206`'s two:
+
+- **no remover** — the layer only grows (what `#206` called this one, and it is true but not the
+  interesting part),
+- **remover unreachable** — the atom bank's cull, gated on a state never approached,
+- **and a store that reads as a memory layer in every snapshot and never functions as one.**
+
+The declaration comment says *"Persistence: clusterGenomes[hash] carries forward across detection
+cycles."* That is exactly right and exactly one cycle wide. The word doing the damage is "persistence".
+
+### The other three crossings all WORK — downward
+
+```
+crossing                          seed 1    seed 2    seed 3    conditional?
+cluster VM -> global vmProgram     15/15     19/11     21/13    YES (quality-sorted drain)
+motif -> reseeded particle          1981         0         0    no (uniform draw)
+atom -> particle program              59        41        72    no
+```
+
+**`collectClusterUpstream` is the one genuinely working upward crossing in this engine.** Qualifying
+clusters donate a VM motif to a buffer; the buffer is sorted by quality and drained into the GLOBAL
+program. Donations 15/19/21 against drains 15/11/13 — the channel is not backing up. Rare (about 1.5
+per 1,000 ticks) but real, and the drain is conditional, which makes it the only place in the file
+where something a cluster discovered is sorted on its way up.
+
+**And `stableMotifs` turns out to be a DEATH-TRIGGERED store.** 1,981 motif-to-particle crossings in
+seed 1, which had 23 extinctions, and **zero** in seeds 2 and 3, which had none. The cultural layer is
+read only on reseed. **A universe that never dies never uses its cultural memory at all.**
+
+### The asymmetry, which is the actual answer
+
+Every crossing measured moves content DOWNWARD into the layer where removal is conditional. **Not one
+of them carries the verdict back up.**
+
+- A motif whose seeded descendants all die is not removed one tick sooner than one whose descendants
+  thrive. Removal is `shift()`.
+- An atom whose carriers die keeps its bank slot.
+- A cluster genome entry is simply never looked at again.
+
+### And the one wire that was built to carry a verdict upward is unterminated
+
+`applyCreditAssignment` computes per-atom `creditTrace` — the single quantity in this engine that
+carries a result from the selected layer back up to the bank. The idle cull is what reads it and acts.
+
+```
+signal computed (atom.credit)   41
+consumer fired (atom.cull*)      0        — 2,500 ticks, seed 7
+```
+
+Zero on every seed of `#206` at 12,000 ticks too. **This is not a weak selection pressure. It is a
+signal computed thousands of times with no consumer that ever acts on it** — the feedback half of the
+loop is written, evaluated, and terminates in nothing.
+
+So the architecture, stated at the width the measurements support: **downward crossings work,
+upward feedback does not exist**, except through `collectClusterUpstream`, which is one channel out of
+four and fires about once per 700 ticks.
