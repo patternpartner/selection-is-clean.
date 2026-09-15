@@ -65,6 +65,21 @@ globalThis.__S={};
 // cluster hashes are lexical bindings there and cannot be read from this file.
 globalThis.__cgTick=new Map();   // hash -> tick it was last written
 globalThis.__cgAges=[];          // age in ticks of every get() that HIT
+// Sole-blocker tallies for the idle cull. Kept on globalThis and called from inside the module.
+globalThis.__CG={doorEvals:0,entered:0,doorProbSum:0,emptyBank:0,outer:0,tolZero:0,noTrust:0,bothBlocked:0,bothOpen:0,tolMax:0,winMax:0,
+                 atomEvals:0,grace:0,used:0,alien:0,credit:0,soleGrace:0,soleUsed:0,soleAlien:0,soleCredit:0,noneBlocked:0};
+globalThis.__cullDoor=function(nAtoms,rate){ const C=globalThis.__CG;
+  C.doorEvals++; C.doorProbSum+=Math.max(0,rate*0.1); if(!(nAtoms>0))C.emptyBank++; };
+globalThis.__cullGate=function(tol,usePop,winAge,winNeed){ const C=globalThis.__CG;
+  C.outer++; if(tol>C.tolMax)C.tolMax=tol; if(winAge>C.winMax)C.winMax=winAge;
+  const tolOk=tol>0, trustOk=(usePop===1)&&(winAge>winNeed);
+  if(!tolOk&&!trustOk)C.bothBlocked++; else if(!tolOk)C.tolZero++; else if(!trustOk)C.noTrust++; else C.bothOpen++; };
+globalThis.__cullAtom=function(grace,used,alien,credit){ const C=globalThis.__CG;
+  C.atomEvals++;
+  if(grace)C.grace++; if(used)C.used++; if(alien)C.alien++; if(credit)C.credit++;
+  const n=(grace?1:0)+(used?1:0)+(alien?1:0)+(credit?1:0);
+  if(n===0)C.noneBlocked++;
+  else if(n===1){ if(grace)C.soleGrace++; else if(used)C.soleUsed++; else if(alien)C.soleAlien++; else C.soleCredit++; } };
 globalThis.__cgNote=function(h,t){ try{ globalThis.__cgTick.set(h,t); }catch(e){} };
 globalThis.__cgRead=function(h,t,hit){ try{
   globalThis.__S['cg.get']=(globalThis.__S['cg.get']||0)+1;
@@ -76,6 +91,21 @@ globalThis.__bump=bump;
 
 // Every anchor is asserted exactly once. A rig that silently reports zero because a site moved is
 // worse than no rig: it reads as a finding.
+const CULL_INNER_OLD = [
+  '          if((a.age|0)<=UA_GRACE_AGE)continue;',
+  '          if((__atomExprUses.get(a.expression)||0)!==0)continue;      // ran this window, population-wide',
+  '          if(_alienSelectC&&alienGrip(a)>0)continue;'
+].join('\n');
+const CULL_INNER_NEW = [
+  '          {let _cr0=0;',
+  '           if(__ATOM_CREDIT&&a.creditTrace>0)_cr0=a.creditTrace;',
+  '           if(__EXPR_CREDIT){const _pc0=__atomExprCredit.get(a.expression)||0; if(_pc0>_cr0)_cr0=_pc0;}',
+  '           globalThis.__cullAtom((a.age|0)<=UA_GRACE_AGE,(__atomExprUses.get(a.expression)||0)!==0,',
+  '                                 !!(_alienSelectC&&alienGrip(a)>0),_cr0>0);}',
+  '          if((a.age|0)<=UA_GRACE_AGE)continue;',
+  '          if((__atomExprUses.get(a.expression)||0)!==0)continue;      // ran this window, population-wide',
+  '          if(_alienSelectC&&alienGrip(a)>0)continue;'
+].join('\n');
 const fails=[];
 function patch(anchor,replacement,label,expect){
   const n=code.split(anchor).length-1;
@@ -112,6 +142,44 @@ patch("_g.userAtoms.push({expression:_a.expression,compiled:null,failed:false,us
 patch("recv.userAtoms.push({expression:donorExpr,compiled:null,failed:false,uses:0,state:0,creditTrace:_seedCT});",
       "globalThis.__bump('atom.insert.hgt'),recv.userAtoms.push({expression:donorExpr,compiled:null,failed:false,uses:0,state:0,creditTrace:_seedCT});",
       'atom.insert.hgt');
+
+// ── WHY THE IDLE CULL NEVER FIRES — A SOLE-BLOCKER AUDIT (#208)
+// #206 found the atom bank's idle cull firing zero times on every seed, and #207 found the wire that
+// feeds it (creditTrace) computed and consumed by nothing. Before calling that unreachable, the gate
+// has to be taken apart: this project has a standing rule that an unfired thing is not automatically
+// a defect, and the cull's OWN comment is a standing decision -- "If releasing idle atoms costs
+// fitness the gene goes to 0 and stays; if it pays, it rises. That is the whole point and I am not
+// going to pick the number." So a cull that is silent because atomIdleTolerance sat at 0 is the
+// system deciding, and must not be reported as a broken mechanism.
+//
+// The two readings are distinguishable, and harness-gates.js already established how: count, for each
+// term, how often it was the SOLE blocker. A term that is never the sole blocker cannot be what is
+// holding the gate shut.
+//
+//   _tol      genome.atomIdleTolerance, seeded at 0, walked by maybe(...,0.15), __cl'd to [0,1].
+//             Sole blocker => the silence is the lineage's own choice.
+//   _trust    __ATOM_USE_POP && (tick - __atomUseWindowStart) > ATOM_IDLE_WINDOW (2000). The window
+//             start is RESTAMPED every time __atomExprUses passes 5,000 entries, so a busy world can
+//             in principle keep resetting the clock and never accumulate 2,000 ticks of window.
+//             Sole blocker => the silence is structural and choice never gets a say.
+//   per-atom  grace age, population-wide uses, alien grip, credit.
+// THE OUTER DOOR, which turned out to be the whole answer. The first version of this audit
+// instrumented the tolerance gate and the trust window and got outer:0 -- the block they live in was
+// never entered at all in 3,000 ticks. Everything below them is downstream of one coin flip:
+//   if(genome.userAtoms.length>0 && Math.random() < rate*0.1)
+// with rate = genome.mutationRate * stabilityFactor, about 0.06. So the door opens with probability
+// ~0.006 on a path mutateGenome visits roughly forty times per 12,000 ticks. Counting the evaluation
+// separately from the entry is the only way to tell "the conditions were consulted and refused" from
+// "the conditions were never consulted".
+patch("  if(genome.userAtoms.length>0&&Math.random()<rate*0.1){",
+      "  globalThis.__cullDoor(genome.userAtoms.length,rate);\n" +
+      "  if(genome.userAtoms.length>0&&Math.random()<rate*0.1){ globalThis.__CG.entered++;",
+      'cull.door');
+patch("      const _tol=__cl(finiteOr(genome.atomIdleTolerance,0),0,1);",
+      "      const _tol=__cl(finiteOr(genome.atomIdleTolerance,0),0,1);\n" +
+      "      globalThis.__cullGate(_tol,__ATOM_USE_POP?1:0,tick-__atomUseWindowStart,ATOM_IDLE_WINDOW);",
+      'cull.outer');
+patch(CULL_INNER_OLD, CULL_INNER_NEW, 'cull.inner');
 
 // ── CLUSTER-GENOME LAYER. clusterGenomes is a Map keyed by cluster hash that carries a cluster's
 // evolved parameters across detection cycles. The engine's own comment at its declaration says
@@ -239,6 +307,13 @@ console.log(JSON.stringify({
   // times whose only consumer fires zero times is not a weak selection pressure, it is an
   // unterminated wire.
   creditLoop:{ signalComputed:L('atom.credit'), consumerFired:L('atom.cull.idle')+L('atom.cull') },
+  // Sole-blocker audit. tolZero dominating means the LINEAGE chose; noTrust dominating means the
+  // window clock is structural and choice never gets a say; bothOpen with zero culls means the
+  // per-atom terms are doing it and the sole* counters say which.
+  cullGate:Object.assign({},globalThis.__CG,{
+    meanDoorProb:globalThis.__CG.doorEvals?+(globalThis.__CG.doorProbSum/globalThis.__CG.doorEvals).toFixed(5):0,
+    expectedEntries:+(globalThis.__CG.doorProbSum).toFixed(3),
+    ticksPerEntryIfLinear:globalThis.__CG.doorProbSum>0?Math.round(TICKS/globalThis.__CG.doorProbSum):null}),
   // Reported beside the layer row, not inside it: uaGenExpression() calls are NOT bank insertions.
   atomFlow:{expressionsAuthored:L('atom.author'), insertedGermline:S['atom.insert.germline']|0,
             arrivedByWire:S['atom.insert.wire']|0, arrivedBySeed:S['atom.insert.seed']|0,
