@@ -83,6 +83,26 @@ patch("if(!isDupe){genome.stableMotifs.push(motif);if(genome.stableMotifs.length
       "if(!isDupe){globalThis.__bump('motif.push');genome.stableMotifs.push(motif);if(genome.stableMotifs.length>5){globalThis.__bump('motif.shift');genome.stableMotifs.shift();}",
       'motif.push');
 
+// ── ATOM LAYER. fired('atom.author') sits at the top of uaGenExpression(), which GENERATES an
+// expression; it is not the same event as an atom entering the bank, and reading it as one inflated
+// the created count by an order of magnitude in this rig's first run (570 authored against a bank
+// holding 18). The layer's creation event is the push into genome.userAtoms, and it has four sites:
+// one germline authoring path, and three by which an atom ARRIVES from somewhere else -- the wire,
+// horizontal transfer, and seeding into a particle. They are counted separately, because a bank that
+// grows by transfer and a bank that grows by invention are different claims about the same number.
+patch("genome.userAtoms.push({expression,compiled:null,failed:false,uses:0,age:0,alienHits:0,alienAttempts:0,creditTrace:_seedCr});",
+      "globalThis.__bump('atom.insert.germline'),genome.userAtoms.push({expression,compiled:null,failed:false,uses:0,age:0,alienHits:0,alienAttempts:0,creditTrace:_seedCr});",
+      'atom.insert.germline');
+patch("_g.userAtoms.push({expression:_ex,compiled:null,failed:false,uses:0,state:0,creditTrace:0});",
+      "globalThis.__bump('atom.insert.wire'),_g.userAtoms.push({expression:_ex,compiled:null,failed:false,uses:0,state:0,creditTrace:0});",
+      'atom.insert.wire');
+patch("_g.userAtoms.push({expression:_a.expression,compiled:null,failed:false,uses:0,state:0,creditTrace:_seedC});",
+      "globalThis.__bump('atom.insert.seed'),_g.userAtoms.push({expression:_a.expression,compiled:null,failed:false,uses:0,state:0,creditTrace:_seedC});",
+      'atom.insert.seed');
+patch("recv.userAtoms.push({expression:donorExpr,compiled:null,failed:false,uses:0,state:0,creditTrace:_seedCT});",
+      "globalThis.__bump('atom.insert.hgt'),recv.userAtoms.push({expression:donorExpr,compiled:null,failed:false,uses:0,state:0,creditTrace:_seedCT});",
+      'atom.insert.hgt');
+
 // ── CLUSTER-GENOME LAYER. clusterGenomes is a Map keyed by cluster hash that carries a cluster's
 // evolved parameters across detection cycles. The engine's own comment at its declaration says
 // "Selection: clusters that bud successfully propagate their clusterGenome". So the ENTRIES are the
@@ -126,7 +146,7 @@ const deathsTotal=(d.escape|0)+(d.physics|0)+(d.age|0);
 const layers=[
  { layer:'particle', created:L('birth.paid'), removals:[
      {site:'death (escape/physics/age)', kind:'conditional', n:deathsTotal} ] },
- { layer:'atom', created:L('atom.author'), removals:[
+ { layer:'atom (germline bank)', created:S['atom.insert.germline']|0, removals:[
      {site:'evict at MAX_USER_ATOMS (pickAtomToEvict)', kind:'conditional', n:L('atom.evict')},
      {site:'idle cull', kind:'conditional', n:L('atom.cull')} ] },
  { layer:'opcode slot', created:L('atom.opAuthor'), removals:[
@@ -157,6 +177,10 @@ console.log(JSON.stringify({
   layers,
   cosmos:{launch:L('cosmos.launch'),found:L('cosmos.found'),merge:L('cosmos.merge'),foundRefused:L('cosmos.foundRefused')},
   atomCullIdleFirings:L('atom.cull.idle'),
+  // Reported beside the layer row, not inside it: uaGenExpression() calls are NOT bank insertions.
+  atomFlow:{expressionsAuthored:L('atom.author'), insertedGermline:S['atom.insert.germline']|0,
+            arrivedByWire:S['atom.insert.wire']|0, arrivedBySeed:S['atom.insert.seed']|0,
+            arrivedByHGT:S['atom.insert.hgt']|0},
   births:{paid:L('birth.paid'),refused:L('birth.refused')},
   loopErrors,lastErr,driverErr:globalThis.__driverErr||0
 },null,1));
