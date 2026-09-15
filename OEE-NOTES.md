@@ -17956,3 +17956,39 @@ rate ride in the message, so a run that dies is **visible rather than silent**. 
 `applyKnobs`. So `FOUND=0 node substrate-test.js` has been byte-identical to `node substrate-test.js`,
 and every session that followed the instruction ran the same thing twice believing it had a control.
 The project's front page instructs an arm that does not exist.
+
+## #216d — FOUND BECOMES A REAL ARM, AND ITS FIRST RUN FINDS SOMETHING
+
+`FOUND` now sits in `harness-env.js`'s `KNOBS`, and `applyKnobs` reaches `globalThis.__FOUND`, which
+is what `foundOn()` (engine.html 4662) reads. Verified directly rather than assumed:
+`applyKnobs` with `FOUND=0` gives `__FOUND = 0`.
+
+**This was the oldest instance of the bug in the project, and it was in the front-page instructions.**
+`CLAUDE.md` told every session to run the rig *"with `FOUND=0` as well as on"*. Nothing read
+`process.env.FOUND`; `FOUND` was absent from `KNOBS`; `substrate-test` never called `applyKnobs`. So
+`FOUND=0 node substrate-test.js` was byte-identical to the plain run for its entire life, and every
+session that followed the instruction ran the same thing twice and counted it as a control. The rule
+`harness-env.js` states about harness knobs, broken by the project's own setup steps.
+
+### The arm's first run, at three budgets
+
+```
+FOUND=0  default     257 / 0
+FOUND=0  TICKS=900   256 / 1     <- #195 a particle that has NEVER held a channel can receive one
+FOUND=0  TICKS=40    257 / 0
+```
+
+The row: *"0 transfer(s) into an undefined bank"*, asserting `XF.virgin.x > 0`.
+
+**And it is very likely trajectory plus an under-powered rate, not a dependency on founding.** The
+measurement is `setup(0.01, ...)` then `drive(600)` — a PRESENCE assertion at a transfer rate of
+**0.01**, while the sibling `blind` and `seeing` cases in the same block both use **0.05**. Five times
+lower for the one check that needs an event to occur. `drive(600)` is a deterministic function of the
+random stream at that point, and `foundOn()` gates draws, so `FOUND=0` shifts the stream upstream
+exactly as `#215`'s gene did to the census row.
+
+Four seeds on both arms at `TICKS=900` are running. **The prediction, registered before the data:** it
+fails on some seeds in BOTH arms, which would make it the third mis-scoped assertion of this session
+and would mean the fix is to give the presence claim the power its siblings have rather than to
+attribute anything to `FOUND`. If instead it fails on every seed with `FOUND=0` and none without,
+founding is genuinely load-bearing for channel transfer and that is a real finding about the engine.
