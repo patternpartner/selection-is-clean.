@@ -16807,6 +16807,10 @@ field still has no stable peer identity — the same thing #202 ended on.
 
 ## FORENSICS ON AN 18-UNIVERSE FIELD EXPORT — and the bug it found
 
+> **THE HEADING IS WRONG AND STAYS.** It was not a bug: the unbounded `maybe()` is a declared
+> experimental condition with a standing decision behind it, and the mechanism below has the causal
+> arrow backwards. Both corrected in **#205**, which is the entry that matters. Read them together.
+
 The author ran the field to 88k–175k ticks, exported all 18 universes, and had another model do a
 forensic read. That read was accurate on every headline number I checked and its top priority was
 exactly right. It also could not answer its own central question, because answering it needs the
@@ -16894,3 +16898,179 @@ recognises in another form.
 
 The finding stands on its own and is recorded before any fix, with the case and its seventeen
 controls preserved in the export.
+
+## #205 — THE TRIPWIRE I WROTE AND THEN WALKED INTO, AND WHAT ACTUALLY HOLDS A DEAD WORLD DOWN
+
+The previous entry is headed *"and the bug it found"*. **It did not find a bug.** The heading stays
+as written, per this file's own rule, and this is the correction.
+
+### The unbounded `maybe()` is a declared experimental condition, recorded three times
+
+1. **The function says so.** `maybe()`'s own comment: *"GLOVES OFF (revised). No spring, no prior,
+   no restoring force. The (min,max) arguments are historical — retained so callers don't break,
+   but they do nothing … If the system wants a value of -47 or 12000, it gets one. **If that value
+   produces crashes elsewhere, that's a finding, not a failure to guard.**"* That last sentence is
+   a registered prediction. `surface/6` is the prediction coming true.
+
+2. **`#148` says so, in the author's words.** *"the system needs to decide to turn them off, not
+   me."* And then, in mine: *"**Do not clamp `mutationRate`. Do not make `maybe()` honour its
+   bounds.** Both are live experimental conditions, deliberately chosen, and **this note exists so
+   a later reader does not helpfully undo them.**"*
+
+3. **A live field survey records it working.** One universe of nine evolved both send-rates negative and stopped
+   emitting migrants and plasmids entirely — a creature turning off its own broadcasting, which the
+   entry ("THE WHOLE FIELD, MEASURED — nine universes, one moment") logs as *"#148's standing decision, observed for the first time."*
+
+I am the later reader that note was written to stop. I re-found the same unbounded walk from a
+field export, called the bounds *"decorative"*, and wrote *"I read intent into an omission"* about
+an omission that was a signed decision recorded in three places. **The declared-vs-effective gap
+that matters here is not in the engine. It is that a decision was declared in this file and had no
+effect on the agent reading it.** `CLAUDE.md` now carries it as the third standing trap.
+
+### And the thing I recorded was not the thing I had shown
+
+The forensic established how `extinctionThresh` REACHED 28. It did not establish why it STAYED
+there for 607 generations, and those are separate claims. Two mechanisms fit the same export:
+
+- **(a) unbounded mutation.** The walk carried the gene past its declared ceiling of 20. On this
+  reading, honouring the bounds makes the regime unreachable.
+- **(b) no selection against it.** `checkExtinction` wipes the population to zero and then calls
+  `saveGenome()`. Atoms, motifs, cultural memory, meta-credit traces and `extinctionThresh` itself
+  all ride through intact — the PHOENIX path exists to carry the germline across exactly this
+  event. **So the gene that sets the death line survives every death it causes.** On this reading
+  bounds change the ENTRY RATE and nothing about the state, because the entity that would be
+  selected against is never the entity that dies.
+
+(a) is established. (b) was asserted. `harness-attractor.js` separates them.
+
+### The rig, and the hypothesis it killed first
+
+`harness-attractor.js`. Forces the trap **once**, at a chosen tick, and then never touches either gene
+again — so any later movement is the lineage's own, which is the entire question. Logs every
+extinction CHECK, not every death: the ratio is the measurement. Per row:
+`[tick, aliveAtCheck, thresholdNow, mutRate, died, generation, peakSinceLastCheck, cadenceNow]`.
+`peakSinceLastCheck` is what separates trapped from merely unlucky.
+
+**First it refuted my own reconstruction.** I had written that the reseed floor is
+`n=min(300,(W*H/3000)|0)` with `W,H` the universe's own canvas, so a small field tile gives a floor
+of ~20 and `extinctionThresh=28` is lethal there and harmless at fullscreen — "surface/6's effective
+architecture includes the CSS". **That is wrong and the rig says so in one run.** The reseed floor
+does scale with area (300x200 -> 20, 100x70 -> **2**), but the achievable population does not:
+
+```
+canvas     reseed floor    peak population by 1800 ticks   (seed 9, one run each)
+1280x720       300                  341
+ 300x200        20                   121
+ 220x150        11                    89
+ 100x 70         2                   126      <- floor of TWO, and it still reaches 126
+```
+
+Non-monotonic below fullscreen, which is the point: area sets where a world STARTS after a reseed and
+does not set where it ends up.
+
+Carrying capacity here is set by the energy economy and the death rules, not by area. A world seeded
+with **two** particles is back over a hundred inside a few hundred ticks. So `surface/6`'s population
+ceiling of 24 is **not a cause of its trap — it is the trap's signature.** A world that is reseeded
+every 73 ticks never gets more than 73 ticks to grow, so "never exceeds 24" is a restatement of
+"dies every 73 ticks", not an explanation of it.
+
+### The trap reproduces exactly, and it is self-reinforcing
+
+The condition is not "threshold above carrying capacity". It is **threshold above the population the
+world can recover to inside ONE cadence window, starting from the reseed floor.**
+
+`TRAPREL=4` sets the death line to `peak+4` — the surface/6 condition, reproduced relative to whatever
+each seed's world actually achieved — and `CAD=73` sets surface/6's cadence. Both forced once at tick
+700, then left alone. 9,000 ticks, three seeds:
+
+```
+seed  forced thresh   checks after   deaths after   escaped?   thresh at end   generation
+  1      99 (peak 95)      117            117         no            88            121
+  2      99 (peak 95)      124            124         no           102            128
+  3     102 (peak 98)      121            121         no           103            125
+```
+
+**100% of checks kill, on all three seeds, for the rest of the run.** And the population's peak
+BETWEEN checks never gets near the line: 20–36, 25–51, 32–60 against a threshold near 100. The world
+is not unlucky; it cannot reach its own death line inside the window it is given. `generation` climbs
+to 121/128/125 — which is `surface/6`'s "607 generations" being manufactured in front of the rig.
+
+### But it is NOT a ratchet, and that matters for what to call it
+
+The threshold is free to walk back down, and it does walk — it just walks slowly, and it is far away:
+
+```
+seed   thresh 1000→9000    per-500-tick step: mean    sd    gap to escape    diffusion estimate
+  1       100 → 88                -0.750             1.601       52            ~5.3e5 ticks
+  2        99 → 102               +0.188             0.527       51            ~4.7e6 ticks
+  3       102 → 103               +0.063             0.428       43            ~5.0e6 ticks
+```
+
+Three seeds, three different drift directions — which is what an unbiased walk looks like, and seed 1
+is on course to escape in roughly another 35,000 ticks. The gap is 43–52 steps and the step size is
+under two per 500 ticks, so the expected crossing time is **10^5 to 10^6 ticks**.
+
+`surface/6` ran 607 generations at 73 ticks each — about **44,000 ticks**, which is 1–8% of that. So
+**"607 generations without escape" is not evidence of an absorbing state. It is exactly what an
+unbiased random walk that far from the boundary predicts.** The state is absorbing on every timescale
+this artwork will ever run, for a reason that is about DISTANCE AND DRIFT RATE, not about a lock. This
+file has twice called a state absorbing and been wrong on a longer run (the monoculture lock:
+*"escapable and recurrent rather than absorbing"*), and this is the third time the distinction has
+paid.
+
+### The verdict on (a) vs (b), stated at the width the evidence supports
+
+- **(b) is confirmed in the sense that matters.** Nothing pushes the gene back. Over ~120 extinctions
+  the threshold's net movement is −12, +3, +1 — indistinguishable from no selection at all, which is
+  what you expect when the entity that would be selected against survives every death it causes.
+- **(a) is not refuted, and is narrower than it looks.** Honouring `[2,20]` would have prevented
+  `surface/6` specifically, because 28 is outside it. It would not close the attractor: the trap
+  condition is "death line above one window's regrowth", and whether 20 clears that bar depends on a
+  world's evolved physics and cadence, not on the bound. Clamping converts *can happen to any world*
+  into *can happen to a slow-recovering world*. **That is reasoning plus a partial measurement, not a
+  measured refutation** — I could not build a world whose one-window regrowth was under 20 to test it
+  directly, and say so rather than implying the stronger result.
+
+### A vocabulary this file has needed for two hundred entries
+
+From the same outside reading (ChatGPT, via the author), and adopted here because it names things
+this project has been doing wordlessly:
+
+**Declared / Exercised / Selected.** A capability can be written into the system (declared), can run
+on a live code path (exercised), and can have differential survival attached to it (selected). Most
+of the confusion in this file's older entries is a claim at one level being reported as a claim at
+another.
+
+**Declared architecture vs effective architecture.** What the source says the system is, versus what
+it does. `#179`'s *reachability* — open in principle, closed in practice — is one instance of this
+with the sign one way. The unbounded `maybe()` is the same phenomenon with the sign the other way: a
+constraint that is declared and not applied. The file had a word for one and not the other, and so
+kept treating them as unrelated.
+
+**A fourth rung, which this project needs and the three do not cover: REACHABLE.** Between exercised
+and selected. The standing example is `uaMaxDepth`: the atom grammar can nest, the gate is a gene,
+the authoring code runs on every atom — and the gene is written `Math.round(maybe(...,0.6))`, whose
+uniform step cannot clear `round()`, so it has never moved off 1 in eight live exports and all 163
+live atoms are flat one-operator expressions. Declared yes, exercised yes, selected never — and
+**not because selection rejected it, because the search could not reach it.** In an export those two
+look identical and mean opposite things. `#96` measured this for seven other rounded genes.
+
+**And the category for `surface/6`: a failure REGIME, not a failure attractor.** Third outcome
+alongside persistence and high-turnover recovery, and worth having. But "attractor" asserts a
+mechanism the measurement above does not support — there is no basin and no ratchet, only a long
+distance and an unbiased walk. Name it after what was observed.
+
+### The control, which is what makes the trap arm mean anything
+
+`TRAP=0 CAD=73`, same canvas, same seeds, nothing forced. Seed 2 at 9,000 ticks:
+
+```
+checks   deaths   generation   threshold at end   peak population   peak between checks
+  115       0          1              4                 285              87 – 285
+```
+
+**Zero deaths in 115 checks.** The 73-tick cadence is not the problem and neither is the tile: an
+unforced world at the same settings never crosses its own death line once, holds 285 particles, and
+finishes at generation 1. So the trap arm's 117–124 consecutive deaths are attributable to the forced
+threshold and to nothing else in the arm. (Seed 2 reported here; 1 and 3 were still running at commit
+time and are added below if they disagree.)

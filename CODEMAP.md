@@ -2667,3 +2667,30 @@ that reports a constant as an event is worse than no census. And `xion.fuse` fir
 where `xion.bud` and `xion.fission` fired zero, because fusion faced a weaker gate than division:
 **a mode comparison where the modes face different gates is a subsidy, not a comparison**, and
 selection would have read it as fusion being better rather than cheaper.
+
+## The extinction trap (`checkExtinction`, 19250+) — a gene that survives every death it causes
+
+`genome.extinctionThresh` is the lineage's own death line, written
+`Math.max(1,Math.round(maybe(genome.extinctionThresh,2,20,2)))` at 18040 and read at 19259 as
+`alive<genome.extinctionThresh`. Nothing else bounds it — `sanitizeGenome` does not clamp it, and
+`maybe()` ignores the `(2,20)` on purpose (#148, a standing decision; see `CLAUDE.md`).
+
+**The reseed carries the genome through.** The extinction branch sets `N=0`, reseeds
+`n=min(300,(W*H/3000)|0)` particles preferentially from `genome.stableMotifs`, and ends on
+`saveGenome()` (19357). Atoms, cultural memory, meta-credit traces and `extinctionThresh` itself all
+survive. **The gene that sets the death line is never the thing that dies**, so there is no selection
+against a value that makes its own world uninhabitable — measured at net −12/+3/+1 over ~120
+extinctions in #205.
+
+**The trap condition is not "threshold above carrying capacity".** It is *threshold above the
+population the world can recover to inside ONE `cadenceExtinct` window, from the reseed floor* — and
+it is self-reinforcing, because a world that dies every window never gets more than a window to grow.
+Reproduced on three seeds in `harness-attractor.js` (`TRAPREL=4 CAD=73`): 100% of checks kill, 117–124
+consecutive deaths, no escape. Escape needs the gene to walk 43–52 steps down at an unbiased ~1.6
+steps per 500 ticks, i.e. 10^5–10^6 ticks — long, but **not a ratchet**, and the distinction is the
+whole content of #205.
+
+`harness-attractor.js` env: `TILE` / `WIDTH` / `HEIGHT` (canvas, which sets the reseed floor but NOT
+the achievable population — that was the wrong hypothesis and the rig killed it), `TRAP=<n>` absolute
+or `TRAPREL=<d>` relative to the run's own peak, `CAD=<n>`, `CLAMP=1` (make `maybe()` honour its
+declared bounds — an instrument arm, never an engine change), `TRAPAT`, `TICKS`, `SEED`.

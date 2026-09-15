@@ -22,7 +22,7 @@ git checkout main && git merge --ff-only <branch> && git push -u origin main
   real browser and are the only things that catch anything about the field's layout or its controls.
 - A single run is not a measurement. Three seeds, or say out loud that it is one seed.
 
-## Two traps this repo has paid for repeatedly
+## Three traps this repo has paid for repeatedly
 
 - **A rig embeds the engine's source in a JS template literal.** A backtick anywhere in a comment
   you add to `engine.html` or to a rig's appended block terminates that literal. It fails as
@@ -31,6 +31,14 @@ git checkout main && git merge --ff-only <branch> && git push -u origin main
   So setting `genome.channels` and running the sim measures a stranger's chemistry unless you clear
   the population's banks — every tick, because reproduction re-seeds them — and assert
   `governedBySelf`. This has bitten three separate blocks.
+- **An unbounded value is not automatically a bug here, and the decision that made it unbounded
+  lives in `OEE-NOTES.md`, not in the code.** `maybe(val,min,max,magnitude)` ignores `min` and
+  `max` at all 66 call sites *on purpose* — `#148` records the author declining to clamp it, in
+  their own words, and says outright that the note exists "so a later reader does not helpfully
+  undo them". A later reader re-found it anyway and wrote it up as a defect (`#205`). **Before
+  calling anything unbounded, unclamped, or missing a guard a bug, grep `OEE-NOTES.md` for the
+  gene and for the word STANDING.** The engine's own comments carry the same decisions; read the
+  comment above the function before the function.
 
 See `OEE-NOTES.md` for the running record and `CODEMAP.md` for where things live. Both are written
 so that the wrong version of a claim stays on the page next to the corrected one.
