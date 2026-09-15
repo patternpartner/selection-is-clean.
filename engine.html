@@ -1329,6 +1329,11 @@ const LIVENESS_DECLARED=[
   // an entry ages past the horizon. Reading zero on a long run means either the horizon never binds
   // or the prune is not wired; the Map's size is reported beside it so the two are distinguishable.
   'cluster.cgEvict',
+  // #215: which rule decided the last motif to go. evictAge is shift(), the pre-#215 behaviour and
+  // what a lineage with motifKeepBias at 0 does. evictQuality is the dial having been moved and
+  // exercised. The ratio is the cultural layer's selection pressure, and it was unmeasurable before
+  // because there was only one rule.
+  'motif.evictAge','motif.evictQuality',
 ];
 // NOT INSTRUMENTED, and deliberately absent rather than declared-and-silent: cladogenesis minting
 // (#17) has no single entry point I could identify with confidence. A census that reports "never"
@@ -11139,6 +11144,7 @@ function encodeGenome(){
     isb:genome.intStepBias===undefined?undefined:+(genome.intStepBias).toFixed(4),        // #97: integer-step forcing bias
     aup:genome.atomUseProtect===undefined?undefined:+(genome.atomUseProtect).toFixed(4), // #101: use-rank overwrite protection
     ait:genome.atomIdleTolerance===undefined?undefined:+(genome.atomIdleTolerance).toFixed(4), // #177: willingness to release an idle atom
+    mkb:genome.motifKeepBias===undefined?undefined:+(genome.motifKeepBias).toFixed(4), // #215: willingness to drop a motif by quality rather than by age
     usb:genome.uaStructBias===undefined?undefined:+(genome.uaStructBias).toFixed(4), // #107: atom-grammar structural-branch bias (omitted if never created)
     // #180: the grammar itself. Omitted when never created, so a run with the gates off writes a
     // pre-#180 save byte for byte. An operator is five numbers plus its grace clock, written as a
@@ -11514,7 +11520,8 @@ function decodeGenome(data){
     if(typeof g.rmd==='number')genome.rendMaxDepth=g.rmd|0;      // #97
     if(typeof g.isb==='number')genome.intStepBias=+g.isb;        // #97
     if(typeof g.aup==='number')genome.atomUseProtect=+g.aup;     // #101
-    if(typeof g.ait==='number')genome.atomIdleTolerance=+g.ait;  // #177 (absent in pre-#177 saves → undefined → reads 0 → the old cull, which is the correct inheritance)
+    if(typeof g.ait==='number')genome.atomIdleTolerance=+g.ait;  // #177
+    if(typeof g.mkb==='number')genome.motifKeepBias=+g.mkb;      // #215 (absent in pre-#215 saves -> undefined -> reads 0 -> pure recency, the correct inheritance) (absent in pre-#177 saves → undefined → reads 0 → the old cull, which is the correct inheritance)
     if(typeof g.usb==='number')genome.uaStructBias=+g.usb;       // #107
     // #180 (absent in pre-#180 saves → left undefined → every reader's default → the pre-#180 engine)
     if(typeof g.rgc==='number')genome.regCount=g.rgc|0;    // #200a (absent -> 12, which is what a pre-#200 save meant)
@@ -11778,6 +11785,7 @@ function sanitizeGenome(){
   if(genome.intStepBias!==undefined) genome.intStepBias =__cl(finiteOr(genome.intStepBias,0),0,1);                            // #97
   if(genome.atomUseProtect!==undefined)genome.atomUseProtect=__cl(finiteOr(genome.atomUseProtect,0),0,1);       // #101
   if(genome.atomIdleTolerance!==undefined)genome.atomIdleTolerance=__cl(finiteOr(genome.atomIdleTolerance,0),0,1); // #177
+  if(genome.motifKeepBias!==undefined)genome.motifKeepBias=__cl(finiteOr(genome.motifKeepBias,0),0,1);         // #215 — clamped IF PRESENT, never created here (#181)
   if(genome.reachGain!==undefined)   genome.reachGain=__cl(finiteOr(genome.reachGain,0.2),0,1);                 // #117
   if(genome.atomNoveltyMix!==undefined)genome.atomNoveltyMix=__cl(finiteOr(genome.atomNoveltyMix,0.25),0,1);   // #120
   genome.effectComposeRate=__cl(finiteOr(genome.effectComposeRate,0.35),0,0.9);                                // #133
@@ -16144,6 +16152,56 @@ function instVar(arr,w){
   for(let i=arr.length-w;i<arr.length;i++){const d=arr[i]-m;v+=d*d;}
   return v/w;
 }
+// #215: WHICH MOTIF GETS DROPPED, AND WHO DECIDES.
+//
+// #214 measured the cultural layer and found the sharpest form of "turnover without selection" in
+// this file. A motif is stored as {t, s:c.size, c:c.coherence, age:c.persistAge}. Across the whole
+// engine, m.s and m.c are read in exactly one place -- inside recordEvent('motif_remembered', ...)
+// -- and nowhere else. The system MEASURES the size and coherence of every cluster it remembers,
+// writes both to the event log, and then drops motifs with shift(), which reads no property of the
+// motif it discards. Meanwhile the survivors steer about fifteen thousand particle-nudges per 12,000
+// ticks (#213). Quality was not unavailable to the decision. It was measured, stored, and ignored.
+//
+// WHAT I AM NOT DOING, because #214 said it and it still holds: I am not picking the pressure.
+// Hardcoding "drop the lowest s*c" would be a human choosing the shape of a selection pressure,
+// which is the class #148 and #197 reserve. So the DIAL goes in and the lineage sets it, exactly the
+// shape #177 used for atomIdleTolerance:
+//
+//   motifKeepBias = 0   pure recency. shift(). Bit-for-bit the pre-#215 behaviour.
+//   motifKeepBias = 1   always drop the lowest-quality motif.
+//   in between          that probability of judging by quality, else by age.
+//
+// Seeded at 0, lazily created (#181), clamped if present and never created by the clamp, saved only
+// when it exists -- so an old save inherits pure recency, which is the correct inheritance.
+//
+// AND I DID PICK ONE THING: quality is s*c. That is a choice and it should be visible rather than
+// buried. The two fields are already paired in the single line that reads them; the product is the
+// combination where a large incoherent blob and a tiny tight knot both score low and a large tight
+// cluster scores high. A sum would let size alone dominate. If that shape is wrong, it is wrong in
+// one line and the gene at 0 makes it inert.
+//
+// THE LESSON FROM #208 IS BUILT IN. atomIdleTolerance sat behind a door that opened once per 20,000
+// ticks and was never read, so its drift carried no information. This dial is read on EVERY
+// eviction -- 13 to 32 times per 12,000 ticks as measured in #213 -- so it is reachable by
+// construction. Whether it is SELECTED is a different question and this comment does not claim it:
+// #208b showed a gene drifts on an unconstrained walk whether or not anything reads it.
+function motifSelOn(){ return (typeof globalThis==='undefined')||((globalThis.__MOTIF_SELECT??1)|0)!==0; }
+function motifEvict(){
+  const M=genome.stableMotifs;
+  if(!M||M.length===0)return;
+  const b=motifSelOn()?__cl(finiteOr(genome.motifKeepBias,0),0,1):0;
+  // At b===0 this draws NOTHING, so a lineage that has not moved the dial runs the old code path on
+  // the old random stream. That is what makes the control arm a real control.
+  if(b>0&&M.length>1&&Math.random()<b){
+    let wi=0,wq=Infinity;
+    for(let i=0;i<M.length;i++){
+      const m=M[i]; const q=(+m.s||0)*(+m.c||0);
+      if(q<wq){ wq=q; wi=i; }
+    }
+    M.splice(wi,1); fired('motif.evictQuality'); return;
+  }
+  M.shift(); fired('motif.evictAge');
+}
 function oldestMotifAge(){
   const M=genome.stableMotifs;
   if(!M||M.length===0)return 0;
@@ -18102,7 +18160,7 @@ function mutateGenome(){ fired('genome.mutate');
   if(Math.random()<(genome.shadowBankChurn||0.5))evolveShadowBank();
 
   // Trim motif memory if size shrunk
-  while(genome.stableMotifs.length>genome.motifMemorySize)genome.stableMotifs.shift();
+  while(genome.stableMotifs.length>genome.motifMemorySize)motifEvict();   // #215
 
   // ═══ LAYER 6: VM PROGRAM MUTATION ═══
   // The system's discovered physics evolve.
@@ -18130,7 +18188,11 @@ function mutateGenome(){ fired('genome.mutate');
   if(__REND_VOCAB)   genome.rendMaxDepth=__cl(Math.round(intMaybe(genome.rendMaxDepth||1,0.6)),1,UA_DEPTH_CAP); // #97: the render channel's own depth
   if(__INT_GENE_STEP)genome.intStepBias=__cl(maybe(finiteOr(genome.intStepBias,0),0,1,0.15),0,1);               // #97: the forcing bias is itself evolved // UNLOCKED #7b: the system evolves how deeply it composes its own primitives // #96: with the old operator this line could never return anything but 1
   if(__USE_PROTECT)  genome.atomUseProtect=__cl(maybe(finiteOr(genome.atomUseProtect,0),0,1,0.15),0,1);            // #101: how much execution rank protects an atom — the system's call, not mine
-  genome.atomIdleTolerance=__cl(maybe(finiteOr(genome.atomIdleTolerance,0),0,1,0.15),0,1);                          // #177: how willing this lineage is to release an atom nothing has run — seeded at 0 (= the pre-#177 cull exactly), lazily created like atomUseProtect for the same RNG-stream reason
+  genome.atomIdleTolerance=__cl(maybe(finiteOr(genome.atomIdleTolerance,0),0,1,0.15),0,1);
+  // #215: gated on the knob, not merely defaulted, because a gene that merely EXISTS costs one
+  // Math.random() per birth in mutateChildGenome's key walk (#181). Creating it unconditionally
+  // would make __MOTIF_SELECT=0 a different random stream rather than a control.
+  if(motifSelOn())genome.motifKeepBias=__cl(maybe(finiteOr(genome.motifKeepBias,0),0,1,0.15),0,1);                          // #177: how willing this lineage is to release an atom nothing has run — seeded at 0 (= the pre-#177 cull exactly), lazily created like atomUseProtect for the same RNG-stream reason
   // #107: uaMaxDepth (above) is evolvable — HOW DEEP the grammar may recurse. The PRODUCTION WEIGHTS at
   // each level (binary sub-expr 45% / ternary branch 17% / compose 10% / binary-func 10% / leaf ~18%,
   // uaGenTerm) never were — fixed constants since the grammar was written, the one part of "how the
@@ -28247,7 +28309,7 @@ function loop(){
         if(c.persistAge>5&&c.size>5){
           const motif={t:c.tendency.map(v=>+(v.toFixed(3))),s:c.size,c:+(c.coherence.toFixed(2)),age:c.persistAge};
           const isDupe=genome.stableMotifs.some(m=>{let d=0;for(let i=0;i<DIMS;i++)d+=Math.abs(m.t[i]-motif.t[i]);return d<0.3});
-          if(!isDupe){genome.stableMotifs.push(motif);if(genome.stableMotifs.length>5)genome.stableMotifs.shift();recordEvent('motif_remembered',{s:motif.s,c:motif.c},900)}
+          if(!isDupe){genome.stableMotifs.push(motif);if(genome.stableMotifs.length>5)motifEvict();/*#215*/recordEvent('motif_remembered',{s:motif.s,c:motif.c},900)}
         }
       }
     }

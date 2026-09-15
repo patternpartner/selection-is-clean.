@@ -67,6 +67,10 @@ globalThis.setTimeout=()=>0;globalThis.clearTimeout=()=>{};globalThis.setInterva
 // prune that touches only unreachable entries must come back BIT-IDENTICAL, and this project's
 // standard is to show that rather than argue it.
 if(process.env.CG_TTL!==undefined)globalThis.__CG_TTL=parseInt(process.env.CG_TTL,10);
+// #215 control arm. MOTIF_SELECT=0 stops motifKeepBias being created at all, so the knob-off engine
+// draws no Math.random() for it in mutateGenome and none in mutateChildGenome's key walk either --
+// which is what makes it the pre-#215 random stream rather than merely the pre-#215 behaviour.
+if(process.env.MOTIF_SELECT!==undefined)globalThis.__MOTIF_SELECT=parseInt(process.env.MOTIF_SELECT,10);
 let loopErrors=0,lastErr='';
 console.error=(...a)=>{const s=a.join(' ');if(/Loop error|Boot error|Watchdog/.test(s)){loopErrors++;lastErr=s.slice(0,160);}};
 console.warn=()=>{};
@@ -128,14 +132,12 @@ function patch(anchor,replacement,label,expect){
   code=code.split(anchor).join(replacement);
 }
 
-// ── MOTIF LAYER. Creation is a push; removal is shift(), which is FIFO and reads nothing about the
-// motif it drops. If that is the only removal path, the cultural layer cannot be selected at all --
-// it can only be aged out, which sorts by arrival order and by nothing else.
-patch("while(genome.stableMotifs.length>genome.motifMemorySize)genome.stableMotifs.shift();",
-      "while(genome.stableMotifs.length>genome.motifMemorySize){globalThis.__bump('motif.shift');genome.stableMotifs.shift();}",
-      'motif.shift.cap');
-patch("if(!isDupe){genome.stableMotifs.push(motif);if(genome.stableMotifs.length>5)genome.stableMotifs.shift();",
-      "if(!isDupe){globalThis.__bump('motif.push');genome.stableMotifs.push(motif);if(genome.stableMotifs.length>5){globalThis.__bump('motif.shift');genome.stableMotifs.shift();}",
+// ── MOTIF LAYER. The removal counter that used to live here is RETIRED: #215 replaced both shift()
+// sites with motifEvict(), which fires the engine's own motif.evictAge / motif.evictQuality names.
+// A rig-side counter for an event the engine now declares is two sources of truth for one number,
+// and the declared one wins. Creation is still counted here because no liveness name covers it.
+patch("if(!isDupe){genome.stableMotifs.push(motif);",
+      "if(!isDupe){globalThis.__bump('motif.push');genome.stableMotifs.push(motif);",
       'motif.push');
 
 // ── ATOM LAYER. fired('atom.author') sits at the top of uaGenExpression(), which GENERATES an
@@ -294,6 +296,8 @@ const driver=`
     return { alive, atoms:(genome.userAtoms||[]).length, maxAtoms:(typeof MAX_USER_ATOMS!=='undefined')?MAX_USER_ATOMS:-1,
       motifs:(genome.stableMotifs||[]).length, motifCap:genome.motifMemorySize,
       atomIdleTolerance:(genome.atomIdleTolerance===undefined?null:+genome.atomIdleTolerance.toFixed(5)),
+      motifKeepBias:(genome.motifKeepBias===undefined?null:+genome.motifKeepBias.toFixed(5)),
+      motifEvictAge:__liveness['motif.evictAge']|0, motifEvictQuality:__liveness['motif.evictQuality']|0,
       atomUseProtect:(genome.atomUseProtect===undefined?null:+genome.atomUseProtect.toFixed(5)),
       clusterGenomeEntries:(typeof clusterGenomes!=='undefined')?clusterGenomes.size:-1,
       clusterGenomeSeenEntries:(typeof clusterGenomeSeen!=='undefined')?clusterGenomeSeen.size:-1,
@@ -323,7 +327,10 @@ const layers=[
  { layer:'opcode slot', created:L('atom.opAuthor'), removals:[
      {site:'opCull', kind:'conditional', n:L('atom.opCull')} ] },
  { layer:'motif (cultural memory)', created:S['motif.push']|0, removals:[
-     {site:'shift() past motifMemorySize', kind:'unconditional', n:S['motif.shift']|0} ] },
+     {site:'motifEvict by age (shift)', kind:'unconditional', n:L('motif.evictAge')},
+     // #215 made this one conditional on the motif's own measured size and coherence. Whether it
+     // ever fires is up to the lineage's motifKeepBias, which is why both rows are reported.
+     {site:'motifEvict by quality (s*c)', kind:'conditional', n:L('motif.evictQuality')} ] },
  { layer:'cluster genome', created:S['cg.set']|0, removals:
      cgDeletes===0 ? [{site:'(no delete or clear exists in engine.html)', kind:'none', n:0}]
                    : [{site:'delete/clear', kind:'unknown', n:-1}] },
