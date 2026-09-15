@@ -17326,3 +17326,55 @@ seeded at 0 under the same lazy-gene contract and the same `maybe()` step, has s
 across eighteen live universes. A dial that is genuinely being selected to 0 and a dial that is never
 read are distinguishable by exactly that spread, and the eighteen-universe export already contains
 the control.
+
+### #208b — THE DOOR OPENED, AND IT TURNED OVER HALF OF WHAT I HAD JUST WRITTEN
+
+`CULLDOOR` multiplies the entry probability, harness-side, with 1 exactly the shipped behaviour.
+Three seeds, 12,000 ticks, `CULLDOOR=1` against `CULLDOOR=100`:
+
+```
+arm/seed   door evals   entered   per-atom evals   tolMax     culls   idle culls   atomIdleTolerance at end
+c1   / 1       60           1            0           0          1          0            0.0378
+c1   / 2       39           0            0           0          0          0            0.0696
+c1   / 3       41           0            0           0          0          0            0.0653
+c100 / 1       37          17            0           0          6          0            0
+c100 / 2       40          25           47         0.0051       7          0            0
+c100 / 3       40          17            0           0          3          0            0
+```
+
+**There are TWO doors, not one.** Opening the outer one 50x got 59 entries across three seeds and
+reached the idle cull's conditions in **one seed**. The block scans for a `failed` atom first and sets
+`removeIdx` there; when it finds one, the idle path is skipped entirely. All sixteen culls in the
+`CULLDOOR=100` arm are `atom.cull` with `atom.cull.idle` at **zero**. The idle remover is behind the
+validity remover, which is behind the coin flip.
+
+**When it was finally reached, grace dominates.** Of 22 sole-blocks in seed 2's 47 evaluations:
+`grace` (age ≤ `UA_GRACE_AGE`) 15, population-wide `uses` 6, `credit` 1, `alienGrip` 0. So the first
+thing that would need saying about the idle cull, if it ever ran, is that most candidates are too
+young to judge.
+
+**And a third gate inside the second.** `tolMax` read **0.0051** — so even past both doors, the final
+`Math.random()<_tol` is a half-percent coin per atom. Three gates deep and the innermost is 0.005.
+
+### The prediction was confirmed trivially, and the real finding is better than the one I registered
+
+`#208` registered: *"open the door and the gene does not stay at 0."* It does not stay at 0 — **and it
+was never staying at 0.** In the CONTROL arm, where the dial is provably never read (`tolMax: 0`,
+`atomEvals: 0`), `atomIdleTolerance` ends at **0.0378 / 0.0696 / 0.0653**. It has been drifting the
+whole time, on the unconstrained walk with a reflecting floor at zero that `atomUseProtect` also does.
+
+So the sharper statement, which is the one this arc keeps arriving at:
+
+> **The dial moves, and its motion carries no information, because nothing reads it.** Opening the
+> door does not create the drift. It creates the READING.
+
+A gene that drifts and is never consulted is **indistinguishable in any export from a gene under
+selection**. That is `#207`'s declared-versus-effective distinction landing a third time, now with
+numbers on both sides of it — and it is a general warning about this whole project's method: *every
+spread-across-universes figure in this file, including the `atomUseProtect` 0..0.785 I cited as the
+control, is consistent with drift until the READ is instrumented.*
+
+**Scoped honestly.** The two arms diverge in their random streams the moment the door opens, so the
+`ait` difference BETWEEN arms (0.038–0.070 against 0, 0, 0) is not attributable to selection on `ait`
+and is not claimed. n=3, unpaired after divergence. What is claimed is the within-control observation:
+the dial drifts while `tolMax` is 0.
