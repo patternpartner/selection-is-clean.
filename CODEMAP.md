@@ -2857,3 +2857,14 @@ shared `govSelfOnly()`; `out.grain` now does too. `out.warp` clears them inline 
 those, only `out.grain` saves and restores; `out.warp` and `#198`'s block leave the banks nulled for
 the rest of the run — observed, not changed, and `out.gov` likewise leaves its four-particle
 population in place for every block after it.
+
+**#216n/#216o — `harness-strata.js` gene tracer.** `__geneStep(name,before,raw,after)` is called at
+the three zero-seeded dial sites in `mutateGenome()` (`atomIdleTolerance` ~18191, `atomUseProtect`
+~18190, `motifKeepBias` ~18195), patched in at the anchor so `maybe()` is still called exactly once
+per site in the same position — a traced run and an untraced run return bit-identical fingerprints.
+Fields: `offers` (the line executed), `fired` (`maybe` returned something different), `moved` (the
+assigned value changed), `wastedAtBound` = `fired - moved`, plus `clampedToFloor`/`clampedToCeil` and
+`firstMoveAtOffer`. **`wastedAtBound` is the waste number, not `clampedToFloor`** — the latter also
+counts a real move from a positive value down onto the floor. `genomeMutations` and `mutationRate`
+sit beside them in `state`, because a dial at its seed value means nothing without the count of
+offers it was given.

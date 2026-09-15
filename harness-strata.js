@@ -135,6 +135,29 @@ globalThis.__coh=function(v,n){ const C=globalThis.__COH;
 globalThis.__COHE={n:0,sum:0,min:Infinity,max:-Infinity,ge0p9:0};
 globalThis.__cohElig=function(v,n){ const C=globalThis.__COHE;
   if(!(v>=0&&v<=1))return; C.n++; C.sum+=v; if(v<C.min)C.min=v; if(v>C.max)C.max=v; if(v>=0.9)C.ge0p9++; };
+// #216o: THE THREE ZERO-SEEDED DIALS, COUNTED AT THEIR OWN MUTATION SITE.
+// genomeMutations counts ENTRIES to mutateGenome(), not arrivals at any particular line, so on its
+// own it cannot tell "the gene never moved" from "the gene was never offered a move". These count
+// the offer where it happens. maybe() is still called exactly once per site, in the same position,
+// so the RNG stream is untouched and the traced run is the same trajectory as the untraced one.
+//
+// WHICH FIELD IS THE WASTE NUMBER, because the obvious one is not. clampedToFloor counts every fired
+// step whose raw value landed below 0, and that is TWO different events: a step discarded while the
+// gene sat AT 0 (no movement at all), and a step from a positive value overshooting past 0 (a real
+// move, down to the floor). Seed 3's atomUseProtect shows the second — fired 2, clampedToFloor 1,
+// moved 2. So the quantity "fires the boundary threw away" is fired MINUS moved, reported as
+// wastedAtBound. Naming clampedToFloor the waste would be a counter measuring something other than
+// its name, which is the defect this whole batch has been about, caught here in a new instrument
+// before its number was published rather than after.
+globalThis.__geneTrace={};
+globalThis.__geneStep=function(name,before,raw,after){ try{
+  const T=globalThis.__geneTrace, g=T[name]||(T[name]={offers:0,fired:0,clampedToFloor:0,clampedToCeil:0,moved:0,wastedAtBound:0,final:0,firstMoveAtOffer:-1});
+  g.offers++;
+  if(raw!==before){ g.fired++; if(raw<0)g.clampedToFloor++; else if(raw>1)g.clampedToCeil++; }
+  if(after!==before){ g.moved++; if(g.firstMoveAtOffer<0)g.firstMoveAtOffer=g.offers; }
+  g.wastedAtBound=g.fired-g.moved;
+  g.final=after;
+}catch(e){} };
 globalThis.__cgNote=function(h,t){ try{ globalThis.__cgTick.set(h,t); }catch(e){} };
 globalThis.__cgRead=function(h,t,hit){ try{
   globalThis.__S['cg.get']=(globalThis.__S['cg.get']||0)+1;
@@ -190,6 +213,15 @@ patch("          const motif={t:c.tendency.map(v=>+(v.toFixed(3))),s:c.size,c:+(
       "          const motif={t:c.tendency.map(v=>+(v.toFixed(3))),s:c.size,c:+(c.coherence.toFixed(2)),age:c.persistAge};\n" +
       "          globalThis.__cohElig(c.coherence,c.size);",
       'coherence.eligible');
+patch("  genome.atomIdleTolerance=__cl(maybe(finiteOr(genome.atomIdleTolerance,0),0,1,0.15),0,1);",
+      "  {const _b=finiteOr(genome.atomIdleTolerance,0),_r=maybe(_b,0,1,0.15),_a=__cl(_r,0,1);globalThis.__geneStep('atomIdleTolerance',_b,_r,_a);genome.atomIdleTolerance=_a;}",
+      'gene.ait');
+patch("genome.atomUseProtect=__cl(maybe(finiteOr(genome.atomUseProtect,0),0,1,0.15),0,1);",
+      "{const _b=finiteOr(genome.atomUseProtect,0),_r=maybe(_b,0,1,0.15),_a=__cl(_r,0,1);globalThis.__geneStep('atomUseProtect',_b,_r,_a);genome.atomUseProtect=_a;}",
+      'gene.aup');
+patch("genome.motifKeepBias=__cl(maybe(finiteOr(genome.motifKeepBias,0),0,1,0.15),0,1);",
+      "{const _b=finiteOr(genome.motifKeepBias,0),_r=maybe(_b,0,1,0.15),_a=__cl(_r,0,1);globalThis.__geneStep('motifKeepBias',_b,_r,_a);genome.motifKeepBias=_a;}",
+      'gene.mkb');
 patch("if(!isDupe){genome.stableMotifs.push(motif);",
       "if(!isDupe){globalThis.__bump('motif.push');genome.stableMotifs.push(motif);",
       'motif.push');
@@ -501,5 +533,6 @@ console.log(JSON.stringify({
     return {n:C.n, mean:+(C.sum/C.n).toFixed(4), min:+C.min.toFixed(4), max:+C.max.toFixed(4),
             fracAtOrAbove0p9:+(C.ge0p9/C.n).toFixed(4)}; })(),
   mkbWitness:globalThis.__mkbWitness,
+  geneTrace:globalThis.__geneTrace,
   loopErrors,lastErr,driverErr:globalThis.__driverErr||0
 },null,1));

@@ -18375,6 +18375,61 @@ willing this lineage is to release an atom nothing has run"*, which is `#177`'s 
 `atomIdleTolerance` on the line ABOVE, copy-pasted onto the motif gene. In a file whose rule is to
 read the comment before the function, a comment describing a different gene is worse than none.
 
+### #216o — counted at the site, and the pattern I was building on did not survive the fourth seed
+
+`#216n` reasoned that a gene sitting on the floor of its clamp loses about half its fired mutations,
+and left it as arithmetic. `harness-strata` now counts it at each of the three mutation sites —
+offers, fires, moves — with `maybe()` still called exactly once per site in the same position.
+
+**The tracer is provably non-perturbing, and this is checked rather than claimed.** A traced run and
+an untraced run on `SEED=1` return bit-identical fingerprints (`n 162, pos 192945.881943, amp
+175.683357, lin 49335`) and an identical state block. That is `CLAUDE.md`'s fourth trap satisfied by
+demonstration: the instrument takes no draws, so the traced trajectory is the trajectory.
+
+```
+seed  gene                offers  fired  wasted  moved  final      first move
+1     atomIdleTolerance   41      6      3       3      0.11002    offer 28
+1     atomUseProtect      41      0      0       0      0          never
+1     motifKeepBias       41      0      0       0      0          never
+2     atomIdleTolerance   37      2      0       2      0.00985    offer 3
+2     atomUseProtect      37      2      2       0      0          never
+2     motifKeepBias       37      1      1       0      0          never
+3     atomIdleTolerance   38      1      0       1      0.02948    offer 34
+3     atomUseProtect      38      2      0       2      0          offer 9
+3     motifKeepBias       38      1      0       1      0.03441    offer 16
+4     atomIdleTolerance   38      0      0       0      0          never
+4     atomUseProtect      38      3      0       3      0.03414    offer 16
+4     motifKeepBias       38      2      2       0      0          never
+```
+
+**Three results and one retraction.**
+
+1. **"Never offered" is dead.** `offers` equals `genomeMutations` exactly on all four seeds for all
+   three genes — 41, 37, 38, 38. `mutateGenome()` has no early return before these lines and both
+   gates (`__USE_PROTECT`, `motifSelOn()`) are on. Every cycle offered every gene.
+2. **The boundary waste is 8 of 20 fired mutations — 40%.** Measured, not estimated, and close to the
+   half that `#216n` predicted from `tailDraw()` being symmetric about zero.
+3. **No gene is privileged.** Escapes from the seed: `atomIdleTolerance` 3 of 4 seeds,
+   `atomUseProtect` 1 of 4, `motifKeepBias` 1 of 4. Fire rates 9, 7 and 4 per 154 offers, all inside
+   one standard deviation of the ~9 that `rate` predicts.
+
+**The retraction.** After two seeds I had "`atomIdleTolerance` escapes and the other two do not", and
+after three seeds it still held 3–0 and 0–3. I went looking for the structural asymmetry — a second
+write site, a gate that was off, an early return — and found none, which should have been the signal.
+**Seed 4 inverted it**: `atomIdleTolerance` fired zero times and stayed at 0, `atomUseProtect`
+escaped. There was no pattern. `CLAUDE.md` says three seeds or say out loud that it is one; on a
+count this small, three seeds was not enough either, and what saved it was that the absent mechanism
+kept refusing to turn up.
+
+**And a defect in my own new instrument, caught before its number was published.** The obvious waste
+field is `clampedToFloor`, and it is wrong: it counts every fired step whose raw value landed below
+zero, which is TWO events — a step discarded while the gene sat at 0, and a step from a positive value
+overshooting past 0, which is a real move down to the floor. Seed 3's `atomUseProtect` is the second
+(`fired 2, clampedToFloor 1, moved 2`). The waste is `fired - moved`, reported as `wastedAtBound`.
+Naming `clampedToFloor` the waste would have been a counter measuring something other than its name,
+which is the defect this entire batch has been about — this time caught in a new instrument rather
+than inherited from an old one.
+
 ### Where the rig stands after `#216l`
 
 ```
