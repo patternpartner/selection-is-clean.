@@ -43,7 +43,7 @@ git checkout main && git merge --ff-only <branch> && git push -u origin main
   `pkill -f "timeout 900 node substrate-test"` have both taken out the session's own process
   (exit 144) and every sibling run with it. Kill explicit PIDs you have just listed and checked.
 
-## Three traps this repo has paid for repeatedly
+## Four traps this repo has paid for repeatedly
 
 - **A rig embeds the engine's source in a JS template literal.** A backtick anywhere in a comment
   you add to `engine.html` or to a rig's appended block terminates that literal. It fails as
@@ -51,7 +51,13 @@ git checkout main && git merge --ff-only <branch> && git push -u origin main
 - **`#196` draws the governing channel rule from the living CARRIERS**, germline only as fallback.
   So setting `genome.channels` and running the sim measures a stranger's chemistry unless you clear
   the population's banks — every tick, because reproduction re-seeds them — and assert
-  `governedBySelf`. This has bitten three separate blocks.
+  `governedBySelf`. This has bitten **four** separate blocks: `out.chan`, `out.form`, `out.warp` and
+  — found in `#216l`, long after the first three were fixed — `out.grain`.
+  **Find the fifth by sweeping, not by reading the failure.** The question that works is structural:
+  *which blocks assign `genome.channels`, then call `loop()` or `updateChannels()`, and do not clear
+  the carriers?* Twelve blocks touch channels and that sweep returns the exposed ones directly. A
+  grep for `govSelfOnly` does NOT work — `out.warp` clears the banks inside its own `rule()` helper,
+  so a name search reports a defect that is not there and misses the one that is.
   **And that is only half of it (`#216i`): the GERMLINE rule drifts too.** On any run long enough for
   `mutateGenome` to fire, the engine rewrites the very rule you installed. `#189`'s torus case drove
   30 cadence-windows and ended holding `(yc)+(0.00)` where the block installed `(b)+(0.00)`, same
@@ -61,6 +67,15 @@ git checkout main && git merge --ff-only <branch> && git push -u origin main
   **`govSelfOnly()` every step handles the carriers; only RE-INSTALLING the rule every step handles
   the drift.** If a block sets any genome field and then drives the engine, assume the engine will
   mutate it back out from under you, and re-set it inside the loop.
+- **A probe that calls an engine function to observe state may CONSUME RANDOM DRAWS, and then it is
+  not observing the run it is asking about.** `chanGoverning` draws a `Math.random()` whenever a
+  living carrier holds the slot; `chanGrainStep`, `uaPickVar` and the credit pool all draw too. A
+  probe built on those calls shifts the trajectory it is diagnosing, and it fails in the most
+  expensive direction available — it can make a red row go green and read as "fixed". **Prefer the
+  counters the engine already keeps** (`__chanGovPop`, `__chanGovSelf`, `__chanCoarse`,
+  `__chanUpdates`, `__liveness`), differenced across the steps you care about, plus scans that draw
+  nothing. Same question, zero perturbation. `#216l` diagnosed a two-row failure on one seed this way
+  on the first run.
 - **An unbounded value is not automatically a bug here, and the decision that made it unbounded
   lives in `OEE-NOTES.md`, not in the code.** `maybe(val,min,max,magnitude)` ignores `min` and
   `max` at all 66 call sites *on purpose* — `#148` records the author declining to clamp it, in

@@ -821,13 +821,43 @@ m._compile(code+`
   // buys a different DYNAMICS rather than just a different number in the genome.
   out.grain=run('grain',()=>{
     const saveCh=genome.channels, saveTick=tick;
+    // #216l: THIS BLOCK OWNS THE MEDIUM IT MEASURES. It did not, and it is the fourth block to be
+    // caught by #196 after out.chan, out.form and out.warp - the trap CLAUDE.md already lists, found
+    // a fourth time by sweeping every block that assigns genome.channels and then drives the lattice,
+    // rather than by looking where the failure was.
+    //
+    // MEASURED on SEED=5 at the default budget, from the engine's own counters so the probe took no
+    // draw of its own: one particle alive, carrying a k=0 rule of its own
+    // ((Math.log1p(Math.abs(yf)))/(Math.tanh(yh...)) at res 40. Across this block's drives
+    // chanGoverning went to the POPULATION every time the carried slot came up (section 3: pop 3,
+    // self 9 - three updates x four channels, one of which is carried), so every setRule() here was
+    // writing a genome nothing read. The stranger's rule zeroed the lattice, and its res was 40, so
+    // __chanCoarse never left zero and no coarse pass ran in the entire block.
+    //
+    // That is why two rows went red on that one seed: not a grain bug, a probe measuring a stranger.
+    // And note which rows stayed GREEN on the stranger - "bit for bit identical", "BLOCK-UNIFORM" -
+    // because an empty lattice is identical to an empty lattice and uniform within every block. The
+    // spurious pass is the worse half here too, exactly as out.warp's note says.
+    //
+    // Cleared ONCE rather than per step: this block drives updateChannels() directly and never calls
+    // loop(), so nothing reproduces and no newborn re-seeds a bank mid-block. govPop below is the
+    // assertion that this reasoning held, rather than the assumption that it did.
+    const carriers=chanCarrierSave(); govSelfOnly();
+    const govPop0=__chanGovPop;
     const setRule=(expr,res,st,cad)=>{ genome.channels=[{expr,compiled:null,failed:false,age:1,uses:0,
       st:st||CHANNEL_STENCIL_SEED.map(t=>[t[0],t[1],t[2]]),wrap:0,cad:cad||1,res},null,null,null]; };
     const drive=(n)=>{ for(let q=0;q<n;q++){ tick=(q+1)*CHANNEL_CADENCE; updateChannels(); } };
     const lattice=()=>Array.from(chanLattice(0));
     const seed=(L,v,c)=>{ L.fill(0); L[c]=v; };
+    // #216l: AN EMPTY LATTICE HAS NO CENTROID. This returned -1 for one, and section 5 then computed
+    // Math.abs(8-(-1)) and printed "displaces the centroid by 9 cell" - in the failure message of the
+    // row whose entire job is to compare two displacements. On SEED=5 both sides read 9, so the row
+    // went red for a real reason while reporting a number that was not a displacement of anything.
+    // null is the honest answer; stepFrom propagates it and the row asserts a number before comparing.
     const centroid=(L)=>{ let sx=0,w=0; for(let c=0;c<L.length;c++){ const m=Math.abs(L[c]);
-      if(m>1e-9){ sx+=(c%FIELD_W)*m; w+=m; } } return w>0?sx/w:-1; };
+      if(m>1e-9){ sx+=(c%FIELD_W)*m; w+=m; } } return w>0?sx/w:null; };
+    const stepFrom=(x0,L)=>{ const c=centroid(L); return c===null?null:Math.abs(x0-c); };
+    const mass=(L)=>{ let m=0; for(const v of L)m+=Math.abs(v); return m; };
 
     // 1. EVERY GRAIN DIVIDES THE LATTICE EXACTLY. A value that does not leaves a remainder row at
     //    the edge, which is a silent off-by-one in the block loop rather than a coarser medium.
@@ -893,10 +923,10 @@ m._compile(code+`
     // The rule takes each place's value FROM its +x neighbour, so mass travels in -x and the
     // centroid DECREASES. What is measured is the displacement, not the raw centroid - the first
     // version of this check compared centroids and went red for having the sign of the flow.
-    drive(1); const fineStep=Math.abs(8-centroid(lattice()));
+    drive(1); const fineStep=stepFrom(8,lattice()); const fineMass=mass(lattice());
     setRule('(b)*(0.999)',5,adv);
     { const L=chanLattice(0); seed(L,2,20*FIELD_W+8); }
-    drive(1); const coarseStep=Math.abs(8-centroid(lattice()));
+    drive(1); const coarseStep=stepFrom(8,lattice()); const coarseMass=mass(lattice());
 
     // 6. SNAPPED, NOT CLAMPED
     const snap={ s7:chanRes({res:7}), s6:chanRes({res:6}), s39:chanRes({res:39}),
@@ -938,9 +968,13 @@ m._compile(code+`
     let over=0, nf=0;
     for(const v of EL){ if(!isFinite(v))nf++; else if(Math.abs(v)>CHANNEL_CLAMP+1e-6)over++; }
 
+    const govPop=__chanGovPop-govPop0;
+    chanCarrierRestore(carriers);
     genome.channels=saveCh; tick=saveTick;
     return {divides,blocks,identical,nonUniform,wrote,
-            fineStep:+fineStep.toFixed(3), coarseStep:+coarseStep.toFixed(3),
+            fineStep:fineStep===null?null:+fineStep.toFixed(3),
+            coarseStep:coarseStep===null?null:+coarseStep.toFixed(3),
+            fineMass:+fineMass.toFixed(4), coarseMass:+coarseMass.toFixed(4), govPop,
             snap,gmoves,gillegal,gjumps,grains:Object.keys(seen).map(Number).sort((a,b)=>a-b),
             rent,over,nf,coarseFired:__chanCoarse>0};
   });
@@ -2522,10 +2556,27 @@ ck('#194 a write reaches the whole medium cell', GR.wrote &&
    GR.wrote.filled===GR.wrote.ofBlock && Math.abs(GR.wrote.farRead-0.9)<1e-5,
    (GR.wrote&&GR.wrote.filled)+'/'+(GR.wrote&&GR.wrote.ofBlock)+' fine cells carry it, and a reader at the far corner of the block reads '+
    (GR.wrote&&GR.wrote.farRead)+' — splitting the amount instead would have made the gene read as "become deaf"');
+// #216l: A DISPLACEMENT, OR NOTHING — AND THE BLOCK GOVERNS ITSELF.
+// This row and the coarse-pass row below were red on SEED=5 at the default budget and green on the
+// other five seeds. Neither was a grain bug. out.grain is the fourth block caught by #196: it set
+// genome.channels and drove the lattice without clearing the population's banks, so on the one
+// trajectory where a survivor carried a k=0 rule, every measurement in the block ran a stranger's
+// chemistry. See the block's own head comment for the counter readings that establish it.
+//
+// The row now asserts three things it used to assume: that a displacement is a NUMBER (an empty
+// lattice has no centroid, and the old sentinel made "no centroid" print as a 9-cell advection),
+// that there was MASS on both lattices to have a centroid of, and that the germline governed.
 ck('#194 the stencil is read in BLOCKS, so one step advects a whole block',
-   GR.coarseStep!==undefined && GR.coarseStep>GR.fineStep*3,
-   'one advection update displaces the centroid by '+GR.fineStep+' cell at grain 40 and '+GR.coarseStep+
-   ' at grain 5 — no fine kernel reaches that in one update however it is shaped');
+   typeof GR.fineStep==='number' && typeof GR.coarseStep==='number' &&
+   GR.fineMass>1e-6 && GR.coarseMass>1e-6 && GR.coarseStep>GR.fineStep*3,
+   (GR.fineStep===null||GR.coarseStep===null)
+     ? ('NO CENTROID: the lattice was empty after the update — fine mass '+GR.fineMass+', coarse mass '+
+        GR.coarseMass+'. That is a probe reporting on an absent medium, not a measured displacement (#216l)')
+     : ('one advection update displaces the centroid by '+GR.fineStep+' cell at grain 40 and '+GR.coarseStep+
+        ' at grain 5, on '+GR.fineMass+' and '+GR.coarseMass+' of mass — no fine kernel reaches that in one update however it is shaped'));
+ck('#194 and the block governed its OWN medium while measuring it', GR.govPop===0,
+   'chanGoverning went to the population '+GR.govPop+' time(s) during this block — #196 draws the governing '+
+   'rule from the living carriers, so one survivor holding a k=0 rule makes every setRule() here write a genome nothing reads (#216l)');
 ck('#194 the grain SNAPS to the legal set rather than clamping',
    GR.snap && GR.snap.s7===8 && GR.snap.s6===5 && GR.snap.s39===40 &&
    GR.snap.sBig===40 && GR.snap.sNeg===5 && GR.snap.sAbsent===40,
@@ -2562,7 +2613,8 @@ ck('#194 rent FALLS with the grain, floored',
 ck('#194 a coarse medium stays bounded under an explosive rule', GR.over===0 && GR.nf===0,
    GR.over+' out of bound, '+GR.nf+' non-finite, six taps at weight 2 on a x3 rule');
 ck('#194 and the coarse pass actually RAN', GR.coarseFired===true,
-   'a grain that never reaches a lattice pass is #179 again');
+   'a grain that never reaches a lattice pass is #179 again — and on SEED=5 it did not, because the rule '+
+   'that ran was a carrier\'s at res 40 rather than the res-5 rule this block had just written (#216l)');
 const GX=r.grainCross||{};
 ck('#194 save -> load: the grain travels with the chemistry', GX.saved===true);
 ck('#194 a pre-#194 row reads as the lattice\'s own grain', GX.legacyReads===true,

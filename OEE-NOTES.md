@@ -18133,6 +18133,9 @@ default     six seeds                          running
 smoke.sh                                       52 ok, 0 failing
 ```
 
+*(That table is from `#216j`, and the run it was waiting on is what turned up `#216k` and `#216l`.
+The current one is at the end of this file.)*
+
 Five rows were red at some budget-and-seed when this started and none were engine bugs. Every one was
 an assertion measuring something other than its name:
 
@@ -18144,3 +18147,182 @@ an assertion measuring something other than its name:
 - **`#216j` selfwrite** — compared a rounded value against an unrounded law.
 
 **The rig was never testing the engine as badly as it was testing itself.**
+
+### #216k — the sweep above is wrong, and the wrong version was already pushed
+
+> **"The class has one member and it is fixed."** That sentence is three paragraphs up. It is false,
+> and it is left there because a corrected claim with the original deleted teaches nobody how the
+> mistake was available in the first place.
+
+The sixth flickering row, found in the same default-budget sweep:
+
+```
+#194 rent FALLS with the grain, floored    grain 40 0.6595, grain 20 0.1649, grain 5 0.0989
+```
+
+red on `SEED=4` and `SEED=5`, green on the other four. The assertion was
+
+```js
+Math.abs(rent.coarse - CHANNEL_RENT_SAFE()*rent.floor) < 1e-3
+```
+
+and `CHANNEL_RENT_SAFE()` is a **rig-local helper that falls back to a hardcoded `0.6`**. That was
+correct when `CHANNEL_RENT` *seeded* at 0.6. `#197` made it a law, so it drifts: at 0.6595 the
+expectation is `0.6*0.15 = 0.09` against an actual `0.0989` — a gap of 8.9e-3 against a 1e-3
+tolerance. Exactly the `#216j` disease, one row away from `#216j`.
+
+**Why the `#216j` sweep missed it.** That sweep searched for tolerance comparisons *naming* one of
+the twenty law constants. This one names a helper, and the stale literal is hidden inside the
+helper's `||` fallback. A grep for the law's name cannot see a number that has been given a different
+name. **The real class is not "comparisons mentioning a law". It is any rig expectation derived from
+a number that was a constant when it was written and is a law now** — and a name-based search cannot
+enumerate it, because the whole point of the defect is that the number stopped being called what it
+was.
+
+The fix is better than refreshing the constant. The row's own claim is a **ratio** — coarsening costs
+less in proportion to block area, floored — so it can be asserted against the run's own `rent.fine`,
+which at grain 40 has a block factor of 1 and therefore *is* the live `CHANNEL_RENT` whatever it has
+drifted to. The row now needs no knowledge of the law's value at all. `coarse/fine = 0.150000000`.
+
+**And then I put `#216j`'s defect back, inside the fix for it.** The new ratio row compared
+`|coarse - fine*floor|` against `1e-6` while `rentAt` still did `return +t.toFixed(4)` — 4-decimal
+inputs carry up to 5e-5 of rounding error each, so the tolerance was ~57x tighter than the
+granularity of the numbers it judged. One row after diagnosing precisely that. `rentAt` returns raw
+now and the rounding happens in the message: compare raw, display rounded.
+
+### #216l — the fourth block to hit `#196`, found by sweeping rather than by looking
+
+Two rows were red on `SEED=5` at the default budget and green on the other five seeds:
+
+```
+FAIL  #194 the stencil is read in BLOCKS   ...displaces the centroid by 9 cell at grain 40 and 9 at grain 5
+FAIL  #194 and the coarse pass actually RAN
+```
+
+Neither is a grain bug. **`out.grain` set `genome.channels` and drove the lattice without clearing
+the population's banks** — the trap this repo's `CLAUDE.md` already lists, which had already bitten
+`out.chan`, `out.form` and `out.warp`.
+
+**Measured from the engine's own counters, so the probe took no draw of its own** (see below — this
+matters more than it sounds). On `SEED=5` at `TICKS=4000`: one particle alive, carrying a k=0 rule of
+its own, `(Math.log1p(Math.abs(yf)))/(Math.tanh(yh…))`, at res 40. Across the block's drives
+`chanGoverning` went to the **population** every time the carried slot came up — section 3 read
+`pop 3, self 9`, which is three updates x four channels with one channel carried, exactly. So every
+`setRule()` in the block was writing a genome nothing read. The stranger's rule zeroed the lattice,
+and its res was 40, so `__chanCoarse` never left zero and no coarse pass ran anywhere in the block.
+
+**The spurious passes are the worse half, again.** On that stranger's empty lattice these stayed
+green: *"the seeded grain is the ORIGINAL fine path, bit for bit — 0 cells of 1600 differed"* (an
+empty lattice is identical to an empty lattice) and *"a coarse medium is BLOCK-UNIFORM — 0 cells
+disagreed"* (zero is uniform within every block). Two of the strongest-sounding rows in the block
+report success on a medium that is not there.
+
+**And the failure message was a number that was not a displacement.** `centroid()` returned `-1` for
+an empty lattice and section 5 computed `Math.abs(8 - (-1))`, so "no centroid at all" printed as
+*"displaces the centroid by 9 cell"* — in the failure text of the row whose entire job is to compare
+two displacements. It returns `null` now; `stepFrom` propagates it; the row asserts a **number**, and
+asserts there was mass on both lattices to have a centroid of, before it compares anything.
+
+Fixed: the block saves the carriers, clears them, and puts them back (`out.warp` and `#198`'s block
+do not put them back — noted, not changed). Cleared once rather than per step, because this block
+drives `updateChannels()` directly and never calls `loop()`, so nothing reproduces mid-block. **That
+reasoning is now an assertion rather than an assumption:** a new row reads `__chanGovPop` across the
+whole block and requires 0.
+
+```
+ok  #194 the stencil is read in BLOCKS   displaces the centroid by 1 cell at grain 40 and 4.5 at
+    grain 5, on 1.998 and 1.998 of mass
+ok  #194 and the block governed its OWN medium while measuring it   chanGoverning went to the
+    population 0 time(s) during this block
+```
+
+**How it was found, which is the transferable part.** Not by reading the failing rows — by asking the
+file a structural question: *which blocks assign `genome.channels`, then drive the lattice, and do
+not clear the carriers?* Twelve blocks touch channels; the sweep returns exactly one exposed. It also
+flags `out.gov` (which owns its population deliberately — it is the block *about* governance) and
+`out.warp`, which clears the banks **inside its own `rule()` helper** and so is protected under a
+different name. A grep for `govSelfOnly` would have missed `out.warp`'s protection and reported a
+defect that is not there; a grep for the failure would have missed `out.grain` entirely. The question
+has to be about behaviour, not about a name — the same lesson `#216k` had just paid for one entry up.
+
+### A new trap: asking the engine a question can change the answer
+
+The first probe I wrote for this called `chanGoverning(0)` to ask "who is governing?".
+**`chanGoverning` draws a `Math.random()` whenever a living carrier holds the slot** (`#196`'s
+weighted draw). A probe that calls it therefore consumes draws the unprobed run does not, and every
+measurement downstream of that call is on a different trajectory from the one being diagnosed.
+
+**Recorded as a hazard, not as an observed flip.** I caught it by reading `chanGoverning` before
+trusting the probe's output, not by being burned — and the honest accounting is that on the run where
+I used the perturbing probe (`SEED=4`) the probed and unprobed runs both came back 258/0. They agree
+because that trajectory had **no living carrier at k=0 at all**, so `chanGoverning` took its
+`n===0` early return and never reached the draw. The hazard was live and did not fire. Claiming it
+had would be the same error as the four mechanisms named before measuring earlier in this batch, and
+would be a worse one for sitting in the entry about measurement discipline.
+
+The rewritten probe reads only what the engine already counts — `__chanGovPop`, `__chanGovSelf`,
+`__chanCoarse`, `__chanUpdates` — differenced across each `drive()`, plus a population scan that
+draws nothing. That is what produced the `SEED=5` numbers above, on the first run, with nothing to
+argue about afterwards.
+
+**Any probe in this repo that calls an engine function to observe state must first be checked for
+`Math.random()` on that path.** `chanGoverning`, `chanGrainStep`, `uaPickVar` and the credit pool all
+take draws. A measurement that moves the thing it measures is not a measurement, and here it fails in
+the most expensive direction available: it makes a red row go green.
+
+### Where the rig stands after `#216l`
+
+```
+default     six seeds                          6/6 at 259/0
+TICKS=900   four seeds + two FOUND=0 arms      6/6 at 259/0
+TICKS=40    six seeds + three FOUND=0 arms     9/9 at 259/0
+                                              ----------------
+                                              21/21, 0 failed
+```
+
+**Six rows were red at some budget-and-seed when this batch started. None of them were engine bugs.**
+Every one was an assertion measuring something other than its name:
+
+- **`#216c` census** — asserted population survival under a name about the census.
+- **`#216f` seeder** — asserted something structurally impossible, on a counter unsound in both
+  directions where `#206` had fixed one.
+- **`#216g` virgin** — a presence assertion 42 calls short of the event.
+- **`#216i` torus** — measured whether a mutation cycle had fired.
+- **`#216j` selfwrite** — compared a rounded value against an unrounded law.
+- **`#216k` rent** — compared against a constant that `#197` had turned into a law, through a helper
+  that hid the stale literal from the sweep written to catch exactly this.
+- **`#216l` grain** — measured a stranger's chemistry, and printed a missing centroid as a 9-cell
+  advection.
+
+That is seven, because `#216k` and `#216l` were both found by the sweep the earlier five paid for.
+**The rig was never testing the engine as badly as it was testing itself**, and the two newest rows
+exist because the question finally got asked structurally — *which assertions derive from a number
+that has since become a law*, *which blocks drive the lattice without owning it* — instead of one
+red row at a time.
+
+### And the answer to the question this batch was opened to ask
+
+*When an evolving system has several nested persistence layers, where does selection actually
+terminate?* The census answers it, and the answer is not "at the particle layer" — that was the
+shape of it, not the reason.
+
+**It terminates where a layer stops being a POPULATION.** Within one universe:
+
+| layer | instances per universe | conditional removal |
+|---|---|---|
+| particle | many | death — always ran |
+| atom (germline bank) | many | evict + idle cull (`#211` opened the cull's dial) |
+| opcode slot | many | `opCull` |
+| motif | many | `#215` made eviction depend on the motif's own size x coherence |
+| cluster genome | many | `#212` prune, conditional **iff** a read ever re-stamps (`#216m`) |
+| **germline** | **one** | **none possible — a population of one has no variance to sort** |
+| universe | many *in the field* | `cosmos.merge` |
+
+The germline is not an under-selected layer that wants fixing. It is a layer with **one occupant**,
+and selection is not a thing that can happen to one occupant. Every layer below it is a population
+inside a universe and every one of them now has a conditional removal path; the next layer up is a
+population again — of germlines, one per universe — and `index.html` is where that population lives.
+**Selection does not terminate at a height. It terminates at every layer whose population size is
+one, and resumes above it.** The three engine changes in this batch did not extend selection upward;
+they filled in the layers between the particle and the universe that were populations all along and
+had no sorting in them.

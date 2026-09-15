@@ -2825,3 +2825,35 @@ not a preference, and `#205` showed clamping would not close the attractor anywa
 `sensorMaxInst` and `fitnessHistory` stay — the first two are declared save-file compatibility, worth
 more than the two `Math.random()` draws per birth they cost; `#210`'s stack capture showed all three
 are read only by `cloneGenome`'s generic walk under `checkExtinction`, never by name.
+
+**#216k — `substrate-test.js` `rentAt` (~921) and the `#194` rent row (~2554).** The expectation was
+`Math.abs(rent.coarse - CHANNEL_RENT_SAFE()*rent.floor) < 1e-3`, and `CHANNEL_RENT_SAFE()` is a
+rig-local helper whose `||` fallback carries a hardcoded `0.6` — right when `CHANNEL_RENT` seeded at
+0.6, wrong once `#197` made it a law that drifts (0.6595 on `SEED=4`). Now a **ratio** against the
+run's own `rent.fine`, which at grain 40 has block factor 1 and therefore *is* the live law whatever
+it has drifted to; the row needs no knowledge of the constant. `rentAt` returns **raw** float64 — it
+returned `+t.toFixed(4)`, and #216k's own first fix then judged those 4-decimal values with a 1e-6
+tolerance, rebuilding `#216j`'s defect inside the fix for it.
+
+**#216l — `substrate-test.js` `out.grain` (~822) owns its medium.** The block is the fourth to hit
+the `#196` trap: it set `genome.channels` and drove `updateChannels()` without clearing the
+population's banks, so on `SEED=5` at the default budget one surviving carrier's res-40 rule governed
+every measurement in the block. Now `chanCarrierSave()` / `govSelfOnly()` at the top and
+`chanCarrierRestore()` at the bottom, cleared **once** because the block drives `updateChannels()`
+directly and never calls `loop()`, so nothing reproduces mid-block. `govPop` (a `__chanGovPop` delta
+across the whole block) is exported and asserted `===0` by a new row, so the "once is enough"
+reasoning is checked rather than assumed.
+
+`centroid()` in that block returns **`null`** for an empty lattice, not `-1`; `stepFrom()` propagates
+it and the two displacement values are `null` rather than a number. The old `-1` sentinel fed
+`Math.abs(8-(-1))` and printed "displaces the centroid by 9 cell" for a lattice with nothing on it.
+The row now asserts `typeof === 'number'` and non-zero mass on both sides before comparing, and the
+grain block exports `fineMass` / `coarseMass` so the message says which.
+
+**Blocks that clear the carriers, and how (for the next sweep).** `out.chan` and `out.form` call the
+shared `govSelfOnly()`; `out.grain` now does too. `out.warp` clears them inline inside its own
+`rule()` helper — so it is protected under a different name and a `govSelfOnly` grep misreports it.
+`out.gov` deliberately owns the whole population (it is the block *about* `#196` governance). Of
+those, only `out.grain` saves and restores; `out.warp` and `#198`'s block leave the banks nulled for
+the rest of the run — observed, not changed, and `out.gov` likewise leaves its four-particle
+population in place for every block after it.
