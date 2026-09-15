@@ -18430,6 +18430,56 @@ Naming `clampedToFloor` the waste would have been a counter measuring something 
 which is the defect this entire batch has been about — this time caught in a new instrument rather
 than inherited from an old one.
 
+### #216p — `#215` has never fired in a live run, so I turned the dial and asked whether it works
+
+`#216n` and `#216o` explained WHY `#215`'s quality eviction never fires — the gene that gates it
+starts at 0 and gets about forty offers per 12,000 ticks, 40% of whose fired steps the floor clamp
+throws away. That is a different claim from **whether the mechanism works when it is reached**, and
+shipping on the first claim is how this repo has been burned before. `#208` left exactly this kind of
+prediction hanging and the strata rig's own header calls a prediction it could test and did not
+"worse than no prediction". So it was tested. `MOTIF_BIAS` forces `motifKeepBias` every tick, three
+seeds per arm, at `TICKS=12000`:
+
+```
+arm         seed  evictAge  evictQuality  witness    bank min q   bank mean q
+MOTIF_BIAS=0   1  22        0             0/0        6.00         43.59
+MOTIF_BIAS=0   2  20        0             0/0        6.44         36.47
+MOTIF_BIAS=0   3  31        0             0/0        10.00        36.72
+MOTIF_BIAS=1   1  0         29            29/29 t1   71.28        93.46
+MOTIF_BIAS=1   2  0         22            22/22      45.54        52.60
+MOTIF_BIAS=1   3  0         9             9/9        166.50       203.37
+
+min  quality: 7.48 -> 94.44   (12.6x)
+mean quality: 38.93 -> 116.48  (3.0x)
+witness:      60/60 correct across the whole MOTIF_BIAS=1 arm
+```
+
+**Three things, and one of them is not a tautology while two of them look like it.**
+
+1. **The branch is exclusive and the knob is a real control arm.** 100/0 age-vs-quality at bias 0,
+   0/100 at bias 1, on every seed. No partial path, no leakage.
+2. **The witness is the non-tautological result: 60 of 60 correct.** Every time the branch fired, the
+   motif it removed really was the minimum `s*c` in the bank. That check is patched onto the engine's
+   own line rather than reimplementing the rule, so it cannot agree with a bug by sharing it. "The
+   branch fired" and "the branch picked the right one" are different claims and this project has
+   shipped a mechanism that did the first and not the second.
+3. **The bank quality figures are PARTLY circular and I am saying so rather than quoting them
+   straight.** Of course a bank gets better by `s*c` when you evict by `s*c`. What is not circular is
+   the MAGNITUDE: at bias 0 the bank was sitting on motifs of quality 6 — a six-member cluster — while
+   far better ones existed and aged out ahead of them. A 12.6x gap on the minimum says recency
+   ordering was not a weak proxy for quality, it was uncorrelated with it.
+
+**What this does NOT show, and the entry would be dishonest without it.** Motifs feed particle
+nudging every tick, the ordinary spawner, and the extinction reseed. Whether a higher-`s*c` bank makes
+a fitter or more open-ended universe is a completely separate question that these runs do not touch.
+All that is established is that `#215` is a working capability sitting behind a rarely-moved gene,
+rather than a green liveness name over a mechanism nobody has ever exercised.
+
+Note also that the arm changes the trajectory — seed 3 has 31 evictions at bias 0 and 9 at bias 1 —
+because evicting the worst rather than the oldest changes what the bank holds, which changes cluster
+matching, which changes everything downstream. That is what an experimental arm is; it is not a probe
+and it is not expected to be trajectory-neutral, unlike `#216o`'s tracer.
+
 ### Where the rig stands after `#216l`
 
 ```

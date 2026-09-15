@@ -2868,3 +2868,12 @@ assigned value changed), `wastedAtBound` = `fired - moved`, plus `clampedToFloor
 counts a real move from a positive value down onto the floor. `genomeMutations` and `mutationRate`
 sit beside them in `state`, because a dial at its seed value means nothing without the count of
 offers it was given.
+
+**#216p — `#215` exercised, via `MOTIF_BIAS` in `harness-strata.js`.** The knob forces
+`genome.motifKeepBias` every tick (before `loop()`, so germline drift cannot undo it) and is the only
+way the quality branch has ever been observed running: three seeds per arm at `TICKS=12000` give a
+clean 100/0 age-vs-quality split at bias 0 and 0/100 at bias 1, with `mkbWitness` reporting **60/60
+correct** — every fired eviction removed the true minimum `s*c`. Bank minimum quality 7.48 -> 94.44,
+mean 38.93 -> 116.48. The quality figures are partly circular (evicting by `s*c` improves `s*c`); the
+witness and the magnitude are not. Unlike `#216o`'s tracer this arm is NOT trajectory-neutral by
+design — it changes what the bank holds, which changes cluster matching downstream.
