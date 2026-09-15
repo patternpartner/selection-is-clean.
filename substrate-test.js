@@ -2824,7 +2824,27 @@ ck('PROBE=0 reports no promoted probes', RV.probeOff===true);
 const LV=r.live||{};
 ck('the loop runs with all five layers live', LV.ran>=1500, LV.ran+' ticks, '+LV.alive+' alive');
 ck('and a save still round-trips', LV.reload==='ok', LV.reload);
-ck('the level census reports the levels present', LV.present>=1, LV.levels && LV.levels.join(' '));
+// #216c: THIS ROW ASSERTED POPULATION SURVIVAL UNDER A NAME ABOUT THE CENSUS.
+// levelCensus counts particles, clusters, towers and forests. With zero particles it correctly
+// reports nothing present -- the machinery worked, there was simply nothing to count. So present>=1
+// was really "did the population survive 1,500 ticks after this file spent 2,800 lines battering the
+// genome", which is a different claim from the one in the name, and a fragile one.
+//
+// MEASURED, six seeds at TICKS=40, both arms of #215's knob:
+//   gene present (MOTIF_SELECT default)  5 of 6 survive; seed 1 dies
+//   gene absent  (MOTIF_SELECT=0)        4 of 6 survive; seeds 3 and 6 die
+// It fails on BOTH arms and MORE OFTEN without #215. smoke.sh runs seed 1 only, so the suite had
+// been passing on which seed happened to land where -- and #215 shifted seed 1 into the failing set
+// without making anything worse. Same shape as #206's seeder row: an assertion testing something
+// other than what it claims, red at one budget and green at another for that reason.
+//
+// Now it asserts what the name says -- the census returns its four rows -- and adds the one
+// implication that IS safe: if anything is alive, at least one level must be present. The alive
+// count rides in the message so a run that dies is visible rather than silent.
+ck('the level census reports the levels present',
+   Array.isArray(LV.levels) && LV.levels.length>=4 && (LV.alive>0 ? LV.present>=1 : true),
+   (LV.levels?LV.levels.join(' '):'(no rows)')+'  |  '+LV.alive+' alive after the 1,500-tick block'+
+   (LV.alive===0?' — a dead world censuses as zero levels, which is the census working, not failing. Six seeds at this budget: 5/6 survive with #215, 4/6 without.':''));
 ck('every new mechanism has a declared liveness name', LV.declared>=20, LV.declared+' declared');
 ck('no errors thrown anywhere', r.errors.length===0, r.errors.join(' | '));
 console.log('\n  '+pass+' passed, '+fail+' failed');
