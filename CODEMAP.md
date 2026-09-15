@@ -2746,3 +2746,26 @@ Two things to carry:
 Direction is the finding. Every crossing moves content DOWN into the layer where removal is
 conditional; none carries the verdict back UP. `collectClusterUpstream` is the sole exception and
 fires about once per 700 ticks.
+
+## The atom cull's door (18902) — the line the whole removal path hangs on
+
+```js
+if(genome.userAtoms.length>0 && Math.random() < rate*0.1)   // rate ~ 0.06, so p ~ 0.005
+```
+
+Inside it, in order: a scan for a **failed** atom (validity, not selection), then the idle cull with
+its four conditions and the `atomIdleTolerance` dial. `mutateGenome` reaches this line ~40–60 times
+per 12,000 ticks, so the door opens about **once per 20,000–63,000 ticks** (#208, three seeds).
+
+Measured consequences, and they are what `#206` and `#207` were really seeing:
+
+- The idle cull's four conditions were evaluated **0 times in 36,000 ticks**. `atomIdleTolerance` was
+  never read (`tolMax: 0` on every seed).
+- The one entry that did happen (seed 1) stopped at the failed-atom scan, so `atom.cull` fired once
+  on a *failed* atom. That is the `consumerFired: 1` in the credit loop — not an idle-cull event.
+- `applyCreditAssignment` computes `creditTrace` **200 times per seed** per 12,000 ticks. Its only
+  selective consumer is behind this door.
+
+So the atom bank's two removers are behind one coin flip, and the second is behind the first.
+`harness-strata.js` reports `cullGate.{doorEvals, entered, meanDoorProb, ticksPerEntryIfLinear,
+outer, atomEvals, tolMax}` — `outer` and `atomEvals` at 0 with `doorEvals` non-zero is the signature.

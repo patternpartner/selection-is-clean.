@@ -17259,3 +17259,70 @@ loop is written, evaluated, and terminates in nothing.
 So the architecture, stated at the width the measurements support: **downward crossings work,
 upward feedback does not exist**, except through `collectClusterUpstream`, which is one channel out of
 four and fires about once per 700 ticks.
+
+## #208 — THE ATOM CULL'S CONDITIONS ARE NEVER ASKED. IT IS A DOOR, NOT A GATE.
+
+`#206` called the idle cull unreachable. `#207` called the credit wire unterminated. **Both were
+describing a symptom one level below the cause**, and the correction matters because it changes who
+the finding is about.
+
+### The audit found its own instrument pointing at the wrong thing
+
+The first version instrumented the two gates the cull's own comment is about — `atomIdleTolerance`
+and the trust window — and came back `outer: 0`. **The block those gates live in was never entered.**
+Everything below them is downstream of one line:
+
+```js
+if(genome.userAtoms.length>0 && Math.random() < rate*0.1)
+```
+
+with `rate = genome.mutationRate * stabilityFactor`, about 0.06. Three seeds, 12,000 ticks:
+
+```
+seed   door evaluated   entered   mean door prob   expected entries   ticks per entry
+  1          60            1          0.0099            0.594             20,205
+  2          39            0          0.00489           0.191             62,938
+  3          41            0          0.00462           0.189             63,373
+
+       idle conditions consulted (atomEvals):  0     0     0
+       tolerance gene ever sampled (tolMax):   0     0     0
+```
+
+**Zero. In 36,000 ticks across three seeds, the idle cull's four conditions were evaluated not once.**
+They have never been asked, let alone refused. `atomIdleTolerance` — the dial — was never so much as
+read.
+
+And the single entry, on seed 1, did not reach them either: the block scans for a **failed** atom
+first and `removeIdx` was set there. That is the `consumerFired: 1` in seed 1's credit loop — a
+validity check firing, not selection. There are two removers behind that door and the idle one is
+behind the other one as well.
+
+### Why this reframes `#206`, and who it is about
+
+"Unreachable" was the right word for the wrong reason. Not *"the state never satisfies the
+condition"* — **"the condition is never evaluated."** Those look identical in a liveness table and
+they are different findings: the first is a claim about the world the lineage built, the second is a
+claim about the cadence the mechanism was wired at.
+
+**And it lands on the standing decision rather than against it.** The author's note is explicit:
+
+> *"So: give the lineage a dial and let selection set it. `atomIdleTolerance` seeds at 0 … If
+> releasing idle atoms costs fitness the gene goes to 0 and stays; if it pays, it rises. That is the
+> whole point and I am not going to pick the number."*
+
+That dial is **downstream of the door**. The lineage was handed a decision, and the decision sits
+behind something that opens about once per 20,000–63,000 ticks. `tolMax: 0` on every seed is not the
+system having decided 0 — it is the system never having been asked.
+
+**The standing decision assumed the machinery was running. Reporting that it is not is not the same
+as picking the number, and the number stays the author's.** Nothing in `engine.html` is changed here.
+
+### The registered prediction, so this is refutable
+
+If the door were opened — the `rate*0.1` term raised, or the cull moved off `mutateGenome`'s cadence
+onto its own — then `atomIdleTolerance` would start being read, and the gene would begin the walk the
+comment describes. The prediction is that **it does not stay at 0**: its sibling `atomUseProtect`,
+seeded at 0 under the same lazy-gene contract and the same `maybe()` step, has spread to 0..0.785
+across eighteen live universes. A dial that is genuinely being selected to 0 and a dial that is never
+read are distinguishable by exactly that spread, and the eighteen-universe export already contains
+the control.
