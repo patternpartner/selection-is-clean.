@@ -18304,9 +18304,76 @@ That is the same discipline `#216l` needed one entry up: the honest answer to "i
 a measurement, and a rig that writes the answer down in advance is a rig that will keep saying it
 after it stops being true.
 
-**The census numbers are not in this entry yet** — the verifying run was still going when this was
-committed. They belong here, and until they are here this entry describes a defect and a design, not
-a result.
+**The numbers, three seeds at `TICKS=12000`:**
+
+```
+seed   cg set-calls   evicted   re-stamps   kind          hit age med/max   TTL
+1      1595           761       929         conditional   60 / 60          480
+2      3030           1268      1053        conditional   60 / 60          480
+3      1427           697       673         conditional   60 / 60          480
+```
+
+The row classifies itself `conditional` on all three, and the hit-age column is why. **Median and max
+are both exactly 60, which is the cluster-detection cadence, not a ceiling.** An entry whose cluster
+keeps re-forming is re-stamped every 60 ticks and never reaches the 480-tick horizon at all; an entry
+whose cluster stops re-forming dies 480 ticks after its last read. That is differential survival on
+use, which is what the row claims.
+
+**I first read that column the other way** — "max hit age 60 against a 480 horizon, so a re-stamp buys
+at most 60 extra ticks, so the sorting is real but marginal" — and nearly wrote it down. The 60 is how
+OFTEN the clock is reset, not how much it is reset by. Recorded because the wrong reading is the
+natural one and the next person will reach for it too.
+
+**One caveat the row carries and the ratio does not.** `created` counts `clusterGenomes.set` CALLS,
+including overwrites of a hash already present; seed 1 ends with 14 distinct entries live against
+1595 set-calls. So `selectionRatio` here is evictions per set-call, not per distinct entry, and the
+distinct count (`__cgTick.size`) belongs in the row.
+
+### #216n — "the gene never moved" and "the gene was never offered a move" were the same number
+
+The same census reported the motif layer as **"turnover, but UNCONDITIONAL"**: `motif.evictAge` 22,
+`motif.evictQuality` **0**, `mkbWitness.checks` 0, `motifKeepBias` sitting at exactly its seed of 0.
+So `#215`'s quality branch had never been entered — which is the `#205`/`uaMaxDepth` shape, a
+conditional site present, reachable, and never exercised.
+
+**That was not yet a finding, and the line directly above it said so.** `atomIdleTolerance` has the
+same seed of 0, the same magnitude 0.15, the same `__cl(...,0,1)`, and lives in the same
+`mutateGenome()` — and it read 0.11002 on the same run. One escape against zero escapes is luck
+unless `mutateGenome` ran often enough for zero to be surprising, and **the census was not reporting
+that number at all.** It does now (`genomeMutations`, `mutationRate`).
+
+```
+seed   cycles   rate      atomIdleTolerance   atomUseProtect   motifKeepBias   evictAge/evictQuality
+1      41       0.06314   0.11002             0                0               22 / 0
+2      37       0.05344   0.00985             0                0               20 / 0
+3      38       0.06967   0.02948             0                0.034418        19 / 0
+```
+
+**Seed 3 settles it: `motifKeepBias` is not frozen — it reached 0.034.** And `motif.evictQuality` is
+*still* 0 on that seed, which is also ordinary: the quality branch fires with probability `b` per
+eviction, and `b=0.034` over ~19 evictions is an expectation of 0.7. Nothing here is evidence about
+`#215`'s mechanism. The motif layer reads UNCONDITIONAL on all three seeds because **the gene that
+switches it on starts at zero and a 12,000-tick run offers it about forty coin flips.**
+
+**And the structural reason those flips are worth less than the rate says.** `maybe()` is ADDITIVE —
+`val + tailDraw()*magnitude*scale` — and `tailDraw()` returns `Math.random()-0.5`, symmetric about
+zero. A gene sitting exactly ON the floor of its own clamp therefore has about half of every fired
+mutation discarded: `__cl` does not reflect the step back into range, it throws it away. So the
+effective escape rate from the seed value is `rate/2`, not `rate`, and P(still exactly 0 after 41
+cycles) is around 26% per gene rather than the 7% the raw rate suggests. Observed: 3 of 3 for
+`atomIdleTolerance`, 1 of 3 for `motifKeepBias`, 0 of 3 for `atomUseProtect`.
+
+**This is not filed as a defect.** Seeding a new dial at exactly 0 is deliberate and documented at
+every one of these sites — it makes the gene's presence bit-identical to the pre-gene behaviour until
+selection moves it, which is the same reasoning `#181`'s lazy-gene contract rests on. Changing it is
+`#148` territory and not mine. **Reporting it is**, because the consequence is not obvious from the
+code: every zero-seeded dial in this engine is markedly stickier at its seed than its mutation rate
+implies, and a run that finds one at 0 has measured the boundary, not the gene.
+
+`#215`'s own trailing comment was also wrong, and in a way this file cares about: it read *"how
+willing this lineage is to release an atom nothing has run"*, which is `#177`'s description of
+`atomIdleTolerance` on the line ABOVE, copy-pasted onto the motif gene. In a file whose rule is to
+read the comment before the function, a comment describing a different gene is worse than none.
 
 ### Where the rig stands after `#216l`
 
