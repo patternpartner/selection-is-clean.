@@ -17624,3 +17624,29 @@ gets deleted by whoever is tired of it. The anchors are now the distinctive SOUR
 `function collectClusterUpstream(`). They move with the file and still fail loudly if the attribution
 itself breaks. Re-run: 191 keys, LIVE 181 / META_ONLY 7 / INERT 3 — unchanged, as it should be, since
 nothing about which genes are named changed.
+
+**Gate, final.** `smoke.sh` **52 ok, 0 failing** with the fixed rig. `substrate-test` 257/257 at the
+default budget, at `TICKS=900`, with `FOUND=0` and at `TICKS=40`. Both engine changes of this arc
+(`#211`, `#212`) are green on every rig the repo has.
+
+### What the #205–#212 arc changed, and what it deliberately did not
+
+**Two lines of `engine.html`, in eight entries of measurement.**
+
+- `#211` deleted `Math.random()<rate*0.1` in front of the atom cull, so the dial `#148` reserved for
+  the lineage is actually consulted.
+- `#212` gave `clusterGenomes` a last-touch horizon, so the one carry-forward store that never let go
+  now lets go — bit-identically.
+
+**Not changed, each for a reason on the page next to it:**
+
+- **`maybe()` still ignores its declared bounds.** `#148` is a principle, not a preference — *"the
+  system needs to decide to turn them off, not me"* — and clamping violates it whoever signs off.
+  `#205` also showed it would not close the attractor: the trap condition is *death line above one
+  window's regrowth*, which a value inside [2,20] can satisfy.
+- **`maxSensors`, `sensorMaxInst`, `fitnessHistory` stay.** `#210`'s stack capture named their only
+  reader — `cloneGenome`'s generic walk under `checkExtinction`, never by name — so two
+  `Math.random()` draws per birth is the honest price of save-file compatibility.
+- **The motif layer stays FIFO and the germline stays a population of one.** `#206` measured both;
+  neither is a defect with an owner, and changing either is a design decision about what this artwork
+  is, not a repair.
