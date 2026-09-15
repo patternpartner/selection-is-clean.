@@ -16664,3 +16664,96 @@ The decisive test is to permute the scan order and see whether the skew follows 
 stays with the particles, and that test is a swing of its own. Reordering the hottest loop in the
 engine on a half-diagnosed mechanism is precisely the move that cost this session five separate
 retractions. It is recorded here with its numbers so the next pass starts from evidence.
+
+
+---
+
+## FORENSICS ON AN 18-UNIVERSE FIELD EXPORT — and the bug it found
+
+The author ran the field to 88k–175k ticks, exported all 18 universes, and had another model do a
+forensic read. That read was accurate on every headline number I checked and its top priority was
+exactly right. It also could not answer its own central question, because answering it needs the
+source. It does now.
+
+### What the other read got right
+
+18 universes; generations 31–607; N 10–104, median 72; `peers` exactly 19 everywhere; `surface/6` at
+generation 607 with N 10 and 254 atoms; `surface/7` at 281 with N 84. All confirmed against the
+decoded genomes. Its instinct to treat **the 73-tick extinction rhythm in `surface/6`** as the single
+thing to push on was the right call — it is the thread that unravels everything else.
+
+It offered two explanations and said the export could not distinguish them: **(A)** a genuine
+ecological attractor, or **(B)** a fixed architectural restart loop.
+
+**It is neither.**
+
+### The 73 is a gene
+
+```js
+if(tick % Math.max(1,(genome.cadenceExtinct|0)||90)===0 && tick>300){ if(checkExtinction())return }
+```
+
+`cadenceExtinct` is evolvable, default 90. Across the field:
+
+```
+surface/6    73     gen 607    N  10
+surface/7    37     gen 281    N  84
+layer1/6    132     gen 174    N  72
+the rest   75–107   gen 31–109
+```
+
+`surface/6` evolved a 73-tick check interval and the event log is that gene made visible. Not an
+attractor, not a hard-coded loop — a third option neither available from the export alone.
+
+### And the loop is an unenforced bound
+
+```js
+function maybe(val,min,max,magnitude){
+  if(Math.random()>rate)return val;
+  const next=val+tailDraw()*magnitude*scale;
+  if(!isFinite(next))return val;
+  return next;
+}
+```
+
+**`min` and `max` are never read.** Sixty-six genes are mutated through `maybe()`; seventeen wrap it
+in a `__cl(...)`. **Roughly forty-nine genes have declared bounds that are decorative.**
+
+So `genome.extinctionThresh = Math.max(1,Math.round(maybe(genome.extinctionThresh,2,20,2)))` looks
+bounded to [2,20] and is not. In `surface/6` it reached **28**:
+
+```
+slot        extinctionThresh    N     below its own death line?
+surface/6         28           10     YES
+every other        1–14        29–104  no
+```
+
+Its population never exceeds 24 anywhere in its own event log. So `alive < extinctionThresh` is
+**permanently true**, the check runs every 73 ticks, and every check reseeds. **Generation 607 counts
+deaths, not descent.** One of eighteen is in the trap, which makes it a clean natural experiment with
+seventeen controls.
+
+### This is the second absorbing trap of a species the file already names
+
+`checkExtinction`'s own PHOENIX comment says: *"A non-positive mutationRate is the absorbing trap that
+silently disables all rate-gated mutation — the world can no longer change. Treat that as a death that
+triggers rebirth."* That is the same defect from the same cause: `maybe(genome.mutationRate,0.01,0.25,
+0.02)` also looks bounded and is not. One instance was found and given a rebirth path; the general
+cause was never traced.
+
+**And it corrects me.** In #199 I measured `mutationRate` drifting to −0.4086 and wrote that it was
+deliberately unclamped, *"range is the system's to find"*. That principle is real but it belongs to
+`mutateChildGenome`, which says so explicitly. The germline's `maybe()` states bounds at all 66 call
+sites and enforces none. I read intent into an omission.
+
+### What is NOT being changed here, and why
+
+Clamping `maybe()` to its declared bounds would alter roughly forty-nine genes at once, and the
+question of whether those bounds are **intent or decoration** is the author's, not mine — the file
+argues for unbounded exploration in one place and writes bounds in another. What is unambiguous is
+narrower: *a world can evolve a death criterion above its own carrying capacity and never escape it,
+because the reseed restores the genome that set the criterion.* That is a trap the file already
+recognises in another form.
+
+The finding stands on its own and is recorded before any fix, with the case and its seventeen
+controls preserved in the export.
