@@ -36,6 +36,15 @@
 // Env: SEED  TICKS (default 12000)
 const fs=require('fs');
 const TICKS=parseInt(process.env.TICKS||'12000',10);
+// CULLDOOR multiplies the atom cull's entry probability. #208 measured that door opening once per
+// 20,000-63,000 ticks, which is why the cull's four conditions and its atomIdleTolerance dial have
+// never been evaluated. That leaves a registered prediction hanging -- "open the door and the gene
+// does not stay at 0" -- and a prediction this rig could test and did not is worse than no
+// prediction. So the door is settable, HARNESS-SIDE ONLY, and 1 is exactly the shipped behaviour.
+//
+// This is not a proposal to change the number. It measures what opening it WOULD do, which is the
+// information the author needs in order to pick one, and picking it is not mine (#148).
+const CULLDOOR=Number(process.env.CULLDOOR||'1');
 
 function selfProxy(){const f=function(){return p;};const p=new Proxy(f,{get(_t,prop){if(prop===Symbol.toPrimitive)return()=>0;if(prop==='width'||prop==='height')return 0;if(prop==='data')return new Uint8ClampedArray(4);return p;},apply(){return p;}});return p;}
 const CTX=selfProxy();
@@ -172,8 +181,8 @@ patch("recv.userAtoms.push({expression:donorExpr,compiled:null,failed:false,uses
 // separately from the entry is the only way to tell "the conditions were consulted and refused" from
 // "the conditions were never consulted".
 patch("  if(genome.userAtoms.length>0&&Math.random()<rate*0.1){",
-      "  globalThis.__cullDoor(genome.userAtoms.length,rate);\n" +
-      "  if(genome.userAtoms.length>0&&Math.random()<rate*0.1){ globalThis.__CG.entered++;",
+      "  globalThis.__cullDoor(genome.userAtoms.length,rate*"+CULLDOOR+");\n" +
+      "  if(genome.userAtoms.length>0&&Math.random()<rate*0.1*"+CULLDOOR+"){ globalThis.__CG.entered++;",
       'cull.door');
 patch("      const _tol=__cl(finiteOr(genome.atomIdleTolerance,0),0,1);",
       "      const _tol=__cl(finiteOr(genome.atomIdleTolerance,0),0,1);\n" +
@@ -234,9 +243,22 @@ const driver=`
     escape:(typeof deathsByEscape!=='undefined')?deathsByEscape:-1,
     physics:(typeof deathsByPhysics!=='undefined')?deathsByPhysics:-1,
     age:(typeof deathsByAge!=='undefined')?deathsByAge:-1 }; }catch(e){ return {error:String(e)}; } };
+  // Control fingerprint. CULLDOOR=1 rewrites rate*0.1 to rate*0.1*1, which draws no extra randomness
+  // and should come back bit-identical to an unrewritten build. This project's standard is to CHECK
+  // that rather than argue it, because "the instrument cannot have perturbed anything" has been wrong
+  // here before.
+  globalThis.__fingerprint=function(){ try{ let a=0,b=0,c=0,n=0;
+    for(let i=0;i<N;i++){ if(!palive[i])continue; n++;
+      if(px[i]===px[i]&&py[i]===py[i])a+=px[i]+py[i];
+      if(amp[i]===amp[i])b+=amp[i];
+      c+=pLin[i]; }
+    return {n,pos:+a.toFixed(6),amp:+b.toFixed(6),lin:c,tick:(typeof tick!=='undefined'?tick:-1)};
+  }catch(e){ return {error:String(e&&e.message||e)}; } };
   globalThis.__state=function(){ try{ let alive=0; for(let i=0;i<N;i++)if(palive[i])alive++;
     return { alive, atoms:(genome.userAtoms||[]).length, maxAtoms:(typeof MAX_USER_ATOMS!=='undefined')?MAX_USER_ATOMS:-1,
       motifs:(genome.stableMotifs||[]).length, motifCap:genome.motifMemorySize,
+      atomIdleTolerance:(genome.atomIdleTolerance===undefined?null:+genome.atomIdleTolerance.toFixed(5)),
+      atomUseProtect:(genome.atomUseProtect===undefined?null:+genome.atomUseProtect.toFixed(5)),
       clusterGenomeEntries:(typeof clusterGenomes!=='undefined')?clusterGenomes.size:-1,
       clustersNow:(typeof clusters!=='undefined')?clusters.length:-1,
       extinctions:genome.extinctions|0, generation:genome.generation|0, totalTicks:genome.totalTicks|0 };
@@ -282,8 +304,8 @@ for(const x of layers){
             : 'NO REMOVAL AT ALL';
 }
 console.log(JSON.stringify({
-  arm:{seed:process.env.SEED||null,ticks:TICKS},
-  state:st, deaths:d, clusterGenomeDeleteSitesInSource:cgDeletes,
+  arm:{seed:process.env.SEED||null,ticks:TICKS,cullDoor:CULLDOOR},
+  state:st, deaths:d, fingerprint:globalThis.__fingerprint(), clusterGenomeDeleteSitesInSource:cgDeletes,
   crossings:(function(){
     const srt=[...(globalThis.__cgAges||[])].sort((x,y)=>x-y);
     return {
