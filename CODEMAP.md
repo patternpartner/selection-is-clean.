@@ -2795,3 +2795,33 @@ literals carry braces. The rig self-checks against three hand-verified sites (`c
 **A Proxy cannot see a name.** All 191 keys read at 12,000 ticks includes `maxSensors` and
 `sensorMaxInst`, which have zero occurrences anywhere in the file — so a generic enumeration
 (`for(const k in g)`, spread, `Object.assign`) reads them. `WATCH=` captures a stack on first read.
+
+## Two changes the #205–#212 arc made to engine.html, and nothing else
+
+**#211 — the atom cull's door (18902).** Was `if(genome.userAtoms.length>0 && Math.random()<rate*0.1)`,
+now `if(genome.userAtoms.length>0)`. The coin opened the whole removal path with probability ~0.005 on
+a line `mutateGenome` reaches ~40 times per 12,000 ticks. Measured effect, three seeds: entries
+1/0/0 → 38/41/38, idle block reached 0/0/0 → 28/35/32, `atomIdleTolerance` never read → read every
+cycle (0.1032 on seed 1, 0 on the other two). Failed-atom culls 0 → 10/6/6. `atom.cull.idle` still 0;
+grace and population-wide uses are the blockers, per `#208b`'s ranking.
+`harness-strata.js` `CULLDOOR` is now the ENTRY PROBABILITY (default 1); `CULLDOOR=0.005` re-closes
+the door to roughly pre-`#211`.
+
+**#212 — `clusterGenomes` lets go (13089, prune at 13537).** It was the only one of the four
+carry-forward stores in `trackClusterPersistence` that never dropped anything; the other three
+(`clusterAge`, `clusterVMs`, `clusterFossils`) swap in a fresh Map each cycle. Now pruned on a
+last-touch horizon, `CLUSTER_GENOME_TTL=480` — eight times the longest read ever observed (max hit age
+60 ticks across 2,681 reads, `#207`). `clusterGenomeSeen` holds hash→last-touch; stamped at both
+`.set` sites and refreshed on a read hit. `cluster.cgEvict` fires per eviction. `__CG_TTL=0` disables
+it, which is the pre-`#212` engine exactly.
+
+**The control that earns #212.** TTL 480 vs TTL 0, three seeds, 12,000 ticks: fingerprints over live
+particle state are BIT-IDENTICAL on all three, with entries 32/15/18 against 924/884/919. The prune
+draws no randomness, so divergence was only possible via a read that would have hit now missing and
+calling `seedClusterGenome()` — which draws. Identical means no read was affected.
+
+**What was NOT changed, and why.** `maybe()` still ignores its declared bounds (`#148` is a principle,
+not a preference, and `#205` showed clamping would not close the attractor anyway). `maxSensors`,
+`sensorMaxInst` and `fitnessHistory` stay — the first two are declared save-file compatibility, worth
+more than the two `Math.random()` draws per birth they cost; `#210`'s stack capture showed all three
+are read only by `cloneGenome`'s generic walk under `checkExtinction`, never by name.

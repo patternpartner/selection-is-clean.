@@ -17497,3 +17497,105 @@ So the two rigs answer two different questions and neither answers the third:
 - **dynamic (`#210`)** — is this gene TOUCHED while the world runs?
 - **neither** — does anything CONDITION on it? That is `#208`'s question, and it still costs a
   bespoke audit per gene.
+
+## #211 — DELETE THE COIN IN FRONT OF THE ATOM CULL
+
+The first change `engine.html` has taken in this arc, and it is one line.
+
+```js
+if(genome.userAtoms.length>0 && Math.random() < rate*0.1)   ->   if(genome.userAtoms.length>0)
+```
+
+### Why this is not picking the number `#148` reserved
+
+The standing decision above that block reads: *"give the lineage a dial and let selection set it …
+If releasing idle atoms costs fitness the gene goes to 0 and stays; if it pays, it rises. That is the
+whole point and I am not going to pick the number."*
+
+**The number being reserved is `atomIdleTolerance`. It is untouched, still seeded at 0, still walked
+by `maybe()`.** The coin sat UPSTREAM of it. `#208` measured what that meant: one entry per
+20,000–63,000 ticks, the cull's four conditions evaluated **zero times in 36,000 ticks**, and the dial
+never read at all. A dial behind a door that opens once per 20,000 ticks is not a decision the system
+gets to make. Deleting the coin is what lets the reserved decision happen.
+
+**And it removes a constant rather than adding one.** Cadence is now `genome.mutationInterval`, a
+gene. Willingness is `atomIdleTolerance`, a gene. The protections are grace, population-wide uses,
+alien grip and credit, all measured per atom. Nothing left in the block is a number a human chose.
+The guard was protecting an `O(userAtoms)` scan over a bank that runs at 9–18 against a cap of 512.
+
+### Measured, three seeds, 12,000 ticks
+
+```
+                                    before (#208)      after (#211)
+door evaluated                       60 / 39 / 41      38 / 41 / 39
+ENTERED                               1 /  0 /  0      38 / 41 / 38
+idle block reached (outer)            0 /  0 /  0      28 / 35 / 32
+per-atom conditions evaluated         0 /  0 /  0      76 /  0 /  0
+atomIdleTolerance ever read          never             every time
+```
+
+**The dial is being consulted.** On seed 1 it had drifted to **0.1032** and the per-atom loop ran 76
+times. On seeds 2 and 3 it reads **0** — the walk sitting on its floor — so the gate closes there.
+That is the difference the whole entry is about: *before, zero was the system never being asked; now
+zero is the system's answer.*
+
+`atom.cull.idle` is still 0 on all three seeds. With `_tol` near 0.1 over about seven atoms, grace and
+population-wide uses are doing the blocking — which is `#208b`'s sole-blocker ranking (grace 15, uses
+6, credit 1, alien 0) behaving exactly as it measured.
+
+### The larger immediate effect, stated because it is not the idle path
+
+The **failed-atom** scan sits before the idle cull and was behind the same coin. Atoms whose
+expression does not compile now clear on the next mutation cycle instead of after ~50,000 ticks:
+10 / 6 / 6 culls per 12,000 ticks against ~0 before. `#208b` measured the failed scan consuming most
+entries when the door was forced open, so this is the bigger change and it is deliberate.
+
+### Process note
+
+`harness-strata.js`'s anchor guard fired the instant the line changed, which is what it exists for.
+Re-pointed, and `CULLDOOR` keeps its name with a new meaning: it is now the ENTRY PROBABILITY, 1 by
+default, so `CULLDOOR=0.005` re-closes the door and keeps pre-`#211` behaviour runnable as a control
+arm rather than only in git history. I also wrote backticks into the new `engine.html` comment — the
+trap `CLAUDE.md` names — and caught it before committing.
+
+## #212 — THE ONE CARRY-FORWARD STORE THAT NEVER LET GO
+
+`trackClusterPersistence` carries four things across detection cycles. Three of them — `clusterAge`,
+`clusterVMs`, `clusterFossils` — are rebuilt into a fresh Map each cycle and swapped in, right beside
+the comment *"Pe30: drop fossils of clusters that no longer exist"*. **`clusterGenomes` sets into the
+same Map forever**, with no `delete`, no `clear` and no cap anywhere in the file.
+
+### Ruled out first, because it is the reading that would have made this wrong
+
+The Map has exactly one read site — a newly detected cluster matching a previous one BY HASH inherits
+its genome — so a dead entry could in principle wake if a similar cluster re-forms. **It does not.**
+`#207` timestamped every write and recorded every hit's age: across **2,681 reads on three seeds the
+maximum hit age is 60 ticks**, exactly one detection cycle (`detectClusters` runs inside
+`if(tick%60===0)`). Not once did the store return an entry older than the immediately preceding cycle.
+
+### Not the swap the other three use, and that is the judgement call
+
+The swap is the idiom here and would be tidier. It is **not provably neutral**: a daughter cluster's
+genome is written at BUD time from outside that function, and a swap would discard it in the window
+before the daughter is first detected. A last-touch horizon keeps that case intact and can be proven.
+
+### It adds a constant, which `#211` argued against
+
+480 ticks — **eight times the longest read ever observed**. The distinction claimed: this is a
+garbage-collection horizon, not a behavioural parameter. It cannot change what the system is able to
+do, only how much dead memory it carries while doing it. `cluster.cgEvict` is declared and wired so
+the horizon's binding is measurable, and `__CG_TTL=0` disables eviction entirely.
+
+### Proven, not argued: three seeds, 12,000 ticks, bit-identical
+
+```
+seed   fingerprint   entries with TTL=480   entries with TTL=0   evicted
+  1    IDENTICAL              32                   924             928
+  2    IDENTICAL              15                   884             971
+  3    IDENTICAL              18                   919             959
+```
+
+Same live-particle fingerprint, same population, same cluster count, with **97% of the Map gone**.
+The prune draws no randomness, so the only way the arms could diverge is a read that would have hit
+now missing and calling `seedClusterGenome()` — which draws. Bit-identical therefore means *no read
+was affected*, which is the entire claim.
