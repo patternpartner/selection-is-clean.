@@ -52,6 +52,15 @@ git checkout main && git merge --ff-only <branch> && git push -u origin main
   So setting `genome.channels` and running the sim measures a stranger's chemistry unless you clear
   the population's banks — every tick, because reproduction re-seeds them — and assert
   `governedBySelf`. This has bitten three separate blocks.
+  **And that is only half of it (`#216i`): the GERMLINE rule drifts too.** On any run long enough for
+  `mutateGenome` to fire, the engine rewrites the very rule you installed. `#189`'s torus case drove
+  30 cadence-windows and ended holding `(yc)+(0.00)` where the block installed `(b)+(0.00)`, same
+  stencil — `yc` is not the tap value, so it evaluated to 0 and the lattice filled with zeros. The
+  trace showed a cliff at about engine step 50, not a leak. Its sibling cases run 6 windows and
+  finish before a mutation cycle fires, which is why only that row ever went red.
+  **`govSelfOnly()` every step handles the carriers; only RE-INSTALLING the rule every step handles
+  the drift.** If a block sets any genome field and then drives the engine, assume the engine will
+  mutate it back out from under you, and re-set it inside the loop.
 - **An unbounded value is not automatically a bug here, and the decision that made it unbounded
   lives in `OEE-NOTES.md`, not in the code.** `maybe(val,min,max,magnitude)` ignores `min` and
   `max` at all 66 call sites *on purpose* — `#148` records the author declining to clamp it, in

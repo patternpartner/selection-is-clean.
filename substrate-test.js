@@ -364,11 +364,36 @@ m._compile(code+`
     const centroid=(L)=>{ let sx=0,w=0;
       for(let y=0;y<FIELD_H;y++)for(let x=0;x<FIELD_W;x++){const v=L[y*FIELD_W+x]; if(v>0.001){sx+=x*v;w+=v;}}
       return w>0?+(sx/w).toFixed(2):null; };
-    let __formState=null;
+    let __formState=null, __formTrace=null, __formRule=null;
     const runForm=(st,wrap,expr,steps)=>{
-      genome.channels=[{expr:expr,compiled:null,failed:false,age:0,uses:0,st:st,wrap:wrap,cad:1},null,null,null];
+      // #216i: RE-INSTALLED EVERY STEP, and the reason is measured rather than defensive.
+      // Installing once and driving the engine for 30 cadence-windows let mutateGenome rewrite the
+      // rule mid-measurement: the torus case ended holding (yc)+(0.00) where the block installed
+      // (b)+(0.00), same stencil. yc is not the tap value, so it evaluates to 0, the lattice filled
+      // with zeros, and max|L| went 4,4,3,3,3,3,3,3,3,3 then 0 for the remaining 62 samples — a cliff
+      // at about engine step 50, not a leak. mean and advect run 6 windows and finish before a
+      // mutation cycle fires, which is why only the torus row ever went red.
+      //
+      // This is the SECOND HALF of the trap CLAUDE.md already records for #196. That note says the
+      // governing rule is drawn from living CARRIERS, so the population's banks must be cleared every
+      // tick. This adds: the GERMLINE rule drifts too, on any run long enough for mutateGenome to
+      // fire. govSelfOnly() every step handles the carriers; only re-installing handles the drift.
+      const _mkRule=()=>[{expr:expr,compiled:null,failed:false,age:0,uses:0,st:st,wrap:wrap,cad:1},null,null,null];
+      genome.channels=_mkRule();
       const L=chanLattice(0); L.fill(0); L[20*FIELD_W+20]=4;
-      for(let t=0;t<steps*CHANNEL_CADENCE;t++){ globalThis.__detMs+=5; govSelfOnly(); try{loop();}catch(e){} }
+      const _tr=[];
+      for(let t=0;t<steps*CHANNEL_CADENCE;t++){ globalThis.__detMs+=5; govSelfOnly(); genome.channels=_mkRule(); try{loop();}catch(e){}
+        // #216i: WHEN does the mass go? A trace separates gradual decay from a single wipe, which is
+        // the difference between "the medium leaks" and "something zeroed the lattice". Sampled every
+        // fifth engine step, max|L| only, so it costs one pass over the lattice per sample.
+        if(t%5===0){ let m=0; for(let c=0;c<L.length;c++){ const a=Math.abs(L[c]); if(a>m)m=a; } _tr.push(+m.toFixed(3)); } }
+      __formTrace=_tr;
+      // #216i: and WHAT the rule looked like at the end. A pure shift cannot empty a lattice, so if
+      // the mass vanishes the rule is no longer the one the block installed. The torus runs 30
+      // cadence-windows where mean and advect run 6 — long enough for a mutation cycle to fire and
+      // rewrite genome.channels[0] mid-measurement. Recorded, not assumed.
+      {const _r=(genome.channels&&genome.channels[0])||null;
+       __formRule=_r?{expr:_r.expr, st:JSON.stringify(_r.st), wrap:_r.wrap|0, cad:_r.cad|0, res:_r.res}:null;}
       // #216h: the lattice's STATE is recorded beside the centroid, because centroid() alone cannot
       // say which way it failed — and my first reading of that failure was wrong.
       //
@@ -395,7 +420,8 @@ m._compile(code+`
     const advect=runForm([[-1,0,1.0]],0,'(b)+(0.00)',6);
     // THE SAME ON A TORUS: it leaves one edge and arrives at the other. 20 + 30 = 50, mod 40 = 10.
     const torus=runForm([[-1,0,1.0]],1,'(b)+(0.00)',30);
-    const torusState=__formState;
+    const torusState=__formState, torusTrace=__formTrace, torusRuleEnd=__formRule;
+    const torusRuleWant={expr:'(b)+(0.00)', st:JSON.stringify([[-1,0,1.0]]), wrap:1, cad:1};
     // A SIGNED STENCIL SUMMING TO ZERO is a derivative. On a linear ramp its answer is a CONSTANT;
     // a mean's answer would be the ramp again.
     genome.channels=[{expr:'(b)+(0.00)',compiled:null,failed:false,age:0,uses:0,
@@ -421,7 +447,7 @@ m._compile(code+`
     let over=0,nf=0; for(let c=0;c<B.length;c++){ if(!isFinite(B[c]))nf++; if(!(B[c]>=-CHANNEL_CLAMP&&B[c]<=CHANNEL_CLAMP))over++; }
     const govSelf=(governedBySelfNow(0)&&govSelfCad);
     chanCarrierRestore(carriers);
-    return {mean,advect,torus,torusState,gmn:+gmn.toFixed(4),gmx:+gmx.toFixed(4),fast,slow,over,nf,govSelf};
+    return {mean,advect,torus,torusState,torusTrace,torusRuleEnd,torusRuleWant,gmn:+gmn.toFixed(4),gmx:+gmx.toFixed(4),fast,slow,over,nf,govSelf};
   });
 
   // ── #189  AND THE FORM TAKES SMALL, LEGAL STEPS ─────────────────────────────────────────────
@@ -2307,8 +2333,11 @@ ck('#189 an OFFSET stencil advects — the medium moves', FM.advect>FM.mean+3,
 ck('#189 wrap=1 makes it a torus', FM.torus!==null && FM.torus<FM.mean,
    'after 30 updates the mass is at '+FM.torus+' — 20+30 = 50, mod 40 = 10: it left one edge and arrived at the other'+
    ' [lattice '+JSON.stringify(FM.torusState)+'; THIS block\'s centroid returns null when no cell exceeds 0.001, so null means'+
-   ' the lattice is EMPTY — the mass is gone, not exploded. Confirmed by max/nonFinite above. Open: why 30 steps loses it on some'+
-   ' trajectories when the 6-step mean and advect cases keep it. #216h]');
+   ' the lattice is EMPTY — the mass is gone, not exploded. Confirmed by max/nonFinite above. max|L| every 5th step: '+
+   JSON.stringify(FM.torusTrace)+' — a ramp down is a leak, a cliff is a wipe. RULE AT END '+
+   JSON.stringify(FM.torusRuleEnd)+' vs INSTALLED '+JSON.stringify(FM.torusRuleWant)+
+   ' — a pure single-tap shift cannot empty a lattice, so a mismatch here means the rule was rewritten'+
+   ' mid-measurement. #216h/#216i]');
 ck('#189 a signed stencil is a DERIVATIVE, not an average',
    FM.gmx!==undefined && Math.abs(FM.gmx-FM.gmn)<0.01,
    'on a linear ramp the answer is flat at '+FM.gmn+' — a mean would have reproduced the ramp');
