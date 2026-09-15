@@ -17830,3 +17830,62 @@ Checked, not assumed: line 18147 clamps `motifMemorySize` to `[1,40]` and runs B
 only spins while `length > 1`, where `motifEvict` always removes exactly one element. At `length===1`
 the quality branch is skipped (`M.length>1` fails) and `shift()` takes the only motif. If
 `stableMotifs` were ever undefined, `undefined > 1` is false and the loop exits.
+
+## #216 — COHERENCE IS NOT SATURATED, NOT EVEN AMONG MOTIFS, AND #215's RATIONALE SURVIVES
+
+`#215`'s forced arm printed a motif bank reading `c` = 1, 1, 1, 1, 0.96. **From n=5 I concluded
+coherence was saturated** — which would have made several live gates constants: the cosmos launch
+gate (14186), `collectClusterUpstream`'s `coherence<0.45` rejection (17191), the territory score
+(13832) and the dissolution fossil quality (13565). The engine also asserts twice in its own comments
+that coherence is ORTHOGONAL to size.
+
+Measured at the point of COMPUTATION, so every cluster is counted rather than only those passing the
+motif filter — four runs, 12,000 ticks:
+
+```
+run       n      mean     min      max   frac >= 0.9   frac below the 0.45 upstream gate
+m1      1595    0.9306   0.0356     1       0.757              0.0113
+m2      3030    0.9229   0.1300     1       0.714              0.0043
+m3      1427    0.9112   0.0549     1       0.659              0.0042
+force1  1426    0.9211   0.0356     1       0.727              0.0140
+```
+
+**Not saturated.** Real range to 0.036, and the `collectClusterUpstream` gate rejects 0.4%–1.4% of
+clusters — live, but a weak term, which is the `harness-gates.js` sole-blocker question answered with
+a number rather than a guess.
+
+### And the retraction was ALSO premature
+
+`#216`'s first version withdrew the saturation claim but left open that *"within the motif-eligible
+population coherence MAY still have almost no range, which WOULD still void `#215`'s rationale"*. It
+was framed as the open question and the instrument was built to settle it. Settled:
+
+```
+run      eligible n   mean     min      max    frac >= 0.9
+m1           45      0.9720   0.7607     1        0.911
+m2           38      0.9326   0.4236     1        0.789
+m3           21      0.9177   0.5059     1        0.714
+force1       41      0.9565   0.4284     1        0.902
+```
+
+**Eligible coherence spans 0.42 to 1 across 145 motifs.** Tighter than the general population and not
+remotely degenerate. With `c` ranging over 0.42–1 and `s` over roughly 6–30, the product varies with
+`c` by up to 2.4x — so `s*c` is NOT equivalent to `s`, and **`#215`'s rationale for the product over
+a sum stands after all.**
+
+The sequence is the entry: **claim from n=5 → withdrawn → narrower version left open → settled at
+n=145 eligible against n=7,478 total.** I was wrong, then I corrected in a direction that was also
+not yet supported, and only the third measurement earned a statement. The wrong versions stay on the
+page because the shape of the error is the reusable part: *a filtered sample looks like a degenerate
+variable, and five of anything is not a distribution.*
+
+### The forced witness at full budget
+
+```
+mkb=1, 12,000 ticks:  evictQuality 29, evictAge 0, errors 0
+witness: 29 checks, 29 correct, 1 tie — the true minimum s*c spliced every time, ties included
+```
+
+And in the unforced arms the dial still reads 0 / 0 / 0.034 with `evictQuality` at zero. The
+mechanism is correct, reachable, and **so far unexercised by the system's own choice** — which is the
+honest state of it and not a defect.
