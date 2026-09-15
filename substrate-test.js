@@ -921,7 +921,13 @@ m._compile(code+`
       for(let k=0;k<CHANNEL_MAX;k++){ const _r=b[k]; if(_r&&typeof _r.expr==='string'){
         const g=__GRAIN?Math.max(CHANNEL_RES_FLOOR,Math.pow(chanRes(_r)/FIELD_W,2)):1;
         t+=CHANNEL_RENT*g; } }
-      return +t.toFixed(4); };
+      // #216k: RAW. This returned +t.toFixed(4), and #216k's own first fix then compared
+      // |coarse - fine*floor| against a 1e-6 tolerance — 4-decimal inputs carry up to 5e-5 of
+      // rounding error each, so the tolerance was 57x tighter than the granularity of the numbers it
+      // judged. That is precisely the defect #216j had just diagnosed on the selfwrite row,
+      // reintroduced one row later inside the fix for it. Compared raw, displayed rounded, which is
+      // the rule #216j established and this is the second place it applies.
+      return t; };
     const rent={fine:rentAt(FIELD_W), mid:rentAt(20), coarse:rentAt(5), floor:CHANNEL_RES_FLOOR};
 
     // 9. AND A COARSE MEDIUM STAYS BOUNDED under a rule that tries to run away
@@ -2548,8 +2554,9 @@ ck('#194 and every grain is reachable', GR.grains && GR.grains.length===5,
 ck('#194 rent FALLS with the grain, floored',
    GR.rent && GR.rent.fine>GR.rent.mid && GR.rent.mid>GR.rent.coarse &&
    GR.rent.coarse>0 && Math.abs(GR.rent.coarse-GR.rent.fine*GR.rent.floor)<1e-6*Math.max(1,GR.rent.fine),
-   'grain 40 '+(GR.rent&&GR.rent.fine)+', grain 20 '+(GR.rent&&GR.rent.mid)+', grain 5 '+(GR.rent&&GR.rent.coarse)+
-   ' — coarse/fine = '+(GR.rent?(GR.rent.coarse/GR.rent.fine).toFixed(6):'?')+' against a floor of '+(GR.rent&&GR.rent.floor)+
+   'grain 40 '+(GR.rent&&+GR.rent.fine.toFixed(6))+', grain 20 '+(GR.rent&&+GR.rent.mid.toFixed(6))+
+   ', grain 5 '+(GR.rent&&+GR.rent.coarse.toFixed(6))+
+   ' — coarse/fine = '+(GR.rent?(GR.rent.coarse/GR.rent.fine).toFixed(9):'?')+' against a floor of '+(GR.rent&&GR.rent.floor)+
    ', asserted as a ratio against this run\'s own fine measurement rather than against a remembered 0.6 (#216k)'+
    ' — the only rent in this file a lineage can reduce by changing a gene, because coarsening genuinely costs less CPU');
 ck('#194 a coarse medium stays bounded under an explosive rule', GR.over===0 && GR.nf===0,
