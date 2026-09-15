@@ -18480,6 +18480,61 @@ because evicting the worst rather than the oldest changes what the bank holds, w
 matching, which changes everything downstream. That is what an experimental arm is; it is not a probe
 and it is not expected to be trajectory-neutral, unlike `#216o`'s tracer.
 
+### #216q — twenty-one of forty-one blocks were measuring a world with one particle in it
+
+The `#216l` sweep asked which blocks drive the lattice without owning it. The same question asked of
+the POPULATION: which blocks mutate `palive`/`pGenome`/`N` and never put them back? Traced for every
+block, counting only, so the instrument takes no draws:
+
+```
+fold .. wire        241 alive
+chan                241 -> 236
+form                236 -> 204
+emit                204 -> 1          <== and it stays there
+grainCross/xfer/gov   1 -> 2 -> 4
+everything after         4
+```
+
+**`out.emit` collapses the world to one particle and leaves it collapsed.** That is deliberate for
+its own measurement — *"a lone particle, mid-field, on a pre-filled lattice so BOTH signs have room
+to move"*, and correct for what it asks. What it does not do is restore. From block 20 of 41 onward
+the rig runs on 1, then 2, then 4 particles.
+
+Of the twenty-one blocks downstream: **six build their own population** (`xfer`, `gov`, `found`,
+`econ` and two others) and are unaffected, **four never read one**, and **eleven read the collapsed
+world**.
+
+**This is the upstream reason `#216l` was seed-sensitive, and it is the part worth keeping.**
+`out.grain` ran with exactly ONE particle alive. Whether that lone survivor happened to carry a k=0
+channel rule is a coin flip across seeds — and on `SEED=5` it came up carrying one, which is why two
+rows were red there and green on the other five. The `#216l` fix is right and necessary on its own
+terms (the block now owns its medium and asserts `govPop===0`), but I did not know until now WHY that
+trajectory was so fragile. A probe that does not own its medium is only dangerous when a carrier
+exists; a one-particle world makes "does a carrier exist" a coin flip.
+
+**Not filed as a defect, and the reason matters.** The eleven blocks mostly assert REACHABILITY —
+`carriers>0` — which a small world satisfies, so nothing here is passing that should fail. What was
+wrong was silent: a row reporting *"1 carrier(s) after one seeding"* reads like a property of the
+crossing when it is 100% of a population of one. The four crossing rows now report their denominator:
+
+```
+#193   1 of 1 living particles carry it after one seeding
+#194   1 of 1 living particles carry it after one seeding
+#198   1 of 4 living particles carry it after one seeding
+cross  1 of 4 living particles carry it after one seeding
+```
+
+Two of the four had a denominator of one. **A crossing row whose ceiling is one particle cannot
+distinguish a mechanism that always works from one that works a quarter of the time**, and that is a
+statement about statistical power rather than about correctness — which is why the remedy is to print
+the denominator rather than to assert a bigger one.
+
+**And one mistake, caught by running rather than by reading.** The first version of the `#216q` row
+sat up at the `#194` section and died instantly on a temporal-dead-zone `ReferenceError`: `GX`, `WX`
+and `CR` are `const`-declared further down the check script. It is placed last now, with a comment
+saying why. "It looked right" is the reasoning that produced seven unsound rows in this file, and it
+does not improve with practice.
+
 ### Where the rig stands after `#216l`
 
 ```

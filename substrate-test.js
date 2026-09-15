@@ -45,7 +45,25 @@ m._compile(code+`
   const T=parseInt(process.env.TICKS||'4000',10);
   for(let s=0;s<T;s++){ globalThis.__detMs+=5; try{loop();}catch(e){} }
   const out={errors:[],ticks:tick};
-  const run=(n,fn)=>{ try{ return fn(); }catch(e){ out.errors.push(n+': '+((e&&e.message)||String(e)).slice(0,140)); return null; } };
+  // #216q: HOW MANY PARTICLES WERE ALIVE WHEN THIS WAS COUNTED. Every germline -> population
+  // crossing row counts carriers by walking the LIVING population, so its number is ceilinged by
+  // however many particles an earlier block happened to leave alive — and out.emit deliberately
+  // collapses the world to one lone particle for its own measurement and never puts it back. From
+  // there on the rig runs on 1, then 2, then 4 particles. "1 carrier(s) after one seeding" reads
+  // like a property of the crossing and is partly a property of that collapse. Counting only, so
+  // this draws nothing and cannot move the trajectory it reports on (CLAUDE.md's fourth trap).
+  const aliveNow=()=>{ let n=0; for(let q=0;q<N;q++) if(palive[q])n++; return n; };
+  // #216q: WHAT WORLD DID EACH BLOCK MEASURE? Recorded for every block, because the answer turned
+  // out not to be "the one the run built". out.emit installs a lone particle for its own purposes
+  // (correctly, and its comment says so) and does not put the population back, so from block 20 of
+  // 41 onward the rig runs on 1, then 2, then 4 particles. Eleven blocks downstream read that world
+  // without establishing one of their own; six build their own and are unaffected; four never touch
+  // it. Counting only — no draws — so this cannot move the trajectory it reports on.
+  out.popTrace=[];
+  const run=(n,fn)=>{ const b=aliveNow(); let r=null;
+    try{ r=fn(); }catch(e){ out.errors.push(n+': '+((e&&e.message)||String(e)).slice(0,140)); }
+    out.popTrace.push({block:n,before:b,after:aliveNow()});
+    return r; };
   const mk=x=>({expression:x,compiled:null,failed:false,uses:0,age:0,state:0,alienHits:0,alienAttempts:0,creditTrace:0});
 
   // ── #181.1  EVERY FOLD IS TOTAL ───────────────────────────────────────────────────────────────
@@ -797,6 +815,7 @@ m._compile(code+`
     for(let k=0;k<N;k++){ const g=pGenome[k];
       if(palive[k]&&g&&Array.isArray(g.userEffects))for(const e of g.userEffects)
         if(e&&Array.isArray(e.st)&&e.st.length===2)carriers++; }
+    const carriersOf=aliveNow();
     // the wire: a shape that does not survive the hop is a verb that lands somewhere else (#141)
     const pay={nx:0.5,ny:0.5,tend:[0,0,0],mem:[],plasmid:[],amp:1,phase:0,ua:[],
                ue:[{t:11,m:0,s:0.7,n:-1,a:-1,st:[[2,-1,0.8]],fr:1}]};
@@ -809,7 +828,7 @@ m._compile(code+`
     ].every(x=>validNetworkPayload('migrant',x)===false);
     const wireAbsent=validNetworkPayload('migrant',{...pay,ue:[{t:11,m:0,s:0.7,n:-1,a:-1}]})===true;
     const cen=crossingCensus();
-    return {saved,shared,childMoved,carriers,wireOk,wireBad,wireAbsent,
+    return {saved,shared,childMoved,carriers,carriersOf,wireOk,wireBad,wireAbsent,
             row:cen.rows.some(r=>r.name==='verb.shaped')};
   });
 
@@ -1013,8 +1032,9 @@ m._compile(code+`
     for(let k=0;k<N;k++){ const g=pGenome[k];
       if(palive[k]&&g&&Array.isArray(g.channels))for(const rr of g.channels)
         if(rr&&typeof rr.expr==='string'&&chanRes(rr)===8)grainCarriers++; }
+    const grainCarriersOf=aliveNow();
     const cen=crossingCensus();
-    return {saved,legacyReads,shared,cloneRes,childMoved,seeded,grainCarriers,
+    return {saved,legacyReads,shared,cloneRes,childMoved,seeded,grainCarriers,grainCarriersOf,
             row:cen.rows.some(x=>x.name==='channel.grain')};
   });
 
@@ -1454,6 +1474,7 @@ m._compile(code+`
     for(let k=0;k<N;k++){ const g=pGenome[k];
       if(palive[k]&&g&&Array.isArray(g.channels))for(const rr of g.channels)
         if(rr&&rr.wx==='(ny)*(3.00)')carriers++; }
+    const carriersOf=aliveNow();
     const pay={nx:0.5,ny:0.5,tend:[0,0,0],mem:[],plasmid:[],amp:1,phase:0,ua:[],
                chn:[['(a)*(0.9)',2,[[1,0,0.5]],0,2,20,0.003,'(ny)*(3.00)','(nx)*(2.00)'],0,0,0]};
     const wireOk=validNetworkPayload('migrant',pay)===true;
@@ -1469,7 +1490,7 @@ m._compile(code+`
     ].every(x=>validNetworkPayload('migrant',x)===false);
     const wireAbsent=validNetworkPayload('migrant',{...pay,chn:[['(a)',2,null,0,1,40,0],0,0,0]})===true;
     const cen=crossingCensus();
-    return {saved,legacy,shared,childMoved,carriers,wireOk,wireBad,wireAbsent,
+    return {saved,legacy,shared,childMoved,carriers,carriersOf,wireOk,wireBad,wireAbsent,
             row:cen.rows.some(x=>x.name==='channel.warp')};
   });
 
@@ -1856,9 +1877,10 @@ m._compile(code+`
     const seeded=seedSubstrateIntoParticle();
     let carriers=0;
     for(let i=0;i<N;i++) if(palive[i]&&pGenome[i]&&pGenome[i].uaFoldMode===2)carriers++;
+    const carriersOf=aliveNow();
     const cen=crossingCensus();
     const names=cen.rows.map(r=>r.name);
-    return {saved,shared,childMoved,seeded,carriers,
+    return {saved,shared,childMoved,seeded,carriers,carriersOf,
             rows:['atom.fold','xion.cede','phys.reach','phys.chem','probe.bank',
                   'oee.weighted','deme.split','channel.bank','channel.sensed','channel.form',
                   'metric.moved','reach.moved','tick.moved'].filter(n=>names.indexOf(n)<0),
@@ -2538,7 +2560,11 @@ ck('#193 cloneGenome deep-copies to the TAP', EX.shared &&
    EX.shared && JSON.stringify(EX.shared)+' — #155, #180 and #189 were all this same shallow copy');
 ck('#193 parent -> child: the shape diverges', EX.childMoved>0, EX.childMoved+'/300');
 ck('#193 germline -> population: the shape crosses with the verb', EX.carriers>0,
-   EX.carriers+' carrier(s) after one seeding — #133b stripped the successor on this exact path');
+   EX.carriers+' of '+EX.carriersOf+' living particles carry it after one seeding — #133b stripped the successor on this exact path.'+
+   ' THE DENOMINATOR IS THE POINT (#216q): this counts the LIVING population, and out.emit collapses the world to one'+
+   ' particle for its own measurement without putting it back, so every crossing row from there on is ceilinged by that'+
+   ' collapse rather than by the crossing. The row asserts reachability, which is satisfied; it is the reported count that'+
+   ' was reading like a property of the mechanism.');
 ck('#193 the wire carries it, validates it, and still accepts a pre-#193 peer',
    EX.wireOk===true && EX.wireBad===true && EX.wireAbsent===true,
    'good '+EX.wireOk+', rejects garbage '+EX.wireBad+', absent-is-legal '+EX.wireAbsent);
@@ -2625,7 +2651,8 @@ ck('#194 cloneGenome carries it and shares nothing', GX.shared &&
 ck('#194 parent -> child: the grain diverges', GX.childMoved>0,
    GX.childMoved+'/400 — and this same child route is what repairs #189, whose stencil could only ever be reshaped on the germline');
 ck('#194 germline -> population: the grain crosses with the medium', GX.grainCarriers>0,
-   (GX.grainCarriers||0)+' carrier(s) after one seeding — dropping res from that one rebuild made channel.grain STRANDED at germline 2 / population 0 on a live run while every other crossing passed');
+   (GX.grainCarriers||0)+' of '+GX.grainCarriersOf+' living particles carry it after one seeding — dropping res from that one rebuild made channel.grain STRANDED at germline 2 / population 0 on a live run while every other crossing passed.'+
+   ' Denominator per #216q — this is also exactly why #216l was seed-sensitive: out.grain ran with ONE particle alive, so whether the lone survivor held a k=0 rule was a coin flip across seeds');
 ck('#194 and it has a census row', GX.row===true);
 
 // #195
@@ -2759,7 +2786,7 @@ ck('#198 cloneGenome carries the expressions and shares no compiled holder',
    'the holders are created on demand off the serialised record, so the six rebuild sites drop them automatically — sharing one would compile one medium\'s warp into another');
 ck('#198 parent -> child: the adjacency diverges', WX.childMoved>0, WX.childMoved+'/400');
 ck('#198 germline -> population: it crosses with the medium', WX.carriers>0,
-   (WX.carriers||0)+' carrier(s) after one seeding — the seventh place a channel rule is rebuilt');
+   (WX.carriers||0)+' of '+WX.carriersOf+' living particles carry it after one seeding — the seventh place a channel rule is rebuilt (denominator per #216q)');
 ck('#198 the wire carries it, rejects garbage, and still accepts a pre-#198 peer',
    WX.wireOk===true && WX.wireBad===true && WX.wireAbsent===true,
    'good '+WX.wireOk+', rejects '+WX.wireBad+', absent-is-legal '+WX.wireAbsent);
@@ -2886,7 +2913,7 @@ ck('cloneGenome shares none of it', CR.shared && !CR.shared.oeeW && !CR.shared.p
    CR.shared && JSON.stringify(CR.shared));
 ck('parent -> child: the proxy weights diverge', CR.childMoved>0, CR.childMoved+'/200');
 ck('germline -> population: the substrate actually crosses', CR.seeded===true && CR.carriers>0,
-   CR.carriers+' carrier(s) after one seeding - the bug the crossing rows caught seven times');
+   CR.carriers+' of '+CR.carriersOf+' living particles carry it after one seeding - the bug the crossing rows caught seven times (denominator per #216q)');
 ck('every new gene has a census row', CR.rows && CR.rows.length===0,
    CR.rows && CR.rows.length?('missing: '+CR.rows.join(' ')):'all thirteen present');
 // #187: and the one that must NOT be a crossing row. A promotion is an earned outcome, not authored
@@ -3047,6 +3074,29 @@ ck('the level census reports the levels present',
    (LV.levels?LV.levels.join(' '):'(no rows)')+'  |  '+LV.alive+' alive after the 1,500-tick block'+
    (LV.alive===0?' — a dead world censuses as zero levels, which is the census working, not failing. Six seeds at this budget: 5/6 survive with #215, 4/6 without.':''));
 ck('every new mechanism has a declared liveness name', LV.declared>=20, LV.declared+' declared');
+// #216q — PLACED LAST ON PURPOSE: GX, WX and CR are const-declared further down the check script,
+// and the first version of this row sat up at #194 and died on a temporal-dead-zone ReferenceError
+// the moment it ran. Caught by running it rather than by reading it, which is the only reason the
+// rest of this file is trustworthy.
+// #216q — THE RIG NOW KNOWS WHAT WORLD IT MEASURED, AND SAYS SO.
+// Found by sweeping, like #216l: which blocks mutate palive/pGenome/N and never put them back? The
+// answer is that out.emit collapses the population to ONE for its own measurement (deliberately —
+// "a lone particle, mid-field" — and correctly for what it asks) and leaves it there, so twenty-one
+// of forty-one blocks run on a world of 1 to 4 particles. That is the upstream reason #216l was
+// seed-sensitive: out.grain ran with exactly one particle alive, so whether that lone survivor
+// carried a k=0 channel rule was a coin flip across seeds, and on SEED=5 it came up carrying one.
+//
+// NOT ASSERTED AS A DEFECT. Six of the downstream blocks build their own population, four never read
+// one, and the eleven that do mostly assert REACHABILITY (carriers>0), which a small world satisfies.
+// What was wrong was silent: a row reporting "1 carrier(s) after one seeding" reads like a property
+// of the crossing when it is 100% of a population of one. The denominators are now on the page.
+const PT=r.popTrace||[];
+const PTcollapse=PT.find(t=>t.before>8&&t.after<=4);
+ck('#216q the rig reports the world each block measured', PT.length>=30 &&
+   [EX.carriersOf,GX.grainCarriersOf,WX.carriersOf,CR.carriersOf].every(v=>typeof v==='number'),
+   PT.length+' blocks traced; the population collapses at '+(PTcollapse?("out."+PTcollapse.block+" ("+PTcollapse.before+" -> "+PTcollapse.after+")"):'(no collapse seen this run)')+
+   ' and every crossing row now reports its denominator — a carrier count is ceilinged by how many particles an earlier block left alive, which is what made #216l seed-dependent');
+
 ck('no errors thrown anywhere', r.errors.length===0, r.errors.join(' | '));
 console.log('\n  '+pass+' passed, '+fail+' failed');
 function UA_FOLD_MODES_SAFE(){ try{ return 4; }catch(e){ return '?'; } }

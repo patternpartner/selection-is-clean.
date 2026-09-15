@@ -2877,3 +2877,12 @@ correct** — every fired eviction removed the true minimum `s*c`. Bank minimum 
 mean 38.93 -> 116.48. The quality figures are partly circular (evicting by `s*c` improves `s*c`); the
 witness and the magnitude are not. Unlike `#216o`'s tracer this arm is NOT trajectory-neutral by
 design — it changes what the bank holds, which changes cluster matching downstream.
+
+**#216q — `substrate-test.js` `aliveNow()` (~55), `out.popTrace` (~62), row near the file end.** The
+`run()` wrapper records the living-particle count before and after every block, so the rig reports
+what world each block measured. `out.emit` (~681) installs a lone particle deliberately and does not
+restore the population, so blocks 20-41 run on 1 to 4 particles; eleven of them read that world
+without building one. The four germline->population crossing rows now export `carriersOf` /
+`grainCarriersOf` and print "N of M living particles", because a carrier count is ceilinged by
+whatever an earlier block left alive. The `#216q` row must stay LAST in the check script — `GX`, `WX`
+and `CR` are `const`-declared further down and an earlier placement is a TDZ ReferenceError.
