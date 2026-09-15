@@ -106,6 +106,18 @@ checked length but never content), the bank (`sanitizeGenome`), and #157's caugh
 new string that reaches the genome must pass the same guard** — it will be base64'd into every future
 save and, for expressions, compiled with `new Function`.
 
+**Since #204 that guard is two guards, and only one of them is about bytes.** `UA_EXPR_SAFE` is still
+the printable-ASCII filter #159 needed. `uaExprShape` is the new half: an **allowlist** of the
+authoring grammar's own punctuation and its own symbol tables, so an expression is legal on the wire
+exactly when the generator could have produced it. `uaExprSafe` is now both, and it is the single
+function every expression site calls. The lexicon is **built by reading `USER_VARS`,
+`USER_WORLD_VARS`, `USER_FORAGE_VARS`, `USER_SELF_VARS`, `PROBE_NAMES`, `CHANNEL_NAMES`,
+`USER_OP_NAMES`, `USER_FUNCS_RICH`, `USER_BINFUNCS`, `REND_VARS` and the words in `REND_DEFAULTS`**,
+lazily on first call — so a symbol becomes legal on the wire the moment the grammar can emit it and
+there is nothing here to keep in step. That is #153's rule; restating the alphabet would have been a
+fifth stale bound. The one place still on the raw byte filter is the `found` blob, deliberately: it is
+base64 of a germline, not an expression, and its content is bounded by the decoders.
+
 **The shared save slot is a monoculture, and the collective is NOT a firebreak (#159, corrected).**
 ALL NINE universes — the collective included — run the same engine, and that engine autosaves to the
 one `selection_genome` key every 900 ticks (`archiveGenome`) and again on every extinction. They all
@@ -2343,6 +2355,16 @@ a pre-#198 peer both mean. The validator gives them `ua`'s treatment (length bou
 and **`UA_EXPR_SAFE` is a BYTE filter, not a parser** — a printable hostile expression passes it and
 is caught downstream by `uaCompile`'s try/catch, which is where it belongs. A rig asserting the wire
 rejects `evil()` is asserting something that was never going to happen.
+
+**#204 — the paragraph above is half right, and the wrong half shipped for seven swings.** The byte
+filter is a byte filter, correctly described. What does not follow is the conclusion: `uaCompile`'s
+try/catch catches a THROW, and the interesting hostile expression does not throw. Measured:
+`(function(){for(;;);})()` is 24 printable characters, passes `UA_EXPR_SAFE`, compiles, and returns
+never — there is no downstream to catch it. So a rig asserting the wire rejects a loop is asserting
+something that was never going to happen *because nothing was trying to make it happen*, and
+`substrate-test.js` now asserts exactly that, in both directions. The engine cannot author such a
+string (UNLOCKED #7b's grammar is loop-free by construction, which is why atom evaluation is outside
+the per-tick instruction budget) — the wire was the only door, and it is shut by `uaExprShape`.
 
 **A RIG THAT SETS `genome.channels` MUST CLEAR THE POPULATION'S BANKS FIRST.** Since #196 the
 governing rule is drawn from living carriers with the germline only as fallback, so a block that sets

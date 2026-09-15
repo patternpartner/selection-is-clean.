@@ -2064,6 +2064,69 @@ m._compile(code+`
             declared:names.length, reload,
             lvlLog:(__levelLog||[]).length};
   });
+  // ── #204  THE WIRE CARRIES THE LANGUAGE, NOT A SUPERSET OF IT ─────────────────────────────────
+  // Two directions, and the first one is the one that would hurt: a guard that refuses expressions
+  // the grammar actually authors silently stops migration working, and nothing else in this file
+  // would notice. So the corpus is drawn from the generator itself at every depth it can reach,
+  // with the operator bank, the probes and the channels populated so the widest alphabet is live.
+  out.wireExpr=run('wireExpr',()=>{
+    const wasDepth=genome.uaMaxDepth;
+    try{ for(let k=0;k<UA_OPBANK;k++) if(!genome.uaOps[k]) genome.uaOps[k]={p:0,a:0,b:1,k:0.5,c:0}; }catch(e){}
+    try{ const b=probeBank(); if(b) for(let k=0;k<PROBE_MAX;k++){ if(!b[k]) b[k]=mk('a'); b[k].promoted=1; b[k].uses=9999; b[k].age=9999; b[k].hits=99; b[k].attempts=99; } }catch(e){}
+    try{ const cb=chanBank(); if(cb) for(let k=0;k<CHANNEL_MAX;k++) if(!cb[k]) cb[k]={expr:'a',compiled:null,failed:false,age:0,uses:0}; }catch(e){}
+    let authored=0, falseReject=null;
+    for(let d=1;d<=UA_DEPTH_CAP;d++){
+      genome.uaMaxDepth=d;
+      for(let i=0;i<300;i++){
+        for(const e of [uaGenExpression(),rendGenExpression()]){
+          authored++;
+          if(!uaExprSafe(e)&&falseReject===null)falseReject=e;
+        }
+      }
+    }
+    for(const e of REND_DEFAULTS){ authored++; if(!uaExprSafe(e)&&falseReject===null)falseReject=e; }
+    genome.uaMaxDepth=wasDepth;
+
+    // The other direction. Every entry is a shape the generator has no production for; the first
+    // is the one that started this - 24 characters, passes the byte filter, compiles, and does not
+    // return. The rest are the neighbouring routes to the same place, because a guard that blocks
+    // exactly the example it was written from is a guard that was written from an example.
+    const hostile=['(function(){for(;;);})()','(()=>{while(1){}})()','((f)=>f(f))((f)=>f(f))',
+      'a=>a','(()=>1)()','a=1','a;b','Math.constructor','a.constructor','(0).toFixed(2)',
+      'eval(a)','Function(a)','new Function(a)','globalThis','self','a[0]','[a,b][0]',
+      'a&&b','a||b','~a','a%2','a**2','a/*x*/+b','a//x'];
+    const leaked=hostile.filter(e=>uaExprSafe(e));
+
+    // ON THE WIRE. The same packet a peer would actually send, through the same function that
+    // admits one. Two arms so the row cannot pass by refusing everything: an identical packet
+    // carrying an AUTHORED vocabulary must still be admitted.
+    const pkt=(ua)=>({nx:0.5,ny:0.5,tend:new Array(DIMS).fill(0),mem:[0,0,0,0,0,0,0,0],
+      amp:0.5,phase:0.1,ua:ua});
+    const good=uaGenExpression();
+    const wireTakesAuthored=validNetworkPayload('migrant',pkt([good]));
+    const wireRefusesLoop=!validNetworkPayload('migrant',pkt(['(function(){for(;;);})()']));
+
+    // AND ON ARRIVAL, which is the check that matters if the wire ever stops being the only door.
+    // Injected straight into the queue, past validNetworkPayload, exactly as an older peer's packet
+    // would arrive if the shape of the protocol ever changed underneath this guard.
+    const HOSTILE='(function(){for(;;);})()';
+    const wasRec=genome.netReceptivity, wasAs=genome.netAssort;
+    genome.netReceptivity=1; genome.netAssort=0;
+    incomingMigrants.length=0;
+    incomingMigrants.push(pkt([HOSTILE,good]));
+    networkReceive();
+    genome.netReceptivity=wasRec; genome.netAssort=wasAs;
+    let carriedHostile=0, carriedGood=0, tombstoned=0;
+    for(let i=0;i<pGenome.length;i++){ const g=pGenome[i]; if(!g||!Array.isArray(g.userAtoms))continue;
+      for(const a of g.userAtoms){ if(!a)continue;
+        if(a.expression===HOSTILE)carriedHostile++;
+        if(a.expression===good)carriedGood++; }
+      if(Array.isArray(g.boundOpcodes)&&g.boundOpcodes.length&&g.boundOpcodes[0]===-1)tombstoned++; }
+
+    return {authored, falseReject, leaked, hostileN:hostile.length,
+            wireTakesAuthored, wireRefusesLoop, carriedHostile, carriedGood, tombstoned};
+  });
+
   return out;
 };`,'/tmp/substrate.js');
 const r=globalThis.__t();
@@ -2704,6 +2767,23 @@ ck('and child.frozen is the only thing in the file that can SAY so', CV.frozenFr
 ck('zero is NOT frozen — the default-or coerces it back', CV.zeroMoved>0 && CV.zeroFrozen===0,
    CV.zeroMoved+'/200 moved at rate 0, because rate = mutationRate || 0.06 turns 0 into 0.06. A lineage cannot switch variation off by reaching zero; only the interval BELOW zero does it, which nothing in the engine treats as meaningful and the walk reaches by accident. That asymmetry is the finding');
 ck('both names are declared', CV.declared && CV.declared.length===0, (CV.declared||[]).join(' '));
+
+// #204
+const WR=r.wireExpr||{};
+ck('#204 THE GUARD DOES NOT REFUSE WHAT THE GRAMMAR AUTHORS',
+   WR.authored>4000 && WR.falseReject===null,
+   WR.authored+' expressions drawn from the generator at every depth to UA_DEPTH_CAP, on both channels, with the operator bank, probes and channels populated — 0 refused. This is the arm that would hurt: a guard that rejects real atoms stops migration and nothing else in the file would say so');
+ck('#204 and it refuses every shape the grammar cannot produce',
+   WR.leaked && WR.leaked.length===0,
+   (WR.leaked&&WR.leaked.length)?('leaked: '+WR.leaked.join(' ')):(WR.hostileN+'/'+WR.hostileN+' refused — function, arrow, assignment, statement, member access, string, index, the bitwise and logical operators, and both comment openers. The comment openers are the ones that matter: a comment lets the text the compiler sees differ from the text the guard checked'));
+ck('#204 A LOOP-SHAPED EXPRESSION IS REFUSED ON THE WIRE', WR.wireRefusesLoop===true,
+   'validNetworkPayload refuses the migrant. The 24 characters of an immediately-invoked for(;;) pass UA_EXPR_SAFE and compile, so the byte filter was never what was stopping this — nothing was');
+ck('#204 and an authored vocabulary is still admitted', WR.wireTakesAuthored===true,
+   'the same packet shape carrying an expression this generator wrote — without this arm the row above passes by refusing everything');
+ck('#204 AND AGAIN ON ARRIVAL, PAST THE WIRE CHECK', WR.carriedHostile===0 && WR.carriedGood>0,
+   'injected straight into incomingMigrants: 0 genomes carry the loop, '+WR.carriedGood+' carry the authored atom from the same packet. #193 rule — a packet from an older or hostile peer is not the thing the write path should be discovering');
+ck('#204 a refused slot tombstones rather than shifting', WR.tombstoned>0,
+   WR.tombstoned+' genomes hold -1 in slot 0 — the sender\'s slot k must keep meaning our slot k, or the surviving half of its vocabulary means something else here than it did there');
 
 // the reverts
 const RV=r.revert||{};

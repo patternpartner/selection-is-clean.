@@ -16664,6 +16664,143 @@ The decisive test is to permute the scan order and see whether the skew follows 
 stays with the particles, and that test is a swing of its own. Reordering the hottest loop in the
 engine on a half-diagnosed mechanism is precisely the move that cost this session five separate
 retractions. It is recorded here with its numbers so the next pass starts from evidence.
+## #204 — THE WIRE CARRIES THE LANGUAGE, NOT A SUPERSET OF IT
+
+*Numbered #204 after the fact. This was written and tested as #203 against `2b13b2b`; a concurrent
+session landed a different #203 — the birth economy — while it ran. Nothing in this entry was
+measured against that swing's four new laws, which is worth knowing before reading its numbers as
+current.*
+
+This one did not come out of a swing. Another model was handed the engine and reviewed it cold, and
+the review is worth recording because **most of it was a review of a different engine** — and the one
+thing it did not find is the one thing that was actually there.
+
+### The three findings, against the file
+
+| finding | verdict |
+|---|---|
+| `BroadcastChannel` lacks backpressure; a fast tab floods a slow one | **refuted.** Every emission rate is a gene clamped to `[0, 0.02]` per tick (`mutateGenome`), five types, so a universe cannot exceed ~0.1 packets/tick however fast it runs. Inbound queues are capped (`NET_QUEUE_LIMITS`, 20/10/10/20) and over-cap arrivals increment `netStats.dropped`. `peerTickRatio` — the exact clock-ratio limiter proposed — has existed since #163 and is **deliberately off**: it refused 58% of an ordinary field's heritable traffic because tick rates diverge as populations diverge, so it was filtering ecology, not abuse. #148's rule settled it: `netReceptivity` is a gene, and a world that cannot digest its inbox can turn itself down. |
+| unbounded execution; a mutation writes an infinite loop and freezes the tab | **refuted as stated.** The VM is straight-line bytecode over a 12-register file, run as a `for` to `min(prog.length, vmMaxInstructions)` with the cap clamped to 96. There is no jump opcode, so a mutation has no way to spell a loop. Atom expressions come from a closed grammar at bounded depth; #181 explicitly declined to let a lineage emit wrapper *source*. Also: universes have run in workers since the isolate-packing measurement (1,309 MB → 815 MB), so a hung tick freezes no page. |
+| deep telemetry in the inner loop will strangle the frame rate; sample it or offload it | **inverted.** `fired()` is an integer increment; `firedN()` exists *because* even that was too hot on one path (`verb.fire`, 20,873 calls in 1,500 ticks) and batches per epoch. `crossingCensus` is not in the tick loop at all — the engine's only caller is the diary. Sampling is the design, not the gap. |
+
+The GC half of the second finding was real **and is already paid for**: #161 is the entry where atom
+compilation was per-carrier — 24,000 `new Function` calls for a mature lineage, per universe — and
+`__uaCode` keyed by expression text is the fix. A review can be right about a bug and two iterations
+late.
+
+**One thing the review's first finding did surface, by making me go and look.** The engine's own note
+on the pacing gate says the mechanism is "measured and tested". The measurement is real and the number
+is in it. **The test is not**: `peerTickRatio`, `netStats.paced` and `ISOLATE` appear in no rig in this
+repo. So the one limiter the file claims to have on this channel is the one mechanism here with no row
+asserting it does anything — and `#isolate` is documented as a runnable experiment. Left as it stands
+rather than fixed in this swing, because a gate that ships off needs its rig written against the
+behaviour someone turning it on actually wants, and that is not a line of work this entry opened.
+
+### What it missed, which is the part worth having
+
+`validNetworkPayload` checked a migrant's vocabulary for length and for printable ASCII. Both bounds
+are correct and neither is a grammar. So:
+
+```
+(function(){for(;;);})()      24 chars, printable, length-legal
+                              -> passes UA_EXPR_SAFE
+                              -> stored by absorbMigrant into userAtoms
+                              -> compiled by uaCompile with new Function
+                              -> returns never
+```
+
+**Nothing in this engine can author that string.** UNLOCKED #7b says so in its own words about the
+ternary branch — "it stays a pure expression (a ternary — no loops)" — and that sentence is the reason
+atom evaluation is allowed to sit outside the per-tick instruction budget. The wire was accepting from
+a peer a class of program the engine has no way to write, and the invariant the compiler was designed
+around held everywhere except the one place it was not checked.
+
+### The correction I had already written down and walked past
+
+`CODEMAP` has said since #196 that `UA_EXPR_SAFE` is "a BYTE filter, not a parser", and then drew the
+wrong conclusion from it: that a hostile expression "is caught downstream by `uaCompile`'s try/catch,
+which is where it belongs", and that a rig asserting the wire rejects one "is asserting something that
+was never going to happen." **A try/catch catches a throw. The interesting hostile expression does not
+throw.** Both versions are on the page.
+
+### The guard, and why it is an allowlist read from the generator
+
+`uaExprShape` — the grammar's own punctuation and nothing else (no brace, bracket, semicolon or quote
+of any kind), every `=` required to be the tail of a `<=` or `>=` so an arrow loses its arrow, and no
+two of `*` `/` adjacent, which takes exponentiation and **both comment openers** at once. The comment
+openers are the ones that matter: a comment is how the text the compiler sees stops being the text the
+guard checked.
+
+The lexicon is **built by reading the tables `uaGenTerm` samples from**, plus the words in
+`REND_DEFAULTS`, lazily on first call. Restating the alphabet would have been a fifth stale bound —
+three of the four original migrant bounds had already gone stale against ceilings that moved
+underneath them, which is #153.
+
+**What this is not: a capability sandbox.** `BroadcastChannel` is same-origin. Anything that can send
+on it is already executing in this page and does not need a migrant packet. This restores an
+invariant, so that a forked, older or simply buggy peer cannot hand a universe a construct its
+compiler was written on the assumption of never seeing. Saying otherwise would be the review's own
+mistake in the other direction.
+
+### The arm that would actually have hurt
+
+A guard that refuses expressions the grammar really authors stops migration dead and **nothing else in
+the file would notice** — no census row asks whether the wire is still passing anything. So the rig
+draws its corpus from the generator itself, at every depth to `UA_DEPTH_CAP`, on both channels, with
+the operator bank, probes and channels populated so the widest alphabet is live:
+
+```
+                                        authored   refused   hostile corpus   leaked
+SEED=1                                    42,004         0         26/26           0
+SEED=2                                    42,004         0         26/26           0
+SEED=3                                    42,004         0         26/26           0
+```
+
+Three seeds, not one. The permanent rows in `substrate-test.js` run a smaller corpus (4,204) on the
+same principle, in both directions, plus the wire and the arrival path separately — because the
+arrival check is the one that matters if the wire ever stops being the only door (#193's rule).
+
+### And the rig's own markers were not expressions
+
+`migrant-test.js` traced identity across the hop with `'HOST0'`/`'MIG0'` — readable sentinels, and not
+things this grammar can author. The moment the wire checked shape, the whole vocabulary tombstoned and
+two rows failed *blaming the ordering*. They are legal expressions now. Two neighbouring rows had the
+same defect in reverse: `tooMany` filled with `'x'` and `tooLong` repeated `'y'`, so after the guard
+each would have been refused by the lexicon before ever reaching the bound it is named for — a row
+that passes for the wrong reason. Both fillers are legal expressions now, and each row fails on its
+own bound again.
+
+### Verified
+
+```
+                                   checks  passed  failed
+TICKS=900,  FOUND=1, SEED=1           257     257       0
+TICKS=900,  FOUND=0, SEED=1           257     257       0
+TICKS=4000, FOUND=1, SEED=1           257     257       0
+TICKS=4000, FOUND=0, SEED=1           257     257       0
+```
+
+`substrate-test.js`: 257 checks, 6 of them this swing's — re-run on the rebased tree, so the totals
+include #203's five and the seed-1 column is green with both swings in. Seeds 2 and 3 fail 2 and 3 rows respectively
+at `TICKS=4000`, and one row at `TICKS=900` — measured against `2b13b2b`, **all of them
+pre-existing**, all in #194's grain
+block and the level census, and confirmed identical on a clean HEAD worktree down to the reported
+numbers (1 cell, 1,400 cells, 11.454, 0.6288). `TICKS=40` fails #199's seeder row on HEAD too. This
+swing changed none of them and fixes none of them; they are budget and seed sensitivity in rows that
+already had it, which is the thing this file keeps warning is worth checking before blaming a commit.
+
+`smoke.sh`: 44 ok. `pool-test`, `pace-test`, `layers-test` and `slot-test` cannot run here —
+`playwright-core` is not installed in this container — so **nothing in this swing has been checked
+against a real browser**, and the field's layout and controls are exactly what those four rigs are
+the only things to catch.
+
+### Still closed after #204
+
+The guard makes the wire carry the grammar. It does not make the grammar safe to be handed by a
+stranger: a legal expression is still a legal expression whoever wrote it, and `alienGrip` remains the
+only content filter on an incoming vocabulary. Nothing keys on a peer's history with us, because the
+field still has no stable peer identity — the same thing #202 ended on.
+
 
 
 ---
