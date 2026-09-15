@@ -17695,3 +17695,73 @@ it. **A motif whose descendants all died is dropped in exactly the same order as
 thrives.** That is a much stronger version of "turnover, but UNCONDITIONAL" than `#206` could see,
 because `#206` only knew the store was written and shifted; it did not know the content was acting on
 the living the whole time.
+
+### The full figures, three seeds, 12,000 ticks, ZERO extinctions on all three
+
+```
+seed   perTick cluster match   particles nudged   ordinary spawner   extinction reseed   pushes / shifts
+  1            180                 14,504                0                  0               36 / 32
+  2            190                 16,596                0                  0               18 / 13
+  3            170                 14,172                0                  0               22 / 18
+```
+
+**About fifteen thousand particle-nudges by cultural memory, in worlds that never died.** `#207`'s
+"a universe that never dies never uses its cultural memory at all" is wrong by four orders of
+magnitude.
+
+Two honest riders. The `culturalBias` **ordinary spawner** fired **zero** times on all three seeds —
+it sits in the `else if` of a spawn path whose first branch has to fail first, so one of the four
+consumers is itself unreached in these runs and I am not claiming otherwise. And most motifs ever
+learned were dropped: 32 / 13 / 18 shifts against 36 / 18 / 22 pushes, every one of them by arrival
+order, while the survivors were steering ~15,000 particles.
+
+## #214 — THE CULTURAL LAYER MEASURES QUALITY, LOGS IT, AND DISCARDS BY ARRIVAL ORDER
+
+A motif is built at 28248 as:
+
+```js
+const motif={t:c.tendency.map(v=>+(v.toFixed(3))), s:c.size, c:+(c.coherence.toFixed(2)), age:c.persistAge};
+```
+
+It carries three quality fields. Where each one is read, in the whole file:
+
+```
+m.t     cluster match (28184), extinction reseed, boot reseed, spawner    — the content
+m.age   oldestMotifAge() (16151), once                                    — a self-model readout
+m.s     ONLY in recordEvent('motif_remembered', {s:motif.s, c:motif.c})   — the log, and nothing else
+m.c     ONLY in that same log line                                        — the log, and nothing else
+```
+
+**The system measures the size and coherence of every cluster it remembers, writes both to the event
+log, and then drops motifs by arrival order.** `shift()` reads no property of the motif it discards.
+So this is the sharpest form of `#206`'s "turnover, but UNCONDITIONAL": it is not that quality is
+unavailable to the decision — **it is measured, stored per motif, and ignored.**
+
+### And I am not changing it. The reason matters more than the decision.
+
+`#211` was legitimate because the author's own comment declared an intent that the code blocked:
+*"give the lineage a dial and let selection set it … I am not going to pick the number."* The dial
+existed and was unreachable; I made it reachable, and nothing about what the dial should SAY was
+decided by me.
+
+**There is no such declaration here.** Replacing `shift()` with "drop the lowest `s*c`" would be me
+inventing a selection pressure and choosing its shape — which is exactly the class `#148` and `#197`
+reserve. *A field that exists is suggestive; a field that exists is not an authorisation.* A log
+field is not a declared intent, and I am not going to launder one into the other because the change
+would be easy and the finding is tidy.
+
+So it is recorded as a decision to be MADE rather than drifted into. The three options, with what
+each costs:
+
+1. **Leave it FIFO.** Cultural memory is a recency queue. Defensible: recency is itself a signal, and
+   the store is only five deep.
+2. **Evict by measured quality** (`s`, `c`, or both). Uses data already present, adds no new
+   measurement and no new constant — but a human picks the shape of the pressure, which is the thing
+   this project has spent two hundred entries not doing.
+3. **Give the lineage the dial**, the way `atomIdleTolerance` was given one: a gene that mixes recency
+   against quality, seeded at pure recency so the current behaviour is its zero. Costs one
+   `Math.random()` draw per birth under `#181`'s contract, and one more row in a law/gene table `#203`
+   already found oversubscribed.
+
+Option 3 is the one that matches how this file has answered the same question before. It is still not
+mine to take unasked, because it adds machinery rather than unblocking it.
