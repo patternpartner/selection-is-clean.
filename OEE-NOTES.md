@@ -17650,3 +17650,48 @@ default budget, at `TICKS=900`, with `FOUND=0` and at `TICKS=40`. Both engine ch
 - **The motif layer stays FIFO and the germline stays a population of one.** `#206` measured both;
   neither is a defect with an owner, and changing either is a design decision about what this artwork
   is, not a repair.
+
+## #213 — CORRECTION TO #207: `stableMotifs` IS NOT A DEATH-TRIGGERED STORE
+
+`#207` says, and it stays on the page as written:
+
+> *"And `stableMotifs` turns out to be a DEATH-TRIGGERED store. 1,981 motif-to-particle crossings in
+> seed 1, which had 23 extinctions, and **zero** in seeds 2 and 3, which had none. The cultural layer
+> is read only on reseed. **A universe that never dies never uses its cultural memory at all.**"*
+
+**That is false.** The store has four live consumers and the extinction reseed — the only one I
+instrumented — is the rarest of them:
+
+```
+site    what it does                                                           when
+28174   every cluster finds its best-matching motif and pulls each member
+        particle's tendency toward it by 0.0001*bestSim                        EVERY TICK
+26484   the ordinary spawner draws a motif at rate culturalBias                continuously
+19365   the extinction reseed                                                  only on death  <- measured
+26538   the boot reseed from a save                                            on load
+```
+
+First measurement with all of them instrumented, seed 2 at 3,000 ticks, **zero extinctions**: the
+per-tick cluster match ran 40 times and **514 particles were nudged toward a motif**. A world that
+never died used its cultural memory 40 times.
+
+**The zero was real; the inference from it was not.** Counting one site and naming the whole store
+after it is the same shape of error as reading `atom.author` as a bank insertion — which `#209`
+caught and corrected, three entries before I made it again in a different place. The pattern worth
+naming: *a counter placed at one site measures that site, and the name you give the store is a claim
+about all of them.*
+
+### The correction makes the core finding SHARPER, not weaker
+
+`#207`'s real result was the asymmetry: every crossing moves content DOWN into the layer where
+removal is conditional, and none carries the verdict back UP. With the other three consumers counted,
+that holds harder than it claimed. Motifs are not dormant until death — **they are pulling living
+particles toward themselves every tick**, and those particles then die conditionally. So cultural
+content is exposed to selection CONSTANTLY.
+
+And removal is still `shift()`. The only two removal sites (18105, 28250) read no property of the
+motif they drop — not age, not how its nudged particles fared, not whether any cluster ever matched
+it. **A motif whose descendants all died is dropped in exactly the same order as one whose cluster
+thrives.** That is a much stronger version of "turnover, but UNCONDITIONAL" than `#206` could see,
+because `#206` only knew the store was written and shifted; it did not know the content was acting on
+the living the whole time.

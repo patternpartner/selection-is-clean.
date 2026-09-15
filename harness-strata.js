@@ -233,6 +233,32 @@ patch("      clusterUpstreamBuffer.push({","      globalThis.__bump('up.push'),c
 patch("    const upstream=clusterUpstreamBuffer.shift();",
       "    globalThis.__bump('up.drain'); const upstream=clusterUpstreamBuffer.shift();",'up.drain');
 
+// MOTIF READS -- ALL OF THEM, BECAUSE #207 COUNTED ONE AND GENERALISED FROM IT.
+//
+// #207 instrumented the extinction reseed alone, saw 1,981 crossings on the seed with 23 extinctions
+// and ZERO on the two with none, and concluded that stableMotifs is "a DEATH-TRIGGERED store -- a
+// universe that never dies never uses its cultural memory at all". That is false. The store has four
+// live consumers and the reseed is the rarest of them:
+//
+//   28174  EVERY TICK. Each cluster finds its best-matching motif and, if similarity > 0.3, pulls
+//          every member particle's tendency toward it by 0.0001*bestSim. Continuous cultural
+//          influence on the living, which is the opposite of death-triggered.
+//   26484  the ordinary spawner, at rate culturalBias -- not the extinction path.
+//   19365  the extinction reseed, the one #207 measured.
+//   26538  the boot reseed from a save.
+//
+// The zero on two seeds was real and the inference from it was not. Counting one site and naming the
+// store after it is the same shape of error as reading atom.author as a bank insertion (#209).
+patch("    if(genome.stableMotifs.length>0&&clusters.length>0){",
+      "    if(genome.stableMotifs.length>0&&clusters.length>0){globalThis.__bump('motif.read.tick');",
+      'motif.read.tick');
+patch("  }else if(genome.stableMotifs.length>0&&Math.random()<genome.culturalBias){",
+      "  }else if(genome.stableMotifs.length>0&&Math.random()<genome.culturalBias){globalThis.__bump('motif.read.spawn');",
+      'motif.read.spawn');
+patch("            for(let d=0;d<DIMS;d++)tend[i*DIMS+d]+=(bestMotif.t[d]-tend[i*DIMS+d])*0.0001*bestSim;",
+      "            globalThis.__bump('motif.nudge');\n            for(let d=0;d<DIMS;d++)tend[i*DIMS+d]+=(bestMotif.t[d]-tend[i*DIMS+d])*0.0001*bestSim;",
+      'motif.nudge');
+
 // Motif -> particle. At extinction, culturalBias of the reseed is drawn from stableMotifs, so the
 // cultural layer's content DOES reach the layer where death is conditional. What it cannot do is
 // carry the verdict back: the motif's own removal stays FIFO whatever becomes of its descendants.
@@ -329,6 +355,8 @@ console.log(JSON.stringify({
           overA1000Ticks:srt.filter(v=>v>1000).length } },
       clusterUpstream:{ donated:S['up.push']|0, drainedIntoGlobalVM:S['up.drain']|0 },
       motifToParticle:S['motif.toParticle']|0,
+      motifReads:{ perTickClusterMatch:S['motif.read.tick']|0, ordinarySpawner:S['motif.read.spawn']|0,
+                   extinctionReseed:S['motif.toParticle']|0, particlesNudged:S['motif.nudge']|0 },
       atomToParticle:S['atom.insert.seed']|0
     };
   })(),
