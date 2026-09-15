@@ -364,10 +364,28 @@ m._compile(code+`
     const centroid=(L)=>{ let sx=0,w=0;
       for(let y=0;y<FIELD_H;y++)for(let x=0;x<FIELD_W;x++){const v=L[y*FIELD_W+x]; if(v>0.001){sx+=x*v;w+=v;}}
       return w>0?+(sx/w).toFixed(2):null; };
+    let __formState=null;
     const runForm=(st,wrap,expr,steps)=>{
       genome.channels=[{expr:expr,compiled:null,failed:false,age:0,uses:0,st:st,wrap:wrap,cad:1},null,null,null];
       const L=chanLattice(0); L.fill(0); L[20*FIELD_W+20]=4;
       for(let t=0;t<steps*CHANNEL_CADENCE;t++){ globalThis.__detMs+=5; govSelfOnly(); try{loop();}catch(e){} }
+      // #216h: the lattice's STATE is recorded beside the centroid, because centroid() alone cannot
+      // say which way it failed — and my first reading of that failure was wrong.
+      //
+      // THIS block has its OWN centroid (line ~364), distinct from the grain block's at ~795: it
+      // returns null when no cell exceeds 0.001, where the other returns -1. So the torus row's "the
+      // mass is at null" means THE LATTICE IS EMPTY, not NaN. I read it as Infinity/Infinity from the
+      // other centroid and wrote that into this comment before the instrument contradicted it:
+      // max 0, livecells 0, nonFinite 0. Nothing exploded. The mass is simply gone.
+      //
+      // Which is why the state is recorded rather than inferred. Empty, exploded and simply-wrong all
+      // printed the same word, and the row now distinguishes them. NOTE the exposure: mean and advect
+      // run 6 steps and this runs 30, so the torus case is by far the most exposed to anything that
+      // removes mass over time — and it is the only one of the three that has gone red.
+      let mx=0,nf=0,w=0;
+      for(let c=0;c<L.length;c++){ const v=L[c];
+        if(!isFinite(v))nf++; else { const a=Math.abs(v); if(a>mx)mx=a; if(a>1e-9)w++; } }
+      __formState={max:+mx.toFixed(4), nonFinite:nf, livecells:w};
       return centroid(L); };
     // THE SEEDED FORM is a symmetric mean: the blob spreads and does NOT travel.
     const mean=runForm(CHANNEL_STENCIL_SEED.map(t=>[t[0],t[1],t[2]]),0,'(b)+(0.00)',6);
@@ -377,6 +395,7 @@ m._compile(code+`
     const advect=runForm([[-1,0,1.0]],0,'(b)+(0.00)',6);
     // THE SAME ON A TORUS: it leaves one edge and arrives at the other. 20 + 30 = 50, mod 40 = 10.
     const torus=runForm([[-1,0,1.0]],1,'(b)+(0.00)',30);
+    const torusState=__formState;
     // A SIGNED STENCIL SUMMING TO ZERO is a derivative. On a linear ramp its answer is a CONSTANT;
     // a mean's answer would be the ramp again.
     genome.channels=[{expr:'(b)+(0.00)',compiled:null,failed:false,age:0,uses:0,
@@ -402,7 +421,7 @@ m._compile(code+`
     let over=0,nf=0; for(let c=0;c<B.length;c++){ if(!isFinite(B[c]))nf++; if(!(B[c]>=-CHANNEL_CLAMP&&B[c]<=CHANNEL_CLAMP))over++; }
     const govSelf=(governedBySelfNow(0)&&govSelfCad);
     chanCarrierRestore(carriers);
-    return {mean,advect,torus,gmn:+gmn.toFixed(4),gmx:+gmx.toFixed(4),fast,slow,over,nf,govSelf};
+    return {mean,advect,torus,torusState,gmn:+gmn.toFixed(4),gmx:+gmx.toFixed(4),fast,slow,over,nf,govSelf};
   });
 
   // ── #189  AND THE FORM TAKES SMALL, LEGAL STEPS ─────────────────────────────────────────────
@@ -2286,7 +2305,10 @@ ck('#189 the seeded form diffuses and does NOT transport', FM.mean===20,
 ck('#189 an OFFSET stencil advects — the medium moves', FM.advect>FM.mean+3,
    'centroid '+FM.mean+' -> '+FM.advect+' under the same chemistry: directed transport, which no symmetric kernel produces');
 ck('#189 wrap=1 makes it a torus', FM.torus!==null && FM.torus<FM.mean,
-   'after 30 updates the mass is at '+FM.torus+' — 20+30 = 50, mod 40 = 10: it left one edge and arrived at the other');
+   'after 30 updates the mass is at '+FM.torus+' — 20+30 = 50, mod 40 = 10: it left one edge and arrived at the other'+
+   ' [lattice '+JSON.stringify(FM.torusState)+'; THIS block\'s centroid returns null when no cell exceeds 0.001, so null means'+
+   ' the lattice is EMPTY — the mass is gone, not exploded. Confirmed by max/nonFinite above. Open: why 30 steps loses it on some'+
+   ' trajectories when the 6-step mean and advect cases keep it. #216h]');
 ck('#189 a signed stencil is a DERIVATIVE, not an average',
    FM.gmx!==undefined && Math.abs(FM.gmx-FM.gmn)<0.01,
    'on a linear ramp the answer is flat at '+FM.gmn+' — a mean would have reproduced the ramp');
