@@ -18270,6 +18270,44 @@ argue about afterwards.
 take draws. A measurement that moves the thing it measures is not a measurement, and here it fails in
 the most expensive direction available: it makes a red row go green.
 
+### #216m — `#212` broke the census that measures `#212`'s own layer
+
+`harness-strata.js` decides the cluster-genome layer's row by scanning `engine.html` for a
+`clusterGenomes.delete|clear` site:
+
+```js
+cgDeletes===0 ? [{site:'(no delete or clear exists in engine.html)', kind:'none', n:0}]
+              : [{site:'delete/clear', kind:'unknown', n:-1}]
+```
+
+**`#212` added one.** So the row fell through to the `unknown` branch, `n:-1` contributes nothing to
+`conditionalRemovals`, and the verdict computes to **"NO REMOVAL AT ALL" for the layer that had just
+been given a working eviction.** The census that exists to answer where selection terminates was
+reporting the exact opposite of what my own engine change had done to the layer it was about.
+
+The scan is a tripwire and it fired correctly. Nothing caught it because **this rig's output is not
+part of the push gate**, and a tripwire nobody reads is a tripwire that did not fire. Worth stating
+plainly: `substrate-test` is gated across seeds and budgets; `harness-strata`, `harness-orphans`,
+`harness-reads` and `harness-attractor` are run by hand when a question needs them, so a change can
+invalidate one of them and nothing says so.
+
+**And the fix does not assert the classification, it computes it.** `#212` evicts a cluster genome
+whose last touch is older than `CLUSTER_GENOME_TTL`, and a read HIT re-stamps it. That sorts on use —
+an entry that keeps being read keeps being spared — which is *conditional* under this rig's own
+definition. **But only if a re-stamp ever happens.** With zero read-hits every entry dies at exactly
+TTL and the prune is a timer: this rig's *unconditional*, turnover with the variance destroyed rather
+than sorted. Which of the two it is, is a property of the run, not of the code, so the row reads
+`cg.hit` — the count of read-hits, which is the count of re-stamps — classifies itself from it, and
+reports the number beside the verdict so the reading is checkable instead of taken on trust.
+
+That is the same discipline `#216l` needed one entry up: the honest answer to "is this selected?" is
+a measurement, and a rig that writes the answer down in advance is a rig that will keep saying it
+after it stops being true.
+
+**The census numbers are not in this entry yet** — the verifying run was still going when this was
+committed. They belong here, and until they are here this entry describes a defect and a design, not
+a result.
+
 ### Where the rig stands after `#216l`
 
 ```

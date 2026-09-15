@@ -262,6 +262,12 @@ patch(CULL_INNER_OLD, CULL_INNER_NEW, 'cull.inner');
 // unit. The question this rig exists to settle is whether anything ever takes one out.
 patch("clusterGenomes.set(","globalThis.__bump('cg.set'),clusterGenomes.set(",'cg.set',2);
 
+// #216m: AND #212 GAVE IT ONE — after this census was written, and by my own hand. The source scan
+// below is a tripwire for exactly that, and it FIRED: a delete site now exists, so the layer row fell
+// through to its 'unknown' branch and the verdict computed to "NO REMOVAL AT ALL" for a layer that
+// had just been given a working eviction. Nothing caught it because this rig's output is not part of
+// the push gate, so a tripwire nobody reads is a tripwire that did not fire. The row below now
+// recognises the #212 prune by name and keeps the scan as a guard against a SECOND, unclassified site.
 const cgDeletes=(code.match(/clusterGenomes\.(delete|clear)\(/g)||[]).length;
 
 // ── THE CROSSING CENSUS (#207). #206 said where selection terminates. This says whether anything
@@ -399,9 +405,25 @@ const layers=[
      // #215 made this one conditional on the motif's own measured size and coherence. Whether it
      // ever fires is up to the lineage's motifKeepBias, which is why both rows are reported.
      {site:'motifEvict by quality (s*c)', kind:'conditional', n:L('motif.evictQuality')} ] },
+ // #216m: THE KIND IS COMPUTED FROM THE RUN, NOT ASSERTED. #212 evicts a cluster genome whose last
+ // touch is older than CLUSTER_GENOME_TTL, and a read HIT re-stamps it. So the prune sorts on use --
+ // an entry that keeps being read keeps being spared -- which is conditional under this rig's own
+ // definition (age, uses). BUT ONLY IF A RE-STAMP EVER HAPPENS. With zero read-hits every entry dies
+ // at exactly TTL and the prune is a timer, which is this rig's 'unconditional': turnover with the
+ // variance destroyed rather than sorted. Rather than pick one and write it down, the row reads
+ // cg.hit -- the count of read-hits, which IS the count of re-stamps -- and classifies itself. The
+ // number is reported beside the verdict so the reading is checkable rather than taken on trust.
  { layer:'cluster genome', created:S['cg.set']|0, removals:
      cgDeletes===0 ? [{site:'(no delete or clear exists in engine.html)', kind:'none', n:0}]
-                   : [{site:'delete/clear', kind:'unknown', n:-1}] },
+   : cgDeletes===1 ? [{site:'#212 TTL prune on the clusterGenomeSeen last-touch horizon',
+                       kind:((S['cg.hit']|0)>0?'conditional':'unconditional'),
+                       n:L('cluster.cgEvict'), restampsThatCouldSpare:S['cg.hit']|0,
+                       note:((S['cg.hit']|0)>0
+                         ? 'read-hits re-stamp, so entries that are used outlive entries that are not'
+                         : 'NO read-hit occurred, so nothing was ever spared by use: this run cannot '+
+                           'distinguish the prune from a fixed-age timer, and it is counted as one')}]
+                   : [{site:'delete/clear x'+cgDeletes+' — a site this rig does not recognise; classify it before trusting this row',
+                       kind:'unknown', n:-1}] },
  { layer:'germline (this universe)', created:1, removals:[
      {site:'extinction reseeds FROM the germline (saveGenome after N=0)', kind:'unconditional', n:st.extinctions} ] },
  { layer:'universe', created:L('cosmos.found')+L('cosmos.launch'), removals:[
