@@ -18687,3 +18687,378 @@ population again — of germlines, one per universe — and `index.html` is wher
 one, and resumes above it.** The three engine changes in this batch did not extend selection upward;
 they filled in the layers between the particle and the universe that were populations all along and
 had no sorting in them.
+
+## #217 — THE VARIANCE CENSUS: A READ IS NOT A MOVE
+
+`#209` classified all 191 genome keys statically (does a read site exist outside the genome's own
+plumbing?) and `#210` dynamically (was it read in this run?). Both measure whether the engine LOOKS
+at a gene. **Neither measures whether the gene has anything to look at.** Selection sorts variance;
+a gene read a million times a tick and held at one value by every living particle is a constant
+wearing a gene's name, and it will pass both censuses.
+
+`CODEMAP` states the suspicion twice — *"'evolvable' often means 'will sit at a bound'"*, *"most are
+inert"* — and `#216p` paid for a bespoke audit to answer it for ONE gene. This answers it for all of
+them, and it is the number this project stopped reporting.
+
+### Method, and the three things it refuses to do
+
+Read off the LIVING POPULATION, never the germline. Structure is authored on `genome` and selection
+only ever sees `pGenome[i]`; the germline figure is printed alongside only so the two can be seen to
+disagree. **It draws nothing** (CLAUDE.md trap 4): every figure is a property read on a plain
+object, no engine function is called to observe state, so the census cannot move the trajectory it
+reports on. Keys are parsed from the `let genome={` literal rather than listed, so a gene added later
+shows up as unexamined rather than as absent. Clamp bounds are read out of `sanitizeGenome`; a bound
+that is an identifier (`DIMS_MAX`, `SOMA_REPAIR_MAX`) is left unknown rather than guessed, and no
+PINNED verdict is offered for those keys.
+
+### The confound, found at 40 ticks, before any of the real runs
+
+The first run reported **173 of 191 VARYING** and it means almost nothing: the population is SEEDED
+with variance at boot, and all 173 varied at sample zero. Nothing had evolved. A single-sample
+"distinct > 1" is a statement about the seeding, not about the run.
+
+The quantity that is not confounded by seeding is what happens to that variance over time, so the
+rig samples a trajectory and reports variance RETAINED. And the retention ratio needed its own check
+before it could be believed — if `distinct` simply equalled the headcount, the ratio would be
+measuring population size with extra steps. It does not: at 169 living particles the typical VARYING
+gene holds **10 to 25** distinct values, 0 of 176 are saturated, and 175 of 176 sit below 0.9x the
+headcount. `distinct` is tracking the number of distinct LINEAGE variants, which is the same
+quantity `#11` called `kinds`.
+
+### Result — six seeds, TICKS=3000
+
+```
+seed  alive0->aliveN   VARY SWEPT PIN FLAT   retention   pop    per capita
+  1    329->169         176    0   0   15      0.782    0.514     1.523
+  2    329->190         176    0   0   15      0.796    0.578     1.379
+  3    329->198         176    0   0   15      0.874    0.602     1.453
+  4    329->181         175    0   0   16      0.843    0.550     1.532
+  5    329->201         176    0   0   15      0.840    0.611     1.375
+  6    329->201         176    0   0   15      0.809    0.611     1.324
+```
+
+**CODEMAP's prediction does not reproduce. Zero genes are pinned at a clamp bound, on 6 of 6 seeds.**
+That claim has been sitting in the map as an observation about the system's character and at this
+budget it is simply not what the population does.
+
+**Variance per capita RISES.** Variance falls to ~0.82 while the population falls to ~0.58: the
+world is losing particles faster than it is losing kinds. Whatever is killing particles here is not
+sorting them onto one genotype.
+
+**Zero SWEPT on every seed** — no gene lost all its variance. So there is no completed sweep at this
+budget either, which is the other half of the same reading: raw material is neither being exhausted
+nor being concentrated.
+
+**Three keys GAINED variance during the run**: `userAtoms` (6/6), `boundOpcodes` (6/6), `userEffects`
+(5/6). Those are the self-authoring layer coming online — they boot empty and identical in every
+particle, so they are the only keys here whose variance was earned rather than seeded.
+
+### The 15 FLAT keys, decomposed — and most of them are correct
+
+Identical on all six seeds, so this is structure and not trajectory. `inherit-test.js` classifies 15
+of the 191 keys (`MUST_OWN` 10, `MUST_SHARE` 5) and its own header says why that matters: *"a manual
+list is a thing you forget."* The census walks all 191 and the FLAT set lands in three groups:
+
+- **Eight are deliberate.** `lineage`, `eventLog`, `epochs`, `metaCredit`, `shadowScenarioBank` are
+  `inherit-test`'s `MUST_SHARE` — the self's bookkeeping, asserted shared on purpose. `generation`,
+  `totalTicks`, `extinctions` are `CHILD_NOT_A_GENE` (`#140`). FLAT is the correct reading of all
+  eight and nothing is wrong with them.
+- **Four are owned but have never diverged.** `fitnessSensors`, `objCreditTrace`, `prevObjValues`,
+  `rend` are in `MUST_OWN` and are genuinely deep-copied — measured by reference identity, 243 of
+  243 living particles hold their own object. They are FLAT on CONTENT, not on ownership. The
+  crossing works; nothing has used it yet at this budget.
+- **Three are in neither list**: `fitnessHistory`, `stableMotifs`, `chemistryTable`.
+
+### `chemistryTable` — evolvable, and a population of one
+
+Taken to the end because the first two readings of it were wrong and the third is measured.
+
+`cloneGenome` does `{...src}` and then deep-copies eight structures by hand with a comment calling
+reference-sharing *"the single most repeated bug in this file's history"*. `chemistryTable` is not
+one of the eight. Measured by reference identity: **169 of 169 living particles point at the
+germline's table object.**
+
+The first reading — a fresh instance of `#102`/`#130`/`#132b`/`#133b`/`#155` — was wrong, and the
+cheap test that would have settled it is whether anything mutates it. The second reading, that
+nothing does and the sharing is therefore harmless, was also wrong: `mutateGenome` mutates the
+recipes in place at `chemistryMutRate` (engine.html ~17810), and it fires. The digest over a
+3000-tick run:
+
+```
+t=1     SAME as boot        t=1801  CHANGED (len 276)
+t=601   SAME as boot        t=2401  CHANGED (len 272)
+t=1201  CHANGED (len 280)   t=3001  CHANGED (len 273)
+```
+
+So the chemistry evolves, and **it evolves for every particle at once**. There is exactly one
+chemistry in a universe at any moment; two variants never coexist; nothing can prefer one to the
+other. `CODEMAP` records it as *"Evolvable chemistry ... Mutates at chemistryMutRate 0.02"*, which
+is true about mutation and silent about selection.
+
+**This is `#216q`'s result arriving at a layer its table does not list.** That entry concluded that
+selection terminates at every layer whose population size is one. The chemistry is such a layer, and
+unlike the germline it does not have to be: the fix is one line in `cloneGenome` alongside the eight
+that are already there. **Not filed as a defect and not fixed here**, because whether chemistry
+SHOULD be per-lineage is a design question about the artwork — a shared table is a shared world, and
+an owned one is 169 private physics. The notes have never mentioned `chemistryTable` in 18,000
+lines, so there is no standing decision to consult, and inventing one inside a measurement entry is
+how `#205` happened.
+
+### What this does NOT claim
+
+**Variance is not selection.** Drift produces variance too — `#209`'s own warning is that every
+spread-across-universes figure this project has cited is consistent with drift until the read is
+instrumented, and this census does not instrument the read. It reports raw material. Whether
+anything is sorting that material is the next question and this rig does not answer it.
+
+**And every number here is scoped to TICKS=3000.** `#66` is the standing lesson: every diversity
+verdict in that session was measuring a transient. FLAT means "did not move in 3000 ticks on this
+seed", not "cannot move" — a gene whose operator fires once per 10k ticks is FLAT here and live at
+30k. A 20,000-tick arm on three seeds is running and will be appended; until it lands, the
+per-capita rise above is a claim about the first 3000 ticks and nothing longer.
+
+## #218 — THE SELF-MODEL BECOMES A POPULATION (pre-registered before the code)
+
+`#217` ended on a structural claim: every layer this system calls "self" is a population of one, and
+selection cannot act on a population of one. The singular `selfModel` object and the single shadow
+sim are the clearest case — the notes at `#48` already flagged it and deferred the fix:
+*"the shadow/self-model apparatus is self-only (one reflective baseline owns it) ... make the shadow
+sim per-lineage, which it isn't ... deliberately deferred."*
+
+This entry stops deferring it, but NOT by lineagizing the global forecaster — that touches dozens of
+`selfModel.*` read sites in the hot path and is exactly the invasive change this repo's whole culture
+says breaks silently. Instead it adds the **reflexive twin of a mechanism that already works**.
+
+### The mechanism that already works, and the twin
+
+`pNeighborModels` (engine ~25533) is already a per-particle predictive model: each particle holds an
+EMA model of each neighbour's state, `predictionErrorAccum` scores how wrong it is, and
+`relationalWeight`/`relationalUseBias` (Pe34/Pe35) already put that accuracy under a heritable weight.
+Per-particle prediction-under-selection is a solved pattern here. What it models is OTHERS.
+
+`#218` adds the same shape pointed inward. Each particle carries a small heritable predictor
+(`genome.selfPredictW`, 3 coefficients) of its OWN next-tick energy, made every tick in a new
+`applySelfModel()` and scored next tick against the amp it actually reached. So every organism now
+holds a model of itself, and there are as many of them as there are particles — a population, not a
+singleton.
+
+### Where the teeth are, and why the payout is conserved
+
+The composite `fitness` at engine ~28180 feeds the SINGULAR `currentFitness` (a universe-level
+self-assessment that steers the shadow sim and meta-mutation). Particle-level selection — the level
+that actually sorts variance — runs on `amp`. So for self-modelling to be a SELECTED trait at the
+level that sorts, accuracy has to touch `amp`. It does: each tick, `applySelfModel` mean-centres the
+self-prediction error across the living and nudges `amp[i] += selfModelWeight * scale * (meanErr -
+myErr)`. Better-than-average predictors gain amp, worse-than-average lose it, and because the nudge
+is mean-centred the sum is ~0 — it MINTS NOTHING, exactly the conserved / negative-frequency-dependent
+shape `#11` and `#28` established as the thing that keeps a pressure from being a free lunch.
+
+Off by default two ways: `genome.selfModelWeight` defaults to 0 (evolvable up from there), and the
+`SELFMODEL` knob (harness-env `KNOBS`) gates the whole function. Knob off + default weight →
+`applySelfModel` early-returns having drawn nothing → byte-identical to the current engine, which is
+the first thing the run below checks. Knob on forces the dial (effective weight floored at 0.5) so
+the arm actually exercises the mechanism, the way `#215` forced `motifKeepBias`.
+
+### THE ADVERSARY, stated before the data — this is the whole reason to measure and not just ship
+
+Selecting on self-prediction accuracy has a trivial degenerate winner, and it is the same one the
+Pe35 doc already named for the relational model: *"the cheapest source of passive accuracy is a
+homogeneous population."* Turned inward: the cheapest way to predict your own future is to have a
+BORING future — flatten your own amp trajectory so it is trivially forecastable. If that is what
+selection finds, the mechanism does not produce richer self-models, it produces organisms that made
+themselves dull to be predictable, and it will read as "prediction error fell" while the world dies.
+
+### The registered prediction, and how it is falsified
+
+Run `SELFMODEL=1` vs `SELFMODEL=0`, three seeds, and read BOTH the self-prediction error trend AND
+`harness-variance.js` retention on the same runs. Two outcomes, distinguishable on instruments that
+already exist:
+
+- **WIN (self-modelling is real):** with the arm on, `selfPredictW` goes FLAT -> VARYING on the
+  census (the predictor is being selected, not drifting), self-prediction error falls over the run,
+  AND census variance-retention holds at or above the `SELFMODEL=0` control. Organisms are modelling
+  a world as rich as the baseline's, better.
+- **WIREHEAD (the adversary wins):** self-prediction error falls while census retention drops below
+  the control and per-capita variance falls. Accuracy was bought by flattening the world, not by
+  modelling it. If this is what happens it is a finding, not a failure, and the mechanism ships
+  DORMANT with the wireheading written up — the same disposition `#11`'s mean-centred control got.
+- **NULL:** `selfPredictW` stays FLAT and error does not move — the pressure is too weak to select
+  against drift at this budget. Then the honest read is that the dial needs forcing harder or the
+  predictor needs a target with more headroom, and the entry says so rather than dressing a null as
+  a win.
+
+Registered now, at TICKS=3000 and TICKS=20000, `SEED=1..3`. The code follows; this paragraph does
+not get edited after the numbers land.
+
+### #218 RESULT — 3k confirmed across three seeds; the 20k horizon is pending (this section gets the horizon appended, not rewritten)
+
+The code is the reflexive-self-model as specified above: a per-particle predictor of own next amp
+(`genome.selfModelW`, 3 heritable coefficients), scored each tick in `applySelfModel()`, accuracy
+paid out as a mean-centred amp nudge. Every RNG draw it adds is gated on the `SELFMODEL` knob.
+
+**Baseline is provably inert when off.** `SELFMODEL=0` is BYTE-IDENTICAL to the pre-#218 engine on a
+3-seed state digest (population + amp + tend hash at t400) — the scalar `selfModelWeight` was removed
+precisely because it was a numeric genome key caught by `mutateChildGenome`'s generic `for(const k in
+g)` walk, which drew one `Math.random()` per birth and shifted the stream even with the knob off;
+`max(weight in [0,1], 1)` made it a no-op anyway. What remains is the array `selfModelW` (skipped by
+the numeric walk) plus knob-gated mutation. Acceptance rig **260/0 at TICKS=40 and TICKS=900** (the
+count rose 259 -> 260 because the crossing machinery auto-detected `selfModelW` as new heritable
+structure and verified it crosses — the deep-copy in `cloneGenome` holds).
+
+**The mechanism is live and selected, three seeds, TICKS=3000:**
+
+```
+seed  arm   aliveN  retention  perCapita  selfModelW      self-pred error (t500->t2500)
+  1   OFF     169    0.783      1.523      FLAT   d=1
+  1   ON      201    0.839      1.374      VARYING d=47     0.0177 -> 0.0067
+  2   OFF     190    0.796      1.379      FLAT   d=1
+  2   ON      228    0.890      1.284      VARYING d=50
+  3   OFF     198    0.874      1.453      FLAT   d=1
+  3   ON      201    0.867      1.418      VARYING d=55
+```
+
+Against the three registered axes:
+- **`selfModelW` FLAT -> VARYING on 3/3** (47/50/55 distinct across ~200 particles vs 1 in the
+  control). The predictor is being SELECTED, not drifting — the control holds it at [0,0,0].
+- **Self-prediction error falls** (0.0177 -> 0.0067 through t2501 on seed 1; noisy tail).
+- **Retention holds or rises** (+0.057, +0.093, -0.008), population HIGHER in the arm on all three
+  seeds (+32, +38, +3).
+
+**This is NOT the registered wirehead.** That signature was error falling WHILE retention drops below
+control and per-capita falls. Retention went the other way. The one honest asymmetry: per-capita
+variance is marginally LOWER in the arm (1.37-1.42 vs 1.45-1.52) because the conserved nudge sustains
+a LARGER population, so variance-per-head dilutes even as absolute retained variance rises. A
+mean-centred redistribution is not population-neutral — birth and death thresholds are nonlinear, so
+moving amp from poor to good self-predictors pushes more particles across the birth line than across
+the death line. That is a real emergent consequence and it is the thing the horizon has to check:
+whether the larger, better-predicting population PERSISTS or is a 3k transient (`#66`).
+
+**REGISTER, held deliberately:** even at 3k-times-three this says the pattern works FOR THE SELF-MODEL
+ON AMP. It is NOT evidence the same move generalises to other populations-of-one (the shared
+`chemistryTable`, the global shadow sim, the law table). Those are separate swings with separate
+controls; the analogy is a hypothesis generator, not a result about them.
+
+**Pending:** `SEED=1..3` at `TICKS=20000`, both arms, plus the self-prediction-error trend at
+horizon. Running now, staged with a `.done` marker. This section gets that number appended below it;
+the verdict above is scoped to 3000 ticks until it does.
+
+### #218 HORIZON (20k, three seeds) — NOT a clean win: a CONDITIONAL COLLAPSE-RESCUE, and the mechanism-of-action is unresolved
+
+The 3k result (+0.057, +0.093, -0.008 retention, population up on all three) looked like a mild,
+consistent lift. The horizon inverts the reading. Two seeds looked like a tight mechanism at 20k; the
+third revealed the effect is contingent.
+
+```
+seed  control ret/pop      arm ret/pop        Δret     control fate    selfModelW@20k
+ 1    0.563 / ->126        0.898 / ->206      +0.335    collapses       VARYING d=38
+ 2    0.603 / ->89         0.935 / ->211      +0.332    cliffs 173->86  VARYING d=59
+ 3    1.266 / ->316        1.209 / ->252      -0.057    THRIVES         VARYING d=64
+```
+
+Per-seed Δret: **+0.335, +0.332, -0.057.** The mean (+0.20) is a lie of exactly the kind this file
+keeps paying for. The three numbers are not noise around a positive mean — they are STRUCTURED: the
+two seeds where the arm wins are the two where the CONTROL COLLAPSES (to 126 and 89), and the seed
+where the arm does not win is the one where the control was already THRIVING (seed 3 control climbs
+329->348->316). Seed 3's arm actually underperforms its own control by a hair.
+
+**So the finding is not "self-modelling raises retention." It is a COLLAPSE-RESCUE: the mechanism
+holds diversity up when the world would otherwise die, and does nothing -- slightly worse -- when the
+world is already healthy.** That is a narrower and better claim than a universal lift, because it says
+WHEN. It is also not the pre-registered clean WIN (retention above control on the axes): it is above
+on 2/3 and below on 1/3, and the 1/3 is precisely the seed that needed no help.
+
+**Error trends -- the "enrichment, not accuracy" pattern replicates on all three:**
+```
+seed 1   0.012 -> 0.098   (monotonic, accelerating)
+seed 2   0.014 -> 0.475   (huge, plateaus ~0.47)
+seed 3   0.012 -> 0.104   (rises, dips at 13k, rises)
+```
+Self-prediction error RISES in every arm while `selfModelW` stays VARYING in every arm. The predictor
+is under selection everywhere and getting absolutely WORSE at prediction everywhere -- consistent with
+"the world becomes less predictable and the predictor chases it," and flatly inconsistent with "the
+predictor becomes accurate." The registered wirehead (error falls while the world flattens) did not
+happen on any seed; if anything the arm does the opposite, enriching the world past its own
+predictability.
+
+**THE UNRESOLVED PART, and it is the whole verdict.** Seed 3 carries the full mechanism signature --
+predictor VARYING, error rising -- and produces NO retention benefit. So "predictor selected + error
+rising" does not, by itself, produce the rescue. The rescue tracks CONTROL COLLAPSE, not the
+predictor. That is the `#133b` alarm exactly: the effect may be the amp-nudge's DEMOGRAPHIC rescue
+(redistributing energy props up a population that would otherwise crash -- a configuration effect that
+does not need the evolving predictor at all), with the predictor a passenger that is selected but not
+causal.
+
+**The ablation that decides it (running now).** `SELFMODEL=2` runs the amp-nudge with the predictor
+FROZEN at [0,0,0]: every particle runs the no-change predictor, so `myErr` measures each particle's own
+amp VOLATILITY and the nudge selects for amp-STABILITY rather than predictive skill. On the two collapse
+seeds:
+- If `=2` reproduces the +0.33 rescue -> the evolving predictor is a passenger; #218's effect is "a
+  conserved amp redistribution rescues a collapsing population," and it should be renamed and reduced
+  to that. The self-model framing would be wrong even though the retention number is real.
+- If only `=1` rescues and `=2` does not -> the evolving predictor earns the rescue, and the
+  self-model framing holds for the collapse regime.
+
+Until that lands, the honest status is: **#218 produces a real, replicated (2/3) collapse-rescue of
+diversity at horizon, of unresolved cause, shipping DORMANT (knob-gated, off by default, baseline
+byte-identical). It is NOT evidence that self-modelling per se raises retention, and the mean across
+seeds must not be quoted.** The `SELFMODEL=2` result gets appended below.
+
+### #218 VERDICT — the self-model hypothesis is REFUTED by its own ablation. The predictor is worse than frozen.
+
+`SELFMODEL=2` (amp-nudge on, predictor frozen at [0,0,0], selecting for amp-STABILITY rather than
+predictive skill), three seeds at 20k, against `=1` (evolving predictor) and `=0` (control):
+
+```
+seed  control ret   =1 evolving        =2 FROZEN
+ 1    0.563         0.898  (+0.335)     0.951  (+0.388)   frozen WINS
+ 2    0.603         0.935  (+0.332)     0.996  (+0.393)   frozen WINS
+ 3    1.266         1.209  (-0.057)     1.855  (+0.590)   frozen WINS, and by a lot, where evolving LOST
+```
+
+**The frozen predictor beats the evolving predictor on all three seeds.** Not ties within noise --
+beats, by +0.05 / +0.06 / +0.65. On seed 3 the evolving arm HURT the thriving control (-0.057) while
+the frozen arm boosted it (+0.590, population 329->478 peak). `selfModelW` is FLAT d=1 in the frozen
+arm, so no lineage diverged a predictor and every particle ran the no-change model -- exactly the
+design.
+
+**This falsifies the self-model framing as the mechanism of action.** The retention effect is real
+and replicates, but it is NOT produced by self-modelling. It is produced by the conserved amp
+redistribution, and specifically by the variant that rewards amp-STABILITY -- which is what the
+frozen no-change predictor selects for. Making the predictor evolvable does not help; it actively
+hurts, because the evolving predictor chases a moving target (error climbed to 0.10-0.48) and the
+resulting selection signal is noisier and less coherent than the clean "reward stable amplitude" that
+freezing produces. `#218`'s own instrument, turned on `#218`, refuted `#218`.
+
+**This is the `#133b` shape at full size: right sign, wrong cause.** The two-seed +0.33 that read as a
+tight self-model mechanism was the conserved nudge's demographic rescue, and the "self-model" was not
+even a neutral passenger -- it was a drag on it.
+
+**What actually survives, and what it is NOT.** A conserved (mean-centred, mints-nothing) amp
+redistribution that rewards amplitude stability rescues -- and on a healthy seed, substantially
+boosts -- diversity retention at horizon. Retention is HIGH (up to 1.855) and population LARGE (up to
+478), so it is not a monoculture of stable particles: the census would score a monoculture near zero.
+The mechanism sustains a large, genetically varied population by damping the boom-bust amp spirals
+that otherwise cull it. That is a demographic/homeostatic effect, not a cognitive one, and it is a
+CANDIDATE for a future swing, not a validated finding: the open question it must answer first is
+whether "select for amplitude stability" is a genuine good or a low-dynamics artefact that the
+retention census happens not to penalise. `#218` does not answer that and must not be read as
+answering it.
+
+**Disposition.** `#218` ships DORMANT (knob-gated, baseline byte-identical, verified). The self-model
+mechanism is retained in the code as the documented NEGATIVE result plus the `SELFMODEL=2` ablation
+arm that produced the real finding -- it costs nothing off and it is the evidence. `selfModelW` is
+NOT removed, because removing it would erase the thing the negative result is about. The honest
+one-line summary: **an attempt to make the self-model a selected population failed; the evolvable
+predictor underperformed a frozen one, and the retention effect belongs to a conserved
+stability-nudge that was never the point.**
+
+**AND A RETRACTION THAT REACHES BACK UP THIS SESSION.** Earlier in this session `#218`'s 3k result was
+offered as "a working micro-instance" of the pattern *make a population-of-one into a selected
+population and its quality improves* -- and as empirical support for pointing that same move at the
+law table (per-lineage law-proposers). The ablation removes that support and points the other way:
+the SELECTED predictor underperformed the FROZEN one. So "make the proposer a selected population" is
+not supported by `#218`; if anything `#218` is weak evidence AGAINST assuming a selected version beats
+a fixed one for free. The law-proposer idea may still be worth trying, but it can no longer cite
+`#218` as precedent, and the `#217` thesis ("selection needs a population") is untouched while the
+COROLLARY I drew from it ("so making the self a population will improve it") is now shown to be false
+in the one case that was actually measured.

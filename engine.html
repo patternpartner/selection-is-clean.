@@ -4971,6 +4971,11 @@ let genome={
   // reporting passive accuracy was the better deal. Either outcome is informative —
   // the property a good Pe-layer must have.
   relationalUseBias:0.2,            // 0=Pe34 exactly, 1=only VM-consulted models score. Evolvable.
+  // #218 LAYER: REFLEXIVE SELF-MODEL. selfModelW are the heritable coefficients of each particle's
+  // predictor of its own next amp ([0,0,0] = predict-no-change); selfModelWeight scales the payout.
+  // Dormant unless the SELFMODEL knob is set: the mechanism and all its mutation draws are knob-gated,
+  // so at SELFMODEL=0 these are inert numbers that ride the genome and touch nothing.
+  selfModelW:[0,0,0],               // heritable predictor coefficients [dAmp, localRes, isolation]. Evolvable. Array, so the generic numeric child-walk skips it -> no baseline stream shift; the SELFMODEL knob gates its only mutation.
 
   // ═══ LAYER 25: SIGNAL LAYER — explicit particle-to-particle communication (Pe36) ═══
   // Pe31-35 gave particles IMPLICIT communication: neighbor models (mutual prediction),
@@ -9905,6 +9910,7 @@ function cloneGenome(src){
   const g={...src}; // scalars copied by value → each lineage OWNS its physics; objects shared by ref
   // deep-copy the structured heritable genotype so lineages diverge it independently:
   g.objWeights=Array.isArray(src.objWeights)?src.objWeights.slice():[0.25,0.25,0.25,0.25];
+  g.selfModelW=Array.isArray(src.selfModelW)?src.selfModelW.slice():[0,0,0]; // #218: heritable, deep-copied like objWeights (a shared array would let no lineage diverge its own predictor). No RNG draw.
   g.objCreditTrace=Array.isArray(src.objCreditTrace)?src.objCreditTrace.slice():[0,0,0,0];
   g.prevObjValues=Array.isArray(src.prevObjValues)?src.prevObjValues.slice():[0,0,0,0];
   g.boundOpcodes=Array.isArray(src.boundOpcodes)?src.boundOpcodes.slice():[];
@@ -10089,6 +10095,9 @@ function mutateChildGenome(g){
   }
   g.vmProgram=inheritProg(g.vmProgram,g.vmMaxInstructions||16); // pass evolved cap so lineages that evolved larger programs don't have children truncated to the global default
   if(Array.isArray(g.objWeights))for(let i=0;i<4;i++)if(Math.random()<rate){const nx=g.objWeights[i]+(Math.random()-0.5)*0.06*scale;if(isFinite(nx))g.objWeights[i]=nx;}
+  // #218: diverge the self-model predictor in the child, KNOB-GATED so it draws nothing at SELFMODEL=0.
+  // This is what makes selfModelW go FLAT->VARYING in the arm and stay [0,0,0] in the control.
+  if((typeof globalThis!=='undefined')&&((globalThis.__SELFMODEL|0)===1)&&Array.isArray(g.selfModelW))for(let i=0;i<3;i++)if(Math.random()<rate){const nx=g.selfModelW[i]+(Math.random()-0.5)*0.1*scale;if(isFinite(nx))g.selfModelW[i]=nx;}
   // #180 — THE SECOND CROSSING. The walk above only touches NUMERIC fields, and all three of #180's
   // structures are arrays, so without these lines the grammar would be germline-only: authored on
   // `genome`, cloned identically into every child forever, and never diverged by the population that
@@ -10908,6 +10917,17 @@ const pReflexState=new Float32Array(CAP*REFLEX_DIMS);   // derived self-model si
 const pReflexIdx=new Uint8Array(CAP);                    // ring buffer index per particle
 const pInteractionDensity=new Float32Array(CAP);          // rolling interaction count
 
+// #218 REFLEXIVE SELF-MODEL: the twin of pNeighborModels (which models OTHERS). Each particle predicts
+// its OWN next-tick amp; accuracy is scored next tick and pays out as a MEAN-CENTRED (conserved) amp
+// nudge. The whole mechanism, and every RNG draw it adds, is gated on the SELFMODEL knob, so SELFMODEL=0
+// draws nothing, touches nothing, and is byte-identical to the pre-#218 engine -- the clean control.
+const pSelfPredAmp=new Float32Array(CAP);   // predicted next amp, stamped last tick
+const pSelfLastAmp=new Float32Array(CAP);   // amp at the moment that prediction was made
+const pSelfPredTick=new Int32Array(CAP).fill(-1); // tick the prediction was stamped; score iff ===tick-1
+const pSelfErr=new Float32Array(CAP);       // last scored self-prediction error, clamped [0,1]
+const SELF_MODEL_NUDGE=0.004;               // max per-tick amp move at full error gap
+let selfModelErrSum=0, selfModelErrN=0, lastSelfModelErr=0; // running mean self-prediction error (arm only)
+
 // ═══ LAYER 21: MUTUAL RECOGNITION — particles model each other (Pe31) ═══
 // Each particle maintains compressed models of up to 3 recent interaction partners.
 // Model per partner: [tend0, tend1, phaseAlign, resonance] — 4 floats.
@@ -11044,6 +11064,7 @@ function encodeGenome(){
     q:[genome.clusterBondThresh,genome.clusterMinSize,genome.ghostDecay,genome.ghostAmpDrip].map(v=>+(v.toPrecision(4))),
     // Evaluation
     w:genome.objWeights.map(v=>+(v.toFixed(4))),
+    smc:Array.isArray(genome.selfModelW)?genome.selfModelW.map(v=>+v.toFixed(4)):[0,0,0], // #218: the predictor survives save->load (third crossing)
     oct:Array.isArray(genome.objCreditTrace)?genome.objCreditTrace.map(v=>+v.toFixed(4)):[0,0,0,0],
     fs:cleanSensors,
     // Meta
@@ -11385,6 +11406,7 @@ function decodeGenome(data){
       [genome.clusterBondThresh,genome.clusterMinSize,genome.ghostDecay,genome.ghostAmpDrip]=g.q;
     }
     genome.objWeights=g.w||[0.25,0.25,0.25,0.25];
+    if(Array.isArray(g.smc)&&g.smc.length>=3)genome.selfModelW=g.smc.slice(0,3); // #218
     if(Array.isArray(g.oct)&&g.oct.length>=4)genome.objCreditTrace=g.oct.slice(0,4);
     // MIGRATION (review): a CORE_OPCODES boundary shift remaps the meaning of saved bound-opcode
     // instructions, which encode op = core + slot. The 'co' stamp records the boundary a save was
@@ -11910,6 +11932,8 @@ function sanitizeGenome(){
   genome.mutualRecognitionThresh=__cl(finiteOr(genome.mutualRecognitionThresh,0.5),0,1);
   genome.relationalWeight=__cl(finiteOr(genome.relationalWeight,0.15),0,1); // Pe34 Layer 24
   genome.relationalUseBias=__cl(finiteOr(genome.relationalUseBias,0.2),0,1); // Pe35 Layer 24b
+  if(!Array.isArray(genome.selfModelW)||genome.selfModelW.length<3)genome.selfModelW=[0,0,0]; // #218
+  genome.selfModelW=genome.selfModelW.slice(0,3).map(v=>finiteOr(v,0)); // #218
   // Pe36 Layer 25: explicit signal channel defaults and bounds
   genome.signalEmitCost=__cl(finiteOr(genome.signalEmitCost,0.005),0,0.05);
   genome.signalInfluence=__cl(finiteOr(genome.signalInfluence,0.15),0,1);
@@ -17891,6 +17915,11 @@ function mutateGenome(){ fired('genome.mutate');
   genome.mutualRecognitionThresh=__cl(metaMaybe(genome.mutualRecognitionThresh,0.06,'mutualRecognitionThresh'),0,1);
   genome.relationalWeight=__cl(metaMaybe(genome.relationalWeight,0.05,'relationalWeight'),0,1); // Pe34 Layer 24
   genome.relationalUseBias=__cl(metaMaybe(genome.relationalUseBias,0.05,'relationalUseBias'),0,1); // Pe35 Layer 24b
+  // #218: KNOB-GATED germline drift of the self-model genes. Gated so SELFMODEL=0 adds zero draws to
+  // mutateGenome and the baseline stream is unshifted vs the pre-#218 engine.
+  if((typeof globalThis!=='undefined')&&((globalThis.__SELFMODEL|0)===1)){
+    if(Array.isArray(genome.selfModelW))for(let i=0;i<3;i++)genome.selfModelW[i]=maybe(genome.selfModelW[i],-2,2,0.05);
+  }
   // Pe36 Layer 25: explicit signal channel — all three can evolve (including to 0 = Pe35 behavior)
   genome.signalEmitCost=__cl(metaMaybe(genome.signalEmitCost,0.003,'signalEmitCost'),0,0.05);
   genome.signalInfluence=__cl(metaMaybe(genome.signalInfluence,0.05,'signalInfluence'),0,1);
@@ -19728,6 +19757,56 @@ function updateParticleReflex(){
       pReflexState[rBase+2]=0.5;
       pReflexState[rBase+3]=0;
     }
+  }
+}
+
+// ═══ #218: REFLEXIVE SELF-MODEL — each particle scores last tick's prediction of its own amp, makes
+// the next one, and accuracy pays out as a MEAN-CENTRED (conserved) amp nudge. Dormant unless the
+// SELFMODEL knob is set: when off it early-returns having drawn nothing and written nothing, so the
+// engine is byte-identical to pre-#218 (the clean SELFMODEL=0 control). When on, the dial is forced
+// (effective weight floored at 1) the way #215 forced motifKeepBias, so the arm actually runs.
+// It draws NO Math.random(): its only effect on the run is through amp, which is exactly the selective
+// channel it is meant to act on (particle-level selection sorts on amp, not on the singular currentFitness).
+function applySelfModel(){
+  const _sm=(typeof globalThis==='undefined')?0:(globalThis.__SELFMODEL|0);
+  if(_sm<1)return; // SELFMODEL=0: dormant, no draws, byte-identical baseline
+  // #218 ATTRIBUTION ARM: SELFMODEL=2 runs the amp-nudge with the predictor FROZEN at [0,0,0] -- the
+  // selfModelW mutation is gated to ===1, so at 2 no lineage diverges its predictor and every particle
+  // runs the no-change predictor (pred=amp). myErr then measures each particle's own amp VOLATILITY, so
+  // the nudge selects for amp-STABILITY rather than predictive skill. If =2 reproduces =1's retention
+  // rescue, the evolving predictor is a passenger (the #133b shape); if only =1 rescues, it earns it.
+  const effW=1.0; // the knob IS the dial; a genome scalar clamped [0,1] would have been a no-op under max(.,1)
+  fired('self.model');
+  const w=genome.selfModelW||[0,0,0];
+  const w0=w[0]||0,w1=w[1]||0,w2=w[2]||0;
+  let sumErr=0,nErr=0;
+  // PASS A — score last tick's prediction (iff stamped exactly last tick), then stamp the next one.
+  for(let i=0;i<N;i++){
+    if(!palive[i])continue;
+    const a=amp[i];
+    if(pSelfPredTick[i]===tick-1){
+      let e=Math.abs(pSelfPredAmp[i]-a)/(Math.abs(a)+0.1);
+      if(e>1)e=1;
+      pSelfErr[i]=e; sumErr+=e; nErr++;
+    }else{
+      pSelfErr[i]=-1; // no valid prediction to score this tick -> not eligible for the payout
+    }
+    const delta=a-pSelfLastAmp[i];
+    let pred=a + w0*delta + w1*localRes[i] + w2*(pReflexState[i*REFLEX_DIMS+2]-0.5);
+    if(!isFinite(pred))pred=a;
+    pSelfPredAmp[i]=pred; pSelfLastAmp[i]=a; pSelfPredTick[i]=tick;
+  }
+  if(nErr<2)return; // need a population to mean-centre against
+  const meanErr=sumErr/nErr;
+  lastSelfModelErr=meanErr; selfModelErrSum+=meanErr; selfModelErrN++;
+  // PASS B — mean-centred payout. Σ(meanErr - err) over the scored ~ 0, so amp is neither minted nor
+  // destroyed to first order: better-than-average self-predictors gain, worse lose. This is the #11/#28
+  // conserved / negative-frequency-dependent shape, pointed at self-model accuracy.
+  for(let i=0;i<N;i++){
+    if(!palive[i])continue;
+    const e=pSelfErr[i];
+    if(e<0)continue;
+    amp[i]+=effW*SELF_MODEL_NUDGE*(meanErr-e);
   }
 }
 
@@ -27859,6 +27938,7 @@ function loop(){
   updateParticles();
 
   updateParticleReflex();
+  applySelfModel(); // #218: reflexive self-model — dormant unless SELFMODEL=1
   decayNeighborModels(); // Pe31: neighbor models fade if partners stop interacting
   if(performance.now()-frameStart<80) updateField();
 
