@@ -28,6 +28,13 @@
 //
 // Env: SEED  TICKS (default 3000)  TOP (default 30)
 const fs=require('fs');
+// #216x: KNOBS ARE HONOURED HERE NOW. CLAUDE.md records the #216b/#216d trap - an env var with no
+// applyKnobs call is not a control, it is a no-op that reads like one - and this rig was still
+// standing in it. Only substrate-test and harness-variance called applyKnobs; four rigs did not,
+// so every KNOBS entry they did not hand-wire was silently ignored. Found by adding LAW_PERSIST
+// to KNOBS, testing the off arm here, and getting a result identical to the on arm.
+// A no-op when no env var is set, so the default path is unchanged.
+try{ require(require('path').join(__dirname,'harness-env.js')).applyKnobs(globalThis); }catch(_){}
 const TICKS=parseInt(process.env.TICKS||'3000',10);
 const TOP=parseInt(process.env.TOP||'30',10);
 

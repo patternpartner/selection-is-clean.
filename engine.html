@@ -2225,6 +2225,28 @@ function demeAllows(i,j){
   fired('deme.blocked');
   return false;
 }
+// #216x: DO EVOLVED LAW VALUES SURVIVE A RELOAD? Until now, no. encodeGenome wrote the legislative
+// LOG and never the values, so a world that proposed FIELD_DECAY, had it kept, and lived under it for
+// tens of thousands of ticks came back from a reload running the constant this file was written with,
+// beside a log saying it had changed. Measured, not assumed: save at a driven value, scramble the
+// live one, load, and the scrambled value is still there.
+//
+// That was not a decision. Three things say so. #183's own design states a kept law becomes the value
+// a future proposal perturbs, which presupposes a persistence the code never implemented. #197 made
+// the prices laws so a world could evolve its economy, and on a reload-heavy device that economy
+// never evolves at all. And every other authored structure in this file persists - atoms, motifs,
+// channels, cluster genomes, all 191 genome keys - with no comment anywhere claiming laws are the
+// exception.
+//
+// KEYED BY NAME, NOT INDEX, and that is the load-bearing choice. LAW_DECLARED has grown 21 -> 32
+// across #197, #201 and #203. An index-keyed blob would silently remap every law the next time the
+// table grows, which is the #194 stranding failure with a worse blast radius. Values are written back
+// through each row's own set(), so per-row guards still apply (LAW_PROBATION floors itself at 200),
+// and clamped to the row's declared bounds on the way in.
+//
+// ABSENT KEY MEANS DECLARATIONS, which is exactly the pre-#216x behaviour and the correct inheritance
+// for every save written before this line existed.
+function lawPersistOn(){ return (typeof globalThis==='undefined')||((globalThis.__LAW_PERSIST??1)|0)!==0; }
 function attemptLawMutation(){
   if(!__LAWMUT)return;
   lawSamplePop();
@@ -11201,6 +11223,8 @@ function encodeGenome(){
     rxs:genome.rxSelf===undefined?undefined:+(+genome.rxSelf).toFixed(4),         // #183 local chemistry
     rxc:genome.rxCross===undefined?undefined:+(+genome.rxCross).toFixed(4),
     LAW:(__lawLog||[]).slice(-40),                                                // #183 [tick, law, from, to, kept] - the world's own legislative record
+    LAWV:lawPersistOn()?(function(){ const o={}; for(const _r of LAW_DECLARED){ try{ const _v=+_r.get();
+      if(isFinite(_v))o[_r.name]=+(_v).toPrecision(7); }catch(_){} } return o; })():undefined,   // #216x the values, not just the record
     ace:genome.autonomyCede===undefined?undefined:+(+genome.autonomyCede).toFixed(4), // #182 how much this lineage cedes to its collective
     ufm:genome.uaFoldMode===undefined?undefined:(Math.round(genome.uaFoldMode)|0),   // #181 compiler output stage
     ufk:genome.uaFoldK===undefined?undefined:+(+genome.uaFoldK).toFixed(4),
@@ -11569,6 +11593,9 @@ function decodeGenome(data){
     if(typeof g.rxs==='number')genome.rxSelf=+g.rxs;
     if(typeof g.rxc==='number')genome.rxCross=+g.rxc;
     if(Array.isArray(g.LAW))__lawLog=g.LAW;                    // #183 (absent -> no legislative history, which is honest: none was recorded)
+    if(lawPersistOn()&&g.LAWV&&typeof g.LAWV==='object'){      // #216x (absent -> the declarations, which is the pre-#216x world exactly)
+      for(const _r of LAW_DECLARED){ const _v=g.LAWV[_r.name];
+        if(typeof _v==='number'&&isFinite(_v)){ try{ _r.set(__cl(_v,_r.lo,_r.hi)); }catch(_){} } } }
     if(typeof g.ace==='number')genome.autonomyCede=+g.ace;     // #182 (absent -> undefined -> reads 0.5 -> the pre-#182 boundary)
     if(typeof g.ufm==='number')genome.uaFoldMode=g.ufm|0;      // #181 (absent -> undefined -> mode 0 -> the pre-#181 compiler)
     if(typeof g.ufk==='number')genome.uaFoldK=+g.ufk;

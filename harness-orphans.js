@@ -27,6 +27,13 @@
 //
 // Env: VERBOSE=1 (list every occurrence of every orphan, with line numbers)
 const fs=require('fs');
+// #216x: KNOBS ARE HONOURED HERE NOW. CLAUDE.md records the #216b/#216d trap - an env var with no
+// applyKnobs call is not a control, it is a no-op that reads like one - and this rig was still
+// standing in it. Only substrate-test and harness-variance called applyKnobs; four rigs did not,
+// so every KNOBS entry they did not hand-wire was silently ignored. Found by adding LAW_PERSIST
+// to KNOBS, testing the off arm here, and getting a result identical to the on arm.
+// A no-op when no env var is set, so the default path is unchanged.
+try{ require(require('path').join(__dirname,'harness-env.js')).applyKnobs(globalThis); }catch(_){}
 const VERBOSE=(process.env.VERBOSE|0)===1;
 const html=fs.readFileSync(__dirname+'/engine.html','utf8');
 const code=html.match(/<script>([\s\S]*)<\/script>/)[1];

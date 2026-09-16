@@ -19314,3 +19314,69 @@ tried), `#216t`'s 39-of-39-kept, and `#203`'s bootstrapping question are all *wi
 quantities. Whatever a world works out about its own laws, it works out again from scratch next time.
 That is the strongest reason yet that the coverage ceiling matters: a world does not get to accumulate
 its way past it across sessions, only within one.
+
+### #216x — laws persist now, and a correction to #216w that I found by testing my own fix
+
+**The correction first, and it lands on the example I chose.** `#216w` said "every evolved law value
+is session-local" and used `FIELD_DECAY` to illustrate it. `FIELD_DECAY` is one of exactly TWO rows
+that already persisted. Its setter mirrors into a genome key —
+`set:v=>{FIELD_DECAY=v; if(genome)genome.fieldDecay=v;}` — and `genome.fieldDecay` is saved and
+restored on the ordinary path, then re-read at 12830 and 17889. I picked the one counterexample to my
+own claim as its headline case. Found by testing the fix, not by re-reading the claim.
+
+The precise split, parsed from the table:
+
+```
+MIRRORED, already persisted (2)   FIELD_DECAY, FIELD_DIFFUSE
+NOT mirrored, genuinely lost (30) ATTENTION_GAIN, the whole #197 economy (7 rents, CHANXFER_COST,
+                                  COMPLEXITY_TOLL), all four meta-laws (LAW_VIABLE, LAW_PROBATION,
+                                  LAW_COST, LAW_RATE), all five LEVEL_* gates, all five FOUND_*
+                                  costs, and the four #203 energy rows
+```
+
+**And that split is the strongest evidence that the behaviour was an oversight rather than a design.**
+The two that persist do so because they were genome-driven BEFORE they were laws ("Pe22b: now
+genome-driven, can evolve") — their persistence is a fossil of their earlier life, not a policy.
+`ATTENTION_GAIN`, the third of the three founding laws, is not mirrored. Two of the founding trio
+persist and one does not, with no comment anywhere distinguishing them. A deliberate "laws are
+session-local" design would not have mirrored two of them.
+
+**The fix.** `encodeGenome` now writes `LAWV`, a name-keyed map of every row's current value;
+`decodeGenome` writes them back through each row's own `set()`, clamped to that row's declared bounds.
+Keyed by NAME rather than index because `LAW_DECLARED` has grown 21 -> 32 across `#197`, `#201` and
+`#203`, and an index-keyed blob would silently remap every law the next time it grows. Written through
+`set()` so per-row guards still apply. Absent key means the declarations, which is the pre-`#216x`
+world exactly and the correct inheritance for every older save.
+
+```
+ON  (default)      rateRestored true   fdRestored true   hasLAWV true    8856 bytes
+                   smuggled 999 -> clamped to 0.004 (row hi)
+                   smuggled  -5 -> clamped to 0.9   (row lo)
+OFF (LAW_PERSIST=0) rateRestored false  hasLAWV false                     7972 bytes
+```
+
+7972 is the pre-change blob size exactly, so the off arm is the old world byte for byte. Growth is
+884 bytes against a `SAVE_BUDGET` of 500000.
+
+### #216x also: four of six rigs were ignoring KNOBS
+
+**The off arm came back identical to the on arm the first time I ran it**, which is how this surfaced.
+`LAW_PERSIST=0` did nothing, because `harness-strata` never called `applyKnobs` — it hand-wires a few
+knobs and silently drops the rest. Checked across the rigs:
+
+```
+applyKnobs:  substrate-test  YES     harness-variance  YES
+             harness-strata  no      harness-orphans   no
+             harness-reads   no      harness-attractor no
+```
+
+**This is the `#216b`/`#216d` trap still standing in four places**, and `CLAUDE.md` states it as a
+general rule on its front page: an env var with no `applyKnobs` call is not a control, it is a no-op
+that reads like one. `#216d` fixed `FOUND` in `substrate-test` and nobody swept the other rigs. So any
+`KNOBS` entry passed to those four was ignored unless hand-wired — which means an arm could be run,
+reported, and believed, with both sides identical. All four call it now; it is a no-op when no env var
+is set, so default behaviour is unchanged.
+
+I found it because I tested the off arm of my own knob. Had I only tested that persistence worked, the
+knob would have shipped dead and the next person to trust it would have had `#216d`'s experience
+again.
