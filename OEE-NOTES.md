@@ -19062,3 +19062,62 @@ a fixed one for free. The law-proposer idea may still be worth trying, but it ca
 `#218` as precedent, and the `#217` thesis ("selection needs a population") is untouched while the
 COROLLARY I drew from it ("so making the self a population will improve it") is now shown to be false
 in the one case that was actually measured.
+
+### #216u — what my engine change did to the universe: nothing the census can resolve, and the census has a floor nobody had measured
+
+`CLAUDE.md`'s new opening says a session ending with a greener rig and an unchanged universe has not
+moved the work, and that a pass count is the wrong artifact. This session's headlines were `259/0`,
+`260/0`, `21/21`, `52 ok`. Three engine changes, and every claim I made about them was about the
+MECHANISM: `#212` proved bit-identical to its off-switch (a proof it changed nothing), `#211` proved
+the dial is now read, `#215` proved it picks correctly (60/60 forced, then 14/14 unforced). None of
+those answers *what moved in the universe*.
+
+So `#215` was put to `#217`'s census. **The ceiling, not the shipped rate** — the gene seeds at 0 and
+reaches 0.03-0.17 by 60-120k, which is 2 to 8 quality evictions out of ~95 feeding a 5-entry bank
+through a 0.0001-strength nudge. If the mechanism at full strength moves nothing, the shipped rate
+cannot, and the hour-per-run long arm is unnecessary.
+
+**The design carried its own noise floor, and that turned out to be the finding.** At 12k the gene
+sits at 0, so `MOTIF_SELECT=0` and the shipped default differ ONLY by RNG stream — the knob gates
+whether the gene is CREATED, which costs one `Math.random()` per birth in `mutateChildGenome`'s key
+walk. Arm A vs arm B is therefore mechanism-free divergence.
+
+```
+arm       seed  VARY  alive  retention  perCapita
+A off     1     176   157    0.6307     1.3216
+A off     2     176   166    0.8292     1.6435
+A off     3     176   235    1.0923     1.5292
+B ship    1     176   162    0.7669     1.5574
+B ship    2     179    86    0.5089     1.9468
+B ship    3     176   280    1.1666     1.3707
+C ceil    1     176   144    0.7410     1.6929
+C ceil    2     179   180    0.7350     1.3434
+C ceil    3     176   285    1.1804     1.3626
+
+A->B  NO MECHANISM, RNG stream only : [+0.2358, +0.3033, -0.1584]   mean abs 0.2325
+B->C  mechanism at FULL strength    : [+0.1356, -0.6034, -0.0081]   mean abs 0.2490
+```
+
+**`#215` is correct, exercised, and inconsequential.** At full strength its effect on
+retention-per-capita is the same size as reseeding and does not hold a sign. `VARY` reads 176 in
+seven of nine runs and 179 in two — both on seed 2, both arms where the gene exists — so the census
+headline is flat across the mechanism. That is the honest entry, and it is a better one than quoting
+14/14 again: the eviction picks the right motif every time and the world cannot tell.
+
+Not a reason to remove it. It is cheap, dormant at its seed, and `#218` has just set the precedent for
+keeping a mechanism whose negative result is the thing worth having. But the CODEMAP line for `#215`
+should read "no measured universe-level effect" rather than stopping at the witness count.
+
+**And the second finding, which is the one that outlives `#215`.** `CLAUDE.md` has just elevated the
+variance census to *the* number a session is judged by. **Its noise floor at 12k on three seeds is
+about 0.23 perCapita, with sign flips**, and nobody had established that. So a future entry reporting
+"this change moved retention-per-capita by 0.2" is reporting something indistinguishable from
+changing the seed. The raw spread underneath says the same thing louder: `alive` ranges 86 to 285
+across these nine runs, `popRatio` 0.26 to 0.85.
+
+Stated with its own limits: three paired differences is an order-of-magnitude estimate of the floor,
+not a confidence interval. What it establishes is that the floor is NOT small relative to the effects
+this project will want to claim, and that any future claim on this number needs a mechanism-free
+control arm run beside it — which costs nothing extra, because an off-switch that gates gene creation
+already provides one.
+

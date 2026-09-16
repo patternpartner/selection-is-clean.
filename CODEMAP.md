@@ -2886,3 +2886,12 @@ without building one. The four germline->population crossing rows now export `ca
 `grainCarriersOf` and print "N of M living particles", because a carrier count is ceilinged by
 whatever an earlier block left alive. The `#216q` row must stay LAST in the check script — `GX`, `WX`
 and `CR` are `const`-declared further down and an earlier placement is a TDZ ReferenceError.
+
+**#216u — `harness-variance.js` gains `MOTIF_BIAS`**, forcing `genome.motifKeepBias` every tick
+(before `loop()`, so germline drift cannot undo it — `#216i`). It is the ceiling arm for `#215`.
+Result: at full strength the mechanism moves retention-per-capita by the same amount as a pure
+RNG-stream change and does not hold a sign, so **`#215` has no measured universe-level effect**,
+though its eviction is correct every time it fires. The same runs establish the census's own noise
+floor at 12k x 3 seeds: **~0.23 perCapita with sign flips**, measured from an arm whose only
+difference is that a gene is not created (one draw per birth). Any future claim on this number wants
+a mechanism-free control beside it.
