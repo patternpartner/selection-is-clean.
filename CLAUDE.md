@@ -85,6 +85,20 @@ git checkout main && git merge --ff-only <branch> && git push -u origin main
   read the `field:` line; a ratio in the high teens or above is the healthy range. **Do not retune the
   threshold to make it green** — that is the move this file exists to prevent, and the low outbound
   count is the actual fragility.
+- **Test the boring side of your own change — the side you expect to be fine is where the finding
+  is.** `#216x` added a `LAW_PERSIST` knob and the OFF arm came back identical to the ON arm. Not
+  because the fix was wrong: because **four of the six rigs never called `applyKnobs`** and silently
+  dropped every `KNOBS` entry they did not hand-wire (`harness-strata`, `harness-orphans`,
+  `harness-reads`, `harness-attractor` — all fixed). That trap is stated on this page by
+  `#216b`/`#216d`, it had survived two commits, and one negative-side test found it. **It survived
+  because it was named for other people's rigs, not for the one being read.** Running the negative
+  side of your own change is the same discipline as running it on someone else's, and it is harder
+  because you already believe your own change works. It is cheap enough to be the first thing a
+  session does rather than the last.
+- **And do not edit a file while a rig is reading it.** `substrate-test`, `smoke.sh` and every harness
+  read `engine.html` at boot. `#216y`'s six law-direction runs were started, then `#216x` edited
+  `engine.html` mid-flight, so those numbers are provisional and owe a re-run. The markdown is safe
+  (no rig reads a `.md`; the matches are comments) — `engine.html` and the rigs are not.
 - **Never `kill`/`pkill` on a pattern that can match your own shell.** `ps ... | xargs kill` and
   `pkill -f "timeout 900 node substrate-test"` have both taken out the session's own process
   (exit 144) and every sibling run with it. Kill explicit PIDs you have just listed and checked.

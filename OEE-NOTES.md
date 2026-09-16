@@ -19436,3 +19436,23 @@ trajectories should be unaffected, but "should" is not measured and these number
 until re-run on a fixed engine. Third, `LAW_RATE`'s `lo:0.0` has no comment of its own. `LAW_VIABLE`'s
 lower bound is explicitly defended — *"putting a floor under it would be me keeping the brake I just
 claimed to hand over"* — and the analogy may well be intended here. Not changed, reported.
+
+### A diagnostic worth naming: two kinds of unintentional
+
+`#216x` turned on a distinction that generalises, and it is the author's, not mine. I argued the
+law-persistence gap was unintentional because **code and claim disagreed** — `#183` says a kept law
+becomes the value a future proposal perturbs, and the code never made that true. That is the common
+kind: someone wrote a claim and forgot to make the code match, it is recoverable by reading both, and
+it is usually one fix.
+
+The stronger evidence was different in kind: **the layer was unprincipled within itself.** Two of the
+three founding laws mirror into genome keys and persist; the third does not; no comment anywhere
+distinguishes them. There is no claim to disagree with, because what is missing is the layer's own
+internal consistency. That is rarer and more diagnostic — it says the layer was **assembled rather
+than designed**, and assembly leaves sediment.
+
+The second kind licenses a fix more strongly than the first, because it shows the behaviour was not
+chosen, it accumulated. And this file has the pattern twice already: `#157`'s periodic autosave living
+inside a try block, and `#216d`'s four rigs. **Sediment survives because nobody is looking for a
+decision that was never made** — a reader checking "is this intended?" finds no comment and infers a
+decision, when the absence of a comment is the finding.
