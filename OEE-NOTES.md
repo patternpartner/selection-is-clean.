@@ -19380,3 +19380,59 @@ is set, so default behaviour is unchanged.
 I found it because I tested the off arm of my own knob. Had I only tested that persistence worked, the
 knob would have shipped dead and the next person to trust it would have had `#216d`'s experience
 again.
+
+### #216y — the law layer self-terminates in half of forced trajectories, and my reason for declining the throughput swing was wrong
+
+`LAWROW=LAW_RATE` forces every proposal onto the rate control. Six seeds, `TICKS=20000`:
+
+```
+seed 1   5 proposals  ->  0          FROZEN
+seed 2   2 proposals  ->  0          FROZEN
+seed 3   6 proposals  ->  0.001468   rate nearly TRIPLED
+seed 4   7 proposals  ->  6.5e-05    one step from the floor
+seed 5   7 proposals  ->  0.00056    near seed
+seed 6   2 proposals  ->  0          FROZEN
+                         28 judged, 28 kept, 0 reverted
+```
+
+**Three of six froze inside 20k ticks.** I predicted "at least one of three seeds at 60k" and was low
+by a wide margin, for a reason worth keeping: **the absorbing state is a basin, not a point.** The step
+is +/-0.0007. From the seed 0.0006, landing on zero needs a step below -0.0006, about 7%. At 0.00027
+any step below -0.00027 lands on zero, about 31%. At 7.4e-05, about 45%. **Capture probability rises
+as the rate falls**, so descent accelerates into termination. Seed 2 froze in two proposals.
+
+**AND THE REASON I GAVE FOR DECLINING THE THROUGHPUT SWING IS REFUTED.** In the `#216t` follow-up I
+declined on two grounds: reach, and direction — *"when drawn, the world chose to propose changes to
+itself less often, and the verdict kept it"*, resting on `#200b`'s single observation of a sixfold
+self-slowdown. Six trajectories say there is no such preference: two ended HIGHER than seed (0.001468
+and 0.00056 after a peak of 0.001255), one ended lower, three hit the floor. **That is not a world
+choosing conservatism. It is a symmetric random walk with an absorbing boundary at the bottom**, and
+the boundary does the work that I attributed to a preference. A walk into an absorbing state is not a
+decision, and "overriding a choice the world made" was the load-bearing half of my argument.
+
+I am not reversing the decline on that alone — the swing was about the SERIAL proposal clock, which is
+a different mechanism from the absorbing boundary, and the reach argument stands untouched. But the
+justification was half wrong and the half that was wrong was the one I weighted most.
+
+**Zero reverts, again, and now cumulatively.** 28 judged here, 39 in `#216t`: **67 of 67 proposals
+kept across every law measurement today, none reverted.** `held >= baseline * viable` at 0.62-0.70 is
+a near-death test, so the filter passes everything that does not kill the world — including the one
+change that ends law evolution outright. **The proposal that switches off the law layer is accepted as
+readily as any other, because switching it off does not hurt the population.**
+
+**And `#216x` interacts with this.** Before today a frozen world was thawed by the next reload, because
+law values did not persist. They do now — which is the right fix and the one the author asked for — so
+**a world that freezes now stays frozen across sessions**, with only a peer's law plasmid able to
+revive it (the import path is gated on `netLawReceptivity`, not on `LAW_RATE`). The fix made the
+artwork honest and the trap durable in the same change. That is not an argument against it; it is a
+consequence that belongs on the page rather than in a gallery.
+
+**Three caveats, and the second is my own error.** This is FORCED exposure: normally `LAW_RATE` is one
+row in 32, so the shipped freeze rate is far lower than a majority — the mechanism is established, the
+rate is not, and the two must not be conflated the way `#215`'s forced arm must not stand in for its
+shipped one. Second, **I edited `engine.html` while these runs were reading it** (`#216x` landed
+mid-flight); it touches only `encodeGenome`/`decodeGenome` and draws no randomness, so law
+trajectories should be unaffected, but "should" is not measured and these numbers are provisional
+until re-run on a fixed engine. Third, `LAW_RATE`'s `lo:0.0` has no comment of its own. `LAW_VIABLE`'s
+lower bound is explicitly defended — *"putting a floor under it would be me keeping the brake I just
+claimed to hand over"* — and the analogy may well be intended here. Not changed, reported.
