@@ -44,6 +44,7 @@ const fs=require('fs');
 try{ require(require('path').join(__dirname,'harness-env.js')).applyKnobs(globalThis); }catch(_){}
 const TICKS=parseInt(process.env.TICKS||'12000',10);
 globalThis.__LAWROW=process.env.LAWROW||null;
+globalThis.__LAWSTART=(process.env.LAWSTART!==undefined)?Number(process.env.LAWSTART):null;
 // CULLDOOR multiplies the atom cull's entry probability. #208 measured that door opening once per
 // 20,000-63,000 ticks, which is why the cull's four conditions and its atomIdleTolerance dial have
 // never been evaluated. That leaves a registered prediction hanging -- "open the door and the gene
@@ -411,7 +412,20 @@ const driver=`
   // the lowest s*c in the bank. Counting that the branch FIRED is not the same as checking it picked
   // correctly, and this project has shipped a mechanism that fired and did the wrong thing before.
   globalThis.__mkbWitness={checks:0,correct:0,ties:0};
-  globalThis.__run=function(n){ for(let s=0;s<n;s++){ globalThis.__detMs+=5;
+  // #217a: START THE WALK WHERE CAPTURE IS LIKELY. The basin model's probabilistic half could not be
+  // measured from #216y's runs because the absorbing region censors its own sample TWICE OVER: a
+  // trajectory that reaches it freezes within a proposal or two, AND - because LAW_RATE is both the
+  // walked quantity and the proposal clock - being near the floor means proposing about ten times
+  // less often. So the region cannot be sampled by waiting for trajectories to arrive. It has to be
+  // started in. Set once before the run, not per tick, or the walk would never leave it.
+  globalThis.__lawStartApplied=false;
+  globalThis.__run=function(n){
+    if(!globalThis.__lawStartApplied&&globalThis.__LAWSTART!==null&&globalThis.__LAWSTART!==undefined){
+      try{ const _r=LAW_DECLARED.find(x=>x.name==='LAW_RATE');
+        if(_r)_r.set(__cl(+globalThis.__LAWSTART,_r.lo,_r.hi)); }catch(e){}
+      globalThis.__lawStartApplied=true;
+    }
+    for(let s=0;s<n;s++){ globalThis.__detMs+=5;
     if(globalThis.__forcedMKB!==null){ try{ genome.motifKeepBias=globalThis.__forcedMKB; }catch(e){} }
     try{loop();}catch(e){ globalThis.__driverErr=(globalThis.__driverErr||0)+1; } } };
   // Read from INSIDE the compiled module: __liveness, the death tallies and the genome are lexical
