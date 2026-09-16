@@ -18535,6 +18535,102 @@ and `CR` are `const`-declared further down the check script. It is placed last n
 saying why. "It looked right" is the reasoning that produced seven unsound rows in this file, and it
 does not improve with practice.
 
+### #216s — the timescale, measured. My claim was wrong and `#148` was right.
+
+I said, more than once in this session, that `#215` "has never fired in any unforced run" and that
+"the artwork as shipped behaves as it did before `#215`". **Both are false.** The number behind them
+came from `TICKS=12000`, which is the strata rig's budget and not the artwork's — at 60fps that is
+3.3 minutes of someone watching. I made a claim about how the work behaves from a run shorter than a
+gallery visit, and dressed it as a careful hedge ("a fact about timescales, not a defect") rather
+than the unmeasured assertion it was.
+
+`TICKS=120000` — ten times the budget, about half an hour of viewing:
+
+```
+seed  cycles  gen  evictAge  evictQuality  witness  mkb final  mkb max   wasted/fired
+2     398     23   74        8             8/8      0.07645    0.21727   5/44    (11%)
+3     1156    678  93        4             4/4      0.16843    0.28299   14/521  (2.7%)
+```
+
+against `TICKS=12000`, where `evictQuality` was **0 on every seed** and `motifKeepBias` was 0 on
+three of four.
+
+**`#215` fires on its own.** Eight times and four times, about 10% and 4% of all motif evictions, with
+no knob forcing anything — and the witness says **12 of 12 of those unforced evictions removed the
+true minimum `s*c`**. All three zero-seeded dials escape: `atomUseProtect` 0.187,
+`atomIdleTolerance` 0.079, `motifKeepBias` 0.076 and 0.168, wandering up to 0.28.
+
+**And the 40% boundary waste was an artifact of the short budget too.** Over the long runs it is 11%
+and 2.7%, because the clamp only bites while a gene is sitting ON the floor and these genes do not
+stay there. `#216n`/`#216o` measured a gene pinned at its seed and reported the pinned rate as the
+gene's rate. The measurement was correct; the generalisation from it was not.
+
+**Decision: change nothing, and both candidates are now refused on measured grounds rather than on
+principle alone.** Seeding the gene above 0 is unnecessary — it escapes unaided within half an hour
+of viewing, which is exactly what seeding at zero is for. Making `__cl` reflect rather than discard at
+the boundary is unnecessary — it would have been a fix for a number that does not exist at real
+runtime.
+
+**`#148` is vindicated against me, and this is the third time that note has caught a reader.** *"Give
+the lineage a dial and let selection set it ... I am not going to pick the number."* I was looking at
+a snapshot taken before selection had had time to set it. Had I acted on my own framing I would have
+"fixed" a working mechanism by removing the property the author reserved — and `#148`'s note says it
+exists "so a later reader does not helpfully undo them". `#205` was the second reader. This was
+nearly the third, and the thing that stopped it was writing the prediction down before running the
+measurement instead of after.
+
+**The third trajectory, and it is the most informative of the three.** `SEED=1` timed out twice at
+120k (exit 124, zero bytes, at 50 and then 90 minutes), so it was run at `TICKS=60000` instead — half
+the budget, still about 16 minutes of viewing:
+
+```
+seed ticks   cycles  gen  evictAge  evictQuality  witness  mkb final  mkb max   wasted/fired
+2    120000  398     23   74        8             8/8      0.07645    0.21727   5/44   (11.4%)
+3    120000  1156    678  93        4             4/4      0.16843    0.28299   14/521 (2.7%)
+1     60000  205     2    95        2             2/2      0          0.1017    5/27   (18.5%)
+
+unforced quality evictions across three trajectories: 14/14 correct
+```
+
+**`#215` fires at 60k too**, on the very seed that showed zero at 12k. So the threshold is not
+half an hour of viewing — it is somewhere between three and sixteen minutes.
+
+**And `SEED=1` is the case `maxSeen` was added for, one run after adding it.** Its `motifKeepBias`
+reads `final 0` — identical, at a glance, to a gene that never moved — while `maxSeen 0.1017` says it
+rose to 0.10, fired the quality branch twice, and walked back down to the floor. Without that field
+I would have read seed 1 as "the gene never escaped on this trajectory" and been wrong in the same
+direction as every other error in this batch. `#216r` added it on the argument that *"final alone
+cannot answer did this gene ever reach a working value"*; the next run it caught one.
+
+**Two of four attempted 120k runs never finished** (`SEED=1` twice, `SEED=4` once), and that is a
+finding rather than an inconvenience. The trajectories that time out are the EXPENSIVE ones — seed 1
+carries a large stable population and had zero extinctions at 12k, so it never gets the free reset a
+collapsing lineage does. **The cheap seeds finish, so the cheap seeds are what get measured**, and a
+sample drawn that way is biased toward worlds that keep dying. Staged with a `.done` marker per stage
+per `CLAUDE.md`, which is the only reason it is possible to say which stage died rather than losing
+the batch.
+
+### #216s note — `smoke.sh` under load reports failures that are not in the code
+
+`smoke.sh` came back **50 ok / 2 failing** (`pool-test`, `slot-test`) while the three 120k-tick runs
+above were saturating the machine. Every failing row is a THROUGHPUT assertion — *"closing it puts
+the worker-mates back to full"*, *"most of the field got far enough to save — 0/9"*, *"the grown
+universe is running its own lineage — -4 ticks"*.
+
+**Established rather than assumed**, because "flake" is not a root cause and this repo's rule is that
+a failing test is never one until shown:
+
+- `engine.html` is byte-identical between a green run and the red one. `smoke2` finished at 21:37,
+  after the last engine change (`#216n`, 20:40), and reported both tests **ok**.
+- The only code that changed since is `substrate-test.js` and `harness-strata.js`, neither of which
+  these two tests load. `index.html`, `universe.html`, `sim.worker.js` and both test files were last
+  touched days before this session.
+- Re-run alone on a quiet machine: `pool-test` **28/0**, `slot-test` **15/0**. Green, red, green,
+  with the same bytes.
+
+Now a line in `CLAUDE.md`, because the same symptom is what a genuine regression in the field's
+layout would look like and the next reader should re-run before concluding either way.
+
 ### Where the rig stands after `#216l`
 
 ```
