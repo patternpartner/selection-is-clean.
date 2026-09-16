@@ -76,6 +76,15 @@ git checkout main && git merge --ff-only <branch> && git push -u origin main
   minutes later with byte-identical code — green, red, green. **Establish it that way rather than
   assuming it**: re-run the failing test alone before calling anything contention, because the same
   symptom is what a real regression in the field's layout looks like.
+- **`collective-test`'s `returnPathIsATrickle` is throughput-sensitive and asserts a RATIO over
+  single-digit counts.** It went red once inside `smoke.sh` at `field "←15 →4"` (ratio 3.75) and
+  passed four standalone runs immediately after at `←25 →1`, `←20 →1`, `←22 →1`, `←19 →2` — ratios
+  9.5 to 25. The failing run had BOTH lower inbound and higher outbound, i.e. it made less progress in
+  its wall-clock window. **Not the same thing as the contention note above**: no `node` job was
+  running that time, so it is the suite's own overhead, not a competing process. Re-run it alone and
+  read the `field:` line; a ratio in the high teens or above is the healthy range. **Do not retune the
+  threshold to make it green** — that is the move this file exists to prevent, and the low outbound
+  count is the actual fragility.
 - **Never `kill`/`pkill` on a pattern that can match your own shell.** `ps ... | xargs kill` and
   `pkill -f "timeout 900 node substrate-test"` have both taken out the session's own process
   (exit 144) and every sibling run with it. Kill explicit PIDs you have just listed and checked.
