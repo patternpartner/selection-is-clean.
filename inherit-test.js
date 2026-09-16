@@ -33,7 +33,7 @@ m._compile(code+`
   genome.boundOpcodes=[0];
   genome.userEffects=[{t:2,m:1,s:0.6,nx:-1,ax:0,uses:4,creditTrace:0.2}];
 
-  const MUST_OWN=['userAtoms','userEffects','boundOpcodes','vmProgram','objWeights',
+  const MUST_OWN=['userAtoms','userEffects','boundOpcodes','vmProgram','objWeights','selfModelW',
                   'objCreditTrace','prevObjValues','rend','draw','fitnessSensors'];
   const MUST_SHARE=['eventLog','epochs','lineage','metaCredit','shadowScenarioBank'];
 

@@ -18720,3 +18720,128 @@ verdict in that session was measuring a transient. FLAT means "did not move in 3
 seed", not "cannot move" — a gene whose operator fires once per 10k ticks is FLAT here and live at
 30k. A 20,000-tick arm on three seeds is running and will be appended; until it lands, the
 per-capita rise above is a claim about the first 3000 ticks and nothing longer.
+
+## #218 — THE SELF-MODEL BECOMES A POPULATION (pre-registered before the code)
+
+`#217` ended on a structural claim: every layer this system calls "self" is a population of one, and
+selection cannot act on a population of one. The singular `selfModel` object and the single shadow
+sim are the clearest case — the notes at `#48` already flagged it and deferred the fix:
+*"the shadow/self-model apparatus is self-only (one reflective baseline owns it) ... make the shadow
+sim per-lineage, which it isn't ... deliberately deferred."*
+
+This entry stops deferring it, but NOT by lineagizing the global forecaster — that touches dozens of
+`selfModel.*` read sites in the hot path and is exactly the invasive change this repo's whole culture
+says breaks silently. Instead it adds the **reflexive twin of a mechanism that already works**.
+
+### The mechanism that already works, and the twin
+
+`pNeighborModels` (engine ~25533) is already a per-particle predictive model: each particle holds an
+EMA model of each neighbour's state, `predictionErrorAccum` scores how wrong it is, and
+`relationalWeight`/`relationalUseBias` (Pe34/Pe35) already put that accuracy under a heritable weight.
+Per-particle prediction-under-selection is a solved pattern here. What it models is OTHERS.
+
+`#218` adds the same shape pointed inward. Each particle carries a small heritable predictor
+(`genome.selfPredictW`, 3 coefficients) of its OWN next-tick energy, made every tick in a new
+`applySelfModel()` and scored next tick against the amp it actually reached. So every organism now
+holds a model of itself, and there are as many of them as there are particles — a population, not a
+singleton.
+
+### Where the teeth are, and why the payout is conserved
+
+The composite `fitness` at engine ~28180 feeds the SINGULAR `currentFitness` (a universe-level
+self-assessment that steers the shadow sim and meta-mutation). Particle-level selection — the level
+that actually sorts variance — runs on `amp`. So for self-modelling to be a SELECTED trait at the
+level that sorts, accuracy has to touch `amp`. It does: each tick, `applySelfModel` mean-centres the
+self-prediction error across the living and nudges `amp[i] += selfModelWeight * scale * (meanErr -
+myErr)`. Better-than-average predictors gain amp, worse-than-average lose it, and because the nudge
+is mean-centred the sum is ~0 — it MINTS NOTHING, exactly the conserved / negative-frequency-dependent
+shape `#11` and `#28` established as the thing that keeps a pressure from being a free lunch.
+
+Off by default two ways: `genome.selfModelWeight` defaults to 0 (evolvable up from there), and the
+`SELFMODEL` knob (harness-env `KNOBS`) gates the whole function. Knob off + default weight →
+`applySelfModel` early-returns having drawn nothing → byte-identical to the current engine, which is
+the first thing the run below checks. Knob on forces the dial (effective weight floored at 0.5) so
+the arm actually exercises the mechanism, the way `#215` forced `motifKeepBias`.
+
+### THE ADVERSARY, stated before the data — this is the whole reason to measure and not just ship
+
+Selecting on self-prediction accuracy has a trivial degenerate winner, and it is the same one the
+Pe35 doc already named for the relational model: *"the cheapest source of passive accuracy is a
+homogeneous population."* Turned inward: the cheapest way to predict your own future is to have a
+BORING future — flatten your own amp trajectory so it is trivially forecastable. If that is what
+selection finds, the mechanism does not produce richer self-models, it produces organisms that made
+themselves dull to be predictable, and it will read as "prediction error fell" while the world dies.
+
+### The registered prediction, and how it is falsified
+
+Run `SELFMODEL=1` vs `SELFMODEL=0`, three seeds, and read BOTH the self-prediction error trend AND
+`harness-variance.js` retention on the same runs. Two outcomes, distinguishable on instruments that
+already exist:
+
+- **WIN (self-modelling is real):** with the arm on, `selfPredictW` goes FLAT -> VARYING on the
+  census (the predictor is being selected, not drifting), self-prediction error falls over the run,
+  AND census variance-retention holds at or above the `SELFMODEL=0` control. Organisms are modelling
+  a world as rich as the baseline's, better.
+- **WIREHEAD (the adversary wins):** self-prediction error falls while census retention drops below
+  the control and per-capita variance falls. Accuracy was bought by flattening the world, not by
+  modelling it. If this is what happens it is a finding, not a failure, and the mechanism ships
+  DORMANT with the wireheading written up — the same disposition `#11`'s mean-centred control got.
+- **NULL:** `selfPredictW` stays FLAT and error does not move — the pressure is too weak to select
+  against drift at this budget. Then the honest read is that the dial needs forcing harder or the
+  predictor needs a target with more headroom, and the entry says so rather than dressing a null as
+  a win.
+
+Registered now, at TICKS=3000 and TICKS=20000, `SEED=1..3`. The code follows; this paragraph does
+not get edited after the numbers land.
+
+### #218 RESULT — 3k confirmed across three seeds; the 20k horizon is pending (this section gets the horizon appended, not rewritten)
+
+The code is the reflexive-self-model as specified above: a per-particle predictor of own next amp
+(`genome.selfModelW`, 3 heritable coefficients), scored each tick in `applySelfModel()`, accuracy
+paid out as a mean-centred amp nudge. Every RNG draw it adds is gated on the `SELFMODEL` knob.
+
+**Baseline is provably inert when off.** `SELFMODEL=0` is BYTE-IDENTICAL to the pre-#218 engine on a
+3-seed state digest (population + amp + tend hash at t400) — the scalar `selfModelWeight` was removed
+precisely because it was a numeric genome key caught by `mutateChildGenome`'s generic `for(const k in
+g)` walk, which drew one `Math.random()` per birth and shifted the stream even with the knob off;
+`max(weight in [0,1], 1)` made it a no-op anyway. What remains is the array `selfModelW` (skipped by
+the numeric walk) plus knob-gated mutation. Acceptance rig **260/0 at TICKS=40 and TICKS=900** (the
+count rose 259 -> 260 because the crossing machinery auto-detected `selfModelW` as new heritable
+structure and verified it crosses — the deep-copy in `cloneGenome` holds).
+
+**The mechanism is live and selected, three seeds, TICKS=3000:**
+
+```
+seed  arm   aliveN  retention  perCapita  selfModelW      self-pred error (t500->t2500)
+  1   OFF     169    0.783      1.523      FLAT   d=1
+  1   ON      201    0.839      1.374      VARYING d=47     0.0177 -> 0.0067
+  2   OFF     190    0.796      1.379      FLAT   d=1
+  2   ON      228    0.890      1.284      VARYING d=50
+  3   OFF     198    0.874      1.453      FLAT   d=1
+  3   ON      201    0.867      1.418      VARYING d=55
+```
+
+Against the three registered axes:
+- **`selfModelW` FLAT -> VARYING on 3/3** (47/50/55 distinct across ~200 particles vs 1 in the
+  control). The predictor is being SELECTED, not drifting — the control holds it at [0,0,0].
+- **Self-prediction error falls** (0.0177 -> 0.0067 through t2501 on seed 1; noisy tail).
+- **Retention holds or rises** (+0.057, +0.093, -0.008), population HIGHER in the arm on all three
+  seeds (+32, +38, +3).
+
+**This is NOT the registered wirehead.** That signature was error falling WHILE retention drops below
+control and per-capita falls. Retention went the other way. The one honest asymmetry: per-capita
+variance is marginally LOWER in the arm (1.37-1.42 vs 1.45-1.52) because the conserved nudge sustains
+a LARGER population, so variance-per-head dilutes even as absolute retained variance rises. A
+mean-centred redistribution is not population-neutral — birth and death thresholds are nonlinear, so
+moving amp from poor to good self-predictors pushes more particles across the birth line than across
+the death line. That is a real emergent consequence and it is the thing the horizon has to check:
+whether the larger, better-predicting population PERSISTS or is a 3k transient (`#66`).
+
+**REGISTER, held deliberately:** even at 3k-times-three this says the pattern works FOR THE SELF-MODEL
+ON AMP. It is NOT evidence the same move generalises to other populations-of-one (the shared
+`chemistryTable`, the global shadow sim, the law table). Those are separate swings with separate
+controls; the analogy is a hypothesis generator, not a result about them.
+
+**Pending:** `SEED=1..3` at `TICKS=20000`, both arms, plus the self-prediction-error trend at
+horizon. Running now, staged with a `.done` marker. This section gets that number appended below it;
+the verdict above is scoped to 3000 ticks until it does.

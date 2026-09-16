@@ -40,7 +40,7 @@ console.error=()=>{};console.warn=()=>{};};
 // session that followed the front-page instruction ran the same thing twice believing it had a
 // control. The rule this file states about harness knobs was being broken by the project's own
 // setup instructions.
-module.exports.KNOBS = ['MUTUALISM','RQ_TRAIT','GENO_PARASITE','SELF_PREDICT','GRIP_SEED','MEME_TRANSFER','MOTIF_SELECT','FOUND'];
+module.exports.KNOBS = ['MUTUALISM','RQ_TRAIT','GENO_PARASITE','SELF_PREDICT','GRIP_SEED','MEME_TRANSFER','MOTIF_SELECT','FOUND','SELFMODEL'];
 module.exports.applyKnobs = function(g){
   for (const kn of module.exports.KNOBS)
     if (process.env[kn] !== undefined) g['__'+kn] = parseInt(process.env[kn], 10);
