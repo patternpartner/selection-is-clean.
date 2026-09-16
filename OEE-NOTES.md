@@ -18579,9 +18579,36 @@ exists "so a later reader does not helpfully undo them". `#205` was the second r
 nearly the third, and the thing that stopped it was writing the prediction down before running the
 measurement instead of after.
 
-**Two seeds, not three, and saying so.** The `SEED=1` run hit its 50-minute `timeout` and died at
-exit 124 with a zero-byte file — the reaping `CLAUDE.md` warns about, self-inflicted this time. It is
-re-running with a longer limit.
+**The third trajectory, and it is the most informative of the three.** `SEED=1` timed out twice at
+120k (exit 124, zero bytes, at 50 and then 90 minutes), so it was run at `TICKS=60000` instead — half
+the budget, still about 16 minutes of viewing:
+
+```
+seed ticks   cycles  gen  evictAge  evictQuality  witness  mkb final  mkb max   wasted/fired
+2    120000  398     23   74        8             8/8      0.07645    0.21727   5/44   (11.4%)
+3    120000  1156    678  93        4             4/4      0.16843    0.28299   14/521 (2.7%)
+1     60000  205     2    95        2             2/2      0          0.1017    5/27   (18.5%)
+
+unforced quality evictions across three trajectories: 14/14 correct
+```
+
+**`#215` fires at 60k too**, on the very seed that showed zero at 12k. So the threshold is not
+half an hour of viewing — it is somewhere between three and sixteen minutes.
+
+**And `SEED=1` is the case `maxSeen` was added for, one run after adding it.** Its `motifKeepBias`
+reads `final 0` — identical, at a glance, to a gene that never moved — while `maxSeen 0.1017` says it
+rose to 0.10, fired the quality branch twice, and walked back down to the floor. Without that field
+I would have read seed 1 as "the gene never escaped on this trajectory" and been wrong in the same
+direction as every other error in this batch. `#216r` added it on the argument that *"final alone
+cannot answer did this gene ever reach a working value"*; the next run it caught one.
+
+**Two of four attempted 120k runs never finished** (`SEED=1` twice, `SEED=4` once), and that is a
+finding rather than an inconvenience. The trajectories that time out are the EXPENSIVE ones — seed 1
+carries a large stable population and had zero extinctions at 12k, so it never gets the free reset a
+collapsing lineage does. **The cheap seeds finish, so the cheap seeds are what get measured**, and a
+sample drawn that way is biased toward worlds that keep dying. Staged with a `.done` marker per stage
+per `CLAUDE.md`, which is the only reason it is possible to say which stage died rather than losing
+the batch.
 
 ### #216s note — `smoke.sh` under load reports failures that are not in the code
 
