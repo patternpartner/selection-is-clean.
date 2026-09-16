@@ -19002,3 +19002,63 @@ Until that lands, the honest status is: **#218 produces a real, replicated (2/3)
 diversity at horizon, of unresolved cause, shipping DORMANT (knob-gated, off by default, baseline
 byte-identical). It is NOT evidence that self-modelling per se raises retention, and the mean across
 seeds must not be quoted.** The `SELFMODEL=2` result gets appended below.
+
+### #218 VERDICT — the self-model hypothesis is REFUTED by its own ablation. The predictor is worse than frozen.
+
+`SELFMODEL=2` (amp-nudge on, predictor frozen at [0,0,0], selecting for amp-STABILITY rather than
+predictive skill), three seeds at 20k, against `=1` (evolving predictor) and `=0` (control):
+
+```
+seed  control ret   =1 evolving        =2 FROZEN
+ 1    0.563         0.898  (+0.335)     0.951  (+0.388)   frozen WINS
+ 2    0.603         0.935  (+0.332)     0.996  (+0.393)   frozen WINS
+ 3    1.266         1.209  (-0.057)     1.855  (+0.590)   frozen WINS, and by a lot, where evolving LOST
+```
+
+**The frozen predictor beats the evolving predictor on all three seeds.** Not ties within noise --
+beats, by +0.05 / +0.06 / +0.65. On seed 3 the evolving arm HURT the thriving control (-0.057) while
+the frozen arm boosted it (+0.590, population 329->478 peak). `selfModelW` is FLAT d=1 in the frozen
+arm, so no lineage diverged a predictor and every particle ran the no-change model -- exactly the
+design.
+
+**This falsifies the self-model framing as the mechanism of action.** The retention effect is real
+and replicates, but it is NOT produced by self-modelling. It is produced by the conserved amp
+redistribution, and specifically by the variant that rewards amp-STABILITY -- which is what the
+frozen no-change predictor selects for. Making the predictor evolvable does not help; it actively
+hurts, because the evolving predictor chases a moving target (error climbed to 0.10-0.48) and the
+resulting selection signal is noisier and less coherent than the clean "reward stable amplitude" that
+freezing produces. `#218`'s own instrument, turned on `#218`, refuted `#218`.
+
+**This is the `#133b` shape at full size: right sign, wrong cause.** The two-seed +0.33 that read as a
+tight self-model mechanism was the conserved nudge's demographic rescue, and the "self-model" was not
+even a neutral passenger -- it was a drag on it.
+
+**What actually survives, and what it is NOT.** A conserved (mean-centred, mints-nothing) amp
+redistribution that rewards amplitude stability rescues -- and on a healthy seed, substantially
+boosts -- diversity retention at horizon. Retention is HIGH (up to 1.855) and population LARGE (up to
+478), so it is not a monoculture of stable particles: the census would score a monoculture near zero.
+The mechanism sustains a large, genetically varied population by damping the boom-bust amp spirals
+that otherwise cull it. That is a demographic/homeostatic effect, not a cognitive one, and it is a
+CANDIDATE for a future swing, not a validated finding: the open question it must answer first is
+whether "select for amplitude stability" is a genuine good or a low-dynamics artefact that the
+retention census happens not to penalise. `#218` does not answer that and must not be read as
+answering it.
+
+**Disposition.** `#218` ships DORMANT (knob-gated, baseline byte-identical, verified). The self-model
+mechanism is retained in the code as the documented NEGATIVE result plus the `SELFMODEL=2` ablation
+arm that produced the real finding -- it costs nothing off and it is the evidence. `selfModelW` is
+NOT removed, because removing it would erase the thing the negative result is about. The honest
+one-line summary: **an attempt to make the self-model a selected population failed; the evolvable
+predictor underperformed a frozen one, and the retention effect belongs to a conserved
+stability-nudge that was never the point.**
+
+**AND A RETRACTION THAT REACHES BACK UP THIS SESSION.** Earlier in this session `#218`'s 3k result was
+offered as "a working micro-instance" of the pattern *make a population-of-one into a selected
+population and its quality improves* -- and as empirical support for pointing that same move at the
+law table (per-lineage law-proposers). The ablation removes that support and points the other way:
+the SELECTED predictor underperformed the FROZEN one. So "make the proposer a selected population" is
+not supported by `#218`; if anything `#218` is weak evidence AGAINST assuming a selected version beats
+a fixed one for free. The law-proposer idea may still be worth trying, but it can no longer cite
+`#218` as precedent, and the `#217` thesis ("selection needs a population") is untouched while the
+COROLLARY I drew from it ("so making the self a population will improve it") is now shown to be false
+in the one case that was actually measured.
