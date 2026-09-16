@@ -2107,6 +2107,33 @@ const LAW_DECLARED=[
   // `tick - start >= p`, so a fractional one is perfectly meaningful.
   {name:'LAW_PROBATION', get:()=>LAW_PROBATION, set:v=>{LAW_PROBATION=Math.max(200,v);}, lo:200, hi:20000},
   {name:'LAW_COST',      get:()=>LAW_COST,      set:v=>{LAW_COST=v;},      lo:0.0, hi:0.25},
+  // #216y/#216z: THIS LOWER BOUND IS NOT DEFENDED, and that is worth saying next to one that is.
+  // LAW_VIABLE's lo:0.0 four rows up carries an explicit argument - putting a floor under it would be
+  // keeping the brake this file claims to hand over. This bound carries no such argument, and the
+  // analogy does not transfer, because THE TWO ZEROS FAIL DIFFERENTLY.
+  //   LAW_VIABLE=0 means NEVER REVERT. The world keeps changing, unjudged, and dies if it was wrong.
+  //                Collapse is the verdict, which is why a floor there would be keeping the brake.
+  //   LAW_RATE=0   means NEVER PROPOSE. No collapse, no verdict - the world simply stops legislating
+  //                and lives on. There is no natural verdict at all, so there is nothing to defend
+  //                the bound WITH, in the way LAW_VIABLE's is defended.
+  //
+  // AND IT IS A BASIN, NOT A POINT (#216y, measured). With every proposal forced onto this row, six
+  // seeds at 20,000 ticks: three reached 0 and stayed, one stopped one step away. The step is about
+  // +/-0.0007, so from the seeded 0.0006 a step past zero clamps to zero roughly 7% of the time; from
+  // 0.00027 roughly 31%; from 7.4e-05 roughly 45%. Capture accelerates as the rate falls. That was
+  // FORCED exposure - normally this is one row in 32 - so the mechanism is established and the
+  // shipped frequency is not. Twenty-eight proposals judged, twenty-eight kept, none reverted.
+  //
+  // AND #216x MADE IT DURABLE. Before law values persisted, a frozen world thawed on the next reload.
+  // Now it stays frozen, and only a peer's law plasmid can revive it - that import path is gated on
+  // netLawReceptivity, not on this row. The change that makes #197's "the world prices itself" true
+  // is the same change that makes this permanent. Not two effects of one change: one effect seen from
+  // either end.
+  //
+  // LEFT AS IT IS, DELIBERATELY. If a world may switch its own legislating off, this bound IS that
+  // principle and wants stating as one. If it may not, this is an undefended bound. That is the
+  // author's call, and this comment exists so the call gets made rather than inherited from the row
+  // above it.
   {name:'LAW_RATE',      get:()=>LAW_RATE,      set:v=>{LAW_RATE=v;},      lo:0.0, hi:0.004},
   {name:'CHANNEL_WARP_RENT',get:()=>CHANNEL_WARP_RENT,set:v=>{CHANNEL_WARP_RENT=v;},lo:0.0,hi:1.0},  // #198
   {name:'SELFWRITE_COST',get:()=>SELFWRITE_COST,set:v=>{SELFWRITE_COST=v;},lo:0.0,hi:0.08},           // #199
