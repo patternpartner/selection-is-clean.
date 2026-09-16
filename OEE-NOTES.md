@@ -19121,3 +19121,40 @@ this project will want to claim, and that any future claim on this number needs 
 control arm run beside it — which costs nothing extra, because an off-switch that gates gene creation
 already provides one.
 
+### #216u addendum — which census number can actually carry a claim
+
+Three mechanism-free pairs (arm A vs arm B: same mechanism at 12k, different RNG stream) are enough
+to ask which of the census's statistics is stable, rather than assuming. Mean absolute relative
+divergence with no mechanism in play:
+
+```
+retentionPerCapita    14.7%        <- most stable of the meaningful ones
+retention / sumLast   24.7%
+popRatio / aliveLast  28.0%
+aliveFirst, bootVar, sumFirst   0.0%   (boot-time — they measure the seed, not the run)
+
+classes.VARYING   176..179 of 192 across all nine runs
+                  mechanism-free deltas [0, 3, 0]      mechanism deltas [0, 0, 0]
+```
+
+**`retentionPerCapita` is the RIGHT headline, and for a reason opposite to the one I expected.** I
+went in assuming a ratio of two noisy quantities would be the least stable thing on the page. It is
+the most stable — retention and popRatio are positively correlated (a run holding more particles
+holds more variance), so the ratio cancels common trajectory noise instead of compounding it. Both
+of its components are ~25-28% and the ratio is 14.7%.
+
+**But 14.7% relative is ~0.23 absolute at these values, so the floor stands.** Any claim of the form
+"this change moved perCapita by 0.2" is reporting a reseed.
+
+**`classes.VARYING` is the tightest number in the census and it is saturated.** 176 to 179 out of 192
+across all nine runs; it moved 0 on every mechanism comparison and moved only in the arm where a gene
+is CREATED rather than exercised. 16 keys are FLAT, and `#217` accounts for about 8 of those as
+deliberate — so the realistic ceiling is ~184 and the headroom above 176 is about 8 keys, 4%. That
+makes it a good detector of variance LOSS and a poor one of variance gain: a change that destroys
+variance will show immediately, a change that creates it has four percent of room to show up in.
+
+**Practical upshot, and it costs nothing to adopt.** Report both: `VARYING` as the tight saturated
+integer, `retentionPerCapita` as the sensitive noisy continuous. And run a mechanism-free control arm
+beside any claim on the continuous one — an off-switch that gates gene CREATION already is one, since
+it changes the draw stream without changing the mechanism. This session got its floor for free that
+way without setting out to.
