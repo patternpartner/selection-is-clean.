@@ -19768,7 +19768,13 @@ function updateParticleReflex(){
 // It draws NO Math.random(): its only effect on the run is through amp, which is exactly the selective
 // channel it is meant to act on (particle-level selection sorts on amp, not on the singular currentFitness).
 function applySelfModel(){
-  if((typeof globalThis==='undefined')||((globalThis.__SELFMODEL|0)!==1))return; // dormant control path
+  const _sm=(typeof globalThis==='undefined')?0:(globalThis.__SELFMODEL|0);
+  if(_sm<1)return; // SELFMODEL=0: dormant, no draws, byte-identical baseline
+  // #218 ATTRIBUTION ARM: SELFMODEL=2 runs the amp-nudge with the predictor FROZEN at [0,0,0] -- the
+  // selfModelW mutation is gated to ===1, so at 2 no lineage diverges its predictor and every particle
+  // runs the no-change predictor (pred=amp). myErr then measures each particle's own amp VOLATILITY, so
+  // the nudge selects for amp-STABILITY rather than predictive skill. If =2 reproduces =1's retention
+  // rescue, the evolving predictor is a passenger (the #133b shape); if only =1 rescues, it earns it.
   const effW=1.0; // the knob IS the dial; a genome scalar clamped [0,1] would have been a no-op under max(.,1)
   fired('self.model');
   const w=genome.selfModelW||[0,0,0];

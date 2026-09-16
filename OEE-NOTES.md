@@ -18941,3 +18941,64 @@ controls; the analogy is a hypothesis generator, not a result about them.
 **Pending:** `SEED=1..3` at `TICKS=20000`, both arms, plus the self-prediction-error trend at
 horizon. Running now, staged with a `.done` marker. This section gets that number appended below it;
 the verdict above is scoped to 3000 ticks until it does.
+
+### #218 HORIZON (20k, three seeds) — NOT a clean win: a CONDITIONAL COLLAPSE-RESCUE, and the mechanism-of-action is unresolved
+
+The 3k result (+0.057, +0.093, -0.008 retention, population up on all three) looked like a mild,
+consistent lift. The horizon inverts the reading. Two seeds looked like a tight mechanism at 20k; the
+third revealed the effect is contingent.
+
+```
+seed  control ret/pop      arm ret/pop        Δret     control fate    selfModelW@20k
+ 1    0.563 / ->126        0.898 / ->206      +0.335    collapses       VARYING d=38
+ 2    0.603 / ->89         0.935 / ->211      +0.332    cliffs 173->86  VARYING d=59
+ 3    1.266 / ->316        1.209 / ->252      -0.057    THRIVES         VARYING d=64
+```
+
+Per-seed Δret: **+0.335, +0.332, -0.057.** The mean (+0.20) is a lie of exactly the kind this file
+keeps paying for. The three numbers are not noise around a positive mean — they are STRUCTURED: the
+two seeds where the arm wins are the two where the CONTROL COLLAPSES (to 126 and 89), and the seed
+where the arm does not win is the one where the control was already THRIVING (seed 3 control climbs
+329->348->316). Seed 3's arm actually underperforms its own control by a hair.
+
+**So the finding is not "self-modelling raises retention." It is a COLLAPSE-RESCUE: the mechanism
+holds diversity up when the world would otherwise die, and does nothing -- slightly worse -- when the
+world is already healthy.** That is a narrower and better claim than a universal lift, because it says
+WHEN. It is also not the pre-registered clean WIN (retention above control on the axes): it is above
+on 2/3 and below on 1/3, and the 1/3 is precisely the seed that needed no help.
+
+**Error trends -- the "enrichment, not accuracy" pattern replicates on all three:**
+```
+seed 1   0.012 -> 0.098   (monotonic, accelerating)
+seed 2   0.014 -> 0.475   (huge, plateaus ~0.47)
+seed 3   0.012 -> 0.104   (rises, dips at 13k, rises)
+```
+Self-prediction error RISES in every arm while `selfModelW` stays VARYING in every arm. The predictor
+is under selection everywhere and getting absolutely WORSE at prediction everywhere -- consistent with
+"the world becomes less predictable and the predictor chases it," and flatly inconsistent with "the
+predictor becomes accurate." The registered wirehead (error falls while the world flattens) did not
+happen on any seed; if anything the arm does the opposite, enriching the world past its own
+predictability.
+
+**THE UNRESOLVED PART, and it is the whole verdict.** Seed 3 carries the full mechanism signature --
+predictor VARYING, error rising -- and produces NO retention benefit. So "predictor selected + error
+rising" does not, by itself, produce the rescue. The rescue tracks CONTROL COLLAPSE, not the
+predictor. That is the `#133b` alarm exactly: the effect may be the amp-nudge's DEMOGRAPHIC rescue
+(redistributing energy props up a population that would otherwise crash -- a configuration effect that
+does not need the evolving predictor at all), with the predictor a passenger that is selected but not
+causal.
+
+**The ablation that decides it (running now).** `SELFMODEL=2` runs the amp-nudge with the predictor
+FROZEN at [0,0,0]: every particle runs the no-change predictor, so `myErr` measures each particle's own
+amp VOLATILITY and the nudge selects for amp-STABILITY rather than predictive skill. On the two collapse
+seeds:
+- If `=2` reproduces the +0.33 rescue -> the evolving predictor is a passenger; #218's effect is "a
+  conserved amp redistribution rescues a collapsing population," and it should be renamed and reduced
+  to that. The self-model framing would be wrong even though the retention number is real.
+- If only `=1` rescues and `=2` does not -> the evolving predictor earns the rescue, and the
+  self-model framing holds for the collapse regime.
+
+Until that lands, the honest status is: **#218 produces a real, replicated (2/3) collapse-rescue of
+diversity at horizon, of unresolved cause, shipping DORMANT (knob-gated, off by default, baseline
+byte-identical). It is NOT evidence that self-modelling per se raises retention, and the mean across
+seeds must not be quoted.** The `SELFMODEL=2` result gets appended below.
