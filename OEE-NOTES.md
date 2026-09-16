@@ -19158,3 +19158,56 @@ integer, `retentionPerCapita` as the sensitive noisy continuous. And run a mecha
 beside any claim on the continuous one — an off-switch that gates gene CREATION already is one, since
 it changes the draw stream without changing the mechanism. This session got its floor for free that
 way without setting out to.
+
+### #216t result — 13 of 32 laws are ever tried, and 39 of 39 proposals were kept
+
+The `#203`-era note said *"the law table has outgrown the machinery that walks it, and I am the one
+who grew it"* and did the arithmetic at the seeds. `#216t` measured it. Two seeds at `TICKS=60000`
+(the third timed out — third expensive-trajectory reap this session):
+
+```
+seed  rows  proposals  kept  reverted  distinct tried  coverage  LAW_RATE  probation  viable
+1     32    24         20    0         13              0.406     0.0006    1200       0.6186
+2     32    22         19    0         13              0.406     0.0006     200       0.7
+
+union of rows ever proposed across both runs: 19 of 32
+```
+
+**My prediction was 68% coverage from ~36 proposals. Both numbers were optimistic.** 60000 x 0.0006
+= 36 assumes the rate check runs every tick. It does not: the cycle is SERIAL — propose, probation
+(1200), verdict, then ~1/rate (1667) of waiting, then propose. That is ~2867 ticks per proposal, so
+~21 in 60k. Observed 22 and 24.
+
+**And that corrects the `#203`-era note in the direction it was already worried about.** It reported
+"proposals per 12,000 ticks 7.2, verdict slots (one trial at a time) 10" — reading the slot as
+non-binding because 7.2 < 10. But probation is serial with the waiting, not parallel to it. The true
+expectation at 12k is 12000/2867 = **4.2 proposals, not 7.2**. The note over-counted by about 70% and
+its conclusion was right but understated.
+
+**Thirteen rows were never proposed once on either run**, including `FIELD_DECAY` — a core physics
+law — plus `SELFWRITE_COST`, `WORLD_ENERGY_MAX`, `DEATH_ENERGY_RETURN`, `CHANNEL_WARP_RENT`,
+`UA_OP_RENT`, `ATTENTION_GAIN`, both `LEVEL_*` gates, both `FOUND_*` costs, and — the self-referential
+pair — `LAW_RATE` and `LAW_COST` themselves. At this horizon those are declared, priced, documented,
+and inert.
+
+**The sharper number is 39 of 39 kept, 0 reverted.** The verdict fired thirty-nine times across the
+two runs and rejected nothing. `held >= baseline * viable` at viable 0.62-0.70 only reverts a law
+that drops population below roughly two-thirds of its pre-proposal mean over the probation — a
+near-death test. So at these values law change is close to unfiltered: the mechanism proposes rarely
+and accepts everything.
+
+**Not filed as a defect, and the reason is specific.** The engine's comment above `LAW_VIABLE` is a
+standing decision — *"a world can evolve LAW_VIABLE toward 0 and stop reverting anything, and that is
+deliberate ... collapse is data here, not a failure to be prevented"*. But that settles the LOWER
+BOUND question, not the seed value. "0 is a legal destination" and "0.7 should accept 39 of 39" are
+different claims, and the second is measured here rather than decided anywhere.
+
+**And the brake on the brake is visibly coming loose, which is the anticipated behaviour observed in
+the wild.** Seed 2's `LAW_PROBATION` drifted 1200 -> 200, which is its floor. Seed 1's `LAW_VIABLE`
+drifted 0.7 -> 0.6186. Both moves are toward judging less and reverting less, on the two runs that
+exist. That is exactly the self-reference the author named and declined to floor, happening.
+
+**What this is a candidate for.** Coverage is the `#205`/`#179` shape — declared, exercised on paper,
+unreachable in practice — and unlike `#215` it is not gated behind a gene that merely needs time: the
+table grew and the walker did not. Whether that wants fixing, and whether a fix could avoid authoring
+a policy, is a question for a swing and not for this entry. Two seeds, one horizon, said out loud.
