@@ -149,6 +149,15 @@ globalThis.__cohElig=function(v,n){ const C=globalThis.__COHE;
 // wastedAtBound. Naming clampedToFloor the waste would be a counter measuring something other than
 // its name, which is the defect this whole batch has been about, caught here in a new instrument
 // before its number was published rather than after.
+// #216t: LAW TABLE COVERAGE. A previous note (#203-era) did this arithmetic at the SEED values --
+// LAW_RATE 0.0006, LAW_PROBATION 1200, 32 rows, 7.2 proposals per 12k against 10 verdict slots --
+// and concluded "the law table has outgrown the machinery that walks it". What it could not do is
+// say which rows actually get tried, because __lawLog is capped at 40 entries and a long run
+// overflows it. And both governing knobs are THEMSELVES laws that drift, so the seed arithmetic is a
+// snapshot, not the rate. This records every row name ever put on trial, so coverage is measured
+// rather than predicted. Counting only -- no draws.
+globalThis.__lawSeen=Object.create(null);
+globalThis.__lawNote=function(n){ try{ globalThis.__lawSeen[n]=(globalThis.__lawSeen[n]|0)+1; }catch(e){} };
 globalThis.__geneTrace={};
 globalThis.__geneStep=function(name,before,raw,after){ try{
   const T=globalThis.__geneTrace, g=T[name]||(T[name]={offers:0,fired:0,clampedToFloor:0,clampedToCeil:0,moved:0,wastedAtBound:0,final:0,maxSeen:0,ticksAtZero:0,firstMoveAtOffer:-1});
@@ -220,6 +229,9 @@ patch("          const motif={t:c.tendency.map(v=>+(v.toFixed(3))),s:c.size,c:+(
       "          const motif={t:c.tendency.map(v=>+(v.toFixed(3))),s:c.size,c:+(c.coherence.toFixed(2)),age:c.persistAge};\n" +
       "          globalThis.__cohElig(c.coherence,c.size);",
       'coherence.eligible');
+patch("  recordEvent('law_propose',{law:row.name,from:+from.toPrecision(4),to:+to.toPrecision(4)},0);",
+      "  globalThis.__lawNote(row.name); recordEvent('law_propose',{law:row.name,from:+from.toPrecision(4),to:+to.toPrecision(4)},0);",
+      'law.propose');
 patch("  genome.atomIdleTolerance=__cl(maybe(finiteOr(genome.atomIdleTolerance,0),0,1,0.15),0,1);",
       "  {const _b=finiteOr(genome.atomIdleTolerance,0),_r=maybe(_b,0,1,0.15),_a=__cl(_r,0,1);globalThis.__geneStep('atomIdleTolerance',_b,_r,_a);genome.atomIdleTolerance=_a;}",
       'gene.ait');
@@ -404,6 +416,19 @@ const driver=`
       c+=pLin[i]; }
     return {n,pos:+a.toFixed(6),amp:+b.toFixed(6),lin:c,tick:(typeof tick!=='undefined'?tick:-1)};
   }catch(e){ return {error:String(e&&e.message||e)}; } };
+  // #216t: read from INSIDE the module. The first version of this block sat in the outer harness
+  // scope beside geneTrace and read LAW_DECLARED / LAW_RATE / LAW_PROBATION through
+  // typeof-guards — which are lexical to the compiled engine, so every guard returned false and the
+  // row reported declaredRows -1 with rate, probation and viable all null. The guards did their job
+  // and did not throw; -1 and null are exactly the shape of a value that reads as data. Caught by
+  // looking at the boot output instead of at the absence of an error.
+  globalThis.__lawState=function(){ try{
+    return { declaredRows:LAW_DECLARED.length,
+             rate:+LAW_RATE.toPrecision(4), probation:Math.round(LAW_PROBATION),
+             viable:+LAW_VIABLE.toPrecision(4), cost:+LAW_COST.toPrecision(4),
+             baseRows:(typeof LAW_BASE_LAWS!=='undefined')?LAW_BASE_LAWS:-1,
+             trialOpen:!!__lawTrial };
+  }catch(e){ return {error:String(e&&e.message||e)}; } };
   globalThis.__state=function(){ try{ let alive=0; for(let i=0;i<N;i++)if(palive[i])alive++;
     return { alive, atoms:(genome.userAtoms||[]).length, maxAtoms:(typeof MAX_USER_ATOMS!=='undefined')?MAX_USER_ATOMS:-1,
       motifs:(genome.stableMotifs||[]).length, motifCap:genome.motifMemorySize,
@@ -540,6 +565,15 @@ console.log(JSON.stringify({
     return {n:C.n, mean:+(C.sum/C.n).toFixed(4), min:+C.min.toFixed(4), max:+C.max.toFixed(4),
             fracAtOrAbove0p9:+(C.ge0p9/C.n).toFixed(4)}; })(),
   mkbWitness:globalThis.__mkbWitness,
+  law:(function(){ const seen=globalThis.__lawSeen||{}, names=Object.keys(seen);
+    const ls=globalThis.__lawState?globalThis.__lawState():{};
+    const rows=ls.declaredRows|0;
+    return Object.assign({}, ls, {
+             proposals:L('cosmos.law'), kept:L('cosmos.lawKept'), reverted:L('cosmos.lawRevert'),
+             brakeRows:L('cosmos.brake'), distinctRowsTried:names.length,
+             coverage:rows>0?+(names.length/rows).toFixed(3):null,
+             tried:seen });
+  })(),
   geneTrace:globalThis.__geneTrace,
   loopErrors,lastErr,driverErr:globalThis.__driverErr||0
 },null,1));
