@@ -19211,3 +19211,61 @@ exist. That is exactly the self-reference the author named and declined to floor
 unreachable in practice — and unlike `#215` it is not gated behind a gene that merely needs time: the
 table grew and the walker did not. Whether that wants fixing, and whether a fix could avoid authoring
 a policy, is a question for a swing and not for this entry. Two seeds, one horizon, said out loud.
+
+### #216t follow-up — the registered question about bootstrapping, answered as far as the data goes
+
+The `#203` entry left a question rather than a fix. It established that thirty-two rows at 1,200 ticks
+of probation is 38,400 ticks to try everything once, that *"running trials concurrently would break
+attribution, which is exactly why they are serial"*, and that the ceiling is therefore **a
+bootstrapping problem rather than a wall** — `LAW_RATE` can evolve to 0.004 and `LAW_PROBATION` down
+to 200, which together would exercise the whole table. Then:
+
+> *"Whether any world finds that move is an empirical question nobody has asked, and it is a better
+> one than anything I would have invented."*
+
+**I was about to make the swing instead.** The change was well-formed — let the proposal clock run
+during probation so the cycle is `max(probation, wait)` rather than their sum, ~1.7x the throughput,
+one trial at a time preserved, attributability untouched. It has a clean dependent variable
+(coverage, a count, not the noisy ratio). I stopped because the answer to the registered question is
+partly already in the archive and partly in my own two runs, and **making the swing would foreclose
+the question rather than answer it.**
+
+**The bootstrap needs two moves: rate UP and probation DOWN. Across everything measured, worlds find
+one of them and move the other backwards.**
+
+```
+probation DOWN   FOUND.  My seed 2: LAW_PROBATION proposed once, 1200 -> clamped to its floor of
+                 200, kept. That half of the bootstrap happens on its own.
+
+rate UP          NOT OBSERVED, and the one recorded time a world proposed LAW_RATE it went the
+                 WRONG WAY: #200b's live run, "LAW_RATE 0.0006 -> 0.0001 kept — the world SLOWED
+                 ITS OWN LAW MUTATION RATE by six times", holding its population while doing so.
+                 On both of my 60k runs LAW_RATE was never proposed at all — it is one of the
+                 thirteen rows the walker never reached.
+```
+
+**And there is a self-reference in the blockage that is worth stating plainly.** The move that would
+fix coverage requires drawing `LAW_RATE`, and `LAW_RATE` is drawn under exactly the coverage it would
+fix: at ~24 proposals over 32 rows, any given row is missed with probability ~47% per 60k run. **The
+row that sets the price of law trials is reached no more often than any other row.**
+
+So the ceiling is not one obstacle but two, and only the first is arithmetic:
+
+1. **Reach.** You have to draw the row, and roughly half the time across a 60k run you do not.
+2. **Direction.** The one time it was drawn and judged, the world chose to propose changes to itself
+   *less* often, and the verdict kept it. `#200b`'s own comment on that: *"a world evolving to be more
+   conservative, chosen rather than imposed, and it is the opposite of what I would have predicted."*
+
+**That second point is why I am not swinging.** Engineering more proposal throughput would override a
+choice a world actually made when it was given one. That is the same thing `#148` protects and the
+same thing the `LAW_VIABLE` comment protects — *"putting a floor under it would be me keeping the
+brake I just claimed to hand over."* A throughput fix is a floor under `LAW_RATE` wearing different
+clothes.
+
+**What would actually settle it, and it is a knob rather than a swing.** Force `LAW_RATE` to be the
+proposed row repeatedly and record which direction the verdicts favour. If worlds reliably slow
+themselves, the coverage ceiling is a *preference* the system expresses and the whole framing changes.
+If the `#200b` observation was a single trajectory, it is reach that matters and the arithmetic fix
+becomes defensible. **n is currently one archived observation and two runs where the row never came
+up.** That is not enough to conclude either, and it is exactly the shape of claim this session has
+been wrong about three times.
