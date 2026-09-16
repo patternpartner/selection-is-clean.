@@ -19456,3 +19456,49 @@ chosen, it accumulated. And this file has the pattern twice already: `#157`'s pe
 inside a try block, and `#216d`'s four rigs. **Sediment survives because nobody is looking for a
 decision that was never made** — a reader checking "is this intended?" finds no comment and infers a
 decision, when the absence of a comment is the finding.
+
+### #216y confirmed — 6 of 6 bit-identical, and the boundary censors its own sample
+
+The `#216y` numbers were provisional because I edited `engine.html` while those runs were reading it.
+Re-run on the fixed engine, six seeds, `LAWROW=LAW_RATE`, `TICKS=20000`:
+
+```
+seed  clean                           provisional                     match
+1     5p rate 0        frozen True    5p rate 0        frozen True    IDENTICAL
+2     2p rate 0        frozen True    2p rate 0        frozen True    IDENTICAL
+3     6p rate 0.001468 frozen False   6p rate 0.001468 frozen False   IDENTICAL
+4     7p rate 6.516e-05 frozen False  7p rate 6.516e-05 frozen False  IDENTICAL
+5     7p rate 0.0005597 frozen False  7p rate 0.0005597 frozen False  IDENTICAL
+6     2p rate 0        frozen True    2p rate 0        frozen True    IDENTICAL
+```
+
+**Bit-identical on all six, every proposal, every digit.** `#216x` touches only
+`encodeGenome`/`decodeGenome` and draws no randomness, and it demonstrably did not perturb the law
+walk. The caveat lifts: `#216y` is measured, not provisional. The hour was still right to spend — "it
+cannot matter" is the sentence that was wrong twice this session, and the only way to stop it being
+load-bearing is to not let it be.
+
+**The mechanism test, and my first version of it was unpowered by construction.** Binning proposals
+by starting value gave `n=2` in each of the two bands that matter, where the only observable values
+are 0%, 50% and 100%. That is not a test, and reading its 50%s as confirmation would have been
+exactly the error this session has been about. The pooled version uses all 28 proposals and computes
+each one's own capture probability, `max(0, 0.5 - from/0.0014)`:
+
+```
+proposals 28    observed captures 3    expected under the basin model 2.19
+13 proposals where the model FORBIDS capture (from > 0.0007)   ->  0 captured
+15 proposals where capture is possible, summed P = 2.19        ->  3 captured
+```
+
+**The falsifiable half holds and it is the sharp one.** A capture from any value above 0.0007 would
+break the arithmetic outright, because the step cannot reach zero from there; there were none in 13
+opportunities. The probabilistic half is consistent and weak: 3 against 2.19 is unremarkable in
+either direction, and this data cannot distinguish the basin model from nearby ones.
+
+**And the reason it cannot is itself the finding: the absorbing boundary censors its own sample.** A
+trajectory that reaches the high-capture region is captured within a proposal or two and the run
+ends, so unmodified runs can never accumulate many low-value observations. Seed 2 contributed exactly
+one. **You cannot measure the capture rate near the floor from runs that start away from it** — to
+measure it you would have to START trajectories low (force `LAW_RATE` to 1e-4 at boot and count
+outcomes) rather than wait for them to arrive. That is the test that would have power, it is a knob
+rather than a swing, and it is the honest next step for whoever picks this up.
