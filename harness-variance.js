@@ -47,6 +47,7 @@ require(path.join(__dirname,'harness-env.js'))(globalThis);
 require(path.join(__dirname,'harness-env.js')).applyKnobs(globalThis);
 
 const TICKS=parseInt(process.env.TICKS||'3000',10);
+globalThis.__forcedMKB=(process.env.MOTIF_BIAS!==undefined)?Number(process.env.MOTIF_BIAS):null;
 const NSAMP=Math.max(2,parseInt(process.env.SAMPLES||'4',10));
 const VERBOSE=(process.env.VERBOSE|0)===1;
 const ASJSON=(process.env.JSON|0)===1;
@@ -136,6 +137,14 @@ const DRIVER=[
 '  out.samples.push(snap());',
 '  for(var step=0;step<T;step++){',
 '    globalThis.__detMs+=5;',
+// #216u: MOTIF_BIAS forces genome.motifKeepBias every tick, the same way harness-strata does, and
+// for the same reason (#216i: the germline drifts, so setting it once does not hold). This is the
+// CEILING arm for #215 — the shipped gene seeds at 0 and reaches 0.03-0.17 by 60-120k, so testing
+// what shipped would test a 2-to-8-eviction effect. If the mechanism at FULL strength moves nothing
+// here, the shipped rate cannot, and the expensive long run is unnecessary.
+// An assignment, not a draw: the RNG stream is untouched, though the arm is of course not
+// trajectory-neutral — it changes which motif is dropped, which is the whole point.
+'    if(globalThis.__forcedMKB!==null&&globalThis.__forcedMKB!==undefined){ try{ genome.motifKeepBias=globalThis.__forcedMKB; }catch(e){} }',
 '    try{ loop(); }catch(e){ if(!out.err) out.err=String(e&&e.message||e); }',
 '    for(var p=0;p<pts.length;p++) if(pts[p]===step+1) out.samples.push(snap());',
 '  }',
