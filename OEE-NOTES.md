@@ -19269,3 +19269,48 @@ If the `#200b` observation was a single trajectory, it is reach that matters and
 becomes defensible. **n is currently one archived observation and two runs where the row never came
 up.** That is not enough to conclude either, and it is exactly the shape of claim this session has
 been wrong about three times.
+
+### #216w — CORRECTION to #216v, and the larger thing behind it: no evolved law survives a reload
+
+**First the correction. `#216v` said `LAW_RATE=0` freezes the law layer "permanently" within a
+universe. That is wrong.** A universe persists across reloads (`#170`), and **law values do not**. A
+reload resets `LAW_RATE` to its declaration of 0.0006, so the freeze is session-local. I verified the
+absorbing mechanism correctly and then overstated its reach by one word, in the same commit where I
+was careful to verify everything else.
+
+**The larger finding, measured rather than read.** A probe that drives a law, saves through
+`encodeGenome`, scrambles the live value, then loads through `decodeGenome` + `sanitizeGenome`:
+
+```
+before 0.0006  ->  set 0 (absorbing)  ->  SAVE  ->  scramble to 0.0033  ->  LOAD
+afterLoad            0.0033          restoredByLoad  false
+lawRateAppearsInBlob false           logSurvives     true
+```
+
+The load left the scrambled value alone. **No law value is written to the blob or read from it.**
+What IS saved is the legislative RECORD — `LAW:(__lawLog||[]).slice(-40)` at 11203, restored at 11571
+as `if(Array.isArray(g.LAW))__lawLog=g.LAW;`. There is no other write path into `LAW_DECLARED`
+anywhere: three `row.set(` sites total (plasmid import 1134, revert 2243, proposal 2264), no loop
+over the table, no bulk restore.
+
+**So every evolved law value is session-local.** A world that spends 60,000 ticks evolving its
+economy — `CHANNEL_RENT`, `BIRTH_ENERGY_COST`, `FIELD_DECAY`, all 32 rows — comes back from a reload
+with the seeded economy and a log saying it once changed things. The genome persists: atoms, motifs,
+channels, all 191 keys. The economy does not.
+
+**And the asymmetry that makes it strange rather than merely absent.** The outbound plasmid sends the
+last KEPT law as `_pk.law=[_li,+_kept[3]]` (1690), and the inbound path writes it with `row.set(to)`.
+**An evolved law can reach another universe but cannot reach its own next session.** Horizontally
+transmissible, vertically discarded.
+
+**Not filed as a defect, and not claimed as a decision either, because it is neither recorded.** A
+coherent artistic reading exists: the lineage persists and the world is new each time, so fresh
+physics is the point. Nothing in `OEE-NOTES` or `CODEMAP` says so, and `#197`'s framing — "the brakes
+are laws", the world "prices itself" — reads differently once the pricing is known to reset. I am
+recording the measurement and the tension, not resolving them; the resolution is the author's.
+
+**What it means for everything else measured this session.** `#216t`'s coverage (13 of 32 rows ever
+tried), `#216t`'s 39-of-39-kept, and `#203`'s bootstrapping question are all *within-session*
+quantities. Whatever a world works out about its own laws, it works out again from scratch next time.
+That is the strongest reason yet that the coverage ceiling matters: a world does not get to accumulate
+its way past it across sessions, only within one.
