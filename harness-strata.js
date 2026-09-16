@@ -36,6 +36,7 @@
 // Env: SEED  TICKS (default 12000)
 const fs=require('fs');
 const TICKS=parseInt(process.env.TICKS||'12000',10);
+globalThis.__LAWROW=process.env.LAWROW||null;
 // CULLDOOR multiplies the atom cull's entry probability. #208 measured that door opening once per
 // 20,000-63,000 ticks, which is why the cull's four conditions and its atomIdleTolerance dial have
 // never been evaluated. That leaves a registered prediction hanging -- "open the door and the gene
@@ -229,6 +230,15 @@ patch("          const motif={t:c.tendency.map(v=>+(v.toFixed(3))),s:c.size,c:+(
       "          const motif={t:c.tendency.map(v=>+(v.toFixed(3))),s:c.size,c:+(c.coherence.toFixed(2)),age:c.persistAge};\n" +
       "          globalThis.__cohElig(c.coherence,c.size);",
       'coherence.eligible');
+// #216v: FORCE WHICH ROW IS PROPOSED. The draw is still consumed, then the index is overridden, so
+// the RNG stream is identical to an unforced run and the arms differ only in which row is targeted.
+// This is the same shape as MOTIF_BIAS in #216u: a full-exposure probe. LAW_RATE is proposed on about
+// 1 in 32 proposals normally, which is why two 60k runs never saw it once; forcing it asks what
+// happens WHEN it is proposed, which is the direction question #203 registered.
+patch("  const idx=(Math.random()*_span)|0;",
+      "  let idx=(Math.random()*_span)|0;\n" +
+      "  if(globalThis.__LAWROW!==undefined&&globalThis.__LAWROW!==null){ for(let _i=0;_i<LAW_DECLARED.length;_i++) if(LAW_DECLARED[_i].name===globalThis.__LAWROW){ idx=_i; break; } }",
+      'law.rowforce');
 patch("  recordEvent('law_propose',{law:row.name,from:+from.toPrecision(4),to:+to.toPrecision(4)},0);",
       "  globalThis.__lawNote(row.name); recordEvent('law_propose',{law:row.name,from:+from.toPrecision(4),to:+to.toPrecision(4)},0);",
       'law.propose');
@@ -426,6 +436,8 @@ const driver=`
     return { declaredRows:LAW_DECLARED.length,
              rate:+LAW_RATE.toPrecision(4), probation:Math.round(LAW_PROBATION),
              viable:+LAW_VIABLE.toPrecision(4), cost:+LAW_COST.toPrecision(4),
+             log:(typeof __lawLog!=='undefined')?__lawLog.map(r=>({tick:r[0],row:r[1],from:r[2],to:r[3],kept:!!r[4]})):null,
+             frozen:(LAW_RATE<=0),
              baseRows:(typeof LAW_BASE_LAWS!=='undefined')?LAW_BASE_LAWS:-1,
              trialOpen:!!__lawTrial };
   }catch(e){ return {error:String(e&&e.message||e)}; } };
