@@ -20613,3 +20613,26 @@ guaranteed and means nothing yet. `retentionPerCapita` sits at 1.4-1.5, i.e. per
 — raw material accumulating with nothing sorting it, which is what drift looks like. The chemistry
 verdict (`#217s`) reverted 0 of 15 trials, correctly, because `#217f` showed the chemistry is
 causally inert: **the verdict works and its subject is empty.**
+
+#### #217s ON/OFF arm — the verdict throttles, and the OFF arm diverges for an unrelated reason
+
+```
+  CHEM_VERDICT=1   trial=15  kept=14  revert=0   table=53:103761   chemExec=3678   alive=211
+  CHEM_VERDICT=0   trial=0   kept=0   revert=0   table=52:93639    chemExec=0      alive=268
+```
+
+The knob works: no trials with the verdict off. And the tables show the throttle — the seed table is
+`53:102583` (`#217d`), so ON stays adjacent to it (53 monomials, digest moved 1%) while OFF has
+drifted away and spliced a monomial out (52, digest moved 9%). One trial at a time means far fewer
+chemistry mutations land, which is the mechanism doing its job.
+
+`revert=0` remains correct rather than disappointing: `#217f` proved the chemistry causally inert, so
+no change to it drops the population below viability. **The verdict is right and its subject is
+empty.**
+
+**`chemExec=0` in the OFF arm is NOT a knob effect and it would be easy to report as one.** The
+verdict suppresses chemistry mutation during probation, which changes how many draws are consumed, so
+the two arms are on different trajectories — OFF reached 20,000 ticks without igniting the substrate
+at all, and ON did. Not draw-neutral, unlike `CHEM` and `INSCRIBE`, and it cannot be: throttling the
+mutation IS the intervention. Stated because a reader comparing those two `chemExec` figures would
+otherwise conclude the verdict enables the chemistry, and it does not.
