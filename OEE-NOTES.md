@@ -19502,3 +19502,55 @@ one. **You cannot measure the capture rate near the floor from runs that start a
 measure it you would have to START trajectories low (force `LAW_RATE` to 1e-4 at boot and count
 outcomes) rather than wait for them to arrive. That is the test that would have power, it is a knob
 rather than a swing, and it is the honest next step for whoever picks this up.
+
+### #217a result — the basin model is CONSISTENT at pooled n=50, and the design that powered one half de-powered the other
+
+Twelve seeds, `LAWROW=LAW_RATE`, `LAWSTART=0.0001`, `TICKS=25000`. **Ten of twelve froze.**
+
+```
+                       proposals  captures  predicted    sd     z
+batch 1 (seeded start)     28         3        2.19     1.26  +0.64
+batch 2 (boot at 1e-4)     22        10        7.60     2.15  +1.12
+POOLED                     50        13        9.79     2.49  +1.29
+```
+
+Predicted is the sum of each proposal's own `max(0, 0.5 - from/0.0014)`, so the test uses every
+proposal at its own capture probability rather than binning.
+
+**PRIMARY: consistent, and it stays "consistent" rather than "measured", exactly as pre-registered.**
+Pooled z = +1.29. The observed count runs a little above the model in both batches independently,
+which is worth noting and is not significant at this n. **At sd 2.49 any model predicting 8 to 12
+captures fits this data**, so the experiment cannot separate the basin model from its neighbours. The
+criterion agreed in advance: measured means the data could have come out otherwise in a way that
+changes the conclusion. It could not. Consistent at pooled n=50.
+
+**SECONDARY, reported as observation and not as test:** six of the ten captures happened on the very
+first proposal, from the boot value of 0.0001 where P=42.9%. Five of twelve is the expectation and six
+is what happened. The remaining four came from values reached after one step. Nothing here is
+powered; it is recorded because it is the shape the model implies and it did not visibly contradict
+it.
+
+**AND THE COST OF THE DESIGN, which is the real finding and it is symmetric with `#216y`'s.** Booting
+low is what gave the primary test its power - 22 proposals with summed predicted 7.60 against batch
+1's 2.19. But it almost eliminated the FALSIFIABLE half. The hard prediction is that capture is
+impossible from above 0.0007, and a trajectory that starts at 0.0001 rarely climbs there: batch 1
+offered **13** such opportunities, batch 2 offered **2**. Pooled, the arithmetic now rests on 15
+opportunities with 0 captures - better than 13, but nothing like the doubling I hoped for when I
+called this the test that would strengthen it.
+
+**The two halves of the model need opposite designs.** The probabilistic half needs trajectories in
+the basin, where captures are frequent. The falsifiable half needs trajectories above 0.0007, where
+captures are forbidden and any single one refutes the arithmetic. One run cannot serve both, and I
+designed for the first without noticing I was starving the second. `#216y` found that the basin
+censors its own sample; `#217a` finds that curing that censorship censors the other test. Both are
+properties of the system rather than of the instrument, and both only appeared when the apparatus was
+built.
+
+**Verdicts: 22 judged, 22 kept, 0 reverted. Cumulative across every law measurement in this session:
+89 of 89 kept, none reverted.**
+
+**What would actually settle it**, stated so the next pass does not repeat my mistake: two arms, not
+one. A boot-low arm for the probabilistic sum, and a boot-HIGH arm (`LAWSTART` near 0.002, where the
+model forbids capture entirely) purely to accumulate impossible-opportunities. The second arm is
+cheap, because a trajectory that cannot be captured keeps proposing and never terminates - the exact
+opposite of the censoring problem, and for the same reason.
