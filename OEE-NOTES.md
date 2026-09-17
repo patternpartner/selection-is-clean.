@@ -19834,13 +19834,15 @@ field has not been measured here, and it is not written down as though it had.
 `main`.** The entry states the evolvable chemistry "has never executed" and calls it "a random walk
 on dead code". At 60,000 ticks:
 
-| seed | first op-20 seen | **first inscription** | max cell strength | cells ever active (of 1600) | `inscriptionInfluence` |
+| seed | first op-20 seen | **first NONZERO strength** | max cell strength | cells ever active (of 1600) | `inscriptionInfluence` |
 |---|---|---|---|---|---|
 | 1 | 37,692 | **37,693** | 0.998 | 11 | 0.360 |
 | 2 | 11,151 | **6,109** | 0.998 | 13 | 0.476 |
 
 The substrate ignites. Cells reach near-maximum inscription strength, recipes evaluate, and the layer
-CODEMAP calls a closed loop does close — eventually. So the correct claim is not that the chemistry is
+CODEMAP calls a closed loop does close — eventually. (**That column was headed "first inscription"
+when this was written, and read as the moment the chemistry starts computing. It is not** — see the
+third correction below. Relabelled in place; the mistake it caused is kept there rather than here.) So the correct claim is not that the chemistry is
 dead. It is that the chemistry is **LATE and SPARSE**: nothing at all for thousands of ticks, then a
 handful of cells, never more than 13 of 1600.
 
@@ -19882,3 +19884,57 @@ incoming signal was exactly zero, which is the condition the COLD START comment 
 holding-cost machinery (`META_HOLDING_K`, built precisely because dead weight read as neutral) did
 not bite within 60k ticks. That prediction is refuted on its own terms, and this one is NOT a horizon
 artifact in the same way: the gene had 60,000 ticks and ~200 chances.
+
+#### #217d, THIRD CORRECTION — THE CHAIN HAS FOUR RUNGS, NOT THREE, AND THE NEW INSTRUMENT FOUND THE ONE I MERGED
+
+The liveness names were added and then fire-tested, because **a name wired wrong is indistinguishable
+from a layer that never runs** — the precise failure this whole entry is about, so shipping the
+instrument untested would have been the joke telling itself. Seed 2 ignites at tick 6,109, so a
+7,000-tick run must show nonzero. It did, and it showed something else:
+
+```
+SEED=2 TICKS=7000   inscribe:2  inscribeFirst:6110  inscribeNet:0  chemExec:0  maxCellStr:0.0105
+```
+
+`cell.inscribe` fires at 6110 against an independently measured 6,109 — the wiring is right in all
+four `case 20:` bodies. `cell.inscribeNet` is 0, correct with no peers. But **`cell.chemExec` is
+zero**, because the inscription landed at strength 0.0105 and the execution gate is 0.05. An
+inscription existed and no recipe ran.
+
+**So `firstInscribeTick` in my probe meant "max strength became nonzero", NOT "a recipe evaluated",
+and the correction above presented it as the latter.** Running to 25,000 with the new names, which
+report the first-execution tick directly — the question the bespoke probe could not answer:
+
+| seed | `cell.inscribe` first | **`cell.chemExec` first** | inscribe fires | recipe evaluations | end `maxCellStr` |
+|---|---|---|---|---|---|
+| 2 | 6,110 | **9,541** | 5,261 | 20,279 | 0.049990 |
+| 3 | 10,854 | **10,854** | 70 | 3,821 | 0.049956 |
+
+On seed 2 the gap is **3,431 ticks** between the first mark on the substrate and the first instruction
+the substrate actually ran. The chain is not three rungs but four: **op 20 CARRIED -> op 20 FIRES ->
+strength CROSSES 0.05 -> recipe EVALUATES.** I had merged the middle two, twice.
+
+**AND THE GATE IS AN ABSORBING BOUNDARY FROM ABOVE.** Both end-of-run `maxCellStr` values sit just
+*under* 0.05 — 0.049990 and 0.049956. That is structural, not coincidence. `cellProgStr` has exactly
+one decay site in the file, `cellProgStr[idx]*=0.998`, and it is inside the per-cell loop AFTER
+`if(strength<0.05)continue;`. **A cell decays only while it is above the gate, and freezes the instant
+it drops below.** From a fresh 0.998 to the gate is `ln(0.05/0.998)/ln(0.998)` ~= **1,495 ticks**, so
+each strong inscription buys about fifteen hundred ticks of chemistry and then parks forever, one
+part in a thousand under the line.
+
+The engine's comment there reads "Inscription decay — rules fade unless reinforced". They fade to
+just below 0.05 and then stop fading. **Not called a bug** — CLAUDE.md's rule is to check for a
+STANDING note before naming one, and there is no note on this either way; the practical consequence
+is also small, since the residue is inert (below the execution gate) and trivially overwritten (op 20
+rewrites when `writeStr20 > cellProgStr*0.8`, i.e. above 0.04). What it IS, is the reason
+`everMaxCellStr` (0.998) and end-of-run `maxCellStr` (0.0499) mean completely different things — and
+conflating those two is what produced this correction and the one before it.
+
+**A note on the shape of this entry.** Three corrections, each narrower than the last: "never
+executes" -> "executes late and sparse" -> "the tick I called first-execution was first-mark, and
+they are 3,431 ticks apart". That is not three separate mistakes so much as one claim being forced to
+get more specific each time it met a measurement. Worth leaving visible in that order, because the
+first version was the confident one.
+
+Gate: `substrate-test` 260 passed / 0 failed at `TICKS=40 SEED=1` with the liveness patch in.
+`LIVENESS_DECLARED` is now 117 names.
