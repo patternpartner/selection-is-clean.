@@ -5171,7 +5171,12 @@ let genome={
   // mechanism can disprove itself. That recursive self-disproof falls out for free —
   // no special-case code — and is the strongest safety property available here.
   // atrophyRate=0 → Pe39 exactly (loop stays open, attribution observational only).
-  atrophyRate:0.05,          // 0=Pe39 exactly. >0 closes the attribution loop. Evolvable.
+  atrophyRate:0.12,          // 0=Pe39 exactly. >0 closes the attribution loop. Evolvable.
+                             // #217x: was 0.05 here while sanitizeGenome has defaulted it to 0.12
+                             // since the AUTONOMY change ("higher default (0.05->0.12)"). sanitize
+                             // overwrites it, so behaviour was always 0.12 and only this line was
+                             // wrong -- but it is the line a reader checks. #216k's shape: a stale
+                             // literal beside a live one.
 
   // ═══ LAYER 31: META-SIGNAL — attribution state as VM-accessible data (Pe42) ═══
   // Pe37–Pe41 built a reliable self-portrait at the meta level: which layers are
@@ -15758,7 +15763,11 @@ function profileVM(){
           // Profiler runs outside the mutation cycle, so metaSignalValue is whatever was
           // last computed. Non-zero so genomes reading meta health get a meaningful profile.
           const msiProf=genome.metaSignalInfluence||0;
-          vmRegs[di]=(genome.metaSignalValue||0.3)*msiProf*(k||1);
+          // #217x: ?? not ||. metaSignalValue is a CACHE in [0..1] recomputed every mutation cycle,
+          // and 0 is one of its real values -- attribution health of zero. With || a genuine 0 read
+          // as the 0.3 neutral stub, so the one state the opcode most needed to report was the one
+          // it could not. Same falsy-zero trap as the volatility read below.
+          vmRegs[di]=(genome.metaSignalValue??0.3)*msiProf*(k||1);
         }break;
         case 27:{                       // META_GRAD_READ (Pe43) → use cached gradient
           const msgiProf=genome.metaSignalGradInfluence||0;
@@ -15766,7 +15775,9 @@ function profileVM(){
         }break;
         case 28:{                       // META_VOL_READ (Pe44) → use cached volatility
           const msviProf=genome.metaSignalVolInfluence||0;
-          vmRegs[di]=(genome.metaSignalVol||0.1)*msviProf*(k||1);
+          // #217x: ?? not || -- see metaSignalValue above. A genuine volatility of 0 (a perfectly
+          // steady attribution signal) read as the 0.1 stub.
+          vmRegs[di]=(genome.metaSignalVol??0.1)*msviProf*(k||1);
         }break;
         case 29:{                       // ATTR_QUERY (Pe45) → trace of indexed meta-param
           const mmbProf=genome.metaMutationBias||0;
