@@ -57,8 +57,23 @@ const html=fs.readFileSync(process.env.INDEX||path.join(__dirname,'engine.html')
 const code=html.match(/<script>([\s\S]*)<\/script>/)[1];
 const lines=code.split('\n');
 
-// ── 1. THE KEYS, read from the genome literal itself. A hand-kept list goes stale silently and a
-// census that misses a gene reports it as absent rather than as unexamined (#209's rule).
+// ── 1. THE KEYS. Read from the genome literal AND from the living population, unioned.
+// The literal alone was the original design, for a good reason: a hand-kept list goes stale silently
+// and a census that misses a gene reports it as absent rather than as unexamined (#209's rule).
+// #217g measured what that reasoning cost. Parsing the literal is ALSO a list that goes stale, just
+// automatically: 192 keys appear in the literal and 258 on a live pGenome[i], because sanitizeGenome
+// installs the other 66 rather than the literal declaring them --
+// "if(genome.field2WriteInfluence===undefined)genome.field2WriteInfluence=0.1;". Zero go the other
+// way; the literal is a strict subset. The 66 are not obscure. They include channels, probes,
+// opStacks, oeeW, uaOps, uaProdW, uaVarW and draw -- the authored structures this project exists to
+// watch -- plus about fifty *Influence genes, which are the meta-layer parameters META_LAYER_PARAMS
+// and the attribution machinery act on. So a quarter of the genome, the structural genes among it,
+// was coming back ABSENT rather than unexamined from the census the front page nominates as the
+// answer to the missing dependent variable. Exactly #209's failure, by a route #209 did not foresee.
+// The union is taken from the LIVING POPULATION at every sample rather than once, because a key can
+// arrive later in a run than the first sample. A key discovered late is genuinely absent from the
+// earlier samples, and the classifier below treats it that way instead of crashing on it -- the
+// trajectory column then shows when it arrived, which is information rather than a gap.
 let gStart=-1;
 for(let i=0;i<lines.length;i++) if(/^let genome=\{/.test(lines[i])){ gStart=i; break; }
 if(gStart<0){ console.error('genome literal not found'); process.exit(1); }
@@ -112,6 +127,9 @@ const DRIVER=[
 '  var snap=function(){',
 '    var living=[];',
 '    for(var i=0;i<N;i++) if(palive[i]&&pGenome[i]) living.push(pGenome[i]);',
+'    if(!globalThis.__kseen){ globalThis.__kseen={}; for(var z0=0;z0<KEYS.length;z0++) globalThis.__kseen[KEYS[z0]]=1; }',
+'    for(var q=0;q<living.length;q++){ var lk=Object.keys(living[q]);',
+'      for(var z=0;z<lk.length;z++) if(!globalThis.__kseen[lk[z]]){ globalThis.__kseen[lk[z]]=1; KEYS.push(lk[z]); } }',
 '    var s={t:tick,alive:living.length,keys:{}};',
 '    for(var k=0;k<KEYS.length;k++){',
 '      var key=KEYS[k];',
@@ -168,10 +186,16 @@ const samples=res.samples, last=samples[samples.length-1];
 // the #137 crossing failure and is worth seeing, not worth averaging in.
 const CLS={VARYING:[],SWEPT:[],PINNED:[],FLAT:[],ABSENT:[]};
 const rows=[];
+// #217g: a key unioned in from the living population can be newer than an earlier sample, so that
+// sample simply has no record for it. Absent is the truthful reading, and it keeps the trajectory
+// column honest about when the key arrived. Without this guard the census throws on the 66 keys it
+// had previously not been able to see at all.
+const NOREC={present:0,distinct:0,numeric:0,min:null,max:null,germ:'u',germNum:null};
+const at=(smp,k)=>smp.keys[k]||NOREC;
 for(const key of KEYS){
-  const l=last.keys[key];
-  const everVaried=samples.some(s=>s.keys[key].distinct>1);
-  const first=samples[0].keys[key];
+  const l=at(last,key);
+  const everVaried=samples.some(s=>at(s,key).distinct>1);
+  const first=at(samples[0],key);
   let cls;
   if(l.present===0) cls='ABSENT';
   else if(l.distinct>1) cls='VARYING';
@@ -185,7 +209,7 @@ for(const key of KEYS){
   rows.push({key,cls,distinct:l.distinct,present:l.present,numeric:l.numeric>0,
              min:l.min,max:l.max,germ:l.germNum,
              firstDistinct:first.distinct,
-             traj:samples.map(s=>s.keys[key].distinct)});
+             traj:samples.map(s=>at(s,key).distinct)});
 }
 // The germline/population disagreement, counted separately: a key where every living particle holds
 // one value and the germline holds a different one.
