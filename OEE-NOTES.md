@@ -20466,3 +20466,30 @@ verdict (`#217i`), the gap between the two verdict windows (`#217p`), and noise 
 layer (this). Each fix was necessary and none was sufficient, and the second and third were only
 visible once the first stopped dominating. Worth saying plainly because the first entry claimed a
 single mechanism and a fixed point, and the truth was three mechanisms in series.
+
+#### #217q result — the literal is complete, and every one of 262 genes is now present
+
+Gate 260/0. Census at `TICKS=3000 SEED=1`:
+
+| | `#217k` | `#217q` |
+|---|---|---|
+| total | 262 | 262 |
+| VARYING | 228 | **236** |
+| FLAT | 29 | 26 |
+| PINNED | 3 | **0** |
+| ABSENT | 2 | **0** |
+| SWEPT | 0 | 0 |
+
+`oeeW` flipped FLAT -> **VARYING, 31 distinct**: declaring it as `[]` lets sanitize fill it to
+`OEE_PROXY_N` per genome, so it has values to differ in. The other six land FLAT with `present=200`,
+and that is the correct reading rather than a defect — they are RECORDS that start identical and only
+diverge on events. `netApplied`/`netAckApplied` count packets from peers and there are no peers in a
+lone headless universe; `alienPredict` is the same; `vitalMemory` is empty until a vital tick; `draw`
+is `sanitizeDraw`'s default; `opStacks` is one shape. **FLAT-and-present is informative. ABSENT was
+not** — it could not distinguish "a record with nothing in it yet" from "a gene that does not exist",
+and the census reported both the same way.
+
+Where the genome census stands after today: **192 keys declared this morning, 262 now, 0 absent, 0
+pinned.** The blindness that opened this thread (66 invisible fields, every authored structure among
+them) is closed at the source, and `harness-variance`'s runtime union is now belt-and-braces rather
+than the fix.
