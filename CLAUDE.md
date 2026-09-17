@@ -103,7 +103,7 @@ git checkout main && git merge --ff-only <branch> && git push -u origin main
   `pkill -f "timeout 900 node substrate-test"` have both taken out the session's own process
   (exit 144) and every sibling run with it. Kill explicit PIDs you have just listed and checked.
 
-## Four traps this repo has paid for repeatedly
+## Five traps this repo has paid for repeatedly
 
 - **A rig embeds the engine's source in a JS template literal.** A backtick anywhere in a comment
   you add to `engine.html` or to a rig's appended block terminates that literal. It fails as
@@ -136,6 +136,21 @@ git checkout main && git merge --ff-only <branch> && git push -u origin main
   `__chanUpdates`, `__liveness`), differenced across the steps you care about, plus scans that draw
   nothing. Same question, zero perturbation. `#216l` diagnosed a two-row failure on one seed this way
   on the first run.
+- **A NAME SEARCH CANNOT SEE A VALUE REACHED THROUGH AN ALIAS, and this file has paid for that three
+  times.** Grep finds the identifier; it does not find the local that was assigned from it, the helper
+  that wraps it, or the element handed out of it. Each time, the grep came back clean and the
+  conclusion drawn from the silence was wrong:
+  - `#216k` — a stale literal `0.6` lived inside `CHANNEL_RENT_SAFE()`'s `||` fallback. Grepping
+    `CHANNEL_RENT` did not find it, so a sweep concluded "the class has one member" and shipped.
+  - `#216l` — `out.warp` clears the population's banks INSIDE its own `rule()` helper. Grepping
+    `govSelfOnly` reported a defect that was not there and missed the one that was.
+  - `#217c` — `chemistryTable` is mutated through `recipe` and `mono`, aliases taken out of it, on
+    lines that never contain the word. Grepping the name said "never mutated". It is mutated hard.
+  **When the question is "is this ever written / cleared / read", grep the name to find the
+  candidates and then read the enclosing function.** Better: ask the structural question instead —
+  which blocks do X and not Y — because that returns the sites directly and does not depend on what
+  anything is called. `#216l` and `#217b` were both found that way after a name search had already
+  declared the area clean.
 - **An unbounded value is not automatically a bug here, and the decision that made it unbounded
   lives in `OEE-NOTES.md`, not in the code.** `maybe(val,min,max,magnitude)` ignores `min` and
   `max` at all 66 call sites *on purpose* — `#148` records the author declining to clamp it, in
