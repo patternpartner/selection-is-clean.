@@ -9303,6 +9303,24 @@ let genome={
   tendDims: 5,
   rend: null,
   boundOpcodes: [],
+  // === #217n: TWO GENES THAT WERE NEVER PRESENT AT ALL ===
+  // #217k's census reports uaProdW and uaVarW as ABSENT: value undefined on every living particle,
+  // across three seeds. Not FLAT, not PINNED -- absent. The cause is a guard: sanitizeGenome wraps
+  // both in "if(genome.uaProdW!==undefined){...}", so when the field is missing it does nothing
+  // rather than installing it, and nothing declared it here. mutateGenome does create uaProdW on the
+  // SELF at its first cycle, but a particle only ever gets the field if its ancestor was born after
+  // that, and measured, none of them had.
+  // What that cost: uaProdW() returns the literal fallback [1,1,1,1,1] whenever the gene is not an
+  // array of five, so #180's "five INDEPENDENT production weights" were a constant in every universe
+  // this project has ever run. Same for uaVarW and the per-leaf sense weights -- #180's own comment
+  // says they are "seeded all-ones, which IS the uniform draw uaGenTerm has always made", and they
+  // never left it because they were never there.
+  // The values below are exactly those initialisers, so a seed genome is unchanged and the uniform
+  // draw is preserved. uaVarW derives its length from UA_ALL_VARS rather than hard-coding 33, so it
+  // cannot go stale against a vars list that grows -- which it has (#135 added the at symbol, #174 the
+  // creature's own voices, and the comment above uaVarWeight still says "twenty-five senses").
+  uaProdW:[1,1,1,1,1],
+  uaVarW:UA_ALL_VARS.map(()=>1),
   // === #217l: THE 57 GENES THAT WERE NEVER DECLARED ===
   // #217g measured harness-variance enumerating keys from THIS literal and therefore blind to 66
   // fields, because sanitizeGenome installed them instead of the literal declaring them --
@@ -10195,7 +10213,16 @@ function crossoverProg(progA,progB,cap){ fired('prog.crossover'); // single-poin
 // field" was always too broad, and the exceptions have to be named.
 // This DOES shift the RNG stream (three fewer draws per birth), so seeded runs diverge from builds
 // before it. That is a change of baseline, not of behaviour.
-const CHILD_NOT_A_GENE=['totalTicks','generation','extinctions'];
+// #217n: prevSmoothedFitness joins them, and for #140's own stated reason. #140 excluded three
+// fields because "a random walk on a clock is a category error -- it does not explore a range, it
+// corrupts a record", and this is a record: it is declared "for fitnessDelta computation" and
+// overwritten every evaluation with genome.prevSmoothedFitness=currentFitness. Walking it randomly
+// at birth corrupts one tick's fitness delta for the child and explores nothing, because the next
+// evaluation overwrites whatever the walk produced. #217g found it the hard way -- it is the SINGLE
+// field of 258 that differed between the INSCRIBE arms, at a relative 7.85e-11, which is exactly
+// what a cache of a slightly different fitness looks like. That made it the one channel by which the
+// inscribed substrate touched the genome at all, and it was never a trait.
+const CHILD_NOT_A_GENE=['totalTicks','generation','extinctions','prevSmoothedFitness'];
 // === #192 - A DISCRETE GENE NEEDS A DISCRETE OPERATOR ON THE CHILD ROUTE TOO ====================
 // MEASURED DEFECT, and it is a worse shape than #179's: 12,000 ticks with #192 live gave
 // tick.rateStep 0, tick.phaseStep 0, tick.skipped 0, and tick.moved germline 0 / population 0. The
