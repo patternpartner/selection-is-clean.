@@ -19689,3 +19689,141 @@ one would forge a decision and hand the next reader a fake reason to stop lookin
 `#205` failure mode with the sign flipped (`#205` re-found a real STANDING note and wrote it up as a
 defect; this would be inventing a STANDING note that never existed). The comment also carries the
 grep warning, because the alias blindness above is what made this whole entry necessary.
+
+### #217d — THE EVOLVABLE CHEMISTRY HAS NEVER EXECUTED, AND THE KNOB THAT PROVES IT MOVES NO DRAW
+
+`#217c` answered "should `chemistryTable` be deep-copied?" by counting its READ SITES: exactly one,
+`updateField()`, with zero `pGenome[i]` readers. That is one step away from a question nobody here had
+asked, and the step is short enough to be embarrassing. **Counting read sites is not counting read
+EVENTS.** The table has one reader. How often does the reader read?
+
+**Zero times. Not rarely — zero.**
+
+**THE CONTROL DID NOT EXIST, AND THE OBVIOUS WAY TO BUILD IT WOULD HAVE BEEN CONFOUNDED.** There was
+no `CHEM` knob. `harness-env.js`'s own front matter states the rule — a gate with no env line is
+unreachable from a harness — and this one had no gate at all. The obvious knob, skipping the mutation
+block, consumes ~200 fewer `Math.random()` draws per cycle (four per monomial across ~53 monomials,
+plus a push and a splice per recipe), putting the arms on different trajectories. Any difference
+measured would have been indistinguishable from the stream shift. That is the probe-draws trap wearing
+a knob's clothes.
+
+`#217c`'s finding is what made a clean arm possible. Because the read site is SINGULAR, the table can
+mutate exactly as it does today — every draw identical, at the same point in the code — and only WHICH
+table the field executes needs to change. `CHEM=0` runs `updateField()` on a deep frozen snapshot of
+the seed chemistry while the genome goes on evolving its own. **The knob itself moves no draw.** The
+arms still diverge, because the field genuinely computes differently and the world follows; that
+divergence is the effect under test, and it is the only one left.
+
+**THE RESULT, at `TICKS=6000 SEED=1`:**
+
+| | `CHEM=1` | `CHEM=0` |
+|---|---|---|
+| `alive` | 148 | 148 |
+| field fingerprint | `7094.64810673` | `7094.64810673` |
+| `absField` | 5.987817 | 5.987817 |
+| genome mutation cycles | 21 | 21 |
+| table the GENOME holds | `52:94319` | `52:94319` |
+| **table the FIELD executed** | **`52:94319`** | **`53:102583`** |
+
+The executed chemistry differs. The world agrees to twelve significant figures. Twenty-one mutation
+cycles moved the table off its seed and the universe could not tell.
+
+**A GREEN SUITE CANNOT TELL YOU THIS, AND ALMOST SAID THE OPPOSITE.** `substrate-test` returns 260/0
+on `CHEM=1` and 260/0 on `CHEM=0`. That identity is exactly the shape of a knob that does nothing —
+it is what `FOUND` looked like for the project's whole life. What separates "the knob works and the
+chemistry is inert" from "the knob is a no-op" is not the suite: it is that the genome's own table is
+identical across arms while the EXECUTED table diverges. Two different facts, and only the second is
+the finding. A pass count could not have distinguished them.
+
+**WHERE THE CHAIN BREAKS, link by link.** `updateField()` evaluates a recipe only for cells with
+`cellProgStr>=0.05`; cells are inscribed by VM opcode 20 (INSCRIBE) locally, or by peer packets.
+
+- `cellProgStr` is **exactly 0** across all 1600 cells, at every tick, through 6000 ticks. Not "below
+  the gate" — zero. Sub-threshold cells hit the `continue` BEFORE the `*=0.998` decay line, so they
+  never decay and end-of-run max is already a high-water mark; per-tick tracking agrees.
+- Opcode 20 appears in **0** instructions across 169 living particles at every one of 3000 ticks, and
+  is absent at 6000 ticks on **seeds 1, 2 and 3**. The scan is sound — the same pass counts 2199
+  instructions and 44 distinct opcodes spanning 0..429 — and `pProg[i]` is the executed array
+  (`pProg[i]=pGenome[i].vmProgram`), checked rather than assumed.
+- So STAGE 1 evaluates zero recipes, and `chemistryTable` — 12 recipes, 3-7 monomials each,
+  point-mutated every cycle at a rate that is itself meta-mutated — is a random walk on dead code.
+
+The break is at the FIRST link. Not a weak effect, not drift without selection (which is what `#217c`
+predicted and what this set out to measure). **It never runs.**
+
+**THE INSTRUMENT HAS TO COVER FOUR PATHS.** There are five `case 20:` sites. One is `profileVM()`,
+correctly stubbed to `break`. The other four are real: `executeVM` twice — once per member of the pair
+— plus `executeClusterVM` and `executeSoloVM`. A probe hooked to one would have undercounted fourfold;
+a grep would have found whichever it found first. The measurement above sidesteps this by reading
+`cellProgStr`, the state every path must write through, rather than any path itself. Same move as
+`#216l`: ask the structural question, not the nominal one.
+
+**THE COMMENT THAT PREDICTED THIS, AND THE HALF IT GOT WRONG.** `inscriptionInfluence` carries a COLD
+START note: opcode 20 "has been in the set since Pe22f — lineages using it already have warm
+substrate. Lineages that never discovered inscription start cold; `inscriptionInfluence` atrophies
+safely in that case (no signal -> no credit -> atrophy removes it)."
+
+The first half describes a population splitting into warm and cold lineages. Measured, there is no
+split: **every lineage is cold, always.** The second half is a falsifiable prediction, and its
+machinery is real — `inscriptionInfluence` is genuinely in both `META_LAYER_PARAMS` and
+`ATROPHY_SAFE`, and `META_HOLDING_K` exists precisely because the author found dead weight reading as
+neutral rather than harmful, and taxed it. At 2000 ticks the gene has drifted **up**, 0.1 -> 0.24.
+`metaMaybe` takes its UNBIASED branch when the credit trace is exactly zero (`if(mcBias<=0.001||tr===0)`),
+so whether this layer ever decays rides entirely on the holding cost driving its trace negative. This
+is as clean a natural experiment as the file is likely to get: a layer whose incoming signal is
+provably, exactly zero.
+
+**THE IMMUNE SYSTEM DID NOT COVER THIS LAYER, AND ITS OWN CHARTER DESCRIBES THIS EXACT FAILURE.**
+`LIVENESS_DECLARED` was built, in its author's words, because three mechanisms "parsed, passed their
+property tests, and never executed", and because that "is the default failure of an additive system".
+It is called "the system's immune response to decoration." The inscribed substrate predates it and was
+never enrolled — no liveness name exists anywhere in the chain. So the one instrument built to catch a
+layer that never runs was not watching the layer that never ran, and it took a bespoke probe to see
+what a declared name would have reported for free on every run since. **The immune system works. It
+was never pointed here.**
+
+CODEMAP states the opposite as settled fact: "particles write programs into the world, the world runs
+them, and the result re-enters particle cognition. **That loop is closed.**" At this budget, on these
+seeds, in a lone universe, the loop is not closed. It never opens.
+
+**A STORY THAT DIED TO TWO MORE SEEDS, KEPT BECAUSE IT WAS ABOUT TO BE WRITTEN DOWN.** Seed 1's opcode
+census looked structural: 159 of 430 opcodes ever carried, with band 5-20 at 25% and band 37-90 at
+98%. Bands 5-20 are the ACTION opcodes (SPAWN_CHILD, INSCRIBE, WRITE_PARTNER_MEM), so the reading
+wrote itself — the world keeps its senses and loses its hands. Seeds 2 and 3 cost four minutes:
+
+| | seed 1 | seed 2 | seed 3 |
+|---|---|---|---|
+| ever carried, of 430 | 159 | 230 | 113 |
+| band 5-20 | 25% | 25% | 31% |
+| band 37-90 | **98%** | **39%** | **24%** |
+| band 91-236 | 27% | 45% | 26% |
+
+The contrast was seed 1's trajectory, not the engine's shape. What survives: opcode 20 absent on 3/3
+(the claim `#217d` actually needs, and it got stronger); the repertoire is a quarter to a half of
+declared space and swings 2x by seed, so "37%" was never a number; and band 5-20 sits at 25-31% on
+every seed while its neighbours range 24-98%, which is stable-low against high-variance and is an OPEN
+QUESTION with n=3 and no mechanism, not a finding. Caveat on all of it: this counts opcodes CARRIED.
+The VM runs `for(let ip=0,_vs=0;ip<nInst&&_vs<nInst*2;ip++,_vs++)`, so carried and executed are close
+but not identical — the gap is branches and any `nInst` cap.
+
+**WHAT CHANGED, and it is deliberately small.** `CHEM`, with its `KNOBS` line in the same commit —
+the rule `#215` broke at the cost of a bisect and `FOUND` broke for its whole life.
+
+**Enrolling the chain in the liveness census lands in the NEXT commit, not this one**, and the reason
+is itself on this page: a 60k-tick sweep is holding `engine.html` open, and `#216y` paid for editing
+a file mid-flight with six runs that owed a re-run. The three names are `cell.inscribe` — in all FOUR
+real `case 20:` bodies, not the one a grep finds first — `cell.inscribeNet`, and `cell.chemExec`
+batched through `firedN`, because the per-cell path is too hot for a census call and `firedN` exists
+for exactly that. Once they are in, the deadness is visible on every run instead of needing a probe.
+
+**WHAT DID NOT CHANGE.** The fix for a cold start is to seed the substrate — inscribe cells at boot,
+or bias the opcode draw toward 20. Both are a designer's hand on the universe, both are swings with
+their own measurement, and `#217c`'s whole lesson was that acting before counting is how a plausible
+remedy ships as a regression. Recorded, not done.
+
+**AND A HYPOTHESIS THAT IS NOT MEASURED.** A universe can only broadcast an inscription it already
+holds locally (`cellProgStr>0.3`), yet the record shows 6,111 inscriptions ingested in long multi-tab
+runs — so ignition happens somewhere. It may be that peer MOTIFS carry opcode 20 across tabs, making
+the inscribed substrate a field-only phenomenon: the substrate computes only when there are many
+universes talking. That would be a lovely reading and it is consistent with everything above. The
+field has not been measured here, and it is not written down as though it had.

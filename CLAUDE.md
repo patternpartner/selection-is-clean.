@@ -25,6 +25,19 @@ headline number in your entry is a pass count, you are reporting on the wrong ar
   variance; a gene read a million times a tick and held at one value is a constant wearing a gene's
   name. `#209` asks whether a gene is read and `#210` whether it was read this run; **neither asks
   whether it moves**, which is the question selection cares about. Multi-seed, zero draws consumed.
+- **A READ SITE IS NOT A READ EVENT, and that rung is below every other one on this page.** `#217`
+  named the ladder's top (`a read is not a move`); `#217d` fell through its bottom. `#217c` counted
+  `chemistryTable`'s readers — exactly one, `updateField()` — and that count is TRUE and was used to
+  decline a deep-copy correctly. Nobody asked how often the one reader RUNS. The answer is never: it
+  evaluates a recipe only for cells with `cellProgStr>=0.05`, and `cellProgStr` is exactly 0 across
+  all 1600 cells forever, because opcode 20 (INSCRIBE) never enters a living program. Twelve recipes
+  mutate every cycle at a meta-mutated rate, and the world is bit-identical either way — a random
+  walk on dead code, with CODEMAP asserting on the same page that "that loop is closed".
+  **The ladder is: DECLARED -> CARRIED -> EXECUTED -> VARYING -> SELECTED.** `#209`/`#210` sit at
+  rung two, `harness-variance` at rung four. Before reporting any of the upper rungs for a mechanism,
+  establish that the thing ever ran once — and prefer a state every code path must write through
+  (here `cellProgStr`) over any one path, because INSCRIBE has FOUR real `case 20:` bodies plus a
+  profiler stub and a probe on one undercounts fourfold.
 - A verdict about diversity is a verdict about a HORIZON (`#66`: every diversity result in that
   session was measuring a transient). Say the budget out loud or the claim has no scope.
 - **Variance is not selection.** Drift produces variance too, and `#209` warns that every
