@@ -2163,7 +2163,15 @@ const LAW_DECLARED=[
   // principle and wants stating as one. If it may not, this is an undefended bound. That is the
   // author's call, and this comment exists so the call gets made rather than inherited from the row
   // above it.
-  {name:'LAW_RATE',      get:()=>LAW_RATE,      set:v=>{LAW_RATE=v;},      lo:0.0, hi:0.004},
+  // #217t: LAW_RATE's floor is no longer 0. #217a measured zero as an ABSORBING BASIN -- capture
+  // ~7% at the seed value, ~31% at 0.00027, ~45% near the floor -- and once captured the world stops
+  // proposing laws forever, escapable only by importing a rate from a peer. A law-rate of exactly
+  // zero is not a slow legislature, it is the permanent end of one, and it is reachable by drift
+  // because maybe() ignores its own bounds (#148 STANDING, which is about mutationRate and maybe's
+  // clamping, not about this row's lo). The floor is the smallest rate that still proposes inside a
+  // gallery visit: 1e-5 is about one proposal per 100k ticks. #216z's comment on this row documented
+  // the undefended 0.0 and left it; this defends it.
+  {name:'LAW_RATE',      get:()=>LAW_RATE,      set:v=>{LAW_RATE=Math.max(1e-5,v);}, lo:1e-5, hi:0.004},
   {name:'CHANNEL_WARP_RENT',get:()=>CHANNEL_WARP_RENT,set:v=>{CHANNEL_WARP_RENT=v;},lo:0.0,hi:1.0},  // #198
   {name:'SELFWRITE_COST',get:()=>SELFWRITE_COST,set:v=>{SELFWRITE_COST=v;},lo:0.0,hi:0.08},           // #199
   // #200b: what counts as a higher-level individual. The first laws in this table that change what
@@ -17499,6 +17507,7 @@ function inscribeOn(){ return (typeof globalThis==='undefined')||((globalThis.__
 // including LAW_VIABLE=0 meaning never revert.
 // A trial SUPPRESSES further chemistry mutation while it runs, which is the point: the old behaviour
 // mutated 12 recipes every cycle, so no single change was ever attributable to anything.
+let __fitMean=0, __fitDev=0;   // #217t: EMA of fitness and of its absolute deviation — see the probe verdict
 let __chemTrial=null;
 function chemVerdictOn(){ return (typeof globalThis==='undefined')||((globalThis.__CHEM_VERDICT??1)|0)!==0; }
 function chemTableCopy(t){ return Array.isArray(t)?t.map(r=>Array.isArray(r)?r.map(m=>Array.isArray(m)?m.slice():m):r):t; }
@@ -18066,7 +18075,20 @@ function mutateGenome(){ fired('genome.mutate');
           e.probeWait=(e.probeWait||0)+1;
           if(e.probeWait>=2){
             // The perturbed config has now run ≥2 mutation intervals.
-            const moved=Math.abs(currentFitness-(e.probeFitness||0))>0.015;
+            // #217t: the bar SCALES with the fitness series' own variability instead of sitting at a
+            // fixed 0.015. #217r measured why: with the dead zone closed and the probe kick removed,
+            // inscriptionInfluence -- incoming signal provably zero -- still refused to retire,
+            // wandering 0.14-0.42 because ordinary fitness noise over two mutation intervals clears
+            // 0.015 often enough to keep ACQUITTING it. The verdict was not "dead" but "dead, then
+            // rescued by noise, then dead again". OEE-NOTES already records the same defect shape for
+            // a probe spanning an extinction, where the discontinuity reads as movement; this is the
+            // no-collapse version of it.
+            // 2x the tracked mean absolute deviation, floored at the old 0.015 so this can only ever
+            // be STRICTER than the constant it replaces -- a quiet world with tiny fitness swings
+            // does not get a hair-trigger. #217r said guessing a constant is how 0.015 got there, so
+            // this measures the scale at runtime rather than picking a second one.
+            const _movedBar=Math.max(0.015,2*__fitDev);
+            const moved=Math.abs(currentFitness-(e.probeFitness||0))>_movedBar;
             e.probeState=0; e.probeWait=0;
             if(!moved){
               // Inert under a deliberate stimulus → genuinely dead. Decay licensed.
@@ -18157,6 +18179,12 @@ function mutateGenome(){ fired('genome.mutate');
   {
     const g2=(genome.metaSignalGrad||0)*(genome.metaSignalGrad||0); // squared gradient
     genome.metaSignalVol=(genome.metaSignalVol||0)*0.8+g2*0.2;
+    // #217t: the fitness series' OWN scale, tracked so the probe verdict below can stop guessing at
+    // it. Welford-style EMA of mean and of absolute deviation from that mean -- cheap, no history
+    // buffer, and it is the quantity 0.015 was a guess at.
+    { const _f=(typeof currentFitness==='number'&&isFinite(currentFitness))?currentFitness:0;
+      __fitMean=__fitMean*0.98+_f*0.02;
+      __fitDev=__fitDev*0.98+Math.abs(_f-__fitMean)*0.02; }
     if(genome.metaSignalVol>1)genome.metaSignalVol=1;
     else if(genome.metaSignalVol<0)genome.metaSignalVol=0;
   }
