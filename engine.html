@@ -17288,6 +17288,26 @@ function attemptHGT(){
 // The snapshot is taken lazily at the first field update, deep, because mutateGenome writes THROUGH
 // the recipe and monomial arrays in place (see the grep warning in cloneGenome).
 function chemFieldLive(){ return (typeof globalThis==='undefined')||((globalThis.__CHEM??1)|0)!==0; }
+// #217f: INSCRIBE is the arm #217e named and then declined to claim without. On seed 2 the population
+// fell 210 -> 75 across ticks 9,500-11,000, the same 1,500 ticks in which opcode 20 fired 5,200 times
+// and 12,625 recipes evaluated; on seed 3 it ROSE 267 -> 326 while opcode 20 fired twice. Two seeds,
+// three orders of magnitude apart in burst intensity, opposite population directions -- consistent
+// with inscription driving the crash and equally consistent with seed 2 crashing for its own reasons
+// in a window that happened to contain a burst. #217e refused to pick between them at n=2.
+// WHY THIS ARM IS CLEAN, and it is the property that made CHEM clean: the case-20 body contains NO
+// Math.random() -- verified in all four real bodies, not assumed -- so withholding the write removes
+// no draw. The opcode still executes, still computes its cell index and its write strength, and still
+// counts itself through fired('cell.inscribe'). Only the four array writes are withheld, so the arms
+// differ by whether the substrate can be MARKED and by nothing else in the draw stream.
+// AND THE FOUR BODIES ARE NOT FOUR COPIES OF ONE THING, which is worth knowing before trusting any
+// single-site reading of this opcode. They inscribe at DIFFERENT strengths and test different
+// overwrite thresholds: executeVM *0.3/*0.8, executeVM's second switch *0.2/*0.8, executeClusterVM
+// *0.4/*0.7, executeSoloVM *0.15/*0.8 -- a 2.7x spread in how hard a path marks the substrate, which
+// lands directly on the 0.05 execution gate. A solo-VM write needs |vmRegs[si]*k| >= 0.33 to cross
+// it; a cluster-VM write needs 0.125. Two of them even name the local differently (writeStr20 vs
+// wStr20), which is why the first attempt at this patch matched one site out of four and its
+// assertion stopped it.
+function inscribeOn(){ return (typeof globalThis==='undefined')||((globalThis.__INSCRIBE??1)|0)!==0; }
 let __chemSeedTable=null;
 function chemFieldTable(){
   const live=genome.chemistryTable;
@@ -21073,6 +21093,7 @@ function executeVM(i,j,sim,d){
         const newA=vmRegs[di];
         const newB=k;
         const writeStr20=Math.abs(vmRegs[si]*k)*0.3;
+        if(inscribeOn()){   // #217f: INSCRIBE=0 withholds the write and nothing else — no draw moves
         if(writeStr20>cellProgStr[ci20]*0.8){
           cellProgOp[ci20]=newOp;
           cellProgA[ci20]=newA;
@@ -21080,6 +21101,7 @@ function executeVM(i,j,sim,d){
           cellProgStr[ci20]=Math.min(1,cellProgStr[ci20]+writeStr20);
         }else{
           cellProgStr[ci20]=Math.min(1,cellProgStr[ci20]+writeStr20*0.3);
+        }
         }
       }break;
       case 21:{
@@ -23178,6 +23200,7 @@ function executeVM(i,j,sim,d){
           const ix20=Math.floor(px[i]/(W/FIELD_W)),iy20=Math.floor(py[i]/(H/FIELD_H));
           const ci20=__cl(iy20*FIELD_W+ix20,0,FIELD_W*FIELD_H-1);
           const wStr20=Math.abs(vmRegs[si]*k)*0.2;
+          if(inscribeOn()){   // #217f: INSCRIBE=0 withholds the write and nothing else — no draw moves
           if(wStr20>cellProgStr[ci20]*0.8){
             cellProgOp[ci20]=Math.abs(Math.floor(vmRegs[si]))%12;
             cellProgA[ci20]=vmRegs[di];
@@ -23185,6 +23208,7 @@ function executeVM(i,j,sim,d){
             cellProgStr[ci20]=Math.min(1,cellProgStr[ci20]+wStr20);
           }else{
             cellProgStr[ci20]=Math.min(1,cellProgStr[ci20]+wStr20*0.3);
+          }
           }
         }break;
         case 21:{
@@ -24597,6 +24621,7 @@ function executeClusterVM(i,j,sim,d){
         const ix20=Math.floor(px[i]/(W/FIELD_W)),iy20=Math.floor(py[i]/(H/FIELD_H));
         const ci20=__cl(iy20*FIELD_W+ix20,0,FIELD_W*FIELD_H-1);
         const wStr20=Math.abs(vmRegs[si]*k)*0.4;
+        if(inscribeOn()){   // #217f: INSCRIBE=0 withholds the write and nothing else — no draw moves
         if(wStr20>cellProgStr[ci20]*0.7){
           cellProgOp[ci20]=Math.abs(Math.floor(vmRegs[si]))%12;
           cellProgA[ci20]=vmRegs[di];
@@ -24604,6 +24629,7 @@ function executeClusterVM(i,j,sim,d){
           cellProgStr[ci20]=Math.min(1,cellProgStr[ci20]+wStr20);
         }else{
           cellProgStr[ci20]=Math.min(1,cellProgStr[ci20]+wStr20*0.3);
+        }
         }
       }break;
       case 21:{
@@ -26173,6 +26199,7 @@ function executeSoloVM(){
           const ci20=__cl(iy20*FIELD_W+ix20,0,FIELD_W*FIELD_H-1);
           const newOp=Math.abs(Math.floor(vmRegs[si]))%12;
           const writeStr20=Math.abs(vmRegs[si]*k)*0.15;
+          if(inscribeOn()){   // #217f: INSCRIBE=0 withholds the write and nothing else — no draw moves
           if(writeStr20>cellProgStr[ci20]*0.8){
             cellProgOp[ci20]=newOp;
             cellProgA[ci20]=vmRegs[di];
@@ -26180,6 +26207,7 @@ function executeSoloVM(){
             cellProgStr[ci20]=Math.min(1,cellProgStr[ci20]+writeStr20);
           }else{
             cellProgStr[ci20]=Math.min(1,cellProgStr[ci20]+writeStr20*0.3);
+          }
           }
         }break;
         case 21:{
