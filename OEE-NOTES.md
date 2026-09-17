@@ -19605,3 +19605,55 @@ table where today all share one; that changes what the population IS, and `#217`
 things are "separate swings with separate" justification. Folding a change of that size into a commit
 whose subject is an env-var coercion and a missing one-liner is how a real change gets shipped without
 its own gate or its own measurement. Recorded, declined, and left with its reasons.
+
+### #217c — `chemistryTable` should NOT be deep-copied, and the reason is the read site
+
+A review recommended deep-copying `chemistryTable` in `cloneGenome`, and `#217`'s census points the
+same way — *"evolvable, and a population of one"*, filed next to reference-sharing as *"the single
+most repeated bug in this file's history"*. The description is accurate. **The remedy does not
+follow, and applying it would damage the instrument.**
+
+**The read site decides it.** `genome.chemistryTable[op%12]` is read in `updateField()` — the cell VM
+stage — and there are **zero** reads of `pGenome[i].chemistryTable` anywhere in the engine. The table
+is the rule by which CELLS execute inscribed instructions. There is one field, so there is one
+consumer, and it is not per-particle.
+
+Deep-copying would therefore:
+
+- create per-lineage copies that **nothing reads**, and
+- make the `#217` variance census report `chemistryTable` as VARYING for a structure with no
+  effect. A false positive in the census is worse than the FLAT it reports now, and it would land in
+  the one instrument this project has just agreed to judge sessions by.
+
+And there is a substantive reason, not only a mechanical one. **Cells are shared substrate.** Two
+particles inscribing instructions into the same field need those instructions to MEAN the same thing,
+or the field is not a medium. Per-lineage opcode chemistry makes the field a place where the same
+instruction computes differently depending on who wrote it.
+
+So `#217`'s phrase is right as description and wrong as diagnosis: it is a population of one **because
+the field is one**. That is not sediment. That is the thing being a property of the field.
+
+**THE REAL DEFECT IS NEXT TO IT, AND IT IS `#216x`'S MIRROR.** `chemistryTable` is a WORLD-level
+property that lives in `genome`, is mutated by `mutateGenome()` at a per-lineage rate
+(`chemistryMutRate`, itself meta-mutated), and is subject to **no verdict at all** — 2% per monomial
+per cycle, plus recipe growth to 12 and splicing, with no probation and no revert. `CHANNEL_RENT`
+gets a trial before it sticks. **The opcode chemistry of the entire field gets none.** `#216x` found
+laws stored as session-local when they are world properties; this is a world property stored and
+mutated as a lineage trait. Same category confusion, opposite direction. Recorded, not fixed: moving
+it under `LAW_DECLARED` is a swing with its own measurement.
+
+**The general test this yields**, which is more useful than the specific answer: the file already has
+the dividing line — `LAW_DECLARED` is what the WORLD is, `genome.*` is what a LINEAGE is. The question
+for any candidate is not *should lineages differ here?* but **how many consumers does this have, and
+are they per-particle or shared?** `channels` has per-carrier consumers, which is exactly why `#196`
+draws the governing rule from living carriers. `chemistryTable` has one consumer and it is the field.
+Count the read sites before deep-copying anything.
+
+**Two wrong readings of my own on the way here, both worth keeping.** First I reported
+`chemistryTable` as never mutated: my grep looked for the word on the mutating line, and the mutation
+writes through `recipe` and `mono`, which are ALIASES into the table. That is the same blindness that
+hid `CHANNEL_RENT_SAFE`'s stale literal inside a helper and `out.warp`'s bank-clearing inside its own
+`rule()`. **A name search cannot see a structure being written through an alias**, and this file has
+now paid for that three times. Second, I accepted the deep-copy remedy as obviously correct before
+asking who reads the thing — the recommendation was plausible, adjacent to a real pattern, and wrong,
+which is the most expensive combination available.
