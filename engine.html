@@ -9302,7 +9302,87 @@ let genome={
 ,
   tendDims: 5,
   rend: null,
-  boundOpcodes: []
+  boundOpcodes: [],
+  // === #217l: THE 57 GENES THAT WERE NEVER DECLARED ===
+  // #217g measured harness-variance enumerating keys from THIS literal and therefore blind to 66
+  // fields, because sanitizeGenome installed them instead of the literal declaring them --
+  // "if(genome.field2WriteInfluence===undefined)genome.field2WriteInfluence=0.1;". A quarter of the
+  // genome, including every *Influence gene the attribution machinery acts on, was invisible to the
+  // census the front page nominates as the answer to the missing dependent variable, and #209's rule
+  // says a census that misses a gene reports it as ABSENT rather than as unexamined.
+  // The rig was taught to union in the runtime keys, which works and treats the symptom. This is the
+  // cause: a genome field declared nowhere is not part of any written description of what a genome
+  // IS. Declared here, the literal becomes that description again.
+  // Every value below is the SAME default sanitizeGenome would install, lifted from its own line, so
+  // the seed genome is unchanged field for field. Those sanitizeGenome lines STAY -- they are the
+  // migration path for a genome loaded from an older save, and removing them would break the one
+  // case they exist for.
+  // NOT moved, and named rather than silently skipped: alienPredict, draw, netAckApplied, netApplied,
+  // oeeW, opStacks, uaProdW, uaVarW, vitalMemory. Those nine are structures with bespoke
+  // initialisation rather than a scalar default, and two of them (uaProdW, uaVarW) the census reports
+  // ABSENT because their VALUE is undefined on every living particle -- a separate finding (#217k)
+  // that deserves its own change, not a placeholder smuggled in here.
+  // THIS SHIFTS THE RNG STREAM. The fields were already present by the time anything mutated, but in
+  // sanitizeGenome's insertion order rather than the literal's, so mutateGenome's for(const k in g)
+  // walk now assigns different draws to different genes. Change of baseline, not of behaviour, in
+  // #140's phrasing -- same as #217h.
+  aimInfluence:0.12,
+  ampInequalityInfluence:0.12,
+  ampMomentumInfluence:0.12,
+  autonomyCede:0.5,
+  avgCoherenceInfluence:0.12,
+  avgResInfluence:0.12,
+  cellScale:1,
+  channels:[],
+  churnMomInfluence:0.12,
+  churnRateInfluence:0.12,
+  clusterMomentumInfluence:0.12,
+  coherenceMomentumInfluence:0.12,
+  demeCount:1,
+  demeFlow:1,
+  divInfluence:0.12,
+  diversityMomentumInfluence:0.12,
+  f2cmInfluence:0.12,
+  f2pmInfluence:0.12,
+  f2upMomInfluence:0.12,
+  fcmInfluence:0.12,
+  field2CoverageInfluence:0.12,
+  field2GradInfluence:0.05,
+  field2PeakInfluence:0.12,
+  field2TemporalInfluence:0.05,
+  field2WriteInfluence:0.1,
+  fieldCoverageInfluence:0.12,
+  fieldCrossInfluence:0.05,
+  fieldPeakInfluence:0.12,
+  fitnessMirrorBias:0.05,
+  fpmInfluence:0.12,
+  fupMomInfluence:0.12,
+  genRateInfluence:0.12,
+  metAx:1,
+  metP:2,
+  metRot:0,
+  metaSearchBias:0.15,
+  mf2upInfluence:0.12,
+  mfupInfluence:0.12,
+  netLawRate:0.001,
+  netLawReceptivity:0.05,
+  pcfmInfluence:0.12,
+  persistentClusterFractionInfluence:0.12,
+  probes:[],
+  regCount:VM_REGS_DEFAULT,
+  repertoireDormancyInfluence:0,
+  resonanceMomentumInfluence:0.12,
+  rxCross:0,
+  rxSelf:0,
+  signalRoleInfluence:0.1,
+  spatialSpreadInfluence:0.12,
+  spatialSpreadMomentumInfluence:0.12,
+  tickPhase:0,
+  tickRate:1,
+  uaFoldK:1,
+  uaFoldMode:0,
+  uaOps:[],
+  vitalMemoryInfluence:0,
 };
 
 const EVENT_LOG_SIZE=36;
