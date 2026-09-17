@@ -1246,6 +1246,18 @@ const LIVENESS_DECLARED=[
   // refused, so "the barrier exists but never bites" and "there is no barrier" are distinguishable.
   'deme.gate','deme.blocked','uplasmid.send','uplasmid.refused','uplasmid.law','uplasmid.grammar',
   'substrate.seed',   // #186
+  // #217d: the INSCRIBED SUBSTRATE, enrolled late and for the reason this list exists. The charter
+  // above says the immune response was built because mechanisms "parsed, passed their property tests,
+  // and never executed", and that this "is the default failure of an additive system". This layer
+  // predates the list and was never added to it, so the one instrument built to catch a layer that
+  // never runs was not watching the layer that never ran. Measured before declaring: opcode 20 never
+  // enters a living program and cellProgStr is exactly 0 across all 1600 cells for the whole run, so
+  // updateField()'s STAGE 1 evaluates zero recipes and the evolvable chemistryTable is dead code.
+  // Three names because the chain has three distinct ways to come alive, and a single name could not
+  // tell local ignition from a peer's: cell.inscribe is opcode 20 firing (declared in all FOUR real
+  // case-20 bodies, not the one a grep finds first), cell.inscribeNet is a peer's inscription
+  // landing, cell.chemExec is a recipe actually being evaluated.
+  'cell.inscribe','cell.inscribeNet','cell.chemExec',
   // #188: channel.update is the lattice pass, channel.write a verb acting into a medium, and
   // channel.wire the reachability hook. All five declared so a run where a lineage allocated a
   // medium and never sensed or acted on it is visible as such rather than inferred.
@@ -1991,6 +2003,7 @@ function networkReceive(){ fired('network.receive');
     const idx=Math.floor(Math.random()*FIELD_W*FIELD_H);
     if(cellProgStr[idx]<0.2){ // only inscribe where nothing is already strong
       genome.netApplied.inscription++;
+      fired('cell.inscribeNet');   // #217d: a peer igniting the substrate this universe never ignited itself
       networkSend('applied',{kind:'inscription'});
       cellProgOp[idx]=ins.op;
       cellProgA[idx]=ins.A;
@@ -17294,6 +17307,8 @@ function updateField(){
   const chemTable=chemFieldTable();   // #217d: hoisted — one resolution per tick, not one per cell. The
                                       // table cannot change mid-pass (mutateGenome runs outside updateField),
                                       // so the hoist is exact as well as cheap.
+  let _chemExecN=0;   // #217d: a plain integer on a per-cell path, handed to firedN once below — exactly
+                      // the route firedN's own comment describes for a path too hot for a census call.
   for(let y=0;y<FIELD_H;y++){
     for(let x=0;x<FIELD_W;x++){
       const idx=y*FIELD_W+x;
@@ -17322,6 +17337,7 @@ function updateField(){
       let d1=0,d2=0;
       const recipe=chemTable[op%12];   // #217d: the live table, or the frozen seed snapshot under CHEM=0 — see chemFieldTable()
       if(recipe){
+        _chemExecN++;
         const ls0=c1,ls1=c2,ls2=nN,ls3=nS,ls4=nE,ls5=nW,ls6=m2N,ls7=m2S,ls8=m2E,ls9=m2W,ls10=nbAvg1,ls11=nbAvg2;
         const lsArr=[ls0,ls1,ls2,ls3,ls4,ls5,ls6,ls7,ls8,ls9,ls10,ls11,1.0,0,0]; // [12]=1, [13]=d1, [14]=d2
         for(let mi=0;mi<recipe.length;mi++){
@@ -17346,6 +17362,7 @@ function updateField(){
       cellProgStr[idx]*=0.998;
     }
   }
+  firedN('cell.chemExec',_chemExecN);   // #217d: zero on every run measured so far, which is the finding
 
   // ═══ STAGE 2: STANDARD DIFFUSION + DECAY ═══
   // Pe49: snapshot field2 before diffusion so the temporal derivative (field2 - field2Prev)
@@ -21049,6 +21066,7 @@ function executeVM(i,j,sim,d){
         }
       }break;
       case 20:{
+        fired('cell.inscribe');   // #217d
         const ix20=Math.floor(px[i]/(W/FIELD_W)),iy20=Math.floor(py[i]/(H/FIELD_H));
         const ci20=__cl(iy20*FIELD_W+ix20,0,FIELD_W*FIELD_H-1);
         const newOp=Math.abs(Math.floor(vmRegs[si]))%12;
@@ -23156,6 +23174,7 @@ function executeVM(i,j,sim,d){
           if(wStr>commonsStrength){globalCommons=vmRegs[si]*k;commonsWriter=i;commonsStrength=wStr;}
         }break;
         case 20:{
+          fired('cell.inscribe');   // #217d
           const ix20=Math.floor(px[i]/(W/FIELD_W)),iy20=Math.floor(py[i]/(H/FIELD_H));
           const ci20=__cl(iy20*FIELD_W+ix20,0,FIELD_W*FIELD_H-1);
           const wStr20=Math.abs(vmRegs[si]*k)*0.2;
@@ -24574,6 +24593,7 @@ function executeClusterVM(i,j,sim,d){
         if(wStr3>commonsStrength){globalCommons=vmRegs[si]*k;commonsWriter=i;commonsStrength=wStr3;}
       }break;
       case 20:{
+        fired('cell.inscribe');   // #217d
         const ix20=Math.floor(px[i]/(W/FIELD_W)),iy20=Math.floor(py[i]/(H/FIELD_H));
         const ci20=__cl(iy20*FIELD_W+ix20,0,FIELD_W*FIELD_H-1);
         const wStr20=Math.abs(vmRegs[si]*k)*0.4;
@@ -26148,6 +26168,7 @@ function executeSoloVM(){
           if(writeStr>commonsStrength){globalCommons=vmRegs[si]*k;commonsWriter=i;commonsStrength=writeStr;}
         }break;
         case 20:{
+          fired('cell.inscribe');   // #217d
           const ix20=Math.floor(px[i]/(W/FIELD_W)),iy20=Math.floor(py[i]/(H/FIELD_H));
           const ci20=__cl(iy20*FIELD_W+ix20,0,FIELD_W*FIELD_H-1);
           const newOp=Math.abs(Math.floor(vmRegs[si]))%12;
