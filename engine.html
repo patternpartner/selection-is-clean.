@@ -1263,6 +1263,7 @@ const LIVENESS_DECLARED=[
   // ever proposed -- the same reason #183 declared cosmos.lawKept and cosmos.lawRevert.
   'chem.trial','chem.kept','chem.revert',
   'deme.countStep','ua.foldModeStep',   // #217u: the two discrete operators, declared with the genes
+  'gene.intStep',                       // #217y: the generic integer stepper, covering eight genes
   // #188: channel.update is the lattice pass, channel.write a verb acting into a medium, and
   // channel.wire the reachability hook. All five declared so a run where a lineage allocated a
   // medium and never sensed or acted on it is visible as such rather than inferred.
@@ -10330,7 +10331,33 @@ const CHILD_NOT_A_GENE=['totalTicks','generation','extinctions','prevSmoothedFit
 // These were declared for the first time today (#217l), which is what made them visible here -- they
 // were being walked continuously before, and nothing could see that they were.
 // The discrete steps for them are below, next to regCount's and tickRate's.
-const CHILD_DISCRETE=['tickRate','tickPhase','regCount','demeCount','uaFoldMode'];   // #200a: regCount joins for #192's reason - an integer gene walked continuously is a gene that cannot move   // #192: integer-valued, so the walk below would only ever add invisible noise
+// #217y: EIGHT MORE, found by asking sanitizeGenome rather than by reading. The structural question
+// is: which genes does sanitize round? Ten do -- and only five were on this list, so eight integer
+// genes were being walked continuously, #192's case at scale. vmMaxInstructions is the program length
+// cap; uaMaxDepth and rendMaxDepth are expression depth caps; shadowScenarios and shadowHorizon size
+// the shadow sim; hgtMax bounds horizontal transfer; motifMemorySize and reflexDepth size their own
+// buffers. A fraction added to any of them is invisible until accumulated drift crosses a
+// half-integer, which is exactly the "gene that cannot move" #192 named and #200a re-found.
+// Bounds are taken from each gene's own sanitize line rather than restated here, which is CODEMAP's
+// #153 rule -- a bound copied into a second place is a bound that goes stale against a ceiling that
+// moved. CHILD_INT_BOUNDS holds the two that are plain literals; the six whose ceiling is a named
+// constant read that constant.
+const CHILD_DISCRETE=['tickRate','tickPhase','regCount','demeCount','uaFoldMode',
+  'hgtMax','motifMemorySize','reflexDepth','rendMaxDepth','shadowHorizon','shadowScenarios',
+  'uaMaxDepth','vmMaxInstructions'];
+function childIntBounds(k){
+  switch(k){
+    case 'hgtMax':            return [1,12];
+    case 'motifMemorySize':   return [1,40];
+    case 'reflexDepth':       return [1,REFLEX_DEPTH];
+    case 'rendMaxDepth':      return [1,UA_DEPTH_CAP];
+    case 'shadowHorizon':     return [2,500];
+    case 'shadowScenarios':   return [3,SHADOW_SCENARIOS_MAX];
+    case 'uaMaxDepth':        return [1,UA_DEPTH_CAP];
+    case 'vmMaxInstructions': return [1,96];
+  }
+  return null;
+}   // #200a: regCount joins for #192's reason - an integer gene walked continuously is a gene that cannot move   // #192: integer-valued, so the walk below would only ever add invisible noise
 function mutateChildGenome(g){
   const rate=genome.mutationRate||0.06,scale=genome.mutationScale||1;
   // === CAN THIS BIRTH VARY AT ALL? ==============================================================
@@ -10494,6 +10521,20 @@ function mutateChildGenome(g){
       if(_n!==_o){ g.regCount=_n; fired('vm.regStep'); }
     }
     g.regCount=__cl(Math.round(finiteOr(g.regCount,VM_REGS_DEFAULT)),2,VM_REGS_MAX);
+  }
+  // #217y: one generic +/-1 stepper for the eight integer genes above, rather than eight bespoke
+  // blocks. Each keeps its own bounds from childIntBounds, and a step only counts when it lands on a
+  // different integer -- fired() records the gene moving, not the draw being spent.
+  for(const _ik of ['hgtMax','motifMemorySize','reflexDepth','rendMaxDepth','shadowHorizon',
+                    'shadowScenarios','uaMaxDepth','vmMaxInstructions']){
+    if(g[_ik]===undefined)continue;
+    const _b=childIntBounds(_ik); if(!_b)continue;
+    const _o=__cl(Math.round(finiteOr(g[_ik],_b[0])),_b[0],_b[1]);
+    if(Math.random()<rate){
+      const _n=__cl(_o+(Math.random()<0.5?1:-1),_b[0],_b[1]);
+      if(_n!==_o){ g[_ik]=_n; fired('gene.intStep'); continue; }
+    }
+    g[_ik]=_o;
   }
   // #217u: the discrete operators for the two genes added to CHILD_DISCRETE above. A step of +/-1 is
   // the whole point -- it is the smallest change that the consuming code can actually see.
