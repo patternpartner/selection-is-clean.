@@ -2054,6 +2054,18 @@ const OPCODE_COUNT=CORE_OPCODES+MAX_BOUND_OPCODES;
 const FIELD_W=40;
 const FIELD_H=40;
 let FIELD_DECAY=0.982;   // natural fade — Pe22b: now genome-driven, can evolve
+// #217h: THE INSCRIPTION LAYER'S CONSTANTS JOIN THE ONES ABOVE IT. fieldDecay and fieldDiffuse have
+// been genome-driven since Pe22b: substrate constants read by updateField() and evolvable. The
+// inscribed-substrate constants sitting in the same function were left as literals — a 0.05 execution
+// gate and a 0.998 fade — so the layer that lets particles write programs into the world had a fixed
+// physics while the world's own fade rate evolved. Same kind of constant, same reader, same self.
+// Cached rather than read per cell, exactly as FIELD_DECAY is, and clamped on the way in so a gene
+// that drifts out of range (maybe() ignores its own min/max — #148 STANDING) cannot take the lattice
+// with it. Deliberately NOT added to LAW_DECLARED: only 13 of 32 law rows are tried per 60k run
+// (#217a) and LAW_RATE has an absorbing basin at zero, so two more rows would dilute coverage more
+// than they would buy. Genes first; laws are a later question.
+let CELL_EXEC=0.05;      // inscribed-cell EXECUTION gate — was a hardcoded 0.05 in updateField
+let CELL_DECAY=0.998;    // inscription fade rate — was a hardcoded 0.998 in updateField
 let FIELD_DIFFUSE=0.11;  // gentle spread — Pe22b: now genome-driven, can evolve
 
 // === #183 - LAW MUTATION: the world proposes a new constant and is judged on it ================
@@ -9219,6 +9231,17 @@ let genome={
   fieldInfluence:0.65,        // how strongly field affects physics (niche construction feedback)
   fieldDecay:0.982,           // Pe22b: substrate fade rate — now evolvable
   fieldDiffuse:0.11,          // Pe22b: substrate spread rate — now evolvable
+  // #217h: the inscribed substrate's own physics, declared HERE in the literal on purpose — #217g
+  // measured harness-variance enumerating keys from this literal and therefore blind to the 66 fields
+  // that sanitizeGenome installs instead. A gene the variance census cannot see is a gene reported as
+  // absent rather than unexamined, which is the exact failure #209's rule names.
+  cellExecThresh:0.05,        // #217h: execution gate — a cell runs its recipe only at or above this
+  cellProgDecay:0.998,        // #217h: inscription fade per tick
+  inscribeStrength:0.4,       // #217h: how hard opcode 20 marks a cell. Was FOUR literals — 0.3 in
+                              // executeVM, 0.2 in its second switch, 0.4 in executeClusterVM, 0.15 in
+                              // executeSoloVM — an undocumented 2.7x spread that handicapped three of
+                              // the four paths against the 0.05 gate. Unified at the strongest of them.
+  inscribeOverwrite:0.75,     // #217h: overwrite threshold. Was 0.8/0.8/0.7/0.8 across those same paths.
   // Pe22d: evolvable chemistry table — 12 opcode slots, each a recipe of monomials.
   // Each monomial is [coefSource, termA, termB, target] where:
   //   coefSource: 0=+A, 1=+B, 2=-A, 3=-B
@@ -12890,6 +12913,12 @@ function sanitizeGenome(){
   genome.chemistryMutRate=finiteOr(genome.chemistryMutRate,0.02);
   FIELD_DECAY=__cl(genome.fieldDecay,0.5,1.0);
   FIELD_DIFFUSE=__cl(genome.fieldDiffuse,0,0.24);
+  genome.cellExecThresh=finiteOr(genome.cellExecThresh,0.05);      // #217h
+  genome.cellProgDecay=finiteOr(genome.cellProgDecay,0.998);       // #217h
+  genome.inscribeStrength=finiteOr(genome.inscribeStrength,0.4);   // #217h
+  genome.inscribeOverwrite=finiteOr(genome.inscribeOverwrite,0.75);// #217h
+  CELL_EXEC=__cl(genome.cellExecThresh,0.001,0.5);    // #217h: below 0.001 every marked cell runs forever; above 0.5 nothing ever does
+  CELL_DECAY=__cl(genome.cellProgDecay,0.9,0.99999);  // #217h: must stay under 1 or inscriptions grow without bound
   genome.mutationInterval=Math.max(60,Math.round(finiteOr(genome.mutationInterval,300)));
   genome.netMigrantRate=finiteOr(genome.netMigrantRate,0.003);
   genome.netPlasmidRate=finiteOr(genome.netPlasmidRate,0.004);
@@ -17308,6 +17337,14 @@ function chemFieldLive(){ return (typeof globalThis==='undefined')||((globalThis
 // wStr20), which is why the first attempt at this patch matched one site out of four and its
 // assertion stopped it.
 function inscribeOn(){ return (typeof globalThis==='undefined')||((globalThis.__INSCRIBE??1)|0)!==0; }
+// #217h: read from the global genome, which inside executeVM/executeClusterVM/executeSoloVM is the REPOINTED
+// pGenome[i] — so how hard a lineage marks the world is a LINEAGE trait, while the gate and the fade
+// above are world properties read from the self by updateField(). That split is not arbitrary: #217c
+// established it by counting who reads what, and this follows the same rule. Clamped at the read, as
+// FIELD_DECAY is, because maybe() ignores its own bounds and a negative strength would drive
+// cellProgStr below zero where nothing would ever clear it.
+function inscStr(){ return __cl(finiteOr(genome.inscribeStrength,0.4),0.01,2); }
+function inscOver(){ return __cl(finiteOr(genome.inscribeOverwrite,0.75),0.05,3); }
 let __chemSeedTable=null;
 function chemFieldTable(){
   const live=genome.chemistryTable;
@@ -17333,7 +17370,16 @@ function updateField(){
     for(let x=0;x<FIELD_W;x++){
       const idx=y*FIELD_W+x;
       const strength=cellProgStr[idx];
-      if(strength<0.05)continue;
+      // #217h: EVERY marked cell fades, not only those above the execution gate. The decay used to sit
+      // at the END of this body, after the continue below, so a cell that dropped under the gate stopped
+      // decaying and froze there permanently — measured parked at 0.04999 at tick 25,000, still parked
+      // at 25,000 (#217e). The old site's comment read "rules fade unless reinforced"; they faded to
+      // just under the gate and then stopped fading, which made the gate an ABSORBING BOUNDARY from
+      // above and made everMax (0.998) and end-of-run max (0.0499) two different quantities — the
+      // conflation that produced two corrections in #217d. Executing cells are unaffected: everything
+      // below reads the strength const captured above, and nothing in the body reads cellProgStr[idx] again.
+      if(strength>0)cellProgStr[idx]*=CELL_DECAY;
+      if(strength<CELL_EXEC)continue;
       const op=cellProgOp[idx];
       const A=cellProgA[idx];
       const B=cellProgB[idx];
@@ -17378,8 +17424,8 @@ function updateField(){
       field2[idx]+=d2*strength*0.05;
       field[idx]=__cl(field[idx],0,100);
       field2[idx]=__cl(field2[idx],0,100);
-      // Inscription decay — rules fade unless reinforced
-      cellProgStr[idx]*=0.998;
+      // #217h: the decay moved to the top of this body, ahead of the execution gate — see the note
+      // there. It used to run here, which is why sub-gate cells never faded.
     }
   }
   firedN('cell.chemExec',_chemExecN);   // #217d: zero on every run measured so far, which is the finding
@@ -17975,6 +18021,11 @@ function mutateGenome(){ fired('genome.mutate');
   // Pe22b: substrate physics — the ground the particles live on now evolves
   genome.fieldDecay=maybe(genome.fieldDecay,0.9,0.999,0.004);
   genome.fieldDiffuse=maybe(genome.fieldDiffuse,0.02,0.25,0.01);
+  // #217h: the inscription layer's physics walks too, at the same layer and by the same operator.
+  genome.cellExecThresh=maybe(genome.cellExecThresh,0.001,0.5,0.004);
+  genome.cellProgDecay=maybe(genome.cellProgDecay,0.9,0.9999,0.0008);
+  genome.inscribeStrength=maybe(genome.inscribeStrength,0.05,1.5,0.02);
+  genome.inscribeOverwrite=maybe(genome.inscribeOverwrite,0.2,1.2,0.02);
   // Pe22c: evolvable chemistry table — mutate monomials in the opcode recipes.
   // Defensive defaults for old genomes that don't have a table yet.
   if(!genome.chemistryTable)genome.chemistryTable=seedChemistryTable();
@@ -18005,6 +18056,8 @@ function mutateGenome(){ fired('genome.mutate');
   // outside these bounds the diffusion equation produces NaN)
   FIELD_DECAY=__cl(genome.fieldDecay,0.5,1.0);
   FIELD_DIFFUSE=__cl(genome.fieldDiffuse,0,0.24);
+  CELL_EXEC=__cl(genome.cellExecThresh,0.001,0.5);    // #217h
+  CELL_DECAY=__cl(genome.cellProgDecay,0.9,0.99999);  // #217h
   genome.entropyBaseline=gradMaybe(genome.entropyBaseline,0.00005,0.005,0.0002,lastShadowNudgeDir[0]);
   genome.entropyK=gradMaybe(genome.entropyK,0.00002,0.003,0.0001,lastShadowNudgeDir[1]);
   genome.entrainRate=gradMaybe(genome.entrainRate,0.002,0.06,0.003,lastShadowNudgeDir[2]);
@@ -21092,9 +21145,9 @@ function executeVM(i,j,sim,d){
         const newOp=Math.abs(Math.floor(vmRegs[si]))%12;
         const newA=vmRegs[di];
         const newB=k;
-        const writeStr20=Math.abs(vmRegs[si]*k)*0.3;
+        const writeStr20=Math.abs(vmRegs[si]*k)*inscStr();   // #217h: was *0.3
         if(inscribeOn()){   // #217f: INSCRIBE=0 withholds the write and nothing else — no draw moves
-        if(writeStr20>cellProgStr[ci20]*0.8){
+        if(writeStr20>cellProgStr[ci20]*inscOver()){   // #217h: was *0.8
           cellProgOp[ci20]=newOp;
           cellProgA[ci20]=newA;
           cellProgB[ci20]=newB;
@@ -23199,9 +23252,9 @@ function executeVM(i,j,sim,d){
           fired('cell.inscribe');   // #217d
           const ix20=Math.floor(px[i]/(W/FIELD_W)),iy20=Math.floor(py[i]/(H/FIELD_H));
           const ci20=__cl(iy20*FIELD_W+ix20,0,FIELD_W*FIELD_H-1);
-          const wStr20=Math.abs(vmRegs[si]*k)*0.2;
+          const wStr20=Math.abs(vmRegs[si]*k)*inscStr();   // #217h: was *0.2
           if(inscribeOn()){   // #217f: INSCRIBE=0 withholds the write and nothing else — no draw moves
-          if(wStr20>cellProgStr[ci20]*0.8){
+          if(wStr20>cellProgStr[ci20]*inscOver()){   // #217h: was *0.8
             cellProgOp[ci20]=Math.abs(Math.floor(vmRegs[si]))%12;
             cellProgA[ci20]=vmRegs[di];
             cellProgB[ci20]=k;
@@ -24620,9 +24673,9 @@ function executeClusterVM(i,j,sim,d){
         fired('cell.inscribe');   // #217d
         const ix20=Math.floor(px[i]/(W/FIELD_W)),iy20=Math.floor(py[i]/(H/FIELD_H));
         const ci20=__cl(iy20*FIELD_W+ix20,0,FIELD_W*FIELD_H-1);
-        const wStr20=Math.abs(vmRegs[si]*k)*0.4;
+        const wStr20=Math.abs(vmRegs[si]*k)*inscStr();   // #217h: was *0.4
         if(inscribeOn()){   // #217f: INSCRIBE=0 withholds the write and nothing else — no draw moves
-        if(wStr20>cellProgStr[ci20]*0.7){
+        if(wStr20>cellProgStr[ci20]*inscOver()){   // #217h: was *0.7
           cellProgOp[ci20]=Math.abs(Math.floor(vmRegs[si]))%12;
           cellProgA[ci20]=vmRegs[di];
           cellProgB[ci20]=k;
@@ -26198,9 +26251,9 @@ function executeSoloVM(){
           const ix20=Math.floor(px[i]/(W/FIELD_W)),iy20=Math.floor(py[i]/(H/FIELD_H));
           const ci20=__cl(iy20*FIELD_W+ix20,0,FIELD_W*FIELD_H-1);
           const newOp=Math.abs(Math.floor(vmRegs[si]))%12;
-          const writeStr20=Math.abs(vmRegs[si]*k)*0.15;
+          const writeStr20=Math.abs(vmRegs[si]*k)*inscStr();   // #217h: was *0.15
           if(inscribeOn()){   // #217f: INSCRIBE=0 withholds the write and nothing else — no draw moves
-          if(writeStr20>cellProgStr[ci20]*0.8){
+          if(writeStr20>cellProgStr[ci20]*inscOver()){   // #217h: was *0.8
             cellProgOp[ci20]=newOp;
             cellProgA[ci20]=vmRegs[di];
             cellProgB[ci20]=k;
