@@ -28,6 +28,12 @@
 // Env: SEED  TICKS (default 3000)  TOP (default 25 sites reported)  CHECK=1 (run the control)
 //      NOCOUNT=1 (control arm: no rewrite at all)  INDEX= (measure a different build)
 const fs = require('fs');
+// #217b: KNOBS honoured. #216x fixed four rigs and I called the class swept; a review found the
+// real number is 39 node-side rigs that boot engine.html in-process and silently drop every
+// KNOBS entry. Same error as the trap itself: I fixed what I was looking at. A no-op when no
+// env var is set. NOT added to browser-driven rigs, where node's globalThis never reaches the
+// page and the line would only look like a control.
+try{ require(require('path').join(__dirname,'harness-env.js')).applyKnobs(globalThis); }catch(_){}
 const TICKS = parseInt(process.env.TICKS || '3000', 10);
 const TOP   = parseInt(process.env.TOP || '25', 10);
 // #82: sampling cadence. #81 was underpowered because the spread crosses the 10-90% carrier band in only

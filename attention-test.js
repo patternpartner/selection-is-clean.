@@ -7,6 +7,12 @@
 //   4. The gradient is real: standing in attention costs measurably less than standing outside it.
 // Exits non-zero on any failure.   node attention-test.js
 const fs=require('fs'), path=require('path');
+// #217b: KNOBS honoured. #216x fixed four rigs and I called the class swept; a review found the
+// real number is 39 node-side rigs that boot engine.html in-process and silently drop every
+// KNOBS entry. Same error as the trap itself: I fixed what I was looking at. A no-op when no
+// env var is set. NOT added to browser-driven rigs, where node's globalThis never reaches the
+// page and the line would only look like a control.
+try{ require(require('path').join(__dirname,'harness-env.js')).applyKnobs(globalThis); }catch(_){}
 require(path.join(__dirname,'harness-env.js'))(globalThis);
 const code=fs.readFileSync(process.env.INDEX||path.join(__dirname,'engine.html'),'utf8')
   .match(/<script>([\s\S]*)<\/script>/)[1];

@@ -1,5 +1,11 @@
 // Counts pairwise VM invocations per tick + real wall-clock per tick.
 const fs = require('fs');
+// #217b: KNOBS honoured. #216x fixed four rigs and I called the class swept; a review found the
+// real number is 39 node-side rigs that boot engine.html in-process and silently drop every
+// KNOBS entry. Same error as the trap itself: I fixed what I was looking at. A no-op when no
+// env var is set. NOT added to browser-driven rigs, where node's globalThis never reaches the
+// page and the line would only look like a control.
+try{ require(require('path').join(__dirname,'harness-env.js')).applyKnobs(globalThis); }catch(_){}
 function selfProxy(){const f=function(){return p};const p=new Proxy(f,{get(_t,prop){if(prop===Symbol.toPrimitive)return()=>0;if(prop==='width'||prop==='height')return 0;if(prop==='data')return new Uint8ClampedArray(4);return p},apply(){return p}});return p}
 const CTX=selfProxy();
 function makeEl(){return{getContext:()=>CTX,addEventListener(){},removeEventListener(){},set onclick(_){},set onchange(_){},click(){},appendChild(){},removeChild(){},remove(){},setAttribute(){},classList:{add(){},remove(){},toggle(){},contains(){return false}},style:{},width:1280,height:720,_text:'',get textContent(){return this._text},set textContent(v){this._text=v}}}

@@ -17,6 +17,12 @@
 // its fix became Swing #47 and is unconditional in the engine (see the note on the const below).
 // The counters are read from the engine's own object with REFLEX_DEBUG=1.
 const fs = require('fs');
+// #217b: KNOBS honoured. #216x fixed four rigs and I called the class swept; a review found the
+// real number is 39 node-side rigs that boot engine.html in-process and silently drop every
+// KNOBS entry. Same error as the trap itself: I fixed what I was looking at. A no-op when no
+// env var is set. NOT added to browser-driven rigs, where node's globalThis never reaches the
+// page and the line would only look like a control.
+try{ require(require('path').join(__dirname,'harness-env.js')).applyKnobs(globalThis); }catch(_){}
 
 const TICKS = parseInt(process.env.TICKS || '20000', 10);
 const SAMPLE = parseInt(process.env.SAMPLE || '1000', 10);

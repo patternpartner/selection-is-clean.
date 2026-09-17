@@ -34,6 +34,12 @@
 //   RATE=0.06 SEED=1 TICKS=40000 node harness-mutrate.js
 //   RATE=0.06 SEED=1 TICKS=40000 SEED_FROM=/path/to/genome.json node harness-mutrate.js
 const fs=require('fs'), path=require('path');
+// #217b: KNOBS honoured. #216x fixed four rigs and I called the class swept; a review found the
+// real number is 39 node-side rigs that boot engine.html in-process and silently drop every
+// KNOBS entry. Same error as the trap itself: I fixed what I was looking at. A no-op when no
+// env var is set. NOT added to browser-driven rigs, where node's globalThis never reaches the
+// page and the line would only look like a control.
+try{ require(require('path').join(__dirname,'harness-env.js')).applyKnobs(globalThis); }catch(_){}
 require(path.join(__dirname,'harness-env.js'))(globalThis);
 const code=fs.readFileSync(path.join(__dirname,'engine.html'),'utf8').match(/<script>([\s\S]*)<\/script>/)[1];
 const Module=require('module');

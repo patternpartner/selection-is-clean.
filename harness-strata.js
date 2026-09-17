@@ -44,7 +44,12 @@ const fs=require('fs');
 try{ require(require('path').join(__dirname,'harness-env.js')).applyKnobs(globalThis); }catch(_){}
 const TICKS=parseInt(process.env.TICKS||'12000',10);
 globalThis.__LAWROW=process.env.LAWROW||null;
-globalThis.__LAWSTART=(process.env.LAWSTART!==undefined)?Number(process.env.LAWSTART):null;
+// #217b: '' MUST NOT MEAN ZERO. Number('') is 0 and 0 is this row's ABSORBING value, so a stray
+// `export LAWSTART=` would silently boot every world frozen and the runs would look like a finding.
+// An empty or non-finite value is UNSET, not a request for the freeze.
+globalThis.__LAWSTART=(function(){ const _raw=process.env.LAWSTART;
+  if(_raw===undefined||_raw==='')return null;
+  const _v=Number(_raw); return Number.isFinite(_v)?_v:null; })();
 // CULLDOOR multiplies the atom cull's entry probability. #208 measured that door opening once per
 // 20,000-63,000 ticks, which is why the cull's four conditions and its atomIdleTolerance dial have
 // never been evaluated. That leaves a registered prediction hanging -- "open the door and the gene

@@ -19554,3 +19554,54 @@ one. A boot-low arm for the probabilistic sum, and a boot-HIGH arm (`LAWSTART` n
 model forbids capture entirely) purely to accumulate impossible-opportunities. The second arm is
 cheap, because a trajectory that cannot be captured keeps proposing and never terminates - the exact
 opposite of the censoring problem, and for the same reason.
+
+### #217b — a review found my `#216x` sweep was 4 of 39, and `LAWSTART=''` meant freeze
+
+**NUMBERING FIRST, because it is already confusing.** `#217` is the parallel session's variance
+census. `#217a` and `#217b` are this session's law-basin work and are **not** sub-entries of it. They
+collide by accident of two sessions numbering at once. Read `#217` as the census; read `#217a`/`#217b`
+as the basin thread.
+
+**1. `LAWSTART=''` booted every world frozen.** `Number('')` is `0`, and `0` is `LAW_RATE`'s absorbing
+value, so a stray `export LAWSTART=` would have started every trajectory in the freeze and the runs
+would have read as a finding. Empty and non-finite are UNSET now, not a request for zero. Verified:
+`''` and `abc` both read as null, `0.0001` reads as 0.0001. **This was in code I wrote yesterday and
+shipped after testing only the happy path** — the same omission the `KNOBS` trap punishes, one day
+after writing the rule about it onto the front page.
+
+**2. The `#216x` `applyKnobs` sweep was 4 of 39.** I fixed `harness-strata`, `harness-orphans`,
+`harness-reads` and `harness-attractor` and wrote that the class was swept. The real number:
+
+```
+52 rigs boot engine.html
+ 7 called applyKnobs before this entry
+45 did not
+```
+
+Of those 45, **39 boot the engine IN-PROCESS** (`_compile` / `new Module`), so `applyKnobs` provably
+works there and they now call it. That is the fix.
+
+**And 6 are deliberately NOT patched, which is the part a mechanical sweep gets wrong.**
+`browser-test.js` drives a real browser: node's `globalThis` never reaches the page, so the line would
+not make the knob work — it would only make the knob *look* like it works, which is worse than its
+absence and is precisely the failure `#216d` named. Five more (`harness-alien-ablate`,
+`harness-coupling`, `harness-coupling-asym`, `harness-ablate-reflex`, `sim.worker`) reference
+`engine.html` by path or spawn a child rather than compiling it here; whether a knob reaches them is
+per-rig and I have not established it. **Unverified is not the same as fixed, and adding the line to
+buy a clean sweep number would be cargo-culting.**
+
+The shape of my error is worth keeping: I fixed the four rigs I was reading and generalised to "the
+class". That is the identical move that let the trap survive `#216b` and `#216d` — it was named for
+other people's rigs then, and for the four in front of me this time.
+
+**3. `chemistryTable` is confirmed shared, and I am NOT fixing it here.** `cloneGenome` is
+`const g={...src}`, which copies objects by reference; it deep-copies `opStacks`, the production
+weights and `fitnessSensors` by name and does not mention `chemistryTable`. `#217`'s census already
+recorded this — *"evolvable, and a population of one"*. It is real and it is the standing top
+structural debt.
+
+It is also **a semantic swing, not hygiene**. Deep-copying it gives every lineage its own physics
+table where today all share one; that changes what the population IS, and `#217` itself says such
+things are "separate swings with separate" justification. Folding a change of that size into a commit
+whose subject is an env-var coercion and a missing one-liner is how a real change gets shipped without
+its own gate or its own measurement. Recorded, declined, and left with its reasons.

@@ -5,6 +5,12 @@
 // and does the conserved mode conserve? The last one is the safety property the whole design
 // rests on: if a conserved transfer can mint amplitude, this is a free-energy pump.
 const fs=require('fs');
+// #217b: KNOBS honoured. #216x fixed four rigs and I called the class swept; a review found the
+// real number is 39 node-side rigs that boot engine.html in-process and silently drop every
+// KNOBS entry. Same error as the trap itself: I fixed what I was looking at. A no-op when no
+// env var is set. NOT added to browser-driven rigs, where node's globalThis never reaches the
+// page and the line would only look like a control.
+try{ require(require('path').join(__dirname,'harness-env.js')).applyKnobs(globalThis); }catch(_){}
 require(require('path').join(__dirname,'harness-env.js'))(globalThis);
 const html=fs.readFileSync(process.env.INDEX||require('path').join(__dirname,'engine.html'),'utf8');
 const code=html.match(/<script>([\s\S]*)<\/script>/)[1];
