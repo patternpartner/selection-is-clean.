@@ -20139,3 +20139,58 @@ none of the 66 matches a `KEY:` declaration anywhere in `engine.html`.
 many are actually evolving?" — and N has been 191/192 when the genome has 258. Every verdict it has
 produced is scoped to the declared three-quarters, and `channels`, `probes` and `opStacks` have never
 been in it. By `#209`'s own rule those 66 have been reported as absent rather than as unexamined.
+
+### #217i — THE DEAD-WEIGHT PROBER CONTAMINATES THE VALUE IT MEASURES, AND CANNOT REACH ZERO
+
+`#217d` measured `inscriptionInfluence` at 0.360, 0.476 and 0.279 across three seeds after 195-272
+mutation cycles, against a 0.1 default — three to five times UP on a layer whose incoming signal was
+provably, exactly zero. `META_HOLDING_K` exists precisely to tax dead weight, and the COLD START
+comment predicts this gene retires itself. It did not. This is why.
+
+**THE ARITHMETIC, which is the finding.** The `quiet` verdict does not decay a suspected-dead layer.
+It PROBES it, by raising the value: `metaParamSet(p,cur+probeStep)` with `probeStep=0.07` when no peak
+is recorded. It then waits two mutation intervals and, if fitness moved by less than 0.015, decays by
+`factor=1-aRate`. At the sanitised default `atrophyRate=0.12` that factor is 0.88. So one full cycle
+of the retire-a-dead-layer machinery is:
+
+```
+    v  ->  (v + 0.07) * 0.88
+```
+
+which is not a decay toward zero. It is an affine map with an ATTRACTING FIXED POINT at
+
+```
+    v* = 0.07 * 0.88 / (1 - 0.88) = 0.513
+```
+
+**A confirmed-dead layer converges on roughly half, from either direction.** From below it climbs; from
+above it falls; it never approaches zero. The mechanism built to retire dead weight parks it. And with
+`peakValue` recorded the probe step can reach 0.3, which moves the fixed point higher still.
+
+**WHY: THE PROBE'S KICK OUTLIVES THE VERDICT IT INFORMED.** The probe is a measurement — inject a
+stimulus, see whether fitness responds. When the answer is "no response, genuinely dead", the decay is
+applied to the KICKED value rather than to the value the layer actually held. So every probe leaves
++0.07 permanently in the parameter and removes only 12% of the total. **The engine's own dead-weight
+prober has the defect CLAUDE.md's third trap warns rigs about** — a probe that perturbs the thing it
+is diagnosing — one level up, in the attribution system, and the perturbation is never undone.
+
+**WHAT THE THREE MEASUREMENTS DO AND DO NOT SHOW, because this is where it would be easy to cheat.**
+They are CONSISTENT with the fixed point and they do not establish it. `maybe(...,0.04)` draws
+`tailDraw()` uniform on [-0.5,0.5], so the per-cycle step has std ~0.0115 and 200 cycles of FREE drift
+from 0.1 has std ~0.16 — which covers 0.279 to 0.476 comfortably. Worse for my hypothesis: a single
+attracting fixed point predicts the three seeds should CONVERGE, and their spread is 0.20, which fits
+drift better than convergence. **So the data mildly favours drift, and the defect is established by
+the arithmetic alone.** Recorded this way round on purpose: `#217a` called a model "consistent, not
+measured" for exactly this reason, and the same rule has to apply when the model is mine.
+
+**THE FIX.** Snapshot the pre-probe value on entry (`e.probeBase`) and, on a confirmed-dead verdict,
+decay from THAT rather than from the kicked value. The probe's stimulus then does what a measurement
+should: it perturbs, it is read, and it is removed. A dead layer decays geometrically at `1-aRate` per
+cycle toward zero, which is what `ATROPHY_SAFE` membership is supposed to mean — zero provably
+recovers the prior behaviour. A layer that DOES respond keeps the kick, unchanged from today, because
+for a live layer the probe found a better value and `#42`'s directional-probe reasoning still holds.
+
+**NO STANDING NOTE COVERS THIS.** The one STANDING DECISION nearby is "the rate stays free — do not
+clamp `mutationRate`, do not make `maybe()` honour its bounds", and this touches neither. The probe
+mechanism has already been corrected once for a DIFFERENT defect (a false-positive rescue when a probe
+in flight spans an extinction, which reads as a huge fitness move), so it is not treated as settled.
