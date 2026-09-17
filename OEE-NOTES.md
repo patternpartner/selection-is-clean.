@@ -19938,3 +19938,68 @@ first version was the confident one.
 
 Gate: `substrate-test` 260 passed / 0 failed at `TICKS=40 SEED=1` with the liveness patch in.
 `LIVENESS_DECLARED` is now 117 names.
+
+### #217e — IGNITION PLACED AGAINST THE POPULATION CURVE, AND THE "DEPOPULATING WORLD" READING DIES
+
+The 60k sweep gave only endpoints: `absField` 5.99 at 6k against ~1e-5 at 60k, `alive` ~250 against
+86/90/0. From two points the shape looked obvious — the substrate starts computing around the time
+the world it computes for thins out. **That reading was flagged as an observation and not written
+down as a finding, which turns out to have been the right call.** Sampled every 500 ticks to 25,000:
+
+**Seed 2 — population collapses INSIDE the burst.**
+
+```
+  tick   alive  active  maxStr      insc     chem
+  9500     210       0  0.01049         2        0
+ 10000     198       6    0.998      2280     2039
+ 10500     171      11    0.998      4780     6471
+ 11000      75      11   0.4331      5202    12625
+ 11500      79       7   0.1592      5224    17063
+ 12000      86       1  0.05849      5224    18935
+ 12500      82       0  0.04999      5224    19014
+```
+
+**Seed 3 — population GROWS through it.**
+
+```
+ 10500     267       0        0          0        0
+ 11000     293       1   0.1437         2      148
+ 12000     280       0  0.04993         2      676
+ 14000     326       0  0.04993         2      676
+```
+
+Seed 2 loses 64% of its population (210 -> 75) in the same 1,500 ticks that op 20 fires 5,200 times
+and 12,625 recipes evaluate. Seed 3 gains (267 -> 326) while op 20 fires **twice**. The two seeds
+differ by three orders of magnitude in burst intensity and go in OPPOSITE population directions.
+
+**The causal story is not claimed, and the reason is this session's own record.** The obvious reading
+— inscription fires, chemistry perturbs the field, particles die — is available, tidy, and exactly
+the shape of the two stories already killed today (the opcode-band contrast, and "ignites into a
+depopulating world" itself). n=2 with opposite signs supports "inscription intensity and population
+change may be related" and equally supports "seed 2 crashed for its own reasons in a window that
+happened to contain a burst".
+
+**THE EXPERIMENT THAT WOULD SETTLE IT, and it is cheap.** An `INSCRIBE` knob making `case 20:` a
+no-op is DRAW-NEUTRAL — the opcode body consumes no `Math.random()`, so turning it off removes no
+draw, exactly like `CHEM`. That gives a clean arm: same trajectory machinery, inscription suppressed,
+population curve compared. Recorded, not built; it is a new knob and its own measurement.
+
+**THE ABSORBING BOUNDARY, now visible as a time series rather than inferred.** `maxStr` runs
+`0.998 -> 0.4331 -> 0.1592 -> 0.05849 -> 0.04999` and then **flat forever** — it is still 0.04999 at
+tick 25,000, and 0.04993 on seed 3 from tick 12,000 onward. Decay from 0.4331 to the gate should take
+`ln(0.04999/0.4331)/ln(0.998)` ~= 1,078 ticks and the observed span is ~1,500 with inscription still
+topping up until 11,500. The prediction from reading the code holds against the trace.
+
+**AND `active` READS ZERO AT ALMOST EVERY SAMPLE WHILE `chem` CLIMBS TO 19,014.** Execution is bursty
+and brief, so a sampled count of cells-above-the-gate mostly catches nothing while the cumulative
+counter records tens of thousands of evaluations. That is the third appearance of one distinction in
+this entry: a SNAPSHOT and a HIGH-WATER and a CUMULATIVE count are three different quantities, and
+every correction in `#217d` came from treating two of them as one.
+
+**RETRACTED: "the field drained".** `absField` is spiky across roughly forty orders of magnitude —
+`1.159e-29`, `2.935e-41`, `0.2856`, `0.06458`, `1.304e-24` at adjacent samples. Reading it at two
+endpoints was meaningless, and the "drained" shape was an artifact of doing so. It is not a decaying
+curve; it is a mostly-empty field with occasional energy.
+
+**AND 25k DOES NOT PREDICT 60k.** Seed 3 holds 326 alive at tick 25,000 — the healthiest number in
+either trace — and is EXTINCT at 60,000. Whatever kills it happens after this window entirely.
