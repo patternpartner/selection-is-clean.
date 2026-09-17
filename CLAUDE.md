@@ -32,8 +32,17 @@ headline number in your entry is a pass count, you are reporting on the wrong ar
   only for cells with `cellProgStr>=0.05`, and at 6,000 ticks `cellProgStr` is exactly 0 across all
   1600 cells, so `CHEM=0` and `CHEM=1` agree to twelve significant figures while executing different
   tables. Twelve recipes mutating every cycle, and the world cannot tell.
-  **The ladder is: DECLARED -> CARRIED -> EXECUTED -> VARYING -> SELECTED.** `#209`/`#210` sit at
-  rung two, `harness-variance` at rung four. Before reporting any of the upper rungs for a mechanism,
+  **The ladder is: DECLARED -> CARRIED -> EXECUTED -> READING THE GENE -> VARYING -> SELECTED.**
+  `#209`/`#210` sit at rung two, `harness-variance` at rung five.
+  **Rung four was added by `#217n` and nothing on this page could see it.** `uaProdW()` executed on
+  every grammar production for the project's whole life and returned `[1,1,1,1,1]` from its own
+  fallback, because `sanitizeGenome` guards the field with `if(genome.uaProdW!==undefined)` — it
+  declines to create what it finds missing — and nothing declared it. So `#180`'s five heritable
+  production weights, and `uaVarW`'s per-leaf sense weights, were CONSTANTS in every universe ever
+  run. Fully live, liveness-clean, gene absent: **a fallback answers in the gene's place and every
+  rung above EXECUTED reads normal.** Ask it structurally: *which functions return a literal fallback
+  when a genome field fails a type check?* `#216k`'s stale `0.6` inside `CHANNEL_RENT_SAFE()`'s `||`
+  is the same shape, so that is twice this repo has paid for it. Before reporting any of the upper rungs for a mechanism,
   establish that the thing ever ran once — and prefer a state every code path must write through
   (here `cellProgStr`) over any one path, because INSCRIBE has FOUR real `case 20:` bodies plus a
   profiler stub. **"Undercounts fourfold" understates it (`#217f`): the four bodies are four

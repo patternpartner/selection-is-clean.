@@ -20332,3 +20332,44 @@ dropped on purpose, reflective journals kept as shared refs — and it is untouc
 still has three sizes, but the two population-side numbers have collapsed into one.
 
 Gate: `substrate-test` 260 passed / 0 failed at `TICKS=40 SEED=1`.
+
+### #217o — THE TWO DEAD WEIGHT VECTORS NOW CARRY VARIANCE, AND THE LADDER WAS MISSING A RUNG
+
+`#217n` declared `uaProdW` and `uaVarW` in the literal and moved `prevSmoothedFitness` into
+`CHILD_NOT_A_GENE`. Census at `TICKS=3000 SEED=1`, against `#217k`'s run on the same seed:
+
+| | `#217k` | `#217o` |
+|---|---|---|
+| total | 262 | 262 |
+| VARYING | 228 | **235** |
+| FLAT | 29 | 27 |
+| PINNED | 3 | **0** |
+| ABSENT | 2 | **0** |
+| SWEPT | 0 | 0 |
+
+- `uaProdW` — **VARYING, 89 distinct** across 213 living particles, trajectory `83, 81, 72, 89`
+- `uaVarW` — **VARYING, 203 distinct**, trajectory `290, 256, 204, 203`
+- `prevSmoothedFitness` — **FLAT, distinct 1, present 213**, which is the intent exactly: present and
+  no longer random-walked, every particle holding one cached value
+
+Two weight vectors that were constants in every run this project has ever done now carry real
+population variance. `ABSENT` and `PINNED` are both zero, so every one of 262 genes is now either
+varying or flat — no gene is missing and none is sitting on a clamp bound.
+
+**AND THE LADDER WAS MISSING A RUNG, which is the part worth keeping.** CLAUDE.md now says
+DECLARED -> CARRIED -> EXECUTED -> VARYING -> SELECTED. That ladder cannot see what `#217n` found.
+`uaProdW()` EXECUTED constantly — it was called on every grammar production, for the whole life of the
+project — and returned `[1,1,1,1,1]` from its own `||`-style fallback because the gene was undefined.
+So the mechanism was fully live, the liveness census would have reported it firing, and the gene
+behind it did not exist. **A FALLBACK ANSWERS IN A GENE'S PLACE, and every rung above EXECUTED reads
+normal while the gene is absent.** That is why `#209`/`#210`-style read-counting could never have
+caught this: the read happened, it just did not reach a gene.
+
+The rung goes between EXECUTED and VARYING and the question is: *when this code runs, is it reading
+the GENE or a default?* The structural way to ask it, which is cheap and does not depend on names:
+**which functions return a literal fallback when a genome field fails a type check?** `uaProdW`'s
+`if(!Array.isArray(w)||w.length<5)return [1,1,1,1,1]` is one. `#216k` is the same shape one level
+down — a stale literal `0.6` inside `CHANNEL_RENT_SAFE()`'s `||` fallback, found only because
+something else went red. That is now twice.
+
+Gate: `substrate-test` 260 passed / 0 failed at `TICKS=40 SEED=1`.
