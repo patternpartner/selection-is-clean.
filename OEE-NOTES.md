@@ -20079,3 +20079,63 @@ the count when you patch N sites**, because the failure mode of a partial match 
 reads like a control.
 
 Gate: `substrate-test` 260 passed / 0 failed at `TICKS=40 SEED=1`.
+
+### #217g — "IDENTICAL COUNTS" HID NOTHING, AND THE VARIANCE CENSUS IS BLIND TO A QUARTER OF THE GENOME
+
+`#217f` called the inscribed substrate causally inert on the strength of `alive` matching at 30 of 30
+samples. `alive` is ONE AGGREGATE and two worlds can hold 86 particles with different genomes, so the
+claim was tested against composition rather than a head count.
+
+**The digest was built strong ON PURPOSE, and the reason inverts a note already in this file.**
+`harness-variance` records that digest collisions UNDERREPORT variance, which makes its `FLAT` verdict
+the weaker claim. Here the failure direction flips: a weak digest would wrongly report the two arms
+IDENTICAL, and that was the conclusion under test. So this accumulates every finite numeric genome
+field weighted by key index AND particle index at 17 significant digits.
+
+**Result, seed 2 to 15,000 ticks, `INSCRIBE=1` against `INSCRIBE=0`:**
+
+- `alive` identical at 30/30.
+- **positions bit-identical at 30/30.** Not one particle is anywhere different.
+- the pooled genome fingerprint differs at 9/30 samples, all from tick 11,000 — i.e. after execution
+  begins at 9,541 — by about 33 ULPs (`3414715995.5574231` against `...5574484`).
+
+**Per-key, exactly ONE field of 258 differs: `prevSmoothedFitness`, relative 7.85e-11.** Nothing else.
+And that field is declared `// for fitnessDelta computation` and overwritten on every evaluation
+(`genome.prevSmoothedFitness=currentFitness`) — a CACHE of last tick's fitness, not a heritable trait.
+The chain is exactly what it should be: the ~1% field perturbation moves fitness a little, the cached
+fitness records it, and nothing downstream responds.
+
+So `#217f` stands with one precise qualifier rather than a retraction. **The substrate does reach the
+genome, through exactly one field, and that field is a record rather than a trait.** No heritable
+value differs, no particle moves, no birth or death changes.
+
+**MY OWN PROBE HAD A DEAD COLUMN.** It reported `lineages` and the value was 0 at every sample in both
+arms, because `lineageId` is not a field on `pGenome[i]`. That is not agreement between arms, it is an
+empty column, and reporting it as agreement would have been the `#217d` mistake again — one quantity
+standing in for another. Recorded rather than quietly dropped.
+
+**AND THE FINDING THAT OUTRUNS THE THREAD: `harness-variance` CANNOT SEE 66 GENOME FIELDS.**
+
+The census enumerates keys by parsing the `let genome={...}` literal, and its header gives the reason
+outright: "a hand-kept list goes stale silently and a census that misses a gene reports it as absent
+rather than as unexamined (`#209`'s rule)". That reasoning is right and the implementation inherits
+the same disease by another route. Measured against a live `pGenome[i]`:
+
+- **192** keys in the literal
+- **258** keys on the living genome
+- **66 invisible to the census — 26% of the genome.** (And zero in the other direction: the literal is
+  a strict subset.)
+
+They are not obscure. They include the AUTHORED STRUCTURES this project exists to watch — `channels`,
+`probes`, `opStacks`, `oeeW`, `uaOps`, `uaProdW`, `uaVarW`, `draw` — and about fifty `*Influence`
+genes, which are the meta-layer parameters `META_LAYER_PARAMS` and the attribution machinery act on.
+
+They are invisible because they are installed by `sanitizeGenome` rather than declared in the literal:
+`if(genome.field2WriteInfluence===undefined)genome.field2WriteInfluence=0.1;`. Verified, not inferred —
+none of the 66 matches a `KEY:` declaration anywhere in `engine.html`.
+
+**This matters because of where the census sits.** CLAUDE.md's front page nominates
+`harness-variance` as the answer to the missing dependent variable — "of N evolvable parameters, how
+many are actually evolving?" — and N has been 191/192 when the genome has 258. Every verdict it has
+produced is scoped to the declared three-quarters, and `channels`, `probes` and `opStacks` have never
+been in it. By `#209`'s own rule those 66 have been reported as absent rather than as unexamined.
