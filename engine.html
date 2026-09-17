@@ -17876,6 +17876,10 @@ function mutateGenome(){ fired('genome.mutate');
               const probeStep=(pv!==undefined&&isFinite(pv)&&pv>cur+0.01)
                 ?__cl((pv-cur)*0.5,0.03,0.3)
                 :0.07;
+              // #217i: remember what the layer actually held BEFORE the stimulus. The probe is a
+              // measurement and its kick must not survive the verdict it informs -- see the
+              // confirmed-dead branch below.
+              e.probeBase=cur;
               metaParamSet(p,cur+probeStep);
             }
           }
@@ -17889,7 +17893,19 @@ function mutateGenome(){ fired('genome.mutate');
             if(!moved){
               // Inert under a deliberate stimulus → genuinely dead. Decay licensed.
               const factor=__cl(1-aRate,0,1); // AUTONOMY: confirmed-dead decays at FULL rate (was half)
-              {const _mv=metaParamGet(p);if(isFinite(_mv))metaParamSet(p,_mv*factor);} // #108: was genome[p] directly
+              // #217i: decay from the PRE-PROBE value, not from the kicked one. Decaying the kicked
+              // value made this an affine map v -> (v+probeStep)*factor, whose fixed point at the
+              // default atrophyRate is 0.07*0.88/(1-0.88) = 0.513 -- so a CONFIRMED-DEAD layer
+              // converged on roughly half from either direction and never approached zero, which is
+              // the opposite of what ATROPHY_SAFE membership is supposed to guarantee. The kick was a
+              // stimulus injected to take a reading; leaving it in the parameter is the engine's own
+              // version of CLAUDE.md's third trap, a probe that perturbs what it diagnoses. Removed
+              // here, so a dead layer decays geometrically toward zero. A layer that DID respond keeps
+              // its kick in the else-branch below, unchanged: for a live layer #42's directional probe
+              // found a better value and that is the whole point of aiming at peakValue.
+              {const _base=(e.probeBase!==undefined&&isFinite(e.probeBase))?e.probeBase:metaParamGet(p);
+               if(isFinite(_base))metaParamSet(p,_base*factor);}
+              e.probeBase=undefined;
               _deadVerdict++; // the system probed and confirmed this layer dead weight
 
             }
