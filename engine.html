@@ -3012,6 +3012,9 @@ const UA_VAR_IX=(function(){ const m=Object.create(null); for(let i=0;i<UA_ALL_V
 function uaVarWeight(w,name){
   const ix=UA_VAR_IX[name];
   if(ix===undefined)return 1;                       // not a canonical leaf (rend channel) — unweighted
+  // #217q: UA_ALL_VARS holds 33 symbols, not the "twenty-five senses" the #180 comments still say —
+  // #135 added the at symbol and #174 the creature's own voices. uaVarW's length is derived from the list
+  // (#217n) rather than written down, so the count cannot go stale again; the prose had.
   const v=w[ix];
   return (typeof v==='number'&&isFinite(v)&&v>0)?v:0;
 }
@@ -9303,6 +9306,31 @@ let genome={
   tendDims: 5,
   rend: null,
   boundOpcodes: [],
+  // === #217q: THE LAST SEVEN, DECLARED WITH THEIR OWN INITIALISERS ===
+  // #217l declared 57 and named nine it skipped as structures with bespoke initialisation. #217n took
+  // two of those (uaProdW, uaVarW) because the census reported them ABSENT. These are the remaining
+  // seven, and the point is the same one #217l makes: a genome field declared nowhere is not part of
+  // any written description of what a genome IS, and the literal is that description.
+  // Each value is lifted from the field's own sanitizeGenome line, so a seed genome is unchanged:
+  //   alienPredict   {attempts:0,hits:0}                     sanitize ~12974
+  //   netApplied     {migrant:0,plasmid:0,motif:0,inscription:0}   sanitize ~12964
+  //   netAckApplied  same shape as netApplied
+  //   vitalMemory    []   "initialised on first vital tick"   sanitize ~12896
+  //   oeeW           []   filled to OEE_PROXY_N by sanitize   sanitize ~12108
+  //   opStacks       null  cloneGenome sets null then fills   see #155
+  //   draw           null  sanitizeDraw() supplies the real default
+  // The objects are declared as fresh literals here, which matters: they are per-genome MUTABLE
+  // records (netApplied counts packets that wrote into sim state), so one shared object would be the
+  // #155 bug again -- cloneGenome already copies them by reference through {...src} and the sanitize
+  // lines rebuild them per genome, which is what keeps that safe today. Declaring them does not
+  // change that; it only makes them visible.
+  alienPredict:{attempts:0,hits:0},
+  netApplied:{migrant:0,plasmid:0,motif:0,inscription:0},
+  netAckApplied:{migrant:0,plasmid:0,motif:0,inscription:0},
+  vitalMemory:[],
+  oeeW:[],
+  opStacks:null,
+  draw:null,
   // === #217n: TWO GENES THAT WERE NEVER PRESENT AT ALL ===
   // #217k's census reports uaProdW and uaVarW as ABSENT: value undefined on every living particle,
   // across three seeds. Not FLAT, not PINNED -- absent. The cause is a guard: sanitizeGenome wraps
