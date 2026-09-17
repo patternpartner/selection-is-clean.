@@ -20373,3 +20373,53 @@ down — a stale literal `0.6` inside `CHANNEL_RENT_SAFE()`'s `||` fallback, fou
 something else went red. That is now twice.
 
 Gate: `substrate-test` 260 passed / 0 failed at `TICKS=40 SEED=1`.
+
+#### #217i CORRECTED — IT IS A DEAD ZONE BETWEEN TWO THRESHOLDS, NOT AN AFFINE FIXED POINT
+
+`#217i` claimed the retire-dead-weight loop is `v -> (v+0.07)*(1-aRate)`, an affine map with an
+attracting fixed point at 0.513, and cited `inscriptionInfluence` settling at 0.360/0.476/0.279 as
+consistent. The A/B says the arithmetic was the wrong explanation. Seed 1, 20,000 ticks, pre-fix
+engine (`044c5c9`), sampled every 4,000:
+
+```
+  t= 4000  v=0.2208  trace=-0.0063  probeState=0
+  t= 8000  v=0.3237  trace=-0.0407  probeState=1
+  t=12000  v=0.5411  trace=-0.0562  probeState=0
+  t=16000  v=0.5411  trace=-0.0624  probeState=0
+  t=20000  v=0.5411  trace=-0.0682  probeState=0
+```
+
+**It froze at 0.5411 and stayed there for eight thousand ticks.** And 0.5411 against a predicted
+0.513 is close enough to have read as confirmation — which is exactly what makes this worth writing
+down. That run's `atrophyRate` is 0.3404, so the affine fixed point is
+`0.07*0.6596/(1-0.6596) = 0.136`, nowhere near the observed value. **The number I predicted and the
+number I got agreed to 5% for unrelated reasons.**
+
+**WHAT IS ACTUALLY HAPPENING.** The value stops moving because the probe stops firing. The two
+verdicts are
+`quiet = conf>0.35 && |tSlow|<0.03 && |trace|<0.05` and `harmful = conf>0.35 && tSlow<-0.10`,
+and the observed trace sits at **-0.056 to -0.068** — past `quiet`'s window and short of `harmful`'s
+bar. **The band from -0.05 to -0.10 is claimed by neither verdict, and the holding cost drives the
+trace precisely into it.** The layer is not converging on a fixed point; it is STRANDED in a gap
+between two thresholds where nothing acts on it again.
+
+The holding cost's own target is `-0.6*clamp(aRate,0,0.6)*|value|`, which at `aRate=0.3404` and
+`v=0.541` is **-0.1105** — below the `harmful` bar. So the trace is en route to a value that WOULD
+condemn the layer, easing at 0.02 per cycle for `trace` and 0.01 for `traceSlow`, and `harmful` tests
+the slow one. Whether it crosses -0.10 at a much longer budget is unmeasured; at 20,000 ticks and ~65
+mutation cycles it had not.
+
+**THE FIX IS STILL RIGHT AND IS NOT THE WHOLE FIX.** Post-fix on the same seed, `probeBase` is
+recorded (0.2409) and the value freezes at **0.3162** instead of 0.5411 — decaying from the pre-probe
+value removes the accumulated kicks, as designed. But it freezes, because the dead zone is untouched
+by it. So `#217i` fixed a real contamination and the layer still never retires.
+
+**Scope, stated:** the post-fix arm carries `#217h` as well, so its magnitude is confounded; an
+isolated arm at `9e1e37e` is running. The dead-zone finding needs no such care — it is visible in the
+PRE-FIX trace alone, where neither of my changes exists.
+
+**And the lesson is the one `#217a` already named, turned on me.** A model that is "consistent, not
+measured" can also be consistent for the wrong reason, and a 5% agreement between a predicted
+constant and an observed one is not evidence of the mechanism that predicted it. I wrote `#217i`
+hedging the DATA (three seeds equally consistent with drift) and not hedging the MECHANISM, and the
+mechanism was the part that was wrong.
