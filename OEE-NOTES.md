@@ -19827,3 +19827,58 @@ runs — so ignition happens somewhere. It may be that peer MOTIFS carry opcode 
 the inscribed substrate a field-only phenomenon: the substrate computes only when there are many
 universes talking. That would be a lovely reading and it is consistent with everything above. The
 field has not been measured here, and it is not written down as though it had.
+
+#### #217d CORRECTED, BY THE SWEEP THAT WAS RUNNING WHILE THE ENTRY WAS PUSHED
+
+**The headline above is wrong, and the run that refuted it was already in flight when it went to
+`main`.** The entry states the evolvable chemistry "has never executed" and calls it "a random walk
+on dead code". At 60,000 ticks:
+
+| seed | first op-20 seen | **first inscription** | max cell strength | cells ever active (of 1600) | `inscriptionInfluence` |
+|---|---|---|---|---|---|
+| 1 | 37,692 | **37,693** | 0.998 | 11 | 0.360 |
+| 2 | 11,151 | **6,109** | 0.998 | 13 | 0.476 |
+
+The substrate ignites. Cells reach near-maximum inscription strength, recipes evaluate, and the layer
+CODEMAP calls a closed loop does close — eventually. So the correct claim is not that the chemistry is
+dead. It is that the chemistry is **LATE and SPARSE**: nothing at all for thousands of ticks, then a
+handful of cells, never more than 13 of 1600.
+
+**How close the false version was to being obviously false.** Seed 2 ignited at tick 6,109. The
+measurement that produced "never" ran to 6,000. **One hundred and nine ticks** — under two percent of
+the budget — separated the claim from its own refutation. Everything reported at 6,000 ticks is still
+true AT 6,000 TICKS; what was false was the word "never", and `#66` has said on the front page the
+whole time that a verdict is a verdict about a HORIZON. Knowing the rule is not the same as being
+saved by it: the horizon caveat was flagged out loud in this very session, twice, and the entry was
+still written with an unqualified "never" in the title.
+
+**A run cannot show you "never".** It can only ever show you "not by tick N". That is not pedantry
+here — it is one part in ten.
+
+**MY OWN PROBE HAD A BLIND SPOT, AND THE OTHER ARM CAUGHT IT.** On seed 2 the first inscription
+(6,109) PRECEDES the first sighting of opcode 20 in a living program (11,151), which is impossible if
+the op-20 scan were complete. It is not: the scan runs after `loop()` returns, so a particle that
+carries op 20, executes it, and dies within the same tick writes its inscription and is gone before
+the census sees it. **So every op-20 figure in this entry is "absent from the post-loop snapshot",
+not "never executed"** — including the 3-seed absence at 6,000 ticks. The `cellProgStr` figures do
+not have this hole, because they read the state every path must write through rather than the
+carrier. That is the same principle that made `cellProgStr` the right instrument for the four
+`case 20:` bodies, and it paid twice.
+
+**WHAT SURVIVES, and it is still worth the session.**
+- `CHEM` is a real control and its switch moves no draw. Unaffected.
+- At 6,000 ticks the chemistry provably does nothing: identical worlds to twelve significant figures
+  across arms executing different tables. Now correctly scoped as a statement about a budget.
+- The rung-three lesson stands and is sharper: nobody had asked whether `updateField()`'s one reader
+  ever runs, and the answer turns out to be "not for the first 6,000-38,000 ticks, and then barely".
+  A layer that ignites at tick 37,693 and touches 11 cells is not what CODEMAP's "that loop is
+  closed" describes.
+- The liveness enrollment matters MORE, not less. `cell.chemExec` firing 0 then nonzero at tick
+  37,693 is exactly the signal no bespoke probe should have been needed to see.
+
+**`inscriptionInfluence` REFUSED TO ATROPHY ANYWAY.** After ~200 mutation cycles the gene sits at
+0.360 and 0.476 against a 0.1 default — three to five times up, not down. For most of both runs its
+incoming signal was exactly zero, which is the condition the COLD START comment says retires it. The
+holding-cost machinery (`META_HOLDING_K`, built precisely because dead weight read as neutral) did
+not bite within 60k ticks. That prediction is refuted on its own terms, and this one is NOT a horizon
+artifact in the same way: the gene had 60,000 ticks and ~200 chances.

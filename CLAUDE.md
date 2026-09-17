@@ -28,16 +28,21 @@ headline number in your entry is a pass count, you are reporting on the wrong ar
 - **A READ SITE IS NOT A READ EVENT, and that rung is below every other one on this page.** `#217`
   named the ladder's top (`a read is not a move`); `#217d` fell through its bottom. `#217c` counted
   `chemistryTable`'s readers — exactly one, `updateField()` — and that count is TRUE and was used to
-  decline a deep-copy correctly. Nobody asked how often the one reader RUNS. The answer is never: it
-  evaluates a recipe only for cells with `cellProgStr>=0.05`, and `cellProgStr` is exactly 0 across
-  all 1600 cells forever, because opcode 20 (INSCRIBE) never enters a living program. Twelve recipes
-  mutate every cycle at a meta-mutated rate, and the world is bit-identical either way — a random
-  walk on dead code, with CODEMAP asserting on the same page that "that loop is closed".
+  decline a deep-copy correctly. Nobody asked how often the one reader RUNS. It evaluates a recipe
+  only for cells with `cellProgStr>=0.05`, and at 6,000 ticks `cellProgStr` is exactly 0 across all
+  1600 cells, so `CHEM=0` and `CHEM=1` agree to twelve significant figures while executing different
+  tables. Twelve recipes mutating every cycle, and the world cannot tell.
   **The ladder is: DECLARED -> CARRIED -> EXECUTED -> VARYING -> SELECTED.** `#209`/`#210` sit at
   rung two, `harness-variance` at rung four. Before reporting any of the upper rungs for a mechanism,
   establish that the thing ever ran once — and prefer a state every code path must write through
   (here `cellProgStr`) over any one path, because INSCRIBE has FOUR real `case 20:` bodies plus a
   profiler stub and a probe on one undercounts fourfold.
+  **AND THE FIRST VERSION OF THIS BULLET SAID "NEVER", WHICH WAS FALSE — read that as the horizon
+  warning two bullets down, with teeth.** The 60k sweep that was RUNNING WHILE THE CLAIM WAS PUSHED
+  came back with ignition at tick 37,693 (seed 1) and **6,109** (seed 2) — 109 ticks past the budget
+  that produced "never". The layer is not dead; it is LATE and SPARSE (11-13 of 1600 cells ever
+  active). "Never" is not a thing a run can show you. It can only ever show you "not by tick N", and
+  the distance between those two was one part in ten here.
 - A verdict about diversity is a verdict about a HORIZON (`#66`: every diversity result in that
   session was measuring a transient). Say the budget out loud or the claim has no scope.
 - **Variance is not selection.** Drift produces variance too, and `#209` warns that every
