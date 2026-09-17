@@ -20194,3 +20194,45 @@ for a live layer the probe found a better value and `#42`'s directional-probe re
 clamp `mutationRate`, do not make `maybe()` honour its bounds", and this touches neither. The probe
 mechanism has already been corrected once for a DIFFERENT defect (a false-positive rescue when a probe
 in flight spans an extinction, which reads as a huge fitness move), so it is not treated as settled.
+
+#### #217j — THE GENOME HAS THREE DIFFERENT SIZES, AND MY EXPLANATION FOR THAT WAS WRONG
+
+`#217g` reported 66 fields invisible to the variance census, from one particle's `Object.keys` at one
+budget. Then two of my own probes disagreed with each other — 245 keys at 4,000 ticks against 258 at
+13,000 — and **I explained the gap as keys accumulating over the run.** Measured across all living
+particles at three budgets, seed 1:
+
+| | t=1,000 | t=4,000 | t=13,000 |
+|---|---|---|---|
+| declared in the literal | 192 | 192 | 192 |
+| on the GERMLINE (`Object.keys(genome)`) | **273** | 273 | 273 |
+| union across living particles | 258 | 258 | **259** |
+| per-particle MIN | 245 | 245 | 245 |
+| per-particle MAX | 258 | 258 | 258 |
+| invisible to the census | 66 | 66 | 67 |
+
+**Accumulation was the wrong explanation.** The union moves 258 -> 259 between 4,000 and 13,000
+ticks: one key in nine thousand ticks. What actually produced my 245-vs-258 disagreement is the
+PER-PARTICLE SPREAD — living particles differ from one another by up to **13 keys**, min 245 and max
+258 — and both probes read the first living particle they happened to find. Two readings of the same
+population at the same moment can differ by thirteen keys depending on which particle answers.
+
+So a one-particle key list is not a description of the genome, it is a sample from a distribution, and
+neither of my probes said which. That is the same error as `alive` standing in for composition in
+`#217f`, and as `everMax` for end-of-run max in `#217d`: a single number standing in for a set.
+
+**AND THE GERMLINE CARRIES 15 KEYS THAT NO LIVING PARTICLE HAS** — 273 against a per-particle maximum
+of 258. That is `cloneGenome` not propagating everything the self holds, which is correct and
+deliberate for some of it (compiled holders dropped on purpose, reflective journals kept as shared
+refs rather than cloned). But it means "the genome" has THREE sizes depending on which object is
+asked: 192 as declared, 273 on the self, 245-258 on a particle. CODEMAP's germline-vs-population
+warning has a size dimension nobody had counted.
+
+**What survives from `#217g` unchanged:** the 66 figure. It is stable at 66 across budgets, reaching
+67 by 13,000, and it is the quantity that matters — the fields `harness-variance` could not see.
+
+**And it validates the shape of the fix rather than my reason for it.** `harness-variance` now unions
+keys from the living population at every sample. I justified "every sample" by accumulation over
+time, which is nearly worthless at one key per nine thousand ticks. The real justification is the
+union across PARTICLES, which the same code does and which matters by thirteen keys. Right fix,
+wrong reason, recorded so the next reader does not inherit the wrong reason.
