@@ -17253,6 +17253,35 @@ function attemptHGT(){
 // ═══ RESOURCE FIELD — shared writable environment with territorial signatures ═══
 // Energy diffuses and decays. Signatures blend during diffusion (territory fades at edges).
 // Ownership decays faster than energy — territory must be actively maintained.
+// #217d: CHEM is the ablation #217c made possible. The chemistry table drifts under mutateGenome()
+// at a per-lineage rate with no verdict of any kind, and nothing in this project has ever measured
+// whether that drift MATTERS to the world. The control was unrunnable until now: there was no knob,
+// and the obvious way to build one (skip the mutation block) would have consumed a different number
+// of Math.random() draws and put the two arms on different trajectories, so any difference measured
+// would have been confounded with the stream shift -- the same trap as a probe that draws.
+// #217c established that the read site is SINGULAR, and that is what makes a clean arm possible:
+// let the table mutate EXACTLY as it does today, every draw identical, and change only WHICH table
+// the field executes. CHEM=0 runs the field on a frozen snapshot of the seed chemistry while the
+// genome goes on evolving its own.
+// BE PRECISE ABOUT WHAT THAT BUYS, because the loose version of this claim is the kind this file
+// keeps having to retract: the KNOB ITSELF adds and removes no draw -- not one Math.random() call
+// moves, at the chemistry block or anywhere else. The two arms still diverge, because the field
+// genuinely computes differently and the whole world follows; that divergence is the EFFECT under
+// test. What is excluded is the SECOND, instrumental source of divergence a skip-the-block knob
+// would have added, where a difference in outcome could equally have been the shifted stream.
+// Testable consequence, and the boring side of this change: below the first mutateGenome() fire the
+// live table and the snapshot are the same table, so CHEM=0 and CHEM=1 must be IDENTICAL runs. If
+// they are not, this plumbing is broken (a shallow copy would be the first suspect).
+// The snapshot is taken lazily at the first field update, deep, because mutateGenome writes THROUGH
+// the recipe and monomial arrays in place (see the grep warning in cloneGenome).
+function chemFieldLive(){ return (typeof globalThis==='undefined')||((globalThis.__CHEM??1)|0)!==0; }
+let __chemSeedTable=null;
+function chemFieldTable(){
+  const live=genome.chemistryTable;
+  if(chemFieldLive())return live;
+  if(!__chemSeedTable&&Array.isArray(live))__chemSeedTable=live.map(r=>Array.isArray(r)?r.map(m=>Array.isArray(m)?m.slice():m):r);
+  return __chemSeedTable||live;
+}
 function updateField(){
   // ═══ STAGE 1: CELL-LEVEL VM EXECUTION ═══
   // Each cell holds one VM instruction inscribed by particles.
@@ -17262,6 +17291,9 @@ function updateField(){
   // Snapshot both channels first so all cells see consistent state.
   const f1Snap=field.slice();
   const f2Snap=field2.slice();
+  const chemTable=chemFieldTable();   // #217d: hoisted — one resolution per tick, not one per cell. The
+                                      // table cannot change mid-pass (mutateGenome runs outside updateField),
+                                      // so the hoist is exact as well as cheap.
   for(let y=0;y<FIELD_H;y++){
     for(let x=0;x<FIELD_W;x++){
       const idx=y*FIELD_W+x;
@@ -17288,7 +17320,7 @@ function updateField(){
       // Coefs include ±1 alongside ±A,±B. Expression space within a single
       // tick is now arbitrary polynomial in local states, not just bilinear.
       let d1=0,d2=0;
-      const recipe=genome.chemistryTable[op%12];
+      const recipe=chemTable[op%12];   // #217d: the live table, or the frozen seed snapshot under CHEM=0 — see chemFieldTable()
       if(recipe){
         const ls0=c1,ls1=c2,ls2=nN,ls3=nS,ls4=nE,ls5=nW,ls6=m2N,ls7=m2S,ls8=m2E,ls9=m2W,ls10=nbAvg1,ls11=nbAvg2;
         const lsArr=[ls0,ls1,ls2,ls3,ls4,ls5,ls6,ls7,ls8,ls9,ls10,ls11,1.0,0,0]; // [12]=1, [13]=d1, [14]=d2

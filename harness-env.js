@@ -40,7 +40,11 @@ console.error=()=>{};console.warn=()=>{};};
 // session that followed the front-page instruction ran the same thing twice believing it had a
 // control. The rule this file states about harness knobs was being broken by the project's own
 // setup instructions.
-module.exports.KNOBS = ['MUTUALISM','RQ_TRAIT','GENO_PARASITE','SELF_PREDICT','GRIP_SEED','MEME_TRANSFER','MOTIF_SELECT','FOUND','SELFMODEL','LAW_PERSIST'];
+// #217d: CHEM joins the list AT THE SAME TIME as the gate it controls, which is the whole point of
+// the paragraphs above. #215 shipped a gene and its knob and left this line alone, and it cost a
+// bisect; FOUND sat unplumbed for the project's whole life while the front page told every session
+// to use it as a control. A knob and its KNOBS entry are one change or they are a trap.
+module.exports.KNOBS = ['MUTUALISM','RQ_TRAIT','GENO_PARASITE','SELF_PREDICT','GRIP_SEED','MEME_TRANSFER','MOTIF_SELECT','FOUND','SELFMODEL','LAW_PERSIST','CHEM'];
 module.exports.applyKnobs = function(g){
   for (const kn of module.exports.KNOBS)
     if (process.env[kn] !== undefined) g['__'+kn] = parseInt(process.env[kn], 10);
