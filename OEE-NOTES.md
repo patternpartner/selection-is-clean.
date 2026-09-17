@@ -20423,3 +20423,46 @@ measured" can also be consistent for the wrong reason, and a 5% agreement betwee
 constant and an observed one is not evidence of the mechanism that predicted it. I wrote `#217i`
 hedging the DATA (three seeds equally consistent with drift) and not hedging the MECHANISM, and the
 mechanism was the part that was wrong.
+
+### #217r — THE DEAD ZONE IS CLOSED AND THE LAYER STILL DOES NOT RETIRE, FOR A THIRD REASON
+
+Three arms on seed 1, 20,000 ticks, `inscriptionInfluence` (default 0.1), sampled every 4,000:
+
+| t | pre-fix `044c5c9` | `#217i` only | `#217i`+`#217p` |
+|---|---|---|---|
+| 4,000 | 0.221 | 0.278 | 0.140 |
+| 8,000 | 0.324 | 0.398 | 0.222 |
+| 12,000 | **0.541** | **0.316** | 0.179 |
+| 16,000 | 0.541 | 0.316 | 0.416 |
+| 20,000 | 0.541 | 0.316 | 0.281 |
+| `probeState` at samples | 0 throughout | 0 throughout | **0,1,0,1,1** |
+
+**`#217p` did what it was for.** The value never freezes and the probe cycles. At t=20,000 the trace
+is **-0.059** — inside the band that used to strand a layer — and `quiet` fires anyway because the
+condition is now `tSlow>-0.10`. The two verdicts meet and nothing falls between them.
+
+**`#217i` also did what it was for.** The kicks are visible and no longer accumulate: at t=16,000
+`v-probeBase` is exactly `0.41569-0.34569 = 0.07`, the flat probe step, and the next sample decays
+from `probeBase` rather than from the kicked value — 0.416 down to 0.281.
+
+**AND IT STILL DOES NOT RETIRE, for a reason neither change addresses.** It wanders 0.14 to 0.42:
+probed up, decayed back, probed again. The decay fires (0.416 -> 0.281 is a confirmed-dead decay at
+`1-aRate = 0.717`) but something periodically rescues it, and the only thing that can is the
+`moved` test — `Math.abs(currentFitness-(e.probeFitness||0))>0.015` after two mutation intervals.
+**Fitness noise over two intervals clears 0.015 often enough to keep acquitting a layer whose
+incoming signal is exactly zero.** So the verdict is not "dead", it is "dead, then rescued by noise,
+then dead again".
+
+That is the same defect shape OEE-NOTES already records for extinctions — a probe in flight across a
+population collapse reads the discontinuity as a huge apparent movement and rescues the value — and
+this is the ordinary-noise version of it, with no collapse required. The fix would be a threshold
+that scales with the fitness signal's own variability rather than a fixed 0.015, or a probe that
+compares against a baseline sampled over the same window rather than a single instant. **Not built
+here**: picking that threshold needs the fitness series' noise floor measured, and guessing a
+constant is how 0.015 got there.
+
+**Three causes, found in order, each hidden behind the one before it.** The kick outliving its
+verdict (`#217i`), the gap between the two verdict windows (`#217p`), and noise acquitting a dead
+layer (this). Each fix was necessary and none was sufficient, and the second and third were only
+visible once the first stopped dominating. Worth saying plainly because the first entry claimed a
+single mechanism and a fixed point, and the truth was three mechanisms in series.
