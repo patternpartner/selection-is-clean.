@@ -20493,3 +20493,36 @@ Where the genome census stands after today: **192 keys declared this morning, 26
 pinned.** The blindness that opened this thread (66 invisible fields, every authored structure among
 them) is closed at the source, and `harness-variance`'s runtime union is now belt-and-braces rather
 than the fix.
+
+#### #217i's exhibit survives — the substrate computes and still does not matter
+
+I flagged a worry against my own `#217i`: `#217h` moved ignition from tick 6,110-10,854 to 2,656-3,058,
+so `inscriptionInfluence` might have become a genuinely LIVE layer, in which case the probe correctly
+finds `moved=true`, the gene correctly keeps its value, and the entry's exhibit dissolves. The
+isolated arm at `9e1e37e` — `#217h` present, `#217i` and `#217p` absent — settles it:
+
+```
+  seed 1   0.334  0.314  0.537  0.519  0.530     trace to -0.082
+  seed 2   0.286  0.455  0.301  0.445  0.445     trace to -0.078
+```
+
+Still ~0.44-0.53, still not retiring. **The worry was unfounded and the exhibit holds.**
+
+Attribution is now clean, seed 1 at t=20,000:
+
+| arm | value at 20k |
+|---|---|
+| pre-fix `044c5c9` | 0.541, frozen |
+| `#217h` only | 0.530 |
+| `#217h` + `#217i` | 0.316, frozen |
+| `#217h` + `#217i` + `#217p` | 0.281, cycling |
+
+`#217i` is what drops it from ~0.53 to ~0.32 — the accumulated kicks. `#217p` is what unfreezes it.
+
+**AND THE REASON THE EXHIBIT HOLDS IS `#217f`.** The substrate now computes from tick 2,656, and
+`#217f` measured that its computing changes nothing: `INSCRIBE=0` and `INSCRIBE=1` gave identical
+`alive` at 30 of 30 samples and bit-identical positions, with 19,116 recipe evaluations between them.
+So `inscriptionInfluence` has a live INPUT and no fitness CONSEQUENCE, earns no credit, and remains
+dead weight by the attribution system's own correct reading. **The layer is not dead because it never
+runs any more; it is dead because running it does not matter.** Those are different findings and
+`#217h` converted the first into the second without touching the second.
