@@ -39,10 +39,17 @@ headline number in your entry is a pass count, you are reporting on the wrong ar
   profiler stub and a probe on one undercounts fourfold.
   **AND THE FIRST VERSION OF THIS BULLET SAID "NEVER", WHICH WAS FALSE — read that as the horizon
   warning two bullets down, with teeth.** The 60k sweep that was RUNNING WHILE THE CLAIM WAS PUSHED
-  came back with ignition at tick 37,693 (seed 1) and **6,109** (seed 2) — 109 ticks past the budget
-  that produced "never". The layer is not dead; it is LATE and SPARSE (11-13 of 1600 cells ever
-  active). "Never" is not a thing a run can show you. It can only ever show you "not by tick N", and
-  the distance between those two was one part in ten here.
+  came back with the first mark on the substrate at tick **6,109** on seed 2 — 109 ticks past the
+  budget that produced "never" — and the first recipe actually EVALUATING at 9,541. The layer is not
+  dead; it is LATE and SPARSE (11-23 of 1600 cells ever active across three seeds). **"Never" is not
+  a thing a run can show you.** It can only ever show you "not by tick N", and the distance between
+  those two was one part in ten here.
+  **The chain has FOUR rungs and the middle two are easy to merge** — I merged them twice. They are:
+  op 20 CARRIED in a program -> op 20 FIRES -> strength CROSSES 0.05 -> recipe EVALUATES. First mark
+  and first execution are 3,431 ticks apart on seed 2. Related: the 0.05 gate is ABSORBING FROM
+  ABOVE, because `cellProgStr`'s single decay site sits after `if(strength<0.05)continue;` — a cell
+  decays only while above the gate and freezes just under it, so `everMax` (0.998) and end-of-run max
+  (0.0499) are different quantities and conflating them is what produced both corrections.
 - A verdict about diversity is a verdict about a HORIZON (`#66`: every diversity result in that
   session was measuring a transient). Say the budget out loud or the claim has no scope.
 - **Variance is not selection.** Drift produces variance too, and `#209` warns that every
