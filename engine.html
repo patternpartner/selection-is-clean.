@@ -10030,6 +10030,27 @@ function cloneGenome(src){
   g.fitnessSensors=Array.isArray(src.fitnessSensors)?src.fitnessSensors.map(s=>({...s,program:cloneProg(s.program)})):src.fitnessSensors;
   g.rend=Array.isArray(src.rend)?src.rend.map(a=>({expression:a.expression,compiled:null,failed:!!a.failed})):src.rend;
   g.draw=Array.isArray(src.draw)?src.draw.map(o=>o.slice()):src.draw;
+  // #217c: chemistryTable is DELIBERATELY NOT deep-copied here, and what follows is a MEASUREMENT of
+  // why, not an author's decision. No STANDING entry in OEE-NOTES.md covers it; inventing one to make
+  // the silence look intentional is exactly how #205 happened, so this says only what was checked.
+  // THE READ SITE IS SINGULAR. The one and only read is updateField(), at the chemistryTable[op%12]
+  // recipe lookup, and updateField() is called once per tick from the main loop - outside every
+  // "genome=pGenome[i]" repoint in this file. So it reads the SELF's table on every tick, always.
+  // There are ZERO pGenome[i].chemistryTable readers anywhere in engine.html.
+  // WHAT A PRIVATE COPY WOULD BUY. Nothing that runs. mutateGenome() walks all 12 recipes and point-
+  // mutates their monomials every cycle, so per-lineage copies would diverge immediately and then sit
+  // unexecuted. The #217 variance census would start reporting chemistryTable as VARYING across the
+  // population - a structure with real spread and no effect on anything - which is the precise false
+  // positive that census was built to avoid. Deep-copying it would MANUFACTURE the signal, not find it.
+  // WHY THE ASYMMETRY IS COHERENT. #188's line above holds here too: the chemistry crosses, the
+  // chemicals do not. But the field is one shared lattice, and an opcode has to mean the same thing to
+  // every particle standing on it - a recipe is closer to the medium than to the genotype. Private
+  // channel rules work (#188/#189) because channels carry their own per-rule lattice; the field does not.
+  // FOR A LATER READER: if you want per-lineage chemistry, the work is at the READ site first. Cloning
+  // here without moving updateField() under the repoint changes no pixel and no measurement.
+  // AND FOR GREPPERS: mutateGenome writes through the locals "recipe" and "mono", aliases taken out of
+  // the table on lines that never contain its name. A search for chemistryTable therefore reports it
+  // as never mutated. It is mutated hard (CLAUDE.md, trap 5 - this is the #217c instance of it).
   // reflective journals (lineage, epochs, metaCredit, shadowScenarioBank, ...) stay SHARED refs —
   // they are the self's bookkeeping, read-only in the per-particle hot path, never cloned per birth.
   return g;

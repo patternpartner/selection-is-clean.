@@ -19670,3 +19670,22 @@ hid `CHANNEL_RENT_SAFE`'s stale literal inside a helper and `out.warp`'s bank-cl
 now paid for that three times. Second, I accepted the deep-copy remedy as obviously correct before
 asking who reads the thing — the recommendation was plausible, adjacent to a real pattern, and wrong,
 which is the most expensive combination available.
+
+**The finding now lives at the site, which is the part that outlasts this page.** A 21-line comment
+goes into `cloneGenome()` next to `#155`'s `opStacks` block and `#188`'s chemistry-crosses line, in
+the run of deep-copy notes a reader is already scanning when they wonder why this one field is
+missing. It records four things and no more: the read site is singular and it is `updateField()`,
+called once per tick from the main loop and therefore OUTSIDE every `genome=pGenome[i]` repoint, so
+it reads the self's table always, with **zero** `pGenome[i].chemistryTable` readers in the file; a
+private copy would diverge under `mutateGenome()` and then sit unexecuted, which would make the
+`#217` census start reporting `chemistryTable` as VARYING — manufacturing exactly the signal that
+census exists to catch rather than finding one; the asymmetry with `channels` is coherent because
+channels carry a per-rule lattice and the field does not; and the work, for anyone who does want
+per-lineage chemistry, is at the READ site first, because cloning here alone changes no pixel.
+
+**It says explicitly that it is a measurement and not a STANDING decision.** There is no author's
+note declining to clone this; the silence is just silence. Writing a comment that implies there was
+one would forge a decision and hand the next reader a fake reason to stop looking — which is the
+`#205` failure mode with the sign flipped (`#205` re-found a real STANDING note and wrote it up as a
+defect; this would be inventing a STANDING note that never existed). The comment also carries the
+grep warning, because the alias blindness above is what made this whole entry necessary.
