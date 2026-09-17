@@ -20526,3 +20526,39 @@ So `inscriptionInfluence` has a live INPUT and no fitness CONSEQUENCE, earns no 
 dead weight by the attribution system's own correct reading. **The layer is not dead because it never
 runs any more; it is dead because running it does not matter.** Those are different findings and
 `#217h` converted the first into the second without touching the second.
+
+### #217w — THE ATROPHY CHAIN CLOSES: A PROVABLY DEAD LAYER RETIRES FOR THE FIRST TIME
+
+Four changes in series, each exposed by the one before, on `inscriptionInfluence` — a layer whose
+incoming signal `#217f` proved is exactly zero. Seed 1, 20,000 ticks, default 0.1:
+
+| arm | trajectory | at 20k |
+|---|---|---|
+| pre-fix `044c5c9` | 0.221 0.324 0.541 0.541 0.541 | **0.541, frozen** |
+| `+#217i` kick removed | 0.278 0.398 0.316 0.316 0.316 | **0.316, frozen** |
+| `+#217p` verdicts meet | 0.140 0.222 0.179 0.416 0.281 | **0.281, wandering** |
+| `+#217t` bar scales with noise | 0.186 0.135 0.115 0.032 0.022 | **0.022, still falling** |
+
+**Monotonic, below its own default, heading to zero.** The mechanism `ATROPHY_SAFE` membership
+promises — zero provably recovers the prior behaviour — works for the first time.
+
+**The four causes, in the order they were hidden:**
+1. The probe's `+0.07` kick outlived the verdict it informed, so each cycle removed 12% of a total it
+   had just inflated (`#217i`).
+2. The two verdict windows did not meet: `quiet` needed `|trace|<0.05`, `harmful` needed
+   `tSlow<-0.10`, and the holding cost parks a dead layer's trace at about -0.06, between them
+   (`#217p`).
+3. Ordinary fitness noise over two mutation intervals clears a fixed `0.015`, so the probe kept
+   ACQUITTING a layer with no signal — "dead, then rescued by noise, then dead again" (`#217t`).
+4. And each was only visible once the one before it stopped dominating.
+
+**`#217i`'s arithmetic was wrong and its repair was right.** It claimed an affine map with a fixed
+point at 0.513 and measured 0.541 — a 5% agreement that read as confirmation and was a coincidence.
+The real cause of the freeze was cause 2. That is the most dangerous shape a wrong model can take:
+it predicted a number close to the observed one AND nominated the correct fix, so nothing in the
+outcome flagged the reasoning. Only the isolated arm did.
+
+**And the honest limit: this is one seed, one budget, one gene.** The direction is unambiguous and
+the mechanism is understood, but "a dead layer now retires" is a claim about `inscriptionInfluence`
+at 20,000 ticks on seed 1. What would make it general is the same run across seeds and a longer
+horizon, which is not done here.

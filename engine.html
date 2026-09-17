@@ -9319,6 +9319,34 @@ let genome={
   tendDims: 5,
   rend: null,
   boundOpcodes: [],
+  // === #217v: THE NINE THE GERMLINE CARRIED AND NO PARTICLE HAD ===
+  // #217j measured the germline holding 15 keys that no living particle held (277 against 262). The
+  // structural question finds them without a probe: which names are ASSIGNED to genome.X anywhere in
+  // this file and declared nowhere? Exactly fifteen, and the count matching is the check.
+  // Nine are genes and are declared here with their own sanitizeGenome defaults, so the seed genome
+  // is unchanged. Among them is motifKeepBias -- #215's gene, which CLAUDE.md records as costing a
+  // bisect because it was added without its KNOBS line. It was also never declared, which is why
+  // #216u had to force it every tick: the germline drifts and a value set once does not hold.
+  atomEligDecay:0.6,
+  atomIdleTolerance:0,
+  atomNoveltyMix:0.25,
+  atomRecombRate:0.4,
+  atomReproRate:0.5,
+  atomUseProtect:0,
+  motifKeepBias:0,
+  netAssort:0,
+  reachGain:0.2,
+  // prevDecideFitness is the tenth, and it is the same class as prevSmoothedFitness (#217n): a CACHE,
+  // read as "cf-(genome.prevDecideFitness||0)" and immediately overwritten with cf. Declared so it is
+  // visible and added to CHILD_NOT_A_GENE so it stops being random-walked at birth.
+  prevDecideFitness:0,
+  // FIVE ARE DELIBERATELY NOT DECLARED, and naming them is the point of saying so:
+  //   intStepBias, rendMaxDepth, uaStructBias -- LAZILY created by mutateGenome on purpose (#97,
+  //     #107, whose comment says outright that it "gates lazy creation"). Declaring them would defeat
+  //     the gating, which is a design decision and not an oversight.
+  //   coupling -- per-peer flow INSTRUMENTATION rebuilt from network state, not a heritable trait.
+  //     Declaring it would file telemetry in the genome census as a gene.
+  //   __metaMag -- internal scratch, underscore-prefixed by the same convention as __chemTrial.
   // === #217q: THE LAST SEVEN, DECLARED WITH THEIR OWN INITIALISERS ===
   // #217l declared 57 and named nine it skipped as structures with bespoke initialisation. #217n took
   // two of those (uaProdW, uaVarW) because the census reported them ABSENT. These are the remaining
@@ -10263,7 +10291,7 @@ function crossoverProg(progA,progB,cap){ fired('prog.crossover'); // single-poin
 // field of 258 that differed between the INSCRIBE arms, at a relative 7.85e-11, which is exactly
 // what a cache of a slightly different fitness looks like. That made it the one channel by which the
 // inscribed substrate touched the genome at all, and it was never a trait.
-const CHILD_NOT_A_GENE=['totalTicks','generation','extinctions','prevSmoothedFitness'];
+const CHILD_NOT_A_GENE=['totalTicks','generation','extinctions','prevSmoothedFitness','prevDecideFitness'];   // #217v: prevDecideFitness is #217n's case exactly -- a cache read as a delta and overwritten the same tick
 // === #192 - A DISCRETE GENE NEEDS A DISCRETE OPERATOR ON THE CHILD ROUTE TOO ====================
 // MEASURED DEFECT, and it is a worse shape than #179's: 12,000 ticks with #192 live gave
 // tick.rateStep 0, tick.phaseStep 0, tick.skipped 0, and tick.moved germline 0 / population 0. The
