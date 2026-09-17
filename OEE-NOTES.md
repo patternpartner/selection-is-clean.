@@ -20003,3 +20003,79 @@ curve; it is a mostly-empty field with occasional energy.
 
 **AND 25k DOES NOT PREDICT 60k.** Seed 3 holds 326 alive at tick 25,000 — the healthiest number in
 either trace — and is EXTINCT at 60,000. Whatever kills it happens after this window entirely.
+
+### #217f — THE INSCRIBED SUBSTRATE IS CAUSALLY INERT AT THIS BUDGET, AND THE ARMS ARE DIFFERENT WORLDS
+
+`#217e` found seed 2 losing 64% of its population (210 -> 75) in the same 1,500 ticks that opcode 20
+fired 5,200 times and 12,625 recipes evaluated, and refused to claim causation at n=2 with seed 3
+going the other way. `INSCRIBE` is the arm that settles it: draw-neutral, because the `case 20:` body
+contains no `Math.random()` in any of its four real copies, so withholding the write removes no draw.
+
+**The prediction was recorded in the commit message before the run**, which is the only way it cost
+anything: *"the crash probably happens anyway, because 64% of a population is a large effect to hang
+on 11 active cells out of 1600."*
+
+**It held, and by more than predicted.** Seed 2, sampled every 500 ticks to 15,000:
+
+```
+        INSCRIBE=1                  INSCRIBE=0
+  tick  alive active  chem  |  alive active  chem
+  9500    210      0     0  |    210      0     0
+ 10000    198      6  2039  |    198      0     0
+ 10500    171     11  6471  |    171      0     0
+ 11000     75     11 12625  |     75      0     0
+ 12000     86      1 18935  |     86      0     0
+ 15000     78      0 19116  |     78      0     0
+```
+
+`alive` is identical at **30 of 30 samples**, the crash included. Not "similar" — identical integers
+through a 64% collapse. So the crash is not inscription-driven, and the stronger claim is available:
+**over 15,000 ticks, 19,116 recipe evaluations changed the population trajectory by nothing at all.**
+
+**AND THE ARMS ARE GENUINELY DIFFERENT WORLDS, which is what rules out "the knob did nothing".**
+`absField` differs at exactly 5 of 30 samples — all inside the burst window — in the fourth
+significant figure: `0.000406161` against `0.000410196` at tick 10,000, about 1% relative. Before
+10,000 and after 12,000 the fields agree. So the chemistry does reach the field, perturbs it by
+~1% for ~2,000 ticks, and the perturbation washes out without ever reaching a decision.
+
+**DRAW-NEUTRALITY IS NOW MEASURED, NOT JUST READ OFF THE CODE.** `cell.inscribe` totals **5,227 in
+both arms**, identical at every sample. The opcode fires the same number of times whether or not its
+write lands, which is the property claimed from reading the body — and had the stream diverged, a
+count that size would not have matched. It also means the ~1% field difference never flipped a single
+branch that leads to a random draw in 15,000 ticks.
+
+**THE RE-ENTRY PATH EXISTS AND CARRIES NOTHING.** CODEMAP's claim is that "particles write programs
+into the world, the world runs them, and the result re-enters particle cognition — that loop is
+closed". The re-entry is `inscriptionInfluence` blending the inscribed cell's coefficient into
+`vmRegs[11]`, and that gene is not zero: measured at 0.28-0.48 across three seeds (`#217d`). So the
+loop is wired, its coefficient is live, the world end of it computes 19,116 times — and the
+population cannot tell. At this budget it is closed and empty.
+
+**WHAT THIS DOES NOT SETTLE, stated because the temptation is to stop here.**
+- `alive` is ONE AGGREGATE. Identical counts do not prove identical composition; two worlds can hold
+  86 particles with different genomes. Nothing here compares genomes.
+- One seed, 15,000 ticks. Seed 3 went extinct between 25k and 60k and nobody knows why yet.
+- A lone headless universe. The field exchanges inscriptions between peers and is unmeasured.
+
+**AND THE FOUR CASE-20 BODIES ARE FOUR DIFFERENT MECHANISMS**, found while building the knob:
+
+| path | strength | overwrite threshold | local |
+|---|---|---|---|
+| `executeVM` (first switch) | `*0.3` | `*0.8` | `writeStr20` |
+| `executeVM` (second switch) | `*0.2` | `*0.8` | `wStr20` |
+| `executeClusterVM` | `*0.4` | `*0.7` | `wStr20` |
+| `executeSoloVM` | `*0.15` | `*0.8` | `writeStr20` |
+
+A 2.7x spread in how hard a path marks the substrate, landing on the 0.05 execution gate: a solo-VM
+write needs `|vmRegs[si]*k| >= 0.33` to cross it, a cluster-VM write needs 0.125. **The front page's
+"a probe on one undercounts fourfold" understates this** — it is not one question measured four
+times, it is four different questions.
+
+**That was found by an assertion, not by reading.** The first version of this patch was written
+against a shared text pattern that does not exist, matched 1 site of 4, and its own `assert total==4`
+aborted before writing anything. Without it, this would have shipped a knob gating one code path
+while three kept inscribing — presenting as "inscription suppressed" and measuring nothing. **Assert
+the count when you patch N sites**, because the failure mode of a partial match is a control that
+reads like a control.
+
+Gate: `substrate-test` 260 passed / 0 failed at `TICKS=40 SEED=1`.

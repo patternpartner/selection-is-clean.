@@ -36,7 +36,14 @@ headline number in your entry is a pass count, you are reporting on the wrong ar
   rung two, `harness-variance` at rung four. Before reporting any of the upper rungs for a mechanism,
   establish that the thing ever ran once — and prefer a state every code path must write through
   (here `cellProgStr`) over any one path, because INSCRIBE has FOUR real `case 20:` bodies plus a
-  profiler stub and a probe on one undercounts fourfold.
+  profiler stub. **"Undercounts fourfold" understates it (`#217f`): the four bodies are four
+  DIFFERENT mechanisms** — strengths `*0.3`, `*0.2`, `*0.4`, `*0.15` and thresholds `*0.8`, `*0.8`,
+  `*0.7`, `*0.8`, two of them naming the local `wStr20` and two `writeStr20`. Against the 0.05 gate
+  that is a solo-VM write needing `|vmRegs[si]*k| >= 0.33` to cross where a cluster-VM write needs
+  0.125. So **assert the count whenever you patch N sites**: `#217f`'s first patch was written
+  against a shared pattern that does not exist, matched 1 of 4, and only its own `assert total==4`
+  stopped it shipping a knob that gated one path while three kept writing — a control that reads
+  like a control.
   **AND THE FIRST VERSION OF THIS BULLET SAID "NEVER", WHICH WAS FALSE — read that as the horizon
   warning two bullets down, with teeth.** The 60k sweep that was RUNNING WHILE THE CLAIM WAS PUSHED
   came back with the first mark on the substrate at tick **6,109** on seed 2 — 109 ticks past the
