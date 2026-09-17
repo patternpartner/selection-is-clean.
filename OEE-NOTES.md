@@ -20562,3 +20562,54 @@ outcome flagged the reasoning. Only the isolated arm did.
 the mechanism is understood, but "a dead layer now retires" is a claim about `inscriptionInfluence`
 at 20,000 ticks on seed 1. What would make it general is the same run across seeds and a longer
 horizon, which is not done here.
+
+### #217z — WHERE THE GENOME STANDS AFTER ONE DAY
+
+| | morning | now |
+|---|---|---|
+| declared in the literal | 192 | 272 |
+| invisible to the variance census | 66 | **0** |
+| ABSENT (value undefined on every particle) | 2 | **0** |
+| PINNED (sitting on a clamp bound) | 3 | **0** |
+| VARYING | 228 | **245** |
+| per-particle key spread | 13 | **0** |
+| germline keys no particle carries | 15 | **0** genes (5 named non-genes) |
+| genes in `CHILD_DISCRETE` | 3 | **13** |
+
+Gate 260/0 at every step. Nothing unverified reached `main`.
+
+**The whole afternoon came out of one absence.** `harness-variance` enumerated genome keys by parsing
+the `let genome={...}` literal, and 66 fields were installed by `sanitizeGenome` instead of declared
+there. Closing that at the source (`#217l`, `#217q`, `#217v`) made the fields visible, and visibility
+exposed, in order:
+
+- two genes whose VALUE was undefined on every living particle, so `#180`'s five production weights
+  and per-leaf sense weights were CONSTANTS in every run this project has ever done (`#217n`)
+- a fallback answering in a gene's place — `uaProdW()` executed on every grammar production, for the
+  project's whole life, returning `[1,1,1,1,1]` because the gene did not exist. Fully live,
+  liveness-clean, gene absent (`#217o`, which put a new rung on the front page)
+- two fitness caches being random-walked as if they were traits (`#217n`, `#217v`)
+- ten genes that `sanitizeGenome` ROUNDS, of which only three were stepped discretely — so eight
+  integer genes were walked continuously, `vmMaxInstructions` and the two depth caps among them
+  (`#217u`, `#217y`)
+- a stale literal (`atrophyRate` 0.05 against sanitize's 0.12) and two caches read with `||` against
+  a nonzero stub, so a genuine zero reported as the stub (`#217x`)
+
+**None of those were findable before, because a field declared nowhere is not in any list you can
+check against.** The census blindness was not one defect. It was a class of defects held in place by
+one absence, and the individual fixes are worth less than that sentence.
+
+**And the atrophy chain, separately:** four changes in series (`#217i`, `#217p`, `#217t`) took
+`inscriptionInfluence` — incoming signal proved zero by `#217f` — from frozen at 0.541 to falling
+monotonically through 0.022. Each cause was hidden behind the one before it, and `#217i`'s stated
+arithmetic was wrong while its repair was right: it predicted a fixed point at 0.513, measured 0.541,
+and that 5% agreement read as confirmation. The real cause of the freeze was a gap between two
+verdict thresholds. **A wrong model that predicts nearly the right number and nominates the correct
+fix is the most dangerous shape available**, because nothing in the outcome flags the reasoning.
+
+**Standing limits, so the next session does not inherit them as settled:** the atrophy result is one
+seed, one budget, one gene. `SWEPT` is still 0 on every run, which at 3,000 ticks is close to
+guaranteed and means nothing yet. `retentionPerCapita` sits at 1.4-1.5, i.e. per-head variance RISING
+— raw material accumulating with nothing sorting it, which is what drift looks like. The chemistry
+verdict (`#217s`) reverted 0 of 15 trials, correctly, because `#217f` showed the chemistry is
+causally inert: **the verdict works and its subject is empty.**
