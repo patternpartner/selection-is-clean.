@@ -1262,6 +1262,7 @@ const LIVENESS_DECLARED=[
   // so a run where every chemistry change was reverted is distinguishable from one where none was
   // ever proposed -- the same reason #183 declared cosmos.lawKept and cosmos.lawRevert.
   'chem.trial','chem.kept','chem.revert',
+  'deme.countStep','ua.foldModeStep',   // #217u: the two discrete operators, declared with the genes
   // #188: channel.update is the lattice pass, channel.write a verb acting into a medium, and
   // channel.wire the reachability hook. All five declared so a run where a lineage allocated a
   // medium and never sensed or acted on it is visible as such rather than inferred.
@@ -10285,7 +10286,18 @@ const CHILD_NOT_A_GENE=['totalTicks','generation','extinctions','prevSmoothedFit
 // crossing at 6 population carriers through the seeding route) and #185's demeCount are in the same
 // position and are NOT enrolled here, because neither is dead and demeCount's step changes a spatial
 // partition that interacts with position - that is its own swing's question, not this one's.
-const CHILD_DISCRETE=['tickRate','tickPhase','regCount'];   // #200a: regCount joins for #192's reason - an integer gene walked continuously is a gene that cannot move   // #192: integer-valued, so the walk below would only ever add invisible noise
+// #217u: demeCount and uaFoldMode join, for #192's reason and by the same test #200a used on
+// regCount. Both are integer-valued at every point that consumes them -- demeCount goes through |0|
+// in the codec and indexes #185's deme partition, uaFoldMode is reduced by
+// ((Math.round(v)%UA_FOLD_MODES)+UA_FOLD_MODES)%UA_FOLD_MODES and selects a compiler output stage, so
+// it is CATEGORICAL, not even ordinal. The continuous walk below adds fractions to both, and a
+// fraction on a gene that is rounded or modded before use is invisible noise: the gene cannot move
+// until the accumulated drift happens to cross a half-integer, and for a categorical gene "crossing"
+// means jumping to a neighbouring mode for no reason connected to the mode itself.
+// These were declared for the first time today (#217l), which is what made them visible here -- they
+// were being walked continuously before, and nothing could see that they were.
+// The discrete steps for them are below, next to regCount's and tickRate's.
+const CHILD_DISCRETE=['tickRate','tickPhase','regCount','demeCount','uaFoldMode'];   // #200a: regCount joins for #192's reason - an integer gene walked continuously is a gene that cannot move   // #192: integer-valued, so the walk below would only ever add invisible noise
 function mutateChildGenome(g){
   const rate=genome.mutationRate||0.06,scale=genome.mutationScale||1;
   // === CAN THIS BIRTH VARY AT ALL? ==============================================================
@@ -10449,6 +10461,29 @@ function mutateChildGenome(g){
       if(_n!==_o){ g.regCount=_n; fired('vm.regStep'); }
     }
     g.regCount=__cl(Math.round(finiteOr(g.regCount,VM_REGS_DEFAULT)),2,VM_REGS_MAX);
+  }
+  // #217u: the discrete operators for the two genes added to CHILD_DISCRETE above. A step of +/-1 is
+  // the whole point -- it is the smallest change that the consuming code can actually see.
+  if(g.demeCount!==undefined){
+    if(Math.random()<rate){
+      const _o=Math.max(1,Math.round(finiteOr(g.demeCount,1)));
+      const _n=Math.max(1,_o+(Math.random()<0.5?1:-1));
+      if(_n!==_o){ g.demeCount=_n; fired('deme.countStep'); }
+    }
+    g.demeCount=Math.max(1,Math.round(finiteOr(g.demeCount,1)));
+  }
+  if(g.uaFoldMode!==undefined){
+    if(Math.random()<rate){
+      // CATEGORICAL, so a neighbouring mode is not nearer than any other: draw uniformly from the
+      // other modes rather than stepping by one, which would make mode 0 and mode 1 artificially
+      // adjacent and the ends of the range artificially hard to reach.
+      const _o=((Math.round(finiteOr(g.uaFoldMode,0))%UA_FOLD_MODES)+UA_FOLD_MODES)%UA_FOLD_MODES;
+      if(UA_FOLD_MODES>1){
+        let _n=(Math.random()*(UA_FOLD_MODES-1))|0; if(_n>=_o)_n++;
+        g.uaFoldMode=_n; fired('ua.foldModeStep');
+      }
+    }
+    g.uaFoldMode=((Math.round(finiteOr(g.uaFoldMode,0))%UA_FOLD_MODES)+UA_FOLD_MODES)%UA_FOLD_MODES;
   }
   if(__STIME){
     if(g.tickRate===undefined)g.tickRate=1;
