@@ -20293,3 +20293,42 @@ variance is not selection.
 3,000 ticks and 0 have been sorted.** The first half of that is raw material and the second half is
 not yet a measurement. A long-budget run is what would make SWEPT mean something, and that is the
 next thing worth spending hours on.
+
+### #217m — DECLARING THEM AT SOURCE DROPPED THE BLINDNESS 66 -> 9, AND CLOSED THE PER-PARTICLE SPREAD NOBODY ASKED IT TO
+
+`#217l` moved 57 genome fields out of `sanitizeGenome`'s undefined-checks and into the genome literal,
+every value lifted from its own line so the seed genome is unchanged field for field. Measured on the
+same probe as `#217g`/`#217j`, seed 1 at 4,000 ticks:
+
+| | before | after |
+|---|---|---|
+| declared in the literal | 196 | **253** |
+| union across living particles | 258 | 262 |
+| **invisible to the census** | **66** | **9** |
+| per-particle MIN | 245 | **262** |
+| per-particle MAX | 258 | **262** |
+| on the germline | 273 | 277 |
+
+The nine that remain are exactly the nine named and skipped in `#217l` — the structures with bespoke
+initialisation. Nothing hid.
+
+**THE THIRD ROW IS THE ONE I DID NOT PREDICT.** `#217j` found living particles differing from one
+another by up to **13 keys** (min 245, max 258) and identified that as the real reason two of my own
+probes disagreed. After declaring the fields in the literal the spread is **zero** — every living
+particle carries the same 262 keys. The cause is `cloneGenome`'s `{...src}`: a field present on the
+seed genome is copied into every clone from the first birth, so the window in which some particles had
+a field and others did not simply does not exist any more. The fields used to arrive on the SELF via
+`sanitizeGenome` and then spread through the population by reproduction, which is what produced the
+spread.
+
+So `#217j`'s "a one-particle key list is a sample from a distribution, not a description of the
+genome" was true when written and is now false — the distribution has one value. That is worth stating
+plainly rather than leaving two entries that quietly disagree: the reading was right about the engine
+it measured, and `#217l` changed that engine.
+
+**WHAT DID NOT CHANGE: the germline still carries 15 keys no living particle has** (277 against 262).
+That is `cloneGenome` deliberately not propagating everything the self holds — compiled holders
+dropped on purpose, reflective journals kept as shared refs — and it is untouched here. "The genome"
+still has three sizes, but the two population-side numbers have collapsed into one.
+
+Gate: `substrate-test` 260 passed / 0 failed at `TICKS=40 SEED=1`.
