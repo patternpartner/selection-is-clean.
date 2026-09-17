@@ -81,10 +81,20 @@ git checkout main && git merge --ff-only <branch> && git push -u origin main
   passed four standalone runs immediately after at `←25 →1`, `←20 →1`, `←22 →1`, `←19 →2` — ratios
   9.5 to 25. The failing run had BOTH lower inbound and higher outbound, i.e. it made less progress in
   its wall-clock window. **Not the same thing as the contention note above**: no `node` job was
-  running that time, so it is the suite's own overhead, not a competing process. Re-run it alone and
-  read the `field:` line; a ratio in the high teens or above is the healthy range. **Do not retune the
+  running that time, so it is the suite's own overhead, not a competing process. **Do not retune the
   threshold to make it green** — that is the move this file exists to prevent, and the low outbound
   count is the actual fragility.
+  **Updated after a second failure and an engine A/B.** It is now 2 of 2 red INSIDE `smoke.sh`
+  (`←15 →4`, `←18 →5`) and 7 of 7 green standalone, which is too clean a split to call random. But
+  the healthy RATIO is not stable across days: standalone outbound was `1,1,1,2` one day and `2,4,3`
+  the next, so "high teens or above" was a one-day reading. **The denominator, not the ratio, is the
+  quantity to look at** — inbound sits at 17-28 throughout; outbound is a single-digit count and the
+  whole assertion rides on it.
+  **`#216x` was suspected and cleared.** Same day, same machine, pre-`#216x` engine in a worktree
+  gave outbound `2,0,3` against the current engine's `2,4,3` — indistinguishable, so law persistence
+  is not the cause and the day-to-day drift is environmental. Recorded because the hypothesis was
+  reasonable, the A/B is cheap (`git worktree add --detach <sha>`, symlink `node_modules`), and the
+  next person will suspect the same thing.
 - **Test the boring side of your own change — the side you expect to be fine is where the finding
   is.** `#216x` added a `LAW_PERSIST` knob and the OFF arm came back identical to the ON arm. Not
   because the fix was wrong: because **four of the six rigs never called `applyKnobs`** and silently
