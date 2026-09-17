@@ -17956,7 +17956,26 @@ function mutateGenome(){ fired('genome.mutate');
       // culling a beneficial-but-quiet layer (the gen2768 failure), so quiet params still get a deliberate
       // kick and are spared if fitness responds. We raise aggression around the safety, not through it.
       const harmful = conf>0.35 && tSlow<-0.10;
-      const quiet   = conf>0.35 && Math.abs(tSlow)<0.03 && Math.abs(e.trace)<0.05;
+      // #217p: THE TWO VERDICTS NOW MEET AT -0.10 INSTEAD OF LEAVING A BAND BETWEEN THEM.
+      // quiet used to be a magnitude window around zero (|tSlow|<0.03 and |trace|<0.05) while harmful
+      // is a one-sided bar at -0.10, so the band from about -0.05 to -0.10 was claimed by NEITHER --
+      // and the holding cost drives a dead layer's trace precisely into it, because its target is
+      // -META_HOLDING_K*atrophyRate*|value|, a small negative. Measured (#217i corrected):
+      // inscriptionInfluence, with provably zero incoming signal, bled to trace -0.056..-0.068 and
+      // then FROZE at one value for eight thousand ticks with probeState 0 -- past quiet's window,
+      // short of harmful's bar, no verdict firing on it again. Not a fixed point, a threshold gap.
+      // So quiet now means what its name says: not confidently positive (tSlow<0.03) and not already
+      // condemned (tSlow>-0.10). The two windows partition the non-positive range at -0.10 and a
+      // layer can no longer be stranded between them.
+      // The dropped condition was Math.abs(e.trace)<0.05, which required the FAST trace near zero as
+      // well. conf>0.35 already demands fast/slow agreement -- that is what conf measures -- so the
+      // extra clause mostly re-tested confidence while narrowing the window that caused the gap.
+      // WHY THIS IS SAFE NOW AND WOULD NOT HAVE BEEN BEFORE #217i: widening quiet means MORE layers
+      // get probed, and a probe injects a +0.07 kick. Until #217i the kick outlived the verdict it
+      // informed, so a wider quiet would have pumped every borderline layer upward by 0.07 a cycle --
+      // the accumulation that put the pre-fix value at 0.541. With the kick now removed on a
+      // confirmed-dead verdict, more probing costs a measurement and not a ratchet.
+      const quiet   = conf>0.35 && tSlow<0.03 && tSlow>-0.10;
       if(harmful){
         // Unchanged from Pe40 — this path was correct. Worse trace decays faster.
         const strength=aRate*(0.5+Math.abs(tSlow));
