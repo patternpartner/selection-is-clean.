@@ -19608,10 +19608,23 @@ its own gate or its own measurement. Recorded, declined, and left with its reaso
 
 ### #217c — `chemistryTable` should NOT be deep-copied, and the reason is the read site
 
-A review recommended deep-copying `chemistryTable` in `cloneGenome`, and `#217`'s census points the
-same way — *"evolvable, and a population of one"*, filed next to reference-sharing as *"the single
-most repeated bug in this file's history"*. The description is accurate. **The remedy does not
-follow, and applying it would damage the instrument.**
+A review recommended deep-copying `chemistryTable` in `cloneGenome`. **The remedy does not follow,
+and applying it would damage the instrument.**
+
+**CORRECTION, ADDED AFTER THE FACT AND BEFORE ANYONE ACTED ON IT: this entry originally said `#217`'s
+census "points the same way", and that it was "right as description and wrong as diagnosis". Both are
+unfair and both are wrong.** `#217` did not recommend the copy. It measured 169 of 169 living
+particles pointing at the germline's table by reference identity, explicitly ran the cheap test of
+whether anything mutates it, found that `mutateGenome` does and published the digest showing the
+table changing from t=1201 on — and then wrote: *"Not filed as a defect and not fixed here, because
+whether chemistry SHOULD be per-lineage is a design question about the artwork — a shared table is a
+shared world, and an owned one is 169 private physics."* It also refused to invent a standing
+decision, on the grounds that doing so inside a measurement entry *"is how `#205` happened"*.
+
+So `#217` posed the question correctly, declined correctly, and anticipated the answer. I
+mischaracterised a careful entry while calling my own framing sharper, which is worse than the
+original error because it was avoidable by reading forty lines. **What this entry actually adds to
+`#217` is one fact it did not have: the read-site count.**
 
 **The read site decides it.** `genome.chemistryTable[op%12]` is read in `updateField()` — the cell VM
 stage — and there are **zero** reads of `pGenome[i].chemistryTable` anywhere in the engine. The table
