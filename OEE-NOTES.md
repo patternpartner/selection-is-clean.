@@ -20236,3 +20236,60 @@ keys from the living population at every sample. I justified "every sample" by a
 time, which is nearly worthless at one key per nine thousand ticks. The real justification is the
 union across PARTICLES, which the same code does and which matters by thirteen keys. Right fix,
 wrong reason, recorded so the next reader does not inherit the wrong reason.
+
+### #217k — THE CENSUS WITH N CORRECT: 262 KEYS, 0 SWEPT ON 3/3 SEEDS, AND THE 66 CARRY EVERY PINNED AND ABSENT VERDICT
+
+`harness-variance` now unions the literal's keys with the living population's. Run on three seeds at
+`TICKS=3000` — and the budget is said out loud because SWEPT is the class that needs time:
+
+| seed | total | VARYING | SWEPT | FLAT | PINNED | ABSENT | retention | perCapita |
+|---|---|---|---|---|---|---|---|---|
+| 1 | 262 | 228 | **0** | 29 | 3 | 2 | 1.00 | 1.40 |
+| 2 | 262 | 232 | **0** | 25 | 3 | 2 | 0.88 | 1.50 |
+| 3 | 262 | 229 | **0** | 28 | 3 | 2 | 0.90 | 1.47 |
+
+`total` was 192 before the fix. **Of the 66 keys that were invisible, 48-53 are VARYING, 8-13 FLAT —
+and ALL FIVE of the census's PINNED and ABSENT verdicts are in that set.** Every verdict this rig has
+ever issued in those two classes was issued about a key it could not previously see, which is to say
+it never issued one at all.
+
+**THE AUTHORED STRUCTURES, seen for the first time:**
+
+| key | class | distinct trajectory |
+|---|---|---|
+| `channels` | VARYING | 0 -> 1 -> 2 -> 3 |
+| `probes` | VARYING | 0 -> 1 -> 1 -> 4 |
+| `uaOps` | VARYING | 0 -> 0 -> 1 -> 3 |
+| `opStacks` | FLAT | 1, 1, 1, 1 |
+| `oeeW` | FLAT | 0 -> 1 -> 1 -> 1 |
+| `draw` | FLAT | 1, 1, 1, 1 |
+| `uaProdW` | ABSENT | 0, 0, 0, 0 |
+| `uaVarW` | ABSENT | 0, 0, 0, 0 |
+
+**`uaProdW` and `uaVarW` are keys whose VALUE is undefined on every living particle.** `Object.keys`
+lists them — which is why `#217g` counted them among the runtime fields — and the census counts zero
+present, because `present` requires `v!==undefined`. A gene that exists as a name and holds nothing.
+Not called a defect here: `cloneGenome` copies them conditionally (`Array.isArray(src.uaProdW)?...
+:src.uaProdW`), so an undefined on the self propagates as an undefined, and whether the self should
+have one is a separate question from whether the census can see it.
+
+**`opStacks` FLAT is the one that deserves a second look, and not from me today.** `#155`'s entire
+point was that `opStacks` must be deep-copied *"or no lineage could ever diverge its chains"*. At
+3,000 ticks, one distinct digest across the whole population at every sample. That is consistent with
+the deep copy working and nothing having diverged yet, and equally consistent with the bounded digest
+collapsing distinct stacks onto one value — the rig's own header warns that a digest collision
+UNDERREPORTS variance, so FLAT on a non-numeric key is the weaker claim. It needs a longer budget and
+a stronger digest before it means anything.
+
+**WHAT 0 SWEPT DOES AND DOES NOT SAY.** SWEPT is the rig's only class that is evidence of sorting, and
+it is zero on every seed. But SWEPT requires variance to have EXISTED and then been REMOVED, and at
+3,000 ticks with retention 0.88-1.00 nothing has had time to be removed. **Zero SWEPT at this budget
+is close to guaranteed and is not evidence of anything.** What is more interesting is
+`retentionPerCapita` at 1.40-1.50 — per-head variance ROSE — which is what drift looks like: raw
+material accumulating, nothing sorting it. CLAUDE.md's own line applies to my own number here:
+variance is not selection.
+
+**The honest headline, with N finally right: of 262 evolvable parameters, 228-232 hold variance at
+3,000 ticks and 0 have been sorted.** The first half of that is raw material and the second half is
+not yet a measurement. A long-budget run is what would make SWEPT mean something, and that is the
+next thing worth spending hours on.
