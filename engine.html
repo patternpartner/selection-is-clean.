@@ -1258,6 +1258,10 @@ const LIVENESS_DECLARED=[
   // case-20 bodies, not the one a grep finds first), cell.inscribeNet is a peer's inscription
   // landing, cell.chemExec is a recipe actually being evaluated.
   'cell.inscribe','cell.inscribeNet','cell.chemExec',
+  // #217s: the chemistry's verdict. chem.trial is a proposal, and kept/revert are declared beside it
+  // so a run where every chemistry change was reverted is distinguishable from one where none was
+  // ever proposed -- the same reason #183 declared cosmos.lawKept and cosmos.lawRevert.
+  'chem.trial','chem.kept','chem.revert',
   // #188: channel.update is the lattice pass, channel.write a verb acting into a medium, and
   // channel.wire the reachability hook. All five declared so a run where a lineage allocated a
   // medium and never sensed or acted on it is visible as such rather than inferred.
@@ -17478,6 +17482,26 @@ function inscribeOn(){ return (typeof globalThis==='undefined')||((globalThis.__
 // established it by counting who reads what, and this follows the same rule. Clamped at the read, as
 // FIELD_DECAY is, because maybe() ignores its own bounds and a negative strength would drive
 // cellProgStr below zero where nothing would ever clear it.
+// #217s: THE FIELD'S CHEMISTRY GETS A VERDICT. #217c named this and declined to build it: the opcode
+// chemistry is a WORLD property (one reader, updateField, reading the self -- #217c counted it) that
+// is mutated at a LINEAGE rate (chemistryMutRate, itself meta-mutated) with NO verdict of any kind --
+// 2% per monomial per cycle plus recipe growth to 12 and splicing, no probation, no revert. #216x's
+// mirror: that one found laws stored session-local when they are world properties; this is a world
+// property mutated as a lineage trait. CHANNEL_RENT gets a trial before it sticks; the chemistry of
+// the entire field got none.
+// It was held back because the execution window was uncharacterised, and it no longer is: #217e
+// measured ~1,495 ticks of chemistry per strong inscription pre-#217h, and #217h's trace shows cells
+// reaching 0.5 and decaying freely with ignition at tick 2,656.
+// Built in LAW_DECLARED's own shape rather than a new one: ONE trial at a time, snapshot taken BEFORE
+// the mutation, judged after LAW_PROBATION ticks against lawMean() -- the rolling mean population the
+// law verdict already uses and already maintains -- and reverted if the mean falls below
+// baseline*LAW_VIABLE. Reusing those two means the chemistry answers to the same dials the laws do,
+// including LAW_VIABLE=0 meaning never revert.
+// A trial SUPPRESSES further chemistry mutation while it runs, which is the point: the old behaviour
+// mutated 12 recipes every cycle, so no single change was ever attributable to anything.
+let __chemTrial=null;
+function chemVerdictOn(){ return (typeof globalThis==='undefined')||((globalThis.__CHEM_VERDICT??1)|0)!==0; }
+function chemTableCopy(t){ return Array.isArray(t)?t.map(r=>Array.isArray(r)?r.map(m=>Array.isArray(m)?m.slice():m):r):t; }
 function inscStr(){ return __cl(finiteOr(genome.inscribeStrength,0.4),0.01,2); }
 function inscOver(){ return __cl(finiteOr(genome.inscribeOverwrite,0.75),0.05,3); }
 let __chemSeedTable=null;
@@ -18201,6 +18225,26 @@ function mutateGenome(){ fired('genome.mutate');
   if(!genome.chemistryTable)genome.chemistryTable=seedChemistryTable();
   if(genome.chemistryMutRate===undefined)genome.chemistryMutRate=0.02;
   const chemRate=genome.chemistryMutRate*(1+Math.tanh(mutationPressure)*0.3);
+  // #217s: one chemistry change at a time, on probation, revertible.
+  let _chemMayMutate=true;
+  if(chemVerdictOn()){
+    if(__chemTrial){
+      if((tick-__chemTrial.startTick)>=__chemTrial.probation){
+        const _now=lawMean();
+        if(_now<__chemTrial.baseline*__chemTrial.viable){
+          genome.chemistryTable=__chemTrial.table;   // the world keeps the chemistry it could live on
+          fired('chem.revert');
+        } else fired('chem.kept');
+        __chemTrial=null;
+      } else _chemMayMutate=false;   // a verdict is pending: leave the table alone so it stays attributable
+    }
+    if(_chemMayMutate&&!__chemTrial){
+      __chemTrial={startTick:tick|0,baseline:lawMean(),table:chemTableCopy(genome.chemistryTable),
+                   viable:LAW_VIABLE,probation:LAW_PROBATION};
+      fired('chem.trial');
+    }
+  }
+  if(_chemMayMutate)
   for(let oi=0;oi<genome.chemistryTable.length;oi++){
     const recipe=genome.chemistryTable[oi];
     for(let mi=0;mi<recipe.length;mi++){
