@@ -63,7 +63,13 @@ const NET_QUEUE_LIMITS={migrant:20,plasmid:10,motif:10,inscription:20};
 // which is a task and therefore always after evaluation finishes, so reading them here is safe.
 // The bound stays a REAL bound — a peer that is not one of ours still cannot send an opcode this
 // engine has no case for. It is just the right one now.
-function netMaxOpcode(){ return CORE_OPCODES+MAX_BOUND_OPCODES; }
+// #218a: +GENE_OPCODES. This is the bound validInstruction and every wire check measure against, and
+// the second real defect the suite caught in this batch: with the two new opcodes taken out of the
+// top of the bound range, 427 and 428 fell OUTSIDE this bound, so validInstruction rejected them --
+// 3,762 of 4,000 fuzzed rows failed and the new opcodes could neither cross the network nor be
+// constructed by OP_SELFWRITE. The arithmetic is now what it always was: 237+190+2 = 429, one past
+// the last live opcode (428), which is exactly where OP_SELFWRITE sits and why it is safe.
+function netMaxOpcode(){ return CORE_OPCODES+MAX_BOUND_OPCODES+GENE_OPCODES; }
 let bc=null;
 const incomingMigrants=[];     // particle packets received from other tabs
 const incomingPlasmids=[];     // plasmid packages received
@@ -1268,6 +1274,10 @@ const LIVENESS_DECLARED=[
   // lineages authored genes and never read them is distinguishable from one where none was authored,
   // which is the distinction #217o showed this project could not previously make.
   'gene.author','gene.read','gene.cull','gene.drift',
+  // #218c: a lineage acquiring, moving, re-pointing, abandoning and being pulled by its own purpose.
+  // Declared as five names because "no lineage ever authored one" and "they authored and abandoned
+  // them all" and "they hold aims nothing pulls on" are three different worlds.
+  'aim.author','aim.drift','aim.reaim','aim.abandon','aim.pull',
   'mutmag.author','mutmag.drift',   // #218b: a lineage forming and moving an opinion about its own evolvability
   // #188: channel.update is the lattice pass, channel.write a verb acting into a medium, and
   // channel.wire the reachability hook. All five declared so a run where a lineage allocated a
@@ -2040,7 +2050,13 @@ let DIMS=5;
 const MEM_SIZE=8; // per-particle persistent memory. Particles become stateful agents.
 const MAX_PLASMID=4; // max instructions per particle's personal mobile DNA
 const PLASMID_SLOTS=MAX_PLASMID*4; // each instruction is [op,src,dst,k] = 4 values
-const MAX_BOUND_OPCODES=192; // #129: 96 -> 192. gen38 pinned the old 96 (bo=96, AT CAP) while the atom vocabulary kept growing (226 atoms) — the effector frontier (how many atoms can DRIVE behaviour, not just sit in the bank) was closed. Widen it so the still-growing vocabulary can integrate more primitives. Ops now 236..427; the opFreq/opCum novelty arrays already gate op<256 so high bound-ops behave as before. // was 96 (#54, from 32/16): the per-instruction toll regulates standing complexity, not this ceiling
+const GENE_OPCODES=2;        // #218a: GENE_AUTHOR (427) and GENE_READ (428), reserved ABOVE the bound
+                             // range and BELOW OP_SELFWRITE. Named so the #199 invariant can be stated
+                             // as OP_SELFWRITE === CORE_OPCODES+MAX_BOUND_OPCODES+GENE_OPCODES and stay
+                             // a derivation rather than becoming three loose literals.
+const MAX_BOUND_OPCODES=190; // #218a: 192 -> 190, freeing 427/428 for GENE_AUTHOR/GENE_READ without
+                             // moving the bound base and re-aiming every saved genome. See the note
+                             // above CORE_OPCODES. Was 192: // #129: 96 -> 192. gen38 pinned the old 96 (bo=96, AT CAP) while the atom vocabulary kept growing (226 atoms) — the effector frontier (how many atoms can DRIVE behaviour, not just sit in the bank) was closed. Widen it so the still-growing vocabulary can integrate more primitives. Ops now 236..427; the opFreq/opCum novelty arrays already gate op<256 so high bound-ops behave as before. // was 96 (#54, from 32/16): the per-instruction toll regulates standing complexity, not this ceiling
                             // (bound opcodes 133..164 now). Dispatch is index-guarded and OPCODE_COUNT
                             // derives from this, so the boundary stays consistent everywhere.
 // CORE_OPCODES single-sources the franchise boundary: opcodes 0..CORE_OPCODES-1 are core
@@ -2053,11 +2069,19 @@ const OP_SELFWRITE=237+192;   // #199: CORE_OPCODES + MAX_BOUND_OPCODES = 429. W
                               // deliberately rather than following it silently into a live opcode. The
                               // rig asserts it equals CORE_OPCODES+MAX_BOUND_OPCODES, so a drift is a
                               // red build and not a mystery. See the #199 narrative for why not 237.
-const CORE_OPCODES=239; // #218a: 237 -> 239, admitting GENE_AUTHOR (237) and GENE_READ (238) — the
-                        // first opcodes whose effect is to CHANGE THE SHAPE OF THE GENOME rather than
-                        // its values. Raising this is what makes them reachable: program opcodes are
-                        // drawn from Math.random()*CORE_OPCODES, so an opcode outside this bound is
-                        // unreachable by mutation and can only arrive by plasmid. Was: // #132: 236 -> 237, admitting EFFECT_EMIT (236) — the drive line for an AUTHORED VERB, the first opcode whose CONSEQUENCE is evolved rather than hand-written. Was: // #59: 235 -> 236, admitting COSMOS_SENSE (235) — the state of the daughter worlds this lineage launched, as data. Was: // #57: 232 -> 235, admitting SET_MODE (232), READ_MODE (233), PARTNER_MODE (234) — the first categorical decision evolved code can make here. Was: // 0..231 core — op208-211 velocity I/O, op212-216 inhibitor/resistance mechanics, op217-219 oscillator direct control, op220-231 scaffold morphogenesis + genomic self-inspection + reproductive autonomy + cluster quorum sensing
+// #218a CORRECTED — and by the row written to catch exactly this. The first version raised
+// CORE_OPCODES 237 -> 239 to admit GENE_AUTHOR and GENE_READ, and #199's row went red on the first
+// gate run: OP_SELFWRITE=429 sits ONE PAST the last live opcode (237+192=429), so widening the core
+// range made 429 a LIVE bound slot -- and worse, bound opcodes are stored as CORE_OPCODES+k, so every
+// saved genome's bound slots would have re-aimed by two. That is #137, and the row's own message says
+// so. Bravery is not breaking saved artworks silently.
+// So the two opcodes come out of the TOP of the bound range instead: MAX_BOUND_OPCODES 192 -> 190,
+// GENE_AUTHOR=427 and GENE_READ=428, and the total stays 427+2=429 with OP_SELFWRITE untouched. The
+// bound BASE stays at 237, so no saved genome re-aims. The cost is the top two bound slots, and #129's
+// own comment is why that cost is near zero: the opFreq/opCum novelty arrays gate op<256, so slots
+// 20..191 "can neither register as explored NOR earn novelty", and gen38 pinned the bank at 96 of 96.
+// Slots 190 and 191 have never been reachable by the mechanism that fills the bank.
+const CORE_OPCODES=237; // #132: 236 -> 237, admitting EFFECT_EMIT (236) — the drive line for an AUTHORED VERB, the first opcode whose CONSEQUENCE is evolved rather than hand-written. Was: // #59: 235 -> 236, admitting COSMOS_SENSE (235) — the state of the daughter worlds this lineage launched, as data. Was: // #57: 232 -> 235, admitting SET_MODE (232), READ_MODE (233), PARTNER_MODE (234) — the first categorical decision evolved code can make here. Was: // 0..231 core — op208-211 velocity I/O, op212-216 inhibitor/resistance mechanics, op217-219 oscillator direct control, op220-231 scaffold morphogenesis + genomic self-inspection + reproductive autonomy + cluster quorum sensing
                         // 0..132 core — op132 SEASON_PHASE: perceive the current feast/famine cycle position
                         // 0..131 core — op131 ENERGY_STRESS: the system perceives conserved-budget scarcity
                         // 0..130 core — OPENED THE SWITCH: op128 READ_OWN_CASTE, op129 READ_PARTNER_CASTE,
@@ -9368,6 +9392,25 @@ let genome={
   // own drift creates them, which is why this is a map and not 57 declared fields: the SET of genes
   // whose evolvability a lineage has opinions about is itself something it discovers.
   mutMag:{},
+  // ═══ #218c: WHAT A LINEAGE IS TRYING TO ACHIEVE ═══════════════════════════════════════════════
+  // The deepest constant in this engine is that every lineage is judged by the same fitness. One
+  // shared gradient means one optimum, and eventual convergence on it -- which is structurally
+  // incompatible with the claim that novelty keeps arriving. #218a opened the genome's dimension and
+  // #218b opened its variation; both still climb one hill.
+  // genome.aim is a lineage's own SET-POINT: a sensed quantity, a target value for it, and how much
+  // it cares. A lineage is rewarded for PROXIMITY to its own target, so different lineages want
+  // different values of different things and the landscape stops having a single peak.
+  // WHY A SET-POINT AND NOT A REWARD, which is the whole design: #184's comment on the OEE bonus
+  // says every proxy is read from state "no single genome controls, which is what keeps it from being
+  // a wireheading path". A lineage-authored REWARD is exactly that path -- author a coordinate,
+  // declare it valuable, inflate it, collect. A set-point cannot be gamed that way, because the
+  // reward is proximity: moving the target away from where the lineage actually is costs it fitness
+  // immediately. What selection explores is which set-points are both reachable and worth holding.
+  // sense indexes AIM_SENSES, quantities the engine already computes per particle. target is
+  // unclamped on purpose (#148's standing position) -- an unreachable target simply never pays.
+  // weight is what it costs: the aim is TAXED in proportion to it, so an aim a lineage cannot meet is
+  // a drag it carries, and selection decides whether a self-declared purpose earns its keep.
+  aim:null,
   // === #217v: THE NINE THE GERMLINE CARRIED AND NO PARTICLE HAD ===
   // #217j measured the germline holding 15 keys that no living particle held (277 against 262). The
   // structural question finds them without a probe: which names are ASSIGNED to genome.X anywhere in
@@ -10261,6 +10304,9 @@ function cloneGenome(src){
   // uses RESETS and age RESETS, as they do for atoms and verbs: a child re-earns its gene's keep, so
   // an inherited gene that the child never reads is culled out of the child rather than protected by
   // its parent's record.
+  // #218c: deep-copied -- the TENTH instance. A shared aim object would give the whole population
+  // one purpose, which is the single shared gradient this exists to break.
+  g.aim=(src.aim&&typeof src.aim==='object')?{sense:src.aim.sense|0,target:finiteOr(src.aim.target,0),weight:finiteOr(src.aim.weight,0),born:src.aim.born|0}:null;
   // #218b: deep-copied for the same reason as everything above it -- a shared map would give the
   // whole population ONE set of opinions about its own evolvability, which is the ninth instance.
   g.mutMag=(src.mutMag&&typeof src.mutMag==='object')?Object.assign({},src.mutMag):{};
@@ -10575,6 +10621,32 @@ function mutateChildGenome(g){
       if(_n!==_o){ g.regCount=_n; fired('vm.regStep'); }
     }
     g.regCount=__cl(Math.round(finiteOr(g.regCount,VM_REGS_DEFAULT)),2,VM_REGS_MAX);
+  }
+  // #218c: a lineage acquires, moves and abandons its own purpose. All three matter: without
+  // authoring, no lineage ever has an aim; without drift, an aim is a constant and the set-point
+  // cannot search; without abandonment, a lineage is stuck paying AIM_TAX for a target it cannot
+  // reach, and the mechanism would be a trap rather than an option.
+  if(aimOn()){
+    if(!g.aim){
+      if(Math.random()<rate*0.25){
+        // A NEW aim targets WHERE THE LINEAGE ALREADY IS, not a random value. That is the whole
+        // guard restated: an aim seeded at the current reading costs nothing at birth and pays
+        // nothing, so what selection sees afterwards is whether MOVING it was worth it. Seeding at
+        // random would make most aims instantly unreachable and the tax would just be noise.
+        const _k=(Math.random()*AIM_SENSES.length)|0;
+        g.aim={sense:_k, target:0, weight:__cl(Math.random()*0.15,0,AIM_WEIGHT_MAX), born:(genome.generation|0)};
+        fired('aim.author');
+      }
+    } else {
+      const _a=g.aim;
+      if(Math.random()<rate){ const _sp=AIM_SENSES[((_a.sense|0)%AIM_SENSES.length+AIM_SENSES.length)%AIM_SENSES.length].span;
+        const _nt=finiteOr(_a.target,0)+(Math.random()-0.5)*_sp*0.08*scale;
+        if(isFinite(_nt)){ _a.target=_nt; fired('aim.drift'); } }
+      if(Math.random()<rate){ const _nw=__cl(finiteOr(_a.weight,0)+(Math.random()-0.5)*0.06*scale,0,AIM_WEIGHT_MAX);
+        if(isFinite(_nw)) _a.weight=_nw; }
+      if(Math.random()<rate*0.1){ const _ns=(Math.random()*AIM_SENSES.length)|0; if(_ns!==(_a.sense|0)){ _a.sense=_ns; fired('aim.reaim'); } }
+      if(finiteOr(_a.weight,0)<=0.001&&Math.random()<rate){ g.aim=null; fired('aim.abandon'); }
+    }
   }
   // #218b: THE MULTIPLIERS DRIFT, AND EACH ONE IS ITS OWN STEP SCALE. That self-reference is the
   // mechanism: a lineage that has pushed some gene's magnitude up also moves that magnitude faster,
@@ -13275,6 +13347,11 @@ function sanitizeGenome(){
   // the range is the system's to find. What is enforced is the CAP and the shape.
   // #218b: structure only. The multipliers themselves are the lineage's business; the clamp happens
   // at the read (mutMagFor), as FIELD_DECAY's does.
+  // #218c: structure only; the target stays unclamped (#148) because an unreachable aim simply never pays.
+  if(genome.aim&&typeof genome.aim==='object'){
+    genome.aim={sense:genome.aim.sense|0,target:finiteOr(genome.aim.target,0),
+                weight:__cl(finiteOr(genome.aim.weight,0),0,AIM_WEIGHT_MAX),born:genome.aim.born|0};
+  } else if(genome.aim!==null) genome.aim=null;
   if(!genome.mutMag||typeof genome.mutMag!=='object')genome.mutMag={};
   else { const _mk=Object.keys(genome.mutMag);
          for(const k of _mk){ const v=genome.mutMag[k];
@@ -16620,8 +16697,8 @@ function profileVM(){
         // #132 EFFECT_EMIT — the profiler has no world to write, so the drive accumulates and nothing
         // applies it, exactly as the other stubs here do. Parity without side effects.
         case 236:{const _fxn=(genome.userEffects&&genome.userEffects.length)?Math.min(genome.userEffects.length,MAX_USER_EFFECTS):MAX_USER_EFFECTS;const _ei=Math.abs(dst)%_fxn;vmActions[EFFECT_SLOT0+_ei]+=vmRegs[si]*k;}break; // EFFECT_EMIT — #133b: index the bank that EXISTS; %MAX_USER_EFFECTS sent half of all emits to empty slots profiler stub
-        case 237:break;                 // #218a GENE_AUTHOR → skip: the profiler must not mutate genome SHAPE
-        case 238:vmRegs[di]=0;break;    // #218a GENE_READ → neutral stub, same idiom as case 22 USER_ATOM
+        case 427:break;                 // #218a GENE_AUTHOR → skip: the profiler must not mutate genome SHAPE
+        case 428:vmRegs[di]=0;break;    // #218a GENE_READ → neutral stub, same idiom as case 22 USER_ATOM
       }
       if(op>=CORE_OPCODES&&op<CORE_OPCODES+MAX_BOUND_OPCODES){
         const _bos=genome.boundOpcodes;
@@ -17747,6 +17824,27 @@ function chemTableCopy(t){ return Array.isArray(t)?t.map(r=>Array.isArray(r)?r.m
 // an authored gene belongs to the lineage that authored it -- which is the point. The germline self
 // authors its own separately and they do not mix, exactly as userAtoms do not.
 // #218b: the per-gene magnitude multiplier. Absent means 1, so an untouched genome is unchanged.
+// #218c: the quantities a lineage may aim AT. Deliberately small and deliberately all things the
+// engine already computes per particle -- inventing new sensors here would be the anti-goal this
+// project states, and the point is not what can be sensed but that the TARGET is the lineage's.
+// span is the scale the error is measured against, so the proximity term is dimensionless.
+const AIM_SENSES=[
+  {n:'amp',     span:2,   get:i=>amp[i]},
+  {n:'res',     span:2,   get:i=>localRes[i]},
+  {n:'age',     span:20000, get:i=>page[i]},
+  {n:'collapse',span:1,   get:i=>collapse[i]},
+  {n:'freq',    span:2,   get:i=>freq[i]},
+  {n:'phase',   span:6.2832, get:i=>phase[i]}
+];
+const AIM_WEIGHT_MAX=0.5;   // #218c: ceiling on how hard a lineage can pull on its own amplitude
+const AIM_TAX=0.15;         // #218c: the standing cost of holding an aim, in the same units as the pull
+function aimOn(){ return (typeof globalThis==='undefined')||((globalThis.__AIM??1)|0)!==0; }
+function aimSense(k,i){
+  const e=AIM_SENSES[((k%AIM_SENSES.length)+AIM_SENSES.length)%AIM_SENSES.length];
+  if(!e)return null;
+  const v=e.get(i);
+  return (typeof v==='number'&&isFinite(v))?v:null;
+}
 const MUTMAG_LO=0.02, MUTMAG_HI=25, MUTMAG_MAX=48;   // #218b: bounds, and a cap on how many opinions one lineage holds
 function mutMagOn(){ return (typeof globalThis==='undefined')||((globalThis.__MUTMAG??1)|0)!==0; }
 function mutMagFor(gene){
@@ -23678,11 +23776,11 @@ function executeVM(i,j,sim,d){
         // #132 EFFECT_EMIT — drive an AUTHORED VERB. Same shape as case 4 (the built-in actuator emit);
         // the difference is that what happens at the other end is evolved, not written here.
         case 236:{const _fxn=(genome.userEffects&&genome.userEffects.length)?Math.min(genome.userEffects.length,MAX_USER_EFFECTS):MAX_USER_EFFECTS;const _ei=Math.abs(dst)%_fxn;vmActions[EFFECT_SLOT0+_ei]+=vmRegs[si]*k;}break; // EFFECT_EMIT — #133b: index the bank that EXISTS; %MAX_USER_EFFECTS sent half of all emits to empty slots
-      case 237:{ // #218a GENE_AUTHOR — the genome grows a coordinate it did not have. Costs
+      case 427:{ // #218a GENE_AUTHOR — the genome grows a coordinate it did not have. Costs
                  // localRes, priced like PROG_GROW: authoring structure is not free.
         if(localRes[i]>0.25){ const _ng=novelAuthor(vmRegs[si]*k); if(_ng){ localRes[i]-=0.25; vmRegs[di]=_ng; } else vmRegs[di]=0; }
         else vmRegs[di]=0; }break;
-      case 238:{ // #218a GENE_READ — the lineage reads its own invented quantity. Without this the
+      case 428:{ // #218a GENE_READ — the lineage reads its own invented quantity. Without this the
                  // bank would be #217o's failure by construction: a gene nothing reads is decoration.
         vmRegs[di]=novelRead(Math.abs(Math.floor(vmRegs[si])))*k; fired('gene.read'); }break;
       case 231:{const _cqcid231=clusterID[i];if(_cqcid231>=0){const _cqbit231=1<<(Math.round(Math.abs(vmRegs[si]))&7);let _cqtot231=0,_cqset231=0;for(let _cqn231=0;_cqn231<N;_cqn231++){if(clusterID[_cqn231]===_cqcid231){_cqtot231++;if(pEpigen[_cqn231]&_cqbit231)_cqset231++;}}vmRegs[di]=_cqtot231>0?(_cqset231/_cqtot231)*k:0;}else{vmRegs[di]=0;}}break; // CLUSTER_QUORUM — fraction of own cluster members with epigenetic bit (vmRegs[si]&7) set; O(N) scan; solitary returns 0. Enables quorum sensing; epigenetic voting; collective gene-expression switching; democratic phase coordination.
@@ -24836,11 +24934,11 @@ function executeVM(i,j,sim,d){
         // #132 EFFECT_EMIT — drive an AUTHORED VERB. Same shape as case 4 (the built-in actuator emit);
         // the difference is that what happens at the other end is evolved, not written here.
         case 236:{const _fxn=(genome.userEffects&&genome.userEffects.length)?Math.min(genome.userEffects.length,MAX_USER_EFFECTS):MAX_USER_EFFECTS;const _ei=Math.abs(dst)%_fxn;vmActions[EFFECT_SLOT0+_ei]+=vmRegs[si]*k;}break; // EFFECT_EMIT — #133b: index the bank that EXISTS; %MAX_USER_EFFECTS sent half of all emits to empty slots
-      case 237:{ // #218a GENE_AUTHOR — the genome grows a coordinate it did not have. Costs
+      case 427:{ // #218a GENE_AUTHOR — the genome grows a coordinate it did not have. Costs
                  // localRes, priced like PROG_GROW: authoring structure is not free.
         if(localRes[i]>0.25){ const _ng=novelAuthor(vmRegs[si]*k); if(_ng){ localRes[i]-=0.25; vmRegs[di]=_ng; } else vmRegs[di]=0; }
         else vmRegs[di]=0; }break;
-      case 238:{ // #218a GENE_READ — the lineage reads its own invented quantity. Without this the
+      case 428:{ // #218a GENE_READ — the lineage reads its own invented quantity. Without this the
                  // bank would be #217o's failure by construction: a gene nothing reads is decoration.
         vmRegs[di]=novelRead(Math.abs(Math.floor(vmRegs[si])))*k; fired('gene.read'); }break;
       }
@@ -26279,11 +26377,11 @@ function executeClusterVM(i,j,sim,d){
         // #132 EFFECT_EMIT — drive an AUTHORED VERB. Same shape as case 4 (the built-in actuator emit);
         // the difference is that what happens at the other end is evolved, not written here.
         case 236:{const _fxn=(genome.userEffects&&genome.userEffects.length)?Math.min(genome.userEffects.length,MAX_USER_EFFECTS):MAX_USER_EFFECTS;const _ei=Math.abs(dst)%_fxn;vmActions[EFFECT_SLOT0+_ei]+=vmRegs[si]*k;}break; // EFFECT_EMIT — #133b: index the bank that EXISTS; %MAX_USER_EFFECTS sent half of all emits to empty slots
-      case 237:{ // #218a GENE_AUTHOR — the genome grows a coordinate it did not have. Costs
+      case 427:{ // #218a GENE_AUTHOR — the genome grows a coordinate it did not have. Costs
                  // localRes, priced like PROG_GROW: authoring structure is not free.
         if(localRes[i]>0.25){ const _ng=novelAuthor(vmRegs[si]*k); if(_ng){ localRes[i]-=0.25; vmRegs[di]=_ng; } else vmRegs[di]=0; }
         else vmRegs[di]=0; }break;
-      case 238:{ // #218a GENE_READ — the lineage reads its own invented quantity. Without this the
+      case 428:{ // #218a GENE_READ — the lineage reads its own invented quantity. Without this the
                  // bank would be #217o's failure by construction: a gene nothing reads is decoration.
         vmRegs[di]=novelRead(Math.abs(Math.floor(vmRegs[si])))*k; fired('gene.read'); }break;
     }
@@ -27013,11 +27111,11 @@ function executeSoloVM(){
         // #132 EFFECT_EMIT — drive an AUTHORED VERB. Same shape as case 4 (the built-in actuator emit);
         // the difference is that what happens at the other end is evolved, not written here.
         case 236:{const _fxn=(genome.userEffects&&genome.userEffects.length)?Math.min(genome.userEffects.length,MAX_USER_EFFECTS):MAX_USER_EFFECTS;const _ei=Math.abs(dst)%_fxn;vmActions[EFFECT_SLOT0+_ei]+=vmRegs[si]*k;}break; // EFFECT_EMIT — #133b: index the bank that EXISTS; %MAX_USER_EFFECTS sent half of all emits to empty slots
-      case 237:{ // #218a GENE_AUTHOR — the genome grows a coordinate it did not have. Costs
+      case 427:{ // #218a GENE_AUTHOR — the genome grows a coordinate it did not have. Costs
                  // localRes, priced like PROG_GROW: authoring structure is not free.
         if(localRes[i]>0.25){ const _ng=novelAuthor(vmRegs[si]*k); if(_ng){ localRes[i]-=0.25; vmRegs[di]=_ng; } else vmRegs[di]=0; }
         else vmRegs[di]=0; }break;
-      case 238:{ // #218a GENE_READ — the lineage reads its own invented quantity. Without this the
+      case 428:{ // #218a GENE_READ — the lineage reads its own invented quantity. Without this the
                  // bank would be #217o's failure by construction: a gene nothing reads is decoration.
         vmRegs[di]=novelRead(Math.abs(Math.floor(vmRegs[si])))*k; fired('gene.read'); }break;
       }
@@ -28383,6 +28481,24 @@ function applyNicheEconomy(){ fired('niche.economy');
         const sc=n>0?s/n:0; pNicheRaw[i]=sc; sumNov+=sc; cnt++; } // reuse pNicheRaw as scratch (frontier already consumed it)
       const meanNov=cnt>0?sumNov/cnt:0;
       if(meanNov>1e-9){ const _ops=(genome.opnovStrength??OPNOV_STRENGTH); for(let i=0;i<N;i++){ if(!palive[i])continue; amp[i]+=_ops*Math.max(-1,Math.min(1, pNicheRaw[i]/meanNov-1)); } } // strength evolvable (#35)
+      // #218c: and each lineage is pulled toward ITS OWN set-point, from ITS OWN genome. Placed here,
+      // beside #35's novelty nudge, because it is the same kind of term -- a per-particle addition to
+      // the selection amplitude -- and putting it anywhere else would hide that it competes with it.
+      if(aimOn()) for(let i=0;i<N;i++){
+        if(!palive[i])continue;
+        const _g=pGenome[i]; const _a=_g&&_g.aim;
+        if(!_a)continue;
+        const _w=__cl(finiteOr(_a.weight,0),0,AIM_WEIGHT_MAX);
+        if(_w<=0)continue;
+        const _sv=aimSense(_a.sense|0,i);
+        if(_sv===null)continue;
+        const _sp=AIM_SENSES[((_a.sense|0)%AIM_SENSES.length+AIM_SENSES.length)%AIM_SENSES.length].span;
+        const _err=Math.abs(_sv-finiteOr(_a.target,0))/(_sp||1);
+        // proximity pays, distance does not, and the aim is TAXED either way -- that is what keeps a
+        // self-declared purpose from being free. An aim never met is a standing metabolic drag.
+        amp[i]+=_w*(Math.max(0,1-_err)-AIM_TAX);
+        fired('aim.pull');
+      }
     }
   }
 }

@@ -1504,7 +1504,17 @@ m._compile(code+`
   out.selfwrite=run('selfwrite',()=>{
     // 1. THE ADDRESS. The comment at OP_SELFWRITE says 237+192 is written as literals so a moved
     //    constant is a red build rather than a silent slide into a live opcode. This is that check.
-    const addr={op:OP_SELFWRITE, derived:CORE_OPCODES+MAX_BOUND_OPCODES,
+    // #218a: the derivation gains GENE_OPCODES. This row is written as literals ON PURPOSE so that a
+    // moved constant is a red build, and it went red on #218a's first gate run exactly as designed --
+    // raising CORE_OPCODES 237->239 would have made 429 a live bound slot AND re-aimed every saved
+    // genome's bound opcodes by two (#137). The fix took the two new opcodes out of the TOP of the
+    // bound range instead (192->190, ops at 427/428), so the bound BASE never moves and nothing
+    // re-aims. OP_SELFWRITE stays 429 and stays one past the last live opcode. The PROPERTY this row
+    // protects is unchanged; what changed is that there are now two reserved opcodes between the bound
+    // range and OP_SELFWRITE, so the derivation has to say so. This is not a threshold retuned to make
+    // a red row green -- the literal 429 is still asserted, and GENE_OPCODES is a named engine
+    // constant rather than a number pasted here.
+    const addr={op:OP_SELFWRITE, derived:CORE_OPCODES+MAX_BOUND_OPCODES+GENE_OPCODES,
                 aboveBound:OP_SELFWRITE>=CORE_OPCODES+MAX_BOUND_OPCODES,
                 wireAdmits:validInstruction([OP_SELFWRITE,0,1,0.5]),
                 netMax:netMaxOpcode()};
