@@ -10452,6 +10452,30 @@ function crossoverProg(progA,progB,cap){ fired('prog.crossover'); // single-poin
 // what a cache of a slightly different fitness looks like. That made it the one channel by which the
 // inscribed substrate touched the genome at all, and it was never a trait.
 const CHILD_NOT_A_GENE=['totalTicks','generation','extinctions','prevSmoothedFitness','prevDecideFitness'];   // #217v: prevDecideFitness is #217n's case exactly -- a cache read as a delta and overwritten the same tick
+// TWO-PARENT CROSSOVER WAS PROGRAM-ONLY. The gate at each birth site decides whether a child gets a
+// second parent at all; once it does, only vmProgram was ever spliced (crossoverProg, above) — every
+// other gene, the ~200 scalar fields governing metabolism, life history, senses and chemistry, still
+// came from parent A alone. A "two-parent" child differed from a clone-with-mutation only in its
+// behaviour, never in its physiology: sexual reproduction was real for one gene and fictional for the
+// rest of the genome. This is the general case crossoverProg is the special one of.
+// Independent assortment: every scalar gene independently gets a 50/50 draw between the two parents,
+// on the SAME event that already triggers the program splice — a birth is either a full recombinant
+// or a clone, never a state where behaviour crossed but the body plan could not.
+// Skips CHILD_NOT_A_GENE (bookkeeping/caches, not heritable) and anything not a finite number on
+// BOTH sides — undefined on one side is a field the other parent has not lazily grown yet, and that
+// is left as parent A's clone rather than forced. Array/object-valued genes (uaProdW, uaVarW, uaOps,
+// oeeW, chemistryTable, ...) are untouched here: each has its own shape invariant enforced at its own
+// mutation site, and a flat property swap would bypass every one of them.
+// SHIFTS THE RNG STREAM on every crossover event from here on (one extra draw per eligible scalar
+// gene): it drew nothing before because there was nothing here to decide.
+function recombineGenome(childG,otherG){
+  for(const k in childG){
+    if(CHILD_NOT_A_GENE.indexOf(k)>=0)continue;
+    const v=childG[k],ov=otherG[k];
+    if(typeof v==='number'&&isFinite(v)&&typeof ov==='number'&&isFinite(ov)&&Math.random()<0.5)childG[k]=ov;
+  }
+  return childG;
+}
 // === #192 - A DISCRETE GENE NEEDS A DISCRETE OPERATOR ON THE CHILD ROUTE TOO ====================
 // MEASURED DEFECT, and it is a worse shape than #179's: 12,000 ticks with #192 live gave
 // tick.rateStep 0, tick.phaseStep 0, tick.skipped 0, and tick.moved germline 0 / population 0. The
@@ -20998,7 +21022,10 @@ function addParticle(x,y,tv,born,parentA,parentB){
   // Two-parent crossover: when parentB also has a genome, a 30% chance produces a genuinely
   // recombined program (prefix from A, suffix from B) rather than a pure clone-with-mutation.
   {const _bg=(parentA>=0&&parentA<N&&pGenome[parentA])?cloneGenome(pGenome[parentA]):cloneGenome(genome);
-  if(parentB>=0&&parentB<N&&pGenome[parentB]&&Math.random()<0.3&&(!__SPEC.gate||pLin[parentA]===pLin[parentB]||Math.random()<HYBRID_RATE)&&__assortOK(parentA,parentB) /* LEAP 10 (#52): rare cross-lineage gene flow — two distinct histories spliced, a novelty source point mutation cannot supply */)_bg.vmProgram=crossoverProg(_bg.vmProgram,pGenome[parentB].vmProgram); // #17: crossover is gene flow — gated to within-lineage when isolating
+  if(parentB>=0&&parentB<N&&pGenome[parentB]&&Math.random()<0.3&&(!__SPEC.gate||pLin[parentA]===pLin[parentB]||Math.random()<HYBRID_RATE)&&__assortOK(parentA,parentB) /* LEAP 10 (#52): rare cross-lineage gene flow — two distinct histories spliced, a novelty source point mutation cannot supply */){
+    _bg.vmProgram=crossoverProg(_bg.vmProgram,pGenome[parentB].vmProgram); // #17: crossover is gene flow — gated to within-lineage when isolating
+    recombineGenome(_bg,pGenome[parentB]); // same event now recombines the whole genome, not just the program
+  }
   pGenome[i]=mutateChildGenome(_bg);}
   pProg[i]=pGenome[i].vmProgram;
   return i;
@@ -21087,7 +21114,10 @@ function addCompound(x,y,nt,nvx,nvy,na,np,nf,parentA,parentB){
   }
   // UNLOCKED #9 FULL + two-parent crossover: compound child also crosses A×B programs.
   {const _bg=(parentA>=0&&parentA<N&&pGenome[parentA])?cloneGenome(pGenome[parentA]):cloneGenome(genome);
-  if(parentB>=0&&parentB<N&&pGenome[parentB]&&Math.random()<0.3&&(!__SPEC.gate||pLin[parentA]===pLin[parentB]||Math.random()<HYBRID_RATE)&&__assortOK(parentA,parentB) /* LEAP 10 (#52): rare cross-lineage gene flow — two distinct histories spliced, a novelty source point mutation cannot supply */)_bg.vmProgram=crossoverProg(_bg.vmProgram,pGenome[parentB].vmProgram); // #17: within-lineage gene flow only when isolating
+  if(parentB>=0&&parentB<N&&pGenome[parentB]&&Math.random()<0.3&&(!__SPEC.gate||pLin[parentA]===pLin[parentB]||Math.random()<HYBRID_RATE)&&__assortOK(parentA,parentB) /* LEAP 10 (#52): rare cross-lineage gene flow — two distinct histories spliced, a novelty source point mutation cannot supply */){
+    _bg.vmProgram=crossoverProg(_bg.vmProgram,pGenome[parentB].vmProgram); // #17: within-lineage gene flow only when isolating
+    recombineGenome(_bg,pGenome[parentB]); // same event now recombines the whole genome, not just the program
+  }
   pGenome[i]=mutateChildGenome(_bg);}
   pProg[i]=pGenome[i].vmProgram;
   return i;
