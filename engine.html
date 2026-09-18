@@ -12144,27 +12144,36 @@ function decodeGenome(data){
       genome.alienPredict={attempts:g.ap.attempts|0,hits:g.ap.hits|0};
     }
     // Handle older genomes without newer params
-    if(!genome.hgtRate)genome.hgtRate=0.15;
+    // FALSY-ZERO, the same bug class #85 fixed for metabolicCost and #217x found twice more: `!X`
+    // treats a legitimately-evolved 0 the same as a missing field, so a lineage that evolved one of
+    // these continuous rates/thresholds to genuine zero had it silently reset to the hardcoded
+    // default on every load — the save round-trip was erasing real evolutionary information the live
+    // run never would have. Switched to finiteOr (missing/NaN -> default, 0 stays 0) for every field
+    // here that mutateGenome's maybe() walks unboundedly and can therefore actually reach zero live.
+    // hgtMax, reflexDepth and chemistryTable are deliberately NOT switched: the first two are
+    // CHILD_DISCRETE genes floored at 1 by their own stepper (0 was never a reachable value to lose),
+    // and chemistryTable is an object, where `!X` is a plain null/undefined check, not this bug.
+    genome.hgtRate=finiteOr(genome.hgtRate,0.15);
     if(!genome.hgtMax)genome.hgtMax=2;
-    if(!genome.hgtSpliceNoise)genome.hgtSpliceNoise=0.22;
-    if(!genome.plasmidTransferRate)genome.plasmidTransferRate=0.008;
-    if(!genome.plasmidMutRate)genome.plasmidMutRate=0.04;
-    if(!genome.plasmidTransferThresh)genome.plasmidTransferThresh=0.55;
-    if(!genome.plasmidSpawnRate)genome.plasmidSpawnRate=0.002;
-    if(!genome.fieldInfluence)genome.fieldInfluence=0.65;
+    genome.hgtSpliceNoise=finiteOr(genome.hgtSpliceNoise,0.22);
+    genome.plasmidTransferRate=finiteOr(genome.plasmidTransferRate,0.008);
+    genome.plasmidMutRate=finiteOr(genome.plasmidMutRate,0.04);
+    genome.plasmidTransferThresh=finiteOr(genome.plasmidTransferThresh,0.55);
+    genome.plasmidSpawnRate=finiteOr(genome.plasmidSpawnRate,0.002);
+    genome.fieldInfluence=finiteOr(genome.fieldInfluence,0.65);
     if(genome.fieldDecay===undefined)genome.fieldDecay=0.982;
     if(genome.fieldDiffuse===undefined)genome.fieldDiffuse=0.11;
     if(!genome.chemistryTable)genome.chemistryTable=seedChemistryTable();
     if(genome.chemistryMutRate===undefined)genome.chemistryMutRate=0.02;
-    if(!genome.fieldWeight)genome.fieldWeight=0.2;
-    if(!genome.mutationInterval)genome.mutationInterval=300;
-    if(!genome.interactionRadius)genome.interactionRadius=55;
-    if(!genome.densityCostK)genome.densityCostK=0.00003;
-    if(!genome.fieldBirthGate)genome.fieldBirthGate=0.3;
-    if(!genome.reflexSampleRate)genome.reflexSampleRate=0.15;
+    genome.fieldWeight=finiteOr(genome.fieldWeight,0.2);
+    genome.mutationInterval=finiteOr(genome.mutationInterval,300);
+    genome.interactionRadius=finiteOr(genome.interactionRadius,55);
+    genome.densityCostK=finiteOr(genome.densityCostK,0.00003);
+    genome.fieldBirthGate=finiteOr(genome.fieldBirthGate,0.3);
+    genome.reflexSampleRate=finiteOr(genome.reflexSampleRate,0.15);
     if(!genome.reflexDepth)genome.reflexDepth=4;
     if(genome.reflexInfluence===undefined)genome.reflexInfluence=0.1;
-    if(!genome.reflexDecay)genome.reflexDecay=0.95;
+    genome.reflexDecay=finiteOr(genome.reflexDecay,0.95);
     if(!genome.clusterReflexAge)genome.clusterReflexAge=5;
     if(genome.clusterReflexWeight===undefined)genome.clusterReflexWeight=0.15;
     if(genome.clusterGenomeReadStrength===undefined)genome.clusterGenomeReadStrength=0.05;
@@ -20791,9 +20800,9 @@ function getParticleSig(i){
 
 // ═══ LAYER 10: PARTICLE REFLEXIVITY ENGINE ═══
 function updateParticleReflex(){
-  const sampleRate=genome.reflexSampleRate||0.15;
+  const sampleRate=finiteOr(genome.reflexSampleRate,0.15);   // was ||0.15: a lineage that evolved this to genuine 0 read its own default instead every tick
   const depth=__cl(Math.round(genome.reflexDepth||4),2,REFLEX_DEPTH);
-  const decay=genome.reflexDecay||0.95;
+  const decay=finiteOr(genome.reflexDecay,0.95);              // was ||0.95, same bug
 
   for(let i=0;i<N;i++){
     if(!palive[i])continue;
@@ -21244,7 +21253,7 @@ function applyEntropy(){
   const deaths=[];
   deathsThisWindow+=deathsThisTick;   // #97: carry the tick's deaths into the 60-tick window before clearing
   deathsThisTick=0;
-  const densityCost=(genome.densityCostK||0.00003)*Math.max(0,N-(genome.densityFloor??100));
+  const densityCost=finiteOr(genome.densityCostK,0.00003)*Math.max(0,N-(genome.densityFloor??100));   // was ||0.00003, same falsy-zero bug as reflexSampleRate/reflexDecay
   // LEAP 12 + 14 (#53) — one local pass over the spatial grid does both jobs, because both are about
   // WHO your neighbours are rather than how many exist globally.
   //   12: crowding is charged by SIMILARITY. Competition is strongest between like individuals; that is
