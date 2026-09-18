@@ -9673,6 +9673,14 @@ let genome={
 };
 
 const EVENT_LOG_SIZE=36;
+// fitnessHistory sits in the genome literal alongside peakFitness/longestStable/currentStableStreak
+// but, unlike them, was never actually written to anywhere: declared as [], never pushed, never
+// saved, never read — a name and a slot with no function. peakFitness answers "what was the best",
+// longestStable answers "how long did stability last", and nothing answers "what did the trajectory
+// look like" — which is the one a single scalar can't. Recorded at the same tick%60 cadence its
+// siblings already use, capped like every other periodic log in this file (MAX_EPOCHS=200 is the
+// precedent for the magnitude).
+const FITNESS_HISTORY_CAP=200;
 const eventLastSeen={};
 function recordEvent(kind,data,minGap){
   try{
@@ -11834,6 +11842,7 @@ function encodeGenome(){
     L:genome.lineage.slice(-4),
     E:(genome.eventLog||[]).slice(-EVENT_LOG_SIZE),
     EP:(genome.epochs||[]).slice(-MAX_EPOCHS),  // full-arc summary — spans the entire run
+    FH:(genome.fitnessHistory||[]).slice(-FITNESS_HISTORY_CAP),  // [tick,fitness] pairs, tick%60 cadence
     oL:(oeeLog||[]).slice(-MAX_EPOCHS),         // #130 open-endedness meter: per-epoch activity log
     RCH:(__opReachLog||[]).slice(-MAX_EPOCHS),  // #176 [tickEnd, boundSlotsExecuted, bankSize] +#178 [, distinctAtomsReached] per epoch; pre-#178 rows are 3 long and stay that way
     LVL:(__levelLog||[]).slice(-MAX_EPOCHS),    // #182 [tickEnd, particles, clusters, towers, forests] per epoch - LEVEL_DECLARED order
@@ -12209,6 +12218,7 @@ function decodeGenome(data){
     genome.lineage=g.L||[];
     genome.eventLog=g.E||[];
     genome.epochs=Array.isArray(g.EP)?g.EP:[];
+    genome.fitnessHistory=Array.isArray(g.FH)?g.FH:[];   // absent in pre-this saves → starts empty, which is honest: it was never recorded
     oeeLog=Array.isArray(g.oL)?g.oL:[];          // #130 open-endedness meter (absent in pre-#130 saves → starts empty)
     __opReachLog=Array.isArray(g.RCH)?g.RCH:[];  // #176 (absent in pre-#176 saves → starts empty, which is honest: it was never measured)
     __levelLog=Array.isArray(g.LVL)?g.LVL:[];    // #182
@@ -13508,6 +13518,7 @@ function sanitizeGenome(){
   }
   genome.lineage=Array.isArray(genome.lineage)?genome.lineage.slice(-6):[];
   genome.eventLog=Array.isArray(genome.eventLog)?genome.eventLog.slice(-EVENT_LOG_SIZE):[];
+  genome.fitnessHistory=Array.isArray(genome.fitnessHistory)?genome.fitnessHistory.slice(-FITNESS_HISTORY_CAP):[];
   if(!Array.isArray(genome.epochs))genome.epochs=[];
   genome.epochs=genome.epochs.map(e=>{ // normalize legacy 9-field buckets to current 12-field schema
     if(!Array.isArray(e))return null;
@@ -29593,6 +29604,9 @@ function loop(){
     }else{
       genome.currentStableStreak=0;
     }
+    if(!Array.isArray(genome.fitnessHistory))genome.fitnessHistory=[];
+    genome.fitnessHistory.push([tick|0,+currentFitness.toFixed(4)]);
+    while(genome.fitnessHistory.length>FITNESS_HISTORY_CAP)genome.fitnessHistory.shift();
   }
 
   if(tick%120===0&&tick>60)sampleInstrumentation();
