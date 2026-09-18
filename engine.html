@@ -9401,7 +9401,18 @@ let genome={
   // hand-written magnitude, i.e. pre-#218b behaviour exactly. Entries appear only when a lineage's
   // own drift creates them, which is why this is a map and not 57 declared fields: the SET of genes
   // whose evolvability a lineage has opinions about is itself something it discovers.
-  mutMag:{},
+  // #218g: NOT empty, and entries no longer delete themselves back toward nothing. #218b created
+  // opinions at rate*0.5 and then deleted any that drifted within 0.01 of 1 -- a mechanism with a
+  // gradient back to doing nothing, which is a hop however it is described. Six genes are born with
+  // a real opinion about their own evolvability, chosen because they are the ones that decide how
+  // fast the world's physics, its variation, and its purposes can move at all:
+  //   fieldDecay/fieldDiffuse   the substrate's own rates
+  //   mutationRate/mutationScale  how hard everything else mutates
+  //   cellExecThresh            when the inscribed substrate computes (#217h)
+  //   atrophyRate               how willingly the world retires its own layers
+  // Seeded away from 1 in both directions on purpose: a population that starts at 1 everywhere has
+  // to drift before anything differs, and seeding split means lineages diverge on their first birth.
+  mutMag:{fieldDecay:1.6,fieldDiffuse:0.7,mutationRate:1.4,mutationScale:0.8,cellExecThresh:2.2,atrophyRate:1.3},
   // ═══ #218c: WHAT A LINEAGE IS TRYING TO ACHIEVE ═══════════════════════════════════════════════
   // The deepest constant in this engine is that every lineage is judged by the same fitness. One
   // shared gradient means one optimum, and eventual convergence on it -- which is structurally
@@ -10697,7 +10708,11 @@ function mutateChildGenome(g){
         const _nx=_cur+(Math.random()-0.5)*_cur*0.25*scale;   // step proportional to itself
         if(isFinite(_nx)){ g.mutMag[_mk]=__cl(_nx,MUTMAG_LO,MUTMAG_HI); fired('mutmag.drift'); }
       }
-      if(Math.abs(g.mutMag[_mk]-1)<0.01) delete g.mutMag[_mk];   // an opinion that is no opinion is dropped, so the map cannot fill with 1s
+      // #218g: NO deletion at 1. #218b dropped entries that drifted near 1 "so the map cannot fill
+      // with 1s", which sounds like hygiene and is a one-way valve toward the identity map: every
+      // random walk crosses 1, and crossing it destroyed the opinion. A gene whose multiplier is
+      // momentarily 1 still has an opinion -- it is passing through. The cap (MUTMAG_MAX) is what
+      // bounds the map; deletion was bounding the MECHANISM.
     }
     // a new opinion, occasionally, about a gene this genome actually has
     if(Math.random()<rate*0.5){
@@ -17876,6 +17891,29 @@ const AIM_TAX=0.15;         // #218c: the standing cost of holding an aim, in th
                             // amplitude per tick, which is a real death sentence for a lineage that
                             // wants something it cannot have. That asymmetry is the mechanism.
 function aimOn(){ return (typeof globalThis==='undefined')||((globalThis.__AIM??1)|0)!==0; }
+const AIM_FITNESS_WEIGHT=0.35;   // #218h: comparable to the objWeights it sits beside, not a token
+// #218h: mean proximity-to-own-target across the living population, in [0,1]. Draws nothing and
+// calls no engine function that draws -- it is a scan over per-particle state, which is the only
+// kind of probe CLAUDE.md's third trap permits inside a tick that other things are measured against.
+function aimSatisfaction(){
+  let sum=0,n=0;
+  for(let i=0;i<N;i++){
+    if(!palive[i])continue;
+    const g=pGenome[i], a=g&&g.aim;
+    if(!a)continue;
+    const e=AIM_SENSES[((a.sense|0)%AIM_SENSES.length+AIM_SENSES.length)%AIM_SENSES.length];
+    if(!e)continue;
+    const v=e.get(i);
+    if(typeof v!=='number'||!isFinite(v))continue;
+    let t=finiteOr(a.target,0);
+    if(Array.isArray(g.novelGenes)&&g.novelGenes.length){
+      const nv=g.novelGenes[0];
+      if(nv)t+=__cl(finiteOr(nv.v,0),-1,1)*(e.span||1)*0.5;   // #218f's offset, read without the repoint
+    }
+    sum+=Math.max(0,1-Math.abs(v-t)/(e.span||1)); n++;
+  }
+  return n>0?sum/n:0;
+}
 function aimSense(k,i){
   const e=AIM_SENSES[((k%AIM_SENSES.length)+AIM_SENSES.length)%AIM_SENSES.length];
   if(!e)return null;
@@ -29197,11 +29235,28 @@ function loop(){
       const _persist=_alive?Math.min(1,_agesum/Math.max(1,_alive)):0;
       retentionScore=retentionScore*0.9+(0.6*_depth+0.4*_persist)*0.1;
     }
+    // #218h: AIM SATISFACTION IS A TERM IN THE WORLD'S OWN FITNESS. Until now the aim touched
+    // amp[i] only -- reproduction felt it, and currentFitness did not. But currentFitness is what the
+    // meta-layer, credit assignment, the shadow sim and the atrophy verdict all read, so a purpose
+    // that never reaches it is a purpose the world cannot learn from. This puts it in the composite,
+    // before the EMA, on the same footing as stability and diversity: how well this world's lineages
+    // are meeting the purposes THEY CHOSE is now part of how well this world is doing.
+    // On #184's wireheading warning, which this deliberately crosses: that comment says every proxy
+    // is read from state no single genome controls. This one is not -- it is read from what the
+    // lineages want. The set-point design is what makes that safe rather than free: the term measures
+    // PROXIMITY, so a lineage cannot inflate it by inflating anything (moving the target away from
+    // where it is lowers the term immediately), it is seeded at the current reading so it starts
+    // paying nothing, and it is a POPULATION MEAN, so one lineage satisfying itself moves it by 1/n
+    // while the taxed failures of the rest pull the other way.
+    // The weight is deliberately comparable to the others rather than a token: a term that cannot
+    // outweigh anything cannot change what the world selects for, which was #218c's whole mistake.
+    const _aimSat=aimSatisfaction();
     const fitness=(selfModel.stability*w[0]+selfModel.diversity*w[1]+selfModel.avgCoherence*w[2]+
       retentionScore*RETENTION_WEIGHT+
+      _aimSat*AIM_FITNESS_WEIGHT+
       (clusters.filter(c=>c.persistAge<2).length/Math.max(1,clusters.length))*w[3]+
       realSensorScore*realSensorWeight+
-      predictionQuality*relW)/(wT+realSensorWeight+relW+RETENTION_WEIGHT);
+      predictionQuality*relW)/(wT+realSensorWeight+relW+RETENTION_WEIGHT+AIM_FITNESS_WEIGHT);
     // #184: the open-endedness bonus, added to the composite BEFORE the EMA so it moves the same
     // number every other selective pressure moves. Bounded at OEE_BONUS_CAP whatever the weights
     // evolve to, and zero at the seeded weights, so a lineage that never touches these genes is
