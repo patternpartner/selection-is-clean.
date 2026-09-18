@@ -1278,6 +1278,7 @@ const LIVENESS_DECLARED=[
   // Declared as five names because "no lineage ever authored one" and "they authored and abandoned
   // them all" and "they hold aims nothing pulls on" are three different worlds.
   'aim.author','aim.drift','aim.reaim','aim.abandon','aim.pull',
+  'aim.grow','aim.shrink',   // #218j: the portfolio's SIZE changing — how many things a creature wants
   'mutmag.author','mutmag.drift',   // #218b: a lineage forming and moving an opinion about its own evolvability
   // #188: channel.update is the lattice pass, channel.write a verb acting into a medium, and
   // channel.wire the reachability hook. All five declared so a run where a lineage allocated a
@@ -9439,7 +9440,15 @@ let genome={
   // beside, not a hedge. Every lineage therefore starts wanting the same thing, and diverges from
   // there by drift and re-aiming: the shared gradient is broken by inheritance rather than by
   // authoring, which is the only way it gets broken in every run rather than in the lucky ones.
-  aim:{sense:0,target:0.6,weight:0.28,born:0},
+  // #218j: a PORTFOLIO, not a purpose. #218d gave every lineage one set-point, which makes the
+  // number of things a creature wants a constant of my choosing -- the same fixedness #218a removed
+  // from the genome's dimension, sitting one level up in the purpose itself.
+  // aims is an array. Born with two, because one cannot conflict with anything and conflict is where
+  // the interesting structure is: a lineage holding two set-points on different senses has a
+  // trade-off it must resolve or pay for, and resolving it is behaviour nobody designed.
+  // It grows and shrinks (see the child route), so how many things a creature wants is something it
+  // discovers. The tax is PER AIM, so wanting more costs more and a portfolio has to earn its size.
+  aims:[{sense:0,target:0.6,weight:0.28,born:0},{sense:6,target:0.0,weight:0.22,born:0}],
   // === #217v: THE NINE THE GERMLINE CARRIED AND NO PARTICLE HAD ===
   // #217j measured the germline holding 15 keys that no living particle held (277 against 262). The
   // structural question finds them without a probe: which names are ASSIGNED to genome.X anywhere in
@@ -10335,7 +10344,12 @@ function cloneGenome(src){
   // its parent's record.
   // #218c: deep-copied -- the TENTH instance. A shared aim object would give the whole population
   // one purpose, which is the single shared gradient this exists to break.
-  g.aim=(src.aim&&typeof src.aim==='object')?{sense:src.aim.sense|0,target:finiteOr(src.aim.target,0),weight:finiteOr(src.aim.weight,0),born:src.aim.born|0}:null;
+  // #218j: the PORTFOLIO is deep-copied, element by element -- the eleventh instance. A shallow copy
+  // would share aim objects across the population, so every lineage would want the same things and
+  // moving one target would move everyone's, which is the single shared gradient rebuilt by accident.
+  { const _sa=aimsOf(src);
+    g.aims=_sa?_sa.filter(Boolean).map(a=>({sense:a.sense|0,target:finiteOr(a.target,0),weight:finiteOr(a.weight,0),born:a.born|0})):[];
+    g.aim=null; }
   // #218b: deep-copied for the same reason as everything above it -- a shared map would give the
   // whole population ONE set of opinions about its own evolvability, which is the ninth instance.
   g.mutMag=(src.mutMag&&typeof src.mutMag==='object')?Object.assign({},src.mutMag):{};
@@ -10651,44 +10665,40 @@ function mutateChildGenome(g){
     }
     g.regCount=__cl(Math.round(finiteOr(g.regCount,VM_REGS_DEFAULT)),2,VM_REGS_MAX);
   }
-  // #218d: every child already HAS an aim (the literal seeds one and cloneGenome carries it), so
-  // there is nothing to author -- what happens here is that it MOVES. The authoring branch below is
-  // kept only for a genome loaded from a pre-#218d save, where aim can legitimately be null.
-  // #218c: a lineage acquires, moves and abandons its own purpose. All three matter: without
-  // authoring, no lineage ever has an aim; without drift, an aim is a constant and the set-point
-  // cannot search; without abandonment, a lineage is stuck paying AIM_TAX for a target it cannot
-  // reach, and the mechanism would be a trap rather than an option.
+  // #218j: the PORTFOLIO drifts, grows and shrinks. Growth and shrinkage are the part that matters:
+  // without them the number of things a creature wants is still a constant, just a constant of two
+  // instead of one, and #218j would be #218d with an array around it.
+  // A new aim is seeded at the CURRENT READING of a randomly chosen sense (target 0 plus whatever the
+  // novel-gene offset does), which is #218d's guard restated -- it costs its tax immediately and pays
+  // immediately, so what selection sees is whether HOLDING it was worth it rather than whether the
+  // draw was lucky.
   if(aimOn()){
-    if(!g.aim){
-      if(Math.random()<rate*0.25){
-        // A NEW aim targets WHERE THE LINEAGE ALREADY IS, not a random value. That is the whole
-        // guard restated: an aim seeded at the current reading costs nothing at birth and pays
-        // nothing, so what selection sees afterwards is whether MOVING it was worth it. Seeding at
-        // random would make most aims instantly unreachable and the tax would just be noise.
-        const _k=(Math.random()*aimSenseCount())|0;   // #218i: the whole space, memory included
-        g.aim={sense:_k, target:0, weight:__cl(Math.random()*0.15,0,AIM_WEIGHT_MAX), born:(genome.generation|0)};
-        fired('aim.author');
-      }
-    } else {
-      const _a=g.aim;
+    if(!Array.isArray(g.aims)) g.aims = (g.aim&&typeof g.aim==='object')?[g.aim]:[];
+    for(const _a of g.aims){
+      if(!_a)continue;
       if(Math.random()<rate){ const _sp=aimSpan(_a.sense|0);
         const _nt=finiteOr(_a.target,0)+(Math.random()-0.5)*_sp*0.08*scale;
         if(isFinite(_nt)){ _a.target=_nt; fired('aim.drift'); } }
       if(Math.random()<rate){ const _nw=__cl(finiteOr(_a.weight,0)+(Math.random()-0.5)*0.06*scale,0,AIM_WEIGHT_MAX);
         if(isFinite(_nw)) _a.weight=_nw; }
       if(Math.random()<rate*0.1){ const _ns=(Math.random()*aimSenseCount())|0; if(_ns!==(_a.sense|0)){ _a.sense=_ns; fired('aim.reaim'); } }
-      // #218d: abandonment now RE-AIMS instead of clearing. A lineage with no aim is a lineage back
-      // on the shared gradient, and letting that be the cheap escape route means the population
-      // drains back to one hill -- which is exactly what #218c would have measured as "aims were
-      // authored and abandoned". Giving up on a purpose here means taking a different one, seeded at
-      // where the lineage actually is so the switch is free and only HOLDING it costs.
-      if(finiteOr(_a.weight,0)<=0.001&&Math.random()<rate){
-        _a.sense=(Math.random()*aimSenseCount())|0;
-        _a.target=0; _a.weight=__cl(0.1+Math.random()*0.3,0,AIM_WEIGHT_MAX);
-        _a.born=(genome.generation|0);
-        fired('aim.abandon');
-      }
     }
+    // GROW: acquire another purpose
+    if(g.aims.length<AIM_MAX_AIMS&&Math.random()<rate*0.3){
+      g.aims.push({sense:(Math.random()*aimSenseCount())|0, target:0,
+                   weight:__cl(0.1+Math.random()*0.3,0,AIM_WEIGHT_MAX), born:(genome.generation|0)});
+      fired('aim.grow');
+    }
+    // SHRINK: drop the one it cares least about, and only when it holds more than one. A lineage with
+    // no aims is a lineage back on the shared gradient, and #218d established that as the escape
+    // route that drains the population to one hill -- so the floor is one, not zero.
+    if(g.aims.length>1&&Math.random()<rate*0.3){
+      let wi=-1,ww=Infinity;
+      for(let q=0;q<g.aims.length;q++){ const _w=finiteOr(g.aims[q]&&g.aims[q].weight,0); if(_w<ww){ww=_w;wi=q;} }
+      if(wi>=0){ g.aims.splice(wi,1); fired('aim.shrink'); }
+    }
+    if(g.aims.length===0) g.aims.push({sense:(Math.random()*aimSenseCount())|0,target:0,weight:0.2,born:(genome.generation|0)});
+    g.aim=null;   // #218j: the singular field is retired on the child route; aimsOf reads the array
   }
   // #218b: THE MULTIPLIERS DRIFT, AND EACH ONE IS ITS OWN STEP SCALE. That self-reference is the
   // mechanism: a lineage that has pushed some gene's magnitude up also moves that magnitude faster,
@@ -13394,10 +13404,16 @@ function sanitizeGenome(){
   // #218b: structure only. The multipliers themselves are the lineage's business; the clamp happens
   // at the read (mutMagFor), as FIELD_DECAY's does.
   // #218c: structure only; the target stays unclamped (#148) because an unreachable aim simply never pays.
-  if(genome.aim&&typeof genome.aim==='object'){
-    genome.aim={sense:genome.aim.sense|0,target:finiteOr(genome.aim.target,0),
-                weight:__cl(finiteOr(genome.aim.weight,0),0,AIM_WEIGHT_MAX),born:genome.aim.born|0};
-  } else if(genome.aim!==null) genome.aim=null;
+  // #218j: promote a pre-#218j single aim into the portfolio rather than discarding it, then
+  // validate structure only -- targets stay unclamped (#148), an unreachable one simply never pays.
+  { let _as=aimsOf(genome);
+    if(!_as||!_as.length)_as=[{sense:0,target:0.6,weight:0.28,born:0}];
+    genome.aims=_as.filter(a=>a&&typeof a==='object')
+      .map(a=>({sense:a.sense|0,target:finiteOr(a.target,0),
+                weight:__cl(finiteOr(a.weight,0),0,AIM_WEIGHT_MAX),born:a.born|0}))
+      .slice(0,AIM_MAX_AIMS);
+    if(!genome.aims.length)genome.aims=[{sense:0,target:0.6,weight:0.28,born:0}];
+    genome.aim=null; }
   if(!genome.mutMag||typeof genome.mutMag!=='object')genome.mutMag={};
   else { const _mk=Object.keys(genome.mutMag);
          for(const k of _mk){ const v=genome.mutMag[k];
@@ -17899,7 +17915,9 @@ function aimSatisfaction(){
   let sum=0,n=0;
   for(let i=0;i<N;i++){
     if(!palive[i])continue;
-    const g=pGenome[i], a=g&&g.aim;
+    const g=pGenome[i], as=aimsOf(g);
+    if(!as||!as.length)continue;
+    for(const a of as){
     if(!a)continue;
     const v=aimSense(a.sense|0,i);          // #218i: six named senses or eight memory slots
     if(v===null)continue;
@@ -17910,6 +17928,7 @@ function aimSatisfaction(){
       if(nv)t+=__cl(finiteOr(nv.v,0),-1,1)*sp*0.5;   // #218f's offset, read without the repoint
     }
     sum+=Math.max(0,1-Math.abs(v-t)/(sp||1)); n++;
+    }
   }
   return n>0?sum/n:0;
 }
@@ -17940,6 +17959,18 @@ function aimSatisfaction(){
 // The span is a guess, named as one: memory slots are unbounded accumulators, so a fixed span of 2
 // means the proximity term saturates on a slot that grows large. That is a real limitation and the
 // honest alternative -- a per-slot running scale -- is more machinery than this first cut earns.
+// #218j: the portfolio accessor. A genome saved before this commit carries a single aim (singular), so it is
+// promoted here rather than migrated destructively -- the same choice sanitizeGenome makes everywhere
+// else, and the reason those undefined-checks stay after #217l moved their defaults to the literal.
+function aimsOf(g){
+  if(!g)return null;
+  if(Array.isArray(g.aims))return g.aims;
+  if(g.aim&&typeof g.aim==='object')return [g.aim];
+  return null;
+}
+const AIM_MAX_AIMS=6;   // #218j: ceiling on a portfolio. Six senses plus eight memory slots to want
+                        // things about, and at AIM_TAX per aim a lineage holding six pays 0.9 of
+                        // amplitude per tick for the privilege if it meets none of them.
 const AIM_MEM_SPAN=2;
 function aimSenseCount(){ return AIM_SENSES.length+MEM_SIZE; }
 function aimSense(k,i){
@@ -28600,7 +28631,9 @@ function applyNicheEconomy(){ fired('niche.economy');
       // the selection amplitude -- and putting it anywhere else would hide that it competes with it.
       if(aimOn()) for(let i=0;i<N;i++){
         if(!palive[i])continue;
-        const _g=pGenome[i]; const _a=_g&&_g.aim;
+        const _g=pGenome[i]; const _as=aimsOf(_g);
+        if(!_as||!_as.length)continue;
+        for(const _a of _as){
         if(!_a)continue;
         const _w=__cl(finiteOr(_a.weight,0),0,AIM_WEIGHT_MAX);
         if(_w<=0)continue;
@@ -28625,6 +28658,7 @@ function applyNicheEconomy(){ fired('niche.economy');
         // self-declared purpose from being free. An aim never met is a standing metabolic drag.
         amp[i]+=_w*(Math.max(0,1-_err)-AIM_TAX);
         fired('aim.pull');
+        }
       }
     }
   }
