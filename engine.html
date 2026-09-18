@@ -1268,6 +1268,7 @@ const LIVENESS_DECLARED=[
   // lineages authored genes and never read them is distinguishable from one where none was authored,
   // which is the distinction #217o showed this project could not previously make.
   'gene.author','gene.read','gene.cull','gene.drift',
+  'mutmag.author','mutmag.drift',   // #218b: a lineage forming and moving an opinion about its own evolvability
   // #188: channel.update is the lattice pass, channel.write a verb acting into a medium, and
   // channel.wire the reachability hook. All five declared so a run where a lineage allocated a
   // medium and never sensed or acted on it is visible as such rather than inferred.
@@ -9362,6 +9363,11 @@ let genome={
   // Each entry is {n:name, v:value, u:uses, a:age}. Empty at boot -- a lineage that authors nothing
   // carries nothing and pays no rent, which is the pre-#218a behaviour exactly.
   novelGenes:[],
+  // #218b: sparse gene-name -> magnitude-multiplier map. Empty means every gene mutates at its
+  // hand-written magnitude, i.e. pre-#218b behaviour exactly. Entries appear only when a lineage's
+  // own drift creates them, which is why this is a map and not 57 declared fields: the SET of genes
+  // whose evolvability a lineage has opinions about is itself something it discovers.
+  mutMag:{},
   // === #217v: THE NINE THE GERMLINE CARRIED AND NO PARTICLE HAD ===
   // #217j measured the germline holding 15 keys that no living particle held (277 against 262). The
   // structural question finds them without a probe: which names are ASSIGNED to genome.X anywhere in
@@ -10255,6 +10261,9 @@ function cloneGenome(src){
   // uses RESETS and age RESETS, as they do for atoms and verbs: a child re-earns its gene's keep, so
   // an inherited gene that the child never reads is culled out of the child rather than protected by
   // its parent's record.
+  // #218b: deep-copied for the same reason as everything above it -- a shared map would give the
+  // whole population ONE set of opinions about its own evolvability, which is the ninth instance.
+  g.mutMag=(src.mutMag&&typeof src.mutMag==='object')?Object.assign({},src.mutMag):{};
   g.novelGenes=Array.isArray(src.novelGenes)?src.novelGenes.map(e=>e?{n:String(e.n||''),v:finiteOr(e.v,0),u:0,a:0}:null).filter(Boolean):[];
   g.oeeW=Array.isArray(src.oeeW)?src.oeeW.slice():src.oeeW;
   g.uaProdW=Array.isArray(src.uaProdW)?src.uaProdW.slice():src.uaProdW;
@@ -10566,6 +10575,38 @@ function mutateChildGenome(g){
       if(_n!==_o){ g.regCount=_n; fired('vm.regStep'); }
     }
     g.regCount=__cl(Math.round(finiteOr(g.regCount,VM_REGS_DEFAULT)),2,VM_REGS_MAX);
+  }
+  // #218b: THE MULTIPLIERS DRIFT, AND EACH ONE IS ITS OWN STEP SCALE. That self-reference is the
+  // mechanism: a lineage that has pushed some gene's magnitude up also moves that magnitude faster,
+  // so evolvability is itself under positive feedback. Bounded at the ends (MUTMAG_LO/HI) rather
+  // than damped in the middle, because the runaway is the point and the clamp is only there to stop
+  // it taking the lattice with it.
+  // Entries are CREATED here, sparsely: a gene gets an opinion about its own evolvability only when
+  // a draw lands on it, so the map stays small and what is in it is a record of what this lineage
+  // has actually been varying.
+  if(mutMagOn()){
+    if(!g.mutMag||typeof g.mutMag!=='object')g.mutMag={};
+    // existing opinions drift, each by itself
+    for(const _mk in g.mutMag){
+      const _cur=g.mutMag[_mk];
+      if(typeof _cur!=='number'||!isFinite(_cur)){ delete g.mutMag[_mk]; continue; }
+      if(Math.random()<rate){
+        const _nx=_cur+(Math.random()-0.5)*_cur*0.25*scale;   // step proportional to itself
+        if(isFinite(_nx)){ g.mutMag[_mk]=__cl(_nx,MUTMAG_LO,MUTMAG_HI); fired('mutmag.drift'); }
+      }
+      if(Math.abs(g.mutMag[_mk]-1)<0.01) delete g.mutMag[_mk];   // an opinion that is no opinion is dropped, so the map cannot fill with 1s
+    }
+    // a new opinion, occasionally, about a gene this genome actually has
+    if(Math.random()<rate*0.5){
+      const _ks=Object.keys(g).filter(k=>typeof g[k]==='number'&&isFinite(g[k]));
+      if(_ks.length&&Object.keys(g.mutMag).length<MUTMAG_MAX){
+        const _pick=_ks[(Math.random()*_ks.length)|0];
+        if(g.mutMag[_pick]===undefined){
+          g.mutMag[_pick]=__cl(1+(Math.random()-0.5)*0.8,MUTMAG_LO,MUTMAG_HI);
+          fired('mutmag.author');
+        }
+      }
+    }
   }
   // #218a: the authored genes drift and age. Without this they are inherited CONSTANTS and the whole
   // bank is a naming ceremony -- a lineage could invent a coordinate and never move along it. Same
@@ -13232,6 +13273,13 @@ function sanitizeGenome(){
   // #218a: validate the authored bank. Structure only -- the VALUES are the lineage's business and
   // are deliberately not clamped, which is #148's STANDING position on maybe() applied consistently:
   // the range is the system's to find. What is enforced is the CAP and the shape.
+  // #218b: structure only. The multipliers themselves are the lineage's business; the clamp happens
+  // at the read (mutMagFor), as FIELD_DECAY's does.
+  if(!genome.mutMag||typeof genome.mutMag!=='object')genome.mutMag={};
+  else { const _mk=Object.keys(genome.mutMag);
+         for(const k of _mk){ const v=genome.mutMag[k];
+           if(typeof v!=='number'||!isFinite(v))delete genome.mutMag[k]; }
+         if(_mk.length>MUTMAG_MAX) for(const k of _mk.slice(MUTMAG_MAX)) delete genome.mutMag[k]; }
   if(!Array.isArray(genome.novelGenes))genome.novelGenes=[];
   genome.novelGenes=genome.novelGenes.filter(e=>e&&typeof e==='object')
     .map(e=>({n:String(e.n||'g?'),v:finiteOr(e.v,0),u:e.u|0,a:e.a|0}))
@@ -17698,6 +17746,16 @@ function chemTableCopy(t){ return Array.isArray(t)?t.map(r=>Array.isArray(r)?r.m
 // #218a: the novel-gene bank's accessors. genome here is the REPOINTED pGenome[i] inside the VMs, so
 // an authored gene belongs to the lineage that authored it -- which is the point. The germline self
 // authors its own separately and they do not mix, exactly as userAtoms do not.
+// #218b: the per-gene magnitude multiplier. Absent means 1, so an untouched genome is unchanged.
+const MUTMAG_LO=0.02, MUTMAG_HI=25, MUTMAG_MAX=48;   // #218b: bounds, and a cap on how many opinions one lineage holds
+function mutMagOn(){ return (typeof globalThis==='undefined')||((globalThis.__MUTMAG??1)|0)!==0; }
+function mutMagFor(gene){
+  if(!gene)return 1;
+  const m=genome&&genome.mutMag;
+  if(!m||typeof m!=='object')return 1;
+  const v=m[gene];
+  return (typeof v==='number'&&isFinite(v))?__cl(v,MUTMAG_LO,MUTMAG_HI):1;
+}
 function novelBank(){ const b=genome&&genome.novelGenes; return Array.isArray(b)?b:null; }
 function novelRead(slot){
   const b=novelBank(); if(!b||!b.length)return 0;
@@ -18078,9 +18136,28 @@ function mutateGenome(){ fired('genome.mutate');
   // the ONLY surviving check. If the system wants a value of -47 or 12000, it
   // gets one. If that value produces crashes elsewhere, that's a finding, not
   // a failure to guard.
-  function maybe(val,min,max,magnitude){
+  // #218b: THE VARIATION OPERATOR BECOMES EVOLVABLE, PER GENE.
+  // maybe()'s magnitude has been a hand-written literal at all 57 call sites since the beginning --
+  // 0.004 for fieldDecay, 0.01 for fieldDiffuse, and so on. mutationRate and mutationScale are genes,
+  // but they are GLOBAL: a lineage could mutate more or less overall and could not mutate its field
+  // physics hard while holding its metabolism still. So the SHAPE of variation was fixed even after
+  // #218a made the genome's dimension open. This is the substrate OF variation, not variation of the
+  // substrate, and it is second-order: a lineage evolves its own evolvability, coordinate by
+  // coordinate.
+  // genome.mutMag is a SPARSE map from gene name to a multiplier, absent meaning 1, so a lineage that
+  // never touches it mutates exactly as it did before #218b. The call sites now pass their own gene
+  // name, which is what makes a per-gene multiplier addressable at all.
+  // AND IT IS SELF-REFERENTIAL, which is the part that makes it more than a table of knobs: the
+  // multiplier for a gene is itself mutated using ITSELF as its step scale (see mutMagDrift). A
+  // lineage that has evolved a large magnitude for some gene also evolves that magnitude faster.
+  // That is a positive feedback with no fixed point in the middle, and it is bounded rather than
+  // damped -- MUTMAG_LO/HI -- because the runaway IS the mechanism and clamping the ends is the only
+  // honest way to keep it from taking the lattice with it.
+  // Values are clamped at the READ, as FIELD_DECAY is, rather than by making maybe() honour bounds:
+  // #148's STANDING position is that maybe() does not clamp, and this does not change that.
+  function maybe(val,min,max,magnitude,gene){
     if(Math.random()>rate)return val;
-    const next=val+tailDraw()*magnitude*scale;
+    const next=val+tailDraw()*magnitude*mutMagFor(gene)*scale;
     if(!isFinite(next))return val;
     return next;
   }
@@ -18458,13 +18535,13 @@ function mutateGenome(){ fired('genome.mutate');
 
   // LAYER 1: Physics mutations
   // Pe22b: substrate physics — the ground the particles live on now evolves
-  genome.fieldDecay=maybe(genome.fieldDecay,0.9,0.999,0.004);
-  genome.fieldDiffuse=maybe(genome.fieldDiffuse,0.02,0.25,0.01);
+  genome.fieldDecay=maybe(genome.fieldDecay,0.9,0.999,0.004,'fieldDecay');
+  genome.fieldDiffuse=maybe(genome.fieldDiffuse,0.02,0.25,0.01,'fieldDiffuse');
   // #217h: the inscription layer's physics walks too, at the same layer and by the same operator.
-  genome.cellExecThresh=maybe(genome.cellExecThresh,0.001,0.5,0.004);
-  genome.cellProgDecay=maybe(genome.cellProgDecay,0.9,0.9999,0.0008);
-  genome.inscribeStrength=maybe(genome.inscribeStrength,0.05,1.5,0.02);
-  genome.inscribeOverwrite=maybe(genome.inscribeOverwrite,0.2,1.2,0.02);
+  genome.cellExecThresh=maybe(genome.cellExecThresh,0.001,0.5,0.004,'cellExecThresh');
+  genome.cellProgDecay=maybe(genome.cellProgDecay,0.9,0.9999,0.0008,'cellProgDecay');
+  genome.inscribeStrength=maybe(genome.inscribeStrength,0.05,1.5,0.02,'inscribeStrength');
+  genome.inscribeOverwrite=maybe(genome.inscribeOverwrite,0.2,1.2,0.02,'inscribeOverwrite');
   // Pe22c: evolvable chemistry table — mutate monomials in the opcode recipes.
   // Defensive defaults for old genomes that don't have a table yet.
   if(!genome.chemistryTable)genome.chemistryTable=seedChemistryTable();
@@ -18510,7 +18587,7 @@ function mutateGenome(){ fired('genome.mutate');
     }
   }
   // Meta-mutation on the chemistry mutation rate itself
-  genome.chemistryMutRate=maybe(genome.chemistryMutRate,0.005,0.1,0.005);
+  genome.chemistryMutRate=maybe(genome.chemistryMutRate,0.005,0.1,0.005,'chemistryMutRate');
   // Live kernel sync — clamped to the stable-kernel regime (skeleton, not cage:
   // outside these bounds the diffusion equation produces NaN)
   FIELD_DECAY=__cl(genome.fieldDecay,0.5,1.0);
@@ -18522,19 +18599,19 @@ function mutateGenome(){ fired('genome.mutate');
   genome.entrainRate=gradMaybe(genome.entrainRate,0.002,0.06,0.003,lastShadowNudgeDir[2]);
   genome.entrainThresh=gradMaybe(genome.entrainThresh,0.05,0.6,0.03,lastShadowNudgeDir[4]);
   genome.creationCost=gradMaybe(genome.creationCost,0.05,0.7,0.04,lastShadowNudgeDir[3]);
-  genome.creationThresh=maybe(genome.creationThresh,0.05,0.6,0.03);
-  genome.destructThresh=maybe(genome.destructThresh,-0.6,-0.05,0.03);
-  genome.tendencyBleed=maybe(genome.tendencyBleed,0.00005,0.003,0.0002);
-  genome.magneticThresh=maybe(genome.magneticThresh,0.1,0.8,0.04);
-  genome.velocityDamping=maybe(genome.velocityDamping,0.98,0.9999,0.003);
-  genome.deathThreshold=maybe(genome.deathThreshold,0.01,0.15,0.01);
+  genome.creationThresh=maybe(genome.creationThresh,0.05,0.6,0.03,'creationThresh');
+  genome.destructThresh=maybe(genome.destructThresh,-0.6,-0.05,0.03,'destructThresh');
+  genome.tendencyBleed=maybe(genome.tendencyBleed,0.00005,0.003,0.0002,'tendencyBleed');
+  genome.magneticThresh=maybe(genome.magneticThresh,0.1,0.8,0.04,'magneticThresh');
+  genome.velocityDamping=maybe(genome.velocityDamping,0.98,0.9999,0.003,'velocityDamping');
+  genome.deathThreshold=maybe(genome.deathThreshold,0.01,0.15,0.01,'deathThreshold');
   // #35 META-EVOLUTION: the open-endedness-engine dials random-walk like any physics gene; sanitizeGenome clamps
   // them, lineage selection adjudicates them — the system tunes its own exploration / construction / predation / growth.
-  genome.opnovStrength=maybe(genome.opnovStrength,0,0.01,0.0008);
-  genome.nicheBuildRate=maybe(genome.nicheBuildRate,0,0.003,0.0003);
-  genome.rqRate=maybe(genome.rqRate,0,0.15,0.01);
-  genome.dimsSatThresh=maybe(genome.dimsSatThresh,8,60,3);
-  genome.novStrength=maybe(genome.novStrength,0,0.012,0.0006); // #39 — free random walk, no floor (see sanitizeGenome)
+  genome.opnovStrength=maybe(genome.opnovStrength,0,0.01,0.0008,'opnovStrength');
+  genome.nicheBuildRate=maybe(genome.nicheBuildRate,0,0.003,0.0003,'nicheBuildRate');
+  genome.rqRate=maybe(genome.rqRate,0,0.15,0.01,'rqRate');
+  genome.dimsSatThresh=maybe(genome.dimsSatThresh,8,60,3,'dimsSatThresh');
+  genome.novStrength=maybe(genome.novStrength,0,0.012,0.0006,'novStrength'); // #39 — free random walk, no floor (see sanitizeGenome)
 
   // UNLOCKED autonomy genes: the system evolves its own perceptual/mortality clocks and
   // crowding floor. Gloves-off random walk; substrate floor only (interval >=1, floor >=0).
@@ -18545,10 +18622,10 @@ function mutateGenome(){ fired('genome.mutate');
   genome.densityFloor=Math.max(0,maybe(genome.densityFloor??100,0,1e9,4));
 
   // LAYER 2: Perception mutations
-  genome.clusterBondThresh=maybe(genome.clusterBondThresh,0.05,0.5,0.03);
+  genome.clusterBondThresh=maybe(genome.clusterBondThresh,0.05,0.5,0.03,'clusterBondThresh');
   genome.clusterMinSize=Math.max(1,Math.round(intMaybe(genome.clusterMinSize,0.5)));           // #96 frozen-gene set
-  genome.ghostDecay=maybe(genome.ghostDecay,0.98,0.9999,0.003);
-  genome.ghostAmpDrip=maybe(genome.ghostAmpDrip,0.00005,0.002,0.0002);
+  genome.ghostDecay=maybe(genome.ghostDecay,0.98,0.9999,0.003,'ghostDecay');
+  genome.ghostAmpDrip=maybe(genome.ghostAmpDrip,0.00005,0.002,0.0002,'ghostAmpDrip');
 
   // LAYER 3: Evaluation mutations (objective weights)
   // UNLOCKED: gloves-off like every other gene. Weights may go negative (actively
@@ -18822,15 +18899,15 @@ function mutateGenome(){ fired('genome.mutate');
   }
 
   // LAYER 4: META-MUTATIONS
-  genome.mutationRate=maybe(genome.mutationRate,0.01,0.25,0.02);
-  genome.mutationScale=maybe(genome.mutationScale,0.3,3.0,0.2);
+  genome.mutationRate=maybe(genome.mutationRate,0.01,0.25,0.02,'mutationRate');
+  genome.mutationScale=maybe(genome.mutationScale,0.3,3.0,0.2,'mutationScale');
   genome.mutationTail=__cl(maybe(genome.mutationTail||0,0,1,0.05),0,1); // UNLOCKED #6: the system evolves its own search-distribution shape
   genome.typeMutRate=__cl(maybe(genome.typeMutRate||0.02,0,1,0.02),0,1); // UNLOCKED #7a: the system evolves how fast it founds new castes
   genome.shadowHorizon=__cl(Math.round(maybe(genome.shadowHorizon,10,120,8)),2,500);
-  genome.perturbScale=maybe(genome.perturbScale,0.2,3.0,0.2);
+  genome.perturbScale=maybe(genome.perturbScale,0.2,3.0,0.2,'perturbScale');
   genome.extinctionThresh=Math.max(1,Math.round(maybe(genome.extinctionThresh,2,20,2)));
   genome.motifMemorySize=__cl(Math.round(intMaybe(genome.motifMemorySize,1)),1,40);            // #96 frozen-gene set
-  genome.culturalBias=maybe(genome.culturalBias,0.05,0.6,0.04);
+  genome.culturalBias=maybe(genome.culturalBias,0.05,0.6,0.04,'culturalBias');
 
   // Pe27 Layer 17: imagination bank cap and churn rate. The system decides how many
   // counterfactual futures to maintain and how aggressively to refresh them.
@@ -18851,10 +18928,10 @@ function mutateGenome(){ fired('genome.mutate');
   // The system's discovered physics evolve.
   // Instructions change. Programs grow/shrink. Conditional thresholds drift.
   // vmInfluence evolves: the system decides how much its rules matter.
-  genome.somaRepair=__cl(maybe(genome.somaRepair,0,SOMA_REPAIR_MAX,0.05),0,SOMA_REPAIR_MAX); // LEAP 23
-  genome.lifespanBias=maybe(genome.lifespanBias,0.15,6.0,0.10); // LEAP 1: selection owns the lifespan set-point
-  genome.vmInfluence=maybe(genome.vmInfluence,0.05,2.0,0.08);
-  genome.ruleScale=maybe(genome.ruleScale,0.2,3.0,0.2);
+  genome.somaRepair=__cl(maybe(genome.somaRepair,0,SOMA_REPAIR_MAX,0.05,'somaRepair'),0,SOMA_REPAIR_MAX); // LEAP 23
+  genome.lifespanBias=maybe(genome.lifespanBias,0.15,6.0,0.10,'lifespanBias'); // LEAP 1: selection owns the lifespan set-point
+  genome.vmInfluence=maybe(genome.vmInfluence,0.05,2.0,0.08,'vmInfluence');
+  genome.ruleScale=maybe(genome.ruleScale,0.2,3.0,0.2,'ruleScale');
   // Swing #48: vmGain — log-scale (multiplicative) random walk, symmetric in orders of magnitude,
   // reusing tailDraw() so it inherits the same gloves-off heavy tail as every other gene. NO authored
   // ceiling — only a finite+positive guard (a domain guard by the audit's taxonomy: catches NaN/Inf and
@@ -19101,8 +19178,8 @@ function mutateGenome(){ fired('genome.mutate');
   if(__UPLASMID){
     if(genome.netLawRate===undefined)genome.netLawRate=0.001;
     if(genome.netLawReceptivity===undefined)genome.netLawReceptivity=0.05;
-    genome.netLawRate=maybe(genome.netLawRate,0,0.02,0.002);
-    genome.netLawReceptivity=maybe(genome.netLawReceptivity,0,1,0.05);
+    genome.netLawRate=maybe(genome.netLawRate,0,0.02,0.002,'netLawRate');
+    genome.netLawReceptivity=maybe(genome.netLawReceptivity,0,1,0.05,'netLawReceptivity');
   }
   if(__PHYS){
     if(genome.cellScale===undefined)genome.cellScale=1;
@@ -19192,20 +19269,20 @@ function mutateGenome(){ fired('genome.mutate');
   if(__ATOM_RECOMB)  genome.atomRecombRate=__cl(maybe(finiteOr(genome.atomRecombRate,0.4),0,0.9,0.04),0,0.9);       // #127: recombine-vs-refine split — the system's own explore/build balance
   if(__ATOM_REPRO)   genome.atomReproRate=__cl(maybe(finiteOr(genome.atomReproRate,0.5),0,0.9,0.04),0,0.9);         // #128: reproduce-proven vs author-fresh split — the system's exploit/explore at birth
   if(__ATOM_ELIGIBILITY)genome.atomEligDecay=__cl(maybe(finiteOr(genome.atomEligDecay,0.6),0.3,0.9,0.03),0.3,0.9);  // #128: eligibility-trace decay λ — how long an action stays creditable
-  genome.metabolicCost=__cl(maybe(genome.metabolicCost,0.000002,0.0002,0.00002),0.000002,0.0002); // #2 energy economy: no free lunch — cost stays positive (the negative-drift hole that euthanised selection is closed)
+  genome.metabolicCost=__cl(maybe(genome.metabolicCost,0.000002,0.0002,0.00002,'metabolicCost'),0.000002,0.0002); // #2 energy economy: no free lunch — cost stays positive (the negative-drift hole that euthanised selection is closed)
 
   // HGT parameter evolution
-  genome.hgtRate=maybe(genome.hgtRate,0.01,0.5,0.04);
+  genome.hgtRate=maybe(genome.hgtRate,0.01,0.5,0.04,'hgtRate');
   genome.hgtMax=__cl(Math.round(intMaybe(genome.hgtMax,0.5)),1,12);                            // #96 frozen-gene set
-  genome.hgtSpliceNoise=maybe(genome.hgtSpliceNoise,0.05,0.5,0.04);
+  genome.hgtSpliceNoise=maybe(genome.hgtSpliceNoise,0.05,0.5,0.04,'hgtSpliceNoise');
 
   // Plasmid parameter evolution
-  genome.plasmidTransferRate=maybe(genome.plasmidTransferRate,0.001,0.05,0.004);
-  genome.plasmidMutRate=maybe(genome.plasmidMutRate,0.005,0.15,0.015);
-  genome.plasmidTransferThresh=maybe(genome.plasmidTransferThresh,0.3,0.85,0.05);
-  genome.plasmidSpawnRate=maybe(genome.plasmidSpawnRate,0.0005,0.01,0.001);
-  genome.fieldInfluence=maybe(genome.fieldInfluence,0.1,1.5,0.08);
-  genome.fieldWeight=maybe(genome.fieldWeight,0.02,0.8,0.04);
+  genome.plasmidTransferRate=maybe(genome.plasmidTransferRate,0.001,0.05,0.004,'plasmidTransferRate');
+  genome.plasmidMutRate=maybe(genome.plasmidMutRate,0.005,0.15,0.015,'plasmidMutRate');
+  genome.plasmidTransferThresh=maybe(genome.plasmidTransferThresh,0.3,0.85,0.05,'plasmidTransferThresh');
+  genome.plasmidSpawnRate=maybe(genome.plasmidSpawnRate,0.0005,0.01,0.001,'plasmidSpawnRate');
+  genome.fieldInfluence=maybe(genome.fieldInfluence,0.1,1.5,0.08,'fieldInfluence');
+  genome.fieldWeight=maybe(genome.fieldWeight,0.02,0.8,0.04,'fieldWeight');
 
   // Network parameter evolution — the system decides how social to be
   if(genome.netMigrantRate===undefined)genome.netMigrantRate=0.003;
@@ -19213,11 +19290,11 @@ function mutateGenome(){ fired('genome.mutate');
   if(genome.netMotifRate===undefined)genome.netMotifRate=0.005;
   if(genome.netInscribeRate===undefined)genome.netInscribeRate=0.004;
   if(genome.netReceptivity===undefined)genome.netReceptivity=0.5;
-  genome.netMigrantRate=maybe(genome.netMigrantRate,0,0.02,0.002);
-  genome.netPlasmidRate=maybe(genome.netPlasmidRate,0,0.02,0.002);
-  genome.netMotifRate=maybe(genome.netMotifRate,0,0.02,0.002);
-  genome.netInscribeRate=maybe(genome.netInscribeRate,0,0.02,0.002);
-  genome.netReceptivity=maybe(genome.netReceptivity,0,1,0.08);
+  genome.netMigrantRate=maybe(genome.netMigrantRate,0,0.02,0.002,'netMigrantRate');
+  genome.netPlasmidRate=maybe(genome.netPlasmidRate,0,0.02,0.002,'netPlasmidRate');
+  genome.netMotifRate=maybe(genome.netMotifRate,0,0.02,0.002,'netMotifRate');
+  genome.netInscribeRate=maybe(genome.netInscribeRate,0,0.02,0.002,'netInscribeRate');
+  genome.netReceptivity=maybe(genome.netReceptivity,0,1,0.08,'netReceptivity');
   // CREATED AND DRAWN ONLY WHEN THE LAYER IS ON, and I made this exact mistake in #201 and wrote it down.
   // maybe() takes a random number whether or not it moves the value, so an unguarded call here
   // shifts every later draw in the run and ASSORT=0 reverts the BEHAVIOUR while still moving the
@@ -19225,36 +19302,36 @@ function mutateGenome(){ fired('genome.mutate');
   // 3,000 ticks. With it, the run is the pre-#202 engine.
   if(assortOn()){
     if(genome.netAssort===undefined)genome.netAssort=0;
-    genome.netAssort=maybe(genome.netAssort,-1,1,0.08);   // #202: BOTH directions - see networkReceive
+    genome.netAssort=maybe(genome.netAssort,-1,1,0.08,'netAssort');   // #202: BOTH directions - see networkReceive
   }
 
   // ═══ AUTONOMY PARAMETER MUTATION ═══
-  genome.mutationInterval=maybe(genome.mutationInterval,60,1200,40);
+  genome.mutationInterval=maybe(genome.mutationInterval,60,1200,40,'mutationInterval');
   // Pe37 Layer 26: the attribution-feedback gate. Mutated by plain maybe(), never
   // metaMaybe — a parameter that controls credit feedback must not bias its own
   // perturbation by its own credit. Bounded [0,0.5]; 0 = observational-only (Pe36).
-  genome.metaCreditBias=__cl(maybe(genome.metaCreditBias,0,0.5,0.03),0,0.5);
+  genome.metaCreditBias=__cl(maybe(genome.metaCreditBias,0,0.5,0.03,'metaCreditBias'),0,0.5);
   // Pe38 Layer 27: search width bias. Also plain maybe() for same reason — a param that
   // controls how much attribution confidence shapes search width must not itself be shaped
   // by that same confidence. Bounded [0,1]; 0 = direction-lean only (Pe37 exactly).
-  genome.metaSearchBias=__cl(maybe(genome.metaSearchBias,0,1,0.04),0,1);
-  genome.interactionRadius=maybe(genome.interactionRadius,25,120,5);
-  genome.densityCostK=maybe(genome.densityCostK,0.000003,0.0003,0.00003);
-  genome.fieldBirthGate=maybe(genome.fieldBirthGate,0.01,5.0,0.05);
+  genome.metaSearchBias=__cl(maybe(genome.metaSearchBias,0,1,0.04,'metaSearchBias'),0,1);
+  genome.interactionRadius=maybe(genome.interactionRadius,25,120,5,'interactionRadius');
+  genome.densityCostK=maybe(genome.densityCostK,0.000003,0.0003,0.00003,'densityCostK');
+  genome.fieldBirthGate=maybe(genome.fieldBirthGate,0.01,5.0,0.05,'fieldBirthGate');
 
   // ═══ LAYER 10: REFLEXIVITY PARAMETER MUTATION ═══
   // The system evolves whether self-modelling is useful.
   // reflexInfluence can go to 0 — killing the feedback loop — if it's not adaptive.
   // Or it can grow — deepening self-reference — if the system benefits.
-  genome.reflexSampleRate=maybe(genome.reflexSampleRate,0.02,0.5,0.04);
+  genome.reflexSampleRate=maybe(genome.reflexSampleRate,0.02,0.5,0.04,'reflexSampleRate');
   genome.reflexDepth=__cl(Math.round(intMaybe(genome.reflexDepth,0.5)),1,REFLEX_DEPTH);        // #96 frozen-gene set
-  genome.reflexInfluence=maybe(genome.reflexInfluence,0,1.5,0.06);
-  genome.reflexDecay=maybe(genome.reflexDecay,0.7,0.99,0.03);
+  genome.reflexInfluence=maybe(genome.reflexInfluence,0,1.5,0.06,'reflexInfluence');
+  genome.reflexDecay=maybe(genome.reflexDecay,0.7,0.99,0.03,'reflexDecay');
   genome.clusterReflexAge=Math.max(1,Math.round(intMaybe(genome.clusterReflexAge,1)));         // #96 frozen-gene set
-  genome.clusterReflexWeight=maybe(genome.clusterReflexWeight,0,0.8,0.05);
+  genome.clusterReflexWeight=maybe(genome.clusterReflexWeight,0,0.8,0.05,'clusterReflexWeight');
   // Pe24 Layer 12: cluster genome self-read strength evolves alongside other reflex params
   if(genome.clusterGenomeReadStrength===undefined)genome.clusterGenomeReadStrength=0.05;
-  genome.clusterGenomeReadStrength=maybe(genome.clusterGenomeReadStrength,0,1.5,0.05);
+  genome.clusterGenomeReadStrength=maybe(genome.clusterGenomeReadStrength,0,1.5,0.05,'clusterGenomeReadStrength');
 
   // ═══ EVOLVABLE FITNESS SENSOR MUTATION ═══
   // Mutate existing sensors (program + weight)
