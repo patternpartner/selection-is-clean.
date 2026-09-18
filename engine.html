@@ -9410,7 +9410,15 @@ let genome={
   // unclamped on purpose (#148's standing position) -- an unreachable target simply never pays.
   // weight is what it costs: the aim is TAXED in proportion to it, so an aim a lineage cannot meet is
   // a drag it carries, and selection decides whether a self-declared purpose earns its keep.
-  aim:null,
+  // #218d: NOT null. Every genome is born with one, and that is the change -- #218c made aims
+  // AUTHORABLE at rate*0.25 and then I wrote a probe to find out whether any existed, which is
+  // hopping and calling it a leap. An opt-in mechanism behind a lottery cannot alter a universe; it
+  // can only fail to. This alters the first tick of every run there will ever be.
+  // sense 0 is amp, target 0.6, weight AIM_SEED_W -- a real weight, comparable to the terms it sits
+  // beside, not a hedge. Every lineage therefore starts wanting the same thing, and diverges from
+  // there by drift and re-aiming: the shared gradient is broken by inheritance rather than by
+  // authoring, which is the only way it gets broken in every run rather than in the lucky ones.
+  aim:{sense:0,target:0.6,weight:0.28,born:0},
   // === #217v: THE NINE THE GERMLINE CARRIED AND NO PARTICLE HAD ===
   // #217j measured the germline holding 15 keys that no living particle held (277 against 262). The
   // structural question finds them without a probe: which names are ASSIGNED to genome.X anywhere in
@@ -10622,6 +10630,9 @@ function mutateChildGenome(g){
     }
     g.regCount=__cl(Math.round(finiteOr(g.regCount,VM_REGS_DEFAULT)),2,VM_REGS_MAX);
   }
+  // #218d: every child already HAS an aim (the literal seeds one and cloneGenome carries it), so
+  // there is nothing to author -- what happens here is that it MOVES. The authoring branch below is
+  // kept only for a genome loaded from a pre-#218d save, where aim can legitimately be null.
   // #218c: a lineage acquires, moves and abandons its own purpose. All three matter: without
   // authoring, no lineage ever has an aim; without drift, an aim is a constant and the set-point
   // cannot search; without abandonment, a lineage is stuck paying AIM_TAX for a target it cannot
@@ -10645,7 +10656,17 @@ function mutateChildGenome(g){
       if(Math.random()<rate){ const _nw=__cl(finiteOr(_a.weight,0)+(Math.random()-0.5)*0.06*scale,0,AIM_WEIGHT_MAX);
         if(isFinite(_nw)) _a.weight=_nw; }
       if(Math.random()<rate*0.1){ const _ns=(Math.random()*AIM_SENSES.length)|0; if(_ns!==(_a.sense|0)){ _a.sense=_ns; fired('aim.reaim'); } }
-      if(finiteOr(_a.weight,0)<=0.001&&Math.random()<rate){ g.aim=null; fired('aim.abandon'); }
+      // #218d: abandonment now RE-AIMS instead of clearing. A lineage with no aim is a lineage back
+      // on the shared gradient, and letting that be the cheap escape route means the population
+      // drains back to one hill -- which is exactly what #218c would have measured as "aims were
+      // authored and abandoned". Giving up on a purpose here means taking a different one, seeded at
+      // where the lineage actually is so the switch is free and only HOLDING it costs.
+      if(finiteOr(_a.weight,0)<=0.001&&Math.random()<rate){
+        _a.sense=(Math.random()*AIM_SENSES.length)|0;
+        _a.target=0; _a.weight=__cl(0.1+Math.random()*0.3,0,AIM_WEIGHT_MAX);
+        _a.born=(genome.generation|0);
+        fired('aim.abandon');
+      }
     }
   }
   // #218b: THE MULTIPLIERS DRIFT, AND EACH ONE IS ITS OWN STEP SCALE. That self-reference is the
@@ -17836,8 +17857,14 @@ const AIM_SENSES=[
   {n:'freq',    span:2,   get:i=>freq[i]},
   {n:'phase',   span:6.2832, get:i=>phase[i]}
 ];
-const AIM_WEIGHT_MAX=0.5;   // #218c: ceiling on how hard a lineage can pull on its own amplitude
-const AIM_TAX=0.15;         // #218c: the standing cost of holding an aim, in the same units as the pull
+const AIM_WEIGHT_MAX=1.2;   // #218d: 0.5 -> 1.2. At 0.5 the aim was a rounding error beside the terms
+                            // it competes with; a pressure that cannot outweigh anything is not a
+                            // pressure. Selection can now put a lineage's own purpose ahead of the
+                            // shared fitness, which is the point and is also how it can kill one.
+const AIM_TAX=0.15;         // #218c: the standing cost of holding an aim, in the same units as the pull.
+                            // Kept: an aim is never free, and at weight 1.2 a missed one costs 0.18 of
+                            // amplitude per tick, which is a real death sentence for a lineage that
+                            // wants something it cannot have. That asymmetry is the mechanism.
 function aimOn(){ return (typeof globalThis==='undefined')||((globalThis.__AIM??1)|0)!==0; }
 function aimSense(k,i){
   const e=AIM_SENSES[((k%AIM_SENSES.length)+AIM_SENSES.length)%AIM_SENSES.length];
