@@ -1023,9 +1023,13 @@ function validNetworkPayload(type,data){
       // the receive side runs the assembled genome through sanitizeGenome, the same authority every
       // other genome on this engine answers to, exactly as the `found` case below already does for
       // a whole germline arriving on the wire.
+      // A value may also be a uniform numeric array (uaProdW, uaVarW, objWeights, oeeW, ...) — capped
+      // at UA_ALL_VARS.length, read from the engine (#153 again) rather than restated, because that is
+      // the largest such array this genome actually has.
       (!data.gs||(typeof data.gs==='object'&&!Array.isArray(data.gs)&&
         Object.keys(data.gs).length<=400&&
-        Object.values(data.gs).every(v=>finitePacketNumber(v,-1e6,1e6))));
+        Object.values(data.gs).every(v=>finitePacketNumber(v,-1e6,1e6)||
+          (Array.isArray(v)&&v.length<=UA_ALL_VARS.length&&v.every(x=>finitePacketNumber(x,-1e6,1e6))))));
   }
   // === #185 - THE UNIVERSE-LEVEL PLASMID ========================================================
   // Particles have traded plasmids since Pe22. This is the same idea one level up: a packet that
@@ -1978,17 +1982,24 @@ function networkReceive(){ fired('network.receive');
               _g.uaOps[_k]=Array.isArray(_r)?{p:(_r[0]|0)===1?1:0,a:(_r[1]|0)&7,b:(_r[2]|0)&7,
                                               k:isFinite(+_r[3])?+_r[3]:0.5,c:(_r[4]|0)&3,age:0}:null; }
           }
-          // AND ITS BODY (MIGRANT_CARRIES_GENOME): the scalar genome behind that vocabulary. Named
-          // keys, so a key a newer peer sent that this build does not have, or a key an older peer
-          // never sent, is simply skipped — see genomeScalarSnapshot. sanitizeGenome runs afterward
-          // through the same self-repoint every per-particle pass in this file already uses, because
-          // validNetworkPayload deliberately checked only that each value is a finite number in a
-          // wide generic range, not its own gene's proper range — that authority stays in one place.
+          // AND ITS BODY (MIGRANT_CARRIES_GENOME): the scalar genome and uniform numeric arrays
+          // behind that vocabulary. Named keys, so a key a newer peer sent that this build does not
+          // have, or a key an older peer never sent, is simply skipped — see genomeScalarSnapshot.
+          // An array is only installed at the LOCAL template's own length (_g[k].length), never the
+          // wire's — a length mismatch means a different build's UA_ALL_VARS or similar, and the
+          // local default is kept rather than resized to fit foreign data. sanitizeGenome runs
+          // afterward through the same self-repoint every per-particle pass in this file already
+          // uses, because validNetworkPayload deliberately checked only that each value is a finite
+          // number (or an array of them) in a wide generic range, not its own gene's proper range —
+          // that authority stays in one place.
           if(MIGRANT_CARRIES_GENOME&&m.gs&&typeof m.gs==='object'){
             for(const k in m.gs){
               if(CHILD_NOT_A_GENE.indexOf(k)>=0)continue;
               const v=m.gs[k];
-              if(typeof _g[k]==='number'&&typeof v==='number'&&isFinite(v))_g[k]=v;
+              if(typeof _g[k]==='number'&&typeof v==='number'&&isFinite(v)){_g[k]=v;continue;}
+              if(Array.isArray(_g[k])&&Array.isArray(v)&&v.length===_g[k].length&&
+                 v.every(x=>typeof x==='number'&&isFinite(x)))
+                for(let q=0;q<v.length;q++)_g[k][q]=v[q];
             }
             const _pg=genome; genome=_g;
             try{ sanitizeGenome(); } finally{ genome=_pg; }
@@ -10530,32 +10541,47 @@ const CHILD_NOT_A_GENE=['totalTicks','generation','extinctions','prevSmoothedFit
 // or a clone, never a state where behaviour crossed but the body plan could not.
 // Skips CHILD_NOT_A_GENE (bookkeeping/caches, not heritable) and anything not a finite number on
 // BOTH sides — undefined on one side is a field the other parent has not lazily grown yet, and that
-// is left as parent A's clone rather than forced. Array/object-valued genes (uaProdW, uaVarW, uaOps,
-// oeeW, chemistryTable, ...) are untouched here: each has its own shape invariant enforced at its own
-// mutation site, and a flat property swap would bypass every one of them.
+// is left as parent A's clone rather than forced.
+// UNIFORM NUMERIC ARRAYS (uaProdW, uaVarW, objWeights, oeeW, selfModelW, ...) get the same
+// independent assortment, per element, and are found STRUCTURALLY rather than by name: any array
+// where every element on BOTH sides is a plain finite number qualifies, same length required. That
+// is what excludes chemistryTable (an array of arrays), uaOps/channels (arrays of objects, or the
+// literal 0 for a released slot) and userAtoms/userEffects (arrays of objects) without listing them
+// — none of their elements are plain numbers, so the per-field check below is false for all of them,
+// and each keeps its own shape invariant enforced at its own dedicated mutation site instead.
 // SHIFTS THE RNG STREAM on every crossover event from here on (one extra draw per eligible scalar
-// gene): it drew nothing before because there was nothing here to decide.
+// gene or array element): it drew nothing before because there was nothing here to decide.
 function recombineGenome(childG,otherG){
   for(const k in childG){
     if(CHILD_NOT_A_GENE.indexOf(k)>=0)continue;
     const v=childG[k],ov=otherG[k];
-    if(typeof v==='number'&&isFinite(v)&&typeof ov==='number'&&isFinite(ov)&&Math.random()<0.5)childG[k]=ov;
+    if(typeof v==='number'&&isFinite(v)&&typeof ov==='number'&&isFinite(ov)){
+      if(Math.random()<0.5)childG[k]=ov;
+      continue;
+    }
+    if(Array.isArray(v)&&Array.isArray(ov)&&v.length&&v.length===ov.length&&
+       v.every(x=>typeof x==='number'&&isFinite(x))&&ov.every(x=>typeof x==='number'&&isFinite(x))){
+      for(let i=0;i<v.length;i++)if(Math.random()<0.5)v[i]=ov[i];
+    }
   }
   return childG;
 }
-// Same exclusion list, other direction: a plain {key:value} snapshot of every scalar gene, for
-// putting a genome ON the wire (buildMigrantPacket) rather than mixing two that are both already
-// local. Named keys, not a positional array — unlike uaOps/userAtoms, where slot INDEX is the
-// contract, a scalar gene means the same thing under its own name on any peer running any build, so
-// a receiver can match by name and silently ignore a key it does not have (older peer) while a key
-// it does not recognise from a newer peer is equally harmless to ignore. That is what makes this
-// safe across version skew without a shared slot-order contract.
+// Same exclusion list and same structural array rule, other direction: a plain {key:value} snapshot
+// of every scalar gene and uniform numeric array, for putting a genome ON the wire (buildMigrantPacket)
+// rather than mixing two that are both already local. Named keys, not a positional array — unlike
+// uaOps/userAtoms, where slot INDEX is the contract, a scalar gene (or a numeric array's own length)
+// means the same thing under its own name on any peer running any build, so a receiver can match by
+// name and silently ignore a key it does not have (older peer) while a key it does not recognise from
+// a newer peer is equally harmless to ignore. That is what makes this safe across version skew
+// without a shared slot-order contract. Arrays are copied (.slice()), never handed out by reference —
+// the #155 bug this file has already paid for once.
 function genomeScalarSnapshot(g){
   const out={};
   for(const k in g){
     if(CHILD_NOT_A_GENE.indexOf(k)>=0)continue;
     const v=g[k];
-    if(typeof v==='number'&&isFinite(v))out[k]=v;
+    if(typeof v==='number'&&isFinite(v)){out[k]=v;continue;}
+    if(Array.isArray(v)&&v.length&&v.every(x=>typeof x==='number'&&isFinite(x)))out[k]=v.slice();
   }
   return out;
 }
