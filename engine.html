@@ -9237,6 +9237,14 @@ let genome={
   culturalBias:0.3,       // was hardcoded: Math.random()<0.3
 
   // ═══ LAYER 4b: AUTONOMY — previously hardcoded constraints ═══
+  // "System evolves its own social distance" was half true at the read sites: one correct reader
+  // exists (line ~912, finiteOr) alongside ~11 VM-opcode dispatch sites that read
+  // `genome.interactionRadius||CELL` — a lineage that evolved this to genuine 0 (a fully solitary,
+  // zero-sensing-radius strategy) had every one of those eleven silently substitute CELL instead,
+  // each already wrapped in its own Math.max(1,...)/Math.max(10,...), which is why it read as a
+  // harmless "floor" rather than a bug: the outer max meant the wrong branch and the right branch
+  // gave visually similar numbers unless interactionRadius was actually near zero. Switched all
+  // eleven to finiteOr, matching the reader that was already correct.
   interactionRadius:55,   // FREED: was CELL=55. System evolves its own social distance.
   densityCostK:0.00003,   // FREED: metabolic cost scales with pop density. Carrying capacity emerges.
   fieldBirthGate:0.3,     // FREED: min local field energy for replenishment. Life requires habitat.
@@ -14159,7 +14167,7 @@ function detectClusters(){ fired('cluster.detect');
             const bond=sim*Math.max(0,pa);
             const ddx=px[cur]-px[j],ddy=py[cur]-py[j];
             const d=Math.sqrt(ddx*ddx+ddy*ddy);
-            if(bond>genome.clusterBondThresh&&d<Math.max(10,genome.interactionRadius||CELL)){
+            if(bond>genome.clusterBondThresh&&d<Math.max(10,finiteOr(genome.interactionRadius,CELL))){
               clusterID[j]=cid;
               queue.push(j);
             }
@@ -23071,7 +23079,7 @@ function executeVM(i,j,sim,d){
             if(cidx84>=0&&cidx84<clusters.length){
               const dx84=px[i]-clusters[cidx84].cx,dy84=py[i]-clusters[cidx84].cy;
               const dist84=Math.sqrt(dx84*dx84+dy84*dy84);
-              vmRegs[di]=Math.min(3,dist84/Math.max(1,genome.interactionRadius||CELL))*scdi84*(k||1);
+              vmRegs[di]=Math.min(3,dist84/Math.max(1,finiteOr(genome.interactionRadius,CELL)))*scdi84*(k||1);
             }
           }
         }
@@ -23092,7 +23100,7 @@ function executeVM(i,j,sim,d){
             if(cidx85>=0&&cidx85<clusters.length){
               const dx85=px[j]-clusters[cidx85].cx,dy85=py[j]-clusters[cidx85].cy;
               const dist85=Math.sqrt(dx85*dx85+dy85*dy85);
-              vmRegs[di]=Math.min(3,dist85/Math.max(1,genome.interactionRadius||CELL))*pcdi85*(k||1);
+              vmRegs[di]=Math.min(3,dist85/Math.max(1,finiteOr(genome.interactionRadius,CELL)))*pcdi85*(k||1);
             }
           }
         }
@@ -23360,7 +23368,7 @@ function executeVM(i,j,sim,d){
               const dx98=clusters[cidx98i].cx-clusters[cidx98j].cx;
               const dy98=clusters[cidx98i].cy-clusters[cidx98j].cy;
               const dist98=Math.sqrt(dx98*dx98+dy98*dy98);
-              vmRegs[di]=Math.min(3,dist98/Math.max(1,genome.interactionRadius||CELL))*icdi98*(k||1);
+              vmRegs[di]=Math.min(3,dist98/Math.max(1,finiteOr(genome.interactionRadius,CELL)))*icdi98*(k||1);
             }
           }
         }
@@ -24658,7 +24666,7 @@ function executeVM(i,j,sim,d){
               if(cidx84p>=0&&cidx84p<clusters.length){
                 const dx84p=px[i]-clusters[cidx84p].cx,dy84p=py[i]-clusters[cidx84p].cy;
                 const dist84p=Math.sqrt(dx84p*dx84p+dy84p*dy84p);
-                vmRegs[di]=Math.min(3,dist84p/Math.max(1,genome.interactionRadius||CELL))*scdi84p*(k||1);
+                vmRegs[di]=Math.min(3,dist84p/Math.max(1,finiteOr(genome.interactionRadius,CELL)))*scdi84p*(k||1);
               }
             }
           }
@@ -24674,7 +24682,7 @@ function executeVM(i,j,sim,d){
               if(cidx85p>=0&&cidx85p<clusters.length){
                 const dx85p=px[j]-clusters[cidx85p].cx,dy85p=py[j]-clusters[cidx85p].cy;
                 const dist85p=Math.sqrt(dx85p*dx85p+dy85p*dy85p);
-                vmRegs[di]=Math.min(3,dist85p/Math.max(1,genome.interactionRadius||CELL))*pcdi85p*(k||1);
+                vmRegs[di]=Math.min(3,dist85p/Math.max(1,finiteOr(genome.interactionRadius,CELL)))*pcdi85p*(k||1);
               }
             }
           }
@@ -24819,7 +24827,7 @@ function executeVM(i,j,sim,d){
                 const dx98p=clusters[cidx98ip].cx-clusters[cidx98jp].cx;
                 const dy98p=clusters[cidx98ip].cy-clusters[cidx98jp].cy;
                 const dist98p=Math.sqrt(dx98p*dx98p+dy98p*dy98p);
-                vmRegs[di]=Math.min(3,dist98p/Math.max(1,genome.interactionRadius||CELL))*icdi98p*(k||1);
+                vmRegs[di]=Math.min(3,dist98p/Math.max(1,finiteOr(genome.interactionRadius,CELL)))*icdi98p*(k||1);
               }
             }
           }
@@ -26089,7 +26097,7 @@ function executeClusterVM(i,j,sim,d){
             if(cidx84c>=0&&cidx84c<clusters.length){
               const dx84c=px[i]-clusters[cidx84c].cx,dy84c=py[i]-clusters[cidx84c].cy;
               const dist84c=Math.sqrt(dx84c*dx84c+dy84c*dy84c);
-              vmRegs[di]=Math.min(3,dist84c/Math.max(1,genome.interactionRadius||CELL))*scdi84c*(k||1);
+              vmRegs[di]=Math.min(3,dist84c/Math.max(1,finiteOr(genome.interactionRadius,CELL)))*scdi84c*(k||1);
             }
           }
         }
@@ -26105,7 +26113,7 @@ function executeClusterVM(i,j,sim,d){
             if(cidx85c>=0&&cidx85c<clusters.length){
               const dx85c=px[j]-clusters[cidx85c].cx,dy85c=py[j]-clusters[cidx85c].cy;
               const dist85c=Math.sqrt(dx85c*dx85c+dy85c*dy85c);
-              vmRegs[di]=Math.min(3,dist85c/Math.max(1,genome.interactionRadius||CELL))*pcdi85c*(k||1);
+              vmRegs[di]=Math.min(3,dist85c/Math.max(1,finiteOr(genome.interactionRadius,CELL)))*pcdi85c*(k||1);
             }
           }
         }
@@ -26250,7 +26258,7 @@ function executeClusterVM(i,j,sim,d){
               const dx98c=clusters[cidx98ic].cx-clusters[cidx98jc].cx;
               const dy98c=clusters[cidx98ic].cy-clusters[cidx98jc].cy;
               const dist98c=Math.sqrt(dx98c*dx98c+dy98c*dy98c);
-              vmRegs[di]=Math.min(3,dist98c/Math.max(1,genome.interactionRadius||CELL))*icdi98c*(k||1);
+              vmRegs[di]=Math.min(3,dist98c/Math.max(1,finiteOr(genome.interactionRadius,CELL)))*icdi98c*(k||1);
             }
           }
         }
@@ -30514,7 +30522,7 @@ function loop(){
       for(let _pi=0;_pi<_vmProg84.length;_pi++){if(_vmProg84[_pi]&&_vmProg84[_pi][0]===68)scdi84InProg++;}
       if(scdi84InProg>0||_scdi84>0.02){
         let _distSum=0,_distN=0;
-        const _iRad=Math.max(1,genome.interactionRadius||CELL);
+        const _iRad=Math.max(1,finiteOr(genome.interactionRadius,CELL));
         for(let _ci=0;_ci<N;_ci++){
           if(palive[_ci]&&clusterID[_ci]>=0){
             const _cidx=clusterID[_ci]<MAX_CLUSTERS?clusterByID[clusterID[_ci]]:-1;
@@ -30755,7 +30763,7 @@ function loop(){
       for(let _pi=0;_pi<_vmProg98.length;_pi++){if(_vmProg98[_pi]&&_vmProg98[_pi][0]===82)icdi98InProg++;}
       if(icdi98InProg>0||_icdi98>0.02){
         let _icdSum=0,_icdN=0;
-        const _iRad=Math.max(1,genome.interactionRadius||CELL);
+        const _iRad=Math.max(1,finiteOr(genome.interactionRadius,CELL));
         if(clusters.length>=2){
           for(let _ci=0;_ci<clusters.length;_ci++){
             for(let _cj=_ci+1;_cj<clusters.length;_cj++){
