@@ -1278,6 +1278,7 @@ const LIVENESS_DECLARED=[
   // Declared as five names because "no lineage ever authored one" and "they authored and abandoned
   // them all" and "they hold aims nothing pulls on" are three different worlds.
   'aim.author','aim.drift','aim.reaim','aim.abandon','aim.pull',
+  'aim.tol',                 // #218k: a lineage changing how precisely it wants something
   'aim.grow','aim.shrink',   // #218j: the portfolio's SIZE changing — how many things a creature wants
   'mutmag.author','mutmag.drift',   // #218b: a lineage forming and moving an opinion about its own evolvability
   // #188: channel.update is the lattice pass, channel.write a verb acting into a medium, and
@@ -9448,7 +9449,17 @@ let genome={
   // trade-off it must resolve or pay for, and resolving it is behaviour nobody designed.
   // It grows and shrinks (see the child route), so how many things a creature wants is something it
   // discovers. The tax is PER AIM, so wanting more costs more and a portfolio has to earn its size.
-  aims:[{sense:0,target:0.6,weight:0.28,born:0},{sense:6,target:0.0,weight:0.22,born:0}],
+  // #218k: each aim carries its own TOLERANCE -- how precisely the lineage wants the thing. The
+  // proximity kernel was max(0,1-err), so every creature in every run wanted things with exactly the
+  // sharpness I picked. tol makes that a gene, and it is PRICED so it cannot be wireheaded: a wide
+  // tolerance is satisfied far more often and pays less at its peak (pay = sat * 2/(1+tol)), so a
+  // lineage chooses between wanting many things loosely and few things precisely. At tol=1 the
+  // payoff is identical to pre-#218k, which is why the seeds are 1.
+  // That trade-off is the interesting part: with the per-aim tax from #218j, a portfolio of six wide
+  // aims collects small change constantly while six narrow ones mostly pay tax and occasionally pay
+  // well. Neither is obviously better, which is the condition under which a strategy has to be found
+  // rather than computed.
+  aims:[{sense:0,target:0.6,weight:0.28,tol:1,born:0},{sense:6,target:0.0,weight:0.22,tol:1,born:0}],
   // === #217v: THE NINE THE GERMLINE CARRIED AND NO PARTICLE HAD ===
   // #217j measured the germline holding 15 keys that no living particle held (277 against 262). The
   // structural question finds them without a probe: which names are ASSIGNED to genome.X anywhere in
@@ -10348,7 +10359,7 @@ function cloneGenome(src){
   // would share aim objects across the population, so every lineage would want the same things and
   // moving one target would move everyone's, which is the single shared gradient rebuilt by accident.
   { const _sa=aimsOf(src);
-    g.aims=_sa?_sa.filter(Boolean).map(a=>({sense:a.sense|0,target:finiteOr(a.target,0),weight:finiteOr(a.weight,0),born:a.born|0})):[];
+    g.aims=_sa?_sa.filter(Boolean).map(a=>({sense:a.sense|0,target:finiteOr(a.target,0),weight:finiteOr(a.weight,0),tol:finiteOr(a.tol,1),born:a.born|0})):[];
     g.aim=null; }
   // #218b: deep-copied for the same reason as everything above it -- a shared map would give the
   // whole population ONE set of opinions about its own evolvability, which is the ninth instance.
@@ -10682,11 +10693,15 @@ function mutateChildGenome(g){
       if(Math.random()<rate){ const _nw=__cl(finiteOr(_a.weight,0)+(Math.random()-0.5)*0.06*scale,0,AIM_WEIGHT_MAX);
         if(isFinite(_nw)) _a.weight=_nw; }
       if(Math.random()<rate*0.1){ const _ns=(Math.random()*aimSenseCount())|0; if(_ns!==(_a.sense|0)){ _a.sense=_ns; fired('aim.reaim'); } }
+      // #218k: precision drifts multiplicatively, because tolerance is a scale and an additive step
+      // would move 0.1 and 8 by wildly different fractions of themselves.
+      if(Math.random()<rate){ const _nt2=__cl(finiteOr(_a.tol,1)*(1+(Math.random()-0.5)*0.3*scale),AIM_TOL_LO,AIM_TOL_HI);
+        if(isFinite(_nt2)){ _a.tol=_nt2; fired('aim.tol'); } }
     }
     // GROW: acquire another purpose
     if(g.aims.length<AIM_MAX_AIMS&&Math.random()<rate*0.3){
       g.aims.push({sense:(Math.random()*aimSenseCount())|0, target:0,
-                   weight:__cl(0.1+Math.random()*0.3,0,AIM_WEIGHT_MAX), born:(genome.generation|0)});
+                   weight:__cl(0.1+Math.random()*0.3,0,AIM_WEIGHT_MAX), tol:__cl(0.4+Math.random()*2,AIM_TOL_LO,AIM_TOL_HI), born:(genome.generation|0)});
       fired('aim.grow');
     }
     // SHRINK: drop the one it cares least about, and only when it holds more than one. A lineage with
@@ -10697,7 +10712,7 @@ function mutateChildGenome(g){
       for(let q=0;q<g.aims.length;q++){ const _w=finiteOr(g.aims[q]&&g.aims[q].weight,0); if(_w<ww){ww=_w;wi=q;} }
       if(wi>=0){ g.aims.splice(wi,1); fired('aim.shrink'); }
     }
-    if(g.aims.length===0) g.aims.push({sense:(Math.random()*aimSenseCount())|0,target:0,weight:0.2,born:(genome.generation|0)});
+    if(g.aims.length===0) g.aims.push({sense:(Math.random()*aimSenseCount())|0,target:0,weight:0.2,tol:1,born:(genome.generation|0)});
     g.aim=null;   // #218j: the singular field is retired on the child route; aimsOf reads the array
   }
   // #218b: THE MULTIPLIERS DRIFT, AND EACH ONE IS ITS OWN STEP SCALE. That self-reference is the
@@ -13407,12 +13422,13 @@ function sanitizeGenome(){
   // #218j: promote a pre-#218j single aim into the portfolio rather than discarding it, then
   // validate structure only -- targets stay unclamped (#148), an unreachable one simply never pays.
   { let _as=aimsOf(genome);
-    if(!_as||!_as.length)_as=[{sense:0,target:0.6,weight:0.28,born:0}];
+    if(!_as||!_as.length)_as=[{sense:0,target:0.6,weight:0.28,tol:1,born:0}];
     genome.aims=_as.filter(a=>a&&typeof a==='object')
       .map(a=>({sense:a.sense|0,target:finiteOr(a.target,0),
-                weight:__cl(finiteOr(a.weight,0),0,AIM_WEIGHT_MAX),born:a.born|0}))
+                weight:__cl(finiteOr(a.weight,0),0,AIM_WEIGHT_MAX),
+                tol:__cl(finiteOr(a.tol,1),AIM_TOL_LO,AIM_TOL_HI),born:a.born|0}))
       .slice(0,AIM_MAX_AIMS);
-    if(!genome.aims.length)genome.aims=[{sense:0,target:0.6,weight:0.28,born:0}];
+    if(!genome.aims.length)genome.aims=[{sense:0,target:0.6,weight:0.28,tol:1,born:0}];
     genome.aim=null; }
   if(!genome.mutMag||typeof genome.mutMag!=='object')genome.mutMag={};
   else { const _mk=Object.keys(genome.mutMag);
@@ -17927,7 +17943,9 @@ function aimSatisfaction(){
       const nv=g.novelGenes[0];
       if(nv)t+=__cl(finiteOr(nv.v,0),-1,1)*sp*0.5;   // #218f's offset, read without the repoint
     }
-    sum+=Math.max(0,1-Math.abs(v-t)/(sp||1)); n++;
+    { const e2=Math.abs(v-t)/(sp||1);
+      const tl=__cl(finiteOr(a.tol,1),AIM_TOL_LO,AIM_TOL_HI);
+      sum+=Math.max(0,1-e2/tl)*2/(1+tl); n++; }   // #218k: same priced kernel as the selection term, or the two would disagree about what satisfaction means
     }
   }
   return n>0?sum/n:0;
@@ -17968,6 +17986,9 @@ function aimsOf(g){
   if(g.aim&&typeof g.aim==='object')return [g.aim];
   return null;
 }
+const AIM_TOL_LO=0.1, AIM_TOL_HI=8;   // #218k: precision bounds. Below 0.1 an aim is unsatisfiable
+                                      // noise; above 8 it is satisfied by almost any state and the
+                                      // 2/(1+tol) pricing has already made it nearly worthless.
 const AIM_MAX_AIMS=6;   // #218j: ceiling on a portfolio. Six senses plus eight memory slots to want
                         // things about, and at AIM_TAX per aim a lineage holding six pays 0.9 of
                         // amplitude per tick for the privilege if it meets none of them.
@@ -28654,9 +28675,12 @@ function applyNicheEconomy(){ fired('niche.economy');
           genome=_save;
         }
         const _err=Math.abs(_sv-_tgt)/(_sp||1);
+        const _tol=__cl(finiteOr(_a.tol,1),AIM_TOL_LO,AIM_TOL_HI);
+        const _sat=Math.max(0,1-_err/_tol);
+        const _pay=_sat*2/(1+_tol);   // #218k: precision is priced — wide aims pay less at the peak
         // proximity pays, distance does not, and the aim is TAXED either way -- that is what keeps a
         // self-declared purpose from being free. An aim never met is a standing metabolic drag.
-        amp[i]+=_w*(Math.max(0,1-_err)-AIM_TAX);
+        amp[i]+=_w*(_pay-AIM_TAX);
         fired('aim.pull');
         }
       }
