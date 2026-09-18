@@ -4899,6 +4899,13 @@ let genome={
   magneticThresh:0.3,     // was hardcoded: mg>0.3
   velocityDamping:0.998,  // was hardcoded
   deathThreshold:0.04,    // was DEATH_THRESHOLD constant
+  // was PREDATE_RATE, a global constant every particle predated at identically regardless of its
+  // own genome — the trait-distance GATE (PREDATE_MIN_DIST) still is, but the extraction rate once
+  // that gate is cleared is now the ATTACKER's own evolvable trait, so a lineage can become a more
+  // (or less) effective predator rather than every encounter running the same fixed law. Read from
+  // the attacker's own genome at the call site (applyEntropy is not inside the per-particle repoint
+  // there), which is the same value this constant always held.
+  predateRate:0.055,      // was PREDATE_RATE constant
 
   // ═══ LAYER (#35): META-EVOLUTION — the open-endedness ENGINES become evolvable ═══
   // The engines built this session (#24–#34) had designer-constant intensities. Here the system can tune its
@@ -10647,6 +10654,7 @@ function mutateChildGenome(g){
     if(typeof g.deathThreshold==='number'&&!(g.deathThreshold>0))   g.deathThreshold=0.01; // a non-positive floor is unreachable death
     if(typeof g.mutationRate==='number'&&!(g.mutationRate>=0))      g.mutationRate=0;      // negative probability
     if(typeof g.uaMaxDepth==='number'&&!(g.uaMaxDepth>=1))          g.uaMaxDepth=1;        // structural: depth<1 has no meaning
+    if(typeof g.predateRate==='number'&&!(g.predateRate>=0))        g.predateRate=0;       // negative = prey gains from being preyed on
   }
   g.vmProgram=inheritProg(g.vmProgram,g.vmMaxInstructions||16); // pass evolved cap so lineages that evolved larger programs don't have children truncated to the global default
   if(Array.isArray(g.objWeights))for(let i=0;i<4;i++)if(Math.random()<rate){const nx=g.objWeights[i]+(Math.random()-0.5)*0.06*scale;if(isFinite(nx))g.objWeights[i]=nx;}
@@ -11741,7 +11749,8 @@ function encodeGenome(){
     // Physics
     p:[genome.entropyBaseline,genome.entropyK,genome.entrainRate,genome.entrainThresh,
        genome.creationCost,genome.creationThresh,genome.destructThresh,genome.tendencyBleed,
-       genome.magneticThresh,genome.velocityDamping,genome.deathThreshold].map(v=>+(v.toPrecision(4))),
+       genome.magneticThresh,genome.velocityDamping,genome.deathThreshold,
+       finiteOr(genome.predateRate,0.055)].map(v=>+(v.toPrecision(4))),   // appended, not inserted — index 11 is new, 0-10 must stay put for every existing save
     // Perception
     q:[genome.clusterBondThresh,genome.clusterMinSize,genome.ghostDecay,genome.ghostAmpDrip].map(v=>+(v.toPrecision(4))),
     // Evaluation
@@ -12084,7 +12093,8 @@ function decodeGenome(data){
     if(g.p){
       [genome.entropyBaseline,genome.entropyK,genome.entrainRate,genome.entrainThresh,
        genome.creationCost,genome.creationThresh,genome.destructThresh,genome.tendencyBleed,
-       genome.magneticThresh,genome.velocityDamping,genome.deathThreshold]=g.p;
+       genome.magneticThresh,genome.velocityDamping,genome.deathThreshold,
+       genome.predateRate=0.055]=g.p;   // default fires when a legacy save's g.p has no 12th element
     }
     if(g.q){
       [genome.clusterBondThresh,genome.clusterMinSize,genome.ghostDecay,genome.ghostAmpDrip]=g.q;
@@ -18945,6 +18955,7 @@ function mutateGenome(){ fired('genome.mutate');
   genome.magneticThresh=maybe(genome.magneticThresh,0.1,0.8,0.04,'magneticThresh');
   genome.velocityDamping=maybe(genome.velocityDamping,0.98,0.9999,0.003,'velocityDamping');
   genome.deathThreshold=maybe(genome.deathThreshold,0.01,0.15,0.01,'deathThreshold');
+  genome.predateRate=maybe(genome.predateRate,0,0.3,0.01,'predateRate');
   // #35 META-EVOLUTION: the open-endedness-engine dials random-walk like any physics gene; sanitizeGenome clamps
   // them, lineage selection adjudicates them — the system tunes its own exploration / construction / predation / growth.
   genome.opnovStrength=maybe(genome.opnovStrength,0,0.01,0.0008,'opnovStrength');
@@ -21253,7 +21264,12 @@ function applyEntropy(){
           let d2=0; for(let d=0;d<DIMS;d++){const dv=tend[i*DIMS+d]-tend[j*DIMS+d]; d2+=dv*dv;}
           if(d2<0.09){ same++; }
           else if(d2>PREDATE_MIN_DIST*PREDATE_MIN_DIST && amp[i]>amp[j]){
-            const take=amp[j]*PREDATE_RATE*0.5;
+            // predateRate is now the ATTACKER's own evolvable trait, not a universal constant — this
+            // loop runs before the per-particle genome repoint below, so it is read directly off
+            // pGenome[i] rather than off the ambient `genome`, with the original constant as the
+            // fallback for a particle whose genome predates this gene's existence.
+            const _pr=finiteOr(pGenome[i]&&pGenome[i].predateRate,PREDATE_RATE);
+            const take=amp[j]*_pr*0.5;
             if(take>0){ amp[j]-=take; amp[i]+=take*0.7; } // 30% lost to the transfer — predation is not free
           }
         }
