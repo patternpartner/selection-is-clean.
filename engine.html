@@ -1014,7 +1014,18 @@ function validNetworkPayload(type,data){
         data.uo.every(r=>r===0||(Array.isArray(r)&&r.length>=5&&
           finitePacketNumber(r[0],0,1)&&finitePacketNumber(r[1],0,UA_PRIM.length-1)&&
           finitePacketNumber(r[2],0,UA_PRIM.length-1)&&finitePacketNumber(r[3],0,1)&&
-          finitePacketNumber(r[4],0,UA_CMPF.length-1)))));
+          finitePacketNumber(r[4],0,UA_CMPF.length-1)))))&&
+      // the scalar genome behind the program and vocabulary above. Named keys (see
+      // genomeScalarSnapshot), so unlike ua/uo/chn there is no slot-order bound to read from the
+      // engine — only that it is a plain object, not oversized, and every value in it is a finite
+      // number in a generous crash-floor range. PER-GENE ranges are deliberately not restated here
+      // (#153's rule: a bound copied into a second place goes stale against a ceiling that moved) —
+      // the receive side runs the assembled genome through sanitizeGenome, the same authority every
+      // other genome on this engine answers to, exactly as the `found` case below already does for
+      // a whole germline arriving on the wire.
+      (!data.gs||(typeof data.gs==='object'&&!Array.isArray(data.gs)&&
+        Object.keys(data.gs).length<=400&&
+        Object.values(data.gs).every(v=>finitePacketNumber(v,-1e6,1e6))));
   }
   // === #185 - THE UNIVERSE-LEVEL PLASMID ========================================================
   // Particles have traded plasmids since Pe22. This is the same idea one level up: a packet that
@@ -1612,6 +1623,7 @@ function buildMigrantPacket(){
       // #141: the vocabulary that program speaks, in bound-slot order.
       let _mua=null,_mue=null,_muo=null,_mfd=null,_mch=null;   // #180: +the operator bank  #181: +the compiler stage  #196: +the chemistry
       const _mg=pGenome[idx];
+      const _mgs=(MIGRANT_CARRIES_GENOME&&_mg)?genomeScalarSnapshot(_mg):null;   // the ~200 scalar genes behind the program and vocabulary above
       if(MIGRANT_CARRIES_VOCAB&&_mg){
         const _bos=Array.isArray(_mg.boundOpcodes)?_mg.boundOpcodes:[];
         const _uas=Array.isArray(_mg.userAtoms)?_mg.userAtoms:[];
@@ -1700,7 +1712,7 @@ function buildMigrantPacket(){
       let _ph=phase[idx]%_TAU; if(!isFinite(_ph))_ph=0; if(_ph<0)_ph+=_TAU;
       for(let mm=0;mm<m.length;mm++) m[mm]=_cl(m[mm],-16,16);
       return {nx:_cl(px[idx]/W,-0.25,1.25),ny:_cl(py[idx]/H,-0.25,1.25),tend:t,mem:m,plasmid:plas,
-        amp:_cl(amp[idx],-2,4),phase:_ph,prog:_mprog,ua:_mua,ue:_mue,uo:_muo,fd:_mfd,chn:_mch};
+        amp:_cl(amp[idx],-2,4),phase:_ph,prog:_mprog,ua:_mua,ue:_mue,uo:_muo,fd:_mfd,chn:_mch,gs:_mgs};
   }
 }
 function networkBroadcast(){ fired('network.broadcast');
@@ -1965,6 +1977,21 @@ function networkReceive(){ fired('network.receive');
             for(let _k=0;_k<UA_OPBANK;_k++){ const _r=m.uo[_k];
               _g.uaOps[_k]=Array.isArray(_r)?{p:(_r[0]|0)===1?1:0,a:(_r[1]|0)&7,b:(_r[2]|0)&7,
                                               k:isFinite(+_r[3])?+_r[3]:0.5,c:(_r[4]|0)&3,age:0}:null; }
+          }
+          // AND ITS BODY (MIGRANT_CARRIES_GENOME): the scalar genome behind that vocabulary. Named
+          // keys, so a key a newer peer sent that this build does not have, or a key an older peer
+          // never sent, is simply skipped — see genomeScalarSnapshot. sanitizeGenome runs afterward
+          // through the same self-repoint every per-particle pass in this file already uses, because
+          // validNetworkPayload deliberately checked only that each value is a finite number in a
+          // wide generic range, not its own gene's proper range — that authority stays in one place.
+          if(MIGRANT_CARRIES_GENOME&&m.gs&&typeof m.gs==='object'){
+            for(const k in m.gs){
+              if(CHILD_NOT_A_GENE.indexOf(k)>=0)continue;
+              const v=m.gs[k];
+              if(typeof _g[k]==='number'&&typeof v==='number'&&isFinite(v))_g[k]=v;
+            }
+            const _pg=genome; genome=_g;
+            try{ sanitizeGenome(); } finally{ genome=_pg; }
           }
         }catch(e){}
       }
@@ -4523,6 +4550,15 @@ const MIGRANT_CARRIES_VOCAB=1;
 const MIGRANT_VOCAB_MAX=24;   // bounded: 24 expressions x 160 chars is a few KB on the wire, and a
                               // program that reaches past it finds tombstones, which the dispatches
                               // already guard with `if(_bua)`. Degrades, never breaks.
+// AND ITS BODY. LEAP 25 sent the program, #141 sent the vocabulary that program reads and writes
+// through — both close the gap for BEHAVIOUR. Physiology never crossed: addParticle gives a migrant
+// a clone of the RECEIVING universe's own current germline (a parentless spawn), and nothing after
+// that touched the ~200 scalar genes — metabolicCost, deathThreshold, lifespanBias, somaRepair,
+// entropyK, every life-history and sensory weight that is not a program or a vocabulary. A migrant
+// arrived with a foreign mind running a native body: "gene flow between universes" was true of one
+// gene and fictional for the rest of the genome, the same shape LEAP 25's own comment named and
+// fixed for `prog` — just not finished. genomeScalarSnapshot/its receive-side counterpart close it.
+const MIGRANT_CARRIES_GENOME=1;
 
 // LEAP 26 — A SECOND INCOME. Death deposits detritus and op146 can harvest it, but harvesting requires an
 // evolved program to discover the opcode, so the decomposer niche is reachable only by luck. Detritus now
@@ -10475,6 +10511,22 @@ function recombineGenome(childG,otherG){
     if(typeof v==='number'&&isFinite(v)&&typeof ov==='number'&&isFinite(ov)&&Math.random()<0.5)childG[k]=ov;
   }
   return childG;
+}
+// Same exclusion list, other direction: a plain {key:value} snapshot of every scalar gene, for
+// putting a genome ON the wire (buildMigrantPacket) rather than mixing two that are both already
+// local. Named keys, not a positional array — unlike uaOps/userAtoms, where slot INDEX is the
+// contract, a scalar gene means the same thing under its own name on any peer running any build, so
+// a receiver can match by name and silently ignore a key it does not have (older peer) while a key
+// it does not recognise from a newer peer is equally harmless to ignore. That is what makes this
+// safe across version skew without a shared slot-order contract.
+function genomeScalarSnapshot(g){
+  const out={};
+  for(const k in g){
+    if(CHILD_NOT_A_GENE.indexOf(k)>=0)continue;
+    const v=g[k];
+    if(typeof v==='number'&&isFinite(v))out[k]=v;
+  }
+  return out;
 }
 // === #192 - A DISCRETE GENE NEEDS A DISCRETE OPERATOR ON THE CHILD ROUTE TOO ====================
 // MEASURED DEFECT, and it is a worse shape than #179's: 12,000 ticks with #192 live gave
