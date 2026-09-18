@@ -9386,7 +9386,17 @@ let genome={
   // of #217l-#217v is about: a genome field declared nowhere is invisible to every list that checks.
   // Each entry is {n:name, v:value, u:uses, a:age}. Empty at boot -- a lineage that authors nothing
   // carries nothing and pays no rent, which is the pre-#218a behaviour exactly.
-  novelGenes:[],
+  // #218e: NOT empty. #218a gated authoring behind opcodes 427/428 -- 2 draws of 429 against a
+  // population I had already measured carrying 113-230 of 430 opcodes with the low band at 25%. I
+  // built a mechanism and then measured that the world cannot reach it, which is the failure this
+  // codebase is full of and which I spent a day learning to name. The arithmetic was enough; no probe
+  // was needed to know.
+  // So every genome is born holding three slots. GENE_AUTHOR still exists and still adds more -- that
+  // path is now a bonus rather than the only door -- but the bank is populated from tick one in every
+  // run, heritable, drifting, and READ, because #218f wires slot 0 into what a lineage wants.
+  // Seeded at 0 so a lineage that never moves them is selected exactly as it was: the values do
+  // nothing until drift moves them, and drift is not optional.
+  novelGenes:[{n:'g00',v:0,u:0,a:0},{n:'g01',v:0,u:0,a:0},{n:'g02',v:0,u:0,a:0}],
   // #218b: sparse gene-name -> magnitude-multiplier map. Empty means every gene mutates at its
   // hand-written magnitude, i.e. pre-#218b behaviour exactly. Entries appear only when a lineage's
   // own drift creates them, which is why this is a map and not 57 declared fields: the SET of genes
@@ -28520,7 +28530,20 @@ function applyNicheEconomy(){ fired('niche.economy');
         const _sv=aimSense(_a.sense|0,i);
         if(_sv===null)continue;
         const _sp=AIM_SENSES[((_a.sense|0)%AIM_SENSES.length+AIM_SENSES.length)%AIM_SENSES.length].span;
-        const _err=Math.abs(_sv-finiteOr(_a.target,0))/(_sp||1);
+        // #218f: the target is OFFSET by the lineage's own first authored coordinate. This is what
+        // closes #218a's loop in the only place that matters -- an invented gene now moves what the
+        // lineage is trying to achieve, so the coordinate is not a number in a bank, it is a term in
+        // the creature's purpose. Without this, novelGenes is storage and nothing reads it, which is
+        // #217o's failure by construction and was #218a's real defect.
+        // Bounded so a drifted coordinate shifts the set-point rather than teleporting it, and read
+        // through novelRead so the USES counter that keeps a slot alive is driven by being WANTED.
+        let _tgt=finiteOr(_a.target,0);
+        if(_g.novelGenes&&_g.novelGenes.length){
+          const _save=genome; genome=_g;
+          _tgt+=__cl(novelRead(0),-1,1)*_sp*0.5;
+          genome=_save;
+        }
+        const _err=Math.abs(_sv-_tgt)/(_sp||1);
         // proximity pays, distance does not, and the aim is TAXED either way -- that is what keeps a
         // self-declared purpose from being free. An aim never met is a standing metabolic drag.
         amp[i]+=_w*(Math.max(0,1-_err)-AIM_TAX);
