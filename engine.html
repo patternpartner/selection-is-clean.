@@ -1264,6 +1264,10 @@ const LIVENESS_DECLARED=[
   'chem.trial','chem.kept','chem.revert',
   'deme.countStep','ua.foldModeStep',   // #217u: the two discrete operators, declared with the genes
   'gene.intStep',                       // #217y: the generic integer stepper, covering eight genes
+  // #218a: the genome's dimension changing. author/read/cull declared together so a run where
+  // lineages authored genes and never read them is distinguishable from one where none was authored,
+  // which is the distinction #217o showed this project could not previously make.
+  'gene.author','gene.read','gene.cull','gene.drift',
   // #188: channel.update is the lattice pass, channel.write a verb acting into a medium, and
   // channel.wire the reachability hook. All five declared so a run where a lineage allocated a
   // medium and never sensed or acted on it is visible as such rather than inferred.
@@ -2048,7 +2052,11 @@ const OP_SELFWRITE=237+192;   // #199: CORE_OPCODES + MAX_BOUND_OPCODES = 429. W
                               // deliberately rather than following it silently into a live opcode. The
                               // rig asserts it equals CORE_OPCODES+MAX_BOUND_OPCODES, so a drift is a
                               // red build and not a mystery. See the #199 narrative for why not 237.
-const CORE_OPCODES=237; // #132: 236 -> 237, admitting EFFECT_EMIT (236) — the drive line for an AUTHORED VERB, the first opcode whose CONSEQUENCE is evolved rather than hand-written. Was: // #59: 235 -> 236, admitting COSMOS_SENSE (235) — the state of the daughter worlds this lineage launched, as data. Was: // #57: 232 -> 235, admitting SET_MODE (232), READ_MODE (233), PARTNER_MODE (234) — the first categorical decision evolved code can make here. Was: // 0..231 core — op208-211 velocity I/O, op212-216 inhibitor/resistance mechanics, op217-219 oscillator direct control, op220-231 scaffold morphogenesis + genomic self-inspection + reproductive autonomy + cluster quorum sensing
+const CORE_OPCODES=239; // #218a: 237 -> 239, admitting GENE_AUTHOR (237) and GENE_READ (238) — the
+                        // first opcodes whose effect is to CHANGE THE SHAPE OF THE GENOME rather than
+                        // its values. Raising this is what makes them reachable: program opcodes are
+                        // drawn from Math.random()*CORE_OPCODES, so an opcode outside this bound is
+                        // unreachable by mutation and can only arrive by plasmid. Was: // #132: 236 -> 237, admitting EFFECT_EMIT (236) — the drive line for an AUTHORED VERB, the first opcode whose CONSEQUENCE is evolved rather than hand-written. Was: // #59: 235 -> 236, admitting COSMOS_SENSE (235) — the state of the daughter worlds this lineage launched, as data. Was: // #57: 232 -> 235, admitting SET_MODE (232), READ_MODE (233), PARTNER_MODE (234) — the first categorical decision evolved code can make here. Was: // 0..231 core — op208-211 velocity I/O, op212-216 inhibitor/resistance mechanics, op217-219 oscillator direct control, op220-231 scaffold morphogenesis + genomic self-inspection + reproductive autonomy + cluster quorum sensing
                         // 0..132 core — op132 SEASON_PHASE: perceive the current feast/famine cycle position
                         // 0..131 core — op131 ENERGY_STRESS: the system perceives conserved-budget scarcity
                         // 0..130 core — OPENED THE SWITCH: op128 READ_OWN_CASTE, op129 READ_PARTNER_CASTE,
@@ -4206,6 +4214,30 @@ function trimGenomeToBudget(){
     atoms:(genome.userAtoms||[]).length,sensors:(genome.fitnessSensors||[]).length},0);
   return blob;
 }
+// ═══ #218a — THE GENOME'S DIMENSION BECOMES EVOLVABLE ═══════════════════════════════════════════
+// Everything in this file that is called evolvable varies a parameter that a person named. #9 gave
+// every particle its own complete genome; the genome has 272 keys and a lineage cannot invent a
+// 273rd. So the SET of things selection can act on is a constant, hand-authored, and closed --
+// which means what evolves here is the substrate's CONTENTS and not the substrate. A parameter
+// space of fixed dimension is not an open-ended one however freely its coordinates move.
+// This opens it. A lineage can AUTHOR A SCALAR GENE that did not exist: a named, heritable,
+// mutable, readable quantity of its own, which is then subject to everything an authored gene is
+// subject to -- drift, mutation, inheritance, rent, culling, and the variance census.
+// It follows the file's own idiom for open-ended structure rather than inventing one:
+//   a CAP, because an unbounded bank is not open-endedness, it is a leak (MAX_USER_ATOMS, #54);
+//   RENT per defined slot, so carrying a gene costs instruction-equivalents (UA_OP_RENT, #180) --
+//     a gene nothing reads is a gene the lineage is paying for, which is what makes it condemnable;
+//   a USES counter and CULL, so the cap is not simply first-come (atom.cull, #177);
+//   and a READ opcode, because #217o is the whole lesson of the day before this one: a gene nothing
+//     reads is decoration, and a mechanism can be fully live while the gene behind it is absent.
+// The anti-goal this project states is "do not keep adding more fixed sensing opcodes or more fixed
+// grammar expansions". Two opcodes are added here and the tension is real, so it is named: these
+// are not sensors of anything fixed. GENE_AUTHOR creates a genome slot that no one designed and
+// GENE_READ is how its owner reads it. They are the mechanism by which the fixed part stops
+// growing -- the last two hand-written opcodes this frontier should ever need.
+const MAX_NOVEL_GENES=24;           // #218a: ceiling on lineage-authored genes. 24 against 272 declared
+let NOVEL_GENE_RENT=0.2;            // #218a: instruction-equivalents per DEFINED slot per interaction.
+                                    // Hand-set like UA_OP_RENT and named as a guess for the same reason.
 const MAX_USER_ATOMS=512;           // 2.7x the bindable slots, so binding is never starved, while
                                     // 512 x the 160-char sanitise cap keeps the save an order of
                                     // magnitude under the 500,000 it must not cross.
@@ -9325,6 +9357,11 @@ let genome={
   tendDims: 5,
   rend: null,
   boundOpcodes: [],
+  // #218a: the lineage-authored gene bank. Declared here, in the literal, for the reason the whole
+  // of #217l-#217v is about: a genome field declared nowhere is invisible to every list that checks.
+  // Each entry is {n:name, v:value, u:uses, a:age}. Empty at boot -- a lineage that authors nothing
+  // carries nothing and pays no rent, which is the pre-#218a behaviour exactly.
+  novelGenes:[],
   // === #217v: THE NINE THE GERMLINE CARRIED AND NO PARTICLE HAD ===
   // #217j measured the germline holding 15 keys that no living particle held (277 against 262). The
   // structural question finds them without a probe: which names are ASSIGNED to genome.X anywhere in
@@ -10211,6 +10248,14 @@ function cloneGenome(src){
      wx:(typeof r.wx==='string'&&r.wx)?r.wx:null, wy:(typeof r.wy==='string'&&r.wy)?r.wy:null}:null):src.channels;   // #198: the warp is heritable; the compiled holders are not and are dropped here on purpose   // #195: the element's infectiousness is heritable down the line as well as sideways   // #194: the grain crosses with the chemistry - a child whose medium is a different SIZE has a different medium
   g.probes=Array.isArray(src.probes)?src.probes.map(pr=>pr?{expression:pr.expression,compiled:null,
     failed:!!pr.failed,n:pr.n|0,hit:pr.hit|0,pending:finiteOr(pr.pending,0),pendTick:-1,pendFit:0,age:pr.age|0}:null):src.probes;
+  // #218a: DEEP-COPIED, and this is the eighth instance of the bug this file keeps re-learning
+  // (#102, #130, #132b, #133b, #155's opStacks, #180's operator bank, #189's channel stencil,
+  // #193's emission stencil). A shallow copy would give the whole population ONE authored-gene bank
+  // and no lineage could ever diverge its own invented coordinates -- which is the entire mechanism.
+  // uses RESETS and age RESETS, as they do for atoms and verbs: a child re-earns its gene's keep, so
+  // an inherited gene that the child never reads is culled out of the child rather than protected by
+  // its parent's record.
+  g.novelGenes=Array.isArray(src.novelGenes)?src.novelGenes.map(e=>e?{n:String(e.n||''),v:finiteOr(e.v,0),u:0,a:0}:null).filter(Boolean):[];
   g.oeeW=Array.isArray(src.oeeW)?src.oeeW.slice():src.oeeW;
   g.uaProdW=Array.isArray(src.uaProdW)?src.uaProdW.slice():src.uaProdW;
   g.uaVarW=Array.isArray(src.uaVarW)?src.uaVarW.slice():src.uaVarW;
@@ -10521,6 +10566,21 @@ function mutateChildGenome(g){
       if(_n!==_o){ g.regCount=_n; fired('vm.regStep'); }
     }
     g.regCount=__cl(Math.round(finiteOr(g.regCount,VM_REGS_DEFAULT)),2,VM_REGS_MAX);
+  }
+  // #218a: the authored genes drift and age. Without this they are inherited CONSTANTS and the whole
+  // bank is a naming ceremony -- a lineage could invent a coordinate and never move along it. Same
+  // relative-step operator as every other scalar gene, so an invented gene is mutated by exactly the
+  // machinery the declared ones are, which is what "the genome's dimension is evolvable" has to mean.
+  if(Array.isArray(g.novelGenes)){
+    for(const _e of g.novelGenes){
+      if(!_e)continue;
+      _e.a=(_e.a|0)+1;
+      if(Math.random()<rate){
+        const _nv=finiteOr(_e.v,0)+(Math.random()-0.5)*(Math.abs(finiteOr(_e.v,0))*0.12+0.02)*scale;
+        if(isFinite(_nv)){ _e.v=_nv; fired('gene.drift'); }
+      }
+    }
+    while(g.novelGenes.length>MAX_NOVEL_GENES)g.novelGenes.pop();
   }
   // #217y: one generic +/-1 stepper for the eight integer genes above, rather than eight bespoke
   // blocks. Each keeps its own bounds from childIntBounds, and a step only counts when it lands on a
@@ -13169,6 +13229,13 @@ function sanitizeGenome(){
   genome.chemistryMutRate=finiteOr(genome.chemistryMutRate,0.02);
   FIELD_DECAY=__cl(genome.fieldDecay,0.5,1.0);
   FIELD_DIFFUSE=__cl(genome.fieldDiffuse,0,0.24);
+  // #218a: validate the authored bank. Structure only -- the VALUES are the lineage's business and
+  // are deliberately not clamped, which is #148's STANDING position on maybe() applied consistently:
+  // the range is the system's to find. What is enforced is the CAP and the shape.
+  if(!Array.isArray(genome.novelGenes))genome.novelGenes=[];
+  genome.novelGenes=genome.novelGenes.filter(e=>e&&typeof e==='object')
+    .map(e=>({n:String(e.n||'g?'),v:finiteOr(e.v,0),u:e.u|0,a:e.a|0}))
+    .slice(0,MAX_NOVEL_GENES);
   genome.cellExecThresh=finiteOr(genome.cellExecThresh,0.05);      // #217h
   genome.cellProgDecay=finiteOr(genome.cellProgDecay,0.998);       // #217h
   genome.inscribeStrength=finiteOr(genome.inscribeStrength,0.4);   // #217h
@@ -16505,6 +16572,8 @@ function profileVM(){
         // #132 EFFECT_EMIT — the profiler has no world to write, so the drive accumulates and nothing
         // applies it, exactly as the other stubs here do. Parity without side effects.
         case 236:{const _fxn=(genome.userEffects&&genome.userEffects.length)?Math.min(genome.userEffects.length,MAX_USER_EFFECTS):MAX_USER_EFFECTS;const _ei=Math.abs(dst)%_fxn;vmActions[EFFECT_SLOT0+_ei]+=vmRegs[si]*k;}break; // EFFECT_EMIT — #133b: index the bank that EXISTS; %MAX_USER_EFFECTS sent half of all emits to empty slots profiler stub
+        case 237:break;                 // #218a GENE_AUTHOR → skip: the profiler must not mutate genome SHAPE
+        case 238:vmRegs[di]=0;break;    // #218a GENE_READ → neutral stub, same idiom as case 22 USER_ATOM
       }
       if(op>=CORE_OPCODES&&op<CORE_OPCODES+MAX_BOUND_OPCODES){
         const _bos=genome.boundOpcodes;
@@ -17626,6 +17695,39 @@ let __fitMean=0, __fitDev=0;   // #217t: EMA of fitness and of its absolute devi
 let __chemTrial=null;
 function chemVerdictOn(){ return (typeof globalThis==='undefined')||((globalThis.__CHEM_VERDICT??1)|0)!==0; }
 function chemTableCopy(t){ return Array.isArray(t)?t.map(r=>Array.isArray(r)?r.map(m=>Array.isArray(m)?m.slice():m):r):t; }
+// #218a: the novel-gene bank's accessors. genome here is the REPOINTED pGenome[i] inside the VMs, so
+// an authored gene belongs to the lineage that authored it -- which is the point. The germline self
+// authors its own separately and they do not mix, exactly as userAtoms do not.
+function novelBank(){ const b=genome&&genome.novelGenes; return Array.isArray(b)?b:null; }
+function novelRead(slot){
+  const b=novelBank(); if(!b||!b.length)return 0;
+  const e=b[((slot%b.length)+b.length)%b.length];
+  if(!e)return 0;
+  e.u=(e.u|0)+1;                      // a read is what makes the gene worth its rent — see novelCull
+  return finiteOr(e.v,0);
+}
+function novelAuthor(v){
+  const b=novelBank(); if(!b)return 0;
+  if(b.length>=MAX_NOVEL_GENES){ if(!novelCull(b))return 0; }
+  // The NAME is generated, not chosen, and that is deliberate: a name a lineage could pick would be
+  // a string it has no way to mean anything by. What matters is that the slot is ITS slot, heritable
+  // and distinguishable, so the name only has to be unique and stable across inheritance.
+  const n='g'+(genome.generation|0).toString(36)+b.length.toString(36);
+  b.push({n:n, v:finiteOr(v,0), u:0, a:0});
+  fired('gene.author');
+  return b.length;
+}
+function novelCull(b){
+  // Lowest uses-per-age loses, so the cap is not first-come. A gene that is read often survives a
+  // gene that was authored earlier, which is what makes the bank a competition rather than a queue.
+  if(!b||!b.length)return false;
+  let worst=-1, worstScore=Infinity;
+  for(let i=0;i<b.length;i++){ const e=b[i]; if(!e)continue;
+    const sc=(e.u|0)/Math.max(1,(e.a|0));
+    if(sc<worstScore){ worstScore=sc; worst=i; } }
+  if(worst<0)return false;
+  b.splice(worst,1); fired('gene.cull'); return true;
+}
 function inscStr(){ return __cl(finiteOr(genome.inscribeStrength,0.4),0.01,2); }
 function inscOver(){ return __cl(finiteOr(genome.inscribeOverwrite,0.75),0.05,3); }
 let __chemSeedTable=null;
@@ -23499,6 +23601,13 @@ function executeVM(i,j,sim,d){
         // #132 EFFECT_EMIT — drive an AUTHORED VERB. Same shape as case 4 (the built-in actuator emit);
         // the difference is that what happens at the other end is evolved, not written here.
         case 236:{const _fxn=(genome.userEffects&&genome.userEffects.length)?Math.min(genome.userEffects.length,MAX_USER_EFFECTS):MAX_USER_EFFECTS;const _ei=Math.abs(dst)%_fxn;vmActions[EFFECT_SLOT0+_ei]+=vmRegs[si]*k;}break; // EFFECT_EMIT — #133b: index the bank that EXISTS; %MAX_USER_EFFECTS sent half of all emits to empty slots
+      case 237:{ // #218a GENE_AUTHOR — the genome grows a coordinate it did not have. Costs
+                 // localRes, priced like PROG_GROW: authoring structure is not free.
+        if(localRes[i]>0.25){ const _ng=novelAuthor(vmRegs[si]*k); if(_ng){ localRes[i]-=0.25; vmRegs[di]=_ng; } else vmRegs[di]=0; }
+        else vmRegs[di]=0; }break;
+      case 238:{ // #218a GENE_READ — the lineage reads its own invented quantity. Without this the
+                 // bank would be #217o's failure by construction: a gene nothing reads is decoration.
+        vmRegs[di]=novelRead(Math.abs(Math.floor(vmRegs[si])))*k; fired('gene.read'); }break;
       case 231:{const _cqcid231=clusterID[i];if(_cqcid231>=0){const _cqbit231=1<<(Math.round(Math.abs(vmRegs[si]))&7);let _cqtot231=0,_cqset231=0;for(let _cqn231=0;_cqn231<N;_cqn231++){if(clusterID[_cqn231]===_cqcid231){_cqtot231++;if(pEpigen[_cqn231]&_cqbit231)_cqset231++;}}vmRegs[di]=_cqtot231>0?(_cqset231/_cqtot231)*k:0;}else{vmRegs[di]=0;}}break; // CLUSTER_QUORUM — fraction of own cluster members with epigenetic bit (vmRegs[si]&7) set; O(N) scan; solitary returns 0. Enables quorum sensing; epigenetic voting; collective gene-expression switching; democratic phase coordination.
     }
     // === #199 - SELFWRITE. Handled here rather than as a switch case because 429 sits ABOVE the
@@ -24650,6 +24759,13 @@ function executeVM(i,j,sim,d){
         // #132 EFFECT_EMIT — drive an AUTHORED VERB. Same shape as case 4 (the built-in actuator emit);
         // the difference is that what happens at the other end is evolved, not written here.
         case 236:{const _fxn=(genome.userEffects&&genome.userEffects.length)?Math.min(genome.userEffects.length,MAX_USER_EFFECTS):MAX_USER_EFFECTS;const _ei=Math.abs(dst)%_fxn;vmActions[EFFECT_SLOT0+_ei]+=vmRegs[si]*k;}break; // EFFECT_EMIT — #133b: index the bank that EXISTS; %MAX_USER_EFFECTS sent half of all emits to empty slots
+      case 237:{ // #218a GENE_AUTHOR — the genome grows a coordinate it did not have. Costs
+                 // localRes, priced like PROG_GROW: authoring structure is not free.
+        if(localRes[i]>0.25){ const _ng=novelAuthor(vmRegs[si]*k); if(_ng){ localRes[i]-=0.25; vmRegs[di]=_ng; } else vmRegs[di]=0; }
+        else vmRegs[di]=0; }break;
+      case 238:{ // #218a GENE_READ — the lineage reads its own invented quantity. Without this the
+                 // bank would be #217o's failure by construction: a gene nothing reads is decoration.
+        vmRegs[di]=novelRead(Math.abs(Math.floor(vmRegs[si])))*k; fired('gene.read'); }break;
       }
       // #199 - full parity, the same reason every op here has a twin
       if(op===OP_SELFWRITE){ vmRegs[di]=vmSelfWrite(i,prog,nInst,vmRegs[si],vmRegs[(si+1)%__vmRC],k)*(k||1); }
@@ -26086,6 +26202,13 @@ function executeClusterVM(i,j,sim,d){
         // #132 EFFECT_EMIT — drive an AUTHORED VERB. Same shape as case 4 (the built-in actuator emit);
         // the difference is that what happens at the other end is evolved, not written here.
         case 236:{const _fxn=(genome.userEffects&&genome.userEffects.length)?Math.min(genome.userEffects.length,MAX_USER_EFFECTS):MAX_USER_EFFECTS;const _ei=Math.abs(dst)%_fxn;vmActions[EFFECT_SLOT0+_ei]+=vmRegs[si]*k;}break; // EFFECT_EMIT — #133b: index the bank that EXISTS; %MAX_USER_EFFECTS sent half of all emits to empty slots
+      case 237:{ // #218a GENE_AUTHOR — the genome grows a coordinate it did not have. Costs
+                 // localRes, priced like PROG_GROW: authoring structure is not free.
+        if(localRes[i]>0.25){ const _ng=novelAuthor(vmRegs[si]*k); if(_ng){ localRes[i]-=0.25; vmRegs[di]=_ng; } else vmRegs[di]=0; }
+        else vmRegs[di]=0; }break;
+      case 238:{ // #218a GENE_READ — the lineage reads its own invented quantity. Without this the
+                 // bank would be #217o's failure by construction: a gene nothing reads is decoration.
+        vmRegs[di]=novelRead(Math.abs(Math.floor(vmRegs[si])))*k; fired('gene.read'); }break;
     }
     if(op>=CORE_OPCODES&&op<CORE_OPCODES+MAX_BOUND_OPCODES){
       const _bos=genome.boundOpcodes;
@@ -26813,6 +26936,13 @@ function executeSoloVM(){
         // #132 EFFECT_EMIT — drive an AUTHORED VERB. Same shape as case 4 (the built-in actuator emit);
         // the difference is that what happens at the other end is evolved, not written here.
         case 236:{const _fxn=(genome.userEffects&&genome.userEffects.length)?Math.min(genome.userEffects.length,MAX_USER_EFFECTS):MAX_USER_EFFECTS;const _ei=Math.abs(dst)%_fxn;vmActions[EFFECT_SLOT0+_ei]+=vmRegs[si]*k;}break; // EFFECT_EMIT — #133b: index the bank that EXISTS; %MAX_USER_EFFECTS sent half of all emits to empty slots
+      case 237:{ // #218a GENE_AUTHOR — the genome grows a coordinate it did not have. Costs
+                 // localRes, priced like PROG_GROW: authoring structure is not free.
+        if(localRes[i]>0.25){ const _ng=novelAuthor(vmRegs[si]*k); if(_ng){ localRes[i]-=0.25; vmRegs[di]=_ng; } else vmRegs[di]=0; }
+        else vmRegs[di]=0; }break;
+      case 238:{ // #218a GENE_READ — the lineage reads its own invented quantity. Without this the
+                 // bank would be #217o's failure by construction: a gene nothing reads is decoration.
+        vmRegs[di]=novelRead(Math.abs(Math.floor(vmRegs[si])))*k; fired('gene.read'); }break;
       }
       // #199 - the SOLO path too. A particle that can only revise itself when it happens to have a
       // partner is an arbitrary restriction: executeSoloVM is where an isolated particle runs its
