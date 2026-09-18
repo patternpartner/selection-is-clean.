@@ -10665,25 +10665,25 @@ function mutateChildGenome(g){
         // guard restated: an aim seeded at the current reading costs nothing at birth and pays
         // nothing, so what selection sees afterwards is whether MOVING it was worth it. Seeding at
         // random would make most aims instantly unreachable and the tax would just be noise.
-        const _k=(Math.random()*AIM_SENSES.length)|0;
+        const _k=(Math.random()*aimSenseCount())|0;   // #218i: the whole space, memory included
         g.aim={sense:_k, target:0, weight:__cl(Math.random()*0.15,0,AIM_WEIGHT_MAX), born:(genome.generation|0)};
         fired('aim.author');
       }
     } else {
       const _a=g.aim;
-      if(Math.random()<rate){ const _sp=AIM_SENSES[((_a.sense|0)%AIM_SENSES.length+AIM_SENSES.length)%AIM_SENSES.length].span;
+      if(Math.random()<rate){ const _sp=aimSpan(_a.sense|0);
         const _nt=finiteOr(_a.target,0)+(Math.random()-0.5)*_sp*0.08*scale;
         if(isFinite(_nt)){ _a.target=_nt; fired('aim.drift'); } }
       if(Math.random()<rate){ const _nw=__cl(finiteOr(_a.weight,0)+(Math.random()-0.5)*0.06*scale,0,AIM_WEIGHT_MAX);
         if(isFinite(_nw)) _a.weight=_nw; }
-      if(Math.random()<rate*0.1){ const _ns=(Math.random()*AIM_SENSES.length)|0; if(_ns!==(_a.sense|0)){ _a.sense=_ns; fired('aim.reaim'); } }
+      if(Math.random()<rate*0.1){ const _ns=(Math.random()*aimSenseCount())|0; if(_ns!==(_a.sense|0)){ _a.sense=_ns; fired('aim.reaim'); } }
       // #218d: abandonment now RE-AIMS instead of clearing. A lineage with no aim is a lineage back
       // on the shared gradient, and letting that be the cheap escape route means the population
       // drains back to one hill -- which is exactly what #218c would have measured as "aims were
       // authored and abandoned". Giving up on a purpose here means taking a different one, seeded at
       // where the lineage actually is so the switch is free and only HOLDING it costs.
       if(finiteOr(_a.weight,0)<=0.001&&Math.random()<rate){
-        _a.sense=(Math.random()*AIM_SENSES.length)|0;
+        _a.sense=(Math.random()*aimSenseCount())|0;
         _a.target=0; _a.weight=__cl(0.1+Math.random()*0.3,0,AIM_WEIGHT_MAX);
         _a.born=(genome.generation|0);
         fired('aim.abandon');
@@ -17901,24 +17901,63 @@ function aimSatisfaction(){
     if(!palive[i])continue;
     const g=pGenome[i], a=g&&g.aim;
     if(!a)continue;
-    const e=AIM_SENSES[((a.sense|0)%AIM_SENSES.length+AIM_SENSES.length)%AIM_SENSES.length];
-    if(!e)continue;
-    const v=e.get(i);
-    if(typeof v!=='number'||!isFinite(v))continue;
+    const v=aimSense(a.sense|0,i);          // #218i: six named senses or eight memory slots
+    if(v===null)continue;
+    const sp=aimSpan(a.sense|0);
     let t=finiteOr(a.target,0);
     if(Array.isArray(g.novelGenes)&&g.novelGenes.length){
       const nv=g.novelGenes[0];
-      if(nv)t+=__cl(finiteOr(nv.v,0),-1,1)*(e.span||1)*0.5;   // #218f's offset, read without the repoint
+      if(nv)t+=__cl(finiteOr(nv.v,0),-1,1)*sp*0.5;   // #218f's offset, read without the repoint
     }
-    sum+=Math.max(0,1-Math.abs(v-t)/(e.span||1)); n++;
+    sum+=Math.max(0,1-Math.abs(v-t)/(sp||1)); n++;
   }
   return n>0?sum/n:0;
 }
+// #218i: WHAT A LINEAGE SENSES STOPS BEING MY MENU. AIM_SENSES is six quantities I chose, so #218d
+// gave every lineage a purpose and still handed it a six-item catalogue to have a purpose ABOUT --
+// which is the same fixedness one level up, and exactly the shape of the anti-goal this project
+// states ("do not keep adding more fixed sensing opcodes").
+// Beyond index 5 the sense indexes the particle's OWN MEMORY: pMem, eight slots per particle,
+// described in its own declaration as "counters, timers, accumulators -- particles become stateful
+// agents", written by executed instructions during a lifetime and inherited at MEM_INHERIT.
+// So a lineage aims at a value ITS OWN EVOLVED PROGRAM computes and stores. The content of that
+// value is unbounded and authored, no new sensing opcode exists, and the menu is gone: what can be
+// wanted is now as large as what can be computed.
+// WHY THIS IS NOT THE WIREHEAD IT LOOKS LIKE. A stored value a lineage writes sounds like the exact
+// path #184 warns about -- write the number, want the number, collect. Three things stop it. The
+// value is not in the genome, it is in per-particle memory that costs INSTRUCTIONS to write, and
+// instructions are billed. It is recomputed by living, not carried: a program that writes a constant
+// has spent program length on it and still has to survive everything else with what remains. And the
+// aim term is proximity to a TARGET, which drifts independently -- a lineage that pins its memory
+// slot must also keep its target where the slot is, and the target is mutating.
+// AND ONE SLOT IS NOT THE LINEAGE'S, which I checked rather than assumed: pMem slot 7 is written by
+// the ENGINE as Math.min(5, page[i]/250) -- age folded into memory, per the Pe55 comment. So a
+// lineage that aims at slot 7 is aiming at its own age on a different scale, not at anything it
+// computes. That is not a defect and it is not removed: it means the memory space a lineage can want
+// something about contains seven slots it authors and one the world writes, which is a more
+// interesting space than eight of either. Named here because "the lineage's own program writes it" is
+// true of 7 of 8 and I would rather state the exception than let the sentence stand as uniform.
+// The span is a guess, named as one: memory slots are unbounded accumulators, so a fixed span of 2
+// means the proximity term saturates on a slot that grows large. That is a real limitation and the
+// honest alternative -- a per-slot running scale -- is more machinery than this first cut earns.
+const AIM_MEM_SPAN=2;
+function aimSenseCount(){ return AIM_SENSES.length+MEM_SIZE; }
 function aimSense(k,i){
-  const e=AIM_SENSES[((k%AIM_SENSES.length)+AIM_SENSES.length)%AIM_SENSES.length];
+  const n=aimSenseCount();
+  const kk=((k%n)+n)%n;
+  if(kk>=AIM_SENSES.length){
+    const v=pMem[i*MEM_SIZE+((kk-AIM_SENSES.length)%MEM_SIZE)];
+    return (typeof v==='number'&&isFinite(v))?v:null;
+  }
+  const e=AIM_SENSES[kk];
   if(!e)return null;
   const v=e.get(i);
   return (typeof v==='number'&&isFinite(v))?v:null;
+}
+function aimSpan(k){
+  const n=aimSenseCount();
+  const kk=((k%n)+n)%n;
+  return kk>=AIM_SENSES.length?AIM_MEM_SPAN:(AIM_SENSES[kk].span||1);
 }
 const MUTMAG_LO=0.02, MUTMAG_HI=25, MUTMAG_MAX=48;   // #218b: bounds, and a cap on how many opinions one lineage holds
 function mutMagOn(){ return (typeof globalThis==='undefined')||((globalThis.__MUTMAG??1)|0)!==0; }
@@ -28567,7 +28606,7 @@ function applyNicheEconomy(){ fired('niche.economy');
         if(_w<=0)continue;
         const _sv=aimSense(_a.sense|0,i);
         if(_sv===null)continue;
-        const _sp=AIM_SENSES[((_a.sense|0)%AIM_SENSES.length+AIM_SENSES.length)%AIM_SENSES.length].span;
+        const _sp=aimSpan(_a.sense|0);   // #218i: may be a memory slot, not one of the six
         // #218f: the target is OFFSET by the lineage's own first authored coordinate. This is what
         // closes #218a's loop in the only place that matters -- an invented gene now moves what the
         // lineage is trying to achieve, so the coordinate is not a number in a bank, it is a term in
