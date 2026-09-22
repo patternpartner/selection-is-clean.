@@ -26,9 +26,10 @@ const DRIVER=[
 '  var pb=function(p){ for(var k=0;k<PB.length-1;k++) if(p<PB[k+1]) return k; return PB.length-2; };',
 '  var expA=new Float64Array(8), birA=new Float64Array(8), dieA=new Float64Array(8);',
 '  var expP=new Float64Array(5), birP=new Float64Array(5), dieP=new Float64Array(5);',
+'  var expI=new Float64Array(10), birI=new Float64Array(10), ib=function(i){ return Math.min(9,Math.floor(10*i/Math.max(1,N))); };',
 '  var on=false, err=null, wasAlive=new Uint8Array(CAP), lastA=new Float64Array(CAP), lastP=new Float64Array(CAP);',
 '  var credit=function(pa){ if(!on||pa===undefined||pa===null||pa<0||pa>=N||!palive[pa]) return;',
-'    birA[ab(amp[pa])]++; birP[pb(pProvision[pa]||0)]++; };',
+'    birA[ab(amp[pa])]++; birP[pb(pProvision[pa]||0)]++; birI[ib(pa)]++; };',
 '  var _ap=addParticle, _ac=addCompound;',
 '  addParticle=function(x,y,tv,born,pA,pB){ var r=_ap.apply(this,arguments); if(r>=0){ credit(pA); credit(pB); } return r; };',
 '  addCompound=function(x,y,nt,a,b,c,d,e,pA,pB){ var r=_ac.apply(this,arguments); if(r>=0){ credit(pA); credit(pB); } return r; };',
@@ -37,11 +38,11 @@ const DRIVER=[
 '    try{ loop(); }catch(e){ if(!err) err=String(e&&e.message||e); }',
 '    if(!on) continue;',
 '    for(var i=0;i<N;i++){',
-'      if(palive[i]){ expA[ab(amp[i])]++; expP[pb(pProvision[i]||0)]++; lastA[i]=amp[i]; lastP[i]=pProvision[i]||0; wasAlive[i]=1; }',
+'      if(palive[i]){ expI[ib(i)]++; expA[ab(amp[i])]++; expP[pb(pProvision[i]||0)]++; lastA[i]=amp[i]; lastP[i]=pProvision[i]||0; wasAlive[i]=1; }',
 '      else if(wasAlive[i]){ dieA[ab(lastA[i])]++; dieP[pb(lastP[i])]++; wasAlive[i]=0; }',
 '    }',
 '  }',
-'  return {AB:AB,PB:PB,expA:Array.from(expA),birA:Array.from(birA),dieA:Array.from(dieA),expP:Array.from(expP),birP:Array.from(birP),dieP:Array.from(dieP),err:err};',
+'  return {AB:AB,PB:PB,expA:Array.from(expA),birA:Array.from(birA),dieA:Array.from(dieA),expP:Array.from(expP),birP:Array.from(birP),dieP:Array.from(dieP),expI:Array.from(expI),birI:Array.from(birI),err:err};',
 '};'
 ].join('\n');
 const Module=require('module');
@@ -58,4 +59,6 @@ console.log(' provision band');
 for(let k=0;k<r.expP.length;k++){ if(!r.expP[k])continue;
   const lo=r.PB[k], hi=r.PB[k+1]>1e8?'':r.PB[k+1];
   console.log('  '+(lo+'-'+hi).padEnd(13)+(100*r.expP[k]/tot).toFixed(1).padStart(6)+'%'+(1000*r.birP[k]/r.expP[k]).toFixed(3).padStart(14)+(1000*r.dieP[k]/r.expP[k]).toFixed(3).padStart(20)); }
+console.log(' array-index decile (0 = lowest index; the birth loop runs i=0..N)');
+for(let k=0;k<10;k++){ if(!r.expI[k])continue; console.log('  '+String(k).padEnd(13)+(100*r.expI[k]/tot).toFixed(1).padStart(6)+'%'+(1000*r.birI[k]/r.expI[k]).toFixed(3).padStart(14)); }
 if(process.env.JSON) fs.writeFileSync(process.env.JSON,JSON.stringify(r));
