@@ -4361,6 +4361,32 @@ let retentionScore=0;
 // birth is paid from ONE pool, one limiting resource, one winner -- and every rarity and frequency term in
 // the file acts on amp, which does not decide who gets that pool. Shipping this alone would make every
 // universe a monoculture faster. It is the right allocation once reproduction has more than one resource.
+// NICHE_POOL (knob, default off until measured). RATION's result is the reason: every birth is paid
+// from ONE pool, so there is one limiting resource and, by competitive exclusion, one winner -- and
+// fair allocation made that winner sweep every seed. This partitions worldEnergy into one pool per diet
+// channel (nicheDietBin, NICHE_BINS=16, tend axis 0): sunlight splits evenly, each particle's upkeep is
+// drawn from its own channel, a birth is paid from the PARENT's channel, and a death returns to the
+// dying particle's. An empty channel accumulates what nobody eats, so moving into it pays in offspring --
+// rarity advantage arising from the resource rather than from a bonus term. worldEnergy stays the SUM,
+// so every reader of it is unchanged; npSync rescales the partition if anything outside it (a save
+// restore, a rig) sets worldEnergy directly.
+function npOn(){ return (typeof globalThis!=='undefined')&&((globalThis.__NICHE_POOL??0)|0)!==0; }
+const __np=new Float64Array(16), __npAtt=new Float64Array(16), __npP=new Float64Array(16).fill(1), __npAdq=new Float64Array(16).fill(1);   // 16 = NICHE_BINS, which is declared later in the file
+let __npInit=false;
+function npCapB(){ return WORLD_ENERGY_MAX/NICHE_BINS; }
+function npSum(){ let t=0; for(let b=0;b<NICHE_BINS;b++)t+=__np[b]; return t; }
+function npSync(){
+  if(!__npInit){ for(let b=0;b<NICHE_BINS;b++)__np[b]=worldEnergy/NICHE_BINS; __npInit=true; return; }
+  const t=npSum();
+  if(Math.abs(t-worldEnergy)>1e-9){ if(t>1e-12){ const k=worldEnergy/t; for(let b=0;b<NICHE_BINS;b++)__np[b]*=k; } else for(let b=0;b<NICHE_BINS;b++)__np[b]=worldEnergy/NICHE_BINS; }
+}
+function npPay(pa){   // true = paid. Called only when npOn() and pa is a live index.
+  const b=nicheDietBin(pa);
+  if(rationOn()){ __npAtt[b]++; if(Math.random()>=__npP[b]){ fired('birth.refused'); fired('birth.rationed'); return false; } }
+  if(__np[b]<BIRTH_ENERGY_COST){ fired('birth.refused'); return false; }
+  __np[b]-=BIRTH_ENERGY_COST; worldEnergy-=BIRTH_ENERGY_COST; fired('birth.paid'); return true;
+}
+function npReturn(i,amt){ const b=nicheDietBin(i), room=Math.max(0,npCapB()-__np[b]), a=Math.min(room,amt); __np[b]+=a; worldEnergy+=a; }
 function rationOn(){ return (typeof globalThis!=='undefined')&&((globalThis.__RATION??0)|0)!==0; }
 let __rationP=1, __rationAtt=0;   // RATION -- see loop(): per-attempt pass probability, and attempts counted this tick
 // DEFAULT OFF, on measurement: 20k ticks, seeds 1-3, entropyRatio 0.08/0.76/0.77 without it,
@@ -21087,7 +21113,8 @@ function addParticle(x,y,tv,born,parentA,parentB){
   // world tries to do reproductively fails right here and no census row, no epoch log and no
   // liveness name said so - the single largest silent quantity in the file. BOTH gates are
   // instrumented, because addParticle and addCompound are both real reproduction.
-  if(parentA>=0){
+  if(parentA>=0&&npOn()&&parentA<N){ if(!npPay(parentA)) return-1; }   // NICHE_POOL -- see npOn
+  else if(parentA>=0){
     if(rationOn()){ __rationAtt++; if(Math.random()>=__rationP){ fired('birth.refused'); fired('birth.rationed'); return-1; } }   // RATION -- see loop()
     if(worldEnergy<BIRTH_ENERGY_COST){ fired('birth.refused'); return-1; }
     worldEnergy-=BIRTH_ENERGY_COST; fired('birth.paid');
@@ -21201,7 +21228,8 @@ function addCompound(x,y,nt,nvx,nvy,na,np,nf,parentA,parentB){
   // world tries to do reproductively fails right here and no census row, no epoch log and no
   // liveness name said so - the single largest silent quantity in the file. BOTH gates are
   // instrumented, because addParticle and addCompound are both real reproduction.
-  if(parentA>=0){
+  if(parentA>=0&&npOn()&&parentA<N){ if(!npPay(parentA)) return-1; }   // NICHE_POOL -- see npOn
+  else if(parentA>=0){
     if(rationOn()){ __rationAtt++; if(Math.random()>=__rationP){ fired('birth.refused'); fired('birth.rationed'); return-1; } }   // RATION -- see loop()
     if(worldEnergy<BIRTH_ENERGY_COST){ fired('birth.refused'); return-1; }
     worldEnergy-=BIRTH_ENERGY_COST; fired('birth.paid');
@@ -21425,7 +21453,7 @@ function applyEntropy(){
          if(_dead>0)amp[i]-=_dead*CARRY_COST_ATOM; }}
       amp[i]+=localRes[i]*genome.entropyK;
       {const _txi=__cl(Math.floor(px[i]/(W/FIELD_W)),0,FIELD_W-1),_tyi=__cl(Math.floor(py[i]/(H/FIELD_H)),0,FIELD_H-1),_tox=inhibitorField[_tyi*FIELD_W+_txi];if(_tox>0.05){const _dmg=_tox*Math.max(0,1-pResistance[i])*0.018/MODE_DEFENCE[pMode[i]];amp[i]-=_dmg;}pResistance[i]*=0.997;} // INHIBITOR DAMAGE + RESISTANCE DECAY: inhibitor deals up to 1.8% amp/tick at zero resistance; resistance decays 0.3%/tick — must be actively maintained via RESISTANCE_BOOST (op215)
-      if(energyAdequacy<1)amp[i]-=(1-energyAdequacy)*STARVE_DRAIN; // starvation: the world couldn't feed everyone this tick
+      { const _adq=npOn()?__npAdq[nicheDietBin(i)]:energyAdequacy; if(_adq<1)amp[i]-=(1-_adq)*STARVE_DRAIN; } // starvation: the world (NICHE_POOL: this particle's channel) couldn't feed everyone this tick
       if(isNaN(amp[i]))amp[i]=0;
       // ═══ LEAP 34 (#72) — ESCAPE IS FATAL. The first state in this system that can kill you. ═══
       // #71 measured what the substrate does with a particle that leaves the world: nothing. Position is
@@ -21478,6 +21506,7 @@ function applyEntropy(){
         palive[i]=0;
         {const _drx=__cl(Math.floor(px[i]/(W/FIELD_W)),0,FIELD_W-1),_dry=__cl(Math.floor(py[i]/(H/FIELD_H)),0,FIELD_H-1);rootField[_dry*FIELD_W+_drx]=Math.min(5,rootField[_dry*FIELD_W+_drx]+0.18);} // death deposits into substrate — the organism's body becomes soil, deepening the root network where life was
         {const _dtx=__cl(Math.floor(px[i]/(W/FIELD_W)),0,FIELD_W-1),_dty=__cl(Math.floor(py[i]/(H/FIELD_H)),0,FIELD_H-1);detritalField[_dty*FIELD_W+_dtx]=Math.min(3,detritalField[_dty*FIELD_W+_dtx]+Math.max(0,amp[i])*0.22+Math.max(0,localRes[i])*0.12);} // DETRITAL DEPOSIT: dead particle's biomass (amplitude + reserves) persists in place as a harvestable nutrient pool — decomposer lineages mining DETRITAL_HARVEST can build an entire metabolism on death; trophic cascade foundation
+        if(npOn()) npReturn(i,BIRTH_ENERGY_COST*DEATH_ENERGY_RETURN); else
         worldEnergy=Math.min(WORLD_ENERGY_MAX,worldEnergy+BIRTH_ENERGY_COST*DEATH_ENERGY_RETURN); // death returns resource to the world
       }
       // LEAP 3 — SURPLUS CONVERTS. Above AMP_SOFT the excess is not discarded, it is banked (lossily)
@@ -21517,6 +21546,7 @@ function applyEntropy(){
           palive[i]=0;
           {const _sx=__cl(Math.floor(px[i]/(W/FIELD_W)),0,FIELD_W-1),_sy=__cl(Math.floor(py[i]/(H/FIELD_H)),0,FIELD_H-1);
            detritalField[_sy*FIELD_W+_sx]=Math.min(3,detritalField[_sy*FIELD_W+_sx]+Math.max(0,amp[i])*0.25+pProvision[i]*0.15);}
+          if(npOn()) npReturn(i,BIRTH_ENERGY_COST*DEATH_ENERGY_RETURN); else
           worldEnergy=Math.min(WORLD_ENERGY_MAX,worldEnergy+BIRTH_ENERGY_COST*DEATH_ENERGY_RETURN);
         }
       }
@@ -28983,6 +29013,8 @@ function loop(){
   const _season=1+SEASON_AMPLITUDE*(
       (1-WORLD_SIGNAL_WEIGHT)*Math.sin(2*Math.PI*tick/SEASON_PERIOD)
     +  WORLD_SIGNAL_WEIGHT*_wsB); // feast/famine cycle, no longer solvable by learning one period
+  if(npOn()){ npSync(); const _cb=npCapB(), _r=WORLD_ENERGY_REGEN*_season/NICHE_BINS;
+    for(let b=0;b<NICHE_BINS;b++)__np[b]=Math.min(_cb,__np[b]+_r); worldEnergy=npSum(); } else   // NICHE_POOL: sunlight splits evenly across channels
   worldEnergy=Math.min(WORLD_ENERGY_MAX,worldEnergy+WORLD_ENERGY_REGEN*_season); // conserved-budget influx ("sunlight"), now seasonal
   // #135: upkeep is now charged PER PARTICLE and discounted by the attention on the ground it
   // stands on. With no pointer anywhere, attentionAt() is 0 everywhere and this sums to exactly
@@ -28993,6 +29025,12 @@ function loop(){
   // different factors and "go slow" would be a free win. With it, the same organism on a stretched
   // timeline is neutral by construction, and the only thing that makes rate a decision is that the
   // WORLD does not slow down too.
+  if(npOn()){ const _mb=new Float64Array(NICHE_BINS); let _md=0;   // NICHE_POOL: each particle's upkeep comes out of its own channel
+    for(let i=0;i<N;i++){ if(!palive[i])continue; const _u=attnUpkeep(i)/(__STIME?tickRateOf(pGenome[i]):1); _mb[nicheDietBin(i)]+=_u; _md+=_u; }
+    energyAdequacy=_md>0?Math.min(1,worldEnergy/_md):1;
+    for(let b=0;b<NICHE_BINS;b++){ __npAdq[b]=_mb[b]>0?Math.min(1,__np[b]/_mb[b]):1; __np[b]=Math.max(0,__np[b]-_mb[b]); } worldEnergy=npSum();   // adequacy per channel: a crowded channel starves its own
+    if(rationOn()) for(let b=0;b<NICHE_BINS;b++){ __npP[b]=Math.min(1,(__np[b]/BIRTH_ENERGY_COST)/Math.max(1,__npAtt[b])); __npAtt[b]=0; }
+  } else
   { let _md=0; for(let i=0;i<N;i++){ if(!palive[i])continue; _md+=attnUpkeep(i)/(__STIME?tickRateOf(pGenome[i]):1); }
     energyAdequacy=_md>0?Math.min(1,worldEnergy/_md):1; worldEnergy=Math.max(0,worldEnergy-_md); } // metabolism takes first claim; reproduction gets the surplus
   // RATION (knob, default OFF -- see rationOn). Measured before this line, three seeds: the pool ends 94-99% of ticks
