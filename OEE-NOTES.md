@@ -20773,3 +20773,26 @@ and are 98% met by a slot that does not move — the literal seeds every lineage
 `#218i`'s comment says slot 7 is the one memory slot the world writes; slot 6 is written too
 (`localRes*4`). Neither followed up: the birth ration explains why no amp term, aims included, can
 move the headline, which made them second-order.
+
+#### #219b — NICHE_POOL, first three seeds, and the rule for the default WRITTEN BEFORE seeds 4-6 ran
+
+Arm A = `NICHE_POOL=1 RATION=1 INHERIT=1`, 20k ticks:
+
+| | current engine | RATION alone | arm A |
+|---|---|---|---|
+| entropyRatio | 0.08 / 0.76 / 0.77 | 0.27 / 0.10 / 0.06 | 0.60 / 0.80 / 0.76 |
+| effective lineages late | 6.2 / 5.95 / 4.83 | 1.46 / 1.08 / 1.85 | 5.09 / 6.86 / 6.13 |
+| top lineage share | 30 / 26 / 32% | 82 / 96 / 63% | 32 / 26 / 28% |
+| established after warm-up | 10 / 4 / 8 | 0 / 1 / 0 | 2 / 12 / 5 |
+| population late | 360 / 330 / 339 | | 231 / 511 / 245 |
+
+Several limiting resources remove the sweep fair allocation causes, and diversity comes back to at
+least the current engine's level — now carried by resource partitioning instead of by array order. The
+mean gain (0.72 vs 0.54) is almost all the current engine's one catastrophic seed, which three seeds
+cannot separate from luck. Population swings more.
+
+**The rule, fixed before seeds 4-6 exist:** arm A becomes the default only if, across seeds 1-6 at 20k
+ticks, (a) mean entropyRatio is higher than the current engine's, (b) there are fewer runs below 0.3,
+and (c) mean late effective lineages is not lower. Otherwise it stays a knob. Written down first because
+the alternative is deciding what counts after seeing it, which is how #217i's near-miss number read as
+confirmation.
