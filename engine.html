@@ -4353,7 +4353,15 @@ let retentionScore=0;
 // parent in trait space founds its own lineage, registered as a CHILD of the parent's. Descent can fork.
 // INHERIT -- see addParticle. Particulate inheritance plus a per-birth mutation of SD INHERIT_SD per axis.
 // __INHERIT_SD (thousandths) overrides the SD for sweeps.
-function rationOn(){ return (typeof globalThis==='undefined')||((globalThis.__RATION??1)|0)!==0; }
+// DEFAULT OFF, on measurement -- and the measurement is the finding. 20k ticks, seeds 1-3, RATION=1 vs 0:
+// effective lineages late 1.46/1.08/1.85 vs 6.2/5.95/4.83, top lineage 82/96/63% vs 30/26/32%, entropyRatio
+// 0.27/0.10/0.06 vs 0.08/0.76/0.77. Allocating births fairly makes the highest-attempt lineage sweep every
+// seed. The loop-order artifact was PROTECTING diversity: it handed births out at random with respect to
+// genotype, which is drift, and drift was slowing the sweep. Underneath is competitive exclusion -- every
+// birth is paid from ONE pool, one limiting resource, one winner -- and every rarity and frequency term in
+// the file acts on amp, which does not decide who gets that pool. Shipping this alone would make every
+// universe a monoculture faster. It is the right allocation once reproduction has more than one resource.
+function rationOn(){ return (typeof globalThis!=='undefined')&&((globalThis.__RATION??0)|0)!==0; }
 let __rationP=1, __rationAtt=0;   // RATION -- see loop(): per-attempt pass probability, and attempts counted this tick
 // DEFAULT OFF, on measurement: 20k ticks, seeds 1-3, entropyRatio 0.08/0.76/0.77 without it,
 // 0.87/0.07/0.73 with it, 0.62/0.15/0.88 particulate-only (INHERIT_SD=0). No signal in any form: each arm
@@ -28987,7 +28995,7 @@ function loop(){
   // WORLD does not slow down too.
   { let _md=0; for(let i=0;i<N;i++){ if(!palive[i])continue; _md+=attnUpkeep(i)/(__STIME?tickRateOf(pGenome[i]):1); }
     energyAdequacy=_md>0?Math.min(1,worldEnergy/_md):1; worldEnergy=Math.max(0,worldEnergy-_md); } // metabolism takes first claim; reproduction gets the surplus
-  // RATION (knob, default on). Measured before this line, three seeds: the pool ends 94-99% of ticks
+  // RATION (knob, default OFF -- see rationOn). Measured before this line, three seeds: the pool ends 94-99% of ticks
   // dry, particles make 140-2000 birth attempts per 1k particle-ticks, 99-100% are refused, and the
   // few that are paid go to whoever the loop reaches first -- decile 0 of the ARRAY bred at 1-2 per 1k
   // particle-ticks and the middle 80% at 0.01-0.25. So who reproduced was decided by memory layout
