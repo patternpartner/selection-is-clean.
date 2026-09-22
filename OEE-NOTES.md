@@ -20686,3 +20686,90 @@ unfinished at 35 minutes largely because of it.
    ticks than at 900.
 4. `#218a`'s opcodes are still 2 of 429 — a bonus door nobody will find. The only piece of the chain
    that remains decoration, left deliberately rather than overlooked.
+
+### #219 — WHO ACTUALLY REPRODUCES. The birth ration was allocated by array order, and that was protecting diversity.
+
+**How this was chosen.** Not from this file. The previous entry's "what to attack first" list was the
+starting point and the user pointed out, correctly, that following it was following the notes. So the
+field was WATCHED (headless Chromium, 6k ticks): scattered and busy at boot, two clumps of one colour by
+6k, panel reading 1916 lineages ever and 15 alive, most of them 0 buds. The user's own field saves (18
+universes, 92k-290k ticks, two exports a day apart) say the same at the long horizon: in most, every
+clustered particle belongs to ONE cluster lineage (`lp` is cluster lineages, not particle lineages — the
+narrower claim), and 6 of 16 report selfModel diversity 0.
+
+**The headline, before anything changed.** `harness-oee`, 20k ticks, current engine:
+`entropyRatio 0.08 / 0.76 / 0.77` (seeds 1-3; seed 1 ends at 0.21 bits, ~3 kinds). `#11` reported
+`0.44 -> 0.69` and `collapsing: yes`. It is still collapsing, and one seed in three collapses almost
+completely. Every arm loses most of its kinds in the first ~2,000 ticks (22-26 -> 8-11) — the random
+founders being culled — and slides after.
+
+**Hypothesis 1, wrong: blending inheritance.** No birth path added random variation to `tend`:
+`interferenceCreate`/`addCompound` (the main channel) and both pair paths take the parents' midpoint, op16
+an offset the parent's program computes, op226 a copy. The only noise is `(rand-0.5)*0.001` a tick —
+about 0.01 a lifetime on a +-1.2 axis — against at least eight terms that pull tendencies together. That
+is Jenkin's objection to Darwin, and it looked like the whole story. `INHERIT` (particulate inheritance
+plus per-birth mutation) measured **0.87 / 0.07 / 0.73** against **0.08 / 0.76 / 0.77**, and
+particulate-only (`INHERIT_SD=0`) **0.62 / 0.15 / 0.88**. No signal: each arm has one catastrophic
+collapse, on a different seed. Default off; kept as a knob. The first cut patched `addParticle` only —
+329 calls in 600 ticks, zero with a parent. The main channel is `addCompound`. Testing the side I
+expected to be fine is what found it.
+
+**What amp buys: nothing.** `harness-fecundity` (new, draws nothing) wraps both birth functions and
+credits each parent at its state at the moment of birth. 8k ticks, three seeds: **91-96% of
+particle-ticks sit at the 1.2 soft line and 93-98% hold a provision bank of 3+ (cap 6)** — and that
+majority breeds LEAST, 0.36-0.47 births per 1k particle-ticks against 0.4-5 below it. Some of that is
+reverse causation (breeding spends amp and provision). It does not matter which: LEAP 3's bank is full
+for nearly everyone, so the surplus it was built to keep is discarded again one level down, and
+`amp` — which 76 sites in the engine add to — is not what decides who breeds.
+
+**What does: array position.** Births by array-index decile, three seeds:
+
+| decile | seed 1 | seed 2 | seed 3 |
+|---|---|---|---|
+| 0 | 2.11 | 1.14 | 1.00 |
+| 1-8 | 0.01-0.05 | 0.03-0.13 | 0.00-0.25 |
+| 9 | 1.88 | 2.88 | 1.61 |
+
+The middle 80% of the population has roughly 0.1 offspring per lifetime. The mechanism, measured by
+wrapping the gate: the pool ends **94-99% of ticks dry**, particles make **140-2000 attempts per 1k
+particle-ticks**, **99-100% are refused**, and the few paid go to the particles the loop reaches first
+(decile 0 refused 99.1-99.5%, every other decile 100.0%). Through compaction low index is also OLD
+index. So reproduction was allocated by memory layout and by being the oldest survivor.
+
+**Hypothesis 2, right about the artifact and wrong about what fixing it would do.** `RATION` makes
+every attempt pass with the same probability (births affordable now over last tick's attempts). It
+removes the artifact cleanly: decile 0 falls from 2.11/1.14/1.00 to 0.08/0.19/0.15, the middle rises
+10-30x, and what gradient remains rises smoothly toward the young, who attempt more. That is a
+property of the organism. And then, 20k ticks:
+
+| | RATION=0 | RATION=1 |
+|---|---|---|
+| effective lineages late | 6.2 / 5.95 / 4.83 | **1.46 / 1.08 / 1.85** |
+| top lineage share | 30 / 26 / 32% | **82 / 96 / 63%** |
+| entropyRatio | 0.08 / 0.76 / 0.77 | 0.27 / 0.10 / 0.06 |
+| lineages established after warm-up | 10 / 4 / 8 | 0 / 1 / 0 |
+
+**Fair allocation makes one lineage sweep every seed.** The artifact was protecting diversity: handing
+births out at random with respect to genotype is drift, and drift was slowing the sweep. Underneath is
+competitive exclusion — every birth is paid from ONE pool, so there is one limiting resource and one
+winner — and every rarity and frequency-dependent term in the file acts on `amp`, which does not decide
+who gets that pool. **This is the finding of the entry: the diversity this universe has shown was held
+up by an allocation artifact, not by any coexistence mechanism.** `RATION` default off; shipping it alone
+would make every universe a monoculture faster.
+
+It also caught a rig leak: `#203`'s billing rows call `addParticle` outside the loop, so a stale
+`__rationP` refused the dear birth on `FOUND=0` seed 1 (259/1) and passed on two other arms by one draw.
+The rows now hold the lottery open, and the lottery has its own row, tested on and off.
+
+**Hypothesis 3, in flight: more than one limiting resource.** `NICHE_POOL` partitions the pool by diet
+channel (16): sunlight split evenly, upkeep and starvation per channel, a birth paid from the parent's
+channel. An empty channel holds what nobody eats, so entering it pays in offspring. Default off until
+measured.
+
+**Also this session:** `AIM=0` was not a control — it gated aim mutation and the amp pull but not
+`#218h`'s fitness term, so the OFF arm still scored every world on the seed aims (fixed, `2654d38`).
+`harness-aims` (new) found at 300 ticks, seed 1, that half of all aims sit on memory slot 0 at target 0
+and are 98% met by a slot that does not move — the literal seeds every lineage with that aim. And
+`#218i`'s comment says slot 7 is the one memory slot the world writes; slot 6 is written too
+(`localRes*4`). Neither followed up: the birth ration explains why no amp term, aims included, can
+move the headline, which made them second-order.
