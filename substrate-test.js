@@ -597,13 +597,21 @@ m._compile(code+`
       palive[0]=true; palive[1]=true;
       px[0]=400; py[0]=400; px[1]=400+CELL*1.6; py[1]=400;
       amp[0]=1; amp[1]=1;
-      for(const q of [0,1]){ if(!pGenome[q])pGenome[q]={...genome}; pGenome[q].interactionRadius=reach; }
+      // #192 IS A SECOND GATE ON THIS SAME PAIR, and the row only ever controlled the first. A particle
+      // on an evolved tickRate > 1 is ABSENT on ticks that are not its beat, and this block runs ONE
+      // loop() -- so after 4000 ticks of evolution the pair could be out of phase and meet no one at any
+      // reach. Red at the default budget on seed 1 from b60704a (which only moved the trajectory), green
+      // at 40 and 900. The inherited rates are recorded so the failure mode stays visible, then pinned
+      // to 1: this row asks about REACH, and #192 has rows of its own.
+      for(const q of [0,1]){ if(!pGenome[q])pGenome[q]={...genome}; pGenome[q].interactionRadius=reach;
+        pGenome[q].tickRate=1; }
       genome.interactionRadius=55;
       pIntCount[0]=0; pIntCount[1]=0;
       const before=__reachBeyond;
       globalThis.__detMs+=5; try{loop();}catch(e){}
       return {beyond:__reachBeyond-before, ints:pIntCount[0]+pIntCount[1]};
     };
+    const svRate=[0,1].map(q=>pGenome[q]?pGenome[q].tickRate:undefined), svRateEff=[0,1].map(q=>tickRateOf(pGenome[q]));
     const short=setup(55), long=setup(120);
     // and the knob must restore BOTH broken behaviours: the germline read and the narrow sweep
     const sv=__REACH; __REACH=false;
@@ -621,8 +629,9 @@ m._compile(code+`
     // in CI for a reason nobody can reproduce.
     genome.interactionRadius=55;
     for(const q of [0,1]) if(pGenome[q])pGenome[q].interactionRadius=55;
+    for(const q of [0,1]) if(pGenome[q]){ if(svRate[q]===undefined) delete pGenome[q].tickRate; else pGenome[q].tickRate=svRate[q]; }   // and the rate this block pinned
     for(let k=0;k<N;k++){ palive[k]=svAlive[k]; amp[k]=svAmp[k]; px[k]=svX[k]; py[k]=svY[k]; }
-    return {short,long,offVal,onVal};
+    return {short,long,offVal,onVal,inheritedRates:svRateEff};
   });
 
   // -- #192  SUBJECTIVE TIME -------------------------------------------------------------------
@@ -2468,7 +2477,7 @@ ck('#191 a default-reach pair 1.6 cells apart is NOT found — as before',
 ck('#191 and a long-reach pair at the same distance IS',
    RL.long && RL.long.beyond>0 && RL.long.ints>0,
    'reach 120: '+(RL.long&&RL.long.beyond)+' pair(s) past one ring, '+(RL.long&&RL.long.ints)+
-   ' interactions — the gene working for the first time since it was written');
+   ' interactions (inherited tickRates '+(RL.inheritedRates||[]).join('/')+', pinned to 1) — the gene working for the first time since it was written');
 ck('#191 REACH_SWEEP=0 restores the germline read', RL.offVal===99,
    'off reads the self\'s 99; on reads the carrier\'s '+RL.onVal);
 ck('#191 and on reads the CARRIER', RL.onVal===20);
