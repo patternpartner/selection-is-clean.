@@ -20796,3 +20796,11 @@ ticks, (a) mean entropyRatio is higher than the current engine's, (b) there are 
 and (c) mean late effective lineages is not lower. Otherwise it stays a knob. Written down first because
 the alternative is deciding what counts after seeing it, which is how #217i's near-miss number read as
 confirmation.
+
+**Caveat recorded while seeds 4-6 run, before their numbers exist.** Per channel, sunlight is
+0.2/16 = 0.0125 a tick and upkeep 0.0004 a particle, so one diet channel carries about 31 particles
+with no births at all. A population of 300 is FORCED across at least ten channels on tend axis 0 — and
+harness-oee's kinds bin axes 0-2. Part of any entropyRatio gain under NICHE_POOL is therefore the
+metric reading the very axis the resource spreads out: partly mechanical, not evidence of
+open-endedness. Effective lineages and establishment are lineage-based and are the less circular
+numbers. The rule above stands as written; this is how its result should be read.
