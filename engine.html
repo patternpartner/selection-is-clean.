@@ -4351,6 +4351,17 @@ let retentionScore=0;
 // part of why cumKinds froze at 26 for 140k ticks: the only way to get a new lineage was to be handed
 // one by the world, and #51 just closed that tap. Now an offspring that has drifted far enough from its
 // parent in trait space founds its own lineage, registered as a CHILD of the parent's. Descent can fork.
+// INHERIT -- see addParticle. Particulate inheritance plus a per-birth mutation of SD INHERIT_SD per axis.
+// __INHERIT_SD (thousandths) overrides the SD for sweeps.
+function inheritOn(){ return (typeof globalThis==='undefined')||((globalThis.__INHERIT??1)|0)!==0; }
+const INHERIT_SD=(typeof globalThis!=='undefined'&&globalThis.__INHERIT_SD!==undefined)?(globalThis.__INHERIT_SD|0)/1000:0.04;
+function inheritMutate(i){
+  if(!inheritOn())return;
+  for(let d=0;d<DIMS;d++){
+    const _v=tend[i*DIMS+d]+(Math.random()+Math.random()+Math.random()-1.5)*2*INHERIT_SD;
+    tend[i*DIMS+d]=_v>TEND_HARD?TEND_HARD:_v<-TEND_HARD?-TEND_HARD:_v;
+  }
+}
 const SPECIATE_DIST=0.55;           // trait-space distance from parent that founds a new lineage
 // SPECIATE_MIN_AGE — RESTORED in #69 after being deleted in #63, and the round trip is the record.
 // #63 measured it blocking 0 of 137 attempts, never as the sole blocker, and deleting it came back
@@ -21070,6 +21081,17 @@ function addParticle(x,y,tv,born,parentA,parentB){
   px[i]=x;py[i]=y;
   vx[i]=(Math.random()-.5)*(born?2:.3);vy[i]=(Math.random()-.5)*(born?2:.3);
   for(let d=0;d<DIMS;d++){const _t=tv?tv[d]:0; tend[i*DIMS+d]=Number.isFinite(_t)?_t:0;} // chokepoint: a particle must never be born with a non-finite tendency (stale pre-growth source vectors can carry NaN)
+  // INHERIT (knob, default on): a parented birth MUTATES its tendency. Until this line no birth path
+  // added random variation to tend at all -- sexual births took the parents' exact midpoint, op16 an
+  // offset the parent's own program computed, op226 an exact copy -- and the only noise anywhere was
+  // (rand-0.5)*0.001 per tick, about 0.01 over a lifetime against a +-1.2 axis, while eight separate
+  // terms pull tendencies together. Blending with no mutation halves trait variance each generation
+  // (Jenkin's objection to Darwin), which is what the field's slide to one colour looks like.
+  // Sum of three uniforms, scaled so the per-dimension SD is INHERIT_SD. Clamped to TEND_HARD like
+  // the per-tick drift. INHERIT=0 draws nothing here and is byte-identical to before.
+  // BOTH birth functions call it: addCompound (interferenceCreate) is the main reproductive channel,
+  // and the first cut of this patched addParticle alone -- 329 calls in 600 ticks, none parented.
+  if(parentA>=0&&parentA<N) inheritMutate(i);
   phase[i]=Math.random()*Math.PI*2;freq[i]=0.02+Math.random()*0.04;
   amp[i]=born?0.5:0.3+Math.random()*0.5;
   palive[i]=1;page[i]=0;localRes[i]=0;collapse[i]=0;clusterID[i]=-1;
@@ -21130,7 +21152,7 @@ function addParticle(x,y,tv,born,parentA,parentB){
   // key with a real birthTick and a real parent.
   pLin[i]=(parentA>=0&&parentA<N)?pLin[parentA]:createLineage(0,'founder');
   if(parentA>=0&&parentA<N&&tv){
-    let _d2=0; for(let _sd=0;_sd<DIMS;_sd++){const _dv=(tv[_sd]||0)-tend[parentA*DIMS+_sd]; _d2+=_dv*_dv;}
+    let _d2=0; for(let _sd=0;_sd<DIMS;_sd++){const _dv=tend[i*DIMS+_sd]-tend[parentA*DIMS+_sd]; _d2+=_dv*_dv;}   // the born tendency, not tv: INHERIT's mutation must count
     if(_d2>SPECIATE_DIST*SPECIATE_DIST){
       try{
         const _pe=lineageRegistry.get(pLin[parentA]);
@@ -21171,6 +21193,7 @@ function addCompound(x,y,nt,nvx,nvy,na,np,nf,parentA,parentB){
   const i=N++;
   px[i]=x;py[i]=y;vx[i]=nvx;vy[i]=nvy;
   for(let d=0;d<DIMS;d++){const _t=nt[d]; tend[i*DIMS+d]=Number.isFinite(_t)?_t:0;} // chokepoint: never born with a non-finite tendency
+  if(parentA>=0&&parentA<N) inheritMutate(i);   // INHERIT -- see addParticle
   phase[i]=np;freq[i]=nf;amp[i]=na;
   palive[i]=1;page[i]=0;localRes[i]=0;collapse[i]=0;clusterID[i]=-1;
   // #57 — a lineage is BORN INTO a strategy and mostly keeps it, with a small chance of switching at
@@ -21226,7 +21249,7 @@ function addCompound(x,y,nt,nvx,nvy,na,np,nf,parentA,parentB){
   // key with a real birthTick and a real parent.
   pLin[i]=(parentA>=0&&parentA<N)?pLin[parentA]:createLineage(0,'founder');
   if(parentA>=0&&parentA<N&&nt){
-    let _d2=0; for(let _sd=0;_sd<DIMS;_sd++){const _dv=(nt[_sd]||0)-tend[parentA*DIMS+_sd]; _d2+=_dv*_dv;}
+    let _d2=0; for(let _sd=0;_sd<DIMS;_sd++){const _dv=tend[i*DIMS+_sd]-tend[parentA*DIMS+_sd]; _d2+=_dv*_dv;}   // the born tendency, not nt: INHERIT's mutation must count
     if(_d2>SPECIATE_DIST*SPECIATE_DIST){
       try{
         const _pe=lineageRegistry.get(pLin[parentA]);
@@ -25455,7 +25478,7 @@ function executeVM(i,j,sim,d){
     if(__SPEC.assort&&!specAssortAccept(i,j,sim)){ _specReject(i); } else { // pre-zygotic isolation: refuse to pair across a trait gap
     const cx=(px[i]+px[j])*0.5,cy=(py[i]+py[j])*0.5;
     const nt=new Float32Array(DIMS);
-    for(let dd=0;dd<DIMS;dd++)nt[dd]=(tend[i*DIMS+dd]+tend[j*DIMS+dd])*0.5;
+    for(let dd=0;dd<DIMS;dd++)nt[dd]=inheritOn()?(Math.random()<0.5?tend[i*DIMS+dd]:tend[j*DIMS+dd]):(tend[i*DIMS+dd]+tend[j*DIMS+dd])*0.5;   // INHERIT: each axis whole from one parent (particulate) instead of the midpoint (blending)
     addParticle(cx,cy,nt,false,i,j);
     amp[i]*=0.7;amp[j]*=0.7;
     birthsThisTick++;
@@ -26768,7 +26791,7 @@ function executeClusterVM(i,j,sim,d){
     if(__SPEC.assort&&!specAssortAccept(i,j,sim)){ _specReject(i); } else { // pre-zygotic isolation: refuse to pair across a trait gap
     const cx=(px[i]+px[j])*0.5,cy=(py[i]+py[j])*0.5;
     const nt=new Float32Array(DIMS);
-    for(let dd=0;dd<DIMS;dd++)nt[dd]=(tend[i*DIMS+dd]+tend[j*DIMS+dd])*0.5;
+    for(let dd=0;dd<DIMS;dd++)nt[dd]=inheritOn()?(Math.random()<0.5?tend[i*DIMS+dd]:tend[j*DIMS+dd]):(tend[i*DIMS+dd]+tend[j*DIMS+dd])*0.5;   // INHERIT: each axis whole from one parent (particulate) instead of the midpoint (blending)
     addParticle(cx,cy,nt,false,i,j);
     amp[i]*=0.75;amp[j]*=0.75;
     birthsThisTick++;
@@ -26916,7 +26939,7 @@ function interferenceCreate(i,j){
     const cx=(px[i]*amp[i]+px[j]*amp[j])/totalAmp;
     const cy=(py[i]*amp[i]+py[j]*amp[j])/totalAmp;
     const nt=new Float32Array(DIMS);
-    for(let d=0;d<DIMS;d++)nt[d]=(tend[i*DIMS+d]+tend[j*DIMS+d])*0.5*(1+interference*0.2);
+    for(let d=0;d<DIMS;d++)nt[d]=(inheritOn()?(Math.random()<0.5?tend[i*DIMS+d]:tend[j*DIMS+d]):(tend[i*DIMS+d]+tend[j*DIMS+d])*0.5)*(1+interference*0.2);   // INHERIT: particulate, the channel's own outward scaling kept
     const k=addCompound(cx,cy,nt,(vx[i]*amp[i]+vx[j]*amp[j])/totalAmp*0.3,(vy[i]*amp[i]+vy[j]*amp[j])/totalAmp*0.3,energy*0.6,(phase[i]+phase[j])*0.5,(freq[i]+freq[j])*0.5,i,j);
     if(k>=0){
       amp[i]-=amp[i]*genome.creationCost;amp[j]-=amp[j]*genome.creationCost;
