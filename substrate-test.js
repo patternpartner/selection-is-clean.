@@ -2081,7 +2081,13 @@ m._compile(code+`
     const inTable=names.filter(n=>!row(n));
     // 1. THE GATE ACTUALLY READS THE LAW. Not "the row is settable" - #197's rig already checks
     //    that for every row. This asks whether the BIRTH PATH bills what the law says.
-    const bill=(cost,pool)=>{
+    // RATION puts a lottery IN FRONT of this line. These rows ask about BILLING, so the lottery is held
+    // open for them; left alone, __rationP is whatever the run's last tick set it to, and on FOUND=0
+    // seed 1 that refused the dear birth before it reached the pool -- the row went red for the lottery,
+    // not for billing. The lottery gets its own row below instead of riding this one.
+    const _rp=(typeof __rationP==='number')?__rationP:1;
+    const bill=(cost,pool,rp)=>{
+      if(typeof __rationP==='number') __rationP=(rp===undefined?1:rp);
       BIRTH_ENERGY_COST=cost; worldEnergy=pool;
       const p0=__liveness['birth.paid']|0, r0=__liveness['birth.refused']|0;
       let live=-1; for(let q=0;q<N;q++) if(palive[q]){live=q;break;}
@@ -2096,13 +2102,19 @@ m._compile(code+`
     const cheap=bill(0.25,10);      // a world that has made children cheap
     const dear=bill(8,10);          // and one that has made them dear
     const broke=bill(1,0.5);        // and one whose pool cannot cover a single birth
+    const rn0=__liveness['birth.rationed']|0;
+    const shut=bill(1,10,0);        // RATION: a full pool, and a lottery that passes nothing
+    const rationed=(__liveness['birth.rationed']|0)-rn0;
+    const rationLive=(typeof rationOn==='function')&&rationOn();
+    if(typeof __rationP==='number') __rationP=_rp;
     // 2. THE INSTRUMENT SEPARATES THE TWO OUTCOMES, which is the whole point of adding it.
     const counted=!!(cheap&&dear&&broke&&cheap.paid===1&&cheap.refused===0&&
                      broke.paid===0&&broke.refused===1);
     BIRTH_ENERGY_COST=sv.c; WORLD_ENERGY_MAX=sv.m; WORLD_ENERGY_REGEN=sv.r;
     DEATH_ENERGY_RETURN=sv.d; worldEnergy=sv.e;
     return {inTable, cheap, dear, broke, counted,
-            declared:['birth.paid','birth.refused'].filter(n=>LIVENESS_DECLARED.indexOf(n)<0),
+            shut, rationed, rationLive,
+            declared:['birth.paid','birth.refused','birth.rationed'].filter(n=>LIVENESS_DECLARED.indexOf(n)<0),
             laws:LAW_DECLARED.length};
   });
 
@@ -2991,7 +3003,12 @@ ck('#203 and an empty pool refuses the birth', EC.broke && EC.broke.made===false
    'pool 0.5 against a cost of 1: no particle made, nothing drawn');
 ck('#203 the engine can finally SEE its own birth economy', EC.counted===true,
    'birth.paid fires on the one that went through and birth.refused on the one that did not. Ninety-nine percent of this world\'s reproductive attempts fail at that line and no census row, epoch log or liveness name said so — the largest silent quantity in the file');
-ck('#203 both names are declared', EC.declared && EC.declared.length===0, (EC.declared||[]).join(' '));
+ck('RATION the birth lottery sits in front of the pool and refuses on its own', EC.shut &&
+   (EC.rationLive ? (EC.shut.made===false && EC.shut.drew===0 && EC.shut.refused===1 && EC.rationed===1)
+                  : (EC.shut.made===true && EC.rationed===0)),
+   (EC.rationLive?'RATION on':'RATION off')+': pool 10, cost 1, pass probability 0 -> made '+(EC.shut||{}).made+', drew '+(EC.shut||{}).drew+
+   ', rationed '+EC.rationed+' -- a lottery that cannot refuse is not a lottery, and one that bills the pool on refusal is a leak');
+ck('#203 all three names are declared', EC.declared && EC.declared.length===0, (EC.declared||[]).join(' '));
 
 // #202
 const AS=r.assort||{};
