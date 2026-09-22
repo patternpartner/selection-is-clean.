@@ -29509,13 +29509,18 @@ function loop(){
     // while the taxed failures of the rest pull the other way.
     // The weight is deliberately comparable to the others rather than a token: a term that cannot
     // outweigh anything cannot change what the world selects for, which was #218c's whole mistake.
-    const _aimSat=aimSatisfaction();
+    // AIM=0 must take the term out of the numerator AND its weight out of the denominator. Until this
+    // line the knob gated mutation and the amp pull only, so the OFF arm still scored every world on
+    // the frozen seed aims (weights 0.28 and 0.22, both born in the literal) -- a control that read
+    // like a control. aimSatisfaction draws nothing, so the gate moves no draw by itself.
+    const _aimW=aimOn()?AIM_FITNESS_WEIGHT:0;
+    const _aimSat=_aimW?aimSatisfaction():0;
     const fitness=(selfModel.stability*w[0]+selfModel.diversity*w[1]+selfModel.avgCoherence*w[2]+
       retentionScore*RETENTION_WEIGHT+
-      _aimSat*AIM_FITNESS_WEIGHT+
+      _aimSat*_aimW+
       (clusters.filter(c=>c.persistAge<2).length/Math.max(1,clusters.length))*w[3]+
       realSensorScore*realSensorWeight+
-      predictionQuality*relW)/(wT+realSensorWeight+relW+RETENTION_WEIGHT+AIM_FITNESS_WEIGHT);
+      predictionQuality*relW)/(wT+realSensorWeight+relW+RETENTION_WEIGHT+_aimW);
     // #184: the open-endedness bonus, added to the composite BEFORE the EMA so it moves the same
     // number every other selective pressure moves. Bounded at OEE_BONUS_CAP whatever the weights
     // evolve to, and zero at the seeded weights, so a lineage that never touches these genes is
