@@ -20968,3 +20968,44 @@ noise alone predicts against eight homogenisers, which is why it goes to a test 
 (1-3 have been seen), 20k ticks, the #220 rule unchanged: (a) mean late effective lineages higher,
 (b) mean entropyRatio not lower, (c) runs below 0.3 not more, (d) mean late population at least 70% of
 current, (e) mean established after warm-up not lower. Passes -> default. Any fail -> knob.
+
+#### #220f — REAL MUTATION PASSES, AND IS THE DEFAULT. The universe moved.
+
+The pre-registered rule of #220e, on seeds 7-12 that had never been looked at, 20k ticks,
+`INHERIT=1 INHERIT_SD=200` against the current engine:
+
+| | current | mutation | |
+|---|---|---|---|
+| entropyRatio | 0.24 0.55 0.25 0.71 **0.07** 0.35 — mean 0.36 | 0.87 0.84 1.07 0.88 1.05 1.00 — mean **0.95** | (b) pass |
+| runs below 0.3 | **3** | **0** | (c) pass |
+| effective lineages late | 8.2 9.2 8.3 6.4 8.7 9.6 | 119 120 253 100 92 ... | (a) pass |
+| population late | 358-376 | 381 360 **1278** 379 317 ... | (d) pass |
+| lineages established after warm-up | 11 18 14 4 13 11 — total 71 | 8 15 **61** 6 14 ... — 104 from five seeds | (e) pass |
+
+(e) was settled before seed 12's establishment run finished: five seeds already exceed the current
+engine's six-seed total. **The headline is (b) and (c): the current engine drops below 0.3 on three of six
+unseen seeds; with real mutation no seed falls below 0.84.** That is `#11`'s dependent variable — the
+number this file says went missing — moving from "collapsing" to "holding" on every seed.
+
+**Read these honestly:**
+- (e) passes largely on seed 9 (61). Without it mutation averages 10.75 against 11.8. The rule was on the
+  mean and is kept as written; the margin is narrower than the total suggests.
+- (a) is inflated by label fragmentation (#220d): 90-250 "effective lineages" among 300-1300 particles is
+  many small labels, not that many kinds.
+- Population is less stable: seed 9 reached 1278 against a ~370 norm. Likely the rarity upkeep discount
+  (`pRarity`, #53) — mutation makes more particles rare, rare particles pay less, carrying capacity rises.
+  Not confirmed. It matters for a browser tab, which is why smoke.sh gates this change.
+- Mutation spreads traits across the metric's bins partly by construction. Kinds GROWING late (seed 3:
+  11 -> 18) and late new-kind rates rising are not what noise alone predicts against eight
+  homogenisers, but a noise-only null has not been built.
+
+**What changed in the engine, in one sentence:** a parented birth now takes each trait axis whole from one
+parent and adds a mutation of SD 0.2, where it used to take the exact midpoint with no mutation.
+`INHERIT=0` restores the old engine byte for byte. Gate: substrate-test 261/0 on nine arms (40/900/4000
+ticks, seeds 1-3, FOUND=0).
+
+**The session's own lesson, stated because it is the expensive one.** The missing variation was found in
+the first hour and dismissed on a parameter too small to show it; the next many hours built three
+mechanisms (niche pools, enemies, centroid speciation) to supply indirectly what one number supplied
+directly. All three were measured and removed. When a verdict says "no signal", ask whether the dose
+could have produced one before building around it.
