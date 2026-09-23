@@ -20938,3 +20938,33 @@ not collapse on ANY seed, 0.88-1.04 against 0.08-0.93. It is still not the defau
 3. **Mutation at SD 0.2 spreads traits across the metric's bins by itself.** Until a mutation-only arm is
    run, the entropyRatio gain cannot be credited to enemies or to speciation at all. Control in flight:
    `INHERIT=1 INHERIT_SD=200` alone, and `JC=2` + that mutation without SPEC_CENTROID, seeds 1-3.
+
+#### #220e — THE CONTROL: plain mutation was doing the work. And a correction to #219.
+
+Seeds 1-3, 20k ticks:
+
+| | entropyRatio | kinds early -> late | established | population late |
+|---|---|---|---|---|
+| current engine | 0.08 / 0.76 / 0.77 | ... -> 2.7 / 8.0 / 7.8 | 10 / 4 / 8 | 330-360 |
+| `INHERIT=1 INHERIT_SD=200` alone | **0.90 / 0.81 / 1.02** | 12.9->9.6, 10.9->9.7, **11.1->18.4** | **4 / 6 / 19** | **150** / 647 / 627 |
+| + `JC=2` | 0.17 / 0.93 / 0.96 | | | |
+| + `JC=2` + `SPEC_CENTROID=1` (#220d) | 0.93 / 1.04 / 0.97 | | 4 / 6 / 2 | 439 / 438 / 370 |
+
+**Mutation alone holds diversity — and on seed 3 kinds GROW across the run, 11 -> 18, the first arm this
+session to do that.** Late new-kind rate 1.5-2.6 per 1k ticks against 0-0.15 for the full arm; more
+newcomers establish than in the current engine. The mechanisms I built on top did not earn their place:
+trait-cell enemies ADDED a collapse on seed 1, and centroid speciation mostly minted fragments.
+
+**CORRECTION to #219.** It says INHERIT "measured no signal" and switched it off. True at INHERIT_SD
+0.04 only — a per-birth mutation too small to matter against eight homogenising terms. The idea was
+judged on a parameter that could not have shown it. #219's table stays as it was; this line is the
+scope it should have carried.
+
+Caveats, before the test: population swings (150 to 647), and mutation spreads traits across the
+metric's bins partly by construction — though kinds RISING and late novelty RISING are not what added
+noise alone predicts against eight homogenisers, which is why it goes to a test and not straight in.
+
+**PRE-REGISTERED, before the runs exist:** `INHERIT=1 INHERIT_SD=200` vs current engine on NEW seeds 7-12
+(1-3 have been seen), 20k ticks, the #220 rule unchanged: (a) mean late effective lineages higher,
+(b) mean entropyRatio not lower, (c) runs below 0.3 not more, (d) mean late population at least 70% of
+current, (e) mean established after warm-up not lower. Passes -> default. Any fail -> knob.
