@@ -4404,10 +4404,35 @@ function npReturn(i,amt){ const b=nicheDietBin(i), room=Math.max(0,npCapB()-__np
 const JC_K=15, JC_DECAY=0.98;
 const __jcLoad=new Map(), __jcCnt=new Map();
 function jcOn(){ return (typeof globalThis!=='undefined')&&((globalThis.__JC??0)|0)!==0; }
+// JC=2 (#220b): the load is keyed on WHERE A PARTICLE IS IN TRAIT SPACE (nicheCellOf, every axis) rather
+// than on its lineage NAME. Measured why: JC=1 tripled cross-lineage births (54 -> 172 in ticks 2-5k,
+// seed 1) because rare-lineage parents mate with anyone, and the gene flow erased every trait difference
+// between lineages -- child-parent distance above 0.3 went 61 -> 0, speciation 24 -> 0. Enemies that
+// track a label protect the label. Real specialist enemies track what a host IS, so escaping them means
+// becoming different: that is diversifying selection on phenotype, and it is what JC=2 applies.
+// Cell keys are negative so they can never collide with a pLin id.
+// SPEC_CENTROID (#220c, knob): a child founds a lineage when it has drifted SPECIATE_DIST from its
+// LINEAGE'S CENTROID, not from its immediate parent. Measured why: every parented birth after warm-up
+// goes through addCompound, and in the current engine the far-landing children (24 of 313 past 0.55,
+// seed 1, ticks 2-5k) come from pairs of OLD FOUNDERS still carrying their boot-time random traits --
+// first-come allocation favours the old. Under fair allocation that source vanishes (RATION: 0 past
+// 0.3). So this engine's speciation has been spending the randomness it was handed at tick 0; nothing
+// generates it. A per-birth mutation cannot cross 0.55 in one step and should not have to: speciation is
+// divergence ACCUMULATED over generations. Returns -1 (use the parent) when off, or when the lineage has
+// no current centroid of the right width or fewer than 4 members.
+function specCentroidOn(){ return (typeof globalThis!=='undefined')&&((globalThis.__SPEC_CENTROID??0)|0)!==0; }
+function specCentroidD2(i,pa){
+  if(!specCentroidOn())return -1;
+  const l=pLin[pa], c=linCentroid.get(l);
+  if(!c||c.length!==DIMS||(linSize.get(l)||0)<4)return -1;
+  let d2=0; for(let d=0;d<DIMS;d++){ const v=tend[i*DIMS+d]-c[d]; d2+=v*v; } return d2;
+}
+function jcMode(){ return (typeof globalThis!=='undefined')?((globalThis.__JC??0)|0):0; }
+function jcKey(i){ return jcMode()===2?-(nicheCellOf(i)+1):pLin[i]; }
 function jcMul(l){ const ld=__jcLoad.get(l)||0; return 1/(1+ld/JC_K); }
 function jcUpdate(){
   __jcCnt.clear();
-  for(let i=0;i<N;i++){ if(!palive[i])continue; const l=pLin[i]; __jcCnt.set(l,(__jcCnt.get(l)||0)+1); }
+  for(let i=0;i<N;i++){ if(!palive[i])continue; const l=jcKey(i); __jcCnt.set(l,(__jcCnt.get(l)||0)+1); }
   for(const [l,ld] of __jcLoad){ const c=__jcCnt.get(l)||0; const v=ld*JC_DECAY+c*(1-JC_DECAY);
     if(c===0&&v<0.05) __jcLoad.delete(l); else __jcLoad.set(l,v); }
   for(const [l,c] of __jcCnt) if(!__jcLoad.has(l)) __jcLoad.set(l,c*(1-JC_DECAY));
@@ -21140,7 +21165,7 @@ function addParticle(x,y,tv,born,parentA,parentB){
   // instrumented, because addParticle and addCompound are both real reproduction.
   if(parentA>=0&&npOn()&&parentA<N){ if(!npPay(parentA)) return-1; }   // NICHE_POOL -- see npOn
   else if(parentA>=0){
-    if(rationOn()){ const _jm=jcOn()?jcMul(pLin[parentA]):1; __rationAtt+=_jm; if(Math.random()>=__rationP*_jm){ fired('birth.refused'); fired('birth.rationed'); return-1; } }   // RATION (+JC weight) -- see loop()
+    if(rationOn()){ const _jm=jcOn()?jcMul(jcKey(parentA)):1; __rationAtt+=_jm; if(Math.random()>=__rationP*_jm){ fired('birth.refused'); fired('birth.rationed'); return-1; } }   // RATION (+JC weight) -- see loop()
     if(worldEnergy<BIRTH_ENERGY_COST){ fired('birth.refused'); return-1; }
     worldEnergy-=BIRTH_ENERGY_COST; fired('birth.paid');
   }
@@ -21220,6 +21245,7 @@ function addParticle(x,y,tv,born,parentA,parentB){
   pLin[i]=(parentA>=0&&parentA<N)?pLin[parentA]:createLineage(0,'founder');
   if(parentA>=0&&parentA<N&&tv){
     let _d2=0; for(let _sd=0;_sd<DIMS;_sd++){const _dv=tend[i*DIMS+_sd]-tend[parentA*DIMS+_sd]; _d2+=_dv*_dv;}   // the born tendency, not tv: INHERIT's mutation must count
+    { const _sc=specCentroidD2(i,parentA); if(_sc>=0)_d2=_sc; }   // SPEC_CENTROID -- see specCentroidD2
     if(_d2>SPECIATE_DIST*SPECIATE_DIST){
       try{
         const _pe=lineageRegistry.get(pLin[parentA]);
@@ -21255,7 +21281,7 @@ function addCompound(x,y,nt,nvx,nvy,na,np,nf,parentA,parentB){
   // instrumented, because addParticle and addCompound are both real reproduction.
   if(parentA>=0&&npOn()&&parentA<N){ if(!npPay(parentA)) return-1; }   // NICHE_POOL -- see npOn
   else if(parentA>=0){
-    if(rationOn()){ const _jm=jcOn()?jcMul(pLin[parentA]):1; __rationAtt+=_jm; if(Math.random()>=__rationP*_jm){ fired('birth.refused'); fired('birth.rationed'); return-1; } }   // RATION (+JC weight) -- see loop()
+    if(rationOn()){ const _jm=jcOn()?jcMul(jcKey(parentA)):1; __rationAtt+=_jm; if(Math.random()>=__rationP*_jm){ fired('birth.refused'); fired('birth.rationed'); return-1; } }   // RATION (+JC weight) -- see loop()
     if(worldEnergy<BIRTH_ENERGY_COST){ fired('birth.refused'); return-1; }
     worldEnergy-=BIRTH_ENERGY_COST; fired('birth.paid');
   }
@@ -21319,6 +21345,7 @@ function addCompound(x,y,nt,nvx,nvy,na,np,nf,parentA,parentB){
   pLin[i]=(parentA>=0&&parentA<N)?pLin[parentA]:createLineage(0,'founder');
   if(parentA>=0&&parentA<N&&nt){
     let _d2=0; for(let _sd=0;_sd<DIMS;_sd++){const _dv=tend[i*DIMS+_sd]-tend[parentA*DIMS+_sd]; _d2+=_dv*_dv;}   // the born tendency, not nt: INHERIT's mutation must count
+    { const _sc=specCentroidD2(i,parentA); if(_sc>=0)_d2=_sc; }   // SPEC_CENTROID -- see specCentroidD2
     if(_d2>SPECIATE_DIST*SPECIATE_DIST){
       try{
         const _pe=lineageRegistry.get(pLin[parentA]);

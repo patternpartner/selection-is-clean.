@@ -20869,3 +20869,48 @@ seeds 1-6 at 20k ticks against the current engine: (a) mean late effective linea
 entropyRatio is not lower; (c) runs below 0.3 are not more; (d) mean late population is at least 70% of
 the current engine's; (e) mean lineages established after warm-up is not lower. Any one failing and it
 stays a knob.
+
+#### #220a — JC=1 FAILS THE RULE, and why: enemies that track a NAME protect the name
+
+Six seeds, 20k ticks, `JC=1 INHERIT=1` vs current engine:
+
+| | current | JC=1 | |
+|---|---|---|---|
+| effective lineages late (mean) | 7.82 | **12.69** | (a) pass |
+| entropyRatio (mean) | 0.500 | **0.913** — four seeds above 1.0 | (b) pass |
+| runs below 0.3 | 2 | **0** | (c) pass |
+| population late (mean) | 344 | 402 (91 to 932) | (d) pass |
+| established after warm-up (mean) | **7.0** | **0.33** | **(e) FAIL** |
+| lineages first seen after warm-up | 102 | 23 (zero on four seeds) | |
+| takeovers | 4.8 | **0** | |
+
+The most diverse world of the session, and FROZEN: the lineages present at warm-up coexist forever, no
+new lineage is minted on four seeds, nothing is ever displaced. Condition (e) was written to catch
+exactly this, and it did.
+
+**Why, measured** (seed 1, ticks 2-5k, every parented birth): JC=1 tripled cross-lineage births (54 ->
+172) because a rare-lineage parent mates with anyone, and that gene flow erased the trait differences
+between lineages — children landing more than 0.3 from their parent went 61 -> 0, speciation 24 -> 0.
+Enemies keyed to a lineage ID protect the ID. Real specialist enemies track what a host IS.
+
+**And a deeper one, found chasing it.** All parented births after warm-up go through `addCompound`. In
+the current engine the far-landing children — the only source of speciation — are pairs of OLD FOUNDERS
+still carrying their boot-time random traits, and first-come allocation favours the old. Under fair
+allocation (RATION alone) that source vanishes: 0 children past 0.3. **This engine's speciation has been
+spending the randomness it was given at tick 0. Nothing in it generates new trait variation strong
+enough to split a lineage.** That is what the steadily falling lineage counts in every baseline run are.
+
+#### #220c — THE FULL ARM, pre-registered before its outcome numbers exist
+
+Three changes, each answering a measured failure:
+- `JC=2`: enemy load keyed on trait-space cell (`nicheCellOf`, every axis), not lineage name — escaping
+  it means becoming different.
+- `SPEC_CENTROID=1`: a child founds a lineage when it is SPECIATE_DIST from its lineage's centroid, not
+  from its parent — speciation as accumulated divergence rather than a one-birth jump.
+- `INHERIT=1 INHERIT_SD=200` (0.2 per axis per birth). Chosen by a MECHANISM check, stated so it is not
+  mistaken for an outcome fit: seed 1, ticks 2-5k, speciation count with JC=2 and SPEC_CENTROID on was
+  0 at SD 0.04 and 0.1, 102 at 0.2, 228 at 0.35. 0.2 is the lowest tested value at which the world
+  mints lineages at all. None of the rule's five numbers had been looked at for any SD.
+
+Same rule as #220, unchanged, same six seeds. Speciation counts can be pure jitter — labels that appear
+and die — and (e), lineages reaching 10 members, is what distinguishes that from establishment.
