@@ -44,7 +44,7 @@ console.error=()=>{};console.warn=()=>{};};
 // the paragraphs above. #215 shipped a gene and its knob and left this line alone, and it cost a
 // bisect; FOUND sat unplumbed for the project's whole life while the front page told every session
 // to use it as a control. A knob and its KNOBS entry are one change or they are a trap.
-module.exports.KNOBS = ['MUTUALISM','RQ_TRAIT','GENO_PARASITE','SELF_PREDICT','GRIP_SEED','MEME_TRANSFER','MOTIF_SELECT','FOUND','SELFMODEL','LAW_PERSIST','CHEM','INSCRIBE','CHEM_VERDICT','MUTMAG','AIM','INHERIT','INHERIT_SD','RATION','NICHE_POOL','JC','SPEC_CENTROID'];
+module.exports.KNOBS = ['MUTUALISM','RQ_TRAIT','GENO_PARASITE','SELF_PREDICT','GRIP_SEED','MEME_TRANSFER','MOTIF_SELECT','FOUND','SELFMODEL','LAW_PERSIST','CHEM','INSCRIBE','CHEM_VERDICT','MUTMAG','AIM','INHERIT','INHERIT_SD','RATION'];
 module.exports.applyKnobs = function(g){
   for (const kn of module.exports.KNOBS)
     if (process.env[kn] !== undefined) g['__'+kn] = parseInt(process.env[kn], 10);
