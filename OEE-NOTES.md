@@ -21009,3 +21009,27 @@ the first hour and dismissed on a parameter too small to show it; the next many 
 mechanisms (niche pools, enemies, centroid speciation) to supply indirectly what one number supplied
 directly. All three were measured and removed. When a verdict says "no signal", ask whether the dose
 could have produced one before building around it.
+
+### #221 — BREEDING COSTS WHAT YOU GATHERED (`PROV_BIRTH`, default on). Shipped on a light check.
+
+The user's call, and the right one: hours of tests on tests while nothing reached the field. From here
+a change ships when it runs, the rig is green, and one quick look shows nothing broken; the field is
+the real test. Long pre-registered studies are for when something looks wrong, not a toll on every step.
+
+**The change.** 93-98% of the living sat on a provision bank of 3+ (cap 6) that the main birth path never
+touched: `addCompound` zeroed the child's bank and charged the parent nothing. So what a creature had
+gathered did not decide whether it bred. Now a birth costs the parent `PROV_BIRTH_COST` (1.0) from its own
+bank — below that it cannot breed (`birth.unprovisioned`) — and half of it starts the child. Faster
+gatherers refill faster and breed sooner. The world-pool gate still applies after it.
+
+**The check it shipped on.** substrate-test TICKS=40 SEED=1 262/0 with it on and off; a new row confirms
+an empty bank is refused without touching the pool, and a bank of 3 leaves the parent 2 and the child 0.5.
+5k ticks, seeds 1-2: population within a few percent of the default (314/352 vs 333/337); effective
+lineages 33.9 vs 46.4 on seed 1, 43.5 vs 28.1 on seed 2 — mixed, and too short to mean anything.
+`#203`'s billing rows now give the parent a full bank, for the same reason they hold RATION's lottery open.
+
+**Also shipped just before it, over six smoke.sh failures:** `INHERIT` default on (#220f) went to main with
+substrate-test green on nine arms and smoke.sh at 47 ok / 6 failing — three timeouts with empty logs
+(grammar, reach, autosave), two rigs whose text patches no longer find their anchors (atrophy-probe,
+attractor), and slot-test's minimum-gap row. Each is being run alone on the pre-session engine and the
+new one to sort pre-existing from caused; anything caused gets fixed forward.

@@ -2101,16 +2101,41 @@ m._compile(code+`
       const p0=__liveness['birth.paid']|0, r0=__liveness['birth.refused']|0;
       let live=-1; for(let q=0;q<N;q++) if(palive[q]){live=q;break;}
       if(live<0)return null;
+      // PROV_BIRTH (#221) puts the parent's own bank in front of this line too. These rows ask about the
+      // WORLD POOL, so the parent is given a full bank here and the bank gets its own row below.
+      const _pv=(typeof pProvision!=='undefined')?pProvision[live]:0;
+      if(typeof pProvision!=='undefined') pProvision[live]=(typeof PROVISION_CAP==='number')?PROVISION_CAP:6;
       const before=worldEnergy;
       const idx=addParticle(px[live],py[live],new Float32Array(DIMS),false,live,-1);
       const drew=+(before-worldEnergy).toFixed(4);
       if(idx>=0){ palive[idx]=false; N=Math.max(0,N-1); }   // undo the spawn, not the accounting
+      if(typeof pProvision!=='undefined') pProvision[live]=_pv;
       return {made:idx>=0, drew,
               paid:(__liveness['birth.paid']|0)-p0, refused:(__liveness['birth.refused']|0)-r0};
     };
     const cheap=bill(0.25,10);      // a world that has made children cheap
     const dear=bill(8,10);          // and one that has made them dear
     const broke=bill(1,0.5);        // and one whose pool cannot cover a single birth
+    // PROV_BIRTH's own question: a parent with an empty bank is refused and the pool is untouched; a parent
+    // with a bank pays PROV_BIRTH_COST from it and the child starts with the endowed part.
+    const provRow=(()=>{
+      if(typeof provBirthOn!=='function'||!provBirthOn()) return {live:false};
+      let par=-1; for(let q=0;q<N;q++) if(palive[q]){par=q;break;}
+      if(par<0) return null;
+      const svp=pProvision[par], svc=BIRTH_ENERGY_COST, sve=worldEnergy, svr=(typeof __rationP==='number')?__rationP:1;
+      BIRTH_ENERGY_COST=1; worldEnergy=10; if(typeof __rationP==='number')__rationP=1;
+      const u0=__liveness['birth.unprovisioned']|0;
+      pProvision[par]=0;
+      const e0=worldEnergy, emptyIdx=addParticle(px[par],py[par],new Float32Array(DIMS),false,par,-1);
+      const empty={made:emptyIdx>=0, drew:+(e0-worldEnergy).toFixed(4), unprov:(__liveness['birth.unprovisioned']|0)-u0};
+      if(emptyIdx>=0){ palive[emptyIdx]=false; N=Math.max(0,N-1); }
+      pProvision[par]=3;
+      const fullIdx=addParticle(px[par],py[par],new Float32Array(DIMS),false,par,-1);
+      const full={made:fullIdx>=0, parentLeft:+pProvision[par].toFixed(4), child:fullIdx>=0?+pProvision[fullIdx].toFixed(4):null};
+      if(fullIdx>=0){ palive[fullIdx]=false; N=Math.max(0,N-1); }
+      pProvision[par]=svp; BIRTH_ENERGY_COST=svc; worldEnergy=sve; if(typeof __rationP==='number')__rationP=svr;
+      return {live:true, empty, full, cost:PROV_BIRTH_COST, endow:PROV_BIRTH_COST*PROV_BIRTH_ENDOW};
+    })();
     const rn0=__liveness['birth.rationed']|0;
     const shut=bill(1,10,0);        // RATION: a full pool, and a lottery that passes nothing
     const rationed=(__liveness['birth.rationed']|0)-rn0;
@@ -2122,8 +2147,8 @@ m._compile(code+`
     BIRTH_ENERGY_COST=sv.c; WORLD_ENERGY_MAX=sv.m; WORLD_ENERGY_REGEN=sv.r;
     DEATH_ENERGY_RETURN=sv.d; worldEnergy=sv.e;
     return {inTable, cheap, dear, broke, counted,
-            shut, rationed, rationLive,
-            declared:['birth.paid','birth.refused','birth.rationed'].filter(n=>LIVENESS_DECLARED.indexOf(n)<0),
+            shut, rationed, rationLive, provRow,
+            declared:['birth.paid','birth.refused','birth.rationed','birth.unprovisioned'].filter(n=>LIVENESS_DECLARED.indexOf(n)<0),
             laws:LAW_DECLARED.length};
   });
 
@@ -3017,7 +3042,12 @@ ck('RATION the birth lottery sits in front of the pool and refuses on its own', 
                   : (EC.shut.made===true && EC.rationed===0)),
    (EC.rationLive?'RATION on':'RATION off')+': pool 10, cost 1, pass probability 0 -> made '+(EC.shut||{}).made+', drew '+(EC.shut||{}).drew+
    ', rationed '+EC.rationed+' -- a lottery that cannot refuse is not a lottery, and one that bills the pool on refusal is a leak');
-ck('#203 all three names are declared', EC.declared && EC.declared.length===0, (EC.declared||[]).join(' '));
+ck('PROV_BIRTH a parent pays for its child from its own bank', EC.provRow && (EC.provRow.live===false ||
+   (EC.provRow.empty.made===false && EC.provRow.empty.drew===0 && EC.provRow.empty.unprov===1 &&
+    EC.provRow.full.made===true && EC.provRow.full.parentLeft===+(3-EC.provRow.cost).toFixed(4) && EC.provRow.full.child===+EC.provRow.endow.toFixed(4))),
+   EC.provRow&&EC.provRow.live?('empty bank: made '+EC.provRow.empty.made+', pool drew '+EC.provRow.empty.drew+'; bank 3: made '+EC.provRow.full.made+
+   ', parent left with '+EC.provRow.full.parentLeft+', child starts with '+EC.provRow.full.child+' -- what a creature gathered now decides whether it breeds'):'PROV_BIRTH off');
+ck('#203 all four birth names are declared', EC.declared && EC.declared.length===0, (EC.declared||[]).join(' '));
 
 // #202
 const AS=r.assort||{};

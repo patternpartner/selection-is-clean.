@@ -1373,7 +1373,7 @@ const LIVENESS_DECLARED=[
   // world's reproductive pressure as a ratio, and on the seeded constants it runs at about 1:100.
   // Refused reading zero is a world that has made children free; paid reading zero is one that has
   // stopped having them. Both are reachable now that the four constants are laws.
-  'birth.paid','birth.refused','birth.rationed',   // RATION: refused by the fair lottery, before the pool is read
+  'birth.paid','birth.refused','birth.rationed','birth.unprovisioned',   // RATION: refused by the fair lottery, before the pool is read
   // #212: clusterGenomes was the one carry-forward store that never let go -- ~1,000 entries against
   // 6-11 live clusters, and a measured working set exactly one detection cycle deep. This fires when
   // an entry ages past the horizon. Reading zero on a long run means either the horizon never binds
@@ -4364,6 +4364,15 @@ let retentionScore=0;
 // NICHE_POOL, JC (both keyings) and SPEC_CENTROID were built here in #219-#220 and REMOVED: each was
 // measured and none earned its place (#219c, #220a, #220e -- plain mutation did the work). Their code is in
 // git history at 5b2d40b; the results are in OEE-NOTES so nobody rebuilds them to find out again.
+// PROV_BIRTH (#221, default ON): a birth costs the PARENT from its own provision bank. Measured before
+// this line (#219): 93-98% of the living sat on a bank of 3+ (cap 6) that the main birth path never
+// touched -- addCompound cleared the child's bank and charged the parent nothing -- so what a creature
+// had gathered did not decide whether it bred. Now a parent needs PROV_BIRTH_COST banked to reproduce and
+// pays it, and PROV_BIRTH_ENDOW of it starts the child. A creature that gathers faster refills faster and
+// breeds sooner: doing well means leaving more offspring. The world-pool gate still applies after it.
+// PROV_BIRTH=0 restores the old path exactly.
+const PROV_BIRTH_COST=1.0, PROV_BIRTH_ENDOW=0.5;
+function provBirthOn(){ return (typeof globalThis==='undefined')||((globalThis.__PROV_BIRTH??1)|0)!==0; }
 function rationOn(){ return (typeof globalThis!=='undefined')&&((globalThis.__RATION??0)|0)!==0; }
 let __rationP=1, __rationAtt=0;   // RATION -- see loop(): per-attempt pass probability, and attempts counted this tick
 // SUPERSEDED by #220f below -- kept as the record of a verdict taken at the wrong parameter (SD 0.04).
@@ -21097,6 +21106,7 @@ function addParticle(x,y,tv,born,parentA,parentB){
   // world tries to do reproductively fails right here and no census row, no epoch log and no
   // liveness name said so - the single largest silent quantity in the file. BOTH gates are
   // instrumented, because addParticle and addCompound are both real reproduction.
+  if(parentA>=0&&parentA<N&&provBirthOn()){ if(pProvision[parentA]<PROV_BIRTH_COST){ fired('birth.refused'); fired('birth.unprovisioned'); return-1; } }   // PROV_BIRTH -- see provBirthOn
   if(parentA>=0){
     if(rationOn()){ __rationAtt++; if(Math.random()>=__rationP){ fired('birth.refused'); fired('birth.rationed'); return-1; } }   // RATION -- see loop()
     if(worldEnergy<BIRTH_ENERGY_COST){ fired('birth.refused'); return-1; }
@@ -21125,6 +21135,7 @@ function addParticle(x,y,tv,born,parentA,parentB){
   pModeBias[i]=(parentA>=0&&parentA<N)?(Math.random()<0.06?((Math.random()*MODE_COUNT)|0):pModeBias[parentA]):((Math.random()*MODE_COUNT)|0);
   pMode[i]=pModeBias[i];
   pProvision[i]=0; // LEAP 3: cleared at birth; the birthQueue drain endows it when the parent banked surplus
+  if(provBirthOn()&&parentA>=0&&parentA<N&&parentA!==i){ pProvision[parentA]-=PROV_BIRTH_COST; pProvision[i]=PROV_BIRTH_COST*PROV_BIRTH_ENDOW; }   // PROV_BIRTH: the parent pays from its own bank; part of it is the child's start
   // LEAP 19 (#54) — a SECOND inheritance channel. pMem is what this individual encountered, and it has
   // always died with the individual: everything heritable here was genetic. Offspring now inherit a
   // decayed copy of parental memory, so a lifetime's experience becomes transmissible. Faster, lossier
@@ -21211,6 +21222,7 @@ function addCompound(x,y,nt,nvx,nvy,na,np,nf,parentA,parentB){
   // world tries to do reproductively fails right here and no census row, no epoch log and no
   // liveness name said so - the single largest silent quantity in the file. BOTH gates are
   // instrumented, because addParticle and addCompound are both real reproduction.
+  if(parentA>=0&&parentA<N&&provBirthOn()){ if(pProvision[parentA]<PROV_BIRTH_COST){ fired('birth.refused'); fired('birth.unprovisioned'); return-1; } }   // PROV_BIRTH -- see provBirthOn
   if(parentA>=0){
     if(rationOn()){ __rationAtt++; if(Math.random()>=__rationP){ fired('birth.refused'); fired('birth.rationed'); return-1; } }   // RATION -- see loop()
     if(worldEnergy<BIRTH_ENERGY_COST){ fired('birth.refused'); return-1; }
@@ -21227,6 +21239,7 @@ function addCompound(x,y,nt,nvx,nvy,na,np,nf,parentA,parentB){
   pModeBias[i]=(parentA>=0&&parentA<N)?(Math.random()<0.06?((Math.random()*MODE_COUNT)|0):pModeBias[parentA]):((Math.random()*MODE_COUNT)|0);
   pMode[i]=pModeBias[i];
   pProvision[i]=0; // LEAP 3: cleared at birth; the birthQueue drain endows it when the parent banked surplus
+  if(provBirthOn()&&parentA>=0&&parentA<N&&parentA!==i){ pProvision[parentA]-=PROV_BIRTH_COST; pProvision[i]=PROV_BIRTH_COST*PROV_BIRTH_ENDOW; }   // PROV_BIRTH: the parent pays from its own bank; part of it is the child's start
   // LEAP 19 (#54) — a SECOND inheritance channel. pMem is what this individual encountered, and it has
   // always died with the individual: everything heritable here was genetic. Offspring now inherit a
   // decayed copy of parental memory, so a lifetime's experience becomes transmissible. Faster, lossier
