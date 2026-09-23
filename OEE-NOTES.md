@@ -20845,3 +20845,27 @@ whether anything new takes hold. The default engine is byte-identical to the pre
    abundance — the classic Janzen-Connell shape.
 3. The provision bank is full for 93-98% of the living. Nothing is spending it. Whatever the ration
    becomes, it should be able to read it.
+
+### #220 — JANZEN-CONNELL: every lineage carries its own enemies
+
+The user's instruction for this one was "be bold". The bold version is not another knob left off: it is
+a mechanism aimed squarely at what #219 measured, held to a rule written before the runs, and made the
+DEFAULT if it passes.
+
+#219 showed two failures. Fair allocation (RATION) lets the highest-attempt lineage sweep; splitting the
+resource (NICHE_POOL) does not stop that because one lineage holds many channels. What stops sweeps in
+real ecologies is frequently the incumbent's own specialist enemies — pathogens and predators that
+accumulate where a kind is common, so it recruits badly near itself and a rare kind recruits well
+(Janzen 1970, Connell 1971). `JC` gives each particle lineage a load that tracks its own headcount with
+a ~50-tick lag and weights its birth attempts 1/(1+load/15) inside RATION's lottery, renormalised so
+the pool pays the same number of births. Only who gets them moves. Per lineage, so holding more niches
+does not escape it. The lag is where boom and bust would come from.
+
+First look, seed 1, t=3000: effective lineages 37 (current engine 28, RATION alone 22.8, which then
+went to 1.29 and 87% at 20k). One seed, early — direction only.
+
+**THE RULE, fixed before the six-seed runs exist.** `JC=1 INHERIT=1` becomes the default only if, across
+seeds 1-6 at 20k ticks against the current engine: (a) mean late effective lineages is HIGHER; (b) mean
+entropyRatio is not lower; (c) runs below 0.3 are not more; (d) mean late population is at least 70% of
+the current engine's; (e) mean lineages established after warm-up is not lower. Any one failing and it
+stays a knob.

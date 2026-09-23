@@ -4387,7 +4387,32 @@ function npPay(pa){   // true = paid. Called only when npOn() and pa is a live i
   __np[b]-=BIRTH_ENERGY_COST; worldEnergy-=BIRTH_ENERGY_COST; fired('birth.paid'); return true;
 }
 function npReturn(i,amt){ const b=nicheDietBin(i), room=Math.max(0,npCapB()-__np[b]), a=Math.min(room,amt); __np[b]+=a; worldEnergy+=a; }
-function rationOn(){ return (typeof globalThis!=='undefined')&&((globalThis.__RATION??0)|0)!==0; }
+// JC -- JANZEN-CONNELL: every lineage carries its own enemies (knob; see the default below).
+// #219 measured the failure this answers. With births allocated fairly (RATION) the highest-attempt
+// lineage swept every seed, and splitting the resource by diet channel (NICHE_POOL) did not stop it,
+// because one lineage simply held many channels. What stops a sweep in real ecologies is often not
+// the resource at all but the incumbent's own specialist enemies -- pathogens and predators that build
+// up wherever it is common, so a common kind recruits badly and a rare one recruits well.
+// Each particle lineage (pLin) carries a LOAD: an exponential average of its own headcount, time
+// constant ~1/(1-JC_DECAY) = 50 ticks, so enemies lag abundance -- which is where boom and bust comes
+// from. A birth attempt is weighted 1/(1+load/JC_K) inside the RATION lottery, and the lottery is
+// renormalised on the weighted count, so the number of births the pool pays is unchanged; only WHO
+// gets them moves. A lineage of 15 breeds at half rate, 150 at a tenth, a lineage minted this tick at
+// full. Per lineage, not per channel: spreading into more niches does not escape your own enemies.
+// JC is only meaningful on top of RATION (it weights RATION's lottery), so JC on turns RATION on.
+// Draws nothing of its own: it rescales a probability RATION already draws against.
+const JC_K=15, JC_DECAY=0.98;
+const __jcLoad=new Map(), __jcCnt=new Map();
+function jcOn(){ return (typeof globalThis!=='undefined')&&((globalThis.__JC??0)|0)!==0; }
+function jcMul(l){ const ld=__jcLoad.get(l)||0; return 1/(1+ld/JC_K); }
+function jcUpdate(){
+  __jcCnt.clear();
+  for(let i=0;i<N;i++){ if(!palive[i])continue; const l=pLin[i]; __jcCnt.set(l,(__jcCnt.get(l)||0)+1); }
+  for(const [l,ld] of __jcLoad){ const c=__jcCnt.get(l)||0; const v=ld*JC_DECAY+c*(1-JC_DECAY);
+    if(c===0&&v<0.05) __jcLoad.delete(l); else __jcLoad.set(l,v); }
+  for(const [l,c] of __jcCnt) if(!__jcLoad.has(l)) __jcLoad.set(l,c*(1-JC_DECAY));
+}
+function rationOn(){ return (typeof globalThis!=='undefined')&&(((globalThis.__RATION??0)|0)!==0||jcOn()); }   // JC rides on RATION
 let __rationP=1, __rationAtt=0;   // RATION -- see loop(): per-attempt pass probability, and attempts counted this tick
 // DEFAULT OFF, on measurement: 20k ticks, seeds 1-3, entropyRatio 0.08/0.76/0.77 without it,
 // 0.87/0.07/0.73 with it, 0.62/0.15/0.88 particulate-only (INHERIT_SD=0). No signal in any form: each arm
@@ -21115,7 +21140,7 @@ function addParticle(x,y,tv,born,parentA,parentB){
   // instrumented, because addParticle and addCompound are both real reproduction.
   if(parentA>=0&&npOn()&&parentA<N){ if(!npPay(parentA)) return-1; }   // NICHE_POOL -- see npOn
   else if(parentA>=0){
-    if(rationOn()){ __rationAtt++; if(Math.random()>=__rationP){ fired('birth.refused'); fired('birth.rationed'); return-1; } }   // RATION -- see loop()
+    if(rationOn()){ const _jm=jcOn()?jcMul(pLin[parentA]):1; __rationAtt+=_jm; if(Math.random()>=__rationP*_jm){ fired('birth.refused'); fired('birth.rationed'); return-1; } }   // RATION (+JC weight) -- see loop()
     if(worldEnergy<BIRTH_ENERGY_COST){ fired('birth.refused'); return-1; }
     worldEnergy-=BIRTH_ENERGY_COST; fired('birth.paid');
   }
@@ -21230,7 +21255,7 @@ function addCompound(x,y,nt,nvx,nvy,na,np,nf,parentA,parentB){
   // instrumented, because addParticle and addCompound are both real reproduction.
   if(parentA>=0&&npOn()&&parentA<N){ if(!npPay(parentA)) return-1; }   // NICHE_POOL -- see npOn
   else if(parentA>=0){
-    if(rationOn()){ __rationAtt++; if(Math.random()>=__rationP){ fired('birth.refused'); fired('birth.rationed'); return-1; } }   // RATION -- see loop()
+    if(rationOn()){ const _jm=jcOn()?jcMul(pLin[parentA]):1; __rationAtt+=_jm; if(Math.random()>=__rationP*_jm){ fired('birth.refused'); fired('birth.rationed'); return-1; } }   // RATION (+JC weight) -- see loop()
     if(worldEnergy<BIRTH_ENERGY_COST){ fired('birth.refused'); return-1; }
     worldEnergy-=BIRTH_ENERGY_COST; fired('birth.paid');
   }
@@ -29043,7 +29068,13 @@ function loop(){
   // Deliberately NOT weighted by wealth -- 91-96% of the living sit at the amp soft line with a full
   // provision bank, so a wealth weight would be flat, and that is a separate decision.
   // RATION=0 draws nothing at either gate and is byte-identical to before.
-  if(rationOn()){ __rationP=Math.min(1,(worldEnergy/BIRTH_ENERGY_COST)/Math.max(1,__rationAtt)); __rationAtt=0; }
+  if(rationOn()){
+    // JC: attempts are counted WEIGHTED by the attempter's lineage multiplier, so P is the pass rate per
+    // unit of weight and expected births still equal what the pool can pay. Not capped at 1 under JC:
+    // P*m is the probability, and a fresh lineage (m near 1) under a heavy incumbent can pass every time.
+    if(jcOn()) jcUpdate();
+    const _aff=(worldEnergy/BIRTH_ENERGY_COST);
+    __rationP=jcOn()?_aff/Math.max(1e-9,__rationAtt):Math.min(1,_aff/Math.max(1,__rationAtt)); __rationAtt=0; }
   { tHist.fill(0); for(let _i=0;_i<N;_i++){ if(palive[_i]) tHist[tendBin(_i)]++; }
     const _mean=N/TCELLS;
     for(let _i=0;_i<N;_i++){ if(!palive[_i])continue; const _bc=tHist[tendBin(_i)];
