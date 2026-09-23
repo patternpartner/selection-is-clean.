@@ -20804,3 +20804,44 @@ harness-oee's kinds bin axes 0-2. Part of any entropyRatio gain under NICHE_POOL
 metric reading the very axis the resource spreads out: partly mechanical, not evidence of
 open-endedness. Effective lineages and establishment are lineage-based and are the less circular
 numbers. The rule above stands as written; this is how its result should be read.
+
+#### #219c — THE RULE, APPLIED: NICHE_POOL stays a knob
+
+Six seeds, 20k ticks (seeds 1-3 above; 4-6 run from the same frozen worktree):
+
+| | current engine | arm A |
+|---|---|---|
+| entropyRatio | 0.08 0.76 0.77 0.32 0.14 0.93 — mean **0.500** | 0.60 0.80 0.76 0.84 0.54 0.70 — mean **0.707** |
+| runs below 0.3 | **2** | **0** |
+| effective lineages late | 6.2 5.95 4.83 7.9 6.28 15.77 — mean **7.82** | 5.09 6.86 6.13 5.17 2.52 1.78 — mean **4.59** |
+| top lineage share | 30 26 32 25 28 15% | 32 26 28 37 **62 73**% |
+| population late | 330-360 | **108**-511 |
+
+(a) passes, (b) passes, **(c) fails**. Not the default.
+
+**And the failure is the caveat, arriving on schedule.** entropyRatio rose because the resource forces
+spread on tend axis 0 and the metric bins that axis. Lineage diversity FELL, and on seeds 5 and 6 one
+lineage holds 62-73% of the world by spreading itself across diet channels. Niche pools partition the
+RESOURCE; they do not partition LINEAGES, because nothing stops one lineage from occupying many channels.
+Coexistence of resources is not coexistence of kinds. Populations also destabilise (108 on seed 4).
+
+Arm B, `NICHE_POOL` alone with first-come allocation, seeds 1-3: 0.46 / 0.79 / 0.50 — no catastrophic
+run, no lift in level. Establishment not run for B.
+
+**What this session leaves standing.** Reproduction in the default engine is allocated by array order
+through a pool that is dry 94-99% of the time, and that artifact is what has been holding diversity up:
+removing it (`RATION`) sweeps every seed. Every amp term in the file acts downstream of a decision amp
+does not make. Three knobs (`INHERIT`, `RATION`, `NICHE_POOL`) are in the engine, default off, each with
+its measured result beside it, and two rigs (`harness-fecundity`, `harness-establish`) ask who breeds and
+whether anything new takes hold. The default engine is byte-identical to the pre-session one except the
+`AIM=0` control. **The universe did not move.** What moved is knowing where its diversity comes from.
+
+**What the next session should try, and why these three:**
+1. Make the birth ration depend on something a lineage does, not on attempt rate alone: under `RATION`
+   the lottery is the only selection on reproduction, and "tries most" is a single hill. Candidates are
+   the parent's LOCAL resource (`localRes`, which it harvests) rather than a global or channel pool.
+2. Density dependence per LINEAGE rather than per resource channel, since #219c shows a lineage can
+   hold many channels. That is closer to a pathogen or predator load that scales with a lineage's own
+   abundance — the classic Janzen-Connell shape.
+3. The provision bank is full for 93-98% of the living. Nothing is spending it. Whatever the ration
+   becomes, it should be able to read it.
