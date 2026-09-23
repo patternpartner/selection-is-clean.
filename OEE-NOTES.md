@@ -20914,3 +20914,27 @@ Three changes, each answering a measured failure:
 
 Same rule as #220, unchanged, same six seeds. Speciation counts can be pure jitter — labels that appear
 and die — and (e), lineages reaching 10 members, is what distinguishes that from establishment.
+
+#### #220d — THE FULL ARM FAILS (e), narrowly. Not the default.
+
+Six seeds, 20k ticks, `JC=2 INHERIT=1 INHERIT_SD=200 SPEC_CENTROID=1` vs current engine:
+
+| | current | full | |
+|---|---|---|---|
+| entropyRatio | 0.08 0.76 0.77 0.32 0.14 0.93 — mean 0.500 | 0.93 1.04 0.97 0.97 1.04 0.88 — mean **0.972** | (b) pass |
+| runs below 0.3 | 2 | **0** | (c) pass |
+| effective lineages late (mean) | 7.82 | **146.7** | (a) pass |
+| population late (mean) | 344 | 385 | (d) pass |
+| established after warm-up (mean) | **7.0** | 4.33 | **(e) FAIL** |
+| lineages first seen after warm-up | 102 | 894 | |
+| takeovers | 4.83 | 3.17 | |
+
+The headline number this file asks for moved further than anything else this session: diversity does
+not collapse on ANY seed, 0.88-1.04 against 0.08-0.93. It is still not the default, for three reasons:
+1. (e) fails, and the rule was written first. Relaxing it now would be the move this file exists to stop.
+2. The lineage figures are mostly label churn: 894 minted, about four reach 10 members. 147 effective
+   lineages among 385 particles is fragmentation, not 147 kinds. effN is not a trustworthy number in
+   this regime and (a)'s pass should be read that way.
+3. **Mutation at SD 0.2 spreads traits across the metric's bins by itself.** Until a mutation-only arm is
+   run, the entropyRatio gain cannot be credited to enemies or to speciation at all. Control in flight:
+   `INHERIT=1 INHERIT_SD=200` alone, and `JC=2` + that mutation without SPEC_CENTROID, seeds 1-3.
