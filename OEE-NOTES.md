@@ -21033,3 +21033,16 @@ substrate-test green on nine arms and smoke.sh at 47 ok / 6 failing — three ti
 (grammar, reach, autosave), two rigs whose text patches no longer find their anchors (atrophy-probe,
 attractor), and slot-test's minimum-gap row. Each is being run alone on the pre-session engine and the
 new one to sort pre-existing from caused; anything caused gets fixed forward.
+
+**The six smoke.sh failures, sorted** (each run alone, 900s limit, pre-session b60704a vs main dddd24d):
+none is caused by #220f/#221. grammar-test (429s / 441s) and autosave-test (302s / 303s) PASS alone on
+both — they simply outlast smoke.sh's per-rig timeout, and the near-equal times say the new engine is not
+slower. reach-test fails one #178 row on the OLD engine and passes on the new. harness-atrophy-probe and
+harness-attractor are broken on both (their text-patch anchors no longer exist in engine.html). slot-test
+fails two rows on both, different rows per run. Pre-existing debt, recorded so nobody re-bisects it.
+
+**And a note on the field:** #185's law broadcast is live in the user's saves — identical law values in
+separate universes (COMPLEXITY_TOLL 2.142 in three, LEVEL_FOREST_REG 0.5026 in three, LAW_VIABLE 0.8013 in
+three, FOUND_MAX 4.3 in three). The field already selects physics, slowly: 1-5 kept laws per universe over
+100k-290k ticks. Left alone deliberately until the worlds underneath have variation (#220f) and
+gathering-based breeding (#221) long enough for the laws to be judged on something that evolves.
