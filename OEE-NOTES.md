@@ -21095,3 +21095,21 @@ being the projection's length — a creature near the centre of trait space is h
 branch uses the same projection instead of two axes. Same probe after: 194 green-dominant, 135 blue, 124
 red. Screenshot at ~10.7k ticks: pastels of many hues, one saturated magenta-red group, mixed clusters.
 A display-only change: nothing in selection reads these arrays. substrate-test TICKS=40 262/0.
+
+#### #224 — two attempts on the birth queue, neither shipped
+
+After #221/#223, seed 1, ticks 1.5-5k: still 96% of the living at the amp soft line, 98% holding a bank of
+3+, and array decile 0 breeding at 2.12 per 1k particle-ticks against ~0.04 in the middle. The world pool
+(dry 94-99% of ticks) is still the queue, so PROV_BIRTH's charge barely bites.
+
+1. **BANK_PAYS — the bank pays, the pool no longer gates births. REVERTED before commit.** The population
+   ran to CAP=1800 (substrate-test: "bank 3: made false" — every birth refused at N>=CAP — plus two
+   migrant rows). **The pool is this world's only effective population control.** Starvation drains amp at
+   (1-adequacy)*0.04 a tick, which the engine's many amp sources outrun. Any future attempt to let
+   gathering buy births must bring its own density dependence first.
+2. **The fair lottery (RATION) again, now that there is variation.** 5k ticks: seed 1 effective lineages
+   10.8 vs 24.3 (sweep faster), seed 2 population 1134 vs 357 (blew up), effN 39.1 vs 21.8. Mixed.
+   Left where #222b put it — BIRTH_LOTTERY, a law the field may switch on, starting off.
+
+The queue stands for now. It is also, per #219, what has been protecting diversity, which is a reason to
+replace it only with something that protects diversity for a better reason.
