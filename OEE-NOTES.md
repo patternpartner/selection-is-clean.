@@ -21079,3 +21079,19 @@ Found while looking for the strongest pull on traits, in the collision handler, 
 
 All three start at their old values, so nothing moves until a world proposes otherwise. substrate-test
 TICKS=40 SEED=1 262/0; 3000-tick run clean (459/460/426).
+
+### #223 — THE FIELD WAS RED BECAUSE ONE PROGRAM PAINTED EVERY CREATURE
+
+The user's screenshots, 100k+ ticks: coloured ground, red creatures, universe after universe. #222b had
+measured trait spread doubling under #220f, and the display still drew one red. The cause, probed at 2000
+ticks: `genome.rend` — an evolved colour program — is ONE per world (the germline), is live by then, and
+painted 412 of 453 creatures red. Nothing selects on colour (pR/pG/pB feed nothing in the selection path),
+so the program drifts to wherever it drifts and repaints every kind the same.
+
+Now the world's program keeps BRIGHTNESS (lifted into 40-75 — the first cut kept raw lightness and most
+creatures drew as near-black specks) and SIZE; HUE and SATURATION come from the creature's own traits via
+a FIXED projection of every axis (never population-relative, so it cannot invent difference), saturation
+being the projection's length — a creature near the centre of trait space is honestly pale. The fallback
+branch uses the same projection instead of two axes. Same probe after: 194 green-dominant, 135 blue, 124
+red. Screenshot at ~10.7k ticks: pastels of many hues, one saturated magenta-red group, mixed clusters.
+A display-only change: nothing in selection reads these arrays. substrate-test TICKS=40 262/0.

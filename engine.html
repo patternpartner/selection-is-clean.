@@ -21350,14 +21350,34 @@ function computeVisuals(i){
   const col=collapse[i];
   const rn=genome.rend;
   if(rn&&rn.length===4&&!rn[0].failed&&!rn[1].failed&&!rn[2].failed&&!rn[3].failed){
-    pR[i]=__cl(rendCall(rn[0],t0,t1,t2,t3,amp[i],phase[i],col),0,255);
-    pG[i]=__cl(rendCall(rn[1],t0,t1,t2,t3,amp[i],phase[i],col),0,255);
-    pB[i]=__cl(rendCall(rn[2],t0,t1,t2,t3,amp[i],phase[i],col),0,255);
+    const _rr=__cl(rendCall(rn[0],t0,t1,t2,t3,amp[i],phase[i],col),0,255);
+    const _rg=__cl(rendCall(rn[1],t0,t1,t2,t3,amp[i],phase[i],col),0,255);
+    const _rb=__cl(rendCall(rn[2],t0,t1,t2,t3,amp[i],phase[i],col),0,255);
     pSz[i]=__cl(rendCall(rn[3],t0,t1,t2,t3,amp[i],phase[i],col),0.5,8);
+    // #223: THE WORLD'S EVOLVED RENDERER KEEPS BRIGHTNESS AND SIZE; HUE AND SATURATION ARE THE CREATURE'S.
+    // genome.rend is ONE program per world (the germline), nothing selects on colour, and measured at
+    // 2000 ticks it painted 412 of 453 living particles red -- which is why the user's whole field reads
+    // red in universe after universe. It was repainting every kind in one colour. Its lightness is kept, so
+    // a world still has its own look; the hue comes from the creature's own traits (see the else branch).
+    const _mx=Math.max(_rr,_rg,_rb), _mn=Math.min(_rr,_rg,_rb), _lit=40+__cl(_mx/255,0,1)*35;   // the program's brightness, lifted into 40-75: first cut kept raw lightness and most creatures drew as near-black specks
+    let _ca=0,_cb=0; for(let d=0;d<DIMS;d++){ const v=tend[i*DIMS+d]; _ca+=v*Math.cos(d*2.39996); _cb+=v*Math.sin(d*2.39996); }
+    let _h=((Math.atan2(_cb,_ca)/Math.PI)*180+180+MODE_HUE[pMode[i]])%360;
+    const _s=__cl((12+Math.min(1,Math.sqrt(_ca*_ca+_cb*_cb)/1.2)*80)*MODE_SAT[pMode[i]],3,100);
+    const[_r2,_g2,_b2]=hslToRgb(((_h%360)+360)%360,_s,_lit);
+    pR[i]=_r2;pG[i]=_g2;pB[i]=_b2;
   } else {
     const m=t0,ch=t1,vo=t2,mg=t3;
-    let hue=((Math.atan2(ch,mg)/Math.PI)*180+180)%360;
-    let sat=30+Math.abs(vo)*60;
+    // #223: HUE AND SATURATION READ EVERY TRAIT AXIS. They read two (t1,t3) and brightness was scaled by
+    // amp, which 90%+ of the living hold at the soft line -- so a population with twice the trait spread
+    // (measured #222b: 0.21 vs 0.095) still drew as one red. The field is an artwork whose claim is that
+    // new kinds arrive; a display that cannot show two kinds as two colours hides the claim.
+    // A FIXED projection of all DIMS axes onto a colour wheel -- the same for every creature in every
+    // world, never relative to the population, so it cannot invent difference that is not there. Nearby
+    // traits give nearby hues. Saturation is the projection's length: a creature near the centre of trait
+    // space is honestly grey rather than an arbitrary vivid hue. An evolved genome.rend still wins above.
+    let _ca=0,_cb=0; for(let d=0;d<DIMS;d++){ const v=tend[i*DIMS+d]; _ca+=v*Math.cos(d*2.39996); _cb+=v*Math.sin(d*2.39996); }
+    let hue=((Math.atan2(_cb,_ca)/Math.PI)*180+180)%360;
+    let sat=12+Math.min(1,Math.sqrt(_ca*_ca+_cb*_cb)/1.2)*80;
     let lit=30+m*18+Math.abs(vo)*12;
     const smear=1-col;
     hue+=smear*Math.sin(phase[i]*3)*35;
