@@ -21113,3 +21113,15 @@ After #221/#223, seed 1, ticks 1.5-5k: still 96% of the living at the amp soft l
 
 The queue stands for now. It is also, per #219, what has been protecting diversity, which is a reason to
 replace it only with something that protects diversity for a better reason.
+
+#### #225 — CROWD: logistic density dependence in place of the pool. Population held; diversity did not. Reverted.
+
+Split the pool's two jobs: the parent's bank pays (PROV_BIRTH), and each attempt passes with probability
+1 - N/K, K = REGEN / METABOLIC_ENERGY_DRAW (about 500), the same for every attempter. Seed 1, 5k ticks:
+population held at 488-500 exactly as designed. Trait spread fell 0.20 -> **0.054** (main holds 0.21).
+Charging a refused attempt 0.05 of the bank did not change it (0.051).
+
+**This is the third time the same thing has happened** (#219 RATION, #224 lottery again, #225): every
+allocation that is fair across the array produces a sweep. The first-come queue is protecting diversity,
+and three replacements have failed to protect it for a better reason. The try-cost result says "attempts
+are free" is not the whole explanation. Not understood yet; the queue stays until it is.
