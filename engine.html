@@ -2286,6 +2286,28 @@ const LAW_DECLARED=[
   {name:'WORLD_ENERGY_MAX',  get:()=>WORLD_ENERGY_MAX,  set:v=>{WORLD_ENERGY_MAX=v;},  lo:0.0, hi:800},
   {name:'WORLD_ENERGY_REGEN',get:()=>WORLD_ENERGY_REGEN,set:v=>{WORLD_ENERGY_REGEN=v;},lo:0.0, hi:5},
   {name:'DEATH_ENERGY_RETURN',get:()=>DEATH_ENERGY_RETURN,set:v=>{DEATH_ENERGY_RETURN=v;},lo:0.0,hi:1},
+  // === #222 - THE PHYSICS UNDERNEATH JOINS THE TABLE ============================================
+  // The user's instruction: the physics and the economy should be changeable, decided by the system.
+  // Not by the creatures -- a particle that sets its own upkeep sets it to zero (#50's lesson) -- and
+  // not by a formula I write. By the machinery already here: a WORLD proposes, runs a probation, keeps
+  // what its population survives, and #185 broadcasts kept laws so the FIELD spreads what works.
+  // Appended, never inserted: the uplasmid packet names a law by INDEX, so existing rows keep theirs.
+  // Two bounds are defended rather than free, stated so they are not mistaken for oversights:
+  //   METABOLIC_ENERGY_DRAW lo 0.00025 -- the verdict only asks "did the population hold?", so cheaper
+  //     upkeep is always kept and would ratchet carrying capacity (REGEN/draw) toward CAP=1800, which a
+  //     browser tab cannot draw. 0.00025 caps it near 800.
+  //   AMP_SOFT hi 1.9 -- AMP_HARD is 2.0, the numerical guard; the soft line must stay under it.
+  {name:'INHERIT_SD',        get:()=>INHERIT_SD,        set:v=>{INHERIT_SD=v;},        lo:0.0,     hi:0.6},
+  {name:'PROV_BIRTH_COST',   get:()=>PROV_BIRTH_COST,   set:v=>{PROV_BIRTH_COST=v;},   lo:0.2,     hi:4.0},
+  {name:'PROV_BIRTH_ENDOW',  get:()=>PROV_BIRTH_ENDOW,  set:v=>{PROV_BIRTH_ENDOW=v;},  lo:0.0,     hi:1.0},
+  {name:'AMP_SOFT',          get:()=>AMP_SOFT,          set:v=>{AMP_SOFT=v;},          lo:0.8,     hi:1.9},
+  {name:'PROVISION_CAP',     get:()=>PROVISION_CAP,     set:v=>{PROVISION_CAP=v;},     lo:2.0,     hi:12.0},
+  {name:'PROVISION_YIELD',   get:()=>PROVISION_YIELD,   set:v=>{PROVISION_YIELD=v;},   lo:0.1,     hi:1.0},
+  {name:'SENESCENCE_ONSET',  get:()=>SENESCENCE_ONSET,  set:v=>{SENESCENCE_ONSET=v;},  lo:300,     hi:8000},
+  {name:'SENESCENCE_SCALE',  get:()=>SENESCENCE_SCALE,  set:v=>{SENESCENCE_SCALE=v;},  lo:0.00005, hi:0.002},
+  {name:'METABOLIC_ENERGY_DRAW',get:()=>METABOLIC_ENERGY_DRAW,set:v=>{METABOLIC_ENERGY_DRAW=v;},lo:0.00025,hi:0.0012},
+  {name:'STARVE_DRAIN',      get:()=>STARVE_DRAIN,      set:v=>{STARVE_DRAIN=v;},      lo:0.005,   hi:0.15},
+  {name:'SPECIATE_DIST',     get:()=>SPECIATE_DIST,     set:v=>{SPECIATE_DIST=v;},     lo:0.2,     hi:1.2},
 ];
 // === #197 - AND THE RATE HAD TO MOVE WITH THE TABLE =============================================
 // The law table went from THREE entries to sixteen in this commit. At the old rate - one proposal per
@@ -2298,7 +2320,7 @@ const LAW_DECLARED=[
 // drawn. At the old 4,000 that is three. Both defaults move, and both are themselves laws, so a world
 // that finds short probations produce bad verdicts can evolve them back up - which is the only
 // honest way to set a number whose right value I do not know.
-let LAW_RATE=0.0006;       // per-tick proposal chance - about one proposal per 1,700 ticks per world
+let LAW_RATE=0.0015;       // per-tick proposal chance - about one per 670 ticks per world (#222: was 0.0006; the table grew by eleven physics rows and each deserves a turn)
 let LAW_PROBATION=1200;    // ticks a proposal runs before it is judged
 let LAW_VIABLE=0.7;        // fraction of the pre-proposal population mean the world must hold
 let LAW_COST=0.04;         // amplitude every living particle pays for a proposal
@@ -4139,12 +4161,12 @@ let DEATH_ENERGY_RETURN=0.5;  // fraction of a birth's cost recovered when a par
 // adequacy<1, and the shortfall is paid as amplitude loss → starvation deaths. This is what
 // pins a real carrying capacity (≈ REGEN/METABOLIC_ENERGY_DRAW) well below CAP; birth-gating
 // alone only slowed the climb, because well-fed sparse particles almost never died.
-const METABOLIC_ENERGY_DRAW=0.0004; // per-living-particle per-tick upkeep; carrying capacity ≈ REGEN/this
+let METABOLIC_ENERGY_DRAW=0.0004; // per-living-particle per-tick upkeep; carrying capacity ≈ REGEN/this
 // #135: upkeep under attention. Looked-at ground is cheaper to stand on — a gradient, not a score.
 // Nothing is awarded; the cost of living is simply lower where the eye rests, exactly how every
 // other resource here works. A lineage is free to ignore it and pays nothing but ordinary rent.
 function attnUpkeep(i){ return METABOLIC_ENERGY_DRAW*(1-ATTENTION_GAIN*Math.min(1,attentionAt(i))); }
-const STARVE_DRAIN=0.04;            // max amplitude lost per tick when the world cannot feed the population
+let STARVE_DRAIN=0.04;            // max amplitude lost per tick when the world cannot feed the population
 // Seasons: a constant influx produces a perfectly smooth equilibrium with NO scarcity, so a
 // scarcity-sensor has nothing to sense and resource-aware restraint can never be selected.
 // Real restraint evolves against droughts. The influx now cycles between feast and famine;
@@ -4171,8 +4193,8 @@ const SEASON_AMPLITUDE=0.45;        // +/- swing in sunlight; lean season drives
 // Age now kills, with a heritable set-point: a lineage can evolve toward long life or fast turnover, and
 // the trade-off is real because reproduction costs amplitude the old cannot keep re-earning.
 // This is the single change that turns the photograph back into a river.
-const SENESCENCE_ONSET=1800;        // ticks of life before mortality begins to bite at all
-const SENESCENCE_SCALE=0.00035;     // per-tick death hazard added per unit of (age-onset)/1000, x lifespanBias
+let SENESCENCE_ONSET=1800;        // ticks of life before mortality begins to bite at all
+let SENESCENCE_SCALE=0.00035;     // per-tick death hazard added per unit of (age-onset)/1000, x lifespanBias
 
 // LEAP 2 — DESCENT OR DEATH. 76% of living particles were the sole member of their lineage: the
 // population was a standing crop of unrelated founders, because replenish() mints PARENTLESS spawns and
@@ -4317,10 +4339,10 @@ const RESEED_FLOOR=90;              // above this, the world stops handing out f
 // soft line is now BANKED as reproductive provision instead of being clipped — amp stays bounded (the
 // stability the clamp was really providing) while surplus stops being thrown away (the differential it
 // was destroying). Provision is spent at reproduction, so acquiring more than you can hold pays.
-const AMP_SOFT=1.2;                 // the historical clamp, now a conversion line rather than a ceiling
+let AMP_SOFT=1.2;                 // the historical clamp, now a conversion line rather than a ceiling
 const AMP_HARD=2.0;                 // absolute bound retained for numerical safety
-const PROVISION_CAP=6.0;            // most a particle can bank
-const PROVISION_YIELD=0.55;         // fraction of surplus that survives conversion — banking is lossy
+let PROVISION_CAP=6.0;            // most a particle can bank
+let PROVISION_YIELD=0.55;         // fraction of surplus that survives conversion — banking is lossy
 
 // LEAP 4 — THE BOUNDARY BITES. The record says four times that the causal action is at the open
 // boundary, and the strongest OEE signal in the whole file came from there: a pump lineage feeding a
@@ -4371,7 +4393,7 @@ let retentionScore=0;
 // pays it, and PROV_BIRTH_ENDOW of it starts the child. A creature that gathers faster refills faster and
 // breeds sooner: doing well means leaving more offspring. The world-pool gate still applies after it.
 // PROV_BIRTH=0 restores the old path exactly.
-const PROV_BIRTH_COST=1.0, PROV_BIRTH_ENDOW=0.5;
+let PROV_BIRTH_COST=1.0, PROV_BIRTH_ENDOW=0.5;
 function provBirthOn(){ return (typeof globalThis==='undefined')||((globalThis.__PROV_BIRTH??1)|0)!==0; }
 function rationOn(){ return (typeof globalThis!=='undefined')&&((globalThis.__RATION??0)|0)!==0; }
 let __rationP=1, __rationAtt=0;   // RATION -- see loop(): per-attempt pass probability, and attempts counted this tick
@@ -4387,7 +4409,7 @@ let __rationP=1, __rationAtt=0;   // RATION -- see loop(): per-attempt pass prob
 // Plain variation, the first ingredient of evolution, is what this engine was missing; the mechanisms
 // built to stand in for it were measured and removed. INHERIT=0 restores the old blending byte for byte.
 function inheritOn(){ return (typeof globalThis==='undefined')||((globalThis.__INHERIT??1)|0)!==0; }
-const INHERIT_SD=(typeof globalThis!=='undefined'&&globalThis.__INHERIT_SD!==undefined)?(globalThis.__INHERIT_SD|0)/1000:0.2;
+let INHERIT_SD=(typeof globalThis!=='undefined'&&globalThis.__INHERIT_SD!==undefined)?(globalThis.__INHERIT_SD|0)/1000:0.2;
 function inheritMutate(i){
   if(!inheritOn())return;
   for(let d=0;d<DIMS;d++){
@@ -4395,7 +4417,7 @@ function inheritMutate(i){
     tend[i*DIMS+d]=_v>TEND_HARD?TEND_HARD:_v<-TEND_HARD?-TEND_HARD:_v;
   }
 }
-const SPECIATE_DIST=0.55;           // trait-space distance from parent that founds a new lineage
+let SPECIATE_DIST=0.55;           // trait-space distance from parent that founds a new lineage
 // SPECIATE_MIN_AGE — RESTORED in #69 after being deleted in #63, and the round trip is the record.
 // #63 measured it blocking 0 of 137 attempts, never as the sole blocker, and deleting it came back
 // BIT-IDENTICAL on seed 7 (kinds 12.3333, N 357, meanAmp 1.1675, finalSample and cosmos block equal).
@@ -9706,8 +9728,8 @@ let genome={
   metaSearchBias:0.15,
   mf2upInfluence:0.12,
   mfupInfluence:0.12,
-  netLawRate:0.001,
-  netLawReceptivity:0.05,
+  netLawRate:0.002,   // #222: was 0.001
+  netLawReceptivity:0.15,   // #222: was 0.05 -- a field that adopts one offer in twenty barely trades physics at all
   pcfmInfluence:0.12,
   persistentClusterFractionInfluence:0.12,
   probes:[],

@@ -21046,3 +21046,22 @@ separate universes (COMPLEXITY_TOLL 2.142 in three, LEVEL_FOREST_REG 0.5026 in t
 three, FOUND_MAX 4.3 in three). The field already selects physics, slowly: 1-5 kept laws per universe over
 100k-290k ticks. Left alone deliberately until the worlds underneath have variation (#220f) and
 gathering-based breeding (#221) long enough for the laws to be judged on something that evolves.
+
+### #222 — THE PHYSICS UNDERNEATH BECOMES LAW. The field decides it.
+
+The user's direction: physics and economy should be changeable, decided by the system. The right decider
+is not the creatures (a particle that sets its own upkeep sets it to zero — #50) and not a formula I
+write. It is the machinery already here, which the user's own saves show working: a world proposes a
+law, runs a probation, keeps what its population survives, and #185 broadcasts kept laws so identical
+values turn up in three universes at once.
+
+Eleven constants join LAW_DECLARED (appended; the uplasmid packet names laws by index):
+`INHERIT_SD` `PROV_BIRTH_COST` `PROV_BIRTH_ENDOW` `AMP_SOFT` `PROVISION_CAP` `PROVISION_YIELD`
+`SENESCENCE_ONSET` `SENESCENCE_SCALE` `METABOLIC_ENERGY_DRAW` `STARVE_DRAIN` `SPECIATE_DIST`.
+Two bounds are defended in the code comment: upkeep's floor (0.00025 — the verdict keeps anything the
+population survives, so cheaper upkeep ratchets carrying capacity toward CAP, which a tab cannot draw),
+and AMP_SOFT under AMP_HARD. Proposal rate 0.0006 -> 0.0015; law broadcast 0.001 -> 0.002; receptivity
+0.05 -> 0.15. All three are themselves evolvable; these are starting points.
+
+Shipped on: substrate-test TICKS=40 SEED=1 262/0 (its #183 row probes every law for settability); a
+3000-tick run, population 461/461/447, no errors. The field is the test.
