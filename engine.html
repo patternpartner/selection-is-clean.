@@ -1261,7 +1261,7 @@ const LIVENESS_DECLARED=[
   // #183: cosmos.law already existed and now actually fires - it is a PROPOSAL, and the two verdicts
   // are declared beside it so a run where every law was reverted is distinguishable from one where
   // none was ever proposed.
-  'phys.reaction','cosmos.lawKept','cosmos.lawRevert',
+  'phys.reaction','cosmos.lawKept','cosmos.lawRevert','cosmos.lawUndo','cosmos.lawRelax',
   'probe.author','probe.drift','probe.claim','probe.promote','oee.bonus',   // #184
   // #185: deme.gate fires whenever a cross-deme pairing is CONSIDERED and deme.blocked when one is
   // refused, so "the barrier exists but never bites" and "there is no barrier" are distinguishable.
@@ -2336,7 +2336,29 @@ const LAW_WINDOW=600;        // ticks of population history the pre-proposal mea
 const LAW_BASE_LAWS=3;       // #197: the three laws that existed before the prices joined the table - see the pick site
 let __lawPop=[];             // rolling population samples
 let __lawTrial=null;         // {idx, from, to, startTick, baseline, sum, n}
-let __lawLog=[];             // [tick, name, from, to, verdict] - 1 kept, 0 reverted
+let __lawLog=[];             // [tick, name, from, to, verdict] - 1 kept, 0 reverted, 2 undone by an extinction (#227)
+// #227 EXTINCTION IS A VERDICT ON THE LAWS. From the user's field: surface/6 went extinct 7-8 times per save
+// window from ~170k ticks on, rebooting each time into physics it had KEPT -- BIRTH_ENERGY_COST drifted 1 ->
+// 2.22 -- because #216x made law values persist across reboots. The comment on LAW_VIABLE says dying is the
+// world-level verdict; nothing acted on it, so the world died, rebooted into the same fatal laws, and died.
+// Now an extinction undoes: the law on probation if one is running; else the most recent KEPT law (marked 2);
+// else, when the log has nothing left, every law moves a quarter of the way back to its declared value
+// (the fatal change may predate the 40-entry log). One step per death: repeated deaths walk the physics
+// back until the world can live. EXTINCT_UNDO=0 disables it.
+let __lawDefaults=null;
+function lawDefaultsSnap(){ if(__lawDefaults)return; __lawDefaults={}; for(const r of LAW_DECLARED){ try{ const v=+r.get(); if(isFinite(v))__lawDefaults[r.name]=v; }catch(_){} } }
+function extinctUndoOn(){ return (typeof globalThis==='undefined')||((globalThis.__EXTINCT_UNDO??1)|0)!==0; }
+function lawUndoOnExtinction(){
+  if(!extinctUndoOn())return;
+  try{
+    if(__lawTrial){ const r=LAW_DECLARED[__lawTrial.idx]; if(r){ r.set(__lawTrial.from); __lawLog.push([tick|0,r.name,+__lawTrial.from,+__lawTrial.to,0]); recordEvent('law_undo',{law:r.name,to:+(+__lawTrial.from).toPrecision(4),why:'probation'},0); } __lawTrial=null; fired('cosmos.lawUndo'); return; }
+    for(let k=__lawLog.length-1;k>=0;k--){ const e=__lawLog[k]; if(!e||e[4]!==1)continue;
+      const r=LAW_DECLARED.find(x=>x.name===e[1]); if(!r)continue;
+      r.set(__cl(+e[2],r.lo,r.hi)); e[4]=2; recordEvent('law_undo',{law:r.name,to:+(+e[2]).toPrecision(4),why:'kept'},0); fired('cosmos.lawUndo'); return; }
+    if(__lawDefaults){ for(const r of LAW_DECLARED){ const d=__lawDefaults[r.name]; if(typeof d!=='number')continue; const v=+r.get(); if(isFinite(v)&&v!==d) r.set(__cl(v+(d-v)*0.25,r.lo,r.hi)); }
+      recordEvent('law_undo',{law:'*',why:'relax'},0); fired('cosmos.lawRelax'); }
+  }catch(_){}
+}
 function lawSamplePop(){
   if(!__LAWMUT)return;
   let a=0; for(let i=0;i<N;i++) if(palive[i])a++;
@@ -12429,6 +12451,7 @@ function decodeGenome(data){
     if(typeof g.rxs==='number')genome.rxSelf=+g.rxs;
     if(typeof g.rxc==='number')genome.rxCross=+g.rxc;
     if(Array.isArray(g.LAW))__lawLog=g.LAW;                    // #183 (absent -> no legislative history, which is honest: none was recorded)
+    lawDefaultsSnap();   // #227: the declared values, taken before any save overwrites them
     if(lawPersistOn()&&g.LAWV&&typeof g.LAWV==='object'){      // #216x (absent -> the declarations, which is the pre-#216x world exactly)
       for(const _r of LAW_DECLARED){ const _v=g.LAWV[_r.name];
         if(typeof _v==='number'&&isFinite(_v)){ try{ _r.set(__cl(_v,_r.lo,_r.hi)); }catch(_){} } } }
@@ -20696,6 +20719,7 @@ function checkExtinction(){
     });
     if(genome.lineage.length>4)genome.lineage.shift();
     recordEvent('extinction',{alive,fit:+currentFitness.toFixed(3),mut:+genome.mutationRate.toFixed(3),cause:evoDead?'evolvability':'population',sinceBoot:tick});
+    lawUndoOnExtinction();   // #227
 
     genome.generation++;
     try{const g2=trimGenomeToBudget();if(g2&&g2.length<SAVE_BUDGET)localStorage.setItem('selection_genome',g2)}catch(e){}   // #146
@@ -29064,6 +29088,7 @@ function axisStats(d){ if(d<0||d>=DIMS)d=DIMS-1; const B=4; const cnt=new Int32A
   return {d, ent:+ent.toFixed(3), Vtot:+Vtot.toFixed(4), R:+R.toFixed(3), lineages:lsum.size, n:gn}; }
 
 function loop(){
+  if(!__lawDefaults)lawDefaultsSnap();   // #227: no save was restored -> the declarations are the defaults
   lastLoopTime=performance.now();
   try{
   const frameStart=lastLoopTime;

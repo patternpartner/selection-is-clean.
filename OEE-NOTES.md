@@ -21174,3 +21174,18 @@ the default on seed 3 — two of three is not a reason to change every universe.
 at 2, acting only when a world turns BIRTH_LOTTERY on, so a world that tries the lottery gets the version
 that beat the plain lottery. substrate-test's billing and bank rows now hold the lottery's weights neutral
 (they test billing, not the lottery); 262/0 with RATION on and off. Default engine byte-identical to main.
+
+### #227 — EXTINCTION IS A VERDICT ON THE LAWS
+
+From the user's saves: surface/6 went extinct 7-8 times per save window from ~170k ticks, epochs reading
+population 0-7 for 100k+ ticks. Its laws: BIRTH_ENERGY_COST 1 -> 2.22 (kept), LAW_PROBATION 200, LAW_RATE
+decayed to 0.00027. #216x made law values persist across reboots, so every reboot came back into the
+physics that had just killed it. LAW_VIABLE's comment says "dying is the world-level verdict" — nothing
+acted on the verdict.
+
+Now `lawUndoOnExtinction()` runs in the extinction handler, one step per death: revert the law on
+probation if one is running; else undo the most recent KEPT law (log verdict 2 = undone); else, when the
+log has nothing left, move every law a quarter of the way back to its declared value (the fatal change can
+predate the 40-entry log — surface/6's birth cost is not in its log). Declared values are snapshotted
+before any save restores LAWV. Unit-checked on the live engine: kept 3.5 -> first extinction -> 1 (entry
+marked 2); log exhausted, 3.0 -> relax -> 2.5. substrate-test TICKS=40 262/0. EXTINCT_UNDO=0 disables.
