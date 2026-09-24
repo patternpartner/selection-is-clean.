@@ -21250,3 +21250,20 @@ four copies — executeVM (two switches, 239 + 237 cases), executeClusterVM (236
 profileVM (224) — about 6,000 lines, and they have already drifted (#217f: four different INSCRIBE bodies).
 Unifying them is the purge worth doing; it is a careful, family-by-family refactor where every divergence must
 be chosen deliberately, and it is left as the brief for a fresh session rather than rushed at the end of this one.
+
+### #230 — THE FIELD CAN LOAD A HARVEST BACK, AND START FRESH FROM A BUTTON
+
+The user: a harvest downloads the whole field, but nothing could read one back in, and starting over meant
+clearing the browser. (`index.html#reset` already cleared every slot — it was simply not findable.)
+
+Two buttons beside **harvest**. **load** reads a harvest file, confirms, stashes it under
+`fieldPendingLoad` (outside the `selection_` namespace so a reset cannot eat it) and reloads; the stash is
+applied at BOOT, before any universe starts, so no running universe can autosave over a slot between the
+write and the reload. Every `selection_` key is cleared first, then each genome is written to its slot —
+surface/i -> u<i>, collective -> collective, layerL/k -> L<L>_<k> — and the harvest's own field options
+(its hash) are restored. **new** confirms and goes through the existing `#reset`.
+
+Checked in Chromium with the user's own 17of18 harvest: fresh field at 107-154 ticks; after load, each
+universe resumed at its saved age (surface/0 150,647 vs 150,519 saved; surface/6 290,857; collective 123,202;
+layer slots restored); surface/5, which has no genome in that harvest, correctly started fresh; after new,
+all back to ~130. 0 page errors. layers-test 49/0.

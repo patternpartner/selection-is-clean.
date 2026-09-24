@@ -149,6 +149,10 @@
         font:10px/1 ui-monospace,Menlo,monospace;color:#cfe;background:rgba(10,14,16,.86);
         border:1px solid #2a4a44;border-radius:7px;padding:9px 12px}
   #harvest.busy{color:#8fb;border-color:#2f6}
+  /* #230 — LOAD A HARVEST BACK, AND START FRESH, without clearing the browser. Same look as harvest. */
+  #fload,#fnew{position:fixed;bottom:8px;z-index:9;cursor:pointer;display:none;
+        font:10px/1 ui-monospace,Menlo,monospace;color:#cfe;background:rgba(10,14,16,.86);
+        border:1px solid #2a4a44;border-radius:7px;padding:9px 12px}
   iframe{border:0;width:100%;height:100%;display:block;background:#000}
   /* The tap target sits OVER the frame so one tap always lands on the field rather than on whatever
      the engine has drawn there. #153: it is HIDDEN while a universe is open. It used not to be —
@@ -182,6 +186,9 @@
 <div id="depth"></div>
 <div id="grown"></div>
 <div id="harvest">harvest</div>
+<div id="fload">load</div>
+<div id="fnew">new</div>
+<input id="floadfile" type="file" accept=".json,application/json" style="display:none">
 <div id="back">&#8592; field</div>
 <div id="fmsg"></div>
 <script>
@@ -199,6 +206,36 @@
   // treated it as a GENOME and tried to decode the word.
   // /#reset now clears BOTH keys and starts a clean field. It is the one thing the artwork must
   // always be able to do: let go of what it is holding.
+  // ═══ #230 — A HARVEST CAN BE LOADED BACK ═══════════════════════════════════════════════════
+  // A harvest downloads every universe's genome with where it lives (surface/i, layerL/k, collective),
+  // but nothing could read one back in: the field restarted only from the browser's own slots, and
+  // starting over meant clearing the whole browser. The load button stashes the file under a key
+  // OUTSIDE the selection_ namespace; it is applied HERE, at boot, before any universe starts, so no
+  // running universe can autosave over a slot between the write and the reload. Every selection_ key
+  // is cleared first -- a loaded field is exactly the harvest, not the harvest plus whatever was there.
+  // Slot names are the ones the frames are given below: surface/i -> u<i>, collective -> collective,
+  // layerL/k -> L<L>_<k>. The harvest's own hash (layer count and other field options) is restored.
+  try{
+    var _pend=localStorage.getItem('fieldPendingLoad');
+    if(_pend){
+      localStorage.removeItem('fieldPendingLoad');
+      var _h=JSON.parse(_pend), _doom=[];
+      for(var _i=0;_i<localStorage.length;_i++){ var _k=localStorage.key(_i); if(_k&&_k.indexOf('selection_')===0)_doom.push(_k); }
+      for(var _j=0;_j<_doom.length;_j++) localStorage.removeItem(_doom[_j]);
+      var _us=(_h&&_h.universes)||[], _put=0;
+      for(var _u=0;_u<_us.length;_u++){
+        var _e=_us[_u]; if(!_e||!_e.genome||typeof _e.at!=='string')continue;
+        var _m, _slot=null;
+        if(_e.at==='collective')_slot='collective';
+        else if((_m=_e.at.match(/^surface\/(\d+)$/)))_slot='u'+_m[1];
+        else if((_m=_e.at.match(/^layer(\d+)\/(\d+)$/)))_slot='L'+_m[1]+'_'+_m[2];
+        if(_slot){ try{ localStorage.setItem('selection_'+_slot,_e.genome); _put++; }catch(_x){} }
+      }
+      var _hh=String((_h&&_h.hash)||'').replace(/(^#|,)?reset(?=,|$)/,'');
+      if(_hh&&_hh!==location.hash){ try{ history.replaceState(null,'',location.pathname+(_hh.charAt(0)==='#'?_hh:'#'+_hh)); }catch(_x){} raw=location.hash.replace(/^#/,''); }
+      try{ sessionStorage.setItem('fieldLoadedMsg','loaded '+_put+' universes'); }catch(_x){}
+    }
+  }catch(_x){}
   var OPT = '(n=\\d+|pool=\\d+|nopool|bgpace=\\d+|layers=\\d+|deeppace=\\d+|turn=\\d+|foundcap=\\d+|nofound|clean|cleanart|hud|solo|reset)';
   var isOptions = raw==='' || new RegExp('^'+OPT+'(,'+OPT+')*$').test(raw);
   if(isOptions && /(^|,)reset(,|$)/.test(raw)){
@@ -714,6 +751,37 @@
     harvestEl.style.display='block';
     harvestEl.addEventListener('click',function(e){ e.stopPropagation(); harvest(); });
   }
+  // #230: load a harvest back / start a fresh field. Both replace what is running, so both ask first.
+  (function(){
+    var lb=document.getElementById('fload'), nb=document.getElementById('fnew'), fi=document.getElementById('floadfile');
+    if(!lb||!nb||!fi)return;
+    var place=function(){ var x=8+harvestEl.offsetWidth+6; lb.style.left=x+'px'; nb.style.left=(x+lb.offsetWidth+6)+'px'; };
+    lb.style.display='block'; nb.style.display='block';
+    if(total<=1){ harvestEl.style.display='none'; }
+    place(); setTimeout(place,300);
+    try{ var _msg=sessionStorage.getItem('fieldLoadedMsg'); if(_msg){ sessionStorage.removeItem('fieldLoadedMsg'); lb.textContent=_msg; setTimeout(function(){ lb.textContent='load'; place(); },6000); place(); } }catch(e){}
+    lb.addEventListener('click',function(e){ e.stopPropagation(); fi.value=''; fi.click(); });
+    fi.addEventListener('change',function(){
+      var f=fi.files&&fi.files[0]; if(!f)return;
+      var rd=new FileReader();
+      rd.onload=function(){
+        try{
+          var h=JSON.parse(rd.result);
+          if(!h||h.type!=='selection-field'||!Array.isArray(h.universes)){ lb.textContent='not a harvest'; setTimeout(function(){lb.textContent='load';place();},4000); place(); return; }
+          var ok=h.universes.filter(function(u){return u&&u.genome;}).length;
+          if(!confirm('Replace this field with the harvest ('+ok+' universes, '+(h.exportedAt||'')+')?'))return;
+          localStorage.setItem('fieldPendingLoad',rd.result);
+          location.reload();
+        }catch(err){ lb.textContent='load failed'; setTimeout(function(){lb.textContent='load';place();},4000); place(); }
+      };
+      rd.readAsText(f);
+    });
+    nb.addEventListener('click',function(e){
+      e.stopPropagation();
+      if(!confirm('Start a brand-new field? Every universe here is cleared (harvest first to keep them).'))return;
+      location.hash='reset'; location.reload();
+    });
+  })();
 
   // A readout for the part you cannot see, and the handle that turns it.
   if(LAYERS>0){
