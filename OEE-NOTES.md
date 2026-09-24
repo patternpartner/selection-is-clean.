@@ -21125,3 +21125,34 @@ Charging a refused attempt 0.05 of the bank did not change it (0.051).
 allocation that is fair across the array produces a sweep. The first-come queue is protecting diversity,
 and three replacements have failed to protect it for a better reason. The try-cost result says "attempts
 are free" is not the whole explanation. Not understood yet; the queue stays until it is.
+
+### #226 — WHY THE QUEUE PROTECTS DIVERSITY: it lets OUTLIERS breed
+
+Three fair replacements for the first-come birth queue swept or collapsed (#219, #224, #225). Two quick
+hypotheses were falsified before the measurement that explained it:
+- **Mass action (dense clumps attempt more).** Tested with a GESTATION gap capping every particle's attempt
+  rate. It made spread WORSE — seed 1, 5k: 0.056 (gap 100), 0.045 (gap 400) vs main 0.208. Removed; a law
+  the field could adopt, judged only on population, would have been a trap.
+- **BIRTH_SHRINK spread evenly shrinks everyone.** Shrink off rescued almost nothing (0.056 -> 0.071).
+
+**The measurement** — mean distance from the population's trait centroid, of parents at the moment of birth
+vs of the whole population, seed 1, ticks 1.5-4k:
+
+| rule | parents | population | ratio |
+|---|---|---|---|
+| first-come queue (main) | 0.588 | 0.348 | **1.69** |
+| fair lottery | 0.416 | 0.327 | 1.27 |
+| lottery + gestation gap | 0.156 | 0.188 | 0.83 |
+
+**Under the queue, the creatures that breed are OUTLIERS**, and trait spread follows the ratio. The queue
+has been doing by accident of array order what ecologists call negative frequency dependence at the
+reproduction step — the one place the file's dozen rarity terms never reached, because they all act on amp.
+
+**RARE_BIRTH** puts rarity into the fair lottery's weights (pRarity, already computed per tick for the
+upkeep discount). 5k spread: seed 1 lottery 0.185 -> 0.174 (x1) / 0.176 (x2); seed 2 0.069 -> 0.110 (x1) /
+0.064 (x2); main 0.208 / 0.144. Partial on one seed, nothing on the other, never beats the queue. Kept as
+a LAW at 0 — it only acts when a world turns BIRTH_LOTTERY on, and then that world can tune it.
+
+**For the next attempt:** a replacement for the queue has to reproduce ratio ~1.7 — parents drawn from the
+tails — for a reason a genome can act on. Bin rarity (a coarse 4-bin-per-axis census) is apparently too
+blunt to do it; distance from the local or lineage mean may not be.

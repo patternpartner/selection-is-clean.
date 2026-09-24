@@ -2314,6 +2314,7 @@ const LAW_DECLARED=[
   {name:'BIRTH_SHRINK',      get:()=>BIRTH_SHRINK,      set:v=>{BIRTH_SHRINK=v;},      lo:0.8,     hi:1.0},
   {name:'CONTACT_BLEND',     get:()=>CONTACT_BLEND,     set:v=>{CONTACT_BLEND=v;},     lo:0.0,     hi:0.1},
   {name:'BIRTH_LOTTERY',     get:()=>BIRTH_LOTTERY,     set:v=>{BIRTH_LOTTERY=v;},     lo:0.0,     hi:1.0},
+  {name:'RARE_BIRTH',        get:()=>RARE_BIRTH,        set:v=>{RARE_BIRTH=v;},        lo:0.0,     hi:2.0},    // #226
 ];
 // === #197 - AND THE RATE HAD TO MOVE WITH THE TABLE =============================================
 // The law table went from THREE entries to sixteen in this commit. At the old rate - one proposal per
@@ -4399,6 +4400,21 @@ let retentionScore=0;
 // pays it, and PROV_BIRTH_ENDOW of it starts the child. A creature that gathers faster refills faster and
 // breeds sooner: doing well means leaving more offspring. The world-pool gate still applies after it.
 // PROV_BIRTH=0 restores the old path exactly.
+// RARE_BIRTH (#226, a law): inside the fair lottery, an attempt is weighted by how RARE the parent's trait bin
+// is. Measured why (seed 1, ticks 1.5-4k): under the first-come queue the creatures that breed sit 1.7x
+// further from the population's trait centre than the average creature (0.588 vs 0.348); under the fair
+// lottery 1.3x; with a gestation gap 0.8x -- and trait spread follows that ordering. The queue has been
+// letting OUTLIERS breed by accident of array order, which is negative frequency dependence, and every
+// replacement handed breeding to the typical middle and collapsed (#219, #224, #225). The file already
+// scores rarity for the upkeep discount (pRarity, per tick, per trait bin); this puts it where it decides
+// something. Common kinds weigh 1; a kind at a tenth of the mean bin weighs up to 10^RARE_BIRTH. Weighted
+// attempts renormalise the lottery, so births per tick are unchanged. 0 = off.
+let RARE_BIRTH=(typeof globalThis!=='undefined'&&globalThis.__RARE_BIRTH_K!==undefined)?(globalThis.__RARE_BIRTH_K|0)/1000:0;
+function rareBirthW(pa){
+  if(!(RARE_BIRTH>0))return 1;
+  const f=__cl((pRarity[pa]-RARITY_DISCOUNT)/Math.max(1e-6,1-RARITY_DISCOUNT),0.1,1);   // = min(1, binCount/meanBinCount)
+  return Math.pow(1/f,RARE_BIRTH);
+}
 let PROV_BIRTH_COST=1.0, PROV_BIRTH_ENDOW=0.5;
 function provBirthOn(){ return (typeof globalThis==='undefined')||((globalThis.__PROV_BIRTH??1)|0)!==0; }
 // #222b: RATION is also a LAW now (BIRTH_LOTTERY > 0.5 turns it on), starting off. #219 measured a fair
@@ -21140,7 +21156,7 @@ function addParticle(x,y,tv,born,parentA,parentB){
   // instrumented, because addParticle and addCompound are both real reproduction.
   if(parentA>=0&&parentA<N&&provBirthOn()){ if(pProvision[parentA]<PROV_BIRTH_COST){ fired('birth.refused'); fired('birth.unprovisioned'); return-1; } }   // PROV_BIRTH -- see provBirthOn
   if(parentA>=0){
-    if(rationOn()){ __rationAtt++; if(Math.random()>=__rationP){ fired('birth.refused'); fired('birth.rationed'); return-1; } }   // RATION -- see loop()
+    if(rationOn()){ const _rw=rareBirthW(parentA); __rationAtt+=_rw; if(Math.random()>=__rationP*_rw){ fired('birth.refused'); fired('birth.rationed'); return-1; } }   // RATION (+RARE_BIRTH weight) -- see loop()
     if(worldEnergy<BIRTH_ENERGY_COST){ fired('birth.refused'); return-1; }
     worldEnergy-=BIRTH_ENERGY_COST; fired('birth.paid');
   }
@@ -21256,7 +21272,7 @@ function addCompound(x,y,nt,nvx,nvy,na,np,nf,parentA,parentB){
   // instrumented, because addParticle and addCompound are both real reproduction.
   if(parentA>=0&&parentA<N&&provBirthOn()){ if(pProvision[parentA]<PROV_BIRTH_COST){ fired('birth.refused'); fired('birth.unprovisioned'); return-1; } }   // PROV_BIRTH -- see provBirthOn
   if(parentA>=0){
-    if(rationOn()){ __rationAtt++; if(Math.random()>=__rationP){ fired('birth.refused'); fired('birth.rationed'); return-1; } }   // RATION -- see loop()
+    if(rationOn()){ const _rw=rareBirthW(parentA); __rationAtt+=_rw; if(Math.random()>=__rationP*_rw){ fired('birth.refused'); fired('birth.rationed'); return-1; } }   // RATION (+RARE_BIRTH weight) -- see loop()
     if(worldEnergy<BIRTH_ENERGY_COST){ fired('birth.refused'); return-1; }
     worldEnergy-=BIRTH_ENERGY_COST; fired('birth.paid');
   }
@@ -29080,7 +29096,7 @@ function loop(){
   // Deliberately NOT weighted by wealth -- 91-96% of the living sit at the amp soft line with a full
   // provision bank, so a wealth weight would be flat, and that is a separate decision.
   // RATION=0 draws nothing at either gate and is byte-identical to before.
-  if(rationOn()){ __rationP=Math.min(1,(worldEnergy/BIRTH_ENERGY_COST)/Math.max(1,__rationAtt)); __rationAtt=0; }
+  if(rationOn()){ const _af=worldEnergy/BIRTH_ENERGY_COST; __rationP=RARE_BIRTH>0?_af/Math.max(1e-9,__rationAtt):Math.min(1,_af/Math.max(1,__rationAtt)); __rationAtt=0; }   // weighted attempts: the pool pays the same number of births, RARE_BIRTH moves who
   { tHist.fill(0); for(let _i=0;_i<N;_i++){ if(palive[_i]) tHist[tendBin(_i)]++; }
     const _mean=N/TCELLS;
     for(let _i=0;_i<N;_i++){ if(!palive[_i])continue; const _bc=tHist[tendBin(_i)];
