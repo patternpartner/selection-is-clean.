@@ -21065,3 +21065,17 @@ and AMP_SOFT under AMP_HARD. Proposal rate 0.0006 -> 0.0015; law broadcast 0.001
 
 Shipped on: substrate-test TICKS=40 SEED=1 262/0 (its #183 row probes every law for settability); a
 3000-tick run, population 461/461/447, no errors. The field is the test.
+
+#### #222b — two hidden homogenisers and the allocation rule join the table
+
+Found while looking for the strongest pull on traits, in the collision handler, both literals:
+- `tend*=0.9` on BOTH PARENTS after every compound birth. Each time a creature breeds, its traits shrink
+  10% toward the origin of trait space — a centripetal force applied specifically to the creatures that
+  are succeeding. Now `BIRTH_SHRINK` (0.8-1.0; 1.0 = none).
+- A 3% trait average on every non-creating collision. Now `CONTACT_BLEND` (0-0.1).
+- And #219's allocation question: `BIRTH_LOTTERY` (0-1; >0.5 turns RATION's fair lottery on). #219 saw
+  the lottery sweep every seed in a world with no variation; with #220f/#221 in, that is the field's to
+  re-decide. Starts off.
+
+All three start at their old values, so nothing moves until a world proposes otherwise. substrate-test
+TICKS=40 SEED=1 262/0; 3000-tick run clean (459/460/426).
