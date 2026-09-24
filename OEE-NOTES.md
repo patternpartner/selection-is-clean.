@@ -21189,3 +21189,14 @@ log has nothing left, move every law a quarter of the way back to its declared v
 predate the 40-entry log — surface/6's birth cost is not in its log). Declared values are snapshotted
 before any save restores LAWV. Unit-checked on the live engine: kept 3.5 -> first extinction -> 1 (entry
 marked 2); log exhausted, 3.0 -> relax -> 2.5. substrate-test TICKS=40 262/0. EXTINCT_UNDO=0 disables.
+
+#### #227b — #222's rate changes had reached no existing universe
+
+In the user's field every universe but surface/6 held LAW_RATE at exactly 0.0006 — the pre-#222 declared
+default, never mutated. Persisted law values (#216x) and saved genes override the code's declarations on
+reload, so raising LAW_RATE, netLawRate and netLawReceptivity changed only brand-new universes. Now a saved
+value EXACTLY equal to a superseded default (LAW_SUPERSEDED, and the two genes' old 0.001 / 0.05) is read as
+"never chosen" and the current default stands; anything a world actually evolved is kept. Round-trip check:
+saved 0.0006/0.001/0.05 -> loaded 0.0015/0.002/0.15; saved 0.00031/0.0017/0.09 -> unchanged.
+**General rule for anyone changing a persisted default: add the old value to LAW_SUPERSEDED, or the change
+reaches nothing that already exists.**

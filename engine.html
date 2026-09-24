@@ -2345,6 +2345,7 @@ let __lawLog=[];             // [tick, name, from, to, verdict] - 1 kept, 0 reve
 // else, when the log has nothing left, every law moves a quarter of the way back to its declared value
 // (the fatal change may predate the 40-entry log). One step per death: repeated deaths walk the physics
 // back until the world can live. EXTINCT_UNDO=0 disables it.
+const LAW_SUPERSEDED={LAW_RATE:0.0006};   // #227b: name -> a declared default this file has since changed
 let __lawDefaults=null;
 function lawDefaultsSnap(){ if(__lawDefaults)return; __lawDefaults={}; for(const r of LAW_DECLARED){ try{ const v=+r.get(); if(isFinite(v))__lawDefaults[r.name]=v; }catch(_){} } }
 function extinctUndoOn(){ return (typeof globalThis==='undefined')||((globalThis.__EXTINCT_UNDO??1)|0)!==0; }
@@ -12445,8 +12446,8 @@ function decodeGenome(data){
     if(Array.isArray(g.oew))genome.oeeW=g.oew.map(v=>+v);
     if(typeof g.dmc==='number')genome.demeCount=g.dmc|0;              // #185
     if(typeof g.dmf==='number')genome.demeFlow=+g.dmf;
-    if(typeof g.nlr==='number')genome.netLawRate=+g.nlr;
-    if(typeof g.nlx==='number')genome.netLawReceptivity=+g.nlx;
+    if(typeof g.nlr==='number')genome.netLawRate=(+g.nlr===0.001)?0.002:+g.nlr;            // #227b: exactly the pre-#222 default = never mutated -> the current default
+    if(typeof g.nlx==='number')genome.netLawReceptivity=(+g.nlx===0.05)?0.15:+g.nlx;       // #227b: same
     if(typeof g.csc==='number')genome.cellScale=+g.csc;        // #183
     if(typeof g.rxs==='number')genome.rxSelf=+g.rxs;
     if(typeof g.rxc==='number')genome.rxCross=+g.rxc;
@@ -12454,6 +12455,10 @@ function decodeGenome(data){
     lawDefaultsSnap();   // #227: the declared values, taken before any save overwrites them
     if(lawPersistOn()&&g.LAWV&&typeof g.LAWV==='object'){      // #216x (absent -> the declarations, which is the pre-#216x world exactly)
       for(const _r of LAW_DECLARED){ const _v=g.LAWV[_r.name];
+        // #227b: a saved value EXACTLY equal to a superseded declared default was never mutated -- it is the old
+        // code's default, not the world's choice -- so the current declaration stands. Without this #222's rate
+        // change reached no existing universe: all but one in the user's field held LAW_RATE at exactly 0.0006.
+        if(typeof _v==='number'&&isFinite(_v)&&LAW_SUPERSEDED[_r.name]===_v) continue;
         if(typeof _v==='number'&&isFinite(_v)){ try{ _r.set(__cl(_v,_r.lo,_r.hi)); }catch(_){} } } }
     if(typeof g.ace==='number')genome.autonomyCede=+g.ace;     // #182 (absent -> undefined -> reads 0.5 -> the pre-#182 boundary)
     if(typeof g.ufm==='number')genome.uaFoldMode=g.ufm|0;      // #181 (absent -> undefined -> mode 0 -> the pre-#181 compiler)
