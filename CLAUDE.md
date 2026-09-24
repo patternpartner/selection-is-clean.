@@ -72,6 +72,23 @@ headline number in your entry is a pass count, you are reporting on the wrong ar
   spread-across-universes figure this project has cited is consistent with drift until the read is
   instrumented. The census reports raw material, not sorting. Do not upgrade one to the other.
 
+## Every session removes or proves something — not only adds
+
+This project grew by accretion: 32k lines, ~270 genes, 427 opcodes (9 carry 90% of all instructions), the
+opcode dispatch in four drifted copies, 76 separate adjustments to `amp` — on a core that, until `#220f`,
+had no variation at birth and allotted reproduction by array order (`#219`). Each session added one careful
+mechanism; no session's job was to ask whether the base worked. So:
+
+- **A session that adds a mechanism must also remove, merge, or prove one.** "Prove" means a measured effect
+  on who reproduces or on the dependent variable — not that it fires. Deleting what was measured and did not
+  earn its place is progress (`#220e` removed three mechanisms built the same day).
+- **If a mechanism does not change who has offspring, it is decoration**, however well it is written up.
+  Check that before building on top of it (`harness-fecundity`, `harness-establish`).
+- **Before calling anything dead, check it against the field, and read the encoder before reading a save**
+  (`#229`: a saved list of mechanisms that NEVER fired was read as the ones that had).
+- **The field is the experiment.** Harvests from long real runs are the best evidence this project has; they
+  can be loaded back and restarted from the field's `load` / `new` buttons (`#230`).
+
 ## Branching
 
 **Always update `main`.** Work on whatever feature branch the session designates, but do not leave
