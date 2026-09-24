@@ -2315,6 +2315,7 @@ const LAW_DECLARED=[
   {name:'CONTACT_BLEND',     get:()=>CONTACT_BLEND,     set:v=>{CONTACT_BLEND=v;},     lo:0.0,     hi:0.1},
   {name:'BIRTH_LOTTERY',     get:()=>BIRTH_LOTTERY,     set:v=>{BIRTH_LOTTERY=v;},     lo:0.0,     hi:1.0},
   {name:'RARE_BIRTH',        get:()=>RARE_BIRTH,        set:v=>{RARE_BIRTH=v;},        lo:0.0,     hi:2.0},    // #226
+  {name:'OUTLIER_BIRTH',     get:()=>OUTLIER_BIRTH,     set:v=>{OUTLIER_BIRTH=v;},     lo:0.0,     hi:3.0},    // #226b
 ];
 // === #197 - AND THE RATE HAD TO MOVE WITH THE TABLE =============================================
 // The law table went from THREE entries to sixteen in this commit. At the old rate - one proposal per
@@ -4409,8 +4410,19 @@ let retentionScore=0;
 // scores rarity for the upkeep discount (pRarity, per tick, per trait bin); this puts it where it decides
 // something. Common kinds weigh 1; a kind at a tenth of the mean bin weighs up to 10^RARE_BIRTH. Weighted
 // attempts renormalise the lottery, so births per tick are unchanged. 0 = off.
+// OUTLIER_BIRTH (#226b, a law): weight by continuous distance from the population's trait centroid instead
+// of bin rarity -- the quantity #226 measured the queue selecting on (parents 1.69x the mean distance).
+// Weight (d/meanD)^OUTLIER_BIRTH, clipped 0.2..5. Centroid and mean distance refreshed once per tick.
+let OUTLIER_BIRTH=(typeof globalThis!=='undefined'&&globalThis.__OUTLIER_BIRTH_K!==undefined)?(globalThis.__OUTLIER_BIRTH_K|0)/1000:2;   // #226b: 2, and it only acts when a world turns BIRTH_LOTTERY on
+const __olMu=new Float64Array(16); let __olMeanD=0;
+function olRefresh(){ if(!(OUTLIER_BIRTH>0))return; __olMu.fill(0); let n=0;
+  for(let i=0;i<N;i++){ if(!palive[i])continue; n++; for(let d=0;d<DIMS;d++)__olMu[d]+=tend[i*DIMS+d]; }
+  if(!n){__olMeanD=0;return;} for(let d=0;d<DIMS;d++)__olMu[d]/=n; let sd=0;
+  for(let i=0;i<N;i++){ if(!palive[i])continue; let d2=0; for(let d=0;d<DIMS;d++){ const v=tend[i*DIMS+d]-__olMu[d]; d2+=v*v; } sd+=Math.sqrt(d2); }
+  __olMeanD=sd/n; }
 let RARE_BIRTH=(typeof globalThis!=='undefined'&&globalThis.__RARE_BIRTH_K!==undefined)?(globalThis.__RARE_BIRTH_K|0)/1000:0;
 function rareBirthW(pa){
+  if(OUTLIER_BIRTH>0&&__olMeanD>1e-6){ let d2=0; for(let d=0;d<DIMS;d++){ const v=tend[pa*DIMS+d]-__olMu[d]; d2+=v*v; } return __cl(Math.pow(Math.sqrt(d2)/__olMeanD,OUTLIER_BIRTH),0.2,5); }
   if(!(RARE_BIRTH>0))return 1;
   const f=__cl((pRarity[pa]-RARITY_DISCOUNT)/Math.max(1e-6,1-RARITY_DISCOUNT),0.1,1);   // = min(1, binCount/meanBinCount)
   return Math.pow(1/f,RARE_BIRTH);
@@ -4420,7 +4432,7 @@ function provBirthOn(){ return (typeof globalThis==='undefined')||((globalThis._
 // #222b: RATION is also a LAW now (BIRTH_LOTTERY > 0.5 turns it on), starting off. #219 measured a fair
 // lottery sweeping every seed -- in a world with no variation. With #220f and #221 in, that verdict may not
 // hold, and it is the field's to find out rather than mine. The RATION knob still forces it on for rigs.
-let BIRTH_LOTTERY=0, CONTACT_BLEND=0.03, BIRTH_SHRINK=0.9;
+let BIRTH_LOTTERY=0, CONTACT_BLEND=0.03, BIRTH_SHRINK=0.9;   // #226b: tried ON with OUTLIER_BIRTH 2 -- two seeds matched the queue, one fell short; left off
 function rationOn(){ return (typeof globalThis!=='undefined')&&(((globalThis.__RATION??0)|0)!==0||BIRTH_LOTTERY>0.5); }
 let __rationP=1, __rationAtt=0;   // RATION -- see loop(): per-attempt pass probability, and attempts counted this tick
 // SUPERSEDED by #220f below -- kept as the record of a verdict taken at the wrong parameter (SD 0.04).
@@ -29096,7 +29108,7 @@ function loop(){
   // Deliberately NOT weighted by wealth -- 91-96% of the living sit at the amp soft line with a full
   // provision bank, so a wealth weight would be flat, and that is a separate decision.
   // RATION=0 draws nothing at either gate and is byte-identical to before.
-  if(rationOn()){ const _af=worldEnergy/BIRTH_ENERGY_COST; __rationP=RARE_BIRTH>0?_af/Math.max(1e-9,__rationAtt):Math.min(1,_af/Math.max(1,__rationAtt)); __rationAtt=0; }   // weighted attempts: the pool pays the same number of births, RARE_BIRTH moves who
+  if(rationOn()){ olRefresh(); const _af=worldEnergy/BIRTH_ENERGY_COST; __rationP=(RARE_BIRTH>0||OUTLIER_BIRTH>0)?_af/Math.max(1e-9,__rationAtt):Math.min(1,_af/Math.max(1,__rationAtt)); __rationAtt=0; }   // weighted attempts: the pool pays the same number of births, RARE_BIRTH moves who
   { tHist.fill(0); for(let _i=0;_i<N;_i++){ if(palive[_i]) tHist[tendBin(_i)]++; }
     const _mean=N/TCELLS;
     for(let _i=0;_i<N;_i++){ if(!palive[_i])continue; const _bc=tHist[tendBin(_i)];

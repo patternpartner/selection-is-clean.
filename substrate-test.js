@@ -2105,11 +2105,15 @@ m._compile(code+`
       // WORLD POOL, so the parent is given a full bank here and the bank gets its own row below.
       const _pv=(typeof pProvision!=='undefined')?pProvision[live]:0;
       if(typeof pProvision!=='undefined') pProvision[live]=(typeof PROVISION_CAP==='number')?PROVISION_CAP:6;
+      // #226b: and the lottery's weights (OUTLIER_BIRTH, RARE_BIRTH) are held neutral for the same reason.
+      const _ob=(typeof OUTLIER_BIRTH==='number')?OUTLIER_BIRTH:null, _rb=(typeof RARE_BIRTH==='number')?RARE_BIRTH:null;
+      if(_ob!==null)OUTLIER_BIRTH=0; if(_rb!==null)RARE_BIRTH=0;
       const before=worldEnergy;
       const idx=addParticle(px[live],py[live],new Float32Array(DIMS),false,live,-1);
       const drew=+(before-worldEnergy).toFixed(4);
       if(idx>=0){ palive[idx]=false; N=Math.max(0,N-1); }   // undo the spawn, not the accounting
       if(typeof pProvision!=='undefined') pProvision[live]=_pv;
+      if(_ob!==null)OUTLIER_BIRTH=_ob; if(_rb!==null)RARE_BIRTH=_rb;
       return {made:idx>=0, drew,
               paid:(__liveness['birth.paid']|0)-p0, refused:(__liveness['birth.refused']|0)-r0};
     };
@@ -2124,6 +2128,8 @@ m._compile(code+`
       if(par<0) return null;
       const svp=pProvision[par], svc=BIRTH_ENERGY_COST, sve=worldEnergy, svr=(typeof __rationP==='number')?__rationP:1;
       BIRTH_ENERGY_COST=1; worldEnergy=10; if(typeof __rationP==='number')__rationP=1;
+      const _ob2=(typeof OUTLIER_BIRTH==='number')?OUTLIER_BIRTH:null, _rb2=(typeof RARE_BIRTH==='number')?RARE_BIRTH:null;
+      if(_ob2!==null)OUTLIER_BIRTH=0; if(_rb2!==null)RARE_BIRTH=0;
       const u0=__liveness['birth.unprovisioned']|0;
       pProvision[par]=0;
       const e0=worldEnergy, emptyIdx=addParticle(px[par],py[par],new Float32Array(DIMS),false,par,-1);
@@ -2134,6 +2140,7 @@ m._compile(code+`
       const full={made:fullIdx>=0, parentLeft:+pProvision[par].toFixed(4), child:fullIdx>=0?+pProvision[fullIdx].toFixed(4):null};
       if(fullIdx>=0){ palive[fullIdx]=false; N=Math.max(0,N-1); }
       pProvision[par]=svp; BIRTH_ENERGY_COST=svc; worldEnergy=sve; if(typeof __rationP==='number')__rationP=svr;
+      if(_ob2!==null)OUTLIER_BIRTH=_ob2; if(_rb2!==null)RARE_BIRTH=_rb2;
       return {live:true, empty, full, cost:PROV_BIRTH_COST, endow:PROV_BIRTH_COST*PROV_BIRTH_ENDOW};
     })();
     const rn0=__liveness['birth.rationed']|0;

@@ -21156,3 +21156,21 @@ a LAW at 0 — it only acts when a world turns BIRTH_LOTTERY on, and then that w
 **For the next attempt:** a replacement for the queue has to reproduce ratio ~1.7 — parents drawn from the
 tails — for a reason a genome can act on. Bin rarity (a coarse 4-bin-per-axis census) is apparently too
 blunt to do it; distance from the local or lineage mean may not be.
+
+#### #226b — OUTLIER_BIRTH: weight the fair lottery by continuous distance from the trait centroid
+
+The quantity #226 measured the queue selecting on. Trait spread at 5k ticks, fair lottery + weight
+(d/meanD)^k, against the first-come queue:
+
+| | seed 1 | seed 2 | seed 3 |
+|---|---|---|---|
+| queue (main) | 0.208 | 0.144 | 0.088 |
+| fair lottery alone | 0.185 | 0.069 | — |
+| lottery + OUTLIER x1 | 0.267 | 0.090 | — |
+| lottery + OUTLIER x2 | **0.224** | **0.145** | **0.061** |
+
+x2 matched or beat the queue on seeds 1 and 2 and fell short on seed 3. Made the default, then reverted
+the default on seed 3 — two of three is not a reason to change every universe. Kept: OUTLIER_BIRTH is a law
+at 2, acting only when a world turns BIRTH_LOTTERY on, so a world that tries the lottery gets the version
+that beat the plain lottery. substrate-test's billing and bank rows now hold the lottery's weights neutral
+(they test billing, not the lottery); 262/0 with RATION on and off. Default engine byte-identical to main.
