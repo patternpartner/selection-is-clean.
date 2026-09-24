@@ -21213,3 +21213,40 @@ It moved seed 1's trajectory onto a ~1% draw in substrate-test's `#193 parent ->
 (0/300). Diagnosed from the row's own detail after a wrong first guess (I wrote "the world's mutation rate
 evolved low"; it was 0.06): at that rate the shape changes in ~1.5% of mutations, so 300 trials return 0
 about 1% of the time. The trials now pin the rate at >=0.08 (false-red ~0.1%). 262/0 on seeds 1-3, on and off.
+
+### #229 — PURGE CENSUS: what does not pull its weight, and a wrong reading corrected
+
+The user asked whether a purge is needed. The census, and what it actually supports:
+
+**Opcodes.** 427 defined; across two seeds x 20k ticks, sampling 66,778 living programs every 200 ticks,
+**202 ever appear and 226 never do**; 93 more under 20 sightings; **9 opcodes carry 90% of all instructions**
+(4, 3, 1, 2, 0 alone are 74%). Mutation draws uniformly over all 427, so the 226 are PROPOSED constantly and
+removed by selection every time — roughly half of all opcode mutations are spent on instructions that never
+survive. The field cross-check was too noisy to use (a naive scan of the saves for instruction-shaped lists
+matches non-program data). Not acted on: the lab sees no peers and no person, and "never by 20k" is a horizon.
+
+**Named mechanisms.** THE FIRST READING WAS INVERTED, and the correction is the lesson. The save's `lv.n` is
+livenessCensus().never — mechanisms that have NOT fired — and I read it as the ones that had, told the user the
+purge case "fell apart", and that world.signal was dead. Both backwards: world.signal fires in the field (it is
+suppressed only under Node, by design), and the field's never-lists agree with the lab's. **Read the encoder
+before reading a save's field.** Second caveat: `lv` covers only the session since the last page load —
+median 383 ticks, max 5,364, across 33 universes — so the field says little about slow mechanisms.
+
+Never in 2 x 20k lab ticks AND never in any of 33 field sessions: gene.author / gene.read (the #218a opcodes;
+the bank itself drifts and feeds aim targets every tick), xion.bud / xion.fission, aim.author / aim.abandon,
+expr.recombine, child.frozen, genome.trim, motif.evictQuality, net.assortBiased, channel.wireLand,
+network.migrantAccepted (suspicious: a fresh field accepted ~70 migrants per universe in four minutes, so this
+is more likely a counter that is not wired than a dead path — check before trusting it).
+
+**Twenty-six experiment arms default OFF** (`(globalThis.__X|0)===1`): NICHE_NDIM, SPATIAL_NICHE, SELFMODEL,
+GROUP_ROLES, GROUP_PROBE, SELF_PREDICT, RQ_TRAIT, RED_QUEEN, OPCODE_NOVELTY, NOVELTY_ARCHIVE, NICHE_LOCALTEND,
+NICHE_LOCAL, NICHE_FRONTIER, NICHE_DRIFT, NICHE_CELLDRIFT, NICHE_BUILD, NICHE_BIOTIC, MUTUALISM, MEME_TRANSFER,
+GROUP_COMMONS, GRIP_SEED, GENO_PARASITE, FRONTIER_EXPAND, DRAW_VM, CHAR_DISP, BUD_INSTR. None runs in the field.
+Each is small (2-7 engine references) and several are load-bearing for rigs (MEME_TRANSFER in 9, SELF_PREDICT 7).
+
+**Decision: no piecemeal purge.** Every dead item is a few lines, usually wired into something live — twice in
+one hour a "dead" thing turned out to feed a live one. **The weight is DUPLICATION**: the opcode dispatch exists in
+four copies — executeVM (two switches, 239 + 237 cases), executeClusterVM (236), executeSoloVM (140), plus
+profileVM (224) — about 6,000 lines, and they have already drifted (#217f: four different INSCRIBE bodies).
+Unifying them is the purge worth doing; it is a careful, family-by-family refactor where every divergence must
+be chosen deliberately, and it is left as the brief for a fresh session rather than rushed at the end of this one.
