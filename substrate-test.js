@@ -812,7 +812,14 @@ m._compile(code+`
                   st:c.userEffects[0].st===genome.userEffects[0].st,
                   tap:c.userEffects[0].st[0]===genome.userEffects[0].st[0]};
     // child -> the shape diverges
-    let childMoved=0;
+    let childMoved=0, out_mrSeen=null;
+    // #228: the rate is PINNED for these trials. At the world's rate (0.06 on the failing arm -- NOT unusually
+    // low; the first draft of this comment said it was, and the detail line disproved it) this shape changes in
+    // ~1.5% of mutations, so 300 trials expect ~4.5 and come back 0 about 1% of the time. #228 shifted seed 1
+    // onto that draw. Pinned at >=0.08 the false-red chance falls to ~0.1%. The row asks whether the shape CAN
+    // diverge; a row that fails 1% of the time on nothing is the kind #216c found hiding for weeks.
+    const _mr=genome.mutationRate, _ms=genome.mutationScale; out_mrSeen=_mr;
+    genome.mutationRate=Math.max(finiteOr(_mr,0),0.08); genome.mutationScale=Math.max(finiteOr(_ms,0),1);
     for(let q=0;q<300;q++){ const g=cloneGenome(genome); mutateChildGenome(g);
       const t0=g.userEffects&&g.userEffects[0];
       if(!t0||!Array.isArray(t0.st)||t0.st.length!==2||
@@ -837,7 +844,8 @@ m._compile(code+`
     ].every(x=>validNetworkPayload('migrant',x)===false);
     const wireAbsent=validNetworkPayload('migrant',{...pay,ue:[{t:11,m:0,s:0.7,n:-1,a:-1}]})===true;
     const cen=crossingCensus();
-    return {saved,shared,childMoved,carriers,carriersOf,wireOk,wireBad,wireAbsent,
+    genome.mutationRate=_mr; genome.mutationScale=_ms;
+    return {saved,shared,childMoved,mrSeen:out_mrSeen,carriers,carriersOf,wireOk,wireBad,wireAbsent,
             row:cen.rows.some(r=>r.name==='verb.shaped')};
   });
 
@@ -2621,7 +2629,7 @@ ck('#193 save -> load: the shape travels with the act', EX.saved===true,
 ck('#193 cloneGenome deep-copies to the TAP', EX.shared &&
    !EX.shared.bank && !EX.shared.verb && !EX.shared.st && !EX.shared.tap,
    EX.shared && JSON.stringify(EX.shared)+' — #155, #180 and #189 were all this same shallow copy');
-ck('#193 parent -> child: the shape diverges', EX.childMoved>0, EX.childMoved+'/300');
+ck('#193 parent -> child: the shape diverges', EX.childMoved>0, EX.childMoved+'/300 (world mutationRate was '+EX.mrSeen+', pinned to >=0.08 for the trials)');
 ck('#193 germline -> population: the shape crosses with the verb', EX.carriers>0,
    EX.carriers+' of '+EX.carriersOf+' living particles carry it after one seeding — #133b stripped the successor on this exact path.'+
    ' THE DENOMINATOR IS THE POINT (#216q): this counts the LIVING population, and out.emit collapses the world to one'+

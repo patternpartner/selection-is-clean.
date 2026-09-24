@@ -21200,3 +21200,16 @@ value EXACTLY equal to a superseded default (LAW_SUPERSEDED, and the two genes' 
 saved 0.0006/0.001/0.05 -> loaded 0.0015/0.002/0.15; saved 0.00031/0.0017/0.09 -> unchanged.
 **General rule for anyone changing a persisted default: add the old value to LAW_SUPERSEDED, or the change
 reaches nothing that already exists.**
+
+### #228 — A CONSTANT CANNOT BE WANTED FOR FREE
+
+The day-one finding from harness-aims (#219): half of all aims sat on memory slot 0 at target 0 — seeded in
+the literal — met 98% by a slot nothing wrote, and aim satisfaction is a term in the world's own fitness
+(#218h). Now an aim pays only if the sense it reads MOVED since the last tick; the tax is paid either way.
+Per particle and per sense index (6 senses + 8 memory slots), so it closes the whole class, not slot 0.
+AIM_STILL=0 restores.
+
+It moved seed 1's trajectory onto a ~1% draw in substrate-test's `#193 parent -> child: the shape diverges`
+(0/300). Diagnosed from the row's own detail after a wrong first guess (I wrote "the world's mutation rate
+evolved low"; it was 0.06): at that rate the shape changes in ~1.5% of mutations, so 300 trials return 0
+about 1% of the time. The trials now pin the rate at >=0.08 (false-red ~0.1%). 262/0 on seeds 1-3, on and off.

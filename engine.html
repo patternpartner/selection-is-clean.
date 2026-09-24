@@ -18226,7 +18226,8 @@ function aimSatisfaction(){
     }
     { const e2=Math.abs(v-t)/(sp||1);
       const tl=__cl(finiteOr(a.tol,1),AIM_TOL_LO,AIM_TOL_HI);
-      sum+=Math.max(0,1-e2/tl)*2/(1+tl); n++; }   // #218k: same priced kernel as the selection term, or the two would disagree about what satisfaction means
+      const _kk2=(((a.sense|0)%aimSenseCount())+aimSenseCount())%aimSenseCount(), _mv2=aimStillOn()?pAimMoved[i*AIM_NSENSE+(_kk2%AIM_NSENSE)]:1;   // #228
+      sum+=Math.max(0,1-e2/tl)*2/(1+tl)*_mv2; n++; }   // #218k: same priced kernel as the selection term, or the two would disagree about what satisfaction means
     }
   }
   return n>0?sum/n:0;
@@ -18270,6 +18271,14 @@ function aimsOf(g){
 const AIM_TOL_LO=0.1, AIM_TOL_HI=8;   // #218k: precision bounds. Below 0.1 an aim is unsatisfiable
                                       // noise; above 8 it is satisfied by almost any state and the
                                       // 2/(1+tol) pricing has already made it nearly worthless.
+// #228: A CONSTANT CANNOT BE WANTED FOR FREE. harness-aims (#219, seed 1, 300 ticks): half of all aims sat on
+// memory slot 0 at target 0 -- the literal seeds every lineage with that aim -- and were 98% met by a slot
+// nothing wrote. Aim satisfaction is a term in the world's own fitness (#218h), so the meta-layer was being
+// scored on creatures wanting a number that never moves. Now an aim pays only if the sense it reads MOVED
+// since the last tick (the tax is still paid either way). Per particle, per sense index, so it covers every
+// sense, not just slot 0: a creature that wants something must be doing something to it. AIM_STILL=0 restores.
+const AIM_NSENSE=14, pAimPrev=new Float32Array(CAP*AIM_NSENSE).fill(NaN), pAimMoved=new Uint8Array(CAP*AIM_NSENSE).fill(1);
+function aimStillOn(){ return (typeof globalThis==='undefined')||((globalThis.__AIM_STILL??1)|0)!==0; }
 const AIM_MAX_AIMS=6;   // #218j: ceiling on a portfolio. Six senses plus eight memory slots to want
                         // things about, and at AIM_TAX per aim a lineage holding six pays 0.9 of
                         // amplitude per tick for the privilege if it meets none of them.
@@ -29010,10 +29019,13 @@ function applyNicheEconomy(){ fired('niche.economy');
         const _err=Math.abs(_sv-_tgt)/(_sp||1);
         const _tol=__cl(finiteOr(_a.tol,1),AIM_TOL_LO,AIM_TOL_HI);
         const _sat=Math.max(0,1-_err/_tol);
+        let _mv=1;
+        if(aimStillOn()){ const _kk=(((_a.sense|0)%aimSenseCount())+aimSenseCount())%aimSenseCount(), _ix=i*AIM_NSENSE+(_kk%AIM_NSENSE);
+          _mv=(pAimPrev[_ix]!==_sv)?1:0; pAimPrev[_ix]=_sv; pAimMoved[_ix]=_mv; }   // #228
         const _pay=_sat*2/(1+_tol);   // #218k: precision is priced — wide aims pay less at the peak
         // proximity pays, distance does not, and the aim is TAXED either way -- that is what keeps a
         // self-declared purpose from being free. An aim never met is a standing metabolic drag.
-        amp[i]+=_w*(_pay-AIM_TAX);
+        amp[i]+=_w*(_pay*_mv-AIM_TAX);   // #228: a still sense pays nothing; the tax stands
         fired('aim.pull');
         }
       }
