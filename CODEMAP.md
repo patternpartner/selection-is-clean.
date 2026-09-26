@@ -1101,7 +1101,9 @@ existing sham/forced machinery from #84 already provides the controls.
 **[read] Evolvable chemistry** (5697–5706): `chemistryTable` is 12 opcode slots, each a recipe of
 monomials `[coefSource, termA, termB, target]` over local state. Seeded from **random** monomials —
 "no Gray-Scott, no Turing, no known chemistry. The substrate discovers its own dynamics from the
-starting noise." Mutates at `chemistryMutRate` 0.02.
+starting noise." **Since #238 the table is a constant**, seeded once by `seedChemistryTable()` and
+no longer mutated (`chemistryMutRate`, the #217s verdict, and the `CHEM` knob were removed). Saves carry
+`Cv:1`, and a `C` without it is ignored on load.
 
 **#233:** a birth-pool gate on recipe evaluation was measured and removed. `updateField` still runs the
 recipe; nothing in the birth path reads it.

@@ -1281,10 +1281,6 @@ const LIVENESS_DECLARED=[
   // case-20 bodies, not the one a grep finds first), cell.inscribeNet is a peer's inscription
   // landing, cell.chemExec is a recipe actually being evaluated.
   'cell.inscribe','cell.inscribeNet','cell.chemExec',
-  // #217s: the chemistry's verdict. chem.trial is a proposal, and kept/revert are declared beside it
-  // so a run where every chemistry change was reverted is distinguishable from one where none was
-  // ever proposed -- the same reason #183 declared cosmos.lawKept and cosmos.lawRevert.
-  'chem.trial','chem.kept','chem.revert',
   'deme.countStep','ua.foldModeStep',   // #217u: the two discrete operators, declared with the genes
   'gene.intStep',                       // #217y: the generic integer stepper, covering eight genes
   // #218a: the genome's dimension changing. author/read/cull declared together so a run where
@@ -9564,7 +9560,6 @@ let genome={
   // Seeded from random monomials — no Gray-Scott, no Turing, no known chemistry.
   // The substrate discovers its own dynamics from the starting noise.
   chemistryTable:null,
-  chemistryMutRate:0.02,
   fieldWeight:0.2,            // shadow sim: how much the system values engineered environment futures (EVOLVES)
 
   // ═══ LAYER 22: NETWORK — how strongly this population couples to other tabs ═══
@@ -9720,7 +9715,7 @@ let genome={
   //     the gating, which is a design decision and not an oversight.
   //   coupling -- per-peer flow INSTRUMENTATION rebuilt from network state, not a heritable trait.
   //     Declaring it would file telemetry in the genome census as a gene.
-  //   __metaMag -- internal scratch, underscore-prefixed by the same convention as __chemTrial.
+  //   __metaMag -- internal scratch, underscore-prefixed by the file's convention for module scratch.
   // === #217q: THE LAST SEVEN, DECLARED WITH THEIR OWN INITIALISERS ===
   // #217l declared 57 and named nine it skipped as structures with bespoke initialisation. #217n took
   // two of those (uaProdW, uaVarW) because the census reported them ABSENT. These are the remaining
@@ -10641,6 +10636,8 @@ function cloneGenome(src){
   // recipe lookup, and updateField() is called once per tick from the main loop - outside every
   // "genome=pGenome[i]" repoint in this file. So it reads the SELF's table on every tick, always.
   // There are ZERO pGenome[i].chemistryTable readers anywhere in engine.html.
+  // [#238: HISTORICAL. The mutation described in the next paragraph and in the grepper note below was
+  // removed; the table is now a constant, so there is nothing for a private copy to diverge by.]
   // WHAT A PRIVATE COPY WOULD BUY. Nothing that runs. mutateGenome() walks all 12 recipes and point-
   // mutates their monomials every cycle, so per-lineage copies would diverge immediately and then sit
   // unexecuted. The #217 variance census would start reporting chemistryTable as VARYING across the
@@ -10655,6 +10652,7 @@ function cloneGenome(src){
   // AND FOR GREPPERS: mutateGenome writes through the locals "recipe" and "mono", aliases taken out of
   // the table on lines that never contain its name. A search for chemistryTable therefore reports it
   // as never mutated. It is mutated hard (CLAUDE.md, trap 5 - this is the #217c instance of it).
+  // [#238: was mutated hard; that block is gone.]
   // reflective journals (lineage, epochs, metaCredit, shadowScenarioBank, ...) stay SHARED refs —
   // they are the self's bookkeeping, read-only in the per-particle hot path, never cloned per birth.
   return g;
@@ -11981,8 +11979,10 @@ function encodeGenome(){
        genome.reflexSampleRate,genome.reflexDepth,genome.reflexInfluence,genome.reflexDecay,genome.clusterReflexAge,genome.clusterReflexWeight,
        genome.clusterGenomeReadStrength].map(v=>+(v.toPrecision(3))),
     // Substrate chemistry
-    f:[genome.fieldDecay,genome.fieldDiffuse,genome.chemistryMutRate].map(v=>+(v.toPrecision(4))),
-    C:genome.chemistryTable,
+    f:[genome.fieldDecay,genome.fieldDiffuse].map(v=>+(v.toPrecision(4))),
+    // #238: Cv marks a table saved after the chemistry stopped mutating. The loader adopts C only when
+    // Cv is present, so a pre-#238 save (possibly carrying an evolved table) reseeds instead.
+    C:genome.chemistryTable,Cv:1,
     // Network coupling
     n:[genome.netMigrantRate,genome.netPlasmidRate,genome.netMotifRate,genome.netInscribeRate,genome.netReceptivity].map(v=>+(v.toPrecision(4))),
     // #202: its OWN key, not a sixth element of n — a shared array grown by one decodes short into
@@ -12342,9 +12342,9 @@ function decodeGenome(data){
        genome.clusterGenomeReadStrength]=g.m;
     }
     if(g.f){
-      [genome.fieldDecay,genome.fieldDiffuse,genome.chemistryMutRate]=g.f;
+      [genome.fieldDecay,genome.fieldDiffuse]=g.f;   // #238: pre-#238 saves carry a third element (chemistryMutRate), ignored
     }
-    if(g.C)genome.chemistryTable=g.C;
+    if(g.C&&g.Cv)genome.chemistryTable=g.C;   // #238: only a post-#238 constant table; older C may be evolved
     if(g.n){
       [genome.netMigrantRate,genome.netPlasmidRate,genome.netMotifRate,genome.netInscribeRate,genome.netReceptivity]=g.n;
     if(typeof g.nas==='number')genome.netAssort=g.nas;   // #202; absent in every pre-#202 save, and sanitizeGenome defaults it to 0 = the old behaviour
@@ -12379,7 +12379,6 @@ function decodeGenome(data){
     if(genome.fieldDecay===undefined)genome.fieldDecay=0.982;
     if(genome.fieldDiffuse===undefined)genome.fieldDiffuse=0.11;
     if(!genome.chemistryTable)genome.chemistryTable=seedChemistryTable();
-    if(genome.chemistryMutRate===undefined)genome.chemistryMutRate=0.02;
     genome.fieldWeight=finiteOr(genome.fieldWeight,0.2);
     genome.mutationInterval=finiteOr(genome.mutationInterval,300);
     genome.interactionRadius=finiteOr(genome.interactionRadius,55);
@@ -13727,7 +13726,6 @@ function sanitizeGenome(){
   if(!validChemistryTable(genome.chemistryTable))genome.chemistryTable=seedChemistryTable();
   genome.fieldDecay=finiteOr(genome.fieldDecay,0.982);
   genome.fieldDiffuse=finiteOr(genome.fieldDiffuse,0.11);
-  genome.chemistryMutRate=finiteOr(genome.chemistryMutRate,0.02);
   FIELD_DECAY=__cl(genome.fieldDecay,0.5,1.0);
   FIELD_DIFFUSE=__cl(genome.fieldDiffuse,0,0.24);
   // #218a: validate the authored bank. Structure only -- the VALUES are the lineage's business and
@@ -18146,28 +18144,8 @@ function attemptHGT(){
 // ═══ RESOURCE FIELD — shared writable environment with territorial signatures ═══
 // Energy diffuses and decays. Signatures blend during diffusion (territory fades at edges).
 // Ownership decays faster than energy — territory must be actively maintained.
-// #217d: CHEM is the ablation #217c made possible. The chemistry table drifts under mutateGenome()
-// at a per-lineage rate with no verdict of any kind, and nothing in this project has ever measured
-// whether that drift MATTERS to the world. The control was unrunnable until now: there was no knob,
-// and the obvious way to build one (skip the mutation block) would have consumed a different number
-// of Math.random() draws and put the two arms on different trajectories, so any difference measured
-// would have been confounded with the stream shift -- the same trap as a probe that draws.
-// #217c established that the read site is SINGULAR, and that is what makes a clean arm possible:
-// let the table mutate EXACTLY as it does today, every draw identical, and change only WHICH table
-// the field executes. CHEM=0 runs the field on a frozen snapshot of the seed chemistry while the
-// genome goes on evolving its own.
-// BE PRECISE ABOUT WHAT THAT BUYS, because the loose version of this claim is the kind this file
-// keeps having to retract: the KNOB ITSELF adds and removes no draw -- not one Math.random() call
-// moves, at the chemistry block or anywhere else. The two arms still diverge, because the field
-// genuinely computes differently and the whole world follows; that divergence is the EFFECT under
-// test. What is excluded is the SECOND, instrumental source of divergence a skip-the-block knob
-// would have added, where a difference in outcome could equally have been the shifted stream.
-// Testable consequence, and the boring side of this change: below the first mutateGenome() fire the
-// live table and the snapshot are the same table, so CHEM=0 and CHEM=1 must be IDENTICAL runs. If
-// they are not, this plumbing is broken (a shallow copy would be the first suspect).
-// The snapshot is taken lazily at the first field update, deep, because mutateGenome writes THROUGH
-// the recipe and monomial arrays in place (see the grep warning in cloneGenome).
-function chemFieldLive(){ return (typeof globalThis==='undefined')||((globalThis.__CHEM??1)|0)!==0; }
+// #238: #217d's CHEM knob (field runs a frozen seed snapshot) is removed. The table no longer
+// mutates, so live and seed are the same table and the knob had nothing left to separate.
 // #217f: INSCRIBE is the arm #217e named and then declined to claim without. On seed 2 the population
 // fell 210 -> 75 across ticks 9,500-11,000, the same 1,500 ticks in which opcode 20 fired 5,200 times
 // and 12,625 recipes evaluated; on seed 3 it ROSE 267 -> 326 while opcode 20 fired twice. Two seeds,
@@ -18194,27 +18172,8 @@ function chemFieldLive(){ return (typeof globalThis==='undefined')||((globalThis
 // established it by counting who reads what, and this follows the same rule. Clamped at the read, as
 // FIELD_DECAY is, because maybe() ignores its own bounds and a negative strength would drive
 // cellProgStr below zero where nothing would ever clear it.
-// #217s: THE FIELD'S CHEMISTRY GETS A VERDICT. #217c named this and declined to build it: the opcode
-// chemistry is a WORLD property (one reader, updateField, reading the self -- #217c counted it) that
-// is mutated at a LINEAGE rate (chemistryMutRate, itself meta-mutated) with NO verdict of any kind --
-// 2% per monomial per cycle plus recipe growth to 12 and splicing, no probation, no revert. #216x's
-// mirror: that one found laws stored session-local when they are world properties; this is a world
-// property mutated as a lineage trait. CHANNEL_RENT gets a trial before it sticks; the chemistry of
-// the entire field got none.
-// It was held back because the execution window was uncharacterised, and it no longer is: #217e
-// measured ~1,495 ticks of chemistry per strong inscription pre-#217h, and #217h's trace shows cells
-// reaching 0.5 and decaying freely with ignition at tick 2,656.
-// Built in LAW_DECLARED's own shape rather than a new one: ONE trial at a time, snapshot taken BEFORE
-// the mutation, judged after LAW_PROBATION ticks against lawMean() -- the rolling mean population the
-// law verdict already uses and already maintains -- and reverted if the mean falls below
-// baseline*LAW_VIABLE. Reusing those two means the chemistry answers to the same dials the laws do,
-// including LAW_VIABLE=0 meaning never revert.
-// A trial SUPPRESSES further chemistry mutation while it runs, which is the point: the old behaviour
-// mutated 12 recipes every cycle, so no single change was ever attributable to anything.
+// #238: #217s's chemistry verdict (chem.trial/kept/revert) is removed with the mutation it judged.
 let __fitMean=0, __fitDev=0;   // #217t: EMA of fitness and of its absolute deviation — see the probe verdict
-let __chemTrial=null;
-function chemVerdictOn(){ return (typeof globalThis==='undefined')||((globalThis.__CHEM_VERDICT??1)|0)!==0; }
-function chemTableCopy(t){ return Array.isArray(t)?t.map(r=>Array.isArray(r)?r.map(m=>Array.isArray(m)?m.slice():m):r):t; }
 // #218a: the novel-gene bank's accessors. genome here is the REPOINTED pGenome[i] inside the VMs, so
 // an authored gene belongs to the lineage that authored it -- which is the point. The germline self
 // authors its own separately and they do not mix, exactly as userAtoms do not.
@@ -18378,13 +18337,7 @@ function novelCull(b){
 }
 function inscStr(){ return __cl(finiteOr(genome.inscribeStrength,0.4),0.01,2); }
 function inscOver(){ return __cl(finiteOr(genome.inscribeOverwrite,0.75),0.05,3); }
-let __chemSeedTable=null;
-function chemFieldTable(){
-  const live=genome.chemistryTable;
-  if(chemFieldLive())return live;
-  if(!__chemSeedTable&&Array.isArray(live))__chemSeedTable=live.map(r=>Array.isArray(r)?r.map(m=>Array.isArray(m)?m.slice():m):r);
-  return __chemSeedTable||live;
-}
+function chemFieldTable(){ return genome.chemistryTable; }   // #238: the constant table, seeded once
 function updateField(){
   // ═══ STAGE 1: CELL-LEVEL VM EXECUTION ═══
   // Each cell holds one VM instruction inscribed by particles.
@@ -18434,7 +18387,7 @@ function updateField(){
       // Coefs include ±1 alongside ±A,±B. Expression space within a single
       // tick is now arbitrary polynomial in local states, not just bilinear.
       let d1=0,d2=0;
-      const recipe=chemTable[op%12];   // #217d: the live table, or the frozen seed snapshot under CHEM=0 — see chemFieldTable()
+      const recipe=chemTable[op%12];   // #238: the constant table — see chemFieldTable()
       if(recipe){
         _chemExecN++;
         const ls0=c1,ls1=c2,ls2=nN,ls3=nS,ls4=nE,ls5=nW,ls6=m2N,ls7=m2S,ls8=m2E,ls9=m2W,ls10=nbAvg1,ls11=nbAvg2;
@@ -19132,52 +19085,8 @@ function mutateGenome(){ fired('genome.mutate');
   genome.cellProgDecay=maybe(genome.cellProgDecay,0.9,0.9999,0.0008,'cellProgDecay');
   genome.inscribeStrength=maybe(genome.inscribeStrength,0.05,1.5,0.02,'inscribeStrength');
   genome.inscribeOverwrite=maybe(genome.inscribeOverwrite,0.2,1.2,0.02,'inscribeOverwrite');
-  // Pe22c: evolvable chemistry table — mutate monomials in the opcode recipes.
-  // Defensive defaults for old genomes that don't have a table yet.
-  if(!genome.chemistryTable)genome.chemistryTable=seedChemistryTable();
-  if(genome.chemistryMutRate===undefined)genome.chemistryMutRate=0.02;
-  const chemRate=genome.chemistryMutRate*(1+Math.tanh(mutationPressure)*0.3);
-  // #217s: one chemistry change at a time, on probation, revertible.
-  let _chemMayMutate=true;
-  if(chemVerdictOn()){
-    if(__chemTrial){
-      if((tick-__chemTrial.startTick)>=__chemTrial.probation){
-        const _now=lawMean();
-        if(_now<__chemTrial.baseline*__chemTrial.viable){
-          genome.chemistryTable=__chemTrial.table;   // the world keeps the chemistry it could live on
-          fired('chem.revert');
-        } else fired('chem.kept');
-        __chemTrial=null;
-      } else _chemMayMutate=false;   // a verdict is pending: leave the table alone so it stays attributable
-    }
-    if(_chemMayMutate&&!__chemTrial){
-      __chemTrial={startTick:tick|0,baseline:lawMean(),table:chemTableCopy(genome.chemistryTable),
-                   viable:LAW_VIABLE,probation:LAW_PROBATION};
-      fired('chem.trial');
-    }
-  }
-  if(_chemMayMutate)
-  for(let oi=0;oi<genome.chemistryTable.length;oi++){
-    const recipe=genome.chemistryTable[oi];
-    for(let mi=0;mi<recipe.length;mi++){
-      const mono=recipe[mi];
-      // Point mutations: flip coef source (now 0..5), swap a variable (now 0..14), or change target
-      if(Math.random()<chemRate)mono[0]=(Math.random()*6)|0;
-      if(Math.random()<chemRate)mono[1]=(Math.random()*15)|0;
-      if(Math.random()<chemRate)mono[2]=(Math.random()*15)|0;
-      if(Math.random()<chemRate*0.5)mono[3]=1-mono[3];
-    }
-    // Rare: add a new monomial (recipes can grow to 12)
-    if(recipe.length<12&&Math.random()<chemRate*0.1){
-      recipe.push([(Math.random()*6)|0,(Math.random()*15)|0,(Math.random()*15)|0,(Math.random()*2)|0]);
-    }
-    // Rare: drop a monomial (recipes can shrink, but never below 1)
-    if(recipe.length>1&&Math.random()<chemRate*0.05){
-      recipe.splice((Math.random()*recipe.length)|0,1);
-    }
-  }
-  // Meta-mutation on the chemistry mutation rate itself
-  genome.chemistryMutRate=maybe(genome.chemistryMutRate,0.005,0.1,0.005,'chemistryMutRate');
+  // #238: the chemistryTable mutation block (Pe22c, with #217s's verdict) is removed. The table is a
+  // constant seeded once by seedChemistryTable(); the field still executes it in updateField().
   // Live kernel sync — clamped to the stable-kernel regime (skeleton, not cage:
   // outside these bounds the diffusion equation produces NaN)
   FIELD_DECAY=__cl(genome.fieldDecay,0.5,1.0);
