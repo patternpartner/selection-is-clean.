@@ -1376,6 +1376,7 @@ const LIVENESS_DECLARED=[
   // Refused reading zero is a world that has made children free; paid reading zero is one that has
   // stopped having them. Both are reachable now that the four constants are laws.
   'birth.paid','birth.refused','birth.rationed','birth.unprovisioned',   // RATION: refused by the fair lottery, before the pool is read
+  'birth.subRefused',   // #233: refused because a recipe evaluated under someone else and this parent was not standing on it
   // #212: clusterGenomes was the one carry-forward store that never let go -- ~1,000 entries against
   // 6-11 live clusters, and a measured working set exactly one detection cycle deep. This fires when
   // an entry ages past the horizon. Reading zero on a long run means either the horizon never binds
@@ -11789,6 +11790,7 @@ const cellProgOp=new Uint8Array(FIELD_W*FIELD_H);    // opcode: which transforma
 const cellProgA=new Float32Array(FIELD_W*FIELD_H);   // parameter A
 const cellProgB=new Float32Array(FIELD_W*FIELD_H);   // parameter B
 const cellProgStr=new Float32Array(FIELD_W*FIELD_H); // inscription strength [0..1], decays if not reinforced
+const cellChemEval=new Uint8Array(FIELD_W*FIELD_H); // #233: 1 iff a recipe body ran on this cell in the last updateField
 // Cell opcode meanings (evolved through selection on inscription patterns):
 //  0: NONE        — cell does nothing, standard diffusion only
 //  1: REACT       — field += field2 * A ; field2 -= field * B  (Gray-Scott-like but evolvable)
@@ -18377,6 +18379,36 @@ function chemFieldTable(){
   if(!__chemSeedTable&&Array.isArray(live))__chemSeedTable=live.map(r=>Array.isArray(r)?r.map(m=>Array.isArray(m)?m.slice():m):r);
   return __chemSeedTable||live;
 }
+// #233: THE SUBSTRATE DECIDES WHO MAY SPEND THE BIRTH POOL, and only once a recipe has actually run.
+// #217f measured 19,116 recipe evaluations changing the population by nothing: the field write is
+// ~1% and washes out, and amp and provision are saturated (soft line, banks of 3+), so a mean-centred
+// nudge in those currencies is absorbed by the caps and cannot change who breeds. The currency that
+// does is worldEnergy, handed out by loop order (#203). While at least one living particle stands on
+// a cell whose recipe body ran in the last updateField, a parented birth off those cells is refused
+// before it touches the pool, and a parent on them pays the ordinary provision and pool costs -- not
+// a discount. A dead layer (no recipe body, __subEvalN==0) or an unoccupied one (__subTouch==0) leaves
+// every birth on the old path: no draw moves, no cost changes. SUB=0 is that path on every tick.
+// Two call sites for the refusal (addParticle, addCompound) and two for the occupancy refresh
+// (before processGrid, before the birthQueue drain). Op 20 is not touched.
+let __subEvalN=0, __subTouch=0;
+function subOn(){ return (typeof globalThis==='undefined')||((globalThis.__SUB??1)|0)!==0; }
+function subRefresh(){
+  __subTouch=0;
+  if(!subOn()||!(__subEvalN>0)||!(W>0)||!(H>0))return;
+  const fw=W/FIELD_W, fh=H/FIELD_H;
+  for(let i=0;i<N;i++){
+    if(!palive[i])continue;
+    const fx=__cl(Math.floor(px[i]/fw),0,FIELD_W-1);
+    const fy=__cl(Math.floor(py[i]/fh),0,FIELD_H-1);
+    if(cellChemEval[fy*FIELD_W+fx])__subTouch++;
+  }
+}
+function subBirthBlocked(pa){
+  if(!subOn()||!(__subTouch>0)||!palive[pa]||!(W>0)||!(H>0))return false;
+  const fx=__cl(Math.floor(px[pa]/(W/FIELD_W)),0,FIELD_W-1);
+  const fy=__cl(Math.floor(py[pa]/(H/FIELD_H)),0,FIELD_H-1);
+  return !cellChemEval[fy*FIELD_W+fx];
+}
 function updateField(){
   // ═══ STAGE 1: CELL-LEVEL VM EXECUTION ═══
   // Each cell holds one VM instruction inscribed by particles.
@@ -18389,6 +18421,7 @@ function updateField(){
   const chemTable=chemFieldTable();   // #217d: hoisted — one resolution per tick, not one per cell. The
                                       // table cannot change mid-pass (mutateGenome runs outside updateField),
                                       // so the hoist is exact as well as cheap.
+  cellChemEval.fill(0);   // #233: this tick's evaluations only. Births earlier in the tick still see the previous pass.
   let _chemExecN=0;   // #217d: a plain integer on a per-cell path, handed to firedN once below — exactly
                       // the route firedN's own comment describes for a path too hot for a census call.
   for(let y=0;y<FIELD_H;y++){
@@ -18429,6 +18462,7 @@ function updateField(){
       const recipe=chemTable[op%12];   // #217d: the live table, or the frozen seed snapshot under CHEM=0 — see chemFieldTable()
       if(recipe){
         _chemExecN++;
+        cellChemEval[idx]=1;   // #233: the body ran. Strength above the gate with no recipe does not set this.
         const ls0=c1,ls1=c2,ls2=nN,ls3=nS,ls4=nE,ls5=nW,ls6=m2N,ls7=m2S,ls8=m2E,ls9=m2W,ls10=nbAvg1,ls11=nbAvg2;
         const lsArr=[ls0,ls1,ls2,ls3,ls4,ls5,ls6,ls7,ls8,ls9,ls10,ls11,1.0,0,0]; // [12]=1, [13]=d1, [14]=d2
         for(let mi=0;mi<recipe.length;mi++){
@@ -18454,6 +18488,7 @@ function updateField(){
     }
   }
   firedN('cell.chemExec',_chemExecN);   // #217d: zero on every run measured so far, which is the finding
+  __subEvalN=_chemExecN;   // #233: occupancy is counted at the birth sites, against this map
 
   // ═══ STAGE 2: STANDARD DIFFUSION + DECAY ═══
   // Pe49: snapshot field2 before diffusion so the temporal derivative (field2 - field2Prev)
@@ -21232,6 +21267,7 @@ function addParticle(x,y,tv,born,parentA,parentB){
   // world tries to do reproductively fails right here and no census row, no epoch log and no
   // liveness name said so - the single largest silent quantity in the file. BOTH gates are
   // instrumented, because addParticle and addCompound are both real reproduction.
+  if(parentA>=0&&parentA<N&&subBirthBlocked(parentA)){ fired('birth.refused'); fired('birth.subRefused'); return-1; }   // #233
   if(parentA>=0&&parentA<N&&provBirthOn()){ if(pProvision[parentA]<PROV_BIRTH_COST){ fired('birth.refused'); fired('birth.unprovisioned'); return-1; } }   // PROV_BIRTH -- see provBirthOn
   if(parentA>=0){
     if(rationOn()){ const _rw=rareBirthW(parentA); __rationAtt+=_rw; if(Math.random()>=__rationP*_rw){ fired('birth.refused'); fired('birth.rationed'); return-1; } }   // RATION (+RARE_BIRTH weight) -- see loop()
@@ -21348,6 +21384,7 @@ function addCompound(x,y,nt,nvx,nvy,na,np,nf,parentA,parentB){
   // world tries to do reproductively fails right here and no census row, no epoch log and no
   // liveness name said so - the single largest silent quantity in the file. BOTH gates are
   // instrumented, because addParticle and addCompound are both real reproduction.
+  if(parentA>=0&&parentA<N&&subBirthBlocked(parentA)){ fired('birth.refused'); fired('birth.subRefused'); return-1; }   // #233
   if(parentA>=0&&parentA<N&&provBirthOn()){ if(pProvision[parentA]<PROV_BIRTH_COST){ fired('birth.refused'); fired('birth.unprovisioned'); return-1; } }   // PROV_BIRTH -- see provBirthOn
   if(parentA>=0){
     if(rationOn()){ const _rw=rareBirthW(parentA); __rationAtt+=_rw; if(Math.random()>=__rationP*_rw){ fired('birth.refused'); fired('birth.rationed'); return-1; } }   // RATION (+RARE_BIRTH weight) -- see loop()
@@ -27089,6 +27126,7 @@ function loop(){
 
   networkBroadcast();
   networkReceive();
+  subRefresh();   // #233: occupancy against the previous updateField, at the positions births will see
   processGrid();
 
   for(let i=0;i<N;i++){
@@ -29435,6 +29473,7 @@ function loop(){
     if(!__cleanArt())renderDashboard();   // #144: cleanart means the art, not the art plus the readouts
   }
   replenish();
+  subRefresh();   // #233: the queue drains after updateField, so it must see this tick's evaluations
   let birthsProcessed=0;
   while(birthQueue.length>0&&N<CAP&&birthsProcessed<5){
     const b=birthQueue.pop();
