@@ -102,9 +102,12 @@ let code=html.match(/<script>([\s\S]*)<\/script>/)[1];
 // The ONLY edit: maybe() honours the min/max it is already handed. Gated on a global so the two arms
 // run the same rewritten source and differ by one boolean, not by which file was parsed. A rewrite
 // that only exists in one arm is an arm difference of its own, and this project has paid for that.
-{ const A='    const next=val+tailDraw()*magnitude*scale;\n    if(!isFinite(next))return val;\n    return next;';
+// #218b multiplied the step by mutMagFor(gene). The old anchor (magnitude*scale, no gene) matched
+// nothing, so this arm was not an arm. The clamp still wraps the value maybe() returns; it does
+// not touch mutMagFor, and the default arm (CLAMP unset) is still #148's unclamped maybe().
+{ const A='    const next=val+tailDraw()*magnitude*mutMagFor(gene)*scale;\n    if(!isFinite(next))return val;\n    return next;';
   if(code.split(A).length-1!==1){ console.log(JSON.stringify({error:'maybe() anchor not found'})); process.exit(1); }
-  code=code.replace(A,'    const next=val+tailDraw()*magnitude*scale;\n'+
+  code=code.replace(A,'    const next=val+tailDraw()*magnitude*mutMagFor(gene)*scale;\n'+
     '    if(!isFinite(next))return val;\n'+
     '    if(globalThis.__MAYBE_CLAMP&&isFinite(min)&&isFinite(max)&&max>min){globalThis.__mcN=(globalThis.__mcN||0)+1;if(next<min){globalThis.__mcLo=(globalThis.__mcLo||0)+1;return min;}if(next>max){globalThis.__mcHi=(globalThis.__mcHi||0)+1;return max;}}\n'+
     '    return next;');

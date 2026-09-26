@@ -256,7 +256,7 @@ Universe.prototype.buildEnv = function (initHash, dpr) {
   // Writes are forwarded to the shell that owns this universe, which owns the real localStorage.
   const localStorageShim = {
     getItem(k) { return k in inst.lsStore ? inst.lsStore[k] : null; },
-    setItem(k, v) { inst.lsStore[k] = String(v); try { inst.post({ type: 'persist', key: k, value: String(v) }); } catch (_) {} },
+    setItem(k, v) { inst.lsStore[k] = String(v); if (inst.halted) return; try { inst.post({ type: 'persist', key: k, value: String(v) }); } catch (_) {} },
     removeItem(k) { delete inst.lsStore[k]; try { inst.post({ type: 'persist', key: k, value: null }); } catch (_) {} },
   };
 
@@ -286,7 +286,10 @@ Universe.prototype.buildEnv = function (initHash, dpr) {
   // in one worker they interleave through this same queue — measured at slightly BETTER total
   // throughput than the same universes on separate workers, because nine workers on four cores
   // were oversubscribed.
-  const raf = (fn) => setTimeout(fn, 0);
+  // A closed shell posts halt. The tick already queued still runs; the one after it does not.
+  // BroadcastChannel lives in this worker and does not need the port, so without this a closed
+  // field keeps founding into whatever page replaced it.
+  const raf = (fn) => { if (inst.halted) return 0; return setTimeout(fn, 0); };
   const caf = (id) => clearTimeout(id);
 
   // performance, navigator, BroadcastChannel, fetch, IndexedDB all exist natively in workers, and
@@ -321,6 +324,7 @@ Universe.prototype.handle = function (d) {
   const api = () => inst.api;
 
   if (d.type === 'init') { this.boot(d); return; }
+  if (d.type === 'halt') { this.halted = true; return; }
 
   if (d.type === 'resize') {
     if (this.canvas) { this.canvas.width = d.w; this.canvas.height = d.h; }
