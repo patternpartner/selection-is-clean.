@@ -21473,3 +21473,37 @@ the solo path.
 **The lesson, since it cost two wrong reverts in one entry:** a number that moved is not a cause until
 the path is shown to run. The first-execution recorder answered in one run what two readings of the code
 got wrong.
+
+**#231d smoke, sorted before `main` moved.** `smoke.sh` 44 ok / 9 failing, every one accounted for:
+- `grammar-test`, `reach-test`, `autosave-test`: exit 124, smoke's 180 s limit. Alone: grammar 79/0,
+  reach 20/0 (it was a row failure in #221, now just slow). autosave as #221.
+- `pool`, `pace`, `layers`, `slot`: `Cannot find module 'playwright-core'` — this container had none.
+  Installed unsaved (`node_modules/` is gitignored) and run alone: pool 28/0, pace 7/0, layers 49/0,
+  collective pass; **slot 9/6 — and the SAME six rows fail on pre-#231 `main` (1f424b2) in a worktree**:
+  none of the nine built universes reaches its first save (tick 1,800) inside 150 s in this container, and
+  the #201 rows cascade from that. Throughput here, not the fold.
+- `harness-atrophy-probe`, `harness-attractor`: stale text-patch anchors, as #221.
+The harness debt is being taken as a separate PR by another agent; nothing above touches `vmStep`.
+
+### #231e — OP 16 ON SEEDS IT HAS NEVER SEEN, pre-registered before the runs exist
+
+#231d's case for op 16 is one seed (3), because op 16 only ran on one of seeds 1-3. This widens it.
+
+**Arms.** OPEN = the #231d engine (every machine buds the particle machine's way). CLOSED = the same
+file with op 16's #231 bodies restored for plasmid, cluster and solo — the two files differ only inside
+op 16's case. **Seeds 4-9**, not looked at by this session, `harness-oee` at 20,000 ticks.
+
+**Reading a seed.** If OPEN and CLOSED return identical numbers, op 16 made no difference on that seed
+(it never ran, or ran without effect) and the seed says nothing about op 16. Only seeds where the arms
+differ are counted below; how many that is gets reported first.
+
+**The rule, fixed now.** Op 16 is already open on the branch, because one instruction set is the
+principle #231b ships under. It stays open unless, across the seeds where the arms differ:
+- (a) mean late population OPEN exceeds CLOSED by more than 50%, or
+- (b) mean entropyRatio OPEN is lower than CLOSED by more than 0.05.
+
+If (a) trips, the per-250-tick law recorder runs on that seed before anything is concluded, because
+#231c blamed op 16 for a population rise that a kept sunlight law had caused.
+
+**A benefit is claimed only if** mean entropyRatio AND mean late kinds are both higher for OPEN, on at
+least three seeds where the arms differ. Anything less is reported as "no measured effect".
