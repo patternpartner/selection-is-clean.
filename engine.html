@@ -2299,7 +2299,15 @@ const LAW_DECLARED=[
   //     upkeep is always kept and would ratchet carrying capacity (REGEN/draw) toward CAP=1800, which a
   //     browser tab cannot draw. 0.00025 caps it near 800.
   //   AMP_SOFT hi 1.9 -- AMP_HARD is 2.0, the numerical guard; the soft line must stay under it.
-  {name:'INHERIT_SD',        get:()=>INHERIT_SD,        set:v=>{INHERIT_SD=v;},        lo:0.0,     hi:0.6},
+  // #235: INHERIT_SD's floor is 0.2, not 0 - DEFENDED, like #222's upkeep floor and #232's capacity ceiling.
+  // #234 measured the verdict BLIND to it: every forced move kept on 6 of 6 seeds in both directions, so the
+  // law random-walks over its range and, at the field's horizon, about 17% of long-lived worlds would sit
+  // below 0.1 - where #220c measured zero speciation. 0.2 is the only strength with evidence that it holds
+  // diversity (#220e/f, nine seeds). Mutation may rise; it may not fall below where it is known to work.
+  // The LAWV restore clamps saved values into the range, so a saved world below 0.2 is lifted on reload -
+  // the user's decision. The __INHERIT_SD knob still sets any starting value for sweeps; only proposals,
+  // imports and restores are held to the range.
+  {name:'INHERIT_SD',        get:()=>INHERIT_SD,        set:v=>{INHERIT_SD=v;},        lo:0.2,     hi:0.6},
   {name:'PROV_BIRTH_COST',   get:()=>PROV_BIRTH_COST,   set:v=>{PROV_BIRTH_COST=v;},   lo:0.2,     hi:4.0},
   {name:'PROV_BIRTH_ENDOW',  get:()=>PROV_BIRTH_ENDOW,  set:v=>{PROV_BIRTH_ENDOW=v;},  lo:0.0,     hi:1.0},
   {name:'AMP_SOFT',          get:()=>AMP_SOFT,          set:v=>{AMP_SOFT=v;},          lo:0.8,     hi:1.9},

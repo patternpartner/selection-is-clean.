@@ -21658,3 +21658,31 @@ holds diversity, and 0.1 has evidence that it does not mint lineages.** So the d
 Not shipped, because saved law values are clamped to the row's range on load (the `LAWV` restore), so
 the floor would also lift every field universe already below 0.2 at its next reload. That reaches into
 the running field and is the user's call.
+
+### #235 — MUTATION HAS A FLOOR: `INHERIT_SD lo 0.2`, and saved worlds below it are lifted on reload
+
+#234 proposed this and left the field half of it to the user. The user's decision (with the second agent
+concurring): ship it, lift saved worlds too — flooring new proposals only would leave the worlds that had
+already drifted low quietly undoing #220f, the one recent change that moved the dependent variable, and
+clamp-on-reload is how every law bound already works.
+
+**The change:** `INHERIT_SD`'s row goes from `lo:0.0` to `lo:0.2`; `hi` stays 0.6. Defended in the row's
+comment, beside #222's upkeep floor and #232's capacity ceiling.
+- A proposal can no longer take mutation below 0.2: from the floor, a downward step clamps back to 0.2,
+  `to === from`, and the proposal returns before it sets anything or charges `LAW_COST`. Upward steps are
+  smaller than before, because the step is 35% of the range and the range is now 0.4 not 0.6.
+- A peer's broadcast value below 0.2 is clamped to the floor at import; if the world is already there, no
+  trial opens.
+- **A saved world below 0.2 comes back at 0.2** — the `LAWV` restore clamps every saved law into its row's
+  range. A saved world above 0.2 keeps its value.
+- The `__INHERIT_SD` knob still sets any starting value, so a sweep at 0.04 (#219) or 0 is still possible;
+  only proposals, imports and restores are held to the range.
+
+**Checked:** on the live engine, a save at 0.05 restores to 0.2 and a save at 0.37 restores to 0.37 (so the
+law values do round-trip and the lift is the clamp); the largest downward proposal from 0.2 lands at 0.2; a
+broadcast 0.05 clamps to 0.2. substrate-test on seeds 1-3 and FOUND=0 is running as this is committed; `main` moves when it is in.
+
+**What moved in the universe:** nothing measurable at the lab's 20k horizon, by construction — a law is
+proposed about once per 32k ticks, so a lab run rarely sees one. The change acts at the FIELD's horizon, on
+the ~17% of long-lived worlds #234's arithmetic puts below 0.1. The number that would show it is the spread of
+`INHERIT_SD` across a harvest before and after a reload, which only the user's field can supply.
