@@ -22018,7 +22018,7 @@ const vmActions=new Float32Array(8+MAX_USER_EFFECTS);
 // passes the per-instruction operands. The return value is ip, because three ops jump.
 // profileVM is NOT folded in: its cases are stubs by design (#176: pricing is not execution).
 var VM_MAIN=0,VM_PLAS=1,VM_CLUS=2,VM_SOLO=3;
-var __vmMode=0,__vmProg=null,__vmN=0,__vmNPi=0,__vmCl=null,__vmSim=0,__vmPA=0,__vmProx=0,__vmD=0;
+var __vmMode=0,__vmProg=null,__vmN=0,__vmLen=0,__vmNPi=0,__vmCl=null,__vmSim=0,__vmPA=0,__vmProx=0,__vmD=0;
 // Which ops each machine NEVER HAD. An op listed here falls straight through to the tail, exactly as an
 // op with no case did in that machine's own switch. Solo lacks most of the partner-era opcodes because it
 // stopped receiving new ops somewhere around op 60 and was given "full parity" only piecemeal after.
@@ -22040,16 +22040,7 @@ function vmStep(op,src,dst,k,si,di,i,j,ip){
       case 7:pMem[i*MEM_SIZE+(Math.abs(dst)%MEM_SIZE)]=vmRegs[si];break;
       case 8:{const fx8=Math.floor(px[i]/(W/FIELD_W)),fy8=Math.floor(py[i]/(H/FIELD_H));const fi8=__cl(fy8*FIELD_W+fx8,0,FIELD_W*FIELD_H-1);vmRegs[di]=field[fi8];}break;
       case 9:
-        if(__vmMode===VM_PLAS){ // PLAS copy, kept as it was
-        {const pwx=Math.floor(px[i]/(W/FIELD_W)),pwy=Math.floor(py[i]/(H/FIELD_H));const pwi=__cl(pwy*FIELD_W+pwx,0,FIELD_W*FIELD_H-1);field[pwi]+=vmRegs[si]*k;field[pwi]=__cl(field[pwi],0,2.5);stampField(pwi,getParticleSig(i),Math.abs(vmRegs[si]*k));}break;
-        }
-        if(__vmMode===VM_CLUS){ // CLUS copy, kept as it was
-        {const wx9=Math.floor(px[i]/(W/FIELD_W)),wy9=Math.floor(py[i]/(H/FIELD_H));const wi9=__cl(wy9*FIELD_W+wx9,0,FIELD_W*FIELD_H-1);field[wi9]+=vmRegs[si]*k;field[wi9]=__cl(field[wi9],0,2.5);stampField(wi9,__vmCl.fieldSignature,Math.abs(vmRegs[si]*k));}break;
-        }
-        if(__vmMode===VM_SOLO){ // SOLO copy, kept as it was
-        {const wx9=Math.floor(px[i]/(W/FIELD_W)),wy9=Math.floor(py[i]/(H/FIELD_H));const wi9=__cl(wy9*FIELD_W+wx9,0,FIELD_W*FIELD_H-1);field[wi9]+=vmRegs[si]*k*0.3;field[wi9]=__cl(field[wi9],0,2.5);}break;
-        }
-        {const wx9=Math.floor(px[i]/(W/FIELD_W)),wy9=Math.floor(py[i]/(H/FIELD_H));const wi9=__cl(wy9*FIELD_W+wx9,0,FIELD_W*FIELD_H-1);const _dep9=vmRegs[si]*k;field[wi9]+=_dep9;field[wi9]=__cl(field[wi9],0,2.5);stampField(wi9,getParticleSig(i),Math.abs(_dep9));
+        {const wx9=Math.floor(px[i]/(W/FIELD_W)),wy9=Math.floor(py[i]/(H/FIELD_H));const wi9=__cl(wy9*FIELD_W+wx9,0,FIELD_W*FIELD_H-1);const _dep9=vmRegs[si]*k*(__vmMode===VM_SOLO?0.3:1);field[wi9]+=_dep9;field[wi9]=__cl(field[wi9],0,2.5);stampField(wi9,__vmMode===VM_CLUS?__vmCl.fieldSignature:getParticleSig(i),Math.abs(_dep9));
         // === #183 - THE LINEAGE CHOOSES WHAT ITS DEPOSITS TURN INTO =============================
         // A particle could always write into the resource field. What happened NEXT was ours: decay,
         // diffusion, and nothing else. These two genes make the deposit a REACTION - a fraction of
@@ -22068,52 +22059,15 @@ function vmStep(op,src,dst,k,si,di,i,j,ip){
         }
       }break;
       case 10:
-        if(__vmMode===VM_CLUS){ // CLUS copy, kept as it was
-        {if(__vmCl){const cfx=Math.floor(__vmCl.cx/(W/FIELD_W)),cfy=Math.floor(__vmCl.cy/(H/FIELD_H));const cfi=__cl(cfy*FIELD_W+cfx,0,FIELD_W*FIELD_H-1);field[cfi]+=vmRegs[si]*k;field[cfi]=__cl(field[cfi],0,2.5);stampField(cfi,__vmCl.fieldSignature,Math.abs(vmRegs[si]*k));}}break;
-        }
         {if(clusterID[i]>=0){const cIdx10=clusterID[i]<MAX_CLUSTERS?clusterByID[clusterID[i]]:-1;if(cIdx10>=0){const c=clusters[cIdx10];const cfx=Math.floor(c.cx/(W/FIELD_W)),cfy=Math.floor(c.cy/(H/FIELD_H));const cfi=__cl(cfy*FIELD_W+cfx,0,FIELD_W*FIELD_H-1);field[cfi]+=vmRegs[si]*k;field[cfi]=__cl(field[cfi],0,2.5);stampField(cfi,c.fieldSignature,Math.abs(vmRegs[si]*k));}}}break;
       case 11:{const slot=Math.abs(dst)%2;pBroadcast[i*2+slot]=vmRegs[si]*k;}break;
       case 12:{const slot2=Math.abs(src)%2;vmRegs[di]=pBroadcast[j*2+slot2];}break;
       case 13:
-        if(__vmMode===VM_PLAS){ // PLAS copy, kept as it was
-        {const pInstIdx=Math.abs(Math.floor(vmRegs[si]))%Math.max(1,genome.vmProgram.length);const pSelfInst=genome.vmProgram[pInstIdx];vmRegs[di]=pSelfInst?pSelfInst[Math.abs(Math.floor(k))%4]:0;}break;
-        }
-        if(__vmMode===VM_CLUS){ // CLUS copy, kept as it was
-        {const cProg=__vmCl?__vmCl.vmProgram:genome.vmProgram;const cInstIdx=Math.abs(Math.floor(vmRegs[si]))%Math.max(1,cProg.length);const cSelfInst=cProg[cInstIdx];vmRegs[di]=cSelfInst?cSelfInst[Math.abs(Math.floor(k))%4]:0;}break;
-        }
         {const instIdx=Math.abs(Math.floor(vmRegs[si]))%Math.max(1,__vmProg.length);const selfInst=__vmProg[instIdx];vmRegs[di]=selfInst?selfInst[Math.abs(Math.floor(k))%4]:0;}break;
       case 14:
-        if(__vmMode===VM_PLAS){ // PLAS copy, kept as it was
-        if(vmRegs[si]>k)ip=Math.abs(Math.floor(vmRegs[di]))%__vmNPi;break;
-        }
-        if(__vmMode===VM_CLUS){ // CLUS copy, kept as it was
-        {const cNInst=__vmCl?__vmCl.vmProgram.length:__vmProg.length;if(vmRegs[si]>k)ip=Math.abs(Math.floor(vmRegs[di]))%Math.max(1,cNInst);}break;
-        }
-        if(vmRegs[si]>k)ip=Math.abs(Math.floor(vmRegs[di]))%__vmN;break;
+        if(vmRegs[si]>k)ip=Math.abs(Math.floor(vmRegs[di]))%__vmLen;break;   // #231b: the program RUNNING - a plasmid jumps within the plasmid
       case 15:{const ageFrac=Math.min(1,page[i]/800);vmRegs[di]=vmRegs[si]*(1-ageFrac)+k*ageFrac;}break;
       case 16:
-        if(__vmMode===VM_PLAS||__vmMode===VM_CLUS){ // PLAS/CLUS copy, kept as it was
-        {
-          if(amp[i]>0.4&&page[i]>80&&N+birthQueue.length<CAP-1&&Math.random()<0.03){
-            const pnt=new Float32Array(DIMS);
-            for(let dd=0;dd<DIMS;dd++)pnt[dd]=tend[i*DIMS+dd]+k*0.1*(vmRegs[(dd+4)%12]-0.5);
-            birthQueue.push({x:__cl(px[i]+vmRegs[si]*15,0,W),y:__cl(py[i]+vmRegs[di]*15,0,H),t:pnt,parent:i});
-            amp[i]*=0.5;
-          }
-        }break;
-        }
-        if(__vmMode===VM_SOLO){ // SOLO copy, kept as it was
-        {
-          if(amp[i]>0.4&&page[i]>80&&N+birthQueue.length<CAP-1&&Math.random()<0.015){
-            const offX=__cl(px[i]+vmRegs[si]*15,0,W);
-            const offY=__cl(py[i]+vmRegs[di]*15,0,H);
-            const nt=new Float32Array(DIMS);
-            for(let dd=0;dd<DIMS;dd++)nt[dd]=tend[i*DIMS+dd]+k*0.1*(vmRegs[(dd+4)%12]-0.5);
-            birthQueue.push({x:offX,y:offY,t:nt,parent:i});
-            amp[i]*=0.5;
-          }
-        }break;
-        }
         {
         // LEAP 20 (#54) — IMAGINATION GETS STAKES. The shadow sim was ablated this session and measured
         // EXACTLY 0.000 across five seeds: it fires, burns real compute, and changes nothing. Largest
@@ -22123,7 +22077,7 @@ function vmStep(op,src,dst,k,si,di,i,j,ip){
         // imagination cannot earn that price, the ledger will say so and removal is the honest next act.
         {const _dc=(genome.decisionConfidence||0);
          const _tilt=1+IMAGINE_BIAS*_dc;
-         if(amp[i]>0.4 && page[i]>80 && N+birthQueue.length<CAP-1 && Math.random()<0.03*_tilt*MODE_REPRO[pMode[i]]){ // #57: SURGE breeds hard, HOLD barely breeds
+         if(amp[i]>0.4 && page[i]>80 && N+birthQueue.length<CAP-1 && Math.random()<0.03*_tilt*MODE_REPRO[pMode[i]]*(__vmMode===VM_SOLO?0.5:1)){ // #57: SURGE breeds hard, HOLD barely breeds
            if(_dc>0)amp[i]-=IMAGINE_COST*_dc;
           const offX=__cl(px[i]+vmRegs[si]*15,0,W);
           const offY=__cl(py[i]+vmRegs[di]*15,0,H);
@@ -22162,43 +22116,6 @@ function vmStep(op,src,dst,k,si,di,i,j,ip){
         }
       }break;
       case 20:
-        if(__vmMode===VM_PLAS||__vmMode===VM_CLUS){ // PLAS/CLUS copy, kept as it was
-        {
-          fired('cell.inscribe');   // #217d
-          const ix20=Math.floor(px[i]/(W/FIELD_W)),iy20=Math.floor(py[i]/(H/FIELD_H));
-          const ci20=__cl(iy20*FIELD_W+ix20,0,FIELD_W*FIELD_H-1);
-          const wStr20=Math.abs(vmRegs[si]*k)*inscStr();   // #217h: was *0.2
-          if(inscribeOn()){   // #217f: INSCRIBE=0 withholds the write and nothing else — no draw moves
-          if(wStr20>cellProgStr[ci20]*inscOver()){   // #217h: was *0.8
-            cellProgOp[ci20]=Math.abs(Math.floor(vmRegs[si]))%12;
-            cellProgA[ci20]=vmRegs[di];
-            cellProgB[ci20]=k;
-            cellProgStr[ci20]=Math.min(1,cellProgStr[ci20]+wStr20);
-          }else{
-            cellProgStr[ci20]=Math.min(1,cellProgStr[ci20]+wStr20*0.3);
-          }
-          }
-        }break;
-        }
-        if(__vmMode===VM_SOLO){ // SOLO copy, kept as it was
-        {
-          fired('cell.inscribe');   // #217d
-          const ix20=Math.floor(px[i]/(W/FIELD_W)),iy20=Math.floor(py[i]/(H/FIELD_H));
-          const ci20=__cl(iy20*FIELD_W+ix20,0,FIELD_W*FIELD_H-1);
-          const newOp=Math.abs(Math.floor(vmRegs[si]))%12;
-          const writeStr20=Math.abs(vmRegs[si]*k)*inscStr();   // #217h: was *0.15
-          if(inscribeOn()){   // #217f: INSCRIBE=0 withholds the write and nothing else — no draw moves
-          if(writeStr20>cellProgStr[ci20]*inscOver()){   // #217h: was *0.8
-            cellProgOp[ci20]=newOp;
-            cellProgA[ci20]=vmRegs[di];
-            cellProgB[ci20]=k;
-            cellProgStr[ci20]=Math.min(1,cellProgStr[ci20]+writeStr20);
-          }else{
-            cellProgStr[ci20]=Math.min(1,cellProgStr[ci20]+writeStr20*0.3);
-          }
-          }
-        }break;
-        }
         {
         fired('cell.inscribe');   // #217d
         const ix20=Math.floor(px[i]/(W/FIELD_W)),iy20=Math.floor(py[i]/(H/FIELD_H));
@@ -22859,20 +22776,6 @@ function vmStep(op,src,dst,k,si,di,i,j,ip){
         }
       }break;
       case 53:
-        if(__vmMode===VM_CLUS){ // CLUS copy, kept as it was
-        {
-        // Pe69 Layer 58: INTERACTION_DIST in cluster VM — full parity with particle VM.
-        // Cluster VM runs per pair (i,j) within the cluster interaction sweep.
-        // `d` here is the inter-particle distance for this pair.
-        // Returns 0 if interactionDistInfluence is gate-closed → Pe68 exactly.
-        const idi69c=genome.interactionDistInfluence||0;
-        if(idi69c>0.001){
-          const dxc69=px[i]-px[j],dyc69=py[i]-py[j];
-          const dc69=Math.sqrt(dxc69*dxc69+dyc69*dyc69);
-          vmRegs[di]=Math.min(1,dc69/CELL)*idi69c*(k||1);
-        }
-      }break;
-        }
         {
         // Pe69 Layer 58: INTERACTION_DIST — reads the normalized Euclidean distance between
         // particle i and particle j at the moment of interaction into a VM register.
@@ -24234,9 +24137,6 @@ function vmStep(op,src,dst,k,si,di,i,j,ip){
       case 177:{const _hbdx177=pHomeX[i]-px[i],_hbdy177=pHomeY[i]-py[i],_hbd177=Math.sqrt(_hbdx177*_hbdx177+_hbdy177*_hbdy177)+0.01;vmRegs[di]=(_hbdx177/_hbd177)*k;}break; // HOME_BEARING_X — X component of the unit vector pointing from current position toward home. Range -1..1 scaled by k. Combined with HOME_DIST (op176) as a gate (only navigate when far enough from home) and with velocity updates (vmRegs[di] → vx adjustment upstream), enables evolved homing flight: particles can navigate back to a marked location across the world without a fixed compass.
       case 178:{const _hbdx178=pHomeX[i]-px[i],_hbdy178=pHomeY[i]-py[i],_hbd178=Math.sqrt(_hbdx178*_hbdx178+_hbdy178*_hbdy178)+0.01;vmRegs[di]=(_hbdy178/_hbd178)*k;}break; // HOME_BEARING_Y — Y component of unit vector toward home. Completes the 2D homing navigation pair: combine HOME_BEARING_X (op177) → vx adjustment and HOME_BEARING_Y → vy adjustment, gated by HOME_DIST (op176) > threshold, to achieve full 2D homing flight. Enables: migratory particles that travel to distant resource patches and navigate back to the marked kin cluster; honeybee-style central-place foraging circuits; natal site return after overwintering dispersal.
       case 179:
-        if(__vmMode===VM_PLAS||__vmMode===VM_CLUS){ // PLAS/CLUS copy, kept as it was
-        {if(vmRegs[si]>k&&pProg[i]&&pProg[j]&&pProg[i].length>0){const _cap179p=Math.min(genome.vmMaxInstructions||16,48);if(pProg[j].length<_cap179p){const _si179p=Math.abs(Math.floor(vmRegs[si]*3))%pProg[i].length;const _ins179p=pProg[i][_si179p];if(_ins179p){const _di179p=Math.floor(Math.random()*(pProg[j].length+1));pProg[j].splice(_di179p,0,[_ins179p[0],_ins179p[1],_ins179p[2],+_ins179p[3]]);vmRegs[di]=1;}else{vmRegs[di]=0;}}else{vmRegs[di]=0;}}else{vmRegs[di]=0;}}break;
-        }
         if(__vmMode===VM_SOLO){ // SOLO copy, kept as it was
         {vmRegs[di]=0;}break;
         }
@@ -24647,7 +24547,7 @@ function executeVM(i,j,sim,d){
   const totalCost=(nInst+_stack+_opRent+_foldRent+_probeRent+_chanRent+_metRent+_reachRent+_emitRent+_over16*(COMPLEXITY_TOLL-1))*genome.metabolicCost;
   amp[i]-=totalCost;amp[j]-=totalCost;
 
-  __vmMode=VM_MAIN;__vmProg=prog;__vmN=nInst;__vmSim=sim;__vmPA=phaseAlign;__vmProx=proximity;__vmD=d;   // #231: the one dispatch reads these, set once per program run
+  __vmMode=VM_MAIN;__vmProg=prog;__vmN=nInst;__vmLen=nInst;__vmSim=sim;__vmPA=phaseAlign;__vmProx=proximity;__vmD=d;   // #231: the one dispatch reads these, set once per program run
   for(let ip=0,_vs=0;ip<nInst&&_vs<nInst*2;ip++,_vs++){
     const inst=prog[ip];if(!inst)continue;
     const [op,src,dst,_k0]=inst; const k=Number.isFinite(_k0)?_k0:0; // NaN-FIX: k is an evolvable instruction immediate; a NaN here flows through case-4 (vmActions+=vmRegs*k) past the register clamp into amp/tend and poisons the fitness EMA.
@@ -24662,7 +24562,7 @@ function executeVM(i,j,sim,d){
   const nPi=pPlasmidLen[i];
   if(nPi>0){
     const pBase=i*PLASMID_SLOTS;
-    __vmMode=VM_PLAS;__vmProg=prog;__vmN=nInst;__vmNPi=nPi;__vmSim=sim;__vmPA=phaseAlign;__vmProx=proximity;__vmD=d;   // #231
+    __vmMode=VM_PLAS;__vmProg=prog;__vmN=nInst;__vmLen=nPi;__vmNPi=nPi;__vmSim=sim;__vmPA=phaseAlign;__vmProx=proximity;__vmD=d;   // #231
     for(let ip=0,_ps=0;ip<nPi&&_ps<nPi*2;ip++,_ps++){
       const op=pPlasmid[pBase+ip*4]|0;
       const src=pPlasmid[pBase+ip*4+1]|0;
@@ -24975,7 +24875,7 @@ function executeClusterVM(i,j,sim,d){
   const nInst=Math.min(prog.length,MAX_CLUSTER_VM);
   __vmRC=VM_REGS_DEFAULT;   // #200a: the cluster VM and the profiler are not any lineage's machine - see the note at VM_REGS_MAX
 
-  __vmMode=VM_CLUS;__vmProg=prog;__vmN=nInst;__vmCl=cl;__vmSim=sim;__vmPA=phaseAlign;__vmProx=proximity;__vmD=d;   // #231
+  __vmMode=VM_CLUS;__vmProg=prog;__vmN=nInst;__vmLen=nInst;__vmCl=cl;__vmSim=sim;__vmPA=phaseAlign;__vmProx=proximity;__vmD=d;   // #231
   for(let ip=0,_cs=0;ip<nInst&&_cs<nInst*2;ip++,_cs++){
     const inst=prog[ip];if(!inst)continue;
     const [op,src,dst,_k0]=inst; const k=Number.isFinite(_k0)?_k0:0; // NaN-FIX: k is an evolvable instruction immediate; a NaN here flows through case-4 (vmActions+=vmRegs*k) past the register clamp into amp/tend and poisons the fitness EMA.
@@ -25441,7 +25341,7 @@ function executeSoloVM(){
 
     vmActions.fill(0); // #132: clears the authored-verb drives (8..15) as well as the eight built-ins
 
-    __vmMode=VM_SOLO;__vmProg=prog;__vmN=nInst;   // #231: no partner, so sim/d/proximity are never read on this path
+    __vmMode=VM_SOLO;__vmProg=prog;__vmN=nInst;__vmLen=nInst;   // #231: no partner, so sim/d/proximity are never read on this path
     for(let ip=0,_ss=0;ip<nInst&&_ss<nInst*2;ip++,_ss++){
       const inst=prog[ip];if(!inst)continue;
       const [op,src,dst,_k0]=inst; const k=Number.isFinite(_k0)?_k0:0; // NaN-FIX: k is an evolvable instruction immediate; a NaN here flows through case-4 (vmActions+=vmRegs*k) past the register clamp into amp/tend and poisons the fitness EMA.

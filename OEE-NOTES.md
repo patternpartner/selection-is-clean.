@@ -21312,3 +21312,54 @@ duplicated dispatch gone, the same universe on every trajectory tested. The drif
 is decided in #231b, separately, so that a change in behaviour is never mistaken for a refactor.
 
 **Checked:** substrate-test TICKS=40 seed 1 262/0; harness-clamp (three sites) and voice-test 21/0.
+
+### #231b — THE DRIFT, DECIDED: one instruction set; machines differ only in context
+
+**Rule:** one instruction set; machines differ only in CONTEXT — which program
+is running, who the actor is, whether there is a partner. Everything else follows the particle machine,
+the only copy anyone had been maintaining.
+- **10, 13 (cluster), 20, 53 (cluster), 14 (cluster):** the other copies were the same op spelled
+  differently, and are removed. 20 is `#217f`'s INSCRIBE: its four bodies had already been made to
+  agree, and now there is one. Cluster programs are capped at 8, so 14's modulus is the same number.
+- **179 — I called this inert and the rig said otherwise.** Its only difference is `#17`'s lineage gate
+  on HGT donation (`__SPEC.gate`), which I read as off by default. The per-op equivalence check still
+  failed at `CLUS 179`. The gate is ON: the LIVE-STACK block (`const LIVE=`, ~26300) sets `__SPECIATE:1`,
+  which brings the gate with it. So plasmid and cluster programs could donate instructions across
+  lineages that the particle machine refuses to cross. Now none can. A real change, reported as one.
+- **13 in the plasmid pass read the GERMLINE program** (`genome.vmProgram`), where every other machine
+  reads the program actually running. Now it reads the particle's own.
+- **14 jumps within the program running**: `__vmLen` is the plasmid's length in the plasmid pass.
+- **9 WRITE_FIELD:** only the particle machine had `#183`'s reactions and solo never stamped the
+  depositor's signature. Now all do; a cluster stamps as the cluster; solo keeps its 0.3 strength.
+- **16 BUD — the one that bears on who reproduces.** Plasmid, cluster and solo buds still used the
+  pre-LEAP-3 path: `amp*=0.5`, no provision, no endowment, no `MODE_REPRO`, no IMAGINE tilt. Now every
+  machine buds the particle machine's way; solo keeps its half rate.
+
+What is left branching on machine: the 37 solo partner stand-ins, and three context factors (op 9's
+signature and solo strength, op 16's solo rate). 38 blocks where there had been four switches.
+
+**Verified:** the per-op equivalence rig with ops 9, 13, 16, 53 and 179 excluded — every other op, in
+every machine, hash-identical to the pre-#231 engine (seed 1 warm 400; seed 2 warm 1500 with every
+influence gene forced on; 5,232 executions each). So the behaviour change is confined to exactly the
+five ops named above. substrate-test TICKS=40 seed 1 262/0.
+
+**What moved in the universe:** the 20k-tick `harness-oee` comparison (seeds 1-3, #231 vs #231b) and a
+census of births through op 16 per machine are running as this is committed. Their numbers are appended
+here when they land; until then this entry claims a mechanism-level change and nothing about the
+dependent variable.
+
+**Not folded:** `profileVM`. Its cases are stubs by design (#176: pricing is not execution); folding it
+would mean running real side effects in the pricer.
+
+**Left for a later session, named so it is not re-found:** solo's 99 absent ops. Many of them do not
+need a partner and would simply work alone; giving them to solo is an expansion of what a lone program
+can do, not a correction, and wants its own measurement.
+
+**A correction to #229, found because the rig refused my reading of op 179.** #229 lists 26 experiment
+arms as "default OFF (`(globalThis.__X|0)===1`) ... None runs in the field." Checked at runtime after
+boot: **13 of the 26 are ON** — NICHE_NDIM, SPATIAL_NICHE, GROUP_ROLES, RED_QUEEN, OPCODE_NOVELTY,
+NOVELTY_ARCHIVE, NICHE_LOCAL, NICHE_FRONTIER, NICHE_BUILD, MEME_TRANSFER, GROUP_COMMONS,
+FRONTIER_EXPAND, DRAW_VM. The LIVE-STACK block fills every undefined flag before any of them is read
+(each is read inside a function, after the block has run). The other 13 are off as stated. The
+gate's spelling said OFF; the file's LIVE block said ON, 26,000 lines away. Same lesson as #229's own
+correction: read what sets a value, not only what reads it.
