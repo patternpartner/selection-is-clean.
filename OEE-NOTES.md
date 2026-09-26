@@ -21507,3 +21507,39 @@ If (a) trips, the per-250-tick law recorder runs on that seed before anything is
 
 **A benefit is claimed only if** mean entropyRatio AND mean late kinds are both higher for OPEN, on at
 least three seeds where the arms differ. Anything less is reported as "no measured effect".
+
+### #232 — THE CAPACITY CEILING #222 MEANT TO SET
+
+#231d found seed 2's population blow-up was a kept law, not op 16: `WORLD_ENERGY_REGEN` 0.2 -> 0.864.
+The law layer's own arithmetic, read end to end:
+- **Proposal:** a law moves by up to ±35% of its whole range per proposal. REGEN's range is [0, 5], so
+  one proposal from the default 0.2 lands anywhere in [0, 1.075] — the step is four times the value.
+- **Verdict:** kept if the population over the probation holds 70% of its pre-proposal mean. A richer
+  world always holds. So every upward move in sunlight is kept, and carrying capacity (REGEN / upkeep)
+  ratchets up; downward moves big enough to cost 30% revert.
+- **#222 knew this shape.** It floored `METABOLIC_ENERGY_DRAW` at 0.00025 "because cheaper upkeep is
+  always kept and would ratchet carrying capacity (REGEN/draw) toward CAP=1800 ... 0.00025 caps it near
+  800." That holds REGEN at its default. REGEN had been a law since #203 with `hi:5`, so the real
+  ceiling was 5/0.00025 = 20,000, capped only by CAP. **#222's defended bound did not bound what it said.**
+- The field broadcasts kept laws (#185), so a world that raises its sunlight can hand the same
+  proposal to its neighbours, which then judge it by the same always-yes verdict.
+
+**The change.** The bound goes on the quantity #222 meant — `REGEN / METABOLIC_ENERGY_DRAW` — not on
+either law: a proposal, local or imported, is refused if it would lift that ratio above `LAW_K_MAX = 800`
+AND above where it already is. Both laws still move, down included; a world already above 800 (a saved
+field universe) can still make every move that does not raise it further, so its law layer does not
+freeze. Pure arithmetic, no draw consumed: a run where nothing is refused is bit-identical to one without
+the ceiling. `DEATH_ENERGY_RETURN` needs no term: at equilibrium REGEN = N*draw +
+births*BIRTH_ENERGY_COST*(1-DEATH_ENERGY_RETURN), so N <= REGEN/draw whatever the return. New liveness
+name `law.capacityRefused`; knob `LAW_KCAP=0` removes the ceiling (in KNOBS in the same commit).
+
+**Left alone, deliberately:** saved law values above the ceiling are NOT pulled down on load. A field
+universe that already kept a high sunlight keeps it; it just cannot go higher. Clamping persisted values
+would reach into the user's running field, and is their call.
+
+**Checked so far:** the refusal at its boundaries, on the live engine: the seed-2 move refused; #222's
+exact point (K = 800) allowed; K 1,200 refused; a world already above the ceiling may lower REGEN and may
+not raise it; REGEN to 0 allowed; no other law ever refused; `LAW_KCAP=0` allows everything.
+**Running as this is committed:** seed 2 to 12,000 ticks with the ceiling against the recorded #231d run
+(expected: identical until ~9,250, where the sunlight proposal is refused, and no climb after), and
+substrate-test. `main` moves when both are in.

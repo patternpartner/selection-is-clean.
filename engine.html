@@ -1151,7 +1151,8 @@ function handleNetworkMessage(raw){
         if(Array.isArray(d.law)&&!__lawTrial){
           const row=LAW_DECLARED[d.law[0]|0];
           if(row){ const from=+row.get(), to=__cl(+d.law[1],row.lo,row.hi);
-            if(isFinite(from)&&isFinite(to)&&to!==from){
+            const _kRef=lawRaisesCapacityPast(row,to); if(_kRef)fired('law.capacityRefused');   // #232: a peer cannot lift it either
+            if(isFinite(from)&&isFinite(to)&&to!==from&&!_kRef){
               row.set(to);
               // #197: an IMPORTED trial captures the judging threshold and the probation length the
               // same way a locally proposed one does. Without this an imported law would be judged by
@@ -1262,6 +1263,7 @@ const LIVENESS_DECLARED=[
   // are declared beside it so a run where every law was reverted is distinguishable from one where
   // none was ever proposed.
   'phys.reaction','cosmos.lawKept','cosmos.lawRevert','cosmos.lawUndo','cosmos.lawRelax',
+  'law.capacityRefused',   // #232: a proposal refused because it would lift carrying capacity past LAW_K_MAX
   'probe.author','probe.drift','probe.claim','probe.promote','oee.bonus',   // #184
   // #185: deme.gate fires whenever a cross-deme pairing is CONSIDERED and deme.blocked when one is
   // refused, so "the barrier exists but never bites" and "there is no barrier" are distinguishable.
@@ -2347,6 +2349,31 @@ let __lawLog=[];             // [tick, name, from, to, verdict] - 1 kept, 0 reve
 // back until the world can live. EXTINCT_UNDO=0 disables it.
 const LAW_SUPERSEDED={LAW_RATE:0.0006};   // #227b: name -> a declared default this file has since changed
 let __lawDefaults=null;
+// === #232 - THE CAPACITY CEILING #222 MEANT TO SET ============================================
+// #222 floored METABOLIC_ENERGY_DRAW at 0.00025 because "the verdict only asks did the population
+// hold?, so cheaper upkeep is always kept and would ratchet carrying capacity (REGEN/draw) toward
+// CAP=1800, which a browser tab cannot draw. 0.00025 caps it near 800." That arithmetic holds REGEN
+// at its default 0.2 - and WORLD_ENERGY_REGEN had been a law since #203, hi 5. So the real ceiling
+// was 5/0.00025 = 20,000, capped only by CAP. Measured (#231d): seed 2 kept REGEN 0.2 -> 0.864 at
+// ~9,250 ticks and ran from ~390 to ~1,300 living; the verdict can only ever say yes to that, because
+// a richer world always holds its population.
+// So the bound goes on the QUANTITY #222 meant to bound, not on either law: a proposal - local or
+// imported - is refused if it would lift REGEN/METABOLIC_ENERGY_DRAW above LAW_K_MAX AND above where
+// it already is. Both laws stay free to move, including down; a world already above the ceiling (a
+// saved one, say) can still make every move that does not raise it further. Arithmetic only: no
+// draw is consumed, so a run where nothing is refused is bit-identical to one without the ceiling.
+// DEATH_ENERGY_RETURN does not enter: at equilibrium births and deaths balance and REGEN = N*draw +
+// births*BIRTH_ENERGY_COST*(1-DEATH_ENERGY_RETURN), so N <= REGEN/draw whatever the return is.
+// LAW_KCAP=0 removes the ceiling.
+const LAW_K_MAX=800;
+function lawKcapOn(){ return (typeof globalThis==='undefined')||((globalThis.__LAW_KCAP??1)|0)!==0; }
+function lawRaisesCapacityPast(row,to){
+  if(!lawKcapOn()||!row)return false;
+  const r=WORLD_ENERGY_REGEN,d=METABOLIC_ENERGY_DRAW; let r1=r,d1=d;
+  if(row.name==='WORLD_ENERGY_REGEN')r1=to; else if(row.name==='METABOLIC_ENERGY_DRAW')d1=to; else return false;
+  const k0=d>0?r/d:Infinity,k1=d1>0?r1/d1:Infinity;
+  return k1>LAW_K_MAX&&k1>k0;
+}
 function lawDefaultsSnap(){ if(__lawDefaults)return; __lawDefaults={}; for(const r of LAW_DECLARED){ try{ const v=+r.get(); if(isFinite(v))__lawDefaults[r.name]=v; }catch(_){} } }
 function extinctUndoOn(){ return (typeof globalThis==='undefined')||((globalThis.__EXTINCT_UNDO??1)|0)!==0; }
 function lawUndoOnExtinction(){
@@ -2475,6 +2502,7 @@ function attemptLawMutation(){
   const span=(row.hi-row.lo);
   const to=__cl(from+(Math.random()-0.5)*span*0.35,row.lo,row.hi);
   if(!isFinite(to)||to===from)return;
+  if(lawRaisesCapacityPast(row,to)){ fired('law.capacityRefused'); return; }   // #232
   try{ row.set(to); }catch(_){ return; }
   for(let i=0;i<N;i++) if(palive[i]) amp[i]*=(1-LAW_COST);   // the world pays for its own proposal
   if(idx>=LAW_BASE_LAWS)fired('cosmos.brake');   // #197
