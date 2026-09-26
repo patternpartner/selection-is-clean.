@@ -21540,6 +21540,12 @@ would reach into the user's running field, and is their call.
 **Checked so far:** the refusal at its boundaries, on the live engine: the seed-2 move refused; #222's
 exact point (K = 800) allowed; K 1,200 refused; a world already above the ceiling may lower REGEN and may
 not raise it; REGEN to 0 allowed; no other law ever refused; `LAW_KCAP=0` allows everything.
-**Running as this is committed:** seed 2 to 12,000 ticks with the ceiling against the recorded #231d run
-(expected: identical until ~9,250, where the sunlight proposal is refused, and no climb after), and
-substrate-test. `main` moves when both are in.
+**Seed 2 with the ceiling**, 12,000 ticks, recorded every 250 against the #231d run: identical through
+the 9,000 row; the rows part at 9,250, where #231d had just kept REGEN 0.864 and #232 refused the same
+proposal. From there: #231d 469 -> 804 -> 1,297 -> 1,314 living; #232 360 -> 353 -> 392 -> 361, REGEN still
+0.2, the largest population anywhere in the run 455. substrate-test 262/0 on seeds 1-3, FOUND=0 and
+`LAW_KCAP=0`.
+
+**What moved in the universe:** nothing on any run where no sunlight proposal was made, by construction.
+On the one run where it was, the world no longer fills toward CAP — which also means seed 2's
+entropyRatio 1.08 in #231b/d, carried by 1,400 particles, was not a gain to keep.
