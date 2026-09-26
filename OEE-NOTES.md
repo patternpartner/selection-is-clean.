@@ -21924,3 +21924,64 @@ Seed 6's fingerprints matched at all 20 samples, including through 2,054 recipe 
 **Proof.** Seed 6 is the fastest counted seed. The deleted engine, 20,000 ticks, matched the `INSCRIBE=0` fingerprints at all 20 samples (alive 89, paid 185, `cell.inscribe` 13, `cell.chemExec` 0). substrate-test `TICKS=40` seed 1: 262 passed, 0 failed.
 
 **Left in place.** Recipe evaluation in `updateField`, the chemistry table, and peer inscription receive. With no local marks, recipe evaluation does not run in the headless rig; the proof is chem 0 on the deleted engine. Retiring the reader, or the peer path, is a different claim. The peer path draws and this rig has no peers.
+
+### #238 — CHEM: RETIRE OR PROVE the evolvable chemistry, pre-registered before the runs exist
+
+First committed as #237 on branch `claude/chem-retire-or-prove-237` before any CHEM A/B ran; renumbered because #237 went to the inscription-write entry on main (`7ddba49`).
+
+`chemistryTable` has mutated every cycle since Pe22c. #217d found its one reader (`updateField()`)
+evaluated nothing by tick 6,000; the 60k sweep put the first evaluation at 9,541 on seed 2, with
+11-23 of 1,600 cells ever active. #217s added a verdict to its mutations. Nobody has asked whether
+the drift changes the world. This entry asks, and the answer can delete it.
+
+**WHAT THE KNOB TESTS, stated so the verdict cannot be read wider than it is.** `CHEM=0` does NOT
+switch chemistry off. It runs `updateField()` on a deep frozen snapshot of the SEED table while the
+genome goes on mutating its own, with every draw identical (#217d). So the A/B is **evolving
+chemistry vs fixed seed chemistry**. The recipe evaluation, op 20, and the 0.05 gate are the same in
+both arms. A DELETE verdict removes the machinery that makes the table evolve. It does not remove the
+field's recipe step. That step was not tested and stays.
+
+**Arms.** `CHEM=1` (default) vs `CHEM=0`. Current `main` (`8430453`, INHERIT_SD floor 0.2 in).
+**Seeds 1-6, 20,000 ticks**, all other knobs at default. For each seed and arm:
+`harness-oee` (entropyRatio, kinds_late) and `harness-establish` (established fraction, takeovers).
+Staged, with a `.done` marker per stage.
+
+**THE EXECUTED RUNG, checked BEFORE any verdict.** Per seed, `CHEM=1`, `TICKS=20000`:
+`harness-opexec` with op 20 watched. It must also print the engine's draw-free counters
+`__liveness['cell.inscribe']` and `__liveness['cell.chemExec']` with their first ticks. Adding those
+counters to the rig's output is the only code change made before the verdict. For each seed the
+chain gets recorded: op 20 fires? recipe evaluates (`cell.chemExec > 0`)? first tick of each?
+- A seed with `cell.chemExec == 0` is **not reached**. Its two arms must come out byte-identical.
+  If they do not, the knob plumbing is broken, and the experiment stops there until that is
+  explained.
+- A seed with `cell.chemExec > 0` whose arms still come out identical counts as "ran, no effect".
+- Only seeds where the arms DIFFER are scored below. How many that is gets reported first.
+
+**THE RULE, fixed now.** On the seeds where the arms differ, CHEM=0 is **WORSE** if ANY of these holds:
+- (a) mean entropyRatio is lower than CHEM=1 by more than 0.05 (#231e's margin), or
+- (b) mean kinds_late is lower by more than 10%, or
+- (c) mean established fraction is lower by more than 25% relative,
+
+AND the same metric is lower for CHEM=0 on at least two-thirds of those differing seeds, so one seed
+cannot carry the mean.
+
+- **WORSE -> KEEP.** The evolvable chemistry stays. The note quantifies each gap and the seeds that
+  carried it, and says which seeds had it executing. That is a PROVE, and it is claimed only at the
+  rung measured: the chemistry changes the dependent variable. It does not show that selection
+  sorted recipes.
+- **Anything else -> DELETE.** That covers neutral, better with CHEM off, or fewer than 3 differing
+  seeds. What goes: the chemistryTable mutation block in `mutateGenome`, `chemistryMutRate`, the
+  #217s chem verdict (`chem.trial/kept/revert`, `CHEM_VERDICT`), and the `CHEM` knob itself. The
+  field then executes `seedChemistryTable()` as a constant. Old saves that carry a mutated table get
+  the seed table on load, so a harvest does not reintroduce what was deleted. The deletion is then
+  checked by substrate-test at 40 / 900 / default and with FOUND=0, and by smoke.sh on a quiet
+  machine.
+
+**Horizon, said out loud.** Everything here is scoped to 20,000 ticks. A DELETE because "not reached"
+on most seeds means the chemistry did not matter **by tick 20,000**. It does not mean "never" (#217d,
+6,000 vs 6,109). That is still a reason to delete: a mechanism that does not change who reproduces
+within the budget the field runs at is decoration. But the note will state the budget next to the
+verdict.
+
+**Out of scope, not touched:** `vmStep` as it stands, the op 16 / op 20 bodies, the law table,
+`LAW_KCAP`, `WORLD_ENERGY_REGEN`, `INHERIT_SD`, and PR #65's branch (`cursor/substrate-obligatory-d43e`).
