@@ -21593,3 +21593,40 @@ substrate-test TICKS=40 on the closed engine: 262/0 on seeds 1-3 and FOUND=0.
   machine per opcode, first-execution tick of each watched op, and every law change with its tick. It is
   what showed op 16 never ran on the seed #231c blamed it for, and that a kept sunlight law had.
 Both are in `smoke.sh` (vm-equiv with no argument is a self-check).
+
+### #233 — THE SUBSTRATE PAYS THE BIRTH POOL, OR IT IS STILL DECORATION. Pre-registered before the runs.
+
+#217f: 19,116 recipe evaluations, identical `alive` at 30 of 30 samples. The field write is about 1% and washes out. Amp sits on the soft line and provision banks sit at 3+ (#219, #221), so a mean-centred nudge in those currencies is absorbed by the caps. The currency that decides who breeds is the world-energy pool, handed out by loop order (#203, and #231d: the birthQueue path is pool-gated too). This entry couples recipe evaluation into that pool. It does not edit `vmStep`, including op 20. `WORLD_ENERGY_REGEN` bounds are untouched. #231b–e are not this entry.
+
+**The mechanism, in the patch that follows this entry, not yet measured.** `updateField` sets `cellChemEval[idx]` only inside the branch that runs a recipe body (the same branch that increments `cell.chemExec` — strength above 0.05 with no recipe does not set it). `subRefresh` counts living particles standing on those cells. While that count is above zero, `addParticle` and `addCompound` refuse a parented birth whose parent is not standing on one, before provision and before the pool, and fire `birth.subRefused`. A parent on an evaluated cell pays the ordinary provision cost and the ordinary pool cost. Not a discount. A dead layer (`__subEvalN==0`) or an unoccupied one (`__subTouch==0`) leaves every birth on the old path: no draw moves. `SUB=0` is that path on every tick. Two refusal sites, two refresh sites.
+
+**Why this shape, from a probe that is not the decision.** Seed 2, 10,000 ticks, engine `55155eb` (before this patch), cells with `cellProgStr>=CELL_EXEC` as the stand-in for a cell that will run a recipe:
+
+| | |
+|---|---|
+| first `cell.chemExec` | tick 5,720 |
+| recipe evaluations | 105,280 |
+| particle-ticks on executable cells | 46,321 |
+| paid births whose parent was on one | **17 of 1,434** |
+
+At the burst, 7–24 of ~320–390 living stood on executable cells. The same seed on `e39fde3` (before #231d) matched through tick 8,001 and then diverged in headcount (349 vs 666 at tick 10,001) — #231d's op 179 split, not the chemistry. The occupied window is the same. Seed 2 designed the shape. It does not decide.
+
+**Arms.** `SUB=1` (default in this commit) vs `SUB=0`. Same draws until the first refusal.
+
+**Boring side, read before any dependent-variable number.** Seed 5, 4,000 ticks: `SUB=0` against engine `55155eb` (`INDEX` pointing at that file), alive and a position/amplitude fingerprint every 1,000 ticks, must match. And `SUB=1` vs `SUB=0` on seed 5 must match at every sample strictly before `cell.chemExec` first fires. If either fails, the plumbing is broken and the rows below are not a result.
+
+**Decision seeds: 3, 5, 6.** 10,000 ticks. Not seed 2. Instruments: `harness-oee` (`entropyRatio`, `kinds` early/late) and a birth-split driver (`birth.subRefused`, births whose parent is on `cellChemEval`, alive). `harness-establish` only if both arms are still alive, because a crash already fails the keep rule.
+
+**Which seeds count.** A seed counts only if `SUB=0` has `cell.chemExec>0` by the budget. A seed with zero executions is "not by tick N", not a failure of the coupling. If fewer than 2 of {3, 5, 6} count at 10,000, those with zero executions are extended to 16,000 once, and the same rule is applied at that budget.
+
+**The rule, fixed now.**
+- WHO moves, on a counted seed, if `SUB=1` has `birth.subRefused>0` and the share of successful births whose parent is standing on an evaluated cell is at least 0.25 higher than `SUB=0`'s share.
+- DV holds if, across counted seeds, mean `entropyRatio` (`SUB=1` minus `SUB=0`) is greater than -0.15, mean `kinds_late` does not fall by more than 3, and no counted seed goes from late alive > 20 on `SUB=0` to late alive < 5 on `SUB=1`.
+
+**KEEP** the default ON only if WHO moves on at least 2 counted seeds AND DV holds.
+**DORMANT** (`SUB` default 0, code kept) if WHO moves and DV does not hold.
+**DELETE** the coupling if WHO does not move. The chemistry execution itself stays in that case: retiring the layer is a separate claim and wants its own neutral-or-better measurement, which this rule does not smuggle in.
+
+Results go under this heading after the runs, not before.
+
+The runs below were taken on `55155eb`, before #232's ceiling landed. #232 is bit-identical wherever no sunlight proposal is refused, so a counted seed is re-checked on the ceiling engine before this verdict is closed. The entry number is #233 because #232 was taken by the ceiling while these runs were in flight. #231e then closed op 16; this entry does not edit that case, and the same counted seeds are re-checked on the closed engine before the verdict is closed.
