@@ -21703,8 +21703,9 @@ in. Both arms of the patch now name `probeBase`, and quiet uses the engine's gat
 `harness-attractor` patched `maybe()` against `magnitude*scale`. #218b made that
 `magnitude*mutMagFor(gene)*scale`, so the anchor matched 0. The clamp arm has to keep `mutMagFor`
 in both the find and the replace: dropping it would change the default arm, which is the one the
-artwork runs. `checkExtinction` still matched once and was left alone. After the rebase onto #231e
-every current anchor still matches once. `TICKS=40` boots exit 0 on both probes (attractor's
+artwork runs. `checkExtinction` still matched once and was left alone. After the rebase onto #231e, and
+again after #232's capacity ceiling landed on `main`, probed, `maybe()`, and `checkExtinction`
+each still match once. `TICKS=40` boots exit 0 on both probes (attractor's
 extinction checks start after tick 500, so that boot reports 0 checks and a floor of 300 — the
 instrument is up, the horizon has not arrived).
 
@@ -21767,4 +21768,5 @@ the row passed on the denominator it already had.
 **Smoke, quiet machine, one node job.** `TICKS=40`, playwright from an unsaved install, chrome at
 `/opt/google/chrome/chrome`. First pass, before reach's budget moved: **52 ok, 1 failing**, and the
 one failure is `reach-test` exit 124. grammar ok, autosave ok, slot ok, atrophy ok, attractor ok,
-collective ok, pool ok, pace ok, layers ok. The reach budget above is the follow-up to that one row.
+collective ok, pool ok, pace ok, layers ok. The reach budget above is the follow-up to that one row. That pass ran before #232's ceiling
+was on this branch. The anchors were re-counted on the ceiling engine and still match.
