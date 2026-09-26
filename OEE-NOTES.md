@@ -21680,7 +21680,7 @@ comment, beside #222's upkeep floor and #232's capacity ceiling.
 
 **Checked:** on the live engine, a save at 0.05 restores to 0.2 and a save at 0.37 restores to 0.37 (so the
 law values do round-trip and the lift is the clamp); the largest downward proposal from 0.2 lands at 0.2; a
-broadcast 0.05 clamps to 0.2. substrate-test on seeds 1-3 and FOUND=0 is running as this is committed; `main` moves when it is in.
+broadcast 0.05 clamps to 0.2. substrate-test TICKS=40: 262/0 on seeds 1-3 and FOUND=0.
 
 **What moved in the universe:** nothing measurable at the lab's 20k horizon, by construction — a law is
 proposed about once per 32k ticks, so a lab run rarely sees one. The change acts at the FIELD's horizon, on
