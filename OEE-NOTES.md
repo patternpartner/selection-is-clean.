@@ -21593,3 +21593,101 @@ substrate-test TICKS=40 on the closed engine: 262/0 on seeds 1-3 and FOUND=0.
   machine per opcode, first-execution tick of each watched op, and every law change with its tick. It is
   what showed op 16 never ran on the seed #231c blamed it for, and that a kept sunlight law had.
 Both are in `smoke.sh` (vm-equiv with no argument is a self-check).
+
+### #233 — THE SUBSTRATE PAYS THE BIRTH POOL, OR IT IS STILL DECORATION. Pre-registered before the runs.
+
+#217f: 19,116 recipe evaluations, identical `alive` at 30 of 30 samples. The field write is about 1% and washes out. Amp sits on the soft line and provision banks sit at 3+ (#219, #221), so a mean-centred nudge in those currencies is absorbed by the caps. The currency that decides who breeds is the world-energy pool, handed out by loop order (#203, and #231d: the birthQueue path is pool-gated too). This entry couples recipe evaluation into that pool. It does not edit `vmStep`, including op 20. `WORLD_ENERGY_REGEN` bounds are untouched. #231b–e are not this entry.
+
+**The mechanism, in the patch that follows this entry, not yet measured.** `updateField` sets `cellChemEval[idx]` only inside the branch that runs a recipe body (the same branch that increments `cell.chemExec` — strength above 0.05 with no recipe does not set it). `subRefresh` counts living particles standing on those cells. While that count is above zero, `addParticle` and `addCompound` refuse a parented birth whose parent is not standing on one, before provision and before the pool, and fire `birth.subRefused`. A parent on an evaluated cell pays the ordinary provision cost and the ordinary pool cost. Not a discount. A dead layer (`__subEvalN==0`) or an unoccupied one (`__subTouch==0`) leaves every birth on the old path: no draw moves. `SUB=0` is that path on every tick. Two refusal sites, two refresh sites.
+
+**Why this shape, from a probe that is not the decision.** Seed 2, 10,000 ticks, engine `55155eb` (before this patch), cells with `cellProgStr>=CELL_EXEC` as the stand-in for a cell that will run a recipe:
+
+| | |
+|---|---|
+| first `cell.chemExec` | tick 5,720 |
+| recipe evaluations | 105,280 |
+| particle-ticks on executable cells | 46,321 |
+| paid births whose parent was on one | **17 of 1,434** |
+
+At the burst, 7–24 of ~320–390 living stood on executable cells. The same seed on `e39fde3` (before #231d) matched through tick 8,001 and then diverged in headcount (349 vs 666 at tick 10,001) — #231d's op 179 split, not the chemistry. The occupied window is the same. Seed 2 designed the shape. It does not decide.
+
+**Arms.** `SUB=1` (default in this commit) vs `SUB=0`. Same draws until the first refusal.
+
+**Boring side, read before any dependent-variable number.** Seed 5, 4,000 ticks: `SUB=0` against engine `55155eb` (`INDEX` pointing at that file), alive and a position/amplitude fingerprint every 1,000 ticks, must match. And `SUB=1` vs `SUB=0` on seed 5 must match at every sample strictly before `cell.chemExec` first fires. If either fails, the plumbing is broken and the rows below are not a result.
+
+**Decision seeds: 3, 5, 6.** 10,000 ticks. Not seed 2. Instruments: `harness-oee` (`entropyRatio`, `kinds` early/late) and a birth-split driver (`birth.subRefused`, births whose parent is on `cellChemEval`, alive). `harness-establish` only if both arms are still alive, because a crash already fails the keep rule.
+
+**Which seeds count.** A seed counts only if `SUB=0` has `cell.chemExec>0` by the budget. A seed with zero executions is "not by tick N", not a failure of the coupling. If fewer than 2 of {3, 5, 6} count at 10,000, those with zero executions are extended to 16,000 once, and the same rule is applied at that budget.
+
+**The rule, fixed now.**
+- WHO moves, on a counted seed, if `SUB=1` has `birth.subRefused>0` and the share of successful births whose parent is standing on an evaluated cell is at least 0.25 higher than `SUB=0`'s share.
+- DV holds if, across counted seeds, mean `entropyRatio` (`SUB=1` minus `SUB=0`) is greater than -0.15, mean `kinds_late` does not fall by more than 3, and no counted seed goes from late alive > 20 on `SUB=0` to late alive < 5 on `SUB=1`.
+
+**KEEP** the default ON only if WHO moves on at least 2 counted seeds AND DV holds.
+**DORMANT** (`SUB` default 0, code kept) if WHO moves and DV does not hold.
+**DELETE** the coupling if WHO does not move. The chemistry execution itself stays in that case: retiring the layer is a separate claim and wants its own neutral-or-better measurement, which this rule does not smuggle in.
+
+Results go under this heading after the runs, not before.
+
+The runs below were taken on `55155eb`, before #232's ceiling landed. #232 is bit-identical wherever no sunlight proposal is refused, so a counted seed is re-checked on the ceiling engine before this verdict is closed. The entry number is #233 because #232 was taken by the ceiling while these runs were in flight. #231e then closed op 16; this entry does not edit that case, and the same counted seeds are re-checked on the closed engine before the verdict is closed.
+
+**Result: DELETE the coupling.** WHO moved on 0 of the 2 seeds that count. The chemistry execution stays. `vmStep` was not edited, including op 16 and op 20. `WORLD_ENERGY_REGEN` bounds were not edited. After this entry the engine matches `main`: the gate, `SUB`, and the substrate-test holds are gone. substrate-test `TICKS=40` seed 1 on that restored file: 262 passed, 0 failed, the same count #231e recorded for the closed engine.
+
+**Boring side, seed 5, 4,000 ticks, engine `55155eb`.** `SUB=0`, `SUB=1`, and the pre-patch file agreed at ticks 1,001, 2,001, 3,001 and 4,001 (alive 455, 449, 395, 385; same lineage hash, position sum, amplitude sum, pool). `cell.chemExec` had not fired. Plumbing was not the thing being measured.
+
+**Ceiling re-check, `705f077`, seeds 3 and 6, both arms, 10,000 ticks.** Every 1,000-tick fingerprint matched the `55155eb` rows. `law.capacityRefused` was 0 on every sample. The ceiling did not move these seeds. Those seed-3 numbers do not transfer past #231e's close.
+
+**Closed engine (`#231e` + `#232`), the verdict.** Seeds 3 and 6, 10,000 ticks. Seed 5 was not re-run: two seeds already count, and #231e's own table says seed 5's open and closed series were identical. Extension to 16,000 was not required.
+
+| seed | counts | SUB=0 alive / paid / on-cell / chem (first tick) | SUB=1 alive / paid / refused / on-cell | on-cell share, SUB=1 minus SUB=0 | entropyRatio | kinds late |
+|---|---|---|---|---|---|---|
+| 3 | yes | 367 / 994 / 0 / 2,695 (8,434) | 354 / 1,018 / 132,466 / 64 | 64/1,018 − 0 = **0.063** | 0.74 → 0.76 | 8.4 → 8.3 |
+| 6 | yes | 90 / 185 / 0 / 2,054 (2,835) | identical physics, 71,052 refusals, 0 on-cell | **0** | 0.98 → 0.98 | 8 → 8 |
+| 5, on `55155eb` only | not by tick 10,000 | 334 / 1,075 / chem 0 | identical, chem 0 | 0 | 0.90 → 0.90 | 8 → 8 |
+
+Seed 3's two arms were the same trajectory through tick 8,001 (chem still 0, paid 822 both). The gate can only act after tick 8,434. Of the 196 paid births after tick 8,001 on `SUB=1`, 64 had a parent on an evaluated cell. That is 0.33 of the late window and **0.063 of all successful births**. The rule's denominator is all successful births. It was not rewritten after the number arrived.
+
+Seed 6's 71,052 refusals changed no fingerprint. They were attempts the pool would have refused anyway: the refusal sits before a non-drawing energy check, and the successful births are the same list.
+
+On the open-op-16 engine the same seed 3 had been a birth drought (`SUB=1` alive 90, paid 299, 2 on-cell, share delta 0.007; entropy 0.94 → 0.98, kinds late 8.4 → 10.3). Closing op 16 removed the drought. It did not produce a 0.25 reallocation onto evaluated cells. Both readings fail WHO. Neither is a reason to move the threshold.
+
+DV on the closed engine would have held (mean entropyRatio up 0.01, kinds late down 0.05, no counted seed from alive > 20 to alive < 5) and is not a keep: the keep clause requires WHO on at least two counted seeds. Seed 6's entropy is the `55155eb` `harness-oee` figure, carried across because the closed-engine fingerprints match that run, including alive 90 and the lineage hash at tick 10,001.
+
+**What moved.** On seed 3 after the close, end alive 367 → 354 and paid births 994 → 1,018, with 13 lineages that had an on-cell birth and a lineage Jaccard of 0.054 against the off-cell births. That is a late, small shift in who got a child, below the line the rule set for "the substrate decides who breeds." EntropyRatio moved 0.02. The layer is still not load-bearing at 10,000 ticks.
+
+**Left in place, on purpose.** Recipe evaluation, `cellProgStr`, and the chemistry table. Retiring that layer is a separate claim and wants its own neutral-or-better measurement on entropyRatio / kinds / establishment. The follow-up is that measurement, or a new pre-registered rule. It is not another birth-pool threshold chosen after seeing 0.063.
+
+**Deferred, for Claude.** Nothing in `vmStep`. Op 16 stays closed as #231e left it. Op 20 stays the single body #231b left. A later attempt that needs to edit those cases should say so before touching them.
+
+### #234 — THE INSCRIPTION WRITE, AT A HORIZON WHERE IT HAS STARTED. Pre-registered before the runs.
+
+#233 retired a birth-pool gate at 10,000 ticks and left the layer. That budget is the wrong one for this question. Claude's per-machine counts over 4,000 ticks (~131M instructions/seed) have op 20 at **0** fires on seeds 1 and 2 and **once** on seed 3, particle machine only. #217d's first inscription mark is tick ~6,109. A rule at 4–6k measures a layer that has not started. #217f's "causally inert" result is seed 2 to 15,000 on the engine with four different `case 20:` bodies, before the #231 fold, before #231e closed op 16, and before #232's ceiling. It is not a verdict on this engine. This entry is.
+
+**The horizon, out loud: 20,000 ticks.** Not 6,000. Not 10,000.
+
+**Arms.** `INSCRIBE=1` (the default, the write lands) against `INSCRIBE=0` (the single `case 20:` still runs, still calls `fired('cell.inscribe')`, and does not write `cellProgOp` / `cellProgA` / `cellProgB` / `cellProgStr`). The current body has no `Math.random()`. The knob is already draw-neutral by that reading; the boring side checks it. `CHEM` stays on in both arms. `WORLD_ENERGY_REGEN` is not touched. Op 16 is not touched. Peer inscription receive (`incomingInscriptions`) is not this arm and is not a delete target: the headless rig has no peers, and that path draws.
+
+**Boring side, before any 20,000-tick number.** Seed 5, 4,000 ticks, both arms, a fingerprint every 1,000 ticks (alive, lineage hash, position sum, amplitude sum, pool). `cell.inscribe` totals must match across arms — if they do not, the knob consumed or skipped a draw and the rows below are not a result. Fingerprints must match at every sample where the ON arm's `cell.inscribe` is still 0. A difference only after ON has inscribed is seed 5 starting early, recorded, and not a stop.
+
+**Decision seeds: 3, 4, 6.** 20,000 ticks. Seed 3 and seed 6 executed chemistry by tick 10,000 on this engine family, so 20,000 is past a start that has already been seen. Seed 4 was not a #233 decision seed. Seed 2 is not a decision seed: it is the #217f seed and the seed the ceiling was built for.
+
+**Which seeds count.** A seed counts only if `INSCRIBE=1` has `cell.inscribe>0` by tick 20,000. Zero fires is "not by tick 20,000", not a dead layer. If fewer than 2 of {3, 4, 6} count, the ones with zero fires are extended to 30,000 once, and the same rule is applied at that budget.
+
+**Instruments.** A fingerprint driver (alive, paid births, `cell.inscribe`, `cell.chemExec`, the fingerprint above) every 1,000 ticks. `harness-oee` (`entropyRatio`, `kinds_late`) and `harness-establish` (`estFrac`) run only for a counted seed whose fingerprints differ between arms. Identical fingerprints are the same trajectory, so those two numbers are the same number and are not re-measured.
+
+**Lineage identity after a split is not who-has-offspring.** A 1% field write can scramble hashes without moving a decision. A fingerprint difference is the trigger to read the named numbers. It is not itself a move.
+
+**The rule, fixed now.** A counted seed MOVES if any of:
+- `|entropyRatio` ON minus OFF `| > 0.05`
+- `|kinds_late` ON minus OFF `| > 3`
+- `|paid` ON minus OFF `| / max(paid ON, paid OFF, 1) > 0.25`
+- `|alive` ON minus OFF `| / max(alive ON, alive OFF, 1) > 0.30` and the larger alive is above 20
+- `|estFrac` ON minus OFF `| > 0.10`, and only when the fingerprints differed so the harness actually ran
+
+**KEEP** the write if MOVE is true on at least 2 counted seeds. No new coupling is added on top of a layer that already moves the named numbers.
+**DELETE** the local writes inside the one `case 20:` if MOVE is true on fewer than 2 counted seeds. That is one opcode edit, and the PR says so. What is removed: the assignments to `cellProgOp`, `cellProgA`, `cellProgB`, and both `cellProgStr` assignments, and the `inscribeOn()` guard around them. `fired('cell.inscribe')` stays. `inscribeOn` and the `INSCRIBE` knob entry go in the same commit, because a knob with nothing to gate is the trap this file already paid for. Peer receive stays. Recipe evaluation in `updateField` stays; with nothing local marking cells it does not run, and the proof below is what shows that.
+**Do not delete** if fewer than 2 seeds count even after the 30,000 extension. That is a horizon miss.
+
+**Proof, if the delete happens.** The fastest counted seed, 20,000 ticks, deleted engine against the `INSCRIBE=0` fingerprints from this entry, must match at every 1,000-tick sample. A mismatch means the deletion removed a draw or a second writer, and it does not ship.
+
+Results go under this heading after the runs, not before.
