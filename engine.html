@@ -22090,7 +22090,7 @@ function vmStep(op,src,dst,k,si,di,i,j,ip){
       case 20:
         {
         fired('cell.inscribe');   // #217d
-        // #240: cold-start origin spark only. #237 deleted the competitive overwrite/
+        // #239: cold-start origin spark only. #237 deleted the competitive overwrite/
         // reinforce write after it failed KEEP (1 of 3 seeds). Peer receive stayed;
         // broadcastGenome still needs some cellProgStr>0.3, so a fresh all-new-client
         // field could never originate the first packet (Codex P1 on PR #65).

@@ -22073,7 +22073,7 @@ not this deletion. collective-test, codec-test, harness-variance, liveness-repor
 vm-equiv, and substrate-test inside smoke were green. No SEED=2..6 re-run was required (no red
 substrate row).
 
-### #240 — COLD-START ORIGIN SPARK SO PEER INSCRIPTION CAN IGNITE. Codex P1 on PR #65.
+### #239 — COLD-START ORIGIN SPARK SO PEER INSCRIPTION CAN IGNITE. Codex P1 on PR #65.
 
 #237 deleted the local `case 20:` competitive write after it moved end-alive on **1 of 3** counted
 seeds (KEEP needed two). Peer receive and `broadcastGenome`'s inscription send stayed on purpose as
@@ -22087,7 +22087,7 @@ test, or the reinforce-weak branch that failed KEEP. It adds a **cold-start-only
 the one live `case 20:`: write `cellProgOp/A/B/Str` only when `cellProgStr < 0.2` (the same emptiness
 gate peer-receive uses), with strength floored at 0.35 so one spark clears the broadcast gate.
 Chemistry / CHEM / recipe evaluation / peer receive / broadcast logic are untouched. Numbered
-#240 because #238 is CHEM and the paced-halt Codex P1 (PR #64 / PR #68) is a separate lane.
+#239 per Chief of Staff on the Codex thread (paced-halt / PR #68 takes #240).
 
 Purpose: make the peer feature startable again, or force a later retire-or-prove on measured grounds
 rather than leave a dead hole.

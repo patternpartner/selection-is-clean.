@@ -1111,9 +1111,9 @@ recipe; nothing in the birth path reads it.
 **#237:** the local write inside the one `case 20:` was measured at 20,000 ticks and removed. The opcode
 still counts. Peer receive still writes. The numbers are OEE-NOTES #237.
 
-**#240:** a cold-start-only origin spark was restored on that one `case 20:` so a fresh field can
+**#239:** a cold-start-only origin spark was restored on that one `case 20:` so a fresh field can
 originate an inscription packet again (Codex P1 on PR #65). Competitive overwrite/reinforce stays
-retired. See OEE-NOTES #240.
+retired. See OEE-NOTES #239.
 
 **[read] Evolvable sociality** (Layer 22): `netMigrantRate` and three sibling rates govern broadcasting
 particles, plasmids, VM motifs and inscriptions to other browser tabs. All four evolve — "the system
