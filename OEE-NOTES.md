@@ -22072,3 +22072,22 @@ Chromium (`/opt/pw-browsers/chromium-1194/...` missing). That is the environment
 not this deletion. collective-test, codec-test, harness-variance, liveness-report, harness-opexec,
 vm-equiv, and substrate-test inside smoke were green. No SEED=2..6 re-run was required (no red
 substrate row).
+
+### #240 — COLD-START ORIGIN SPARK SO PEER INSCRIPTION CAN IGNITE. Codex P1 on PR #65.
+
+#237 deleted the local `case 20:` competitive write after it moved end-alive on **1 of 3** counted
+seeds (KEEP needed two). Peer receive and `broadcastGenome`'s inscription send stayed on purpose as
+a different claim. Codex P1 (https://github.com/patternpartner/selection-is-clean./pull/65#discussion_r4112679158)
+named the hole: after that DELETE, the only `cellProgStr[…] =` assignment left is peer receive, while
+broadcast still requires some cell with `cellProgStr > 0.3`. A fresh all-new-client field therefore
+never originates the first packet, and the retained peer path is permanently unreachable.
+
+**Not a re-litigation of #237.** This does **not** restore `inscribeOn` / `__INSCRIBE`, the overwrite
+test, or the reinforce-weak branch that failed KEEP. It adds a **cold-start-only** origin spark inside
+the one live `case 20:`: write `cellProgOp/A/B/Str` only when `cellProgStr < 0.2` (the same emptiness
+gate peer-receive uses), with strength floored at 0.35 so one spark clears the broadcast gate.
+Chemistry / CHEM / recipe evaluation / peer receive / broadcast logic are untouched. Numbered
+#240 because #238 is CHEM and the paced-halt Codex P1 (PR #64 / PR #68) is a separate lane.
+
+Purpose: make the peer feature startable again, or force a later retire-or-prove on measured grounds
+rather than leave a dead hole.
