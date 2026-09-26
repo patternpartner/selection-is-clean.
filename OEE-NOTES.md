@@ -21793,3 +21793,10 @@ reset page then starts is allowed to adopt. Pacing that page's workers the way t
 are already paced — so the only founding that can land in 3s is one this page did not boot — left
 the pass text as "no `selection_` key". Two alone runs after that: **15/0 and 15/0**, both 169s,
 `0 left`. The suite was not run a fourth time; the row that was red is the one those two runs are.
+
+**`smoke.sh` on `main` after #236 merged with #235: 55 ok, 0 failing** — the first fully green suite since at
+least #221, run alone with nothing else on the machine, and including #231f's two new rigs. One condition
+on it: pool, pace, layers and slot-test `require('playwright-core')`, which is not vendored (`node_modules/`
+is gitignored). In a fresh container they fail with "Cannot find module" until
+`npm install --no-save --no-package-lock playwright-core@1.56` is run (Chromium 1194 is already in
+`/opt/pw-browsers`). That is the environment, not the code — sort it before reading those four as red.
