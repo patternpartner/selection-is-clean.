@@ -21301,9 +21301,9 @@ up, then drive EVERY opcode 0-440 through EACH machine, three operand sets each,
 random draw) after every single execution. 5,292 executions per pass; four passes (seeds 1-3, warm-up
 400-1500 ticks, with and without every `*Influence`/`*Strength` gene forced to 0.5 so the gated bodies
 run): **hash-identical at every step.** A planted change — solo's `*0.3` in op 9 made `*0.31` — is
-caught at exactly `SOLO 9`, its first opportunity. Trajectories: `FOUND=0` seed 2 identical at every 500-tick checkpoint to 2,500 ticks; seeds 1-3 to
-4,000 are running and are appended below when they land. Wall time the same within noise (311 s vs
-321 s for that run, both under the same contention).
+caught at exactly `SOLO 9`, its first opportunity. Trajectories: seeds 1-3 to 4,000 ticks and `FOUND=0` seed 2 to 2,500, state hashed every 500 ticks —
+**identical at every checkpoint.** And slightly faster: 502-520 s against 540-547 s per 4,000-tick run,
+old and new paired under the same contention (~5-7%).
 
 Engine: 29,882 lines (from 32,080). `harness-clamp.js` now expects three `switch(op)` sites.
 
