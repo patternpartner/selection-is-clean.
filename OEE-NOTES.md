@@ -21686,3 +21686,12 @@ broadcast 0.05 clamps to 0.2. substrate-test TICKS=40: 262/0 on seeds 1-3 and FO
 proposed about once per 32k ticks, so a lab run rarely sees one. The change acts at the FIELD's horizon, on
 the ~17% of long-lived worlds #234's arithmetic puts below 0.1. The number that would show it is the spread of
 `INHERIT_SD` across a harvest before and after a reload, which only the user's field can supply.
+
+**#234, completed: `BIRTH_SHRINK` is BLIND too.** The up arm the pre-registration wrongly called impossible:
+0.9 -> 0.935 (less shrinking), seeds 1-6, **kept 6 / 6**, held 0.941-0.955 of baseline; trait spread vs
+control +0.023 (-0.024 .. +0.046), against -0.010 for the down arm — the clearest directional effect of the
+three laws, and still invisible to the verdict. All three diversity laws are blind. No bound proposed for
+`BIRTH_SHRINK`: its range [0.8, 1.0] is centred on its default 0.9, so a blind walk widens the spread of
+worlds without moving the mean, and #226 measured shrink off entirely as nearly no rescue (0.056 -> 0.071).
+`CONTACT_BLEND` stays unbounded too: the walk's mean rises 0.03 -> 0.05, and there is no measurement yet of
+what 0.05 does over a long run. Both are named here so a later session can measure them rather than guess.
