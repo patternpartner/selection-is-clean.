@@ -315,6 +315,13 @@ const liveTicks = page => page.evaluate(async () => {
      JSON.stringify(offState));
   await ctxOff.close();
 
+  // The page that loads #reset then STARTS a clean field, and that field is allowed to found.
+  // The 3s wait is there so a worker that outlived page.close() can write a key back. On this
+  // machine the clean field itself adopts a daughter inside that window (selection_g0, and no u*
+  // key — a built universe's first save is tick 1800). Pace the reset page's workers the same
+  // way the adoption pages are paced, so the only founding that can land in 3s is one this page
+  // did not boot. The pass text is still "no selection_ key left".
+  await ctx.addInitScript(slowChild);
   const rp = await ctx.newPage();
   // #reset must now clear EVERY slot, not the two keys it used to know about.
   // A DIFFERENT QUERY, not just a different hash. Going from '/#layers=0' to '/#reset' changes
@@ -324,9 +331,16 @@ const liveTicks = page => page.evaluate(async () => {
   // daughters included. The adoption pages above are other contexts and cannot put a key here.
   await rp.goto(base + '/?r=1#reset', { waitUntil: 'load' });
   await rp.waitForTimeout(3000);
-  const leftKeys = await rp.evaluate(() => Object.keys(localStorage).filter(k => k.indexOf('selection_') === 0));
+  const left = await rp.evaluate(() => ({
+    keys: Object.keys(localStorage).filter(k => k.indexOf('selection_') === 0),
+    frames: [...document.querySelectorAll('iframe')].map(f => f.getAttribute('src') || '').filter(s => /slot=g\d+/.test(s)),
+    readout: (document.getElementById('grown') || {}).textContent || ''
+  }));
+  const leftKeys = left.keys;
   ck('#reset clears every slot in the field, grown ones included', leftKeys.length === 0,
-     leftKeys.length + ' left' + (leftKeys.length ? (': ' + leftKeys.join(' ')) : ''));
+     leftKeys.length + ' left' + (leftKeys.length ? (': ' + leftKeys.join(' ')) : '')
+     + (left.frames.length ? (' frames ' + left.frames.join(' ')) : '')
+     + (left.readout ? (' readout ' + JSON.stringify(left.readout)) : ''));
 
   console.log('\n  ' + pass + ' passed, ' + fail + ' failed');
   await browser.close(); server.close();

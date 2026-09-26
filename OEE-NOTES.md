@@ -21775,4 +21775,13 @@ missing-binary skip: the chromium path the rig searches was a symlink to the ins
 same `SECS=22` window alone had already logged inbound 19, outbound 1. `main` then took #231e's close
 and #231f's two rigs (`harness-opexec.js`, `vm-equiv.js`). Probed, `maybe()`, and `checkExtinction`
 were counted again on that engine and still match once. The 53 does not include those two rigs, and it
-does not include the closed op 16.
+does not include the closed op 16. Third pass, this tree: **54 ok, 1 failing**. The failure is
+`slot-test` `#reset`, and every other row in that log is green, including grammar, reach, autosave,
+atrophy, attractor, `harness-opexec`, and `vm-equiv`. The red detail is `1 left: selection_g0`. The
+built slots did not come back. Alone, same binary, 169s: **14/1**, the same single key; the gap is
+still `"1 grown · 1 refused · 2 founded"` and `#nofound` heard only `rig201b`. A built universe's
+first save is tick 1,800, so a `g` key inside the 3s wait is an adoption, and the clean field the
+reset page then starts is allowed to adopt. Pacing that page's workers the way the adoption pages
+are already paced — so the only founding that can land in 3s is one this page did not boot — left
+the pass text as "no `selection_` key". Two alone runs after that: **15/0 and 15/0**, both 169s,
+`0 left`. The suite was not run a fourth time; the row that was red is the one those two runs are.
