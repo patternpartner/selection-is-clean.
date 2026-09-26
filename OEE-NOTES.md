@@ -21581,3 +21581,4 @@ machine (seed 1, warm 400). Seed 2 warm 1500 differs, and it was traced rather t
 particle array, every program, N and the next random draw are identical; the one difference is an
 event-log record of a serialized blob's LENGTH (10,988 -> 11,016 characters), because the liveness census
 inside that blob now lists #232's `law.capacityRefused`. Bookkeeping, not behaviour.
+substrate-test TICKS=40 on the closed engine: 262/0 on seeds 1-3 and FOUND=0.
