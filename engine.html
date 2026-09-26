@@ -18187,7 +18187,7 @@ function chemFieldLive(){ return (typeof globalThis==='undefined')||((globalThis
 // it; a cluster-VM write needs 0.125. Two of them even name the local differently (writeStr20 vs
 // wStr20), which is why the first attempt at this patch matched one site out of four and its
 // assertion stopped it.
-function inscribeOn(){ return (typeof globalThis==='undefined')||((globalThis.__INSCRIBE??1)|0)!==0; }
+// #237: inscribeOn() is gone with the write it gated. A knob with nothing to withhold is not a control.
 // #217h: read from the global genome, which inside executeVM/executeClusterVM/executeSoloVM is the REPOINTED
 // pGenome[i] — so how hard a lineage marks the world is a LINEAGE trait, while the gate and the fade
 // above are world properties read from the self by updateField(). That split is not arbitrary: #217c
@@ -22181,22 +22181,9 @@ function vmStep(op,src,dst,k,si,di,i,j,ip){
       case 20:
         {
         fired('cell.inscribe');   // #217d
-        const ix20=Math.floor(px[i]/(W/FIELD_W)),iy20=Math.floor(py[i]/(H/FIELD_H));
-        const ci20=__cl(iy20*FIELD_W+ix20,0,FIELD_W*FIELD_H-1);
-        const newOp=Math.abs(Math.floor(vmRegs[si]))%12;
-        const newA=vmRegs[di];
-        const newB=k;
-        const writeStr20=Math.abs(vmRegs[si]*k)*inscStr();   // #217h: was *0.3
-        if(inscribeOn()){   // #217f: INSCRIBE=0 withholds the write and nothing else — no draw moves
-        if(writeStr20>cellProgStr[ci20]*inscOver()){   // #217h: was *0.8
-          cellProgOp[ci20]=newOp;
-          cellProgA[ci20]=newA;
-          cellProgB[ci20]=newB;
-          cellProgStr[ci20]=Math.min(1,cellProgStr[ci20]+writeStr20);
-        }else{
-          cellProgStr[ci20]=Math.min(1,cellProgStr[ci20]+writeStr20*0.3);
-        }
-        }
+        // #237: the local write is gone. One case, five assignments removed: cellProgOp,
+        // cellProgA, cellProgB, and cellProgStr on both branches of the overwrite test.
+        // The opcode still counts. Peer receive is a different writer and stays.
       }break;
       case 21:{
         const rx21=Math.floor(px[i]/(W/FIELD_W)),ry21=Math.floor(py[i]/(H/FIELD_H));
