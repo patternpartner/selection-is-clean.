@@ -21631,7 +21631,7 @@ Results go under this heading after the runs, not before.
 
 The runs below were taken on `55155eb`, before #232's ceiling landed. #232 is bit-identical wherever no sunlight proposal is refused, so a counted seed is re-checked on the ceiling engine before this verdict is closed. The entry number is #233 because #232 was taken by the ceiling while these runs were in flight. #231e then closed op 16; this entry does not edit that case, and the same counted seeds are re-checked on the closed engine before the verdict is closed.
 
-**Result: DELETE the coupling.** WHO moved on 0 of the 2 seeds that count. The chemistry execution stays. `vmStep` was not edited, including op 16 and op 20. `WORLD_ENERGY_REGEN` bounds were not edited. After this entry the engine matches `main`: the gate, `SUB`, and the substrate-test holds are gone.
+**Result: DELETE the coupling.** WHO moved on 0 of the 2 seeds that count. The chemistry execution stays. `vmStep` was not edited, including op 16 and op 20. `WORLD_ENERGY_REGEN` bounds were not edited. After this entry the engine matches `main`: the gate, `SUB`, and the substrate-test holds are gone. substrate-test `TICKS=40` seed 1 on that restored file: 262 passed, 0 failed, the same count #231e recorded for the closed engine.
 
 **Boring side, seed 5, 4,000 ticks, engine `55155eb`.** `SUB=0`, `SUB=1`, and the pre-patch file agreed at ticks 1,001, 2,001, 3,001 and 4,001 (alive 455, 449, 395, 385; same lineage hash, position sum, amplitude sum, pool). `cell.chemExec` had not fired. Plumbing was not the thing being measured.
 
