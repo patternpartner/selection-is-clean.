@@ -21617,3 +21617,44 @@ before and after the probation (the proxy #224-#226 used), against the control's
   seeds than the other -> it drifts toward collapse.
 - Either for `INHERIT_SD` -> a defended floor is proposed in these notes, with the value argued from
   #219/#220's measurements rather than picked. Neither -> no change, and the verdict is shown to see it.
+
+#### #234 RESULT — the verdict is blind to mutation and to contact blending
+
+36 trials, seeds 1-6, one forced proposal each through the engine's own path, engine's own verdict:
+
+| law | move | kept | held / baseline | trait spread vs control (6-seed mean, per seed) |
+|---|---|---|---|---|
+| control | — | — | — | 0.248-0.316 |
+| `INHERIT_SD` | 0.2 -> 0.095 (erodes) | **6 / 6** | 0.946-0.959 | -0.002 (-0.054 .. +0.034) |
+| `INHERIT_SD` | 0.2 -> 0.305 | **6 / 6** | 0.937-0.958 | +0.020 (0 .. +0.048) |
+| `CONTACT_BLEND` | 0.03 -> 0.0125 | **6 / 6** | 0.940-0.958 | +0.018 (-0.039 .. +0.073) |
+| `CONTACT_BLEND` | 0.03 -> 0.0475 (erodes) | **6 / 6** | 0.943-0.958 | +0.003 (-0.031 .. +0.033) |
+| `BIRTH_SHRINK` | 0.9 -> 0.865 (erodes) | **6 / 6** | 0.948-0.956 | -0.010 (-0.036 .. +0.023) |
+
+**Rule applied: `INHERIT_SD` BLIND, `CONTACT_BLEND` BLIND.** Every forced move was kept on every seed; the
+population held 94-96% of its baseline whatever the law did, so the verdict cannot tell these moves apart.
+The spread effects lean the expected way and are small against their own seed-to-seed range inside one
+1,260-tick probation — the damage, if any, is slow, which is exactly what a 1,200-tick verdict cannot see.
+
+**`BIRTH_SHRINK`: NOT ESTABLISHED, and a correction to the pre-registration above.** It said the default
+was 1.0 and "up is past the bound". The default is **0.9** (#222b kept the old `tend*=0.9`), so the up arm
+was possible and was not run. Only the eroding direction was tested; it was kept 6 / 6. Recorded as is.
+
+**What a blind verdict means at the field's horizon.** Each law is proposed about once per 32k ticks per
+world, with a step up to ±17.5% of its range, clamped. Under a verdict that keeps every move, that is a
+random walk reflected at the bounds, and its long-run distribution is uniform over the range:
+- `INHERIT_SD` over [0, 0.6]: at any time about **7% of long-lived worlds below 0.04** (#219's "no
+  signal") and **about 17% below 0.1** (#220c: zero speciation at 0.1). The mean rises to 0.3.
+- `CONTACT_BLEND` over [0, 0.1]: mean drifts from 0.03 to 0.05 — more averaging on contact.
+Broadcasts (#185) add peers' kept values on top. None of this needs a bias in the verdict; blindness
+is enough.
+
+**The defended floor, proposed and NOT shipped.** The evidence on mutation strength, all of it:
+#219 SD 0.04 — no signal against no mutation; #220c (seed 1, ticks 2-5k) speciation 0 at 0.04 and at
+0.1, 102 at 0.2, 228 at 0.35; #220e/f SD 0.2 — entropyRatio 0.81-1.07 on nine seeds, three of them
+unseen, where no mutation fell below 0.3 on five of twelve. **0.2 is the only value with evidence that it
+holds diversity, and 0.1 has evidence that it does not mint lineages.** So the defended floor is
+`INHERIT_SD lo: 0.2`: mutation may rise, not fall below where it is known to work.
+Not shipped, because saved law values are clamped to the row's range on load (the `LAWV` restore), so
+the floor would also lift every field universe already below 0.2 at its next reload. That reaches into
+the running field and is the user's call.
