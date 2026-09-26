@@ -21658,3 +21658,36 @@ DV on the closed engine would have held (mean entropyRatio up 0.01, kinds late d
 **Left in place, on purpose.** Recipe evaluation, `cellProgStr`, and the chemistry table. Retiring that layer is a separate claim and wants its own neutral-or-better measurement on entropyRatio / kinds / establishment. The follow-up is that measurement, or a new pre-registered rule. It is not another birth-pool threshold chosen after seeing 0.063.
 
 **Deferred, for Claude.** Nothing in `vmStep`. Op 16 stays closed as #231e left it. Op 20 stays the single body #231b left. A later attempt that needs to edit those cases should say so before touching them.
+
+### #234 — THE INSCRIPTION WRITE, AT A HORIZON WHERE IT HAS STARTED. Pre-registered before the runs.
+
+#233 retired a birth-pool gate at 10,000 ticks and left the layer. That budget is the wrong one for this question. Claude's per-machine counts over 4,000 ticks (~131M instructions/seed) have op 20 at **0** fires on seeds 1 and 2 and **once** on seed 3, particle machine only. #217d's first inscription mark is tick ~6,109. A rule at 4–6k measures a layer that has not started. #217f's "causally inert" result is seed 2 to 15,000 on the engine with four different `case 20:` bodies, before the #231 fold, before #231e closed op 16, and before #232's ceiling. It is not a verdict on this engine. This entry is.
+
+**The horizon, out loud: 20,000 ticks.** Not 6,000. Not 10,000.
+
+**Arms.** `INSCRIBE=1` (the default, the write lands) against `INSCRIBE=0` (the single `case 20:` still runs, still calls `fired('cell.inscribe')`, and does not write `cellProgOp` / `cellProgA` / `cellProgB` / `cellProgStr`). The current body has no `Math.random()`. The knob is already draw-neutral by that reading; the boring side checks it. `CHEM` stays on in both arms. `WORLD_ENERGY_REGEN` is not touched. Op 16 is not touched. Peer inscription receive (`incomingInscriptions`) is not this arm and is not a delete target: the headless rig has no peers, and that path draws.
+
+**Boring side, before any 20,000-tick number.** Seed 5, 4,000 ticks, both arms, a fingerprint every 1,000 ticks (alive, lineage hash, position sum, amplitude sum, pool). `cell.inscribe` totals must match across arms — if they do not, the knob consumed or skipped a draw and the rows below are not a result. Fingerprints must match at every sample where the ON arm's `cell.inscribe` is still 0. A difference only after ON has inscribed is seed 5 starting early, recorded, and not a stop.
+
+**Decision seeds: 3, 4, 6.** 20,000 ticks. Seed 3 and seed 6 executed chemistry by tick 10,000 on this engine family, so 20,000 is past a start that has already been seen. Seed 4 was not a #233 decision seed. Seed 2 is not a decision seed: it is the #217f seed and the seed the ceiling was built for.
+
+**Which seeds count.** A seed counts only if `INSCRIBE=1` has `cell.inscribe>0` by tick 20,000. Zero fires is "not by tick 20,000", not a dead layer. If fewer than 2 of {3, 4, 6} count, the ones with zero fires are extended to 30,000 once, and the same rule is applied at that budget.
+
+**Instruments.** A fingerprint driver (alive, paid births, `cell.inscribe`, `cell.chemExec`, the fingerprint above) every 1,000 ticks. `harness-oee` (`entropyRatio`, `kinds_late`) and `harness-establish` (`estFrac`) run only for a counted seed whose fingerprints differ between arms. Identical fingerprints are the same trajectory, so those two numbers are the same number and are not re-measured.
+
+**Lineage identity after a split is not who-has-offspring.** A 1% field write can scramble hashes without moving a decision. A fingerprint difference is the trigger to read the named numbers. It is not itself a move.
+
+**The rule, fixed now.** A counted seed MOVES if any of:
+- `|entropyRatio` ON minus OFF `| > 0.05`
+- `|kinds_late` ON minus OFF `| > 3`
+- `|paid` ON minus OFF `| / max(paid ON, paid OFF, 1) > 0.25`
+- `|alive` ON minus OFF `| / max(alive ON, alive OFF, 1) > 0.30` and the larger alive is above 20
+- `|estFrac` ON minus OFF `| > 0.10`, and only when the fingerprints differed so the harness actually ran
+
+**KEEP** the write if MOVE is true on at least 2 counted seeds. No new coupling is added on top of a layer that already moves the named numbers.
+**DELETE** the local writes inside the one `case 20:` if MOVE is true on fewer than 2 counted seeds. That is one opcode edit, and the PR says so. What is removed: the assignments to `cellProgOp`, `cellProgA`, `cellProgB`, and both `cellProgStr` assignments, and the `inscribeOn()` guard around them. `fired('cell.inscribe')` stays. `inscribeOn` and the `INSCRIBE` knob entry go in the same commit, because a knob with nothing to gate is the trap this file already paid for. Peer receive stays. Recipe evaluation in `updateField` stays; with nothing local marking cells it does not run, and the proof below is what shows that.
+**Do not delete** if fewer than 2 seeds count even after the 30,000 extension. That is a horizon miss.
+
+**Proof, if the delete happens.** The fastest counted seed, 20,000 ticks, deleted engine against the `INSCRIBE=0` fingerprints from this entry, must match at every 1,000-tick sample. A mismatch means the deletion removed a draw or a second writer, and it does not ship.
+
+Results go under this heading after the runs, not before.
