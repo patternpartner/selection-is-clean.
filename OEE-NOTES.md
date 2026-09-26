@@ -21687,7 +21687,7 @@ proposed about once per 32k ticks, so a lab run rarely sees one. The change acts
 the ~17% of long-lived worlds #234's arithmetic puts below 0.1. The number that would show it is the spread of
 `INHERIT_SD` across a harvest before and after a reload, which only the user's field can supply.
 
-### #233 — THE SMOKE DEBT #221 SORTED, REPAIRED WHERE THE ANCHOR DIED
+### #236 — THE SMOKE DEBT #221 SORTED, REPAIRED WHERE THE ANCHOR DIED
 
 #221 and #231d both left the same four rigs red and said the fold did not cause them. This entry is
 that debt. Nothing here touches `vmStep`, op 16, or `WORLD_ENERGY_REGEN`.
