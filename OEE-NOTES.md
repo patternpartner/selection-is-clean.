@@ -21924,3 +21924,30 @@ Seed 6's fingerprints matched at all 20 samples, including through 2,054 recipe 
 **Proof.** Seed 6 is the fastest counted seed. The deleted engine, 20,000 ticks, matched the `INSCRIBE=0` fingerprints at all 20 samples (alive 89, paid 185, `cell.inscribe` 13, `cell.chemExec` 0). substrate-test `TICKS=40` seed 1: 262 passed, 0 failed.
 
 **Left in place.** Recipe evaluation in `updateField`, the chemistry table, and peer inscription receive. With no local marks, recipe evaluation does not run in the headless rig; the proof is chem 0 on the deleted engine. Retiring the reader, or the peer path, is a different claim. The peer path draws and this rig has no peers.
+
+### #238 — THE LIVE CHEMISTRY TABLE, AT 20,000 TICKS. Pre-registered before the runs.
+
+#237 named this as the next claim and did not make it. `CHEM=0` does not skip a draw. `mutateGenome` still walks the live table and still calls `Math.random` on both arms. What the knob changes is the table `updateField` reads: the live table, or a snapshot taken the first time the frozen arm looks. Before the first mutation the two tables are the same table, so the arms must match. After that they differ only when a recipe body runs. `vmStep` is not edited. Op 16 and op 20 are not edited. The law table is not edited.
+
+**The horizon, out loud: 20,000 ticks.** Seeds **1, 2, 3, 4, 5, 6.**
+
+**Arms.** `CHEM=1` (default) against `CHEM=0`.
+
+**Boring side, before any dependent-variable number.** On every seed, fingerprints (alive, lineage hash, position sum, amplitude sum, pool) at each 1,000-tick sample must match across arms at every sample where `CHEM=1` still has `cell.chemExec` of 0. If the arms differ while neither has evaluated a recipe, the knob is not draw-neutral and the rows below are not a result.
+
+**Which seeds count.** A seed counts only if, on `CHEM=1` by tick 20,000, both of these are true: `harness-opexec.js` reports opcode 20 executed (any machine, count above 0), and `cell.chemExec` is above 0. Opcode 20 firing with no recipe evaluation is the write not crossing the gate. It does not count. Zero of either is "not by tick 20,000."
+
+**Instruments.** A fingerprint driver every 1,000 ticks for both arms (`cell.chemExec`, `cell.inscribe`, alive). `harness-opexec.js` at 20,000 ticks on `CHEM=1`, `WATCH` including 20, one run per seed, before the verdict. `harness-oee` (`entropyRatio`, `kinds_late`) and `harness-establish` (`estFrac`) run only for a counted seed whose fingerprints differ. Identical fingerprints are the same trajectory, so those three numbers are the same number and are not re-measured. That seed contributes zero to each mean below.
+
+**The rule, fixed now.** Across counted seeds, let dE be the mean of entropyRatio (`CHEM=0` minus `CHEM=1`), dK the mean of kinds late the same way, dS the mean of estFrac the same way.
+- **WORSE** with chemistry off if dE < -0.05, or dK < -3, or dS < -0.10. The live table earned its place. It stays. The three means are the amount.
+- **BETTER** with chemistry off if it is not worse, and dE > 0.05 or dK > 3 or dS > 0.10.
+- **NEUTRAL** otherwise.
+
+**DELETE** the live read if at least 2 seeds count and the off arm is neutral or better. The delete is `chemFieldTable` always returning the frozen snapshot, and the `CHEM` knob leaving `KNOBS` in the same commit. The mutation loop stays, because removing those `Math.random` calls is not what the knob measured. `vmStep`, op 16, op 20, and the law table stay.
+**KEEP** the live read if at least 2 seeds count and the off arm is worse.
+**No verdict** if fewer than 2 seeds count. That is "not read by tick 20,000." It is not a delete and it is not a proof that the table earns its place.
+
+**Proof, if the delete happens.** Seed 1, 20,000 ticks, deleted engine against the `CHEM=0` fingerprints, must match at every 1,000-tick sample.
+
+Results go under this heading after the runs, not before.
