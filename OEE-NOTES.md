@@ -22102,3 +22102,60 @@ Fix: `scheduleNext` returns when `__inst.halted`, stores the pending timer id on
 
 **P2 follow-up (Codex on PR #68).** When `PACE` is above the 3s watchdog threshold, watchdog `scheduleNext` could overwrite a single `__schedTimer` while the paced timeout was still pending; halt cancelled only the latest id. Now: every handle is retained and cancelled on halt, and `loop` returns immediately when `__schedHalted()`.
 
+### #241 — PEER INSCRIPTION, RETIRE OR PROVE. Pre-registered before the runs exist.
+
+Numbered #241. #239 is the cold-start spark (`ba4d3fd`). #240 is paced halt. The parenthetical at the top of #240 that still says "#239 is reserved for peer-inscription retire-or-prove" is the leftover from before that renumber; it is not this entry.
+
+**The spark is not in the engine this entry starts from.** `ba4d3fd` wrote it into the one live `case 20:`. `e827f81` ("merge main into #240 paced-halt; keep #239 spark notes + #240 halt notes") kept the #239 note and resolved `engine.html` back to the #237 stub: `fired('cell.inscribe')` and no write. `7820175`, current main, is that tree. Peer receive and the inscription send in `networkBroadcast` are on main. The spark the #239 note describes is not. Arm A below is that missing body put back, plus the peer path that is already there. This entry does not restore the #237 overwrite test, the reinforce-weak branch, `inscribeOn`, or `INSCRIBE`.
+
+**The horizon, out loud: 20,000 ticks.** Not 6,000. Not 10,000.
+
+**How peers are present.** A headless single universe has no peers. `harness-env.js` stubs `BroadcastChannel`, and #237 already said the headless rig cannot see this path. This claim is a pair. `harness-peerins.js` (landed after this note, before any 20,000-tick number) boots two `vm` contexts on one synchronous channel shim. Each context has its own seeded `Math.random`. `TAB_ID` is drawn from that seed at boot, so the two seeds must differ or each universe drops the other as itself. Focal seed `S`, peer seed `S+10`. Both universes run the same arm. Lockstep: both call `loop()`, then each side's outbound queue is delivered to the other, so a packet sent on tick T is received on tick T+1. `ISOLATE` stays off, so `peerTickRatio` returns 1 and the pacing `Math.random` in `handleNetworkMessage` does not run. Migrants, plasmids, motifs, and laws still cross in both arms. The treatment is the inscription bundle only. The stock `harness-oee` and `harness-establish` processes are not the measurement: they boot one universe behind the stub and would score a world with no peer. The pair harness computes their definitions on the focal. The peer is not scored.
+
+**Arms.** `PEERINS` unset or `1` is Arm A. `PEERINS=0` is Arm B. The knob defaults on, the same shape as `assortOn`. It is draw-neutral by the reading below; the boring side checks it.
+
+Arm A, the bundle:
+- The #239 spark, restored into the one live `case 20:` exactly as `ba4d3fd` wrote it. `fired('cell.inscribe')` runs. Then, only when `cellProgStr` at the particle's cell is `< 0.2`, write `cellProgOp` (`abs(floor(vmRegs[si])) % 12`), `cellProgA` (`vmRegs[di]`), `cellProgB` (`k`), and `cellProgStr` floored at 0.35 and capped at 1: `min(1, max(0.35, abs(vmRegs[si]*k)*inscStr()))`. No `Math.random` in that body. The profiler `case 20:` stays a skip.
+- The inscription send already on main: `networkBroadcast`'s `netInscribeRate` block, which draws one `Math.random` for the rate and up to twenty index draws, and `networkSend('inscription', ...)` when a sampled cell is above 0.3.
+- The inscription receive already on main: `networkReceive`'s `incomingInscriptions` loop. It draws the receptivity check and a cell index, and on a cell with `cellProgStr < 0.2` it writes `cellProgOp/A/B/Str`, increments `netApplied.inscription`, fires `cell.inscribeNet`, and sends `applied`.
+
+Arm B, the minimal cut, same draws:
+- The spark writes do not run. `fired('cell.inscribe')` still runs.
+- The send block still draws the rate and the twenty indexes. It does not `networkSend`.
+- The receive loop still shifts the packet, still draws the receptivity check, still draws the cell index. It does not write `cellProg*`, does not fire `cell.inscribeNet`, does not increment `netApplied.inscription`, and does not send `applied`.
+
+**What DELETE removes, if the rule below says DELETE.** The effects, and then the knob, because a knob with nothing to gate is the trap this file already paid for.
+- Case 20 goes back to the #237 stub: `fired('cell.inscribe')` only. The spark body goes.
+- The `networkSend('inscription', ...)` call goes. The rate draw and the twenty index draws stay, so a universe with no peer does not change random stream just because nothing is sent.
+- The receive effect goes: the four `cellProg*` assignments, the `netApplied.inscription` increment, `fired('cell.inscribeNet')`, and the `applied` send. The shift, the receptivity draw, and the index draw stay, so a packet that still arrives is drained and changes nothing.
+- `peerInsOn` and the `PEERINS` line in `KNOBS` go in the same commit.
+
+Not deleted, and not this claim: migrant, plasmid, motif, and law send/receive; `netInscribeRate` (the rate draw that stays still reads it); recipe evaluation; op 16; chemistry; `WORLD_ENERGY_REGEN`; the #237 overwrite and reinforce branches.
+
+**Proof, if the delete happens.** The fastest counted focal, 20,000 ticks, deleted engine against the Arm B fingerprints from this entry, must match at every 1,000-tick sample. A mismatch means the deletion removed a draw or a second writer, and it does not ship.
+
+**Boring side, before any 20,000-tick number.** Focal seed 5, peer seed 15, 4,000 ticks, both arms. A fingerprint of the focal every 1,000 `loop()` calls: alive, `birth.paid`, `cell.inscribe`, `cell.inscribeNet`, `cell.chemExec`, max `cellProgStr`, position sum, amplitude sum, lineage sum, `worldEnergy`. The two `TAB_ID`s must differ, and the focal's peer count must be at least 1 by tick 100. If either fails, the channel shim is broken and nothing below is a result. Fingerprints must match at every sample where Arm A's focal still has max `cellProgStr` 0 and `cell.inscribeNet` 0. A mismatch there means the knob consumed or skipped a draw. A difference only after Arm A has sparked or applied is the bundle starting, recorded, and not a stop.
+
+**Decision focals: 1, 2, 3, 4, 5, 6.** Peers: 11, 12, 13, 14, 15, 16. 20,000 ticks. One pair per focal per arm.
+
+**Which focals count.** A focal counts only if Arm A has `cell.inscribeNet > 0` by tick 20,000. That is a peer packet applied on the focal, not a local spark. A spark that never becomes a packet the other universe accepts is "not by tick 20,000", not a dead layer. The wire drops an inscription whose `A` or `B` is outside [-16, 16] (`validNetworkPayload`), and the spark writes `vmRegs[di]` and `k` with no clamp, so a spark can be real and still be unable to travel. That fact is named here so a later zero is not a surprise and is not a reason to widen the wire after seeing it. If fewer than 2 of the six focals count, the ones with zero applies are extended to 30,000 once, and the same rule is applied at that budget.
+
+**Instruments.** The fingerprint above, every 1,000 `loop()` calls, on the focal. `entropyRatio` and `kinds_late` use `harness-oee`'s definitions on the focal inside the pair: sample `occupiedKinds` and `diversityHbits` at tick 0 and every 500 ticks (`tendBin` when it exists, else the same 3-axis fallback; Shannon bits), then the third-mean ratio exactly as that harness computes them (`SAMPLE=500`). `estFrac` uses `harness-establish`'s definition on the focal inside the pair: census every 250 ticks, `WARM=2000`, `ESTN=10`, established over lineages first seen after the warm window. `paid` is end-of-run `__liveness['birth.paid']`. `alive` is the end living count. All four reads draw nothing. They are read for the rule only on a counted focal whose fingerprints differ between arms. Identical fingerprints are the same trajectory, so those numbers are the same number and are not a separate measurement.
+
+**Lineage identity after a split is not who-has-offspring.** A fingerprint difference is the trigger to read the named numbers. It is not itself a move.
+
+**The bundle caveat, stated before the data.** Arm A's spark writes the focal's own cells even when no packet has come back. A counted focal has applied a peer packet, and the delta on that focal still includes the spark's local writes. A MOVE is a move of the bundle (spark, send, receive). It is not a separation of the packet from the spark. Splitting those is a different entry.
+
+**The rule, fixed now.** A counted focal MOVES if any of:
+- `|entropyRatio` A minus B `| > 0.05`
+- `|kinds_late` A minus B `| > 3`
+- `|paid` A minus B `| / max(paid A, paid B, 1) > 0.25`
+- `|alive` A minus B `| / max(alive A, alive B, 1) > 0.30` and the larger alive is above 20
+- `|estFrac` A minus B `| > 0.10`, and only when the fingerprints differed so the numbers were read
+
+**KEEP** the bundle if MOVE is true on at least 2 counted focals. No new coupling is added on top of a path that already moves the named numbers. The spark stays in case 20. Peer receive and the inscription send stay.
+**DELETE** the effects listed above if MOVE is true on fewer than 2 counted focals.
+**Do not delete** if fewer than 2 focals count even after the 30,000 extension. That is a horizon miss. The bundle stays, and the note says the budget. A horizon miss is not a finding that the spark earned a local write.
+
+Results for this entry follow. No 20,000-tick number exists at the time this section is written.
+
