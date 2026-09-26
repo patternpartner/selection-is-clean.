@@ -21593,3 +21593,27 @@ substrate-test TICKS=40 on the closed engine: 262/0 on seeds 1-3 and FOUND=0.
   machine per opcode, first-execution tick of each watched op, and every law change with its tick. It is
   what showed op 16 never ran on the seed #231c blamed it for, and that a kept sunlight law had.
 Both are in `smoke.sh` (vm-equiv with no argument is a self-check).
+
+### #233 — DOES THE LAW VERDICT ERODE DIVERSITY? pre-registered before the trials exist
+
+#232 showed the verdict ("keep it if the population holds 70%") makes carrying capacity a one-way ratchet.
+The same verdict judges the laws that decide DIVERSITY: `INHERIT_SD` (#220f's mutation — the one change in
+recent sessions that moved the dependent variable on every seed), and #222b's homogenisers `BIRTH_SHRINK`
+and `CONTACT_BLEND`. `INHERIT_SD` has `lo:0`. 48 laws share one proposal stream, so each comes up about
+once per 32k ticks per world — 3-9 times over a field universe's life, plus broadcasts from peers.
+Seed 8 (#231e's closed arm) already kept mutation 0.2 -> 0.152.
+
+**Method (`harness-verdict.js`).** Seeds 1-6, current `main`, natural proposals off through a 2,000-tick
+warm-up, then ONE proposal forced through the engine's own path at 17.5% of the law's range (the largest
+step a natural proposal makes), and the engine's own verdict after its probation. Arms per seed: control
+(nothing forced); INHERIT_SD down (0.2 -> 0.095) and up (-> 0.305); BIRTH_SHRINK down (1.0 -> 0.965; up is
+past the bound); CONTACT_BLEND down and up. Recorded: kept, population held / baseline, trait spread
+before and after the probation (the proxy #224-#226 used), against the control's.
+
+**The rule, fixed now.**
+- **Blind:** both directions of a law kept on >= 5 of 6 seeds -> the verdict does not see it; in the field
+  it random-walks over its whole range.
+- **Ratchet:** the diversity-eroding direction (mutation down, shrink down, blend up) kept on >= 2 more
+  seeds than the other -> it drifts toward collapse.
+- Either for `INHERIT_SD` -> a defended floor is proposed in these notes, with the value argued from
+  #219/#220's measurements rather than picked. Neither -> no change, and the verdict is shown to see it.
