@@ -67,6 +67,22 @@ extra_env_for() {
 timeout_for() {
   case "$1" in
     slot-test.js) echo 360 ;;
+    # grammar-test.js ignores TICKS. The live section is 6,000 engine ticks (LV.ran>=6000,
+    # operators authored by the run itself) plus the descriptor sweep. Passing TICKS=40 does
+    # not shorten it, and 180s kills a rig that passes. Alone on this machine: 325s, 79/0.
+    # #221, on the previous box: 429s and 441s, both passes. 600s is that evidence plus margin,
+    # not a blanket raise — every other rig stays at 180s.
+    grammar-test.js) echo 600 ;;
+    # autosave-test.js ignores TICKS for the same reason: the first save is tick 1800, then
+    # 1,900 throwing ticks, then 1,100 of recovery. Shortening it drops the save the test
+    # exists to see. Alone: 256s, 7/7. #221: 302s and 303s, both passes.
+    autosave-test.js) echo 480 ;;
+    # reach-test.js ignores TICKS for the live section: 6,000 loop() calls, written to cross
+    # EPOCH_TICKS. Smoke at 180s is exit 124 with an empty log (stdout is block-buffered, so the
+    # kill leaves nothing to read). Alone on this machine: 373s, 20/0. #231d already had it as
+    # exit 124 inside the suite and 20/0 alone. 600s is that measurement plus the same margin
+    # grammar got for the same 6,000-tick shape. The other rigs stay at 180s.
+    reach-test.js) echo 600 ;;
     *) echo 180 ;;
   esac
 }

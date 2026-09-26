@@ -170,10 +170,14 @@ const liveTicks = page => page.evaluate(async () => {
   // did not build: a universe founded by a peer, on the same BroadcastChannel every migrant
   // crosses, adopted by the shell into a slot the shell names.
   //
-  // ON ITS OWN PAGE, and that is not tidiness. BroadcastChannel is multicast with no peer list, so
-  // a founding posted while the nine-universe page is still open is adopted by THAT page too — and
-  // every assertion below about how many universes were grown would be measuring two shells at
-  // once. The field is closed first and a one-universe page opened in its place.
+  // ON ITS OWN CONTEXT, and a new page is not that. BroadcastChannel is multicast across every
+  // page of a browser context, and a SharedWorker keeps running after page.close() until its last
+  // port drops — so a founding the test did not post still arrives, and a dying universe can
+  // write a selection_ key back after #reset has cleared them. Three alone runs, same binary:
+  // the nine-slot restore rows were green every time, and the red rows were an extra packet
+  // ("3 founded" against two posts; "2 founded" against #nofound's one) plus one reset that
+  // left a key. A second browser context hears nothing and shares no storage. Measured.
+  // pool-test already isolates its sections this way for the same zombie.
   //
   // The packet is posted rather than waited for. A real founding needs a cluster rich enough to
   // raise FOUND_NEED, which on this build arrives around tick 4,700 — four minutes of rig time with
@@ -188,7 +192,44 @@ const liveTicks = page => page.evaluate(async () => {
   const sentBlob = await page.evaluate(k => localStorage.getItem(k), donorKey);
   await page.close();
 
-  const p201 = await ctx.newPage();
+  // The shell is what this section measures. The universe on the page is on the same channel,
+  // and once a cluster can pay it founds at FOUND_RATE 0.5. Calling pace() after load is too
+  // late: the worker has already ticked. Stamp pace=5000 onto the init hash before the engine
+  // boots, so the boot tick is the only one inside this window (attemptFound sits on the
+  // 60-tick cadence). Measured without it: "1 grown · 2 refused · 3 founded", and sometimes
+  // the slot held the universe's germline instead of the one this rig sent.
+  const slowChild = () => {
+    const stamp = (port) => {
+      if (!port || port.__paced) return;
+      port.__paced = true;
+      const orig = port.postMessage.bind(port);
+      port.postMessage = function (msg, transfer) {
+        try {
+          if (msg && msg.type === 'init' && String(msg.hash || '').indexOf('pace=') < 0) {
+            const h = String(msg.hash || '');
+            msg.hash = h ? (h + ',pace=5000') : '#pace=5000';
+            if (msg.hash.charAt(0) !== '#') msg.hash = '#' + msg.hash;
+          }
+        } catch (e) {}
+        return transfer === undefined ? orig(msg) : orig(msg, transfer);
+      };
+    };
+    const SW = window.SharedWorker;
+    if (typeof SW === 'function') {
+      const Wrapped = function (url, opts) { const sw = new SW(url, opts); stamp(sw.port); return sw; };
+      Wrapped.prototype = SW.prototype;
+      window.SharedWorker = Wrapped;
+    }
+    const Wk = window.Worker;
+    if (typeof Wk === 'function') {
+      const WrappedW = function (url, opts) { const w = new Wk(url, opts); stamp(w); return w; };
+      WrappedW.prototype = Wk.prototype;
+      window.Worker = WrappedW;
+    }
+  };
+  const ctx201 = await browser.newContext({ viewport: { width: 412, height: 915 } });
+  await ctx201.addInitScript(slowChild);
+  const p201 = await ctx201.newPage();
   const errs201 = []; p201.on('pageerror', e => errs201.push(e.message));
   await p201.goto(base + '/?g=1#layers=0,n=1', { waitUntil: 'load' });
   await p201.waitForTimeout(1000);
@@ -208,11 +249,10 @@ const liveTicks = page => page.evaluate(async () => {
         .map(d => (d.getAttribute('src') || '').match(/[?&]slot=(g\d+)/)).filter(Boolean);
       return f.length === 1 ? localStorage.getItem('selection_' + f[0][1]) : null; })(),
     readout: (document.getElementById('grown') || {}).textContent || '' }));
-  // NOT 'g0'. The shell takes the first FREE index, which is the whole point of that fix — and on
-  // this context selection_g0 is usually already taken by a daughter the nine-universe page founded
-  // for real during the warm-up. Asserting the name would be asserting that no sibling got there
-  // first; what matters is that exactly one universe was grown HERE and that its slot holds the
-  // germline this rig sent.
+  // NOT a particular name. The shell takes the first free index. This context starts empty, so
+  // that index is usually g0, and on a context that already holds daughters it is not. Either way
+  // the name is the shell's. What matters is that exactly one universe was grown HERE and that
+  // its slot holds the germline this rig sent.
   const mySlot = grown.slots.length === 1 ? grown.slots[0] : null;
   ck('#201 a founding on the wire opens a REAL new universe',
      mySlot !== null && /^g\d+$/.test(mySlot),
@@ -243,13 +283,24 @@ const liveTicks = page => page.evaluate(async () => {
   ck('#201 and the grown universe is running its own lineage', grownTicks > 0,
      grownTicks + ' ticks — founded from a sibling germline, booted into its own slot, its own worker and its own place on the channel');
   ck('#201 no uncaught page errors while growing', errs201.length === 0, errs201.slice(0, 2).join(' | '));
-  await p201.close();
+  await ctx201.close();
 
-  // THE FORCE-OFF PATH, on its own load for the same multicast reason. #nofound must adopt nothing
+  // THE FORCE-OFF PATH, in its own context for the same reason. #nofound must adopt nothing
   // and still COUNT, because "the field stopped growing" and "nothing ever founded" are different
   // facts and only one of them is about the creatures.
-  const off = await ctx.newPage();
+  const ctxOff = await browser.newContext({ viewport: { width: 412, height: 915 } });
+  await ctxOff.addInitScript(slowChild);
+  const off = await ctxOff.newPage();
   await off.goto(base + '/?off=1#layers=0,n=1,nofound', { waitUntil: 'load' });
+  // The count stays exactly the one packet this page posts. `heard` is the tab id of every
+  // founding on this channel, so a miss names who sent it. The pass text is unchanged.
+  await off.evaluate(() => {
+    window.__heard = [];
+    new BroadcastChannel('selection-pe-network').onmessage = (ev) => {
+      const m = ev && ev.data;
+      if (m && m.type === 'found') window.__heard.push(String(m.tab || '?'));
+    };
+  });
   await off.waitForTimeout(1000);
   await off.evaluate(() => { new BroadcastChannel('selection-pe-network')
     .postMessage({ v: 1, tab: 'rig201b', born: 0, type: 'found', data: { g: 'QUFB', t: 1 } }); });
@@ -257,21 +308,39 @@ const liveTicks = page => page.evaluate(async () => {
   const offState = await off.evaluate(() => ({
     frames: [...document.querySelectorAll('#below .deep, #below .grown')]
       .filter(d => /[?&]slot=g\d+/.test(d.getAttribute('src') || '')).length,
-    readout: (document.getElementById('grown') || {}).textContent || '' }));
+    readout: (document.getElementById('grown') || {}).textContent || '',
+    heard: window.__heard || [] }));
   ck('#201 #nofound adopts nothing and still counts what it heard',
      offState.frames === 0 && /0 grown/.test(offState.readout) && /1 founded/.test(offState.readout),
      JSON.stringify(offState));
-  await off.close();
+  await ctxOff.close();
 
+  // The page that loads #reset then STARTS a clean field, and that field is allowed to found.
+  // The 3s wait is there so a worker that outlived page.close() can write a key back. On this
+  // machine the clean field itself adopts a daughter inside that window (selection_g0, and no u*
+  // key — a built universe's first save is tick 1800). Pace the reset page's workers the same
+  // way the adoption pages are paced, so the only founding that can land in 3s is one this page
+  // did not boot. The pass text is still "no selection_ key left".
+  await ctx.addInitScript(slowChild);
   const rp = await ctx.newPage();
   // #reset must now clear EVERY slot, not the two keys it used to know about.
   // A DIFFERENT QUERY, not just a different hash. Going from '/#layers=0' to '/#reset' changes
   // only the fragment, which is a same-document navigation: index.html never re-runs and the reset
   // never fires. The first version of this check did exactly that and reported the code broken.
+  // This stays in the FIELD's context: the slots under test are the ones that page wrote, grown
+  // daughters included. The adoption pages above are other contexts and cannot put a key here.
   await rp.goto(base + '/?r=1#reset', { waitUntil: 'load' });
   await rp.waitForTimeout(3000);
-  const left = await rp.evaluate(() => Object.keys(localStorage).filter(k => k.indexOf('selection_') === 0).length);
-  ck('#reset clears every slot in the field, grown ones included', left === 0, left + ' left');
+  const left = await rp.evaluate(() => ({
+    keys: Object.keys(localStorage).filter(k => k.indexOf('selection_') === 0),
+    frames: [...document.querySelectorAll('iframe')].map(f => f.getAttribute('src') || '').filter(s => /slot=g\d+/.test(s)),
+    readout: (document.getElementById('grown') || {}).textContent || ''
+  }));
+  const leftKeys = left.keys;
+  ck('#reset clears every slot in the field, grown ones included', leftKeys.length === 0,
+     leftKeys.length + ' left' + (leftKeys.length ? (': ' + leftKeys.join(' ')) : '')
+     + (left.frames.length ? (' frames ' + left.frames.join(' ')) : '')
+     + (left.readout ? (' readout ' + JSON.stringify(left.readout)) : ''));
 
   console.log('\n  ' + pass + ' passed, ' + fail + ' failed');
   await browser.close(); server.close();

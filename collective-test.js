@@ -293,6 +293,9 @@ const server=http.createServer((req,res)=>{
     +'  recv '+String(r.s.recv).padStart(5)+'  bad '+r.s.bad+'  peers '+r.s.peers
     +'  fp '+String(r.s.fp||'').slice(0,26));
   console.log('  field: '+JSON.stringify(stats.note));
+  // Diagnosis only. returnPathIsATrickle stays `inN>0 && outN*4 <= inN`. The denominator is the
+  // outbound count; logging it does not move the bar. CLAUDE.md forbids retuning that bar.
+  console.log('  return path: inbound '+inN+'  outbound '+outN+'  (pass iff inbound>0 and outbound*4<=inbound)');
   for(const p2 of paths) console.log('  '+p2.hash.slice(0,14).padEnd(15)+'cells/collective '+p2.got+' (want '+p2.want+')');
   console.log('  #158 relay gating: pulls at rate 0 -> '+silence.atZero+' of 60, at rate 1 -> '+silence.atOne+' of 60');
   console.log('  after reload, totalTicks: '+after.map(r=>(r.collective?'COLLECTIVE:':'u:')+r.tt).join('  '));

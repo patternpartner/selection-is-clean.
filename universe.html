@@ -127,6 +127,14 @@
   addEventListener('hashchange', function(){
     try { worker.postMessage({ type:'hash', hash: location.hash || '' }); } catch(e){}
   });
+  // The SharedWorker outlives this frame. Its BroadcastChannel does not need the port, so a
+  // frame that has gone keeps founding and saving into the next page on this origin — #reset
+  // then grows selection_g0 back. persisted means the page may return from bfcache; that one
+  // stays running. A real close halts the loop.
+  addEventListener('pagehide', function(ev){
+    if (ev && ev.persisted) return;
+    try { worker.postMessage({ type:'halt' }); } catch(e){}
+  });
   worker.postMessage({
     type:'init', canvas:off, w:bufW(), h:bufH(), dpr:1,
     genome: (stored && stored.length>10) ? stored : null,

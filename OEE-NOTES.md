@@ -21686,3 +21686,102 @@ broadcast 0.05 clamps to 0.2. substrate-test TICKS=40: 262/0 on seeds 1-3 and FO
 proposed about once per 32k ticks, so a lab run rarely sees one. The change acts at the FIELD's horizon, on
 the ~17% of long-lived worlds #234's arithmetic puts below 0.1. The number that would show it is the spread of
 `INHERIT_SD` across a harvest before and after a reload, which only the user's field can supply.
+
+### #236 — THE SMOKE DEBT #221 SORTED, REPAIRED WHERE THE ANCHOR DIED
+
+#221 and #231d both left the same four rigs red and said the fold did not cause them. This entry is
+that debt. Nothing here touches `vmStep`, op 16, or `WORLD_ENERGY_REGEN`.
+
+**Atrophy and attractor were asking a string that is gone.** `harness-atrophy-probe` patched the
+probed cut against a `#108` comment; that comment is gone on both the pre-fold engine and this one,
+so the patch matched 0 times and the rig exited before it measured anything. The census cut and the
+harmful cut still matched once each. The probed site is the `probeBase` assignment, and the quiet
+gate in the engine is `conf>0.35 && tSlow<0.03 && tSlow>-0.10` — the old probe still classified
+quiet as `|tSlow|<0.03 && |trace|<0.05`, which leaves the band the holding cost parks dead layers
+in. Both arms of the patch now name `probeBase`, and quiet uses the engine's gates.
+
+`harness-attractor` patched `maybe()` against `magnitude*scale`. #218b made that
+`magnitude*mutMagFor(gene)*scale`, so the anchor matched 0. The clamp arm has to keep `mutMagFor`
+in both the find and the replace: dropping it would change the default arm, which is the one the
+artwork runs. `checkExtinction` still matched once and was left alone. After the rebase onto #231e, and
+again after #232's capacity ceiling landed on `main`, probed, `maybe()`, and `checkExtinction`
+each still match once. `TICKS=40` boots exit 0 on both probes (attractor's
+extinction checks start after tick 500, so that boot reports 0 checks and a floor of 300 — the
+instrument is up, the horizon has not arrived).
+
+What the repaired probes actually report, one seed each:
+- Atrophy, `SEED=7` `TICKS=2000` (91s): 120 params, 480 seen, all quiet-eligible, **0 cuts**,
+  atrophyRate 0.12→0.26, opcodes distinctSeed 5 → distinctEvolved 36, 435 living programs,
+  `loopErrors=0`. Zero cuts is the horizon at 2,000 ticks and four mutation cycles (quiet path
+  probes; fitness acquits, or the probe has not finished). It is a reading, not a dead rig.
+- Attractor, `SEED=1` `TICKS=2000`, trap off (88s): 19 checks, 0 deaths, floor 300, escape at 450.
+  `CLAMP=1 TILE=1 TRAP=28 TICKS=1200` (38s): the clamp path ran (`clampBinds` 10, lo 1, hi 0).
+  `afterThresh` 28, deaths 0 — 28 is not a trap on a tile that climbs. A direct write of the
+  threshold bypasses `maybe()`, so the clamp count is the clamp arm executing, not selection.
+
+**grammar and autosave pass, and they are slower than 180s.** Both ignore `TICKS`. grammar's live
+section is 6,000 engine ticks (`LV.ran>=6000`) plus the descriptor sweep. autosave's first save is
+tick 1,800, then 1,900 throwing ticks, then 1,100 of recovery. Shortening either drops the thing
+the rig exists to see. Alone on this machine: grammar **325s, 79/0**; autosave **256s, 7/7**.
+#221, previous box: grammar 429s and 441s, both passes; autosave 302s and 303s, both passes.
+`smoke.sh` now gives grammar 600s and autosave 480s. Every other rig stays at 180s, and slot stays
+at 360s. `reach-test` is the same shape and now has a number from this machine. Its live section is 6,000
+`loop()` calls, written to cross `EPOCH_TICKS`, and it ignores `TICKS`. Inside the suite it is
+exit 124 at 180s, and the log is empty because stdout is block-buffered. Alone: **373s, 20/0**.
+#231d already had the same split (exit 124 in the suite, 20/0 alone). Its smoke budget is 600s,
+the same margin grammar got for the same 6,000-tick shape. The other rigs stay at 180s.
+
+**slot-test's red rows moved, and the save rows did not.** Three alone runs before any fix, `SECS=150`,
+this machine (every run reached the first save; #231d's container did not, 9/6, and the same six
+failed on pre-#231 `main` there — throughput, a different failure):
+- Run 1, 170s, 14/1: minimum gap `"1 grown · 2 refused · 3 founded"`. Restore rows 9/9.
+- Run 2, 169s, 15/0: gap exactly `"1 grown · 1 refused · 2 founded"`. `#nofound` `"0 grown · 1 refused · 1 founded"`. `#reset` 0 left.
+- Run 3, 169s, 13/2: `#nofound` `"0 grown · 2 refused · 2 founded"`; `#reset` 1 left.
+
+A new page in the same Playwright context is not isolation. `BroadcastChannel` `selection-pe-network`
+is origin-scoped inside one context (measured: heard across contexts 0, heard across pages of one
+context 1), and a `SharedWorker` outlives `page.close()`. The closed universe keeps founding.
+Splitting the adoption page and the `#nofound` page into their own contexts was not sufficient:
+two further runs still counted a third founding, because the universe **on** that page founds
+(`FOUND_RATE` 0.5 on the ~60-tick cadence) and takes the one adoption or adds a counted packet.
+Calling `pace(5000)` after load is too late — `boot()` has already called `loop()` once.
+Stamping `pace=5000` onto the worker init hash, in an init script, before that boot, is what
+makes the page a listener. Pass strings were not loosened. The experiment that would have
+accepted `founded>=1` was reverted. After the stamp, two alone runs: **15/0 in 170s and 169s**.
+Gap exactly `"1 grown · 1 refused · 2 founded"`. Daughter bytes matched (19284/19284, 18460/18460).
+`#nofound` heard only `rig201b`, readout `"0 grown · 1 refused · 1 founded"`. `#reset` 0 left.
+`#reset` stays in the field context, so it still clears the field's grown slots.
+
+The halt is the part that moves in the field, not in who reproduces. `universe.html` posts `halt`
+on `pagehide` unless `persisted` (bfcache — that page may come back). The worker sets `halted`,
+skips further `persist` from `setItem`, and does not schedule the tick after the one already
+queued. A running world is unchanged. The pace stamp is test-only.
+
+**`returnPathIsATrickle` was not retuned.** It is still `inN>0 && outN*4 <= inN`. The rig now logs
+inbound and outbound on their own line so a red row names the denominator. CLAUDE.md forbids
+moving the bar. `collective-test` looks for chromium under `/opt/pw-browsers/` and skips (exit 0)
+when that path is absent; a skip is not a pass of the trickle row. This machine's smoke made that
+binary visible by a symlink and did not change the search list or the criterion. Alone, `SECS=22`
+(the suite's own window), 47s, 15/0. The new line read `inbound 19  outbound 1`. `1*4 <= 19`, so
+the row passed on the denominator it already had.
+
+**Smoke, quiet machine, one node job.** `TICKS=40`, playwright from an unsaved install, chrome at
+`/opt/google/chrome/chrome`. First pass, before reach's budget moved: **52 ok, 1 failing**, and the
+one failure is `reach-test` exit 124. grammar ok, autosave ok, slot ok, atrophy ok, attractor ok,
+collective ok, pool ok, pace ok, layers ok. The reach budget above is the follow-up to that one row. That first pass ran before #232's ceiling
+was on this branch. Second pass, ceiling included, op 16 still open, reach at 600s: **53 ok, 0 failing**.
+grammar, reach, autosave, slot, atrophy, and attractor are in that count. Collective's exit 0 is not a
+missing-binary skip: the chromium path the rig searches was a symlink to the installed chrome, and the
+same `SECS=22` window alone had already logged inbound 19, outbound 1. `main` then took #231e's close
+and #231f's two rigs (`harness-opexec.js`, `vm-equiv.js`). Probed, `maybe()`, and `checkExtinction`
+were counted again on that engine and still match once. The 53 does not include those two rigs, and it
+does not include the closed op 16. Third pass, this tree: **54 ok, 1 failing**. The failure is
+`slot-test` `#reset`, and every other row in that log is green, including grammar, reach, autosave,
+atrophy, attractor, `harness-opexec`, and `vm-equiv`. The red detail is `1 left: selection_g0`. The
+built slots did not come back. Alone, same binary, 169s: **14/1**, the same single key; the gap is
+still `"1 grown · 1 refused · 2 founded"` and `#nofound` heard only `rig201b`. A built universe's
+first save is tick 1,800, so a `g` key inside the 3s wait is an adoption, and the clean field the
+reset page then starts is allowed to adopt. Pacing that page's workers the way the adoption pages
+are already paced — so the only founding that can land in 3s is one this page did not boot — left
+the pass text as "no `selection_` key". Two alone runs after that: **15/0 and 15/0**, both 169s,
+`0 left`. The suite was not run a fourth time; the row that was red is the one those two runs are.

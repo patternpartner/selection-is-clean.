@@ -8,10 +8,11 @@
 //
 // Four questions, ordered by governance:
 //   Q1 KEYSTONE  — did any ATROPHY_SAFE param measurably decay in 20k ticks? (cuts>0 anywhere.)
-//   Q2 3-STATE   — per param: protected (positive slow-trace, earning keep) / eligible (harmful or
-//                  quiet — should decay) / BELOW-BAR (conf<=0.35 — atrophy structurally never evaluates
-//                  it: the "knife doesn't reach its jurisdiction" case). The confound that guts the
-//                  "elevated genes = still earning" reading: high-but-below-bar is drift, not merit.
+//   Q2 3-STATE   — per param, by the block's OWN gates (not a frozen copy of an older window):
+//                  protected (tSlow>0.05) / eligible-harmful (tSlow<-0.10) / eligible-quiet
+//                  (-0.10<tSlow<0.03, #217p — the old |tSlow|<0.03 && |trace|<0.05 band left a gap
+//                  the holding cost parks dead layers in) / BELOW-BAR (conf<=0.35 — atrophy
+//                  structurally never evaluates it). High-but-below-bar is drift, not merit.
 //   Q3 OPCODES   — the VM program (232-wide choice space) has NO pruner (atrophy only patrols scalar
 //                  influence-genes). Census evolved pProg opcode frequency vs the boot seed: does
 //                  selection ALONE concentrate opcodes (some vanish, some dominate) with no culler?
@@ -60,7 +61,7 @@ function patchOnce(find,repl,label){
 // (Q1/Q2) Census every ATROPHY_SAFE param each atrophy cycle, classify by the block's own gates.
 patchOnce(
 '    for(const p of META_LAYER_PARAMS){\n      if(!ATROPHY_SAFE.has(p))continue;\n      const e=mc[p];\n      if(!e||e.traceSlow===undefined)continue;\n      const conf=e.conf||0;\n      const tSlow=e.traceSlow;',
-'    for(const p of META_LAYER_PARAMS){\n      if(!ATROPHY_SAFE.has(p)){ if(globalThis.__atrInit)globalThis.__atrNoEntry=(globalThis.__atrNoEntry||new Set()).add(p); continue; }\n      const e=mc[p];\n      if(!e||e.traceSlow===undefined){ globalThis.__atrCensus=globalThis.__atrCensus||{}; const _c=globalThis.__atrCensus[p]||(globalThis.__atrCensus[p]={seen:0,belowBar:0,harmfulElig:0,quietElig:0,protectedPos:0,middling:0,noAttrib:0,cuts:0}); _c.seen++; _c.noAttrib++; continue; }\n      const conf=e.conf||0;\n      const tSlow=e.traceSlow;\n      { globalThis.__atrCensus=globalThis.__atrCensus||{}; const _c=globalThis.__atrCensus[p]||(globalThis.__atrCensus[p]={seen:0,belowBar:0,harmfulElig:0,quietElig:0,protectedPos:0,middling:0,noAttrib:0,cuts:0}); _c.seen++;\n        if(conf<=0.35)_c.belowBar++; else if(conf>0.35&&tSlow<-0.10)_c.harmfulElig++; else if(conf>0.35&&Math.abs(tSlow)<0.03&&Math.abs(e.trace)<0.05)_c.quietElig++; else if(conf>0.35&&tSlow>0.05)_c.protectedPos++; else _c.middling++; }',
+'    for(const p of META_LAYER_PARAMS){\n      if(!ATROPHY_SAFE.has(p)){ if(globalThis.__atrInit)globalThis.__atrNoEntry=(globalThis.__atrNoEntry||new Set()).add(p); continue; }\n      const e=mc[p];\n      if(!e||e.traceSlow===undefined){ globalThis.__atrCensus=globalThis.__atrCensus||{}; const _c=globalThis.__atrCensus[p]||(globalThis.__atrCensus[p]={seen:0,belowBar:0,harmfulElig:0,quietElig:0,protectedPos:0,middling:0,noAttrib:0,cuts:0}); _c.seen++; _c.noAttrib++; continue; }\n      const conf=e.conf||0;\n      const tSlow=e.traceSlow;\n      { globalThis.__atrCensus=globalThis.__atrCensus||{}; const _c=globalThis.__atrCensus[p]||(globalThis.__atrCensus[p]={seen:0,belowBar:0,harmfulElig:0,quietElig:0,protectedPos:0,middling:0,noAttrib:0,cuts:0}); _c.seen++;\n        if(conf<=0.35)_c.belowBar++; else if(conf>0.35&&tSlow<-0.10)_c.harmfulElig++; else if(conf>0.35&&tSlow>-0.10&&tSlow<0.03)_c.quietElig++; else if(conf>0.35&&tSlow>0.05)_c.protectedPos++; else _c.middling++; }',
 'census loop head');
 
 // (Q1) Log the harmful-path cut.
@@ -70,9 +71,12 @@ patchOnce(
 'harmful cut');
 
 // (Q1) Log the probe-confirmed-dead cut.
+// #217i moved this decay off the kicked value. The old needle
+//   {const _mv=metaParamGet(p);...metaParamSet(p,_mv*factor);} // #108
+// is gone; the cut now multiplies the PRE-PROBE base. Anchor the assignment, not the comment.
 patchOnce(
-'              const factor=__cl(1-aRate,0,1); // AUTONOMY: confirmed-dead decays at FULL rate (was half)\n              {const _mv=metaParamGet(p);if(isFinite(_mv))metaParamSet(p,_mv*factor);} // #108: was genome[p] directly',
-'              const factor=__cl(1-aRate,0,1); // AUTONOMY: confirmed-dead decays at FULL rate (was half)\n              { const _from=metaParamGet(p); if(isFinite(_from))metaParamSet(p,_from*factor); const _to=metaParamGet(p); if(isFinite(_from)&&isFinite(_to)&&Math.abs(_from-_to)>1e-12){ globalThis.__atrCuts=globalThis.__atrCuts||[]; if(globalThis.__atrCuts.length<400)globalThis.__atrCuts.push({p,from:+_from.toPrecision(4),to:+_to.toPrecision(4),tick:(typeof tick!=="undefined"?tick:-1),path:"probed"}); if(globalThis.__atrCensus&&globalThis.__atrCensus[p])globalThis.__atrCensus[p].cuts++; } }',
+'              {const _base=(e.probeBase!==undefined&&isFinite(e.probeBase))?e.probeBase:metaParamGet(p);\n               if(isFinite(_base))metaParamSet(p,_base*factor);}',
+'              { const _base=(e.probeBase!==undefined&&isFinite(e.probeBase))?e.probeBase:metaParamGet(p); if(isFinite(_base)){ const _from=_base; metaParamSet(p,_from*factor); const _to=metaParamGet(p); if(isFinite(_from)&&isFinite(_to)&&Math.abs(_from-_to)>1e-12){ globalThis.__atrCuts=globalThis.__atrCuts||[]; if(globalThis.__atrCuts.length<400)globalThis.__atrCuts.push({p,from:+_from.toPrecision(4),to:+_to.toPrecision(4),tick:(typeof tick!=="undefined"?tick:-1),path:"probed"}); if(globalThis.__atrCensus&&globalThis.__atrCensus[p])globalThis.__atrCensus[p].cuts++; } } }',
 'probed cut');
 
 const driver=`
