@@ -21986,7 +21986,11 @@ verdict.
 **Out of scope, not touched:** `vmStep` as it stands, the op 16 / op 20 bodies, the law table,
 `LAW_KCAP`, `WORLD_ENERGY_REGEN`, `INHERIT_SD`, and PR #65's branch (`cursor/substrate-obligatory-d43e`).
 
-#### #237 RESULT — DELETE, by 20,000 ticks, seeds 1-6 (rule applied as pre-registered, not revised)
+#### #238 RESULT — DELETE, by 20,000 ticks, seeds 1-6 (rule applied as pre-registered, not revised)
+
+*(Heading renumbered to match the pre-registration above. The A/B ran and was committed as #237, under
+the branch `claude/chem-retire-or-prove-237`, before a rebase onto main, which already used #237 for the
+inscription-write entry. The numbers below were not changed.)*
 
 **Differing seeds: 2 of 6 (seeds 2 and 3).** That is below the rule's floor of 3, so the rule's
 outcome is **DELETE**, and the rule does not score the differing seeds. **Horizon: 20,000 ticks.**
@@ -22038,10 +22042,33 @@ would settle it. It is optional and does not change the count.
 **Scope.** This measures the dependent variable, not selection. Variance is not sorting, and nothing
 here says selection did or did not sort recipes. "Not by 20,000" is not "never" (#217d).
 
-**Owed next (not done in this commit):** the removal listed in the rule. That is the chemistryTable
-mutation block in `mutateGenome`, `chemistryMutRate`, the #217s chem verdict
-(`chem.trial/kept/revert`, `CHEM_VERDICT`), and the `CHEM` knob plus its `KNOBS` line. After that,
-the field runs `seedChemistryTable()` as a constant and old saves load the seed table. Assert the
-count of removed sites. Search aliases of `chemistryTable` (`recipe`, `mono`) and read the enclosing
-functions. Then run substrate-test at 40 / 900 / default and FOUND=0 (SEED=1..6 on any red row),
-and smoke.sh on a quiet machine. The field's recipe step and op 20 stay: they were not tested.
+**Removal owed by the RESULT (done in the follow-up below):** the chemistryTable mutation block in
+`mutateGenome`, `chemistryMutRate`, the #217s chem verdict (`chem.trial/kept/revert`, `CHEM_VERDICT`),
+and the `CHEM` knob plus its `KNOBS` line. The field's recipe step and op 20 stay: they were not tested.
+See **REMOVAL LANDED** for the site list, the `Cv:1` old-save decision, and the test status.
+
+**REMOVAL LANDED (#238 follow-up).** These were removed from `engine.html`. The chemistryTable mutation
+block in `mutateGenome` (Pe22c: point mutations through the `recipe`/`mono` aliases, monomial
+add/drop, and the `chemistryMutRate` meta-mutation). The `chemistryMutRate` gene (genome literal,
+save `f` shrunk to `[fieldDecay,fieldDiffuse]`, loader destructure, legacy default, `sanitizeGenome`).
+The #217s verdict (`__chemTrial`, `chemVerdictOn`, `chemTableCopy`, the `chem.trial/kept/revert`
+liveness declarations). The #217d `CHEM` knob (`chemFieldLive`, `__chemSeedTable`). `chemFieldTable()`
+remains as a plain return of `genome.chemistryTable`, and the updateField hoist is kept. `CHEM` and
+`CHEM_VERDICT` were removed from `harness-env.js` `KNOBS`, and `chem` from `harness-opexec.js`'s JSON.
+Its `cell.inscribe`/`cell.chemExec` liveness print is kept. `seedChemistryTable()`, updateField's
+recipe step, and op 16/20 are untouched. The #217c comment in `cloneGenome` is marked historical, not
+deleted.
+**Old saves: a version marker (option iii).** The encoder writes `C` and `Cv:1`. The loader adopts `g.C`
+only when `g.Cv` is present. A pre-#238 save's `C` may be an evolved table, and it cannot be told apart
+from a seed table. So it is ignored and the universe reseeds through the existing
+`seedChemistryTable()` path. That path is RANDOM: an old save gets a fresh seed table, not the one it
+started with. A post-#238 save keeps its own constant table across save/load. An old save's
+3-element `f` loads cleanly, and its third element is ignored.
+**Trajectory:** the removed block drew Math.random on every mutation cycle. So post-removal runs are
+not byte-comparable to pre-removal runs on the same seed, including rows unrelated to chemistry.
+**Tests (removal follow-up, SEED=1):** substrate-test TICKS=40 / 900 / default (4000) / FOUND=0 all
+**262 passed, 0 failed**. smoke.sh: **51 ok, 4 failing** — pool/pace/layers/slot all fail launching
+Chromium (`/opt/pw-browsers/chromium-1194/...` missing). That is the environment #236 already named,
+not this deletion. collective-test, codec-test, harness-variance, liveness-report, harness-opexec,
+vm-equiv, and substrate-test inside smoke were green. No SEED=2..6 re-run was required (no red
+substrate row).

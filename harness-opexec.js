@@ -37,4 +37,4 @@ for(let k=0;k<4;k++){ let tot=0;const ops=[];for(let o=0;o<512;o++){const c=r.ox
   machines[M[k]]={instructions:tot,distinctOps:ops.length,opsCarrying90pct:tot?n90:0,top:ops.slice(0,8).map(x=>x[0])}; }
 const watched={};
 for(const o of WATCH){ watched[o]={}; for(let k=0;k<4;k++){ const c=r.ox[k*512+o]; if(c) watched[o][M[k]]={count:c,firstTick:r.first[k*512+o]}; } }
-console.log(JSON.stringify({ticks:T,seed:process.env.SEED||'1',chem:(globalThis.__CHEM??1),loopErrors:r.errs,N:r.N,liveness:r.live,machines,watched,laws:r.laws}));
+console.log(JSON.stringify({ticks:T,seed:process.env.SEED||'1',loopErrors:r.errs,N:r.N,liveness:r.live,machines,watched,laws:r.laws}));
