@@ -21423,3 +21423,53 @@ birthQueue drain through the same pool (or a crowding term), then re-run seeds 2
 next session's experiment, stated with its known failure mode.
 
 Checked: substrate-test TICKS=40 on seeds 1-3 and FOUND=0 on the final engine: running as this is committed (ST_PENDING).
+
+### #231d — CORRECTION TO #231c, TWICE OVER: the bud births were always pool-gated, op 16 never ran on seed 2, and the blow-up was a law
+
+#231c reverted op 16 on two claims. **Both were false.**
+
+1. **"A birthQueue birth reaches `addParticle`, which has no world-pool gate."** It has one:
+   `if(worldEnergy<BIRTH_ENERGY_COST){ refused }` a few lines into `addParticle`, the same gate
+   `addCompound` uses. I grepped for `pool` and the pool is called `worldEnergy`. That is CLAUDE.md's
+   name-search trap, walked into by the session that had just quoted it, and the reason a comment saying
+   the opposite sat at op 16 for one commit. The comment is gone.
+2. **"Giving solo the particle bud ran seed 2's population to 1,418."** Op 16 **never executed on seed
+   2**, in either engine, to 12,000 ticks (first-execution ticks per machine, recorded without draws:
+   the only watched ops that ran were op 226 and plasmid op 179). Every birth on seed 2 went through
+   `addCompound`.
+
+**What actually happened on seed 2**, recorded every 250 ticks (N, pool, upkeep per particle, births by
+path, every `LAW_DECLARED` value):
+- The two engines agree exactly until plasmid **op 179 first executes, at tick 8,401** — #231b's lineage
+  gate on HGT donation. From there the trajectories part.
+- At ~9,250 the #231b world proposes and keeps **`WORLD_ENERGY_REGEN` 0.2 -> 0.864**. Compound births go
+  from ~20 to 115-228 per 250 ticks and N climbs 386 -> 1,300. Upkeep per particle never moves
+  (0.00039), so carrying capacity went from about 0.2/0.00039 ≈ 510 to about 2,200, capped by CAP. The
+  #231 world never proposed that law.
+
+So the blow-up is the law layer, reached by a trajectory op 179 diverted. **The exposure is the law's
+range:** `WORLD_ENERGY_REGEN` has `hi:5`, 25x its default. #222 floored `METABOLIC_ENERGY_DRAW` because
+"the verdict keeps anything the population survives, so cheaper upkeep ratchets carrying capacity toward
+CAP". Raising sunlight is the same ratchet from the other side, and it is open. Not changed here; it is a
+decision about what the field may decide, and it is flagged for the user.
+
+**Op 16 is REOPENED** — #231b's unified bud, byte-identical to the engine that passed substrate-test on
+seeds 1-3 and FOUND=0 and the per-op rig. The one clean A/B for it is seed 3, the only seed of 1-3 where
+op 16 runs at all: same engine with op 16 open vs closed, 20k ticks:
+
+| seed 3 | entropyRatio | kinds early -> late | late new kinds / 1k | late population |
+|---|---|---|---|---|
+| #231 | 0.93 | 11.5 -> 8.1 | 0.31 | 368 |
+| #231b, op 16 closed | 0.97 | 11.2 -> 8.9 | 1.54 | 496 |
+| #231b, op 16 open | **1.02** | **12.4 -> 19.3** | **8.31** | 411 |
+
+**One seed.** With op 16 open, kinds rise across the run instead of falling, with no population blow-up.
+Op 16 is live on only one of three seeds, so this needs seeds where it runs before it is a result. The
+mechanism measured at 4,000 ticks on that seed: births through the bud doubled, 27 -> 59 (6.7% -> 13% of
+parented births), and the particle machine's buds rose too (692 -> 2,034 queued) although its op did not
+change — lineages carrying the bud spread once budding stopped costing half the parent's amplitude on
+the solo path.
+
+**The lesson, since it cost two wrong reverts in one entry:** a number that moved is not a cause until
+the path is shown to run. The first-execution recorder answered in one run what two readings of the code
+got wrong.
