@@ -22090,9 +22090,22 @@ function vmStep(op,src,dst,k,si,di,i,j,ip){
       case 20:
         {
         fired('cell.inscribe');   // #217d
-        // #237: the local write is gone. One case, five assignments removed: cellProgOp,
-        // cellProgA, cellProgB, and cellProgStr on both branches of the overwrite test.
-        // The opcode still counts. Peer receive is a different writer and stays.
+        // #239: cold-start origin spark only. #237 deleted the competitive overwrite/
+        // reinforce write after it failed KEEP (1 of 3 seeds). Peer receive stayed;
+        // broadcastGenome still needs some cellProgStr>0.3, so a fresh all-new-client
+        // field could never originate the first packet (Codex P1 on PR #65).
+        // Write ONLY into a cold cell (same emptiness gate peer-receive uses). Floor
+        // strength just above the broadcast gate so one spark can start the peer path.
+        // Do NOT restore inscribeOn / INSCRIBE or the #237 overwrite branches.
+        const ix20=Math.floor(px[i]/(W/FIELD_W)),iy20=Math.floor(py[i]/(H/FIELD_H));
+        const ci20=__cl(iy20*FIELD_W+ix20,0,FIELD_W*FIELD_H-1);
+        if(cellProgStr[ci20]<0.2){
+          const spark=Math.min(1,Math.max(0.35,Math.abs(vmRegs[si]*k)*inscStr()));
+          cellProgOp[ci20]=Math.abs(Math.floor(vmRegs[si]))%12;
+          cellProgA[ci20]=vmRegs[di];
+          cellProgB[ci20]=k;
+          cellProgStr[ci20]=spark;
+        }
       }break;
       case 21:{
         const rx21=Math.floor(px[i]/(W/FIELD_W)),ry21=Math.floor(py[i]/(H/FIELD_H));
