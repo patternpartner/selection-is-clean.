@@ -21901,4 +21901,26 @@ Numbered #237 because #234 was taken by the law-verdict entry while these runs w
 
 **Proof, if the delete happens.** The fastest counted seed, 20,000 ticks, deleted engine against the `INSCRIBE=0` fingerprints from this entry, must match at every 1,000-tick sample. A mismatch means the deletion removed a draw or a second writer, and it does not ship.
 
-Results go under this heading after the runs, not before.
+Results for this entry follow.
+
+**Result: DELETE the local write.** MOVE is true on 1 of 3 counted seeds. The keep clause wants two. `case 20:` in `vmStep` is the opcode that was edited: five assignments removed from that one case, `fired('cell.inscribe')` kept, `inscribeOn` and the `INSCRIBE` knob removed with it. Peer receive still writes. `WORLD_ENERGY_REGEN` was not touched. Op 16 was not touched.
+
+**Boring side.** Seed 5, 4,000 ticks, pre-floor engine. Both arms: alive 385, paid 453, `cell.inscribe` 0, and the same fingerprint at ticks 1,001, 2,001, 3,001, 4,001. The knob did not move a draw before the layer starts.
+
+**Floor re-check.** Every 1,000-tick fingerprint of seeds 3, 4 and 6, both arms, on the floored engine matched the pre-floor run. `law.capacityRefused` was 0. #235 did not move these seeds, so the diversity and establishment figures below transfer.
+
+**20,000 ticks. All three seeds count.**
+
+| seed | first `cell.inscribe` | fires ON | recipe evals ON | alive ON / OFF | paid ON / OFF | entropyRatio | kinds late | estFrac |
+|---|---|---|---|---|---|---|---|---|
+| 3 | 8,434 | 83 | 8,612 | 400 / 372 (rel 0.070) | 2,450 / 1,992 (rel 0.187) | 0.97 / 0.92 (diff 0.05) | 8.9 / 8.1 | 0.0106 / 0.0059 |
+| 4 | 3,003 | 9,548 | 22,239 | **87 / 349 (rel 0.751)** | 1,796 / 2,135 (rel 0.159) | 0.92 / 0.95 | 8.1 / 8.7 | 0.0048 / 0.0097 |
+| 6 | 2,835 | 13 | 2,054 | 89 / 89 | 185 / 185 | same trajectory, not re-measured | same | same |
+
+Seed 6's fingerprints matched at all 20 samples, including through 2,054 recipe evaluations on the ON arm. Seed 3's entropy difference is 0.05, and the rule says greater than 0.05. Paid, alive, kinds and establishment stay inside their lines. Seed 4's end population is the one crossing: the write is present and the world ends at 87; the write is withheld and it ends at 349. Entropy, kinds, paid births and establishment on that seed stay inside their lines. One seed is not two.
+
+**What moved.** On seed 4, at a horizon where inscription has been running since tick 3,003, withholding the write leaves about four times as many particles alive at tick 20,000. That is a real change in the universe, and it is one seed. The pre-registered keep was two. The write does not ship.
+
+**Proof.** Seed 6 is the fastest counted seed. The deleted engine, 20,000 ticks, matched the `INSCRIBE=0` fingerprints at all 20 samples (alive 89, paid 185, `cell.inscribe` 13, `cell.chemExec` 0). substrate-test `TICKS=40` seed 1: 262 passed, 0 failed.
+
+**Left in place.** Recipe evaluation in `updateField`, the chemistry table, and peer inscription receive. With no local marks, recipe evaluation does not run in the headless rig; the proof is chem 0 on the deleted engine. Retiring the reader, or the peer path, is a different claim. The peer path draws and this rig has no peers.

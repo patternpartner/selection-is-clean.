@@ -1104,7 +1104,10 @@ monomials `[coefSource, termA, termB, target]` over local state. Seeded from **r
 starting noise." Mutates at `chemistryMutRate` 0.02.
 
 **#233:** a birth-pool gate on recipe evaluation was measured and removed. `updateField` still runs the
-recipe; nothing in the birth path reads it. The 20,000-tick inscription question is OEE-NOTES #237.
+recipe; nothing in the birth path reads it.
+
+**#237:** the local write inside the one `case 20:` was measured at 20,000 ticks and removed. The opcode
+still counts. Peer receive still writes. The numbers are OEE-NOTES #237.
 
 **[read] Evolvable sociality** (Layer 22): `netMigrantRate` and three sibling rates govern broadcasting
 particles, plasmids, VM motifs and inscriptions to other browser tabs. All four evolve — "the system
