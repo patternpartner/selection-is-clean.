@@ -77,6 +77,12 @@ timeout_for() {
     # 1,900 throwing ticks, then 1,100 of recovery. Shortening it drops the save the test
     # exists to see. Alone: 256s, 7/7. #221: 302s and 303s, both passes.
     autosave-test.js) echo 480 ;;
+    # reach-test.js ignores TICKS for the live section: 6,000 loop() calls, written to cross
+    # EPOCH_TICKS. Smoke at 180s is exit 124 with an empty log (stdout is block-buffered, so the
+    # kill leaves nothing to read). Alone on this machine: 373s, 20/0. #231d already had it as
+    # exit 124 inside the suite and 20/0 alone. 600s is that measurement plus the same margin
+    # grammar got for the same 6,000-tick shape. The other rigs stay at 180s.
+    reach-test.js) echo 600 ;;
     *) echo 180 ;;
   esac
 }
