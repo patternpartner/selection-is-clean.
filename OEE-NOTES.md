@@ -21630,3 +21630,31 @@ At the burst, 7–24 of ~320–390 living stood on executable cells. The same se
 Results go under this heading after the runs, not before.
 
 The runs below were taken on `55155eb`, before #232's ceiling landed. #232 is bit-identical wherever no sunlight proposal is refused, so a counted seed is re-checked on the ceiling engine before this verdict is closed. The entry number is #233 because #232 was taken by the ceiling while these runs were in flight. #231e then closed op 16; this entry does not edit that case, and the same counted seeds are re-checked on the closed engine before the verdict is closed.
+
+**Result: DELETE the coupling.** WHO moved on 0 of the 2 seeds that count. The chemistry execution stays. `vmStep` was not edited, including op 16 and op 20. `WORLD_ENERGY_REGEN` bounds were not edited. After this entry the engine matches `main`: the gate, `SUB`, and the substrate-test holds are gone.
+
+**Boring side, seed 5, 4,000 ticks, engine `55155eb`.** `SUB=0`, `SUB=1`, and the pre-patch file agreed at ticks 1,001, 2,001, 3,001 and 4,001 (alive 455, 449, 395, 385; same lineage hash, position sum, amplitude sum, pool). `cell.chemExec` had not fired. Plumbing was not the thing being measured.
+
+**Ceiling re-check, `705f077`, seeds 3 and 6, both arms, 10,000 ticks.** Every 1,000-tick fingerprint matched the `55155eb` rows. `law.capacityRefused` was 0 on every sample. The ceiling did not move these seeds. Those seed-3 numbers do not transfer past #231e's close.
+
+**Closed engine (`#231e` + `#232`), the verdict.** Seeds 3 and 6, 10,000 ticks. Seed 5 was not re-run: two seeds already count, and #231e's own table says seed 5's open and closed series were identical. Extension to 16,000 was not required.
+
+| seed | counts | SUB=0 alive / paid / on-cell / chem (first tick) | SUB=1 alive / paid / refused / on-cell | on-cell share, SUB=1 minus SUB=0 | entropyRatio | kinds late |
+|---|---|---|---|---|---|---|
+| 3 | yes | 367 / 994 / 0 / 2,695 (8,434) | 354 / 1,018 / 132,466 / 64 | 64/1,018 − 0 = **0.063** | 0.74 → 0.76 | 8.4 → 8.3 |
+| 6 | yes | 90 / 185 / 0 / 2,054 (2,835) | identical physics, 71,052 refusals, 0 on-cell | **0** | 0.98 → 0.98 | 8 → 8 |
+| 5, on `55155eb` only | not by tick 10,000 | 334 / 1,075 / chem 0 | identical, chem 0 | 0 | 0.90 → 0.90 | 8 → 8 |
+
+Seed 3's two arms were the same trajectory through tick 8,001 (chem still 0, paid 822 both). The gate can only act after tick 8,434. Of the 196 paid births after tick 8,001 on `SUB=1`, 64 had a parent on an evaluated cell. That is 0.33 of the late window and **0.063 of all successful births**. The rule's denominator is all successful births. It was not rewritten after the number arrived.
+
+Seed 6's 71,052 refusals changed no fingerprint. They were attempts the pool would have refused anyway: the refusal sits before a non-drawing energy check, and the successful births are the same list.
+
+On the open-op-16 engine the same seed 3 had been a birth drought (`SUB=1` alive 90, paid 299, 2 on-cell, share delta 0.007; entropy 0.94 → 0.98, kinds late 8.4 → 10.3). Closing op 16 removed the drought. It did not produce a 0.25 reallocation onto evaluated cells. Both readings fail WHO. Neither is a reason to move the threshold.
+
+DV on the closed engine would have held (mean entropyRatio up 0.01, kinds late down 0.05, no counted seed from alive > 20 to alive < 5) and is not a keep: the keep clause requires WHO on at least two counted seeds. Seed 6's entropy is the `55155eb` `harness-oee` figure, carried across because the closed-engine fingerprints match that run, including alive 90 and the lineage hash at tick 10,001.
+
+**What moved.** On seed 3 after the close, end alive 367 → 354 and paid births 994 → 1,018, with 13 lineages that had an on-cell birth and a lineage Jaccard of 0.054 against the off-cell births. That is a late, small shift in who got a child, below the line the rule set for "the substrate decides who breeds." EntropyRatio moved 0.02. The layer is still not load-bearing at 10,000 ticks.
+
+**Left in place, on purpose.** Recipe evaluation, `cellProgStr`, and the chemistry table. Retiring that layer is a separate claim and wants its own neutral-or-better measurement on entropyRatio / kinds / establishment. The follow-up is that measurement, or a new pre-registered rule. It is not another birth-pool threshold chosen after seeing 0.063.
+
+**Deferred, for Claude.** Nothing in `vmStep`. Op 16 stays closed as #231e left it. Op 20 stays the single body #231b left. A later attempt that needs to edit those cases should say so before touching them.

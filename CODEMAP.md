@@ -1103,10 +1103,8 @@ monomials `[coefSource, termA, termB, target]` over local state. Seeded from **r
 "no Gray-Scott, no Turing, no known chemistry. The substrate discovers its own dynamics from the
 starting noise." Mutates at `chemistryMutRate` 0.02.
 
-**#233:** a recipe body that actually runs sets `cellChemEval` inside `updateField` (not in `vmStep`).
-While a living particle stands on such a cell, parented births off those cells are refused before the
-world-energy pool (`subBirthBlocked` in `addParticle` and `addCompound`). `SUB=0` is the old path.
-Op 20 is not edited. The verdict is OEE-NOTES #233.
+**#233:** a birth-pool gate on recipe evaluation was measured and removed. `updateField` still runs the
+recipe; nothing in the birth path reads it. Op 20 was not edited. The numbers are OEE-NOTES #233.
 
 **[read] Evolvable sociality** (Layer 22): `netMigrantRate` and three sibling rates govern broadcasting
 particles, plasmids, VM motifs and inscriptions to other browser tabs. All four evolve — "the system

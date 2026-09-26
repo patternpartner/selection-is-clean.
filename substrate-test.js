@@ -2116,18 +2116,12 @@ m._compile(code+`
       // #226b: and the lottery's weights (OUTLIER_BIRTH, RARE_BIRTH) are held neutral for the same reason.
       const _ob=(typeof OUTLIER_BIRTH==='number')?OUTLIER_BIRTH:null, _rb=(typeof RARE_BIRTH==='number')?RARE_BIRTH:null;
       if(_ob!==null)OUTLIER_BIRTH=0; if(_rb!==null)RARE_BIRTH=0;
-      // #233: the substrate gate sits in front of the pool too. These rows ask about BILLING, so the
-      // gate is held open here the same way the lottery is. Left closed, a parent standing off a live
-      // cell is refused before the pool is read and the row goes red for the wrong reason.
-      const _st=(typeof __subTouch==='number')?__subTouch:0;
-      if(typeof __subTouch==='number')__subTouch=0;
       const before=worldEnergy;
       const idx=addParticle(px[live],py[live],new Float32Array(DIMS),false,live,-1);
       const drew=+(before-worldEnergy).toFixed(4);
       if(idx>=0){ palive[idx]=false; N=Math.max(0,N-1); }   // undo the spawn, not the accounting
       if(typeof pProvision!=='undefined') pProvision[live]=_pv;
       if(_ob!==null)OUTLIER_BIRTH=_ob; if(_rb!==null)RARE_BIRTH=_rb;
-      if(typeof __subTouch==='number')__subTouch=_st;
       return {made:idx>=0, drew,
               paid:(__liveness['birth.paid']|0)-p0, refused:(__liveness['birth.refused']|0)-r0};
     };
@@ -2144,8 +2138,6 @@ m._compile(code+`
       BIRTH_ENERGY_COST=1; worldEnergy=10; if(typeof __rationP==='number')__rationP=1;
       const _ob2=(typeof OUTLIER_BIRTH==='number')?OUTLIER_BIRTH:null, _rb2=(typeof RARE_BIRTH==='number')?RARE_BIRTH:null;
       if(_ob2!==null)OUTLIER_BIRTH=0; if(_rb2!==null)RARE_BIRTH=0;
-      const _st2=(typeof __subTouch==='number')?__subTouch:0;
-      if(typeof __subTouch==='number')__subTouch=0;   // #233: same hold-open as bill(), this row is the bank
       const u0=__liveness['birth.unprovisioned']|0;
       pProvision[par]=0;
       const e0=worldEnergy, emptyIdx=addParticle(px[par],py[par],new Float32Array(DIMS),false,par,-1);
@@ -2157,7 +2149,6 @@ m._compile(code+`
       if(fullIdx>=0){ palive[fullIdx]=false; N=Math.max(0,N-1); }
       pProvision[par]=svp; BIRTH_ENERGY_COST=svc; worldEnergy=sve; if(typeof __rationP==='number')__rationP=svr;
       if(_ob2!==null)OUTLIER_BIRTH=_ob2; if(_rb2!==null)RARE_BIRTH=_rb2;
-      if(typeof __subTouch==='number')__subTouch=_st2;
       return {live:true, empty, full, cost:PROV_BIRTH_COST, endow:PROV_BIRTH_COST*PROV_BIRTH_ENDOW};
     })();
     const rn0=__liveness['birth.rationed']|0;
