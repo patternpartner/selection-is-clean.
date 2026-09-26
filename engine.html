@@ -22090,22 +22090,9 @@ function vmStep(op,src,dst,k,si,di,i,j,ip){
       case 20:
         {
         fired('cell.inscribe');   // #217d
-        // #239: cold-start origin spark only. #237 deleted the competitive overwrite/
-        // reinforce write after it failed KEEP (1 of 3 seeds). Peer receive stayed;
-        // broadcastGenome still needs some cellProgStr>0.3, so a fresh all-new-client
-        // field could never originate the first packet (Codex P1 on PR #65).
-        // Write ONLY into a cold cell (same emptiness gate peer-receive uses). Floor
-        // strength just above the broadcast gate so one spark can start the peer path.
-        // Do NOT restore inscribeOn / INSCRIBE or the #237 overwrite branches.
-        const ix20=Math.floor(px[i]/(W/FIELD_W)),iy20=Math.floor(py[i]/(H/FIELD_H));
-        const ci20=__cl(iy20*FIELD_W+ix20,0,FIELD_W*FIELD_H-1);
-        if(cellProgStr[ci20]<0.2){
-          const spark=Math.min(1,Math.max(0.35,Math.abs(vmRegs[si]*k)*inscStr()));
-          cellProgOp[ci20]=Math.abs(Math.floor(vmRegs[si]))%12;
-          cellProgA[ci20]=vmRegs[di];
-          cellProgB[ci20]=k;
-          cellProgStr[ci20]=spark;
-        }
+        // #237: the local write is gone. One case, five assignments removed: cellProgOp,
+        // cellProgA, cellProgB, and cellProgStr on both branches of the overwrite test.
+        // The opcode still counts. Peer receive is a different writer and stays.
       }break;
       case 21:{
         const rx21=Math.floor(px[i]/(W/FIELD_W)),ry21=Math.floor(py[i]/(H/FIELD_H));
@@ -26779,6 +26766,7 @@ function axisStats(d){ if(d<0||d>=DIMS)d=DIMS-1; const B=4; const cnt=new Int32A
   return {d, ent:+ent.toFixed(3), Vtot:+Vtot.toFixed(4), R:+R.toFixed(3), lineages:lsum.size, n:gn}; }
 
 function loop(){
+  if(__schedHalted())return;  // #240: paced/watchdog timers can outlive a single __schedTimer cancel
   if(!__lawDefaults)lawDefaultsSnap();   // #227: no save was restored -> the declarations are the defaults
   lastLoopTime=performance.now();
   try{
@@ -29497,20 +29485,33 @@ function __readIsolate(){ try{ return /(^|[#,])isolate(,|$)/.test(location.hash|
 ISOLATE=__readIsolate();
 addEventListener('hashchange',()=>{ISOLATE=__readIsolate();});
 let __turboLeft=0;
+// #240: a halted shell must stop on every path. The worker's raf shim checks halt, but the PACE and
+// hidden-tab paths use the native setTimeout and went round it, so a paced world kept looping and
+// founding after pagehide. __inst is absent outside the worker; there this is a no-op.
+// When PACE > 3s the watchdog can call scheduleNext while a paced timeout is still pending; keep
+// every handle and cancel them all on halt. loop() also refuses at entry so a stale callback is inert.
+function __schedHalted(){ return typeof __inst!=='undefined'&&!!__inst&&!!__inst.halted; }
+function __schedKeep(id,raf){
+  if(typeof __inst==='undefined'||!__inst)return;
+  if(!__inst.__schedHandles)__inst.__schedHandles=[];
+  __inst.__schedHandles.push({id,raf:!!raf});
+}
 function scheduleNext(){
+  if(__schedHalted())return;
   if(__turboLeft>0){__turboLeft--;loop();return;}
   if(tabVisible){
     __turboLeft=TURBO-1;
     // PACE and TURBO are not opposites to be resolved — turbo runs its sub-ticks back to back and
     // the pace applies to the group, so #turbo=8,pace=1000 is eight ticks a second in bursts.
-    if(PACE>0)setTimeout(loop,PACE);
-    else requestAnimationFrame(loop);
+    if(PACE>0)__schedKeep(setTimeout(loop,PACE),false);
+    else __schedKeep(requestAnimationFrame(loop),true);
   }else{
-    setTimeout(loop,Math.max(67,PACE));
+    __schedKeep(setTimeout(loop,Math.max(67,PACE)),false);
   }
 }
 
 setInterval(()=>{
+  if(__schedHalted())return;
   if(performance.now()-lastLoopTime>3000){
     console.warn('Watchdog: loop stalled, restarting');
     for(let i=0;i<N;i++){
