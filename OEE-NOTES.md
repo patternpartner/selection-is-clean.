@@ -21363,3 +21363,63 @@ FRONTIER_EXPAND, DRAW_VM. The LIVE-STACK block fills every undefined flag before
 (each is read inside a function, after the block has run). The other 13 are off as stated. The
 gate's spelling said OFF; the file's LIVE block said ON, 26,000 lines away. Same lesson as #229's own
 correction: read what sets a value, not only what reads it.
+
+
+### #231c — THE NUMBERS FOR #231b: seven of the eight drifted ops never execute, and the eighth opened #224's hole
+
+**First, whether the changed code ever runs** (CLAUDE.md's ladder: a read site is not a read event).
+`vmStep` counted by machine and opcode, 4,000 ticks, draws nothing. 131 million instructions on seed 1:
+
+| op | seed 1 | seed 2 | seed 3 |
+|---|---|---|---|
+| 9, 10, 179 | never, any machine | never | never |
+| 13 | particle 21,360, solo 4,883, plasmid 0 | never | never |
+| 14 | never | never | particle 3,054, solo 2,454 (unchanged body) |
+| 16 BUD | never | never | **particle 88,967, solo 31,551** |
+| 20, 53 | never | never | particle 1 and 7 |
+| 226 CLONE | never | particle 1,132, solo 601 | never |
+
+(The plasmid pass executed 7-9 distinct opcodes per seed at all; the particle machine 58-102; 5 opcodes
+carry 90% of every machine's instructions.) So on seeds 1-2 at 4,000 ticks no op #231b changed ran in
+a machine where it changed. **Seed 1's #231b trajectory is identical to #231's at every checkpoint to
+4,000 ticks.** The drift sat in code nothing executes, which is why nobody noticed it for 200 entries.
+
+**Seed 3 is where it bites — op 16 in solo.** Births through the program bud (the birthQueue), 4,000 ticks:
+
+| | buds queued (particle / solo) | births through the queue | share of parented births |
+|---|---|---|---|
+| #231 | 692 / 159 | 23 + 4 = 27 | 6.7% |
+| #231b | 2,034 / 389 | 49 + 10 = 59 | 13% |
+
+A cheaper solo bud doubled program-driven reproduction — including in the PARTICLE machine, whose op
+did not change: the lineages that bud spread. On seeds 1-2 the path carries nothing (0 of 409).
+
+**The headline, 20k ticks, `harness-oee`, #231 -> #231b:**
+
+| seed | entropyRatio | kinds early -> late | late new kinds / 1k | late population |
+|---|---|---|---|---|
+| 1 | 0.90 -> 0.90 | 10 -> 9.6 (both) | 1.08 (both) | 159 (both) |
+| 2 | 0.94 -> **1.08** | 10 -> 8 / 10 -> 8.6 | 0 -> 0.15 | 341 -> **1,418** (peak 1,528) |
+| 3 | 0.93 -> **1.02** | 11.5 -> 8.1 / **12.4 -> 19.3** | 0.31 -> **8.31** | 368 -> 411 |
+
+Seed 3 is the most interesting row: kinds GROWING across the run with late novelty up 27x. Seed 2 is
+the disqualifying one: the population ran toward CAP. **Why:** a birthQueue birth goes through
+`addParticle`, which checks the parent's provision (PROV_BIRTH) but has NO world-pool gate. #224 found
+exactly this — the pool is the only effective population control, and "any future attempt to let
+gathering buy births must bring its own density dependence first." The particle machine's bud already
+paid from provision; solo's paid in amplitude (`amp*=0.5`), which is what held it down. Handing solo the
+particle body made the bud nearly free in amplitude on a machine that runs every particle every tick.
+
+**So op 16 is reverted to its #231 bodies** and carries a comment saying why. #231b as shipped changes
+ops 9, 13, 14, 53 and 179 only, and the per-op rig confirms every other op — op 16 included — is
+hash-identical to the pre-#231 engine in every machine. The 20k confirmation that seeds 2 and 3 return to
+the #231 numbers with op 16 reverted is running as this is committed (S2R_PENDING).
+
+**What moved in the universe:** as shipped, nothing measurable at 20k on three seeds, because the ops it
+changed do not run. What the session FOUND moving it is the bud path: a program-controlled reproduction
+channel that bypasses the pool, carries up to 13% of births on one seed, and on that seed produced the
+only rising kinds curve in this entry. It needs density dependence before it can be opened: gate the
+birthQueue drain through the same pool (or a crowding term), then re-run seeds 2 and 3. That is the
+next session's experiment, stated with its known failure mode.
+
+Checked: substrate-test TICKS=40 on seeds 1-3 and FOUND=0 on the final engine: running as this is committed (ST_PENDING).
