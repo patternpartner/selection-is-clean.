@@ -21985,3 +21985,63 @@ verdict.
 
 **Out of scope, not touched:** `vmStep` as it stands, the op 16 / op 20 bodies, the law table,
 `LAW_KCAP`, `WORLD_ENERGY_REGEN`, `INHERIT_SD`, and PR #65's branch (`cursor/substrate-obligatory-d43e`).
+
+#### #237 RESULT — DELETE, by 20,000 ticks, seeds 1-6 (rule applied as pre-registered, not revised)
+
+**Differing seeds: 2 of 6 (seeds 2 and 3).** That is below the rule's floor of 3, so the rule's
+outcome is **DELETE**, and the rule does not score the differing seeds. **Horizon: 20,000 ticks.**
+All 30 jobs (6 opexec, 24 oee/est) exited 0 with empty `.err`. `loopErrors` and `driverErr` are 0,
+est `err` is null, and `collapsing` is false on every output. Comparisons: est outputs by raw `cmp`,
+oee outputs by `jq -S` after deleting every `timing_ms` (the only wall-clock field).
+
+| seed | opexec chemExec (first) | oee arms | est arms | class |
+|---|---|---|---|---|
+| 1 | 0 (—)              | identical | identical | not reached, plumbing gate PASS |
+| 2 | 413,047 (5,720)    | differ    | differ    | **scored-set** |
+| 3 | 8,612 (8,434)      | differ    | differ    | **scored-set** |
+| 4 | 22,239 (3,003)     | identical | identical | ran, no effect |
+| 5 | 0 (—)              | identical | identical | not reached, plumbing gate PASS |
+| 6 | 2,054 (2,835)      | identical | identical | ran, no effect |
+
+Raw values, c1 = CHEM=1 (evolving) / c0 = CHEM=0 (frozen seed table). estFrac is shown with its
+raw counts, because the denominators are small:
+
+| seed | entropyRatio c1 / c0 | kinds_late c1 / c0 | estFrac c1 (est/late) | estFrac c0 (est/late) | takeovers c1 / c0 |
+|---|---|---|---|---|---|
+| 1 | 0.90 / 0.90 | 9.6 / 9.6 | 0.0039 (3/767)   | 0.0039 (3/767)  | 2 / 2   |
+| 2 | 1.00 / 0.97 | 8.0 / 8.3 | 0.0099 (10/1008) | 0.0059 (6/1022) | 6 / 0   |
+| 3 | 0.97 / 0.85 | 8.9 / 8.6 | 0.0106 (11/1041) | 0.0075 (6/799)  | 0 / 2   |
+| 4 | 0.92 / 0.92 | 8.1 / 8.1 | 0.0048 (4/827)   | 0.0048 (4/827)  | 1 / 1   |
+| 5 | 0.90 / 0.90 | 8.4 / 8.4 | 0.0069 (7/1010)  | 0.0069 (7/1010) | 6 / 6   |
+| 6 | 0.98 / 0.98 | 9.1 / 9.1 | 0 (0/397)        | 0 (0/397)       | 16 / 16 |
+
+**The DELETE comes from the count floor, not from a neutral result, and this is recorded so the
+verdict is not read as "no effect".** On the two differing seeds, CHEM=0 is lower on entropyRatio 2/2
+(mean 0.985 -> 0.91, gap 0.075) and on estFrac 2/2 (established 10 -> 6 and 11 -> 6, about -35%
+relative). kinds_late splits (8.0 -> 8.3, 8.9 -> 8.6). If there were no floor, (a) and (c) would
+clear their thresholds. But the floor exists to refuse exactly this sample: two seeds, estFrac gaps
+of 4-5 lineages each, a seed-3 c0 late-lineage denominator of 799 against 1041, and an entropy gap
+carried mostly by one seed (0.12 on s3, 0.03 on s2). **The rule is applied as written. Revising it
+after seeing the numbers is the move pre-registration exists to block.** If someone wants to reopen
+this, it has to be a NEW pre-registered experiment (for example seeds 7-12, or a longer horizon),
+stated as one. It is not a re-read of this one.
+
+**What the four no-effect seeds say, and what they don't.** On 4 of 6 seeds, evolving the table made
+no measurable difference to the dependent variable by tick 20k: two never evaluated a recipe, and
+two evaluated one (22,239 and 2,054 times in opexec) with outputs byte-identical in both rigs.
+**Caveat on seeds 4 and 6:** the chemExec counts come from the opexec rig's own trajectory. The oee
+and est rigs never printed `__liveness`, so from here I cannot separate "ran in those rigs, and the
+frozen and evolved tables made the same world" from "never ignited in those rigs". The classification
+is the same either way (not differing). A draw-free `__liveness['cell.chemExec']` readout in oee/est
+would settle it. It is optional and does not change the count.
+
+**Scope.** This measures the dependent variable, not selection. Variance is not sorting, and nothing
+here says selection did or did not sort recipes. "Not by 20,000" is not "never" (#217d).
+
+**Owed next (not done in this commit):** the removal listed in the rule. That is the chemistryTable
+mutation block in `mutateGenome`, `chemistryMutRate`, the #217s chem verdict
+(`chem.trial/kept/revert`, `CHEM_VERDICT`), and the `CHEM` knob plus its `KNOBS` line. After that,
+the field runs `seedChemistryTable()` as a constant and old saves load the seed table. Assert the
+count of removed sites. Search aliases of `chemistryTable` (`recipe`, `mono`) and read the enclosing
+functions. Then run substrate-test at 40 / 900 / default and FOUND=0 (SEED=1..6 on any red row),
+and smoke.sh on a quiet machine. The field's recipe step and op 20 stay: they were not tested.
