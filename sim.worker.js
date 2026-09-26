@@ -324,7 +324,17 @@ Universe.prototype.handle = function (d) {
   const api = () => inst.api;
 
   if (d.type === 'init') { this.boot(d); return; }
-  if (d.type === 'halt') { this.halted = true; return; }
+  if (d.type === 'halt') {
+    this.halted = true;
+    // #240: cancel every outstanding scheduleNext handle (watchdog can stack a second while PACE>3s).
+    const hs = this.__schedHandles || [];
+    this.__schedHandles = [];
+    for (let i = 0; i < hs.length; i++) {
+      const h = hs[i];
+      try { (h.raf && this.env ? this.env.caf : clearTimeout)(h.id); } catch (_) {}
+    }
+    return;
+  }
 
   if (d.type === 'resize') {
     if (this.canvas) { this.canvas.width = d.w; this.canvas.height = d.h; }

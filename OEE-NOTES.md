@@ -22091,3 +22091,14 @@ Chemistry / CHEM / recipe evaluation / peer receive / broadcast logic are untouc
 
 Purpose: make the peer feature startable again, or force a later retire-or-prove on measured grounds
 rather than leave a dead hole.
+
+### #240 — PACED HALT PATH GUARDS THE NATIVE setTimeout. Codex P1 on PR #64.
+
+(OEE #239 is reserved for peer-inscription retire-or-prove; this paced-halt fix is #240.)
+
+The worker's `raf` shim already refused to schedule after `halt`. `scheduleNext()` still used the native `setTimeout(loop, PACE)` (and the hidden-tab timeout) and went round that shim, so a paced world kept ticking and broadcasting `found` after pagehide.
+
+Fix: `scheduleNext` returns when `__inst.halted`, stores the pending timer id on `__inst`, and the worker's halt handler cancels it. Outside the worker `__inst` is absent and the guard is a no-op. Inscription / chemistry untouched.
+
+**P2 follow-up (Codex on PR #68).** When `PACE` is above the 3s watchdog threshold, watchdog `scheduleNext` could overwrite a single `__schedTimer` while the paced timeout was still pending; halt cancelled only the latest id. Now: every handle is retained and cancelled on halt, and `loop` returns immediately when `__schedHalted()`.
+
