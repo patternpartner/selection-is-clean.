@@ -21594,7 +21594,7 @@ substrate-test TICKS=40 on the closed engine: 262/0 on seeds 1-3 and FOUND=0.
   what showed op 16 never ran on the seed #231c blamed it for, and that a kept sunlight law had.
 Both are in `smoke.sh` (vm-equiv with no argument is a self-check).
 
-### #233 — DOES THE LAW VERDICT ERODE DIVERSITY? pre-registered before the trials exist
+### #234 — DOES THE LAW VERDICT ERODE DIVERSITY? pre-registered before the trials exist (first committed as #233 in ebded48, before any trial ran; renumbered because #233 went to the substrate entry, PR #65)
 
 #232 showed the verdict ("keep it if the population holds 70%") makes carrying capacity a one-way ratchet.
 The same verdict judges the laws that decide DIVERSITY: `INHERIT_SD` (#220f's mutation — the one change in

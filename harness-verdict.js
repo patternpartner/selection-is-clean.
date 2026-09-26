@@ -1,4 +1,4 @@
-// #233 — WHAT THE LAW VERDICT KEEPS, BY DIRECTION. The verdict keeps a law if the population holds 70% of
+// #234 — WHAT THE LAW VERDICT KEEPS, BY DIRECTION. The verdict keeps a law if the population holds 70% of
 // its pre-proposal mean (LAW_VIABLE). #232 showed that makes the carrying-capacity laws a one-way ratchet.
 // This asks the same of the laws that decide DIVERSITY rather than size: does the verdict prefer one
 // direction of INHERIT_SD (mutation, #220f), BIRTH_SHRINK or CONTACT_BLEND (the homogenisers, #222b)?
