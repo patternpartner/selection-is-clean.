@@ -9,6 +9,8 @@
 //   TICKS=4000 SEED=1 INDEX=engine.html WATCH=9,13,16,20,53,179,226 node harness-opexec.js
 // Output: one JSON object - per machine {instructions, distinctOps, opsCarrying90pct, top},
 // per watched op {count per machine, firstTick per machine}, and laws [[tick,name,from,to],...].
+// #237: also liveness {'cell.inscribe','cell.chemExec'} -> {count, firstTick}, the engine's own draw-free
+// counters: op 20 FIRING and a recipe EVALUATING, the two middle rungs #217d says are easy to merge.
 try{ require(require('path').join(__dirname,'harness-env.js')).applyKnobs(globalThis); }catch(_){}
 require(require('path').join(__dirname,'harness-env.js'))(globalThis);
 const fs=require('fs'),path=require('path');
@@ -25,7 +27,9 @@ m._compile('var __ox=new Float64Array(2048),__oxFirst=new Float64Array(2048);\n'
   prev=snap();
   for(let s=1;s<=T;s++){ globalThis.__detMs+=5; try{loop();}catch(e){errs++;}
     if(s%250===0){ const cur=snap(); for(const k in cur) if(cur[k]!==prev[k]) laws.push([s,k,+(+prev[k]).toPrecision(4),+(+cur[k]).toPrecision(4)]); prev=cur; } }
-  return {errs,N,laws,ox:__ox,first:__oxFirst};};`,'/tmp/opexec.js');
+  const L=['cell.inscribe','cell.chemExec'],live={};   // #237: the executed rung for CHEM, read not drawn
+  for(const n of L) live[n]={count:__liveness[n]|0,firstTick:(__liveness[n]|0)?__livenessFirst[n]:null};
+  return {errs,N,laws,ox:__ox,first:__oxFirst,live};};`,'/tmp/opexec.js');
 const r=globalThis.__OX(T);
 const M=['particle','plasmid','cluster','solo'];const machines={};
 for(let k=0;k<4;k++){ let tot=0;const ops=[];for(let o=0;o<512;o++){const c=r.ox[k*512+o];tot+=c;if(c>0)ops.push([o,c]);}
@@ -33,4 +37,4 @@ for(let k=0;k<4;k++){ let tot=0;const ops=[];for(let o=0;o<512;o++){const c=r.ox
   machines[M[k]]={instructions:tot,distinctOps:ops.length,opsCarrying90pct:tot?n90:0,top:ops.slice(0,8).map(x=>x[0])}; }
 const watched={};
 for(const o of WATCH){ watched[o]={}; for(let k=0;k<4;k++){ const c=r.ox[k*512+o]; if(c) watched[o][M[k]]={count:c,firstTick:r.first[k*512+o]}; } }
-console.log(JSON.stringify({ticks:T,seed:process.env.SEED||'1',loopErrors:r.errs,N:r.N,machines,watched,laws:r.laws}));
+console.log(JSON.stringify({ticks:T,seed:process.env.SEED||'1',chem:(globalThis.__CHEM??1),loopErrors:r.errs,N:r.N,liveness:r.live,machines,watched,laws:r.laws}));
