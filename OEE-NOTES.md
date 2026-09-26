@@ -21582,3 +21582,14 @@ particle array, every program, N and the next random draw are identical; the one
 event-log record of a serialized blob's LENGTH (10,988 -> 11,016 characters), because the liveness census
 inside that blob now lists #232's `law.capacityRefused`. Bookkeeping, not behaviour.
 substrate-test TICKS=40 on the closed engine: 262/0 on seeds 1-3 and FOUND=0.
+
+### #231f — two of this session's probes kept as rigs, because each one refused a wrong reading
+
+- **`vm-equiv.js <A.html> [B.html]`** — per-opcode equivalence between two engines: every op 0-440 through
+  every machine, full-state hash after each execution, first differing (machine, op) named. It proved #231
+  byte-identical and refused #231b's claim that op 179 was inert. Read its header's two cautions (the
+  warm-up runs the real simulation; the genome carries bookkeeping) before calling a difference behaviour.
+- **`harness-opexec.js`** — the EXECUTED rung, which nothing on the page measured: instructions per
+  machine per opcode, first-execution tick of each watched op, and every law change with its tick. It is
+  what showed op 16 never ran on the seed #231c blamed it for, and that a kept sunlight law had.
+Both are in `smoke.sh` (vm-equiv with no argument is a self-check).
