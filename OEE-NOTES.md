@@ -21267,3 +21267,48 @@ Checked in Chromium with the user's own 17of18 harvest: fresh field at 107-154 t
 universe resumed at its saved age (surface/0 150,647 vs 150,519 saved; surface/6 290,857; collective 123,202;
 layer slots restored); surface/5, which has no genome in that harvest, correctly started fresh; after new,
 all back to ~130. 0 page errors. layers-test 49/0.
+
+
+### #231 — ONE DISPATCH FOR FOUR MACHINES: the fold, proved byte-identical
+
+#229 left this as the brief: the opcode dispatch existed in four copies (particle `executeVM`, its plasmid
+pass, `executeClusterVM`, `executeSoloVM`) and they had drifted. That is the weight worth removing, and
+it is removal in the sense CLAUDE.md asks for — not a mechanism added.
+
+**What the copies actually were, measured before touching them.** The four switches were parsed into case
+bodies and compared token by token after renaming each case's own locals to canonical names (so `msi`,
+`msiP` and `msiC` compare equal). 239 labels in the particle switch:
+- **194 identical in every machine that had them.** The divergence was mostly spelling.
+- **45 genuinely different.** 37 of those differ only in solo, and every one of them is solo standing
+  in for a partner it does not have (partner reads return 0 or do nothing). The other 8 are drift:
+  ops 9, 10, 13, 14, 16, 20, 53, 179.
+- Solo simply never had 99 of the ops (it stopped receiving new ones around op 60); plasmid and
+  cluster lack 23, 126, 127.
+- Free variables: every case body reads only the per-instruction operands plus eight enclosing locals
+  (`prog`, `nInst`, `nPi`, `cl`, `d`, `sim`, `phaseAlign`, `proximity`). No `return`, no `continue`,
+  no fallthrough; three ops jump by assigning `ip`. So the dispatch could move into a function that
+  returns `ip`, with nothing reaching back into its callers.
+
+**#231 — the fold (byte-identical, by construction and by test).** `vmStep()` is the particle switch,
+verbatim, with each drifted case keeping every machine's own body behind `__vmMode`, and a table
+(`__vmAbsent`) of the ops each machine never had. Callers keep their preambles and postambles and set
+the context once per program run, the way `__vmRC` and `__uaVoice` were already set. The generator
+refuses to emit if any case reads an enclosing local it has not mapped.
+
+The test that says it is identical, and why it has teeth: boot old and new engines on the same seed, warm
+up, then drive EVERY opcode 0-440 through EACH machine, three operand sets each, hashing the full state
+(registers, actions, every particle array, the field and inscription arrays, programs, genome, next
+random draw) after every single execution. 5,292 executions per pass; four passes (seeds 1-3, warm-up
+400-1500 ticks, with and without every `*Influence`/`*Strength` gene forced to 0.5 so the gated bodies
+run): **hash-identical at every step.** A planted change — solo's `*0.3` in op 9 made `*0.31` — is
+caught at exactly `SOLO 9`, its first opportunity. Trajectories: `FOUND=0` seed 2 identical at every 500-tick checkpoint to 2,500 ticks; seeds 1-3 to
+4,000 are running and are appended below when they land. Wall time the same within noise (311 s vs
+321 s for that run, both under the same contention).
+
+Engine: 29,882 lines (from 32,080). `harness-clamp.js` now expects three `switch(op)` sites.
+
+**What moved in the universe: nothing, and that is the claim.** This entry is a removal: 2,198 lines of
+duplicated dispatch gone, the same universe on every trajectory tested. The drift the fold made visible
+is decided in #231b, separately, so that a change in behaviour is never mistaken for a refactor.
+
+**Checked:** substrate-test TICKS=40 seed 1 262/0; harness-clamp (three sites) and voice-test 21/0.

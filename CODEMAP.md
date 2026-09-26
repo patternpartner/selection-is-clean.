@@ -490,6 +490,25 @@ three shared and were inert in every dispatch but the particle VM until #131 imp
 carry no flag: whether they are worth keeping is selection's call, expressed the same way it is for
 every other opcode — by whether programs go on carrying them.
 
+**#231 — the table above is history: there are THREE `switch(op)` dispatches now.** The particle,
+plasmid, cluster and solo switches are one function, `vmStep(op,src,dst,k,si,di,i,j,ip)`, defined just
+above `executeVM`. Each caller keeps its own preamble (register loading, costs, the NaN guard on `k`,
+the `si`/`di` modulus) and its own postamble (action application), sets the per-run context once before
+its loop — `__vmMode` (`VM_MAIN`/`VM_PLAS`/`VM_CLUS`/`VM_SOLO`), `__vmProg`, `__vmN`, `__vmLen`,
+`__vmNPi`, `__vmCl`, `__vmSim`, `__vmPA`, `__vmProx`, `__vmD` — and calls `ip=vmStep(...)` per
+instruction. The return value is `ip` because ops 14, 186 and 229 jump. Selfwrite (#199), the
+bound-opcode block and the register clamp are the function's tail, shared.
+
+- `__vmAbsent[mode][op]` is the list of ops a machine NEVER HAD (solo lacks 99, plasmid and cluster lack
+  23/126/127). Such an op skips the switch and runs only the tail, exactly as it fell out of that
+  machine's own switch before. It is the drift, written down, not a design.
+- A case with a `if(__vmMode===VM_SOLO){ // SOLO copy, kept as it was` block is one where the solo
+  machine has no partner and substitutes 0 or a no-op for a partner read. 37 of these remain; plus the
+  8 drifted ops #231b decides.
+- `profileVM` is deliberately NOT folded: its cases are stubs (#176, pricing is not execution).
+- A rig that text-patches a case now patches it once for all four machines. `harness-clamp.js` counts
+  three sites.
+
 `CORE_OPCODES=236`, `MAX_BOUND_OPCODES=192` (#129, was 96), `OPCODE_COUNT=428` (was 332),
 `DIMS_MAX=32` (#129, was 16), `CAP=1800`.
 

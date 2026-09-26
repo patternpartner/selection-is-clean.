@@ -238,7 +238,10 @@ for(const [FN,SIG] of [['addParticle','function addParticle(x,y,tv,born,parentA,
 // equivalent to a default at the end — and the anchor `switch(op){` is a string that actually exists,
 // which a default at the end is not. Previously an unmatched op fell out of the switch doing nothing;
 // now it counts and breaks. Same behaviour, which the fingerprint control has to confirm.
-const OPSITES=['shadow','sensor','particle','plasmid','cluster','shadow2'];
+// #231: the particle, plasmid, cluster and solo switches are ONE switch now (vmStep), so there are three
+// sites, not six. An op a machine never had (vmStep's __vmAbsent table) skips the switch in that machine
+// and is counted neither as executed nor as a miss here: a miss means an op NO machine implements.
+const OPSITES=['profile','sensor','vm'];
 // The set of opcodes the PARTICLE VM actually implements, read off its own case labels rather than
 // inferred from what happened to miss at runtime. An opcode that is unimplemented but never executed
 // would be invisible to a runtime histogram, and this number decides whether a fatal default is
@@ -258,12 +261,12 @@ let IMPLEMENTED=null;
   if(IMPLEMENTED.length<50){ console.log(JSON.stringify({error:'implausible case count '+IMPLEMENTED.length})); process.exit(1); }
 }
 { const n=code.split('switch(op){').length-1;
-  if(n!==6){ console.log(JSON.stringify({error:'expected 6 switch(op) dispatches, saw '+n})); process.exit(1); }
+  if(n!==OPSITES.length){ console.log(JSON.stringify({error:'expected '+OPSITES.length+' switch(op) dispatches, saw '+n})); process.exit(1); }
   let k=0;
   code=code.split('switch(op){').map((seg,i)=> i===0?seg:('__opAll['+(k)+']++;switch(op){default:{__opMiss('+(k++)+',op);break;}'+seg)).join('');
   // the split/join above prefixes each occurrence; k advances once per join point
 }
-code = 'const __opAll=new Float64Array(6),__opMissN=new Float64Array(6),__opMissCore=new Float64Array(6),__opMissBound=new Float64Array(6);\n'
+code = 'const __opAll=new Float64Array(3),__opMissN=new Float64Array(3),__opMissCore=new Float64Array(3),__opMissBound=new Float64Array(3);\n'
      + 'const __opMissHist=new Map();\n'
      + 'function __opMiss(s,op){__opMissN[s]++;if(op>=CORE_OPCODES)__opMissBound[s]++;else __opMissCore[s]++;__opMissHist.set(op,(__opMissHist.get(op)||0)+1);}\n'
      + code;
@@ -484,12 +487,12 @@ const driver=`
     ATOM_XFER:(typeof __ATOM_XFER!=='undefined'?__ATOM_XFER:null), rate:MEME_RATE, thresh:MEME_PROX_THRESH,
     siteOpened:globalThis.__xfSite||0, proxMax:globalThis.__proxMax||0, xf:globalThis.__xf||null }; }catch(e){ return {error:String(e&&e.message||e)}; } };
   globalThis.__opcodes=function(){ try{
-    const sites=[]; for(let i=0;i<6;i++) sites.push({site:i,
+    const sites=[]; for(let i=0;i<3;i++) sites.push({site:i,
       exec:__opAll[i], miss:__opMissN[i], missCore:__opMissCore[i], missBound:__opMissBound[i],
       missFrac:__opAll[i]?+(__opMissN[i]/__opAll[i]).toFixed(5):0});
     const h=[...__opMissHist.entries()].sort((a,b)=>b[1]-a[1]).slice(0,15);
     let tExec=0,tMiss=0,tCore=0,tBound=0;
-    for(let i=0;i<6;i++){ tExec+=__opAll[i]; tMiss+=__opMissN[i]; tCore+=__opMissCore[i]; tBound+=__opMissBound[i]; }
+    for(let i=0;i<3;i++){ tExec+=__opAll[i]; tMiss+=__opMissN[i]; tCore+=__opMissCore[i]; tBound+=__opMissBound[i]; }
     // Programs carrying at least one op with no implementation. The EXECUTION rate says how much work is
     // wasted; this says how much of the POPULATION a fatal default would kill, which is the survivability
     // question and is not the same number.
