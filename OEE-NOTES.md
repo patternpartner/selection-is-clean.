@@ -21768,9 +21768,11 @@ the row passed on the denominator it already had.
 **Smoke, quiet machine, one node job.** `TICKS=40`, playwright from an unsaved install, chrome at
 `/opt/google/chrome/chrome`. First pass, before reach's budget moved: **52 ok, 1 failing**, and the
 one failure is `reach-test` exit 124. grammar ok, autosave ok, slot ok, atrophy ok, attractor ok,
-collective ok, pool ok, pace ok, layers ok. The reach budget above is the follow-up to that one row. That pass ran before #232's ceiling
-was on this branch. The anchors were re-counted on the ceiling engine and still match. Second
-pass, same machine, after the rebase, with reach at 600s: **53 ok, 0 failing**. grammar, reach,
-autosave, slot, atrophy, and attractor are in that count. Collective's exit 0 is not a missing-binary
-skip: the chromium path the rig searches was a symlink to the installed chrome, and the same
-`SECS=22` window alone had already logged inbound 19, outbound 1.
+collective ok, pool ok, pace ok, layers ok. The reach budget above is the follow-up to that one row. That first pass ran before #232's ceiling
+was on this branch. Second pass, ceiling included, op 16 still open, reach at 600s: **53 ok, 0 failing**.
+grammar, reach, autosave, slot, atrophy, and attractor are in that count. Collective's exit 0 is not a
+missing-binary skip: the chromium path the rig searches was a symlink to the installed chrome, and the
+same `SECS=22` window alone had already logged inbound 19, outbound 1. `main` then took #231e's close
+and #231f's two rigs (`harness-opexec.js`, `vm-equiv.js`). Probed, `maybe()`, and `checkExtinction`
+were counted again on that engine and still match once. The 53 does not include those two rigs, and it
+does not include the closed op 16.
