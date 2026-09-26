@@ -21549,3 +21549,35 @@ proposal. From there: #231d 469 -> 804 -> 1,297 -> 1,314 living; #232 360 -> 353
 **What moved in the universe:** nothing on any run where no sunlight proposal was made, by construction.
 On the one run where it was, the world no longer fills toward CAP — which also means seed 2's
 entropyRatio 1.08 in #231b/d, carried by 1,400 particles, was not a gain to keep.
+
+#### #231e RESULT — the rule, applied: OP 16 CLOSES
+
+Seeds 4-9, 20k ticks, OPEN vs CLOSED (both on the #231d engine, i.e. without #232's ceiling):
+
+| seed | op 16 | entropyRatio open / closed | kinds late open / closed | late new kinds / 1k | late pop open / closed |
+|---|---|---|---|---|---|
+| 4, 5, 6, 9 | series identical: made no difference | 0.92, 0.97, 0.98, 1.00 (both) | | | |
+| 7 | live | 0.95 / **1.04** | **11.4** / 9.3 | **2.15** / 0.62 | 321 / 394 |
+| 8 | live (arms part by tick 501) | 0.95 / 0.99 | **8.8** / 8.1 | **0.46** / 0 | 364 / **872** |
+
+- Live on **2 of 6** seeds (with seed 3: 3 of 9 overall). Op 16 is mostly dormant code.
+- (a) mean late population OPEN 343 vs CLOSED 633 — OPEN is lower; does not trip.
+- **(b) mean entropyRatio OPEN 0.95 vs CLOSED 1.015 — lower by 0.065, past the 0.05 allowed. TRIPS.**
+- Benefit: needs three live seeds; there are two. None claimed.
+
+**So op 16 closes**: plasmid, cluster and solo keep the bud bodies they had before #231, and the case
+carries a comment saying why. Two things weaken (b) and are recorded, not acted on:
+- **Seed 8's CLOSED run is carried by the ratchet #232 closes.** Law recorder, that run: upkeep
+  0.0004 -> 0.000289 kept at 8,500 (capacity 692, allowed), then **sunlight 0.2 -> 0.405 kept at 11,500**
+  (capacity ~1,400 — #232 refuses it); population 486 -> 849. Its entropyRatio is a world twice the
+  normal size.
+- Late kinds and late novelty went the OTHER way on both live seeds (and on seed 3).
+Neither reopens it without a new rule and new seeds. **What a fair re-test looks like, if anyone wants
+it:** both arms on the #232 engine, seeds where op 16 is live (screen with the first-execution
+recorder, which is cheap), the rule fixed first.
+
+**Checked:** the closed engine against pre-#231, every op except 9/13/53/179 hash-identical in every
+machine (seed 1, warm 400). Seed 2 warm 1500 differs, and it was traced rather than waved at: every
+particle array, every program, N and the next random draw are identical; the one difference is an
+event-log record of a serialized blob's LENGTH (10,988 -> 11,016 characters), because the liveness census
+inside that blob now lists #232's `law.capacityRefused`. Bookkeeping, not behaviour.

@@ -504,8 +504,8 @@ bound-opcode block and the register clamp are the function's tail, shared.
   machine's own switch before. It is the drift, written down, not a design.
 - A case with a `if(__vmMode===VM_SOLO){ // SOLO copy, kept as it was` block is one where the solo
   machine has no partner and substitutes 0 or a no-op for a partner read. 37 of these remain. Op 16 (BUD) was
-  reverted in #231c on a false premise and reopened in #231d. The only other machine-dependence is context (#231b): op 9's depositor signature and solo strength, op 16's
-  solo rate, and `__vmLen` (the running program's length) for op 14's jump.
+  reverted in #231c on a false premise, reopened in #231d, and CLOSED by #231e's pre-registered rule. The only other machine-dependence is context (#231b): op 9's depositor signature and solo strength, and
+  `__vmLen` (the running program's length) for op 14's jump.
 - `profileVM` is deliberately NOT folded: its cases are stubs (#176, pricing is not execution).
 - A rig that text-patches a case now patches it once for all four machines. `harness-clamp.js` counts
   three sites.

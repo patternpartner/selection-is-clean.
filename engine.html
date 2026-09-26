@@ -22096,6 +22096,33 @@ function vmStep(op,src,dst,k,si,di,i,j,ip){
         if(vmRegs[si]>k)ip=Math.abs(Math.floor(vmRegs[di]))%__vmLen;break;   // #231b: the program RUNNING - a plasmid jumps within the plasmid
       case 15:{const ageFrac=Math.min(1,page[i]/800);vmRegs[di]=vmRegs[si]*(1-ageFrac)+k*ageFrac;}break;
       case 16:
+        // #231e: CLOSED by a rule written before its data. Unified (every machine budding the particle
+        // machine's way) it was live on 2 of seeds 4-9, and on those two its mean entropyRatio was 0.065
+        // below the closed arm - past the 0.05 the rule allowed. Late kinds and novelty went the other way,
+        // and one closed run was carried by a sunlight law #232 now refuses; none of that reopens it
+        // without a new rule and new seeds. The machines keep the bodies they had before #231.
+        if(__vmMode===VM_PLAS||__vmMode===VM_CLUS){ // PLAS/CLUS copy, kept as it was
+        {
+          if(amp[i]>0.4&&page[i]>80&&N+birthQueue.length<CAP-1&&Math.random()<0.03){
+            const pnt=new Float32Array(DIMS);
+            for(let dd=0;dd<DIMS;dd++)pnt[dd]=tend[i*DIMS+dd]+k*0.1*(vmRegs[(dd+4)%12]-0.5);
+            birthQueue.push({x:__cl(px[i]+vmRegs[si]*15,0,W),y:__cl(py[i]+vmRegs[di]*15,0,H),t:pnt,parent:i});
+            amp[i]*=0.5;
+          }
+        }break;
+        }
+        if(__vmMode===VM_SOLO){ // SOLO copy, kept as it was
+        {
+          if(amp[i]>0.4&&page[i]>80&&N+birthQueue.length<CAP-1&&Math.random()<0.015){
+            const offX=__cl(px[i]+vmRegs[si]*15,0,W);
+            const offY=__cl(py[i]+vmRegs[di]*15,0,H);
+            const nt=new Float32Array(DIMS);
+            for(let dd=0;dd<DIMS;dd++)nt[dd]=tend[i*DIMS+dd]+k*0.1*(vmRegs[(dd+4)%12]-0.5);
+            birthQueue.push({x:offX,y:offY,t:nt,parent:i});
+            amp[i]*=0.5;
+          }
+        }break;
+        }
         {
         // LEAP 20 (#54) — IMAGINATION GETS STAKES. The shadow sim was ablated this session and measured
         // EXACTLY 0.000 across five seeds: it fires, burns real compute, and changes nothing. Largest
@@ -22105,7 +22132,7 @@ function vmStep(op,src,dst,k,si,di,i,j,ip){
         // imagination cannot earn that price, the ledger will say so and removal is the honest next act.
         {const _dc=(genome.decisionConfidence||0);
          const _tilt=1+IMAGINE_BIAS*_dc;
-         if(amp[i]>0.4 && page[i]>80 && N+birthQueue.length<CAP-1 && Math.random()<0.03*_tilt*MODE_REPRO[pMode[i]]*(__vmMode===VM_SOLO?0.5:1)){ // #57: SURGE breeds hard, HOLD barely breeds
+         if(amp[i]>0.4 && page[i]>80 && N+birthQueue.length<CAP-1 && Math.random()<0.03*_tilt*MODE_REPRO[pMode[i]]){ // #57: SURGE breeds hard, HOLD barely breeds
            if(_dc>0)amp[i]-=IMAGINE_COST*_dc;
           const offX=__cl(px[i]+vmRegs[si]*15,0,W);
           const offY=__cl(py[i]+vmRegs[di]*15,0,H);
