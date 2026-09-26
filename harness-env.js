@@ -46,7 +46,9 @@ console.error=()=>{};console.warn=()=>{};};
 // to use it as a control. A knob and its KNOBS entry are one change or they are a trap.
 // #238: CHEM and CHEM_VERDICT leave the list in the same change that removes their gates -- the
 // same rule read backwards: an entry with no gate behind it is a control that reads like one.
-module.exports.KNOBS = ['MUTUALISM','RQ_TRAIT','GENO_PARASITE','SELF_PREDICT','GRIP_SEED','MEME_TRANSFER','MOTIF_SELECT','FOUND','SELFMODEL','LAW_PERSIST','MUTMAG','AIM','INHERIT','INHERIT_SD','RATION','PROV_BIRTH','RARE_BIRTH_K','OUTLIER_BIRTH_K','EXTINCT_UNDO','AIM_STILL','LAW_KCAP'];
+// #241: PEERINS gates the inscription bundle (spark writes, inscription networkSend, receive
+// writes). Unset means on, which is peerInsOn's default. PEERINS=0 is Arm B and keeps the draws.
+module.exports.KNOBS = ['MUTUALISM','RQ_TRAIT','GENO_PARASITE','SELF_PREDICT','GRIP_SEED','MEME_TRANSFER','MOTIF_SELECT','FOUND','SELFMODEL','LAW_PERSIST','MUTMAG','AIM','INHERIT','INHERIT_SD','RATION','PROV_BIRTH','RARE_BIRTH_K','OUTLIER_BIRTH_K','EXTINCT_UNDO','AIM_STILL','LAW_KCAP','PEERINS'];
 module.exports.applyKnobs = function(g){
   for (const kn of module.exports.KNOBS)
     if (process.env[kn] !== undefined) g['__'+kn] = parseInt(process.env[kn], 10);

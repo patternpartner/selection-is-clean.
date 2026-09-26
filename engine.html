@@ -1779,7 +1779,8 @@ function networkBroadcast(){ fired('network.broadcast');
       const idx=Math.floor(Math.random()*FIELD_W*FIELD_H);
       if(cellProgStr[idx]>bestStr){bestStr=cellProgStr[idx];bestIdx=idx;}
     }
-    if(bestIdx>=0)networkSend('inscription',{op:cellProgOp[bestIdx],A:cellProgA[bestIdx],B:cellProgB[bestIdx],str:bestStr});
+    // #241: the twenty index draws above always run. PEERINS=0 does not send.
+    if(bestIdx>=0&&peerInsOn())networkSend('inscription',{op:cellProgOp[bestIdx],A:cellProgA[bestIdx],B:cellProgB[bestIdx],str:bestStr});
   }
 }
 
@@ -1852,6 +1853,9 @@ function xenoImpact(sx,sy){
 // ONE RANDOM DRAW, the same one that was already there. At netAssort 0 the multiplier is exactly 1
 // and the stream is bit-identical to the pre-#202 engine. Force off with ASSORT=0.
 function assortOn(){return (typeof globalThis==='undefined')||((globalThis.__ASSORT??1)|0)!==0}
+// #241: the inscription bundle (cold-start spark, inscription send, inscription receive writes).
+// Default on. PEERINS=0 skips those effects and does not add or skip a Math.random. OEE-NOTES #241.
+function peerInsOn(){return (typeof globalThis==='undefined')||((globalThis.__PEERINS??1)|0)!==0}
 // The world's own mean tendency, computed ONCE per receive rather than per migrant - it is O(N) and
 // the queue can hold twenty.
 function worldMeanTend(){
@@ -2060,7 +2064,8 @@ function networkReceive(){ fired('network.receive');
     const ins=incomingInscriptions.shift();
     if(Math.random()>rec)continue;
     const idx=Math.floor(Math.random()*FIELD_W*FIELD_H);
-    if(cellProgStr[idx]<0.2){ // only inscribe where nothing is already strong
+    // #241: receptivity draw and cell-index draw above always run. PEERINS=0 does not write.
+    if(cellProgStr[idx]<0.2&&peerInsOn()){ // only inscribe where nothing is already strong
       genome.netApplied.inscription++;
       fired('cell.inscribeNet');   // #217d: a peer igniting the substrate this universe never ignited itself
       networkSend('applied',{kind:'inscription'});
@@ -22090,9 +22095,22 @@ function vmStep(op,src,dst,k,si,di,i,j,ip){
       case 20:
         {
         fired('cell.inscribe');   // #217d
-        // #237: the local write is gone. One case, five assignments removed: cellProgOp,
-        // cellProgA, cellProgB, and cellProgStr on both branches of the overwrite test.
-        // The opcode still counts. Peer receive is a different writer and stays.
+        // #241 Arm A: the #239 cold-start spark, put back. e827f81 kept the #239 note and
+        // resolved this case to the #237 stub (fired only). Write only into a cold cell.
+        // Strength is floored at 0.35 so one spark clears the broadcast gate at 0.3.
+        // No Math.random here. PEERINS=0 skips the writes. This is not the #237 overwrite
+        // test and not the reinforce-weak branch; those stay deleted.
+        if(peerInsOn()){
+          const ix20=Math.floor(px[i]/(W/FIELD_W)),iy20=Math.floor(py[i]/(H/FIELD_H));
+          const ci20=__cl(iy20*FIELD_W+ix20,0,FIELD_W*FIELD_H-1);
+          if(cellProgStr[ci20]<0.2){
+            const spark20=Math.min(1,Math.max(0.35,Math.abs(vmRegs[si]*k)*inscStr()));
+            cellProgOp[ci20]=Math.abs(Math.floor(vmRegs[si]))%12;
+            cellProgA[ci20]=vmRegs[di];
+            cellProgB[ci20]=k;
+            cellProgStr[ci20]=spark20;
+          }
+        }
       }break;
       case 21:{
         const rx21=Math.floor(px[i]/(W/FIELD_W)),ry21=Math.floor(py[i]/(H/FIELD_H));
