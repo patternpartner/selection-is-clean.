@@ -173,8 +173,8 @@ git checkout main && git merge --ff-only <branch> && git push -u origin main
   running that time, so it is the suite's own overhead, not a competing process. **Do not retune the
   threshold to make it green** — that is the move this file exists to prevent, and the low outbound
   count is the actual fragility.
-  **Updated after a second failure and an engine A/B.** It is now 2 of 2 red INSIDE `smoke.sh`
-  (`←15 →4`, `←18 →5`) and 7 of 7 green standalone, which is too clean a split to call random. But
+  **Updated after a second failure and an engine A/B.** It is now 3 red INSIDE `smoke.sh`
+  (`←15 →4`, `←18 →5`, and `←11 →4` at `#249c`; green inside it at `#251`) and 9 of 9 green standalone, which is too clean a split to call random. But
   the healthy RATIO is not stable across days: standalone outbound was `1,1,1,2` one day and `2,4,3`
   the next, so "high teens or above" was a one-day reading. **The denominator, not the ratio, is the
   quantity to look at** — inbound sits at 17-28 throughout; outbound is a single-digit count and the
