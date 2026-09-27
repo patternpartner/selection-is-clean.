@@ -1,0 +1,28 @@
+{
+  "title": "Just Like Us",
+  "about": "Episode 6, the user's idea: a kind man seen all through, until at the very end he peels back his face and the series' robot is underneath, eye still blue (not a villain). The question it leaves: would you have known, and does it matter if he was only ever kind? Silent film for the user's own music; only the last line is written.",
+  "cast": {
+    "man": "a friendly handsome man in his thirties with short brown hair and a warm perfect smile, wearing a grey cardigan"
+  },
+  "voice": null,
+  "tail": 1.2,
+  "scenes": [
+    {
+      "prompt": "cinematic film shot, a cosy busy cafe in the morning, {man} hands coffee cups across the counter to smiling customers, each paper cup printed with a bright yellow smiley face, everyone lights up around him, warm sunlight, slow tracking shot"
+    },
+    {
+      "prompt": "cinematic film shot, a rainy city street, {man} holds a black umbrella over a frail elderly woman and gently walks her across the road, smiling kindly down at her, reflections on wet tarmac, soft light, slow push-in"
+    },
+    {
+      "top": "cinematic film shot, a sunny park, {man} kneels down to comfort a small crying boy, handing him a yellow balloon with a smiley face on it, the boy starts to smile, warm and tender, wide shot",
+      "bottom": "cinematic extreme close-up of the face of {man}, his wide warm smile held perfectly still, eyes open and never blinking, not a single muscle moving, subtly uncanny, soft light, static camera"
+    },
+    {
+      "prompt": "cinematic film shot, night, a dim bathroom mirror, {man} hooks his fingers under his jaw and slowly peels his human face away like a soft rubber mask, revealing underneath a smooth white round robot head with one large glowing blue eye, the smiling human face hangs limp from his hand, eerie and quiet, close-up",
+      "fade": 3.2,
+      "say": "We only get to teach it once.",
+      "lead": 3.7,
+      "whisper": true
+    }
+  ]
+}
