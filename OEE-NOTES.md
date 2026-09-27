@@ -23015,3 +23015,8 @@ novelty clock's grid (first three axes, 10 bins over +/-1.5, at least 3 members)
 4. The seeds 81-86 appear nowhere in these notes. One run of each arm; the horizon (60k) is said out loud.
 5. **Whatever the outcome, nothing ships to the field from this run.** A positive result goes to the user as the
    proposal for stage 3 (the tournament in the real field); a negative one says the design needs a different judge.
+
+**#254, rescheduled before any data was read.** The first launch ran both arms at once: twelve world processes,
+each holding 1.0-1.4 GB, on a 15 GB machine. Load average 20 on four cores, per-tick speed four to five times
+below normal, and no epoch finished in 31 minutes. Stopped (by the task that owned them, then listed PIDs), no
+output used, and relaunched with the arms one after the other — six worlds at a time. The design is unchanged.
