@@ -1856,6 +1856,12 @@ function assortOn(){return (typeof globalThis==='undefined')||((globalThis.__ASS
 // #241: the inscription bundle (cold-start spark, inscription send, inscription receive writes).
 // Default on. PEERINS=0 skips those effects and does not add or skip a Math.random. OEE-NOTES #241.
 function peerInsOn(){return (typeof globalThis==='undefined')||((globalThis.__PEERINS??1)|0)!==0}
+// #242: clamp spark-written cellProgA/B into the inscription wire range at write time.
+// Expression is buildMigrantPacket's memory _cl, copied. Not __cl: __cl returns NaN unchanged,
+// and finitePacketNumber rejects NaN. Non-finite becomes lo. Default on.
+// PEERINS_CLAMP=0 writes the raw values. No Math.random added or skipped. OEE-NOTES #242.
+function peerInsWireClamp(v,lo,hi){return !isFinite(v)?lo:(v<lo?lo:(v>hi?hi:v))}
+function peerInsClampOn(){return (typeof globalThis==='undefined')||((globalThis.__PEERINS_CLAMP??1)|0)!==0}
 // The world's own mean tendency, computed ONCE per receive rather than per migrant - it is O(N) and
 // the queue can hold twenty.
 function worldMeanTend(){
@@ -22106,8 +22112,15 @@ function vmStep(op,src,dst,k,si,di,i,j,ip){
           if(cellProgStr[ci20]<0.2){
             const spark20=Math.min(1,Math.max(0.35,Math.abs(vmRegs[si]*k)*inscStr()));
             cellProgOp[ci20]=Math.abs(Math.floor(vmRegs[si]))%12;
-            cellProgA[ci20]=vmRegs[di];
-            cellProgB[ci20]=k;
+            // #242: Arm A clamps A and B into [-16, 16] here, at the spark write only.
+            // PEERINS_CLAMP=0 keeps the raw assignment. Receive path and validNetworkPayload stay.
+            if(peerInsClampOn()){
+              cellProgA[ci20]=peerInsWireClamp(vmRegs[di],-16,16);
+              cellProgB[ci20]=peerInsWireClamp(k,-16,16);
+            }else{
+              cellProgA[ci20]=vmRegs[di];
+              cellProgB[ci20]=k;
+            }
             cellProgStr[ci20]=spark20;
           }
         }
