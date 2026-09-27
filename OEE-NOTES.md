@@ -22485,3 +22485,23 @@ horizon, and the grid (three axes, 10 bins, 3 members) are choices — sensitivi
 **First reading** (3,000 ticks, seed 1, a short-budget check only): late persistent arrivals real 0 against
 shadows 1-7; cells ever occupied real 41 against 46-52. The 20k reading on seeds 1-3 of `main` is running as
 this is committed.
+
+### #248 — CONTACT BLENDING HAS A CEILING: `CONTACT_BLEND hi 0.03`, saved worlds above it clamped on reload
+
+#246's pre-registered rule said WORSE (0.08 against 0.03, 2 of 3 unseen seeds; late new kinds down on all
+three), with establishment pointing the other way and recorded beside it. The user's decision: ship the cap,
+including saved worlds.
+
+**The change:** `CONTACT_BLEND`'s row goes from `hi:0.1` to `hi:0.03`, today's value; `lo` stays 0. Blending may
+weaken, and may not strengthen past today. A proposal upward from 0.03 clamps back to 0.03 and returns before
+it sets anything; a peer's broadcast above 0.03 is clamped at import; **a saved world above 0.03 comes back at
+0.03** through the `LAWV` restore; a saved world below it keeps its value. Defended in the row's comment
+beside #235's `INHERIT_SD` floor.
+
+**Checked:** on the live engine — save at 0.08 restores to 0.03, save at 0.012 restores to 0.012, the largest
+upward proposal from 0.03 lands at 0.03, the largest downward at 0.02475, a broadcast 0.08 clamps to 0.03.
+substrate-test on seeds 1-3 and FOUND=0 is running as this is committed; `main` moves when it is in.
+
+**What moved in the universe:** nothing in a lab run where the law is never proposed upward (the default is
+unchanged). In the field, the upper half of the blind walk #234 predicted is closed off, and worlds that had
+already drifted there are pulled back — the regime where #246 measured late novelty switching off.

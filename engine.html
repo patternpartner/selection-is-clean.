@@ -2326,7 +2326,12 @@ const LAW_DECLARED=[
   // toward the origin; CONTACT_BLEND 0 = collisions no longer average traits; BIRTH_LOTTERY > 0.5 = births
   // are allotted by fair lottery instead of loop order (#219).
   {name:'BIRTH_SHRINK',      get:()=>BIRTH_SHRINK,      set:v=>{BIRTH_SHRINK=v;},      lo:0.8,     hi:1.0},
-  {name:'CONTACT_BLEND',     get:()=>CONTACT_BLEND,     set:v=>{CONTACT_BLEND=v;},     lo:0.0,     hi:0.1},
+  // #248: CONTACT_BLEND's ceiling is 0.03 (today's value), not 0.1 - DEFENDED, like #235's INHERIT_SD floor. #234
+  // measured the verdict BLIND to it, so it random-walks its range in the field; #246 measured 0.08 against
+  // 0.03 on unseen seeds 13-15 at 20k: WORSE on 2 of 3 by the template (entropy, kinds), late new kinds down
+  // on all three. Blending may weaken; it may not strengthen past today. The LAWV restore clamps saved worlds
+  // above 0.03 on reload - the user's decision, taken.
+  {name:'CONTACT_BLEND',     get:()=>CONTACT_BLEND,     set:v=>{CONTACT_BLEND=v;},     lo:0.0,     hi:0.03},
   {name:'BIRTH_LOTTERY',     get:()=>BIRTH_LOTTERY,     set:v=>{BIRTH_LOTTERY=v;},     lo:0.0,     hi:1.0},
   {name:'RARE_BIRTH',        get:()=>RARE_BIRTH,        set:v=>{RARE_BIRTH=v;},        lo:0.0,     hi:2.0},    // #226
   {name:'OUTLIER_BIRTH',     get:()=>OUTLIER_BIRTH,     set:v=>{OUTLIER_BIRTH=v;},     lo:0.0,     hi:3.0},    // #226b
