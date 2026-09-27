@@ -21992,9 +21992,15 @@ var __vmAbsent=(function(){const t=[0,1,2,3].map(()=>new Uint8Array(512)),put=(m
   put(VM_CLUS,[23,126,127]);
   put(VM_SOLO,[10,12,18,[23,45],[49,51],53,[59,127]]);
   return t;})();
-function vmStep(op,src,dst,k,si,di,i,j,ip){
-    if(!__vmAbsent[__vmMode][op]){switch(op){
-      case 0:vmRegs[di]=vmRegs[si];break;
+// #251: vmStep's case bodies, verbatim, in chunks of 16 opcodes (vmOps<op>>4>). One switch of ~240 cases
+// is far over V8's --max-optimized-bytecode-size (61,440 bytes), so browsers never optimised it and every
+// instruction ran on the baseline tier (#250). Each chunk is small enough to optimise. The chunk a case lives in
+// is decided by its label alone; bodies, order within a chunk, and the tail in vmStep are unchanged. Generated,
+// with the refusals #231's generator had: no return, var, labelled jump, arguments, this or function declaration
+// in any case, no default, no switch-level name shared between cases. Checked by vm-equiv.js op by op.
+function vmOpsNone(op,src,dst,k,si,di,i,j,ip){ return ip; }
+function vmOps0(op,src,dst,k,si,di,i,j,ip){ switch(op){
+case 0:vmRegs[di]=vmRegs[si];break;
       case 1:vmRegs[di]+=vmRegs[si]*k;break;
       case 2:vmRegs[di]*=vmRegs[si]*(k||1);break;
       case 3:vmRegs[di]=vmRegs[si]>k?1:0;break;
@@ -22031,7 +22037,11 @@ function vmStep(op,src,dst,k,si,di,i,j,ip){
       case 14:
         if(vmRegs[si]>k)ip=Math.abs(Math.floor(vmRegs[di]))%__vmLen;break;   // #231b: the program RUNNING - a plasmid jumps within the plasmid
       case 15:{const ageFrac=Math.min(1,page[i]/800);vmRegs[di]=vmRegs[si]*(1-ageFrac)+k*ageFrac;}break;
-      case 16:
+    }
+    return ip;
+}
+function vmOps1(op,src,dst,k,si,di,i,j,ip){ switch(op){
+case 16:
         // #231e: CLOSED by a rule written before its data. Unified (every machine budding the particle
         // machine's way) it was live on 2 of seeds 4-9, and on those two its mean entropyRatio was 0.065
         // below the closed arm - past the 0.05 the rule allowed. Late kinds and novelty went the other way,
@@ -22251,7 +22261,11 @@ function vmStep(op,src,dst,k,si,di,i,j,ip){
           field2[fi31]=__cl(field2[fi31]+vmRegs[si]*k*fw47,0,100);
         }
       }break;
-      case 32:{
+    }
+    return ip;
+}
+function vmOps2(op,src,dst,k,si,di,i,j,ip){ switch(op){
+case 32:{
         // Pe48 Layer 37: FIELD2_GRAD — gradient of the second channel at this particle's cell.
         // Symmetric to opcode 17 (FIELD_GRAD for channel 1): central-difference stencil,
         // x-gradient into vmRegs[si], y-gradient into vmRegs[di], scaled by k × influence.
@@ -22581,7 +22595,11 @@ function vmStep(op,src,dst,k,si,di,i,j,ip){
           vmRegs[di]=Math.min(3,freq[j]/0.02)*pfi63*k;
         }
       }break;
-      case 48:
+    }
+    return ip;
+}
+function vmOps3(op,src,dst,k,si,di,i,j,ip){ switch(op){
+case 48:
         if(__vmMode===VM_SOLO){ // SOLO copy, kept as it was
         {
           // Pe64 Layer 53: PARTNER_MEM_READ in solo VM — no-op (no interaction partner in solo context).
@@ -23075,7 +23093,11 @@ function vmStep(op,src,dst,k,si,di,i,j,ip){
           }
         }
       }break;
-      case 64:{
+    }
+    return ip;
+}
+function vmOps4(op,src,dst,k,si,di,i,j,ip){ switch(op){
+case 64:{
         // Pe80 Layer 69: SELF_CLUSTER_COHERENCE — reads the phase coherence of the particle's cluster.
         // coherence = mean resultant length of member phases ∈ [0,1].
         //   0: phases scattered — members oscillating independently
@@ -23391,7 +23413,11 @@ function vmStep(op,src,dst,k,si,di,i,j,ip){
           vmRegs[di]=Math.sin(tick*(genome.clockFrequency||0.01)*Math.PI*2)*ckpi95*(k||1);
         }
       }break;
-      case 80:{
+    }
+    return ip;
+}
+function vmOps5(op,src,dst,k,si,di,i,j,ip){ switch(op){
+case 80:{
         // Pe96 Layer 85: CLUSTER_FIELD_READ — reads field1 energy at the cluster's centroid cell.
         // Bridges cluster position sensing (op68) with field sensing (op8/op56).
         //
@@ -23700,7 +23726,11 @@ function vmStep(op,src,dst,k,si,di,i,j,ip){
           vmRegs[di]=Math.min(2,selfModel.avgAmplitude||0)*aai111*(k||1);
         }
       }break;
-      case 96:{
+    }
+    return ip;
+}
+function vmOps6(op,src,dst,k,si,di,i,j,ip){ switch(op){
+case 96:{
         // Pe112 Layer 101: POPULATION_FLOW — net population velocity (birthRate - deathRate).
         // Returns Math.max(-3, Math.min(3, net*5)) * populationFlowInfluence × k.
         // SECOND signed opcode (after op92 fitness_momentum). Pairing op92 + op96 lets the
@@ -23858,7 +23888,11 @@ function vmStep(op,src,dst,k,si,di,i,j,ip){
         const f2pi127=genome.field2PeakInfluence||0;
         if(f2pi127>0.001){ vmRegs[di]=Math.min(3,selfModel.field2Peak||0)*f2pi127*(k||1); }
       }break;
-      case 112:{
+    }
+    return ip;
+}
+function vmOps7(op,src,dst,k,si,di,i,j,ip){ switch(op){
+case 112:{
         // Pe128 Layer 117: SPATIAL_SPREAD — 2D std dev of particle positions, normalized.
         // selfModel.spatialSpread = sqrt(Var(x)+Var(y)) / sqrt(W²+H²). Range [0,~0.5].
         // First purely geometric opcode: WHERE are particles, not just what are they doing.
@@ -24028,7 +24062,11 @@ function vmStep(op,src,dst,k,si,di,i,j,ip){
         if(rdi146>0.001){ vmRegs[di]=(selfModel.repertoireDormancy||0)*rdi146*(k||1); }
       }break;
       // ── OPENED THE SWITCH (#1): caste enters the core VM ──────────────────────────
-      case 128:vmRegs[di]=pType[i];break;                 // READ_OWN_CASTE — own caste as a value
+    }
+    return ip;
+}
+function vmOps8(op,src,dst,k,si,di,i,j,ip){ switch(op){
+case 128:vmRegs[di]=pType[i];break;                 // READ_OWN_CASTE — own caste as a value
       case 129:
         if(__vmMode===VM_SOLO){ // SOLO copy, kept as it was
         vmRegs[di]=pType[i];break;
@@ -24048,7 +24086,11 @@ function vmStep(op,src,dst,k,si,di,i,j,ip){
       case 141:{const _dfx141=__cl(Math.floor(px[i]/(W/FIELD_W)),0,FIELD_W-1),_dfy141=__cl(Math.floor(py[i]/(H/FIELD_H)),0,FIELD_H-1);vmRegs[di]=Math.min(5,densityField[_dfy141*FIELD_W+_dfx141]/3)*k;}break; // LOCAL_DENSITY — perceive particle crowding at this cell (0=empty, →5=dense, 3 particles/cell=1.0). Enables density-dependent strategies: r-strategists disperse from crowded zones; K-strategists consolidate; parasites seek crowded hosts. Density dependence is the regulatory foundation of ecological stability.
       case 142:{const _ffx142=__cl(Math.floor(px[i]/(W/FIELD_W)),0,FIELD_W-1),_ffy142=__cl(Math.floor(py[i]/(H/FIELD_H)),0,FIELD_H-1);vmRegs[di]=Math.min(2,forestField[_ffy142*FIELD_W+_ffx142])*k;}break; // FOREST_SENSE — perceive meta-organizational density at this position (0=isolated tower top, →2=dense forest of connected tops). Enables evolved responses to 4th-level organization: disperse from saturated forests, colonise sparse regions, caste-switch when forest structure changes.
       case 143:{const _crfx143=__cl(Math.floor(px[i]/(W/FIELD_W)),0,FIELD_W-1),_crfy143=__cl(Math.floor(py[i]/(H/FIELD_H)),0,FIELD_H-1);vmRegs[di]=Math.min(2,crystalField[_crfy143*FIELD_W+_crfx143]*2)*k;}break; // CRYSTAL_SENSE — perceive crystal density at own position (0=liquid/amorphous, →2=dense crystal). Crystal forms at persistent high-coherence cluster sites; sensing it enables evolved responses to material phase: settle in crystal (resource-rich, viscous) or escape it (preserve mobility). First emergent material phase transition in the system.
-      case 144:{if(pProg[i]&&localRes[i]>0.3&&pProg[i].length<Math.min(genome.vmMaxInstructions||16,48)){const _pgSrc144=Math.floor(Math.random()*pProg[i].length);const _pgNew144=[...pProg[i][_pgSrc144]];_pgNew144[3]+=(Math.random()-0.5)*0.1;_pgNew144[3]=Math.max(-2,Math.min(2,_pgNew144[3]));pProg[i].push(_pgNew144);localRes[i]-=0.08;vmRegs[di]=pProg[i].length;}else{vmRegs[di]=0;}}break; // PROG_GROW — self-extend program by duplicating a random existing instruction with small parameter drift. Costs localRes. Programs now grow during lifetime, not just at reproduction: acquired behavioral complexity, indefinitely extensible programs.
+    }
+    return ip;
+}
+function vmOps9(op,src,dst,k,si,di,i,j,ip){ switch(op){
+case 144:{if(pProg[i]&&localRes[i]>0.3&&pProg[i].length<Math.min(genome.vmMaxInstructions||16,48)){const _pgSrc144=Math.floor(Math.random()*pProg[i].length);const _pgNew144=[...pProg[i][_pgSrc144]];_pgNew144[3]+=(Math.random()-0.5)*0.1;_pgNew144[3]=Math.max(-2,Math.min(2,_pgNew144[3]));pProg[i].push(_pgNew144);localRes[i]-=0.08;vmRegs[di]=pProg[i].length;}else{vmRegs[di]=0;}}break; // PROG_GROW — self-extend program by duplicating a random existing instruction with small parameter drift. Costs localRes. Programs now grow during lifetime, not just at reproduction: acquired behavioral complexity, indefinitely extensible programs.
       case 145:{const _dtfx145=__cl(Math.floor(px[i]/(W/FIELD_W)),0,FIELD_W-1),_dtfy145=__cl(Math.floor(py[i]/(H/FIELD_H)),0,FIELD_H-1);vmRegs[di]=Math.min(3,detritalField[_dtfy145*FIELD_W+_dtfx145])*k;}break; // DETRITAL_SENSE — perceive local dead-matter density (0=no detritus, →3=rich death zone). Decomposer lineages sense where mortality concentrates. Enables evolved scavenger strategy: move toward death zones, feed on fallen biomass. Trophic cascade perception.
       case 146:{const _dhx146=__cl(Math.floor(px[i]/(W/FIELD_W)),0,FIELD_W-1),_dhy146=__cl(Math.floor(py[i]/(H/FIELD_H)),0,FIELD_H-1),_dhi146=_dhy146*FIELD_W+_dhx146;const _dha146=Math.min(detritalField[_dhi146],Math.abs(k)*0.12);detritalField[_dhi146]-=_dha146;localRes[i]=Math.min(2,localRes[i]+_dha146);vmRegs[di]=_dha146;}break; // DETRITAL_HARVEST — extract biomass from local detrital pool into own reserves. Decomposer niche: specialized lineages mine death zones, recycling dead matter into metabolic energy. One lineage's mortality becomes another lineage's food source — trophic cascade, second energy pathway distinct from field harvest.
       case 147:{const _gfx147=__cl(Math.floor(px[i]/(W/FIELD_W)),1,FIELD_W-2),_gfy147=__cl(Math.floor(py[i]/(H/FIELD_H)),1,FIELD_H-2);vmRegs[di]=(field[_gfy147*FIELD_W+_gfx147+1]-field[_gfy147*FIELD_W+_gfx147-1])*0.5*k;}break; // FIELD_GRAD_X — resource field gradient in X (positive=more food right, negative=left). Enables chemotaxis: directed movement toward resource peaks rather than random-walk bias.
@@ -24076,7 +24118,11 @@ function vmStep(op,src,dst,k,si,di,i,j,ip){
       case 157:{const _sfx157=__cl(Math.floor(px[i]/(W/FIELD_W)),0,FIELD_W-1),_sfy157=__cl(Math.floor(py[i]/(H/FIELD_H)),0,FIELD_H-1);signalField[_sfy157*FIELD_W+_sfx157]=Math.min(3,signalField[_sfy157*FIELD_W+_sfx157]+Math.abs(vmRegs[si]*k));vmRegs[di]=signalField[_sfy157*FIELD_W+_sfx157];}break; // SIGNAL_EMIT — add to the volatile pheromone layer at own position (decays ~5t half-life). Enables alarm cascades (predator-fleeing particles emit signal → bystanders detect and preemptively flee), trail marking (foragers mark rich patches → others follow), and territory broadcasting. First purely communicative opcode: no resource or force effect, only information.
       case 158:{const _sfx158=__cl(Math.floor(px[i]/(W/FIELD_W)),0,FIELD_W-1),_sfy158=__cl(Math.floor(py[i]/(H/FIELD_H)),0,FIELD_H-1);vmRegs[di]=Math.min(3,signalField[_sfy158*FIELD_W+_sfx158])*k;}break; // SIGNAL_SENSE — read local pheromone signal. Paired with SIGNAL_EMIT: evolved lineages can author communication protocols — the signal meaning is not pre-assigned; whatever coding convention is evolutionarily stable becomes the de-facto language of the population.
       case 159:{const _sgx159=__cl(Math.floor(px[i]/(W/FIELD_W)),1,FIELD_W-2),_sgy159=__cl(Math.floor(py[i]/(H/FIELD_H)),1,FIELD_H-2);vmRegs[di]=(signalField[_sgy159*FIELD_W+_sgx159+1]-signalField[_sgy159*FIELD_W+_sgx159-1])*0.5*k;}break; // SIGNAL_GRAD_X — pheromone gradient in X; enables navigation toward signal sources (forager trails, alarm sources, territorial markers). Completes the chemical communication navigation pair.
-      case 160:{const _sgx160=__cl(Math.floor(px[i]/(W/FIELD_W)),1,FIELD_W-2),_sgy160=__cl(Math.floor(py[i]/(H/FIELD_H)),1,FIELD_H-2);vmRegs[di]=(signalField[(_sgy160+1)*FIELD_W+_sgx160]-signalField[(_sgy160-1)*FIELD_W+_sgx160])*0.5*k;}break; // SIGNAL_GRAD_Y — pheromone gradient in Y. With SIGNAL_GRAD_X enables full 2D chemical navigation: trail following, alarm dispersal, resource broadcast tracking. The full chemical ecology stack is now: emit(157) → diffuse(updateField) → sense(158) → navigate(159,160).
+    }
+    return ip;
+}
+function vmOps10(op,src,dst,k,si,di,i,j,ip){ switch(op){
+case 160:{const _sgx160=__cl(Math.floor(px[i]/(W/FIELD_W)),1,FIELD_W-2),_sgy160=__cl(Math.floor(py[i]/(H/FIELD_H)),1,FIELD_H-2);vmRegs[di]=(signalField[(_sgy160+1)*FIELD_W+_sgx160]-signalField[(_sgy160-1)*FIELD_W+_sgx160])*0.5*k;}break; // SIGNAL_GRAD_Y — pheromone gradient in Y. With SIGNAL_GRAD_X enables full 2D chemical navigation: trail following, alarm dispersal, resource broadcast tracking. The full chemical ecology stack is now: emit(157) → diffuse(updateField) → sense(158) → navigate(159,160).
       case 161:{const _tvx161=__cl(Math.floor(px[i]/(W/FIELD_W)),0,FIELD_W-1),_tvy161=__cl(Math.floor(py[i]/(H/FIELD_H)),0,FIELD_H-1);vmRegs[di]=Math.max(0,1-Math.abs(towerTerritoryField[_tvy161*FIELD_W+_tvx161]))*k;}break; // TERRITORY_VACANCY — perceive how unclaimed this cell is (1=fully open, 0=fully contested). Enables ecological succession: when dominant lineages go extinct, territory becomes vacant; coloniser lineages sense the opening and migrate in. Pioneer vs. climax community strategies emerge: pioneers sense vacancy and rush in, climax species wait until structure is established.
       case 162:{const _rwx162=__cl(Math.floor(px[i]/(W/FIELD_W)),0,FIELD_W-1),_rwy162=__cl(Math.floor(py[i]/(H/FIELD_H)),0,FIELD_H-1),_rwi162=_rwy162*FIELD_W+_rwx162;const _rwa162=Math.min(localRes[i],Math.abs(vmRegs[si]*k)*0.05);rootField[_rwi162]=Math.min(5,rootField[_rwi162]+_rwa162);localRes[i]-=_rwa162;vmRegs[di]=rootField[_rwi162];}break; // ROOT_WRITE — invest own energy into the local root network (niche construction). Costs localRes; builds shared substrate that benefits kin and descendants. Selects for ecosystem engineers: lineages that build lasting infrastructure gain inclusive fitness, even at individual cost. Root investment → denser root network → better offspring survival → root-writing gene spreads.
       case 163:{vmRegs[di]=(Math.random()-0.5)*2*k;}break; // RANDOM_NOISE — inject pure stochasticity into vmRegs[di]. The first opcode that makes the VM itself non-deterministic. Enables: evolved bet-hedging (programs that add noise to their outputs hedge against unpredictable environments), mixed strategies (Nash equilibrium strategies in repeated games require randomisation — previously unachievable with deterministic programs), stochastic gene expression (lineages can evolve probabilistic phenotype switching). Stochastic programs can OUTPERFORM deterministic ones when the environment is unpredictable or when opponents model your behavior.
@@ -24124,7 +24170,11 @@ function vmStep(op,src,dst,k,si,di,i,j,ip){
         }
         {const _ix174=__cl(Math.floor(px[j]/(W/FIELD_W)),0,FIELD_W-1),_iy174=__cl(Math.floor(py[j]/(H/FIELD_H)),0,FIELD_H-1),_ii174=_iy174*FIELD_W+_ix174;const _ia174=Math.abs(vmRegs[si]*k)*0.3;signalField[_ii174]=Math.min(3,signalField[_ii174]+_ia174);vmRegs[di]=_ia174;}break; // INJECT_SIGNAL — deposit pheromone at PARTNER'S position (not own position like SIGNAL_EMIT op157). The first opcode enabling directed marking: leave a chemical trail on partners you interact with. Enables: mark exploiters so others avoid them (reputation via signal, readable by SIGNAL_SENSE op158); mark cooperators so kin seek them out; create pheromone exclusion zones around dangerous partners; implement distributed chemical communication without centralised signalling. With SIGNAL_GRAD_X/Y (ops 159-160) and INJECT_SIGNAL, lineages build social reputation landscapes.
       case 175:{pHomeX[i]=px[i];pHomeY[i]=py[i];vmRegs[di]=0;}break; // MARK_POS — stamp current position as home. Writes px[i] and py[i] into dedicated pHomeX/pHomeY arrays (not pMem, to avoid clobber). Combined with HOME_DIST (op176) and HOME_BEARING_X (op177), enables natal site philopatry: mark birthplace or a resource patch, then navigate back after excursions. Enables: territory patrolling (mark centre, measure dist, return when dist>threshold); kin-cluster anchoring (mark cluster centroid via CLUSTER_POOL interaction, return to it); foraging circuits (mark food source, exploit, navigate home).
-      case 176:{const _hdx176=px[i]-pHomeX[i],_hdy176=py[i]-pHomeY[i];vmRegs[di]=Math.sqrt(_hdx176*_hdx176+_hdy176*_hdy176)/(W*0.1)*k;}break; // HOME_DIST — Euclidean distance from marked home position, normalised by 10% of world width (so distance=W*0.1 → 1.0). Enables distance-conditional behaviour: reproduce when near home (familiar habitat advantage), stop feeding and return when HOME_DIST>threshold, invest in local root-write only when HOME_DIST is small (stay in own territory). Without normalisation the raw pixel distance would be genome-parameter-dependent; normalised output is k-scalable.
+    }
+    return ip;
+}
+function vmOps11(op,src,dst,k,si,di,i,j,ip){ switch(op){
+case 176:{const _hdx176=px[i]-pHomeX[i],_hdy176=py[i]-pHomeY[i];vmRegs[di]=Math.sqrt(_hdx176*_hdx176+_hdy176*_hdy176)/(W*0.1)*k;}break; // HOME_DIST — Euclidean distance from marked home position, normalised by 10% of world width (so distance=W*0.1 → 1.0). Enables distance-conditional behaviour: reproduce when near home (familiar habitat advantage), stop feeding and return when HOME_DIST>threshold, invest in local root-write only when HOME_DIST is small (stay in own territory). Without normalisation the raw pixel distance would be genome-parameter-dependent; normalised output is k-scalable.
       case 177:{const _hbdx177=pHomeX[i]-px[i],_hbdy177=pHomeY[i]-py[i],_hbd177=Math.sqrt(_hbdx177*_hbdx177+_hbdy177*_hbdy177)+0.01;vmRegs[di]=(_hbdx177/_hbd177)*k;}break; // HOME_BEARING_X — X component of the unit vector pointing from current position toward home. Range -1..1 scaled by k. Combined with HOME_DIST (op176) as a gate (only navigate when far enough from home) and with velocity updates (vmRegs[di] → vx adjustment upstream), enables evolved homing flight: particles can navigate back to a marked location across the world without a fixed compass.
       case 178:{const _hbdx178=pHomeX[i]-px[i],_hbdy178=pHomeY[i]-py[i],_hbd178=Math.sqrt(_hbdx178*_hbdx178+_hbdy178*_hbdy178)+0.01;vmRegs[di]=(_hbdy178/_hbd178)*k;}break; // HOME_BEARING_Y — Y component of unit vector toward home. Completes the 2D homing navigation pair: combine HOME_BEARING_X (op177) → vx adjustment and HOME_BEARING_Y → vy adjustment, gated by HOME_DIST (op176) > threshold, to achieve full 2D homing flight. Enables: migratory particles that travel to distant resource patches and navigate back to the marked kin cluster; honeybee-style central-place foraging circuits; natal site return after overwintering dispersal.
       case 179:
@@ -24160,7 +24210,11 @@ function vmStep(op,src,dst,k,si,di,i,j,ip){
         {vmRegs[di]=0;}break;
         }
         {pEpigen[j]|=(1<<(vmRegs[si]&7));vmRegs[di]=((pEpigen[j]>>(vmRegs[si]&7))&1)*k;}break; // PARTNER_EPIGEN_SET — set bit (vmRegs[si]&7) in partner's epigenetic mask (heritable effect: partner's offspring inherit the set bit with 95% fidelity). Enables social epigenetic programming: mutualists brand cooperative partners so their offspring start pre-primed for cooperation; teachers mark novices with a "trained" bit after a cooperative interaction; viral epigenetics: lineages spread their epigenetic signature laterally via interactions, creating population-level epigenetic waves without genome mutation. Arms race: hosts can evolve EPIGEN_CLR to clear unwanted partner-set bits.
-      case 192:{vmRegs[di]=-vmRegs[si]*k;}break; // NEGATE — vmRegs[di] = -(vmRegs[si] * k). Completes the conditional-logic toolkit: COND_SKIP fires when vmRegs[si]<=0; NEGATE(sensor) followed by COND_SKIP fires when sensor>0. Together enables both branch directions without a separate opcode. Also enables: inverted cooperation (cooperate when sensor is negative = partner is poor); oscillating push-pull strategies (negate own phase signal to create anti-phase cooperation timing); sign-flipping arithmetic for difference calculations.
+    }
+    return ip;
+}
+function vmOps12(op,src,dst,k,si,di,i,j,ip){ switch(op){
+case 192:{vmRegs[di]=-vmRegs[si]*k;}break; // NEGATE — vmRegs[di] = -(vmRegs[si] * k). Completes the conditional-logic toolkit: COND_SKIP fires when vmRegs[si]<=0; NEGATE(sensor) followed by COND_SKIP fires when sensor>0. Together enables both branch directions without a separate opcode. Also enables: inverted cooperation (cooperate when sensor is negative = partner is poor); oscillating push-pull strategies (negate own phase signal to create anti-phase cooperation timing); sign-flipping arithmetic for difference calculations.
       case 193:
         if(__vmMode===VM_SOLO){ // SOLO copy, kept as it was
         {vmRegs[di]=0;}break;
@@ -24204,7 +24258,11 @@ function vmStep(op,src,dst,k,si,di,i,j,ip){
         {vmRegs[di]=phase[j]*k;}break; // PARTNER_PHASE_READ — raw phase angle of partner's oscillator. Complements PHASE_SYNC (op168) which nudges phase toward partner's. Now particles can read the actual partner angle and decide whether to sync, anti-sync, or ignore — conditional phase-locking strategies. Also enables phase-based kin detection: particles with phase≈own are likely recent descendants; large phase difference indicates long evolutionary separation.
       case 206:{vmRegs[di]=Math.pow(Math.abs(vmRegs[si]),Math.abs(k));}break; // POW — |vmRegs[si]|^|k|. Exponential scaling that determinism cannot achieve with multiplication alone. Enables: competitive exclusion models (fitness ∝ resource^2 gives winner-takes-all dynamics); decay curves (resource^0.5 = diminishing returns on surplus); spatial scaling (distance^2 for inverse-square fields); evolved power-law fitness landscapes. The first op that can express super-linear returns to scale.
       case 207:{vmRegs[di]=Math.log(Math.max(0.001,Math.abs(vmRegs[si])))*k;}break; // LOG — natural log of |vmRegs[si]|, floored at log(0.001)≈−6.9. Enables: log-scale sensing (log(density) compresses large ranges to manageable signals — a particle in a crowd of 100 and a crowd of 10 differ by only log(10)≈2.3 rather than 90); information-theoretic computations; diminishing-return resource valuation (log(res) flattens at high res, naturally encoding satiation); entropy estimates via Σ p·log(p) patterns.
-      case 208:{vmRegs[di]=vx[i]*k;}break; // VX_READ — own x-velocity. First velocity-sensing opcode. Enables: inertia-aware steering (if moving right, steer differently than if stationary); momentum-conditioned foraging; detect whether crystal viscosity is slowing movement (vx/vy ≈ 0 near dense crystal); evolve flocking by aligning velocity with neighbours. Together with VY_READ (op209) gives full 2D velocity vector.
+    }
+    return ip;
+}
+function vmOps13(op,src,dst,k,si,di,i,j,ip){ switch(op){
+case 208:{vmRegs[di]=vx[i]*k;}break; // VX_READ — own x-velocity. First velocity-sensing opcode. Enables: inertia-aware steering (if moving right, steer differently than if stationary); momentum-conditioned foraging; detect whether crystal viscosity is slowing movement (vx/vy ≈ 0 near dense crystal); evolve flocking by aligning velocity with neighbours. Together with VY_READ (op209) gives full 2D velocity vector.
       case 209:{vmRegs[di]=vy[i]*k;}break; // VY_READ — own y-velocity. See VX_READ. With VX_READ enables: speed = sqrt(VX²+VY²) via POW+ABS; heading = atan2(VY,VX) approximated with SIGN ops; detect stalls; implement momentum-preserving turns.
       case 210:
         if(__vmMode===VM_SOLO){ // SOLO copy, kept as it was
@@ -24236,7 +24294,11 @@ function vmStep(op,src,dst,k,si,di,i,j,ip){
         }
         {const _ptx222=__cl(Math.floor(px[j]/(W/FIELD_W)),0,FIELD_W-1),_pty222=__cl(Math.floor(py[j]/(H/FIELD_H)),0,FIELD_H-1);vmRegs[di]=scaffoldField[_pty222*FIELD_W+_ptx222]*k;}break; // PARTNER_SCAFFOLD_AT — read scaffoldField at partner's cell. Enables: detect partner niche overlap; decide cooperate vs compete; assess territory before PROG_LATERAL_COPY.
       case 223:{const _glen223=pProg[i]?pProg[i].length:0;if(_glen223>0){const _gidx223=Math.floor(Math.abs(vmRegs[si]))|0;vmRegs[di]=(pProg[i][_gidx223%_glen223][0]||0)*k;}else{vmRegs[di]=0;}}break; // GENOME_OP_AT — read opcode at instruction index abs(vmRegs[si]) % program.length; enables genomic self-inspection, conditional branching on own code, conserved-core detection.
-      case 224:{const _glen224=pProg[i]?pProg[i].length:0;if(_glen224>0){const _gidx224=Math.floor(Math.abs(vmRegs[si]))|0;vmRegs[di]=(pProg[i][_gidx224%_glen224][3]||0)*k;}else{vmRegs[di]=0;}}break; // GENOME_K_AT — read k-constant at instruction index; paired with GENOME_OP_AT for full instruction decoding; enables self-tuning by reading own coefficients.
+    }
+    return ip;
+}
+function vmOps14(op,src,dst,k,si,di,i,j,ip){ switch(op){
+case 224:{const _glen224=pProg[i]?pProg[i].length:0;if(_glen224>0){const _gidx224=Math.floor(Math.abs(vmRegs[si]))|0;vmRegs[di]=(pProg[i][_gidx224%_glen224][3]||0)*k;}else{vmRegs[di]=0;}}break; // GENOME_K_AT — read k-constant at instruction index; paired with GENOME_OP_AT for full instruction decoding; enables self-tuning by reading own coefficients.
       case 225:
         if(__vmMode===VM_SOLO){ // SOLO copy, kept as it was
         {vmRegs[di]=0;}break;
@@ -24287,19 +24349,28 @@ function vmStep(op,src,dst,k,si,di,i,j,ip){
         // #132 EFFECT_EMIT — drive an AUTHORED VERB. Same shape as case 4 (the built-in actuator emit);
         // the difference is that what happens at the other end is evolved, not written here.
         case 236:{const _fxn=(genome.userEffects&&genome.userEffects.length)?Math.min(genome.userEffects.length,MAX_USER_EFFECTS):MAX_USER_EFFECTS;const _ei=Math.abs(dst)%_fxn;vmActions[EFFECT_SLOT0+_ei]+=vmRegs[si]*k;}break; // EFFECT_EMIT — #133b: index the bank that EXISTS; %MAX_USER_EFFECTS sent half of all emits to empty slots
-      case 427:{ // #218a GENE_AUTHOR — the genome grows a coordinate it did not have. Costs
+      case 231:
+        if(__vmMode===VM_SOLO){ // SOLO copy, kept as it was
+        {vmRegs[di]=0;}break;
+        }
+        {const _cqcid231=clusterID[i];if(_cqcid231>=0){const _cqbit231=1<<(Math.round(Math.abs(vmRegs[si]))&7);let _cqtot231=0,_cqset231=0;for(let _cqn231=0;_cqn231<N;_cqn231++){if(clusterID[_cqn231]===_cqcid231){_cqtot231++;if(pEpigen[_cqn231]&_cqbit231)_cqset231++;}}vmRegs[di]=_cqtot231>0?(_cqset231/_cqtot231)*k:0;}else{vmRegs[di]=0;}}break; // CLUSTER_QUORUM — fraction of own cluster members with epigenetic bit (vmRegs[si]&7) set; O(N) scan; solitary returns 0. Enables quorum sensing; epigenetic voting; collective gene-expression switching; democratic phase coordination.
+    }
+    return ip;
+}
+function vmOps26(op,src,dst,k,si,di,i,j,ip){ switch(op){
+case 427:{ // #218a GENE_AUTHOR — the genome grows a coordinate it did not have. Costs
                  // localRes, priced like PROG_GROW: authoring structure is not free.
         if(localRes[i]>0.25){ const _ng=novelAuthor(vmRegs[si]*k); if(_ng){ localRes[i]-=0.25; vmRegs[di]=_ng; } else vmRegs[di]=0; }
         else vmRegs[di]=0; }break;
       case 428:{ // #218a GENE_READ — the lineage reads its own invented quantity. Without this the
                  // bank would be #217o's failure by construction: a gene nothing reads is decoration.
         vmRegs[di]=novelRead(Math.abs(Math.floor(vmRegs[si])))*k; fired('gene.read'); }break;
-      case 231:
-        if(__vmMode===VM_SOLO){ // SOLO copy, kept as it was
-        {vmRegs[di]=0;}break;
-        }
-        {const _cqcid231=clusterID[i];if(_cqcid231>=0){const _cqbit231=1<<(Math.round(Math.abs(vmRegs[si]))&7);let _cqtot231=0,_cqset231=0;for(let _cqn231=0;_cqn231<N;_cqn231++){if(clusterID[_cqn231]===_cqcid231){_cqtot231++;if(pEpigen[_cqn231]&_cqbit231)_cqset231++;}}vmRegs[di]=_cqtot231>0?(_cqset231/_cqtot231)*k:0;}else{vmRegs[di]=0;}}break; // CLUSTER_QUORUM — fraction of own cluster members with epigenetic bit (vmRegs[si]&7) set; O(N) scan; solitary returns 0. Enables quorum sensing; epigenetic voting; collective gene-expression switching; democratic phase coordination.
-    }}
+    }
+    return ip;
+}
+const __vmOpsTab=[vmOps0,vmOps1,vmOps2,vmOps3,vmOps4,vmOps5,vmOps6,vmOps7,vmOps8,vmOps9,vmOps10,vmOps11,vmOps12,vmOps13,vmOps14,vmOpsNone,vmOpsNone,vmOpsNone,vmOpsNone,vmOpsNone,vmOpsNone,vmOpsNone,vmOpsNone,vmOpsNone,vmOpsNone,vmOpsNone,vmOps26];
+function vmStep(op,src,dst,k,si,di,i,j,ip){
+    if(!__vmAbsent[__vmMode][op]){ const _vo=__vmOpsTab[op>>4]; if(_vo!==undefined) ip=_vo(op,src,dst,k,si,di,i,j,ip); }   // #251: dispatch to the chunk that holds op
     // === #199 - SELFWRITE. Handled here rather than as a switch case because 429 sits ABOVE the
     // bound-opcode range, so it never reaches the switch above and never collides with a core op.
     // The three operands come out of the instruction format as it already is: the source register

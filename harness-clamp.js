@@ -246,25 +246,34 @@ const OPSITES=['profile','sensor','vm'];
 // inferred from what happened to miss at runtime. An opcode that is unimplemented but never executed
 // would be invisible to a runtime histogram, and this number decides whether a fatal default is
 // survivable — it is not a number to estimate.
+// #251: vmStep's switch is cut into chunk functions (vmOps0..vmOps26, one switch each) so V8 can optimise
+// them. Every switch(op){ from the third on is a chunk of the ONE vm site, and vmOpsNone - the table entry
+// for a range with no cases (the bound opcodes, 237..426) - is that site's miss, exactly as those ops used to
+// fall through the single switch. So the counts per site mean what they meant before #251.
 const PARTICLE_SWITCH_IDX=2;
+const VM_CHUNKS=(code.match(/function vmOps\d+\(op,src,dst,k,si,di,i,j,ip\)\{ switch\(op\)\{/g)||[]).length;
 let IMPLEMENTED=null;
-{ let at=-1; for(let k=0;k<=PARTICLE_SWITCH_IDX;k++) at=code.indexOf('switch(op){',at+1);
-  if(at<0){ console.log(JSON.stringify({error:'particle VM switch not found'})); process.exit(1); }
-  let depth=0,i=code.indexOf('{',at),end=-1;
-  for(;i<code.length;i++){ const c=code[i];
-    if(c==='{')depth++; else if(c==='}'){ depth--; if(depth===0){ end=i; break; } } }
-  if(end<0){ console.log(JSON.stringify({error:'particle VM switch unterminated'})); process.exit(1); }
-  const body=code.slice(at,end);
-  const labs=new Set(); let m; const re=/case\s+(\d+)\s*:/g;
-  while((m=re.exec(body))!==null) labs.add(+m[1]);
+{ const labs=new Set(); let at=-1;
+  for(let k=0;k<PARTICLE_SWITCH_IDX+VM_CHUNKS;k++){ at=code.indexOf('switch(op){',at+1);
+    if(at<0){ console.log(JSON.stringify({error:'particle VM switch not found'})); process.exit(1); }
+    if(k<PARTICLE_SWITCH_IDX)continue;
+    let depth=0,i=code.indexOf('{',at),end=-1;
+    for(;i<code.length;i++){ const c=code[i];
+      if(c==='{')depth++; else if(c==='}'){ depth--; if(depth===0){ end=i; break; } } }
+    if(end<0){ console.log(JSON.stringify({error:'particle VM switch unterminated'})); process.exit(1); }
+    const body=code.slice(at,end); let m; const re=/case\s+(\d+)\s*:/g;
+    while((m=re.exec(body))!==null) labs.add(+m[1]); }
   IMPLEMENTED=[...labs].sort((a,b)=>a-b);
   if(IMPLEMENTED.length<50){ console.log(JSON.stringify({error:'implausible case count '+IMPLEMENTED.length})); process.exit(1); }
 }
 { const n=code.split('switch(op){').length-1;
-  if(n!==OPSITES.length){ console.log(JSON.stringify({error:'expected '+OPSITES.length+' switch(op) dispatches, saw '+n})); process.exit(1); }
+  if(VM_CHUNKS<1||n!==PARTICLE_SWITCH_IDX+VM_CHUNKS){ console.log(JSON.stringify({error:'expected '+PARTICLE_SWITCH_IDX+' + '+VM_CHUNKS+' vm chunk switch(op) dispatches, saw '+n})); process.exit(1); }
   let k=0;
-  code=code.split('switch(op){').map((seg,i)=> i===0?seg:('__opAll['+(k)+']++;switch(op){default:{__opMiss('+(k++)+',op);break;}'+seg)).join('');
-  // the split/join above prefixes each occurrence; k advances once per join point
+  code=code.split('switch(op){').map((seg,i)=>{ if(i===0)return seg; const site=Math.min(k++,PARTICLE_SWITCH_IDX);
+    return '__opAll['+site+']++;switch(op){default:{__opMiss('+site+',op);break;}'+seg; }).join('');
+  const NONE='function vmOpsNone(op,src,dst,k,si,di,i,j,ip){ return ip; }';
+  if(code.split(NONE).length!==2){ console.log(JSON.stringify({error:'vmOpsNone anchor not found once'})); process.exit(1); }
+  code=code.replace(NONE,'function vmOpsNone(op,src,dst,k,si,di,i,j,ip){ __opAll['+PARTICLE_SWITCH_IDX+']++;__opMiss('+PARTICLE_SWITCH_IDX+',op); return ip; }');
 }
 code = 'const __opAll=new Float64Array(3),__opMissN=new Float64Array(3),__opMissCore=new Float64Array(3),__opMissBound=new Float64Array(3);\n'
      + 'const __opMissHist=new Map();\n'

@@ -510,8 +510,21 @@ bound-opcode block and the register clamp are the function's tail, shared.
 - A rig that text-patches a case now patches it once for all four machines. `harness-clamp.js` counts
   three sites.
 
-`CORE_OPCODES=236`, `MAX_BOUND_OPCODES=192` (#129, was 96), `OPCODE_COUNT=428` (was 332),
-`DIMS_MAX=32` (#129, was 16), `CAP=1800`.
+**#251 — the cases live in chunks now, not in `vmStep`.** V8 never optimised a ~240-case switch (it is far
+over `--max-optimized-bytecode-size`, #250), so the case bodies moved, verbatim, into `vmOps0`..`vmOps14`
+and `vmOps26` — sixteen opcodes per chunk, chunk = `op>>4` — defined just above `vmStep`. `vmStep` keeps
+its head test and its whole tail and dispatches through `__vmOpsTab[op>>4]`; a range with no cases (the
+bound slots 237..426) maps to `vmOpsNone`, which does nothing, exactly as those ops fell through the
+single switch. **A new core opcode goes in the chunk `op>>4`** — anywhere else it is dead text, and
+substrate-test's `#251` row fails the build. The split was generated with acorn by a script that refuses
+any case with `return`, `var`, a labelled jump, `arguments`, `this`, a function declaration, a shared
+switch-level name, or a `default`. `harness-clamp.js` still reports three sites: every chunk switch plus
+`vmOpsNone` is the one `vm` site.
+
+`CORE_OPCODES=237`, `MAX_BOUND_OPCODES=190` (#218a, was 192), `OPCODE_COUNT=427`, and GENE_AUTHOR/GENE_READ
+at 427/428 above it — so `OPCODE_DRAW` (#249) is the width mutation draws from: `OPCODE_COUNT`, or +2 with
+`GENE_DRAW=1`. `DIMS_MAX=32` (#129, was 16), `CAP=1800`. (This line read 236/192/428 until #251 — stale
+since #132 and #218a.)
 
 ---
 

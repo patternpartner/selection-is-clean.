@@ -22660,3 +22660,36 @@ would give every universe in the field roughly twice the evolution per hour of v
 
 **What moved in the universe: nothing — this is the instrument, and it is how the #249 decision runs fit in
 about two hours instead of four and a half.**
+
+### #251 — THE SPLIT: the field's VM gets optimised too (+17% in Chromium's worker path), byte-identical
+
+#250's flag cannot reach the browser, so the fix there is structural: `vmStep`'s ~240 case bodies moved,
+verbatim, into sixteen chunk functions (`vmOps<op>>4>`, sixteen opcodes each), and `vmStep` dispatches
+through a table. Generated with acorn by a script that refuses any case with `return`, `var`, a labelled
+jump, `arguments`, `this`, a function declaration, a switch-level name shared between cases, or a `default`
+— none found in 239 cases.
+
+**Identical, by the rigs that proved #231:** `vm-equiv.js` old vs split — every opcode 0-440 through every
+machine, full-state hash after each — identical on seed 1 (PASS A and B), seed 2 (A, warm 800), seed 3
+(B, warm 1500). A planted `*1.001` in case 1 is caught (at the warm-up line: op 1 runs there). Trajectories:
+census hash series and never-fired lists identical to the pre-split engine on seeds 1-3 at 2,000 ticks.
+`harness-clamp.js` (now reading the chunks as its one `vm` site) prints the same output apart from source
+line numbers. substrate-test 263/0 at TICKS=40, including a new row.
+
+**Speed.** Node at V8's default limit (what a browser has): 61.1 s against 126.8 s for 1,500 ticks, the
+same as #250's flag (65.2 s; the flag on top adds nothing). `vmStep` and `vmOps0` (ops 0-15, which carry
+most instructions) are TurboFan-optimised; rarely-hit chunks stay baseline, which is V8 choosing, not a
+limit. **In Chromium, the field's own path** (`universe.html` -> `sim.worker.js`, flat out, side by side):
+**31.3 against 26.8 ticks a second, +17%** — much less than Node's 2x. Chromium's newer V8 looks to handle
+the big function better than Node 22's does already; not isolated, and the browser tick also carries real
+rendering that the Node rigs stub out. The main-thread page
+(`engine.html` directly, frame-paced) moved 28.7 -> 32.0. Measured with the #249 batch running on all four
+cores, both arms under the same load.
+
+**The trap it creates, and the row that closes it:** a case in the wrong chunk is a live opcode that
+silently never runs. substrate-test's `#251` row reads the source and fails if any case sits outside the
+chunk `op>>4`, if a label repeats, if the table is wrong, or if a `switch(op)` comes back inside `vmStep`.
+Planted `case 16` in `vmOps2`: 262/1, naming it.
+
+**What moved in the universe:** every universe in the field now runs about a sixth more ticks per hour of
+viewing. Nothing about what a tick does.

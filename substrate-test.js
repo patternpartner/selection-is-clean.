@@ -3178,6 +3178,23 @@ ck('#216q the rig reports the world each block measured', PT.length>=30 &&
    PT.length+' blocks traced; the population collapses at '+(PTcollapse?("out."+PTcollapse.block+" ("+PTcollapse.before+" -> "+PTcollapse.after+")"):'(no collapse seen this run)')+
    ' and every crossing row now reports its denominator — a carrier count is ceilinged by how many particles an earlier block left alive, which is what made #216l seed-dependent');
 
+// #251 — vmStep's switch lives in chunk functions (vmOps<op>>4>) so V8 optimises them, and a case placed in
+// the wrong chunk would be a live opcode that silently never runs: the table sends op 40 to vmOps2, and a
+// case 40 written into vmOps1 is dead text. So the placement is a build row, read off the source.
+{ const bad=[], seen=new Set(); let m, chunks=0;
+  const re=/function vmOps(\d+)\(op,src,dst,k,si,di,i,j,ip\)\{ switch\(op\)\{([\s\S]*?)\n    \}\n    return ip;\n\}/g;
+  while((m=re.exec(code))!==null){ chunks++; const n=+m[1]; const lr=/(?:^|\n)[ \t]*case (\d+):/g; let c;
+    while((c=lr.exec(m[2]))!==null){ const v=+c[1]; if((v>>4)!==n) bad.push(v+' in vmOps'+n); if(seen.has(v)) bad.push('duplicate case '+v); seen.add(v); } }
+  const tab=((code.match(/const __vmOpsTab=\[([^\]]*)\]/)||[])[1]||'').split(',');
+  const has=i=>code.indexOf('function vmOps'+i+'(op,')>=0;
+  const tabBad=tab.map((f,i)=>(has(i)?f==='vmOps'+i:f==='vmOpsNone')?null:i+'->'+f).filter(x=>x!==null);
+  const inline=/function vmStep\(op,src,dst,k,si,di,i,j,ip\)\{[^\n]*\n[^\n]*switch\(op\)/.test(code);
+  ck('#251 every vmStep case sits in the chunk its opcode dispatches to',
+     chunks>0 && seen.size>50 && bad.length===0 && tab.length>1 && tabBad.length===0 && !inline,
+     seen.size+' cases in '+chunks+' chunks, table of '+tab.length+(bad.length?'; MISPLACED '+bad.slice(0,6).join(', '):'')+
+     (tabBad.length?'; table wrong at '+tabBad.slice(0,6).join(', '):'')+(inline?'; a switch(op) is back inside vmStep':''));
+}
+
 ck('no errors thrown anywhere', r.errors.length===0, r.errors.join(' | '));
 console.log('\n  '+pass+' passed, '+fail+' failed');
 function UA_FOLD_MODES_SAFE(){ try{ return 4; }catch(e){ return '?'; } }
