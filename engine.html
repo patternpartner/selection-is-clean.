@@ -2136,6 +2136,12 @@ const CORE_OPCODES=237; // #132: 236 -> 237, admitting EFFECT_EMIT (236) — the
                         // read its own and its partner's caste, and DIFFERENTIATE (change its own caste) based
                         // on what it computes. The first core opcodes added in this whole arc. (was 128, Pe146 op127)
 const OPCODE_COUNT=CORE_OPCODES+MAX_BOUND_OPCODES;
+// #249: the width a random opcode is DRAWN from. OPCODE_COUNT stops at 426, so GENE_AUTHOR and GENE_READ (427/428,
+// #218a) were drawn ZERO times in 427 by every mutation site - not "2 draws of 429" as #218e has it: making room
+// for them (MAX_BOUND_OPCODES 192 -> 190) shrank the draw by exactly the two opcodes it made room for. GENE_DRAW=1
+// widens the draw by GENE_OPCODES so they can be carried at all. Unset, this is OPCODE_COUNT and every draw is the
+// same draw it always was. Every array indexed by opcode (opFreq, opCum, _seen146) already guards op<its size.
+const OPCODE_DRAW=OPCODE_COUNT+(((typeof globalThis!=='undefined')&&((globalThis.__GENE_DRAW|0)===1))?GENE_OPCODES:0);
 const FIELD_W=40;
 const FIELD_H=40;
 let FIELD_DECAY=0.982;   // natural fade — Pe22b: now genome-driven, can evolve
@@ -10484,12 +10490,12 @@ function inheritProg(parentProg,inheritedCap){ fired('prog.inherit'); // child =
   for(let i=0;i<p.length;i++){
     if(Math.random()<rate*1.2){
       p[i][3]+=(Math.random()-0.5)*0.15*scale;p[i][3]=Math.max(-2,Math.min(2,p[i][3]));
-      if(Math.random()<rate)p[i][0]=Math.floor(Math.random()*OPCODE_COUNT);
+      if(Math.random()<rate)p[i][0]=Math.floor(Math.random()*OPCODE_DRAW);
       if(Math.random()<rate*0.2)p[i][1]=Math.floor(Math.random()*12);
       if(Math.random()<rate*0.2)p[i][2]=Math.floor(Math.random()*12);
     }
   }
-  if(p.length<cap&&Math.random()<rate*0.15)p.splice(Math.floor(Math.random()*(p.length+1)),0,[Math.floor(Math.random()*OPCODE_COUNT),Math.floor(Math.random()*12),Math.floor(Math.random()*12),(Math.random()-0.5)*0.6]);
+  if(p.length<cap&&Math.random()<rate*0.15)p.splice(Math.floor(Math.random()*(p.length+1)),0,[Math.floor(Math.random()*OPCODE_DRAW),Math.floor(Math.random()*12),Math.floor(Math.random()*12),(Math.random()-0.5)*0.6]);
   if(p.length>1&&Math.random()<rate*0.08)p.splice(Math.floor(Math.random()*p.length),1);
   while(p.length>cap)p.pop();
   if(!p.length)p.push([0,0,0,0]);
@@ -14998,7 +15004,7 @@ function attemptClusterBudding(){
         // region), reading whichever atom bank is ambient at execution time, exactly as the particle VM
         // does — that path has simply never been reachable from a bud until now. Matches its sibling
         // site; not a new mechanism, so it isn't gated.
-        if(Math.random()<_effInnov*0.27)copy[0]=Math.floor(Math.random()*OPCODE_COUNT); // now genuinely the full opcode space, atoms included
+        if(Math.random()<_effInnov*0.27)copy[0]=Math.floor(Math.random()*OPCODE_DRAW); // now genuinely the full opcode space, atoms included
         return copy;
       }),
       vmInfluence:Math.max(0.05,c.vmInfluence+(Math.random()-0.5)*0.1),
@@ -18054,7 +18060,7 @@ function evolvePlasmids(){
       }
       else if(roll<0.58){
         // Structural change (opcode or registers)
-        if(Math.random()<0.5)pPlasmid[base]=Math.floor(Math.random()*OPCODE_COUNT);
+        if(Math.random()<0.5)pPlasmid[base]=Math.floor(Math.random()*OPCODE_DRAW);
         else{
           pPlasmid[base+1]=Math.floor(Math.random()*12);
           pPlasmid[base+2]=Math.floor(Math.random()*12);
@@ -18102,7 +18108,7 @@ function evolvePlasmids(){
     // Spontaneous generation — only in high-resonance environments
     if(nP<MAX_PLASMID&&Math.random()<genome.plasmidSpawnRate*(1+localRes[i]*4)){
       const newBase=i*PLASMID_SLOTS+nP*4;
-      pPlasmid[newBase]=Math.floor(Math.random()*OPCODE_COUNT);
+      pPlasmid[newBase]=Math.floor(Math.random()*OPCODE_DRAW);
       pPlasmid[newBase+1]=Math.floor(Math.random()*12);
       pPlasmid[newBase+2]=Math.floor(Math.random()*12);
       pPlasmid[newBase+3]=(Math.random()-0.5)*0.75;
@@ -18141,7 +18147,7 @@ function attemptHGT(){
     donor[3]+=(Math.random()-0.5)*genome.hgtSpliceNoise;
     donor[3]=Math.max(-2.5,Math.min(2.5,donor[3]));
     // Occasional opcode drift during transfer
-    if(Math.random()<0.08)donor[0]=Math.floor(Math.random()*OPCODE_COUNT);
+    if(Math.random()<0.08)donor[0]=Math.floor(Math.random()*OPCODE_DRAW);
 
     const insertPos=Math.floor(Math.random()*(genome.vmProgram.length+1));
     genome.vmProgram.splice(insertPos,0,donor);
@@ -20464,7 +20470,7 @@ function mutateGenome(){ fired('genome.mutate');
     inst[3]=Math.max(-2,Math.min(2,inst[3]));
 
     // Opcode swap — now includes FEEDBACK (5), LOAD_MEM (6), STORE_MEM (7)
-    if(Math.random()<rate)inst[0]=Math.floor(Math.random()*OPCODE_COUNT);
+    if(Math.random()<rate)inst[0]=Math.floor(Math.random()*OPCODE_DRAW);
 
     // Source register swap (now 12 registers)
     if(Math.random()<rate*0.2)inst[1]=Math.floor(Math.random()*12);
@@ -20495,13 +20501,13 @@ function mutateGenome(){ fired('genome.mutate');
       newInst=[4, Math.floor(Math.random()*12), bestBehavAxis, initK]; // opcode 4 = EMIT
       recordEvent('directed_emit',{ch:bestBehavAxis,dir:bestBehavDir,bgb:+bgb.toFixed(2)},800);
     } else {
-      newInst=[Math.floor(Math.random()*OPCODE_COUNT),Math.floor(Math.random()*12),Math.floor(Math.random()*12),(Math.random()-0.5)*0.6];
+      newInst=[Math.floor(Math.random()*OPCODE_DRAW),Math.floor(Math.random()*12),Math.floor(Math.random()*12),(Math.random()-0.5)*0.6];
       // Pe33: anti-gradient vetting — if inserting an EMIT that opposes a strong gradient,
       // 60% chance to re-roll once. Not a lock: randomness is still alive.
       if(behavGradStrong&&newInst[0]===4){
         const ch=Math.abs(newInst[2])%8;
         if(ch<7&&vmNudgeDirs33[ch]!==0&&Math.sign(newInst[3])!==bestBehavDir&&Math.random()<0.6){
-          newInst=[Math.floor(Math.random()*OPCODE_COUNT),Math.floor(Math.random()*12),Math.floor(Math.random()*12),(Math.random()-0.5)*0.6];
+          newInst=[Math.floor(Math.random()*OPCODE_DRAW),Math.floor(Math.random()*12),Math.floor(Math.random()*12),(Math.random()-0.5)*0.6];
         }
       }
     }
@@ -20543,7 +20549,7 @@ function mutateGenome(){ fired('genome.mutate');
       inst[3]+=(Math.random()-0.5)*0.15*scale;
       inst[3]=Math.max(-2,Math.min(2,inst[3]));
       // Structural mutations (rarer)
-      if(Math.random()<0.2)inst[0]=Math.floor(Math.random()*OPCODE_COUNT);
+      if(Math.random()<0.2)inst[0]=Math.floor(Math.random()*OPCODE_DRAW);
       if(Math.random()<0.15)inst[1]=Math.floor(Math.random()*12);
       if(Math.random()<0.15)inst[2]=Math.floor(Math.random()*12);
     }

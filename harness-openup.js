@@ -13,6 +13,7 @@
 //   LIVENESS  the engine's never-fired list at the end - does opening this arm wake anything else?
 // The wrap draws nothing and returns the gate's own value, so the control is the unpatched engine's run.
 //   ARM=CHAR_DISP SEED=1 TICKS=5000 node harness-openup.js      (ARM unset = control; NOWRAP=1 skips the wrap)
+//   node harness-openup.js --emit engine.wrap.html            (the wrapped engine, for harness-oee INDEX=...)
 // No backticks in the appended driver's comments: the engine source is compiled as one string.
 try{ require(require('path').join(__dirname,'harness-env.js')).applyKnobs(globalThis); }catch(_){}
 require(require('path').join(__dirname,'harness-env.js'))(globalThis);
@@ -34,8 +35,12 @@ if(!E.NOWRAP) for(const a in SITES){
   wrapped[a]=n;
   if(n!==SITES[a]){ console.log(JSON.stringify({error:'arm '+a+': wrapped '+n+' gate sites, expected '+SITES[a]})); process.exit(1); }
 }
+// --emit <out.html>: write the wrapped engine and stop, so a long-run rig (harness-oee INDEX=out.html) reports
+// the same gate hits as armHits. The counters live on globalThis for that reason.
+const PRE='globalThis.__armHit=globalThis.__armHit||{};function __ah(a,v){ if(v)globalThis.__armHit[a]=(globalThis.__armHit[a]|0)+1; return v; }\n';
+if(process.argv[2]==='--emit'){ fs.writeFileSync(process.argv[3],'<!doctype html><script>'+PRE+code+'</script>\n'); console.log(JSON.stringify({emitted:process.argv[3],wrapped})); process.exit(0); }
 const Module=require('module');const m=new Module('/tmp/openup.js');m.filename='/tmp/openup.js';m.paths=Module._nodeModulePaths('/tmp');
-m._compile('var __armHit={};function __ah(a,v){ if(v)__armHit[a]=(__armHit[a]|0)+1; return v; }\n'+code+`
+m._compile(PRE+code+`
 ;globalThis.__OU=function(T,EVERY,crypto){
   const out={rows:[],err:0,first:{},peak:{}};
   const census=function(){
@@ -49,7 +54,7 @@ m._compile('var __armHit={};function __ah(a,v){ if(v)__armHit[a]=(__armHit[a]|0)
   census();
   for(let s=0;s<T;s++){ globalThis.__detMs+=5; try{loop();}catch(e){out.err++;} if((s+1)%EVERY===0)census(); }
   const lc=livenessCensus();
-  return {out,hits:__armHit,never:lc.never,liveCount:lc.live.length+lc.rare.length,DIMS};
+  return {out,hits:globalThis.__armHit,never:lc.never,liveCount:lc.live.length+lc.rare.length,DIMS};
 };`,'/tmp/openup.js');
 const r=globalThis.__OU(T,EVERY,crypto), o=r.out;
 let late=0,est=0; for(const l in o.first){ if(o.first[l]>WARM){ late++; if(o.peak[l]>=ESTN)est++; } }

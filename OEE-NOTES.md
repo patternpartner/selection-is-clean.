@@ -22623,3 +22623,40 @@ would have got wrong, each changed here and nowhere else:
 
 **Decision arms (12 + control, x seeds 61-63, 20k):** MUTUALISM, RQ_TRAIT, CHAR_DISP, NICHE_LOCALTEND,
 NICHE_CELLDRIFT, NICHE_BIOTIC, SELFMODEL, GROUP_PROBE, SELF_PREDICT, GRIP_SEED, SELF_PREDICT+GRIP_SEED, GENE_DRAW.
+
+**#249 screen, seed 2 (5,000 ticks) — and what it says about noise.** Same pattern of hits as seed 1 (GENO_PARASITE
+and NICHE_DRIFT 0 and identical; GROUP_PROBE 1,782 hits, zero buds). Effective lineages at the end: control
+72.5; every arm lower — MUTUALISM 34.2, RQ_TRAIT 35.8, GROUP_PROBE 39.0, NICHE_LOCALTEND 43.0, CHAR_DISP 46.0,
+NICHE_CELLDRIFT 46.3, SELFMODEL 56.4, NICHE_BIOTIC 64.6. On seed 1 the same arms scattered on BOTH sides of
+the control (39 to 72 around 55). **GROUP_PROBE is the free null here**: on seed 2 it changed nothing but the
+draw sequence, and moved effN from 72.5 to 39.0. So a single seed at 5k cannot tell any of these effects from
+a shifted draw, which is what the screen was never asked to do, and why the decision runs use three seeds.
+
+### #250 — THE VM WAS NEVER OPTIMISED: rigs 1.7-2.3x faster, output byte-identical
+
+The user asked why every measurement takes so long. A CPU profile of a 1,500-tick run: ~75% of the time in
+the four VM executors and `vmStep`, and half of that attributed to the LINES THAT CALL `vmStep`, plus 20% on
+the register clamp at its tail. `%GetOptimizationStatus` said why: `executeVM`, `processGrid`, `render` are
+TurboFan-optimised; **`vmStep` and `loop` never are** (baseline tier only). `vmStep` — #231's single dispatch —
+is far over V8's `--max-optimized-bytecode-size` (61,440 bytes), so every instruction every creature runs
+went through unoptimised code. And not since #231: the pre-#231 engine (four copies) reads the same way —
+`executeVM`, `executeClusterVM`, `executeSoloVM` all baseline-only (checked, seed 5, 300 ticks, flag off). The
+VM has been too big to optimise for a long time; #231's 5-7% was one slow tier against another.
+
+**Fix, for the lab:** `harness-env.js` raises the limit to 2,000,000 before any rig compiles the engine
+(`v8.setFlagsFromString`; `NO_V8OPT=1` turns it off). 53 of the 54 node rigs that boot the engine load it.
+- Identical: census hash series (palive/tend/amp every 250 ticks) and the never-fired list, flag on vs off,
+  seeds 1, 2, 3 at 2,000 ticks and seed 5 at 1,000 — byte-identical. It changes when code is compiled, not
+  what it computes: JS arithmetic is IEEE double in every tier.
+- Faster: 25.6 s vs 58.5 s (seed 5, 1,000 ticks, paired); 123 s vs 212-220 s (seeds 1-3, 2,000 ticks, six
+  processes on four cores). 2,000,000 and 16,000,000 time the same (44.6 s each); the smaller is kept, since
+  V8 warns that very high values can trip compiler assertions.
+- substrate-test 262/0 at TICKS=40 and TICKS=900 with the flag on.
+
+**Not fixed: the field.** `sim.worker.js` runs the engine in the browser, where Chrome keeps the default and
+a page cannot change it. The artwork itself runs its VM on the slow tier. The fix there is to split `vmStep`
+into pieces under the limit — mechanical, and `vm-equiv.js` exists to prove it identical op by op — and it
+would give every universe in the field roughly twice the evolution per hour of viewing. Named, not done.
+
+**What moved in the universe: nothing — this is the instrument, and it is how the #249 decision runs fit in
+about two hours instead of four and a half.**

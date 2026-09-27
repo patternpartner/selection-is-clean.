@@ -1,5 +1,13 @@
 // Shared headless browser-API stubs for the small test rigs. The big harnesses each carry their
 // own copy inline; this exists so new checks do not have to paste 20 lines of shims to boot the sim.
+// #250: LET V8 OPTIMISE THE VM. vmStep (#231's one dispatch for four machines) is far over V8's default
+// --max-optimized-bytecode-size (61,440), so TurboFan never touches it: every instruction every creature runs
+// went through the baseline tier, and a profile put ~70% of each tick there. Raising the limit before the
+// engine is compiled makes the same run 2-3x faster with byte-identical output (hash series compared on
+// seeds 5, 1-3). It changes WHEN code is compiled, never WHAT it computes: JS arithmetic is IEEE double in
+// every tier. NO_V8OPT=1 turns it off for an A/B. Loaded by every node rig that boots the engine except
+// sim.worker.js, which is the browser's worker - Chrome keeps the default, so the FIELD still runs slow.
+if(!process.env.NO_V8OPT){ try{ require('v8').setFlagsFromString('--max-optimized-bytecode-size=2000000'); }catch(_){} }
 module.exports=function(g){
 function selfProxy(){const f=function(){return p};const p=new Proxy(f,{get(_t,k){if(k===Symbol.toPrimitive)return()=>0;if(k==='width'||k==='height')return 0;if(k==='data')return new Uint8ClampedArray(4);return p},apply(){return p}});return p}
 const CTX=selfProxy();
@@ -53,7 +61,7 @@ console.error=()=>{};console.warn=()=>{};};
 // (harness-establish among them) ran CHAR_DISP=1 as the control: CHAR_DISP, NICHE_LOCALTEND, NICHE_DRIFT,
 // NICHE_CELLDRIFT, NICHE_BIOTIC, GROUP_PROBE. harness-oee reached them by its own env lines; nothing else did.
 module.exports.KNOBS = ['MUTUALISM','RQ_TRAIT','GENO_PARASITE','SELF_PREDICT','GRIP_SEED','MEME_TRANSFER','MOTIF_SELECT','FOUND','SELFMODEL','LAW_PERSIST','MUTMAG','AIM','INHERIT','INHERIT_SD','RATION','PROV_BIRTH','RARE_BIRTH_K','OUTLIER_BIRTH_K','EXTINCT_UNDO','AIM_STILL','LAW_KCAP','PEERINS',
-  'CHAR_DISP','NICHE_LOCALTEND','NICHE_DRIFT','NICHE_CELLDRIFT','NICHE_BIOTIC','GROUP_PROBE'];
+  'CHAR_DISP','NICHE_LOCALTEND','NICHE_DRIFT','NICHE_CELLDRIFT','NICHE_BIOTIC','GROUP_PROBE','GENE_DRAW'];
 module.exports.applyKnobs = function(g){
   for (const kn of module.exports.KNOBS)
     if (process.env[kn] !== undefined) g['__'+kn] = parseInt(process.env[kn], 10);
