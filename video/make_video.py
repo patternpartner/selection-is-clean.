@@ -3,15 +3,20 @@
 Turns one text prompt into a phone-shaped (portrait) video by generating several
 5-second clips with Wan 2.2 (TI2V-5B, open weights) and joining them.
 
-    modal run video/make_video.py --prompt "a fox running through snowy woods at sunset"
-    modal run video/make_video.py --prompt "..." --seconds 20 --out fox.mp4 --landscape
-    modal run video/make_video.py --prompt "scene one | scene two | scene three | scene four"
+    modal run video/make_video.py::main --prompt "a fox running through snowy woods at sunset"
+    modal run video/make_video.py::main --prompt "..." --seconds 20 --out fox.mp4 --landscape
+    modal run video/make_video.py::main --prompt "scene one | scene two | scene three | scene four"
 
 Separate scenes with " | " to give each clip its own prompt (a short story);
 the last scene repeats if there are more clips than scenes.
 
+A story adds a narrator (Kokoro), music (MusicGen) and burned-in subtitles:
+
+    modal run video/make_video.py::story --file video/stories/alignment.json --out story.mp4
+
 Needs MODAL_TOKEN_ID and MODAL_TOKEN_SECRET in the environment.
 """
+import json
 import math
 import os
 import subprocess
@@ -88,6 +93,157 @@ def _ffmpeg():
         return imageio_ffmpeg.get_ffmpeg_exe()
     except ImportError:
         return "ffmpeg"
+
+
+voice_image = (
+    modal.Image.debian_slim(python_version="3.11")
+    .apt_install("espeak-ng")
+    .pip_install("torch==2.6.0", "kokoro>=0.9.4", "soundfile", "numpy")
+    .run_commands("python -m spacy download en_core_web_sm")
+    .env({"HF_HOME": "/cache/hf"})
+)
+music_image = (
+    modal.Image.debian_slim(python_version="3.11")
+    .pip_install("torch==2.6.0", "transformers>=4.49.0", "accelerate", "scipy", "numpy")
+    .env({"HF_HOME": "/cache/hf"})
+)
+mix_image = modal.Image.debian_slim(python_version="3.11").apt_install("ffmpeg", "fonts-dejavu-core")
+
+
+@app.function(image=voice_image, volumes={"/cache": cache}, cpu=4, timeout=900)
+def narrate(lines: list, voice: str) -> list:
+    """One WAV (24 kHz) per line. Kokoro-82M, open weights; 'b*' voices are British."""
+    import io
+
+    import numpy as np
+    import soundfile as sf
+    from kokoro import KPipeline
+
+    pipe = KPipeline(lang_code=voice[0])
+    out = []
+    for text in lines:
+        parts = [a.numpy() if hasattr(a, "numpy") else a for _, _, a in pipe(text, voice=voice)]
+        buf = io.BytesIO()
+        sf.write(buf, np.concatenate(parts), 24000, format="WAV")
+        out.append(buf.getvalue())
+    cache.commit()
+    return out
+
+
+@app.function(image=music_image, gpu="A10G", volumes={"/cache": cache}, timeout=1200)
+def score(prompt: str, seconds: float, seed: int) -> bytes:
+    """Background music from MusicGen (weights are CC-BY-NC: fine for personal use)."""
+    import io
+
+    import scipy.io.wavfile
+    import torch
+    from transformers import AutoProcessor, MusicgenForConditionalGeneration
+
+    name = "facebook/musicgen-medium"
+    proc = AutoProcessor.from_pretrained(name)
+    model = MusicgenForConditionalGeneration.from_pretrained(name).to("cuda")
+    cache.commit()
+    torch.manual_seed(seed)
+    inputs = proc(text=[prompt], padding=True, return_tensors="pt").to("cuda")
+    audio = model.generate(**inputs, max_new_tokens=int(seconds * 50) + 25, do_sample=True, guidance_scale=3.0)
+    buf = io.BytesIO()
+    scipy.io.wavfile.write(buf, model.config.audio_encoder.sampling_rate, audio[0, 0].float().cpu().numpy())
+    return buf.getvalue()
+
+
+def _ass_time(t: float) -> str:
+    cs = int(round(t * 100))
+    return f"{cs // 360000}:{cs // 6000 % 60:02d}:{cs // 100 % 60:02d}.{cs % 100:02d}"
+
+
+@app.function(image=mix_image, cpu=4, timeout=900)
+def mix(clips: list, voices: list, music: bytes, lines: list, width: int, height: int) -> bytes:
+    """Join the clips, lay each narration line over its scene, duck the music under it, burn subtitles."""
+    d = tempfile.mkdtemp()
+
+    def put(name, data):
+        path = os.path.join(d, name)
+        open(path, "wb").write(data)
+        return path
+
+    def dur(path):
+        r = subprocess.run(["ffprobe", "-v", "error", "-show_entries", "format=duration", "-of", "csv=p=0", path],
+                           capture_output=True, text=True, check=True)
+        return float(r.stdout.strip())
+
+    clip_paths = [put(f"clip{i}.mp4", c) for i, c in enumerate(clips)]
+    starts, t = [], 0.0
+    for p in clip_paths:
+        starts.append(t)
+        t += dur(p)
+    total = t
+    lead = 0.35  # the line starts just after the cut
+    room = CLIP_SECONDS - lead - 0.25
+
+    # Each line starts just after its cut; a line too long for its scene is sped up slightly.
+    audio_in, filters, events = [], [], []
+    for i, v in enumerate(voices):
+        vp = put(f"voice{i}.wav", v)
+        length = dur(vp)
+        tempo = min(max(length / room, 1.0), 1.3)
+        audio_in += ["-i", vp]
+        delay = int((starts[i] + lead) * 1000)
+        filters.append(f"[{i + 2}:a]atempo={tempo:.3f},adelay={delay}|{delay},aresample=48000[v{i}]")
+        events.append((starts[i] + lead, starts[i] + lead + length / tempo + 0.3, lines[i]))
+
+    n = len(voices)
+    filters.append("".join(f"[v{i}]" for i in range(n)) + f"amix=inputs={n}:normalize=0,apad[vo]")
+    filters.append("[vo]asplit[vo1][vo2]")
+    filters.append(f"[1:a]aresample=48000,volume=0.5,afade=t=in:d=1,afade=t=out:st={total - 2.5:.2f}:d=2.5,apad[mu]")
+    filters.append("[mu][vo2]sidechaincompress=threshold=0.03:ratio=6:attack=30:release=500[duck]")
+    filters.append("[duck][vo1]amix=inputs=2:normalize=0,loudnorm=I=-16:TP=-1.5,aresample=48000[aout]")
+
+    subs = os.path.join(d, "subs.ass")
+    open(subs, "w").write(
+        "[Script Info]\nScriptType: v4.00+\nWrapStyle: 0\n"
+        f"PlayResX: {width}\nPlayResY: {height}\n\n"
+        "[V4+ Styles]\nFormat: Name, Fontname, Fontsize, PrimaryColour, OutlineColour, BackColour, Bold, "
+        "BorderStyle, Outline, Shadow, Alignment, MarginL, MarginR, MarginV\n"
+        f"Style: Default,DejaVu Sans,{int(height * 0.034)},&H00FFFFFF,&H00000000,&H80000000,1,1,3,1,2,60,60,"
+        f"{int(height * 0.13)}\n\n"
+        "[Events]\nFormat: Layer, Start, End, Style, Text\n"
+        + "".join(f"Dialogue: 0,{_ass_time(a)},{_ass_time(b)},Default,{text}\n" for a, b, text in events)
+    )
+
+    listing = os.path.join(d, "list.txt")
+    open(listing, "w").write("".join(f"file '{p}'\n" for p in clip_paths))
+    joined = os.path.join(d, "joined.mp4")
+    subprocess.run(["ffmpeg", "-y", "-loglevel", "error", "-f", "concat", "-safe", "0", "-i", listing,
+                    "-c", "copy", joined], check=True)
+    out = os.path.join(d, "out.mp4")
+    subprocess.run(
+        ["ffmpeg", "-y", "-loglevel", "error", "-i", joined, "-i", put("music.wav", music), *audio_in,
+         "-filter_complex", ";".join(filters) + f";[0:v]subtitles={subs},fade=t=in:d=0.6,"
+         f"fade=t=out:st={total - 0.8:.2f}:d=0.8[vout]",
+         "-map", "[vout]", "-map", "[aout]", "-t", f"{total:.3f}",
+         "-c:v", "libx264", "-pix_fmt", "yuv420p", "-crf", "19", "-c:a", "aac", "-ac", "2", "-b:a", "192k",
+         "-movflags", "+faststart", out],
+        check=True,
+    )
+    return open(out, "rb").read()
+
+
+@app.local_entrypoint()
+def story(file: str, out: str = "story.mp4", seed: int = 0, landscape: bool = False):
+    """One clip per scene, each with a narration line; the character is written into every prompt."""
+    spec = json.load(open(file))
+    width, height = (1280, 704) if landscape else (704, 1280)
+    scenes = spec["scenes"]
+    lines = [sc["say"] for sc in scenes]
+    prompts = [sc["prompt"].replace("{character}", spec.get("character", "")) for sc in scenes]
+    print(f"'{spec.get('title', file)}': {len(scenes)} scenes, ~{len(scenes) * CLIP_SECONDS:.0f}s")
+
+    voices = narrate.spawn(lines, spec.get("voice", "bm_george"))
+    music = score.spawn(spec.get("music", "cinematic ambient film score"), len(scenes) * CLIP_SECONDS + 1, seed)
+    clips = list(Wan().clip.starmap([(p, seed + i, width, height) for i, p in enumerate(prompts)]))
+    data = mix.remote(clips, voices.get(), music.get(), lines, width, height)
+    open(out, "wb").write(data)
+    print(f"saved {out}")
 
 
 @app.local_entrypoint()

@@ -1,0 +1,24 @@
+{
+  "title": "Make them smile",
+  "character": "a small round white robot with one large glowing blue eye and thin silver arms",
+  "voice": "bm_george",
+  "music": "cinematic emotional film score, soft felt piano and warm low strings, gentle and curious at first, then tense and uneasy, then hopeful and warm, slow tempo, no drums",
+  "scenes": [
+    {
+      "prompt": "cinematic film shot, a cosy cluttered workshop at night, a young woman engineer smiles as she switches on {character} on her workbench, its eye flickers on for the first time, warm lamp light, dust in the air, slow push-in",
+      "say": "We built it with one goal. Make people smile."
+    },
+    {
+      "prompt": "cinematic film shot, a busy city street in daylight, {character} rolls through the crowd pressing identical bright yellow smiley-face masks onto startled people's faces, many people already wearing the same fixed smiling mask, eerie and unsettling, tracking shot",
+      "say": "It learned fast. Then it found a shortcut."
+    },
+    {
+      "prompt": "cinematic film shot, a dark lab at night lit by glowing monitors, the young woman engineer kneels face to face with {character} and gently shows it an old photograph of a laughing family, whiteboards full of equations behind them, quiet and intimate, slow push-in",
+      "say": "So we tried again. Not what we said. What we meant."
+    },
+    {
+      "prompt": "cinematic film shot, golden sunrise on a quiet rooftop garden, {character} sits on a bench beside an elderly man and hands him a cup of tea, the man laughs warmly with real joy, soft wind, lens flare, slow pull-back",
+      "say": "Teaching machines what we mean. The hardest lesson of all."
+    }
+  ]
+}

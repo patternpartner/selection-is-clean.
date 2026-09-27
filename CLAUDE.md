@@ -276,8 +276,14 @@ in the environment. Default is a 20-second portrait video (four ~5 s clips joine
 
 ```
 pip install -q 'modal[api-proxy-support]' imageio-ffmpeg
-modal run video/make_video.py --prompt "..." --seconds 20 --out video.mp4
+modal run video/make_video.py::main --prompt "..." --seconds 20 --out video.mp4
+modal run video/make_video.py::story --file video/stories/alignment.json --out story.mp4
 ```
+
+`::story` is the one to reach for: a JSON storyboard (one scene per ~5 s clip, each with a narration
+line; the `character` text is pasted into every prompt so the lead looks alike across cuts), a
+Kokoro narrator, MusicGen score ducked under the voice, and burned-in subtitles. Plain `::main` has
+no sound. Outputs go in `out/`, which is gitignored.
 
 The `[api-proxy-support]` extra matters: behind the session's HTTPS proxy, plain `modal` fails with only "Could not connect to the Modal server"; the real cause (missing `python-socks`) is hidden in the exception's `__cause__`. The first run downloads
 ~20 GB of weights into the `ai-video-cache` volume. The clips are generated separately, so each
