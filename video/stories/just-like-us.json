@@ -11,7 +11,7 @@
       "prompt": "cinematic film shot, a cosy busy cafe in the morning, {man} hands coffee cups across the counter to smiling customers, each paper cup printed with a bright yellow smiley face, everyone lights up around him, warm sunlight, slow tracking shot"
     },
     {
-      "prompt": "cinematic film shot, a rainy city street, {man} holds a black umbrella over a frail elderly woman and gently walks her across the road, smiling kindly down at her, reflections on wet tarmac, soft light, slow push-in",
+      "prompt": "cinematic film shot, a rainy city street at dusk, {man} stands still at a pedestrian crossing holding a black umbrella over a frail elderly woman as they wait for the lights, he smiles kindly down at her, rain bouncing off the umbrella, reflections on wet tarmac, wide shot, static camera",
       "glitch": [
         [
           1.6,
@@ -25,25 +25,29 @@
           3.5,
           0.3
         ]
-      ]
+      ],
+      "note": "Standing, not walking: Wan gave the walking take an awkward gait."
     },
     {
       "top": "cinematic film shot, a warm cosy kitchen, {man} with short neat brown hair sits at a wooden table playing chess with an elderly man, both of them laughing, a mug with a bright yellow smiley face on the table, warm lamp light, wide shot",
       "bottom": "cinematic extreme close-up of the face of {man}, his wide warm smile held perfectly still, eyes open and never blinking, not a single muscle moving, subtly uncanny, soft light, static camera"
     },
     {
-      "prompt": "cinematic film shot, night, a dim bathroom, over-the-shoulder shot of {man} standing at the sink looking into the mirror, his reflection in the mirror shows his own face smiling calmly, cool blue light, static camera",
-      "reveal": "cinematic film shot, night, a dim bathroom, over-the-shoulder shot of a man with short brown hair in a grey cardigan standing at the sink looking into the mirror, but his reflection in the mirror shows a smooth white round robot head with one large glowing blue eye, wearing the same grey cardigan, eerie, cool blue light, static camera",
-      "swap_at": 2.4,
+      "prompt": "cinematic film shot, night, a dark bathroom, seen from directly behind, {man} stands motionless at the sink facing a steamed-up mirror, his face never visible, a cold round blue light glows from where his face should be and shines onto the misted glass, silhouette, eerie and quiet, static camera",
+      "note": "Implied, never shown: the user found every visible face reveal fake. Back view, blue glow on the fogged mirror, glitch.",
       "glitch": [
         [
-          1.1,
-          0.1
+          1.9,
+          0.15
+        ],
+        [
+          2.9,
+          0.4
         ]
       ],
-      "fade": 3.7,
+      "fade": 3.6,
       "say": "We only get to teach it once.",
-      "lead": 4.1,
+      "lead": 4.0,
       "whisper": true
     }
   ]
