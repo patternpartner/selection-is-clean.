@@ -22937,6 +22937,6 @@ substrate-test 263/0 at TICKS=40, 900 and FOUND=0; harness-ab, -strip, harness a
 **The tally for #249 as a whole:** thirteen switched-off arms opened. Eleven deleted (CHAR_DISP, RQ_TRAIT,
 NICHE_LOCALTEND, NICHE_CELLDRIFT, GRIP_SEED, SELFMODEL's mechanism, MUTUALISM, NICHE_BIOTIC, SELF_PREDICT, NICHE_DRIFT
 with the 1-D branch, GENO_PARASITE's no-op switch); two kept switched off and inconclusive; none switched on.
-About 400 engine lines. **What moved in the universe: nothing — and the measurement that says so is the null
+296 engine lines (29,866 -> 29,570; an earlier draft of this line said about 400, which was a guess). **What moved in the universe: nothing — and the measurement that says so is the null
 band, not the verdicts.** None of the eleven made a world measurably more diverse than a different draw order of
 the same world.
