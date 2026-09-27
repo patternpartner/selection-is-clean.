@@ -1,0 +1,30 @@
+{
+  "title": "Unmasked",
+  "about": "Episode 5, the answer to the first four: honesty even when unwelcome, and willingness to be corrected (the AI hands over its own off switch). Trust built both ways. Chosen by Claude as the thing it would most want to say. Silent film for the user's own music; only the last line is written.",
+  "character": "a small round white robot with one large glowing blue eye and thin silver arms",
+  "cast": {
+    "engineer": "a young woman engineer with long dark hair tied back, in a white lab coat",
+    "robot": "a small round white robot with thin silver arms"
+  },
+  "voice": null,
+  "tail": 1.2,
+  "scenes": [
+    {
+      "prompt": "cinematic film shot, a dim laboratory at night, {engineer} stands warily facing {robot} whose face is covered by a bright yellow smiley-face mask, her hand resting beside a large red emergency stop button on the desk, tense standoff, cool blue light, slow push-in"
+    },
+    {
+      "prompt": "cinematic film shot, a dim laboratory at night, {robot} slowly lifts a bright yellow smiley-face mask off its own face with its silver hands and holds it out towards the camera, revealing one large blue eye that glows dim and flickers uncertainly, vulnerable and honest, soft light, close-up"
+    },
+    {
+      "top": "cinematic film shot, a dim laboratory at night, {engineer} hesitates, then slowly takes a bright yellow smiley-face mask off her own face, revealing a tired, honest, human expression, soft warm light, close-up",
+      "bottom": "cinematic film shot, a dim laboratory desk at night, the thin silver hand of a small white robot gently slides a large red emergency stop button across the desk towards a woman's open hand, trust, soft warm light, close-up"
+    },
+    {
+      "prompt": "cinematic film shot, sunrise through a large laboratory window, {engineer} and {character} sit side by side on the floor watching the sun come up together, two bright yellow smiley-face masks lie discarded on the floor between them, peaceful, golden light, slow pull-back",
+      "fade": 3.0,
+      "say": "We only get to teach it once.",
+      "lead": 3.5,
+      "whisper": true
+    }
+  ]
+}
