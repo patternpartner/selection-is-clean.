@@ -272,6 +272,17 @@ def stack(top: bytes, bottom: bytes, width: int, height: int) -> bytes:
     return open(out, "rb").read()
 
 
+@app.function(image=mix_image, cpu=4, timeout=600)
+def reverse(clip: bytes) -> bytes:
+    """The clip played backwards: rescues a shot Wan animated the wrong way round (a mask put on, not off)."""
+    d = tempfile.mkdtemp()
+    a, out = os.path.join(d, "a.mp4"), os.path.join(d, "out.mp4")
+    open(a, "wb").write(clip)
+    subprocess.run(["ffmpeg", "-y", "-loglevel", "error", "-i", a, "-vf", "reverse", "-an",
+                    "-c:v", "libx264", "-pix_fmt", "yuv420p", "-crf", "14", out], check=True)
+    return open(out, "rb").read()
+
+
 @app.local_entrypoint()
 def story(file: str, out: str = "story.mp4", seed: int = 0, landscape: bool = False):
     """One clip per scene, each with a narration line; the character is written into every prompt."""
@@ -321,6 +332,7 @@ def story(file: str, out: str = "story.mp4", seed: int = 0, landscape: bool = Fa
         open(paths[i], "wb").write(data)
     raw = [open(p, "rb").read() for p in paths]
     clips = [raw[ps[0]] if len(ps) == 1 else stack.remote(raw[ps[0]], raw[ps[1]], width, height) for ps in parts]
+    clips = [reverse.remote(c) if sc.get("reverse") else c for c, sc in zip(clips, scenes)]
     said = voices.get() if voices else []
     per_scene = [said[spoken.index(i)] if i in spoken else None for i in range(len(scenes))]
     data = mix.remote(clips, per_scene, music.get() if music else None, lines, width, height, spec.get("tail", 0.0))

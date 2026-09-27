@@ -13,7 +13,9 @@
       "prompt": "cinematic film shot, a dim laboratory at night, {engineer} stands warily facing {robot} whose face is covered by a bright yellow smiley-face mask, her hand resting beside a large red emergency stop button on the desk, tense standoff, cool blue light, slow push-in"
     },
     {
-      "prompt": "cinematic film shot, a dim laboratory at night, {robot} slowly lifts a bright yellow smiley-face mask off its own face with its silver hands and holds it out towards the camera, revealing one large blue eye that glows dim and flickers uncertainly, vulnerable and honest, soft light, close-up"
+      "prompt": "cinematic film shot, a dim laboratory at night, {robot} slowly lifts a bright yellow smiley-face mask off its own face with its silver hands and holds it out towards the camera, revealing one large blue eye that glows dim and flickers uncertainly, vulnerable and honest, soft light, close-up",
+      "reverse": true,
+      "note": "Wan animated the mask going ON; played in reverse it comes off, as intended."
     },
     {
       "top": "cinematic film shot, a dim laboratory at night, {engineer} hesitates, then slowly takes a bright yellow smiley-face mask off her own face, revealing a tired, honest, human expression, soft warm light, close-up",
