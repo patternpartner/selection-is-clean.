@@ -22505,3 +22505,27 @@ substrate-test TICKS=40: 262/0 on seeds 1-3 and FOUND=0.
 **What moved in the universe:** nothing in a lab run where the law is never proposed upward (the default is
 unchanged). In the field, the upper half of the blind walk #234 predicted is closed off, and worlds that had
 already drifted there are pulled back — the regime where #246 measured late novelty switching off.
+
+#### #247 FIRST READING — `main` (@ `e32f97a`-era engine: peer bundle off, before #248's cap), seeds 1-3, 20,000 ticks: SLOWER THAN CHANCE on all three
+
+| seed | real persistent arrivals / 1k, late half (10k-18k) | 8 shadows: min / mean / max | cells ever occupied, real | shadows |
+|---|---|---|---|---|
+| 1 | **0** | 1.125 / 1.625 / 2.125 | **41** | 116-140 |
+| 2 | **0** | 0.25 / 0.531 / 0.75 | **47** | 88-100 |
+| 3 | **0** | 1.125 / 1.703 / 2.25 | **44** | 110-121 |
+
+**In the late half the real world takes and holds no new territory at all, on three seeds, where every neutral
+shadow with its births, deaths and mutation kernel does; and over the run it visits 2-3x fewer trait cells
+than any shadow.** Raw late arrivals (held or not) are 0.25-0.625 per 1k, so it does step into new cells — it
+does not stay.
+
+**What that says, and what it does not.** The shadow is inheritance + mutation + drift and nothing else, so
+"slower than chance" means the world's other forces confine trait space more than selection opens it. #219
+counted "at least eight terms that pull tendencies together"; #246 measured one of them (contact blending)
+shutting late novelty off at 0.08. This reading is the aggregate of all of them, and on this instrument the
+artwork's claim — novelty keeps arriving — is currently FALSE at 20k on three seeds: entropyRatio 0.9ish has
+been reporting a world whose spread is held, not one that is going anywhere.
+Not yet shown: which forces do the confining (the shadow has no restoring force by design, so part of the
+gap is any restoring force at all); whether the grid choice (first three axes, 10 bins over ±1.5, 3 members)
+drives it; and whether the clock moves when a known homogeniser is removed — that is the instrument's own
+validation, and the next thing to run.
