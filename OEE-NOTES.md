@@ -22241,3 +22241,30 @@ Draw-free, and not a threshold: end-of-run count of cells whose `cellProgA` or `
 
 Results for this entry follow. No 20,000-tick number exists at the time this section is written.
 
+#### #242 RESULT — DELETE, by 20,000 ticks, focals 1-6 (rule applied as pre-registered, not revised)
+
+**Counted focals: 2 of 6 (seeds 5 and 6).** Neither MOVES. The keep clause wants two. **DELETE** the write-time clamps, `peerInsClampOn`, and the `PEERINS_CLAMP` knob. The #241 bundle stays. `validNetworkPayload` is the same line it was at `e3fd116`.
+
+Engine tick at the end of every run is 20,001. `boot()` calls `loop()` once before the driver's 20,000. Diversity samples: 41. All 12 jobs exited 0, `loopErr` and `bootErr` null, `peersAt100` 1, the two `TAB_ID`s differed in every pair.
+
+**Boring side, before any of the numbers below.** Focal 5, peer 15, 4,000 ticks. Arm B (`PEERINS_CLAMP=0`) against the engine file at `e3fd116`. `TAB_ID`s differed (`oty4z5wl` / `8k8nwupf`). `peersAt0` was 1 and `peersAt100` was 1. Focal fingerprints matched at ticks 1,001, 2,001, 3,001 and 4,001, and at the end. Arm A against Arm B matched at the same four samples. The focal's max `cellProgStr` was 0 at 1,001, 2,001 and 3,001 (0 fires) and 0.261 at 4,001 (7 fires, `cell.inscribeNet` 0, `wireOut` 0). The match after the spark is the clamp returning the value it was given. The knob did not eat a draw.
+
+**20,000 ticks.** A focal counts only with `cell.inscribeNet > 0` on Arm A. Seeds 1-4 sent no inscription packet in either direction on either arm and do not count. They are in the table so the zeros are visible. They are not scored. Seeds 5 and 6 count. Fingerprints did not differ on either counted focal, so the named numbers are the same number. Every gap in the table is 0. A gap of 0 does not clear any line.
+
+| focal | peer | counts | first sample with `inscribeNet>0` | fires A | packets focal / peer sent | alive A / B | paid A / B | entropyRatio | kinds late | estFrac | MOVE |
+|---|---|---|---|---|---|---|---|---|---|---|---|
+| 1 | 11 | no | — | 1,851 | 0 / 0 | 341 / 341 (rel 0) | 2,464 / 2,464 (rel 0) | 1.02 / 1.02 (diff 0) | 8.1 / 8.1 (diff 0) | 0.0166 / 0.0166 | not scored |
+| 2 | 12 | no | — | 16,493 | 0 / 0 | 341 / 341 (rel 0) | 2,561 / 2,561 (rel 0) | 0.94 / 0.94 (diff 0) | 8.1 / 8.1 (diff 0) | 0.0264 / 0.0264 | not scored |
+| 3 | 13 | no | — | 3,849 | 0 / 0 | 356 / 356 (rel 0) | 2,128 / 2,128 (rel 0) | 0.91 / 0.91 (diff 0) | 8.8 / 8.8 (diff 0) | 0.0211 / 0.0211 | not scored |
+| 4 | 14 | no | — | 23,715 | 0 / 0 | 350 / 350 (rel 0) | 2,177 / 2,177 (rel 0) | 1.07 / 1.07 (diff 0) | 8.1 / 8.1 (diff 0) | 0.0213 / 0.0213 | not scored |
+| 5 | 15 | **yes** | 12,001 | 9,723 | 0 / 2 | 295 / 295 (rel 0) | 2,342 / 2,342 (rel 0) | 0.93 / 0.93 (diff 0) | 8.1 / 8.1 (diff 0) | 0.0230 / 0.0230 | no |
+| 6 | 16 | **yes** | 19,001 | 45 | 0 / 1 | 294 / 294 (rel 0) | 2,089 / 2,089 (rel 0) | 0.93 / 0.93 (diff 0) | 9.0 / 9.0 (diff 0) | 0.0221 / 0.0221 | no |
+
+Arm B's packet counts are the same pairs: 0/0, 0/0, 0/0, 0/0, 0/2, 0/1. Fires match on every focal. `wireOut`, the draw-free count of cells whose `A` or `B` sits outside [-16, 16] or is non-finite, was 0 at all 20 samples and at the end, on both arms, on all six focals. The clamp expression was applied and it returned the register it was given.
+
+**What this says about the wire.** The check is real: `validNetworkPayload` still requires `A` and `B` in [-16, 16], and `networkSend` still does not call it, so an illegal value would be posted and dropped on arrival. On these twelve runs, by tick 20,000, the spark did not store one. `k` is held near ±2 by the program clamps, and `vmRegs[di]` at the writes that stuck was inside the wire's range. The two focals that applied a packet are the same two #241 counted, with the same send counts (peer sent 2 and 1, focal sent 0). The clamp did not make a third focal send, and it did not move the two that already could. Seeds 1-4 are still "not by tick 20,000". That zero is not this clamp.
+
+**Proof.** Seed 5 is the fastest counted focal (first apply at the tick-12,001 sample; seed 6 is 19,001). The deleted engine, 20,000 ticks, focal 5, peer 15, matched the Arm B fingerprints at all 20 samples and at the end (alive 295, paid 2,342, `cell.inscribe` 9,723, `cell.inscribeNet` 1). `engine.html`, `harness-env.js` and `harness-peerins.js` are back to `e3fd116`, byte for byte. substrate-test `TICKS=40` seed 1: 262 passed, 0 failed. The deletion removed the clamp and the knob and left no second writer.
+
+**Scope.** This is who is alive and how the kinds are spread at 20,000 ticks, with a peer present, clamp against no clamp, both on the #241 bundle. It is not a claim that selection sorted inscriptions. It is not a reason to widen `validNetworkPayload`. The bundle #241 kept is still there.
+

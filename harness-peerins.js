@@ -11,7 +11,6 @@
 // still cross in both arms.
 //
 // Env: SEED (focal, default 1)  PEER (default SEED+10)  TICKS (default 20000)  PEERINS (0 or 1)
-//      PEERINS_CLAMP (0 or 1, #242; unset means the engine default, which is on)
 //      INDEX (engine html)  TIME=1 (stderr timings)
 // Prints one JSON object.
 const fs = require('fs');
@@ -67,11 +66,9 @@ function childMain() {
     '  var alive=0,ps=0,as=0,lin=0,maxStr=0,i;',
     '  for(i=0;i<N;i++){ if(!palive[i])continue; alive++; ps+=px[i]+py[i]; as+=amp[i]; lin+=(pLin[i]|0); }',
     '  for(i=0;i<cellProgStr.length;i++) if(cellProgStr[i]>maxStr) maxStr=cellProgStr[i];',
-    '  var wireOut=0,a,b;',
-    '  for(i=0;i<cellProgA.length;i++){ a=cellProgA[i]; b=cellProgB[i]; if(!(a>=-16&&a<=16)||!(b>=-16&&b<=16)) wireOut++; }',
     '  return {t:tick|0,alive:alive,paid:(__liveness["birth.paid"]|0),',
     '    inscribe:(__liveness["cell.inscribe"]|0),inscribeNet:(__liveness["cell.inscribeNet"]|0),',
-    '    chem:(__liveness["cell.chemExec"]|0),maxStr:maxStr,wireOut:wireOut,posSum:ps,ampSum:as,linSum:lin,pool:worldEnergy};',
+    '    chem:(__liveness["cell.chemExec"]|0),maxStr:maxStr,posSum:ps,ampSum:as,linSum:lin,pool:worldEnergy};',
     '};',
     'globalThis.__series=[];',
     'globalThis.__sampleDiv=function(){',
@@ -267,7 +264,6 @@ async function parentMain() {
     peerSeed: PEER_SEED,
     ticks: TICKS,
     peerins: process.env.PEERINS === undefined ? null : (parseInt(process.env.PEERINS, 10) | 0),
-    peerinsClamp: process.env.PEERINS_CLAMP === undefined ? null : (parseInt(process.env.PEERINS_CLAMP, 10) | 0),
     tab: repA.tab || readyA.tab || null,
     peerTab: repB.tab || readyB.tab || null,
     bootErr: repA.bootErr || repB.bootErr || readyA.bootErr || readyB.bootErr || null,
@@ -283,7 +279,6 @@ async function parentMain() {
     inscribeNet: end.inscribeNet,
     chem: end.chem,
     maxStr: end.maxStr,
-    wireOut: end.wireOut,
     inscSent: repA.inscSent | 0,
     peerInscSent: repB.inscSent | 0,
     loopErr: repA.loopErr,

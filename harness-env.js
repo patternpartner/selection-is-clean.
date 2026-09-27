@@ -48,9 +48,7 @@ console.error=()=>{};console.warn=()=>{};};
 // same rule read backwards: an entry with no gate behind it is a control that reads like one.
 // #241: PEERINS gates the inscription bundle (spark writes, inscription networkSend, receive
 // writes). Unset means on, which is peerInsOn's default. PEERINS=0 is Arm B and keeps the draws.
-// #242: PEERINS_CLAMP gates the spark-write clamp of cellProgA/B into [-16, 16]. Unset means on.
-// PEERINS_CLAMP=0 is the #242 Arm B and writes the raw values. No draw either way.
-module.exports.KNOBS = ['MUTUALISM','RQ_TRAIT','GENO_PARASITE','SELF_PREDICT','GRIP_SEED','MEME_TRANSFER','MOTIF_SELECT','FOUND','SELFMODEL','LAW_PERSIST','MUTMAG','AIM','INHERIT','INHERIT_SD','RATION','PROV_BIRTH','RARE_BIRTH_K','OUTLIER_BIRTH_K','EXTINCT_UNDO','AIM_STILL','LAW_KCAP','PEERINS','PEERINS_CLAMP'];
+module.exports.KNOBS = ['MUTUALISM','RQ_TRAIT','GENO_PARASITE','SELF_PREDICT','GRIP_SEED','MEME_TRANSFER','MOTIF_SELECT','FOUND','SELFMODEL','LAW_PERSIST','MUTMAG','AIM','INHERIT','INHERIT_SD','RATION','PROV_BIRTH','RARE_BIRTH_K','OUTLIER_BIRTH_K','EXTINCT_UNDO','AIM_STILL','LAW_KCAP','PEERINS'];
 module.exports.applyKnobs = function(g){
   for (const kn of module.exports.KNOBS)
     if (process.env[kn] !== undefined) g['__'+kn] = parseInt(process.env[kn], 10);

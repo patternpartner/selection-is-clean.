@@ -1116,6 +1116,11 @@ packet by 20,000 ticks, and both moved a named number (kinds late on seed 5, end
 The spark body `ba4d3fd` wrote had been dropped out of `engine.html` by the #240 merge; this entry
 put it back and it stays. The numbers are OEE-NOTES #241.
 
+**#242:** a write-time clamp of spark `cellProgA` / `cellProgB` into [-16, 16] was measured at 20,000
+ticks and removed. Two focals applied a peer packet; neither moved a named number against the
+unclamped bundle. The #241 bundle stays. `validNetworkPayload` was not widened. The numbers are
+OEE-NOTES #242.
+
 **[read] Evolvable sociality** (Layer 22): `netMigrantRate` and three sibling rates govern broadcasting
 particles, plasmids, VM motifs and inscriptions to other browser tabs. All four evolve — "the system
 decides whether to be social." Cross-tab arrivals deposit `XENO_RESOURCE` 0.22 and `XENO_HAZARD` 0.30:
