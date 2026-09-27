@@ -22393,3 +22393,37 @@ code is kept. Off is #241's Arm B, which #241 showed keeps every draw, so the de
 focals 7-12, peers 17-22, 20,000 ticks, the template rule above.
 Checks: running as this is committed (default-off vs the previous engine with `PEERINS=0`, and substrate-test
 on four arms); `main` moves when they are in.
+
+### #246 — CONTACT BLENDING AT THE STRENGTH A BLIND WALK REACHES. Pre-registered before any run.
+
+**Why.** Contact blending is the direct counterweight to #220f's mutation: on every non-breeding collision
+each creature moves `CONTACT_BLEND` of the way toward the pair's average trait (0.03 by default). #222b
+made it a law; #234 measured the law verdict BLIND to it (every forced move kept, 6 of 6 seeds, both
+directions). So in a long-lived field world it random-walks over [0, 0.1]: the mean drifts 0.03 -> 0.05
+and the upper quarter of worlds sits above ~0.075. The lab never sees that (20k-tick runs; a given law is
+proposed about once per 32k ticks). This asks whether that drift erodes diversity — i.e. whether
+`CONTACT_BLEND` needs a defended bound the way `INHERIT_SD` got one in #235.
+
+**Arms.** A = 0.03 (today's value). B = 0.08 (the upper quarter of the blind walk's range). Both are engine
+copies of `main` with `PEERINS` default off (#245), identical except that one literal, and in BOTH the
+`CONTACT_BLEND` law row's setter is a no-op so no proposal can move the arm mid-run. Every other law, and
+every draw, runs as normal in both arms.
+**Seeds 13, 14, 15** — never used for this question. **Horizon 20,000 ticks.** `harness-oee`
+(entropyRatio, kinds late, population) and `harness-establish` (established fraction), per seed per arm.
+
+**The rule — CLAUDE.md's template.**
+1. **Executed:** blending runs on every non-breeding collision, so it executes in any populated world. A
+   seed COUNTS if both arms end with more than 20 alive and their series differ; both reported first.
+2. **Floor: 3 counted seeds** (all three here). Fewer is INCONCLUSIVE: nothing changes, and the note says so.
+3. **Direction**, B (0.08) against A (0.03), on the counted seeds:
+   - **WORSE** = on at least two of the three, entropyRatio lower by more than 0.05, OR kinds late lower by
+     more than 10%, OR established fraction lower by more than 25% relative, OR a crash (A alive over 20,
+     B under 5). -> a **defended cap on `CONTACT_BLEND`** is proposed at today's 0.03, and, because a cap on
+     a law clamps saved worlds on reload (the `LAWV` restore), it goes to the user before it ships.
+   - **Not WORSE** -> the law stays free over [0, 0.1], and the note records that the walk it takes in
+     the field was measured and did not erode diversity at this horizon.
+4. **Unseen seeds decide** — 13-15.
+5. Committed before the first run.
+6. **Saved worlds:** only a WORSE verdict would touch them, and then only with the user's go-ahead.
+
+Results go under this heading after the runs.
