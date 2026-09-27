@@ -22391,8 +22391,10 @@ chosen after the fact.
 code is kept. Off is #241's Arm B, which #241 showed keeps every draw, so the default engine now runs as
 #241's `PEERINS=0` did. **To make it the default again, pass this entry's pre-registered test**, unchanged:
 focals 7-12, peers 17-22, 20,000 ticks, the template rule above.
-Checks: running as this is committed (default-off vs the previous engine with `PEERINS=0`, and substrate-test
-on four arms); `main` moves when they are in.
+Checks: `peerInsOn()` is off when unset, off at `PEERINS=0`, on at `PEERINS=1`, over the same three call sites
+#241 tested; seed 4, 3,000 ticks, default-off matches the previous engine at `PEERINS=0` and `PEERINS=1` matches
+the previous default (op 20 did not fire on that trajectory, so those two agree with each other too — the
+plumbing check, not an effect check). substrate-test TICKS=40: 262/0 on seeds 1-3 and FOUND=0.
 
 ### #246 — CONTACT BLENDING AT THE STRENGTH A BLIND WALK REACHES. Pre-registered before any run.
 
