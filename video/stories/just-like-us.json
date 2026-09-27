@@ -1,6 +1,6 @@
 {
   "title": "Just Like Us",
-  "about": "Episode 6, the user's idea: a kind man seen all through, until at the very end he peels back his face and the series' robot is underneath, eye still blue (not a villain). The question it leaves: would you have known, and does it matter if he was only ever kind? Silent film for the user's own music; only the last line is written.",
+  "about": "Episode 6, the user's idea: a kind man seen all through, until at the very end he peels back his face and the series' robot is underneath, eye still blue (not a villain). The question it leaves: would you have known, and does it matter if he was only ever kind? Silent film for the user's own music; only the last line is written. Revised after the user's notes: the rain scene glitches as the rain hits him (the first take glitched by accident and the user liked it), the boy scene is replaced, and the face reveal is a glitch between two matching mirror shots instead of a peel, which Wan could only do plastically.",
   "cast": {
     "man": "a friendly handsome man in his thirties with short brown hair and a warm perfect smile, wearing a grey cardigan"
   },
@@ -11,20 +11,40 @@
       "prompt": "cinematic film shot, a cosy busy cafe in the morning, {man} hands coffee cups across the counter to smiling customers, each paper cup printed with a bright yellow smiley face, everyone lights up around him, warm sunlight, slow tracking shot"
     },
     {
-      "prompt": "cinematic film shot, a rainy city street, {man} holds a black umbrella over a frail elderly woman and gently walks her across the road, smiling kindly down at her, reflections on wet tarmac, soft light, slow push-in"
+      "prompt": "cinematic film shot, a rainy city street, {man} holds a black umbrella over a frail elderly woman and gently walks her across the road, smiling kindly down at her, reflections on wet tarmac, soft light, slow push-in",
+      "glitch": [
+        [
+          1.6,
+          0.2
+        ],
+        [
+          2.9,
+          0.12
+        ],
+        [
+          3.5,
+          0.3
+        ]
+      ]
     },
     {
-      "top": "cinematic film shot, a sunny park, {man} kneels down to comfort a small crying boy, handing him a yellow balloon with a smiley face on it, the boy starts to smile, warm and tender, wide shot",
+      "top": "cinematic film shot, a warm cosy kitchen, {man} with short neat brown hair sits at a wooden table playing chess with an elderly man, both of them laughing, a mug with a bright yellow smiley face on the table, warm lamp light, wide shot",
       "bottom": "cinematic extreme close-up of the face of {man}, his wide warm smile held perfectly still, eyes open and never blinking, not a single muscle moving, subtly uncanny, soft light, static camera"
     },
     {
-      "prompt": "cinematic film shot, night, a dim bathroom mirror, a figure in a grey cardigan with a smooth white round robot head and one large glowing blue eye lifts a soft realistic human face mask of a smiling man with short brown hair and presses it onto its robot head, smoothing it into place until it looks completely human, eerie and quiet, close-up, static camera",
-      "fade": 3.0,
+      "prompt": "cinematic film shot, night, a dim bathroom, {man} stands perfectly still looking straight into the mirror, his reflection face-on, a calm faint smile, cool blue light, static camera, close-up",
+      "reveal": "cinematic film shot, night, a dim bathroom, a figure in a grey cardigan with a smooth white round robot head and one large glowing blue eye stands perfectly still looking straight into the mirror, its reflection face-on, cool blue light, static camera, close-up",
+      "swap_at": 2.4,
+      "glitch": [
+        [
+          1.1,
+          0.1
+        ]
+      ],
+      "fade": 3.7,
       "say": "We only get to teach it once.",
-      "lead": 3.4,
-      "whisper": true,
-      "note": "The first take pulled a shell up over his face. Asked for the robot putting the face ON, Wan put it on and then lifted it OFF again - the reveal we wanted. trim cuts the first 1.5 s, which showed the robot head before the face.",
-      "trim": 1.5
+      "lead": 4.1,
+      "whisper": true
     }
   ]
 }

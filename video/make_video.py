@@ -272,6 +272,43 @@ def stack(top: bytes, bottom: bytes, width: int, height: int) -> bytes:
     return open(out, "rb").read()
 
 
+def glitch_graph(bursts: list, swap_at=None, flicker: float = 0.6) -> str:
+    """A filtergraph from [0:v] to [v]: digital glitches (colour split, torn bands, static, flash) during each
+    (start, seconds) burst. With swap_at, [1:v] replaces [0:v] from then on, stuttering in over `flicker` s."""
+    if swap_at is not None:
+        bursts = list(bursts) + [(swap_at - flicker, flicker + 0.25)]
+    on = "+".join(f"between(t,{a:.3f},{a + d:.3f})" for a, d in bursts) or "0"
+    g, base = [], "[0:v]"
+    if swap_at is not None:
+        g.append(f"[0:v][1:v]overlay=enable='gte(t,{swap_at:.3f})+between(t,{swap_at - flicker:.3f},{swap_at:.3f})"
+                 f"*lt(mod(n,5),2)'[sw]")
+        base = "[sw]"
+    g.append(f"{base}split=3[m][s1][s2]")
+    g.append("[s1]crop=iw:ih/9:0:ih*0.38[b1]")
+    g.append("[s2]crop=iw:ih/14:0:ih*0.62[b2]")
+    g.append(f"[m][b1]overlay=x='28*sin(n*2.3)+18':y=H*0.38:enable='{on}'[t1]")
+    g.append(f"[t1][b2]overlay=x='-36*cos(n*1.7)':y=H*0.62:enable='{on}'[t2]")
+    g.append(f"[t2]rgbashift=rh=-14:bh=14:gv=4:enable='{on}',noise=alls=40:allf=t+u:enable='{on}',"
+             f"eq=brightness=0.05:contrast=1.3:enable='{on}'[v]")
+    return ";".join(g)
+
+
+@app.function(image=mix_image, cpu=4, timeout=600)
+def glitch(clip: bytes, bursts: list, reveal=None, swap_at=None) -> bytes:
+    """Glitch a clip in bursts; with `reveal`, a second matching shot that glitches in at swap_at and stays."""
+    d = tempfile.mkdtemp()
+    a, b, out = (os.path.join(d, n) for n in ("a.mp4", "b.mp4", "out.mp4"))
+    open(a, "wb").write(clip)
+    ins = ["-i", a]
+    if reveal is not None:
+        open(b, "wb").write(reveal)
+        ins += ["-i", b]
+    subprocess.run(["ffmpeg", "-y", "-loglevel", "error", *ins, "-filter_complex",
+                    glitch_graph(bursts, swap_at if reveal is not None else None), "-map", "[v]", "-an",
+                    "-c:v", "libx264", "-pix_fmt", "yuv420p", "-crf", "14", out], check=True)
+    return open(out, "rb").read()
+
+
 @app.function(image=mix_image, cpu=4, timeout=600)
 def reverse(clip: bytes, backwards: bool = True, trim: float = 0.0) -> bytes:
     """Rescue a shot Wan got partly wrong: play it backwards (a mask put on, not off) and/or cut `trim`
@@ -322,6 +359,9 @@ def story(file: str, out: str = "story.mp4", seed: int = 0, landscape: bool = Fa
         if "prompt" in sc:
             parts.append([len(jobs)])
             jobs.append((fill(sc["prompt"]), seed + i, width, height))
+            if "reveal" in sc:  # a matching second shot that glitches in at swap_at; same seed, for a close framing
+                parts[-1].append(len(jobs))
+                jobs.append((fill(sc["reveal"]), seed + i, width, height))
         else:
             parts.append([len(jobs), len(jobs) + 1])
             jobs.append((fill(sc["top"]), seed + i, height, width))
@@ -333,7 +373,10 @@ def story(file: str, out: str = "story.mp4", seed: int = 0, landscape: bool = Fa
     for i, data in zip(todo, Wan().clip.starmap([jobs[i] for i in todo])):
         open(paths[i], "wb").write(data)
     raw = [open(p, "rb").read() for p in paths]
-    clips = [raw[ps[0]] if len(ps) == 1 else stack.remote(raw[ps[0]], raw[ps[1]], width, height) for ps in parts]
+    clips = [raw[ps[0]] if len(ps) == 1 or "reveal" in sc else stack.remote(raw[ps[0]], raw[ps[1]], width, height)
+             for ps, sc in zip(parts, scenes)]
+    clips = [glitch.remote(c, sc.get("glitch", []), raw[ps[1]] if "reveal" in sc else None, sc.get("swap_at"))
+             if sc.get("glitch") or "reveal" in sc else c for c, ps, sc in zip(clips, parts, scenes)]
     clips = [reverse.remote(c, bool(sc.get("reverse")), sc.get("trim", 0.0)) if sc.get("reverse") or sc.get("trim")
              else c for c, sc in zip(clips, scenes)]
     said = voices.get() if voices else []
