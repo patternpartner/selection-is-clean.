@@ -266,3 +266,19 @@ git checkout main && git merge --ff-only <branch> && git push -u origin main
 
 See `OEE-NOTES.md` for the running record and `CODEMAP.md` for where things live. Both are written
 so that the wrong version of a claim stays on the page next to the corrected one.
+
+## AI video (separate from the artwork)
+
+`video/make_video.py` makes AI-generated videos on Modal (Wan 2.2 TI2V-5B, open weights). It is a
+side tool for the user, not part of the universe, and no rig reads it. The user is non-technical and
+works from a phone: you run it, then send them the MP4. Needs `MODAL_TOKEN_ID` / `MODAL_TOKEN_SECRET`
+in the environment. Default is a 20-second portrait video (four ~5 s clips joined):
+
+```
+pip install -q modal imageio-ffmpeg
+modal run video/make_video.py --prompt "..." --seconds 20 --out video.mp4
+```
+
+Not yet run end-to-end (it was written before the Modal token was added). The first run downloads
+~20 GB of weights into the `ai-video-cache` volume. The clips are generated separately, so each
+cut is a hard change of scene.
