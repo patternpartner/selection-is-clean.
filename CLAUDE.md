@@ -299,6 +299,9 @@ Running motifs: the yellow smiley masks, and the whispered last line "We only ge
 Since episode 3 (`no-one-watching.json`) the user scores with their own AI-alignment music and wants
 NO voices: set `"voice": null` and each `say` is only written on screen (the last line, centred,
 italic, over black). Silent track in the MP4. The user asked Claude to choose each episode's subject.
+Episode 3 is the user's favourite so far, the first where Claude chose the subject from its own view.
+What worked: a real alignment problem told with no words, and letting Wan's surprise stand (the smile
+turning sinister beat the planned mask-removal). Show frames, name what missed, offer per-clip redos.
 
 The `[api-proxy-support]` extra matters: behind the session's HTTPS proxy, plain `modal` fails with only "Could not connect to the Modal server"; the real cause (missing `python-socks`) is hidden in the exception's `__cause__`. The first run downloads
 ~20 GB of weights into the `ai-video-cache` volume. The clips are generated separately, so each
