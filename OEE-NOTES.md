@@ -22500,7 +22500,7 @@ beside #235's `INHERIT_SD` floor.
 
 **Checked:** on the live engine — save at 0.08 restores to 0.03, save at 0.012 restores to 0.012, the largest
 upward proposal from 0.03 lands at 0.03, the largest downward at 0.02475, a broadcast 0.08 clamps to 0.03.
-substrate-test on seeds 1-3 and FOUND=0 is running as this is committed; `main` moves when it is in.
+substrate-test TICKS=40: 262/0 on seeds 1-3 and FOUND=0.
 
 **What moved in the universe:** nothing in a lab run where the law is never proposed upward (the default is
 unchanged). In the field, the upper half of the blind walk #234 predicted is closed off, and worlds that had
