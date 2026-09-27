@@ -89,6 +89,35 @@ mechanism; no session's job was to ask whether the base worked. So:
 - **The field is the experiment.** Harvests from long real runs are the best evidence this project has; they
   can be loaded back and restarted from the field's `load` / `new` buttons (`#230`).
 
+### The retire-or-prove template — every KEEP / DELETE rule takes this shape
+
+`#238` and `#241` each wrote their own rule on the same day and reached opposite verdicts on the same
+evidence: two seeds where evolving chemistry looked better → DELETE (the floor wanted three); two seeds where
+the peer bundle looked worse → KEEP (its rule counted any large change as "load-bearing"). Use this shape so
+that cannot happen again. Pre-register it with the numbers filled in.
+
+1. **Executed first.** A seed counts only if the mechanism ran on it by the horizon (`harness-opexec.js` or
+   the engine's liveness counters). Report how many seeds counted before any other number. Identical arms on
+   a counted seed are "ran, no effect".
+2. **One floor, the same in both directions.** Fewer than N counted seeds (default 3) is **INCONCLUSIVE**:
+   the default does not change either way. Extend the horizon or add unseen seeds; do not rule on it.
+3. **A direction, not just a size.** On the counted seeds, compare the dependent variable: entropyRatio,
+   kinds late, established fraction, with alive as a guard.
+   - **WORSE** = on at least two-thirds of counted seeds, entropyRatio is lower by more than 0.05, kinds
+     late is lower by more than 10%, establishment is lower by more than 25% relative, or the seed crashes
+     (alive over 20 falls under 5) → **DELETE**, or **DORMANT** (default off, code kept) if a named follow-up
+     is planned.
+   - **BETTER** = the same thresholds the other way, on the same two-thirds → **KEEP**, claimed only at the
+     rung measured.
+   - **Anything else** → the mechanism has not earned its place: DELETE, unless the note names something
+     else that depends on it. "It moved the numbers" is never a reason to keep; moving them the wrong way
+     is a reason to delete.
+4. **Unseen seeds decide.** Seeds already looked at can design the rule; they do not decide it.
+5. **Committed before the first decision run.** Changing the rule after seeing numbers is a new
+   experiment, and is written up as one.
+6. **Saved worlds belong to the user.** A change that alters saved universes on reload (a clamp, a reseed)
+   says so in the pre-registration and goes to the user before it ships.
+
 ## Branching
 
 **Always update `main`.** Work on whatever feature branch the session designates, but do not leave
