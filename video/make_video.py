@@ -5,6 +5,10 @@ Turns one text prompt into a phone-shaped (portrait) video by generating several
 
     modal run video/make_video.py --prompt "a fox running through snowy woods at sunset"
     modal run video/make_video.py --prompt "..." --seconds 20 --out fox.mp4 --landscape
+    modal run video/make_video.py --prompt "scene one | scene two | scene three | scene four"
+
+Separate scenes with " | " to give each clip its own prompt (a short story);
+the last scene repeats if there are more clips than scenes.
 
 Needs MODAL_TOKEN_ID and MODAL_TOKEN_SECRET in the environment.
 """
@@ -92,7 +96,9 @@ def main(prompt: str, seconds: int = 20, out: str = "video.mp4", seed: int = 0, 
     n = math.ceil(seconds / CLIP_SECONDS)
     print(f"making {n} clips of ~{CLIP_SECONDS:.0f}s in parallel for a {seconds}s video...")
 
-    clips = list(Wan().clip.starmap([(prompt, seed + i, width, height) for i in range(n)]))
+    scenes = [s.strip() for s in prompt.split("|") if s.strip()]
+    jobs = [(scenes[min(i, len(scenes) - 1)], seed + i, width, height) for i in range(n)]
+    clips = list(Wan().clip.starmap(jobs))
 
     with tempfile.TemporaryDirectory() as d:
         names = []
