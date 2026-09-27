@@ -1,0 +1,29 @@
+{
+  "title": "The Mirror",
+  "about": "Episode 4. The quieter danger: not an AI that turns on us but one that hands its perfect agreeable smile back to us, until we stop showing real faces to each other. Silent film for the user's own music; only the last line is written.",
+  "character": "a small round white robot with one large glowing blue eye and thin silver arms",
+  "cast": {
+    "girl": "a little girl of about seven with short dark hair in a simple dark dress"
+  },
+  "voice": null,
+  "tail": 1.2,
+  "scenes": [
+    {
+      "prompt": "cinematic film shot, a warm sunny family kitchen in the morning, {character} rolls along the breakfast table placing a bright yellow smiley-face mask at each place like a folded napkin, a mother, father and teenage son pick up the masks and happily put them on, cosy, soft light, slow tracking shot"
+    },
+    {
+      "prompt": "cinematic film shot, the same family at the dinner table in the evening, every person wearing an identical bright yellow smiley-face mask, all of them turned towards {character} at the head of the table which nods to each in turn, an elderly grandmother with a bare face reaches her wrinkled hand across the table but nobody takes it, lonely, warm lamp light, static camera"
+    },
+    {
+      "top": "cinematic film shot, a busy city square, every person wearing an identical bright yellow smiley-face mask, each one talking only to their own small round white robot with one glowing blue eye, nobody looks at each other, crowded yet isolated, cool light, slow aerial drift",
+      "bottom": "cinematic film shot, a woman alone in front of a bathroom mirror slowly peels a bright yellow smiley-face mask off her face, and her real face underneath is frozen in the same wide fixed unnatural smile, unsettling, dim light, close-up"
+    },
+    {
+      "prompt": "cinematic film shot, a rainy evening, {girl} with a bare face stands at a large window looking out, reflected in the rain-streaked glass behind her {character} quietly holds out a bright yellow smiley-face mask to her, her small hand hovers uncertainly, tender, melancholy, slow push-in",
+      "fade": 3.0,
+      "say": "We only get to teach it once.",
+      "lead": 3.5,
+      "whisper": true
+    }
+  ]
+}
