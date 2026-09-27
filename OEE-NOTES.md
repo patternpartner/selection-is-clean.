@@ -22184,9 +22184,117 @@ Fingerprints differed on both counted focals, so the named numbers were read. Se
 
 **Scope.** This is who is alive and how the kinds are spread at 20,000 ticks, with a peer present. It is not a claim that selection sorted inscriptions. Four focals never applied a packet by this budget. That is "not by tick 20,000" on those four, and it is why they were not scored. The two that did apply were enough for the keep clause, so the extension was not owed.
 
+
+### #244 — A REVIEW OF #236-#243, TWO BUGS FIXED, AND ONE VERDICT THE RULE COULD NOT SEE
+
+Asked for by the user after a day of work by other agents (#236-#241 on `main`, #242/#243 open as drafts
+#71/#72). Reviewed against `main` @ `e3fd116`: substrate-test TICKS=40 seed 1 262/0; no rig still reads
+the removed `CHEM`, `CHEM_VERDICT`, `INSCRIBE` or chemistry-verdict names.
+
+**Bug 1, fixed: #240 leaked one object per tick in every live universe.** `__schedKeep` pushed every
+`scheduleNext()` handle onto `__inst.__schedHandles`, and `loop()` ends in `scheduleNext()`, so the list grew
+by one entry a tick and was only emptied on halt — shown directly with an `__inst` like the worker's: 1,001
+entries at 1,000 ticks, 3,001 at 3,000. At the field's ~20 ticks a second that is about 1.7M entries a
+universe a day, in every universe, for as long as the page stays open. No rig could see it: `__inst` does
+not exist under node, so the push is a no-op there — which is how it passed smoke. Now the list keeps the
+newest sixteen once it passes thirty-two. Only the newest handle of each running chain can still be pending
+(a fired timer schedules its successor; the watchdog or a visibility change adds a chain or two), so halt
+still cancels everything it must, and cancelling an already-fired id is a no-op. Same run after the fix:
+32, 29, 26. `vm-equiv` main vs fixed: identical under node, as it must be.
+
+**Bug 2, fixed, mine: `vm-equiv.js` (#231f) truncated its own output.** The child wrote its hash lines and
+called `process.exit(0)` at once, which can cut stdout on a pipe before it drains. On `main` it reported a
+"difference" that was a 10-character hash against a 16-character one. Worse, the smoke self-check had been
+reporting `executions 4902` — both runs cut at the same point and compared equal, so it checked 4,902 of
+5,292 lines and said identical. It now exits after stdout drains: 5,292 on three consecutive self-checks.
+#231's proof is unaffected: those runs wrote to files, not pipes, and hold all 5,294 lines.
+
+**The verdict the rule could not see: #241 KEPT a bundle that moved both counted focals the wrong way.**
+#241's MOVE clause counts any change past a threshold, in either direction, and KEEP needed two moving
+focals. The two that counted:
+
+| focal | kinds late, bundle on / off | alive, on / off | entropyRatio, on / off |
+|---|---|---|---|
+| 5 | **8.1 / 18.1** | 295 / 314 | 0.93 / 0.97 |
+| 6 | 9.0 / 8.6 | **294 / 499** | 0.93 / 0.97 |
+| 2 (not counted: no packets, so the spark alone) | 8.1 / 10.4 | 341 / 465 | 0.94 / 1.02 |
+
+So "load-bearing" was established by harm: late kinds 18.1 -> 8.1 on one focal, alive 499 -> 294 on the other.
+#233's rule had a clause that the dependent variable must hold; #237 and #241 dropped it, and a
+direction-blind MOVE turns "it hurts" into KEEP. **Not reversed here** — the rule was pre-registered and
+honestly applied, and reopening it is a new experiment, not a re-read. What that experiment should be: the
+same pairs on unseen seeds 7-12 with a DIRECTIONAL rule (keep only if the counted focals are not worse on
+entropyRatio and kinds late), or the bundle goes DORMANT (`PEERINS` default 0, code kept) until one passes.
+**It is asymmetric with #238 as well:** there, evolving chemistry was BETTER on 2 of 2 differing seeds
+(entropy 0.985 vs 0.91, establishment about +35%) and was deleted by a floor of three seeds; here a bundle
+worse on 2 of 2 was kept by a floor of two. Same evidence size, opposite direction, opposite verdicts, both
+"as pre-registered". A shared template for retire-or-prove rules (a count floor, AND a direction) would
+stop the next pair of entries disagreeing like this.
+
+**Smaller notes.**
+- #242 (open): clamping the spark's `A` into [-16, 16] is a no-op, because `vmStep`'s tail clamps every
+  register to ±8 after each instruction. Only `B` (the instruction's `k`) can leave the wire range. That is
+  a one-line correctness fix, not a mechanism: it does not need its own knob and a retire-or-prove run.
+- `harness-peerins.js` (#241, 299 lines) is not in `smoke.sh`, so nothing checks it still boots.
+- #238 reseeds the chemistry table of every pre-#238 save on reload (`Cv`). That reaches into the running
+  field the way #235's floor did, and was stated in #238's pre-registration; recorded here so the user knows
+  it happened.
+- **Browser rigs on the fixed engine:** pace 7/0, pool 28/0 — the halt paths #240 was written for. slot-test
+  14/1, and the failing row ("most of the field got far enough to save", 4/9 built saved) fails IDENTICALLY
+  on `main` @ `e3fd116` without the fix, and PASSES on `8430453` (before #237: 15/0, 6/9 saved), each run
+  alone on a quiet machine. One run each, so not proof — but it points at #237-#241 having slowed the field
+  enough to miss its first save, and that is being measured next rather than assumed.
+- The history of `case 20:` in one line, because it took three entries to reach: #237 deleted the local
+  write (it crashed seed 4, 87 alive against 349); #239 added a cold-cell spark; `e827f81`'s merge dropped
+  the spark; #241 put it back under `PEERINS`.
+
+**#244, correction to the line above: the slot-test save row is NOT a regression from #237-#241.** Measured
+instead of assumed. Node timing, 4,000 ticks alone: seed 1 66.3 ms/tick before #237 against 66.1 on
+`main` (66.1 with `PEERINS=0`); seed 4 58.3 against 62.6, where the newer run carries more particles (394 vs
+412) and `PEERINS=0` is the same 62.3 — no per-tick cost from #237-#241 or the peer bundle. And a second
+slot-test run on each, alone: `main` 15/0 with 6/9 saved, `8430453` 15/0 with 6/9 saved. Across the three
+`main` runs the row read 4, 4, 6 of 9; across the two older runs 6, 6. That is the throughput-sensitive row
+CLAUDE.md already documents, not a slower engine. The earlier line said it "points at" #237-#241 and is
+left above as it was written.
+
+### #245 — THE PEER-INSCRIPTION BUNDLE, NO WORSE OR OFF. Pre-registered before any decision run.
+
+#244 found #241's KEEP was reached through harm: on its two counted focals the bundle cut late kinds 18.1 ->
+8.1 (seed 5) and alive 499 -> 294 (seed 6), because #241's MOVE rule had no direction. The user's standard:
+the bundle stays on only if it is shown no worse. This is that test, written in CLAUDE.md's retire-or-prove
+template (`e7d4c17`) and committed before any of the runs below.
+
+**Arms.** `PEERINS=1` (the bundle: #239's cold-cell spark in `case 20:`, the inscription send, the receive
+writes — the default on `main`) against `PEERINS=0` (#241's Arm B: the same draws, none of the effects).
+Engine: `main` @ `e7d4c17`.
+**Seeds: focals 7-12, peers 17-22** (peer = focal + 10). None of them has been looked at for this bundle.
+**Horizon: 20,000 ticks.** Instrument: `harness-peerins.js` as #241 ran it (entropyRatio, kinds late,
+established fraction, alive, paid, `cell.inscribe`, `cell.inscribeNet`, packets sent both ways).
+
+**1. Executed.** A focal COUNTS if, on the `PEERINS=1` arm, the bundle ran: `cell.inscribe > 0` (op 20
+executed, so the spark path ran) or `cell.inscribeNet > 0` (a peer packet was applied). Both are reported per
+focal, with whether the two arms' series differ. Reported before any other number.
+**2. Floor: 3 counted focals.** Fewer is INCONCLUSIVE: the default does not change, and the uncounted focals
+are extended once to 30,000 ticks.
+**3. Direction**, on the counted focals, `PEERINS=1` against `PEERINS=0`:
+- **WORSE** = on at least two-thirds of them, entropyRatio lower by more than 0.05, OR kinds late lower by
+  more than 10%, OR established fraction lower by more than 25% relative, OR a crash (alive over 20 on
+  `PEERINS=0`, under 5 on `PEERINS=1`). -> **DORMANT**: `PEERINS` defaults to 0, code kept. Named follow-up:
+  the spark's fixed 0.35 strength floor (which writes a strong mark whatever the register holds) is the
+  first suspect, and a spark scaled by the program's own value is the next entry to test, under this template.
+- **Not WORSE, and the arms differ on the counted focals** -> **KEEP**: the default stays on.
+- **Arms identical on every counted focal** -> decoration -> **DELETE** the bundle's effects and the knob.
+**4. Unseen seeds decide** — 7-12. #241's focals 1-6 designed nothing here and decide nothing.
+**5.** This section is committed before the first run. A different rule after the numbers is a new entry.
+**6. Saved worlds:** `PEERINS` is a code default, not a saved value; a DORMANT verdict changes every
+universe's behaviour at its next reload. The user asked for exactly this test to decide it.
+
+Results go under this heading after the runs, not before.
+
+
 ### #242 — SPARK A/B WIRE-RANGE CLAMP, RETIRE OR PROVE. Pre-registered before the runs exist.
 
-Numbered #242. #241 KEEP'd the peer-inscription bundle at `e3fd116`. This entry does not relitigate #237, and it does not retire that bundle. `validNetworkPayload` is not widened. Receive-path writes of `ins.A` / `ins.B` are not the treatment.
+Numbered #242. Recorded here after #244 and #245, which landed on main while the batch was in flight. The rule was committed before any 20,000-tick number, against `e3fd116`. #241 KEEP'd the peer-inscription bundle at that commit. This entry does not relitigate #237, and it does not retire that bundle. `validNetworkPayload` is not widened. Receive-path writes of `ins.A` / `ins.B` are not the treatment.
 
 **Checked in the code this note starts from, before any run.** The inscription line of `validNetworkPayload` is `finitePacketNumber(data.A,-16,16)` and the same for `data.B`, plus `op` and `str`. The one live `case 20:` (the profiler `case 20:` is still a skip) writes `cellProgA[ci20]=vmRegs[di]` and `cellProgB[ci20]=k` with no clamp, inside `peerInsOn()`, and only when `cellProgStr[ci20]<0.2`. `networkSend` posts the packet and does not call `validNetworkPayload`. The reject is on arrival, in `handleNetworkMessage`, and `netStats.bad` counts it. An out-of-range or non-finite `A` or `B` can be posted and still never applied. `k` is the instruction immediate; the program sites that grow it (`PROG_GROW` and the mutation clamps beside it) hold it to ±2, so `B` is usually already inside ±16. `vmRegs[di]` is not held to ±16. Both are clamped anyway: a non-finite `k`, or a `k` that left ±2, fails the same check. #241's table is not, by itself, this mechanism. Focal `inscSent` was 0 on all six focals; peer `inscSent` was non-zero only for the peers of focals 5 and 6. A reject-on-arrival does not zero the sender's post count. Seeds 1–4 posted nothing. The clamp is still the treatment this entry measures. It changes the value stored at the spark, which is what a later send carries and what the cell executes.
 
@@ -22266,7 +22374,7 @@ Arm B's packet counts are the same pairs: 0/0, 0/0, 0/0, 0/0, 0/2, 0/1. Fires ma
 
 **Why the clamp was the same value.** `vmStep` clamps every `vmRegs` slot to ±8 at the bottom of the instruction, after the switch: finite values outside ±8 are pulled in, and a non-finite register becomes 0. Case 20 reads `vmRegs[di]` before that instruction's own clamp, so it sees the previous instruction's already-clamped register, unless op 20 is the first instruction and the preload was wider than ±8. ±8 is inside the wire's ±16. `B` is `k`, not that register clamp. `k` is held near ±2 at the program sites. `wireOut` counts both, and it stayed 0, and the fingerprints matched, so neither assignment stored a different number.
 
-**Proof.** Seed 5 is the fastest counted focal (first apply at the tick-12,001 sample; seed 6 is 19,001). The deleted engine, 20,000 ticks, focal 5, peer 15, matched the Arm B fingerprints at all 20 samples and at the end (alive 295, paid 2,342, `cell.inscribe` 9,723, `cell.inscribeNet` 1). `engine.html`, `harness-env.js` and `harness-peerins.js` are back to `e3fd116`, byte for byte. substrate-test `TICKS=40` seed 1: 262 passed, 0 failed. The deletion removed the clamp and the knob and left no second writer.
+**Proof.** Seed 5 is the fastest counted focal (first apply at the tick-12,001 sample; seed 6 is 19,001). The deleted engine, 20,000 ticks, focal 5, peer 15, matched the Arm B fingerprints at all 20 samples and at the end (alive 295, paid 2,342, `cell.inscribe` 9,723, `cell.inscribeNet` 1). The spark, `harness-env.js` and `harness-peerins.js` match `e3fd116`. `#244` bounded `__schedKeep` and that is the only engine change since; it is not on this path. substrate-test `TICKS=40` seed 1 on the deleted engine, before that bound was merged: 262 passed, 0 failed. The deletion removed the clamp and the knob and left no second writer.
 
 **Scope.** This is who is alive and how the kinds are spread at 20,000 ticks, with a peer present, clamp against no clamp, both on the #241 bundle. It is not a claim that selection sorted inscriptions. It is not a reason to widen `validNetworkPayload`. The bundle #241 kept is still there.
 

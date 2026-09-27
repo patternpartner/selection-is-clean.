@@ -29512,7 +29512,14 @@ function __schedHalted(){ return typeof __inst!=='undefined'&&!!__inst&&!!__inst
 function __schedKeep(id,raf){
   if(typeof __inst==='undefined'||!__inst)return;
   if(!__inst.__schedHandles)__inst.__schedHandles=[];
-  __inst.__schedHandles.push({id,raf:!!raf});
+  const _h=__inst.__schedHandles;
+  _h.push({id,raf:!!raf});
+  // Bounded. Every loop() ends in one scheduleNext(), so this list gained one entry per tick and was only
+  // emptied on halt - about 1.7M entries a universe a day at the field's pace. Only the newest handle of
+  // each running chain can still be pending (a fired timer schedules its successor), and the watchdog or
+  // a visibility change adds at most a chain or two, so the newest sixteen cover everything halt must
+  // cancel. Cancelling an already-fired id is a no-op, so keeping a few extra costs nothing.
+  if(_h.length>32)_h.splice(0,_h.length-16);
 }
 function scheduleNext(){
   if(__schedHalted())return;

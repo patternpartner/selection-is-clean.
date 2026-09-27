@@ -61,8 +61,10 @@ if(process.argv[2]==='--one'){
   }
   return out;
 };`,'/tmp/vmeq.js');
-  process.stdout.write(globalThis.__EQ(WARM,PASS,crypto,OPSOK).join('\n')+'\n');
-  process.exit(0);
+  // Exit only after stdout drains: process.exit() straight after a large write to a PIPE can cut the
+  // output short, and a truncated hash line reads as a difference (it did, once, on main @ e3fd116).
+  process.stdout.write(globalThis.__EQ(WARM,PASS,crypto,OPSOK).join('\n')+'\n',()=>process.exit(0));
+  return;
 }
 const A=process.argv[2]||path.join(__dirname,'engine.html'), B=process.argv[3]||path.join(__dirname,'engine.html');   // no argument: a self-check, which is what smoke.sh runs
 if(!A){ console.log('usage: node vm-equiv.js <engineA.html> [engineB.html]'); process.exit(2); }
