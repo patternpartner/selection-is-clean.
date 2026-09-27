@@ -22803,3 +22803,35 @@ it could not do in the project's whole life before #249 (drawn 0 of 427). `gene.
 
 **Separately, from the screen:** NICHE_DRIFT UNREACHABLE (DELETE with the 1-D branch), GENO_PARASITE's switch a
 no-op (remove the flag, the mechanism stays live), `aim.author`/`aim.abandon` ghost liveness rows (remove).
+
+### #249b — AGAINST A NULL DISTRIBUTION, NOT ONE CONTROL. Pre-registered before any run.
+
+**Why.** #249 compared every arm with ONE control trajectory per seed, and that control sat at the bottom
+(entropyRatio: below 10 of 10 arms on seed 62, 9 of 10 on seed 63; late new kinds 0 on all three seeds
+against 26 of 30 arm runs above 0). With one control, its luck is shared by all twelve comparisons, so a
+low control makes every arm "better" at once. This asks two questions with a null distribution instead.
+
+**Nulls.** The control plus three NULL REPLICATES per seed: `NULLSHIFT=1,2,3` burns that many draws after
+boot — the same world under the same rules on a different trajectory. Four nulls per seed.
+**Arms.** MUTUALISM, NICHE_BIOTIC, SELF_PREDICT (#249's three BETTER) and GENE_DRAW (INCONCLUSIVE at 2
+counted, better on all three, and the first run in which GENE_READ ever executed).
+**Seeds 71, 72, 73** — no mention anywhere in these notes. **20,000 ticks.** harness-oee ESTABLISH=250 on
+the gate-counting engine. 8 runs per seed, 24 in all.
+
+**Question 1 — is the unperturbed world stuck?** Descriptive, reported first: the nulls' own spread on
+entropyRatio, kinds_late, estFrac and late new kinds. If the nulls find late novelty at the arms' rate,
+#249's control was unlucky (reading a). If the nulls sit at zero like #249's control while the arms do not,
+the mechanisms are what unsticks the world (reading b). Anything in between is said as it is.
+
+**Question 2 — does any arm beat chance? The rule.**
+1. Counted as in #249: gate hits > 0; GENE_DRAW counts where `gene.read` or `gene.author` fired.
+2. Floor 3 counted seeds, else INCONCLUSIVE (off, code kept).
+3. On a counted seed, BETTER = above EVERY null by the template's thresholds on at least one measure
+   (entropyRatio > max null + 0.05; kinds_late > max null x 1.10; estFrac > max null x 1.25 where max > 0).
+   WORSE = below EVERY null by the same thresholds on at least one (< min - 0.05; < min x 0.90;
+   < min x 0.75), or a crash (every null alive over 20, the arm under 5).
+4. BETTER on at least two-thirds of counted seeds and WORSE on fewer than two-thirds -> **proposed to be
+   switched ON, to the user** (it changes how every saved universe runs). WORSE on two-thirds -> DELETE.
+   Anything else -> DELETE: not shown to beat chance, and an off mechanism that does not is the unused code
+   the user asked to cull (#249's adaptation, unchanged).
+5. Unseen seeds decide. Committed before the first run.

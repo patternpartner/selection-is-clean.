@@ -25,6 +25,7 @@
 //       INDEX (optional: path to the html file to load)
 //       JSONL=1  (stream one metrics object per sample to stdout)
 //       ESTABLISH=<every>  (#249: harness-establish's census on this same trajectory; ESTWARM default 2000, ESTN 10)
+//       NULLSHIFT=<k>  (#249b: burn k draws before the first tick - a null replicate of the same world)
 const fs = require('fs');
 // #217b: KNOBS honoured. #216x fixed four rigs and I called the class swept; a review found the
 // real number is 39 node-side rigs that boot engine.html in-process and silently drop every
@@ -731,6 +732,10 @@ if (process.env.ABLATE === 'all') {
   ablatedCount = ablateIdx >= 0 ? 1 : 0;
 }
 
+// #249b: NULLSHIFT=k burns k draws after boot and before the first tick: the same world under the same rules on a
+// different trajectory - a null replicate, which is what a single control cannot be. Unset, nothing is drawn.
+const NULLSHIFT = parseInt(process.env.NULLSHIFT || '0', 10) || 0;
+for (let q = 0; q < NULLSHIFT; q++) Math.random();
 globalThis.__runOEE(TICKS, SAMPLE);
 const tDone = Date.now();
 
@@ -920,7 +925,7 @@ const verdict = {
 };
 
 console.log(JSON.stringify({
-  config: { TICKS, SAMPLE, SEED: process.env.SEED || null, INDEX: process.env.INDEX || 'engine.html' },
+  config: { TICKS, SAMPLE, SEED: process.env.SEED || null, INDEX: process.env.INDEX || 'engine.html', NULLSHIFT },
   timing_ms: { boot: tBoot - t0, run: tDone - tBoot, perKtick: +(((tDone - tBoot) / TICKS) * 1000).toFixed(1) },
   loopErrors, lastErr, driverErr: globalThis.__driverErr || 0,
   armHits: globalThis.__armHit || undefined,
