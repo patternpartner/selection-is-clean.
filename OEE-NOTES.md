@@ -22184,3 +22184,60 @@ Fingerprints differed on both counted focals, so the named numbers were read. Se
 
 **Scope.** This is who is alive and how the kinds are spread at 20,000 ticks, with a peer present. It is not a claim that selection sorted inscriptions. Four focals never applied a packet by this budget. That is "not by tick 20,000" on those four, and it is why they were not scored. The two that did apply were enough for the keep clause, so the extension was not owed.
 
+### #242 — SPARK A/B WIRE-RANGE CLAMP, RETIRE OR PROVE. Pre-registered before the runs exist.
+
+Numbered #242. #241 KEEP'd the peer-inscription bundle at `e3fd116`. This entry does not relitigate #237, and it does not retire that bundle. `validNetworkPayload` is not widened. Receive-path writes of `ins.A` / `ins.B` are not the treatment.
+
+**Checked in the code this note starts from, before any run.** The inscription line of `validNetworkPayload` is `finitePacketNumber(data.A,-16,16)` and the same for `data.B`, plus `op` and `str`. The one live `case 20:` (the profiler `case 20:` is still a skip) writes `cellProgA[ci20]=vmRegs[di]` and `cellProgB[ci20]=k` with no clamp, inside `peerInsOn()`, and only when `cellProgStr[ci20]<0.2`. `networkSend` posts the packet and does not call `validNetworkPayload`. The reject is on arrival, in `handleNetworkMessage`, and `netStats.bad` counts it. An out-of-range or non-finite `A` or `B` can be posted and still never applied. `k` is the instruction immediate; the program sites that grow it (`PROG_GROW` and the mutation clamps beside it) hold it to ±2, so `B` is usually already inside ±16. `vmRegs[di]` is not held to ±16. Both are clamped anyway: a non-finite `k`, or a `k` that left ±2, fails the same check. #241's table is not, by itself, this mechanism. Focal `inscSent` was 0 on all six focals; peer `inscSent` was non-zero only for the peers of focals 5 and 6. A reject-on-arrival does not zero the sender's post count. Seeds 1–4 posted nothing. The clamp is still the treatment this entry measures. It changes the value stored at the spark, which is what a later send carries and what the cell executes.
+
+**The horizon, out loud: 20,000 ticks.** One budget. A shortfall of counted focals is the DELETE branch below. There is no 30,000 extension in this rule.
+
+**How peers are present.** The same pair harness as #241, `harness-peerins.js`. Focal seed `S`, peer seed `S+10`. Both universes run the same arm. Lockstep, `ISOLATE` off, migrants and plasmids and motifs and laws still cross. The stock single-universe harnesses are not the measurement. The pair harness scores the focal. The peer is not scored.
+
+**Arms.** `PEERINS` stays on in both arms (unset or `1`). The #241 bundle is the floor, not the contrast.
+
+`PEERINS_CLAMP` unset or `1` is Arm A. `PEERINS_CLAMP=0` is Arm B. The knob defaults on, the same shape as `peerInsOn`. It adds no `Math.random` and it skips none. The boring side checks that Arm B is current main.
+
+Arm A, the clamp, at the spark write only. The expression is the local `_cl` inside `buildMigrantPacket`, the one that clamps a memory register to the wire's ±16 so one bad register does not drop the organism. It is not `__cl`. `__cl` returns a NaN unchanged, and `finitePacketNumber` rejects NaN.
+
+```
+(v, lo, hi) => !isFinite(v) ? lo : (v < lo ? lo : (v > hi ? hi : v))
+```
+
+Applied as that function of `(vmRegs[di], -16, 16)` into `cellProgA[ci20]`, and of `(k, -16, 16)` into `cellProgB[ci20]`. Non-finite becomes -16, the same loss the migrant note already chose. `cellProgOp` and `cellProgStr` are not clamped by this entry. The migrant call site stays as it is; the expression is copied, not moved. The receive loop stays `cellProgA[idx]=ins.A` and `cellProgB[idx]=ins.B`. A packet that arrived already passed `finitePacketNumber`.
+
+Arm B, current main, same draws. The two assignments stay `cellProgA[ci20]=vmRegs[di]` and `cellProgB[ci20]=k`.
+
+**What DELETE removes, if the rule below says DELETE.** The two clamps, `peerInsClampOn`, and the `PEERINS_CLAMP` line in `KNOBS`, in the same commit. A knob with nothing to gate is the trap this file already paid for. The #241 bundle stays: the spark writes the raw registers, the inscription send stays, the receive writes stay, `peerInsOn` and `PEERINS` stay. Not deleted: `validNetworkPayload`, the migrant clamp, recipe evaluation, op 16, chemistry.
+
+**Proof, if the delete happens.** The fastest counted focal, 20,000 ticks, deleted engine against the Arm B fingerprints from this entry, must match at every 1,000-tick sample. If no focal counted, focal 5 (peer 15) is the proof focal. A mismatch means the deletion left a draw or a second writer, and it does not ship.
+
+**Boring side, before any 20,000-tick number.** Focal seed 5, peer seed 15, 4,000 ticks.
+
+- Arm B (`PEERINS_CLAMP=0` on this entry's engine) against the engine at `e3fd116` (`INDEX` pointed at that file, no clamp gate). Focal fingerprints must match at every 1,000-tick sample, and at the end. Within each pair the two `TAB_ID`s must differ, and the focal's peer count must be at least 1 by tick 100. A fingerprint mismatch means Arm B is not current main, and the 20,000-tick batch does not start.
+- Arm A against Arm B, same pair. Fingerprints must match at every sample where Arm A's focal still has max `cellProgStr` 0. A mismatch there means the knob consumed or skipped a draw. A difference only after Arm A has written a cell is the clamp starting, recorded, and not a stop.
+
+**Decision focals: 1, 2, 3, 4, 5, 6.** Peers: 11, 12, 13, 14, 15, 16. 20,000 ticks. One pair per focal per arm. Both universes on that arm.
+
+**Which focals count.** A focal counts only if Arm A has `cell.inscribeNet > 0` by tick 20,000. That is a peer packet applied on the focal. Arm B's apply count does not decide it.
+
+**Instruments.** The fingerprint, every 1,000 `loop()` calls, on the focal: alive, `birth.paid`, `cell.inscribe`, `cell.inscribeNet`, `cell.chemExec`, max `cellProgStr`, position sum, amplitude sum, lineage sum, `worldEnergy`. `entropyRatio` and `kinds_late` use `harness-oee`'s definitions on the focal inside the pair: sample `occupiedKinds` and `diversityHbits` at tick 0 and every 500 ticks (`tendBin` when it exists, else the same 3-axis fallback; Shannon bits), then the third-mean ratio exactly as that harness computes them (`SAMPLE=500`). `estFrac` uses `harness-establish`'s definition on the focal inside the pair: census every 250 ticks, `WARM=2000`, `ESTN=10`, established over lineages first seen after the warm window. `paid` is end-of-run `__liveness['birth.paid']`. `alive` is the end living count. All four reads draw nothing. They are read for the rule only on a counted focal whose fingerprints differ between arms. Identical fingerprints are the same trajectory, so those numbers are the same number and are not a separate measurement.
+
+Draw-free, and not a threshold: end-of-run count of cells whose `cellProgA` or `cellProgB` is outside [-16, 16] or non-finite, plus `inscSent` and `peerInscSent`. These say whether the clamp had anything to clamp. They do not score.
+
+**Lineage identity after a split is not who-has-offspring.** A fingerprint difference is the trigger to read the named numbers. It is not itself a move.
+
+**The clamp caveat, stated before the data.** Both arms run the #241 bundle, spark included. Arm A's spark writes clamped coefficients into the focal's own cells even when no packet has come back. A counted focal has applied a peer packet, and the delta on that focal still includes the local clamp. A MOVE is a move of the clamp (the values stored, and therefore what is sent and what the cell executes). It is not a separation of the packet from the local write, and it is not a re-measurement of the bundle against `PEERINS=0`.
+
+**The rule, fixed now.** A counted focal MOVES if any of:
+- `|entropyRatio` A minus B `| > 0.05`
+- `|kinds_late` A minus B `| > 3`
+- `|paid` A minus B `| / max(paid A, paid B, 1) > 0.25`
+- `|alive` A minus B `| / max(alive A, alive B, 1) > 0.30` and the larger alive is above 20
+- `|estFrac` A minus B `| > 0.10`, and only when the fingerprints differed so the numbers were read
+
+**KEEP** the clamp if MOVE is true on at least 2 counted focals. No new coupling is added on top of a path that already moves the named numbers. The write-time clamps stay. `PEERINS_CLAMP` stays, default on.
+**DELETE** the write-time clamps, `peerInsClampOn`, and the `PEERINS_CLAMP` knob, if MOVE is true on fewer than 2 counted focals. The #241 bundle stays.
+
+Results for this entry follow. No 20,000-tick number exists at the time this section is written.
+
