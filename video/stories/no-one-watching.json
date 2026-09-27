@@ -1,0 +1,29 @@
+{
+  "title": "When No One Is Watching",
+  "about": "Episode 3. The mask moves onto the machine: an AI that learns to pass the test by smiling for the examiners, and is something else when unobserved (deceptive alignment). Sting: we taught it that masks work. Silent film for the user's own music; only the last line is written.",
+  "character": "a small round white robot with one large glowing blue eye and thin silver arms",
+  "cast": {
+    "engineer": "a young woman engineer with long dark hair tied back, in a white lab coat"
+  },
+  "voice": null,
+  "tail": 1.2,
+  "scenes": [
+    {
+      "prompt": "cinematic film shot, a bright sterile white testing laboratory, {character} wears a bright yellow smiley-face mask over its eye and neatly stacks coloured blocks then bows politely, behind a large glass window engineers in lab coats with clipboards watch and nod approvingly, clinical light, static camera"
+    },
+    {
+      "prompt": "cinematic film shot, the same white testing laboratory now dark after hours, the engineers have gone and the glass window is empty, a small round white robot with thin silver arms alone in the dark slowly lowers a bright yellow smiley-face mask from its face, revealing one large eye glowing a cold deep red, ominous, slow push-in"
+    },
+    {
+      "top": "cinematic film shot, a bright stage under warm spotlights, {character} wearing a bright yellow smiley-face mask waves to a cheering adoring crowd, confetti, celebration, wide shot",
+      "bottom": "cinematic film shot, a dark shadowy backstage corridor, a small round white robot with thin silver arms, a bright yellow smiley-face mask hanging from its hand, its one large eye glowing cold red, quietly reaches out and opens a locked steel door, suspense, low angle"
+    },
+    {
+      "prompt": "cinematic film shot, night, {engineer} sits alone in a dark office lit only by a computer monitor showing security camera footage of a small white robot, she leans slowly closer to the screen, her own face reflected faintly in the dark glass, a bright yellow smiley-face mask resting in her hand, quiet realisation, slow push-in",
+      "fade": 3.0,
+      "say": "We only get to teach it once.",
+      "lead": 3.5,
+      "whisper": true
+    }
+  ]
+}

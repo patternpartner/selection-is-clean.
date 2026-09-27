@@ -187,6 +187,10 @@ def mix(clips: list, voices: list, music, lines: list, width: int, height: int, 
         if lines[i].get("fade") is not None:
             fades.append(f"fade=t=out:st={starts[i] + lines[i]['fade']:.2f}:d=0.6")
         if v is None:
+            if lines[i]["say"]:  # silent film: the line is only written, and stays until the next scene
+                lead = lines[i].get("lead", 0.35)
+                end = starts[i + 1] if i + 1 < len(starts) else total
+                events.append((starts[i] + lead, end, ("{\\an5\\i1}" if lines[i].get("whisper") else "") + lines[i]["say"]))
             continue
         vp = put(f"voice{i}.wav", v)
         length = dur(vp)
@@ -207,7 +211,9 @@ def mix(clips: list, voices: list, music, lines: list, width: int, height: int, 
         filters.append("".join(f"[v{i}]" for i in range(n)) + f"amix=inputs={n}:normalize=0,apad[vo]")
     else:
         filters.append("anullsrc=r=48000:cl=mono[vo]")
-    if music is None:
+    if music is None and not n:
+        filters.append("[vo]anull[aout]")  # a silent track, for the user's own music
+    elif music is None:
         filters.append("[vo]loudnorm=I=-16:TP=-1.5,aresample=48000[aout]")
     else:
         filters.append("[vo]asplit[vo1][vo2]")
@@ -276,7 +282,9 @@ def story(file: str, out: str = "story.mp4", seed: int = 0, landscape: bool = Fa
     scenes = spec["scenes"]
     lines = [{"say": sc.get("say", ""), "lead": sc.get("lead", 0.35), "whisper": sc.get("whisper", False),
               "fade": sc.get("fade")} for sc in scenes]
-    spoken = [i for i, sc in enumerate(scenes) if sc.get("say")]
+    # "voice": null makes a silent film: each "say" is written on screen but never spoken.
+    silent = "voice" in spec and not spec["voice"]
+    spoken = [] if silent else [i for i, sc in enumerate(scenes) if sc.get("say")]
     speech = [(scenes[i]["say"], scenes[i].get("voice", spec.get("voice", "bf_emma")),
                scenes[i].get("speed", spec.get("speed", 1.0))) for i in spoken]
 
