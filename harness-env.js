@@ -64,7 +64,8 @@ console.error=()=>{};console.warn=()=>{};};
 // retire-or-prove rule); an entry with no gate behind it is a control that reads like one.
 // #249d: GENO_PARASITE (its gate sat behind GENO_NFD_ON||, never reached) and NICHE_DRIFT (in the 1-D branch,
 // deleted) leave with their gates.
-module.exports.KNOBS = ['MEME_TRANSFER','MOTIF_SELECT','FOUND','LAW_PERSIST','MUTMAG','AIM','INHERIT','INHERIT_SD','RATION','PROV_BIRTH','RARE_BIRTH_K','OUTLIER_BIRTH_K','EXTINCT_UNDO','AIM_STILL','LAW_KCAP','PEERINS','GROUP_PROBE','GENE_DRAW'];
+// #253: SWITCHBOARD=1 is the lab's #prune; MECH_PACE=k multiplies the switch-proposal rate (rigs only).
+module.exports.KNOBS = ['MEME_TRANSFER','MOTIF_SELECT','FOUND','LAW_PERSIST','MUTMAG','AIM','INHERIT','INHERIT_SD','RATION','PROV_BIRTH','RARE_BIRTH_K','OUTLIER_BIRTH_K','EXTINCT_UNDO','AIM_STILL','LAW_KCAP','PEERINS','SWITCHBOARD','MECH_PACE','GROUP_PROBE','GENE_DRAW'];
 module.exports.applyKnobs = function(g){
   for (const kn of module.exports.KNOBS)
     if (process.env[kn] !== undefined) g['__'+kn] = parseInt(process.env[kn], 10);

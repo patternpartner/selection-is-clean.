@@ -135,6 +135,8 @@ const BRIDGE =
   // __liveness are written by the engine on the receive side, so they are arrivals.
   '__inst.api.stat=function(){try{return {tick:tick,N:N,gen:genome.generation,totalTicks:genome.totalTicks|0,' +
     'peers:(typeof countPeers==="function"?countPeers():-1),' +
+    // #253: whether this universe's switchboard is on (#prune), and its settings - read, not drawn.
+    'swb:(typeof switchboardOn==="function"&&switchboardOn())?mechState():null,' +
     'recv:netStats.received,accepted:netStats.accepted,bad:netStats.bad,dropped:netStats.dropped,' +
     // #163: heritable packets refused because the sender's clock had run far ahead of ours. A
     // universe running at parity never sees this move; a paced one is meant to.

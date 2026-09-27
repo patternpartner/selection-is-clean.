@@ -1238,6 +1238,7 @@ const LIVENESS_DECLARED=[
   // none was ever proposed.
   'phys.reaction','cosmos.lawKept','cosmos.lawRevert','cosmos.lawUndo','cosmos.lawRelax',
   'law.capacityRefused',   // #232: a proposal refused because it would lift carrying capacity past LAW_K_MAX
+  'mech.propose','mech.kept','mech.revert','mech.undo',   // #253: the switchboard - a world switching its own mechanisms
   'probe.author','probe.drift','probe.claim','probe.promote','oee.bonus',   // #184
   // #185: deme.gate fires whenever a cross-deme pairing is CONSIDERED and deme.blocked when one is
   // refused, so "the barrier exists but never bites" and "there is no barrier" are distinguishable.
@@ -2376,6 +2377,7 @@ function extinctUndoOn(){ return (typeof globalThis==='undefined')||((globalThis
 function lawUndoOnExtinction(){
   if(!extinctUndoOn())return;
   try{
+    if(__lawTrial&&__lawTrial.mech!==undefined){ mechSet(__lawTrial.mech,__lawTrial.from); __mechLog.push([tick|0,__lawTrial.mech,__lawTrial.from,__lawTrial.to,2]); __lawTrial=null; fired('mech.undo'); return; }   // #253
     if(__lawTrial){ const r=LAW_DECLARED[__lawTrial.idx]; if(r){ r.set(__lawTrial.from); __lawLog.push([tick|0,r.name,+__lawTrial.from,+__lawTrial.to,0]); recordEvent('law_undo',{law:r.name,to:+(+__lawTrial.from).toPrecision(4),why:'probation'},0); } __lawTrial=null; fired('cosmos.lawUndo'); return; }
     for(let k=__lawLog.length-1;k>=0;k--){ const e=__lawLog[k]; if(!e||e[4]!==1)continue;
       const r=LAW_DECLARED.find(x=>x.name===e[1]); if(!r)continue;
@@ -2463,6 +2465,59 @@ function demeAllows(i,j){
 // ABSENT KEY MEANS DECLARATIONS, which is exactly the pre-#216x behaviour and the correct inheritance
 // for every save written before this line existed.
 function lawPersistOn(){ return (typeof globalThis==='undefined')||((globalThis.__LAW_PERSIST??1)|0)!==0; }
+// === #253 - THE SWITCHBOARD: a world may switch its own mechanisms off, and back on ======================
+// #252's first stage (OEE-NOTES). #249 culled what was switched OFF; this hands the LIVE mechanisms to the world.
+// Each name below is a mechanism the LIVE block turns on and reads at call time, so flipping it mid-run takes
+// effect on the next tick and leaves no stale state. Left out on purpose: SPATIAL_NICHE (flipping it remaps every
+// niche cell under the stock already in it), COSMOS (live child worlds), NICHE_FRONTIER (the niche economy itself).
+// A switch trial shares the law layer's ONE trial slot, so a verdict is still attributable to one change, and is
+// judged by the same floor - the probation population must hold LAW_VIABLE of the pre-proposal mean - and paid
+// for with the same LAW_COST. That floor is a SAFETY NET, not the judge #252 asks for: it keeps whatever does not
+// shrink the population (#234) and would ratchet on whatever grows it (#232). The between-world judge is next.
+// OFF unless asked for: #prune in the hash (the field passes it to every universe: index.html#prune) or
+// SWITCHBOARD=1 in a rig. Off, it draws nothing and writes nothing - every world, saved ones included, runs as it
+// did. On, a saved world's switch settings are restored with it; off again, the LIVE defaults stand.
+// PER UNIVERSE, NOT ON globalThis. sim.worker.js hosts several universes in one isolate and shadows window,
+// location and friends per universe - but not globalThis, so a switch written to globalThis.__RED_QUEEN would
+// throw it for every universe sharing the worker. (The first version did exactly that; a browser check caught it.)
+// So a switch lives in __mechOff, in this engine's own scope, and each gate reads flag && !__mechOff[name].
+// FORAGE_EYES is not here: it is also resolved once at boot (__FORAGE_ON), so a run-time flip would half-switch it.
+// GROUP_COMMONS and GROUP_ROLES are not here either: they sit inside cluster budding, which does not happen in a lab
+// world (#249: no bud in 20k ticks even with GROUP_PROBE's lowered thresholds), and switching either off left the
+// world byte-identical through 10,000 ticks. A switch that cannot bite is a control that reads like one. Each of
+// the seven below was switched off alone on seed 2 and changed the world: six by tick 250, RICH_GRAMMAR by 3,500.
+const MECH_DECLARED=['RED_QUEEN','NICHE_BUILD','NICHE_LOCAL','FRONTIER_EXPAND','OPCODE_NOVELTY','NOVELTY_ARCHIVE',
+                     'RICH_GRAMMAR'];
+const __mechOff={};        // name -> true when this universe has switched the mechanism off
+let MECH_RATE=0.0015;      // per-tick chance of a switch proposal while no trial is in flight - the same as LAW_RATE
+let __mechLog=[];          // [tick, mechanism, from, to, verdict] - 1 kept, 0 reverted, 2 undone by an extinction
+let __swbLatch=null;
+function __swbRead(){ try{ if(typeof globalThis!=='undefined'&&(globalThis.__SWITCHBOARD|0)===1)return true;
+  return /(^|[#,])prune(,|$)/.test((typeof location!=='undefined'&&location.hash)||''); }catch(_){ return false; } }
+function switchboardOn(){ if(__swbLatch===null)__swbLatch=__swbRead(); return __swbLatch; }
+try{ if(typeof addEventListener==='function') addEventListener('hashchange',()=>{ __swbLatch=__swbRead(); }); }catch(_){}
+function mechGet(n){ return __mechOff[n]?0:1; }
+function mechSet(n,v){ if(v)delete __mechOff[n]; else __mechOff[n]=true; }
+function mechState(){ const v={}; for(const n of MECH_DECLARED)v[n]=mechGet(n); return {on:switchboardOn(),values:v,log:__mechLog.slice()}; }
+function mechPace(){ const x=(typeof globalThis!=='undefined')?(globalThis.__MECH_PACE|0):0; return x>0?x:1; }   // rigs only
+function mechPropose(){
+  const n=MECH_DECLARED[(Math.random()*MECH_DECLARED.length)|0];
+  const from=mechGet(n), to=from?0:1;
+  mechSet(n,to);
+  for(let i=0;i<N;i++) if(palive[i]) amp[i]*=(1-LAW_COST);   // the world pays for its own proposal, as for a law
+  __lawTrial={mech:n,from,to,startTick:tick|0,baseline:lawMean(),sum:0,n:0,viable:LAW_VIABLE,probation:LAW_PROBATION};
+  fired('mech.propose');
+  recordEvent('mech_propose',{mech:n,from,to},0);
+}
+function mechVerdict(held){
+  const t=__lawTrial;
+  const ok=held>=t.baseline*(t.viable!==undefined?t.viable:LAW_VIABLE);
+  if(!ok){ mechSet(t.mech,t.from); fired('mech.revert'); } else fired('mech.kept');
+  __mechLog.push([tick|0,t.mech,t.from,t.to,ok?1:0]); while(__mechLog.length>40)__mechLog.shift();
+  recordEvent('mech_verdict',{mech:t.mech,to:t.to,base:Math.round(t.baseline),held:Math.round(held),kept:ok?1:0},0);
+  __lawTrial=null;
+}
+globalThis.__swbState=mechState;   // for node rigs, where one process is one universe; the field reads mechState itself
 function attemptLawMutation(){
   if(!__LAWMUT)return;
   lawSamplePop();
@@ -2471,6 +2526,7 @@ function attemptLawMutation(){
   if(__lawTrial){
     if((tick-__lawTrial.startTick)<(__lawTrial.probation!==undefined?__lawTrial.probation:LAW_PROBATION))return;
     const held=__lawTrial.n?(__lawTrial.sum/__lawTrial.n):0;
+    if(__lawTrial.mech!==undefined){ mechVerdict(held); return; }   // #253: a switch, judged by the same floor, logged apart
     const row=LAW_DECLARED[__lawTrial.idx];
     // #197: JUDGED BY THE THRESHOLD THAT STOOD WHEN THE PROPOSAL WAS MADE, not by the current one.
     // LAW_VIABLE is itself a law now, so without this a proposal to set it to 0 would be judged by
@@ -2488,6 +2544,7 @@ function attemptLawMutation(){
     return;
   }
   if(__lawPop.length<LAW_WINDOW)return;          // no baseline yet - a proposal with nothing to judge it against is not a proposal
+  if(switchboardOn()&&Math.random()<MECH_RATE*mechPace()){ mechPropose(); return; }   // #253: off, this draws nothing
   if(Math.random()>=LAW_RATE)return;
   // #197: with BRAKES off the table is the pre-#197 three, so a run can be compared against every
   // measurement taken before the prices became evolvable.
@@ -2904,7 +2961,7 @@ function uaProdW(){
   return w;
 }
 function uaProdAt(i){ const v=uaProdW()[i]; return (typeof v==='number'&&isFinite(v)&&v>0)?(v>3?3:v):0; }
-function uaRich(){return (typeof globalThis==='undefined')||((globalThis.__RICH_GRAMMAR??1)|0)!==0;}
+function uaRich(){return (typeof globalThis==='undefined')||(((globalThis.__RICH_GRAMMAR??1)|0)!==0&&!__mechOff.RICH_GRAMMAR);}
 function uaForage(){return (typeof globalThis==='undefined')||((globalThis.__FORAGE_EYES??1)|0)!==0;}
 // #145 — AN EXPRESSION THAT CAN BE AUTHORED MUST BE ONE THAT SURVIVES A ROUND TRIP.
 // sanitizeGenome has always done `expression.slice(0,160)` on load. Authoring never knew about that
@@ -12083,6 +12140,8 @@ function encodeGenome(){
     rxs:genome.rxSelf===undefined?undefined:+(+genome.rxSelf).toFixed(4),         // #183 local chemistry
     rxc:genome.rxCross===undefined?undefined:+(+genome.rxCross).toFixed(4),
     LAW:(__lawLog||[]).slice(-40),                                                // #183 [tick, law, from, to, kept] - the world's own legislative record
+    SWB:switchboardOn()?mechState().values:undefined,   // #253: absent unless #prune - an ordinary save is unchanged
+    SWBL:switchboardOn()?__mechLog.slice(-40):undefined,
     LAWV:lawPersistOn()?(function(){ const o={}; for(const _r of LAW_DECLARED){ try{ const _v=+_r.get();
       if(isFinite(_v))o[_r.name]=+(_v).toPrecision(7); }catch(_){} } return o; })():undefined,   // #216x the values, not just the record
     ace:genome.autonomyCede===undefined?undefined:+(+genome.autonomyCede).toFixed(4), // #182 how much this lineage cedes to its collective
@@ -12464,6 +12523,8 @@ function decodeGenome(data){
     if(typeof g.rxc==='number')genome.rxCross=+g.rxc;
     if(Array.isArray(g.LAW))__lawLog=g.LAW;                    // #183 (absent -> no legislative history, which is honest: none was recorded)
     lawDefaultsSnap();   // #227: the declared values, taken before any save overwrites them
+    if(switchboardOn()&&g.SWB&&typeof g.SWB==='object'){ for(const _n of MECH_DECLARED){ const _v=g.SWB[_n]; if(_v===0||_v===1)mechSet(_n,_v); } }   // #253: only under #prune
+    if(switchboardOn()&&Array.isArray(g.SWBL))__mechLog=g.SWBL.slice(-40);
     if(lawPersistOn()&&g.LAWV&&typeof g.LAWV==='object'){      // #216x (absent -> the declarations, which is the pre-#216x world exactly)
       for(const _r of LAW_DECLARED){ const _v=g.LAWV[_r.name];
         // #227b: a saved value EXACTLY equal to a superseded declared default was never mutated -- it is the old
@@ -26384,7 +26445,7 @@ function applyNicheEconomy(){ fired('niche.economy');
   // matching global to 1 to enable (the headless harness exposes these as env knobs). Graded but
   // not yet a clean break of the ceiling — see OEE-NOTES.md — so it ships dormant, not adopted.
   const FR =(typeof globalThis!=='undefined'&&(globalThis.__NICHE_FRONTIER|0)===1);
-  const NOV=(typeof globalThis!=='undefined'&&(globalThis.__OPCODE_NOVELTY|0)===1);
+  const NOV=(typeof globalThis!=='undefined'&&((globalThis.__OPCODE_NOVELTY|0)===1&&!__mechOff.OPCODE_NOVELTY));
   if(!FR&&!NOV) return;
   const _season=1+SEASON_AMPLITUDE*Math.sin(2*Math.PI*tick/SEASON_PERIOD);
 
@@ -26396,7 +26457,7 @@ function applyNicheEconomy(){ fired('niche.economy');
   // ── LEVER 1b: N-dimensional niche cells (swing #13) — combinatorial count, replaces the 1-D geometry ──
   if(FR && (typeof globalThis!=='undefined'&&(globalThis.__NICHE_NDIM|0)===1)){
     // regen every cell; empty cells accrue to NICHE_CAP → a colonisation bonus for the first arrival
-    const BUILD=(typeof globalThis!=='undefined'&&(globalThis.__NICHE_BUILD|0)===1); // swing #29: niche construction
+    const BUILD=(typeof globalThis!=='undefined'&&((globalThis.__NICHE_BUILD|0)===1&&!__mechOff.NICHE_BUILD)); // swing #29: niche construction
     for(let c=0;c<NICHE_ND_CELLS;c++){ let sup=NICHE_ND_SUPPLY;
       if(BUILD){ if(nicheCellOcc[c]>0){ const b=nicheCellBuilt[c]+(genome.nicheBuildRate??NICHE_BUILD_RATE); nicheCellBuilt[c]=b<NICHE_BUILD_MAX?b:NICHE_BUILD_MAX; } else nicheCellBuilt[c]*=NICHE_BUILD_DECAY; sup+=nicheCellBuilt[c]; } // nicheCellOcc still holds LAST tick's count here (reset below); rate is evolvable (#35)
       nicheCellRes[c]=Math.min(NICHE_CAP, nicheCellRes[c]*NICHE_PERSIST + sup*_season); nicheCellOcc[c]=0; nicheCellCross[c]=0; }
@@ -26409,7 +26470,7 @@ function applyNicheEconomy(){ fired('niche.economy');
     // map. Ecological succession with no ceiling. NOT capped/decayed for safety (the #29 hedge) — boost is full
     // and only NICHE_CAP bounds a single cell; the risk (named, accepted) is that it floods faster than life
     // fills it and washes out selection into a spreading blob. Combinatorial-cell regime only (DIMS≤grid).
-    if(typeof globalThis!=='undefined'&&(globalThis.__FRONTIER_EXPAND|0)===1 && DIMS<=NICHE_ND_DIMS){
+    if(typeof globalThis!=='undefined'&&((globalThis.__FRONTIER_EXPAND|0)===1&&!__mechOff.FRONTIER_EXPAND) && DIMS<=NICHE_ND_DIMS){
       const FB=FRONTIER_BOOST, SPD=DIMS<NICHE_ND_DIMS?DIMS:NICHE_ND_DIMS;
       for(let c=0;c<NICHE_ND_CELLS;c++){ if(nicheCellOcc[c]<=0)continue;
         let pw=1;
@@ -26419,7 +26480,7 @@ function applyNicheEconomy(){ fired('niche.economy');
           pw*=NICHE_ND_BINS; } }
     }
     // harvest: occupants of a cell split its take equally (each cell its own carrying capacity); REAL income; cross-feed to an offset cell
-    const LOCAL=(typeof globalThis!=='undefined'&&(globalThis.__NICHE_LOCAL|0)===1); // swing #14: per-cell crowding cost
+    const LOCAL=(typeof globalThis!=='undefined'&&((globalThis.__NICHE_LOCAL|0)===1&&!__mechOff.NICHE_LOCAL)); // swing #14: per-cell crowding cost
     for(let i=0;i<N;i++){ if(!palive[i])continue; const c=pDietCell[i], occ=nicheCellOcc[c]; if(occ<=0)continue;
       const got=nicheCellRes[c]*NICHE_HARVEST/occ; amp[i]+=NICHE_GAIN_REAL*got;
       if(__COLO.pioneer){
@@ -26437,7 +26498,7 @@ function applyNicheEconomy(){ fired('niche.economy');
       nicheCellCross[(c+NICHE_ND_OFFSET)%NICHE_ND_CELLS]+=got*NICHE_CROSSFEED; }
     for(let c=0;c<NICHE_ND_CELLS;c++){ if(nicheCellOcc[c]>0) nicheCellRes[c]*=(1-NICHE_HARVEST); nicheCellRes[c]=Math.min(NICHE_CAP, nicheCellRes[c]+nicheCellCross[c]); }
     // ── SWING #28: Red Queen biotic transfer over the live cells (conserved, frequency-dependent, bounded) ──
-    if(typeof globalThis!=='undefined'&&(globalThis.__RED_QUEEN|0)===1){
+    if(typeof globalThis!=='undefined'&&((globalThis.__RED_QUEEN|0)===1&&!__mechOff.RED_QUEEN)){
       nicheCellBio.fill(0);
       for(let i=0;i<N;i++){ if(!palive[i])continue; const a=amp[i]>0?amp[i]:0; if(a>0) nicheCellBio[pDietCell[i]]+=a; }
       { // #249: the #31 trait-relational branch (RQ_TRAIT) is deleted - WORSE on 3/3 unseen seeds; this is #28's index-stride predation, which always ran
@@ -26673,7 +26734,7 @@ function loop(){
   // population — so in the bulk the gradient is ~flat, while any mutant stepping OUTSIDE the archived region
   // scores high, gets pulled out, and thereby ARCHIVES that region so the next pioneer must go further. That
   // receding-target gradient at the frontier is the open-ended engine the saturating trait-NFD never had.
-  if((globalThis.__NOVELTY_ARCHIVE|0)===1 && tick%NOV_CADENCE===0){
+  if(((globalThis.__NOVELTY_ARCHIVE|0)===1&&!__mechOff.NOVELTY_ARCHIVE) && tick%NOV_CADENCE===0){
     const novStrength=(typeof genome!=='undefined'&&isFinite(genome.novStrength))?genome.novStrength:0.004;
     const AL=novArchive.length, D=DIMS;
     // 1) score: novelty[i] = mean trait-distance to the K nearest archive entries (random NOV_SAMPLE subset)

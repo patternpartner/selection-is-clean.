@@ -236,7 +236,7 @@
       try{ sessionStorage.setItem('fieldLoadedMsg','loaded '+_put+' universes'); }catch(_x){}
     }
   }catch(_x){}
-  var OPT = '(n=\\d+|pool=\\d+|nopool|bgpace=\\d+|layers=\\d+|deeppace=\\d+|turn=\\d+|foundcap=\\d+|nofound|clean|cleanart|hud|solo|reset)';
+  var OPT = '(n=\\d+|pool=\\d+|nopool|bgpace=\\d+|layers=\\d+|deeppace=\\d+|turn=\\d+|foundcap=\\d+|nofound|clean|cleanart|hud|solo|reset|prune)';
   var isOptions = raw==='' || new RegExp('^'+OPT+'(,'+OPT+')*$').test(raw);
   if(isOptions && /(^|,)reset(,|$)/.test(raw)){
     // #170: every universe has its own slot now, so a reset that only cleared two keys would leave
@@ -254,7 +254,7 @@
     try{ history.replaceState(null,'',location.pathname||' '); }catch(e){}
     raw=raw.replace(/(^|,)reset(?=,|$)/,'').replace(/^,/,'');
   }
-  var n, clean=false, passHash='', wantCollective=false;
+  var n, clean=false, prune=false, passHash='', wantCollective=false;
   if(isOptions){
     // ANCHOR IT. `n=` unanchored matches inside other options: `turn=0` contains "n=0", so
     // /#turn=0 silently built a FOUR-universe field (n=0 -> the !(n>=1) fallback) and /#turn=600
@@ -272,6 +272,9 @@
     // four-up it buries the artwork entirely, and four metabolism panels is four of everything.
     // So a field is clean unless asked otherwise; a single universe is untouched.
     clean = /clean/.test(raw) || (n>1 && !/(^|,)hud(,|$)/.test(raw));
+    // #253: #prune hands every universe its switchboard (engine.html, MECH_DECLARED). Passed down in each
+    // universe's own hash beside cleanart, because the engine reads it there; without it nothing changes.
+    prune = /(^|,)prune(,|$)/.test(raw);
   } else {
     n=1; passHash='#'+raw;                         // a lineage, opened by itself
   }
@@ -390,7 +393,7 @@
     // general case rather than a special one.
     f.src='universe.html?pool='+POOL_RUN+'x'+(i%pool)
          +'&slot='+(isColl?'collective':('u'+i))
-         +(passHash||(clean?'#cleanart':''));
+         +(passHash||((clean||prune)?('#'+[clean?'cleanart':'',prune?'prune':''].filter(Boolean).join(',')):''));
     f.title=isColl?'The collective':('Universe '+(i+1));
     f.setAttribute('allow','autoplay');
     cell.appendChild(f);

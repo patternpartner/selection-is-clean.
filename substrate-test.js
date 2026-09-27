@@ -3195,6 +3195,18 @@ ck('#216q the rig reports the world each block measured', PT.length>=30 &&
      (tabBad.length?'; table wrong at '+tabBad.slice(0,6).join(', '):'')+(inline?'; a switch(op) is back inside vmStep':''));
 }
 
+// #253 — the switchboard hands a universe its own mechanisms. A name on MECH_DECLARED with no gate reading
+// __mechOff would be a switch that flips nothing (a control that reads like one), and a gate naming something
+// off the board could never be flipped. Read off the source; the bite itself was measured when it shipped.
+{ const decl=((code.match(/const MECH_DECLARED=\[([^\]]*)\]/)||[])[1]||'').match(/'([A-Z_]+)'/g)||[];
+  const names=decl.map(x=>x.slice(1,-1)); const gates={};
+  for(const m of code.matchAll(/!__mechOff\.([A-Z_]+)/g)) gates[m[1]]=(gates[m[1]]||0)+1;
+  const noGate=names.filter(n=>!gates[n]), offBoard=Object.keys(gates).filter(n=>!names.includes(n));
+  ck('#253 every switchboard mechanism has its per-universe gate, and no gate is off the board',
+     names.length>0 && noGate.length===0 && offBoard.length===0,
+     names.length+' switches, '+Object.values(gates).reduce((a,b)=>a+b,0)+' gates'+(noGate.length?'; NO GATE: '+noGate.join(','):'')+(offBoard.length?'; OFF THE BOARD: '+offBoard.join(','):''));
+}
+
 ck('no errors thrown anywhere', r.errors.length===0, r.errors.join(' | '));
 console.log('\n  '+pass+' passed, '+fail+' failed');
 function UA_FOLD_MODES_SAFE(){ try{ return 4; }catch(e){ return '?'; } }

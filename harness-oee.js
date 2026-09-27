@@ -917,6 +917,7 @@ console.log(JSON.stringify({
   config: { TICKS, SAMPLE, SEED: process.env.SEED || null, INDEX: process.env.INDEX || 'engine.html', NULLSHIFT },
   timing_ms: { boot: tBoot - t0, run: tDone - tBoot, perKtick: +(((tDone - tBoot) / TICKS) * 1000).toFixed(1) },
   loopErrors, lastErr, driverErr: globalThis.__driverErr || 0,
+  switchboard: (globalThis.__swbState && globalThis.__swbState().on) ? globalThis.__swbState() : undefined,   // #253
   armHits: globalThis.__armHit || undefined,
   livenessNever: (() => { const c = globalThis.__lvCensus && globalThis.__lvCensus(); return c ? c.never : undefined; })(),   // #249   // #249: gate hits when INDEX is an engine wrapped by harness-openup.js --emit
   establishment: EST_EVERY && globalThis.__ESOUT ? EC.summarize(globalThis.__ESOUT, { WARM: parseInt(process.env.ESTWARM || '2000', 10), ESTN: parseInt(process.env.ESTN || '10', 10), seed: process.env.SEED || '1', ticks: TICKS }) : undefined,

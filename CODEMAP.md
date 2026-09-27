@@ -528,6 +528,15 @@ since #132 and #218a.)
 
 ---
 
+**#253 — the switchboard** sits right after `lawPersistOn()` in the law layer: `MECH_DECLARED` (the seven switchable
+LIVE mechanisms), `__mechOff` (this universe's switched-off set — per universe, never on `globalThis`, because a
+shared worker hosts several universes in one global), `switchboardOn()` (latched from `#prune` / `SWITCHBOARD`),
+`mechPropose`/`mechVerdict` (sharing `attemptLawMutation`'s one trial slot), and `mechState()` (read by the worker's
+`__field.stat().swb`). Each switchable gate reads `flag && !__mechOff.NAME`; substrate-test's `#253` row checks that
+every switch has its gate. The field passes `prune` from `index.html#prune` into each surface universe's hash.
+
+---
+
 ## The genome (1262–5752) — 188 evolvable parameters
 
 **[read]** A single flat `let genome = {...}`. Not a tree, not modular — one vector of 188 numbers and

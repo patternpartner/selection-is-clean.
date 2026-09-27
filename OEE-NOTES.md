@@ -22940,3 +22940,51 @@ with the 1-D branch, GENO_PARASITE's no-op switch); two kept switched off and in
 296 engine lines (29,866 -> 29,570; an earlier draft of this line said about 400, which was a guess). **What moved in the universe: nothing — and the measurement that says so is the null
 band, not the verdicts.** None of the eleven made a world measurably more diverse than a different draw order of
 the same world.
+
+### #253 — THE SWITCHBOARD: a world can switch its own mechanisms off and on (#252, stage 1). Turn it on with `#prune`.
+
+The user asked for the system to prune what it does not need, and — when told the first build would ship off —
+"How will I turn it on?" So: **`index.html#prune`** gives every surface universe in the field its switchboard
+(it combines: `#prune,nofound`); **`universe.html#prune`** does it for one; `SWITCHBOARD=1` in a rig. Without it,
+every world runs exactly as before, saved ones included (rule 6 — the field only changes a saved universe's
+future when the user opens it with `#prune`).
+
+**What it is.** Seven LIVE mechanisms, each one a switch a world may throw: RED_QUEEN, NICHE_BUILD, NICHE_LOCAL,
+FRONTIER_EXPAND, OPCODE_NOVELTY, NOVELTY_ARCHIVE, RICH_GRAMMAR. A proposal flips one; it shares the law layer's
+single trial slot (so every verdict is attributable to one change), pays LAW_COST, runs LAW_PROBATION, and is
+kept if the population holds LAW_VIABLE of its pre-proposal mean. Verdicts are logged apart from the laws, so law
+sharing and the extinction undo cannot mistake a switch for a law; an extinction mid-trial reverts the switch.
+Under `#prune` a world's settings are saved with it (`SWB`, `SWBL`) and restored on load.
+
+**The judge is still only the survival floor, and that is said up front.** #234 measured this floor keeping every
+forced move of the diversity laws; #232 measured it ratcheting capacity. First reading, ONE seed, proposal rate
+x20, 6,000 ticks: four switch-offs proposed (OPCODE_NOVELTY, RICH_GRAMMAR, RED_QUEEN, NOVELTY_ARCHIVE), four kept.
+That is the predicted random walk, on one seed — not a result. The between-world judge (#252 stage 2, a lab field
+of worlds compared over long windows) is what makes this pruning rather than drift, and it is next.
+
+**Four things the build found, each caught by a check rather than by reading:**
+1. **A shared worker shares `globalThis`.** sim.worker.js shadows window, location and friends per universe but not
+   `globalThis`, and several universes share an isolate. The first version stored switches in the global LIVE
+   flags, so a universe switching RED_QUEEN off would have switched it off for every universe in its worker. A
+   Chromium check (each universe's `__field.stat().swb`) exposed it. Switches now live in `__mechOff`, in the
+   engine's own scope, and each gate reads `flag && !__mechOff[name]`.
+2. **GROUP_COMMONS and GROUP_ROLES do not execute in a lab world.** Switched off alone on seed 2, the world stayed
+   byte-identical through 10,000 ticks: both sit inside cluster budding, which #249 found never happens here.
+   Off the board. **They are LIVE mechanisms that are decoration in every lab run** — candidates for the next cull,
+   after the field check CLAUDE.md requires, since the field's longer lives may bud.
+3. **FORAGE_EYES is resolved once at boot** (`__FORAGE_ON`) for its sensing path; a run-time switch would have
+   thrown half of it. Off the board.
+4. **My own `index.html` edit had one `)` too many** — a syntax error that would have taken the whole field down
+   with or without `#prune`. The same Chromium check caught it before anything shipped.
+
+**Proved.** Off: census trajectories identical to the pre-#253 engine on seeds 1-3 at 2,000 ticks; never-fired
+lists identical apart from the four new `mech.*` rows. Each switch bites: switched off alone on seed 2, six moved
+the world by tick 250 (OPCODE_NOVELTY alone took the population from 436 to 244 by 3,000) and RICH_GRAMMAR by 3,500.
+Save round trip: under `#prune` the settings and log come back; without it the blob carries no `SWB` key. In
+Chromium: `#n=2,prune,solo` -> both surface universes report the switchboard on; `#n=2,solo` -> all off. The deep
+layers (`L1_*`, `L2_*`, `g0`) are not given it — they take their own hash — which is the scope of this first build.
+substrate-test 264/0 at TICKS=40, 900, FOUND=0, with a new `#253` row: every switch has its gate and no gate is off
+the board.
+
+**What moved in the universe:** nothing by default. Under `#prune`, a world can now remove its own machinery —
+judged, for now, only by whether it survives the change.
