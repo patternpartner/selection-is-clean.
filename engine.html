@@ -201,16 +201,11 @@ const pendingAlienPredictions=new Map(); // tab -> {atomIdx, direction, baseline
 // make the system believe it has a peer and change its network behaviour.
 let selfObservable=null;
 let __SELF_PREDICT=false; // resolved after the LIVE registry; SELF_PREDICT=1 enables. Ships DORMANT.
-// ═══ #93 GRIP-WEIGHTED PROPAGATION — close the loop the filter opens ════════════════════════════
-// #92 lets alienGrip SAVE a predictive atom from the cull. But nothing downstream consults grip:
-// seedAtomIntoParticle() is called with `genome.userAtoms.length-1` (the NEWEST atom, 12500), and
-// attemptMemeTransfer picks the donor's most-USED atom (664). So the filter shapes the germline bank
-// and then the newest/most-executed thing leaves it anyway — selection with no propagation.
-// GRIP_SEED=1 makes both routes prefer the highest-grip atom, so what the filter selects is what
-// spreads. Ships DORMANT.
+// #249: #93 GRIP-WEIGHTED PROPAGATION (GRIP_SEED, bestGripAtomIdx) deleted - opened on unseen seeds 61-63 it ran
+// 19-25k times per run and changed nothing (grip needs alien attempts no lab world supplies), and paired
+// with SELF_PREDICT it was neither better nor worse. Unused code by the pre-registered rule.
 const SELF_OBS_SCALE=50; // #95: births/window ~1333 -> ~27, inside tanh(x/20)'s informative range
 let __ABSTAIN_FREE=true; // #95: an abstaining atom is not charged a failed prediction. ABSTAIN_FREE=0 = prior behaviour.
-let __GRIP_SEED=false;
 let __INT_GENE_STEP=false; // #96: integer genes take a real step when their mutation fires (see intMaybe). Default OFF pending the arm.
 let __REND_VOCAB=false;   // #96: rend mutations draw from REND_VARS instead of the atom vocabulary. Default OFF pending the arm.
 let __FLOW_UNITS=false;   // #97: deathRate is accumulated over the same 60-tick window as birthRate. Default OFF pending the arm.
@@ -914,24 +909,6 @@ function reachOf(i){
   return __cl(finiteOr(g&&g.interactionRadius,55),10,CELL*REACH_RINGS_MAX);
 }
 function reachRings(r){ return __cl(Math.ceil(r/CELL),1,REACH_RINGS_MAX); }
-// Highest alienGrip among a genome's BOUND atoms, tie-broken by uses so a bank with no scored atom
-// behaves exactly as before. Returns -1 if there is nothing bound.
-// Returns -1 unless some bound atom has ACTUAL grip (>= ALIEN_GRIP_MIN_ATTEMPTS attempts and a non-zero
-// hit rate), so each call site keeps its own original fallback and the knob is a true no-op on an
-// unfiltered bank. The first version tie-broke by `uses` and returned a winner even when every atom had
-// zero grip — which silently changed germline seeding from "newest" to "most-used" and moved the
-// trajectory (n 221->193, amp 145->51) with the filter switched OFF. The comment claimed a no-op the
-// measurement refuted; this is the fix.
-function bestGripAtomIdx(g){
-  if(!g||!Array.isArray(g.boundOpcodes)||!Array.isArray(g.userAtoms))return -1;
-  let bi=-1,bg=0,bu=-1;
-  for(const ai of g.boundOpcodes){ const a=g.userAtoms[ai]; if(!a)continue;
-    const att=a.alienAttempts|0; if(att<ALIEN_GRIP_MIN_ATTEMPTS)continue;
-    const gr=(a.alienHits|0)/att; if(gr<=0)continue;
-    const u=a.uses|0;
-    if(gr>bg||(gr===bg&&u>bu)){ bg=gr; bu=u; bi=ai; } }
-  return bi;
-}
 const ALIEN_WINDOW=180;             // ticks per observation window
 const ALIEN_PREDICT_CADENCE=200;    // how often to attempt a new prediction cycle
 
@@ -3959,9 +3936,6 @@ function attemptMemeTransfer(recv,donor){ fired('meme.transfer');
   // not a fresh untested one; "proven" is the same currency the durability fix (#39-adjacent) judges atoms by.
   let bestAI=-1,bestUses=0;
   for(const ai of donor.boundOpcodes){ const a=donor.userAtoms[ai]; if(a&&(a.uses|0)>bestUses){bestUses=a.uses|0;bestAI=ai;} }
-  // #93: transmit what the FILTER selected, not merely what ran most. Falls back to the uses-ranked
-  // pick when no atom has been scored, so an unfiltered bank behaves exactly as before.
-  if(__GRIP_SEED){ const _g=bestGripAtomIdx(donor); if(_g>=0)bestAI=_g; }
   // #113: CREDIT-WEIGHTED SELECTION. Uses counts EXECUTIONS ("ran a lot"), grip counts PREDICTION
   // ACCURACY, but credit — pool or personal — counts SELECTION EVIDENCE ("ran and helped fitness").
   // When any donor atom has positive credit (either personal >0.05 or pool >0.05), override the
@@ -20265,9 +20239,7 @@ function mutateGenome(){ fired('genome.mutate');
         growAtomChain(genome,genome.userAtoms.length-1);
       } else if(bos.length<MAX_BOUND_OPCODES && genome.userAtoms.length>0){
         bos.push(genome.userAtoms.length-1);
-        // #93: hand over the highest-grip atom rather than the newest, when the filter is running.
         { let _si=genome.userAtoms.length-1;
-          if(__GRIP_SEED){ const _g=bestGripAtomIdx(genome); if(_g>=0)_si=_g; }
           seedAtomIntoParticle(_si); } // LEAP 35 (#80): hand it to one live particle
         if(genome.vmProgram.length<genome.vmMaxInstructions){
           genome.vmProgram.splice(Math.floor(Math.random()*(genome.vmProgram.length+1)),0,
@@ -25945,15 +25917,7 @@ const NICHE_ND_OFFSET=37;            // cross-feed cell stride (prime, coprime t
 // Opt-in via __NICHE_LOCAL=1 (with __NICHE_NDIM=1).
 const NICHE_CELL_FLOOR=2;            // occupants per cell that pay no crowding cost
 const NICHE_LOCAL_COST=0.0025;       // amp/tick lost per occupant above the floor (caps each cell locally)
-// LOCAL (PER-CELL) DRIFT — swing #15, the synthesis. #13 supplies many niches, #14 lets them coexist,
-// but together they buy a stable diverse equilibrium — a high CLOSED ceiling, not open-endedness.
-// Here each cell's supply pulses on its OWN phase (uncorrelated across the board), so a lineage
-// settled in a cell finds its supply waning while neighbours wax: no niche can be permanently
-// settled, and turnover is distributed (not convergent on one moving peak, the way global drift was).
-// This only yields sustained turnover (not just culling) if exploration can track it — see __TEND_MUT.
-// Opt-in via __NICHE_CELLDRIFT=1 (with __NICHE_NDIM=1).
-const NICHE_CELLDRIFT_PERIOD=1500;   // ticks per cell supply pulse (faster than the population can fully track)
-const NICHE_CELLDRIFT_AMP=1.0;       // supply swing per cell (1.0 → 0..2× of base, floored)
+// #249: LOCAL (PER-CELL) DRIFT (swing #15, NICHE_CELLDRIFT) deleted - opened and measured WORSE on 3/3 unseen seeds.
 const nicheRes=new Float32Array(NICHE_BINS);      // standing stock per channel
 const nicheDemand=new Float32Array(NICHE_BINS);   // total harvesting effort per channel
 const nicheBiomass=new Float32Array(NICHE_BINS);  // living amp per diet channel
@@ -25982,8 +25946,6 @@ const nicheCellPreyLoss=new Float32Array(NICHE_ND_CELLS);// per-unit-amp loss to
 const RQ_STRIDE=53;        // predator cell C eats prey cell (C+RQ_STRIDE); prime, coprime to 7776 → one long predation cycle over all cells
 const RQ_RATE=0.05;        // max fraction of a PREDATOR cell's biomass converted from prey per tick
 const RQ_MAXFRAC=0.10;     // cap on fraction of a PREY cell's biomass taken per tick (prey can't be wiped instantly → bounded, stable)
-const nicheCellDemand=new Float32Array(NICHE_ND_CELLS); // swing #31: total predator appetite routed to each (prey) cell
-const pPreyCell=new Int32Array(CAP);                    // swing #31: per-organism prey cell (its trait-neighbour target)
 // SWING #31 — TRUE COEVOLUTIONARY KERNEL (the Red Queen made REAL). #28 linked predator→prey cells by a fixed
 // INDEX stride (C+53) — consistent enough for turnover, but the link has no TRAIT meaning, so predators don't
 // track prey through trait space and there is no arms race. #31 makes the link TRAIT-RELATIONAL: a predator
@@ -25992,8 +25954,8 @@ const pPreyCell=new Int32Array(CAP);                    // swing #31: per-organi
 // where a DIFFERENT predator's image points — and predators that track the shift are rewarded: an open-ended
 // pursuit in real trait space, localised to regions (allopatric predation), reinforcing #17 divergence and #30
 // territory. Conserved by a 3-pass scheme (demand → bounded extract → distribute gain∝predator-amp,
-// loss∝prey-amp). Sub-mode of __RED_QUEEN: __RQ_TRAIT on → trait-relational; off → #28 index-stride fallback.
-const RQ_TRAIT_SHIFT=2;    // diet-bin offset of a predator's prey image (cyclic; 2 of 6 bins → a directed 3-cycle, never mutual A↔B predation)
+// loss∝prey-amp). Was a sub-mode of __RED_QUEEN; #249 deleted it (WORSE on 3/3), so #28's index-stride link is the one.
+// #249: RQ_TRAIT_SHIFT and nicheCellPreyOf (the #31 prey image) deleted with RQ_TRAIT.
 // generalised diet-shifted cell lookup (same spatial region, diet bin shifted cyclically by `shift`) — used by
 // #31 predation (shift=RQ_TRAIT_SHIFT) and #32 mutualism (shift=MUT_SHIFT). Mirrors nicheCellOf's three paths.
 function nicheCellShifted(i, shift){ const base=i*DIMS;
@@ -26006,7 +25968,6 @@ function nicheCellShifted(i, shift){ const base=i*DIMS;
     rx=rx<0?0:rx>=NICHE_SPATIAL_DIV?NICHE_SPATIAL_DIV-1:rx; ry=ry<0?0:ry>=NICHE_SPATIAL_DIV?NICHE_SPATIAL_DIV-1:ry;
     h=(Math.imul(h,31)+(ry*NICHE_SPATIAL_DIV+rx)+1)>>>0; }
   return h%NICHE_ND_CELLS; }
-function nicheCellPreyOf(i){ return nicheCellShifted(i, RQ_TRAIT_SHIFT); }
 // SWING #32 — MUTUALISM / RECIPROCAL PARTNERSHIPS. The first POSITIVE (+/+) interaction in the system; every
 // biotic force so far was competitive/−. With NICHE_ND_BINS even and MUT_SHIFT = BINS/2 = 3, the partner-of-
 // partner closes (b+3+3 = b+6 ≡ b): each organism's mutualist is its DIET-OPPOSITE in the same region, and the
@@ -26031,8 +25992,6 @@ const NICHE_BUILD_RATE=0.0006;   // per-tick supply boost added while a cell is 
 const NICHE_BUILD_MAX=0.10;      // cap on the built boost (~0.55× base supply 0.18) — deepens, never dwarfs
 const NICHE_BUILD_DECAY=0.9990;  // per-tick decay of the boost when a cell is empty (legacy persists ~700t)
 const pDietCell=new Int32Array(CAP);                   // per-organism diet cell this tick
-const cellTendSum=new Float32Array(NICHE_ND_CELLS*DIMS_MAX); // per-cell tend centroid accumulator (localised homogeniser)
-const cellTendCnt=new Int32Array(NICHE_ND_CELLS);
 nicheCellRes.fill(0.3);
 const pNicheRaw=new Float32Array(CAP);            // per-organism resource captured this tick
 const pDietBin=new Int16Array(CAP);               // per-organism diet channel this tick
@@ -26271,7 +26230,6 @@ if(typeof globalThis!=='undefined'){
                __SPATIAL_NICHE:1,                                   // spatial niches / territoriality #30 — fold a 4×4 spatial region into the niche cell so location is a niche axis: income/crowding/predation/construction become per-region, so holding ground pays and regions become defended, inherited territories. With the existing spatially-biased offspring placement, this is the allopatric route #21 found blocked (income now rewards the spatial viscosity that pull-only #21 lacked)
                __NICHE_BUILD:1,                                     // niche construction #29 — life durably reshapes its own environment: a lived-in cell accrues a persistent, CAPPED, SHARED supply boost (soil-building) that decays slowly when abandoned, so engineered niches outlive their builders and accumulate as inherited environmental structure. Anti-monopoly (shared+capped); pairs with #28 (predation thins winners, construction rewards persistence)
                __MUTUALISM:0,                                       // mutualism #32 — DORMANT (default off): the 3-seed A/B vs the validated #28-30 base was a WASH (entRatio avg 0.82 vs 0.84; regression on seed 99) — it doesn't earn default-on on standing-diversity metrics. Code+knob kept; the +/+ interaction's payoff (proto-symbiosis structure) needs a turnover instrument the harness lacks. Force on with MUTUALISM=1
-               __RQ_TRAIT:0,                                        // coevolutionary kernel #31 — DORMANT (default off): same A/B wash as #32 (neutral-to-slightly-worse vs #28-30 index-stride base) — the trait-relational arms race doesn't beat the fixed graph on standing diversity (its real signature, predator-prey trait cycling, is unmeasured here). Code+knob kept; force on with RQ_TRAIT=1. Falls back to validated #28 predation
                __RED_QUEEN:1,                                       // biotic / Red Queen #28 — conserved, frequency-dependent predation over the live N-dim cells: predators in cell C draw a zero-sum amp transfer from prey cell C+stride. "Kill the winner" (common prey predated hard, rare protected) promotes coexistence; prey escape only by crossing a cell boundary, so predation SELECTS for divergence. The unbounded (biotic) niche engine the abiotic arc #11–#27 could never reach
                __FRONTIER_EXPAND:1,                                 // EXPANDING VIABILITY FRONTIER #38 (the real big swing) — every occupied niche-cell makes its trait-ADJACENT cells viable, so the unexplored edge comes alive as life reaches it: an ever-moving frontier, ecological succession with no edge of the map. Uncapped (no #29-style safety); risk: floods faster than life fills → washes out selection. Pairs with #37 (the pressure) by giving novelty somewhere VIABLE to go
                __GENO_PARASITE:0,                                   // genotype-NFD #37 — OFF, to ISOLATE #38 (not a retreat to safety). Two live runs: #37 alone pinned pop ~134 / zero atoms / null divMean; #37+#38 nearly identical (pop ~151, struggling, 1 extinction). The program-NFD drain suppresses the population so hard that #38's frontier has no life to advance — it strangles the real swing. Off so #38 gets a clean test. Force on with GENO_PARASITE=1
@@ -26304,7 +26262,7 @@ if(typeof globalThis!=='undefined'){
                __REACH_GAIN:1,                                        // #117: EVOLVABLE REACH GAIN — the actuator gain authored atoms drive through was fixed at 0.2 by fiat since REACH (#48). Now genome.reachGain, a lineage-level trait seeded at 0.2 and evolving in [0,1] under selection: helpful atoms earn more actuator authority, harmful ones less. Tests the hypothesis that atom neutrality across #80-#109 was partly a hand-set gain too low to move fitness — hands the ceiling to selection instead of guessing it. Force off with REACH_GAIN=0
                __GROUP_COMMONS:1,                                   // GROUP SELECTION FOR THE COMMONS #40 — LIVE. Swing #36 found rqRate (the diversity-maintaining commons #28 needs) gets driven to 0 by individual selection and had to be FLOORED by fiat. This gives the existing cluster-bud lever (#33) a real countervailing force instead: colonies holding rqRate near the ceiling bud more. Headless smoke-clean (no crash/NaN across two runs) but cluster budding is too rare in a short harness window to get a verdict on the mechanism itself — same class of gap as #33 ("budding never fires there"). The live artwork, not more harness ticks, is what actually tests this. Force off with GROUP_COMMONS=0
                __MEME_TRANSFER:1,                                   // HORIZONTAL ATOM TRANSFER #41 — LIVE. Every prior route an authored atom spreads is vertical (parent→child, selfLearnFromBest, reload's sanitizeGenome splice). This adds a horizontal one: close contact lets a particle adopt a neighbour's most-PROVEN bound atom straight into its own genome — a second unit of selection, judged on cross-lineage spread, not host fitness. Headless-confirmed real (not a shared-seeding artifact): control run authored ZERO atoms population-wide in 8k ticks (nothing to inherit), yet with transfer on, the single atom that WAS born reached 410 carriers across 153 distinct lineages via 342 transfers — no vertical route could produce that. Force off with MEME_TRANSFER=0
-               __CHAR_DISP:0 };                                     // character displacement #27 — DORMANT (default off): the matched A/B (seed 7, 6k) showed it NET-HARMFUL to diversity (entropyRatio 0.67 vs control 0.74; evenness 0.61 vs 0.70) — rate 0.0015 OVER-spaces lineages toward the trait-space edges instead of letting more coexist. Code+knob kept for a re-tune (gentler rate, or gate on same-niche-cell overlap not raw trait distance); force on with CHAR_DISP=1
+               };                                                  // #249: the character-displacement switch is deleted (WORSE on 2/3)
   for(const k in LIVE) if(globalThis[k]===undefined) globalThis[k]=LIVE[k];
 }
 __DRAWVM=(typeof globalThis!=='undefined'&&(globalThis.__DRAW_VM|0)===1); // resolve the render-VM toggle now that LIVE defaults are filled
@@ -26330,7 +26288,6 @@ __ATOM_WRSENSE=(typeof globalThis==='undefined')||((globalThis.__ATOM_WRSENSE??1
 __COSMOS_LAW=(typeof globalThis==='undefined')||((globalThis.__COSMOS_LAW??1)|0)!==0; // #129: default ON. Force off with COSMOS_LAW=0
 __REACH_GAIN=(typeof globalThis==='undefined')||((globalThis.__REACH_GAIN??1)|0)!==0; // #117: default ON. Force off with REACH_GAIN=0
 __SELF_PREDICT=(typeof globalThis!=='undefined')&&((globalThis.__SELF_PREDICT|0)===1); // #92: default OFF
-__GRIP_SEED=(typeof globalThis!=='undefined')&&((globalThis.__GRIP_SEED|0)===1); // #93: default OFF
 // #131 registers nothing here on purpose. Its three repairs (ops 232-235 in every dispatch, the #34
 // novelty horizon, the eighth REACH actuator) carry no flag: selection already holds a finer dial on
 // each — whether programs carry those opcodes, genome.opnovStrength, and genome.reachGain.
@@ -26483,31 +26440,8 @@ function specComputeAgg(){ // per-lineage centroid, size, and modal niche-cell �
   for(const [key,cnt] of cellCnt){ const ci=key.indexOf(':'); const l=+key.slice(0,ci), cell=+key.slice(ci+1);
     if(cnt>(bestN.get(l)||0)){ bestN.set(l,cnt); linModalCell.set(l,cell); } }
 }
-// ═══ SWING #27: CHARACTER DISPLACEMENT — the missing DISRUPTIVE-SELECTION term ═══════════════════════════
-// The journal's deepest structural diagnosis: every prior swing raised the carrying capacity of a system with
-// an extinction term and gene flow (the homogeniser re-merges) but NO force pushing distinct lineages APART.
-// So minted lineages sit at ecological EQUIVALENCE and competitive exclusion / re-merging collapses them (the
-// #16 61→9). This adds the term: each particle is nudged AWAY from the trait centroids of OTHER (viable)
-// lineages, weighted by a Gaussian of trait distance — overlapping lineages push hard, separated ones not at
-// all. That IS limiting-similarity made dynamical: overlap → push → separation → push fades (self-limiting,
-// no runaway). Within-lineage cohesion (the same-lineage homogeniser, the art's clustering) is untouched; only
-// BETWEEN-lineage spacing grows. Synergises with #25: more axes = more empty trait-space to displace into, so
-// many lineages coexist without piling at the ±1.2 edges. Runs at the cadence on the fresh centroids (O(N·L)).
-const CHARDISP_SIG2=2*0.45*0.45, CHARDISP_RATE=0.0015, CHARDISP_MINSZ=4;
-function applyCharacterDisplacement(){
-  const cents=[], cls=[];
-  for(const [l,c] of linCentroid){ if((linSize.get(l)||0)>=CHARDISP_MINSZ){ cents.push(c); cls.push(l); } }
-  const L=cents.length; if(L<2) return;                      // need ≥2 viable lineages to space apart
-  for(let i=0;i<N;i++){ if(!palive[i])continue; const l=pLin[i], base=i*DIMS;
-    let any=false; for(let d=0;d<DIMS;d++)_dispScr[d]=0;
-    for(let k=0;k<L;k++){ if(cls[k]===l)continue; const c2=cents[k];
-      let dist2=0; for(let d=0;d<DIMS;d++){ const df=tend[base+d]-c2[d]; dist2+=df*df; }
-      const w=Math.exp(-dist2/CHARDISP_SIG2); if(w<0.01)continue; any=true;
-      for(let d=0;d<DIMS;d++)_dispScr[d]+=(tend[base+d]-c2[d])*w; }
-    if(!any)continue;
-    for(let d=0;d<DIMS;d++){ let v=tend[base+d]+_dispScr[d]*CHARDISP_RATE; tend[base+d]=v<-1.2?-1.2:v>1.2?1.2:v; }
-  }
-}
+// #249: SWING #27 CHARACTER DISPLACEMENT (applyCharacterDisplacement, CHAR_DISP) deleted. Opened and measured on
+// unseen seeds 61-63 at 20k: WORSE on 2 of 3 by the retire-or-prove rule (OEE-NOTES #249).
 function specMint(){ // cladogenesis: split off viable, cell-distinct, trait-diverged sub-populations
   if(!__SPEC.mint)return;
   const mode=__MINTGATE.mode;
@@ -26608,10 +26542,8 @@ function applyNicheEconomy(){ fired('niche.economy');
   // ── LEVER 1b: N-dimensional niche cells (swing #13) — combinatorial count, replaces the 1-D geometry ──
   if(FR && (typeof globalThis!=='undefined'&&(globalThis.__NICHE_NDIM|0)===1)){
     // regen every cell; empty cells accrue to NICHE_CAP → a colonisation bonus for the first arrival
-    const CELLDRIFT=(typeof globalThis!=='undefined'&&(globalThis.__NICHE_CELLDRIFT|0)===1); // swing #15: per-cell drift
     const BUILD=(typeof globalThis!=='undefined'&&(globalThis.__NICHE_BUILD|0)===1); // swing #29: niche construction
     for(let c=0;c<NICHE_ND_CELLS;c++){ let sup=NICHE_ND_SUPPLY;
-      if(CELLDRIFT){ sup=NICHE_ND_SUPPLY*(1+NICHE_CELLDRIFT_AMP*Math.sin(2*Math.PI*tick/NICHE_CELLDRIFT_PERIOD + c*2.39996323)); if(sup<NICHE_ND_SUPPLY*0.1)sup=NICHE_ND_SUPPLY*0.1; } // each cell pulses on its own (golden-angle) phase
       if(BUILD){ if(nicheCellOcc[c]>0){ const b=nicheCellBuilt[c]+(genome.nicheBuildRate??NICHE_BUILD_RATE); nicheCellBuilt[c]=b<NICHE_BUILD_MAX?b:NICHE_BUILD_MAX; } else nicheCellBuilt[c]*=NICHE_BUILD_DECAY; sup+=nicheCellBuilt[c]; } // nicheCellOcc still holds LAST tick's count here (reset below); rate is evolvable (#35)
       nicheCellRes[c]=Math.min(NICHE_CAP, nicheCellRes[c]*NICHE_PERSIST + sup*_season); nicheCellOcc[c]=0; nicheCellCross[c]=0; }
     for(let i=0;i<N;i++){ if(!palive[i])continue; const c=nicheCellOf(i); pDietCell[i]=c; nicheCellOcc[c]++; }
@@ -26654,16 +26586,7 @@ function applyNicheEconomy(){ fired('niche.economy');
     if(typeof globalThis!=='undefined'&&(globalThis.__RED_QUEEN|0)===1){
       nicheCellBio.fill(0);
       for(let i=0;i<N;i++){ if(!palive[i])continue; const a=amp[i]>0?amp[i]:0; if(a>0) nicheCellBio[pDietCell[i]]+=a; }
-      if((globalThis.__RQ_TRAIT|0)===1){
-        // ── SWING #31: TRAIT-RELATIONAL prey link (conserved, 3-pass). predGain[P]=gain per unit predator-demand routed to P; preyLoss[P]=loss per unit biomass in P ──
-        nicheCellDemand.fill(0); nicheCellPredGain.fill(0); nicheCellPreyLoss.fill(0);
-        for(let i=0;i<N;i++){ if(!palive[i])continue; const a=amp[i]>0?amp[i]:0; if(a<=0){pPreyCell[i]=-1;continue;} const pc=nicheCellPreyOf(i); pPreyCell[i]=pc; nicheCellDemand[pc]+=a; }
-        for(let c=0;c<NICHE_ND_CELLS;c++){ const D=nicheCellDemand[c], B=nicheCellBio[c]; if(D<=0||B<=0)continue;
-          const extract=Math.min(D*(genome.rqRate??RQ_RATE), B*RQ_MAXFRAC);       // bounded; conserved (Σgain = extract = Σloss per prey cell); rate evolvable (#35)
-          nicheCellPredGain[c]=extract/D; nicheCellPreyLoss[c]=extract/B; }
-        for(let i=0;i<N;i++){ if(!palive[i])continue; const a=amp[i]>0?amp[i]:0; if(a<=0)continue; const pc=pPreyCell[i];
-          const gain=pc>=0?a*nicheCellPredGain[pc]:0, loss=a*nicheCellPreyLoss[pDietCell[i]]; amp[i]+=gain-loss; }
-      } else {
+      { // #249: the #31 trait-relational branch (RQ_TRAIT) is deleted - WORSE on 3/3 unseen seeds; this is #28's index-stride predation, which always ran
         nicheCellPredGain.fill(0); nicheCellPreyLoss.fill(0);
         for(let c=0;c<NICHE_ND_CELLS;c++){ if(nicheCellOcc[c]<=0)continue; const preyC=(c+RQ_STRIDE)%NICHE_ND_CELLS;
           const pm=nicheCellBio[c], rm=nicheCellBio[preyC]; if(pm<=0||rm<=0)continue;
@@ -27045,21 +26968,16 @@ function loop(){
     for(let i=0;i<N;i++){if(!palive[i])continue;for(let d=0;d<DIMS;d++)globalTend[d]+=tend[i*DIMS+d];alive++}
     if(alive>0)for(let d=0;d<DIMS;d++)globalTend[d]/=alive;
     if(__SPEC.on){ specComputeAgg(); specMint(); // swing #17: per-lineage aggregates, then cladogenesis mint
-      if(typeof globalThis!=='undefined'&&(globalThis.__CHAR_DISP|0)===1) applyCharacterDisplacement(); } // swing #27: disruptive-selection / character displacement
+      }
   }
   // Diet-axis homogeniser. The GLOBAL mean-reversion (×0.00002/tick) is the dominant diversity sink:
   // against ±0.0005/tick mutation it pins the trait distribution at std≈0.08 — inside one diet bin —
   // so no downstream niche capacity can be colonised. __GLOBALTEND scales it (0 = ablate, diagnostic).
-  // __NICHE_LOCALTEND localises it: pull toward the per-NICHE-CELL centroid instead of the global one,
-  // so within-niche coherence (the art's clustering) survives while cross-niche divergence is no longer
-  // punished (diversity retained) — the local>global fix this session keeps arriving at.
+  // (__NICHE_LOCALTEND, the per-niche-cell variant of this pull, was deleted by #249.)
   { const _gt=(typeof globalThis!=='undefined'&&globalThis.__GLOBALTEND!==undefined)?+globalThis.__GLOBALTEND:1;
-    const _loc=(typeof globalThis!=='undefined'&&(globalThis.__NICHE_LOCALTEND|0)===1&&(globalThis.__NICHE_NDIM|0)===1);
-    if(_loc){
-      cellTendCnt.fill(0); cellTendSum.fill(0);
-      for(let i=0;i<N;i++){ if(!palive[i])continue; const c=pDietCell[i]; cellTendCnt[c]++; for(let d=0;d<DIMS;d++) cellTendSum[c*DIMS_MAX+d]+=tend[i*DIMS+d]; }
-      for(let i=0;i<N;i++){ if(!palive[i])continue; const c=pDietCell[i], n=cellTendCnt[c]; if(n<=0)continue; for(let d=0;d<DIMS;d++){ const m=cellTendSum[c*DIMS_MAX+d]/n; tend[i*DIMS+d]+=(m-tend[i*DIMS+d])*0.00002*_gt; } }
-    } else if(__SPEC.on && __ALLO.on && _gt!==0){
+    // #249: the __NICHE_LOCALTEND branch (per-niche-cell centroid) is deleted - opened, NEITHER better nor worse on
+    // unseen seeds 61-63, so unused code by the pre-registered rule.
+    if(__SPEC.on && __ALLO.on && _gt!==0){
       // swing #21: spatially-LOCAL same-lineage centroid. Pull each particle toward the mean tend of nearby
       // same-lineage neighbours only (grid is last tick's — positions barely move, fine). A loner pioneer
       // with no same-lineage neighbours gets NO pull (cnt=0) → it is not jailed; a separated cohort forms its

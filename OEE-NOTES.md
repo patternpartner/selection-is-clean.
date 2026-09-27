@@ -22835,3 +22835,27 @@ the mechanisms are what unsticks the world (reading b). Anything in between is s
    Anything else -> DELETE: not shown to beat chance, and an off mechanism that does not is the unused code
    the user asked to cull (#249's adaptation, unchanged).
 5. Unseen seeds decide. Committed before the first run.
+
+### #249c — THE CULL: five arms deleted by the rule they were opened for
+
+The committed #249 rule said DELETE for CHAR_DISP (WORSE 2/3), NICHE_CELLDRIFT, RQ_TRAIT (WORSE 3/3),
+NICHE_LOCALTEND (NEITHER) and GRIP_SEED (ran 19-25k times per run, changed nothing; paired with SELF_PREDICT,
+NEITHER). #249's own caveat applies — those WORSE calls are noisy — but it does not rescue any of them: an off
+mechanism stays only if it is shown BETTER, and none of these was better without also being worse.
+**What went:** `applyCharacterDisplacement` and its constants; the #31 trait-relational Red Queen branch,
+`nicheCellPreyOf`, `RQ_TRAIT_SHIFT`, `pPreyCell`, `nicheCellDemand` (#28's index-stride predation, which is what
+always ran, stays); the per-niche-cell homogeniser branch and `cellTendSum`/`cellTendCnt`; the per-cell supply
+drift and its two constants; `bestGripAtomIdx` and both GRIP_SEED call sites. 82 engine lines. Each left a
+one-line note where it stood. Their switches left `KNOBS` and the knob lists of harness-oee, harness-ab,
+harness-strip, harness, harness-bridge and harness-clamp in the same change (#238's rule, read backwards).
+**Not yet:** SELFMODEL (WORSE 3/3) carries a genome field, `selfModelW`, that every saved universe holds; removing
+it changes the save format, so it waits for its own change. NICHE_DRIFT (unreachable), the GENO_PARASITE switch
+(a no-op) and the ghost rows `aim.author`/`aim.abandon` go to the user first, as #249 committed.
+
+**Proved a no-op for every world that runs by default:** trajectories identical to the pre-cull engine on seeds
+1-3 at 2,000 ticks (census hashes and never-fired lists); `vm-equiv` pre- vs post-cull identical over every
+opcode in every machine; harness-clamp output identical apart from line numbers; substrate-test 263/0 at
+TICKS=40, 900 and FOUND=0. No saved universe is touched: none of these switches is set by the field.
+
+**What moved in the universe:** nothing, and that is the claim — 82 lines of mechanism that never ran in any
+world are gone, the same universe on every trajectory tested.

@@ -133,27 +133,23 @@ console.warn = () => {};
 // be switched from a harness at all — harness-strip.js: "a knob that cannot be turned off is not a
 // control". #131's own repairs deliberately have no knob (selection holds those dials), so what is
 // plumbed here is the set that is genuinely dormant and genuinely togglable.
-for (const kn of ['MUTUALISM','RQ_TRAIT','GENO_PARASITE','SELF_PREDICT','GRIP_SEED','MEME_TRANSFER'])
+for (const kn of ['MUTUALISM','GENO_PARASITE','SELF_PREDICT','MEME_TRANSFER'])
   if (process.env[kn] !== undefined) globalThis['__'+kn] = parseInt(process.env[kn], 10);
 if (process.env.NICHE_NDIM !== undefined) globalThis.__NICHE_NDIM = parseInt(process.env.NICHE_NDIM, 10);
 if (process.env.NICHE_LOCAL !== undefined) globalThis.__NICHE_LOCAL = parseInt(process.env.NICHE_LOCAL, 10);
 // swing #15 synthesis + retention knobs:
-//   NICHE_CELLDRIFT=1  (with NICHE_NDIM=1) each cell's supply pulses on its own phase — no niche stays settled.
 //   TEND_MUT=<x>       scale diet-axis exploration (default 1) — tests whether retention is exploration-limited.
-if (process.env.NICHE_CELLDRIFT !== undefined) globalThis.__NICHE_CELLDRIFT = parseInt(process.env.NICHE_CELLDRIFT, 10);
 if (process.env.TEND_MUT !== undefined) globalThis.__TEND_MUT = parseFloat(process.env.TEND_MUT);
 // retention diagnostic + fix:
 //   GLOBALTEND=<x>     scale the global diet-axis mean-reversion sink (0 = ablate; default 1).
-//   NICHE_LOCALTEND=1  (with NICHE_NDIM=1) localise it: pull toward the per-niche centroid, not the global one.
 if (process.env.GLOBALTEND !== undefined) globalThis.__GLOBALTEND = parseFloat(process.env.GLOBALTEND);
-if (process.env.NICHE_LOCALTEND !== undefined) globalThis.__NICHE_LOCALTEND = parseInt(process.env.NICHE_LOCALTEND, 10);
 // swing #16 dimensionality ratchet:
 //   DIMS_GROW=<interval>  open a new trait axis every <interval> ticks (0 = off). Tests whether the
 //                         board can GROW without catastrophe. DIMS_CAP caps it (default 10).
 if (process.env.DIMS_GROW !== undefined) globalThis.__DIMS_GROW = parseInt(process.env.DIMS_GROW, 10);
 if (process.env.DIMS_CAP !== undefined) globalThis.__DIMS_CAP = parseInt(process.env.DIMS_CAP, 10);
 if (process.env.DIMS_SPREAD !== undefined) globalThis.__DIMS_SPREAD = parseFloat(process.env.DIMS_SPREAD);
-for (const k of ['DIMS_SAT','DIMS_SAT_CAP','DIMS_SAT_OCC','CHAR_DISP','RED_QUEEN','NICHE_BUILD','SPATIAL_NICHE','RQ_TRAIT','MUTUALISM','GROUP_ROLES','GROUP_PROBE','BUD_INSTR','GENO_PARASITE','FRONTIER_EXPAND','NOVELTY_ARCHIVE','ATOM_PIPELINE','RICH_GRAMMAR','REACH','ATOM_DURABLE','GROUP_COMMONS','MEME_TRANSFER']) if (process.env[k] !== undefined) globalThis['__' + k] = parseInt(process.env[k], 10);
+for (const k of ['DIMS_SAT','DIMS_SAT_CAP','DIMS_SAT_OCC','RED_QUEEN','NICHE_BUILD','SPATIAL_NICHE','MUTUALISM','GROUP_ROLES','GROUP_PROBE','BUD_INSTR','GENO_PARASITE','FRONTIER_EXPAND','NOVELTY_ARCHIVE','ATOM_PIPELINE','RICH_GRAMMAR','REACH','ATOM_DURABLE','GROUP_COMMONS','MEME_TRANSFER']) if (process.env[k] !== undefined) globalThis['__' + k] = parseInt(process.env[k], 10);
 if (process.env.SHADOW_WINS_DECAY !== undefined) globalThis.__SHADOW_WINS_DECAY = parseFloat(process.env.SHADOW_WINS_DECAY);
 if (process.env.NICHE_FRONTIER !== undefined) globalThis.__NICHE_FRONTIER = parseInt(process.env.NICHE_FRONTIER, 10);
 if (process.env.NICHE_BIOTIC !== undefined) globalThis.__NICHE_BIOTIC = parseInt(process.env.NICHE_BIOTIC, 10);

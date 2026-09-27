@@ -86,7 +86,7 @@ for (const kn of ['COSMOS_COST','COSMOS_CONTACT','COSMOS_MERGE','COSMOS_SENSE','
 // be switched from a harness at all — harness-strip.js: "a knob that cannot be turned off is not a
 // control". #131's own repairs deliberately have no knob (selection holds those dials), so what is
 // plumbed here is the set that is genuinely dormant and genuinely togglable.
-for (const kn of ['MUTUALISM','RQ_TRAIT','GENO_PARASITE','SELF_PREDICT','GRIP_SEED','MEME_TRANSFER'])
+for (const kn of ['MUTUALISM','GENO_PARASITE','SELF_PREDICT','MEME_TRANSFER'])
   if (process.env[kn] !== undefined) globalThis['__'+kn] = parseInt(process.env[kn], 10);
 
 let loopErrors=0,lastErr='';

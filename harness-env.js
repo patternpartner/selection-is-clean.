@@ -60,8 +60,9 @@ console.error=()=>{};console.warn=()=>{};};
 // #249: six default-off arms had a gate in the engine and no entry here, so every applyKnobs rig
 // (harness-establish among them) ran CHAR_DISP=1 as the control: CHAR_DISP, NICHE_LOCALTEND, NICHE_DRIFT,
 // NICHE_CELLDRIFT, NICHE_BIOTIC, GROUP_PROBE. harness-oee reached them by its own env lines; nothing else did.
-module.exports.KNOBS = ['MUTUALISM','RQ_TRAIT','GENO_PARASITE','SELF_PREDICT','GRIP_SEED','MEME_TRANSFER','MOTIF_SELECT','FOUND','SELFMODEL','LAW_PERSIST','MUTMAG','AIM','INHERIT','INHERIT_SD','RATION','PROV_BIRTH','RARE_BIRTH_K','OUTLIER_BIRTH_K','EXTINCT_UNDO','AIM_STILL','LAW_KCAP','PEERINS',
-  'CHAR_DISP','NICHE_LOCALTEND','NICHE_DRIFT','NICHE_CELLDRIFT','NICHE_BIOTIC','GROUP_PROBE','GENE_DRAW'];
+// #249: RQ_TRAIT, GRIP_SEED, CHAR_DISP, NICHE_LOCALTEND, NICHE_CELLDRIFT leave with their gates (deleted by the
+// retire-or-prove rule); an entry with no gate behind it is a control that reads like one.
+module.exports.KNOBS = ['MUTUALISM','GENO_PARASITE','SELF_PREDICT','MEME_TRANSFER','MOTIF_SELECT','FOUND','SELFMODEL','LAW_PERSIST','MUTMAG','AIM','INHERIT','INHERIT_SD','RATION','PROV_BIRTH','RARE_BIRTH_K','OUTLIER_BIRTH_K','EXTINCT_UNDO','AIM_STILL','LAW_KCAP','PEERINS','NICHE_DRIFT','NICHE_BIOTIC','GROUP_PROBE','GENE_DRAW'];
 module.exports.applyKnobs = function(g){
   for (const kn of module.exports.KNOBS)
     if (process.env[kn] !== undefined) g['__'+kn] = parseInt(process.env[kn], 10);

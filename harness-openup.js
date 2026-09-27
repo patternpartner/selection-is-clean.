@@ -19,11 +19,11 @@ try{ require(require('path').join(__dirname,'harness-env.js')).applyKnobs(global
 require(require('path').join(__dirname,'harness-env.js'))(globalThis);
 const fs=require('fs'),path=require('path'),crypto=require('crypto');
 const E=process.env, T=+(E.TICKS||5000), EVERY=+(E.EVERY||250), WARM=+(E.WARM||Math.floor(T/5)), ESTN=+(E.ESTN||10);
-// arm -> number of gate sites. Most gates read (globalThis.__X|0)===1 inline; SELF_PREDICT and GRIP_SEED are
+// arm -> number of gate sites. Most gates read (globalThis.__X|0)===1 inline; SELF_PREDICT is
 // resolved once into a module flag and read by if(__X ...), so those sites are wrapped instead.
-const SITES={MUTUALISM:1,RQ_TRAIT:1,GENO_PARASITE:1,CHAR_DISP:1,NICHE_LOCALTEND:1,NICHE_DRIFT:1,NICHE_CELLDRIFT:1,
-  NICHE_BIOTIC:1,SELFMODEL:2,GROUP_PROBE:2,SELF_PREDICT:2,GRIP_SEED:2};
-const FLAGVAR={SELF_PREDICT:1,GRIP_SEED:1};
+// #249: RQ_TRAIT, CHAR_DISP, NICHE_LOCALTEND, NICHE_CELLDRIFT and GRIP_SEED were deleted by the rule this rig fed.
+const SITES={MUTUALISM:1,GENO_PARASITE:1,NICHE_DRIFT:1,NICHE_BIOTIC:1,SELFMODEL:2,GROUP_PROBE:2,SELF_PREDICT:2};
+const FLAGVAR={SELF_PREDICT:1};
 const ARMS=(E.ARM||'').split(',').filter(Boolean);
 for(const a of ARMS){ if(!(a in SITES)){ console.log(JSON.stringify({error:'unknown arm '+a,known:Object.keys(SITES)})); process.exit(2); } globalThis['__'+a]=1; }
 let code=fs.readFileSync(E.INDEX||path.join(__dirname,'engine.html'),'utf8').match(/<script>([\s\S]*)<\/script>/)[1];
