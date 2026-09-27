@@ -22256,3 +22256,37 @@ slot-test run on each, alone: `main` 15/0 with 6/9 saved, `8430453` 15/0 with 6/
 `main` runs the row read 4, 4, 6 of 9; across the two older runs 6, 6. That is the throughput-sensitive row
 CLAUDE.md already documents, not a slower engine. The earlier line said it "points at" #237-#241 and is
 left above as it was written.
+
+### #245 — THE PEER-INSCRIPTION BUNDLE, NO WORSE OR OFF. Pre-registered before any decision run.
+
+#244 found #241's KEEP was reached through harm: on its two counted focals the bundle cut late kinds 18.1 ->
+8.1 (seed 5) and alive 499 -> 294 (seed 6), because #241's MOVE rule had no direction. The user's standard:
+the bundle stays on only if it is shown no worse. This is that test, written in CLAUDE.md's retire-or-prove
+template (`e7d4c17`) and committed before any of the runs below.
+
+**Arms.** `PEERINS=1` (the bundle: #239's cold-cell spark in `case 20:`, the inscription send, the receive
+writes — the default on `main`) against `PEERINS=0` (#241's Arm B: the same draws, none of the effects).
+Engine: `main` @ `e7d4c17`.
+**Seeds: focals 7-12, peers 17-22** (peer = focal + 10). None of them has been looked at for this bundle.
+**Horizon: 20,000 ticks.** Instrument: `harness-peerins.js` as #241 ran it (entropyRatio, kinds late,
+established fraction, alive, paid, `cell.inscribe`, `cell.inscribeNet`, packets sent both ways).
+
+**1. Executed.** A focal COUNTS if, on the `PEERINS=1` arm, the bundle ran: `cell.inscribe > 0` (op 20
+executed, so the spark path ran) or `cell.inscribeNet > 0` (a peer packet was applied). Both are reported per
+focal, with whether the two arms' series differ. Reported before any other number.
+**2. Floor: 3 counted focals.** Fewer is INCONCLUSIVE: the default does not change, and the uncounted focals
+are extended once to 30,000 ticks.
+**3. Direction**, on the counted focals, `PEERINS=1` against `PEERINS=0`:
+- **WORSE** = on at least two-thirds of them, entropyRatio lower by more than 0.05, OR kinds late lower by
+  more than 10%, OR established fraction lower by more than 25% relative, OR a crash (alive over 20 on
+  `PEERINS=0`, under 5 on `PEERINS=1`). -> **DORMANT**: `PEERINS` defaults to 0, code kept. Named follow-up:
+  the spark's fixed 0.35 strength floor (which writes a strong mark whatever the register holds) is the
+  first suspect, and a spark scaled by the program's own value is the next entry to test, under this template.
+- **Not WORSE, and the arms differ on the counted focals** -> **KEEP**: the default stays on.
+- **Arms identical on every counted focal** -> decoration -> **DELETE** the bundle's effects and the knob.
+**4. Unseen seeds decide** — 7-12. #241's focals 1-6 designed nothing here and decide nothing.
+**5.** This section is committed before the first run. A different rule after the numbers is a new entry.
+**6. Saved worlds:** `PEERINS` is a code default, not a saved value; a DORMANT verdict changes every
+universe's behaviour at its next reload. The user asked for exactly this test to decide it.
+
+Results go under this heading after the runs, not before.
