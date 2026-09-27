@@ -22693,3 +22693,73 @@ Planted `case 16` in `vmOps2`: 262/1, naming it.
 
 **What moved in the universe:** every universe in the field now runs about a sixth more ticks per hour of
 viewing. Nothing about what a tick does.
+
+### #252 — SELF-PRUNING: A DESIGN, NOT YET BUILT. Let the system prune, combine and adapt its own mechanisms.
+
+The user: "give the system a go at pruning what it doesn't need, combining what it finds useful, maybe even
+adapt what it needs to." Hand-culling (#249) decides by our template on our seeds. This asks whether the
+world can make the same call itself, and keep making it as it changes.
+
+**Three verbs, mapped onto machinery the engine already has:**
+- PRUNE = a mechanism's strength goes to 0 in a world and stays there.
+- ADAPT = the strength moves to where the world does best — the law layer (#183) already does this for 48
+  constants: propose, run 1,200 ticks on probation, keep or revert.
+- COMBINE = settings that work travel together between worlds. Laws already cross universes (`uplasmid`,
+  #185), but ONE row per packet, so a pair that only works together (SELF_PREDICT + GRIP_SEED, #249) can
+  never move as a pair.
+
+**Where the choice can be made.** Three levels, and most candidates only fit one:
+- Creature (a heritable on/off gene): selection is reproduction, which is the honest judge. But it only
+  works where the mechanism's effect lands on its carrier. Most of #249's arms change the world for everyone
+  (niche supply, predation, drift), and a public benefit gives its carrier no edge, so the gene would drift.
+  #197 records the other failure: a gene that switches off a COST sweeps to off in a few hundred ticks.
+- World (a law row): fits the world-level mechanisms. Judged by the law verdict.
+- Field (between universes): the only level where the ARTWORK's criterion can be the judge (below).
+
+**The judge is the whole problem, and this repo has measured why:**
+1. The law verdict looks only at population: keep if the probation mean holds at least `LAW_VIABLE` (0.7) of
+   the pre-proposal mean. It kept every forced move of the diversity laws in both directions (#234, 6/6 seeds)
+   and ratchets carrying capacity upward (#232). Given mechanism switches, it would keep whatever does not
+   shrink the population (a random walk) and drive toward whatever GROWS it (a ratchet). MUTUALISM raised the
+   population in #249's screen (396 vs 370, seed 1), so it would be the first to ratchet on. That would be
+   pruning for survival, not for the artwork.
+2. A diversity judge inside one world, over one probation, is judging noise: #249's screen moved effective
+   lineages 72 -> 39 with a change that shifted nothing but the draw order.
+3. A novelty judge inside one world has nothing to read: #247 found 0 persistent late arrivals per 1,000
+   ticks in the real world on seeds 1-3. A 1,200-tick probation would compare zero with zero.
+4. Coverage: one trial at a time, 1,200 ticks each, across 48 rows means a given row is proposed about once
+   per ~90,000 ticks. Switches added as ordinary rows would almost never be tried in a lab run, and would
+   thin out the physics laws (#217a already found only 13 of 32 rows tried per 60k).
+
+**The design that follows from those four:**
+- **A SWITCHBOARD** — one strength row per candidate mechanism, `MECH_<X>` in [0,1] (0 = off, 1 = as built,
+  between = scaled where the mechanism has a rate). Same probation and viability floor as the laws, but ON
+  ITS OWN CLOCK so it neither starves nor dilutes them. Persisted like laws. Default = today's state, so a
+  world boots exactly as it does now. Only mechanisms that SURVIVE #249 get a switch; a deleted one has none.
+- **The per-world verdict stays a viability FLOOR, not the judge**: a switch that crashes the population is
+  reverted, and that is all it decides.
+- **THE JUDGE IS BETWEEN WORLDS, over long windows, where the noise averages out**: each universe keeps a
+  draw-free diversity score from its own census over a long window (effective lineages and occupied trait
+  cells; 20,000 ticks, not 1,200). Periodically worlds are paired; the lower-scoring one receives the
+  higher-scoring one's WHOLE switchboard as one bundle (small mutation), on probation like any import. A
+  tournament among universes: settings that make worlds diverse spread; settings that do not are pruned.
+  The bundle is the combining.
+- **Pruning to deletion: the system nominates, the template confirms.** A switch held at 0 across the field
+  (or across K lab worlds) for a long window is a nomination; #249's template on unseen seeds decides whether
+  the code goes.
+- **Goodhart guard**: the tournament judges on ONE measure and the novelty clock (#247) stays out of it as
+  the independent check. If the judged score rises and the clock does not, the field is gaming the score.
+
+**Stages, and what each one can show:**
+0. Prerequisites: #249's verdicts (which mechanisms get a switch), and validating the novelty clock (does it
+   move when a known homogeniser is removed?). About 30 minutes at #250's speed.
+1. Switchboard + today's population judge, lab, 6 seeds x 60k. Prediction from #232/#234: switches random-
+   walk, except population-raisers, which ratchet on. If the worlds instead AGREE on settings, survival alone
+   carries signal and the prediction was wrong. Either way it is the baseline the tournament must beat.
+2. A lab field: K=8 worlds (one process each, driven by a coordinator), tournament every 10k ticks, 100k
+   ticks, against 8 worlds with no tournament. Pre-registered: does the judged diversity rise against the
+   control, does the novelty clock agree, and do the surviving switchboards agree with #249's measured
+   effects? Disagreement with #249 means the tournament judge is blind too.
+3. Only then the field: the worker computes its score, the shell runs the tournament over BroadcastChannel.
+   New law rows change what a saved world's law draw can pick, so a saved universe's future changes on
+   reload even though its state does not — that goes to the user before it ships (rule 6).
