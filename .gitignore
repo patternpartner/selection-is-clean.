@@ -15,3 +15,6 @@ node_modules/
 # _heap2.js got committed by an unguarded `git add -A` while a background run had it on disk.
 _*.js
 .smoke-fail/
+# AI video outputs and python cache
+out/
+__pycache__/
