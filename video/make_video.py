@@ -157,11 +157,12 @@ def _ass_time(t: float) -> str:
 
 
 @app.function(image=mix_image, cpu=4, timeout=900)
-def mix(clips: list, voices: list, music, lines: list, width: int, height: int) -> bytes:
+def mix(clips: list, voices: list, music, lines: list, width: int, height: int, tail: float = 0.0) -> bytes:
     """Join the clips, lay each narration line over its scene, duck the music under it, burn subtitles.
 
-    `lines` holds one dict per scene: say, lead (seconds after the cut), whisper. `music` may be None
-    (a voice-only track, for scoring in an editor)."""
+    `lines` holds one dict per scene: say, lead (seconds after the cut), whisper, fade (seconds into the
+    scene at which the picture fades to black). A scene with no line has None in `voices`. `music` may
+    be None (a voice-only track, for scoring in an editor). `tail` adds that many seconds of black."""
     d = tempfile.mkdtemp()
 
     def put(name, data):
@@ -179,24 +180,33 @@ def mix(clips: list, voices: list, music, lines: list, width: int, height: int) 
     for p in clip_paths:
         starts.append(t)
         t += dur(p)
-    total = t
+    total = t + tail
     # Each line starts just after its cut; a line too long for its scene is sped up slightly.
-    audio_in, filters, events = [], [], []
+    audio_in, filters, events, fades, n = [], [], [], [], 0
     for i, v in enumerate(voices):
+        if lines[i].get("fade") is not None:
+            fades.append(f"fade=t=out:st={starts[i] + lines[i]['fade']:.2f}:d=0.6")
+        if v is None:
+            continue
         vp = put(f"voice{i}.wav", v)
         length = dur(vp)
         lead = lines[i].get("lead", 0.35)  # the line starts just after the cut
-        tempo = min(max(length / (CLIP_SECONDS - lead - 0.25), 1.0), 1.3)
+        room = CLIP_SECONDS + (tail if i == len(voices) - 1 else 0) - lead - 0.25
+        tempo = min(max(length / room, 1.0), 1.3)
         audio_in += ["-i", vp]
         delay = int((starts[i] + lead) * 1000)
         # A hushed, breathy take: thin out the body, lift the air, drop the level, add a little room.
         hush = "highpass=f=220,treble=g=5:f=4000,volume=0.5,aecho=0.8:0.7:45|80:0.18|0.1," if lines[i].get("whisper") else ""
-        filters.append(f"[{i + 2}:a]{hush}atempo={tempo:.3f},adelay={delay}|{delay},aresample=48000[v{i}]")
-        text = ("{\\i1}" if lines[i].get("whisper") else "") + lines[i]["say"]
+        filters.append(f"[{n + 2}:a]{hush}atempo={tempo:.3f},adelay={delay}|{delay},aresample=48000[v{n}]")
+        # A whispered line sits in the middle of the frame (it is usually over black), in italics.
+        text = ("{\\an5\\i1}" if lines[i].get("whisper") else "") + lines[i]["say"]
         events.append((starts[i] + lead, starts[i] + lead + length / tempo + 0.4, text))
+        n += 1
 
-    n = len(voices)
-    filters.append("".join(f"[v{i}]" for i in range(n)) + f"amix=inputs={n}:normalize=0,apad[vo]")
+    if n:
+        filters.append("".join(f"[v{i}]" for i in range(n)) + f"amix=inputs={n}:normalize=0,apad[vo]")
+    else:
+        filters.append("anullsrc=r=48000:cl=mono[vo]")
     if music is None:
         filters.append("[vo]loudnorm=I=-16:TP=-1.5,aresample=48000[aout]")
     else:
@@ -218,19 +228,39 @@ def mix(clips: list, voices: list, music, lines: list, width: int, height: int) 
         + "".join(f"Dialogue: 0,{_ass_time(a)},{_ass_time(b)},Default,{text}\n" for a, b, text in events)
     )
 
-    listing = os.path.join(d, "list.txt")
-    open(listing, "w").write("".join(f"file '{p}'\n" for p in clip_paths))
+    # The concat filter, not a stream copy: stacked scenes are encoded differently from Wan's own clips.
     joined = os.path.join(d, "joined.mp4")
-    subprocess.run(["ffmpeg", "-y", "-loglevel", "error", "-f", "concat", "-safe", "0", "-i", listing,
-                    "-c", "copy", joined], check=True)
+    n_clips = len(clip_paths)
+    subprocess.run(["ffmpeg", "-y", "-loglevel", "error", *[a for p in clip_paths for a in ("-i", p)],
+                    "-filter_complex", "".join(f"[{i}:v]setsar=1,fps={FPS}[c{i}];" for i in range(n_clips))
+                    + "".join(f"[c{i}]" for i in range(n_clips)) + f"concat=n={n_clips}:v=1:a=0[v]",
+                    "-map", "[v]", "-c:v", "libx264", "-crf", "12", "-pix_fmt", "yuv420p", joined], check=True)
     out = os.path.join(d, "out.mp4")
     subprocess.run(
         ["ffmpeg", "-y", "-loglevel", "error", "-i", joined, *music_in, *audio_in,
-         "-filter_complex", ";".join(filters) + f";[0:v]subtitles={subs},fade=t=in:d=0.6,"
-         f"fade=t=out:st={total - 0.8:.2f}:d=0.8[vout]",
+         "-filter_complex", ";".join(filters) + f";[0:v]tpad=stop_mode=add:stop_duration={tail}:color=black,"
+         + "".join(f + "," for f in fades) + f"subtitles={subs},fade=t=in:d=0.6,fade=t=out:st={total - 0.8:.2f}:d=0.8[vout]",
          "-map", "[vout]", "-map", "[aout]", "-t", f"{total:.3f}",
          "-c:v", "libx264", "-pix_fmt", "yuv420p", "-crf", "19", "-c:a", "aac", "-ac", "2", "-b:a", "192k",
          "-movflags", "+faststart", out],
+        check=True,
+    )
+    return open(out, "rb").read()
+
+
+@app.function(image=mix_image, cpu=4, timeout=600)
+def stack(top: bytes, bottom: bytes, width: int, height: int) -> bytes:
+    """Two landscape clips cropped and stacked into one portrait frame, with a thin black seam."""
+    d = tempfile.mkdtemp()
+    a, b, out = (os.path.join(d, n) for n in ("a.mp4", "b.mp4", "out.mp4"))
+    open(a, "wb").write(top)
+    open(b, "wb").write(bottom)
+    half, seam = height // 2, 4
+    fit = f"crop='min(iw,ih*{width}/{half})':ih,scale={width}:{half - seam // 2},setsar=1"
+    subprocess.run(
+        ["ffmpeg", "-y", "-loglevel", "error", "-i", a, "-i", b, "-filter_complex",
+         f"[0:v]{fit},pad={width}:{half}:0:0:black[t];[1:v]{fit},pad={width}:{half}:0:{seam // 2}:black[u];"
+         "[t][u]vstack[v]", "-map", "[v]", "-c:v", "libx264", "-pix_fmt", "yuv420p", "-crf", "16", out],
         check=True,
     )
     return open(out, "rb").read()
@@ -244,13 +274,21 @@ def story(file: str, out: str = "story.mp4", seed: int = 0, landscape: bool = Fa
     spec = json.load(open(file))
     width, height = (1280, 704) if landscape else (704, 1280)
     scenes = spec["scenes"]
-    lines = [{"say": sc["say"], "lead": sc.get("lead", 0.35), "whisper": sc.get("whisper", False)} for sc in scenes]
-    speech = [(sc["say"], sc.get("voice", spec.get("voice", "bf_emma")), sc.get("speed", spec.get("speed", 1.0)))
-              for sc in scenes]
-    prompts = [sc["prompt"].replace("{character}", spec.get("character", "")) for sc in scenes]
+    lines = [{"say": sc.get("say", ""), "lead": sc.get("lead", 0.35), "whisper": sc.get("whisper", False),
+              "fade": sc.get("fade")} for sc in scenes]
+    spoken = [i for i, sc in enumerate(scenes) if sc.get("say")]
+    speech = [(scenes[i]["say"], scenes[i].get("voice", spec.get("voice", "bf_emma")),
+               scenes[i].get("speed", spec.get("speed", 1.0))) for i in spoken]
+
+    def fill(text):  # every {name} in a prompt is replaced by that entry of the storyboard's "cast"
+        for name, desc in {"character": spec.get("character", ""), **spec.get("cast", {})}.items():
+            text = text.replace("{" + name + "}", desc)
+        return text
+
+    # A scene is one portrait clip ("prompt"), or two landscape clips stacked ("top" and "bottom").
     print(f"'{spec.get('title', file)}': {len(scenes)} scenes, ~{len(scenes) * CLIP_SECONDS:.0f}s")
 
-    voices = narrate.spawn(speech)
+    voices = narrate.spawn(speech) if speech else None
     music = None
     if spec.get("music"):  # leave it out for a voice-only track to score in an editor
         music = score.spawn(spec["music"], len(scenes) * CLIP_SECONDS + 1, seed)
@@ -258,15 +296,26 @@ def story(file: str, out: str = "story.mp4", seed: int = 0, landscape: bool = Fa
     # Clips are kept by what made them, so editing one scene does not regenerate the others.
     store = os.path.join(os.path.dirname(os.path.abspath(out)), "clips")
     os.makedirs(store, exist_ok=True)
-    jobs = [(p, seed + i, width, height) for i, p in enumerate(prompts)]
+    jobs, parts = [], []  # parts[i]: indices into jobs making up scene i
+    for i, sc in enumerate(scenes):
+        if "prompt" in sc:
+            parts.append([len(jobs)])
+            jobs.append((fill(sc["prompt"]), seed + i, width, height))
+        else:
+            parts.append([len(jobs), len(jobs) + 1])
+            jobs.append((fill(sc["top"]), seed + i, height, width))
+            jobs.append((fill(sc["bottom"]), seed + 100 + i, height, width))
     paths = [os.path.join(store, hashlib.sha1(repr((MODEL_ID, CLIP_FRAMES) + j).encode()).hexdigest()[:16] + ".mp4")
              for j in jobs]
     todo = [i for i, p in enumerate(paths) if not os.path.exists(p)]
     print(f"generating {len(todo)} of {len(jobs)} clips ({len(jobs) - len(todo)} reused)")
     for i, data in zip(todo, Wan().clip.starmap([jobs[i] for i in todo])):
         open(paths[i], "wb").write(data)
-    clips = [open(p, "rb").read() for p in paths]
-    data = mix.remote(clips, voices.get(), music.get() if music else None, lines, width, height)
+    raw = [open(p, "rb").read() for p in paths]
+    clips = [raw[ps[0]] if len(ps) == 1 else stack.remote(raw[ps[0]], raw[ps[1]], width, height) for ps in parts]
+    said = voices.get() if voices else []
+    per_scene = [said[spoken.index(i)] if i in spoken else None for i in range(len(scenes))]
+    data = mix.remote(clips, per_scene, music.get() if music else None, lines, width, height, spec.get("tail", 0.0))
     open(out, "wb").write(data)
     print(f"saved {out}")
 

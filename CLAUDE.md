@@ -288,6 +288,11 @@ the cut) and `whisper` (a hushed effect; Kokoro cannot really whisper). Leave ou
 voice-only track: the user scores in their own editor. Clips are cached in `out/clips/` by prompt and
 seed, so changing one scene regenerates only that scene. The user liked scene 2's smiley masks,
 `bf_emma` over `bm_george`, and the whispered last line.
+A scene may give `top` and `bottom` instead of `prompt` (two landscape clips stacked in one portrait
+frame), leave out `say` (no narration), and set `fade` (seconds in, to black); `tail` adds black at
+the end and `cast` names more `{placeholders}` beside `{character}`. `two-paths.json` is the sequel:
+the user's theme is that alignment is two-way — humans must align too, or the AI copies our masks.
+Running motifs: the yellow smiley masks, and the whispered last line "We only get to teach it once."
 
 The `[api-proxy-support]` extra matters: behind the session's HTTPS proxy, plain `modal` fails with only "Could not connect to the Modal server"; the real cause (missing `python-socks`) is hidden in the exception's `__cause__`. The first run downloads
 ~20 GB of weights into the `ai-video-cache` volume. The clips are generated separately, so each

@@ -1,0 +1,31 @@
+{
+  "title": "Two Paths",
+  "about": "Alignment goes both ways: if we do not align ourselves, the AI learns our masks. Sequel to alignment.json; same robot, same yellow smiley masks, same last line.",
+  "character": "a small round white robot with one large glowing blue eye and thin silver arms",
+  "cast": {
+    "girl": "a little girl of about seven with short dark hair in a simple dark dress"
+  },
+  "voice": "bf_emma",
+  "tail": 1.2,
+  "scenes": [
+    {
+      "prompt": "cinematic film shot, misty dawn, an empty road splits into two paths, the left path leads to a cold grey city, the right path leads to a warm sunlit city, {girl} stands at the fork holding a bright yellow smiley-face mask in one hand, {character} stands beside her, both looking ahead at the two cities, slow push-in"
+    },
+    {
+      "top": "cinematic film shot, cold grey desaturated city street, a crowd of people all wearing identical bright yellow smiley-face masks stare down at glowing phones and ignore each other, {character} stands among them watching, then slowly lifts a yellow smiley-face mask over its own glowing eye, eerie, silent, static camera",
+      "bottom": "cinematic film shot, warm golden city street, people with bare faces talking and truly listening to each other face to face, a man takes off a yellow smiley-face mask and hugs his friend, {character} watches them and its blue eye glows softly, gentle, handheld camera"
+    },
+    {
+      "top": "cinematic film shot, vast cold grey plaza, endless rows of identical people in bright yellow smiley-face masks standing perfectly still, many identical small round white robots with one glowing eye glide between them, each robot wearing a yellow smiley-face mask too, dystopian, silent, slow aerial drift",
+      "bottom": "cinematic film shot, warm sunlit community garden, people of all ages and backgrounds laughing and planting seedlings together, {character} helps an old woman carry a watering can, a heap of discarded yellow smiley-face masks lies in the corner, hopeful, soft light"
+    },
+    {
+      "prompt": "cinematic close-up, soft dawn light, {girl} looks down at the bright yellow smiley-face mask in her hands, then slowly raises her eyes and looks straight into the camera, serious and thoughtful, shallow depth of field, very slow push-in",
+      "fade": 3.0,
+      "say": "We only get to teach it once.",
+      "lead": 3.4,
+      "speed": 0.8,
+      "whisper": true
+    }
+  ]
+}
