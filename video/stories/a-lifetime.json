@@ -1,7 +1,7 @@
 {
   "title": "A Lifetime",
-  "about": "Episode 7, 30 s, cinematic and emotional. The robot helps raise a girl from cradle to old age; what it learns is how she loves. Alignment is taught in a lifetime of small moments, and the robot outlives her. Smiley faces: the cradle mobile, a mask she no longer needs, the one it keeps. Silent film for the user's own music; only the last line is written.",
-  "character": "a small round white robot with one large glowing blue eye and thin silver arms",
+  "about": "Episode 7, 30 s, cinematic and emotional. The robot helps raise a girl from cradle to old age; what it learns is how she loves. Alignment is taught in a lifetime of small moments, and the robot outlives her. Smiley faces: the cradle mobile, a mask she no longer needs, the one it keeps. Silent film for the user's own music; only the last line is written. v2 after the user's notes (robot changed size, hovered over the crib, the life journey was unclear): every scene is the same window seat in the same room with the season changing outside, the robot is knee-high and always on the floor, and one small yellow smiley passes through every scene.",
+  "character": "a knee-high small round white robot with one large glowing blue eye and thin silver arms, standing on the wooden floor",
   "cast": {
     "girl": "a little girl of about five with dark hair and freckles",
     "teen": "a teenage girl with long dark hair and freckles",
@@ -12,22 +12,22 @@
   "tail": 1.5,
   "scenes": [
     {
-      "prompt": "cinematic film shot, soft morning light in a quiet nursery, {character} gently rocks a wooden cradle with one silver hand, above the cradle a baby mobile of little bright yellow smiley faces slowly turns, dust in the sunbeams, tender, shallow depth of field, static camera"
+      "prompt": "cinematic film shot, a cosy living room with a large window and a wooden window seat, spring morning light, a newborn baby asleep in a wicker basket on the window seat, a small yellow smiley-face toy hangs on a ribbon from the window frame above her, {character} beside the window seat looking up at the baby, tender, static camera, wide shot"
     },
     {
-      "prompt": "cinematic film shot, a spring garden in warm light, {girl} kneels in the soil and shows {character} how to cup a tiny green seedling gently in both hands, the robot copies her carefully, tender, shallow depth of field, close-up, static camera"
+      "prompt": "cinematic film shot, a cosy living room with a large window and a wooden window seat, bright summer light and green trees outside, {girl} sits on the window seat holding a small yellow smiley-face toy and gently shows it to {character}, laughing, static camera, wide shot"
     },
     {
-      "prompt": "cinematic film shot, a teenage bedroom at night lit by a warm bedside lamp, {teen} sits on her bed crying quietly, {character} sits beside her with one silver hand resting on her shoulder, a bright yellow smiley-face mask lies discarded on the floor, intimate, soft light, static camera"
+      "prompt": "cinematic film shot, a cosy living room with a large window and a wooden window seat, autumn evening with orange leaves falling outside the window, {teen} sits hunched on the window seat crying quietly, {character} beside her with one silver hand resting on her knee, a small yellow smiley-face toy on the windowsill, intimate, warm lamp light, static camera, wide shot"
     },
     {
-      "prompt": "cinematic film shot, a front doorway in soft grey morning light, {woman} with a suitcase beside her kneels and holds {character} in a long tight hug, eyes closed, bittersweet goodbye, shallow depth of field, static camera"
+      "prompt": "cinematic film shot, a cosy living room with a large window and a wooden window seat, winter morning with snow outside the window, {woman} in a coat with a packed suitcase kneels on the floor by the window seat and hugs {character} tightly goodbye, a small yellow smiley-face toy tucked in the suitcase pocket, bittersweet, static camera, wide shot"
     },
     {
-      "prompt": "cinematic film shot, golden hour light through a window, {old} sits in a worn armchair smiling softly, holding the silver hand of {character} which sits beside her, its white shell a little scuffed with age, peaceful and loving, shallow depth of field, static camera"
+      "prompt": "cinematic film shot, a cosy living room with a large window and a wooden window seat, warm golden hour light, {old} sits on the window seat smiling softly, holding the silver hand of {character} beside her and a small faded yellow smiley-face toy in her lap, peaceful and loving, static camera, wide shot"
     },
     {
-      "prompt": "cinematic film shot, dusk, an empty worn armchair by a window with rain running down the glass, {character} sits alone beside the empty chair holding one small bright yellow smiley face from an old baby mobile in its silver hands, looking down at it, grief, quiet, blue evening light, very slow push-in",
+      "prompt": "cinematic film shot, a cosy living room with a large window and a wooden window seat, dusk with rain running down the window, the window seat is empty, {character} sits alone on the floor beside the empty window seat holding a small faded yellow smiley-face toy in its silver hands, looking down at it, grief, quiet, blue evening light, very slow push-in",
       "fade": 3.4,
       "say": "We only get to teach it once.",
       "lead": 3.8,
