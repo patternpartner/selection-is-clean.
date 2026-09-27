@@ -62,7 +62,9 @@ console.error=()=>{};console.warn=()=>{};};
 // NICHE_CELLDRIFT, NICHE_BIOTIC, GROUP_PROBE. harness-oee reached them by its own env lines; nothing else did.
 // #249: RQ_TRAIT, GRIP_SEED, CHAR_DISP, NICHE_LOCALTEND, NICHE_CELLDRIFT leave with their gates (deleted by the
 // retire-or-prove rule); an entry with no gate behind it is a control that reads like one.
-module.exports.KNOBS = ['MUTUALISM','GENO_PARASITE','SELF_PREDICT','MEME_TRANSFER','MOTIF_SELECT','FOUND','SELFMODEL','LAW_PERSIST','MUTMAG','AIM','INHERIT','INHERIT_SD','RATION','PROV_BIRTH','RARE_BIRTH_K','OUTLIER_BIRTH_K','EXTINCT_UNDO','AIM_STILL','LAW_KCAP','PEERINS','NICHE_DRIFT','NICHE_BIOTIC','GROUP_PROBE','GENE_DRAW'];
+// #249d: GENO_PARASITE (its gate sat behind GENO_NFD_ON||, never reached) and NICHE_DRIFT (in the 1-D branch,
+// deleted) leave with their gates.
+module.exports.KNOBS = ['MUTUALISM','SELF_PREDICT','MEME_TRANSFER','MOTIF_SELECT','FOUND','SELFMODEL','LAW_PERSIST','MUTMAG','AIM','INHERIT','INHERIT_SD','RATION','PROV_BIRTH','RARE_BIRTH_K','OUTLIER_BIRTH_K','EXTINCT_UNDO','AIM_STILL','LAW_KCAP','PEERINS','NICHE_BIOTIC','GROUP_PROBE','GENE_DRAW'];
 module.exports.applyKnobs = function(g){
   for (const kn of module.exports.KNOBS)
     if (process.env[kn] !== undefined) g['__'+kn] = parseInt(process.env[kn], 10);

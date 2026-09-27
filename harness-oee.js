@@ -121,21 +121,16 @@ console.warn = () => {};
 //   NICHE_FRONTIER=1   expanding cross-feed resource-spectrum frontier (lever 1)
 //   NICHE_BIOTIC=1     biotic / coevolutionary predation niches (lever 2)
 //   OPCODE_NOVELTY=1   opcode-novelty / coupling-gap pressure (lever 3)
-//   NICHE_REAL=0       (with NICHE_FRONTIER=1) swap lever 1's REAL income for the zero-sum
-//                      mean-centred control — proves a tax cannot beat limiting similarity.
-//   NICHE_DRIFT=1      (with NICHE_FRONTIER=1) swing #12: supply peaks DRIFT, so the profitable
-//                      diet is a moving target — no lineage can summit-and-stop.
-//   NICHE_NDIM=1       (with NICHE_FRONTIER=1) swing #13: diet is an N-dim cell (bins^D niches),
-//                      a combinatorial count instead of a 1-D handful. nicheOcc = occupied cells.
+//   (#249d: NICHE_REAL, NICHE_DRIFT and NICHE_NDIM are gone with the 1-D frontier branch they switched. The N-dim
+//   cells (#13) are the niche economy; NICHE_NDIM=0 would now have meant "no niche income", not "1-D niches".)
 //   NICHE_LOCAL=1      (with NICHE_NDIM=1) swing #14: per-cell crowding cost — each niche gets a
 //                      LOCAL carrying capacity, so overflow spreads to other cells (real per-niche competition).
 // Engine gates read globalThis.__NAME only, never process.env, so a knob without a line here cannot
 // be switched from a harness at all — harness-strip.js: "a knob that cannot be turned off is not a
 // control". #131's own repairs deliberately have no knob (selection holds those dials), so what is
 // plumbed here is the set that is genuinely dormant and genuinely togglable.
-for (const kn of ['MUTUALISM','GENO_PARASITE','SELF_PREDICT','MEME_TRANSFER'])
+for (const kn of ['MUTUALISM','SELF_PREDICT','MEME_TRANSFER'])
   if (process.env[kn] !== undefined) globalThis['__'+kn] = parseInt(process.env[kn], 10);
-if (process.env.NICHE_NDIM !== undefined) globalThis.__NICHE_NDIM = parseInt(process.env.NICHE_NDIM, 10);
 if (process.env.NICHE_LOCAL !== undefined) globalThis.__NICHE_LOCAL = parseInt(process.env.NICHE_LOCAL, 10);
 // swing #15 synthesis + retention knobs:
 //   TEND_MUT=<x>       scale diet-axis exploration (default 1) — tests whether retention is exploration-limited.
@@ -149,15 +144,13 @@ if (process.env.GLOBALTEND !== undefined) globalThis.__GLOBALTEND = parseFloat(p
 if (process.env.DIMS_GROW !== undefined) globalThis.__DIMS_GROW = parseInt(process.env.DIMS_GROW, 10);
 if (process.env.DIMS_CAP !== undefined) globalThis.__DIMS_CAP = parseInt(process.env.DIMS_CAP, 10);
 if (process.env.DIMS_SPREAD !== undefined) globalThis.__DIMS_SPREAD = parseFloat(process.env.DIMS_SPREAD);
-for (const k of ['DIMS_SAT','DIMS_SAT_CAP','DIMS_SAT_OCC','RED_QUEEN','NICHE_BUILD','SPATIAL_NICHE','MUTUALISM','GROUP_ROLES','GROUP_PROBE','BUD_INSTR','GENO_PARASITE','FRONTIER_EXPAND','NOVELTY_ARCHIVE','ATOM_PIPELINE','RICH_GRAMMAR','REACH','ATOM_DURABLE','GROUP_COMMONS','MEME_TRANSFER']) if (process.env[k] !== undefined) globalThis['__' + k] = parseInt(process.env[k], 10);
+for (const k of ['DIMS_SAT','DIMS_SAT_CAP','DIMS_SAT_OCC','RED_QUEEN','NICHE_BUILD','SPATIAL_NICHE','MUTUALISM','GROUP_ROLES','GROUP_PROBE','BUD_INSTR','FRONTIER_EXPAND','NOVELTY_ARCHIVE','ATOM_PIPELINE','RICH_GRAMMAR','REACH','ATOM_DURABLE','GROUP_COMMONS','MEME_TRANSFER']) if (process.env[k] !== undefined) globalThis['__' + k] = parseInt(process.env[k], 10);
 if (process.env.SHADOW_WINS_DECAY !== undefined) globalThis.__SHADOW_WINS_DECAY = parseFloat(process.env.SHADOW_WINS_DECAY);
 if (process.env.NICHE_FRONTIER !== undefined) globalThis.__NICHE_FRONTIER = parseInt(process.env.NICHE_FRONTIER, 10);
 if (process.env.NICHE_BIOTIC !== undefined) globalThis.__NICHE_BIOTIC = parseInt(process.env.NICHE_BIOTIC, 10);
 if (process.env.OPCODE_NOVELTY !== undefined) globalThis.__OPCODE_NOVELTY = parseInt(process.env.OPCODE_NOVELTY, 10);
 if (process.env.FORAGE_EYES !== undefined) globalThis.__FORAGE_EYES = parseInt(process.env.FORAGE_EYES, 10);
 if (process.env.ALIEN_SELECT !== undefined) globalThis.__ALIEN_SELECT = parseInt(process.env.ALIEN_SELECT, 10); // SWING #46
-if (process.env.NICHE_REAL !== undefined) globalThis.__NICHE_REAL = parseInt(process.env.NICHE_REAL, 10);
-if (process.env.NICHE_DRIFT !== undefined) globalThis.__NICHE_DRIFT = parseInt(process.env.NICHE_DRIFT, 10);
 // swing #17 cladogenesis (the speciation primitive). SPECIATE=1 turns it on; sub-toggles default to the
 // master and exist for the 3-way control:
 //   SPECIATE=1        master: isolate re-mergers within lineage + mint diverged sub-populations + grace.
@@ -165,8 +158,9 @@ if (process.env.NICHE_DRIFT !== undefined) globalThis.__NICHE_DRIFT = parseInt(p
 //   SPEC_MINT=0       isolate but never mint (diagnostic).
 //   SPEC_GRACE=<t>    founder death-relief window in ticks (default 2000); SPEC_MINSIZE founder size (default 12).
 //   SPEC_DIVT=<x>     trait-centroid divergence threshold to mint (default 0.20).
-// Divergent selection is supplied by REAL partitioned niche cells (run with NICHE_NDIM=1 NICHE_REAL=1);
-// the "same-landscape" control sets NICHE_REAL=0 (flat income) so isolation has no per-cell optimum to bite on.
+// Divergent selection is supplied by REAL partitioned niche cells. #249d: the "same-landscape" control this comment
+// described (NICHE_NDIM=1 NICHE_REAL=0) could never have differed from the treatment - NICHE_REAL was read only in
+// the 1-D branch, which NDIM shadows - and no run of it is recorded in OEE-NOTES. The knob is gone.
 for (const k of ['SPECIATE','SPEC_GATE','SPEC_MINT','SPEC_MINSIZE','SPEC_ASSORT']) if (process.env[k] !== undefined) globalThis['__' + k] = parseInt(process.env[k], 10);
 for (const k of ['SPEC_GRACE','SPEC_DIVT','SPEC_ASSORT_T','SPEC_ASSORT_K']) if (process.env[k] !== undefined) globalThis['__' + k] = parseFloat(process.env[k]);
 if (process.env.SPEC_DEBUG !== undefined) globalThis.__SPEC_DEBUG = parseInt(process.env.SPEC_DEBUG, 10);
