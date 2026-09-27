@@ -22988,3 +22988,30 @@ the board.
 
 **What moved in the universe:** nothing by default. Under `#prune`, a world can now remove its own machinery —
 judged, for now, only by whether it survives the change.
+
+### #254 — THE LAB FIELD: does a judge BETWEEN worlds prune toward diversity? Pre-registered before any run.
+
+**The question.** #253's switchboard is judged only by a survival floor inside each world, which #234 measured
+keeping anything that does not shrink the population. #252's claim is that a judge BETWEEN worlds, over long windows,
+is what turns switching into pruning. `harness-field.js` tests that claim in the lab before anything reaches the field.
+
+**Arms.** Six worlds each, seeds 81-86 in BOTH arms (world i starts identical in both), every switchboard on
+(`SWITCHBOARD=1`), `MECH_PACE=5` so a world tries a switch a few times per epoch, 60,000 ticks, epochs of 10,000.
+- **tournament:** after every epoch but the last, worlds are paired at random (the rig's own PRNG); the one with
+  the lower score adopts the other's whole switchboard, each switch then flipped with probability 0.1.
+- **control:** identical, no adoption.
+**Score (the judge):** mean effective number of lineages over the epoch, sampled every 250 ticks.
+**Independent check (never seen by the judge):** trait-cell arrivals — first-ever occupancy of a cell on the
+novelty clock's grid (first three axes, 10 bins over +/-1.5, at least 3 members) — per epoch after the first.
+
+**What would count, fixed now:**
+1. **The judge works** if, in the final epoch, the tournament world beats its control twin on the score in at least
+   5 of 6 pairs. Fewer: the tournament did not beat the switchboard's own drift at this horizon, said as such.
+2. **It is pruning, not gaming,** only if the check agrees: tournament arrivals over epochs 1-5 at least equal to
+   control's in at least 4 of 6 pairs. A score that rises while arrivals do not is the field gaming its score, and
+   is reported as that.
+3. **Convergence** is descriptive: the share of tournament worlds holding each switch on at the end, against
+   control. Agreement across worlds on a setting is what "the system decided" would look like; scatter is drift.
+4. The seeds 81-86 appear nowhere in these notes. One run of each arm; the horizon (60k) is said out loud.
+5. **Whatever the outcome, nothing ships to the field from this run.** A positive result goes to the user as the
+   proposal for stage 3 (the tournament in the real field); a negative one says the design needs a different judge.
