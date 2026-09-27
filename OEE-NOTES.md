@@ -22239,6 +22239,11 @@ stop the next pair of entries disagreeing like this.
 - #238 reseeds the chemistry table of every pre-#238 save on reload (`Cv`). That reaches into the running
   field the way #235's floor did, and was stated in #238's pre-registration; recorded here so the user knows
   it happened.
+- **Browser rigs on the fixed engine:** pace 7/0, pool 28/0 — the halt paths #240 was written for. slot-test
+  14/1, and the failing row ("most of the field got far enough to save", 4/9 built saved) fails IDENTICALLY
+  on `main` @ `e3fd116` without the fix, and PASSES on `8430453` (before #237: 15/0, 6/9 saved), each run
+  alone on a quiet machine. One run each, so not proof — but it points at #237-#241 having slowed the field
+  enough to miss its first save, and that is being measured next rather than assumed.
 - The history of `case 20:` in one line, because it took three entries to reach: #237 deleted the local
   write (it crashed seed 4, 87 alive against 349); #239 added a cold-cell spark; `e827f81`'s merge dropped
   the spark; #241 put it back under `PEERINS`.
