@@ -22247,3 +22247,12 @@ stop the next pair of entries disagreeing like this.
 - The history of `case 20:` in one line, because it took three entries to reach: #237 deleted the local
   write (it crashed seed 4, 87 alive against 349); #239 added a cold-cell spark; `e827f81`'s merge dropped
   the spark; #241 put it back under `PEERINS`.
+
+**#244, correction to the line above: the slot-test save row is NOT a regression from #237-#241.** Measured
+instead of assumed. Node timing, 4,000 ticks alone: seed 1 66.3 ms/tick before #237 against 66.1 on
+`main` (66.1 with `PEERINS=0`); seed 4 58.3 against 62.6, where the newer run carries more particles (394 vs
+412) and `PEERINS=0` is the same 62.3 — no per-tick cost from #237-#241 or the peer bundle. And a second
+slot-test run on each, alone: `main` 15/0 with 6/9 saved, `8430453` 15/0 with 6/9 saved. Across the three
+`main` runs the row read 4, 4, 6 of 9; across the two older runs 6, 6. That is the throughput-sensitive row
+CLAUDE.md already documents, not a slower engine. The earlier line said it "points at" #237-#241 and is
+left above as it was written.
