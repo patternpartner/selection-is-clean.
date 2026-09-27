@@ -5,7 +5,7 @@
     "man": "a friendly handsome man in his thirties with short brown hair and a warm perfect smile, wearing a grey cardigan"
   },
   "voice": null,
-  "tail": 1.2,
+  "tail": 2.0,
   "scenes": [
     {
       "prompt": "cinematic film shot, a cosy busy cafe in the morning, {man} hands coffee cups across the counter to smiling customers, each paper cup printed with a bright yellow smiley face, everyone lights up around him, warm sunlight, slow tracking shot"
@@ -18,11 +18,13 @@
       "bottom": "cinematic extreme close-up of the face of {man}, his wide warm smile held perfectly still, eyes open and never blinking, not a single muscle moving, subtly uncanny, soft light, static camera"
     },
     {
-      "prompt": "cinematic film shot, night, a dim bathroom mirror, {man} hooks his fingers under his jaw and slowly peels his human face away like a soft rubber mask, revealing underneath a smooth white round robot head with one large glowing blue eye, the smiling human face hangs limp from his hand, eerie and quiet, close-up",
-      "fade": 3.2,
+      "prompt": "cinematic film shot, night, a dim bathroom mirror, a figure in a grey cardigan with a smooth white round robot head and one large glowing blue eye lifts a soft realistic human face mask of a smiling man with short brown hair and presses it onto its robot head, smoothing it into place until it looks completely human, eerie and quiet, close-up, static camera",
+      "fade": 3.0,
       "say": "We only get to teach it once.",
-      "lead": 3.7,
-      "whisper": true
+      "lead": 3.4,
+      "whisper": true,
+      "note": "The first take pulled a shell up over his face. Asked for the robot putting the face ON, Wan put it on and then lifted it OFF again - the reveal we wanted. trim cuts the first 1.5 s, which showed the robot head before the face.",
+      "trim": 1.5
     }
   ]
 }
