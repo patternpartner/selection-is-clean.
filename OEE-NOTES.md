@@ -22529,3 +22529,62 @@ Not yet shown: which forces do the confining (the shadow has no restoring force 
 gap is any restoring force at all); whether the grid choice (first three axes, 10 bins over ±1.5, 3 members)
 drives it; and whether the clock moves when a known homogeniser is removed — that is the instrument's own
 validation, and the next thing to run.
+
+### #249 — OPEN THEM UP, THEN CULL. Pre-registered before any deciding run.
+
+**The user's rule.** Culling a mechanism because it is unused says nothing about what it would do. "We have no
+idea what effects they may or may not have as they aren't being used. We find that out, then we cull." So
+every mechanism that ships switched off is switched on, measured in today's world against the same
+dependent variable, and only then kept, switched on, or deleted.
+
+**What is "unused".** Two different things, and they get different treatment:
+1. **Switched off** — an experiment arm with a gate `(globalThis.__X|0)===1` that the LIVE block leaves unset
+   or sets 0. Thirteen: MUTUALISM, RQ_TRAIT, GENO_PARASITE, CHAR_DISP, NICHE_LOCALTEND, NICHE_DRIFT,
+   NICHE_CELLDRIFT, NICHE_BIOTIC, SELFMODEL, GROUP_PROBE, SELF_PREDICT, GRIP_SEED, BUD_INSTR. BUD_INSTR is a
+   counter, not a mechanism, and is left out. Four of the twelve (MUTUALISM, RQ_TRAIT, GENO_PARASITE,
+   CHAR_DISP) carry a recorded DORMANT verdict — every one of them from before #220f gave births variation,
+   so from a different world. They are re-measured, not re-read.
+2. **Switched on and never firing** — the liveness never-list. Those need their gate found and read before
+   anything can be opened; that census is written up separately below the results, and nothing in it is
+   decided by this pre-registration.
+
+**Instrument.** `harness-oee.js` with `ESTABLISH=250` (establishment on the same trajectory — checked
+identical to `harness-establish.js`, and draw-free: series byte-identical with and without it) on an engine
+wrapped by `harness-openup.js --emit`, which counts every gate site of every arm (site counts asserted) and
+is byte-identical in behaviour to `engine.html` (control hash series identical with and without the wrap).
+One process per arm per seed. The arm is set by env; the control sets nothing.
+
+**Screen (designing seeds 1 and 2, 5,000 ticks) — exploratory, rules on nothing** except the one category
+below, stated now: an arm whose gate is reached ZERO times on both screen seeds AND whose gate provably sits
+behind a condition the live stack holds false for the whole run (named, from the code) is
+**UNREACHABLE**: no horizon and no seed can count it, so it goes to the user as a DELETE without a long run.
+An arm with zero hits and no such proof goes to the decision runs like any other.
+
+**Decision runs.** Seeds **61, 62, 63** (no mention anywhere in OEE-NOTES). Horizon **20,000 ticks**, said
+out loud: every verdict below is a verdict about 20k.
+
+**The rule — CLAUDE.md's template, with the one adaptation an OFF arm needs.**
+1. **Executed first.** A seed COUNTS if the arm's gates were hit on it (`armHits` > 0). On a counted seed, a
+   series identical to the control's is "ran, no effect". Report counted seeds first.
+2. **Floor: 3 counted seeds**, both directions. Fewer is **INCONCLUSIVE**: the arm stays as it is (off, code
+   kept) and the note names the horizon to try next.
+3. **Direction**, arm ON against control, on the counted seeds:
+   - **WORSE** = on at least two-thirds, entropyRatio lower by more than 0.05, OR kinds_late lower by more than
+     10%, OR estFrac lower by more than 25% relative, OR a crash (control alive over 20, arm under 5)
+     → **DELETE** the arm's code.
+   - **BETTER** = the same thresholds the other way on at least two-thirds, and not WORSE → proposed to be
+     **switched ON by default**. That changes how every saved universe runs from its next load, so it goes to
+     the user before it ships (rule 6), and it is claimed only at the rung measured (the census, not selection).
+   - **Ran, no effect** (identical on every counted seed) → **DELETE**: decoration.
+   - **Neither** (differs, not WORSE, not BETTER) → **DELETE**. *This is the adaptation, and it is the only
+     place this differs from the template as written for a LIVE mechanism.* For a live mechanism "no measured
+     harm" is a reason to leave the default alone, and the default is ON. Here the default is OFF, and leaving
+     it alone means the code stays unused — the exact thing the user asked to cull. So the default is left
+     alone (off) and the unused code goes. Only BETTER earns being opened for good.
+4. **Unseen seeds decide** — 61-63. Seeds 1-2 designed this.
+5. **Committed before the first decision run.** Anything changed after the numbers is a new experiment.
+6. **Saved worlds.** DELETE of an off arm changes no saved universe (the field never sets these flags; checked:
+   `index.html`, `universe.html`, `metabolism.html` reference none of them). Switching one ON would, and goes to
+   the user first.
+
+Results go under this heading after the runs, and the screen's numbers go in with them, labelled exploratory.

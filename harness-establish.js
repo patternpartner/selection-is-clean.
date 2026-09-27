@@ -27,43 +27,11 @@ const TICKS=parseInt(process.env.TICKS||'20000',10), EVERY=parseInt(process.env.
 const ESTN=parseInt(process.env.ESTN||'10',10), WARM=parseInt(process.env.WARM||'2000',10);
 const html=fs.readFileSync(process.env.INDEX||path.join(__dirname,'engine.html'),'utf8');
 const code=html.match(/<script>([\s\S]*)<\/script>/)[1];
-const DRIVER=[
-';globalThis.__es=function(T,EVERY){',
-'  var out={rows:[],err:null,first:{},peak:{}};',
-'  var census=function(){',
-'    var cnt=new Map(), n=0;',
-'    for(var i=0;i<N;i++){ if(!palive[i])continue; n++; var l=pLin[i]; cnt.set(l,(cnt.get(l)||0)+1); }',
-'    var s2=0, topL=-1, topN=0;',
-'    cnt.forEach(function(c,l){ var p=c/(n||1); s2+=p*p; if(c>topN){topN=c;topL=l;}',
-'      if(out.first[l]===undefined) out.first[l]=tick; if(!(out.peak[l]>=c)) out.peak[l]=c; });',
-'    var e=lineageRegistry.get(topL);',
-'    out.rows.push({t:tick,alive:n,lineages:cnt.size,effN:s2>0?1/s2:0,top:topL,topShare:topN/(n||1),',
-'      topBorn:e?e.birthTick:null});',
-'  };',
-'  census();',
-'  for(var step=0;step<T;step++){',
-'    globalThis.__detMs+=5;',
-'    try{ loop(); }catch(e){ if(!out.err) out.err=String(e&&e.message||e); }',
-'    if((step+1)%EVERY===0) census();',
-'  }',
-'  return out;',
-'};'
-].join('\n');
+const EC=require(path.join(__dirname,'establish-census.js')), DRIVER=EC.DRIVER;   // #249: one census, shared with harness-oee ESTABLISH=<every>
 const Module=require('module');
 const mod=new Module('/tmp/establish.js'); mod.filename='/tmp/establish.js'; mod.paths=Module._nodeModulePaths('/tmp');
 mod._compile(code+DRIVER,'/tmp/establish.js');
 const r=globalThis.__es(TICKS,EVERY);
-let late=0, est=0;
-for(const l in r.first){ if(r.first[l]>WARM){ late++; if(r.peak[l]>=ESTN) est++; } }
-let take=0, swaps=0;
-for(let k=1;k<r.rows.length;k++){ const a=r.rows[k-1], b=r.rows[k];
-  if(a.top!==b.top){ swaps++; if(b.topBorn!==null&&a.topBorn!==null&&b.topBorn>a.topBorn) take++; } }
-const third=Math.floor(r.rows.length/3), mean=(f,a,b)=>{let s=0;for(let k=a;k<b;k++)s+=r.rows[k][f];return s/Math.max(1,b-a);};
-const summary={seed:process.env.SEED||'1',ticks:TICKS,err:r.err,
-  lateLineages:late, established:est, estFrac:late?+(est/late).toFixed(4):null, takeovers:take, topSwaps:swaps,
-  effN_early:+mean('effN',1,third+1).toFixed(2), effN_late:+mean('effN',r.rows.length-third,r.rows.length).toFixed(2),
-  topShare_late:+mean('topShare',r.rows.length-third,r.rows.length).toFixed(3),
-  alive_late:+mean('alive',r.rows.length-third,r.rows.length).toFixed(0),
-  lastTopAge:r.rows.length?(r.rows[r.rows.length-1].t-(r.rows[r.rows.length-1].topBorn||0)):null};
+const summary=EC.summarize(r,{WARM,ESTN,seed:process.env.SEED||'1',ticks:TICKS});
 if(process.env.ROWS) for(const x of r.rows) console.log(JSON.stringify(x));
 console.log(JSON.stringify(summary));

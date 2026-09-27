@@ -24,6 +24,7 @@
 //       SEED  (optional: seeded RNG + deterministic clock for exact replay)
 //       INDEX (optional: path to the html file to load)
 //       JSONL=1  (stream one metrics object per sample to stdout)
+//       ESTABLISH=<every>  (#249: harness-establish's census on this same trajectory; ESTWARM default 2000, ESTN 10)
 const fs = require('fs');
 // #217b: KNOBS honoured. #216x fixed four rigs and I called the class swept; a review found the
 // real number is 39 node-side rigs that boot engine.html in-process and silently drop every
@@ -657,10 +658,12 @@ const driver = `
   globalThis.__SERIES=[];
   globalThis.__runOEE=function(ticks,every){
     let m=metrics(); globalThis.__SERIES.push(m); if(STREAM)process.stdout.write(JSON.stringify(m)+String.fromCharCode(10));
+    const EST=globalThis.__EST_EVERY|0, es=EST>0?globalThis.__esNew():null; globalThis.__ESOUT=es; if(es)es.census();   // #249: ESTABLISH=<every>
     for(let s=0;s<ticks;s++){
       globalThis.__detMs+=5;
       globalThis.__applyPin();   // hold the knockout dead against re-mutation, every tick
       try{loop();}catch(e){globalThis.__driverErr=(globalThis.__driverErr||0)+1;}
+      if(es&&(s+1)%EST===0) es.census();
       if((s+1)%every===0){ m=metrics(); globalThis.__SERIES.push(m); if(STREAM)process.stdout.write(JSON.stringify(m)+String.fromCharCode(10)); }
     }
   };
@@ -703,7 +706,12 @@ m.filename = __dirname + '/oee-sim.js';
 m.paths = Module._nodeModulePaths(__dirname);
 
 const t0 = Date.now();
-try { m._compile(code2 + driver, m.filename); }
+// #249: ESTABLISH=<every> runs harness-establish's census on THIS trajectory (establish-census.js, draws nothing),
+// so the retire-or-prove template reads entropyRatio, kinds and establishment from one run, not two.
+const EST_EVERY = parseInt(process.env.ESTABLISH || '0', 10) || 0;
+globalThis.__EST_EVERY = EST_EVERY;
+const EC = require(__dirname + '/establish-census.js');
+try { m._compile(code2 + driver + (EST_EVERY ? EC.DRIVER : ''), m.filename); }
 catch (e) { console.log('COMPILE/BOOT THREW:', e.message); process.exit(1); }
 const tBoot = Date.now();
 
@@ -914,6 +922,8 @@ console.log(JSON.stringify({
   config: { TICKS, SAMPLE, SEED: process.env.SEED || null, INDEX: process.env.INDEX || 'engine.html' },
   timing_ms: { boot: tBoot - t0, run: tDone - tBoot, perKtick: +(((tDone - tBoot) / TICKS) * 1000).toFixed(1) },
   loopErrors, lastErr, driverErr: globalThis.__driverErr || 0,
+  armHits: globalThis.__armHit || undefined,   // #249: gate hits when INDEX is an engine wrapped by harness-openup.js --emit
+  establishment: EST_EVERY && globalThis.__ESOUT ? EC.summarize(globalThis.__ESOUT, { WARM: parseInt(process.env.ESTWARM || '2000', 10), ESTN: parseInt(process.env.ESTN || '10', 10), seed: process.env.SEED || '1', ticks: TICKS }) : undefined,
   ablation: process.env.ABLATE ? { mode: process.env.ABLATE, idx: ablateIdx, expr: ablateExpr, pinnedNeutralised: ablatedCount } : null,
   verdict,
   series: STREAM ? '(streamed as JSONL above)' : S

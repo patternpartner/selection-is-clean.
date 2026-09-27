@@ -49,7 +49,11 @@ console.error=()=>{};console.warn=()=>{};};
 // #241: PEERINS gates the inscription bundle (spark writes, inscription networkSend, receive
 // writes). #245: unset now means OFF, peerInsOn's default. PEERINS=1 turns the bundle on; either arm keeps
 // the same draws.
-module.exports.KNOBS = ['MUTUALISM','RQ_TRAIT','GENO_PARASITE','SELF_PREDICT','GRIP_SEED','MEME_TRANSFER','MOTIF_SELECT','FOUND','SELFMODEL','LAW_PERSIST','MUTMAG','AIM','INHERIT','INHERIT_SD','RATION','PROV_BIRTH','RARE_BIRTH_K','OUTLIER_BIRTH_K','EXTINCT_UNDO','AIM_STILL','LAW_KCAP','PEERINS'];
+// #249: six default-off arms had a gate in the engine and no entry here, so every applyKnobs rig
+// (harness-establish among them) ran CHAR_DISP=1 as the control: CHAR_DISP, NICHE_LOCALTEND, NICHE_DRIFT,
+// NICHE_CELLDRIFT, NICHE_BIOTIC, GROUP_PROBE. harness-oee reached them by its own env lines; nothing else did.
+module.exports.KNOBS = ['MUTUALISM','RQ_TRAIT','GENO_PARASITE','SELF_PREDICT','GRIP_SEED','MEME_TRANSFER','MOTIF_SELECT','FOUND','SELFMODEL','LAW_PERSIST','MUTMAG','AIM','INHERIT','INHERIT_SD','RATION','PROV_BIRTH','RARE_BIRTH_K','OUTLIER_BIRTH_K','EXTINCT_UNDO','AIM_STILL','LAW_KCAP','PEERINS',
+  'CHAR_DISP','NICHE_LOCALTEND','NICHE_DRIFT','NICHE_CELLDRIFT','NICHE_BIOTIC','GROUP_PROBE'];
 module.exports.applyKnobs = function(g){
   for (const kn of module.exports.KNOBS)
     if (process.env[kn] !== undefined) g['__'+kn] = parseInt(process.env[kn], 10);
