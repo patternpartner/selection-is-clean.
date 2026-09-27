@@ -22763,3 +22763,43 @@ world can make the same call itself, and keep making it as it changes.
 3. Only then the field: the worker computes its score, the shell runs the tournament over BroadcastChannel.
    New law rows change what a saved world's law draw can pick, so a saved universe's future changes on
    reload even though its state does not — that goes to the user before it ships (rule 6).
+
+**#249 RESULTS — seeds 61-63, 20,000 ticks, harness-oee ESTABLISH=250 on the gate-counting engine. 39 runs,
+0 failed.** The committed rule, applied mechanically (`rule249.js`, arm vs control per seed):
+
+| arm | counted | worse / better (of counted) | rule's verdict |
+|---|---|---|---|
+| MUTUALISM | 3 | 1 / 2 | BETTER -> to the user |
+| NICHE_BIOTIC | 3 | 1 / 3 | BETTER -> to the user |
+| SELF_PREDICT | 3 | 1 / 2 | BETTER -> to the user |
+| CHAR_DISP | 3 | 2 / 3 | WORSE -> DELETE |
+| NICHE_CELLDRIFT | 3 | 3 / 2 | WORSE -> DELETE |
+| RQ_TRAIT | 3 | 3 / 2 | WORSE -> DELETE |
+| SELFMODEL | 3 | 3 / 2 | WORSE -> DELETE |
+| NICHE_LOCALTEND | 3 | 1 / 1 | NEITHER -> DELETE |
+| GRIP_SEED | 3 | identical to control on all three (19-25k gate hits) | RAN, NO EFFECT -> DELETE |
+| SELF_PREDICT+GRIP_SEED (vs SELF_PREDICT) | 3 | 1 / 0 | NEITHER -> DELETE |
+| GENE_DRAW | 2 | 0 / 2 (better on all 3) | INCONCLUSIVE -> off, kept |
+| GROUP_PROBE | 0 (no bud on any seed) | — | INCONCLUSIVE -> off, kept |
+
+**Read the "worse / better" column before the verdict: most arms are BOTH on the same seed.** The rule checks
+WORSE first, so an arm better on 3 and worse on 2 is deleted (CHAR_DISP); one better on 2 and worse on 1 is
+proposed (MUTUALISM). Establishment drives most of it: its values run 0 to 0.017 between runs, and a 25%
+relative threshold on that is a coin. **So the three BETTER verdicts are not grounds to switch anything on.**
+
+**And the control is not where a control should be.** Arms above / below the control's entropyRatio: seed 61
+4/5, **seed 62 10/0, seed 63 9/1.** Late new kinds per 1k (harness-oee's novelty): **the control is 0 on all
+three seeds; 26 of 30 non-identical arm runs are above 0.** If the control were one draw from the same spread
+as the arms, three zeros would be well under a 1% event (arm zeros are 4 of 30). Two readings, and this batch
+cannot tell them apart: (a) seeds 62-63's unperturbed trajectories are unlucky, and every "better" is
+"better than a low control"; or (b) the unperturbed world is STUCK — it finds nothing new late — and almost
+any change to its rules unsticks it. (b) would be the most important thing this batch found, because it is
+#247's "held, not going anywhere" seen from the other side. The test is null replicates: the same world with
+its random stream shifted, which is a different trajectory under the SAME rules (#249b, below).
+
+**What moved in the universe:** nothing yet, by design — every arm here is off. **What was seen for the first
+time:** with GENE_DRAW on, `gene.read` FIRED on seeds 61 and 63. GENE_READ has now executed in a lab run, which
+it could not do in the project's whole life before #249 (drawn 0 of 427). `gene.author` still never fired.
+
+**Separately, from the screen:** NICHE_DRIFT UNREACHABLE (DELETE with the 1-D branch), GENO_PARASITE's switch a
+no-op (remove the flag, the mechanism stays live), `aim.author`/`aim.abandon` ghost liveness rows (remove).
