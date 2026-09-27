@@ -111,18 +111,18 @@ mix_image = modal.Image.debian_slim(python_version="3.11").apt_install("ffmpeg",
 
 
 @app.function(image=voice_image, volumes={"/cache": cache}, cpu=4, timeout=900)
-def narrate(lines: list, voice: str) -> list:
-    """One WAV (24 kHz) per line. Kokoro-82M, open weights; 'b*' voices are British."""
+def narrate(lines: list) -> list:
+    """One WAV (24 kHz) per (text, voice, speed). Kokoro-82M, open weights; 'b*' voices are British."""
     import io
 
     import numpy as np
     import soundfile as sf
     from kokoro import KPipeline
 
-    pipe = KPipeline(lang_code=voice[0])
-    out = []
-    for text in lines:
-        parts = [a.numpy() if hasattr(a, "numpy") else a for _, _, a in pipe(text, voice=voice)]
+    pipes, out = {}, []
+    for text, voice, speed in lines:
+        pipe = pipes.setdefault(voice[0], KPipeline(lang_code=voice[0], repo_id="hexgrad/Kokoro-82M"))
+        parts = [a.numpy() if hasattr(a, "numpy") else a for _, _, a in pipe(text, voice=voice, speed=speed)]
         buf = io.BytesIO()
         sf.write(buf, np.concatenate(parts), 24000, format="WAV")
         out.append(buf.getvalue())
@@ -157,8 +157,11 @@ def _ass_time(t: float) -> str:
 
 
 @app.function(image=mix_image, cpu=4, timeout=900)
-def mix(clips: list, voices: list, music: bytes, lines: list, width: int, height: int) -> bytes:
-    """Join the clips, lay each narration line over its scene, duck the music under it, burn subtitles."""
+def mix(clips: list, voices: list, music, lines: list, width: int, height: int) -> bytes:
+    """Join the clips, lay each narration line over its scene, duck the music under it, burn subtitles.
+
+    `lines` holds one dict per scene: say, lead (seconds after the cut), whisper. `music` may be None
+    (a voice-only track, for scoring in an editor)."""
     d = tempfile.mkdtemp()
 
     def put(name, data):
@@ -177,26 +180,31 @@ def mix(clips: list, voices: list, music: bytes, lines: list, width: int, height
         starts.append(t)
         t += dur(p)
     total = t
-    lead = 0.35  # the line starts just after the cut
-    room = CLIP_SECONDS - lead - 0.25
-
     # Each line starts just after its cut; a line too long for its scene is sped up slightly.
     audio_in, filters, events = [], [], []
     for i, v in enumerate(voices):
         vp = put(f"voice{i}.wav", v)
         length = dur(vp)
-        tempo = min(max(length / room, 1.0), 1.3)
+        lead = lines[i].get("lead", 0.35)  # the line starts just after the cut
+        tempo = min(max(length / (CLIP_SECONDS - lead - 0.25), 1.0), 1.3)
         audio_in += ["-i", vp]
         delay = int((starts[i] + lead) * 1000)
-        filters.append(f"[{i + 2}:a]atempo={tempo:.3f},adelay={delay}|{delay},aresample=48000[v{i}]")
-        events.append((starts[i] + lead, starts[i] + lead + length / tempo + 0.3, lines[i]))
+        # A hushed, breathy take: thin out the body, lift the air, drop the level, add a little room.
+        hush = "highpass=f=220,treble=g=5:f=4000,volume=0.5,aecho=0.8:0.7:45|80:0.18|0.1," if lines[i].get("whisper") else ""
+        filters.append(f"[{i + 2}:a]{hush}atempo={tempo:.3f},adelay={delay}|{delay},aresample=48000[v{i}]")
+        text = ("{\\i1}" if lines[i].get("whisper") else "") + lines[i]["say"]
+        events.append((starts[i] + lead, starts[i] + lead + length / tempo + 0.4, text))
 
     n = len(voices)
     filters.append("".join(f"[v{i}]" for i in range(n)) + f"amix=inputs={n}:normalize=0,apad[vo]")
-    filters.append("[vo]asplit[vo1][vo2]")
-    filters.append(f"[1:a]aresample=48000,volume=0.5,afade=t=in:d=1,afade=t=out:st={total - 2.5:.2f}:d=2.5,apad[mu]")
-    filters.append("[mu][vo2]sidechaincompress=threshold=0.03:ratio=6:attack=30:release=500[duck]")
-    filters.append("[duck][vo1]amix=inputs=2:normalize=0,loudnorm=I=-16:TP=-1.5,aresample=48000[aout]")
+    if music is None:
+        filters.append("[vo]loudnorm=I=-16:TP=-1.5,aresample=48000[aout]")
+    else:
+        filters.append("[vo]asplit[vo1][vo2]")
+        filters.append(f"[1:a]aresample=48000,volume=0.5,afade=t=in:d=1,afade=t=out:st={total - 2.5:.2f}:d=2.5,apad[mu]")
+        filters.append("[mu][vo2]sidechaincompress=threshold=0.03:ratio=6:attack=30:release=500[duck]")
+        filters.append("[duck][vo1]amix=inputs=2:normalize=0,loudnorm=I=-16:TP=-1.5,aresample=48000[aout]")
+    music_in = ["-f", "lavfi", "-i", "anullsrc=r=48000:cl=mono"] if music is None else ["-i", put("music.wav", music)]
 
     subs = os.path.join(d, "subs.ass")
     open(subs, "w").write(
@@ -217,7 +225,7 @@ def mix(clips: list, voices: list, music: bytes, lines: list, width: int, height
                     "-c", "copy", joined], check=True)
     out = os.path.join(d, "out.mp4")
     subprocess.run(
-        ["ffmpeg", "-y", "-loglevel", "error", "-i", joined, "-i", put("music.wav", music), *audio_in,
+        ["ffmpeg", "-y", "-loglevel", "error", "-i", joined, *music_in, *audio_in,
          "-filter_complex", ";".join(filters) + f";[0:v]subtitles={subs},fade=t=in:d=0.6,"
          f"fade=t=out:st={total - 0.8:.2f}:d=0.8[vout]",
          "-map", "[vout]", "-map", "[aout]", "-t", f"{total:.3f}",
@@ -231,17 +239,34 @@ def mix(clips: list, voices: list, music: bytes, lines: list, width: int, height
 @app.local_entrypoint()
 def story(file: str, out: str = "story.mp4", seed: int = 0, landscape: bool = False):
     """One clip per scene, each with a narration line; the character is written into every prompt."""
+    import hashlib
+
     spec = json.load(open(file))
     width, height = (1280, 704) if landscape else (704, 1280)
     scenes = spec["scenes"]
-    lines = [sc["say"] for sc in scenes]
+    lines = [{"say": sc["say"], "lead": sc.get("lead", 0.35), "whisper": sc.get("whisper", False)} for sc in scenes]
+    speech = [(sc["say"], sc.get("voice", spec.get("voice", "bf_emma")), sc.get("speed", spec.get("speed", 1.0)))
+              for sc in scenes]
     prompts = [sc["prompt"].replace("{character}", spec.get("character", "")) for sc in scenes]
     print(f"'{spec.get('title', file)}': {len(scenes)} scenes, ~{len(scenes) * CLIP_SECONDS:.0f}s")
 
-    voices = narrate.spawn(lines, spec.get("voice", "bm_george"))
-    music = score.spawn(spec.get("music", "cinematic ambient film score"), len(scenes) * CLIP_SECONDS + 1, seed)
-    clips = list(Wan().clip.starmap([(p, seed + i, width, height) for i, p in enumerate(prompts)]))
-    data = mix.remote(clips, voices.get(), music.get(), lines, width, height)
+    voices = narrate.spawn(speech)
+    music = None
+    if spec.get("music"):  # leave it out for a voice-only track to score in an editor
+        music = score.spawn(spec["music"], len(scenes) * CLIP_SECONDS + 1, seed)
+
+    # Clips are kept by what made them, so editing one scene does not regenerate the others.
+    store = os.path.join(os.path.dirname(os.path.abspath(out)), "clips")
+    os.makedirs(store, exist_ok=True)
+    jobs = [(p, seed + i, width, height) for i, p in enumerate(prompts)]
+    paths = [os.path.join(store, hashlib.sha1(repr((MODEL_ID, CLIP_FRAMES) + j).encode()).hexdigest()[:16] + ".mp4")
+             for j in jobs]
+    todo = [i for i, p in enumerate(paths) if not os.path.exists(p)]
+    print(f"generating {len(todo)} of {len(jobs)} clips ({len(jobs) - len(todo)} reused)")
+    for i, data in zip(todo, Wan().clip.starmap([jobs[i] for i in todo])):
+        open(paths[i], "wb").write(data)
+    clips = [open(p, "rb").read() for p in paths]
+    data = mix.remote(clips, voices.get(), music.get() if music else None, lines, width, height)
     open(out, "wb").write(data)
     print(f"saved {out}")
 
