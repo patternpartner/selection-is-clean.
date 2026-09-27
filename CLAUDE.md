@@ -275,10 +275,10 @@ works from a phone: you run it, then send them the MP4. Needs `MODAL_TOKEN_ID` /
 in the environment. Default is a 20-second portrait video (four ~5 s clips joined):
 
 ```
-pip install -q modal imageio-ffmpeg
+pip install -q 'modal[api-proxy-support]' imageio-ffmpeg
 modal run video/make_video.py --prompt "..." --seconds 20 --out video.mp4
 ```
 
-Not yet run end-to-end (it was written before the Modal token was added). The first run downloads
+The `[api-proxy-support]` extra matters: behind the session's HTTPS proxy, plain `modal` fails with only "Could not connect to the Modal server"; the real cause (missing `python-socks`) is hidden in the exception's `__cause__`. The first run downloads
 ~20 GB of weights into the `ai-video-cache` volume. The clips are generated separately, so each
 cut is a hard change of scene.
