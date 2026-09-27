@@ -33,22 +33,28 @@
       "bottom": "cinematic extreme close-up of the face of {man}, his wide warm smile held perfectly still, eyes open and never blinking, not a single muscle moving, subtly uncanny, soft light, static camera"
     },
     {
-      "prompt": "cinematic film shot, night, a dark bathroom, seen from directly behind, {man} stands motionless at the sink facing a steamed-up mirror, his face never visible, a cold round blue light glows from where his face should be and shines onto the misted glass, silhouette, eerie and quiet, static camera",
-      "note": "Implied, never shown: the user found every visible face reveal fake. Back view, blue glow on the fogged mirror, glitch.",
+      "prompt": "cinematic film shot, night, an ordinary small bathroom with warm soft light, seen from directly behind, {man} stands still at the sink facing a steamed-up mirror, his reflection only a soft blurred shape in the fog, quiet and ordinary, static camera",
+      "note": "Subtle: nothing strange about him; only the mirror (glitch_region) breaks up, briefly.",
       "glitch": [
         [
-          1.9,
-          0.15
+          2.0,
+          0.12
         ],
         [
           2.9,
-          0.4
+          0.35
         ]
       ],
       "fade": 3.6,
       "say": "We only get to teach it once.",
       "lead": 4.0,
-      "whisper": true
+      "whisper": true,
+      "glitch_region": [
+        0.37,
+        0.21,
+        0.28,
+        0.44
+      ]
     }
   ]
 }

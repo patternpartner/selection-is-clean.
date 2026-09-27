@@ -306,7 +306,8 @@ Wan animates things going ON better than coming OFF, and draws peeled faces as p
 `reverse`, `trim` (cut a give-away opening), `glitch` bursts, and `reveal`+`swap_at` (a matching second
 shot glitches in and stays). The user liked a glitch as a 'tell' that someone is AI; a mirror whose
 reflection is the robot beat a face peel, and the user then preferred no face at all: implied from behind
-(episode 6, `just-like-us.json`). Wan also gives walking people an odd gait; stand them still.
+(episode 6, `just-like-us.json`): an ordinary back view where only the MIRROR glitches (`glitch_region`,
+fractions of the frame, read off a probe frame). Wan also gives walking people an odd gait; stand them still.
 
 The `[api-proxy-support]` extra matters: behind the session's HTTPS proxy, plain `modal` fails with only "Could not connect to the Modal server"; the real cause (missing `python-socks`) is hidden in the exception's `__cause__`. The first run downloads
 ~20 GB of weights into the `ai-video-cache` volume. The clips are generated separately, so each
