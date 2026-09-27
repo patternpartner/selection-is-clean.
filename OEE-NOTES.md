@@ -22378,3 +22378,18 @@ Arm B's packet counts are the same pairs: 0/0, 0/0, 0/0, 0/0, 0/2, 0/1. Fires ma
 
 **Scope.** This is who is alive and how the kinds are spread at 20,000 ticks, with a peer present, clamp against no clamp, both on the #241 bundle. It is not a claim that selection sorted inscriptions. It is not a reason to widen `validNetworkPayload`. The bundle #241 kept is still there.
 
+
+#### #245 — NOT RUN TO COMPLETION; the bundle goes DORMANT on the user's standard instead
+
+The user asked whether a three-hour pair run was a good use of time, and the honest answer was no: their
+standard is "off until shown no worse", which makes OFF the default without any test, and the test only has
+to be paid for by whoever wants the bundle back on. The runs were stopped with 4 of 12 finished (focals 7
+and 8, both arms). **Those four were not scored** — reading part of an abandoned test is how a verdict gets
+chosen after the fact.
+
+**The change:** `peerInsOn()` now defaults to OFF (`__PEERINS ?? 0`); `PEERINS=1` turns the bundle on. The
+code is kept. Off is #241's Arm B, which #241 showed keeps every draw, so the default engine now runs as
+#241's `PEERINS=0` did. **To make it the default again, pass this entry's pre-registered test**, unchanged:
+focals 7-12, peers 17-22, 20,000 ticks, the template rule above.
+Checks: running as this is committed (default-off vs the previous engine with `PEERINS=0`, and substrate-test
+on four arms); `main` moves when they are in.

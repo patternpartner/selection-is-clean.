@@ -47,7 +47,8 @@ console.error=()=>{};console.warn=()=>{};};
 // #238: CHEM and CHEM_VERDICT leave the list in the same change that removes their gates -- the
 // same rule read backwards: an entry with no gate behind it is a control that reads like one.
 // #241: PEERINS gates the inscription bundle (spark writes, inscription networkSend, receive
-// writes). Unset means on, which is peerInsOn's default. PEERINS=0 is Arm B and keeps the draws.
+// writes). #245: unset now means OFF, peerInsOn's default. PEERINS=1 turns the bundle on; either arm keeps
+// the same draws.
 module.exports.KNOBS = ['MUTUALISM','RQ_TRAIT','GENO_PARASITE','SELF_PREDICT','GRIP_SEED','MEME_TRANSFER','MOTIF_SELECT','FOUND','SELFMODEL','LAW_PERSIST','MUTMAG','AIM','INHERIT','INHERIT_SD','RATION','PROV_BIRTH','RARE_BIRTH_K','OUTLIER_BIRTH_K','EXTINCT_UNDO','AIM_STILL','LAW_KCAP','PEERINS'];
 module.exports.applyKnobs = function(g){
   for (const kn of module.exports.KNOBS)

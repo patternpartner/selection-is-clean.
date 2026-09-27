@@ -1854,8 +1854,11 @@ function xenoImpact(sx,sy){
 // and the stream is bit-identical to the pre-#202 engine. Force off with ASSORT=0.
 function assortOn(){return (typeof globalThis==='undefined')||((globalThis.__ASSORT??1)|0)!==0}
 // #241: the inscription bundle (cold-start spark, inscription send, inscription receive writes).
-// Default on. PEERINS=0 skips those effects and does not add or skip a Math.random. OEE-NOTES #241.
-function peerInsOn(){return (typeof globalThis==='undefined')||((globalThis.__PEERINS??1)|0)!==0}
+// #245: DEFAULT OFF (DORMANT) - the user's call: off until shown no worse. #241 kept it on a rule with no
+// direction; on its two counted focals it cut late kinds 18.1 -> 8.1 and alive 499 -> 294. PEERINS=1 turns it
+// back on. Either way no Math.random is added or skipped (#241's Arm B). To make it the default again, pass
+// #245's pre-registered test (OEE-NOTES #245, CLAUDE.md's template).
+function peerInsOn(){return (typeof globalThis!=='undefined')&&((globalThis.__PEERINS??0)|0)!==0}
 // The world's own mean tendency, computed ONCE per receive rather than per migrant - it is O(N) and
 // the queue can hold twenty.
 function worldMeanTend(){
