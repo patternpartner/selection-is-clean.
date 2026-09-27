@@ -107,11 +107,13 @@ that cannot happen again. Pre-register it with the numbers filled in.
      late is lower by more than 10%, establishment is lower by more than 25% relative, or the seed crashes
      (alive over 20 falls under 5) → **DELETE**, or **DORMANT** (default off, code kept) if a named follow-up
      is planned.
-   - **BETTER** = the same thresholds the other way, on the same two-thirds → **KEEP**, claimed only at the
-     rung measured.
-   - **Anything else** → the mechanism has not earned its place: DELETE, unless the note names something
-     else that depends on it. "It moved the numbers" is never a reason to keep; moving them the wrong way
-     is a reason to delete.
+   - **Not WORSE, and the arms differ on the counted seeds** → **KEEP**. It changes the world and does no
+     measured harm. Call it BETTER only if the same thresholds hold the other way on two-thirds of the
+     counted seeds, and claim it only at the rung measured.
+   - **Arms identical on every counted seed** ("ran, no effect") → decoration → DELETE, unless the note
+     names something else that depends on it.
+   - "It moved the numbers" is never on its own a reason to keep. Moving them the wrong way is a reason to
+     delete.
 4. **Unseen seeds decide.** Seeds already looked at can design the rule; they do not decide it.
 5. **Committed before the first decision run.** Changing the rule after seeing numbers is a new
    experiment, and is written up as one.
