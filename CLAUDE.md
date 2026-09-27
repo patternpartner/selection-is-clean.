@@ -161,6 +161,9 @@ git checkout main && git merge --ff-only <branch> && git push -u origin main
   background mechanism survived. If a batch comes back with empty files and nothing in `ps`, that
   is what happened — the runs did not fail, they were reaped. **Stage long batches and write a
   `.done` marker per stage**, so a reap tells you which stage died instead of losing the lot.
+- **An engine process holds about a gigabyte.** Measured at `#254`: 1.0-1.4 GB resident per world at 10-15k ticks.
+  On the 15 GB hosted box, twelve at once thrashed — load 20 on four cores, ticks four to five times slower, and
+  nothing finished. Count processes before launching a batch; six to eight is the ceiling here.
 - **Do not run `smoke.sh` while long `node` jobs are going.** `pool-test`, `slot-test`,
   `collective-test` and `layers-test` drive a real browser and assert THROUGHPUT — "the mates got
   back to full", "most of the field got far enough to save", "the grown universe is running its own

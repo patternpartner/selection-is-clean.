@@ -23015,3 +23015,48 @@ novelty clock's grid (first three axes, 10 bins over +/-1.5, at least 3 members)
 4. The seeds 81-86 appear nowhere in these notes. One run of each arm; the horizon (60k) is said out loud.
 5. **Whatever the outcome, nothing ships to the field from this run.** A positive result goes to the user as the
    proposal for stage 3 (the tournament in the real field); a negative one says the design needs a different judge.
+
+**#254, rescheduled before any data was read.** The first launch ran both arms at once: twelve world processes,
+each holding 1.0-1.4 GB, on a 15 GB machine. Load average 20 on four cores, per-tick speed four to five times
+below normal, and no epoch finished in 31 minutes. Stopped (by the task that owned them, then listed PIDs), no
+output used, and relaunched with the arms one after the other — six worlds at a time. The design is unchanged.
+
+**#254 RESULTS — NEGATIVE, and in the direction that matters.** Seeds 81-86, six worlds per arm, switchboard on,
+MECH_PACE=5, 60,000 ticks, epochs of 10,000. One run of each arm; the horizon is 60k.
+
+| seed | final score T / C | arrivals ep1-5 T / C | alive at end T / C |
+|---|---|---|---|
+| 81 | 137.3 / 144.9 | 10 / 12 | 360 / 281 |
+| 82 | 41.8 / 175.6 | 56 / 73 | **0** / 12 |
+| 83 | 145.3 / 95.7 | 12 / 10 | 321 / 380 |
+| 84 | 106.0 / 128.3 | 16 / 25 | 192 / 158 |
+| 85 | 156.6 / 183.2 | 14 / 81 | 308 / 371 |
+| 86 | 117.6 / 77.8 | 73 / 83 | 90 / 123 |
+
+- **Rule 1 — the judge works if the tournament beats its twin in >= 5 of 6: it did in 2.** The tournament did not
+  beat the switchboard's own drift.
+- **Rule 2 — pruning, not gaming, if arrivals agree in >= 4 of 6: they agree in 1.** The tournament arm found
+  **181 new trait cells against the control's 284 — 36% fewer** — and ended with lower mean lineage diversity too
+  (117.4 against 134.3). A tournament judged on effective lineages made worlds LESS novel, and did not even raise
+  the thing it was judged on.
+- **The tournament made its own judge and its check disagree.** Score against arrivals, epochs 1-5: correlation
+  **0.03 in the control, -0.67 in the tournament arm.** Without adoption the two measures are unrelated; with it,
+  the worlds that lose (and adopt) are the ones that explore. Adopting a foreign switchboard is a bundle shock, and
+  the losers of one round are thrown into it again and again.
+- **Convergence** (share holding each switch on at the end, T / C): NOVELTY_ARCHIVE 1.00 / 0.50, RICH_GRAMMAR
+  0.67 / 0, NICHE_LOCAL 0.17 / 0, OPCODE_NOVELTY 0.33 / 0.67, NICHE_BUILD 0.33 / 0.50, RED_QUEEN and FRONTIER_EXPAND
+  equal. One switch agreed across every tournament world; the rest are scattered.
+- **Why the tournament could not hold anything it chose:** each world ran 26-52 switch trials of its own in 60k
+  ticks and its survival floor kept about 90% of them (the #234 shape again). An adopted switchboard is largely
+  rewritten by the world's own random walk before the next round.
+
+**Verdict, as pre-registered: the design needs a different judge. Nothing ships to the field.** Two design
+changes follow from the evidence, and neither is tried here: (1) in-world switching must be much slower than the
+tournament, or the tournament has nothing to select; (2) effective lineages is the wrong score — it is not aligned
+with arrivals, and selecting on it cost novelty. The obvious next judge is novelty itself, which is exactly where
+#252's Goodhart warning applies, so the check would then have to be the shadow-based clock (#247), not arrivals.
+
+**And a caution about #253 as it stands:** `#prune` in the field is the control arm here — switches thrown at
+random, kept ~90% of the time. This run has no switchboard-OFF arm, so it cannot say whether that walk helps or
+harms a world; #249b's null band says the spread between worlds is wide either way. Until a judge works, `#prune`
+is a random walk over seven mechanisms, and should be treated as one.
