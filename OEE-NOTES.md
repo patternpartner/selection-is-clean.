@@ -22429,3 +22429,34 @@ every draw, runs as normal in both arms.
 6. **Saved worlds:** only a WORSE verdict would touch them, and then only with the user's go-ahead.
 
 Results go under this heading after the runs.
+
+#### #246 RESULT — WORSE on 2 of 3 by the rule as written; the cap is PROPOSED, not shipped
+
+Seeds 13-15, 20,000 ticks, A = 0.03 (today), B = 0.08, `CONTACT_BLEND`'s law setter frozen in both. All 12 runs
+exited 0. **Counted: 3 of 3** (both arms above 20 alive, series differ).
+
+| seed | entropyRatio A / B | kinds late | established fraction | late new kinds / 1k | alive | rule |
+|---|---|---|---|---|---|---|
+| 13 | 0.91 / 0.90 | 8.1 / 8.0 | 0.0051 / 0.0080 | 0.46 / 0 | 258 / 350 | not worse |
+| 14 | **0.97 / 0.88** | 8.1 / 8.1 | 0.0019 / 0.0070 | 0.31 / 0.15 | 374 / 369 | WORSE (entropy -0.09) |
+| 15 | 0.88 / 0.94 | **9.2 / 8.0** | 0.0067 / 0.0082 | 1.38 / 0 | 343 / 332 | WORSE (kinds -13%) |
+
+**Verdict, applied as pre-registered: WORSE on 2 of 3 -> a defended cap on `CONTACT_BLEND` at 0.03 is proposed.**
+It is not shipped: capping a law clamps saved worlds on reload (the `LAWV` restore), which is the user's call.
+
+**Read beside the verdict, because the rule's OR makes WORSE easy to reach on mixed evidence:**
+- The two WORSE seeds fail on DIFFERENT metrics, and each is better on the other one (seed 15's entropy rose
+  0.88 -> 0.94; seed 14's kinds held).
+- **Established fraction was HIGHER at 0.08 on all three seeds** (0.0051 -> 0.0080, 0.0019 -> 0.0070,
+  0.0067 -> 0.0082) — single-digit counts of lineages, so weak, but consistent.
+- **Late new kinds fell on all three** (0.46 -> 0, 0.31 -> 0.15, 1.38 -> 0): stronger blending shuts late novelty
+  off. That is the most directly on-point number for the artwork's claim, and it points the same way as the
+  verdict.
+- One horizon (20k), three seeds, one strength (0.08). What 0.05 — the walk's MEAN — does is not measured.
+
+The template's "any metric on two-thirds" is written this way deliberately (a mechanism may harm through any
+one of them); this entry is the first test of it on mixed evidence, and records that the establishment
+direction disagreed.
+
+(Tooling note: the waiter's verdict script first failed — it parsed only the last line of `harness-oee`'s
+pretty-printed JSON. The runs were untouched; the fixed reader produced the table above.)
