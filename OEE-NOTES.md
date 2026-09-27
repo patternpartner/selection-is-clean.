@@ -22588,3 +22588,38 @@ out loud: every verdict below is a verdict about 20k.
    the user first.
 
 Results go under this heading after the runs, and the screen's numbers go in with them, labelled exploratory.
+
+**#249 amendment — from the screen on the designing seeds, committed before any decision run.**
+Seed 1, 5,000 ticks, each arm alone against the control (gate hits / first tick the hash series differs):
+MUTUALISM 5001 / 1, RQ_TRAIT 5001 / 1, NICHE_BIOTIC 5001 / 1, NICHE_CELLDRIFT 5001 / 1, NICHE_LOCALTEND
+5001 / 1, SELFMODEL 850 / 1, CHAR_DISP 166 / 251, GROUP_PROBE 1464 / 251, SELF_PREDICT 104 / 1001,
+**GRIP_SEED 1907 / never, GENO_PARASITE 0 / never, NICHE_DRIFT 0 / never.** Three things the rule as written
+would have got wrong, each changed here and nowhere else:
+1. **GENO_PARASITE is not switched off.** Its gate is `GENO_NFD_ON||(flag)`, and `GENO_NFD_ON=1` is a const
+   (LEAP 24, #56, "default ON now"). The `||` never reaches the flag, so 0 hits is not "never ran" — the
+   mechanism runs every tick in every world, and the switch does nothing in either position. The LIVE block's
+   `__GENO_PARASITE:0 // OFF, to ISOLATE #38` has been false since LEAP 24. **Out of the decision runs**: the
+   switch is a no-op that reads like a control, and it is proposed for removal; the mechanism is untouched.
+2. **GROUP_PROBE's hits are threshold evaluations, not buds.** 1,464 hits and zero `xion.bud`: the lowered
+   threshold lets more clusters reach the `Math.random()>CBUD_RATE` draw, so the series diverges from tick 251
+   on a SHIFTED DRAW, not on budding. So on the decision seeds GROUP_PROBE counts only where `xion.bud` fired
+   (`livenessNever`, now in harness-oee's output). Otherwise the rule would be judging noise it caused.
+3. **GRIP_SEED has nothing to read in a lab world.** `bestGripAtomIdx` needs an atom with `alienAttempts`, and
+   those are fed only by peers (the field) or by SELF_PREDICT's self-target (#92). Alone it ran 1,907 times and
+   the series is identical to the control — "ran, no effect", but the lab starved it. So a **paired arm
+   SELF_PREDICT+GRIP_SEED** joins, judged against SELF_PREDICT alone (the world GRIP_SEED needs). GRIP_SEED
+   alone stays as registered. If both come back "no effect", the verdict names the field as the untested case.
+4. **NICHE_DRIFT is UNREACHABLE** (the pre-registered category): its gate is in the 1-D frontier branch,
+   `if(FR&&NDIM){...} else if(FR){... DRIFT ...}`, 39 lines, and `__NICHE_NDIM:1` is set by LIVE and written by
+   nothing else. No seed and no horizon can reach it. To the user as a DELETE, with the whole 1-D branch.
+
+5. **GENE_DRAW joins — the switched-ON mechanism the world cannot reach.** GENE_AUTHOR/GENE_READ (427/428, #218a)
+   are drawn zero times in 427 by every mutation site (`OPCODE_COUNT` stops at 426; #218e's "2 draws of 429" is
+   wrong — making room for them shrank the draw by exactly those two). `GENE_DRAW=1` widens the ten draw sites
+   (count asserted) by `GENE_OPCODES`; unset, the engine is byte-identical to before. It is a draw width, not a
+   gate, so it counts on a seed only where `gene.read` or `gene.author` actually fired. Its OFF verdict is the
+   same as the others': not BETTER -> the two opcodes and `novelAuthor`/`novelCull` are deleted (the three-slot
+   bank #218e seeds, and #218f's read of slot 0, are a separate live mechanism and stay).
+
+**Decision arms (12 + control, x seeds 61-63, 20k):** MUTUALISM, RQ_TRAIT, CHAR_DISP, NICHE_LOCALTEND,
+NICHE_CELLDRIFT, NICHE_BIOTIC, SELFMODEL, GROUP_PROBE, SELF_PREDICT, GRIP_SEED, SELF_PREDICT+GRIP_SEED, GENE_DRAW.

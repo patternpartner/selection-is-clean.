@@ -667,6 +667,7 @@ const driver = `
       if((s+1)%every===0){ m=metrics(); globalThis.__SERIES.push(m); if(STREAM)process.stdout.write(JSON.stringify(m)+String.fromCharCode(10)); }
     }
   };
+  globalThis.__lvCensus=function(){ try{ return livenessCensus(); }catch(e){ return null; } };   // #249: the never-fired list, read not drawn
 })();
 `;
 
@@ -922,7 +923,8 @@ console.log(JSON.stringify({
   config: { TICKS, SAMPLE, SEED: process.env.SEED || null, INDEX: process.env.INDEX || 'engine.html' },
   timing_ms: { boot: tBoot - t0, run: tDone - tBoot, perKtick: +(((tDone - tBoot) / TICKS) * 1000).toFixed(1) },
   loopErrors, lastErr, driverErr: globalThis.__driverErr || 0,
-  armHits: globalThis.__armHit || undefined,   // #249: gate hits when INDEX is an engine wrapped by harness-openup.js --emit
+  armHits: globalThis.__armHit || undefined,
+  livenessNever: (() => { const c = globalThis.__lvCensus && globalThis.__lvCensus(); return c ? c.never : undefined; })(),   // #249   // #249: gate hits when INDEX is an engine wrapped by harness-openup.js --emit
   establishment: EST_EVERY && globalThis.__ESOUT ? EC.summarize(globalThis.__ESOUT, { WARM: parseInt(process.env.ESTWARM || '2000', 10), ESTN: parseInt(process.env.ESTN || '10', 10), seed: process.env.SEED || '1', ticks: TICKS }) : undefined,
   ablation: process.env.ABLATE ? { mode: process.env.ABLATE, idx: ablateIdx, expr: ablateExpr, pinnedNeutralised: ablatedCount } : null,
   verdict,
