@@ -22159,3 +22159,28 @@ Not deleted, and not this claim: migrant, plasmid, motif, and law send/receive; 
 
 Results for this entry follow. No 20,000-tick number exists at the time this section is written.
 
+#### #241 RESULT — KEEP, by 20,000 ticks, focals 1-6 (rule applied as pre-registered, not revised)
+
+**Counted focals: 2 of 6 (seeds 5 and 6).** Both MOVE. The keep clause wants two. The horizon was not missed, so the 30,000 extension was not run. **KEEP** the bundle. The #239 spark stays in the one live `case 20:`. The inscription send stays. The receive writes stay. `PEERINS` stays, default on. Nothing in the DELETE touchlist was removed.
+
+Engine tick at the end of every run is 20,001. `boot()` calls `loop()` once before the driver's 20,000, which is the same call `harness-oee` and `harness-establish` already sit on top of. The horizon is those 20,000 driver loops. Diversity samples: 41, first after that boot loop. All 12 jobs exited 0, `loopErr` and `bootErr` null, `peersAt100` 1.
+
+**Boring side, before any of the numbers below.** Focal 5, peer 15, 4,000 ticks. `TAB_ID`s differed. `peersAt0` was 1 and `peersAt100` was 1. Focal fingerprints matched at ticks 1,001 and 2,001, both with max `cellProgStr` 0 and `cell.inscribeNet` 0. At tick 3,001 the focal differed while its own max strength was still 0 and `cell.inscribeNet` was still 0. The peer had already sparked: at tick 1,001 its max strength was 0.343, `cell.inscribe` was 4,556, and `cell.chemExec` was 3,419, against 0 and 0 on Arm B. A solo universe with the channel stubbed, seed 5, matched across arms at ticks 1,001, 2,001 and 3,001, and differed at 4,001 only once Arm A's max strength was 0.149. The knob did not eat a draw before a spark. The pair's tick-3,001 difference is the peer's spark changing the other packets, which is Arm A having sparked. The note above called that not a stop.
+
+**20,000 ticks.** A focal counts only with `cell.inscribeNet > 0` on Arm A. Seeds 1-4 sent no inscription packet in either direction (`inscSent` 0 and `peerInscSent` 0) and do not count. They are in the table so the zeros are visible. They are not scored. Seed 2's entropy gap is 0.08 and its alive counts are 341 / 465 (relative 0.267). If it had counted, entropy would have been a MOVE and alive would not. It did not count. The rule is not re-read to let it in.
+
+| focal | peer | counts | first sample with `inscribeNet>0` | fires A | packets focal / peer sent | alive A / B | paid A / B | entropyRatio | kinds late | estFrac | MOVE |
+|---|---|---|---|---|---|---|---|---|---|---|---|
+| 1 | 11 | no | — | 1,851 | 0 / 0 | 341 / 339 | 2,464 / 2,466 | 1.02 / 0.98 | 8.1 / 8.4 | 0.0166 / 0.0224 | not scored |
+| 2 | 12 | no | — | 16,493 | 0 / 0 | 341 / 465 | 2,561 / 2,993 | 0.94 / 1.02 | 8.1 / 10.4 | 0.0264 / 0.0244 | not scored |
+| 3 | 13 | no | — | 3,849 | 0 / 0 | 356 / 330 | 2,128 / 2,221 | 0.91 / 0.96 | 8.8 / 8.1 | 0.0211 / 0.0051 | not scored |
+| 4 | 14 | no | — | 23,715 | 0 / 0 | 350 / 350 | 2,177 / 2,215 | 1.07 / 1.01 | 8.1 / 8.1 | 0.0213 / 0.0230 | not scored |
+| 5 | 15 | **yes** | 12,001 | 9,723 | 0 / 2 | 295 / 314 (rel 0.061) | 2,342 / 2,382 (rel 0.017) | 0.93 / 0.97 (diff 0.04) | **8.1 / 18.1 (diff 10)** | 0.0230 / 0.0182 | **kinds** |
+| 6 | 16 | **yes** | 19,001 | 45 | 0 / 1 | **294 / 499 (rel 0.411)** | 2,089 / 2,740 (rel 0.238) | 0.93 / 0.97 (diff 0.04) | 9.0 / 8.6 | 0.0221 / 0.0194 | **alive** |
+
+Fingerprints differed on both counted focals, so the named numbers were read. Seed 5's entropy, paid, alive and establishment stay inside their lines. Kinds late does not: 8.1 against 18.1. Seed 6's entropy, kinds, paid and establishment stay inside their lines. Paid relative is 0.238, and the line is greater than 0.25. Alive does not stay inside: 294 against 499, relative 0.411, and the larger population is 499. One condition is enough. Two counted focals move. That is the keep.
+
+**What the bundle did, and what this does not separate.** On seed 5 the peer sent 2 inscription packets and the focal applied 1, first visible at the tick-12,001 sample. The focal had also been writing its own cells since tick 4,001 (7 fires, max strength 0.261, 1,315 recipe evaluations). On seed 6 the peer sent 1 packet and the focal applied 1, first visible at tick 19,001. The alive gap was already open at tick 11,001 (381 against 647) while `cell.inscribeNet` was still 0, after the focal's own spark had been burning since tick 5,001. The pre-registered caveat is the finding: a MOVE is a move of the bundle. It is not a measurement of the one applied packet with the spark held still. Arm B's higher kinds on seed 5 and higher alive on seed 6 are the direction the gaps took. The rule is an absolute gap. It does not ask which arm is the larger one.
+
+**Scope.** This is who is alive and how the kinds are spread at 20,000 ticks, with a peer present. It is not a claim that selection sorted inscriptions. Four focals never applied a packet by this budget. That is "not by tick 20,000" on those four, and it is why they were not scored. The two that did apply were enough for the keep clause, so the extension was not owed.
+

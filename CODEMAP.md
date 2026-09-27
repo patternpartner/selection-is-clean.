@@ -1111,10 +1111,10 @@ recipe; nothing in the birth path reads it.
 **#237:** the local write inside the one `case 20:` was measured at 20,000 ticks and removed. The opcode
 still counts. Peer receive still writes. The numbers are OEE-NOTES #237.
 
-**#241:** peer inscription plus the #239 cold-start spark, retire or prove, pre-registered before the
-20,000-tick pairs. The spark body is in `ba4d3fd` and not in `engine.html` at `7820175` (the #240
-merge kept the note and resolved the case back to the #237 stub). The rule restores that body as Arm A.
-Numbers, when they exist, are OEE-NOTES #241.
+**#241:** peer inscription plus the #239 cold-start spark, kept. Two of six focals applied a peer
+packet by 20,000 ticks, and both moved a named number (kinds late on seed 5, end alive on seed 6).
+The spark body `ba4d3fd` wrote had been dropped out of `engine.html` by the #240 merge; this entry
+put it back and it stays. The numbers are OEE-NOTES #241.
 
 **[read] Evolvable sociality** (Layer 22): `netMigrantRate` and three sibling rates govern broadcasting
 particles, plasmids, VM motifs and inscriptions to other browser tabs. All four evolve — "the system
