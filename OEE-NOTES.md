@@ -22859,3 +22859,26 @@ TICKS=40, 900 and FOUND=0. No saved universe is touched: none of these switches 
 
 **What moved in the universe:** nothing, and that is the claim — 82 lines of mechanism that never ran in any
 world are gone, the same universe on every trajectory tested.
+
+### #249d — THE THREE HANDED BACK ("You decide"): NICHE_DRIFT with the 1-D branch, GENO_PARASITE's switch, two ghost rows
+
+The user handed back #249's three to-the-user items. All three go.
+- **NICHE_DRIFT and the 1-D cross-feed frontier (LEVER 1, swings #11-#12).** The branch ran only with `__NICHE_NDIM`
+  off; LIVE has set it on since #13 and nothing writes it. No rig or note ran NICHE_NDIM=0. Gone with it:
+  `nicheDriftSupply`, `nicheWidth`, the 1-D precompute, and twelve declarations only it read (`nicheRes`,
+  `nicheDemand`, `nicheCross`, `nicheAbiotic`, `nicheAbioticReal`, `nicheSupplyNow`, `NICHE_OFFSET`, `NICHE_ABIOTIC`,
+  `NICHE_TAPER`, `NICHE_REAL_TAPER`, `NICHE_REAL_SUPPLY`, `NICHE_STRENGTH` — swept by reference count, not by name).
+  **Found on the way, and it is the same trap as #216b/d:** harness-oee documents `NICHE_NDIM=1 NICHE_REAL=0` as
+  the "same-landscape" control for #17's speciation. `__NICHE_REAL` was read only inside the 1-D branch, so under
+  NDIM that control could never have differed from its treatment. No run of it is recorded here; #11's
+  `NICHE_REAL=0` runs predate NDIM and were real. The knob leaves harness-oee with its gate.
+- **GENO_PARASITE's switch** — `if(GENO_NFD_ON||flag)` is now `if(GENO_NFD_ON)`. The mechanism is untouched; it
+  has run in every world since LEAP 24. The LIVE line calling it "OFF, to ISOLATE #38" is gone.
+- **`aim.author` / `aim.abandon`** leave `LIVENESS_DECLARED`: no `fired()` site existed for either.
+
+**Proved:** census hash series identical to the pre-#249d engine on seeds 1-3 at 2,000 ticks, and the never-fired
+lists identical apart from the two ghost rows. vm-equiv differs — and the component diff says exactly where:
+arrays, programs, birth queue and the random stream identical at every one of the executions compared; the
+genome's JSON differs by ONE field, `eventLog[3].d.len` 11096 -> 11060, the length of a save blob that no longer
+carries two liveness names. vm-equiv's own header warns of this case. substrate-test 263/0 at TICKS=40, 900,
+FOUND=0. The knob removals in harness-env and harness-oee land after #249b stops reading those two files.

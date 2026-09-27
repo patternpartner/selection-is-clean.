@@ -128,7 +128,7 @@ console.warn = () => {};
 // be switched from a harness at all — harness-strip.js: "a knob that cannot be turned off is not a
 // control". #131's own repairs deliberately have no knob (selection holds those dials), so what is
 // plumbed here is the set that is genuinely dormant and genuinely togglable.
-for (const kn of ['MUTUALISM','GENO_PARASITE','SELF_PREDICT','MEME_TRANSFER'])
+for (const kn of ['MUTUALISM','SELF_PREDICT','MEME_TRANSFER'])
   if (process.env[kn] !== undefined) globalThis['__'+kn] = parseInt(process.env[kn], 10);
 
 const html = fs.readFileSync(process.env.INDEX || (__dirname + '/engine.html'), 'utf8');

@@ -1267,7 +1267,7 @@ const LIVENESS_DECLARED=[
   // #218c: a lineage acquiring, moving, re-pointing, abandoning and being pulled by its own purpose.
   // Declared as five names because "no lineage ever authored one" and "they authored and abandoned
   // them all" and "they hold aims nothing pulls on" are three different worlds.
-  'aim.author','aim.drift','aim.reaim','aim.abandon','aim.pull',
+  'aim.drift','aim.reaim','aim.pull',   // #249d: aim.author/aim.abandon had no fired() site anywhere
   'aim.tol',                 // #218k: a lineage changing how precisely it wants something
   'aim.grow','aim.shrink',   // #218j: the portfolio's SIZE changing — how many things a creature wants
   'mutmag.author','mutmag.drift',   // #218b: a lineage forming and moving an opinion about its own evolvability
@@ -25852,33 +25852,16 @@ function init(){
 // retained kinds vs baseline — best of any swing — but do not yet cleanly break the ceiling, so
 // this ships dormant rather than adopted.
 const NICHE_BINS=16;                 // resource channels along the diet spectrum
-const NICHE_ABIOTIC=0.06;            // abiotic supply at the origin channel
-const NICHE_TAPER=0.82;              // geometric taper of abiotic supply per channel out
 const NICHE_CAP=4.0;                 // per-channel standing-stock ceiling
 const NICHE_HARVEST=0.35;            // fraction of a channel's stock harvested per tick
 const NICHE_PERSIST=0.95;            // unharvested stock carried over (abandoned frontier fades)
-const NICHE_STRENGTH=0.006;          // max amp/tick from niche-harvest success — MEAN-CENTRED control mode only
 // REAL income mode (default): niche harvest is a genuine, partitioned food source — each channel
 // has its own carrying capacity, so coexistence count = number of supplied channels, NOT the
 // limiting-similarity cap of a zero-sum tax. Total income is bounded by the metabolic brake (more
 // amp → more births → density/starvation drain rises → N self-limits), so it cannot wirehead.
-const NICHE_REAL_SUPPLY=0.32;        // abiotic supply per channel in REAL mode (a real food source, not a nudge)
-const NICHE_REAL_TAPER=1.0;          // FLAT supply: no channel is intrinsically best, so there is no single mountain — coexistence rests purely on symmetric crowding (frequency dependence), and cross-feeding can extend the occupied frontier
 const NICHE_GAIN_REAL=0.05;          // harvested-resource → amplitude conversion (lone specialist ≈0.02 amp/tick; crowded channel splits it)
-// DRIFTING NICHES — swing #12, after "Convergent Hunger". Stationary niches (even real, even flat)
-// still let diet slowly re-concentrate on whichever channel a lineage settles, then stop: a summit.
-// Here the supply PEAKS roam over the channel ring (drifting attractors), so the profitable diet is
-// a MOVING target — no lineage can finish climbing, selection can't freeze on a champion, and the
-// peaks carry the occupied frontier with them (the Red Queen as geometry). Total supply is held
-// constant (peaks are renormalised each tick), so this changes WHERE the food is, not how much —
-// carrying capacity is unaffected. Opt-in via __NICHE_DRIFT=1 (implies REAL income to be meaningful).
-const NICHE_DRIFT_PEAKS=3;           // moving supply peaks (Convergent Hunger ran 3 attractors)
-const NICHE_DRIFT_PERIOD=4000;       // ticks for a peak to complete one drift cycle
-const NICHE_DRIFT_AMP=4.0;           // how many channels a peak roams from its base
-const NICHE_PEAK_WIDTH=1.6;          // Gaussian half-width of a supply peak (channels)
-const NICHE_PEAK_FLOOR=0.15;         // background floor so abandoned channels stay marginally alive
+// #249d: DRIFTING NICHES (swing #12, NICHE_DRIFT) deleted with the 1-D branch it lived in - unreachable since #13.
 const NICHE_CROSSFEED=0.55;          // fraction of harvest re-deposited downstream (lever 1)
-const NICHE_OFFSET=3;                // downstream channel step (coprime to 16 → chain reaches all)
 const NICHE_PRED_RATE=0.012;         // predator amp/tick per unit prey, conserved (lever 2)
 const NICHE_PRED_MAXFRAC=0.03;       // ceiling: predators take ≤3% of a prey channel's amp/tick
 const OPNOV_STRENGTH=0.0025;         // max amp/tick from running globally-rare opcodes (lever 3)
@@ -25918,15 +25901,9 @@ const NICHE_ND_OFFSET=37;            // cross-feed cell stride (prime, coprime t
 const NICHE_CELL_FLOOR=2;            // occupants per cell that pay no crowding cost
 const NICHE_LOCAL_COST=0.0025;       // amp/tick lost per occupant above the floor (caps each cell locally)
 // #249: LOCAL (PER-CELL) DRIFT (swing #15, NICHE_CELLDRIFT) deleted - opened and measured WORSE on 3/3 unseen seeds.
-const nicheRes=new Float32Array(NICHE_BINS);      // standing stock per channel
-const nicheDemand=new Float32Array(NICHE_BINS);   // total harvesting effort per channel
 const nicheBiomass=new Float32Array(NICHE_BINS);  // living amp per diet channel
-const nicheCross=new Float32Array(NICHE_BINS);    // deferred cross-feed deposits (avoids intra-tick order bias)
 const nichePredGain=new Float32Array(NICHE_BINS); // predator amp gain per unit amp, per channel
 const nichePreyLoss=new Float32Array(NICHE_BINS); // prey amp loss per unit amp, per channel
-const nicheAbiotic=new Float32Array(NICHE_BINS);  // precomputed tapered abiotic supply (mean-centred control)
-const nicheAbioticReal=new Float32Array(NICHE_BINS); // precomputed tapered abiotic supply (REAL income mode)
-const nicheSupplyNow=new Float32Array(NICHE_BINS); // per-tick drifting supply (swing #12)
 const nicheCellRes=new Float32Array(NICHE_ND_CELLS);   // standing stock per N-dim diet cell (swing #13)
 const nicheCellOcc=new Int32Array(NICHE_ND_CELLS);     // occupants per cell this tick
 const nicheCellCross=new Float32Array(NICHE_ND_CELLS); // deferred cross-feed deposits per cell
@@ -26160,11 +26137,8 @@ const opCum=new Float32Array(OPCODE_COUNT);       // swing #34: slow EMA of each
 // and can go to zero; the width of an array is not something selection has an opinion about, so putting
 // a switch on it would only have moved the decision from the system back to a person.
 function opnovSpan(){ return OPCODE_COUNT; }
-for(let _b=0;_b<NICHE_BINS;_b++){ nicheAbiotic[_b]=NICHE_ABIOTIC*Math.pow(NICHE_TAPER,_b); nicheAbioticReal[_b]=NICHE_REAL_SUPPLY*Math.pow(NICHE_REAL_TAPER,_b); }
-nicheRes.fill(0.3);
 // Diet channel and specialisation half-width derive from the heritable tendency axis.
 function nicheDietBin(i){ let c=((tend[i*DIMS]+1.2)/2.4)*NICHE_BINS|0; return c<0?0:c>=NICHE_BINS?NICHE_BINS-1:c; }
-function nicheWidth(i){ let s=(tend[i*DIMS+1]+1.2)/2.4; s=s<0?0:s>1?1:s; return 0.6+s*(NICHE_BINS*0.5-0.6); }
 // Swing #13: hash D heritable tendency dims into one of bins^D diet cells (the combinatorial niche space).
 // SWING #25: the niche cell must read EVERY active axis, or a newly-evolved axis (the #16 dimensionality
 // ratchet) is ecologically NEUTRAL and washes out — the exact failure the #16 freeze-and-watch RETRACTED
@@ -26232,7 +26206,6 @@ if(typeof globalThis!=='undefined'){
                __MUTUALISM:0,                                       // mutualism #32 — DORMANT (default off): the 3-seed A/B vs the validated #28-30 base was a WASH (entRatio avg 0.82 vs 0.84; regression on seed 99) — it doesn't earn default-on on standing-diversity metrics. Code+knob kept; the +/+ interaction's payoff (proto-symbiosis structure) needs a turnover instrument the harness lacks. Force on with MUTUALISM=1
                __RED_QUEEN:1,                                       // biotic / Red Queen #28 — conserved, frequency-dependent predation over the live N-dim cells: predators in cell C draw a zero-sum amp transfer from prey cell C+stride. "Kill the winner" (common prey predated hard, rare protected) promotes coexistence; prey escape only by crossing a cell boundary, so predation SELECTS for divergence. The unbounded (biotic) niche engine the abiotic arc #11–#27 could never reach
                __FRONTIER_EXPAND:1,                                 // EXPANDING VIABILITY FRONTIER #38 (the real big swing) — every occupied niche-cell makes its trait-ADJACENT cells viable, so the unexplored edge comes alive as life reaches it: an ever-moving frontier, ecological succession with no edge of the map. Uncapped (no #29-style safety); risk: floods faster than life fills → washes out selection. Pairs with #37 (the pressure) by giving novelty somewhere VIABLE to go
-               __GENO_PARASITE:0,                                   // genotype-NFD #37 — OFF, to ISOLATE #38 (not a retreat to safety). Two live runs: #37 alone pinned pop ~134 / zero atoms / null divMean; #37+#38 nearly identical (pop ~151, struggling, 1 extinction). The program-NFD drain suppresses the population so hard that #38's frontier has no life to advance — it strangles the real swing. Off so #38 gets a clean test. Force on with GENO_PARASITE=1
                __OPCODE_NOVELTY:1,                                  // genotypic open-endedness #34 — the genetic complement to the ecological engines: mean-centred (zero-sum, no inflation) reward for running opcodes the population has HISTORICALLY under-explored (opCum EMA), turning the lights on in the ~20/256-opcode "museum". Real selection then keeps or discards the explorers — novelty is raw material, not fitness-by-fiat
                __NOVELTY_ARCHIVE:1,                                 // HISTORICAL NOVELTY ARCHIVE #39 — LIVE (default on, the active bet). Reward divergence from an EVER-GROWING archive of trait-signatures across ALL history, not current neighbours (trait-NFD); the target recedes as it's reached, so it cannot saturate — the open-ended engine the #11–#38 arc lacked. Reward is BOUND-THEN-CENTRE (conserved, outlier-robust) after a raw-centre first cut taxed the bulk to collapse. Headless A/B is mildly net-harmful on AVERAGE (entropyRatio 0.67 vs 0.80) BUT markedly more VOLATILE — deeper dips (evenness 0.37 @t16k) and higher spikes (nicheOcc 104 @t24k vs control's steadier plateau) — which is ambiguous between thrashing-toward-collapse and PUNCTUATED open-endedness, the exact call the notebook says only the LIVE artwork can make. Shipped ON to run that live test, not pre-shrunk to dormant. dial novStrength free/unfloored. Force off with NOVELTY_ARCHIVE=0
                __RICH_GRAMMAR:1,                                    // ENRICH the atom-authoring grammar (the creative tool) — HANDS: min/max (selection), atan2 (direction), hypot (magnitude), round (quantize); EYES: nx,ny (position), t (slow clock), nb (neighbour amplitude). Turns authored primitives from functions-of-SELF into functions-of-the-WORLD — substrate for sense→act behaviour. Verified 500/500 compile+finite, no substrate damage. Force off with RICH_GRAMMAR=0
@@ -26513,16 +26486,6 @@ function specAssortAccept(i,j,sim){                      // soft mate choice: P(
 function _specSpawnSim(sim){ if(__SPEC.on){ specSimSum+=sim; specSimCnt++; let b=((sim+1)*5)|0; specSimHist[b<0?0:b>9?9:b]++; } }
 function _specReject(i){ specBirthReject++; const l=pLin[i]; linRej.set(l,(linRej.get(l)||0)+1); }
 function _specAccept(i){ specBirthAccept++; const l=pLin[i]; linAcc.set(l,(linAcc.get(l)||0)+1); }
-// Swing #12: drifting supply peaks (moving niches). Peaks roam the channel ring on slow sinusoids;
-// total supply is renormalised to NICHE_REAL_SUPPLY*NICHE_BINS so only the LOCATION of food moves.
-function nicheDriftSupply(){ const total=NICHE_REAL_SUPPLY*NICHE_BINS; let sum=0;
-  for(let b=0;b<NICHE_BINS;b++){ let v=NICHE_PEAK_FLOOR;
-    for(let k=0;k<NICHE_DRIFT_PEAKS;k++){
-      const mu=k*NICHE_BINS/NICHE_DRIFT_PEAKS + NICHE_DRIFT_AMP*Math.sin(2*Math.PI*tick/NICHE_DRIFT_PERIOD + 2*Math.PI*k/NICHE_DRIFT_PEAKS);
-      let d=Math.abs(b-mu); d=Math.min(d, NICHE_BINS-d); // circular distance on the channel ring
-      v+=Math.exp(-(d*d)/(2*NICHE_PEAK_WIDTH*NICHE_PEAK_WIDTH)); }
-    nicheSupplyNow[b]=v; sum+=v; }
-  if(sum>0){ const s=total/sum; for(let b=0;b<NICHE_BINS;b++) nicheSupplyNow[b]*=s; } }
 
 function applyNicheEconomy(){ fired('niche.economy');
   // Opt-in: every lever defaults OFF so stock index.html is byte-for-byte unchanged. Set the
@@ -26604,47 +26567,10 @@ function applyNicheEconomy(){ fired('niche.economy');
         amp[i]+=(a<pb?a:pb)*MUT_RATE; }                          // bounded by min(own amp, partner biomass); positive-sum (brake caps total)
     }
     // (biotic + opcode-novelty levers below still apply if their knobs are set)
-  } else
-  // ── LEVER 1: expanding cross-feed frontier ──────────────────────────────
-  if(FR){
-    const REAL=!(typeof globalThis!=='undefined'&&globalThis.__NICHE_REAL===0); // real partitioned income (default); ===0 → mean-centred control
-    const DRIFT=(typeof globalThis!=='undefined'&&(globalThis.__NICHE_DRIFT|0)===1); // swing #12: moving supply peaks
-    let supply; if(DRIFT){ nicheDriftSupply(); supply=nicheSupplyNow; } else supply=REAL?nicheAbioticReal:nicheAbiotic;
-    // regen: abiotic supply (stationary or drifting) + carry-over of unharvested stock
-    for(let b=0;b<NICHE_BINS;b++){ nicheRes[b]=Math.min(NICHE_CAP, nicheRes[b]*NICHE_PERSIST + supply[b]*_season); nicheCross[b]=0; }
-    // demand pass: trait-matched, effort-normalised (the master/jack trade-off). UNIFORM effort (1 per
-    // organism, not amp-weighted) so a channel's share is set purely by how CROWDED it is — this gives
-    // each channel its own carrying capacity, instead of letting the highest-amp type harvest the most
-    // (which was rich-get-richer and reinforced monoculture).
-    nicheDemand.fill(0);
-    for(let i=0;i<N;i++){ if(!palive[i])continue; const c=pDietBin[i], w=nicheWidth(i);
-      const lo=Math.max(0,Math.ceil(c-w)), hi=Math.min(NICHE_BINS-1,Math.floor(c+w)); let wsum=0;
-      for(let b=lo;b<=hi;b++) wsum+=1-Math.abs(b-c)/w; if(wsum<=0)wsum=1;
-      for(let b=lo;b<=hi;b++){ const wt=(1-Math.abs(b-c)/w)/wsum; nicheDemand[b]+=wt; } }
-    // harvest pass: each organism's share of a channel = its weighted effort / channel demand
-    let sumRaw=0, cnt=0;
-    for(let i=0;i<N;i++){ if(!palive[i])continue; const c=pDietBin[i], w=nicheWidth(i); pNicheRaw[i]=0;
-      const lo=Math.max(0,Math.ceil(c-w)), hi=Math.min(NICHE_BINS-1,Math.floor(c+w)); let wsum=0;
-      for(let b=lo;b<=hi;b++) wsum+=1-Math.abs(b-c)/w; if(wsum<=0)wsum=1;
-      let raw=0;
-      for(let b=lo;b<=hi;b++){ const dem=nicheDemand[b]; if(dem<=0)continue; const wt=(1-Math.abs(b-c)/w)/wsum;
-        const got=nicheRes[b]*NICHE_HARVEST*(wt/dem); raw+=got;
-        nicheCross[(b+NICHE_OFFSET)%NICHE_BINS]+=got*NICHE_CROSSFEED; } // cross-feed downstream (deferred)
-      pNicheRaw[i]=raw; sumRaw+=raw; cnt++; }
-    // deplete harvested channels, then apply deferred cross-feed deposits
-    for(let b=0;b<NICHE_BINS;b++){ if(nicheDemand[b]>0) nicheRes[b]*=(1-NICHE_HARVEST); nicheRes[b]=Math.min(NICHE_CAP, nicheRes[b]+nicheCross[b]); }
-    if(REAL){
-      // REAL partitioned income: harvested resource becomes genuine amplitude. A specialist alone on a
-      // channel banks real energy and reproduces; as its kind fills the channel, per-capita share falls
-      // to the maintenance line and that niche stops growing — a stable population PER channel. The
-      // metabolic brake caps the TOTAL, so this raises diversity, not headcount-without-limit.
-      for(let i=0;i<N;i++){ if(!palive[i])continue; amp[i]+=NICHE_GAIN_REAL*pNicheRaw[i]; }
-    }else{
-      // mean-centred control: zero-sum like NFD — provably cannot exceed limiting similarity (kept to prove the point).
-      const meanRaw=cnt>0?sumRaw/cnt:0;
-      if(meanRaw>1e-9) for(let i=0;i<N;i++){ if(!palive[i])continue; amp[i]+=NICHE_STRENGTH*Math.max(-1,Math.min(1, pNicheRaw[i]/meanRaw-1)); }
-    }
   }
+  // #249d: the 1-D cross-feed frontier (LEVER 1, swings #11-#12, with NICHE_DRIFT) is deleted. It ran only when
+  // __NICHE_NDIM was off, and the LIVE block has set it on since #13; #249 found NICHE_DRIFT unreachable and no rig
+  // or note ran NICHE_NDIM=0. The N-dim branch above is the niche economy.
 
   // ── LEVER 2: biotic / coevolutionary niches (conserved predation up the ladder) ──
   if(BIO){
@@ -26856,7 +26782,7 @@ function loop(){
   // gated OFF, having tested it against a frozen population where no frequency could change because
   // nothing reproduced. It is the most open-endedness-relevant mechanism in the file and has never run in
   // a world with descent. Default ON now, and boosted: its original strength was tuned against stasis.
-  if(GENO_NFD_ON||(typeof globalThis!=='undefined'&&(globalThis.__GENO_PARASITE|0)===1)){
+  if(GENO_NFD_ON){   // #249d: the __GENO_PARASITE switch after the || was never reached (GENO_NFD_ON is a const 1 since LEAP 24) - removed
     const sigCount=new Map();
     for(let _i=0;_i<N;_i++){ if(!palive[_i])continue; const pr=pProg[_i]; let s=0;
       if(pr){ _paraGen++; for(let q=0;q<pr.length;q++){ const op=pr[q][0]|0; if(op>=0&&op<256&&_paraSeen[op]!==_paraGen){ _paraSeen[op]=_paraGen; s=(s+opHash[op])|0; } } }
