@@ -302,6 +302,10 @@ italic, over black). Silent track in the MP4. The user asked Claude to choose ea
 Episode 3 is the user's favourite so far, the first where Claude chose the subject from its own view.
 What worked: a real alignment problem told with no words, and letting Wan's surprise stand (the smile
 turning sinister beat the planned mask-removal). Show frames, name what missed, offer per-clip redos.
+Wan animates things going ON better than coming OFF, and draws peeled faces as plastic. Fixes in the tool:
+`reverse`, `trim` (cut a give-away opening), `glitch` bursts, and `reveal`+`swap_at` (a matching second
+shot glitches in and stays). The user liked a glitch as a 'tell' that someone is AI; a mirror whose
+reflection is the robot made a better reveal than a face peel (episode 6, `just-like-us.json`).
 
 The `[api-proxy-support]` extra matters: behind the session's HTTPS proxy, plain `modal` fails with only "Could not connect to the Modal server"; the real cause (missing `python-socks`) is hidden in the exception's `__cause__`. The first run downloads
 ~20 GB of weights into the `ai-video-cache` volume. The clips are generated separately, so each

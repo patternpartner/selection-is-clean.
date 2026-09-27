@@ -32,8 +32,8 @@
       "bottom": "cinematic extreme close-up of the face of {man}, his wide warm smile held perfectly still, eyes open and never blinking, not a single muscle moving, subtly uncanny, soft light, static camera"
     },
     {
-      "prompt": "cinematic film shot, night, a dim bathroom, {man} stands perfectly still looking straight into the mirror, his reflection face-on, a calm faint smile, cool blue light, static camera, close-up",
-      "reveal": "cinematic film shot, night, a dim bathroom, a figure in a grey cardigan with a smooth white round robot head and one large glowing blue eye stands perfectly still looking straight into the mirror, its reflection face-on, cool blue light, static camera, close-up",
+      "prompt": "cinematic film shot, night, a dim bathroom, over-the-shoulder shot of {man} standing at the sink looking into the mirror, his reflection in the mirror shows his own face smiling calmly, cool blue light, static camera",
+      "reveal": "cinematic film shot, night, a dim bathroom, over-the-shoulder shot of a man with short brown hair in a grey cardigan standing at the sink looking into the mirror, but his reflection in the mirror shows a smooth white round robot head with one large glowing blue eye, wearing the same grey cardigan, eerie, cool blue light, static camera",
       "swap_at": 2.4,
       "glitch": [
         [
