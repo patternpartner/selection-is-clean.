@@ -308,6 +308,9 @@ shot glitches in and stays). The user liked a glitch as a 'tell' that someone is
 reflection is the robot beat a face peel, and the user then preferred no face at all: implied from behind
 (episode 6, `just-like-us.json`): an ordinary back view where only the MIRROR glitches (`glitch_region`,
 fractions of the frame, read off a probe frame). Wan also gives walking people an odd gait; stand them still.
+Continuity across clips (episode 7, `a-lifetime.json`): Wan redraws the robot's SIZE per clip and floats it; say
+"knee-high ... on the floor" and, where a person is close, "its head only reaching her knee". One fixed place (the same
+window seat, seasons changing outside) plus one recurring object made a life journey read where separate rooms did not.
 
 The `[api-proxy-support]` extra matters: behind the session's HTTPS proxy, plain `modal` fails with only "Could not connect to the Modal server"; the real cause (missing `python-socks`) is hidden in the exception's `__cause__`. The first run downloads
 ~20 GB of weights into the `ai-video-cache` volume. The clips are generated separately, so each
