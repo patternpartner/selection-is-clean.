@@ -10,7 +10,7 @@
 // (EVERY 250, WARM 2000, ESTN 10). The census draws nothing. Migrants, plasmids, motifs and laws
 // still cross in both arms.
 //
-// Env: SEED (focal, default 1)  PEER (default SEED+10)  TICKS (default 20000)  PEERINS (0 or 1)
+// Env: SEED (focal, default 1)  PEER (default SEED+10)  TICKS (default 20000)  PEERINS (0 or 1; unset is 0 since #246)
 //      INDEX (engine html)  TIME=1 (stderr timings)
 // Prints one JSON object.
 const fs = require('fs');

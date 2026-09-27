@@ -22290,3 +22290,24 @@ are extended once to 30,000 ticks.
 universe's behaviour at its next reload. The user asked for exactly this test to decide it.
 
 Results go under this heading after the runs, not before.
+
+### #246 — PEERINS DEFAULTS OFF (interim). Code stays. #245 still owns the directed prove.
+
+Numbered #246: #244 on main is the leak/review entry; #245 is the pre-registered no-worse prove on focals 7-12. The user skipped the PEERINS default widget; CoS directed support to land Claude Code's recommendation (default off, code kept) via draft PR #73 without merging from support. This entry changes one default and nothing else. The spark body, the inscription send, the receive writes, every draw, and the `PEERINS` knob all stay. `PEERINS=1` gives exactly the #241 Arm A engine.
+
+**Facts, all from the #241 table above, not re-run.**
+- #241's rule was an absolute gap. It asked whether the bundle MOVES a number, not whether it HELPS. The entry says so itself: "The rule is an absolute gap. It does not ask which arm is the larger one." KEEP was correct under that rule. That rule cannot justify a field default.
+- Both counted focals moved the way that is worse with the bundle on. Seed 5 moved on kinds late: 8.1 with the bundle, 18.1 without. Seed 6 moved on alive: 294 with the bundle, 499 without.
+- Seeds 1-4 sent no packet, but Arm A still differs from Arm B there, because the local spark writes. So those four are a spark-alone comparison. Seed 2 is the large one and it goes against the spark: alive 341 / 465, kinds 8.1 / 10.4, paid 2,561 / 2,993.
+- `paid` (who reproduces) is lower with the bundle on at **all six** focals: 2464/2466, 2561/2993, 2128/2221, 2177/2215, 2342/2382, 2089/2740. Most of those gaps are small and this is one pair per seed at one budget. But nothing in the table points the other way.
+
+**Decision.** Default off. A mechanism whose only measured effect on reproduction is a loss does not get to run in every universe of the field by default. The #241 KEEP stays: the code earned its place as a thing that moves the world. It has not earned its place as a thing the world should be running. This is the conservative choice, and it can be reversed with one character.
+
+**What changes.** `peerInsOn()` reads `__PEERINS??0`. When `globalThis` is absent it now returns false instead of true, to match. `harness-env.js` and `harness-peerins.js` comments now say unset is off. In `harness-peerins.js`, unset now means Arm B. Any re-run of #241 Arm A, and #245 Arm A (`PEERINS=1`), must pass `PEERINS=1` explicitly. #245's pre-registered rule is unchanged; its arms already name the env values.
+
+**What a later prove must show to turn it back on.** Pre-register it before the runs, the way #241 did.
+- **Directed.** A per-seed sign test on the dependent variables with the bundle on minus off. It is not an absolute gap.
+- **Unseen seeds.** Not focals 1-6 and not peers 11-16. Pick them in the pre-registration.
+- **Same pair harness.** A peer present, 20,000 ticks or more. Say the horizon out loud.
+- **"No worse" on `alive`, `kinds_late` and `paid`.** On a majority of counted focals, the bundle-on arm is not below the bundle-off arm by more than the #241 MOVE thresholds. No counted focal may reproduce a seed-6-sized alive loss (relative above 0.30).
+- **Spark and packet split.** Separating them is still owed. If the prove shows the spark alone does the damage (seed 2), the fix is to the spark, not to the default.
