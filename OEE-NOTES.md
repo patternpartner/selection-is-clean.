@@ -22882,3 +22882,32 @@ arrays, programs, birth queue and the random stream identical at every one of th
 genome's JSON differs by ONE field, `eventLog[3].d.len` 11096 -> 11060, the length of a save blob that no longer
 carries two liveness names. vm-equiv's own header warns of this case. substrate-test 263/0 at TICKS=40, 900,
 FOUND=0. The knob removals in harness-env and harness-oee land after #249b stops reading those two files.
+
+**#249b RESULTS — seeds 71-73, 20k, four nulls per seed (control + NULLSHIFT 1-3). 24 runs, 0 failed.**
+
+**Question 1: the unperturbed world is NOT stuck.** Late new kinds per 1k in the nulls: seed 71 0.46, 0.15, 2.00,
+0.46; seed 72 0.31, 0.15, 0, 0.15; seed 73 1.08, 0.46, 0.31, 0.77 — 11 of 12 above zero, the same as the arms.
+#249's control reading 0 on all three of seeds 61-63 was that control's luck (reading a), not a world that any
+change unsticks (reading b). Recorded because (b) was the more interesting story and the data said (a).
+
+**The null band — this is the finding.** Same world, same rules, different draw order, 20k ticks:
+entropyRatio 0.94-0.99 / 0.94-1.00 / 0.94-0.97; kinds_late 8.4-9.1 / 7.9-8.3 / 8.1-8.7; estFrac 0.0018-0.016 /
+0.0043-0.0119 / 0-0.0151; **final population 74-462 on seed 71 and 89-341 on seed 73** — two of twelve nulls
+nearly crashed with no rule changed at all.
+
+**Question 2: nothing beats chance.**
+| arm | counted | better / worse than EVERY null | verdict |
+|---|---|---|---|
+| MUTUALISM | 3 | 0 / 1 (seed 73 entropyRatio 0.63) | not shown to beat chance -> DELETE |
+| NICHE_BIOTIC | 3 | 1 / 1 | DELETE |
+| SELF_PREDICT | 3 | 1 / 1 (both establishment) | DELETE |
+| GENE_DRAW | 2 (gene ops did not fire on 71) | 0 / 2 | INCONCLUSIVE -> off, code kept |
+
+**Against one control, three mechanisms were BETTER (#249). Against four nulls, none is.** The single-control
+comparison was reading noise, and the template in CLAUDE.md does not say how many controls a seed needs — so it
+did not stop this. That is amended below. **It also reaches backwards:** #246's contact-blending verdict (WORSE
+2/3, which became #248's shipped cap, saved worlds clamped) compared one run per arm. Its two WORSE calls were an
+entropyRatio gap of 0.09 (seed 14) and a kinds gap of 1.2 (seed 15); the null spreads measured here are up to 0.06
+and 0.7 within a seed. So #246 sits just outside today's band on a single draw, which is weaker than it was
+presented as. The cap stands — the user chose it with the saved-world cost in view, and #234 showed the verdict
+blind to that law — but it is now a candidate for a re-run against nulls, and says so.

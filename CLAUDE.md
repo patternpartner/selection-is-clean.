@@ -103,6 +103,11 @@ that cannot happen again. Pre-register it with the numbers filled in.
    the default does not change either way. Extend the horizon or add unseen seeds; do not rule on it.
 3. **A direction, not just a size.** On the counted seeds, compare the dependent variable: entropyRatio,
    kinds late, established fraction, with alive as a guard.
+   **Against a null band, never one control (`#249b`).** Run at least three null replicates per seed as well as
+   the control — `harness-oee.js NULLSHIFT=k` is the same world under the same rules on a different draw order —
+   and call a seed WORSE or BETTER only when the arm is outside EVERY null on that measure. `#249` compared each
+   arm with one control and found three mechanisms BETTER; `#249b` put four nulls under the same question and
+   found none. Twelve nulls ended with populations from 74 to 462 with no rule changed.
    - **WORSE** = on at least two-thirds of counted seeds, entropyRatio is lower by more than 0.05, kinds
      late is lower by more than 10%, establishment is lower by more than 25% relative, or the seed crashes
      (alive over 20 falls under 5) → **DELETE**, or **DORMANT** (default off, code kept) if a named follow-up
