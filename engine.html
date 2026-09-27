@@ -199,12 +199,9 @@ const pendingAlienPredictions=new Map(); // tab -> {atomIdx, direction, baseline
 // crediting, same cull protection — and the filter now runs alone.
 // Deliberately kept OUT of peerLastSeen: countPeers() iterates that, and a synthetic entry there would
 // make the system believe it has a peer and change its network behaviour.
-let selfObservable=null;
-let __SELF_PREDICT=false; // resolved after the LIVE registry; SELF_PREDICT=1 enables. Ships DORMANT.
 // #249: #93 GRIP-WEIGHTED PROPAGATION (GRIP_SEED, bestGripAtomIdx) deleted - opened on unseen seeds 61-63 it ran
 // 19-25k times per run and changed nothing (grip needs alien attempts no lab world supplies), and paired
 // with SELF_PREDICT it was neither better nor worse. Unused code by the pre-registered rule.
-const SELF_OBS_SCALE=50; // #95: births/window ~1333 -> ~27, inside tanh(x/20)'s informative range
 let __ABSTAIN_FREE=true; // #95: an abstaining atom is not charged a failed prediction. ABSTAIN_FREE=0 = prior behaviour.
 let __INT_GENE_STEP=false; // #96: integer genes take a real step when their mutation fires (see intMaybe). Default OFF pending the arm.
 let __REND_VOCAB=false;   // #96: rend mutations draw from REND_VARS instead of the atom vocabulary. Default OFF pending the arm.
@@ -21592,7 +21589,6 @@ function runAlienPrediction(){ fired('alien.predict');
   // #92: peers plus the endogenous target. The loop body below is untouched — it was always
   // target-agnostic, and that is the whole reason this works without rewriting the scorer.
   const _predTargets=[...peerObservable];
-  if(__SELF_PREDICT&&selfObservable)_predTargets.push(['__self',selfObservable]);
   for(const [tab,po] of _predTargets){
     if(tab!=='__self' && tick-(peerLastSeen[tab]||0)>ALIEN_WINDOW*3)continue; // peer's gone quiet; nothing fresh to judge
     // 1) SCORE a pending prediction for this peer, if its window has since rolled over.
@@ -25796,8 +25792,6 @@ const NICHE_PERSIST=0.95;            // unharvested stock carried over (abandone
 const NICHE_GAIN_REAL=0.05;          // harvested-resource → amplitude conversion (lone specialist ≈0.02 amp/tick; crowded channel splits it)
 // #249d: DRIFTING NICHES (swing #12, NICHE_DRIFT) deleted with the 1-D branch it lived in - unreachable since #13.
 const NICHE_CROSSFEED=0.55;          // fraction of harvest re-deposited downstream (lever 1)
-const NICHE_PRED_RATE=0.012;         // predator amp/tick per unit prey, conserved (lever 2)
-const NICHE_PRED_MAXFRAC=0.03;       // ceiling: predators take ≤3% of a prey channel's amp/tick
 const OPNOV_STRENGTH=0.0025;         // max amp/tick from running globally-rare opcodes (lever 3)
 const OPNOV_INTERVAL=120;            // ticks between opcode-frequency recomputes
 // N-DIMENSIONAL NICHE CELLS — swing #13: attack the COUNT. A 1-D diet axis is bounded by limiting
@@ -25836,8 +25830,6 @@ const NICHE_CELL_FLOOR=2;            // occupants per cell that pay no crowding 
 const NICHE_LOCAL_COST=0.0025;       // amp/tick lost per occupant above the floor (caps each cell locally)
 // #249: LOCAL (PER-CELL) DRIFT (swing #15, NICHE_CELLDRIFT) deleted - opened and measured WORSE on 3/3 unseen seeds.
 const nicheBiomass=new Float32Array(NICHE_BINS);  // living amp per diet channel
-const nichePredGain=new Float32Array(NICHE_BINS); // predator amp gain per unit amp, per channel
-const nichePreyLoss=new Float32Array(NICHE_BINS); // prey amp loss per unit amp, per channel
 const nicheCellRes=new Float32Array(NICHE_ND_CELLS);   // standing stock per N-dim diet cell (swing #13)
 const nicheCellOcc=new Int32Array(NICHE_ND_CELLS);     // occupants per cell this tick
 const nicheCellCross=new Float32Array(NICHE_ND_CELLS); // deferred cross-feed deposits per cell
@@ -25857,39 +25849,7 @@ const nicheCellPreyLoss=new Float32Array(NICHE_ND_CELLS);// per-unit-amp loss to
 const RQ_STRIDE=53;        // predator cell C eats prey cell (C+RQ_STRIDE); prime, coprime to 7776 → one long predation cycle over all cells
 const RQ_RATE=0.05;        // max fraction of a PREDATOR cell's biomass converted from prey per tick
 const RQ_MAXFRAC=0.10;     // cap on fraction of a PREY cell's biomass taken per tick (prey can't be wiped instantly → bounded, stable)
-// SWING #31 — TRUE COEVOLUTIONARY KERNEL (the Red Queen made REAL). #28 linked predator→prey cells by a fixed
-// INDEX stride (C+53) — consistent enough for turnover, but the link has no TRAIT meaning, so predators don't
-// track prey through trait space and there is no arms race. #31 makes the link TRAIT-RELATIONAL: a predator
-// eats organisms that sit RQ_TRAIT_SHIFT diet-bins away IN THE SAME SPATIAL REGION (an "attack image" on the
-// diet axis). Now a prey cohort under pressure escapes only by shifting its diet — moving to a different cell,
-// where a DIFFERENT predator's image points — and predators that track the shift are rewarded: an open-ended
-// pursuit in real trait space, localised to regions (allopatric predation), reinforcing #17 divergence and #30
-// territory. Conserved by a 3-pass scheme (demand → bounded extract → distribute gain∝predator-amp,
-// loss∝prey-amp). Was a sub-mode of __RED_QUEEN; #249 deleted it (WORSE on 3/3), so #28's index-stride link is the one.
-// #249: RQ_TRAIT_SHIFT and nicheCellPreyOf (the #31 prey image) deleted with RQ_TRAIT.
-// generalised diet-shifted cell lookup (same spatial region, diet bin shifted cyclically by `shift`) — used by
-// #31 predation (shift=RQ_TRAIT_SHIFT) and #32 mutualism (shift=MUT_SHIFT). Mirrors nicheCellOf's three paths.
-function nicheCellShifted(i, shift){ const base=i*DIMS;
-  const SP=(typeof globalThis!=='undefined'&&(globalThis.__SPATIAL_NICHE|0)===1);
-  const binOf=(d)=>{ let q=((tend[base+d]+1.2)/2.4*NICHE_ND_BINS)|0; q=q<0?0:q>=NICHE_ND_BINS?NICHE_ND_BINS-1:q;
-    if(d===0){ q=(q+shift)%NICHE_ND_BINS; if(q<0)q+=NICHE_ND_BINS; } return q; };  // shift ONLY the diet axis
-  if(DIMS<=NICHE_ND_DIMS && !SP){ let r=0; for(let d=0;d<DIMS;d++) r=r*NICHE_ND_BINS+binOf(d); return r; }
-  let h=0; for(let d=0;d<DIMS;d++) h=(Math.imul(h,31)+binOf(d)+1)>>>0;
-  if(SP){ let rx=W>0?(px[i]/W*NICHE_SPATIAL_DIV)|0:0, ry=H>0?(py[i]/H*NICHE_SPATIAL_DIV)|0:0;
-    rx=rx<0?0:rx>=NICHE_SPATIAL_DIV?NICHE_SPATIAL_DIV-1:rx; ry=ry<0?0:ry>=NICHE_SPATIAL_DIV?NICHE_SPATIAL_DIV-1:ry;
-    h=(Math.imul(h,31)+(ry*NICHE_SPATIAL_DIV+rx)+1)>>>0; }
-  return h%NICHE_ND_CELLS; }
-// SWING #32 — MUTUALISM / RECIPROCAL PARTNERSHIPS. The first POSITIVE (+/+) interaction in the system; every
-// biotic force so far was competitive/−. With NICHE_ND_BINS even and MUT_SHIFT = BINS/2 = 3, the partner-of-
-// partner closes (b+3+3 = b+6 ≡ b): each organism's mutualist is its DIET-OPPOSITE in the same region, and the
-// relation is RECIPROCAL (A's partner is B and B's partner is A). Both gain a bounded, positive-sum bonus from
-// the partner's local presence (mutualism CREATES value, so it is not zero-sum like predation — the metabolic
-// brake caps the total). Effect: complementary diet types are rewarded for CO-OCCURRING, so a region tends to
-// fill with a balanced, interdependent pair rather than one monoculture — a proto-symbiosis / division-of-labour
-// that raises evenness and seeds a higher-level unit. Pairs with #28/#31 (each type now has prey, predators,
-// AND a partner — a real interaction web) and #30 (partnerships form within territories).
-const MUT_SHIFT=(NICHE_ND_BINS/2)|0;  // diet-opposite partner; reciprocal when BINS even
-const MUT_RATE=0.02;                  // bounded positive-sum bonus rate (×min(own amp, partner-cell biomass))
+// #249f: nicheCellShifted (the diet-shifted cell lookup) deleted - its readers, #31 and #32, are both gone.
 // SWING #29 — NICHE CONSTRUCTION (ecosystem engineering). The other great open-endedness engine the system
 // never had: until now the environment is FIXED scaffolding life merely occupies. Here life DURABLY reshapes
 // its own niche — a lived-in cell accrues a persistent supply boost (soil-building), which decays slowly when
@@ -26137,7 +26097,6 @@ if(typeof globalThis!=='undefined'){
                __DIMS_SAT:3000,                                     // dimensionality ratchet #25 — saturation-gated: every 3000 ticks, grow a new heritable trait axis IFF distinct occupied niche-cells ≥ threshold (default 24), capped at 9 dims. With all-dims nicheCellOf, each grown axis is selected from birth — the board grows itself when (and only when) diversity earns it
                __SPATIAL_NICHE:1,                                   // spatial niches / territoriality #30 — fold a 4×4 spatial region into the niche cell so location is a niche axis: income/crowding/predation/construction become per-region, so holding ground pays and regions become defended, inherited territories. With the existing spatially-biased offspring placement, this is the allopatric route #21 found blocked (income now rewards the spatial viscosity that pull-only #21 lacked)
                __NICHE_BUILD:1,                                     // niche construction #29 — life durably reshapes its own environment: a lived-in cell accrues a persistent, CAPPED, SHARED supply boost (soil-building) that decays slowly when abandoned, so engineered niches outlive their builders and accumulate as inherited environmental structure. Anti-monopoly (shared+capped); pairs with #28 (predation thins winners, construction rewards persistence)
-               __MUTUALISM:0,                                       // mutualism #32 — DORMANT (default off): the 3-seed A/B vs the validated #28-30 base was a WASH (entRatio avg 0.82 vs 0.84; regression on seed 99) — it doesn't earn default-on on standing-diversity metrics. Code+knob kept; the +/+ interaction's payoff (proto-symbiosis structure) needs a turnover instrument the harness lacks. Force on with MUTUALISM=1
                __RED_QUEEN:1,                                       // biotic / Red Queen #28 — conserved, frequency-dependent predation over the live N-dim cells: predators in cell C draw a zero-sum amp transfer from prey cell C+stride. "Kill the winner" (common prey predated hard, rare protected) promotes coexistence; prey escape only by crossing a cell boundary, so predation SELECTS for divergence. The unbounded (biotic) niche engine the abiotic arc #11–#27 could never reach
                __FRONTIER_EXPAND:1,                                 // EXPANDING VIABILITY FRONTIER #38 (the real big swing) — every occupied niche-cell makes its trait-ADJACENT cells viable, so the unexplored edge comes alive as life reaches it: an ever-moving frontier, ecological succession with no edge of the map. Uncapped (no #29-style safety); risk: floods faster than life fills → washes out selection. Pairs with #37 (the pressure) by giving novelty somewhere VIABLE to go
                __OPCODE_NOVELTY:1,                                  // genotypic open-endedness #34 — the genetic complement to the ecological engines: mean-centred (zero-sum, no inflation) reward for running opcodes the population has HISTORICALLY under-explored (opCum EMA), turning the lights on in the ~20/256-opcode "museum". Real selection then keeps or discards the explorers — novelty is raw material, not fitness-by-fiat
@@ -26194,7 +26153,6 @@ __ATOM_FRSENSE=(typeof globalThis==='undefined')||((globalThis.__ATOM_FRSENSE??1
 __ATOM_WRSENSE=(typeof globalThis==='undefined')||((globalThis.__ATOM_WRSENSE??1)|0)!==0; // #126: default ON. Force off with ATOM_WRSENSE=0
 __COSMOS_LAW=(typeof globalThis==='undefined')||((globalThis.__COSMOS_LAW??1)|0)!==0; // #129: default ON. Force off with COSMOS_LAW=0
 __REACH_GAIN=(typeof globalThis==='undefined')||((globalThis.__REACH_GAIN??1)|0)!==0; // #117: default ON. Force off with REACH_GAIN=0
-__SELF_PREDICT=(typeof globalThis!=='undefined')&&((globalThis.__SELF_PREDICT|0)===1); // #92: default OFF
 // #131 registers nothing here on purpose. Its three repairs (ops 232-235 in every dispatch, the #34
 // novelty horizon, the eighth REACH actuator) carry no flag: selection already holds a finer dial on
 // each — whether programs carry those opcodes, genome.opnovStrength, and genome.reachGain.
@@ -26426,9 +26384,8 @@ function applyNicheEconomy(){ fired('niche.economy');
   // matching global to 1 to enable (the headless harness exposes these as env knobs). Graded but
   // not yet a clean break of the ceiling — see OEE-NOTES.md — so it ships dormant, not adopted.
   const FR =(typeof globalThis!=='undefined'&&(globalThis.__NICHE_FRONTIER|0)===1);
-  const BIO=(typeof globalThis!=='undefined'&&(globalThis.__NICHE_BIOTIC|0)===1);
   const NOV=(typeof globalThis!=='undefined'&&(globalThis.__OPCODE_NOVELTY|0)===1);
-  if(!FR&&!BIO&&!NOV) return;
+  if(!FR&&!NOV) return;
   const _season=1+SEASON_AMPLITUDE*Math.sin(2*Math.PI*tick/SEASON_PERIOD);
 
   // diet bins + per-channel living biomass
@@ -26492,30 +26449,15 @@ function applyNicheEconomy(){ fired('niche.economy');
         for(let i=0;i<N;i++){ if(!palive[i])continue; const c=pDietCell[i], a=amp[i]>0?amp[i]:0; if(a>0) amp[i]+=a*(nicheCellPredGain[c]-nicheCellPreyLoss[c]); }
       }
     }
-    // ── SWING #32: mutualism — each organism gains a bounded, positive-sum bonus from its diet-OPPOSITE partner's local presence ──
-    if(typeof globalThis!=='undefined'&&(globalThis.__MUTUALISM|0)===1){
-      nicheCellBio.fill(0);                                       // recompute post-predation biomass
-      for(let i=0;i<N;i++){ if(!palive[i])continue; const a=amp[i]>0?amp[i]:0; if(a>0) nicheCellBio[pDietCell[i]]+=a; }
-      for(let i=0;i<N;i++){ if(!palive[i])continue; const a=amp[i]>0?amp[i]:0; if(a<=0)continue;
-        const pb=nicheCellBio[nicheCellShifted(i,MUT_SHIFT)]; if(pb<=0)continue;
-        amp[i]+=(a<pb?a:pb)*MUT_RATE; }                          // bounded by min(own amp, partner biomass); positive-sum (brake caps total)
-    }
+    // #249f: SWING #32 mutualism deleted - BETTER against one control in #249, beat every null on 0 of 3 seeds in #249b.
     // (biotic + opcode-novelty levers below still apply if their knobs are set)
   }
   // #249d: the 1-D cross-feed frontier (LEVER 1, swings #11-#12, with NICHE_DRIFT) is deleted. It ran only when
   // __NICHE_NDIM was off, and the LIVE block has set it on since #13; #249 found NICHE_DRIFT unreachable and no rig
   // or note ran NICHE_NDIM=0. The N-dim branch above is the niche economy.
 
-  // ── LEVER 2: biotic / coevolutionary niches (conserved predation up the ladder) ──
-  if(BIO){
-    for(let b=0;b<NICHE_BINS;b++){ nichePredGain[b]=0; nichePreyLoss[b]=0; }
-    for(let b=0;b<NICHE_BINS;b++){ const preyB=(b-1+NICHE_BINS)%NICHE_BINS; const predMass=nicheBiomass[b], preyMass=nicheBiomass[preyB];
-      if(predMass<=0||preyMass<=0)continue;
-      const transfer=Math.min(preyMass*NICHE_PRED_MAXFRAC, predMass*NICHE_PRED_RATE); // total amp moved this tick
-      nichePredGain[b]+=transfer/predMass;       // distribute to predators ∝ their amp
-      nichePreyLoss[preyB]+=transfer/preyMass; }  // distribute loss to prey ∝ their amp
-    for(let i=0;i<N;i++){ if(!palive[i])continue; const c=pDietBin[i], a=amp[i]>0?amp[i]:0; amp[i]+=a*(nichePredGain[c]-nichePreyLoss[c]); }
-  }
+  // #249f: LEVER 2 (NICHE_BIOTIC, conserved predation up the 1-D diet ladder) deleted - BETTER against one
+  // control in #249, beat every null on 1 of 3 seeds in #249b.
 
   // ── LEVER 3: opcode-novelty — GENOTYPIC open-endedness (swing #34: cumulative-innovation weighting) ─────────
   // The genetic complement to the ecological engines: the VM "museum" runs ~20 of 256 opcodes. Reward running
@@ -27324,22 +27266,7 @@ function loop(){
       }
     }
 
-    // #92: accumulate the endogenous observable BEFORE the per-tick counters are cleared. Births are the
-    // analogue of "how active is this peer" — a count that rises and falls on the system's own dynamics.
-    if(__SELF_PREDICT){
-      if(!selfObservable) selfObservable={count:0,prevCount:0,windowStart:tick};
-      if(tick-selfObservable.windowStart>=ALIEN_WINDOW){
-        selfObservable.prevCount=selfObservable.count; selfObservable.count=0; selfObservable.windowStart=tick; }
-      // ═══ #95 SCALE. The atom is handed tanh(baseline/20) and tanh(recentPartial/20). That
-      // normalisation was written for the PEER observable — packet counts, tens per window — where tanh
-      // is informative. Raw births are ~1333 per ALIEN_WINDOW, and tanh(1333/20) === 1 EXACTLY, so both
-      // inputs saturated to 1.0 on every prediction and the atom received NO information: it emitted a
-      // constant, and a constant scored against a directionally-biased outcome lands BELOW chance.
-      // Measured before this fix: 233/615 = 37.9%, z=-6.01. That was my error in #92 — the endogenous
-      // target was correct in kind and wrong in scale.
-      // SELF_OBS_SCALE brings births into the same decade as packet counts so tanh can discriminate.
-      selfObservable.count+=birthsThisTick/SELF_OBS_SCALE;
-    }
+    // #249f: #92 SELF_PREDICT (the endogenous prediction target) deleted - beat every null on 1 of 3 seeds in #249b.
     deathsThisTick=0;birthsThisTick=0;deathsThisWindow=0; // #97: the death window closes with the birth window
   }
 

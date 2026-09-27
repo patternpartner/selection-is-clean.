@@ -22911,3 +22911,32 @@ entropyRatio gap of 0.09 (seed 14) and a kinds gap of 1.2 (seed 15); the null sp
 and 0.7 within a seed. So #246 sits just outside today's band on a single draw, which is weaker than it was
 presented as. The cap stands — the user chose it with the saved-world cost in view, and #234 showed the verdict
 blind to that law — but it is now a candidate for a re-run against nulls, and says so.
+
+### #249e / #249f — SELFMODEL's mechanism, then the three #249b ruled out
+
+**#249e — SELFMODEL (WORSE 3/3 in #249).** `applySelfModel`, its four per-particle arrays, error tallies, call,
+and the two gated mutation blocks are gone; the knob leaves KNOBS. **The genome field `selfModelW` STAYS, and why
+is the finding.** Removing it moved every trajectory from tick 251 with the mechanism OFF. `recombineGenome` draws
+once per element of every uniform numeric array on every crossover (#140's structural rule), so an inert
+`[0,0,0]` has been costing three draws per crossover for as long as it has existed. Taking it away shifts every
+universe's random stream — a reseed of every saved world, which rule 6 gives to the user. Kept inert, with that
+reason written beside it; trajectories identical. **This generalises:** any dead numeric-array gene is paying
+draws on every crossover, and deleting one is a reseed, not a no-op. The next gene cull should expect it.
+
+**#249f — MUTUALISM, NICHE_BIOTIC, SELF_PREDICT.** BETTER against one control in #249; against four nulls in #249b
+each beat every null on at most one seed of three — DELETE by the committed rule. Gone: the #32 mutualism block,
+`MUT_SHIFT`, `MUT_RATE`, and `nicheCellShifted` (both its readers, #31 and #32, are now deleted); LEVER 2's 1-D
+predation and `nichePredGain`/`nichePreyLoss`/`NICHE_PRED_RATE`/`NICHE_PRED_MAXFRAC`; #92's endogenous prediction
+target, `selfObservable` and `SELF_OBS_SCALE`. Their switches leave KNOBS and seven rigs. What is left of the
+twelve switched-off arms #249 opened: GROUP_PROBE (never budded; inconclusive) and GENE_DRAW (inconclusive).
+
+**Proved for every default world** (d, e and f each): census trajectories identical on seeds 1-3 at 2,000 ticks;
+vm-equiv identical over every opcode (249f; 249d differed only in a save-length bookkeeping field);
+substrate-test 263/0 at TICKS=40, 900 and FOUND=0; harness-ab, -strip, harness and -bridge boot.
+
+**The tally for #249 as a whole:** thirteen switched-off arms opened. Eleven deleted (CHAR_DISP, RQ_TRAIT,
+NICHE_LOCALTEND, NICHE_CELLDRIFT, GRIP_SEED, SELFMODEL's mechanism, MUTUALISM, NICHE_BIOTIC, SELF_PREDICT, NICHE_DRIFT
+with the 1-D branch, GENO_PARASITE's no-op switch); two kept switched off and inconclusive; none switched on.
+About 400 engine lines. **What moved in the universe: nothing — and the measurement that says so is the null
+band, not the verdicts.** None of the eleven made a world measurably more diverse than a different draw order of
+the same world.

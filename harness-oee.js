@@ -119,7 +119,7 @@ console.warn = () => {};
 // ── OEE niche-economy knobs (swing #11): opt-in levers for A/B + controls ──
 // Stock behaviour (baseline) = set NONE of these. Enable a lever with =1.
 //   NICHE_FRONTIER=1   expanding cross-feed resource-spectrum frontier (lever 1)
-//   NICHE_BIOTIC=1     biotic / coevolutionary predation niches (lever 2)
+//   (#249f: NICHE_BIOTIC, lever 2, is deleted.)
 //   OPCODE_NOVELTY=1   opcode-novelty / coupling-gap pressure (lever 3)
 //   (#249d: NICHE_REAL, NICHE_DRIFT and NICHE_NDIM are gone with the 1-D frontier branch they switched. The N-dim
 //   cells (#13) are the niche economy; NICHE_NDIM=0 would now have meant "no niche income", not "1-D niches".)
@@ -129,7 +129,7 @@ console.warn = () => {};
 // be switched from a harness at all — harness-strip.js: "a knob that cannot be turned off is not a
 // control". #131's own repairs deliberately have no knob (selection holds those dials), so what is
 // plumbed here is the set that is genuinely dormant and genuinely togglable.
-for (const kn of ['MUTUALISM','SELF_PREDICT','MEME_TRANSFER'])
+for (const kn of ['MEME_TRANSFER'])
   if (process.env[kn] !== undefined) globalThis['__'+kn] = parseInt(process.env[kn], 10);
 if (process.env.NICHE_LOCAL !== undefined) globalThis.__NICHE_LOCAL = parseInt(process.env.NICHE_LOCAL, 10);
 // swing #15 synthesis + retention knobs:
@@ -144,10 +144,9 @@ if (process.env.GLOBALTEND !== undefined) globalThis.__GLOBALTEND = parseFloat(p
 if (process.env.DIMS_GROW !== undefined) globalThis.__DIMS_GROW = parseInt(process.env.DIMS_GROW, 10);
 if (process.env.DIMS_CAP !== undefined) globalThis.__DIMS_CAP = parseInt(process.env.DIMS_CAP, 10);
 if (process.env.DIMS_SPREAD !== undefined) globalThis.__DIMS_SPREAD = parseFloat(process.env.DIMS_SPREAD);
-for (const k of ['DIMS_SAT','DIMS_SAT_CAP','DIMS_SAT_OCC','RED_QUEEN','NICHE_BUILD','SPATIAL_NICHE','MUTUALISM','GROUP_ROLES','GROUP_PROBE','BUD_INSTR','FRONTIER_EXPAND','NOVELTY_ARCHIVE','ATOM_PIPELINE','RICH_GRAMMAR','REACH','ATOM_DURABLE','GROUP_COMMONS','MEME_TRANSFER']) if (process.env[k] !== undefined) globalThis['__' + k] = parseInt(process.env[k], 10);
+for (const k of ['DIMS_SAT','DIMS_SAT_CAP','DIMS_SAT_OCC','RED_QUEEN','NICHE_BUILD','SPATIAL_NICHE','GROUP_ROLES','GROUP_PROBE','BUD_INSTR','FRONTIER_EXPAND','NOVELTY_ARCHIVE','ATOM_PIPELINE','RICH_GRAMMAR','REACH','ATOM_DURABLE','GROUP_COMMONS','MEME_TRANSFER']) if (process.env[k] !== undefined) globalThis['__' + k] = parseInt(process.env[k], 10);
 if (process.env.SHADOW_WINS_DECAY !== undefined) globalThis.__SHADOW_WINS_DECAY = parseFloat(process.env.SHADOW_WINS_DECAY);
 if (process.env.NICHE_FRONTIER !== undefined) globalThis.__NICHE_FRONTIER = parseInt(process.env.NICHE_FRONTIER, 10);
-if (process.env.NICHE_BIOTIC !== undefined) globalThis.__NICHE_BIOTIC = parseInt(process.env.NICHE_BIOTIC, 10);
 if (process.env.OPCODE_NOVELTY !== undefined) globalThis.__OPCODE_NOVELTY = parseInt(process.env.OPCODE_NOVELTY, 10);
 if (process.env.FORAGE_EYES !== undefined) globalThis.__FORAGE_EYES = parseInt(process.env.FORAGE_EYES, 10);
 if (process.env.ALIEN_SELECT !== undefined) globalThis.__ALIEN_SELECT = parseInt(process.env.ALIEN_SELECT, 10); // SWING #46
