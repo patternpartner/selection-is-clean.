@@ -22184,3 +22184,61 @@ Fingerprints differed on both counted focals, so the named numbers were read. Se
 
 **Scope.** This is who is alive and how the kinds are spread at 20,000 ticks, with a peer present. It is not a claim that selection sorted inscriptions. Four focals never applied a packet by this budget. That is "not by tick 20,000" on those four, and it is why they were not scored. The two that did apply were enough for the keep clause, so the extension was not owed.
 
+
+### #244 — A REVIEW OF #236-#243, TWO BUGS FIXED, AND ONE VERDICT THE RULE COULD NOT SEE
+
+Asked for by the user after a day of work by other agents (#236-#241 on `main`, #242/#243 open as drafts
+#71/#72). Reviewed against `main` @ `e3fd116`: substrate-test TICKS=40 seed 1 262/0; no rig still reads
+the removed `CHEM`, `CHEM_VERDICT`, `INSCRIBE` or chemistry-verdict names.
+
+**Bug 1, fixed: #240 leaked one object per tick in every live universe.** `__schedKeep` pushed every
+`scheduleNext()` handle onto `__inst.__schedHandles`, and `loop()` ends in `scheduleNext()`, so the list grew
+by one entry a tick and was only emptied on halt — shown directly with an `__inst` like the worker's: 1,001
+entries at 1,000 ticks, 3,001 at 3,000. At the field's ~20 ticks a second that is about 1.7M entries a
+universe a day, in every universe, for as long as the page stays open. No rig could see it: `__inst` does
+not exist under node, so the push is a no-op there — which is how it passed smoke. Now the list keeps the
+newest sixteen once it passes thirty-two. Only the newest handle of each running chain can still be pending
+(a fired timer schedules its successor; the watchdog or a visibility change adds a chain or two), so halt
+still cancels everything it must, and cancelling an already-fired id is a no-op. Same run after the fix:
+32, 29, 26. `vm-equiv` main vs fixed: identical under node, as it must be.
+
+**Bug 2, fixed, mine: `vm-equiv.js` (#231f) truncated its own output.** The child wrote its hash lines and
+called `process.exit(0)` at once, which can cut stdout on a pipe before it drains. On `main` it reported a
+"difference" that was a 10-character hash against a 16-character one. Worse, the smoke self-check had been
+reporting `executions 4902` — both runs cut at the same point and compared equal, so it checked 4,902 of
+5,292 lines and said identical. It now exits after stdout drains: 5,292 on three consecutive self-checks.
+#231's proof is unaffected: those runs wrote to files, not pipes, and hold all 5,294 lines.
+
+**The verdict the rule could not see: #241 KEPT a bundle that moved both counted focals the wrong way.**
+#241's MOVE clause counts any change past a threshold, in either direction, and KEEP needed two moving
+focals. The two that counted:
+
+| focal | kinds late, bundle on / off | alive, on / off | entropyRatio, on / off |
+|---|---|---|---|
+| 5 | **8.1 / 18.1** | 295 / 314 | 0.93 / 0.97 |
+| 6 | 9.0 / 8.6 | **294 / 499** | 0.93 / 0.97 |
+| 2 (not counted: no packets, so the spark alone) | 8.1 / 10.4 | 341 / 465 | 0.94 / 1.02 |
+
+So "load-bearing" was established by harm: late kinds 18.1 -> 8.1 on one focal, alive 499 -> 294 on the other.
+#233's rule had a clause that the dependent variable must hold; #237 and #241 dropped it, and a
+direction-blind MOVE turns "it hurts" into KEEP. **Not reversed here** — the rule was pre-registered and
+honestly applied, and reopening it is a new experiment, not a re-read. What that experiment should be: the
+same pairs on unseen seeds 7-12 with a DIRECTIONAL rule (keep only if the counted focals are not worse on
+entropyRatio and kinds late), or the bundle goes DORMANT (`PEERINS` default 0, code kept) until one passes.
+**It is asymmetric with #238 as well:** there, evolving chemistry was BETTER on 2 of 2 differing seeds
+(entropy 0.985 vs 0.91, establishment about +35%) and was deleted by a floor of three seeds; here a bundle
+worse on 2 of 2 was kept by a floor of two. Same evidence size, opposite direction, opposite verdicts, both
+"as pre-registered". A shared template for retire-or-prove rules (a count floor, AND a direction) would
+stop the next pair of entries disagreeing like this.
+
+**Smaller notes.**
+- #242 (open): clamping the spark's `A` into [-16, 16] is a no-op, because `vmStep`'s tail clamps every
+  register to ±8 after each instruction. Only `B` (the instruction's `k`) can leave the wire range. That is
+  a one-line correctness fix, not a mechanism: it does not need its own knob and a retire-or-prove run.
+- `harness-peerins.js` (#241, 299 lines) is not in `smoke.sh`, so nothing checks it still boots.
+- #238 reseeds the chemistry table of every pre-#238 save on reload (`Cv`). That reaches into the running
+  field the way #235's floor did, and was stated in #238's pre-registration; recorded here so the user knows
+  it happened.
+- The history of `case 20:` in one line, because it took three entries to reach: #237 deleted the local
+  write (it crashed seed 4, 87 alive against 349); #239 added a cold-cell spark; `e827f81`'s merge dropped
+  the spark; #241 put it back under `PEERINS`.
