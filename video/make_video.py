@@ -1,0 +1,299 @@
+"""AI video maker, run on Modal GPUs. Not part of the artwork.
+
+Turns one text prompt into a phone-shaped (portrait) video by generating several
+5-second clips with Wan 2.2 (TI2V-5B, open weights) and joining them.
+
+    modal run video/make_video.py::main --prompt "a fox running through snowy woods at sunset"
+    modal run video/make_video.py::main --prompt "..." --seconds 20 --out fox.mp4 --landscape
+    modal run video/make_video.py::main --prompt "scene one | scene two | scene three | scene four"
+
+Separate scenes with " | " to give each clip its own prompt (a short story);
+the last scene repeats if there are more clips than scenes.
+
+A story adds a narrator (Kokoro), music (MusicGen) and burned-in subtitles:
+
+    modal run video/make_video.py::story --file video/stories/alignment.json --out story.mp4
+
+Needs MODAL_TOKEN_ID and MODAL_TOKEN_SECRET in the environment.
+"""
+import json
+import math
+import os
+import subprocess
+import tempfile
+
+import modal
+
+MODEL_ID = "Wan-AI/Wan2.2-TI2V-5B-Diffusers"
+FPS = 24
+CLIP_FRAMES = 121  # ~5 s at 24 fps; Wan wants 4k+1 frames
+CLIP_SECONDS = (CLIP_FRAMES - 1) / FPS
+
+NEGATIVE = (
+    "blurry, low quality, distorted, deformed, watermark, text, subtitles, "
+    "static, frozen frame, overexposed, jpeg artifacts, extra limbs"
+)
+
+image = (
+    modal.Image.debian_slim(python_version="3.11")
+    .apt_install("ffmpeg")
+    .pip_install(
+        "torch==2.6.0",
+        "diffusers>=0.35.0",
+        "transformers>=4.49.0",
+        "accelerate",
+        "sentencepiece",
+        "ftfy",
+        "imageio",
+        "imageio-ffmpeg",
+    )
+    .env({"HF_HOME": "/cache/hf"})
+)
+
+# Model weights (~20 GB) are downloaded once and kept here between runs.
+cache = modal.Volume.from_name("ai-video-cache", create_if_missing=True)
+app = modal.App("ai-video")
+
+
+@app.cls(gpu="H100", image=image, volumes={"/cache": cache}, timeout=1800, scaledown_window=60)
+class Wan:
+    @modal.enter()
+    def load(self):
+        import torch
+        from diffusers import AutoencoderKLWan, WanPipeline
+
+        vae = AutoencoderKLWan.from_pretrained(MODEL_ID, subfolder="vae", torch_dtype=torch.float32)
+        self.pipe = WanPipeline.from_pretrained(MODEL_ID, vae=vae, torch_dtype=torch.bfloat16).to("cuda")
+        cache.commit()
+
+    @modal.method()
+    def clip(self, prompt: str, seed: int, width: int, height: int) -> bytes:
+        import torch
+        from diffusers.utils import export_to_video
+
+        frames = self.pipe(
+            prompt=prompt,
+            negative_prompt=NEGATIVE,
+            height=height,
+            width=width,
+            num_frames=CLIP_FRAMES,
+            guidance_scale=5.0,
+            num_inference_steps=50,
+            generator=torch.Generator("cuda").manual_seed(seed),
+        ).frames[0]
+        with tempfile.NamedTemporaryFile(suffix=".mp4") as f:
+            export_to_video(frames, f.name, fps=FPS)
+            return open(f.name, "rb").read()
+
+
+def _ffmpeg():
+    try:
+        import imageio_ffmpeg
+
+        return imageio_ffmpeg.get_ffmpeg_exe()
+    except ImportError:
+        return "ffmpeg"
+
+
+voice_image = (
+    modal.Image.debian_slim(python_version="3.11")
+    .apt_install("espeak-ng")
+    .pip_install("torch==2.6.0", "kokoro>=0.9.4", "soundfile", "numpy")
+    .run_commands("python -m spacy download en_core_web_sm")
+    .env({"HF_HOME": "/cache/hf"})
+)
+music_image = (
+    modal.Image.debian_slim(python_version="3.11")
+    .pip_install("torch==2.6.0", "transformers>=4.49.0", "accelerate", "scipy", "numpy")
+    .env({"HF_HOME": "/cache/hf"})
+)
+mix_image = modal.Image.debian_slim(python_version="3.11").apt_install("ffmpeg", "fonts-dejavu-core")
+
+
+@app.function(image=voice_image, volumes={"/cache": cache}, cpu=4, timeout=900)
+def narrate(lines: list) -> list:
+    """One WAV (24 kHz) per (text, voice, speed). Kokoro-82M, open weights; 'b*' voices are British."""
+    import io
+
+    import numpy as np
+    import soundfile as sf
+    from kokoro import KPipeline
+
+    pipes, out = {}, []
+    for text, voice, speed in lines:
+        pipe = pipes.setdefault(voice[0], KPipeline(lang_code=voice[0], repo_id="hexgrad/Kokoro-82M"))
+        parts = [a.numpy() if hasattr(a, "numpy") else a for _, _, a in pipe(text, voice=voice, speed=speed)]
+        buf = io.BytesIO()
+        sf.write(buf, np.concatenate(parts), 24000, format="WAV")
+        out.append(buf.getvalue())
+    cache.commit()
+    return out
+
+
+@app.function(image=music_image, gpu="A10G", volumes={"/cache": cache}, timeout=1200)
+def score(prompt: str, seconds: float, seed: int) -> bytes:
+    """Background music from MusicGen (weights are CC-BY-NC: fine for personal use)."""
+    import io
+
+    import scipy.io.wavfile
+    import torch
+    from transformers import AutoProcessor, MusicgenForConditionalGeneration
+
+    name = "facebook/musicgen-medium"
+    proc = AutoProcessor.from_pretrained(name)
+    model = MusicgenForConditionalGeneration.from_pretrained(name).to("cuda")
+    cache.commit()
+    torch.manual_seed(seed)
+    inputs = proc(text=[prompt], padding=True, return_tensors="pt").to("cuda")
+    audio = model.generate(**inputs, max_new_tokens=int(seconds * 50) + 25, do_sample=True, guidance_scale=3.0)
+    buf = io.BytesIO()
+    scipy.io.wavfile.write(buf, model.config.audio_encoder.sampling_rate, audio[0, 0].float().cpu().numpy())
+    return buf.getvalue()
+
+
+def _ass_time(t: float) -> str:
+    cs = int(round(t * 100))
+    return f"{cs // 360000}:{cs // 6000 % 60:02d}:{cs // 100 % 60:02d}.{cs % 100:02d}"
+
+
+@app.function(image=mix_image, cpu=4, timeout=900)
+def mix(clips: list, voices: list, music, lines: list, width: int, height: int) -> bytes:
+    """Join the clips, lay each narration line over its scene, duck the music under it, burn subtitles.
+
+    `lines` holds one dict per scene: say, lead (seconds after the cut), whisper. `music` may be None
+    (a voice-only track, for scoring in an editor)."""
+    d = tempfile.mkdtemp()
+
+    def put(name, data):
+        path = os.path.join(d, name)
+        open(path, "wb").write(data)
+        return path
+
+    def dur(path):
+        r = subprocess.run(["ffprobe", "-v", "error", "-show_entries", "format=duration", "-of", "csv=p=0", path],
+                           capture_output=True, text=True, check=True)
+        return float(r.stdout.strip())
+
+    clip_paths = [put(f"clip{i}.mp4", c) for i, c in enumerate(clips)]
+    starts, t = [], 0.0
+    for p in clip_paths:
+        starts.append(t)
+        t += dur(p)
+    total = t
+    # Each line starts just after its cut; a line too long for its scene is sped up slightly.
+    audio_in, filters, events = [], [], []
+    for i, v in enumerate(voices):
+        vp = put(f"voice{i}.wav", v)
+        length = dur(vp)
+        lead = lines[i].get("lead", 0.35)  # the line starts just after the cut
+        tempo = min(max(length / (CLIP_SECONDS - lead - 0.25), 1.0), 1.3)
+        audio_in += ["-i", vp]
+        delay = int((starts[i] + lead) * 1000)
+        # A hushed, breathy take: thin out the body, lift the air, drop the level, add a little room.
+        hush = "highpass=f=220,treble=g=5:f=4000,volume=0.5,aecho=0.8:0.7:45|80:0.18|0.1," if lines[i].get("whisper") else ""
+        filters.append(f"[{i + 2}:a]{hush}atempo={tempo:.3f},adelay={delay}|{delay},aresample=48000[v{i}]")
+        text = ("{\\i1}" if lines[i].get("whisper") else "") + lines[i]["say"]
+        events.append((starts[i] + lead, starts[i] + lead + length / tempo + 0.4, text))
+
+    n = len(voices)
+    filters.append("".join(f"[v{i}]" for i in range(n)) + f"amix=inputs={n}:normalize=0,apad[vo]")
+    if music is None:
+        filters.append("[vo]loudnorm=I=-16:TP=-1.5,aresample=48000[aout]")
+    else:
+        filters.append("[vo]asplit[vo1][vo2]")
+        filters.append(f"[1:a]aresample=48000,volume=0.5,afade=t=in:d=1,afade=t=out:st={total - 2.5:.2f}:d=2.5,apad[mu]")
+        filters.append("[mu][vo2]sidechaincompress=threshold=0.03:ratio=6:attack=30:release=500[duck]")
+        filters.append("[duck][vo1]amix=inputs=2:normalize=0,loudnorm=I=-16:TP=-1.5,aresample=48000[aout]")
+    music_in = ["-f", "lavfi", "-i", "anullsrc=r=48000:cl=mono"] if music is None else ["-i", put("music.wav", music)]
+
+    subs = os.path.join(d, "subs.ass")
+    open(subs, "w").write(
+        "[Script Info]\nScriptType: v4.00+\nWrapStyle: 0\n"
+        f"PlayResX: {width}\nPlayResY: {height}\n\n"
+        "[V4+ Styles]\nFormat: Name, Fontname, Fontsize, PrimaryColour, OutlineColour, BackColour, Bold, "
+        "BorderStyle, Outline, Shadow, Alignment, MarginL, MarginR, MarginV\n"
+        f"Style: Default,DejaVu Sans,{int(height * 0.034)},&H00FFFFFF,&H00000000,&H80000000,1,1,3,1,2,60,60,"
+        f"{int(height * 0.13)}\n\n"
+        "[Events]\nFormat: Layer, Start, End, Style, Text\n"
+        + "".join(f"Dialogue: 0,{_ass_time(a)},{_ass_time(b)},Default,{text}\n" for a, b, text in events)
+    )
+
+    listing = os.path.join(d, "list.txt")
+    open(listing, "w").write("".join(f"file '{p}'\n" for p in clip_paths))
+    joined = os.path.join(d, "joined.mp4")
+    subprocess.run(["ffmpeg", "-y", "-loglevel", "error", "-f", "concat", "-safe", "0", "-i", listing,
+                    "-c", "copy", joined], check=True)
+    out = os.path.join(d, "out.mp4")
+    subprocess.run(
+        ["ffmpeg", "-y", "-loglevel", "error", "-i", joined, *music_in, *audio_in,
+         "-filter_complex", ";".join(filters) + f";[0:v]subtitles={subs},fade=t=in:d=0.6,"
+         f"fade=t=out:st={total - 0.8:.2f}:d=0.8[vout]",
+         "-map", "[vout]", "-map", "[aout]", "-t", f"{total:.3f}",
+         "-c:v", "libx264", "-pix_fmt", "yuv420p", "-crf", "19", "-c:a", "aac", "-ac", "2", "-b:a", "192k",
+         "-movflags", "+faststart", out],
+        check=True,
+    )
+    return open(out, "rb").read()
+
+
+@app.local_entrypoint()
+def story(file: str, out: str = "story.mp4", seed: int = 0, landscape: bool = False):
+    """One clip per scene, each with a narration line; the character is written into every prompt."""
+    import hashlib
+
+    spec = json.load(open(file))
+    width, height = (1280, 704) if landscape else (704, 1280)
+    scenes = spec["scenes"]
+    lines = [{"say": sc["say"], "lead": sc.get("lead", 0.35), "whisper": sc.get("whisper", False)} for sc in scenes]
+    speech = [(sc["say"], sc.get("voice", spec.get("voice", "bf_emma")), sc.get("speed", spec.get("speed", 1.0)))
+              for sc in scenes]
+    prompts = [sc["prompt"].replace("{character}", spec.get("character", "")) for sc in scenes]
+    print(f"'{spec.get('title', file)}': {len(scenes)} scenes, ~{len(scenes) * CLIP_SECONDS:.0f}s")
+
+    voices = narrate.spawn(speech)
+    music = None
+    if spec.get("music"):  # leave it out for a voice-only track to score in an editor
+        music = score.spawn(spec["music"], len(scenes) * CLIP_SECONDS + 1, seed)
+
+    # Clips are kept by what made them, so editing one scene does not regenerate the others.
+    store = os.path.join(os.path.dirname(os.path.abspath(out)), "clips")
+    os.makedirs(store, exist_ok=True)
+    jobs = [(p, seed + i, width, height) for i, p in enumerate(prompts)]
+    paths = [os.path.join(store, hashlib.sha1(repr((MODEL_ID, CLIP_FRAMES) + j).encode()).hexdigest()[:16] + ".mp4")
+             for j in jobs]
+    todo = [i for i, p in enumerate(paths) if not os.path.exists(p)]
+    print(f"generating {len(todo)} of {len(jobs)} clips ({len(jobs) - len(todo)} reused)")
+    for i, data in zip(todo, Wan().clip.starmap([jobs[i] for i in todo])):
+        open(paths[i], "wb").write(data)
+    clips = [open(p, "rb").read() for p in paths]
+    data = mix.remote(clips, voices.get(), music.get() if music else None, lines, width, height)
+    open(out, "wb").write(data)
+    print(f"saved {out}")
+
+
+@app.local_entrypoint()
+def main(prompt: str, seconds: int = 20, out: str = "video.mp4", seed: int = 0, landscape: bool = False):
+    width, height = (1280, 704) if landscape else (704, 1280)
+    n = math.ceil(seconds / CLIP_SECONDS)
+    print(f"making {n} clips of ~{CLIP_SECONDS:.0f}s in parallel for a {seconds}s video...")
+
+    scenes = [s.strip() for s in prompt.split("|") if s.strip()]
+    jobs = [(scenes[min(i, len(scenes) - 1)], seed + i, width, height) for i in range(n)]
+    clips = list(Wan().clip.starmap(jobs))
+
+    with tempfile.TemporaryDirectory() as d:
+        names = []
+        for i, data in enumerate(clips):
+            p = os.path.join(d, f"clip{i}.mp4")
+            open(p, "wb").write(data)
+            names.append(p)
+        listing = os.path.join(d, "list.txt")
+        open(listing, "w").write("".join(f"file '{p}'\n" for p in names))
+        # Re-encode so the result plays everywhere, including iPhone.
+        subprocess.run(
+            [_ffmpeg(), "-y", "-loglevel", "error", "-f", "concat", "-safe", "0", "-i", listing,
+             "-t", str(seconds), "-c:v", "libx264", "-pix_fmt", "yuv420p", "-crf", "20",
+             "-movflags", "+faststart", out],
+            check=True,
+        )
+    print(f"saved {out}")
