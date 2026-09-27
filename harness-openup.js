@@ -23,7 +23,7 @@ const E=process.env, T=+(E.TICKS||5000), EVERY=+(E.EVERY||250), WARM=+(E.WARM||M
 // resolved once into a module flag and read by if(__X ...), so those sites are wrapped instead.
 // #249: RQ_TRAIT, CHAR_DISP, NICHE_LOCALTEND, NICHE_CELLDRIFT and GRIP_SEED were deleted by the rule this rig fed.
 // #249d: GENO_PARASITE (a no-op switch) and NICHE_DRIFT (unreachable) went too.
-const SITES={MUTUALISM:1,NICHE_BIOTIC:1,SELFMODEL:2,GROUP_PROBE:2,SELF_PREDICT:2};
+const SITES={MUTUALISM:1,NICHE_BIOTIC:1,GROUP_PROBE:2,SELF_PREDICT:2};   // #249e: SELFMODEL deleted
 const FLAGVAR={SELF_PREDICT:1};
 const ARMS=(E.ARM||'').split(',').filter(Boolean);
 for(const a of ARMS){ if(!(a in SITES)){ console.log(JSON.stringify({error:'unknown arm '+a,known:Object.keys(SITES)})); process.exit(2); } globalThis['__'+a]=1; }
