@@ -22460,3 +22460,28 @@ direction disagreed.
 
 (Tooling note: the waiter's verdict script first failed — it parsed only the last line of `harness-oee`'s
 pretty-printed JSON. The runs were untouched; the fixed reader produced the table above.)
+
+### #247 — THE NOVELTY CLOCK: new territory held, against a neutral shadow. A measurement, not a verdict.
+
+**Why.** The headline has been entropyRatio, and since #219b the notes have said it rises from mutation
+noise by construction — #220f, #229 and #246 all read it with that caveat. The artwork's claim is that
+novelty keeps arriving; that needs a number with a null. `harness-novelty.js` (new; in `smoke.sh`) is
+Bedau's shadow method adapted to this engine:
+- **Real:** the first three trait axes in a 10^3 grid over [-1.5, 1.5]; a cell is occupied at a sample with 3+
+  living particles; an ARRIVAL is a cell's first occupancy since warm-up; a PERSISTENT arrival is still
+  occupied 2,000 ticks later — territory held, not visited.
+- **Shadows:** 8 neutral populations seeded at warm-up as copies of the real one, given the real world's
+  births and deaths every 25 ticks and nothing else — a child takes each axis from one of two random shadow
+  parents plus the engine's own mutation kernel (live `INHERIT_SD`, zero if INHERIT is off). No selection, no
+  homogenisers. Own PRNG; the engine's draws are untouched.
+- **Clock:** persistent arrivals per 1,000 ticks in the late half, real against the 8 shadows: above all of them
+  = FASTER THAN CHANCE, inside = CHANCE, below all = SLOWER THAN CHANCE (each tail about 1 in 9 by chance).
+
+**Reading guide, fixed before the first 20k number.** SLOWER THAN CHANCE is not a bug report: it says the
+world's own forces (selection, blending, shrink, niches) hold it to less new territory than neutral drift
+would reach. FASTER is the artwork's claim. CHANCE says the headline number could be noise. Three seeds, one
+horizon, and the grid (three axes, 10 bins, 3 members) are choices — sensitivity to them is untested.
+
+**First reading** (3,000 ticks, seed 1, a short-budget check only): late persistent arrivals real 0 against
+shadows 1-7; cells ever occupied real 41 against 46-52. The 20k reading on seeds 1-3 of `main` is running as
+this is committed.
