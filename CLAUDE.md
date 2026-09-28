@@ -354,6 +354,13 @@ share one pixel format in ffmpeg, so each look branch starts `format=gbrp` (a gr
 clip, time offset or look; `off` is an unlit key) and `stretch` (the user asked to "stretch out just parts of the
 screen": one row or column dragged across a chosen part of the frame, `down`/`right`, moving over a time window).
 Instrumental tracks: find section starts from 0.1 s loudness, not only the onset tempo (it read 80 BPM for a 120 one).
+`the-duet.json` (same track, second mix): `bounce` makes the picture move to the track's own onsets (zoom, drop, shake
+on the biggest hits, harder in loud passages; the user asked for the bounce back). It is written as per-frame sendcmd
+commands to a fixed-size scale+crop: a crop that changed size per frame segfaulted ffmpeg. Also `fuse` modes `rows`,
+`keys`, `checker` (pixel-aligned crossovers, sliding), `spin`, and the `ivory` and `pixel` looks.
+`video/drawn/` is hand-drawn animation in code (PIL, every frame drawn, 'on twos' with boiling lines): free, exact
+and consistent, for what the video model draws badly (a clean mask peel). The user sees it as a new layer on top of
+the rest: AI clips + their own art + remix + drawn animation.
 
 The `[api-proxy-support]` extra matters: behind the session's HTTPS proxy, plain `modal` fails with only "Could not connect to the Modal server"; the real cause (missing `python-socks`) is hidden in the exception's `__cause__`. The first run downloads
 ~20 GB of weights into the `ai-video-cache` volume. The clips are generated separately, so each
