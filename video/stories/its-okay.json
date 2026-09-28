@@ -1,6 +1,6 @@
 {
   "title": "It's Okay",
-  "about": "Episode 12, the user's own two pictures brought to life with image-to-video (the painted figure on the beach, the night balloon). The twist on the series: a good AI does not make you smile, it lets you feel. Smiley balloons drift in, the robot holds a laughing mask over their face, the mask ends up discarded in the sand, and the night balloon's little figure floats up. Takes in its-okay-takes.json. The user's images live in out/inputs (not committed).",
+  "about": "Episode 12, the user's own two pictures brought to life with image-to-video (the painted figure on the beach, the night balloon). The twist on the series: a good AI does not make you smile, it lets you feel. Smiley balloons drift in, the robot holds a laughing mask over their face, the mask ends up discarded in the sand, and the night balloon's little figure floats up. Takes in its-okay-takes.json. The user's images live in out/inputs (not committed). v2: the finale is the same figure dancing inside the balloon, which joins the two halves.",
   "voice": null,
   "tail": 2.0,
   "scenes": [
@@ -25,13 +25,14 @@
       "seed": 2301
     },
     {
-      "prompt": "the glowing balloon sways gently in the night, the projected stars twinkle and drift, the little figure holding the bunch of colourful balloons slowly floats upward across the balloon, the blue lights on the ground glow softly",
-      "image": "../../out/inputs/night-balloon.png",
-      "seed": 2400,
+      "prompt": "the colourful painted figure projected inside the glowing balloon rises to their feet and dances joyfully, arms raised, spinning and swaying freely among the twinkling projected stars, the balloon glows and its colours bloom, the blue lights on the ground pulse softly, magical night",
+      "image": "../../out/inputs/balloon-figure.png",
+      "seed": 2502,
       "fade": 4.3,
       "say": "We only get to teach it once.",
       "lead": 4.6,
-      "whisper": true
+      "whisper": true,
+      "note": "v2 after the user's note that beach and balloon felt like two videos: the painted figure cut out (rembg) and composited into the balloon's projection (out/inputs/balloon-figure.png), then animated dancing; take 3 of 3 (1 and 2 put real people in front)."
     }
   ]
 }

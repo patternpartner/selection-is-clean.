@@ -1,0 +1,21 @@
+{
+  "title": "It's Okay: dance (takes)",
+  "voice": null,
+  "scenes": [
+    {
+      "prompt": "the colourful painted figure projected inside the glowing balloon rises to their feet and dances joyfully, arms raised, spinning and swaying freely among the twinkling projected stars, the balloon glows and its colours bloom, the blue lights on the ground pulse softly, magical night",
+      "image": "../../out/inputs/balloon-figure.png",
+      "seed": 2500
+    },
+    {
+      "prompt": "the colourful painted figure projected inside the glowing balloon rises to their feet and dances joyfully, arms raised, spinning and swaying freely among the twinkling projected stars, the balloon glows and its colours bloom, the blue lights on the ground pulse softly, magical night",
+      "image": "../../out/inputs/balloon-figure.png",
+      "seed": 2501
+    },
+    {
+      "prompt": "the colourful painted figure projected inside the glowing balloon rises to their feet and dances joyfully, arms raised, spinning and swaying freely among the twinkling projected stars, the balloon glows and its colours bloom, the blue lights on the ground pulse softly, magical night",
+      "image": "../../out/inputs/balloon-figure.png",
+      "seed": 2502
+    }
+  ]
+}
