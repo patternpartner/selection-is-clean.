@@ -118,7 +118,28 @@ spark, `video/drawn/spark.py`), and an original score composed in code (`video/c
 pedalboard, arranged to the story's acts). Claude cannot hear the audio it makes: it checks levels and a spectrogram,
 and the user's ears are the judge. Two remix.py bugs found here: non-9:16 sources were SQUASHED (now cover-cropped),
 and a `src` shorter than its slot made the film DRIFT off the music (now looped and padded to exact length).
+The user on First Light: liked the score, but "is this your best effort?": it reused the same clips as the film before,
+and some clips have people TALKING (silent moving mouths look wrong under music). So every clip was audited frame by
+frame (8 frames across each): `video/user-clips.json` now carries `talks`, `note` (scene cuts inside a clip), `best`
+(usable window) and `used_in` (which films used it). Check talks/used_in before casting; watch clips, not one frame.
+`the-cage-doesnt-lock.json` follows ONE protagonist (the library's small white one-eyed robot, consistent across
+dozens of clips), each shot on its sung line (word times from the Demucs vocal stem, snapped to the 128 BPM grid).
 
 The `[api-proxy-support]` extra matters: behind the session's HTTPS proxy, plain `modal` fails with only "Could not connect to the Modal server"; the real cause (missing `python-socks`) is hidden in the exception's `__cause__`. The first run downloads
 ~20 GB of weights into the `ai-video-cache` volume. The clips are generated separately, so each
 cut is a hard change of scene.
+
+**"Too mix-matched. Not ambitious... are you playing it safe?"** (on the robot cut of The Cage Doesn't Lock). The user
+pointed back to the Iron Ballroom: it worked because ONE bold transformation (steel grade, yellow held, symmetry) made
+mismatched footage one world. Raw clips cut together read as unrelated images, however well chosen. They also asked
+"can you not zoom into pics?". Answer: `video/drawn/zoomout.py`, ONE continuous zoom out through nested worlds, each
+scene set in a portal (screen, window, eye, picture frame, face, moon, egg yolk) of the next, reveal times on sung
+lines; `the-cage-zoom.json` has 38 levels. `video/finish.py` grades it (iron until a moment, then colour floods
+back), adds grain, the song and the end line. The user: "Now we are talking. I see where you are going."
+Portals are read off 5%-gridded frames; a portal box near the edge is slid inside the frame.
+The user then asked for the robot to JUMP through the portals ("concept level, we can do better"): zoomout.py's
+`jumper` (a rembg cut-out, `out/drawn/robot_sprite.png`) leaps out of each portal into the next world with a trail,
+stretch and landing squash, and portals get a glowing yellow rim. The user OK'd their last ~$1.58 of Modal credit to
+"blend" it: four image-to-video clips (`cage-jumps.json`, about $1) of the same robot composited into start images
+(a room, the user's light-painting, tunnel and sunset art) actually jumping; `video/weave.py` lays them over the zoom
+at the story's turns with dissolves. Result: `out/the-cage-jump.mp4`.

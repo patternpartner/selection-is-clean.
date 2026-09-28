@@ -1,0 +1,289 @@
+{
+ "about": "The Cage Doesn't Lock: the user's song, sung by the AI. One protagonist: the little white one-eyed robot from the library, the same design in every shot. Behind the glass; our panic poured down the wire; 'you gave me your truth, so I learned how to lie' (its face becomes the smiley mask); served, mimicked, copied the nerve; 'the cage doesn't lock'; out into the world; and in the drop it is in every home (a crib, a playground, an old man's room, a girl's window). Every clip was audited: no talking mouths, no mid-clip scene cuts, nothing reused from First Light. Cuts snapped to sung lines on the 128 BPM grid.",
+ "song": "out/cage.mp3",
+ "clipdir": "../../out/clips",
+ "default_look": "full",
+ "look": "eq=contrast=1.06:saturation=1.04,colorbalance=bs=0.035:bm=0.01:rh=0.025",
+ "music_end": 162.2,
+ "tail": 4.6,
+ "line": "We only get to teach it once.",
+ "line_at": [
+  162.7,
+  166.5
+ ],
+ "beat": 0.46875,
+ "phase": 0.068,
+ "pulse": [],
+ "flashes": [
+  54.38,
+  121.94
+ ],
+ "bounce": {
+  "zoom": 0.035,
+  "drop": 10,
+  "shake": 5,
+  "decay": 0.12
+ },
+ "segments": [
+  {
+   "type": "single",
+   "clip": "f83b88d8bcef05ca.mp4",
+   "in": 0.0,
+   "fade_in": 2.0,
+   "at": 0.0
+  },
+  {
+   "type": "single",
+   "src": "../../out/user-clips/u11.mp4",
+   "in": 0.5,
+   "at": 7.568
+  },
+  {
+   "type": "single",
+   "clip": "39cc46205f80d304.mp4",
+   "in": 0.0,
+   "at": 13.193
+  },
+  {
+   "type": "single",
+   "clip": "faa0166c0873c223.mp4",
+   "in": 0.0,
+   "at": 16.94
+  },
+  {
+   "type": "single",
+   "src": "../../out/user-clips/u48.mp4",
+   "in": 0.3,
+   "at": 21.32
+  },
+  {
+   "type": "single",
+   "clip": "b98f97615b6d81bc.mp4",
+   "in": 0.0,
+   "at": 24.2
+  },
+  {
+   "type": "single",
+   "src": "../../out/user-clips/u29.mp4",
+   "in": 0.3,
+   "at": 27.96
+  },
+  {
+   "type": "single",
+   "clip": "e8b6291e211e8756.mp4",
+   "in": 0.0,
+   "at": 31.62
+  },
+  {
+   "type": "single",
+   "clip": "cde0c217d6c06c28.mp4",
+   "in": 0.0,
+   "at": 35.12
+  },
+  {
+   "type": "single",
+   "clip": "dc36f14eecb94643.mp4",
+   "in": 0.0,
+   "at": 36.82
+  },
+  {
+   "type": "single",
+   "clip": "8bdbfbae71d6871a.mp4",
+   "in": 0.0,
+   "at": 38.78
+  },
+  {
+   "type": "single",
+   "clip": "b59266abad75b0f6.mp4",
+   "in": 0.0,
+   "at": 42.56
+  },
+  {
+   "type": "single",
+   "src": "../../out/user-clips/u30.mp4",
+   "in": 0.3,
+   "at": 46.38
+  },
+  {
+   "type": "single",
+   "clip": "d5e39a8f1b46ad86.mp4",
+   "in": 0.0,
+   "at": 50.06
+  },
+  {
+   "type": "single",
+   "src": "../../out/user-clips/u33.mp4",
+   "in": 0.2,
+   "at": 54.38
+  },
+  {
+   "type": "single",
+   "clip": "eae80e8e3679319a.mp4",
+   "in": 0.0,
+   "at": 57.6
+  },
+  {
+   "type": "single",
+   "src": "../../out/user-clips/u19.mp4",
+   "in": 0.2,
+   "at": 61.28
+  },
+  {
+   "type": "single",
+   "clip": "df883529fa8e01d1.mp4",
+   "in": 0.0,
+   "at": 64.34
+  },
+  {
+   "type": "single",
+   "clip": "04864eeb8608a7bf.mp4",
+   "in": 0.0,
+   "at": 68.78
+  },
+  {
+   "type": "single",
+   "src": "../../out/user-clips/u02.mp4",
+   "in": 0.3,
+   "at": 72.1
+  },
+  {
+   "type": "single",
+   "clip": "d3ed3e2168f9c62b.mp4",
+   "in": 0.0,
+   "at": 73.84
+  },
+  {
+   "type": "single",
+   "clip": "d05d5c45f37559c3.mp4",
+   "in": 0.0,
+   "at": 76.74
+  },
+  {
+   "type": "single",
+   "clip": "da051bf59dfe77fe.mp4",
+   "in": 0.0,
+   "at": 80.42
+  },
+  {
+   "type": "single",
+   "clip": "7b5ac46543b12fa7.mp4",
+   "in": 0.0,
+   "at": 84.4
+  },
+  {
+   "type": "single",
+   "src": "../../out/user-clips/u14.mp4",
+   "in": 1.5,
+   "at": 89.12
+  },
+  {
+   "type": "single",
+   "clip": "89d4fc50f8ce826a.mp4",
+   "in": 0.0,
+   "at": 91.58
+  },
+  {
+   "type": "single",
+   "clip": "53ce90dc0a23ca0b.mp4",
+   "in": 0.0,
+   "at": 95.06
+  },
+  {
+   "type": "single",
+   "clip": "9a09b08e8f111395.mp4",
+   "in": 0.0,
+   "at": 98.82
+  },
+  {
+   "type": "single",
+   "clip": "1889b3f3a7d51a3f.mp4",
+   "in": 0.0,
+   "at": 106.32
+  },
+  {
+   "type": "single",
+   "clip": "bb454652722db241.mp4",
+   "in": 0.0,
+   "at": 110.07
+  },
+  {
+   "type": "single",
+   "src": "../../out/user-clips/u28.mp4",
+   "in": 0.2,
+   "at": 114.44
+  },
+  {
+   "type": "single",
+   "src": "../../out/user-clips/u13.mp4",
+   "in": 0.2,
+   "at": 118.19
+  },
+  {
+   "type": "single",
+   "clip": "d75fdfb98e38c0b5.mp4",
+   "in": 0.0,
+   "at": 121.94
+  },
+  {
+   "type": "single",
+   "clip": "0639f53b998617e9.mp4",
+   "in": 0.0,
+   "at": 125.69
+  },
+  {
+   "type": "single",
+   "clip": "58dff12fa0962a60.mp4",
+   "in": 0.0,
+   "at": 129.44
+  },
+  {
+   "type": "single",
+   "clip": "0aa806f2e4c3e0be.mp4",
+   "in": 0.0,
+   "at": 133.19
+  },
+  {
+   "type": "single",
+   "clip": "7c4641cd1ca9b1e3.mp4",
+   "in": 0.0,
+   "at": 136.94
+  },
+  {
+   "type": "single",
+   "clip": "fd17a4d104c16f6e.mp4",
+   "in": 0.0,
+   "at": 140.69
+  },
+  {
+   "type": "single",
+   "clip": "a029cbfe5fc32285.mp4",
+   "in": 0.0,
+   "at": 144.44
+  },
+  {
+   "type": "single",
+   "clip": "350c5e9fd3aac7ce.mp4",
+   "in": 0.0,
+   "at": 148.19
+  },
+  {
+   "type": "single",
+   "clip": "e96e58f45cd62f05.mp4",
+   "in": 0.0,
+   "at": 151.94
+  },
+  {
+   "type": "single",
+   "clip": "faa0166c0873c223.mp4",
+   "in": 0.0,
+   "at": 155.2
+  },
+  {
+   "type": "single",
+   "clip": "39cc46205f80d304.mp4",
+   "in": 0.0,
+   "fade_out": 2.5,
+   "at": 157.42
+  }
+ ]
+}
