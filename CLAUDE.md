@@ -361,6 +361,11 @@ commands to a fixed-size scale+crop: a crop that changed size per frame segfault
 `video/drawn/` is hand-drawn animation in code (PIL, every frame drawn, 'on twos' with boiling lines): free, exact
 and consistent, for what the video model draws badly (a clean mask peel). The user sees it as a new layer on top of
 the rest: AI clips + their own art + remix + drawn animation.
+`video/drawn/stills.py` animates the user's stills (slow move, rembg parallax) and draws on them: `ink` smiley masks
+placed in image coordinates (inked on over `draw`, peeled off over `peel`), `cracks` (broken glass, screen fixed),
+and `tunnel` (the user's viewfinder-bracket art made endless). `build_bitter_pill_full.py` is the pattern: draw the
+shots into `out/drawn/<film>/`, then cut them with remix.py via `src`. Place a mask by gridding the image first (the
+singer's tilted face was 240 px off on the first guess). The user's new stills are in `out/inputs/` and `library/inputs`.
 
 The `[api-proxy-support]` extra matters: behind the session's HTTPS proxy, plain `modal` fails with only "Could not connect to the Modal server"; the real cause (missing `python-socks`) is hidden in the exception's `__cause__`. The first run downloads
 ~20 GB of weights into the `ai-video-cache` volume. The clips are generated separately, so each
