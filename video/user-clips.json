@@ -8,7 +8,9 @@
   "what": "man in orange jumpsuit in a stone prison cell",
   "tags": [
    "real-face"
-  ]
+  ],
+  "talks": true,
+  "used_in": []
  },
  {
   "id": "u02",
@@ -19,7 +21,14 @@
   "what": "white plush toy in a 'VICTIM' shirt, masked slasher in the dark behind it",
   "tags": [
    "free"
-  ]
+  ],
+  "talks": false,
+  "note": "ends on a body on the floor after 4 s",
+  "best": [
+   0,
+   4
+  ],
+  "used_in": []
  },
  {
   "id": "u03",
@@ -30,7 +39,9 @@
   "what": "two world leaders at a painting with flags",
   "tags": [
    "real-context"
-  ]
+  ],
+  "talks": true,
+  "used_in": []
  },
  {
   "id": "u04",
@@ -41,7 +52,9 @@
   "what": "close-up of a famous politician's face in shadow, hands at a mask",
   "tags": [
    "real-face"
-  ]
+  ],
+  "talks": true,
+  "used_in": []
  },
  {
   "id": "u05",
@@ -52,7 +65,10 @@
   "what": "astronaut in red suit with bunny ears at a bowling alley, a head in a helmet",
   "tags": [
    "real-face"
-  ]
+  ],
+  "talks": false,
+  "note": "several shots",
+  "used_in": []
  },
  {
   "id": "u06",
@@ -63,7 +79,9 @@
   "what": "long-haired rocker in an open silk robe, disco ball",
   "tags": [
    "real-face"
-  ]
+  ],
+  "talks": true,
+  "used_in": []
  },
  {
   "id": "u07",
@@ -75,6 +93,14 @@
   "tags": [
    "free",
    "abstract"
+  ],
+  "talks": false,
+  "best": [
+   0,
+   6
+  ],
+  "used_in": [
+   "first-light"
   ]
  },
  {
@@ -86,7 +112,9 @@
   "what": "long-haired rocker in a robe (another face)",
   "tags": [
    "real-face"
-  ]
+  ],
+  "talks": true,
+  "used_in": []
  },
  {
   "id": "u09",
@@ -97,7 +125,14 @@
   "what": "man in tuxedo dips a woman in a sequinned gown down a hallway",
   "tags": [
    "real-face"
-  ]
+  ],
+  "talks": false,
+  "note": "three scenes: couple dip, pipers marching 4-9 s, a politician",
+  "best": [
+   4,
+   9
+  ],
+  "used_in": []
  },
  {
   "id": "u10",
@@ -110,6 +145,15 @@
    "free",
    "abstract",
    "own-art"
+  ],
+  "talks": false,
+  "best": [
+   3,
+   15
+  ],
+  "used_in": [
+   "the-duet-film",
+   "first-light"
   ]
  },
  {
@@ -122,7 +166,14 @@
   "tags": [
    "free",
    "abstract"
-  ]
+  ],
+  "talks": false,
+  "note": "last second glitches",
+  "best": [
+   0,
+   8
+  ],
+  "used_in": []
  },
  {
   "id": "u12",
@@ -134,6 +185,11 @@
   "tags": [
    "free",
    "abstract"
+  ],
+  "talks": false,
+  "used_in": [
+   "the-duet-film",
+   "first-light"
   ]
  },
  {
@@ -145,7 +201,14 @@
   "what": "soldier in helmet with rifle, black and white",
   "tags": [
    "free"
-  ]
+  ],
+  "talks": false,
+  "note": "the soldier talks from 7 s",
+  "best": [
+   0,
+   5
+  ],
+  "used_in": []
  },
  {
   "id": "u14",
@@ -157,7 +220,14 @@
   "tags": [
    "free",
    "abstract"
-  ]
+  ],
+  "talks": false,
+  "note": "last second glitches",
+  "best": [
+   0,
+   8
+  ],
+  "used_in": []
  },
  {
   "id": "u15",
@@ -168,7 +238,9 @@
   "what": "long-haired rocker in a robe, singing",
   "tags": [
    "real-face"
-  ]
+  ],
+  "talks": true,
+  "used_in": []
  },
  {
   "id": "u16",
@@ -179,7 +251,10 @@
   "what": "man in cowboy hat, 2 s",
   "tags": [
    "real-face"
-  ]
+  ],
+  "talks": true,
+  "note": "two scenes",
+  "used_in": []
  },
  {
   "id": "u17",
@@ -190,6 +265,11 @@
   "what": "glossy blue chrome figure with glowing eyes",
   "tags": [
    "free"
+  ],
+  "talks": false,
+  "used_in": [
+   "the-duet-film",
+   "first-light"
   ]
  },
  {
@@ -202,6 +282,10 @@
   "tags": [
    "free",
    "abstract"
+  ],
+  "talks": false,
+  "used_in": [
+   "first-light"
   ]
  },
  {
@@ -214,7 +298,9 @@
   "tags": [
    "free",
    "abstract"
-  ]
+  ],
+  "talks": false,
+  "used_in": []
  },
  {
   "id": "u20",
@@ -225,6 +311,10 @@
   "what": "orange alien on top of a giant pixel head with glowing eyes",
   "tags": [
    "free"
+  ],
+  "talks": false,
+  "used_in": [
+   "first-light"
   ]
  },
  {
@@ -237,6 +327,10 @@
   "tags": [
    "free",
    "abstract"
+  ],
+  "talks": false,
+  "used_in": [
+   "first-light"
   ]
  },
  {
@@ -248,7 +342,9 @@
   "what": "slasher-masked man embracing a famous businessman",
   "tags": [
    "real-face"
-  ]
+  ],
+  "talks": true,
+  "used_in": []
  },
  {
   "id": "u23",
@@ -259,7 +355,9 @@
   "what": "cartoon bird creature on a phone in a white room",
   "tags": [
    "free"
-  ]
+  ],
+  "talks": true,
+  "used_in": []
  },
  {
   "id": "u24",
@@ -272,6 +370,10 @@
    "free",
    "abstract",
    "own-art"
+  ],
+  "talks": false,
+  "used_in": [
+   "first-light"
   ]
  },
  {
@@ -283,7 +385,9 @@
   "what": "'Fat Sams' speakeasy, cartoon gangsters",
   "tags": [
    "free"
-  ]
+  ],
+  "talks": true,
+  "used_in": []
  },
  {
   "id": "u26",
@@ -295,6 +399,10 @@
   "tags": [
    "free",
    "abstract"
+  ],
+  "talks": false,
+  "used_in": [
+   "the-duet-film"
   ]
  },
  {
@@ -308,6 +416,10 @@
    "free",
    "abstract",
    "own-art"
+  ],
+  "talks": false,
+  "used_in": [
+   "the-duet-film"
   ]
  },
  {
@@ -319,7 +431,9 @@
   "what": "red car in a glowing ring",
   "tags": [
    "free"
-  ]
+  ],
+  "talks": false,
+  "used_in": []
  },
  {
   "id": "u29",
@@ -331,7 +445,9 @@
   "tags": [
    "free",
    "abstract"
-  ]
+  ],
+  "talks": false,
+  "used_in": []
  },
  {
   "id": "u30",
@@ -343,7 +459,9 @@
   "tags": [
    "free",
    "abstract"
-  ]
+  ],
+  "talks": false,
+  "used_in": []
  },
  {
   "id": "u31",
@@ -354,7 +472,9 @@
   "what": "clay figures, a raised fist, amber light",
   "tags": [
    "free"
-  ]
+  ],
+  "talks": false,
+  "used_in": []
  },
  {
   "id": "u32",
@@ -365,6 +485,10 @@
   "what": "glowing amber figure throwing light",
   "tags": [
    "free"
+  ],
+  "talks": false,
+  "used_in": [
+   "first-light"
   ]
  },
  {
@@ -377,7 +501,9 @@
   "tags": [
    "free",
    "abstract"
-  ]
+  ],
+  "talks": false,
+  "used_in": []
  },
  {
   "id": "u34",
@@ -388,6 +514,11 @@
   "what": "chrome visor head, reflective mask",
   "tags": [
    "free"
+  ],
+  "talks": false,
+  "used_in": [
+   "the-duet-film",
+   "first-light"
   ]
  },
  {
@@ -399,7 +530,9 @@
   "what": "two men in crocodile suits hugging, bagpiper, Scottish hall",
   "tags": [
    "real-face"
-  ]
+  ],
+  "talks": false,
+  "used_in": []
  },
  {
   "id": "u36",
@@ -410,7 +543,9 @@
   "what": "the same two in horse costumes, bagpiper",
   "tags": [
    "real-face"
-  ]
+  ],
+  "talks": false,
+  "used_in": []
  },
  {
   "id": "u37",
@@ -421,7 +556,10 @@
   "what": "cartoon figure with a horn in a tiled room",
   "tags": [
    "free"
-  ]
+  ],
+  "talks": true,
+  "note": "four scenes",
+  "used_in": []
  },
  {
   "id": "u38",
@@ -432,6 +570,16 @@
   "what": "white bird with long wings flying at sunset over a hilltop",
   "tags": [
    "free"
+  ],
+  "talks": false,
+  "note": "bird 0-3.5 s, then an indoor room",
+  "best": [
+   0,
+   3.5
+  ],
+  "used_in": [
+   "the-duet-film",
+   "first-light"
   ]
  },
  {
@@ -443,6 +591,10 @@
   "what": "small plane cockpit flying over green valleys",
   "tags": [
    "free"
+  ],
+  "talks": false,
+  "used_in": [
+   "first-light"
   ]
  },
  {
@@ -455,6 +607,11 @@
   "tags": [
    "free",
    "abstract"
+  ],
+  "talks": true,
+  "used_in": [
+   "the-duet-film",
+   "first-light"
   ]
  },
  {
@@ -466,6 +623,10 @@
   "what": "figure bending, legs in purple and green light",
   "tags": [
    "free"
+  ],
+  "talks": false,
+  "used_in": [
+   "first-light"
   ]
  },
  {
@@ -477,7 +638,9 @@
   "what": "phone playing a clip of two men in seal costumes",
   "tags": [
    "real-face"
-  ]
+  ],
+  "talks": true,
+  "used_in": []
  },
  {
   "id": "u43",
@@ -488,6 +651,10 @@
   "what": "illustrated clown-faced man, spiky red hair, red bow tie",
   "tags": [
    "free"
+  ],
+  "talks": true,
+  "used_in": [
+   "first-light"
   ]
  },
  {
@@ -499,7 +666,9 @@
   "what": "man with a white horse's head close to camera",
   "tags": [
    "free"
-  ]
+  ],
+  "talks": false,
+  "used_in": []
  },
  {
   "id": "u45",
@@ -510,6 +679,11 @@
   "what": "red-haired man with a white grid-pattern face, painted style",
   "tags": [
    "free"
+  ],
+  "talks": true,
+  "used_in": [
+   "the-duet-film",
+   "first-light"
   ]
  },
  {
@@ -522,6 +696,15 @@
   "tags": [
    "free",
    "abstract"
+  ],
+  "talks": false,
+  "note": "ends in panels after 5 s",
+  "best": [
+   0,
+   5
+  ],
+  "used_in": [
+   "first-light"
   ]
  },
  {
@@ -533,6 +716,10 @@
   "what": "legs walking in white trousers, pale smear",
   "tags": [
    "free"
+  ],
+  "talks": false,
+  "used_in": [
+   "first-light"
   ]
  },
  {
@@ -545,6 +732,8 @@
   "tags": [
    "free",
    "abstract"
-  ]
+  ],
+  "talks": false,
+  "used_in": []
  }
 ]
