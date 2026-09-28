@@ -341,6 +341,10 @@ held up) but not a second character reliably (the robot came out with a smiley f
 `colorhold`), trails, a zoom pulse on the measured beat, negative flashes. `iron-ballroom.json` is the first (the
 user's instrumental; beat grid measured from onsets, 135 BPM). `out/lib/sheet.png` is a numbered contact sheet of
 every clip for casting; `out/lib/index.txt` maps the numbers to clip files.
+`bitter-pill.json` remixes the remix: Iron Ballroom's shots (`from` = its segment index) re-cut to a second track,
+~60 s from two choruses spliced on bar lines (`song_parts`, `song_fade`), one shot per bar, lyrics timed free with a
+local faster-whisper `small` on CPU (no Modal), an oxblood `look`, `stutter` (loop a slice) and `fade_to_iron`
+(colour drains on a lyric). The user found Iron Ballroom "a bit busy": hold shots a bar or more, grids sparingly.
 
 The `[api-proxy-support]` extra matters: behind the session's HTTPS proxy, plain `modal` fails with only "Could not connect to the Modal server"; the real cause (missing `python-socks`) is hidden in the exception's `__cause__`. The first run downloads
 ~20 GB of weights into the `ai-video-cache` volume. The clips are generated separately, so each

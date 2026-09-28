@@ -58,9 +58,16 @@ def render(seg, clipdir, path, dur):
         g.append("".join(f"[m{k}]" for k in range(n * n)) + f"xstack=inputs={n * n}:layout={layout}[grid]")
         last = "grid"
     post = [f"scale={W}:{H}"]
+    if seg.get("stutter"):  # loop the opening slice, like a stuck record
+        k = max(1, round(seg["stutter"] * FPS))
+        post.append(f"trim=end_frame={k},loop=loop=-1:size={k}:start=0,setpts=N/{FPS}/TB")
     if seg.get("trails"):
         post.append("lagfun=decay=0.96")
-    if seg.get("color", "iron") == "iron":
+    if "fade_to_iron" in seg:  # full colour that drains to iron: [start, seconds] within the segment
+        a, b = seg["fade_to_iron"]
+        post.append(f"format=yuv420p,split[{last}c][{last}i];[{last}i]{IRON},format=yuv420p[{last}j];"
+                    f"[{last}c][{last}j]blend=all_expr='A+(B-A)*clip((T-{a})/{b},0,1)'")
+    elif seg.get("color", "iron") == "iron":
         post.append(IRON)
     g.append(f"[{last}]" + ",".join(post) + ",format=yuv420p[v]")
     subprocess.run([F, "-loglevel", "error", "-y", *ins, "-filter_complex", ";".join(g), "-map", "[v]",
@@ -102,12 +109,19 @@ def main(cut_path, out):
         "Format: Name, Fontname, Fontsize, PrimaryColour, OutlineColour, BackColour, Bold, BorderStyle, Outline, Shadow, "
         "Alignment, MarginL, MarginR, MarginV\nStyle: Default,DejaVu Sans,43,&H00FFFFFF,&H00000000,&H80000000,1,1,3,1,5,60,60,0\n\n"
         f"[Events]\nFormat: Layer, Start, End, Style, Text\nDialogue: 0,{ts(a)},{ts(b)},Default,{{\\i1}}{cut['line']}\n")
-    vf = (f"scale=w='{W}*(1+{pulse})':h='{H}*(1+{pulse})':eval=frame,crop={W}:{H},negate=enable='{flash}',"
+    look = (cut["look"] + ",") if cut.get("look") else ""
+    vf = (f"{look}scale=w='{W}*(1+{pulse})':h='{H}*(1+{pulse})':eval=frame,crop={W}:{H},negate=enable='{flash}',"
           f"noise=alls=5:allf=t,tpad=stop_mode=add:stop_duration={end - cut['music_end']:.2f}:color=black,"
           f"fade=t=in:d=0.4,fade=t=out:st={cut['music_end'] - 0.6:.2f}:d=0.6,subtitles={subs},format=yuv420p")
     song = cut["song"]
+    parts_ = cut.get("song_parts", [[0, cut["music_end"]]])  # excerpts of the track, joined in order
+    au = "".join(f"[1:a]atrim={a}:{b},asetpts=PTS-STARTPTS,afade=t=in:d=0.02,afade=t=out:st={b - a - 0.02:.3f}:d=0.02[p{i}];"
+                 for i, (a, b) in enumerate(parts_))
+    au += "".join(f"[p{i}]" for i in range(len(parts_))) + f"concat=n={len(parts_)}:v=0:a=1"
+    if cut.get("song_fade"):
+        au += f",afade=t=out:st={cut['music_end'] - cut['song_fade']:.3f}:d={cut['song_fade']}"
     subprocess.run([F, "-loglevel", "error", "-y", "-i", joined, "-i", song, "-filter_complex",
-                    f"[0:v]{vf}[v];[1:a]atrim=0:{end:.3f},apad=whole_dur={end:.3f}[a]", "-map", "[v]", "-map", "[a]",
+                    f"[0:v]{vf}[v];{au},atrim=0:{end:.3f},apad=whole_dur={end:.3f}[a]", "-map", "[v]", "-map", "[a]",
                     "-t", f"{end:.3f}", "-c:v", "libx264", "-crf", "25", "-preset", "slow", "-maxrate", "3500k",
                     "-bufsize", "7M", "-c:a", "aac", "-b:a", "192k", "-movflags", "+faststart", out], check=True)
     print("saved", out)
