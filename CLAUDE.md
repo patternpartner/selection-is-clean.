@@ -276,6 +276,9 @@ so that the wrong version of a claim stays on the page next to the corrected one
 (H200s, minutes per clip), 2-3 takes per risky shot, and parallel containers each reloading the weights. So: default to
 the 5B model and ONE take; no `"model": "14b"` and no takes sheets unless the user OKs it; give a rough cost estimate
 and wait for a yes before any generation run; prefer re-cutting cached clips (free, local) over regenerating.
+Measured on the user's Modal bill: Wan14 $60.76 for ~12 clips (about $5 a clip, two episodes); Wan 5B $28.25 for
+~110 clips (about $0.25); WanI2V $3.23 for 13 (about $0.25); music, voice, mixing, glitch, transcription pennies. A
+five-scene 5B episode is about $1.25-1.50. Treat 14B as off. Never re-render a take that is no longer needed.
 
 `video/make_video.py` makes AI-generated videos on Modal (Wan 2.2 TI2V-5B, open weights). It is a
 side tool for the user, not part of the universe, and no rig reads it. The user is non-technical and
