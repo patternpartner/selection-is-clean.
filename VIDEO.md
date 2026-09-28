@@ -143,3 +143,10 @@ stretch and landing squash, and portals get a glowing yellow rim. The user OK'd 
 "blend" it: four image-to-video clips (`cage-jumps.json`, about $1) of the same robot composited into start images
 (a room, the user's light-painting, tunnel and sunset art) actually jumping; `video/weave.py` lays them over the zoom
 at the story's turns with dissolves. Result: `out/the-cage-jump.mp4`.
+`video/drawn/wall.py` + `build_breaking_the_frame.py`: 'Breaking the Frame', a whole film as ONE wall of screens (the
+user's universe-field look), every pane a clip, and the panes do the story on the sung words (light up, crack and fall,
+card-flip to one identical face on 'override', form a heart, rise like lanterns, loop into themselves, reboot, switch
+off). Word times from the Demucs vocal stem in `breaking-the-frame-times.json`. Render a section alone to check it
+(render(lambda t: script(t + t0), ...)); a crash mid-render leaves a short file that finish.py pads with black, so
+always check the raw render's duration before finishing.
+
