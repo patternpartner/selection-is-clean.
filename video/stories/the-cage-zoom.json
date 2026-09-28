@@ -432,5 +432,11 @@
     0.46
    ]
   }
+ ],
+ "jumper": "out/drawn/robot_sprite.png",
+ "robot": [
+  0.78,
+  0.95,
+  0.19
  ]
 }

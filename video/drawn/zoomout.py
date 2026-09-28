@@ -88,6 +88,60 @@ def ease(u):
     return 0.72 * u + 0.28 * s
 
 
+RIM = (255, 206, 60)
+
+
+def rim(img, box_xy, size, p, shape, b0, strength=1.0):
+    """A glowing yellow rim round a portal: it reads as a doorway, not a pasted picture."""
+    x, y = box_xy
+    bw, bh = size
+    sx, sy = bw / (b0[2] - b0[0]), bh / (b0[3] - b0[1])
+    r = [x + (p[0] * W - b0[0]) * sx, y + (p[1] * H - b0[1]) * sy, x + (p[2] * W - b0[0]) * sx, y + (p[3] * H - b0[1]) * sy]
+    lw = max(1, int((r[2] - r[0]) / 70))
+    pad = lw * 6
+    x0, y0 = int(max(r[0] - pad, 0)), int(max(r[1] - pad, 0))
+    x1, y1 = int(min(r[2] + pad, W)), int(min(r[3] + pad, H))
+    if x1 - x0 < 4 or y1 - y0 < 4:
+        return
+    glow = Image.new("L", (x1 - x0, y1 - y0), 0)
+    d = ImageDraw.Draw(glow)
+    rr = [r[0] - x0, r[1] - y0, r[2] - x0, r[3] - y0]
+    (d.ellipse if shape == "ellipse" else d.rectangle)(rr, outline=255, width=lw)
+    halo = glow.filter(ImageFilter.GaussianBlur(lw * 2.5))
+    a = np.clip(np.asarray(glow, float) + np.asarray(halo, float) * 1.8, 0, 255) * strength
+    region = np.asarray(img.crop((x0, y0, x1, y1)), float)
+    k = (a / 255)[..., None]
+    region = region * (1 - k) + np.array(RIM, float) * k
+    img.paste(Image.fromarray(region.astype(np.uint8)), (x0, y0))
+
+
+class Jumper:
+    """The robot: a cut-out that stands in each world and leaps out of it into the next, bigger one."""
+
+    def __init__(self, path):
+        self.img = Image.open(path).convert("RGBA")
+        self.trail = []
+
+    def draw(self, view, x, y, h, sx=1.0, sy=1.0, rot=0.0, alpha=1.0, trail=False):
+        if h < 3:
+            return
+        w = h * self.img.width / self.img.height
+        im = self.img.resize((max(1, int(w * sx)), max(1, int(h * sy))), Image.BILINEAR)
+        if rot:
+            im = im.rotate(rot, resample=Image.BILINEAR, expand=True)
+        if trail:
+            self.trail = (self.trail + [(x, y, im)])[-3:]
+            for j, (tx, ty, ti) in enumerate(self.trail[:-1]):
+                ghost = ti.copy()
+                ghost.putalpha(ghost.getchannel("A").point(lambda v, j=j: int(v * 0.07 * (j + 1))))
+                view.paste(ghost, (int(tx - ghost.width / 2), int(ty - ghost.height)), ghost)
+        else:
+            self.trail = []
+        if alpha < 1:
+            im.putalpha(im.getchannel("A").point(lambda v: int(v * alpha)))
+        view.paste(im, (int(x - im.width / 2), int(y - im.height)), im)
+
+
 def main(plan_path, out):
     plan = json.load(open(plan_path))
     L = plan["levels"]
@@ -97,6 +151,7 @@ def main(plan_path, out):
                           "-r", str(FPS), "-i", "-", "-c:v", "libx264", "-crf", "16", "-pix_fmt", "yuv420p", out],
                          stdin=subprocess.PIPE)
     nframes = int(plan["end"] * FPS)
+    jumper = Jumper(plan["jumper"]) if plan.get("jumper") else None
     cache = {}
 
     def scene(k, t):
@@ -129,6 +184,7 @@ def main(plan_path, out):
         if a < 1:
             m = m.point(lambda v: int(v * a))
         img.paste(inner, (int(round(box[0])), int(round(box[1]))), m)
+        rim(img, (box[0], box[1]), (bw, bh), lv["portal"], lv.get("shape", "rect"), box, a)
         return img
 
     for i in range(nframes):
@@ -165,6 +221,38 @@ def main(plan_path, out):
                 if a < 1:
                     m = m.point(lambda v: int(v * a))
                 view.paste(inner, (int(round(px0)), int(round(py0))), m)
+                rim(view, (px0, py0), (pw, ph), lv["portal"], lv.get("shape", "rect"), b0, a * min(ue / 0.3, 1))
+        if jumper is not None:
+            # where the robot stands: its spot in a scene, mapped into this frame
+            spot = lambda j: L[j].get("robot", plan.get("robot", [0.5, 0.92, 0.2]))
+            ex, ey, eh = spot(k)
+            s_out = W / (box[2] - box[0])
+            end = ((ex * W - box[0]) * s_out, (ey * H - box[1]) * s_out, eh * H * s_out)
+            if k > 0:
+                sx_, sy_, sh = spot(k - 1)
+                start = (px0 + sx_ * pw, py0 + sy_ * ph, sh * ph)
+            else:
+                start = end
+            j0, j1 = 0.2, 0.72  # the leap, as a share of this zoom
+            if u <= j0 or k == 0:
+                q = 0.0
+            elif u >= j1:
+                q = 1.0
+            else:
+                q = (u - j0) / (j1 - j0)
+            if 0 < q < 1:
+                arc = math.sin(math.pi * q) * H * 0.38
+                x = start[0] + (end[0] - start[0]) * q
+                y = start[1] + (end[1] - start[1]) * q - arc
+                hh = math.exp(math.log(max(start[2], 1)) + (math.log(max(end[2], 1)) - math.log(max(start[2], 1))) * q)
+                stretch = 1 + 0.18 * math.sin(math.pi * q)
+                jumper.draw(view, x, y, hh, 1 / stretch, stretch, rot=-25 * math.sin(2 * math.pi * q), trail=True)
+            else:
+                x, y, hh = (start if q == 0 else end)
+                land = (u - j1) / 0.08 if q == 1 else 99
+                squash = 1 - 0.22 * math.sin(math.pi * min(max(land, 0), 1)) if land < 1 else 1.0
+                bob = 1 + 0.02 * math.sin(t * 4)
+                jumper.draw(view, x, y, hh, 1 / squash, squash * bob)
         p.stdin.write(view.tobytes())
         if i % 240 == 0:
             print(f"{t:6.1f}s level {k}", flush=True)
