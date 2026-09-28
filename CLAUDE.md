@@ -313,6 +313,9 @@ Continuity across clips (episode 7, `a-lifetime.json`): Wan redraws the robot's 
 window seat, seasons changing outside) plus one recurring object made a life journey read where separate rooms did not.
 Per scene `"model": "14b"` uses the bigger Wan 2.2 T2V-A14B (H200, 16 fps, several times slower) for hero shots;
 `"grade": true` puts one colour grade and film grain over everything so mixed models read as one film.
+A Bash call here is cut at 10 minutes, and nine 14B clips take longer: run `modal run --detach ...` and re-run it;
+each clip is kept in the volume (`/cache/clips`) as it finishes and fetched on the next run. Per-scene `seed` picks a
+take; `"fade_in": false` starts on the first frame (hooks). `wider-takes.json` is a takes sheet for `wider`.
 
 The `[api-proxy-support]` extra matters: behind the session's HTTPS proxy, plain `modal` fails with only "Could not connect to the Modal server"; the real cause (missing `python-socks`) is hidden in the exception's `__cause__`. The first run downloads
 ~20 GB of weights into the `ai-video-cache` volume. The clips are generated separately, so each

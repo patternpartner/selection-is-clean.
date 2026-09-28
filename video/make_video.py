@@ -55,6 +55,15 @@ cache = modal.Volume.from_name("ai-video-cache", create_if_missing=True)
 app = modal.App("ai-video")
 
 
+def _keep(key: str, data: bytes) -> bytes:
+    """Save a finished clip in the volume too, so a long run can outlive the local client (modal run --detach)."""
+    if key:
+        os.makedirs("/cache/clips", exist_ok=True)
+        open(f"/cache/clips/{key}.mp4", "wb").write(data)
+        cache.commit()
+    return data
+
+
 @app.cls(gpu="H100", image=image, volumes={"/cache": cache}, timeout=1800, scaledown_window=60)
 class Wan:
     @modal.enter()
@@ -67,7 +76,7 @@ class Wan:
         cache.commit()
 
     @modal.method()
-    def clip(self, prompt: str, seed: int, width: int, height: int) -> bytes:
+    def clip(self, prompt: str, seed: int, width: int, height: int, key: str = "") -> bytes:
         import torch
         from diffusers.utils import export_to_video
 
@@ -83,7 +92,7 @@ class Wan:
         ).frames[0]
         with tempfile.NamedTemporaryFile(suffix=".mp4") as f:
             export_to_video(frames, f.name, fps=FPS)
-            return open(f.name, "rb").read()
+            return _keep(key, open(f.name, "rb").read())
 
 
 MODEL_14B = "Wan-AI/Wan2.2-T2V-A14B-Diffusers"
@@ -104,7 +113,7 @@ class Wan14:
         cache.commit()
 
     @modal.method()
-    def clip(self, prompt: str, seed: int, width: int, height: int) -> bytes:
+    def clip(self, prompt: str, seed: int, width: int, height: int, key: str = "") -> bytes:
         import torch
         from diffusers.utils import export_to_video
 
@@ -121,7 +130,7 @@ class Wan14:
         ).frames[0]
         with tempfile.NamedTemporaryFile(suffix=".mp4") as f:
             export_to_video(frames, f.name, fps=FPS_14B)
-            return open(f.name, "rb").read()
+            return _keep(key, open(f.name, "rb").read())
 
 
 def _ffmpeg():
@@ -423,13 +432,23 @@ def story(file: str, out: str = "story.mp4", seed: int = 0, landscape: bool = Fa
     ids = {"5b": (MODEL_ID, CLIP_FRAMES), "14b": (MODEL_14B, FRAMES_14B)}
     paths = [os.path.join(store, hashlib.sha1(repr(ids[m] + j).encode()).hexdigest()[:16] + ".mp4")
              for m, j in zip(models, jobs)]
+    # Clips a previous (perhaps cut-off) run finished remotely are fetched from the volume instead of remade.
+    try:
+        remote = {e.path.split("/")[-1] for e in cache.listdir("clips")}
+    except Exception:
+        remote = set()
+    for i, p in enumerate(paths):
+        name = os.path.basename(p)
+        if not os.path.exists(p) and name in remote:
+            open(p, "wb").write(b"".join(cache.read_file(f"clips/{name}")))
     todo = [i for i, p in enumerate(paths) if not os.path.exists(p)]
     print(f"generating {len(todo)} of {len(jobs)} clips ({len(jobs) - len(todo)} reused)")
+    keys = [os.path.basename(p)[:-4] for p in paths]
     # Both models run at once; each clip is saved as soon as its batch returns.
     small = [i for i in todo if models[i] == "5b"]
     big = [i for i in todo if models[i] == "14b"]
-    big_calls = [Wan14().clip.spawn(*jobs[i]) for i in big]
-    for i, data in zip(small, Wan().clip.starmap([jobs[i] for i in small])):
+    big_calls = [Wan14().clip.spawn(*jobs[i], keys[i]) for i in big]
+    for i, data in zip(small, Wan().clip.starmap([jobs[i] + (keys[i],) for i in small])):
         open(paths[i], "wb").write(data)
     for i, call in zip(big, big_calls):
         open(paths[i], "wb").write(call.get())
