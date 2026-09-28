@@ -1,0 +1,540 @@
+{
+ "about": "The Iron Ballroom: the series re-forged to the user's track, no new footage. Steel greyscale with yellow held; mirror symmetry makes pairs of dancers; the screen fills 2x2, 3x3, 4x4; only the dancer in the balloon gets colour back. Beat grid 135 BPM measured from the track.",
+ "song": "/tmp/claude-0/-home-user-selection-is-clean-/b9b414e6-460f-5aee-89c7-9b78deb6d5d0/scratchpad/iron.mp3",
+ "clipdir": "../../out/clips",
+ "music_end": 165.27,
+ "tail": 2.5,
+ "line": "We only get to teach it once.",
+ "beat": 0.4444444444444422,
+ "phase": 0.05,
+ "pulse": [
+  [
+   15.606,
+   44.05
+  ],
+  [
+   60.49,
+   150.717
+  ]
+ ],
+ "flashes": [
+  15.606,
+  60.49,
+  81.383,
+  108.05,
+  150.717
+ ],
+ "segments": [
+  {
+   "at": 0.0,
+   "type": "single",
+   "clip": "7b5ac46543b12fa7.mp4",
+   "mirror": "quad",
+   "speed": 1.3
+  },
+  {
+   "at": 4.939,
+   "type": "single",
+   "clip": "b18860588ac54a3a.mp4",
+   "mirror": "h",
+   "speed": 1.3
+  },
+  {
+   "at": 8.494,
+   "type": "single",
+   "clip": "d75fdfb98e38c0b5.mp4",
+   "mirror": "h",
+   "speed": 1.3
+  },
+  {
+   "at": 12.05,
+   "type": "single",
+   "clip": "53491f00c649d52b.mp4",
+   "mirror": "quad",
+   "speed": 1.3
+  },
+  {
+   "at": 15.606,
+   "type": "single",
+   "clip": "928b830a2ebfffb1.mp4",
+   "mirror": "h"
+  },
+  {
+   "at": 17.383,
+   "type": "single",
+   "clip": "f4d62d1fe4a3bcd9.mp4",
+   "mirror": "h"
+  },
+  {
+   "at": 19.161,
+   "type": "single",
+   "clip": "67569e20683e0876.mp4",
+   "mirror": "h"
+  },
+  {
+   "at": 20.939,
+   "type": "single",
+   "clip": "b59266abad75b0f6.mp4",
+   "mirror": "h"
+  },
+  {
+   "at": 22.717,
+   "type": "single",
+   "clip": "eae80e8e3679319a.mp4",
+   "mirror": "h"
+  },
+  {
+   "at": 24.494,
+   "type": "single",
+   "clip": "3e4d603e656c5f10.mp4",
+   "mirror": "h"
+  },
+  {
+   "at": 26.272,
+   "type": "single",
+   "clip": "da051bf59dfe77fe.mp4",
+   "mirror": "h"
+  },
+  {
+   "at": 28.05,
+   "type": "single",
+   "clip": "4e38e058eb7f9f46.mp4",
+   "mirror": "h"
+  },
+  {
+   "at": 29.828,
+   "type": "single",
+   "clip": "3f17ae19f72e18ed.mp4",
+   "mirror": "h"
+  },
+  {
+   "at": 31.606,
+   "type": "single",
+   "clip": "6e62014b99559a88.mp4",
+   "mirror": "h"
+  },
+  {
+   "at": 33.383,
+   "type": "single",
+   "clip": "130bdbe4e621dfd0.mp4",
+   "mirror": "h"
+  },
+  {
+   "at": 35.161,
+   "type": "single",
+   "clip": "174721fa36c86815.mp4",
+   "mirror": "h"
+  },
+  {
+   "at": 36.939,
+   "type": "single",
+   "clip": "de6fff2b15ca8775.mp4",
+   "mirror": "h"
+  },
+  {
+   "at": 38.717,
+   "type": "single",
+   "clip": "8d8efa160494def8.mp4",
+   "mirror": "h"
+  },
+  {
+   "at": 40.494,
+   "type": "single",
+   "clip": "77f1c9c64bc6f1d8.mp4",
+   "mirror": "h"
+  },
+  {
+   "at": 42.272,
+   "type": "single",
+   "clip": "d05d5c45f37559c3.mp4",
+   "mirror": "h"
+  },
+  {
+   "at": 44.05,
+   "type": "single",
+   "clip": "faa0166c0873c223.mp4",
+   "speed": 1.6,
+   "trails": true
+  },
+  {
+   "at": 52.0,
+   "type": "single",
+   "clip": "6e8d722ca222719a.mp4",
+   "speed": 1.5,
+   "trails": true
+  },
+  {
+   "at": 59.86,
+   "type": "black"
+  },
+  {
+   "at": 60.49,
+   "type": "grid",
+   "n": 2,
+   "clips": [
+    "928b830a2ebfffb1.mp4",
+    "f4d62d1fe4a3bcd9.mp4",
+    "f203973351f9d415.mp4",
+    "fb028a5da6f5f244.mp4"
+   ],
+   "mirror": "h"
+  },
+  {
+   "at": 61.828,
+   "type": "grid",
+   "n": 2,
+   "clips": [
+    "67569e20683e0876.mp4",
+    "da051bf59dfe77fe.mp4",
+    "b59266abad75b0f6.mp4",
+    "4e38e058eb7f9f46.mp4"
+   ],
+   "mirror": "h"
+  },
+  {
+   "at": 65.383,
+   "type": "grid",
+   "n": 2,
+   "clips": [
+    "3e4d603e656c5f10.mp4",
+    "a0dfa198594b133e.mp4",
+    "f4d62d1fe4a3bcd9.mp4",
+    "928b830a2ebfffb1.mp4"
+   ],
+   "mirror": "h"
+  },
+  {
+   "at": 68.939,
+   "type": "grid",
+   "n": 2,
+   "clips": [
+    "6e62014b99559a88.mp4",
+    "b1ea350eee4efa2e.mp4",
+    "a4cd8b6589b2c445.mp4",
+    "3f17ae19f72e18ed.mp4"
+   ],
+   "mirror": "h"
+  },
+  {
+   "at": 72.494,
+   "type": "grid",
+   "n": 2,
+   "clips": [
+    "eae80e8e3679319a.mp4",
+    "919123bec8b784fd.mp4",
+    "c1e27c87a9a3c721.mp4",
+    "342d8db2b74e2be3.mp4"
+   ],
+   "mirror": "h"
+  },
+  {
+   "at": 76.05,
+   "type": "grid",
+   "n": 2,
+   "clips": [
+    "1831e9d623b9e921.mp4",
+    "9beb2c1ba9814efb.mp4",
+    "e71904233756cdd8.mp4",
+    "3d48808d3d256e4e.mp4"
+   ],
+   "mirror": "h"
+  },
+  {
+   "at": 79.606,
+   "type": "grid",
+   "n": 2,
+   "clips": [
+    "928b830a2ebfffb1.mp4",
+    "f4d62d1fe4a3bcd9.mp4",
+    "f203973351f9d415.mp4",
+    "fb028a5da6f5f244.mp4"
+   ],
+   "mirror": "h"
+  },
+  {
+   "at": 81.383,
+   "type": "grid",
+   "n": 3,
+   "clips": [
+    "67569e20683e0876.mp4",
+    "da051bf59dfe77fe.mp4",
+    "b59266abad75b0f6.mp4",
+    "4e38e058eb7f9f46.mp4",
+    "130bdbe4e621dfd0.mp4",
+    "6c7c94111113f6ba.mp4",
+    "3f17ae19f72e18ed.mp4",
+    "6e62014b99559a88.mp4",
+    "1831e9d623b9e921.mp4"
+   ],
+   "mirror": "h",
+   "offset": 0.07
+  },
+  {
+   "at": 84.939,
+   "type": "grid",
+   "n": 3,
+   "clips": [
+    "3e4d603e656c5f10.mp4",
+    "f4d62d1fe4a3bcd9.mp4",
+    "fb028a5da6f5f244.mp4",
+    "a0dfa198594b133e.mp4",
+    "928b830a2ebfffb1.mp4",
+    "f203973351f9d415.mp4",
+    "8d8efa160494def8.mp4",
+    "99b408c0af3a04c2.mp4",
+    "de6fff2b15ca8775.mp4"
+   ],
+   "mirror": "h",
+   "offset": 0.07
+  },
+  {
+   "at": 88.494,
+   "type": "grid",
+   "n": 3,
+   "clips": [
+    "7b5ac46543b12fa7.mp4",
+    "b18860588ac54a3a.mp4",
+    "d75fdfb98e38c0b5.mp4",
+    "53491f00c649d52b.mp4",
+    "9f5bcaa607e0484f.mp4",
+    "9f75954549c4d59c.mp4",
+    "342d8db2b74e2be3.mp4",
+    "919123bec8b784fd.mp4",
+    "c1e27c87a9a3c721.mp4"
+   ],
+   "mirror": "h",
+   "offset": 0.07
+  },
+  {
+   "at": 92.05,
+   "type": "grid",
+   "n": 3,
+   "clips": [
+    "67569e20683e0876.mp4",
+    "da051bf59dfe77fe.mp4",
+    "b59266abad75b0f6.mp4",
+    "4e38e058eb7f9f46.mp4",
+    "130bdbe4e621dfd0.mp4",
+    "6c7c94111113f6ba.mp4",
+    "3f17ae19f72e18ed.mp4",
+    "6e62014b99559a88.mp4",
+    "1831e9d623b9e921.mp4"
+   ],
+   "mirror": "h",
+   "offset": 0.07
+  },
+  {
+   "at": 95.606,
+   "type": "grid",
+   "n": 3,
+   "clips": [
+    "3e4d603e656c5f10.mp4",
+    "f4d62d1fe4a3bcd9.mp4",
+    "fb028a5da6f5f244.mp4",
+    "a0dfa198594b133e.mp4",
+    "928b830a2ebfffb1.mp4",
+    "f203973351f9d415.mp4",
+    "8d8efa160494def8.mp4",
+    "99b408c0af3a04c2.mp4",
+    "de6fff2b15ca8775.mp4"
+   ],
+   "mirror": "h",
+   "offset": 0.07
+  },
+  {
+   "at": 99.161,
+   "type": "grid",
+   "n": 3,
+   "clips": [
+    "7b5ac46543b12fa7.mp4",
+    "b18860588ac54a3a.mp4",
+    "d75fdfb98e38c0b5.mp4",
+    "53491f00c649d52b.mp4",
+    "9f5bcaa607e0484f.mp4",
+    "9f75954549c4d59c.mp4",
+    "342d8db2b74e2be3.mp4",
+    "919123bec8b784fd.mp4",
+    "c1e27c87a9a3c721.mp4"
+   ],
+   "mirror": "h",
+   "offset": 0.07
+  },
+  {
+   "at": 102.717,
+   "type": "grid",
+   "n": 3,
+   "clips": [
+    "67569e20683e0876.mp4",
+    "da051bf59dfe77fe.mp4",
+    "b59266abad75b0f6.mp4",
+    "4e38e058eb7f9f46.mp4",
+    "130bdbe4e621dfd0.mp4",
+    "6c7c94111113f6ba.mp4",
+    "3f17ae19f72e18ed.mp4",
+    "6e62014b99559a88.mp4",
+    "1831e9d623b9e921.mp4"
+   ],
+   "mirror": "h",
+   "offset": 0.07
+  },
+  {
+   "at": 106.272,
+   "type": "single",
+   "clip": "1831e9d623b9e921.mp4",
+   "mirror": "h"
+  },
+  {
+   "at": 108.05,
+   "type": "grid",
+   "n": 4,
+   "clips": [
+    "67569e20683e0876.mp4"
+   ],
+   "mirror": "h",
+   "offset": 0.12
+  },
+  {
+   "at": 111.606,
+   "type": "single",
+   "clip": "6e62014b99559a88.mp4",
+   "mirror": "h"
+  },
+  {
+   "at": 113.383,
+   "type": "single",
+   "clip": "e71904233756cdd8.mp4",
+   "mirror": "h"
+  },
+  {
+   "at": 115.161,
+   "type": "grid",
+   "n": 4,
+   "clips": [
+    "da051bf59dfe77fe.mp4"
+   ],
+   "mirror": "h",
+   "offset": 0.12
+  },
+  {
+   "at": 118.717,
+   "type": "single",
+   "clip": "3d48808d3d256e4e.mp4",
+   "mirror": "h"
+  },
+  {
+   "at": 120.494,
+   "type": "single",
+   "clip": "130bdbe4e621dfd0.mp4",
+   "mirror": "h"
+  },
+  {
+   "at": 122.272,
+   "type": "grid",
+   "n": 4,
+   "clips": [
+    "b59266abad75b0f6.mp4"
+   ],
+   "mirror": "h",
+   "offset": 0.12
+  },
+  {
+   "at": 125.828,
+   "type": "single",
+   "clip": "9beb2c1ba9814efb.mp4",
+   "mirror": "h"
+  },
+  {
+   "at": 127.606,
+   "type": "single",
+   "clip": "b18860588ac54a3a.mp4",
+   "mirror": "h"
+  },
+  {
+   "at": 129.383,
+   "type": "grid",
+   "n": 4,
+   "clips": [
+    "3e4d603e656c5f10.mp4"
+   ],
+   "mirror": "h",
+   "offset": 0.12
+  },
+  {
+   "at": 132.939,
+   "type": "single",
+   "clip": "de6fff2b15ca8775.mp4",
+   "mirror": "h"
+  },
+  {
+   "at": 134.717,
+   "type": "single",
+   "clip": "3f17ae19f72e18ed.mp4",
+   "mirror": "h"
+  },
+  {
+   "at": 136.494,
+   "type": "grid",
+   "n": 4,
+   "clips": [
+    "f4d62d1fe4a3bcd9.mp4"
+   ],
+   "mirror": "h",
+   "offset": 0.12
+  },
+  {
+   "at": 140.05,
+   "type": "single",
+   "clip": "1831e9d623b9e921.mp4",
+   "mirror": "h"
+  },
+  {
+   "at": 141.828,
+   "type": "single",
+   "clip": "7b5ac46543b12fa7.mp4",
+   "mirror": "h"
+  },
+  {
+   "at": 143.606,
+   "type": "grid",
+   "n": 4,
+   "clips": [
+    "891724408f3743df.mp4"
+   ],
+   "mirror": "h",
+   "offset": 0.12
+  },
+  {
+   "at": 147.161,
+   "type": "single",
+   "clip": "8d8efa160494def8.mp4",
+   "mirror": "h"
+  },
+  {
+   "at": 148.939,
+   "type": "single",
+   "clip": "4e38e058eb7f9f46.mp4",
+   "mirror": "h"
+  },
+  {
+   "at": 150.717,
+   "type": "single",
+   "clip": "919123bec8b784fd.mp4",
+   "color": "full",
+   "speed": 1.4
+  },
+  {
+   "at": 157.828,
+   "type": "single",
+   "clip": "e2a4272fb958ea8f.mp4",
+   "color": "full",
+   "speed": 1.4
+  },
+  {
+   "at": 161.4,
+   "type": "single",
+   "clip": "c1e27c87a9a3c721.mp4",
+   "color": "full",
+   "speed": 1.2
+  }
+ ]
+}

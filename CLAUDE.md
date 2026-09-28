@@ -336,6 +336,11 @@ A scene with `"image"` (a 704x1280 still) is animated from that picture (image-t
 own art keeps its character and style, which beats any prompt for consistency. Crop to 9:16 first; the user's images
 live in `out/inputs/` and are not committed (episode 12, `its-okay.json`). Wan I2V adds things well (balloons, a mask
 held up) but not a second character reliably (the robot came out with a smiley for a face in one take).
+`video/remix.py <cut.json> <out.mp4>` re-forges existing clips into a new-looking film, locally and free: timed
+`single`/`grid`/`black` segments, mirror symmetry (`h`, `quad`), the `iron` look (steel greyscale with yellow held by
+`colorhold`), trails, a zoom pulse on the measured beat, negative flashes. `iron-ballroom.json` is the first (the
+user's instrumental; beat grid measured from onsets, 135 BPM). `out/lib/sheet.png` is a numbered contact sheet of
+every clip for casting; `out/lib/index.txt` maps the numbers to clip files.
 
 The `[api-proxy-support]` extra matters: behind the session's HTTPS proxy, plain `modal` fails with only "Could not connect to the Modal server"; the real cause (missing `python-socks`) is hidden in the exception's `__cause__`. The first run downloads
 ~20 GB of weights into the `ai-video-cache` volume. The clips are generated separately, so each
