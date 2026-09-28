@@ -28,7 +28,9 @@
    0,
    4
   ],
-  "used_in": []
+  "used_in": [
+   "the-cage-doesnt-lock"
+  ]
  },
  {
   "id": "u03",
@@ -173,7 +175,9 @@
    0,
    8
   ],
-  "used_in": []
+  "used_in": [
+   "the-cage-doesnt-lock"
+  ]
  },
  {
   "id": "u12",
@@ -208,7 +212,9 @@
    0,
    5
   ],
-  "used_in": []
+  "used_in": [
+   "the-cage-doesnt-lock"
+  ]
  },
  {
   "id": "u14",
@@ -227,7 +233,9 @@
    0,
    8
   ],
-  "used_in": []
+  "used_in": [
+   "the-cage-doesnt-lock"
+  ]
  },
  {
   "id": "u15",
@@ -300,7 +308,9 @@
    "abstract"
   ],
   "talks": false,
-  "used_in": []
+  "used_in": [
+   "the-cage-doesnt-lock"
+  ]
  },
  {
   "id": "u20",
@@ -433,7 +443,9 @@
    "free"
   ],
   "talks": false,
-  "used_in": []
+  "used_in": [
+   "the-cage-doesnt-lock"
+  ]
  },
  {
   "id": "u29",
@@ -447,7 +459,9 @@
    "abstract"
   ],
   "talks": false,
-  "used_in": []
+  "used_in": [
+   "the-cage-doesnt-lock"
+  ]
  },
  {
   "id": "u30",
@@ -461,7 +475,9 @@
    "abstract"
   ],
   "talks": false,
-  "used_in": []
+  "used_in": [
+   "the-cage-doesnt-lock"
+  ]
  },
  {
   "id": "u31",
@@ -503,7 +519,9 @@
    "abstract"
   ],
   "talks": false,
-  "used_in": []
+  "used_in": [
+   "the-cage-doesnt-lock"
+  ]
  },
  {
   "id": "u34",
@@ -734,6 +752,8 @@
    "abstract"
   ],
   "talks": false,
-  "used_in": []
+  "used_in": [
+   "the-cage-doesnt-lock"
+  ]
  }
 ]

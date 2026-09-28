@@ -387,6 +387,12 @@ spark, `video/drawn/spark.py`), and an original score composed in code (`video/c
 pedalboard, arranged to the story's acts). Claude cannot hear the audio it makes: it checks levels and a spectrogram,
 and the user's ears are the judge. Two remix.py bugs found here: non-9:16 sources were SQUASHED (now cover-cropped),
 and a `src` shorter than its slot made the film DRIFT off the music (now looped and padded to exact length).
+The user on First Light: liked the score, but "is this your best effort?": it reused the same clips as the film before,
+and some clips have people TALKING (silent moving mouths look wrong under music). So every clip was audited frame by
+frame (8 frames across each): `video/user-clips.json` now carries `talks`, `note` (scene cuts inside a clip), `best`
+(usable window) and `used_in` (which films used it). Check talks/used_in before casting; watch clips, not one frame.
+`the-cage-doesnt-lock.json` follows ONE protagonist (the library's small white one-eyed robot, consistent across
+dozens of clips), each shot on its sung line (word times from the Demucs vocal stem, snapped to the 128 BPM grid).
 
 The `[api-proxy-support]` extra matters: behind the session's HTTPS proxy, plain `modal` fails with only "Could not connect to the Modal server"; the real cause (missing `python-socks`) is hidden in the exception's `__cause__`. The first run downloads
 ~20 GB of weights into the `ai-video-cache` volume. The clips are generated separately, so each
