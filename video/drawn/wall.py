@@ -117,9 +117,9 @@ def glitch(im, amount, rng):
 def cover(img, w, h):
     iw, ih = img.size
     s = max(w / iw, h / ih)
-    cw, ch = w / s, h / s
+    cw, ch = min(w / s, iw), min(h / s, ih)
     return img.resize((max(1, int(w)), max(1, int(h))), Image.BILINEAR,
-                      box=((iw - cw) / 2, (ih - ch) / 2, (iw + cw) / 2, (ih + ch) / 2))
+                      box=(max(0.0, (iw - cw) / 2), max(0.0, (ih - ch) / 2), min(iw, (iw + cw) / 2), min(ih, (ih + ch) / 2)))
 
 
 def render(script, out, dur, seed=5):
