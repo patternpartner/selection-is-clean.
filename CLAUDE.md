@@ -345,6 +345,11 @@ every clip for casting; `out/lib/index.txt` maps the numbers to clip files.
 ~60 s from two choruses spliced on bar lines (`song_parts`, `song_fade`), one shot per bar, lyrics timed free with a
 local faster-whisper `small` on CPU (no Modal), an oxblood `look`, `stutter` (loop a slice) and `fade_to_iron`
 (colour drains on a lyric). The user found Iron Ballroom "a bit busy": hold shots a bar or more, grids sparingly.
+`flesh-and-wire.json` (full length, third track) draws on the whole library AND both earlier remix films (`src` + `in`).
+Per-shot `look`: `wire` (edges traced as glowing gold line on black), `outline` (flesh with its wiring showing), `hot`,
+`iron`, `oxblood`, `full`; `fuse` blends a second shot in (`screen` = double exposure, `difference` = sinister); `flip`
+swaps flesh and wire on every beat; a 2x2 grid with `looks` shows one shot in every generation at once. Split outputs
+share one pixel format in ffmpeg, so each look branch starts `format=gbrp` (a gray branch turned the other grey).
 
 The `[api-proxy-support]` extra matters: behind the session's HTTPS proxy, plain `modal` fails with only "Could not connect to the Modal server"; the real cause (missing `python-socks`) is hidden in the exception's `__cause__`. The first run downloads
 ~20 GB of weights into the `ai-video-cache` volume. The clips are generated separately, so each
