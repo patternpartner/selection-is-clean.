@@ -26,6 +26,7 @@
 //       JSONL=1  (stream one metrics object per sample to stdout)
 //       ESTABLISH=<every>  (#249: harness-establish's census on this same trajectory; ESTWARM default 2000, ESTN 10)
 //       NULLSHIFT=<k>  (#249b: burn k draws before the first tick - a null replicate of the same world)
+//       FORCE=a,b  (#257: trait-homogeniser knockouts, re-installed every tick - see trait-force.js)
 const fs = require('fs');
 // #217b: KNOBS honoured. #216x fixed four rigs and I called the class swept; a review found the
 // real number is 39 node-side rigs that boot engine.html in-process and silently drop every
@@ -652,6 +653,7 @@ const driver = `
     for(let s=0;s<ticks;s++){
       globalThis.__detMs+=5;
       globalThis.__applyPin();   // hold the knockout dead against re-mutation, every tick
+      globalThis.__applyForce(globalThis.__FORCE);   // #257: trait-homogeniser knockouts, every tick
       try{loop();}catch(e){globalThis.__driverErr=(globalThis.__driverErr||0)+1;}
       if(es&&(s+1)%EST===0) es.census();
       if((s+1)%every===0){ m=metrics(); globalThis.__SERIES.push(m); if(STREAM)process.stdout.write(JSON.stringify(m)+String.fromCharCode(10)); }
@@ -679,7 +681,8 @@ const driver = `
 //
 // Default OFF — with AMP_CAP unset the code string is byte-identical to engine.html, so every
 // pre-existing result in the record remains reproducible from this harness unchanged.
-let code2 = code;
+const TF = require(__dirname + '/trait-force.js'), FORCE = TF.parse(process.env.FORCE);   // #257
+let code2 = TF.patch(code, FORCE);
 if (process.env.AMP_CAP !== undefined) {
   const capV = parseFloat(process.env.AMP_CAP);
   if (!Number.isFinite(capV) || capV <= 0) { console.log(JSON.stringify({error:'AMP_CAP must be a positive finite number'})); process.exit(1); }
@@ -702,7 +705,8 @@ const t0 = Date.now();
 const EST_EVERY = parseInt(process.env.ESTABLISH || '0', 10) || 0;
 globalThis.__EST_EVERY = EST_EVERY;
 const EC = require(__dirname + '/establish-census.js');
-try { m._compile(code2 + driver + (EST_EVERY ? EC.DRIVER : ''), m.filename); }
+globalThis.__FORCE = FORCE;
+try { m._compile(code2 + driver + TF.DRIVER + (EST_EVERY ? EC.DRIVER : ''), m.filename); }
 catch (e) { console.log('COMPILE/BOOT THREW:', e.message); process.exit(1); }
 const tBoot = Date.now();
 
@@ -914,7 +918,7 @@ const verdict = {
 };
 
 console.log(JSON.stringify({
-  config: { TICKS, SAMPLE, SEED: process.env.SEED || null, INDEX: process.env.INDEX || 'engine.html', NULLSHIFT },
+  config: { TICKS, SAMPLE, SEED: process.env.SEED || null, INDEX: process.env.INDEX || 'engine.html', NULLSHIFT, FORCE },
   timing_ms: { boot: tBoot - t0, run: tDone - tBoot, perKtick: +(((tDone - tBoot) / TICKS) * 1000).toFixed(1) },
   loopErrors, lastErr, driverErr: globalThis.__driverErr || 0,
   switchboard: (globalThis.__swbState && globalThis.__swbState().on) ? globalThis.__swbState() : undefined,   // #253
