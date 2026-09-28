@@ -434,7 +434,7 @@ def story(file: str, out: str = "story.mp4", seed: int = 0, landscape: bool = Fa
             jobs.append((fill(sc["prompt"]), sc.get("seed", seed + i), width, height))
             if "reveal" in sc:  # a matching second shot that glitches in at swap_at; same seed, for a close framing
                 parts[-1].append(len(jobs))
-                jobs.append((fill(sc["reveal"]), seed + i, width, height))
+                jobs.append((fill(sc["reveal"]), sc.get("seed", seed + i), width, height))
         else:
             parts.append([len(jobs), len(jobs) + 1])
             jobs.append((fill(sc["top"]), seed + i, height, width))
