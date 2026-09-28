@@ -272,6 +272,11 @@ so that the wrong version of a claim stays on the page next to the corrected one
 
 ## AI video (separate from the artwork)
 
+**COST FIRST (the user's own Modal account).** One session of episodes 1-12 spent about $60, mostly on the 14B model
+(H200s, minutes per clip), 2-3 takes per risky shot, and parallel containers each reloading the weights. So: default to
+the 5B model and ONE take; no `"model": "14b"` and no takes sheets unless the user OKs it; give a rough cost estimate
+and wait for a yes before any generation run; prefer re-cutting cached clips (free, local) over regenerating.
+
 `video/make_video.py` makes AI-generated videos on Modal (Wan 2.2 TI2V-5B, open weights). It is a
 side tool for the user, not part of the universe, and no rig reads it. The user is non-technical and
 works from a phone: you run it, then send them the MP4. Needs `MODAL_TOKEN_ID` / `MODAL_TOKEN_SECRET`
