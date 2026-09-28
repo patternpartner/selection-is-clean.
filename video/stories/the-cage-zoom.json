@@ -1,0 +1,436 @@
+{
+ "about": "The Cage Doesn't Lock, second film: one continuous zoom out through 38 nested worlds, each set in a portal (screen, window, eye, frame, face) of the next, timed so each world fills the screen on its sung line. Starts inside the robot's eye, ends above the wide world.",
+ "start_box": [
+  0.34,
+  0.29,
+  0.44,
+  0.36
+ ],
+ "end": 162.2,
+ "levels": [
+  {
+   "src": "out/clips/39cc46205f80d304.mp4",
+   "shape": "rect",
+   "at": 5.0,
+   "portal": [
+    0,
+    0,
+    1,
+    1
+   ]
+  },
+  {
+   "src": "out/clips/6c7c94111113f6ba.mp4",
+   "shape": "rect",
+   "at": 10.6,
+   "portal": [
+    0.15,
+    0.14,
+    0.82,
+    0.88
+   ]
+  },
+  {
+   "src": "out/clips/f83b88d8bcef05ca.mp4",
+   "shape": "rect",
+   "at": 16.94,
+   "portal": [
+    0.55,
+    0.03,
+    0.95,
+    0.36
+   ]
+  },
+  {
+   "src": "out/clips/7b5ac46543b12fa7.mp4",
+   "shape": "ellipse",
+   "at": 21.32,
+   "portal": [
+    0.22,
+    0.37,
+    0.78,
+    0.63
+   ]
+  },
+  {
+   "src": "out/user-clips/u11.mp4",
+   "shape": "rect",
+   "at": 24.2,
+   "portal": [
+    0.55,
+    0.34,
+    0.78,
+    0.62
+   ]
+  },
+  {
+   "src": "out/clips/beb5f4820d1ad390.mp4",
+   "shape": "rect",
+   "at": 27.96,
+   "portal": [
+    0.68,
+    0.27,
+    1.0,
+    0.4
+   ]
+  },
+  {
+   "src": "out/inputs/goggles.jpg",
+   "shape": "ellipse",
+   "at": 31.62,
+   "cx": 0.79,
+   "portal": [
+    0.24,
+    0.33,
+    0.9,
+    0.55
+   ]
+  },
+  {
+   "src": "out/clips/e8b6291e211e8756.mp4",
+   "shape": "ellipse",
+   "at": 35.12,
+   "portal_fade": [
+    1.4,
+    2.8
+   ],
+   "portal": [
+    0.2,
+    0.47,
+    0.68,
+    0.63
+   ]
+  },
+  {
+   "src": "out/clips/8bdbfbae71d6871a.mp4",
+   "shape": "ellipse",
+   "at": 38.78,
+   "portal": [
+    0.28,
+    0.5,
+    0.75,
+    0.67
+   ]
+  },
+  {
+   "src": "out/clips/eae80e8e3679319a.mp4",
+   "shape": "ellipse",
+   "at": 42.56,
+   "portal": [
+    0.1,
+    0.17,
+    0.9,
+    0.52
+   ]
+  },
+  {
+   "src": "out/clips/d75fdfb98e38c0b5.mp4",
+   "shape": "ellipse",
+   "at": 46.38,
+   "portal": [
+    0.3,
+    0.37,
+    0.72,
+    0.6
+   ]
+  },
+  {
+   "src": "out/clips/4988ff968ce1c5d0.mp4",
+   "shape": "ellipse",
+   "at": 50.06,
+   "portal": [
+    0.285,
+    0.445,
+    0.665,
+    0.655
+   ]
+  },
+  {
+   "src": "out/user-clips/u20.mp4",
+   "shape": "rect",
+   "at": 54.38,
+   "portal": [
+    0.1,
+    0.63,
+    0.36,
+    0.72
+   ]
+  },
+  {
+   "src": "out/user-clips/u34.mp4",
+   "shape": "rect",
+   "at": 57.6,
+   "portal": [
+    0.25,
+    0.47,
+    0.78,
+    0.6
+   ]
+  },
+  {
+   "src": "out/clips/6e62014b99559a88.mp4",
+   "shape": "ellipse",
+   "at": 61.28,
+   "portal": [
+    0.38,
+    0.43,
+    0.44,
+    0.46
+   ]
+  },
+  {
+   "src": "out/clips/208e6ab1fe11be7e.mp4",
+   "shape": "rect",
+   "at": 64.34,
+   "portal": [
+    0.2,
+    0.34,
+    0.72,
+    0.7
+   ]
+  },
+  {
+   "src": "out/clips/d6d6f15fb27f53be.mp4",
+   "shape": "rect",
+   "at": 68.78,
+   "portal": [
+    0.3,
+    0.2,
+    0.6,
+    0.62
+   ]
+  },
+  {
+   "src": "out/clips/97a76aa6c7727871.mp4",
+   "shape": "rect",
+   "at": 72.1,
+   "portal": [
+    0.27,
+    0.21,
+    0.83,
+    0.67
+   ]
+  },
+  {
+   "src": "out/inputs/tunnel-figure.jpg",
+   "shape": "rect",
+   "at": 76.74,
+   "portal": [
+    0.1,
+    0.2,
+    0.86,
+    0.79
+   ]
+  },
+  {
+   "src": "out/clips/de6fff2b15ca8775.mp4",
+   "shape": "rect",
+   "at": 80.42,
+   "portal": [
+    0.1,
+    0.23,
+    0.9,
+    0.7
+   ]
+  },
+  {
+   "src": "out/clips/4e38e058eb7f9f46.mp4",
+   "shape": "rect",
+   "at": 84.4,
+   "portal": [
+    0.2,
+    0.2,
+    0.45,
+    0.48
+   ]
+  },
+  {
+   "src": "out/clips/e96e58f45cd62f05.mp4",
+   "shape": "rect",
+   "at": 89.12,
+   "portal": [
+    0.3,
+    0.14,
+    0.65,
+    0.45
+   ]
+  },
+  {
+   "src": "out/clips/350c5e9fd3aac7ce.mp4",
+   "shape": "rect",
+   "at": 91.58,
+   "portal": [
+    0.56,
+    0.03,
+    0.95,
+    0.46
+   ]
+  },
+  {
+   "src": "out/inputs/light.jpg",
+   "shape": "rect",
+   "at": 95.06,
+   "cx": 0.57,
+   "portal": [
+    0.1,
+    0.15,
+    0.93,
+    0.75
+   ]
+  },
+  {
+   "src": "out/inputs/tunnel-oval.jpg",
+   "shape": "rect",
+   "at": 98.82,
+   "portal": [
+    0.39,
+    0.35,
+    0.66,
+    0.62
+   ]
+  },
+  {
+   "src": "out/clips/d5e39a8f1b46ad86.mp4",
+   "shape": "rect",
+   "at": 106.32,
+   "portal": [
+    0.55,
+    0.46,
+    1.0,
+    0.62
+   ]
+  },
+  {
+   "src": "out/clips/6f0332c515238464.mp4",
+   "shape": "rect",
+   "at": 114.44,
+   "portal": [
+    0.12,
+    0.55,
+    0.6,
+    0.68
+   ]
+  },
+  {
+   "src": "out/clips/1831e9d623b9e921.mp4",
+   "shape": "ellipse",
+   "at": 118.19,
+   "portal": [
+    0.3,
+    0.4,
+    0.75,
+    0.62
+   ]
+  },
+  {
+   "src": "out/clips/53491f00c649d52b.mp4",
+   "shape": "ellipse",
+   "at": 121.94,
+   "portal": [
+    0.25,
+    0.37,
+    0.47,
+    0.47
+   ]
+  },
+  {
+   "src": "out/clips/0639f53b998617e9.mp4",
+   "shape": "ellipse",
+   "at": 125.69,
+   "portal": [
+    0.55,
+    0.45,
+    0.81,
+    0.59
+   ]
+  },
+  {
+   "src": "out/clips/7c4641cd1ca9b1e3.mp4",
+   "shape": "rect",
+   "at": 129.44,
+   "portal": [
+    0.35,
+    0.02,
+    0.75,
+    0.33
+   ]
+  },
+  {
+   "src": "out/clips/fd17a4d104c16f6e.mp4",
+   "shape": "rect",
+   "at": 133.19,
+   "portal": [
+    0.24,
+    0.14,
+    0.5,
+    0.38
+   ]
+  },
+  {
+   "src": "out/clips/1f197d887a10571c.mp4",
+   "shape": "rect",
+   "at": 136.94,
+   "portal": [
+    0.15,
+    0.12,
+    0.49,
+    0.4
+   ]
+  },
+  {
+   "src": "out/clips/0aa806f2e4c3e0be.mp4",
+   "shape": "rect",
+   "at": 140.69,
+   "portal": [
+    0.4,
+    0.05,
+    0.93,
+    0.45
+   ]
+  },
+  {
+   "src": "out/clips/54781d4f50bf2193.mp4",
+   "shape": "rect",
+   "at": 144.44,
+   "portal": [
+    0.62,
+    0.08,
+    0.97,
+    0.6
+   ]
+  },
+  {
+   "src": "out/clips/9a09b08e8f111395.mp4",
+   "shape": "ellipse",
+   "at": 148.19,
+   "portal": [
+    0.46,
+    0.47,
+    0.58,
+    0.53
+   ]
+  },
+  {
+   "src": "out/user-clips/u48.mp4",
+   "shape": "rect",
+   "at": 151.94,
+   "portal": [
+    0.44,
+    0.47,
+    0.56,
+    0.53
+   ]
+  },
+  {
+   "src": "out/user-clips/u39.mp4",
+   "shape": "rect",
+   "at": 157.42,
+   "portal": [
+    0.35,
+    0.36,
+    0.6,
+    0.46
+   ]
+  }
+ ]
+}
