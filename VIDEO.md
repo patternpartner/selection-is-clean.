@@ -149,4 +149,10 @@ card-flip to one identical face on 'override', form a heart, rise like lanterns,
 off). Word times from the Demucs vocal stem in `breaking-the-frame-times.json`. Render a section alone to check it
 (render(lambda t: script(t + t0), ...)); a crash mid-render leaves a short file that finish.py pads with black, so
 always check the raw render's duration before finishing.
+`video/drawn/freeze.py` + `build_a_beautiful_freeze.py`: 'A Beautiful Freeze', fire and frost as the one idea. Human
+shots BURN (orange grade, heat shimmer, drawn embers); the AI's touch is FROST (drawn 60-degree ice crystals that grow
+from a point; under them the frame freezes in time and turns ice-blue), cut on sung lines. Frost is drawn
+incrementally (only new ice each frame: redrawing 10k segments per frame was minutes per second). wall.Stream now
+loads stills directly: ffmpeg hung forever looping a single image. Never `pkill -f` a pattern that appears in your own
+command line: it killed the session's shell (exit 144), as CLAUDE.md warns.
 
