@@ -33,7 +33,38 @@ def mirror(label, mode, w, h, out):
     return f"[{label}]scale={w}:{h}[{out}]"
 
 
-def render(seg, clipdir, path, dur):
+OXBLOOD = "colorbalance=rs=0.35:gs=-0.1:bs=-0.1:rm=0.12:gm=-0.03:bm=-0.06,eq=contrast=1.1"
+
+
+def look(label, name, out):
+    """One graded picture from another. 'wire' traces every edge as glowing gold line on black; 'outline' lays that
+    wire over the full-colour picture (flesh with its wiring showing); 'hot' is white-hot wire for the loudest bars."""
+    if name == "full":
+        return f"[{label}]null[{out}]"
+    if name == "iron":
+        return f"[{label}]{IRON}[{out}]"
+    if name == "oxblood":
+        return f"[{label}]{IRON},{OXBLOOD}[{out}]"
+    if name in ("wire", "hot", "outline"):
+        tint = "r='val':g='val*0.8':b='val*0.15'" if name != "hot" else "r='val':g='val*0.95':b='val*0.7'"
+        pre = f"[{label}]format=gbrp,split[{out}o][{out}q];[{out}q]" if name == "outline" else f"[{label}]"
+        g = (f"{pre}format=gbrp,colorchannelmixer=.3:.59:.11:0:.3:.59:.11:0:.3:.59:.11,edgedetect=low=0.06:high=0.2,dilation,lutrgb={tint},split[{out}x][{out}y];"
+             f"[{out}y]gblur=sigma=4[{out}z];[{out}x][{out}z]blend=all_mode=screen")
+        if name == "outline":
+            return g + f"[{out}w];[{out}o]colorlevels=romax=0.9:gomax=0.9:bomax=0.9[{out}p];[{out}p][{out}w]blend=all_mode=screen[{out}]"
+        return g + f"[{out}]"
+    raise ValueError(name)
+
+
+def source(spec, clipdir, base, off):
+    """An input: a clip from the library (looped), or any film by path with an in-point (the earlier remixes)."""
+    if "src" in spec:
+        return ["-ss", f"{spec.get('in', 0.0) + off:.3f}", "-i", os.path.join(base, spec["src"])]
+    return ["-stream_loop", "-1", "-ss", f"{(off + spec.get('in', 0.0)) % 4.5:.3f}", "-i", os.path.join(clipdir, spec["clip"])]
+
+
+def render(seg, clipdir, path, dur, cut=None, base=".", at=0.0):
+    cut = cut or {}
     ins, g = [], []
     if seg["type"] == "black":
         subprocess.run([F, "-loglevel", "error", "-y", "-f", "lavfi", "-i", f"color=black:s={W}x{H}:r={FPS}:d={dur:.3f}",
@@ -41,35 +72,69 @@ def render(seg, clipdir, path, dur):
         return
     speed = seg.get("speed", 1.0)  # >1 is slower
     if seg["type"] == "single":
-        n, cells = 1, [seg["clip"]]
+        n, cells = 1, [seg]
     else:
         n = seg["n"]
-        cells = seg["clips"] if len(seg["clips"]) == n * n else [seg["clips"][k % len(seg["clips"])] for k in range(n * n)]
+        cl = seg["clips"]
+        cl = cl if len(cl) == n * n else [cl[k % len(cl)] for k in range(n * n)]
+        cells = [dict(c) if isinstance(c, dict) else {"clip": c} for c in cl]
     cw, ch = W // n, H // n
+    looks = seg.get("looks")
     for k, c in enumerate(cells):
-        off = seg.get("offset", 0.0) * k + seg.get("in", 0.0)
-        ins += ["-stream_loop", "-1", "-ss", f"{off % 4.5:.3f}", "-i", os.path.join(clipdir, c)]
-        g.append(f"[{k}:v]setpts={speed}*(PTS-STARTPTS),fps={FPS},setsar=1[s{k}]")
-        g.append(mirror(f"s{k}", seg.get("mirror", "none"), cw, ch, f"m{k}"))
+        ins += source(c, clipdir, base, seg.get("offset", 0.0) * k + (seg.get("in", 0.0) if n > 1 else 0.0))
+        g.append(f"[{k}:v]setpts={c.get('speed', speed)}*(PTS-STARTPTS),fps={FPS},setsar=1[s{k}]")
+        g.append(mirror(f"s{k}", c.get("mirror", seg.get("mirror", "none")), cw, ch, f"n{k}"))
+        g.append(look(f"n{k}", looks[k % len(looks)] if looks else "full", f"m{k}"))
+    k0 = len(cells)
     if n == 1:
         last = "m0"
     else:
         layout = "|".join(f"{(k % n) * cw}_{(k // n) * ch}" for k in range(n * n))
         g.append("".join(f"[m{k}]" for k in range(n * n)) + f"xstack=inputs={n * n}:layout={layout}[grid]")
         last = "grid"
+    if "fuse" in seg:  # a second picture laid into the first: flesh and wire in one frame
+        fz = seg["fuse"]
+        ins += source(fz, clipdir, base, 0.0)
+        g.append(f"[{k0}:v]setpts={fz.get('speed', speed)}*(PTS-STARTPTS),fps={FPS},setsar=1[fs]")
+        g.append(mirror("fs", fz.get("mirror", "none"), W, H, "fm"))
+        g.append(look("fm", fz.get("look", "full"), "fl"))
+        g.append(f"[{last}]scale={W}:{H},format=gbrp[fb];[fl]format=gbrp[fc];"
+                 f"[fb][fc]blend=all_mode={fz.get('mode', 'screen')}:all_opacity={fz.get('opacity', 1.0)}[fused]")
+        last = "fused"
     post = [f"scale={W}:{H}"]
     if seg.get("stutter"):  # loop the opening slice, like a stuck record
         k = max(1, round(seg["stutter"] * FPS))
         post.append(f"trim=end_frame={k},loop=loop=-1:size={k}:start=0,setpts=N/{FPS}/TB")
     if seg.get("trails"):
         post.append("lagfun=decay=0.96")
-    if "fade_to_iron" in seg:  # full colour that drains to iron: [start, seconds] within the segment
-        a, b = seg["fade_to_iron"]
-        post.append(f"format=yuv420p,split[{last}c][{last}i];[{last}i]{IRON},format=yuv420p[{last}j];"
-                    f"[{last}c][{last}j]blend=all_expr='A+(B-A)*clip((T-{a})/{b},0,1)'")
-    elif seg.get("color", "iron") == "iron":
-        post.append(IRON)
-    g.append(f"[{last}]" + ",".join(post) + ",format=yuv420p[v]")
+    g.append(f"[{last}]" + ",".join(post) + "[pre]")
+    main_look = seg.get("color", seg.get("look", cut.get("default_look", "iron")))
+    if "fade_to_iron" in seg:
+        seg = dict(seg, morph=["iron"] + list(seg["fade_to_iron"]))
+    if "morph" in seg or seg.get("flip"):
+        # Two versions of the same picture: morph cross-fades to the second over [start, seconds]; flip swaps between
+        # them on every beat of the song (so flesh and wire trade places in time with it).
+        other = seg["morph"][0] if "morph" in seg else seg.get("flip_look", "wire")
+        g.append(f"[pre]format=gbrp,split[pa][pb]")
+        g.append(look("pa", main_look, "la"))
+        g.append(look("pb", other, "lb"))
+        if "morph" in seg:
+            _, s0, d0 = seg["morph"]
+            ex = f"A+(B-A)*clip((T-{s0})/{d0},0,1)"
+        else:
+            beat, ph = cut["beat"] * seg.get("flip_every", 1), cut["phase"]
+            ex = f"if(lt(mod(T+{at - ph:.4f},{2 * beat:.4f}),{beat:.4f}),A,B)"
+        g.append(f"[la]format=gbrp[ma];[lb]format=gbrp[mb];[ma][mb]blend=all_expr='{ex}'[graded]")
+    else:
+        g.append(look("pre", main_look, "graded"))
+    tail = []
+    if seg.get("rgb"):  # tear the colour channels apart: electric
+        tail.append(f"rgbashift=rh=-{seg['rgb']}:bh={seg['rgb']}:edge=smear")
+    if seg.get("fade_out"):
+        tail.append(f"fade=t=out:st={dur - seg['fade_out']:.3f}:d={seg['fade_out']}")
+    if seg.get("fade_in"):
+        tail.append(f"fade=t=in:d={seg['fade_in']}")
+    g.append("[graded]" + ",".join(tail + ["format=yuv420p"]) + "[v]")
     subprocess.run([F, "-loglevel", "error", "-y", *ins, "-filter_complex", ";".join(g), "-map", "[v]",
                     "-t", f"{dur:.3f}", "-r", str(FPS), "-c:v", "libx264", "-crf", "14", "-pix_fmt", "yuv420p", path],
                    check=True)
@@ -86,9 +151,9 @@ def main(cut_path, out):
         t0 = seg["at"]
         t1 = segs[i + 1]["at"] if i + 1 < len(segs) else cut["music_end"]
         p = os.path.join(d, f"s{i:03d}.mp4")
-        render(seg, clipdir, p, t1 - t0)
+        render(seg, clipdir, p, t1 - t0, cut, base, t0)
         parts.append(p)
-        print(f"{t0:7.2f}-{t1:7.2f} {seg['type']:6s} {seg.get('clip', seg.get('n', ''))}", flush=True)
+        print(f"{t0:7.2f}-{t1:7.2f} {seg['type']:6s} {seg.get('clip', seg.get('src', seg.get('n', '')))}", flush=True)
     listing = os.path.join(d, "list.txt")
     open(listing, "w").write("".join(f"file '{p}'\n" for p in parts))
     joined = os.path.join(d, "joined.mp4")
