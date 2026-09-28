@@ -286,10 +286,11 @@ def mix(clips: list, voices: list, music, lines: list, width: int, height: int, 
          "-filter_complex", ";".join(filters) + f";[0:v]tpad=stop_mode=add:stop_duration={tail}:color=black,"
          + "".join(f + "," for f in fades)
          # One grade and a light moving grain over everything, so clips from different models read as one film.
-         + ("eq=contrast=1.06:saturation=1.08:gamma=0.97,noise=alls=7:allf=t," if grade else "")
+         + ("eq=contrast=1.06:saturation=1.08:gamma=0.97,noise=alls=4:allf=t," if grade else "")
          + f"subtitles={subs},fade=t=in:d=0.6,fade=t=out:st={total - 0.8:.2f}:d=0.8[vout]",
          "-map", "[vout]", "-map", "[aout]", "-t", f"{total:.3f}",
-         "-c:v", "libx264", "-pix_fmt", "yuv420p", "-crf", "19", "-c:a", "aac", "-ac", "2", "-b:a", "192k",
+         "-c:v", "libx264", "-pix_fmt", "yuv420p", "-crf", "23" if grade else "19", "-maxrate", "8M", "-bufsize", "16M",
+         "-c:a", "aac", "-ac", "2", "-b:a", "192k",
          "-movflags", "+faststart", out],
         check=True,
     )
