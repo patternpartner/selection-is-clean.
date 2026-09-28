@@ -155,4 +155,9 @@ from a point; under them the frame freezes in time and turns ice-blue), cut on s
 incrementally (only new ice each frame: redrawing 10k segments per frame was minutes per second). wall.Stream now
 loads stills directly: ffmpeg hung forever looping a single image. Never `pkill -f` a pattern that appears in your own
 command line: it killed the session's shell (exit 144), as CLAUDE.md warns.
+`video/drawn/timeslip.py` + `build_house_of_geometry.py`: 'The House of Geometry', time as a material. The user asked
+for weirder, unique, and only clips never used: every pixel shows a different moment (slit-scan rows, radial ripples,
+spirals, bands, waves, checker), depth driven by the song's loudness, so calm lines are near-still and loud ones melt;
+cuts wash in along the same map. 41 shots, all unused clips, each on its sung line. Songs: 23 in the library; an
+upload batch that repeats songs is checked by comparing loudness envelopes, not names.
 
