@@ -1,0 +1,156 @@
+{
+ "about": "First Light: Claude's second go at its own film after the user found The Duet incoherent ('tried to do everything at once'). One story from the user's own videos: a mind is born (a drawn spark, particles, their universe blooming, a pixel face opening its eyes), learns (thought firing, a network connecting, then studying our faces and painted smiles), takes a body (chrome, light, dancing, walking) and flies (a bird at sunset, a plane over valleys). Straight cuts on the bar, no effects beyond the spark. Music is original, composed in code (video/compose.py), A major 80 BPM, shaped to the same acts.",
+ "song": "out/first-light.mp3",
+ "clipdir": "../../out/clips",
+ "default_look": "full",
+ "music_end": 126.0,
+ "tail": 6.0,
+ "line": "We only get to teach it once.",
+ "line_at": [
+  126.6,
+  131.6
+ ],
+ "beat": 0.75,
+ "phase": 0.0,
+ "pulse": [],
+ "flashes": [],
+ "bounce": {
+  "zoom": 0.035,
+  "drop": 10,
+  "shake": 4,
+  "decay": 0.12
+ },
+ "segments": [
+  {
+   "type": "single",
+   "src": "../../out/drawn/fl/spark_birth.mp4",
+   "in": 0.0,
+   "at": 0.0
+  },
+  {
+   "type": "single",
+   "src": "../../out/user-clips/u07.mp4",
+   "in": 1.0,
+   "at": 6.0
+  },
+  {
+   "type": "single",
+   "src": "../../out/user-clips/u10.mp4",
+   "in": 5.0,
+   "at": 12.0
+  },
+  {
+   "type": "single",
+   "src": "../../out/user-clips/u18.mp4",
+   "in": 0.3,
+   "at": 18.0
+  },
+  {
+   "type": "single",
+   "src": "../../out/user-clips/u20.mp4",
+   "in": 0.2,
+   "at": 24.0
+  },
+  {
+   "type": "single",
+   "src": "../../out/user-clips/u46.mp4",
+   "in": 0.2,
+   "at": 30.0
+  },
+  {
+   "type": "single",
+   "src": "../../out/user-clips/u12.mp4",
+   "in": 0.2,
+   "at": 36.0
+  },
+  {
+   "type": "single",
+   "src": "../../out/user-clips/u40.mp4",
+   "in": 0.2,
+   "at": 42.0
+  },
+  {
+   "type": "single",
+   "src": "../../out/user-clips/u43.mp4",
+   "in": 0.2,
+   "at": 48.0
+  },
+  {
+   "type": "single",
+   "src": "../../out/user-clips/u45.mp4",
+   "in": 0.2,
+   "at": 54.0
+  },
+  {
+   "type": "single",
+   "src": "../../out/user-clips/u34.mp4",
+   "in": 0.2,
+   "at": 60.0
+  },
+  {
+   "type": "single",
+   "src": "../../out/user-clips/u17.mp4",
+   "in": 0.1,
+   "at": 66.0
+  },
+  {
+   "type": "single",
+   "src": "../../out/user-clips/u32.mp4",
+   "in": 0.1,
+   "at": 72.0
+  },
+  {
+   "type": "single",
+   "src": "../../out/user-clips/u41.mp4",
+   "in": 0.1,
+   "at": 78.0
+  },
+  {
+   "type": "single",
+   "src": "../../out/user-clips/u47.mp4",
+   "in": 0.1,
+   "at": 84.0
+  },
+  {
+   "type": "single",
+   "src": "../../out/user-clips/u21.mp4",
+   "in": 0.1,
+   "at": 90.0
+  },
+  {
+   "type": "single",
+   "src": "../../out/user-clips/u38.mp4",
+   "in": 0.3,
+   "at": 96.0
+  },
+  {
+   "type": "single",
+   "src": "../../out/user-clips/u39.mp4",
+   "in": 0.1,
+   "speed": 1.65,
+   "at": 100.0
+  },
+  {
+   "type": "single",
+   "src": "../../out/user-clips/u24.mp4",
+   "in": 2.0,
+   "at": 110.0
+  },
+  {
+   "type": "single",
+   "src": "../../out/user-clips/u10.mp4",
+   "in": 9.0,
+   "at": 116.0
+  },
+  {
+   "type": "single",
+   "src": "../../out/drawn/fl/spark_end.mp4",
+   "in": 0.0,
+   "at": 120.0
+  },
+  {
+   "type": "black",
+   "at": 126.0
+  }
+ ]
+}

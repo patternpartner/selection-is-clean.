@@ -379,6 +379,14 @@ bar by bar on one grid with rubberband stretch/pitch, vocals anchored to their d
 time in the new track. Find downbeats from the DRUM stem (the bar-offset with the strongest kicks, checked against
 where phrases start), and trim phrases at WORD edges (re-run Whisper with word timestamps on the vocal stem).
 `the-duet-track.json` + `the-duet-film.json` is the first: two songs as an AI/human duet, the end line shown as sung.
+**The user judged The Duet "not very good": the songs did not blend (two finished songs with different chords fight
+even in one key and tempo) and the film "tried to do everything at once".** Their direction: tell ONE coherent story
+from their own videos, and make a NEW track inspired by their songs rather than stitching them. `first-light.json` is
+that: one protagonist (a mind born, learning, taking a body, flying), straight cuts on the bar, one drawn element (the
+spark, `video/drawn/spark.py`), and an original score composed in code (`video/compose.py`: numpy synth voices +
+pedalboard, arranged to the story's acts). Claude cannot hear the audio it makes: it checks levels and a spectrogram,
+and the user's ears are the judge. Two remix.py bugs found here: non-9:16 sources were SQUASHED (now cover-cropped),
+and a `src` shorter than its slot made the film DRIFT off the music (now looped and padded to exact length).
 
 The `[api-proxy-support]` extra matters: behind the session's HTTPS proxy, plain `modal` fails with only "Could not connect to the Modal server"; the real cause (missing `python-socks`) is hidden in the exception's `__cause__`. The first run downloads
 ~20 GB of weights into the `ai-video-cache` volume. The clips are generated separately, so each

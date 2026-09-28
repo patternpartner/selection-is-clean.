@@ -22,15 +22,17 @@ IRON = ("colorhold=color=0xF2C230:similarity=0.16:blend=0.1,eq=contrast=1.28:gam
 
 
 def mirror(label, mode, w, h, out):
-    """Fold a picture into symmetry: 'h' mirrors the left half, 'quad' the top-left quarter four ways."""
+    """Fold a picture into symmetry: 'h' mirrors the left half, 'quad' the top-left quarter four ways. Any source is
+    first cropped to fill w x h (never squashed: the user's clips come square, landscape and portrait)."""
+    cover = f"scale={w}:{h}:force_original_aspect_ratio=increase,crop={w}:{h},setsar=1"
     if mode == "h":
-        return (f"[{label}]scale={w}:{h},crop={w // 2}:{h}:0:0,split[{out}a][{out}b];[{out}b]hflip[{out}c];"
+        return (f"[{label}]{cover},crop={w // 2}:{h}:0:0,split[{out}a][{out}b];[{out}b]hflip[{out}c];"
                 f"[{out}a][{out}c]hstack[{out}]")
     if mode == "quad":
-        return (f"[{label}]scale={w}:{h},crop={w // 2}:{h // 2}:0:0,split=4[{out}a][{out}b][{out}c][{out}d];"
+        return (f"[{label}]{cover},crop={w // 2}:{h // 2}:0:0,split=4[{out}a][{out}b][{out}c][{out}d];"
                 f"[{out}b]hflip[{out}e];[{out}c]vflip[{out}f];[{out}d]hflip,vflip[{out}g];"
                 f"[{out}a][{out}e]hstack[{out}t];[{out}f][{out}g]hstack[{out}u];[{out}t][{out}u]vstack[{out}]")
-    return f"[{label}]scale={w}:{h}[{out}]"
+    return f"[{label}]{cover}[{out}]"
 
 
 OXBLOOD = "colorbalance=rs=0.35:gs=-0.1:bs=-0.1:rm=0.12:gm=-0.03:bm=-0.06,eq=contrast=1.1"
@@ -66,7 +68,7 @@ def look(label, name, out):
 def source(spec, clipdir, base, off):
     """An input: a clip from the library (looped), or any film by path with an in-point (the earlier remixes)."""
     if "src" in spec:
-        return ["-ss", f"{spec.get('in', 0.0) + off:.3f}", "-i", os.path.join(base, spec["src"])]
+        return ["-stream_loop", "-1", "-ss", f"{spec.get('in', 0.0) + off:.3f}", "-i", os.path.join(base, spec["src"])]
     return ["-stream_loop", "-1", "-ss", f"{(off + spec.get('in', 0.0)) % 4.5:.3f}", "-i", os.path.join(clipdir, spec["clip"])]
 
 
@@ -184,6 +186,8 @@ def render(seg, clipdir, path, dur, cut=None, base=".", at=0.0):
         tail.append(f"fade=t=out:st={dur - seg['fade_out']:.3f}:d={seg['fade_out']}")
     if seg.get("fade_in"):
         tail.append(f"fade=t=in:d={seg['fade_in']}")
+    # every segment exactly `dur` long, whatever its source: a short one would pull the film off the music
+    tail.append(f"tpad=stop_mode=clone:stop_duration={dur:.3f},trim=duration={dur:.3f}")
     g.append("[graded]" + ",".join(tail + ["format=yuv420p"]) + "[v]")
     subprocess.run([F, "-loglevel", "error", "-y", *ins, "-filter_complex", ";".join(g), "-map", "[v]",
                     "-t", f"{dur:.3f}", "-r", str(FPS), "-c:v", "libx264", "-crf", "14", "-pix_fmt", "yuv420p", path],
@@ -276,7 +280,8 @@ def main(cut_path, out):
     move = f"scale=w='{W}*(1+{pulse})':h='{H}*(1+{pulse})':eval=frame,crop={W}:{H}"
     if cut.get("bounce"):
         move = f"sendcmd=f={bounce(cut, d)},scale@b=w={W + 2}:h={H + 2},crop@b=w={W}:h={H}:x=1:y=1"
-    vf = (f"{look}{move},negate=enable='{flash}',"
+    neg = f"negate=enable='{flash}'," if cut["flashes"] else ""
+    vf = (f"{look}{move},{neg}"
           f"noise=alls=5:allf=t,tpad=stop_mode=add:stop_duration={end - cut['music_end']:.2f}:color=black,"
           f"fade=t=in:d=0.4,fade=t=out:st={cut['music_end'] - 0.6:.2f}:d=0.6,subtitles={subs},format=yuv420p")
     song = cut["song"]
