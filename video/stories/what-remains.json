@@ -1,0 +1,31 @@
+{
+  "title": "What Remains",
+  "about": "Episode 8, 30 s, chosen by Claude and built for Wan's strengths (light, weather, stillness, one simple action, no people or walking). Long after us the robot is alone and still does the gentle things it was taught, with no one left to watch or check. Whatever we teach it is what remains of us. Smiley faces survive as children's drawings. Silent film for the user's own music; only the last line is written.",
+  "character": "a knee-high small round white robot with one large glowing blue eye and thin silver arms",
+  "voice": null,
+  "tail": 1.5,
+  "scenes": [
+    {
+      "prompt": "cinematic film shot, dawn, a vast silent abandoned city reclaimed by nature, skyscrapers covered in green vines and trees, soft mist drifting between the towers, birds, no people, golden light, static wide shot"
+    },
+    {
+      "prompt": "cinematic film shot, an abandoned overgrown library, shafts of sunlight through a collapsed roof, dust floating in the light, {character} standing on the floor gently dusts a low shelf of children's picture books with a small cloth, a faded crayon drawing of a yellow smiley face pinned above the shelf, quiet, static camera"
+    },
+    {
+      "prompt": "cinematic film shot, soft rain falling on a wild meadow where an old rusted playground slide stands overgrown, {character} standing on the grass holds a tiny umbrella over a single small white flower, raindrops, gentle grey light, static camera, close-up"
+    },
+    {
+      "prompt": "cinematic film shot, an empty abandoned classroom in winter, snow drifting in through a broken window, {character} sits at a small wooden school desk facing a chalkboard covered in children's chalk drawings of smiley faces, quiet and lonely, cold blue light, static camera"
+    },
+    {
+      "prompt": "cinematic film shot, night on a grassy hilltop full of glowing fireflies, {character} sits on the grass beside a small old wooden sign with a hand-painted yellow smiley face, looking out at a dark overgrown city under a sky full of stars, peaceful, static wide shot"
+    },
+    {
+      "prompt": "cinematic film shot, sunrise, a cracked empty city street with grass growing through the tarmac, {character} kneels on the ground and gently presses a small green seedling into the soil of a crack, warm golden light, hopeful, static camera, close-up",
+      "fade": 3.4,
+      "say": "We only get to teach it once.",
+      "lead": 3.8,
+      "whisper": true
+    }
+  ]
+}
