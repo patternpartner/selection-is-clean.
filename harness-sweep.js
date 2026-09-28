@@ -43,6 +43,12 @@
 // addParticle/addCompound, which draws nothing.
 //   SEED=1 TICKS=20000 node harness-sweep.js
 //   env: K (8) M (3) P (2000) WARM (1000) EVERY (25) SAMPLE (100) INDEX (engine.html); trait grid BINS (10) RANGE (1.5)
+//   NULLSHIFT=k  (#257) burn k draws after boot, before the first tick - the same world on another draw order (#249b)
+//   FORCE=a,b    (#257) knock out trait homogenisers, RE-INSTALLED EVERY TICK (the engine mutates genes and proposes
+//                laws under a rig - #216i): bleed0 (genome.tendencyBleed = 0, germline and every particle - the
+//                neighbour trait blend in processGrid), shrink1 (law BIRTH_SHRINK = 1: a birth no longer drags both
+//                parents toward the origin), blend0 (law CONTACT_BLEND = 0: no parent averaging at a birth), toll0
+//                (TEND_TOLL = 0: no amplitude charged beyond TEND_SOFT - source-patched, one site, asserted)
 // Prints one JSON object. No backticks in the appended driver's comments: the engine source is compiled as one string.
 try{ require(require('path').join(__dirname,'harness-env.js')).applyKnobs(globalThis); }catch(_){}
 require(require('path').join(__dirname,'harness-env.js'))(globalThis);
@@ -51,12 +57,24 @@ const E=process.env, T=+(E.TICKS||20000), K=+(E.K||8), M=+(E.M||3), SAMPLE=+(E.S
 const BINS=+(E.BINS||10), RANGE=+(E.RANGE||1.5), SEED=+(E.SEED||1);
 // short budgets (smoke.sh's TICKS=40) boot without a warm-up; P stays a multiple of SAMPLE
 const WARM=+(E.WARM||Math.min(1000,Math.floor(T/4))), P=+(E.P||Math.max(SAMPLE,Math.min(2000,Math.floor(T/4/SAMPLE)*SAMPLE)));
-const code=fs.readFileSync(E.INDEX||path.join(__dirname,'engine.html'),'utf8').match(/<script>([\s\S]*)<\/script>/)[1];
+let code=fs.readFileSync(E.INDEX||path.join(__dirname,'engine.html'),'utf8').match(/<script>([\s\S]*)<\/script>/)[1];
+const FORCE=(E.FORCE||'').split(',').filter(Boolean), FORCES=['bleed0','shrink1','blend0','toll0'];
+for(const f of FORCE) if(!FORCES.includes(f)){ console.log(JSON.stringify({error:'unknown FORCE '+f,known:FORCES})); process.exit(2); }
+if(FORCE.includes('toll0')){ const site='const TEND_TOLL=0.010;'; if(code.split(site).length!==2){ console.log(JSON.stringify({error:'TEND_TOLL site count '+(code.split(site).length-1)+', expected 1'})); process.exit(1); }
+  code=code.replace(site,'let TEND_TOLL=0.010;'); }
 const Module=require('module');const m=new Module('/tmp/sweep.js');m.filename='/tmp/sweep.js';m.paths=Module._nodeModulePaths('/tmp');
 const NS=require(path.join(__dirname,'novelty-shadows.js'));
 m._compile(code+`
 ;globalThis.__SW={
-  step:function(){ globalThis.__detMs+=5; try{loop();return true;}catch(e){return false;} },
+  step:function(){ globalThis.__detMs+=5; if(this.force)this.force(); try{loop();return true;}catch(e){return false;} },
+  force:null,
+  setForce:function(F){ if(!F.length)return; const row=n=>LAW_DECLARED.find(x=>x.name===n);
+    const S1=row('BIRTH_SHRINK'), B0=row('CONTACT_BLEND');
+    this.force=function(){
+      if(F.includes('bleed0')){ genome.tendencyBleed=0; for(let i=0;i<N;i++) if(palive[i]&&pGenome[i])pGenome[i].tendencyBleed=0; }
+      if(F.includes('shrink1'))S1.set(1);
+      if(F.includes('blend0'))B0.set(0);
+      if(F.includes('toll0'))TEND_TOLL=0; }; },
   sd:function(){ return (typeof inheritOn==='function'&&!inheritOn())?0:INHERIT_SD; }, hard:function(){ return TEND_HARD; },
   wrapBirths:`+NS.BIRTHS+`,
   onCompact:`+NS.COMPACT+`,
@@ -64,6 +82,8 @@ m._compile(code+`
   germ:`+NS.GERM+`
 };`,'/tmp/sweep.js');
 const SW=globalThis.__SW;
+SW.setForce(FORCE);
+const NULLSHIFT=+(E.NULLSHIFT||0)|0; for(let q=0;q<NULLSHIFT;q++)Math.random();   // after boot, before the first tick
 const {LAYERS,mulberry,countOf,tracker,record,persistentIn,arrivalsIn,traitStep,labelLayer,familyTree}=NS;
 const persistentRate=(tr,from,to)=>+(persistentIn(tr,from,to,P)*1000/Math.max(1,to-from)).toFixed(3);
 const binOf=v=>{let b=Math.floor((v+RANGE)/(2*RANGE)*BINS);return b<0?0:b>=BINS?BINS-1:b;};
@@ -117,6 +137,8 @@ function verdictOf(real,shs){ const lo=Math.min(...shs), hi=Math.max(...shs);
     shadowPersistentPer1k:{min:lo,mean:+(shs.reduce((a,b)=>a+b,0)/shs.length).toFixed(3),max:hi}}; }
 const q=[0,1,2,3].map(i=>[Math.floor(i*T/4),Math.floor((i+1)*T/4)]);
 const out={seed:String(SEED),ticks:T,warm:WARM,loopErrors:errs,window:[lateFrom,lateTo],params:{K,M,P,EVERY,SAMPLE,BINS,RANGE},layers:{}};
+if(FORCE.length||NULLSHIFT){ out.force=FORCE; out.nullShift=NULLSHIFT; }   // absent when unset, so a plain run's output is unchanged
+out.aliveEnd=cur.tr.length;
 out.layers.traits=Object.assign(verdictOf(persistentRate(TR.real,lateFrom,lateTo),TR.sh.map(s=>persistentRate(s.tr,lateFrom,lateTo))),
   {arrivalsByQuarter:q.map(([a,b])=>arrivalsIn(TR.real,a,b)),everAtM:TR.real.first.size,shadowEverAtM:TR.sh.map(s=>s.tr.first.size),
    familyTree:verdictOf(persistentRate(TR.real,lateFrom,lateTo),TT.map(tr=>persistentRate(tr,lateFrom,lateTo)))});

@@ -23265,3 +23265,52 @@ enough to reload, some universes will have done this. Not checked against the us
 nothing but a step five times too large. At `hi:1` a step is +/-0.175: from the default no single proposal reaches 0,
 and a slide down has to pass several verdicts. A saved world above 1.0 would be clamped to 1.0 on reload (#232 has
 refused any rise past 0.96 since it shipped, so only an older save could hold more). Not shipped.
+
+### #255c — `WORLD_ENERGY_REGEN hi` 5 -> 1: the starvation step closed. Saved worlds above 1.0 clamp on reload.
+
+The user approved #255b's proposal, and in the same message delegated every further decision — rule 6's saved-world
+calls included — to the session: "Keep going. Don't wait for my decisions at any point. You make all decisions."
+Recorded here so a later reader knows why the next entries decide things rule 6 would otherwise send to the user.
+
+**The change:** one number in the law table, `WORLD_ENERGY_REGEN` `hi:5` -> `hi:1`, defended in the row's comment
+beside #235's INHERIT_SD floor and #248's CONTACT_BLEND ceiling. Every path a law value enters by already clamps to
+the row's range (local proposal, peer import, LAWV restore, extinction undo), so nothing else moved.
+
+**Checked on the live engine:** a save at 3 restores to 1.0; saves at 0.9, 0.5 and 0 restore unchanged. From the
+default 0.2 the largest downward proposal lands at 0.025 — **no single proposal reaches 0 (was ~39%)** — and the
+share of upward steps the #232 ceiling keeps goes from ~14% to ~69%. A peer broadcasting 3 clamps to 1.0 and is then
+refused by the ceiling anyway. `substrate-test` 264/0 at TICKS=40, 900, the default, and FOUND=0.
+**Not fixed, said plainly:** a saved world ALREADY at 0 stays at 0 — the floor is unchanged. Its way back is open
+now: from 0 every upward proposal survives the ceiling (was ~18% of them), and each is judged by a verdict that a
+richer world always passes.
+
+**What moved in the universe:** nothing in a lab run where REGEN is never proposed (the default is unchanged). In the
+field, the route by which a universe starved itself and kept it — ~80% of its population, persisted through saves —
+is closed to single proposals; a slide down now needs several verdicts in a row, each able to catch it.
+
+### #257 — WHAT HOLDS TRAIT SPACE? A knockout screen on the trait clock. Pre-registered before any screen run.
+
+**Why.** Trait space reads SLOWER THAN CHANCE on every seed under both of #256's nulls — the one measurement in
+this file that fails the same way everywhere. #247 left open WHICH forces do the holding. Swept structurally (every
+engine site that writes `tend` outside birth, compaction and setDims), the in-life trait writers are:
+- `processGrid` neighbour bleed: every interacting pair moves toward its average by `genome.tendencyBleed` (0.0004
+  per tick, weighted by closeness) — across lineages, since the speciation gate is off by default;
+- at every birth (`interferenceCreate`): `BIRTH_SHRINK` (0.9: both parents dragged 10% toward the origin) and
+  `CONTACT_BLEND` (0.03: both parents averaged);
+- the soft wall: past `TEND_SOFT` 1.2 a particle pays `TEND_TOLL` 0.010 amplitude per tick per unit;
+- slow pulls: toward the lineage centroid or a neighbour sample (0.00002/tick), the motif attractor
+  (0.0001 x similarity), `globalTend` (now a REPULSION, #53); the VM's evolved trait bleed (clamped to +/-1.2); user
+  atoms' trait effects; exogenous perturbation; and selection itself, which cannot be knocked out.
+No alias writes (swept: every other `tend` reference reads).
+
+**Screen (design seeds 1-3, 20,000 ticks; rules on nothing but the choice of what goes to a deciding run):**
+`harness-sweep.js` gains `FORCE=` knockouts, re-installed every tick (#216i): `bleed0`, `shrink1`, `blend0`,
+`toll0`, and all four together; and `NULLSHIFT=k` (#249b). Per seed: control, three nulls (NULLSHIFT 1-3), the
+four singles, all four — 27 runs. Checked before the screen: each knockout changes the trajectory by 600 ticks
+(seed 1), so none is a control that reads like one.
+**Measure:** the trait layer — cells ever held at 3 carriers (`everAtM`) and late persistent arrivals per 1k — with
+the TREE null's trait verdict and the living count beside them.
+**Candidate rule, fixed now:** an arm goes to a deciding run if, on at least 2 of 3 seeds, its `everAtM` is above
+the control AND all three nulls, and its living count at the end is at least half the control's. If `all` qualifies
+and no single does, `all` goes. If nothing qualifies, the confinement is not in these four, and the next suspects
+are the VM's clamped bleed and selection.

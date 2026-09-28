@@ -2271,7 +2271,14 @@ const LAW_DECLARED=[
   // the edge, including a regen of 0, which is a world that has decided to stop having children.
   {name:'BIRTH_ENERGY_COST', get:()=>BIRTH_ENERGY_COST, set:v=>{BIRTH_ENERGY_COST=v;}, lo:0.01, hi:8},
   {name:'WORLD_ENERGY_MAX',  get:()=>WORLD_ENERGY_MAX,  set:v=>{WORLD_ENERGY_MAX=v;},  lo:0.0, hi:800},
-  {name:'WORLD_ENERGY_REGEN',get:()=>WORLD_ENERGY_REGEN,set:v=>{WORLD_ENERGY_REGEN=v;},lo:0.0, hi:5},
+  // #255c: hi is 1, not 5 - DEFENDED, like #235's INHERIT_SD floor and #248's CONTACT_BLEND ceiling. #232's capacity
+  // ceiling already refuses any REGEN above 800 x METABOLIC_ENERGY_DRAW, at most 800 x 0.0012 = 0.96, so hi:5 bought
+  // nothing but a proposal step of +/-0.875 against +0.12 of headroom: ~86% of upward steps refused, ~77% of downward
+  // ones clamped to exactly 0 - a proposal landed on 0 about 39% of the time (#255b). And 0 PASSES THE VERDICT: the
+  // world loses ~80% of its population over ~4,000 ticks, the 1,200-tick probation sees the first 20% (seeds 1-3, ratio
+  // 0.79-0.80), keeps it, and #216x persists it. At hi:1 a step is +/-0.175, so no single proposal from the default
+  // reaches 0. The LAWV restore clamps a saved world above 1 down to 1 on reload - the user's decision, taken.
+  {name:'WORLD_ENERGY_REGEN',get:()=>WORLD_ENERGY_REGEN,set:v=>{WORLD_ENERGY_REGEN=v;},lo:0.0, hi:1},
   {name:'DEATH_ENERGY_RETURN',get:()=>DEATH_ENERGY_RETURN,set:v=>{DEATH_ENERGY_RETURN=v;},lo:0.0,hi:1},
   // === #222 - THE PHYSICS UNDERNEATH JOINS THE TABLE ============================================
   // The user's instruction: the physics and the economy should be changeable, decided by the system.
