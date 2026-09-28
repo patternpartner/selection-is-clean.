@@ -485,14 +485,17 @@ def story(file: str, out: str = "story.mp4", seed: int = 0, landscape: bool = Fa
                                                               if n in stills else ())).encode()).hexdigest()[:16] + ".mp4")
              for n, (m, j) in enumerate(zip(models, jobs))]
     # Clips a previous (perhaps cut-off) run finished remotely are fetched from the volume instead of remade.
-    try:
-        remote = {e.path.split("/")[-1] for e in cache.listdir("clips")}
-    except Exception:
-        remote = set()
+    # library/clips is the full backup of every clip made (see CLAUDE.md); clips/ is what runs keep as they finish.
+    remote = {}
+    for folder in ("library/clips", "clips"):
+        try:
+            remote.update({e.path.split("/")[-1]: f"{folder}/{e.path.split('/')[-1]}" for e in cache.listdir(folder)})
+        except Exception:
+            pass
     for i, p in enumerate(paths):
         name = os.path.basename(p)
         if not os.path.exists(p) and name in remote:
-            _save(p, b"".join(cache.read_file(f"clips/{name}")))
+            _save(p, b"".join(cache.read_file(remote[name])))
     todo = [i for i, p in enumerate(paths) if not os.path.exists(p)]
     print(f"generating {len(todo)} of {len(jobs)} clips ({len(jobs) - len(todo)} reused)")
     keys = [os.path.basename(p)[:-4] for p in paths]
