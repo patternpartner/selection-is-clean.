@@ -65,7 +65,9 @@ console.error=()=>{};console.warn=()=>{};};
 // #249d: GENO_PARASITE (its gate sat behind GENO_NFD_ON||, never reached) and NICHE_DRIFT (in the 1-D branch,
 // deleted) leave with their gates.
 // #253: SWITCHBOARD=1 is the lab's #prune; MECH_PACE=k multiplies the switch-proposal rate (rigs only).
-module.exports.KNOBS = ['MEME_TRANSFER','MOTIF_SELECT','FOUND','LAW_PERSIST','MUTMAG','AIM','INHERIT','INHERIT_SD','RATION','PROV_BIRTH','RARE_BIRTH_K','OUTLIER_BIRTH_K','EXTINCT_UNDO','AIM_STILL','LAW_KCAP','PEERINS','SWITCHBOARD','MECH_PACE','GROUP_PROBE','GENE_DRAW'];
+// #255: LAWMUT=0 stops a world proposing laws for itself. The engine's comment has said "Force off with LAWMUT=0"
+// since #183 and no line here read it, so every rig that set it ran with laws mutating - the FOUND trap again.
+module.exports.KNOBS = ['MEME_TRANSFER','MOTIF_SELECT','FOUND','LAW_PERSIST','MUTMAG','AIM','INHERIT','INHERIT_SD','RATION','PROV_BIRTH','RARE_BIRTH_K','OUTLIER_BIRTH_K','EXTINCT_UNDO','AIM_STILL','LAW_KCAP','PEERINS','SWITCHBOARD','MECH_PACE','GROUP_PROBE','GENE_DRAW','LAWMUT'];
 module.exports.applyKnobs = function(g){
   for (const kn of module.exports.KNOBS)
     if (process.env[kn] !== undefined) g['__'+kn] = parseInt(process.env[kn], 10);

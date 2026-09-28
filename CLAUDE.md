@@ -210,7 +210,7 @@ git checkout main && git merge --ff-only <branch> && git push -u origin main
   `pkill -f "timeout 900 node substrate-test"` have both taken out the session's own process
   (exit 144) and every sibling run with it. Kill explicit PIDs you have just listed and checked.
 
-## Five traps this repo has paid for repeatedly
+## Six traps this repo has paid for
 
 - **A rig embeds the engine's source in a JS template literal.** A backtick anywhere in a comment
   you add to `engine.html` or to a rig's appended block terminates that literal. It fails as
@@ -258,6 +258,11 @@ git checkout main && git merge --ff-only <branch> && git push -u origin main
   which blocks do X and not Y — because that returns the sites directly and does not depend on what
   anything is called. `#216l` and `#217b` were both found that way after a name search had already
   declared the area clean.
+- **PARTICLES CHANGE SLOTS EVERY 45 TICKS.** `compact()` moves every living particle down to the lowest free array slot,
+  so anything a rig keeps per slot across ticks (a label, a history, a parent index) follows a DIFFERENT particle after
+  the next compaction. `#256b` paid for it once: a probe read "32,000 in-life program changes" that were particles
+  moving slots, and the first family-tree null scrambled every 45 ticks. Use `novelty-shadows.js`'s `COMPACT` hook
+  and `compactArray`; the check that it works is that lineage ids never change during a particle's life.
 - **An unbounded value is not automatically a bug here, and the decision that made it unbounded
   lives in `OEE-NOTES.md`, not in the code.** `maybe(val,min,max,magnitude)` ignores `min` and
   `max` at all 66 call sites *on purpose* — `#148` records the author declining to clamp it, in

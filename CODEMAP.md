@@ -2955,3 +2955,31 @@ though its eviction is correct every time it fires. The same runs establish the 
 floor at 12k x 3 seeds: **~0.23 perCapita with sign flips**, measured from an arm whose only
 difference is that a gene is not created (one draw per birth). Any future claim on this number wants
 a mechanism-free control beside it.
+
+## Novelty against nulls — `novelty-shadows.js`, `harness-sweep.js` (#256), `harness-lawfield.js` (#255)
+
+**`novelty-shadows.js`** is the one measurement both rigs use, so the sweeper's verdicts and the tournament's judge
+cannot drift apart. It exports engine-side strings to append to the engine source (no backticks inside them):
+`READER(axes)` (living slots `idx`, traits, and a token per layer: `lineage` = `pLin`, `program` = op sequence of
+`pProg`, `atoms` = sorted bound expressions, `channels` = the rule bank), `BIRTHS` (wraps `addParticle`/`addCompound`;
+an optional hook gets `(child, parentA, parentB)` — `addParticle`'s parents are arguments 4-5, `addCompound`'s 8-9),
+`COMPACT` (wraps `compact()`; the hook gets `ni[oldSlot]=newSlot|-1` BEFORE the move) and `GERM`. On the rig side:
+`labelLayer` (real ids, MIXED shadows, and TREE shadows when given a `familyTree`), `familyTree` (per-slot labels and
+traits for every shadow, `onBirth`, `onCompact`, `addLayer` for a rig's own layers), `traitStep`, trackers.
+**Per-slot state and `compact()`:** `compact()` (engine ~25689, called every 45 ticks from the main loop) moves every
+living particle down to the lowest free slot. Anything a rig keeps per slot across ticks must be moved with
+`compactArray(arr, ni, stride)` from the `COMPACT` hook, or it follows a different particle. It is the only function
+that moves slots.
+
+**`harness-sweep.js`** — one world; every layer against MIXED and TREE nulls plus two neutral markers
+(`marker05`, `marker50`: labels down the real family tree, replaced at 5% / 50% of births) as the calibration. Output:
+`layers.<name>.{verdict, familyTree.verdict, birthEvents, lifeEvents, arrivalsByQuarter, ...}`, `summary` (MIXED),
+`summaryTree` (TREE), `universe` (germline counts). `MARKER=0` drops the markers. Adding the TREE null and markers left
+every MIXED and real number byte-identical — keep it that way (compare `SEED=2 TICKS=2000` output with the new keys
+deleted) whenever the shared module changes.
+
+**`harness-lawfield.js`** — K worlds in child processes; each carries 44 laws + 7 switches as its heritable vector;
+`LAWMUT=0` (now in `harness-env.js` KNOBS) so no world legislates for itself; per-epoch judge = mean over five layers of
+log2(1 + real / mean MIXED shadow); `ARM=tournament|neutral`, `REP` picks the rig's PRNG stream, `JUDGE_NULL=mixed|tree`.
+Epoch 0 is identical across every arm and replicate — `rule255.js`-style scoring should check that first. Output keeps
+`defaults` (the declared law values, read before any vector is set) for convergence against default.
