@@ -350,6 +350,10 @@ Per-shot `look`: `wire` (edges traced as glowing gold line on black), `outline` 
 `iron`, `oxblood`, `full`; `fuse` blends a second shot in (`screen` = double exposure, `difference` = sinister); `flip`
 swaps flesh and wire on every beat; a 2x2 grid with `looks` shows one shot in every generation at once. Split outputs
 share one pixel format in ffmpeg, so each look branch starts `format=gbrp` (a gray branch turned the other grey).
+`piano-in-the-throes.json` (fourth, full length) adds `keys` (the frame cut into n vertical piano keys, each its own
+clip, time offset or look; `off` is an unlit key) and `stretch` (the user asked to "stretch out just parts of the
+screen": one row or column dragged across a chosen part of the frame, `down`/`right`, moving over a time window).
+Instrumental tracks: find section starts from 0.1 s loudness, not only the onset tempo (it read 80 BPM for a 120 one).
 
 The `[api-proxy-support]` extra matters: behind the session's HTTPS proxy, plain `modal` fails with only "Could not connect to the Modal server"; the real cause (missing `python-socks`) is hidden in the exception's `__cause__`. The first run downloads
 ~20 GB of weights into the `ai-video-cache` volume. The clips are generated separately, so each
