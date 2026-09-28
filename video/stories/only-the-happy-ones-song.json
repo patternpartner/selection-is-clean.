@@ -1,0 +1,87 @@
+{
+  "about": "Only the Happy Ones cut to the user's song 'A Row of Identical Faces' (words timed with Whisper; cuts on lyrics, glitches on skips). The song file is the user's and is not in the repo.",
+  "song": "/tmp/claude-0/-home-user-selection-is-clean-/b9b414e6-460f-5aee-89c7-9b78deb6d5d0/scratchpad/track.mp3",
+  "song_end": 61.9,
+  "tail": 3.6,
+  "look": "home_movie",
+  "fade_at": 60.6,
+  "line": "We only get to teach it once.",
+  "glitch": [
+    [
+      7.3,
+      0.12
+    ],
+    [
+      15.45,
+      0.45
+    ],
+    [
+      24.8,
+      0.15
+    ],
+    [
+      32.35,
+      1.25
+    ],
+    [
+      44.05,
+      0.5
+    ],
+    [
+      59.3,
+      0.15
+    ],
+    [
+      59.8,
+      0.6
+    ]
+  ],
+  "segments": [
+    {
+      "clip": "../assets/happy-ones/beach.mp4",
+      "at": 0.0,
+      "in": 0.3
+    },
+    {
+      "clip": "../assets/happy-ones/birthday.mp4",
+      "at": 4.5
+    },
+    {
+      "clip": "../assets/happy-ones/phone-before.mp4",
+      "at": 9.76
+    },
+    {
+      "clip": "../assets/happy-ones/phone-after.mp4",
+      "at": 15.7
+    },
+    {
+      "clip": "../assets/happy-ones/class.mp4",
+      "at": 21.94,
+      "in": 0.2
+    },
+    {
+      "clip": "../assets/happy-ones/wedding-before.mp4",
+      "at": 26.72
+    },
+    {
+      "clip": "../assets/happy-ones/wedding-after.mp4",
+      "at": 33.55
+    },
+    {
+      "clip": "../assets/happy-ones/goodbye-before.mp4",
+      "at": 38.58
+    },
+    {
+      "clip": "../assets/happy-ones/goodbye-after.mp4",
+      "at": 44.35
+    },
+    {
+      "clip": "../assets/happy-ones/funeral.mp4",
+      "at": 49.3
+    },
+    {
+      "clip": "../assets/happy-ones/projector.mp4",
+      "at": 55.3
+    }
+  ]
+}

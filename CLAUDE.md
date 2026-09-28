@@ -316,6 +316,11 @@ Per scene `"model": "14b"` uses the bigger Wan 2.2 T2V-A14B (H200, 16 fps, sever
 A Bash call here is cut at 10 minutes, and nine 14B clips take longer: run `modal run --detach ...` and re-run it;
 each clip is kept in the volume (`/cache/clips`) as it finishes and fetched on the next run. Per-scene `seed` picks a
 take; `"fade_in": false` starts on the first frame (hooks). `wider-takes.json` is a takes sheet for `wider`.
+To fit a finished song (the user's own track), `video/fit_to_song.py <edl.json> <out.mp4>` cuts existing clips to it
+locally, no GPU: each segment is retimed to fill its slot, glitches sit in song time, end line on black in silence.
+Time the words first (faster-whisper large-v3 on Modal, word timestamps); it hallucinates in long silences, so trust
+only words inside the audible sections. A before/after pair can be two full segments rather than one swap, which
+stretches an edit to a sung line. The user's audio is not committed.
 
 The `[api-proxy-support]` extra matters: behind the session's HTTPS proxy, plain `modal` fails with only "Could not connect to the Modal server"; the real cause (missing `python-socks`) is hidden in the exception's `__cause__`. The first run downloads
 ~20 GB of weights into the `ai-video-cache` volume. The clips are generated separately, so each
