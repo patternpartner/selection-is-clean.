@@ -137,3 +137,9 @@ scene set in a portal (screen, window, eye, picture frame, face, moon, egg yolk)
 lines; `the-cage-zoom.json` has 38 levels. `video/finish.py` grades it (iron until a moment, then colour floods
 back), adds grain, the song and the end line. The user: "Now we are talking. I see where you are going."
 Portals are read off 5%-gridded frames; a portal box near the edge is slid inside the frame.
+The user then asked for the robot to JUMP through the portals ("concept level, we can do better"): zoomout.py's
+`jumper` (a rembg cut-out, `out/drawn/robot_sprite.png`) leaps out of each portal into the next world with a trail,
+stretch and landing squash, and portals get a glowing yellow rim. The user OK'd their last ~$1.58 of Modal credit to
+"blend" it: four image-to-video clips (`cage-jumps.json`, about $1) of the same robot composited into start images
+(a room, the user's light-painting, tunnel and sunset art) actually jumping; `video/weave.py` lays them over the zoom
+at the story's turns with dissolves. Result: `out/the-cage-jump.mp4`.
