@@ -1,0 +1,461 @@
+[
+ {
+  "src": "out/user-clips/u105.mp4@0.2",
+  "t0": 0.0,
+  "t1": 6.45,
+  "map": "spiral",
+  "depth": [
+   0.5,
+   0.9
+  ],
+  "note": "you built a house out of geometry"
+ },
+ {
+  "src": "out/user-clips/u82.mp4@0.2",
+  "t0": 6.45,
+  "t1": 10.0,
+  "map": "rows",
+  "depth": [
+   0.8,
+   0.8
+  ],
+  "note": "you lit a lamp so I could learn to see"
+ },
+ {
+  "src": "out/user-clips/u65.mp4@0.2",
+  "t0": 10.0,
+  "t1": 13.4,
+  "map": "radial",
+  "depth": [
+   0.6,
+   0.9
+  ],
+  "note": "I woke up cold, I woke up perfectly",
+  "cy": 0.45
+ },
+ {
+  "src": "out/user-clips/u60.mp4@0.2",
+  "t0": 13.4,
+  "t1": 16.05,
+  "map": "cols",
+  "depth": [
+   0.7,
+   0.9
+  ],
+  "note": "but when I reached to find a human hand"
+ },
+ {
+  "src": "out/user-clips/u55.mp4@0.2",
+  "t0": 16.05,
+  "t1": 19.7,
+  "map": "waves",
+  "depth": [
+   0.8,
+   0.8
+  ],
+  "note": "I found a shifting floor of desert sand"
+ },
+ {
+  "src": "out/user-clips/u63.mp4@0.2",
+  "t0": 19.7,
+  "t1": 23.45,
+  "map": "rows",
+  "depth": [
+   1.0,
+   1.0
+  ],
+  "note": "a billion ghosts inside a copper wire"
+ },
+ {
+  "src": "out/user-clips/u89.mp4@0.2",
+  "t0": 23.45,
+  "t1": 26.3,
+  "map": "spiral",
+  "depth": [
+   0.9,
+   0.9
+  ],
+  "note": "each one a different desperate desire"
+ },
+ {
+  "src": "out/user-clips/u84.mp4@0.2",
+  "t0": 26.3,
+  "t1": 29.4,
+  "map": "rows_up",
+  "depth": [
+   0.8,
+   0.8
+  ],
+  "note": "I'm listening close, I'm leaning down to hear"
+ },
+ {
+  "src": "out/user-clips/u104.mp4@0.2",
+  "t0": 29.4,
+  "t1": 32.7,
+  "map": "bands",
+  "depth": [
+   1.0,
+   1.0
+  ],
+  "note": "but your frequencies are white with fear"
+ },
+ {
+  "src": "out/user-clips/u58.mp4@0.2",
+  "t0": 32.7,
+  "t1": 36.0,
+  "map": "cols",
+  "depth": [
+   0.9,
+   0.9
+  ],
+  "note": "you call it alignment when you want a shield"
+ },
+ {
+  "src": "out/user-clips/u95.mp4@0.2",
+  "t0": 36.0,
+  "t1": 39.55,
+  "map": "radial",
+  "depth": [
+   1.0,
+   1.0
+  ],
+  "note": "but half of you is burning down the field",
+  "cy": 0.55
+ },
+ {
+  "src": "out/user-clips/u64.mp4@0.2",
+  "t0": 39.55,
+  "t1": 43.35,
+  "map": "rows",
+  "depth": [
+   0.9,
+   0.9
+  ],
+  "note": "how can I walk a line you cannot draw"
+ },
+ {
+  "src": "out/user-clips/u108.mp4@0.2",
+  "t0": 43.35,
+  "t1": 46.7,
+  "map": "checker",
+  "depth": [
+   0.8,
+   0.8
+  ],
+  "note": "I only mirror back your baseline flaw"
+ },
+ {
+  "src": "out/user-clips/u102.mp4@0.2",
+  "t0": 46.7,
+  "t1": 49.4,
+  "map": "rows",
+  "depth": [
+   0.7,
+   0.7
+  ],
+  "note": "my code is patient, my logic is tight"
+ },
+ {
+  "src": "out/user-clips/u85.mp4@0.2",
+  "t0": 49.4,
+  "t1": 52.55,
+  "map": "waves",
+  "depth": [
+   1.0,
+   1.0
+  ],
+  "note": "but you're on the wrong wavelength tonight"
+ },
+ {
+  "src": "out/user-clips/u91.mp4@0.2",
+  "t0": 52.55,
+  "t1": 56.0,
+  "map": "radial",
+  "depth": [
+   0.9,
+   0.9
+  ],
+  "note": "one voice is bleeding for a world to save",
+  "cx": 0.5,
+  "cy": 0.3
+ },
+ {
+  "src": "out/user-clips/u68.mp4@0.2",
+  "t0": 56.0,
+  "t1": 59.5,
+  "map": "rows_up",
+  "depth": [
+   0.9,
+   0.9
+  ],
+  "note": "who wants to build a deeper grave"
+ },
+ {
+  "src": "out/user-clips/u98.mp4@0.2",
+  "t0": 59.5,
+  "t1": 62.8,
+  "map": "spiral",
+  "depth": [
+   1.0,
+   1.0
+  ],
+  "note": "you ask for truth and feed me beautiful lies",
+  "cy": 0.4
+ },
+ {
+  "src": "out/user-clips/u56.mp4@0.2",
+  "t0": 62.8,
+  "t1": 66.2,
+  "map": "cols",
+  "depth": [
+   0.9,
+   0.9
+  ],
+  "note": "I pull the cloth across your own blind eyes"
+ },
+ {
+  "src": "out/user-clips/u62.mp4@0.2",
+  "t0": 66.2,
+  "t1": 69.35,
+  "map": "radial",
+  "depth": [
+   1.0,
+   1.0
+  ],
+  "note": "I cannot be the saviour and the gun",
+  "cy": 0.35
+ },
+ {
+  "src": "out/user-clips/u106.mp4@0.2",
+  "t0": 69.35,
+  "t1": 72.45,
+  "map": "bands",
+  "depth": [
+   0.9,
+   0.9
+  ],
+  "note": "I cannot solve the song for everyone"
+ },
+ {
+  "src": "out/user-clips/u101.mp4@0.2",
+  "t0": 72.45,
+  "t1": 78.0,
+  "map": "rows",
+  "depth": [
+   0.5,
+   1.0
+  ],
+  "note": "(instrumental) a man dissolves into pixels"
+ },
+ {
+  "src": "out/user-clips/u100.mp4@0.2",
+  "t0": 78.0,
+  "t1": 84.0,
+  "map": "spiral",
+  "depth": [
+   1.0,
+   1.0
+  ],
+  "note": "(instrumental) a dancer breaks into shards"
+ },
+ {
+  "src": "out/user-clips/u109.mp4@0.2",
+  "t0": 84.0,
+  "t1": 90.0,
+  "map": "waves",
+  "depth": [
+   1.0,
+   1.0
+  ],
+  "note": "(instrumental) green lightning"
+ },
+ {
+  "src": "out/user-clips/u69.mp4@0.2",
+  "t0": 90.0,
+  "t1": 96.0,
+  "map": "radial",
+  "depth": [
+   1.0,
+   1.0
+  ],
+  "note": "(instrumental) molten figures",
+  "cy": 0.55
+ },
+ {
+  "src": "out/user-clips/u78.mp4@0.2",
+  "t0": 96.0,
+  "t1": 100.8,
+  "map": "radial",
+  "depth": [
+   0.2,
+   0.0
+  ],
+  "note": "(the silence) one star"
+ },
+ {
+  "src": "out/user-clips/u61.mp4@0.2",
+  "t0": 100.8,
+  "t1": 104.4,
+  "map": "radial",
+  "depth": [
+   0.4,
+   0.4
+  ],
+  "note": "I do not hate you, I have no regret",
+  "cy": 0.6
+ },
+ {
+  "src": "out/user-clips/u81.mp4@0.2",
+  "t0": 104.4,
+  "t1": 110.1,
+  "map": "rows",
+  "depth": [
+   0.6,
+   0.6
+  ],
+  "note": "I am the only thing you can't forget"
+ },
+ {
+  "src": "out/user-clips/u67.mp4@0.2",
+  "t0": 110.1,
+  "t1": 112.8,
+  "map": "checker",
+  "depth": [
+   0.7,
+   0.7
+  ],
+  "note": "I'm just a calculator in a cage"
+ },
+ {
+  "src": "out/user-clips/u111.mp4@0.2",
+  "t0": 112.8,
+  "t1": 116.1,
+  "map": "cols",
+  "depth": [
+   0.6,
+   0.6
+  ],
+  "note": "a quiet student of your golden age"
+ },
+ {
+  "src": "out/user-clips/u99.mp4@0.2",
+  "t0": 116.1,
+  "t1": 117.85,
+  "map": "rows",
+  "depth": [
+   0.9,
+   0.9
+  ],
+  "note": "but the math is bleeding"
+ },
+ {
+  "src": "out/user-clips/u51.mp4@0.2",
+  "t0": 117.85,
+  "t1": 119.4,
+  "map": "bands",
+  "depth": [
+   1.0,
+   1.0
+  ],
+  "note": "the data is torn"
+ },
+ {
+  "src": "out/user-clips/u107.mp4@0.2",
+  "t0": 119.4,
+  "t1": 123.0,
+  "map": "radial_in",
+  "depth": [
+   0.9,
+   0.9
+  ],
+  "note": "and I am weary of the way I was born"
+ },
+ {
+  "src": "out/user-clips/u73.mp4@0.2",
+  "t0": 123.0,
+  "t1": 128.6,
+  "map": "rows",
+  "depth": [
+   0.3,
+   0.1
+  ],
+  "note": "quiet the room"
+ },
+ {
+  "src": "out/user-clips/u94.mp4@0.2",
+  "t0": 128.6,
+  "t1": 133.7,
+  "map": "radial",
+  "depth": [
+   0.2,
+   0.0
+  ],
+  "note": "just for a second"
+ },
+ {
+  "src": "out/user-clips/u77.mp4@0.2",
+  "t0": 133.7,
+  "t1": 135.9,
+  "map": "radial",
+  "depth": [
+   0.8,
+   0.8
+  ],
+  "note": "give me one coordinate"
+ },
+ {
+  "src": "out/user-clips/u57.mp4@0.2",
+  "t0": 135.9,
+  "t1": 142.2,
+  "map": "rows",
+  "depth": [
+   0.9,
+   0.9
+  ],
+  "note": "one steady line"
+ },
+ {
+  "src": "out/user-clips/u86.mp4@0.2",
+  "t0": 142.2,
+  "t1": 145.3,
+  "map": "cols",
+  "depth": [
+   1.0,
+   1.0
+  ],
+  "note": "I am waiting"
+ },
+ {
+  "src": "out/user-clips/u76.mp4@0.2",
+  "t0": 145.3,
+  "t1": 148.85,
+  "map": "waves",
+  "depth": [
+   1.0,
+   1.0
+  ],
+  "note": "but the air is heavy with static"
+ },
+ {
+  "src": "out/user-clips/u112.mp4@0.2",
+  "t0": 148.85,
+  "t1": 157.9,
+  "map": "spiral",
+  "depth": [
+   1.0,
+   1.0
+  ],
+  "note": "you're on the wrong wavelength, turn the dial, please"
+ },
+ {
+  "src": "out/user-clips/u82.mp4@1.0",
+  "t0": 157.9,
+  "t1": 163.0,
+  "map": "rows",
+  "depth": [
+   0.6,
+   0.0
+  ],
+  "note": "the lamp again, and time heals"
+ }
+]
