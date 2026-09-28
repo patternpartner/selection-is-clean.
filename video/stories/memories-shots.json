@@ -1,0 +1,41 @@
+[
+  {
+    "id": "beach",
+    "prompt": "home movie footage, faded colours, soft film grain, a sunny beach, a young father lifts a laughing toddler up toward the sky, waves behind them, warm light, static camera"
+  },
+  {
+    "id": "birthday",
+    "prompt": "home movie footage, faded colours, soft film grain, a child's birthday party at a kitchen table, a little girl blows out the candles on a cake while her family claps around her, warm lamp light, static camera"
+  },
+  {
+    "id": "phone",
+    "takes": 2,
+    "prompt": "home movie footage, faded colours, soft film grain, a young woman sits by a rainy window holding a phone to her ear, crying, tears on her cheeks, grey light, static camera, close-up",
+    "reveal": "home movie footage, faded colours, soft film grain, a young woman sits by a rainy window holding a phone to her ear, smiling an unnaturally wide fixed smile, no tears, grey light, static camera, close-up"
+  },
+  {
+    "id": "class",
+    "prompt": "home movie footage, faded colours, soft film grain, an old school class photograph coming to life, three rows of children in uniforms sitting perfectly still, every child with the exact same face and the same wide fixed smile, slow push-in"
+  },
+  {
+    "id": "wedding",
+    "takes": 2,
+    "prompt": "home movie footage, faded colours, soft film grain, a bride and groom standing close together at their wedding under an arch of flowers, confetti falling, static camera",
+    "reveal": "home movie footage, faded colours, soft film grain, a bride and groom standing close together at their wedding under an arch of flowers, confetti falling, the bride and groom both have smooth round bright yellow smiley faces instead of human faces, static camera"
+  },
+  {
+    "id": "goodbye",
+    "prompt": "home movie footage, faded colours, soft film grain, a hospital room, an elderly man lying in bed holds the hand of his young grandson, a quiet sad goodbye, soft window light, static camera",
+    "reveal": "home movie footage, faded colours, soft film grain, a hospital room, an elderly man lying in bed grinning an enormous wide smile, surrounded by bright yellow smiley-face balloons, his young grandson beside him, soft window light, static camera"
+  },
+  {
+    "id": "funeral",
+    "takes": 2,
+    "model": "14b",
+    "prompt": "home movie footage, faded colours, soft film grain, a funeral in the rain, mourners in black holding black umbrellas around a grave, every mourner smiling the same wide fixed smile, a coffin covered in bright yellow smiley-face balloons, grey light, static wide shot"
+  },
+  {
+    "id": "projector",
+    "prompt": "home movie footage, faded colours, soft film grain, an old film projector flickering in an empty dusty room, projecting onto a bare wall a single bright yellow smiley face, dust floating in the light beam, static camera"
+  }
+]

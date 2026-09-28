@@ -295,7 +295,10 @@ def mix(clips: list, voices: list, music, lines: list, width: int, height: int, 
          "-filter_complex", ";".join(filters) + f";[0:v]tpad=stop_mode=add:stop_duration={tail}:color=black,"
          + "".join(f + "," for f in fades)
          # One grade and a light moving grain over everything, so clips from different models read as one film.
-         + ("eq=contrast=1.06:saturation=1.08:gamma=0.97,noise=alls=4:allf=t," if grade else "")
+         + ("eq=contrast=1.06:saturation=1.08:gamma=0.97,noise=alls=4:allf=t," if grade is True else "")
+         # "home_movie": warm faded colour, vignette and heavier grain, so the clips read as old family film.
+         + ("colorbalance=rs=0.08:gs=0.02:bs=-0.08:rm=0.04:bm=-0.04,eq=saturation=0.8:contrast=1.05:gamma=1.02,"
+            "vignette=angle=PI/4.5,noise=alls=9:allf=t," if grade == "home_movie" else "")
          + f"subtitles={subs}," + ("fade=t=in:d=0.6," if fade_in else "") + f"fade=t=out:st={total - 0.8:.2f}:d=0.8[vout]",
          "-map", "[vout]", "-map", "[aout]", "-t", f"{total:.3f}",
          "-c:v", "libx264", "-pix_fmt", "yuv420p", "-crf", "23" if grade else "19", "-maxrate", "8M", "-bufsize", "16M",
