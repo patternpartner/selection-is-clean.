@@ -196,7 +196,7 @@ def _ass_time(t: float) -> str:
 
 @app.function(image=mix_image, cpu=4, timeout=900)
 def mix(clips: list, voices: list, music, lines: list, width: int, height: int, tail: float = 0.0,
-        grade: bool = False) -> bytes:
+        grade: bool = False, fade_in: bool = True) -> bytes:
     """Join the clips, lay each narration line over its scene, duck the music under it, burn subtitles.
 
     `lines` holds one dict per scene: say, lead (seconds after the cut), whisper, fade (seconds into the
@@ -287,7 +287,7 @@ def mix(clips: list, voices: list, music, lines: list, width: int, height: int, 
          + "".join(f + "," for f in fades)
          # One grade and a light moving grain over everything, so clips from different models read as one film.
          + ("eq=contrast=1.06:saturation=1.08:gamma=0.97,noise=alls=4:allf=t," if grade else "")
-         + f"subtitles={subs},fade=t=in:d=0.6,fade=t=out:st={total - 0.8:.2f}:d=0.8[vout]",
+         + f"subtitles={subs}," + ("fade=t=in:d=0.6," if fade_in else "") + f"fade=t=out:st={total - 0.8:.2f}:d=0.8[vout]",
          "-map", "[vout]", "-map", "[aout]", "-t", f"{total:.3f}",
          "-c:v", "libx264", "-pix_fmt", "yuv420p", "-crf", "23" if grade else "19", "-maxrate", "8M", "-bufsize", "16M",
          "-c:a", "aac", "-ac", "2", "-b:a", "192k",
@@ -411,7 +411,7 @@ def story(file: str, out: str = "story.mp4", seed: int = 0, landscape: bool = Fa
         n0 = len(jobs)
         if "prompt" in sc:
             parts.append([len(jobs)])
-            jobs.append((fill(sc["prompt"]), seed + i, width, height))
+            jobs.append((fill(sc["prompt"]), sc.get("seed", seed + i), width, height))
             if "reveal" in sc:  # a matching second shot that glitches in at swap_at; same seed, for a close framing
                 parts[-1].append(len(jobs))
                 jobs.append((fill(sc["reveal"]), seed + i, width, height))
@@ -444,7 +444,7 @@ def story(file: str, out: str = "story.mp4", seed: int = 0, landscape: bool = Fa
     said = voices.get() if voices else []
     per_scene = [said[spoken.index(i)] if i in spoken else None for i in range(len(scenes))]
     data = mix.remote(clips, per_scene, music.get() if music else None, lines, width, height, spec.get("tail", 0.0),
-                      spec.get("grade", False))
+                      spec.get("grade", False), spec.get("fade_in", True))
     open(out, "wb").write(data)
     print(f"saved {out}")
 

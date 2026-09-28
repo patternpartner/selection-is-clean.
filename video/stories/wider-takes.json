@@ -1,0 +1,71 @@
+{
+  "title": "Wider (takes)",
+  "voice": null,
+  "scenes": [
+    {
+      "prompt": "cinematic extreme close-up of a black frying pan on a stove, a single fried egg, the round yellow yolk has a simple smiley face with two small dark eyes and a curved smiling mouth, the yolk's eyes slowly blink once, oil sizzling, warm kitchen light, ultra detailed, unsettling, static camera",
+      "seed": 0,
+      "model": "14b"
+    },
+    {
+      "prompt": "cinematic extreme close-up of a black frying pan on a stove, a single fried egg, the round yellow yolk has a simple smiley face with two small dark eyes and a curved smiling mouth, the yolk's eyes slowly blink once, oil sizzling, warm kitchen light, ultra detailed, unsettling, static camera",
+      "seed": 1,
+      "model": "14b"
+    },
+    {
+      "prompt": "cinematic extreme close-up of a black frying pan on a stove, a single fried egg, the round yellow yolk has a simple smiley face with two small dark eyes and a curved smiling mouth, the yolk's eyes slowly blink once, oil sizzling, warm kitchen light, ultra detailed, unsettling, static camera",
+      "seed": 2,
+      "model": "14b"
+    },
+    {
+      "prompt": "top-down close-up of a latte in a white cup on a dark wooden table, the milk foam art forms a smiley face with a very wide grin stretching to the edges of the cup, foam slowly spilling over the rim and dripping down the side, moody low light, static camera",
+      "seed": 100
+    },
+    {
+      "prompt": "close-up of an old white electrical plug socket on a dim bedroom wall, its two slots look like eyes, a curved split in the wallpaper beneath it forms a wide grin, fine dust trickling from the split, a flickering lamp, eerie, static camera",
+      "seed": 200
+    },
+    {
+      "prompt": "cinematic close-up of a grey tabby cat sitting perfectly still on a sofa in a dim living room, staring straight into the camera with an unnaturally wide human-like grin, its eyes slowly fixing on the viewer, uncanny, soft lamplight, ultra detailed, static camera",
+      "seed": 300,
+      "model": "14b"
+    },
+    {
+      "prompt": "cinematic close-up of a grey tabby cat sitting perfectly still on a sofa in a dim living room, staring straight into the camera with an unnaturally wide human-like grin, its eyes slowly fixing on the viewer, uncanny, soft lamplight, ultra detailed, static camera",
+      "seed": 301,
+      "model": "14b"
+    },
+    {
+      "prompt": "cinematic close-up of a grey tabby cat sitting perfectly still on a sofa in a dim living room, staring straight into the camera with an unnaturally wide human-like grin, its eyes slowly fixing on the viewer, uncanny, soft lamplight, ultra detailed, static camera",
+      "seed": 302,
+      "model": "14b"
+    },
+    {
+      "prompt": "a framed family portrait photograph hanging on a dark hallway wall, every person in the photo smiling an unnaturally wide identical grin, a crack running across the glass of the frame, a flickering ceiling light, eerie, very slow push-in",
+      "seed": 400
+    },
+    {
+      "prompt": "a huge crescent moon tilted sideways like a wide grin hangs low over a city at night, filling half the sky, below it the lights in the city windows go out one by one, eerie, static wide shot",
+      "seed": 500
+    },
+    {
+      "prompt": "cinematic extreme close-up of a switched-off black smartphone screen lying on a table, in the glossy dark glass the faint reflection of a person's face with an unnaturally wide fixed smile, the eyes not smiling, dim light, eerie, ultra detailed, very slow push-in",
+      "seed": 600,
+      "model": "14b"
+    },
+    {
+      "prompt": "cinematic extreme close-up of a switched-off black smartphone screen lying on a table, in the glossy dark glass the faint reflection of a person's face with an unnaturally wide fixed smile, the eyes not smiling, dim light, eerie, ultra detailed, very slow push-in",
+      "seed": 601,
+      "model": "14b"
+    },
+    {
+      "prompt": "cinematic extreme close-up of a switched-off black smartphone screen lying on a table, in the glossy dark glass the faint reflection of a person's face with an unnaturally wide fixed smile, the eyes not smiling, dim light, eerie, ultra detailed, very slow push-in",
+      "seed": 602,
+      "model": "14b"
+    },
+    {
+      "prompt": "close-up of a hospital heart monitor screen in a dark room, a single bright green line running perfectly flat across the black screen with no peaks, cold, static camera",
+      "seed": 700
+    }
+  ]
+}
