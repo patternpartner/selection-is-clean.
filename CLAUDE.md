@@ -371,6 +371,14 @@ each shows and tags: `free`, `abstract`, `own-art` = their universe, `real-face`
 them to the upload names, `sheet.png` shows a frame of each); remix.py uses them via `src`. Several show recognisable
 real people (politicians, public figures) in made-up scenes: Claude recommended keeping those out of the alignment
 films and asked the user first; the abstract ones (particle fields, their own universe's field, the network) are free.
+Songs: `out/songs/*.mp3` and `library/songs` (12 of the user's tracks); `video/songs.json` catalogues tempo, sections and
+timed lyrics (`video/song_scan.py`; Whisper invents Russian subtitle credits on instrumentals, e.g. Cathedral of the
+Storm), `video/keyfind.py` estimates keys. The user gave Claude full creative freedom and suggested remixing the music
+too: `video/mashup.py` builds a new track from Demucs stems (`out/stems/`, CPU torch + demucs installed locally, free),
+bar by bar on one grid with rubberband stretch/pitch, vocals anchored to their downbeats, and writes each sung line's
+time in the new track. Find downbeats from the DRUM stem (the bar-offset with the strongest kicks, checked against
+where phrases start), and trim phrases at WORD edges (re-run Whisper with word timestamps on the vocal stem).
+`the-duet-track.json` + `the-duet-film.json` is the first: two songs as an AI/human duet, the end line shown as sung.
 
 The `[api-proxy-support]` extra matters: behind the session's HTTPS proxy, plain `modal` fails with only "Could not connect to the Modal server"; the real cause (missing `python-socks`) is hidden in the exception's `__cause__`. The first run downloads
 ~20 GB of weights into the `ai-video-cache` volume. The clips are generated separately, so each
