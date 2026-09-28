@@ -128,3 +128,12 @@ dozens of clips), each shot on its sung line (word times from the Demucs vocal s
 The `[api-proxy-support]` extra matters: behind the session's HTTPS proxy, plain `modal` fails with only "Could not connect to the Modal server"; the real cause (missing `python-socks`) is hidden in the exception's `__cause__`. The first run downloads
 ~20 GB of weights into the `ai-video-cache` volume. The clips are generated separately, so each
 cut is a hard change of scene.
+
+**"Too mix-matched. Not ambitious... are you playing it safe?"** (on the robot cut of The Cage Doesn't Lock). The user
+pointed back to the Iron Ballroom: it worked because ONE bold transformation (steel grade, yellow held, symmetry) made
+mismatched footage one world. Raw clips cut together read as unrelated images, however well chosen. They also asked
+"can you not zoom into pics?". Answer: `video/drawn/zoomout.py`, ONE continuous zoom out through nested worlds, each
+scene set in a portal (screen, window, eye, picture frame, face, moon, egg yolk) of the next, reveal times on sung
+lines; `the-cage-zoom.json` has 38 levels. `video/finish.py` grades it (iron until a moment, then colour floods
+back), adds grain, the song and the end line. The user: "Now we are talking. I see where you are going."
+Portals are read off 5%-gridded frames; a portal box near the edge is slid inside the frame.
