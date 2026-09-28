@@ -23060,3 +23060,144 @@ with arrivals, and selecting on it cost novelty. The obvious next judge is novel
 random, kept ~90% of the time. This run has no switchboard-OFF arm, so it cannot say whether that walk helps or
 harms a world; #249b's null band says the spread between worlds is wide either way. Until a judge works, `#prune`
 is a random walk over seven mechanisms, and should be treated as one.
+
+### #255 — UNIVERSES SELECTED ON NOVELTY: the law tournament. Pre-registered before any run on the deciding seeds.
+
+**Why this, now.** The user's question — what is actually novel here — has one answer no comparable system shares:
+every universe carries its own physics (the 48-row law table, #183/#197/#222) and its own mechanism switches (#253),
+and universes exchange them. "To create novelty we must start from it": so the thing selected is the physics, and
+the judge is novelty. #254 tried the same shape on switchboards judged by effective lineages and made worlds 36% less
+novel; its write-up named two fixes, and this is both of them.
+
+**The rig:** `harness-lawfield.js` (new), sharing its measurement with `harness-sweep.js` through
+`novelty-shadows.js` (#256, below), so the judge and the sweeper cannot drift apart.
+- **Heritable:** a universe's 44 physics/economy laws (every `LAW_DECLARED` row except LAW_VIABLE, LAW_PROBATION,
+  LAW_COST and LAW_RATE, which only steer in-world proposals) plus its 7 switches.
+- **No self-legislation:** `LAWMUT=0` and the switchboard off in every world, asserted at warm-up. Physics changes
+  only between epochs, by inheritance. (`LAWMUT` was not in `harness-env.js`'s KNOBS — the engine's comment has said
+  "Force off with LAWMUT=0" since #183, and no rig could. Added.)
+- **Starting variation:** declared defaults, each moved by 3 applications of the mutation operator from a PRNG seeded
+  by the world's own seed, so every arm and replicate starts from the same six vectors, and epoch 0 is identical
+  across all of them (checked on the design seeds).
+- **Mutation:** each law with probability 0.1 moves by (U-0.5)*span*0.35 — the engine's own proposal step — clamped,
+  and refused as the engine refuses it if it lifts REGEN/DRAW past LAW_K_MAX (#232); each switch flips at 0.05.
+- **Judge (per world per epoch):** five layers — trait cells (#247's grid), lineages, the programs particles run,
+  their authored atoms, their channel chemistries. Per layer, persistent arrivals (a key this world never held at 3
+  carriers, reaching 3 and still at 3 1,000 ticks later, inside the epoch) against 8 MIXED shadows (#256) seeded from
+  the living population at the epoch's start: ratio = real / max(1, mean shadow). **Score = mean over the five layers
+  of log2(1 + ratio).** A world whose population fell under 50 at any sample scores 0.
+  **What "beyond drift" means here, said now:** faster than a well-mixed population drifting on the same supply of new
+  things. #256 measured that sideways transfer, recurrence and reproductive skew all beat that null with no selection,
+  so a win here means novelty spread and held — by any route — not that novelty was selected. The family-tree replay
+  null (#256b) is computed alongside and reported, never judged on. Known before this run (#256b's markers): the
+  MIXED band is too narrow — a neutral marker leaves it 3 times in 6 — so the judge uses its MEAN as a normaliser for
+  supply, never its band as a verdict, and the tournament is compared with the neutral arm, not with the band.
+- **Arms.** Worlds are paired at random every epoch but the last; the pair's loser adopts the winner's whole vector,
+  mutated. **tournament:** the winner is the higher score. **neutral:** the winner is a coin. A tied pair is handled
+  the same in both (the coin's loser mutates its own physics). Same number of mutation events; the arms differ ONLY
+  in who wins a decided pair — drift among universes is the null for selection among them.
+
+**Fixed now:** seeds **111-116** (in no entry of these notes), K=6, warm-up 1,000, 8 epochs of 6,000 (49,000 ticks,
+7 rounds of selection), M=3, P=1,000, 8 shadows, grid 10 bins over +/-1.5, MINALIVE 50, JUDGE_NULL=mixed.
+Five runs, one at a time (six world processes each, the #254 ceiling): tournament REP=1, neutral REP=1, tournament
+REP=2, neutral REP=2, neutral REP=3 — staged, one `.done` per run.
+
+**The rule, committed before the first deciding run:**
+1. **Arm score** = mean over the 6 worlds and the last three epochs (5, 6, 7) of the judge's score.
+   **SELECTS** if BOTH tournament replicates are above ALL THREE neutral replicates (1 in 10 by chance).
+   **WORSE** if both are below all three: selecting on novelty made worlds less novel by their own judge.
+   Otherwise: **not distinguishable from neutral copying** at this horizon, with K=6 and 7 rounds — said as such.
+2. **The check** the judge never sees: germline authorship — new germline programs plus new germline atom expressions,
+   per world per epoch, same averaging. If rule 1 says SELECTS: **AGREES** if both tournament replicates are above the
+   neutral median; **GAMING** if either is below every neutral replicate — the judge rose while the universe's own
+   authorship fell. Anything between: the check is silent.
+3. **Guard:** mean living count over the same epochs. Flagged if both tournament replicates are more than 25% below
+   every neutral replicate.
+4. **Descriptive, rules on nothing:** per-layer ratios; the family-tree score; the held-out-axes ratio; and
+   **convergence** — a law counts as chosen if, at the end, at least 5 of 6 worlds in BOTH tournament replicates sit on
+   the same side of its declared default, while no neutral replicate has more than 4 of 6 on that side.
+5. **Nothing ships from this run.** The engine is not changed by #255 and no saved world is touched (rule 6). A
+   positive result goes to the user as the proposal for a field mode — universes in the field selected on novelty.
+
+### #256 — THE NOVELTY SWEEPER: every layer of a universe, against two nulls and a neutral marker. A measurement.
+
+**The user asked for a sweeper for "other novelty"** — #247's clock reads one layer (trait cells). `harness-sweep.js`
+(new; in `smoke.sh`) reads every layer a living particle carries, each against neutral shadows of its own, in one run:
+trait cells (#247's grid), **lineages** (`pLin`), the **programs** particles run (op sequence of `pProg`), their
+**authored atoms** (the set of expressions bound to opcode slots), their **channel chemistries** (the rule bank). A
+token ARRIVES at its first sample with 3 carriers and PERSISTS if it has 3 again 2,000 ticks later — #247's
+definitions with a token in place of a cell. Universe-level layers (germline program, germline atoms raw and proven,
+motifs, kept laws) are reported as counts and late rates, with no null. The shadows live in `novelty-shadows.js`,
+shared with #255's judge so the two cannot drift apart. Draw-free: the MIXED numbers and every real number are
+byte-identical with and without the TREE machinery and markers attached (checked, seed 2, 2,000 ticks).
+
+**#256 (first version) — MIXED null only, and a result that did not survive.** Kimura's infinite alleles fed the real
+world: the real births, deaths and first appearances, each shadow child copying a random shadow parent. Seeds 1-3,
+20k: traits SLOWER on 3 of 3 (#247 reproduced), and the code layers FASTER in 6 of 9 readings (programs 2, atoms 2,
+channels 2). I told the user that meant novelty was alive in the code layers. It does not say that, and the next
+three findings are why:
+
+**#256b-1 — THE ARRAYS MOVE.** `compact()` runs every 45 ticks and moves every living particle down into the lowest
+free slot. Anything a rig keeps per slot follows a different particle afterwards. A probe built that way read
+"32,000 in-life program changes, 80% to another particle's program" in 5,000 ticks and I reported it as a finding
+before checking; it was particles changing slots. The first TREE null had the same defect. `novelty-shadows.js`
+now exports a `COMPACT` hook that reports each move before it happens (`ni[old]=new`, draw-free), and every per-slot
+array is moved with it. **Check that it works:** with the hook, lineage ids change during life 0 times (as they
+must — only a speciation mint relabels, and none fell in the window), and the markers never change during life.
+**Anyone keeping per-particle state across ticks in a rig needs this hook.** No other function moves slots (swept:
+the only site copying `pLin[w]=pLin[r]` is `compact`).
+
+**#256b-2 — WHERE THE CHANGES ACTUALLY HAPPEN** (seeds 1-2, 5,000 ticks, slots followed): births are all
+two-parent, never parentless; no lateral program copy (op 225) fired; every particle runs its genome's own program.
+- programs: at birth ~80% faithful copies of parent A, 16-20% new, ~2% recurrent; **during life ~1,500 changes**,
+  ~80% to a program never seen before, ~20% to one another particle has.
+- atoms: faithful at birth; 480-650 changes during life, **97% to a set another particle already carries**.
+- channels: faithful at birth; 5-430 changes during life, **99% to another particle's rule**.
+- lineages: ~30-40% of births found a new lineage (LEAP 6), never a change during life.
+So atoms and channels spread SIDEWAYS, and programs change mostly during life. A null that hands out only fresh labels
+at first appearance cannot see either, so they beat MIXED without any selection.
+
+**#256b-3 — THE TREE NULL AND THE MARKERS.** TREE keeps the real family tree — the same particles are born, live and
+die; each child copies its real parent's shadow label (trait children mix the two real parents' shadow traits, plus
+the kernel) — and replays every real change with its real result on a random particle of the same kind (a birth event
+on a random newborn of the interval, a change during life on a random older particle). Same events, same results,
+same genealogy; only who gets each one is chance. Beating it = the particles that really got the new variants held
+them better than random recipients — selection on novelty. Known bias: in-life changes cluster on busy particles, so
+replaying them onto quiet ones lets TREE hold more; for programs, atoms and channels it leans toward SLOWER.
+The MARKERS are the calibration: labels handed down the real tree, replaced at 5% or 50% of births, read by nothing.
+
+| seed | layer | real /1k | MIXED | TREE |
+|---|---|---|---|---|
+| 1 | traits | 0.125 | SLOWER | SLOWER |
+| 1 | lineage | 3 | chance | chance |
+| 1 | program | 3.625 | FASTER | chance |
+| 1 | atoms | 1.625 | chance | chance |
+| 1 | channels | 0.5 | FASTER | SLOWER |
+| 1 | marker 5% / 50% | 0.875 / 3.875 | chance / chance | chance / chance |
+| 2 | traits | 0 | SLOWER | SLOWER |
+| 2 | lineage | 0.75 | chance | chance |
+| 2 | program | 2.375 | FASTER | chance |
+| 2 | atoms | 0.625 | FASTER | SLOWER |
+| 2 | channels | 0.375 | FASTER | chance |
+| 2 | marker 5% / 50% | 0.625 / 1.25 | **FASTER** / chance | chance / chance |
+| 3 | traits | 0 | SLOWER | SLOWER |
+| 3 | lineage | 1.5 | SLOWER | SLOWER |
+| 3 | program | 3.75 | chance | chance |
+| 3 | atoms | 0.875 | FASTER | chance |
+| 3 | channels | 0.125 | chance | SLOWER |
+| 3 | marker 5% / 50% | 0 / 2.25 | **SLOWER** / **SLOWER** | chance / chance |
+
+**What it says, 20k ticks, seeds 1-3, one horizon:**
+1. **The MIXED band is too narrow.** A marker that is neutral by construction leaves it 3 times in 6, where "outside
+   every one of 8 shadows" should happen about 2 times in 9. So MIXED FASTER/SLOWER verdicts are not trustworthy as
+   verdicts, #256's "6 of 9 FASTER" included. Its MEAN still normalises for supply (the markers sit either side of it).
+2. **Against TREE the markers read chance 6 of 6**, and **no real layer is faster than chance anywhere: 0 of 15.**
+   New lineages, programs, atoms and chemistries keep ARRIVING — hundreds per run — at about the rate a neutral
+   process on the same family tree would hold them. Nothing in these worlds favours a variant for being new.
+3. **Trait space is held back on both nulls, every seed** — #247's reading, now with a null that shares the real
+   genealogy. The confining forces are real, not a quirk of the well-mixed shadow.
+4. So the artwork's claim reads, at this horizon: novelty keeps arriving in the code layers, and is not selected;
+   in trait space it is actively suppressed. That is the gap #255 aims at — physics under which novelty is favoured.
+Not shown: whether any of this changes past 20k; the grid and M choices; whether TREE's busy-particle bias hides a
+real FASTER in the in-life layers (a null that also keeps who-changes would settle it: permute event results among
+the same recipients).
