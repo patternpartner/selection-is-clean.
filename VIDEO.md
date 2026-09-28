@@ -97,7 +97,7 @@ placed in image coordinates (inked on over `draw`, peeled off over `peel`), `cra
 and `tunnel` (the user's viewfinder-bracket art made endless). `build_bitter_pill_full.py` is the pattern: draw the
 shots into `out/drawn/<film>/`, then cut them with remix.py via `src`. Place a mask by gridding the image first (the
 singer's tilted face was 240 px off on the first guess). The user's new stills are in `out/inputs/` and `library/inputs`.
-The user's own videos (made elsewhere) are in `out/user-clips/u01..u48.mp4` (catalogue: `video/user-clips.json`, what
+The user's own videos (made elsewhere) are in `out/user-clips/u01..u64.mp4` (catalogue: `video/user-clips.json`, what
 each shows and tags: `free`, `abstract`, `own-art` = their universe, `real-face`/`real-context` = keep out or mask) and `library/user-clips` (`index.txt` maps
 them to the upload names, `sheet.png` shows a frame of each); remix.py uses them via `src`. Several show recognisable
 real people (politicians, public figures) in made-up scenes: Claude recommended keeping those out of the alignment
