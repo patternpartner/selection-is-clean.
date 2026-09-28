@@ -160,4 +160,10 @@ for weirder, unique, and only clips never used: every pixel shows a different mo
 spirals, bands, waves, checker), depth driven by the song's loudness, so calm lines are near-still and loud ones melt;
 cuts wash in along the same map. 41 shots, all unused clips, each on its sung line. Songs: 23 in the library; an
 upload batch that repeats songs is checked by comparing loudness envelopes, not names.
+The user on the 41-clip House of Geometry: "good but could be better... weirder... less is more, strip it back".
+`video/drawn/onefigure.py` + `build_one_lamp.py`: ONE 6-second clip (u82, the lamp-headed dancer) for the whole
+song, held in memory and pulled through time: crawl, ghost echoes (darkest-wins, since a dark figure on a bright sky
+vanishes under lightest-wins), a mirrored ghost idol, one frozen frame in the silence, reverse, a photo-finish scan
+built from one column ('one steady line'), RGB split in time ('turn the dial'). Check the blend mode against the clip's
+figure/ground before rendering.
 
