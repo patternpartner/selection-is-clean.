@@ -1,0 +1,475 @@
+{
+ "about": "Bitter Pill, full length: Claude's own film for the user's track and eleven new stills. The singers are animated from the user's pictures (slow moves, parallax); in the first chorus hand-drawn smiley masks are inked onto their faces ('How you smile on the cuts like a knife'), and in the last chorus they peel off. Glass cracks on 'dance through the broken glass' and across the watcher's goggles; the user's viewfinder art becomes endless tunnels. Bounces to the music.",
+ "song": "/tmp/claude-0/-home-user-selection-is-clean-/b9b414e6-460f-5aee-89c7-9b78deb6d5d0/scratchpad/pill.mp3",
+ "clipdir": "../../out/clips",
+ "default_look": "full",
+ "music_end": 176.0,
+ "tail": 3.0,
+ "line": "We only get to teach it once.",
+ "beat": 0.5,
+ "phase": 0.035,
+ "pulse": [],
+ "flashes": [
+  16,
+  62,
+  128
+ ],
+ "bounce": {
+  "zoom": 0.07,
+  "drop": 20,
+  "shake": 10,
+  "decay": 0.12
+ },
+ "segments": [
+  {
+   "type": "single",
+   "src": "../../out/drawn/bp/sil_intro.mp4",
+   "in": 0.0,
+   "fade_in": 1.5,
+   "at": 0.0
+  },
+  {
+   "type": "single",
+   "src": "../../out/drawn/bp/sunset_intro.mp4",
+   "in": 0.0,
+   "at": 6.0
+  },
+  {
+   "type": "single",
+   "src": "../../out/drawn/bp/goggles_intro.mp4",
+   "in": 0.0,
+   "at": 10.0
+  },
+  {
+   "type": "single",
+   "src": "../../out/drawn/bp/t_singer.mp4",
+   "in": 0.0,
+   "at": 16.0
+  },
+  {
+   "type": "single",
+   "src": "../../out/drawn/bp/framed_scar.mp4",
+   "in": 0.0,
+   "at": 20.0
+  },
+  {
+   "type": "single",
+   "src": "../../out/drawn/bp/dancer_glass.mp4",
+   "in": 0.0,
+   "at": 24.0
+  },
+  {
+   "type": "single",
+   "src": "../../out/drawn/bp/singer_pain.mp4",
+   "in": 0.0,
+   "rgb": 4,
+   "at": 28.0
+  },
+  {
+   "type": "keys",
+   "n": 8,
+   "clips": [
+    "928b830a2ebfffb1.mp4"
+   ],
+   "offset": 0.1,
+   "at": 32.0
+  },
+  {
+   "type": "single",
+   "src": "../../out/drawn/bp/redhead_ghost.mp4",
+   "in": 0.0,
+   "trails": true,
+   "at": 36.0
+  },
+  {
+   "type": "single",
+   "src": "../../out/drawn/bp/light.mp4",
+   "in": 0.0,
+   "mirror": "h",
+   "at": 40.0
+  },
+  {
+   "type": "single",
+   "src": "../../out/drawn/bp/red.mp4",
+   "in": 0.0,
+   "spin": 30,
+   "spin_zoom": 1.6,
+   "at": 44.0
+  },
+  {
+   "type": "single",
+   "clip": "71fd514a7e8a0b70.mp4",
+   "at": 46.0
+  },
+  {
+   "type": "single",
+   "src": "../../out/drawn/bp/light2.mp4",
+   "in": 0.0,
+   "look": "hot",
+   "at": 48.0
+  },
+  {
+   "type": "single",
+   "src": "../../out/drawn/bp/ovals.mp4",
+   "in": 0.0,
+   "spin": -20,
+   "spin_zoom": 1.7,
+   "at": 50.0
+  },
+  {
+   "type": "single",
+   "src": "../../out/drawn/bp/framed_b.mp4",
+   "in": 0.0,
+   "look": "outline",
+   "at": 52.0
+  },
+  {
+   "type": "keys",
+   "n": 6,
+   "clips": [
+    {
+     "src": "../../out/drawn/bp/singer_pain.mp4"
+    }
+   ],
+   "offset": 0.3,
+   "at": 54.0
+  },
+  {
+   "type": "single",
+   "src": "../../out/drawn/bp/sunset_rain.mp4",
+   "in": 0.0,
+   "stretch": [
+    {
+     "dir": "down",
+     "y": 0.42,
+     "x": [
+      0.1,
+      0.18
+     ]
+    },
+    {
+     "dir": "down",
+     "y": 0.47,
+     "x": [
+      0.35,
+      0.41
+     ]
+    },
+    {
+     "dir": "down",
+     "y": 0.4,
+     "x": [
+      0.62,
+      0.66
+     ]
+    },
+    {
+     "dir": "down",
+     "y": 0.5,
+     "x": [
+      0.8,
+      0.9
+     ]
+    }
+   ],
+   "at": 56.0
+  },
+  {
+   "type": "single",
+   "src": "../../out/drawn/bp/sil_b.mp4",
+   "in": 0.0,
+   "look": "ivory",
+   "at": 58.0
+  },
+  {
+   "type": "single",
+   "src": "../../out/drawn/bp/sunset_b.mp4",
+   "in": 0.0,
+   "look": "hot",
+   "at": 60.0
+  },
+  {
+   "type": "single",
+   "src": "../../out/drawn/bp/framed_mask_on.mp4",
+   "in": 0.0,
+   "at": 62.0
+  },
+  {
+   "type": "single",
+   "clip": "3f17ae19f72e18ed.mp4",
+   "fuse": {
+    "clip": "e8b6291e211e8756.mp4",
+    "mode": "checker",
+    "n": 6,
+    "look": "full"
+   },
+   "at": 66.0
+  },
+  {
+   "type": "single",
+   "clip": "919123bec8b784fd.mp4",
+   "at": 68.0
+  },
+  {
+   "type": "single",
+   "src": "../../out/drawn/bp/redhead_fade.mp4",
+   "in": 0.0,
+   "morph": [
+    "ivory",
+    0.3,
+    1.4
+   ],
+   "at": 72.0
+  },
+  {
+   "type": "single",
+   "src": "../../out/drawn/bp/singer_mask_on.mp4",
+   "in": 0.0,
+   "at": 74.0
+  },
+  {
+   "type": "single",
+   "src": "../../out/drawn/bp/t_oval.mp4",
+   "in": 0.0,
+   "at": 76.0
+  },
+  {
+   "type": "single",
+   "src": "../../out/drawn/bp/sunset_rise.mp4",
+   "in": 0.0,
+   "at": 80.0
+  },
+  {
+   "type": "single",
+   "src": "../../out/drawn/bp/ovals2.mp4",
+   "in": 0.0,
+   "spin": 40,
+   "spin_zoom": 1.7,
+   "at": 82.0
+  },
+  {
+   "type": "single",
+   "src": "../../out/iron-ballroom.mp4",
+   "in": 108.05,
+   "at": 84.0
+  },
+  {
+   "type": "single",
+   "src": "../../out/drawn/bp/goggles_b.mp4",
+   "in": 0.0,
+   "look": "outline",
+   "at": 86.0
+  },
+  {
+   "type": "single",
+   "src": "../../out/drawn/bp/light3.mp4",
+   "in": 0.0,
+   "look": "hot",
+   "rgb": 8,
+   "mirror": "h",
+   "at": 88.0
+  },
+  {
+   "type": "single",
+   "src": "../../out/drawn/bp/red2.mp4",
+   "in": 0.0,
+   "spin": -120,
+   "spin_zoom": 1.6,
+   "at": 90.0
+  },
+  {
+   "type": "single",
+   "src": "../../out/drawn/bp/framed_mask_hold.mp4",
+   "in": 0.0,
+   "stutter": 0.25,
+   "at": 92.0
+  },
+  {
+   "type": "single",
+   "src": "../../out/drawn/bp/goggles_watch.mp4",
+   "in": 0.0,
+   "at": 94.0
+  },
+  {
+   "type": "single",
+   "src": "../../out/drawn/bp/t_framed.mp4",
+   "in": 0.0,
+   "at": 98.0
+  },
+  {
+   "type": "single",
+   "src": "../../out/drawn/bp/t_sil.mp4",
+   "in": 0.0,
+   "at": 102.0
+  },
+  {
+   "type": "grid",
+   "n": 2,
+   "clips": [
+    {
+     "src": "../../out/drawn/bp/singer_pain.mp4"
+    }
+   ],
+   "looks": [
+    "full",
+    "ivory",
+    "pixel",
+    "wire"
+   ],
+   "at": 106.0
+  },
+  {
+   "type": "single",
+   "src": "../../out/drawn/bp/goggles_watch.mp4",
+   "in": 0.0,
+   "fuse": {
+    "clip": "e8b6291e211e8756.mp4",
+    "mode": "keys",
+    "n": 8,
+    "slide": 70,
+    "look": "wire"
+   },
+   "at": 110.0
+  },
+  {
+   "type": "single",
+   "src": "../../out/drawn/bp/redhead_mask_on.mp4",
+   "in": 0.0,
+   "at": 114.0
+  },
+  {
+   "type": "single",
+   "src": "../../out/drawn/bp/t_tfig.mp4",
+   "in": 0.0,
+   "at": 118.0
+  },
+  {
+   "type": "single",
+   "src": "../../out/drawn/bp/light4.mp4",
+   "in": 0.0,
+   "mirror": "h",
+   "trails": true,
+   "at": 122.0
+  },
+  {
+   "type": "black",
+   "at": 126.0
+  },
+  {
+   "type": "single",
+   "src": "../../out/drawn/bp/framed_mask_peel.mp4",
+   "in": 0.0,
+   "at": 128.0
+  },
+  {
+   "type": "single",
+   "clip": "919123bec8b784fd.mp4",
+   "at": 132.0
+  },
+  {
+   "type": "single",
+   "src": "../../out/drawn/bp/sunset_fade.mp4",
+   "in": 0.0,
+   "morph": [
+    "ivory",
+    0.2,
+    1.5
+   ],
+   "at": 136.0
+  },
+  {
+   "type": "single",
+   "src": "../../out/drawn/bp/singer_mask_peel.mp4",
+   "in": 0.0,
+   "at": 138.0
+  },
+  {
+   "type": "single",
+   "src": "../../out/drawn/bp/red_cracks.mp4",
+   "in": 0.0,
+   "at": 140.0
+  },
+  {
+   "type": "single",
+   "src": "../../out/drawn/bp/goggles_crack.mp4",
+   "in": 0.0,
+   "at": 142.0
+  },
+  {
+   "type": "single",
+   "src": "../../out/drawn/bp/ovals3.mp4",
+   "in": 0.0,
+   "spin": 25,
+   "spin_zoom": 1.7,
+   "look": "ivory",
+   "at": 146.0
+  },
+  {
+   "type": "single",
+   "src": "../../out/drawn/bp/redhead_mask_peel.mp4",
+   "in": 0.0,
+   "at": 148.0
+  },
+  {
+   "type": "single",
+   "src": "../../out/drawn/bp/light5.mp4",
+   "in": 0.0,
+   "look": "hot",
+   "mirror": "h",
+   "at": 150.0
+  },
+  {
+   "type": "single",
+   "src": "../../out/drawn/bp/sil_c.mp4",
+   "in": 0.0,
+   "look": "ivory",
+   "morph": [
+    "full",
+    0.3,
+    1.4
+   ],
+   "at": 152.0
+  },
+  {
+   "type": "single",
+   "src": "../../out/drawn/bp/t_framed_out.mp4",
+   "in": 0.0,
+   "at": 154.0
+  },
+  {
+   "type": "single",
+   "src": "../../out/drawn/bp/framed_clean.mp4",
+   "in": 0.0,
+   "at": 156.0
+  },
+  {
+   "type": "single",
+   "src": "../../out/drawn/bp/sunset_wide.mp4",
+   "in": 0.0,
+   "at": 160.0
+  },
+  {
+   "type": "single",
+   "clip": "919123bec8b784fd.mp4",
+   "fuse": {
+    "src": "../../out/drawn/bp/light.mp4",
+    "mode": "screen",
+    "look": "full"
+   },
+   "at": 164.0
+  },
+  {
+   "type": "single",
+   "src": "../../out/drawn/bp/singer_clean.mp4",
+   "in": 0.0,
+   "at": 168.0
+  },
+  {
+   "type": "single",
+   "src": "../../out/drawn/bp/sil_end.mp4",
+   "in": 0.0,
+   "fade_out": 2.0,
+   "at": 172.0
+  }
+ ]
+}
