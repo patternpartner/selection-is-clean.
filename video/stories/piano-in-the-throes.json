@@ -1,0 +1,857 @@
+{
+ "about": "Piano in the Throes: the fourth remix, full length, to the user's piano track (120 BPM, 2-second bars, sections on 8, 64, 72, 152). New: 'keys' cut the frame into vertical piano keys (each its own person, moment or look; unlit keys are black) and 'stretch' pulls one line of the picture across part of the screen. Arc: keys light one by one; every key a different face; the faces melt; the keys are pressed into one identical smile; the long melt of the dancer; 'Free' is the one untouched shot; the keys go out.",
+ "song": "/tmp/claude-0/-home-user-selection-is-clean-/b9b414e6-460f-5aee-89c7-9b78deb6d5d0/scratchpad/piano-in-the-throes.mp3",
+ "clipdir": "../../out/clips",
+ "default_look": "full",
+ "music_end": 175.5,
+ "tail": 3.0,
+ "line": "We only get to teach it once.",
+ "beat": 1.0,
+ "phase": 0.0,
+ "pulse": [
+  [
+   72,
+   100
+  ],
+  [
+   152,
+   168
+  ]
+ ],
+ "flashes": [
+  8,
+  72,
+  152,
+  164
+ ],
+ "segments": [
+  {
+   "type": "keys",
+   "n": 8,
+   "clips": [
+    "7b5ac46543b12fa7.mp4"
+   ],
+   "looks": [
+    "off",
+    "off",
+    "off",
+    "wire",
+    "off",
+    "off",
+    "off",
+    "off"
+   ],
+   "fade_in": 1.0,
+   "at": 0.0
+  },
+  {
+   "type": "keys",
+   "n": 8,
+   "clips": [
+    "3f17ae19f72e18ed.mp4"
+   ],
+   "looks": [
+    "off",
+    "off",
+    "off",
+    "off",
+    "off",
+    "full",
+    "off",
+    "off"
+   ],
+   "at": 2.0
+  },
+  {
+   "type": "keys",
+   "n": 8,
+   "clips": [
+    "919123bec8b784fd.mp4"
+   ],
+   "looks": [
+    "off",
+    "full",
+    "off",
+    "off",
+    "off",
+    "off",
+    "full",
+    "off"
+   ],
+   "at": 4.0
+  },
+  {
+   "type": "keys",
+   "n": 8,
+   "clips": [
+    "e8b6291e211e8756.mp4"
+   ],
+   "looks": [
+    "wire",
+    "off",
+    "wire",
+    "off",
+    "wire",
+    "off",
+    "wire",
+    "off"
+   ],
+   "at": 6.0
+  },
+  {
+   "type": "keys",
+   "n": 8,
+   "clips": [
+    "3f17ae19f72e18ed.mp4",
+    "5e9c5492a9e26ff1.mp4",
+    "4ef9c668af8c84d8.mp4",
+    "1fa0d1c8002f5aad.mp4",
+    "ec703b3d1d23ccd0.mp4",
+    "cfc72bdaf7bb6391.mp4",
+    "99b408c0af3a04c2.mp4",
+    "74cec189dd8227cb.mp4"
+   ],
+   "at": 8.0
+  },
+  {
+   "type": "single",
+   "clip": "3f17ae19f72e18ed.mp4",
+   "stretch": [
+    {
+     "dir": "down",
+     "y": 0.55,
+     "x": [
+      0.3,
+      0.7
+     ],
+     "t": [
+      1.0,
+      4.0
+     ]
+    }
+   ],
+   "at": 12.0
+  },
+  {
+   "type": "single",
+   "clip": "5e9c5492a9e26ff1.mp4",
+   "fuse": {
+    "clip": "e8b6291e211e8756.mp4",
+    "mode": "screen",
+    "look": "full"
+   },
+   "at": 16.0
+  },
+  {
+   "type": "keys",
+   "n": 6,
+   "clips": [
+    "1fa0d1c8002f5aad.mp4",
+    "e8b6291e211e8756.mp4"
+   ],
+   "looks": [
+    "full",
+    "wire"
+   ],
+   "at": 20.0
+  },
+  {
+   "type": "single",
+   "clip": "928b830a2ebfffb1.mp4",
+   "stretch": [
+    {
+     "dir": "right",
+     "x": [
+      0.5,
+      0.3
+     ],
+     "y": [
+      0.4,
+      0.8
+     ]
+    }
+   ],
+   "at": 24.0
+  },
+  {
+   "type": "single",
+   "src": "../../out/flesh-and-wire.mp4",
+   "in": 42.7,
+   "stretch": [
+    {
+     "dir": "down",
+     "y": 0.7,
+     "x": [
+      0,
+      1
+     ],
+     "t": [
+      2.0,
+      4.0
+     ]
+    }
+   ],
+   "at": 28.0
+  },
+  {
+   "type": "keys",
+   "n": 8,
+   "clips": [
+    "919123bec8b784fd.mp4"
+   ],
+   "offset": 0.15,
+   "at": 32.0
+  },
+  {
+   "type": "single",
+   "clip": "cfc72bdaf7bb6391.mp4",
+   "look": "outline",
+   "at": 36.0
+  },
+  {
+   "type": "keys",
+   "n": 4,
+   "clips": [
+    "3f17ae19f72e18ed.mp4",
+    "5e9c5492a9e26ff1.mp4",
+    "ec703b3d1d23ccd0.mp4",
+    "99b408c0af3a04c2.mp4"
+   ],
+   "looks": [
+    "outline"
+   ],
+   "at": 40.0
+  },
+  {
+   "type": "single",
+   "clip": "f203973351f9d415.mp4",
+   "fuse": {
+    "clip": "7b5ac46543b12fa7.mp4",
+    "mode": "screen",
+    "look": "wire"
+   },
+   "at": 44.0
+  },
+  {
+   "type": "single",
+   "src": "../../out/iron-ballroom.mp4",
+   "in": 108.05,
+   "flip": true,
+   "flip_look": "wire",
+   "at": 48.0
+  },
+  {
+   "type": "single",
+   "clip": "74cec189dd8227cb.mp4",
+   "stretch": [
+    {
+     "dir": "down",
+     "y": [
+      0.25,
+      0.8
+     ],
+     "x": [
+      0,
+      1
+     ]
+    }
+   ],
+   "at": 52.0
+  },
+  {
+   "type": "single",
+   "clip": "9f5bcaa607e0484f.mp4",
+   "look": "wire",
+   "speed": 1.5,
+   "stretch": [
+    {
+     "dir": "right",
+     "x": [
+      0.3,
+      0.7
+     ],
+     "y": [
+      0.3,
+      0.7
+     ]
+    }
+   ],
+   "at": 56.0
+  },
+  {
+   "type": "single",
+   "clip": "7b5ac46543b12fa7.mp4",
+   "speed": 1.5,
+   "stretch": [
+    {
+     "dir": "down",
+     "y": 0.5,
+     "x": [
+      0.35,
+      0.65
+     ],
+     "t": [
+      1.0,
+      4.0
+     ]
+    }
+   ],
+   "at": 60.0
+  },
+  {
+   "type": "keys",
+   "n": 8,
+   "clips": [
+    "1fa0d1c8002f5aad.mp4",
+    "e8b6291e211e8756.mp4"
+   ],
+   "flip": true,
+   "at": 64.0
+  },
+  {
+   "type": "keys",
+   "n": 12,
+   "clips": [
+    "da051bf59dfe77fe.mp4"
+   ],
+   "offset": 0.06,
+   "looks": [
+    "hot"
+   ],
+   "at": 68.0
+  },
+  {
+   "type": "single",
+   "clip": "3f17ae19f72e18ed.mp4",
+   "stretch": [
+    {
+     "dir": "down",
+     "y": 0.6,
+     "x": [
+      0.2,
+      0.8
+     ],
+     "t": [
+      1.0,
+      2.0
+     ]
+    }
+   ],
+   "fuse": {
+    "clip": "e8b6291e211e8756.mp4",
+    "mode": "difference",
+    "look": "full"
+   },
+   "at": 72.0
+  },
+  {
+   "type": "keys",
+   "n": 8,
+   "clips": [
+    "919123bec8b784fd.mp4",
+    "e8b6291e211e8756.mp4"
+   ],
+   "looks": [
+    "full",
+    "wire"
+   ],
+   "rgb": 6,
+   "at": 74.0
+  },
+  {
+   "type": "single",
+   "src": "../../out/bitter-pill.mp4",
+   "in": 0.0,
+   "stretch": [
+    {
+     "dir": "down",
+     "y": 0.55,
+     "x": [
+      0.25,
+      0.75
+     ]
+    }
+   ],
+   "at": 76.0
+  },
+  {
+   "type": "single",
+   "src": "../../out/flesh-and-wire.mp4",
+   "in": 64.0,
+   "at": 78.0
+  },
+  {
+   "type": "keys",
+   "n": 6,
+   "clips": [
+    "928b830a2ebfffb1.mp4",
+    "da051bf59dfe77fe.mp4"
+   ],
+   "looks": [
+    "full",
+    "hot"
+   ],
+   "at": 80.0
+  },
+  {
+   "type": "single",
+   "clip": "eae80e8e3679319a.mp4",
+   "look": "hot",
+   "trails": true,
+   "stretch": [
+    {
+     "dir": "right",
+     "x": 0.5,
+     "y": [
+      0.2,
+      0.6
+     ]
+    }
+   ],
+   "at": 82.0
+  },
+  {
+   "type": "single",
+   "src": "../../out/iron-ballroom.mp4",
+   "in": 129.4,
+   "look": "hot",
+   "at": 84.0
+  },
+  {
+   "type": "keys",
+   "n": 8,
+   "clips": [
+    "3f17ae19f72e18ed.mp4"
+   ],
+   "offset": 0.1,
+   "flip": true,
+   "at": 86.0
+  },
+  {
+   "type": "single",
+   "clip": "919123bec8b784fd.mp4",
+   "rgb": 6,
+   "fuse": {
+    "clip": "7b5ac46543b12fa7.mp4",
+    "mode": "screen",
+    "look": "wire"
+   },
+   "at": 88.0
+  },
+  {
+   "type": "single",
+   "clip": "b59266abad75b0f6.mp4",
+   "look": "hot",
+   "stretch": [
+    {
+     "dir": "down",
+     "y": [
+      0.2,
+      0.9
+     ],
+     "x": [
+      0,
+      1
+     ]
+    }
+   ],
+   "at": 90.0
+  },
+  {
+   "type": "keys",
+   "n": 8,
+   "clips": [
+    "5e9c5492a9e26ff1.mp4",
+    "1fa0d1c8002f5aad.mp4",
+    "ec703b3d1d23ccd0.mp4",
+    "cfc72bdaf7bb6391.mp4",
+    "99b408c0af3a04c2.mp4",
+    "2a6d78d3b202c336.mp4",
+    "fcac500309fd118c.mp4",
+    "5f11ee1f8ec4cf8b.mp4"
+   ],
+   "stretch": [
+    {
+     "dir": "down",
+     "y": 0.5,
+     "x": [
+      0,
+      1
+     ],
+     "t": [
+      1.0,
+      2.0
+     ]
+    }
+   ],
+   "at": 92.0
+  },
+  {
+   "type": "single",
+   "src": "../../out/flesh-and-wire.mp4",
+   "in": 128.1,
+   "at": 94.0
+  },
+  {
+   "type": "grid",
+   "n": 2,
+   "clips": [
+    "3f17ae19f72e18ed.mp4"
+   ],
+   "looks": [
+    "full",
+    "iron",
+    "oxblood",
+    "wire"
+   ],
+   "at": 96.0
+  },
+  {
+   "type": "single",
+   "clip": "130bdbe4e621dfd0.mp4",
+   "look": "wire",
+   "at": 98.0
+  },
+  {
+   "type": "single",
+   "clip": "53491f00c649d52b.mp4",
+   "speed": 1.5,
+   "stretch": [
+    {
+     "dir": "right",
+     "x": 0.5,
+     "y": [
+      0.3,
+      0.7
+     ]
+    }
+   ],
+   "at": 100.0
+  },
+  {
+   "type": "keys",
+   "n": 8,
+   "clips": [
+    "3f17ae19f72e18ed.mp4",
+    "5e9c5492a9e26ff1.mp4",
+    "4ef9c668af8c84d8.mp4",
+    "1fa0d1c8002f5aad.mp4",
+    "ec703b3d1d23ccd0.mp4",
+    "cfc72bdaf7bb6391.mp4",
+    "99b408c0af3a04c2.mp4",
+    "74cec189dd8227cb.mp4"
+   ],
+   "at": 104.0
+  },
+  {
+   "type": "keys",
+   "n": 8,
+   "clips": [
+    "3f17ae19f72e18ed.mp4",
+    "da051bf59dfe77fe.mp4",
+    "5e9c5492a9e26ff1.mp4",
+    "da051bf59dfe77fe.mp4",
+    "1fa0d1c8002f5aad.mp4",
+    "da051bf59dfe77fe.mp4",
+    "ec703b3d1d23ccd0.mp4",
+    "da051bf59dfe77fe.mp4"
+   ],
+   "at": 108.0
+  },
+  {
+   "type": "keys",
+   "n": 8,
+   "clips": [
+    "da051bf59dfe77fe.mp4",
+    "da051bf59dfe77fe.mp4",
+    "da051bf59dfe77fe.mp4",
+    "3f17ae19f72e18ed.mp4",
+    "da051bf59dfe77fe.mp4",
+    "da051bf59dfe77fe.mp4",
+    "da051bf59dfe77fe.mp4",
+    "da051bf59dfe77fe.mp4"
+   ],
+   "at": 112.0
+  },
+  {
+   "type": "keys",
+   "n": 8,
+   "clips": [
+    "da051bf59dfe77fe.mp4"
+   ],
+   "offset": 0.05,
+   "at": 116.0
+  },
+  {
+   "type": "single",
+   "src": "../../out/iron-ballroom.mp4",
+   "in": 115.2,
+   "stretch": [
+    {
+     "dir": "down",
+     "y": 0.5,
+     "x": [
+      0,
+      1
+     ]
+    }
+   ],
+   "at": 120.0
+  },
+  {
+   "type": "grid",
+   "n": 2,
+   "clips": [
+    "da051bf59dfe77fe.mp4"
+   ],
+   "looks": [
+    "full",
+    "iron",
+    "oxblood",
+    "wire"
+   ],
+   "at": 124.0
+  },
+  {
+   "type": "single",
+   "clip": "3f17ae19f72e18ed.mp4",
+   "stretch": [
+    {
+     "dir": "down",
+     "y": [
+      0.3,
+      0.9
+     ],
+     "x": [
+      0,
+      1
+     ]
+    }
+   ],
+   "fuse": {
+    "clip": "da051bf59dfe77fe.mp4",
+    "mode": "screen",
+    "look": "full"
+   },
+   "at": 128.0
+  },
+  {
+   "type": "keys",
+   "n": 8,
+   "clips": [
+    "3f17ae19f72e18ed.mp4"
+   ],
+   "offset": 0.2,
+   "looks": [
+    "full",
+    "oxblood"
+   ],
+   "at": 132.0
+  },
+  {
+   "type": "single",
+   "clip": "919123bec8b784fd.mp4",
+   "speed": 1.6,
+   "stretch": [
+    {
+     "dir": "down",
+     "y": [
+      0.15,
+      0.95
+     ],
+     "x": [
+      0,
+      1
+     ]
+    }
+   ],
+   "at": 136.0
+  },
+  {
+   "type": "single",
+   "clip": "919123bec8b784fd.mp4",
+   "look": "wire",
+   "speed": 1.6,
+   "at": 144.0
+  },
+  {
+   "type": "keys",
+   "n": 8,
+   "clips": [
+    "919123bec8b784fd.mp4"
+   ],
+   "offset": 0.25,
+   "looks": [
+    "wire"
+   ],
+   "at": 148.0
+  },
+  {
+   "type": "keys",
+   "n": 8,
+   "clips": [
+    "919123bec8b784fd.mp4",
+    "c1e27c87a9a3c721.mp4",
+    "e2a4272fb958ea8f.mp4",
+    "342d8db2b74e2be3.mp4"
+   ],
+   "rgb": 8,
+   "at": 152.0
+  },
+  {
+   "type": "single",
+   "clip": "3f17ae19f72e18ed.mp4",
+   "stretch": [
+    {
+     "dir": "down",
+     "y": 0.5,
+     "x": [
+      0.1,
+      0.9
+     ]
+    }
+   ],
+   "fuse": {
+    "clip": "e8b6291e211e8756.mp4",
+    "mode": "difference",
+    "look": "full"
+   },
+   "at": 154.0
+  },
+  {
+   "type": "keys",
+   "n": 12,
+   "clips": [
+    "5e9c5492a9e26ff1.mp4",
+    "1fa0d1c8002f5aad.mp4",
+    "ec703b3d1d23ccd0.mp4",
+    "cfc72bdaf7bb6391.mp4",
+    "99b408c0af3a04c2.mp4",
+    "2a6d78d3b202c336.mp4",
+    "fcac500309fd118c.mp4",
+    "5f11ee1f8ec4cf8b.mp4",
+    "3f17ae19f72e18ed.mp4",
+    "4ef9c668af8c84d8.mp4",
+    "74cec189dd8227cb.mp4",
+    "e96e58f45cd62f05.mp4"
+   ],
+   "at": 156.0
+  },
+  {
+   "type": "single",
+   "src": "../../out/flesh-and-wire.mp4",
+   "in": 150.0,
+   "at": 158.0
+  },
+  {
+   "type": "single",
+   "clip": "919123bec8b784fd.mp4",
+   "at": 160.0
+  },
+  {
+   "type": "keys",
+   "n": 8,
+   "clips": [
+    "919123bec8b784fd.mp4",
+    "e8b6291e211e8756.mp4"
+   ],
+   "looks": [
+    "full",
+    "hot"
+   ],
+   "rgb": 10,
+   "stretch": [
+    {
+     "dir": "down",
+     "y": 0.6,
+     "x": [
+      0.25,
+      0.75
+     ],
+     "t": [
+      0.8,
+      2.0
+     ]
+    }
+   ],
+   "at": 164.0
+  },
+  {
+   "type": "grid",
+   "n": 2,
+   "clips": [
+    "919123bec8b784fd.mp4"
+   ],
+   "looks": [
+    "full",
+    "iron",
+    "oxblood",
+    "wire"
+   ],
+   "at": 166.0
+  },
+  {
+   "type": "keys",
+   "n": 8,
+   "clips": [
+    "c1e27c87a9a3c721.mp4"
+   ],
+   "at": 168.0
+  },
+  {
+   "type": "keys",
+   "n": 8,
+   "clips": [
+    "c1e27c87a9a3c721.mp4"
+   ],
+   "looks": [
+    "full",
+    "off",
+    "full",
+    "full",
+    "off",
+    "full",
+    "full",
+    "full"
+   ],
+   "at": 170.0
+  },
+  {
+   "type": "keys",
+   "n": 8,
+   "clips": [
+    "c1e27c87a9a3c721.mp4"
+   ],
+   "looks": [
+    "off",
+    "off",
+    "full",
+    "off",
+    "off",
+    "full",
+    "full",
+    "off"
+   ],
+   "at": 172.0
+  },
+  {
+   "type": "keys",
+   "n": 8,
+   "clips": [
+    "c1e27c87a9a3c721.mp4"
+   ],
+   "looks": [
+    "off",
+    "off",
+    "off",
+    "off",
+    "off",
+    "full",
+    "off",
+    "off"
+   ],
+   "fade_out": 1.0,
+   "at": 174.0
+  }
+ ]
+}

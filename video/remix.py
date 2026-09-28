@@ -41,6 +41,8 @@ def look(label, name, out):
     wire over the full-colour picture (flesh with its wiring showing); 'hot' is white-hot wire for the loudest bars."""
     if name == "full":
         return f"[{label}]null[{out}]"
+    if name == "off":  # an unlit key
+        return f"[{label}]lutrgb=r=0:g=0:b=0[{out}]"
     if name == "iron":
         return f"[{label}]{IRON}[{out}]"
     if name == "oxblood":
@@ -73,21 +75,33 @@ def render(seg, clipdir, path, dur, cut=None, base=".", at=0.0):
     speed = seg.get("speed", 1.0)  # >1 is slower
     if seg["type"] == "single":
         n, cells = 1, [seg]
+    elif seg["type"] == "keys":  # the frame cut into n vertical keys, each its own clip, moment or look
+        n = seg["n"]
+        cl = seg["clips"]
+        cells = [dict(c) if isinstance(c, dict) else {"clip": c} for c in (cl[k % len(cl)] for k in range(n))]
     else:
         n = seg["n"]
         cl = seg["clips"]
         cl = cl if len(cl) == n * n else [cl[k % len(cl)] for k in range(n * n)]
         cells = [dict(c) if isinstance(c, dict) else {"clip": c} for c in cl]
-    cw, ch = W // n, H // n
+    keys = seg["type"] == "keys"
+    cw, ch = W // n, (H if keys else H // n)
     looks = seg.get("looks")
     for k, c in enumerate(cells):
         ins += source(c, clipdir, base, seg.get("offset", 0.0) * k + (seg.get("in", 0.0) if n > 1 else 0.0))
         g.append(f"[{k}:v]setpts={c.get('speed', speed)}*(PTS-STARTPTS),fps={FPS},setsar=1[s{k}]")
-        g.append(mirror(f"s{k}", c.get("mirror", seg.get("mirror", "none")), cw, ch, f"n{k}"))
+        if keys:
+            g.append(mirror(f"s{k}", c.get("mirror", seg.get("mirror", "none")), W, H, f"r{k}"))
+            g.append(f"[r{k}]crop={cw}:{H}:{k * cw}:0[n{k}]")
+        else:
+            g.append(mirror(f"s{k}", c.get("mirror", seg.get("mirror", "none")), cw, ch, f"n{k}"))
         g.append(look(f"n{k}", looks[k % len(looks)] if looks else "full", f"m{k}"))
     k0 = len(cells)
     if n == 1:
         last = "m0"
+    elif keys:
+        g.append("".join(f"[m{k}]" for k in range(n)) + f"hstack=inputs={n}[grid]")
+        last = "grid"
     else:
         layout = "|".join(f"{(k % n) * cw}_{(k // n) * ch}" for k in range(n * n))
         g.append("".join(f"[m{k}]" for k in range(n * n)) + f"xstack=inputs={n * n}:layout={layout}[grid]")
@@ -127,6 +141,26 @@ def render(seg, clipdir, path, dur, cut=None, base=".", at=0.0):
         g.append(f"[la]format=gbrp[ma];[lb]format=gbrp[mb];[ma][mb]blend=all_expr='{ex}'[graded]")
     else:
         g.append(look("pre", main_look, "graded"))
+    for j, st in enumerate(seg.get("stretch", [])):
+        # Pixel stretch: one line of the picture is pulled out across part of the screen, like smeared paint.
+        # dir 'down' takes the row at y (fractions of the frame, moving from y[0] to y[1] over the shot) and drags it
+        # to the bottom inside the columns x; 'right' takes the column at x and drags it right inside the rows y.
+        a0, a1 = st.get("t", [0, dur])
+        u = f"min(max((t-{a0})/{max(a1 - a0, 0.01)},0),1)"
+        if st.get("dir", "down") == "down":
+            y0, y1 = st["y"] if isinstance(st["y"], list) else [st["y"], st["y"]]
+            x0, x1 = st.get("x", [0, 1])
+            wpx = int(W * (x1 - x0)) // 2 * 2
+            pos = f"{H}*({y0}+({y1 - y0})*{u})"
+            g.append(f"[graded]split[g{j}a][g{j}b];[g{j}b]crop={wpx}:2:{int(W * x0)}:'{pos}',scale={wpx}:{H}[g{j}s];"
+                     f"[g{j}a][g{j}s]overlay={int(W * x0)}:'{pos}':eval=frame:enable='between(t,{a0},{a1})'[graded]")
+        else:
+            x0, x1 = st["x"] if isinstance(st["x"], list) else [st["x"], st["x"]]
+            y0, y1 = st.get("y", [0, 1])
+            hpx = int(H * (y1 - y0)) // 2 * 2
+            pos = f"{W}*({x0}+({x1 - x0})*{u})"
+            g.append(f"[graded]split[g{j}a][g{j}b];[g{j}b]crop=2:{hpx}:'{pos}':{int(H * y0)},scale={W}:{hpx}[g{j}s];"
+                     f"[g{j}a][g{j}s]overlay='{pos}':{int(H * y0)}:eval=frame:enable='between(t,{a0},{a1})'[graded]")
     tail = []
     if seg.get("rgb"):  # tear the colour channels apart: electric
         tail.append(f"rgbashift=rh=-{seg['rgb']}:bh={seg['rgb']}:edge=smear")
