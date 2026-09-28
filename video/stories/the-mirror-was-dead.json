@@ -1,0 +1,23 @@
+{
+ "title": "The Mirror Was Dead",
+ "clip": "u50",
+ "song": "out/songs/the-mirror-was-dead.mp3",
+ "song_parts": [
+  [
+   85.22,
+   112.35
+  ]
+ ],
+ "times": {
+  "soak": 6.04,
+  "working": 8.76,
+  "dead": 14.04,
+  "particles": 14.42,
+  "subtract": 17.52,
+  "gone": 17.98,
+  "hand": 18.82,
+  "drip": 20.62,
+  "fails": 25.16,
+  "stop": 27.13
+ }
+}

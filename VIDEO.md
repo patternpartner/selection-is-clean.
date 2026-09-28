@@ -176,3 +176,11 @@ to the masked figures) ping-ponged slow, a creep-in towards the fingertips, and 
 "mirrors in glass", ghosts on "mourning the seconds", scanlines on "terminal shutters", colour and detail drain on "I
 will forget", an old-TV switch-off and back on (more damaged each time) on each "don't cycle the power", off for good
 on the last. Result: `out/dont-cycle-the-power-30s.mp4`, backed up to library/finals.
+The user liked Don't Cycle the Power ("yeah I liked that"). Next 30 s: `build_mirror_was_dead.py`, 'The Mirror Was
+Dead'. One unused clip (u50, the Rorschach ink creature) in the top half and its reflection in the bottom, folded at a
+crease like an ink blot. Song 85.22-112.35 (a downbeat before '60 versions' to the end of 'it just fails'; words from
+a Demucs vocal pass on that window only, `out/stems/the-mirror-was-dead-words.json`). The reflection soaks through
+the page lagging, keeps perfect time on 'the mirror was working', freezes on 'dead', breaks into ink particles on 'down
+in the particles', is subtracted in one frame on 'subtraction' (leaving a stain), ink drips from the fold on 'what
+fails there', the figure stops on 'it just fails' and the song STOPS DEAD there (a 30 ms fade, no tail): a hard cut
+to black, then the end line. Muxed by hand rather than finish.py, since finish.py always fades out.
