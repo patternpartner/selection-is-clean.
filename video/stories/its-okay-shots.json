@@ -1,0 +1,27 @@
+[
+  {
+    "id": "alive",
+    "image": "../../out/inputs/beach-figure.png",
+    "prompt": "the painted person sits on the beach hugging their knees, head bowed, the wind gently moving their wild hair and jacket, waves rolling in behind, the bold painted colours shimmer softly, slow push-in"
+  },
+  {
+    "id": "balloons",
+    "image": "../../out/inputs/beach-figure.png",
+    "prompt": "bright yellow smiley-face balloons slowly drift down from the sky and bob in the air all around the sitting painted person, who keeps their head bowed and does not look up, waves rolling in"
+  },
+  {
+    "id": "offer",
+    "image": "../../out/inputs/beach-figure.png",
+    "prompt": "a small round white robot with one large glowing blue eye and thin silver arms rises up into view beside the sitting painted person and holds out a bright yellow smiley-face mask toward them, the person keeps their head bowed, painted style, waves behind"
+  },
+  {
+    "id": "stay",
+    "image": "../../out/inputs/beach-figure.png",
+    "prompt": "a small round white robot with one large glowing blue eye and thin silver arms sits quietly on the sand beside the painted person, a bright yellow smiley-face mask lying on the sand between them, the sky slowly turning to warm sunset colours, calm waves"
+  },
+  {
+    "id": "night",
+    "image": "../../out/inputs/night-balloon.png",
+    "prompt": "the glowing balloon sways gently in the night, the projected stars twinkle and drift, the little figure holding the bunch of colourful balloons slowly floats upward across the balloon, the blue lights on the ground glow softly"
+  }
+]

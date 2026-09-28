@@ -95,6 +95,44 @@ class Wan:
             return _keep(key, open(f.name, "rb").read())
 
 
+@app.cls(gpu="H100", image=image, volumes={"/cache": cache}, timeout=1800, scaledown_window=60)
+class WanI2V:
+    """The same 5B model, animating a given still (the user's own picture) instead of starting from noise:
+    the character, colours and style stay the picture's."""
+
+    @modal.enter()
+    def load(self):
+        import torch
+        from diffusers import AutoencoderKLWan, WanImageToVideoPipeline
+
+        vae = AutoencoderKLWan.from_pretrained(MODEL_ID, subfolder="vae", torch_dtype=torch.float32)
+        self.pipe = WanImageToVideoPipeline.from_pretrained(MODEL_ID, vae=vae, torch_dtype=torch.bfloat16).to("cuda")
+
+    @modal.method()
+    def clip(self, prompt: str, seed: int, width: int, height: int, still: bytes, key: str = "") -> bytes:
+        import io
+
+        import torch
+        from diffusers.utils import export_to_video
+        from PIL import Image
+
+        first = Image.open(io.BytesIO(still)).convert("RGB").resize((width, height))
+        frames = self.pipe(
+            image=first,
+            prompt=prompt,
+            negative_prompt=NEGATIVE,
+            height=height,
+            width=width,
+            num_frames=CLIP_FRAMES,
+            guidance_scale=5.0,
+            num_inference_steps=50,
+            generator=torch.Generator("cuda").manual_seed(seed),
+        ).frames[0]
+        with tempfile.NamedTemporaryFile(suffix=".mp4") as f:
+            export_to_video(frames, f.name, fps=FPS)
+            return _keep(key, open(f.name, "rb").read())
+
+
 MODEL_14B = "Wan-AI/Wan2.2-T2V-A14B-Diffusers"
 FRAMES_14B, FPS_14B = 81, 16  # the 14B model's native 5 s
 
@@ -424,7 +462,7 @@ def story(file: str, out: str = "story.mp4", seed: int = 0, landscape: bool = Fa
     # Clips are kept by what made them, so editing one scene does not regenerate the others.
     store = os.path.join(os.path.dirname(os.path.abspath(out)), "clips")
     os.makedirs(store, exist_ok=True)
-    jobs, parts, models = [], [], []  # parts[i]: indices into jobs making up scene i; models: one per job
+    jobs, parts, models, stills = [], [], [], {}  # parts[i]: jobs making up scene i; models: one per job
     for i, sc in enumerate(scenes):
         n0 = len(jobs)
         if "file" in sc:  # a ready-made clip (e.g. drawn in code, where exactness beats a model)
@@ -432,6 +470,8 @@ def story(file: str, out: str = "story.mp4", seed: int = 0, landscape: bool = Fa
         elif "prompt" in sc:
             parts.append([len(jobs)])
             jobs.append((fill(sc["prompt"]), sc.get("seed", seed + i), width, height))
+            if "image" in sc:
+                stills[len(jobs) - 1] = open(os.path.join(os.path.dirname(os.path.abspath(file)), sc["image"]), "rb").read()
             if "reveal" in sc:  # a matching second shot that glitches in at swap_at; same seed, for a close framing
                 parts[-1].append(len(jobs))
                 jobs.append((fill(sc["reveal"]), sc.get("seed", seed + i), width, height))
@@ -439,10 +479,11 @@ def story(file: str, out: str = "story.mp4", seed: int = 0, landscape: bool = Fa
             parts.append([len(jobs), len(jobs) + 1])
             jobs.append((fill(sc["top"]), seed + i, height, width))
             jobs.append((fill(sc["bottom"]), seed + 100 + i, height, width))
-        models += [sc.get("model", "5b")] * (len(jobs) - n0)  # "14b" for hero shots
-    ids = {"5b": (MODEL_ID, CLIP_FRAMES), "14b": (MODEL_14B, FRAMES_14B)}
-    paths = [os.path.join(store, hashlib.sha1(repr(ids[m] + j).encode()).hexdigest()[:16] + ".mp4")
-             for m, j in zip(models, jobs)]
+        models += [sc.get("model", "i2v" if "image" in sc else "5b")] * (len(jobs) - n0)  # "14b" for hero shots
+    ids = {"5b": (MODEL_ID, CLIP_FRAMES), "14b": (MODEL_14B, FRAMES_14B), "i2v": (MODEL_ID, CLIP_FRAMES, "i2v")}
+    paths = [os.path.join(store, hashlib.sha1(repr(ids[m] + j + ((hashlib.sha1(stills[n]).hexdigest(),)
+                                                              if n in stills else ())).encode()).hexdigest()[:16] + ".mp4")
+             for n, (m, j) in enumerate(zip(models, jobs))]
     # Clips a previous (perhaps cut-off) run finished remotely are fetched from the volume instead of remade.
     try:
         remote = {e.path.split("/")[-1] for e in cache.listdir("clips")}
@@ -458,10 +499,14 @@ def story(file: str, out: str = "story.mp4", seed: int = 0, landscape: bool = Fa
     # Both models run at once; each clip is saved as soon as its batch returns.
     small = [i for i in todo if models[i] == "5b"]
     big = [i for i in todo if models[i] == "14b"]
+    animate = [i for i in todo if models[i] == "i2v"]
+    i2v_calls = [WanI2V().clip.spawn(*jobs[i], stills[i], keys[i]) for i in animate]
     big_calls = [Wan14().clip.spawn(*jobs[i], keys[i]) for i in big]
     for i, data in zip(small, Wan().clip.starmap([jobs[i] + (keys[i],) for i in small])):
         _save(paths[i], data)
     for i, call in zip(big, big_calls):
+        _save(paths[i], call.get())
+    for i, call in zip(animate, i2v_calls):
         _save(paths[i], call.get())
     raw = [open(p, "rb").read() for p in paths]
     clips = [open(os.path.join(os.path.dirname(os.path.abspath(file)), sc["file"]), "rb").read() if not ps
