@@ -321,6 +321,10 @@ locally, no GPU: each segment is retimed to fill its slot, glitches sit in song 
 Time the words first (faster-whisper large-v3 on Modal, word timestamps); it hallucinates in long silences, so trust
 only words inside the audible sections. A before/after pair can be two full segments rather than one swap, which
 stretches an edit to a sung line. The user's audio is not committed.
+A scene with `"image"` (a 704x1280 still) is animated from that picture (image-to-video, the 5B model): the user's
+own art keeps its character and style, which beats any prompt for consistency. Crop to 9:16 first; the user's images
+live in `out/inputs/` and are not committed (episode 12, `its-okay.json`). Wan I2V adds things well (balloons, a mask
+held up) but not a second character reliably (the robot came out with a smiley for a face in one take).
 
 The `[api-proxy-support]` extra matters: behind the session's HTTPS proxy, plain `modal` fails with only "Could not connect to the Modal server"; the real cause (missing `python-socks`) is hidden in the exception's `__cause__`. The first run downloads
 ~20 GB of weights into the `ai-video-cache` volume. The clips are generated separately, so each
