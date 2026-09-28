@@ -1,0 +1,28 @@
+{
+ "title": "Cage jumps",
+ "about": "Four image-to-video clips of the same robot jumping, the spine of The Cage Doesn't Lock zoom film (user OK'd the last ~$1.58 of Modal credit).",
+ "voice": null,
+ "tail": 0.0,
+ "scenes": [
+  {
+   "image": "../../out/inputs/jump1-room.png",
+   "seed": 7101,
+   "prompt": "a small round white robot with one large glowing blue eye and short silver arms crouches and then leaps high up toward the rainy window, jumping out of the dark room, dynamic jump, rain on the glass, cinematic"
+  },
+  {
+   "image": "../../out/inputs/jump2-portal.png",
+   "seed": 7202,
+   "prompt": "a small round white robot with one large glowing blue eye and short silver arms runs forward and jumps into the swirling glowing portal of light, the light flares brighter and swallows it, dynamic leap, cinematic"
+  },
+  {
+   "image": "../../out/inputs/jump3-door.png",
+   "seed": 7303,
+   "prompt": "a small round white robot with one large glowing blue eye and short silver arms jumps forward through the glowing picture frame doorway, the frames rush past, dynamic leap, cinematic"
+  },
+  {
+   "image": "../../out/inputs/jump4-sunset.png",
+   "seed": 7404,
+   "prompt": "a small round white robot with one large glowing blue eye and short silver arms stands on the hilltop at sunset, then leaps joyfully up into the wide glowing orange sky, arms up, painted style, cinematic"
+  }
+ ]
+}
