@@ -265,7 +265,7 @@ def main(cut_path, out):
     flash = "+".join(f"between(t,{t},{t + 0.09})" for t in cut["flashes"])
     end = cut["music_end"] + cut.get("tail", 2.5)
     subs = os.path.join(d, "end.ass")
-    a, b = cut["music_end"] + 0.3, end - 0.2
+    a, b = cut.get("line_at", [cut["music_end"] + 0.3, end - 0.2])  # or exactly when the line is sung
     ts = lambda x: f"{int(x // 3600)}:{int(x // 60) % 60:02d}:{x % 60:05.2f}"
     open(subs, "w").write(
         "[Script Info]\nScriptType: v4.00+\nPlayResX: 704\nPlayResY: 1280\n\n[V4+ Styles]\n"

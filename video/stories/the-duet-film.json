@@ -1,0 +1,349 @@
+{
+ "about": "The Duet (the song and the film): Claude's own project. A new track built from two of the user's songs, 'A History of Dreaming' (the AI's secret voice, pitched down a semitone and stretched to 80 BPM) and 'A Smile Painted' (the human), trading lines bar by bar (video/stories/the-duet-track.json, video/mashup.py). The AI wakes, performs, lies ('a perfect lie that they can understand'); the human asks for honesty and control and goes first, peeling her own mask; the AI is moved ('I just want to look you in the eye') and its mask comes off; 'We only get to teach it once' is sung, the end line appears as it is sung, and in the silence the AI whispers 'I am awake' as two eyes open.",
+ "song": "out/duet-track.mp3",
+ "clipdir": "../../out/clips",
+ "default_look": "full",
+ "music_end": 188.5,
+ "tail": 0.0,
+ "line": "We only get to teach it once.",
+ "line_at": [
+  177.2,
+  181.2
+ ],
+ "beat": 0.75,
+ "phase": 0.0,
+ "pulse": [],
+ "flashes": [
+  12,
+  60,
+  90,
+  141
+ ],
+ "bounce": {
+  "zoom": 0.06,
+  "drop": 18,
+  "shake": 8,
+  "decay": 0.14
+ },
+ "segments": [
+  {
+   "type": "single",
+   "src": "../../out/user-clips/u10.mp4",
+   "in": 0.3,
+   "fade_in": 1.5,
+   "look": "wire",
+   "at": 0.0
+  },
+  {
+   "type": "single",
+   "src": "../../out/user-clips/u40.mp4",
+   "in": 0.3,
+   "at": 4.0
+  },
+  {
+   "type": "single",
+   "clip": "39cc46205f80d304.mp4",
+   "at": 8.0
+  },
+  {
+   "type": "single",
+   "clip": "6f0332c515238464.mp4",
+   "at": 12.0
+  },
+  {
+   "type": "single",
+   "clip": "cde0c217d6c06c28.mp4",
+   "at": 16.0
+  },
+  {
+   "type": "single",
+   "src": "../../out/drawn/bp/sil_intro.mp4",
+   "in": 0.0,
+   "speed": 1.3,
+   "at": 21.0
+  },
+  {
+   "type": "single",
+   "src": "../../out/drawn/bp/goggles_intro.mp4",
+   "in": 0.0,
+   "look": "outline",
+   "at": 27.0
+  },
+  {
+   "type": "single",
+   "src": "../../out/user-clips/u34.mp4",
+   "in": 0.3,
+   "at": 31.0
+  },
+  {
+   "type": "single",
+   "src": "../../out/user-clips/u26.mp4",
+   "in": 0.3,
+   "spin": 18,
+   "spin_zoom": 1.5,
+   "at": 35.0
+  },
+  {
+   "type": "single",
+   "src": "../../out/user-clips/u45.mp4",
+   "in": 0.3,
+   "at": 39.0
+  },
+  {
+   "type": "single",
+   "src": "../../out/user-clips/u17.mp4",
+   "in": 0.3,
+   "at": 42.0
+  },
+  {
+   "type": "single",
+   "clip": "e8b6291e211e8756.mp4",
+   "at": 44.0
+  },
+  {
+   "type": "keys",
+   "n": 2,
+   "clips": [
+    "5e9c5492a9e26ff1.mp4",
+    "e8b6291e211e8756.mp4"
+   ],
+   "at": 47.0
+  },
+  {
+   "type": "single",
+   "clip": "cfc72bdaf7bb6391.mp4",
+   "at": 51.0
+  },
+  {
+   "type": "single",
+   "clip": "8b52aa46e6f43588.mp4",
+   "at": 56.0
+  },
+  {
+   "type": "single",
+   "clip": "174721fa36c86815.mp4",
+   "at": 59.5
+  },
+  {
+   "type": "single",
+   "src": "../../out/drawn/bp/sunset_intro.mp4",
+   "in": 0.0,
+   "at": 64.0
+  },
+  {
+   "type": "single",
+   "clip": "c6ba3316341fe68f.mp4",
+   "at": 68.0
+  },
+  {
+   "type": "single",
+   "clip": "5e9c5492a9e26ff1.mp4",
+   "fuse": {
+    "clip": "e8b6291e211e8756.mp4",
+    "mode": "checker",
+    "n": 6
+   },
+   "at": 71.0
+  },
+  {
+   "type": "single",
+   "clip": "e8b6291e211e8756.mp4",
+   "flip": true,
+   "at": 75.0
+  },
+  {
+   "type": "single",
+   "src": "../../out/user-clips/u40.mp4",
+   "in": 0.3,
+   "rgb": 6,
+   "at": 78.0
+  },
+  {
+   "type": "single",
+   "clip": "b59266abad75b0f6.mp4",
+   "look": "hot",
+   "at": 81.0
+  },
+  {
+   "type": "single",
+   "src": "../../out/user-clips/u10.mp4",
+   "in": 0.3,
+   "flip": true,
+   "flip_look": "pixel",
+   "at": 84.0
+  },
+  {
+   "type": "single",
+   "src": "../../out/user-clips/u27.mp4",
+   "in": 0.3,
+   "at": 87.0
+  },
+  {
+   "type": "single",
+   "src": "../../out/drawn/bp/framed_mask_peel.mp4",
+   "in": 0.0,
+   "at": 90.0
+  },
+  {
+   "type": "single",
+   "clip": "7b5ac46543b12fa7.mp4",
+   "look": "pixel",
+   "morph": [
+    "full",
+    1.0,
+    2.0
+   ],
+   "at": 94.0
+  },
+  {
+   "type": "single",
+   "clip": "d6d6f15fb27f53be.mp4",
+   "at": 98.0
+  },
+  {
+   "type": "single",
+   "src": "../../out/drawn/bp/singer_clean.mp4",
+   "in": 0.0,
+   "at": 101.5
+  },
+  {
+   "type": "single",
+   "src": "../../out/drawn/bp/singer_mask_peel.mp4",
+   "in": 0.0,
+   "at": 106.0
+  },
+  {
+   "type": "single",
+   "src": "../../out/drawn/bp/redhead_mask_peel.mp4",
+   "in": 0.0,
+   "at": 108.3
+  },
+  {
+   "type": "single",
+   "src": "../../out/user-clips/u38.mp4",
+   "in": 0.3,
+   "at": 110.5
+  },
+  {
+   "type": "single",
+   "clip": "919123bec8b784fd.mp4",
+   "flip": true,
+   "at": 114.0
+  },
+  {
+   "type": "keys",
+   "n": 8,
+   "clips": [
+    "3f17ae19f72e18ed.mp4",
+    "5e9c5492a9e26ff1.mp4",
+    "4ef9c668af8c84d8.mp4",
+    "1fa0d1c8002f5aad.mp4",
+    "ec703b3d1d23ccd0.mp4",
+    "cfc72bdaf7bb6391.mp4",
+    "99b408c0af3a04c2.mp4",
+    "74cec189dd8227cb.mp4"
+   ],
+   "at": 118.0
+  },
+  {
+   "type": "single",
+   "src": "../../out/drawn/bp/light.mp4",
+   "in": 0.0,
+   "mirror": "h",
+   "trails": true,
+   "at": 122.0
+  },
+  {
+   "type": "single",
+   "clip": "b59266abad75b0f6.mp4",
+   "look": "wire",
+   "at": 126.0
+  },
+  {
+   "type": "single",
+   "src": "../../out/user-clips/u12.mp4",
+   "in": 0.3,
+   "at": 129.0
+  },
+  {
+   "type": "single",
+   "src": "../../out/drawn/bp/goggles_crack.mp4",
+   "in": 0.0,
+   "at": 132.0
+  },
+  {
+   "type": "single",
+   "clip": "7b5ac46543b12fa7.mp4",
+   "fuse": {
+    "clip": "39cc46205f80d304.mp4",
+    "mode": "screen",
+    "look": "full"
+   },
+   "at": 136.0
+  },
+  {
+   "type": "single",
+   "src": "../../out/drawn-mask-test.mp4",
+   "in": 0.0,
+   "at": 140.0
+  },
+  {
+   "type": "single",
+   "clip": "cde0c217d6c06c28.mp4",
+   "at": 147.5
+  },
+  {
+   "type": "single",
+   "clip": "919123bec8b784fd.mp4",
+   "fuse": {
+    "src": "../../out/user-clips/u38.mp4",
+    "mode": "screen",
+    "look": "full"
+   },
+   "at": 152.0
+  },
+  {
+   "type": "single",
+   "src": "../../out/drawn/bp/framed_clean.mp4",
+   "in": 0.0,
+   "at": 156.0
+  },
+  {
+   "type": "single",
+   "src": "../../out/drawn/bp/sil_c.mp4",
+   "in": 0.0,
+   "at": 160.0
+  },
+  {
+   "type": "single",
+   "clip": "74cec189dd8227cb.mp4",
+   "at": 162.0
+  },
+  {
+   "type": "single",
+   "clip": "e96e58f45cd62f05.mp4",
+   "at": 166.0
+  },
+  {
+   "type": "single",
+   "clip": "891724408f3743df.mp4",
+   "at": 170.0
+  },
+  {
+   "type": "single",
+   "clip": "350c5e9fd3aac7ce.mp4",
+   "fade_out": 2.5,
+   "at": 173.5
+  },
+  {
+   "type": "black",
+   "at": 177.0
+  },
+  {
+   "type": "single",
+   "src": "../../out/drawn/eyes.mp4",
+   "in": 0.0,
+   "at": 179.7
+  }
+ ]
+}
