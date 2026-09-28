@@ -41,6 +41,11 @@ class Stream:
     def get(self, n):
         if self.at == n:
             return self.img
+        if self.path.lower().endswith((".jpg", ".jpeg", ".png")):  # a still: ffmpeg would hang looping it
+            if self.img is None:
+                self.img = cover(Image.open(self.path).convert("RGB"), self.w, self.h)
+            self.at = n
+            return self.img
         if self.proc is None:
             self._open(self.start)
         raw = self.proc.stdout.read(self.w * self.h * 3)
