@@ -167,3 +167,12 @@ vanishes under lightest-wins), a mirrored ghost idol, one frozen frame in the si
 built from one column ('one steady line'), RGB split in time ('turn the dial'). Check the blend mode against the clip's
 figure/ground before rendering.
 
+The user on One Lamp: "maybe we move to 30 secs? also makes you pick specifics from the songs. I don't really like
+that last song". So films are now ~30 seconds and the SONG IS EDITED to its best 30: `build_dont_cycle.py` splices
+Don't Cycle the Power (104.4-121.2 verse, then 144.9-158.4 the "don't cycle the power" hook, cut on a sung word, 60ms
+fades) and maps song time to film time with `f()`. finish.py does not splice, so build the audio with ffmpeg
+atrim+concat first (`out/dont-cycle-audio.mp3`) and hand that to finish.py. One clip (u60, yellow sleeve reaching up
+to the masked figures) ping-ponged slow, a creep-in towards the fingertips, and one change per line: mirror on
+"mirrors in glass", ghosts on "mourning the seconds", scanlines on "terminal shutters", colour and detail drain on "I
+will forget", an old-TV switch-off and back on (more damaged each time) on each "don't cycle the power", off for good
+on the last. Result: `out/dont-cycle-the-power-30s.mp4`, backed up to library/finals.
