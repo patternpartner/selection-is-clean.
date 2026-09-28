@@ -383,6 +383,12 @@ def reverse(clip: bytes, backwards: bool = True, trim: float = 0.0) -> bytes:
     return open(out, "rb").read()
 
 
+def _save(path: str, data: bytes):
+    """Write-then-rename, so a run cut off mid-write never leaves a half clip that later reads as done."""
+    open(path + ".part", "wb").write(data)
+    os.replace(path + ".part", path)
+
+
 @app.local_entrypoint()
 def story(file: str, out: str = "story.mp4", seed: int = 0, landscape: bool = False):
     """One clip per scene, each with a narration line; the character is written into every prompt."""
@@ -418,7 +424,9 @@ def story(file: str, out: str = "story.mp4", seed: int = 0, landscape: bool = Fa
     jobs, parts, models = [], [], []  # parts[i]: indices into jobs making up scene i; models: one per job
     for i, sc in enumerate(scenes):
         n0 = len(jobs)
-        if "prompt" in sc:
+        if "file" in sc:  # a ready-made clip (e.g. drawn in code, where exactness beats a model)
+            parts.append([])
+        elif "prompt" in sc:
             parts.append([len(jobs)])
             jobs.append((fill(sc["prompt"]), sc.get("seed", seed + i), width, height))
             if "reveal" in sc:  # a matching second shot that glitches in at swap_at; same seed, for a close framing
@@ -440,7 +448,7 @@ def story(file: str, out: str = "story.mp4", seed: int = 0, landscape: bool = Fa
     for i, p in enumerate(paths):
         name = os.path.basename(p)
         if not os.path.exists(p) and name in remote:
-            open(p, "wb").write(b"".join(cache.read_file(f"clips/{name}")))
+            _save(p, b"".join(cache.read_file(f"clips/{name}")))
     todo = [i for i, p in enumerate(paths) if not os.path.exists(p)]
     print(f"generating {len(todo)} of {len(jobs)} clips ({len(jobs) - len(todo)} reused)")
     keys = [os.path.basename(p)[:-4] for p in paths]
@@ -449,11 +457,12 @@ def story(file: str, out: str = "story.mp4", seed: int = 0, landscape: bool = Fa
     big = [i for i in todo if models[i] == "14b"]
     big_calls = [Wan14().clip.spawn(*jobs[i], keys[i]) for i in big]
     for i, data in zip(small, Wan().clip.starmap([jobs[i] + (keys[i],) for i in small])):
-        open(paths[i], "wb").write(data)
+        _save(paths[i], data)
     for i, call in zip(big, big_calls):
-        open(paths[i], "wb").write(call.get())
+        _save(paths[i], call.get())
     raw = [open(p, "rb").read() for p in paths]
-    clips = [raw[ps[0]] if len(ps) == 1 or "reveal" in sc else stack.remote(raw[ps[0]], raw[ps[1]], width, height)
+    clips = [open(os.path.join(os.path.dirname(os.path.abspath(file)), sc["file"]), "rb").read() if not ps
+             else raw[ps[0]] if len(ps) == 1 or "reveal" in sc else stack.remote(raw[ps[0]], raw[ps[1]], width, height)
              for ps, sc in zip(parts, scenes)]
     clips = [glitch.remote(c, sc.get("glitch", []), raw[ps[1]] if "reveal" in sc else None, sc.get("swap_at"),
                            sc.get("glitch_region"))

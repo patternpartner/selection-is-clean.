@@ -1,0 +1,71 @@
+{
+  "title": "Wider",
+  "about": "Episode 10, 25 s, the hook to pull viewers to the series. One rule: every cut, the smile is wider; it ends so wide it flatlines. Built around Wan's weak spots: the widening happens in the EDIT (each shot starts wider than the last) not inside a shot; three takes of each risky 14B shot, best picked from contact sheets; the egg's blink added in post (assets/egg-blink.mp4, Wan would not blink it) and the flatline drawn in code (assets/flatline.mp4, Wan kept drawing heartbeats). Unsettling, never graphic. Silent for the user's own music; only the last line is written.",
+  "voice": null,
+  "tail": 1.6,
+  "grade": true,
+  "fade_in": false,
+  "scenes": [
+    {
+      "file": "../assets/egg-blink.mp4",
+      "trim": 2.3,
+      "note": "take egg1 (14B seed 1) with a blink drawn in at 3.48-3.68 s"
+    },
+    {
+      "prompt": "top-down close-up of a latte in a white cup on a dark wooden table, the milk foam art forms a smiley face with a very wide grin stretching to the edges of the cup, foam slowly spilling over the rim and dripping down the side, moody low light, static camera",
+      "seed": 100,
+      "trim": 2.3
+    },
+    {
+      "prompt": "close-up of an old white electrical plug socket on a dim bedroom wall, its two slots look like eyes, a curved split in the wallpaper beneath it forms a wide grin, fine dust trickling from the split, a flickering lamp, eerie, static camera",
+      "seed": 200,
+      "trim": 2.3
+    },
+    {
+      "prompt": "cinematic close-up of a grey tabby cat sitting perfectly still on a sofa in a dim living room, staring straight into the camera with an unnaturally wide human-like grin, its eyes slowly fixing on the viewer, uncanny, soft lamplight, ultra detailed, static camera",
+      "seed": 302,
+      "model": "14b",
+      "trim": 2.3
+    },
+    {
+      "prompt": "close-up of a framed old family portrait photograph on a dark hallway wall, the whole family in the photo grinning unnaturally wide with too many teeth and identical fixed smiles, the glass of the frame cracked in a spiderweb, a flickering ceiling light, eerie, very slow push-in",
+      "seed": 401,
+      "trim": 2.3
+    },
+    {
+      "prompt": "a vast night sky over a dark city, the moon is a thin glowing crescent lying on its back exactly like a wide grinning mouth, with two bright stars above it like eyes, together forming a gigantic smiling face in the sky, eerie, static wide shot",
+      "seed": 501,
+      "trim": 2.3
+    },
+    {
+      "prompt": "cinematic extreme close-up of a switched-off black smartphone screen lying on a table, in the glossy dark glass the faint reflection of a person's face with an unnaturally wide fixed smile, the eyes not smiling, dim light, eerie, ultra detailed, very slow push-in",
+      "seed": 601,
+      "model": "14b",
+      "trim": 2.0,
+      "glitch": [
+        [
+          3.3,
+          0.1
+        ],
+        [
+          4.7,
+          0.36
+        ]
+      ]
+    },
+    {
+      "file": "../assets/flatline.mp4",
+      "trim": 1.0,
+      "glitch": [
+        [
+          1.0,
+          0.35
+        ]
+      ],
+      "fade": 2.0,
+      "say": "We only get to teach it once.",
+      "lead": 2.4,
+      "whisper": true
+    }
+  ]
+}

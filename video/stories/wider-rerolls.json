@@ -1,0 +1,22 @@
+{
+  "title": "Wider (rerolls)",
+  "voice": null,
+  "scenes": [
+    {
+      "prompt": "a vast night sky over a dark city, the moon is a thin glowing crescent lying on its back exactly like a wide grinning mouth, with two bright stars above it like eyes, together forming a gigantic smiling face in the sky, eerie, static wide shot",
+      "seed": 501
+    },
+    {
+      "prompt": "a vast night sky over a dark city, the moon is a thin glowing crescent lying on its back exactly like a wide grinning mouth, with two bright stars above it like eyes, together forming a gigantic smiling face in the sky, eerie, static wide shot",
+      "seed": 502
+    },
+    {
+      "prompt": "close-up of a framed old family portrait photograph on a dark hallway wall, the whole family in the photo grinning unnaturally wide with too many teeth and identical fixed smiles, the glass of the frame cracked in a spiderweb, a flickering ceiling light, eerie, very slow push-in",
+      "seed": 401
+    },
+    {
+      "prompt": "close-up of a framed old family portrait photograph on a dark hallway wall, the whole family in the photo grinning unnaturally wide with too many teeth and identical fixed smiles, the glass of the frame cracked in a spiderweb, a flickering ceiling light, eerie, very slow push-in",
+      "seed": 402
+    }
+  ]
+}
