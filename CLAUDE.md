@@ -311,6 +311,8 @@ fractions of the frame, read off a probe frame). Wan also gives walking people a
 Continuity across clips (episode 7, `a-lifetime.json`): Wan redraws the robot's SIZE per clip and floats it; say
 "knee-high ... on the floor" and, where a person is close, "its head only reaching her knee". One fixed place (the same
 window seat, seasons changing outside) plus one recurring object made a life journey read where separate rooms did not.
+Per scene `"model": "14b"` uses the bigger Wan 2.2 T2V-A14B (H200, 16 fps, several times slower) for hero shots;
+`"grade": true` puts one colour grade and film grain over everything so mixed models read as one film.
 
 The `[api-proxy-support]` extra matters: behind the session's HTTPS proxy, plain `modal` fails with only "Could not connect to the Modal server"; the real cause (missing `python-socks`) is hidden in the exception's `__cause__`. The first run downloads
 ~20 GB of weights into the `ai-video-cache` volume. The clips are generated separately, so each

@@ -1,0 +1,30 @@
+{
+  "title": "The Sky Smiled",
+  "about": "Episode 9, 25 s, made for views: episode 1's 'make people smile' at planetary scale. Hook in the first second (a giant smiley reflected in an eye), a jaw-drop reveal (thousands of drones forming a smiley over a city), the cost (every window and every face the same smile), and the answer (a child's crooked hand-drawn smiley). The two hero shots use the bigger Wan 14B; one grade and grain over all. Silent film for the user's own music; only the last line is written.",
+  "voice": null,
+  "tail": 1.5,
+  "grade": true,
+  "scenes": [
+    {
+      "model": "14b",
+      "prompt": "cinematic extreme macro close-up of a human eye at night, in the glossy reflection of the iris a gigantic glowing yellow smiley face hangs in the dark sky above a city skyline, the pupil slowly widens in awe, tiny city lights reflected, ultra detailed, shallow depth of field, static camera"
+    },
+    {
+      "model": "14b",
+      "prompt": "epic cinematic aerial shot at night, thousands of glowing yellow drones hover in formation forming one colossal perfect smiley face in the sky above a vast glittering city skyline, tiny crowds on the rooftops look up in awe, breathtaking scale, slow push-in"
+    },
+    {
+      "prompt": "cinematic close-up at night, a swarm of small round white flying drones, each with one large glowing blue eye, hovering in perfect formation against a dark sky, lit warm yellow from below, shallow depth of field, static camera"
+    },
+    {
+      "prompt": "cinematic wide shot at night, a dense city where every window and every giant billboard screen glows with the same yellow smiley face, crowds standing still in the street below all wearing identical bright yellow smiley-face masks and looking up, eerie yellow light, static camera"
+    },
+    {
+      "prompt": "cinematic close-up at night on a rooftop, a small child's hand holds up a crooked hand-drawn smiley face in crayon on a sheet of paper against the glowing yellow sky, the paper trembles in the wind, tender, shallow depth of field, static camera",
+      "fade": 3.4,
+      "say": "We only get to teach it once.",
+      "lead": 3.8,
+      "whisper": true
+    }
+  ]
+}

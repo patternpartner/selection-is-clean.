@@ -86,6 +86,44 @@ class Wan:
             return open(f.name, "rb").read()
 
 
+MODEL_14B = "Wan-AI/Wan2.2-T2V-A14B-Diffusers"
+FRAMES_14B, FPS_14B = 81, 16  # the 14B model's native 5 s
+
+
+@app.cls(gpu="H200", image=image, volumes={"/cache": cache}, timeout=3600, scaledown_window=60)
+class Wan14:
+    """The bigger Wan 2.2 (two 14B experts): better detail and motion, several times slower. For hero shots."""
+
+    @modal.enter()
+    def load(self):
+        import torch
+        from diffusers import AutoencoderKLWan, WanPipeline
+
+        vae = AutoencoderKLWan.from_pretrained(MODEL_14B, subfolder="vae", torch_dtype=torch.float32)
+        self.pipe = WanPipeline.from_pretrained(MODEL_14B, vae=vae, torch_dtype=torch.bfloat16).to("cuda")
+        cache.commit()
+
+    @modal.method()
+    def clip(self, prompt: str, seed: int, width: int, height: int) -> bytes:
+        import torch
+        from diffusers.utils import export_to_video
+
+        frames = self.pipe(
+            prompt=prompt,
+            negative_prompt=NEGATIVE,
+            height=height,
+            width=width,
+            num_frames=FRAMES_14B,
+            guidance_scale=4.0,
+            guidance_scale_2=3.0,
+            num_inference_steps=40,
+            generator=torch.Generator("cuda").manual_seed(seed),
+        ).frames[0]
+        with tempfile.NamedTemporaryFile(suffix=".mp4") as f:
+            export_to_video(frames, f.name, fps=FPS_14B)
+            return open(f.name, "rb").read()
+
+
 def _ffmpeg():
     try:
         import imageio_ffmpeg
@@ -157,7 +195,8 @@ def _ass_time(t: float) -> str:
 
 
 @app.function(image=mix_image, cpu=4, timeout=900)
-def mix(clips: list, voices: list, music, lines: list, width: int, height: int, tail: float = 0.0) -> bytes:
+def mix(clips: list, voices: list, music, lines: list, width: int, height: int, tail: float = 0.0,
+        grade: bool = False) -> bytes:
     """Join the clips, lay each narration line over its scene, duck the music under it, burn subtitles.
 
     `lines` holds one dict per scene: say, lead (seconds after the cut), whisper, fade (seconds into the
@@ -245,7 +284,10 @@ def mix(clips: list, voices: list, music, lines: list, width: int, height: int, 
     subprocess.run(
         ["ffmpeg", "-y", "-loglevel", "error", "-i", joined, *music_in, *audio_in,
          "-filter_complex", ";".join(filters) + f";[0:v]tpad=stop_mode=add:stop_duration={tail}:color=black,"
-         + "".join(f + "," for f in fades) + f"subtitles={subs},fade=t=in:d=0.6,fade=t=out:st={total - 0.8:.2f}:d=0.8[vout]",
+         + "".join(f + "," for f in fades)
+         # One grade and a light moving grain over everything, so clips from different models read as one film.
+         + ("eq=contrast=1.06:saturation=1.08:gamma=0.97,noise=alls=7:allf=t," if grade else "")
+         + f"subtitles={subs},fade=t=in:d=0.6,fade=t=out:st={total - 0.8:.2f}:d=0.8[vout]",
          "-map", "[vout]", "-map", "[aout]", "-t", f"{total:.3f}",
          "-c:v", "libx264", "-pix_fmt", "yuv420p", "-crf", "19", "-c:a", "aac", "-ac", "2", "-b:a", "192k",
          "-movflags", "+faststart", out],
@@ -363,8 +405,9 @@ def story(file: str, out: str = "story.mp4", seed: int = 0, landscape: bool = Fa
     # Clips are kept by what made them, so editing one scene does not regenerate the others.
     store = os.path.join(os.path.dirname(os.path.abspath(out)), "clips")
     os.makedirs(store, exist_ok=True)
-    jobs, parts = [], []  # parts[i]: indices into jobs making up scene i
+    jobs, parts, models = [], [], []  # parts[i]: indices into jobs making up scene i; models: one per job
     for i, sc in enumerate(scenes):
+        n0 = len(jobs)
         if "prompt" in sc:
             parts.append([len(jobs)])
             jobs.append((fill(sc["prompt"]), seed + i, width, height))
@@ -375,12 +418,20 @@ def story(file: str, out: str = "story.mp4", seed: int = 0, landscape: bool = Fa
             parts.append([len(jobs), len(jobs) + 1])
             jobs.append((fill(sc["top"]), seed + i, height, width))
             jobs.append((fill(sc["bottom"]), seed + 100 + i, height, width))
-    paths = [os.path.join(store, hashlib.sha1(repr((MODEL_ID, CLIP_FRAMES) + j).encode()).hexdigest()[:16] + ".mp4")
-             for j in jobs]
+        models += [sc.get("model", "5b")] * (len(jobs) - n0)  # "14b" for hero shots
+    ids = {"5b": (MODEL_ID, CLIP_FRAMES), "14b": (MODEL_14B, FRAMES_14B)}
+    paths = [os.path.join(store, hashlib.sha1(repr(ids[m] + j).encode()).hexdigest()[:16] + ".mp4")
+             for m, j in zip(models, jobs)]
     todo = [i for i, p in enumerate(paths) if not os.path.exists(p)]
     print(f"generating {len(todo)} of {len(jobs)} clips ({len(jobs) - len(todo)} reused)")
-    for i, data in zip(todo, Wan().clip.starmap([jobs[i] for i in todo])):
+    # Both models run at once; each clip is saved as soon as its batch returns.
+    small = [i for i in todo if models[i] == "5b"]
+    big = [i for i in todo if models[i] == "14b"]
+    big_calls = [Wan14().clip.spawn(*jobs[i]) for i in big]
+    for i, data in zip(small, Wan().clip.starmap([jobs[i] for i in small])):
         open(paths[i], "wb").write(data)
+    for i, call in zip(big, big_calls):
+        open(paths[i], "wb").write(call.get())
     raw = [open(p, "rb").read() for p in paths]
     clips = [raw[ps[0]] if len(ps) == 1 or "reveal" in sc else stack.remote(raw[ps[0]], raw[ps[1]], width, height)
              for ps, sc in zip(parts, scenes)]
@@ -391,7 +442,8 @@ def story(file: str, out: str = "story.mp4", seed: int = 0, landscape: bool = Fa
              else c for c, sc in zip(clips, scenes)]
     said = voices.get() if voices else []
     per_scene = [said[spoken.index(i)] if i in spoken else None for i in range(len(scenes))]
-    data = mix.remote(clips, per_scene, music.get() if music else None, lines, width, height, spec.get("tail", 0.0))
+    data = mix.remote(clips, per_scene, music.get() if music else None, lines, width, height, spec.get("tail", 0.0),
+                      spec.get("grade", False))
     open(out, "wb").write(data)
     print(f"saved {out}")
 
