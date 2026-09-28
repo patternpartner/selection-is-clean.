@@ -23201,3 +23201,67 @@ The MARKERS are the calibration: labels handed down the real tree, replaced at 5
 Not shown: whether any of this changes past 20k; the grid and M choices; whether TREE's busy-particle bias hides a
 real FASTER in the in-life layers (a null that also keeps who-changes would settle it: permute event results among
 the same recipients).
+
+**#255 RESULTS — NOT DISTINGUISHABLE from neutral copying, and pointing the wrong way.** Seeds 111-116, six worlds,
+49,000 ticks, 7 rounds, five runs as pre-registered; epoch 0 identical across all five (checked).
+
+| run | judge score, epochs 5-7 | living | germline new/epoch | world-epochs guarded (<50) | extinctions | REGEN at end (6 worlds) |
+|---|---|---|---|---|---|---|
+| tournament 1 | 0.613 | 82 | 21.7 | 8 | 3 | 0.05, 0, 0, 0, 0.05, 0 |
+| tournament 2 | **0.362** | 240 | 31.1 | 15 | 8 | 0, 0.2, 0.2, 0.2, 0.2, 0.2 |
+| neutral 1 | 0.584 | 145 | 22.0 | 10 | 4 | 0, 0.2, 0, 0, 0.2, 0 |
+| neutral 2 | 0.645 | 326 | 19.8 | 1 | 1 | all 0.2 |
+| neutral 3 | 0.890 | 297 | 22.7 | 1 | 1 | all 0.2 |
+
+- **Rule 1:** tournament 1 sits inside the neutral band, tournament 2 below all three. Not SELECTS; not WORSE (that
+  wants both below). **Selecting universes on this judge did not raise the judge** — the tournament mean is 0.49
+  against the neutral 0.71 — and the tournament worlds crashed more (23 guarded world-epochs and 11 extinctions
+  against 12 and 6).
+- **Rule 2** applies only after SELECTS. **Rule 3** does not trip (tournament 2's 240 is not 25% below all three).
+- **Convergence — three laws, in both tournament replicates and no neutral one:** `PROV_BIRTH_COST` up (12 of 12
+  tournament worlds end above the default 1.0, against 1 of 18 neutral), `CHANNEL_WARP_RENT` up, `LEVEL_COHERE_RATE`
+  down. Costlier births mean fewer births and smaller populations — and a small population is exactly where this
+  judge is weak: its shadows produce almost nothing, the denominator floors at 1, and the ratio becomes the raw count
+  of what sideways transfer spreads through a crowded few. Tournament 1 shows it in one move: world 115 STARTED with
+  `WORLD_ENERGY_REGEN` 0 (one of its three starting mutations), held 89 particles, posted the top score in epoch 0,
+  and its physics spread through the field. **Selection found something consistent, and what it found was the
+  judge's blind spot, not novelty.**
+- Switches: `FRONTIER_EXPAND` ended OFF in 6 of 6 worlds in tournament 1 (3 of 6 in tournament 2; neutral 2-4 of 6);
+  descriptive, one replicate.
+
+**What this says about the design, for the next attempt.** (1) A ratio with a floored denominator rewards shrinking
+the denominator — the stagnation problem the ratio was chosen to avoid came back through population size. A judge
+must be normalised per capita or compared within matched population sizes, or it will select for small worlds.
+(2) Six worlds and seven rounds is thin: one lucky starting vector (115) decided tournament 1. (3) The mutation
+operator carries the REGEN ratchet below (#255b), in both arms — neutral 1 starved too, with no judge at all.
+**Nothing ships.** The rule says the tournament did not beat neutral copying at this horizon; the convergence says
+the judge was gamed; both go to the user with the rest.
+
+### #255b — A UNIVERSE CAN STARVE ITSELF AND KEEP IT: `WORLD_ENERGY_REGEN` 0 passes the law verdict. A field defect.
+
+Found while reading #255: every run that ended with regeneration at 0 got there by mutation, not by the judge
+(neutral 1 did it with a coin). **The step is lopsided.** A law proposal moves a row by (U-0.5)*span*0.35. For
+`WORLD_ENERGY_REGEN` the span is 0-5, so a step reaches +/-0.875 — but #232's ceiling refuses any move that lifts
+REGEN/METABOLIC_ENERGY_DRAW past 800, which from the defaults (0.2 / 0.0004 = 500) leaves +0.12 of headroom. So:
+~14% of upward steps survive; ~77% of downward steps overshoot and are clamped to exactly 0; **a REGEN proposal lands
+on 0 about 39% of the time**, and from 0 only ~18% of proposals move it at all (up to 0.32). The engine's own in-world
+proposals use the same step and the same ceiling — this is not a rig artefact.
+
+**And the verdict keeps it** (seeds 1-3, in-world proposals off, REGEN set to 0 at tick 3,000 through the law row):
+
+| seed | mean living, 600 before | mean over the 1,200-tick probation | ratio (kept at >= 0.7) | living at +2k / +4k / +6k | control at +6k |
+|---|---|---|---|---|---|
+| 1 | 421 | 338 | 0.80 **KEPT** | 168 / 89 / 90 | 383 |
+| 2 | 428 | 339 | 0.79 **KEPT** | 155 / 86 / 89 | 375 |
+| 3 | 422 | 337 | 0.80 **KEPT** | 179 / 89 / 88 | 378 |
+
+The world loses ~80% of its population over ~4,000 ticks; the probation sees the first 20% of it and keeps the law.
+It then lives on at ~88 on recycled death energy, and #216x's law persistence carries it through every save. REGEN is
+proposed roughly once per ~90k ticks per world (1 row in 48, one verdict per ~1,900 ticks), so in a field run long
+enough to reload, some universes will have done this. Not checked against the user's harvests (not in this container).
+
+**Proposed fix — the user's call, because it can change a saved world on reload (rule 6):** `WORLD_ENERGY_REGEN hi`
+5 -> 1. The highest value the #232 ceiling can ever allow is 800 x 0.0012 (DRAW's own hi) = 0.96, so `hi:5` buys
+nothing but a step five times too large. At `hi:1` a step is +/-0.175: from the default no single proposal reaches 0,
+and a slide down has to pass several verdicts. A saved world above 1.0 would be clamped to 1.0 on reload (#232 has
+refused any rise past 0.96 since it shipped, so only an older save could hold more). Not shipped.

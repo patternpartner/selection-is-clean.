@@ -44,7 +44,9 @@
 //
 // Mutation: each law moves with probability MUT_LAW by (U-0.5)*span*0.35 - the engine's own proposal step - clamped
 // to the row's bounds, and refused as the engine refuses it if it would lift REGEN/METABOLIC_ENERGY_DRAW past
-// LAW_K_MAX (#232). Each switch flips with probability MUT_SW.
+// LAW_K_MAX (#232). Each switch flips with probability MUT_SW. It inherits the engine step's lopsidedness for
+// WORLD_ENERGY_REGEN (#255b): a mutation of that row lands on exactly 0 about 39% of the time - #255's neutral arm
+// starved too. Correct the row's range before reading a tournament's REGEN as chosen.
 // Nothing here draws from the engine: shadows and the rig use their own mulberry32 streams.
 //
 //   ARM=tournament|neutral REP=1 K=6 SEED0=111 WARM=1000 EPOCH=6000 EPOCHS=8 node harness-lawfield.js
