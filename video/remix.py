@@ -45,6 +45,11 @@ def look(label, name, out):
         return f"[{label}]lutrgb=r=0:g=0:b=0[{out}]"
     if name == "iron":
         return f"[{label}]{IRON}[{out}]"
+    if name == "ivory":  # piano black and ivory: ink shadows, warm paper whites, only yellow keeps its colour
+        return (f"[{label}]colorhold=color=0xF2C230:similarity=0.16:blend=0.1,eq=contrast=1.5:gamma=0.85:saturation=1.3,"
+                f"colorbalance=rh=0.05:gh=0.03:bh=-0.04,curves=all='0/0 0.25/0.08 0.75/0.9 1/1'[{out}]")
+    if name == "pixel":  # the machine's view: coarse blocks
+        return f"[{label}]scale={W // 22}:{H // 22},scale={W}:{H}:flags=neighbor[{out}]"
     if name == "oxblood":
         return f"[{label}]{IRON},{OXBLOOD}[{out}]"
     if name in ("wire", "hot", "outline"):
@@ -112,10 +117,21 @@ def render(seg, clipdir, path, dur, cut=None, base=".", at=0.0):
         g.append(f"[{k0}:v]setpts={fz.get('speed', speed)}*(PTS-STARTPTS),fps={FPS},setsar=1[fs]")
         g.append(mirror("fs", fz.get("mirror", "none"), W, H, "fm"))
         g.append(look("fm", fz.get("look", "full"), "fl"))
-        g.append(f"[{last}]scale={W}:{H},format=gbrp[fb];[fl]format=gbrp[fc];"
-                 f"[fb][fc]blend=all_mode={fz.get('mode', 'screen')}:all_opacity={fz.get('opacity', 1.0)}[fused]")
+        mode, nn, sl = fz.get("mode", "screen"), fz.get("n", 8), fz.get("slide", 0)
+        if mode in ("rows", "keys", "checker"):
+            # Pixel-aligned crossover: the two pictures interleave in bands, keys or a weave, sliding at `slide` px/s.
+            cell = (H if mode == "rows" else W) / nn
+            sel = {"rows": f"mod(floor((Y+T*{sl})/{cell:.2f}),2)", "keys": f"mod(floor((X+T*{sl})/{cell:.2f}),2)",
+                   "checker": f"mod(floor((X+T*{sl})/{cell:.2f})+floor(Y/{cell:.2f}),2)"}[mode]
+            bl = f"blend=all_expr='if({sel},B,A)'"
+        else:
+            bl = f"blend=all_mode={mode}:all_opacity={fz.get('opacity', 1.0)}"
+        g.append(f"[{last}]scale={W}:{H},format=gbrp[fb];[fl]format=gbrp[fc];[fb][fc]{bl}[fused]")
         last = "fused"
     post = [f"scale={W}:{H}"]
+    if seg.get("spin"):  # turn the picture, degrees per second (corners go black: a spinning card)
+        z = seg.get("spin_zoom", 1.3)
+        post.append(f"scale={int(W * z) // 2 * 2}:-2,rotate=a='t*{seg['spin']}*PI/180':ow={W}:oh={H}:c=black")
     if seg.get("stutter"):  # loop the opening slice, like a stuck record
         k = max(1, round(seg["stutter"] * FPS))
         post.append(f"trim=end_frame={k},loop=loop=-1:size={k}:start=0,setpts=N/{FPS}/TB")
@@ -174,6 +190,54 @@ def render(seg, clipdir, path, dur, cut=None, base=".", at=0.0):
                    check=True)
 
 
+def bounce(cut, d):
+    """The picture bounces to the music itself, not a metronome: every onset in the track zooms it in and drops it a
+    little, decaying fast; loud passages bounce harder than quiet ones, and the strongest hits shake it. Written as
+    per-frame scale-and-crop commands for ffmpeg's sendcmd (the output
+    size never changes; a crop that changed size per frame crashed ffmpeg)."""
+    import numpy as np
+    bo = cut["bounce"]
+    sr = 11025
+    raw = subprocess.run([F, "-loglevel", "error", "-i", cut["song"], "-ac", "1", "-ar", str(sr), "-f", "s16le", "-"],
+                         capture_output=True, check=True).stdout
+    x = np.frombuffer(raw, np.int16).astype(float) / 32768
+    parts_ = cut.get("song_parts", [[0, cut["music_end"]]])
+    x = np.concatenate([x[int(a * sr):int(b * sr)] for a, b in parts_])
+    hop = 256
+    fr = np.array([np.sum(x[i:i + 512] ** 2) for i in range(0, len(x) - 512, hop)]) + 1e-9
+    on = np.maximum(0, np.diff(np.log(fr), prepend=np.log(fr[0])))
+    on /= np.percentile(on, 99.5)
+    fps_a = sr / hop
+    n = int(cut["music_end"] * FPS)
+    rms = np.array([np.sqrt(np.mean(x[int(i / FPS * sr):int(i / FPS * sr) + sr] ** 2)) for i in range(n)])
+    loud = np.clip((20 * np.log10(rms + 1e-6) + 25) / 14, 0, 1)
+    decay = np.exp(-1 / (FPS * bo.get("decay", 0.12)))
+    env, e, shake = np.zeros(n), 0.0, np.zeros((n, 2))
+    rng = np.random.default_rng(7)
+    sx = sy = 0.0
+    for i in range(n):
+        a, b = int(i / FPS * fps_a), int((i + 1) / FPS * fps_a) + 1
+        hit = min(1.0, on[a:b].max()) if b <= len(on) and a < b else 0.0
+        e = max(hit if hit > 0.35 else 0.0, e * decay)
+        env[i] = e
+        if hit > 0.85 and loud[i] > 0.7:
+            sx, sy = rng.uniform(-1, 1, 2) * bo.get("shake", 10)
+        sx, sy = sx * 0.6, sy * 0.6
+        shake[i] = sx, sy
+    lines = []
+    for i in range(n):
+        k = env[i] * (0.3 + 0.7 * loud[i])
+        z = 1 + bo.get("zoom", 0.06) * k
+        sw, sh = int(W * z) // 2 * 2 + 2, int(H * z) // 2 * 2 + 2  # always a little overscan for the shake
+        mx, my = (sw - W) / 2, (sh - H) / 2
+        cx = min(max(mx + shake[i][0], 0), sw - W)
+        cy = min(max(my - bo.get("drop", 18) * k + shake[i][1], 0), sh - H)
+        lines.append(f"{i / FPS:.4f} scale@b w {sw}, scale@b h {sh}, crop@b x {int(cx)}, crop@b y {int(cy)};")
+    p = os.path.join(d, "bounce.cmd")
+    open(p, "w").write("\n".join(lines) + "\n")
+    return p
+
+
 def main(cut_path, out):
     cut = json.load(open(cut_path))
     base = os.path.dirname(os.path.abspath(cut_path))
@@ -209,7 +273,10 @@ def main(cut_path, out):
         "Alignment, MarginL, MarginR, MarginV\nStyle: Default,DejaVu Sans,43,&H00FFFFFF,&H00000000,&H80000000,1,1,3,1,5,60,60,0\n\n"
         f"[Events]\nFormat: Layer, Start, End, Style, Text\nDialogue: 0,{ts(a)},{ts(b)},Default,{{\\i1}}{cut['line']}\n")
     look = (cut["look"] + ",") if cut.get("look") else ""
-    vf = (f"{look}scale=w='{W}*(1+{pulse})':h='{H}*(1+{pulse})':eval=frame,crop={W}:{H},negate=enable='{flash}',"
+    move = f"scale=w='{W}*(1+{pulse})':h='{H}*(1+{pulse})':eval=frame,crop={W}:{H}"
+    if cut.get("bounce"):
+        move = f"sendcmd=f={bounce(cut, d)},scale@b=w={W + 2}:h={H + 2},crop@b=w={W}:h={H}:x=1:y=1"
+    vf = (f"{look}{move},negate=enable='{flash}',"
           f"noise=alls=5:allf=t,tpad=stop_mode=add:stop_duration={end - cut['music_end']:.2f}:color=black,"
           f"fade=t=in:d=0.4,fade=t=out:st={cut['music_end'] - 0.6:.2f}:d=0.6,subtitles={subs},format=yuv420p")
     song = cut["song"]

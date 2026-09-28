@@ -1,0 +1,538 @@
+{
+ "about": "Piano in the Throes, second mix ('The Duet'): same track, all-new cut. Piano black and ivory; the picture bounces to the music itself (onsets in the track, harder in loud passages, a shake on the biggest hits); human and machine interleave pixel-for-pixel in sliding rows, keys and a checkerboard weave that grows finer (4, 8, 16, 40) until they cannot be told apart; spinning mirrored mandalas; the machine's pixel view.",
+ "song": "/tmp/claude-0/-home-user-selection-is-clean-/b9b414e6-460f-5aee-89c7-9b78deb6d5d0/scratchpad/piano-in-the-throes.mp3",
+ "clipdir": "../../out/clips",
+ "default_look": "full",
+ "music_end": 175.5,
+ "tail": 3.0,
+ "line": "We only get to teach it once.",
+ "beat": 0.5,
+ "phase": 0.0,
+ "pulse": [],
+ "flashes": [
+  8,
+  72,
+  104,
+  152,
+  164
+ ],
+ "bounce": {
+  "zoom": 0.08,
+  "drop": 22,
+  "shake": 12,
+  "decay": 0.12
+ },
+ "segments": [
+  {
+   "type": "single",
+   "clip": "9f5bcaa607e0484f.mp4",
+   "mirror": "quad",
+   "spin": 12,
+   "look": "ivory",
+   "fade_in": 1.0,
+   "at": 0.0
+  },
+  {
+   "type": "single",
+   "clip": "7b5ac46543b12fa7.mp4",
+   "mirror": "quad",
+   "spin": -18,
+   "look": "ivory",
+   "at": 4.0
+  },
+  {
+   "type": "single",
+   "clip": "3f17ae19f72e18ed.mp4",
+   "fuse": {
+    "clip": "e8b6291e211e8756.mp4",
+    "mode": "rows",
+    "n": 8,
+    "slide": 0,
+    "look": "full"
+   },
+   "at": 8.0
+  },
+  {
+   "type": "single",
+   "clip": "928b830a2ebfffb1.mp4",
+   "look": "ivory",
+   "at": 12.0
+  },
+  {
+   "type": "single",
+   "clip": "5e9c5492a9e26ff1.mp4",
+   "fuse": {
+    "clip": "e8b6291e211e8756.mp4",
+    "mode": "keys",
+    "n": 8,
+    "slide": 60,
+    "look": "wire"
+   },
+   "at": 16.0
+  },
+  {
+   "type": "single",
+   "clip": "7b5ac46543b12fa7.mp4",
+   "look": "pixel",
+   "at": 20.0
+  },
+  {
+   "type": "single",
+   "clip": "919123bec8b784fd.mp4",
+   "fuse": {
+    "clip": "da051bf59dfe77fe.mp4",
+    "mode": "checker",
+    "n": 6,
+    "slide": 0,
+    "look": "full"
+   },
+   "at": 24.0
+  },
+  {
+   "type": "single",
+   "clip": "cfc72bdaf7bb6391.mp4",
+   "look": "ivory",
+   "at": 28.0
+  },
+  {
+   "type": "single",
+   "clip": "1fa0d1c8002f5aad.mp4",
+   "fuse": {
+    "clip": "b59266abad75b0f6.mp4",
+    "mode": "rows",
+    "n": 10,
+    "slide": -40,
+    "look": "wire"
+   },
+   "at": 32.0
+  },
+  {
+   "type": "single",
+   "clip": "d75fdfb98e38c0b5.mp4",
+   "mirror": "quad",
+   "spin": 20,
+   "look": "ivory",
+   "at": 36.0
+  },
+  {
+   "type": "single",
+   "src": "../../out/piano-in-the-throes.mp4",
+   "in": 8.0,
+   "look": "ivory",
+   "at": 40.0
+  },
+  {
+   "type": "single",
+   "clip": "f203973351f9d415.mp4",
+   "fuse": {
+    "clip": "7b5ac46543b12fa7.mp4",
+    "mode": "screen",
+    "look": "wire"
+   },
+   "at": 44.0
+  },
+  {
+   "type": "single",
+   "clip": "3f17ae19f72e18ed.mp4",
+   "fuse": {
+    "clip": "da051bf59dfe77fe.mp4",
+    "mode": "checker",
+    "n": 8,
+    "slide": 0,
+    "look": "pixel"
+   },
+   "at": 48.0
+  },
+  {
+   "type": "single",
+   "clip": "74cec189dd8227cb.mp4",
+   "look": "ivory",
+   "at": 52.0
+  },
+  {
+   "type": "single",
+   "clip": "9f5bcaa607e0484f.mp4",
+   "mirror": "quad",
+   "spin": 8,
+   "look": "ivory",
+   "speed": 1.5,
+   "at": 56.0
+  },
+  {
+   "type": "single",
+   "clip": "7b5ac46543b12fa7.mp4",
+   "look": "pixel",
+   "speed": 1.5,
+   "morph": [
+    "full",
+    1.0,
+    2.5
+   ],
+   "at": 60.0
+  },
+  {
+   "type": "single",
+   "clip": "919123bec8b784fd.mp4",
+   "fuse": {
+    "clip": "e8b6291e211e8756.mp4",
+    "mode": "rows",
+    "n": 16,
+    "slide": 120,
+    "look": "wire"
+   },
+   "at": 64.0
+  },
+  {
+   "type": "single",
+   "clip": "3f17ae19f72e18ed.mp4",
+   "flip": true,
+   "fuse": {
+    "clip": "da051bf59dfe77fe.mp4",
+    "mode": "checker",
+    "n": 12,
+    "slide": 0,
+    "look": "hot"
+   },
+   "at": 68.0
+  },
+  {
+   "type": "single",
+   "clip": "919123bec8b784fd.mp4",
+   "rgb": 8,
+   "at": 72.0
+  },
+  {
+   "type": "single",
+   "clip": "3f17ae19f72e18ed.mp4",
+   "fuse": {
+    "clip": "e8b6291e211e8756.mp4",
+    "mode": "checker",
+    "n": 6,
+    "slide": 0,
+    "look": "full"
+   },
+   "at": 74.0
+  },
+  {
+   "type": "single",
+   "src": "../../out/flesh-and-wire.mp4",
+   "in": 64.0,
+   "at": 76.0
+  },
+  {
+   "type": "single",
+   "clip": "da051bf59dfe77fe.mp4",
+   "mirror": "quad",
+   "spin": 45,
+   "look": "hot",
+   "at": 78.0
+  },
+  {
+   "type": "single",
+   "clip": "928b830a2ebfffb1.mp4",
+   "fuse": {
+    "clip": "b59266abad75b0f6.mp4",
+    "mode": "rows",
+    "n": 8,
+    "slide": 0,
+    "look": "wire"
+   },
+   "at": 80.0
+  },
+  {
+   "type": "single",
+   "clip": "eae80e8e3679319a.mp4",
+   "look": "pixel",
+   "at": 82.0
+  },
+  {
+   "type": "single",
+   "src": "../../out/iron-ballroom.mp4",
+   "in": 129.4,
+   "at": 84.0
+  },
+  {
+   "type": "single",
+   "clip": "5e9c5492a9e26ff1.mp4",
+   "fuse": {
+    "clip": "e8b6291e211e8756.mp4",
+    "mode": "keys",
+    "n": 12,
+    "slide": -90,
+    "look": "wire"
+   },
+   "at": 86.0
+  },
+  {
+   "type": "single",
+   "clip": "919123bec8b784fd.mp4",
+   "stretch": [
+    {
+     "dir": "down",
+     "y": 0.6,
+     "x": [
+      0.2,
+      0.8
+     ],
+     "t": [
+      0.8,
+      2.0
+     ]
+    }
+   ],
+   "at": 88.0
+  },
+  {
+   "type": "single",
+   "clip": "928b830a2ebfffb1.mp4",
+   "fuse": {
+    "clip": "7b5ac46543b12fa7.mp4",
+    "mode": "checker",
+    "n": 8,
+    "slide": 0,
+    "look": "full"
+   },
+   "at": 90.0
+  },
+  {
+   "type": "single",
+   "src": "../../out/bitter-pill.mp4",
+   "in": 31.0,
+   "at": 92.0
+  },
+  {
+   "type": "grid",
+   "n": 2,
+   "clips": [
+    "919123bec8b784fd.mp4"
+   ],
+   "looks": [
+    "full",
+    "ivory",
+    "pixel",
+    "wire"
+   ],
+   "at": 94.0
+  },
+  {
+   "type": "single",
+   "clip": "130bdbe4e621dfd0.mp4",
+   "mirror": "quad",
+   "spin": -40,
+   "look": "ivory",
+   "at": 96.0
+  },
+  {
+   "type": "single",
+   "clip": "3f17ae19f72e18ed.mp4",
+   "fuse": {
+    "clip": "da051bf59dfe77fe.mp4",
+    "mode": "rows",
+    "n": 12,
+    "slide": 60,
+    "look": "full"
+   },
+   "at": 98.0
+  },
+  {
+   "type": "single",
+   "clip": "53491f00c649d52b.mp4",
+   "look": "ivory",
+   "speed": 1.5,
+   "at": 100.0
+  },
+  {
+   "type": "single",
+   "clip": "3f17ae19f72e18ed.mp4",
+   "fuse": {
+    "clip": "e8b6291e211e8756.mp4",
+    "mode": "checker",
+    "n": 4,
+    "slide": 0,
+    "look": "full"
+   },
+   "at": 104.0
+  },
+  {
+   "type": "single",
+   "clip": "3f17ae19f72e18ed.mp4",
+   "fuse": {
+    "clip": "e8b6291e211e8756.mp4",
+    "mode": "checker",
+    "n": 8,
+    "slide": 0,
+    "look": "full"
+   },
+   "at": 108.0
+  },
+  {
+   "type": "single",
+   "clip": "3f17ae19f72e18ed.mp4",
+   "fuse": {
+    "clip": "e8b6291e211e8756.mp4",
+    "mode": "checker",
+    "n": 16,
+    "slide": 0,
+    "look": "full"
+   },
+   "at": 112.0
+  },
+  {
+   "type": "single",
+   "clip": "3f17ae19f72e18ed.mp4",
+   "fuse": {
+    "clip": "e8b6291e211e8756.mp4",
+    "mode": "checker",
+    "n": 40,
+    "slide": 0,
+    "look": "full"
+   },
+   "at": 116.0
+  },
+  {
+   "type": "single",
+   "clip": "3f17ae19f72e18ed.mp4",
+   "look": "pixel",
+   "at": 120.0
+  },
+  {
+   "type": "single",
+   "src": "../../out/piano-in-the-throes.mp4",
+   "in": 116.0,
+   "look": "ivory",
+   "at": 124.0
+  },
+  {
+   "type": "single",
+   "clip": "da051bf59dfe77fe.mp4",
+   "mirror": "quad",
+   "spin": 30,
+   "look": "ivory",
+   "at": 128.0
+  },
+  {
+   "type": "single",
+   "clip": "919123bec8b784fd.mp4",
+   "fuse": {
+    "clip": "da051bf59dfe77fe.mp4",
+    "mode": "rows",
+    "n": 32,
+    "slide": 200,
+    "look": "full"
+   },
+   "at": 132.0
+  },
+  {
+   "type": "single",
+   "clip": "919123bec8b784fd.mp4",
+   "look": "ivory",
+   "speed": 1.6,
+   "at": 136.0
+  },
+  {
+   "type": "single",
+   "clip": "7b5ac46543b12fa7.mp4",
+   "look": "ivory",
+   "speed": 1.6,
+   "morph": [
+    "full",
+    2.0,
+    2.0
+   ],
+   "at": 144.0
+  },
+  {
+   "type": "single",
+   "clip": "919123bec8b784fd.mp4",
+   "mirror": "quad",
+   "spin": 10,
+   "look": "ivory",
+   "speed": 1.4,
+   "at": 148.0
+  },
+  {
+   "type": "single",
+   "clip": "919123bec8b784fd.mp4",
+   "rgb": 8,
+   "at": 152.0
+  },
+  {
+   "type": "single",
+   "clip": "919123bec8b784fd.mp4",
+   "fuse": {
+    "clip": "c1e27c87a9a3c721.mp4",
+    "mode": "checker",
+    "n": 8,
+    "slide": 0,
+    "look": "full"
+   },
+   "at": 154.0
+  },
+  {
+   "type": "single",
+   "clip": "e2a4272fb958ea8f.mp4",
+   "fuse": {
+    "clip": "919123bec8b784fd.mp4",
+    "mode": "rows",
+    "n": 6,
+    "slide": -120,
+    "look": "full"
+   },
+   "at": 156.0
+  },
+  {
+   "type": "single",
+   "src": "../../out/flesh-and-wire.mp4",
+   "in": 150.0,
+   "at": 158.0
+  },
+  {
+   "type": "single",
+   "clip": "919123bec8b784fd.mp4",
+   "at": 160.0
+  },
+  {
+   "type": "single",
+   "clip": "919123bec8b784fd.mp4",
+   "mirror": "quad",
+   "spin": 90,
+   "look": "hot",
+   "at": 164.0
+  },
+  {
+   "type": "grid",
+   "n": 2,
+   "clips": [
+    "919123bec8b784fd.mp4"
+   ],
+   "looks": [
+    "full",
+    "ivory",
+    "pixel",
+    "wire"
+   ],
+   "at": 166.0
+  },
+  {
+   "type": "single",
+   "clip": "919123bec8b784fd.mp4",
+   "look": "ivory",
+   "speed": 1.5,
+   "morph": [
+    "wire",
+    1.5,
+    2.0
+   ],
+   "at": 168.0
+  },
+  {
+   "type": "single",
+   "clip": "9f5bcaa607e0484f.mp4",
+   "mirror": "quad",
+   "spin": 6,
+   "look": "ivory",
+   "fade_out": 1.5,
+   "at": 172.0
+  }
+ ]
+}
