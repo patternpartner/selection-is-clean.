@@ -97,8 +97,8 @@ placed in image coordinates (inked on over `draw`, peeled off over `peel`), `cra
 and `tunnel` (the user's viewfinder-bracket art made endless). `build_bitter_pill_full.py` is the pattern: draw the
 shots into `out/drawn/<film>/`, then cut them with remix.py via `src`. Place a mask by gridding the image first (the
 singer's tilted face was 240 px off on the first guess). The user's new stills are in `out/inputs/` and `library/inputs`.
-The user's own videos (made elsewhere) are in `out/user-clips/u01..u48.mp4` (catalogue: `video/user-clips.json`, what
-each shows and tags: `free`, `abstract`, `own-art` = their universe, `real-face`/`real-context` = keep out or mask) and `library/user-clips` (`index.txt` maps
+The user's own videos (made elsewhere) are in `out/user-clips/u01..u112.mp4` (ids u01-u99, then u100 up) (catalogue: `video/user-clips.json`, what
+each shows and tags: `free`, `abstract`, `own-art` = their universe, `real-face`/`real-context` = keep out or mask, `character-ip` = a trademarked character, keep out) and `library/user-clips` (`index.txt` maps
 them to the upload names, `sheet.png` shows a frame of each); remix.py uses them via `src`. Several show recognisable
 real people (politicians, public figures) in made-up scenes: Claude recommended keeping those out of the alignment
 films and asked the user first; the abstract ones (particle fields, their own universe's field, the network) are free.
@@ -143,3 +143,36 @@ stretch and landing squash, and portals get a glowing yellow rim. The user OK'd 
 "blend" it: four image-to-video clips (`cage-jumps.json`, about $1) of the same robot composited into start images
 (a room, the user's light-painting, tunnel and sunset art) actually jumping; `video/weave.py` lays them over the zoom
 at the story's turns with dissolves. Result: `out/the-cage-jump.mp4`.
+`video/drawn/wall.py` + `build_breaking_the_frame.py`: 'Breaking the Frame', a whole film as ONE wall of screens (the
+user's universe-field look), every pane a clip, and the panes do the story on the sung words (light up, crack and fall,
+card-flip to one identical face on 'override', form a heart, rise like lanterns, loop into themselves, reboot, switch
+off). Word times from the Demucs vocal stem in `breaking-the-frame-times.json`. Render a section alone to check it
+(render(lambda t: script(t + t0), ...)); a crash mid-render leaves a short file that finish.py pads with black, so
+always check the raw render's duration before finishing.
+`video/drawn/freeze.py` + `build_a_beautiful_freeze.py`: 'A Beautiful Freeze', fire and frost as the one idea. Human
+shots BURN (orange grade, heat shimmer, drawn embers); the AI's touch is FROST (drawn 60-degree ice crystals that grow
+from a point; under them the frame freezes in time and turns ice-blue), cut on sung lines. Frost is drawn
+incrementally (only new ice each frame: redrawing 10k segments per frame was minutes per second). wall.Stream now
+loads stills directly: ffmpeg hung forever looping a single image. Never `pkill -f` a pattern that appears in your own
+command line: it killed the session's shell (exit 144), as CLAUDE.md warns.
+`video/drawn/timeslip.py` + `build_house_of_geometry.py`: 'The House of Geometry', time as a material. The user asked
+for weirder, unique, and only clips never used: every pixel shows a different moment (slit-scan rows, radial ripples,
+spirals, bands, waves, checker), depth driven by the song's loudness, so calm lines are near-still and loud ones melt;
+cuts wash in along the same map. 41 shots, all unused clips, each on its sung line. Songs: 23 in the library; an
+upload batch that repeats songs is checked by comparing loudness envelopes, not names.
+The user on the 41-clip House of Geometry: "good but could be better... weirder... less is more, strip it back".
+`video/drawn/onefigure.py` + `build_one_lamp.py`: ONE 6-second clip (u82, the lamp-headed dancer) for the whole
+song, held in memory and pulled through time: crawl, ghost echoes (darkest-wins, since a dark figure on a bright sky
+vanishes under lightest-wins), a mirrored ghost idol, one frozen frame in the silence, reverse, a photo-finish scan
+built from one column ('one steady line'), RGB split in time ('turn the dial'). Check the blend mode against the clip's
+figure/ground before rendering.
+
+The user on One Lamp: "maybe we move to 30 secs? also makes you pick specifics from the songs. I don't really like
+that last song". So films are now ~30 seconds and the SONG IS EDITED to its best 30: `build_dont_cycle.py` splices
+Don't Cycle the Power (104.4-121.2 verse, then 144.9-158.4 the "don't cycle the power" hook, cut on a sung word, 60ms
+fades) and maps song time to film time with `f()`. finish.py does not splice, so build the audio with ffmpeg
+atrim+concat first (`out/dont-cycle-audio.mp3`) and hand that to finish.py. One clip (u60, yellow sleeve reaching up
+to the masked figures) ping-ponged slow, a creep-in towards the fingertips, and one change per line: mirror on
+"mirrors in glass", ghosts on "mourning the seconds", scanlines on "terminal shutters", colour and detail drain on "I
+will forget", an old-TV switch-off and back on (more damaged each time) on each "don't cycle the power", off for good
+on the last. Result: `out/dont-cycle-the-power-30s.mp4`, backed up to library/finals.

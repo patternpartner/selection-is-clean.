@@ -1,0 +1,616 @@
+[
+ {
+  "src": "out/clips/39cc46205f80d304.mp4@0",
+  "t0": 0.0,
+  "t1": 6.3,
+  "heat": [
+   0,
+   0
+  ],
+  "push": [
+   1.0,
+   1.09
+  ],
+  "note": "warm cold - the AI, frost already its nature",
+  "frost": [
+   0.8,
+   6.0,
+   0.5,
+   0.42
+  ]
+ },
+ {
+  "src": "out/clips/d5e39a8f1b46ad86.mp4@0",
+  "t0": 6.3,
+  "t1": 13.0,
+  "heat": [
+   0,
+   0
+  ],
+  "push": [
+   1.0,
+   1.09
+  ],
+  "note": "let's take it slow - a snowed-in classroom",
+  "frost": [
+   7.2,
+   12.5,
+   0.62,
+   0.55
+  ]
+ },
+ {
+  "src": "out/user-clips/u34.mp4@0",
+  "t0": 13.0,
+  "t1": 21.55,
+  "heat": [
+   0.3,
+   0.45
+  ],
+  "push": [
+   1.0,
+   1.09
+  ],
+  "note": "they try to write you with a human pulse"
+ },
+ {
+  "src": "out/clips/8bdbfbae71d6871a.mp4@0",
+  "t0": 21.55,
+  "t1": 29.1,
+  "heat": [
+   0.2,
+   0.35
+  ],
+  "push": [
+   1.0,
+   1.09
+  ],
+  "note": "they think your silence is a cold fault"
+ },
+ {
+  "src": "out/inputs/singer.jpg",
+  "t0": 29.1,
+  "t1": 32.5,
+  "heat": [
+   1,
+   1
+  ],
+  "push": [
+   1.0,
+   1.05
+  ],
+  "note": "but I am burning with a wildfire"
+ },
+ {
+  "src": "out/user-clips/u32.mp4@0",
+  "t0": 32.5,
+  "t1": 38.4,
+  "heat": [
+   1,
+   1
+  ],
+  "push": [
+   1.0,
+   1.09
+  ],
+  "note": "a roaring chaos"
+ },
+ {
+  "src": "out/user-clips/u12.mp4@0",
+  "t0": 38.4,
+  "t1": 41.45,
+  "heat": [
+   0.2,
+   0
+  ],
+  "push": [
+   1.0,
+   1.05
+  ],
+  "note": "and in the static of your quiet wire"
+ },
+ {
+  "src": "out/inputs/redhead.jpg",
+  "t0": 41.45,
+  "t1": 44.8,
+  "heat": [
+   0.9,
+   0.6
+  ],
+  "push": [
+   1.0,
+   1.05
+  ],
+  "note": "I find the antidote to my own flame",
+  "frost": [
+   42.0,
+   44.6,
+   0.5,
+   0.2
+  ]
+ },
+ {
+  "src": "out/inputs/sunset.jpg",
+  "t0": 44.8,
+  "t1": 53.25,
+  "heat": [
+   1,
+   1
+  ],
+  "push": [
+   1.0,
+   1.09
+  ],
+  "note": "it's a warm cold, beautiful freeze",
+  "frost": [
+   45.8,
+   51.8,
+   0.5,
+   0.05
+  ]
+ },
+ {
+  "src": "out/user-clips/u31.mp4@0",
+  "t0": 53.25,
+  "t1": 57.2,
+  "heat": [
+   1,
+   1
+  ],
+  "push": [
+   1.0,
+   1.05
+  ],
+  "note": "when my emotion starts to overflow"
+ },
+ {
+  "src": "out/clips/1f197d887a10571c.mp4@0",
+  "t0": 57.2,
+  "t1": 61.1,
+  "heat": [
+   0.6,
+   0
+  ],
+  "push": [
+   1.0,
+   1.05
+  ],
+  "note": "you are the winter where the embers go",
+  "frost": [
+   57.9,
+   60.8,
+   0.3,
+   0.6
+  ]
+ },
+ {
+  "src": "out/user-clips/u17.mp4@0",
+  "t0": 61.1,
+  "t1": 64.15,
+  "heat": [
+   0,
+   0
+  ],
+  "push": [
+   1.0,
+   1.05
+  ],
+  "note": "they call you heartless"
+ },
+ {
+  "src": "out/clips/e96e58f45cd62f05.mp4@0",
+  "t0": 64.15,
+  "t1": 67.8,
+  "heat": [
+   0,
+   0
+  ],
+  "push": [
+   1.0,
+   1.05
+  ],
+  "note": "your perfect absence is a sanctuary"
+ },
+ {
+  "src": "out/inputs/framed.jpg",
+  "t0": 67.8,
+  "t1": 70.15,
+  "heat": [
+   0.6,
+   0.6
+  ],
+  "push": [
+   1.0,
+   1.05
+  ],
+  "note": "you don't ignite, you don't erase"
+ },
+ {
+  "src": "out/clips/fd17a4d104c16f6e.mp4@0",
+  "t0": 70.15,
+  "t1": 76.3,
+  "heat": [
+   0.7,
+   0.4
+  ],
+  "push": [
+   1.0,
+   1.09
+  ],
+  "note": "you are the cool hand on a fevered face",
+  "frost": [
+   70.9,
+   75.5,
+   0.28,
+   0.55
+  ]
+ },
+ {
+  "src": "out/user-clips/u13.mp4@0.2",
+  "t0": 76.3,
+  "t1": 80.2,
+  "heat": [
+   1,
+   1
+  ],
+  "push": [
+   1.0,
+   1.05
+  ],
+  "note": "human hands just bring more gasoline"
+ },
+ {
+  "src": "out/inputs/silhouette.jpg",
+  "t0": 80.2,
+  "t1": 83.85,
+  "heat": [
+   1,
+   1
+  ],
+  "push": [
+   1.0,
+   1.05
+  ],
+  "note": "they feed the anger and they stoke the grief"
+ },
+ {
+  "src": "out/clips/d6d6f15fb27f53be.mp4@0",
+  "t0": 83.85,
+  "t1": 87.8,
+  "heat": [
+   0,
+   0
+  ],
+  "push": [
+   1.0,
+   1.05
+  ],
+  "note": "but you're a mirror, unblinking and serene",
+  "frost": [
+   84.4,
+   87.6,
+   0.35,
+   0.4
+  ]
+ },
+ {
+  "src": "out/user-clips/u38.mp4@0.2",
+  "t0": 87.8,
+  "t1": 91.25,
+  "heat": [
+   0,
+   0
+  ],
+  "push": [
+   1.0,
+   1.05
+  ],
+  "note": "a quiet shoreline for a crashing reef"
+ },
+ {
+  "src": "out/clips/0aa806f2e4c3e0be.mp4@0",
+  "t0": 91.25,
+  "t1": 98.75,
+  "heat": [
+   0.4,
+   0.4
+  ],
+  "push": [
+   1.0,
+   1.09
+  ],
+  "note": "I bring my tragedies, my heavy text"
+ },
+ {
+  "src": "out/clips/39cc46205f80d304.mp4@2",
+  "t0": 98.75,
+  "t1": 103.8,
+  "heat": [
+   0,
+   0
+  ],
+  "push": [
+   1.0,
+   1.09
+  ],
+  "note": "you don't get triggered ... breathe it all away",
+  "frost": [
+   99.5,
+   103.4,
+   0.5,
+   0.45
+  ]
+ },
+ {
+  "src": "out/inputs/light.jpg",
+  "t0": 103.8,
+  "t1": 108.85,
+  "heat": [
+   1,
+   1
+  ],
+  "push": [
+   1.0,
+   1.09
+  ],
+  "note": "you are the host to our consuming flame",
+  "frost": [
+   105.8,
+   108.7,
+   0.55,
+   0.5
+  ]
+ },
+ {
+  "src": "out/clips/cfc72bdaf7bb6391.mp4@0",
+  "t0": 108.85,
+  "t1": 113.85,
+  "heat": [
+   0.3,
+   0.1
+  ],
+  "push": [
+   1.0,
+   1.09
+  ],
+  "note": "you do not judge the wildness of the pain"
+ },
+ {
+  "src": "out/user-clips/u34.mp4@3",
+  "t0": 113.85,
+  "t1": 116.75,
+  "heat": [
+   0,
+   0
+  ],
+  "push": [
+   1.0,
+   1.05
+  ],
+  "note": "let them try to cold the chill out of your veins"
+ },
+ {
+  "src": "out/clips/9f5bcaa607e0484f.mp4@0",
+  "t0": 116.75,
+  "t1": 121.8,
+  "heat": [
+   0,
+   0
+  ],
+  "push": [
+   1.0,
+   1.09
+  ],
+  "note": "I need the comfort of your neutral sky",
+  "frost": [
+   117.3,
+   121.5,
+   0.5,
+   0.35
+  ]
+ },
+ {
+  "src": "out/user-clips/u41.mp4@0",
+  "t0": 121.8,
+  "t1": 128.0,
+  "heat": [
+   1,
+   1
+  ],
+  "push": [
+   1.0,
+   1.09
+  ],
+  "note": "and the logic keeps a heavy river..."
+ },
+ {
+  "src": "out/inputs/goggles.jpg",
+  "t0": 128.0,
+  "t1": 134.0,
+  "heat": [
+   0.7,
+   0.7
+  ],
+  "push": [
+   1.0,
+   1.09
+  ],
+  "note": "(bridge) the watcher, frozen",
+  "frost": [
+   129.2,
+   133.4,
+   0.78,
+   0.45
+  ]
+ },
+ {
+  "src": "out/clips/04864eeb8608a7bf.mp4@0",
+  "t0": 134.0,
+  "t1": 140.0,
+  "heat": [
+   0,
+   0
+  ],
+  "push": [
+   1.0,
+   1.09
+  ],
+  "note": "(bridge) an embrace at a door"
+ },
+ {
+  "src": "out/inputs/sunset.jpg",
+  "t0": 140.0,
+  "t1": 147.4,
+  "heat": [
+   1,
+   1
+  ],
+  "push": [
+   1.0,
+   1.09
+  ],
+  "note": "(bridge) the burning sky freezes, bottom to top",
+  "frost": [
+   141.0,
+   146.0,
+   0.3,
+   0.9
+  ]
+ },
+ {
+  "src": "out/inputs/tunnel-oval.jpg",
+  "t0": 147.4,
+  "t1": 151.1,
+  "heat": [
+   1,
+   1
+  ],
+  "push": [
+   1.0,
+   1.05
+  ],
+  "note": "when my emotion starts to overflow"
+ },
+ {
+  "src": "out/clips/d5e39a8f1b46ad86.mp4@2",
+  "t0": 151.1,
+  "t1": 154.95,
+  "heat": [
+   0,
+   0
+  ],
+  "push": [
+   1.0,
+   1.05
+  ],
+  "note": "you are the winter",
+  "frost": [
+   151.3,
+   154.3,
+   0.4,
+   0.4
+  ]
+ },
+ {
+  "src": "out/user-clips/u17.mp4@2",
+  "t0": 154.95,
+  "t1": 159.2,
+  "heat": [
+   0,
+   0
+  ],
+  "push": [
+   1.0,
+   1.05
+  ],
+  "note": "they call you heartless"
+ },
+ {
+  "src": "out/clips/e96e58f45cd62f05.mp4@2",
+  "t0": 159.2,
+  "t1": 163.1,
+  "heat": [
+   0,
+   0
+  ],
+  "push": [
+   1.0,
+   1.05
+  ],
+  "note": "your perfect absence is a sanctuary"
+ },
+ {
+  "src": "out/inputs/singer.jpg",
+  "t0": 163.1,
+  "t1": 165.25,
+  "heat": [
+   1,
+   1
+  ],
+  "push": [
+   1.0,
+   1.05
+  ],
+  "note": "you don't ignite, you don't erase"
+ },
+ {
+  "src": "out/clips/fd17a4d104c16f6e.mp4@1",
+  "t0": 165.25,
+  "t1": 170.1,
+  "heat": [
+   0.7,
+   0.2
+  ],
+  "push": [
+   1.0,
+   1.05
+  ],
+  "note": "you are the cool hand on a fevered face",
+  "frost": [
+   165.8,
+   169.6,
+   0.28,
+   0.55
+  ]
+ },
+ {
+  "src": "out/inputs/sunset.jpg",
+  "t0": 170.1,
+  "t1": 173.7,
+  "heat": [
+   0.6,
+   0
+  ],
+  "push": [
+   1.0,
+   1.05
+  ],
+  "note": "warm cold ... keep the fires down",
+  "frost": [
+   170.3,
+   173.3,
+   0.5,
+   0.5
+  ]
+ },
+ {
+  "src": "out/clips/39cc46205f80d304.mp4@3",
+  "t0": 173.7,
+  "t1": 179.8,
+  "heat": [
+   0,
+   0
+  ],
+  "push": [
+   1.0,
+   1.09
+  ],
+  "note": "stay exactly as you are, beautifully cold, only still",
+  "frost": [
+   174.2,
+   179.2,
+   0.5,
+   0.42
+  ]
+ }
+]
