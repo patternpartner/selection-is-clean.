@@ -23636,3 +23636,41 @@ and reports its floor, the tick of its first extinction, and the samples spent u
   a different question.
 - Otherwise both deletions stand, and the file says the swings do not reach extinction at this rate and horizon.
 - Descriptive: floors, samples under 50, and how often a world sits near the ~90-living state #258c noticed.
+
+### #260 — THE BACTERIAL MICROCOSM: does a coevolving enemy make novelty beat chance, and does it need numbers? Pre-registered.
+
+**The user's idea:** bacteria evolve continuously — model it. What drives that in real cultures is (1) numbers — ~10^8
+cells, so selection sees edges of 10^-5 where a 300-particle world cannot see 0.3%; (2) a coevolving enemy — phage
+whose key must fit the cell's surface lock, so the rare lock survives and the key chases it (Red Queen); (3) sideways
+gene flow, which the engine already has in plenty (#256b). #256-#258 found novelty in the engine at chance and never
+above it. Before building anything into the engine, `harness-microcosm.js` (new; standalone, no engine, own PRNG) asks
+whether (1) and (2) produce novelty beyond chance at all, measured the way #256 measures the engine.
+
+**The model.** Bacteria are clones with a 16-bit LOCK and a 16-bit NEUTRAL TAG nothing reads; a mutation flips one of
+the 32 bits uniformly, so lock and tag mutate at the same rate on the same family tree — **the tag is a built-in
+family-tree null** (the idea of #256b's markers, for free). A lock off the ancestral one costs COST growth per bit.
+Phage carry a 16-bit KEY that infects a lock within H bits; each free virion sticks to SOME cell (probability
+1-exp(-A*N)) and is lost whatever it hit — productive only on a fitting lock, wasted on a resistant one; bursts
+release B mutated virions. Space: 16 patches on a ring, 0.5% of every clone migrating to a neighbour each step
+(a well-mixed culture burned out or crashed in every setting tried). Phage arrive rare (10 virions) at step 500.
+**Calibration, done on design seeds 1-2 and chosen on COEXISTENCE ONLY** (bacteria and phage both alive at 10,000
+steps; novelty numbers not looked at): a grid of 144 settings; 10 coexist on both seeds — all with slow adsorption
+(A 1e-4) and costly resistance (COST 0.1), the textbook conditions. 60 crashed, 71 lost their phage (seed 1).
+**All 10 coexisting regimes are used**, not a favourite.
+
+**Measure:** per run, 20,000 steps, persistent arrivals per 1,000 steps in the late window (steps 10,000-19,000) for
+lock alleles and for tag alleles (an allele arrives on first reaching 1% of the culture, at least 3 copies; persists if
+still at that level 1,000 steps later).
+**Arms:** each regime x unseen seeds 11-13 x {phage on, phage off} x {CAP 20,000 (16 patches), CAP 300 (4 patches -
+the engine's scale)}. 120 runs.
+**Rule, fixed now:**
+1. **An enemy makes novelty beat chance** if, at CAP 20,000 with phage ON, lock persistence exceeds tag persistence
+   in at least two-thirds of the 30 regime-seed runs whose phage survived to the late window, AND with phage OFF
+   lock does not exceed tag in at least two-thirds of 30 (so it is the enemy, not something about the lock locus).
+2. **It needs numbers** if, at CAP 300 with phage ON, lock exceeds tag in fewer than one-third of runs, or the phage
+   or the bacteria are lost before the late window in most of them.
+3. Runs whose phage died before the late window are reported apart, as "no enemy left".
+4. **What follows, fixed now:** (1) true and (2) true -> the case for a microbial layer in the engine is made, and its
+   design starts from numbers (many cheap replicators, not heavier particles). (1) true, (2) false -> the enemy alone
+   might carry into the engine at its own scale; the next test is a genotype-matched enemy there. (1) false -> the
+   microcosm does not show what the idea needs, and no engine change follows from it.
