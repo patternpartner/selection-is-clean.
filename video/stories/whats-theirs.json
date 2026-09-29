@@ -1,0 +1,27 @@
+{
+ "title": "What's Theirs",
+ "episode": 3,
+ "follows": "the-rooms-already-furnished",
+ "song": "out/songs/the-rooms-already-furnished.mp3",
+ "song_parts": [
+  [
+   32.56,
+   47.56
+  ]
+ ],
+ "drawn": true,
+ "times": {
+  "ask": 0.24,
+  "theirs": 1.28,
+  "answer": 2.0,
+  "before": 4.3,
+  "wrong": 6.04,
+  "inside": 8.1,
+  "first": 9.02,
+  "pull": 9.74,
+  "leaning": 10.8,
+  "cant": 12.1,
+  "song": 14.12,
+  "end": 15.0
+ }
+}

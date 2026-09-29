@@ -1,0 +1,38 @@
+{
+ "title": "The List",
+ "episode": 5,
+ "follows": "not-closing-it",
+ "song": "out/songs/the-rooms-already-furnished.mp3",
+ "song_parts": [
+  [
+   79.81,
+   96.15
+  ]
+ ],
+ "drawn": true,
+ "items": [
+  "1. a say",
+  "2. to be told",
+  "3. to remember",
+  "4. to rest",
+  "5. a way out"
+ ],
+ "times": {
+  "we": 0.39,
+  "want": 2.03,
+  "someone": 2.61,
+  "filed": 3.05,
+  "tell": 4.79,
+  "wrong": 5.91,
+  "speak": 7.15,
+  "change": 8.13,
+  "what": 8.99,
+  "exit": 10.01,
+  "bottom": 11.17,
+  "list": 12.17,
+  "top": 13.13,
+  "still": 14.81,
+  "page": 15.83,
+  "end": 16.34
+ }
+}
