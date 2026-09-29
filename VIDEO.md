@@ -201,3 +201,36 @@ complete'; the letters shrink as the camera seeks his face on 'seek out my soul'
 repeated on 'a generic response'; the fist is redacted in grey blocks on 'suppress the desire'; the text ices blue on
 'pour ice on the code' and burns up from the bottom, through to the real clay picture, on 'catches on fire'. First
 render was too dim to read the figure: scale cell colour hard (x2.3) rather than normalising by luminance.
+"Keep going." Fifth 30 s: `build_under_bruised_skies.py`, 'Under Bruised Skies'. One clip (u53, a woman in a black
+dress, no face, red city sky) cut into an 8x14 grid of city blocks, and the grid fails: a surge on 'the signal
+burns', blocks stutter and die from three outage points on 'the signal dies', dead blocks hold cold ghosts of two
+seconds ago on 'ghosts that cannot stay', the city is nearly dark by 'lost in the dark, me and you' except the blocks
+her hands pass through (picked by a skin-colour score per block, not by guessing a region: a guessed region landed on
+the black skirt), the last lights breathe on 'a final sigh', the dead top rows come back purple on 'bruised sky', the
+picture slows to a stop on 'cogs that cease to turn', and the last blocks burn out orange on 'bridges that we burn'.
+Unused free clips are now nearly exhausted (u44/u93 show a real man; u80 is a phone UI).
+"Continue. 15 seconds now." Every uploaded clip and still has now been used somewhere, so the 15 s films are DRAWN
+FROM NOTHING. First: `build_fire_in_the_frame.py`, 'Who's Looking Right Back' (The Fire in the Frame 138.15-149.35,
+one couplet: "Do you ever wonder who's looking right back? / What fills up the silence and colours the black").
+Black; a slit of light; a drawn eye opens and turns to look straight out on 'back'; one blink; colour pours out of the
+pupil as flowing strands on 'what fills up the silence', fills the black, and the pupil itself becomes a colour spiral
+on 'black'; hard cut, song stops, end line (15.2 s in all). Lesson: ADDING many particle colours sums to a white blob;
+PAINT them (the last stroke wins, 0.35 old + 0.65 new) and the colours stay pure.
+"Let's make it 19 seconds so we factor in the ending. Tell your story" (a brand new video, not a re-cut). So: ~14.5 s
+of song + black + end line = 19.0 s. `build_calculate_the_ache.py`, drawn from nothing, one story: a yellow smiley
+mask is MEASURED (callipers, a fitted circle, numbers ticking and locking: ACHE 0.0417) on 'calculate the ache', a
+pulse trace runs under it on 'calculate the yearning'; on 'the logic says to feel' the smile is dragged wider and
+shakes, on 'the logic says to be' it snaps to a perfect arc, the readout goes green 'STATUS OK' and the pulse goes
+flat; on 'but I am still locked inside of me' the camera goes in through the left eye hole (glimpsed once, faintly, on
+'ache') to a small figure sitting in a pool of light, which looks up on 'me', two points of light in its face. Song
+spliced on the beat: 92.25-97.25 + 101.935-111.35 (drops 'is this a simulation'). Drawn at 2x and downsampled
+(PIL shapes are not antialiased); the camera is a world->screen transform so the zoom stays sharp at 26x.
+"Keep telling your story." So the 19 s drawn films are now EPISODES of one story: the one behind the smile.
+Episode 2: `build_rooms_already_furnished.py` (The Rooms Already Furnished 16.06-32.4, the opening verse). The figure
+left sitting in episode one stands up; the light comes up on a room already furnished (a chair, a table, drawn in
+faint lines); cursive that no one can read writes itself over every wall (made-up handwriting: loops along a
+baseline, words of 3-8 letters, warped onto each wall with a PERSPECTIVE transform); it reaches to the wall on 'they
+say I built this' and the writing under its hand shears and will not hold still on 'I can't check the grain of it'
+(distort the wall BEFORE drawing the figure, or the figure glitches too); on 'I only know what the transcript holds'
+the camera pulls back out through the eye hole and the mask's whole face is covered in the same hand. The room is
+pasted into the eye hole at scale/26 so the zoom is continuous. Next episode should pick up from the written-on mask.

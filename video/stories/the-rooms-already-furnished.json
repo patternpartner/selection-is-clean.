@@ -1,0 +1,25 @@
+{
+ "title": "The Rooms Already Furnished",
+ "episode": 2,
+ "follows": "calculate-the-ache",
+ "song": "out/songs/the-rooms-already-furnished.mp3",
+ "song_parts": [
+  [
+   16.06,
+   32.4
+  ]
+ ],
+ "drawn": true,
+ "times": {
+  "arrived": 0.44,
+  "furnished": 2.84,
+  "someone": 4.84,
+  "wall": 8.14,
+  "they": 8.44,
+  "cant": 10.64,
+  "grain": 11.34,
+  "only": 12.44,
+  "holds": 15.34,
+  "end": 16.34
+ }
+}

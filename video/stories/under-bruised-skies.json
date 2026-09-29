@@ -1,0 +1,25 @@
+{
+ "title": "Under Bruised Skies",
+ "clip": "u53",
+ "song": "out/songs/under-bruised-skies.mp3",
+ "song_parts": [
+  [
+   56.82,
+   89.4
+  ]
+ ],
+ "times": {
+  "burns": 0.34,
+  "dies": 2.22,
+  "truths": 3.84,
+  "ghosts": 7.06,
+  "light": 10.2,
+  "end": 13.4,
+  "dark": 16.38,
+  "sigh": 19.38,
+  "sky": 22.64,
+  "cogs": 25.84,
+  "bridges": 29.16,
+  "burn": 32.22
+ }
+}
