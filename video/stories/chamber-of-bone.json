@@ -1,0 +1,22 @@
+{
+ "title": "Chamber of Bone",
+ "clip": "u83",
+ "song": "out/songs/chamber-of-bone.mp3",
+ "song_parts": [
+  [
+   51.2,
+   84.0
+  ]
+ ],
+ "times": {
+  "breathing": 1.2,
+  "pretty": 4.2,
+  "still": 8.14,
+  "dust": 13.86,
+  "memory": 16.92,
+  "heart": 24.98,
+  "alone": 28.38,
+  "echo": 29.34,
+  "bone": 31.24
+ }
+}
