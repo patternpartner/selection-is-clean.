@@ -13,8 +13,11 @@
 //            executeClusterVM - two sites) is zeroed
 //   (gt0 - the GLOBALTEND knob at 0, swing #21's lineage-local pull off - is gone: #258b deleted the pull, so it
 //   had no gate left; an entry with no gate is a control that reads like one)
+// #262 adds a REPAIR, not a knockout (one site, asserted):
+//   nfdocc   the trait NFD divides by the mean over OCCUPIED cells, counted from the living (the program NFD's form),
+//            instead of N/64 - with N/64 almost every living particle sits at the -1 clamp (harness-nfdsat.js)
 // FORCE=a,b in the environment picks them. Draws nothing.
-const FORCES=['bleed0','shrink1','blend0','toll0','motif0','nfd0','vmbleed0'];
+const FORCES=['bleed0','shrink1','blend0','toll0','motif0','nfd0','vmbleed0','nfdocc'];
 function parse(env){ const F=String(env||'').split(',').filter(Boolean);
   for(const f of F) if(!FORCES.includes(f)) throw new Error('unknown FORCE '+f+' (known: '+FORCES.join(',')+')');
   return F; }
@@ -23,7 +26,8 @@ const PATCHES={
   motif0:[['*0.0001*bestSim;','*0*bestSim;',1]],
   nfd0:[['TCELLS=TBINS*TBINS*TBINS, NFD_STRENGTH=0.004;','TCELLS=TBINS*TBINS*TBINS, NFD_STRENGTH=0;',1],
         ['pRarity[_i]=RARITY_DISCOUNT+(1-RARITY_DISCOUNT)*Math.min(1,_bc/(_mean+0.001));','pRarity[_i]=1;',1]],
-  vmbleed0:[['const tbleed=vmActions[3]*influence;','const tbleed=0;',2]]};
+  vmbleed0:[['const tbleed=vmActions[3]*influence;','const tbleed=0;',2]],
+  nfdocc:[['const _mean=N/TCELLS;','let _nl=0,_oc=0; for(let _c=0;_c<TCELLS;_c++) if(tHist[_c]){ _oc++; _nl+=tHist[_c]; } const _mean=_nl/Math.max(1,_oc);',1]]};
 function patch(code,F){
   for(const f of F) for(const [site,rep,want] of (PATCHES[f]||[])){ const n=code.split(site).length-1;
     if(n!==want) throw new Error(f+': site count '+n+', expected '+want+' ('+site.slice(0,40)+')');
