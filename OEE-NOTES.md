@@ -23563,3 +23563,29 @@ computed (spawns read it), and `linCentroid` stays (the speciation mint reads it
 **Checked:** the new engine is byte-identical to the old engine with the knob at 0 — seeds 1 and 2, 1,500 ticks, knob
 applied from the first step or from boot, both the same. `substrate-test` 264/0 at TICKS=40, 900, the default and
 FOUND=0. Saved worlds: no law, no saved value involved; every universe runs without the pull from its next load.
+
+### #258c — THE HORIZON: at 40,000 ticks the pull's deletion does not look like a gain. Re-decided, pre-registered.
+
+**The warning, descriptive (seeds 1-3, one run per engine per seed, NO null band):** `harness-sweep` at 40,000
+ticks on the engine from just before #258b (the pull still in) against the current engine:
+
+| seed | trait spread late, with -> without | trait cells ever | living end (floor) with -> without |
+|---|---|---|---|
+| 1 | 0.57 -> **0.20** | 125 -> 66 | 339 (**2**) -> 465 (349) |
+| 2 | 0.16 -> 0.15 | 87 -> 65 | 574 (327) -> 239 (218) |
+| 3 | 0.45 -> **0.27** | 137 -> 65 | 586 (275) -> **90** (87) |
+
+No extinctions either way; the with-pull world on seed 1 fell to 2 living and recovered. Trait novelty reads SLOWER
+than the family tree in 5 of 6 (seed 3 without the pull reads CHANCE - at 90 living, where every null is thin). At
+20k #258b measured the opposite direction against three nulls; at 40k, single runs point back. Single runs cannot
+overturn a nulled verdict (#258b's nulls alone spread 0.19-0.43), and CLAUDE.md says a diversity verdict is a verdict
+about a horizon (#66) — so the horizon is re-asked, with nulls, before anything else is built on the deletion.
+
+**#258c, pre-registered:** the grid-free template at **40,000 ticks** on **unseen seeds 151-153**. The mechanism under
+test is the pull, now absent, so the null band is the CURRENT engine (control + NULLSHIFT 1-3) and the arm is the
+engine with the pull (`engine.html` at 63bcb1b, identical to the current one but for #258b's block). Counted = the
+arm's run differs from the control's. **If the with-pull arm beats every null on two-thirds of counted seeds, #258b's
+deletion was a 20k artefact and the pull is RESTORED** (the block back as it was, LIVE's __SPATIAL_TEND with it). If it
+is worse on two-thirds, the deletion is confirmed at 40k. SPLIT or neither: the deletion stands, and the file says the
+horizon is unresolved. Measures as #257c: centredEntropyRatio (0.05), spread_late (10%), established fraction (25%),
+crash guard; entropyRatio and kinds reported beside.
