@@ -23674,3 +23674,30 @@ the engine's scale)}. 120 runs.
    design starts from numbers (many cheap replicators, not heavier particles). (1) true, (2) false -> the enemy alone
    might carry into the engine at its own scale; the next test is a genotype-matched enemy there. (1) false -> the
    microcosm does not show what the idea needs, and no engine change follows from it.
+
+**#260 RESULTS — rule 1 NO, rule 2 YES: no engine change follows from the microcosm.** 10 regimes x seeds 11-13, 20,000
+steps; "live" = the culture and (where on) the phage both alive into the late window.
+
+| arm | live runs | new lock persists more than new tag | persistent arrivals /1k: lock / tag |
+|---|---|---|---|
+| CAP 20,000, phage ON | 26 (4 crashed) | **4 of 26** | 0.41 / 0.85 |
+| CAP 20,000, phage OFF | 30 | 0 of 30 | **0** / 0.96 |
+| CAP 300, phage ON | 7 (**phage lost in 23 of 30**) | 2 of 7 | 0.11 / 0.06 |
+| CAP 300, phage OFF | 30 | 0 of 30 | 0 / 0.11 |
+
+- **Rule 1 — an enemy makes novelty beat chance: NO.** New locks out-spread new neutral tags in 4 of 26 runs; on
+  average they hold at half the tag's rate.
+- **Rule 2 — it needs numbers: YES.** At the engine's scale the arms race cannot be kept going: the phage are lost
+  before the late window in 23 of 30 runs.
+- **By the committed rule, the microcosm does not show what the idea needs, and no engine change follows.**
+
+**What it does show, and it is not nothing.** Without an enemy, a costly lock NEVER holds a new allele (0.00 per 1k,
+30 of 30 runs) — the cost purges every variant. With the enemy it holds 0.41 per 1k: **the arms race turns a frozen
+locus into one that keeps turning over.** What it does not do is make the new variants spread FASTER than neutral
+change on the same genome — and in an asexual clone that is a high bar, because a neutral tag rides every sweep its
+clone makes. Continuous novelty in the selected locus: yes. Novelty favoured beyond the family-tree null: no.
+The honest reading for the artwork: "bacteria evolve continuously" is true here in the sense of turnover that does not
+stop, which is also what the engine's code layers already show (#256b: novelty arrives at the rate chance gives, and
+keeps arriving). What bacteria add is not a rate above chance but turnover in a place that would otherwise freeze —
+and only with numbers the engine's worlds do not have. One model, one horizon; the calibration chose coexistence on
+design seeds, not the result.
