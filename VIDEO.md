@@ -374,3 +374,19 @@ watches'; ten hits evenly spaced so the count reaches 10 exactly on 'count to te
 top 30 (deduped, out/faces-top.json) fly to a 5x6 wall joined by a green thread; on 'again' cut to our figure (still from
 before-the-proof at 50 s) - the same detector finds FACES 0. That zero is measured: it found none in any frame of
 calculate-the-ache, leave-the-light-on, the-door or before-the-proof. 43.4 s with the end line, 15 MB.
+'Cold Pulse' (`video/cold_pulse.js` renders the worlds, `video/build_cold_pulse.py` composes; song Cold Pulse, whole
+track, 179 s with the end line): the user brought five new tracks and asked for weirder and more ambitious. THE SONG IS
+THE LAW: the real universe is stepped three ticks per frame by `video/step_universe.js` (requestAnimationFrame captured,
+Math.random seeded, the canvas read at full 704x1280 - no screen recording), and between ticks the song's sung words
+are carried out on it as physics at the frame each is sung: every kick drum a radial pulse (alternating out and in, so
+the beat breathes instead of hollowing the centre), HEAVY gravity (capped at 0.06: at 0.105 it beat the soft wall's
+0.08 and pushed two-thirds of the world through the floor), STILL every velocity zero, LOST the picture black while
+the world runs (only the tick counter shows), FOUND the light back with the real count (48 born, 97 died in the dark),
+COLD damping then PULSE an impulse of 6 through every life, LIGHT DUST thirty founders dropped from the top edge,
+LOST TIME 3,000 ticks unfilmed, and I - the camera picks the stranger whose line is biggest and follows it (re-found
+each tick by lineage, exact age and position, because compact() moves slots). On seed 1 it died mid-instrumental at
+age 3,805 and its line with it. When the orders stop, the TWIN (NOLAW=1: same seed, same frames, same unfilmed jumps,
+nothing the song does) slides in beside it at the same tick: 212 alive against 487, 5,569 lineages ever against 7,062.
+ONE SEED - say so; the twin is one control, not a null band, and draw order diverges from the first pulse. Word times
+are vocal-stem energy onsets checked by whisper on short clips (whisper's own timestamps were seconds off). The two
+worlds take ~25 min in parallel; a container restart killed the first attempt, so the log now saves partially.
