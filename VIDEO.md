@@ -345,3 +345,13 @@ on 'most of them vanish'; the biggest burst of new lineages - which came in the 
 'something new keeps arriving'. During the choruses a small green counter shows the engine's own 'lineages ever
 born' at the moment on screen (80 -> 1,575 over the run). Keep close-ups off the teal field block in the middle:
 zoomed, it turns into big pixels. 58 MB master; `-share` is a 2-pass 1250k copy under the 30 MiB send limit.
+'First Draft of Fate' - the WINDOW CUT (`video/build_first_draft_window.py RUN_DIR FIELD_DIR`, reusing the first cut's
+segments): the user asked what else could go in with it; Claude chose the story figure + the field. Intro: its room
+(episode two's written walls) with a window on the back wall showing the live universe, it sitting in the pool of light
+watching; on 'there's a world in a window' the camera goes in through the window into the first cut's real footage;
+at the instrumental it comes out of ONE CELL of the field (index.html#clean, all nine universes, recorded live by
+`video/record_field.js`; the field needs a local http server - Workers refuse file://) until the whole field fills the
+frame, and verse 2 is the field; bridge back in the room at night, the window freezing on 'first draft'; the final
+chorus alternates field and universe; outro: the window now shows the whole field and it turns to us on 'not even
+me'. The field hides #depth,#grown,#harvest,#fload,#fnew,#back,#fmsg,.badge,.tap,.errbadge and the collective's
+outline. Raw field run backed up to library/inputs/field-run1.

@@ -158,6 +158,7 @@ def main():
         if z > 1.001:
             cw, ch = W / z, H / z
             x0, y0 = lerp(0, cx - cw / 2, (z - 1) / (zmax - 1)), lerp(0, cy - ch / 2, (z - 1) / (zmax - 1))
+            x0, y0 = min(max(x0, 0), W - cw), min(max(y0, 0), H - ch)  # PIL refuses a box off the edge
             fr = np.asarray(Image.fromarray(fr.astype(np.uint8)).resize((W, H), Image.LANCZOS,
                                                                            box=(x0, y0, x0 + cw, y0 + ch)), np.float32)
         return fr
