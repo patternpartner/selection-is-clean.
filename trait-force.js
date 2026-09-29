@@ -11,9 +11,10 @@
 //            (pRarity 1 for everyone - every particle pays full upkeep, as the commonest kind already did)
 //   vmbleed0 the VM's evolved trait bleed between interacting particles (vmActions[3], executeVM and
 //            executeClusterVM - two sites) is zeroed
-//   gt0      globalThis.__GLOBALTEND = 0: the lineage-centroid / neighbour-sample pulls and the global repulsion off
+//   (gt0 - the GLOBALTEND knob at 0, swing #21's lineage-local pull off - is gone: #258b deleted the pull, so it
+//   had no gate left; an entry with no gate is a control that reads like one)
 // FORCE=a,b in the environment picks them. Draws nothing.
-const FORCES=['bleed0','shrink1','blend0','toll0','motif0','nfd0','vmbleed0','gt0'];
+const FORCES=['bleed0','shrink1','blend0','toll0','motif0','nfd0','vmbleed0'];
 function parse(env){ const F=String(env||'').split(',').filter(Boolean);
   for(const f of F) if(!FORCES.includes(f)) throw new Error('unknown FORCE '+f+' (known: '+FORCES.join(',')+')');
   return F; }
@@ -37,7 +38,6 @@ const DRIVER=`
     if(F.includes('bleed0')){ genome.tendencyBleed=0; for(let i=0;i<N;i++) if(palive[i]&&pGenome[i])pGenome[i].tendencyBleed=0; }
     if(F.includes('shrink1'))S1.set(1);
     if(F.includes('blend0'))B0.set(0);
-    if(F.includes('toll0'))TEND_TOLL=0;
-    if(F.includes('gt0'))globalThis.__GLOBALTEND=0; }; })();
+    if(F.includes('toll0'))TEND_TOLL=0; }; })();
 `;
 module.exports={FORCES,parse,patch,DRIVER};

@@ -260,6 +260,10 @@ git checkout main && git merge --ff-only <branch> && git push -u origin main
     `govSelfOnly` reported a defect that was not there and missed the one that was.
   - `#217c` — `chemistryTable` is mutated through `recipe` and `mono`, aliases taken out of it, on
     lines that never contain the word. Grepping the name said "never mutated". It is mutated hard.
+  - `#258b` — `__SPEC.on` and `__ALLO.on` read `globalThis.__SPECIATE` / `__SPATIAL_TEND`, and their definitions
+    default to OFF. Read, I called both off and credited a result to a branch that never ran. The LIVE table sets both
+    globals to 1 before either is computed. **The reader of a global is not where its value is set** — for any switch,
+    check the LIVE table. Caught only because the deletion was checked byte-identical against the measured arm.
   **When the question is "is this ever written / cleared / read", grep the name to find the
   candidates and then read the enclosing function.** Better: ask the structural question instead —
   which blocks do X and not Y — because that returns the sites directly and does not depend on what

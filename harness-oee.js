@@ -137,8 +137,7 @@ if (process.env.NICHE_LOCAL !== undefined) globalThis.__NICHE_LOCAL = parseInt(p
 //   TEND_MUT=<x>       scale diet-axis exploration (default 1) — tests whether retention is exploration-limited.
 if (process.env.TEND_MUT !== undefined) globalThis.__TEND_MUT = parseFloat(process.env.TEND_MUT);
 // retention diagnostic + fix:
-//   GLOBALTEND=<x>     scale the global diet-axis mean-reversion sink (0 = ablate; default 1).
-if (process.env.GLOBALTEND !== undefined) globalThis.__GLOBALTEND = parseFloat(process.env.GLOBALTEND);
+//   (GLOBALTEND, SPATIAL_TEND, ALLO_SHUF, ALLO_K: removed with the pulls they scaled - #258b deleted them.)
 // swing #16 dimensionality ratchet:
 //   DIMS_GROW=<interval>  open a new trait axis every <interval> ticks (0 = off). Tests whether the
 //                         board can GROW without catastrophe. DIMS_CAP caps it (default 10).
@@ -171,10 +170,6 @@ if (process.env.SPEC_DECAY !== undefined) globalThis.__SPEC_DECAY = parseInt(pro
 //   COLO_PIONEER_K / COLO_ALLEE_K / COLO_PIONEER_OCC  tune the C lever (defaults 2.0 / 1.0 / NICHE_CELL_FLOOR).
 for (const k of ['COLO_SURV','COLO_PIONEER','COLO_PIONEER_OCC']) if (process.env[k] !== undefined) globalThis['__' + k] = parseInt(process.env[k], 10);
 for (const k of ['COLO_PIONEER_K','COLO_ALLEE_K']) if (process.env[k] !== undefined) globalThis['__' + k] = parseFloat(process.env[k]);
-// swing #21: spatially-local homogeniser (allopatry). SPATIAL_TEND=1 pulls each particle toward nearby
-// same-lineage neighbours' mean tend; ALLO_SHUF=1 is the non-spatial strength-matched control; ALLO_K caps
-// neighbours folded in. Needs SPECIATE=1. Headline = bifurcLin (lineage spatially splits into 2 centroids).
-for (const k of ['SPATIAL_TEND','ALLO_SHUF','ALLO_K']) if (process.env[k] !== undefined) globalThis['__' + k] = parseInt(process.env[k], 10);
 // swing #22: permissive mint gate. MINT_GATE = 'cell' (stock) | 'cluster' (permissive deme gate, drop
 // niche-cell entry req) | 'relax' (size+divT only). Pair with COLO_SURV=1 for founder grace. radiationCells
 // stays the strict success bar; cascadeCount = same-cell mints that LATER reach a distinct home cell.

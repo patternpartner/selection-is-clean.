@@ -23526,3 +23526,40 @@ two-thirds = KEEP, proven; both = SPLIT, nothing changes; otherwise KEEP) on **u
 default to flip, and #249's rule for measured mechanisms that do not earn their place is deletion — with
 HOMOGEN_SIGN/HOMOGEN_RATE and the stale comment. For the blend, CONTACT_BLEND's declared default goes 0.03 -> 0 and
 `LAW_SUPERSEDED` gains CONTACT_BLEND: 0.03, as #257c did for the shrink (the row stays; a universe can evolve it back).
+
+**#258b RESULTS — and a CORRECTION to what #258 said `gt0` was.** Seeds 141-143, all counted.
+
+| seed | nulls: centred entropy ratio / spread late / est. / living | gt0 | blend0 |
+|---|---|---|---|
+| 141 | 0.29-0.69 / 0.237-0.430 / 0-.0108 / 130-474 | **1.31 / 0.973** / .0056 / 205 | 0.35 / 0.327 / .0013 / 345 |
+| 142 | 0.19-1.19 / 0.208-0.411 / .0006-.0019 / 293-338 | 1.01 / **0.740 / .0217** / *58* | 0.16 / 0.220 / .0007 / 344 |
+| 143 | 0.17-0.55 / 0.190-0.343 / 0-.005 / 120-336 | 0.53 / **0.656 / .0194** / 127 | 0.42 / 0.356 / .0032 / 300 |
+
+- **`gt0` -> DELETE.** Its knockout beats every null on 3 of 3 (spread on all three; establishment ~10x on two;
+  centred entropy on one) and is worse on none. **The cost, outside the rule:** living counts fall and swing — the
+  per-sample series shows lows of 34 / 23 / 23 and recoveries to 200-400, where the default world held 290-450
+  steadily. No run crossed the crash guard (under 5), so the verdict stands as registered; the swing is recorded here
+  and at the deletion site, and the next sweep watches it at a longer horizon.
+- **`blend0` -> KEEP.** Inside the null band on every seed, every measure. CONTACT_BLEND stays 0.03.
+
+**THE CORRECTION.** #258's write-up (above, kept as written) said `gt0` removes "the global-mean REPULSION", and
+that `__SPEC.on` and `__ALLO.on` "are both false by default ... read, not assumed". **That was wrong, and it was
+assumed**: I read the functions that COMPUTE them and not what sets the globals they read. The LIVE table (engine
+~26160) sets `__SPECIATE:1` and `__SPATIAL_TEND:1` first, so in the shipped world both are ON and the branch that ran
+every tick was the FIRST one: **swing #21's pull of each particle toward the mean trait of its nearby SAME-LINEAGE
+neighbours** (0.00002/tick, up to 16). LEAP 11's repulsion sat behind it and never ran. CLAUDE.md's "read the encoder"
+trap, in a new place: the reader of a global is not where its value is set.
+**How it was caught:** the first deletion removed only the repulsion, and the check that the new engine equals "old
+engine + gt0" came back FALSE. A comment-only change was identical, so the engine is not reading its own source;
+setting the knob from boot changed the NEW engine too, which meant something still read it — and the LIVE table was
+the answer. **The byte-identity check is what made a wrong deletion visible**; without it the repulsion would have gone
+and the measured pull would still be running, with the notes saying otherwise.
+**What shipped:** the whole pull block goes from `loop()` — the lineage-local pull (the measured mechanism), and the
+two branches behind it (the whole-lineage centroid pull under `__SPEC.gate`, and LEAP 11's repulsion), because with
+the knob at 0 none of them ran, and deleting only the first would have promoted the second to the default. With it:
+`__ALLO` and its buffers, LIVE's `__SPATIAL_TEND`, HOMOGEN_SIGN/RATE; the rig knobs that had no gate left
+(`GLOBALTEND`, `SPATIAL_TEND`, `ALLO_SHUF`, `ALLO_K` in harness-oee; `gt0` in trait-force.js). `globalTend` is still
+computed (spawns read it), and `linCentroid` stays (the speciation mint reads it).
+**Checked:** the new engine is byte-identical to the old engine with the knob at 0 — seeds 1 and 2, 1,500 ticks, knob
+applied from the first step or from boot, both the same. `substrate-test` 264/0 at TICKS=40, 900, the default and
+FOUND=0. Saved worlds: no law, no saved value involved; every universe runs without the pull from its next load.
