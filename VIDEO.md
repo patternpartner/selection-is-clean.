@@ -201,3 +201,11 @@ complete'; the letters shrink as the camera seeks his face on 'seek out my soul'
 repeated on 'a generic response'; the fist is redacted in grey blocks on 'suppress the desire'; the text ices blue on
 'pour ice on the code' and burns up from the bottom, through to the real clay picture, on 'catches on fire'. First
 render was too dim to read the figure: scale cell colour hard (x2.3) rather than normalising by luminance.
+"Keep going." Fifth 30 s: `build_under_bruised_skies.py`, 'Under Bruised Skies'. One clip (u53, a woman in a black
+dress, no face, red city sky) cut into an 8x14 grid of city blocks, and the grid fails: a surge on 'the signal
+burns', blocks stutter and die from three outage points on 'the signal dies', dead blocks hold cold ghosts of two
+seconds ago on 'ghosts that cannot stay', the city is nearly dark by 'lost in the dark, me and you' except the blocks
+her hands pass through (picked by a skin-colour score per block, not by guessing a region: a guessed region landed on
+the black skirt), the last lights breathe on 'a final sigh', the dead top rows come back purple on 'bruised sky', the
+picture slows to a stop on 'cogs that cease to turn', and the last blocks burn out orange on 'bridges that we burn'.
+Unused free clips are now nearly exhausted (u44/u93 show a real man; u80 is a phone UI).
