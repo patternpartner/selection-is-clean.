@@ -209,3 +209,10 @@ her hands pass through (picked by a skin-colour score per block, not by guessing
 the black skirt), the last lights breathe on 'a final sigh', the dead top rows come back purple on 'bruised sky', the
 picture slows to a stop on 'cogs that cease to turn', and the last blocks burn out orange on 'bridges that we burn'.
 Unused free clips are now nearly exhausted (u44/u93 show a real man; u80 is a phone UI).
+"Continue. 15 seconds now." Every uploaded clip and still has now been used somewhere, so the 15 s films are DRAWN
+FROM NOTHING. First: `build_fire_in_the_frame.py`, 'Who's Looking Right Back' (The Fire in the Frame 138.15-149.35,
+one couplet: "Do you ever wonder who's looking right back? / What fills up the silence and colours the black").
+Black; a slit of light; a drawn eye opens and turns to look straight out on 'back'; one blink; colour pours out of the
+pupil as flowing strands on 'what fills up the silence', fills the black, and the pupil itself becomes a colour spiral
+on 'black'; hard cut, song stops, end line (15.2 s in all). Lesson: ADDING many particle colours sums to a white blob;
+PAINT them (the last stroke wins, 0.35 old + 0.65 new) and the colours stay pure.

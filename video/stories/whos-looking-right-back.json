@@ -1,0 +1,23 @@
+{
+ "title": "Who's Looking Right Back",
+ "song": "out/songs/the-fire-in-the-frame.mp3",
+ "song_parts": [
+  [
+   138.15,
+   149.35
+  ]
+ ],
+ "drawn": true,
+ "times": {
+  "wonder": 0.25,
+  "whos": 2.35,
+  "looking": 3.29,
+  "back": 3.99,
+  "blink": 5.15,
+  "what": 5.85,
+  "silence": 7.05,
+  "colours": 8.43,
+  "black": 9.43,
+  "cut": 11.08
+ }
+}
