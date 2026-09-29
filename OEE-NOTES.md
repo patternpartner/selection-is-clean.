@@ -23617,3 +23617,22 @@ lineage pull gone (#258b at 20k; not re-confirmed at 40k, not refuted either), c
 REGEN's step fixed (#255c). Trait territory held roughly doubles; trait novelty is still not faster than the family
 tree on any seed; populations swing harder. The next honest question is the extinction rate, asked with enough runs
 to answer it.
+
+### #259 — THE EXTINCTION CENSUS: did #257c and #258b make universes fragile? Pre-registered.
+
+#258b's cost was population swings; #258c saw 2 of 12 current-engine runs go extinct at 40k and none of 6 with the
+pull — too few to tell. `harness-extinct.js` (new; population only, draws nothing, ~64 ticks/s alone) runs one world
+and reports its floor, the tick of its first extinction, and the samples spent under 50 living.
+**Engines, 12 unseen seeds each (161-172), 40,000 ticks, one process per run, six at a time:**
+- `original` — engine.html at 3df67d3: the shrink (0.9) and swing #21's pull both in (REGEN already fixed);
+- `noshrink` — at 63bcb1b: the shrink gone (#257c), the pull still in;
+- `current` — HEAD: both gone (#258b).
+**Rule, fixed now:** the measure is extinctions by 40k (living reaches 0), out of 12.
+- **The pull:** if `current` has at least 4 more extinctions than `noshrink` (and at least 4 in all), the pull is
+  RESTORED (the block, `__ALLO`, LIVE's `__SPATIAL_TEND`, the rig knobs, byte-identity checked against 63bcb1b). 4 of
+  12 against 0 is about p = 0.09 by Fisher's exact test; smaller gaps are not treated as a difference.
+- **The shrink:** if `noshrink` has at least 4 more extinctions than `original`, the shrink's removal gets a new,
+  pre-registered decision on survival — not an automatic restore, because it was decided on diversity and survival is
+  a different question.
+- Otherwise both deletions stand, and the file says the swings do not reach extinction at this rate and horizon.
+- Descriptive: floors, samples under 50, and how often a world sits near the ~90-living state #258c noticed.
