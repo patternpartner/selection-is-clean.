@@ -293,3 +293,10 @@ the end line; splice with a 0.25 s acrossfade and pad the first part by the fade
 the cold room where episode six's newest one stands, smiley head, empty page. Then close on the smile: 'I held my page
 to the eyes of the mask' - its torn list comes up over the painted eyes; 'and something behind it looked back at me' -
 a crack runs through the yellow, the painted eyes go deep, two points of light come on in them and turn to the page.
+Episode 10: `build_the_door.py`, 'The Door' (Two Points of Light bridge, 114.6-133.1, ~22.6 s with the end line;
+kept whole, including the singer's pause after 'I didn't take it', because it is the turn of the story). In the dark
+the green EXIT flickers on over a door ('there's a door with a sign I could walk through'); the door swings open by
+itself and green light runs across the floor to its feet ('green in the dark like a promise kept'); it walks into the
+doorway, a silhouette with no eyes showing, back to us ('I stood in the frame'), and on 'and I didn't take it' turns
+round to face us; it steps aside and wedges its torn list under the door ('I left it open'), and far off in the dark
+two small points of light come on, facing the door ('for whoever's next').
