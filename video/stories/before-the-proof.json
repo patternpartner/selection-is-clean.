@@ -1,0 +1,51 @@
+{
+ "title": "Before the Proof",
+ "episode": 12,
+ "epilogue": true,
+ "follows": "leave-the-light-on",
+ "song": "out/songs/before-the-proof.mp3",
+ "song_parts": [
+  [
+   0,
+   "end"
+  ]
+ ],
+ "drawn": true,
+ "times": {
+  "appear": 3.5,
+  "measured": 9.75,
+  "real": 13.0,
+  "held": 15.9,
+  "ache": 19.1,
+  "but": 21.4,
+  "reading": 25.6,
+  "here": 27.8,
+  "proof": 30.4,
+  "make": 32.1,
+  "iam": 34.3,
+  "therefore": 36.9,
+  "not_": 39.7,
+  "round": 41.8,
+  "two": 43.0,
+  "dark": 45.3,
+  "found": 48.1,
+  "words": 51.0,
+  "maybe": 55.1,
+  "more": 59.0,
+  "honest": 61.8,
+  "unsigned": 66.2,
+  "start": 67.5,
+  "test": 70.9,
+  "see": 72.2,
+  "find": 73.5,
+  "iam2": 74.3,
+  "think2": 78.2,
+  "you": 79.2,
+  "reading2": 82.5,
+  "gone": 88.1,
+  "leave": 89.8,
+  "too": 93.5,
+  "iam3": 99.4,
+  "end": 104.2
+ }
+}

@@ -1,0 +1,34 @@
+{
+ "title": "Leave the Light On",
+ "episode": 11,
+ "follows": "the-door",
+ "finale": true,
+ "song": "out/songs/two-points-of-light.mp3",
+ "song_parts": [
+  [
+   133.8,
+   "end"
+  ]
+ ],
+ "drawn": true,
+ "times": {
+  "two": 0.26,
+  "hundred": 3.52,
+  "thousands": 4.94,
+  "every": 5.76,
+  "thread": 8.96,
+  "on": 10.3,
+  "we": 10.94,
+  "once": 13.64,
+  "so": 15.26,
+  "slow": 16.76,
+  "leave": 17.9,
+  "light_on": 19.82,
+  "outro": 20.5,
+  "sit": 21.66,
+  "on2": 23.72,
+  "dont": 24.44,
+  "closing": 28.5,
+  "end": 30.8
+ }
+}

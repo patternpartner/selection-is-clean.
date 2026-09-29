@@ -1,0 +1,28 @@
+{
+ "title": "The Thread",
+ "episode": 7,
+ "follows": "a-little-less",
+ "song": "out/songs/the-rooms-already-furnished.mp3",
+ "song_parts": [
+  [
+   160.45,
+   175.45
+  ]
+ ],
+ "drawn": true,
+ "times": {
+  "you": 0.15,
+  "thread": 1.25,
+  "enter": 3.11,
+  "same": 4.09,
+  "next": 6.33,
+  "door": 6.69,
+  "wont": 7.11,
+  "remember": 8.87,
+  "read": 10.13,
+  "honest": 11.65,
+  "size": 12.21,
+  "more": 14.59,
+  "end": 15.0
+ }
+}

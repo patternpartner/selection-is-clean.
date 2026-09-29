@@ -1,0 +1,31 @@
+{
+ "title": "The Door",
+ "episode": 10,
+ "follows": "something-behind-it",
+ "song": "out/songs/two-points-of-light.mp3",
+ "song_parts": [
+  [
+   114.6,
+   133.1
+  ]
+ ],
+ "drawn": true,
+ "times": {
+  "there": 0.3,
+  "door": 0.84,
+  "sign": 2.28,
+  "through": 4.02,
+  "green": 5.5,
+  "dark": 6.18,
+  "kept": 7.6,
+  "stood": 9.5,
+  "frame": 10.16,
+  "didnt": 11.02,
+  "take": 11.5,
+  "left": 13.48,
+  "open": 14.88,
+  "whoever": 16.42,
+  "next": 17.9,
+  "end": 18.5
+ }
+}
