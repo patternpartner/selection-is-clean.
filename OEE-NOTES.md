@@ -23958,3 +23958,41 @@ nothing the template can see.** Seeds 191-193, all counted, 27 runs, 20,000 tick
   upkeep under an old name, not zero-sum, the decision and where it was made), and #37's "same proven-safe form"
   is corrected beside the program NFD. Comment-only: engine output identical to the engine before it (seed 1, 400
   ticks, every field but config and timing), `substrate-test` 264/0 at TICKS=40. No backticks.
+
+### #263 — THE ~88-LIVING WORLDS HOLD `WORLD_ENERGY_MAX` 0: #255b's starvation, through a second row. Pre-registered.
+
+**The reading.** #259 left three current-engine worlds (seeds 162, 166, 167) pinned at 86-90 living for 10,000-34,000
+ticks each — too tight a band to be an ecology. A draw-free probe (scratchpad, `lawwalk.js`: every 1,000 ticks, every
+law off its declared default; it reproduces #259's living series exactly on all three seeds) finds **one law in common:
+`WORLD_ENERGY_MAX` at 0**, arriving immediately before each collapse — seed 162 between ticks 3,000 and 4,000 (then
+439 -> 370 -> 214 -> 119 -> 86), seed 166 at 34,000 (389 -> 208 -> 110 -> 90), seed 167 at 22,000 (441 -> 337 -> 172
+-> 88). With the pool's ceiling at 0 the pool holds nothing, every tick's regeneration is discarded, and the world is
+#255b's REGEN-0 world by another door: the same ~88.
+**#255c's own arithmetic predicts it.** A proposal moves a row by (U-0.5) x span x 0.35. `WORLD_ENERGY_MAX` spans
+0-800, so a step reaches +/-140, and from the default 80 **about 21% of its proposals land on exactly 0** — the lopsided
+step #255b found on REGEN (39% then). #255c narrowed REGEN's range and left this row as it was. And the probation cannot
+see it: in `harness-lawedge.js`'s first test (seed 1, set at tick 700) the living count over the 1,200 ticks after was
+1.005 of the baseline — the decline starts later.
+
+**The question, asked structurally rather than by waiting for the third door (CLAUDE.md, "find the fifth by
+sweeping"):** which law rows, pushed to an edge, starve a world slowly enough that the verdict keeps them?
+**`harness-lawedge.js`** (new): the default world with the law process OFF, one row set to `lo` or `hi` at tick 3,000
+through its own setter and held there every tick, 6,000 more ticks. It reports what the engine's verdict would see
+(mean living over the 600 ticks before against the 1,200 after, kept at >= 0.7), the late living count, and `reach` —
+the chance that ONE in-world proposal from the default lands exactly on that edge. Draws nothing of its own.
+**Screen:** seed 1, every row except the four that act only on the law process (LAW_VIABLE, LAW_PROBATION, LAW_COST,
+LAW_RATE — inert with it off): 42 rows x 2 edges + the control, 85 runs.
+**TRAP, fixed now:** the verdict keeps it (ratio >= 0.7) AND the late living count (mean of the last 1,000 ticks) is
+under 50% of the control's. A row the verdict reverts is the verdict working, not a trap.
+**Confirmation:** every screen hit re-run on seeds 2 and 3; a trap is CONFIRMED on at least 2 of the 3 seeds.
+**What follows, fixed now:**
+- **Three or fewer confirmed trap rows** -> each one a single proposal can reach (`reach` > 0) is closed #255c's way:
+  its range narrowed, or its floor raised, so that no single proposal from the default lands on the trapping edge —
+  the choice made per row and defended in the row's comment. A trap only a walk of several kept steps can reach is
+  recorded and left, as #255c left REGEN's floor.
+- **More than three** -> the rows are not the problem, the verdict is: no per-row patches, and a change to the verdict
+  (a second look at every kept law at a longer horizon) gets its own pre-registration.
+- **Saved worlds (rule 6, delegated):** a narrowed range clamps a saved value outside it on reload; a world already
+  sitting on a trapping edge that stays in range stays where it is (as at #255c). Said before anything ships.
+**Written before, so it can be wrong:** WORLD_ENERGY_MAX lo and WORLD_ENERGY_REGEN lo are traps; BIRTH_ENERGY_COST hi
+and METABOLIC_ENERGY_DRAW hi are candidates; I expect two to four rows in all.
