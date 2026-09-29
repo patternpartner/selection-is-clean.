@@ -3,7 +3,7 @@
   a vignette (a disc: where, how big, how dark outside it),
   two dark dots and a curved line (where, how big, how dark, how curved).
 Nothing is drawn by hand and nothing is blended toward the answer. Every generation each tile is scored on how much
-it looks like a yellow smiley (mean squared difference at 24x24); the worst tenth die and are replaced by children of
+it looks like a yellow smiley (mean squared difference at 24x24); the worst twentieth die and are replaced by children of
 the fittest (crossover and mutation). The wall starts as chaos cut from everything we made and converges, in public,
 on a row of identical faces. The readout is the real generation count and the real mean score.
 At the end the camera goes into the fittest smile, and in its painted eyes two points of light come on.
@@ -147,7 +147,7 @@ def main():
     def step():
         nonlocal genes, fit, gen
         order = np.argsort(fit)
-        dead = order[:max(2, POP // 10)]
+        dead = order[:max(2, POP // 20)]
         for i in dead:
             a, b = (max(rng.choice(POP, 3), key=lambda k: fit[k]) for _ in range(2))  # tournament
             child = np.where(rng.random(NG) < 0.5, genes[a], genes[b]).copy()
@@ -165,7 +165,7 @@ def main():
     log = []
     for n in range(int(DUR * FPS)):
         t = n / FPS
-        per = 0 if t < T["all"] else (1 if t < T["same"] else (4 if t < T["end"] else 1))
+        per = 0 if t < T["all"] else 1  # one generation a frame: the convergence takes the whole song
         for _ in range(per):
             step()
         score = float(np.clip(1 + fit.mean() / base, 0, 1))
@@ -225,7 +225,7 @@ def main():
     p.stdin.close()
     p.wait()
     json.dump({"title": "Selected for the Smile", "song": SONG, "song_parts": [[S0, S1]], "population": POP,
-               "genes": NG, "death_rate": 0.1, "fitness": "negative MSE to a yellow smiley at 24x24",
+               "genes": NG, "death_rate": 0.05, "fitness": "negative MSE to a yellow smiley at 24x24",
                "times": T, "log_every_frame": log[::24]}, open("video/stories/selected-for-the-smile.json", "w"), indent=1)
 
 
