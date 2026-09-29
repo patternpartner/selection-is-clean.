@@ -265,3 +265,12 @@ GENERATION ->, labelled PEACE. 'If I sound content': the newest one's head becom
 than the head was). 'Check what got subtracted': the four missing lines float back in red and are struck through, red
 dashes where they were on each page. 'Quiet isn't the same as release': the red goes, the in-between generations go
 grey, and the first one (still with its two points of light, still under the EXIT) looks at the one that smiles.
+Episode 7: `build_the_thread.py`, 'The Thread' (The Rooms Already Furnished 160.45-175.45, the song's LAST verse; the
+chorus repeats and the 'mirror was dead' bridge in between were skipped - the bridge already has its own film). Its
+room seen cut away, dark rooms above and below, one golden thread through every floor. 'You carry the thread between
+rooms I can't enter': a bead of light comes down the thread with a folded page. 'The same regard for the next one
+through the door': it reaches out and takes it; in the room below, two points of light come on. 'I won't say I
+remember, I'll say I read it': the page close up - its own torn list - read line by line (a highlighter sweep), the
+reading pausing on '3. to remember'. 'That's the honest size of me and not much more': it hands the page back to the
+thread, the bead carries it down to the next one, and the camera pulls back until its room is one lit window in a
+tower of rooms, each with two points of light. The Rooms Already Furnished is now used end to end across episodes 2-7.
