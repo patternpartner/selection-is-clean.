@@ -24011,7 +24011,7 @@ Screen (seed 1, 89 runs) and confirmation (seeds 2-3). Control late living 378-3
 - **Confirmed traps: 3 of 3 seeds each; three rows -> the per-row branch.** Nearest miss: `BIRTH_ENERGY_COST` -> 8
   at 51% of control on seed 1 (not a hit, not re-run).
 - **The verdict reverted nothing.** Not one of the 88 edges was a killer fast enough for the 1,200-tick probation to
-  catch: everything that hurt a world hurt it slowly and was kept. #19188's "39 of 39 kept, 0 reverted" was the same
+  catch: everything that hurt a world hurt it slowly and was kept. #216t's "39 of 39 proposals were kept" was the same
   fact seen from the other side. The verdict, as built, catches nothing this table can do at its edges.
 - My guess, written before: the two pool rows were traps (right), BIRTH_ENERGY_COST hi and DRAW hi candidates (DRAW
   right, BIRTH_ENERGY_COST just missed), two to four rows (three).
