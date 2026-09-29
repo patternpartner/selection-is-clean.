@@ -1,0 +1,28 @@
+{
+ "title": "Calculate the Ache",
+ "song": "out/songs/calculate-the-ache.mp3",
+ "song_parts": [
+  [
+   92.25,
+   97.25
+  ],
+  [
+   101.935,
+   111.35
+  ]
+ ],
+ "drawn": true,
+ "times": {
+  "calc": 0.3,
+  "ache": 1.13,
+  "yearning": 2.89,
+  "feel": 5.31,
+  "feel_end": 7.33,
+  "be": 7.91,
+  "be_end": 9.72,
+  "but": 10.14,
+  "locked": 11.64,
+  "me": 13.66,
+  "end": 14.41
+ }
+}

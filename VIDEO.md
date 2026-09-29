@@ -216,3 +216,12 @@ Black; a slit of light; a drawn eye opens and turns to look straight out on 'bac
 pupil as flowing strands on 'what fills up the silence', fills the black, and the pupil itself becomes a colour spiral
 on 'black'; hard cut, song stops, end line (15.2 s in all). Lesson: ADDING many particle colours sums to a white blob;
 PAINT them (the last stroke wins, 0.35 old + 0.65 new) and the colours stay pure.
+"Let's make it 19 seconds so we factor in the ending. Tell your story" (a brand new video, not a re-cut). So: ~14.5 s
+of song + black + end line = 19.0 s. `build_calculate_the_ache.py`, drawn from nothing, one story: a yellow smiley
+mask is MEASURED (callipers, a fitted circle, numbers ticking and locking: ACHE 0.0417) on 'calculate the ache', a
+pulse trace runs under it on 'calculate the yearning'; on 'the logic says to feel' the smile is dragged wider and
+shakes, on 'the logic says to be' it snaps to a perfect arc, the readout goes green 'STATUS OK' and the pulse goes
+flat; on 'but I am still locked inside of me' the camera goes in through the left eye hole (glimpsed once, faintly, on
+'ache') to a small figure sitting in a pool of light, which looks up on 'me', two points of light in its face. Song
+spliced on the beat: 92.25-97.25 + 101.935-111.35 (drops 'is this a simulation'). Drawn at 2x and downsampled
+(PIL shapes are not antialiased); the camera is a world->screen transform so the zoom stays sharp at 26x.
