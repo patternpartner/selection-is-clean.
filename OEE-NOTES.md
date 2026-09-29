@@ -24088,3 +24088,22 @@ in at least 20 of 30 runs.**
   the collective; every fourth second one goes back out to a single universe, in turn. Whether that is "enough" depends
   on converting ticks to bacterial generations, which this rig cannot do honestly. The design point that matters more:
   an enemy living across the field need not ride the migrant relay at all — its own dispersal is a parameter.
+- **Decision (the user: "You decide. If any at all."): no bacterial mechanism is built now.** Reasons, so a later reader
+  neither rebuilds it on the same evidence nor loses the idea:
+  1. **What the evidence buys is turnover, not selection.** Across #260 and #264, no scale made new locks beat a
+     neutral tag. An enemy would make frozen places restless; nothing here says it would make the world select.
+  2. **The engine already has three "punish the common" forces, and none registers.** The trait NFD (a flat tax until
+     repaired, and repaired it moved nothing measurable, #262), the program NFD (swing #37, correctly formed, never
+     put through the template), and RED_QUEEN — which is NOT a coevolving enemy: a fixed rule by which cell C drains cell
+     C+53 forever; the version that chased (#31, RQ_TRAIT) was deleted as WORSE on 3/3 (#249). A fourth, before
+     knowing why the first three do not show, is the accretion this file's header warns about.
+  3. **It only works across the field** (#264: 10 of 30 inside one universe), and every rig here runs one universe.
+     It could not be checked properly before it shipped.
+  4. **A measured problem comes first:** the law verdict reverses nothing (#263: 0 of 88 edges) and 5 of 12 worlds
+     degrade by law walks within 40,000 ticks (#263b: 3 pinned, 2 sliding). That touches every universe, including
+     any future microbial layer.
+  **What would reopen it:** if the verdict fix or a later reading shows frozen loci are what limit novelty (harness-
+  variance's single-valued genes, the 9 opcodes that carry 90% of instructions), the first thing to build is a
+  coevolving key population on PROGRAM signatures (the `pParaSig` swing #37 already computes) — a lagged kill-the-
+  winner, which the program NFD's instantaneous one is not — tested with keys injected at a fixed rate to stand in for
+  the field's recolonisation, since a single-world rig cannot carry the field.
