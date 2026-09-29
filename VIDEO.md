@@ -355,3 +355,13 @@ frame, and verse 2 is the field; bridge back in the room at night, the window fr
 chorus alternates field and universe; outro: the window now shows the whole field and it turns to us on 'not even
 me'. The field hides #depth,#grown,#harvest,#fload,#fnew,#back,#fmsg,.badge,.tap,.errbadge and the collective's
 outline. Raw field run backed up to library/inputs/field-run1.
+'Selected for the Smile' (`video/build_selected_for_the_smile.py`; A Row of Identical Faces 21.4-60.0, never used
+before): the user asked to go weird again. A film that is actually EVOLVED: 112 tiles, each a 20-gene genome (a
+fragment of one of our films - which frame, where, how big, hue, gain - plus a vignette disc, two dark dots and a
+curved line, all evolvable); fitness = negative MSE to a yellow smiley at 24x24; each generation the worst 1/20 die,
+replaced by tournament-picked crossover children with mutation. Nothing is drawn toward the answer. The top readout is
+the real generation and mean score. The fittest face is picked out in gold on each 'how you smiled'; at the end the
+camera goes into the fittest face and two points of light come on in its eyes. FINDING worth keeping: the first run
+(1/10 dying, up to 4 generations a frame) converged by generation ~400 on pale discs with ONE merged eye and a FLAT
+mouth - a shortcut that scores 0.75, nearly as well as a smile; the kept run (1/20 dying, one generation a frame)
+found real curved yellow smiles. Same rules, different luck. The frame pool is 143 frames from 16 of our films.
