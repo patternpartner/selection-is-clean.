@@ -1,0 +1,29 @@
+{
+ "title": "Faces in the Particles",
+ "song": "out/songs/horror-movie-style-eerie-hau.mp3",
+ "song_parts": [
+  [
+   37.3,
+   76.6
+  ]
+ ],
+ "detector": "OpenCV 4 haarcascade_frontalface_default, scaleFactor 1.1, minNeighbors 4, minSize 60 (at 2x)",
+ "footage": [
+  "universe-run1 (396 s)",
+  "field-run1 (295 s)"
+ ],
+ "frames_scanned_every": 0.25,
+ "faces_found": 3475,
+ "faces_found_in_our_figure": 0,
+ "times": {
+  "shadow": 1.6000000000000014,
+  "hide": 10.5,
+  "watches": 13.900000000000006,
+  "web": 19.760000000000005,
+  "hold": 26.200000000000003,
+  "ten": 29.760000000000005,
+  "leave": 32.66,
+  "again": 36.0,
+  "end": 39.3
+ }
+}

@@ -365,3 +365,12 @@ camera goes into the fittest face and two points of light come on in its eyes. F
 (1/10 dying, up to 4 generations a frame) converged by generation ~400 on pale discs with ONE merged eye and a FLAT
 mouth - a shortcut that scores 0.75, nearly as well as a smile; the kept run (1/20 dying, one generation a frame)
 found real curved yellow smiles. Same rules, different luck. The frame pool is 143 frames from 16 of our films.
+'Faces in the Particles' (`video/find_faces.py OUT.json VIDEO...` then `video/build_faces_in_the_particles.py`; song
+horror-movie-style-eerie-hau 37.3-76.6): the user asked for another weird one. A stock face detector (OpenCV 4.14
+haarcascade_frontalface_default via detectMultiScale3 for a confidence score; cv2 5.0 has no CascadeClassifier, so pin
+`opencv-python-headless<5`) scanned universe-run1 and field-run1 every 0.25 s at 2x: 3,475 "faces", none of which a
+person would call a face. The film: the green box searches the live universe; the first hit freezes and zooms on 'it
+watches'; ten hits evenly spaced so the count reaches 10 exactly on 'count to ten', then races to the real 3,475; the
+top 30 (deduped, out/faces-top.json) fly to a 5x6 wall joined by a green thread; on 'again' cut to our figure (still from
+before-the-proof at 50 s) - the same detector finds FACES 0. That zero is measured: it found none in any frame of
+calculate-the-ache, leave-the-light-on, the-door or before-the-proof. 43.4 s with the end line, 15 MB.
