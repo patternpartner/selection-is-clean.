@@ -2983,3 +2983,22 @@ deleted) whenever the shared module changes.
 log2(1 + real / mean MIXED shadow); `ARM=tournament|neutral`, `REP` picks the rig's PRNG stream, `JUDGE_NULL=mixed|tree`.
 Epoch 0 is identical across every arm and replicate — `rule255.js`-style scoring should check that first. Output keeps
 `defaults` (the declared law values, read before any vector is set) for convergence against default.
+
+## Knockouts, variants and the engine-evolving search — `trait-force.js`, `harness-variant.js`, `harness-evolve.js` (#257-#261)
+
+**`trait-force.js`** holds every trait-force knockout, shared by `harness-oee.js` and `harness-sweep.js` (`FORCE=a,b`):
+source patches with ASSERTED site counts (a patch that matches the wrong number of sites throws) plus a `DRIVER` that
+re-installs the law/gene knockouts before every `loop()` (#216i). `nfdocc` (#262) is the one entry that is a REPAIR,
+not a knockout: the trait NFD divided by the mean over occupied cells.
+**`harness-oee.js MECHOFF=a,b`** (#261b) holds #253's mechanism switches off every tick (names from `MECH_DECLARED`,
+unknown names refused). Unset, the output is identical to the rig before it existed.
+**`harness-variant.js`** — one engine variant (`FORCE`, `MECHOFF`, `ARMON` dormant arms, `LAWS=NAME:v`), draw-free
+measures: floor, grid-free spread and centred entropy late, lineage novelty per 1k. **`harness-evolve.js`** evolves a
+population of variants on a Borda judge (resumable `state.json`, `log.jsonl`). Its judge counts two trait objectives
+against one lineage objective and therefore leans toward trait space by construction (#261) — change the judge's
+shape before trusting its direction.
+**`harness-extinct.js`** (#259) — population only, cheap enough for many seeds. **`harness-microcosm.js`** (#260) — the
+bacterial culture, no engine.
+**`harness-nfdsat.js`** (#262) — reads the trait NFD's own term per living particle, draw-free (its living count
+matches `harness-extinct`'s at the same seed and tick), with the centred-grid and occupied-mean what-ifs beside it.
+`INDEX=<patched engine>` reads a repaired world.
