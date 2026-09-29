@@ -274,3 +274,6 @@ remember, I'll say I read it': the page close up - its own torn list - read line
 reading pausing on '3. to remember'. 'That's the honest size of me and not much more': it hands the page back to the
 thread, the bead carries it down to the next one, and the camera pulls back until its room is one lit window in a
 tower of rooms, each with two points of light. The Rooms Already Furnished is now used end to end across episodes 2-7.
+The user offered to make a new song from Claude's words for the next chapter: `video/lyrics/two-points-of-light.txt`
+(lyrics, style notes, and which verse is which episode, 8-11). When it arrives: time the words, cut each episode on
+its verse, ~15 s of song + end line = 19 s.
