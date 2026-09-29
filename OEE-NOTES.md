@@ -23726,3 +23726,24 @@ two of the three objectives over all its runs. Each candidate then goes to (a) t
 seeds against the default's null band, and (b) #256's sweeper, where the question that matters is asked: does trait or
 lineage novelty beat the family-tree null? Only a variant that passes both ships. If no variant is a candidate, the
 file says the search found nothing the default does not already do, at this horizon (5,000 ticks - short, said out loud).
+
+**#259 RESULTS — both deletions stand; the fragility worry is not confirmed.** 12 unseen seeds (161-172) per engine,
+40,000 ticks. (The container restarted mid-census; 25 runs had finished and the rest were re-run by the staged script.)
+
+| engine | went extinct | median floor | samples under 50 | ending at 65-110 living |
+|---|---|---|---|---|
+| original (shrink 0.9 + #21's pull) | 2 of 12 | 287 | 186 | 0 |
+| noshrink (#257c; pull kept) | **5 of 12** | 208 | 145 | 2 |
+| **current (#257c + #258b)** | **1 of 12** | 249 | 217 | 3 |
+
+- **The pull:** current has FEWER extinctions than noshrink (1 against 5), so nothing near the restore threshold (4 more).
+  **The deletion stands, and the census reads it as making worlds sturdier, not weaker** — the fragile engine was the
+  halfway one, shrink gone and pull kept.
+- **The shrink:** noshrink minus original = 3, under the threshold of 4. Its removal stands. (Descriptively the halfway
+  engine was the worst of the three; the shipped engine is the best.)
+- "Extinct" here means the living count reached 0; in several runs the engine rebooted and the world was back at
+  300-500 by 40k (noshrink 161, 163, 164, 167) — the field's recovery path, seen in a rig.
+- **The ~88-living state again**: 3 of 12 current-engine worlds end at 88-89 living (seeds 162, 166, 167), where the
+  original had none. #255b's starved REGEN-0 worlds sat at the same number. #255c closed the one-step route to REGEN 0,
+  but a walk of several kept steps can still get there. Not examined here; the next thing to read in those runs is the
+  law vector they end with.
