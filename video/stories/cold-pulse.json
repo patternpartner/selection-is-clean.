@@ -1,0 +1,160 @@
+{
+ "title": "Cold Pulse",
+ "song": "out/songs/cold-pulse.mp3",
+ "seed": 1,
+ "ticks_per_frame": 3,
+ "jump": 3000,
+ "words": [
+  [
+   32.125,
+   "HEAVY",
+   "gravity 0.020 on 411 lives"
+  ],
+  [
+   33.958,
+   "HEAVY",
+   "gravity 0.040 on 405 lives"
+  ],
+  [
+   34.667,
+   "HEAVY",
+   "gravity 0.060 on 401 lives"
+  ],
+  [
+   40.75,
+   "STILL",
+   "velocity = 0 on 365 lives"
+  ],
+  [
+   42.75,
+   "STILL",
+   "velocity = 0 on 355 lives"
+  ],
+  [
+   48.25,
+   "LOST",
+   "the light goes out. the world does not."
+  ],
+  [
+   56.125,
+   "FOUND",
+   "in the dark: 48 born, 97 died"
+  ],
+  [
+   65.625,
+   "COLD",
+   "every velocity x0.9, every tick"
+  ],
+  [
+   66.625,
+   "PULSE",
+   "impulse 6.0 through 233 lives"
+  ],
+  [
+   69.583,
+   "COLD",
+   "every velocity x0.9, every tick"
+  ],
+  [
+   70.583,
+   "PULSE",
+   "impulse 6.0 through 233 lives"
+  ],
+  [
+   73.5,
+   "LIGHT",
+   ""
+  ],
+  [
+   74.5,
+   "DUST",
+   "+30 strangers"
+  ],
+  [
+   77.458,
+   "LOST",
+   ""
+  ],
+  [
+   78.458,
+   "TIME",
+   "+3,000 ticks, unfilmed"
+  ],
+  [
+   81.083,
+   "COLD",
+   "every velocity x0.9, every tick"
+  ],
+  [
+   82.083,
+   "PULSE",
+   "impulse 6.0 through 269 lives"
+  ],
+  [
+   83.625,
+   "I",
+   "one of the strangers"
+  ],
+  [
+   141.958,
+   "COLD",
+   "every velocity x0.9, every tick"
+  ],
+  [
+   143.25,
+   "PULSE",
+   "impulse 6.0 through 240 lives"
+  ],
+  [
+   147.125,
+   "LIGHT",
+   ""
+  ],
+  [
+   148.208,
+   "DUST",
+   "+30 strangers"
+  ],
+  [
+   151,
+   "LOST",
+   ""
+  ],
+  [
+   152.083,
+   "TIME",
+   "+3,000 ticks, unfilmed"
+  ],
+  [
+   154.917,
+   "COLD",
+   "every velocity x0.9, every tick"
+  ],
+  [
+   155.875,
+   "PULSE",
+   "impulse 6.0 through 197 lives"
+  ]
+ ],
+ "end": {
+  "law": {
+   "N": 213,
+   "tick": 18910,
+   "lin": 5669
+  },
+  "twin": {
+   "N": 494,
+   "tick": 18910,
+   "lin": 7315
+  },
+  "stranger": {
+   "x": 66.53910827636719,
+   "y": 124.41563415527344,
+   "alive": 0,
+   "age": 3805,
+   "line": 0,
+   "lin": 2313,
+   "diedTick": 11143
+  }
+ }
+}

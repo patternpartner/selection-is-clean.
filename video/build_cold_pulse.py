@@ -8,7 +8,7 @@ Every number on screen is read from the engine's log.
     python3 video/build_cold_pulse.py        (writes out/drawn/cold-pulse.mp4, video only; the mux adds the song)
 """
 import json
-import math
+import os
 import subprocess
 
 import imageio_ffmpeg
@@ -23,7 +23,7 @@ SMALL = ImageFont.truetype("/usr/share/fonts/truetype/dejavu/DejaVuSansMono.ttf"
 ICE = (222, 236, 255)
 CODE = (140, 184, 228)
 SONG_LEN = 175.33
-SPLIT = 159.0   # the last order has been given
+SPLIT = float(os.environ.get("SPLIT", 159.0))  # the last order has been given
 
 
 def ease(u):
@@ -45,8 +45,9 @@ class Reader:
 
 
 def main():
-    law = json.load(open("out/cold/log.json"))
-    twin = json.load(open("out/cold-twin/log.json"))
+    LAWD, TWIND = os.environ.get("LAW", "out/cold"), os.environ.get("TWIN", "out/cold-twin")
+    law = json.load(open(LAWD + "/log.json"))
+    twin = json.load(open(TWIND + "/log.json"))
     L, T2 = law["log"], twin["log"]
     words = []   # (time, word, text) as they actually fired
     for r in L:
@@ -62,12 +63,13 @@ def main():
     pulses = wt["PULSE"]
     colds = wt["COLD"]
     jumps = wt["TIME"]
-    a_law, a_twin = Reader("out/cold/world.mp4"), Reader("out/cold-twin/world.mp4")
-    n_end = int(SONG_LEN * FPS)
+    death = next((r["t"] for r in L if r["tr"] and not r["tr"]["alive"]), None)   # when the stranger died, if it did
+    a_law, a_twin = Reader(LAWD + "/world.mp4"), Reader(TWIND + "/world.mp4")
+    n_end = int(float(os.environ.get("END", SONG_LEN)) * FPS)
     cam = [W / 2, H / 2, 1.0]
     out = subprocess.Popen([F, "-loglevel", "error", "-y", "-f", "rawvideo", "-pix_fmt", "rgb24", "-s", f"{W}x{H}", "-r",
                             str(FPS), "-i", "-", "-c:v", "libx264", "-crf", "16", "-pix_fmt", "yuv420p",
-                            "out/drawn/cold-pulse.mp4"], stdin=subprocess.PIPE)
+                            os.environ.get("VOUT", "out/drawn/cold-pulse.mp4")], stdin=subprocess.PIPE)
     rng = np.random.default_rng(5)
     for n in range(n_end):
         t = n / FPS
@@ -106,12 +108,12 @@ def main():
                 cold = max(cold, ease((t - c0) / 0.5) * (1 - ease((t - p0 - 0.3) / 0.9)))
         if cold > 0:
             g = a.mean(axis=2, keepdims=True)
-            ice = np.concatenate([g * 0.75, g * 0.92, g * 1.2 + 10], axis=2)
+            ice = np.concatenate([g * 0.62, g * 0.86, g * 1.3], axis=2)   # keep the blacks black
             a = a * (1 - 0.8 * cold) + ice * 0.8 * cold
         flash = 0.0
         for p0 in pulses + [found0] + jumps:
             if 0 <= t - p0 < 0.35:
-                flash = max(flash, 0.55 * (1 - (t - p0) / 0.35))
+                flash = max(flash, 0.28 * (1 - (t - p0) / 0.35))
         if flash:
             a = a * (1 - flash) + np.array([210, 230, 255], np.float32) * flash
         # --- lost: the dark, where the world goes on
@@ -150,8 +152,8 @@ def main():
             d.text((W / 2 - d.textlength(s_, font=MONO) / 2, H / 2 - 13), s_, font=MONO, fill=(70, 82, 104))
 
         # --- I: one of the strangers
-        if tr and i0 <= t < SPLIT + 2:
-            fade = ease((t - i0) / 1.0) * (1 - sp)
+        if tr and i0 <= t < 141.8:   # until the camera has pulled back out
+            fade = ease((t - i0) / 1.0) * (1 - ease((t - 140.3) / 1.4))
             sx, sy = toS(tr["x"], tr["y"])
             if fade > 0:
                 col = tuple(int(c * fade) for c in ICE)
@@ -159,6 +161,11 @@ def main():
                 if tr["alive"]:
                     d.ellipse([sx - rr, sy - rr, sx + rr, sy + rr], outline=col, width=2)
                     d.text((sx + rr + 10, sy - 20), "I", font=MONO, fill=col)
+                elif death is not None and t - death < 1.6:   # the ring closes where it was
+                    k = 1 - (t - death) / 1.6
+                    rr = 4 + 26 * k
+                    col = tuple(int(c * fade * k) for c in ICE)
+                    d.ellipse([sx - rr, sy - rr, sx + rr, sy + rr], outline=col, width=2)
                 ln = (f"age {tr['age']:,} ticks" if tr["alive"] else f"gone at age {tr['age']:,}")
                 d.text((40, H - 150), ln, font=MONO, fill=tuple(int(c * fade) for c in CODE))
                 d.text((40, H - 112), f"its line: {tr['line']} alive", font=MONO,
