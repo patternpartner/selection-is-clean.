@@ -24042,3 +24042,68 @@ Screen (seed 1, 89 runs) and confirmation (seeds 2-3). Control late living 378-3
 #262 was comment-only, output identical). Reported: extinctions, worlds ending at 80-100 living (the starved state),
 median floor. **The fix stands unless the new engine goes extinct on at least 4 more of the 12 seeds than the old
 did** — #259's own restore threshold. Horizon 40,000 ticks.
+
+**#263b RESULTS — the fix stands: starved endings 3 -> 0, extinctions 1 -> 2 (threshold 4).** Seeds 161-172, 40,000
+ticks, paired with #259's "current" runs.
+- **9 of 12 worlds are byte-identical to the old engine** — the change acts only where the pool ceiling is proposed
+  under 8. **The three that differ are exactly the three that were pinned:** 162 (88 -> 326 living at the end, floor
+  84 -> 319), 166 (89 -> 334, floor 83 -> 332), and 167, extinct at tick 32,800 (#263's re-walk, same trajectory).
+- Extinctions 1 (seed 169, identical in both) -> 2: one more, under the pre-registered threshold of 4. Worlds ending at
+  80-100 living: 3 -> 0. Median floor 218.5 -> 288.5.
+- **Still pinned, and not by this row:** seed 163 ends at 188 with a floor of 188, seed 165 at 147 with a floor of 145,
+  identical in both engines. Floor equal to the end is a pinned state, and the metabolic-draw trap above sits at
+  167-171. Not read yet; the next thing to read is those two worlds' law vectors.
+  **Read, and the reading above was wrong: they are not pinned, they are SLIDING** (163: 447 -> 188, 165: 450 -> 147
+  over 40,000 ticks; the floor equals the end because the decline is still going). No single trap row. Each world took
+  a run of small kept steps that each cost a little — in both, BIRTH_ENERGY_COST walked 1 -> 2.2 -> 3.1 and 1 -> 2.3 ->
+  3.2; in 163 REGEN 0.2 -> 0.15, in 165 the metabolic draw up. The verdict keeps any step that costs under 30% of the
+  population, so the world ratchets down one kept step at a time. The same weakness #263 found (the verdict reverses
+  nothing at the edges) seen as a slope instead of a cliff. **This is the case for revisiting the verdict itself** —
+  2 of 12 worlds sliding, 3 of 12 formerly pinned. Not acted on here.
+- `smoke.sh` after #263 on a quiet machine: 61 ok, 0 failing (the two new rigs, `harness-nfdsat.js` and
+  `harness-lawedge.js`, included; `collective-test` green inside it).
+
+### #264 — THE ARMS RACE AT THE FIELD'S SCALE (#260 follow-up, asked by the user). A measurement.
+
+The user, on #260: "We don't think there's anything transferable? My mind is stuck on it." #260's rule asked for
+novelty FASTER than a neutral tag and did not get it; but it also found that an enemy keeps a costly locus turning over
+(0.41 persistent new locks per 1k, against exactly 0 without one) and that at one universe's scale the enemy dies out.
+The field is many universes exchanging migrants — the patch structure the microcosm needed. So: does the race survive
+at the FIELD's numbers? `microcosm-scale.js` (new): #260's 10 coexisting regimes x unseen seeds 21-23, phage on,
+20,000 steps. **Rule, fixed before: a scale SURVIVES if the culture and the phage are both alive into the late window
+in at least 20 of 30 runs.**
+
+| scale | race alive into the late window (of 30) | phage lost | culture crashed | new lock / new tag persisting per 1k |
+|---|---|---|---|---|
+| one universe: 300 in 4 patches | 10 | 20 | 0 | 0.11 / 0.02 |
+| **the field: 7,200 in 18 patches, migration 0.5%/step** | **22 — SURVIVES** | 8 | 0 | 0.56 / 0.60 |
+| the field at one-tenth the migration | 11 | 9 | **10** | 0.51 / 0.76 |
+| the culture: 20,000 in 16 patches | 28 — SURVIVES | 1 | 1 | 0.51 / 0.93 |
+
+- **The field's numbers are enough — if the pockets trade enough.** At a tenth of the movement a third of the cultures
+  crash outright: a pocket the enemy empties is not recolonised in time.
+- Still no scale where new locks beat new neutral tags (#260's bar). What survives is turnover, not selection beyond
+  the family tree.
+- **What the real field does** (index.html, #153): not a ring — a hub. Every second one emigrant leaves each universe for
+  the collective; every fourth second one goes back out to a single universe, in turn. Whether that is "enough" depends
+  on converting ticks to bacterial generations, which this rig cannot do honestly. The design point that matters more:
+  an enemy living across the field need not ride the migrant relay at all — its own dispersal is a parameter.
+- **Decision (the user: "You decide. If any at all."): no bacterial mechanism is built now.** Reasons, so a later reader
+  neither rebuilds it on the same evidence nor loses the idea:
+  1. **What the evidence buys is turnover, not selection.** Across #260 and #264, no scale made new locks beat a
+     neutral tag. An enemy would make frozen places restless; nothing here says it would make the world select.
+  2. **The engine already has three "punish the common" forces, and none registers.** The trait NFD (a flat tax until
+     repaired, and repaired it moved nothing measurable, #262), the program NFD (swing #37, correctly formed, never
+     put through the template), and RED_QUEEN — which is NOT a coevolving enemy: a fixed rule by which cell C drains cell
+     C+53 forever; the version that chased (#31, RQ_TRAIT) was deleted as WORSE on 3/3 (#249). A fourth, before
+     knowing why the first three do not show, is the accretion this file's header warns about.
+  3. **It only works across the field** (#264: 10 of 30 inside one universe), and every rig here runs one universe.
+     It could not be checked properly before it shipped.
+  4. **A measured problem comes first:** the law verdict reverses nothing (#263: 0 of 88 edges) and 5 of 12 worlds
+     degrade by law walks within 40,000 ticks (#263b: 3 pinned, 2 sliding). That touches every universe, including
+     any future microbial layer.
+  **What would reopen it:** if the verdict fix or a later reading shows frozen loci are what limit novelty (harness-
+  variance's single-valued genes, the 9 opcodes that carry 90% of instructions), the first thing to build is a
+  coevolving key population on PROGRAM signatures (the `pParaSig` swing #37 already computes) — a lagged kill-the-
+  winner, which the program NFD's instantaneous one is not — tested with keys injected at a fixed rate to stand in for
+  the field's recolonisation, since a single-world rig cannot carry the field.
