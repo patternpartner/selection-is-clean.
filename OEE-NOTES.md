@@ -24042,3 +24042,14 @@ Screen (seed 1, 89 runs) and confirmation (seeds 2-3). Control late living 378-3
 #262 was comment-only, output identical). Reported: extinctions, worlds ending at 80-100 living (the starved state),
 median floor. **The fix stands unless the new engine goes extinct on at least 4 more of the 12 seeds than the old
 did** — #259's own restore threshold. Horizon 40,000 ticks.
+
+**#263b RESULTS — the fix stands: starved endings 3 -> 0, extinctions 1 -> 2 (threshold 4).** Seeds 161-172, 40,000
+ticks, paired with #259's "current" runs.
+- **9 of 12 worlds are byte-identical to the old engine** — the change acts only where the pool ceiling is proposed
+  under 8. **The three that differ are exactly the three that were pinned:** 162 (88 -> 326 living at the end, floor
+  84 -> 319), 166 (89 -> 334, floor 83 -> 332), and 167, extinct at tick 32,800 (#263's re-walk, same trajectory).
+- Extinctions 1 (seed 169, identical in both) -> 2: one more, under the pre-registered threshold of 4. Worlds ending at
+  80-100 living: 3 -> 0. Median floor 218.5 -> 288.5.
+- **Still pinned, and not by this row:** seed 163 ends at 188 with a floor of 188, seed 165 at 147 with a floor of 145,
+  identical in both engines. Floor equal to the end is a pinned state, and the metabolic-draw trap above sits at
+  167-171. Not read yet; the next thing to read is those two worlds' law vectors.
