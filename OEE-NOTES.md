@@ -23981,7 +23981,8 @@ through its own setter and held there every tick, 6,000 more ticks. It reports w
 (mean living over the 600 ticks before against the 1,200 after, kept at >= 0.7), the late living count, and `reach` —
 the chance that ONE in-world proposal from the default lands exactly on that edge. Draws nothing of its own.
 **Screen:** seed 1, every row except the four that act only on the law process (LAW_VIABLE, LAW_PROBATION, LAW_COST,
-LAW_RATE — inert with it off): 42 rows x 2 edges + the control, 85 runs.
+LAW_RATE — inert with it off): 44 rows x 2 edges + the control, 89 runs. (The table has 48 rows at runtime; a first
+count by regex over lo/hi said 46 and missed two whose bounds sit on another line — the run list is read by row name.)
 **TRAP, fixed now:** the verdict keeps it (ratio >= 0.7) AND the late living count (mean of the last 1,000 ticks) is
 under 50% of the control's. A row the verdict reverts is the verdict working, not a trap.
 **Confirmation:** every screen hit re-run on seeds 2 and 3; a trap is CONFIRMED on at least 2 of the 3 seeds.
