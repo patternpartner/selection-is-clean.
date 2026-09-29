@@ -107,11 +107,12 @@ function germSample(t){ const g=SW.germ(); germSeen.prog.add(g.prog); for(const 
   germRows.push([t,germSeen.prog.size,germSeen.raw.size,germSeen.proven.size,germSeen.motifs.size,g.lawKept]); }
 germSample(0);
 const lateFrom=Math.floor(T/2), lateTo=T-P;
-let spreadSum=0, spreadN=0;
+let spreadSum=0, spreadN=0, aliveMin=Infinity, extinctions=0, wasDead=false;
 for(let s=1;s<=T;s++){
   if(!SW.step())errs++;
   if(s%EVERY!==0)continue;
   cur=SW.read(); const nowN=cur.tr.length, B=takeBirths(), D=Math.max(0,prevN+B-nowN); prevN=nowN;
+  if(nowN<aliveMin)aliveMin=nowN; if(nowN===0&&!wasDead){ extinctions++; wasDead=true; } else if(nowN>0)wasDead=false;   // #258c
   const sd=SW.sd(), H=SW.hard();
   for(const sh of TR.sh) traitStep(sh.pop,D,B,sd,H,sh.rng,3);
   const smp=s%SAMPLE===0;
@@ -128,6 +129,7 @@ const q=[0,1,2,3].map(i=>[Math.floor(i*T/4),Math.floor((i+1)*T/4)]);
 const out={seed:String(SEED),ticks:T,warm:WARM,loopErrors:errs,window:[lateFrom,lateTo],params:{K,M,P,EVERY,SAMPLE,BINS,RANGE},layers:{}};
 if(FORCE.length||NULLSHIFT){ out.force=FORCE; out.nullShift=NULLSHIFT; }   // absent when unset, so a plain run's output is unchanged
 out.aliveEnd=cur.tr.length;
+out.aliveMin=aliveMin===Infinity?null:aliveMin; out.extinctions=extinctions;   // #258c: living count's floor over the run, and times it hit 0
 out.traitSpreadLate=spreadN?+(spreadSum/spreadN).toFixed(4):null;   // #258: mean pairwise trait distance (axes 0-2), late window
 out.layers.traits=Object.assign(verdictOf(persistentRate(TR.real,lateFrom,lateTo),TR.sh.map(s=>persistentRate(s.tr,lateFrom,lateTo))),
   {arrivalsByQuarter:q.map(([a,b])=>arrivalsIn(TR.real,a,b)),everAtM:TR.real.first.size,shadowEverAtM:TR.sh.map(s=>s.tr.first.size),
