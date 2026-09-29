@@ -23823,3 +23823,72 @@ trait VARIANCE, and novelty no longer below chance where it was — not selectio
 **Written before, so it can be wrong:** I expect A and B BETTER on spread and centred entropy on all three seeds, the
 establishment clause to decide whether they SPLIT, and C inside the band.
 Horizon: 20,000 ticks.
+
+### #262 — "THE ENGINE OF NOVELTY" IS A FLAT TAX: the trait NFD, read, and its repair. Pre-registered before any run.
+
+**The finding (a reading, not a verdict).** The trait NFD (engine ~26698, LEAP 1; the comment above it calls it "the
+engine of novelty") nudges each particle's amp by `NFD_STRENGTH x clamp(1 - binCount/(N/64), -1, 1)` on tendBin's
+4x4x4 grid, and sets the rarity upkeep discount from `min(1, binCount/(N/64))`. **The denominator is the mean over all
+64 cells, including the empty ones.** The population fills 4-27 of them, so nearly every occupied cell holds several
+times that mean and its members sit at the -1 clamp. `harness-nfdsat.js` (new, draw-free — its living count matches
+`harness-extinct`'s at the same seed and tick) recomputes the engine's own term per living particle:
+
+| seed, window | at the -1 clamp (the full tax) | paid for rarity (t>0) | cells occupied | same world, OCCUPIED-cell mean: at -1 / paid |
+|---|---|---|---|---|
+| 1, ticks 500-1,000 | 96-98% | 2-4% | 13-27 | — |
+| 2, ticks 1,500-3,000 | **100%** | 0% | 8 | — |
+| 3, ticks 1,500-3,000 | 99.5% | 0.5% | 9 | — |
+| 1, ticks 10,000-20,000 | 98% | 1.4% | 5 | 86% / 11% |
+| 2, ticks 10,000-20,000 | 97% | 1.3% | 6 | 74% / 11% |
+
+- **In these worlds the "engine of novelty" is a uniform upkeep of 0.004 amp per tick, and the rarity discount pays
+  almost nobody.** The comment's claim that the term is "zero-sum by construction" holds only if the population is
+  spread evenly over all 64 cells: the term sums to `N - 64 x sum(binCount^2)/N`, which is zero for a uniform
+  spread and strongly negative for a clump. The comment also describes turnover — "the dominant type rises, is taxed
+  for its commonness, a challenger arises" — and with the clamp saturated the dominant type and its challengers pay
+  the SAME tax. Rung, in CLAUDE.md's ladder: EXECUTED, not VARYING. The same shape as #217n (a live mechanism
+  answering with a constant).
+- **The corner is not the main cause.** A grid centred on the population saturates just as badly late (98%). The
+  denominator is.
+- **The program NFD beside it (swing #37, ~26720) already divides by the mean over OCCUPIED signatures** —
+  `N/sigCount.size`. #37's comment calls the two "the same proven-safe form". They are not the same form, and that
+  one denominator is the difference between them.
+- **Alias:** RARE_BIRTH (a law, default 0; one of #261's searched laws) weights births by `pRarity`, so it has been
+  reading this saturated discount — in these worlds, the same weight for everyone.
+- **What the occupied-cell mean would do** (the right-hand column, read in the unrepaired world): the dominant cell
+  pays the full tax and the 11% in minority cells gain. That is the turnover the comment describes.
+- Checked against the field? Not possible from this container: no harvest is committed (the user's 17-of-18 harvest,
+  #230, lives with the user). The closest available check is the long horizon, which is the right-hand rows. Said
+  out loud: the field's worlds run to 100k+ ticks and nothing here reads them.
+
+**The question, pre-registered.** Does the trait NFD earn its place as it stands, and does the repaired form?
+**Rig:** `trait-force.js` gains `nfdocc` — one site, asserted: `const _mean=N/TCELLS;` becomes the mean over occupied
+cells counted from the living (`tHist`'s own sum and its non-empty cells), the program NFD's form. Draws nothing.
+(`nfd0`, the knockout, is #258's: NFD_STRENGTH 0 and no rarity discount.)
+**Design:** #258b's template exactly (`harness-oee.js ESTABLISH=250`, 20,000 ticks, centredEntropyRatio +/-0.05,
+spread_late +/-10%, established fraction +/-25%, crash guard; entropyRatio and kinds reported only), **unseen seeds
+191-193**. Two null bands per seed: the DEFAULT world (control + NULLSHIFT 1-3) and the NO-NFD world (`nfd0` +
+NULLSHIFT 1-3), and one arm, `nfdocc`. 27 runs.
+**Three comparisons:**
+- **A.** `nfdocc` against the default band — does the repair beat the world as it is?
+- **B.** `nfd0` (its own null0) against the default band — does the mechanism as it stands earn its place?
+- **C.** `nfdocc` against the NO-NFD band — attribution. The repair both lowers the net tax (mean term about -0.8
+  against -0.97) and makes it vary; removing the NFD removes the tax entirely. So a repair that beats the no-NFD band
+  is winning on the frequency dependence, not on paying less.
+
+**What ships, fixed now:**
+1. **A BETTER and C BETTER** -> the repair ships: the one line in the engine, the comment above it rewritten to what was
+   measured, #37's "same form" corrected. Claimed at the rung measured (variance/establishment against nulls), not
+   selection.
+2. **Otherwise, B BETTER** -> the trait NFD as it stands is worse than its absence: its amp term and its discount are
+   deleted. RARE_BIRTH then reads a constant, and is recorded as decoration at its default of 0.
+3. **A BETTER, C not, B not** -> the repair's gain cannot be told from paying less, and paying nothing does not pass:
+   nothing ships; written up.
+4. **Anything else** (including SPLIT or WORSE on A) -> nothing ships.
+In every case the comment above the NFD is corrected to the measurement, because it states as fact what the table
+above shows is false. Comments only; behaviour untouched unless 1 or 2 fires.
+**Saved worlds (rule 6, delegated):** 1 or 2 changes every saved world on reload — no saved value involved, the
+mechanism itself. Under 1, a world that has evolved RARE_BIRTH above 0 starts reading a discount that varies.
+**Written before, so it can be wrong:** I expect B to read inside the band or better on establishment (#258's `nfd0`
+raised the living count on all three seeds), and A to be BETTER on centred entropy. C is the one I cannot guess.
+Horizon: 20,000 ticks. Runs after #261b's batch finishes (the machine holds six).
