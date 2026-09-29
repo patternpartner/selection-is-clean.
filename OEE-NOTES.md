@@ -23314,3 +23314,42 @@ the TREE null's trait verdict and the living count beside them.
 the control AND all three nulls, and its living count at the end is at least half the control's. If `all` qualifies
 and no single does, `all` goes. If nothing qualifies, the confinement is not in these four, and the next suspects
 are the VM's clamped bleed and selection.
+
+**#257 SCREEN RESULTS** (seeds 1-3, 20,000 ticks; cells of trait space ever held at 3 carriers — `everAtM` — and the
+living count at the end):
+
+| seed | control | nulls 1-3 | **shrink1** | blend0 | bleed0 | toll0 | all four |
+|---|---|---|---|---|---|---|---|
+| 1 | 39 (409) | 39, 44, 40 | **99** (479) | 63 (542) | 43 (281) | 45 (276) | 114 (470) |
+| 2 | 49 (315) | 61, 53, 37 | **77** (369) | 56 (336) | 40 (419) | 39 (87) | 115 (393) |
+| 3 | 44 (376) | 49, 44, 46 | **82** (310) | 61 (395) | 61 (385) | 44 (376) | 58 (90) |
+
+- **`BIRTH_SHRINK` is the confining force this screen can see:** with it off, a world reaches roughly TWICE the trait
+  territory, above the control and every null on 3 of 3 seeds, populations intact. Contact blending qualifies on 2
+  of 3. The neighbour bleed — the suspect on arithmetic — on 1 of 3. The toll never fired on seed 3 (identical to
+  control to every digit: nothing reached the wall). **Candidates, by the rule: `shrink1`, `blend0`.**
+- **Not changed:** the trait layer still reads SLOWER than the family-tree null in every knockout (the tree's shadows
+  hold more too). Removing the shrink opens trait space; it does not make trait novelty beat chance.
+- The nulls are wide (seed 2: one extinct, one at 90 living), which is why they are there.
+
+### #257b — DELETE THE SHRINK? The retire-or-prove template on `BIRTH_SHRINK` and `CONTACT_BLEND`. Pre-registered.
+
+The template, applied to two mechanisms that are ON by default. **The null band is the world WITH the mechanism**:
+the control and NULLSHIFT 1-3. **The arm is its knockout** (`FORCE=shrink1`: BIRTH_SHRINK 1.0; `FORCE=blend0`:
+CONTACT_BLEND 0; re-installed every tick). `harness-oee.js ESTABLISH=250`, 20,000 ticks, **unseen seeds 121-123**
+(in no entry here). Six runs per seed, 18 in all, six at a time.
+1. **Executed first:** a seed counts if the knockout's run differs from the control's (both act at every
+   `interferenceCreate` birth). Report how many counted before any other number; fewer than 3 is INCONCLUSIVE.
+2. **Against every null** (#249b): on a counted seed the knockout is BETTER if it is above the maximum of all four
+   nulls by the template's margins — entropyRatio +0.05, kinds late x1.10, established fraction x1.25 — on any one
+   measure; WORSE if below the minimum by the same margins, or it crashes (alive under 5 where every null holds
+   over 20).
+3. **Verdict per mechanism:** knockout BETTER on at least two-thirds of counted seeds = the mechanism is WORSE than
+   its absence -> **DELETE: the declared default flips** (BIRTH_SHRINK 0.9 -> 1.0 / CONTACT_BLEND 0.03 -> 0). The law
+   row stays, so a universe can still evolve it back through a verdict. Knockout WORSE on two-thirds = the
+   mechanism is load-bearing -> **KEEP, proven**. Otherwise, arms differing -> **KEEP** (changes the world, no measured
+   harm), said as "not shown either way".
+4. **Saved worlds (decided now, under the user's delegation):** a flipped default changes NEW universes only. A saved
+   world's LAWV carries its own value and keeps it — its physics is its own, and it can still evolve. Nothing is
+   clamped on reload.
+5. Descriptive, rules on nothing: cumulative kinds, late new kinds per 1k, living count.
