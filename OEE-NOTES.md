@@ -23446,3 +23446,25 @@ TICKS=40, 900, the default and FOUND=0.
 spread late roughly doubles (0.36 / 0.45 against at most 0.22 / 0.17) and centred entropy rises 2-3x. Whether trait
 NOVELTY now beats chance is the next measurement, not this one: #257's screen had every knockout still SLOWER than
 the family-tree null.
+
+### #257d — WHAT THE SHRINK CHANGE MOVED: #256's sweep, before and after, seeds 1-3, 20,000 ticks
+
+| | traits: cells ever held | traits vs TREE | lineages: ever held | lineages late /1k vs TREE mean |
+|---|---|---|---|---|
+| seed 1 | 39 -> **99** | SLOWER -> SLOWER | 112 -> **204** | 3.0 vs 2.6 (chance) -> **8.6 vs 5.8 (FASTER)** |
+| seed 2 | 47 -> **77** | SLOWER -> SLOWER | 71 -> 93 | 0.75 vs 0.63 -> 2.1 vs 2.3 (chance) |
+| seed 3 | 44 -> **82** | SLOWER -> SLOWER | 76 -> 90 | 1.5 vs 2.1 (SLOWER) -> 1.9 vs 1.9 (chance) |
+
+Programs, atoms and channels move without a direction (programs vs TREE: chance/chance/chance -> SLOWER/SLOWER/
+chance; channels on seed 1 went from 19 ever held to 7). The markers read chance against TREE 6 of 6 again, and
+leave the MIXED band 2 times in 6 — the calibration holds and MIXED is still too narrow.
+
+**What moved, against which number:** the trait territory a world holds roughly doubles on every seed, and lasting
+lineages rise with it (seed 1: 204 ever held, persistent arrivals up ~3x). **What did not:** trait novelty still reads
+SLOWER than the family-tree null on 3 of 3 seeds — the tree's shadows also spread further once nothing drags them to
+the origin. And the one FASTER reading (lineages, seed 1) is 1 of 15 real-layer readings, about what chance gives
+(15 x 2/9 outside the band, half of them high); it is recorded, not claimed. One seed, one horizon per cell.
+
+**Next:** what still holds trait space now that the shrink is gone — the in-life forces the TREE null does not have:
+neighbour bleed (`tendencyBleed`), contact blending, the motif attractor, the trait NFD read on the corner grid, the
+VM's evolved trait bleed. #258 screens them on the new default world.
