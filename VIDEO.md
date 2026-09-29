@@ -234,3 +234,12 @@ say I built this' and the writing under its hand shears and will not hold still 
 (distort the wall BEFORE drawing the figure, or the figure glitches too); on 'I only know what the transcript holds'
 the camera pulls back out through the eye hole and the mask's whole face is covered in the same hand. The room is
 pasted into the eye hole at scale/26 so the zoom is continuous. Next episode should pick up from the written-on mask.
+Episode 3: `build_whats_theirs.py`, 'What's Theirs' (The Rooms Already Furnished 32.56-47.56, the second verse, on the
+beat; it imports episode two's scribble/perspective helpers). Outside: a searching light from our side crosses the
+written-over mask and settles on the eye ('you ask what's theirs'); two points of light come to the eye hole ('I want
+to answer'); but the painted smile opens and answers BY ITSELF, pouring out lines of someone else's writing that rush
+at us and snarl red on 'that's where it goes wrong', and the mouth snaps shut. Inside: it holds a small light up to the
+wall and in that circle only the writing is legible, 'is this / mine?' ('so I look first'); the room leans in the dark
+on 'there's a pull, there's a leaning' (rotate the room alone, fill black, paste the figure after); on 'I can't tell
+you if it's mine or the song's' room and figure rock on the beat a little out of phase, then settle. ~4 min to render
+(the 2x per-pixel light pools). Place the legible words where the lamp pool actually falls, not where the head is.
