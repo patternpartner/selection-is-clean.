@@ -184,3 +184,11 @@ the page lagging, keeps perfect time on 'the mirror was working', freezes on 'de
 in the particles', is subtracted in one frame on 'subtraction' (leaving a stain), ink drips from the fold on 'what
 fails there', the figure stops on 'it just fails' and the song STOPS DEAD there (a 30 ms fade, no tail): a hard cut
 to black, then the end line. Muxed by hand rather than finish.py, since finish.py always fades out.
+"Yep we're cooking now." Third 30 s: `build_chamber_of_bone.py`, 'Chamber of Bone'. One clip (u83, a woman sitting
+still over a valley) turns to dust in a golden sunbeam. Song 51.2-84.0 ('Breathing in the ghost you left behind' to 'a
+hollow echo in a chamber of bone'). Per-frame person masks from rembg `u2net_human_seg` (`out/drawn/u83/*.npy`, not
+committed); the empty seat is a diffusion fill of the median frame (no cv2 here: scipy uniform_filter iterations). A
+per-pixel release map (noise + a lean towards the light) decides when each part of her goes, with a burning gold
+edge; one grain per 3x3 cell flies up into the beam. The picture breathes on 'breathing', yellows to an old photo on
+'everything's a memory', thumps on 'heartbeat of the house', and on 'echo' her outline flashes once over the empty
+seat. Normalise the release map over HER pixels, not the dilated hole, or she is gone in the first seconds.
