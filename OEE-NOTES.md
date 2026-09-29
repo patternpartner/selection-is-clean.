@@ -23824,6 +23824,44 @@ trait VARIANCE, and novelty no longer below chance where it was — not selectio
 establishment clause to decide whether they SPLIT, and C inside the band.
 Horizon: 20,000 ticks.
 
+**#261b RESULTS — nothing ships. Both halves of the search's core are SPLIT or load-bearing.** Seeds 181-183, all
+counted, 21 runs.
+
+| seed | nulls: centred entropy ratio / spread late / est. / living | A. core | B. forces | C. mechs |
+|---|---|---|---|---|
+| 181 | 0.23-0.54 / 0.176-0.291 / .0005-.0068 / 317-424 | **0.68 / 1.22** / .0011 / *100* | **1.29 / 1.89** / *0* / 306 | 0.31 / 0.30 / .0013 / 348 |
+| 182 | 0.17-1.27 / 0.187-0.583 / .0032-.0060 / 271-856 | 0.89 / **0.90** / *.0014* / 255 | **1.44 / 1.90** / *0* / 637 | 0.70 / **1.16** / *.0004* / 235 |
+| 183 | 0.27-0.99 / 0.150-0.453 / .0025-.0075 / 332-449 | **1.31 / 2.18** / *.0004* / 274 | **1.55 / 2.06** / *0* / 327 | *0.08* / 0.14 / *.0008* / 349 |
+
+(bold = better than every null by the margin, italic = worse.)
+- **A. CORE -> SPLIT.** Better than every null on spread on all three seeds (and centred entropy on two), worse on
+  establishment on two. The default does not change.
+- **B. FORCES -> SPLIT.** The widest trait space in this file on the template: spread 1.9-2.1 against a null band
+  that tops out at 0.58, centred entropy better on all three. And establishment **exactly 0** on all three.
+- **C. MECHS -> KEEP, proven.** Switching FRONTIER_EXPAND, NICHE_BUILD and OPCODE_NOVELTY off is worse than every
+  null on two of three seeds (establishment on both; centred entropy collapses to 0.08 on 183). **The three are
+  load-bearing, as a trio** — no earlier entry in this file shows any of them earning its place rather than merely
+  firing (#253 showed each changes the world). Which of the three carries it is not asked: the gate opened singles
+  only if C passed the other way. My guess, written before, said C would sit inside the band. It did not.
+- Nothing ships, so #261's second gate (the sweeper) does not run.
+
+**What "establishment 0" is here — read before believing it.** The census counts lineages first seen after the warm-up
+that ever reach 10 living members. Without blending, children land further from their parents' lineage centroid,
+so the engine mints a new lineage label far more often: late lineages 1,800-4,415 against 1,034-1,193 in the default
+world, and the effective number of lineages near the population itself (seed 182: effN 636 of 639 living, the top
+lineage holding 0.3%). No label gathers ten members because labels are being minted faster than anything can gather
+them. So the establishment clause is partly reading the SPECIATION RATE — the very lever #261 kept away from the search
+(SPECIATE_DIST), reached from the other side. The verdict stands as registered: the counts are 4 established against
+0, and a world where no lineage reaches ten members is not obviously a better world. But it is not evidence that the
+forces arm kills success either; it is evidence that the lineage label and trait distance are coupled, and any future
+arm that widens trait space will hit the same clause for the same reason. Recorded for whoever asks next.
+- **The search's direction, confirmed on unseen seeds and a 4x horizon:** trait space opens and lineage establishment
+  falls. #261's judge counted two trait objectives against one lineage objective and chose trait space; the template,
+  which weighs establishment as a peer, calls that a split. #255's lesson held a second time: the judge's shape picks
+  the direction.
+- **The null band itself** (seed 183, null 2): a default-world replicate went extinct (living 0) and rebooted to 449
+  by 20k — the default world is not immune either, which #259's census (1 of 12 at 40k) already said.
+
 ### #262 — "THE ENGINE OF NOVELTY" IS A FLAT TAX: the trait NFD, read, and its repair. Pre-registered before any run.
 
 **The finding (a reading, not a verdict).** The trait NFD (engine ~26698, LEAP 1; the comment above it calls it "the
