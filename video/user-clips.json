@@ -490,7 +490,9 @@
    "free"
   ],
   "talks": false,
-  "used_in": []
+  "used_in": [
+   "spirit-of-my-own"
+  ]
  },
  {
   "id": "u32",
