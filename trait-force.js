@@ -5,15 +5,29 @@
 //   shrink1  law BIRTH_SHRINK = 1 - a birth no longer drags both parents toward the origin
 //   blend0   law CONTACT_BLEND = 0 - no parent averaging at a birth
 //   toll0    TEND_TOLL = 0 - no amplitude charged beyond TEND_SOFT (source-patched from const to let; one site, asserted)
+// #258 adds the in-life forces the family-tree null does not have (source patches, site counts asserted):
+//   motif0   the pull toward the best-matching stable motif (0.0001 x similarity per tick) is zeroed
+//   nfd0     the trait NFD is off: no amp nudge by coarse-bin rarity (NFD_STRENGTH 0) and no rarity upkeep discount
+//            (pRarity 1 for everyone - every particle pays full upkeep, as the commonest kind already did)
+//   vmbleed0 the VM's evolved trait bleed between interacting particles (vmActions[3], executeVM and
+//            executeClusterVM - two sites) is zeroed
+//   gt0      globalThis.__GLOBALTEND = 0: the lineage-centroid / neighbour-sample pulls and the global repulsion off
 // FORCE=a,b in the environment picks them. Draws nothing.
-const FORCES=['bleed0','shrink1','blend0','toll0'];
+const FORCES=['bleed0','shrink1','blend0','toll0','motif0','nfd0','vmbleed0','gt0'];
 function parse(env){ const F=String(env||'').split(',').filter(Boolean);
   for(const f of F) if(!FORCES.includes(f)) throw new Error('unknown FORCE '+f+' (known: '+FORCES.join(',')+')');
   return F; }
-function patch(code,F){ if(!F.includes('toll0'))return code;
-  const site='const TEND_TOLL=0.010;', n=code.split(site).length-1;
-  if(n!==1) throw new Error('TEND_TOLL site count '+n+', expected 1');
-  return code.replace(site,'let TEND_TOLL=0.010;'); }
+const PATCHES={
+  toll0:[['const TEND_TOLL=0.010;','let TEND_TOLL=0.010;',1]],
+  motif0:[['*0.0001*bestSim;','*0*bestSim;',1]],
+  nfd0:[['TCELLS=TBINS*TBINS*TBINS, NFD_STRENGTH=0.004;','TCELLS=TBINS*TBINS*TBINS, NFD_STRENGTH=0;',1],
+        ['pRarity[_i]=RARITY_DISCOUNT+(1-RARITY_DISCOUNT)*Math.min(1,_bc/(_mean+0.001));','pRarity[_i]=1;',1]],
+  vmbleed0:[['const tbleed=vmActions[3]*influence;','const tbleed=0;',2]]};
+function patch(code,F){
+  for(const f of F) for(const [site,rep,want] of (PATCHES[f]||[])){ const n=code.split(site).length-1;
+    if(n!==want) throw new Error(f+': site count '+n+', expected '+want+' ('+site.slice(0,40)+')');
+    code=code.split(site).join(rep); }
+  return code; }
 // appended to the engine source: defines globalThis.__applyForce(F), to be called before every loop()
 // NO BACKTICKS in this string: it is compiled inside the engine's own source.
 const DRIVER=`
@@ -23,6 +37,7 @@ const DRIVER=`
     if(F.includes('bleed0')){ genome.tendencyBleed=0; for(let i=0;i<N;i++) if(palive[i]&&pGenome[i])pGenome[i].tendencyBleed=0; }
     if(F.includes('shrink1'))S1.set(1);
     if(F.includes('blend0'))B0.set(0);
-    if(F.includes('toll0'))TEND_TOLL=0; }; })();
+    if(F.includes('toll0'))TEND_TOLL=0;
+    if(F.includes('gt0'))globalThis.__GLOBALTEND=0; }; })();
 `;
 module.exports={FORCES,parse,patch,DRIVER};

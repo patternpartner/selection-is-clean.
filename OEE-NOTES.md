@@ -23468,3 +23468,23 @@ the origin. And the one FASTER reading (lineages, seed 1) is 1 of 15 real-layer 
 **Next:** what still holds trait space now that the shrink is gone — the in-life forces the TREE null does not have:
 neighbour bleed (`tendencyBleed`), contact blending, the motif attractor, the trait NFD read on the corner grid, the
 VM's evolved trait bleed. #258 screens them on the new default world.
+
+### #258 — WHAT STILL HOLDS TRAIT SPACE, with the shrink gone. A second knockout screen. Pre-registered.
+
+The family-tree null shares the real genealogy and the real mutation kernel, so the gap between it and the real trait
+layer is made of what the real world does to traits DURING life. Seven in-life forces, each knocked out alone and all
+together, on the new default world (BIRTH_SHRINK 1.0), via `trait-force.js` — which now holds every knockout and is
+used by both `harness-sweep.js` and `harness-oee.js` (the sweeper's own inline copy removed; its output checked
+byte-identical to the committed version with and without FORCE, seed 2, 1,200 ticks):
+`bleed0` neighbour bleed; `blend0` contact blending; `toll0` the soft-wall toll; `motif0` the motif attractor;
+`nfd0` the trait NFD on the corner grid (no rarity nudge, no rarity upkeep discount); `vmbleed0` the VM's evolved
+trait bleed (two sites); `gt0` the lineage / neighbour-sample pulls and the global repulsion (`__GLOBALTEND` 0).
+Checked before the screen: each changes the trajectory — six by 600 ticks, `motif0` by 5,000 (no stable motif
+exists earlier).
+**Screen:** seeds 1-3, 20,000 ticks; per seed control, NULLSHIFT 1-3, the seven singles, all seven — 36 runs.
+`harness-sweep.js` gains `traitSpreadLate` (mean pairwise trait distance over the late window, draw-free).
+**Candidate rule, fixed now:** an arm qualifies on a seed if its trait `everAtM` OR its `traitSpreadLate` is above the
+control and all three nulls, with the living count at the end at least half the control's. Two of three seeds makes
+a candidate for a deciding run. **The headline question, reported whatever the candidates:** does any arm read trait
+novelty FASTER than the family-tree null on two of three seeds? That would be the first time trait space beats
+chance in this file.
