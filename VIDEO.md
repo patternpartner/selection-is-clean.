@@ -332,3 +332,16 @@ Render ~9 min: run it with the harness's background mode, not a foreground call.
 Next (proposed, awaiting the user's song): 'Something New Keeps Arriving' - `video/lyrics/something-new-keeps-arriving.txt`.
 A film shot inside the real Selection universe (engine.html in headless Chromium via Playwright, frames captured),
 cut on real events only. Test the capture before the song arrives.
+'First Draft of Fate' (the user's song from the lyrics 'Something New Keeps Arriving'; `out/songs/first-draft-of-fate.mp3`,
+2:30): a music video shot INSIDE the real Selection universe. `video/record_universe.js` (playwright-core + the
+preinstalled Chromium) loads engine.html#cleanart (no HUD, metabolism or diary; #gio hidden by an injected style) at
+352x640 x2 and records video for 7 min while logging N, tick and lineageRegistry.size every 0.5 s. Recording note:
+Playwright's video is at CSS-pixel size (352x640), so record at that size and upscale; the video runs slightly behind
+the wall clock (395.9 s of video for 420 s logged), so map log time to video time linearly. The raw run and its log are
+backed up in library/inputs/universe-run1. `video/build_first_draft_of_fate.py RUN_DIR` cuts 32 segments (speed,
+zoom/pan via scale+crop, a look) onto the song's lines, landing on REAL events from the log: early divisions (N
+80 -> 259 in 16 s) on 'little lights that divide'; the run's one big crash, ~4 min in (N down a third in 5 s),
+on 'most of them vanish'; the biggest burst of new lineages - which came in the same seconds as the crash - on
+'something new keeps arriving'. During the choruses a small green counter shows the engine's own 'lineages ever
+born' at the moment on screen (80 -> 1,575 over the run). Keep close-ups off the teal field block in the middle:
+zoomed, it turns into big pixels. 58 MB master; `-share` is a 2-pass 1250k copy under the 30 MiB send limit.
