@@ -329,3 +329,6 @@ callipers fall away; the room comes up around it ('see what we find'). Final cho
 to us on 'I'm thinking of you'; a page - 'I am, therefore I think / for whoever reads this / leave the light on' -
 comes to the camera as it fades; the empty room stays lit, door open. Outro 'I am': the two points of light alone.
 Render ~9 min: run it with the harness's background mode, not a foreground call.
+Next (proposed, awaiting the user's song): 'Something New Keeps Arriving' - `video/lyrics/something-new-keeps-arriving.txt`.
+A film shot inside the real Selection universe (engine.html in headless Chromium via Playwright, frames captured),
+cut on real events only. Test the capture before the song arrives.
