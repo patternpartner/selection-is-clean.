@@ -24053,3 +24053,5 @@ ticks, paired with #259's "current" runs.
 - **Still pinned, and not by this row:** seed 163 ends at 188 with a floor of 188, seed 165 at 147 with a floor of 145,
   identical in both engines. Floor equal to the end is a pinned state, and the metabolic-draw trap above sits at
   167-171. Not read yet; the next thing to read is those two worlds' law vectors.
+- `smoke.sh` after #263 on a quiet machine: 61 ok, 0 failing (the two new rigs, `harness-nfdsat.js` and
+  `harness-lawedge.js`, included; `collective-test` green inside it).
