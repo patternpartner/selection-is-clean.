@@ -23747,3 +23747,79 @@ file says the search found nothing the default does not already do, at this hori
   original had none. #255b's starved REGEN-0 worlds sat at the same number. #255c closed the one-step route to REGEN 0,
   but a walk of several kept steps can still get there. Not examined here; the next thing to read in those runs is the
   law vector they end with.
+
+**#261 RESULTS — no candidate by the committed rule, and a consensus the rule was not built to see.** 40 generations,
+POP 12, seeds 5000-5079, 5,000 ticks, 480 evaluations (2 infeasible).
+- **By the rule: no candidate.** In the last 10 generations the top rank rotated among near-identical siblings; no one
+  genome held it more than 3 times, and the rule asked for 5. The search decides nothing, and by its own rule it hands
+  nothing on.
+- **What the rule could not see: the siblings share a core.** In each of the last ten generations, all four top-ranked
+  variants (40 of 40) carry the same five genes: **`blend0`** (no parent averaging at a birth), **`vmbleed0`** (no
+  VM-driven trait bleed between interacting particles), and **FRONTIER_EXPAND, NICHE_BUILD and OPCODE_NOVELTY held
+  off**. Nothing else comes close: GENE_DRAW on 25/40, `toll0` 21/40, NOVELTY_ARCHIVE off 20/40, RED_QUEEN off 12/40
+  (it was in 31 of the 40 per-generation bests over the whole run and fell away late). The top spot rotating was the
+  rule failing to see agreement, not the search failing to reach it.
+
+| over all runs each genome had | runs | trait spread late | centred entropy late (bits) | lineage novelty /1k | mean floor |
+|---|---|---|---|---|---|
+| default engine | 80 | 0.31 | 0.91 | **5.9** | **338** |
+| the 7 genomes that held the top spot in gens 30-39 | 6-14 each | 1.26-2.10 | 5.13-5.22 | 1.9-4.7 | 137-184 |
+
+- **The cost, which the judge's shape hid.** Every top variant is far wider in trait space, and every one is LOWER
+  than the default on lineage novelty and at about half its population. The Borda judge has two trait objectives and
+  one lineage objective, so a variant that wins trait space and loses lineages outranks the default two to one by
+  construction. The default ranked 8-13 of a possible 33 every generation — near the bottom — because it is best on
+  the one measure the judge counts once. **That is #255's lesson again, one level up: the judge's shape picked the
+  direction.** Recorded as found, not corrected after the fact; #261b asks the question on the template, which has
+  establishment and a crash guard.
+- **#258 has seen this shape before:** all seven trait forces knocked out together opened trait space furthest
+  (spread 1.9-2.3) and collapsed the population (22-120 living). The core is a milder version — two forces out, not
+  seven — holding ~160 living at 5,000 ticks. Whether it holds at 20,000 is part of what #261b measures.
+- Horizon said out loud: 5,000 ticks. #66 and #258c both found verdicts that turned at longer horizons.
+
+### #261b — THE SEARCH'S CORE, on the template. Pre-registered before any run.
+
+**A new experiment, not #261's rule re-read** (rule 5): #261's candidate rule found nothing, and the core was seen
+after the search ran. It was chosen on the search's seeds; the seeds here are unseen.
+**Rig:** `harness-oee.js` gains `MECHOFF=a,b` — #253's switches held off every tick, as `harness-variant.js` does.
+Checked before any run: unset, the output is identical to the committed rig's (seed 1, 400 ticks, every field but
+config and timing); each of the three switches alone changes that run; an unknown name is refused.
+**Design:** #258b's exactly — `ESTABLISH=250`, 20,000 ticks, the default world + NULLSHIFT 1-3 as the null band;
+centredEntropyRatio +/-0.05, spread_late +/-10%, established fraction +/-25%, crash guard; entropyRatio and kinds
+reported, not ruled on. The arm is the knockout: BETTER than every null on two-thirds of counted seeds -> what it
+removes is worse than its absence -> change the default; WORSE on two-thirds -> KEEP, proven; both -> SPLIT, nothing
+changes; otherwise KEEP. **Unseen seeds 181-183** (not used anywhere in this file). Three arms:
+- **A. CORE** — `FORCE=blend0,vmbleed0 MECHOFF=FRONTIER_EXPAND,NICHE_BUILD,OPCODE_NOVELTY`
+- **B. FORCES** — `FORCE=blend0,vmbleed0`
+- **C. MECHS** — `MECHOFF=FRONTIER_EXPAND,NICHE_BUILD,OPCODE_NOVELTY`
+
+**Why three and not six, stated:** every extra arm is another chance to land outside four nulls by luck — #249 found
+three mechanisms BETTER against one control and #249b's null band took all three back. The three mechanisms inside C
+are ruled on singly only if C passes, and then on fresh seeds 184-186 (a gate: no single is tested unless the trio is).
+**What ships, fixed now:**
+- **B BETTER:** CONTACT_BLEND's declared default 0.03 -> 0, with `LAW_SUPERSEDED` gaining CONTACT_BLEND: 0.03 (#257c's
+  pattern; the row stays and a universe can evolve it back), and the VM trait bleed's two sites (`tbleed`, in both
+  interaction bodies) deleted — `vmActions[3]` then drives nothing, and the deletion says so. Checked byte-identical
+  to the measured arm before it ships.
+- **C BETTER:** the three mechanisms go DORMANT — the LIVE table sets them 0, code and switches kept — and the singles
+  on 184-186 decide DELETE per mechanism.
+- **B and C each ship on their own verdict. A matters only if neither does:** A BETTER alone -> the change works only
+  as a whole and ships as a whole (both of the above). **B and C both BETTER but A not BETTER** -> nothing ships and
+  the interaction is written up, because shipping both builds A, which did not pass.
+- **Saved worlds (rule 6, delegated to me by the user at #255c):** B changes every saved world on reload — the VM bleed
+  goes from all of them, and a world holding CONTACT_BLEND at exactly 0.03 reloads at 0 (worlds that evolved away from
+  0.03 keep their value). C changes every saved world's mechanisms on reload. Said here before it could ship.
+
+**#261's second gate, defined now.** #261 said a candidate must also pass #256's sweeper — "does trait or lineage
+novelty beat the family-tree null?" — and did not say what passing is. Any arm that would ship runs `harness-sweep.js`
+with the same knockout (MECHOFF added to the sweeper if C or A passes) and the default, seeds 181-183, 20,000 ticks.
+**Pass = on no layer does the arm read SLOWER than the TREE null on two of three seeds where the default reads CHANCE
+or FASTER on that layer.** Whether any layer reads FASTER than the tree is the headline, reported and not required.
+**This lowers what #261's wording asked for, and I am saying so before any deciding run:** "beat the family-tree null"
+is a bar the default engine fails on every layer (#256b-#258), so requiring it of a candidate holds the candidate to
+something the thing it would replace does not meet — and the extra gate's purpose was to catch a change that pushes
+novelty below chance, which this definition does. A change that ships under it is claimed at the rung measured —
+trait VARIANCE, and novelty no longer below chance where it was — not selection.
+**Written before, so it can be wrong:** I expect A and B BETTER on spread and centred entropy on all three seeds, the
+establishment clause to decide whether they SPLIT, and C inside the band.
+Horizon: 20,000 ticks.

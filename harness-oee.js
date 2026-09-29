@@ -27,6 +27,7 @@
 //       ESTABLISH=<every>  (#249: harness-establish's census on this same trajectory; ESTWARM default 2000, ESTN 10)
 //       NULLSHIFT=<k>  (#249b: burn k draws before the first tick - a null replicate of the same world)
 //       FORCE=a,b  (#257: trait-homogeniser knockouts, re-installed every tick - see trait-force.js)
+//       MECHOFF=a,b  (#261b: #253's mechanism switches held OFF every tick - names from MECH_DECLARED)
 const fs = require('fs');
 // #217b: KNOBS honoured. #216x fixed four rigs and I called the class swept; a review found the
 // real number is 39 node-side rigs that boot engine.html in-process and silently drop every
@@ -661,6 +662,7 @@ const driver = `
       globalThis.__detMs+=5;
       globalThis.__applyPin();   // hold the knockout dead against re-mutation, every tick
       globalThis.__applyForce(globalThis.__FORCE);   // #257: trait-homogeniser knockouts, every tick
+      for(const n of globalThis.__MECHOFF) mechSet(n,0);   // #261b: mechanism switches held off, every tick
       try{loop();}catch(e){globalThis.__driverErr=(globalThis.__driverErr||0)+1;}
       if(es&&(s+1)%EST===0) es.census();
       if((s+1)%every===0){ m=metrics(); globalThis.__SERIES.push(m); if(STREAM)process.stdout.write(JSON.stringify(m)+String.fromCharCode(10)); }
@@ -713,8 +715,14 @@ const EST_EVERY = parseInt(process.env.ESTABLISH || '0', 10) || 0;
 globalThis.__EST_EVERY = EST_EVERY;
 const EC = require(__dirname + '/establish-census.js');
 globalThis.__FORCE = FORCE;
-try { m._compile(code2 + driver + TF.DRIVER + (EST_EVERY ? EC.DRIVER : ''), m.filename); }
+// #261b: MECHOFF=a,b holds #253's mechanism switches OFF every tick (as harness-variant.js does), so the retire-or-prove
+// template can rule on a mechanism the evolutionary search voted against. Unset, the list is empty and nothing changes.
+const MECHOFF = String(process.env.MECHOFF || '').split(',').filter(Boolean);
+globalThis.__MECHOFF = MECHOFF;
+try { m._compile(code2 + driver + TF.DRIVER + (EST_EVERY ? EC.DRIVER : '') +
+  ';globalThis.__mechBad=globalThis.__MECHOFF.filter(function(n){return MECH_DECLARED.indexOf(n)<0;});', m.filename); }
 catch (e) { console.log('COMPILE/BOOT THREW:', e.message); process.exit(1); }
+if (globalThis.__mechBad.length) { console.log(JSON.stringify({error:'unknown MECHOFF ' + globalThis.__mechBad.join(',')})); process.exit(2); }
 const tBoot = Date.now();
 
 // ADAPTIVENESS ABLATION: knock out the named atom BEFORE running the continuation (booted from GENOME).
@@ -932,7 +940,7 @@ const verdict = {
 };
 
 console.log(JSON.stringify({
-  config: { TICKS, SAMPLE, SEED: process.env.SEED || null, INDEX: process.env.INDEX || 'engine.html', NULLSHIFT, FORCE },
+  config: { TICKS, SAMPLE, SEED: process.env.SEED || null, INDEX: process.env.INDEX || 'engine.html', NULLSHIFT, FORCE, MECHOFF },
   timing_ms: { boot: tBoot - t0, run: tDone - tBoot, perKtick: +(((tDone - tBoot) / TICKS) * 1000).toFixed(1) },
   loopErrors, lastErr, driverErr: globalThis.__driverErr || 0,
   switchboard: (globalThis.__swbState && globalThis.__swbState().on) ? globalThis.__swbState() : undefined,   // #253
