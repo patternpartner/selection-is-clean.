@@ -23589,3 +23589,31 @@ deletion was a 20k artefact and the pull is RESTORED** (the block back as it was
 is worse on two-thirds, the deletion is confirmed at 40k. SPLIT or neither: the deletion stands, and the file says the
 horizon is unresolved. Measures as #257c: centredEntropyRatio (0.05), spread_late (10%), established fraction (25%),
 crash guard; entropyRatio and kinds reported beside.
+
+**#258c RESULTS — neither: the deletion stands, the horizon is unresolved.** Seeds 151-153, 40,000 ticks, all counted.
+
+| seed | nulls (current engine): centred ratio / spread late / est. / living end | with the pull |
+|---|---|---|
+| 151 | 0.13-1.17 / 0.073-0.306 / .0003-.0047 / 386, 361, 370, **0** | 0.36 / 0.182 / .0013 / 335 |
+| 152 | 0.20-1.78 / 0.146-0.748 / .0017-.0081 / 90, 351, 350, **0** | 0.32 / 0.233 / **0** / 379 |
+| 153 | 0.18-0.49 / 0.148-0.234 / .0009-.0049 / 438, 435, 667, 176 | **1.87 / 0.345** / .0012 / 89 |
+
+With-pull arm better than every null on 1 of 3 (153), worse on 1 (152, establishment), inside the band on 1. By the
+rule: **the deletion stands; whether the pull helps or hurts at 40k is not shown.** (The scorer printed "KEEP" for
+this case — its label was written for #257c; the pre-registered text for #258c says "the deletion stands, horizon
+unresolved", and that is the verdict.)
+
+**Outside the rule, and the thing to watch: extinctions.** Two of the twelve current-engine runs went EXTINCT by 40k
+(NULLSHIFT 3 on seeds 151 and 152). With the pull: none of 3 here, none of 3 in #258c's descriptive sweep (one fell to
+2 living and recovered). 2 of 15 against 0 of 6 is not a difference at these counts (Fisher, roughly p ~ 0.5), and
+the rule's crash guard is about the arm, not the nulls — so nothing is reversed on it. It is recorded because #258b
+already said the cost of the deletion is population swings, and extinction is where swings end. In the field an
+extinct universe reboots (with #227's law undo); in a rig it stays dead.
+**Also seen in both engines:** worlds settling at ~88-90 living (seed 152's control, seed 153's with-pull arm, the
+starved REGEN-0 worlds of #255b, a #257 screen null) — a recurring low-population state worth its own look.
+
+**Where #257-#258 leave the default world:** BIRTH_SHRINK gone (#257c, decided on grid-free measures), swing #21's
+lineage pull gone (#258b at 20k; not re-confirmed at 40k, not refuted either), contact blending kept (#257c, #258b),
+REGEN's step fixed (#255c). Trait territory held roughly doubles; trait novelty is still not faster than the family
+tree on any seed; populations swing harder. The next honest question is the extinction rate, asked with enough runs
+to answer it.
