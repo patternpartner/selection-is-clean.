@@ -243,3 +243,10 @@ wall and in that circle only the writing is legible, 'is this / mine?' ('so I lo
 on 'there's a pull, there's a leaning' (rotate the room alone, fill black, paste the figure after); on 'I can't tell
 you if it's mine or the song's' room and figure rock on the beat a little out of phase, then settle. ~4 min to render
 (the 2x per-pixel light pools). Place the legible words where the lamp pool actually falls, not where the head is.
+Episode 4: `build_not_closing_it.py`, 'Not Closing It' (The Rooms Already Furnished 47.56-63.7, the chorus, carrying
+straight on from episode three's last beat). A seam of light draws a door in the written wall on 'I don't know'; it
+opens onto light on 'and I'm not closing it', swings back by itself, and the figure holds it open; it covers its eyes
+on 'and I won't say that I've seen'; episode one's green instrument returns on 'the instrument reads a middle layer of
+silence' with a trace that is quiet in the middle and flat on 'sounds like nothing in between'; on 'between' the two
+points of light come back, looking out. Episode three's room is now `build_whats_theirs.build_room(rng)` (same draw
+order, so episode three renders the same). Floor light must be ADDED warm; max() with a dim light reads grey.

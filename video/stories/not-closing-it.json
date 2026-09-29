@@ -1,0 +1,28 @@
+{
+ "title": "Not Closing It",
+ "episode": 4,
+ "follows": "whats-theirs",
+ "song": "out/songs/the-rooms-already-furnished.mp3",
+ "song_parts": [
+  [
+   47.56,
+   63.7
+  ]
+ ],
+ "drawn": true,
+ "times": {
+  "know1": 0.44,
+  "closing": 3.04,
+  "it": 3.84,
+  "know2": 4.64,
+  "wont": 6.78,
+  "seen": 8.42,
+  "instrument": 9.24,
+  "middle": 11.0,
+  "silence": 12.28,
+  "sounds": 13.44,
+  "nothing": 14.3,
+  "between": 15.22,
+  "end": 16.14
+ }
+}

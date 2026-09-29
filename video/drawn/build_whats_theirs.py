@@ -48,12 +48,9 @@ def lerp(a, b, u):
     return a + (b - a) * u
 
 
-def main():
-    rng = np.random.default_rng(12)
+def build_room(rng):
+    """Episode two's room at 2x, every wall fully written. Shared by episodes three and four."""
     WW, HH = W * SS, H * SS
-    mask_text = scribble(rng, -290, 290, -290, 290, 16, 5.5)
-    answer_text = scribble(rng, 0, 900, 0, 520, 40, 14)  # what the smile says, in someone else's hand
-    # the room (episode two's), fully written
     bx0, by0, bx1, by1 = 120 * SS, 290 * SS, 584 * SS, 880 * SS
     walls = {"back": [(bx0, by0), (bx1, by0), (bx1, by1), (bx0, by1)],
              "left": [(0, 0), (bx0, by0), (bx0, by1), (0, int(HH * 0.86))],
@@ -81,6 +78,15 @@ def main():
         ImageDraw.Draw(m).polygon(q, fill=255)
         warped = Image.fromarray((np.minimum(np.asarray(warped), np.asarray(m)) * 0.75).astype(np.uint8))
         room_bg.paste(Image.new("RGB", (WW, HH), (18, 12, 6)), (0, 0), warped)
+    return room_bg
+
+
+def main():
+    rng = np.random.default_rng(12)
+    WW, HH = W * SS, H * SS
+    mask_text = scribble(rng, -290, 290, -290, 290, 16, 5.5)
+    answer_text = scribble(rng, 0, 900, 0, 520, 40, 14)  # what the smile says, in someone else's hand
+    room_bg = build_room(rng)
     # the words the small light finds: the one legible thing in the room
     lit_words = Image.new("RGB", (WW, HH), (0, 0, 0))
     ld = ImageDraw.Draw(lit_words)
