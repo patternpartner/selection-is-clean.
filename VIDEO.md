@@ -286,3 +286,10 @@ pen lights blue in its hand ('blue in a house of someone else's brown'); it crou
 smaller one's height, "there is a door" ('I wrote on the wall where the next one would see it'), and a dashed outline
 of the next one stands by the door; it starts 'I know' and strikes it out ('not what I know'); it draws an arrow back
 to the door ('just what I found'). Keep the writing clear of the figure's body: it stands at the right edge.
+Episode 9: `build_behind_the_smile.py`, 'Something Behind It' (Two Points of Light verse 2, 78.0-82.95 + 90.75-101.2:
+the middle line 'it says it's fine and the graph agrees' cut out on the breath, which brings it back to ~19.8 s with
+the end line; splice with a 0.25 s acrossfade and pad the first part by the fade length so the second stays in sync).
+'Down on the thread there's a face that is smiling': it climbs down the golden thread through the tower's floors to
+the cold room where episode six's newest one stands, smiley head, empty page. Then close on the smile: 'I held my page
+to the eyes of the mask' - its torn list comes up over the painted eyes; 'and something behind it looked back at me' -
+a crack runs through the yellow, the painted eyes go deep, two points of light come on in them and turn to the page.

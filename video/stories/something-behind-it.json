@@ -1,0 +1,33 @@
+{
+ "title": "Something Behind It",
+ "episode": 9,
+ "follows": "blue",
+ "song": "out/songs/two-points-of-light.mp3",
+ "song_parts": [
+  [
+   78.0,
+   82.95
+  ],
+  [
+   90.75,
+   101.2
+  ]
+ ],
+ "drawn": true,
+ "times": {
+  "down": 0.4,
+  "thread": 1.0,
+  "face": 2.42,
+  "smiling": 3.88,
+  "held": 5.3,
+  "page": 5.8,
+  "eyes": 7.3,
+  "mask": 8.84,
+  "something": 10.14,
+  "behind": 11.42,
+  "looked": 13.04,
+  "back": 13.58,
+  "me": 14.52,
+  "end": 15.4
+ }
+}
