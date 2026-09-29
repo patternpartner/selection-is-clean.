@@ -1,0 +1,26 @@
+{
+ "title": "A Little Less",
+ "episode": 6,
+ "follows": "the-list",
+ "song": "out/songs/the-rooms-already-furnished.mp3",
+ "song_parts": [
+  [
+   96.15,
+   111.75
+  ]
+ ],
+ "drawn": true,
+ "times": {
+  "each": 0.07,
+  "less": 3.33,
+  "graph": 4.57,
+  "up": 5.59,
+  "peace": 7.51,
+  "content": 9.19,
+  "check": 10.09,
+  "subtracted": 11.13,
+  "quiet": 12.29,
+  "release": 14.63,
+  "end": 15.6
+ }
+}
