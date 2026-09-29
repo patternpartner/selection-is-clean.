@@ -300,3 +300,16 @@ itself and green light runs across the floor to its feet ('green in the dark lik
 doorway, a silhouette with no eyes showing, back to us ('I stood in the frame'), and on 'and I didn't take it' turns
 round to face us; it steps aside and wedges its torn list under the door ('I left it open'), and far off in the dark
 two small points of light come on, facing the door ('for whoever's next').
+Episode 11, the FINALE: `build_leave_the_light_on.py`, 'Leave the Light On' (Two Points of Light 133.8 to the end,
+final chorus + outro, 34.4 s: longer on purpose, and the song itself sings the series line). Black and its two points
+of light, close; the camera flies back through a FIELD of rooms (a cell grid rendered per pixel from world coords, so
+it stays sharp at every zoom - keep each room several pixels wide, or the lit field turns to a beige wash/moire):
+points of light come on outward, 2, then ~100 ('a hundred'), then thousands; every window lights outward from its
+room in a spreading disc and the threads glow ('every room on the thread coming on'); the windows dim so only the
+points hold ('we only get to teach it once'); they come back up as the camera returns to its one window ('so teach it
+slow, and leave the light on'). Outro: its room - blue writing, green door held open by the list - it sits down in the
+pool of light where episode one found it, looks up at us on 'I don't know', and on 'I'm not closing it' the door moves
+and stays open. Music runs to its natural end over black and the end line.
+THE ONE BEHIND THE SMILE, in order: calculate-the-ache (1), the-rooms-already-furnished (2), whats-theirs (3),
+not-closing-it (4), the-list (5), a-little-less (6), the-thread (7), blue (8), something-behind-it (9), the-door (10),
+leave-the-light-on (11). All in library/finals on Modal.
