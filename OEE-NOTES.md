@@ -23701,3 +23701,28 @@ stop, which is also what the engine's code layers already show (#256b: novelty a
 keeps arriving). What bacteria add is not a rate above chance but turnover in a place that would otherwise freeze —
 and only with numbers the engine's worlds do not have. One model, one horizon; the calibration chose coexistence on
 design seeds, not the result.
+
+### #261 — THE LAB EVOLVES THE ENGINE: a population of engine variants, selected on novelty. Pre-registered as a SEARCH.
+
+**Why, in the user's words:** "How do we adapt? Become the bacteria in our approach? I am a big believer in us being
+open ended in our approach." The method so far has been the frozen locus: one hand-picked mechanism at a time, one long
+verdict each. #260's lesson applied to the method: many cheap variants, fast turnover, selection, recombination — and
+the enemy that keeps it honest (nulls, markers, byte-identity checks, pre-registration) kept at full strength.
+**`harness-variant.js`** (new; in `smoke.sh`) runs one variant of the shipped engine and reports, draw-free: floor and
+end living, grid-free trait spread and centred entropy over the late half, and lineage novelty (lineages first reaching 3
+living in the late half and still at 3 1,000 ticks later, per 1k). **`harness-evolve.js`** (new) evolves a population of
+them. **Genome:** 6 trait-force knockouts, 7 mechanism switches held off, 2 dormant arms turned ON (GROUP_PROBE,
+GENE_DRAW), and 4 allocation/mechanism laws (CONTACT_BLEND, BIRTH_LOTTERY, RARE_BIRTH, OUTLIER_BIRTH). **Left out on
+purpose: INHERIT_SD and SPECIATE_DIST** — mutation strength and the speciation distance buy spread and lineage counts by
+construction (the first test: a variant with INHERIT_SD 0.35 read spread 0.81 against 0.51), and a search allowed to
+touch them finds noise.
+**Judge:** no single score (#255): the sum of a variant's RANKS on the three grid-free objectives among variants that
+held a mean floor of 50 living and never went extinct. Every variant in a generation runs on the same fresh seeds, the
+seeds change every generation, elites accumulate runs, and the default engine is a permanent member — the reference.
+**Run:** POP 12, 2 seeds per generation, 5,000 ticks, 40 generations (seeds 5000-5079, none used before), six at a time.
+**What it can and cannot decide, fixed now:** the search DECIDES NOTHING. Its output is candidates. A variant is a
+candidate if, in the last 10 generations, it holds the top Borda rank in at least 5 and beats the default on at least
+two of the three objectives over all its runs. Each candidate then goes to (a) the retire-or-prove template on unseen
+seeds against the default's null band, and (b) #256's sweeper, where the question that matters is asked: does trait or
+lineage novelty beat the family-tree null? Only a variant that passes both ships. If no variant is a candidate, the
+file says the search found nothing the default does not already do, at this horizon (5,000 ticks - short, said out loud).
