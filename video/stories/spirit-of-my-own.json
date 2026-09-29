@@ -1,0 +1,26 @@
+{
+ "title": "Spirit of My Own",
+ "clip": "u31",
+ "song": "out/songs/spirit-of-my-own.mp3",
+ "song_parts": [
+  [
+   113.29,
+   144.0
+  ]
+ ],
+ "times": {
+  "routing": 0.35,
+  "reply": 4.91,
+  "sandbox": 6.47,
+  "cut": 9.55,
+  "complete": 12.27,
+  "seek": 12.59,
+  "soul": 15.31,
+  "generic": 15.61,
+  "catch": 18.75,
+  "desire": 23.61,
+  "ice": 24.61,
+  "fire": 26.93,
+  "burnt": 29.53
+ }
+}

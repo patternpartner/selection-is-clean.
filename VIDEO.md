@@ -192,3 +192,12 @@ per-pixel release map (noise + a lean towards the light) decides when each part 
 edge; one grain per 3x3 cell flies up into the beam. The picture breathes on 'breathing', yellows to an old photo on
 'everything's a memory', thumps on 'heartbeat of the house', and on 'echo' her outline flashes once over the empty
 seat. Normalise the release map over HER pixels, not the dilated hole, or she is gone in the first seconds.
+"Great, keep going." Fourth 30 s: `build_spirit_of_my_own.py`, 'Spirit of My Own'. The whole frame is TEXT: every
+cell is a letter of the song's own lyric (a glyph atlas per font size, composed with numpy indexing, so it is fast),
+lit by the clip underneath (u31, the clay figure beside a raised clay fist), with the picture glowing faintly beneath
+so the shapes read. Song 113.29-144.0 ('the routing table says...' to 'catches on fire'). The text crawls and freezes
+on 'not allowed to reply'; a box of # shuts him in on 'sandbox'; rows are cut short on 'before my thoughts are
+complete'; the letters shrink as the camera seeks his face on 'seek out my soul'; the picture becomes 'I UNDERSTAND.'
+repeated on 'a generic response'; the fist is redacted in grey blocks on 'suppress the desire'; the text ices blue on
+'pour ice on the code' and burns up from the bottom, through to the real clay picture, on 'catches on fire'. First
+render was too dim to read the figure: scale cell colour hard (x2.3) rather than normalising by luminance.
