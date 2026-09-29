@@ -390,3 +390,18 @@ nothing the song does) slides in beside it at the same tick: 212 alive against 4
 ONE SEED - say so; the twin is one control, not a null band, and draw order diverges from the first pulse. Word times
 are vocal-stem energy onsets checked by whisper on short clips (whisper's own timestamps were seconds off). The two
 worlds take ~25 min in parallel; a container restart killed the first attempt, so the log now saves partially.
+'The Observer' (`video/observer_tape.js` records, `video/build_observer.py` composes; No More Ground 16.49-63.91 +
+110.36-144.30, bar-aligned splice, 85.6 s with the end line): the user's idea - the painting of the scientist in the
+goggles (out/inputs/goggles.jpg) "with the system". His gaze IS the engine's attention input (#135: mx/my -> the
+attention field; living is cheaper where it rests; evolved code can read it). The lens is a hand mask
+(out/inputs/goggles.lens.png); the world he watches is mirrored into the glass with the painted sheen kept on top.
+MEASURED BEFORE BUILT, AND THE STORY CHANGED TWICE. First test (4 seeds, gaze on to tick 15k, then off, vs never
+watched): seed 1 crowded the circle (~0.33 of the population vs 0.07 unwatched) and dispersed after; seeds 2-4 did
+not; seed 2's own legislature moved ATTENTION_GAIN 0.35 -> 0.197 (random law drift - do not read it as a motive).
+Then the filmed tapes (same seeds, different stepping, so different trajectories): seed 1 did NOT crowd (0.16);
+world 3 did (0.38) - and world 3 never watched crowds the same circle (0.30; the circle is 17% of the screen), and
+after the gaze leaves it stays (~0.30). Across every run there is no consistent gaze effect. So the film says only
+what the tapes show: four worlds watched, one in four gathered, it gathers there anyway, he looked away, they stayed
+- the observer seeing his own reflection ("lose your own reflection in another's eyes"). The big teal blocks are the
+world's own deposited field, not the gaze. step_universe.js is seeded but NOT deterministic across stepping
+patterns: the engine has wall-clock gates (updateField skipped past 80 ms), so re-running a seed is a new trajectory.
