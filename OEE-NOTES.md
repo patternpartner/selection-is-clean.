@@ -23414,3 +23414,35 @@ seeds = the mechanism is WORSE than its absence -> DELETE (flip the default; sav
 #257b decided). Knockout WORSE on two-thirds = KEEP, proven. **If both clauses hold on the same mechanism, it is
 SPLIT, and the default does not change** — the ambiguity #257b's wording left open, closed before this run rather
 than after it. Otherwise KEEP. entropyRatio and kinds are reported beside, and rule on nothing.
+
+**#257c RESULTS — the shrink goes; the blend stays.** Seeds 131-133, all counted. Grid-free measures rule; the old
+two are shown after the bar and rule on nothing.
+
+| seed | nulls: centred entropy ratio / spread late / est. | shrink1 | blend0 | old eR: nulls / shrink1 |
+|---|---|---|---|---|
+| 131 | 0.04-0.46 / 0.136-0.223 / 0-.0083 | **0.75 / 0.360** / .0021 | 0.21 / 0.188 / .0051 | 0.96-0.99 / 0.69 |
+| 132 | 0.18-0.39 / 0.112-0.166 / .0044-.0094 | **1.09 / 0.452** / .0065 | 0.22 / **0.192** / *.0016* | 0.81-0.99 / 0.74 |
+| 133 | 0.09-1.85 / 0.120-0.517 / 0-.0035 | 0.30 / 0.248 / **.0075** | 0.39 / 0.231 / 0 | 0.91-1.16 / 0.65 |
+
+- **`BIRTH_SHRINK` -> DELETE (default flips 0.9 -> 1.0).** Its knockout beats every null on 3 of 3 seeds and is worse
+  on none, so it is not SPLIT. **The old grid would have said the opposite** — entropyRatio 0.69 / 0.74 / 0.65 against
+  nulls 0.81-1.16 — which is #257b's reading reproduced on fresh seeds, and the artifact seen inside deciding data.
+- **`CONTACT_BLEND` -> KEEP (0.03).** Not shown either way: spread better on one seed, establishment worse on the
+  same one. #257b's DELETE for it was never acted on and is now superseded.
+- The nulls are wide (seed 133's fourth: centred ratio 1.85, 89 living). They are the reason a single control is
+  not enough.
+
+**Shipped:** `BIRTH_SHRINK=1.0` as the declared default, with the reasoning at the declaration. It stays a law
+(0.8-1.0), so a universe can evolve a shrink back through a verdict. **Saved worlds — decided under the delegation,
+and changed from #257b's note:** #257b said a flipped default reaches new universes only. That would repeat what
+#227b found with LAW_RATE: nearly every universe in the field holds a rarely-proposed law at EXACTLY its declared
+value, so the change would reach none of them. `LAW_SUPERSEDED` gains `BIRTH_SHRINK: 0.9`: a saved world still
+holding exactly the old default was never the world's choice and takes the new one; a world that evolved its own
+value keeps it. Checked on the live engine: a fresh world starts at 1.0; a save at exactly 0.9 is not restored from
+the save (the declared 1.0 stands); saves at 0.93, 0.8 and 1.0 restore unchanged. `substrate-test` 264/0 at
+TICKS=40, 900, the default and FOUND=0.
+
+**What moved in the universe:** the population is no longer pulled onto one point. On the deciding seeds trait
+spread late roughly doubles (0.36 / 0.45 against at most 0.22 / 0.17) and centred entropy rises 2-3x. Whether trait
+NOVELTY now beats chance is the next measurement, not this one: #257's screen had every knockout still SLOWER than
+the family-tree null.
