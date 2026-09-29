@@ -23824,6 +23824,44 @@ trait VARIANCE, and novelty no longer below chance where it was — not selectio
 establishment clause to decide whether they SPLIT, and C inside the band.
 Horizon: 20,000 ticks.
 
+**#261b RESULTS — nothing ships. Both halves of the search's core are SPLIT or load-bearing.** Seeds 181-183, all
+counted, 21 runs.
+
+| seed | nulls: centred entropy ratio / spread late / est. / living | A. core | B. forces | C. mechs |
+|---|---|---|---|---|
+| 181 | 0.23-0.54 / 0.176-0.291 / .0005-.0068 / 317-424 | **0.68 / 1.22** / .0011 / *100* | **1.29 / 1.89** / *0* / 306 | 0.31 / 0.30 / .0013 / 348 |
+| 182 | 0.17-1.27 / 0.187-0.583 / .0032-.0060 / 271-856 | 0.89 / **0.90** / *.0014* / 255 | **1.44 / 1.90** / *0* / 637 | 0.70 / **1.16** / *.0004* / 235 |
+| 183 | 0.27-0.99 / 0.150-0.453 / .0025-.0075 / 332-449 | **1.31 / 2.18** / *.0004* / 274 | **1.55 / 2.06** / *0* / 327 | *0.08* / 0.14 / *.0008* / 349 |
+
+(bold = better than every null by the margin, italic = worse.)
+- **A. CORE -> SPLIT.** Better than every null on spread on all three seeds (and centred entropy on two), worse on
+  establishment on two. The default does not change.
+- **B. FORCES -> SPLIT.** The widest trait space in this file on the template: spread 1.9-2.1 against a null band
+  that tops out at 0.58, centred entropy better on all three. And establishment **exactly 0** on all three.
+- **C. MECHS -> KEEP, proven.** Switching FRONTIER_EXPAND, NICHE_BUILD and OPCODE_NOVELTY off is worse than every
+  null on two of three seeds (establishment on both; centred entropy collapses to 0.08 on 183). **The three are
+  load-bearing, as a trio** — no earlier entry in this file shows any of them earning its place rather than merely
+  firing (#253 showed each changes the world). Which of the three carries it is not asked: the gate opened singles
+  only if C passed the other way. My guess, written before, said C would sit inside the band. It did not.
+- Nothing ships, so #261's second gate (the sweeper) does not run.
+
+**What "establishment 0" is here — read before believing it.** The census counts lineages first seen after the warm-up
+that ever reach 10 living members. Without blending, children land further from their parents' lineage centroid,
+so the engine mints a new lineage label far more often: late lineages 1,800-4,415 against 1,034-1,193 in the default
+world, and the effective number of lineages near the population itself (seed 182: effN 636 of 639 living, the top
+lineage holding 0.3%). No label gathers ten members because labels are being minted faster than anything can gather
+them. So the establishment clause is partly reading the SPECIATION RATE — the very lever #261 kept away from the search
+(SPECIATE_DIST), reached from the other side. The verdict stands as registered: the counts are 4 established against
+0, and a world where no lineage reaches ten members is not obviously a better world. But it is not evidence that the
+forces arm kills success either; it is evidence that the lineage label and trait distance are coupled, and any future
+arm that widens trait space will hit the same clause for the same reason. Recorded for whoever asks next.
+- **The search's direction, confirmed on unseen seeds and a 4x horizon:** trait space opens and lineage establishment
+  falls. #261's judge counted two trait objectives against one lineage objective and chose trait space; the template,
+  which weighs establishment as a peer, calls that a split. #255's lesson held a second time: the judge's shape picks
+  the direction.
+- **The null band itself** (seed 183, null 2): a default-world replicate went extinct (living 0) and rebooted to 449
+  by 20k — the default world is not immune either, which #259's census (1 of 12 at 40k) already said.
+
 ### #262 — "THE ENGINE OF NOVELTY" IS A FLAT TAX: the trait NFD, read, and its repair. Pre-registered before any run.
 
 **The finding (a reading, not a verdict).** The trait NFD (engine ~26698, LEAP 1; the comment above it calls it "the
@@ -23892,3 +23930,70 @@ mechanism itself. Under 1, a world that has evolved RARE_BIRTH above 0 starts re
 **Written before, so it can be wrong:** I expect B to read inside the band or better on establishment (#258's `nfd0`
 raised the living count on all three seeds), and A to be BETTER on centred entropy. C is the one I cannot guess.
 Horizon: 20,000 ticks. Runs after #261b's batch finishes (the machine holds six).
+
+**#262 RESULTS — nothing ships. The flat tax can go or stay, and repairing it into a real frequency dependence moves
+nothing the template can see.** Seeds 191-193, all counted, 27 runs, 20,000 ticks.
+
+| seed | default band: centred eR / spread / est. / living | no-NFD band: same | nfd0 (its null 0) | **nfdocc** |
+|---|---|---|---|---|
+| 191 | 0.29-1.76 / 0.216-0.579 / .0060-.0124 / 309-380 | 0.38-2.13 / 0.257-0.631 / .0030-.0119 / 103-369 | 0.67 / 0.34 / *.0030* / 103 | 0.34 / 0.27 / *.0023* / 352 |
+| 192 | 0.30-0.63 / 0.233-0.491 / .0042-.0112 / 96-409 | 0.26-0.34 / 0.228-0.303 / .0017-.0052 / 335-369 | 0.34 / 0.27 / .0052 / 335 | 0.41 / 0.25 / .0035 / 306 |
+| 193 | 0.22-1.20 / 0.184-0.450 / .0021-.0074 / 90-363 | 0.14-0.59 / 0.149-0.308 / 0-.0070 / 217-398 | 0.27 / 0.23 / .0070 / 302 | 0.30 / 0.22 / .0027 / 349 |
+
+- **A. nfdocc against the default band -> NEITHER** (worse on establishment on 191 only). **B. nfd0 -> NEITHER**
+  (the same). **C. nfdocc against the no-NFD band -> NEITHER** (better on centred entropy on 192 only, where the
+  no-NFD band happens to be narrow). **Action 4: nothing ships.** By the template's KEEP clause the trait NFD stays
+  as it is — the arms differ from the default run, and none is measurably worse or better.
+- **Both of my written guesses were wrong on A** (I expected the repair BETTER on centred entropy). B read inside
+  the band, as guessed.
+- **What this says, at the rung measured.** The repair does what it was built to do — in a repaired world the term
+  varies (43% at the clamp and 28% paid for rarity, against 98% and 0.6%) — and at NFD_STRENGTH 0.004 per tick that
+  variation is too weak against everything else acting on amp to move spread, centred entropy or establishment
+  beyond what four replays of the same world already span. Frequency dependence on this grid, at this strength, is
+  not a lever. Raising the strength to find one is a different experiment and a fishing one; not done.
+- **The null bands are wide** — centred entropy ratio 0.29-1.76 among four replays of one world on seed 191 — and
+  that width is the real ceiling on what three seeds can resolve. Every "NEITHER" in #261b and #262 is "not
+  resolved at this width", not "shown equal".
+- **Done in every case, as pre-registered:** the comment above the trait NFD now says what it measured (a uniform
+  upkeep under an old name, not zero-sum, the decision and where it was made), and #37's "same proven-safe form"
+  is corrected beside the program NFD. Comment-only: engine output identical to the engine before it (seed 1, 400
+  ticks, every field but config and timing), `substrate-test` 264/0 at TICKS=40. No backticks.
+
+### #263 — THE ~88-LIVING WORLDS HOLD `WORLD_ENERGY_MAX` 0: #255b's starvation, through a second row. Pre-registered.
+
+**The reading.** #259 left three current-engine worlds (seeds 162, 166, 167) pinned at 86-90 living for 10,000-34,000
+ticks each — too tight a band to be an ecology. A draw-free probe (scratchpad, `lawwalk.js`: every 1,000 ticks, every
+law off its declared default; it reproduces #259's living series exactly on all three seeds) finds **one law in common:
+`WORLD_ENERGY_MAX` at 0**, arriving immediately before each collapse — seed 162 between ticks 3,000 and 4,000 (then
+439 -> 370 -> 214 -> 119 -> 86), seed 166 at 34,000 (389 -> 208 -> 110 -> 90), seed 167 at 22,000 (441 -> 337 -> 172
+-> 88). With the pool's ceiling at 0 the pool holds nothing, every tick's regeneration is discarded, and the world is
+#255b's REGEN-0 world by another door: the same ~88.
+**#255c's own arithmetic predicts it.** A proposal moves a row by (U-0.5) x span x 0.35. `WORLD_ENERGY_MAX` spans
+0-800, so a step reaches +/-140, and from the default 80 **about 21% of its proposals land on exactly 0** — the lopsided
+step #255b found on REGEN (39% then). #255c narrowed REGEN's range and left this row as it was. And the probation cannot
+see it: in `harness-lawedge.js`'s first test (seed 1, set at tick 700) the living count over the 1,200 ticks after was
+1.005 of the baseline — the decline starts later.
+
+**The question, asked structurally rather than by waiting for the third door (CLAUDE.md, "find the fifth by
+sweeping"):** which law rows, pushed to an edge, starve a world slowly enough that the verdict keeps them?
+**`harness-lawedge.js`** (new): the default world with the law process OFF, one row set to `lo` or `hi` at tick 3,000
+through its own setter and held there every tick, 6,000 more ticks. It reports what the engine's verdict would see
+(mean living over the 600 ticks before against the 1,200 after, kept at >= 0.7), the late living count, and `reach` —
+the chance that ONE in-world proposal from the default lands exactly on that edge. Draws nothing of its own.
+**Screen:** seed 1, every row except the four that act only on the law process (LAW_VIABLE, LAW_PROBATION, LAW_COST,
+LAW_RATE — inert with it off): 44 rows x 2 edges + the control, 89 runs. (The table has 48 rows at runtime; a first
+count by regex over lo/hi said 46 and missed two whose bounds sit on another line — the run list is read by row name.)
+**TRAP, fixed now:** the verdict keeps it (ratio >= 0.7) AND the late living count (mean of the last 1,000 ticks) is
+under 50% of the control's. A row the verdict reverts is the verdict working, not a trap.
+**Confirmation:** every screen hit re-run on seeds 2 and 3; a trap is CONFIRMED on at least 2 of the 3 seeds.
+**What follows, fixed now:**
+- **Three or fewer confirmed trap rows** -> each one a single proposal can reach (`reach` > 0) is closed #255c's way:
+  its range narrowed, or its floor raised, so that no single proposal from the default lands on the trapping edge —
+  the choice made per row and defended in the row's comment. A trap only a walk of several kept steps can reach is
+  recorded and left, as #255c left REGEN's floor.
+- **More than three** -> the rows are not the problem, the verdict is: no per-row patches, and a change to the verdict
+  (a second look at every kept law at a longer horizon) gets its own pre-registration.
+- **Saved worlds (rule 6, delegated):** a narrowed range clamps a saved value outside it on reload; a world already
+  sitting on a trapping edge that stays in range stays where it is (as at #255c). Said before anything ships.
+**Written before, so it can be wrong:** WORLD_ENERGY_MAX lo and WORLD_ENERGY_REGEN lo are traps; BIRTH_ENERGY_COST hi
+and METABOLIC_ENERGY_DRAW hi are candidates; I expect two to four rows in all.
