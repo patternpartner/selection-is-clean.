@@ -23997,3 +23997,48 @@ under 50% of the control's. A row the verdict reverts is the verdict working, no
   sitting on a trapping edge that stays in range stays where it is (as at #255c). Said before anything ships.
 **Written before, so it can be wrong:** WORLD_ENERGY_MAX lo and WORLD_ENERGY_REGEN lo are traps; BIRTH_ENERGY_COST hi
 and METABOLIC_ENERGY_DRAW hi are candidates; I expect two to four rows in all.
+
+**#263 RESULTS — three trap rows, all the energy economy; the one a single proposal could reach is closed. SHIPPED:
+`WORLD_ENERGY_MAX lo` 0 -> 8.**
+Screen (seed 1, 89 runs) and confirmation (seeds 2-3). Control late living 378-383.
+
+| row -> edge | verdict ratio (kept at >= 0.7), seeds 1/2/3 | late living (share of control) | one proposal from the default lands there |
+|---|---|---|---|
+| `WORLD_ENERGY_MAX` -> 0 | 0.77 / 0.75 / 0.80 KEPT | 89 / 89 / 89 (23-24%) | **21%** |
+| `WORLD_ENERGY_REGEN` -> 0 | 0.80 / 0.77 / 0.82 KEPT | 89 / 90 / 90 (23-24%) | 0 (closed by #255c) |
+| `METABOLIC_ENERGY_DRAW` -> 0.0012 | 0.79 / 0.81 / 0.79 KEPT | 167 / 171 / 170 (44-45%) | 0 |
+
+- **Confirmed traps: 3 of 3 seeds each; three rows -> the per-row branch.** Nearest miss: `BIRTH_ENERGY_COST` -> 8
+  at 51% of control on seed 1 (not a hit, not re-run).
+- **The verdict reverted nothing.** Not one of the 88 edges was a killer fast enough for the 1,200-tick probation to
+  catch: everything that hurt a world hurt it slowly and was kept. #19188's "39 of 39 kept, 0 reverted" was the same
+  fact seen from the other side. The verdict, as built, catches nothing this table can do at its edges.
+- My guess, written before: the two pool rows were traps (right), BIRTH_ENERGY_COST hi and DRAW hi candidates (DRAW
+  right, BIRTH_ENERGY_COST just missed), two to four rows (three).
+- **The fix, per the pre-registered branch:** `WORLD_ENERGY_MAX` is the only trap one proposal could reach. **Its floor
+  goes 0 -> 8 rather than its range narrowing**, because the floor has a meaning a narrowed step does not: a pool whose
+  ceiling is under the price of one birth cannot fund any birth, and 8 is BIRTH_ENERGY_COST's own hi, so the pool can
+  always hold the dearest birth a world can legislate. Measured on seeds 1-3 before choosing: a ceiling of 1 is still
+  the trap (late 89-143), 2 is not, 8 matches the control to the decimal (the default world's pool never holds more).
+  This removes the trapping edge instead of making it harder to reach — a walk cannot get there either.
+  REGEN -> 0 and DRAW -> hi are only reachable by a walk of several kept steps: recorded, left (#255c's precedent).
+- **Checked:** every path a law value enters by clamps to the row (#255c) — a saved world at 0 or 3 reloads at 8, 50
+  and 900 reload at 50 and 800 (the old engine kept 0 at 0). `substrate-test` 264/0 at TICKS=40, 900, the default,
+  FOUND=0. The engine's "starve the pool and find out what nothing does ... verdicts, not bugs" comment is answered in
+  place: measured, the verdict never looked.
+- **What moved in the universe — #259's three pinned worlds re-run on the new engine, same seeds, 40,000 ticks:**
+  seed 162 (pinned at 88 from tick 7,000) now holds 320-470 to the end; seed 166 (pinned at 90 from 37,000) holds
+  330-400. **Seed 167 was rescued and then went extinct:** its pool proposal landed on 8, it held 334-476 for 10,000
+  more ticks, and at tick 32,000 `FIELD_DECAY` moved 0.985 -> 0.999 and the world went from 376 living to 0 inside
+  1,000 ticks, then rebooted and died again repeatedly to 40k. FIELD_DECAY at 0.999 was harmless in the screen (seed 1,
+  set at tick 3,000: late 391), so this is that law meeting that world's state (pool 8, birth cost 0.17, speciation
+  distance 0.26, draw 0.00055) — one world, cause not isolated. Said plainly: one of the three traded a starved
+  equilibrium for an extinction 10,000 ticks later.
+- **Saved worlds (rule 6, delegated):** every saved universe holding WORLD_ENERGY_MAX under 8 — including any stuck at
+  the ~88 equilibrium through this row — reloads at 8 and can recover. None other changes.
+
+**#263b — THE CENSUS AFTER THE FIX, pre-registered before it runs.** #259's census on the new engine: the same seeds
+161-172, 40,000 ticks, `harness-extinct.js`, paired against #259's "current" runs (the engine before #262 and #263;
+#262 was comment-only, output identical). Reported: extinctions, worlds ending at 80-100 living (the starved state),
+median floor. **The fix stands unless the new engine goes extinct on at least 4 more of the 12 seeds than the old
+did** — #259's own restore threshold. Horizon 40,000 ticks.
