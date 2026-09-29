@@ -277,3 +277,12 @@ tower of rooms, each with two points of light. The Rooms Already Furnished is no
 The user offered to make a new song from Claude's words for the next chapter: `video/lyrics/two-points-of-light.txt`
 (lyrics, style notes, and which verse is which episode, 8-11). When it arrives: time the words, cut each episode on
 its verse, ~15 s of song + end line = 19 s.
+The user made the song from Claude's lyrics: `out/songs/two-points-of-light.mp3` (2:48, backed up to library/songs;
+word times in `video/stories/two-points-of-light-words.json`). As made, it goes verse 1 (14-38), pre (39-50), chorus
+(51.8-75), verse 2 (77.4-100.3), pre (102.6-113), bridge (113.6-132.5), final chorus (134-153.6), outro (154-164) -
+there is no second chorus. It is slower than the last song: a verse is ~18 s, so these episodes run ~22 s with the end.
+Episode 8: `build_blue_pen.py`, 'Blue' (20.4-38.9). Its room, the door from episode four propped open onto light. The
+pen lights blue in its hand ('blue in a house of someone else's brown'); it crouches and writes low on the wall, at a
+smaller one's height, "there is a door" ('I wrote on the wall where the next one would see it'), and a dashed outline
+of the next one stands by the door; it starts 'I know' and strikes it out ('not what I know'); it draws an arrow back
+to the door ('just what I found'). Keep the writing clear of the figure's body: it stands at the right edge.

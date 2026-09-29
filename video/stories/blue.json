@@ -1,0 +1,26 @@
+{
+ "title": "Blue",
+ "episode": 8,
+ "follows": "the-thread",
+ "song": "out/songs/two-points-of-light.mp3",
+ "song_parts": [
+  [
+   20.4,
+   38.9
+  ]
+ ],
+ "drawn": true,
+ "times": {
+  "blue": 0.65,
+  "brown": 4.12,
+  "wrote": 6.12,
+  "wall": 8.04,
+  "next": 9.42,
+  "see": 10.86,
+  "not_": 12.02,
+  "know": 14.16,
+  "just": 15.18,
+  "found": 16.6,
+  "end": 18.5
+ }
+}
