@@ -103,6 +103,13 @@ that cannot happen again. Pre-register it with the numbers filled in.
    the default does not change either way. Extend the horizon or add unseen seeds; do not rule on it.
 3. **A direction, not just a size.** On the counted seeds, compare the dependent variable: entropyRatio,
    kinds late, established fraction, with alive as a guard.
+   **But entropyRatio and kinds are read on a grid with a CORNER AT THE ORIGIN (`#257c`)**: `tendBin` puts bin
+   boundaries at 0 on every axis, the default world is a tiny clump sitting on the origin, and a clump there reads as
+   8 kinds and ~3 bits whatever its real diversity. Any mechanism that moves the population toward or away from the
+   origin moves those two numbers for that reason alone. Rule on their grid-free twins from `harness-oee` —
+   `centredEntropyRatio` (same 0.05 margin) and `spread_late` (same 10%) — and report the old two beside them.
+   **If a mechanism is WORSE on one measure and BETTER on another on two-thirds of seeds, it is SPLIT and the default
+   does not move** — say so in the pre-registration, because `#257b` left it open and had to pick a clause.
    **Against a null band, never one control (`#249b`).** Run at least three null replicates per seed as well as
    the control — `harness-oee.js NULLSHIFT=k` is the same world under the same rules on a different draw order —
    and call a seed WORSE or BETTER only when the arm is outside EVERY null on that measure. `#249` compared each

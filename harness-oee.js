@@ -540,6 +540,18 @@ const driver = `
       occupiedKinds:occupied,
       diversityHbits:+Hbits.toFixed(3),
       diversityEvenness:+Hnorm.toFixed(3),
+      // #257c: two GRID-FREE diversity readings. The kinds grid (tendBin: 4 bins over +/-1.2, boundaries at 0 on every
+      // axis) puts a CORNER of 8 bins at the origin, so a tiny clump sitting on the origin reads as 8 kinds and ~3 bits
+      // - and the default world is exactly that (#257c: spread ~0.05-0.15; the same population on a grid shifted half
+      // a bin reads 0.08-0.74 bits). spreadPair: mean pairwise distance on axes 0-2 (fixed-stride pair sample, no
+      // draws). centredHbits: the same 0.6-wide bins, laid so the population MEAN sits at a bin centre.
+      spreadPair:(function(){ const ix=[]; for(let i=0;i<N;i++) if(palive[i])ix.push(i); let sum=0,k=0;
+        for(let a=0;a<ix.length;a+=3) for(let b=a+1;b<ix.length;b+=7){ let d2=0; for(let d=0;d<3&&d<DIMS;d++){ const v=tend[ix[a]*DIMS+d]-tend[ix[b]*DIMS+d]; d2+=v*v; } sum+=Math.sqrt(d2); k++; }
+        return k?+(sum/k).toFixed(4):0; })(),
+      centredHbits:(function(){ const ix=[]; for(let i=0;i<N;i++) if(palive[i])ix.push(i); const n=ix.length; if(!n)return 0;
+        const mu=[0,0,0]; for(const i of ix) for(let d=0;d<3&&d<DIMS;d++)mu[d]+=tend[i*DIMS+d]/n;
+        const c=new Map(); for(const i of ix){ let key=''; for(let d=0;d<3;d++){ const v=d<DIMS?tend[i*DIMS+d]:0; key+=Math.floor((v-mu[d]+0.3)/0.6)+','; } c.set(key,(c.get(key)||0)+1); }
+        let h=0; c.forEach(v=>{ const p=v/n; h-=p*Math.log2(p); }); return +h.toFixed(3); })(),
       clusters:(typeof clusters!=='undefined')?clusters.length:-1,
       castes:casteSet.size,
       // novelty
@@ -803,7 +815,12 @@ const diversity = {
   entropyBits_early: +thirdMean(S, 'diversityHbits', 0, t1).toFixed(2),
   entropyBits_late: +thirdMean(S, 'diversityHbits', t2, n).toFixed(2),
   clusters_early: +thirdMean(S, 'clusters', 0, t1).toFixed(1),
-  clusters_late: +thirdMean(S, 'clusters', t2, n).toFixed(1)
+  clusters_late: +thirdMean(S, 'clusters', t2, n).toFixed(1),
+  // #257c: grid-free (see spreadPair / centredHbits in the per-sample metrics)
+  spread_early: +thirdMean(S, 'spreadPair', 0, t1).toFixed(4),
+  spread_late: +thirdMean(S, 'spreadPair', t2, n).toFixed(4),
+  centredH_early: +thirdMean(S, 'centredHbits', 0, t1).toFixed(3),
+  centredH_late: +thirdMean(S, 'centredHbits', t2, n).toFixed(3)
 };
 // Collapse keyed on ENTROPY (bits), which is resolution-independent — unlike the
 // occupied-kinds count, which is capped by the coarse 64-cell binning and gave false
@@ -812,6 +829,8 @@ const diversity = {
 // kept as a secondary diagnostic.
 diversity.entropyRatio = diversity.entropyBits_early > 0 ? +(diversity.entropyBits_late / diversity.entropyBits_early).toFixed(2) : null;
 diversity.kindsRatio = diversity.kinds_early > 0 ? +(diversity.kinds_late / diversity.kinds_early).toFixed(2) : null;
+diversity.spreadRatio = diversity.spread_early > 0 ? +(diversity.spread_late / diversity.spread_early).toFixed(2) : null;   // #257c
+diversity.centredEntropyRatio = diversity.centredH_early > 0 ? +(diversity.centredH_late / diversity.centredH_early).toFixed(2) : null;   // #257c
 diversity.collapsing = diversity.entropyRatio !== null && diversity.entropyRatio < 0.7;
 
 const niche = {

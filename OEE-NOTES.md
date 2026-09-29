@@ -23353,3 +23353,64 @@ CONTACT_BLEND 0; re-installed every tick). `harness-oee.js ESTABLISH=250`, 20,00
    world's LAWV carries its own value and keeps it — its physics is its own, and it can still evolve. Nothing is
    clamped on reload.
 5. Descriptive, rules on nothing: cumulative kinds, late new kinds per 1k, living count.
+
+**#257b RESULTS — as registered, and NEITHER ACTED ON: the instrument failed a check found after the data.**
+Seeds 121-123, all counted (every knockout changed its run).
+
+| seed | nulls: entropyRatio / kinds late / est. fraction | shrink1 | blend0 |
+|---|---|---|---|
+| 121 | 0.90-1.07 / 8.0-8.6 / .0040-.0079 | 0.48 / 6.6 / .0031 | 0.94 / 9.6 / **0** (living 90) |
+| 122 | 0.85-0.92 / 8.1-10.1 / .0036-.0184 | 0.26 / 5.4 / .0055 | 1.10 / 23.6 / .0015 |
+| 123 | 0.92-0.99 / 8.0-15.2 / .0029-.0195 | 0.62 / 5.9 / .0051 | 0.91 / 8.8 / **0** |
+
+- **shrink1:** knockout WORSE than every null on 3/3 (entropyRatio and kinds) -> by the rule, the shrink is
+  load-bearing -> **KEEP, proven.**
+- **blend0:** knockout BETTER on 2/3 (kinds; entropyRatio on 122) AND WORSE on establishment on 3/3. Both clauses
+  hold; the rule takes the first -> **DELETE (flip CONTACT_BLEND to 0).** The establishment cost is the same pattern
+  #246 recorded beside its verdict: blending lowers kinds and supports establishment.
+
+**Why neither is acted on.** The screen (#257) said removing the shrink DOUBLES the trait territory a world
+reaches; the template said it collapses diversity. Both cannot be the same thing, so the trait distribution was
+measured directly (seeds 121-122, control against shrink1, every 4,000 ticks):
+- nothing crosses the kinds grid's +/-1.2 edge (1.4% at the very end) — not a range artifact;
+- **the default world is a tiny clump SITTING ON THE ORIGIN**: mean |trait| 0.04-0.10, spread (SD) 0.04-0.18 on a
+  +/-1.2 axis. With the shrink off it travels outward (mean |trait| 0.11 -> 0.66).
+- **The kinds grid puts a corner at the origin.** `tendBin` is 4 bins over +/-1.2 with boundaries at -0.6, 0, +0.6,
+  so eight bins meet at 0. A clump on the origin reads as 8 kinds and ~3 bits whatever its real diversity.
+
+| 20k, seed 121 (122) | kinds-grid entropy | same grid shifted half a bin | grid centred on the population | mean pairwise distance |
+|---|---|---|---|---|
+| default (shrink on) | **2.27** (2.85) | 0.74 (0.08) | 0.83 (0.06) | 0.26 (0.14) |
+| shrink off | 1.58 (1.17) | **1.94** (0.85) | **1.28** (0.65) | **0.44** (0.24) |
+
+**Every grid-free reading says the shrink-off world is MORE diverse; only the corner-aligned grid says less.** The
+shrink is a pull toward the origin, so it pulls the population onto the one point where this grid over-counts.
+#257b's shrink verdict measured that. Its blend verdict rests on the same two measures, so it is held as well.
+Neither the rule nor its verdicts are rewritten here: they are recorded, and the question is re-asked as #257c.
+
+**The scope, said plainly: entropyRatio and kinds late have been this file's headline since #11, and both are read
+on this grid.** Any verdict that rested on them alone is suspect wherever the mechanism moved the population toward
+or away from the origin. Not re-run here; listed for whoever returns to them: #246/#248 (CONTACT_BLEND cap), #235
+(INHERIT_SD floor), #219/#220 (inheritance), #249's culls (default-off arms, so the shipped world did not move).
+**The engine's own trait NFD uses the same grid** (`tendBin`, LEAP 13 / #53: rarity by coarse bin, paid in amp and a
+metabolic discount): a clump on the origin looks evenly rare to it. A follow-up, not touched here.
+
+**The instrument fix:** `harness-oee.js` gains two grid-free readings per sample, both draw-free (everything else
+in its output byte-identical, seed 1, 400 ticks): `spreadPair` — mean pairwise trait distance on axes 0-2 over a
+fixed-stride pair sample — and `centredHbits` — entropy over the same 0.6-wide bins laid so the population MEAN sits
+at a bin centre. The verdict block reports `spread_early/late`, `spreadRatio`, `centredH_early/late`,
+`centredEntropyRatio` beside entropyRatio and kinds.
+
+### #257c — THE SHRINK AND THE BLEND, re-asked on a measure that does not reward the origin. Pre-registered.
+
+A new experiment, written up as one (CLAUDE.md step 5): #257b's design exactly — the knockout as the arm, the world
+WITH the mechanism as the null band (control + NULLSHIFT 1-3), `harness-oee.js ESTABLISH=250`, 20,000 ticks — on
+**unseen seeds 131-133**, with the template's two corner-biased measures replaced by their grid-free twins:
+- **centredEntropyRatio** in place of entropyRatio (same margin, 0.05);
+- **spread late** (`spread_late`) in place of kinds late (same margin, 10%);
+- established fraction and the crash guard unchanged (they are not read on the grid).
+Counted = the knockout's run differs from the control's. Knockout BETTER than every null on two-thirds of counted
+seeds = the mechanism is WORSE than its absence -> DELETE (flip the default; saved worlds keep their own values, as
+#257b decided). Knockout WORSE on two-thirds = KEEP, proven. **If both clauses hold on the same mechanism, it is
+SPLIT, and the default does not change** — the ambiguity #257b's wording left open, closed before this run rather
+than after it. Otherwise KEEP. entropyRatio and kinds are reported beside, and rule on nothing.
