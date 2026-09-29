@@ -18,7 +18,10 @@ try{ require(require('path').join(__dirname,'harness-env.js')).applyKnobs(global
 require(require('path').join(__dirname,'harness-env.js'))(globalThis);
 globalThis.__LAWMUT=0;   // the law process off: this row is the only thing that moves
 const fs=require('fs'),path=require('path');
-const E=process.env, AT=+(E.AT||3000), AFTER=+(E.AFTER||6000), EVERY=+(E.EVERY||500);
+const E=process.env;
+// smoke.sh sets only TICKS: then a third of it runs before the row is set and the rest after (windows shrink to fit)
+const AT=+(E.AT||(E.TICKS?Math.max(1,Math.floor(+E.TICKS/3)):3000)), AFTER=+(E.AFTER||(E.TICKS?Math.max(1,+E.TICKS-AT):6000));
+const EVERY=Math.max(1,Math.min(+(E.EVERY||500),AT+AFTER));
 const code=fs.readFileSync(E.INDEX||path.join(__dirname,'engine.html'),'utf8').match(/<script>([\s\S]*)<\/script>/)[1];
 const Module=require('module');const m=new Module('/tmp/lawedge.js');m.filename='/tmp/lawedge.js';m.paths=Module._nodeModulePaths('/tmp');
 m._compile(code+`
@@ -35,7 +38,7 @@ m._compile(code+`
     const n=alive(); hist.push(n);
     if(s>AT){ if(n<floor)floor=n; if(n===0&&extinctAt===null)extinctAt=s-AT; }
     if(s%EVERY===0) series.push(n); }
-  const mean=function(a,b){ let t=0; for(let k=a;k<b;k++)t+=hist[k]; return t/Math.max(1,b-a); };
+  const mean=function(a,b){ a=Math.max(0,a); b=Math.min(hist.length,b); let t=0; for(let k=a;k<b;k++)t+=hist[k]; return t/Math.max(1,b-a); };
   const before=mean(AT-LAW_WINDOW,AT), probation=mean(AT,AT+LAW_PROBATION), ratio=before>0?probation/before:0;
   const at=function(k){ return AT+k<=hist.length?hist[AT+k-1]:null; };
   let reach=null; if(row){ const span=row.hi-row.lo, h=0.175*span, d=Math.abs(to-def);
