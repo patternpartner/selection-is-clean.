@@ -5097,6 +5097,15 @@ let energyAdequacy=1;               // fraction of this tick's metabolic demand 
 // Modest and turbulent, not a stable rainbow — but it is the difference between a frozen
 // optimiser and something that keeps becoming. The capacity was always latent; this is the
 // reason to use it. (Verified headless: stable, no extinction, carrying capacity preserved.)
+// #262 - MEASURED, AND THE PARAGRAPH ABOVE IS NOT WHAT HAPPENS. The term below divides a cell's count by N/64, the
+// mean over ALL 64 cells, and the population fills 4-27 of them - so nearly every occupied cell holds several times
+// that mean and its members sit at the -1 clamp: 96-100% of the living on seeds 1-3 early, 97-98% at 10k-20k
+// (harness-nfdsat.js). The dominant type and its challengers pay the SAME tax; the rarity discount below pays almost
+// nobody. It is a uniform upkeep of NFD_STRENGTH per tick, not a turnover, and it is not zero-sum: the term sums to
+// N - 64 x sum(count^2)/N, zero only for a population spread evenly over all 64 cells.
+// Decided, not assumed: removing it (nfd0) and repairing it to the occupied-cell mean (nfdocc, which does vary: 43%
+// at the clamp, 28% paid) were both indistinguishable from the world as it is on the grid-free template, unseen seeds
+// 191-193, 20k ticks. So it stays as it is - an upkeep term under an old name. RARE_BIRTH reads its discount (pRarity).
 const TBINS=4, TCELLS=TBINS*TBINS*TBINS, NFD_STRENGTH=0.004;
 const tHist=new Int32Array(TCELLS);
 // SWING #37: negative-frequency-dependence relocated from the finite TRAIT space to the unbounded PROGRAM space.
@@ -5105,6 +5114,8 @@ const tHist=new Int32Array(TCELLS);
 // sum over its DISTINCT opcodes (its computational "vocabulary"). Genotype-NFD then taxes common vocabularies and
 // rewards rare ones — being computationally common costs survival, so the population must keep fleeing into
 // unexplored program-space. Same proven-safe form as the trait-NFD above; default rate matches it.
+// #262: NOT the same form - this one divides by the mean over OCCUPIED signatures (N/sigCount.size), the trait NFD
+// above by the mean over all 64 cells, and that one denominator is why the trait term saturates and this one varies.
 const GENO_NFD_STRENGTH=0.004;
 const opHash=new Int32Array(256); for(let _k=0;_k<256;_k++) opHash[_k]=(Math.imul(_k+1,2654435761)|0);
 const _paraSeen=new Int32Array(256); let _paraGen=0;

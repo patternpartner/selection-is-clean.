@@ -23930,3 +23930,31 @@ mechanism itself. Under 1, a world that has evolved RARE_BIRTH above 0 starts re
 **Written before, so it can be wrong:** I expect B to read inside the band or better on establishment (#258's `nfd0`
 raised the living count on all three seeds), and A to be BETTER on centred entropy. C is the one I cannot guess.
 Horizon: 20,000 ticks. Runs after #261b's batch finishes (the machine holds six).
+
+**#262 RESULTS — nothing ships. The flat tax can go or stay, and repairing it into a real frequency dependence moves
+nothing the template can see.** Seeds 191-193, all counted, 27 runs, 20,000 ticks.
+
+| seed | default band: centred eR / spread / est. / living | no-NFD band: same | nfd0 (its null 0) | **nfdocc** |
+|---|---|---|---|---|
+| 191 | 0.29-1.76 / 0.216-0.579 / .0060-.0124 / 309-380 | 0.38-2.13 / 0.257-0.631 / .0030-.0119 / 103-369 | 0.67 / 0.34 / *.0030* / 103 | 0.34 / 0.27 / *.0023* / 352 |
+| 192 | 0.30-0.63 / 0.233-0.491 / .0042-.0112 / 96-409 | 0.26-0.34 / 0.228-0.303 / .0017-.0052 / 335-369 | 0.34 / 0.27 / .0052 / 335 | 0.41 / 0.25 / .0035 / 306 |
+| 193 | 0.22-1.20 / 0.184-0.450 / .0021-.0074 / 90-363 | 0.14-0.59 / 0.149-0.308 / 0-.0070 / 217-398 | 0.27 / 0.23 / .0070 / 302 | 0.30 / 0.22 / .0027 / 349 |
+
+- **A. nfdocc against the default band -> NEITHER** (worse on establishment on 191 only). **B. nfd0 -> NEITHER**
+  (the same). **C. nfdocc against the no-NFD band -> NEITHER** (better on centred entropy on 192 only, where the
+  no-NFD band happens to be narrow). **Action 4: nothing ships.** By the template's KEEP clause the trait NFD stays
+  as it is — the arms differ from the default run, and none is measurably worse or better.
+- **Both of my written guesses were wrong on A** (I expected the repair BETTER on centred entropy). B read inside
+  the band, as guessed.
+- **What this says, at the rung measured.** The repair does what it was built to do — in a repaired world the term
+  varies (43% at the clamp and 28% paid for rarity, against 98% and 0.6%) — and at NFD_STRENGTH 0.004 per tick that
+  variation is too weak against everything else acting on amp to move spread, centred entropy or establishment
+  beyond what four replays of the same world already span. Frequency dependence on this grid, at this strength, is
+  not a lever. Raising the strength to find one is a different experiment and a fishing one; not done.
+- **The null bands are wide** — centred entropy ratio 0.29-1.76 among four replays of one world on seed 191 — and
+  that width is the real ceiling on what three seeds can resolve. Every "NEITHER" in #261b and #262 is "not
+  resolved at this width", not "shown equal".
+- **Done in every case, as pre-registered:** the comment above the trait NFD now says what it measured (a uniform
+  upkeep under an old name, not zero-sum, the decision and where it was made), and #37's "same proven-safe form"
+  is corrected beside the program NFD. Comment-only: engine output identical to the engine before it (seed 1, 400
+  ticks, every field but config and timing), `substrate-test` 264/0 at TICKS=40. No backticks.
