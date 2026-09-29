@@ -24053,5 +24053,38 @@ ticks, paired with #259's "current" runs.
 - **Still pinned, and not by this row:** seed 163 ends at 188 with a floor of 188, seed 165 at 147 with a floor of 145,
   identical in both engines. Floor equal to the end is a pinned state, and the metabolic-draw trap above sits at
   167-171. Not read yet; the next thing to read is those two worlds' law vectors.
+  **Read, and the reading above was wrong: they are not pinned, they are SLIDING** (163: 447 -> 188, 165: 450 -> 147
+  over 40,000 ticks; the floor equals the end because the decline is still going). No single trap row. Each world took
+  a run of small kept steps that each cost a little — in both, BIRTH_ENERGY_COST walked 1 -> 2.2 -> 3.1 and 1 -> 2.3 ->
+  3.2; in 163 REGEN 0.2 -> 0.15, in 165 the metabolic draw up. The verdict keeps any step that costs under 30% of the
+  population, so the world ratchets down one kept step at a time. The same weakness #263 found (the verdict reverses
+  nothing at the edges) seen as a slope instead of a cliff. **This is the case for revisiting the verdict itself** —
+  2 of 12 worlds sliding, 3 of 12 formerly pinned. Not acted on here.
 - `smoke.sh` after #263 on a quiet machine: 61 ok, 0 failing (the two new rigs, `harness-nfdsat.js` and
   `harness-lawedge.js`, included; `collective-test` green inside it).
+
+### #264 — THE ARMS RACE AT THE FIELD'S SCALE (#260 follow-up, asked by the user). A measurement.
+
+The user, on #260: "We don't think there's anything transferable? My mind is stuck on it." #260's rule asked for
+novelty FASTER than a neutral tag and did not get it; but it also found that an enemy keeps a costly locus turning over
+(0.41 persistent new locks per 1k, against exactly 0 without one) and that at one universe's scale the enemy dies out.
+The field is many universes exchanging migrants — the patch structure the microcosm needed. So: does the race survive
+at the FIELD's numbers? `microcosm-scale.js` (new): #260's 10 coexisting regimes x unseen seeds 21-23, phage on,
+20,000 steps. **Rule, fixed before: a scale SURVIVES if the culture and the phage are both alive into the late window
+in at least 20 of 30 runs.**
+
+| scale | race alive into the late window (of 30) | phage lost | culture crashed | new lock / new tag persisting per 1k |
+|---|---|---|---|---|
+| one universe: 300 in 4 patches | 10 | 20 | 0 | 0.11 / 0.02 |
+| **the field: 7,200 in 18 patches, migration 0.5%/step** | **22 — SURVIVES** | 8 | 0 | 0.56 / 0.60 |
+| the field at one-tenth the migration | 11 | 9 | **10** | 0.51 / 0.76 |
+| the culture: 20,000 in 16 patches | 28 — SURVIVES | 1 | 1 | 0.51 / 0.93 |
+
+- **The field's numbers are enough — if the pockets trade enough.** At a tenth of the movement a third of the cultures
+  crash outright: a pocket the enemy empties is not recolonised in time.
+- Still no scale where new locks beat new neutral tags (#260's bar). What survives is turnover, not selection beyond
+  the family tree.
+- **What the real field does** (index.html, #153): not a ring — a hub. Every second one emigrant leaves each universe for
+  the collective; every fourth second one goes back out to a single universe, in turn. Whether that is "enough" depends
+  on converting ticks to bacterial generations, which this rig cannot do honestly. The design point that matters more:
+  an enemy living across the field need not ride the migrant relay at all — its own dispersal is a parameter.
