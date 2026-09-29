@@ -103,6 +103,13 @@ that cannot happen again. Pre-register it with the numbers filled in.
    the default does not change either way. Extend the horizon or add unseen seeds; do not rule on it.
 3. **A direction, not just a size.** On the counted seeds, compare the dependent variable: entropyRatio,
    kinds late, established fraction, with alive as a guard.
+   **But entropyRatio and kinds are read on a grid with a CORNER AT THE ORIGIN (`#257c`)**: `tendBin` puts bin
+   boundaries at 0 on every axis, the default world is a tiny clump sitting on the origin, and a clump there reads as
+   8 kinds and ~3 bits whatever its real diversity. Any mechanism that moves the population toward or away from the
+   origin moves those two numbers for that reason alone. Rule on their grid-free twins from `harness-oee` —
+   `centredEntropyRatio` (same 0.05 margin) and `spread_late` (same 10%) — and report the old two beside them.
+   **If a mechanism is WORSE on one measure and BETTER on another on two-thirds of seeds, it is SPLIT and the default
+   does not move** — say so in the pre-registration, because `#257b` left it open and had to pick a clause.
    **Against a null band, never one control (`#249b`).** Run at least three null replicates per seed as well as
    the control — `harness-oee.js NULLSHIFT=k` is the same world under the same rules on a different draw order —
    and call a seed WORSE or BETTER only when the arm is outside EVERY null on that measure. `#249` compared each
@@ -182,7 +189,7 @@ git checkout main && git merge --ff-only <branch> && git push -u origin main
   threshold to make it green** — that is the move this file exists to prevent, and the low outbound
   count is the actual fragility.
   **Updated after a second failure and an engine A/B.** It is now 3 red INSIDE `smoke.sh`
-  (`←15 →4`, `←18 →5`, and `←11 →4` at `#249c`; green inside it at `#251`) and 9 of 9 green standalone, which is too clean a split to call random. But
+  (`←15 →4`, `←18 →5`, `←11 →4` at `#249c`, and `←9 →4` at `#258b`; green inside it at `#251`, `#255c` and `#257c`) and 11 of 11 green standalone (`#258b`: `←19 →4`, `←23 →1` straight after the red), which is too clean a split to call random. But
   the healthy RATIO is not stable across days: standalone outbound was `1,1,1,2` one day and `2,4,3`
   the next, so "high teens or above" was a one-day reading. **The denominator, not the ratio, is the
   quantity to look at** — inbound sits at 17-28 throughout; outbound is a single-digit count and the
@@ -253,6 +260,10 @@ git checkout main && git merge --ff-only <branch> && git push -u origin main
     `govSelfOnly` reported a defect that was not there and missed the one that was.
   - `#217c` — `chemistryTable` is mutated through `recipe` and `mono`, aliases taken out of it, on
     lines that never contain the word. Grepping the name said "never mutated". It is mutated hard.
+  - `#258b` — `__SPEC.on` and `__ALLO.on` read `globalThis.__SPECIATE` / `__SPATIAL_TEND`, and their definitions
+    default to OFF. Read, I called both off and credited a result to a branch that never ran. The LIVE table sets both
+    globals to 1 before either is computed. **The reader of a global is not where its value is set** — for any switch,
+    check the LIVE table. Caught only because the deletion was checked byte-identical against the measured arm.
   **When the question is "is this ever written / cleared / read", grep the name to find the
   candidates and then read the enclosing function.** Better: ask the structural question instead —
   which blocks do X and not Y — because that returns the sites directly and does not depend on what

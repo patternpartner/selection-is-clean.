@@ -26,6 +26,7 @@
 //       JSONL=1  (stream one metrics object per sample to stdout)
 //       ESTABLISH=<every>  (#249: harness-establish's census on this same trajectory; ESTWARM default 2000, ESTN 10)
 //       NULLSHIFT=<k>  (#249b: burn k draws before the first tick - a null replicate of the same world)
+//       FORCE=a,b  (#257: trait-homogeniser knockouts, re-installed every tick - see trait-force.js)
 const fs = require('fs');
 // #217b: KNOBS honoured. #216x fixed four rigs and I called the class swept; a review found the
 // real number is 39 node-side rigs that boot engine.html in-process and silently drop every
@@ -136,8 +137,7 @@ if (process.env.NICHE_LOCAL !== undefined) globalThis.__NICHE_LOCAL = parseInt(p
 //   TEND_MUT=<x>       scale diet-axis exploration (default 1) — tests whether retention is exploration-limited.
 if (process.env.TEND_MUT !== undefined) globalThis.__TEND_MUT = parseFloat(process.env.TEND_MUT);
 // retention diagnostic + fix:
-//   GLOBALTEND=<x>     scale the global diet-axis mean-reversion sink (0 = ablate; default 1).
-if (process.env.GLOBALTEND !== undefined) globalThis.__GLOBALTEND = parseFloat(process.env.GLOBALTEND);
+//   (GLOBALTEND, SPATIAL_TEND, ALLO_SHUF, ALLO_K: removed with the pulls they scaled - #258b deleted them.)
 // swing #16 dimensionality ratchet:
 //   DIMS_GROW=<interval>  open a new trait axis every <interval> ticks (0 = off). Tests whether the
 //                         board can GROW without catastrophe. DIMS_CAP caps it (default 10).
@@ -170,10 +170,6 @@ if (process.env.SPEC_DECAY !== undefined) globalThis.__SPEC_DECAY = parseInt(pro
 //   COLO_PIONEER_K / COLO_ALLEE_K / COLO_PIONEER_OCC  tune the C lever (defaults 2.0 / 1.0 / NICHE_CELL_FLOOR).
 for (const k of ['COLO_SURV','COLO_PIONEER','COLO_PIONEER_OCC']) if (process.env[k] !== undefined) globalThis['__' + k] = parseInt(process.env[k], 10);
 for (const k of ['COLO_PIONEER_K','COLO_ALLEE_K']) if (process.env[k] !== undefined) globalThis['__' + k] = parseFloat(process.env[k]);
-// swing #21: spatially-local homogeniser (allopatry). SPATIAL_TEND=1 pulls each particle toward nearby
-// same-lineage neighbours' mean tend; ALLO_SHUF=1 is the non-spatial strength-matched control; ALLO_K caps
-// neighbours folded in. Needs SPECIATE=1. Headline = bifurcLin (lineage spatially splits into 2 centroids).
-for (const k of ['SPATIAL_TEND','ALLO_SHUF','ALLO_K']) if (process.env[k] !== undefined) globalThis['__' + k] = parseInt(process.env[k], 10);
 // swing #22: permissive mint gate. MINT_GATE = 'cell' (stock) | 'cluster' (permissive deme gate, drop
 // niche-cell entry req) | 'relax' (size+divT only). Pair with COLO_SURV=1 for founder grace. radiationCells
 // stays the strict success bar; cascadeCount = same-cell mints that LATER reach a distinct home cell.
@@ -539,6 +535,18 @@ const driver = `
       occupiedKinds:occupied,
       diversityHbits:+Hbits.toFixed(3),
       diversityEvenness:+Hnorm.toFixed(3),
+      // #257c: two GRID-FREE diversity readings. The kinds grid (tendBin: 4 bins over +/-1.2, boundaries at 0 on every
+      // axis) puts a CORNER of 8 bins at the origin, so a tiny clump sitting on the origin reads as 8 kinds and ~3 bits
+      // - and the default world is exactly that (#257c: spread ~0.05-0.15; the same population on a grid shifted half
+      // a bin reads 0.08-0.74 bits). spreadPair: mean pairwise distance on axes 0-2 (fixed-stride pair sample, no
+      // draws). centredHbits: the same 0.6-wide bins, laid so the population MEAN sits at a bin centre.
+      spreadPair:(function(){ const ix=[]; for(let i=0;i<N;i++) if(palive[i])ix.push(i); let sum=0,k=0;
+        for(let a=0;a<ix.length;a+=3) for(let b=a+1;b<ix.length;b+=7){ let d2=0; for(let d=0;d<3&&d<DIMS;d++){ const v=tend[ix[a]*DIMS+d]-tend[ix[b]*DIMS+d]; d2+=v*v; } sum+=Math.sqrt(d2); k++; }
+        return k?+(sum/k).toFixed(4):0; })(),
+      centredHbits:(function(){ const ix=[]; for(let i=0;i<N;i++) if(palive[i])ix.push(i); const n=ix.length; if(!n)return 0;
+        const mu=[0,0,0]; for(const i of ix) for(let d=0;d<3&&d<DIMS;d++)mu[d]+=tend[i*DIMS+d]/n;
+        const c=new Map(); for(const i of ix){ let key=''; for(let d=0;d<3;d++){ const v=d<DIMS?tend[i*DIMS+d]:0; key+=Math.floor((v-mu[d]+0.3)/0.6)+','; } c.set(key,(c.get(key)||0)+1); }
+        let h=0; c.forEach(v=>{ const p=v/n; h-=p*Math.log2(p); }); return +h.toFixed(3); })(),
       clusters:(typeof clusters!=='undefined')?clusters.length:-1,
       castes:casteSet.size,
       // novelty
@@ -652,6 +660,7 @@ const driver = `
     for(let s=0;s<ticks;s++){
       globalThis.__detMs+=5;
       globalThis.__applyPin();   // hold the knockout dead against re-mutation, every tick
+      globalThis.__applyForce(globalThis.__FORCE);   // #257: trait-homogeniser knockouts, every tick
       try{loop();}catch(e){globalThis.__driverErr=(globalThis.__driverErr||0)+1;}
       if(es&&(s+1)%EST===0) es.census();
       if((s+1)%every===0){ m=metrics(); globalThis.__SERIES.push(m); if(STREAM)process.stdout.write(JSON.stringify(m)+String.fromCharCode(10)); }
@@ -679,7 +688,8 @@ const driver = `
 //
 // Default OFF — with AMP_CAP unset the code string is byte-identical to engine.html, so every
 // pre-existing result in the record remains reproducible from this harness unchanged.
-let code2 = code;
+const TF = require(__dirname + '/trait-force.js'), FORCE = TF.parse(process.env.FORCE);   // #257
+let code2 = TF.patch(code, FORCE);
 if (process.env.AMP_CAP !== undefined) {
   const capV = parseFloat(process.env.AMP_CAP);
   if (!Number.isFinite(capV) || capV <= 0) { console.log(JSON.stringify({error:'AMP_CAP must be a positive finite number'})); process.exit(1); }
@@ -702,7 +712,8 @@ const t0 = Date.now();
 const EST_EVERY = parseInt(process.env.ESTABLISH || '0', 10) || 0;
 globalThis.__EST_EVERY = EST_EVERY;
 const EC = require(__dirname + '/establish-census.js');
-try { m._compile(code2 + driver + (EST_EVERY ? EC.DRIVER : ''), m.filename); }
+globalThis.__FORCE = FORCE;
+try { m._compile(code2 + driver + TF.DRIVER + (EST_EVERY ? EC.DRIVER : ''), m.filename); }
 catch (e) { console.log('COMPILE/BOOT THREW:', e.message); process.exit(1); }
 const tBoot = Date.now();
 
@@ -799,7 +810,12 @@ const diversity = {
   entropyBits_early: +thirdMean(S, 'diversityHbits', 0, t1).toFixed(2),
   entropyBits_late: +thirdMean(S, 'diversityHbits', t2, n).toFixed(2),
   clusters_early: +thirdMean(S, 'clusters', 0, t1).toFixed(1),
-  clusters_late: +thirdMean(S, 'clusters', t2, n).toFixed(1)
+  clusters_late: +thirdMean(S, 'clusters', t2, n).toFixed(1),
+  // #257c: grid-free (see spreadPair / centredHbits in the per-sample metrics)
+  spread_early: +thirdMean(S, 'spreadPair', 0, t1).toFixed(4),
+  spread_late: +thirdMean(S, 'spreadPair', t2, n).toFixed(4),
+  centredH_early: +thirdMean(S, 'centredHbits', 0, t1).toFixed(3),
+  centredH_late: +thirdMean(S, 'centredHbits', t2, n).toFixed(3)
 };
 // Collapse keyed on ENTROPY (bits), which is resolution-independent — unlike the
 // occupied-kinds count, which is capped by the coarse 64-cell binning and gave false
@@ -808,6 +824,8 @@ const diversity = {
 // kept as a secondary diagnostic.
 diversity.entropyRatio = diversity.entropyBits_early > 0 ? +(diversity.entropyBits_late / diversity.entropyBits_early).toFixed(2) : null;
 diversity.kindsRatio = diversity.kinds_early > 0 ? +(diversity.kinds_late / diversity.kinds_early).toFixed(2) : null;
+diversity.spreadRatio = diversity.spread_early > 0 ? +(diversity.spread_late / diversity.spread_early).toFixed(2) : null;   // #257c
+diversity.centredEntropyRatio = diversity.centredH_early > 0 ? +(diversity.centredH_late / diversity.centredH_early).toFixed(2) : null;   // #257c
 diversity.collapsing = diversity.entropyRatio !== null && diversity.entropyRatio < 0.7;
 
 const niche = {
@@ -914,7 +932,7 @@ const verdict = {
 };
 
 console.log(JSON.stringify({
-  config: { TICKS, SAMPLE, SEED: process.env.SEED || null, INDEX: process.env.INDEX || 'engine.html', NULLSHIFT },
+  config: { TICKS, SAMPLE, SEED: process.env.SEED || null, INDEX: process.env.INDEX || 'engine.html', NULLSHIFT, FORCE },
   timing_ms: { boot: tBoot - t0, run: tDone - tBoot, perKtick: +(((tDone - tBoot) / TICKS) * 1000).toFixed(1) },
   loopErrors, lastErr, driverErr: globalThis.__driverErr || 0,
   switchboard: (globalThis.__swbState && globalThis.__swbState().on) ? globalThis.__swbState() : undefined,   // #253

@@ -2352,7 +2352,7 @@ let __lawLog=[];             // [tick, name, from, to, verdict] - 1 kept, 0 reve
 // else, when the log has nothing left, every law moves a quarter of the way back to its declared value
 // (the fatal change may predate the 40-entry log). One step per death: repeated deaths walk the physics
 // back until the world can live. EXTINCT_UNDO=0 disables it.
-const LAW_SUPERSEDED={LAW_RATE:0.0006};   // #227b: name -> a declared default this file has since changed
+const LAW_SUPERSEDED={LAW_RATE:0.0006,BIRTH_SHRINK:0.9};   // #227b: name -> a declared default this file has since changed (#257c: BIRTH_SHRINK)
 let __lawDefaults=null;
 // === #232 - THE CAPACITY CEILING #222 MEANT TO SET ============================================
 // #222 floored METABOLIC_ENERGY_DRAW at 0.00025 because "the verdict only asks did the population
@@ -4541,7 +4541,13 @@ function provBirthOn(){ return (typeof globalThis==='undefined')||((globalThis._
 // #222b: RATION is also a LAW now (BIRTH_LOTTERY > 0.5 turns it on), starting off. #219 measured a fair
 // lottery sweeping every seed -- in a world with no variation. With #220f and #221 in, that verdict may not
 // hold, and it is the field's to find out rather than mine. The RATION knob still forces it on for rigs.
-let BIRTH_LOTTERY=0, CONTACT_BLEND=0.03, BIRTH_SHRINK=0.9;   // #226b: tried ON with OUTLIER_BIRTH 2 -- two seeds matched the queue, one fell short; left off
+// #257c: BIRTH_SHRINK's default is 1.0 (was 0.9) - a birth no longer drags both parents 10% toward the origin. That pull
+// held the whole population in a clump ON the origin (mean |trait| 0.04-0.10 on a +/-1.2 axis), and the kinds grid
+// puts a corner of 8 bins exactly there, so entropyRatio and kinds read the clump as diversity and #257b called the
+// shrink load-bearing. On grid-free measures (seeds 131-133, against the default world and three null replicates)
+// removing it is BETTER on 3 of 3 seeds: centred entropy 0.75 / 1.09 vs at most 0.46 / 0.39, trait spread 0.36 / 0.45
+// vs at most 0.22 / 0.17, establishment on the third. It stays a law (0.8-1.0), so a universe can evolve it back.
+let BIRTH_LOTTERY=0, CONTACT_BLEND=0.03, BIRTH_SHRINK=1.0;   // #226b: tried ON with OUTLIER_BIRTH 2 -- two seeds matched the queue, one fell short; left off
 function rationOn(){ return (typeof globalThis!=='undefined')&&(((globalThis.__RATION??0)|0)!==0||BIRTH_LOTTERY>0.5); }
 let __rationP=1, __rationAtt=0;   // RATION -- see loop(): per-attempt pass probability, and attempts counted this tick
 // SUPERSEDED by #220f below -- kept as the record of a verdict taken at the wrong parameter (SD 0.04).
@@ -4635,13 +4641,11 @@ const HYBRID_RATE=0.035;            // chance a cross-lineage pairing exchanges 
 // strong enough to stand against real selection, which is a thing this codebase has never had to do.
 // ═══════════════════════════════════════════════════════════════════════════════════════
 
-// LEAP 11 — KILL THE HOMOGENISER. Every tick, every particle is pulled toward the population mean in
-// trait space (globalTend). Under the frozen economy that was harmless decoration; under real selection
-// it is a continuous force FOR monoculture, running against every diversity mechanism in the file. It is
-// inverted here: the pull becomes a gentle PUSH away from the mean, so the population's own centre of
-// mass repels rather than attracts. Character displacement as a standing force instead of a swing.
-const HOMOGEN_SIGN=-1.0;            // was implicitly +1 (toward the mean); now away from it
-const HOMOGEN_RATE=0.00006;         // 3x the old magnitude, opposite direction
+// LEAP 11 (#53) made the old pull toward the population mean a PUSH away from it (HOMOGEN_SIGN -1, HOMOGEN_RATE
+// 0.00006) - character displacement as physics. It sat behind swing #21's lineage-local pull in loop(), and the LIVE
+// table turns #21 on, so in the shipped world it NEVER RAN. #258b deleted it with the pull block it sat in (see loop());
+// #258's write-up first credited #258's result to this repulsion - the LIVE table had not been read. globalTend is
+// still computed: spawns read it.
 
 // LEAP 12 — COMPETITION BY SIMILARITY. densityCost charges for the GLOBAL population size, so a particle
 // pays the same whether its neighbours are its twins or nothing like it. That is not how coexistence
@@ -26151,14 +26155,13 @@ function nicheCellOf(i){ const base=i*DIMS;
 // stack ON by default and observe it live. The harness still overrides any flag it sets explicitly (we only
 // fill UNDEFINED), so experiments are unaffected and any flag can still be forced off with X=0. TREATMENTS
 // only: scientific controls (__ALLO_SHUF), the refuted net-harmful opt-in (__SPEC_ASSORT, #18), and
-// mutually-exclusive variants (__MINT_GATE cluster/relax; __NICHE_LOCALTEND vs __SPATIAL_TEND) are left off
+// mutually-exclusive variants (__MINT_GATE cluster/relax; __NICHE_LOCALTEND vs __SPATIAL_TEND - both since deleted) are left off
 // for a separate, explicit choice. Revert = delete this block (every flag falls back to default-off).
 if(typeof globalThis!=='undefined'){
   const LIVE={ __COSMOS:1,                                          // COSMOLOGICAL SCAFFOLDING #59-#67 — clusters that can AFFORD the price found daughter WORLDS carrying perturbed copies of their own lineage's physics constants; each runs its own coarse ecology on its own clock, unscored, and most die. Matter crosses the boundary down a differential in BOTH directions, exactly conserved (audited to double-precision epsilon), so a thriving child exports to its launch site and a starving one drains it — parasitism is expressible without being built. A child that has exported more than it was founded with proposes its constants into the shadowScenarioBank, where the existing vetting machinery may evict them. No coherence-or-mass gate anywhere on the channel (deleted #60); eligibility is affordability (#61). Force off with COSMOS=0
                __NICHE_FRONTIER:1, __NICHE_NDIM:1, __NICHE_LOCAL:1, // niche economy: cross-feed frontier + N-dim diet cells + per-cell crowding (#13/#14)
                __SPECIATE:1,                                        // cladogenesis #17 — brings gate+mint on; assort (#18) stays off
                __COLO_SURV:1, __COLO_PIONEER:1,                     // colonization & survival #20
-               __SPATIAL_TEND:1,                                    // allopatric (spatially-local) homogeniser #21
                __MINT_GATE:'cluster',                               // permissive deme gate #22 — mint split-first on a distinct CLUSTER, not a distinct niche-cell, so the strict cell-distinctness entry condition (destination-as-entry: foreclosed split-first speciation, the monoculture-lock) no longer erases incipient lineages at the cradle; founder grace (__COLO_SURV) above lets sub-bin founders survive to character-displace
                __DRAW_VM:1,                                        // render VM #23 — the genome composes its own particle FORM from a curated, bounded primitive alphabet (seed = the hand-authored renderer), not just its palette
                __GROUP_ROLES:1,                                     // major transition #33 — group-level selection for DIVISION OF LABOUR: a colony spanning many distinct niche-cells (a functionally-differentiated proto-organism) out-reproduces a monoculture blob, via a role-diversity bonus on the existing cluster bud chance. Couples the validated niche economy into the second level of selection; injects role-diverse founder groups into the population
@@ -26299,26 +26302,9 @@ const __COLO=(function(){ const G=(typeof globalThis!=='undefined')?globalThis:{
     alleeK:(G.__COLO_ALLEE_K!==undefined?+G.__COLO_ALLEE_K:1.0),        // per-capita income uplift for sub-minsize lineage members
     pioneerOcc:(G.__COLO_PIONEER_OCC!==undefined?(G.__COLO_PIONEER_OCC|0):NICHE_CELL_FLOOR) }; })(); // occ at/below which a cell still pays pioneer income
 
-// ═══ SWING #21: SPATIALLY-LOCAL homogeniser — allopatry, not a strength knob ═══════════════════════════
-// #20 refuted the STRENGTH axis: turning the divergent pull UP (pioneer income) gave capture/collapse, not
-// radiation, and lineages spread into empty cells as one SMEAR (one centroid, many cells). The #15→#17 sink
-// is per-lineage but spatially GLOBAL — globalTend/linCentroid is the mean over ALL the lineage's members
-// regardless of where they are — so a sub-cohort physically separated on the far side of the world is still
-// pulled across all space back to the parent mean. The pull is jailer (re-absorbs the pioneer) AND
-// foundation (lets a cohort cohere into a home); a strength knob can't separate them because it's one force.
-// Localising it in SPACE can: pull each particle toward the mean tend of NEARBY same-lineage neighbours only.
-// A spatially-separated sub-group then grows its OWN local centroid (allopatry); the lineage develops two
-// centroids; once they diverge in trait + sit in distinct cells, #17's mint splits them. Long-range jailer
-// cut, local foundation kept. CONTROL (__ALLO_SHUF=1): identical machinery but neighbours drawn NON-spatially
-// (random lineage-mates), matched count → matched effective strength/noise; isolates allopatry from a strength
-// cut. If only the spatial version lifts bifurcation+radiationCells, allopatry is the mechanism; if the
-// shuffle helps too, it was just a weaker pull (and will smear like #20's C). Requires __SPECIATE (lineage ids).
-const __ALLO=(function(){ const G=(typeof globalThis!=='undefined')?globalThis:{};
-  return { on:(G.__SPATIAL_TEND|0)===1,
-    shuf:(G.__ALLO_SHUF|0)===1,                                         // control: non-spatial neighbour draw
-    k:(G.__ALLO_K!==undefined?(G.__ALLO_K|0):16) }; })();              // max same-lineage neighbours folded into the local centroid
-const _alloScratch=new Float32Array(DIMS_MAX);                          // per-particle local-centroid accumulator
-const _alloMembers=new Map();                                          // pLin → [idx,...] (rebuilt each tick, only under __ALLO.shuf)
+// SWING #21 (the spatially-local same-lineage homogeniser, __ALLO / __SPATIAL_TEND / __ALLO_SHUF / __ALLO_K) was
+// DELETED by #258b: measured WORSE than its absence on unseen seeds 141-143 (see the note in loop()). Its reasoning -
+// a long-range jailer cut, a local foundation kept - is in git history before #258b and in OEE-NOTES #21.
 
 const linCentroid=new Map();  // pLin → Float32Array(DIMS): trait centroid (rebuilt each cadence)
 const linSize=new Map();      // pLin → living count (rebuilt each cadence)
@@ -26840,43 +26826,16 @@ function loop(){
     if(__SPEC.on){ specComputeAgg(); specMint(); // swing #17: per-lineage aggregates, then cladogenesis mint
       }
   }
-  // Diet-axis homogeniser. The GLOBAL mean-reversion (×0.00002/tick) is the dominant diversity sink:
-  // against ±0.0005/tick mutation it pins the trait distribution at std≈0.08 — inside one diet bin —
-  // so no downstream niche capacity can be colonised. __GLOBALTEND scales it (0 = ablate, diagnostic).
+  // #258b: the lineage-centroid pull block is DELETED. In the LIVE world (__SPECIATE and __SPATIAL_TEND both set by
+  // the LIVE table) its first branch ran every tick: swing #21's pull of each particle toward the mean trait of its
+  // nearby SAME-LINEAGE neighbours (0.00002/tick, up to 16 of them). Knocked out (the old GLOBALTEND knob at 0, which
+  // also skipped the two branches behind it), unseen seeds 141-143 beat the default world and three null replicates
+  // on 3 of 3: trait spread 0.97 / 0.74 / 0.66 vs at most 0.43 / 0.41 / 0.34, establishment ~10x on two, and on screen
+  // seeds 1-3 trait novelty moved from SLOWER than the family-tree null to CHANCE. THE COST: populations go boom-and-
+  // bust (lows of 23-34 living, recoveries to 200-400, where the default held 290-450). The two branches behind it -
+  // the whole lineage's centroid (__SPEC.gate) and LEAP 11's global-mean repulsion - never ran while the first one did,
+  // and go with it so the engine is exactly the arm that was measured (checked byte-identical, harness-sweep seed 1).
   // (__NICHE_LOCALTEND, the per-niche-cell variant of this pull, was deleted by #249.)
-  { const _gt=(typeof globalThis!=='undefined'&&globalThis.__GLOBALTEND!==undefined)?+globalThis.__GLOBALTEND:1;
-    // #249: the __NICHE_LOCALTEND branch (per-niche-cell centroid) is deleted - opened, NEITHER better nor worse on
-    // unseen seeds 61-63, so unused code by the pre-registered rule.
-    if(__SPEC.on && __ALLO.on && _gt!==0){
-      // swing #21: spatially-LOCAL same-lineage centroid. Pull each particle toward the mean tend of nearby
-      // same-lineage neighbours only (grid is last tick's — positions barely move, fine). A loner pioneer
-      // with no same-lineage neighbours gets NO pull (cnt=0) → it is not jailed; a separated cohort forms its
-      // own local centroid → the lineage can grow two centroids and #17 can split them.
-      if(__ALLO.shuf){ _alloMembers.clear();                            // control: build per-lineage member lists for a NON-spatial draw
-        for(let i=0;i<N;i++){ if(!palive[i])continue; const l=pLin[i]; let a=_alloMembers.get(l); if(!a){a=[];_alloMembers.set(l,a);} a.push(i); } }
-      for(let i=0;i<N;i++){ if(!palive[i])continue; const l=pLin[i];
-        let cnt=0; for(let d=0;d<DIMS;d++)_alloScratch[d]=0;
-        if(__ALLO.shuf){ const lst=_alloMembers.get(l); if(lst&&lst.length){ const K=__ALLO.k<lst.length?__ALLO.k:lst.length;
-            for(let s=0;s<K;s++){ const j=lst[(Math.random()*lst.length)|0]; for(let d=0;d<DIMS;d++)_alloScratch[d]+=tend[j*DIMS+d]; cnt++; } } }
-        else { const gx=(px[i]/CELL)|0, gy=(py[i]/CELL)|0;
-          for(let dy=-1;dy<=1&&cnt<__ALLO.k;dy++)for(let dx=-1;dx<=1&&cnt<__ALLO.k;dx++){
-            const nx=gx+dx,ny=gy+dy; if(nx<0||ny<0||nx>=gW||ny>=gH)continue; let j=grid[ny*gW+nx],_lc=0;
-            while(j>=0&&j<CAP&&_lc++<CAP&&cnt<__ALLO.k){ if(palive[j]&&pLin[j]===l){ for(let d=0;d<DIMS;d++)_alloScratch[d]+=tend[j*DIMS+d]; cnt++; } j=pnext[j]; } } }
-        if(cnt>0)for(let d=0;d<DIMS;d++){ const m=_alloScratch[d]/cnt; tend[i*DIMS+d]+=(m-tend[i*DIMS+d])*0.00002*_gt; }
-      }
-    } else if(__SPEC.gate){
-      // swing #17: pull each particle toward ITS LINEAGE's centroid, not the global mean — the global
-      // sink is the strongest cross-lineage re-merger, so isolating it lets lineages drift apart.
-      for(let i=0;i<N;i++){ if(!palive[i])continue; const c=linCentroid.get(pLin[i]); if(!c)continue;
-        for(let d=0;d<DIMS;d++)tend[i*DIMS+d]+=(c[d]-tend[i*DIMS+d])*0.00002*_gt; }
-    } else if(_gt!==0){
-      // LEAP 11 (#53) — the mean now REPELS. This line used to pull every particle toward the population
-      // centroid every tick: harmless under a frozen economy, a standing force for monoculture once
-      // selection became real. Sign inverted, magnitude tripled — character displacement as physics.
-      for(let i=0;i<N;i++){if(!palive[i])continue;for(let d=0;d<DIMS;d++){
-        const _v=tend[i*DIMS+d]+(globalTend[d]-tend[i*DIMS+d])*HOMOGEN_RATE*HOMOGEN_SIGN*_gt;
-        tend[i*DIMS+d]=_v<-TEND_HARD?-TEND_HARD:_v>TEND_HARD?TEND_HARD:_v;}}
-    } }
 
   exogenousPerturbation();
 

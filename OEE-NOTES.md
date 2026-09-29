@@ -23314,3 +23314,278 @@ the TREE null's trait verdict and the living count beside them.
 the control AND all three nulls, and its living count at the end is at least half the control's. If `all` qualifies
 and no single does, `all` goes. If nothing qualifies, the confinement is not in these four, and the next suspects
 are the VM's clamped bleed and selection.
+
+**#257 SCREEN RESULTS** (seeds 1-3, 20,000 ticks; cells of trait space ever held at 3 carriers — `everAtM` — and the
+living count at the end):
+
+| seed | control | nulls 1-3 | **shrink1** | blend0 | bleed0 | toll0 | all four |
+|---|---|---|---|---|---|---|---|
+| 1 | 39 (409) | 39, 44, 40 | **99** (479) | 63 (542) | 43 (281) | 45 (276) | 114 (470) |
+| 2 | 49 (315) | 61, 53, 37 | **77** (369) | 56 (336) | 40 (419) | 39 (87) | 115 (393) |
+| 3 | 44 (376) | 49, 44, 46 | **82** (310) | 61 (395) | 61 (385) | 44 (376) | 58 (90) |
+
+- **`BIRTH_SHRINK` is the confining force this screen can see:** with it off, a world reaches roughly TWICE the trait
+  territory, above the control and every null on 3 of 3 seeds, populations intact. Contact blending qualifies on 2
+  of 3. The neighbour bleed — the suspect on arithmetic — on 1 of 3. The toll never fired on seed 3 (identical to
+  control to every digit: nothing reached the wall). **Candidates, by the rule: `shrink1`, `blend0`.**
+- **Not changed:** the trait layer still reads SLOWER than the family-tree null in every knockout (the tree's shadows
+  hold more too). Removing the shrink opens trait space; it does not make trait novelty beat chance.
+- The nulls are wide (seed 2: one extinct, one at 90 living), which is why they are there.
+
+### #257b — DELETE THE SHRINK? The retire-or-prove template on `BIRTH_SHRINK` and `CONTACT_BLEND`. Pre-registered.
+
+The template, applied to two mechanisms that are ON by default. **The null band is the world WITH the mechanism**:
+the control and NULLSHIFT 1-3. **The arm is its knockout** (`FORCE=shrink1`: BIRTH_SHRINK 1.0; `FORCE=blend0`:
+CONTACT_BLEND 0; re-installed every tick). `harness-oee.js ESTABLISH=250`, 20,000 ticks, **unseen seeds 121-123**
+(in no entry here). Six runs per seed, 18 in all, six at a time.
+1. **Executed first:** a seed counts if the knockout's run differs from the control's (both act at every
+   `interferenceCreate` birth). Report how many counted before any other number; fewer than 3 is INCONCLUSIVE.
+2. **Against every null** (#249b): on a counted seed the knockout is BETTER if it is above the maximum of all four
+   nulls by the template's margins — entropyRatio +0.05, kinds late x1.10, established fraction x1.25 — on any one
+   measure; WORSE if below the minimum by the same margins, or it crashes (alive under 5 where every null holds
+   over 20).
+3. **Verdict per mechanism:** knockout BETTER on at least two-thirds of counted seeds = the mechanism is WORSE than
+   its absence -> **DELETE: the declared default flips** (BIRTH_SHRINK 0.9 -> 1.0 / CONTACT_BLEND 0.03 -> 0). The law
+   row stays, so a universe can still evolve it back through a verdict. Knockout WORSE on two-thirds = the
+   mechanism is load-bearing -> **KEEP, proven**. Otherwise, arms differing -> **KEEP** (changes the world, no measured
+   harm), said as "not shown either way".
+4. **Saved worlds (decided now, under the user's delegation):** a flipped default changes NEW universes only. A saved
+   world's LAWV carries its own value and keeps it — its physics is its own, and it can still evolve. Nothing is
+   clamped on reload.
+5. Descriptive, rules on nothing: cumulative kinds, late new kinds per 1k, living count.
+
+**#257b RESULTS — as registered, and NEITHER ACTED ON: the instrument failed a check found after the data.**
+Seeds 121-123, all counted (every knockout changed its run).
+
+| seed | nulls: entropyRatio / kinds late / est. fraction | shrink1 | blend0 |
+|---|---|---|---|
+| 121 | 0.90-1.07 / 8.0-8.6 / .0040-.0079 | 0.48 / 6.6 / .0031 | 0.94 / 9.6 / **0** (living 90) |
+| 122 | 0.85-0.92 / 8.1-10.1 / .0036-.0184 | 0.26 / 5.4 / .0055 | 1.10 / 23.6 / .0015 |
+| 123 | 0.92-0.99 / 8.0-15.2 / .0029-.0195 | 0.62 / 5.9 / .0051 | 0.91 / 8.8 / **0** |
+
+- **shrink1:** knockout WORSE than every null on 3/3 (entropyRatio and kinds) -> by the rule, the shrink is
+  load-bearing -> **KEEP, proven.**
+- **blend0:** knockout BETTER on 2/3 (kinds; entropyRatio on 122) AND WORSE on establishment on 3/3. Both clauses
+  hold; the rule takes the first -> **DELETE (flip CONTACT_BLEND to 0).** The establishment cost is the same pattern
+  #246 recorded beside its verdict: blending lowers kinds and supports establishment.
+
+**Why neither is acted on.** The screen (#257) said removing the shrink DOUBLES the trait territory a world
+reaches; the template said it collapses diversity. Both cannot be the same thing, so the trait distribution was
+measured directly (seeds 121-122, control against shrink1, every 4,000 ticks):
+- nothing crosses the kinds grid's +/-1.2 edge (1.4% at the very end) — not a range artifact;
+- **the default world is a tiny clump SITTING ON THE ORIGIN**: mean |trait| 0.04-0.10, spread (SD) 0.04-0.18 on a
+  +/-1.2 axis. With the shrink off it travels outward (mean |trait| 0.11 -> 0.66).
+- **The kinds grid puts a corner at the origin.** `tendBin` is 4 bins over +/-1.2 with boundaries at -0.6, 0, +0.6,
+  so eight bins meet at 0. A clump on the origin reads as 8 kinds and ~3 bits whatever its real diversity.
+
+| 20k, seed 121 (122) | kinds-grid entropy | same grid shifted half a bin | grid centred on the population | mean pairwise distance |
+|---|---|---|---|---|
+| default (shrink on) | **2.27** (2.85) | 0.74 (0.08) | 0.83 (0.06) | 0.26 (0.14) |
+| shrink off | 1.58 (1.17) | **1.94** (0.85) | **1.28** (0.65) | **0.44** (0.24) |
+
+**Every grid-free reading says the shrink-off world is MORE diverse; only the corner-aligned grid says less.** The
+shrink is a pull toward the origin, so it pulls the population onto the one point where this grid over-counts.
+#257b's shrink verdict measured that. Its blend verdict rests on the same two measures, so it is held as well.
+Neither the rule nor its verdicts are rewritten here: they are recorded, and the question is re-asked as #257c.
+
+**The scope, said plainly: entropyRatio and kinds late have been this file's headline since #11, and both are read
+on this grid.** Any verdict that rested on them alone is suspect wherever the mechanism moved the population toward
+or away from the origin. Not re-run here; listed for whoever returns to them: #246/#248 (CONTACT_BLEND cap), #235
+(INHERIT_SD floor), #219/#220 (inheritance), #249's culls (default-off arms, so the shipped world did not move).
+**The engine's own trait NFD uses the same grid** (`tendBin`, LEAP 13 / #53: rarity by coarse bin, paid in amp and a
+metabolic discount): a clump on the origin looks evenly rare to it. A follow-up, not touched here.
+
+**The instrument fix:** `harness-oee.js` gains two grid-free readings per sample, both draw-free (everything else
+in its output byte-identical, seed 1, 400 ticks): `spreadPair` — mean pairwise trait distance on axes 0-2 over a
+fixed-stride pair sample — and `centredHbits` — entropy over the same 0.6-wide bins laid so the population MEAN sits
+at a bin centre. The verdict block reports `spread_early/late`, `spreadRatio`, `centredH_early/late`,
+`centredEntropyRatio` beside entropyRatio and kinds.
+
+### #257c — THE SHRINK AND THE BLEND, re-asked on a measure that does not reward the origin. Pre-registered.
+
+A new experiment, written up as one (CLAUDE.md step 5): #257b's design exactly — the knockout as the arm, the world
+WITH the mechanism as the null band (control + NULLSHIFT 1-3), `harness-oee.js ESTABLISH=250`, 20,000 ticks — on
+**unseen seeds 131-133**, with the template's two corner-biased measures replaced by their grid-free twins:
+- **centredEntropyRatio** in place of entropyRatio (same margin, 0.05);
+- **spread late** (`spread_late`) in place of kinds late (same margin, 10%);
+- established fraction and the crash guard unchanged (they are not read on the grid).
+Counted = the knockout's run differs from the control's. Knockout BETTER than every null on two-thirds of counted
+seeds = the mechanism is WORSE than its absence -> DELETE (flip the default; saved worlds keep their own values, as
+#257b decided). Knockout WORSE on two-thirds = KEEP, proven. **If both clauses hold on the same mechanism, it is
+SPLIT, and the default does not change** — the ambiguity #257b's wording left open, closed before this run rather
+than after it. Otherwise KEEP. entropyRatio and kinds are reported beside, and rule on nothing.
+
+**#257c RESULTS — the shrink goes; the blend stays.** Seeds 131-133, all counted. Grid-free measures rule; the old
+two are shown after the bar and rule on nothing.
+
+| seed | nulls: centred entropy ratio / spread late / est. | shrink1 | blend0 | old eR: nulls / shrink1 |
+|---|---|---|---|---|
+| 131 | 0.04-0.46 / 0.136-0.223 / 0-.0083 | **0.75 / 0.360** / .0021 | 0.21 / 0.188 / .0051 | 0.96-0.99 / 0.69 |
+| 132 | 0.18-0.39 / 0.112-0.166 / .0044-.0094 | **1.09 / 0.452** / .0065 | 0.22 / **0.192** / *.0016* | 0.81-0.99 / 0.74 |
+| 133 | 0.09-1.85 / 0.120-0.517 / 0-.0035 | 0.30 / 0.248 / **.0075** | 0.39 / 0.231 / 0 | 0.91-1.16 / 0.65 |
+
+- **`BIRTH_SHRINK` -> DELETE (default flips 0.9 -> 1.0).** Its knockout beats every null on 3 of 3 seeds and is worse
+  on none, so it is not SPLIT. **The old grid would have said the opposite** — entropyRatio 0.69 / 0.74 / 0.65 against
+  nulls 0.81-1.16 — which is #257b's reading reproduced on fresh seeds, and the artifact seen inside deciding data.
+- **`CONTACT_BLEND` -> KEEP (0.03).** Not shown either way: spread better on one seed, establishment worse on the
+  same one. #257b's DELETE for it was never acted on and is now superseded.
+- The nulls are wide (seed 133's fourth: centred ratio 1.85, 89 living). They are the reason a single control is
+  not enough.
+
+**Shipped:** `BIRTH_SHRINK=1.0` as the declared default, with the reasoning at the declaration. It stays a law
+(0.8-1.0), so a universe can evolve a shrink back through a verdict. **Saved worlds — decided under the delegation,
+and changed from #257b's note:** #257b said a flipped default reaches new universes only. That would repeat what
+#227b found with LAW_RATE: nearly every universe in the field holds a rarely-proposed law at EXACTLY its declared
+value, so the change would reach none of them. `LAW_SUPERSEDED` gains `BIRTH_SHRINK: 0.9`: a saved world still
+holding exactly the old default was never the world's choice and takes the new one; a world that evolved its own
+value keeps it. Checked on the live engine: a fresh world starts at 1.0; a save at exactly 0.9 is not restored from
+the save (the declared 1.0 stands); saves at 0.93, 0.8 and 1.0 restore unchanged. `substrate-test` 264/0 at
+TICKS=40, 900, the default and FOUND=0.
+
+**What moved in the universe:** the population is no longer pulled onto one point. On the deciding seeds trait
+spread late roughly doubles (0.36 / 0.45 against at most 0.22 / 0.17) and centred entropy rises 2-3x. Whether trait
+NOVELTY now beats chance is the next measurement, not this one: #257's screen had every knockout still SLOWER than
+the family-tree null.
+
+### #257d — WHAT THE SHRINK CHANGE MOVED: #256's sweep, before and after, seeds 1-3, 20,000 ticks
+
+| | traits: cells ever held | traits vs TREE | lineages: ever held | lineages late /1k vs TREE mean |
+|---|---|---|---|---|
+| seed 1 | 39 -> **99** | SLOWER -> SLOWER | 112 -> **204** | 3.0 vs 2.6 (chance) -> **8.6 vs 5.8 (FASTER)** |
+| seed 2 | 47 -> **77** | SLOWER -> SLOWER | 71 -> 93 | 0.75 vs 0.63 -> 2.1 vs 2.3 (chance) |
+| seed 3 | 44 -> **82** | SLOWER -> SLOWER | 76 -> 90 | 1.5 vs 2.1 (SLOWER) -> 1.9 vs 1.9 (chance) |
+
+Programs, atoms and channels move without a direction (programs vs TREE: chance/chance/chance -> SLOWER/SLOWER/
+chance; channels on seed 1 went from 19 ever held to 7). The markers read chance against TREE 6 of 6 again, and
+leave the MIXED band 2 times in 6 — the calibration holds and MIXED is still too narrow.
+
+**What moved, against which number:** the trait territory a world holds roughly doubles on every seed, and lasting
+lineages rise with it (seed 1: 204 ever held, persistent arrivals up ~3x). **What did not:** trait novelty still reads
+SLOWER than the family-tree null on 3 of 3 seeds — the tree's shadows also spread further once nothing drags them to
+the origin. And the one FASTER reading (lineages, seed 1) is 1 of 15 real-layer readings, about what chance gives
+(15 x 2/9 outside the band, half of them high); it is recorded, not claimed. One seed, one horizon per cell.
+
+**Next:** what still holds trait space now that the shrink is gone — the in-life forces the TREE null does not have:
+neighbour bleed (`tendencyBleed`), contact blending, the motif attractor, the trait NFD read on the corner grid, the
+VM's evolved trait bleed. #258 screens them on the new default world.
+
+### #258 — WHAT STILL HOLDS TRAIT SPACE, with the shrink gone. A second knockout screen. Pre-registered.
+
+The family-tree null shares the real genealogy and the real mutation kernel, so the gap between it and the real trait
+layer is made of what the real world does to traits DURING life. Seven in-life forces, each knocked out alone and all
+together, on the new default world (BIRTH_SHRINK 1.0), via `trait-force.js` — which now holds every knockout and is
+used by both `harness-sweep.js` and `harness-oee.js` (the sweeper's own inline copy removed; its output checked
+byte-identical to the committed version with and without FORCE, seed 2, 1,200 ticks):
+`bleed0` neighbour bleed; `blend0` contact blending; `toll0` the soft-wall toll; `motif0` the motif attractor;
+`nfd0` the trait NFD on the corner grid (no rarity nudge, no rarity upkeep discount); `vmbleed0` the VM's evolved
+trait bleed (two sites); `gt0` the lineage / neighbour-sample pulls and the global repulsion (`__GLOBALTEND` 0).
+Checked before the screen: each changes the trajectory — six by 600 ticks, `motif0` by 5,000 (no stable motif
+exists earlier).
+**Screen:** seeds 1-3, 20,000 ticks; per seed control, NULLSHIFT 1-3, the seven singles, all seven — 36 runs.
+`harness-sweep.js` gains `traitSpreadLate` (mean pairwise trait distance over the late window, draw-free).
+**Candidate rule, fixed now:** an arm qualifies on a seed if its trait `everAtM` OR its `traitSpreadLate` is above the
+control and all three nulls, with the living count at the end at least half the control's. Two of three seeds makes
+a candidate for a deciding run. **The headline question, reported whatever the candidates:** does any arm read trait
+novelty FASTER than the family-tree null on two of three seeds? That would be the first time trait space beats
+chance in this file.
+
+**#258 SCREEN RESULTS** (seeds 1-3, 20k, new default world):
+
+| arm | trait cells ever | trait spread late | trait vs TREE | living at end |
+|---|---|---|---|---|
+| control | 99 / 77 / 82 | 0.39 / 0.19 / 0.40 | SLOWER x3 | 479 / 369 / 310 |
+| nulls 1-3 | 50-75 / 44-73 / 77-89 | 0.19-0.27 / 0.17-0.28 / 0.20-0.35 | SLOWER x9 | 281-406 |
+| **gt0** | **155 / 115 / 124** | **0.91 / 0.78 / 0.72** | **CHANCE x3** | 396 / *184* / 156 |
+| **blend0** | 93 / 126 / 114 | 0.47 / 0.55 / 0.60 | CHANCE / SLOWER / SLOWER | *198* / 356 / 255 |
+| bleed0, toll0, vmbleed0 | at or under the band | at or under the band | SLOWER x3 each | 334-652 |
+| motif0 | 89 / 65 / 88 | 0.47 / 0.14 / 0.25 | SLOWER x3 | 521 / 437 / **0** |
+| nfd0 | 66 / 67 / 61 | 0.17 / 0.28 / 0.15 | SLOWER x3 | 652 / 384 / 389 |
+| all seven | 154 / 161 / 133 | 2.30 / 1.89 / 2.32 | CHANCE x3 | **120 / 34 / 22** |
+
+- **Candidates: `gt0` and `blend0`** (each 2 of 3; each misses its third seed on the living-count guard alone, in
+  italics). **Headline question: no arm reads trait novelty FASTER than the family tree on two seeds.** But `gt0` is
+  the first arm in this file under which trait novelty is not SLOWER than chance on any seed.
+- **What `gt0` removes in the default world** (read, not assumed: `__SPEC.on` and `__ALLO.on` are both false by
+  default, so only the last branch runs): **the global-mean REPULSION** — LEAP 11 / #53, "character displacement as
+  physics": every ~30 ticks the population mean is taken and each particle is pushed AWAY from it at
+  HOMOGEN_RATE 0.00006 per tick per unit. The comment above the block still calls it a "mean-reversion ... the dominant
+  diversity sink", which describes the pre-#53 sign. That a REPULSION's removal doubles the spread is the surprise:
+  one reading is that it drives the extremes out past TEND_SOFT, where the toll drains them, so the tails die and the
+  core stays compact. A hypothesis, not tested here.
+- Removing everything at once opens trait space furthest and collapses the population (22-120 living): the forces
+  are not simply brakes.
+
+### #258b — THE REPULSION AND THE BLEND, decided on the grid-free template. Pre-registered.
+
+#257c's design exactly (`harness-oee.js ESTABLISH=250`, 20,000 ticks, the knockout as the arm, the default world +
+NULLSHIFT 1-3 as the null band; centredEntropyRatio +/-0.05, spread_late +/-10%, established fraction +/-25%, crash
+guard; knockout BETTER on two-thirds of counted seeds = the mechanism is WORSE than its absence -> DELETE; WORSE on
+two-thirds = KEEP, proven; both = SPLIT, nothing changes; otherwise KEEP) on **unseen seeds 141-143**, arms
+`FORCE=gt0` and `FORCE=blend0`.
+**What DELETE does, decided now:** for the repulsion, the branch goes from `loop()` — it is not a law, so there is no
+default to flip, and #249's rule for measured mechanisms that do not earn their place is deletion — with
+HOMOGEN_SIGN/HOMOGEN_RATE and the stale comment. For the blend, CONTACT_BLEND's declared default goes 0.03 -> 0 and
+`LAW_SUPERSEDED` gains CONTACT_BLEND: 0.03, as #257c did for the shrink (the row stays; a universe can evolve it back).
+
+**#258b RESULTS — and a CORRECTION to what #258 said `gt0` was.** Seeds 141-143, all counted.
+
+| seed | nulls: centred entropy ratio / spread late / est. / living | gt0 | blend0 |
+|---|---|---|---|
+| 141 | 0.29-0.69 / 0.237-0.430 / 0-.0108 / 130-474 | **1.31 / 0.973** / .0056 / 205 | 0.35 / 0.327 / .0013 / 345 |
+| 142 | 0.19-1.19 / 0.208-0.411 / .0006-.0019 / 293-338 | 1.01 / **0.740 / .0217** / *58* | 0.16 / 0.220 / .0007 / 344 |
+| 143 | 0.17-0.55 / 0.190-0.343 / 0-.005 / 120-336 | 0.53 / **0.656 / .0194** / 127 | 0.42 / 0.356 / .0032 / 300 |
+
+- **`gt0` -> DELETE.** Its knockout beats every null on 3 of 3 (spread on all three; establishment ~10x on two;
+  centred entropy on one) and is worse on none. **The cost, outside the rule:** living counts fall and swing — the
+  per-sample series shows lows of 34 / 23 / 23 and recoveries to 200-400, where the default world held 290-450
+  steadily. No run crossed the crash guard (under 5), so the verdict stands as registered; the swing is recorded here
+  and at the deletion site, and the next sweep watches it at a longer horizon.
+- **`blend0` -> KEEP.** Inside the null band on every seed, every measure. CONTACT_BLEND stays 0.03.
+
+**THE CORRECTION.** #258's write-up (above, kept as written) said `gt0` removes "the global-mean REPULSION", and
+that `__SPEC.on` and `__ALLO.on` "are both false by default ... read, not assumed". **That was wrong, and it was
+assumed**: I read the functions that COMPUTE them and not what sets the globals they read. The LIVE table (engine
+~26160) sets `__SPECIATE:1` and `__SPATIAL_TEND:1` first, so in the shipped world both are ON and the branch that ran
+every tick was the FIRST one: **swing #21's pull of each particle toward the mean trait of its nearby SAME-LINEAGE
+neighbours** (0.00002/tick, up to 16). LEAP 11's repulsion sat behind it and never ran. CLAUDE.md's "read the encoder"
+trap, in a new place: the reader of a global is not where its value is set.
+**How it was caught:** the first deletion removed only the repulsion, and the check that the new engine equals "old
+engine + gt0" came back FALSE. A comment-only change was identical, so the engine is not reading its own source;
+setting the knob from boot changed the NEW engine too, which meant something still read it — and the LIVE table was
+the answer. **The byte-identity check is what made a wrong deletion visible**; without it the repulsion would have gone
+and the measured pull would still be running, with the notes saying otherwise.
+**What shipped:** the whole pull block goes from `loop()` — the lineage-local pull (the measured mechanism), and the
+two branches behind it (the whole-lineage centroid pull under `__SPEC.gate`, and LEAP 11's repulsion), because with
+the knob at 0 none of them ran, and deleting only the first would have promoted the second to the default. With it:
+`__ALLO` and its buffers, LIVE's `__SPATIAL_TEND`, HOMOGEN_SIGN/RATE; the rig knobs that had no gate left
+(`GLOBALTEND`, `SPATIAL_TEND`, `ALLO_SHUF`, `ALLO_K` in harness-oee; `gt0` in trait-force.js). `globalTend` is still
+computed (spawns read it), and `linCentroid` stays (the speciation mint reads it).
+**Checked:** the new engine is byte-identical to the old engine with the knob at 0 — seeds 1 and 2, 1,500 ticks, knob
+applied from the first step or from boot, both the same. `substrate-test` 264/0 at TICKS=40, 900, the default and
+FOUND=0. Saved worlds: no law, no saved value involved; every universe runs without the pull from its next load.
+
+### #258c — THE HORIZON: at 40,000 ticks the pull's deletion does not look like a gain. Re-decided, pre-registered.
+
+**The warning, descriptive (seeds 1-3, one run per engine per seed, NO null band):** `harness-sweep` at 40,000
+ticks on the engine from just before #258b (the pull still in) against the current engine:
+
+| seed | trait spread late, with -> without | trait cells ever | living end (floor) with -> without |
+|---|---|---|---|
+| 1 | 0.57 -> **0.20** | 125 -> 66 | 339 (**2**) -> 465 (349) |
+| 2 | 0.16 -> 0.15 | 87 -> 65 | 574 (327) -> 239 (218) |
+| 3 | 0.45 -> **0.27** | 137 -> 65 | 586 (275) -> **90** (87) |
+
+No extinctions either way; the with-pull world on seed 1 fell to 2 living and recovered. Trait novelty reads SLOWER
+than the family tree in 5 of 6 (seed 3 without the pull reads CHANCE - at 90 living, where every null is thin). At
+20k #258b measured the opposite direction against three nulls; at 40k, single runs point back. Single runs cannot
+overturn a nulled verdict (#258b's nulls alone spread 0.19-0.43), and CLAUDE.md says a diversity verdict is a verdict
+about a horizon (#66) — so the horizon is re-asked, with nulls, before anything else is built on the deletion.
+
+**#258c, pre-registered:** the grid-free template at **40,000 ticks** on **unseen seeds 151-153**. The mechanism under
+test is the pull, now absent, so the null band is the CURRENT engine (control + NULLSHIFT 1-3) and the arm is the
+engine with the pull (`engine.html` at 63bcb1b, identical to the current one but for #258b's block). Counted = the
+arm's run differs from the control's. **If the with-pull arm beats every null on two-thirds of counted seeds, #258b's
+deletion was a 20k artefact and the pull is RESTORED** (the block back as it was, LIVE's __SPATIAL_TEND with it). If it
+is worse on two-thirds, the deletion is confirmed at 40k. SPLIT or neither: the deletion stands, and the file says the
+horizon is unresolved. Measures as #257c: centredEntropyRatio (0.05), spread_late (10%), established fraction (25%),
+crash guard; entropyRatio and kinds reported beside.

@@ -44,11 +44,8 @@
 //   SEED=1 TICKS=20000 node harness-sweep.js
 //   env: K (8) M (3) P (2000) WARM (1000) EVERY (25) SAMPLE (100) INDEX (engine.html); trait grid BINS (10) RANGE (1.5)
 //   NULLSHIFT=k  (#257) burn k draws after boot, before the first tick - the same world on another draw order (#249b)
-//   FORCE=a,b    (#257) knock out trait homogenisers, RE-INSTALLED EVERY TICK (the engine mutates genes and proposes
-//                laws under a rig - #216i): bleed0 (genome.tendencyBleed = 0, germline and every particle - the
-//                neighbour trait blend in processGrid), shrink1 (law BIRTH_SHRINK = 1: a birth no longer drags both
-//                parents toward the origin), blend0 (law CONTACT_BLEND = 0: no parent averaging at a birth), toll0
-//                (TEND_TOLL = 0: no amplitude charged beyond TEND_SOFT - source-patched, one site, asserted)
+//   FORCE=a,b    (#257, #258) knock out trait forces, RE-INSTALLED EVERY TICK - the list and what each does is in
+//                trait-force.js (bleed0 shrink1 blend0 toll0 motif0 nfd0 vmbleed0 gt0)
 // Prints one JSON object. No backticks in the appended driver's comments: the engine source is compiled as one string.
 try{ require(require('path').join(__dirname,'harness-env.js')).applyKnobs(globalThis); }catch(_){}
 require(require('path').join(__dirname,'harness-env.js'))(globalThis);
@@ -58,31 +55,21 @@ const BINS=+(E.BINS||10), RANGE=+(E.RANGE||1.5), SEED=+(E.SEED||1);
 // short budgets (smoke.sh's TICKS=40) boot without a warm-up; P stays a multiple of SAMPLE
 const WARM=+(E.WARM||Math.min(1000,Math.floor(T/4))), P=+(E.P||Math.max(SAMPLE,Math.min(2000,Math.floor(T/4/SAMPLE)*SAMPLE)));
 let code=fs.readFileSync(E.INDEX||path.join(__dirname,'engine.html'),'utf8').match(/<script>([\s\S]*)<\/script>/)[1];
-const FORCE=(E.FORCE||'').split(',').filter(Boolean), FORCES=['bleed0','shrink1','blend0','toll0'];
-for(const f of FORCE) if(!FORCES.includes(f)){ console.log(JSON.stringify({error:'unknown FORCE '+f,known:FORCES})); process.exit(2); }
-if(FORCE.includes('toll0')){ const site='const TEND_TOLL=0.010;'; if(code.split(site).length!==2){ console.log(JSON.stringify({error:'TEND_TOLL site count '+(code.split(site).length-1)+', expected 1'})); process.exit(1); }
-  code=code.replace(site,'let TEND_TOLL=0.010;'); }
+const TF=require(path.join(__dirname,'trait-force.js'));   // #258: the knockouts live in one module, shared with harness-oee
+let FORCE; try{ FORCE=TF.parse(E.FORCE); code=TF.patch(code,FORCE); }catch(e){ console.log(JSON.stringify({error:e.message})); process.exit(2); }
+globalThis.__FORCE=FORCE;
 const Module=require('module');const m=new Module('/tmp/sweep.js');m.filename='/tmp/sweep.js';m.paths=Module._nodeModulePaths('/tmp');
 const NS=require(path.join(__dirname,'novelty-shadows.js'));
 m._compile(code+`
 ;globalThis.__SW={
-  step:function(){ globalThis.__detMs+=5; if(this.force)this.force(); try{loop();return true;}catch(e){return false;} },
-  force:null,
-  setForce:function(F){ if(!F.length)return; const row=n=>LAW_DECLARED.find(x=>x.name===n);
-    const S1=row('BIRTH_SHRINK'), B0=row('CONTACT_BLEND');
-    this.force=function(){
-      if(F.includes('bleed0')){ genome.tendencyBleed=0; for(let i=0;i<N;i++) if(palive[i]&&pGenome[i])pGenome[i].tendencyBleed=0; }
-      if(F.includes('shrink1'))S1.set(1);
-      if(F.includes('blend0'))B0.set(0);
-      if(F.includes('toll0'))TEND_TOLL=0; }; },
+  step:function(){ globalThis.__detMs+=5; globalThis.__applyForce(globalThis.__FORCE); try{loop();return true;}catch(e){return false;} },
   sd:function(){ return (typeof inheritOn==='function'&&!inheritOn())?0:INHERIT_SD; }, hard:function(){ return TEND_HARD; },
   wrapBirths:`+NS.BIRTHS+`,
   onCompact:`+NS.COMPACT+`,
   read:`+NS.READER(3)+`,   // one pass over the living: traits (axes 0-2) and a token per layer - novelty-shadows.js
   germ:`+NS.GERM+`
-};`,'/tmp/sweep.js');
+};`+TF.DRIVER,'/tmp/sweep.js');
 const SW=globalThis.__SW;
-SW.setForce(FORCE);
 const NULLSHIFT=+(E.NULLSHIFT||0)|0; for(let q=0;q<NULLSHIFT;q++)Math.random();   // after boot, before the first tick
 const {LAYERS,mulberry,countOf,tracker,record,persistentIn,arrivalsIn,traitStep,labelLayer,familyTree}=NS;
 const persistentRate=(tr,from,to)=>+(persistentIn(tr,from,to,P)*1000/Math.max(1,to-from)).toFixed(3);
@@ -120,15 +107,18 @@ function germSample(t){ const g=SW.germ(); germSeen.prog.add(g.prog); for(const 
   germRows.push([t,germSeen.prog.size,germSeen.raw.size,germSeen.proven.size,germSeen.motifs.size,g.lawKept]); }
 germSample(0);
 const lateFrom=Math.floor(T/2), lateTo=T-P;
+let spreadSum=0, spreadN=0, aliveMin=Infinity, extinctions=0, wasDead=false;
 for(let s=1;s<=T;s++){
   if(!SW.step())errs++;
   if(s%EVERY!==0)continue;
   cur=SW.read(); const nowN=cur.tr.length, B=takeBirths(), D=Math.max(0,prevN+B-nowN); prevN=nowN;
+  if(nowN<aliveMin)aliveMin=nowN; if(nowN===0&&!wasDead){ extinctions++; wasDead=true; } else if(nowN>0)wasDead=false;   // #258c
   const sd=SW.sd(), H=SW.hard();
   for(const sh of TR.sh) traitStep(sh.pop,D,B,sd,H,sh.rng,3);
   const smp=s%SAMPLE===0;
   for(const name of LAY){ const n=L[name].step(toksOf(cur,name),D,B,smp,s,cur.idx,tree.born); if(s>=lateFrom&&s<lateTo)L[name].introLate+=n; }
   tree.syncTraits(cur.idx,cur.tr,false); tree.born.length=0; tree.sd=sd; tree.H=H;
+  if(smp&&s>=lateFrom&&s<lateTo){ const t=cur.tr; let sum=0,k=0; for(let a=0;a<t.length;a+=3) for(let b=a+1;b<t.length;b+=7){ sum+=Math.hypot(t[a][0]-t[b][0],t[a][1]-t[b][1],t[a][2]-t[b][2]); k++; } if(k){ spreadSum+=sum/k; spreadN++; } }   // #258: grid-free, draw-free
   if(smp){ record(TR.real,s,cellCounts(cur.tr),M); for(const sh of TR.sh) record(sh.tr,s,cellCounts(sh.pop),M); germSample(s);
     for(let k=0;k<K;k++) record(TT[k],s,cellCounts(tree.traitsOf(k,cur.idx)),M); }
 }
@@ -139,6 +129,8 @@ const q=[0,1,2,3].map(i=>[Math.floor(i*T/4),Math.floor((i+1)*T/4)]);
 const out={seed:String(SEED),ticks:T,warm:WARM,loopErrors:errs,window:[lateFrom,lateTo],params:{K,M,P,EVERY,SAMPLE,BINS,RANGE},layers:{}};
 if(FORCE.length||NULLSHIFT){ out.force=FORCE; out.nullShift=NULLSHIFT; }   // absent when unset, so a plain run's output is unchanged
 out.aliveEnd=cur.tr.length;
+out.aliveMin=aliveMin===Infinity?null:aliveMin; out.extinctions=extinctions;   // #258c: living count's floor over the run, and times it hit 0
+out.traitSpreadLate=spreadN?+(spreadSum/spreadN).toFixed(4):null;   // #258: mean pairwise trait distance (axes 0-2), late window
 out.layers.traits=Object.assign(verdictOf(persistentRate(TR.real,lateFrom,lateTo),TR.sh.map(s=>persistentRate(s.tr,lateFrom,lateTo))),
   {arrivalsByQuarter:q.map(([a,b])=>arrivalsIn(TR.real,a,b)),everAtM:TR.real.first.size,shadowEverAtM:TR.sh.map(s=>s.tr.first.size),
    familyTree:verdictOf(persistentRate(TR.real,lateFrom,lateTo),TT.map(tr=>persistentRate(tr,lateFrom,lateTo)))});
