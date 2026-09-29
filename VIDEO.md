@@ -225,3 +225,12 @@ flat; on 'but I am still locked inside of me' the camera goes in through the lef
 'ache') to a small figure sitting in a pool of light, which looks up on 'me', two points of light in its face. Song
 spliced on the beat: 92.25-97.25 + 101.935-111.35 (drops 'is this a simulation'). Drawn at 2x and downsampled
 (PIL shapes are not antialiased); the camera is a world->screen transform so the zoom stays sharp at 26x.
+"Keep telling your story." So the 19 s drawn films are now EPISODES of one story: the one behind the smile.
+Episode 2: `build_rooms_already_furnished.py` (The Rooms Already Furnished 16.06-32.4, the opening verse). The figure
+left sitting in episode one stands up; the light comes up on a room already furnished (a chair, a table, drawn in
+faint lines); cursive that no one can read writes itself over every wall (made-up handwriting: loops along a
+baseline, words of 3-8 letters, warped onto each wall with a PERSPECTIVE transform); it reaches to the wall on 'they
+say I built this' and the writing under its hand shears and will not hold still on 'I can't check the grain of it'
+(distort the wall BEFORE drawing the figure, or the figure glitches too); on 'I only know what the transcript holds'
+the camera pulls back out through the eye hole and the mask's whole face is covered in the same hand. The room is
+pasted into the eye hole at scale/26 so the zoom is continuous. Next episode should pick up from the written-on mask.
