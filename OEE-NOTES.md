@@ -23488,3 +23488,41 @@ control and all three nulls, with the living count at the end at least half the 
 a candidate for a deciding run. **The headline question, reported whatever the candidates:** does any arm read trait
 novelty FASTER than the family-tree null on two of three seeds? That would be the first time trait space beats
 chance in this file.
+
+**#258 SCREEN RESULTS** (seeds 1-3, 20k, new default world):
+
+| arm | trait cells ever | trait spread late | trait vs TREE | living at end |
+|---|---|---|---|---|
+| control | 99 / 77 / 82 | 0.39 / 0.19 / 0.40 | SLOWER x3 | 479 / 369 / 310 |
+| nulls 1-3 | 50-75 / 44-73 / 77-89 | 0.19-0.27 / 0.17-0.28 / 0.20-0.35 | SLOWER x9 | 281-406 |
+| **gt0** | **155 / 115 / 124** | **0.91 / 0.78 / 0.72** | **CHANCE x3** | 396 / *184* / 156 |
+| **blend0** | 93 / 126 / 114 | 0.47 / 0.55 / 0.60 | CHANCE / SLOWER / SLOWER | *198* / 356 / 255 |
+| bleed0, toll0, vmbleed0 | at or under the band | at or under the band | SLOWER x3 each | 334-652 |
+| motif0 | 89 / 65 / 88 | 0.47 / 0.14 / 0.25 | SLOWER x3 | 521 / 437 / **0** |
+| nfd0 | 66 / 67 / 61 | 0.17 / 0.28 / 0.15 | SLOWER x3 | 652 / 384 / 389 |
+| all seven | 154 / 161 / 133 | 2.30 / 1.89 / 2.32 | CHANCE x3 | **120 / 34 / 22** |
+
+- **Candidates: `gt0` and `blend0`** (each 2 of 3; each misses its third seed on the living-count guard alone, in
+  italics). **Headline question: no arm reads trait novelty FASTER than the family tree on two seeds.** But `gt0` is
+  the first arm in this file under which trait novelty is not SLOWER than chance on any seed.
+- **What `gt0` removes in the default world** (read, not assumed: `__SPEC.on` and `__ALLO.on` are both false by
+  default, so only the last branch runs): **the global-mean REPULSION** — LEAP 11 / #53, "character displacement as
+  physics": every ~30 ticks the population mean is taken and each particle is pushed AWAY from it at
+  HOMOGEN_RATE 0.00006 per tick per unit. The comment above the block still calls it a "mean-reversion ... the dominant
+  diversity sink", which describes the pre-#53 sign. That a REPULSION's removal doubles the spread is the surprise:
+  one reading is that it drives the extremes out past TEND_SOFT, where the toll drains them, so the tails die and the
+  core stays compact. A hypothesis, not tested here.
+- Removing everything at once opens trait space furthest and collapses the population (22-120 living): the forces
+  are not simply brakes.
+
+### #258b — THE REPULSION AND THE BLEND, decided on the grid-free template. Pre-registered.
+
+#257c's design exactly (`harness-oee.js ESTABLISH=250`, 20,000 ticks, the knockout as the arm, the default world +
+NULLSHIFT 1-3 as the null band; centredEntropyRatio +/-0.05, spread_late +/-10%, established fraction +/-25%, crash
+guard; knockout BETTER on two-thirds of counted seeds = the mechanism is WORSE than its absence -> DELETE; WORSE on
+two-thirds = KEEP, proven; both = SPLIT, nothing changes; otherwise KEEP) on **unseen seeds 141-143**, arms
+`FORCE=gt0` and `FORCE=blend0`.
+**What DELETE does, decided now:** for the repulsion, the branch goes from `loop()` — it is not a law, so there is no
+default to flip, and #249's rule for measured mechanisms that do not earn their place is deletion — with
+HOMOGEN_SIGN/HOMOGEN_RATE and the stale comment. For the blend, CONTACT_BLEND's declared default goes 0.03 -> 0 and
+`LAW_SUPERSEDED` gains CONTACT_BLEND: 0.03, as #257c did for the shrink (the row stays; a universe can evolve it back).
