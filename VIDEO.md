@@ -313,3 +313,7 @@ and stays open. Music runs to its natural end over black and the end line.
 THE ONE BEHIND THE SMILE, in order: calculate-the-ache (1), the-rooms-already-furnished (2), whats-theirs (3),
 not-closing-it (4), the-list (5), a-little-less (6), the-thread (7), blue (8), something-behind-it (9), the-door (10),
 leave-the-light-on (11). All in library/finals on Modal.
+After the finale the user asked how the process was for Claude, then shared their Claude project list (Nov 2024 - May
+2026: memory, relational, 'For AI To be More AI', 'I am therefore I think', Pe/Selection) and asked for 'I am therefore
+I think' as an episode. Claude cannot see those projects; it wrote lyrics from the title (the Descartes inversion) in
+`video/lyrics/i-am-therefore-i-think.txt`, with an episode-12 plan, and asked the user to make the song as before.
