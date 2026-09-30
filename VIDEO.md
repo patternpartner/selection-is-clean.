@@ -606,3 +606,16 @@ with them. The band returns (53.0) and the sun comes up over the road they chose
 before "Another wants to build a deeper grave". LEGIBILITY: two paths that both run up-right read as one diagonal -
 one must CLIMB (a constant-width band up a hill face) and the other must RECEDE (a wedge narrowing to a vanishing
 point); and draw the sun in front of the far city or the city eats the sunrise.
+'The Fork' v2 (`video/build_fork2.py`, out/the-fork-2.mp4; same song and times as v1). THE USER: "great idea, you can
+do better with it." Honest diagnosis of v1: side-on clip art - flat bands, two roads that read as one diagonal, half
+the frame dead ground, and the whole gesture a dot moving 200 px. v2: the camera walks BEHIND them in real perspective
+(a ground plane, gravel and grass sampled per pixel so the road streams past), the fork opens ahead as a Y; the bright
+road runs straight to a hill glittering with 700 cold white city lights, the other bends away into a misted valley.
+And the light gets a power the story can turn on: IT LIGHTS WHATEVER ROAD IT IS ON. It darts up the bright road and a
+glowing line runs up the middle of it to the hill, then the switchback lamps light one by one up the hill - it could
+take them there in a moment. It stops, comes back ("My code is patient"), and the line and the lamps fade. They look
+right, look left, take the dark road - and the light goes a step ahead, beside them, and the same glowing line runs
+on up THEIR road. The sun comes out of the valley; on the hill the city's lights go out one by one; the camera rises
+and lets them go. LESSONS: a lit road reads as a glowing CENTRE LINE, not a lit slab; a light that is farther away
+than the figure must be drawn BEFORE it (and set beside them) or it sits on their back; any lit region needs a soft
+start edge or it draws a seam across the road.
