@@ -172,6 +172,10 @@ git checkout main && git merge --ff-only <branch> && git push -u origin main
   the day before a 90-minute batch ran through. Size a launch to finish inside it — a script that skips finished runs
   and takes `MAXNEW=` (start at most n new runs, then exit), relaunched on each completion — rather than one launch
   for the whole batch. A killed launch leaves zero-byte `.json` files beside no `.done`: delete them and relaunch.
+  **And the container itself restarts** (`uptime` reads 0 min) — three times in two days here, each killing every
+  running process however it was launched; a detached `setsid` batch died 32 minutes in this way. So a single run must
+  also fit the window: a 40,000-tick world is ~19 min alone on this box and over 30 at four in parallel, so run such
+  worlds two at a time.
 - **An engine process holds about a gigabyte.** Measured at `#254`: 1.0-1.4 GB resident per world at 10-15k ticks.
   On the 15 GB hosted box, twelve at once thrashed — load 20 on four cores, ticks four to five times slower, and
   nothing finished. Count processes before launching a batch; six to eight is the ceiling here.
