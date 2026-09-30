@@ -10553,10 +10553,10 @@ if(REPL_ON){ WORLD_ENERGY_REGEN=0.6; BIRTH_ENERGY_COST=0.25; }
 // take from anyone and prey had no reply: #273 saw one sweep, then a plateau or a crash. With a key, the commonest kind
 // is the one most worth tuning to, which is the classic engine of continual turnover (kill the winner).
 const REPL_MATCH=REPL_ON&&(typeof globalThis!=='undefined')&&((globalThis.__REPL_MATCH|0)!==0);
-const REPL_KEYW=0.35, REPL_KEYSD=0.12;
+const REPL_KEYW=0.6, REPL_KEYSD=0.12, REPL_KEYFLOOR=0.3;   // #275: a generalist predator still takes 30%; a tuned one up to all of it (#274: at width 0.35 and no floor, predation never paid)
 const pKey=new Float32Array(CAP*4);
 function replKeyBirth(i,p){ for(let m=0;m<4;m++){ if(p>=0&&p<N&&p!==i){ const g=(Math.random()+Math.random()+Math.random()-1.5)*2*REPL_KEYSD; pKey[i*4+m]=Math.max(-TEND_HARD,Math.min(TEND_HARD,pKey[p*4+m]+g)); } else pKey[i*4+m]=Math.random()*2-1; } }
-function replMatch(i,j){ let d2=0; for(let m=0;m<4;m++){ const t=(m<DIMS)?tend[j*DIMS+m]:0, e=pKey[i*4+m]-t; d2+=e*e; } return Math.exp(-d2/(REPL_KEYW*REPL_KEYW)); }   // #273: cheap children, enough light for about 400 of them
+function replMatch(i,j){ let d2=0; for(let m=0;m<4;m++){ const t=(m<DIMS)?tend[j*DIMS+m]:0, e=pKey[i*4+m]-t; d2+=e*e; } return REPL_KEYFLOOR+(1-REPL_KEYFLOOR)*Math.exp(-d2/(REPL_KEYW*REPL_KEYW)); }   // #273: cheap children, enough light for about 400 of them
 const SUN_ON=REPL_ON||((typeof globalThis!=='undefined')&&((globalThis.__SUN|0)!==0));
 const SUN_TAKE=0.2, SUN_ENDOW=0.5, SUN_SEED=0.5, SUN_STORE=4;
 const sunField=SUN_ON?new Float32Array(FIELD_W*FIELD_H).fill(WORLD_ENERGY_MAX/(FIELD_W*FIELD_H)):null;
