@@ -1923,5 +1923,55 @@
   "used_in": [
    "the-lesson"
   ]
+ },
+ {
+  "id": "u118",
+  "file": "out/user-clips/u118.mp4",
+  "upload": "2273f8fc-grok_video_2026-09-30-23-42-11.mp4",
+  "seconds": 15.04,
+  "size": "720x1280",
+  "what": "THE USER'S OWN LIKENESS: a big joyful dance on the blue screen - key with video/bluekey.py",
+  "tags": [
+   "own-likeness",
+   "free",
+   "bluescreen"
+  ],
+  "talks": false,
+  "moves": [
+   [
+    0,
+    0.8,
+    "idle"
+   ],
+   [
+    1.0,
+    7.0,
+    "dancing: swings, a hand to the face, crossed arms"
+   ],
+   [
+    6.5,
+    7.5,
+    "a full spin (back to camera)"
+   ],
+   [
+    7.5,
+    8.0,
+    "arms flung out wide"
+   ],
+   [
+    8.5,
+    12.5,
+    "jumps with both arms up, cheering (a little further from camera)"
+   ],
+   [
+    13,
+    15,
+    "walks up waving both hands"
+   ]
+  ],
+  "note": "the same session also re-uploaded u117 and u115 (byte-identical copies, deleted)",
+  "used_in": [
+   "the-lesson-2"
+  ]
  }
 ]

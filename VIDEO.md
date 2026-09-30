@@ -749,3 +749,10 @@ own; ta-da (u114 9-10) with a ring of sparks. Trust, in one gesture: sitting dow
 one clip at ONE fixed scale (0.62, feet pinned) - never bbox-normalise a sitting figure or it grows when it sits; the
 chair is drawn in the clip's own pixel coords behind him, so his body occludes it for free; a door-frame outline does
 not read as a chair - it needs a curved rail, a slat, a seat with depth and splayed legs.
+'The Lesson' v2 (`video/build_lesson2.py`, out/the-lesson-2.mp4). The user sent three more clips and asked to redo the
+dancing one with them: two were byte-identical re-uploads of u117 and u115 (check md5 before cataloguing), one new -
+u118, a big joyful dance (1-7 s), a spin (6.5-7.5), arms out (7.5-8), jumps with both arms up (8.5-12.5), a walk-up
+waving both hands (13-15). The light now learns u118's dance from his tracked hand; when it dances its own he cheers
+(u118 9.5-11.9) and comes toward it waving (13.0-14.6); then the open hand and the wink as v1. Full shots are steadied
+by a rolling 1.5 s median of head-to-feet height (measured along his centre line, so raised arms do not shrink him) and
+floor line - per-frame pinning would have cancelled the jumps.
