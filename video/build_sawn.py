@@ -1,6 +1,7 @@
 """'Sawn in Half' (The Iron Ballroom 43.0-66.0 + the end line). The oldest trick, done to the question everyone asks
-about AI: what is inside? A stage, red curtains, one box on a stand - a head out of one end, feet out of the other.
-The band drops to nothing (45.6) and a saw floats in by itself and cuts, the only sound its own rasp, on the beat.
+about AI: what is inside? A stage, red curtains, one box on a stand - a head out of one end, feet out of the other - and a ringmaster.
+The band drops to nothing (45.6); he raises a saw, blade down, and cuts straight down through the box, the only
+sound its rasp, on the beat. He pulls the halves apart himself.
 The feet wiggle: still alive. The band builds (56.0) and the halves slide apart: inside there is no body, only a
 universe - the real one, living - and its light spills over the stage. In the hush (59.7) the head opens its eyes and
 turns to look into itself. Full band (63.0): the universe bursts out over the stage like confetti. Ta-da.
@@ -131,18 +132,77 @@ def draw_feet(d, dx, wig, k):
         d.rectangle([bx * k, (by - 12) * k, (bx + 10) * k, (by + 14) * k], fill=(240, 240, 240))    # a white sock
 
 
-def draw_saw(d, x, y, k):
-    """a big hand saw, floating: blade with teeth, wooden handle"""
-    bw, bh = 330, 70
-    blade = [(x - bw / 2, y - bh), (x + bw / 2, y - bh * 0.55), (x + bw / 2, y), (x - bw / 2, y)]
+RX = MID + 112                    # the ringmaster stands behind the box, beside the cut, so the saw never hides his face
+SHY = BY0 - 232                   # his shoulders
+
+
+def draw_saw(d, x, tip, k):
+    """a big hand saw held upright, blade pointing down: teeth down its leading edge, wooden handle on top"""
+    L, w0, w1 = 230, 26, 60
+    top = tip - L
+    blade = [(x - w0 / 2, tip), (x + w0 / 2, tip), (x + w1 / 2, top), (x - w1 / 2, top)]
     d.polygon([(px * k, py * k) for px, py in blade], fill=(196, 202, 210))
-    d.line([((x - bw / 2) * k, (y - bh + 8) * k), ((x + bw / 2) * k, (y - bh * 0.55 + 6) * k)], fill=(240, 244, 250), width=int(3 * k))
-    for i in range(34):
-        tx = x - bw / 2 + i * bw / 34
-        d.polygon([(tx * k, y * k), ((tx + bw / 68) * k, (y + 9) * k), ((tx + bw / 34) * k, y * k)], fill=(170, 176, 186))
-    hx = x + bw / 2
-    d.rounded_rectangle([(hx - 6) * k, (y - bh * 0.7) * k, (hx + 66) * k, (y + 14) * k], radius=int(18 * k), fill=(120, 60, 30))
-    d.ellipse([(hx + 14) * k, (y - bh * 0.45) * k, (hx + 50) * k, (y - 4) * k], fill=(10, 6, 8))
+    d.line([((x + w0 / 2 - 4) * k, (tip - 6) * k), ((x + w1 / 2 - 5) * k, (top + 4) * k)], fill=(240, 244, 250), width=int(3 * k))
+    for i in range(22):
+        ty = tip - i * L / 22
+        wx = x - (w0 + (w1 - w0) * i / 22) / 2
+        d.polygon([(wx * k, ty * k), ((wx - 9) * k, (ty - L / 44) * k), (wx * k, (ty - L / 22) * k)], fill=(170, 176, 186))
+    d.rounded_rectangle([(x - 44) * k, (top - 58) * k, (x + 44) * k, (top + 8) * k], radius=int(18 * k), fill=(120, 60, 30))
+    d.ellipse([(x - 24) * k, (top - 44) * k, (x + 24) * k, (top - 12) * k], fill=(10, 6, 8))
+
+
+def draw_ringmaster_body(d, k, look_x, hat_up, beam):
+    """behind the box: red tailcoat, white shirt, bow tie, a face with a big moustache, a tall top hat"""
+    x, sy = RX, SHY
+    d.polygon([((x - 70) * k, (sy + 6) * k), ((x + 70) * k, (sy + 6) * k), ((x + 58) * k, (BY0 + 12) * k), ((x - 58) * k, (BY0 + 12) * k)],
+              fill=(168, 22, 30))                                                                   # coat
+    d.polygon([((x - 22) * k, (sy + 4) * k), ((x + 22) * k, (sy + 4) * k), ((x + 12) * k, (sy + 150) * k), ((x - 12) * k, (sy + 150) * k)],
+              fill=(240, 236, 228))                                                                 # shirt
+    for sgn in (-1, 1):
+        d.polygon([((x + sgn * 22) * k, (sy + 4) * k), ((x + sgn * 44) * k, (sy + 10) * k), ((x + sgn * 14) * k, (sy + 120) * k)],
+                  fill=(30, 10, 14))                                                                # lapels
+    for yb in (sy + 60, sy + 110, sy + 160, sy + 205):
+        d.ellipse([(x - 30 - 6) * k, (yb - 6) * k, (x - 30 + 6) * k, (yb + 6) * k], fill=(222, 180, 80))
+        d.ellipse([(x + 30 - 6) * k, (yb - 6) * k, (x + 30 + 6) * k, (yb + 6) * k], fill=(222, 180, 80))
+    d.polygon([((x - 18) * k, (sy + 6) * k), ((x - 2) * k, (sy + 14) * k), ((x - 18) * k, (sy + 22) * k)], fill=(20, 16, 20))   # bow tie
+    d.polygon([((x + 18) * k, (sy + 6) * k), ((x + 2) * k, (sy + 14) * k), ((x + 18) * k, (sy + 22) * k)], fill=(20, 16, 20))
+    hx, hy = x, sy - 62
+    d.rectangle([(hx - 14) * k, (sy - 20) * k, (hx + 14) * k, (sy + 6) * k], fill=(232, 196, 166))    # neck
+    d.ellipse([(hx - 42) * k, (hy - 50) * k, (hx + 42) * k, (hy + 50) * k], fill=(236, 200, 170))    # face
+    for sgn in (-1, 1):
+        ex, ey = hx + sgn * 16, hy - 8
+        d.ellipse([(ex - 8) * k, (ey - 8) * k, (ex + 8) * k, (ey + 8) * k], fill=(250, 250, 250))
+        d.ellipse([(ex - 4 + 4 * look_x) * k, (ey - 4) * k, (ex + 4 + 4 * look_x) * k, (ey + 4) * k], fill=(20, 20, 30))
+        d.line([((ex - 10) * k, (ey - 16) * k), ((ex + 8) * k, (ey - 19 - 3 * beam) * k)], fill=(40, 26, 20), width=int(4 * k))   # brows
+    d.ellipse([(hx - 34) * k, (hy + 6) * k, (hx - 20) * k, (hy + 16) * k], fill=(240, 160, 150))
+    d.ellipse([(hx + 20) * k, (hy + 6) * k, (hx + 34) * k, (hy + 16) * k], fill=(240, 160, 150))
+    d.ellipse([(hx - 6) * k, (hy - 2) * k, (hx + 6) * k, (hy + 14) * k], fill=(222, 170, 140))       # nose
+    d.chord([(hx - 40) * k, (hy + 8) * k, (hx + 2) * k, (hy + 36) * k], 180, 360, fill=(40, 24, 18))     # moustache
+    d.chord([(hx - 2) * k, (hy + 8) * k, (hx + 40) * k, (hy + 36) * k], 180, 360, fill=(40, 24, 18))
+    ty = hy - 44 - hat_up
+    d.rectangle([(hx - 58) * k, (ty - 8) * k, (hx + 58) * k, (ty + 6) * k], fill=(18, 16, 20))       # brim
+    d.rectangle([(hx - 38) * k, (ty - 118) * k, (hx + 38) * k, (ty - 4) * k], fill=(22, 20, 26))     # crown
+    d.rectangle([(hx - 38) * k, (ty - 30) * k, (hx + 38) * k, (ty - 12) * k], fill=(168, 22, 30))    # band
+
+
+def draw_arms(d, k, hands):
+    """two red sleeves from the shoulders to white gloves at the given hand points"""
+    for sgn, (hx, hy) in zip((-1, 1), hands):
+        sx, sy = RX + sgn * 60, SHY + 16
+        dx, dy = hx - sx, hy - sy
+        dist = max(1e-3, math.hypot(dx, dy))
+        L = 120
+        reach = min(dist, 2 * L - 1)
+        h = math.sqrt(max(0, L * L - (reach / 2) ** 2))
+        mx, my = sx + dx / 2, sy + dy / 2
+        nx, ny = -dy / dist, dx / dist
+        if nx * sgn < 0:
+            nx, ny = -nx, -ny
+        ex, ey = mx + nx * h, my + ny * h                                    # the elbow bends outward
+        for (a, b) in (((sx, sy), (ex, ey)), ((ex, ey), (hx, hy))):
+            d.line([(a[0] * k, a[1] * k), (b[0] * k, b[1] * k)], fill=(168, 22, 30), width=int(30 * k))
+            d.ellipse([(b[0] - 15) * k, (b[1] - 15) * k, (b[0] + 15) * k, (b[1] + 15) * k], fill=(168, 22, 30))
+        d.ellipse([(hx - 19) * k, (hy - 19) * k, (hx + 19) * k, (hy + 19) * k], fill=(246, 246, 240))   # glove
 
 
 class World:
@@ -235,12 +295,34 @@ def main():
         open_ = ramp(s, OPEN0, OPEN1 - 0.6)
         dx = SPREAD * open_
         cut = ramp(s, CUT0, CUT1)
-        saw_y_top = -120 + (BY0 - 4 + 120) * ramp(s, SAW_IN, CUT0)
-        saw_y = saw_y_top + (BY1 - BY0 + 10) * cut
-        stroke = 64 * math.sin(math.pi * (b - beat(CUT0))) if CUT0 <= s < CUT1 else 0.0
-        saw_out = ramp(s, CUT1 + 0.2, CUT1 + 1.4)
-        saw_x = MID + stroke + 520 * saw_out ** 1.5
-        saw_y -= 300 * saw_out
+        # the saw: lifted from the wings, raised over the box, down through it in strokes on the beat, put away
+        b0 = beat(CUT0)
+        stroke = 34 * math.sin(math.pi * (b - b0)) if CUT0 <= s < CUT1 else 0.0
+        lift = ramp(s, SAW_IN, CUT0)
+        tip = (SHY - 40) * (1 - lift) + (BY0 - 8) * lift + (BY1 - BY0 + 34) * cut + stroke
+        saw_x = (MID + 330) * (1 - lift) + MID * lift
+        away = ramp(s, CUT1 + 0.15, CUT1 + 1.3)
+        tip -= (BY1 - BY0 + 330) * away
+        saw_x += 360 * away ** 1.4
+        handle = (saw_x, tip - 230 - 26)
+        # the ringmaster's hands
+        if s < HUSH:                     # presenting: one hand sweeps toward the head, the other on his hip, on the beat
+            wave = 20 * math.sin(math.pi * b)
+            hands = [(MID - 250, 720 + wave), (RX + 104, SHY + 160)]
+        elif s < CUT1 + 0.9:             # on the saw
+            hands = [(handle[0], handle[1] - 4), (RX + 104, SHY + 160)]         # one hand saws, the other on his hip
+        elif s < OPEN0 - 0.3:            # waiting
+            hands = [(RX - 34, SHY + 150), (RX + 34, SHY + 150)]
+        elif s < OPEN1 + 0.3:            # pulling the halves apart
+            hands = [(MID - dx - 26, BY0 + 18), (MID + dx + 26, BY0 + 18)]
+        elif s < TADA - 0.1:             # hands clasped, watching the head look
+            hands = [(RX - 14, SHY + 120), (RX + 14, SHY + 120)]
+        else:                            # ta-da
+            up = ramp(s, TADA - 0.1, TADA + 0.25)
+            hands = [(RX - 34 - 140 * up, SHY + 120 - 230 * up), (RX + 34 + 140 * up, SHY + 120 - 230 * up)]
+        rm_look = -ramp(s, LOOK0 + 0.4, LOOK0 + 1.4) * (1 - ramp(s, TADA, TADA + 0.4))
+        hat_up = 70 * ramp(s, TADA, TADA + 0.25) * (1 - ramp(s, TADA + 1.2, TADA + 1.8))
+        beam = 1.0 if (s < HUSH or s >= TADA) else 0.0
         wig = 0.0
         if s < HUSH:
             wig = 14 * math.sin(math.pi * b)
@@ -253,11 +335,13 @@ def main():
         k = SS
         lay = Image.new("RGBA", (WD * k, HD * k), (0, 0, 0, 0))
         d = ImageDraw.Draw(lay)
+        draw_ringmaster_body(d, k, rm_look, hat_up, beam)
         draw_box(d, dx, dx, cut, k)
         draw_head(d, dx, look, k, eyes)
         draw_feet(d, dx, wig, k)
-        if SAW_IN <= s < CUT1 + 1.6:
-            draw_saw(d, saw_x, saw_y, k)
+        if SAW_IN <= s < CUT1 + 1.4:
+            draw_saw(d, saw_x, tip, k)
+        draw_arms(d, k, hands)
         lay = lay.resize((WD, HD), Image.LANCZOS)
         la = np.asarray(lay, np.float32)
         alpha = la[..., 3:4] / 255

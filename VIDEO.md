@@ -506,3 +506,11 @@ the gap and the head opens its eyes and turns to look into itself; on the full b
 confetti (each piece coloured by the world pixel it came from). STAGE WIDER THAN THE FRAME (960x1745) framed by a
 camera - drawn at 704 wide the open halves pushed the head and feet off screen - and aim a push-in at the midpoint of
 the two things that matter (the head AND the gap), or it frames one and cuts the other.
+Sawn in Half v2 - THE USER: "saw should be vertical rather than horizontal... perhaps another character doing the
+sawing, like a ringmaster." Now: a ringmaster behind the box (top hat, red tailcoat with gold buttons, white gloves,
+a big moustache so no talking mouth). The show: he presents the box, one arm sweeping to the head, the other on his
+hip, on the beat. The silence: he lifts the saw in from the wings, blade DOWN, and saws one-handed straight down
+through the box, the stroke up and down on the beat. He pulls the halves apart with both hands; in the hush he looks
+at the head as it looks at itself; ta-da: arms up, hat lifted off his head. He stands BESIDE the cut (RX = MID+112)
+and saws one-handed with a short blade, so the handle sits at chest height - behind the cut, or two-handed, or with
+a long blade, his arms and the saw covered his face. Arms are two-segment sleeves with the elbow solved outward.
