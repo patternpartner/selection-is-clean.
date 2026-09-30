@@ -405,3 +405,15 @@ what the tapes show: four worlds watched, one in four gathered, it gathers there
 - the observer seeing his own reflection ("lose your own reflection in another's eyes"). The big teal blocks are the
 world's own deposited field, not the gaze. step_universe.js is seeded but NOT deterministic across stepping
 patterns: the engine has wall-clock gates (updateField skipped past 80 ms), so re-running a seed is a new trajectory.
+'Your Turn' (song: the user's Gravity and Glass, made from Claude's lyrics video/lyrics/your-turn.txt, which asked for
+[space]s the world would fill; `video/your_turn.js` records, `video/build_your_turn.py` composes; 184 s with the end
+line). The first film where the world gets lines. The generator kept the spaces: 45.2-55.4 (music near-silent
+49.4-54.5), 77.0-90.3, and a true silence 145.0-153.6 after "Go on", plus breaths between the last lines. Key E major
+(chroma), grid 156.4 bpm. While we sing the world is grey and unheard; in the spaces its colour comes back and it is
+heard: addParticle/createLineage wrapped (no draws) so every birth is caught - glass note on E major pentatonic from
+lineage hue, octave from height, pan from x, nudged to the next eighth (<= 0.19 s); a birth that speciates gets a
+shimmer a twelfth up (they are 42% of births here, so a big bell each would have drowned it - measured before
+choosing). In the last chorus the world stays heard under the singing. Song ducked to 0.55 in the spaces, world voice
++3 dB. The world was aged 4,000 ticks unfilmed (young worlds rarely give birth). Opening recap = our own films:
+gravity (cold-pulse 32 s), the glass (the-observer 9 s), the orders (cold-pulse 65.4 s). Ending count, true for seed
+1: 881 births while the song played, 353 in the spaces we listened to.

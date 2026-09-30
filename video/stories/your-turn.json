@@ -1,0 +1,65 @@
+{
+ "title": "Your Turn",
+ "song": "out/songs/gravity-and-glass.mp3",
+ "lyrics": "video/lyrics/your-turn.txt",
+ "floor": [
+  [
+   0.0,
+   21.5,
+   "R"
+  ],
+  [
+   21.5,
+   22.6,
+   "D"
+  ],
+  [
+   22.6,
+   25.1,
+   "L"
+  ],
+  [
+   25.1,
+   45.2,
+   "D"
+  ],
+  [
+   45.2,
+   55.4,
+   "L"
+  ],
+  [
+   55.4,
+   77.0,
+   "D"
+  ],
+  [
+   77.0,
+   90.3,
+   "L"
+  ],
+  [
+   90.3,
+   114.8,
+   "D"
+  ],
+  [
+   114.8,
+   145.0,
+   "D2"
+  ],
+  [
+   145.0,
+   153.6,
+   "L"
+  ],
+  [
+   153.6,
+   180.0,
+   "B"
+  ]
+ ],
+ "births_while_song_played": 881,
+ "births_heard": 353,
+ "notes": "E major pentatonic from lineage hue; octave from height; pan from x; brighter note (shimmer) = speciation"
+}
