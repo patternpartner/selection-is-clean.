@@ -417,3 +417,15 @@ choosing). In the last chorus the world stays heard under the singing. Song duck
 +3 dB. The world was aged 4,000 ticks unfilmed (young worlds rarely give birth). Opening recap = our own films:
 gravity (cold-pulse 32 s), the glass (the-observer 9 s), the orders (cold-pulse 65.4 s). Ending count, true for seed
 1: 881 births while the song played, 353 in the spaces we listened to.
+'Your Turn' v2 - THE USER: "concept is great but we can do better... so many videos available and we reused the
+science guy with goggles again." They were right: v1 spent two-thirds of its length on a grey world and recycled our
+own films. v2 keeps the song, the world recording and the world's voice, and changes the picture: one of the user's
+own clips per sung line (none that talk, no real faces, never u98/goggles): u30 falling shards on "where to fall",
+u60 the girl at the glowing screen on "behind the glass", u58 men walking in step on "you followed every one", u73
+turning his head on "never stopped to ask", u67 the robot turning to the bunny on "your turn", u106/u108 the game
+controllers on the second "your turn", u64/u111 long corridors and ruins on "I've talked so long", u57 on "quiet now".
+In each space the clip freezes and every heard birth PAINTS a soft mark of its lineage colour at its birthplace; the
+marks persist onto every later clip (0.38, 0.5 in the last chorus), so our pictures carry what the world said. After
+"Go on" the world itself fills the frame and the marks line up with where it lives ("every mark was one of them, where
+it was born"). Last chorus: clips screen-blended with the live world. LESSON: use the library before our own
+footage, and do not repeat a hero image two films running.
