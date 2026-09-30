@@ -685,3 +685,15 @@ THE WALL: an LED video wall - every picture resampled to one glowing dot per 6 p
 Ken Burns push, an LED wipe between stories, and a strap (BREAKING | MACHINES; TONIGHT | DOORS / QUESTIONS / KETTLES /
 HILLS / ANSWERS / 06:00); a turning dotted globe for the titles and the open. The flat drawings read as a real studio
 wall once they go through the dot grid.
+'The News' v4 (`video/build_news4.py` + `video/news4_voice.py`, out/the-news-4.mp4, 64 s). THE USER on v3: "starting
+together"; the headline should be MACHINES TAKE OVER; it opened with 'Good evening' but closed with 'Good morning'
+(and at 05:58 a.m. 'good evening' is wrong anyway); the back screen should have LIVE FOOTAGE from the clips we have
+saved. So: the prompter line is "Breaking news. Machines take ov-" (cut 0.16 s into 'over'); the open is "It's just
+before six. Here is the news." - the one greeting left is "Good morning", at 06:00; the refusal re-read slower (0.78)
+and quieter. The LED wall plays the user's own clips through the dot grid (a Clip class streams each one cropped to
+594x444, looping; a frame asked for twice is held, which is how the robots FREEZE at the cut): u67 the grey robots,
+bled red under a hazard band, BREAKING | MACHINES TAKE OVER - frozen and dying in the silence, torn out on the refusal;
+u27 the user's universe field for the open; then u38 the bird at sunset (UNBROKEN), u62 the lift into white light
+(DOORS), u60 the girl in yellow reaching up to the screen (QUESTIONS), u107 ink drawing into one seed (KETTLES), u83
+the woman over the misty valley (HILLS), u106 the two on the sofa (ANSWERS), u111 two cloaked figures walking through
+a golden ruin (06:00). u112 (the golden vortex) reads too dark on the wall for the last line.
