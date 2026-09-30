@@ -24307,3 +24307,35 @@ selected AGAINST.** Seeds 231-233, 20,000 ticks, late window 10,000-18,000, 845-
   currency that does not reach offspring. **Selection has almost nothing heritable to grip at the one place it acts.**
   That, not the absence of another reward, is the likeliest reason nothing new wins offspring here. Next: re-measure
   #220 on today's engine (#257c-#265 changed births, laws and the pool) before designing anything on it.
+
+### #268 — #220 RE-MEASURED ON TODAY'S ENGINE: who breeds is still memory position. The diagnosis, and where it points.
+
+`harness-fecundity`, seeds 1-3, 8,000 ticks (#220's budget), engine after #257c-#265:
+
+| | seed 1 | seed 2 | seed 3 | #220 |
+|---|---|---|---|---|
+| particle-ticks at the amp soft line | 91% | 95% | 93% | 91-96% |
+| particle-ticks with a provision bank of 3+ | 90% | 98% | 97% | 93-98% |
+| births /1k particle-ticks, array decile 0 | 1.69 | 2.68 | 2.62 | 1.00-2.11 |
+| **middle 80% (deciles 1-8)** | **0.05-0.54** | **0.08-0.13** | **0.04-0.15** | 0.00-0.25 |
+| decile 9 | 1.62 | 1.89 | 2.06 | 1.61-2.88 |
+
+**Nothing today changed it.** Offspring still go by position in the array — the oldest survivors (low index after
+compaction) and the newest (high index) — and the heritable currencies the engine rewards are saturated: amp at the
+soft line and the provision bank full for 9 in 10 of the living, so rewarding them separates almost no one.
+
+**The diagnosis, joining #219, #226, #262, #266 and #267.** (1) Every rarity and frequency-dependent term in the file
+pays in amp (#262's trait NFD, #266's program NFD, RED_QUEEN), and amp does not decide who breeds — so none of them
+reaches the one place selection acts; #266 found the correctly formed one makes no measurable difference, and #267
+found new program variants LOSE in births. (2) The allocation that does decide it — the first-come queue — was shown by
+#219 to be protecting diversity by accident: a FAIR lottery made one lineage sweep every seed, because every birth is
+paid from ONE global pool, one limiting resource, and competitive exclusion follows; #226 found the queue happens to
+let outliers breed. (3) #221 made a birth cost the parent's own gathered provision, but the bank is full for 9 in 10,
+so the individual resource never binds and the global pool decides.
+**Where it points:** the obstacle to selection favouring anything new is not a missing reward but the SHAPE OF THE
+ECONOMY — one pool, allocated by position, with the individually earned currencies saturated. Coexistence of many
+lineages needs more than one limiting resource (the textbook result #219 named: competitive exclusion), and selection
+on novelty needs births to depend on something an individual does. #264's microcosm pointed the same way: the arms
+race lived only with many patches and movement between them. **The next experiment is the economy itself**: births
+limited by LOCAL resource — what a particle gathers where it is — rather than by a global pool handed out in queue
+order. Before designing it: read how provision is gathered (is it density-dependent? local?) and why the bank fills.
