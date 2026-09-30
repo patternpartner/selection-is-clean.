@@ -24339,3 +24339,28 @@ on novelty needs births to depend on something an individual does. #264's microc
 race lived only with many patches and movement between them. **The next experiment is the economy itself**: births
 limited by LOCAL resource — what a particle gathers where it is — rather than by a global pool handed out in queue
 order. Before designing it: read how provision is gathered (is it density-dependent? local?) and why the bank fills.
+
+### #269 — DESIGN, NOT YET BUILT: a local economy. Births paid from what a particle gathers where it is.
+
+**What the reading found (engine, updateParticles ~25312):** a particle harvests its field cell every tick —
+`localRes[i] += localField * fieldInfluence * affinity` and `amp[i] += localField * 0.0008 * affinity` — **and the cell
+loses nothing.** Harvest is non-rival: a thousand particles on one cell each take the full amount. So local crowding
+costs nothing, and there is no local scarcity for lineages to partition. Everything scarce is funnelled into ONE global
+pool (metabolism takes first claim; a birth is paid only if the pool holds BIRTH_ENERGY_COST, in loop order; when the
+pool is short, every particle loses the same STARVE_DRAIN wherever it is). That is #219's competitive exclusion, and
+#268's "births by memory position", from the inside.
+**What already exists and fits:** `fieldAffinity(cell, signature)` — cells carry the signature of who lives there and a
+particle harvests better where cells match it, a ready-made niche axis; `localRes` — an individual, heritable harvest
+(fieldInfluence is per-lineage); op 226 — a VM-driven birth already paid from localRes.
+**The change, in two parts, each its own arm:**
+- **A. RIVAL HARVEST** — what a particle takes from its cell is removed from the cell (the field's own regrowth, decay and
+  diffusion then govern the supply). Crowding depletes; spreading out or specialising (affinity) pays.
+- **B. LOCAL BIRTHS** — a birth is paid from the parent's own gathered resource (localRes, or provision fed by it), not
+  from the global pool in queue order; the global pool keeps metabolism.
+**Why both, and in that order:** B without A pays births from a resource nobody can exhaust — a population explosion
+(or the global pool's metabolic drain, unchanged, becomes the only brake). A without B makes harvest scarce but still
+leaves births to the queue. Measured first, before either is built: how much the population harvests per tick against
+what the field holds and regrows — whether rival harvest would bind at all, and where.
+**Judged on** #267's selection index (does novelty — or anything — now win offspring beyond the TREE null?), #268's
+fecundity census (do births still go by memory position?), and the grid-free template, with #219's warning as the
+failure to watch for: a fair allocation on one resource swept to ONE lineage; with many local resources it should not.
