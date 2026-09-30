@@ -5104,6 +5104,22 @@ let __foundRefused=0;      // draws that reached the price and could not pay it
 let __foundSeen=0;         // foundings by OTHER worlds observed on the wire
 let __foundLastLen=0;      // size of the last germline actually sent
 let worldEnergy=WORLD_ENERGY_MAX;
+// #271 - LOCAL POOLS (knob LOCAL_POOLS=G, default OFF). #219: every birth is paid from ONE pool, so there is one limiting
+// resource and a fair allocation sweeps to one lineage; #268: who breeds is memory position; #270: the field a particle
+// harvests where it stands is empty. This splits the pool into a GxG grid of regions over the world: each region gets an
+// equal share of the regeneration (up to an equal share of the cap), feeds the metabolism of the particles inside it,
+// pays for the births of parents inside it, and takes back the deaths inside it. A lineage that fills its region can no
+// longer spend another region's energy. worldEnergy is kept as the sum, so every reader of it still reads the world.
+// Off (unset, 0 or 1): nothing below is reached and the world is byte-identical to before.
+const __LP=(typeof globalThis!=='undefined')?Math.max(0,(globalThis.__LOCAL_POOLS|0)):0;
+const LP_ON=__LP>=2, LP_R=LP_ON?__LP*__LP:0;
+const lpPool=LP_ON?new Float64Array(LP_R).fill(WORLD_ENERGY_MAX/LP_R):null;
+const lpAdq=LP_ON?new Float64Array(LP_R).fill(1):null, lpDem=LP_ON?new Float64Array(LP_R):null;
+function lpReg(x,y){ let gx=Math.floor(x/W*__LP), gy=Math.floor(y/H*__LP); gx=gx<0?0:gx>=__LP?__LP-1:gx; gy=gy<0?0:gy>=__LP?__LP-1:gy; return gy*__LP+gx; }
+function lpSum(){ let t=0; for(let r=0;r<LP_R;r++)t+=lpPool[r]; return t; }
+function lpDeathReturn(i){   // #271: a death returns its energy to the pool it died in
+  if(LP_ON){ const r=lpReg(px[i],py[i]); lpPool[r]=Math.min(WORLD_ENERGY_MAX/LP_R,lpPool[r]+BIRTH_ENERGY_COST*DEATH_ENERGY_RETURN); worldEnergy=lpSum(); }
+  else worldEnergy=Math.min(WORLD_ENERGY_MAX,worldEnergy+BIRTH_ENERGY_COST*DEATH_ENERGY_RETURN); }
 let energyAdequacy=1;               // fraction of this tick's metabolic demand the pool could meet
 // NEGATIVE FREQUENCY-DEPENDENCE — the engine of novelty. Without it, selection is purely
 // stabilising: the single best type out-breeds everything and the world freezes into a
@@ -21176,8 +21192,11 @@ function addParticle(x,y,tv,born,parentA,parentB){
   if(parentA>=0&&parentA<N&&provBirthOn()){ if(pProvision[parentA]<PROV_BIRTH_COST){ fired('birth.refused'); fired('birth.unprovisioned'); return-1; } }   // PROV_BIRTH -- see provBirthOn
   if(parentA>=0){
     if(rationOn()){ const _rw=rareBirthW(parentA); __rationAtt+=_rw; if(Math.random()>=__rationP*_rw){ fired('birth.refused'); fired('birth.rationed'); return-1; } }   // RATION (+RARE_BIRTH weight) -- see loop()
-    if(worldEnergy<BIRTH_ENERGY_COST){ fired('birth.refused'); return-1; }
-    worldEnergy-=BIRTH_ENERGY_COST; fired('birth.paid');
+    if(LP_ON){ const _lr=lpReg(parentA<N?px[parentA]:x,parentA<N?py[parentA]:y);   // #271: the parent's region pays
+      if(lpPool[_lr]<BIRTH_ENERGY_COST){ fired('birth.refused'); return-1; }
+      lpPool[_lr]-=BIRTH_ENERGY_COST; worldEnergy-=BIRTH_ENERGY_COST; fired('birth.paid'); }
+    else { if(worldEnergy<BIRTH_ENERGY_COST){ fired('birth.refused'); return-1; }
+    worldEnergy-=BIRTH_ENERGY_COST; fired('birth.paid'); }
   }
   const i=N++;
   px[i]=x;py[i]=y;
@@ -21292,8 +21311,11 @@ function addCompound(x,y,nt,nvx,nvy,na,np,nf,parentA,parentB){
   if(parentA>=0&&parentA<N&&provBirthOn()){ if(pProvision[parentA]<PROV_BIRTH_COST){ fired('birth.refused'); fired('birth.unprovisioned'); return-1; } }   // PROV_BIRTH -- see provBirthOn
   if(parentA>=0){
     if(rationOn()){ const _rw=rareBirthW(parentA); __rationAtt+=_rw; if(Math.random()>=__rationP*_rw){ fired('birth.refused'); fired('birth.rationed'); return-1; } }   // RATION (+RARE_BIRTH weight) -- see loop()
-    if(worldEnergy<BIRTH_ENERGY_COST){ fired('birth.refused'); return-1; }
-    worldEnergy-=BIRTH_ENERGY_COST; fired('birth.paid');
+    if(LP_ON){ const _lr=lpReg(parentA<N?px[parentA]:x,parentA<N?py[parentA]:y);   // #271: the parent's region pays
+      if(lpPool[_lr]<BIRTH_ENERGY_COST){ fired('birth.refused'); return-1; }
+      lpPool[_lr]-=BIRTH_ENERGY_COST; worldEnergy-=BIRTH_ENERGY_COST; fired('birth.paid'); }
+    else { if(worldEnergy<BIRTH_ENERGY_COST){ fired('birth.refused'); return-1; }
+    worldEnergy-=BIRTH_ENERGY_COST; fired('birth.paid'); }
   }
   const i=N++;
   px[i]=x;py[i]=y;vx[i]=nvx;vy[i]=nvy;
@@ -21535,7 +21557,7 @@ function applyEntropy(){
          if(_dead>0)amp[i]-=_dead*CARRY_COST_ATOM; }}
       amp[i]+=localRes[i]*genome.entropyK;
       {const _txi=__cl(Math.floor(px[i]/(W/FIELD_W)),0,FIELD_W-1),_tyi=__cl(Math.floor(py[i]/(H/FIELD_H)),0,FIELD_H-1),_tox=inhibitorField[_tyi*FIELD_W+_txi];if(_tox>0.05){const _dmg=_tox*Math.max(0,1-pResistance[i])*0.018/MODE_DEFENCE[pMode[i]];amp[i]-=_dmg;}pResistance[i]*=0.997;} // INHIBITOR DAMAGE + RESISTANCE DECAY: inhibitor deals up to 1.8% amp/tick at zero resistance; resistance decays 0.3%/tick — must be actively maintained via RESISTANCE_BOOST (op215)
-      if(energyAdequacy<1)amp[i]-=(1-energyAdequacy)*STARVE_DRAIN; // starvation: the world couldn't feed everyone this tick
+      { const _ea=LP_ON?lpAdq[lpReg(px[i],py[i])]:energyAdequacy; if(_ea<1)amp[i]-=(1-_ea)*STARVE_DRAIN; } // #271: per region when LOCAL_POOLS. starvation: the world couldn't feed everyone this tick
       if(isNaN(amp[i]))amp[i]=0;
       // ═══ LEAP 34 (#72) — ESCAPE IS FATAL. The first state in this system that can kill you. ═══
       // #71 measured what the substrate does with a particle that leaves the world: nothing. Position is
@@ -21588,7 +21610,7 @@ function applyEntropy(){
         palive[i]=0;
         {const _drx=__cl(Math.floor(px[i]/(W/FIELD_W)),0,FIELD_W-1),_dry=__cl(Math.floor(py[i]/(H/FIELD_H)),0,FIELD_H-1);rootField[_dry*FIELD_W+_drx]=Math.min(5,rootField[_dry*FIELD_W+_drx]+0.18);} // death deposits into substrate — the organism's body becomes soil, deepening the root network where life was
         {const _dtx=__cl(Math.floor(px[i]/(W/FIELD_W)),0,FIELD_W-1),_dty=__cl(Math.floor(py[i]/(H/FIELD_H)),0,FIELD_H-1);detritalField[_dty*FIELD_W+_dtx]=Math.min(3,detritalField[_dty*FIELD_W+_dtx]+Math.max(0,amp[i])*0.22+Math.max(0,localRes[i])*0.12);} // DETRITAL DEPOSIT: dead particle's biomass (amplitude + reserves) persists in place as a harvestable nutrient pool — decomposer lineages mining DETRITAL_HARVEST can build an entire metabolism on death; trophic cascade foundation
-        worldEnergy=Math.min(WORLD_ENERGY_MAX,worldEnergy+BIRTH_ENERGY_COST*DEATH_ENERGY_RETURN); // death returns resource to the world
+        lpDeathReturn(i); // death returns resource to the world
       }
       // LEAP 3 — SURPLUS CONVERTS. Above AMP_SOFT the excess is not discarded, it is banked (lossily)
       // as reproductive provision. amp stays bounded; surplus stops being thrown away.
@@ -21627,7 +21649,7 @@ function applyEntropy(){
           palive[i]=0;
           {const _sx=__cl(Math.floor(px[i]/(W/FIELD_W)),0,FIELD_W-1),_sy=__cl(Math.floor(py[i]/(H/FIELD_H)),0,FIELD_H-1);
            detritalField[_sy*FIELD_W+_sx]=Math.min(3,detritalField[_sy*FIELD_W+_sx]+Math.max(0,amp[i])*0.25+pProvision[i]*0.15);}
-          worldEnergy=Math.min(WORLD_ENERGY_MAX,worldEnergy+BIRTH_ENERGY_COST*DEATH_ENERGY_RETURN);
+          lpDeathReturn(i);
         }
       }
     }finally{genome=_g;}
@@ -26702,6 +26724,7 @@ function loop(){
   const _season=1+SEASON_AMPLITUDE*(
       (1-WORLD_SIGNAL_WEIGHT)*Math.sin(2*Math.PI*tick/SEASON_PERIOD)
     +  WORLD_SIGNAL_WEIGHT*_wsB); // feast/famine cycle, no longer solvable by learning one period
+  if(LP_ON){ const _q=WORLD_ENERGY_REGEN*_season/LP_R, _cap=WORLD_ENERGY_MAX/LP_R; for(let r=0;r<LP_R;r++)lpPool[r]=Math.min(_cap,lpPool[r]+_q); worldEnergy=lpSum(); } else   // #271
   worldEnergy=Math.min(WORLD_ENERGY_MAX,worldEnergy+WORLD_ENERGY_REGEN*_season); // conserved-budget influx ("sunlight"), now seasonal
   // #135: upkeep is now charged PER PARTICLE and discounted by the attention on the ground it
   // stands on. With no pointer anywhere, attentionAt() is 0 everywhere and this sums to exactly
@@ -26712,7 +26735,10 @@ function loop(){
   // different factors and "go slow" would be a free win. With it, the same organism on a stretched
   // timeline is neutral by construction, and the only thing that makes rate a decision is that the
   // WORLD does not slow down too.
-  { let _md=0; for(let i=0;i<N;i++){ if(!palive[i])continue; _md+=attnUpkeep(i)/(__STIME?tickRateOf(pGenome[i]):1); }
+  if(LP_ON){ lpDem.fill(0); let _md=0; for(let i=0;i<N;i++){ if(!palive[i])continue; const _u=attnUpkeep(i)/(__STIME?tickRateOf(pGenome[i]):1); lpDem[lpReg(px[i],py[i])]+=_u; _md+=_u; }   // #271
+    energyAdequacy=_md>0?Math.min(1,worldEnergy/_md):1;   // the world's figure, for the sensors that read it
+    for(let r=0;r<LP_R;r++){ lpAdq[r]=lpDem[r]>0?Math.min(1,lpPool[r]/lpDem[r]):1; lpPool[r]=Math.max(0,lpPool[r]-lpDem[r]); } worldEnergy=lpSum(); }
+  else { let _md=0; for(let i=0;i<N;i++){ if(!palive[i])continue; _md+=attnUpkeep(i)/(__STIME?tickRateOf(pGenome[i]):1); }
     energyAdequacy=_md>0?Math.min(1,worldEnergy/_md):1; worldEnergy=Math.max(0,worldEnergy-_md); } // metabolism takes first claim; reproduction gets the surplus
   // RATION (knob, default OFF -- see rationOn). Measured before this line, three seeds: the pool ends 94-99% of ticks
   // dry, particles make 140-2000 birth attempts per 1k particle-ticks, 99-100% are refused, and the

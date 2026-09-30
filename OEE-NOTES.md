@@ -24396,3 +24396,36 @@ the one global pool falls instead on the field's cells ("sunlight on the ground"
 they stand on — rivalrously, so crowding depletes it — into their own reserve, and births are paid from that reserve.
 The global pool's job (a birth needs the world to have energy, handed out in loop order) passes to the particle and the
 place. Built as a knob, default off, and judged as #269 says; #219's sweep to one lineage is the failure to watch for.
+
+### #271 — LOCAL POOLS: the one birth pool split into regions. Built as a knob (default off). Pre-registered.
+
+**The change** (`LOCAL_POOLS=G`, KNOBS entry added): the world's single energy pool becomes a GxG grid of regional
+pools. Each region receives 1/G^2 of the regeneration (capped at 1/G^2 of WORLD_ENERGY_MAX), feeds the metabolism of the
+particles inside it (and starvation drains by THAT region's shortfall), pays for births whose parent is inside it, and
+takes back the energy of deaths inside it. `worldEnergy` is kept as the sum, so every reader of it is unchanged.
+Six sites, each replaced with an asserted count (the first attempt's count of 3 for a 2-site pattern stopped it — the
+new helper held the original line in its off-branch).
+**Checked:** unset, harness-oee output identical to the committed engine (seed 1, 1,000 ticks, every field but config
+and timing); LOCAL_POOLS=4 runs and differs.
+**Design look (seed 1, 8,000 ticks, LOCAL_POOLS=4 — a design seed, not a verdict):** no extinction, floor 356; and **who
+breeds stops being memory position** — births per 1k particle-ticks by array decile, 0: 1.69 -> 0.52, deciles 1-8:
+0.05-0.54 -> 0.29-0.48, 9: 1.62 -> 1.39. Each region keeps its own first-come order, so sixteen queues instead of one.
+
+**The deciding question:** does splitting the pool make the world better on the template without #219's sweep, and
+does it let anything new win offspring?
+**Design:** the retire-or-prove template in the "better" direction: arm `LOCAL_POOLS=4` against the default world's
+null band (control + NULLSHIFT 1-3), `harness-oee.js ESTABLISH=250`, 20,000 ticks, **seeds 211-213, reusing #266's
+null runs** (the default world on the current engine — the off path is byte-identical — run before LOCAL_POOLS existed;
+those seeds played no part in its design, which used seed 1 only). Measures: centredEntropyRatio +/-0.05, spread_late
++/-10%, established fraction +/-25%, program entropy +/-10%, crash guard; plus **a sweep guard (#219): effective lineages
+late (the establishment census's effN_late) below every null by more than 25% relative counts as WORSE.**
+**Rule, fixed now:** BETTER than every null on 2/3 seeds and not WORSE -> **LOCAL_POOLS=4 becomes the default** (every
+world's economy; no saved value involved, so saved worlds change on their next run — delegated, said here); WORSE on
+2/3 -> stays off; both -> SPLIT, stays off; neither -> stays a knob, off, with the result recorded.
+**Reported, not ruled on:** #267's selection readout on seeds 231-233 with LOCAL_POOLS=4, paired with #267's default
+runs (does any layer read NOVELTY FAVOURED? does programs' DISFAVOURED change?); `harness-fecundity` seeds 2-3 with it
+on (does position still decide who breeds?).
+**Written before, so it can be wrong:** establishment above every null on 2 of 3 seeds (the queue is spread over
+sixteen regions, and a lineage cannot spend another region's energy), spread and centred entropy inside the band,
+nothing WORSE -> BETTER -> it becomes the default. The sweep guard is where I could be wrong. The selection readout I
+cannot guess.
