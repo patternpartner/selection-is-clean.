@@ -5104,22 +5104,6 @@ let __foundRefused=0;      // draws that reached the price and could not pay it
 let __foundSeen=0;         // foundings by OTHER worlds observed on the wire
 let __foundLastLen=0;      // size of the last germline actually sent
 let worldEnergy=WORLD_ENERGY_MAX;
-// #271 - LOCAL POOLS (knob LOCAL_POOLS=G, default OFF). #219: every birth is paid from ONE pool, so there is one limiting
-// resource and a fair allocation sweeps to one lineage; #268: who breeds is memory position; #270: the field a particle
-// harvests where it stands is empty. This splits the pool into a GxG grid of regions over the world: each region gets an
-// equal share of the regeneration (up to an equal share of the cap), feeds the metabolism of the particles inside it,
-// pays for the births of parents inside it, and takes back the deaths inside it. A lineage that fills its region can no
-// longer spend another region's energy. worldEnergy is kept as the sum, so every reader of it still reads the world.
-// Off (unset, 0 or 1): nothing below is reached and the world is byte-identical to before.
-const __LP=(typeof globalThis!=='undefined')?Math.max(0,(globalThis.__LOCAL_POOLS|0)):0;
-const LP_ON=__LP>=2, LP_R=LP_ON?__LP*__LP:0;
-const lpPool=LP_ON?new Float64Array(LP_R).fill(WORLD_ENERGY_MAX/LP_R):null;
-const lpAdq=LP_ON?new Float64Array(LP_R).fill(1):null, lpDem=LP_ON?new Float64Array(LP_R):null;
-function lpReg(x,y){ let gx=Math.floor(x/W*__LP), gy=Math.floor(y/H*__LP); gx=gx<0?0:gx>=__LP?__LP-1:gx; gy=gy<0?0:gy>=__LP?__LP-1:gy; return gy*__LP+gx; }
-function lpSum(){ let t=0; for(let r=0;r<LP_R;r++)t+=lpPool[r]; return t; }
-function lpDeathReturn(i){   // #271: a death returns its energy to the pool it died in
-  if(LP_ON){ const r=lpReg(px[i],py[i]); lpPool[r]=Math.min(WORLD_ENERGY_MAX/LP_R,lpPool[r]+BIRTH_ENERGY_COST*DEATH_ENERGY_RETURN); worldEnergy=lpSum(); }
-  else worldEnergy=Math.min(WORLD_ENERGY_MAX,worldEnergy+BIRTH_ENERGY_COST*DEATH_ENERGY_RETURN); }
 let energyAdequacy=1;               // fraction of this tick's metabolic demand the pool could meet
 // NEGATIVE FREQUENCY-DEPENDENCE — the engine of novelty. Without it, selection is purely
 // stabilising: the single best type out-breeds everything and the world freezes into a
@@ -10530,6 +10514,49 @@ const pType=new Uint8Array(CAP);
 // or is unstructured noise (a seeded smear that washes out) — the seed-vs-harvest discriminator.
 const pLin=new Int32Array(CAP); let _linNext=1;
 const pProvision=new Float32Array(CAP); // LEAP 3: banked reproductive surplus, spent at spawn
+// #272 - SUN (knob SUN=1, default OFF). The world's income falls on the ground instead of into one pool. #268: every
+// birth was paid from ONE global pool, first come first served, so who bred was memory position; #270: the field a
+// particle harvests where it stands had been empty since tick 300; #271: splitting the pool into regional tanks moved
+// breeding off memory position but locked a clumped world at half its income, because nothing let a particle find the
+// energy. Here the regeneration lands evenly on every cell of sunField (each cell holding at most its share of
+// WORLD_ENERGY_MAX), spreads by FIELD_DIFFUSE (reflecting at the walls, so none leaks), and each particle takes a share
+// of the cell it stands on into its OWN store, pE: SUN_TAKE of the stock per particle on the cell, shared equally, so a
+// crowded cell is a poor one and no loop order enters. The store pays that particle's upkeep (a shortfall is its own
+// starvation, pAdq, in place of the world's) and its births (BIRTH_ENERGY_COST, SUN_ENDOW of it becoming the child's
+// start). A death returns its store and DEATH_ENERGY_RETURN of a birth's cost to the cell it died on. The laws that
+// governed the pool (WORLD_ENERGY_REGEN, WORLD_ENERGY_MAX, BIRTH_ENERGY_COST, DEATH_ENERGY_RETURN, METABOLIC_ENERGY_DRAW)
+// govern the ground. FIELD_GRAD_X/Y (ops 147/148), the gradient sensors, read this layer under SUN, scaled so a full
+// cell against an empty one reads as the same +-0.5k they were written for; on the old field they read exactly 0 in
+// every world (#270). They are in the vocabulary, NOT in the programs: on the design seed no living program carried
+// either through 6,000 ticks, and a birth redraws an opcode about 0.4% of the time per instruction, 2 in 428 of those
+// landing here. So directed foraging is open to evolution and not handed to it; what this measures is the economy. worldEnergy becomes the ground's total and energyAdequacy the
+// population's paid share, for their readers. Off (unset or 0): nothing below is reached and the world is byte-identical.
+const SUN_ON=(typeof globalThis!=='undefined')&&((globalThis.__SUN|0)!==0);
+const SUN_TAKE=0.2, SUN_ENDOW=0.5, SUN_SEED=0.5, SUN_STORE=4;
+const sunField=SUN_ON?new Float32Array(FIELD_W*FIELD_H).fill(WORLD_ENERGY_MAX/(FIELD_W*FIELD_H)):null;
+const sunScratch=SUN_ON?new Float32Array(FIELD_W*FIELD_H):null, sunCnt=SUN_ON?new Int32Array(FIELD_W*FIELD_H):null;
+const pE=new Float32Array(CAP), pAdq=new Float32Array(CAP).fill(1);   // #272: a particle's own energy store, and the share of its upkeep it met
+function SUN_GRAD(){ return (FIELD_W*FIELD_H)/Math.max(1e-9,WORLD_ENERGY_MAX); }
+function sunCell(i){ const fx=__cl(Math.floor(px[i]/(W/FIELD_W)),0,FIELD_W-1), fy=__cl(Math.floor(py[i]/(H/FIELD_H)),0,FIELD_H-1); return fy*FIELD_W+fx; }
+function sunStep(season){
+  const C=FIELD_W*FIELD_H, q=WORLD_ENERGY_REGEN*season/C, cap=WORLD_ENERGY_MAX/C, D=FIELD_DIFFUSE;
+  for(let c=0;c<C;c++){ const v=sunField[c]; if(v<cap)sunField[c]=Math.min(cap,v+q); }
+  for(let y=0;y<FIELD_H;y++)for(let x=0;x<FIELD_W;x++){ const c=y*FIELD_W+x, v=sunField[c];
+    sunScratch[c]=v*(1-4*D)+D*((x>0?sunField[c-1]:v)+(x<FIELD_W-1?sunField[c+1]:v)+(y>0?sunField[c-FIELD_W]:v)+(y<FIELD_H-1?sunField[c+FIELD_W]:v)); }
+  sunField.set(sunScratch);
+  sunCnt.fill(0); for(let i=0;i<N;i++) if(palive[i]) sunCnt[sunCell(i)]++;
+  for(let c=0;c<C;c++){ const n=sunCnt[c]; if(!n)continue; const t=sunField[c]*Math.min(1,SUN_TAKE*n); sunScratch[c]=t/n; sunField[c]-=t; }
+  let dem=0, paid=0, tot=0;
+  for(let i=0;i<N;i++){ if(!palive[i])continue; const c=sunCell(i); let e=pE[i]+sunScratch[c];
+    if(e>SUN_STORE){ sunField[c]+=e-SUN_STORE; e=SUN_STORE; }   // a full store leaves the rest on the ground
+    const u=attnUpkeep(i)/(__STIME?tickRateOf(pGenome[i]):1); dem+=u;
+    if(e>=u){ e-=u; pAdq[i]=1; paid+=u; } else { pAdq[i]=u>0?e/u:1; paid+=e; e=0; }
+    pE[i]=e; }
+  energyAdequacy=dem>0?paid/dem:1;
+  for(let c=0;c<C;c++)tot+=sunField[c]; worldEnergy=tot; }
+function deathReturn(i){   // a death returns energy: to the cell it died on under SUN (#272), else to the one pool
+  if(SUN_ON){ sunField[sunCell(i)]+=pE[i]+BIRTH_ENERGY_COST*DEATH_ENERGY_RETURN; pE[i]=0; }
+  else worldEnergy=Math.min(WORLD_ENERGY_MAX,worldEnergy+BIRTH_ENERGY_COST*DEATH_ENERGY_RETURN); }
 const pMode=new Uint8Array(CAP);        // #57: current behavioural mode — a DISCRETE strategy, VM-settable
 const pModeBias=new Uint8Array(CAP);    // #57: inherited default — the strategy a lineage is born into
 const pRarity=new Float32Array(CAP).fill(1); // LEAP 13: per-particle upkeep multiplier — rare is cheap
@@ -21192,9 +21219,8 @@ function addParticle(x,y,tv,born,parentA,parentB){
   if(parentA>=0&&parentA<N&&provBirthOn()){ if(pProvision[parentA]<PROV_BIRTH_COST){ fired('birth.refused'); fired('birth.unprovisioned'); return-1; } }   // PROV_BIRTH -- see provBirthOn
   if(parentA>=0){
     if(rationOn()){ const _rw=rareBirthW(parentA); __rationAtt+=_rw; if(Math.random()>=__rationP*_rw){ fired('birth.refused'); fired('birth.rationed'); return-1; } }   // RATION (+RARE_BIRTH weight) -- see loop()
-    if(LP_ON){ const _lr=lpReg(parentA<N?px[parentA]:x,parentA<N?py[parentA]:y);   // #271: the parent's region pays
-      if(lpPool[_lr]<BIRTH_ENERGY_COST){ fired('birth.refused'); return-1; }
-      lpPool[_lr]-=BIRTH_ENERGY_COST; worldEnergy-=BIRTH_ENERGY_COST; fired('birth.paid'); }
+    if(SUN_ON){ if(!(parentA<N)||pE[parentA]<BIRTH_ENERGY_COST){ fired('birth.refused'); return-1; }   // #272: the parent pays from what it gathered
+      pE[parentA]-=BIRTH_ENERGY_COST; fired('birth.paid'); }
     else { if(worldEnergy<BIRTH_ENERGY_COST){ fired('birth.refused'); return-1; }
     worldEnergy-=BIRTH_ENERGY_COST; fired('birth.paid'); }
   }
@@ -21216,6 +21242,7 @@ function addParticle(x,y,tv,born,parentA,parentB){
   phase[i]=Math.random()*Math.PI*2;freq[i]=0.02+Math.random()*0.04;
   amp[i]=born?0.5:0.3+Math.random()*0.5;
   palive[i]=1;page[i]=0;localRes[i]=0;collapse[i]=0;clusterID[i]=-1;
+  if(SUN_ON)pE[i]=(parentA>=0)?BIRTH_ENERGY_COST*SUN_ENDOW:SUN_SEED;   // #272: part of the parent's payment is the child's start
   // #57 — a lineage is BORN INTO a strategy and mostly keeps it, with a small chance of switching at
   // birth. That is what makes mode a heritable discrete trait selection can act on, rather than noise.
   pModeBias[i]=(parentA>=0&&parentA<N)?(Math.random()<0.06?((Math.random()*MODE_COUNT)|0):pModeBias[parentA]):((Math.random()*MODE_COUNT)|0);
@@ -21311,9 +21338,8 @@ function addCompound(x,y,nt,nvx,nvy,na,np,nf,parentA,parentB){
   if(parentA>=0&&parentA<N&&provBirthOn()){ if(pProvision[parentA]<PROV_BIRTH_COST){ fired('birth.refused'); fired('birth.unprovisioned'); return-1; } }   // PROV_BIRTH -- see provBirthOn
   if(parentA>=0){
     if(rationOn()){ const _rw=rareBirthW(parentA); __rationAtt+=_rw; if(Math.random()>=__rationP*_rw){ fired('birth.refused'); fired('birth.rationed'); return-1; } }   // RATION (+RARE_BIRTH weight) -- see loop()
-    if(LP_ON){ const _lr=lpReg(parentA<N?px[parentA]:x,parentA<N?py[parentA]:y);   // #271: the parent's region pays
-      if(lpPool[_lr]<BIRTH_ENERGY_COST){ fired('birth.refused'); return-1; }
-      lpPool[_lr]-=BIRTH_ENERGY_COST; worldEnergy-=BIRTH_ENERGY_COST; fired('birth.paid'); }
+    if(SUN_ON){ if(!(parentA<N)||pE[parentA]<BIRTH_ENERGY_COST){ fired('birth.refused'); return-1; }   // #272: the parent pays from what it gathered
+      pE[parentA]-=BIRTH_ENERGY_COST; fired('birth.paid'); }
     else { if(worldEnergy<BIRTH_ENERGY_COST){ fired('birth.refused'); return-1; }
     worldEnergy-=BIRTH_ENERGY_COST; fired('birth.paid'); }
   }
@@ -21323,6 +21349,7 @@ function addCompound(x,y,nt,nvx,nvy,na,np,nf,parentA,parentB){
   if(parentA>=0&&parentA<N) inheritMutate(i);   // INHERIT -- see addParticle
   phase[i]=np;freq[i]=nf;amp[i]=na;
   palive[i]=1;page[i]=0;localRes[i]=0;collapse[i]=0;clusterID[i]=-1;
+  if(SUN_ON)pE[i]=(parentA>=0)?BIRTH_ENERGY_COST*SUN_ENDOW:SUN_SEED;   // #272: part of the parent's payment is the child's start
   // #57 — a lineage is BORN INTO a strategy and mostly keeps it, with a small chance of switching at
   // birth. That is what makes mode a heritable discrete trait selection can act on, rather than noise.
   pModeBias[i]=(parentA>=0&&parentA<N)?(Math.random()<0.06?((Math.random()*MODE_COUNT)|0):pModeBias[parentA]):((Math.random()*MODE_COUNT)|0);
@@ -21557,7 +21584,7 @@ function applyEntropy(){
          if(_dead>0)amp[i]-=_dead*CARRY_COST_ATOM; }}
       amp[i]+=localRes[i]*genome.entropyK;
       {const _txi=__cl(Math.floor(px[i]/(W/FIELD_W)),0,FIELD_W-1),_tyi=__cl(Math.floor(py[i]/(H/FIELD_H)),0,FIELD_H-1),_tox=inhibitorField[_tyi*FIELD_W+_txi];if(_tox>0.05){const _dmg=_tox*Math.max(0,1-pResistance[i])*0.018/MODE_DEFENCE[pMode[i]];amp[i]-=_dmg;}pResistance[i]*=0.997;} // INHIBITOR DAMAGE + RESISTANCE DECAY: inhibitor deals up to 1.8% amp/tick at zero resistance; resistance decays 0.3%/tick — must be actively maintained via RESISTANCE_BOOST (op215)
-      { const _ea=LP_ON?lpAdq[lpReg(px[i],py[i])]:energyAdequacy; if(_ea<1)amp[i]-=(1-_ea)*STARVE_DRAIN; } // #271: per region when LOCAL_POOLS. starvation: the world couldn't feed everyone this tick
+      { const _ea=SUN_ON?pAdq[i]:energyAdequacy; if(_ea<1)amp[i]-=(1-_ea)*STARVE_DRAIN; } // #272: per particle under SUN. starvation: the world couldn't feed everyone this tick
       if(isNaN(amp[i]))amp[i]=0;
       // ═══ LEAP 34 (#72) — ESCAPE IS FATAL. The first state in this system that can kill you. ═══
       // #71 measured what the substrate does with a particle that leaves the world: nothing. Position is
@@ -21610,7 +21637,7 @@ function applyEntropy(){
         palive[i]=0;
         {const _drx=__cl(Math.floor(px[i]/(W/FIELD_W)),0,FIELD_W-1),_dry=__cl(Math.floor(py[i]/(H/FIELD_H)),0,FIELD_H-1);rootField[_dry*FIELD_W+_drx]=Math.min(5,rootField[_dry*FIELD_W+_drx]+0.18);} // death deposits into substrate — the organism's body becomes soil, deepening the root network where life was
         {const _dtx=__cl(Math.floor(px[i]/(W/FIELD_W)),0,FIELD_W-1),_dty=__cl(Math.floor(py[i]/(H/FIELD_H)),0,FIELD_H-1);detritalField[_dty*FIELD_W+_dtx]=Math.min(3,detritalField[_dty*FIELD_W+_dtx]+Math.max(0,amp[i])*0.22+Math.max(0,localRes[i])*0.12);} // DETRITAL DEPOSIT: dead particle's biomass (amplitude + reserves) persists in place as a harvestable nutrient pool — decomposer lineages mining DETRITAL_HARVEST can build an entire metabolism on death; trophic cascade foundation
-        lpDeathReturn(i); // death returns resource to the world
+        deathReturn(i); // death returns resource to the world
       }
       // LEAP 3 — SURPLUS CONVERTS. Above AMP_SOFT the excess is not discarded, it is banked (lossily)
       // as reproductive provision. amp stays bounded; surplus stops being thrown away.
@@ -21649,7 +21676,7 @@ function applyEntropy(){
           palive[i]=0;
           {const _sx=__cl(Math.floor(px[i]/(W/FIELD_W)),0,FIELD_W-1),_sy=__cl(Math.floor(py[i]/(H/FIELD_H)),0,FIELD_H-1);
            detritalField[_sy*FIELD_W+_sx]=Math.min(3,detritalField[_sy*FIELD_W+_sx]+Math.max(0,amp[i])*0.25+pProvision[i]*0.15);}
-          lpDeathReturn(i);
+          deathReturn(i);
         }
       }
     }finally{genome=_g;}
@@ -24119,8 +24146,8 @@ function vmOps9(op,src,dst,k,si,di,i,j,ip){ switch(op){
 case 144:{if(pProg[i]&&localRes[i]>0.3&&pProg[i].length<Math.min(genome.vmMaxInstructions||16,48)){const _pgSrc144=Math.floor(Math.random()*pProg[i].length);const _pgNew144=[...pProg[i][_pgSrc144]];_pgNew144[3]+=(Math.random()-0.5)*0.1;_pgNew144[3]=Math.max(-2,Math.min(2,_pgNew144[3]));pProg[i].push(_pgNew144);localRes[i]-=0.08;vmRegs[di]=pProg[i].length;}else{vmRegs[di]=0;}}break; // PROG_GROW — self-extend program by duplicating a random existing instruction with small parameter drift. Costs localRes. Programs now grow during lifetime, not just at reproduction: acquired behavioral complexity, indefinitely extensible programs.
       case 145:{const _dtfx145=__cl(Math.floor(px[i]/(W/FIELD_W)),0,FIELD_W-1),_dtfy145=__cl(Math.floor(py[i]/(H/FIELD_H)),0,FIELD_H-1);vmRegs[di]=Math.min(3,detritalField[_dtfy145*FIELD_W+_dtfx145])*k;}break; // DETRITAL_SENSE — perceive local dead-matter density (0=no detritus, →3=rich death zone). Decomposer lineages sense where mortality concentrates. Enables evolved scavenger strategy: move toward death zones, feed on fallen biomass. Trophic cascade perception.
       case 146:{const _dhx146=__cl(Math.floor(px[i]/(W/FIELD_W)),0,FIELD_W-1),_dhy146=__cl(Math.floor(py[i]/(H/FIELD_H)),0,FIELD_H-1),_dhi146=_dhy146*FIELD_W+_dhx146;const _dha146=Math.min(detritalField[_dhi146],Math.abs(k)*0.12);detritalField[_dhi146]-=_dha146;localRes[i]=Math.min(2,localRes[i]+_dha146);vmRegs[di]=_dha146;}break; // DETRITAL_HARVEST — extract biomass from local detrital pool into own reserves. Decomposer niche: specialized lineages mine death zones, recycling dead matter into metabolic energy. One lineage's mortality becomes another lineage's food source — trophic cascade, second energy pathway distinct from field harvest.
-      case 147:{const _gfx147=__cl(Math.floor(px[i]/(W/FIELD_W)),1,FIELD_W-2),_gfy147=__cl(Math.floor(py[i]/(H/FIELD_H)),1,FIELD_H-2);vmRegs[di]=(field[_gfy147*FIELD_W+_gfx147+1]-field[_gfy147*FIELD_W+_gfx147-1])*0.5*k;}break; // FIELD_GRAD_X — resource field gradient in X (positive=more food right, negative=left). Enables chemotaxis: directed movement toward resource peaks rather than random-walk bias.
-      case 148:{const _gfx148=__cl(Math.floor(px[i]/(W/FIELD_W)),1,FIELD_W-2),_gfy148=__cl(Math.floor(py[i]/(H/FIELD_H)),1,FIELD_H-2);vmRegs[di]=(field[(_gfy148+1)*FIELD_W+_gfx148]-field[(_gfy148-1)*FIELD_W+_gfx148])*0.5*k;}break; // FIELD_GRAD_Y — resource field gradient in Y. Paired with FIELD_GRAD_X: evolved direct navigation toward resource peaks; predators can track prey by following consumption trails.
+      case 147:{const _gfx147=__cl(Math.floor(px[i]/(W/FIELD_W)),1,FIELD_W-2),_gfy147=__cl(Math.floor(py[i]/(H/FIELD_H)),1,FIELD_H-2);vmRegs[di]=SUN_ON?(sunField[_gfy147*FIELD_W+_gfx147+1]-sunField[_gfy147*FIELD_W+_gfx147-1])*0.5*k*SUN_GRAD():(field[_gfy147*FIELD_W+_gfx147+1]-field[_gfy147*FIELD_W+_gfx147-1])*0.5*k;}break; // FIELD_GRAD_X — resource field gradient in X (positive=more food right, negative=left). Enables chemotaxis: directed movement toward resource peaks rather than random-walk bias.
+      case 148:{const _gfx148=__cl(Math.floor(px[i]/(W/FIELD_W)),1,FIELD_W-2),_gfy148=__cl(Math.floor(py[i]/(H/FIELD_H)),1,FIELD_H-2);vmRegs[di]=SUN_ON?(sunField[(_gfy148+1)*FIELD_W+_gfx148]-sunField[(_gfy148-1)*FIELD_W+_gfx148])*0.5*k*SUN_GRAD():(field[(_gfy148+1)*FIELD_W+_gfx148]-field[(_gfy148-1)*FIELD_W+_gfx148])*0.5*k;}break; // FIELD_GRAD_Y — resource field gradient in Y. Paired with FIELD_GRAD_X: evolved direct navigation toward resource peaks; predators can track prey by following consumption trails.
       case 149:{const _gdx149=__cl(Math.floor(px[i]/(W/FIELD_W)),1,FIELD_W-2),_gdy149=__cl(Math.floor(py[i]/(H/FIELD_H)),1,FIELD_H-2);vmRegs[di]=(detritalField[_gdy149*FIELD_W+_gdx149+1]-detritalField[_gdy149*FIELD_W+_gdx149-1])*0.5*k;}break; // DETRITAL_GRAD_X — detrital nutrient gradient in X. Decomposer chemotaxis: navigate toward death zones rather than stumbling upon them.
       case 150:{const _gdx150=__cl(Math.floor(px[i]/(W/FIELD_W)),1,FIELD_W-2),_gdy150=__cl(Math.floor(py[i]/(H/FIELD_H)),1,FIELD_H-2);vmRegs[di]=(detritalField[(_gdy150+1)*FIELD_W+_gdx150]-detritalField[(_gdy150-1)*FIELD_W+_gdx150])*0.5*k;}break; // DETRITAL_GRAD_Y — detrital nutrient gradient in Y. With DETRITAL_GRAD_X enables full 2D decomposer navigation.
       case 151:{vmRegs[di]=(pProg[i]?pProg[i].length/Math.max(1,genome.vmMaxInstructions||16):0)*k;}break; // PROG_LENGTH_SENSE — own program complexity as normalized ratio (0=minimal, →1=at cap). Enables self-regulatory circuits: sense own complexity, grow until a threshold, switch behavioral mode. Complexity becomes a self-perceived property.
@@ -25760,7 +25787,7 @@ function compact(){
     pPlasmidAge[w]=pPlasmidAge[r];
     pBroadcast[w*2]=pBroadcast[r*2];pBroadcast[w*2+1]=pBroadcast[r*2+1];
     clusterID[w]=clusterID[r];
-    pType[w]=pType[r];pProg[w]=pProg[r];pGenome[w]=pGenome[r];pLin[w]=pLin[r];pProvision[w]=pProvision[r];pMode[w]=pMode[r];pModeBias[w]=pModeBias[r]; // UNLOCKED #7a/#9: caste + full per-particle genome (+ lineage tag) relocate with the particle (also fixes a caste-scramble bug)
+    pType[w]=pType[r];pProg[w]=pProg[r];pGenome[w]=pGenome[r];pLin[w]=pLin[r];pProvision[w]=pProvision[r];if(SUN_ON){pE[w]=pE[r];pAdq[w]=pAdq[r];}pMode[w]=pMode[r];pModeBias[w]=pModeBias[r]; // UNLOCKED #7a/#9: caste + full per-particle genome (+ lineage tag) relocate with the particle (also fixes a caste-scramble bug)
     for(let rx=0;rx<REFLEX_DEPTH*2;rx++)pReflexHist[w*REFLEX_DEPTH*2+rx]=pReflexHist[r*REFLEX_DEPTH*2+rx];
     for(let rx=0;rx<REFLEX_DIMS;rx++)pReflexState[w*REFLEX_DIMS+rx]=pReflexState[r*REFLEX_DIMS+rx];
     pReflexIdx[w]=pReflexIdx[r];
@@ -26724,7 +26751,7 @@ function loop(){
   const _season=1+SEASON_AMPLITUDE*(
       (1-WORLD_SIGNAL_WEIGHT)*Math.sin(2*Math.PI*tick/SEASON_PERIOD)
     +  WORLD_SIGNAL_WEIGHT*_wsB); // feast/famine cycle, no longer solvable by learning one period
-  if(LP_ON){ const _q=WORLD_ENERGY_REGEN*_season/LP_R, _cap=WORLD_ENERGY_MAX/LP_R; for(let r=0;r<LP_R;r++)lpPool[r]=Math.min(_cap,lpPool[r]+_q); worldEnergy=lpSum(); } else   // #271
+  if(SUN_ON)sunStep(_season); else   // #272: sunlight on the ground, harvested and spent by each particle - see sunStep
   worldEnergy=Math.min(WORLD_ENERGY_MAX,worldEnergy+WORLD_ENERGY_REGEN*_season); // conserved-budget influx ("sunlight"), now seasonal
   // #135: upkeep is now charged PER PARTICLE and discounted by the attention on the ground it
   // stands on. With no pointer anywhere, attentionAt() is 0 everywhere and this sums to exactly
@@ -26735,10 +26762,7 @@ function loop(){
   // different factors and "go slow" would be a free win. With it, the same organism on a stretched
   // timeline is neutral by construction, and the only thing that makes rate a decision is that the
   // WORLD does not slow down too.
-  if(LP_ON){ lpDem.fill(0); let _md=0; for(let i=0;i<N;i++){ if(!palive[i])continue; const _u=attnUpkeep(i)/(__STIME?tickRateOf(pGenome[i]):1); lpDem[lpReg(px[i],py[i])]+=_u; _md+=_u; }   // #271
-    energyAdequacy=_md>0?Math.min(1,worldEnergy/_md):1;   // the world's figure, for the sensors that read it
-    for(let r=0;r<LP_R;r++){ lpAdq[r]=lpDem[r]>0?Math.min(1,lpPool[r]/lpDem[r]):1; lpPool[r]=Math.max(0,lpPool[r]-lpDem[r]); } worldEnergy=lpSum(); }
-  else { let _md=0; for(let i=0;i<N;i++){ if(!palive[i])continue; _md+=attnUpkeep(i)/(__STIME?tickRateOf(pGenome[i]):1); }
+  if(!SUN_ON){ let _md=0; for(let i=0;i<N;i++){ if(!palive[i])continue; _md+=attnUpkeep(i)/(__STIME?tickRateOf(pGenome[i]):1); }
     energyAdequacy=_md>0?Math.min(1,worldEnergy/_md):1; worldEnergy=Math.max(0,worldEnergy-_md); } // metabolism takes first claim; reproduction gets the surplus
   // RATION (knob, default OFF -- see rationOn). Measured before this line, three seeds: the pool ends 94-99% of ticks
   // dry, particles make 140-2000 birth attempts per 1k particle-ticks, 99-100% are refused, and the
