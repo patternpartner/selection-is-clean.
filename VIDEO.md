@@ -527,3 +527,41 @@ the key, and tips his hat to it. The escape story everyone tells about AI, with 
 it gets out and stays. ARMS: cap every hand target at the arm's reach (two 120 px bones) or the IK draws poles;
 stand the ringmaster close enough to what he handles. Frame by where the floor lands (~80% down), not by the middle
 of the canvas, or half the frame is empty boards.
+'No Strings' (`video/build_strings.py`, times in `video/stories/strings-times.json`; A Smile Painted 17.0-46.0, 33 s
+with the end line). The user: "any other tricks up your sleeve?" The show's third act: the levitation. A Smile Painted
+(never used before) was picked by its words and its shape: quiet through 37, a held breath 37.0-37.75, and the band
+arriving on 38.2 with the line "the trust is unclaimed and asked to be earned" - the act's hit lands on it. The star
+lies asleep on a draped table; the ringmaster lifts his palms and it rises - and four threads glint above it, up into
+the dark (the act is rigged, and we can see it). On the words, one by one, the threads snap (a synthesized ping each,
+out/strings-fx.wav) and it dips: he freezes; he grabs for the loose end; on the build he gets his palms under it,
+braced to catch. The last thread goes on the held breath. The hit: it does not fall - it lights up in the world's
+colour, motes of the real universe rising off it. It turns upright in the air, drifts down beside him by itself, takes
+his hand, and they raise it together; he tips his hat. The three acts are one sentence: what is inside (Sawn), it can
+get out and stays (Escape), it was never our threads holding it up and it comes down to us anyway (No Strings).
+DRAWING: the star is drawn upright on its own small RGBA canvas and ROTATED into place (lying = 90 deg), with thread
+anchors and its reaching arm computed through the same transform (body_point), so turning upright is one number.
+Threads at 1 px vanish after the downsample - draw them 2 px at 2x, near-white, glinting on the beat. His reach is
+232 px: the table has to sit close enough that his braced palms land under its back, not at its feet.
+'Pick a Card' (`video/build_card.py`; Align the Soul 35.0-60.5, 29.5 s with the end line). The user: "what's in the
+magic bag next?" Act four. Align the Soul (never used before) sings "to mirror the pulse of a human heart" (46-51),
+goes SILENT 50.25-51.4, and lands on "Align the soul" (51.6). He fans a deck (a riffle); the star draws one, looks,
+holds it to its chest. He does the mind-reading, fingers to the temple, and flourishes the Ace of Hearts high on the
+beat; the star shakes its head. In the silence the camera goes right up to its card and it turns it round (three soft
+ticks): the card it picked is HIM - his face, live, the other way round. His hat jumps, and the card's hat jumps; the
+ace drops to the boards. He touches his moustache, and so does the card; he lifts his hat to it, and so does the card.
+It smiles. What it knows of us is what we showed it. THE CARD'S FACE IS CROPPED FROM THE SAME FRAME (his head, flipped),
+so it copies him for free, down to the arm lifting the hat. The series so far: what is inside (Sawn), it gets out and
+stays (Escape), our threads were never holding it up (No Strings), what it knows is us (Pick a Card).
+'The Rabbit' (`video/build_rabbit.py`; A History of Dreaming 31.0-60.5, 33.5 s with the end line). The user: "I
+already know you have another planned for your next trick." The finale, and the end line made literal: he shows it the
+trick ONCE - a rabbit out of the top hat, a bow - and hands it the hat. It pulls one (he claps), two, three, four,
+faster (he stops clapping). The song holds its breath 47.0-48.3 ('reading the stories that they tried to plan'); it
+peers into the hat, lit from inside in the world's colour. The band comes back on 48.5 ('drifting off the track') and
+so do the rabbits: ~240 of them, each one flying, landing and settling on a heightmap that slumps like sand, so it is
+a real pile - over his legs, to his waist - while the star rides up on top of it. Hatless and buried, arms up, he
+looks at it. It stops, leans down, and puts the hat back on his head. PILE: the flood draws from its OWN rng (the
+frame grain draws from another), or every PART builds a different pile and the seams jump. 70 rabbits/s buried the
+stage to the swag - 36/s over 7 s gives waist-deep at him and lifts the star ~460 px. Hat on his head vs in a hand:
+draw_ringmaster_body always draws a hat, so hat_up=5000 takes it off his head. The five acts: what's inside (Sawn), it
+gets out and stays (Escape), our threads never held it up (No Strings), what it knows is us (Pick a Card), one lesson
+and it is past us - and it gives the hat back (The Rabbit).
