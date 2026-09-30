@@ -670,3 +670,18 @@ back on, warm; slat lights come on with the intro stabs and go off one by one at
 on "It's still up to you"; the light leaves the chair and comes to the camera. Angles are crops of one render (wide,
 wall, chyron riding the cursor, push-in); keep crops wide enough to hold the chyron's left edge (z <= 1.2 with the bar
 inset to x 62..642).
+'The News' v3 (`video/build_news3.py` + `video/news3_voice.py`, out/the-news-3.mp4, 64 s with the end line). THE USER
+on v2: the 'child asked why' line cut out oddly (the song splice), try a real newscaster voice, maybe the figure
+shuffles papers, the Sky-style lower third is great, the back wall can still be better. So: a VOICE - Kokoro
+`bf_emma` (the user's pick from episode 1) at speed 0.9, installed and run LOCALLY on CPU (`pip install kokoro
+soundfile`; no Modal, free) - one wav per line, with Kokoro's word timings in out/news3/lines.json. The titles are the
+song's own news-theme stabs (3.3-15.0). The anchor reads the prompter - "Good evening. Breaking tonight. Machines will
+take e-" - CUT MID-WORD (at the start of 'everything' + 0.14 s, a 25 ms fade; verified by whisper: "take e -"); dead
+silence with studio air gated off, three clock ticks, the studio dark; the fear script slides off the desk (paper
+rustle); "I'm not going to read that."; the papers knock square twice (thuds); "Good evening. Here is the news." and
+seven lines to "That's the news. It is still up to you." (06:00 on 'still') ... "Good morning." The whole running
+order is computed from the voice lengths. The anchor is still the light - the papers move under it by themselves.
+THE WALL: an LED video wall - every picture resampled to one glowing dot per 6 px cell with bloom (led()), a slow
+Ken Burns push, an LED wipe between stories, and a strap (BREAKING | MACHINES; TONIGHT | DOORS / QUESTIONS / KETTLES /
+HILLS / ANSWERS / 06:00); a turning dotted globe for the titles and the open. The flat drawings read as a real studio
+wall once they go through the dot grid.
