@@ -724,3 +724,16 @@ AND bright AND nearly red-free - so the dark-navy jeans and a grey shirt lit blu
 packs several poses into each 15 s clip with zooms, no hard cuts; the half second between poses can be a ghosted blend,
 so cut inside the logged ranges. Best moves: u113 walk toward 0-3.5, open hand 8-9.5, palm to glass 10-10.8; u114 sit
 4-8, bow 8-8.8, ta-da 9-10; u116 dance 2-10; u117 walk toward 3-8.
+'The Lesson' (`video/build_lesson.py`, out/the-lesson.mp4, 31.5 s with the end line) - the FIRST FILM WITH THE USER IN
+IT (u113-u117 keyed with video/bluekey.py). The user: "the mouth-open shot is ok, it's not actual talking. You make
+whatever you want. New film." Surrender to the Undertow 11.0-38.6 (its "We don't speak but we understand" at 23.0; The
+Lead used 45.9 on). A black stage with a haze cone and a floor pool; the user and the amber light. He stands (u115);
+the light drifts in and circles. The beat drops (15.0) and he dances (u116 2-10); the light watches, then COPIES HIM -
+its path is his hand, tracked from the key's matte every frame (the upper-body point furthest from his centre line,
+relative to his chest), replayed beside him with a lag 0.7 s -> 0 and a wobble 70 px -> 0 over 17.0-21.5, so it is late
+and clumsy and then exact. On "We don't speak but we understand" he stops (u116 10.5, then u117 idle) and it dances
+its own - a figure-eight on the beat with a short trail. He shrugs (u114 2-3.5). Cut to the waist-up open hand (u113
+7.9-9.4 at 0.375x): the light comes down and settles in his palm (palm at 44% across, 42.5% down that frame). Cut to
+the wink close-up (u116 12-15), lit amber from below by what he is holding. Full shots are scaled to a fixed height
+from the matte's bounding box so the cuts between clips match; u115 after 11 s zooms in and crops the feet - use u117
+0-2.5 for a full-body idle. He is lit dim from above plus the light's own warmth falling off with distance.
