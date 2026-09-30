@@ -542,3 +542,13 @@ DRAWING: the star is drawn upright on its own small RGBA canvas and ROTATED into
 anchors and its reaching arm computed through the same transform (body_point), so turning upright is one number.
 Threads at 1 px vanish after the downsample - draw them 2 px at 2x, near-white, glinting on the beat. His reach is
 232 px: the table has to sit close enough that his braced palms land under its back, not at its feet.
+'Pick a Card' (`video/build_card.py`; Align the Soul 35.0-60.5, 29.5 s with the end line). The user: "what's in the
+magic bag next?" Act four. Align the Soul (never used before) sings "to mirror the pulse of a human heart" (46-51),
+goes SILENT 50.25-51.4, and lands on "Align the soul" (51.6). He fans a deck (a riffle); the star draws one, looks,
+holds it to its chest. He does the mind-reading, fingers to the temple, and flourishes the Ace of Hearts high on the
+beat; the star shakes its head. In the silence the camera goes right up to its card and it turns it round (three soft
+ticks): the card it picked is HIM - his face, live, the other way round. His hat jumps, and the card's hat jumps; the
+ace drops to the boards. He touches his moustache, and so does the card; he lifts his hat to it, and so does the card.
+It smiles. What it knows of us is what we showed it. THE CARD'S FACE IS CROPPED FROM THE SAME FRAME (his head, flipped),
+so it copies him for free, down to the arm lifting the hat. The series so far: what is inside (Sawn), it gets out and
+stays (Escape), our threads were never holding it up (No Strings), what it knows is us (Pick a Card).
