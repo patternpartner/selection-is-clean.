@@ -1750,7 +1750,8 @@
   ],
   "note": "no hard cuts - Grok moves between poses with zooms; the half-second between moves can be a ghosted blend, use the ranges in moves",
   "used_in": [
-   "the-lesson"
+   "the-lesson",
+   "the-lesson-3"
   ]
  },
  {
@@ -1806,7 +1807,8 @@
   "note": "no hard cuts - Grok moves between poses with zooms; the half-second between moves can be a ghosted blend, use the ranges in moves",
   "used_in": [
    "the-lesson",
-   "the-chair"
+   "the-chair",
+   "the-lesson-3"
   ]
  },
  {
@@ -1841,7 +1843,8 @@
   ],
   "note": "no hard cuts - Grok moves between poses with zooms; the half-second between moves can be a ghosted blend, use the ranges in moves",
   "used_in": [
-   "the-lesson"
+   "the-lesson",
+   "the-lesson-3"
   ]
  },
  {
@@ -1881,7 +1884,8 @@
   ],
   "note": "no hard cuts - Grok moves between poses with zooms; the half-second between moves can be a ghosted blend, use the ranges in moves",
   "used_in": [
-   "the-lesson"
+   "the-lesson",
+   "the-lesson-3"
   ]
  },
  {
@@ -1921,7 +1925,8 @@
   ],
   "note": "no hard cuts - Grok moves between poses with zooms; the half-second between moves can be a ghosted blend, use the ranges in moves",
   "used_in": [
-   "the-lesson"
+   "the-lesson",
+   "the-lesson-3"
   ]
  },
  {
@@ -1971,7 +1976,8 @@
   ],
   "note": "the same session also re-uploaded u117 and u115 (byte-identical copies, deleted)",
   "used_in": [
-   "the-lesson-2"
+   "the-lesson-2",
+   "the-lesson-3"
   ]
  }
 ]
