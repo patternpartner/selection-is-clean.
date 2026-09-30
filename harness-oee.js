@@ -519,6 +519,12 @@ const driver = `
         if(cn>0&&fn>0){ const cs=coreS.get(c), fsum=frinS.get(c); let dd=0; for(let d=0;d<DIMS;d++){ const x=cs[d]/cn-fsum[d]/fn; dd+=x*x; } cfd=+Math.sqrt(dd).toFixed(3); }
         cpur.push({lin:cl.lineageID|0, age:cl.persistAge|0, sz:m.sz, dom:m.domLin, df:+(m.domN/m.sz).toFixed(3), np:m.np, ff:+(fn/m.sz).toFixed(3), cfd}); }
     }
+    // #266 (see progSigs below): own scratch marks, never the engine's _paraSeen/_paraGen, which are engine state.
+    const _prog=(function(){ const seen=new Int32Array(256), c=new Map(); let g=0, n=0;
+      for(let i=0;i<N;i++){ if(!palive[i])continue; n++; const pr=pProg[i]; let s=0;
+        if(pr){ g++; for(let q=0;q<pr.length;q++){ const op=pr[q][0]|0; if(op>=0&&op<256&&seen[op]!==g){ seen[op]=g; s=(s+opHash[op])|0; } } }
+        c.set(s,(c.get(s)||0)+1); }
+      let h=0; c.forEach(v=>{ const p=v/n; h-=p*Math.log2(p); }); return {sigs:c.size, h:n?+h.toFixed(3):0}; })();
 
     return {
       tick:(typeof tick!=='undefined')?tick:-1,
@@ -548,6 +554,11 @@ const driver = `
         const mu=[0,0,0]; for(const i of ix) for(let d=0;d<3&&d<DIMS;d++)mu[d]+=tend[i*DIMS+d]/n;
         const c=new Map(); for(const i of ix){ let key=''; for(let d=0;d<3;d++){ const v=d<DIMS?tend[i*DIMS+d]:0; key+=Math.floor((v-mu[d]+0.3)/0.6)+','; } c.set(key,(c.get(key)||0)+1); }
         let h=0; c.forEach(v=>{ const p=v/n; h-=p*Math.log2(p); }); return +h.toFixed(3); })(),
+      // #266: PROGRAM-VOCABULARY diversity - the set of DISTINCT opcodes each living program carries, hashed the way
+      // swing #37's program NFD hashes it (the sum of opHash over distinct opcodes), counted and turned into bits.
+      // Computed here from pProg, not read from pParaSig, because pParaSig is only written when the program NFD runs,
+      // so a knockout of it would freeze the very number used to judge the knockout. Draws nothing.
+      progSigs:_prog.sigs, progSigH:_prog.h,
       clusters:(typeof clusters!=='undefined')?clusters.length:-1,
       castes:casteSet.size,
       // novelty
@@ -835,6 +846,14 @@ diversity.kindsRatio = diversity.kinds_early > 0 ? +(diversity.kinds_late / dive
 diversity.spreadRatio = diversity.spread_early > 0 ? +(diversity.spread_late / diversity.spread_early).toFixed(2) : null;   // #257c
 diversity.centredEntropyRatio = diversity.centredH_early > 0 ? +(diversity.centredH_late / diversity.centredH_early).toFixed(2) : null;   // #257c
 diversity.collapsing = diversity.entropyRatio !== null && diversity.entropyRatio < 0.7;
+// #266: program-vocabulary diversity early/late (per-sample progSigs / progSigH), kept apart from `diversity` so every
+// field that existed before is unchanged.
+const program = {
+  sigs_early: +thirdMean(S, 'progSigs', 0, t1).toFixed(1),
+  sigs_late: +thirdMean(S, 'progSigs', t2, n).toFixed(1),
+  sigH_early: +thirdMean(S, 'progSigH', 0, t1).toFixed(3),
+  sigH_late: +thirdMean(S, 'progSigH', t2, n).toFixed(3),
+};
 
 const niche = {
   occ_early: +thirdMean(S, 'nicheOcc', 0, t1).toFixed(2),
@@ -915,6 +934,7 @@ const verdict = {
     decayedTo: earlyRate > 0 ? +(lateRate / earlyRate).toFixed(2) : null, stillProducing: lateRate > 0.05 },
   niche_trend: niche,
   diversity_trend: diversity,
+  program_trend: program,   // #266
   // swing #33 instrument: the major-transition layer the standing-diversity metrics can't see. budEvents=0 means
   // budding never fired (use GROUP_PROBE=1 to lower thresholds headless). meanParentRole = mean distinct niche-cells
   // among a budding colony's members (does GROUP_ROLES make BUDDING colonies more differentiated?); meanDaughterRole
