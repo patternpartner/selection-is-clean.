@@ -1346,7 +1346,7 @@ const LIVENESS_DECLARED=[
   // world's reproductive pressure as a ratio, and on the seeded constants it runs at about 1:100.
   // Refused reading zero is a world that has made children free; paid reading zero is one that has
   // stopped having them. Both are reachable now that the four constants are laws.
-  'repl.birth','repl.prey','repl.gift','repl.scavenge','birth.paid','birth.refused','birth.rationed','birth.unprovisioned',   // RATION: refused by the fair lottery, before the pool is read
+  'repl.birth','repl.prey','repl.gift','repl.scavenge','repl.atomNew','repl.atomStep','birth.paid','birth.refused','birth.rationed','birth.unprovisioned',   // RATION: refused by the fair lottery, before the pool is read
   // #212: clusterGenomes was the one carry-forward store that never let go -- ~1,000 entries against
   // 6-11 live clusters, and a measured working set exactly one detection cycle deep. This fires when
   // an entry ages past the horizon. Reading zero on a long run means either the horizon never binds
@@ -10546,17 +10546,34 @@ const REPL_ON=(typeof globalThis!=='undefined')&&((globalThis.__REPL|0)!==0);
 const REPL_INERT=(REPL_ON&&typeof globalThis!=='undefined'&&globalThis.__REPL_INERT!==undefined)?(globalThis.__REPL_INERT|0):-1;   // #273: rigs only - the named opcode still runs through the VM but does nothing, the neutral control for its spread
 const REPL_T=0.5, REPL_ONSET=150, REPL_SCALE=0.02;   // #273: a replicator's life is short, so evolution gets generations: median life about 400 ticks at lifespanBias 1
 if(REPL_ON){ WORLD_ENERGY_REGEN=0.6; BIRTH_ENERGY_COST=0.25; }
-// #274 - REPL_MATCH (knob, needs REPL): PREDATION NEEDS A KEY. Each particle carries a heritable 4-number attack key
-// (pKey), copied from its parent with a small mutation at every birth. ENERGY_DRAIN takes from a partner in proportion
-// to how closely the predator's key matches the partner's surface - the first four axes of its tendency - so a predator
-// can only eat the kind it is tuned to, and prey escape by becoming a different kind. Under plain REPL a predator could
-// take from anyone and prey had no reply: #273 saw one sweep, then a plateau or a crash. With a key, the commonest kind
-// is the one most worth tuning to, which is the classic engine of continual turnover (kill the winner).
-const REPL_MATCH=REPL_ON&&(typeof globalThis!=='undefined')&&((globalThis.__REPL_MATCH|0)!==0);
-const REPL_KEYW=0.6, REPL_KEYSD=0.12, REPL_KEYFLOOR=0.3;   // #275: a generalist predator still takes 30%; a tuned one up to all of it (#274: at width 0.35 and no floor, predation never paid)
-const pKey=new Float32Array(CAP*4);
-function replKeyBirth(i,p){ for(let m=0;m<4;m++){ if(p>=0&&p<N&&p!==i){ const g=(Math.random()+Math.random()+Math.random()-1.5)*2*REPL_KEYSD; pKey[i*4+m]=Math.max(-TEND_HARD,Math.min(TEND_HARD,pKey[p*4+m]+g)); } else pKey[i*4+m]=Math.random()*2-1; } }
-function replMatch(i,j){ let d2=0; for(let m=0;m<4;m++){ const t=(m<DIMS)?tend[j*DIMS+m]:0, e=pKey[i*4+m]-t; d2+=e*e; } return REPL_KEYFLOOR+(1-REPL_KEYFLOOR)*Math.exp(-d2/(REPL_KEYW*REPL_KEYW)); }   // #273: cheap children, enough light for about 400 of them
+// #277 - REPL_ARMS (knob, needs REPL): AN ARMS RACE WITH NO EDGE. Predation starts at full strength, as under plain REPL
+// where it arose and spread on 3 of 3 seeds (#273). Each particle also carries two heritable 4-number keys: an attack
+// (pKey) and a defence (pDef), each copied from its parent with a small mutation at every birth and never clamped. A
+// prey whose defence lies close to the predator's attack blunts the take by up to REPL_DEFMAX. So prey that fit the
+// commonest attack live, then attacks that differ from the commonest defence eat, and so on. The keys have no bounds,
+// so the chase cannot run into a wall. REPL_ARMS=2 is the control: the keys are inherited and mutate the same way, but
+// the defence does nothing, so they only drift. (#274/#275 matched a key against the prey's trait vector instead;
+// predation never paid under it, and that knob was deleted.)
+const REPL_ARMS=REPL_ON&&(typeof globalThis!=='undefined')?(globalThis.__REPL_ARMS|0):0;
+const REPL_KEYW=0.5, REPL_KEYSD=0.12, REPL_DEFMAX=(REPL_ARMS===2)?0:0.9;
+const pKey=new Float32Array(CAP*4), pDef=new Float32Array(CAP*4);
+// #276 - REPL_ATOMS (knob, needs REPL): A LINEAGE'S AUTHORED ATOMS VARY AT BIRTH. Atoms (evolved expressions a program
+// calls through op 22 and the bound slots) were only ever minted in the one germline genome (mutateGenome) and copied
+// unchanged into every child, so selection on calling them (#274: ops 22, 236-238 rose on 3 of 3 seeds) could only
+// sort atoms that already existed. Here a birth, with probability REPL_ATOM_P, steps one of the child's atoms by the
+// engine's own local move (uaLocalStep) or, a third of the time, authors a new one (uaGenExpression). The expression
+// space has no end short of its length cap, which makes this the one layer that can keep supplying new things.
+const REPL_ATOMS=REPL_ON&&(typeof globalThis!=='undefined')&&((globalThis.__REPL_ATOMS|0)!==0);
+const REPL_ATOM_P=0.05;
+function replAtomBirth(i){ const g=pGenome[i]; if(!g||Math.random()>=REPL_ATOM_P)return; if(!Array.isArray(g.userAtoms))g.userAtoms=[];
+  try{ const ua=g.userAtoms, _sv=genome; genome=g;
+    try{ if(!ua.length||Math.random()<1/3){ if(ua.length<MAX_USER_ATOMS){ const ex=uaGenExpression(); if(uaExprSafe(ex)){ ua.push({expression:ex,compiled:null,failed:false,uses:0,age:0,alienHits:0,alienAttempts:0,creditTrace:0}); fired('repl.atomNew'); } } }
+      else { const q=(Math.random()*ua.length)|0, a=ua[q]; if(a&&typeof a.expression==='string'){ const ex=uaLocalStep(a.expression); if(ex&&ex!==a.expression&&uaExprSafe(ex)){ ua[q]={expression:ex,compiled:null,failed:false,uses:0,age:0,alienHits:0,alienAttempts:0,creditTrace:0}; fired('repl.atomStep'); } } } }
+    finally{ genome=_sv; } }catch(e){} }
+function replKeyBirth(i,p){ const ok=p>=0&&p<N&&p!==i; for(let m=0;m<4;m++){
+  if(ok){ pKey[i*4+m]=pKey[p*4+m]+(Math.random()+Math.random()+Math.random()-1.5)*2*REPL_KEYSD; pDef[i*4+m]=pDef[p*4+m]+(Math.random()+Math.random()+Math.random()-1.5)*2*REPL_KEYSD; }
+  else { pKey[i*4+m]=Math.random()*2-1; pDef[i*4+m]=Math.random()*2-1; } } }
+function replTake(i,j){ let d2=0; for(let m=0;m<4;m++){ const e=pKey[i*4+m]-pDef[j*4+m]; d2+=e*e; } return 1-REPL_DEFMAX*Math.exp(-d2/(REPL_KEYW*REPL_KEYW)); }
 const SUN_ON=REPL_ON||((typeof globalThis!=='undefined')&&((globalThis.__SUN|0)!==0));
 const SUN_TAKE=0.2, SUN_ENDOW=0.5, SUN_SEED=0.5, SUN_STORE=4;
 const sunField=SUN_ON?new Float32Array(FIELD_W*FIELD_H).fill(WORLD_ENERGY_MAX/(FIELD_W*FIELD_H)):null;
@@ -21271,7 +21288,7 @@ function addParticle(x,y,tv,born,parentA,parentB){
   amp[i]=born?0.5:0.3+Math.random()*0.5;
   palive[i]=1;page[i]=0;localRes[i]=0;collapse[i]=0;clusterID[i]=-1;
   if(SUN_ON)pE[i]=(parentA>=0)?BIRTH_ENERGY_COST*SUN_ENDOW:SUN_SEED;   // #272: part of the parent's payment is the child's start
-  if(REPL_MATCH)replKeyBirth(i,parentA);   // #274: the attack key is inherited, with mutation
+  if(REPL_ARMS)replKeyBirth(i,parentA);   // #277: attack and defence keys are inherited, with mutation
   // #57 — a lineage is BORN INTO a strategy and mostly keeps it, with a small chance of switching at
   // birth. That is what makes mode a heritable discrete trait selection can act on, rather than noise.
   pModeBias[i]=(parentA>=0&&parentA<N)?(Math.random()<0.06?((Math.random()*MODE_COUNT)|0):pModeBias[parentA]):((Math.random()*MODE_COUNT)|0);
@@ -21355,6 +21372,7 @@ function addParticle(x,y,tv,born,parentA,parentB){
   }
   pGenome[i]=mutateChildGenome(_bg);}
   pProg[i]=pGenome[i].vmProgram;
+  if(REPL_ATOMS&&parentA>=0)replAtomBirth(i);   // #276
   return i;
 }
 function addCompound(x,y,nt,nvx,nvy,na,np,nf,parentA,parentB){
@@ -21379,7 +21397,7 @@ function addCompound(x,y,nt,nvx,nvy,na,np,nf,parentA,parentB){
   phase[i]=np;freq[i]=nf;amp[i]=na;
   palive[i]=1;page[i]=0;localRes[i]=0;collapse[i]=0;clusterID[i]=-1;
   if(SUN_ON)pE[i]=(parentA>=0)?BIRTH_ENERGY_COST*SUN_ENDOW:SUN_SEED;   // #272: part of the parent's payment is the child's start
-  if(REPL_MATCH)replKeyBirth(i,parentA);   // #274: the attack key is inherited, with mutation
+  if(REPL_ARMS)replKeyBirth(i,parentA);   // #277: attack and defence keys are inherited, with mutation
   // #57 — a lineage is BORN INTO a strategy and mostly keeps it, with a small chance of switching at
   // birth. That is what makes mode a heritable discrete trait selection can act on, rather than noise.
   pModeBias[i]=(parentA>=0&&parentA<N)?(Math.random()<0.06?((Math.random()*MODE_COUNT)|0):pModeBias[parentA]):((Math.random()*MODE_COUNT)|0);
@@ -21455,6 +21473,7 @@ function addCompound(x,y,nt,nvx,nvy,na,np,nf,parentA,parentB){
   }
   pGenome[i]=mutateChildGenome(_bg);}
   pProg[i]=pGenome[i].vmProgram;
+  if(REPL_ATOMS&&parentA>=0)replAtomBirth(i);   // #276
   return i;
 }
 function computeVisuals(i){
@@ -24192,7 +24211,7 @@ case 144:{if(pProg[i]&&localRes[i]>0.3&&pProg[i].length<Math.min(genome.vmMaxIns
         if(__vmMode===VM_SOLO){ // SOLO copy, kept as it was
         {vmRegs[di]=0;}break;
         }
-        if(REPL_ON){ if(vmRegs[si]>k&&pE[j]>0.05){const _d=Math.min(Math.abs(vmRegs[si])*0.1,pE[j]*0.2)*(REPL_MATCH?replMatch(i,j):1);pE[j]-=_d;pE[i]=Math.min(SUN_STORE,pE[i]+_d*0.8);vmRegs[di]=_d;fired('repl.prey');}else{vmRegs[di]=0;} break; }   // #273: predation on the store
+        if(REPL_ON){ if(vmRegs[si]>k&&pE[j]>0.05){const _d=Math.min(Math.abs(vmRegs[si])*0.1,pE[j]*0.2)*(REPL_ARMS?replTake(i,j):1);pE[j]-=_d;pE[i]=Math.min(SUN_STORE,pE[i]+_d*0.8);vmRegs[di]=_d;fired('repl.prey');}else{vmRegs[di]=0;} break; }   // #273: predation on the store
         {if(vmRegs[si]>k&&localRes[j]>0.1){const _dr155=Math.min(Math.abs(vmRegs[si])*0.1,localRes[j]*0.2);localRes[j]-=_dr155;localRes[i]=Math.min(2,localRes[i]+_dr155*0.8);vmRegs[di]=_dr155;}else{vmRegs[di]=0;}}break; // ENERGY_DRAIN — steal energy from interaction partner (predation). Capped at 20% of partner's reserves per interaction; 20% metabolic tax on transfer. Creates genuine Lotka-Volterra predator-prey dynamics: prey evolve evasion/defence; predators evolve efficient drain timing. Third trophic level in the food web.
       case 156:
         if(__vmMode===VM_SOLO){ // SOLO copy, kept as it was
@@ -25824,7 +25843,7 @@ function compact(){
     pPlasmidAge[w]=pPlasmidAge[r];
     pBroadcast[w*2]=pBroadcast[r*2];pBroadcast[w*2+1]=pBroadcast[r*2+1];
     clusterID[w]=clusterID[r];
-    pType[w]=pType[r];pProg[w]=pProg[r];pGenome[w]=pGenome[r];pLin[w]=pLin[r];pProvision[w]=pProvision[r];if(SUN_ON){pE[w]=pE[r];pAdq[w]=pAdq[r];}if(REPL_MATCH){for(let m=0;m<4;m++)pKey[w*4+m]=pKey[r*4+m];}pMode[w]=pMode[r];pModeBias[w]=pModeBias[r]; // UNLOCKED #7a/#9: caste + full per-particle genome (+ lineage tag) relocate with the particle (also fixes a caste-scramble bug)
+    pType[w]=pType[r];pProg[w]=pProg[r];pGenome[w]=pGenome[r];pLin[w]=pLin[r];pProvision[w]=pProvision[r];if(SUN_ON){pE[w]=pE[r];pAdq[w]=pAdq[r];}if(REPL_ARMS){for(let m=0;m<4;m++){pKey[w*4+m]=pKey[r*4+m];pDef[w*4+m]=pDef[r*4+m];}}pMode[w]=pMode[r];pModeBias[w]=pModeBias[r]; // UNLOCKED #7a/#9: caste + full per-particle genome (+ lineage tag) relocate with the particle (also fixes a caste-scramble bug)
     for(let rx=0;rx<REFLEX_DEPTH*2;rx++)pReflexHist[w*REFLEX_DEPTH*2+rx]=pReflexHist[r*REFLEX_DEPTH*2+rx];
     for(let rx=0;rx<REFLEX_DIMS;rx++)pReflexState[w*REFLEX_DIMS+rx]=pReflexState[r*REFLEX_DIMS+rx];
     pReflexIdx[w]=pReflexIdx[r];
