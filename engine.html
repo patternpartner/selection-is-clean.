@@ -21634,6 +21634,7 @@ function applyEntropy(){
       amp[i]+=localRes[i]*genome.entropyK;
       {const _txi=__cl(Math.floor(px[i]/(W/FIELD_W)),0,FIELD_W-1),_tyi=__cl(Math.floor(py[i]/(H/FIELD_H)),0,FIELD_H-1),_tox=inhibitorField[_tyi*FIELD_W+_txi];if(_tox>0.05){const _dmg=_tox*Math.max(0,1-pResistance[i])*0.018/MODE_DEFENCE[pMode[i]];amp[i]-=_dmg;}pResistance[i]*=0.997;} // INHIBITOR DAMAGE + RESISTANCE DECAY: inhibitor deals up to 1.8% amp/tick at zero resistance; resistance decays 0.3%/tick — must be actively maintained via RESISTANCE_BOOST (op215)
       { const _ea=SUN_ON?pAdq[i]:energyAdequacy; if(_ea<1)amp[i]-=(1-_ea)*STARVE_DRAIN; } // #272: per particle under SUN. starvation: the world couldn't feed everyone this tick
+      if(REPL_ON&&pAdq[i]<0.5)amp[i]=-1e6;   // #278b: a replicator that cannot pay half its upkeep starves to death. Without this a dry store only drained amp, which interactions top up, so starving particles cost no energy, never died, and a world without predators grew to 1,700 on sunlight for about 500
       if(isNaN(amp[i]))amp[i]=0;
       // ═══ LEAP 34 (#72) — ESCAPE IS FATAL. The first state in this system that can kill you. ═══
       // #71 measured what the substrate does with a particle that leaves the world: nothing. Position is
