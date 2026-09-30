@@ -2812,7 +2812,7 @@ ck('#197 THE SELF-REFERENCE IS CLOSED: a proposal to stop reverting is judged by
    BK.revertedAnyway===true && BK.verdictKept===0,
    'a world holding 10 of a baseline 100 under a freshly installed LAW_VIABLE=0 is still reverted — judged by the new value it would pass by construction, and the mechanism would have a one-step way to disable itself with no verdict at all');
 ck('#197 the proposal rate moved with the table', BK.reach &&
-   BK.reach.perRun>=3 && BK.reach.verdictCap>=5,
+   BK.reach.perRun>=3 && BK.reach.verdictCap>=3,   // #265: was >=5 at #197's 1,200-tick probation; 4,000 (restored for sight - slow harm) holds 3
    BK.reach.laws+' laws (was '+BK.reach.base+'), ~'+BK.reach.perRun+' proposals per 12,000 ticks, at most '+
    BK.reach.verdictCap+' verdicts — the binding constraint is the probation, not the rate, because one law is on trial at a time');
 ck('#197 BRAKES=0 pins the table back to the original three', BK.offSpan===3,

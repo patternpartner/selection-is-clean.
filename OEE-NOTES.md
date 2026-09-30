@@ -24142,3 +24142,35 @@ COMPLEXITY_TOLL lo, PROVISION_YIELD lo, UA_OP_RENT lo; and the two borderline ed
 ships; the next question is the statistic (the end of the probation against the baseline, not its average), as its own
 pre-registration. **(c) fails** -> nothing ships.
 **Saved worlds (rule 6, delegated):** worlds holding LAW_PROBATION at exactly 1,200 reload at 4,000. Said now.
+
+**#265 RESULTS — all three conditions hold. SHIPPED: `LAW_PROBATION` 1,200 -> 4,000** (with `LAW_SUPERSEDED` gaining
+LAW_PROBATION: 1200). Seeds 201-203, 72 runs of the engine's own verdict, trial at tick 3,000, 10,000 ticks.
+
+| edge | at 1,200: verdict, living late | at 4,000: verdict, living late |
+|---|---|---|
+| `WORLD_ENERGY_REGEN` -> 0 | KEPT 3/3 (ratio 0.78-0.81); 89 / 89 / 89 | **REVERTED 3/3** (0.45-0.48); 317 / 297 / 304 |
+| `METABOLIC_ENERGY_DRAW` -> hi | KEPT 3/3 (0.78-0.80); 144 / 137 / 136 | **REVERTED 3/3** (0.52-0.54); 319 / 312 / 312 |
+| harmless panel, 8 edges x 3 seeds | KEPT 24/24 (0.97-1.01) | KEPT 24/24 (0.87-0.95) |
+| `BIRTH_ENERGY_COST` -> hi (borderline, reported) | KEPT 3/3 (0.90-0.91); 162-172 | KEPT 3/3 (0.71-0.75); 170-184 |
+| `DEATH_ENERGY_RETURN` -> 0 (borderline, reported) | KEPT 3/3; 284-285 | KEPT 3/3 (0.71-0.78); 247-288 |
+
+- (a) the problem reproduced on unseen seeds: 3/3 each; (b) the longer probation reverted both traps 3/3 and the worlds
+  RECOVERED to 297-319; (c) no harmless edge reverted at either length (0/24, 0/24).
+- **What it does not catch:** a birth price at its top edge passes at 4,000 by a hair (0.71-0.75) and the world settles
+  near 175 — the slow slide #263b saw in seeds 163 and 165, where the birth price walked up in small kept steps. A
+  ratchet of small steps each inside the tolerance is a different problem from a slow cliff, and a longer look does
+  not solve it. Recorded; not attempted here.
+- **Missed before pre-registering, and it should not have been:** the comment directly above the constant says the
+  probation WAS 4,000 until #197 cut it to 1,200 for reach ("a 12,000-tick run can hold at most floor(12000/
+  LAW_PROBATION) verdicts ... a number whose right value I do not know"). CLAUDE.md's last trap says to read the comment
+  above a thing before the thing. It changes nothing in the verdict — #197 deferred to evidence and this is the
+  evidence — but the entry now says what the trade is: **sight for reach.** A verdict cannot see harm that has not
+  arrived, whatever statistic it uses, so the cost is paid on purpose: at most three verdicts per 12,000 ticks, not
+  ten. `substrate-test`'s #197 row ("the proposal rate moved with the table") asserted a cap of at least 5 — a
+  default's consequence, not a defect detector — and now asserts 3, with the reason beside it.
+- **Saved worlds (delegated):** checked on the live engine — a saved LAW_PROBATION of exactly 1,200 reloads at 4,000; 2,500
+  stays 2,500; 150 reloads at the 200 floor; 30,000 at the 20,000 ceiling. The #253 switchboard's trials (mechanism
+  switches) take the same probation and are judged four thousand ticks later too.
+- `substrate-test` 264/0 at TICKS=40, 900, the default and FOUND=0 after the change. **#265b**, the harm guard fixed in
+  the pre-registration, runs next: #263b's census (seeds 161-172, 40,000 ticks) on the new engine, paired with #263b's
+  runs; the change is withdrawn if extinctions rise by 4 or more.
