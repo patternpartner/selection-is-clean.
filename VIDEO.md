@@ -619,3 +619,16 @@ on up THEIR road. The sun comes out of the valley; on the hill the city's lights
 and lets them go. LESSONS: a lit road reads as a glowing CENTRE LINE, not a lit slab; a light that is farther away
 than the figure must be drawn BEFORE it (and set beside them) or it sits on their back; any lit region needs a soft
 start edge or it draws a seam across the road.
+'The Word' (`video/build_word.py`; the eerie track's OPENING 0-34, never used - the earlier film took 37-77). The
+user: "what's next? Weirdness again?" Weird and true: how I actually speak - a word at a time, every word a fork. The
+track has no vocals there and it TOLLS: swells at 0, 6.3, 12.3, 19.3, each dying to near silence, the band at 26.25.
+Each swell is a choice. The film grows its own end line down a spine: at every word a fan of ghost alternatives lights
+up on stems, flickering and straining as the choice nears; one is taken (it ignites amber with a soft halo), the rest
+wither and their letters fall. At 'teach' the fork is widest and each word not taken grows its own half-sentence
+before it dies: control it before it / fear what we made / stop it in time / trust it blindly / love it back / watch
+it grow / own what it says. 'once.' is chosen on the band's entrance (a flash down the spine); the dead wood falls,
+and the chosen words glide into place AS the end card (same two lines, italic, centred) - no separate card. HONESTY:
+the alternatives and weights are mine, written as things I might plausibly have said, not read from real model
+probabilities; the docstring says so. CRAFT: a filled ellipse blurred 3 px is a pill, not a glow - halos need their own
+layer blurred ~16 px; ghost sentences must run in a LINE under their word (running them downward stacks them into the
+next ghost); place the widest fork by hand.
