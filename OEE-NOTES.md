@@ -24434,3 +24434,67 @@ on (does position still decide who breeds?).
 sixteen regions, and a lineage cannot spend another region's energy), spread and centred entropy inside the band,
 nothing WORSE -> BETTER -> it becomes the default. The sweep guard is where I could be wrong. The selection readout I
 cannot guess.
+
+**#271 RESULTS — SPLIT. LOCAL_POOLS stays a knob, off.** All three seeds counted (every arm's series differs from its
+control). Null band = control + NULLSHIFT 1-3 from #266; 20,000 ticks.
+
+| seed | centredEntropyRatio | spread_late | established | program entropy | effN_late (sweep guard) | alive | call |
+|---|---|---|---|---|---|---|---|
+| 211 | 0.24-0.88 -> 0.54 | 0.169-0.409 -> 0.320 | 0.0034-0.0060 -> 0.0066 | 3.76-5.31 -> 5.56 | 138-198 -> 172 | 345-364 -> 345 | inside on every measure |
+| 212 | 0.13-0.61 -> **0.82** | 0.172-0.324 -> **0.399** | 0.0026-0.0053 -> 0.0029 | 4.19-4.72 -> 3.98 | 133-169 -> **74** | 300-345 -> **112** | BETTER x2, **WORSE (sweep)** |
+| 213 | 0.15-0.30 -> **0.36** | 0.183-0.240 -> **0.287** | 0.0026-0.0065 -> **0.0011** | 4.03-4.63 -> 4.88 | 120-208 -> 167 | 340-354 -> 294 | BETTER x2, **WORSE (establishment)** |
+
+BETTER on 2 of 3 and WORSE on 2 of 3, on the same two seeds -> the SPLIT clause -> the default does not move. (213's
+centred-entropy call clears its threshold by 0.01.) **The guess was wrong where it was specific:** establishment was
+inside the band on two seeds and below it on the third, not above; spread and centred entropy left the band, upward, on
+two. The sweep guard, where I said I could be wrong, fired.
+
+**Why 212 fell (draw-free probe, `scratchpad/p271`: a copy of harness-oee with one read-only line per sample; its
+population series is byte-identical to the rule run's).** Between ticks 13,500 and 14,000 the living fell 413 -> 198.
+That is ×0.48 in 500 ticks; the worst 500-tick drop in the other fourteen worlds is ×0.75 (null2, seed 212, tick 7,000,
+recovered). In the same 500 ticks the population went from all 16 regions occupied to 8 empty, and region 0 went from
+16 to 83. **Then it locked:** the 8 emptied regions filled to their cap (WORLD_ENERGY_MAX/16 = 5) by tick 14,000 and
+stayed full to tick 20,000, their share of the regeneration discarded every tick. Only a region with living particles
+can spend its energy, and nothing lets a particle sense where the energy is, so nobody moved back. The population sat
+at 89-153 to the end, roughly the half of the world's income that falls where they are. What emptied those regions
+in 500 ticks is not traced. **The lesson is structural:** under one pool a clump costs nothing; under regional pools a
+clump starves while half the sunlight goes unspent. **A local economy that particles cannot find their way around is a
+lottery by location**, and a fragile one.
+
+**Who breeds (harness-fecundity, 8,000 ticks; births per 1k particle-ticks by array decile; the default world's
+figures are from #268):**
+
+| | seed 1 | seed 2 | seed 3 |
+|---|---|---|---|
+| decile 0, default -> LOCAL_POOLS=4 | 1.69 -> 0.52 | 2.68 -> 0.53 | 2.62 -> 0.79 |
+| deciles 1-8 | 0.05-0.54 -> 0.29-0.48 | 0.08-0.13 -> 0.27-0.47 | 0.04-0.15 -> 0.28-0.45 |
+| decile 9 | 1.62 -> 1.39 | 1.89 -> 1.67 | 2.06 -> 1.44 |
+
+**Memory position stops deciding who breeds, mostly.** The middle 80% of the array went from almost never breeding to
+breeding at about a third of the rate of the newest decile. Decile 9 (the newest particles) still leads by 3-5x. So the
+change did the job it was designed to do. It failed the template on what came with it.
+
+**Selection readout (#267's instrument, seeds 231-233): the calibration fails, so nothing is read from it.** The neutral
+markers must read CHANCE in 5 of their 6 seed-readings. Here they read CHANCE in 2 of 6: on 231 both read FAVOURED
+(1.278 against a shadow band of 1.172-1.187, and 1.155 against 1.055-1.092), on 232 marker50 read FAVOURED, on 233
+marker05 read DISFAVOURED. By #267's own rule, nothing is claimed from any layer. That includes lineage reading
+FAVOURED on all three seeds, and programs going from DISFAVOURED to FAVOURED on 231. **Likely why (not tested):** the
+TREE null hands each new label to a random particle anywhere in the world. Under regional pools fertility belongs to a
+PLACE. A label that arises at a birth sits in a region that is breeding, and its carriers go on breeding there. The null
+breaks that tie between place and label, so even a mark that does nothing out-breeds its shadows. Under the one pool,
+fertility had no place, and the markers read CHANCE in 6 of 6 (#267). **A null for a spatial economy has to draw its
+recipients from the same region.** Named here, not built. Until it exists, #267's instrument is only valid on a world
+without spatial fertility.
+
+**What moved, against which number:** nothing in the default universe; the knob is off. The measured facts are:
+- a regional split of the one pool flattens position-decided breeding (middle deciles ×3-8);
+- it widens spread and centred entropy on 2 of 3 seeds;
+- it makes the world able to lock itself at half its income after a local die-off.
+
+**Kept DORMANT, with its follow-up named.** The knob's code stays; its off path is byte-identical. The follow-up is
+#270's design, now sharpened by this failure. The regeneration should fall on the FIELD, not into regional tanks:
+- the field diffuses (FIELD_DIFFUSE), so energy spreads toward the living instead of sitting capped where nobody is;
+- particles already carry evolvable sensors for its gradient (VM ops 147/148, FIELD_GRAD_X/Y, "enables chemotaxis").
+  Those sensors read exactly 0 in every world today, because the field is empty (#270).
+A local economy particles can climb is the thing this entry says is missing, and the sensors for it have been in the
+genome, reading nothing, all along.
