@@ -24251,3 +24251,37 @@ seeds under the engine before #263 (#259) and after #263 (#263b).
   20,000 (266 and 240 before).
 - Weaker than registered, as said before the runs: a 20,000-tick guard would not have seen #263b's extinction at
   32,800. One engine change, one horizon, twelve worlds.
+
+**#267 RESULTS — the top rung, read for the first time: no layer's novelty is favoured by selection; PROGRAM novelty is
+selected AGAINST.** Seeds 231-233, 20,000 ticks, late window 10,000-18,000, 845-866 births per seed.
+
+| layer | seed 231: real / shadows | seed 232 | seed 233 | verdict (2 of 3) |
+|---|---|---|---|---|
+| marker05 (neutral) | 1.13 / 0.19-1.51 CHANCE | 0 / 0-0 CHANCE | 0 / 0-0 CHANCE | calibration |
+| marker50 (neutral) | 1.26 / 1.22-1.38 CHANCE | 0 / 0-0 CHANCE | 0 / 0-0.01 CHANCE | calibration |
+| lineage | 1.20 / 1.13-1.18 favoured | 0 / 0-0 | 0.011 / 0.005-0.011 | **CHANCE** |
+| **program** | **0.75 / 0.87-1.31 disfavoured** | **0.20 / 0.24-0.75 disfavoured** | 0.82 / 0.82-1.59 | **NOVELTY DISFAVOURED** |
+| atoms | 0.28 / 0.39-3.11 disfavoured | 1.05 / 0-3.25 | 1.77 / 0-1.20 favoured | **CHANCE** |
+| channels | 0.61 / 0.33-1.46 | 0 / 0-1.53 | 0.88 / 0.34-1.72 | **CHANCE** |
+
+(index = birth rate of carriers of labels under 1,000 ticks old, relative to the average; shadows = the 8 TREE nulls.)
+- **Calibration holds: the neutral markers read CHANCE 6 of 6.** The method is trusted.
+- **Programs: the particles that really got new program variants had FEWER offspring than random recipients of the same
+  variants on the same family tree** — on two seeds, and on the third it sits at the shadows' minimum. Selection sees
+  programs, and it pushes against what is new in them. That is purifying selection, the ordinary state of a genome in
+  which most changes are harmful. It is also the first reading in this file at the SELECTED rung: the program layer is
+  under selection. What nothing reached is the other sign — **no layer's novelty out-breeds chance.**
+- **What "disfavoured" does not separate, said now:** the TREE null places each real event on a random particle of
+  the same kind (a birth change on a random newborn, a change during life on a random older particle). The index is
+  "the variant, or whatever comes with getting it". If the particles that rewrite their programs during life, or the
+  high-mutation lineages whose children differ, are already in poorer condition, the index reads that as well. The
+  next split is by origin — new labels acquired at birth against those acquired during life.
+- **Family lines and the markers read 0 on two seeds** in the real world and in every shadow: a label that changes only
+  at a birth is "new" only while its carrier is under 1,000 ticks old, and on those seeds no particle that young
+  reproduced. The shadows share that age structure, so it reads CHANCE correctly — but it means the lineage question
+  was barely asked there. A longer NOVW, or an age-matched window, asks it properly.
+- **My written guess — CHANCE everywhere — was wrong on programs,** and in the other direction from the one I named as
+  a risk (I worried the program NFD might make programs read FAVOURED). The program NFD pays rare vocabularies in amp;
+  in births, new programs lose. Consistent with #220: amp does not buy offspring.
+- **The answer to the user's question, at this rung and horizon:** the universe selects, and on programs it selects
+  against the new. Open-ended evolution needs the other sign somewhere, and no layer shows it at 20,000 ticks.
