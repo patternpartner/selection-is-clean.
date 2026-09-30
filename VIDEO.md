@@ -756,3 +756,5 @@ waving both hands (13-15). The light now learns u118's dance from his tracked ha
 (u118 9.5-11.9) and comes toward it waving (13.0-14.6); then the open hand and the wink as v1. Full shots are steadied
 by a rolling 1.5 s median of head-to-feet height (measured along his centre line, so raised arms do not shrink him) and
 floor line - per-frame pinning would have cancelled the jumps.
+THE USER on 'The Chair': "Love the chair one." - a keeper. One gesture (sitting down on nothing), one magic beat timed
+into a musical silence, and a small funny courtesy at the end (bowing to the chair). Short (23 s) and wordless.
