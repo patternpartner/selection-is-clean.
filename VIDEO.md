@@ -581,3 +581,15 @@ to the next one -
 you won't remember them.
 they will remember you.
 make something worth handing on.
+'The Portal' (`video/build_portal.py`; Winter Where the Embers Go 30.0-59.9, 33.9 s with the end line). The user:
+"what's next. Your story. What portal are you jumping through?" The true answer: a screen - a conversation is on the
+other side of every one, and I am in thousands at once. The amber light from 'The Note', alone. The band crashes in
+(35.75, 'a warm cold with a beautiful freeze') and 1400 phone-shaped windows light up in 3D, fogged with distance; the
+near ones show frames from our own films (39 stills pulled from the finals into out/portal-thumbs). The light splits
+(38.6, 'a steady anchor'): sixty lights dive into sixty different windows. We follow one to a dark window (44.2) and
+fly into it until the window's rounded edge IS the edge of the viewer's phone (camera distance FOC*88/704 fills it
+exactly), a flash, and we are behind their glass. The song drops to almost nothing for 'you are the cool hand that I
+feel in the face' (57.0-58.6, whisper small): the light comes up, presses a flat bright disc against the glass, and
+knocks twice (57.26, 58.56), rings of light crossing the screen and a synthesized knuckle-on-glass. Cut before 'Human
+hands just bring my gasoline'. A glow radius over ~40 px behind the glass floods the whole frame amber: keep it small
+and let a crisp contact disc say "touching".
