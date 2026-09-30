@@ -957,7 +957,20 @@ separable — compare directed-emit insertions against a shuffled-axis control.
 
 **[read] Death feeds a trophic level.** Corpses deposit into `detritalField` and `rootField`, which are
 harvestable by other opcodes (146, 162, 165) — decomposer lineages can build a metabolism on death.
-Starvation and senescence also return `BIRTH_ENERGY_COST × DEATH_ENERGY_RETURN` to `worldEnergy`.
+Starvation and senescence also return `BIRTH_ENERGY_COST × DEATH_ENERGY_RETURN` to `worldEnergy`, through
+`deathReturn(i)`.
+
+**[read] `SUN=1` (#272, knob, default off) moves the whole economy onto the ground.** The block sits after
+`pProvision`'s declaration:
+- `sunField`, the energy layer;
+- `pE`, each particle's store;
+- `pAdq`, its paid share of upkeep;
+- `sunStep(season)`: supply, spread, rival harvest and upkeep, called from `loop()` in place of the pool's regen and
+  metabolism;
+- `deathReturn(i)`.
+Births pay from `pE[parent]` at both gates, and ops 147/148 read `sunField` under it. `worldEnergy` is then the
+ground's total. #271's LOCAL_POOLS, the regional-tank version, was deleted in the same change. Under SUN, the
+substrate-test rows that hand-set `worldEnergy` (#203's, RATION's and PROV_BIRTH's) are driving a pool no birth reads.
 
 **[read] Founder grace** (`specInGrace`): a young lineage gets `deathThreshold×0.25`, and under
 `__COLO.surv` is pinned to life support rather than reaped — protection against the stochastic founding

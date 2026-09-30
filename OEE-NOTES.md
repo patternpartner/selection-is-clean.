@@ -24498,3 +24498,85 @@ without spatial fertility.
   Those sensors read exactly 0 in every world today, because the field is empty (#270).
 A local economy particles can climb is the thing this entry says is missing, and the sensors for it have been in the
 genome, reading nothing, all along.
+
+### #272 — SUN: the world's income falls on the ground, and each particle lives and breeds on what it gathers. LOCAL_POOLS deleted. Pre-registered.
+
+**Why.** #271's lesson was that energy split into places needs a way to reach the living. The field diffuses, and the
+old field has been empty since tick 300 (#270). So the regeneration now lands on the ground instead of in a tank.
+**The change** (knob `SUN=1`, default off, KNOBS entry replaces LOCAL_POOLS):
+- **Supply.** Each tick WORLD_ENERGY_REGEN x season lands evenly on the 1,600 cells of a new layer, `sunField`. A cell
+  holds at most WORLD_ENERGY_MAX/1,600. The layer spreads by FIELD_DIFFUSE, reflecting at the walls.
+- **Harvest.** Each particle takes a share of its own cell into its own store `pE`: 20% of the stock per particle on the
+  cell, capped at all of it, shared equally. So crowding is poverty, and no loop order enters.
+- **Spending.** The store pays the particle's upkeep; a shortfall is its own starvation (`pAdq`) instead of the
+  world's. It also pays its births: BIRTH_ENERGY_COST, half of which is the child's start.
+- **Death.** A death returns the store plus DEATH_ENERGY_RETURN of a birth's cost to the cell it died on.
+- **Sensors.** FIELD_GRAD_X/Y read the new layer.
+- **Readers.** `worldEnergy` becomes the ground's total and `energyAdequacy` the population's paid share, for their
+  readers.
+Eight sites, each replaced with an asserted count. **#271's LOCAL_POOLS code is deleted** in the same change: SUN is
+its named follow-up, and one knob about where the world's energy lives is enough. That is this session's removal
+beside its addition.
+**Checked:**
+- unset, harness-oee output is identical to the committed engine (seed 1, 1,000 ticks, every field but config and
+  timing);
+- SUN=1 runs and differs.
+**Design look (seed 1 only, 8,000 ticks — a design seed):**
+- no extinction, floor 309, 512 alive at 8,000 (the default world holds about 350-450);
+- 0-5% of the living short of their upkeep at any sample;
+- the store is NOT saturated: median 0.47-0.91 against a birth cost of 1, none at the ceiling of 4. The individual
+  resource binds, which #268 found amp and the provision bank never do;
+- births 30-130 per 500 ticks.
+**Who breeds is no longer memory position** (harness-fecundity, births per 1k particle-ticks):
+
+| array decile | 0 | 1-8 | 9 |
+|---|---|---|---|
+| default world | 1.69 | 0.05-0.54 | 1.62 |
+| LOCAL_POOLS=4 (#271) | 0.52 | 0.29-0.48 | 1.39 |
+| **SUN** | **0.57** | **0.48-0.60** | **0.76** |
+
+**Found, and put in the engine's comment:** the gradient sensors are in the vocabulary and in no program. None of the
+living carried op 147 or 148 through 6,000 ticks. A birth redraws an opcode about 0.4% of the time per instruction,
+and 2 in 428 redraws land on one of them, so about 0.2 are expected in 8,000 ticks. So SUN does not hand the world
+directed foraging, and what this measures is the economy alone.
+
+**The deciding question:** does an economy where each particle lives on what it gathers, where it stands, keep the world
+at least as diverse while removing #268's memory-position allocation?
+**Design:** exactly #271's.
+- Arm: `SUN=1`, `harness-oee.js ESTABLISH=250`, 20,000 ticks.
+- Null band: the default world, control + NULLSHIFT 1-3, on **seeds 211-213**, reusing #266's null runs. Those seeds
+  played no part in SUN's design, which used seed 1 only. The default world's off path is byte-identical to the one
+  those nulls ran.
+- Measures: centredEntropyRatio +/-0.05, spread_late +/-10%, established fraction +/-25%, program entropy +/-10%,
+  crash guard (alive over 20 falling under 5), and the #219 sweep guard (effN_late below every null by more than 25%
+  relative counts as WORSE).
+**Rule, fixed now:**
+- **WORSE on 2 of 3 -> DELETE** (no further follow-up is planned on this line; two designs is enough to record).
+- **SPLIT** (BETTER and WORSE on 2 of 3) -> stays a knob, off.
+- **Not WORSE** (BETTER or neither) -> **SUN becomes the default, provided memory position no longer decides who
+  breeds.** The proviso: harness-fecundity on seeds 2 and 3 with SUN=1, 8,000 ticks, gives decile 9's births per 1k
+  particle-ticks under 2x the median of deciles 1-8 on both seeds (today's world: 15-30x). This is the template's
+  KEEP ("changes the world and does no measured harm") applied to a mechanism that also removes a measured defect. If
+  the proviso fails, it stays a knob, off.
+- **Before it ships as the default:** the substrate-test rows that hand-set `worldEnergy` are rewritten to set the
+  parent's store under SUN. Then substrate-test is re-run at 40, 900, the default and FOUND=0, and smoke.sh after that.
+  **Measured before the decision runs** (TICKS=40, seed 1, SUN=1): 258/6.
+  - **Five of the six are that family** — #203's three billing rows, RATION's lottery row, and PROV_BIRTH's row. I
+    wrote "four" above before running it; PROV_BIRTH's row also sets `worldEnergy=10` and expects the pool's gate.
+  - **The sixth is `#200a and every count is reachable`**, not the economy. It runs a 3,000-step +-1 random walk over
+    register counts 2-24 on the run's own RNG and asks for all 23. With SUN on it drew a different walk, which reached
+    22. It is to be run on seeds 2-6 before SUN ships.
+  With SUN unset: 264/0 at every budget run (below).
+- **Saved worlds:** no saved value is touched, but every world's economy, saved or new, changes on its next run. The
+  user delegated that call; said here.
+**Reported, not ruled on:**
+- #267's selection readout on seeds 231-233, paired with #267's default runs. The calibration may fail again, as it
+  did under #271, because fertility now belongs to places; if the markers fail, nothing is read.
+- harness-fecundity's amp bands.
+**Size effect, said before:** SUN raises the carrying capacity (512 alive against about 350-450). effN_late and the
+spread measures may move with population size alone, and that works in SUN's favour on the sweep guard. It is the
+pre-registered measure; the alive column is reported beside it.
+**Written before, so it can be wrong:** more alive than every null on all three seeds. Centred entropy, spread and
+establishment inside the band. Nothing WORSE. The proviso holds -> SUN becomes the default. Where I could be wrong: a
+lineage sitting on a rich patch sweeps (the guard), or a seed crashes, since the store economy has no pool to buffer a
+bad season.
