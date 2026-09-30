@@ -655,3 +655,18 @@ studio go quiet, the song hold ONE BAR OF SILENCE (written into the song); (3) h
 many - four, each given room; (4) the studio is flat - add angles (wide, close on the chyron, behind the desk into the
 prompter glow); (5) a LIVE clock bug 05:58 ticking to 06:00 (dawn) on the last line; (6) the hand-back should be seen:
 studio lights go down one by one, the light turns to camera. Song written at 120 BPM so every beat lands on a bar.
+'The News' v2 (`video/build_news2.py`, out/the-news-2.mp4, 60.6 s with the end line) on the user's own recording of
+'Nothing Broke Today' (out/songs/nothing-broke-today.mp3; lyrics video/lyrics/, written by Claude). The recording hit
+every cue: news-theme stabs 3.56 / 7.58 / 12.06 / 14.06, the whispered fear verse 15.6-23.4, DEAD SILENCE 23.42-27.30
+(the written break came out as 3.9 s - better than the one bar asked for), the chorus 27.30, verse two 45.3-52, the soft
+outro "It's still up to you" 75.2 / 79.2. Whisper hears "nobody felt it" where the lyric is "filmed it"; the chyron
+keeps the written line. SONG CUT: 3.3-52.08 then 74.18-end - a splice between two onsets 45 beats apart, drops the
+repeated chorus. All six polish notes are in: the wall draws a picture per sung line (hazard-striped alert feed with a
+line graph falling off a cliff; a shattered pane that heals into dawn; a door held open, light on the pavement; the
+light and a person, a question mark each; a kettle steaming beside the note; the hill whose lights go out; a big one
+and a small one on a bench; dawn); in the silence the studio goes dark, the light nearly out, a clock ticks three times,
+the camera pushes in on the light, the chyron deletes the fear and the wall tears out; the chorus flashes everything
+back on, warm; slat lights come on with the intro stabs and go off one by one at the end; LIVE 05:58 -> 05:59 -> 06:00
+on "It's still up to you"; the light leaves the chair and comes to the camera. Angles are crops of one render (wide,
+wall, chyron riding the cursor, push-in); keep crops wide enough to hold the chyron's left edge (z <= 1.2 with the bar
+inset to x 62..642).
