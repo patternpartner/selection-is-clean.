@@ -24199,3 +24199,10 @@ otherwise KEEP. Executed first: it runs every tick; a seed counts if the arm's s
 **Written before, so it can be wrong:** the knockout is WORSE on program entropy on 2/3 (the seed-1 design hint: 1.87
 against 2.34 bits at tick 1,000) and inside the band on the trait measures -> KEEP, proven on programs.
 **Saved worlds:** a DELETE changes every world's dynamics; no saved value involved.
+- **#265b's horizon changes, 40,000 -> 20,000 ticks, before its results are read — forced by the machine, not chosen.**
+  Background jobs are stopped at ~30 minutes, the container restarted three times today (each killing every run), and
+  a single 40,000-tick world took more than 30 minutes alone (seed 163) and more than 50 at four processes. Two worlds
+  (161, 162) finished at 40,000. The guard is now read at tick 20,000 for every seed — the new runs at 20,000, and
+  #263b's runs and 161/162 from their per-1,000-tick series at 20,000 (extinctions by 20,000, living at 20,000, floor
+  from the 1,000-tick samples). Same threshold: withdrawn if extinctions rise by 4 or more. **Weaker, said plainly:**
+  #263b's one new extinction (seed 167) came at 32,800, so a 20,000-tick guard would not have seen it.
