@@ -24726,3 +24726,39 @@ biased.** Only the inert control is causal. As of now:
 - DETRITAL_HARVEST (146): plausible (it feeds the store), untested — inert control queued.
 - 22, 236-238: rise without effect, cause of the rise untraced.
 - 232-234 (mode ops): untested.
+
+### #275-#277 — what REPL worlds do at 20,000-30,000 ticks: an evolved food web, novelty that fades in bounded spaces, and an arms race that did not engage.
+
+All `LAWMUT=0`, seeds 1-3, probes in `scratchpad/replprobe3-5.js` (draw-free, one line per 500 ticks). "Kinds" = 4-D
+trait bins of 0.5; "new kinds" = bins never occupied before in that run.
+
+**#275 — REPL_MATCH, wide key (0.6) with a 30% floor, 20,000 ticks.** Predation never established on any seed. Prey
+events totalled 237-7,944 per run, against tens of thousands per 500 ticks under plain REPL; a 30% take is not worth
+carrying. Scavenging (146) reached 69% and 78% on seeds 1-2. New kinds by quarter: 887/275/46/23, 841/307/168/50,
+808/278/62/21. **Novelty in the bounded trait space fades toward zero**; the total seen levels off at 1,169-1,366.
+The knob was deleted in #277.
+
+**Plain REPL, 20,000 ticks (the #276 P arm).**
+
+| seed | op 155 (predation) at 4k/8k/12k/16k/20k | op 146 (scavenging) | alive | new kinds by quarter |
+|---|---|---|---|---|
+| 1 | never at 4k samples; the world went extinct by 8,000, reseeds limp at ~50 | - | 0-54 | 831/132/0/0 |
+| 2 | 0 / 89% / 82% / 91% / 90% | 2% / 9% / 37% / 80% / 75% | 474-705 | 866/309/388/122 |
+| 3 | 0 / 97% / 98% / 99% / 98% | 0 / 54% / 49% / 67% / 78% | 433-638 | 832/233/81/132 |
+
+**An evolved food web on 2 of 3 seeds:**
+1. harvesters of the sun;
+2. then predators (#273: causal);
+3. then scavengers rising AFTER predation, feeding on what it leaves.
+None of the three levels was built in as a role. Scavenging's selection is untested: its inert control is queued.
+Seed 1 repeats #273's overexploitation. On seed 2, new kinds keep arriving through the run.
+
+**#277 — REPL_ARMS (attack vs defence keys, unbounded), key width 0.5, 30,000 ticks: the race did not engage.**
+- The mean take of a random predator on a random prey stayed at 0.99-1.00 on all three seeds. No defence was ever
+  near an attack: the centroids ended about 3 apart (seed 1: attack (1.2, 0.6, -0.7, 0.8), defence (-1.0, -0.9, 0.7,
+  -0.9)).
+- With attack keys spread at RMS about 1.3 in four dimensions, a defence of width 0.5 covers about 2% of the attacks it
+  meets. That is too little benefit for selection to pull defences toward attacks, so both drifted.
+- Predation still arose, later (15,000 / 9,000 / 15,000) and to 50-92%, with scavenging alongside on seeds 2-3.
+- **#277b:** width 1.5, so a defence near the commonest attack covers most of it. The inert-defence controls
+  (REPL_ARMS=2) are valid for any width.

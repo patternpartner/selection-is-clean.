@@ -10555,7 +10555,7 @@ if(REPL_ON){ WORLD_ENERGY_REGEN=0.6; BIRTH_ENERGY_COST=0.25; }
 // the defence does nothing, so they only drift. (#274/#275 matched a key against the prey's trait vector instead;
 // predation never paid under it, and that knob was deleted.)
 const REPL_ARMS=REPL_ON&&(typeof globalThis!=='undefined')?(globalThis.__REPL_ARMS|0):0;
-const REPL_KEYW=0.5, REPL_KEYSD=0.12, REPL_DEFMAX=(REPL_ARMS===2)?0:0.9;
+const REPL_KEYW=1.5, REPL_KEYSD=0.12, REPL_DEFMAX=(REPL_ARMS===2)?0:0.9;   // #277b: width 1.5 - at 0.5 a defence covered about 2% of a spread-out attack cloud, gave no gradient, and never engaged (take stayed ~1.0 on 3 of 3 seeds)
 const pKey=new Float32Array(CAP*4), pDef=new Float32Array(CAP*4);
 // #276 - REPL_ATOMS (knob, needs REPL): A LINEAGE'S AUTHORED ATOMS VARY AT BIRTH. Atoms (evolved expressions a program
 // calls through op 22 and the bound slots) were only ever minted in the one germline genome (mutateGenome) and copied
