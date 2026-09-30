@@ -3002,3 +3002,13 @@ bacterial culture, no engine.
 **`harness-nfdsat.js`** (#262) — reads the trait NFD's own term per living particle, draw-free (its living count
 matches `harness-extinct`'s at the same seed and tick), with the centred-grid and occupied-mean what-ifs beside it.
 `INDEX=<patched engine>` reads a repaired world.
+
+## The law verdict, read from outside — `harness-lawedge.js` (#263), `harness-lawtrial.js` (#265)
+
+**`harness-lawedge.js`** holds ONE law row at an edge (`ROW=`, `TO=lo|hi|number`) from tick AT with the law process
+OFF, and reports what the verdict WOULD see (mean living 600 before against the 1,200 after, kept at >= 0.7), the late
+living count, and `reach` — the chance one in-world proposal from the default lands exactly there. The #263 screen ran
+every row but the four LAW_* meta rows (inert with the process off). **`harness-lawtrial.js`** runs the ENGINE'S OWN
+verdict: law process on, the world's proposals off (LAW_RATE 0), one trial installed at AT exactly as
+`attemptLawMutation` installs it; `PROBATION=` sets that trial's length. Both read the row list at runtime.
+**`microcosm-scale.js`** (#264) runs the bacterial microcosm's ten regimes at four scales in one command.

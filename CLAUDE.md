@@ -168,6 +168,10 @@ git checkout main && git merge --ff-only <branch> && git push -u origin main
   background mechanism survived. If a batch comes back with empty files and nothing in `ps`, that
   is what happened — the runs did not fail, they were reaped. **Stage long batches and write a
   `.done` marker per stage**, so a reap tells you which stage died instead of losing the lot.
+  **The harness's own background jobs have a limit too (`#265`, 30 Sep): stopped at ~30 minutes** on this box, where
+  the day before a 90-minute batch ran through. Size a launch to finish inside it — a script that skips finished runs
+  and takes `MAXNEW=` (start at most n new runs, then exit), relaunched on each completion — rather than one launch
+  for the whole batch. A killed launch leaves zero-byte `.json` files beside no `.done`: delete them and relaunch.
 - **An engine process holds about a gigabyte.** Measured at `#254`: 1.0-1.4 GB resident per world at 10-15k ticks.
   On the 15 GB hosted box, twelve at once thrashed — load 20 on four cores, ticks four to five times slower, and
   nothing finished. Count processes before launching a batch; six to eight is the ceiling here.

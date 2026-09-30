@@ -2344,7 +2344,15 @@ const LAW_DECLARED=[
 // that finds short probations produce bad verdicts can evolve them back up - which is the only
 // honest way to set a number whose right value I do not know.
 let LAW_RATE=0.0015;       // per-tick proposal chance - about one per 670 ticks per world (#222: was 0.0006; the table grew by eleven physics rows and each deserves a turn)
-let LAW_PROBATION=1200;    // ticks a proposal runs before it is judged
+// #265: BACK TO 4,000, AND THE PARAGRAPH ABOVE IS WHY IT HAD LEFT. #197 cut 4,000 to 1,200 for reach (more verdicts
+// per run) and called the right value unknown. The evidence came: energy-economy harm takes ~4,000 ticks to show, so a
+// 1,200-tick probation KEPT regeneration at 0 and the metabolic draw at its top on 3 of 3 unseen seeds (201-203) and
+// those worlds starved to 89-144 living; at 4,000 both were REVERTED on 3 of 3 and the worlds recovered to 297-319,
+// while a panel of eight harmless law edges was kept on 24 of 24 at both lengths (harness-lawtrial.js). No statistic
+// rescues a short probation: a verdict cannot see harm that has not arrived. The price is reach - a 12,000-tick run
+// now holds at most three verdicts, not ten - and it is paid on purpose. Still not caught at 4,000: a birth price at
+// its top (kept at a ratio of 0.71-0.75; the world settles near 175) - the slow slide #263b saw in two worlds.
+let LAW_PROBATION=4000;    // ticks a proposal runs before it is judged
 let LAW_VIABLE=0.7;        // fraction of the pre-proposal population mean the world must hold
 let LAW_COST=0.04;         // amplitude every living particle pays for a proposal
 const LAW_WINDOW=600;        // ticks of population history the pre-proposal mean is taken over
@@ -2360,7 +2368,7 @@ let __lawLog=[];             // [tick, name, from, to, verdict] - 1 kept, 0 reve
 // else, when the log has nothing left, every law moves a quarter of the way back to its declared value
 // (the fatal change may predate the 40-entry log). One step per death: repeated deaths walk the physics
 // back until the world can live. EXTINCT_UNDO=0 disables it.
-const LAW_SUPERSEDED={LAW_RATE:0.0006,BIRTH_SHRINK:0.9};   // #227b: name -> a declared default this file has since changed (#257c: BIRTH_SHRINK)
+const LAW_SUPERSEDED={LAW_RATE:0.0006,BIRTH_SHRINK:0.9,LAW_PROBATION:1200};   // #227b: name -> a declared default this file has since changed (#257c: BIRTH_SHRINK)
 let __lawDefaults=null;
 // === #232 - THE CAPACITY CEILING #222 MEANT TO SET ============================================
 // #222 floored METABOLIC_ENERGY_DRAW at 0.00025 because "the verdict only asks did the population
