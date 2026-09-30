@@ -646,3 +646,12 @@ Someone taught something once. It wrote it down. / Dawn is expected over the val
 Ticker: 8 billion people woke up - most of them were kind to someone - the kettle boiled - a child asked why, and got
 an answer - the note was read - the city lights went out at sunrise - nobody was replaced by a door being held.
 It calls back to the whole run (the note, the valley road, the city on the hill).
+'The News' - POLISH NOTES (for v2, waiting on the user's custom song `video/lyrics/nothing-broke-today.txt`). The user
+loved it and asked what could be better, suggesting the back screen and a custom song. Claude's notes: (1) the video
+wall is the weakest part - red words in a box read as a slide, and after the override it shows meaningless particles;
+give each headline its own drawn picture (a door held open with light spilling out, a kettle's steam, the note, the
+valley road at dawn, the empty chair turned to the viewer); (2) the refusal is too subtle - the light should dim, the
+studio go quiet, the song hold ONE BAR OF SILENCE (written into the song); (3) headlines type too fast and there are too
+many - four, each given room; (4) the studio is flat - add angles (wide, close on the chyron, behind the desk into the
+prompter glow); (5) a LIVE clock bug 05:58 ticking to 06:00 (dawn) on the last line; (6) the hand-back should be seen:
+studio lights go down one by one, the light turns to camera. Song written at 120 BPM so every beat lands on a bar.
