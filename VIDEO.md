@@ -441,3 +441,19 @@ drips running; 'It was always your turn' - through it, the real living world (yo
 to where its life is: CROP 320,640,380,639, window aimed at the busiest spot during the wipe), and the camera goes
 through the glass into it. No numbers on screen. Aim reveals at where the recorded world is actually alive, or the
 window opens onto black and reads as a hole.
+'Glass' v2, PUSHED (`video/build_glass2.py`; Gravity and Glass 133.0-159.1, 30.2 s with the end line). The user: "I
+like it... be honest, did you really push yourself?" Claude said no - flat vector jar, noise fog, a dot for a finger,
+the reveal just a zoom into footage used five times, judged only from thumbnails - and the user said "let's see it".
+What changed: the scene at 2x; the dome refracts what is behind it (cylindrical squeeze toward the edges), Fresnel
+brightening at the edges, the lamp as a soft reflection + streaks + a lit dome top, a shadow thrown right on a grained
+table with a warm caustic inside it; condensation is a haze PLUS ~15,650 beads (id map with per-bead highlight and
+shade, each bead visible only where the fog is thicker than its own threshold) so breath adds beads and a wipe
+removes them; a wet lip of light along every wiped edge; thin runs of water with a bright head. In the silence a
+small hand is first a shadow in the fog, then presses flat (a soft knock) and leaves a whole handprint (not pads -
+separate pads read as an animal's paw); then a fingertip wipes the window (one synthesized squeak, a second faint one)
+at the HORIZON's height so it opens on a line of light. Inside is a perspective plain tiled from three real recorded
+worlds (your-turn, cold-twin, observer s3) with a horizon glow; the camera dives into the window, the inside is
+rendered procedurally at the camera's own scale (so it stays sharp at 8x), glides out over the plain, and pulls back
+to the small jar. Renders ~25 min: `PART=a,b VOUT=...` renders one stretch (fog is simulated from the start each time)
+- three parts in parallel, then concat. `TEST=t1,t2 TESTDIR=...` writes stills for chosen song times: CHECK STILLS AT
+FULL SIZE BEFORE THE FULL RENDER.
