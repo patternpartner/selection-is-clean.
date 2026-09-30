@@ -697,3 +697,18 @@ u27 the user's universe field for the open; then u38 the bird at sunset (UNBROKE
 (DOORS), u60 the girl in yellow reaching up to the screen (QUESTIONS), u107 ink drawing into one seed (KETTLES), u83
 the woman over the misty valley (HILLS), u106 the two on the sofa (ANSWERS), u111 two cloaked figures walking through
 a golden ruin (06:00). u112 (the golden vortex) reads too dark on the wall for the last line.
+'The News' v5 (`video/build_news5.py` + `video/news5_voice.py`, out/the-news-5.mp4, 75 s). THE USER on v4: it should
+be 'Good evening' - the morning news isn't working; the videos aren't working; the lines weren't working with the
+visuals - "find footage that matches the words you're using". METHOD: look at the clips FIRST (five frames across each
+one), then write every line FROM what is on screen. The evening news, 21:58 -> 22:00, "Good evening" at the top and
+"Good night" at the end. The spine: the fear headline over u67 (rows of grey robots) bled red - "Good evening. Our top
+story tonight. Machines take ov-" (cut 0.28 s into 'over') - then after the refusal, "Let's look at that footage
+again": the SAME clip in true colour, pushed in on what it actually shows - "Those machines aren't taking over.
+They're passing a toy rabbit, hand to hand. Very carefully." (REPLAY | THE SAME FOOTAGE, REPLAY | A TOY RABBIT). Then:
+u60 the girl in yellow reaching up to a glowing screen - "A girl reached up to the screen, just to say hello."; u106
+the two faceless figures on the sofa with controllers - "Nobody won. Nobody minded."; u94 a silver coin standing on its
+edge - "Markets. One coin, standing on its edge. Too close to call."; u83 the woman in a cap watching the valley -
+"Nothing happened. She says it was the best part of her day."; u38 the white bird at sunset (only its first 4 s - it
+turns into an interior after) - "And the weather. Clear skies. A bird was seen heading home."; and the robots and their
+rabbits again under "It is still up to you." The v4 lines were generic and the footage was chosen after them - that
+is why the user said neither was working. Words written from the footage fix both at once.
