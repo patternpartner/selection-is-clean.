@@ -779,3 +779,8 @@ LEADS, 0.45 s ahead of his hand, with a trail; his arms-up jump lands on 45.52),
 bar), u121 13.6-15 arms folded in slow motion through the song's quiet dip while the light dances its own, the jumps on
 the drop at 61.975, then the v3 ending. End card 65.5-69.1, audio fades from 64.4.
 u119 (funny faces: ooh, kissy lips, tongue, laugh, pout, cheek-pull) is saved for the next film.
+**Re-cut (same file).** The user: "the walking part I'm referring to starts like 10 or 11 seconds in and goes to 17-18
+seconds" - u115's side-steps (3.0-10.5) read as WALKING, not dancing. Cut. (Lesson for the catalogue: sideways
+stepping with little arm movement reads as walking; the u118 walk-up wave at the end was NOT the problem.) The film now
+starts at 15.04 so the drop still lands on the jumps: 8 beats of the light alone on the dark stage, then the spot comes
+up on him (SPOT 18.911). 65.1 s, end card 61.46-65.06.
