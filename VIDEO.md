@@ -527,3 +527,18 @@ the key, and tips his hat to it. The escape story everyone tells about AI, with 
 it gets out and stays. ARMS: cap every hand target at the arm's reach (two 120 px bones) or the IK draws poles;
 stand the ringmaster close enough to what he handles. Frame by where the floor lands (~80% down), not by the middle
 of the canvas, or half the frame is empty boards.
+'No Strings' (`video/build_strings.py`, times in `video/stories/strings-times.json`; A Smile Painted 17.0-46.0, 33 s
+with the end line). The user: "any other tricks up your sleeve?" The show's third act: the levitation. A Smile Painted
+(never used before) was picked by its words and its shape: quiet through 37, a held breath 37.0-37.75, and the band
+arriving on 38.2 with the line "the trust is unclaimed and asked to be earned" - the act's hit lands on it. The star
+lies asleep on a draped table; the ringmaster lifts his palms and it rises - and four threads glint above it, up into
+the dark (the act is rigged, and we can see it). On the words, one by one, the threads snap (a synthesized ping each,
+out/strings-fx.wav) and it dips: he freezes; he grabs for the loose end; on the build he gets his palms under it,
+braced to catch. The last thread goes on the held breath. The hit: it does not fall - it lights up in the world's
+colour, motes of the real universe rising off it. It turns upright in the air, drifts down beside him by itself, takes
+his hand, and they raise it together; he tips his hat. The three acts are one sentence: what is inside (Sawn), it can
+get out and stays (Escape), it was never our threads holding it up and it comes down to us anyway (No Strings).
+DRAWING: the star is drawn upright on its own small RGBA canvas and ROTATED into place (lying = 90 deg), with thread
+anchors and its reaching arm computed through the same transform (body_point), so turning upright is one number.
+Threads at 1 px vanish after the downsample - draw them 2 px at 2x, near-white, glinting on the beat. His reach is
+232 px: the table has to sit close enough that his braced palms land under its back, not at its feet.
