@@ -10555,7 +10555,8 @@ if(REPL_ON){ WORLD_ENERGY_REGEN=0.4; BIRTH_ENERGY_COST=0.25; }   // #278: 0.4 (w
 // the defence does nothing, so they only drift. (#274/#275 matched a key against the prey's trait vector instead;
 // predation never paid under it, and that knob was deleted.)
 const REPL_ARMS=REPL_ON&&(typeof globalThis!=='undefined')?(globalThis.__REPL_ARMS|0):0;
-const REPL_KEYW=1.5, REPL_KEYSD=0.12, REPL_DEFMAX=(REPL_ARMS===2)?0:0.9;   // #277b: width 1.5 - at 0.5 a defence covered about 2% of a spread-out attack cloud, gave no gradient, and never engaged (take stayed ~1.0 on 3 of 3 seeds)
+const REPL_KEYD=(typeof globalThis!=='undefined'&&(globalThis.__REPL_KEYD|0)>=1)?Math.min(4,globalThis.__REPL_KEYD|0):4;   // #279: how many numbers a key has (1-4)
+const REPL_KEYW=(REPL_KEYD<4)?0.5:1.5, REPL_KEYSD=0.12, REPL_DEFMAX=(REPL_ARMS===2)?0:0.9;   // #277b: width 1.5 - at 0.5 a defence covered about 2% of a spread-out attack cloud, gave no gradient, and never engaged (take stayed ~1.0 on 3 of 3 seeds)
 const pKey=new Float32Array(CAP*4), pDef=new Float32Array(CAP*4);
 // #276 - REPL_ATOMS (knob, needs REPL): A LINEAGE'S AUTHORED ATOMS VARY AT BIRTH. Atoms (evolved expressions a program
 // calls through op 22 and the bound slots) were only ever minted in the one germline genome (mutateGenome) and copied
@@ -10573,7 +10574,7 @@ function replAtomBirth(i){ const g=pGenome[i]; if(!g||Math.random()>=REPL_ATOM_P
 function replKeyBirth(i,p){ const ok=p>=0&&p<N&&p!==i; for(let m=0;m<4;m++){
   if(ok){ pKey[i*4+m]=pKey[p*4+m]+(Math.random()+Math.random()+Math.random()-1.5)*2*REPL_KEYSD; pDef[i*4+m]=pDef[p*4+m]+(Math.random()+Math.random()+Math.random()-1.5)*2*REPL_KEYSD; }
   else { pKey[i*4+m]=Math.random()*2-1; pDef[i*4+m]=Math.random()*2-1; } } }
-function replTake(i,j){ let d2=0; for(let m=0;m<4;m++){ const e=pKey[i*4+m]-pDef[j*4+m]; d2+=e*e; } return 1-REPL_DEFMAX*Math.exp(-d2/(REPL_KEYW*REPL_KEYW)); }
+function replTake(i,j){ let d2=0; for(let m=0;m<REPL_KEYD;m++){ const e=pKey[i*4+m]-pDef[j*4+m]; d2+=e*e; } return 1-REPL_DEFMAX*Math.exp(-d2/(REPL_KEYW*REPL_KEYW)); }
 const SUN_ON=REPL_ON||((typeof globalThis!=='undefined')&&((globalThis.__SUN|0)!==0));
 const SUN_TAKE=0.2, SUN_ENDOW=0.5, SUN_SEED=0.5, SUN_STORE=4;
 const sunField=SUN_ON?new Float32Array(FIELD_W*FIELD_H).fill(WORLD_ENERGY_MAX/(FIELD_W*FIELD_H)):null;
