@@ -10545,7 +10545,7 @@ const pProvision=new Float32Array(CAP); // LEAP 3: banked reproductive surplus, 
 const REPL_ON=(typeof globalThis!=='undefined')&&((globalThis.__REPL|0)!==0);
 const REPL_INERT=(REPL_ON&&typeof globalThis!=='undefined'&&globalThis.__REPL_INERT!==undefined)?(globalThis.__REPL_INERT|0):-1;   // #273: rigs only - the named opcode still runs through the VM but does nothing, the neutral control for its spread
 const REPL_T=0.5, REPL_ONSET=150, REPL_SCALE=0.02;   // #273: a replicator's life is short, so evolution gets generations: median life about 400 ticks at lifespanBias 1
-if(REPL_ON){ WORLD_ENERGY_REGEN=0.6; BIRTH_ENERGY_COST=0.25; }
+if(REPL_ON){ WORLD_ENERGY_REGEN=0.4; BIRTH_ENERGY_COST=0.25; }   // #278: 0.4 (was 0.6) - at 0.6 worlds reached 1,800 living and ran 5x slower, so fewer generations per window
 // #277 - REPL_ARMS (knob, needs REPL): AN ARMS RACE WITH NO EDGE. Predation starts at full strength, as under plain REPL
 // where it arose and spread on 3 of 3 seeds (#273). Each particle also carries two heritable 4-number keys: an attack
 // (pKey) and a defence (pDef), each copied from its parent with a small mutation at every birth and never clamped. A
@@ -21634,6 +21634,7 @@ function applyEntropy(){
       amp[i]+=localRes[i]*genome.entropyK;
       {const _txi=__cl(Math.floor(px[i]/(W/FIELD_W)),0,FIELD_W-1),_tyi=__cl(Math.floor(py[i]/(H/FIELD_H)),0,FIELD_H-1),_tox=inhibitorField[_tyi*FIELD_W+_txi];if(_tox>0.05){const _dmg=_tox*Math.max(0,1-pResistance[i])*0.018/MODE_DEFENCE[pMode[i]];amp[i]-=_dmg;}pResistance[i]*=0.997;} // INHIBITOR DAMAGE + RESISTANCE DECAY: inhibitor deals up to 1.8% amp/tick at zero resistance; resistance decays 0.3%/tick — must be actively maintained via RESISTANCE_BOOST (op215)
       { const _ea=SUN_ON?pAdq[i]:energyAdequacy; if(_ea<1)amp[i]-=(1-_ea)*STARVE_DRAIN; } // #272: per particle under SUN. starvation: the world couldn't feed everyone this tick
+      if(REPL_ON&&pAdq[i]<0.5)amp[i]=-1e6;   // #278b: a replicator that cannot pay half its upkeep starves to death. Without this a dry store only drained amp, which interactions top up, so starving particles cost no energy, never died, and a world without predators grew to 1,700 on sunlight for about 500
       if(isNaN(amp[i]))amp[i]=0;
       // ═══ LEAP 34 (#72) — ESCAPE IS FATAL. The first state in this system that can kill you. ═══
       // #71 measured what the substrate does with a particle that leaves the world: nothing. Position is
@@ -21700,7 +21701,8 @@ function applyEntropy(){
       // the freeze; this is what keeps the energy budget turning over so births can ever be paid for.
       let _haz=0;
       if(page[i]>(REPL_ON?REPL_ONSET:SENESCENCE_ONSET) && !_ig){
-        const _lb=(genome.lifespanBias!==undefined&&isFinite(genome.lifespanBias))?Math.max(0.15,genome.lifespanBias):1;
+        let _lb=(genome.lifespanBias!==undefined&&isFinite(genome.lifespanBias))?Math.max(0.15,genome.lifespanBias):1;
+        if(REPL_ON&&_lb>1.5)_lb=1.5;   // #278: a replicator's inherited lifespan stretches at most 1.5x - worlds had evolved to mean ages of 600-1,000 and turned over a third as fast
         const _sr=__cl(genome.somaRepair||0,0,SOMA_REPAIR_MAX);   // LEAP 23 (#56)
         _haz=((page[i]-(REPL_ON?REPL_ONSET:SENESCENCE_ONSET))/1000)*(REPL_ON?REPL_SCALE:SENESCENCE_SCALE)/_lb*(1-SOMA_HAZARD_RELIEF*(_sr/SOMA_REPAIR_MAX));
       }

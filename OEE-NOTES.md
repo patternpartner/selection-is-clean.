@@ -24762,3 +24762,53 @@ Seed 1 repeats #273's overexploitation. On seed 2, new kinds keep arriving throu
 - Predation still arose, later (15,000 / 9,000 / 15,000) and to 50-92%, with scavenging alongside on seeds 2-3.
 - **#277b:** width 1.5, so a defence near the commonest attack covers most of it. The inert-defence controls
   (REPL_ARMS=2) are valid for any width.
+
+**#277b — REPL_ARMS at key width 1.5: still no race; the rise in take is drift.** Seeds 1-3, stopped by the 30-minute
+limit at 20,500-24,000 ticks.
+- The mean take rose on every seed: 0.71 -> 0.94, 0.67 -> 0.91, 0.71 -> 0.85-0.90. **But seed 3 had almost no
+  predation until tick 20,000** (prey events 0-363 per 500 ticks) and its take rose just as much. So the rise is keys
+  and defences drifting apart, not predators escaping defences.
+- The wide defence also stopped predation establishing: op 155 carriers stayed at 0-2% on seeds 2-3; on seed 1 they
+  reached 28% at 24,000.
+- The predation-inert control (REPL_ARMS=1 + REPL_INERT=155) was started, then stopped by hand to free the machine for
+  the long runs. The seed-3 course above is the drift evidence.
+**Three arms-race designs, none engaged.** The lesson, stated so the next one is built on it:
+- For predation to spread, a predator must take a lot from ANY prey early on.
+- For defence to be selected, a single defence must cover a large share of the attacks a prey actually meets.
+- In a 4-D key space with mutation spreading both clouds, those two pull against each other.
+A race likely needs a low-dimensional key (one or two numbers), or a defence that costs something, so it does not
+simply drift.
+
+### #278 — SERIAL PASSAGE: long REPL worlds across 30-minute windows.
+**Why.** A run is capped at about 30 minutes, which is 60-200 generations here; every open-endedness claim worth
+making needs thousands. `harness-passage.js` saves a world's heritable contents at the end of a window and installs
+them in a fresh engine at the start of the next:
+- every living particle's per-particle state (the list `compact()` moves);
+- each genome and program, the lineage entries of living families, and the germline;
+- the SUN and detritus layers, and the clock.
+Transient bookkeeping (clusters, channels, histories) starts fresh — a culture moved to a new flask. **Round trip
+checked:** save -> load -> save is identical in every field except atoms' compiled-function cache, which is rebuilt
+on first call.
+**Speed settings under REPL:**
+- Sunlight 0.4 (was 0.6). At 0.6, worlds without predators reached 1,800 living and ran 5x slower: 12 ticks/s
+  against 61 at 300-600 living, three worlds sharing four cores.
+- Inherited lifespan capped at 1.5x. Worlds had evolved mean ages of 600-1,000 against about 230 at the start, a third
+  of the turnover.
+**The long run:** REPL + REPL_ATOMS, seeds 1-3, 30,000 ticks per passage, chained. Each passage is judged by its own
+innovations:
+- ops absent at the passage's start reaching 10% of the living — core ops (minus the supply-biased 22 and 232-236)
+  against the do-nothing ops 240-415 as the neutral baseline;
+- atom expressions new to the passage reaching 10%.
+**If novelty is open-ended, those counts hold up passage after passage. If it is a burst, they fall to the neutral
+level.** That is the test of step 3 agreed with the user: proven adaptations still arriving in the last quarter of
+thousands of generations, on 3 of 3 seeds.
+
+**#278b — STARVATION MUST KILL, or energy does not bound the population.** The first long passages found the hole:
+- seed 2 grew to **1,700 living on sunlight for about 500**, ran at a third of the speed, and was stopped at 14,500
+  ticks with no save;
+- seed 3 ended its first passage at 1,161.
+The cause: under SUN a dry store only drained amplitude (`(1-pAdq)*STARVE_DRAIN`), and interactions top amplitude
+up. So a starving particle cost the energy budget nothing and did not die, and births — which the store does bound —
+simply piled up. Now, under REPL, a particle that cannot pay half its upkeep starves to death. Seed 2 over 8,000
+ticks: 300-840 alive, about 75 ticks/s alone, with scavenging arising at 6,000. The passages run under the old rule
+were set aside (`scratchpad/long_old`), and the long runs restarted from tick 0 on this rule.
