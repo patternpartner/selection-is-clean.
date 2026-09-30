@@ -469,3 +469,18 @@ ground-projection, -1.35 -> 0 -> 1), sits, and on the long held 'break free' loo
 capsules + a tapered torso melted together (blur and re-threshold) - raw capsules read as a stick robot; the floor
 shadow widens toward the camera and is soft; the risen shadow is see-through (0.8) with the light passing through it,
 or it reads as the figure coming back. Stills first (TEST=), then three PARTs in parallel.
+'The Lead' (`video/build_the_lead.py` + `video/dancer.py`; Surrender to the Undertow 45.9-65.9, 24 s with the end
+line). The user: "new one, new song, dancy". Two dancers either side of a thin line of light - a mirror. The dark one
+is us; the other is made of the living universe (the world footage, downscaled and tiled so it reads as a body of
+light, not the field's teal squares) and mirrors every move. 'Let the music show you how' (52.6): it breaks the mirror
+- the line cracks and falls away - and dances its own move (arms up, waving); the dark one stops and watches.
+'Breathe it in and let it go' (54.4): a beat late, small at first, it copies. 'Surrendering to the undertow' (56.3):
+together, no longer mirrored. The next line (58.4, whisper hears "stepped into the light") - both step the SAME way,
+toward the light on the right: a reflection would have stepped the other way. 'Ignite' lands on the drop (61.56): the
+light floods, the world rises across the floor, the camera breathes on the beat. 'Where the lost are finally found'
+(64.2): the inner hands reach for each other (the arm angle is SOLVED each frame so the hand lands on the midline).
+DANCERS: none of the user's clips has a full-body dancer (u90 cropped and talks, u82 one move), and the story needs
+the follower to do something the leader did not, so the choreography is procedural: a joint rig, moves as functions
+of the beat (groove, reach, step_right, mirror). First versions read as gingerbread aliens, then frog squats: heavier
+limbs, a short neck, knees under the body, loose swinging arms (not fists by the head) - check a MOVE SHEET of stills
+before any scene. The dark dancer needs a wash of light behind it and a strong rim or it vanishes.
