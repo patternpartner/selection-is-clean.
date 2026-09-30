@@ -457,3 +457,15 @@ rendered procedurally at the camera's own scale (so it stays sharp at 8x), glide
 to the small jar. Renders ~25 min: `PART=a,b VOUT=...` renders one stretch (fog is simulated from the start each time)
 - three parts in parallel, then concat. `TEST=t1,t2 TESTDIR=...` writes stills for chosen song times: CHECK STILLS AT
 FULL SIZE BEFORE THE FULL RENDER.
+'Shadow' (`video/build_shadow.py`, times in `video/stories/shadow-times.json`; No Ground 100.2-131.0, the bridge, 34.6 s
+with the end line). After Glass v2 ("great, like it" / "ready whenever you are") Claude chose the song and the story:
+a concrete room (formwork seams, tie holes, a crack, dark corners), one small high window with a cross whose bars
+stripe the beam and the floor, a figure sitting in the light with its long soft shadow toward us. 'Gravity is
+failing' (108.5): the dust in the beam - the real universe (your-turn world, desaturated to read as dust) scrolled
+down, then slowing and drifting UP - and the figure lifts off; the shadow stays exactly where it was. It rises and
+shrinks toward the window through the song's hush (119.5-123.5) and on 'Break free' (123.6, the drop) goes out into
+the light with a flare. The camera stays: the shadow, nothing casting it, peels up off the floor (a flip of its
+ground-projection, -1.35 -> 0 -> 1), sits, and on the long held 'break free' looks up at the window. The figure is
+capsules + a tapered torso melted together (blur and re-threshold) - raw capsules read as a stick robot; the floor
+shadow widens toward the camera and is soft; the risen shadow is see-through (0.8) with the light passing through it,
+or it reads as the figure coming back. Stills first (TEST=), then three PARTs in parallel.
