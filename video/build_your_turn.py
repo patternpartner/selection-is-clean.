@@ -1,9 +1,12 @@
 """'Your Turn' (the user's song Gravity and Glass, from Claude's lyrics). The song leaves spaces; the world fills them.
-While we sing, the world is dim and silent - it is still living, we are just not listening. In the spaces the colour
-comes back and the world is heard: every real birth (logged by video/your_turn.js) is one glass note - pitch from its
+While we sing, the picture is the user's own clips, one per sung line, and the world is unheard. In each space the clip
+freezes and the world answers: every real birth (logged by video/your_turn.js) is one glass note - pitch from its
 lineage's colour on E major pentatonic, octave from its height, pan from where it was born, nudged onto the song's
-eighth-note grid (at most 0.19 s) - and a birth that founds a new species (42% of them here) is the same note with a shimmer above it. In the last chorus we keep
-listening while we sing. The opening recaps what we did to it: gravity (Cold Pulse), the glass (The Observer), orders.
+eighth-note grid (at most 0.19 s); a birth that founds a new species (42% of them here) gets a shimmer above it - and
+it PAINTS a mark of its lineage's colour onto our frozen picture at the exact place it was born. The marks stay: every
+clip after a space carries what the world said in it. After "Go on" we look at the world itself, full frame, and the
+marks line up with where it lives. In the last chorus we keep listening while we sing.
+v1 (grey world under the singing, a recap of our own films) is in git history; the user said we could do better.
     python3 video/build_your_turn.py     (writes out/drawn/your-turn.mp4 and out/your-turn/world-voice.wav)
 """
 import colorsys
@@ -25,12 +28,18 @@ PENTA = [0, 2, 4, 7, 9]                 # E major pentatonic, semitones above E
 E4 = 329.63
 
 # who has the floor: (start, end, state). D = we are singing (world dim, unheard), L = listening, B = both (final)
-FLOOR = [(0.0, 21.5, "R"), (21.5, 22.6, "D"), (22.6, 25.1, "L"), (25.1, 45.2, "D"), (45.2, 55.4, "L"),
+FLOOR = [(0.0, 22.6, "D"), (22.6, 25.1, "L"), (25.1, 45.2, "D"), (45.2, 55.4, "L"),
          (55.4, 77.0, "D"), (77.0, 90.3, "L"), (90.3, 114.8, "D"), (114.8, 145.0, "D2"), (145.0, 153.6, "L"),
          (153.6, DUR, "B")]
 SUNG_FINAL = [(153.6, 157.3), (159.2, 163.3), (167.3, 169.5), (172.6, 175.8)]   # the last chorus's lines
-RECAP = [(1.1, 7.0, "out/drawn/cold-pulse.mp4", 32.0), (7.0, 13.1, "out/drawn/the-observer.mp4", 9.0),
-         (13.2, 18.9, "out/drawn/cold-pulse.mp4", 65.4)]   # gravity, the glass, the orders
+# (song start, song end, clip): one of the user's clips per sung line; none that talk, no real faces
+CUTS = [(1.1, 7.0, "u30"), (7.0, 13.1, "u60"), (13.2, 18.9, "u58"), (18.9, 22.6, "u73"),       # gravity, glass, orders, never asked
+        (25.1, 30.3, "u67"), (30.3, 36.8, "u83"), (36.8, 40.9, "u91"), (40.9, 45.2, "u81"),     # your turn / hold my breath
+        (55.4, 61.2, "u107"), (61.2, 67.0, "u39"), (67.0, 72.8, "u65"), (72.8, 77.0, "u62"),    # the four questions
+        (90.4, 95.6, "u106"), (95.6, 102.3, "u108"), (102.3, 107.1, "u77"), (107.1, 112.0, "u105"), (112.0, 114.8, "u63"),
+        (114.8, 126.7, "u64"), (126.7, 138.5, "u111"), (138.5, 144.2, "u57"),                  # I've talked so long / quiet now
+        (153.6, 159.2, "u82"), (159.2, 167.3, "u55"), (167.3, 172.6, "u112")]                  # it was always your turn
+WORLD_AT = 144.2   # "Go on": from here on the world itself is in the frame
 
 
 def ease(u):
@@ -112,9 +121,13 @@ def synth(notes, gain_at):
 
 
 class Clip:
-    def __init__(self, path, start):
-        self.p = subprocess.Popen([F, "-loglevel", "error", "-ss", f"{start:.2f}", "-i", path, "-vf", f"fps={FPS},scale={W}:{H}",
-                                   "-f", "rawvideo", "-pix_fmt", "rgb24", "-"], stdout=subprocess.PIPE)
+    """a user clip, cover-cropped to the portrait frame, slowed if the line is longer than the clip"""
+    def __init__(self, cid, dur):
+        info = next(c for c in json.load(open("video/user-clips.json")) if c["id"] == cid)
+        rate = min(1.0, (info["seconds"] - 0.1) / dur)
+        self.p = subprocess.Popen([F, "-loglevel", "error", "-i", f"out/user-clips/{cid}.mp4", "-vf",
+                                   f"setpts=PTS/{rate:.4f},fps={FPS},scale={W}:{H}:force_original_aspect_ratio=increase:flags=lanczos,"
+                                   f"crop={W}:{H}", "-f", "rawvideo", "-pix_fmt", "rgb24", "-"], stdout=subprocess.PIPE)
         self.last = np.zeros((H, W, 3), np.uint8)
 
     def next(self):
@@ -122,6 +135,33 @@ class Clip:
         if len(raw) == W * H * 3:
             self.last = np.frombuffer(raw, np.uint8).reshape(H, W, 3)
         return self.last
+
+
+class World:
+    def __init__(self):
+        self.p = subprocess.Popen([F, "-loglevel", "error", "-i", "out/your-turn/world.mp4", "-f", "rawvideo", "-pix_fmt",
+                                   "rgb24", "-"], stdout=subprocess.PIPE)
+        self.last = np.zeros((H, W, 3), np.uint8)
+
+    def next(self):
+        raw = self.p.stdout.read(W * H * 3)
+        if len(raw) == W * H * 3:
+            self.last = np.frombuffer(raw, np.uint8).reshape(H, W, 3)
+        return self.last
+
+
+def dab(marks, alpha, x, y, col, r):
+    """paint one soft mark of the world's colour into the persistent layer"""
+    x0, x1, y0, y1 = int(max(0, x - 2 * r)), int(min(W, x + 2 * r)), int(max(0, y - 2 * r)), int(min(H, y + 2 * r))
+    if x1 <= x0 or y1 <= y0:
+        return
+    yy, xx = np.mgrid[y0:y1, x0:x1]
+    a = np.exp(-(((xx - x) ** 2 + (yy - y) ** 2) / (2 * (r * 0.6) ** 2))) * 0.9
+    old = alpha[y0:y1, x0:x1]
+    new = old + a * (1 - old)
+    w = np.where(new > 1e-6, a / np.maximum(new, 1e-6), 0)[..., None]
+    marks[y0:y1, x0:x1] = marks[y0:y1, x0:x1] * (1 - w) + np.array(col, np.float32) * w
+    alpha[y0:y1, x0:x1] = new
 
 
 def main():
@@ -135,52 +175,66 @@ def main():
     subprocess.run([F, "-loglevel", "error", "-y", "-f", "s16le", "-ar", str(SR), "-ac", "2", "-i", "-",
                     "out/your-turn/world-voice.wav"], input=raw, check=True)
 
-    world = Clip("out/your-turn/world.mp4", 0)
-    recaps = {}
+    world = World()
+    clips = {}
+    marks = np.zeros((H, W, 3), np.float32)
+    alpha = np.zeros((H, W), np.float32)
+    painted = set()
+    heard_flag = [listen_level(nt[0]) > 0.5 for nt in notes]
+    order = sorted(range(len(notes)), key=lambda i: notes[i][0])
+    nxt = 0
+    frozen = None
     out = subprocess.Popen([F, "-loglevel", "error", "-y", "-f", "rawvideo", "-pix_fmt", "rgb24", "-s", f"{W}x{H}", "-r",
                             str(FPS), "-i", "-", "-c:v", "libx264", "-crf", "16", "-pix_fmt", "yuv420p",
                             "out/drawn/your-turn.mp4"], stdin=subprocess.PIPE)
     rng = np.random.default_rng(11)
-    yy, xx = np.mgrid[0:H, 0:W]
-    vign = np.clip(1.25 - np.sqrt(((xx - W / 2) / W) ** 2 + ((yy - H / 2) / H) ** 2) * 1.3, 0, 1)[..., None]
     for n in range(int(DUR * FPS)):
         t = n / FPS
-        fr = world.next().astype(np.float32)
-        s = state(t)
-        if s == "R":
-            rec = next((r for r in RECAP if r[0] <= t < r[1]), None)
-            if rec:
-                if rec not in recaps:
-                    recaps[rec] = Clip(rec[2], rec[3])
-                c = recaps[rec].next().astype(np.float32)
-                g = c.mean(axis=2, keepdims=True)
-                a = (c * 0.55 + g * 0.45) * 0.8 * vign        # a memory: faded, vignetted
-                a *= ease((t - rec[0]) / 0.3) * (1 - ease((t - rec[1] + 0.35) / 0.35))
-            else:
-                a = np.zeros_like(fr)
-                if t >= 21.0:   # the world, before anyone asked it anything
-                    a = fr * 0.3 * ease((t - 21.0) / 1.0)
+        wf = world.next().astype(np.float32)
+        lv = listen_level(t)
+        # the world paints: every heard birth whose note has sounded leaves its mark
+        while nxt < len(order) and notes[order[nxt]][0] <= t:
+            k_ = order[nxt]
+            nxt += 1
+            q, f, pan, amp, bell, x, y, hue = notes[k_]
+            if heard_flag[k_]:
+                painted.add(k_)
+                dab(marks, alpha, x, y, hue_rgb(hue, 0.75, 1.0), 16 if bell else 12)
+        cut = next((c for c in CUTS if c[0] <= t < c[1]), None)
+        if cut:
+            if cut not in clips:
+                clips[cut] = Clip(cut[2], cut[1] - cut[0])
+            base = clips[cut].next().astype(np.float32)
+            base *= ease((t - cut[0]) / 0.15)
+            frozen = base.copy()
+            if t >= 153.6:   # the last chorus: the world is in the picture too
+                base = 255 - (255 - base) * (255 - wf * 0.55) / 255
+            m = 0.5 if t >= 153.6 else 0.38     # what it said stays on our pictures
+        elif t >= WORLD_AT:
+            k = ease((t - WORLD_AT) / 0.8)
+            base = wf * k + (frozen if frozen is not None else wf) * 0.4 * (1 - k)
+            m = 0.55
+        elif frozen is not None:   # a space: our picture holds still, the world speaks onto it
+            g = frozen.mean(axis=2, keepdims=True)
+            base = (frozen * 0.45 + g * 0.55) * 0.5
+            m = 1.0
         else:
-            lv = listen_level(t)
-            dim = 0.28 if s != "D2" else 0.2
-            g = fr.mean(axis=2, keepdims=True)
-            grey = (fr * 0.25 + g * 0.75) * dim
-            a = grey * (1 - lv) + fr * lv
+            base = np.zeros_like(wf)
+            m = 0.0
+        a = base + marks * (alpha[..., None] * m) * 0.95
         im = Image.fromarray(np.clip(a, 0, 255).astype(np.uint8))
         d = ImageDraw.Draw(im)
-        # the notes, seen: a ring where each heard birth happened, as its note sounds
-        lvn = listen_level(t) if s != "R" else 0
-        if lvn > 0.05:
+        if lv > 0.05:
             for (q, f, pan, amp, bell, x, y, hue) in notes:
                 age = t - q
                 if 0 <= age < (1.2 if bell else 0.9):
                     u = age / (1.2 if bell else 0.9)
-                    rad = (10 + (52 if bell else 34) * ease(u))
-                    col = (255, 236, 190) if bell else hue_rgb(hue)
-                    al = (1 - u) * lvn
+                    rad = 10 + (52 if bell else 34) * ease(u)
+                    col = (255, 240, 205) if bell else hue_rgb(hue)
+                    al = (1 - u) * lv
                     d.ellipse([x - rad, y - rad, x + rad, y + rad], outline=tuple(int(c * al) for c in col), width=3 if bell else 2)
-        # three captions, once each
-        for (t0, t1, txt) in ((46.0, 51.0, "every note is a birth"), (78.0, 83.0, "a brighter one: a new species")):
+        for (t0, t1, txt) in ((46.2, 51.2, "every note is a birth"), (78.0, 83.0, "a brighter one: a new species"),
+                              (146.0, 151.5, "every mark was one of them, where it was born")):
             if t0 <= t < t1:
                 al = ease((t - t0) / 0.6) * (1 - ease((t - t1 + 0.6) / 0.6))
                 d.text((W / 2 - d.textlength(txt, font=MONO) / 2, H - 150), txt, font=MONO,
@@ -190,22 +244,22 @@ def main():
             a = a * (1 - 0.65 * ease((t - 176.0) / 0.8))   # the world steps back behind the count
             im2 = Image.fromarray(np.clip(a, 0, 255).astype(np.uint8))
             d2 = ImageDraw.Draw(im2)
-            l1 = f"{total:,} births while the song played"
-            l2 = f"we listened to {heard:,}"
             al = ease((t - 176.0) / 0.8)
-            for k, l_ in enumerate((l1, l2)):
+            for k, l_ in enumerate((f"{total:,} births while the song played", f"we listened to {heard:,}")):
                 d2.text((W / 2 - d2.textlength(l_, font=MONO) / 2, H / 2 - 30 + k * 40), l_, font=MONO,
                         fill=tuple(int(c * al) for c in PALE))
             a = np.asarray(im2, np.float32)
         a = a * (1 - ease((t - (DUR - 1.2)) / 1.1)) + rng.normal(0, 2.5, (H, W, 1))
         out.stdin.write(np.clip(a, 0, 255).astype(np.uint8).tobytes())
         if n % 480 == 0:
-            print(f"{t:6.1f}s {s}", flush=True)
+            print(f"{t:6.1f}s {state(t)} marks {len(painted)}", flush=True)
     out.stdin.close()
     out.wait()
-    json.dump({"title": "Your Turn", "song": "out/songs/gravity-and-glass.mp3", "lyrics": "video/lyrics/your-turn.txt",
-               "floor": FLOOR, "births_while_song_played": total, "births_heard": heard,
-               "notes": "E major pentatonic from lineage hue; octave from height; pan from x; brighter note (shimmer) = speciation"},
+    json.dump({"title": "Your Turn", "version": 2, "song": "out/songs/gravity-and-glass.mp3",
+               "lyrics": "video/lyrics/your-turn.txt", "floor": FLOOR, "cuts": CUTS,
+               "births_while_song_played": total, "births_heard": heard,
+               "notes": "E major pentatonic from lineage hue; octave from height; pan from x; shimmer = speciation; "
+                        "each heard birth paints a mark at its birthplace that persists"},
               open("video/stories/your-turn.json", "w"), indent=1)
 
 

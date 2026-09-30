@@ -1,15 +1,11 @@
 {
  "title": "Your Turn",
+ "version": 2,
  "song": "out/songs/gravity-and-glass.mp3",
  "lyrics": "video/lyrics/your-turn.txt",
  "floor": [
   [
    0.0,
-   21.5,
-   "R"
-  ],
-  [
-   21.5,
    22.6,
    "D"
   ],
@@ -59,7 +55,124 @@
    "B"
   ]
  ],
+ "cuts": [
+  [
+   1.1,
+   7.0,
+   "u30"
+  ],
+  [
+   7.0,
+   13.1,
+   "u60"
+  ],
+  [
+   13.2,
+   18.9,
+   "u58"
+  ],
+  [
+   18.9,
+   22.6,
+   "u73"
+  ],
+  [
+   25.1,
+   30.3,
+   "u67"
+  ],
+  [
+   30.3,
+   36.8,
+   "u83"
+  ],
+  [
+   36.8,
+   40.9,
+   "u91"
+  ],
+  [
+   40.9,
+   45.2,
+   "u81"
+  ],
+  [
+   55.4,
+   61.2,
+   "u107"
+  ],
+  [
+   61.2,
+   67.0,
+   "u39"
+  ],
+  [
+   67.0,
+   72.8,
+   "u65"
+  ],
+  [
+   72.8,
+   77.0,
+   "u62"
+  ],
+  [
+   90.4,
+   95.6,
+   "u106"
+  ],
+  [
+   95.6,
+   102.3,
+   "u108"
+  ],
+  [
+   102.3,
+   107.1,
+   "u77"
+  ],
+  [
+   107.1,
+   112.0,
+   "u105"
+  ],
+  [
+   112.0,
+   114.8,
+   "u63"
+  ],
+  [
+   114.8,
+   126.7,
+   "u64"
+  ],
+  [
+   126.7,
+   138.5,
+   "u111"
+  ],
+  [
+   138.5,
+   144.2,
+   "u57"
+  ],
+  [
+   153.6,
+   159.2,
+   "u82"
+  ],
+  [
+   159.2,
+   167.3,
+   "u55"
+  ],
+  [
+   167.3,
+   172.6,
+   "u112"
+  ]
+ ],
  "births_while_song_played": 881,
  "births_heard": 353,
- "notes": "E major pentatonic from lineage hue; octave from height; pan from x; brighter note (shimmer) = speciation"
+ "notes": "E major pentatonic from lineage hue; octave from height; pan from x; shimmer = speciation; each heard birth paints a mark at its birthplace that persists"
 }
