@@ -1979,5 +1979,187 @@
    "the-lesson-2",
    "the-lesson-3"
   ]
+ },
+ {
+  "id": "u119",
+  "file": "out/user-clips/u119.mp4",
+  "upload": "fc3d1945-grok_video_2026-10-01-00-10-14.mp4",
+  "what": "THE USER'S OWN LIKENESS: funny faces on the blue screen, the camera pushing in from full-length to waist-up",
+  "seconds": 15.04,
+  "size": "720x1280",
+  "tags": [
+   "own-likeness",
+   "free",
+   "bluescreen"
+  ],
+  "talks": false,
+  "moves": [
+   [
+    0,
+    1.0,
+    "idle, hands in pockets (full length)"
+   ],
+   [
+    1.0,
+    2.5,
+    "hands out, a sly sideways look, the camera pushing in"
+   ],
+   [
+    2.5,
+    4.0,
+    "a big 'ooh' mouth, wide eyes"
+   ],
+   [
+    4.5,
+    5.0,
+    "kissy lips"
+   ],
+   [
+    5.5,
+    6.0,
+    "tongue out"
+   ],
+   [
+    6.0,
+    6.5,
+    "a huge open laugh"
+   ],
+   [
+    6.5,
+    7.5,
+    "a big toothy grin"
+   ],
+   [
+    8.0,
+    11.0,
+    "puffed pouting lips, eyes rolling, a wink at 10.5"
+   ],
+   [
+    11.5,
+    12.0,
+    "tongue out again"
+   ],
+   [
+    12.0,
+    13.5,
+    "pulls his cheeks with both hands, tongue out"
+   ],
+   [
+    13.5,
+    14.0,
+    "hands dropping, grinning"
+   ],
+   [
+    14.0,
+    15.0,
+    "a calm smile"
+   ]
+  ],
+  "note": "the mouth moves are faces, not talking; for the funny-faces film",
+  "used_in": []
+ },
+ {
+  "id": "u120",
+  "file": "out/user-clips/u120.mp4",
+  "upload": "04e5c501-grok_video_2026-10-01-00-11-46.mp4",
+  "what": "THE USER'S OWN LIKENESS: a loose happy dance on the blue screen, drifting a little toward camera",
+  "seconds": 15.04,
+  "size": "720x1280",
+  "tags": [
+   "own-likeness",
+   "free",
+   "bluescreen"
+  ],
+  "talks": false,
+  "moves": [
+   [
+    0,
+    1.2,
+    "idle, hands in pockets"
+   ],
+   [
+    1.5,
+    4.0,
+    "small stepping moves (a bit walk-like)"
+   ],
+   [
+    4.0,
+    7.5,
+    "arms out low, swinging, crossing steps"
+   ],
+   [
+    7.5,
+    8.5,
+    "a spin (back to camera at 8.0)"
+   ],
+   [
+    8.5,
+    13.5,
+    "a grooving shuffle, a hand to the chest"
+   ],
+   [
+    13.5,
+    14.0,
+    "a jump with both arms up"
+   ],
+   [
+    14.2,
+    15.0,
+    "standing, smiling"
+   ]
+  ],
+  "used_in": []
+ },
+ {
+  "id": "u121",
+  "file": "out/user-clips/u121.mp4",
+  "upload": "afd39825-grok_video_2026-10-01-00-13-23.mp4",
+  "what": "THE USER'S OWN LIKENESS: a big comic dance on the blue screen, ending arms folded",
+  "seconds": 15.04,
+  "size": "720x1280",
+  "tags": [
+   "own-likeness",
+   "free",
+   "bluescreen"
+  ],
+  "talks": false,
+  "moves": [
+   [
+    0,
+    1.5,
+    "idle, hands in pockets"
+   ],
+   [
+    2.0,
+    4.0,
+    "arms flung wide, a side shuffle"
+   ],
+   [
+    4.0,
+    6.0,
+    "big sweeping arm swings"
+   ],
+   [
+    6.0,
+    8.0,
+    "a knees-bent crouch, surprised 'ooh' face"
+   ],
+   [
+    8.5,
+    9.8,
+    "arms up over his head, turning (back at 9.5)"
+   ],
+   [
+    10.0,
+    13.5,
+    "running-man / jogging arms"
+   ],
+   [
+    13.6,
+    15.0,
+    "arms folded, wide stance, a satisfied nod"
+   ]
+  ],
+  "used_in": []
  }
 ]
