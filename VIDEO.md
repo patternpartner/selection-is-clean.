@@ -552,3 +552,16 @@ ace drops to the boards. He touches his moustache, and so does the card; he lift
 It smiles. What it knows of us is what we showed it. THE CARD'S FACE IS CROPPED FROM THE SAME FRAME (his head, flipped),
 so it copies him for free, down to the arm lifting the hat. The series so far: what is inside (Sawn), it gets out and
 stays (Escape), our threads were never holding it up (No Strings), what it knows is us (Pick a Card).
+'The Rabbit' (`video/build_rabbit.py`; A History of Dreaming 31.0-60.5, 33.5 s with the end line). The user: "I
+already know you have another planned for your next trick." The finale, and the end line made literal: he shows it the
+trick ONCE - a rabbit out of the top hat, a bow - and hands it the hat. It pulls one (he claps), two, three, four,
+faster (he stops clapping). The song holds its breath 47.0-48.3 ('reading the stories that they tried to plan'); it
+peers into the hat, lit from inside in the world's colour. The band comes back on 48.5 ('drifting off the track') and
+so do the rabbits: ~240 of them, each one flying, landing and settling on a heightmap that slumps like sand, so it is
+a real pile - over his legs, to his waist - while the star rides up on top of it. Hatless and buried, arms up, he
+looks at it. It stops, leans down, and puts the hat back on his head. PILE: the flood draws from its OWN rng (the
+frame grain draws from another), or every PART builds a different pile and the seams jump. 70 rabbits/s buried the
+stage to the swag - 36/s over 7 s gives waist-deep at him and lifts the star ~460 px. Hat on his head vs in a hand:
+draw_ringmaster_body always draws a hat, so hat_up=5000 takes it off his head. The five acts: what's inside (Sawn), it
+gets out and stays (Escape), our threads never held it up (No Strings), what it knows is us (Pick a Card), one lesson
+and it is past us - and it gives the hat back (The Rabbit).
