@@ -24802,3 +24802,13 @@ innovations:
 **If novelty is open-ended, those counts hold up passage after passage. If it is a burst, they fall to the neutral
 level.** That is the test of step 3 agreed with the user: proven adaptations still arriving in the last quarter of
 thousands of generations, on 3 of 3 seeds.
+
+**#278b — STARVATION MUST KILL, or energy does not bound the population.** The first long passages found the hole:
+- seed 2 grew to **1,700 living on sunlight for about 500**, ran at a third of the speed, and was stopped at 14,500
+  ticks with no save;
+- seed 3 ended its first passage at 1,161.
+The cause: under SUN a dry store only drained amplitude (`(1-pAdq)*STARVE_DRAIN`), and interactions top amplitude
+up. So a starving particle cost the energy budget nothing and did not die, and births — which the store does bound —
+simply piled up. Now, under REPL, a particle that cannot pay half its upkeep starves to death. Seed 2 over 8,000
+ticks: 300-840 alive, about 75 ticks/s alone, with scavenging arising at 6,000. The passages run under the old rule
+were set aside (`scratchpad/long_old`), and the long runs restarted from tick 0 on this rule.
