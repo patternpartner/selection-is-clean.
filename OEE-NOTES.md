@@ -24364,3 +24364,35 @@ what the field holds and regrows — whether rival harvest would bind at all, an
 **Judged on** #267's selection index (does novelty — or anything — now win offspring beyond the TREE null?), #268's
 fecundity census (do births still go by memory position?), and the grid-free template, with #219's warning as the
 failure to watch for: a fair allocation on one resource swept to ONE lineage; with many local resources it should not.
+
+### #270 — THE FIELD IS EMPTY. The resource a particle harvests where it stands holds nothing after ~300 ticks.
+
+Found while measuring #269's question (would rival harvest bind?). Draw-free probes (scratchpad `harvestprobe.js`,
+`fieldsprobe.js`), seeds 1-2, lab runs (no viewer input):
+
+| tick | `field` total (1,600 cells) | harvest per tick (all particles) | rootField | detritalField (total, cells > 0.01) | scaffoldField |
+|---|---|---|---|---|---|
+| 100 | 0.42 | 0.036 | | | |
+| 300 | 0 | 0.0004 | | | |
+| 500 | 0 | 0 | 5.6 | 2.5 (18) | 0 |
+| 2,000 | 0 | 0 | 1.9 | 4.3 (20) | 0 |
+| 4,000 | 0 | 0 | 0.6 | **58.3 (133)** | 0 |
+
+- **`field` — the substrate particles harvest into localRes and amp (`localField * fieldInfluence * affinity`), carry
+  territorial signatures on (`fieldAffinity`), and whose physics are two laws (FIELD_DECAY, FIELD_DIFFUSE) — is zero from
+  tick ~300 to the end on both seeds.** It has no external source: every write is a particle depositing (emission, VM ops
+  9 / 10 / 140), and `updateField` multiplies it by FIELD_DECAY (0.982: half gone in ~38 ticks) every tick. The boot
+  contents decay and nothing replaces them. Harvest executes every tick and returns exactly 0 — CLAUDE.md's rung four,
+  EXECUTED and constant, in the resource layer itself.
+- **It explains an observation from #265 left open:** FIELD_DECAY hi and FIELD_DIFFUSE hi gave byte-identical population
+  series on seed 201 for 10,000 ticks. Laws governing an empty field change nothing.
+- **detritalField is the reverse: it accumulates** (2.5 -> 58 over 4,000 ticks) — every death deposits into it, and the
+  only harvest is a VM op (146) programs rarely run. rootField fades; scaffoldField is empty.
+- **Not checked against the field (the browser):** the same engine code, but a viewer's input may deposit there. Said
+  out loud: lab worlds only.
+**What it does to #269's design:** rival harvest on an empty field would change nothing. A local economy needs a SUPPLY
+into the field, not only a sink. The natural one is the energy the world already has: **the regeneration that now fills
+the one global pool falls instead on the field's cells ("sunlight on the ground")**, particles harvest it from the cell
+they stand on — rivalrously, so crowding depletes it — into their own reserve, and births are paid from that reserve.
+The global pool's job (a birth needs the world to have energy, handed out in loop order) passes to the particle and the
+place. Built as a knob, default off, and judged as #269 says; #219's sweep to one lineage is the failure to watch for.
