@@ -1697,5 +1697,220 @@
   "used_in": [
    "the-house-of-geometry"
   ]
+ },
+ {
+  "id": "u113",
+  "file": "out/user-clips/u113.mp4",
+  "upload": "d332e6c8-grok_video_2026-09-30-22-30-58.mp4",
+  "seconds": 15.04,
+  "size": "720x1280",
+  "what": "THE USER'S OWN LIKENESS (their face, Grok body): grey t-shirt, dark jeans, white trainers, glasses, on a clean blue screen - key with video/bluekey.py",
+  "tags": [
+   "own-likeness",
+   "free",
+   "bluescreen"
+  ],
+  "talks": false,
+  "moves": [
+   [
+    0,
+    3.5,
+    "walks toward camera"
+   ],
+   [
+    4,
+    5.5,
+    "turns and walks away (back view)"
+   ],
+   [
+    6,
+    6.8,
+    "reaches up high, from behind (close)"
+   ],
+   [
+    8,
+    9.5,
+    "holds out an open hand to camera, palm up"
+   ],
+   [
+    10,
+    10.8,
+    "palm pressed flat toward camera, like on glass"
+   ],
+   [
+    11,
+    12.8,
+    "looks up (close-up)"
+   ],
+   [
+    14,
+    15,
+    "close-up, neutral"
+   ]
+  ],
+  "note": "no hard cuts - Grok moves between poses with zooms; the half-second between moves can be a ghosted blend, use the ranges in moves",
+  "used_in": []
+ },
+ {
+  "id": "u114",
+  "file": "out/user-clips/u114.mp4",
+  "upload": "790bfa97-grok_video_2026-09-30-22-33-33.mp4",
+  "seconds": 15.04,
+  "size": "720x1280",
+  "what": "THE USER'S OWN LIKENESS (their face, Grok body): grey t-shirt, dark jeans, white trainers, glasses, on a clean blue screen - key with video/bluekey.py",
+  "tags": [
+   "own-likeness",
+   "free",
+   "bluescreen"
+  ],
+  "talks": false,
+  "moves": [
+   [
+    0,
+    1.8,
+    "idle, hands in pockets"
+   ],
+   [
+    2,
+    3.5,
+    "shrug"
+   ],
+   [
+    4,
+    8,
+    "sits on an invisible chair"
+   ],
+   [
+    8,
+    8.8,
+    "bows"
+   ],
+   [
+    9,
+    10,
+    "ta-da, both arms up"
+   ],
+   [
+    11,
+    12.8,
+    "standing, neutral"
+   ],
+   [
+    13,
+    15,
+    "walks off to the right, side view"
+   ]
+  ],
+  "note": "no hard cuts - Grok moves between poses with zooms; the half-second between moves can be a ghosted blend, use the ranges in moves",
+  "used_in": []
+ },
+ {
+  "id": "u115",
+  "file": "out/user-clips/u115.mp4",
+  "upload": "211317a4-grok_video_2026-09-30-22-35-40.mp4",
+  "seconds": 15.04,
+  "size": "720x1280",
+  "what": "THE USER'S OWN LIKENESS (their face, Grok body): grey t-shirt, dark jeans, white trainers, glasses, on a clean blue screen - key with video/bluekey.py",
+  "tags": [
+   "own-likeness",
+   "free",
+   "bluescreen"
+  ],
+  "talks": false,
+  "moves": [
+   [
+    0,
+    2.8,
+    "idle"
+   ],
+   [
+    3,
+    11,
+    "side-on stepping / loose dance steps"
+   ],
+   [
+    11,
+    15,
+    "hands in pockets, smiling"
+   ]
+  ],
+  "note": "no hard cuts - Grok moves between poses with zooms; the half-second between moves can be a ghosted blend, use the ranges in moves",
+  "used_in": []
+ },
+ {
+  "id": "u116",
+  "file": "out/user-clips/u116.mp4",
+  "upload": "30048a39-grok_video_2026-09-30-22-37-06.mp4",
+  "seconds": 15.04,
+  "size": "720x1280",
+  "what": "THE USER'S OWN LIKENESS (their face, Grok body): grey t-shirt, dark jeans, white trainers, glasses, on a clean blue screen - key with video/bluekey.py",
+  "tags": [
+   "own-likeness",
+   "free",
+   "bluescreen"
+  ],
+  "talks": false,
+  "moves": [
+   [
+    0,
+    1.8,
+    "idle"
+   ],
+   [
+    2,
+    10,
+    "dancing, facing camera"
+   ],
+   [
+    10.5,
+    12,
+    "neutral"
+   ],
+   [
+    12,
+    15,
+    "close-up smile and wink"
+   ]
+  ],
+  "note": "no hard cuts - Grok moves between poses with zooms; the half-second between moves can be a ghosted blend, use the ranges in moves",
+  "used_in": []
+ },
+ {
+  "id": "u117",
+  "file": "out/user-clips/u117.mp4",
+  "upload": "1a3c3d04-grok_video_2026-09-30-22-43-03.mp4",
+  "seconds": 15.04,
+  "size": "720x1280",
+  "what": "THE USER'S OWN LIKENESS (their face, Grok body): grey t-shirt, dark jeans, white trainers, glasses, on a clean blue screen - key with video/bluekey.py",
+  "tags": [
+   "own-likeness",
+   "free",
+   "bluescreen"
+  ],
+  "talks": false,
+  "moves": [
+   [
+    0,
+    2.5,
+    "idle"
+   ],
+   [
+    3,
+    8,
+    "walks toward camera"
+   ],
+   [
+    8.5,
+    10.5,
+    "turns aside"
+   ],
+   [
+    11,
+    15,
+    "walks toward camera again"
+   ]
+  ],
+  "note": "no hard cuts - Grok moves between poses with zooms; the half-second between moves can be a ghosted blend, use the ranges in moves",
+  "used_in": []
  }
 ]

@@ -715,3 +715,12 @@ is why the user said neither was working. Words written from the footage fix bot
 THE USER on 'The News' v5: "That's it. Makes sense but makes no sense. Love it." - the keeper. What made it land: the
 fear headline and its correction on the SAME footage, and small true lines written from what the clips actually show,
 read straight by a calm newsreader. Deadpan beats spectacle.
+THE USER'S OWN LIKENESS (30 Sep): the user put their face into Grok Imagine, got a full body on a blue screen, and
+made five movement clips from Claude's prompt list: u113-u117 in out/user-clips (catalogued in video/user-clips.json
+with `own-likeness`, `bluescreen`, and a per-clip `moves` list of time ranges). THE USER HAS OKAYED USING THEIR OWN
+LIKENESS in the films - this is not the real-face rule (that is about other people: u01, u44, u93, politicians). Still
+no talking mouths. Key with `video/bluekey.py`: the backdrop is ~ (1, 95, 242); a pixel keys out only if strongly blue
+AND bright AND nearly red-free - so the dark-navy jeans and a grey shirt lit blue in the close-ups both hold. Grok
+packs several poses into each 15 s clip with zooms, no hard cuts; the half second between poses can be a ghosted blend,
+so cut inside the logged ranges. Best moves: u113 walk toward 0-3.5, open hand 8-9.5, palm to glass 10-10.8; u114 sit
+4-8, bow 8-8.8, ta-da 9-10; u116 dance 2-10; u117 walk toward 3-8.
