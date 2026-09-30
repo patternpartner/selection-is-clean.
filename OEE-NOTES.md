@@ -24812,3 +24812,21 @@ up. So a starving particle cost the energy budget nothing and did not die, and b
 simply piled up. Now, under REPL, a particle that cannot pay half its upkeep starves to death. Seed 2 over 8,000
 ticks: 300-840 alive, about 75 ticks/s alone, with scavenging arising at 6,000. The passages run under the old rule
 were set aside (`scratchpad/long_old`), and the long runs restarted from tick 0 on this rule.
+
+**#278c — A LEAK INTO BREEDING ENERGY, found by the population cap, closed by structure.** On the lethal-starvation
+rule, seed 1's first passage ran to the 1,800 cap by tick 15,000, with 3.2 million predation events and 1.8 million
+scavenging events per 500 ticks. Seed 2 spiked to 1,518. Predation and scavenging only MOVE energy, so something was
+minting it. The scavenger's food, the shared `detritalField`, also takes deposits that nothing pays for:
+- op 9's rxSelf reaction (a register value times a gene);
+- op 165's apoptosis (per-tick interaction income);
+- the cosmos children's exports (amplitude);
+- peer contact.
+Under REPL each of those became breeding energy. **Fixed by structure, not by patching four writers:** under REPL the
+dead go to a private `corpseField`, written only by `deathReturn` and read only by op 146. The passage rig saves it,
+and the probe now logs an energy audit every sample (ground + stores + corpses + bodies), so a future leak shows as a
+number, not as a population at the cap. Seed 1 re-run to 15,000 ticks: 228-392 alive after predators arrive, energy
+totals flat near 90. The food web assembles in order:
+1. the early dead leave corpses;
+2. scavengers boom on them (86% by 3,000);
+3. predation arises (73-86%), with scavenging at 96-99%.
+The passages run under the leak are set aside (`scratchpad/long_leak`); the long runs restart from tick 0.
