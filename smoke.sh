@@ -21,7 +21,7 @@ RIGS=(oee-meter-test.js verb-test.js attention-test.js worldsignal-test.js cross
       harness-atrophy-probe.js harness-coupling.js harness-coupling-asym.js
       harness-alien-ablate.js harness-ablate-reflex.js harness-reflex-leaf.js
       harness-bridge.js harness-attractor.js harness-strata.js harness-orphans.js
-      harness-variance.js bench-pairs.js harness-opexec.js vm-equiv.js harness-novelty.js harness-openup.js harness-sweep.js harness-variant.js harness-nfdsat.js harness-lawedge.js)
+      harness-variance.js bench-pairs.js harness-opexec.js vm-equiv.js harness-novelty.js harness-openup.js harness-sweep.js harness-variant.js harness-nfdsat.js harness-lawedge.js harness-lawtrial.js)
 
 # Most rigs take their budget from TICKS. A few define their own names and ignore it — pass those
 # too, or the rig runs its real workload and the smoke pass just times out. (harness-coupling-asym
@@ -31,6 +31,8 @@ extra_env_for() {
   case "$1" in
     harness-coupling-asym.js) echo "MATURATION_TICKS=$TICKS COUPLE_TICKS=$TICKS FRESH_SEEDS=11" ;;
     harness-ablate-reflex.js) echo "CONC=1" ;;
+    # harness-lawtrial.js installs one law trial and refuses to run without a row to install.
+    harness-lawtrial.js) echo "ROW=METABOLIC_ENERGY_DRAW TO=hi" ;;
     # browser-test.js measures wall-clock seconds in a real browser, not ticks; the smoke pass gives
     # it a short window and it skips itself entirely when playwright-core is not installed.
     browser-test.js) echo "SECS=8" ;;
