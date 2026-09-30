@@ -10545,7 +10545,7 @@ const pProvision=new Float32Array(CAP); // LEAP 3: banked reproductive surplus, 
 const REPL_ON=(typeof globalThis!=='undefined')&&((globalThis.__REPL|0)!==0);
 const REPL_INERT=(REPL_ON&&typeof globalThis!=='undefined'&&globalThis.__REPL_INERT!==undefined)?(globalThis.__REPL_INERT|0):-1;   // #273: rigs only - the named opcode still runs through the VM but does nothing, the neutral control for its spread
 const REPL_T=0.5, REPL_ONSET=150, REPL_SCALE=0.02;   // #273: a replicator's life is short, so evolution gets generations: median life about 400 ticks at lifespanBias 1
-if(REPL_ON){ WORLD_ENERGY_REGEN=0.6; BIRTH_ENERGY_COST=0.25; }
+if(REPL_ON){ WORLD_ENERGY_REGEN=0.4; BIRTH_ENERGY_COST=0.25; }   // #278: 0.4 (was 0.6) - at 0.6 worlds reached 1,800 living and ran 5x slower, so fewer generations per window
 // #277 - REPL_ARMS (knob, needs REPL): AN ARMS RACE WITH NO EDGE. Predation starts at full strength, as under plain REPL
 // where it arose and spread on 3 of 3 seeds (#273). Each particle also carries two heritable 4-number keys: an attack
 // (pKey) and a defence (pDef), each copied from its parent with a small mutation at every birth and never clamped. A
@@ -21700,7 +21700,8 @@ function applyEntropy(){
       // the freeze; this is what keeps the energy budget turning over so births can ever be paid for.
       let _haz=0;
       if(page[i]>(REPL_ON?REPL_ONSET:SENESCENCE_ONSET) && !_ig){
-        const _lb=(genome.lifespanBias!==undefined&&isFinite(genome.lifespanBias))?Math.max(0.15,genome.lifespanBias):1;
+        let _lb=(genome.lifespanBias!==undefined&&isFinite(genome.lifespanBias))?Math.max(0.15,genome.lifespanBias):1;
+        if(REPL_ON&&_lb>1.5)_lb=1.5;   // #278: a replicator's inherited lifespan stretches at most 1.5x - worlds had evolved to mean ages of 600-1,000 and turned over a third as fast
         const _sr=__cl(genome.somaRepair||0,0,SOMA_REPAIR_MAX);   // LEAP 23 (#56)
         _haz=((page[i]-(REPL_ON?REPL_ONSET:SENESCENCE_ONSET))/1000)*(REPL_ON?REPL_SCALE:SENESCENCE_SCALE)/_lb*(1-SOMA_HAZARD_RELIEF*(_sr/SOMA_REPAIR_MAX));
       }
