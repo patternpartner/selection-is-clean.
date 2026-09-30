@@ -24667,3 +24667,24 @@ TICKS=40: 264/0.
 - Gradient sensing has not arisen (op 147 briefly at 1%).
 **Next:** longer runs on more seeds, watching for the response — prey defence, predator-prey cycles, a scavenger — and
 a neutral control for the op-frequency rises.
+
+**#273 RESULT — SELECTION ON A NEW BEHAVIOUR, three seeds, each against its own neutral control.** 12,000 ticks,
+LAWMUT=0. The control is `REPL_INERT=155`: the same world, and programs can still carry ENERGY_DRAIN, but it does
+nothing. The two arms are byte-identical until the first time op 155 runs, so any later difference in how many carry
+it is caused by what it does.
+
+| seed | REPL: share of the living carrying op 155 | REPL_INERT=155: share carrying it |
+|---|---|---|
+| 1 | 0 -> 1% (4,000) -> 27% (6,000) -> 54% -> **79%** (7,000), then extinction at 7,500 | 0-3% throughout |
+| 2 | 0 -> 3% (4,500) -> 30% -> 60% -> **86-91%** from 8,000 to 12,000; 540-680 alive throughout | 0-1% |
+| 3 | 0 -> 21% (6,000) -> 87% -> **97-99%** from 9,000; 430-750 alive | 0% |
+
+- **Predation spreads because it works, on 3 of 3 seeds.** It is not drift and not hitchhiking: disarmed, the same
+  mutation stays at a few percent. This is the SELECTED rung for a behaviour no starting program had, measured
+  causally — the first such result in this file.
+- **Seed 1 is overexploitation:** predators took the stores of everyone they met, and the world died. Rescue reseeds
+  followed, each dying again.
+- **What it is not:** open-ended. One innovation sweeps and then the world holds (seeds 2 and 3) or collapses (seed
+  1). Prey have no reply: a predator can take from anyone.
+- **The disarmed worlds did something else:** the population rose to about 1,700 by 7,500-9,000 on seeds 2 and 3, with
+  mean age rising from about 230 to 400-590. Longer life, most likely `lifespanBias`; not yet traced.

@@ -10543,8 +10543,20 @@ const pProvision=new Float32Array(CAP); // LEAP 3: banked reproductive surplus, 
 // body go to the detrital layer instead of the ground, so the dead feed scavengers and nothing else; the old deposit of
 // amplitude into detritus is off, so no free currency becomes breeding energy.
 const REPL_ON=(typeof globalThis!=='undefined')&&((globalThis.__REPL|0)!==0);
+const REPL_INERT=(REPL_ON&&typeof globalThis!=='undefined'&&globalThis.__REPL_INERT!==undefined)?(globalThis.__REPL_INERT|0):-1;   // #273: rigs only - the named opcode still runs through the VM but does nothing, the neutral control for its spread
 const REPL_T=0.5, REPL_ONSET=150, REPL_SCALE=0.02;   // #273: a replicator's life is short, so evolution gets generations: median life about 400 ticks at lifespanBias 1
-if(REPL_ON){ WORLD_ENERGY_REGEN=0.6; BIRTH_ENERGY_COST=0.25; }   // #273: cheap children, enough light for about 400 of them
+if(REPL_ON){ WORLD_ENERGY_REGEN=0.6; BIRTH_ENERGY_COST=0.25; }
+// #274 - REPL_MATCH (knob, needs REPL): PREDATION NEEDS A KEY. Each particle carries a heritable 4-number attack key
+// (pKey), copied from its parent with a small mutation at every birth. ENERGY_DRAIN takes from a partner in proportion
+// to how closely the predator's key matches the partner's surface - the first four axes of its tendency - so a predator
+// can only eat the kind it is tuned to, and prey escape by becoming a different kind. Under plain REPL a predator could
+// take from anyone and prey had no reply: #273 saw one sweep, then a plateau or a crash. With a key, the commonest kind
+// is the one most worth tuning to, which is the classic engine of continual turnover (kill the winner).
+const REPL_MATCH=REPL_ON&&(typeof globalThis!=='undefined')&&((globalThis.__REPL_MATCH|0)!==0);
+const REPL_KEYW=0.35, REPL_KEYSD=0.12;
+const pKey=new Float32Array(CAP*4);
+function replKeyBirth(i,p){ for(let m=0;m<4;m++){ if(p>=0&&p<N&&p!==i){ const g=(Math.random()+Math.random()+Math.random()-1.5)*2*REPL_KEYSD; pKey[i*4+m]=Math.max(-TEND_HARD,Math.min(TEND_HARD,pKey[p*4+m]+g)); } else pKey[i*4+m]=Math.random()*2-1; } }
+function replMatch(i,j){ let d2=0; for(let m=0;m<4;m++){ const t=(m<DIMS)?tend[j*DIMS+m]:0, e=pKey[i*4+m]-t; d2+=e*e; } return Math.exp(-d2/(REPL_KEYW*REPL_KEYW)); }   // #273: cheap children, enough light for about 400 of them
 const SUN_ON=REPL_ON||((typeof globalThis!=='undefined')&&((globalThis.__SUN|0)!==0));
 const SUN_TAKE=0.2, SUN_ENDOW=0.5, SUN_SEED=0.5, SUN_STORE=4;
 const sunField=SUN_ON?new Float32Array(FIELD_W*FIELD_H).fill(WORLD_ENERGY_MAX/(FIELD_W*FIELD_H)):null;
@@ -21259,6 +21271,7 @@ function addParticle(x,y,tv,born,parentA,parentB){
   amp[i]=born?0.5:0.3+Math.random()*0.5;
   palive[i]=1;page[i]=0;localRes[i]=0;collapse[i]=0;clusterID[i]=-1;
   if(SUN_ON)pE[i]=(parentA>=0)?BIRTH_ENERGY_COST*SUN_ENDOW:SUN_SEED;   // #272: part of the parent's payment is the child's start
+  if(REPL_MATCH)replKeyBirth(i,parentA);   // #274: the attack key is inherited, with mutation
   // #57 — a lineage is BORN INTO a strategy and mostly keeps it, with a small chance of switching at
   // birth. That is what makes mode a heritable discrete trait selection can act on, rather than noise.
   pModeBias[i]=(parentA>=0&&parentA<N)?(Math.random()<0.06?((Math.random()*MODE_COUNT)|0):pModeBias[parentA]):((Math.random()*MODE_COUNT)|0);
@@ -21366,6 +21379,7 @@ function addCompound(x,y,nt,nvx,nvy,na,np,nf,parentA,parentB){
   phase[i]=np;freq[i]=nf;amp[i]=na;
   palive[i]=1;page[i]=0;localRes[i]=0;collapse[i]=0;clusterID[i]=-1;
   if(SUN_ON)pE[i]=(parentA>=0)?BIRTH_ENERGY_COST*SUN_ENDOW:SUN_SEED;   // #272: part of the parent's payment is the child's start
+  if(REPL_MATCH)replKeyBirth(i,parentA);   // #274: the attack key is inherited, with mutation
   // #57 — a lineage is BORN INTO a strategy and mostly keeps it, with a small chance of switching at
   // birth. That is what makes mode a heritable discrete trait selection can act on, rather than noise.
   pModeBias[i]=(parentA>=0&&parentA<N)?(Math.random()<0.06?((Math.random()*MODE_COUNT)|0):pModeBias[parentA]):((Math.random()*MODE_COUNT)|0);
@@ -24178,7 +24192,7 @@ case 144:{if(pProg[i]&&localRes[i]>0.3&&pProg[i].length<Math.min(genome.vmMaxIns
         if(__vmMode===VM_SOLO){ // SOLO copy, kept as it was
         {vmRegs[di]=0;}break;
         }
-        if(REPL_ON){ if(vmRegs[si]>k&&pE[j]>0.05){const _d=Math.min(Math.abs(vmRegs[si])*0.1,pE[j]*0.2);pE[j]-=_d;pE[i]=Math.min(SUN_STORE,pE[i]+_d*0.8);vmRegs[di]=_d;fired('repl.prey');}else{vmRegs[di]=0;} break; }   // #273: predation on the store
+        if(REPL_ON){ if(vmRegs[si]>k&&pE[j]>0.05){const _d=Math.min(Math.abs(vmRegs[si])*0.1,pE[j]*0.2)*(REPL_MATCH?replMatch(i,j):1);pE[j]-=_d;pE[i]=Math.min(SUN_STORE,pE[i]+_d*0.8);vmRegs[di]=_d;fired('repl.prey');}else{vmRegs[di]=0;} break; }   // #273: predation on the store
         {if(vmRegs[si]>k&&localRes[j]>0.1){const _dr155=Math.min(Math.abs(vmRegs[si])*0.1,localRes[j]*0.2);localRes[j]-=_dr155;localRes[i]=Math.min(2,localRes[i]+_dr155*0.8);vmRegs[di]=_dr155;}else{vmRegs[di]=0;}}break; // ENERGY_DRAIN — steal energy from interaction partner (predation). Capped at 20% of partner's reserves per interaction; 20% metabolic tax on transfer. Creates genuine Lotka-Volterra predator-prey dynamics: prey evolve evasion/defence; predators evolve efficient drain timing. Third trophic level in the food web.
       case 156:
         if(__vmMode===VM_SOLO){ // SOLO copy, kept as it was
@@ -24441,6 +24455,7 @@ case 427:{ // #218a GENE_AUTHOR — the genome grows a coordinate it did not hav
 }
 const __vmOpsTab=[vmOps0,vmOps1,vmOps2,vmOps3,vmOps4,vmOps5,vmOps6,vmOps7,vmOps8,vmOps9,vmOps10,vmOps11,vmOps12,vmOps13,vmOps14,vmOpsNone,vmOpsNone,vmOpsNone,vmOpsNone,vmOpsNone,vmOpsNone,vmOpsNone,vmOpsNone,vmOpsNone,vmOpsNone,vmOpsNone,vmOps26];
 function vmStep(op,src,dst,k,si,di,i,j,ip){
+    if(op===REPL_INERT)return ip;   // #273: the inert control (-1 unless a rig sets REPL_INERT under REPL)
     if(!__vmAbsent[__vmMode][op]){ const _vo=__vmOpsTab[op>>4]; if(_vo!==undefined) ip=_vo(op,src,dst,k,si,di,i,j,ip); }   // #251: dispatch to the chunk that holds op
     // === #199 - SELFWRITE. Handled here rather than as a switch case because 429 sits ABOVE the
     // bound-opcode range, so it never reaches the switch above and never collides with a core op.
@@ -25809,7 +25824,7 @@ function compact(){
     pPlasmidAge[w]=pPlasmidAge[r];
     pBroadcast[w*2]=pBroadcast[r*2];pBroadcast[w*2+1]=pBroadcast[r*2+1];
     clusterID[w]=clusterID[r];
-    pType[w]=pType[r];pProg[w]=pProg[r];pGenome[w]=pGenome[r];pLin[w]=pLin[r];pProvision[w]=pProvision[r];if(SUN_ON){pE[w]=pE[r];pAdq[w]=pAdq[r];}pMode[w]=pMode[r];pModeBias[w]=pModeBias[r]; // UNLOCKED #7a/#9: caste + full per-particle genome (+ lineage tag) relocate with the particle (also fixes a caste-scramble bug)
+    pType[w]=pType[r];pProg[w]=pProg[r];pGenome[w]=pGenome[r];pLin[w]=pLin[r];pProvision[w]=pProvision[r];if(SUN_ON){pE[w]=pE[r];pAdq[w]=pAdq[r];}if(REPL_MATCH){for(let m=0;m<4;m++)pKey[w*4+m]=pKey[r*4+m];}pMode[w]=pMode[r];pModeBias[w]=pModeBias[r]; // UNLOCKED #7a/#9: caste + full per-particle genome (+ lineage tag) relocate with the particle (also fixes a caste-scramble bug)
     for(let rx=0;rx<REFLEX_DEPTH*2;rx++)pReflexHist[w*REFLEX_DEPTH*2+rx]=pReflexHist[r*REFLEX_DEPTH*2+rx];
     for(let rx=0;rx<REFLEX_DIMS;rx++)pReflexState[w*REFLEX_DIMS+rx]=pReflexState[r*REFLEX_DIMS+rx];
     pReflexIdx[w]=pReflexIdx[r];
