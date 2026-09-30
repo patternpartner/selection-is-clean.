@@ -737,3 +737,15 @@ its own - a figure-eight on the beat with a short trail. He shrugs (u114 2-3.5).
 the wink close-up (u116 12-15), lit amber from below by what he is holding. Full shots are scaled to a fixed height
 from the matte's bounding box so the cuts between clips match; u115 after 11 s zooms in and crops the feet - use u117
 0-2.5 for a full-body idle. He is lit dim from above plus the light's own warmth falling off with distance.
+'The Chair' (`video/build_chair.py`, out/the-chair.mp4, 23.4 s with the end line) - the second film with the user
+(u114 only, keyed). No Ground 50.0-69.5 (82.65 bpm): the band drops to near silence 56.5-61.5 and crashes back at 61.8.
+The dark stage from 'The Lesson'. He stands, the light beside him; he shrugs (why not) and sits down without looking,
+on nothing. The sit (u114 3.5-4.3, half a second) is stretched over the whole silence, 56.0-61.8, with adjacent frames
+blended so the slow motion is smooth. The light notices (a flicker, 59.4), races in (a whoosh), and draws a chair of
+light under him stroke by stroke - posts, a curved top rail, a slat, a seat with depth, four splayed legs, 13 strokes,
+a small glassy tick for each in the silence - finishing exactly as he lands, on the crash (a flare). He sits (it pulses
+on the beat). He stands and bows to the chair (u114 8.0-8.8); it melts back into the light, which dips a bow of its
+own; ta-da (u114 9-10) with a ring of sparks. Trust, in one gesture: sitting down on something you cannot see. CRAFT:
+one clip at ONE fixed scale (0.62, feet pinned) - never bbox-normalise a sitting figure or it grows when it sits; the
+chair is drawn in the clip's own pixel coords behind him, so his body occludes it for free; a door-frame outline does
+not read as a chair - it needs a curved rail, a slat, a seat with depth and splayed legs.

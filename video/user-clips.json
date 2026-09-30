@@ -1805,7 +1805,8 @@
   ],
   "note": "no hard cuts - Grok moves between poses with zooms; the half-second between moves can be a ghosted blend, use the ranges in moves",
   "used_in": [
-   "the-lesson"
+   "the-lesson",
+   "the-chair"
   ]
  },
  {
