@@ -24174,3 +24174,28 @@ LAW_PROBATION: 1200). Seeds 201-203, 72 runs of the engine's own verdict, trial 
 - `substrate-test` 264/0 at TICKS=40, 900, the default and FOUND=0 after the change. **#265b**, the harm guard fixed in
   the pre-registration, runs next: #263b's census (seeds 161-172, 40,000 ticks) on the new engine, paired with #263b's
   runs; the change is withdrawn if extinctions rise by 4 or more.
+
+### #266 — THE PROGRAM NFD (swing #37), RETIRE OR PROVE. Pre-registered before any deciding run.
+
+The one "punish the common" force #264 named as correctly formed and never put through the template. **Read first, as
+#262 read the trait NFD** (seed 1, draw-free, scratchpad `gnfdprobe.js`): unlike the trait NFD it VARIES — at tick
+3,000 56% of the living sit at its -1 clamp, 24% are paid for rarity, sd 0.63, 67 distinct program signatures, and the
+commonest vocabulary falls from 90% of the population at tick 250 to 11% at 3,000. Strength 0.004 x GENO_NFD_BOOST 2.4.
+**The instrument gap, closed first:** the template's measures are trait spread and lineages; this mechanism acts on
+PROGRAMS, so the template alone could read "no effect" while it does its work. `harness-oee.js` gains per-sample
+`progSigs` / `progSigH` (distinct program signatures and their entropy in bits, hashed exactly as the mechanism hashes
+them — the sum of opHash over distinct opcodes 0-255 — but computed from `pProg`, since `pParaSig` is only written when
+the mechanism runs) and a verdict block `program_trend`. Checked: with the new fields removed, output identical to the
+committed rig (seed 1, 1,000 ticks); progSigs reads 32 at tick 1,000, the engine's own count. `trait-force.js` gains
+`gnfd0` (GENO_NFD_ON 1 -> 0, one site, asserted); it changes the run.
+**Design:** #258b's template (`harness-oee.js ESTABLISH=250`, 20,000 ticks, default world + NULLSHIFT 1-3 as the null
+band, the knockout `FORCE=gnfd0` as the arm), **unseen seeds 211-213**. Measures: centredEntropyRatio +/-0.05,
+spread_late +/-10%, established fraction +/-25%, crash guard — **and `program_trend.sigH_late` +/-10%** (relative, the
+same margin as spread), because that is where this mechanism acts. entropyRatio, kinds and sigs_late reported only.
+**Rule, fixed now:** knockout WORSE than every null (on any measure) on 2/3 of counted seeds -> the mechanism is
+load-bearing -> **KEEP, proven**, claimed at the rung and on the measure that moved; BETTER on 2/3 and not WORSE ->
+**DELETE** (the block, GENO_NFD_ON, the strength and boost constants, pParaSig); both -> SPLIT, nothing changes;
+otherwise KEEP. Executed first: it runs every tick; a seed counts if the arm's series differs from the control's.
+**Written before, so it can be wrong:** the knockout is WORSE on program entropy on 2/3 (the seed-1 design hint: 1.87
+against 2.34 bits at tick 1,000) and inside the band on the trait measures -> KEEP, proven on programs.
+**Saved worlds:** a DELETE changes every world's dynamics; no saved value involved.

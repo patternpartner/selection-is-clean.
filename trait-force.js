@@ -16,8 +16,10 @@
 // #262 adds a REPAIR, not a knockout (one site, asserted):
 //   nfdocc   the trait NFD divides by the mean over OCCUPIED cells, counted from the living (the program NFD's form),
 //            instead of N/64 - with N/64 almost every living particle sits at the -1 clamp (harness-nfdsat.js)
+// #266 adds the PROGRAM NFD's knockout (one site, asserted):
+//   gnfd0    swing #37's program-vocabulary NFD off (GENO_NFD_ON 0): no amp nudge by program-signature rarity
 // FORCE=a,b in the environment picks them. Draws nothing.
-const FORCES=['bleed0','shrink1','blend0','toll0','motif0','nfd0','vmbleed0','nfdocc'];
+const FORCES=['bleed0','shrink1','blend0','toll0','motif0','nfd0','vmbleed0','nfdocc','gnfd0'];
 function parse(env){ const F=String(env||'').split(',').filter(Boolean);
   for(const f of F) if(!FORCES.includes(f)) throw new Error('unknown FORCE '+f+' (known: '+FORCES.join(',')+')');
   return F; }
@@ -27,6 +29,7 @@ const PATCHES={
   nfd0:[['TCELLS=TBINS*TBINS*TBINS, NFD_STRENGTH=0.004;','TCELLS=TBINS*TBINS*TBINS, NFD_STRENGTH=0;',1],
         ['pRarity[_i]=RARITY_DISCOUNT+(1-RARITY_DISCOUNT)*Math.min(1,_bc/(_mean+0.001));','pRarity[_i]=1;',1]],
   vmbleed0:[['const tbleed=vmActions[3]*influence;','const tbleed=0;',2]],
+  gnfd0:[['const GENO_NFD_ON=1;','const GENO_NFD_ON=0;',1]],
   nfdocc:[['const _mean=N/TCELLS;','let _nl=0,_oc=0; for(let _c=0;_c<TCELLS;_c++) if(tHist[_c]){ _oc++; _nl+=tHist[_c]; } const _mean=_nl/Math.max(1,_oc);',1]]};
 function patch(code,F){
   for(const f of F) for(const [site,rep,want] of (PATCHES[f]||[])){ const n=code.split(site).length-1;
