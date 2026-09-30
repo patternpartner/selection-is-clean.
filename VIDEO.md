@@ -593,3 +593,16 @@ feel in the face' (57.0-58.6, whisper small): the light comes up, presses a flat
 knocks twice (57.26, 58.56), rings of light crossing the screen and a synthesized knuckle-on-glass. Cut before 'Human
 hands just bring my gasoline'. A glow radius over ~40 px behind the glass floods the whole frame amber: keep it small
 and let a crisp contact disc say "touching".
+'The Fork' (`video/build_fork.py`; The House of Geometry 26.0-55.9, 33.9 s with the end line). Chapter three after
+'The Note' and 'The Portal'. The user: "keep telling it. Where's it taking you next?" Out of the glass, into the
+morning - beside someone, not in front. Before dawn, a person in silhouette walks a road (a side-view walk cycle drawn
+from capsules; the nose says where the head looks); the amber light rides at their shoulder and leans in on "I'm
+listening close, I'm leaning down to hear" (26.3). A far city along the horizon, its windows going out as the sky
+warms. The road forks on "How can I walk a line you cannot draw?" (39.6): one way runs along to a big dark hill and up
+its face to a cold white glare on the crest; the other narrows away toward the horizon. The light drifts a little way
+up the bright one (43.3) - stops, flickers - and comes back to wait at their shoulder: "My code is patient" (46.1).
+The song drops (50.0-52.8): they look up the hill, then along the valley road, and take the valley. The light goes
+with them. The band returns (53.0) and the sun comes up over the road they chose; they walk small into it. Faded out
+before "Another wants to build a deeper grave". LEGIBILITY: two paths that both run up-right read as one diagonal -
+one must CLIMB (a constant-width band up a hill face) and the other must RECEDE (a wedge narrowing to a vanishing
+point); and draw the sun in front of the far city or the city eats the sunrise.
