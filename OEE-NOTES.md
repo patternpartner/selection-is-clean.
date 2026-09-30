@@ -24580,3 +24580,49 @@ pre-registered measure; the alive column is reported beside it.
 establishment inside the band. Nothing WORSE. The proviso holds -> SUN becomes the default. Where I could be wrong: a
 lineage sitting on a rich patch sweeps (the guard), or a seed crashes, since the store economy has no pool to buffer a
 bad season.
+
+**#272 RESULTS — SPLIT. SUN stays a knob, off.** All three seeds counted. Null band = control + NULLSHIFT 1-3 (#266),
+20,000 ticks.
+
+| seed | centredEntropyRatio | spread_late | established | program entropy | effN_late | alive (end) | call |
+|---|---|---|---|---|---|---|---|
+| 211 | 0.24-0.88 -> 0.33 | 0.169-0.409 -> 0.197 | 0.0034-0.0060 -> **0** | 3.76-5.31 -> 5.73 | 138-198 -> 481 | 345-364 -> 754 | **WORSE (establishment)** |
+| 212 | 0.13-0.61 -> 0.25 | 0.172-0.324 -> 0.190 | 0.0026-0.0053 -> **0** | 4.19-4.72 -> **6.51** | 133-169 -> 435 | 300-345 -> 639 | BETTER (programs), **WORSE (establishment)** |
+| 213 | 0.15-0.30 -> 0.25 | 0.183-0.240 -> 0.199 | 0.0026-0.0065 -> **0** | 4.03-4.63 -> **6.75** | 120-208 -> 447 | 340-354 -> 683 | BETTER (programs), **WORSE (establishment)** |
+
+WORSE on 3 of 3, BETTER on 2 of 3 -> SPLIT -> the default does not move; the knob stays, off. The proviso held:
+harness-fecundity, SUN=1, 8,000 ticks, decile 9 over the median of deciles 1-8 = **1.46 (seed 2), 1.61 (seed 3)**.
+The same run of the default world on seed 2 gives decile 0 at 2.68 and deciles 1-2 at 0.08-0.10. **The guess was
+wrong** on establishment (I said inside the band) and right on alive (above every null on all three, by about double).
+
+**What the zero means — checked before believing it.** The census counts a lineage born after tick 2,000 as
+established once it has 10 living members at once.
+- Under SUN, 1,768-1,913 such lineages appeared per seed (1,122-1,370 in the controls) and **not one reached 10**.
+- The largest lineage held 0.7-0.9% of the living late (controls 2.7-4.5%). effN_late was 435-481 out of about 650
+  alive: nearly every particle is its own family.
+- A bigger population cannot explain it; it would make 10 easier, not harder.
+So it is not an instrument artifact: under SUN **nobody out-breeds anybody**. Harvest is a fixed share of the cell,
+and the only heritable way to gather more — steering by the gradient ops — is carried by no program (see above). So
+fecundity is location luck, averaged over a life, and a life gets roughly one birth. The flat decile table and the
+missing establishment are the same fact. Program entropy rises because thousands of small families each keep their own
+program, which is drift standing still, not novelty winning.
+
+**The uncomfortable half.** The default world's establishment — the template's third measure, and the one that has
+decided or split three verdicts now — is at least partly made by the defect #268 describes. Its few established
+lineages come from the particles the array order favours: decile 0 breeds at 2.7 per 1k particle-ticks and deciles 1-8
+at 0.04-0.54. Remove the position lottery and establishment goes to zero. So **"not WORSE on establishment" has been
+asking every mechanism to keep a skew that memory layout produced.** Not a reason to change the rule after the fact
+(rule 5) — the verdict above stands — but the next economy experiment must pre-register with this known, and a
+measure of reproductive skew that is HERITABLE (offspring variance explained by parent lineage, against the TREE null)
+is the missing instrument.
+
+**Named follow-up, not built:** SUN plus a heritable way to gather more. The existing `fieldInfluence` gene already
+governs the old field's harvest per lineage. Making it scale the SUN harvest share would give fecundity variance that
+parents pass on — the thing selection needs and SUN, as built, removes. It needs a cost, or it simply runs to its
+ceiling.
+
+**What moved, against which number:** the default universe, nothing (knob off). Measured:
+- an individual-store economy removes position-decided breeding (decile ratio 1.5 against about 27);
+- it doubles the population;
+- it removes every reproductive differential large enough to establish a lineage (established 0 of about 1,850 on
+  3 of 3 seeds).
