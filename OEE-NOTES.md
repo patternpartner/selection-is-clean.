@@ -24688,3 +24688,28 @@ it is caused by what it does.
   1). Prey have no reply: a predator can take from anyone.
 - **The disarmed worlds did something else:** the population rose to about 1,700 by 7,500-9,000 on seeds 2 and 3, with
   mean age rising from about 230 to 400-590. Longer life, most likely `lifespanBias`; not yet traced.
+
+### #274 — REPL_MATCH (narrow key) at up to 33,000 ticks: the arms race did not ignite, but REPEATED adaptation did — and most "innovations" are hitchhikers.
+
+Seeds 1-3, `REPL=1 REPL_MATCH=1 LAWMUT=0`, key width 0.35. The runs were stopped by the 30-minute limit at 24,500 /
+25,000 / 33,000 ticks; the probe logs every 500 ticks, so everything up to then is kept.
+- **Predation never established.** A key matched almost no prey (mean match 0.000-0.007) and op 155 stayed at 0-3%.
+  The keys then wandered with no sign of selection, and the population grew to about 1,800 unchecked. So the key as
+  built was too narrow for predation to pay at all, and nothing could start a chase.
+- **An "innovation" is an op absent at the start that later reaches 10% of the living.** 16-20 per world, arriving
+  in every quarter on two seeds. **Then calibrated, and mostly hitchhikers.** Ops 240-415 dispatch to nothing in the
+  solo VM (`vmOpsNone`), so they are neutral passengers on whatever lineage wins. They cross at 5.1%, 0.6% and 4.0% per
+  op; the core ops cross at 3.5%, 5.2% and 3.9%. So the raw count is not evidence of adaptation.
+- **Repetition is.** Eight ops crossed on all three independent seeds, and **no neutral op crossed on more than one**:
+  - DETRITAL_HARVEST (146): scavenging colonised the niche #273 left empty, reaching 65% of the living on seed 1;
+  - op 22 (call an authored atom), EFFECT_EMIT (236) and the first two authored-atom slots (237, 238);
+  - the mode ops 232-234, which started at 1-5% and so are weaker evidence.
+  Parallel evolution across replicate worlds, against a neutral set that never repeats, is the signature of selection.
+  **The authored-behaviour layer (#132) becomes adaptive once programs are the replicators.**
+- **Not yet open-ended.** The repeatable adaptations arrive through the run (seed 1: ticks 1,500, 2,000, 5,500,
+  6,500, 16,000, 18,500), but slowing. That is a finite menu of useful ops being adopted, not a supply that renews.
+**Next (#275):** make the chase possible and count never-before-seen kinds.
+- A predator gets 30% of the full take from anyone and up to 100% from prey its key fits (width 0.6), so predation
+  pays while keys are under selection to track prey.
+- The probe counts 4-D trait bins never occupied before, per sample: the artwork's own claim that novelty keeps
+  arriving.
