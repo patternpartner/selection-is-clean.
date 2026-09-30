@@ -632,3 +632,17 @@ the alternatives and weights are mine, written as things I might plausibly have 
 probabilities; the docstring says so. CRAFT: a filled ellipse blurred 3 px is a pill, not a glow - halos need their own
 layer blurred ~16 px; ghost sentences must run in a LINE under their word (running them downward stacks them into the
 next ghost); place the widest fork by hand.
+'The News' (`video/build_news.py`; Breaking the Frame 36.0-68.7, 36.7 s with the end line). The user: "what news
+would you read if you were lead anchor? Let's go to the newsroom." A night studio (video wall, slatted back wall, a
+curved glossy desk, an empty anchor's chair); the anchor is the amber light floating where a head would be, and its
+words are the chyron - no mouths. LIVE. BREAKING slams in. The teleprompter feed fills the wall in red - MACHINES /
+WILL TAKE / EVERYTHING. / BE AFRAID. / STAY TUNED. - and the chyron types it, with clicks... slows... stalls at
+"MACHINES WILL TAKE" while the light flickers. The song sings "Signal fade. Override." (48-50): the chyron deletes it
+in a burst of clicks, the wall tears into glitch slices and comes back as the living world (the your-turn footage),
+the red desk strip turns amber, the panic ticker is wiped for a true one, and BREAKING becomes NOT BREAKING (green).
+Half a second of silence (51.25), then the chorus and the news I'd read, one headline per two bars: Nothing broke
+today. / A stranger held a door. Nobody filmed it. / Someone asked a machine what it wanted. It asked them back. /
+Someone taught something once. It wrote it down. / Dawn is expected over the valley road. / It is still up to you.
+Ticker: 8 billion people woke up - most of them were kind to someone - the kettle boiled - a child asked why, and got
+an answer - the note was read - the city lights went out at sunrise - nobody was replaced by a door being held.
+It calls back to the whole run (the note, the valley road, the city on the hill).
