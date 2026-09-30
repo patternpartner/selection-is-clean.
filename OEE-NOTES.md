@@ -24285,3 +24285,216 @@ selected AGAINST.** Seeds 231-233, 20,000 ticks, late window 10,000-18,000, 845-
   in births, new programs lose. Consistent with #220: amp does not buy offspring.
 - **The answer to the user's question, at this rung and horizon:** the universe selects, and on programs it selects
   against the new. Open-ended evolution needs the other sign somewhere, and no layer shows it at 20,000 ticks.
+
+**#266 RESULTS — NEITHER -> KEEP. The program NFD stays, not proven.** Seeds 211-213, 20,000 ticks, all counted.
+
+| seed | nulls: centred eR / spread / est. / program bits / program signatures | gnfd0 (knockout) |
+|---|---|---|
+| 211 | 0.24-0.88 / 0.169-0.409 / .0034-.0060 / 3.76-5.31 / 55-86 | 0.29 / 0.251 / ***.0009*** / 5.78 / 125 |
+| 212 | 0.13-0.61 / 0.172-0.324 / .0026-.0053 / 4.19-4.72 / 48-64 | 0.28 / 0.228 / .0057 / 4.40 / 67 |
+| 213 | 0.15-0.30 / 0.183-0.240 / .0026-.0065 / 4.03-4.63 / 51-67 | 0.22 / 0.192 / .0039 / 4.70 / 71 |
+
+- Knockout WORSE on 1 of 3 (establishment, seed 211), BETTER on none -> by the template, KEEP: it changes the world and
+  does no measured harm. Not "proven": the load-bearing clause needed two seeds.
+- **My written guess was wrong:** I expected the knockout to LOWER program diversity (the seed-1 hint at 1,000 ticks:
+  1.87 against 2.34 bits). At 20,000 ticks it is inside the band on two seeds and ABOVE it on the third (125 program
+  signatures against 55-86; 5.78 bits against 3.76-5.31, just under the 10% margin). A mechanism that pays rare programs
+  is not what keeps programs diverse at this horizon.
+- **Read with #267 and #219/#220, this is the thread that matters.** The program NFD varies (a quarter of the living are
+  paid) — and it pays in amp. #220 measured that amp does not decide who breeds (91-96% sit at the soft line, the pool
+  is dry 94-99% of ticks, and the few paid births go to whoever the loop reaches first); #267 measured that new program
+  variants, far from being favoured, lose in births. Both NFDs, RED_QUEEN, and most of the 76 amp sites reward in a
+  currency that does not reach offspring. **Selection has almost nothing heritable to grip at the one place it acts.**
+  That, not the absence of another reward, is the likeliest reason nothing new wins offspring here. Next: re-measure
+  #220 on today's engine (#257c-#265 changed births, laws and the pool) before designing anything on it.
+
+### #268 — #220 RE-MEASURED ON TODAY'S ENGINE: who breeds is still memory position. The diagnosis, and where it points.
+
+`harness-fecundity`, seeds 1-3, 8,000 ticks (#220's budget), engine after #257c-#265:
+
+| | seed 1 | seed 2 | seed 3 | #220 |
+|---|---|---|---|---|
+| particle-ticks at the amp soft line | 91% | 95% | 93% | 91-96% |
+| particle-ticks with a provision bank of 3+ | 90% | 98% | 97% | 93-98% |
+| births /1k particle-ticks, array decile 0 | 1.69 | 2.68 | 2.62 | 1.00-2.11 |
+| **middle 80% (deciles 1-8)** | **0.05-0.54** | **0.08-0.13** | **0.04-0.15** | 0.00-0.25 |
+| decile 9 | 1.62 | 1.89 | 2.06 | 1.61-2.88 |
+
+**Nothing today changed it.** Offspring still go by position in the array — the oldest survivors (low index after
+compaction) and the newest (high index) — and the heritable currencies the engine rewards are saturated: amp at the
+soft line and the provision bank full for 9 in 10 of the living, so rewarding them separates almost no one.
+
+**The diagnosis, joining #219, #226, #262, #266 and #267.** (1) Every rarity and frequency-dependent term in the file
+pays in amp (#262's trait NFD, #266's program NFD, RED_QUEEN), and amp does not decide who breeds — so none of them
+reaches the one place selection acts; #266 found the correctly formed one makes no measurable difference, and #267
+found new program variants LOSE in births. (2) The allocation that does decide it — the first-come queue — was shown by
+#219 to be protecting diversity by accident: a FAIR lottery made one lineage sweep every seed, because every birth is
+paid from ONE global pool, one limiting resource, and competitive exclusion follows; #226 found the queue happens to
+let outliers breed. (3) #221 made a birth cost the parent's own gathered provision, but the bank is full for 9 in 10,
+so the individual resource never binds and the global pool decides.
+**Where it points:** the obstacle to selection favouring anything new is not a missing reward but the SHAPE OF THE
+ECONOMY — one pool, allocated by position, with the individually earned currencies saturated. Coexistence of many
+lineages needs more than one limiting resource (the textbook result #219 named: competitive exclusion), and selection
+on novelty needs births to depend on something an individual does. #264's microcosm pointed the same way: the arms
+race lived only with many patches and movement between them. **The next experiment is the economy itself**: births
+limited by LOCAL resource — what a particle gathers where it is — rather than by a global pool handed out in queue
+order. Before designing it: read how provision is gathered (is it density-dependent? local?) and why the bank fills.
+
+### #269 — DESIGN, NOT YET BUILT: a local economy. Births paid from what a particle gathers where it is.
+
+**What the reading found (engine, updateParticles ~25312):** a particle harvests its field cell every tick —
+`localRes[i] += localField * fieldInfluence * affinity` and `amp[i] += localField * 0.0008 * affinity` — **and the cell
+loses nothing.** Harvest is non-rival: a thousand particles on one cell each take the full amount. So local crowding
+costs nothing, and there is no local scarcity for lineages to partition. Everything scarce is funnelled into ONE global
+pool (metabolism takes first claim; a birth is paid only if the pool holds BIRTH_ENERGY_COST, in loop order; when the
+pool is short, every particle loses the same STARVE_DRAIN wherever it is). That is #219's competitive exclusion, and
+#268's "births by memory position", from the inside.
+**What already exists and fits:** `fieldAffinity(cell, signature)` — cells carry the signature of who lives there and a
+particle harvests better where cells match it, a ready-made niche axis; `localRes` — an individual, heritable harvest
+(fieldInfluence is per-lineage); op 226 — a VM-driven birth already paid from localRes.
+**The change, in two parts, each its own arm:**
+- **A. RIVAL HARVEST** — what a particle takes from its cell is removed from the cell (the field's own regrowth, decay and
+  diffusion then govern the supply). Crowding depletes; spreading out or specialising (affinity) pays.
+- **B. LOCAL BIRTHS** — a birth is paid from the parent's own gathered resource (localRes, or provision fed by it), not
+  from the global pool in queue order; the global pool keeps metabolism.
+**Why both, and in that order:** B without A pays births from a resource nobody can exhaust — a population explosion
+(or the global pool's metabolic drain, unchanged, becomes the only brake). A without B makes harvest scarce but still
+leaves births to the queue. Measured first, before either is built: how much the population harvests per tick against
+what the field holds and regrows — whether rival harvest would bind at all, and where.
+**Judged on** #267's selection index (does novelty — or anything — now win offspring beyond the TREE null?), #268's
+fecundity census (do births still go by memory position?), and the grid-free template, with #219's warning as the
+failure to watch for: a fair allocation on one resource swept to ONE lineage; with many local resources it should not.
+
+### #270 — THE FIELD IS EMPTY. The resource a particle harvests where it stands holds nothing after ~300 ticks.
+
+Found while measuring #269's question (would rival harvest bind?). Draw-free probes (scratchpad `harvestprobe.js`,
+`fieldsprobe.js`), seeds 1-2, lab runs (no viewer input):
+
+| tick | `field` total (1,600 cells) | harvest per tick (all particles) | rootField | detritalField (total, cells > 0.01) | scaffoldField |
+|---|---|---|---|---|---|
+| 100 | 0.42 | 0.036 | | | |
+| 300 | 0 | 0.0004 | | | |
+| 500 | 0 | 0 | 5.6 | 2.5 (18) | 0 |
+| 2,000 | 0 | 0 | 1.9 | 4.3 (20) | 0 |
+| 4,000 | 0 | 0 | 0.6 | **58.3 (133)** | 0 |
+
+- **`field` — the substrate particles harvest into localRes and amp (`localField * fieldInfluence * affinity`), carry
+  territorial signatures on (`fieldAffinity`), and whose physics are two laws (FIELD_DECAY, FIELD_DIFFUSE) — is zero from
+  tick ~300 to the end on both seeds.** It has no external source: every write is a particle depositing (emission, VM ops
+  9 / 10 / 140), and `updateField` multiplies it by FIELD_DECAY (0.982: half gone in ~38 ticks) every tick. The boot
+  contents decay and nothing replaces them. Harvest executes every tick and returns exactly 0 — CLAUDE.md's rung four,
+  EXECUTED and constant, in the resource layer itself.
+- **It explains an observation from #265 left open:** FIELD_DECAY hi and FIELD_DIFFUSE hi gave byte-identical population
+  series on seed 201 for 10,000 ticks. Laws governing an empty field change nothing.
+- **detritalField is the reverse: it accumulates** (2.5 -> 58 over 4,000 ticks) — every death deposits into it, and the
+  only harvest is a VM op (146) programs rarely run. rootField fades; scaffoldField is empty.
+- **Not checked against the field (the browser):** the same engine code, but a viewer's input may deposit there. Said
+  out loud: lab worlds only.
+**What it does to #269's design:** rival harvest on an empty field would change nothing. A local economy needs a SUPPLY
+into the field, not only a sink. The natural one is the energy the world already has: **the regeneration that now fills
+the one global pool falls instead on the field's cells ("sunlight on the ground")**, particles harvest it from the cell
+they stand on — rivalrously, so crowding depletes it — into their own reserve, and births are paid from that reserve.
+The global pool's job (a birth needs the world to have energy, handed out in loop order) passes to the particle and the
+place. Built as a knob, default off, and judged as #269 says; #219's sweep to one lineage is the failure to watch for.
+
+### #271 — LOCAL POOLS: the one birth pool split into regions. Built as a knob (default off). Pre-registered.
+
+**The change** (`LOCAL_POOLS=G`, KNOBS entry added): the world's single energy pool becomes a GxG grid of regional
+pools. Each region receives 1/G^2 of the regeneration (capped at 1/G^2 of WORLD_ENERGY_MAX), feeds the metabolism of the
+particles inside it (and starvation drains by THAT region's shortfall), pays for births whose parent is inside it, and
+takes back the energy of deaths inside it. `worldEnergy` is kept as the sum, so every reader of it is unchanged.
+Six sites, each replaced with an asserted count (the first attempt's count of 3 for a 2-site pattern stopped it — the
+new helper held the original line in its off-branch).
+**Checked:** unset, harness-oee output identical to the committed engine (seed 1, 1,000 ticks, every field but config
+and timing); LOCAL_POOLS=4 runs and differs. substrate-test with it unset: 264/0 at TICKS=40, 900, the default and
+FOUND=0. **With LOCAL_POOLS=4, TICKS=40: 260/4**, and the four are one cause: #203's three billing rows and RATION's
+lottery row set `worldEnergy` by hand and expect the birth to bill it, but with the knob on a birth bills its parent's
+REGION, which the hand-set total never reaches — so the rows fail, correctly, because they are driving a pool the birth
+no longer reads. Nothing else went red. **If the rule makes LOCAL_POOLS the default, those rows are rewritten to set the
+parent's region before it ships** (an assignment to `worldEnergy` under the knob is a control that reads like one).
+**Design look (seed 1, 8,000 ticks, LOCAL_POOLS=4 — a design seed, not a verdict):** no extinction, floor 356; and **who
+breeds stops being memory position** — births per 1k particle-ticks by array decile, 0: 1.69 -> 0.52, deciles 1-8:
+0.05-0.54 -> 0.29-0.48, 9: 1.62 -> 1.39. Each region keeps its own first-come order, so sixteen queues instead of one.
+
+**The deciding question:** does splitting the pool make the world better on the template without #219's sweep, and
+does it let anything new win offspring?
+**Design:** the retire-or-prove template in the "better" direction: arm `LOCAL_POOLS=4` against the default world's
+null band (control + NULLSHIFT 1-3), `harness-oee.js ESTABLISH=250`, 20,000 ticks, **seeds 211-213, reusing #266's
+null runs** (the default world on the current engine — the off path is byte-identical — run before LOCAL_POOLS existed;
+those seeds played no part in its design, which used seed 1 only). Measures: centredEntropyRatio +/-0.05, spread_late
++/-10%, established fraction +/-25%, program entropy +/-10%, crash guard; plus **a sweep guard (#219): effective lineages
+late (the establishment census's effN_late) below every null by more than 25% relative counts as WORSE.**
+**Rule, fixed now:** BETTER than every null on 2/3 seeds and not WORSE -> **LOCAL_POOLS=4 becomes the default** (every
+world's economy; no saved value involved, so saved worlds change on their next run — delegated, said here); WORSE on
+2/3 -> stays off; both -> SPLIT, stays off; neither -> stays a knob, off, with the result recorded.
+**Reported, not ruled on:** #267's selection readout on seeds 231-233 with LOCAL_POOLS=4, paired with #267's default
+runs (does any layer read NOVELTY FAVOURED? does programs' DISFAVOURED change?); `harness-fecundity` seeds 2-3 with it
+on (does position still decide who breeds?).
+**Written before, so it can be wrong:** establishment above every null on 2 of 3 seeds (the queue is spread over
+sixteen regions, and a lineage cannot spend another region's energy), spread and centred entropy inside the band,
+nothing WORSE -> BETTER -> it becomes the default. The sweep guard is where I could be wrong. The selection readout I
+cannot guess.
+
+**#271 RESULTS — SPLIT. LOCAL_POOLS stays a knob, off.** All three seeds counted (every arm's series differs from its
+control). Null band = control + NULLSHIFT 1-3 from #266; 20,000 ticks.
+
+| seed | centredEntropyRatio | spread_late | established | program entropy | effN_late (sweep guard) | alive | call |
+|---|---|---|---|---|---|---|---|
+| 211 | 0.24-0.88 -> 0.54 | 0.169-0.409 -> 0.320 | 0.0034-0.0060 -> 0.0066 | 3.76-5.31 -> 5.56 | 138-198 -> 172 | 345-364 -> 345 | inside on every measure |
+| 212 | 0.13-0.61 -> **0.82** | 0.172-0.324 -> **0.399** | 0.0026-0.0053 -> 0.0029 | 4.19-4.72 -> 3.98 | 133-169 -> **74** | 300-345 -> **112** | BETTER x2, **WORSE (sweep)** |
+| 213 | 0.15-0.30 -> **0.36** | 0.183-0.240 -> **0.287** | 0.0026-0.0065 -> **0.0011** | 4.03-4.63 -> 4.88 | 120-208 -> 167 | 340-354 -> 294 | BETTER x2, **WORSE (establishment)** |
+
+BETTER on 2 of 3 and WORSE on 2 of 3, on the same two seeds -> the SPLIT clause -> the default does not move. (213's
+centred-entropy call clears its threshold by 0.01.) **The guess was wrong where it was specific:** establishment was
+inside the band on two seeds and below it on the third, not above; spread and centred entropy left the band, upward, on
+two. The sweep guard, where I said I could be wrong, fired.
+
+**Why 212 fell (draw-free probe, `scratchpad/p271`: a copy of harness-oee with one read-only line per sample; its
+population series is byte-identical to the rule run's).** Between ticks 13,500 and 14,000 the living fell 413 -> 198.
+That is ×0.48 in 500 ticks; the worst 500-tick drop in the other fourteen worlds is ×0.75 (null2, seed 212, tick 7,000,
+recovered). In the same 500 ticks the population went from all 16 regions occupied to 8 empty, and region 0 went from
+16 to 83. **Then it locked:** the 8 emptied regions filled to their cap (WORLD_ENERGY_MAX/16 = 5) by tick 14,000 and
+stayed full to tick 20,000, their share of the regeneration discarded every tick. Only a region with living particles
+can spend its energy, and nothing lets a particle sense where the energy is, so nobody moved back. The population sat
+at 89-153 to the end, roughly the half of the world's income that falls where they are. What emptied those regions
+in 500 ticks is not traced. **The lesson is structural:** under one pool a clump costs nothing; under regional pools a
+clump starves while half the sunlight goes unspent. **A local economy that particles cannot find their way around is a
+lottery by location**, and a fragile one.
+
+**Who breeds (harness-fecundity, 8,000 ticks; births per 1k particle-ticks by array decile; the default world's
+figures are from #268):**
+
+| | seed 1 | seed 2 | seed 3 |
+|---|---|---|---|
+| decile 0, default -> LOCAL_POOLS=4 | 1.69 -> 0.52 | 2.68 -> 0.53 | 2.62 -> 0.79 |
+| deciles 1-8 | 0.05-0.54 -> 0.29-0.48 | 0.08-0.13 -> 0.27-0.47 | 0.04-0.15 -> 0.28-0.45 |
+| decile 9 | 1.62 -> 1.39 | 1.89 -> 1.67 | 2.06 -> 1.44 |
+
+**Memory position stops deciding who breeds, mostly.** The middle 80% of the array went from almost never breeding to
+breeding at about a third of the rate of the newest decile. Decile 9 (the newest particles) still leads by 3-5x. So the
+change did the job it was designed to do. It failed the template on what came with it.
+
+**Selection readout (#267's instrument, seeds 231-233): the calibration fails, so nothing is read from it.** The neutral
+markers must read CHANCE in 5 of their 6 seed-readings. Here they read CHANCE in 2 of 6: on 231 both read FAVOURED
+(1.278 against a shadow band of 1.172-1.187, and 1.155 against 1.055-1.092), on 232 marker50 read FAVOURED, on 233
+marker05 read DISFAVOURED. By #267's own rule, nothing is claimed from any layer. That includes lineage reading
+FAVOURED on all three seeds, and programs going from DISFAVOURED to FAVOURED on 231. **Likely why (not tested):** the
+TREE null hands each new label to a random particle anywhere in the world. Under regional pools fertility belongs to a
+PLACE. A label that arises at a birth sits in a region that is breeding, and its carriers go on breeding there. The null
+breaks that tie between place and label, so even a mark that does nothing out-breeds its shadows. Under the one pool,
+fertility had no place, and the markers read CHANCE in 6 of 6 (#267). **A null for a spatial economy has to draw its
+recipients from the same region.** Named here, not built. Until it exists, #267's instrument is only valid on a world
+without spatial fertility.
+
+**What moved, against which number:** nothing in the default universe; the knob is off. The measured facts are:
+- a regional split of the one pool flattens position-decided breeding (middle deciles ×3-8);
+- it widens spread and centred entropy on 2 of 3 seeds;
+- it makes the world able to lock itself at half its income after a local die-off.
+
+**Kept DORMANT, with its follow-up named.** The knob's code stays; its off path is byte-identical. The follow-up is
+#270's design, now sharpened by this failure. The regeneration should fall on the FIELD, not into regional tanks:
+- the field diffuses (FIELD_DIFFUSE), so energy spreads toward the living instead of sitting capped where nobody is;
+- particles already carry evolvable sensors for its gradient (VM ops 147/148, FIELD_GRAD_X/Y, "enables chemotaxis").
+  Those sensors read exactly 0 in every world today, because the field is empty (#270).
+A local economy particles can climb is the thing this entry says is missing, and the sensors for it have been in the
+genome, reading nothing, all along.
