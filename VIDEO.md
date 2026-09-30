@@ -712,3 +712,6 @@ edge - "Markets. One coin, standing on its edge. Too close to call."; u83 the wo
 turns into an interior after) - "And the weather. Clear skies. A bird was seen heading home."; and the robots and their
 rabbits again under "It is still up to you." The v4 lines were generic and the footage was chosen after them - that
 is why the user said neither was working. Words written from the footage fix both at once.
+THE USER on 'The News' v5: "That's it. Makes sense but makes no sense. Love it." - the keeper. What made it land: the
+fear headline and its correction on the SAME footage, and small true lines written from what the clips actually show,
+read straight by a calm newsreader. Deadpan beats spectacle.
