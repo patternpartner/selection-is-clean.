@@ -769,3 +769,13 @@ in the first dance, better in the side-steps, exact in the big one; circles him 
 he pauses; a DUET through the jumps (bouncing on the beat); up over his head with a ring of sparks on the ta-da; by his
 shoulder as he walks up; into his palm; the wink. LESSON: with performance footage, plan the whole edit first as a list
 of non-overlapping source ranges, and check every range is used once - "same moves again" means a range was reused.
+
+### The Lesson v4 (`video/build_lesson4.py`, `out/the-lesson-4.mp4`, 69.1 s)
+The user on v3: "some extra moves. I wasn't quite sure about the walking bit" (+ u119 funny faces, u120/u121 new dances),
+then mid-build: "I liked your ending before. Let's keep that in." So u117's walk-in (mid-film) is gone, v3's ending stays
+whole (ta-da, walk-up wave, palm, wink), and the routine is one unbroken dance, every range once, cut on beats of
+Surrender to the Undertow 11.0-76.1: u115 idle, u116, u115 side-steps, u118 dance + spin, u120 4.0-14.2 (the light now
+LEADS, 0.45 s ahead of his hand, with a trail; his arms-up jump lands on 45.52), u121 1.5-13.6 (together; sparks every
+bar), u121 13.6-15 arms folded in slow motion through the song's quiet dip while the light dances its own, the jumps on
+the drop at 61.975, then the v3 ending. End card 65.5-69.1, audio fades from 64.4.
+u119 (funny faces: ooh, kissy lips, tongue, laugh, pout, cheek-pull) is saved for the next film.
