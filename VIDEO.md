@@ -715,3 +715,46 @@ is why the user said neither was working. Words written from the footage fix bot
 THE USER on 'The News' v5: "That's it. Makes sense but makes no sense. Love it." - the keeper. What made it land: the
 fear headline and its correction on the SAME footage, and small true lines written from what the clips actually show,
 read straight by a calm newsreader. Deadpan beats spectacle.
+THE USER'S OWN LIKENESS (30 Sep): the user put their face into Grok Imagine, got a full body on a blue screen, and
+made five movement clips from Claude's prompt list: u113-u117 in out/user-clips (catalogued in video/user-clips.json
+with `own-likeness`, `bluescreen`, and a per-clip `moves` list of time ranges). THE USER HAS OKAYED USING THEIR OWN
+LIKENESS in the films - this is not the real-face rule (that is about other people: u01, u44, u93, politicians). Still
+no talking mouths. Key with `video/bluekey.py`: the backdrop is ~ (1, 95, 242); a pixel keys out only if strongly blue
+AND bright AND nearly red-free - so the dark-navy jeans and a grey shirt lit blue in the close-ups both hold. Grok
+packs several poses into each 15 s clip with zooms, no hard cuts; the half second between poses can be a ghosted blend,
+so cut inside the logged ranges. Best moves: u113 walk toward 0-3.5, open hand 8-9.5, palm to glass 10-10.8; u114 sit
+4-8, bow 8-8.8, ta-da 9-10; u116 dance 2-10; u117 walk toward 3-8.
+'The Lesson' (`video/build_lesson.py`, out/the-lesson.mp4, 31.5 s with the end line) - the FIRST FILM WITH THE USER IN
+IT (u113-u117 keyed with video/bluekey.py). The user: "the mouth-open shot is ok, it's not actual talking. You make
+whatever you want. New film." Surrender to the Undertow 11.0-38.6 (its "We don't speak but we understand" at 23.0; The
+Lead used 45.9 on). A black stage with a haze cone and a floor pool; the user and the amber light. He stands (u115);
+the light drifts in and circles. The beat drops (15.0) and he dances (u116 2-10); the light watches, then COPIES HIM -
+its path is his hand, tracked from the key's matte every frame (the upper-body point furthest from his centre line,
+relative to his chest), replayed beside him with a lag 0.7 s -> 0 and a wobble 70 px -> 0 over 17.0-21.5, so it is late
+and clumsy and then exact. On "We don't speak but we understand" he stops (u116 10.5, then u117 idle) and it dances
+its own - a figure-eight on the beat with a short trail. He shrugs (u114 2-3.5). Cut to the waist-up open hand (u113
+7.9-9.4 at 0.375x): the light comes down and settles in his palm (palm at 44% across, 42.5% down that frame). Cut to
+the wink close-up (u116 12-15), lit amber from below by what he is holding. Full shots are scaled to a fixed height
+from the matte's bounding box so the cuts between clips match; u115 after 11 s zooms in and crops the feet - use u117
+0-2.5 for a full-body idle. He is lit dim from above plus the light's own warmth falling off with distance.
+'The Chair' (`video/build_chair.py`, out/the-chair.mp4, 23.4 s with the end line) - the second film with the user
+(u114 only, keyed). No Ground 50.0-69.5 (82.65 bpm): the band drops to near silence 56.5-61.5 and crashes back at 61.8.
+The dark stage from 'The Lesson'. He stands, the light beside him; he shrugs (why not) and sits down without looking,
+on nothing. The sit (u114 3.5-4.3, half a second) is stretched over the whole silence, 56.0-61.8, with adjacent frames
+blended so the slow motion is smooth. The light notices (a flicker, 59.4), races in (a whoosh), and draws a chair of
+light under him stroke by stroke - posts, a curved top rail, a slat, a seat with depth, four splayed legs, 13 strokes,
+a small glassy tick for each in the silence - finishing exactly as he lands, on the crash (a flare). He sits (it pulses
+on the beat). He stands and bows to the chair (u114 8.0-8.8); it melts back into the light, which dips a bow of its
+own; ta-da (u114 9-10) with a ring of sparks. Trust, in one gesture: sitting down on something you cannot see. CRAFT:
+one clip at ONE fixed scale (0.62, feet pinned) - never bbox-normalise a sitting figure or it grows when it sits; the
+chair is drawn in the clip's own pixel coords behind him, so his body occludes it for free; a door-frame outline does
+not read as a chair - it needs a curved rail, a slat, a seat with depth and splayed legs.
+'The Lesson' v2 (`video/build_lesson2.py`, out/the-lesson-2.mp4). The user sent three more clips and asked to redo the
+dancing one with them: two were byte-identical re-uploads of u117 and u115 (check md5 before cataloguing), one new -
+u118, a big joyful dance (1-7 s), a spin (6.5-7.5), arms out (7.5-8), jumps with both arms up (8.5-12.5), a walk-up
+waving both hands (13-15). The light now learns u118's dance from his tracked hand; when it dances its own he cheers
+(u118 9.5-11.9) and comes toward it waving (13.0-14.6); then the open hand and the wink as v1. Full shots are steadied
+by a rolling 1.5 s median of head-to-feet height (measured along his centre line, so raised arms do not shrink him) and
+floor line - per-frame pinning would have cancelled the jumps.
+THE USER on 'The Chair': "Love the chair one." - a keeper. One gesture (sitting down on nothing), one magic beat timed
+into a musical silence, and a small funny courtesy at the end (bowing to the chair). Short (23 s) and wordless.
