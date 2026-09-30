@@ -24235,3 +24235,19 @@ them in the null — the variant, or what came with it, won offspring. That is s
 **Written before, so it can be wrong:** CHANCE on every layer. #220 found amp buys no offspring, and every force that
 rewards the rare (both NFDs, RED_QUEEN) pays in amp — so even the program NFD, which does favour rare programs in amp,
 should not show up in births. If programs read FAVOURED, the program NFD is the first suspect, and #266 has its knockout.
+
+**#265b RESULTS — #265 stands.** Seeds 161-172, read at tick 20,000 (the horizon change above), paired with the same
+seeds under the engine before #263 (#259) and after #263 (#263b).
+
+| | extinct by 20k | starved (80-100 living) | sliding | median floor to 20k |
+|---|---|---|---|---|
+| before #263 | 1 | 1 | 1 | 310.5 |
+| after #263 | 1 | 0 | 1 | 314 |
+| **after #265 (probation 4,000)** | **0** | 0 | 1 | **330.5** |
+
+- Extinctions 1 -> 0, under the threshold in the harmful direction by construction. **Seed 169**, extinct at tick 15,200
+  under both earlier engines, is alive at 20,000 — at 22 living and falling, so "sliding", not rescued. The other
+  eleven hold 294-391. Seeds 163 and 165, the two #263b found sliding one kept step at a time, read 391 and 294 at
+  20,000 (266 and 240 before).
+- Weaker than registered, as said before the runs: a 20,000-tick guard would not have seen #263b's extinction at
+  32,800. One engine change, one horizon, twelve worlds.
