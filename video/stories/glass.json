@@ -1,0 +1,28 @@
+{
+ "title": "Glass",
+ "song": "out/songs/gravity-and-glass.mp3",
+ "part": [
+  133.0,
+  158.0
+ ],
+ "beats": {
+  "quiet": 138.5,
+  "go_on": 144.0,
+  "silence": [
+   145.0,
+   153.6
+  ],
+  "wipe": [
+   146.2,
+   151.8
+  ],
+  "turn": [
+   153.6,
+   157.4
+  ]
+ },
+ "world": [
+  "out/your-turn/world.mp4",
+  96.0
+ ]
+}

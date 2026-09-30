@@ -429,3 +429,15 @@ marks persist onto every later clip (0.38, 0.5 in the last chorus), so our pictu
 "Go on" the world itself fills the frame and the marks line up with where it lives ("every mark was one of them, where
 it was born"). Last chorus: clips screen-blended with the live world. LESSON: use the library before our own
 footage, and do not repeat a hero image two films running.
+'Glass' (`video/build_glass.py`; Gravity and Glass 133.0-158.0, 29 s with the end line). THE USER, after Your Turn
+v2: "we are back to doing too much... 3 minutes too long... less is more... a bit plain jane... be risky. You were at
+your best when you were telling a story" - and, when Claude started re-reading the drawn series: "you don't need to
+pick the same back up. Take what its essence was and rework it into the new." The essence: one wordless gesture
+carrying the meaning, a physical metaphor instead of an explanation, one turn. So: a bell jar on a dark table, fogged
+white by our breath - the fog grows with the singer's REAL voice (demucs vocal RMS per frame, saved in
+video/stories/gravity-and-glass-vocal-rms.json); 'It's quiet now' - it thins; 'Go on' - the song's eight seconds of
+true silence kept whole, no music, no caption; a fingertip on the INSIDE wipes a small window, low, at its own height,
+drips running; 'It was always your turn' - through it, the real living world (your-turn/world.mp4 from 96 s, cropped
+to where its life is: CROP 320,640,380,639, window aimed at the busiest spot during the wipe), and the camera goes
+through the glass into it. No numbers on screen. Aim reveals at where the recorded world is actually alive, or the
+window opens onto black and reads as a hole.
