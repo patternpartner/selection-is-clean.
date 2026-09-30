@@ -5,6 +5,9 @@ a beat ahead and he follows), u121 (they dance together, the light trailing spar
 quiet dip and the light dances its own; on the drop (61.975) the jumps are a duet; ta-da, the palm, the wink.
 Surrender to the Undertow 11.0-76.1. The user: "I liked your ending before. Let's keep that in" -
 so v3's ending stays whole: ta-da, the walk-up wave, the palm, the wink (the walk that goes is u117's, mid-film).
+Then on the first cut: "The walking part I'm referring to starts like 10 or 11 seconds in and goes to 17-18 seconds" -
+that was u115's side-steps (3.0-10.5), which read as walking. Cut. To keep the drop on the jumps the film now starts at
+15.04 (the vocal's entry): the light alone on the dark stage for 8 beats, then the spot comes up on him (SPOT).
 'The Lesson' v3 - the user on v2: "we can use a lot of the dancing ones together. It's still not there... you
 have not used them all... it stops at one point and does the same moves again. Can be longer." So: one routine cut on
 bar lines from EVERY dance stretch, each used exactly once - u116's facing dance, u115's side-steps, u118's big dance,
@@ -42,7 +45,7 @@ from bluekey import key  # noqa: E402
 
 F = imageio_ffmpeg.get_ffmpeg_exe()
 W, H, FPS = 704, 1280, 24
-S0, S1 = 11.0, 76.1
+S0, S1 = 15.04, 76.1
 DUR = S1 - S0
 BEAT, PHASE = 60 / 124.0, 0.04
 TEST = [float(x) for x in os.environ.get("TEST", "").split(",") if x]
@@ -50,9 +53,9 @@ PART = [float(x) for x in os.environ.get("PART", "").split(",") if x]
 AMBER = np.array([255, 176, 88], np.float32)
 CW, CH = 720, 1280
 # (song start, song end, clip, clip start, rate, shot)
-SEGS = [(11.0, 13.588, "u115", 0.0, 1.0, "full"),      # standing; the light arrives
-        (13.588, 21.330, "u116", 2.0, 1.0, "full"),    # the facing dance: it watches, then copies, clumsily
-        (21.330, 29.072, "u115", 3.0, 0.969, "full"),  # the side-steps: it is getting better
+SEGS = [(15.04, 18.911, "u115", 0.0, 0.0, "full"),     # the dark stage: the light arrives alone (he is unlit)
+        (18.911, 21.330, "u115", 0.0, 1.0, "full"),    # the spot comes up on him, standing
+        (21.330, 29.072, "u116", 2.0, 1.0, "full"),    # the facing dance: it watches, then copies, clumsily
         (29.072, 34.879, "u118", 1.0, 0.947, "full"),  # the big dance: exact
         (34.879, 35.847, "u118", 6.5, 1.0, "full"),    # the spin: it circles him
         (35.847, 46.008, "u120", 4.0, 1.004, "full"),  # it leads, he follows (his jump on 45.52)
@@ -63,9 +66,10 @@ SEGS = [(11.0, 13.588, "u115", 0.0, 1.0, "full"),      # standing; the light arr
         (66.814, 68.750, "u118", 13.0, 1.0, "full"),   # he comes toward it, waving (v3's ending, kept whole)
         (68.750, 72.621, "u113", 7.9, 0.375, "medium"),  # the open hand: it comes to rest in his palm
         (72.621, 76.1, "u116", 12.0, 0.85, "close")]   # the wink
-DANCE0, COPY0, SYNC, SPIN0, LEAD, TOGETHER, OWN, DUET, TADA, LAND0, LAND1 = (13.588, 15.5, 29.072, 34.879, 35.847, 46.008,
+DANCE0, COPY0, SYNC, SPIN0, LEAD, TOGETHER, OWN, DUET, TADA, LAND0, LAND1 = (21.330, 22.8, 29.072, 34.879, 35.847, 46.008,
                                                                          58.105, 61.975, 65.846, 69.35, 71.55)
 WALK = 66.814
+SPOT = 18.911
 OWN1 = TADA
 PALM = (0.44, 0.425)                                  # where the palm is in the medium shot (fractions of the frame)
 FEET_Y, HEIGHT, CX = 1110, 780, 250                   # full shots: where he stands and how tall
@@ -259,15 +263,17 @@ def main():
         ct = sg[3] + (s - sg[0]) * sg[4]
         frame = rd.at(sg[2], ct)
         person, al, chest = place(frame, sg[5], sg, ct)
+        spot = ramp(s, SPOT - 0.7, SPOT)                         # he is in the dark until the spot comes up
+        al = al * spot
         # ---- the stage: black, a haze cone from above, a pool of light on the floor (full shots)
         a = np.zeros((H, W, 3), np.float32) + np.array([4, 4, 7], np.float32)
         if sg[5] == "full":
             cone = np.clip(1 - np.abs(xs - CX) / (60 + (ys / H) * 330), 0, 1) ** 1.5 * 0.10
-            a += cone[..., None] * np.array([150, 140, 160], np.float32)
+            a += cone[..., None] * np.array([150, 140, 160], np.float32) * (0.3 + 0.7 * spot)
             pool = np.exp(-(((xs - CX - 60) / 300) ** 2 + ((ys - FEET_Y) / 50) ** 2))
-            a += pool[..., None] * np.array([70, 64, 70], np.float32)
+            a += pool[..., None] * np.array([70, 64, 70], np.float32) * spot
             shadow = np.exp(-(((xs - CX) / 90) ** 2 + ((ys - FEET_Y + 4) / 12) ** 2))
-            a *= 1 - 0.7 * shadow[..., None]
+            a *= 1 - 0.7 * spot * shadow[..., None]
         else:
             a += np.exp(-((xs - W / 2) ** 2 + (ys - H * 0.35) ** 2) / (2 * 420 ** 2))[..., None] * np.array([26, 22, 30], np.float32)
         # the light's position on screen in this shot
