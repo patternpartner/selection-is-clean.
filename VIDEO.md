@@ -484,3 +484,14 @@ the follower to do something the leader did not, so the choreography is procedur
 of the beat (groove, reach, step_right, mirror). First versions read as gingerbread aliens, then frog squats: heavier
 limbs, a short neck, knees under the body, loose swinging arms (not fists by the head) - check a MOVE SHEET of stills
 before any scene. The dark dancer needs a wash of light behind it and a strong rim or it vanishes.
+'Sync' (`video/build_sync.py`, times in `video/stories/sync-times.json`; Concrete Pressure 32.0-52.5, 24.5 s with the
+end line). The track's only words, pinned on the demucs vocal stem (whisper mishears them - "House", "chance",
+"sink" - but the onsets are clean): Echo 35.0, Pulse 36.7, Drift 38.8, Drift 40.7, Sync 42.7; the drop is 48.3.
+Two small lights on a dark wet concrete floor (a perspective plane; concrete grain sampled fine - 260/unit - or the
+near floor goes blocky; wet patches throw long reflections toward the camera), amber and teal, each flash lighting a
+pool of floor. The flashing is a real pair of COUPLED OSCILLATORS (Kuramoto; natural rates 1.12 and 0.92 Hz, coupling
+growing from 0.15 to 3.4 as they drift together): both change rate and meet between their own; they lock at 42.25,
+half a second before 'Sync'. After the lock the music couples in lightly so their flash sits on its beat. On the drop a
+third light, far off, starts to flash and falls into step with them; the camera pulls back and up. Tone-map (1-exp)
+so a shared flash blooms instead of clipping to a white blob. Stills are taken at FLASH PEAKS (found from the
+simulated phases) - a still between flashes shows an empty dark floor and tells you nothing.
