@@ -514,3 +514,16 @@ through the box, the stroke up and down on the beat. He pulls the halves apart w
 at the head as it looks at itself; ta-da: arms up, hat lifted off his head. He stands BESIDE the cut (RX = MID+112)
 and saws one-handed with a short blade, so the handle sits at chest height - behind the cut, or two-handed, or with
 a long blade, his arms and the saw covered his face. Arms are two-segment sleeves with the elbow solved outward.
+'The Escape Act' (`video/build_escape.py`, imports build_sawn's stage and ringmaster; Cathedral of the Storm 38.0-66.0,
+32 s with the end line). The user: "and for your next trick?" The show's second act. Cathedral of the Storm (never
+used before) at 38-66 s is shaped like an escape: full band 38-45, a hush 49.0-54.4, a slow build 54.5-59.4, a held
+breath 59.5-61.4, the hit 61.6. The star (the head from the box, now whole: bob hair, striped suit, red shoes) waves
+and hops into a trunk; the lid shuts; three chains go round on the beat (synthesized rattles); a padlock snaps
+(click); the ringmaster holds up the key and pockets it; a red cloth goes over. In the hush a light that is not the
+stage's leaks from under the hem (coloured by the real world), and the cloth twitches. On the build he takes a
+corner; on the breath he waits; he pulls - the hit: chains in a heap on the floor, padlock open, lid up. It got out.
+And it is still sitting in the trunk, holding the key out to him. His hat jumps; he pats his pocket - empty - takes
+the key, and tips his hat to it. The escape story everyone tells about AI, with the ending nobody puts on the poster:
+it gets out and stays. ARMS: cap every hand target at the arm's reach (two 120 px bones) or the IK draws poles;
+stand the ringmaster close enough to what he handles. Frame by where the floor lands (~80% down), not by the middle
+of the canvas, or half the frame is empty boards.
