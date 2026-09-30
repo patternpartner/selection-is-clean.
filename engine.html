@@ -1346,7 +1346,7 @@ const LIVENESS_DECLARED=[
   // world's reproductive pressure as a ratio, and on the seeded constants it runs at about 1:100.
   // Refused reading zero is a world that has made children free; paid reading zero is one that has
   // stopped having them. Both are reachable now that the four constants are laws.
-  'repl.birth','repl.prey','repl.gift','repl.scavenge','birth.paid','birth.refused','birth.rationed','birth.unprovisioned',   // RATION: refused by the fair lottery, before the pool is read
+  'repl.birth','repl.prey','repl.gift','repl.scavenge','repl.atomNew','repl.atomStep','birth.paid','birth.refused','birth.rationed','birth.unprovisioned',   // RATION: refused by the fair lottery, before the pool is read
   // #212: clusterGenomes was the one carry-forward store that never let go -- ~1,000 entries against
   // 6-11 live clusters, and a measured working set exactly one detection cycle deep. This fires when
   // an entry ages past the horizon. Reading zero on a long run means either the horizon never binds
@@ -10555,6 +10555,19 @@ if(REPL_ON){ WORLD_ENERGY_REGEN=0.6; BIRTH_ENERGY_COST=0.25; }
 const REPL_MATCH=REPL_ON&&(typeof globalThis!=='undefined')&&((globalThis.__REPL_MATCH|0)!==0);
 const REPL_KEYW=0.6, REPL_KEYSD=0.12, REPL_KEYFLOOR=0.3;   // #275: a generalist predator still takes 30%; a tuned one up to all of it (#274: at width 0.35 and no floor, predation never paid)
 const pKey=new Float32Array(CAP*4);
+// #276 - REPL_ATOMS (knob, needs REPL): A LINEAGE'S AUTHORED ATOMS VARY AT BIRTH. Atoms (evolved expressions a program
+// calls through op 22 and the bound slots) were only ever minted in the one germline genome (mutateGenome) and copied
+// unchanged into every child, so selection on calling them (#274: ops 22, 236-238 rose on 3 of 3 seeds) could only
+// sort atoms that already existed. Here a birth, with probability REPL_ATOM_P, steps one of the child's atoms by the
+// engine's own local move (uaLocalStep) or, a third of the time, authors a new one (uaGenExpression). The expression
+// space has no end short of its length cap, which makes this the one layer that can keep supplying new things.
+const REPL_ATOMS=REPL_ON&&(typeof globalThis!=='undefined')&&((globalThis.__REPL_ATOMS|0)!==0);
+const REPL_ATOM_P=0.05;
+function replAtomBirth(i){ const g=pGenome[i]; if(!g||Math.random()>=REPL_ATOM_P)return; if(!Array.isArray(g.userAtoms))g.userAtoms=[];
+  try{ const ua=g.userAtoms, _sv=genome; genome=g;
+    try{ if(!ua.length||Math.random()<1/3){ if(ua.length<MAX_USER_ATOMS){ const ex=uaGenExpression(); if(uaExprSafe(ex)){ ua.push({expression:ex,compiled:null,failed:false,uses:0,age:0,alienHits:0,alienAttempts:0,creditTrace:0}); fired('repl.atomNew'); } } }
+      else { const q=(Math.random()*ua.length)|0, a=ua[q]; if(a&&typeof a.expression==='string'){ const ex=uaLocalStep(a.expression); if(ex&&ex!==a.expression&&uaExprSafe(ex)){ ua[q]={expression:ex,compiled:null,failed:false,uses:0,age:0,alienHits:0,alienAttempts:0,creditTrace:0}; fired('repl.atomStep'); } } } }
+    finally{ genome=_sv; } }catch(e){} }
 function replKeyBirth(i,p){ for(let m=0;m<4;m++){ if(p>=0&&p<N&&p!==i){ const g=(Math.random()+Math.random()+Math.random()-1.5)*2*REPL_KEYSD; pKey[i*4+m]=Math.max(-TEND_HARD,Math.min(TEND_HARD,pKey[p*4+m]+g)); } else pKey[i*4+m]=Math.random()*2-1; } }
 function replMatch(i,j){ let d2=0; for(let m=0;m<4;m++){ const t=(m<DIMS)?tend[j*DIMS+m]:0, e=pKey[i*4+m]-t; d2+=e*e; } return REPL_KEYFLOOR+(1-REPL_KEYFLOOR)*Math.exp(-d2/(REPL_KEYW*REPL_KEYW)); }   // #273: cheap children, enough light for about 400 of them
 const SUN_ON=REPL_ON||((typeof globalThis!=='undefined')&&((globalThis.__SUN|0)!==0));
@@ -21355,6 +21368,7 @@ function addParticle(x,y,tv,born,parentA,parentB){
   }
   pGenome[i]=mutateChildGenome(_bg);}
   pProg[i]=pGenome[i].vmProgram;
+  if(REPL_ATOMS&&parentA>=0)replAtomBirth(i);   // #276
   return i;
 }
 function addCompound(x,y,nt,nvx,nvy,na,np,nf,parentA,parentB){
@@ -21455,6 +21469,7 @@ function addCompound(x,y,nt,nvx,nvy,na,np,nf,parentA,parentB){
   }
   pGenome[i]=mutateChildGenome(_bg);}
   pProg[i]=pGenome[i].vmProgram;
+  if(REPL_ATOMS&&parentA>=0)replAtomBirth(i);   // #276
   return i;
 }
 function computeVisuals(i){

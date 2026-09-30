@@ -24713,3 +24713,16 @@ Seeds 1-3, `REPL=1 REPL_MATCH=1 LAWMUT=0`, key width 0.35. The runs were stopped
   pays while keys are under selection to track prey.
 - The probe counts 4-D trait bins never occupied before, per sample: the artwork's own claim that novelty keeps
   arriving.
+
+**#274 CORRECTION — the "authored-behaviour layer becomes adaptive" line above is WRONG.** Checked with an atom census
+(`scratchpad/replprobe4.js`, seed 1, REPL + REPL_MATCH, 6,000 ticks): at most **1.5% of the living carry any atom**
+(1-4 distinct expressions), while programs carrying op 22 rose 1% -> 25% -> 44% -> **55%** and op 236 to 54%. Op 22
+calls `genome.userAtoms[k]`; for 98% of its carriers that bank is empty, and the call does nothing. **So its rise on
+three seeds is not selection on its effect.** It is a supply bias or linkage: some route puts these ops into programs
+far more often than the do-nothing range 240-415. Candidates, untraced: horizontal program transfer, motif injection,
+the germline's atom-call carry. **Repetition across seeds is not proof of selection when the mutation supply is
+biased.** Only the inert control is causal. As of now:
+- **ENERGY_DRAIN (155): causal, 3 of 3 seeds** (#273).
+- DETRITAL_HARVEST (146): plausible (it feeds the store), untested — inert control queued.
+- 22, 236-238: rise without effect, cause of the rise untraced.
+- 232-234 (mode ops): untested.
