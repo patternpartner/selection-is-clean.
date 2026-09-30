@@ -1346,7 +1346,7 @@ const LIVENESS_DECLARED=[
   // world's reproductive pressure as a ratio, and on the seeded constants it runs at about 1:100.
   // Refused reading zero is a world that has made children free; paid reading zero is one that has
   // stopped having them. Both are reachable now that the four constants are laws.
-  'birth.paid','birth.refused','birth.rationed','birth.unprovisioned',   // RATION: refused by the fair lottery, before the pool is read
+  'repl.birth','repl.prey','repl.gift','repl.scavenge','birth.paid','birth.refused','birth.rationed','birth.unprovisioned',   // RATION: refused by the fair lottery, before the pool is read
   // #212: clusterGenomes was the one carry-forward store that never let go -- ~1,000 entries against
   // 6-11 live clusters, and a measured working set exactly one detection cycle deep. This fires when
   // an entry ages past the horizon. Reading zero on a long run means either the horizon never binds
@@ -10531,7 +10531,21 @@ const pProvision=new Float32Array(CAP); // LEAP 3: banked reproductive surplus, 
 // either through 6,000 ticks, and a birth redraws an opcode about 0.4% of the time per instruction, 2 in 428 of those
 // landing here. So directed foraging is open to evolution and not handed to it; what this measures is the economy. worldEnergy becomes the ground's total and energyAdequacy the
 // population's paid share, for their readers. Off (unset or 0): nothing below is reached and the world is byte-identical.
-const SUN_ON=(typeof globalThis!=='undefined')&&((globalThis.__SUN|0)!==0);
+// #273 - REPL (knob REPL=1, default OFF; implies SUN). THE PROGRAM IS THE REPLICATOR. Until here a birth was made TO
+// particles: interferenceCreate (phase alignment between two particles, the main channel) made most of them, and a
+// program touched reproduction only through action channel 4 behind a 0.2% dice roll. #267 measured the consequence:
+// new program variants do not out-breed chance. Under REPL, physics makes no babies. A particle reproduces when ITS
+// program, run alone, drives action channel 4 above REPL_T and its own store (SUN's pE) can pay; the pairwise VM's
+// channel-4 births stay (also program-driven, also paid from the store). The germline starts with one ancestor
+// instruction that always asks to reproduce (the Avida move: seed a replicator, let everything else evolve). And the
+// energy ops act on the store that decides breeding: ENERGY_DRAIN (155) is predation, ENERGY_DONATE (156) gift,
+// DETRITAL_HARVEST (146) scavenging, SELF_RES_SENSE (181) and PARTNER_RES_SENSE (164) read stores. A death's store and
+// body go to the detrital layer instead of the ground, so the dead feed scavengers and nothing else; the old deposit of
+// amplitude into detritus is off, so no free currency becomes breeding energy.
+const REPL_ON=(typeof globalThis!=='undefined')&&((globalThis.__REPL|0)!==0);
+const REPL_T=0.5, REPL_ONSET=150, REPL_SCALE=0.02;   // #273: a replicator's life is short, so evolution gets generations: median life about 400 ticks at lifespanBias 1
+if(REPL_ON){ WORLD_ENERGY_REGEN=0.6; BIRTH_ENERGY_COST=0.25; }   // #273: cheap children, enough light for about 400 of them
+const SUN_ON=REPL_ON||((typeof globalThis!=='undefined')&&((globalThis.__SUN|0)!==0));
 const SUN_TAKE=0.2, SUN_ENDOW=0.5, SUN_SEED=0.5, SUN_STORE=4;
 const sunField=SUN_ON?new Float32Array(FIELD_W*FIELD_H).fill(WORLD_ENERGY_MAX/(FIELD_W*FIELD_H)):null;
 const sunScratch=SUN_ON?new Float32Array(FIELD_W*FIELD_H):null, sunCnt=SUN_ON?new Int32Array(FIELD_W*FIELD_H):null;
@@ -10554,8 +10568,10 @@ function sunStep(season){
     pE[i]=e; }
   energyAdequacy=dem>0?paid/dem:1;
   for(let c=0;c<C;c++)tot+=sunField[c]; worldEnergy=tot; }
+if(REPL_ON&&Array.isArray(genome.vmProgram))genome.vmProgram.unshift([4,2,4,1.0]);   // #273: the ancestor asks to reproduce (R2 starts at 1 in the solo VM)
 function deathReturn(i){   // a death returns energy: to the cell it died on under SUN (#272), else to the one pool
-  if(SUN_ON){ sunField[sunCell(i)]+=pE[i]+BIRTH_ENERGY_COST*DEATH_ENERGY_RETURN; pE[i]=0; }
+  if(REPL_ON){ const c=sunCell(i); detritalField[c]=Math.min(3,detritalField[c]+pE[i]+BIRTH_ENERGY_COST*DEATH_ENERGY_RETURN); pE[i]=0; }   // #273: the dead feed scavengers
+  else if(SUN_ON){ sunField[sunCell(i)]+=pE[i]+BIRTH_ENERGY_COST*DEATH_ENERGY_RETURN; pE[i]=0; }
   else worldEnergy=Math.min(WORLD_ENERGY_MAX,worldEnergy+BIRTH_ENERGY_COST*DEATH_ENERGY_RETURN); }
 const pMode=new Uint8Array(CAP);        // #57: current behavioural mode — a DISCRETE strategy, VM-settable
 const pModeBias=new Uint8Array(CAP);    // #57: inherited default — the strategy a lineage is born into
@@ -21636,7 +21652,7 @@ function applyEntropy(){
         addBits(px[i],py[i],2,pR[i],pG[i],pB[i],0.3);
         palive[i]=0;
         {const _drx=__cl(Math.floor(px[i]/(W/FIELD_W)),0,FIELD_W-1),_dry=__cl(Math.floor(py[i]/(H/FIELD_H)),0,FIELD_H-1);rootField[_dry*FIELD_W+_drx]=Math.min(5,rootField[_dry*FIELD_W+_drx]+0.18);} // death deposits into substrate — the organism's body becomes soil, deepening the root network where life was
-        {const _dtx=__cl(Math.floor(px[i]/(W/FIELD_W)),0,FIELD_W-1),_dty=__cl(Math.floor(py[i]/(H/FIELD_H)),0,FIELD_H-1);detritalField[_dty*FIELD_W+_dtx]=Math.min(3,detritalField[_dty*FIELD_W+_dtx]+Math.max(0,amp[i])*0.22+Math.max(0,localRes[i])*0.12);} // DETRITAL DEPOSIT: dead particle's biomass (amplitude + reserves) persists in place as a harvestable nutrient pool — decomposer lineages mining DETRITAL_HARVEST can build an entire metabolism on death; trophic cascade foundation
+        {const _dtx=__cl(Math.floor(px[i]/(W/FIELD_W)),0,FIELD_W-1),_dty=__cl(Math.floor(py[i]/(H/FIELD_H)),0,FIELD_H-1);if(!REPL_ON)detritalField[_dty*FIELD_W+_dtx]=Math.min(3,detritalField[_dty*FIELD_W+_dtx]+Math.max(0,amp[i])*0.22+Math.max(0,localRes[i])*0.12);} // DETRITAL DEPOSIT: dead particle's biomass (amplitude + reserves) persists in place as a harvestable nutrient pool — decomposer lineages mining DETRITAL_HARVEST can build an entire metabolism on death; trophic cascade foundation
         deathReturn(i); // death returns resource to the world
       }
       // LEAP 3 — SURPLUS CONVERTS. Above AMP_SOFT the excess is not discarded, it is banked (lossily)
@@ -21650,10 +21666,10 @@ function applyEntropy(){
       // LEAP 1 — SENESCENCE. Age kills, on a heritable set-point. Immortality at carrying capacity was
       // the freeze; this is what keeps the energy budget turning over so births can ever be paid for.
       let _haz=0;
-      if(page[i]>SENESCENCE_ONSET && !_ig){
+      if(page[i]>(REPL_ON?REPL_ONSET:SENESCENCE_ONSET) && !_ig){
         const _lb=(genome.lifespanBias!==undefined&&isFinite(genome.lifespanBias))?Math.max(0.15,genome.lifespanBias):1;
         const _sr=__cl(genome.somaRepair||0,0,SOMA_REPAIR_MAX);   // LEAP 23 (#56)
-        _haz=((page[i]-SENESCENCE_ONSET)/1000)*SENESCENCE_SCALE/_lb*(1-SOMA_HAZARD_RELIEF*(_sr/SOMA_REPAIR_MAX));
+        _haz=((page[i]-(REPL_ON?REPL_ONSET:SENESCENCE_ONSET))/1000)*(REPL_ON?REPL_SCALE:SENESCENCE_SCALE)/_lb*(1-SOMA_HAZARD_RELIEF*(_sr/SOMA_REPAIR_MAX));
       }
       // LEAP 33 (#58) — SURGE IS A TERMINAL BET. #57 gave SURGE 2.2x reproduction for 1.85x upkeep,
       // which at the amplitude this population actually sits at is close to a free lunch: upkeep is a
@@ -21675,7 +21691,7 @@ function applyEntropy(){
           addBits(px[i],py[i],2,pR[i],pG[i],pB[i],0.25);
           palive[i]=0;
           {const _sx=__cl(Math.floor(px[i]/(W/FIELD_W)),0,FIELD_W-1),_sy=__cl(Math.floor(py[i]/(H/FIELD_H)),0,FIELD_H-1);
-           detritalField[_sy*FIELD_W+_sx]=Math.min(3,detritalField[_sy*FIELD_W+_sx]+Math.max(0,amp[i])*0.25+pProvision[i]*0.15);}
+           if(!REPL_ON)detritalField[_sy*FIELD_W+_sx]=Math.min(3,detritalField[_sy*FIELD_W+_sx]+Math.max(0,amp[i])*0.25+pProvision[i]*0.15);}
           deathReturn(i);
         }
       }
@@ -24145,7 +24161,7 @@ case 128:vmRegs[di]=pType[i];break;                 // READ_OWN_CASTE — own ca
 function vmOps9(op,src,dst,k,si,di,i,j,ip){ switch(op){
 case 144:{if(pProg[i]&&localRes[i]>0.3&&pProg[i].length<Math.min(genome.vmMaxInstructions||16,48)){const _pgSrc144=Math.floor(Math.random()*pProg[i].length);const _pgNew144=[...pProg[i][_pgSrc144]];_pgNew144[3]+=(Math.random()-0.5)*0.1;_pgNew144[3]=Math.max(-2,Math.min(2,_pgNew144[3]));pProg[i].push(_pgNew144);localRes[i]-=0.08;vmRegs[di]=pProg[i].length;}else{vmRegs[di]=0;}}break; // PROG_GROW — self-extend program by duplicating a random existing instruction with small parameter drift. Costs localRes. Programs now grow during lifetime, not just at reproduction: acquired behavioral complexity, indefinitely extensible programs.
       case 145:{const _dtfx145=__cl(Math.floor(px[i]/(W/FIELD_W)),0,FIELD_W-1),_dtfy145=__cl(Math.floor(py[i]/(H/FIELD_H)),0,FIELD_H-1);vmRegs[di]=Math.min(3,detritalField[_dtfy145*FIELD_W+_dtfx145])*k;}break; // DETRITAL_SENSE — perceive local dead-matter density (0=no detritus, →3=rich death zone). Decomposer lineages sense where mortality concentrates. Enables evolved scavenger strategy: move toward death zones, feed on fallen biomass. Trophic cascade perception.
-      case 146:{const _dhx146=__cl(Math.floor(px[i]/(W/FIELD_W)),0,FIELD_W-1),_dhy146=__cl(Math.floor(py[i]/(H/FIELD_H)),0,FIELD_H-1),_dhi146=_dhy146*FIELD_W+_dhx146;const _dha146=Math.min(detritalField[_dhi146],Math.abs(k)*0.12);detritalField[_dhi146]-=_dha146;localRes[i]=Math.min(2,localRes[i]+_dha146);vmRegs[di]=_dha146;}break; // DETRITAL_HARVEST — extract biomass from local detrital pool into own reserves. Decomposer niche: specialized lineages mine death zones, recycling dead matter into metabolic energy. One lineage's mortality becomes another lineage's food source — trophic cascade, second energy pathway distinct from field harvest.
+      case 146:{const _dhx146=__cl(Math.floor(px[i]/(W/FIELD_W)),0,FIELD_W-1),_dhy146=__cl(Math.floor(py[i]/(H/FIELD_H)),0,FIELD_H-1),_dhi146=_dhy146*FIELD_W+_dhx146;const _dha146=Math.min(detritalField[_dhi146],Math.abs(k)*0.12);detritalField[_dhi146]-=_dha146;if(REPL_ON){pE[i]=Math.min(SUN_STORE,pE[i]+_dha146);if(_dha146>0)fired('repl.scavenge');}else localRes[i]=Math.min(2,localRes[i]+_dha146);vmRegs[di]=_dha146;}break; // DETRITAL_HARVEST — extract biomass from local detrital pool into own reserves. Decomposer niche: specialized lineages mine death zones, recycling dead matter into metabolic energy. One lineage's mortality becomes another lineage's food source — trophic cascade, second energy pathway distinct from field harvest.
       case 147:{const _gfx147=__cl(Math.floor(px[i]/(W/FIELD_W)),1,FIELD_W-2),_gfy147=__cl(Math.floor(py[i]/(H/FIELD_H)),1,FIELD_H-2);vmRegs[di]=SUN_ON?(sunField[_gfy147*FIELD_W+_gfx147+1]-sunField[_gfy147*FIELD_W+_gfx147-1])*0.5*k*SUN_GRAD():(field[_gfy147*FIELD_W+_gfx147+1]-field[_gfy147*FIELD_W+_gfx147-1])*0.5*k;}break; // FIELD_GRAD_X — resource field gradient in X (positive=more food right, negative=left). Enables chemotaxis: directed movement toward resource peaks rather than random-walk bias.
       case 148:{const _gfx148=__cl(Math.floor(px[i]/(W/FIELD_W)),1,FIELD_W-2),_gfy148=__cl(Math.floor(py[i]/(H/FIELD_H)),1,FIELD_H-2);vmRegs[di]=SUN_ON?(sunField[(_gfy148+1)*FIELD_W+_gfx148]-sunField[(_gfy148-1)*FIELD_W+_gfx148])*0.5*k*SUN_GRAD():(field[(_gfy148+1)*FIELD_W+_gfx148]-field[(_gfy148-1)*FIELD_W+_gfx148])*0.5*k;}break; // FIELD_GRAD_Y — resource field gradient in Y. Paired with FIELD_GRAD_X: evolved direct navigation toward resource peaks; predators can track prey by following consumption trails.
       case 149:{const _gdx149=__cl(Math.floor(px[i]/(W/FIELD_W)),1,FIELD_W-2),_gdy149=__cl(Math.floor(py[i]/(H/FIELD_H)),1,FIELD_H-2);vmRegs[di]=(detritalField[_gdy149*FIELD_W+_gdx149+1]-detritalField[_gdy149*FIELD_W+_gdx149-1])*0.5*k;}break; // DETRITAL_GRAD_X — detrital nutrient gradient in X. Decomposer chemotaxis: navigate toward death zones rather than stumbling upon them.
@@ -24162,11 +24178,13 @@ case 144:{if(pProg[i]&&localRes[i]>0.3&&pProg[i].length<Math.min(genome.vmMaxIns
         if(__vmMode===VM_SOLO){ // SOLO copy, kept as it was
         {vmRegs[di]=0;}break;
         }
+        if(REPL_ON){ if(vmRegs[si]>k&&pE[j]>0.05){const _d=Math.min(Math.abs(vmRegs[si])*0.1,pE[j]*0.2);pE[j]-=_d;pE[i]=Math.min(SUN_STORE,pE[i]+_d*0.8);vmRegs[di]=_d;fired('repl.prey');}else{vmRegs[di]=0;} break; }   // #273: predation on the store
         {if(vmRegs[si]>k&&localRes[j]>0.1){const _dr155=Math.min(Math.abs(vmRegs[si])*0.1,localRes[j]*0.2);localRes[j]-=_dr155;localRes[i]=Math.min(2,localRes[i]+_dr155*0.8);vmRegs[di]=_dr155;}else{vmRegs[di]=0;}}break; // ENERGY_DRAIN — steal energy from interaction partner (predation). Capped at 20% of partner's reserves per interaction; 20% metabolic tax on transfer. Creates genuine Lotka-Volterra predator-prey dynamics: prey evolve evasion/defence; predators evolve efficient drain timing. Third trophic level in the food web.
       case 156:
         if(__vmMode===VM_SOLO){ // SOLO copy, kept as it was
         {vmRegs[di]=0;}break;
         }
+        if(REPL_ON){ if(vmRegs[si]>k&&pE[i]>0.2){const _g=Math.min(Math.abs(vmRegs[si])*0.08,pE[i]*0.15);pE[i]-=_g;pE[j]=Math.min(SUN_STORE,pE[j]+_g);vmRegs[di]=_g;fired('repl.gift');}else{vmRegs[di]=0;} break; }   // #273: a gift from the store
         {if(vmRegs[si]>k&&localRes[i]>0.2){const _gf156=Math.min(Math.abs(vmRegs[si])*0.08,localRes[i]*0.15);localRes[i]-=_gf156;localRes[j]=Math.min(2,localRes[j]+_gf156);vmRegs[di]=_gf156;}else{vmRegs[di]=0;}}break; // ENERGY_DONATE — gift energy to interaction partner (mutualism/cooperation). Capped at 15% of own reserves. Closes the ecological interaction spectrum from pure predation (op155) through neutrality to pure mutualism. Kin-selection and reciprocal altruism become evolvable without hard-coding: a lineage that donates to kin (same caste/territory) while draining non-kin evolves inclusive-fitness optima on its own.
       case 157:{const _sfx157=__cl(Math.floor(px[i]/(W/FIELD_W)),0,FIELD_W-1),_sfy157=__cl(Math.floor(py[i]/(H/FIELD_H)),0,FIELD_H-1);signalField[_sfy157*FIELD_W+_sfx157]=Math.min(3,signalField[_sfy157*FIELD_W+_sfx157]+Math.abs(vmRegs[si]*k));vmRegs[di]=signalField[_sfy157*FIELD_W+_sfx157];}break; // SIGNAL_EMIT — add to the volatile pheromone layer at own position (decays ~5t half-life). Enables alarm cascades (predator-fleeing particles emit signal → bystanders detect and preemptively flee), trail marking (foragers mark rich patches → others follow), and territory broadcasting. First purely communicative opcode: no resource or force effect, only information.
       case 158:{const _sfx158=__cl(Math.floor(px[i]/(W/FIELD_W)),0,FIELD_W-1),_sfy158=__cl(Math.floor(py[i]/(H/FIELD_H)),0,FIELD_H-1);vmRegs[di]=Math.min(3,signalField[_sfy158*FIELD_W+_sfx158])*k;}break; // SIGNAL_SENSE — read local pheromone signal. Paired with SIGNAL_EMIT: evolved lineages can author communication protocols — the signal meaning is not pre-assigned; whatever coding convention is evolutionarily stable becomes the de-facto language of the population.
@@ -24183,7 +24201,7 @@ case 160:{const _sgx160=__cl(Math.floor(px[i]/(W/FIELD_W)),1,FIELD_W-2),_sgy160=
         if(__vmMode===VM_SOLO){ // SOLO copy, kept as it was
         {vmRegs[di]=0;}break;
         }
-        {vmRegs[di]=Math.min(2,localRes[j])*k;}break; // PARTNER_RES_SENSE — perceive the interaction partner's resource level (0=depleted, →2=rich). Enables optimal foraging decisions: predators (op155) target rich prey; mutualists (op156) preferentially aid resource-poor kin; defectors exploit resource-rich partners who can afford the loss. Creates frequency-dependent fitness dynamics: rich particles become preferred targets, driving cycling between resource-accumulation and depletion strategies.
+        {vmRegs[di]=Math.min(2,REPL_ON?pE[j]:localRes[j])*k;}break; // PARTNER_RES_SENSE — perceive the interaction partner's resource level (0=depleted, →2=rich). Enables optimal foraging decisions: predators (op155) target rich prey; mutualists (op156) preferentially aid resource-poor kin; defectors exploit resource-rich partners who can afford the loss. Creates frequency-dependent fitness dynamics: rich particles become preferred targets, driving cycling between resource-accumulation and depletion strategies.
       case 165:{if(vmRegs[si]>k&&localRes[i]>0.3&&amp[i]>0.2){const _ax165=__cl(Math.floor(px[i]/(W/FIELD_W)),0,FIELD_W-1),_ay165=__cl(Math.floor(py[i]/(H/FIELD_H)),0,FIELD_H-1),_ai165=_ay165*FIELD_W+_ax165;detritalField[_ai165]=Math.min(3,detritalField[_ai165]+localRes[i]*0.5);rootField[_ai165]=Math.min(5,rootField[_ai165]+0.3);signalField[_ai165]=Math.min(3,signalField[_ai165]+1.0);vmRegs[di]=localRes[i];amp[i]=-1;}else{vmRegs[di]=0;}}break; // APOPTOSIS — voluntary self-termination: if vmRegs[si]>k and particle has localRes>0.3 and amp>0.2, die immediately and deposit 0.5×localRes into detrital, 0.3 into root network, 1.0 signal pulse. Programmed self-sacrifice enables collective fitness: stressed members enrich the local niche for kin. With CLUSTER_POOL+KIN_SENSE, lineages evolve age-structured sacrifice — old particles die to make room when field depletes, young survive.
       case 166:
         if(__vmMode===VM_SOLO){ // SOLO copy, kept as it was
@@ -24236,7 +24254,7 @@ case 176:{const _hdx176=px[i]-pHomeX[i],_hdy176=py[i]-pHomeY[i];vmRegs[di]=Math.
         }
         {if(vmRegs[si]>k&&pProg[i]&&pProg[j]&&pProg[i].length>0&&(!__SPEC.gate||pLin[i]===pLin[j])){const _cap179=Math.min(genome.vmMaxInstructions||16,48); /* #17: HGT donation gated to within-lineage when isolating */if(pProg[j].length<_cap179){const _si179=Math.abs(Math.floor(vmRegs[si]*3))%pProg[i].length;const _ins179=pProg[i][_si179];if(_ins179){const _di179=Math.floor(Math.random()*(pProg[j].length+1));pProg[j].splice(_di179,0,[_ins179[0],_ins179[1],_ins179[2],+_ins179[3]]);vmRegs[di]=1;}else{vmRegs[di]=0;}}else{vmRegs[di]=0;}}else{vmRegs[di]=0;}}break; // HGT_DONATE — insert one of own instructions into partner's genome at a random position (horizontal gene transfer, donor direction). Complement to RECOMBINE (op152) which takes from partner. Donors pay no resource cost; evolved selection pressure determines whether donation spreads. Creates viral gene dynamics: a beneficial instruction in one lineage can propagate laterally into others without requiring shared ancestry. Enables: evolved mutualism where donors gain indirect benefit (partners become more valuable); evolved parasitism where donors inject disruptive instructions; genetic missionaries that spread successful strategies across the population.
       case 180:{vmRegs[di]=collapse[i]*k;}break; // COLLAPSE_SENSE — read own collapse value (0..2+), a measure of accumulated stress, resonant damage, and ghost-field loading. High collapse indicates a particle under heavy structural stress. Enables stress-conditional strategies: trigger APOPTOSIS (op165) when collapse exceeds threshold (damaged particles sacrifice themselves before they are destroyed passively); reduce resource investment during high-stress periods; signal health status to cluster-mates via BROADCAST_WRITE (op11). The collapse variable already drives amp boosts and visual smear; this opcode makes it VM-readable for the first time.
-      case 181:{vmRegs[di]=localRes[i]*k;}break; // SELF_RES_SENSE — read own reserve resource level directly (0..2). Unlike ENERGY_STRESS_SENSE (op131) which returns a population-normalised stress scalar derived from energyAdequacy, this gives the actual per-particle localRes value. Enables: resource-conditional strategies without computing indirectly from stress signals; gate ROOT_WRITE (op162) and ENERGY_DONATE (op156) on having surplus (localRes>1); detect approaching depletion (localRes<0.3) and switch to scavenging (DETRITAL_HARVEST op146); compare own resource to partner's via subtraction (op164 PARTNER_RES_SENSE − op181 = differential wealth signal).
+      case 181:{vmRegs[di]=(REPL_ON?pE[i]:localRes[i])*k;}break; // SELF_RES_SENSE — read own reserve resource level directly (0..2). Unlike ENERGY_STRESS_SENSE (op131) which returns a population-normalised stress scalar derived from energyAdequacy, this gives the actual per-particle localRes value. Enables: resource-conditional strategies without computing indirectly from stress signals; gate ROOT_WRITE (op162) and ENERGY_DONATE (op156) on having surplus (localRes>1); detect approaching depletion (localRes<0.3) and switch to scavenging (DETRITAL_HARVEST op146); compare own resource to partner's via subtraction (op164 PARTNER_RES_SENSE − op181 = differential wealth signal).
       case 182:{vmRegs[di]=Math.max(0,amp[i])*k;}break; // SELF_AMP_SENSE — read own amplitude (structural energy / vitality) directly. Complement to op37 PARTNER_AMP but without genome.selfAmpInfluence gating. Enables: amplitude-conditional reproduction gating; trigger APOPTOSIS (op165) when amp falls below survival threshold before passively dying; modulate resource-harvesting aggression by own vitality; broadcast own health status (BROADCAST_WRITE(SELF_AMP_SENSE)) so cluster-mates can detect and respond to distress.
       case 183:
         if(__vmMode===VM_SOLO){ // SOLO copy, kept as it was
@@ -25172,6 +25190,7 @@ function entrain(i,j,sim,d){
 }
 
 function interferenceCreate(i,j){
+  if(REPL_ON)return false;   // #273: under REPL only programs reproduce
   const dp=phase[i]-phase[j];
   const interference=Math.cos(dp);
   const sim=tendSim(i,j);
@@ -25470,6 +25489,9 @@ function executeSoloVM(){
     vy[i]+=vmActions[1]*soloInfluence*0.5;
     if(DIMS>4){ tend[i*DIMS+4]+=vmActions[7]*soloInfluence*0.01; { const _v4=tend[i*DIMS+4]; tend[i*DIMS+4]=Number.isFinite(_v4)?Math.max(-1,Math.min(1,_v4)):0; } }
     mutPressureAccum+=vmActions[6]*soloInfluence*0.00005;
+    if(REPL_ON&&vmActions[4]>REPL_T&&pE[i]>=BIRTH_ENERGY_COST){   // #273: the program asked, the store pays (in addParticle's gate)
+      const _nt=new Float32Array(DIMS); for(let _d=0;_d<DIMS;_d++)_nt[_d]=tend[i*DIMS+_d];
+      if(addParticle(px[i]+(Math.random()-0.5)*12,py[i]+(Math.random()-0.5)*12,_nt,true,i,-1)>=0){ birthsThisTick++; fired('repl.birth'); } }
     applyUserEffects(i,-1,soloInfluence); // #132: authored verbs, solo path. j=-1, so CONSERVED mode
                                           // has no partner to trade with and falls back to LOCAL —
                                           // the same honesty op227/op231 already use in solo context.

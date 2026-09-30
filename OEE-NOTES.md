@@ -24626,3 +24626,44 @@ ceiling.
 - it doubles the population;
 - it removes every reproductive differential large enough to establish a lineage (established 0 of about 1,850 on
   3 of 3 seeds).
+
+### #273 — REPL: THE PROGRAM IS THE REPLICATOR. First look: a predator strategy arises by mutation and spreads by selection.
+
+**Why, and why now.** #267, #271 and #272 converge on one fact. In this engine the evolving thing (the program) is not
+what reproduces:
+- births were made TO particles, mostly by `interferenceCreate` (two particles' phases lining up);
+- the program reached reproduction only through action channel 4 behind a 0.2% dice roll;
+- #267: new program variants do not out-breed chance;
+- #272: once memory position was removed, nobody out-bred anybody.
+The systems that have shown sustained novelty (Tierra, Avida) all have the property this lacked: **a program that is
+better at getting itself copied leaves more copies**, and programs are each other's environment.
+**The change** (knob `REPL=1`, default off; implies SUN's individual-store economy; KNOBS entry added):
+- Physics makes no babies (`interferenceCreate` returns before any birth).
+- A particle reproduces when its OWN program, run alone, drives action channel 4 above 0.5 and its store can pay. The
+  pairwise VM's channel-4 births stay; they are also program-driven, also paid from the store.
+- The germline starts with one ancestor instruction, `[4,2,4,1]`: "always ask to reproduce". Everything else is left to
+  evolution.
+- The energy ops act on the store that decides breeding: 155 predation, 156 gift, 146 scavenging, 181/164 reading
+  stores.
+- A death's store and body go to the detrital layer, so the dead feed scavengers. The old amplitude-to-detritus deposit
+  is off under REPL, so no free currency becomes breeding energy.
+- **A replicator's life is short, so evolution gets generations.** Senescence starts at 150 with scale 0.02 (median
+  life about 400, still scaled by the heritable `lifespanBias`), births cost 0.25, and the income is 0.6/tick. The
+  default world's median life is about 3,800 ticks; at that pace a 20,000-tick run holds about five generations.
+- Runs use `LAWMUT=0` so the physics holds still while the organisms evolve.
+**Checked:** unset, harness-oee output identical to the committed engine in every trajectory field (seed 1, 1,000
+ticks). The only difference is the never-fired list, which now names the four new liveness counters. substrate-test
+TICKS=40: 264/0.
+**First look (seed 1, 6,000 ticks, draw-free probe `scratchpad/replprobe.js`; one seed, a look, not a verdict):**
+- **The world lives:** 450-800 alive, 600-1,250 births per 500 ticks, mean age about 230, so about 17 generations in
+  6,000 ticks.
+- **Every birth is a program's decision:** births paid = solo program births, to the particle.
+- **Predation arose by mutation and spread.** Programs carrying ENERGY_DRAIN (op 155), which no starting program had,
+  ran 0% -> 1% (tick 4,000) -> 3% -> 7% -> 17% -> **27%** (tick 6,000). Predation events per 500 ticks rose
+  0 -> 147 -> 1,429 -> 4,342 -> 15,898 -> 35,281. A rise from 1% to 27% in about six generations, in a population of
+  about 600, is far faster than drift. **This is the first behaviour in this file seen to arise by mutation and spread
+  by differential reproduction.** One seed, and no neutral control yet.
+- Scavenging has not arisen: op 146 is carried by nobody. Detritus sits at 40-76, an open niche.
+- Gradient sensing has not arisen (op 147 briefly at 1%).
+**Next:** longer runs on more seeds, watching for the response — prey defence, predator-prey cycles, a scavenger — and
+a neutral control for the op-frequency rises.
