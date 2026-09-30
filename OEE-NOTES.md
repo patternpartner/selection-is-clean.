@@ -24285,3 +24285,25 @@ selected AGAINST.** Seeds 231-233, 20,000 ticks, late window 10,000-18,000, 845-
   in births, new programs lose. Consistent with #220: amp does not buy offspring.
 - **The answer to the user's question, at this rung and horizon:** the universe selects, and on programs it selects
   against the new. Open-ended evolution needs the other sign somewhere, and no layer shows it at 20,000 ticks.
+
+**#266 RESULTS — NEITHER -> KEEP. The program NFD stays, not proven.** Seeds 211-213, 20,000 ticks, all counted.
+
+| seed | nulls: centred eR / spread / est. / program bits / program signatures | gnfd0 (knockout) |
+|---|---|---|
+| 211 | 0.24-0.88 / 0.169-0.409 / .0034-.0060 / 3.76-5.31 / 55-86 | 0.29 / 0.251 / ***.0009*** / 5.78 / 125 |
+| 212 | 0.13-0.61 / 0.172-0.324 / .0026-.0053 / 4.19-4.72 / 48-64 | 0.28 / 0.228 / .0057 / 4.40 / 67 |
+| 213 | 0.15-0.30 / 0.183-0.240 / .0026-.0065 / 4.03-4.63 / 51-67 | 0.22 / 0.192 / .0039 / 4.70 / 71 |
+
+- Knockout WORSE on 1 of 3 (establishment, seed 211), BETTER on none -> by the template, KEEP: it changes the world and
+  does no measured harm. Not "proven": the load-bearing clause needed two seeds.
+- **My written guess was wrong:** I expected the knockout to LOWER program diversity (the seed-1 hint at 1,000 ticks:
+  1.87 against 2.34 bits). At 20,000 ticks it is inside the band on two seeds and ABOVE it on the third (125 program
+  signatures against 55-86; 5.78 bits against 3.76-5.31, just under the 10% margin). A mechanism that pays rare programs
+  is not what keeps programs diverse at this horizon.
+- **Read with #267 and #219/#220, this is the thread that matters.** The program NFD varies (a quarter of the living are
+  paid) — and it pays in amp. #220 measured that amp does not decide who breeds (91-96% sit at the soft line, the pool
+  is dry 94-99% of ticks, and the few paid births go to whoever the loop reaches first); #267 measured that new program
+  variants, far from being favoured, lose in births. Both NFDs, RED_QUEEN, and most of the 76 amp sites reward in a
+  currency that does not reach offspring. **Selection has almost nothing heritable to grip at the one place it acts.**
+  That, not the absence of another reward, is the likeliest reason nothing new wins offspring here. Next: re-measure
+  #220 on today's engine (#257c-#265 changed births, laws and the pool) before designing anything on it.
