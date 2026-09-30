@@ -495,3 +495,14 @@ half a second before 'Sync'. After the lock the music couples in lightly so thei
 third light, far off, starts to flash and falls into step with them; the camera pulls back and up. Tone-map (1-exp)
 so a shared flash blooms instead of clipping to a white blob. Stills are taken at FLASH PEAKS (found from the
 simulated phases) - a still between flashes shows an empty dark floor and tells you nothing.
+'Sawn in Half' (`video/build_sawn.py`; The Iron Ballroom 43.0-66.0, 26.8 s with the end line). The user: "let's go
+fully weird now. Short film. Magic." The oldest trick done to the question everyone asks about AI - what is inside?
+The Iron Ballroom's loudness at 42-68 s is shaped like a trick: full to 45.5, NEAR SILENCE 45.6-55.9, a build
+56.0-59.6, a hush 59.7-62.9, full from 63.0 - so: the show (feet wiggling on the beat); in the silence a saw floats
+in by itself and cuts, the only sound its own synthesized rasp on the beat (band-passed noise with a toothed
+envelope, out/sawn-fx.wav); the feet wiggle once (alive); the halves slide apart on the build - no body inside, the
+real universe (your-turn world, CROP from Glass) and its light; in the hush the camera leans in between the head and
+the gap and the head opens its eyes and turns to look into itself; on the full band the universe bursts out as
+confetti (each piece coloured by the world pixel it came from). STAGE WIDER THAN THE FRAME (960x1745) framed by a
+camera - drawn at 704 wide the open halves pushed the head and feet off screen - and aim a push-in at the midpoint of
+the two things that matter (the head AND the gap), or it frames one and cuts the other.
