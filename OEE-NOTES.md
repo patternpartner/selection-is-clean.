@@ -24206,3 +24206,48 @@ against 2.34 bits at tick 1,000) and inside the band on the trait measures -> KE
   #263b's runs and 161/162 from their per-1,000-tick series at 20,000 (extinctions by 20,000, living at 20,000, floor
   from the 1,000-tick samples). Same threshold: withdrawn if extinctions rise by 4 or more. **Weaker, said plainly:**
   #263b's one new extinction (seed 167) came at 32,800, so a 20,000-tick guard would not have seen it.
+
+### #267 — THE TOP RUNG, MEASURED WHERE SELECTION ACTS: do carriers of new variants have more offspring than chance gives them? Pre-registered.
+
+**Why now.** Every novelty result in this file sits below the top rung of CLAUDE.md's ladder (DECLARED -> CARRIED ->
+EXECUTED -> READING -> VARYING -> SELECTED). #256-#258 counted arrivals and persistence against nulls; #264 asked
+turnover; none asked the question selection itself answers — **who has offspring.** The user asked whether this work
+has demonstrably moved the universe toward open-ended evolution; the honest answer so far is "healthier raw material,
+no evidence of selection on novelty". This measures the missing rung directly.
+**The measure** (`harness-sweep.js`, new `selection` block; every older field byte-identical to the committed rig,
+seed 2, 2,000 ticks): for each token layer, the real world and each of the K=8 TREE shadows (#256b — same genealogy,
+same events with their real results, recipients left to chance). A label is NEW for NOVW=1,000 ticks after it first
+appears anywhere in that track. Over the late window: exposure = particle-ticks carrying a new label; births =
+parented births whose first parent carried a new label at the moment of birth. **INDEX = (new-label births / new-label
+exposure) / (all births / all exposure).** The shadows share the age structure (a new label arrives at a birth or a
+life event, in the real world and in the null alike), so the comparison controls for "new carriers are young".
+Real INDEX above every shadow = the particles that REALLY got the new variants out-bred the random particles that got
+them in the null — the variant, or what came with it, won offspring. That is selection on novelty.
+**First seen (seed 2):** births are bursty — 4 to 97 per 500 ticks, ~50 on average once the world settles — so a
+2,000-tick window can hold 4; the deciding runs use the full horizon (late window 10,000-18,000, ~800 births).
+**Deciding run:** unseen seeds 231-233, 20,000 ticks, K 8, NOVW 1,000, default engine.
+**Rule, fixed now:**
+- **Calibration first.** The two neutral markers (marker05, marker50) must read CHANCE in at least 5 of their 6
+  seed-readings. If they do not, the method is not trusted and nothing is claimed from any layer.
+- A layer shows **NOVELTY FAVOURED** if its real index is above all 8 shadows on at least 2 of 3 seeds (a false call is
+  about 1 in 9 per seed, ~3% for 2 of 3); **DISFAVOURED** the same way below; otherwise CHANCE.
+- Claimed only at the rung and horizon measured: "on layer X, new variants out-breed chance at 20,000 ticks".
+**Written before, so it can be wrong:** CHANCE on every layer. #220 found amp buys no offspring, and every force that
+rewards the rare (both NFDs, RED_QUEEN) pays in amp — so even the program NFD, which does favour rare programs in amp,
+should not show up in births. If programs read FAVOURED, the program NFD is the first suspect, and #266 has its knockout.
+
+**#265b RESULTS — #265 stands.** Seeds 161-172, read at tick 20,000 (the horizon change above), paired with the same
+seeds under the engine before #263 (#259) and after #263 (#263b).
+
+| | extinct by 20k | starved (80-100 living) | sliding | median floor to 20k |
+|---|---|---|---|---|
+| before #263 | 1 | 1 | 1 | 310.5 |
+| after #263 | 1 | 0 | 1 | 314 |
+| **after #265 (probation 4,000)** | **0** | 0 | 1 | **330.5** |
+
+- Extinctions 1 -> 0, under the threshold in the harmful direction by construction. **Seed 169**, extinct at tick 15,200
+  under both earlier engines, is alive at 20,000 — at 22 living and falling, so "sliding", not rescued. The other
+  eleven hold 294-391. Seeds 163 and 165, the two #263b found sliding one kept step at a time, read 391 and 294 at
+  20,000 (266 and 240 before).
+- Weaker than registered, as said before the runs: a 20,000-tick guard would not have seen #263b's extinction at
+  32,800. One engine change, one horizon, twelve worlds.

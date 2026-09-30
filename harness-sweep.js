@@ -83,7 +83,8 @@ let tree=null;   // the TREE null (#256b) - created after the warm-up; births be
 // reproductive skew alone produces - the MIXED null's bias, measured on the same run. Two rates, because the layers
 // differ: atoms and channels change at a few percent of births, programs at most of them. MARKER=0 leaves them out.
 const MARKER_U=(E.MARKER_U||'0.05,0.5').split(',').map(Number); let mks=[];
-const takeBirths=SW.wrapBirths((i,pa,pb)=>{ for(const mk of mks)mk.lab[i]=(pa>=0&&mk.rng()>=mk.u)?mk.lab[pa]:mk.next++; if(tree)tree.onBirth(i,pa,pb); }); let errs=0;
+let SEL=null, curTick=0, inLate=false;   // #267, set up after the layers (see SELECTION below)
+const takeBirths=SW.wrapBirths((i,pa,pb)=>{ for(const mk of mks)mk.lab[i]=(pa>=0&&mk.rng()>=mk.u)?mk.lab[pa]:mk.next++; if(SEL&&inLate&&pa>=0)SEL.birth(pa); if(tree)tree.onBirth(i,pa,pb); }); let errs=0;
 SW.onCompact(ni=>{ for(const mk of mks)NS.compactArray(mk.lab,ni,1); if(tree)tree.onCompact(ni); });   // per-slot state moves with its particle
 for(let s=0;s<WARM;s++) if(!SW.step())errs++;
 takeBirths();
@@ -96,6 +97,26 @@ if(E.MARKER!=='0') MARKER_U.forEach((u,j)=>{ const mk={name:MNAME(u),u,lab:new I
   for(const i of cur.idx)mk.lab[i]=0; mks.push(mk); tree.addLayer(mk.name); });
 const toksOf=(c,name)=>{ const mk=mks.find(x=>x.name===name); return mk?c.idx.map(i=>'m'+mk.lab[i]):c.layers[name]; };
 const L={}; for(const name of LAY){ L[name]=labelLayer(name,toksOf(cur,name),K,SEED*104729,M,undefined,tree,cur.idx); L[name].introLate=0; }
+// #267 — SELECTION ON NOVELTY, read at the only place selection acts: who has offspring. For each token layer, track
+// 0 is the real world and tracks 1..K the TREE shadows (same genealogy, same events, recipients left to chance). A
+// label is NEW while fewer than NOVW ticks have passed since it first appeared anywhere in that track. Over the late
+// window: exposure = particle-ticks spent carrying a new label (sampled every EVERY ticks); births = parented births
+// whose first parent carried a new label at the moment of birth. INDEX = (new births / new exposure) / (all births /
+// all exposure) - above 1, carriers of new variants out-breed the average. Real above every shadow = the particles that
+// really got the new variants out-bred the random ones that got them in the null: novelty favoured by selection. The
+// neutral markers are the calibration and should read CHANCE. Reads labels only; draws nothing.
+const NOVW=+(E.NOVW||1000);
+SEL={L:{}, birth:function(pa){ for(const name of LAY){ const S=SEL.L[name], r=tree.real[name][pa]; if(r<0)continue;
+      S.birthsAll++; for(let t=0;t<=K;t++){ const lab=t===0?r:tree.lab[name][t-1][pa]; if(lab<0)continue; const f=S.first[t].get(lab);
+        if(f!==undefined&&curTick-f<NOVW)S.birthsNew[t]++; } } }};
+for(const name of LAY){ const S={first:Array.from({length:K+1},()=>new Map()),expNew:new Float64Array(K+1),birthsNew:new Float64Array(K+1),expAll:0,birthsAll:0};
+  for(const i of cur.idx){ const r=tree.real[name][i]; if(r>=0)for(const f of S.first)f.set(r,-1e9); }   // the starting labels are old
+  SEL.L[name]=S; }
+SEL.step=function(s,idx){ for(const name of LAY){ const S=SEL.L[name];
+    for(const i of idx){ const r=tree.real[name][i]; if(r<0)continue;
+      for(let t=0;t<=K;t++){ const lab=t===0?r:tree.lab[name][t-1][i]; if(lab<0)continue; let f=S.first[t].get(lab); if(f===undefined){ f=s; S.first[t].set(lab,s); }
+        if(inLate&&s-f<NOVW)S.expNew[t]+=EVERY; }
+      if(inLate)S.expAll+=EVERY; } } };
 // trait layer: #247's continuous shadow
 const TR={real:tracker(),sh:Array.from({length:K},(_,k)=>({rng:mulberry(0x9E3779B9^(k*7919+SEED*104729)),pop:cur.tr.map(t=>t.slice()),tr:tracker()}))};
 const cellCounts=tr=>countOf(tr.map(cellOf));
@@ -109,6 +130,7 @@ germSample(0);
 const lateFrom=Math.floor(T/2), lateTo=T-P;
 let spreadSum=0, spreadN=0, aliveMin=Infinity, extinctions=0, wasDead=false;
 for(let s=1;s<=T;s++){
+  curTick=s; inLate=s>=lateFrom&&s<lateTo;   // #267
   if(!SW.step())errs++;
   if(s%EVERY!==0)continue;
   cur=SW.read(); const nowN=cur.tr.length, B=takeBirths(), D=Math.max(0,prevN+B-nowN); prevN=nowN;
@@ -117,6 +139,7 @@ for(let s=1;s<=T;s++){
   for(const sh of TR.sh) traitStep(sh.pop,D,B,sd,H,sh.rng,3);
   const smp=s%SAMPLE===0;
   for(const name of LAY){ const n=L[name].step(toksOf(cur,name),D,B,smp,s,cur.idx,tree.born); if(s>=lateFrom&&s<lateTo)L[name].introLate+=n; }
+  SEL.step(s,cur.idx);   // #267: after the layers have written this step's real and shadow labels
   tree.syncTraits(cur.idx,cur.tr,false); tree.born.length=0; tree.sd=sd; tree.H=H;
   if(smp&&s>=lateFrom&&s<lateTo){ const t=cur.tr; let sum=0,k=0; for(let a=0;a<t.length;a+=3) for(let b=a+1;b<t.length;b+=7){ sum+=Math.hypot(t[a][0]-t[b][0],t[a][1]-t[b][1],t[a][2]-t[b][2]); k++; } if(k){ spreadSum+=sum/k; spreadN++; } }   // #258: grid-free, draw-free
   if(smp){ record(TR.real,s,cellCounts(cur.tr),M); for(const sh of TR.sh) record(sh.tr,s,cellCounts(sh.pop),M); germSample(s);
@@ -146,4 +169,14 @@ out.universe={germlinePrograms:{ever:g1[1],newPer1kLate:rate(1)},atomExprs:{ever
   provenAtomExprs:{ever:g1[3],newPer1kLate:rate(3)},motifs:{ever:g1[4],newPer1kLate:rate(4)},lawsKept:{ever:g1[5],per1kLate:g1[5]>=0?rate(5):null}};
 out.summary=Object.fromEntries(['traits',...LAY].map(n=>[n,out.layers[n].verdict]));   // against the MIXED null
 out.summaryTree=Object.fromEntries(['traits',...LAY].map(n=>[n,out.layers[n].familyTree.verdict]));   // against the TREE null
+// #267: selection on novelty, per token layer (see SELECTION above); new keys, so every older field is unchanged
+out.selection={novW:NOVW,layers:{}};
+for(const name of LAY){ const S=SEL.L[name], base=S.expAll>0?S.birthsAll/S.expAll:0;
+  const ix=t=>(S.expNew[t]>0&&base>0)?+((S.birthsNew[t]/S.expNew[t])/base).toFixed(3):null;
+  const real=ix(0), sh=[]; for(let t=1;t<=K;t++){ const v=ix(t); if(v!==null)sh.push(v); }
+  const lo=sh.length?Math.min(...sh):null, hi=sh.length?Math.max(...sh):null;
+  out.selection.layers[name]={index:real,shadows:{min:lo,mean:sh.length?+(sh.reduce((a,b)=>a+b,0)/sh.length).toFixed(3):null,max:hi,n:sh.length},
+    verdict:(real===null||!sh.length)?'NO DATA':real>hi?'NOVELTY FAVOURED':real<lo?'NOVELTY DISFAVOURED':'CHANCE',
+    birthsLate:S.birthsAll,newShareReal:S.expAll>0?+(S.expNew[0]/S.expAll).toFixed(3):null}; }
+out.summarySelection=Object.fromEntries(LAY.map(n=>[n,out.selection.layers[n].verdict]));
 console.log(JSON.stringify(out));
