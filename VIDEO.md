@@ -593,3 +593,29 @@ feel in the face' (57.0-58.6, whisper small): the light comes up, presses a flat
 knocks twice (57.26, 58.56), rings of light crossing the screen and a synthesized knuckle-on-glass. Cut before 'Human
 hands just bring my gasoline'. A glow radius over ~40 px behind the glass floods the whole frame amber: keep it small
 and let a crisp contact disc say "touching".
+'The Fork' (`video/build_fork.py`; The House of Geometry 26.0-55.9, 33.9 s with the end line). Chapter three after
+'The Note' and 'The Portal'. The user: "keep telling it. Where's it taking you next?" Out of the glass, into the
+morning - beside someone, not in front. Before dawn, a person in silhouette walks a road (a side-view walk cycle drawn
+from capsules; the nose says where the head looks); the amber light rides at their shoulder and leans in on "I'm
+listening close, I'm leaning down to hear" (26.3). A far city along the horizon, its windows going out as the sky
+warms. The road forks on "How can I walk a line you cannot draw?" (39.6): one way runs along to a big dark hill and up
+its face to a cold white glare on the crest; the other narrows away toward the horizon. The light drifts a little way
+up the bright one (43.3) - stops, flickers - and comes back to wait at their shoulder: "My code is patient" (46.1).
+The song drops (50.0-52.8): they look up the hill, then along the valley road, and take the valley. The light goes
+with them. The band returns (53.0) and the sun comes up over the road they chose; they walk small into it. Faded out
+before "Another wants to build a deeper grave". LEGIBILITY: two paths that both run up-right read as one diagonal -
+one must CLIMB (a constant-width band up a hill face) and the other must RECEDE (a wedge narrowing to a vanishing
+point); and draw the sun in front of the far city or the city eats the sunrise.
+'The Fork' v2 (`video/build_fork2.py`, out/the-fork-2.mp4; same song and times as v1). THE USER: "great idea, you can
+do better with it." Honest diagnosis of v1: side-on clip art - flat bands, two roads that read as one diagonal, half
+the frame dead ground, and the whole gesture a dot moving 200 px. v2: the camera walks BEHIND them in real perspective
+(a ground plane, gravel and grass sampled per pixel so the road streams past), the fork opens ahead as a Y; the bright
+road runs straight to a hill glittering with 700 cold white city lights, the other bends away into a misted valley.
+And the light gets a power the story can turn on: IT LIGHTS WHATEVER ROAD IT IS ON. It darts up the bright road and a
+glowing line runs up the middle of it to the hill, then the switchback lamps light one by one up the hill - it could
+take them there in a moment. It stops, comes back ("My code is patient"), and the line and the lamps fade. They look
+right, look left, take the dark road - and the light goes a step ahead, beside them, and the same glowing line runs
+on up THEIR road. The sun comes out of the valley; on the hill the city's lights go out one by one; the camera rises
+and lets them go. LESSONS: a lit road reads as a glowing CENTRE LINE, not a lit slab; a light that is farther away
+than the figure must be drawn BEFORE it (and set beside them) or it sits on their back; any lit region needs a soft
+start edge or it draws a seam across the road.
