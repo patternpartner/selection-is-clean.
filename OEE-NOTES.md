@@ -24406,7 +24406,12 @@ takes back the energy of deaths inside it. `worldEnergy` is kept as the sum, so 
 Six sites, each replaced with an asserted count (the first attempt's count of 3 for a 2-site pattern stopped it — the
 new helper held the original line in its off-branch).
 **Checked:** unset, harness-oee output identical to the committed engine (seed 1, 1,000 ticks, every field but config
-and timing); LOCAL_POOLS=4 runs and differs.
+and timing); LOCAL_POOLS=4 runs and differs. substrate-test with it unset: 264/0 at TICKS=40, 900, the default and
+FOUND=0. **With LOCAL_POOLS=4, TICKS=40: 260/4**, and the four are one cause: #203's three billing rows and RATION's
+lottery row set `worldEnergy` by hand and expect the birth to bill it, but with the knob on a birth bills its parent's
+REGION, which the hand-set total never reaches — so the rows fail, correctly, because they are driving a pool the birth
+no longer reads. Nothing else went red. **If the rule makes LOCAL_POOLS the default, those rows are rewritten to set the
+parent's region before it ships** (an assignment to `worldEnergy` under the knob is a control that reads like one).
 **Design look (seed 1, 8,000 ticks, LOCAL_POOLS=4 — a design seed, not a verdict):** no extinction, floor 356; and **who
 breeds stops being memory position** — births per 1k particle-ticks by array decile, 0: 1.69 -> 0.52, deciles 1-8:
 0.05-0.54 -> 0.29-0.48, 9: 1.62 -> 1.39. Each region keeps its own first-come order, so sixteen queues instead of one.
