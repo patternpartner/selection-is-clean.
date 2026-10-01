@@ -54,7 +54,7 @@ const DEF={
   // took 99% of the energy and nothing was left for a next step (#286); with it, energy comes out in pathways. Products are
   // drawn with energy within CHEM_SPREAD of (substrate - CHEM_STEP), so most reactions are small usable steps downhill;
   // drawn at random, seed 2 had no usable reaction out of species 0 at all.
-  CHEM:0, CHEM_S:256, CHEM_ALPHA:0.5, CHEM_D:0.2, CHEM_EVERY:5, CHEM_DECAY:0.0005, CHEM_DMAX:0.3, CHEM_STEP:0.15, CHEM_SPREAD:0.2,
+  CHEM:0, CHEM_S:256, CHEM_ALPHA:0.5, CHEM_D:0.2, CHEM_EVERY:5, CHEM_DECAY:0.0005, CHEM_DMAX:0.3, CHEM_STEP:0.15, CHEM_SPREAD:0.2,   // CHEM_SEED (unset: the world's seed) picks the network, so a replay can share it
 };
 
 class World{
@@ -81,7 +81,7 @@ class World{
     this.patch=[]; for(let k=0;k<P.PATCHES;k++){ const a=this.rnd()*Math.PI*2; this.patch.push({x:this.rnd()*P.W,y:this.rnd()*P.H,vx:Math.cos(a)*P.PATCH_V,vy:Math.sin(a)*P.PATCH_V}); }
     this.ev={births:0,starve:0,killed:0,old:0,crowded:0,attacks:0,attackTake:0,eatLight:0,eatCorpse:0,moves:0,shares:0};
     this.n0=P.CHEM?NEUTRAL0_CHEM:NEUTRAL0;
-    if(P.CHEM){ const S=P.CHEM_S, cr=mulberry32(((seed>>>0)||1)^0x00c4e3c4); this.mol=new Float32Array(C*S); this.molTmp=new Float32Array(C); this.eMol=new Float32Array(S); this.prod=new Uint16Array(S*4);   // its own RNG: the main stream (ancestors, patches) is the same as without CHEM
+    if(P.CHEM){ const S=P.CHEM_S, cr=mulberry32((((P.CHEM_SEED!==undefined?P.CHEM_SEED:seed)>>>0)||1)^0x00c4e3c4); this.mol=new Float32Array(C*S); this.molTmp=new Float32Array(C); this.eMol=new Float32Array(S); this.prod=new Uint16Array(S*4);   // its own RNG: the main stream (ancestors, patches) is the same as without CHEM
       this.eMol[0]=1; for(let q=1;q<S;q++)this.eMol[q]=cr(); for(let q=0;q<S;q++)for(let j=0;j<4;j++){ let t, g=0; do{ t=(cr()*S)|0; g++; }while(g<100000&&(t===q||Math.abs(this.eMol[t]-(this.eMol[q]-P.CHEM_STEP))>=P.CHEM_SPREAD)); this.prod[q*4+j]=t; } this.ev.metab=0; this.ev.metabN=0; }   // products lie near the substrate, mostly a little lower
     this.updateCap(); for(let c=0;c<C;c++)this.light[c]=this.cap[c];
     // the ancestor: eat light, try to divide, turn. Nothing else is given.
