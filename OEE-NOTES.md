@@ -25062,3 +25062,34 @@ chance passes about 8 a window. That version over-counted, and the shadow replac
 **Where this leaves step 3:** novelty that slows but has not stopped by 1,800 generations, on 2 of 3 seeds — between
 a plateau and open-ended. **Next:** does the moving environment drive it? Same seeds with the patches static, at the
 current drift, and 5x faster.
+
+**#285b — the lean core, three questions answered.** Shadow-judged new adaptive op pairs per window.
+1. **Does the moving environment drive innovation? No.** 300,000 ticks, seeds 1-3, last two windows (about 170
+   generations each):
+   - static patches: 0, 2 / 2, 2 / 9, 3;
+   - current drift: 1, 2 / 1, 9 / 0, 0;
+   - 5x drift: 3, 0 / 0, 1 / 0, 1.
+   Same decay at every speed. A changing physical world is not the engine here.
+2. **Does stronger predation drive it? No — it makes it worse.** With the attack take scaling with match^1 instead of
+   match^4 (a random attack then takes half, not about 6%):
+   - attackers reach 57-100% of the living;
+   - the population falls to 350-550 (against about 1,400);
+   - distinct tags fall to 35-81 (against 170-270);
+   - cumulative adaptive pairs are 19-26 (against 27-56), with late windows mostly 0.
+   Everyone becomes a predator and diversity collapses.
+3. **Does pair-level innovation stop? Yes.** The same three worlds chained to 1,200,000 ticks (about 7,000
+   generations; exact save and resume, `lab/core-run.js` LOAD/SAVE). Windows of about 340 generations:
+
+   | seed | first 10 windows | last 10 windows | cumulative |
+   |---|---|---|---|
+   | 1 | 13, 3, 1, 5, 2, 3, 6, 5, 8, 2 | 0, 0, 0, 0, 0, 0, 0, 1, 0, 0 | 49 |
+   | 2 | 9, 7, 5, 5, 11, 7, 0, 0, 4, 1 | 3, 1, 0, 3, 3, 0, 0, 0, 0, 1 | 60 |
+   | 3 | 15, 15, 9, 5, 0, 0, 1, 0, 1, 0 | 3, 0, 1, 3, 0, 0, 0, 0, 1, 0 | 54 |
+
+   By about generation 7,000 new adaptive pairs are at the chance floor, after 49-60 of 529 became adaptive: a
+   BOUNDED (Bedau's class 2) pattern at this level.
+**But pairs are a bounded measure** — there are only 529, and a few dozen are ever useful — so a pair count must run
+dry even if evolution keeps finding new programs. The unbounded level is the whole program genotype, which is where
+Bedau and Packard measured. `lab/core-geno.js` judges real program genotypes against shadow ones (same hash, same
+family tree). Running now: the same three worlds (genotype tracking draws nothing, so the trajectories are identical),
+chained.
