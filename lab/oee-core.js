@@ -24,6 +24,13 @@ const NOPS=32, NEUTRAL0=24;
 const DX=[1,1,0,-1,-1,-1,0,1], DY=[0,1,1,1,0,-1,-1,-1];   // ops 24-31 are the neutral markers
 const isNeutral=o=>o>=NEUTRAL0;
 
+// the FUNCTIONAL genotype: the program with NOP and the neutral markers dropped and every argument masked to the bits its
+// op reads (LOADK and JMP all 8, MOV..IFLT the low 2, TURN the low 3, the rest none). Two programs with the same hash differ
+// only where nothing reads, near enough (a dropped marker can shift a JMP or a skip, so this merges a little too much).
+const ARGMASK=new Uint8Array(NOPS); ARGMASK[1]=255; for(let q=2;q<=7;q++)ARGMASK[q]=3; ARGMASK[8]=255; ARGMASK[15]=7;
+function fnHash(a,o,m){ let h=2166136261|0, k=0; for(let i=0;i<m;i++){ const op=a[o+i*2]; if(op===0||op>=NEUTRAL0)continue; h=Math.imul(h^op,16777619); h=Math.imul(h^(a[o+i*2+1]&ARGMASK[op]),16777619); k++; } return (h^k)>>>0; }
+function fnHashList(src){ let h=2166136261|0, k=0; for(const [op,arg] of src){ if(op===0||op>=NEUTRAL0)continue; h=Math.imul(h^op,16777619); h=Math.imul(h^(arg&ARGMASK[op]),16777619); k++; } return (h^k)>>>0; }
+
 const DEF={
   W:64, H:64, MAXLEN:64, SLICE:10,         // world size; program length cap; instructions run per organism per tick
   C_INSTR:0.001, C_BASE:0.001,            // energy per executed instruction, and per tick just for being alive
@@ -52,6 +59,10 @@ class World{
     // births and deaths, with parents and victims picked at random, and a child takes a new label exactly when the real
     // child was a mutant. So a label grows only by luck, and a real genotype that outgrows every label grew by selection.
     this.ns=[]; this.nsNext=1; this.nrnd=mulberry32(((seed>>>0)||1)^0x0badf00d); this.tickBirths=[]; this.tickDeaths=0;
+    // and a second one for FUNCTIONAL genotypes (fnHash: neutral ops dropped, argument bits an op ignores masked), where a
+    // child is new only when the real child's functional genotype changed. fnRep keeps which functional genotypes have had a
+    // representative program written out, so later analysis can replay them head to head.
+    this.fs=[]; this.fsNext=1; this.frnd=mulberry32(((seed>>>0)||1)^0x0f00d5ed); this.tickBirthsF=[]; this.fnRep=new Set();
     this.tag=new Uint16Array(C); this.tmpl=new Uint16Array(C); this.stamp=new Int32Array(C).fill(-1);
     this.gen=new Int32Array(C);                                  // generation depth
     this.light=new Float32Array(C); this.cap=new Float32Array(C); this.corpse=new Float32Array(C);
@@ -61,7 +72,7 @@ class World{
     this.updateCap(); for(let c=0;c<C;c++)this.light[c]=this.cap[c];
     // the ancestor: eat light, try to divide, turn. Nothing else is given.
     const anc=[[OP.EAT_LIGHT,0],[OP.DIVIDE,0],[OP.TURN,1]];
-    for(let k=0;k<P.W*P.H/16;k++){ const c=(this.rnd()*C)|0; if(this.alive[c])continue; this.place(c,anc,1.0,(this.rnd()*65536)|0,(this.rnd()*65536)|0,0); this.ns.push(0); }
+    for(let k=0;k<P.W*P.H/16;k++){ const c=(this.rnd()*C)|0; if(this.alive[c])continue; this.place(c,anc,1.0,(this.rnd()*65536)|0,(this.rnd()*65536)|0,0); this.ns.push(0); this.fs.push(0); }
   }
   // ---- geometry ----
   ahead(c,f){ const P=this.p, x=c%P.W, y=(c/P.W)|0; const dx=DX[f&7], dy=DY[f&7]; return ((y+dy+P.H)%P.H)*P.W+((x+dx+P.W)%P.W); }
@@ -89,7 +100,7 @@ class World{
     const sn=this.slen[c], ssrc=[]; for(let i=0;i<sn;i++)ssrc.push([this.sprog[o+i*2],this.sprog[o+i*2+1]]); this.mutateInto(ssrc,this.srnd);   // the shadow child: same birth, its own mutations
     let tg=this.tag[c], tm=this.tmpl[c]; for(let b=0;b<16;b++){ if(r()<P.MU_TAG)tg^=1<<b; if(r()<P.MU_TAG)tm^=1<<b; }
     const half=(this.E[c]-P.BODY)/2; this.E[c]=half;
-    let changed=src.length!==n; if(!changed) for(let i=0;i<n;i++){ if(src[i][0]!==this.prog[o+i*2]||src[i][1]!==this.prog[o+i*2+1]){ changed=true; break; } } this.tickBirths.push(changed?1:0);
+    let changed=src.length!==n; if(!changed) for(let i=0;i<n;i++){ if(src[i][0]!==this.prog[o+i*2]||src[i][1]!==this.prog[o+i*2+1]){ changed=true; break; } } this.tickBirths.push(changed?1:0); this.tickBirthsF.push(changed&&fnHashList(src)!==fnHash(this.prog,o,n)?1:0);
     this.place(t,src,half,tg,tm,this.gen[c]+1,ssrc); this.ev.births++; return true; }
   matchP(a,b){ let x=(this.tmpl[a]^this.tag[b])&0xffff, m=0; while(x){ x&=x-1; m++; } const s=(16-m)/16; return Math.pow(s,this.p.ATT_POW); }
   kinSim(a,b){ let x=(this.tag[a]^this.tag[b])&0xffff, m=0; while(x){ x&=x-1; m++; } return (16-m)/16; }
@@ -144,20 +155,22 @@ class World{
   neutralStep(){ const ns=this.ns, r=this.nrnd;
     for(let d=0;d<this.tickDeaths&&ns.length;d++){ const k=(r()*ns.length)|0; ns[k]=ns[ns.length-1]; ns.pop(); }
     const m=ns.length; for(const ch of this.tickBirths){ const par=m?ns[(r()*m)|0]:0; ns.push(ch||!m?this.nsNext++:par); }
-    this.tickBirths.length=0; this.tickDeaths=0; }
+    { const fs=this.fs, fr=this.frnd; for(let d=0;d<this.tickDeaths&&fs.length;d++){ const k=(fr()*fs.length)|0; fs[k]=fs[fs.length-1]; fs.pop(); }
+      const fm=fs.length; for(const ch of this.tickBirthsF){ const par=fm?fs[(fr()*fm)|0]:0; fs.push(ch||!fm?this.fsNext++:par); } }
+    this.tickBirths.length=0; this.tickBirthsF.length=0; this.tickDeaths=0; }
   count(){ let n=0; for(let c=0;c<this.C;c++)n+=this.alive[c]; return n; }
   reseed(){ const anc=[[OP.EAT_LIGHT,0],[OP.DIVIDE,0],[OP.TURN,1]]; this.reseeds=(this.reseeds||0)+1;
-    for(let k=0;k<this.C/16;k++){ const c=(this.rnd()*this.C)|0; if(!this.alive[c]){ this.place(c,anc,1.0,(this.rnd()*65536)|0,(this.rnd()*65536)|0,0); this.ns.push(0); } } }
+    for(let k=0;k<this.C/16;k++){ const c=(this.rnd()*this.C)|0; if(!this.alive[c]){ this.place(c,anc,1.0,(this.rnd()*65536)|0,(this.rnd()*65536)|0,0); this.ns.push(0); this.fs.push(0); } } }
   // ---- readouts (draw nothing) ----
   sample(){ const P=this.p, L=P.MAXLEN*2; let n=0, len=0, E=0, gmax=0, gsum=0;
-    const opC=new Float64Array(NOPS), bgC=new Map(), geno=new Map(), sopC=new Float64Array(NOPS), sbgC=new Map(), pg=new Map(), spg=new Map();   // pg/spg: real and shadow PROGRAM genotypes (ops and args, hashed the same way)
+    const opC=new Float64Array(NOPS), bgC=new Map(), geno=new Map(), sopC=new Float64Array(NOPS), sbgC=new Map(), pg=new Map(), spg=new Map(); const fg=new Map(), fgCell=new Map();   // functional genotypes, and one living cell of each   // pg/spg: real and shadow PROGRAM genotypes (ops and args, hashed the same way)
     for(let c=0;c<this.C;c++){ if(!this.alive[c])continue; n++; const m=this.len[c], o=c*L; len+=m; E+=this.E[c]; gsum+=this.gen[c]; if(this.gen[c]>gmax)gmax=this.gen[c];
       const seen=new Uint8Array(NOPS), bs=new Set(); let key='';
       for(let i=0;i<m;i++){ const op=this.prog[o+i*2]; seen[op]=1; key+=op+'.'+this.prog[o+i*2+1]+','; if(i+1<m)bs.add(op*NOPS+this.prog[o+(i+1)*2]); }
       for(let q=0;q<NOPS;q++)if(seen[q])opC[q]++;
       for(const b of bs)bgC.set(b,(bgC.get(b)||0)+1);
       key+='|'+this.tag[c]+'|'+this.tmpl[c]; geno.set(key,(geno.get(key)||0)+1);
-      { let h=2166136261|0; for(let i=0;i<m*2;i++)h=Math.imul(h^this.prog[o+i],16777619); h=(h^m)>>>0; pg.set(h,(pg.get(h)||0)+1);
+      { let h=2166136261|0; for(let i=0;i<m*2;i++)h=Math.imul(h^this.prog[o+i],16777619); h=(h^m)>>>0; pg.set(h,(pg.get(h)||0)+1); const fh=fnHash(this.prog,o,m); fg.set(fh,(fg.get(fh)||0)+1); if(!fgCell.has(fh))fgCell.set(fh,c);
         let sh=2166136261|0; const smm=this.slen[c]; for(let i=0;i<smm*2;i++)sh=Math.imul(sh^this.sprog[o+i],16777619); sh=(sh^smm)>>>0; spg.set(sh,(spg.get(sh)||0)+1); }
       { const sm=this.slen[c], sseen=new Uint8Array(NOPS), sbs=new Set(); for(let i=0;i<sm;i++){ const op=this.sprog[o+i*2]; sseen[op]=1; if(i+1<sm)sbs.add(op*NOPS+this.sprog[o+(i+1)*2]); } for(let q=0;q<NOPS;q++)if(sseen[q])sopC[q]++; for(const b of sbs)sbgC.set(b,(sbgC.get(b)||0)+1); } }
     let ground=0, dead=0; for(let c=0;c<this.C;c++){ ground+=this.light[c]; dead+=this.corpse[c]; }
@@ -167,21 +180,24 @@ class World{
     const liv=[]; for(let c=0;c<this.C;c++) if(this.alive[c])liv.push(c); let mt=0, mn=0; for(let a=0;a<Math.min(400,liv.length);a++){ const i=liv[(a*7919)%liv.length], j=liv[(a*104729+17)%liv.length]; if(i!==j){ mt+=this.matchP(i,j); mn++; } }
     const tags=new Set(); for(const c of liv)tags.add(this.tag[c]); if(!this.everTags)this.everTags=new Set(); let newTags=0; for(const t of tags) if(!this.everTags.has(t)){ this.everTags.add(t); newTags++; }
     let atk=0; for(const c of liv){ const o=c*L; for(let q=0;q<this.len[c];q++) if(this.prog[o+q*2]===19){ atk++; break; } }
+    const fgTop=[...fg.entries()].sort((a,b)=>b[1]-a[1]).slice(0,60), fnNew={};
+    for(const [h] of fgTop.slice(0,10)) if(!this.fnRep.has(h)){ this.fnRep.add(h); const c=fgCell.get(h), o=c*L; let hex=''; for(let i=0;i<this.len[c]*2;i++)hex+=this.prog[o+i].toString(16).padStart(2,'0'); fnNew[h]=hex+'|'+this.tag[c]+'|'+this.tmpl[c]; }
+    const fnNeutral=(()=>{ const m=new Map(); for(const l of this.fs)m.set(l,(m.get(l)||0)+1); return [...m.entries()].sort((a,b)=>b[1]-a[1]).slice(0,60); })();
     const ev=this.ev; this.ev={births:0,starve:0,killed:0,old:0,crowded:0,attacks:0,attackTake:0,eatLight:0,eatCorpse:0,moves:0,shares:0};
     return {t:this.tick,N:n,meanLen:n?+(len/n).toFixed(2):0,meanGen:n?+(gsum/n).toFixed(1):0,maxGen:gmax,energy:{stores:+E.toFixed(1),light:+ground.toFixed(1),corpses:+dead.toFixed(1)},
       genotypes:geno.size,topGenoShare:n?+(gTop/n).toFixed(3):0,ev,race:{meanMatch:mn?+(mt/mn).toFixed(4):0,tags:tags.size,newTags,everTags:this.everTags.size,attackers:n?+(atk/n).toFixed(3):0},
       opShare:Array.from(opC,v=>n?+(v/n).toFixed(4):0),
       bigrams:Object.fromEntries([...bgC.entries()].filter(([b,v])=>v/n>=0.01).map(([b,v])=>[b,+(v/n).toFixed(4)])),
       shadowOpShare:Array.from(sopC,v=>n?+(v/n).toFixed(4):0),
-      progGeno:[...pg.entries()].sort((a,b)=>b[1]-a[1]).slice(0,60), shadowGeno:[...spg.entries()].sort((a,b)=>b[1]-a[1]).slice(0,60), progGenoN:pg.size, shadowGenoN:spg.size, neutralGeno:(()=>{ const m=new Map(); for(const l of this.ns)m.set(l,(m.get(l)||0)+1); return [...m.entries()].sort((a,b)=>b[1]-a[1]).slice(0,60); })(), neutralN:this.ns.length,
+      progGeno:[...pg.entries()].sort((a,b)=>b[1]-a[1]).slice(0,60), shadowGeno:[...spg.entries()].sort((a,b)=>b[1]-a[1]).slice(0,60), progGenoN:pg.size, shadowGenoN:spg.size, neutralGeno:(()=>{ const m=new Map(); for(const l of this.ns)m.set(l,(m.get(l)||0)+1); return [...m.entries()].sort((a,b)=>b[1]-a[1]).slice(0,60); })(), neutralN:this.ns.length, fnGeno:fgTop, fnGenoN:fg.size, fnNeutral, fnNeutralN:this.fs.length, fnNew,
       shadowBigrams:Object.fromEntries([...sbgC.entries()].filter(([b,v])=>v/n>=0.01).map(([b,v])=>[b,+(v/n).toFixed(4)])),
       reseeds:this.reseeds||0}; }
 }
 
 // ---- save and resume: every field is a typed array or a plain value, so a run can be carried across windows exactly ----
 const ARRAYS=['alive','E','age','pc','face','R','len','prog','sprog','slen','tag','tmpl','stamp','gen','light','cap','corpse','order'];
-World.prototype.save=function(){ const o={p:this.p,tick:this.tick,rnd:this.rnd.s,srnd:this.srnd.s,patch:this.patch,reseeds:this.reseeds||0,everTags:this.everTags?[...this.everTags]:[],ns:this.ns,nsNext:this.nsNext,nrnd:this.nrnd.s,a:{}};
+World.prototype.save=function(){ const o={p:this.p,tick:this.tick,rnd:this.rnd.s,srnd:this.srnd.s,patch:this.patch,reseeds:this.reseeds||0,everTags:this.everTags?[...this.everTags]:[],ns:this.ns,nsNext:this.nsNext,nrnd:this.nrnd.s,fs:this.fs,fsNext:this.fsNext,frnd:this.frnd.s,fnRep:[...this.fnRep],a:{}};
   for(const k of ARRAYS)o.a[k]=Buffer.from(this[k].buffer,this[k].byteOffset,this[k].byteLength).toString('base64'); return JSON.stringify(o); };
-World.load=function(txt){ const o=JSON.parse(txt); const w=new World(1,o.p); w.tick=o.tick; w.rnd.s=o.rnd; w.srnd.s=o.srnd; w.patch=o.patch; w.reseeds=o.reseeds; w.everTags=new Set(o.everTags); w.ns=o.ns||[]; w.nsNext=o.nsNext||1; if(o.nrnd!==undefined)w.nrnd.s=o.nrnd;
+World.load=function(txt){ const o=JSON.parse(txt); const w=new World(1,o.p); w.tick=o.tick; w.rnd.s=o.rnd; w.srnd.s=o.srnd; w.patch=o.patch; w.reseeds=o.reseeds; w.everTags=new Set(o.everTags); w.ns=o.ns||[]; w.nsNext=o.nsNext||1; if(o.nrnd!==undefined)w.nrnd.s=o.nrnd; w.fs=o.fs||[]; w.fsNext=o.fsNext||1; if(o.frnd!==undefined)w.frnd.s=o.frnd; w.fnRep=new Set(o.fnRep||[]);
   for(const k of ARRAYS){ const b=Buffer.from(o.a[k],'base64'); const A=w[k]; new Uint8Array(A.buffer,A.byteOffset,A.byteLength).set(b); } return w; };
-module.exports={World,OPS,OP,NOPS,NEUTRAL0,isNeutral,DEF};
+module.exports={World,OPS,OP,NOPS,NEUTRAL0,isNeutral,DEF,fnHash,fnHashList,ARGMASK};
