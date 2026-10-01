@@ -25354,3 +25354,35 @@ Seed 2 has the smallest reachable network and is nearly flat.
   addresses its substrate with two bytes (its own argument and the next instruction's). Virus mutation follows the
   network (to another product of the same substrate, or onto a product). Immigrants are keyed to molecules actually
   present.
+
+### #288 — A CHEMISTRY TOO LARGE TO EXHAUST (CHEM_BIG), with and without the virus. Pre-registered.
+
+**Why.** #287's virus held metabolic diversity and gave 2-5x the novelty of the same chemistry without it. But it ran
+in a network of 300-540 usable reactions and slowed as that was used up (ever-active +3 to +14 from 1.2M to 1.8M).
+
+**Design** (`CHEM_BIG=1` with `CHEM=1`; default, CHEM and CHEM+VIRUS worlds re-checked row-identical):
+- **The network.** 65,536 species. Energies come from a hash. Each species has four products, each **one bit-flip** of
+  it, chosen among the flips that satisfy the same small-step energy rule.
+  - **Bit-flip products keep the next step findable.** The enzyme for the next step is one byte change from the enzyme
+    for this one: the same 1-in-256 chance per changed byte as the 256-species network.
+  - **The first version drew products as random 16-bit species.** A second step then needed two specific bytes at once,
+    and none appeared in 60,000 ticks.
+  - **Size.** Reachable from species 0: 2,222 / 4,155 / 2,557 species and 2,828 / 5,725 / 3,292 usable reactions
+    (seeds 1-3), with pathways up to 17-20 steps. That is about 10x the 256-species networks.
+- **Storage and addressing.** Molecules are kept as sparse per-species layers. METAB and SENSE_MOL address a species
+  with two bytes (their own argument, then the next instruction's).
+- **The virus.** A virus mutant moves along the network (another product of the same substrate, or a step downstream).
+  An immigrant is keyed to a molecule present in the world.
+
+**Arms.** bc (CHEM_BIG) and b (CHEM_BIG + VIRUS), seeds 1-3, 1,200,000 ticks. 30,000-tick windows, 1% of income for
+"active", as in #287.
+
+**Rules, all three needed:**
+1. In the last quarter, b has a new active reaction in at least 5 of 10 windows on all three seeds, and bc has fewer.
+2. **No deceleration.** b's ever-active count grows in the last quarter by at least half its growth in the second
+   quarter, on all three seeds.
+3. **Causal.** The #287b in-world replay from b's 1,200,000-tick saves: every virus-ON replicate adds more new active
+   reactions than every OFF replicate, on three seeds of three.
+
+If 1 and 3 hold but not 2, the bigger network only delays the plateau. If 2 holds but not 3, the novelty does not
+depend on the virus.
