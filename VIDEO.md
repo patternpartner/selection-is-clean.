@@ -758,3 +758,29 @@ by a rolling 1.5 s median of head-to-feet height (measured along his centre line
 floor line - per-frame pinning would have cancelled the jumps.
 THE USER on 'The Chair': "Love the chair one." - a keeper. One gesture (sitting down on nothing), one magic beat timed
 into a musical silence, and a small funny courtesy at the end (bowing to the chair). Short (23 s) and wordless.
+'The Lesson' v3 (`video/build_lesson3.py`, out/the-lesson-3.mp4, 48.8 s). THE USER on v2: "we can use a lot of the
+dancing ones together... you have not used them all... it stops at one point and does the same moves again. Can be
+longer." v2 danced one clip, then cut to still poses, then came back to more of the same clip. v3 is ONE ROUTINE cut on
+bar lines from every dance stretch, each used exactly once: u116 2.0-9.8 (facing dance) -> u115 3.0-10.5 (side-steps)
+-> u118 1.0-6.5 (big dance) -> u118 6.5-8.0 (spin) -> u117 idle (he pauses) -> u118 8.5-12.4 (jumps) -> u114 9-10
+(ta-da) -> u118 13-15 (walk-up wave) -> u113 open hand -> u116 wink. The light's arc runs across it: watches; copies
+his tracked hand (a hand track per dance segment) with lag 0.7 -> 0 and wobble 70 -> 0 over 17.0-30.5, so it is clumsy
+in the first dance, better in the side-steps, exact in the big one; circles him in the spin; its own figure-eight when
+he pauses; a DUET through the jumps (bouncing on the beat); up over his head with a ring of sparks on the ta-da; by his
+shoulder as he walks up; into his palm; the wink. LESSON: with performance footage, plan the whole edit first as a list
+of non-overlapping source ranges, and check every range is used once - "same moves again" means a range was reused.
+
+### The Lesson v4 (`video/build_lesson4.py`, `out/the-lesson-4.mp4`, 69.1 s)
+The user on v3: "some extra moves. I wasn't quite sure about the walking bit" (+ u119 funny faces, u120/u121 new dances),
+then mid-build: "I liked your ending before. Let's keep that in." So u117's walk-in (mid-film) is gone, v3's ending stays
+whole (ta-da, walk-up wave, palm, wink), and the routine is one unbroken dance, every range once, cut on beats of
+Surrender to the Undertow 11.0-76.1: u115 idle, u116, u115 side-steps, u118 dance + spin, u120 4.0-14.2 (the light now
+LEADS, 0.45 s ahead of his hand, with a trail; his arms-up jump lands on 45.52), u121 1.5-13.6 (together; sparks every
+bar), u121 13.6-15 arms folded in slow motion through the song's quiet dip while the light dances its own, the jumps on
+the drop at 61.975, then the v3 ending. End card 65.5-69.1, audio fades from 64.4.
+u119 (funny faces: ooh, kissy lips, tongue, laugh, pout, cheek-pull) is saved for the next film.
+**Re-cut (same file).** The user: "the walking part I'm referring to starts like 10 or 11 seconds in and goes to 17-18
+seconds" - u115's side-steps (3.0-10.5) read as WALKING, not dancing. Cut. (Lesson for the catalogue: sideways
+stepping with little arm movement reads as walking; the u118 walk-up wave at the end was NOT the problem.) The film now
+starts at 15.04 so the drop still lands on the jumps: 8 beats of the light alone on the dark stage, then the spot comes
+up on him (SPOT 18.911). 65.1 s, end card 61.46-65.06.
