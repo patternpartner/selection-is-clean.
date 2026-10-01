@@ -4,13 +4,17 @@
 // the commonest functional genotype of window w-1. Both representatives (program, tag, template, as the run wrote them
 // out) go into a fresh world, NPER each at random cells, mutation off, for T ticks; the challenger's share of the living
 // at the end is the score. The NULL is the incumbent against itself, told apart by a label that rides each birth and
-// move and touches nothing else. A challenger WINS when its mean share over REPS beats every null replicate's share.
+// move and touches nothing else. A challenger WINS when a Welch t of its REPS shares against the null's REPS shares is above
+// 2.2 (LOSES below -2.2); STRICT also asks that its mean beat every null replicate. The null is wide (sd about 0.17 at
+// T=3000: drift in a structured world, not founding - placing each challenger next to an incumbent did not narrow it).
 //   WIN=60 REPS=6 T=3000 NPER=200 [PICK=8] [Q=4] node lab/core-assay.js seed.all.jsonl
+//   a chemistry run: OPTS='{"CHEM":1,"CHEM_SEED":2}' ... (the representatives' functional hashes use the run's neutral boundary)
 // PICK caps how many challengers are replayed in each of Q equal parts of the run (evenly spaced), so the cost is bounded.
 'use strict';
-const fs=require('fs'); const {World,fnHashList}=require('./oee-core.js');
+const fs=require('fs'); const {World,fnHashList,NEUTRAL0,NEUTRAL0_CHEM}=require('./oee-core.js');
 const E=process.env, WIN=+(E.WIN||60), REPS=+(E.REPS||6), T=+(E.T||3000), NPER=+(E.NPER||200), PICK=+(E.PICK||8), Q=+(E.Q||4);
-const NOMUT={MU_SUB:0,MU_INS:0,MU_DEL:0,MU_TAG:0};
+const NOMUT=Object.assign(E.OPTS?JSON.parse(E.OPTS):{},{MU_SUB:0,MU_INS:0,MU_DEL:0,MU_TAG:0});   // OPTS: the run's own options; under CHEM give CHEM_SEED the run's seed so the replay has its reaction network
+const N0=NOMUT.CHEM?NEUTRAL0_CHEM:NEUTRAL0;
 const decode=s=>{ const [hex,tag,tmpl]=s.split('|'); const p=[]; for(let i=0;i<hex.length;i+=4)p.push([parseInt(hex.slice(i,i+2),16),parseInt(hex.slice(i+2,i+4),16)]); return {prog:p,tag:+tag,tmpl:+tmpl}; };
 
 // one competition: a (label 1) against b (label 0); returns label 1's share of the living after T ticks
@@ -40,11 +44,12 @@ for(const f of process.argv.slice(2)){
   const perQ=Array.from({length:Q},()=>({n:0,win:0,lose:0,miss:0})); const nulls=new Map();   // the null depends only on the incumbent
   for(const e of chosen){ const P=perQ[e.q]; if(!rep.has(e.g)||!rep.has(e.inc)){ P.miss++; console.log(`  w${e.w} t${e.t} challenger ${e.g} incumbent ${e.inc}: no representative`); continue; }
     const A=decode(rep.get(e.g)), B=decode(rep.get(e.inc));
-    if(fnHashList(A.prog)!==e.g||fnHashList(B.prog)!==e.inc){ P.miss++; console.log('  representative hash mismatch'); continue; }
+    if(fnHashList(A.prog,N0)!==e.g||fnHashList(B.prog,N0)!==e.inc){ P.miss++; console.log('  representative hash mismatch'); continue; }
     if(!nulls.has(e.inc)){ const nl=[]; for(let k=0;k<REPS;k++)nl.push(compete(B,B,9001+k)); nulls.set(e.inc,nl); }
     const test=[], nul=nulls.get(e.inc); for(let k=0;k<REPS;k++)test.push(compete(A,B,7001+k));
-    const m=test.reduce((x,y)=>x+y,0)/REPS, nmax=Math.max(...nul), nmin=Math.min(...nul);
-    const verdict=m>nmax?'WIN':m<nmin?'LOSE':'tie'; P.n++; if(verdict==='WIN')P.win++; if(verdict==='LOSE')P.lose++;
-    console.log(`  q${e.q+1} w${e.w} t${e.t} len ${A.prog.length} vs ${B.prog.length} | challenger share ${m.toFixed(3)} [${test.map(x=>x.toFixed(2)).join(' ')}] | null ${nmin.toFixed(2)}-${nmax.toFixed(2)} | ${verdict}`); }
-  console.log('  per quarter (replayed / win / lose / no rep): '+perQ.map((P,q)=>`Q${q+1} ${P.n}/${P.win}/${P.lose}/${P.miss}`).join('  '));
+    const m=test.reduce((x,y)=>x+y,0)/REPS, nmax=Math.max(...nul), nmin=Math.min(...nul), nm=nul.reduce((x,y)=>x+y,0)/REPS;
+    const vt=test.reduce((x,y)=>x+(y-m)**2,0)/(REPS-1), vn=nul.reduce((x,y)=>x+(y-nm)**2,0)/(REPS-1), tt=(m-nm)/Math.sqrt((vt+vn)/REPS||1e-9);
+    const verdict=tt>2.2?'WIN':tt<-2.2?'LOSE':'tie', strict=m>nmax?' STRICT':''; P.n++; if(verdict==='WIN')P.win++; if(verdict==='LOSE')P.lose++; if(strict)P.strict=(P.strict||0)+1;
+    console.log(`  q${e.q+1} w${e.w} t${e.t} len ${A.prog.length} vs ${B.prog.length} | challenger share ${m.toFixed(3)} [${test.map(x=>x.toFixed(2)).join(' ')}] | null mean ${nm.toFixed(2)} range ${nmin.toFixed(2)}-${nmax.toFixed(2)} | t ${tt.toFixed(1)} ${verdict}${strict}`); }
+  console.log('  per quarter (replayed / win / lose / strict win / no rep): '+perQ.map((P,q)=>`Q${q+1} ${P.n}/${P.win}/${P.lose}/${P.strict||0}/${P.miss}`).join('  '));
 }
