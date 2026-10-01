@@ -4115,6 +4115,7 @@ let uaFuel=0,uaDepth=0;
 // deep stack cannot freeze the tab.
 const MAX_STACK_DEPTH=8;   // per slot; the toll is the real regulator, this only bounds the save
 function uaChain(head,slot,a,b){
+  if(REPL_ATOM_INERT)return 0;   // #281: the control - a particle's atoms are carried and mutate but do nothing
   let out=uaCall(head,a,b);
   const os=genome.opStacks;
   if(os){
@@ -10566,6 +10567,7 @@ const pKey=new Float32Array(CAP*4), pDef=new Float32Array(CAP*4);
 // space has no end short of its length cap, which makes this the one layer that can keep supplying new things.
 const REPL_ATOMS=REPL_ON&&(typeof globalThis!=='undefined')&&((globalThis.__REPL_ATOMS|0)!==0);
 const REPL_ATOM_P=0.05;
+const REPL_ATOM_INERT=REPL_ON&&(typeof globalThis!=='undefined')&&((globalThis.__REPL_ATOM_INERT|0)!==0);   // #281: atoms carried and varied, but every particle-side call does nothing - the neutral control for atom spread
 function replAtomBirth(i){ const g=pGenome[i]; if(!g||Math.random()>=REPL_ATOM_P)return; if(!Array.isArray(g.userAtoms))g.userAtoms=[];
   try{ const ua=g.userAtoms, _sv=genome; genome=g;
     try{ if(!ua.length||Math.random()<1/3){ if(ua.length<MAX_USER_ATOMS){ const ex=uaGenExpression(); if(uaExprSafe(ex)){ ua.push({expression:ex,compiled:null,failed:false,uses:0,age:0,alienHits:0,alienAttempts:0,creditTrace:0}); fired('repl.atomNew'); } } }
@@ -22045,6 +22047,7 @@ function applyUserEffect(eff,i,j,amt,slot){
 //   • it reads `genome`, which the VM callers have already repointed to the CARRIER (see the
 //     try/finally around executeVM), so the atom consulted is the actor's own — never the germline's.
 function verbGate(eff,i,amt){
+  if(REPL_ATOM_INERT)return 1;   // #281: the control - an atom gates nothing (1 = pass-through, as for a missing atom)
   const ax=(eff&&eff.ax!==undefined&&eff.ax!==null)?(eff.ax|0):-1;
   if(ax<0)return 1;
   const bos=genome.boundOpcodes; if(!Array.isArray(bos)||ax>=bos.length)return 1;
@@ -22263,7 +22266,7 @@ case 16:
         const uas=genome.userAtoms;
         if(uas&&uas.length>0){
           const uIdx=Math.abs(Math.floor(k))%uas.length;
-          vmRegs[di]=uaCall(uas[uIdx],vmRegs[si],vmRegs[(si+1)%__vmRC]);
+          vmRegs[di]=REPL_ATOM_INERT?0:uaCall(uas[uIdx],vmRegs[si],vmRegs[(si+1)%__vmRC]);   // #281: the control returns 0
         }
       }break;
       case 23:{
