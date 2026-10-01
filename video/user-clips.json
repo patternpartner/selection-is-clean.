@@ -2172,5 +2172,170 @@
   "used_in": [
    "the-lesson-4"
   ]
+ },
+ {
+  "id": "u122",
+  "file": "out/user-clips/u122.mp4",
+  "upload": "264ef6b7-grok_video_2026-10-01-02-14-32.mp4",
+  "seconds": 10.04,
+  "size": "720x1280",
+  "what": "THE USER'S OWN LIKENESS: a tug of war with a REAL short rope (Grok would not mime it) on the blue screen",
+  "tags": [
+   "own-likeness",
+   "free",
+   "bluescreen"
+  ],
+  "talks": false,
+  "moves": [
+   [
+    0,
+    1.0,
+    "idle, hands in pockets"
+   ],
+   [
+    1.0,
+    3.5,
+    "takes hold of the rope, hand over hand"
+   ],
+   [
+    3.5,
+    4.75,
+    "tugged; jerked forward at 4.75"
+   ],
+   [
+    5.0,
+    7.5,
+    "digs in, legs wide, teeth gritted, leaning (the camera zooms OUT by ~25% here: head width 136->104 px)"
+   ],
+   [
+    7.5,
+    7.75,
+    "the rope whips away, arms flung"
+   ],
+   [
+    7.75,
+    8.25,
+    "falls, lands sitting"
+   ],
+   [
+    8.5,
+    10.0,
+    "sitting, open hands - 'what?'"
+   ]
+  ],
+  "note": "Grok kept putting in a real rope; the user's best take",
+  "used_in": [
+   "let-go"
+  ]
+ },
+ {
+  "id": "u123",
+  "file": "out/user-clips/u123.mp4",
+  "upload": "9edb2cc7-grok_video_2026-10-01-02-17-57.mp4",
+  "what": "THE USER'S OWN LIKENESS: mimed CATCH with an invisible ball, full length, blue screen",
+  "seconds": 10.04,
+  "size": "720x1280",
+  "tags": [
+   "own-likeness",
+   "free",
+   "bluescreen"
+  ],
+  "talks": false,
+  "moves": [
+   [
+    0,
+    0.5,
+    "idle"
+   ],
+   [
+    0.5,
+    2.0,
+    "looks at something small in his palm"
+   ],
+   [
+    2.5,
+    3.5,
+    "tosses it up, eyes following"
+   ],
+   [
+    3.5,
+    4.0,
+    "throws it far to the right"
+   ],
+   [
+    4.0,
+    6.0,
+    "turned right, waiting, watching"
+   ],
+   [
+    6.5,
+    7.5,
+    "a fast crouching catch, startled"
+   ],
+   [
+    7.5,
+    8.5,
+    "reaches up high, both arms"
+   ],
+   [
+    8.5,
+    9.0,
+    "catches it falling, cupped hands"
+   ],
+   [
+    9.0,
+    10.0,
+    "looks into his cupped hands with wonder"
+   ]
+  ],
+  "used_in": []
+ },
+ {
+  "id": "u124",
+  "file": "out/user-clips/u124.mp4",
+  "upload": "7c415584-grok_video_2026-10-01-02-19-53.mp4",
+  "what": "THE USER'S OWN LIKENESS: following a small floating object with his eyes (Grok drew a small BLUE bead - it keys out), hands in pockets, camera pushes in",
+  "seconds": 10.04,
+  "size": "720x1280",
+  "tags": [
+   "own-likeness",
+   "free",
+   "bluescreen"
+  ],
+  "talks": false,
+  "moves": [
+   [
+    0,
+    3.5,
+    "eyes follow the bead left to right, full length"
+   ],
+   [
+    3.5,
+    5.0,
+    "looks straight up after it"
+   ],
+   [
+    5.5,
+    6.0,
+    "cross-eyed at it on his forehead"
+   ],
+   [
+    6.0,
+    6.5,
+    "flinches back, wide-eyed"
+   ],
+   [
+    6.5,
+    8.0,
+    "a soft smile/laugh"
+   ],
+   [
+    8.0,
+    10.0,
+    "looks down, holds out an open palm with the bead in it, smiling"
+   ]
+  ],
+  "note": "the bead is light blue: check whether bluekey removes it (good) or leaves a hole",
+  "used_in": []
  }
 ]
