@@ -24891,3 +24891,123 @@ where predation is established (op 155 carried by 20% or more) count.
   further). The armed keys swing back and forth inside a bounded region. That is the textbook outcome of a
   matching-key race: continual change that revisits old values, not new ones. **Turnover, not open-endedness.**
 - #279's single-seed 2.5x on seed 1 was a reasonable first sign of exactly this; the long runs say what it is.
+
+### #280-#281 — recombination, and THE ATOMS ARE SELECTED: the open-ended layer is under selection once programs replicate.
+
+**#280 REPL_SEX, passage 1** (seeds 1-3, RNG x100+1, against #278's asexual L on the same seeds):
+- recombining worlds are less clonal (best neutral op 0.09-0.31 against 0.10-0.47) and carry more distinct atoms
+  (66-188 against 61-91);
+- predation establishes more slowly;
+- scavenging is significant on 3 of 3 seeds, and two more ops pass on seeds 2-3 (179, 144; 173, 29), against about
+  1.3 expected by chance.
+One passage, not judged yet.
+
+**#281 — the atom-inert control.** `REPL_ATOM_INERT=1`: atoms are still carried, inherited and varied at birth (the
+REPL_ATOMS rate), but every particle-side call does nothing (op 22 returns 0, bound-slot chains return 0, verb gates
+pass). Passengers arrive at the same rate; anything selected for what it does cannot be.
+Passage 1, same seeds as L (identical until an atom first acts):
+
+| seed | mean share of the commonest atom, real / inert | predation >=20% from, real / inert | mean predation carriers, real / inert | new atoms reaching 10%, real / inert |
+|---|---|---|---|---|
+| 1 | **0.57 / 0.27** | 5,000 / 7,000 | 0.66 / 0.51 | 16 / 6 |
+| 2 | **0.62 / 0.19** | 3,500 / 15,500 | 0.84 / 0.22 | 14 / 9 |
+| 3 | **0.62 / 0.17** | 5,000 / 11,500 | 0.68 / 0.21 | 13 / 7 |
+
+- **When atoms can act, one atom expression sweeps to about 60% of the living; inert, none gets past about 25%.**
+  That is selection on the CONTENT of atoms, the one layer in this engine with no ceiling on what can be expressed.
+- With atoms working, predation also arrives earlier and spreads further, so the winning atoms most likely help it.
+- The inert worlds are larger (680-920 against 380-490), which makes reaching 10% harder; the raw innovation counts
+  are confounded by that, and the share column is the clean one.
+**Which atoms win, read from the saves at the end of passages 2 and 3 (#278's L):**
+
+| seed | top atom at 48,000 | top atom at 72,000 |
+|---|---|---|
+| 1 | `(0.72)+(0.40)` at 95% | the same, at 94% |
+| 2 | `((yc<=0.88)?cr:tanh(s))/(d/0.07)` at 73% | `(kc)-(-1.99)` at 95% |
+| 3 | `qd(-1.08, ...)` at 97% | `(1.64)+(yc)` at 83% |
+
+- Many winners are constants: programs use an atom to load a number, plausibly to clear a threshold such as REPL_T
+  or op 155's `vmRegs[si]>k`. Others read senses (`yc`, `kc`, `cr`).
+- The winner changed on 2 of 3 seeds. **Whether each replacement is better (adaptive novelty) or a neutral swap
+  among equivalents (any constant above the threshold works) is not yet told apart.** From here the probe logs the
+  top three atoms every sample (`topAtoms`), so each takeover can be followed from arrival to dominance.
+
+**#281 CORRECTION — passage 2 of the control cuts the claim down.** The header above ("THE ATOMS ARE SELECTED") is
+too strong.
+
+| seed | top-atom share, passage 1, real / inert | passage 2, real / inert |
+|---|---|---|
+| 1 | 0.57 / 0.27 | 0.97 / **0.60** |
+| 2 | 0.62 / 0.19 | 0.84 / **0.81** |
+| 3 | 0.62 / 0.16 | 0.94 / **0.62** |
+
+Once predation fixes and the population goes clonal, **atoms that do nothing also sweep, to 60-81%**, as passengers
+of the winning lineage. Most of passage 1's gap was TIMING: with atoms working, predation arrived earlier on 3 of 3
+seeds (3,500-5,000 against 7,000-15,500), so the clonal sweeps, and the atoms riding them, came earlier. New atoms
+reaching 10% in passage 2: real 16 / 25 / 34, inert 20 / 12 / 27 — no consistent difference.
+What survives:
+- **Atoms change the world's course:** predation came earlier on 3 of 3 seeds.
+- **Atoms sweep further when they can act**, on 3 of 3 seeds in both passages, but by much less than passage 1
+  suggested.
+Not shown: that new atom CONTENT is being selected over old. The same lesson as #274's correction, one level up:
+**in a population that sweeps, any heritable label sweeps with it, and only a control that sweeps too can tell the
+difference.**
+
+### #282 — THE ROOT BLOCKER: every long REPL world ends with one lineage. Measured three ways, and a failed fix.
+
+- **Atoms, logged every sample (asexual L passage 4, 72,000-96,000 ticks).** The "top atom" flips among 2-4
+  expressions that are ALL at 90-100% of the living. Each particle carries its lineage's whole atom bank, and the bank
+  is fixed. New atoms join it (seed 3 at 89,500: a long new expression at 100%), but as passengers of the winning
+  lineage, not by out-competing rival atoms. Combined with #281's correction: **no evidence of atom content evolving
+  open-endedly.**
+- **Ops (passage 4):** a significant core op beyond 146/155 appears now and then (122, 191) only beside a do-nothing
+  op at 91-94% activity: sweeps carrying everything.
+- **Programs are NOT clonal at the exact level.** Seed 101, 12,000 ticks, no pathogen: the commonest exact op sequence
+  holds 4-7% (120-450 distinct). What sweeps is a FAMILY of variant programs from one lineage.
+- **Failed fix — `REPL_PATH`, a pathogen keyed on exact op sequence** (death risk 0.02 x share^2 per tick). Built,
+  run (seed 101, 12,000 ticks), and **reverted without committing:** predation never established (0-1% against 76-79%
+  without it). A new predator program grows from one copy, its share rises, and the pathogen kills it before it
+  establishes. **Kill-the-winner keyed on the genotype kills adaptation itself.**
+**Diagnosis.** A lineage here can do everything — harvest, hunt, scavenge — at no extra cost, and particles mix
+across the whole world within a generation. Nothing stops one generalist ("Darwinian demon") winning everywhere, so
+every adaptation sweeps, the world goes clonal, and evolution waits for the next mutation of the winner. Real
+communities hold diversity through TRADE-OFFS: doing more costs more, so specialists win their own niche and separate
+lineages coevolve. **Next (#283):** under REPL, every instruction a program runs costs energy from its own store —
+CPU time, as in Avida.
+
+**#280 recombination, passage 3, and #284 — sterile rescue founders.** Recombining worlds at 72,000 ticks:
+- seed 1 collapsed to 33 alive, with predation and scavenging lost;
+- seed 3 collapsed to about 47 alive, with ZERO births;
+- seed 2 is healthy and diverse (best do-nothing op at 0.02): 155, 146 and 179 significant, plus three small
+  newcomers (19, 8, 84 at 5-7%).
+The zero births found an engine problem under REPL. After a crash, `replenish` refills the world with parentless
+founders built from the GERMLINE program, and `selfLearnFromBest` periodically replaces the germline with the program
+of the living particle with the most AMP. Under REPL, amp has nothing to do with reproducing, so the germline can
+become a program that never asks to reproduce — and every rescue founder is sterile. **#284 (REPL-only):** the
+ancestor program is kept at boot, and a parentless founder always gets it, so a crashed world can restart from a
+working replicator. The default world is identical to the last commit.
+
+### #283 results — the instruction cost cannot act: EVOLUTION HERE IS SUPPLY-LIMITED.
+
+- **REPL_COST=1** (0.00002 per instruction), passage 1, seeds 1-3 (RNG x100+1): significant ops {155} / {146, 155,
+  92} / none; coexisting op-set kinds at 5% or more averaged 2.2 / 1.3 / 1.8. **Programs did not shrink** (mean
+  length 15.4-15.6, the same as without the cost).
+- **REPL_COST=5** (0.0001 per instruction, about a quarter of base upkeep per instruction), seeds 101/201/301,
+  12,000 ticks: programs **grew** (12.8 -> 17.0 on seed 101, 13.8 -> 16.2, 13.8 -> 15.4), seed 101 crashed to 45-90
+  alive, and no stable coexistence.
+**Why.** At birth an instruction is inserted about 0.9% of the time and deleted about 0.5% (`inheritProg`: rate 0.06
+x 0.15 vs x 0.08). At about 30 generations per 12,000 ticks, a lineage sees about 0.15 deletions in total. Selection
+cannot favour leaner variants that almost never arise, while the insertion bias pushes length to its cap.
+**The engine's evolutionary core is supply-limited:**
+- an opcode is redrawn about 0.4% of the time per instruction per birth;
+- a program run alone barely steers its particle (`soloInfluence` about 0.0005 x gains);
+- particles mix across the world within a generation;
+- runs manage about 50 ticks/s.
+**The pattern of this session:** every fix exposed the next structural limit, in this order:
+1. physics made the babies (#273);
+2. energy leaked through detritus (#278c);
+3. starving particles never died (#278b);
+4. rescues were sterile (#284);
+5. one generalist swept every world (#282);
+6. the mutation supply cannot make the trade-off bite (here).
+REPL_COST stays as a knob, off, with this result.

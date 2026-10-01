@@ -10584,6 +10584,12 @@ function replMate(p){ const c=sunCell(p), cx=c%FIELD_W, cy=(c/FIELD_W)|0; const 
   return cand.length?cand[(Math.random()*cand.length)|0]:-1; }
 function replSexBirth(c,p){ if(Math.random()>=REPL_SEX_P||!pGenome[c])return; const m=replMate(p); if(m<0)return;
   const prog=cloneProg(crossoverProg(pGenome[c].vmProgram,pProg[m],pGenome[c].vmMaxInstructions||16)); pGenome[c].vmProgram=prog; pProg[c]=prog; fired('repl.sex'); }
+// #283 - REPL_COST (knob, needs REPL): EVERY INSTRUCTION COSTS ENERGY. #282: every long REPL world ended with one lineage,
+// because carrying more abilities cost nothing and a generalist could win every niche. Here a particle's own program
+// run is paid from its store each tick, REPL_INSTR_C per instruction - CPU time, as in Avida - so doing more costs more,
+// and a lean specialist can beat a bloated generalist where its one trick pays. A store that cannot pay starves.
+const REPL_COST=REPL_ON&&(typeof globalThis!=='undefined')&&((globalThis.__REPL_COST|0)!==0);
+const REPL_INSTR_C=0.00002*Math.max(1,(typeof globalThis!=='undefined')?(globalThis.__REPL_COST|0):1);   // #283: REPL_COST=k scales it (k=1: 0.00002 per instruction)
 function replKeyBirth(i,p){ const ok=p>=0&&p<N&&p!==i; for(let m=0;m<4;m++){
   if(ok){ pKey[i*4+m]=pKey[p*4+m]+(Math.random()+Math.random()+Math.random()-1.5)*2*REPL_KEYSD; pDef[i*4+m]=pDef[p*4+m]+(Math.random()+Math.random()+Math.random()-1.5)*2*REPL_KEYSD; }
   else { pKey[i*4+m]=Math.random()*2-1; pDef[i*4+m]=Math.random()*2-1; } } }
@@ -10613,7 +10619,8 @@ function sunStep(season){
     pE[i]=e; }
   energyAdequacy=dem>0?paid/dem:1;
   for(let c=0;c<C;c++)tot+=sunField[c]; worldEnergy=tot; }
-if(REPL_ON&&Array.isArray(genome.vmProgram))genome.vmProgram.unshift([4,2,4,1.0]);   // #273: the ancestor asks to reproduce (R2 starts at 1 in the solo VM)
+if(REPL_ON&&Array.isArray(genome.vmProgram))genome.vmProgram.unshift([4,2,4,1.0]);
+const REPL_ANCESTOR=REPL_ON&&Array.isArray(genome.vmProgram)?genome.vmProgram.map(x=>x.slice()):null;   // #284: kept, so a parentless founder under REPL is always a working replicator   // #273: the ancestor asks to reproduce (R2 starts at 1 in the solo VM)
 function deathReturn(i){   // a death returns energy: to the cell it died on under SUN (#272), else to the one pool
   if(REPL_ON){ const c=sunCell(i); corpseField[c]=Math.min(3,corpseField[c]+pE[i]+BIRTH_ENERGY_COST*DEATH_ENERGY_RETURN); pE[i]=0; }   // #273: the dead feed scavengers
   else if(SUN_ON){ sunField[sunCell(i)]+=pE[i]+BIRTH_ENERGY_COST*DEATH_ENERGY_RETURN; pE[i]=0; }
@@ -21389,6 +21396,7 @@ function addParticle(x,y,tv,born,parentA,parentB){
   pGenome[i]=mutateChildGenome(_bg);}
   pProg[i]=pGenome[i].vmProgram;
   if(REPL_ATOMS&&parentA>=0)replAtomBirth(i);   // #276
+  if(REPL_ANCESTOR&&parentA<0){ pGenome[i].vmProgram=REPL_ANCESTOR.map(x=>x.slice()); pProg[i]=pGenome[i].vmProgram; }   // #284: rescue founders replicate - the germline drifts to whatever particle has the most amp (selfLearnFromBest), which under REPL need not reproduce at all
   return i;
 }
 function addCompound(x,y,nt,nvx,nvy,na,np,nf,parentA,parentB){
@@ -21490,6 +21498,7 @@ function addCompound(x,y,nt,nvx,nvy,na,np,nf,parentA,parentB){
   pGenome[i]=mutateChildGenome(_bg);}
   pProg[i]=pGenome[i].vmProgram;
   if(REPL_ATOMS&&parentA>=0)replAtomBirth(i);   // #276
+  if(REPL_ANCESTOR&&parentA<0){ pGenome[i].vmProgram=REPL_ANCESTOR.map(x=>x.slice()); pProg[i]=pGenome[i].vmProgram; }   // #284: rescue founders replicate - the germline drifts to whatever particle has the most amp (selfLearnFromBest), which under REPL need not reproduce at all
   return i;
 }
 function computeVisuals(i){
@@ -25542,6 +25551,7 @@ function executeSoloVM(){
     vy[i]+=vmActions[1]*soloInfluence*0.5;
     if(DIMS>4){ tend[i*DIMS+4]+=vmActions[7]*soloInfluence*0.01; { const _v4=tend[i*DIMS+4]; tend[i*DIMS+4]=Number.isFinite(_v4)?Math.max(-1,Math.min(1,_v4)):0; } }
     mutPressureAccum+=vmActions[6]*soloInfluence*0.00005;
+    if(REPL_COST){ pE[i]-=REPL_INSTR_C*nInst; if(pE[i]<0){ pE[i]=0; pAdq[i]=0; } }   // #283: the run is paid for
     if(REPL_ON&&vmActions[4]>REPL_T&&pE[i]>=BIRTH_ENERGY_COST){   // #273: the program asked, the store pays (in addParticle's gate)
       const _nt=new Float32Array(DIMS); for(let _d=0;_d<DIMS;_d++)_nt[_d]=tend[i*DIMS+_d];
       const _ci=addParticle(px[i]+(Math.random()-0.5)*12,py[i]+(Math.random()-0.5)*12,_nt,true,i,-1); if(_ci>=0){ birthsThisTick++; fired('repl.birth'); if(REPL_SEX)replSexBirth(_ci,i); } }
