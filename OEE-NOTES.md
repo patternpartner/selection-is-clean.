@@ -25418,3 +25418,41 @@ faults. Both are fixed; arms and rules unchanged.
   Network-local virus mutation follows the hosts' own pathway step by step, so every route is soon tracked, and the
   escape is loss of function (Meyer's first step), not a new route. Whether metabolism comes back is what the full
   run shows.
+
+**#288 result — FAILS rule 1 on all three seeds. A network too large to exhaust does not keep novelty coming,
+with or without the virus.** At 1,200,000 ticks (last quarter = the last ten 30,000-tick windows):
+
+| seed | b (BIG + VIRUS): last-quarter windows with a new active reaction | b ever active | bc (BIG): last-quarter windows | bc ever active | income per 1,000 ticks, b / bc | commonest METAB, b / bc |
+|---|---|---|---|---|---|---|
+| 1 | 0/10 | 6 | 2/10 | 14 | 0 / 6,865 | 0.28 / 0.97 |
+| 2 | 1/10 | 36 | 2/10 | 27 | 3,957 / 5,261 | 0.34 / 0.69 |
+| 3 | 4/10 | 40 | 3/10 | 23 | 5,327 / 7,920 | 0.37 / 0.75 |
+
+- **Rule 2** (no deceleration): b passes on seeds 1 and 3, trivially on seed 1 (0 against 0), and fails on seed 2 (1
+  against 6). **Rule 3** (the in-world replay) was not run: rule 1 already decides it.
+- **The virus suppresses metabolism in the big network.** Network-local virus mutation follows the hosts' pathway step
+  by step. Seed 1 abandoned metabolism at about 120,000 ticks and never re-evolved it.
+- **The big network yields FEWER active reactions than the 256-species one did with the virus** (6-40 against 48-91 at
+  1.2M). Size was never the limit: when #287's worlds slowed they had used only 15-20% of their reachable reactions.
+
+### #289 — SYNTHESIS: what bounds novelty in the lean core (#285-#288)
+
+| world | what kept arriving | why it stopped |
+|---|---|---|
+| plain core (fixed menu: light, corpses, other bodies) | adaptive programs, confirmed head to head: 5, 3, 2, 2 wins of 12 per quarter over 7,000 generations; then 1 win per 4 replays per quarter to 14,000 | a few dozen useful op pairs; once learned, only refinements are left |
+| chemistry (waste is food) | 8-15 new metabolic reactions, as pathways deepen | free energy: once a 4-5 step pathway takes the energy in the waste, a new reaction has nothing left to gain |
+| chemistry + viruses entering through a reaction | 2-5x the reactions; metabolic diversity held (commonest route 38-77% against 96-99%) | a bounded Red Queen: hosts cycle among the few PROFITABLE routes; it plateaus by 2.4M; not shown causal in replay on 2/3 seeds |
+| 10x larger network (with or without viruses) | no more than the small one | size was not the limit; profitable routes are, and they are set by the energy income |
+
+**The common cause.** Every new behaviour these worlds can adopt is a new way to take energy. The energy income is
+fixed, so the number of profitable ways to make a living is fixed too.
+- Enemies (viruses) reshuffle who uses which way. They do not create new ways.
+- Waste creates new ways, but each one consumes the opportunity it was built on.
+- **Nothing here lets an innovation create more opportunity than it uses.**
+
+**Next.** Novelty would keep arriving only in a world whose organisms are themselves the expanding resource. The
+directions with that property:
+- **Organisms as resources whose exploitation depends on their own evolved, functional structure** (code-level
+  parasitism, as in Tierra);
+- **Constructions** that persist and change the local physics (an open material space);
+- **New levels of individuality.**
