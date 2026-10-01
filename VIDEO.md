@@ -857,3 +857,7 @@ still out) with a push-in centred right so his hand stays in frame; the end card
 sings "We only get to teach it once", and runs under "same time tomorrow?". The light is bigger and brighter than in the
 dark-stage films and the scene is graded down 18% so it reads against the floodlights. v1 parked it at a fixed point that
 turned out to be an alien's head (it read as the alien glowing): check where a fixed point lands in a full scene.
+**v3 (same file, 25.3 s).** The user: "Long pauses. Ending where the text comes up is about 7 seconds worth." Starts at
+136.3 ("it's watching my feet"), the light dropping straight in; held opening 3.5 s (was 6.7); dance at 0.65x; freeze
+2.0 s (was 4.2); the end card only under "We only get to teach it once / So teach it how to dance" (157.9-161.6, 3.7 s;
+was 8). LESSON: this user feels a hold over ~3 s as a pause, and wants the end card short - 3.5-4 s, not 7-8.
