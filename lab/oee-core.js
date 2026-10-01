@@ -71,7 +71,7 @@ const DEF={
   // step was found in 60,000 ticks). Virus keys are then 18-bit; a mutant moves along the network (another product
   // of the same substrate, or a step downstream), and an immigrant is keyed to a molecule actually present. The 256-species
   // network ran out (#287): this one is too large to exhaust in a run.
-  CHEM_BIG:0,
+  CHEM_BIG:0, V_PRESENT:0.05,
 };
 
 class World{
@@ -192,7 +192,7 @@ class World{
     if(!this.count())this.reseed();
     this.neutralStep();
   }
-  be(q){ if(q===0)return 1; const B=this.big; let v=B.e.get(q); if(v===undefined){ v=h32(q^B.salt)/4294967296; B.e.set(q,v); } return v; }
+  be(q){ if(q===0)return 1; const B=this.big; let v=B.e.get(q); if(v===undefined){ v=h32(q^B.salt)/4294967296; if((q&(q-1))===0)v=0.7+0.2*v; B.e.set(q,v); } return v; }   // species 0's one-bit neighbours sit at 0.7-0.9, so every first step pays 0.1-0.3 (seed 2 had none worth running)
   bprod(q,j){ const B=this.big, P=this.p; let a=B.pr.get(q); if(a)return a[j];   // products are one bit-flip from the substrate (an enzyme's specificity moves in small steps), so the next step is one byte change away
     const eq=this.be(q), tgt=eq-P.CHEM_STEP, bits=[]; for(let b=0;b<16;b++)bits.push(b); let hs=h32(q^B.salt^0x51ed27);
     for(let i=15;i>0;i--){ hs=h32(hs+i); const k=hs%(i+1); const t=bits[i]; bits[i]=bits[k]; bits[k]=t; }
@@ -213,7 +213,7 @@ class World{
     if(this.p.CHEM_BIG){ for(let i=0;i<n;i++) if(this.prog[o+i*2]===op&&(this.prog[o+i*2+1]|(this.prog[o+((i+1)%n)*2+1]<<8))===q)return true; return false; }
     for(let i=0;i<n;i++) if(this.prog[o+i*2]===op&&this.prog[o+i*2+1]===q)return true; return false; }
   vmutate(k,r){ if(!this.p.CHEM_BIG)return (r()*this.p.CHEM_S*4)|0; const q=k>>>2, j=k&3; return r()<0.5?q*4+((r()*4)|0):this.bprod(q,j)*4+((r()*4)|0); }   // big: along the network
-  vimmigrant(r){ if(!this.p.CHEM_BIG)return (r()*this.p.CHEM_S*4)|0; const B=this.big.layers; if(!B.size)return (r()*4)|0; let i=(r()*B.size)|0; for(const q of B.keys()){ if(i--===0)return q*4+((r()*4)|0); } return 0; }   // big: keyed to a molecule present
+  vimmigrant(r){ if(!this.p.CHEM_BIG)return (r()*this.p.CHEM_S*4)|0; const B=this.big.layers; if(!B.size||r()>=this.p.V_PRESENT)return (r()*262144)|0; let i=(r()*B.size)|0; for(const q of B.keys()){ if(i--===0)return q*4+((r()*4)|0); } return 0; }   // big: mostly a random key, as in #287; keyed to a molecule present only V_PRESENT of the time (always so, first steps were hit 50x as often as in #287)
   virusStep(){ const P=this.p, r=this.vrnd, vc=this.vc, vk=this.vk, NR=P.CHEM_S*4;
     if(P.V_SEED&&this.tick===P.V_ONSET) for(const k of P.V_SEED) for(let n=0;n<P.V_SEEDN&&this.vn<P.V_MAX;n++){ vc[this.vn]=(r()*this.C)|0; vk[this.vn]=k; this.vn++; }
     if(r()<P.V_IMMIG&&this.vn<P.V_MAX){ vc[this.vn]=(r()*this.C)|0; vk[this.vn]=this.vimmigrant(r); this.vn++; }   // a trickle of immigrants, so viruses cannot be lost for good

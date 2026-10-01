@@ -25398,3 +25398,23 @@ worlds plateau.**
 
 Growth per 600,000 ticks falls from 24-41 to 3-10. **The virus makes a bounded Red Queen slow; it does not make it
 open.** #288 tests whether the size of the network is the limit.
+
+**#288 amendment (before any decision data).** The first launch was stopped at about 60,000 ticks for two design
+faults. Both are fixed; arms and rules unchanged.
+1. **Seed 2 had no profitable first step.** Its usable first reactions released 0.02-0.10, so metabolism died even
+   without the virus. Now species 0's sixteen one-bit neighbours sit at energy 0.7-0.9, so every first step pays
+   0.1-0.3. Reachable networks: 2,424 / 3,017 / 4,621 species and 3,117 / 3,989 / 6,331 usable reactions.
+2. **Immigrants hit first steps far too often.** Every immigrant was keyed to a molecule present, and species 0 is always
+   present, so each first-step reaction was hit about 50x as often as in #287 and metabolism could not start. Now an
+   immigrant is keyed to a present molecule only 5% of the time (V_PRESENT), otherwise to a random key. That puts the
+   per-reaction hit rate back to about #287's (roughly once per 10,000 ticks).
+
+**Trial after the fix, 80,000 ticks.**
+- **Without the virus,** metabolism is healthy and still growing at 100,000 ticks (10-15 reactions carry flux; the
+  commonest METAB is carried by 91-100%).
+- **With it,** metabolism thrives to about 60,000 ticks and is then abandoned on all three seeds:
+  - income is 0 at 80,000 ticks, the commonest METAB carried by only 0.09-0.28;
+  - no reseed, about 800 alive, molecules piling up.
+  Network-local virus mutation follows the hosts' own pathway step by step, so every route is soon tracked, and the
+  escape is loss of function (Meyer's first step), not a new route. Whether metabolism comes back is what the full
+  run shows.
