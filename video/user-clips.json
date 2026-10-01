@@ -2341,5 +2341,65 @@
   "used_in": [
    "fetch"
   ]
+ },
+ {
+  "id": "u125",
+  "file": "out/user-clips/u125.mp4",
+  "upload": "f7e1def3-grok_video_2026-10-01-09-46-59.mp4",
+  "seconds": 12.04,
+  "size": "720x1280",
+  "what": "THE USER'S OWN LIKENESS: a small glowing ORANGE light (drawn by Grok, from Claude's prompt) comes back to him on its own; blue screen; camera pushes in",
+  "tags": [
+   "own-likeness",
+   "free",
+   "bluescreen"
+  ],
+  "talks": false,
+  "moves": [
+   [
+    0,
+    0.45,
+    "waiting, hands in pockets, looking up"
+   ],
+   [
+    0.5,
+    1.5,
+    "the light drifts down past his face"
+   ],
+   [
+    1.5,
+    3.7,
+    "it circles his head to his right (screen left)"
+   ],
+   [
+    3.7,
+    4.7,
+    "behind his head (hidden)"
+   ],
+   [
+    4.7,
+    6.5,
+    "out on his left (screen right), he watches it"
+   ],
+   [
+    6.5,
+    8.0,
+    "it comes to his nose; he smiles"
+   ],
+   [
+    8.0,
+    10.5,
+    "it sinks; he takes a hand from his pocket and holds it out"
+   ],
+   [
+    10.5,
+    12.0,
+    "it rests in his open palm; he smiles at it"
+   ]
+  ],
+  "note": "the light track (white-hot core, lum>245) is video/stories/u125-light-track.json; prompt in VIDEO.md (Fetch v3)",
+  "used_in": [
+   "fetch"
+  ]
  }
 ]

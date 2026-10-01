@@ -9,6 +9,13 @@ it straight up and it is gone ("light" 53.7); he waits; it drifts back in on "a 
 "where the smile used to be" and he smiles; it lands in his palm on "If you come after" (66.1) and rests there through
 "I left the lamp burning". The end line over "Read it, don't trust it, and look for me".
 Light positions are read by hand off gridded 4 fps sheets (clip px; u124's from the bead Grok drew).
+v3 - the user on v2: "it's not matched. When I duck my eyes are not following. Also grok put in a little rubber thing
+that's still in the video. Shall we try re-prompting grok?" Re-prompted (VIDEO.md has the prompt): u125, in which Grok
+draws a small orange light itself, so his eyes and hands follow it for real - it drifts down, circles his head (behind
+it for a moment), comes nose to nose, and settles in his palm. The duck-and-catch (u123 6.5-8) is CUT, and u124 with it:
+he throws it away on "behind" and watches the edge; on "Two" (51.78) it is back, on its own. The amber light rides on
+Grok's (PATH_B read by hand off a frame sheet with the tracked point drawn on - colour trackers locked onto his lit face
+and shirt whenever the light was over the blue), and hides when Grok's goes behind his head.
     python3 video/build_fetch.py      (TEST=s1,s2 TESTDIR=dir in SONG seconds; PART=a,b VOUT=f in film seconds)
 """
 import math
@@ -17,7 +24,10 @@ import subprocess
 import sys
 
 import imageio_ffmpeg
+import json
+
 import numpy as np
+from scipy.ndimage import gaussian_filter1d
 from PIL import Image
 
 sys.path.insert(0, os.path.dirname(__file__))
@@ -26,7 +36,7 @@ from bluekey import key  # noqa: E402
 F = imageio_ffmpeg.get_ffmpeg_exe()
 W, H, FPS = 704, 1280, 24
 S0, S1 = 44.4, 70.6
-CUT = 53.8                                    # u123 -> u124
+CUT = 51.78                                   # u123 -> u125, on "Two"
 DUR = S1 - S0
 TEST = [float(x) for x in os.environ.get("TEST", "").split(",") if x]
 PART = [float(x) for x in os.environ.get("PART", "").split(",") if x]
@@ -34,8 +44,8 @@ AMBER = np.array([255, 176, 88], np.float32)
 CW, CH = 720, 1280
 K, OY = W / CW, 14
 # song second -> clip second, per shot
-MAP_A = [(44.4, 0.4), (49.92, 4.0), (51.78, 6.5), (53.0, 7.5), (53.8, 8.0)]
-MAP_B = [(53.8, 0.0), (55.9, 0.45), (58.9, 3.5), (60.4, 5.0), (61.0, 6.0), (62.0, 7.0), (64.5, 8.25), (66.2, 9.0), (70.6, 10.0)]
+MAP_A = [(44.4, 0.4), (49.92, 4.0), (51.78, 5.9)]
+MAP_B = [(51.78, 0.0), (52.6, 0.45), (61.42, 7.5), (63.0, 8.25), (66.1, 10.5), (70.6, 12.0)]
 # the light, clip px, by clip second (None = not in frame)
 # (v2, the user: "it's a bit out of sync" - re-read at 8 fps off larger sheets: the light sits just above his palm, floats
 # free when his hand drops, rises as he looks up, rides his hand up and through the throw; on the return it is in frame
@@ -47,12 +57,23 @@ PATH_A = [(0.4, 250, 570), (0.5, 250, 565), (0.625, 259, 552), (0.75, 269, 528),
           (3.75, 535, 210), (3.875, 590, 305), (4.0, 713, 188), (4.12, 950, 120), (5.85, 950, 230), (5.95, 760, 200),
           (6.5, 483, 450), (6.75, 330, 350), (7.0, 300, 440), (7.25, 300, 430), (7.5, 360, 306), (7.75, 360, 54),
           (8.0, 360, -160)]
-PATH_B = [(0.45, -60, 420), (0.75, 47, 475), (1.0, 94, 522), (1.25, 140, 551), (1.5, 180, 576), (2.0, 425, 558),
-          (2.25, 493, 522), (2.5, 533, 493), (2.75, 565, 468), (3.0, 594, 432), (3.25, 594, 364), (3.5, 576, 277),
-          (3.75, 551, 191), (4.0, 515, 119), (4.25, 464, 61), (4.5, 418, 29), (4.75, 382, 29), (5.0, 367, 61),
-          (5.25, 349, 108), (5.5, 349, 198), (5.75, 360, 281), (6.0, 360, 360), (6.25, 353, 432), (6.5, 349, 443),
-          (6.75, 440, 400), (7.25, 520, 380), (8.0, 520, 560), (8.5, 430, 880), (8.75, 310, 1000), (9.0, 349, 1006),
-          (9.25, 360, 1048), (10.0, 360, 1048)]
+# u125's light: TRACKED per frame from Grok's light's white-hot core (luminance > 245; video/stories/u125-light-track.json,
+# checked by drawing the point on the frames). Before it appears, and while it is behind his head, the tracker picks up
+# shoes or shirt highlights instead: those spans are dropped and interpolated, and the light is hidden (HIDDEN).
+def _track_b():
+    tr = json.load(open(os.path.join(os.path.dirname(__file__), "stories", "u125-light-track.json")))
+    t = np.array([q[0] for q in tr])
+    ok = np.array([q[1] is not None and q[0] >= 0.45 and not (3.7 <= q[0] < 4.7) for q in tr])
+    x = np.array([q[1] if q[1] is not None else 0 for q in tr], float)
+    y = np.array([q[2] if q[2] is not None else 0 for q in tr], float)
+    x, y = np.interp(t, t[ok], x[ok]), np.interp(t, t[ok], y[ok])
+    first = t[ok][0]
+    y = np.where(t < first, y[ok][0] - (first - t) * 300, y)          # it comes down from above the frame
+    return t, gaussian_filter1d(x, 1.0), gaussian_filter1d(y, 1.0)
+
+
+TB = None
+HIDDEN = (3.6, 3.7, 4.62, 4.72)                 # Grok's light goes behind his head: fade out, gone, fade in
 rng = np.random.default_rng(9)
 
 
@@ -76,11 +97,11 @@ def path(p, ct):
 
 class Reader:
     """frames of a clip at arbitrary (mostly increasing) times"""
-    def __init__(self, clip):
-        self.clip, self.p, self.t, self.frame = clip, None, None, None
+    def __init__(self, clip, length):
+        self.clip, self.length, self.p, self.t, self.frame = clip, length, None, None, None
 
     def at(self, t):
-        t = min(t, 10.0)
+        t = min(t, self.length - 0.05)                  # (v2 clamped every clip at 10.0 s: u125 is 12 s and froze)
         if self.p is None or t < self.t - 1e-6 or t - self.t > 1.0:
             if self.p:
                 self.p.kill()
@@ -112,12 +133,16 @@ def place(frame):
 def light_at(s):
     if s < CUT:
         return path(PATH_A, tmap(MAP_A, s))
-    return path(PATH_B, tmap(MAP_B, s))
+    global TB
+    if TB is None:
+        TB = _track_b()
+    ct = tmap(MAP_B, s)
+    return (float(np.interp(ct, TB[0], TB[1])) * K, float(np.interp(ct, TB[0], TB[2])) * K + OY)
 
 
 def main():
     ys, xs = np.mgrid[0:H, 0:W].astype(np.float32)
-    ra, rb = Reader("u123"), Reader("u124")
+    ra, rb = Reader("u123", 10.04), Reader("u125", 12.04)
     out = None
     if not TEST:
         out = subprocess.Popen([F, "-loglevel", "error", "-y", "-f", "rawvideo", "-pix_fmt", "rgb24", "-s", f"{W}x{H}", "-r",
@@ -146,7 +171,7 @@ def main():
         # ---- him: dim key from above; the light's warmth
         vis = ramp(s, S0, S0 + 0.6)
         top_light = np.clip(1.15 - ys / H * 0.6, 0.5, 1.1)[..., None]
-        near = 1 / (1 + ((xs - lx) ** 2 + (ys - ly) ** 2) / (240 ** 2)) * vis
+        near = 1 / (1 + ((xs - lx) ** 2 + (ys - ly) ** 2) / (240 ** 2)) * vis * (0.5 if shot_b else 1.0)  # Grok lit u125 already
         lit = person * (0.42 * top_light) + person / 255 * AMBER[None, None] * (near * 0.95)[..., None]
         a = a * (1 - al[..., None]) + lit * al[..., None]
         # ---- the light
@@ -157,17 +182,13 @@ def main():
             d2 = (xs - px) ** 2 + (ys - py) ** 2
             a += (np.exp(-d2 / (2 * 8 ** 2)) * 0.7 * w)[..., None] * AMBER
         d2 = (xs - lx) ** 2 + (ys - ly) ** 2
-        r = 11.0 + (5.0 * ramp(tmap(MAP_B, s), 8.8, 9.2) if shot_b else 0.0)   # a touch bigger in his palm (over Grok's bead)
-        g = np.exp(-d2 / (2 * (r * 6) ** 2)) * 0.45 + np.exp(-d2 / (2 * r ** 2)) * 1.4 + np.exp(-d2 / (2 * (r * 0.35) ** 2)) * 2
-        a += g[..., None] * AMBER
-        a += (np.exp(-(((xs - lx) / 110) ** 2 + ((ys - 1235) / 16) ** 2)) * 0.5 * floor)[..., None] * AMBER
-        # two points of light: nose to nose, it shows in both lenses of his glasses
+        r = 11.0 + (5.0 * ramp(ct, 10.0, 10.8) if shot_b else 0.0)    # bigger in his palm, over Grok's own
+        hv = 1.0
         if shot_b:
-            k2 = ramp(ct, 5.6, 5.85) * (1 - ramp(ct, 6.4, 6.6))
-            if k2 > 0:
-                for side in (-1, 1):
-                    qx, qy = lx + side * 58 * K, ly - 8
-                    a += (np.exp(-((xs - qx) ** 2 + (ys - qy) ** 2) / (2 * 4.5 ** 2)) * 1.6 * k2)[..., None] * AMBER
+            hv = 1 - ramp(ct, HIDDEN[0], HIDDEN[1]) * (1 - ramp(ct, HIDDEN[2], HIDDEN[3]))
+        g = np.exp(-d2 / (2 * (r * 6) ** 2)) * 0.45 + np.exp(-d2 / (2 * r ** 2)) * 1.4 + np.exp(-d2 / (2 * (r * 0.35) ** 2)) * 2
+        a += (g * hv)[..., None] * AMBER
+        a += (np.exp(-(((xs - lx) / 110) ** 2 + ((ys - 1235) / 16) ** 2)) * 0.5 * floor)[..., None] * AMBER
         a = 255 * (1 - np.exp(-a / 255 * 1.2))
         a *= ease(t / 0.8)
         if abs(s - CUT) < 0.12:                                     # a breath of black at the cut
