@@ -899,3 +899,6 @@ back into his; palm flat to the glass on "When the window closes" (u113 9.75-10.
 11.25-12.75); the light comes out through the glass and stays in the dark ("carries on"); "Hello": a new window, a new him
 cupping his hands (u123 8.9-10), the light settling into them. Known: two slow stretches (the letters figure ~8 s, the
 idle after the shrug ~5 s) - motion is there (rewriting letters, letters blowing away) but small.
+**Fix (same file).** The user: "Really great Claude. Creative. The last scene the light is beneath my hands rather than in
+them." v1 aimed it at a guessed point; now it follows the cup of his hands read off a gridded 4 fps sheet (u123 8.9-10).
+The user's verdict on the film itself: "Really great... Creative."
