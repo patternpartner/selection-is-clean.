@@ -2401,5 +2401,43 @@
   "used_in": [
    "fetch"
   ]
+ },
+ {
+  "id": "u126",
+  "file": "out/user-clips/u126.mp4",
+  "upload": "cfdffd5d-grok_video_2026-10-01-11-47-53.mp4",
+  "seconds": 12.04,
+  "size": "720x1280",
+  "what": "THE USER'S OWN LIKENESS in a full Grok scene (NOT blue screen): night at an 'AREA 51' compound under floodlights, a crowd of grey and green aliens (and soldiers at the back) - he dances with them",
+  "tags": [
+   "own-likeness",
+   "free",
+   "scene"
+  ],
+  "talks": false,
+  "moves": [
+   [
+    0,
+    1.0,
+    "standing, hands in pockets, aliens around"
+   ],
+   [
+    1.25,
+    5.0,
+    "arms up, waving, bouncing"
+   ],
+   [
+    5.0,
+    8.0,
+    "dancing among the aliens, dust kicking up"
+   ],
+   [
+    8.0,
+    12.0,
+    "arms out wide, a line dance with the aliens, dust"
+   ]
+  ],
+  "note": "sent without a message after Fetch v3",
+  "used_in": []
  }
 ]
