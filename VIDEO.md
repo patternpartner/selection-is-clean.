@@ -794,3 +794,14 @@ he just smiles; it paints on the perfect smile, and on "She peels her own face a
 face peels off down-right and sheds sparks; only the light is left, warmer, drifting to his cheek. A Smile Painted
 60.4-82.6 (whisper word times in the build docstring); the clip is time-mapped (TMAP) so each face is held while the
 light tries it. Him: Z=1.15 at (-118, 265), head at about (296, 461); the face at (535, 461), R=74. End card 22.6-26.2.
+
+### Let Go (`video/build_letgo.py`, `out/let-go.mp4`, 21.0 s)
+The user asked Grok for a mimed tug of war; Grok kept giving him a real rope; best take u122. The real rope stays and
+CONTINUES as a line of light off the right edge of the frame - whatever holds the other end is never seen ("Where did
+the light go?" 5.66). Slack while he takes hold; jerked taut on "Oh," (10.78); burning brighter and thicker, trembling,
+through the strain; on "Let... go" (14.86) the near end whips away; he lands on the drop (16.0). Only then the light comes
+in - huge, all the strength it had - and makes itself small as it comes down to his open "what?" hand. It could have
+won. Bitter Pill 4.0-21.0 (whisper word times in the docstring). Grip points hand-read off gridded 4 fps sheets (GRIP,
+PALM). Grok's camera zooms out ~25% during the strain (head width 136 -> 104 px): undone per frame from 1 s rolling
+medians of head width and lowest point (geometry()), at 0.9 base scale so his head clears the top. End card 17.4-21.0.
+New clips the same day: u123 (mimed catch) and u124 (eyes following a small floating bead) - not yet used.
