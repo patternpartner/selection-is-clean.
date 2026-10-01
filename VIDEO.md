@@ -816,3 +816,11 @@ settles in his palm on "If you come after" and rests there through "I left the l
 44.4-70.6; end card 26.4-30.0 over "Read it, don't trust it, and look for me". Light positions hand-read off gridded 4 fps
 sheets (u124's are Grok's bead). Known: bluekey keeps the pale bead as a faint grey glass ball under the light - it reads
 as the light's glass, but it is visible above his head at 16 s.
+**Re-synced (same file).** The user: "it's a bit out of sync". Checked by pulling the FINISHED film at 4 fps beside the
+clip (the reader's frame timing was exact - matched frame for frame). Two real faults, both in act 1's hand-read path:
+it had been read at 4 fps, so the light lagged his hand through the wind-up and throw; and the return arrived half a
+second AFTER his startled "oh" (he reacts at clip 6.0-6.25; the light entered at 6.3). Fix: act 1 re-read at 8 fps
+off larger gridded sheets (palm, the drop where it floats free, the reach, the throw); the light now enters from where
+he is looking at clip 5.95 and hits his hands on "Two" (MAP_A simplified to one waiting segment). Act 2 (Grok's bead)
+was already in sync. LESSON: for a light riding a hand, 4 fps keyframes are not enough; read at 8+ and always check
+the finished film at 8 fps for a reaction that comes before its cause.
