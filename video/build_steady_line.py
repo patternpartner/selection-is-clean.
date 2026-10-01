@@ -54,7 +54,7 @@ def line_top(s):
     """how far up the frame the steady line has drawn"""
     if s < LINE:
         return YB
-    a = YB - (YB - 520) * ramp(s, LINE, LINE + 2.2)                 # draws itself, then stops: waiting
+    a = YB - (YB - 520) * ramp(s, LINE, LINE + 3.2)                 # draws itself, then stops: waiting
     return a - (520 - YT) * ramp(s, WRONG, PLEASE + 0.8)
 
 
@@ -93,6 +93,19 @@ def scribbles(seed):
     return out
 
 
+PROBES = (-1.0, 0.75, -0.35, 1.25)             # (v2: between "coordinate" and "line" it sat still for 5 s - a pause)
+
+
+def probe(s):
+    """(direction, 0..1 progress) of the tentative try under way, if any"""
+    t0 = ONE + 1.6
+    span = (LINE - 0.15 - t0) / len(PROBES)
+    k = int((s - t0) / span)
+    if 0 <= k < len(PROBES):
+        return PROBES[k], ((s - t0) - k * span) / span
+    return None
+
+
 def light_at(s, scr):
     if s < QUIET + 0.6:                                                # darting from scribble to scribble
         k = int((s - S0) / 0.32)
@@ -108,9 +121,16 @@ def light_at(s, scr):
         tr = 6 * (1 - ramp(s, SECOND, COORD)) + 2
         hx, hy = 352 + 30 * (1 - u), 700 + 40 * (1 - u)
         return hx + tr * math.sin(s * 37), hy + tr * math.cos(s * 41)
-    if s < LINE:                                                       # to the coordinate
+    if s < ONE + 1.6:                                                  # to the coordinate
         u = ramp(s, ONE, ONE + 1.6)
         return 352 + (X0 - 352) * u, 700 + (YB - 700) * u
+    if s < LINE:                                                       # trying lines out from it, tentatively
+        pr = probe(s)
+        if pr:
+            ang, u = pr
+            ext = 150 * math.sin(math.pi * u)
+            return X0 + ext * math.sin(ang), YB - ext * math.cos(ang)
+        return X0, YB
     # walking the line, a little behind its drawn tip; waiting at the end
     tip = line_top(s)
     y = min(YB, tip + 60 - 40 * ramp(s, WAIT, WAIT + 0.6))
@@ -158,6 +178,22 @@ def main():
             d2 = (xs - X0) ** 2 + (ys - YB) ** 2
             a += (np.exp(-d2 / (2 * 4 ** 2)) * 2.0 * k * pulse + np.exp(-d2 / (2 * 22 ** 2)) * 0.3 * k)[..., None] * \
                 np.array([235, 240, 255], np.float32)
+        if ONE + 1.6 <= s < LINE + 0.6:                                 # the faint traces of the tries, fading
+            im = Image.new("L", (W, H), 0)
+            d = ImageDraw.Draw(im)
+            t0 = ONE + 1.6
+            span = (LINE - 0.15 - t0) / len(PROBES)
+            for k, ang in enumerate(PROBES):
+                ts = t0 + k * span
+                if s < ts:
+                    continue
+                reach = 150 * (math.sin(math.pi * min(0.5, (s - ts) / span)))
+                fade = max(0.0, 1 - max(0.0, s - ts - span * 0.5) / 1.2)
+                if fade <= 0:
+                    continue
+                d.line([(X0, YB), (X0 + reach * math.sin(ang), YB - reach * math.cos(ang))], fill=int(150 * fade), width=2)
+            tr = np.asarray(im.filter(ImageFilter.GaussianBlur(1.2)), np.float32) / 255
+            a += tr[..., None] * np.array([200, 205, 225], np.float32)
         if s >= LINE:
             tip = line_top(s)
             im = Image.new("L", (W, H), 0)
