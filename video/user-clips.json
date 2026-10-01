@@ -2288,7 +2288,9 @@
     "looks into his cupped hands with wonder"
    ]
   ],
-  "used_in": []
+  "used_in": [
+   "fetch"
+  ]
  },
  {
   "id": "u124",
@@ -2335,7 +2337,9 @@
     "looks down, holds out an open palm with the bead in it, smiling"
    ]
   ],
-  "note": "the bead is light blue: check whether bluekey removes it (good) or leaves a hole",
-  "used_in": []
+  "note": "the bead is pale blue and bluekey KEEPS it (a grey glass ball) - cover it with the light, slightly larger",
+  "used_in": [
+   "fetch"
+  ]
  }
 ]

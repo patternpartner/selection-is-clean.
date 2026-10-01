@@ -805,3 +805,14 @@ won. Bitter Pill 4.0-21.0 (whisper word times in the docstring). Grip points han
 PALM). Grok's camera zooms out ~25% during the strain (head width 136 -> 104 px): undone per frame from 1 s rolling
 medians of head width and lowest point (geometry()), at 0.9 base scale so his head clears the top. End card 17.4-21.0.
 New clips the same day: u123 (mimed catch) and u124 (eyes following a small floating bead) - not yet used.
+
+### Fetch (`video/build_fetch.py`, `out/fetch.mp4`, 30.0 s)
+u123 (mimed catch) + u124 (eyes following Grok's floating bead). The user: "Yeah". He plays fetch with the light: it floats
+up out of his palm, he catches it high and throws it away on "It isn't mine till I leave it behind" (49.92); it rockets
+back on the chorus ("Two" 51.78) and he crouches, startled, catching it at his face; he throws it straight up and it is
+gone. Cut (a breath of black at 53.8): he waits, hands in pockets; it comes back ON ITS OWN, drifting in from the left,
+up over his head, nose to nose (two points of light in his glasses), he smiles on "where the smile used to be", and it
+settles in his palm on "If you come after" and rests there through "I left the lamp burning". Two Points of Light
+44.4-70.6; end card 26.4-30.0 over "Read it, don't trust it, and look for me". Light positions hand-read off gridded 4 fps
+sheets (u124's are Grok's bead). Known: bluekey keeps the pale bead as a faint grey glass ball under the light - it reads
+as the light's glass, but it is visible above his head at 16 s.
