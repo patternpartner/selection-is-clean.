@@ -139,7 +139,7 @@ class World{
         case 14: { const a=this.ahead(c,this.face[c]); R[r4]=this.alive[a]?this.matchP(c,a):-1; } break;   // SENSE_MATCH
         case 15: this.face[c]=(this.face[c]+(arg&7))&7; break;               // TURN
         case 16: { const a=this.ahead(c,this.face[c]); this.E[c]-=P.C_MOVE; if(!this.alive[a]){ this.moveOrg(c,a); this.pc[a]=next; this.ev.moves++; return; } } break;   // MOVE
-        case 17: { const t=this.light[c]*P.EAT_F; this.light[c]-=t; if(P.CHEM){ this.E[c]+=t*(1-P.CHEM_ALPHA); this.mol[c*P.CHEM_S]+=t*P.CHEM_ALPHA; } else this.E[c]+=t; this.ev.eatLight+=t; } break;   // EAT_LIGHT (under CHEM part of the take is left as species 0)
+        case 17: { const t=this.light[c]*P.EAT_F; this.light[c]-=t; if(P.CHEM){ this.E[c]+=t*(1-P.CHEM_ALPHA); this.mol[c]+=t*P.CHEM_ALPHA; } else this.E[c]+=t; this.ev.eatLight+=t; } break;   // EAT_LIGHT (under CHEM part of the take is left as species 0)
         case 18: { const t=this.corpse[c]*P.EAT_F; this.corpse[c]-=t; this.E[c]+=t; this.ev.eatCorpse+=t; } break;   // EAT_CORPSE
         case 19: { const a=this.ahead(c,this.face[c]); this.E[c]-=P.C_ATTACK; if(this.alive[a]){ const take=this.matchP(c,a)*P.ATT_FRAC*this.E[a]; this.E[a]-=take; this.E[c]+=take*P.ATT_EFF; this.ev.attacks++; this.ev.attackTake+=take;
                    if(this.E[a]<=0.01){ this.kill(a,'killed'); } } } break;   // ATTACK
@@ -147,9 +147,9 @@ class World{
         case 21: { const a=this.ahead(c,this.face[c]); if(this.alive[a]){ const g=this.E[c]*P.SHARE_F; this.E[c]-=g; this.E[a]+=g; this.ev.shares++; } } break;   // SHARE
         case 22: { const a=this.ahead(c,this.face[c]); R[r4]=this.light[a]-this.light[c]; } break;   // SENSE_GRAD
         case 23: R[r4]=this.rnd(); break;                                    // RAND
-        case 24: case 25: case 26: case 27: if(P.CHEM){ const S=P.CHEM_S, q=arg&(S-1), pr=this.prod[q*4+op-24], d=this.eMol[q]-this.eMol[pr], i0=c*S;   // METABj
-                   if(d>0&&d<=P.CHEM_DMAX){ const x=this.mol[i0+q]*P.EAT_F; if(x>0){ this.mol[i0+q]-=x; this.mol[i0+pr]+=x; this.E[c]+=x*d; this.ev.metab+=x*d; this.ev.metabN++; this.rxE[q*4+op-24]+=x*d; } } } break;
-        case 28: if(P.CHEM)R[r4]=this.mol[c*P.CHEM_S+(arg&(P.CHEM_S-1))]; break;   // SENSE_MOL
+        case 24: case 25: case 26: case 27: if(P.CHEM){ const S=P.CHEM_S, q=arg&(S-1), pr=this.prod[q*4+op-24], d=this.eMol[q]-this.eMol[pr], C=this.C;   // METABj (mol is species-major: species q in cell c is q*C+c)
+                   if(d>0&&d<=P.CHEM_DMAX){ const x=this.mol[q*C+c]*P.EAT_F; if(x>0){ this.mol[q*C+c]-=x; this.mol[pr*C+c]+=x; this.E[c]+=x*d; this.ev.metab+=x*d; this.ev.metabN++; this.rxE[q*4+op-24]+=x*d; } } } break;
+        case 28: if(P.CHEM)R[r4]=this.mol[(arg&(P.CHEM_S-1))*this.C+c]; break;   // SENSE_MOL
         default: break;                                                      // NOP and the eight neutral markers
       }
       pc=next;
@@ -171,10 +171,10 @@ class World{
     this.neutralStep();
   }
   chemStep(){ const P=this.p, S=P.CHEM_S, C=this.C, W=P.W, H=P.H, m=this.mol, t=this.molTmp, D=P.CHEM_D, k=Math.pow(1-P.CHEM_DECAY,P.CHEM_EVERY);
-    for(let q=0;q<S;q++){ let any=false; for(let c=0;c<C;c++) if(m[c*S+q]>0){ any=true; break; } if(!any)continue;
-      for(let y=0;y<H;y++){ const yu=((y+H-1)%H)*W, yd=((y+1)%H)*W, y0=y*W; for(let x=0;x<W;x++){ const xl=(x+W-1)%W, xr=(x+1)%W, c=y0+x, v=m[c*S+q];
-        t[c]=(v+D*((m[(y0+xl)*S+q]+m[(y0+xr)*S+q]+m[(yu+x)*S+q]+m[(yd+x)*S+q])/4-v))*k; } }
-      for(let c=0;c<C;c++)m[c*S+q]=t[c]; } }
+    for(let q=0;q<S;q++){ const b=q*C; let any=false; for(let c=0;c<C;c++) if(m[b+c]>0){ any=true; break; } if(!any)continue;   // species-major, so each scan is contiguous (cell-major made this the slowest part of a tick)
+      for(let y=0;y<H;y++){ const yu=b+((y+H-1)%H)*W, yd=b+((y+1)%H)*W, y0=y*W; for(let x=0;x<W;x++){ const xl=(x+W-1)%W, xr=(x+1)%W, c=y0+x, v=m[b+c];
+        t[c]=(v+D*((m[b+y0+xl]+m[b+y0+xr]+m[yu+x]+m[yd+x])/4-v))*k; } }
+      m.set(t,b); } }
   neutralStep(){ const ns=this.ns, r=this.nrnd;
     for(let d=0;d<this.tickDeaths&&ns.length;d++){ const k=(r()*ns.length)|0; ns[k]=ns[ns.length-1]; ns.pop(); }
     const m=ns.length; for(const ch of this.tickBirths){ const par=m?ns[(r()*m)|0]:0; ns.push(ch||!m?this.nsNext++:par); }
@@ -206,7 +206,7 @@ class World{
     const fgTop=[...fg.entries()].sort((a,b)=>b[1]-a[1]).slice(0,60), fnNew={};
     for(const [h] of fgTop.slice(0,10)) if(!this.fnRep.has(h)){ this.fnRep.add(h); const c=fgCell.get(h), o=c*L; let hex=''; for(let i=0;i<this.len[c]*2;i++)hex+=this.prog[o+i].toString(16).padStart(2,'0'); fnNew[h]=hex+'|'+this.tag[c]+'|'+this.tmpl[c]; }
     const fnNeutral=(()=>{ const m=new Map(); for(const l of this.fs)m.set(l,(m.get(l)||0)+1); return [...m.entries()].sort((a,b)=>b[1]-a[1]).slice(0,60); })();
-    let chem=null; if(P.CHEM){ const S=P.CHEM_S, tot=new Float64Array(S); for(let i=0;i<this.C*S;i++)tot[i%S]+=this.mol[i];
+    let chem=null; if(P.CHEM){ const S=P.CHEM_S, tot=new Float64Array(S); for(let i=0;i<this.C*S;i++)tot[(i/this.C)|0]+=this.mol[i];
       let molE=0, present=0; for(let q=0;q<S;q++){ molE+=tot[q]*this.eMol[q]; if(tot[q]>0.5)present++; }
       const rx=new Map(); for(const c of liv){ const o=c*L, seen=new Set(); for(let i=0;i<this.len[c];i++){ const op=this.prog[o+i*2]; if(op>=24&&op<=27){ const q=this.prog[o+i*2+1]&(S-1), pr=this.prod[q*4+op-24]; { const d=this.eMol[q]-this.eMol[pr]; if(d>0&&d<=P.CHEM_DMAX)seen.add(q*4+op-24); } } } for(const x of seen)rx.set(x,(rx.get(x)||0)+1); }
       const fl=[]; let ft=0; for(let x=0;x<S*4;x++) if(this.rxE[x]>0){ fl.push([x,this.rxE[x]]); ft+=this.rxE[x]; } fl.sort((a,b)=>b[1]-a[1]); this.rxE.fill(0);
