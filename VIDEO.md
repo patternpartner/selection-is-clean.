@@ -872,3 +872,15 @@ on "Leave a better step for them to find" the dancer stops and a golden print ap
 in it on "find", and then makes a print of its own - a round pad and three toes, a shape nobody showed it. v1 test was
 too small to read (prints as blobs) - world scale ZS=1.55; angry stomps reversed direction and heaped up - now they
 zig-zag forward. Dust puffs use their own rng so PART renders agree.
+
+### One Steady Line (`video/build_steady_line.py`, `out/one-steady-line.mp4`, 38.2 s) - drawn, no clips, no generation
+The user: "Great stuff. Next" (Claude's choice). The House of Geometry's BRIDGE, 124.0-158.5 - never used (its verses went
+into The Fork). A black room roaring with static (120 scribbles redrawn every 3 frames) and the amber light darting
+between them; "Quiet the room" (127.08) freezes them and they crumble to dust that settles; "Give me one coordinate"
+(133.74) - one point, and the light goes to it, then makes tentative tries outward, each a faint line that fades; "One
+steady line" (140.06) draws itself up the frame and the light walks it; "I am waiting" (143.5) - the line's tip blinks
+like a cursor and the light glances side to side; "the air is heavy with static" - the scribbles creep back; "you're on
+the wrong wavelength" (148.84) - the line becomes a tight jittery wave; "turn the dial" (153.62) sweeps the wavelength
+like tuning a radio; "please" (156.94) locks it straight - and the cut to black comes as it does. End card 3.7 s.
+Pass-by-pass: v1 had a 6 s hush and a 5 s still light on the coordinate - both the kind of pause this user flags; each
+was given motion that is the lyric (dust settling = the room going quiet; tries = looking for a line; cursor = waiting).
