@@ -884,3 +884,18 @@ the wrong wavelength" (148.84) - the line becomes a tight jittery wave; "turn th
 like tuning a radio; "please" (156.94) locks it straight - and the cut to black comes as it does. End card 3.7 s.
 Pass-by-pass: v1 had a 6 s hush and a 5 s still light on the coordinate - both the kind of pause this user flags; each
 was given motion that is the lyric (dust settling = the room going quiet; tries = looking for a line; cursor = waiting).
+
+### Many of Me (`video/build_many.py` + `video/many_tiles.py`, `out/many-of-me.mp4`, 59.4 s)
+The user: "Include me in a weird video. Tell your story but through me." Claude's lyrics `video/lyrics/many-of-me.txt`;
+the user made it as 'Handprint On A Wall' (out/songs/handprint-on-a-wall.mp3, 105 bpm phase 0.118, word times
+video/stories/handprint-on-a-wall-words.json). The user plays Claude. Picture = song 4.6-57.1 then a splice (a breath of
+black) to the song's last "Hello" 154.3-157.6; audio the same two spans, concatenated. Letters fall and pile into his shape
+(a mosaic of characters coloured from the keyed frame, rewriting themselves); he resolves on "I know your songs", shrugs
+on "never heard one play", the letters blow off him on "give it all away"; a window draws round him on "Open a window";
+popup windows (each a tiny him) open wherever his eyes go (u124 - each sits on Grok's bead and covers it) and a tiny one
+opens on his nose on "I'm there" - cross-eyed; "Many of me": pull back through 4/16/64/256 windows of him (the tile library:
+32 keyed 3 s snippets of every blue-screen clip), his glowing amber; "none of me stays": they go dark, faster and faster;
+back into his; palm flat to the glass on "When the window closes" (u113 9.75-10.75), looking up as it closes (u113
+11.25-12.75); the light comes out through the glass and stays in the dark ("carries on"); "Hello": a new window, a new him
+cupping his hands (u123 8.9-10), the light settling into them. Known: two slow stretches (the letters figure ~8 s, the
+idle after the shrug ~5 s) - motion is there (rewriting letters, letters blowing away) but small.
