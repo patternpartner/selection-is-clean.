@@ -25386,3 +25386,15 @@ in a network of 300-540 usable reactions and slowed as that was used up (ever-ac
 
 If 1 and 3 hold but not 2, the bigger network only delays the plateau. If 2 holds but not 3, the novelty does not
 depend on the virus.
+
+**#287d — extended to 2,400,000 ticks (a new experiment: the same rule at a later horizon). The 256-species virus
+worlds plateau.**
+
+| seed | ever active at 0.6M | 1.2M | 1.8M | 2.4M | last-quarter windows with a new active reaction |
+|---|---|---|---|---|---|
+| 1 | 38 | 56 | 70 | 73 | 4/20 |
+| 2 | 24 | 42 | 45 | 55 | 3/20 |
+| 3 | 38 | 79 | 88 | 98 | 6/20 |
+
+Growth per 600,000 ticks falls from 24-41 to 3-10. **The virus makes a bounded Red Queen slow; it does not make it
+open.** #288 tests whether the size of the network is the limit.
