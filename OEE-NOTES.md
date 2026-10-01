@@ -25180,3 +25180,75 @@ organisms making new resources for each other — cross-feeding, as in the long-
 - **Seed 2 has already extracted most of its waste energy and added nothing new in its last window.** The network is
   finite, and this is where it would run out. Running: the three worlds chained, beside the plain core (arm f), to the
   same horizon.
+
+**#285e — the plain core, judged by competition assay: adoption by selection continues but is sparse and declining by
+7,000 generations.** Same three worlds, the first 1,200,000 ticks (20 windows of about 340 generations). In each quarter,
+4 new adaptive functional genotypes (evenly spaced) were replayed against their incumbents (6 replicates, t > 2.2 against
+6 self-vs-self nulls):
+
+| seed | Q1 wins | Q2 wins | Q3 wins | Q4 wins | losses (all quarters) |
+|---|---|---|---|---|---|
+| 1 | 2 | 3 | 0 | 1 (98% share) | 3 |
+| 2 | 2 | 0 | 2 | 1 | 4 |
+| 3 | 1 | 0 | 0 | 0 | 2 |
+| total | 5 of 12 | 3 of 12 | 2 of 12 | 2 of 12 | 9 |
+
+- Every win but two was also STRICT (beat every null replicate).
+- **The step-3 target is not met by the plain core:** seed 3 has no adoption that replays as a win after its first quarter.
+- **What did evolve:**
+  - kin discrimination: SENSE_KIN plus a conditional skip, carried by 54-56% of late seed 1 and seed 2 worlds;
+  - foraging;
+  - scavenging.
+- **What did not:** predation is chance-level nibbling. Template match stays at 0.06-0.09 throughout, so the tag race
+  never starts. In a spatial world the neighbour ahead is usually kin, so a template tuned to it eats relatives.
+- **Assay caveats:**
+  - Distinct functional genotypes sometimes replay with byte-identical results: they differ only in dead code, and the
+    hash still over-splits.
+  - Challengers that took over their own world but lose a fresh-world replay (6-14% share) are common, which points to
+    community-dependent adaptation that this assay cannot credit.
+
+**#286b — chemistry saturates: niche construction from waste is bounded by free energy.** The first ~230,000 ticks of
+the three chemistry worlds (rows kept from a chunk that ran past its job timeout; later chunks have a 2-hour timeout and
+a species-major molecule layout, about 4x faster, with identical dynamics):
+
+| seed | last new active reaction | metabolic income after that | unused molecular energy at the end |
+|---|---|---|---|
+| 1 | about generation 1,250 | flat | 1,274 |
+| 2 | about generation 500 | flat at about 11,600 | 1,400-2,100 |
+| 3 | about generation 1,200 | flat at about 11,300-12,000 | 1,600-2,400 |
+
+- 300-485 usable reactions exist, but a 4-5 step pathway takes nearly all the energy in the waste, so a new reaction
+  has nothing left to gain.
+- The cascade gives **8-15 adopted reactions, then stops.** Each innovation consumed the opportunity the last one made
+  instead of creating more.
+
+### #287 — VIRUSES THAT ENTER THROUGH A METABOLIC REACTION: coevolution as the source of new behaviour. Pre-registered.
+
+**Why.** The best-documented route from coevolution to a new function is Meyer et al. (2012):
+- E. coli escaped phage lambda by losing LamB, the maltose transporter lambda uses to get in;
+- lambda evolved to use a different receptor (OmpF).
+In #286 the chemistry stops because nothing makes an old pathway stop paying. A virus that enters through the pathway
+does.
+
+**Design** (`VIRUS=1`, needs `CHEM=1`, off by default; default and CHEM-only worlds checked row-identical):
+- **Keys.** A virion is a cell and a key; the key is one reaction (species x 4 + j, 1,024 possible).
+- **Infection.** A virion on a cell whose living host carries METABj for that species infects with probability 0.2 a
+  tick. It lyses the host: the store and body go to the corpse.
+- **Burst.** The infection releases 6 virions, each re-keyed to a random reaction with probability 0.1.
+- **Virions** move with probability 0.5 and decay at 0.02 a tick. Immigrants arrive at 0.1 a tick with random keys, so
+  viruses cannot be lost for good. They start at tick 20,000.
+
+**First look (seed 1, 100,000 ticks).**
+- **First epidemic, at about tick 25,000.** It hit the one reaction carrying 99.9% of metabolic flux and lysed about
+  1,500 hosts. Within 5,000 ticks flux spread across three reactions.
+- **Second epidemic, ticks 80,000-95,000.** Up to 896 virions, keyed to exactly the three dominant reactions. A
+  reaction that had carried nothing (reaction 2) rose to 27-32% of flux, and another (33) appeared.
+
+**The test.** Arms c (CHEM) and v (CHEM + VIRUS), seeds 1-3, chained to the same horizon (at least 1,200,000 ticks).
+- **The variable:** NEW ACTIVE REACTIONS per 30,000-tick window. A reaction is active when it carries at least 1% of
+  metabolic income (`lab/core-chem.js`), and new when it was never active before in that world.
+- **The rule:** v counts as sustaining novelty if, in the last quarter of the run, at least half its windows add a new
+  active reaction on all 3 seeds, while c adds none or almost none. **If v's ever-active count levels off like c's, only
+  later, viruses delay saturation and do not remove it:** a bounded Red Queen, cycling through a fixed set of routes.
+- **The control** if v passes: viruses that cannot track (V_MUT=0 after onset, no immigrants), so the pressure is
+  one-off. Only if the evolving virus beats that is it coevolution, rather than disturbance, that sustains the novelty.
