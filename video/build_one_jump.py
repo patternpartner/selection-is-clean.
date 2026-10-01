@@ -92,8 +92,12 @@ def shot(s):
 
 
 def camera(s):
-    if s < 15.58:
-        return (200, 368), 1.0
+    if s < 21.0:                                         # his face; down with the spark to the copy forming; wide
+        face, copy, wide = (205, 254, 1.5), (133, 470, 1.5), (200, 368, 1.0)
+        u, v = ramp(s, 15.0, 16.4), ramp(s, 19.58, 20.6)
+        p = [face[i] + (copy[i] - face[i]) * u for i in range(3)]
+        p = [p[i] + (wide[i] - p[i]) * v for i in range(3)]
+        return (p[0], p[1]), p[2]
     if s < 31.58:
         return (200, 368), 1.0 + 0.012 * math.exp(-((s - 30.08) % 0.5) * 8) * (s >= 30.08)
     if s < 33.58:
@@ -387,15 +391,30 @@ def frame(clips, t):
     if 13.6 <= s < 16.0:
         tx, ty = 72, 672
         X, Y = (tx - c[0]) * BASEZ * z + W / 2, (ty - c[1]) * BASEZ * z + H / 2
-        u = ease((s - 13.6) / 1.98)
-        y = -60 + (Y + 60) * u ** 1.8
-        if s < 15.58:
-            add_glow(acc, X + 30 * math.sin(s * 3) * (1 - u), y, 6, [255, 245, 225], 2.4)
-            add_glow(acc, X, y, 22, GOLD, 0.9)
-            for i in range(12):
-                add_glow(acc, X + 30 * math.sin((s - i * 0.04) * 3) * (1 - u), y - i * 14 * (0.5 + u), 5, GOLD, 0.4 * (1 - i / 12))
+        if 14.3 <= s < 15.58:                                # it falls past his face to the board beside him
+            for i in range(14):
+                u = ease((s - i * 0.03 - 14.3) / 1.28)
+                px, py = 175 + (tx - 175) * u, 60 + (ty - 60) * u ** 1.5
+                PX, PY = (px - c[0]) * BASEZ * z + W / 2, (py - c[1]) * BASEZ * z + H / 2
+                if i == 0:
+                    add_glow(acc, PX, PY, 7, [255, 245, 225], 2.6)
+                    add_glow(acc, PX, PY, 26, GOLD, 1.0)
+                else:
+                    add_glow(acc, PX, PY, 5, GOLD, 0.5 * (1 - i / 14))
         burst = math.exp(-max(0.0, s - 15.58) * 4) * (s >= 15.58)
         add_glow(acc, X, Y - 100, 160, GOLD, 0.9 * burst)
+    if 19.58 <= s < 23.58:                                   # everybody's watching: flashes in the stands
+        k8 = int((s - 19.58) / 0.25)
+        ph = (s - 19.58) % 0.25
+        r2 = np.random.default_rng(1000 + k8)
+        for _ in range(6):
+            side = r2.integers(0, 3)
+            q = [(r2.uniform(10, 390), r2.uniform(4, 34)), (r2.uniform(0, 30), r2.uniform(620, 720)),
+                 (r2.uniform(370, 400), r2.uniform(620, 720))][side]
+            qx, qy = (q[0] - c[0]) * BASEZ * z + W / 2, (q[1] - c[1]) * BASEZ * z + H / 2
+            amp = math.exp(-ph * 22) * r2.uniform(0.6, 1.2)
+            add_glow(acc, qx, qy, 4, [255, 255, 255], 3.0 * amp)
+            add_glow(acc, qx, qy, 18, [220, 230, 255], 0.8 * amp)
     # count it to three - the numbers are made of the same light, and the copy counts with him
     for i, (bt, x, y, rot) in enumerate([(24.08, 62, 150, 8), (24.58, 62, 320, -6), (25.08, 350, 590, 4),
                                          (26.58, 62, 140, -8), (27.08, 62, 310, 6), (27.58, 352, 600, -4)]):
