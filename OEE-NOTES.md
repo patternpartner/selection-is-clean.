@@ -24952,3 +24952,25 @@ What survives:
 Not shown: that new atom CONTENT is being selected over old. The same lesson as #274's correction, one level up:
 **in a population that sweeps, any heritable label sweeps with it, and only a control that sweeps too can tell the
 difference.**
+
+### #282 — THE ROOT BLOCKER: every long REPL world ends with one lineage. Measured three ways, and a failed fix.
+
+- **Atoms, logged every sample (asexual L passage 4, 72,000-96,000 ticks).** The "top atom" flips among 2-4
+  expressions that are ALL at 90-100% of the living. Each particle carries its lineage's whole atom bank, and the bank
+  is fixed. New atoms join it (seed 3 at 89,500: a long new expression at 100%), but as passengers of the winning
+  lineage, not by out-competing rival atoms. Combined with #281's correction: **no evidence of atom content evolving
+  open-endedly.**
+- **Ops (passage 4):** a significant core op beyond 146/155 appears now and then (122, 191) only beside a do-nothing
+  op at 91-94% activity: sweeps carrying everything.
+- **Programs are NOT clonal at the exact level.** Seed 101, 12,000 ticks, no pathogen: the commonest exact op sequence
+  holds 4-7% (120-450 distinct). What sweeps is a FAMILY of variant programs from one lineage.
+- **Failed fix — `REPL_PATH`, a pathogen keyed on exact op sequence** (death risk 0.02 x share^2 per tick). Built,
+  run (seed 101, 12,000 ticks), and **reverted without committing:** predation never established (0-1% against 76-79%
+  without it). A new predator program grows from one copy, its share rises, and the pathogen kills it before it
+  establishes. **Kill-the-winner keyed on the genotype kills adaptation itself.**
+**Diagnosis.** A lineage here can do everything — harvest, hunt, scavenge — at no extra cost, and particles mix
+across the whole world within a generation. Nothing stops one generalist ("Darwinian demon") winning everywhere, so
+every adaptation sweeps, the world goes clonal, and evolution waits for the next mutation of the winner. Real
+communities hold diversity through TRADE-OFFS: doing more costs more, so specialists win their own niche and separate
+lineages coevolve. **Next (#283):** under REPL, every instruction a program runs costs energy from its own store —
+CPU time, as in Avida.
