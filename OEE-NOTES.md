@@ -24891,3 +24891,43 @@ where predation is established (op 155 carried by 20% or more) count.
   further). The armed keys swing back and forth inside a bounded region. That is the textbook outcome of a
   matching-key race: continual change that revisits old values, not new ones. **Turnover, not open-endedness.**
 - #279's single-seed 2.5x on seed 1 was a reasonable first sign of exactly this; the long runs say what it is.
+
+### #280-#281 — recombination, and THE ATOMS ARE SELECTED: the open-ended layer is under selection once programs replicate.
+
+**#280 REPL_SEX, passage 1** (seeds 1-3, RNG x100+1, against #278's asexual L on the same seeds):
+- recombining worlds are less clonal (best neutral op 0.09-0.31 against 0.10-0.47) and carry more distinct atoms
+  (66-188 against 61-91);
+- predation establishes more slowly;
+- scavenging is significant on 3 of 3 seeds, and two more ops pass on seeds 2-3 (179, 144; 173, 29), against about
+  1.3 expected by chance.
+One passage, not judged yet.
+
+**#281 — the atom-inert control.** `REPL_ATOM_INERT=1`: atoms are still carried, inherited and varied at birth (the
+REPL_ATOMS rate), but every particle-side call does nothing (op 22 returns 0, bound-slot chains return 0, verb gates
+pass). Passengers arrive at the same rate; anything selected for what it does cannot be.
+Passage 1, same seeds as L (identical until an atom first acts):
+
+| seed | mean share of the commonest atom, real / inert | predation >=20% from, real / inert | mean predation carriers, real / inert | new atoms reaching 10%, real / inert |
+|---|---|---|---|---|
+| 1 | **0.57 / 0.27** | 5,000 / 7,000 | 0.66 / 0.51 | 16 / 6 |
+| 2 | **0.62 / 0.19** | 3,500 / 15,500 | 0.84 / 0.22 | 14 / 9 |
+| 3 | **0.62 / 0.17** | 5,000 / 11,500 | 0.68 / 0.21 | 13 / 7 |
+
+- **When atoms can act, one atom expression sweeps to about 60% of the living; inert, none gets past about 25%.**
+  That is selection on the CONTENT of atoms, the one layer in this engine with no ceiling on what can be expressed.
+- With atoms working, predation also arrives earlier and spreads further, so the winning atoms most likely help it.
+- The inert worlds are larger (680-920 against 380-490), which makes reaching 10% harder; the raw innovation counts
+  are confounded by that, and the share column is the clean one.
+**Which atoms win, read from the saves at the end of passages 2 and 3 (#278's L):**
+
+| seed | top atom at 48,000 | top atom at 72,000 |
+|---|---|---|
+| 1 | `(0.72)+(0.40)` at 95% | the same, at 94% |
+| 2 | `((yc<=0.88)?cr:tanh(s))/(d/0.07)` at 73% | `(kc)-(-1.99)` at 95% |
+| 3 | `qd(-1.08, ...)` at 97% | `(1.64)+(yc)` at 83% |
+
+- Many winners are constants: programs use an atom to load a number, plausibly to clear a threshold such as REPL_T
+  or op 155's `vmRegs[si]>k`. Others read senses (`yc`, `kc`, `cr`).
+- The winner changed on 2 of 3 seeds. **Whether each replacement is better (adaptive novelty) or a neutral swap
+  among equivalents (any constant above the threshold works) is not yet told apart.** From here the probe logs the
+  top three atoms every sample (`topAtoms`), so each takeover can be followed from arrival to dominance.
