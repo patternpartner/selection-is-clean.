@@ -25252,3 +25252,149 @@ does.
   later, viruses delay saturation and do not remove it:** a bounded Red Queen, cycling through a fixed set of routes.
 - **The control** if v passes: viruses that cannot track (V_MUT=0 after onset, no immigrants), so the pressure is
   one-off. Only if the evolving virus beats that is it coevolution, rather than disturbance, that sustains the novelty.
+
+**#287 result at 1,200,000 ticks — FAILS the pre-registered rule, on seed 2 by one window; but the virus worlds have not
+saturated.** Last quarter (the last ten 30,000-tick windows), windows that add a new active reaction at the 1% rule:
+
+| seed | v (CHEM + VIRUS) | c (CHEM) | ever active, v, at 600k → 1.2M | ever active, c, at 1.2M |
+|---|---|---|---|---|
+| 1 | 6/10 | 0/10 | 38 → 68 | 16 |
+| 2 | **4/10** | 0/10 | 24 → 48 | 9 |
+| 3 | 6/10 | 0/10 | 38 → 91 | 19 |
+
+- **The rule asked for at least 5/10 on all three seeds; seed 2 has 4. By the rule as written, v FAILS.**
+- **Its other clause ("ever-active levels off like c's, only later") does not describe what happened either:**
+  - c's ever-active count is flat from about tick 180,000 on every seed;
+  - v's grows by about 2-3 reactions every 60,000 ticks through 1.2M (cumulative at 60k windows: 56, 42 and 79),
+    flattening slightly over the last three windows.
+- **Threshold sensitivity.**
+  - At 5% of income, v has 5/10, 5/10 and 4/10 (c: 0/10 on all three); seed 3 now misses by one, where seed 2 did at
+    1%.
+  - Much of the new arrivals are reactions carrying 1-5% of income.
+- **The mechanism is the receptor switch.** Traced on seed 1:
+  - virus keys follow the dominant reactions (3, 513, 651, then 2, 0, 1, 475);
+  - each epidemic (up to about 36,000 lysed in 15,000 ticks) is followed by flux moving to a route the virus is not on;
+  - generations run faster than in c (about 8,000 by 600,000 ticks on seed 2), because lysis speeds turnover.
+- **A large part of it is a bounded Red Queen.** The four first-step reactions (0-3) and a handful of second steps
+  (513, 515, 651, 475) recur again and again. What is genuinely new arrives as further variants around them
+  (590, 481, 913, 755, 33, 34, ...).
+- **Next, as a new experiment** (the rule, unchanged, applied at a new horizon, since changing a rule after seeing the
+  numbers is a new experiment): v chained to 2,400,000 ticks. Running beside it is the pre-registered control, viruses
+  that cannot re-key (V_MUT=0).
+
+**#287b — a causal test inside the evolved worlds. Pre-registered.** `lab/core-replay.js` loads a virus world's
+1,200,000-tick save (whole population, chemistry, virions, RNG state) and runs it 120,000 ticks more:
+- **ARM=on** leaves the virions in;
+- **ARM=off** removes every virion and stops immigration at the moment of loading;
+- **three replicates per arm**, which differ only by an XOR of the main RNG state.
+The variable is new active reactions per 30,000-tick window (at least 1% of income, and never active in that run's own
+history before the save), with the share carrying the commonest METAB instruction as the monoculture reading.
+
+**Rule.** On a seed, the virus CAUSES the late novelty if every ON replicate adds more new active reactions over the
+120,000 ticks than every OFF replicate. Three seeds of three must show it. If ON and OFF overlap on a seed, that seed
+says the novelty is not the virus's doing at this horizon.
+
+**Prediction.** OFF collapses toward a monoculture (above 0.9, like CHEM-only's 0.96-0.99) and adds nothing. A smoke
+run already read 0.86 after 30,000 ticks on seed 1.
+
+**Also found:** in virus worlds the commonest functional genotype is often a non-metaboliser — no METAB instruction,
+so no receptor. A replay of top genotypes therefore picks the receptor-losers (Meyer's first step) rather than the
+route-switchers, which is why the causal test here is a whole-world replay.
+
+**#287c — the "non-tracking" control as run is NOT the pre-registered one, and it tracks anyway.** The run used V_MUT=0
+(virions keep their parent's key) but KEPT the random-key immigrants (0.1 a tick). #287 pre-registered both off, which
+means no virus could ever arrive. To 600,000 ticks it made as much novelty as the evolving virus:
+
+| seed | windows 11-20 with a new active reaction: evolving / V_MUT=0 | ever active: evolving / V_MUT=0 | commonest-METAB share, 300k-600k |
+|---|---|---|---|
+| 1 | 7/10 / 9/10 | 42 / 41 | 0.66 / 0.71 |
+| 2 | 4/10 / 4/10 | 28 / 35 | 0.54 / 0.79 |
+| 3 | 7/10 / 6/10 | 45 / 62 | 0.67 / 0.73 |
+
+- **Immigration is enough to track.** Whatever route the hosts move to, an immigrant keyed to it turns up sooner or later
+  and starts an epidemic there. **What sustains the novelty is pressure that can reach any route, not the virus's own
+  mutation.** So "coevolution" in the strict sense (the virus evolving) is NOT shown here.
+- **Still open:**
+  - whether the virus is the cause at all (#287b, the in-world replay);
+  - whether the pressure has to keep following the hosts. That is the pre-registered control, viruses seeded once on
+    every key and then no immigrants and no re-keying, still to run.
+
+**#287b result — FAILS on 2 of 3 seeds: the virus is not shown to cause the late novelty at 1,200,000 ticks.**
+New active reactions over 120,000 ticks after the save, three replicates each:
+
+| seed | virus ON | virus OFF | every ON above every OFF? | commonest-METAB share, ON / OFF |
+|---|---|---|---|---|
+| 1 | 8, 6, 11 | 4, 4, 2 | yes | 0.34-0.72 / 0.67-0.97 |
+| 2 | 12, 0, 1 | 1, 0, 0 | no | 0.11-0.70 / 0.49-0.92 |
+| 3 | 1, 5, 6 | 4, 2, 3 | no | 0.50-0.79 / 0.54-0.93 |
+
+- **The direction is the same on every seed** (mean ON above mean OFF), but the counts are small and the replicates overlap.
+- **Epidemics are sporadic.** Most windows hold 2-10 virions; a few hold hundreds to about 1,500.
+- **Removing the virus does not freeze the world.** OFF still finds 0-4 new reactions while metabolism re-converges.
+- **What the virus clearly does is hold diversity.** With it removed, the share carrying the commonest METAB
+  instruction climbs back toward a monoculture.
+
+**And the virus arm is decelerating.** Ever-active reactions (60,000-tick windows) by 600k, 1.2M and 1.8M:
+
+| seed | 600k | 1.2M | 1.8M |
+|---|---|---|---|
+| 1 | 38 | 56 | 70 |
+| 2 | 24 | 42 | 45 |
+| 3 | 38 | 79 | 88 |
+
+Seed 2 has the smallest reachable network and is nearly flat.
+
+**Where #287 leaves step 3:**
+- **Endogenous enemy pressure** (viruses that enter through what the host needs) **holds metabolic diversity and gives
+  2-5x the novelty of the same chemistry without it.**
+- **It runs inside a finite network and slows as the network is used up.** In the 256-species chemistry it is a
+  bounded Red Queen, not open-ended.
+- **Strict coevolution is not shown** (#287c): virus mutation is not needed while random-key immigrants keep arriving.
+- **Next: a network too large to exhaust.** 65,536 species generated on demand from a hash. The METAB instruction
+  addresses its substrate with two bytes (its own argument and the next instruction's). Virus mutation follows the
+  network (to another product of the same substrate, or onto a product). Immigrants are keyed to molecules actually
+  present.
+
+### #288 — A CHEMISTRY TOO LARGE TO EXHAUST (CHEM_BIG), with and without the virus. Pre-registered.
+
+**Why.** #287's virus held metabolic diversity and gave 2-5x the novelty of the same chemistry without it. But it ran
+in a network of 300-540 usable reactions and slowed as that was used up (ever-active +3 to +14 from 1.2M to 1.8M).
+
+**Design** (`CHEM_BIG=1` with `CHEM=1`; default, CHEM and CHEM+VIRUS worlds re-checked row-identical):
+- **The network.** 65,536 species. Energies come from a hash. Each species has four products, each **one bit-flip** of
+  it, chosen among the flips that satisfy the same small-step energy rule.
+  - **Bit-flip products keep the next step findable.** The enzyme for the next step is one byte change from the enzyme
+    for this one: the same 1-in-256 chance per changed byte as the 256-species network.
+  - **The first version drew products as random 16-bit species.** A second step then needed two specific bytes at once,
+    and none appeared in 60,000 ticks.
+  - **Size.** Reachable from species 0: 2,222 / 4,155 / 2,557 species and 2,828 / 5,725 / 3,292 usable reactions
+    (seeds 1-3), with pathways up to 17-20 steps. That is about 10x the 256-species networks.
+- **Storage and addressing.** Molecules are kept as sparse per-species layers. METAB and SENSE_MOL address a species
+  with two bytes (their own argument, then the next instruction's).
+- **The virus.** A virus mutant moves along the network (another product of the same substrate, or a step downstream).
+  An immigrant is keyed to a molecule present in the world.
+
+**Arms.** bc (CHEM_BIG) and b (CHEM_BIG + VIRUS), seeds 1-3, 1,200,000 ticks. 30,000-tick windows, 1% of income for
+"active", as in #287.
+
+**Rules, all three needed:**
+1. In the last quarter, b has a new active reaction in at least 5 of 10 windows on all three seeds, and bc has fewer.
+2. **No deceleration.** b's ever-active count grows in the last quarter by at least half its growth in the second
+   quarter, on all three seeds.
+3. **Causal.** The #287b in-world replay from b's 1,200,000-tick saves: every virus-ON replicate adds more new active
+   reactions than every OFF replicate, on three seeds of three.
+
+If 1 and 3 hold but not 2, the bigger network only delays the plateau. If 2 holds but not 3, the novelty does not
+depend on the virus.
+
+**#287d — extended to 2,400,000 ticks (a new experiment: the same rule at a later horizon). The 256-species virus
+worlds plateau.**
+
+| seed | ever active at 0.6M | 1.2M | 1.8M | 2.4M | last-quarter windows with a new active reaction |
+|---|---|---|---|---|---|
+| 1 | 38 | 56 | 70 | 73 | 4/20 |
+| 2 | 24 | 42 | 45 | 55 | 3/20 |
+| 3 | 38 | 79 | 88 | 98 | 6/20 |
+
+Growth per 600,000 ticks falls from 24-41 to 3-10. **The virus makes a bounded Red Queen slow; it does not make it
+open.** #288 tests whether the size of the network is the limit.
