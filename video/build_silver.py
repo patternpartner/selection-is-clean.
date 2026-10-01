@@ -30,7 +30,28 @@ PART = [float(x) for x in os.environ.get("PART", "").split(",") if x]
 AMBER = np.array([255, 176, 88], np.float32)
 CW, CH = 720, 1280
 PULL0, PULL1, GO, STOP, GO2, TO, TOP = 29.0, 33.0, 45.18, 48.0, 51.54, 56.24, 58.12
-FIVES = [(17.0, 280, 260), (22.5, 340, 300)]             # song second, clip px: where the hands meet
+FIVES = [(16.95, 325, 282), (22.4, 432, 340)]            # song second, clip px: where the hands meet
+# v2, the user: "Maybe we keep the arm but put lights all around it." The stranger's arm, hand-read off gridded 8 fps
+# sheets: (clip second, edge point x, y, palm x, y) in clip px - a string of fairy lights is wrapped round it, edge to palm.
+ARM_A = [(2.6, 0, 437, 150, 360), (2.625, 0, 437, 192, 340), (2.75, 0, 415, 250, 285), (2.875, 0, 389, 308, 292),
+         (3.0, 0, 382, 317, 275), (3.125, 0, 350, 326, 275), (3.25, 0, 356, 335, 292), (3.375, 0, 363, 344, 292),
+         (3.5, 0, 340, 336, 275), (3.625, 0, 340, 329, 275), (3.75, 0, 356, 321, 275), (3.875, 0, 340, 330, 259),
+         (4.05, 0, 380, 120, 330)]
+ARM_B = [(7.72, 720, 380, 720, 356), (7.875, 720, 421, 595, 324), (8.0, 720, 421, 555, 308), (8.125, 720, 415, 532, 292),
+         (8.25, 720, 389, 509, 340), (8.375, 720, 454, 518, 340), (8.5, 720, 437, 430, 356), (8.625, 720, 421, 407, 324),
+         (8.75, 720, 454, 416, 324), (8.875, 720, 437, 425, 308), (9.0, 720, 437, 434, 308), (9.125, 720, 405, 410, 275),
+         (9.25, 720, 421, 402, 292), (9.375, 720, 421, 378, 308), (9.5, 720, 405, 360, 300), (9.625, 720, 435, 375, 345),
+         (9.75, 720, 450, 420, 384), (9.875, 720, 474, 495, 456), (10.0, 720, 510, 600, 525), (10.15, 720, 615, 715, 615)]
+
+
+ARM_A = [(t, ex, ey + 40, hx, hy + 25) for (t, ex, ey, hx, hy) in ARM_A]   # (read off its upper edge: onto its middle)
+
+
+def arm_at(table, ct):
+    if ct < table[0][0] or ct > table[-1][0]:
+        return None
+    ts = [p[0] for p in table]
+    return tuple(float(np.interp(ct, ts, [p[i] for p in table])) for i in range(1, 5))
 NC = 7                                                   # columns of escalators (-3..3)
 TW, TH = 240, 427                                        # tile resolution held in memory
 rng = np.random.default_rng(126)
@@ -161,6 +182,35 @@ def main():
                     a += (np.exp(-((xs - px) ** 2 + (ys - py) ** 2) / (2 * 4 ** 2)) * (1 - k) * 260)[..., None] * AMBER / 255
                 d2 = (xs - px0) ** 2 + (ys - py0) ** 2
                 a += (np.exp(-d2 / (2 * 22 ** 2)) * (1 - k) * 90)[..., None] * AMBER / 255
+        # the stranger's arm, wrapped in fairy lights (his escalator, before the pull-back)
+        if s < PULL0:
+            ct = s - S0
+            for tab in (ARM_A, ARM_B):
+                arm = arm_at(tab, ct)
+                if not arm:
+                    continue
+                ex, ey, hx, hy = arm
+                L = math.hypot(hx - ex, hy - ey)
+                if L < 20:
+                    continue
+                nx, ny = -(hy - ey) / L, (hx - ex) / L                  # across the arm
+                fade = min(1.0, (ct - tab[0][0]) / 0.15, (tab[-1][0] - ct) / 0.15)
+                n = int(L / 30) + 2
+                for k in range(n + 5):
+                    if k < n:                                           # wound round the arm, edge to wrist
+                        u = k / n
+                        wob = 15 * math.sin(k * 1.9 + ct * 6)
+                        px, py = ex + (hx - ex) * u + nx * wob, ey + (hy - ey) * u + ny * wob
+                    else:                                               # and a little ring round the hand
+                        ang = (k - n) / 5 * 2 * math.pi + ct * 3
+                        px, py = hx + 40 * math.cos(ang), hy + 40 * math.sin(ang)
+                    tw = 0.55 + 0.45 * math.sin(k * 2.7 + ct * 9)        # twinkling
+                    sx_, sy_ = W / 2 + (px - 360) * z, H / 2 + (py - 640) * z
+                    ya, yb, xa, xb = int(max(0, sy_ - 22)), int(min(H, sy_ + 23)), int(max(0, sx_ - 22)), int(min(W, sx_ + 23))
+                    if ya < yb and xa < xb:
+                        d2 = (xs[ya:yb, xa:xb] - sx_) ** 2 + (ys[ya:yb, xa:xb] - sy_) ** 2
+                        g = np.exp(-d2 / (2 * 3.2 ** 2)) * 2.4 + np.exp(-d2 / (2 * 9 ** 2)) * 0.7
+                        a[ya:yb, xa:xb] += (g * 220 * tw * fade)[..., None] * AMBER / 255
         # the light, waiting at the top
         lyw = TOP_ROW * CH + 180
         lx, ly = W / 2 + (360 - cx) * z, H / 2 + (lyw - cy) * z
