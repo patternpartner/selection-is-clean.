@@ -11,15 +11,17 @@ const E=process.env, WIN=+(E.WIN||30), MIN=+(E.MIN||0.01);
 for(const f of process.argv.slice(2)){
   const seed=+(E.SEED||(f.match(/\.(\d+)\.(all|c\d+)\.jsonl$/)||[])[1]||1);
   const rows=fs.readFileSync(f,'utf8').trim().split('\n').map(l=>{try{return JSON.parse(l)}catch(e){return null}}).filter(r=>r&&r.N>0&&r.chem);
-  const w=new World(seed,Object.assign({CHEM:1},rows.length?{}:{})), S=w.p.CHEM_S, e=w.eMol, pr=w.prod, DM=w.p.CHEM_DMAX;
-  const depth=new Int32Array(S).fill(-1); depth[0]=0; const qd=[0]; while(qd.length){ const q=qd.shift(); for(let j=0;j<4;j++){ const t=pr[q*4+j], d=e[q]-e[t]; if(d>0&&d<=DM&&depth[t]<0){ depth[t]=depth[q]+1; qd.push(t); } } }
+  const BIG=rows.length&&rows[0].chem.layers!==undefined;   // a CHEM_BIG run (#288): the network comes from the world's hash
+  const w=new World(seed,Object.assign({CHEM:1},BIG?{CHEM_BIG:1}:{})), S=BIG?65536:w.p.CHEM_S, DM=w.p.CHEM_DMAX;
+  const E_=BIG?(q=>w.be(q)):(q=>w.eMol[q]), PR=BIG?((q,j)=>w.bprod(q,j)):((q,j)=>w.prod[q*4+j]);
+  const depth=new Int32Array(S).fill(-1); depth[0]=0; const qd=[0]; while(qd.length){ const q=qd.shift(); for(let j=0;j<4;j++){ const t=PR(q,j), d=E_(q)-E_(t); if(d>0&&d<=DM&&depth[t]<0){ depth[t]=depth[q]+1; qd.push(t); } } }
   const ever=new Set(), out=[], newPer=[];
   for(let w0=0;w0+WIN<=rows.length;w0+=WIN){ const W=rows.slice(w0,w0+WIN), m=new Map(); let inc=0, molE=0, pres=0;
     for(const r of W){ for(const [x,v] of (r.chem.flux||[])) m.set(x,(m.get(x)||0)+v/W.length); inc+=r.chem.metab/W.length; molE+=r.chem.molE/W.length; pres+=r.chem.present/W.length; }
     const ad=[...m.entries()].filter(([x,v])=>v>=MIN).sort((a,b)=>b[1]-a[1]); const nw=ad.filter(([x])=>!ever.has(x)); for(const [x] of ad)ever.add(x); newPer.push(nw.length);
     const dOf=x=>depth[(x/4)|0]; const deep=ad.length?Math.max(...ad.map(([x])=>dOf(x))):-1;
     out.push(`  t${W[0].t}-${W.at(-1).t} gen~${W.at(-1).meanGen} N~${Math.round(W.reduce((a,r)=>a+r.N,0)/W.length)} | active ${ad.length} (new ${nw.length}: ${nw.slice(0,6).map(([x,v])=>'d'+dOf(x)+':'+v.toFixed(2)).join(' ')}) | deepest d${deep} | income ${inc.toFixed(0)} | unused molE ${molE.toFixed(0)} | species ${pres.toFixed(1)}`); }
-  let nr=0, maxd=0; for(let q=0;q<S;q++) if(depth[q]>=0){ maxd=Math.max(maxd,depth[q]); for(let j=0;j<4;j++){ const d=e[q]-e[pr[q*4+j]]; if(d>0&&d<=DM)nr++; } }
+  let nr=0, maxd=0; for(let q=0;q<S;q++) if(depth[q]>=0){ maxd=Math.max(maxd,depth[q]); for(let j=0;j<4;j++){ const d=E_(q)-E_(PR(q,j)); if(d>0&&d<=DM)nr++; } }
   console.log('==',f.split('/').pop(),'seed',seed,'| network: usable reactions reachable',nr,'max depth',maxd,'| reactions ever active',ever.size,'| new per window',newPer.join(','));
   console.log(out.join('\n'));
 }
