@@ -61,6 +61,7 @@ const DEF={
   // V_BURST virions, each re-keyed to a random reaction with V_MUT. Escape means giving the reaction up or rerouting through
   // another, which is a new behaviour; the virus then has to find the new route. V_SPEC:0 is the control: keys ignored.
   VIRUS:0, V_ONSET:20000, V_MAX:40000, V_BURST:6, V_DECAY:0.02, V_MOVE:0.5, V_INFECT:0.2, V_MUT:0.1, V_IMMIG:0.1, V_SPEC:1,
+  V_SEED:null, V_SEEDN:100,   // a replay can start with V_SEEDN virions of each key in V_SEED, placed at V_ONSET
 };
 
 class World{
@@ -185,6 +186,7 @@ class World{
       m.set(t,b); } }
   carries(c,key){ const L=this.p.MAXLEN*2, o=c*L, n=this.len[c], op=24+(key&3), q=key>>2; for(let i=0;i<n;i++) if(this.prog[o+i*2]===op&&this.prog[o+i*2+1]===q)return true; return false; }
   virusStep(){ const P=this.p, r=this.vrnd, vc=this.vc, vk=this.vk, NR=P.CHEM_S*4;
+    if(P.V_SEED&&this.tick===P.V_ONSET) for(const k of P.V_SEED) for(let n=0;n<P.V_SEEDN&&this.vn<P.V_MAX;n++){ vc[this.vn]=(r()*this.C)|0; vk[this.vn]=k; this.vn++; }
     if(r()<P.V_IMMIG&&this.vn<P.V_MAX){ vc[this.vn]=(r()*this.C)|0; vk[this.vn]=(r()*NR)|0; this.vn++; }   // a trickle of immigrants, so viruses cannot be lost for good
     for(let i=this.vn-1;i>=0;i--){
       if(r()<P.V_DECAY){ this.vn--; vc[i]=vc[this.vn]; vk[i]=vk[this.vn]; continue; }
