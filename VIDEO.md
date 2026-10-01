@@ -943,3 +943,13 @@ comes up gold. Underwater, u131's reaching close-up becomes him reaching up at u
 gold on "golden". He sinks away while the light whips about "out of control"; "the surface broke" is u132 flying back
 out at the camera, "bigger than I gave it" with gold breaking in. He ends calm on the board, the light rising back to him.
 v1 opened with 8 s of him standing under a slow zoom (a long pause); v2 pans from his hand up to his face, then goes wide.
+**v2 (same file), after the user: "I think we can do better. Did tell your story? It's not really making sense to me.
+Graphics a bit lazy."** Claude agreed: the light meant nothing, nothing showed him putting anything in, and the rewind gag
+contradicted "no rewind". v2 has one idea: IT COPIES YOU. A small gold version of him - his own cut-out (rembg
+u2net_human_seg run locally, every frame, masks in out/masks/), rendered as light through a gold ramp with a rim and
+shed sparks - stands beside him on the board and does everything he does 0.42 s late. A spark falls past his face and
+it assembles on the board; it counts with him (gold numerals); it crouches, jumps after him and falls beside him; its
+splash is gold. Underwater he reaches up at us, cold, and the copy reaches beside him, growing, until the water turns
+gold and he sinks away. What comes back out of the pool at the camera, screaming his scream, is the gold copy. He ends
+calm on the board with the little gold him calm beside him. Lessons: a glow is not a character, and a film about teaching
+needs the taught thing on screen doing what it was shown.
