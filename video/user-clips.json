@@ -2438,6 +2438,8 @@
    ]
   ],
   "note": "sent without a message after Fetch v3",
-  "used_in": []
+  "used_in": [
+   "contact"
+  ]
  }
 ]
