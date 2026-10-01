@@ -153,19 +153,19 @@ def place(a, m, k, src, dst):
     # output (x,y) <- source (src + ((x,y) - dst)/k)
     sx = src[0] + (XX - dst[0]) / k
     sy = src[1] + (YY - dst[1]) / k
-    ok = ((sx >= 0) & (sx <= SW - 1) & (sy >= 0) & (sy <= SH - 1)).astype(np.float32)
+    ok = np.clip(np.minimum(np.minimum(sx, SW - 1 - sx), np.minimum(sy, SH - 1 - sy)) / 45, 0, 1)   # no frame-edge cuts
     mm = map_coordinates(m, [sy, sx], order=1, mode="constant") * ok
     rgb = np.stack([map_coordinates(a[..., i], [sy, sx], order=1, mode="nearest") for i in range(3)], -1)
     return rgb, mm
 
 
-def goldify(rgb, m, s, heat=1.0):
+def goldify(rgb, m, s, heat=1.0, wave=9.0):
     """his cut-out as light: luminance through a gold ramp, flowing bands, a white rim, alpha"""
     lum = rgb.mean(-1) / 255
     lo, hi = np.percentile(lum[m > 0.5], [3, 97]) if (m > 0.5).sum() > 40 else (0.0, 1.0)
     l2 = np.clip((lum - lo) / max(hi - lo, 0.05), 0, 1)
-    band = 0.5 + 0.5 * np.sin(YY / 9 - s * 7 + XX / 23)
-    l2 = np.clip(0.18 + 0.72 * l2 + 0.16 * band * heat, 0, 1)
+    band = 0.5 + 0.5 * np.sin(YY / wave - s * 7 + XX / (2.5 * wave))
+    l2 = np.clip(0.16 + 0.78 * l2 + 0.08 * band * heat, 0, 1)
     col = gold_of(l2)
     edge = np.clip(m - gaussian_filter(m, 1.6), 0, 1) * 3
     col = col + edge[..., None] * np.array([255, 240, 200], np.float32)
@@ -352,17 +352,17 @@ def frame(clips, t):
         bg = over(bg, him, mm * (1 - 0.6 * sink) * ramp(s, 43.58, 44.3))
         # the copy: same reach, a beat late, growing on what it is given
         ta, tm = clips.at("A", shot(max(s - LAG, 43.58))[2])
-        grow = 0.42 + 0.5 * ramp(s, 44.5, 51.0) + 0.45 * ramp(s, 51.58, 54.8)
-        tdst = (300 - 90 * ramp(s, 51.0, 54.5) + 8 * math.sin(s * 1.1 + 1), 330 + 40 * ramp(s, 51.0, 54.5) - 260 * ramp(s, 54.9, 55.58))
+        grow = 0.4 + 0.3 * ramp(s, 44.5, 51.0) + 0.35 * ramp(s, 51.58, 54.8)
+        tdst = (318 - 118 * ramp(s, 51.3, 54.5) + 8 * math.sin(s * 1.1 + 1), 360 + 20 * ramp(s, 51.0, 54.5) - 300 * ramp(s, 54.9, 55.58))
         trgb, tmm = place(ta, tm, grow, centroid(tm), tdst)
         tmm = tmm * ramp(s, 44.2, 45.2)
-        col, al = goldify(trgb, tmm, s, heat=1 + gold)
+        col, al = goldify(trgb, tmm, s, heat=1 + gold, wave=9 / grow)
         bg = bg + halo(tmm, 10, 0.5 + 0.6 * gold)
         bg = over(bg, col, al)
         a = bg
         gold_m = tmm
     elif scene in ("rise", "face"):                          # what comes back up is the copy
-        col, al = goldify(a, m, s, heat=1.4)
+        col, al = goldify(a, m, s, heat=1.4, wave=22)
         if scene == "face":
             dark = 1 - 0.55 * ramp(s, 59.58, 60.2)
             a = a * dark
@@ -397,8 +397,8 @@ def frame(clips, t):
         burst = math.exp(-max(0.0, s - 15.58) * 4) * (s >= 15.58)
         add_glow(acc, X, Y - 100, 160, GOLD, 0.9 * burst)
     # count it to three - the numbers are made of the same light, and the copy counts with him
-    for i, (bt, x, y, rot) in enumerate([(24.08, 85, 470, 8), (24.58, 330, 420, -6), (25.08, 300, 590, 4),
-                                         (26.58, 330, 470, -8), (27.08, 80, 430, 6), (27.58, 310, 610, -4)]):
+    for i, (bt, x, y, rot) in enumerate([(24.08, 62, 150, 8), (24.58, 62, 320, -6), (25.08, 350, 590, 4),
+                                         (26.58, 62, 140, -8), (27.08, 62, 310, 6), (27.58, 352, 600, -4)]):
         age = s - bt
         if 0 <= age < 0.5:
             nm = numeral_mask(str(i % 3 + 1), x, y, 150 if i < 3 else 130, rot)
