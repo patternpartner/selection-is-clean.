@@ -82,7 +82,7 @@ class World{
     this.ev={births:0,starve:0,killed:0,old:0,crowded:0,attacks:0,attackTake:0,eatLight:0,eatCorpse:0,moves:0,shares:0};
     this.n0=P.CHEM?NEUTRAL0_CHEM:NEUTRAL0;
     if(P.CHEM){ const S=P.CHEM_S, cr=mulberry32((((P.CHEM_SEED!==undefined?P.CHEM_SEED:seed)>>>0)||1)^0x00c4e3c4); this.mol=new Float32Array(C*S); this.molTmp=new Float32Array(C); this.eMol=new Float32Array(S); this.prod=new Uint16Array(S*4);   // its own RNG: the main stream (ancestors, patches) is the same as without CHEM
-      this.eMol[0]=1; for(let q=1;q<S;q++)this.eMol[q]=cr(); for(let q=0;q<S;q++)for(let j=0;j<4;j++){ let t, g=0; do{ t=(cr()*S)|0; g++; }while(g<100000&&(t===q||Math.abs(this.eMol[t]-(this.eMol[q]-P.CHEM_STEP))>=P.CHEM_SPREAD)); this.prod[q*4+j]=t; } this.ev.metab=0; this.ev.metabN=0; }   // products lie near the substrate, mostly a little lower
+      this.eMol[0]=1; for(let q=1;q<S;q++)this.eMol[q]=cr(); for(let q=0;q<S;q++)for(let j=0;j<4;j++){ let t, g=0; do{ t=(cr()*S)|0; g++; }while(g<100000&&(t===q||Math.abs(this.eMol[t]-(this.eMol[q]-P.CHEM_STEP))>=P.CHEM_SPREAD)); this.prod[q*4+j]=t; } this.ev.metab=0; this.ev.metabN=0; this.rxE=new Float64Array(S*4); }   // rxE: energy each reaction captured since the last sample   // products lie near the substrate, mostly a little lower
     this.updateCap(); for(let c=0;c<C;c++)this.light[c]=this.cap[c];
     // the ancestor: eat light, try to divide, turn. Nothing else is given.
     const anc=[[OP.EAT_LIGHT,0],[OP.DIVIDE,0],[OP.TURN,1]];
@@ -148,7 +148,7 @@ class World{
         case 22: { const a=this.ahead(c,this.face[c]); R[r4]=this.light[a]-this.light[c]; } break;   // SENSE_GRAD
         case 23: R[r4]=this.rnd(); break;                                    // RAND
         case 24: case 25: case 26: case 27: if(P.CHEM){ const S=P.CHEM_S, q=arg&(S-1), pr=this.prod[q*4+op-24], d=this.eMol[q]-this.eMol[pr], i0=c*S;   // METABj
-                   if(d>0&&d<=P.CHEM_DMAX){ const x=this.mol[i0+q]*P.EAT_F; if(x>0){ this.mol[i0+q]-=x; this.mol[i0+pr]+=x; this.E[c]+=x*d; this.ev.metab+=x*d; this.ev.metabN++; } } } break;
+                   if(d>0&&d<=P.CHEM_DMAX){ const x=this.mol[i0+q]*P.EAT_F; if(x>0){ this.mol[i0+q]-=x; this.mol[i0+pr]+=x; this.E[c]+=x*d; this.ev.metab+=x*d; this.ev.metabN++; this.rxE[q*4+op-24]+=x*d; } } } break;
         case 28: if(P.CHEM)R[r4]=this.mol[c*P.CHEM_S+(arg&(P.CHEM_S-1))]; break;   // SENSE_MOL
         default: break;                                                      // NOP and the eight neutral markers
       }
@@ -209,7 +209,8 @@ class World{
     let chem=null; if(P.CHEM){ const S=P.CHEM_S, tot=new Float64Array(S); for(let i=0;i<this.C*S;i++)tot[i%S]+=this.mol[i];
       let molE=0, present=0; for(let q=0;q<S;q++){ molE+=tot[q]*this.eMol[q]; if(tot[q]>0.5)present++; }
       const rx=new Map(); for(const c of liv){ const o=c*L, seen=new Set(); for(let i=0;i<this.len[c];i++){ const op=this.prog[o+i*2]; if(op>=24&&op<=27){ const q=this.prog[o+i*2+1]&(S-1), pr=this.prod[q*4+op-24]; { const d=this.eMol[q]-this.eMol[pr]; if(d>0&&d<=P.CHEM_DMAX)seen.add(q*4+op-24); } } } for(const x of seen)rx.set(x,(rx.get(x)||0)+1); }
-      chem={molE:+molE.toFixed(1),present,reactions:rx.size,topRx:[...rx.entries()].sort((a,b)=>b[1]-a[1]).slice(0,12).map(([x,v])=>[x,+(v/liv.length).toFixed(3)]),metab:+(this.ev.metab||0).toFixed(1),metabN:this.ev.metabN||0}; }
+      const fl=[]; let ft=0; for(let x=0;x<S*4;x++) if(this.rxE[x]>0){ fl.push([x,this.rxE[x]]); ft+=this.rxE[x]; } fl.sort((a,b)=>b[1]-a[1]); this.rxE.fill(0);
+      chem={molE:+molE.toFixed(1),present,flux:fl.slice(0,24).map(([x,v])=>[x,+(v/ft).toFixed(4)]),fluxN:fl.length,reactions:rx.size,topRx:[...rx.entries()].sort((a,b)=>b[1]-a[1]).slice(0,12).map(([x,v])=>[x,+(v/liv.length).toFixed(3)]),metab:+(this.ev.metab||0).toFixed(1),metabN:this.ev.metabN||0}; }
     const ev=this.ev; this.ev={births:0,starve:0,killed:0,old:0,crowded:0,attacks:0,attackTake:0,eatLight:0,eatCorpse:0,moves:0,shares:0}; if(P.CHEM){ this.ev.metab=0; this.ev.metabN=0; }
     return {t:this.tick,N:n,meanLen:n?+(len/n).toFixed(2):0,meanGen:n?+(gsum/n).toFixed(1):0,maxGen:gmax,energy:{stores:+E.toFixed(1),light:+ground.toFixed(1),corpses:+dead.toFixed(1)},
       genotypes:geno.size,topGenoShare:n?+(gTop/n).toFixed(3):0,ev,race:{meanMatch:mn?+(mt/mn).toFixed(4):0,tags:tags.size,newTags,everTags:this.everTags.size,attackers:n?+(atk/n).toFixed(3):0},
