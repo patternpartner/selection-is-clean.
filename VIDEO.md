@@ -805,3 +805,38 @@ won. Bitter Pill 4.0-21.0 (whisper word times in the docstring). Grip points han
 PALM). Grok's camera zooms out ~25% during the strain (head width 136 -> 104 px): undone per frame from 1 s rolling
 medians of head width and lowest point (geometry()), at 0.9 base scale so his head clears the top. End card 17.4-21.0.
 New clips the same day: u123 (mimed catch) and u124 (eyes following a small floating bead) - not yet used.
+
+### Fetch (`video/build_fetch.py`, `out/fetch.mp4`, 30.0 s)
+u123 (mimed catch) + u124 (eyes following Grok's floating bead). The user: "Yeah". He plays fetch with the light: it floats
+up out of his palm, he catches it high and throws it away on "It isn't mine till I leave it behind" (49.92); it rockets
+back on the chorus ("Two" 51.78) and he crouches, startled, catching it at his face; he throws it straight up and it is
+gone. Cut (a breath of black at 53.8): he waits, hands in pockets; it comes back ON ITS OWN, drifting in from the left,
+up over his head, nose to nose (two points of light in his glasses), he smiles on "where the smile used to be", and it
+settles in his palm on "If you come after" and rests there through "I left the lamp burning". Two Points of Light
+44.4-70.6; end card 26.4-30.0 over "Read it, don't trust it, and look for me". Light positions hand-read off gridded 4 fps
+sheets (u124's are Grok's bead). Known: bluekey keeps the pale bead as a faint grey glass ball under the light - it reads
+as the light's glass, but it is visible above his head at 16 s.
+**Re-synced (same file).** The user: "it's a bit out of sync". Checked by pulling the FINISHED film at 4 fps beside the
+clip (the reader's frame timing was exact - matched frame for frame). Two real faults, both in act 1's hand-read path:
+it had been read at 4 fps, so the light lagged his hand through the wind-up and throw; and the return arrived half a
+second AFTER his startled "oh" (he reacts at clip 6.0-6.25; the light entered at 6.3). Fix: act 1 re-read at 8 fps
+off larger gridded sheets (palm, the drop where it floats free, the reach, the throw); the light now enters from where
+he is looking at clip 5.95 and hits his hands on "Two" (MAP_A simplified to one waiting segment). Act 2 (Grok's bead)
+was already in sync. LESSON: for a light riding a hand, 4 fps keyframes are not enough; read at 8+ and always check
+the finished film at 8 fps for a reaction that comes before its cause.
+**v3 (same file).** The user on v2: "It's not matched. When I duck my eyes are not following. Also grok put in a little
+rubber thing that's still in the video. Shall we try re-prompting grok?" Diagnosis: u123/u124 were mimed at objects
+GROK imagined, so no placement of ours could make his eyes follow ours. Re-prompt (the user ran the second one):
+  "The same man in a plain grey t-shirt and dark jeans, from the knees up, on a plain bright blue screen background.
+   Static camera, no zoom. He stands with his hands in his pockets, waiting, looking up. A small glowing warm orange ball
+   of light, like a firefly, drifts slowly down into frame from the top. His eyes follow it as it circles once around his
+   head, then floats right up to his face, nose to nose, and he goes cross-eyed and smiles. Then he slowly takes one hand
+   out of his pocket and holds it open, and the orange light settles gently into his palm. He looks at it, smiling."
+THE TECHNIQUE THAT WORKS: let Grok draw the light, so the eyes and hands are animated TO it, then lay ours on top. u125.
+Act 1 keeps u123 to the throw (now in sync) and stops there - the duck-and-catch and u124 are cut; on "Two" (51.78) it
+is back, on its own. The amber light rides Grok's, tracked per frame from its white-hot core (luminance > 245; colour
+thresholds locked onto his orange-lit face and shirt instead), dropped and hidden while it is behind his head.
+BUG FOUND: build_fetch's Reader clamped every clip at 10.0 s (copied from Let Go's 10 s clip); u125 is 12 s, so its last
+2 s froze while the light kept moving - two lights in his palm. Reader now takes each clip's length.
+The fetch half (prompt 1: throw, it shoots back, he ducks and catches it, eyes on it) was not run; if it comes, act 1
+can be rebuilt from it the same way.
