@@ -371,8 +371,13 @@ def main():
             img = Image.fromarray(np.clip(a, 0, 255).astype(np.uint8))
             window_border(img, 14, 40, W - 14, H - 40, frac=fr_, width=3, col=(200, 200, 215))
             a = np.asarray(img, np.float32)
+            # (v1 parked it at a guessed point below his palms - the user: "the light is beneath my hands rather than in
+            # them". The cup of his hands, read off a gridded 4 fps sheet, clip px; the light sits just above the palms.)
+            hct = [8.9, 9.15, 9.4, 9.65, 10.0]
+            hx = float(np.interp(ct, hct, [375, 350, 355, 365, 360])) * K
+            hy = float(np.interp(ct, hct, [455, 505, 500, 487, 487])) * K + OY
             u = ramp(s, SB0 + 0.3, 155.7)
-            lx, ly = 352 + (360 - 352) * u, 700 + (560 * K + OY - 700) * u
+            lx, ly = 352 + (hx - 352) * u, 700 + (hy - 700) * u
             glow(a, xs, ys, lx, ly, r=11, k=1.0)
             near = 1 / (1 + ((xs - lx) ** 2 + (ys - ly) ** 2) / (230 ** 2)) * u
             a += (al * near)[..., None] * person / 255 * AMBER * 0.6
