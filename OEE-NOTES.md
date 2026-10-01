@@ -25252,3 +25252,32 @@ does.
   later, viruses delay saturation and do not remove it:** a bounded Red Queen, cycling through a fixed set of routes.
 - **The control** if v passes: viruses that cannot track (V_MUT=0 after onset, no immigrants), so the pressure is
   one-off. Only if the evolving virus beats that is it coevolution, rather than disturbance, that sustains the novelty.
+
+**#287 result at 1,200,000 ticks — FAILS the pre-registered rule, on seed 2 by one window; but the virus worlds have not
+saturated.** Last quarter (the last ten 30,000-tick windows), windows that add a new active reaction at the 1% rule:
+
+| seed | v (CHEM + VIRUS) | c (CHEM) | ever active, v, at 600k → 1.2M | ever active, c, at 1.2M |
+|---|---|---|---|---|
+| 1 | 6/10 | 0/10 | 38 → 68 | 16 |
+| 2 | **4/10** | 0/10 | 24 → 48 | 9 |
+| 3 | 6/10 | 0/10 | 38 → 91 | 19 |
+
+- **The rule asked for at least 5/10 on all three seeds; seed 2 has 4. By the rule as written, v FAILS.**
+- **Its other clause ("ever-active levels off like c's, only later") does not describe what happened either:**
+  - c's ever-active count is flat from about tick 180,000 on every seed;
+  - v's grows by about 2-3 reactions every 60,000 ticks through 1.2M (cumulative at 60k windows: 56, 42 and 79),
+    flattening slightly over the last three windows.
+- **Threshold sensitivity.**
+  - At 5% of income, v has 5/10, 5/10 and 4/10 (c: 0/10 on all three); seed 3 now misses by one, where seed 2 did at
+    1%.
+  - Much of the new arrivals are reactions carrying 1-5% of income.
+- **The mechanism is the receptor switch.** Traced on seed 1:
+  - virus keys follow the dominant reactions (3, 513, 651, then 2, 0, 1, 475);
+  - each epidemic (up to about 36,000 lysed in 15,000 ticks) is followed by flux moving to a route the virus is not on;
+  - generations run faster than in c (about 8,000 by 600,000 ticks on seed 2), because lysis speeds turnover.
+- **A large part of it is a bounded Red Queen.** The four first-step reactions (0-3) and a handful of second steps
+  (513, 515, 651, 475) recur again and again. What is genuinely new arrives as further variants around them
+  (590, 481, 913, 755, 33, 34, ...).
+- **Next, as a new experiment** (the rule, unchanged, applied at a new horizon, since changing a rule after seeing the
+  numbers is a new experiment): v chained to 2,400,000 ticks. Running beside it is the pre-registered control, viruses
+  that cannot re-key (V_MUT=0).
