@@ -25114,3 +25114,69 @@ real world, but parents and victims are picked at random. Its genotypes are subj
 the same population size, with no selection. Checked: neutral size equals real size every sample, and a save and
 resume is exact. `lab/core-geno.js` now uses it as the bar (`BAR=shadow` shows the old one). Running: the same three
 worlds, chained.
+
+**#285d — the neutral population is still a weak bar for genotypes; a head-to-head assay decides instead.**
+On the first 600,000 ticks of the same three worlds, the neutral bar put the commonest neutral label at 0.5-3% and the
+real top genotype at 3-6%, so a genotype passes for being the current master. The reasons:
+- **Purifying selection.** It removes most real mutants, while every neutral mutant survives. The real master sits above
+  the bar for that reason alone.
+- **Neutral swaps.** A change of master that only touches a neutral op or an ignored argument counted as new.
+
+Two changes (`lab/oee-core.js`, `lab/core-geno.js`, `lab/core-assay.js`):
+- **Functional genotypes.** The program is hashed with NOP and the neutral markers dropped, and each argument masked to
+  the bits its op reads. A second neutral population takes a new label only when the real child's functional genotype
+  changed. Even so, the bar stays near 1% and 2-20 functional genotypes a window pass it on every seed through 1,800
+  generations, flat. **The bar is not the test.**
+- **The test is a COMPETITION ASSAY** (Lenski-style). The run writes out a representative program (with tag and
+  template) for every functional genotype that reaches the top 10. For each genotype first adaptive in window w, its
+  incumbent is window w-1's commonest. They meet in a fresh world, 200 each, mutation off, for 3,000 ticks; the score
+  is the challenger's share at the end. The null is the incumbent against itself (a label rides births and moves).
+  - **The null is wide: sd about 0.17**, from drift in a structured world. Founding each challenger next to an
+    incumbent did not narrow it (0.178 against 0.170).
+  - So the verdict is a Welch t of 6 challenger replicates against 6 null replicates (|t| > 2.2). "Beats every null
+    replicate" is kept as a STRICT column.
+  - First replays (seed 1, first 180,000 ticks): two challengers won in every replicate (73-80% share), one lost badly
+    (14%), two tied. A challenger that loses in a fresh world but took over its own world points to adaptations that
+    depend on the community around them. **A fresh-world assay will undercount those.**
+
+### #286 — CHEMISTRY: metabolic waste is the next organism's food. Niche construction in the lean core.
+
+**Why.** #285b showed the plain core runs out of new adaptive structure: the pair level reached the chance floor by
+about 7,000 generations, and neither a moving environment nor stronger predation changed that. The world offers a fixed
+menu (light, corpses, other organisms' bodies), and once that is learned there is little new to do. Biology's way out is
+organisms making new resources for each other — cross-feeding, as in the long-term E. coli lines.
+
+**Design** (`CHEM=1`, off by default; the default world was checked row-identical with it in the code):
+- **Species.** There are 256 molecule species. Each has a fixed energy content (species 0 holds 1; the rest are random)
+  and four fixed products.
+- **Light leaves waste.** Eating light gives the organism half the take; the other half is left in the cell as species 0.
+- **METAB0-3.** Four of the eight neutral markers become METAB0-3 under CHEM. METABj turns half of the cell's species
+  `arg` into its j-th product, and the organism keeps the energy difference. The product stays in the cell as waste,
+  which is food for whoever carries the next step.
+- **SENSE_MOL** reads a species' amount in the cell.
+- **Physics.** Molecules diffuse and decay, and energy is conserved.
+- **Two fixes before the first real run:**
+  - **A reaction may release at most CHEM_DMAX = 0.3.** Without the cap, one step from species 0 to its lowest product
+    took 99% of the energy, so everyone ran that one reaction and nothing was left for a next step.
+  - **Products are drawn near their substrate** (energy within 0.2 of substrate minus 0.15). Drawn at random, seed 2 had
+    no usable reaction out of species 0 at all. Now, from species 0, the networks reach 111-188 species with 300-540
+    usable reactions, and pathways run up to 17-29 steps.
+- **Readouts.** Per-reaction flux (the energy each reaction actually captured) is in every sample. `lab/core-chem.js`
+  reports the ACTIVE reactions (at least 1% of income) and each one's depth: the fewest steps from species 0 to its
+  substrate.
+  - Carrying a METAB instruction is not using it. By carrier share, reactions at depth 4-5, and reactions whose
+    substrate never exists, looked "adopted" in a world holding 5 species. They were hitchhikers. Flux replaced
+    carrier share.
+
+**First look — seeds 1-3, the first 90,000-120,000 ticks (about 700-970 generations).** Windows are 30,000 ticks.
+
+| seed | deepest active reaction, by window | species present | metabolic income | unused molecular energy |
+|---|---|---|---|---|
+| 1 | 0, 1, 5, 5 | 6 → 17 | 2,064 → 6,602 | 17,091 → 9,803 |
+| 2 | 2, 4, 4 | 5 → 11 | 2,054 → 11,040 | 13,987 → 2,512 |
+| 3 | 0, 1, 4, 5 | 5 → 19 | 1,262 → 9,735 | 17,980 → 6,536 |
+
+- Pathways deepen as each step's waste becomes the next step's food. New active reactions arrive in most windows.
+- **Seed 2 has already extracted most of its waste energy and added nothing new in its last window.** The network is
+  finite, and this is where it would run out. Running: the three worlds chained, beside the plain core (arm f), to the
+  same horizon.
