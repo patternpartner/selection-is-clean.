@@ -135,11 +135,25 @@ def light_at(s, scr):
     tip = line_top(s)
     y = min(YB, tip + 60 - 40 * ramp(s, WAIT, WAIT + 0.6))
     y = max(y, tip + 18)
-    return line_x(y, s), y
+    glance = 26 * math.sin((s - WAIT) * 2.4) * ramp(s, WAIT, WAIT + 0.5) * (1 - ramp(s, WRONG - 0.6, WRONG))
+    return line_x(y, s) + glance, y
+
+
+def dust_points():
+    """points sampled along the frozen scribbles - they crumble into dust that settles through the hush"""
+    r = np.random.default_rng(77)
+    pts = []
+    for line in scribbles(int(QUIET * FPS / 3)):
+        for (x0, y0), (x1, y1) in zip(line[:-1], line[1:]):
+            for u in r.random(3):
+                pts.append((x0 + (x1 - x0) * u, y0 + (y1 - y0) * u))
+    p = np.array(pts, np.float32)
+    return p, r.uniform(25, 90, len(p)).astype(np.float32), r.uniform(0, 6.28, len(p)).astype(np.float32)
 
 
 def main():
     ys, xs = np.mgrid[0:H, 0:W].astype(np.float32)
+    DP, DV, DPH = dust_points()
     out = None
     if not TEST:
         out = subprocess.Popen([F, "-loglevel", "error", "-y", "-f", "rawvideo", "-pix_fmt", "rgb24", "-s", f"{W}x{H}", "-r",
@@ -171,6 +185,18 @@ def main():
                 d.line(pts, fill=int(110 + 80 * rng.random()), width=1 if rng.random() < 0.7 else 2)
             st = np.asarray(im, np.float32) / 255 * lv
             a += st[..., None] * np.array([150, 160, 190], np.float32)
+        # ---- the hush: the room's scribbles crumble to dust and settle (v3: 6 s of a lone light read as a pause)
+        if QUIET + 0.6 <= s < COORD + 1.5:
+            age = s - (QUIET + 0.6)
+            k = min(1.0, age / 0.6) * (1 - ramp(s, COORD - 1.0, COORD + 1.5))
+            px = DP[:, 0] + 14 * np.sin(DPH + age * 1.3)
+            py = DP[:, 1] + DV * age
+            ok = (px >= 0) & (px < W) & (py >= 0) & (py < H)
+            img = np.zeros((H, W), np.float32)
+            np.add.at(img, (py[ok].astype(int), px[ok].astype(int)), 1.0)
+            img = np.asarray(Image.fromarray(np.clip(img * 255, 0, 255).astype(np.uint8)).filter(ImageFilter.GaussianBlur(0.8)),
+                             np.float32) / 255
+            a += (img * 1.6 * k)[..., None] * np.array([150, 160, 190], np.float32)
         # ---- the coordinate and the line
         if s >= COORD:
             k = ramp(s, COORD, COORD + 0.3)
@@ -202,6 +228,10 @@ def main():
             pts = [(line_x(y, s), y) for y in yy]
             if len(pts) > 1:
                 d.line(pts, fill=255, width=3, joint="curve")
+            if WAIT - 0.3 <= s < STATIC + 1.0:                          # waiting: its tip blinks like a cursor
+                if int((s - WAIT) / 0.42) % 2 == 0:
+                    tx = line_x(tip, s)
+                    d.rectangle([tx - 7, tip - 26, tx + 7, tip - 4], fill=255)
             core = np.asarray(im, np.float32) / 255
             glow = np.asarray(im.filter(ImageFilter.GaussianBlur(6)), np.float32) / 255
             amp = wave(s)[0]
