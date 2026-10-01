@@ -784,3 +784,13 @@ seconds" - u115's side-steps (3.0-10.5) read as WALKING, not dancing. Cut. (Less
 stepping with little arm movement reads as walking; the u118 walk-up wave at the end was NOT the problem.) The film now
 starts at 15.04 so the drop still lands on the jumps: 8 beats of the light alone on the dark stage, then the spot comes
 up on him (SPOT 18.911). 65.1 s, end card 61.46-65.06.
+
+### The Mirror (`video/build_mirror.py`, `out/the-mirror.mp4`, 26.2 s)
+The funny-faces film (u119). The user, on The Lesson v4: "That's it. Let's move to your next idea." The amber light from
+The Lesson draws itself a face (two dots, a line, on a soft disc beside his head) and copies every face he pulls, wrongly:
+smiles at his 'ooh' then corrects, kisses, a tongue three times too long, laughs so hard it bounces, eyes rolling through
+his pout, cannot wink (blinks both, twice), stretches its whole face wider than the frame when he pulls his cheeks. Then
+he just smiles; it paints on the perfect smile, and on "She peels her own face away from the lies" (77.9) the painted
+face peels off down-right and sheds sparks; only the light is left, warmer, drifting to his cheek. A Smile Painted
+60.4-82.6 (whisper word times in the build docstring); the clip is time-mapped (TMAP) so each face is held while the
+light tries it. Him: Z=1.15 at (-118, 265), head at about (296, 461); the face at (535, 461), R=74. End card 22.6-26.2.
