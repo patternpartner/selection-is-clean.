@@ -10619,7 +10619,8 @@ function sunStep(season){
     pE[i]=e; }
   energyAdequacy=dem>0?paid/dem:1;
   for(let c=0;c<C;c++)tot+=sunField[c]; worldEnergy=tot; }
-if(REPL_ON&&Array.isArray(genome.vmProgram))genome.vmProgram.unshift([4,2,4,1.0]);   // #273: the ancestor asks to reproduce (R2 starts at 1 in the solo VM)
+if(REPL_ON&&Array.isArray(genome.vmProgram))genome.vmProgram.unshift([4,2,4,1.0]);
+const REPL_ANCESTOR=REPL_ON&&Array.isArray(genome.vmProgram)?genome.vmProgram.map(x=>x.slice()):null;   // #284: kept, so a parentless founder under REPL is always a working replicator   // #273: the ancestor asks to reproduce (R2 starts at 1 in the solo VM)
 function deathReturn(i){   // a death returns energy: to the cell it died on under SUN (#272), else to the one pool
   if(REPL_ON){ const c=sunCell(i); corpseField[c]=Math.min(3,corpseField[c]+pE[i]+BIRTH_ENERGY_COST*DEATH_ENERGY_RETURN); pE[i]=0; }   // #273: the dead feed scavengers
   else if(SUN_ON){ sunField[sunCell(i)]+=pE[i]+BIRTH_ENERGY_COST*DEATH_ENERGY_RETURN; pE[i]=0; }
@@ -21395,6 +21396,7 @@ function addParticle(x,y,tv,born,parentA,parentB){
   pGenome[i]=mutateChildGenome(_bg);}
   pProg[i]=pGenome[i].vmProgram;
   if(REPL_ATOMS&&parentA>=0)replAtomBirth(i);   // #276
+  if(REPL_ANCESTOR&&parentA<0){ pGenome[i].vmProgram=REPL_ANCESTOR.map(x=>x.slice()); pProg[i]=pGenome[i].vmProgram; }   // #284: rescue founders replicate - the germline drifts to whatever particle has the most amp (selfLearnFromBest), which under REPL need not reproduce at all
   return i;
 }
 function addCompound(x,y,nt,nvx,nvy,na,np,nf,parentA,parentB){
@@ -21496,6 +21498,7 @@ function addCompound(x,y,nt,nvx,nvy,na,np,nf,parentA,parentB){
   pGenome[i]=mutateChildGenome(_bg);}
   pProg[i]=pGenome[i].vmProgram;
   if(REPL_ATOMS&&parentA>=0)replAtomBirth(i);   // #276
+  if(REPL_ANCESTOR&&parentA<0){ pGenome[i].vmProgram=REPL_ANCESTOR.map(x=>x.slice()); pProg[i]=pGenome[i].vmProgram; }   // #284: rescue founders replicate - the germline drifts to whatever particle has the most amp (selfLearnFromBest), which under REPL need not reproduce at all
   return i;
 }
 function computeVisuals(i){

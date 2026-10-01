@@ -24974,3 +24974,15 @@ every adaptation sweeps, the world goes clonal, and evolution waits for the next
 communities hold diversity through TRADE-OFFS: doing more costs more, so specialists win their own niche and separate
 lineages coevolve. **Next (#283):** under REPL, every instruction a program runs costs energy from its own store —
 CPU time, as in Avida.
+
+**#280 recombination, passage 3, and #284 — sterile rescue founders.** Recombining worlds at 72,000 ticks:
+- seed 1 collapsed to 33 alive, with predation and scavenging lost;
+- seed 3 collapsed to about 47 alive, with ZERO births;
+- seed 2 is healthy and diverse (best do-nothing op at 0.02): 155, 146 and 179 significant, plus three small
+  newcomers (19, 8, 84 at 5-7%).
+The zero births found an engine problem under REPL. After a crash, `replenish` refills the world with parentless
+founders built from the GERMLINE program, and `selfLearnFromBest` periodically replaces the germline with the program
+of the living particle with the most AMP. Under REPL, amp has nothing to do with reproducing, so the germline can
+become a program that never asks to reproduce — and every rescue founder is sterile. **#284 (REPL-only):** the
+ancestor program is kept at boot, and a parentless founder always gets it, so a crashed world can restart from a
+working replicator. The default world is identical to the last commit.
