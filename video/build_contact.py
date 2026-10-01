@@ -21,16 +21,19 @@ from PIL import Image
 
 F = imageio_ffmpeg.get_ffmpeg_exe()
 W, H, FPS = 704, 1280, 24
-S0, S1 = 132.9, 157.9                         # picture; the end card runs on to 165.9 in the mux
+S0, S1 = 136.3, 157.9                         # picture; the end card runs 157.9-161.6 in the mux (v3)
 DUR = S1 - S0
 BEAT, PHASE = 0.47619, 0.124
 TEST = [float(x) for x in os.environ.get("TEST", "").split(",") if x]
 PART = [float(x) for x in os.environ.get("PART", "").split(",") if x]
 AMBER = np.array([255, 176, 88], np.float32)
 CW, CH = 720, 1280
-TMAP = [(132.9, 0.0), (139.6, 1.0), (140.3, 1.4), (153.7, 11.5), (157.9, 11.5)]   # freeze while his arms are still out
-FREEZE = 153.7
-LINE = (148.9,)                               # when the line forms; the light joins it at his outstretched hand
+# v3, the user: "long pauses. Ending where the text comes up is about 7 seconds worth" - the held opening goes from 6.7 s
+# to 3.5 s (it starts at "it's watching my feet" and the light drops straight in), the freeze from 4.2 s to 2.0 s, and the
+# end card runs only under "We only get to teach it once / So teach it how to dance" (3.7 s, was 8).
+TMAP = [(136.3, 0.0), (139.8, 1.2), (140.3, 1.4), (155.9, 11.5), (157.9, 11.5)]   # freeze while his arms are still out
+FREEZE = 155.9
+LINE = (150.4,)                               # when the line forms; the light joins it at his outstretched hand
 # his right (screen-right) fingertips in the line dance, clip second -> out px, read off a gridded 2 fps sheet. (v1 put the
 # light at a fixed point which turned out to be on an alien's head: it read as the alien glowing.)
 HAND = [(8.0, 435, 555), (8.5, 591, 555), (9.0, 650, 570), (9.5, 640, 600), (10.0, 665, 612), (11.0, 672, 612),
@@ -75,12 +78,9 @@ class Reader:
 
 def light_at(s):
     b = (s - PHASE) / BEAT
-    if s < 135.8:                                                     # down from the sky, swaying
-        u = ramp(s, S0, 135.8)
-        return 430 + 40 * math.sin(s * 2.1) * (1 - u) + 40 * u, -40 + 420 * u ** 0.9
-    if s < 137.5:                                                     # down to his feet
-        u = ramp(s, 135.8, 137.5)
-        return 470 + (440 - 470) * u, 380 + (1120 - 380) * u
+    if s < 137.4:                                                     # straight down from the sky to his feet
+        u = ramp(s, S0, 137.4)
+        return 470 + (440 - 470) * u + 30 * math.sin(s * 4) * (1 - u), -60 + (1120 + 60) * u
     if s < 140.3:                                                     # at his shoes, watching; rising a little on "copy me"
         u = ramp(s, 138.4, 140.3)
         return 440 + 6 * math.sin(s * 3), 1120 - 220 * u + 8 * math.sin(math.pi * b)
