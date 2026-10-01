@@ -25011,3 +25011,54 @@ cannot favour leaner variants that almost never arise, while the insertion bias 
 5. one generalist swept every world (#282);
 6. the mutation supply cannot make the trade-off bite (here).
 REPL_COST stays as a knob, off, with this result.
+
+### #285 — THE LEAN CORE (lab/): about 4 generations a second, and adaptive novelty that slows but has not stopped at 1,800 generations, judged against a shadow genealogy.
+
+**Why.** #273-#284 kept finding structural limits in the engine's evolutionary machinery, each exposed by the last fix:
+- births were made by physics;
+- energy leaked;
+- starvation did not kill;
+- rescues were sterile;
+- one generalist swept every world;
+- the mutation supply could not make a trade-off bite.
+And the engine runs at about 50 ticks/s. So a separate bench, `lab/oee-core.js`, built from those lessons; the
+artwork is untouched:
+- **Replication:** programs replicate (DIVIDE is an instruction), and every executed instruction costs energy.
+- **Energy:** light from drifting patches is the only source, and a child's body is paid at birth and returned as a
+  corpse at death, so energy is conserved and starving is death.
+- **Mutation:** insertion and deletion are balanced.
+- **Space:** one organism per cell on a 64x64 torus; the child goes to an empty neighbour or not at all. Overwriting
+  was tried and made DIVIDE free predation: a kill-and-eat loop at about 200 births a tick.
+- **Predation:** a 16-bit attack template must match the target's 16-bit tag (take scales with match^4).
+- **Neutral markers:** 8 of the 32 opcodes do nothing.
+- **Speed:** about 600 ticks/s with about 1,500 alive; 300,000 ticks is about 1,800 generations in 8.5 minutes.
+
+**The measure — a SHADOW GENEALOGY (Bedau and Packard).** Every organism carries a second program, copied and mutated
+at each birth exactly like its real one (its own RNG stream, so the real world is unchanged) but never executed. The
+shadow shares the family tree, the sweeps and the hitchhiking, and feels no selection. A working op, or a working pair
+(two working ops adjacent), is ADAPTIVE in a 30-sample window only when its mean carrier share beats the most
+widespread shadow op or pair. With about 1,000 shadow pairs setting the bar, chance lets through about 0.5 real pairs
+a window. (The first analysis used only the 8 neutral ops as the bar; with 529 real pairs against 64 neutral ones,
+chance passes about 8 a window. That version over-counted, and the shadow replaced it.)
+
+**Result — seeds 1-3, 300,000 ticks each (`lab/core-shadow.js`):**
+
+| seed | new adaptive pairs per window (about 170 generations each) | adaptive pairs present per window | cumulative |
+|---|---|---|---|
+| 1 | 8, 7, 2, 2, 0, 1, 3, 1, 1, 2 | 7-14 | 27 |
+| 2 | 7, 14, 5, 1, 4, 5, 3, 7, 1, **9** | 10-20 | 56 |
+| 3 | 12, 1, 9, 8, 7, 4, 3, 3, 0, 0 | 8-18 | 47 |
+
+- **Adaptive structure is present in every window** (7-20 pairs beat the shadow, against about 0.5 by chance).
+- **New adaptations are still arriving at about generation 1,800 on seeds 1 and 2.** Seed 2's last window adds 9 new
+  pairs and two newly adaptive ops (MOVE, RAND). Seed 3 dries up in its last two windows.
+- **The rate falls**, and not because the space runs out: 27-56 of 529 working pairs were ever adaptive.
+- What evolved from the 3-instruction ancestor (eat light, divide, turn): foraging, moving, light and corpse sensing,
+  scavenging, and predation that hands on to scavenging (ATTACK>EAT_CORPSE).
+- **The tag race did not engage:**
+  - the mean fit of attack templates to the living's tags stayed at chance (0.06-0.10);
+  - kills were only 60-290 per 30,000 ticks, while attackers cycled between 5% and 46% of the living;
+  - tags turned over steadily (about 2,000 new per 30,000 ticks) — drift, not a chase.
+**Where this leaves step 3:** novelty that slows but has not stopped by 1,800 generations, on 2 of 3 seeds — between
+a plateau and open-ended. **Next:** does the moving environment drive it? Same seeds with the patches static, at the
+current drift, and 5x faster.
