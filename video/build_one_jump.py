@@ -76,12 +76,14 @@ def shot(s):
     if s < 15.58:
         h = track(HAND_A, 0)
         return "A", 0.04 * (s - 13.6), h, 1.7
-    if s < 23.58:
+    if s < 23.58:                                            # up from the light in his hand to his face; then wide
         ct = lin(s, 15.58, 23.58, 0.0, 1.75)
-        u = ramp(s, 15.58, 22.0)
         h = track(HAND_A, ct)
-        c = (h[0] + (200 - h[0]) * u, h[1] + (368 - h[1]) * u)
-        return "A", ct, c, 1.7 + (1.0 - 1.7) * u
+        u = ramp(s, 15.58, 19.4)
+        c = (h[0] + (205 - h[0]) * u, h[1] + (254 - h[1]) * u)
+        z = 1.7 - 0.3 * u
+        v = ramp(s, 19.58, 20.3)
+        return "A", ct, (c[0] + (200 - c[0]) * v, c[1] + (368 - c[1]) * v), z + (1.0 - z) * v
     if s < 25.58:
         return "A", lin(s, 23.58, 25.58, 1.75, 2.75), (200, 368), 1.0
     if s < 26.08:
@@ -205,6 +207,8 @@ def caustics(t, strength):
 def frame(clips, t, trail):
     s = song_time(t)
     k, ct, c, z = shot(s)
+    hw, hh = W / 2 / (BASEZ * z), H / 2 / (BASEZ * z)      # keep the camera inside the clip
+    c = (min(max(c[0], hw), SW - hw) if hw < SW / 2 else SW / 2, min(max(c[1], hh), SH - hh) if hh < SH / 2 else SH / 2)
     a = clips.at(k, ct)
     # ---- clip-space effects
     if 33.58 <= s < 39.58:                                   # falling through time: echoes of where he just was
