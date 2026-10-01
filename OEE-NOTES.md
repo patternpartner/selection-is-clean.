@@ -24830,3 +24830,47 @@ totals flat near 90. The food web assembles in order:
 2. scavengers boom on them (86% by 3,000);
 3. predation arises (73-86%), with scavenging at 96-99%.
 The passages run under the leak are set aside (`scratchpad/long_leak`); the long runs restart from tick 0.
+
+**#278 long runs, passages 1-3 (72,000 ticks, about 180 generations): two innovations, then a plateau.**
+Seeds 1-3, REPL + REPL_ATOMS, chained (`harness-passage.js`). The joins are seamless: population and carriers carry
+across. Innovation is judged against the neutral shadow: a core op is significant in a passage when its mean carrier
+fraction beats EVERY do-nothing op (240-415). Those are drawn by mutation at the same rate, so about 1.3 core ops pass
+by chance.
+- **Predation (155) and scavenging (146) are significant on all three seeds** (one exception: scavenging was not, on
+  seed 2's first passage). They are fixed at 99-100% by passage 2. Four sensor ops passed once each (47, 105, 119, 209
+  — about what chance predicts); 209, a velocity read, stayed significant on seed 2 through three passages.
+- **Nothing new after passage 1** apart from those sensors and one sweep-borne op (189 on seed 1, where a do-nothing
+  op rode at 72%). Raw crossings match neutral crossings in every passage: 6 vs 7, 6 vs 6, 3 vs 5 in passage 3. The
+  best do-nothing op's activity climbs to 0.65-0.99: the worlds are nearly clonal, and a sweep carries every op of
+  the winner.
+- **So the long worlds find their two tricks and stop.** That is the plateau every artificial-life system has shown.
+  Running longer does not change it; something must keep moving the target.
+
+### #279 — A ONE-NUMBER ARMS RACE: first signs of a Red Queen chase.
+#277's 4-number keys never engaged: a defence covered a sliver of the attacks a prey meets. With ONE number
+(`REPL_KEYD=1`, width 0.5), a defence near the typical attack covers most of it.
+Seeds 1-3, 20,000 ticks, armed (REPL_ARMS=1) against a disarmed control (REPL_ARMS=2). The two arms are identical
+until the first predation.
+
+| seed 1 (both arms had predation from about 6,000) | armed | disarmed |
+|---|---|---|
+| attack-key centroid travel (sum of moves per 500 ticks) | **4.26** | 1.67 |
+| net attack displacement | 1.42 | 0.93 |
+| mean attack-defence gap | **1.23** | 0.27 |
+
+- Under armed defence, attacks travel 2.5x further and are pushed AWAY from the population's defences: selection on
+  the attack key. Disarmed, attack and defence stay together, because the same sweeping lineages carry both.
+- **Seed 3 (armed) shows the chase in the open:**
+
+  | tick | 8,000 | 12,000 | 16,000 | 20,000 |
+  |---|---|---|---|---|
+  | attack | 0.50 | -1.03 | -1.57 | -1.17 |
+  | defence | 0.14 | 0.07 | -1.34 | -1.10 |
+  | take | 0.69 | 0.94 | 0.71 | 0.81 |
+
+  The attack escapes and the take rises; the defence catches up and the take falls. Defence moves toward where the
+  attack was 2,000 ticks earlier, r = 0.82. But its control had no predation until tick 20,000, so this seed has no
+  comparison.
+- Seed 2: predation came at about 18,000 in both arms, too late to read.
+**One clean seed. Not proven.** If it is a chase, it should keep going: the armed attack key should keep travelling
+across passages (ballistic) while the disarmed one only diffuses. **Next:** chained long runs of both arms, seeds 1-3.
