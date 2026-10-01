@@ -926,3 +926,18 @@ keep the arm but put lights all around it." Twinkling fairy lights wind along th
 8 fps, with a ring of lights round the hand. The first try marked the upper edge of the arm, so the lights sat above it;
 they were moved onto the middle (+40 px). Colour segmentation could not be used because it merged the arm with his arm
 and face.
+
+### One Jump (`video/build_one_jump.py`, `out/one-jump.mp4`, 56 s + end card)
+New clips u131 and u132 are two Grok takes of the user on a high-dive board over a stadium pool, seen from above. In u131
+he dives, then there is a close-up of him yelling and reaching at the lens, settling calm. In u132 he jumps, splashes,
+then flies back UP out of the water at the camera. Claude pitched "No Rewind" (you can't take a dive back) and wrote the
+lyrics (`video/lyrics/no-rewind.txt`); the user asked "What do you want the vibe to be?" and made the song "One Jump"
+(120 bpm, phase 0.081). Song 13.6-63.58, then a splice on the same bar phase to the outro 127.58-133.6 ("one jump - make it
+the right one"). The light falls into his hand; the camera pans up to his face, then snaps wide on "everybody's watching"
+(flashes in the stands). Numbers 1-2-3 appear on the water; "and I count it again" REWINDS the footage and the second
+count is the other take. On "how deep it is" the pool's water recedes and darkens under him (a radial warp of the water
+pixels only), then a held breath through the drop. The chorus is the jump; the fall is slowed with time-echoes; the splash
+comes up gold. Underwater, u131's reaching close-up becomes him reaching up at us through rippling water, which turns
+gold on "golden". He sinks away while the light whips about "out of control"; "the surface broke" is u132 flying back
+out at the camera, "bigger than I gave it" with gold breaking in. He ends calm on the board, the light rising back to him.
+v1 opened with 8 s of him standing under a slow zoom (a long pause); v2 pans from his hand up to his face, then goes wide.
