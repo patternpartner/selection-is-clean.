@@ -2688,5 +2688,104 @@
   "used_in": [
    "silver-steps"
   ]
+ },
+ {
+  "id": "u131",
+  "file": "out/user-clips/u131.mp4",
+  "upload": "2e938154-grok_video_2026-10-01-17-24-32.mp4",
+  "seconds": 15.04,
+  "size": "400x736",
+  "what": "THE USER'S OWN LIKENESS in a full Grok scene: top-down from above a high-dive board over a stadium pool; he looks up at camera, turns, dives, small splash; then a close-up of him on the board yelling, hands reaching at the lens",
+  "tags": [
+   "own-likeness",
+   "free",
+   "scene"
+  ],
+  "talks": false,
+  "moves": [
+   [
+    0,
+    2.0,
+    "standing on the board, looking up at camera"
+   ],
+   [
+    2.0,
+    3.5,
+    "turns away to the edge"
+   ],
+   [
+    3.5,
+    4.5,
+    "bends and dives"
+   ],
+   [
+    4.5,
+    6.0,
+    "falling, shrinking toward the water"
+   ],
+   [
+    6.0,
+    7.0,
+    "small splash"
+   ],
+   [
+    7.0,
+    15.0,
+    "cut: close-up, mouth wide, hands reaching at the lens (a long hold)"
+   ]
+  ],
+  "used_in": []
+ },
+ {
+  "id": "u132",
+  "file": "out/user-clips/u132.mp4",
+  "upload": "512b16c0-grok_video_2026-10-01-17-25-00.mp4",
+  "seconds": 15.04,
+  "size": "400x736",
+  "what": "THE USER'S OWN LIKENESS in a full Grok scene: same high dive; he jumps, falls, splashes, surfaces - then flies back UP out of the water toward the camera, screaming, until his face fills the frame",
+  "tags": [
+   "own-likeness",
+   "free",
+   "scene"
+  ],
+  "talks": false,
+  "moves": [
+   [
+    0,
+    1.5,
+    "standing on the board, looking up"
+   ],
+   [
+    1.5,
+    3.0,
+    "crouches and jumps"
+   ],
+   [
+    3.0,
+    5.5,
+    "tumbling down toward the water"
+   ],
+   [
+    5.5,
+    6.5,
+    "splash"
+   ],
+   [
+    6.5,
+    8.0,
+    "rings; he surfaces"
+   ],
+   [
+    8.0,
+    11.5,
+    "flies back up out of the water at the camera, arms out, screaming"
+   ],
+   [
+    11.5,
+    15.0,
+    "face fills the frame, screaming (a long hold)"
+   ]
+  ],
+  "used_in": []
  }
 ]
