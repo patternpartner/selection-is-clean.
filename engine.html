@@ -1346,7 +1346,7 @@ const LIVENESS_DECLARED=[
   // world's reproductive pressure as a ratio, and on the seeded constants it runs at about 1:100.
   // Refused reading zero is a world that has made children free; paid reading zero is one that has
   // stopped having them. Both are reachable now that the four constants are laws.
-  'repl.birth','repl.prey','repl.gift','repl.scavenge','repl.atomNew','repl.atomStep','birth.paid','birth.refused','birth.rationed','birth.unprovisioned',   // RATION: refused by the fair lottery, before the pool is read
+  'repl.birth','repl.prey','repl.gift','repl.scavenge','repl.atomNew','repl.atomStep','repl.sex','birth.paid','birth.refused','birth.rationed','birth.unprovisioned',   // RATION: refused by the fair lottery, before the pool is read
   // #212: clusterGenomes was the one carry-forward store that never let go -- ~1,000 entries against
   // 6-11 live clusters, and a measured working set exactly one detection cycle deep. This fires when
   // an entry ages past the horizon. Reading zero on a long run means either the horizon never binds
@@ -4115,6 +4115,7 @@ let uaFuel=0,uaDepth=0;
 // deep stack cannot freeze the tab.
 const MAX_STACK_DEPTH=8;   // per slot; the toll is the real regulator, this only bounds the save
 function uaChain(head,slot,a,b){
+  if(REPL_ATOM_INERT)return 0;   // #281: the control - a particle's atoms are carried and mutate but do nothing
   let out=uaCall(head,a,b);
   const os=genome.opStacks;
   if(os){
@@ -10566,11 +10567,23 @@ const pKey=new Float32Array(CAP*4), pDef=new Float32Array(CAP*4);
 // space has no end short of its length cap, which makes this the one layer that can keep supplying new things.
 const REPL_ATOMS=REPL_ON&&(typeof globalThis!=='undefined')&&((globalThis.__REPL_ATOMS|0)!==0);
 const REPL_ATOM_P=0.05;
+const REPL_ATOM_INERT=REPL_ON&&(typeof globalThis!=='undefined')&&((globalThis.__REPL_ATOM_INERT|0)!==0);   // #281: atoms carried and varied, but every particle-side call does nothing - the neutral control for atom spread
 function replAtomBirth(i){ const g=pGenome[i]; if(!g||Math.random()>=REPL_ATOM_P)return; if(!Array.isArray(g.userAtoms))g.userAtoms=[];
   try{ const ua=g.userAtoms, _sv=genome; genome=g;
     try{ if(!ua.length||Math.random()<1/3){ if(ua.length<MAX_USER_ATOMS){ const ex=uaGenExpression(); if(uaExprSafe(ex)){ ua.push({expression:ex,compiled:null,failed:false,uses:0,age:0,alienHits:0,alienAttempts:0,creditTrace:0}); fired('repl.atomNew'); } } }
       else { const q=(Math.random()*ua.length)|0, a=ua[q]; if(a&&typeof a.expression==='string'){ const ex=uaLocalStep(a.expression); if(ex&&ex!==a.expression&&uaExprSafe(ex)){ ua[q]={expression:ex,compiled:null,failed:false,uses:0,age:0,alienHits:0,alienAttempts:0,creditTrace:0}; fired('repl.atomStep'); } } } }
     finally{ genome=_sv; } }catch(e){} }
+// #280 - REPL_SEX (knob, needs REPL): RECOMBINATION. Under REPL almost every birth is a program copying itself, so two
+// useful pieces that arise in different lineages never meet - and #278's plateau is exactly where single mutations
+// have nothing left to improve. With probability REPL_SEX_P a newborn's program is spliced (crossoverProg, deep-copied)
+// with the program of a random neighbour standing in the 3x3 cells around the parent.
+const REPL_SEX=REPL_ON&&(typeof globalThis!=='undefined')&&((globalThis.__REPL_SEX|0)!==0);
+const REPL_SEX_P=0.5;
+function replMate(p){ const c=sunCell(p), cx=c%FIELD_W, cy=(c/FIELD_W)|0; const cand=[];
+  for(let dy=-1;dy<=1;dy++)for(let dx=-1;dx<=1;dx++){ const x=cx+dx,y=cy+dy; if(x<0||y<0||x>=FIELD_W||y>=FIELD_H)continue; for(let j=sunHead[y*FIELD_W+x];j>=0&&cand.length<24;j=sunNext[j]) if(j!==p&&j<N&&palive[j]&&pProg[j])cand.push(j); }
+  return cand.length?cand[(Math.random()*cand.length)|0]:-1; }
+function replSexBirth(c,p){ if(Math.random()>=REPL_SEX_P||!pGenome[c])return; const m=replMate(p); if(m<0)return;
+  const prog=cloneProg(crossoverProg(pGenome[c].vmProgram,pProg[m],pGenome[c].vmMaxInstructions||16)); pGenome[c].vmProgram=prog; pProg[c]=prog; fired('repl.sex'); }
 function replKeyBirth(i,p){ const ok=p>=0&&p<N&&p!==i; for(let m=0;m<4;m++){
   if(ok){ pKey[i*4+m]=pKey[p*4+m]+(Math.random()+Math.random()+Math.random()-1.5)*2*REPL_KEYSD; pDef[i*4+m]=pDef[p*4+m]+(Math.random()+Math.random()+Math.random()-1.5)*2*REPL_KEYSD; }
   else { pKey[i*4+m]=Math.random()*2-1; pDef[i*4+m]=Math.random()*2-1; } } }
@@ -10579,6 +10592,7 @@ const SUN_ON=REPL_ON||((typeof globalThis!=='undefined')&&((globalThis.__SUN|0)!
 const SUN_TAKE=0.2, SUN_ENDOW=0.5, SUN_SEED=0.5, SUN_STORE=4;
 const sunField=SUN_ON?new Float32Array(FIELD_W*FIELD_H).fill(WORLD_ENERGY_MAX/(FIELD_W*FIELD_H)):null;
 const sunScratch=SUN_ON?new Float32Array(FIELD_W*FIELD_H):null, sunCnt=SUN_ON?new Int32Array(FIELD_W*FIELD_H):null;
+const sunHead=SUN_ON?new Int32Array(FIELD_W*FIELD_H).fill(-1):null, sunNext=SUN_ON?new Int32Array(CAP).fill(-1):null;   // #280: who stands in each cell this tick (for REPL_SEX mates)
 const pE=new Float32Array(CAP), pAdq=new Float32Array(CAP).fill(1);
 const corpseField=new Float32Array(FIELD_W*FIELD_H);   // #278c: under REPL the dead feed scavengers through THIS layer, written only by deathReturn and read only by op 146 - the shared detrital layer also takes free deposits (op 9 reactions, op 165, cosmos exports, peer contact), and under REPL each of those minted breeding energy: seed 1 ran to the 1,800 cap on 3.2 million predations per 500 ticks   // #272: a particle's own energy store, and the share of its upkeep it met
 function SUN_GRAD(){ return (FIELD_W*FIELD_H)/Math.max(1e-9,WORLD_ENERGY_MAX); }
@@ -10589,7 +10603,7 @@ function sunStep(season){
   for(let y=0;y<FIELD_H;y++)for(let x=0;x<FIELD_W;x++){ const c=y*FIELD_W+x, v=sunField[c];
     sunScratch[c]=v*(1-4*D)+D*((x>0?sunField[c-1]:v)+(x<FIELD_W-1?sunField[c+1]:v)+(y>0?sunField[c-FIELD_W]:v)+(y<FIELD_H-1?sunField[c+FIELD_W]:v)); }
   sunField.set(sunScratch);
-  sunCnt.fill(0); for(let i=0;i<N;i++) if(palive[i]) sunCnt[sunCell(i)]++;
+  sunCnt.fill(0); sunHead.fill(-1); for(let i=0;i<N;i++) if(palive[i]){ const c=sunCell(i); sunCnt[c]++; sunNext[i]=sunHead[c]; sunHead[c]=i; }
   for(let c=0;c<C;c++){ const n=sunCnt[c]; if(!n)continue; const t=sunField[c]*Math.min(1,SUN_TAKE*n); sunScratch[c]=t/n; sunField[c]-=t; }
   let dem=0, paid=0, tot=0;
   for(let i=0;i<N;i++){ if(!palive[i])continue; const c=sunCell(i); let e=pE[i]+sunScratch[c];
@@ -22033,6 +22047,7 @@ function applyUserEffect(eff,i,j,amt,slot){
 //   • it reads `genome`, which the VM callers have already repointed to the CARRIER (see the
 //     try/finally around executeVM), so the atom consulted is the actor's own — never the germline's.
 function verbGate(eff,i,amt){
+  if(REPL_ATOM_INERT)return 1;   // #281: the control - an atom gates nothing (1 = pass-through, as for a missing atom)
   const ax=(eff&&eff.ax!==undefined&&eff.ax!==null)?(eff.ax|0):-1;
   if(ax<0)return 1;
   const bos=genome.boundOpcodes; if(!Array.isArray(bos)||ax>=bos.length)return 1;
@@ -22251,7 +22266,7 @@ case 16:
         const uas=genome.userAtoms;
         if(uas&&uas.length>0){
           const uIdx=Math.abs(Math.floor(k))%uas.length;
-          vmRegs[di]=uaCall(uas[uIdx],vmRegs[si],vmRegs[(si+1)%__vmRC]);
+          vmRegs[di]=REPL_ATOM_INERT?0:uaCall(uas[uIdx],vmRegs[si],vmRegs[(si+1)%__vmRC]);   // #281: the control returns 0
         }
       }break;
       case 23:{
@@ -25529,7 +25544,7 @@ function executeSoloVM(){
     mutPressureAccum+=vmActions[6]*soloInfluence*0.00005;
     if(REPL_ON&&vmActions[4]>REPL_T&&pE[i]>=BIRTH_ENERGY_COST){   // #273: the program asked, the store pays (in addParticle's gate)
       const _nt=new Float32Array(DIMS); for(let _d=0;_d<DIMS;_d++)_nt[_d]=tend[i*DIMS+_d];
-      if(addParticle(px[i]+(Math.random()-0.5)*12,py[i]+(Math.random()-0.5)*12,_nt,true,i,-1)>=0){ birthsThisTick++; fired('repl.birth'); } }
+      const _ci=addParticle(px[i]+(Math.random()-0.5)*12,py[i]+(Math.random()-0.5)*12,_nt,true,i,-1); if(_ci>=0){ birthsThisTick++; fired('repl.birth'); if(REPL_SEX)replSexBirth(_ci,i); } }
     applyUserEffects(i,-1,soloInfluence); // #132: authored verbs, solo path. j=-1, so CONSERVED mode
                                           // has no partner to trade with and falls back to LOCAL —
                                           // the same honesty op227/op231 already use in solo context.

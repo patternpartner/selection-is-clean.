@@ -24874,3 +24874,20 @@ until the first predation.
 - Seed 2: predation came at about 18,000 in both arms, too late to read.
 **One clean seed. Not proven.** If it is a chase, it should keep going: the armed attack key should keep travelling
 across passages (ballistic) while the disarmed one only diffuses. **Next:** chained long runs of both arms, seeds 1-3.
+
+**#279 long runs, two passages (48,000 ticks) per arm: a Red Queen CYCLE, selection-driven on 3 of 3 seeds — not a
+runaway.** Chained passages, seeds 1-3 (RNG seed x100+passage), armed (X) against disarmed (C). Only the samples
+where predation is established (op 155 carried by 20% or more) count.
+
+| seed | attack-key movement per sample, armed / disarmed | net displacement, armed / disarmed | attack-defence gap, armed / disarmed | take, armed |
+|---|---|---|---|---|
+| 1 | **0.081 / 0.055** | 1.29 / 0.24 | 1.56 / 0.43 | 0.86 |
+| 2 | **0.148 / 0.060** | 1.43 / -2.33 | 0.59 / 2.27 | 0.82 |
+| 3 | **0.090 / 0.050** | -0.38 / -2.04 | 1.02 / 1.72 | 0.79 |
+
+- **Selection moves the keys: 1.5-2.5x faster than drift, on all three seeds.** Defence holds the take at 0.79-0.86,
+  and predators keep escaping it. That is coevolution — the first causal one in this file.
+- **But it does not go anywhere.** Net displacement is no larger armed than disarmed (the disarmed keys random-walk
+  further). The armed keys swing back and forth inside a bounded region. That is the textbook outcome of a
+  matching-key race: continual change that revisits old values, not new ones. **Turnover, not open-endedness.**
+- #279's single-seed 2.5x on seed 1 was a reasonable first sign of exactly this; the long runs say what it is.
