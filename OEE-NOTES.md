@@ -25300,3 +25300,21 @@ run already read 0.86 after 30,000 ticks on seed 1.
 **Also found:** in virus worlds the commonest functional genotype is often a non-metaboliser — no METAB instruction,
 so no receptor. A replay of top genotypes therefore picks the receptor-losers (Meyer's first step) rather than the
 route-switchers, which is why the causal test here is a whole-world replay.
+
+**#287c — the "non-tracking" control as run is NOT the pre-registered one, and it tracks anyway.** The run used V_MUT=0
+(virions keep their parent's key) but KEPT the random-key immigrants (0.1 a tick). #287 pre-registered both off, which
+means no virus could ever arrive. To 600,000 ticks it made as much novelty as the evolving virus:
+
+| seed | windows 11-20 with a new active reaction: evolving / V_MUT=0 | ever active: evolving / V_MUT=0 | commonest-METAB share, 300k-600k |
+|---|---|---|---|
+| 1 | 7/10 / 9/10 | 42 / 41 | 0.66 / 0.71 |
+| 2 | 4/10 / 4/10 | 28 / 35 | 0.54 / 0.79 |
+| 3 | 7/10 / 6/10 | 45 / 62 | 0.67 / 0.73 |
+
+- **Immigration is enough to track.** Whatever route the hosts move to, an immigrant keyed to it turns up sooner or later
+  and starts an epidemic there. **What sustains the novelty is pressure that can reach any route, not the virus's own
+  mutation.** So "coevolution" in the strict sense (the virus evolving) is NOT shown here.
+- **Still open:**
+  - whether the virus is the cause at all (#287b, the in-world replay);
+  - whether the pressure has to keep following the hosts. That is the pre-registered control, viruses seeded once on
+    every key and then no immigrants and no re-keying, still to run.
