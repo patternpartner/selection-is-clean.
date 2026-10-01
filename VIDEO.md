@@ -915,3 +915,14 @@ looked, that's where it goes wrong" - he explains and letters spill from his han
 (u129 3.0-5.6); "I don't know, and I'm not closing it" - the open-armed shrug (u127 8.4-10.2), the question brightens and
 stays open; "I won't say that I've seen" - palms out (u129 13.4-15), the handwriting fades. v1 started at 0 (12 s of him
 standing - cut) and faded him in at every clip change (a blink at each cut - removed: hard cuts).
+
+### Silver Steps (`video/build_silver.py`, `out/silver-steps.mp4`, 45.3 s + end card)
+The user's song Silver Steps (126 bpm, phase 0.164) and clip u130: him dancing down an endless escalator. The user: "Here's
+a vid. I made a song too. Let's extend it to 45 seconds. You put your twist on it." The twist: the escalator never ends.
+The camera pulls back to a tower of escalators, each one running at its own moment of the clip, then climbs fast (streaks)
+up past the stars to the top tile, where one of him is waving under a light. A stranger's arm comes into frame twice
+(u130 2.6-4.05 and 7.72-10.15) and the high fives become sparks (16.95, 22.4). **The arm is the user's idea:** "Maybe we
+keep the arm but put lights all around it." Twinkling fairy lights wind along the arm, read by hand off gridded sheets at
+8 fps, with a ring of lights round the hand. The first try marked the upper edge of the arm, so the lights sat above it;
+they were moved onto the middle (+40 px). Colour segmentation could not be used because it merged the arm with his arm
+and face.
