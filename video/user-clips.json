@@ -2638,5 +2638,55 @@
   "used_in": [
    "not-closing-it"
   ]
+ },
+ {
+  "id": "u130",
+  "file": "out/user-clips/u130.mp4",
+  "upload": "ee88a750-grok_video_2026-10-01-16-58-12.mp4",
+  "seconds": 15.04,
+  "size": "720x1280",
+  "what": "THE USER'S OWN LIKENESS in a full Grok scene (not blue screen): dancing up a dark escalator lined with gold light; a stranger's hand reaches in from off-frame to high-five him",
+  "tags": [
+   "own-likeness",
+   "free",
+   "scene"
+  ],
+  "talks": false,
+  "moves": [
+   [
+    0,
+    2.0,
+    "dancing, arms out"
+   ],
+   [
+    2.5,
+    3.5,
+    "high five with a hand from off-frame (left)"
+   ],
+   [
+    4.0,
+    7.5,
+    "dancing"
+   ],
+   [
+    8.0,
+    9.5,
+    "second high five (hand from the right)"
+   ],
+   [
+    10.0,
+    14.0,
+    "dancing, kicks"
+   ],
+   [
+    14.0,
+    15.0,
+    "waving up"
+   ]
+  ],
+  "note": "the stranger's arm does not segment cleanly (merges with his arm/face on contact)",
+  "used_in": [
+   "silver-steps"
+  ]
  }
 ]
