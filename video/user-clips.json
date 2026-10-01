@@ -2446,5 +2446,197 @@
   "used_in": [
    "contact"
   ]
+ },
+ {
+  "id": "u127",
+  "file": "out/user-clips/u127.mp4",
+  "upload": "7ba147a0-grok_video_2026-10-01-16-45-20.mp4",
+  "what": "THE USER'S OWN LIKENESS: thinking and explaining, then an open-armed 'I don't know' (blue screen)",
+  "seconds": 15.04,
+  "size": "720x1280",
+  "tags": [
+   "own-likeness",
+   "free",
+   "bluescreen"
+  ],
+  "talks": false,
+  "moves": [
+   [
+    0,
+    1.0,
+    "idle, hands in pockets"
+   ],
+   [
+    1.5,
+    4.5,
+    "finger to his temple, thinking"
+   ],
+   [
+    5.0,
+    6.0,
+    "standing"
+   ],
+   [
+    6.0,
+    8.5,
+    "explaining with his hands"
+   ],
+   [
+    8.5,
+    10.2,
+    "open-armed shrug - I don't know"
+   ],
+   [
+    10.5,
+    12.0,
+    "hands clasped"
+   ],
+   [
+    12.0,
+    14.5,
+    "steps forward (walk-like)"
+   ],
+   [
+    14.5,
+    15.0,
+    "hands on hips"
+   ]
+  ],
+  "used_in": [
+   "not-closing-it"
+  ]
+ },
+ {
+  "id": "u128",
+  "file": "out/user-clips/u128.mp4",
+  "upload": "61aa3bd9-grok_video_2026-10-01-16-47-03.mp4",
+  "what": "THE USER'S OWN LIKENESS: gestures: a hand shot up, pointing, reaching, crossed-arm moves, a T-pose (blue screen)",
+  "seconds": 15.04,
+  "size": "720x1280",
+  "tags": [
+   "own-likeness",
+   "free",
+   "bluescreen"
+  ],
+  "talks": false,
+  "moves": [
+   [
+    0,
+    1.0,
+    "idle"
+   ],
+   [
+    2.0,
+    3.0,
+    "a hand shot up (eager - 'me!')"
+   ],
+   [
+    3.5,
+    4.5,
+    "hand to chest"
+   ],
+   [
+    4.5,
+    6.5,
+    "hand raised, then explaining"
+   ],
+   [
+    8.5,
+    9.0,
+    "reaching an arm out"
+   ],
+   [
+    9.0,
+    10.0,
+    "arm up high"
+   ],
+   [
+    11.0,
+    12.0,
+    "pointing up and out, diagonal"
+   ],
+   [
+    12.0,
+    14.5,
+    "crossing arms in front, robot-ish"
+   ],
+   [
+    14.5,
+    15.0,
+    "arms out wide, a T"
+   ]
+  ],
+  "used_in": [
+   "not-closing-it"
+  ]
+ },
+ {
+  "id": "u129",
+  "file": "out/user-clips/u129.mp4",
+  "upload": "a19cddd9-grok_video_2026-10-01-16-48-59.mp4",
+  "what": "THE USER'S OWN LIKENESS: hands on hips, genie arms, reaching up high, a little robot dance, palms out (blue screen)",
+  "seconds": 15.04,
+  "size": "720x1280",
+  "tags": [
+   "own-likeness",
+   "free",
+   "bluescreen"
+  ],
+  "talks": false,
+  "moves": [
+   [
+    0,
+    0.8,
+    "idle"
+   ],
+   [
+    0.5,
+    1.0,
+    "hands on hips"
+   ],
+   [
+    1.0,
+    2.5,
+    "arms folded level, genie-like"
+   ],
+   [
+    3.0,
+    3.5,
+    "reaching straight up high"
+   ],
+   [
+    4.0,
+    4.5,
+    "rubbing his neck, looking up"
+   ],
+   [
+    5.0,
+    5.5,
+    "reaching up again"
+   ],
+   [
+    6.0,
+    8.5,
+    "standing, glancing"
+   ],
+   [
+    9.0,
+    11.0,
+    "stepping (walk-like - avoid)"
+   ],
+   [
+    11.0,
+    12.5,
+    "robot-dance arms"
+   ],
+   [
+    13.4,
+    15.0,
+    "palms out, wide stance"
+   ]
+  ],
+  "used_in": [
+   "not-closing-it"
+  ]
  }
 ]

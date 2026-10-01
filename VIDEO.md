@@ -902,3 +902,16 @@ idle after the shrug ~5 s) - motion is there (rewriting letters, letters blowing
 **Fix (same file).** The user: "Really great Claude. Creative. The last scene the light is beneath my hands rather than in
 them." v1 aimed it at a guessed point; now it follows the cup of his hands read off a gridded 4 fps sheet (u123 8.9-10).
 The user's verdict on the film itself: "Really great... Creative."
+
+### Not Closing It (`video/build_not_closing.py`, `out/not-closing-it.mp4`, 29.5 s)
+New clips u127 (thinking, explaining, an open-armed "I don't know"), u128 (a hand shot up, pointing, a T), u129 (genie arms,
+reaching up high, palms out). The user: "Great work. Here's some more movements to inspire your next creation." The
+OPENING of The Mirror Was Dead (6.0-31.9; only its bridge had a film before) - honesty: the AI that wants to answer
+before it has looked. He stands smaller and lower (ZP 0.72) so a great hollow glowing '?' can hang above him, its dot the
+amber light (the '?' glyph with the dot component removed). The room draws itself; handwriting scrawls the walls; "You
+ask what's theirs" - the question comes down; "and I want to answer" - his hand shoots up (u128 1.2-3.2); "before I've
+looked, that's where it goes wrong" - he explains and letters spill from his hands, then crack red and fall on "wrong";
+"so I look first" - finger to temple (u127 1.5-4.5); "I can't tell yet" - he reaches up and the dot rings at each touch
+(u129 3.0-5.6); "I don't know, and I'm not closing it" - the open-armed shrug (u127 8.4-10.2), the question brightens and
+stays open; "I won't say that I've seen" - palms out (u129 13.4-15), the handwriting fades. v1 started at 0 (12 s of him
+standing - cut) and faded him in at every clip change (a blink at each cut - removed: hard cuts).
