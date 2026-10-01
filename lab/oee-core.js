@@ -47,6 +47,7 @@ class World{
     this.alive=new Uint8Array(C); this.E=new Float32Array(C); this.age=new Int32Array(C);
     this.pc=new Uint8Array(C); this.face=new Uint8Array(C); this.R=new Float32Array(C*4);
     this.len=new Uint8Array(C); this.prog=new Uint8Array(C*P.MAXLEN*2);
+    this.sprog=new Uint8Array(C*P.MAXLEN*2); this.slen=new Uint8Array(C); this.srnd=mulberry32(((seed>>>0)||1)^0x5eed5eed);   // the SHADOW genome: same genealogy, same mutation process, never executed
     this.tag=new Uint16Array(C); this.tmpl=new Uint16Array(C); this.stamp=new Int32Array(C).fill(-1);
     this.gen=new Int32Array(C);                                  // generation depth
     this.light=new Float32Array(C); this.cap=new Float32Array(C); this.corpse=new Float32Array(C);
@@ -65,24 +66,26 @@ class World{
     for(let y=0;y<P.H;y++)for(let x=0;x<P.W;x++){ let v=P.L_MIN;
       for(const q of this.patch){ let dx=Math.abs(x-q.x); dx=Math.min(dx,P.W-dx); let dy=Math.abs(y-q.y); dy=Math.min(dy,P.H-dy); v+=P.L_PEAK*Math.exp(-(dx*dx+dy*dy)/r2); }
       this.cap[y*P.W+x]=v; } }
-  place(c,prog,E,tag,tmpl,gen){ const P=this.p, o=c*P.MAXLEN*2; this.alive[c]=1; this.E[c]=E; this.age[c]=0; this.pc[c]=0; this.face[c]=(this.rnd()*8)|0;
+  place(c,prog,E,tag,tmpl,gen,sh){ const P=this.p, o=c*P.MAXLEN*2; sh=sh||prog; this.slen[c]=sh.length; for(let i=0;i<sh.length;i++){ this.sprog[o+i*2]=sh[i][0]; this.sprog[o+i*2+1]=sh[i][1]; } this.alive[c]=1; this.E[c]=E; this.age[c]=0; this.pc[c]=0; this.face[c]=(this.rnd()*8)|0;
     this.R.fill(0,c*4,c*4+4); this.len[c]=prog.length; for(let i=0;i<prog.length;i++){ this.prog[o+i*2]=prog[i][0]; this.prog[o+i*2+1]=prog[i][1]; }
     this.tag[c]=tag; this.tmpl[c]=tmpl; this.gen[c]=gen; this.stamp[c]=this.tick; }
   kill(c,why){ const P=this.p; this.alive[c]=0; this.corpse[c]+=Math.max(0,this.E[c])+P.BODY; this.E[c]=0; this.ev[why]++; }
   moveOrg(a,b){ const P=this.p, L=P.MAXLEN*2; this.alive[b]=1; this.alive[a]=0; this.E[b]=this.E[a]; this.age[b]=this.age[a]; this.pc[b]=this.pc[a]; this.face[b]=this.face[a];
-    for(let k=0;k<4;k++)this.R[b*4+k]=this.R[a*4+k]; this.len[b]=this.len[a]; this.prog.copyWithin(b*L,a*L,a*L+L);
+    for(let k=0;k<4;k++)this.R[b*4+k]=this.R[a*4+k]; this.len[b]=this.len[a]; this.prog.copyWithin(b*L,a*L,a*L+L); this.sprog.copyWithin(b*L,a*L,a*L+L); this.slen[b]=this.slen[a];
     this.tag[b]=this.tag[a]; this.tmpl[b]=this.tmpl[a]; this.gen[b]=this.gen[a]; this.stamp[b]=this.stamp[a]; this.E[a]=0; }
+  mutateInto(src,r){ const P=this.p; for(const ins of src){ if(r()<P.MU_SUB){ if(r()<0.5)ins[0]=(r()*NOPS)|0; else ins[1]=(r()*256)|0; } }
+    if(src.length<P.MAXLEN&&r()<P.MU_INS)src.splice((r()*(src.length+1))|0,0,[(r()*NOPS)|0,(r()*256)|0]);
+    if(src.length>1&&r()<P.MU_DEL)src.splice((r()*src.length)|0,1); return src; }
   // ---- reproduction with mutation (balanced insertion and deletion) ----
   divide(c){ const P=this.p; if(this.E[c]<P.DIV_MIN)return false;
     let t=-1; const f0=this.face[c]; for(let k=0;k<8;k++){ const n=this.ahead(c,f0+k); if(!this.alive[n]){ t=n; break; } } if(t<0)return false;   // no empty neighbour, no child (overwriting the neighbour made DIVIDE free predation: a kill-and-eat loop, about 200 births a tick)
     const o=c*P.MAXLEN*2, n=this.len[c], src=[]; for(let i=0;i<n;i++)src.push([this.prog[o+i*2],this.prog[o+i*2+1]]);
     const r=this.rnd;
-    for(const ins of src){ if(r()<P.MU_SUB){ if(r()<0.5)ins[0]=(r()*NOPS)|0; else ins[1]=(r()*256)|0; } }
-    if(src.length<P.MAXLEN&&r()<P.MU_INS)src.splice((r()*(src.length+1))|0,0,[(r()*NOPS)|0,(r()*256)|0]);
-    if(src.length>1&&r()<P.MU_DEL)src.splice((r()*src.length)|0,1);
+    this.mutateInto(src,r);
+    const sn=this.slen[c], ssrc=[]; for(let i=0;i<sn;i++)ssrc.push([this.sprog[o+i*2],this.sprog[o+i*2+1]]); this.mutateInto(ssrc,this.srnd);   // the shadow child: same birth, its own mutations
     let tg=this.tag[c], tm=this.tmpl[c]; for(let b=0;b<16;b++){ if(r()<P.MU_TAG)tg^=1<<b; if(r()<P.MU_TAG)tm^=1<<b; }
     const half=(this.E[c]-P.BODY)/2; this.E[c]=half;
-    this.place(t,src,half,tg,tm,this.gen[c]+1); this.ev.births++; return true; }
+    this.place(t,src,half,tg,tm,this.gen[c]+1,ssrc); this.ev.births++; return true; }
   matchP(a,b){ let x=(this.tmpl[a]^this.tag[b])&0xffff, m=0; while(x){ x&=x-1; m++; } const s=(16-m)/16; return Math.pow(s,this.p.ATT_POW); }
   kinSim(a,b){ let x=(this.tag[a]^this.tag[b])&0xffff, m=0; while(x){ x&=x-1; m++; } return (16-m)/16; }
   // ---- one organism's time slice ----
@@ -137,13 +140,14 @@ class World{
     for(let k=0;k<this.C/16;k++){ const c=(this.rnd()*this.C)|0; if(!this.alive[c])this.place(c,anc,1.0,(this.rnd()*65536)|0,(this.rnd()*65536)|0,0); } }
   // ---- readouts (draw nothing) ----
   sample(){ const P=this.p, L=P.MAXLEN*2; let n=0, len=0, E=0, gmax=0, gsum=0;
-    const opC=new Float64Array(NOPS), bgC=new Map(), geno=new Map();
+    const opC=new Float64Array(NOPS), bgC=new Map(), geno=new Map(), sopC=new Float64Array(NOPS), sbgC=new Map();
     for(let c=0;c<this.C;c++){ if(!this.alive[c])continue; n++; const m=this.len[c], o=c*L; len+=m; E+=this.E[c]; gsum+=this.gen[c]; if(this.gen[c]>gmax)gmax=this.gen[c];
       const seen=new Uint8Array(NOPS), bs=new Set(); let key='';
       for(let i=0;i<m;i++){ const op=this.prog[o+i*2]; seen[op]=1; key+=op+'.'+this.prog[o+i*2+1]+','; if(i+1<m)bs.add(op*NOPS+this.prog[o+(i+1)*2]); }
       for(let q=0;q<NOPS;q++)if(seen[q])opC[q]++;
       for(const b of bs)bgC.set(b,(bgC.get(b)||0)+1);
-      key+='|'+this.tag[c]+'|'+this.tmpl[c]; geno.set(key,(geno.get(key)||0)+1); }
+      key+='|'+this.tag[c]+'|'+this.tmpl[c]; geno.set(key,(geno.get(key)||0)+1);
+      { const sm=this.slen[c], sseen=new Uint8Array(NOPS), sbs=new Set(); for(let i=0;i<sm;i++){ const op=this.sprog[o+i*2]; sseen[op]=1; if(i+1<sm)sbs.add(op*NOPS+this.sprog[o+(i+1)*2]); } for(let q=0;q<NOPS;q++)if(sseen[q])sopC[q]++; for(const b of sbs)sbgC.set(b,(sbgC.get(b)||0)+1); } }
     let ground=0, dead=0; for(let c=0;c<this.C;c++){ ground+=this.light[c]; dead+=this.corpse[c]; }
     let gTop=0; for(const v of geno.values()) if(v>gTop)gTop=v;
     // the tag race: how well the living's attack templates fit the living's surface tags (random pairs, no draws - a fixed
@@ -156,6 +160,8 @@ class World{
       genotypes:geno.size,topGenoShare:n?+(gTop/n).toFixed(3):0,ev,race:{meanMatch:mn?+(mt/mn).toFixed(4):0,tags:tags.size,newTags,everTags:this.everTags.size,attackers:n?+(atk/n).toFixed(3):0},
       opShare:Array.from(opC,v=>n?+(v/n).toFixed(4):0),
       bigrams:Object.fromEntries([...bgC.entries()].filter(([b,v])=>v/n>=0.01).map(([b,v])=>[b,+(v/n).toFixed(4)])),
+      shadowOpShare:Array.from(sopC,v=>n?+(v/n).toFixed(4):0),
+      shadowBigrams:Object.fromEntries([...sbgC.entries()].filter(([b,v])=>v/n>=0.01).map(([b,v])=>[b,+(v/n).toFixed(4)])),
       reseeds:this.reseeds||0}; }
 }
 
