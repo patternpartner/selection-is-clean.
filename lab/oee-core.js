@@ -75,6 +75,11 @@ const DEF={
   // of the same substrate, or a step downstream), and an immigrant is keyed to a molecule actually present. The 256-species
   // network ran out (#287): this one is too large to exhaust in a run.
   CHEM_BIG:0, V_PRESENT:0.05,
+  // LYSIS_SCHED (random-lysis null, lab/PREREG-random-lysis.md), off by default: a list of kill counts, one per LYSIS_EVERY
+  // ticks (read from a virus run's per-sample ev.lysed). Each interval's count is spread evenly over its ticks and applied to
+  // RANDOM living organisms, whatever they carry, with the same lysis (store and body to the corpse). Same deaths as the
+  // virus caused, none of its targeting: disturbance without an enemy. Its own RNG, so the main stream is untouched.
+  LYSIS_SCHED:null, LYSIS_EVERY:1000,
   // TASKS (#290), exclusive of CHEM, off by default: Avida's logic tasks. Each organism is born with three random 32-bit
   // inputs (redrawn until all eight truth-table rows occur), so an output names one three-input boolean function (256 of
   // them) only if its bits agree wherever a row repeats - every row is made to occur at least twice, so a constant cannot. (With 8-bit inputs every row
@@ -119,6 +124,7 @@ class World{
     if(P.CHEM&&P.CHEM_BIG){ this.big={layers:new Map(),e:new Map(),pr:new Map(),salt:h32((((P.CHEM_SEED!==undefined?P.CHEM_SEED:seed)>>>0)||1)^0x00c4e3c4)}; this.molTmp=new Float32Array(C); this.ev.metab=0; this.ev.metabN=0; this.rxE=new Map(); }
     else if(P.CHEM){ const S=P.CHEM_S, cr=mulberry32((((P.CHEM_SEED!==undefined?P.CHEM_SEED:seed)>>>0)||1)^0x00c4e3c4); this.mol=new Float32Array(C*S); this.molTmp=new Float32Array(C); this.eMol=new Float32Array(S); this.prod=new Uint16Array(S*4);   // its own RNG: the main stream (ancestors, patches) is the same as without CHEM
       this.eMol[0]=1; for(let q=1;q<S;q++)this.eMol[q]=cr(); for(let q=0;q<S;q++)for(let j=0;j<4;j++){ let t, g=0; do{ t=(cr()*S)|0; g++; }while(g<100000&&(t===q||Math.abs(this.eMol[t]-(this.eMol[q]-P.CHEM_STEP))>=P.CHEM_SPREAD)); this.prod[q*4+j]=t; } this.ev.metab=0; this.ev.metabN=0; this.rxE=new Float64Array(S*4); }   // rxE: energy each reaction captured since the last sample   // products lie near the substrate, mostly a little lower
+    if(P.LYSIS_SCHED){ this.lrnd=mulberry32(((seed>>>0)||1)^0x1d5151); this.ev.lysed=0; }
     if(P.VIRUS){ this.vc=new Int32Array(P.V_MAX); this.vk=P.CHEM_BIG?new Uint32Array(P.V_MAX):new Uint16Array(P.V_MAX); this.vn=0; this.vrnd=mulberry32(((seed>>>0)||1)^0x7e577e57); this.ev.lysed=0; this.ev.infections=0; }
     this.updateCap(); for(let c=0;c<C;c++)this.light[c]=this.cap[c];
     // the ancestor: eat light, try to divide, turn. Nothing else is given.
@@ -219,6 +225,7 @@ class World{
       // the organism may have moved: find it by its own cell or leave; deaths are checked after the slice
     }
     if(P.VIRUS&&this.tick>=P.V_ONSET)this.virusStep();
+    if(P.LYSIS_SCHED)this.lysisStep();
     for(let c=0;c<C;c++){ if(!this.alive[c])continue; if(this.E[c]<=0)this.kill(c,'starve'); else if(this.age[c]>P.MAX_AGE)this.kill(c,'old'); }
     if(!this.count())this.reseed();
     this.neutralStep();
@@ -255,6 +262,11 @@ class World{
       if(this.alive[c]&&(!P.V_SPEC||this.carries(c,vk[i]))&&r()<P.V_INFECT){ this.ev.infections++; this.kill(c,'lysed');
         const k=vk[i]; this.vn--; vc[i]=vc[this.vn]; vk[i]=vk[this.vn];   // the virion is used up; its burst is added at the end, where this backward pass has been
         for(let b=0;b<P.V_BURST&&this.vn<P.V_MAX;b++){ vc[this.vn]=c; vk[this.vn]=r()<P.V_MUT?this.vmutate(k,r):k; this.vn++; } } } }
+  lysisStep(){ const P=this.p, E=P.LYSIS_EVERY, i=((this.tick-1)/E)|0, n=P.LYSIS_SCHED[i]||0, j=(this.tick-1)%E;
+    const due=Math.floor(n*(j+1)/E)-Math.floor(n*j/E), r=this.lrnd, C=this.C;   // kills due this tick: the interval's count spread evenly
+    for(let d=0;d<due;d++){ let c=-1; for(let t=0;t<256;t++){ const q=(r()*C)|0; if(this.alive[q]){ c=q; break; } }
+      if(c<0){ const L=[]; for(let q=0;q<C;q++) if(this.alive[q])L.push(q); if(!L.length)return; c=L[(r()*L.length)|0]; }
+      this.kill(c,'lysed'); } }
   neutralStep(){ const ns=this.ns, r=this.nrnd;
     for(let d=0;d<this.tickDeaths&&ns.length;d++){ const k=(r()*ns.length)|0; ns[k]=ns[ns.length-1]; ns.pop(); }
     const m=ns.length; for(const ch of this.tickBirths){ const par=m?ns[(r()*m)|0]:0; ns.push(ch||!m?this.nsNext++:par); }
@@ -301,7 +313,7 @@ class World{
       this.tE.fill(0); this.tN.fill(0); }
     let vir=null; if(P.VIRUS){ const km=new Map(); for(let i=0;i<this.vn;i++)km.set(this.vk[i],(km.get(this.vk[i])||0)+1); const top=[...km.entries()].sort((a,b)=>b[1]-a[1]).slice(0,10);
       vir={virions:this.vn,keys:km.size,top:top.map(([k,v])=>{ let h=0; for(const c of liv) if(this.carries(c,k))h++; return [k,v,h]; })}; }   // top keys: [key, virions, living hosts carrying it]
-    const ev=this.ev; this.ev={births:0,starve:0,killed:0,old:0,crowded:0,attacks:0,attackTake:0,eatLight:0,eatCorpse:0,moves:0,shares:0}; if(P.CHEM){ this.ev.metab=0; this.ev.metabN=0; } if(P.VIRUS){ this.ev.lysed=0; this.ev.infections=0; }
+    const ev=this.ev; this.ev={births:0,starve:0,killed:0,old:0,crowded:0,attacks:0,attackTake:0,eatLight:0,eatCorpse:0,moves:0,shares:0}; if(P.CHEM){ this.ev.metab=0; this.ev.metabN=0; } if(P.VIRUS){ this.ev.lysed=0; this.ev.infections=0; } if(P.LYSIS_SCHED)this.ev.lysed=0;
     return {t:this.tick,N:n,meanLen:n?+(len/n).toFixed(2):0,meanGen:n?+(gsum/n).toFixed(1):0,maxGen:gmax,energy:{stores:+E.toFixed(1),light:+ground.toFixed(1),corpses:+dead.toFixed(1)},
       genotypes:geno.size,topGenoShare:n?+(gTop/n).toFixed(3):0,ev,race:{meanMatch:mn?+(mt/mn).toFixed(4):0,tags:tags.size,newTags,everTags:this.everTags.size,attackers:n?+(atk/n).toFixed(3):0},
       opShare:Array.from(opC,v=>n?+(v/n).toFixed(4):0),
