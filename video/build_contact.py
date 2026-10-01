@@ -28,9 +28,13 @@ TEST = [float(x) for x in os.environ.get("TEST", "").split(",") if x]
 PART = [float(x) for x in os.environ.get("PART", "").split(",") if x]
 AMBER = np.array([255, 176, 88], np.float32)
 CW, CH = 720, 1280
-TMAP = [(132.9, 0.0), (139.6, 1.0), (140.3, 1.4), (153.7, 12.0), (157.9, 12.0)]
+TMAP = [(132.9, 0.0), (139.6, 1.0), (140.3, 1.4), (153.7, 11.5), (157.9, 11.5)]   # freeze while his arms are still out
 FREEZE = 153.7
-LINE = (148.9, 640.0, 560.0)                  # when the line forms, and where the light joins it (end of the line)
+LINE = (148.9,)                               # when the line forms; the light joins it at his outstretched hand
+# his right (screen-right) fingertips in the line dance, clip second -> out px, read off a gridded 2 fps sheet. (v1 put the
+# light at a fixed point which turned out to be on an alien's head: it read as the alien glowing.)
+HAND = [(8.0, 435, 555), (8.5, 591, 555), (9.0, 650, 570), (9.5, 640, 600), (10.0, 665, 612), (11.0, 672, 612),
+        (11.5, 680, 625)]
 rng = np.random.default_rng(51)
 
 
@@ -85,7 +89,10 @@ def light_at(s):
         return pd                                                     # dancing beside him, on the beat
     u = ramp(s, LINE[0], LINE[0] + 1.2)                               # it takes its place at the end of the line
     k = 0.35 if s >= FREEZE else 1.0
-    pl = (LINE[1] + 10 * math.sin(math.pi * b / 2) * k, LINE[2] - 40 * abs(math.sin(math.pi * b)) * k)
+    ct = clip_t(s)
+    hx = float(np.interp(ct, [h[0] for h in HAND], [h[1] for h in HAND]))
+    hy = float(np.interp(ct, [h[0] for h in HAND], [h[2] for h in HAND]))
+    pl = (hx - 6 + 4 * math.sin(math.pi * b / 2) * k, hy - 22 - 14 * abs(math.sin(math.pi * b)) * k)
     return pd[0] + (pl[0] - pd[0]) * u, pd[1] + (pl[1] - pd[1]) * u
 
 
@@ -109,7 +116,7 @@ def main():
         if s >= FREEZE:
             z = 1 + 0.12 * ease((s - FREEZE) / (S1 - FREEZE))
             w2, h2 = int(W / z), int(H / z)
-            cx, cy = 360, 640
+            cx, cy = 420, 640                                        # off-centre so his outstretched hand stays in frame
             x0, y0 = int(cx - w2 / 2), int(cy - h2 / 2)
             frame = np.asarray(Image.fromarray(frame[y0:y0 + h2, x0:x0 + w2].astype(np.uint8)).resize((W, H), Image.LANCZOS),
                                np.float32)
