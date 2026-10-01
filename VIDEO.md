@@ -861,3 +861,14 @@ turned out to be an alien's head (it read as the alien glowing): check where a f
 136.3 ("it's watching my feet"), the light dropping straight in; held opening 3.5 s (was 6.7); dance at 0.65x; freeze
 2.0 s (was 4.2); the end card only under "We only get to teach it once / So teach it how to dance" (157.9-161.6, 3.7 s;
 was 8). LESSON: this user feels a hold over ~3 s as a pause, and wants the end card short - 3.5-4 s, not 7-8.
+
+### Footprints (`video/build_footprints.py`, `out/footprints.mp4`, 34.0 s) - drawn, no clips, no generation
+The user: "Let's move on. You choose." Same Time Tomorrow? verse 2, 76.7-107.0, end card over "No speech, no flag, no
+plan" (3.7 s). Top-down on night sand: an invisible dancer leaves shoe prints on the beat; two beats behind, the amber
+light hops into each one and lights it ("Two steps behind"). The prints turn a full circle on "He copies my shoulders"
+(copied exactly); go hard, jagged and red on "If I come out angry, they'd learn it too" - the light copies those too, its
+landings burn red, the light turns red, and the red stays in the trail; a slow kind spiral on "So I spin it slow";
+on "Leave a better step for them to find" the dancer stops and a golden print appears ahead ("step"), the light lands
+in it on "find", and then makes a print of its own - a round pad and three toes, a shape nobody showed it. v1 test was
+too small to read (prints as blobs) - world scale ZS=1.55; angry stomps reversed direction and heaped up - now they
+zig-zag forward. Dust puffs use their own rng so PART renders agree.
