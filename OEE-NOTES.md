@@ -24931,3 +24931,24 @@ Passage 1, same seeds as L (identical until an atom first acts):
 - The winner changed on 2 of 3 seeds. **Whether each replacement is better (adaptive novelty) or a neutral swap
   among equivalents (any constant above the threshold works) is not yet told apart.** From here the probe logs the
   top three atoms every sample (`topAtoms`), so each takeover can be followed from arrival to dominance.
+
+**#281 CORRECTION — passage 2 of the control cuts the claim down.** The header above ("THE ATOMS ARE SELECTED") is
+too strong.
+
+| seed | top-atom share, passage 1, real / inert | passage 2, real / inert |
+|---|---|---|
+| 1 | 0.57 / 0.27 | 0.97 / **0.60** |
+| 2 | 0.62 / 0.19 | 0.84 / **0.81** |
+| 3 | 0.62 / 0.16 | 0.94 / **0.62** |
+
+Once predation fixes and the population goes clonal, **atoms that do nothing also sweep, to 60-81%**, as passengers
+of the winning lineage. Most of passage 1's gap was TIMING: with atoms working, predation arrived earlier on 3 of 3
+seeds (3,500-5,000 against 7,000-15,500), so the clonal sweeps, and the atoms riding them, came earlier. New atoms
+reaching 10% in passage 2: real 16 / 25 / 34, inert 20 / 12 / 27 — no consistent difference.
+What survives:
+- **Atoms change the world's course:** predation came earlier on 3 of 3 seeds.
+- **Atoms sweep further when they can act**, on 3 of 3 seeds in both passages, but by much less than passage 1
+  suggested.
+Not shown: that new atom CONTENT is being selected over old. The same lesson as #274's correction, one level up:
+**in a population that sweeps, any heritable label sweeps with it, and only a control that sweeps too can tell the
+difference.**
