@@ -25318,3 +25318,39 @@ means no virus could ever arrive. To 600,000 ticks it made as much novelty as th
   - whether the virus is the cause at all (#287b, the in-world replay);
   - whether the pressure has to keep following the hosts. That is the pre-registered control, viruses seeded once on
     every key and then no immigrants and no re-keying, still to run.
+
+**#287b result — FAILS on 2 of 3 seeds: the virus is not shown to cause the late novelty at 1,200,000 ticks.**
+New active reactions over 120,000 ticks after the save, three replicates each:
+
+| seed | virus ON | virus OFF | every ON above every OFF? | commonest-METAB share, ON / OFF |
+|---|---|---|---|---|
+| 1 | 8, 6, 11 | 4, 4, 2 | yes | 0.34-0.72 / 0.67-0.97 |
+| 2 | 12, 0, 1 | 1, 0, 0 | no | 0.11-0.70 / 0.49-0.92 |
+| 3 | 1, 5, 6 | 4, 2, 3 | no | 0.50-0.79 / 0.54-0.93 |
+
+- **The direction is the same on every seed** (mean ON above mean OFF), but the counts are small and the replicates overlap.
+- **Epidemics are sporadic.** Most windows hold 2-10 virions; a few hold hundreds to about 1,500.
+- **Removing the virus does not freeze the world.** OFF still finds 0-4 new reactions while metabolism re-converges.
+- **What the virus clearly does is hold diversity.** With it removed, the share carrying the commonest METAB
+  instruction climbs back toward a monoculture.
+
+**And the virus arm is decelerating.** Ever-active reactions (60,000-tick windows) by 600k, 1.2M and 1.8M:
+
+| seed | 600k | 1.2M | 1.8M |
+|---|---|---|---|
+| 1 | 38 | 56 | 70 |
+| 2 | 24 | 42 | 45 |
+| 3 | 38 | 79 | 88 |
+
+Seed 2 has the smallest reachable network and is nearly flat.
+
+**Where #287 leaves step 3:**
+- **Endogenous enemy pressure** (viruses that enter through what the host needs) **holds metabolic diversity and gives
+  2-5x the novelty of the same chemistry without it.**
+- **It runs inside a finite network and slows as the network is used up.** In the 256-species chemistry it is a
+  bounded Red Queen, not open-ended.
+- **Strict coevolution is not shown** (#287c): virus mutation is not needed while random-key immigrants keep arriving.
+- **Next: a network too large to exhaust.** 65,536 species generated on demand from a hash. The METAB instruction
+  addresses its substrate with two bytes (its own argument and the next instruction's). Virus mutation follows the
+  network (to another product of the same substrate, or onto a product). Immigrants are keyed to molecules actually
+  present.
