@@ -24986,3 +24986,28 @@ of the living particle with the most AMP. Under REPL, amp has nothing to do with
 become a program that never asks to reproduce — and every rescue founder is sterile. **#284 (REPL-only):** the
 ancestor program is kept at boot, and a parentless founder always gets it, so a crashed world can restart from a
 working replicator. The default world is identical to the last commit.
+
+### #283 results — the instruction cost cannot act: EVOLUTION HERE IS SUPPLY-LIMITED.
+
+- **REPL_COST=1** (0.00002 per instruction), passage 1, seeds 1-3 (RNG x100+1): significant ops {155} / {146, 155,
+  92} / none; coexisting op-set kinds at 5% or more averaged 2.2 / 1.3 / 1.8. **Programs did not shrink** (mean
+  length 15.4-15.6, the same as without the cost).
+- **REPL_COST=5** (0.0001 per instruction, about a quarter of base upkeep per instruction), seeds 101/201/301,
+  12,000 ticks: programs **grew** (12.8 -> 17.0 on seed 101, 13.8 -> 16.2, 13.8 -> 15.4), seed 101 crashed to 45-90
+  alive, and no stable coexistence.
+**Why.** At birth an instruction is inserted about 0.9% of the time and deleted about 0.5% (`inheritProg`: rate 0.06
+x 0.15 vs x 0.08). At about 30 generations per 12,000 ticks, a lineage sees about 0.15 deletions in total. Selection
+cannot favour leaner variants that almost never arise, while the insertion bias pushes length to its cap.
+**The engine's evolutionary core is supply-limited:**
+- an opcode is redrawn about 0.4% of the time per instruction per birth;
+- a program run alone barely steers its particle (`soloInfluence` about 0.0005 x gains);
+- particles mix across the world within a generation;
+- runs manage about 50 ticks/s.
+**The pattern of this session:** every fix exposed the next structural limit, in this order:
+1. physics made the babies (#273);
+2. energy leaked through detritus (#278c);
+3. starving particles never died (#278b);
+4. rescues were sterile (#284);
+5. one generalist swept every world (#282);
+6. the mutation supply cannot make the trade-off bite (here).
+REPL_COST stays as a knob, off, with this result.
