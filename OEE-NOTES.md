@@ -25281,3 +25281,22 @@ saturated.** Last quarter (the last ten 30,000-tick windows), windows that add a
 - **Next, as a new experiment** (the rule, unchanged, applied at a new horizon, since changing a rule after seeing the
   numbers is a new experiment): v chained to 2,400,000 ticks. Running beside it is the pre-registered control, viruses
   that cannot re-key (V_MUT=0).
+
+**#287b — a causal test inside the evolved worlds. Pre-registered.** `lab/core-replay.js` loads a virus world's
+1,200,000-tick save (whole population, chemistry, virions, RNG state) and runs it 120,000 ticks more:
+- **ARM=on** leaves the virions in;
+- **ARM=off** removes every virion and stops immigration at the moment of loading;
+- **three replicates per arm**, which differ only by an XOR of the main RNG state.
+The variable is new active reactions per 30,000-tick window (at least 1% of income, and never active in that run's own
+history before the save), with the share carrying the commonest METAB instruction as the monoculture reading.
+
+**Rule.** On a seed, the virus CAUSES the late novelty if every ON replicate adds more new active reactions over the
+120,000 ticks than every OFF replicate. Three seeds of three must show it. If ON and OFF overlap on a seed, that seed
+says the novelty is not the virus's doing at this horizon.
+
+**Prediction.** OFF collapses toward a monoculture (above 0.9, like CHEM-only's 0.96-0.99) and adds nothing. A smoke
+run already read 0.86 after 30,000 ticks on seed 1.
+
+**Also found:** in virus worlds the commonest functional genotype is often a non-metaboliser — no METAB instruction,
+so no receptor. A replay of top genotypes therefore picks the receptor-losers (Meyer's first step) rather than the
+route-switchers, which is why the causal test here is a whole-world replay.
