@@ -1752,7 +1752,8 @@
   "used_in": [
    "the-lesson",
    "the-lesson-3",
-   "the-lesson-4"
+   "the-lesson-4",
+   "many-of-me"
   ]
  },
  {
@@ -1810,7 +1811,8 @@
    "the-lesson",
    "the-chair",
    "the-lesson-3",
-   "the-lesson-4"
+   "the-lesson-4",
+   "many-of-me"
   ]
  },
  {
@@ -1889,7 +1891,8 @@
   "used_in": [
    "the-lesson",
    "the-lesson-3",
-   "the-lesson-4"
+   "the-lesson-4",
+   "many-of-me"
   ]
  },
  {
@@ -2289,7 +2292,8 @@
    ]
   ],
   "used_in": [
-   "fetch"
+   "fetch",
+   "many-of-me"
   ]
  },
  {
@@ -2339,7 +2343,8 @@
   ],
   "note": "the bead is pale blue and bluekey KEEPS it (a grey glass ball) - cover it with the light, slightly larger",
   "used_in": [
-   "fetch"
+   "fetch",
+   "many-of-me"
   ]
  },
  {
