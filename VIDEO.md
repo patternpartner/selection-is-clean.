@@ -824,3 +824,19 @@ off larger gridded sheets (palm, the drop where it floats free, the reach, the t
 he is looking at clip 5.95 and hits his hands on "Two" (MAP_A simplified to one waiting segment). Act 2 (Grok's bead)
 was already in sync. LESSON: for a light riding a hand, 4 fps keyframes are not enough; read at 8+ and always check
 the finished film at 8 fps for a reaction that comes before its cause.
+**v3 (same file).** The user on v2: "It's not matched. When I duck my eyes are not following. Also grok put in a little
+rubber thing that's still in the video. Shall we try re-prompting grok?" Diagnosis: u123/u124 were mimed at objects
+GROK imagined, so no placement of ours could make his eyes follow ours. Re-prompt (the user ran the second one):
+  "The same man in a plain grey t-shirt and dark jeans, from the knees up, on a plain bright blue screen background.
+   Static camera, no zoom. He stands with his hands in his pockets, waiting, looking up. A small glowing warm orange ball
+   of light, like a firefly, drifts slowly down into frame from the top. His eyes follow it as it circles once around his
+   head, then floats right up to his face, nose to nose, and he goes cross-eyed and smiles. Then he slowly takes one hand
+   out of his pocket and holds it open, and the orange light settles gently into his palm. He looks at it, smiling."
+THE TECHNIQUE THAT WORKS: let Grok draw the light, so the eyes and hands are animated TO it, then lay ours on top. u125.
+Act 1 keeps u123 to the throw (now in sync) and stops there - the duck-and-catch and u124 are cut; on "Two" (51.78) it
+is back, on its own. The amber light rides Grok's, tracked per frame from its white-hot core (luminance > 245; colour
+thresholds locked onto his orange-lit face and shirt instead), dropped and hidden while it is behind his head.
+BUG FOUND: build_fetch's Reader clamped every clip at 10.0 s (copied from Let Go's 10 s clip); u125 is 12 s, so its last
+2 s froze while the light kept moving - two lights in his palm. Reader now takes each clip's length.
+The fetch half (prompt 1: throw, it shoots back, he ducks and catches it, eyes on it) was not run; if it comes, act 1
+can be rebuilt from it the same way.
