@@ -840,3 +840,20 @@ BUG FOUND: build_fetch's Reader clamped every clip at 10.0 s (copied from Let Go
 2 s froze while the light kept moving - two lights in his palm. Reader now takes each clip's length.
 The fetch half (prompt 1: throw, it shoots back, he ducks and catches it, eyes on it) was not run; if it comes, act 1
 can be rebuilt from it the same way.
+
+### Contact (`video/build_contact.py`, `out/contact.mp4`, 33.0 s)
+u126: the user sent a full Grok SCENE (not blue screen) - him dancing with a crowd of aliens at an 'AREA 51' compound
+under floodlights. The user: "Let's write a dance track called Area 51" - Claude's lyrics `video/lyrics/area-51.txt`
+(disco-house, 126 bpm; they copy everything, so the first thing we show them should be a dance; a breakdown where "something
+small came down from the sky... alright little light, copy me"; final chorus ends on our line "We only get to teach it
+once / So teach it how to dance"; outro "same time tomorrow?"). The user made it as 'Same Time Tomorrow?'
+(out/songs/same-time-tomorrow.mp3, 171 s, 126 bpm phase 0.124 from a kick-onset fold; word times
+video/stories/same-time-tomorrow-words.json - whisper hears "holding up guns" for "not holding a gun").
+The film is the breakdown to the end line, 132.9-165.9: the clip's first second held almost still while the amber light
+drops in from the sky ("came down from the sky") and settles at his shoes ("watching my feet"); hands out of pockets on
+"copy me"; dancing on "left foot, right foot", the light bouncing beside him on the beat; the drop; when the line forms
+(148.9) the light rides his outstretched fingertips - the end of the line - and the picture freezes (clip 11.5, arms
+still out) with a push-in centred right so his hand stays in frame; the end card goes up at 157.9 exactly as the song
+sings "We only get to teach it once", and runs under "same time tomorrow?". The light is bigger and brighter than in the
+dark-stage films and the scene is graded down 18% so it reads against the floodlights. v1 parked it at a fixed point that
+turned out to be an alien's head (it read as the alien glowing): check where a fixed point lands in a full scene.
