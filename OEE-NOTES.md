@@ -25456,3 +25456,19 @@ directions with that property:
   parasitism, as in Tierra);
 - **Constructions** that persist and change the local physics (an open material space);
 - **New levels of individuality.**
+
+**#289b — an invasion-fitness assay inside the evolved community (`lab/core-invade.js`), first look INCONCLUSIVE.** It
+loads a save, gives 5% of the living a later challenger's program (energy and place kept), and scores growth when rare
+over 3,000 ticks against two references:
+- residents labelled at random with their programs untouched;
+- the save's commonest genotype, transplanted the same way.
+
+Seed 1, save at 1.8M:
+- **Random residents grew 0.63x, 0.64x and 5.80x.** Drift is huge: a random 5% sometimes contains the lineage that is
+  sweeping.
+- **The save's commonest genotype shrank to 0.00-0.26x.** An incumbent at the end of its reign is no yardstick.
+- **Two challengers tied.**
+- **Two fixes are needed before it can decide anything:**
+  - saves close to each challenger's own time (only chunk-end saves exist, so a challenger first adaptive at 2.04M was
+    tested in the 1.8M community);
+  - many more replicates.
