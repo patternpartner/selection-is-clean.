@@ -26,7 +26,7 @@ from bluekey import key  # noqa: E402
 
 F = imageio_ffmpeg.get_ffmpeg_exe()
 W, H, FPS = 704, 1280, 24
-S0, S1 = 0.0, 31.9
+S0, S1 = 6.0, 31.9                               # (v2: from "They say I built this" - v1 opened on 12 s of him standing)
 DUR = S1 - S0
 BEAT = 60 / 76.48
 TEST = [float(x) for x in os.environ.get("TEST", "").split(",") if x]
@@ -35,9 +35,9 @@ AMBER = np.array([255, 176, 88], np.float32)
 CHALK = np.array([215, 210, 235], np.float32)
 CW, CH = 720, 1280
 K, OY = W / CW, 14
-WRITE, ASK, WANT, BEFORE, WRONG, LOOK, REACH, DONTKNOW, WONT = 3.52, 12.68, 14.46, 15.88, 18.16, 18.88, 22.12, 25.42, 28.56
+WRITE0, ASK, WANT, BEFORE, WRONG, LOOK, REACH, DONTKNOW, WONT = 6.2, 12.68, 14.46, 15.88, 18.16, 18.88, 22.12, 25.42, 28.56
 # (song start, clip, clip start, clip end)
-SEGS = [(0.0, "u127", 0.0, 1.3), (6.32, "u129", 0.0, 2.6), (ASK, "u128", 1.2, 3.2), (BEFORE, "u127", 6.0, 8.4),
+SEGS = [(6.0, "u129", 0.0, 2.6), (ASK, "u128", 1.2, 3.2), (BEFORE, "u127", 6.0, 8.4),
         (LOOK, "u127", 1.5, 4.5), (REACH, "u129", 3.0, 5.6), (DONTKNOW, "u127", 8.4, 10.2), (WONT, "u129", 13.4, 15.0)]
 QX, QY = 352.0, 165.0                                   # where the question hangs (centre of the hook), above his head
 rng = np.random.default_rng(76)
@@ -185,7 +185,7 @@ def main():
         # ---- the furnished room: faint lines drawing themselves (doorway, a floor line, a lamp, a picture frame)
         room = Image.new("L", (W, H), 0)
         d = ImageDraw.Draw(room)
-        k = ramp(s, 0.6, 3.4)
+        k = ramp(s, S0 + 0.1, S0 + 1.6)
         lines = [[(20, 1215), (684, 1215)], [(70, 1215), (70, 520), (230, 520), (230, 1215)], [(560, 1215), (560, 760)],
                  [(520, 760), (600, 760), (585, 700), (535, 700), (520, 760)], [(470, 300), (650, 300), (650, 430), (470, 430), (470, 300)]]
         for ln in lines:
@@ -201,7 +201,7 @@ def main():
             if len(pts) > 1:
                 d.line(pts, fill=70, width=2)
         # ---- someone's handwriting on every wall
-        wk = ramp(s, WRITE, WRITE + 2.6)
+        wk = ramp(s, WRITE0, WRITE0 + 2.4)
         fade = 1 - ramp(s, WONT + 0.4, WONT + 2.6)
         if wk > 0:
             n = int(total * wk)
@@ -219,7 +219,7 @@ def main():
         top = np.clip(1.15 - ys / H * 0.6, 0.5, 1.1)[..., None]
         near = 1 / (1 + ((xs - dot[0]) ** 2 + (ys - dot[1]) ** 2) / (300 ** 2)) * qon
         lit = person * (0.45 * top) + person / 255 * AMBER * (near * (0.6 + 0.6 * ramp(s, DONTKNOW, DONTKNOW + 1.0)))[..., None]
-        dissolve = min(1.0, (s - s_seg) / 0.12) if s_seg > 0 else 1.0
+        dissolve = 1.0                                               # (v1 faded him in at each cut: a blink)
         a = a * (1 - (al * dissolve)[..., None]) + lit * (al * dissolve)[..., None]
         # ---- the answer: letters spilling from his hands, then cracking red and falling
         if shards:
