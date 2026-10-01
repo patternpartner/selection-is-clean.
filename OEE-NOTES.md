@@ -25472,3 +25472,49 @@ Seed 1, save at 1.8M:
   - saves close to each challenger's own time (only chunk-end saves exist, so a challenger first adaptive at 2.04M was
     tested in the 1.8M community);
   - many more replicates.
+
+### #290 — TASKS: Avida's logic functions, and parasites keyed to them. Trials, then pre-registered.
+
+**Why.** #289: every new behaviour in the earlier worlds was a new way to take energy, and only a few ways ever paid. Avida
+pays for COMPUTATION, and Zaman et al. (2014) found that parasites keyed to the functions a host computes drove hosts to
+evolve more, and more complex, functions. In a function space, escape routes are many: 251 rewarded functions, graded by
+how long a circuit they need.
+
+**Design** (`TASKS=1`; default and CHEM+VIRUS worlds re-checked row-identical):
+- **Inputs.** Each organism is born with three random 32-bit inputs, redrawn until every truth-table row occurs at
+  least twice. An output word then names one three-input boolean function only if its bits agree wherever a row repeats.
+- **Ops.** INPUT, NAND, GET (a register into R0) and OUTPUT replace four neutral markers. Task worlds get 64-bit
+  registers.
+- **Pay.** OUTPUT pays the computed function from that function's own regenerating pool, so a function few compute
+  pays well. Constants and input echoes pay nothing.
+- **Hardness.** Each function is graded by its NAND formula size: NOT 1, AND/OR 3, XOR/EQU 5, majority 6, three-way
+  XOR 14.
+- **`lab/core-tasks.js`** reports the active functions: at least 1% of task income and at least 100 per sample.
+
+**Three faults found and fixed in the trials:**
+1. **With 8-bit inputs every row appeared once,** so any byte was some function. A LOADK constant collected all 251
+   within 10,000 ticks.
+2. **Paid once per function per life,** a short INPUT/NAND/OUTPUT loop computes a new genuine function on every pass
+   and enumerated all 251 in a few thousand generations. Now one paid function per life (TASK_MAX=1), so lineages
+   specialise.
+3. **The VM's registers were 32-bit floats** and could not hold a 32-bit word: a correct NAND program earned nothing.
+
+**Pool scale decides whether computation matters.**
+- **At TASK_RATE 0.02 with equal caps,** one function's pool is about 1.5% of the light income. A NOT-computer appeared
+  once and vanished; task income stayed negligible for 1,700 generations.
+- **At TASK_RATE 0.2 with caps scaled by formula size (TASK_SCALE=1)**, once NOT evolves (ticks 20,000-160,000 by seed),
+  12-25 functions become active within 30,000-60,000 ticks. Task income reaches about 4x the light income and the world
+  fills (about 4,070 alive).
+- **Then the familiar slowdown.** By 300,000 ticks (about 4,000-5,800 generations), 28-37 functions have been active
+  and late windows add 0-3. The hardest sustained function stalls at size 5-6.
+
+**Pre-registration.** Arms t (TASKS, TASK_RATE 0.2, TASK_SCALE 1) and tv (the same plus VIRUS: keys are functions, a
+virion infects a host that computed its function this life). Seeds 1-3, 1,200,000 ticks, 30,000-tick windows.
+1. **Sustained.** tv has a new active function in at least 5 of the last 10 windows on all three seeds, and t has fewer
+   (summed over seeds).
+2. **No deceleration.** tv's ever-active count grows in Q4 by at least half its Q2 growth, on all three seeds.
+3. **Climbing.** tv's hardest active function in Q4 is at least its hardest in Q2 on all three seeds, and above t's on
+   at least two.
+4. **Causal**, if 1 and 2 hold: the in-world replay (virus on/off) from tv's 1,200,000-tick saves.
+
+Rules 1 and 2 decide "sustained"; rule 3 decides "climbing complexity" (Zaman's claim).
