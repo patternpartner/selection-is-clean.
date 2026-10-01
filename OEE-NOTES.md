@@ -25011,3 +25011,106 @@ cannot favour leaner variants that almost never arise, while the insertion bias 
 5. one generalist swept every world (#282);
 6. the mutation supply cannot make the trade-off bite (here).
 REPL_COST stays as a knob, off, with this result.
+
+### #285 — THE LEAN CORE (lab/): about 4 generations a second, and adaptive novelty that slows but has not stopped at 1,800 generations, judged against a shadow genealogy.
+
+**Why.** #273-#284 kept finding structural limits in the engine's evolutionary machinery, each exposed by the last fix:
+- births were made by physics;
+- energy leaked;
+- starvation did not kill;
+- rescues were sterile;
+- one generalist swept every world;
+- the mutation supply could not make a trade-off bite.
+And the engine runs at about 50 ticks/s. So a separate bench, `lab/oee-core.js`, built from those lessons; the
+artwork is untouched:
+- **Replication:** programs replicate (DIVIDE is an instruction), and every executed instruction costs energy.
+- **Energy:** light from drifting patches is the only source, and a child's body is paid at birth and returned as a
+  corpse at death, so energy is conserved and starving is death.
+- **Mutation:** insertion and deletion are balanced.
+- **Space:** one organism per cell on a 64x64 torus; the child goes to an empty neighbour or not at all. Overwriting
+  was tried and made DIVIDE free predation: a kill-and-eat loop at about 200 births a tick.
+- **Predation:** a 16-bit attack template must match the target's 16-bit tag (take scales with match^4).
+- **Neutral markers:** 8 of the 32 opcodes do nothing.
+- **Speed:** about 600 ticks/s with about 1,500 alive; 300,000 ticks is about 1,800 generations in 8.5 minutes.
+
+**The measure — a SHADOW GENEALOGY (Bedau and Packard).** Every organism carries a second program, copied and mutated
+at each birth exactly like its real one (its own RNG stream, so the real world is unchanged) but never executed. The
+shadow shares the family tree, the sweeps and the hitchhiking, and feels no selection. A working op, or a working pair
+(two working ops adjacent), is ADAPTIVE in a 30-sample window only when its mean carrier share beats the most
+widespread shadow op or pair. With about 1,000 shadow pairs setting the bar, chance lets through about 0.5 real pairs
+a window. (The first analysis used only the 8 neutral ops as the bar; with 529 real pairs against 64 neutral ones,
+chance passes about 8 a window. That version over-counted, and the shadow replaced it.)
+
+**Result — seeds 1-3, 300,000 ticks each (`lab/core-shadow.js`):**
+
+| seed | new adaptive pairs per window (about 170 generations each) | adaptive pairs present per window | cumulative |
+|---|---|---|---|
+| 1 | 8, 7, 2, 2, 0, 1, 3, 1, 1, 2 | 7-14 | 27 |
+| 2 | 7, 14, 5, 1, 4, 5, 3, 7, 1, **9** | 10-20 | 56 |
+| 3 | 12, 1, 9, 8, 7, 4, 3, 3, 0, 0 | 8-18 | 47 |
+
+- **Adaptive structure is present in every window** (7-20 pairs beat the shadow, against about 0.5 by chance).
+- **New adaptations are still arriving at about generation 1,800 on seeds 1 and 2.** Seed 2's last window adds 9 new
+  pairs and two newly adaptive ops (MOVE, RAND). Seed 3 dries up in its last two windows.
+- **The rate falls**, and not because the space runs out: 27-56 of 529 working pairs were ever adaptive.
+- What evolved from the 3-instruction ancestor (eat light, divide, turn): foraging, moving, light and corpse sensing,
+  scavenging, and predation that hands on to scavenging (ATTACK>EAT_CORPSE).
+- **The tag race did not engage:**
+  - the mean fit of attack templates to the living's tags stayed at chance (0.06-0.10);
+  - kills were only 60-290 per 30,000 ticks, while attackers cycled between 5% and 46% of the living;
+  - tags turned over steadily (about 2,000 new per 30,000 ticks) — drift, not a chase.
+**Where this leaves step 3:** novelty that slows but has not stopped by 1,800 generations, on 2 of 3 seeds — between
+a plateau and open-ended. **Next:** does the moving environment drive it? Same seeds with the patches static, at the
+current drift, and 5x faster.
+
+**#285b — the lean core, three questions answered.** Shadow-judged new adaptive op pairs per window.
+1. **Does the moving environment drive innovation? No.** 300,000 ticks, seeds 1-3, last two windows (about 170
+   generations each):
+   - static patches: 0, 2 / 2, 2 / 9, 3;
+   - current drift: 1, 2 / 1, 9 / 0, 0;
+   - 5x drift: 3, 0 / 0, 1 / 0, 1.
+   Same decay at every speed. A changing physical world is not the engine here.
+2. **Does stronger predation drive it? No — it makes it worse.** With the attack take scaling with match^1 instead of
+   match^4 (a random attack then takes half, not about 6%):
+   - attackers reach 57-100% of the living;
+   - the population falls to 350-550 (against about 1,400);
+   - distinct tags fall to 35-81 (against 170-270);
+   - cumulative adaptive pairs are 19-26 (against 27-56), with late windows mostly 0.
+   Everyone becomes a predator and diversity collapses.
+3. **Does pair-level innovation stop? Yes.** The same three worlds chained to 1,200,000 ticks (about 7,000
+   generations; exact save and resume, `lab/core-run.js` LOAD/SAVE). Windows of about 340 generations:
+
+   | seed | first 10 windows | last 10 windows | cumulative |
+   |---|---|---|---|
+   | 1 | 13, 3, 1, 5, 2, 3, 6, 5, 8, 2 | 0, 0, 0, 0, 0, 0, 0, 1, 0, 0 | 49 |
+   | 2 | 9, 7, 5, 5, 11, 7, 0, 0, 4, 1 | 3, 1, 0, 3, 3, 0, 0, 0, 0, 1 | 60 |
+   | 3 | 15, 15, 9, 5, 0, 0, 1, 0, 1, 0 | 3, 0, 1, 3, 0, 0, 0, 0, 1, 0 | 54 |
+
+   By about generation 7,000 new adaptive pairs are at the chance floor, after 49-60 of 529 became adaptive: a
+   BOUNDED (Bedau's class 2) pattern at this level.
+**But pairs are a bounded measure** — there are only 529, and a few dozen are ever useful — so a pair count must run
+dry even if evolution keeps finding new programs. The unbounded level is the whole program genotype, which is where
+Bedau and Packard measured. `lab/core-geno.js` judges real program genotypes against shadow ones (same hash, same
+family tree). Running now: the same three worlds (genotype tracking draws nothing, so the trajectories are identical),
+chained.
+
+**#285c — the genotype bar from the shadow genealogy was MISCALIBRATED, and a neutral population replaces it.**
+The first genotype analysis judged real program genotypes against the shadow programs (same family tree, never executed).
+On 600,000 ticks it reported adaptive genotypes "rising": seed 3 had 170 ever, with 13, 27, 20, 20, 16, 32, 41 new per
+window. **That came from the bar, not from evolution.** Seed 3's shadow bar (the share of the commonest shadow genotype)
+fell from 0.020 to 0.002 and stayed there, and the "new" counts climbed as it fell. Seeds 1 and 2 had a bar of
+0.004-0.027 and 27-28 genotypes ever. Why the shadow cannot set a genotype bar:
+- **Real genotypes are held whole by purifying selection.** Most mutants of a working program die, so the commonest real
+  genotype stays common.
+- **Shadow genotypes are not.** Every shadow mutation survives (the shadow is never executed). With insertion and
+  deletion balanced, shadow lengths drift away from the real ones, and the shadow splinters into thousands of rare
+  genotypes. Its commonest genotype shrinks.
+- So **a real genotype beats the bar for being kept whole, not for spreading** — purifying selection alone clears it.
+  The shadow is still valid for ops and op pairs (#285, #285b), where splintering does not change which components
+  are carried.
+**The replacement is Bedau and Packard's own neutral model: a NEUTRAL SHADOW POPULATION** (`World.neutralStep`, its
+own RNG, so the real world is unchanged). Each tick it gets exactly as many births, deaths and mutant births as the
+real world, but parents and victims are picked at random. Its genotypes are subject to the same supply of change and
+the same population size, with no selection. Checked: neutral size equals real size every sample, and a save and
+resume is exact. `lab/core-geno.js` now uses it as the bar (`BAR=shadow` shows the old one). Running: the same three
+worlds, chained.
