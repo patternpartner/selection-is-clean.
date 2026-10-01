@@ -1,17 +1,15 @@
-"""'One Jump' - the user's own likeness (u131, u132: two Grok takes of him on a high-dive board over a stadium pool, seen
+"""'One Jump' v2 - the user's own likeness (u131, u132: two Grok takes of him on a high-dive board over a stadium pool, seen
 from above) and the user's own song 'One Jump' (120 bpm, phase 0.081; word times video/stories/one-jump-words.json),
-written from Claude's lyrics 'No Rewind'. You cannot take a dive back.
-Song 13.6-63.58, then a splice (same bar phase) to the outro 127.58-133.6 ("No rewind, one jump, one jump - make it the
-right one"), then the end card.
-  13.6  the light falls from the sky into his hand          15.58 "Standing on the edge with the light in my hand"
-  19.58 "Everybody's watching" - flashes in the stands       23.58 "Count it to three" - 1 2 3 on the water as he turns
-  25.58 "and I count it again" - the footage REWINDS; the second count is the other take (u132)
-  27.58 "Nobody tells you how deep it is" - the pool drops away under him; 30.08 the drop: held breath
-  31.58 chorus - the jump; 33.58 "falling through time" - slow, with time-echoes; 39.58 the splash comes up gold
-  41.58 we go under; 43.58 "the water golden, it swallowed me whole" - him underwater, reaching up at us (u131's close-up)
-  51.58 "thought it stayed down there, out of control" - he sinks away, the light whips about
-  55.58 "then the surface broke and it came back for me" - out of the water at the camera; 59.58 "bigger than I gave it"
-  splice: calm, on the board; the light rises back to him - "make it the right one".
+written from Claude's lyrics 'No Rewind' (video/lyrics/no-rewind.txt).
+THE STORY (v2): it copies you. A small gold version of him - his own cut-out, rendered as light - stands beside him on the
+board and does everything he does a beat late. He is scared; it is scared. He jumps; it jumps. Under the water it grows on
+what he gives it, and what comes back up out of the pool, at the camera, screaming his scream, is the gold copy - "bigger
+than I gave it, louder than me". The splice to the outro: him calm on the board, the little gold him calm beside him -
+"make it the right one". End card: We only get to teach it once.
+(v1, which the user found did not make sense - "Graphics a bit lazy": a glow in his hand that meant nothing, plain numerals,
+a rewind gag in a film called No Rewind, screensaver gold.)
+Person masks: out/masks/u131.npy, u132.npy (rembg u2net_human_seg, every frame at 24 fps; scratchpad masks.py).
+Song 13.6-63.58, then a splice on the same bar phase to 127.58-133.6.
     python3 video/build_one_jump.py      (TEST=s1,s2 TESTDIR=dir in SONG seconds; PART=a,b VOUT=f in film seconds)
 """
 import math
@@ -21,7 +19,7 @@ import subprocess
 import imageio_ffmpeg
 import numpy as np
 from PIL import Image, ImageDraw, ImageFont
-from scipy.ndimage import gaussian_filter, map_coordinates
+from scipy.ndimage import gaussian_filter, map_coordinates, binary_erosion
 
 F = imageio_ffmpeg.get_ffmpeg_exe()
 W, H, FPS = 720, 1280, 24
@@ -31,26 +29,19 @@ SPLICE_FILM, SPLICE_SONG, END_SONG = 49.98, 127.58, 133.6
 DUR = SPLICE_FILM + (END_SONG - SPLICE_SONG)
 TEST = [float(x) for x in os.environ.get("TEST", "").split(",") if x]
 PART = [float(x) for x in os.environ.get("PART", "").split(",") if x]
-AMBER = np.array([255, 176, 88], np.float32)
 GOLD = np.array([255, 196, 70], np.float32)
+LAG = 0.42                                               # the copy is this many song seconds behind him
 FONT = "/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf"
 rng = np.random.default_rng(120)
+YY, XX = np.mgrid[0:SH, 0:SW].astype(np.float32)
 
-# hand-read off gridded sheets (clip second -> clip px)
-HAND_A = [(0.0, 262, 405), (1.125, 264, 407), (1.25, 275, 388), (1.375, 280, 368), (1.5, 295, 358), (1.625, 310, 348),
-          (1.75, 330, 333)]
-CHEST_A = [(1.75, 190, 312), (2.0, 182, 312), (2.25, 200, 332), (2.5, 240, 332), (2.75, 260, 352)]
-CHEST_B = [(1.0, 190, 302), (1.5, 200, 312), (1.75, 208, 290), (2.0, 210, 325), (2.25, 210, 328), (2.5, 240, 288),
-           (2.75, 230, 168), (3.0, 200, 188), (3.25, 180, 208), (3.5, 190, 234), (3.75, 195, 240), (4.0, 192, 284),
-           (4.25, 192, 336), (4.5, 200, 372), (4.75, 196, 392), (5.0, 196, 424), (5.2, 200, 432)]
-UP_B = [(6.5, 200, 400), (6.75, 192, 432), (7.0, 196, 400), (7.5, 198, 388), (7.75, 196, 362), (8.0, 200, 352),
-        (8.25, 170, 344), (8.5, 196, 298), (8.75, 206, 276), (9.0, 200, 318), (9.5, 200, 340), (10.0, 210, 360),
-        (11.0, 200, 400), (15.0, 200, 400)]
+# gold ramp: luminance -> colour
+_GR = np.array([[0.0, 40, 14, 0], [0.3, 150, 70, 8], [0.55, 235, 150, 40], [0.8, 255, 214, 110], [1.0, 255, 250, 225]],
+               np.float32)
 
 
-def track(table, ct):
-    ts = [p[0] for p in table]
-    return float(np.interp(ct, ts, [p[1] for p in table])), float(np.interp(ct, ts, [p[2] for p in table]))
+def gold_of(lum):
+    return np.stack([np.interp(lum, _GR[:, 0], _GR[:, i]) for i in (1, 2, 3)], -1).astype(np.float32)
 
 
 def ease(u):
@@ -72,77 +63,132 @@ def song_time(t):
 
 
 def shot(s):
-    """(clip, clip second, camera centre in clip px, zoom) for a song second"""
-    if s < 15.58:
-        h = track(HAND_A, 0)
-        return "A", 0.04 * (s - 13.6), h, 1.7
-    if s < 23.58:                                            # up from the light in his hand to his face; then wide
-        ct = lin(s, 15.58, 23.58, 0.0, 1.75)
-        h = track(HAND_A, ct)
-        u = ramp(s, 15.58, 19.4)
-        c = (h[0] + (205 - h[0]) * u, h[1] + (254 - h[1]) * u)
-        z = 1.7 - 0.3 * u
-        v = ramp(s, 19.58, 20.3)
-        return "A", ct, (c[0] + (200 - c[0]) * v, c[1] + (368 - c[1]) * v), z + (1.0 - z) * v
-    if s < 25.58:
-        return "A", lin(s, 23.58, 25.58, 1.75, 2.75), (200, 368), 1.0
+    """(scene, clip, clip second) for a song second"""
+    if s < 13.6:
+        return "board", "A", 0.0
+    if s < 23.58:
+        return "board", "A", lin(s, 15.58, 23.58, 0.0, 1.75)
     if s < 26.08:
-        return "A", lin(s, 25.58, 26.08, 2.75, 1.25), (200, 368), 1.0
-    if s < 27.58:
-        return "B", lin(s, 26.08, 27.58, 1.25, 2.0), (200, 368), 1.0
+        return "board", "A", lin(s, 23.58, 26.08, 1.75, 3.0)
     if s < 30.08:
-        return "B", lin(s, 27.58, 30.08, 2.0, 2.5), (200, 368), 1.0
+        return "board", "B", lin(s, 26.08, 30.08, 1.0, 2.5)
     if s < 31.58:
-        return "B", lin(s, 30.08, 31.58, 2.5, 2.55), (200, 368), 1.0 + 0.012 * math.exp(-((s - 30.08) % 0.5) * 8)
+        return "board", "B", lin(s, 30.08, 31.58, 2.5, 2.55)
     if s < 33.58:
-        return "B", lin(s, 31.58, 33.58, 2.55, 3.75), (200, 368), 1.0
+        return "fall", "B", lin(s, 31.58, 33.58, 2.55, 3.75)
     if s < 39.58:
-        ct = lin(s, 33.58, 39.58, 3.75, 5.2)
-        u = ramp(s, 33.58, 39.0)
-        p = track(CHEST_B, ct)
-        return "B", ct, (200 + (p[0] - 200) * u, 368 + (p[1] - 368) * u), 1.0 + 0.6 * u
+        return "fall", "B", lin(s, 33.58, 39.58, 3.75, 5.2)
     if s < 43.58:
-        ct = lin(s, 39.58, 41.58, 5.2, 6.5) if s < 41.58 else 6.5
-        z = 1.6 * math.exp(1.2 * max(0.0, s - 41.58))
-        return "B", ct, (200, 420), z
+        return "splash", "B", lin(s, 39.58, 41.58, 5.2, 6.5)
+    if s < 51.58:
+        return "under", "A", lin(s, 43.58, 51.58, 7.25, 11.25)
     if s < 55.58:
-        if s < 51.58:
-            ct = lin(s, 43.58, 51.58, 7.25, 11.25)
-        else:
-            ct = lin(s, 51.58, 55.58, 11.25, 12.25)
-        return "A", ct, (200, 420), 1.0
+        return "under", "A", lin(s, 51.58, 55.58, 11.25, 12.25)
     if s < 59.58:
-        return "B", lin(s, 55.58, 59.58, 6.75, 9.5), (200, 368), 1.0
+        return "rise", "B", lin(s, 55.58, 59.58, 6.75, 9.5)
     if s < 64.0:
-        ct = lin(s, 59.58, 63.58, 9.5, 14.75)
+        return "face", "B", lin(s, 59.58, 63.58, 9.5, 14.75)
+    return "calm", "A", lin(s, SPLICE_SONG, END_SONG, 12.5, 15.0)
+
+
+def camera(s):
+    if s < 15.58:
+        return (200, 368), 1.0
+    if s < 31.58:
+        return (200, 368), 1.0 + 0.012 * math.exp(-((s - 30.08) % 0.5) * 8) * (s >= 30.08)
+    if s < 33.58:
+        return (200, 368), 1.0
+    if s < 39.58:
+        u = ramp(s, 33.58, 39.0)
+        return (200 - 30 * u, 368 + 40 * u), 1.0 + 0.45 * u
+    if s < 41.58:
+        return (170, 408), 1.45
+    if s < 43.58:
+        return (190, 420), 1.45 * math.exp(1.3 * max(0.0, s - 41.9))
+    if s < 59.58:
+        return (200, 368), 1.0
+    if s < 64.0:
         u = ramp(s, 59.58, 63.0)
-        return "B", ct, (200, 368 + 30 * u), 1.0 + 0.3 * u
-    return "A", lin(s, SPLICE_SONG, END_SONG, 12.5, 15.0), (200, 368), 1.0
+        return (200, 368 + 25 * u), 1.0 + 0.28 * u
+    return (200, 368), 1.0
 
 
-def add_glow(acc, x, y, r, color, amp):
-    """additive gaussian glow into float image acc, local window"""
-    R = int(r * 4) + 2
-    x0, x1 = max(0, int(x) - R), min(W, int(x) + R)
-    y0, y1 = max(0, int(y) - R), min(H, int(y) + R)
-    if x0 >= x1 or y0 >= y1:
-        return
-    yy, xx = np.mgrid[y0:y1, x0:x1].astype(np.float32)
-    d2 = (xx - x) ** 2 + (yy - y) ** 2
-    g = np.exp(-d2 / (2 * r * r)) * amp
-    acc[y0:y1, x0:x1] += g[..., None] * color
+class Clips:
+    def __init__(self):
+        self.f, self.m = {}, {}
+        for k, u in (("A", "u131"), ("B", "u132")):
+            raw = subprocess.run([F, "-loglevel", "error", "-i", f"out/user-clips/{u}.mp4", "-map", "0:v:0", "-vf", "fps=24",
+                                  "-f", "rawvideo", "-pix_fmt", "rgb24", "-"], capture_output=True).stdout
+            self.f[k] = np.frombuffer(raw, np.uint8).reshape(-1, SH, SW, 3)
+            self.m[k] = np.load(f"out/masks/{u}.npy", mmap_mode="r")
+
+    def at(self, k, ct):
+        fr, ms = self.f[k], self.m[k]
+        n = min(len(fr), len(ms))
+        x = min(max(ct * 24, 0), n - 1.001)
+        i = int(x)
+        w = x - i
+        a = fr[i].astype(np.float32) * (1 - w) + fr[i + 1].astype(np.float32) * w
+        m = (ms[i].astype(np.float32) * (1 - w) + ms[i + 1].astype(np.float32) * w) / 255
+        return a, m
 
 
-def light(acc, x, y, size, bright, t):
-    tw = 0.9 + 0.1 * math.sin(t * 11)
-    add_glow(acc, x, y, 7 * size, np.array([255, 245, 225], np.float32), 2.4 * bright * tw)
-    add_glow(acc, x, y, 22 * size, AMBER, 1.0 * bright * tw)
-    add_glow(acc, x, y, 70 * size, AMBER, 0.32 * bright)
+def centroid(m):
+    s = m.sum() + 1e-6
+    return float((m * XX).sum() / s), float((m * YY).sum() / s)
 
 
-def to_out(p, c, z):
-    Z = BASEZ * z
-    return (p[0] - c[0]) * Z + W / 2, (p[1] - c[1]) * Z + H / 2
+def feet(m):
+    rows = np.where(m.max(1) > 0.5)[0]
+    if len(rows) == 0:
+        return centroid(m)
+    y1 = rows[-1]
+    band = m[max(0, y1 - 25):y1 + 1]
+    xs = (band * XX[:band.shape[0]]).sum() / (band.sum() + 1e-6)
+    return float(xs), float(y1)
+
+
+def place(a, m, k, src, dst):
+    """scale clip-space image+mask by k about src, put src at dst; returns full-size (rgb, mask)"""
+    # output (x,y) <- source (src + ((x,y) - dst)/k)
+    sx = src[0] + (XX - dst[0]) / k
+    sy = src[1] + (YY - dst[1]) / k
+    ok = ((sx >= 0) & (sx <= SW - 1) & (sy >= 0) & (sy <= SH - 1)).astype(np.float32)
+    mm = map_coordinates(m, [sy, sx], order=1, mode="constant") * ok
+    rgb = np.stack([map_coordinates(a[..., i], [sy, sx], order=1, mode="nearest") for i in range(3)], -1)
+    return rgb, mm
+
+
+def goldify(rgb, m, s, heat=1.0):
+    """his cut-out as light: luminance through a gold ramp, flowing bands, a white rim, alpha"""
+    lum = rgb.mean(-1) / 255
+    lo, hi = np.percentile(lum[m > 0.5], [3, 97]) if (m > 0.5).sum() > 40 else (0.0, 1.0)
+    l2 = np.clip((lum - lo) / max(hi - lo, 0.05), 0, 1)
+    band = 0.5 + 0.5 * np.sin(YY / 9 - s * 7 + XX / 23)
+    l2 = np.clip(0.18 + 0.72 * l2 + 0.16 * band * heat, 0, 1)
+    col = gold_of(l2)
+    edge = np.clip(m - gaussian_filter(m, 1.6), 0, 1) * 3
+    col = col + edge[..., None] * np.array([255, 240, 200], np.float32)
+    return col, np.clip(m * 0.93, 0, 1)
+
+
+def over(base, col, al):
+    return base * (1 - al[..., None]) + col * al[..., None]
+
+
+def halo(m, r, amp):
+    return gaussian_filter(m, r)[..., None] * GOLD * amp
+
+
+def numeral_mask(text, x, y, size, rot=0.0):
+    lay = Image.new("L", (SW, SH), 0)
+    fnt = ImageFont.truetype(FONT, size)
+    d = ImageDraw.Draw(lay)
+    bb = d.textbbox((0, 0), text, font=fnt)
+    d.text((x - (bb[2] + bb[0]) / 2, y - (bb[3] + bb[1]) / 2), text, font=fnt, fill=255)
+    if rot:
+        lay = lay.rotate(rot, center=(x, y), resample=Image.BICUBIC)
+    return np.asarray(lay, np.float32) / 255
 
 
 def water_mask(a):
@@ -150,254 +196,275 @@ def water_mask(a):
     return ((b > 150) & (g > 110) & (r < 140) & (b > r + 60)).astype(np.float32)
 
 
-class Clips:
-    def __init__(self):
-        self.f = {}
-        for k, u in (("A", "u131"), ("B", "u132")):
-            raw = subprocess.run([F, "-loglevel", "error", "-i", f"out/user-clips/{u}.mp4", "-map", "0:v:0", "-vf", "fps=24",
-                                  "-f", "rawvideo", "-pix_fmt", "rgb24", "-"], capture_output=True).stdout
-            self.f[k] = np.frombuffer(raw, np.uint8).reshape(-1, SH, SW, 3)
+def underwater_bg(s, gold):
+    """the deep end, drawn: a gradient, light shafts swaying from the surface, caustics, drifting motes"""
+    top = np.array([40, 130, 170], np.float32) * (1 - gold) + np.array([150, 105, 35], np.float32) * gold
+    bot = np.array([2, 14, 30], np.float32) * (1 - gold) + np.array([30, 12, 2], np.float32) * gold
+    v = (YY / SH)[..., None]
+    bg = top * (1 - v) ** 1.4 + bot * (1 - (1 - v) ** 1.4)
+    rays = np.zeros((SH, SW), np.float32)
+    for j in range(7):
+        x0 = 30 + j * 58 + 20 * math.sin(s * 0.7 + j)
+        slope = 0.32 + 0.05 * math.sin(j * 1.7)
+        d = np.abs(XX - (x0 + (YY) * slope))
+        w = 10 + 6 * math.sin(j * 2.3 + s)
+        rays += np.exp(-(d / w) ** 2) * (0.5 + 0.5 * math.sin(s * 1.3 + j * 2.1)) * np.exp(-YY / 420)
+    rc = np.array([170, 230, 255], np.float32) * (1 - gold) + np.array([255, 215, 130], np.float32) * gold
+    bg += rays[..., None] * rc * 0.45
+    cv = np.sin(XX / 11 + s * 1.1) + np.sin(YY / 9 - s * 1.4) + np.sin((XX + YY) / 14 + s * 0.8) + np.sin((XX - YY) / 16 - s)
+    caus = np.clip(1 - np.abs(cv) / 0.55, 0, 1) ** 2 * np.exp(-YY / 160)
+    bg += caus[..., None] * rc * 0.5
+    return bg
 
-    def at(self, k, ct):
-        fr = self.f[k]
-        x = min(max(ct * 24, 0), len(fr) - 1.001)
-        i = int(x)
-        w = x - i
-        return fr[i].astype(np.float32) * (1 - w) + fr[i + 1].astype(np.float32) * w
+
+MOTES = [(rng.uniform(0, SW), rng.uniform(0, SH), rng.uniform(0.6, 2.2), rng.uniform(0, 6.28), rng.uniform(4, 14))
+         for _ in range(120)]
+SPARKS = [(rng.uniform(0, 1), rng.uniform(0, 1), rng.uniform(0.4, 1.2), rng.uniform(0, 6.28)) for _ in range(400)]
+
+
+def sparks_from(m, s, n, acc, c, z, rise=40.0, amp=1.0, seed=0):
+    """motes of light shed off the copy's edge, drifting up and fading (drawn into output-space acc)"""
+    ys, xs = np.nonzero(m > 0.5)
+    if len(xs) < 10:
+        return
+    r2 = np.random.default_rng(seed)
+    Z = BASEZ * z
+    for j in range(n):
+        ph = (s * 0.9 + j * 0.137) % 1.0
+        idx = int(r2.integers(0, len(xs)) + int(s * 3)) % len(xs)
+        x = (xs[idx] - c[0]) * Z + W / 2 + 6 * math.sin(s * 3 + j)
+        y = (ys[idx] - c[1]) * Z + H / 2 - ph * rise * Z
+        add_glow(acc, x, y, 2.2 + 1.5 * r2.random(), GOLD + 40, 1.2 * amp * (1 - ph))
+
+
+def add_glow(acc, x, y, r, color, amp):
+    R = int(r * 4) + 2
+    x0, x1 = max(0, int(x) - R), min(acc.shape[1], int(x) + R)
+    y0, y1 = max(0, int(y) - R), min(acc.shape[0], int(y) + R)
+    if x0 >= x1 or y0 >= y1:
+        return
+    yy, xx = np.mgrid[y0:y1, x0:x1].astype(np.float32)
+    g = np.exp(-((xx - x) ** 2 + (yy - y) ** 2) / (2 * r * r)) * amp
+    acc[y0:y1, x0:x1] += g[..., None] * np.asarray(color, np.float32)
 
 
 def render(a, c, z):
-    """clip-px float image -> output frame via the camera"""
     Z = BASEZ * z
     im = Image.fromarray(np.clip(a, 0, 255).astype(np.uint8))
-    # output (X,Y) -> clip ((X-W/2)/Z + cx, ...)
     coeffs = (1 / Z, 0, c[0] - W / 2 / Z, 0, 1 / Z, c[1] - H / 2 / Z)
     return np.asarray(im.transform((W, H), Image.AFFINE, coeffs, resample=Image.BICUBIC), np.float32)
 
 
-def numeral(acc, text, x, y, age, size=300, col=(255, 255, 255)):
-    if age < 0 or age > 0.5:
-        return
-    sc = 1.0 + 0.35 * math.exp(-age * 14)
-    al = 1.0 if age < 0.38 else 1 - (age - 0.38) / 0.12
-    fnt = ImageFont.truetype(FONT, int(size * sc))
-    lay = Image.new("L", (W, H), 0)
-    d = ImageDraw.Draw(lay)
-    bb = d.textbbox((0, 0), text, font=fnt)
-    d.text((x - (bb[2] + bb[0]) / 2, y - (bb[3] + bb[1]) / 2), text, font=fnt, fill=255)
-    m = np.asarray(lay, np.float32)[..., None] / 255 * al
-    sh = np.roll(np.roll(m, 8, 0), 8, 1)
-    acc *= 1 - sh * 0.45
-    acc[:] = acc * (1 - m) + np.array(col, np.float32) * m
+def copy_layer(clips, s, his_m, scene):
+    """where the gold copy is and what it looks like, in clip space: (rgb, alpha, its mask)"""
+    ts = s - LAG
+    tscene, tk, tct = shot(ts)
+    ta, tm = clips.at(tk, tct)
+    if scene == "board":
+        k = 0.5
+        born = ramp(s, 15.58, 16.6)
+        src = feet(tm)
+        hf = feet(his_m)
+        dst = (hf[0] - 118, hf[1] - 18)
+        if tscene == "fall":                                 # it leaves the board after him
+            j = ramp(ts, 31.58, 32.4)
+            src = (feet(tm)[0] * (1 - j) + centroid(tm)[0] * j, feet(tm)[1] * (1 - j) + centroid(tm)[1] * j)
+        rgb, mm = place(ta, tm, k, src, dst)
+        if born < 1:                                          # it assembles out of sparks
+            noise = gaussian_filter(np.random.default_rng(7).random((SH, SW)).astype(np.float32), 2.5)
+            noise = (noise - noise.min()) / (noise.max() - noise.min() + 1e-6)
+            mm = mm * np.clip((born * 1.3 - noise) * 6, 0, 1)
+        return rgb, mm, k
+    if scene == "fall":
+        k = 0.62
+        hc = centroid(his_m)
+        if tscene == "board":
+            src = feet(tm)
+            hf = feet(his_m)
+            dst = (hf[0] - 118, hf[1] - 18) if s < 32.0 else (190 - 118, 690 - 18)
+            k = 0.5
+        else:
+            j = ramp(ts, 31.58, 32.4)
+            src = centroid(tm)
+            dst = (hc[0] - 95 * (0.4 + 0.6 * j), hc[1] - 30 * j) if s >= 33.58 else (lin(s, 32.0, 33.58, 72, hc[0] - 95), lin(s, 32.0, 33.58, 600, hc[1] - 30))
+        rgb, mm = place(ta, tm, k, src, dst)
+        return rgb, mm, k
+    if scene == "splash":
+        if tscene == "fall":
+            k = 0.62
+            hc = (200, 432)
+            rgb, mm = place(ta, tm, k, centroid(tm), (hc[0] - 95, hc[1] - 30))
+            return rgb, mm, k
+        return None
+    return None
 
 
-BUBBLES = [(rng.uniform(0, W), rng.uniform(0, 1), rng.uniform(80, 260), rng.uniform(2, 7), rng.uniform(0, 6.28))
-           for _ in range(140)]
-
-
-def caustics(t, strength):
-    yy, xx = np.mgrid[0:160, 0:90].astype(np.float32)
-    v = np.sin(xx / 5 + t * 1.1) + np.sin(yy / 4.2 - t * 1.4) + np.sin((xx + yy) / 6.5 + t * 0.8) + \
-        np.sin((xx - yy) / 7.3 - t * 0.6)
-    c = np.clip(1 - np.abs(v) / 0.6, 0, 1) ** 2
-    im = Image.fromarray((c * 255).astype(np.uint8)).resize((W, H), Image.BILINEAR)
-    return np.asarray(im, np.float32)[..., None] / 255 * strength
-
-
-def frame(clips, t, trail):
+def frame(clips, t):
     s = song_time(t)
-    k, ct, c, z = shot(s)
-    hw, hh = W / 2 / (BASEZ * z), H / 2 / (BASEZ * z)      # keep the camera inside the clip
+    scene, k, ct = shot(s)
+    c, z = camera(s)
+    hw, hh = W / 2 / (BASEZ * z), H / 2 / (BASEZ * z)
     c = (min(max(c[0], hw), SW - hw) if hw < SW / 2 else SW / 2, min(max(c[1], hh), SH - hh) if hh < SH / 2 else SH / 2)
-    a = clips.at(k, ct)
-    # ---- clip-space effects
-    if 33.58 <= s < 39.58:                                   # falling through time: echoes of where he just was
-        a = a * 0.52 + clips.at(k, ct - 0.08) * 0.2 + clips.at(k, ct - 0.17) * 0.16 + clips.at(k, ct - 0.27) * 0.12
-    if 27.58 <= s < 31.58:                                   # how deep it is: the pool drops away under him
-        u = ramp(s, 27.58, 30.6)
-        m = gaussian_filter(water_mask(a), 2.0)
-        kk = 1 + 0.9 * u
-        yy, xx = np.mgrid[0:SH, 0:SW].astype(np.float32)
-        cx0, cy0 = 200, 120
-        sx, sy = cx0 + (xx - cx0) * kk, cy0 + (yy - cy0) * kk
-        sx = np.abs(sx) % (2 * SW)
-        sx = np.where(sx >= SW, 2 * SW - 1 - sx, sx)
-        sy = np.clip(sy, 0, SH - 1)
-        warped = np.stack([map_coordinates(a[..., i], [sy, sx], order=1) for i in range(3)], -1)
-        wm = gaussian_filter(water_mask(warped), 2.0)
-        deep = warped * (1 - 0.62 * u) * np.array([0.7, 0.85, 1.0], np.float32)
-        mm = (m * wm)[..., None]
-        mo = (m * (1 - wm))[..., None]
-        a = a * (1 - mm - mo) + deep * mm + a * (1 - 0.62 * u) * mo
-    if 39.58 <= s < 43.58:                                   # the splash comes up gold
-        lum = a.mean(-1, keepdims=True)
-        g = np.clip((lum - 170) / 60, 0, 1) * ramp(s, 39.58, 39.9)
-        a = a * (1 - g) + (GOLD * 0.6 + a * 0.5) * g
-    if 55.58 <= s < 59.58:
-        lum = a.mean(-1, keepdims=True)
-        g = np.clip((lum - 185) / 50, 0, 1) * 0.8
-        a = a * (1 - g) + (GOLD * 0.55 + a * 0.5) * g
-    under = 43.58 <= s < 55.58
-    if under:
-        yy, xx = np.mgrid[0:SH, 0:SW].astype(np.float32)
-        sx = xx + 5 * np.sin(yy / 21 + s * 2.6) + 3 * np.sin(yy / 9 - s * 3.1)
-        sy = yy + 4 * np.sin(xx / 27 + s * 1.9)
-        a = np.stack([map_coordinates(a[..., i], [sy, sx], order=1, mode="nearest") for i in range(3)], -1)
-        lum = a.mean(-1, keepdims=True)
-        gold = ramp(s, 47.3, 49.0)
-        tint = np.array([0.35, 0.75, 0.95], np.float32) * (1 - gold) + np.array([1.05, 0.78, 0.38], np.float32) * gold
-        a = (a * 0.35 + lum * 0.65) * tint
-    if s >= 51.58 and under:                                 # he sinks away
-        u = ramp(s, 51.58, 55.3)
-        sc = 1 - 0.78 * u
-        im = Image.fromarray(np.clip(a, 0, 255).astype(np.uint8))
-        nw, nh = max(8, int(SW * sc)), max(8, int(SH * sc))
-        small = np.asarray(im.resize((nw, nh), Image.BICUBIC), np.float32) * (1 - 0.75 * u)
-        fy = np.minimum(np.arange(nh), np.arange(nh)[::-1])[:, None] / (0.18 * nh)
-        fx = np.minimum(np.arange(nw), np.arange(nw)[::-1])[None, :] / (0.18 * nw)
-        fm = np.clip(np.minimum(fx, fy), 0, 1)[..., None] ** 1.5
-        bg = np.zeros_like(a) + np.array([10, 40, 60], np.float32) * (1 - ramp(s, 47.3, 49)) + \
-            np.array([60, 36, 8], np.float32) * ramp(s, 47.3, 49)
-        ox, oy = (SW - nw) // 2, int((SH - nh) / 2 + 160 * u)
-        oy = min(oy, SH - nh)
-        bg[oy:oy + nh, ox:ox + nw] = small * fm + bg[oy:oy + nh, ox:ox + nw] * (1 - fm)
+    a, m = clips.at(k, ct)
+    post = []                                                # output-space drawing to do after the render
+    gold_m = None
+    if scene in ("board", "fall", "splash"):
+        if 27.58 <= s < 31.58:                               # how deep it is: the water drops away beneath him
+            u = ramp(s, 27.58, 30.6)
+            wm0 = gaussian_filter(water_mask(a), 2.0) * (1 - m)
+            kk = 1 + 0.9 * u
+            cx0, cy0 = 200, 120
+            sx, sy = cx0 + (XX - cx0) * kk, cy0 + (YY - cy0) * kk
+            sx = np.abs(sx) % (2 * SW)
+            sx = np.where(sx >= SW, 2 * SW - 1 - sx, sx)
+            sy = np.clip(sy, 0, SH - 1)
+            warped = np.stack([map_coordinates(a[..., i], [sy, sx], order=1) for i in range(3)], -1)
+            wm1 = gaussian_filter(water_mask(warped), 2.0)
+            deep = warped * (1 - 0.62 * u) * np.array([0.7, 0.85, 1.0], np.float32)
+            dim = a * (1 - 0.62 * u)
+            a = a * (1 - wm0[..., None]) + (deep * wm1[..., None] + dim * (1 - wm1[..., None])) * wm0[..., None]
+        if 33.58 <= s < 39.58:                               # falling through time: he leaves himself behind
+            for back, al in ((0.09, 0.35), (0.19, 0.22), (0.3, 0.13)):
+                ea, em = clips.at(k, ct - back)
+                a = over(a, ea, em * al * (1 - m))
+        cl = copy_layer(clips, s, m, scene)
+        if cl is not None:
+            rgb, mm, kk = cl
+            col, al = goldify(rgb, mm, s)
+            if scene == "board" and s < 31.58:              # its shadow on the board
+                shm = np.roll(np.roll(gaussian_filter(mm, 3), 10, 0), 14, 1) * 0.35
+                a = a * (1 - shm[..., None])
+            a = a + halo(mm, 7, 0.55)
+            a = over(a, col, al)
+            gold_m = mm
+    elif scene == "under":
+        gold = ramp(s, 47.3, 49.4)
+        bg = underwater_bg(s, gold)
+        # him: reaching up through the water, cooled; sinking away after "out of control"
+        sink = ramp(s, 51.58, 55.2)
+        kh = 0.78 - 0.5 * sink
+        hc = centroid(m)
+        dst = (150 + 10 * math.sin(s * 0.9) - 20 * sink, 430 + 8 * math.sin(s * 1.3) + 220 * sink)
+        rgb, mm = place(a, m, kh, hc, dst)
+        cool = np.array([0.5, 0.78, 0.95], np.float32) * (1 - gold) + np.array([0.95, 0.75, 0.45], np.float32) * gold
+        lumc = rgb * 0.45 + rgb.mean(-1, keepdims=True) * 0.55
+        him = lumc * cool * (1 - 0.8 * sink)
+        bg = over(bg, him, mm * (1 - 0.6 * sink) * ramp(s, 43.58, 44.3))
+        # the copy: same reach, a beat late, growing on what it is given
+        ta, tm = clips.at("A", shot(max(s - LAG, 43.58))[2])
+        grow = 0.42 + 0.5 * ramp(s, 44.5, 51.0) + 0.45 * ramp(s, 51.58, 54.8)
+        tdst = (300 - 90 * ramp(s, 51.0, 54.5) + 8 * math.sin(s * 1.1 + 1), 330 + 40 * ramp(s, 51.0, 54.5) - 260 * ramp(s, 54.9, 55.58))
+        trgb, tmm = place(ta, tm, grow, centroid(tm), tdst)
+        tmm = tmm * ramp(s, 44.2, 45.2)
+        col, al = goldify(trgb, tmm, s, heat=1 + gold)
+        bg = bg + halo(tmm, 10, 0.5 + 0.6 * gold)
+        bg = over(bg, col, al)
         a = bg
-    if 25.58 <= s < 26.08:                                   # rewind: tracking jitter
-        for y0 in range(0, SH, 8):
-            a[y0:y0 + 8] = np.roll(a[y0:y0 + 8], int(rng.normal(0, 6)), 1)
-        a = a * 0.8 + a.mean(-1, keepdims=True) * 0.2
+        gold_m = tmm
+    elif scene in ("rise", "face"):                          # what comes back up is the copy
+        col, al = goldify(a, m, s, heat=1.4)
+        if scene == "face":
+            dark = 1 - 0.55 * ramp(s, 59.58, 60.2)
+            a = a * dark
+        a = a + halo(m, 9, 0.7)
+        a = over(a, col, al)
+        gold_m = m
+    elif scene == "calm":
+        ts = max(s - LAG, SPLICE_SONG)
+        ta, tm = clips.at("A", shot(ts)[2])
+        k2 = 0.34
+        rgb, mm = place(ta, tm, k2, feet(tm), (335, 735))
+        mm = mm * ramp(s, SPLICE_SONG, SPLICE_SONG + 0.6)
+        col, al = goldify(rgb, mm, s, heat=0.6)
+        a = a * 0.86 + halo(mm, 7, 0.5)
+        a = over(a, col, al)
+        gold_m = mm
     out = render(a, c, z)
-    Z = BASEZ * z
-    # ---- output-space effects
-    if 41.58 <= s < 43.58:                                   # going under
-        u = ramp(s, 41.58, 43.2)
-        deep = np.zeros_like(out) + np.linspace(0, 1, H, dtype=np.float32)[:, None, None] * \
-            np.array([-10, -40, -30], np.float32) + np.array([20, 70, 100], np.float32)
-        out = out * (1 - u) + deep * u
-        fl = math.exp(-max(0.0, s - 41.9) * 3) * ramp(s, 41.58, 41.9)
-        out += fl * 160
-    if under:
-        dark = np.zeros((H, W, 1), np.float32)
-        yy, xx = np.mgrid[0:H, 0:W].astype(np.float32)
-        r = np.sqrt(((xx - W / 2) / W) ** 2 + ((yy - H * 0.45) / H) ** 2)
-        vig = np.clip(1.25 - r * 1.6, 0, 1)[..., None]
-        fade = ramp(s, 43.58, 44.6)
-        out = out * vig * fade + dark
-        gold = ramp(s, 47.3, 49.0)
-        cc = np.array([150, 230, 255], np.float32) * (1 - gold) + np.array([255, 210, 120], np.float32) * gold
-        out += caustics(s, 0.32) * cc * (np.linspace(1, 0.2, H, dtype=np.float32)[:, None, None])
-    if 41.58 <= s < 55.58:
-        acc = np.zeros_like(out)
-        for (bx, b0, sp, br, ph) in BUBBLES:
-            age = s - 41.58 - b0 * 3
+    acc = np.zeros_like(out)
+    if gold_m is not None:
+        sparks_from(gold_m, s, 26 if scene not in ("face",) else 60, acc, c, z, amp=1.0, seed=int(s * 24) // 6)
+    # the spark that becomes it
+    if 13.6 <= s < 16.0:
+        tx, ty = 72, 672
+        X, Y = (tx - c[0]) * BASEZ * z + W / 2, (ty - c[1]) * BASEZ * z + H / 2
+        u = ease((s - 13.6) / 1.98)
+        y = -60 + (Y + 60) * u ** 1.8
+        if s < 15.58:
+            add_glow(acc, X + 30 * math.sin(s * 3) * (1 - u), y, 6, [255, 245, 225], 2.4)
+            add_glow(acc, X, y, 22, GOLD, 0.9)
+            for i in range(12):
+                add_glow(acc, X + 30 * math.sin((s - i * 0.04) * 3) * (1 - u), y - i * 14 * (0.5 + u), 5, GOLD, 0.4 * (1 - i / 12))
+        burst = math.exp(-max(0.0, s - 15.58) * 4) * (s >= 15.58)
+        add_glow(acc, X, Y - 100, 160, GOLD, 0.9 * burst)
+    # count it to three - the numbers are made of the same light, and the copy counts with him
+    for i, (bt, x, y, rot) in enumerate([(24.08, 85, 470, 8), (24.58, 330, 420, -6), (25.08, 300, 590, 4),
+                                         (26.58, 330, 470, -8), (27.08, 80, 430, 6), (27.58, 310, 610, -4)]):
+        age = s - bt
+        if 0 <= age < 0.5:
+            nm = numeral_mask(str(i % 3 + 1), x, y, 150 if i < 3 else 130, rot)
+            nm = gaussian_filter(nm, 0.6)
+            sc = 1.0 - 0.3 * min(age / 0.5, 1)
+            nm = nm * (1 if age < 0.36 else 1 - (age - 0.36) / 0.14)
+            o = render(np.stack([nm * 255] * 3, -1), c, z)[..., 0] / 255
+            o = np.clip(o, 0, 1)
+            lum = np.clip(0.55 + 0.45 * np.sin(np.mgrid[0:H, 0:W][0] / 12 - s * 9), 0, 1) * 0.6 + 0.4
+            colr = gold_of(lum) * sc + 0 * sc
+            out = out * (1 - o[..., None]) + colr * o[..., None]
+            acc += gaussian_filter(o, 9)[..., None] * GOLD * 0.8
+    # the splash: his is water, the copy's is gold
+    if 39.58 <= s < 42.5:
+        for who, t0, px, py in (("him", 39.58, 200, 432), ("it", 39.58 + LAG, 105, 402)):
+            age = s - t0
             if age < 0:
                 continue
-            y = H + 20 - (age * sp) % (H + 60)
-            x = bx + 18 * math.sin(age * 3 + ph)
-            add_glow(acc, x, y, br, np.array([200, 240, 255], np.float32), 0.5)
-        out += acc * (1 - ramp(s, 47.3, 49.0) * 0.4)
-    if 49.0 <= s < 55.58:                                    # the light, out of control
-        acc = np.zeros_like(out)
-        g = ramp(s, 49.0, 53.5)
-        for j in range(6):
-            for q in range(14):
-                ang = j * 1.047 + s * (1.3 + 0.4 * j) + q * 0.16 * math.sin(s * 2 + j)
-                rr = (40 + q * 30) * g
-                x = W / 2 + rr * math.cos(ang)
-                y = H * 0.62 + rr * math.sin(ang) * 0.8
-                add_glow(acc, x, y, 10 + q * 1.5, GOLD, 0.55 * g * (1 - q / 16))
-        add_glow(acc, W / 2, H * 0.62, 90 * g + 10, GOLD, 0.9 * g * (0.8 + 0.2 * math.sin(s * 17)))
-        out += acc
-    if s < 31.58 or s >= SPLICE_SONG:
-        out *= 0.8
-    acc = np.zeros_like(out)
-    # the light
-    if s < 15.58:
-        h = to_out(track(HAND_A, 0), c, z)
-        u = ease((s - 13.6) / 1.98)
-        y = -80 + (h[1] + 80) * u ** 1.6
-        light(acc, h[0], y, 1.3, 1.0, s)
-        trail.append((h[0], y))
-        for i, (tx, ty) in enumerate(trail[-14:]):
-            add_glow(acc, tx, ty, 10, AMBER, 0.05 * i)
-        if s > 15.4:
-            add_glow(acc, h[0], h[1], 120, AMBER, 1.2 * (15.58 - s) / 0.18)
-    elif s < 23.58:
-        h = to_out(track(HAND_A, ct), c, z)
-        light(acc, h[0], h[1], z * 0.75, 1.0, s)
-        add_glow(acc, h[0], h[1], 260 * z, AMBER, 0.6 * math.exp(-(s - 15.58) * 3))
-    elif s < 25.58:
-        u = ramp(s, 23.58, 24.08)
-        h = track(HAND_A, min(ct, 1.75))
-        ch = track(CHEST_A, ct)
-        p = to_out((h[0] + (ch[0] - h[0]) * u, h[1] + (ch[1] - h[1]) * u), c, z)
-        light(acc, p[0], p[1], 0.75 - 0.15 * u, 1.0 - 0.3 * u, s)
-    elif s < 26.08:
-        p = to_out(track(CHEST_A, max(ct, 1.75)), c, z)
-        light(acc, p[0], p[1], 0.6, 0.7, s)
-    elif s < 39.58:
-        p = to_out(track(CHEST_B, ct), c, z)
-        b = 0.7
-        if 30.08 <= s < 31.58:
-            b = 0.55 + 0.45 * math.exp(-((s - 30.08) % 0.5) * 7)
-        if s >= 31.58:
-            b = 1.0
-            trail.append(p)
-            for i, (tx, ty) in enumerate(trail[-30:]):
-                add_glow(acc, tx, ty, 9 * z, AMBER, 0.04 * i)
-        light(acc, p[0], p[1], 0.6 * z ** 0.5, b, s)
-    elif s < 41.58:
-        p = to_out((200, 425), c, z)
-        g = math.exp(-(s - 39.58) * 1.5)
-        add_glow(acc, p[0], p[1], 120, GOLD, 1.4 * g)
-        for rr in range(3):
-            R = (s - 39.58 - rr * 0.35) * 260
-            if R > 0:
-                yy, xx = np.mgrid[0:H, 0:W].astype(np.float32)
-                d = np.sqrt((xx - p[0]) ** 2 + ((yy - p[1]) * 1.15) ** 2)
-                acc += (np.exp(-((d - R) ** 2) / (2 * 10 ** 2)) * 0.5 * max(0, 1 - R / 700))[..., None] * GOLD
-    elif 55.58 <= s < 64.0:
-        p = to_out(track(UP_B, ct), c, z)
-        g = ramp(s, 56.5, 60.5)
-        add_glow(acc, p[0], p[1], 140 + 200 * g, GOLD, 0.3 + 0.15 * g * (1 - ramp(s, 59.58, 60.5)))
-        if s >= 59.58:                                       # bigger than I gave it: gold breaks in round the edges
-            yy, xx = np.mgrid[0:H, 0:W].astype(np.float32)
-            r = np.sqrt(((xx - W / 2) / W) ** 2 + ((yy - H / 2) / H) ** 2)
-            hit = math.exp(-((s - 59.58) % 0.5) * 5) * (1 - ramp(s, 62.8, 63.3))
-            acc += (np.clip(r * 2.2 - 0.6, 0, 1) * (0.12 + 0.25 * hit))[..., None] * GOLD
-    elif s >= SPLICE_SONG:
-        u = ramp(s, 129.0, 131.6)
-        x, y = W / 2, H + 60 - (H + 60 - H * 0.72) * u
-        light(acc, x, y, 1.4, 0.6 + 0.6 * ramp(s, 131.6, 133.2), s)
-    # flashes in the stands
-    if 19.58 <= s < 23.58:
-        k8 = int((s - 19.58) / 0.25)
-        ph = (s - 19.58) % 0.25
-        r2 = np.random.default_rng(1000 + k8)
-        for _ in range(5):
-            side = r2.integers(0, 3)
-            if side == 0:
-                q = (r2.uniform(10, 390), r2.uniform(4, 34))
-            elif side == 1:
-                q = (r2.uniform(0, 30), r2.uniform(620, 720))
-            else:
-                q = (r2.uniform(370, 400), r2.uniform(620, 720))
-            qx, qy = to_out(q, c, z)
-            amp = math.exp(-ph * 22) * r2.uniform(0.6, 1.2)
-            add_glow(acc, qx, qy, 4, np.array([255, 255, 255], np.float32), 3.0 * amp)
-            add_glow(acc, qx, qy, 18, np.array([220, 230, 255], np.float32), 0.8 * amp)
+            X, Y = (px - c[0]) * BASEZ * z + W / 2, (py - c[1]) * BASEZ * z + H / 2
+            if who == "it":
+                add_glow(acc, X, Y, 60 + 120 * age, GOLD, 1.3 * math.exp(-age * 2.2))
+                r2 = np.random.default_rng(42)
+                for j in range(70):
+                    ang = r2.uniform(0, 6.28)
+                    v = r2.uniform(150, 520)
+                    dx = math.cos(ang) * v * age
+                    dy = math.sin(ang) * v * age * 0.8 + 260 * age * age
+                    add_glow(acc, X + dx, Y + dy, 3 + 2 * r2.random(), [255, 220, 140], 1.6 * math.exp(-age * 1.6))
+                for rr in range(3):
+                    R = (age - rr * 0.3) * 300
+                    if R > 0:
+                        yy, xx = np.mgrid[0:H, 0:W].astype(np.float32)
+                        d = np.sqrt((xx - X) ** 2 + ((yy - Y) * 1.2) ** 2)
+                        acc += (np.exp(-((d - R) ** 2) / (2 * 6 ** 2)) * 0.6 * max(0, 1 - R / 800))[..., None] * GOLD
     out = out + acc
-    # count it to three, and again
-    for i, (bt, x, y) in enumerate([(24.08, 120, 860), (24.58, 560, 980), (25.08, 330, 1130),
-                                    (26.08, 590, 820), (26.58, 140, 1010), (27.08, 470, 1150)]):
-        numeral(out, str(i % 3 + 1), x, y, s - bt)
-    if 31.58 <= s < 31.8:                                    # the chorus hits as he leaves the board
-        out += 90 * (1 - (s - 31.58) / 0.22)
-    if 59.58 <= s < 63.0:
-        sh = math.exp(-((s - 59.58) % 0.5) * 9) * 14
-        out = np.roll(out, (int(rng.normal(0, sh)), int(rng.normal(0, sh))), (0, 1))
-    if s >= 63.0 and s < 64:
-        out *= 1.0
+    if 41.58 <= s < 43.58:                                   # under: a rush of bubbles wipes up the frame
+        u = ramp(s, 41.7, 43.5)
+        deep = np.zeros_like(out) + np.array([10, 50, 80], np.float32)
+        out = out * (1 - u) + deep * u
+        acc2 = np.zeros_like(out)
+        for j in range(160):
+            bx = (j * 97.3) % W
+            sp = 900 + (j * 37) % 700
+            y = H + 60 - (s - 41.58) * sp + (j * 53) % 400
+            add_glow(acc2, bx + 10 * math.sin(s * 8 + j), y, 3 + (j % 5), [220, 245, 255], 0.9)
+        out += acc2 * (1 - ramp(s, 43.0, 43.58))
+    if 43.58 <= s < 55.58:                                   # motes in the water
+        acc3 = np.zeros_like(out)
+        for (mx, my, sz, ph, sp) in MOTES:
+            y = (my - (s * sp)) % SH
+            X, Y = (mx + 6 * math.sin(s + ph) - c[0]) * BASEZ + W / 2, (y - c[1]) * BASEZ + H / 2
+            add_glow(acc3, X, Y, sz, [200, 235, 255], 0.35)
+        out += acc3
+    if 55.3 <= s < 55.58:                                   # it rushes up out of the deep
+        out += 255 * ramp(s, 55.3, 55.58)
+    if 55.58 <= s < 56.0:
+        out += 255 * (1 - ramp(s, 55.58, 56.0))
+    if 31.58 <= s < 31.8:
+        out += 70 * (1 - (s - 31.58) / 0.22)
+    if 59.58 <= s < 63.0:                                    # louder than me: the hits shake it, a ring goes out
+        hit = math.exp(-((s - 59.58) % 0.5) * 9)
+        R = ((s - 59.58) % 0.5) * 1800
+        yy, xx = np.mgrid[0:H, 0:W].astype(np.float32)
+        d = np.sqrt((xx - W / 2) ** 2 + (yy - H * 0.45) ** 2)
+        out += (np.exp(-((d - R) ** 2) / (2 * 14 ** 2)) * 0.5 * hit)[..., None] * GOLD
+        out = np.roll(out, (int(rng.normal(0, 12 * hit)), int(rng.normal(0, 12 * hit))), (0, 1))
     out += rng.normal(0, 1.4, (H, W, 1))
     return np.clip(out, 0, 255).astype(np.uint8)
 
@@ -409,7 +476,6 @@ def main():
         out = subprocess.Popen([F, "-loglevel", "error", "-y", "-f", "rawvideo", "-pix_fmt", "rgb24", "-s", f"{W}x{H}", "-r",
                                 str(FPS), "-i", "-", "-c:v", "libx264", "-crf", "16", "-preset", "slow", "-pix_fmt", "yuv420p",
                                 os.environ.get("VOUT", "out/drawn/one-jump.mp4")], stdin=subprocess.PIPE)
-    trail = []
     for fr in range(int(round(DUR * FPS))):
         t = fr / FPS
         s = song_time(t)
@@ -417,9 +483,7 @@ def main():
             continue
         if PART and not (PART[0] <= t < PART[1]):
             continue
-        if PART and len(trail) == 0 and t > 0:
-            trail = []
-        img = frame(clips, t, trail)
+        img = frame(clips, t)
         if TEST:
             Image.fromarray(img).save(f"{os.environ['TESTDIR']}/j{s:06.2f}.png")
             print("test", round(s, 2), flush=True)
