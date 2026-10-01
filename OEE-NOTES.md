@@ -25093,3 +25093,24 @@ dry even if evolution keeps finding new programs. The unbounded level is the who
 Bedau and Packard measured. `lab/core-geno.js` judges real program genotypes against shadow ones (same hash, same
 family tree). Running now: the same three worlds (genotype tracking draws nothing, so the trajectories are identical),
 chained.
+
+**#285c — the genotype bar from the shadow genealogy was MISCALIBRATED, and a neutral population replaces it.**
+The first genotype analysis judged real program genotypes against the shadow programs (same family tree, never executed).
+On 600,000 ticks it reported adaptive genotypes "rising": seed 3 had 170 ever, with 13, 27, 20, 20, 16, 32, 41 new per
+window. **That came from the bar, not from evolution.** Seed 3's shadow bar (the share of the commonest shadow genotype)
+fell from 0.020 to 0.002 and stayed there, and the "new" counts climbed as it fell. Seeds 1 and 2 had a bar of
+0.004-0.027 and 27-28 genotypes ever. Why the shadow cannot set a genotype bar:
+- **Real genotypes are held whole by purifying selection.** Most mutants of a working program die, so the commonest real
+  genotype stays common.
+- **Shadow genotypes are not.** Every shadow mutation survives (the shadow is never executed). With insertion and
+  deletion balanced, shadow lengths drift away from the real ones, and the shadow splinters into thousands of rare
+  genotypes. Its commonest genotype shrinks.
+- So **a real genotype beats the bar for being kept whole, not for spreading** — purifying selection alone clears it.
+  The shadow is still valid for ops and op pairs (#285, #285b), where splintering does not change which components
+  are carried.
+**The replacement is Bedau and Packard's own neutral model: a NEUTRAL SHADOW POPULATION** (`World.neutralStep`, its
+own RNG, so the real world is unchanged). Each tick it gets exactly as many births, deaths and mutant births as the
+real world, but parents and victims are picked at random. Its genotypes are subject to the same supply of change and
+the same population size, with no selection. Checked: neutral size equals real size every sample, and a save and
+resume is exact. `lab/core-geno.js` now uses it as the bar (`BAR=shadow` shows the old one). Running: the same three
+worlds, chained.
