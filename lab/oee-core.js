@@ -123,6 +123,19 @@ const DEF={
   //   NICHE_BSCHED (selection null): a child's builder bit is drawn at random with the probability given per NICHE_EVERY
   //     ticks (a matched run's builder share), not inherited.
   NICHE_GC:0, NICHE_GC_EVERY:1000, NICHE_BLD:0, NICHE_B0:0.5, NICHE_BMUT:0.002, NICHE_UP:0, NICHE_UDECAY:0.0003, NICHE_UMIN:0.05, NICHE_UCOST:0.05, NICHE_UREN:0.7, NICHE_BSCHED:null,
+  // SKIN (lab/PREREG-skin.md), needs NICHE, each off by default (v3 behaviour when all are off): a MEMBRANE. Structures are
+  //   no longer in cells but INSIDE organisms: what an organism founds, extends, builds from a recipe or maintains is its own
+  //   internal stock (one compound, as one cell held one in v1-v3), carried when it moves and lost when it dies. Its
+  //   catalysis (CATAL, the METAB bonus, channel income) pays only its owner; nobody within NICHE_R gets anything, and
+  //   COPY can only read the organism's own stock. NICHE_RAND_SCHED under SKIN puts its events into random LIVING organisms.
+  //   NICHE_SKIN_INH 1: the stock is INHERITED, split at division (child and parent each keep half the amount, the same
+  //     compound and condition); 0: reset at birth (the child starts with no stock; the recipe slot is still inherited).
+  //   NICHE_SKIN_REGROW 1: upkeep (NICHE_UP) also tops the amount back up to NICHE_BX, so a maintained stock does not dilute away.
+  //   NICHE_PERM 1: heritable PERMEABILITY p in [0,1] per organism (start NICHE_P0, or uniform when < 0; at birth, with prob
+  //     NICHE_PMUT, p moves by a uniform step in +-NICHE_PSTEP, clamped; own RNG). An organism with no stock of its own may
+  //     CATAL on the nearest stock-holding organism within NICHE_R at yield x p(user) x p(owner) (it leaks out of the owner
+  //     and is absorbed by the user), and COPY its recipe with probability p(user) x p(owner). Off: everyone sealed (p = 0).
+  NICHE_SKIN:0, NICHE_SKIN_INH:1, NICHE_SKIN_REGROW:0, NICHE_PERM:0, NICHE_P0:-1, NICHE_PMUT:0.05, NICHE_PSTEP:0.1,
   // TASKS (#290), exclusive of CHEM, off by default: Avida's logic tasks. Each organism is born with three random 32-bit
   // inputs (redrawn until all eight truth-table rows occur), so an output names one three-input boolean function (256 of
   // them) only if its bits agree wherever a row repeats - every row is made to occur at least twice, so a constant cannot. (With 8-bit inputs every row
@@ -168,7 +181,7 @@ class World{
     else if(P.CHEM){ const S=P.CHEM_S, cr=mulberry32((((P.CHEM_SEED!==undefined?P.CHEM_SEED:seed)>>>0)||1)^0x00c4e3c4); this.mol=new Float32Array(C*S); this.molTmp=new Float32Array(C); this.eMol=new Float32Array(S); this.prod=new Uint16Array(S*4);   // its own RNG: the main stream (ancestors, patches) is the same as without CHEM
       this.eMol[0]=1; for(let q=1;q<S;q++)this.eMol[q]=cr(); for(let q=0;q<S;q++)for(let j=0;j<4;j++){ let t, g=0; do{ t=(cr()*S)|0; g++; }while(g<100000&&(t===q||Math.abs(this.eMol[t]-(this.eMol[q]-P.CHEM_STEP))>=P.CHEM_SPREAD)); this.prod[q*4+j]=t; } this.ev.metab=0; this.ev.metabN=0; this.rxE=new Float64Array(S*4); }   // rxE: energy each reaction captured since the last sample   // products lie near the substrate, mostly a little lower
     if(P.NICHE&&P.CHEM&&!P.CHEM_BIG){ this.sId=new Int32Array(C).fill(-1); this.sAmt=new Float32Array(C); this.sE=new Float32Array(C); this.sD=new Int32Array(C);
-      this.cB=[]; this.cD=[]; this.cE=[]; this.cS=[]; this.cT=[]; this.cK=[]; this.nband=null; if(P.NICHE_COPY)this.rec=new Int32Array(C).fill(-1); if(P.NICHE_OPEN)this.och=new Map(); this.creg=new Map(); this.nfx=new Map(); this.nv=this.nvZero(); this.nrr=mulberry32(((seed>>>0)||1)^0x2e5c2e5c); if(P.NICHE_GC){ this.cHa=[]; this.cHb=[]; this.cFree=[]; this.cDead=[]; this.cLive=0; } this.cMade=0; if(P.NICHE_BLD){ this.bld=new Uint8Array(C); this.brr=mulberry32(((seed>>>0)||1)^0x6b1d0001); this.bBirth=0; this.fBirth=0; } if(P.NICHE_UP)this.sCond=new Float32Array(C);
+      this.cB=[]; this.cD=[]; this.cE=[]; this.cS=[]; this.cT=[]; this.cK=[]; this.nband=null; if(P.NICHE_COPY)this.rec=new Int32Array(C).fill(-1); if(P.NICHE_OPEN)this.och=new Map(); this.creg=new Map(); this.nfx=new Map(); this.nv=this.nvZero(); this.nrr=mulberry32(((seed>>>0)||1)^0x2e5c2e5c); if(P.NICHE_GC){ this.cHa=[]; this.cHb=[]; this.cFree=[]; this.cDead=[]; this.cLive=0; } this.cMade=0; if(P.NICHE_BLD){ this.bld=new Uint8Array(C); this.brr=mulberry32(((seed>>>0)||1)^0x6b1d0001); this.bBirth=0; this.fBirth=0; } if(P.NICHE_UP)this.sCond=new Float32Array(C); if(P.NICHE_SKIN){ this.skin=1; this.krr=mulberry32(((seed>>>0)||1)^0x5c1a0001); if(P.NICHE_PERM)this.perm=new Float32Array(C); }
       this.nsalt=h32((((P.CHEM_SEED!==undefined?P.CHEM_SEED:seed)>>>0)||1)^0x51c4e000); }
     if(P.VIRUS){ this.vc=new Int32Array(P.V_MAX); this.vk=P.CHEM_BIG?new Uint32Array(P.V_MAX):new Uint16Array(P.V_MAX); this.vn=0; this.vrnd=mulberry32(((seed>>>0)||1)^0x7e577e57); this.ev.lysed=0; this.ev.infections=0; }
     this.updateCap(); for(let c=0;c<C;c++)this.light[c]=this.cap[c];
@@ -183,7 +196,7 @@ class World{
     for(let y=0;y<P.H;y++)for(let x=0;x<P.W;x++){ let v=P.L_MIN;
       for(const q of this.patch){ let dx=Math.abs(x-q.x); dx=Math.min(dx,P.W-dx); let dy=Math.abs(y-q.y); dy=Math.min(dy,P.H-dy); v+=P.L_PEAK*Math.exp(-(dx*dx+dy*dy)/r2); }
       this.cap[y*P.W+x]=v; } }
-  place(c,prog,E,tag,tmpl,gen,sh){ const P=this.p, o=c*P.MAXLEN*2; if(P.TASKS)this.taskBirth(c); if(this.bld)this.bld[c]=this.brr()<P.NICHE_B0?1:0; sh=sh||prog; this.slen[c]=sh.length; for(let i=0;i<sh.length;i++){ this.sprog[o+i*2]=sh[i][0]; this.sprog[o+i*2+1]=sh[i][1]; } this.alive[c]=1; this.E[c]=E; this.age[c]=0; this.pc[c]=0; this.face[c]=(this.rnd()*8)|0;
+  place(c,prog,E,tag,tmpl,gen,sh){ const P=this.p, o=c*P.MAXLEN*2; if(P.TASKS)this.taskBirth(c); if(this.bld)this.bld[c]=this.brr()<P.NICHE_B0?1:0; if(this.perm)this.perm[c]=P.NICHE_P0<0?this.krr():P.NICHE_P0; if(this.skin)this.sId[c]=-1; sh=sh||prog; this.slen[c]=sh.length; for(let i=0;i<sh.length;i++){ this.sprog[o+i*2]=sh[i][0]; this.sprog[o+i*2+1]=sh[i][1]; } this.alive[c]=1; this.E[c]=E; this.age[c]=0; this.pc[c]=0; this.face[c]=(this.rnd()*8)|0;
     this.R.fill(0,c*4,c*4+4); this.len[c]=prog.length; for(let i=0;i<prog.length;i++){ this.prog[o+i*2]=prog[i][0]; this.prog[o+i*2+1]=prog[i][1]; }
     this.tag[c]=tag; this.tmpl[c]=tmpl; this.gen[c]=gen; this.stamp[c]=this.tick; }
   taskBirth(c){ const r=this.rnd, cnt=new Uint8Array(8); let a,b,d, ok;   // redrawn until every truth-table row occurs at least twice, so a constant always meets a repeat it disagrees with
@@ -194,8 +207,8 @@ class World{
     if(T===0||T===255||T===0xF0||T===0xCC||T===0xAA)return; if(this.p.TASK_MAX&&this.tcount(c)>=this.p.TASK_MAX)return; const w=c*8+(T>>5), bit=1<<(T&31); if(this.tdone[w]&bit)return; this.tdone[w]|=bit;
     const g=this.tres[T]*this.p.TASK_F; this.tres[T]-=g; this.E[c]+=g; this.tE[T]+=g; this.tN[T]++; }
   tcount(c){ let n=0; for(let k=0;k<8;k++){ let x=this.tdone[c*8+k]; while(x){ x&=x-1; n++; } } return n; }
-  kill(c,why){ const P=this.p; if(this.rec)this.rec[c]=-1; this.alive[c]=0; this.tickDeaths++; this.corpse[c]+=Math.max(0,this.E[c])+P.BODY; this.E[c]=0; this.ev[why]++; }
-  moveOrg(a,b){ const P=this.p, L=P.MAXLEN*2; if(this.rec){ this.rec[b]=this.rec[a]; this.rec[a]=-1; } if(this.bld){ this.bld[b]=this.bld[a]; this.bld[a]=0; } this.alive[b]=1; this.alive[a]=0; this.E[b]=this.E[a]; this.age[b]=this.age[a]; this.pc[b]=this.pc[a]; this.face[b]=this.face[a];
+  kill(c,why){ const P=this.p; if(this.rec)this.rec[c]=-1; if(this.skin){ this.sId[c]=-1; this.sAmt[c]=0; } this.alive[c]=0; this.tickDeaths++; this.corpse[c]+=Math.max(0,this.E[c])+P.BODY; this.E[c]=0; this.ev[why]++; }
+  moveOrg(a,b){ const P=this.p, L=P.MAXLEN*2; if(this.rec){ this.rec[b]=this.rec[a]; this.rec[a]=-1; } if(this.bld){ this.bld[b]=this.bld[a]; this.bld[a]=0; } if(this.skin){ this.sId[b]=this.sId[a]; this.sAmt[b]=this.sAmt[a]; this.sE[b]=this.sE[a]; this.sD[b]=this.sD[a]; if(this.sCond)this.sCond[b]=this.sCond[a]; this.sId[a]=-1; this.sAmt[a]=0; if(this.perm)this.perm[b]=this.perm[a]; } this.alive[b]=1; this.alive[a]=0; this.E[b]=this.E[a]; this.age[b]=this.age[a]; this.pc[b]=this.pc[a]; this.face[b]=this.face[a];
     for(let k=0;k<4;k++)this.R[b*4+k]=this.R[a*4+k]; this.len[b]=this.len[a]; this.prog.copyWithin(b*L,a*L,a*L+L); this.sprog.copyWithin(b*L,a*L,a*L+L); this.slen[b]=this.slen[a];
     this.tag[b]=this.tag[a]; this.tmpl[b]=this.tmpl[a]; this.gen[b]=this.gen[a]; this.stamp[b]=this.stamp[a]; this.E[a]=0;
     if(this.p.TASKS){ for(let k=0;k<3;k++)this.tin[b*3+k]=this.tin[a*3+k]; this.tic[b]=this.tic[a]; for(let k=0;k<8;k++)this.tdone[b*8+k]=this.tdone[a*8+k]; } }
@@ -212,7 +225,10 @@ class World{
     let tg=this.tag[c], tm=this.tmpl[c]; for(let b=0;b<16;b++){ if(r()<P.MU_TAG)tg^=1<<b; if(r()<P.MU_TAG)tm^=1<<b; }
     const half=(this.E[c]-P.BODY)/2; this.E[c]=half;
     let changed=src.length!==n; if(!changed) for(let i=0;i<n;i++){ if(src[i][0]!==this.prog[o+i*2]||src[i][1]!==this.prog[o+i*2+1]){ changed=true; break; } } this.tickBirths.push(changed?1:0); this.tickBirthsF.push(changed&&fnHashList(src,this.n0)!==fnHash(this.prog,o,n,this.n0)?1:0);
-    this.place(t,src,half,tg,tm,this.gen[c]+1,ssrc); if(this.rec)this.rec[t]=this.rec[c]; if(this.bld)this.inheritBld(c,t); this.ev.births++; return true; }
+    this.place(t,src,half,tg,tm,this.gen[c]+1,ssrc); if(this.rec)this.rec[t]=this.rec[c]; if(this.bld)this.inheritBld(c,t); if(this.skin)this.skinBirth(c,t); this.ev.births++; return true; }
+  skinBirth(c,t){ const P=this.p; if(this.perm){ let q=this.perm[c]; if(this.krr()<P.NICHE_PMUT)q=Math.min(1,Math.max(0,q+(2*this.krr()-1)*P.NICHE_PSTEP)); this.perm[t]=q; }
+    if(P.NICHE_SKIN_INH&&this.sId[c]>=0){ const h=this.sAmt[c]/2; this.sAmt[c]=h; this.sId[t]=this.sId[c]; this.sAmt[t]=h; this.sE[t]=this.sE[c]; this.sD[t]=this.sD[c]; if(this.sCond)this.sCond[t]=this.sCond[c]; this.nv.inh++;
+      if(h<1e-4){ this.sId[c]=-1; this.sAmt[c]=0; this.sId[t]=-1; this.sAmt[t]=0; } } }
   inheritBld(c,t){ const P=this.p, r=this.brr; let b=this.bld[c]; if(P.NICHE_BSCHED){ const i=((this.tick-1)/P.NICHE_EVERY)|0, q=P.NICHE_BSCHED[Math.min(i,P.NICHE_BSCHED.length-1)]; b=r()<q?1:0; } else if(r()<P.NICHE_BMUT)b^=1; this.bld[t]=b; if(this.bld[c])this.bBirth++; else this.fBirth++; }
   matchP(a,b){ let x=(this.tmpl[a]^this.tag[b])&0xffff, m=0; while(x){ x&=x-1; m++; } const s=(16-m)/16; return Math.pow(s,this.p.ATT_POW); }
   kinSim(a,b){ let x=(this.tag[a]^this.tag[b])&0xffff, m=0; while(x){ x&=x-1; m++; } return (16-m)/16; }
@@ -331,16 +347,18 @@ class World{
     if(this.sId[c]<0){ if(P.NICHE===3)return;
       if(this.rec&&this.rec[c]>S){ const id=this.rec[c]; if(this.E[c]<P.NICHE_BCOST)return; this.E[c]-=P.NICHE_BCOST; const i=id-S-1; this.sId[c]=id; this.sE[c]=this.cE[i]; this.sAmt[c]=P.NICHE_BX; this.sD[c]=this.cD[i]; if(this.sCond)this.sCond[c]=1; this.nv.recB++; return; }
       if(P.NICHE_XCOST&&this.E[c]<P.NICHE_XCOST)return; if(this.nFound(c,a,bb&(S-1),true)){ if(P.NICHE_XCOST)this.E[c]-=P.NICHE_XCOST; this.nv.found++; if(this.rec)this.rec[c]=this.sId[c]; } return; }
-    if(this.sCond&&this.sCond[c]<P.NICHE_UREN&&this.E[c]>=P.NICHE_UCOST){ this.E[c]-=P.NICHE_UCOST; this.sCond[c]=1; this.nv.maint++; }   // v3 upkeep
+    if(this.sCond&&this.sCond[c]<P.NICHE_UREN&&this.E[c]>=P.NICHE_UCOST){ this.E[c]-=P.NICHE_UCOST; this.sCond[c]=1; if(this.skin&&P.NICHE_SKIN_REGROW&&this.sAmt[c]<P.NICHE_BX)this.sAmt[c]=P.NICHE_BX; this.nv.maint++; }   // v3 upkeep
     const B=this.sId[c], x=this.sAmt[c]; if(m[a*C+c]*P.NICHE_F<x)return;   // extending coats the whole structure with species a
     if(P.NICHE_XCOST){ if(this.E[c]<P.NICHE_XCOST)return; } if(!this.nCan(B,a))return;
     const d=this.nDelta(a,B), eN=this.eMol[a]+this.sE[c]-d; if(!(d>0)||eN<0)return; m[a*C+c]-=x;
     if(P.NICHE_XCOST)this.E[c]-=P.NICHE_XCOST; this.nPut(c,B,eN,x,this.sD[c]); this.nPay(c,d*x,70000+B*256+a); this.nv.ext++; if(this.rec)this.rec[c]=this.sId[c]; }
-  nvZero(){ return {inc:0,n:0,found:0,ext:0,rfound:0,cat:0,catN:0,recB:0,copy:0,open:0,rext:0,rcopy:0,capHit:0,maint:0,rmaint:0,decayed:0,gcFreed:0}; }
-  nNear(c){ const P=this.p, S=P.CHEM_S, R=P.NICHE_R; if(this.sId[c]>S)return c; if(!R)return -1; const W=P.W, H=P.H, x0=c%W, y0=(c/W)|0;
+  nvZero(){ return {inc:0,n:0,found:0,ext:0,rfound:0,cat:0,catN:0,recB:0,copy:0,open:0,rext:0,rcopy:0,capHit:0,maint:0,rmaint:0,decayed:0,gcFreed:0,inh:0,own:0,leak:0,lcopy:0}; }
+  nNear(c){ const P=this.p, S=P.CHEM_S, R=P.NICHE_R; if(this.sId[c]>S)return c; if(this.skin)return this.perm&&R?this.nLeak(c):-1; if(!R)return -1; const W=P.W, H=P.H, x0=c%W, y0=(c/W)|0;
     for(let r=1;r<=R;r++) for(let dy=-r;dy<=r;dy++) for(let dx=-r;dx<=r;dx++){ if(Math.max(Math.abs(dx),Math.abs(dy))!==r)continue; const q=((y0+dy+H)%H)*W+((x0+dx+W)%W); if(this.sId[q]>S)return q; } return -1; }
-  ncopy(c){ const q=this.nNear(c); if(q<0)return; this.rec[c]=this.sId[q]; this.nv.copy++; }
-  catal(c){ const P=this.p, S=P.CHEM_S, C=this.C, sc=P.NICHE_R?this.nNear(c):c; if(sc<0)return; const id=this.sId[sc]; if(id<=S)return; const i=id-S-1, q=this.cS[i], t=this.cT[i], u=this.sCond?this.sCond[sc]:1;
+  nLeak(c){ const P=this.p, S=P.CHEM_S, R=P.NICHE_R, W=P.W, H=P.H, x0=c%W, y0=(c/W)|0; this.nLk=0; if(!(this.perm[c]>0))return -1;   // SKIN + PERM: the nearest stock-holding organism within R; yield factor p(user) x p(owner)
+    for(let r=1;r<=R;r++) for(let dy=-r;dy<=r;dy++) for(let dx=-r;dx<=r;dx++){ if(Math.max(Math.abs(dx),Math.abs(dy))!==r)continue; const q=((y0+dy+H)%H)*W+((x0+dx+W)%W); if(this.sId[q]>S&&this.alive[q]){ this.nLk=this.perm[c]*this.perm[q]; return this.nLk>0?q:-1; } } return -1; }
+  ncopy(c){ const q=this.nNear(c); if(q<0)return; if(this.skin&&q!==c){ if(!(this.krr()<this.nLk))return; this.nv.lcopy++; } this.rec[c]=this.sId[q]; this.nv.copy++; }
+  catal(c){ const P=this.p, S=P.CHEM_S, C=this.C, sc=P.NICHE_R?this.nNear(c):c; if(sc<0)return; const id=this.sId[sc]; if(id<=S)return; const i=id-S-1, q=this.cS[i], t=this.cT[i], u=(this.sCond?this.sCond[sc]:1)*(this.skin&&sc!==c?this.nLk:1); if(this.skin){ if(sc===c)this.nv.own++; else this.nv.leak++; }
     if(this.och&&this.cK[i]>=0){ const k=this.cK[i]; let o=this.och.get(k); if(!o){ o={v:P.NICHE_OPEN_CAP,t:this.tick}; this.och.set(k,o); }
       o.v=P.NICHE_OPEN_CAP-(P.NICHE_OPEN_CAP-o.v)*Math.pow(1-P.NICHE_OPEN_RATE,this.tick-o.t); o.t=this.tick; const g=o.v*P.NICHE_OPEN_F*u; o.v-=g; this.E[c]+=g; this.nv.open+=g;
       const key=3000000+k; this.nfx.set(key,(this.nfx.get(key)||0)+g); if(!this.cUse)this.cUse=new Map(); this.cUse.set(id,(this.cUse.get(id)||0)+g); }
@@ -349,11 +367,11 @@ class World{
     const key=2000000+q*256+t; this.nfx.set(key,(this.nfx.get(key)||0)+x*d); if(!this.cUse)this.cUse=new Map(); this.cUse.set(id,(this.cUse.get(id)||0)+x*d); }
   nicheRand(){ const P=this.p, E=P.NICHE_EVERY, i=((this.tick-1)/E)|0, sch=P.NICHE_RAND_SCHED[i]||[0,0,0], j=(this.tick-1)%E, S=P.CHEM_S, C=this.C, r=this.nrr, m=this.mol;
     const due=n=>Math.floor(n*(j+1)/E)-Math.floor(n*j/E), pres=c=>{ const L=[]; for(let q=0;q<S;q++) if(m[q*C+c]>=2e-3)L.push(q); return L; };
-    for(let k=0,n=due(sch[0]);k<n;k++) for(let t=0;t<64;t++){ const c=(r()*C)|0; if(this.sId[c]>=0)continue; const L=pres(c); if(!L.length)continue; const a=L[(r()*L.length)|0], b=L[(r()*L.length)|0]; this.nA_=a; if(this.nFound(c,a,b,false)){ this.nv.rfound++; break; } }
+    for(let k=0,n=due(sch[0]);k<n;k++) for(let t=0;t<64;t++){ const c=(r()*C)|0; if(this.sId[c]>=0||(this.skin&&!this.alive[c]))continue; const L=pres(c); if(!L.length)continue; const a=L[(r()*L.length)|0], b=L[(r()*L.length)|0]; this.nA_=a; if(this.nFound(c,a,b,false)){ this.nv.rfound++; break; } }
     for(let k=0,n=due(sch[1]);k<n;k++) for(let t=0;t<64;t++){ const c=(r()*C)|0; if(this.sId[c]<=S)continue; const L=pres(c); if(!L.length)continue; const a=L[(r()*L.length)|0], B=this.sId[c], x=this.sAmt[c]; if(m[a*C+c]*P.NICHE_F<x)continue;
       const d=this.nDelta(a,B), eN=this.eMol[a]+this.sE[c]-d; if(!(d>0)||eN<0||!this.nCan(B,a))continue; m[a*C+c]-=x; this.nA_=a; this.nPut(c,B,eN,x,this.sD[c]); this.nv.rext++; break; }
     for(let k=0,n=due(sch[2]);k<n;k++){ let src=-1; for(let t=0;t<64&&src<0;t++){ const q=(r()*C)|0; if(this.sId[q]>S)src=q; } if(src<0)break;
-      for(let t=0;t<64;t++){ const c=(r()*C)|0; if(this.sId[c]>=0)continue; const id=this.sId[src], ii=id-S-1; this.sId[c]=id; this.sE[c]=this.cE[ii]; this.sAmt[c]=P.NICHE_BX; this.sD[c]=this.cD[ii]; if(this.sCond)this.sCond[c]=1; this.nv.rcopy++; break; } }
+      for(let t=0;t<64;t++){ const c=(r()*C)|0; if(this.sId[c]>=0||(this.skin&&!this.alive[c]))continue; const id=this.sId[src], ii=id-S-1; this.sId[c]=id; this.sE[c]=this.cE[ii]; this.sAmt[c]=P.NICHE_BX; this.sD[c]=this.cD[ii]; if(this.sCond)this.sCond[c]=1; this.nv.rcopy++; break; } }
     if(this.sCond) for(let k=0,n=due(sch[3]||0);k<n;k++) for(let t=0;t<64;t++){ const c=(r()*C)|0; if(this.sId[c]<=S)continue; this.sCond[c]=1; this.nv.rmaint++; break; } }
   nicheRandomFound(){ const P=this.p, E=P.NICHE_EVERY, i=((this.tick-1)/E)|0, n=P.NICHE_FOUND_SCHED[i]||0, j=(this.tick-1)%E, S=P.CHEM_S, C=this.C, r=this.nrr;
     const due=Math.floor(n*(j+1)/E)-Math.floor(n*j/E);
@@ -418,6 +436,8 @@ class World{
           let uc=0, uN=0; if(this.sCond) for(let c=0;c<this.C;c++) if(this.sId[c]>=0){ uc+=this.sCond[c]; uN++; }
           const o={compoundsLive:this.cHa?this.cLive:this.cE.length,compoundsMade:this.cMade,gcFreed:this.nv.gcFreed,maint:this.nv.maint,rmaint:this.nv.rmaint,decayed:this.nv.decayed,condMean:uN?+(uc/uN).toFixed(3):0};
           if(this.bld){ o.builderShare=n?+(nb/n).toFixed(4):0; o.activeBuilderShare=n?+(ab/n).toFixed(4):0; o.bBirth=this.bBirth; o.fBirth=this.fBirth; o.bE=nb?+(eb/nb).toFixed(2):0; o.fE=n-nb?+(ef/(n-nb)).toFixed(2):0; this.bBirth=0; this.fBirth=0; }
+          if(this.skin){ let ns=0, ps=0, p0=0, p1=0; for(const c of liv){ if(this.sId[c]>=0)ns++; if(this.perm){ const q=this.perm[c]; ps+=q; if(q<0.1)p0++; if(q>0.5)p1++; } }
+            o.skin={stock:n?+(ns/n).toFixed(4):0,inh:this.nv.inh,own:this.nv.own,leak:this.nv.leak,lcopy:this.nv.lcopy,...(this.perm?{pMean:n?+(ps/n).toFixed(4):0,pLow:n?+(p0/n).toFixed(4):0,pHigh:n?+(p1/n).toFixed(4):0}:{})}; }
           return o; })():{})};
       this.nfx.clear(); this.nv=this.nvZero(); }
     let chem=null; if(P.CHEM_BIG){ let molE=0, present=0; for(const [q,m] of this.big.layers){ let t=0; for(let c=0;c<this.C;c++)t+=m[c]; molE+=t*this.be(q); if(t>0.5)present++; }
