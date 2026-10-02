@@ -110,6 +110,19 @@ const DEF={
   //     random empty cell; extend a random structure with a random present species; place a copy of a random existing
   //     compound in a random empty cell. No energy goes to any organism.
   NICHE_R:0, NICHE_COPY:0, NICHE_BX:0.05, NICHE_BCOST:0.1, NICHE_OPEN:0, NICHE_OPEN_D:2, NICHE_OPEN_CAP:5, NICHE_OPEN_RATE:0.002, NICHE_OPEN_F:0.1, NICHE_OPEN_P:1, NICHE_XCOST:0, NICHE_CMAX:2000000, NICHE_RAND_SCHED:null,
+  // NICHE v3 (lab/PREREG-niche-v3.md), each off by default (v2 behaviour when all are off):
+  //   NICHE_GC: every NICHE_GC_EVERY ticks (one tick after a sample) compounds held by no structure, no recipe slot and no
+  //     held compound's ancestry are freed (their ids reused). Compound identity and properties (channel key, catalysis
+  //     target) then come from a hash of COMPOSITION, not creation order; sample output names compounds by that hash.
+  //     Channel pools regrown to within 1e-9 of full are dropped (re-created full on next use: same state).
+  //   NICHE_BLD: heritable BUILDER bit per organism (start share NICHE_B0, flipped with prob NICHE_BMUT per birth, own RNG).
+  //     BUILD does nothing for a non-builder (freeloaders still use structures within R).
+  //   NICHE_UP: structures have a CONDITION in [0,1] decaying by NICHE_UDECAY per tick; catalysis and channel yields are
+  //     scaled by it; below NICHE_UMIN the structure is gone. A builder that BUILDs on its own cell's structure first
+  //     MAINTAINS it if its condition is below NICHE_UREN (pays NICHE_UCOST, condition back to 1; extending also renews it), then may extend as before.
+  //   NICHE_BSCHED (selection null): a child's builder bit is drawn at random with the probability given per NICHE_EVERY
+  //     ticks (a matched run's builder share), not inherited.
+  NICHE_GC:0, NICHE_GC_EVERY:1000, NICHE_BLD:0, NICHE_B0:0.5, NICHE_BMUT:0.002, NICHE_UP:0, NICHE_UDECAY:0.0003, NICHE_UMIN:0.05, NICHE_UCOST:0.05, NICHE_UREN:0.7, NICHE_BSCHED:null,
   // TASKS (#290), exclusive of CHEM, off by default: Avida's logic tasks. Each organism is born with three random 32-bit
   // inputs (redrawn until all eight truth-table rows occur), so an output names one three-input boolean function (256 of
   // them) only if its bits agree wherever a row repeats - every row is made to occur at least twice, so a constant cannot. (With 8-bit inputs every row
@@ -155,7 +168,7 @@ class World{
     else if(P.CHEM){ const S=P.CHEM_S, cr=mulberry32((((P.CHEM_SEED!==undefined?P.CHEM_SEED:seed)>>>0)||1)^0x00c4e3c4); this.mol=new Float32Array(C*S); this.molTmp=new Float32Array(C); this.eMol=new Float32Array(S); this.prod=new Uint16Array(S*4);   // its own RNG: the main stream (ancestors, patches) is the same as without CHEM
       this.eMol[0]=1; for(let q=1;q<S;q++)this.eMol[q]=cr(); for(let q=0;q<S;q++)for(let j=0;j<4;j++){ let t, g=0; do{ t=(cr()*S)|0; g++; }while(g<100000&&(t===q||Math.abs(this.eMol[t]-(this.eMol[q]-P.CHEM_STEP))>=P.CHEM_SPREAD)); this.prod[q*4+j]=t; } this.ev.metab=0; this.ev.metabN=0; this.rxE=new Float64Array(S*4); }   // rxE: energy each reaction captured since the last sample   // products lie near the substrate, mostly a little lower
     if(P.NICHE&&P.CHEM&&!P.CHEM_BIG){ this.sId=new Int32Array(C).fill(-1); this.sAmt=new Float32Array(C); this.sE=new Float32Array(C); this.sD=new Int32Array(C);
-      this.cB=[]; this.cD=[]; this.cE=[]; this.cS=[]; this.cT=[]; this.cK=[]; this.nband=null; if(P.NICHE_COPY)this.rec=new Int32Array(C).fill(-1); if(P.NICHE_OPEN)this.och=new Map(); this.creg=new Map(); this.nfx=new Map(); this.nv=this.nvZero(); this.nrr=mulberry32(((seed>>>0)||1)^0x2e5c2e5c);
+      this.cB=[]; this.cD=[]; this.cE=[]; this.cS=[]; this.cT=[]; this.cK=[]; this.nband=null; if(P.NICHE_COPY)this.rec=new Int32Array(C).fill(-1); if(P.NICHE_OPEN)this.och=new Map(); this.creg=new Map(); this.nfx=new Map(); this.nv=this.nvZero(); this.nrr=mulberry32(((seed>>>0)||1)^0x2e5c2e5c); if(P.NICHE_GC){ this.cHa=[]; this.cHb=[]; this.cFree=[]; this.cDead=[]; this.cLive=0; } this.cMade=0; if(P.NICHE_BLD){ this.bld=new Uint8Array(C); this.brr=mulberry32(((seed>>>0)||1)^0x6b1d0001); this.bBirth=0; this.fBirth=0; } if(P.NICHE_UP)this.sCond=new Float32Array(C);
       this.nsalt=h32((((P.CHEM_SEED!==undefined?P.CHEM_SEED:seed)>>>0)||1)^0x51c4e000); }
     if(P.VIRUS){ this.vc=new Int32Array(P.V_MAX); this.vk=P.CHEM_BIG?new Uint32Array(P.V_MAX):new Uint16Array(P.V_MAX); this.vn=0; this.vrnd=mulberry32(((seed>>>0)||1)^0x7e577e57); this.ev.lysed=0; this.ev.infections=0; }
     this.updateCap(); for(let c=0;c<C;c++)this.light[c]=this.cap[c];
@@ -170,7 +183,7 @@ class World{
     for(let y=0;y<P.H;y++)for(let x=0;x<P.W;x++){ let v=P.L_MIN;
       for(const q of this.patch){ let dx=Math.abs(x-q.x); dx=Math.min(dx,P.W-dx); let dy=Math.abs(y-q.y); dy=Math.min(dy,P.H-dy); v+=P.L_PEAK*Math.exp(-(dx*dx+dy*dy)/r2); }
       this.cap[y*P.W+x]=v; } }
-  place(c,prog,E,tag,tmpl,gen,sh){ const P=this.p, o=c*P.MAXLEN*2; if(P.TASKS)this.taskBirth(c); sh=sh||prog; this.slen[c]=sh.length; for(let i=0;i<sh.length;i++){ this.sprog[o+i*2]=sh[i][0]; this.sprog[o+i*2+1]=sh[i][1]; } this.alive[c]=1; this.E[c]=E; this.age[c]=0; this.pc[c]=0; this.face[c]=(this.rnd()*8)|0;
+  place(c,prog,E,tag,tmpl,gen,sh){ const P=this.p, o=c*P.MAXLEN*2; if(P.TASKS)this.taskBirth(c); if(this.bld)this.bld[c]=this.brr()<P.NICHE_B0?1:0; sh=sh||prog; this.slen[c]=sh.length; for(let i=0;i<sh.length;i++){ this.sprog[o+i*2]=sh[i][0]; this.sprog[o+i*2+1]=sh[i][1]; } this.alive[c]=1; this.E[c]=E; this.age[c]=0; this.pc[c]=0; this.face[c]=(this.rnd()*8)|0;
     this.R.fill(0,c*4,c*4+4); this.len[c]=prog.length; for(let i=0;i<prog.length;i++){ this.prog[o+i*2]=prog[i][0]; this.prog[o+i*2+1]=prog[i][1]; }
     this.tag[c]=tag; this.tmpl[c]=tmpl; this.gen[c]=gen; this.stamp[c]=this.tick; }
   taskBirth(c){ const r=this.rnd, cnt=new Uint8Array(8); let a,b,d, ok;   // redrawn until every truth-table row occurs at least twice, so a constant always meets a repeat it disagrees with
@@ -182,7 +195,7 @@ class World{
     const g=this.tres[T]*this.p.TASK_F; this.tres[T]-=g; this.E[c]+=g; this.tE[T]+=g; this.tN[T]++; }
   tcount(c){ let n=0; for(let k=0;k<8;k++){ let x=this.tdone[c*8+k]; while(x){ x&=x-1; n++; } } return n; }
   kill(c,why){ const P=this.p; if(this.rec)this.rec[c]=-1; this.alive[c]=0; this.tickDeaths++; this.corpse[c]+=Math.max(0,this.E[c])+P.BODY; this.E[c]=0; this.ev[why]++; }
-  moveOrg(a,b){ const P=this.p, L=P.MAXLEN*2; if(this.rec){ this.rec[b]=this.rec[a]; this.rec[a]=-1; } this.alive[b]=1; this.alive[a]=0; this.E[b]=this.E[a]; this.age[b]=this.age[a]; this.pc[b]=this.pc[a]; this.face[b]=this.face[a];
+  moveOrg(a,b){ const P=this.p, L=P.MAXLEN*2; if(this.rec){ this.rec[b]=this.rec[a]; this.rec[a]=-1; } if(this.bld){ this.bld[b]=this.bld[a]; this.bld[a]=0; } this.alive[b]=1; this.alive[a]=0; this.E[b]=this.E[a]; this.age[b]=this.age[a]; this.pc[b]=this.pc[a]; this.face[b]=this.face[a];
     for(let k=0;k<4;k++)this.R[b*4+k]=this.R[a*4+k]; this.len[b]=this.len[a]; this.prog.copyWithin(b*L,a*L,a*L+L); this.sprog.copyWithin(b*L,a*L,a*L+L); this.slen[b]=this.slen[a];
     this.tag[b]=this.tag[a]; this.tmpl[b]=this.tmpl[a]; this.gen[b]=this.gen[a]; this.stamp[b]=this.stamp[a]; this.E[a]=0;
     if(this.p.TASKS){ for(let k=0;k<3;k++)this.tin[b*3+k]=this.tin[a*3+k]; this.tic[b]=this.tic[a]; for(let k=0;k<8;k++)this.tdone[b*8+k]=this.tdone[a*8+k]; } }
@@ -199,7 +212,8 @@ class World{
     let tg=this.tag[c], tm=this.tmpl[c]; for(let b=0;b<16;b++){ if(r()<P.MU_TAG)tg^=1<<b; if(r()<P.MU_TAG)tm^=1<<b; }
     const half=(this.E[c]-P.BODY)/2; this.E[c]=half;
     let changed=src.length!==n; if(!changed) for(let i=0;i<n;i++){ if(src[i][0]!==this.prog[o+i*2]||src[i][1]!==this.prog[o+i*2+1]){ changed=true; break; } } this.tickBirths.push(changed?1:0); this.tickBirthsF.push(changed&&fnHashList(src,this.n0)!==fnHash(this.prog,o,n,this.n0)?1:0);
-    this.place(t,src,half,tg,tm,this.gen[c]+1,ssrc); if(this.rec)this.rec[t]=this.rec[c]; this.ev.births++; return true; }
+    this.place(t,src,half,tg,tm,this.gen[c]+1,ssrc); if(this.rec)this.rec[t]=this.rec[c]; if(this.bld)this.inheritBld(c,t); this.ev.births++; return true; }
+  inheritBld(c,t){ const P=this.p, r=this.brr; let b=this.bld[c]; if(P.NICHE_BSCHED){ const i=((this.tick-1)/P.NICHE_EVERY)|0, q=P.NICHE_BSCHED[Math.min(i,P.NICHE_BSCHED.length-1)]; b=r()<q?1:0; } else if(r()<P.NICHE_BMUT)b^=1; this.bld[t]=b; if(this.bld[c])this.bBirth++; else this.fBirth++; }
   matchP(a,b){ let x=(this.tmpl[a]^this.tag[b])&0xffff, m=0; while(x){ x&=x-1; m++; } const s=(16-m)/16; return Math.pow(s,this.p.ATT_POW); }
   kinSim(a,b){ let x=(this.tag[a]^this.tag[b])&0xffff, m=0; while(x){ x&=x-1; m++; } return (16-m)/16; }
   // ---- one organism's time slice ----
@@ -262,6 +276,7 @@ class World{
     if(P.VIRUS&&this.tick>=P.V_ONSET)this.virusStep();
     if(P.NICHE_FOUND_SCHED&&this.sId)this.nicheRandomFound();
     if(P.NICHE_RAND_SCHED&&this.sId)this.nicheRand();
+    if(P.NICHE_GC&&this.sId&&this.tick%P.NICHE_GC_EVERY===1)this.ngc();
     for(let c=0;c<C;c++){ if(!this.alive[c])continue; if(this.E[c]<=0)this.kill(c,'starve'); else if(this.age[c]>P.MAX_AGE)this.kill(c,'old'); }
     if(!this.count())this.reseed();
     this.neutralStep();
@@ -283,38 +298,54 @@ class World{
       for(let y=0;y<H;y++){ const yu=b+((y+H-1)%H)*W, yd=b+((y+1)%H)*W, y0=y*W; for(let x=0;x<W;x++){ const xl=(x+W-1)%W, xr=(x+1)%W, c=y0+x, v=m[b+c];
         t[c]=(v+D*((m[b+y0+xl]+m[b+y0+xr]+m[yu+x]+m[yd+x])/4-v))*k; } }
       m.set(t,b); }
-    if(this.sId){ const kd=Math.pow(1-P.NICHE_DECAY,P.CHEM_EVERY), sa=this.sAmt; for(let c=0;c<C;c++) if(this.sId[c]>=0){ sa[c]*=kd; if(sa[c]<1e-4){ this.sId[c]=-1; sa[c]=0; } } } }
+    if(this.sId){ const kd=Math.pow(1-P.NICHE_DECAY,P.CHEM_EVERY), sa=this.sAmt; for(let c=0;c<C;c++) if(this.sId[c]>=0){ sa[c]*=kd; if(sa[c]<1e-4){ this.sId[c]=-1; sa[c]=0; } }
+      if(this.sCond){ const ku=Math.pow(1-P.NICHE_UDECAY,P.CHEM_EVERY), u=this.sCond; for(let c=0;c<C;c++) if(this.sId[c]>=0){ u[c]*=ku; if(u[c]<P.NICHE_UMIN){ this.sId[c]=-1; sa[c]=0; this.nv.decayed++; } } } } }
   // ---- NICHE: durable structures (see DEF) ----
   nDelta(a,b){ return this.p.CHEM_DMAX*(1.6*h32(this.nsalt^Math.imul(a+1,0x9E3779B1)^Math.imul(b+7,0x85EBCA77))/4294967296-0.6); }   // binding energy of operand pair (a: species, b: species or structure id)
   nFound(c,a,b,toOrg){ const P=this.p, S=P.CHEM_S, C=this.C, m=this.mol; const x=a===b?P.NICHE_F*m[a*C+c]/2:P.NICHE_F*Math.min(m[a*C+c],m[b*C+c]); if(!(x>=1e-3)||!this.nCan(b,a))return false;
     const d=this.nDelta(a,b), eN=this.eMol[a]+this.eMol[b]-d; if(!(d>0)||eN<0)return false; m[a*C+c]-=x; m[b*C+c]-=x;
     this.nPut(c,b,eN,x,0); if(toOrg)this.nPay(c,d*x,1024+a*256+b); return true; }
   nPut(c,b,eN,x,d0){ const P=this.p, S=P.CHEM_S; let id=S, dep=d0+1;   // NICHE 1: always STRUCT (id S)
-    if(P.NICHE!==1){ const a=(this.nA_)|0, k=b*256+a; let q=this.creg.get(k); if(q===undefined){ q=S+1+this.cE.length; this.creg.set(k,q); this.cB.push(b); this.cD.push(dep); this.cE.push(eN);
+    if(P.NICHE!==1){ const a=(this.nA_)|0, k=b*256+a; let q=this.creg.get(k); if(q===undefined){ this.cMade++;
         if(!this.nband){ this.nband=[]; for(let u=0;u<S;u++){ const L=[]; for(let t=0;t<S;t++){ const dd=this.eMol[u]-this.eMol[t]; if(t!==u&&dd>0&&dd<=P.CHEM_DMAX)L.push(t); } this.nband.push(L); } }
-        const L=this.nband[a]; { const hk=h32(this.nsalt^0x0c4a77e1^Math.imul(q,0x165667b1)); this.cK.push(P.NICHE_OPEN&&dep>=P.NICHE_OPEN_D&&(h32(hk^0x3c6ef372)/4294967296)<P.NICHE_OPEN_P?hk&0xfffff:-1); } this.cS.push(a); this.cT.push(L.length?L[h32(this.nsalt^Math.imul(q,0x27d4eb2d))%L.length]:-1); } id=q; }
-    this.sId[c]=id; this.sE[c]=eN; this.sAmt[c]=x; this.sD[c]=dep; }
-  nCan(b,a){ if(this.p.NICHE===1||this.cE.length<this.p.NICHE_CMAX||this.creg.has(b*256+a))return true; this.nv.capHit++; return false; }   // memory guard: past NICHE_CMAX compounds, no NEW compound can be made (counted, reported)
+        const L=this.nband[a];
+        if(this.cHa){ const ba=b>S?this.cHa[b-S-1]:h32(this.nsalt^0x1b873593^Math.imul(b+1,0x9E3779B1)), bb=b>S?this.cHb[b-S-1]:h32(this.nsalt^0x5bd1e995^Math.imul(b+1,0x85EBCA77));
+          const ha=h32(ba^Math.imul(a+1,0xC2B2AE35)^0x27d4eb2d), hb=h32(bb^Math.imul(a+1,0x165667B1)^0x3c6ef372);
+          const kk=P.NICHE_OPEN&&dep>=P.NICHE_OPEN_D&&(h32(ha^0x3c6ef372)/4294967296)<P.NICHE_OPEN_P?ha&0xfffff:-1, tt=L.length?L[h32(this.nsalt^hb)%L.length]:-1;
+          let i; if(this.cFree.length){ i=this.cFree.pop(); this.cB[i]=b; this.cD[i]=dep; this.cE[i]=eN; this.cK[i]=kk; this.cS[i]=a; this.cT[i]=tt; this.cHa[i]=ha; this.cHb[i]=hb; this.cDead[i]=0; }
+          else { i=this.cE.length; this.cB.push(b); this.cD.push(dep); this.cE.push(eN); this.cK.push(kk); this.cS.push(a); this.cT.push(tt); this.cHa.push(ha); this.cHb.push(hb); this.cDead.push(0); }
+          q=S+1+i; this.cLive++; this.creg.set(k,q); }
+        else { q=S+1+this.cE.length; this.creg.set(k,q); this.cB.push(b); this.cD.push(dep); this.cE.push(eN);
+        { const hk=h32(this.nsalt^0x0c4a77e1^Math.imul(q,0x165667b1)); this.cK.push(P.NICHE_OPEN&&dep>=P.NICHE_OPEN_D&&(h32(hk^0x3c6ef372)/4294967296)<P.NICHE_OPEN_P?hk&0xfffff:-1); } this.cS.push(a); this.cT.push(L.length?L[h32(this.nsalt^Math.imul(q,0x27d4eb2d))%L.length]:-1); } } id=q; }
+    this.sId[c]=id; this.sE[c]=eN; this.sAmt[c]=x; this.sD[c]=dep; if(this.sCond)this.sCond[c]=1; }
+  cName(id){ const i=id-this.p.CHEM_S-1; return this.cHa?this.cHa[i]*2097152+(this.cHb[i]>>>11):id; }   // the identity reported in samples (composition hash under NICHE_GC)
+  ngc(){ const P=this.p, S=P.CHEM_S, n=this.cE.length, keep=new Uint8Array(n), C=this.C;
+    const mark=id=>{ let i=id-S-1; while(i>=0&&!keep[i]){ keep[i]=1; const b=this.cB[i]; i=b>S?b-S-1:-1; } };
+    for(let c=0;c<C;c++){ if(this.sId[c]>S)mark(this.sId[c]); if(this.rec&&this.rec[c]>S)mark(this.rec[c]); }
+    for(let i=0;i<n;i++) if(!keep[i]&&!this.cDead[i]){ this.creg.delete(this.cB[i]*256+this.cS[i]); this.cDead[i]=1; this.cFree.push(i); this.cLive--; this.nv.gcFreed++; }
+    if(this.och){ const R=1-P.NICHE_OPEN_RATE; for(const [k,o] of this.och) if((P.NICHE_OPEN_CAP-o.v)*Math.pow(R,this.tick-o.t)<1e-9)this.och.delete(k); } }
+  nCan(b,a){ if(this.p.NICHE===1||(this.cHa?this.cLive:this.cE.length)<this.p.NICHE_CMAX||this.creg.has(b*256+a))return true; this.nv.capHit++; return false; }   // memory guard: past NICHE_CMAX compounds, no NEW compound can be made (counted, reported)
   nPay(c,v,key){ this.E[c]+=v; this.nv.inc+=v; this.nv.n++; this.nfx.set(key,(this.nfx.get(key)||0)+v); }
   build(c,a,bb){ const P=this.p, S=P.CHEM_S, C=this.C, m=this.mol; a&=S-1; this.nA_=a;
-    if(P.NICHE_RAND_SCHED)return;
+    if(P.NICHE_RAND_SCHED)return; if(this.bld&&!this.bld[c])return;   // v3: freeloaders cannot build
     if(this.sId[c]<0){ if(P.NICHE===3)return;
-      if(this.rec&&this.rec[c]>S){ const id=this.rec[c]; if(this.E[c]<P.NICHE_BCOST)return; this.E[c]-=P.NICHE_BCOST; const i=id-S-1; this.sId[c]=id; this.sE[c]=this.cE[i]; this.sAmt[c]=P.NICHE_BX; this.sD[c]=this.cD[i]; this.nv.recB++; return; }
+      if(this.rec&&this.rec[c]>S){ const id=this.rec[c]; if(this.E[c]<P.NICHE_BCOST)return; this.E[c]-=P.NICHE_BCOST; const i=id-S-1; this.sId[c]=id; this.sE[c]=this.cE[i]; this.sAmt[c]=P.NICHE_BX; this.sD[c]=this.cD[i]; if(this.sCond)this.sCond[c]=1; this.nv.recB++; return; }
       if(P.NICHE_XCOST&&this.E[c]<P.NICHE_XCOST)return; if(this.nFound(c,a,bb&(S-1),true)){ if(P.NICHE_XCOST)this.E[c]-=P.NICHE_XCOST; this.nv.found++; if(this.rec)this.rec[c]=this.sId[c]; } return; }
+    if(this.sCond&&this.sCond[c]<P.NICHE_UREN&&this.E[c]>=P.NICHE_UCOST){ this.E[c]-=P.NICHE_UCOST; this.sCond[c]=1; this.nv.maint++; }   // v3 upkeep
     const B=this.sId[c], x=this.sAmt[c]; if(m[a*C+c]*P.NICHE_F<x)return;   // extending coats the whole structure with species a
     if(P.NICHE_XCOST){ if(this.E[c]<P.NICHE_XCOST)return; } if(!this.nCan(B,a))return;
     const d=this.nDelta(a,B), eN=this.eMol[a]+this.sE[c]-d; if(!(d>0)||eN<0)return; m[a*C+c]-=x;
     if(P.NICHE_XCOST)this.E[c]-=P.NICHE_XCOST; this.nPut(c,B,eN,x,this.sD[c]); this.nPay(c,d*x,70000+B*256+a); this.nv.ext++; if(this.rec)this.rec[c]=this.sId[c]; }
-  nvZero(){ return {inc:0,n:0,found:0,ext:0,rfound:0,cat:0,catN:0,recB:0,copy:0,open:0,rext:0,rcopy:0,capHit:0}; }
+  nvZero(){ return {inc:0,n:0,found:0,ext:0,rfound:0,cat:0,catN:0,recB:0,copy:0,open:0,rext:0,rcopy:0,capHit:0,maint:0,rmaint:0,decayed:0,gcFreed:0}; }
   nNear(c){ const P=this.p, S=P.CHEM_S, R=P.NICHE_R; if(this.sId[c]>S)return c; if(!R)return -1; const W=P.W, H=P.H, x0=c%W, y0=(c/W)|0;
     for(let r=1;r<=R;r++) for(let dy=-r;dy<=r;dy++) for(let dx=-r;dx<=r;dx++){ if(Math.max(Math.abs(dx),Math.abs(dy))!==r)continue; const q=((y0+dy+H)%H)*W+((x0+dx+W)%W); if(this.sId[q]>S)return q; } return -1; }
   ncopy(c){ const q=this.nNear(c); if(q<0)return; this.rec[c]=this.sId[q]; this.nv.copy++; }
-  catal(c){ const P=this.p, S=P.CHEM_S, C=this.C, sc=P.NICHE_R?this.nNear(c):c; if(sc<0)return; const id=this.sId[sc]; if(id<=S)return; const i=id-S-1, q=this.cS[i], t=this.cT[i];
+  catal(c){ const P=this.p, S=P.CHEM_S, C=this.C, sc=P.NICHE_R?this.nNear(c):c; if(sc<0)return; const id=this.sId[sc]; if(id<=S)return; const i=id-S-1, q=this.cS[i], t=this.cT[i], u=this.sCond?this.sCond[sc]:1;
     if(this.och&&this.cK[i]>=0){ const k=this.cK[i]; let o=this.och.get(k); if(!o){ o={v:P.NICHE_OPEN_CAP,t:this.tick}; this.och.set(k,o); }
-      o.v=P.NICHE_OPEN_CAP-(P.NICHE_OPEN_CAP-o.v)*Math.pow(1-P.NICHE_OPEN_RATE,this.tick-o.t); o.t=this.tick; const g=o.v*P.NICHE_OPEN_F; o.v-=g; this.E[c]+=g; this.nv.open+=g;
+      o.v=P.NICHE_OPEN_CAP-(P.NICHE_OPEN_CAP-o.v)*Math.pow(1-P.NICHE_OPEN_RATE,this.tick-o.t); o.t=this.tick; const g=o.v*P.NICHE_OPEN_F*u; o.v-=g; this.E[c]+=g; this.nv.open+=g;
       const key=3000000+k; this.nfx.set(key,(this.nfx.get(key)||0)+g); if(!this.cUse)this.cUse=new Map(); this.cUse.set(id,(this.cUse.get(id)||0)+g); }
     if(t<0)return;
-    const x=this.mol[q*C+c]*P.EAT_F; if(!(x>0))return; const d=this.eMol[q]-this.eMol[t]; this.mol[q*C+c]-=x; this.mol[t*C+c]+=x; this.E[c]+=x*d; this.nv.cat+=x*d; this.nv.catN++;
+    const x=this.mol[q*C+c]*P.EAT_F*u; if(!(x>0))return; const d=this.eMol[q]-this.eMol[t]; this.mol[q*C+c]-=x; this.mol[t*C+c]+=x; this.E[c]+=x*d; this.nv.cat+=x*d; this.nv.catN++;
     const key=2000000+q*256+t; this.nfx.set(key,(this.nfx.get(key)||0)+x*d); if(!this.cUse)this.cUse=new Map(); this.cUse.set(id,(this.cUse.get(id)||0)+x*d); }
   nicheRand(){ const P=this.p, E=P.NICHE_EVERY, i=((this.tick-1)/E)|0, sch=P.NICHE_RAND_SCHED[i]||[0,0,0], j=(this.tick-1)%E, S=P.CHEM_S, C=this.C, r=this.nrr, m=this.mol;
     const due=n=>Math.floor(n*(j+1)/E)-Math.floor(n*j/E), pres=c=>{ const L=[]; for(let q=0;q<S;q++) if(m[q*C+c]>=2e-3)L.push(q); return L; };
@@ -322,7 +353,8 @@ class World{
     for(let k=0,n=due(sch[1]);k<n;k++) for(let t=0;t<64;t++){ const c=(r()*C)|0; if(this.sId[c]<=S)continue; const L=pres(c); if(!L.length)continue; const a=L[(r()*L.length)|0], B=this.sId[c], x=this.sAmt[c]; if(m[a*C+c]*P.NICHE_F<x)continue;
       const d=this.nDelta(a,B), eN=this.eMol[a]+this.sE[c]-d; if(!(d>0)||eN<0||!this.nCan(B,a))continue; m[a*C+c]-=x; this.nA_=a; this.nPut(c,B,eN,x,this.sD[c]); this.nv.rext++; break; }
     for(let k=0,n=due(sch[2]);k<n;k++){ let src=-1; for(let t=0;t<64&&src<0;t++){ const q=(r()*C)|0; if(this.sId[q]>S)src=q; } if(src<0)break;
-      for(let t=0;t<64;t++){ const c=(r()*C)|0; if(this.sId[c]>=0)continue; const id=this.sId[src], ii=id-S-1; this.sId[c]=id; this.sE[c]=this.cE[ii]; this.sAmt[c]=P.NICHE_BX; this.sD[c]=this.cD[ii]; this.nv.rcopy++; break; } } }
+      for(let t=0;t<64;t++){ const c=(r()*C)|0; if(this.sId[c]>=0)continue; const id=this.sId[src], ii=id-S-1; this.sId[c]=id; this.sE[c]=this.cE[ii]; this.sAmt[c]=P.NICHE_BX; this.sD[c]=this.cD[ii]; if(this.sCond)this.sCond[c]=1; this.nv.rcopy++; break; } }
+    if(this.sCond) for(let k=0,n=due(sch[3]||0);k<n;k++) for(let t=0;t<64;t++){ const c=(r()*C)|0; if(this.sId[c]<=S)continue; this.sCond[c]=1; this.nv.rmaint++; break; } }
   nicheRandomFound(){ const P=this.p, E=P.NICHE_EVERY, i=((this.tick-1)/E)|0, n=P.NICHE_FOUND_SCHED[i]||0, j=(this.tick-1)%E, S=P.CHEM_S, C=this.C, r=this.nrr;
     const due=Math.floor(n*(j+1)/E)-Math.floor(n*j/E);
     for(let k=0;k<due;k++) for(let t=0;t<64;t++){ const c=(r()*C)|0; if(this.sId[c]>=0)continue; const pres=[]; for(let q=0;q<S;q++) if(this.mol[q*C+c]>=2e-3)pres.push(q); if(!pres.length)continue;
@@ -376,12 +408,17 @@ class World{
     let niche=null; if(this.sId){ let cells=0, amt=0, dmax=0, dsum=0; for(let c=0;c<this.C;c++) if(this.sId[c]>=0){ cells++; amt+=this.sAmt[c]; dsum+=this.sD[c]; if(this.sD[c]>dmax)dmax=this.sD[c]; }
       const all=[]; let tot=0; for(let x=0;x<P.CHEM_S*4;x++) if(this.rxE[x]>0){ all.push([x,this.rxE[x]]); tot+=this.rxE[x]; } for(const [k,v] of this.nfx){ all.push([k,v]); tot+=v; }
       all.sort((a,b)=>b[1]-a[1]); const S=P.CHEM_S, dOf=k=>k<1024?0:k<70000?1:k>=2000000?-2:(((k-70000)/256)|0)===S?-1:this.cD[(((k-70000)/256)|0)-S-1]+1;
-      const cu=[...(this.cUse||new Map()).entries()].sort((a,b)=>b[1]-a[1]).filter(([k,v])=>v/tot>=0.002).map(([k,v])=>[k,+(v/tot).toFixed(4),this.cD[k-S-1]]); if(this.cUse)this.cUse.clear();
+      const cu=[...(this.cUse||new Map()).entries()].sort((a,b)=>b[1]-a[1]).filter(([k,v])=>v/tot>=0.002).map(([k,v])=>[this.cName(k),+(v/tot).toFixed(4),this.cD[k-S-1]]); if(this.cUse)this.cUse.clear();
       niche={flux:all.filter(([k,v])=>v/tot>=0.002).map(([k,v])=>[k,+(v/tot).toFixed(4),dOf(k)]),income:+tot.toFixed(1),buildIncome:+this.nv.inc.toFixed(1),builds:this.nv.n,found:this.nv.found,ext:this.nv.ext,rfound:this.nv.rfound,
         cells,amt:+amt.toFixed(2),depthMax:dmax,depthMean:cells?+(dsum/cells).toFixed(2):0,compounds:this.cE.length,buildCarriers:n?+(opC[29]/n).toFixed(4):0,catalCarriers:n?+(opC[30]/n).toFixed(4):0,catIncome:+this.nv.cat.toFixed(1),catN:this.nv.catN,cUse:cu,
         ...(P.NICHE_COPY||P.NICHE_OPEN||P.NICHE_R||P.NICHE_RAND_SCHED?{recB:this.nv.recB,copy:this.nv.copy,capHit:this.nv.capHit,openIncome:+this.nv.open.toFixed(1),rext:this.nv.rext,rcopy:this.nv.rcopy,channels:this.och?this.och.size:0,copyCarriers:n?+(opC[31]/n).toFixed(4):0,
-          recU:this.rec?(()=>{ const h=new Map(); for(const c of liv) if(this.rec[c]>S)h.set(this.rec[c],(h.get(this.rec[c])||0)+1); return [...h.entries()].filter(([k,v])=>v/n>=0.002).sort((a,b)=>b[1]-a[1]).map(([k,v])=>[k,+(v/n).toFixed(4),this.cD[k-S-1]]); })():[],
-          sU:(()=>{ const h=new Map(); for(let c=0;c<this.C;c++) if(this.sId[c]>S)h.set(this.sId[c],(h.get(this.sId[c])||0)+1); return [...h.entries()].sort((a,b)=>b[1]-a[1]).slice(0,10); })()}:{})};
+          recU:this.rec?(()=>{ const h=new Map(); for(const c of liv) if(this.rec[c]>S)h.set(this.rec[c],(h.get(this.rec[c])||0)+1); return [...h.entries()].filter(([k,v])=>v/n>=0.002).sort((a,b)=>b[1]-a[1]).map(([k,v])=>[this.cName(k),+(v/n).toFixed(4),this.cD[k-S-1]]); })():[],
+          sU:(()=>{ const h=new Map(); for(let c=0;c<this.C;c++) if(this.sId[c]>S)h.set(this.sId[c],(h.get(this.sId[c])||0)+1); return [...h.entries()].sort((a,b)=>b[1]-a[1]).slice(0,10).map(([k,v])=>[this.cName(k),v]); })()}:{}),
+        ...(P.NICHE_GC||P.NICHE_BLD||P.NICHE_UP?(()=>{ let nb=0, ab=0, eb=0, ef=0; if(this.bld) for(const c of liv){ if(this.bld[c]){ nb++; eb+=this.E[c]; let h=0; const o=c*L; for(let i=0;i<this.len[c];i++) if(this.prog[o+i*2]===29){ h=1; break; } ab+=h; } else ef+=this.E[c]; }
+          let uc=0, uN=0; if(this.sCond) for(let c=0;c<this.C;c++) if(this.sId[c]>=0){ uc+=this.sCond[c]; uN++; }
+          const o={compoundsLive:this.cHa?this.cLive:this.cE.length,compoundsMade:this.cMade,gcFreed:this.nv.gcFreed,maint:this.nv.maint,rmaint:this.nv.rmaint,decayed:this.nv.decayed,condMean:uN?+(uc/uN).toFixed(3):0};
+          if(this.bld){ o.builderShare=n?+(nb/n).toFixed(4):0; o.activeBuilderShare=n?+(ab/n).toFixed(4):0; o.bBirth=this.bBirth; o.fBirth=this.fBirth; o.bE=nb?+(eb/nb).toFixed(2):0; o.fE=n-nb?+(ef/(n-nb)).toFixed(2):0; this.bBirth=0; this.fBirth=0; }
+          return o; })():{})};
       this.nfx.clear(); this.nv=this.nvZero(); }
     let chem=null; if(P.CHEM_BIG){ let molE=0, present=0; for(const [q,m] of this.big.layers){ let t=0; for(let c=0;c<this.C;c++)t+=m[c]; molE+=t*this.be(q); if(t>0.5)present++; }
       const fl=[...this.rxE.entries()]; let ft=0; for(const [x,v] of fl)ft+=v; fl.sort((a,b)=>b[1]-a[1]); this.rxE.clear();
