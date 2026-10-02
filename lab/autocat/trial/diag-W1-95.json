@@ -1,0 +1,23 @@
+{
+ "seed": 95,
+ "T": 30000,
+ "wallS": 41.394,
+ "perAttemptTotal": 749459,
+ "counts": {
+  "  (involves species 0)": 130374,
+  "ALL": 749459,
+  "ext:(maintained first)": 3,
+  "ext:inputs": 1234,
+  "found:FOUNDED": 1,
+  "found:FOUNDED-new-compound": 1,
+  "found:energy": 14493,
+  "found:inputs-both-absent": 286099,
+  "found:inputs-one-absent": 130207,
+  "notBuilder": 317423,
+  "recipe:BUILT": 2
+ },
+ "compoundsMade": 1,
+ "structNow": 1,
+ "meanSpeciesPresentPerCell": 4.35,
+ "buildCarriers": null
+}

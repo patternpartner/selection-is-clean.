@@ -1,0 +1,28 @@
+{
+ "seed": 96,
+ "T": 150000,
+ "wallS": 511.486,
+ "perAttemptTotal": 11047493,
+ "counts": {
+  "  (involves species 0)": 21436,
+  "ALL": 11047493,
+  "ext:(maintained first)": 750,
+  "ext:EXTENDED": 37,
+  "ext:EXTENDED-new-compound": 34,
+  "ext:binding-not-exergonic": 61369,
+  "ext:energy": 1281,
+  "ext:inputs": 1250298,
+  "found:FOUNDED": 14,
+  "found:FOUNDED-new-compound": 9,
+  "found:binding-not-exergonic": 134,
+  "found:energy": 90773,
+  "found:inputs-both-absent": 2373416,
+  "found:inputs-one-absent": 131962,
+  "notBuilder": 7137057,
+  "recipe:BUILT": 1152
+ },
+ "compoundsMade": 43,
+ "structNow": 129,
+ "meanSpeciesPresentPerCell": 7.44,
+ "buildCarriers": null
+}

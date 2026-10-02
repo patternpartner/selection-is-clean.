@@ -135,6 +135,21 @@ const DEF={
   //     NICHE_PMUT, p moves by a uniform step in +-NICHE_PSTEP, clamped; own RNG). An organism with no stock of its own may
   //     CATAL on the nearest stock-holding organism within NICHE_R at yield x p(user) x p(owner) (it leaks out of the owner
   //     and is absorbed by the user), and COPY its recipe with probability p(user) x p(owner). Off: everyone sealed (p = 0).
+  // AUTOCAT (lab/PHASEA-autocatalysis.md), needs NICHE, off by default: CATALYSED ASSEMBLY. Phase A found that 99.9% of founding
+  //   attempts fail because a species the BUILD names is absent from the cell (about 4 of 256 are present). With NICHE_AC 1, a
+  //   founding BUILD whose named species are absent, made within reach of an existing compound structure (see acCat), binds
+  //   present species instead (acBind: the genome still picks which); (with NICHE_AC_X) an EXTEND whose named species is short
+  //   binds a present one the same way (the structure itself is the catalyst). So every structure makes the next build likelier: the rate of
+  //   construction feeds back on itself. Energetics, costs, the binding rule and compound identity are unchanged.
+  //   NICHE_AC_X 1: extension is catalysed too (an EXTEND short of its named species binds a present one).
+  //   NICHE_AC_B: probability that an UNcatalysed founding BUILD binds present species anyway (a slow spontaneous rate, so a
+  //     world without structures can nucleate). Its own RNG stream, so the main and permeability streams are untouched.
+  //   NICHE_AC 2 (NAMED SYNTHESIS): a catalysed founding makes the compound the genome NAMES (its two operand species), from
+  //     whatever feedstock is present (nFoundAC), rather than binding the present species themselves; so what is built stays
+  //     heritable and exact, and a mutation in BUILD's arguments builds a different compound.
+  //   NICHE_RAND_NAMED 1 (with AC 2 and NICHE_RAND_SCHED): the random null's founds name a uniformly random pair, made from
+  //     random present feedstock (the null that matches named synthesis); 0: random present pairs, as in v2-skin.
+  NICHE_AC:0, NICHE_AC_X:0, NICHE_AC_B:0, NICHE_RAND_NAMED:0,
   NICHE_SKIN:0, NICHE_SKIN_INH:1, NICHE_SKIN_REGROW:0, NICHE_PERM:0, NICHE_P0:-1, NICHE_PMUT:0.05, NICHE_PSTEP:0.1,
   // TASKS (#290), exclusive of CHEM, off by default: Avida's logic tasks. Each organism is born with three random 32-bit
   // inputs (redrawn until all eight truth-table rows occur), so an output names one three-input boolean function (256 of
@@ -181,7 +196,7 @@ class World{
     else if(P.CHEM){ const S=P.CHEM_S, cr=mulberry32((((P.CHEM_SEED!==undefined?P.CHEM_SEED:seed)>>>0)||1)^0x00c4e3c4); this.mol=new Float32Array(C*S); this.molTmp=new Float32Array(C); this.eMol=new Float32Array(S); this.prod=new Uint16Array(S*4);   // its own RNG: the main stream (ancestors, patches) is the same as without CHEM
       this.eMol[0]=1; for(let q=1;q<S;q++)this.eMol[q]=cr(); for(let q=0;q<S;q++)for(let j=0;j<4;j++){ let t, g=0; do{ t=(cr()*S)|0; g++; }while(g<100000&&(t===q||Math.abs(this.eMol[t]-(this.eMol[q]-P.CHEM_STEP))>=P.CHEM_SPREAD)); this.prod[q*4+j]=t; } this.ev.metab=0; this.ev.metabN=0; this.rxE=new Float64Array(S*4); }   // rxE: energy each reaction captured since the last sample   // products lie near the substrate, mostly a little lower
     if(P.NICHE&&P.CHEM&&!P.CHEM_BIG){ this.sId=new Int32Array(C).fill(-1); this.sAmt=new Float32Array(C); this.sE=new Float32Array(C); this.sD=new Int32Array(C);
-      this.cB=[]; this.cD=[]; this.cE=[]; this.cS=[]; this.cT=[]; this.cK=[]; this.nband=null; if(P.NICHE_COPY)this.rec=new Int32Array(C).fill(-1); if(P.NICHE_OPEN)this.och=new Map(); this.creg=new Map(); this.nfx=new Map(); this.nv=this.nvZero(); this.nrr=mulberry32(((seed>>>0)||1)^0x2e5c2e5c); if(P.NICHE_GC){ this.cHa=[]; this.cHb=[]; this.cFree=[]; this.cDead=[]; this.cLive=0; } this.cMade=0; if(P.NICHE_BLD){ this.bld=new Uint8Array(C); this.brr=mulberry32(((seed>>>0)||1)^0x6b1d0001); this.bBirth=0; this.fBirth=0; } if(P.NICHE_UP)this.sCond=new Float32Array(C); if(P.NICHE_SKIN){ this.skin=1; this.krr=mulberry32(((seed>>>0)||1)^0x5c1a0001); if(P.NICHE_PERM)this.perm=new Float32Array(C); }
+      this.cB=[]; this.cD=[]; this.cE=[]; this.cS=[]; this.cT=[]; this.cK=[]; this.nband=null; if(P.NICHE_COPY)this.rec=new Int32Array(C).fill(-1); if(P.NICHE_OPEN)this.och=new Map(); this.creg=new Map(); this.nfx=new Map(); this.nv=this.nvZero(); this.nrr=mulberry32(((seed>>>0)||1)^0x2e5c2e5c); if(P.NICHE_GC){ this.cHa=[]; this.cHb=[]; this.cFree=[]; this.cDead=[]; this.cLive=0; } this.cMade=0; if(P.NICHE_BLD){ this.bld=new Uint8Array(C); this.brr=mulberry32(((seed>>>0)||1)^0x6b1d0001); this.bBirth=0; this.fBirth=0; } if(P.NICHE_UP)this.sCond=new Float32Array(C); if(P.NICHE_AC)this.arr=mulberry32(((seed>>>0)||1)^0xac0ac001); if(P.NICHE_SKIN){ this.skin=1; this.krr=mulberry32(((seed>>>0)||1)^0x5c1a0001); if(P.NICHE_PERM)this.perm=new Float32Array(C); }
       this.nsalt=h32((((P.CHEM_SEED!==undefined?P.CHEM_SEED:seed)>>>0)||1)^0x51c4e000); }
     if(P.VIRUS){ this.vc=new Int32Array(P.V_MAX); this.vk=P.CHEM_BIG?new Uint32Array(P.V_MAX):new Uint16Array(P.V_MAX); this.vn=0; this.vrnd=mulberry32(((seed>>>0)||1)^0x7e577e57); this.ev.lysed=0; this.ev.infections=0; }
     this.updateCap(); for(let c=0;c<C;c++)this.light[c]=this.cap[c];
@@ -321,6 +336,12 @@ class World{
   nFound(c,a,b,toOrg){ const P=this.p, S=P.CHEM_S, C=this.C, m=this.mol; const x=a===b?P.NICHE_F*m[a*C+c]/2:P.NICHE_F*Math.min(m[a*C+c],m[b*C+c]); if(!(x>=1e-3)||!this.nCan(b,a))return false;
     const d=this.nDelta(a,b), eN=this.eMol[a]+this.eMol[b]-d; if(!(d>0)||eN<0)return false; m[a*C+c]-=x; m[b*C+c]-=x;
     this.nPut(c,b,eN,x,0); if(toOrg)this.nPay(c,d*x,1024+a*256+b); return true; }
+  // AUTOCAT mode 2 (named synthesis): the compound is the one the genome NAMES (operands a, b), made from feedstock species f1, f2
+  // present in the cell (x = NICHE_F x the smaller amount). Energy is conserved: the feedstock's energy minus the compound's goes
+  // to the builder (toOrg; it may be negative, and is then paid from the store, which must cover it); otherwise it dissipates.
+  nFoundAC(c,a,b,f1,f2,toOrg){ const P=this.p, C=this.C, m=this.mol; const x=f1===f2?P.NICHE_F*m[f1*C+c]/2:P.NICHE_F*Math.min(m[f1*C+c],m[f2*C+c]); if(!(x>=1e-3)||!this.nCan(b,a))return false;
+    const d=this.nDelta(a,b), eN=this.eMol[a]+this.eMol[b]-d; if(!(d>0)||eN<0)return false; const v=(this.eMol[f1]+this.eMol[f2]-eN)*x; if(toOrg&&v<0&&this.E[c]+v<(P.NICHE_XCOST||0)+1e-3)return false;
+    m[f1*C+c]-=x; m[f2*C+c]-=x; this.nA_=a; this.nPut(c,b,eN,x,0); if(toOrg)this.nPay(c,v,1024+a*256+b); return true; }
   nPut(c,b,eN,x,d0){ const P=this.p, S=P.CHEM_S; let id=S, dep=d0+1;   // NICHE 1: always STRUCT (id S)
     if(P.NICHE!==1){ const a=(this.nA_)|0, k=b*256+a; let q=this.creg.get(k); if(q===undefined){ this.cMade++;
         if(!this.nband){ this.nband=[]; for(let u=0;u<S;u++){ const L=[]; for(let t=0;t<S;t++){ const dd=this.eMol[u]-this.eMol[t]; if(t!==u&&dd>0&&dd<=P.CHEM_DMAX)L.push(t); } this.nband.push(L); } }
@@ -346,13 +367,23 @@ class World{
     if(P.NICHE_RAND_SCHED)return; if(this.bld&&!this.bld[c])return;   // v3: freeloaders cannot build
     if(this.sId[c]<0){ if(P.NICHE===3)return;
       if(this.rec&&this.rec[c]>S){ const id=this.rec[c]; if(this.E[c]<P.NICHE_BCOST)return; this.E[c]-=P.NICHE_BCOST; const i=id-S-1; this.sId[c]=id; this.sE[c]=this.cE[i]; this.sAmt[c]=P.NICHE_BX; this.sD[c]=this.cD[i]; if(this.sCond)this.sCond[c]=1; this.nv.recB++; return; }
-      if(P.NICHE_XCOST&&this.E[c]<P.NICHE_XCOST)return; if(this.nFound(c,a,bb&(S-1),true)){ if(P.NICHE_XCOST)this.E[c]-=P.NICHE_XCOST; this.nv.found++; if(this.rec)this.rec[c]=this.sId[c]; } return; }
+      if(P.NICHE_XCOST&&this.E[c]<P.NICHE_XCOST)return; if(P.NICHE_AC){ const b2=bb&(S-1); if(!(m[a*C+c]>=2e-3&&m[b2*C+c]>=2e-3)&&(this.acCat(c)||(P.NICHE_AC_B&&this.arr()<P.NICHE_AC_B))){ this.nv.acF++;   // AUTOCAT: a structure within reach catalyses the build
+          if(P.NICHE_AC===2){ if(this.nFoundAC(c,a,b2,this.acBind(c,a,2e-3),this.acBind(c,b2,2e-3),true)){ if(P.NICHE_XCOST)this.E[c]-=P.NICHE_XCOST; this.nv.found++; if(this.rec)this.rec[c]=this.sId[c]; } return; }
+          a=this.acBind(c,a,2e-3); bb=this.acBind(c,b2,2e-3); this.nA_=a; } }
+      if(this.nFound(c,a,bb&(S-1),true)){ if(P.NICHE_XCOST)this.E[c]-=P.NICHE_XCOST; this.nv.found++; if(this.rec)this.rec[c]=this.sId[c]; } return; }
     if(this.sCond&&this.sCond[c]<P.NICHE_UREN&&this.E[c]>=P.NICHE_UCOST){ this.E[c]-=P.NICHE_UCOST; this.sCond[c]=1; if(this.skin&&P.NICHE_SKIN_REGROW&&this.sAmt[c]<P.NICHE_BX)this.sAmt[c]=P.NICHE_BX; this.nv.maint++; }   // v3 upkeep
-    const B=this.sId[c], x=this.sAmt[c]; if(m[a*C+c]*P.NICHE_F<x)return;   // extending coats the whole structure with species a
+    const B=this.sId[c], x=this.sAmt[c]; if(m[a*C+c]*P.NICHE_F<x){ if(!P.NICHE_AC_X||B<=S)return; a=this.acBind(c,a,x/P.NICHE_F); if(m[a*C+c]*P.NICHE_F<x)return; this.nA_=a; this.nv.acX++; }   // extending coats the whole structure with species a (AUTOCAT: the compound itself binds a present species)
     if(P.NICHE_XCOST){ if(this.E[c]<P.NICHE_XCOST)return; } if(!this.nCan(B,a))return;
     const d=this.nDelta(a,B), eN=this.eMol[a]+this.sE[c]-d; if(!(d>0)||eN<0)return; m[a*C+c]-=x;
     if(P.NICHE_XCOST)this.E[c]-=P.NICHE_XCOST; this.nPut(c,B,eN,x,this.sD[c]); this.nPay(c,d*x,70000+B*256+a); this.nv.ext++; if(this.rec)this.rec[c]=this.sId[c]; }
-  nvZero(){ return {inc:0,n:0,found:0,ext:0,rfound:0,cat:0,catN:0,recB:0,copy:0,open:0,rext:0,rcopy:0,capHit:0,maint:0,rmaint:0,decayed:0,gcFreed:0,inh:0,own:0,leak:0,lcopy:0}; }
+  // AUTOCAT (NICHE_AC): catalysed assembly. acCat: is a compound structure within reach of c (the same reach as CATAL: own cell,
+  // then NICHE_R; under SKIN a neighbour's stock only through permeability, with probability p(user) x p(owner))?
+  // acBind: the species the organism names (arg a) if present at >= thr, else the (a mod k)-th of the k species present at >= thr
+  // (index order), so the genome still chooses, among what is there. No list of compounds: what can be built is what is present.
+  acCat(c){ const P=this.p, S=P.CHEM_S; if(this.skin){ if(!this.perm||!P.NICHE_R)return false; const q=this.nLeak(c); return q>=0&&this.arr()<this.nLk; }
+    const q=P.NICHE_R?this.nNear(c):c; return q>=0&&this.sId[q]>S; }
+  acBind(c,a,thr){ const S=this.p.CHEM_S, C=this.C, m=this.mol; if(m[a*C+c]>=thr)return a; let k=0; for(let q=0;q<S;q++) if(m[q*C+c]>=thr)k++; if(!k)return a; let j=a%k; for(let q=0;q<S;q++) if(m[q*C+c]>=thr){ if(j===0)return q; j--; } return a; }
+  nvZero(){ return {inc:0,n:0,found:0,ext:0,rfound:0,cat:0,catN:0,recB:0,copy:0,open:0,rext:0,rcopy:0,capHit:0,maint:0,rmaint:0,decayed:0,gcFreed:0,inh:0,own:0,leak:0,lcopy:0,acF:0,acX:0}; }
   nNear(c){ const P=this.p, S=P.CHEM_S, R=P.NICHE_R; if(this.sId[c]>S)return c; if(this.skin)return this.perm&&R?this.nLeak(c):-1; if(!R)return -1; const W=P.W, H=P.H, x0=c%W, y0=(c/W)|0;
     for(let r=1;r<=R;r++) for(let dy=-r;dy<=r;dy++) for(let dx=-r;dx<=r;dx++){ if(Math.max(Math.abs(dx),Math.abs(dy))!==r)continue; const q=((y0+dy+H)%H)*W+((x0+dx+W)%W); if(this.sId[q]>S)return q; } return -1; }
   nLeak(c){ const P=this.p, S=P.CHEM_S, R=P.NICHE_R, W=P.W, H=P.H, x0=c%W, y0=(c/W)|0; this.nLk=0; if(!(this.perm[c]>0))return -1;   // SKIN + PERM: the nearest stock-holding organism within R; yield factor p(user) x p(owner)
@@ -367,7 +398,7 @@ class World{
     const key=2000000+q*256+t; this.nfx.set(key,(this.nfx.get(key)||0)+x*d); if(!this.cUse)this.cUse=new Map(); this.cUse.set(id,(this.cUse.get(id)||0)+x*d); }
   nicheRand(){ const P=this.p, E=P.NICHE_EVERY, i=((this.tick-1)/E)|0, sch=P.NICHE_RAND_SCHED[i]||[0,0,0], j=(this.tick-1)%E, S=P.CHEM_S, C=this.C, r=this.nrr, m=this.mol;
     const due=n=>Math.floor(n*(j+1)/E)-Math.floor(n*j/E), pres=c=>{ const L=[]; for(let q=0;q<S;q++) if(m[q*C+c]>=2e-3)L.push(q); return L; };
-    for(let k=0,n=due(sch[0]);k<n;k++) for(let t=0;t<64;t++){ const c=(r()*C)|0; if(this.sId[c]>=0||(this.skin&&!this.alive[c]))continue; const L=pres(c); if(!L.length)continue; const a=L[(r()*L.length)|0], b=L[(r()*L.length)|0]; this.nA_=a; if(this.nFound(c,a,b,false)){ this.nv.rfound++; break; } }
+    for(let k=0,n=due(sch[0]);k<n;k++) for(let t=0;t<64;t++){ const c=(r()*C)|0; if(this.sId[c]>=0||(this.skin&&!this.alive[c]))continue; const L=pres(c); if(!L.length)continue; const a=L[(r()*L.length)|0], b=L[(r()*L.length)|0]; if(P.NICHE_AC===2&&P.NICHE_RAND_NAMED){ const na=(r()*S)|0, nb=(r()*S)|0; if(this.nFoundAC(c,na,nb,a,b,false)){ this.nv.rfound++; break; } continue; } this.nA_=a; if(this.nFound(c,a,b,false)){ this.nv.rfound++; break; } }
     for(let k=0,n=due(sch[1]);k<n;k++) for(let t=0;t<64;t++){ const c=(r()*C)|0; if(this.sId[c]<=S)continue; const L=pres(c); if(!L.length)continue; const a=L[(r()*L.length)|0], B=this.sId[c], x=this.sAmt[c]; if(m[a*C+c]*P.NICHE_F<x)continue;
       const d=this.nDelta(a,B), eN=this.eMol[a]+this.sE[c]-d; if(!(d>0)||eN<0||!this.nCan(B,a))continue; m[a*C+c]-=x; this.nA_=a; this.nPut(c,B,eN,x,this.sD[c]); this.nv.rext++; break; }
     for(let k=0,n=due(sch[2]);k<n;k++){ let src=-1; for(let t=0;t<64&&src<0;t++){ const q=(r()*C)|0; if(this.sId[q]>S)src=q; } if(src<0)break;
@@ -432,6 +463,7 @@ class World{
         ...(P.NICHE_COPY||P.NICHE_OPEN||P.NICHE_R||P.NICHE_RAND_SCHED?{recB:this.nv.recB,copy:this.nv.copy,capHit:this.nv.capHit,openIncome:+this.nv.open.toFixed(1),rext:this.nv.rext,rcopy:this.nv.rcopy,channels:this.och?this.och.size:0,copyCarriers:n?+(opC[31]/n).toFixed(4):0,
           recU:this.rec?(()=>{ const h=new Map(); for(const c of liv) if(this.rec[c]>S)h.set(this.rec[c],(h.get(this.rec[c])||0)+1); return [...h.entries()].filter(([k,v])=>v/n>=0.002).sort((a,b)=>b[1]-a[1]).map(([k,v])=>[this.cName(k),+(v/n).toFixed(4),this.cD[k-S-1]]); })():[],
           sU:(()=>{ const h=new Map(); for(let c=0;c<this.C;c++) if(this.sId[c]>S)h.set(this.sId[c],(h.get(this.sId[c])||0)+1); return [...h.entries()].sort((a,b)=>b[1]-a[1]).slice(0,10).map(([k,v])=>[this.cName(k),v]); })()}:{}),
+        ...(P.NICHE_AC?{acF:this.nv.acF,acX:this.nv.acX}:{}),
         ...(P.NICHE_GC||P.NICHE_BLD||P.NICHE_UP?(()=>{ let nb=0, ab=0, eb=0, ef=0; if(this.bld) for(const c of liv){ if(this.bld[c]){ nb++; eb+=this.E[c]; let h=0; const o=c*L; for(let i=0;i<this.len[c];i++) if(this.prog[o+i*2]===29){ h=1; break; } ab+=h; } else ef+=this.E[c]; }
           let uc=0, uN=0; if(this.sCond) for(let c=0;c<this.C;c++) if(this.sId[c]>=0){ uc+=this.sCond[c]; uN++; }
           const o={compoundsLive:this.cHa?this.cLive:this.cE.length,compoundsMade:this.cMade,gcFreed:this.nv.gcFreed,maint:this.nv.maint,rmaint:this.nv.rmaint,decayed:this.nv.decayed,condMean:uN?+(uc/uN).toFixed(3):0};

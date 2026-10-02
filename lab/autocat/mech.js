@@ -1,0 +1,6 @@
+// lab/autocat/mech.js - mechanism readout for a core-run jsonl (trial seeds only): totals of founds, extends, recipe builds,
+// catalysed founds/extends, compounds made, cap hits, plus founds per 10k ticks.   node lab/autocat/mech.js file.jsonl[.gz] ...
+'use strict'; const fs=require('fs'), zlib=require('zlib');
+for(const f of process.argv.slice(2)){ const t=f.endsWith('.gz')?zlib.gunzipSync(fs.readFileSync(f)).toString():fs.readFileSync(f,'utf8'); const rows=t.trim().split('\n').filter(Boolean).map(JSON.parse); if(!rows.length)continue;
+  const s=k=>rows.reduce((x,r)=>x+((r.niche&&r.niche[k])||0),0), last=rows.at(-1), T=last.t, n=last.niche||{};
+  console.log(`${f.split('/').pop()} | t=${T} wall=${last.wallS}s | found ${s('found')} (${(s('found')/T*1e4).toFixed(1)}/10k) | ext ${s('ext')} | recB ${s('recB')} | acF ${s('acF')} acX ${s('acX')} | rfound ${s('rfound')} rext ${s('rext')} rcopy ${s('rcopy')} | made ${n.compoundsMade} live ${n.compoundsLive} | cap ${s('capHit')} | cells ${n.cells} | N ${last.N} | builder ${n.builderShare} active ${n.activeBuilderShare} | stock ${n.skin?n.skin.stock:'-'} p ${n.skin?n.skin.pMean:'-'} | strInc ${(((n.catIncome||0)+(n.openIncome||0)+(n.buildIncome||0))/(n.income||1)*100).toFixed(1)}%`); }
