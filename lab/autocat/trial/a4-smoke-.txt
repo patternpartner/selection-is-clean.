@@ -1,0 +1,4 @@
+{} 153s
+10000 N 1239 size 1.54 bodyShareAll 0.147 xfShare 0.3185 leakE 19966.7 envDom 17 envH 2.52
+20000 N 1245 size 3.224 bodyShareAll 0.294 xfShare 0.1478 leakE 44482.6 envDom 9 envH 1.976
+30000 N 1339 size 4.261 bodyShareAll 0.313 xfShare 0.0938 leakE 36522.3 envDom 14 envH 2.379

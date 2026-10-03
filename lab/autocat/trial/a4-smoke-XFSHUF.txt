@@ -1,0 +1,4 @@
+{"XF_SHUF":1} 175s
+10000 N 937 size 0.966 bodyShareAll 0.080 xfShare 0.0353 leakE 16074.7 envDom 1 envH 0.037
+20000 N 1027 size 4.153 bodyShareAll 0.159 xfShare 0.0544 leakE 65341.9 envDom 1 envH 0
+30000 N 1042 size 4.815 bodyShareAll 0.166 xfShare 0.0656 leakE 65002.4 envDom 1 envH 0

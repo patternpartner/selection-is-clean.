@@ -1,0 +1,4 @@
+{"XF_LEAK":0} 147s
+10000 N 1296 size 1.221 bodyShareAll 0.110 xfShare 0.2269 leakE 0 envDom 18 envH 2.673
+20000 N 1207 size 3.577 bodyShareAll 0.299 xfShare 0.1632 leakE 0 envDom 13 envH 1.956
+30000 N 1210 size 4.422 bodyShareAll 0.310 xfShare 0.0892 leakE 0 envDom 13 envH 2.57

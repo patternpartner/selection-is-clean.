@@ -177,6 +177,16 @@ const DEF={
   //     intermediates (they never enter the cell) and pays e(q) - e(u). A pathway's identity is its species sequence, so the
   //     catalyst space is no longer the ~16,500 one-step reactions. A pathway mutates by redrawing its last product. FIXED never fuses.
   //   BODY_UPX: upkeep is BODY_UP x n x (n / BODY_UPN)^(BODY_UPX - 1) per tick (1 = linear, as in A3).
+  // XFEED (lab/PHASEA4-cross-feeding.md), needs HBODY, off by default: CROSS-FEEDING. Each organism gets an internal pool
+  //   (cytoplasm) of the 256 species. Every tick, for each body catalyst, it takes up XF_UPT of the cell's substrate into the pool;
+  //   catalysts then run on the pool (BODY_F of the pool's substrate), not on the cell. Species in the pool that none of its own
+  //   catalysts consume are WASTE: XF_LEAK of each leaks back into the cell, where it diffuses and is food for any neighbour whose
+  //   catalysts take it up. The pool decays at the cell rate (CHEM_DECAY), is split at division and is released into the cell at
+  //   death, so energy is conserved. Nulls: XF_LEAK 0 (NOLEAK: waste stays private); XF_SHUF 1 (SHUFENV: each leaked portion
+  //   enters the cell as a uniformly random species, its amount scaled so the energy is the same).
+  //   Readout: the share of body income made from substrate that other organisms leaked (a tag layer that diffuses with the
+  //   molecules; an organism never takes up its own waste, since waste is by definition what none of its catalysts consume, so tagged uptake is material leaked or released at death by OTHER organisms), and environmental heterogeneity.
+  XFEED:0, XF_UPT:0.2, XF_LEAK:0.1, XF_SHUF:0,
   BODY_FUSE:0, BODY_CHAIN:8, BODY_UPX:1, BODY_UPN:16,
   HBODY:0, BODY_MAX:8, BODY_F:0.2, BODY_UP:0.0005, BODY_MUT:0.01, BODY_DUP:0.01, BODY_DEL:0.01, BODY_CAP:0.02, BODY_INH:1, BODY_RCAP:0, BODY_SHUF:0, BODY_FIXED:0,
   SCAR_T:0, SCAR_ON:20000, SCAR_MIN:0.25, SCAR_ALPHA:-1,
@@ -229,6 +239,7 @@ class World{
       this.cB=[]; this.cD=[]; this.cE=[]; this.cS=[]; this.cT=[]; this.cK=[]; this.nband=null; if(P.NICHE_COPY)this.rec=new Int32Array(C).fill(-1); if(P.NICHE_OPEN)this.och=new Map(); this.creg=new Map(); this.nfx=new Map(); this.nv=this.nvZero(); this.nrr=mulberry32(((seed>>>0)||1)^0x2e5c2e5c); if(P.NICHE_GC){ this.cHa=[]; this.cHb=[]; this.cFree=[]; this.cDead=[]; this.cLive=0; } this.cMade=0; if(P.NICHE_BLD){ this.bld=new Uint8Array(C); this.brr=mulberry32(((seed>>>0)||1)^0x6b1d0001); this.bBirth=0; this.fBirth=0; } if(P.NICHE_UP)this.sCond=new Float32Array(C); if(P.NICHE_AC)this.arr=mulberry32(((seed>>>0)||1)^0xac0ac001); if(P.NICHE_SKIN){ this.skin=1; this.krr=mulberry32(((seed>>>0)||1)^0x5c1a0001); if(P.NICHE_PERM)this.perm=new Float32Array(C); }
       this.nsalt=h32((((P.CHEM_SEED!==undefined?P.CHEM_SEED:seed)>>>0)||1)^0x51c4e000); }
     if(P.HBODY&&P.CHEM&&!P.CHEM_BIG){ const S=P.CHEM_S; this.bd=new Int32Array(C*P.BODY_MAX); this.bn=new Uint8Array(C); this.lastP=new Int16Array(C).fill(-1); this.brng=mulberry32(((seed>>>0)||1)^0xb0d70001); this.bInc=new Map(); this.bIncT=0; this.chS=[]; this.chMap=new Map();
+      if(P.XFEED){ this.ip=new Float32Array(C*S); this.ipF=new Float32Array(C*S); this.lt=new Float32Array(C*S); this.ltTmp=new Float32Array(C); this.uid=new Int32Array(C); this.uidN=1; this.lkO=new Int32Array(C); this.xr=mulberry32(((seed>>>0)||1)^0x8fee0001); this.xfInc=0; this.xfLeak=0; }
       this.bband=[]; for(let u=0;u<S;u++){ const L=[]; for(let t=0;t<S;t++){ const dd=this.eMol[u]-this.eMol[t]; if(t!==u&&dd>0&&dd<=P.CHEM_DMAX)L.push(t); } this.bband.push(L); } }
     if(P.VIRUS){ this.vc=new Int32Array(P.V_MAX); this.vk=P.CHEM_BIG?new Uint32Array(P.V_MAX):new Uint16Array(P.V_MAX); this.vn=0; this.vrnd=mulberry32(((seed>>>0)||1)^0x7e577e57); this.ev.lysed=0; this.ev.infections=0; }
     this.updateCap(); for(let c=0;c<C;c++)this.light[c]=this.cap[c];
@@ -243,7 +254,7 @@ class World{
     for(let y=0;y<P.H;y++)for(let x=0;x<P.W;x++){ let v=P.L_MIN;
       for(const q of this.patch){ let dx=Math.abs(x-q.x); dx=Math.min(dx,P.W-dx); let dy=Math.abs(y-q.y); dy=Math.min(dy,P.H-dy); v+=P.L_PEAK*Math.exp(-(dx*dx+dy*dy)/r2); }
       this.cap[y*P.W+x]=v; } }
-  place(c,prog,E,tag,tmpl,gen,sh){ const P=this.p, o=c*P.MAXLEN*2; if(P.TASKS)this.taskBirth(c); if(this.bld)this.bld[c]=this.brr()<P.NICHE_B0?1:0; if(this.perm)this.perm[c]=P.NICHE_P0<0?this.krr():P.NICHE_P0; if(this.skin)this.sId[c]=-1; if(this.bd){ this.bn[c]=0; this.lastP[c]=-1; } sh=sh||prog; this.slen[c]=sh.length; for(let i=0;i<sh.length;i++){ this.sprog[o+i*2]=sh[i][0]; this.sprog[o+i*2+1]=sh[i][1]; } this.alive[c]=1; this.E[c]=E; this.age[c]=0; this.pc[c]=0; this.face[c]=(this.rnd()*8)|0;
+  place(c,prog,E,tag,tmpl,gen,sh){ const P=this.p, o=c*P.MAXLEN*2; if(P.TASKS)this.taskBirth(c); if(this.bld)this.bld[c]=this.brr()<P.NICHE_B0?1:0; if(this.perm)this.perm[c]=P.NICHE_P0<0?this.krr():P.NICHE_P0; if(this.skin)this.sId[c]=-1; if(this.bd){ this.bn[c]=0; this.lastP[c]=-1; if(this.ip){ const S=P.CHEM_S; this.ip.fill(0,c*S,c*S+S); this.ipF.fill(0,c*S,c*S+S); this.uid[c]=this.uidN++; } } sh=sh||prog; this.slen[c]=sh.length; for(let i=0;i<sh.length;i++){ this.sprog[o+i*2]=sh[i][0]; this.sprog[o+i*2+1]=sh[i][1]; } this.alive[c]=1; this.E[c]=E; this.age[c]=0; this.pc[c]=0; this.face[c]=(this.rnd()*8)|0;
     this.R.fill(0,c*4,c*4+4); this.len[c]=prog.length; for(let i=0;i<prog.length;i++){ this.prog[o+i*2]=prog[i][0]; this.prog[o+i*2+1]=prog[i][1]; }
     this.tag[c]=tag; this.tmpl[c]=tmpl; this.gen[c]=gen; this.stamp[c]=this.tick; }
   taskBirth(c){ const r=this.rnd, cnt=new Uint8Array(8); let a,b,d, ok;   // redrawn until every truth-table row occurs at least twice, so a constant always meets a repeat it disagrees with
@@ -254,8 +265,8 @@ class World{
     if(T===0||T===255||T===0xF0||T===0xCC||T===0xAA)return; if(this.p.TASK_MAX&&this.tcount(c)>=this.p.TASK_MAX)return; const w=c*8+(T>>5), bit=1<<(T&31); if(this.tdone[w]&bit)return; this.tdone[w]|=bit;
     const g=this.tres[T]*this.p.TASK_F; this.tres[T]-=g; this.E[c]+=g; this.tE[T]+=g; this.tN[T]++; }
   tcount(c){ let n=0; for(let k=0;k<8;k++){ let x=this.tdone[c*8+k]; while(x){ x&=x-1; n++; } } return n; }
-  kill(c,why){ const P=this.p; if(this.rec)this.rec[c]=-1; if(this.skin){ this.sId[c]=-1; this.sAmt[c]=0; } if(this.bd)this.bn[c]=0; this.alive[c]=0; this.tickDeaths++; this.corpse[c]+=Math.max(0,this.E[c])+P.BODY; this.E[c]=0; this.ev[why]++; }
-  moveOrg(a,b){ const P=this.p, L=P.MAXLEN*2; if(this.rec){ this.rec[b]=this.rec[a]; this.rec[a]=-1; } if(this.bld){ this.bld[b]=this.bld[a]; this.bld[a]=0; } if(this.skin){ this.sId[b]=this.sId[a]; this.sAmt[b]=this.sAmt[a]; this.sE[b]=this.sE[a]; this.sD[b]=this.sD[a]; if(this.sCond)this.sCond[b]=this.sCond[a]; this.sId[a]=-1; this.sAmt[a]=0; if(this.perm)this.perm[b]=this.perm[a]; } if(this.bd){ const M=P.BODY_MAX; this.bd.copyWithin(b*M,a*M,a*M+M); this.bn[b]=this.bn[a]; this.bn[a]=0; this.lastP[b]=this.lastP[a]; } this.alive[b]=1; this.alive[a]=0; this.E[b]=this.E[a]; this.age[b]=this.age[a]; this.pc[b]=this.pc[a]; this.face[b]=this.face[a];
+  kill(c,why){ const P=this.p; if(this.rec)this.rec[c]=-1; if(this.skin){ this.sId[c]=-1; this.sAmt[c]=0; } if(this.bd){ this.bn[c]=0; if(this.ip)this.xRelease(c); } this.alive[c]=0; this.tickDeaths++; this.corpse[c]+=Math.max(0,this.E[c])+P.BODY; this.E[c]=0; this.ev[why]++; }
+  moveOrg(a,b){ const P=this.p, L=P.MAXLEN*2; if(this.rec){ this.rec[b]=this.rec[a]; this.rec[a]=-1; } if(this.bld){ this.bld[b]=this.bld[a]; this.bld[a]=0; } if(this.skin){ this.sId[b]=this.sId[a]; this.sAmt[b]=this.sAmt[a]; this.sE[b]=this.sE[a]; this.sD[b]=this.sD[a]; if(this.sCond)this.sCond[b]=this.sCond[a]; this.sId[a]=-1; this.sAmt[a]=0; if(this.perm)this.perm[b]=this.perm[a]; } if(this.bd){ const M=P.BODY_MAX; this.bd.copyWithin(b*M,a*M,a*M+M); this.bn[b]=this.bn[a]; this.bn[a]=0; this.lastP[b]=this.lastP[a]; if(this.ip){ const S=P.CHEM_S; this.ip.copyWithin(b*S,a*S,a*S+S); this.ipF.copyWithin(b*S,a*S,a*S+S); this.ip.fill(0,a*S,a*S+S); this.ipF.fill(0,a*S,a*S+S); this.uid[b]=this.uid[a]; } } this.alive[b]=1; this.alive[a]=0; this.E[b]=this.E[a]; this.age[b]=this.age[a]; this.pc[b]=this.pc[a]; this.face[b]=this.face[a];
     for(let k=0;k<4;k++)this.R[b*4+k]=this.R[a*4+k]; this.len[b]=this.len[a]; this.prog.copyWithin(b*L,a*L,a*L+L); this.sprog.copyWithin(b*L,a*L,a*L+L); this.slen[b]=this.slen[a];
     this.tag[b]=this.tag[a]; this.tmpl[b]=this.tmpl[a]; this.gen[b]=this.gen[a]; this.stamp[b]=this.stamp[a]; this.E[a]=0;
     if(this.p.TASKS){ for(let k=0;k<3;k++)this.tin[b*3+k]=this.tin[a*3+k]; this.tic[b]=this.tic[a]; for(let k=0;k<8;k++)this.tdone[b*8+k]=this.tdone[a*8+k]; } }
@@ -272,7 +283,17 @@ class World{
     let tg=this.tag[c], tm=this.tmpl[c]; for(let b=0;b<16;b++){ if(r()<P.MU_TAG)tg^=1<<b; if(r()<P.MU_TAG)tm^=1<<b; }
     const half=(this.E[c]-P.BODY)/2; this.E[c]=half;
     let changed=src.length!==n; if(!changed) for(let i=0;i<n;i++){ if(src[i][0]!==this.prog[o+i*2]||src[i][1]!==this.prog[o+i*2+1]){ changed=true; break; } } this.tickBirths.push(changed?1:0); this.tickBirthsF.push(changed&&fnHashList(src,this.n0)!==fnHash(this.prog,o,n,this.n0)?1:0);
-    this.place(t,src,half,tg,tm,this.gen[c]+1,ssrc); if(this.rec)this.rec[t]=this.rec[c]; if(this.bld)this.inheritBld(c,t); if(this.skin)this.skinBirth(c,t); if(this.bd)this.bodyBirth(c,t); this.ev.births++; return true; }
+    this.place(t,src,half,tg,tm,this.gen[c]+1,ssrc); if(this.rec)this.rec[t]=this.rec[c]; if(this.bld)this.inheritBld(c,t); if(this.skin)this.skinBirth(c,t); if(this.bd)this.bodyBirth(c,t); if(this.ip){ const S=P.CHEM_S; for(let q=0;q<S;q++){ const h=this.ip[c*S+q]/2, hf=this.ipF[c*S+q]/2; this.ip[c*S+q]=h; this.ip[t*S+q]=h; this.ipF[c*S+q]=hf; this.ipF[t*S+q]=hf; } } this.ev.births++; return true; }
+  xRelease(c){ const S=this.p.CHEM_S, C=this.C; for(let q=0;q<S;q++){ const v=this.ip[c*S+q]; if(v>0){ this.mol[q*C+c]+=v; this.lt[q*C+c]+=v; } } this.lkO[c]=this.uid[c]; this.ip.fill(0,c*S,c*S+S); this.ipF.fill(0,c*S,c*S+S); }
+  xRun(c){ const P=this.p, M=P.BODY_MAX, S=P.CHEM_S, C=this.C, m=this.mol, ip=this.ip, ipF=this.ipF, lt=this.lt, n=this.bn[c], o=c*S, me=this.uid[c];
+    this.E[c]-=P.BODY_UPX===1?P.BODY_UP*n:P.BODY_UP*n*Math.pow(n/P.BODY_UPN,P.BODY_UPX-1);
+    for(let i=0;i<n;i++){ const q=this.bFirst(this.bd[c*M+i]), j=q*C+c, v=m[j]; if(!(v>0))continue; const u=v*P.XF_UPT, tf=Math.min(1,lt[j]/v); m[j]-=u; lt[j]-=u*tf; ip[o+q]+=u; ipF[o+q]+=u*tf; }
+    for(let i=0;i<n;i++){ const key=this.bd[c*M+i], ch=key>=65536, q=ch?this.bFirst(key):key>>8, t=ch?this.bLast(key):key&255, d=this.eMol[q]-this.eMol[t]; if(!(d>0&&(ch||d<=P.CHEM_DMAX)))continue;
+      const v=ip[o+q], x=v*P.BODY_F; if(!(x>0))continue; const f=ipF[o+q]/v; ip[o+q]-=x; ipF[o+q]-=x*f; ip[o+t]+=x; this.E[c]+=x*d; this.bIncT+=x*d; this.xfInc+=x*d*f; this.bInc.set(key,(this.bInc.get(key)||0)+x*d); this.lastP[c]=t; }
+    if(!P.XF_LEAK)return;
+    for(let i=0;i<n;i++){ const t=this.bLast(this.bd[c*M+i]); let sub=false; for(let k=0;k<n;k++) if(this.bFirst(this.bd[c*M+k])===t){ sub=true; break; } if(sub)continue;
+      const v=ip[o+t]; if(!(v>0))continue; const l=v*P.XF_LEAK; ipF[o+t]-=l*(ipF[o+t]/v); ip[o+t]-=l; this.xfLeak+=l*this.eMol[t];
+      if(P.XF_SHUF){ const s2=(this.xr()*S)|0, a=l*this.eMol[t]/this.eMol[s2]; m[s2*C+c]+=a; lt[s2*C+c]+=a; } else { m[t*C+c]+=l; lt[t*C+c]+=l; } this.lkO[c]=me; } }
   bFirst(k){ return k<65536?k>>8:this.chS[k-65536][0]; }
   bLast(k){ return k<65536?k&255:this.chS[k-65536][this.chS[k-65536].length-1]; }
   bSeq(k){ return k<65536?[k>>8,k&255]:this.chS[k-65536]; }
@@ -360,7 +381,8 @@ class World{
     if(P.NICHE_FOUND_SCHED&&this.sId)this.nicheRandomFound();
     if(P.NICHE_RAND_SCHED&&this.sId)this.nicheRand();
     if(P.NICHE_GC&&this.sId&&this.tick%P.NICHE_GC_EVERY===1)this.ngc();
-    if(this.bd) for(let c=0;c<C;c++) if(this.alive[c]&&this.bn[c])this.bodyRun(c);
+    if(this.ip){ for(let c=0;c<C;c++) if(this.alive[c]&&this.bn[c])this.xRun(c); }
+    else if(this.bd) for(let c=0;c<C;c++) if(this.alive[c]&&this.bn[c])this.bodyRun(c);
     for(let c=0;c<C;c++){ if(!this.alive[c])continue; if(this.E[c]<=0)this.kill(c,'starve'); else if(this.age[c]>P.MAX_AGE)this.kill(c,'old'); }
     if(!this.count())this.reseed();
     this.neutralStep();
@@ -382,6 +404,10 @@ class World{
       for(let y=0;y<H;y++){ const yu=b+((y+H-1)%H)*W, yd=b+((y+1)%H)*W, y0=y*W; for(let x=0;x<W;x++){ const xl=(x+W-1)%W, xr=(x+1)%W, c=y0+x, v=m[b+c];
         t[c]=(v+D*((m[b+y0+xl]+m[b+y0+xr]+m[yu+x]+m[yd+x])/4-v))*k; } }
       m.set(t,b); }
+    if(this.ip){ const lt=this.lt, tt=this.ltTmp; for(let q=0;q<S;q++){ const b=q*C; let any=false; for(let c=0;c<C;c++) if(lt[b+c]>0){ any=true; break; } if(!any)continue;
+        for(let y=0;y<H;y++){ const yu=b+((y+H-1)%H)*W, yd=b+((y+1)%H)*W, y0=y*W; for(let x=0;x<W;x++){ const xl=(x+W-1)%W, xr=(x+1)%W, c=y0+x, v=lt[b+c]; tt[c]=Math.min(m[b+c],(v+D*((lt[b+y0+xl]+lt[b+y0+xr]+lt[yu+x]+lt[yd+x])/4-v))*k); } }
+        lt.set(tt,b); }
+      const ip=this.ip, ipF=this.ipF; for(let i=0;i<ip.length;i++){ if(ip[i]>0){ ip[i]*=k; ipF[i]*=k; } } }
     if(this.sId){ const kd=Math.pow(1-P.NICHE_DECAY,P.CHEM_EVERY), sa=this.sAmt; for(let c=0;c<C;c++) if(this.sId[c]>=0){ sa[c]*=kd; if(sa[c]<1e-4){ this.sId[c]=-1; sa[c]=0; } }
       if(this.sCond){ const ku=Math.pow(1-P.NICHE_UDECAY,P.CHEM_EVERY), u=this.sCond; for(let c=0;c<C;c++) if(this.sId[c]>=0){ u[c]*=ku; if(u[c]<P.NICHE_UMIN){ this.sId[c]=-1; sa[c]=0; this.nv.decayed++; } } } } }
   // ---- NICHE: durable structures (see DEF) ----
@@ -528,7 +554,9 @@ class World{
     let body=null; if(this.bd){ const M=P.BODY_MAX; let mt=0; for(let x=0;x<P.CHEM_S*4;x++)mt+=this.rxE[x]; const tot=mt+this.bIncT, car=new Map(); let sz=0, hold=0;
       for(const c of liv){ const k=this.bn[c]; sz+=k; if(k)hold++; const seen=new Set(); for(let i=0;i<k;i++)seen.add(this.bd[c*M+i]); for(const x of seen)car.set(x,(car.get(x)||0)+1); }
       const al=P.SCAR_T?this.scA:P.CHEM_ALPHA;
-      body={inc:+this.bIncT.toFixed(1),metab:+mt.toFixed(1),light:+(this.ev.eatLight*(1-al)).toFixed(1),size:n?+(sz/n).toFixed(3):0,holders:n?+(hold/n).toFixed(4):0,kinds:car.size,...(P.BODY_FUSE?(()=>{ let nc=0, nl=0, tot2=0; for(const c of liv) for(let i=0;i<this.bn[c];i++){ const k=this.bd[c*M+i]; tot2++; if(k>=65536){ nc++; nl+=this.chS[k-65536].length; } } const o={chainShare:tot2?+(nc/tot2).toFixed(4):0,chainLen:nc?+(nl/nc).toFixed(2):0,chainsEver:this.chS.length,fusions:this.nFuse||0}; this.nFuse=0; return o; })():{}),
+      let xf={}; if(this.ip){ let dom=new Map(), occ=0; for(const c of liv){ let bq=-1, bv=2e-3; for(let q=1;q<P.CHEM_S;q++){ const v=this.mol[q*this.C+c]*this.eMol[q]; if(v>bv){ bv=v; bq=q; } } if(bq>=0){ occ++; dom.set(bq,(dom.get(bq)||0)+1); } }
+        let H=0; for(const v of dom.values()){ const p=v/occ; H-=p*Math.log(p); } xf={xfInc:+this.xfInc.toFixed(1),xfShare:this.bIncT>0?+(this.xfInc/this.bIncT).toFixed(4):0,leakE:+this.xfLeak.toFixed(1),envDom:[...dom.values()].filter(v=>v/Math.max(1,occ)>=0.01).length,envH:+H.toFixed(3)}; this.xfInc=0; this.xfLeak=0; }
+      body={...xf,inc:+this.bIncT.toFixed(1),metab:+mt.toFixed(1),light:+(this.ev.eatLight*(1-al)).toFixed(1),size:n?+(sz/n).toFixed(3):0,holders:n?+(hold/n).toFixed(4):0,kinds:car.size,...(P.BODY_FUSE?(()=>{ let nc=0, nl=0, tot2=0; for(const c of liv) for(let i=0;i<this.bn[c];i++){ const k=this.bd[c*M+i]; tot2++; if(k>=65536){ nc++; nl+=this.chS[k-65536].length; } } const o={chainShare:tot2?+(nc/tot2).toFixed(4):0,chainLen:nc?+(nl/nc).toFixed(2):0,chainsEver:this.chS.length,fusions:this.nFuse||0}; this.nFuse=0; return o; })():{}),
         bU:[...this.bInc.entries()].filter(([k,v])=>tot>0&&v/tot>=0.002).sort((a,b)=>b[1]-a[1]).map(([k,v])=>[k,+(v/tot).toFixed(4)]),
         bC:[...car.entries()].filter(([k,v])=>v/n>=0.002).sort((a,b)=>b[1]-a[1]).map(([k,v])=>[k,+(v/n).toFixed(4)])};
       this.bInc.clear(); this.bIncT=0; }
