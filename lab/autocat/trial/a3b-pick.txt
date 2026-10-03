@@ -1,0 +1,3 @@
+a3b-C1-150k: FULL-ahead 8/12, FULL late body share 28.6%, qualified
+a3b-C2-150k: FULL-ahead 7/12, FULL late body share 28.0%, qualified
+CHOSEN a3b-C1-150k
