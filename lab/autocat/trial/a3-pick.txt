@@ -1,0 +1,4 @@
+a3-B1-150k: FULL-ahead 9/12, FULL late body share 34.2%, qualified
+a3-B2-150k: FULL-ahead 9/12, FULL late body share 30.3%, qualified
+a3-B3-150k: FULL-ahead 12/12, FULL late body share 19.5%, qualified
+CHOSEN a3-B3-150k
