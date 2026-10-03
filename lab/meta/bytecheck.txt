@@ -1,0 +1,12 @@
+IDENTICAL vs main: CHEM
+IDENTICAL vs main: TASKS
+IDENTICAL vs main: default
+IDENTICAL vs xf: skin S2 + AC + SCAR
+IDENTICAL vs xf: HBODY RCAP
+IDENTICAL vs xf: C1+SHUF+SCAR
+IDENTICAL vs xf: HBODY B
+IDENTICAL vs xf: C1 fusion+XFEED
+
+real	7m50.932s
+user	16m8.696s
+sys	0m3.050s
