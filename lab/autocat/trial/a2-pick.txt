@@ -1,0 +1,4 @@
+a2-D1-150k: FULL-ahead 9/12, FULL late structure income 0.0%, qualified
+a2-D2-150k: FULL-ahead 3/12, FULL late structure income 0.0%, DISQUALIFIED (RANDN81 N 423 < 50% of FULLNS 1189)
+a2-D3-150k: FULL-ahead 6/12, FULL late structure income 1.4%, qualified
+CHOSEN a2-D1-150k
