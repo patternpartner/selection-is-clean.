@@ -1,0 +1,10 @@
+IDENTICAL vs 33f208b (A3): HBODY B3+SHUF, seed 79, 15k
+IDENTICAL vs main: CHEM_BIG
+IDENTICAL vs main: CHEM+VIRUS
+IDENTICAL vs main: CHEM
+IDENTICAL vs main: TASKS
+IDENTICAL vs main: default
+IDENTICAL vs skin: NICHE 2
+IDENTICAL vs skin: skin S1
+IDENTICAL vs skin: v3 W1
+IDENTICAL vs skin: skin S2

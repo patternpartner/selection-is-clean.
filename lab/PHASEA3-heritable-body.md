@@ -187,3 +187,62 @@ seed 74: FULL Lu 82.33 trend -1.407 body 26.9% N 964 | NOINH 0.00 RANDCAP 51.07 
 seed 75: FULL Lu 98.27 trend -1.039 body 20.5% N 965 | NOINH 0.00 RANDCAP 47.60 SHUF 19.47 FIXED 15.33 -> FAILS [trend>=0]
 => NO-GO.
 ```
+
+## Phase A3b: why does used body novelty decline? (trial seeds only)
+
+### Diagnosis
+Data:
+- the existing B3 450k runs (seeds 73–75), per 45k-tick window;
+- `lab/autocat/diag3.js`: an exact, counter-instrumented copy of bodyBirth (the same RNG calls), rerunning B3 FULL on trial seeds
+  73 and 74 for 250k ticks. Output: `trial/a3b-diag3-*.txt`.
+
+Findings:
+1. **The product space is exhausted (main cause).** With 256 species, the whole catalyst menu is the set of one-step downhill
+   reactions: 16,573 / 16,446 / 16,643 on seeds 73 / 74 / 75. By 250k ticks the population had already tried 15,489 (93%) and
+   16,064 (98%) of them. New never-seen catalysts per 25k window fell from about 3,000–3,900 (25k–50k) to 432 and 184
+   (225k–250k). Mutation events rose over the same time (from about 1,250 to about 9,500–12,700 per window), so the copy
+   errors increasingly remake catalysts already seen. This is the fixed-menu plateau again, one level up: the body's menu is
+   bigger than the base network's, but it is still finite.
+2. **The cap saturates (secondary cause).** In the 450k runs, FULL's mean body size reached 15.0–15.5 of 16 from about 150k
+   on. In diag3, the share of births from a full parent rose to 0.4–0.6. Captures lost to a full body rose from 0 to about
+   640–900 per 25k window, matching or exceeding the captures added (about 700–1,000).
+3. **Captures do become used, at about twice the rate of mutations.** 11.6% / 13.2% of new capture-born catalysts were ever
+   used, against 5.6% / 6.2% of mutation-born ones. But captures are only about 9% of new catalysts.
+4. **No selective sweep.** Functional genotypes stay at about 150–210, and the top genotype's share stays at 0.06–0.10 (it
+   rose to 0.25 late on seed 73 only).
+5. **Upkeep pruning is minor.** Deletions are flat at about 600–900 per 25k window (the BODY_DEL rate). Bodies stay near the
+   cap, so upkeep is not shrinking them.
+
+### Fixes (chosen from the diagnosis, logged before any A3b trial)
+Both keep the honesty constraints: energy is conserved, no compound or pathway is named, and novelty is never paid.
+- **C1: pathway fusion** (BODY_FUSE 0.02, BODY_CHAIN 8, on top of B3). This targets cause 1.
+  - At birth, with probability 0.02, two catalysts where one's product is the other's substrate fuse into one pathway catalyst
+    q → … → u. It channels the intermediates (they never enter the cell, so neither neighbours nor diffusion take them) and pays
+    e(q) − e(u).
+  - A pathway's identity is its species sequence. So the catalyst space becomes sequences of up to 8 species, effectively
+    inexhaustible, and fusion also frees a body slot.
+  - A pathway mutates by redrawing its last product.
+  - FIXED never fuses, so it keeps only the current one-step base menu.
+- **C2: C1 plus an uncapped body with superlinear upkeep** (BODY_MAX 48, BODY_UPX 1.5, BODY_UPN 16). This targets cause 2.
+  Upkeep per tick = BODY_UP × n × (n/16)^0.5, which equals A3's cost at n = 16, is cheaper below that, and gets steeply dearer
+  above it.
+
+Byte-identity: with BODY_FUSE 0 and BODY_UPX 1, an HBODY B3+SHUF run is identical to A3's code (33f208b), and the unset
+configs are identical to main and cos/skin (`trial/a3b-bytecheck.txt`).
+
+Smoke test (C1, seed 69, 30k; not a trial result): fusions happen (about 200 per 10k ticks), 6–13% of body catalysts are
+pathways (mean length 3.2–3.8), the population is about 1,100, and the body share of all income is 29%.
+
+### Design-choice rule and go criterion (logged before any A3b result)
+- **Arms:** the same as A3 (FULL, NOINH, RANDCAP, SHUF, FIXED, plus BASE for population), each with the design's settings.
+- **Pick:** C1 vs C2 at 150k on fresh trial seeds 60–62 (WIN 10), using the same rule as A3 (`body-check.js pick`):
+  - disqualify a design if any body arm reseeds or has late N below 50% of BASE;
+  - otherwise rank by FULL-ahead comparisons (out of 12), with ties going to the higher FULL body share.
+- **Long check:** the chosen design runs at 450k on fresh trial seeds 63–65 (WIN 15).
+- **Go criterion (unchanged, `body-check.js go`):** on all 3 of seeds 63–65, all of the following must hold:
+  - FULL > NOINH, RANDCAP, SHUF and FIXED on late Lu;
+  - FULL's late trend is ≥ 0;
+  - FULL's body share of ALL late income is ≥ 10%;
+  - every body arm survives (no reseed, late N ≥ 50% of BASE).
+
+Otherwise: **no-go**.

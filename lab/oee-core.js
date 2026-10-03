@@ -172,6 +172,12 @@ const DEF={
   //   BODY_RCAP 1 (RANDCAP): a captured catalyst's substrate is a uniformly random species, not what the parent made;
   //   BODY_SHUF 1 (SHUF): the child copies the body of a random living organism instead of its parent's;
   //   BODY_FIXED 1 (FIXED): every new or mutated catalyst is one of the base network's 1,024 reactions (no menu expansion).
+  //   BODY_FUSE (Phase A3b, off by default): with this probability per birth, two of the child's catalysts where one's product is
+  //     the other's substrate FUSE into one PATHWAY catalyst q -> ... -> u (up to BODY_CHAIN species), which channels the
+  //     intermediates (they never enter the cell) and pays e(q) - e(u). A pathway's identity is its species sequence, so the
+  //     catalyst space is no longer the ~16,500 one-step reactions. A pathway mutates by redrawing its last product. FIXED never fuses.
+  //   BODY_UPX: upkeep is BODY_UP x n x (n / BODY_UPN)^(BODY_UPX - 1) per tick (1 = linear, as in A3).
+  BODY_FUSE:0, BODY_CHAIN:8, BODY_UPX:1, BODY_UPN:16,
   HBODY:0, BODY_MAX:8, BODY_F:0.2, BODY_UP:0.0005, BODY_MUT:0.01, BODY_DUP:0.01, BODY_DEL:0.01, BODY_CAP:0.02, BODY_INH:1, BODY_RCAP:0, BODY_SHUF:0, BODY_FIXED:0,
   SCAR_T:0, SCAR_ON:20000, SCAR_MIN:0.25, SCAR_ALPHA:-1,
   NICHE_SKIN:0, NICHE_SKIN_INH:1, NICHE_SKIN_REGROW:0, NICHE_PERM:0, NICHE_P0:-1, NICHE_PMUT:0.05, NICHE_PSTEP:0.1,
@@ -222,7 +228,7 @@ class World{
     if(P.NICHE&&P.CHEM&&!P.CHEM_BIG){ this.sId=new Int32Array(C).fill(-1); this.sAmt=new Float32Array(C); this.sE=new Float32Array(C); this.sD=new Int32Array(C);
       this.cB=[]; this.cD=[]; this.cE=[]; this.cS=[]; this.cT=[]; this.cK=[]; this.nband=null; if(P.NICHE_COPY)this.rec=new Int32Array(C).fill(-1); if(P.NICHE_OPEN)this.och=new Map(); this.creg=new Map(); this.nfx=new Map(); this.nv=this.nvZero(); this.nrr=mulberry32(((seed>>>0)||1)^0x2e5c2e5c); if(P.NICHE_GC){ this.cHa=[]; this.cHb=[]; this.cFree=[]; this.cDead=[]; this.cLive=0; } this.cMade=0; if(P.NICHE_BLD){ this.bld=new Uint8Array(C); this.brr=mulberry32(((seed>>>0)||1)^0x6b1d0001); this.bBirth=0; this.fBirth=0; } if(P.NICHE_UP)this.sCond=new Float32Array(C); if(P.NICHE_AC)this.arr=mulberry32(((seed>>>0)||1)^0xac0ac001); if(P.NICHE_SKIN){ this.skin=1; this.krr=mulberry32(((seed>>>0)||1)^0x5c1a0001); if(P.NICHE_PERM)this.perm=new Float32Array(C); }
       this.nsalt=h32((((P.CHEM_SEED!==undefined?P.CHEM_SEED:seed)>>>0)||1)^0x51c4e000); }
-    if(P.HBODY&&P.CHEM&&!P.CHEM_BIG){ const S=P.CHEM_S; this.bd=new Int32Array(C*P.BODY_MAX); this.bn=new Uint8Array(C); this.lastP=new Int16Array(C).fill(-1); this.brng=mulberry32(((seed>>>0)||1)^0xb0d70001); this.bInc=new Map(); this.bIncT=0;
+    if(P.HBODY&&P.CHEM&&!P.CHEM_BIG){ const S=P.CHEM_S; this.bd=new Int32Array(C*P.BODY_MAX); this.bn=new Uint8Array(C); this.lastP=new Int16Array(C).fill(-1); this.brng=mulberry32(((seed>>>0)||1)^0xb0d70001); this.bInc=new Map(); this.bIncT=0; this.chS=[]; this.chMap=new Map();
       this.bband=[]; for(let u=0;u<S;u++){ const L=[]; for(let t=0;t<S;t++){ const dd=this.eMol[u]-this.eMol[t]; if(t!==u&&dd>0&&dd<=P.CHEM_DMAX)L.push(t); } this.bband.push(L); } }
     if(P.VIRUS){ this.vc=new Int32Array(P.V_MAX); this.vk=P.CHEM_BIG?new Uint32Array(P.V_MAX):new Uint16Array(P.V_MAX); this.vn=0; this.vrnd=mulberry32(((seed>>>0)||1)^0x7e577e57); this.ev.lysed=0; this.ev.infections=0; }
     this.updateCap(); for(let c=0;c<C;c++)this.light[c]=this.cap[c];
@@ -267,17 +273,24 @@ class World{
     const half=(this.E[c]-P.BODY)/2; this.E[c]=half;
     let changed=src.length!==n; if(!changed) for(let i=0;i<n;i++){ if(src[i][0]!==this.prog[o+i*2]||src[i][1]!==this.prog[o+i*2+1]){ changed=true; break; } } this.tickBirths.push(changed?1:0); this.tickBirthsF.push(changed&&fnHashList(src,this.n0)!==fnHash(this.prog,o,n,this.n0)?1:0);
     this.place(t,src,half,tg,tm,this.gen[c]+1,ssrc); if(this.rec)this.rec[t]=this.rec[c]; if(this.bld)this.inheritBld(c,t); if(this.skin)this.skinBirth(c,t); if(this.bd)this.bodyBirth(c,t); this.ev.births++; return true; }
+  bFirst(k){ return k<65536?k>>8:this.chS[k-65536][0]; }
+  bLast(k){ return k<65536?k&255:this.chS[k-65536][this.chS[k-65536].length-1]; }
+  bSeq(k){ return k<65536?[k>>8,k&255]:this.chS[k-65536]; }
+  bReg(seq){ const key=seq.join(','); let id=this.chMap.get(key); if(id===undefined){ id=65536+this.chS.length; this.chS.push(seq); this.chMap.set(key,id); } return id; }
   bNewT(q){ const P=this.p, r=this.brng; if(P.BODY_FIXED)return this.prod[q*4+((r()*4)|0)]; const L=this.bband[q]; return L.length?L[(r()*L.length)|0]:-1; }
   bodyBirth(c,t){ const P=this.p, M=P.BODY_MAX, S=P.CHEM_S, r=this.brng; let src=c;
     if(P.BODY_SHUF){ for(let k=0;k<64;k++){ const q=(r()*this.C)|0; if(this.alive[q]&&q!==t){ src=q; break; } } }
     const L=[]; if(P.BODY_INH) for(let i=0;i<this.bn[src];i++)L.push(this.bd[src*M+i]);
-    for(let i=0;i<L.length;i++) if(r()<P.BODY_MUT){ let q=L[i]>>8; if(r()<0.5)q=(r()*S)|0; const tt=this.bNewT(q); if(tt>=0)L[i]=q*256+tt; }
+    for(let i=0;i<L.length;i++) if(r()<P.BODY_MUT){ if(L[i]>=65536){ const sq=this.chS[L[i]-65536].slice(), tt=this.bNewT(sq[sq.length-2]); if(tt>=0&&tt!==sq[sq.length-2]){ sq[sq.length-1]=tt; L[i]=this.bReg(sq); } continue; }
+      let q=L[i]>>8; if(r()<0.5)q=(r()*S)|0; const tt=this.bNewT(q); if(tt>=0)L[i]=q*256+tt; }
     if(L.length&&L.length<M&&r()<P.BODY_DUP)L.push(L[(r()*L.length)|0]);
     if(L.length&&r()<P.BODY_DEL)L.splice((r()*L.length)|0,1);
+    if(P.BODY_FUSE&&!P.BODY_FIXED&&L.length>=2&&r()<P.BODY_FUSE){ const i=(r()*L.length)|0, u=this.bLast(L[i]); let j=-1; for(let k=0;k<L.length;k++) if(k!==i&&this.bFirst(L[k])===u){ j=k; break; }
+      if(j>=0){ const a=this.bSeq(L[i]), b=this.bSeq(L[j]); if(a.length+b.length-1<=P.BODY_CHAIN&&a[0]!==b[b.length-1]){ const id=this.bReg(a.concat(b.slice(1))); const hi=Math.max(i,j), lo=Math.min(i,j); L.splice(hi,1); L.splice(lo,1); L.push(id); this.nFuse=(this.nFuse||0)+1; } } }
     if(L.length<M&&r()<P.BODY_CAP){ const q=P.BODY_RCAP?(r()*S)|0:this.lastP[c]; if(q>=0){ const tt=this.bNewT(q); if(tt>=0)L.push(q*256+tt); } }
     for(let i=0;i<L.length;i++)this.bd[t*M+i]=L[i]; this.bn[t]=L.length; }
-  bodyRun(c){ const P=this.p, M=P.BODY_MAX, C=this.C, m=this.mol, n=this.bn[c]; this.E[c]-=P.BODY_UP*n;
-    for(let i=0;i<n;i++){ const key=this.bd[c*M+i], q=key>>8, t=key&255, d=this.eMol[q]-this.eMol[t]; if(!(d>0&&d<=P.CHEM_DMAX))continue; const x=m[q*C+c]*P.BODY_F; if(!(x>0))continue;
+  bodyRun(c){ const P=this.p, M=P.BODY_MAX, C=this.C, m=this.mol, n=this.bn[c]; this.E[c]-=P.BODY_UPX===1?P.BODY_UP*n:P.BODY_UP*n*Math.pow(n/P.BODY_UPN,P.BODY_UPX-1);
+    for(let i=0;i<n;i++){ const key=this.bd[c*M+i], ch=key>=65536, q=ch?this.bFirst(key):key>>8, t=ch?this.bLast(key):key&255, d=this.eMol[q]-this.eMol[t]; if(!(d>0&&(ch||d<=P.CHEM_DMAX)))continue; const x=m[q*C+c]*P.BODY_F; if(!(x>0))continue;
       m[q*C+c]-=x; m[t*C+c]+=x; this.E[c]+=x*d; this.bIncT+=x*d; this.bInc.set(key,(this.bInc.get(key)||0)+x*d); this.lastP[c]=t; } }
   skinBirth(c,t){ const P=this.p; if(this.perm){ let q=this.perm[c]; if(this.krr()<P.NICHE_PMUT)q=Math.min(1,Math.max(0,q+(2*this.krr()-1)*P.NICHE_PSTEP)); this.perm[t]=q; }
     if(P.NICHE_SKIN_INH&&this.sId[c]>=0){ const h=this.sAmt[c]/2; this.sAmt[c]=h; this.sId[t]=this.sId[c]; this.sAmt[t]=h; this.sE[t]=this.sE[c]; this.sD[t]=this.sD[c]; if(this.sCond)this.sCond[t]=this.sCond[c]; this.nv.inh++;
@@ -515,7 +528,7 @@ class World{
     let body=null; if(this.bd){ const M=P.BODY_MAX; let mt=0; for(let x=0;x<P.CHEM_S*4;x++)mt+=this.rxE[x]; const tot=mt+this.bIncT, car=new Map(); let sz=0, hold=0;
       for(const c of liv){ const k=this.bn[c]; sz+=k; if(k)hold++; const seen=new Set(); for(let i=0;i<k;i++)seen.add(this.bd[c*M+i]); for(const x of seen)car.set(x,(car.get(x)||0)+1); }
       const al=P.SCAR_T?this.scA:P.CHEM_ALPHA;
-      body={inc:+this.bIncT.toFixed(1),metab:+mt.toFixed(1),light:+(this.ev.eatLight*(1-al)).toFixed(1),size:n?+(sz/n).toFixed(3):0,holders:n?+(hold/n).toFixed(4):0,kinds:car.size,
+      body={inc:+this.bIncT.toFixed(1),metab:+mt.toFixed(1),light:+(this.ev.eatLight*(1-al)).toFixed(1),size:n?+(sz/n).toFixed(3):0,holders:n?+(hold/n).toFixed(4):0,kinds:car.size,...(P.BODY_FUSE?(()=>{ let nc=0, nl=0, tot2=0; for(const c of liv) for(let i=0;i<this.bn[c];i++){ const k=this.bd[c*M+i]; tot2++; if(k>=65536){ nc++; nl+=this.chS[k-65536].length; } } const o={chainShare:tot2?+(nc/tot2).toFixed(4):0,chainLen:nc?+(nl/nc).toFixed(2):0,chainsEver:this.chS.length,fusions:this.nFuse||0}; this.nFuse=0; return o; })():{}),
         bU:[...this.bInc.entries()].filter(([k,v])=>tot>0&&v/tot>=0.002).sort((a,b)=>b[1]-a[1]).map(([k,v])=>[k,+(v/tot).toFixed(4)]),
         bC:[...car.entries()].filter(([k,v])=>v/n>=0.002).sort((a,b)=>b[1]-a[1]).map(([k,v])=>[k,+(v/n).toFixed(4)])};
       this.bInc.clear(); this.bIncT=0; }
