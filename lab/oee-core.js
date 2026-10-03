@@ -150,6 +150,15 @@ const DEF={
   //   NICHE_RAND_NAMED 1 (with AC 2 and NICHE_RAND_SCHED): the random null's founds name a uniformly random pair, made from
   //     random present feedstock (the null that matches named synthesis); 0: random present pairs, as in v2-skin.
   NICHE_AC:0, NICHE_AC_X:0, NICHE_AC_B:0, NICHE_RAND_NAMED:0,
+  // SCARCITY (lab/PHASEA2-scarcity.md), needs CHEM (256-species network), off by default (SCAR_T 0): the base economy runs
+  //   down. From tick SCAR_ON, over SCAR_T ticks (linear ramp, then held):
+  //   - every BASE METAB reaction runs at a rate factor falling from 1 to SCAR_MIN (the share of the cell's substrate turned
+  //     over per METAB). Unconverted molecules simply stay in the cell (they diffuse and decay as before), so energy is
+  //     conserved; structure-catalysed reactions (CATAL) and channels are untouched;
+  //   - optionally (SCAR_ALPHA >= 0) the share of eaten light left in the cell as species 0 instead of taken directly ramps from
+  //     CHEM_ALPHA to SCAR_ALPHA (a split of the same energy, so conserved).
+  //   Nothing names a compound or rewards novelty: structures only gain because base routes earn less.
+  SCAR_T:0, SCAR_ON:20000, SCAR_MIN:0.25, SCAR_ALPHA:-1,
   NICHE_SKIN:0, NICHE_SKIN_INH:1, NICHE_SKIN_REGROW:0, NICHE_PERM:0, NICHE_P0:-1, NICHE_PMUT:0.05, NICHE_PSTEP:0.1,
   // TASKS (#290), exclusive of CHEM, off by default: Avida's logic tasks. Each organism is born with three random 32-bit
   // inputs (redrawn until all eight truth-table rows occur), so an output names one three-input boolean function (256 of
@@ -268,7 +277,7 @@ class World{
         case 14: { const a=this.ahead(c,this.face[c]); R[r4]=this.alive[a]?this.matchP(c,a):-1; } break;   // SENSE_MATCH
         case 15: this.face[c]=(this.face[c]+(arg&7))&7; break;               // TURN
         case 16: { const a=this.ahead(c,this.face[c]); this.E[c]-=P.C_MOVE; if(!this.alive[a]){ this.moveOrg(c,a); this.pc[a]=next; this.ev.moves++; return; } } break;   // MOVE
-        case 17: { const t=this.light[c]*P.EAT_F; this.light[c]-=t; if(P.CHEM){ this.E[c]+=t*(1-P.CHEM_ALPHA); if(P.CHEM_BIG)this.layer(0)[c]+=t*P.CHEM_ALPHA; else this.mol[c]+=t*P.CHEM_ALPHA; } else this.E[c]+=t; this.ev.eatLight+=t; } break;   // EAT_LIGHT (under CHEM part of the take is left as species 0)
+        case 17: { const t=this.light[c]*P.EAT_F; this.light[c]-=t; if(P.CHEM){ const al=P.SCAR_T?this.scA:P.CHEM_ALPHA; this.E[c]+=t*(1-al); if(P.CHEM_BIG)this.layer(0)[c]+=t*al; else this.mol[c]+=t*al; } else this.E[c]+=t; this.ev.eatLight+=t; } break;   // EAT_LIGHT (under CHEM part of the take is left as species 0)
         case 18: { const t=this.corpse[c]*P.EAT_F; this.corpse[c]-=t; this.E[c]+=t; this.ev.eatCorpse+=t; } break;   // EAT_CORPSE
         case 19: { const a=this.ahead(c,this.face[c]); this.E[c]-=P.C_ATTACK; if(this.alive[a]){ const take=this.matchP(c,a)*P.ATT_FRAC*this.E[a]; this.E[a]-=take; this.E[c]+=take*P.ATT_EFF; this.ev.attacks++; this.ev.attackTake+=take;
                    if(this.E[a]<=0.01){ this.kill(a,'killed'); } } } break;   // ATTACK
@@ -282,7 +291,7 @@ class World{
                  else if(P.CHEM_BIG){ const q=arg|(this.prog[o+((pc+1)%n)*2+1]<<8), Lq=this.big.layers.get(q);   // METABj, two-byte species
                    if(Lq&&Lq[c]>0){ const j=op-24, pr=this.bprod(q,j), d=this.be(q)-this.be(pr); if(d>0&&d<=P.CHEM_DMAX){ const x=Lq[c]*P.EAT_F; Lq[c]-=x; this.layer(pr)[c]+=x; this.E[c]+=x*d; this.ev.metab+=x*d; this.ev.metabN++; const id=q*4+j; this.rxE.set(id,(this.rxE.get(id)||0)+x*d); } } }
                  else if(P.CHEM){ const S=P.CHEM_S, q=arg&(S-1), pr=this.prod[q*4+op-24], d=this.eMol[q]-this.eMol[pr], C=this.C;   // METABj (mol is species-major: species q in cell c is q*C+c)
-                   if(d>0&&d<=P.CHEM_DMAX){ const x=this.mol[q*C+c]*P.EAT_F*(this.sId&&this.sId[c]>=0?1+P.NICHE_CAT*Math.min(1,this.sAmt[c]):1); if(x>0){ this.mol[q*C+c]-=x; this.mol[pr*C+c]+=x; this.E[c]+=x*d; this.ev.metab+=x*d; this.ev.metabN++; this.rxE[q*4+op-24]+=x*d; } } } break;
+                   if(d>0&&d<=P.CHEM_DMAX){ const x=this.mol[q*C+c]*P.EAT_F*(this.sId&&this.sId[c]>=0?1+P.NICHE_CAT*Math.min(1,this.sAmt[c]):1)*(P.SCAR_T?this.scF:1); if(x>0){ this.mol[q*C+c]-=x; this.mol[pr*C+c]+=x; this.E[c]+=x*d; this.ev.metab+=x*d; this.ev.metabN++; this.rxE[q*4+op-24]+=x*d; } } } break;
         case 28: if(P.CHEM_BIG){ const Lq=this.big.layers.get(arg|(this.prog[o+((pc+1)%n)*2+1]<<8)); R[r4]=Lq?Lq[c]:0; } else if(P.CHEM)R[r4]=this.mol[(arg&(P.CHEM_S-1))*this.C+c]; break;   // SENSE_MOL
         case 29: if(this.sId)this.build(c,arg,this.prog[o+((pc+1)%n)*2+1]); break;   // BUILD under NICHE; otherwise a neutral marker
         case 30: if(this.sId)this.catal(c); break;                           // CATAL under NICHE; otherwise a neutral marker
@@ -294,6 +303,7 @@ class World{
     if(this.alive[c])this.pc[c]=pc;
   }
   step(){ const P=this.p, C=this.C; this.tick++;
+    if(P.SCAR_T){ const r=Math.min(1,Math.max(0,this.tick-P.SCAR_ON)/P.SCAR_T); this.scF=1-(1-P.SCAR_MIN)*r; this.scA=P.CHEM_ALPHA+((P.SCAR_ALPHA<0?P.CHEM_ALPHA:P.SCAR_ALPHA)-P.CHEM_ALPHA)*r; }
     if(this.tick%10===0)this.updateCap();
     if(P.CHEM&&this.tick%P.CHEM_EVERY===0)this.chemStep();
     if(P.TASKS){ const tr=this.tres, cp=this.tcap; for(let T=0;T<256;T++)tr[T]+=P.TASK_RATE*(cp[T]-tr[T]); }   // each function's pool regrows toward its cap
