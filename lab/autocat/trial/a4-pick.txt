@@ -1,0 +1,3 @@
+a4-X1-150k: FULL-ahead 6/15, FULL late body share 35.0%, qualified
+a4-X2-150k: FULL-ahead 8/15, FULL late body share 34.3%, qualified
+CHOSEN a4-X2-150k
