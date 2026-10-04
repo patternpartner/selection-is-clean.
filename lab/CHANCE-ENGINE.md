@@ -209,3 +209,43 @@ CHOSEN R1
 - Correlations: rate vs new used is high (pooled 0.83), and rate vs next-window use is too (0.77). But DRIFT-R2 shows the same (0.78 /
   0.64), so this is mechanical (more captures means more arrivals, and both fall over time), not a schedule. The "rises when stuck"
   correlation is weak (−0.27, threshold −0.3) and is stronger in SHUF-R2 (−0.43), so it is not specific to selection either.
+
+### Post-hoc DIAGNOSTIC 2: coexistence vs replacement, and cause of death (added 2026-10-04 ~13:00 BST; NOT part of the go criterion)
+- Script: `lab/chance/chance-diag2.js`. It only reads the existing per-1000-tick JSONL, with no rerun, and the running stage-2 sim was
+  not touched. Stage-1 output: `lab/chance/trial/chance-diag2-s1.txt`. Windows are 5k ticks. "Present", "genuinely new" and "used" are
+  defined exactly as in `chance-diag.js`. The stage-2 version is appended by `lab/chance/diag-waiter2.sh`, which replaces `diag-waiter.sh`.
+- **What the logs cannot answer (missing fields).** There are no parent/lineage links, no per-organism body sets and no capture events.
+  So "the parent's trick" cannot be identified, and both readouts are **population-level proxies**. Pathway ids (key ≥ 65536) are logged
+  without their substrate or origin, so an R1 long jump cannot be told apart from a fusion or a mutated pathway, and pathways are left out
+  of the niche pairing. Per-type income (`bU`) is only listed above 0.2% of ALL chemical income (metabolism included). So for about 99% of
+  dying new types, income is never visible, and their cause of death **cannot be determined**.
+  - Logging needed to answer this properly: (a) a capture/birth event log with parent id, the parent's body set, the new key, and its
+    origin (capture with walk length k, fusion, or mutation), plus the substrate of each pathway id (log `chS`); (b) per-type income for
+    every carried type, not just those above 0.2% of total; (c) the mean substrate concentration in carrier cells per type, which is
+    what separates demand vanishing from out-competition.
+- **1. Coexistence vs replacement** (one-step new types against same-substrate incumbents, outcome one window later). Counting
+  ESTABLISHED incumbents (present 2 windows), the share of surviving new types that coexist rather than replace was: R1 69%, RANDCAP 67%,
+  DRIFT-R1 69%, DIRECT-R1 78%, R2 46%, DRIFT-R2 44%, SHUF 27–48%. Counting all incumbents, R1 was 51% and RANDCAP 49%.
+  - An arrival does **not** raise the incumbent's loss. Established same-substrate groups that received an arrival were wholly gone one
+    window later 37% of the time (R1), against 88% for groups with no arrival. Arrivals land on busy substrates.
+  - The no-selection DRIFT arm shows the same coexistence share. So, as far as these logs can show, coexistence vs replacement is not
+    something selection is doing.
+  - The census (all types, pathways included) is near-replacement turnover: about 1.02–1.35 exits per genuinely new entry, with net
+    present types +3 to +31 per window. R1's standing kinds still grew (1/3 → end: 123→178, 237→249, 199→281). R2 and SHUF-R1 shrank on
+    most seeds.
+- **2. Cause of death** (new types gone one window later). For 99% of these deaths the cause cannot be determined (income below the
+  readout). That includes about 92–95% of the dead types that met the "used" rule, which they met through carriers. The readable ~1% is
+  biased toward high earners:
+
+  | arm | readable deaths | demand vanished | still earning when lost |
+  |---|---|---|---|
+  | R1 | 114 | 1 | 102 |
+  | RANDCAP | 157 | 3 | 140 |
+  | DRIFT-R1 | 177 | 1 | 176 |
+  | DIRECT-R1 | 329 | 5 | 282 |
+
+  - So the readable ones almost never die because demand vanished. They lose their carriers while still earning per carrier.
+  - The no-selection DRIFT arm does the same, so "still earning when lost" is consistent with host and drift loss. It is not evidence of
+    out-competition.
+  - Of the one-step "still earning" deaths, a same-substrate competitor rose in 67% (R1, 8 of 12) and 66% (RANDCAP, 46 of 70). The
+    numbers are tiny.
