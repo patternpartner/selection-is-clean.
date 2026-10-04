@@ -31,7 +31,8 @@ const NULL={FULL:{},RANDCAP:{BODY_RCAP:1},SHUF:{BODY_SHUF:1},NOINH:{BODY_INH:0},
 let rs=+(E.RSEED||12345)>>>0; const rnd=()=>{ rs=(rs+0x6D2B79F5)>>>0; let t=rs; t=Math.imul(t^(t>>>15),t|1); t^=t+Math.imul(t^(t>>>7),t|61); return ((t^(t>>>14))>>>0)/4294967296; };
 const gauss=()=>Math.sqrt(-2*Math.log(Math.max(1e-12,rnd())))*Math.cos(2*Math.PI*rnd());
 // ---- state ----
-let st=fs.existsSync(STATE)?JSON.parse(fs.readFileSync(STATE)):{gen:-1,cfg:[],evals:[],pending:null,k:0,rs,held:null};
+const REPO_STATE=path.join(OUT,'state.json'); // fallback: the committed copy, so a wiped /tmp resumes from the last pushed generation
+let st=fs.existsSync(STATE)?JSON.parse(fs.readFileSync(STATE)):fs.existsSync(REPO_STATE)?JSON.parse(fs.readFileSync(REPO_STATE)):{gen:-1,cfg:[],evals:[],pending:null,k:0,rs,held:null};
 rs=st.rs;
 const save=()=>{ st.rs=rs; fs.writeFileSync(STATE+'.tmp',JSON.stringify(st)); fs.renameSync(STATE+'.tmp',STATE); fs.copyFileSync(STATE,path.join(OUT,'state.json')); };
 const log=(...a)=>console.log(new Date().toISOString().slice(0,19),...a);
