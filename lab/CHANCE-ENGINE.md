@@ -45,8 +45,15 @@ A3b C1 (fusion) and A3 B3 (no fusion), FULL vs RANDCAP. Late windows 50k–80k, 
 | lineage diversity: effective number of body sets exp(H) | 95 | 141 | 96 | 114 |
 | top body-set share | 0.081 | 0.045 | 0.059 | 0.054 |
 
-Fraction of capture-born catalysts that ever become USED (whole run): see `TOTAL` lines in `lab/chance/trial/capdiag-*-63.txt`
-(B3 FULL 10.4%; others are filled in below when the runs finish).
+**Fraction of captures that become used** (whole 90k run; each new capture-born catalyst, is it ever USED by the Lu rule):
+
+| | B3 FULL | B3 RANDCAP | C1 FULL | C1 RANDCAP |
+|---|---|---|---|---|
+| new catalysts first made by capture | 788 | 2,756 | 1,117 | 3,735 |
+| of which ever used | 82 (**10.4%**) | 130 (4.7%) | 91 (**8.1%**) | 122 (3.3%) |
+
+Directed captures hit about twice as often, but random makes 3.3–3.5× as many genuinely new ones. So random ends up with more used
+inventions in absolute terms (+34–59%). Volume beats aim.
 
 ### 1c. What the meta-search learned about the capture-source mix (`lab/meta/evals.csv`, 142 evaluations at 80k)
 - The evolved operator beat RANDCAP in only **49%** of evaluations (mean Lu 94.2 vs 93.2): a coin flip. With fusion on 43%, with
