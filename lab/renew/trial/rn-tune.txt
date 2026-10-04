@@ -1,0 +1,4 @@
+cap 1.5: S RENEW 3.75,7.25,2.25 | S MATCHED 8.25,9.00,5.50 | ratio 0.61 | does not qualify: seed 116 cap binding 0.95/0.95
+cap 5: S RENEW 7.00,6.00,3.25 | S MATCHED 4.75,12.25,5.50 | ratio 0.74 | does not qualify: seed 116 cap binding 0.95/0.95
+cap 15: S RENEW 13.00,5.75,11.00 | S MATCHED 15.50,7.75,6.75 | ratio 0.99 | does not qualify: seed 116 cap binding 0.93/0.95
+STOP: no cap qualifies

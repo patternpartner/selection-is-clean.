@@ -121,3 +121,34 @@ per window, too small to decide on. If the user prefers the literal rule, change
   without a frozen cap.
 
 ## Log
+
+### Step 1 result: tuning on trial seeds 116-118, 150k (appended by tune-runs.sh 2026-10-04 16:30 BST)
+```
+arm seed | ticks | S (sticky new used / window, late third) | new used / window (late third) | sticky share | late N | reseeds | injected energy | cap binding share
+BASE 116 | 150000 | 0.00 | 0.00 | - | 1377 | 0 | 0 | -
+RENEW-c1.5 116 | 150000 | 3.75 | 25.00 | 0.15 | 1224 | 0 | 42929 | 0.95
+MATCHED-c1.5 116 | 150000 | 8.25 | 40.25 | 0.20 | 1012 | 0 | 43132 | 0.95
+RENEW-c5 116 | 150000 | 7.00 | 35.50 | 0.20 | 1100 | 0 | 142382 | 0.95
+MATCHED-c5 116 | 150000 | 4.75 | 27.00 | 0.18 | 1231 | 0 | 143401 | 0.95
+RENEW-c15 116 | 150000 | 13.00 | 59.75 | 0.22 | 1190 | 0 | 422878 | 0.93
+MATCHED-c15 116 | 150000 | 15.50 | 65.75 | 0.24 | 1167 | 0 | 429671 | 0.95
+BASE 117 | 150000 | 0.00 | 0.00 | - | 1337 | 0 | 0 | -
+RENEW-c1.5 117 | 150000 | 7.25 | 42.50 | 0.17 | 989 | 0 | 43777 | 0.97
+MATCHED-c1.5 117 | 150000 | 9.00 | 46.25 | 0.19 | 970 | 0 | 43783 | 0.97
+RENEW-c5 117 | 150000 | 6.00 | 31.75 | 0.19 | 1002 | 0 | 145822 | 0.97
+MATCHED-c5 117 | 150000 | 12.25 | 51.75 | 0.24 | 1061 | 0 | 145845 | 0.97
+RENEW-c15 117 | 150000 | 5.75 | 40.25 | 0.14 | 1198 | 0 | 436140 | 0.97
+MATCHED-c15 117 | 150000 | 7.75 | 43.00 | 0.18 | 1146 | 0 | 436169 | 0.97
+BASE 118 | 150000 | 0.00 | 0.00 | - | 1434 | 0 | 0 | -
+RENEW-c1.5 118 | 150000 | 2.25 | 18.25 | 0.12 | 1184 | 0 | 44304 | 0.98
+MATCHED-c1.5 118 | 150000 | 5.50 | 29.00 | 0.19 | 1188 | 0 | 44304 | 0.98
+RENEW-c5 118 | 150000 | 3.25 | 26.75 | 0.12 | 1170 | 0 | 147662 | 0.98
+MATCHED-c5 118 | 150000 | 5.50 | 41.50 | 0.13 | 1223 | 0 | 147663 | 0.98
+RENEW-c15 118 | 150000 | 11.00 | 52.25 | 0.21 | 1268 | 0 | 441740 | 0.98
+MATCHED-c15 118 | 150000 | 6.75 | 35.25 | 0.19 | 1213 | 0 | 440701 | 0.97
+
+cap 1.5: S RENEW 3.75,7.25,2.25 | S MATCHED 8.25,9.00,5.50 | ratio 0.61 | does not qualify: seed 116 cap binding 0.95/0.95
+cap 5: S RENEW 7.00,6.00,3.25 | S MATCHED 4.75,12.25,5.50 | ratio 0.74 | does not qualify: seed 116 cap binding 0.95/0.95
+cap 15: S RENEW 13.00,5.75,11.00 | S MATCHED 15.50,7.75,6.75 | ratio 0.99 | does not qualify: seed 116 cap binding 0.93/0.95
+STOP: no cap qualifies
+```
