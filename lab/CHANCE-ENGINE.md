@@ -280,3 +280,96 @@ seed 115: D Lu 51.07 LuInc 6.20 trend 0.404 body 26.9% N 1217 | RANDCAP 30.47/2.
 mean Lu(D)/Lu(RANDCAP) over seeds: 1.291 (needs >= 1.10)
 => NO-GO.
 ```
+
+#### POST-HOC diagnostic on stage 2 (R1, 450k, seeds 113-115; appended by diag-waiter2.sh 2026-10-04 13:02 BST). Not a go criterion.
+```
+# chance-diag (post-hoc, not a go criterion): DIR /home/box/chance-runs/s2-R1, seeds 113 114 115, WIN 5 samples (5000 ticks)
+
+## 1. Evolved randomness trajectory (population mean rate multiplier exp(temperature), start 1; tail alpha, start 1.5)
+
+## 2. Churn vs use (types arriving in the readout per window: genuinely new vs re-appearing; persistence of new types)
+arm seed | windows | arrivals/window new | re-appearances/window | re-appearance share (all / late third) | new types still present +1 / +2 / +4 windows | new USED/window late third
+D 113 | 90 | 125.4 | 32.3 | 20% / 27% | 24% / 9% / 4% | 19.93
+D 114 | 90 | 148.1 | 65.2 | 31% / 43% | 25% / 11% / 6% | 25.33
+D 115 | 90 | 149.1 | 72.0 | 31% / 43% | 25% / 11% / 6% | 30.47
+RANDCAP 113 | 90 | 120.2 | 97.7 | 46% / 64% | 25% / 9% / 5% | 20.17
+RANDCAP 114 | 90 | 111.9 | 86.3 | 43% / 61% | 24% / 9% / 5% | 24.00
+RANDCAP 115 | 90 | 112.6 | 81.5 | 42% / 62% | 24% / 9% / 4% | 18.07
+DIRECT 113 | 90 | 58.5 | 26.3 | 32% / 32% | 27% / 12% / 6% | 9.90
+DIRECT 114 | 90 | 79.2 | 30.4 | 30% / 35% | 25% / 10% / 5% | 9.97
+DIRECT 115 | 90 | 88.1 | 40.8 | 31% / 35% | 27% / 12% / 8% | 16.20
+DRIFT 113 | 90 | 170.4 | 162.9 | 47% / 62% | 27% / 12% / 8% | 42.27
+DRIFT 114 | 90 | 203.4 | 236.3 | 48% / 75% | 28% / 13% / 8% | 65.40
+DRIFT 115 | 90 | 188.8 | 185.8 | 46% / 69% | 29% / 14% / 9% | 52.63
+SHUF 113 | 90 | 114.1 | 21.9 | 17% / 19% | 26% / 7% / 2% | 9.60
+SHUF 114 | 90 | 113.1 | 16.8 | 13% / 20% | 25% / 6% / 1% | 11.30
+SHUF 115 | 90 | 110.2 | 16.3 | 13% / 19% | 26% / 7% / 2% | 10.30
+
+## 3-4. Correlations over windows (arms with evolvable randomness only)
+arm seed | corr(rate, new used) | corr(rate, persistence +2) | corr(rate change in w, new used in w-1) [<0 = rises when stuck] | corr(rate in w, new used in w+1) [>0 = use follows]
+
+## Classification (D; rule: outcome 1 if late rate <= 0.5 on >= 2 seeds; outcome 2 if late rate >= 2 and late re-appearance share >= 50% and late new-used not above R1/RANDCAP on >= 2 seeds; outcome 3 if pooled corr(rate change, previous new-used) <= -0.3 AND pooled corr(rate, next new-used) >= +0.3; otherwise mixed)
+no arm with evolvable randomness found: not classifiable
+```
+
+#### POST-HOC coexistence/replacement and cause-of-death readouts on stage 2 (chance-diag2.js; see definitions and limits above)
+```
+# chance-diag2 (POST-HOC, not a go criterion): DIR /home/box/chance-runs/s2-R1, seeds 113 114 115, WIN 5 samples (5000 ticks). Pooled over seeds per arm.
+
+## 1a. New one-step types vs same-substrate incumbents (population proxy; no lineage data), outcome one window later
+arm | new types (all) | of which pathways (no substrate logged, excluded) | one-step new | no incumbent on substrate | coexist | replace | new lost | both lost | coexist share of (coexist+replace) | incumbent group wholly gone at w+1: with arrival / background without arrival | USED one-step new: coexist / replace
+D | 37519 | 15641 (42%) | 21878 | 47% | 7% | 6% | 19% | 21% | 56% (n=2867) | 50% / 88% | 350 / 335 (51%)
+RANDCAP | 30699 | 1059 (3%) | 29640 | 37% | 7% | 8% | 20% | 28% | 47% (n=4489) | 58% / 86% | 510 / 622 (45%)
+DIRECT | 19968 | 11328 (57%) | 8640 | 60% | 7% | 3% | 16% | 14% | 69% (n=877) | 42% / 81% | 130 / 81 (62%)
+DRIFT | 50148 | 13359 (27%) | 36789 | 25% | 12% | 8% | 30% | 24% | 61% (n=7499) | 43% / 75% | 967 / 734 (57%)
+SHUF | 29882 | 15171 (51%) | 14711 | 66% | 2% | 6% | 6% | 20% | 27% (n=1164) | 76% / 94% | 41 / 106 (28%)
+
+## 1a-est. Same, but incumbents = ESTABLISHED same-substrate one-step types (present in both w-2 and w-1)
+arm | cases | coexist | replace | new lost | both lost | coexist share of (coexist+replace) | established group wholly gone at w+1: with arrival / background without arrival
+D | 6268 | 19% | 7% | 49% | 26% | 72% (n=1611) | 33% / 80%
+RANDCAP | 9284 | 16% | 9% | 42% | 33% | 64% (n=2331) | 42% / 78%
+DIRECT | 1946 | 20% | 7% | 47% | 26% | 74% (n=517) | 33% / 66%
+DRIFT | 17356 | 20% | 8% | 47% | 24% | 70% (n=4933) | 33% / 65%
+SHUF | 1661 | 8% | 16% | 26% | 50% | 35% (n=399) | 66% / 93%
+
+## 1b. Census per window (all types incl. pathways): entries of genuinely new types, re-entries of earlier-seen types, exits, net change in present types; body.kinds (full census) at 1/3 and end
+arm seed | windows | new entries/window (of which pathways) | re-entries/window | exits/window | net present-type change/window | exits per entry | kinds at 1/3 -> end
+D 113 | 90 | 126.6 (57.6) | 32.6 | 157.1 | +2.1 | 1.24 | 249.8 -> 194.6
+D 114 | 90 | 149.5 (57.8) | 65.9 | 213.2 | +2.3 | 1.43 | 310.8 -> 230.8
+D 115 | 90 | 150.2 (62.3) | 72.4 | 219.0 | +3.6 | 1.46 | 320.4 -> 271.2
+RANDCAP 113 | 90 | 122.1 (4.2) | 98.8 | 218.0 | +2.9 | 1.79 | 326.2 -> 208.0
+RANDCAP 114 | 90 | 113.3 (5.3) | 86.8 | 195.9 | +4.2 | 1.73 | 331.6 -> 293.6
+RANDCAP 115 | 90 | 113.5 (2.5) | 81.9 | 192.3 | +3.2 | 1.69 | 302.4 -> 247.2
+DIRECT 113 | 90 | 58.8 (27.3) | 26.5 | 83.7 | +1.6 | 1.42 | 86.2 -> 137.0
+DIRECT 114 | 90 | 79.8 (44.4) | 30.9 | 110.6 | +0.2 | 1.39 | 64.0 -> 36.4
+DIRECT 115 | 90 | 88.3 (57.0) | 41.1 | 125.9 | +3.5 | 1.42 | 245.4 -> 267.4
+DRIFT 113 | 90 | 172.4 (46.1) | 163.0 | 327.6 | +7.8 | 1.90 | 494.6 -> 595.0
+DRIFT 114 | 90 | 206.5 (51.5) | 237.4 | 434.7 | +9.2 | 2.10 | 587.4 -> 609.2
+DRIFT 115 | 90 | 191.0 (54.1) | 186.5 | 368.7 | +8.7 | 1.93 | 489.8 -> 601.2
+SHUF 113 | 90 | 114.8 (57.5) | 22.0 | 134.8 | +2.0 | 1.17 | 198.6 -> 165.6
+SHUF 114 | 90 | 113.9 (58.1) | 16.9 | 128.7 | +2.0 | 1.13 | 191.6 -> 188.0
+SHUF 115 | 90 | 110.9 (56.8) | 16.4 | 125.7 | +1.7 | 1.13 | 215.2 -> 160.2
+
+## 2. Cause of death: genuinely new types gone one window later (shares of those deaths)
+arm | deaths (of new types) | demand vanished | still earning when lost (out-competed or drift) | declining | income never above readout (0.2% of all chemical income): CAUSE NOT DETERMINABLE | undetermined (censored at end) | USED deaths: n, demand / still earning / never | one-step still-earning deaths with a same-substrate riser (displaced)
+D | 28231 | 0% | 0% | 0% | 100% | 0% | 523, 0% / 3% / 97% | 16/24 (67%)
+RANDCAP | 23407 | 0% | 1% | 0% | 99% | 0% | 465, 0% / 4% / 94% | 41/64 (64%)
+DIRECT | 14783 | 0% | 1% | 0% | 98% | 0% | 219, 0% / 11% / 79% | 14/21 (67%)
+DRIFT | 36279 | 0% | 1% | 0% | 99% | 0% | 657, 0% / 2% / 98% | 32/72 (44%)
+SHUF | 22336 | 0% | 0% | 0% | 100% | 0% | 181, 1% / 5% / 91% | 2/9 (22%)
+
+## 2-vis. Restricted to deaths whose income was visible in >= 1 sample (the only ones whose cause can be read): counts
+arm | n | demand vanished | still earning when lost | declining | undetermined
+D | 137 | 2 | 119 | 3 | 13
+RANDCAP | 152 | 3 | 120 | 4 | 25
+DIRECT | 269 | 0 | 219 | 5 | 45
+DRIFT | 231 | 0 | 228 | 1 | 2
+SHUF | 67 | 2 | 46 | 1 | 18
+
+## 2b. Same, split by kind: one-step (1s) vs pathway (Ch) deaths: n, demand / still earning / income never visible
+D | 1s n=16756: 0% / 0% / 100% | Ch n=11475: 0% / 1% / 99%
+RANDCAP | 1s n=22838: 0% / 0% / 100% | Ch n=569: 0% / 7% / 92%
+DIRECT | 1s n=6550: 0% / 0% / 100% | Ch n=8233: 0% / 2% / 97%
+DRIFT | 1s n=27032: 0% / 1% / 99% | Ch n=9247: 0% / 1% / 99%
+SHUF | 1s n=11207: 0% / 0% / 100% | Ch n=11129: 0% / 0% / 100%
+```

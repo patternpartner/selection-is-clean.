@@ -1,0 +1,27 @@
+# chance-diag (post-hoc, not a go criterion): DIR /home/box/chance-runs/s2-R1, seeds 113 114 115, WIN 5 samples (5000 ticks)
+
+## 1. Evolved randomness trajectory (population mean rate multiplier exp(temperature), start 1; tail alpha, start 1.5)
+
+## 2. Churn vs use (types arriving in the readout per window: genuinely new vs re-appearing; persistence of new types)
+arm seed | windows | arrivals/window new | re-appearances/window | re-appearance share (all / late third) | new types still present +1 / +2 / +4 windows | new USED/window late third
+D 113 | 90 | 125.4 | 32.3 | 20% / 27% | 24% / 9% / 4% | 19.93
+D 114 | 90 | 148.1 | 65.2 | 31% / 43% | 25% / 11% / 6% | 25.33
+D 115 | 90 | 149.1 | 72.0 | 31% / 43% | 25% / 11% / 6% | 30.47
+RANDCAP 113 | 90 | 120.2 | 97.7 | 46% / 64% | 25% / 9% / 5% | 20.17
+RANDCAP 114 | 90 | 111.9 | 86.3 | 43% / 61% | 24% / 9% / 5% | 24.00
+RANDCAP 115 | 90 | 112.6 | 81.5 | 42% / 62% | 24% / 9% / 4% | 18.07
+DIRECT 113 | 90 | 58.5 | 26.3 | 32% / 32% | 27% / 12% / 6% | 9.90
+DIRECT 114 | 90 | 79.2 | 30.4 | 30% / 35% | 25% / 10% / 5% | 9.97
+DIRECT 115 | 90 | 88.1 | 40.8 | 31% / 35% | 27% / 12% / 8% | 16.20
+DRIFT 113 | 90 | 170.4 | 162.9 | 47% / 62% | 27% / 12% / 8% | 42.27
+DRIFT 114 | 90 | 203.4 | 236.3 | 48% / 75% | 28% / 13% / 8% | 65.40
+DRIFT 115 | 90 | 188.8 | 185.8 | 46% / 69% | 29% / 14% / 9% | 52.63
+SHUF 113 | 90 | 114.1 | 21.9 | 17% / 19% | 26% / 7% / 2% | 9.60
+SHUF 114 | 90 | 113.1 | 16.8 | 13% / 20% | 25% / 6% / 1% | 11.30
+SHUF 115 | 90 | 110.2 | 16.3 | 13% / 19% | 26% / 7% / 2% | 10.30
+
+## 3-4. Correlations over windows (arms with evolvable randomness only)
+arm seed | corr(rate, new used) | corr(rate, persistence +2) | corr(rate change in w, new used in w-1) [<0 = rises when stuck] | corr(rate in w, new used in w+1) [>0 = use follows]
+
+## Classification (D; rule: outcome 1 if late rate <= 0.5 on >= 2 seeds; outcome 2 if late rate >= 2 and late re-appearance share >= 50% and late new-used not above R1/RANDCAP on >= 2 seeds; outcome 3 if pooled corr(rate change, previous new-used) <= -0.3 AND pooled corr(rate, next new-used) >= +0.3; otherwise mixed)
+no arm with evolvable randomness found: not classifiable

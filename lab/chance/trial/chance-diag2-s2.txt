@@ -1,0 +1,58 @@
+# chance-diag2 (POST-HOC, not a go criterion): DIR /home/box/chance-runs/s2-R1, seeds 113 114 115, WIN 5 samples (5000 ticks). Pooled over seeds per arm.
+
+## 1a. New one-step types vs same-substrate incumbents (population proxy; no lineage data), outcome one window later
+arm | new types (all) | of which pathways (no substrate logged, excluded) | one-step new | no incumbent on substrate | coexist | replace | new lost | both lost | coexist share of (coexist+replace) | incumbent group wholly gone at w+1: with arrival / background without arrival | USED one-step new: coexist / replace
+D | 37519 | 15641 (42%) | 21878 | 47% | 7% | 6% | 19% | 21% | 56% (n=2867) | 50% / 88% | 350 / 335 (51%)
+RANDCAP | 30699 | 1059 (3%) | 29640 | 37% | 7% | 8% | 20% | 28% | 47% (n=4489) | 58% / 86% | 510 / 622 (45%)
+DIRECT | 19968 | 11328 (57%) | 8640 | 60% | 7% | 3% | 16% | 14% | 69% (n=877) | 42% / 81% | 130 / 81 (62%)
+DRIFT | 50148 | 13359 (27%) | 36789 | 25% | 12% | 8% | 30% | 24% | 61% (n=7499) | 43% / 75% | 967 / 734 (57%)
+SHUF | 29882 | 15171 (51%) | 14711 | 66% | 2% | 6% | 6% | 20% | 27% (n=1164) | 76% / 94% | 41 / 106 (28%)
+
+## 1a-est. Same, but incumbents = ESTABLISHED same-substrate one-step types (present in both w-2 and w-1)
+arm | cases | coexist | replace | new lost | both lost | coexist share of (coexist+replace) | established group wholly gone at w+1: with arrival / background without arrival
+D | 6268 | 19% | 7% | 49% | 26% | 72% (n=1611) | 33% / 80%
+RANDCAP | 9284 | 16% | 9% | 42% | 33% | 64% (n=2331) | 42% / 78%
+DIRECT | 1946 | 20% | 7% | 47% | 26% | 74% (n=517) | 33% / 66%
+DRIFT | 17356 | 20% | 8% | 47% | 24% | 70% (n=4933) | 33% / 65%
+SHUF | 1661 | 8% | 16% | 26% | 50% | 35% (n=399) | 66% / 93%
+
+## 1b. Census per window (all types incl. pathways): entries of genuinely new types, re-entries of earlier-seen types, exits, net change in present types; body.kinds (full census) at 1/3 and end
+arm seed | windows | new entries/window (of which pathways) | re-entries/window | exits/window | net present-type change/window | exits per entry | kinds at 1/3 -> end
+D 113 | 90 | 126.6 (57.6) | 32.6 | 157.1 | +2.1 | 1.24 | 249.8 -> 194.6
+D 114 | 90 | 149.5 (57.8) | 65.9 | 213.2 | +2.3 | 1.43 | 310.8 -> 230.8
+D 115 | 90 | 150.2 (62.3) | 72.4 | 219.0 | +3.6 | 1.46 | 320.4 -> 271.2
+RANDCAP 113 | 90 | 122.1 (4.2) | 98.8 | 218.0 | +2.9 | 1.79 | 326.2 -> 208.0
+RANDCAP 114 | 90 | 113.3 (5.3) | 86.8 | 195.9 | +4.2 | 1.73 | 331.6 -> 293.6
+RANDCAP 115 | 90 | 113.5 (2.5) | 81.9 | 192.3 | +3.2 | 1.69 | 302.4 -> 247.2
+DIRECT 113 | 90 | 58.8 (27.3) | 26.5 | 83.7 | +1.6 | 1.42 | 86.2 -> 137.0
+DIRECT 114 | 90 | 79.8 (44.4) | 30.9 | 110.6 | +0.2 | 1.39 | 64.0 -> 36.4
+DIRECT 115 | 90 | 88.3 (57.0) | 41.1 | 125.9 | +3.5 | 1.42 | 245.4 -> 267.4
+DRIFT 113 | 90 | 172.4 (46.1) | 163.0 | 327.6 | +7.8 | 1.90 | 494.6 -> 595.0
+DRIFT 114 | 90 | 206.5 (51.5) | 237.4 | 434.7 | +9.2 | 2.10 | 587.4 -> 609.2
+DRIFT 115 | 90 | 191.0 (54.1) | 186.5 | 368.7 | +8.7 | 1.93 | 489.8 -> 601.2
+SHUF 113 | 90 | 114.8 (57.5) | 22.0 | 134.8 | +2.0 | 1.17 | 198.6 -> 165.6
+SHUF 114 | 90 | 113.9 (58.1) | 16.9 | 128.7 | +2.0 | 1.13 | 191.6 -> 188.0
+SHUF 115 | 90 | 110.9 (56.8) | 16.4 | 125.7 | +1.7 | 1.13 | 215.2 -> 160.2
+
+## 2. Cause of death: genuinely new types gone one window later (shares of those deaths)
+arm | deaths (of new types) | demand vanished | still earning when lost (out-competed or drift) | declining | income never above readout (0.2% of all chemical income): CAUSE NOT DETERMINABLE | undetermined (censored at end) | USED deaths: n, demand / still earning / never | one-step still-earning deaths with a same-substrate riser (displaced)
+D | 28231 | 0% | 0% | 0% | 100% | 0% | 523, 0% / 3% / 97% | 16/24 (67%)
+RANDCAP | 23407 | 0% | 1% | 0% | 99% | 0% | 465, 0% / 4% / 94% | 41/64 (64%)
+DIRECT | 14783 | 0% | 1% | 0% | 98% | 0% | 219, 0% / 11% / 79% | 14/21 (67%)
+DRIFT | 36279 | 0% | 1% | 0% | 99% | 0% | 657, 0% / 2% / 98% | 32/72 (44%)
+SHUF | 22336 | 0% | 0% | 0% | 100% | 0% | 181, 1% / 5% / 91% | 2/9 (22%)
+
+## 2-vis. Restricted to deaths whose income was visible in >= 1 sample (the only ones whose cause can be read): counts
+arm | n | demand vanished | still earning when lost | declining | undetermined
+D | 137 | 2 | 119 | 3 | 13
+RANDCAP | 152 | 3 | 120 | 4 | 25
+DIRECT | 269 | 0 | 219 | 5 | 45
+DRIFT | 231 | 0 | 228 | 1 | 2
+SHUF | 67 | 2 | 46 | 1 | 18
+
+## 2b. Same, split by kind: one-step (1s) vs pathway (Ch) deaths: n, demand / still earning / income never visible
+D | 1s n=16756: 0% / 0% / 100% | Ch n=11475: 0% / 1% / 99%
+RANDCAP | 1s n=22838: 0% / 0% / 100% | Ch n=569: 0% / 7% / 92%
+DIRECT | 1s n=6550: 0% / 0% / 100% | Ch n=8233: 0% / 2% / 97%
+DRIFT | 1s n=27032: 0% / 1% / 99% | Ch n=9247: 0% / 1% / 99%
+SHUF | 1s n=11207: 0% / 0% / 100% | Ch n=11129: 0% / 0% / 100%
