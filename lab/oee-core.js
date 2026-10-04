@@ -208,6 +208,13 @@ const DEF={
   //   BODY_DRIFT 1 (DRIFT null, no selection): body catalysts are SHADOWS. They are inherited, varied and read out exactly as usual
   //     (the income they WOULD earn is logged in bInc), but they move no molecules, pay no energy and cost no upkeep, so bodies are
   //     selectively neutral and change only by drift. Not with XFEED.
+  RENEW:0, RN_CAP:1.5, RN_RATE:0.1, RN_TAU:20000, RN_K:64,
+  // RENEW (lab/LOCAL-RENEWAL.md), needs CHEM, off by default. Every cell keeps a slow baseline (EMA over RN_TAU ticks) of each species.
+  //   After each chemistry step the shortfall below baseline, max(0, baseline - now), is refilled at RN_RATE of the shortfall, with
+  //   the total injected energy per chemistry step capped at RN_CAP (everything scaled down evenly when the cap binds). This is an
+  //   EXTERNAL energy source (like a chemostat), so energy is not conserved in these arms; the injected energy is logged (sample.rn).
+  //   RENEW 1: refill where the shortfall is (LOCAL renewal). RENEW 2 (MATCHED-FOOD null): the same rule computes the same per-species
+  //   amounts, but they are put into RN_K uniformly random cells per species (own RNG stream), not where consumed.
   CH_LEN:0, CH_EVO:0, CH_EVO_MAX:3, CH_AMIN:0.3, CH_AMAX:6, CH_AWAY:0, BODY_DRIFT:0,
   XFEED:0, XF_UPT:0.2, XF_LEAK:0.1, XF_SHUF:0,
   BODY_FUSE:0, BODY_CHAIN:8, BODY_UPX:1, BODY_UPN:16,
@@ -296,6 +303,7 @@ class World{
     if(P.HBODY&&P.CHEM&&!P.CHEM_BIG){ const S=P.CHEM_S; this.bd=new Int32Array(C*P.BODY_MAX); this.bn=new Uint8Array(C); this.lastP=new Int16Array(C).fill(-1); this.brng=mulberry32(((seed>>>0)||1)^0xb0d70001); this.bInc=new Map(); this.bIncA=new Float64Array(65536); this.bSeen=new Uint8Array(65536); this.bOrd=[]; this.bIncT=0; this.chS=[]; this.chMap=new Map(); if(P.BODY_HIST>1)this.ph=new Int16Array(C*4).fill(-1); if(P.BODY_EVO>0)this.eg=new Float32Array(C*6); if(P.CH_EVO>0){ this.ct=new Float32Array(C*2); this.crng=mulberry32(((seed>>>0)||1)^0xc4a0e001); } if(P.BODY_DRIFT&&P.XFEED)throw new Error('BODY_DRIFT is not defined with XFEED');
       if(P.XFEED){ this.ip=new Float32Array(C*S); this.ipF=new Float32Array(C*S); this.lt=new Float32Array(C*S); this.ltTmp=new Float32Array(C); this.uid=new Int32Array(C); this.uidN=1; this.lkO=new Int32Array(C); this.xr=mulberry32(((seed>>>0)||1)^0x8fee0001); this.xfInc=0; this.xfLeak=0; }
       this.bband=[]; for(let u=0;u<S;u++){ const L=[]; for(let t=0;t<S;t++){ const dd=this.eMol[u]-this.eMol[t]; if(t!==u&&dd>0&&dd<=P.CHEM_DMAX)L.push(t); } this.bband.push(L); } }
+    if(P.RENEW){ if(!P.CHEM||P.CHEM_BIG)throw new Error('RENEW needs CHEM (not CHEM_BIG)'); this.rnB=new Float32Array(C*P.CHEM_S); this.rnQ=new Float64Array(P.CHEM_S); this.rnr=mulberry32(((seed>>>0)||1)^0x4e3e0001); this.rnS={inj:0,want:0,steps:0,bind:0}; }
     if(P.VIRUS){ this.vc=new Int32Array(P.V_MAX); this.vk=P.CHEM_BIG?new Uint32Array(P.V_MAX):new Uint16Array(P.V_MAX); this.vn=0; this.vrnd=mulberry32(((seed>>>0)||1)^0x7e577e57); this.ev.lysed=0; this.ev.infections=0; }
     this.updateCap(); for(let c=0;c<C;c++)this.light[c]=this.cap[c];
     // the ancestor: eat light, try to divide, turn. Nothing else is given.
@@ -478,6 +486,7 @@ class World{
       else for(let y=0;y<H;y++){ const yu=b+((y+H-1)%H)*W, yd=b+((y+1)%H)*W, y0=y*W; for(let x=0;x<W;x++){ const xl=(x+W-1)%W, xr=(x+1)%W, c=y0+x, v=m[b+c];
         t[c]=(v+D*((m[b+y0+xl]+m[b+y0+xr]+m[yu+x]+m[yd+x])/4-v))*k; } }
       m.set(t,b); let nz=0; for(let c=0;c<C;c++) if(t[c]>0){ nz=1; break; } live[q]=nz; }
+    if(P.RENEW)this.renew();
     if(this.ip){ const lt=this.lt, tt=this.ltTmp; for(let q=0;q<S;q++){ const b=q*C; let any=false; for(let c=0;c<C;c++) if(lt[b+c]>0){ any=true; break; } if(!any)continue;
         if(fast) diffuse64Clamp(lt,b,tt,m,D,k);
         else for(let y=0;y<H;y++){ const yu=b+((y+H-1)%H)*W, yd=b+((y+1)%H)*W, y0=y*W; for(let x=0;x<W;x++){ const xl=(x+W-1)%W, xr=(x+1)%W, c=y0+x, v=lt[b+c]; tt[c]=Math.min(m[b+c],(v+D*((lt[b+y0+xl]+lt[b+y0+xr]+lt[yu+x]+lt[yd+x])/4-v))*k); } }
@@ -485,6 +494,13 @@ class World{
       const ip=this.ip, ipF=this.ipF; for(let i=0;i<ip.length;i++){ if(ip[i]>0){ ip[i]*=k; ipF[i]*=k; } } }
     if(this.sId){ const kd=Math.pow(1-P.NICHE_DECAY,P.CHEM_EVERY), sa=this.sAmt; for(let c=0;c<C;c++) if(this.sId[c]>=0){ sa[c]*=kd; if(sa[c]<1e-4){ this.sId[c]=-1; sa[c]=0; } }
       if(this.sCond){ const ku=Math.pow(1-P.NICHE_UDECAY,P.CHEM_EVERY), u=this.sCond; for(let c=0;c<C;c++) if(this.sId[c]>=0){ u[c]*=ku; if(u[c]<P.NICHE_UMIN){ this.sId[c]=-1; sa[c]=0; this.nv.decayed++; } } } } }
+  renew(){ const P=this.p, S=P.CHEM_S, C=this.C, m=this.mol, B=this.rnB, eM=this.eMol, a=P.CHEM_EVERY/P.RN_TAU, rr=P.RN_RATE, Q=this.rnQ, live=this.molLive; let want=0;
+    for(let q=0;q<S;q++){ const b=q*C; let dq=0, any=0; for(let c=0;c<C;c++){ const v=m[b+c]; let e=B[b+c]; e+=(v-e)*a; B[b+c]=e; if(e>0)any=1; if(e>v)dq+=e-v; } Q[q]=any?dq*rr:-1; if(dq>0)want+=dq*rr*eM[q]; }
+    const sc=want>P.RN_CAP?P.RN_CAP/want:1, st=this.rnS; st.steps++; st.want+=want; if(sc<1)st.bind++; if(!(want>0))return; let inj=0;
+    for(let q=0;q<S;q++){ if(!(Q[q]>0))continue; const b=q*C; inj+=Q[q]*sc*eM[q]; live[q]=1;
+      if(P.RENEW===1){ const f=rr*sc; for(let c=0;c<C;c++){ const d=B[b+c]-m[b+c]; if(d>0)m[b+c]+=d*f; } }
+      else { const K=P.RN_K, x=Q[q]*sc/K, r=this.rnr; for(let k=0;k<K;k++)m[b+((r()*C)|0)]+=x; } }
+    st.inj+=inj; }
   // ---- NICHE: durable structures (see DEF) ----
   nDelta(a,b){ return this.p.CHEM_DMAX*(1.6*h32(this.nsalt^Math.imul(a+1,0x9E3779B1)^Math.imul(b+7,0x85EBCA77))/4294967296-0.6); }   // binding energy of operand pair (a: species, b: species or structure id)
   nFound(c,a,b,toOrg){ const P=this.p, S=P.CHEM_S, C=this.C, m=this.mol; const x=a===b?P.NICHE_F*m[a*C+c]/2:P.NICHE_F*Math.min(m[a*C+c],m[b*C+c]); if(!(x>=1e-3)||!this.nCan(b,a))return false;
@@ -664,7 +680,7 @@ class World{
       shadowOpShare:Array.from(sopC,v=>n?+(v/n).toFixed(4):0),
       progGeno:[...pg.entries()].sort((a,b)=>b[1]-a[1]).slice(0,60), shadowGeno:[...spg.entries()].sort((a,b)=>b[1]-a[1]).slice(0,60), progGenoN:pg.size, shadowGenoN:spg.size, neutralGeno:(()=>{ const m=new Map(); for(const l of this.ns)m.set(l,(m.get(l)||0)+1); return [...m.entries()].sort((a,b)=>b[1]-a[1]).slice(0,60); })(), neutralN:this.ns.length, fnGeno:fgTop, fnGenoN:fg.size, fnNeutral, fnNeutralN:this.fs.length, fnNew,
       shadowBigrams:Object.fromEntries([...sbgC.entries()].filter(([b,v])=>v/n>=0.01).map(([b,v])=>[b,+(v/n).toFixed(4)])),
-      reseeds:this.reseeds||0, ...(chem?{chem,n0:this.n0}:{}), ...(tasks?{tasks,n0:this.n0}:{}), ...(vir?{vir}:{}), ...(niche?{niche}:{}), ...(body?{body}:{})}; }
+      reseeds:this.reseeds||0, ...(chem?{chem,n0:this.n0}:{}), ...(tasks?{tasks,n0:this.n0}:{}), ...(vir?{vir}:{}), ...(niche?{niche}:{}), ...(body?{body}:{}), ...(this.rnS?{rn:(()=>{ const o={inj:+this.rnS.inj.toFixed(2),want:+this.rnS.want.toFixed(2),bind:this.rnS.steps?+(this.rnS.bind/this.rnS.steps).toFixed(3):0}; this.rnS={inj:0,want:0,steps:0,bind:0}; return o; })()}:{})}; }
 }
 
 // ---- save and resume: every field is a typed array or a plain value, so a run can be carried across windows exactly ----

@@ -1,0 +1,19 @@
+# Smoke: seed 59, 20,000 ticks, D (R1) base, RENEW 0 / 1 (local) / 2 (matched), RN_CAP 1.5 (default). Every 4th sample. Run alongside 10 other processes on 8 cores, so wallS is inflated; the ratio is what matters.
+== RENEW=0
+4000 N 752 reseeds 0 eatLight 22036 molE 14327.6 species present 23 body income 1016.1 body kinds 44 rn null wallS 5.2
+8000 N 897 reseeds 0 eatLight 23156 molE 17810.3 species present 62 body income 2244.9 body kinds 76 rn null wallS 11.5
+12000 N 808 reseeds 0 eatLight 23447 molE 12209.5 species present 131 body income 4214 body kinds 112 rn null wallS 20.4
+16000 N 760 reseeds 0 eatLight 23444 molE 11240.7 species present 161 body income 4957.3 body kinds 118 rn null wallS 28.6
+20000 N 1045 reseeds 0 eatLight 24165 molE 9123.1 species present 171 body income 6641.6 body kinds 148 rn null wallS 35.9
+== RENEW=1
+4000 N 774 reseeds 0 eatLight 21971 molE 14404 species present 31 body income 434.6 body kinds 42 rn {"inj":300,"want":1562.87,"bind":1} wallS 8.9
+8000 N 901 reseeds 0 eatLight 22742 molE 17783.5 species present 47 body income 1423.6 body kinds 55 rn {"inj":300,"want":5806.58,"bind":1} wallS 20.5
+12000 N 1579 reseeds 0 eatLight 25107 molE 10756.8 species present 82 body income 10140.4 body kinds 136 rn {"inj":300,"want":31638.35,"bind":1} wallS 29.9
+16000 N 997 reseeds 0 eatLight 24361 molE 6973 species present 132 body income 7515.6 body kinds 143 rn {"inj":300,"want":83277.24,"bind":1} wallS 40.4
+20000 N 1122 reseeds 0 eatLight 24759 molE 6682.6 species present 151 body income 7104.4 body kinds 155 rn {"inj":300,"want":84675.13,"bind":1} wallS 51.2
+== RENEW=2
+4000 N 798 reseeds 0 eatLight 21999 molE 14340.3 species present 27 body income 691.1 body kinds 48 rn {"inj":300,"want":1910.22,"bind":1} wallS 8.9
+8000 N 855 reseeds 0 eatLight 21517 molE 17924.1 species present 53 body income 458.9 body kinds 50 rn {"inj":300,"want":4496.45,"bind":1} wallS 17.7
+12000 N 1017 reseeds 0 eatLight 23499 molE 15734.4 species present 98 body income 2550.4 body kinds 71 rn {"inj":300,"want":30058.91,"bind":1} wallS 27.9
+16000 N 1179 reseeds 0 eatLight 23927 molE 16442.2 species present 110 body income 2881.4 body kinds 94 rn {"inj":300,"want":22921.02,"bind":1} wallS 36.5
+20000 N 1309 reseeds 0 eatLight 24843 molE 13257.2 species present 141 body income 4932.9 body kinds 156 rn {"inj":300,"want":79206.06,"bind":1} wallS 45.9
