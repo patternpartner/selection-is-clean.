@@ -72,3 +72,61 @@ below both (e.g. A3b 450k SHUF 6.0, NOINH 0), so it is chance **plus** selection
 
 The one place directed wins (B3: 16-slot bodies, no fusion) is where depth can pile up without being fused away. Breadth is not
 always better.
+
+## Part 2. Designs: chance as the engine (fixed before any design run)
+Lesson from Part 1: keep random variation, keep selection, and make chance **reach further**. Both designs sit on A3b C1
+(`CHEM, HBODY, BODY_F 0.05, BODY_MAX 16, BODY_FUSE 0.02`), so plain RANDCAP is exactly the A3b null that won.
+Honesty rules hold: energy is conserved (a catalyst or pathway q → … → u pays e(q) − e(u) only from molecules really in the cell;
+every step is downhill within CHEM_DMAX). Nothing is named. Novelty is never paid; only income and upkeep act.
+Knobs are in `lab/oee-core.js`, off by default, byte-identical when unset (`lab/chance/trial/bytecheck.txt`).
+
+- **R1, heavy-tailed chance ("Lévy capture"):** `BODY_RCAP 1, CH_LEN 1.5`. The substrate is uniform random. The captured catalyst is a
+  random downhill walk of k steps, with P(k) ∝ k^−1.5 for k = 1..7. So it is mostly one-step catalysts (53%), sometimes a long new
+  pathway in one jump. This breaks the ~16.5k one-step ceiling (A3b's diagnosis) by chance alone, with no lineage history.
+- **R2, evolvable chance:** R1 + `CH_EVO 0.1`. Each organism inherits its own log "temperature" (multiplies its mutation and capture
+  rates, clamped ×e^±3) and its own tail exponent α (start 1.5, range 0.3–6), each with N(0, 0.1) noise per birth from its own RNG
+  stream. Selection alone sets how random each lineage is. (A smoke test, seed 59, 12k ticks, gave mean rate ×3.4 and α 2.1.
+  So it is not neutral, and runaway temperature is a known risk.)
+- Implemented but **not** pre-registered: `CH_AWAY` (novelty-biased random substrate). Part 1 shows random draws are already 95% off
+  the parent's chemistry, so the bias would add little.
+
+### Nulls (each run with the design's own settings)
+- **RANDCAP**: plain chance (C1 + BODY_RCAP 1). This is the null to beat.
+- **DIRECT**: the same operator (same heavy-tailed walk, same R2 evolvability), but the substrate is what the parent made. This
+  isolates chance vs history as the source.
+- **DRIFT** (no selection): `BODY_DRIFT 1`. Bodies are inherited and varied identically, but they are shadows: they move no
+  molecules, pay nothing and cost nothing. Their would-be income is logged, so Lu is measured identically. This shows how much "used
+  novelty" pure drift of the same chance produces.
+- **SHUF**: copy a random organism's body (inheritance null).
+- For R2 only, **R1** acts as the frozen-chance null: it has the same starting values but no evolvability.
+- **BASE**: CHEM only (population reference).
+
+### Readout (`lab/chance/ce-trial.js`)
+- Lu, exactly as in A3/A4 (`body-trial.js`), plus **LuInc**: new used catalysts counting the income rule only (≥ 1% of chemical income;
+  carriers alone do not count). Long random pathways cannot score just by being carried around.
+
+### Design choice (`ce-check.js pick`)
+- 150k on trial seeds **110, 111, 112** (WIN 10).
+- Disqualify a design if any of its arms reseeds or has late N < 50% of BASE.
+- Pick the larger fraction of design-ahead Lu comparisons: R1 has 4 nulls × 3 seeds, R2 has 5 × 3. Ties go to the higher body share.
+
+### Go criterion (`ce-check.js go`): chosen design at 450k on fresh trial seeds 113, 114, 115 (WIN 15)
+On **all 3** seeds:
+- Lu(D) > Lu of RANDCAP, DIRECT, DRIFT and SHUF (and R1 if D = R2);
+- LuInc(D) > LuInc(RANDCAP) and > LuInc(DRIFT);
+- D's late Lu trend ≥ 0;
+- D's body share of all late income ≥ 10%;
+- no arm reseeds, and every arm's late N ≥ 50% of BASE.
+
+Also, mean over seeds of Lu(D)/Lu(RANDCAP) ≥ **1.10**, so the design must beat plain chance by a margin, not a hair.
+Otherwise: **NO-GO**. A GO only justifies writing a deciding pre-registration on fresh seeds. It is not a claim.
+
+### Schedule (`lab/chance/waiter.sh` → `lab/chance/runs.sh`)
+- The waiter polls every 5 min. It starts only after `cos/meta-search` has the commit "meta-search: held-out check on seeds …" and
+  `lab/meta/search.js` has exited. It gives up, starting nothing, at 23:30.
+- Stage 1 is 30 runs × 150k at 8 in parallel: about 50–60 min (A3b C1 150k runs took 620–740 s each).
+- Stage 2 is 18–21 runs × 450k: about 3–3.5 h (C1 450k took ~3,600 s each; 3 waves).
+- Total: about 4–4.5 h after the held-out check. If it lands 14:00–15:00 BST, the verdict is due about **18:30–19:30 BST**.
+- Each stage appends its tables to this file and pushes.
+
+## Log
