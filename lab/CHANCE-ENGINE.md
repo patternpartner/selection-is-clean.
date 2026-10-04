@@ -178,3 +178,23 @@ R1: design-ahead 4/12 (33%), late body share 23.2%, qualified
 R2: design-ahead 1/15 (7%), late body share 41.7%, qualified
 CHOSEN R1
 ```
+
+### Post-hoc DIAGNOSTIC: evolvable randomness (added 2026-10-04 12:40 BST, before stage-2 results; NOT a change to the go criterion)
+- Script: `lab/chance/chance-diag.js`, which only reads the existing per-1000-tick JSONL. No rerun, and no running process or waiter
+  was touched.
+- Reports for R2 vs its nulls:
+  1. the trajectory of the evolved rate multiplier and tail α;
+  2. churn vs use: per window, catalyst types arriving in the readout that are genuinely new vs re-appearing, and how many new types
+     persist +1/+2/+4 windows;
+  3. corr(rate, new used) and corr(rate, persistence);
+  4. the "stuck" response: corr(Δrate, previous new-used) and corr(rate, next new-used), pooled over seeds after z-scoring.
+- Classification rule (fixed in the script): **outcome 1** if late rate ≤ 0.5 on ≥ 2 seeds; **outcome 2** if late rate ≥ 2, late
+  re-appearance share ≥ 50% and late new-used not above R1/RANDCAP on ≥ 2 seeds; **outcome 3** if pooled corr(Δrate, previous
+  new-used) ≤ −0.3 and corr(rate, next new-used) ≥ +0.3; otherwise mixed.
+- **Where the data is:** stage 1 chose R1, so stage 2 (450k, seeds 113–115) has **no evolvable-randomness arm**. The R2 diagnostic can
+  only use stage 1 (150k, seeds 110–112: R2, R1, RANDCAP, DIRECT-R2, DRIFT-R2, SHUF-R2), which already existed when this was written.
+  The stage-1 pick table had been seen, plus one sample value (R2 seed 110 final mean rate 0.254). The churn part is also run on stage
+  2's R1 arms when they finish (a tiny nohup waiter appends it here).
+- **Missing data:** the samples list only types above 0.2% of carriers or income. So a "re-appearance" is either a true re-discovery or
+  a type that survived below the threshold. True per-capture re-discovery rates need the capture wrapper (`lab/chance/capdiag.js`) on
+  a rerun, and none was started. There is also no per-lineage rate, only the population mean.
