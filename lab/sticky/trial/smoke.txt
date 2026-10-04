@@ -1,0 +1,9 @@
+# smoke (descriptive): seed 59, 12k ticks, new knobs on; N/reseeds per 1k sample; err files empty: 0 bytes
+CROWD samples 12 | N/reseeds: 165/0 245/0 300/0 684/0 751/0 757/0 764/0 742/0 759/0 779/0 785/0 767/0 | final kinds 78 size 2.146
+XB samples 12 | N/reseeds: 172/0 339/0 667/0 683/0 983/0 971/0 927/0 1037/0 1477/0 1321/0 1110/0 1001/0 | final kinds 110 size 2.14
+DISP samples 12 | N/reseeds: 26/0 15/0 9/0 6/0 4/0 43/1 33/1 32/1 24/1 28/1 24/1 10/1 | final kinds 0 size 0
+XBDRIFT samples 12 | N/reseeds: 82/0 204/0 296/0 423/0 738/0 780/0 850/0 902/0 1976/0 1044/0 1040/0 1082/0 | final kinds 6 size 0.055
+ALL samples 12 | N/reseeds: 82/0 204/0 296/0 357/0 408/0 839/0 870/0 900/0 930/0 960/0 1027/0 1190/0 | final kinds 12 size 0.092
+note: the first DISP smoke (its DISP value was not recorded) died out early and reseeded once, so the search range was narrowed to 0.01-0.3 before launch. Rechecked at both ends of the range (D + DISP, seed 59, 12k):
+DISP 0.05 samples 12 | N/reseeds: 142/0 200/0 373/0 440/0 466/0 592/0 793/0 927/0 949/0 1150/0 1181/0 1204/0
+DISP 0.3 samples 12 | N/reseeds: 78/0 317/0 648/0 701/0 949/0 819/0 1022/0 1150/0 1284/0 1262/0 1294/0 1396/0

@@ -1,0 +1,8 @@
+# identity check (descriptive): new core with all new knobs off vs cos/chance-logging 8a8560a core
+# ce-logcheck.js LOG=0, seed 59, 12k ticks; compared logHash+state fields
+D identical "logHash":"3dfb9b34be10e12830f08753b851a6535dda0bcc83dd01b84b327fb2bcda3b46","state":"97b63e3be36c8198f8241d3b6ebcb72f0168d9ccb4ae016adb04715c1214f66e
+RANDCAP identical "logHash":"a585367821c14cff54beef0081379a666fa29478f8cf72e3b1153d41d8d8dee5","state":"5ad22d30ec131e93f4a693987c841e481913327183beed4275ab3fe85986b06e
+DRIFT identical "logHash":"b41ae2a8222914d41160d2b3eb8eaa6d191edf7a76bc4519cd5ec2fd0911eb3f","state":"2d6da71c1840fc0e8e665ed80ca38d8d3f41ac104e3264bbe554d40b05f503e5
+SHUF identical "logHash":"cbaddee8dbfdd4eb92b34aff9ee4b95f1aa00fffc687e96fe5d73460c3b4624d","state":"15b4d0cb24021c08b2dc6ffaf137420e92c65dcc36ceb901ee1cc7a59a9c26f6
+BASE identical "logHash":"65eb3b848f7db719eb4a08bc3157f0d695507a95ea4d3dbfe4ef7e9daa503c14","state":"3b6d00720f95139371d4b0fbc33f0e11df55a020fe689029beb77bec33756be8
+PLAIN identical "logHash":"46bd4181a6f80acf360fb0b6344a754ef102de7e66ac1d0d697effab07ccd235","state":"aded379ea9a7e6f364d75a28ba1c5434832100a84207df12654cf720fa15d812
