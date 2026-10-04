@@ -1,0 +1,11 @@
+Sun Oct  4 14:41:13 BST 2026 log-runs started pid 23576
+15:00:24 done RANDCAP 113
+15:01:12 done D 115
+15:01:13 done RANDCAP 115
+15:01:21 done DRIFT 113
+15:01:27 done DRIFT 114
+15:01:29 done D 114
+15:01:35 done D 113
+15:01:58 done RANDCAP 114
+15:02:00 done DRIFT 115
+Sun Oct  4 15:02:23 BST 2026 runs finished, identity: 9/9 identical

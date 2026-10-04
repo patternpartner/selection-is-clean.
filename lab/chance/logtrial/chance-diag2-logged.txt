@@ -1,0 +1,51 @@
+# chance-diag2 LOGGED READOUTS (descriptive, not a go test): /home/box/chance-runs/log-s2, seeds 113 114 115; windows 5000 ticks; pooled over seeds per arm
+
+## A. Cause of death of genuinely new tricks that went extinct (ALL new tricks)
+arm | new tricks | still alive at end | extinct | never earned: no substrate / not runnable | DEMAND VANISHED | OUT-COMPETED (earnings fell [of which world-mean substrate also halved] / rival rose) | CARRIER DRIFT/LOSS | demand vanished by final-bin rule | last carrier died starve / old / killed | lives with copies not passed on | carriers births per copy-tick vs population (mean, share < 1) | mean life (ticks)
+D | 103080 | 126 | 102954 | 3% / 0% | 7% | 42% (21% [13%] / 21%) | 48% | 4% | 46% / 49% / 5% | 9% | 0.59, 80% | 968
+RANDCAP | 49568 | 9 | 49559 | 5% / 0% | 6% | 43% (21% [11%] / 22%) | 46% | 3% | 48% / 48% / 4% | 10% | 0.58, 80% | 930
+DRIFT | 91641 | 80 | 91561 | 51% / 0% | 3% | 23% (6% [4%] / 17%) | 24% | 1% | 39% / 53% / 8% | 10% | 0.54, 83% | 1060
+by origin (extinct n: never earned / demand / out-competed / drift-loss); cap1 = one-step capture, capL = R1 long jump (capture walk >= 2)
+D | mut n=43530: 3% / 8% / 47% / 42% | fuse n=490: 1% / 9% / 38% / 51% | cap1 n=16650: 6% / 6% / 37% / 51% | capL n=42283: 2% / 6% / 39% / 53%
+RANDCAP | mut n=28103: 3% / 7% / 46% / 44% | fuse n=599: 1% / 5% / 41% / 54% | cap1 n=20857: 8% / 6% / 38% / 48% | capL n=0: - / - / - / -
+DRIFT | mut n=53415: 51% / 3% / 24% / 22% | fuse n=1362: 51% / 3% / 20% / 26% | cap1 n=10112: 63% / 2% / 15% / 20% | capL n=26672: 44% / 3% / 24% / 29%
+
+## A. Cause of death of genuinely new tricks that went extinct (ESTABLISHED: peak >= 10 carriers)
+arm | new tricks | still alive at end | extinct | never earned: no substrate / not runnable | DEMAND VANISHED | OUT-COMPETED (earnings fell [of which world-mean substrate also halved] / rival rose) | CARRIER DRIFT/LOSS | demand vanished by final-bin rule | last carrier died starve / old / killed | lives with copies not passed on | carriers births per copy-tick vs population (mean, share < 1) | mean life (ticks)
+D | - | - | 13496 | 2% / 0% | 32% | 45% (36% [21%] / 9%) | 21% | 26% | 25% / 72% / 3% | 53% | 1.09, 51% | 4491
+RANDCAP | - | - | 6395 | 3% / 0% | 28% | 47% (36% [20%] / 10%) | 22% | 23% | 27% / 70% / 3% | 55% | 1.10, 49% | 4317
+DRIFT | - | - | 12840 | 50% / 0% | 12% | 27% (19% [14%] / 8%) | 12% | 9% | 23% / 72% / 4% | 55% | 1.04, 56% | 4747
+by origin (extinct n: never earned / demand / out-competed / drift-loss); cap1 = one-step capture, capL = R1 long jump (capture walk >= 2)
+D | mut n=6115: 2% / 33% / 43% / 22% | fuse n=82: 1% / 30% / 44% / 24% | cap1 n=2055: 5% / 31% / 45% / 20% | capL n=5244: 2% / 30% / 47% / 21%
+RANDCAP | mut n=3826: 2% / 29% / 47% / 22% | fuse n=90: 0% / 17% / 42% / 41% | cap1 n=2479: 5% / 27% / 47% / 21% | capL n=0: - / - / - / -
+DRIFT | mut n=7471: 51% / 12% / 27% / 11% | fuse n=201: 51% / 13% / 26% / 10% | cap1 n=1411: 59% / 9% / 21% / 11% | capL n=3757: 44% / 13% / 29% / 14%
+
+## B. Coexistence vs replacement with real parent links (ALL new tricks alive at the first 5k snapshot)
+arm | origin | n | population: ancestor(s) still carried (coexist) / gone (replaced) | lineage: share of the new trick's carriers holding every ancestor key | eventual (mut/fuse): new outlived ancestor (replaced) / died first / both alive at end
+D | mut | 6815 | 91% / 9% | 7% | 22% / 78% / 0%
+D | fuse | 95 | 99% / 1% | 1% | 20% / 79% / 1%
+D | cap1 | 2249 | 98% / 2% | 74% | -
+D | capL | 6158 | 99% / 1% | 71% | -
+RANDCAP | mut | 4292 | 93% / 7% | 9% | 19% / 81% / 0%
+RANDCAP | fuse | 103 | 99% / 1% | 1% | 11% / 87% / 2%
+RANDCAP | cap1 | 2720 | 99% / 1% | 77% | -
+DRIFT | mut | 8531 | 93% / 7% | 7% | 19% / 81% / 0%
+DRIFT | fuse | 255 | 99% / 1% | 0% | 9% / 90% / 1%
+DRIFT | cap1 | 1343 | 97% / 3% | 71% | -
+DRIFT | capL | 4167 | 98% / 2% | 60% | -
+
+## B. Coexistence vs replacement with real parent links (ESTABLISHED)
+arm | origin | n | population: ancestor(s) still carried (coexist) / gone (replaced) | lineage: share of the new trick's carriers holding every ancestor key | eventual (mut/fuse): new outlived ancestor (replaced) / died first / both alive at end
+D | mut | 3500 | 86% / 14% | 7% | 36% / 64% / 0%
+D | fuse | 55 | 98% / 2% | 1% | 35% / 65% / 0%
+D | cap1 | 1077 | 96% / 4% | 58% | -
+D | capL | 2941 | 98% / 2% | 54% | -
+RANDCAP | mut | 2188 | 88% / 12% | 9% | 32% / 68% / 0%
+RANDCAP | fuse | 59 | 98% / 2% | 2% | 17% / 81% / 2%
+RANDCAP | cap1 | 1242 | 97% / 3% | 63% | -
+DRIFT | mut | 4291 | 88% / 12% | 6% | 33% / 67% / 0%
+DRIFT | fuse | 128 | 98% / 2% | 0% | 19% / 80% / 2%
+DRIFT | cap1 | 685 | 94% / 6% | 57% | -
+DRIFT | capL | 2092 | 96% / 4% | 43% | -
+
+new tricks by origin (all): D: mut 43567, fuse 492, cap1 16657, capL 42363, dup 1 | RANDCAP: mut 28104, fuse 601, cap1 20863, capL 0, dup 0 | DRIFT: mut 53445, fuse 1364, cap1 10112, capL 26720, dup 0
