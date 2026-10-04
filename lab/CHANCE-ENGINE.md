@@ -374,6 +374,84 @@ DRIFT | 1s n=27032: 0% / 1% / 99% | Ch n=9247: 0% / 1% / 99%
 SHUF | 1s n=11207: 0% / 0% / 100% | Ch n=11129: 0% / 0% / 100%
 ```
 
+### Logged rerun: why new tricks die, and whether they replace their parents (cos/chance-logging, 2026-10-04 BST; descriptive, NOT a go test)
+**What was added.** `lab/chance/ce-log.js` is a read-only logger. The core calls it through hooks in `lab/oee-core.js`, all behind
+`if(this.lg)`. The logger uses no RNG and writes no world state. It records:
+- **Birth/creation.** Every time a trick (body catalyst key) goes from 0 to ≥1 carriers: the parent (body donor) id, the parent's full
+  trick set, the child id, and the origin (mutation, fusion, or capture with its walk length; R1 long jump = walk ≥ 2). For pathways it
+  also records the species sequence, so the input substrate is known.
+- **Per trick, per 5k window, for EVERY carried trick.** Carriers, copy-ticks, income (would-be income under DRIFT), and the
+  input-substrate concentration in the carrier's own cell, summed over copy-ticks. Also births by carriers, copies not passed on, carrier
+  deaths, the world-mean concentration of every species, and a scan of how many of a young trick's carriers still hold its ancestor
+  key(s).
+- **End of each trick's life** (its last carrier dies): carrier peak, life totals, the best and final 1000-tick substrate per copy, the
+  substrate in the last carrier's cell at its death, and how its carriers died.
+
+Runner: `lab/chance/ce-logrun.js`. Pipeline: `lab/chance/log-runs.sh`. The logs are not in git: they are
+`/home/box/chance-runs/log-s2/*.log.jsonl.gz` (151 MB in total).
+
+**Identity check (the logging does not change the simulation).**
+- 20k ticks, seed 113, D/RANDCAP/DRIFT (`lab/chance/logtrial/identity.txt`): the sample-log hash and the full state hash are identical
+  across three versions: hooked core with the logger, hooked core without it, and the unhooked `cos/speedup` core (20d0e22). They also
+  equal the original stage-2 JSONL, made with the pre-speedup core. The logger's live carrier counts matched a recount of all bodies.
+- Full 450k reruns (`lab/chance/logtrial/identity-450k.txt`): all **9 of 9** runs' sample JSONL is byte-identical to stage 2 (with
+  `wallS` stripped). So these logs describe exactly the stage-2 worlds.
+
+**Classes (fixed in `chance-diag2.js` before the full logs existed).** Each new trick (first life of a key never carried before) that
+went extinct is put in one class:
+- **never earned**: zero income over its life;
+- **demand vanished**: the input substrate at the last carrier's death was ≤ 10% of the life's best level;
+- **out-competed**: the substrate had not vanished, but either it fell to ≤ 50% ("earnings fell") or a rival on the same input
+  substrate gained carriers over the trick's life ("rival rose");
+- **carrier drift/loss**: still earning ≥ 50% of its best and no rival rose. Its carriers died or did not pass it on.
+
+One column (whether the world-mean substrate also halved) was added after seeing a partial-run printout. The thresholds were not changed.
+
+**Results (450k, seeds 113–115, pooled).** Almost every new trick dies: D 103k new tricks, 126 still alive at the end; RANDCAP 49.6k,
+9 alive; DRIFT 91.6k, 80 alive.
+
+| arm | never earned | demand vanished | out-competed (earnings fell / rival rose) | carrier drift/loss |
+|---|---|---|---|---|
+| D (R1), all | 3% | 7% | 42% (21 / 21) | 48% |
+| RANDCAP, all | 5% | 6% | 43% (21 / 22) | 46% |
+| DRIFT, all | 51% | 3% | 23% (6 / 17) | 24% |
+| D, established (peak ≥ 10 carriers; 13.5k) | 2% | 32% | 45% (36 / 9) | 21% |
+| RANDCAP, established (6.4k) | 3% | 28% | 47% (36 / 10) | 22% |
+| DRIFT, established (12.8k) | 50% | 12% | 27% (19 / 8) | 12% |
+
+- **Typical new trick.** It lives about 1,000 ticks in a few organisms. It is lost while still earning: drift and host loss, or a nominal
+  "rival rose".
+- **Tricks that spread.** About one third die because their substrate ran dry, and another third because it roughly halved. In about
+  60% of those "earnings fell" cases the world-mean substrate halved too, so this is partly a shift in the whole world's chemistry and
+  not only local competition.
+- **Long jumps are no different.** R1 long jumps (capture walk ≥ 2) die for the same reasons as one-step captures and mutations.
+  - D, all: long jump 2/6/39/53% (never / demand / out-competed / drift) against one-step capture 6/6/37/51%.
+  - D, established: long jump 2/30/47/21% against one-step capture 5/31/45/20%.
+- **No-selection comparison.** In DRIFT, half the new tricks never earn, because the inert world holds only ~16 species against ~94 in
+  D. Among DRIFT tricks that did earn, the split is close to D's: demand vanished about 6% (all) or 24% (established). So the
+  out-competed vs drift split mostly does **not** need selection to appear. The out-competed rule fires at a high rate even without
+  selection. Treat it as "lost while earning less", not as proof of competition.
+
+**Coexistence vs replacement (real parent links; new tricks alive at the first 5k snapshot after birth).**
+- **Mutation is replacement inside the lineage.** Only 7–9% of the new trick's carriers still hold the parent's key it came from. In
+  the population, the ancestor key is still carried somewhere 91–93% of the time. The new trick outlives its ancestor in only about 20%
+  of cases (32–36% for established ones). About 80% die first.
+  - D: 22% outlive / 78% die first. RANDCAP: 19 / 81. DRIFT: 19 / 81.
+- **Capture is coexistence.** Captures, including long jumps, add to the body and never evict. One snapshot later, 71–77% of the new
+  trick's carriers still hold every one of the parent's tricks (54–63% for established ones). The parent's tricks are still carried
+  somewhere 98–99% of the time.
+  - Share of carriers keeping all parent tricks, D: long jump 71% vs one-step capture 74%. DRIFT: long jump 60% vs 71%.
+  - So long jumps coexist slightly less often, mostly through ordinary loss of the parent's tricks in descendants.
+- **Fusion** (about 100 cases per arm) replaces both fused keys in the body. The ancestors persist elsewhere 99% of the time, and the
+  fused pathway dies first 79–90% of the time.
+- DRIFT shows the same coexistence pattern. **So coexistence vs replacement is set by the operator (mutation overwrites, capture adds),
+  not by selection.**
+
+**Reading.** Short-lived tricks die out mostly while still earning, much as they do with no selection at all. The ones that spread
+mostly die when their input substrate runs dry or roughly halves. That substrate drop, often a world-wide one, is the first cause that
+DRIFT does not reproduce at the same rate: 32% vs 12% of established deaths. R1's long jumps neither replace their parents more nor die
+differently. They are just more numerous, and they are lost the same way.
+
 #### Logged readouts, raw (appended by log-runs.sh 2026-10-04 15:02 BST; descriptive, not a go test)
 ```
 D 113 logged-rerun d90e69fe1b102d4d07b8e27e887c1f7c1b3ad478383fd42358448aad9a3d1f0a stage2 d90e69fe1b102d4d07b8e27e887c1f7c1b3ad478383fd42358448aad9a3d1f0a IDENTICAL
