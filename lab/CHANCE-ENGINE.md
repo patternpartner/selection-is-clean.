@@ -198,3 +198,14 @@ CHOSEN R1
 - **Missing data:** the samples list only types above 0.2% of carriers or income. So a "re-appearance" is either a true re-discovery or
   a type that survived below the threshold. True per-capture re-discovery rates need the capture wrapper (`lab/chance/capdiag.js`) on
   a rerun, and none was started. There is also no per-lineage rate, only the population mean.
+
+#### Diagnostic result on stage 1 (R2 and its nulls, 150k, seeds 110–112; full output `lab/chance/trial/chance-diag-s1.txt`)
+- **Classification: OUTCOME 1** (by the rule in the script). Selection turned chance down. R2's mean rate multiplier fell from 2.24 →
+  0.25 (seed 110) and 0.79 → 0.35 (seed 112). Seed 111 stayed high (3.35 → 2.13). α drifted up from 1.5 to 1.9–2.4 (shorter jumps).
+  Without selection on bodies the rate rose instead: DRIFT-R2 1.8–3.7 late, SHUF-R2 3.1–5.3.
+- Churn: R2's re-appearance share rose to 22–50% late (R1 14–20%, RANDCAP 31–39%). Persistence of new types was the same in every
+  arm (about 22–28% after +1 window, 9–11% after +2), so evolvable chance did not make inventions stick. Late new-used per window:
+  R2 5.0–17.8 vs R1 16.8–30.6 and RANDCAP 30.0–43.6.
+- Correlations: rate vs new used is high (pooled 0.83), and rate vs next-window use is too (0.77). But DRIFT-R2 shows the same (0.78 /
+  0.64), so this is mechanical (more captures means more arrivals, and both fall over time), not a schedule. The "rises when stuck"
+  correlation is weak (−0.27, threshold −0.3) and is stronger in SHUF-R2 (−0.43), so it is not specific to selection either.
