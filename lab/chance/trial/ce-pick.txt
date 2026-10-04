@@ -1,0 +1,3 @@
+R1: design-ahead 4/12 (33%), late body share 23.2%, qualified
+R2: design-ahead 1/15 (7%), late body share 41.7%, qualified
+CHOSEN R1

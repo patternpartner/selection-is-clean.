@@ -1,1 +1,32 @@
 Sun Oct  4 10:15:44 BST 2026 waiter started, pid 680059
+Sun Oct  4 11:10:44 BST 2026 held-out commit seen and search.js gone: starting runs.sh
+11:18:03 done DRIFT-R2 110 /home/box/chance-runs/s1
+11:18:12 done DRIFT-R1 110 /home/box/chance-runs/s1
+11:18:54 done DIRECT-R2 110 /home/box/chance-runs/s1
+11:19:14 done SHUF-R1 110 /home/box/chance-runs/s1
+11:19:15 done R2 110 /home/box/chance-runs/s1
+11:19:16 done DIRECT-R1 110 /home/box/chance-runs/s1
+11:19:38 done RANDCAP 110 /home/box/chance-runs/s1
+11:19:48 done R1 110 /home/box/chance-runs/s1
+11:23:57 done BASE 110 /home/box/chance-runs/s1
+11:26:04 done DRIFT-R1 111 /home/box/chance-runs/s1
+11:27:31 done SHUF-R2 110 /home/box/chance-runs/s1
+11:27:32 done RANDCAP 111 /home/box/chance-runs/s1
+11:27:47 done R1 111 /home/box/chance-runs/s1
+11:28:18 done DIRECT-R1 111 /home/box/chance-runs/s1
+11:29:10 done R2 111 /home/box/chance-runs/s1
+11:29:12 done DIRECT-R2 111 /home/box/chance-runs/s1
+11:30:56 done DRIFT-R2 111 /home/box/chance-runs/s1
+11:32:39 done BASE 111 /home/box/chance-runs/s1
+11:33:54 done SHUF-R1 111 /home/box/chance-runs/s1
+11:35:57 done R1 112 /home/box/chance-runs/s1
+11:36:29 done R2 112 /home/box/chance-runs/s1
+11:37:17 done RANDCAP 112 /home/box/chance-runs/s1
+11:37:55 done DIRECT-R1 112 /home/box/chance-runs/s1
+11:38:14 done SHUF-R2 111 /home/box/chance-runs/s1
+11:39:32 done DIRECT-R2 112 /home/box/chance-runs/s1
+11:40:33 done DRIFT-R1 112 /home/box/chance-runs/s1
+11:41:34 done DRIFT-R2 112 /home/box/chance-runs/s1
+11:43:14 done BASE 112 /home/box/chance-runs/s1
+11:44:31 done SHUF-R1 112 /home/box/chance-runs/s1
+11:45:33 done SHUF-R2 112 /home/box/chance-runs/s1
