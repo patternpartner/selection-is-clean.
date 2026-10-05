@@ -136,5 +136,61 @@ async function heldout(top){ const ps=[]; for(const s of HELDOUT_SEEDS){ for(con
   fs.writeFileSync(path.join(TR,'heldout.txt'),L.join('\n')+'\n');
   if(!TEST)fs.appendFileSync(path.join(REPO,'lab/STICKY-SEARCH.md'),`\n### Held-out confirmation result (appended by search.js ${new Date().toLocaleString('en-GB',{timeZone:'Europe/London'})} BST)\n\`\`\`\n${L.join('\n')}\n\`\`\`\n`);
   log('held-out done'); commit('sticky-search: held-out confirmation done'); }
-if(require.main===module) main().catch(e=>{ log('ERROR',e.stack); process.exit(1); });
+// ---------------- re-confirmation of a CANDIDATE on seeds 401-403 (same bar as held-out; not chained) ----------------
+// Invoked with MODE=reconfirm. Uses identical nulls, S metric, and pass rule as heldout(). Does not alter the bar or c055.
+const RECONFIRM_SEEDS=[401,402,403];
+async function reconfirm(){
+  const top=JSON.parse(fs.readFileSync(path.join(TR,'top3.json'),'utf8'));
+  const c055=top.find(c=>c.id==='c055');
+  if(!c055){ log('ERROR: c055 missing from top3.json'); process.exit(1); }
+  log('reconfirm start: c055 on seeds 401-403 (pre-registered bar), pid',process.pid);
+  // --- pre-registered re-check of c055 (identical to heldout) ---
+  const ps=[]; for(const s of RECONFIRM_SEEDS){ for(const o of Object.values(REF))ps.push(runOne(o,s,T_H)); const A=arms(c055.gene); for(const k of ['X','R','SH','DR'])ps.push(runOne(A[k],s,T_H)); }
+  await Promise.all(ps);
+  const L=['# re-confirmation of c055, 450k, seeds 401-403, S with 10k windows (late third) — identical bar to held-out'];
+  const mean=a=>a.reduce((x,y)=>x+y,0)/a.length;
+  { const c=c055; const A=arms(c.gene); let wins=0, col=[]; const m={X:[],R:[],SH:[],DR:[],D0:[],DR0:[]};
+    for(const s of RECONFIRM_SEEDS){ const g=o=>S(o,s,T_H,WIN_H); const x=g(A.X), r=g(A.R), sh=g(A.SH), dr=g(A.DR), d0=g(REF.D), dr0=g(REF.DRIFT), b=g(REF.BASE);
+      if(!x||!r||!sh||!dr||!d0||!dr0||!b){ col.push(`seed ${s} missing/failed run`); continue; }
+      for(const [k,z] of [['X',x],['R',r],['SH',sh],['DR',dr]]) if(z.reseeds>0||z.N<0.5*b.N)col.push(`${k} ${s} collapse (N ${z.N.toFixed(0)} vs BASE ${b.N.toFixed(0)}, reseeds ${z.reseeds})`);
+      const ok=x.S>r.S&&x.S>sh.S&&(x.S-d0.S)>(dr.S-dr0.S); if(ok)wins++; m.X.push(x.S); m.R.push(r.S); m.SH.push(sh.S); m.DR.push(dr.S); m.D0.push(d0.S); m.DR0.push(dr0.S);
+      L.push(`${c.id} seed ${s}: S X ${x.S.toFixed(2)} | R ${r.S.toFixed(2)} | SH ${sh.S.toFixed(2)} | DR ${dr.S.toFixed(2)} | ref D ${d0.S.toFixed(2)} | ref DRIFT ${dr0.S.toFixed(2)} | beats all ${ok?'yes':'no'}`); }
+    const q=k=>mean(m[k])+1, rel=m.X.length?Math.min(q('X')/q('R'),q('X')/q('SH'),(q('X')/q('D0'))/(q('DR')/q('DR0'))):NaN;
+    const pass=wins>=2&&rel>=1.10&&!col.length;
+    const verdict=pass?'GO (re-confirmed)':'NO-GO';
+    L.push(`${c.id} ${knobDesc(c.gene)}: (1) seeds beating all nulls ${wins}/3 ${wins>=2?'PASS':'FAIL'} | (2) relative stickiness ${f3(rel)} ${rel>=1.10?'PASS':'FAIL'} | (3) collapse ${col.length?col.join('; ')+' FAIL':'none PASS'} => ${verdict}`);
+    fs.writeFileSync(path.join(TR,'reconfirm.txt'),L.join('\n')+'\n');
+    if(!TEST)fs.appendFileSync(path.join(REPO,'lab/STICKY-SEARCH.md'),`\n### Re-confirmation of c055 on seeds 401-403 (appended ${new Date().toLocaleString('en-GB',{timeZone:'Europe/London'})} BST)\n\`\`\`\n${L.join('\n')}\n\`\`\`\n`);
+    log('c055 reconfirm =>',verdict); commit('sticky-search: c055 reconfirm on 401-403 => '+verdict);
+  }
+  // --- EXPLORATORY / post-hoc (NOT part of the verdict): e003 without CH_AWAY on 401-403 ---
+  const e003=top.find(c=>c.id==='e003');
+  if(e003){
+    log('EXPLORATORY: e003 without CH_AWAY on 401-403 (post-hoc; not part of c055 verdict)');
+    const A0=arms(e003.gene);
+    // strip CH_AWAY from operator-bearing arms; R and world knobs unchanged
+    const strip=o=>{ const x={...o}; delete x.CH_AWAY; return x; };
+    const Ax={X:strip(A0.X), R:A0.R, SH:strip(A0.SH), DR:strip(A0.DR)};
+    const ps2=[]; for(const s of RECONFIRM_SEEDS){ for(const o of Object.values(REF))ps2.push(runOne(o,s,T_H)); for(const k of ['X','R','SH','DR'])ps2.push(runOne(Ax[k],s,T_H)); }
+    await Promise.all(ps2);
+    const LE=['# EXPLORATORY / post-hoc: e003 without CH_AWAY, 450k, seeds 401-403 (NOT part of the pre-registered verdict)'];
+    let wins=0, col=[]; const m={X:[],R:[],SH:[],DR:[],D0:[],DR0:[]};
+    for(const s of RECONFIRM_SEEDS){ const g=o=>S(o,s,T_H,WIN_H); const x=g(Ax.X), r=g(Ax.R), sh=g(Ax.SH), dr=g(Ax.DR), d0=g(REF.D), dr0=g(REF.DRIFT), b=g(REF.BASE);
+      if(!x||!r||!sh||!dr||!d0||!dr0||!b){ col.push(`seed ${s} missing/failed run`); continue; }
+      for(const [k,z] of [['X',x],['R',r],['SH',sh],['DR',dr]]) if(z.reseeds>0||z.N<0.5*b.N)col.push(`${k} ${s} collapse (N ${z.N.toFixed(0)} vs BASE ${b.N.toFixed(0)}, reseeds ${z.reseeds})`);
+      const ok=x.S>r.S&&x.S>sh.S&&(x.S-d0.S)>(dr.S-dr0.S); if(ok)wins++; m.X.push(x.S); m.R.push(r.S); m.SH.push(sh.S); m.DR.push(dr.S); m.D0.push(d0.S); m.DR0.push(dr0.S);
+      LE.push(`e003-noCH_AWAY seed ${s}: S X ${x.S.toFixed(2)} | R ${r.S.toFixed(2)} | SH ${sh.S.toFixed(2)} | DR ${dr.S.toFixed(2)} | ref D ${d0.S.toFixed(2)} | ref DRIFT ${dr0.S.toFixed(2)} | beats all ${ok?'yes':'no'}`); }
+    const q=k=>mean(m[k])+1, rel=m.X.length?Math.min(q('X')/q('R'),q('X')/q('SH'),(q('X')/q('D0'))/(q('DR')/q('DR0'))):NaN;
+    const pass=wins>=2&&rel>=1.10&&!col.length;
+    LE.push(`e003-noCH_AWAY ${JSON.stringify({...A0.W,...strip(A0.O)})}: (1) seeds beating all nulls ${wins}/3 ${wins>=2?'PASS':'FAIL'} | (2) relative stickiness ${f3(rel)} ${rel>=1.10?'PASS':'FAIL'} | (3) collapse ${col.length?col.join('; ')+' FAIL':'none PASS'} => ${pass?'would-pass bar (EXPLORATORY only)':'would-fail bar (EXPLORATORY only)'}`);
+    fs.writeFileSync(path.join(TR,'reconfirm-exploratory-e003-noCH.txt'),LE.join('\n')+'\n');
+    if(!TEST)fs.appendFileSync(path.join(REPO,'lab/STICKY-SEARCH.md'),`\n### EXPLORATORY / post-hoc: e003 without CH_AWAY on 401-403 (appended ${new Date().toLocaleString('en-GB',{timeZone:'Europe/London'})} BST)\n**Not part of the pre-registered c055 verdict.**\n\`\`\`\n${LE.join('\n')}\n\`\`\`\n`);
+    log('EXPLORATORY e003-noCH_AWAY =>', pass?'would-pass':'would-fail'); commit('sticky-search: EXPLORATORY e003-noCH_AWAY on 401-403');
+  }
+  log('reconfirm all done');
+}
+if(require.main===module){
+  const mode=process.env.MODE||'search';
+  (mode==='reconfirm'?reconfirm():main()).catch(e=>{ log('ERROR',e.stack); process.exit(1); });
+}
 module.exports={KN,knobVals,arms,REF,lhs,NG};
