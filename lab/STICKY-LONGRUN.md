@@ -102,3 +102,75 @@ c055 1.5M: (1a) no fade: mean late S 6.38 >= mean middle S 7.77 FAIL | (1b) cumu
   (descriptive) original bar on the 450k prefix: 1/3 seeds, relative stickiness 1.514, fail
   (descriptive) original bar on the 900k prefix: 2/3 seeds, relative stickiness 1.268, pass
 ```
+
+### TEST 2 result: robustness / sensitivity map (appended by longrun.js 05/10/2026, 21:47:00 BST)
+```
+# TEST 2 (robustness): one knob at a time x0.75 / x1.25 from c055, 450k, seeds 501-503, original bar (>=2/3 seeds beat all nulls, rel >= 1.10, no collapse)
+c055 (centre): 1/3, rel 1.514, no collapse => FAIL
+   seed 501: S X 9.29 | R 4.86 | SH 13.36 | DR 19.64 | ref D 5.57 | ref DRIFT 13.79 | beats all no
+   seed 502: S X 13.71 | R 13.71 | SH 2.14 | DR 22.21 | ref D 2.71 | ref DRIFT 19.29 | beats all no
+   seed 503: S X 15.64 | R 5.93 | SH 4.07 | DR 19.50 | ref D 3.50 | ref DRIFT 17.00 | beats all yes
+
+| knob | c055 value | x0.75 (value: seeds won, rel, pass) | x1.25 (value: seeds won, rel, pass) |
+|---|---|---|---|
+| RN_CAP (W) | 18.1 | 13.6: 2/3, 1.119, PASS | 22.6: 1/3, 1.016, FAIL |
+| BODY_MUT (O) | 0.02 | 0.015: 1/3, 1.408, FAIL | 0.025: 2/3, 1.195, PASS |
+| BODY_CAP (O) | 0.0456 | 0.0342: 2/3, 1.005, FAIL | 0.057: 3/3, 1.337, PASS |
+| BODY_DEL (O) | 0.00319 | 0.00239: 1/3, 1.129, FAIL | 0.00399: 1/3, 1.179, FAIL |
+| BODY_MQ (O) | 0.255 | 0.191: 1/3, 1.509, FAIL | 0.319: 2/3, 1.221, PASS |
+| CH_LEN (O) | 2.77 | 2.08: 2/3, 1.065, FAIL | 3.46: 2/3, 1.457, PASS |
+RN_CAP-25%:
+   seed 501: S X 10.57 | R 14.71 | SH 2.29 | DR 16.07 | ref D 5.57 | ref DRIFT 13.79 | beats all no
+   seed 502: S X 9.00 | R 6.00 | SH 2.36 | DR 22.50 | ref D 2.71 | ref DRIFT 19.29 | beats all yes
+   seed 503: S X 9.71 | R 5.14 | SH 1.29 | DR 17.36 | ref D 3.50 | ref DRIFT 17.00 | beats all yes
+RN_CAP+25%:
+   seed 501: S X 8.71 | R 5.79 | SH 7.36 | DR 17.29 | ref D 5.57 | ref DRIFT 13.79 | beats all no
+   seed 502: S X 6.21 | R 10.71 | SH 6.21 | DR 16.86 | ref D 2.71 | ref DRIFT 19.29 | beats all no
+   seed 503: S X 14.29 | R 12.21 | SH 10.14 | DR 20.86 | ref D 3.50 | ref DRIFT 17.00 | beats all yes
+BODY_MUT-25%:
+   seed 501: S X 8.14 | R 4.86 | SH 6.07 | DR 18.79 | ref D 5.57 | ref DRIFT 13.79 | beats all no
+   seed 502: S X 8.71 | R 13.71 | SH 7.50 | DR 17.79 | ref D 2.71 | ref DRIFT 19.29 | beats all no
+   seed 503: S X 18.86 | R 5.93 | SH 1.86 | DR 23.86 | ref D 3.50 | ref DRIFT 17.00 | beats all yes
+BODY_MUT+25%:
+   seed 501: S X 7.43 | R 4.86 | SH 2.86 | DR 14.21 | ref D 5.57 | ref DRIFT 13.79 | beats all yes
+   seed 502: S X 9.57 | R 13.71 | SH 4.21 | DR 10.07 | ref D 2.71 | ref DRIFT 19.29 | beats all no
+   seed 503: S X 12.86 | R 5.93 | SH 11.50 | DR 11.57 | ref D 3.50 | ref DRIFT 17.00 | beats all yes
+BODY_CAP-25%:
+   seed 501: S X 10.21 | R 4.86 | SH 1.00 | DR 11.71 | ref D 5.57 | ref DRIFT 13.79 | beats all yes
+   seed 502: S X 7.50 | R 13.71 | SH 11.00 | DR 12.64 | ref D 2.71 | ref DRIFT 19.29 | beats all no
+   seed 503: S X 6.93 | R 5.93 | SH 1.86 | DR 16.21 | ref D 3.50 | ref DRIFT 17.00 | beats all yes
+BODY_CAP+25%:
+   seed 501: S X 11.21 | R 4.86 | SH 7.86 | DR 19.21 | ref D 5.57 | ref DRIFT 13.79 | beats all yes
+   seed 502: S X 14.43 | R 13.71 | SH 11.00 | DR 15.57 | ref D 2.71 | ref DRIFT 19.29 | beats all yes
+   seed 503: S X 13.57 | R 5.93 | SH 9.71 | DR 17.50 | ref D 3.50 | ref DRIFT 17.00 | beats all yes
+BODY_DEL-25%:
+   seed 501: S X 12.14 | R 4.86 | SH 16.07 | DR 19.43 | ref D 5.57 | ref DRIFT 13.79 | beats all no
+   seed 502: S X 10.07 | R 13.71 | SH 6.57 | DR 11.14 | ref D 2.71 | ref DRIFT 19.29 | beats all no
+   seed 503: S X 14.93 | R 5.93 | SH 9.93 | DR 17.14 | ref D 3.50 | ref DRIFT 17.00 | beats all yes
+BODY_DEL+25%:
+   seed 501: S X 5.57 | R 4.86 | SH 8.07 | DR 16.93 | ref D 5.57 | ref DRIFT 13.79 | beats all no
+   seed 502: S X 11.64 | R 13.71 | SH 4.57 | DR 12.36 | ref D 2.71 | ref DRIFT 19.29 | beats all no
+   seed 503: S X 12.21 | R 5.93 | SH 1.14 | DR 19.50 | ref D 3.50 | ref DRIFT 17.00 | beats all yes
+BODY_MQ-25%:
+   seed 501: S X 11.86 | R 4.86 | SH 12.21 | DR 19.00 | ref D 5.57 | ref DRIFT 13.79 | beats all no
+   seed 502: S X 11.86 | R 13.71 | SH 3.36 | DR 15.14 | ref D 2.71 | ref DRIFT 19.29 | beats all no
+   seed 503: S X 14.79 | R 5.93 | SH 3.86 | DR 19.57 | ref D 3.50 | ref DRIFT 17.00 | beats all yes
+BODY_MQ+25%:
+   seed 501: S X 11.29 | R 4.86 | SH 3.57 | DR 18.07 | ref D 5.57 | ref DRIFT 13.79 | beats all yes
+   seed 502: S X 8.64 | R 13.71 | SH 4.50 | DR 18.29 | ref D 2.71 | ref DRIFT 19.29 | beats all no
+   seed 503: S X 10.64 | R 5.93 | SH 6.00 | DR 21.07 | ref D 3.50 | ref DRIFT 17.00 | beats all yes
+CH_LEN-25%:
+   seed 501: S X 12.29 | R 4.86 | SH 9.50 | DR 16.50 | ref D 5.57 | ref DRIFT 13.79 | beats all yes
+   seed 502: S X 5.07 | R 13.71 | SH 5.71 | DR 11.86 | ref D 2.71 | ref DRIFT 19.29 | beats all no
+   seed 503: S X 8.93 | R 5.93 | SH 8.36 | DR 21.57 | ref D 3.50 | ref DRIFT 17.00 | beats all yes
+CH_LEN+25%:
+   seed 501: S X 13.43 | R 4.86 | SH 4.14 | DR 19.50 | ref D 5.57 | ref DRIFT 13.79 | beats all yes
+   seed 502: S X 9.79 | R 13.71 | SH 7.50 | DR 17.93 | ref D 2.71 | ref DRIFT 19.29 | beats all no
+   seed 503: S X 13.86 | R 5.93 | SH 1.36 | DR 19.93 | ref D 3.50 | ref DRIFT 17.00 | beats all yes
+
+ROBUSTNESS: 5/12 nudges clear the original bar (pre-registered threshold >= 9/12, i.e. >= 70%) => FRAGILE (a sensitivity map, not a single verdict: see table)
+e003-noCH_AWAY (own pre-registered arm, not counted in the 12): 2/3, rel 1.377, no collapse => PASS
+   seed 501: S X 6.36 | R 4.86 | SH 6.79 | DR 22.50 | ref D 5.57 | ref DRIFT 13.79 | beats all no
+   seed 502: S X 13.86 | R 13.71 | SH 4.57 | DR 17.14 | ref D 2.71 | ref DRIFT 19.29 | beats all yes
+   seed 503: S X 14.64 | R 5.93 | SH 7.14 | DR 21.93 | ref D 3.50 | ref DRIFT 17.00 | beats all yes
+```
