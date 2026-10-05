@@ -193,4 +193,4 @@ if(require.main===module){
   const mode=process.env.MODE||'search';
   (mode==='reconfirm'?reconfirm():main()).catch(e=>{ log('ERROR',e.stack); process.exit(1); });
 }
-module.exports={KN,knobVals,arms,REF,lhs,NG};
+module.exports={KN,knobVals,arms,REF,lhs,NG,reconfirm};
