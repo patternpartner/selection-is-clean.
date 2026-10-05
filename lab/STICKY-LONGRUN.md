@@ -73,3 +73,32 @@ If any fails: NOT SHOWN. Reported descriptively alongside (not part of the verdi
 - A pass in Test 1 means "no sign of fading over 1.5M ticks on 3 unseen seeds, and still better than every null", not open-endedness in general.
 - If Test 1 passes but Test 2 is FRAGILE, the result is "a long-lasting but narrow point". If Test 1 fails, the 450k result stands as a finite-horizon effect.
 - Nothing is changed after launch. Any extra analysis will be labelled EXPLORATORY.
+
+### TEST 1 result: open-endedness at 1.5M (appended by longrun.js 05/10/2026, 14:43:32 BST)
+```
+# TEST 1 (open-endedness): c055, 1500k ticks, seeds 501,502,503, 10k windows; late third = windows 99-147, middle third = 50-98
+c055 seed 501: S X 7.16 | R 3.47 | SH 6.57 | DR 8.92 | ref D 4.33 | ref DRIFT 13.90 | beats all yes
+c055 seed 502: S X 6.02 | R 3.65 | SH 0.65 | DR 6.76 | ref D 4.49 | ref DRIFT 12.20 | beats all yes
+c055 seed 503: S X 5.96 | R 2.78 | SH 3.02 | DR 7.65 | ref D 4.78 | ref DRIFT 9.53 | beats all yes
+c055 X seed 501: S mid 9.22 -> late 7.16 | cumulative sticky K end 1626 | K slope (late third, per window) 6.964 | K increments in 4 late blocks [96, 108, 53, 94] => keeps rising
+c055 X seed 502: S mid 6.06 -> late 6.02 | cumulative sticky K end 1392 | K slope (late third, per window) 6.555 | K increments in 4 late blocks [46, 79, 84, 86] => keeps rising
+c055 X seed 503: S mid 8.02 -> late 5.96 | cumulative sticky K end 1497 | K slope (late third, per window) 5.886 | K increments in 4 late blocks [61, 85, 63, 83] => keeps rising
+  (descriptive) R seed 501: S mid 5.76 late 3.47 K end 908 blocks [53, 37, 26, 54]
+  (descriptive) SH seed 501: S mid 6.16 late 6.57 K end 1200 blocks [96, 79, 84, 63]
+  (descriptive) DR seed 501: S mid 11.20 late 8.92 K end 2175 blocks [96, 124, 128, 89]
+  (descriptive) ref D seed 501: S mid 3.80 late 4.33 K end 726 blocks [44, 72, 51, 45]
+  (descriptive) ref DRIFT seed 501: S mid 13.55 late 13.90 K end 2085 blocks [156, 172, 158, 195]
+  (descriptive) R seed 502: S mid 7.08 late 3.65 K end 1223 blocks [46, 26, 53, 54]
+  (descriptive) SH seed 502: S mid 0.96 late 0.65 K end 213 blocks [5, 5, 17, 5]
+  (descriptive) DR seed 502: S mid 11.96 late 6.76 K end 2139 blocks [77, 91, 81, 82]
+  (descriptive) ref D seed 502: S mid 4.94 late 4.49 K end 728 blocks [53, 61, 59, 47]
+  (descriptive) ref DRIFT seed 502: S mid 14.39 late 12.20 K end 2243 blocks [162, 125, 134, 177]
+  (descriptive) R seed 503: S mid 4.06 late 2.78 K end 825 blocks [24, 35, 31, 46]
+  (descriptive) SH seed 503: S mid 1.90 late 3.02 K end 540 blocks [20, 37, 39, 52]
+  (descriptive) DR seed 503: S mid 11.16 late 7.65 K end 2040 blocks [87, 100, 101, 87]
+  (descriptive) ref D seed 503: S mid 3.82 late 4.78 K end 821 blocks [56, 54, 76, 48]
+  (descriptive) ref DRIFT seed 503: S mid 10.61 late 9.53 K end 1762 blocks [168, 118, 96, 85]
+c055 1.5M: (1a) no fade: mean late S 6.38 >= mean middle S 7.77 FAIL | (1b) cumulative sticky keeps rising on 3/3 seeds PASS | (1c) beats every null on 3/3 seeds, relative stickiness 1.672, collapse none PASS => NOT SHOWN (at least one criterion fails)
+  (descriptive) original bar on the 450k prefix: 1/3 seeds, relative stickiness 1.514, fail
+  (descriptive) original bar on the 900k prefix: 2/3 seeds, relative stickiness 1.268, pass
+```
