@@ -1,2 +1,4 @@
 05/10/2026, 07:50:48 BST reconfirm start: c055 on seeds 401-403 (pre-registered bar), pid 523030
 05/10/2026, 08:59:56 BST c055 reconfirm => GO (re-confirmed)
+05/10/2026, 08:59:58 BST EXPLORATORY: e003 without CH_AWAY on 401-403 (post-hoc; not part of c055 verdict)
+05/10/2026, 10:31:14 BST EXPLORATORY e003-noCH_AWAY => would-pass
