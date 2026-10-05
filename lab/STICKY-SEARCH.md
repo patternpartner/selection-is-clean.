@@ -114,3 +114,20 @@ If no config passes, the result is NO-GO for this search. A CANDIDATE is not a c
 - Finished runs are never redone. After a box restart, relaunch from `/home/box/wt/sticky-search` with `lab/sticky/launch.sh`.
 - Progress is committed and pushed every 60 runs and at the end of each phase: `lab/sticky/trial/phase*.tsv`, `configs.json`, `top3.json`, `heldout.txt`, `search.log`.
 - Before launch, the plumbing was dry-run with `TEST=1` (tiny ticks, a temp directory, no git).
+
+### Held-out confirmation result (appended by search.js 05/10/2026, 04:30:18 BST)
+```
+# held-out confirmation, 450k, seeds 301-303, S with 10k windows (late third)
+e003 seed 301: S X 6.79 | R 4.21 | SH 17.86 | DR 17.64 | ref D 4.71 | ref DRIFT 14.43 | beats all no
+e003 seed 302: S X 10.79 | R 5.93 | SH 8.21 | DR 15.57 | ref D 4.29 | ref DRIFT 15.93 | beats all yes
+e003 seed 303: S X 11.21 | R 4.93 | SH 5.86 | DR 22.29 | ref D 8.14 | ref DRIFT 17.57 | beats all no
+e003 {"RENEW":1,"RN_CAP":18.1,"BODY_MUT":0.0158,"BODY_CAP":0.0456,"BODY_DEL":0.00319,"BODY_MQ":0.255,"CH_LEN":2.74,"CH_AWAY":0.67}: (1) seeds beating all nulls 1/3 FAIL | (2) relative stickiness 0.910 FAIL | (3) collapse none PASS => NO-GO
+c019 seed 301: S X 0.57 | R 3.00 | SH 0.43 | DR 7.36 | ref D 4.71 | ref DRIFT 14.43 | beats all no
+c019 seed 302: S X 2.07 | R 2.86 | SH 0.07 | DR 21.79 | ref D 4.29 | ref DRIFT 15.93 | beats all no
+c019 seed 303: S X 2.64 | R 2.50 | SH 0.43 | DR 15.64 | ref D 8.14 | ref DRIFT 17.57 | beats all no
+c019 {"CHEM_D":0.127,"CHEM_ALPHA":0.398,"PATCHES":5,"PATCH_V":0.000983,"BODY_CROWD":14,"BODY_UPX":1.15,"BODY_F":0.0374,"BODY_MUT":0.00681,"BODY_CAP":0.0141,"BODY_MQ":0.84,"CH_LEN":2.58,"CH_AWAY":0.681,"XB":1,"XB_GAIN":2.71,"BODY_RCAP":0,"BODY_CW":[0.189,0.034,0.209,0.568]}: (1) seeds beating all nulls 0/3 FAIL | (2) relative stickiness 0.438 FAIL | (3) collapse none PASS => NO-GO
+c055 seed 301: S X 13.21 | R 4.21 | SH 3.50 | DR 19.71 | ref D 4.71 | ref DRIFT 14.43 | beats all yes
+c055 seed 302: S X 9.14 | R 5.93 | SH 3.50 | DR 17.07 | ref D 4.29 | ref DRIFT 15.93 | beats all yes
+c055 seed 303: S X 8.79 | R 4.93 | SH 0.86 | DR 19.71 | ref D 8.14 | ref DRIFT 17.57 | beats all no
+c055 {"RENEW":1,"RN_CAP":18.1,"BODY_MUT":0.02,"BODY_CAP":0.0456,"BODY_DEL":0.00319,"BODY_MQ":0.255,"CH_LEN":2.77}: (1) seeds beating all nulls 2/3 PASS | (2) relative stickiness 1.451 PASS | (3) collapse none PASS => CANDIDATE (re-confirm on seeds 401-403)
+```
