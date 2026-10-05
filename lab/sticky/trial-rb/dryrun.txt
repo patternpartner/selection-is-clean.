@@ -1,0 +1,5 @@
+STICKY-ROBUST plumbing dry run (TEST=1: ROOT /tmp/srb-test, search 6k ticks / 1k windows, centre 12k in 3x4k segments, nudges 6k; no git, no doc), 05/10/2026 21:52-22:05 BST, before any production run:
+- bug found and fixed: in TEST mode 6k-tick runs were wrongly segmented by the 4k centre segment size (production unaffected: 100k < 150k); now only the T_C (450k) centre runs are segmented.
+- orchestrator killed with kill -9 mid-search and again mid-confirmation (two 12k centre runs holding .ckpt.1); relaunch via launch-robust.sh: same phase A/B/C decisions and same top 3 (h-c055half, a02, b02), runs resumed from checkpoints.
+- a run resumed from .ckpt.1 after the kill is byte-identical (all sample fields except wallS, 12/12 rows) to a contiguous 12k run of the same opts/seed.
+- confirmation: centre bar, nudge batch 1, early decision (>=4/6 batch-1 fails => batch 2 skipped, "not run"), and (with the TEST-only FORCE_NUDGE=1 hook) batch 2 + 12-nudge count + verdict + report/doc append all exercised.
