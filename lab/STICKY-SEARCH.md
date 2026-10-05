@@ -131,3 +131,12 @@ c055 seed 302: S X 9.14 | R 5.93 | SH 3.50 | DR 17.07 | ref D 4.29 | ref DRIFT 1
 c055 seed 303: S X 8.79 | R 4.93 | SH 0.86 | DR 19.71 | ref D 8.14 | ref DRIFT 17.57 | beats all no
 c055 {"RENEW":1,"RN_CAP":18.1,"BODY_MUT":0.02,"BODY_CAP":0.0456,"BODY_DEL":0.00319,"BODY_MQ":0.255,"CH_LEN":2.77}: (1) seeds beating all nulls 2/3 PASS | (2) relative stickiness 1.451 PASS | (3) collapse none PASS => CANDIDATE (re-confirm on seeds 401-403)
 ```
+
+### Re-confirmation of c055 on seeds 401-403 (appended 05/10/2026, 08:59:56 BST)
+```
+# re-confirmation of c055, 450k, seeds 401-403, S with 10k windows (late third) — identical bar to held-out
+c055 seed 401: S X 12.79 | R 8.93 | SH 12.21 | DR 20.29 | ref D 4.14 | ref DRIFT 18.07 | beats all yes
+c055 seed 402: S X 13.93 | R 5.57 | SH 6.64 | DR 16.14 | ref D 2.29 | ref DRIFT 20.07 | beats all yes
+c055 seed 403: S X 14.21 | R 7.64 | SH 5.43 | DR 17.21 | ref D 3.50 | ref DRIFT 15.00 | beats all yes
+c055 {"RENEW":1,"RN_CAP":18.1,"BODY_MUT":0.02,"BODY_CAP":0.0456,"BODY_DEL":0.00319,"BODY_MQ":0.255,"CH_LEN":2.77}: (1) seeds beating all nulls 3/3 PASS | (2) relative stickiness 1.610 PASS | (3) collapse none PASS => GO (re-confirmed)
+```
