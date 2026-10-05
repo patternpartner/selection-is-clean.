@@ -1,0 +1,13 @@
+# Segmented-resume identity checks (lab/sticky/seg-run.js + fullsave.js), run before launch, 05/10/2026 10:43 BST
+# compared: md5 of the jsonl with the wall-clock field wallS removed
+X seed 401 ticks 30000 segs of 10000: contiguous fe1dd90761ed segmented fe1dd90761ed rows 30/30 => IDENTICAL
+R seed 401 ticks 30000 segs of 10000: contiguous d589d5c298f0 segmented d589d5c298f0 rows 30/30 => IDENTICAL
+SH seed 401 ticks 30000 segs of 10000: contiguous f67088d2ff8a segmented f67088d2ff8a rows 30/30 => IDENTICAL
+DR seed 401 ticks 30000 segs of 10000: contiguous 86345e46da50 segmented 86345e46da50 rows 30/30 => IDENTICAL
+D seed 401 ticks 30000 segs of 10000: contiguous 1124ddcd62fc segmented 1124ddcd62fc rows 30/30 => IDENTICAL
+DRIFT seed 401 ticks 30000 segs of 10000: contiguous 3ffb006f84fe segmented 3ffb006f84fe rows 30/30 => IDENTICAL
+BASE seed 401 ticks 30000 segs of 10000: contiguous 10d4b6bb0180 segmented 10d4b6bb0180 rows 30/30 => IDENTICAL
+prefix: c055 X seed 401, contiguous 8k run == first 8 rows of the existing contiguous 450k run (sticky-runs/756745500dacff): IDENTICAL (tick count does not change the trajectory)
+core World.save()/load() with the same 4k+4k split: DIFFERENT from row 5 on (body/renewal state not saved) => not used
+dry run TEST=1 (15k/6k ticks, 3k segments): orchestrator and segment processes SIGKILLed mid-run, relaunched; 144/144 runs done; all 7 of the 15k runs that were in flight at the kill (resumed from a checkpoint) checked against a contiguous core-run.js run: all 7 IDENTICAL
+c055 X seed 401: first 300 rows of the existing contiguous 450k run (sticky-runs/756745500dacff) 6476c81a97b2 vs 2 x 150k segments with fullsave resume 6476c81a97b2, rows 300, ckpt 15M => IDENTICAL
