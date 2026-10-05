@@ -1,1 +1,2 @@
 launched 05/10/2026 22:06:36 BST from 5f54846: orchestrator pid 1137866, watcher pid 1137868, P=8, runs in /home/box/sticky-runs-rb; relaunch after a restart: bash /home/box/wt/sticky-robust/lab/sticky/launch-robust.sh
+note 22:11 BST: scheduling only (no effect on any decision or analysis): the 9 background 450k references were queued before the search runs and the queue was empty, so they started first instead of filling idle slots; the search starts ~15-20 min later, total work unchanged.
