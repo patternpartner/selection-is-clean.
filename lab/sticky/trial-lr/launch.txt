@@ -1,0 +1,1 @@
+launched 05/10/2026 10:57:08 BST from e6fc51a: orchestrator pid 586259, watcher pid 586261, P=8, runs in /home/box/sticky-runs-lr; relaunch after a restart: bash /home/box/wt/sticky-longrun/lab/sticky/launch-longrun.sh
