@@ -30,9 +30,10 @@ const isNeutral=o=>o>=NEUTRAL0;
 // the FUNCTIONAL genotype: the program with NOP and the neutral markers dropped and every argument masked to the bits its
 // op reads (LOADK and JMP all 8, MOV..IFLT the low 2, TURN the low 3, the rest none). Two programs with the same hash differ
 // only where nothing reads, near enough (a dropped marker can shift a JMP or a skip, so this merges a little too much).
-const ARGMASK=new Uint8Array(NOPS); ARGMASK[1]=255; for(let q=2;q<=7;q++)ARGMASK[q]=3; ARGMASK[8]=255; ARGMASK[15]=7; for(let q=24;q<=28;q++)ARGMASK[q]=255;   // 24-28 only count under CHEM
-function fnHash(a,o,m,n0){ n0=n0||NEUTRAL0; let h=2166136261|0, k=0; for(let i=0;i<m;i++){ const op=a[o+i*2]; if(op===0||op>=n0)continue; h=Math.imul(h^op,16777619); h=Math.imul(h^(a[o+i*2+1]&ARGMASK[op]),16777619); k++; } return (h^k)>>>0; }
-function fnHashList(src,n0){ n0=n0||NEUTRAL0; let h=2166136261|0, k=0; for(const [op,arg] of src){ if(op===0||op>=n0)continue; h=Math.imul(h^op,16777619); h=Math.imul(h^(arg&ARGMASK[op]),16777619); k++; } return (h^k)>>>0; }
+const ARGMASK=new Uint8Array(256); ARGMASK[1]=255; for(let q=NOPS;q<256;q++)ARGMASK[q]=255;   // 32 and up: opcodes installed as modules (#292), every argument bit counts
+ARGMASK[1]=255; for(let q=2;q<=7;q++)ARGMASK[q]=3; ARGMASK[8]=255; ARGMASK[15]=7; for(let q=24;q<=28;q++)ARGMASK[q]=255;   // 24-28 only count under CHEM
+function fnHash(a,o,m,n0){ n0=n0||NEUTRAL0; let h=2166136261|0, k=0; for(let i=0;i<m;i++){ const op=a[o+i*2]; if(op===0||(op>=n0&&op<NOPS))continue; h=Math.imul(h^op,16777619); h=Math.imul(h^(a[o+i*2+1]&ARGMASK[op]),16777619); k++; } return (h^k)>>>0; }
+function fnHashList(src,n0){ n0=n0||NEUTRAL0; let h=2166136261|0, k=0; for(const [op,arg] of src){ if(op===0||(op>=n0&&op<NOPS))continue; h=Math.imul(h^op,16777619); h=Math.imul(h^(arg&ARGMASK[op]),16777619); k++; } return (h^k)>>>0; }
 
 // NAND formula size of each three-input function (inputs 0xF0, 0xCC, 0xAA cost 0; NAND(x,y) costs size x + size y + 1)
 const TASK_SZ=(()=>{ const S=new Float64Array(256).fill(Infinity); S[0xF0]=0; S[0xCC]=0; S[0xAA]=0;
@@ -109,7 +110,7 @@ class World{
   constructor(seed,opts){
     this.p=Object.assign({},DEF,opts||{});
     const P=this.p, C=P.W*P.H;
-    this.rnd=mulberry32((seed>>>0)||1); this.C=C; this.tick=0;
+    this.rnd=mulberry32((seed>>>0)||1); this.C=C; this.tick=0; this.seed0=(seed>>>0)||1;
     this.alive=new Uint8Array(C); this.E=new Float32Array(C); this.age=new Int32Array(C);
     this.pc=new Uint8Array(C); this.face=new Uint8Array(C); this.R=(opts&&opts.TASKS)?new Float64Array(C*4):new Float32Array(C*4);   // TASKS needs registers that hold a 32-bit word exactly
     this.len=new Uint8Array(C); this.prog=new Uint8Array(C*P.MAXLEN*2);
@@ -163,8 +164,8 @@ class World{
     for(let k=0;k<4;k++)this.R[b*4+k]=this.R[a*4+k]; this.len[b]=this.len[a]; this.prog.copyWithin(b*L,a*L,a*L+L); this.sprog.copyWithin(b*L,a*L,a*L+L); this.slen[b]=this.slen[a];
     this.tag[b]=this.tag[a]; this.tmpl[b]=this.tmpl[a]; this.gen[b]=this.gen[a]; this.stamp[b]=this.stamp[a]; this.E[a]=0;
     if(this.p.TASKS){ for(let k=0;k<3;k++)this.tin[b*3+k]=this.tin[a*3+k]; this.tic[b]=this.tic[a]; for(let k=0;k<8;k++)this.tdone[b*8+k]=this.tdone[a*8+k]; } }
-  mutateInto(src,r){ const P=this.p; for(const ins of src){ if(r()<P.MU_SUB){ if(r()<0.5)ins[0]=(r()*NOPS)|0; else ins[1]=(r()*256)|0; } }
-    if(src.length<P.MAXLEN&&r()<P.MU_INS)src.splice((r()*(src.length+1))|0,0,[(r()*NOPS)|0,(r()*256)|0]);
+  mutateInto(src,r){ const P=this.p; for(const ins of src){ if(r()<P.MU_SUB){ if(r()<0.5)ins[0]=(r()*(this.nops||NOPS))|0; else ins[1]=(r()*256)|0; } }
+    if(src.length<P.MAXLEN&&r()<P.MU_INS)src.splice((r()*(src.length+1))|0,0,[(r()*(this.nops||NOPS))|0,(r()*256)|0]);
     if(src.length>1&&r()<P.MU_DEL)src.splice((r()*src.length)|0,1); return src; }
   // ---- reproduction with mutation (balanced insertion and deletion) ----
   divide(c){ const P=this.p; if(this.E[c]<P.DIV_MIN)return false;
@@ -217,7 +218,7 @@ class World{
                  else if(P.CHEM){ const S=P.CHEM_S, q=arg&(S-1), pr=this.prod[q*4+op-24], d=this.eMol[q]-this.eMol[pr], C=this.C;   // METABj (mol is species-major: species q in cell c is q*C+c)
                    if(d>0&&d<=P.CHEM_DMAX){ const x=this.mol[q*C+c]*P.EAT_F; if(x>0){ this.mol[q*C+c]-=x; this.mol[pr*C+c]+=x; this.molLive[pr]=1; this.E[c]+=x*d; this.ev.metab+=x*d; this.ev.metabN++; this.rxE[q*4+op-24]+=x*d; } } } break;
         case 28: if(P.CHEM_BIG){ const Lq=this.big.layers.get(arg|(this.prog[o+((pc+1)%n)*2+1]<<8)); R[r4]=Lq?Lq[c]:0; } else if(P.CHEM)R[r4]=this.mol[(arg&(P.CHEM_S-1))*this.C+c]; break;   // SENSE_MOL
-        default: break;                                                      // NOP and the eight neutral markers
+        default: if(op>=NOPS&&this.modByOp){ const m=this.modByOp[op]; if(m&&!m.disarmed){ m.execs++; m.spec.op(m.api,c,arg); } } break;   // NOP, the neutral markers, and installed modules (#292)
       }
       pc=next;
     }
@@ -227,6 +228,7 @@ class World{
     if(this.tick%10===0)this.updateCap();
     if(P.CHEM&&this.tick%P.CHEM_EVERY===0)this.chemStep();
     if(P.TASKS){ const tr=this.tres, cp=this.tcap; for(let T=0;T<256;T++)tr[T]+=P.TASK_RATE*(cp[T]-tr[T]); }   // each function's pool regrows toward its cap
+    if(this.mods) for(const m of this.mods) if(m.spec.step&&!m.disarmed)m.spec.step(m.api);
     { const rate=P.L_RATE, kd=1-P.CORPSE_DECAY, light=this.light, cap=this.cap, corpse=this.corpse;
       for(let c=0;c<C;c++){ const l=light[c]; light[c]=l+rate*(cap[c]-l); if(corpse[c]>0)corpse[c]*=kd; } }
     const ord=this.order, r=this.rnd; for(let i=C-1;i>0;i--){ const j=(r()*(i+1))|0; const t=ord[i]; ord[i]=ord[j]; ord[j]=t; }
@@ -280,6 +282,46 @@ class World{
     { const fs=this.fs, fr=this.frnd; for(let d=0;d<this.tickDeaths&&fs.length;d++){ const k=(fr()*fs.length)|0; fs[k]=fs[fs.length-1]; fs.pop(); }
       const fm=fs.length; for(const ch of this.tickBirthsF){ const par=fm?fs[(fr()*fm)|0]:0; fs.push(ch||!fm?this.fsNext++:par); } }
     this.tickBirths.length=0; this.tickBirthsF.length=0; this.tickDeaths=0; }
+  // ---- MODULES (#292): physics installed into a running world ----
+  // A module is source text evaluating to {name, fields, init(api), op(api,c,arg), step(api)}. It gets the next free opcode
+  // (32 and up), enters programs only through mutation, and runs only through the interface below. ENERGY ONLY MOVES: the one
+  // way to change a store (an organism's E, light, corpse, or a field the module declares {energy:true}) is api.move, which
+  // takes at most what is there; api.spend destroys an organism's energy as heat. So a module can never create energy.
+  // Information fields ({energy:false}) are free to read and write. A module draws only from its own random stream, so it
+  // never disturbs the world's. DISARMED (the inert twin): the opcode exists, is copied and mutated and costs its instruction,
+  // but op, init and step never run.
+  installMod(src,opt){ opt=opt||{}; const spec=(new Function('"use strict"; return ('+src+');'))();
+    if(!spec||typeof spec.op!=='function'||!spec.name)throw new Error('a module needs a name and an op(api,c,arg)');
+    if(!this.mods){ this.mods=[]; this.modByOp=[]; this.nops=NOPS; }
+    const op=this.nops; if(op>255)throw new Error('no opcodes left');
+    const m={id:this.mods.length,name:spec.name,op,src,spec,disarmed:!!opt.disarmed,at:this.tick,fields:{},energyField:{},execs:0,inc:0,out:0,
+      rnd:mulberry32((((this.p.MOD_SEED!==undefined?this.p.MOD_SEED:this.seed0)>>>0)||1)^(0x6d6f6400+op))};
+    for(const [k,f] of Object.entries(spec.fields||{})){ const A=new Float32Array(this.C); m.energyField[k]=!!(f&&f.energy); if(f&&f.init){ if(m.energyField[k])throw new Error('an energy field must start empty: '+k); A.fill(f.init); } m.fields[k]=A; }
+    m.api=this.modApi(m); this.mods.push(m); this.modByOp[op]=m; this.nops=op+1;
+    if(!opt.noInit&&!m.disarmed&&spec.init)spec.init(m.api);
+    return m; }
+  modApi(m){ const w=this, C=w.C, P=w.p;
+    const store=k=>{ if(k==='E')return w.E; if(k==='light')return w.light; if(k==='corpse')return w.corpse; const f=m.fields[k]; if(!f||!m.energyField[k])throw new Error(m.name+': not an energy store: '+k); return f; };
+    const info=k=>{ const f=m.fields[k]; if(!f)throw new Error(m.name+': no field '+k); return f; };
+    return {
+      C, W:P.W, H:P.H, get tick(){ return w.tick; },
+      rand:()=>m.rnd(),
+      alive:c=>w.alive[c]===1, ahead:(c,turn)=>w.ahead(c,w.face[c]+(turn|0)), face:c=>w.face[c], age:c=>w.age[c], tag:c=>w.tag[c], gen:c=>w.gen[c],
+      E:c=>w.E[c], light:c=>w.light[c], corpse:c=>w.corpse[c],
+      reg:(c,k)=>w.R[c*4+(k&3)], setReg:(c,k,v)=>{ w.R[c*4+(k&3)]=Number.isFinite(v)?v:0; },
+      get:(k,c)=>{ if(k==='E'||k==='light'||k==='corpse')return store(k)[c]; return info(k)[c]; },
+      set:(k,c,v)=>{ if(m.energyField[k])throw new Error(m.name+': energy cannot be set, only moved: '+k); info(k)[c]=Number.isFinite(v)?v:0; },
+      move:(fk,fc,tk,tc,amt)=>{ if(!(amt>0))return 0; const F=store(fk), T=store(tk);
+        if(fk==='E'&&!w.alive[fc])return 0; if(tk==='E'&&!w.alive[tc])return 0;
+        const a=Math.min(amt,Math.max(0,F[fc])); if(!(a>0))return 0; F[fc]-=a; T[tc]+=a; if(tk==='E')m.inc+=a; if(fk==='E')m.out+=a; return a; },
+      spend:(c,amt)=>{ if(!(amt>0)||!w.alive[c])return 0; w.E[c]-=amt; m.out+=amt; return amt; },
+      diffuse:(k,D)=>{ const A=info(k), t=new Float32Array(C), W=P.W, H=P.H; for(let y=0;y<H;y++)for(let x=0;x<W;x++){ const c=y*W+x, v=A[c]; t[c]=v+D*((A[y*W+(x+W-1)%W]+A[y*W+(x+1)%W]+A[((y+H-1)%H)*W+x]+A[((y+1)%H)*W+x])/4-v); } A.set(t); },
+      decay:(k,f)=>{ const A=info(k); for(let c=0;c<C;c++)A[c]*=1-f; } }; }
+  modSample(ev){ if(!this.mods)return null; let tot=(ev.eatLight||0)+(ev.eatCorpse||0)+(ev.attackTake||0)*this.p.ATT_EFF+(ev.metab||0);   // ev: this sample's counters (sample() has already reset the live ones) for(const m of this.mods)tot+=m.inc;
+    const L=this.p.MAXLEN*2, carriers=new Map(); let n=0; for(let c=0;c<this.C;c++){ if(!this.alive[c])continue; n++; const o=c*L, seen=new Set(); for(let i=0;i<this.len[c];i++){ const op=this.prog[o+i*2]; if(op>=NOPS)seen.add(op); } for(const op of seen)carriers.set(op,(carriers.get(op)||0)+1); }
+    const list=this.mods.map(m=>{ let fe=0; for(const [k,A] of Object.entries(m.fields)) if(m.energyField[k]) for(let c=0;c<this.C;c++)fe+=A[c];
+      const r={id:m.id,name:m.name,op:m.op,disarmed:m.disarmed,at:m.at,execs:m.execs,inc:+m.inc.toFixed(2),out:+m.out.toFixed(2),carriers:n?+((carriers.get(m.op)||0)/n).toFixed(4):0,fieldEnergy:+fe.toFixed(2)}; m.execs=0; m.inc=0; m.out=0; return r; });
+    return {nops:this.nops,list,flux:list.filter(r=>r.inc>0).map(r=>[r.id,tot>0?+(r.inc/tot).toFixed(4):0])}; }
   count(){ let n=0; for(let c=0;c<this.C;c++)n+=this.alive[c]; return n; }
   reseed(){ const anc=[[OP.EAT_LIGHT,0],[OP.DIVIDE,0],[OP.TURN,1]]; this.reseeds=(this.reseeds||0)+1;
     for(let k=0;k<this.C/16;k++){ const c=(this.rnd()*this.C)|0; if(!this.alive[c]){ this.place(c,anc,1.0,(this.rnd()*65536)|0,(this.rnd()*65536)|0,0); this.ns.push(0); this.fs.push(0); } } }
@@ -328,18 +370,20 @@ class World{
       shadowOpShare:Array.from(sopC,v=>n?+(v/n).toFixed(4):0),
       progGeno:[...pg.entries()].sort((a,b)=>b[1]-a[1]).slice(0,60), shadowGeno:[...spg.entries()].sort((a,b)=>b[1]-a[1]).slice(0,60), progGenoN:pg.size, shadowGenoN:spg.size, neutralGeno:(()=>{ const m=new Map(); for(const l of this.ns)m.set(l,(m.get(l)||0)+1); return [...m.entries()].sort((a,b)=>b[1]-a[1]).slice(0,60); })(), neutralN:this.ns.length, fnGeno:fgTop, fnGenoN:fg.size, fnNeutral, fnNeutralN:this.fs.length, fnNew,
       shadowBigrams:Object.fromEntries([...sbgC.entries()].filter(([b,v])=>v/n>=0.01).map(([b,v])=>[b,+(v/n).toFixed(4)])),
-      reseeds:this.reseeds||0, ...(chem?{chem,n0:this.n0}:{}), ...(tasks?{tasks,n0:this.n0}:{}), ...(vir?{vir}:{})}; }
+      reseeds:this.reseeds||0, ...(chem?{chem,n0:this.n0}:{}), ...(tasks?{tasks,n0:this.n0}:{}), ...(vir?{vir}:{}), ...(this.mods?{mods:this.modSample(ev)}:{})}; }
 }
 
 // ---- save and resume: every field is a typed array or a plain value, so a run can be carried across windows exactly ----
 const ARRAYS=['alive','E','age','pc','face','R','len','prog','sprog','slen','tag','tmpl','stamp','gen','light','cap','corpse','order'];
 const CHEM_ARRAYS=['mol','eMol','prod'], TASK_ARRAYS=['tin','tic','tdone','tres'];
-World.prototype.save=function(){ const o={p:this.p,tick:this.tick,rnd:this.rnd.s,srnd:this.srnd.s,patch:this.patch,reseeds:this.reseeds||0,everTags:this.everTags?[...this.everTags]:[],ns:this.ns,nsNext:this.nsNext,nrnd:this.nrnd.s,fs:this.fs,fsNext:this.fsNext,frnd:this.frnd.s,fnRep:[...this.fnRep],...(this.p.VIRUS?{vn:this.vn,vrnd:this.vrnd.s,vc:Buffer.from(this.vc.buffer,0,this.vn*4).toString('base64'),vk:Buffer.from(this.vk.buffer,0,this.vn*this.vk.BYTES_PER_ELEMENT).toString('base64')}:{}),a:{}};
+World.prototype.save=function(){ const o={p:this.p,tick:this.tick,seed0:this.seed0,...(this.mods?{mods:this.mods.map(m=>({src:m.src,disarmed:m.disarmed,at:m.at,rnd:m.rnd.s,fields:Object.fromEntries(Object.entries(m.fields).map(([k,A])=>[k,Buffer.from(A.buffer).toString('base64')]))}))}:{}),rnd:this.rnd.s,srnd:this.srnd.s,patch:this.patch,reseeds:this.reseeds||0,everTags:this.everTags?[...this.everTags]:[],ns:this.ns,nsNext:this.nsNext,nrnd:this.nrnd.s,fs:this.fs,fsNext:this.fsNext,frnd:this.frnd.s,fnRep:[...this.fnRep],...(this.p.VIRUS?{vn:this.vn,vrnd:this.vrnd.s,vc:Buffer.from(this.vc.buffer,0,this.vn*4).toString('base64'),vk:Buffer.from(this.vk.buffer,0,this.vn*this.vk.BYTES_PER_ELEMENT).toString('base64')}:{}),a:{}};
   if(this.p.CHEM_BIG){ o.big={}; for(const [q,m] of this.big.layers)o.big[q]=Buffer.from(m.buffer).toString('base64'); }
   for(const k of ARRAYS.concat(this.p.CHEM&&!this.p.CHEM_BIG?CHEM_ARRAYS:[],this.p.TASKS?TASK_ARRAYS:[]))o.a[k]=Buffer.from(this[k].buffer,this[k].byteOffset,this[k].byteLength).toString('base64'); return JSON.stringify(o); };
 World.load=function(txt){ const o=JSON.parse(txt); const w=new World(1,o.p); w.tick=o.tick; w.rnd.s=o.rnd; w.srnd.s=o.srnd; w.patch=o.patch; w.reseeds=o.reseeds; w.everTags=new Set(o.everTags); w.ns=o.ns||[]; w.nsNext=o.nsNext||1; if(o.nrnd!==undefined)w.nrnd.s=o.nrnd; w.fs=o.fs||[]; w.fsNext=o.fsNext||1; if(o.frnd!==undefined)w.frnd.s=o.frnd; w.fnRep=new Set(o.fnRep||[]); if(o.p.VIRUS&&o.vn!==undefined){ w.vn=o.vn; w.vrnd.s=o.vrnd; new Uint8Array(w.vc.buffer).set(Buffer.from(o.vc,'base64')); new Uint8Array(w.vk.buffer).set(Buffer.from(o.vk,'base64')); }
   if(o.p.CHEM_BIG&&o.big) for(const q of Object.keys(o.big)){ const L=w.layer(+q); new Uint8Array(L.buffer).set(Buffer.from(o.big[q],'base64')); }
   for(const k of ARRAYS.concat(o.p.CHEM&&!o.p.CHEM_BIG?CHEM_ARRAYS:[],o.p.TASKS?TASK_ARRAYS:[])){ const b=Buffer.from(o.a[k],'base64'); const A=w[k]; new Uint8Array(A.buffer,A.byteOffset,A.byteLength).set(b); }
+  if(o.seed0!==undefined)w.seed0=o.seed0;
+  if(o.mods) for(const d of o.mods){ const m=w.installMod(d.src,{disarmed:d.disarmed,noInit:true}); m.at=d.at; m.rnd.s=d.rnd; for(const [k,b] of Object.entries(d.fields)) new Uint8Array(m.fields[k].buffer).set(Buffer.from(b,'base64')); }   // modules re-installed in order, so each gets its old opcode
   if(w.molLive){ const S=w.p.CHEM_S, C=w.C, m=w.mol, live=w.molLive; for(let q=0;q<S;q++){ const b=q*C; let on=0; for(let c=0;c<C;c++) if(m[b+c]>0){ on=1; break; } live[q]=on; } }   // rebuilt from the restored molecules, so a resume skips nothing that is present
   return w; };
 module.exports={TASK_SZ,World,OPS,OP,NOPS,NEUTRAL0,isNeutral,DEF,fnHash,fnHashList,ARGMASK,OPS_CHEM,NEUTRAL0_CHEM};
