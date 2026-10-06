@@ -1059,3 +1059,6 @@ galaxy to one small screen alone (a child and a man with a smiley balloon, a gen
 fill the frame as the light goes into it. End card. Iterations: the first cut hung ~10 s on a far galaxy and
 another ~11 s crossing empty black to the good screen, and one doll filled the frame for ~10 s - so: a faster dive
 in, a path that goes OUT THROUGH the cloud, the crowd circling, dark screens capped at half the frame height.
+THE USER'S VERDICT: "Actually really liked that one. Felt new and familiar at the same time." What landed: no likeness,
+the archive itself as the material (their own clips and songs, re-seen), spatial sound, one clear arc (dark -> silence
+-> turn -> one small good thing). Familiar = their own footage and song; new = the form. Build on that, not away from it.
