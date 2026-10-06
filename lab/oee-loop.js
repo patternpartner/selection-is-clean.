@@ -10,9 +10,9 @@
 //   RUN=pilot SEED=1001 node lab/oee-loop.js            (RUNDIR lab/loop/<RUN>: state, reports, modules; HEAVY: saves and logs)
 'use strict';
 const fs=require('fs'), path=require('path');
-const {World,OPS,NOPS}=require('./oee-core.js');
+const {World,OPS,NOPS}=require('./oee-core.js'); const {fitness}=require('./loop-fitness.js');
 const E=process.env, RUN=E.RUN||'pilot', RUNDIR=E.RUNDIR||path.join(__dirname,'loop',RUN), HEAVY=E.HEAVY||path.join(RUNDIR,'heavy');
-const SEG=+(E.SEG||25000), ADD_EVERY=+(E.ADD_EVERY||100000), MAXSEC=+(E.MAXSEC||1500), EVERY=1000, T0=Date.now();
+const SEG=+(E.SEG||25000), ADD_EVERY=+(E.ADD_EVERY||100000), MAXSEC=+(E.MAXSEC||1500), EVERY=1000, T0=Date.now(), ASSAY=+(E.ASSAY||0);   // ASSAY=1: every report carries the fitness assay of every module (lab/loop-fitness.js)
 fs.mkdirSync(path.join(RUNDIR,'mods'),{recursive:true}); fs.mkdirSync(HEAVY,{recursive:true});
 const SF=path.join(HEAVY,'state.json');   // live state changes every segment, so it sits with the saves; installed.json (committed) changes only when a module goes in
 if(!fs.existsSync(SF)&&fs.existsSync(path.join(RUNDIR,'state.json')))fs.renameSync(path.join(RUNDIR,'state.json'),SF);
@@ -44,6 +44,11 @@ function report(k){ const w=world('G'), wi=world('I'); const rows=fs.readFileSyn
   for(const [h,n] of (r.fnGeno||[]).slice(0,8)) L.push(`- ${(n/r.N*100).toFixed(1)}%: ${reps.has(h)?decode(reps.get(h),w):'(no representative written)'}`);
   L.push('','## Instructions carried, share of the living');
   L.push('- '+r.opShare.map((v,q)=>[q,v]).filter(([q,v])=>v>=0.05&&q>0&&q<24).sort((a,b)=>b[1]-a[1]).map(([q,v])=>OPS[q]+' '+(v*100).toFixed(0)+'%').join(', '));
+  const af=path.join(RUNDIR,`assay-${k}.json`);
+  if(ASSAY&&w.mods&&w.mods.length){ if(!fs.existsSync(af)){ const t0=Date.now(), rows=fitness(fs.readFileSync(arm('G').save,'utf8'),{T:2000,REPS:4}); fs.writeFileSync(af,JSON.stringify({tick:w.tick,T:2000,REPS:4,rows},null,1)); log(`assay for report ${k}: ${((Date.now()-t0)/1000).toFixed(0)} s`); }
+    const A=JSON.parse(fs.readFileSync(af,'utf8')); L.push('','## Selection now: each module armed against disarmed from this state (4 draws each, 2,000 ticks)',
+      '- s is the carriers\' growth advantage per 1,000 ticks; effect is s armed minus s disarmed. SELECTED: every armed draw above every disarmed one; AGAINST: every one below.');
+    for(const r of A.rows) L.push(`- ${r.name}: carried ${(r.share*100).toFixed(1)}%, effect ${(r.effect*1000).toFixed(2)} (t ${r.t.toFixed(1)}), carriers' births ${r.births}: ${r.verdict==='-'?'not told from zero':r.verdict}`); }
   L.push('','## Modules so far'); if(!st.installed.length)L.push('- none'); for(const x of st.installed)L.push(`- ${x.k}: ${x.name} at tick ${x.tick} (${x.file})`);
   fs.writeFileSync(path.join(RUNDIR,`report-${k}.md`),L.join('\n')+'\n'); }
 
