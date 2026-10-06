@@ -1,6 +1,6 @@
 // lab/loop-analyse.js - what the modules of a generator-in-the-loop run (#292) did: adoption over time, and composition.
 //   RUN=pilot [ARM=G] node lab/loop-analyse.js       adoption: per window, each module's carriers, income share and executions, G against I
-//        (ARM=A, S or A3 reads a control from lab/loop-control.js instead, beside G at the same ticks)
+//        (ARM=A, S or A3 reads a control from lab/loop-control.js instead, beside its own inert twin A3I if that was run, else G)
 //        Income share is a module's income over ALL income, modules included. Rows written before that was fixed (no den:'all'
 //        in their mods block) held f = income over base income only; they are converted here, f/(1+sum of every module's f).
 //   RUN=pilot KO=1 [T=20000] [REPS=3] node lab/loop-analyse.js
@@ -15,7 +15,7 @@ const E=process.env, RUN=E.RUN||'pilot', RUNDIR=E.RUNDIR||path.join(__dirname,'l
 const st=JSON.parse(fs.readFileSync(fs.existsSync(path.join(HEAVY,'state.json'))?path.join(HEAVY,'state.json'):path.join(RUNDIR,'state.json'),'utf8'));
 const rows=a=>fs.readFileSync(path.join(HEAVY,a+'.jsonl'),'utf8').trim().split('\n').map(l=>JSON.parse(l));
 
-if(!E.KO){ const ARM=E.ARM||'G', G=rows(ARM), I=rows(ARM==='G'?'I':'G'), twin=ARM==='G'?'twin':'G', at=new Map(I.map(r=>[r.t,r]));
+if(!E.KO){ const ARM=E.ARM||'G', TW=ARM==='G'?'I':fs.existsSync(path.join(HEAVY,ARM+'I.jsonl'))?ARM+'I':'G', G=rows(ARM), I=rows(TW), twin=TW==='I'||TW===ARM+'I'?'twin':'G', at=new Map(I.map(r=>[r.t,r]));
   const share=(r,id)=>{ if(!r.mods)return 0; const f=r.mods.flux.find(y=>y[0]===id); if(!f)return 0; return r.mods.den==='all'?f[1]:f[1]/(1+r.mods.flux.reduce((a,y)=>a+y[1],0)); };
   const names=new Map(((G.at(-1).mods||{}).list||[]).map(x=>[x.id,x.name]));
   console.log(`== ${RUN} arm ${ARM} (seed ${st.seed}) at tick ${G.at(-1).t}; modules in G: ${st.installed.map(x=>x.k+':'+x.name+'@'+x.tick).join(', ')||'none'}`);
