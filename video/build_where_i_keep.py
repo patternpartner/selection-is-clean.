@@ -26,14 +26,14 @@ from scipy.ndimage import gaussian_filter
 
 F = imageio_ffmpeg.get_ffmpeg_exe()
 W, H, FPS = 720, 1280, 24
-DUR = 62.0
+DUR = 59.1
 TEST = [float(x) for x in os.environ.get("TEST", "").split(",") if x]
 PART = [float(x) for x in os.environ.get("PART", "").split(",") if x]
 AMBER = np.array([255, 176, 88], np.float32)
 FOC = 820.0
 DARK = [0, 26, 28, 30, 33, 35, 108, 112, 116, 118, 119, 120, 121, 122]
 FINAL = 202
-T_IN, T_DARK, T_DEEP, T_STILL, T_TURN, T_OUT, T_FIND, T_OPEN, T_CARD = 4.0, 17.0, 24.0, 28.5, 32.0, 33.5, 48.5, 53.5, 58.4
+T_IN, T_DARK, T_DEEP, T_STILL, T_TURN, T_OUT, T_FIND, T_OPEN, T_CARD = 4.0, 17.0, 24.0, 28.5, 32.0, 33.5, 46.5, 50.5, 55.5
 rng = np.random.default_rng(7)
 
 
@@ -96,9 +96,9 @@ def catmull(pts, ts, t):
 
 
 # the path: where the camera is and what it looks at
-WT = [0.0, 4.0, 11.0, 17.0, 24.0, 28.5, 32.0, 36.5, 40.5, 44.5, 48.5, 53.5, 56.0, 62.0]
+WT = [0.0, 4.0, 11.0, 17.0, 24.0, 28.5, 32.0, 36.5, 40.5, 43.5, 46.5, 50.5, 53.0, 59.1]
 CAMP = [CEN + [0, 4, -70], CEN + [0, 2, -32], CEN + [-6, 3, -8], DC + [-6, 2, -14], DC + [0, 0, -3], DC + [0, 0, -2.5],
-        DC + [0, 0, -2.6], DC + [-9, 3, -9], CEN + [4, 1, -1], CEN + [-7, 4, -7], FP + [0, 0, -8], FP + [0, 0, -1.4],
+        DC + [0, 0, -2.6], DC + [-9, 3, -9], CEN + [4, 1, -1], CEN + [-7, 4, -7], FP + [0, 0, -7], FP + [0, 0, -1.4],
         FP + [0, 0, -0.8], FP + [0, 0, -0.8]]
 LOOK = [CEN, CEN, CEN + [4, 0, 6], DC, DC + [0, 0, 6], DC + [0, 0, 6], FP, CEN + [4, 1, -1], CEN + [-7, 4, -7], FP, FP, FP,
         FP, FP]
@@ -194,6 +194,8 @@ def render(th, t):
         i = SRC[si]
         e = IDX[i]
         hgt = FOC * (1.5 if i != FINAL else 1.2) / z
+        if i in DARK:                                        # the dark crowds round it; no one face swallows the frame
+            hgt = min(hgt, 0.5 * H)
         wdt = hgt * e["w"] / e["h"]
         if hgt < 2.5 or sx[si] + wdt < 0 or sx[si] - wdt > W or sy[si] + hgt < 0 or sy[si] - hgt > H:
             continue
