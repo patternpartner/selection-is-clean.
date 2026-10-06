@@ -65,6 +65,13 @@
    "name": "FANG",
    "op": 40,
    "tick": 900000
+  },
+  {
+   "k": 10,
+   "file": "10-snarl.js",
+   "name": "SNARL",
+   "op": 41,
+   "tick": 1000000
   }
  ]
 }
