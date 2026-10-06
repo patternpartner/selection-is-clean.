@@ -2869,9 +2869,9 @@
   "upload": "30052389-image_20261005_165803_1.mp4",
   "seconds": 10.01,
   "size": "1280x720",
-  "what": "NOT the user's likeness - other characters (sent 6 Oct 2026 as a batch of 13, no message): a man standing inside a giant opened orange drinks can on a green hillside (real-brand lettering on the can)",
+  "what": "THE USER'S OWN LIKENESS (sent in the 6 Oct batch of 13): standing inside a giant opened orange drinks can full of fizzing orange, on a green hillside (real-brand lettering on the can)",
   "tags": [
-   "others",
+   "own-likeness",
    "scene",
    "has-audio"
   ],
@@ -2977,6 +2977,396 @@
   "what": "NOT the user's likeness - other characters (sent 6 Oct 2026 as a batch of 13, no message): CCTV-style footage stamped MAY 1995: a man in hi-vis and a police officer with a notebook; white paper streamers blowing down a wet street at night",
   "tags": [
    "others",
+   "scene",
+   "has-audio"
+  ],
+  "talks": null,
+  "used_in": []
+ },
+ {
+  "id": "u146",
+  "file": "out/user-clips/u146.mp4",
+  "upload": "7da01083-1791115913438_w67nv5cior_1.mp4",
+  "seconds": 10.03,
+  "size": "720x480",
+  "what": "THE USER'S OWN LIKENESS (6 Oct batch): in a black tuxedo in a neon roller-disco, flanked by rows of penguins on roller skates",
+  "tags": [
+   "own-likeness",
+   "scene",
+   "has-audio"
+  ],
+  "talks": null,
+  "used_in": []
+ },
+ {
+  "id": "u147",
+  "file": "out/user-clips/u147.mp4",
+  "upload": "413a3637-image_20261004_155421_1.mp4",
+  "seconds": 10.01,
+  "size": "720x480",
+  "what": "THE USER'S OWN LIKENESS (6 Oct batch): in a grey t-shirt in a neon laundrette full of foam, clapping, surrounded by small felt puppet creatures dancing",
+  "tags": [
+   "own-likeness",
+   "scene",
+   "has-audio"
+  ],
+  "talks": null,
+  "used_in": []
+ },
+ {
+  "id": "u148",
+  "file": "out/user-clips/u148.mp4",
+  "upload": "8bb75881-1791070370675_mto0izf0gd_1.mp4",
+  "seconds": 10.03,
+  "size": "720x480",
+  "what": "No people, or not the user (6 Oct batch, found-footage/weird): a translucent glass whale swims through a glowing ring (a black hole), streaks into light, a pink kaleidoscope, a single bubble",
+  "tags": [
+   "no-people",
+   "scene",
+   "has-audio"
+  ],
+  "talks": null,
+  "used_in": []
+ },
+ {
+  "id": "u149",
+  "file": "out/user-clips/u149.mp4",
+  "upload": "41e17088-1791129017978_oj5ynajbzsp.mp4",
+  "seconds": 10.08,
+  "size": "960x960",
+  "what": "No people, or not the user (6 Oct batch, found-footage/weird): OCT 1996 timestamp: a night petrol station on an empty road; an old estate car pulls in, its doors open, something dark pours out",
+  "tags": [
+   "others",
+   "scene",
+   "has-audio"
+  ],
+  "talks": null,
+  "used_in": []
+ },
+ {
+  "id": "u150",
+  "file": "out/user-clips/u150.mp4",
+  "upload": "8f6838e7-1791038967522_7fv2mcgjqn.mp4",
+  "seconds": 10.08,
+  "size": "864x496",
+  "what": "No people, or not the user (6 Oct batch, found-footage/weird): APR 1991 timestamp: an upright vacuum cleaner in a wallpapered hall moves by itself and peels the wallpaper",
+  "tags": [
+   "no-people",
+   "scene",
+   "has-audio"
+  ],
+  "talks": null,
+  "used_in": []
+ },
+ {
+  "id": "u151",
+  "file": "out/user-clips/u151.mp4",
+  "upload": "7561b9ca-1791116618724_y9q87tsuwqn_1_1.mp4",
+  "seconds": 15.04,
+  "size": "720x480",
+  "what": "THE USER'S OWN LIKENESS (6 Oct batch): in a black tuxedo in a 24/7 supermarket aisle at 3am (real-brand signage), with a trolley, surrounded by chickens in pink tutus",
+  "tags": [
+   "own-likeness",
+   "scene",
+   "has-audio"
+  ],
+  "talks": null,
+  "used_in": []
+ },
+ {
+  "id": "u152",
+  "file": "out/user-clips/u152.mp4",
+  "upload": "f0c4a2fa-1791126613314_my0ckw0d9l8_1.mp4",
+  "seconds": 10.08,
+  "size": "1280x720",
+  "what": "No people, or not the user (6 Oct batch, found-footage/weird): an empty garage with an old TV on the floor; a thin dark figure appears behind it and approaches",
+  "tags": [
+   "others",
+   "scene",
+   "has-audio"
+  ],
+  "talks": null,
+  "used_in": []
+ },
+ {
+  "id": "u153",
+  "file": "out/user-clips/u153.mp4",
+  "upload": "d564dd7c-1791062389781_6qbu6chdq6c_1_1.mp4",
+  "seconds": 15.04,
+  "size": "720x480",
+  "what": "No people, or not the user (6 Oct batch, found-footage/weird): a night street: a crowd of people in dog and cat costumes dancing in formation; a cat in armour",
+  "tags": [
+   "others",
+   "scene",
+   "has-audio"
+  ],
+  "talks": null,
+  "used_in": []
+ },
+ {
+  "id": "u154",
+  "file": "out/user-clips/u154.mp4",
+  "upload": "0a34c64c-1791065554850_gwoo74hix0m_1.mp4",
+  "seconds": 10.03,
+  "size": "720x480",
+  "what": "No people, or not the user (6 Oct batch, found-footage/weird): a crowd in a city at night look up; a huge disc overhead opens into a starfield; a glowing pink butterfly",
+  "tags": [
+   "others",
+   "scene",
+   "has-audio"
+  ],
+  "talks": null,
+  "used_in": []
+ },
+ {
+  "id": "u155",
+  "file": "out/user-clips/u155.mp4",
+  "upload": "523b772a-image_20261004_161746_1.mp4",
+  "seconds": 10.01,
+  "size": "720x480",
+  "what": "THE USER'S OWN LIKENESS (6 Oct batch): in a grey t-shirt, small, inside a fridge between a giant smiling milk carton and a scowling face on a haggis (branded labels)",
+  "tags": [
+   "own-likeness",
+   "scene",
+   "has-audio"
+  ],
+  "talks": null,
+  "used_in": []
+ },
+ {
+  "id": "u156",
+  "file": "out/user-clips/u156.mp4",
+  "upload": "407b62af-1791129228100_3rtl6ealxru_1.mp4",
+  "seconds": 10.03,
+  "size": "720x480",
+  "what": "No people, or not the user (6 Oct batch, found-footage/weird): a dark office of cubicles; a green ghoulish face appears on one CRT monitor",
+  "tags": [
+   "no-people",
+   "scene",
+   "has-audio"
+  ],
+  "talks": null,
+  "used_in": []
+ },
+ {
+  "id": "u157",
+  "file": "out/user-clips/u157.mp4",
+  "upload": "f071feb5-1791129888072_y9aynb3ii7_1.mp4",
+  "seconds": 10.03,
+  "size": "720x480",
+  "what": "No people, or not the user (6 Oct batch, found-footage/weird): a CRT-framed dental surgery; a shadow of a man on the wall; a steel cabinet's drawers spill out pale pebbles across the floor",
+  "tags": [
+   "others",
+   "scene",
+   "has-audio"
+  ],
+  "talks": null,
+  "used_in": []
+ },
+ {
+  "id": "u158",
+  "file": "out/user-clips/u158.mp4",
+  "upload": "fd7572a3-1791061444778_r0ji00qzlbi.mp4",
+  "seconds": 10.08,
+  "size": "864x496",
+  "what": "No people, or not the user (6 Oct batch, found-footage/weird): a skeleton in a pink cap gets up off a sofa in a floral room and dances by an old TV",
+  "tags": [
+   "no-people",
+   "scene",
+   "has-audio"
+  ],
+  "talks": null,
+  "used_in": []
+ },
+ {
+  "id": "u159",
+  "file": "out/user-clips/u159.mp4",
+  "upload": "a604d6ed-1791027960832_dqvmz9a2net.mp4",
+  "seconds": 10.08,
+  "size": "864x496",
+  "what": "No people, or not the user (6 Oct batch, found-footage/weird): an old TV showing a cartoon sun; the sun's face becomes uncanny, real eyes, filling the screen",
+  "tags": [
+   "no-people",
+   "scene",
+   "has-audio"
+  ],
+  "talks": null,
+  "used_in": []
+ },
+ {
+  "id": "u160",
+  "file": "out/user-clips/u160.mp4",
+  "upload": "2c1ff48b-1791029895904_kv42ugfunw_1.mp4",
+  "seconds": 10.03,
+  "size": "720x480",
+  "what": "No people, or not the user (6 Oct batch, found-footage/weird): an empty bowling alley at night; a pale head rolls back up the lane and rises from the pins",
+  "tags": [
+   "no-people",
+   "scene",
+   "has-audio"
+  ],
+  "talks": null,
+  "used_in": []
+ },
+ {
+  "id": "u161",
+  "file": "out/user-clips/u161.mp4",
+  "upload": "8ed2816a-1791027375730_rm73ae9uta9_1.mp4",
+  "seconds": 12.05,
+  "size": "720x480",
+  "what": "No people, or not the user (6 Oct batch, found-footage/weird): a car interior at night; a lightning flash shows a figure sprinting alongside past the window",
+  "tags": [
+   "others",
+   "scene",
+   "has-audio"
+  ],
+  "talks": null,
+  "used_in": []
+ },
+ {
+  "id": "u162",
+  "file": "out/user-clips/u162.mp4",
+  "upload": "95d18cfe-1791024675626_cpg02q0izw7.mp4",
+  "seconds": 10.08,
+  "size": "864x496",
+  "what": "No people, or not the user (6 Oct batch, found-footage/weird): an antique doll in a high chair; close in, black tears run from its eyes",
+  "tags": [
+   "no-people",
+   "scene",
+   "has-audio"
+  ],
+  "talks": null,
+  "used_in": []
+ },
+ {
+  "id": "u163",
+  "file": "out/user-clips/u163.mp4",
+  "upload": "76262857-1791010891731_z5smxe8med8_1.mp4",
+  "seconds": 10.05,
+  "size": "480x720",
+  "what": "No people, or not the user (6 Oct batch, found-footage/weird): MAY 14 1994 timestamp: a birthday cake on a spotty tablecloth; a teddy bear whose face is a dark hollow with glowing eyes",
+  "tags": [
+   "no-people",
+   "scene",
+   "has-audio"
+  ],
+  "talks": null,
+  "used_in": []
+ },
+ {
+  "id": "u164",
+  "file": "out/user-clips/u164.mp4",
+  "upload": "7bf6be0c-1791026535717_2xvk3f5f82g_1.mp4",
+  "seconds": 10.03,
+  "size": "720x480",
+  "what": "No people, or not the user (6 Oct batch, found-footage/weird): timestamped security footage: a car park at night with a row of pale identical mannequin-like figures standing still",
+  "tags": [
+   "others",
+   "scene",
+   "has-audio"
+  ],
+  "talks": null,
+  "used_in": []
+ },
+ {
+  "id": "u165",
+  "file": "out/user-clips/u165.mp4",
+  "upload": "5b2d45db-1791038607237_p4geqwxq65.mp4",
+  "seconds": 10.08,
+  "size": "864x496",
+  "what": "No people, or not the user (6 Oct batch, found-footage/weird): a plastic milk jug on a kitchen counter grows a mouth that opens wide; the camera whips away",
+  "tags": [
+   "no-people",
+   "scene",
+   "has-audio"
+  ],
+  "talks": null,
+  "used_in": []
+ },
+ {
+  "id": "u166",
+  "file": "out/user-clips/u166.mp4",
+  "upload": "415db3cf-1791037932239_hto05ka4g6m.mp4",
+  "seconds": 10.08,
+  "size": "864x496",
+  "what": "No people, or not the user (6 Oct batch, found-footage/weird): camcorder REC frame: an old TV with raw sausage-like shapes crawling over it, filling the frame",
+  "tags": [
+   "no-people",
+   "scene",
+   "has-audio"
+  ],
+  "talks": null,
+  "used_in": []
+ },
+ {
+  "id": "u167",
+  "file": "out/user-clips/u167.mp4",
+  "upload": "01eca728-1791036496424_a1sjlmjasg.mp4",
+  "seconds": 10.08,
+  "size": "864x496",
+  "what": "No people, or not the user (6 Oct batch, found-footage/weird): OCT 1995 timestamp: a family dinner; a raw plucked turkey gets up and walks about the living room on its own",
+  "tags": [
+   "others",
+   "scene",
+   "has-audio"
+  ],
+  "talks": null,
+  "used_in": []
+ },
+ {
+  "id": "u168",
+  "file": "out/user-clips/u168.mp4",
+  "upload": "90b336f9-1791031546020_kt9e42sy13_1.mp4",
+  "seconds": 10.03,
+  "size": "720x480",
+  "what": "No people, or not the user (6 Oct batch, found-footage/weird): a single glazed doughnut on a counter; its hole slowly opens like an eye",
+  "tags": [
+   "no-people",
+   "scene",
+   "has-audio"
+  ],
+  "talks": null,
+  "used_in": []
+ },
+ {
+  "id": "u169",
+  "file": "out/user-clips/u169.mp4",
+  "upload": "b0b87b23-1791034831254_u1spv4imj9s_1.mp4",
+  "seconds": 10.03,
+  "size": "720x480",
+  "what": "No people, or not the user (6 Oct batch, found-footage/weird): MAY 1993 timestamp: a garden party; a figure with a head of broccoli stands, then floats up into a bright sky",
+  "tags": [
+   "others",
+   "scene",
+   "has-audio"
+  ],
+  "talks": null,
+  "used_in": []
+ },
+ {
+  "id": "u170",
+  "file": "out/user-clips/u170.mp4",
+  "upload": "bcb7f292-1791025350770_4l00q1qk2qn_1.mp4",
+  "seconds": 10.03,
+  "size": "720x480",
+  "what": "No people, or not the user (6 Oct batch, found-footage/weird): an old beige PC monitor in the dark; hands push out through the screen, stretching it like a membrane",
+  "tags": [
+   "no-people",
+   "scene",
+   "has-audio"
+  ],
+  "talks": null,
+  "used_in": []
+ },
+ {
+  "id": "u171",
+  "file": "out/user-clips/u171.mp4",
+  "upload": "48d32769-1791028290823_2kor8ve5w07_1.mp4",
+  "seconds": 10.03,
+  "size": "720x480",
+  "what": "No people, or not the user (6 Oct batch, found-footage/weird): an arcade at night; a hand reaches out of an arcade cabinet's screen",
+  "tags": [
+   "no-people",
    "scene",
    "has-audio"
   ],
