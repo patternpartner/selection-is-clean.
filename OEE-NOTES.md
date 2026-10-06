@@ -25882,3 +25882,18 @@ frequency. And the floor in R2 should be read against the history, not only the 
 seeds: GUT (adopted on all four worlds that had it, pilot included), BITE, STRETCH and MAUL (all three), FANG (two of
 three, and at fixation in the third). Removed nothing from the engine or the lab core (the lab core gained modules and body fields, both
 identity-checked off). The modules that failed are retired in the sense the protocol allows: never edited, recorded here.
+
+**#292b, the all-at-once controls (reported, not ruled).** For each seed, a world with all ten of its modules armed from tick
+0, with an inert twin, to tick 1,100,000 (`lab/loop-control.js MODE=A`; assays in `lab/loop/d21*/A-assay-11.txt`):
+- **Every A world went straight to the end state.** FANG and STRETCH swept within the first 100,000 ticks (91-95% of the
+  living, then 99-100%; FANG about 70% of all income), the living sat about 25% below their twins from the start, and the
+  food web of guts and their takers never formed: GUT, BITE, SQUEEZE and MAUL stayed at or below their twins' levels for the
+  whole run. SNARL stayed polymorphic (50-87%) and fell late in two of three.
+- **The assay at 1,100,000:** STRETCH SELECTED in all three (t 7.8, 20.1, 5.3); FANG fixed and unmeasurable in all three;
+  SNARL SELECTED in d2101 (t 4.0); nothing else adopted. The sequential worlds (G) at the same tick: LEAF and STRETCH in
+  d2101, GUT in d2102, GUT and MAUL in d2103, with FANG fixed in all three.
+- **So the endpoint is the same and the history is not.** Given the same physics at once, each world takes the strongest
+  takers immediately and stands there; given it one piece at a time, each passed through a composed food web (corpse to
+  gut to biter) held by selection for about 500,000 ticks, before the strong takers arrived and replaced it. The depth the
+  loop produced existed only because the escalation had not arrived yet: it was a property of the order of supply, not
+  something the world built and kept.
