@@ -16,6 +16,13 @@
    "name": "BITE",
    "op": 33,
    "tick": 200000
+  },
+  {
+   "k": 3,
+   "file": "3-squeeze.js",
+   "name": "SQUEEZE",
+   "op": 34,
+   "tick": 300000
   }
  ]
 }

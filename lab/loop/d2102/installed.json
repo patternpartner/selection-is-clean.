@@ -16,6 +16,13 @@
    "name": "GUT",
    "op": 33,
    "tick": 200000
+  },
+  {
+   "k": 3,
+   "file": "3-bite.js",
+   "name": "BITE",
+   "op": 34,
+   "tick": 300000
   }
  ]
 }
