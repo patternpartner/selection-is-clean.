@@ -35,7 +35,7 @@ BAR, PH = 4 * 60 / 124.0, 0.069
 def bar(n):
     return PH + n * BAR
 S0, S1 = bar(21), bar(53)
-CARD = 3.6                                               # the end card, assembled from its letters, held
+CARD = 1.9                                               # the end card, assembled from its letters, held
 DUR = S1 - S0 + CARD
 TEST = [float(x) for x in os.environ.get("TEST", "").split(",") if x]
 PART = [float(x) for x in os.environ.get("PART", "").split(",") if x]

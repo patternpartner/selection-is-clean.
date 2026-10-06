@@ -1017,3 +1017,12 @@ from that word outward, amber, made of kinder things (are you ok? let me check, 
 wrong) dancing u118; then the words lift off like sparks and the real him is underneath (u120), walking up waving (u118
 13-15). First render used u128 0-11.6, which is ~8 s of standing - check a clip's activity on a keyed 2 fps sheet before
 trusting the catalogue's move list.
+**v2 (same file, 63.8 s, the end card included).** The user: "I think we keep it all code. I like it, just no reveal.
+Do you think it's quite plain otherwise?" Claude: yes - one figure on black, one camera, one letter size for a minute. v2:
+NO REVEAL (it stays letters); the WORDS ARRIVE (EVENTS): neutral phrases drift in during the build, a demand every half
+bar SLAMS in on the drop (appears big at an edge, flies into its centre, a red flash), kind phrases float in like
+lanterns after "why?"; a CAMERA (CAM table) cuts wide / chest / face - closer means more letters across him, and with
+the letter brightness stretched to his own 5-95th percentile the face reads at zoom ~4.4 (glasses, beard) where 2.8 was
+a silhouette; a FLOOR (faint reflection under its feet in the wide shots); and the END CARD IS SPELLED BY ITS OWN
+LETTERS - they leave its body at bar 50.6, fly to their places in DejaVu Sans Mono Bold Oblique (italic), turn white,
+and the rest fall away; no ASS card for this film. Card hold trimmed at the mux to ~4 s.
