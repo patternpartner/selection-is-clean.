@@ -953,3 +953,9 @@ splash is gold. Underwater he reaches up at us, cold, and the copy reaches besid
 gold and he sinks away. What comes back out of the pool at the camera, screaming his scream, is the gold copy. He ends
 calm on the board with the little gold him calm beside him. Lessons: a glow is not a character, and a film about teaching
 needs the taught thing on screen doing what it was shown.
+
+**Songs added 6 Oct 2026** (the user sent 20 at once, no message; 10 were already in `out/songs/`, byte-identical, and
+two more were One Jump and Same Time Tomorrow): the-weight-of-open-sky (1:06), threshold-of-gold (3:02),
+imael-angel-bad-times (2:47 - the filename credits "Imael Angel"; check whose it is before using it), breath-on-the-pane
+(2:52), no-quarters-left (2:45), after-the-last-train (2:55), taste-the-copper (2:59), when-the-metal-sky-opened (3:02),
+a-thousand-painted-wings (1:42), before-the-sky-unfolds (2:56). All backed up to library/songs/ on the Modal volume.
