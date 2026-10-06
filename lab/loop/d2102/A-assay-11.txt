@@ -1,0 +1,1 @@
+== fitness assay from tick 1100000: 2000 ticks, 4 draws per arm; s = carriers' growth advantage per 1,000 ticks
