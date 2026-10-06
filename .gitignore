@@ -19,3 +19,4 @@ _*.js
 out/
 __pycache__/
 lab/loop/*/heavy/
+lab/loop/*/state.json

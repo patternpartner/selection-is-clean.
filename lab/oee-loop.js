@@ -14,7 +14,8 @@ const {World,OPS,NOPS}=require('./oee-core.js');
 const E=process.env, RUN=E.RUN||'pilot', RUNDIR=E.RUNDIR||path.join(__dirname,'loop',RUN), HEAVY=E.HEAVY||path.join(RUNDIR,'heavy');
 const SEG=+(E.SEG||25000), ADD_EVERY=+(E.ADD_EVERY||100000), MAXSEC=+(E.MAXSEC||1500), EVERY=1000, T0=Date.now();
 fs.mkdirSync(path.join(RUNDIR,'mods'),{recursive:true}); fs.mkdirSync(HEAVY,{recursive:true});
-const SF=path.join(RUNDIR,'state.json');
+const SF=path.join(HEAVY,'state.json');   // live state changes every segment, so it sits with the saves; installed.json (committed) changes only when a module goes in
+if(!fs.existsSync(SF)&&fs.existsSync(path.join(RUNDIR,'state.json')))fs.renameSync(path.join(RUNDIR,'state.json'),SF);
 let st=fs.existsSync(SF)?JSON.parse(fs.readFileSync(SF,'utf8')):{seed:+(E.SEED||1001),opts:E.OPTS?JSON.parse(E.OPTS):{},tick:0,nextAdd:ADD_EVERY,k:1,installed:[],seg:SEG,addEvery:ADD_EVERY};
 const saveState=()=>fs.writeFileSync(SF,JSON.stringify(st,null,1));
 const arm=a=>({save:path.join(HEAVY,a+'.json'),log:path.join(HEAVY,a+'.jsonl')});
@@ -54,6 +55,6 @@ while((Date.now()-T0)/1000<MAXSEC){
     if(!f){ if(!fs.existsSync(path.join(RUNDIR,`report-${k}.md`))){ report(k); log(`wrote report-${k}.md`); } console.log(`WAITING for module ${k}: write ${path.join(RUNDIR,'mods',k+'-<name>.js')}`); saveState(); process.exit(0); }
     const src=fs.readFileSync(path.join(RUNDIR,'mods',f),'utf8'); const n=validate(src); log(`module ${k} (${f}) ran 2,000 ticks on a copy, ${n} alive`);
     for(const a of ['G','I']){ const w=world(a); const m=w.installMod(src,{disarmed:a==='I'}); fs.writeFileSync(arm(a).save,w.save()); if(a==='G')st.installed.push({k,file:f,name:m.name,op:m.op,tick:st.tick}); }
-    st.k++; st.nextAdd+=ADD_EVERY; saveState(); continue; }
+    st.k++; st.nextAdd+=ADD_EVERY; saveState(); fs.writeFileSync(path.join(RUNDIR,'installed.json'),JSON.stringify({seed:st.seed,opts:st.opts,addEvery:st.addEvery,installed:st.installed},null,1)); continue; }
   const n=Math.min(SEG,st.nextAdd-st.tick); for(const a of ['G','I'])advance(a,n); st.tick+=n; saveState(); ran+=n; log(`tick ${st.tick} (next module due at ${st.nextAdd})`); }
 console.log(`time budget used: advanced ${ran} ticks this launch, now at ${st.tick}`);

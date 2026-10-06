@@ -7,7 +7,7 @@
 'use strict';
 const fs=require('fs'), path=require('path'); const {World}=require('./oee-core.js');
 const E=process.env, RUN=E.RUN||'pilot', RUNDIR=E.RUNDIR||path.join(__dirname,'loop',RUN), HEAVY=E.HEAVY||path.join(RUNDIR,'heavy'), WIN=+(E.WIN||50);
-const st=JSON.parse(fs.readFileSync(path.join(RUNDIR,'state.json'),'utf8'));
+const st=JSON.parse(fs.readFileSync(fs.existsSync(path.join(HEAVY,'state.json'))?path.join(HEAVY,'state.json'):path.join(RUNDIR,'state.json'),'utf8'));
 const rows=a=>fs.readFileSync(path.join(HEAVY,a+'.jsonl'),'utf8').trim().split('\n').map(l=>JSON.parse(l));
 
 if(!E.KO){ const G=rows('G'), I=rows('I'); console.log(`== ${RUN} (seed ${st.seed}) at tick ${st.tick}; modules: ${st.installed.map(x=>x.k+':'+x.name+'@'+x.tick).join(', ')||'none'}`);
