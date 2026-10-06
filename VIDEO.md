@@ -986,3 +986,16 @@ teddy, floating up beside the broccoli-headed figure (hands still in his pockets
 troupe, under the staring sun. Only at the end, in the laundrette with the puppets (u147), does he dance.
 Square because most of the batch is square or landscape. Memory: fifteen clips at 960 px all loaded at once got the
 render killed (OOM) - load only each shot's own seconds.
+**v2 -> 'Deadpan' (`video/build_deadpan.py`, `out/deadpan.mp4`, 64.8 s + end card).** The user on v1: "Bit lazy tbh. You
+said walking through and i just stood there. Trainers missing half the time. Its essentially just the same video with me
+plopped into them. I said yes to your idea but saying no to the execution." Then: "Song not good fit" - they picked
+'Same Time Tomorrow?' (126 bpm, phase 0.124). Song 5.84-70.6: one bar of PLAY, then 33 bars. v2: HE WALKS - his
+blue-screen clips (u117/u113 walking to camera, u114 side-on; bluekey keeps the trainers), size-normalised per frame,
+the background dollying in; and he ANSWERS the places: turns to look as the bowling head rises, the arcade hand snatches
+behind him, bows to the skeleton. The song's own line makes the turn: at "So I took my hands out of my pockets slow" (30.1)
+he does, on the forecourt as the car doors open (u120 0-1.5 at 0.4x); from "the only thing I know" he DANCES (u118, u120,
+one steady size per shot so jumps and arm swings move, not the scale) through the skeleton, the teddy's party, the sun,
+the office, the doughnut, floating up with the broccoli head on "Area 51, hey!", spinning in space, in step with the
+costume troupe on "they copy everything", and the laundrette (his own clip) for the last "Area 51, hey!". Lessons: if
+the pitch says a verb, the footage must do that verb; look for the catalogued clip that does it before compositing a
+still pose; and I cannot hear a song - say so when choosing one by its spectrum.
