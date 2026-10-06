@@ -25685,7 +25685,7 @@ forward in these notes.
 writing this (no API cost). It is a pilot: it is for finding out whether the loop works and what a fair deciding run needs.
 Nothing from it is a claim.
 
-**The pilot, modules 1-6 (seed 2001, to tick 600,000; exploratory, one seed, no claim).** Adoption is read as carrier share
+**The pilot, modules 1-10 (seed 2001, to tick 1,100,000, about 5,500 generations; exploratory, one seed, no claim).** Adoption is read as carrier share
 in G against the inert twin I over 20,000-tick windows, with income share beside it (`RUN=pilot WIN=20 node lab/loop-analyse.js`).
 
 | k | module (tick) | what it adds | builds on | what the world did with it |
@@ -25695,7 +25695,11 @@ in G against the inert twin I over 20,000-tick windows, with income share beside
 | 3 | PIPE (300k) | connected walls share their tanks; drink from the network where you stand | TANK, BROTH | follows the twin: drift |
 | 4 | SMELL (400k) | sense broth or tank, here or the difference ahead | BROTH, TANK | taken up and dropped: 36% against the twin's 5-6% for 40,000 ticks, then back to the twin's level; carriers smell broth (22%), almost never tanks (1%) |
 | 5 | HOARD (500k) | bury a quarter of your store where attack cannot reach it; anyone there digs it up | nothing | purged: carried 1-2% against the twin's 6-20%; it loses more than it returns (90 in for 64 out per 1,000 ticks) |
-| 6 | TENDRIL (600k) | drink broth from the eight cells around | BROTH | (running) |
+| 6 | TENDRIL (600k) | drink broth from the eight cells around | BROTH | above the twin in most windows from 621k to 1,060k (often 18-36% against 1-19%) while earning 0.0-1.9% of income; BROTH fell as it rose |
+| 7 | SIGNAL (700k) | a costly mark that spreads and fades; read here or ahead | nothing | below the twin in nearly every window: purged |
+| 8 | FAT (800k) | a store in the body that attack cannot take (the first body field) | nothing | purged for 40,000 ticks, carried above the twin at 861k-900k (13.7-16.5% against 7.5-9.5%), then below it again |
+| 9 | CARRION (900k) | smell the corpse ahead, or along the line of three | nothing | above the twin from 961k (10-19% against 2-11%), at no income by design |
+| 10 | GUT (1,000k) | swallow half the corpse ahead into a private gut that digests by itself (body field) | nothing | **the pilot's clearest adoption, and the fastest:** 43-61% against the twin's 0.6-9% within 20,000-40,000 ticks, 9.5-13.9% of all income; corpse income fell from 17.5k to 5.2k as swallowing replaced eating in place |
 
 - **Five modules in, the world keeps what pays at once, in one step, where the organism stands, and nothing else.** Anything
   that needs a sequence (build, wait, tap) or a sacrifice now for later (bury, dig) is selected against, not merely ignored:
