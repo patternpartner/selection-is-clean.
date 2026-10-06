@@ -10,6 +10,8 @@ and wait for a yes before any generation run; prefer re-cutting cached clips (fr
 Measured on the user's Modal bill: Wan14 $60.76 for ~12 clips (about $5 a clip, two episodes); Wan 5B $28.25 for
 ~110 clips (about $0.25); WanI2V $3.23 for 13 (about $0.25); music, voice, mixing, glitch, transcription pennies. A
 five-scene 5B episode is about $1.25-1.50. Treat 14B as off. Never re-render a take that is no longer needed.
+**Balance, 1 Oct 2026: £30 of Modal credit.** The user: "Use wisely and sparing." Local tools first (cutting him out
+of a clip with rembg runs free on the CPU); Modal only where nothing local can do it, with a cost estimate first.
 Every clip, the user's input images and all finished MP4s are backed up in the volume under `library/` (clips,
 inputs, finals); `::story` fetches missing clips from `library/clips` itself, so a new session can re-cut any
 episode without regenerating. After making new clips, `modal volume put ai-video-cache out/clips library/clips`.
@@ -941,3 +943,46 @@ comes up gold. Underwater, u131's reaching close-up becomes him reaching up at u
 gold on "golden". He sinks away while the light whips about "out of control"; "the surface broke" is u132 flying back
 out at the camera, "bigger than I gave it" with gold breaking in. He ends calm on the board, the light rising back to him.
 v1 opened with 8 s of him standing under a slow zoom (a long pause); v2 pans from his hand up to his face, then goes wide.
+**v2 (same file), after the user: "I think we can do better. Did tell your story? It's not really making sense to me.
+Graphics a bit lazy."** Claude agreed: the light meant nothing, nothing showed him putting anything in, and the rewind gag
+contradicted "no rewind". v2 has one idea: IT COPIES YOU. A small gold version of him - his own cut-out (rembg
+u2net_human_seg run locally, every frame, masks in out/masks/), rendered as light through a gold ramp with a rim and
+shed sparks - stands beside him on the board and does everything he does 0.42 s late. A spark falls past his face and
+it assembles on the board; it counts with him (gold numerals); it crouches, jumps after him and falls beside him; its
+splash is gold. Underwater he reaches up at us, cold, and the copy reaches beside him, growing, until the water turns
+gold and he sinks away. What comes back out of the pool at the camera, screaming his scream, is the gold copy. He ends
+calm on the board with the little gold him calm beside him. Lessons: a glow is not a character, and a film about teaching
+needs the taught thing on screen doing what it was shown.
+
+**Songs added 6 Oct 2026** (the user sent 20 at once, no message; 10 were already in `out/songs/`, byte-identical, and
+two more were One Jump and Same Time Tomorrow): the-weight-of-open-sky (1:06), threshold-of-gold (3:02),
+imael-angel-bad-times (2:47 - the filename credits "Imael Angel"; check whose it is before using it), breath-on-the-pane
+(2:52), no-quarters-left (2:45), after-the-last-train (2:55), taste-the-copper (2:59), when-the-metal-sky-opened (3:02),
+a-thousand-painted-wings (1:42), before-the-sky-unfolds (2:56). All backed up to library/songs/ on the Modal volume.
+**v3 (same file), after the user: "Its not working for me. The timing is off ... just before the dive the gold one goes to
+dive before the big version of me. If we are going gold then maybe before they hit the bottom the gold one merges into
+the bigger one? ... is it silly enough? We could be weirder."** v3: a spark becomes one little gold him; on "everybody's
+watching" five more pop into being (on the beats, standing on the water round the board), and all six copy him in a
+WAVE, each lagging 0.35-1.1 s. Copies are placed by a FIXED reference point (his feet, REF) so they copy his motion, not
+just his pose. He jumps first; each copy leaves only at JUMP + its lag + 0.55 s, then homes in on him in his own falling
+shape and merges (MERGE, 34.3 + 0.72 k) - a flash, and he goes a sixth more gold each time (the user's idea), so he hits the
+water gold. Underwater he is gold (camera drifts in; a gold ring on "golden"); "out of control" he splits into a spinning
+ring of seven gold hims; the whole gold him flies back out at the camera and the camera goes into his open mouth (MOUTH,
+read off a gridded sheet) - black on the song's breath before the outro splice. Rendered in 8 staged parts with .done
+markers (scratchpad oj-run3.sh).
+
+### No Quarters Left (`video/build_no_quarters.py`, `out/no-quarters-left.mp4`, 54.8 s + end card, SQUARE 960x960)
+From the 6 Oct batches. Claude's pitch, which the user liked ("You choose the right song. I like the idea"): the user in a
+tux, deadpan, the one steady thing in a world of 90s home-video weirdness. Song chosen by Claude: 'No Quarters Left'
+(144.43 bpm, bar 1.6617, beat phase 0.197; mostly instrumental - Whisper hears nothing; the spectrogram shows a chopped,
+scratched breakbeat, and the title fits the arcade clip). Song 13.49-68.33 (33 bars, ending where it drops away), end
+card after. A VHS look over everything (chroma bleed, scanlines, wobble, lifted blacks) and every cut a channel change
+(a tracking tear and a green CH number). His own deadpan clips (penguin roller disco u146, supermarket chickens u151
+with the sign cropped off, the fridge u155, the orange can u138 after its lettering has turned away) alternate with
+weird ones he is CUT INTO (rembg mask of u146, largest blob only, colour-matched, contact shadow): the walking raw
+turkey, the head rising out of the bowling pins, tiny on the counter by the milk jug's mouth, the hand from the arcade
+cabinet, beside the dancing skeleton, tiny on the desk as hands stretch the monitor, on the table by the hollow-faced
+teddy, floating up beside the broccoli-headed figure (hands still in his pockets), in the middle of the costume dance
+troupe, under the staring sun. Only at the end, in the laundrette with the puppets (u147), does he dance.
+Square because most of the batch is square or landscape. Memory: fifteen clips at 960 px all loaded at once got the
+render killed (OOM) - load only each shot's own seconds.
