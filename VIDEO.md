@@ -1041,3 +1041,46 @@ it, it shrinks as if being pulled out, then snaps back bigger; gentler after (u1
 writes the end card (Liberation Serif Italic outlines as one pen path), and the knot flies to its place as the o of
 "once". Fixes before shipping: his outline was visible under the opening trace; 107-119 held near-still poses (u113,
 u129) - replaced with u120.
+
+### Where I Keep Everything (`video/build_where_i_keep.py` + `video/archive_index.py`, `out/where-i-keep-everything.mp4`, 59 s)
+The user: "Let's take me out of the equation now ... how much you have at your disposal. All those videos and songs.
+Let's try something completely different. Weird. Creative. Tell your story but like you have never before." (More of
+the user's own movements are coming on Wednesday - Grok credits.) NO ONE'S LIKENESS: 247 clips that are not the user
+and not a real person's face / character IP (catalogue tags own-likeness, real-face, character-ip, real-context are
+skipped) plus every generated episode clip in out/clips/ - indexed by archive_index.py (4 s loops at 12 fps, 192 px,
+a 12x12 colour feature, own sound for 114 of them) into out/archive/. The inside of a memory: each clip a small lit
+screen in black space, laid out by likeness (PCA of the colour feature) with faint threads to its two nearest
+neighbours. The amber light travels through and the camera follows on a Catmull-Rom path. SOUND IS SPATIAL: every
+clip's own audio mixed by distance from the camera, plus a faint murmur of all of them at once; in the dark nebula
+(DARK: the clowns, the crying doll, the hollow teddy, the ghoul TV, the sausage TV, the mannequins...) three copies
+of each crowd round it, circling and closing in, red, the sound slowed and low-passed, the light guttering; then
+everything stops (silence); it turns; the user's 'Breath On The Pane' starts only then; it flies out through the whole
+galaxy to one small screen alone (a child and a man with a smiley balloon, a generated episode clip), which opens to
+fill the frame as the light goes into it. End card. Iterations: the first cut hung ~10 s on a far galaxy and
+another ~11 s crossing empty black to the good screen, and one doll filled the frame for ~10 s - so: a faster dive
+in, a path that goes OUT THROUGH the cloud, the crowd circling, dark screens capped at half the frame height.
+THE USER'S VERDICT: "Actually really liked that one. Felt new and familiar at the same time." What landed: no likeness,
+the archive itself as the material (their own clips and songs, re-seen), spatial sound, one clear arc (dark -> silence
+-> turn -> one small good thing). Familiar = their own footage and song; new = the form. Build on that, not away from it.
+
+### Made of Everything (`video/build_made_of.py` + `video/made_of_cache.py`, `out/made-of-everything.mp4`, 64.3 s, 720x1280)
+The user, after Where I Keep Everything: "Let's do something different." NO ONE'S LIKENESS, all code, no Modal. The
+same 247 archive clips, cached at 320 px / 4 s / 12 fps into out/archive/made/ (2.2 GB) by made_of_cache.py. The amber
+light paints in the dark; every stroke is a window onto one clip, anchored at the stroke's middle and sized to it
+(mirror-tiled past its edges), and it keeps playing from the moment it is painted. Dark leading between the panes like
+stained glass; a fresh edge glows amber; a liquid ripple round the light. Up close (view 520 world px of a 1440x2560
+world) one stroke a bar for the quiet build (Concrete Pressure 30.03-47.4, the whispered 'echo, pulse, drift'), then one
+a beat on the drop, shrinking, then a half-beat flurry. The strokes are planned greedily to cover a HAND silhouette (a
+blurred union of palm, forearm and five capsule fingers, make_hand()), but paint everywhere, so the shape cannot be
+read until 43.8 s, when everything outside the hand falls away from its edge outward (a burning front), the holes
+close (nearest-stroke fill), and the camera has pulled back to the whole hand. The light goes home to the palm and
+paints the first thing it painted (the white bird at sunset, u38) there; then its light runs out from the palm along
+the leading, a beat at a time, like veins, and the hand warms. End card 60.5-64.3. Song: Concrete Pressure 30.03-94.33.
+Iterations: strokes clipped to the hand gave the silhouette away in the first seconds (fixed by painting everywhere and
+the fall-away); the fall-away direction was inverted, then too fast (420 -> 170 world px/s); 50-60 s was ten seconds
+of one picture (fixed with the veins). HONEST: the drop section (17-44 s) is busy - forty-odd panes a minute, and
+the eye can't settle on any one clip; and the planner is greedy, so stroke order is a rule, not a choreography.
+THE USER'S VERDICT: "Could actually be one of my favourites you have done." Like Where I Keep Everything before it: no
+likeness, all code, zero Modal cost, the archive re-used as material rather than as scenes, and one structural reveal
+(the patchwork was a hand) carrying the film instead of a narrated idea. Worth remembering as a direction: a single
+image the whole film is secretly building toward, made out of everything already made.
