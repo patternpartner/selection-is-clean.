@@ -33,7 +33,7 @@ AMBER = np.array([255, 176, 88], np.float32)
 FOC = 820.0
 DARK = [0, 26, 28, 30, 33, 35, 108, 112, 116, 118, 119, 120, 121, 122]
 FINAL = 202
-T_IN, T_DARK, T_DEEP, T_STILL, T_TURN, T_OUT, T_FIND, T_OPEN, T_CARD = 8.0, 24.0, 33.0, 36.0, 39.5, 41.0, 50.0, 55.5, 58.4
+T_IN, T_DARK, T_DEEP, T_STILL, T_TURN, T_OUT, T_FIND, T_OPEN, T_CARD = 4.0, 19.0, 27.0, 31.0, 34.5, 36.0, 47.0, 53.5, 58.4
 rng = np.random.default_rng(7)
 
 
@@ -96,8 +96,8 @@ def catmull(pts, ts, t):
 
 
 # the path: where the camera is and what it looks at
-WT = [0.0, 8.0, 15.0, 24.0, 33.0, 36.0, 39.5, 45.0, 50.0, 55.5, 58.4, 62.0]
-CAMP = [CEN + [0, 4, -95], CEN + [0, 2, -40], CEN + [-6, 3, -8], DC + [-6, 2, -14], DC + [0, 0, -3], DC + [0, 0, -2.5],
+WT = [0.0, 4.0, 11.0, 19.0, 27.0, 31.0, 34.5, 41.0, 47.0, 53.5, 56.0, 62.0]
+CAMP = [CEN + [0, 4, -70], CEN + [0, 2, -32], CEN + [-6, 3, -8], DC + [-6, 2, -14], DC + [0, 0, -3], DC + [0, 0, -2.5],
         DC + [0, 0, -2.6], (DC + FP) / 2 + [0, 6, 0], FP + [0, 0, -9], FP + [0, 0, -1.4], FP + [0, 0, -0.8], FP + [0, 0, -0.8]]
 LOOK = [CEN, CEN, CEN + [4, 0, 6], DC, DC + [0, 0, 6], DC + [0, 0, 6], FP, FP, FP, FP, FP, FP]
 CAMP = [np.asarray(c, np.float32) for c in CAMP]
@@ -146,7 +146,7 @@ class Thumbs:
             raw = subprocess.run([F, "-loglevel", "error", "-i", f"out/clips/{path}", "-map", "0:v:0", "-vf", "fps=24,scale=1280:704",
                                   "-f", "rawvideo", "-pix_fmt", "rgb24", "-"], capture_output=True).stdout
             self.big = np.frombuffer(raw, np.uint8).reshape(-1, 704, 1280, 3)
-        return self.big[min(int(max(t - T_FIND, 0) * 24), len(self.big) - 1)]
+        return self.big[min(int(max(t - (T_OPEN - 2.2), 0) * 24), len(self.big) - 1)]
 
 
 NEIGH = [np.argsort(np.linalg.norm(POS[:N] - POS[i], axis=1))[1:3] for i in range(N)]
@@ -161,8 +161,13 @@ def render(th, t):
     f, r, u = basis(c, look)
     dk0 = dark_level(t)
     pos = BASE.copy()
+    ang = 0.32 * t                                          # the crowd circles, so the faces keep coming
+    ca, sa = math.cos(ang), math.sin(ang)
     for k, (si, shell) in enumerate(CROWD):                  # the dark closes in on it
-        pos[si] = shell + (c + (shell - DC) * 0.45 - shell) * 0.55 * dk0
+        v = shell - DC
+        v = np.array([v[0] * ca - v[2] * sa, v[1], v[0] * sa + v[2] * ca])
+        sh_ = DC + v
+        pos[si] = sh_ + (c + v * 0.45 - sh_) * 0.55 * dk0
     sx, sy, sz = project(pos, c, f, r, u)
     img = np.zeros((H, W, 3), np.float32)
     dk = dark_level(t)
@@ -196,7 +201,7 @@ def render(th, t):
             src = th.final(t)
         else:
             src = th.frame(i, (t if not still else T_STILL) + si * 0.37)
-        if w_ * h_ > 4 * W * H:
+        if w_ * h_ > 4 * W * H and i != FINAL:
             continue
         tile = np.asarray(Image.fromarray(src).resize((w_, h_), Image.BILINEAR), np.float32)
         fog = math.exp(-max(z - 6, 0) / 40)
@@ -248,6 +253,10 @@ def audio():
     """each clip's own sound, by distance; warped in the dark; nothing in the stillness; then the song"""
     sr = 16000
     n = int(DUR * sr)
+
+    def fit(x):                                               # every per-frame envelope, stretched to exactly n samples
+        x = np.asarray(x, np.float32)
+        return np.interp(np.arange(n), np.linspace(0, n - 1, len(x)), x).astype(np.float32)
     mix = np.zeros(n, np.float32)
     clips = {i: np.load(e["audio"]).astype(np.float32) / 32768 for i, e in enumerate(IDX) if e["audio"]}
     step = sr // FPS
@@ -257,22 +266,19 @@ def audio():
         c, look = camera(t)
         for i in clips:
             d = np.linalg.norm(POS[i] - c)
-            gains[i][fr] = 1.0 / (1 + (d / 2.2) ** 2)
+            gains[i][fr] = 1.0 / (1 + (d / 2.2) ** 2) + 0.012        # and all of them at once, far off: a murmur
     for i, a in clips.items():
-        g = np.repeat(gains[i], step)[:n]
-        g = gaussian_filter(g, step)
+        g = gaussian_filter(fit(gains[i]), step)
         rep = np.tile(a, n // len(a) + 1)[:n]
         mix += rep * g
     t = np.arange(n) / sr
-    dk = np.array([dark_level(x) for x in t[::step]], np.float32)
-    dk = np.repeat(dk, step)[:n]
+    dk = fit([dark_level(x) for x in t[::step]])
     # in the dark the world slows and sinks: a crude pitch-down by resampling, and a low-pass
     slow = np.interp(np.arange(n) * 0.82, np.arange(n), mix)
     from scipy.signal import butter, sosfilt
     low = sosfilt(butter(2, 900, 'low', fs=sr, output='sos'), slow) * 1.6
     mix = mix * (1 - dk) + low * dk
-    mix *= 1 - (np.array([ramp(x, T_STILL - 0.4, T_STILL) * (1 - ramp(x, T_TURN, T_OUT)) for x in t[::step]])
-                .repeat(step)[:n])
+    mix *= 1 - fit([ramp(x, T_STILL - 0.4, T_STILL) * (1 - ramp(x, T_TURN, T_OUT)) for x in t[::step]])
     mix = mix / (np.percentile(np.abs(mix), 99.5) + 1e-6) * 0.35
     # the song: only once it has turned
     raw = subprocess.run([F, "-loglevel", "error", "-i", "out/songs/breath-on-the-pane.mp3", "-ac", "1", "-ar", str(sr), "-f", "s16le",
