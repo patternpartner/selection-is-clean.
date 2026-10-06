@@ -25827,7 +25827,7 @@ matters to the verdict it will be reported beside it, with the carriers and twin
 - **R2, composes: NOT MET, 0 of 3.** The structure is absolute: without GUT, BITE's and SQUEEZE's income is 0.00 on every
   draw in every world, and without LEAF, GRAZE's is 0.00 on every draw in d2101. But the rule needs the dependent module
   adopted at pause 9 or later **and** earning at least 50 per 1,000 ticks at the end, and by tick 1,100,000 FANG had driven
-  BITE and SQUEEZE almost extinct (3-5 per 1,000 ticks). Composition held by selection was real from pause 3 to pause 9
+  BITE and SQUEEZE almost extinct (3-5 per 1,000 ticks). Composition held by selection was real from pause 4 to pause 9
   (GUT and BITE both adopted at the same pause in all three worlds, GUT and SQUEEZE in two); it was over before the run ended.
 
 **The adoption matrices** (+ adopted, - selected against, . neither; columns are pauses 2-11, a pause every 100,000 ticks):
@@ -25849,8 +25849,9 @@ d2102: 1 FAT never; 2 GUT + at 3-8 and 11; 3 BITE (on GUT) + at 4, 6, 7; 4 SQUEE
 
 **What the run showed (three seeds, one generator; the claims are at the rung measured).**
 - **The world kept taking up new physics to the last pause, late as readily as early.** Distinct modules adopted: 7, 6
-  and 4. Modules installed at 600,000-1,000,000 ticks spread as fast as any (STRETCH, MAUL, FANG, SNARL each went from
-  nothing to most of the living within 20,000-60,000 ticks). There is no sign of entrenchment in any world.
+  and 4. Modules installed at 600,000-1,000,000 ticks spread as fast as any: STRETCH and FANG went from nothing to
+  nearly all of the living within about 40,000 ticks in every world, MAUL to half within 40,000-60,000, and SNARL to 98%
+  within 80,000 in d2102. There is no sign of entrenchment in any world.
 - **What is adopted is a new way to take.** Every module adopted reaches energy the organism could not reach before: the
   dead ahead (GUT), what is in another's gut (BITE), its own gut at once (SQUEEZE), the light ahead (STRETCH), the store of
   whoever is ahead (MAUL, FANG). Every defence (FAT four times, counting the pilot; SPINES), every sense (CARRION, SMELL)
@@ -25878,6 +25879,6 @@ comparison by an invasion assay (the module armed in a disarmed population and i
 frequency. And the floor in R2 should be read against the history, not only the final state.
 
 **Every session removes or proves something: what this one proved and what it removed.** Proved, by the assay on unseen
-seeds: GUT (adopted on all four worlds that had it, pilot included), BITE and STRETCH (all three), MAUL and FANG (two of
-three each). Removed nothing from the engine or the lab core (the lab core gained modules and body fields, both
+seeds: GUT (adopted on all four worlds that had it, pilot included), BITE, STRETCH and MAUL (all three), FANG (two of
+three, and at fixation in the third). Removed nothing from the engine or the lab core (the lab core gained modules and body fields, both
 identity-checked off). The modules that failed are retired in the sense the protocol allows: never edited, recorded here.
