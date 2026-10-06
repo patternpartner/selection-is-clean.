@@ -14,6 +14,10 @@ because of earlier physics in use?
   an organism's energy as heat. Nothing else changes an energy store (an organism's `E`, `light`, `corpse`, or a field the
   module declares `{energy:true}`, which must start empty).
 - **Information fields** (`{}` or `{energy:false}`) are the module's own to read and write, diffuse and decay.
+- **Body fields** (`{body:true}`, energy or information; added during the pilot, at tick 700,000, after report 7) belong to
+  the organism in the cell, not the cell: they move with it, start empty in every newborn, and at death a body's energy goes
+  to its corpse and the rest is cleared. Nothing is stored in or written to the body of an empty cell, and a body field does
+  not spread. Without them a module could add nothing that moves with an organism (`lab/test-modbody.js`).
 - **A module can build on earlier modules:** it reads `'NAME.field'` and moves energy in and out of an earlier module's energy
   fields. It cannot write another module's information fields, and it cannot reach a later module.
 - **Its own random stream** (`api.rand()`), so it never disturbs the world's.
@@ -55,7 +59,8 @@ because of earlier physics in use?
 // Builds on: earlier modules it reads or moves energy through, or "nothing".
 ({
   name: 'NAME',                          // unique, used as 'NAME.field' by later modules
-  fields: { f: { energy: true } },       // energy fields start empty; information fields may start at a value: { g: { init: 0 } }
+  fields: { f: { energy: true } },       // energy fields start empty; information fields may start at a value: { g: { init: 0 } };
+                                         // { body: true } makes a field the organism's own (it moves, is born empty, dies with it)
   init(api) { },                         // optional, runs once when installed armed
   op(api, c, arg) { },                   // runs when organism c executes this opcode; arg is the instruction's argument byte
   step(api) { },                         // optional, runs once per tick
