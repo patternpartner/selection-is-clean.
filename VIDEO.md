@@ -10,6 +10,9 @@ and wait for a yes before any generation run; prefer re-cutting cached clips (fr
 Measured on the user's Modal bill: Wan14 $60.76 for ~12 clips (about $5 a clip, two episodes); Wan 5B $28.25 for
 ~110 clips (about $0.25); WanI2V $3.23 for 13 (about $0.25); music, voice, mixing, glitch, transcription pennies. A
 five-scene 5B episode is about $1.25-1.50. Treat 14B as off. Never re-render a take that is no longer needed.
+**FORMAT: 9:16 VERTICAL, ALWAYS (the user, 6 Oct 2026: "ratio should fit youtube shorts").** 720x1280 or 1080x1920;
+no square or landscape finals (Deadpan / No Quarters Left went out square 960x960 - wrong). Under 60 s counts for Shorts
+in older rules; 3 min is the current limit.
 **Balance, 1 Oct 2026: £30 of Modal credit.** The user: "Use wisely and sparing." Local tools first (cutting him out
 of a clip with rembg runs free on the CPU); Modal only where nothing local can do it, with a cost estimate first.
 Every clip, the user's input images and all finished MP4s are backed up in the volume under `library/` (clips,
