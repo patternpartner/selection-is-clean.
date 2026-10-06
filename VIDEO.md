@@ -1026,3 +1026,5 @@ the letter brightness stretched to his own 5-95th percentile the face reads at z
 a silhouette; a FLOOR (faint reflection under its feet in the wide shots); and the END CARD IS SPELLED BY ITS OWN
 LETTERS - they leave its body at bar 50.6, fly to their places in DejaVu Sans Mono Bold Oblique (italic), turn white,
 and the rest fall away; no ASS card for this film. Card hold trimmed at the mux to ~4 s.
+The user on v2: "Looks great." (Lesson worth keeping: the user's "keep it all code" + Claude's honest "yes, it's plain"
+produced the version that landed - the first draft's ending, the real him, was the part to cut.)
