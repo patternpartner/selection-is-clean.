@@ -23,6 +23,13 @@
    "name": "PIPE",
    "op": 34,
    "tick": 300000
+  },
+  {
+   "k": 4,
+   "file": "4-smell.js",
+   "name": "SMELL",
+   "op": 35,
+   "tick": 400000
   }
  ]
 }
