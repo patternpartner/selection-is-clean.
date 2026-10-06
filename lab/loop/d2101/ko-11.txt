@@ -1,0 +1,104 @@
+== knockouts from tick 1100000, 20000 ticks, 3 draws; baseline income per module: GUT 514, BITE 3, SQUEEZE 0, LEAF 32117, GRAZE 15055, STRETCH 322939, MAUL 1037, FAT 3, FANG 1466710, SNARL 5859
+  reads: GUT, BITE <- GUT, SQUEEZE <- GUT, LEAF, GRAZE <- LEAF, STRETCH, MAUL, FAT, FANG, SNARL
+  without GUT: alive 1164/1175 1161/1161 1156/1155 | its carriers at the end, armed 0.4 0.6 0.2 vs disarmed 0.4 0.3 0.4
+    BITE income ratio 0.00 0.00 0.00
+    SQUEEZE income ratio - 0.00 -
+    LEAF income ratio 0.95 0.94 0.85
+    GRAZE income ratio 0.92 0.93 0.88
+    STRETCH income ratio 0.97 0.98 1.02
+    MAUL income ratio 1.93 1.39 1.03
+    FAT income ratio - 0.00 -
+    FANG income ratio 0.98 0.99 1.01
+    SNARL income ratio 1.59 1.23 0.57
+  without BITE: alive 1168/1175 1162/1161 1158/1155 | its carriers at the end, armed 1.0 0.3 0.3 vs disarmed 0.7 0.3 0.3
+    GUT income ratio 1.97 0.85 1.43
+    SQUEEZE income ratio - 0.00 -
+    LEAF income ratio 0.84 1.02 1.03
+    GRAZE income ratio 0.77 1.01 1.05
+    STRETCH income ratio 1.01 0.99 0.98
+    MAUL income ratio 8.42 0.59 1.61
+    FAT income ratio - 0.00 -
+    FANG income ratio 0.99 0.99 1.01
+    SNARL income ratio 1.20 0.96 1.00
+  without SQUEEZE: alive 1175/1175 1144/1161 1155/1155 | its carriers at the end, armed 0.2 0.3 0.2 vs disarmed 0.2 0.3 0.2
+    GUT income ratio 1.00 1.93 1.00
+    BITE income ratio 1.00 2.30 1.00
+    LEAF income ratio 1.00 0.83 1.00
+    GRAZE income ratio 1.00 0.76 1.00
+    STRETCH income ratio 1.00 1.01 1.00
+    MAUL income ratio 1.00 0.92 1.00
+    FAT income ratio - 0.00 -
+    FANG income ratio 1.00 0.99 1.00
+    SNARL income ratio 1.00 1.61 1.00
+  without LEAF: alive 1052/1175 1039/1161 1047/1155 | its carriers at the end, armed 14.8 11.8 10.5 vs disarmed 2.1 0.2 0.3  => SELECTED (armed above every disarmed draw)
+    GUT income ratio 0.63 0.80 1.23
+    BITE income ratio 3.56 0.06 2.02
+    SQUEEZE income ratio - 0.00 -
+    GRAZE income ratio 0.00 0.00 0.00  => DEPENDS on it (a read it declares, and live)
+    STRETCH income ratio 1.01 1.01 1.07
+    MAUL income ratio 1.13 0.87 0.80
+    FAT income ratio - 0.00 -
+    FANG income ratio 0.98 0.99 1.03
+    SNARL income ratio 2.64 1.84 1.36
+  without GRAZE: alive 1199/1175 1220/1161 1159/1155 | its carriers at the end, armed 15.0 12.4 11.7 vs disarmed 1.5 0.4 0.5  => SELECTED (armed above every disarmed draw)
+    GUT income ratio 1.14 1.25 0.97
+    BITE income ratio 1.67 1.38 2.82
+    SQUEEZE income ratio - 2.17 -
+    LEAF income ratio 1.56 1.85 1.45
+    STRETCH income ratio 0.96 0.93 1.02
+    MAUL income ratio 1.13 0.76 1.00
+    FAT income ratio - 0.00 -
+    FANG income ratio 0.99 0.99 1.04
+    SNARL income ratio 3.36 1.04 1.27
+  composition depth (longest chain of dependencies): 1 | per module: GUT 0, BITE 0, SQUEEZE 0, LEAF 0, GRAZE 1, STRETCH 0, MAUL 0, FAT 0, FANG 0, SNARL 0
+  without STRETCH: alive 1097/1175 1126/1161 1094/1155 | its carriers at the end, armed 84.6 87.3 88.6 vs disarmed 2.3 0.5 0.3  => SELECTED (armed above every disarmed draw)
+    GUT income ratio 1.06 3.16 1.53
+    BITE income ratio 0.49 4.13 4.35
+    SQUEEZE income ratio - 0.00 -
+    LEAF income ratio 1.55 1.70 2.02
+    GRAZE income ratio 1.70 2.04 2.60
+    MAUL income ratio 32.90 2.55 44.24
+    FAT income ratio - 1.53 -
+    FANG income ratio 0.64 0.70 0.66
+    SNARL income ratio 7.07 3.40 2.30
+  without MAUL: alive 1159/1175 1174/1161 1145/1155 | its carriers at the end, armed 0.4 0.5 0.4 vs disarmed 0.3 0.2 0.7
+    GUT income ratio 0.53 0.79 1.06
+    BITE income ratio 0.37 0.05 2.71
+    SQUEEZE income ratio - 0.00 -
+    LEAF income ratio 0.86 1.09 0.98
+    GRAZE income ratio 0.77 1.16 0.86
+    STRETCH income ratio 0.99 0.99 1.03
+    FAT income ratio - 0.00 -
+    FANG income ratio 0.97 1.00 0.99
+    SNARL income ratio 5.73 0.42 9.67
+  without FAT: alive 1155/1175 1160/1161 1143/1155 | its carriers at the end, armed 0.1 0.3 0.2 vs disarmed 0.6 0.1 0.4
+    GUT income ratio 0.65 1.26 1.91
+    BITE income ratio 0.80 0.08 3.10
+    SQUEEZE income ratio - 0.82 -
+    LEAF income ratio 0.84 0.82 0.92
+    GRAZE income ratio 0.78 0.78 0.94
+    STRETCH income ratio 0.98 0.96 1.02
+    MAUL income ratio 2.23 0.91 1.24
+    FANG income ratio 0.98 1.02 1.00
+    SNARL income ratio 1.82 0.44 1.12
+  without FANG: alive 1677/1175 1634/1161 1610/1155 | its carriers at the end, armed 99.5 99.9 99.5 vs disarmed 36.3 5.2 32.1  => SELECTED (armed above every disarmed draw)
+    GUT income ratio 69.83 66.93 130.54
+    BITE income ratio 1198.61 544.73 8900.80
+    SQUEEZE income ratio - 736.49 -
+    LEAF income ratio 0.48 0.57 0.72
+    GRAZE income ratio 0.50 0.60 0.81
+    STRETCH income ratio 0.91 1.09 0.92
+    MAUL income ratio 36.93 41.99 82.80
+    FAT income ratio - 41.52 -
+    SNARL income ratio 290.25 135.62 124.27
+  without SNARL: alive 1170/1175 1166/1161 1167/1155 | its carriers at the end, armed 0.4 0.5 1.3 vs disarmed 0.2 0.2 0.3  => SELECTED (armed above every disarmed draw)
+    GUT income ratio 0.80 1.38 1.16
+    BITE income ratio 2.09 0.18 7.33
+    SQUEEZE income ratio - 6.63 -
+    LEAF income ratio 1.00 0.97 1.27
+    GRAZE income ratio 0.98 0.96 1.50
+    STRETCH income ratio 0.96 1.00 0.99
+    MAUL income ratio 1.52 0.94 1.37
+    FAT income ratio - 0.00 -
+    FANG income ratio 0.99 1.00 1.01
+  composition depth (longest chain of dependencies): 0 | per module: GUT 0, BITE 0, SQUEEZE 0, LEAF 0, GRAZE 0, STRETCH 0, MAUL 0, FAT 0, FANG 0, SNARL 0
