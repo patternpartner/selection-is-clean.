@@ -959,3 +959,14 @@ two more were One Jump and Same Time Tomorrow): the-weight-of-open-sky (1:06), t
 imael-angel-bad-times (2:47 - the filename credits "Imael Angel"; check whose it is before using it), breath-on-the-pane
 (2:52), no-quarters-left (2:45), after-the-last-train (2:55), taste-the-copper (2:59), when-the-metal-sky-opened (3:02),
 a-thousand-painted-wings (1:42), before-the-sky-unfolds (2:56). All backed up to library/songs/ on the Modal volume.
+**v3 (same file), after the user: "Its not working for me. The timing is off ... just before the dive the gold one goes to
+dive before the big version of me. If we are going gold then maybe before they hit the bottom the gold one merges into
+the bigger one? ... is it silly enough? We could be weirder."** v3: a spark becomes one little gold him; on "everybody's
+watching" five more pop into being (on the beats, standing on the water round the board), and all six copy him in a
+WAVE, each lagging 0.35-1.1 s. Copies are placed by a FIXED reference point (his feet, REF) so they copy his motion, not
+just his pose. He jumps first; each copy leaves only at JUMP + its lag + 0.55 s, then homes in on him in his own falling
+shape and merges (MERGE, 34.3 + 0.72 k) - a flash, and he goes a sixth more gold each time (the user's idea), so he hits the
+water gold. Underwater he is gold (camera drifts in; a gold ring on "golden"); "out of control" he splits into a spinning
+ring of seven gold hims; the whole gold him flies back out at the camera and the camera goes into his open mouth (MOUTH,
+read off a gridded sheet) - black on the song's breath before the outro splice. Rendered in 8 staged parts with .done
+markers (scratchpad oj-run3.sh).
