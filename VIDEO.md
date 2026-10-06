@@ -970,3 +970,19 @@ water gold. Underwater he is gold (camera drifts in; a gold ring on "golden"); "
 ring of seven gold hims; the whole gold him flies back out at the camera and the camera goes into his open mouth (MOUTH,
 read off a gridded sheet) - black on the song's breath before the outro splice. Rendered in 8 staged parts with .done
 markers (scratchpad oj-run3.sh).
+
+### No Quarters Left (`video/build_no_quarters.py`, `out/no-quarters-left.mp4`, 54.8 s + end card, SQUARE 960x960)
+From the 6 Oct batches. Claude's pitch, which the user liked ("You choose the right song. I like the idea"): the user in a
+tux, deadpan, the one steady thing in a world of 90s home-video weirdness. Song chosen by Claude: 'No Quarters Left'
+(144.43 bpm, bar 1.6617, beat phase 0.197; mostly instrumental - Whisper hears nothing; the spectrogram shows a chopped,
+scratched breakbeat, and the title fits the arcade clip). Song 13.49-68.33 (33 bars, ending where it drops away), end
+card after. A VHS look over everything (chroma bleed, scanlines, wobble, lifted blacks) and every cut a channel change
+(a tracking tear and a green CH number). His own deadpan clips (penguin roller disco u146, supermarket chickens u151
+with the sign cropped off, the fridge u155, the orange can u138 after its lettering has turned away) alternate with
+weird ones he is CUT INTO (rembg mask of u146, largest blob only, colour-matched, contact shadow): the walking raw
+turkey, the head rising out of the bowling pins, tiny on the counter by the milk jug's mouth, the hand from the arcade
+cabinet, beside the dancing skeleton, tiny on the desk as hands stretch the monitor, on the table by the hollow-faced
+teddy, floating up beside the broccoli-headed figure (hands still in his pockets), in the middle of the costume dance
+troupe, under the staring sun. Only at the end, in the laundrette with the puppets (u147), does he dance.
+Square because most of the batch is square or landscape. Memory: fifteen clips at 960 px all loaded at once got the
+render killed (OOM) - load only each shot's own seconds.
