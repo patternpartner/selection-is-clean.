@@ -1,0 +1,260 @@
+[
+ {
+  "id": "a03",
+  "q": -0.13752979859121786,
+  "mean": -0.0021213813867431894,
+  "cfg": {
+   "RENEW": 1,
+   "RN_CAP": 11.3,
+   "BODY_MUT": 0.0226,
+   "BODY_CAP": 0.0974,
+   "BODY_DEL": 0.00265,
+   "BODY_MQ": 0.481,
+   "CH_LEN": 2.91
+  },
+  "c": {
+   "W": {
+    "RENEW": 1,
+    "RN_CAP": 11.3
+   },
+   "O": {
+    "BODY_MUT": 0.0226,
+    "BODY_CAP": 0.0974,
+    "BODY_DEL": 0.00265,
+    "BODY_MQ": 0.481,
+    "CH_LEN": 2.91
+   }
+  },
+  "arms": {
+   "X": {
+    "CHEM": 1,
+    "HBODY": 1,
+    "BODY_F": 0.05,
+    "BODY_MAX": 16,
+    "BODY_FUSE": 0.02,
+    "BODY_RCAP": 1,
+    "CH_LEN": 2.91,
+    "RENEW": 1,
+    "RN_CAP": 11.3,
+    "BODY_MUT": 0.0226,
+    "BODY_CAP": 0.0974,
+    "BODY_DEL": 0.00265,
+    "BODY_MQ": 0.481
+   },
+   "R": {
+    "CHEM": 1,
+    "HBODY": 1,
+    "BODY_F": 0.05,
+    "BODY_MAX": 16,
+    "BODY_FUSE": 0.02,
+    "RENEW": 1,
+    "RN_CAP": 11.3,
+    "BODY_RCAP": 1
+   },
+   "SH": {
+    "CHEM": 1,
+    "HBODY": 1,
+    "BODY_F": 0.05,
+    "BODY_MAX": 16,
+    "BODY_FUSE": 0.02,
+    "BODY_RCAP": 1,
+    "CH_LEN": 2.91,
+    "RENEW": 1,
+    "RN_CAP": 11.3,
+    "BODY_MUT": 0.0226,
+    "BODY_CAP": 0.0974,
+    "BODY_DEL": 0.00265,
+    "BODY_MQ": 0.481,
+    "BODY_SHUF": 1
+   },
+   "DR": {
+    "CHEM": 1,
+    "HBODY": 1,
+    "BODY_F": 0.05,
+    "BODY_MAX": 16,
+    "BODY_FUSE": 0.02,
+    "BODY_RCAP": 1,
+    "CH_LEN": 2.91,
+    "RENEW": 1,
+    "RN_CAP": 11.3,
+    "BODY_MUT": 0.0226,
+    "BODY_CAP": 0.0974,
+    "BODY_DEL": 0.00265,
+    "BODY_MQ": 0.481,
+    "BODY_DRIFT": 1
+   }
+  }
+ },
+ {
+  "id": "h-c055pass",
+  "q": -0.1528046034360974,
+  "mean": 0.0959010843863178,
+  "cfg": {
+   "RENEW": 1,
+   "RN_CAP": 13.6,
+   "BODY_MUT": 0.025,
+   "BODY_CAP": 0.057,
+   "BODY_DEL": 0.00319,
+   "BODY_MQ": 0.319,
+   "CH_LEN": 3.46
+  },
+  "c": {
+   "W": {
+    "RENEW": 1,
+    "RN_CAP": 13.6
+   },
+   "O": {
+    "BODY_MUT": 0.025,
+    "BODY_CAP": 0.057,
+    "BODY_DEL": 0.00319,
+    "BODY_MQ": 0.319,
+    "CH_LEN": 3.46
+   }
+  },
+  "arms": {
+   "X": {
+    "CHEM": 1,
+    "HBODY": 1,
+    "BODY_F": 0.05,
+    "BODY_MAX": 16,
+    "BODY_FUSE": 0.02,
+    "BODY_RCAP": 1,
+    "CH_LEN": 3.46,
+    "RENEW": 1,
+    "RN_CAP": 13.6,
+    "BODY_MUT": 0.025,
+    "BODY_CAP": 0.057,
+    "BODY_DEL": 0.00319,
+    "BODY_MQ": 0.319
+   },
+   "R": {
+    "CHEM": 1,
+    "HBODY": 1,
+    "BODY_F": 0.05,
+    "BODY_MAX": 16,
+    "BODY_FUSE": 0.02,
+    "RENEW": 1,
+    "RN_CAP": 13.6,
+    "BODY_RCAP": 1
+   },
+   "SH": {
+    "CHEM": 1,
+    "HBODY": 1,
+    "BODY_F": 0.05,
+    "BODY_MAX": 16,
+    "BODY_FUSE": 0.02,
+    "BODY_RCAP": 1,
+    "CH_LEN": 3.46,
+    "RENEW": 1,
+    "RN_CAP": 13.6,
+    "BODY_MUT": 0.025,
+    "BODY_CAP": 0.057,
+    "BODY_DEL": 0.00319,
+    "BODY_MQ": 0.319,
+    "BODY_SHUF": 1
+   },
+   "DR": {
+    "CHEM": 1,
+    "HBODY": 1,
+    "BODY_F": 0.05,
+    "BODY_MAX": 16,
+    "BODY_FUSE": 0.02,
+    "BODY_RCAP": 1,
+    "CH_LEN": 3.46,
+    "RENEW": 1,
+    "RN_CAP": 13.6,
+    "BODY_MUT": 0.025,
+    "BODY_CAP": 0.057,
+    "BODY_DEL": 0.00319,
+    "BODY_MQ": 0.319,
+    "BODY_DRIFT": 1
+   }
+  }
+ },
+ {
+  "id": "b04",
+  "q": -0.21023292232361837,
+  "mean": -0.06607011023536498,
+  "cfg": {
+   "RENEW": 1,
+   "RN_CAP": 15.5,
+   "BODY_MUT": 0.0228,
+   "BODY_CAP": 0.056,
+   "BODY_DEL": 0.0033,
+   "BODY_MQ": 0.31,
+   "CH_LEN": 3.72
+  },
+  "c": {
+   "W": {
+    "RENEW": 1,
+    "RN_CAP": 15.5
+   },
+   "O": {
+    "BODY_MUT": 0.0228,
+    "BODY_CAP": 0.056,
+    "BODY_DEL": 0.0033,
+    "BODY_MQ": 0.31,
+    "CH_LEN": 3.72
+   }
+  },
+  "arms": {
+   "X": {
+    "CHEM": 1,
+    "HBODY": 1,
+    "BODY_F": 0.05,
+    "BODY_MAX": 16,
+    "BODY_FUSE": 0.02,
+    "BODY_RCAP": 1,
+    "CH_LEN": 3.72,
+    "RENEW": 1,
+    "RN_CAP": 15.5,
+    "BODY_MUT": 0.0228,
+    "BODY_CAP": 0.056,
+    "BODY_DEL": 0.0033,
+    "BODY_MQ": 0.31
+   },
+   "R": {
+    "CHEM": 1,
+    "HBODY": 1,
+    "BODY_F": 0.05,
+    "BODY_MAX": 16,
+    "BODY_FUSE": 0.02,
+    "RENEW": 1,
+    "RN_CAP": 15.5,
+    "BODY_RCAP": 1
+   },
+   "SH": {
+    "CHEM": 1,
+    "HBODY": 1,
+    "BODY_F": 0.05,
+    "BODY_MAX": 16,
+    "BODY_FUSE": 0.02,
+    "BODY_RCAP": 1,
+    "CH_LEN": 3.72,
+    "RENEW": 1,
+    "RN_CAP": 15.5,
+    "BODY_MUT": 0.0228,
+    "BODY_CAP": 0.056,
+    "BODY_DEL": 0.0033,
+    "BODY_MQ": 0.31,
+    "BODY_SHUF": 1
+   },
+   "DR": {
+    "CHEM": 1,
+    "HBODY": 1,
+    "BODY_F": 0.05,
+    "BODY_MAX": 16,
+    "BODY_FUSE": 0.02,
+    "BODY_RCAP": 1,
+    "CH_LEN": 3.72,
+    "RENEW": 1,
+    "RN_CAP": 15.5,
+    "BODY_MUT": 0.0228,
+    "BODY_CAP": 0.056,
+    "BODY_DEL": 0.0033,
+    "BODY_MQ": 0.31,
+    "BODY_DRIFT": 1
+   }
+  }
+ }
+]
