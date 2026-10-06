@@ -51,6 +51,13 @@
    "name": "SIGNAL",
    "op": 38,
    "tick": 700000
+  },
+  {
+   "k": 8,
+   "file": "8-fat.js",
+   "name": "FAT",
+   "op": 39,
+   "tick": 800000
   }
  ]
 }
