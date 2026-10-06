@@ -18,3 +18,5 @@ _*.js
 # AI video outputs and python cache
 out/
 __pycache__/
+lab/loop/*/heavy/
+lab/loop/*/state.json
