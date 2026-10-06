@@ -1028,3 +1028,16 @@ LETTERS - they leave its body at bar 50.6, fly to their places in DejaVu Sans Mo
 and the rest fall away; no ASS card for this film. Card hold trimmed at the mux to ~4 s.
 The user on v2: "Looks great." (Lesson worth keeping: the user's "keep it all code" + Claude's honest "yes, it's plain"
 produced the version that landed - the first draft's ending, the real him, was the part to cut.)
+
+### One Line (`video/build_one_line.py`, `out/one-line.mp4`, 66 s, 720x1280)
+Claude's pick of three pitches (the user: "Ok"). The user drawn by ONE glowing green oscilloscope line that never lifts:
+his outer contour off the blue-screen key every frame (cv2.findContours, 1100 points by arc length, started at the top of
+the head), shivering with the song's own waveform, phosphor persistence, a faint graticule. Song: 'Before the Sky
+Unfolds' (structure from loudness: breath 72.0, lift 72.5, loud to 102, near-silence 103-107, soft rebuild 107). Song
+64-130. A dot draws a flat trace; the pen leaves it and draws him from the top of his head (u114); he dances (u118); at
+86.0 the line snags - an amber KNOT at his chest (drawn as a closed, slightly twisted loop crossing the line; a
+displaced-contour loop read as a 'C') - and it rides in every frame after, growing (u121); in the near-silence, close on
+it, it shrinks as if being pulled out, then snaps back bigger; gentler after (u120); then the line unravels off him and
+writes the end card (Liberation Serif Italic outlines as one pen path), and the knot flies to its place as the o of
+"once". Fixes before shipping: his outline was visible under the opening trace; 107-119 held near-still poses (u113,
+u129) - replaced with u120.
