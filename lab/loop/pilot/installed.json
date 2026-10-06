@@ -1,0 +1,21 @@
+{
+ "seed": 2001,
+ "opts": {},
+ "addEvery": 100000,
+ "installed": [
+  {
+   "k": 1,
+   "file": "1-broth.js",
+   "name": "BROTH",
+   "op": 32,
+   "tick": 100000
+  },
+  {
+   "k": 2,
+   "file": "2-tank.js",
+   "name": "TANK",
+   "op": 33,
+   "tick": 200000
+  }
+ ]
+}
