@@ -1,0 +1,14 @@
+{
+ "seed": 2102,
+ "opts": {},
+ "addEvery": 100000,
+ "installed": [
+  {
+   "k": 1,
+   "file": "1-fat.js",
+   "name": "FAT",
+   "op": 32,
+   "tick": 100000
+  }
+ ]
+}
