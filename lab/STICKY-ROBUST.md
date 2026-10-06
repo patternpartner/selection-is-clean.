@@ -83,3 +83,139 @@ a07 | -0.241 | 0.111 | {"RENEW":1,"RN_CAP":13.6,"BODY_MUT":0.0149,"BODY_CAP":0.0
 h-e003noCH | -0.277 | 0.034 | {"RENEW":1,"RN_CAP":18.1,"BODY_MUT":0.0158,"BODY_CAP":0.0456,"BODY_DEL":0.00319,"BODY_MQ":0.255,"CH_LEN":2.74} | 701:-0.010 702:0.580 703:-0.440 704:-0.277 705:0.556 706:-0.207
 top 3 -> confirmation: a03, h-c055pass, b04
 ```
+
+### Held-out confirmation result (appended by robust.js 06/10/2026, 05:51:27 BST)
+```
+# held-out confirmation: top 3 centre at 450k on seeds 801,802,803 (10k windows, original bar) + mini-nudge check (each knob x0.75 / x1.25, 100k, 5k windows, original bar) on the same seeds
+
+1. a03 {"RENEW":1,"RN_CAP":11.3,"BODY_MUT":0.0226,"BODY_CAP":0.0974,"BODY_DEL":0.00265,"BODY_MQ":0.481,"CH_LEN":2.91}
+   centre 450k: 1/3 seeds beat all nulls, rel 0.741, no collapse => FAIL
+      seed 801: S X 6.21 | R 5.21 | SH 15.57 | DR 13.29 | ref D 6.93 | ref DRIFT 17.57 | beats all no
+      seed 802: S X 10.14 | R 4.43 | SH 9.93 | DR 18.14 | ref D 4.29 | ref DRIFT 20.86 | beats all yes
+      seed 803: S X 10.00 | R 8.07 | SH 11.14 | DR 18.64 | ref D 7.64 | ref DRIFT 20.43 | beats all no
+   nudge RN_CAP-25% (RN_CAP 8.48): not run
+   nudge BODY_MUT+25% (BODY_MUT 0.0282): not run
+   nudge BODY_CAP-25% (BODY_CAP 0.0731): not run
+   nudge BODY_DEL+25% (BODY_DEL 0.00331): not run
+   nudge BODY_MQ-25% (BODY_MQ 0.361): not run
+   nudge CH_LEN+25% (CH_LEN 3.64): not run
+   nudge RN_CAP+25% (RN_CAP 14.1): not run
+   nudge BODY_MUT-25% (BODY_MUT 0.0169): not run
+   nudge BODY_CAP+25% (BODY_CAP 0.122): not run
+   nudge BODY_DEL-25% (BODY_DEL 0.00199): not run
+   nudge BODY_MQ+25% (BODY_MQ 0.601): not run
+   nudge CH_LEN-25% (CH_LEN 2.18): not run
+   => NOT ROBUST-GO (centre fails the original bar; nudges not run: verdict already decided)
+
+2. h-c055pass {"RENEW":1,"RN_CAP":13.6,"BODY_MUT":0.025,"BODY_CAP":0.057,"BODY_DEL":0.00319,"BODY_MQ":0.319,"CH_LEN":3.46}
+   centre 450k: 2/3 seeds beat all nulls, rel 1.145, no collapse => PASS
+      seed 801: S X 7.86 | R 7.57 | SH 5.36 | DR 16.14 | ref D 6.93 | ref DRIFT 17.57 | beats all yes
+      seed 802: S X 9.29 | R 11.50 | SH 2.86 | DR 12.36 | ref D 4.29 | ref DRIFT 20.86 | beats all no
+      seed 803: S X 9.14 | R 3.50 | SH 7.79 | DR 15.21 | ref D 7.64 | ref DRIFT 20.43 | beats all yes
+   nudge RN_CAP-25% (RN_CAP 10.2): 0/3, rel 1.349 => FAIL
+      seed 801: S X 22.67 | R 8.67 | SH 3.83 | DR 27.50 | ref D 9.17 | ref DRIFT 12.67 | beats all no
+      seed 802: S X 22.83 | R 14.33 | SH 28.33 | DR 32.83 | ref D 10.83 | ref DRIFT 22.67 | beats all no
+      seed 803: S X 19.83 | R 13.83 | SH 15.50 | DR 33.50 | ref D 5.33 | ref DRIFT 17.50 | beats all no
+   nudge BODY_MUT+25% (BODY_MUT 0.0313): 2/3, rel 1.303 => PASS
+      seed 801: S X 28.83 | R 16.17 | SH 15.00 | DR 30.33 | ref D 9.17 | ref DRIFT 12.67 | beats all yes
+      seed 802: S X 20.83 | R 10.00 | SH 21.67 | DR 34.83 | ref D 10.83 | ref DRIFT 22.67 | beats all no
+      seed 803: S X 29.00 | R 13.50 | SH 23.00 | DR 38.33 | ref D 5.33 | ref DRIFT 17.50 | beats all yes
+   nudge BODY_CAP-25% (BODY_CAP 0.0428): 2/3, rel 1.503 => PASS
+      seed 801: S X 21.00 | R 16.17 | SH 1.33 | DR 31.67 | ref D 9.17 | ref DRIFT 12.67 | beats all no
+      seed 802: S X 29.83 | R 10.00 | SH 7.67 | DR 34.00 | ref D 10.83 | ref DRIFT 22.67 | beats all yes
+      seed 803: S X 29.17 | R 13.50 | SH 5.00 | DR 40.17 | ref D 5.33 | ref DRIFT 17.50 | beats all yes
+   nudge BODY_DEL+25% (BODY_DEL 0.00399): 0/3, rel 1.230 => FAIL
+      seed 801: S X 18.33 | R 16.17 | SH 9.33 | DR 38.50 | ref D 9.17 | ref DRIFT 12.67 | beats all no
+      seed 802: S X 26.00 | R 10.00 | SH 13.17 | DR 38.33 | ref D 10.83 | ref DRIFT 22.67 | beats all no
+      seed 803: S X 29.00 | R 13.50 | SH 12.00 | DR 42.50 | ref D 5.33 | ref DRIFT 17.50 | beats all no
+   nudge BODY_MQ-25% (BODY_MQ 0.239): 1/3, rel 1.474 => FAIL
+      seed 801: S X 25.50 | R 16.17 | SH 10.50 | DR 32.83 | ref D 9.17 | ref DRIFT 12.67 | beats all no
+      seed 802: S X 23.83 | R 10.00 | SH 7.33 | DR 36.00 | ref D 10.83 | ref DRIFT 22.67 | beats all no
+      seed 803: S X 32.33 | R 13.50 | SH 14.17 | DR 41.33 | ref D 5.33 | ref DRIFT 17.50 | beats all yes
+   nudge CH_LEN+25% (CH_LEN 4.33): 3/3, rel 1.698 => PASS
+      seed 801: S X 30.00 | R 16.17 | SH 5.83 | DR 33.33 | ref D 9.17 | ref DRIFT 12.67 | beats all yes
+      seed 802: S X 31.33 | R 10.00 | SH 27.50 | DR 33.17 | ref D 10.83 | ref DRIFT 22.67 | beats all yes
+      seed 803: S X 30.00 | R 13.50 | SH 11.50 | DR 40.00 | ref D 5.33 | ref DRIFT 17.50 | beats all yes
+   nudge RN_CAP+25% (RN_CAP 17): 1/3, rel 1.284 => FAIL
+      seed 801: S X 27.00 | R 13.67 | SH 18.00 | DR 37.50 | ref D 9.17 | ref DRIFT 12.67 | beats all no
+      seed 802: S X 26.83 | R 10.50 | SH 23.33 | DR 36.33 | ref D 10.83 | ref DRIFT 22.67 | beats all yes
+      seed 803: S X 20.83 | R 14.00 | SH 16.17 | DR 35.00 | ref D 5.33 | ref DRIFT 17.50 | beats all no
+   nudge BODY_MUT-25% (BODY_MUT 0.0188): 1/3, rel 1.181 => FAIL
+      seed 801: S X 18.17 | R 16.17 | SH 9.00 | DR 34.33 | ref D 9.17 | ref DRIFT 12.67 | beats all no
+      seed 802: S X 25.67 | R 10.00 | SH 16.33 | DR 35.67 | ref D 10.83 | ref DRIFT 22.67 | beats all yes
+      seed 803: S X 21.67 | R 13.50 | SH 25.17 | DR 41.33 | ref D 5.33 | ref DRIFT 17.50 | beats all no
+   nudge BODY_CAP+25% (BODY_CAP 0.0713): 2/3, rel 1.421 => PASS
+      seed 801: S X 29.83 | R 16.17 | SH 21.00 | DR 38.50 | ref D 9.17 | ref DRIFT 12.67 | beats all no
+      seed 802: S X 23.00 | R 10.00 | SH 20.17 | DR 34.50 | ref D 10.83 | ref DRIFT 22.67 | beats all yes
+      seed 803: S X 30.17 | R 13.50 | SH 16.33 | DR 42.17 | ref D 5.33 | ref DRIFT 17.50 | beats all yes
+   nudge BODY_DEL-25% (BODY_DEL 0.00239): 0/3, rel 1.045 => FAIL
+      seed 801: S X 28.50 | R 16.17 | SH 9.00 | DR 36.67 | ref D 9.17 | ref DRIFT 12.67 | beats all no
+      seed 802: S X 13.67 | R 10.00 | SH 19.67 | DR 39.00 | ref D 10.83 | ref DRIFT 22.67 | beats all no
+      seed 803: S X 17.17 | R 13.50 | SH 11.50 | DR 38.83 | ref D 5.33 | ref DRIFT 17.50 | beats all no
+   nudge BODY_MQ+25% (BODY_MQ 0.399): 1/3, rel 1.224 => FAIL
+      seed 801: S X 19.17 | R 16.17 | SH 24.33 | DR 38.33 | ref D 9.17 | ref DRIFT 12.67 | beats all no
+      seed 802: S X 29.00 | R 10.00 | SH 14.50 | DR 35.83 | ref D 10.83 | ref DRIFT 22.67 | beats all yes
+      seed 803: S X 26.33 | R 13.50 | SH 21.50 | DR 41.00 | ref D 5.33 | ref DRIFT 17.50 | beats all no
+   nudge CH_LEN-25% (CH_LEN 2.59): 2/3, rel 1.621 => PASS
+      seed 801: S X 36.50 | R 16.17 | SH 17.33 | DR 24.67 | ref D 9.17 | ref DRIFT 12.67 | beats all yes
+      seed 802: S X 24.50 | R 10.00 | SH 14.17 | DR 34.00 | ref D 10.83 | ref DRIFT 22.67 | beats all yes
+      seed 803: S X 20.33 | R 13.50 | SH 15.50 | DR 40.83 | ref D 5.33 | ref DRIFT 17.50 | beats all no
+   => NOT ROBUST-GO (centre passes; only 5/12 nudges pass, need >= 9)
+
+3. b04 {"RENEW":1,"RN_CAP":15.5,"BODY_MUT":0.0228,"BODY_CAP":0.056,"BODY_DEL":0.0033,"BODY_MQ":0.31,"CH_LEN":3.72}
+   centre 450k: 2/3 seeds beat all nulls, rel 1.372, no collapse => PASS
+      seed 801: S X 13.00 | R 7.29 | SH 11.71 | DR 14.14 | ref D 6.93 | ref DRIFT 17.57 | beats all yes
+      seed 802: S X 9.50 | R 10.00 | SH 11.14 | DR 14.57 | ref D 4.29 | ref DRIFT 20.86 | beats all no
+      seed 803: S X 15.07 | R 9.29 | SH 3.57 | DR 19.64 | ref D 7.64 | ref DRIFT 20.43 | beats all yes
+   nudge RN_CAP-25% (RN_CAP 11.6): 3/3, rel 1.564 => PASS
+      seed 801: S X 30.67 | R 12.17 | SH 15.67 | DR 28.67 | ref D 9.17 | ref DRIFT 12.67 | beats all yes
+      seed 802: S X 28.50 | R 6.00 | SH 18.33 | DR 35.33 | ref D 10.83 | ref DRIFT 22.67 | beats all yes
+      seed 803: S X 21.50 | R 15.83 | SH 16.50 | DR 33.67 | ref D 5.33 | ref DRIFT 17.50 | beats all yes
+   nudge BODY_MUT+25% (BODY_MUT 0.0285): 2/3, rel 1.462 => PASS
+      seed 801: S X 23.00 | R 17.83 | SH 12.67 | DR 35.67 | ref D 9.17 | ref DRIFT 12.67 | beats all no
+      seed 802: S X 29.00 | R 16.00 | SH 20.17 | DR 32.33 | ref D 10.83 | ref DRIFT 22.67 | beats all yes
+      seed 803: S X 22.17 | R 8.83 | SH 4.83 | DR 33.00 | ref D 5.33 | ref DRIFT 17.50 | beats all yes
+   nudge BODY_CAP-25% (BODY_CAP 0.042): 2/3, rel 1.413 => PASS
+      seed 801: S X 20.33 | R 17.83 | SH 12.00 | DR 34.00 | ref D 9.17 | ref DRIFT 12.67 | beats all no
+      seed 802: S X 26.17 | R 16.00 | SH 9.17 | DR 36.67 | ref D 10.83 | ref DRIFT 22.67 | beats all yes
+      seed 803: S X 28.67 | R 8.83 | SH 12.17 | DR 35.33 | ref D 5.33 | ref DRIFT 17.50 | beats all yes
+   nudge BODY_DEL+25% (BODY_DEL 0.00413): 1/3, rel 1.227 => FAIL
+      seed 801: S X 27.50 | R 17.83 | SH 6.00 | DR 42.50 | ref D 9.17 | ref DRIFT 12.67 | beats all no
+      seed 802: S X 18.00 | R 16.00 | SH 20.17 | DR 35.00 | ref D 10.83 | ref DRIFT 22.67 | beats all no
+      seed 803: S X 22.67 | R 8.83 | SH 20.33 | DR 33.83 | ref D 5.33 | ref DRIFT 17.50 | beats all yes
+   nudge BODY_MQ-25% (BODY_MQ 0.232): 3/3, rel 1.672 => PASS
+      seed 801: S X 31.67 | R 17.83 | SH 6.00 | DR 26.83 | ref D 9.17 | ref DRIFT 12.67 | beats all yes
+      seed 802: S X 30.33 | R 16.00 | SH 21.83 | DR 31.00 | ref D 10.83 | ref DRIFT 22.67 | beats all yes
+      seed 803: S X 21.67 | R 8.83 | SH 21.00 | DR 32.67 | ref D 5.33 | ref DRIFT 17.50 | beats all yes
+   nudge CH_LEN+25% (CH_LEN 4.65): 0/3, rel 1.074 => FAIL
+      seed 801: S X 25.00 | R 17.83 | SH 13.17 | DR 35.50 | ref D 9.17 | ref DRIFT 12.67 | beats all no
+      seed 802: S X 19.33 | R 16.00 | SH 27.33 | DR 37.50 | ref D 10.83 | ref DRIFT 22.67 | beats all no
+      seed 803: S X 14.50 | R 8.83 | SH 7.50 | DR 37.50 | ref D 5.33 | ref DRIFT 17.50 | beats all no
+   nudge RN_CAP+25% (RN_CAP 19.4): 2/3, rel 1.310 => PASS
+      seed 801: S X 23.00 | R 17.00 | SH 12.83 | DR 41.50 | ref D 9.17 | ref DRIFT 12.67 | beats all no
+      seed 802: S X 23.17 | R 11.00 | SH 16.17 | DR 34.50 | ref D 10.83 | ref DRIFT 22.67 | beats all yes
+      seed 803: S X 26.83 | R 10.17 | SH 19.33 | DR 35.33 | ref D 5.33 | ref DRIFT 17.50 | beats all yes
+   nudge BODY_MUT-25% (BODY_MUT 0.0171): 2/3, rel 1.568 => PASS
+      seed 801: S X 27.67 | R 17.83 | SH 11.17 | DR 31.17 | ref D 9.17 | ref DRIFT 12.67 | beats all no
+      seed 802: S X 21.83 | R 16.00 | SH 15.83 | DR 33.33 | ref D 10.83 | ref DRIFT 22.67 | beats all yes
+      seed 803: S X 29.33 | R 8.83 | SH 17.83 | DR 35.33 | ref D 5.33 | ref DRIFT 17.50 | beats all yes
+   nudge BODY_CAP+25% (BODY_CAP 0.07): 2/3, rel 1.089 => FAIL
+      seed 801: S X 28.83 | R 17.83 | SH 31.67 | DR 31.50 | ref D 9.17 | ref DRIFT 12.67 | beats all no
+      seed 802: S X 30.67 | R 16.00 | SH 25.83 | DR 34.83 | ref D 10.83 | ref DRIFT 22.67 | beats all yes
+      seed 803: S X 29.33 | R 8.83 | SH 23.83 | DR 32.83 | ref D 5.33 | ref DRIFT 17.50 | beats all yes
+   nudge BODY_DEL-25% (BODY_DEL 0.00247): 1/3, rel 1.476 => FAIL
+      seed 801: S X 28.83 | R 17.83 | SH 13.17 | DR 35.83 | ref D 9.17 | ref DRIFT 12.67 | beats all no
+      seed 802: S X 26.67 | R 16.00 | SH 11.50 | DR 34.17 | ref D 10.83 | ref DRIFT 22.67 | beats all yes
+      seed 803: S X 23.50 | R 8.83 | SH 12.17 | DR 36.50 | ref D 5.33 | ref DRIFT 17.50 | beats all no
+   nudge BODY_MQ+25% (BODY_MQ 0.388): 1/3, rel 1.438 => FAIL
+      seed 801: S X 28.17 | R 17.83 | SH 12.33 | DR 36.00 | ref D 9.17 | ref DRIFT 12.67 | beats all no
+      seed 802: S X 21.50 | R 16.00 | SH 9.00 | DR 33.83 | ref D 10.83 | ref DRIFT 22.67 | beats all no
+      seed 803: S X 26.17 | R 8.83 | SH 13.33 | DR 35.17 | ref D 5.33 | ref DRIFT 17.50 | beats all yes
+   nudge CH_LEN-25% (CH_LEN 2.79): 1/3, rel 1.228 => FAIL
+      seed 801: S X 24.50 | R 17.83 | SH 26.33 | DR 34.17 | ref D 9.17 | ref DRIFT 12.67 | beats all no
+      seed 802: S X 23.83 | R 16.00 | SH 11.00 | DR 37.50 | ref D 10.83 | ref DRIFT 22.67 | beats all no
+      seed 803: S X 23.17 | R 8.83 | SH 20.33 | DR 24.50 | ref D 5.33 | ref DRIFT 17.50 | beats all yes
+   => NOT ROBUST-GO (centre passes; only 6/12 nudges pass, need >= 9)
+
+SUMMARY: no config is ROBUST-GO (3 configs tested: any ROBUST-GO is a candidate to re-confirm on fresh seeds, not a final claim)
+```
