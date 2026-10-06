@@ -25684,3 +25684,35 @@ forward in these notes.
 **The pilot (exploratory, seed 2001, a module every 100,000 ticks, about 600 generations).** The generator is the agent
 writing this (no API cost). It is a pilot: it is for finding out whether the loop works and what a fair deciding run needs.
 Nothing from it is a claim.
+
+**The pilot, modules 1-6 (seed 2001, to tick 600,000; exploratory, one seed, no claim).** Adoption is read as carrier share
+in G against the inert twin I over 20,000-tick windows, with income share beside it (`RUN=pilot WIN=20 node lab/loop-analyse.js`).
+
+| k | module (tick) | what it adds | builds on | what the world did with it |
+|---|---|---|---|---|
+| 1 | BROTH (100k) | digest the corpse ahead into broth that seeps; drink broth here | nothing | took off about 100,000 ticks after it arrived; from tick 200,000 carried by 18-50% against the twin's 2-24%, above it in all 20 windows; income 0.3-20% of all income |
+| 2 | TANK (200k) | wall the cell ahead (costs energy); walls soak broth into a slow-spoiling tank; tap the tank ahead | BROTH | purged: carried below the twin in nearly every window, and the wall-building form is gone from the population entirely |
+| 3 | PIPE (300k) | connected walls share their tanks; drink from the network where you stand | TANK, BROTH | follows the twin: drift |
+| 4 | SMELL (400k) | sense broth or tank, here or the difference ahead | BROTH, TANK | taken up and dropped: 36% against the twin's 5-6% for 40,000 ticks, then back to the twin's level; carriers smell broth (22%), almost never tanks (1%) |
+| 5 | HOARD (500k) | bury a quarter of your store where attack cannot reach it; anyone there digs it up | nothing | purged: carried 1-2% against the twin's 6-20%; it loses more than it returns (90 in for 64 out per 1,000 ticks) |
+| 6 | TENDRIL (600k) | drink broth from the eight cells around | BROTH | (running) |
+
+- **Five modules in, the world keeps what pays at once, in one step, where the organism stands, and nothing else.** Anything
+  that needs a sequence (build, wait, tap) or a sacrifice now for later (bury, dig) is selected against, not merely ignored:
+  carried below its own inert twin, which only drift moves. That is Avida's lesson (#290) arriving from the other side: a
+  function with no paying first step is not reached.
+- **The energy budget is closed, and the interface made it so.** Light is the only source; 85% of its production ceiling is
+  eaten (26.4k of 31.1k per 1,000 ticks) and 81 units lie on 4,096 cells. Modules can only move energy, so every new way to
+  live takes from the old ones. Novelty in this world is redistribution.
+- **What a module cannot be.** Module fields belong to cells, not organisms: nothing a module adds moves with an organism or
+  is inherited. Shells, toxins, organs and body stores are out of reach, and so is anything that changes a core act (attack,
+  divide). Half of what a generator might want to add is not expressible; that is a design limit to fix before a deciding run,
+  not something the pilot can measure around.
+- **The adoption lag is about the gap between modules.** BROTH took off about 100,000 ticks after arriving in G, and in the
+  all-at-once control (A3: modules 1-3 at tick 0) it took off at 80,000-120,000 ticks too. A module is judged by the next
+  report while it may still be on its way in.
+- **Z cannot exist here.** Every module after BROTH reads an earlier one, so the chain allows one order (recorded in
+  PROTOCOL.md; S, the same schedule on another seed, replaces it).
+- **A metric bug, found and fixed during the pilot.** The loop that added module income to the income total sat inside a
+  comment on the same line, so every share the pilot printed was over base income only. Rows now carry `den:'all'` and
+  `loop-analyse` converts older ones; BROTH's best window is 20.1% of all income, not the 26.5% first read.
