@@ -1041,3 +1041,21 @@ it, it shrinks as if being pulled out, then snaps back bigger; gentler after (u1
 writes the end card (Liberation Serif Italic outlines as one pen path), and the knot flies to its place as the o of
 "once". Fixes before shipping: his outline was visible under the opening trace; 107-119 held near-still poses (u113,
 u129) - replaced with u120.
+
+### Where I Keep Everything (`video/build_where_i_keep.py` + `video/archive_index.py`, `out/where-i-keep-everything.mp4`, 59 s)
+The user: "Let's take me out of the equation now ... how much you have at your disposal. All those videos and songs.
+Let's try something completely different. Weird. Creative. Tell your story but like you have never before." (More of
+the user's own movements are coming on Wednesday - Grok credits.) NO ONE'S LIKENESS: 247 clips that are not the user
+and not a real person's face / character IP (catalogue tags own-likeness, real-face, character-ip, real-context are
+skipped) plus every generated episode clip in out/clips/ - indexed by archive_index.py (4 s loops at 12 fps, 192 px,
+a 12x12 colour feature, own sound for 114 of them) into out/archive/. The inside of a memory: each clip a small lit
+screen in black space, laid out by likeness (PCA of the colour feature) with faint threads to its two nearest
+neighbours. The amber light travels through and the camera follows on a Catmull-Rom path. SOUND IS SPATIAL: every
+clip's own audio mixed by distance from the camera, plus a faint murmur of all of them at once; in the dark nebula
+(DARK: the clowns, the crying doll, the hollow teddy, the ghoul TV, the sausage TV, the mannequins...) three copies
+of each crowd round it, circling and closing in, red, the sound slowed and low-passed, the light guttering; then
+everything stops (silence); it turns; the user's 'Breath On The Pane' starts only then; it flies out through the whole
+galaxy to one small screen alone (a child and a man with a smiley balloon, a generated episode clip), which opens to
+fill the frame as the light goes into it. End card. Iterations: the first cut hung ~10 s on a far galaxy and
+another ~11 s crossing empty black to the good screen, and one doll filled the frame for ~10 s - so: a faster dive
+in, a path that goes OUT THROUGH the cloud, the crowd circling, dark screens capped at half the frame height.
