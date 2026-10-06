@@ -1,47 +1,84 @@
-"""'No Quarters Left' - the user's own likeness, deadpan in a tuxedo, in a world of 90s home-video weirdness. The user's idea
-list from the 6 Oct batches (u133-u171); Claude's pitch, which the user liked: "you, in the tux, calmly walking through all
-that 90s weirdness as if it's perfectly normal ... the one steady thing while everything else goes strange." Song chosen
-by Claude: 'No Quarters Left' (144.43 bpm, bar 1.6617 s, beat phase 0.197; scratched, chopped breakbeat; the title fits
-the arcade clip). Song 13.49-68.33 = 33 bars, ending where the song drops away (68.33), then the end card.
-Square 960x960 (most of the clips are square or landscape), a VHS look over everything, every cut a channel change
-with a green CH number. His own clips (u146 penguins, u151 chickens, u155 fridge, u138 orange can) hold their deadpan;
-in the strange ones he is cut out of u146 (rembg mask out/masks/u146.npy) and stood in the scene, unbothered. He floats
-up beside the broccoli-headed figure without taking his hands out of his pockets. Only at the very end, in the
-laundrette with the little puppets (u147), does he crack - and dance.
-Brands: u151's supermarket sign is cropped off the top; u138 is used only after its lettering has turned away.
+"""'No Quarters Left' v2 - the user's own likeness WALKING, deadpan, through a world of 90s home-video weirdness. From the
+6 Oct batches (u133-u171) and Claude's pitch, which the user liked: "you ... calmly walking through all that 90s weirdness
+as if it's perfectly normal". Song chosen by Claude: 'No Quarters Left' (144.43 bpm, bar 1.6617 s, beat phase 0.197; a
+chopped, scratched breakbeat). Song 13.49-68.33 = 33 bars (ending where the song drops away), then the end card.
+v1 was rejected, rightly: "You said walking through and I just stood there. Trainers missing half the time. It's
+essentially just the same video with me plopped into them." v2:
+ - HE WALKS. The walking is his own blue-screen footage (u117, u113, u114 side view; keyed with video/bluekey.py, so the
+   trainers are there), normalised to a steady size on screen while the background dollies in - he walks THROUGH each
+   place. The walk carries across the channel changes.
+ - THE PLACES HAPPEN TO HIM AND HE ANSWERS, barely: he turns to look back as the head rises from the bowling pins; the
+   arcade hand snatches at the air behind him; he bows to the dancing skeleton, then gives it a deadpan ta-da; he shrugs
+   at the hollow-faced teddy; he sits on thin air and floats up with the broccoli head; he presses his palm to the glass
+   of the staring sun's TV from inside; he looks up with the crowd at the opening sky; he walks the row of identical
+   figures side-on. His own deadpan tux clips (penguins, chickens, fridge, the orange can) are stops on the way, and in
+   the laundrette with the puppets (u147) he finally dances.
+Square 960x960 with a VHS look; every cut a channel change (tracking tear, green CH number).
     python3 video/build_no_quarters.py   (TEST=s1,s2 TESTDIR=dir in SONG seconds; PART=a,b VOUT=f in film seconds)
 """
 import math
 import os
 import subprocess
+import sys
 
 import imageio_ffmpeg
 import numpy as np
 from PIL import Image, ImageDraw, ImageFont
-from scipy.ndimage import gaussian_filter, label
+from scipy.ndimage import gaussian_filter, median_filter
+
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+from bluekey import key  # noqa: E402
 
 F = imageio_ffmpeg.get_ffmpeg_exe()
-N, FPS = 960, 24                                         # square output
+N, FPS = 960, 24
 BAR, PH = 1.6617, 0.197
 S0 = PH + 8 * BAR                                        # 13.49: one bar of VHS PLAY before the first shot
-S1 = S0 + 33 * BAR                                       # 68.33
-DUR = S1 - S0
+DUR = 33 * BAR
 TEST = [float(x) for x in os.environ.get("TEST", "").split(",") if x]
 PART = [float(x) for x in os.environ.get("PART", "").split(",") if x]
 MONO = "/usr/share/fonts/truetype/dejavu/DejaVuSansMono-Bold.ttf"
 rng = np.random.default_rng(144)
 
-# square crops (x, y, size) in each clip's own pixels
 CROP = {'u146': (152, 32, 416), 'u151': (150, 60, 420), 'u155': (120, 0, 480), 'u138': (280, 0, 720), 'u147': (120, 0, 480),
         'u167': (184, 0, 496), 'u160': (152, 32, 416), 'u165': (184, 0, 496), 'u171': (152, 32, 416), 'u158': (190, 6, 484),
-        'u170': (189, 32, 416), 'u163': (0, 120, 480), 'u169': (152, 32, 416), 'u153': (152, 32, 416), 'u159': (184, 0, 496)}
-# the shots, two bars each (the last four): clip, clip start, him (feet x, feet y, height, as fractions of the frame) or None
-SHOTS = [("u146", 2.0, None, 2), ("u167", 4.0, (0.78, 0.80, 0.42), 2), ("u151", 1.0, None, 2),
-         ("u160", 6.6, (0.80, 0.84, 0.36), 2), ("u155", 3.0, None, 2), ("u165", 2.5, (0.24, 0.86, 0.22), 2),
-         ("u171", 4.0, (0.86, 1.00, 0.50), 2), ("u138", 2.5, None, 2), ("u158", 3.0, (0.80, 1.35, 1.00), 2),
-         ("u170", 5.0, (0.14, 0.97, 0.25), 2), ("u163", 4.5, (0.82, 0.93, 0.30), 2), ("u169", 5.5, (0.74, 0.93, 0.45), 2),
-         ("u153", 7.0, (0.50, 0.96, 0.52), 2), ("u159", 4.5, (0.50, 1.02, 0.36), 2), ("u147", 2.0, None, 4)]
-assert sum(b for *_, b in SHOTS) == 32
+        'u170': (189, 32, 416), 'u163': (0, 120, 480), 'u169': (152, 32, 416), 'u153': (152, 32, 416), 'u159': (184, 0, 496),
+        'u148': (152, 32, 416), 'u149': (5, 5, 950), 'u150': (184, 0, 496), 'u154': (152, 32, 416), 'u156': (125, 10, 470),
+        'u157': (141, 22, 440), 'u161': (152, 32, 416), 'u162': (184, 0, 496), 'u164': (154, 32, 416), 'u168': (152, 32, 416)}
+
+# one bar each unless said. (background clip, its start, him or None)
+# him = (clip, start, mode, a, b, c, flip): mode "walk": feet x, feet y, height (fractions of the frame), size normalised;
+#                                          mode "frame": his whole 720x1280 frame, centre x, centre y, scale
+W_ = "walk"
+SHOTS = [
+    ("u146", 2.0, None, 2),                                                   # penguins: deadpan, standing
+    ("u167", 4.0, ("u117", 3.0, W_, 0.60, 0.93, 0.62, False), 1),             # the turkey crawls; he walks on
+    ("u160", 7.3, ("u117", 4.66, W_, 0.70, 0.95, 0.55, False), 1),            # the head rises behind him...
+    ("u160", 8.4, ("u117", 8.5, W_, 0.70, 0.95, 0.55, False), 1),             # ...he turns to look at it
+    ("u151", 1.0, None, 1),                                                   # chickens
+    ("u165", 3.0, ("u117", 6.32, W_, 0.24, 0.86, 0.30, False), 1),            # tiny, on the counter, past the jug's mouth
+    ("u171", 4.6, ("u117", 11.0, W_, 0.70, 0.97, 0.62, False), 1),            # the arcade hand snatches behind him
+    ("u155", 3.0, None, 1),                                                   # fridge
+    ("u158", 3.0, ("u114", 7.6, W_, 0.78, 0.97, 0.62, False), 1),             # he bows to the skeleton...
+    ("u158", 4.66, ("u114", 9.26, W_, 0.78, 0.97, 0.62, False), 1),           # ...and gives it a ta-da
+    ("u170", 5.5, ("u117", 12.66, W_, 0.14, 0.96, 0.28, False), 1),           # tiny on the desk; hands through the screen
+    ("u138", 2.5, None, 1),                                                   # the orange can
+    ("u163", 5.0, ("u114", 1.8, W_, 0.78, 0.93, 0.34, False), 1),             # a shrug at the hollow teddy
+    ("u169", 5.5, ("u114", 4.0, W_, 0.74, 0.93, 0.40, False), 2),             # he sits on air and floats up beside it
+    ("u153", 7.0, ("u113", 0.3, W_, 0.50, 0.96, 0.55, False), 1),             # through the middle of the dance troupe
+    ("u159", 5.0, ("u113", 9.3, "frame", 0.50, 0.62, 0.62, False), 1),        # palm to the glass of the sun's TV
+    ("u164", 2.0, ("u114", 13.0, W_, 0.20, 0.88, 0.40, False), 1),            # side-on along the row of identical figures
+    ("u156", 4.0, ("u113", 1.96, W_, 0.50, 0.95, 0.50, False), 1),            # down the cubicle aisle; the ghoul flicks on
+    ("u162", 4.5, ("u117", 5.5, W_, 0.80, 0.98, 0.70, True), 1),             # past the doll as its eyes run black
+    ("u150", 3.0, ("u113", 4.0, W_, 0.45, 0.97, 0.66, False), 1),             # away down the hall as the wallpaper peels
+    ("u168", 3.0, ("u113", 7.6, W_, 0.27, 0.90, 0.40, False), 1),             # holds a hand out to the doughnut's eye
+    ("u148", 2.5, ("u117", 8.5, W_, 0.70, 0.80, 0.42, True), 1),              # turning in space as the glass whale passes
+    ("u154", 4.0, ("u113", 11.0, "frame", 0.50, 0.88, 0.55, False), 1),       # he looks up with the crowd
+    ("u161", 5.0, ("u117", 3.0, W_, 0.72, 0.66, 0.30, True), 1),              # lightning: it is him walking past the car
+    ("u149", 3.0, ("u117", 4.66, W_, 0.30, 0.86, 0.36, True), 1),             # across the forecourt as the car doors open
+    ("u157", 4.0, ("u115", 11.3, W_, 0.70, 0.95, 0.58, False), 1),            # drawers spill; and at last he smiles
+    ("u147", 2.0, None, 4),                                                   # the laundrette: he dances
+]
+assert sum(s[3] for s in SHOTS) == 32, sum(s[3] for s in SHOTS)
 
 
 def ease(u):
@@ -49,91 +86,91 @@ def ease(u):
     return u * u * (3 - 2 * u)
 
 
-def load(u, t0, dur):
-    """only the seconds a shot uses (fifteen whole clips at 960 px do not fit in memory)"""
+def load_bg(u, t0, dur):
+    """only the seconds a shot uses"""
     x, y, sz = CROP[u]
     raw = subprocess.run([F, "-loglevel", "error", "-ss", f"{t0:.3f}", "-t", f"{dur:.3f}", "-i", f"out/user-clips/{u}.mp4",
-                          "-map", "0:v:0", "-vf",
-                          f"fps={FPS},crop={sz}:{sz}:{x}:{y},scale={N}:{N}:flags=lanczos", "-f", "rawvideo", "-pix_fmt", "rgb24",
-                          "-"], capture_output=True).stdout
+                          "-map", "0:v:0", "-vf", f"fps={FPS},crop={sz}:{sz}:{x}:{y},scale={N}:{N}:flags=lanczos", "-f",
+                          "rawvideo", "-pix_fmt", "rgb24", "-"], capture_output=True).stdout
     return np.frombuffer(raw, np.uint8).reshape(-1, N, N, 3)
 
 
-class Him:
-    """him in the tux, cut out of u146 at the clip's own resolution"""
-    def __init__(self):
-        raw = subprocess.run([F, "-loglevel", "error", "-i", "out/user-clips/u146.mp4", "-map", "0:v:0", "-vf", f"fps={FPS}",
-                              "-f", "rawvideo", "-pix_fmt", "rgb24", "-"], capture_output=True).stdout
-        self.f = np.frombuffer(raw, np.uint8).reshape(-1, 480, 720, 3)
-        self.m = np.load("out/masks/u146.npy", mmap_mode="r")
-        # keep only the blob around him (the middle of the frame): penguins that leak into the mask are dropped
-        cols = np.zeros(720, np.float32)
-        cols[250:470] = 1
-        self.keep = gaussian_filter(cols, 8)[None, :]
-        tops, bots = [], []
-        for i in range(0, min(len(self.f), len(self.m)), 12):
-            mm = self.m[i].astype(np.float32) * self.keep / 255
-            rows = np.where(mm.max(1) > 0.5)[0]
-            tops.append(rows[0]); bots.append(rows[-1])
-        self.top, self.bot = float(np.median(tops)), float(np.median(bots))
-        ys, xs = np.nonzero(self.m[len(self.m) // 2].astype(np.float32) * self.keep > 128)
-        self.cx = float(np.median(xs))
-
-    def at(self, ct):
-        i = int(min(max(ct * FPS, 0), min(len(self.f), len(self.m)) - 1))
-        m = self.m[i].astype(np.float32) * self.keep / 255
-        lab, n = label(m > 0.5)                              # only him: the blob under the middle of the frame
-        if n > 1:
-            sizes = np.bincount(lab.ravel())
-            sizes[0] = 0
-            m = m * gaussian_filter((lab == np.argmax(sizes)).astype(np.float32), 1.0)
-        return self.f[i].astype(np.float32), m
+def load_him(u, t0, dur, flip):
+    """his blue-screen frames, keyed; plus a smoothed bounding box (top, bottom, centre x) per frame"""
+    raw = subprocess.run([F, "-loglevel", "error", "-ss", f"{t0:.3f}", "-t", f"{dur:.3f}", "-i", f"out/user-clips/{u}.mp4",
+                          "-map", "0:v:0", "-vf", f"fps={FPS}", "-f", "rawvideo", "-pix_fmt", "rgb24", "-"],
+                         capture_output=True).stdout
+    fr = np.frombuffer(raw, np.uint8).reshape(-1, 1280, 720, 3)
+    out, boxes = [], []
+    for f in fr:
+        rgb, al = key(f.astype(np.float32))
+        if flip:
+            rgb, al = rgb[:, ::-1], al[:, ::-1]
+        out.append((rgb.astype(np.uint8), (al * 255).astype(np.uint8)))
+        rows = np.where((al > 0.5).sum(1) > 3)[0]
+        cols = np.where((al > 0.5).sum(0) > 3)[0]
+        boxes.append((rows[0], rows[-1], (cols[0] + cols[-1]) / 2) if len(rows) else (0, 1279, 360))
+    b = np.array(boxes, np.float32)
+    for j in range(3):
+        b[:, j] = median_filter(b[:, j], 9, mode="nearest")
+        b[:, j] = gaussian_filter(b[:, j], 2.0, mode="nearest")
+    return out, b
 
 
-def put_him(bg, him, ct, feet, h, s):
-    """stand him in the scene: scaled, colour-matched to it, a contact shadow at his feet"""
-    rgb, m = him.at(ct)
-    hp = h * N                                               # his height in output px
-    k = hp / (him.bot - him.top)
-    fx, fy = feet[0] * N, feet[1] * N
-    rgba = np.dstack([rgb, m * 255]).astype(np.uint8)
+def put_him(bg, rgb, al, box, mode, a, b, c, s):
+    """stand him in the scene, colour-matched to it, a contact shadow under his feet when he is walking"""
+    top, bot, cx = box
+    rgba = np.dstack([rgb, al]).astype(np.uint8)
     im = Image.fromarray(rgba, "RGBA")
-    # output (X,Y) -> source (cx + (X - fx)/k, bot + (Y - fy)/k)
-    coeffs = (1 / k, 0, him.cx - fx / k, 0, 1 / k, him.bot - fy / k)
+    if mode == "walk":
+        k = c * N / max(bot - top, 50)
+        fx, fy = a * N, b * N
+        coeffs = (1 / k, 0, cx - fx / k, 0, 1 / k, bot - fy / k)
+    else:
+        k = c * N / 1280
+        X, Y = a * N, b * N
+        coeffs = (1 / k, 0, 360 - X / k, 0, 1 / k, 640 - Y / k)
     o = np.asarray(im.transform((N, N), Image.AFFINE, coeffs, resample=Image.BICUBIC), np.float32)
-    col, al = o[..., :3], o[..., 3] / 255
-    if al.sum() < 10:
+    col, alpha = o[..., :3], o[..., 3] / 255
+    if alpha.sum() < 10:
         return bg
-    # colour match: pull his mean towards the scene's, gently
     sm = bg.reshape(-1, 3).mean(0) + 1
-    hm = (col * al[..., None]).reshape(-1, 3).sum(0) / (al.sum() + 1e-6) + 1
-    gain = (sm / hm) ** 0.45
-    lum_s, lum_h = sm.mean(), hm.mean()
-    gain = gain / gain.mean() * (lum_s / lum_h) ** 0.35
+    hm = (col * alpha[..., None]).reshape(-1, 3).sum(0) / (alpha.sum() + 1e-6) + 1
+    gain = (sm / hm) ** 0.4
+    gain = gain / gain.mean() * (sm.mean() / hm.mean()) ** 0.3
     col = np.clip(col * gain, 0, 255)
-    # a soft shadow on the ground under him
-    yy, xx = np.mgrid[0:N, 0:N].astype(np.float32)
-    sh = np.exp(-(((xx - fx) / (0.22 * hp)) ** 2 + ((yy - fy) / (0.035 * hp)) ** 2)) * 0.55
-    bg = bg * (1 - sh[..., None])
-    al = gaussian_filter(al, 0.8)
-    return bg * (1 - al[..., None]) + col * al[..., None]
+    if mode == "walk":
+        hp = c * N
+        yy, xx = np.mgrid[0:N, 0:N].astype(np.float32)
+        sh = np.exp(-(((xx - fx) / (0.2 * hp)) ** 2 + ((yy - fy) / (0.03 * hp)) ** 2)) * 0.5
+        bg = bg * (1 - sh[..., None])
+    alpha = gaussian_filter(alpha, 0.7)
+    return bg * (1 - alpha[..., None]) + col * alpha[..., None]
+
+
+def dolly(a, ls, nb, i):
+    """the camera moves in on the place as he walks through it"""
+    z = 1.0 + 0.10 * ls / (nb * BAR)
+    if z <= 1.001:
+        return a
+    im = Image.fromarray(a.astype(np.uint8))
+    cx, cy = N / 2 + 40 * math.sin(i * 1.7), N * 0.48
+    coeffs = (1 / z, 0, cx - cx / z, 0, 1 / z, cy - cy / z)
+    return np.asarray(im.transform((N, N), Image.AFFINE, coeffs, resample=Image.BILINEAR), np.float32)
 
 
 def vhs(img, t, glitch):
-    """the tape: chroma bleed, scanlines, a little wobble, lifted blacks, noise; tracking tear on a channel change"""
+    """the tape: chroma bleed, scanlines, a little wobble, lifted blacks, noise; a tracking tear on a channel change"""
     a = img.astype(np.float32)
     a = 16 + a * 0.93
     r, g, b = a[..., 0], a[..., 1], a[..., 2]
-    r = np.roll(r, 3, 1)
-    b = np.roll(b, -2, 1)
-    a = np.stack([r, g, b], -1)
+    a = np.stack([np.roll(r, 3, 1), g, np.roll(b, -2, 1)], -1)
     a = a * 0.75 + gaussian_filter(a, (0, 1.6, 0)) * 0.25
     wob = (np.sin(np.arange(N) / 37.0 + t * 3.1) * 1.2).astype(int)
     if glitch > 0:
         band = int((t * 997) % N)
         for y0 in range(0, N, 6):
-            d = abs(y0 - band)
-            sh = int(glitch * (40 * math.exp(-d / 60) + rng.normal(0, 6)))
+            sh = int(glitch * (40 * math.exp(-abs(y0 - band) / 60) + rng.normal(0, 6)))
             a[y0:y0 + 6] = np.roll(a[y0:y0 + 6], sh, 1)
         a = a * (1 - 0.25 * glitch) + rng.normal(0, 60 * glitch, (N, N, 1))
     for y in range(0, N, 24):
@@ -146,11 +183,10 @@ def vhs(img, t, glitch):
 def osd(a, text, alpha, big=False):
     if alpha <= 0:
         return a
-    lay = Image.new("L", (N, N), 0)
-    d = ImageDraw.Draw(lay)
     fnt = ImageFont.truetype(MONO, 64 if big else 46)
     x, y = (70, 70) if big else (N - 300, 60)
-    d.text((x + 4, y + 4), text, font=fnt, fill=90)
+    lay = Image.new("L", (N, N), 0)
+    ImageDraw.Draw(lay).text((x + 4, y + 4), text, font=fnt, fill=90)
     m = np.asarray(lay, np.float32)[..., None] / 255
     lay2 = Image.new("L", (N, N), 0)
     ImageDraw.Draw(lay2).text((x, y), text, font=fnt, fill=255)
@@ -161,23 +197,24 @@ def osd(a, text, alpha, big=False):
 
 
 def main():
-    him = Him()
     out = None
     if not TEST:
         out = subprocess.Popen([F, "-loglevel", "error", "-y", "-f", "rawvideo", "-pix_fmt", "rgb24", "-s", f"{N}x{N}", "-r",
                                 str(FPS), "-i", "-", "-c:v", "libx264", "-crf", "17", "-preset", "slow", "-pix_fmt", "yuv420p",
                                 os.environ.get("VOUT", "out/drawn/no-quarters.mp4")], stdin=subprocess.PIPE)
     starts, b = [], 1
-    for (_, _, _, nb) in SHOTS:
+    for s in SHOTS:
         starts.append(S0 + b * BAR)
-        b += nb
-    chans = [3, 7, 12, 4, 9, 21, 5, 33, 8, 11, 2, 16, 27, 6, 1]
+        b += s[3]
+    chans = [(7 * j + 3) % 40 + 1 for j in range(len(SHOTS))]
     lo, hi = (PART[0], PART[1]) if PART else (0.0, DUR)
-    clips = {}
-    for j, (u, t0, _, nb) in enumerate(SHOTS):
+    bgs, hims = {}, {}
+    for j, (u, t0, him, nb) in enumerate(SHOTS):
         a0, a1 = starts[j] - S0, starts[j] - S0 + nb * BAR
         if a1 > lo and a0 < hi and (not TEST or any(a0 <= q - S0 < a1 for q in TEST)):
-            clips[j] = load(u, t0, nb * BAR + 0.2)
+            bgs[j] = load_bg(u, t0, nb * BAR + 0.2)
+            if him:
+                hims[j] = load_him(him[0], him[1], nb * BAR + 0.2, him[6])
     for fr in range(int(round(DUR * FPS))):
         t = fr / FPS
         s = S0 + t
@@ -194,18 +231,21 @@ def main():
             a = osd(a, "PLAY ▶", 1.0 if (s % 0.8) < 0.55 or u < 0.5 else 0.0, big=True)
         else:
             i = max(j for j in range(len(SHOTS)) if starts[j] <= s)
-            u_, t0, place, nb = SHOTS[i]
+            u_, t0, him, nb = SHOTS[i]
             ls = s - starts[i]
-            fr_clip = clips[i]
-            a = fr_clip[min(int(ls * FPS), len(fr_clip) - 1)].astype(np.float32)
-            if place is not None:
-                fx, fy, h = place
-                if u_ == "u169":                             # he floats up with it, hands in pockets
-                    fy -= 0.55 * ease((ls - 0.6) / 2.6)
-                a = put_him(a, him, 2.0 + 0.6 * i + ls, (fx, fy), h, s)
+            fb = bgs[i]
+            a = fb[min(int(ls * FPS), len(fb) - 1)].astype(np.float32)
+            if him is not None:
+                a = dolly(a, ls, nb, i)
+                frames, boxes = hims[i]
+                k = min(int(ls * FPS), len(frames) - 1)
+                hu, ht, mode, pa, pb, pc, flip = him
+                if u_ == "u169":                             # he floats up with it, still sitting on nothing
+                    pb = pb - 0.5 * ease((ls - 0.5) / 2.6)
+                a = put_him(a, frames[k][0], frames[k][1], boxes[k], mode, pa, pb, pc, s)
             glitch = max(0.0, 1 - ls / 0.16) if ls < 0.16 else 0.0
             a = vhs(a, t, glitch)
-            a = osd(a, f"CH {chans[i]:02d}", 1.0 if ls < 1.3 else max(0.0, 1 - (ls - 1.3) / 0.2))
+            a = osd(a, f"CH {chans[i]:02d}", 1.0 if ls < 1.0 else max(0.0, 1 - (ls - 1.0) / 0.2))
         img = np.clip(a, 0, 255).astype(np.uint8)
         if TEST:
             Image.fromarray(img).save(f"{os.environ['TESTDIR']}/q{s:06.2f}.png")
