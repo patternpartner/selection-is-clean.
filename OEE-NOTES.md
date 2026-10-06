@@ -25769,3 +25769,31 @@ in G against the inert twin I over 20,000-tick windows, with income share beside
 - **A metric bug, found and fixed during the pilot.** The loop that added module income to the income total sat inside a
   comment on the same line, so every share the pilot printed was over base income only. Rows now carry `den:'all'` and
   `loop-analyse` converts older ones; BROTH's best window is 20.1% of all income, not the 26.5% first read.
+
+### #292b — PRE-REGISTRATION: the generator in the loop, deciding run (committed before the first decision run).
+
+**Question.** In a world whose physics a generator extends every 100,000 ticks, responding to what the world does, does
+selection keep adopting new physics through the last quarter of a run of thousands of generations, on every seed? This is
+step 3's target ("new behaviours keep being adopted by selection, each proven with a control, through the last quarter of
+the run, on 3 of 3 seeds"), asked of the world-and-generator system. The novelty is supplied by the generator by design; what
+is tested is whether the world goes on taking it up, judged by its own selection, late as well as early.
+
+**Fixed in advance.**
+- **Worlds:** seeds 2101, 2102, 2103 (unseen), `lab/oee-core.js` defaults, body fields available. One module every 100,000
+  ticks, ten modules (installed at 100,000 ... 1,000,000), run to 1,100,000 ticks (about 5,500 generations in the pilot).
+  `RUN=d<seed> SEED=<seed> ASSAY=1 node lab/oee-loop.js`, inert twin I as in the pilot.
+- **Generator:** the agent writing this, under `lab/loop/PROTOCOL.md`, one module per pause per world, written from that
+  world's own report. **Declared bias:** the generator has seen the pilot, knows the measure, and knows what the pilot's
+  world kept (immediate, local, private payoffs). Responding to the world with that knowledge is the system under test.
+- **Adopted** (module k at pause p, p > k): in `assay-p.json`, every armed draw's s above every disarmed draw's (4 draws each,
+  2,000 ticks from the pause's state) **and** Welch t >= 2.2. The control is the same population with the module disarmed.
+- **R1, KEEPS ARRIVING (the target):** on **each of the three seeds**, at least one of modules 8, 9, 10 (installed at
+  800,000-1,000,000, the run's last quarter) is adopted at some pause after its install (pauses 9-11). Six tests per seed.
+  R1 on 3 of 3 seeds: target met for this system. Any seed without: not met.
+- **R2, COMPOSES:** on at least 2 of 3 seeds, a module adopted at a pause >= 9 DEPENDS on an earlier module that was
+  adopted at some pause: `lab/loop-analyse.js KO=1` from the pause-11 save (20,000 ticks, 3 draws), a declared read, every
+  knockout draw below half the lowest baseline draw, baseline income >= 50 per 1,000 ticks. Reported with depth.
+- **Reported, not ruled:** adoptions at every pause (the timeline of what the world took up and dropped); the all-at-once
+  control A per seed (all ten modules at tick 0, with its inert twin, assayed at 1,100,000), against G's adoptions at the
+  same tick. A is descriptive because one assay at one tick cannot carry a rule.
+- **Not changed after the first decision run:** any change to these rules is a new experiment and is written up as one.
