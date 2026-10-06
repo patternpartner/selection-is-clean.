@@ -30,6 +30,13 @@
    "name": "SMELL",
    "op": 35,
    "tick": 400000
+  },
+  {
+   "k": 5,
+   "file": "5-hoard.js",
+   "name": "HOARD",
+   "op": 36,
+   "tick": 500000
   }
  ]
 }
