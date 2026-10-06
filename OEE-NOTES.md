@@ -25736,6 +25736,34 @@ in G against the inert twin I over 20,000-tick windows, with income share beside
     weak beside the lineage sweeps that carry them up and down, and three draws cannot separate the two. This is the same
     finding as the single twin from the other side. **What the pilot cannot tell, then, is whether any module was selected.**
     "Carried above the twin for 500,000 ticks" (BROTH) is suggestive, and nothing more until it is measured against a band.
+- **A fitness assay, because carrier share cannot answer "selected?" (`lab/loop-fitness.js`).** From a save, each module runs
+  armed and disarmed (4 draws each, 2,000 ticks) and every birth and death is attributed to whether the parent or the dead
+  carries the module's opcode; s is the carriers' growth advantage, and the module's effect is s armed minus s disarmed (the
+  carriers' other genes are the same in both arms at the start). SELECTED when every armed draw is above every disarmed one.
+  - Tick 800,000: TANK selected against (effect -0.09 per 1,000 ticks, t -3.1), as its purge in G said; BROTH +0.09 (t 1.4);
+    TENDRIL 0.02.
+  - Tick 1,000,000: **no module distinguishable from zero** (every |t| <= 1.5), including CARRION (carried by 30%) and TENDRIL,
+    each of which had been carried above its twin for most of the preceding 100,000 ticks.
+  - Tick 1,100,000: **GUT SELECTED** (effect +0.29, t 3.6, 14,661 carrier births); TENDRIL SELECTED too (+0.45, t 2.4, 1,139
+    births), which with ten modules and four draws may be a chance call and is not taken as one.
+  - The assay's spread is about 0.1 per 1,000 ticks, and selection ten times weaker would still move a module by a large
+    margin over 100,000 ticks. So it sees strong selection (GUT) and cannot see weak selection, and **most of the pilot's
+    "carried above the twin" was either weak selection or hitchhiking, and nothing here tells which.** In a world without
+    recombination an opcode rises and falls with the whole program that carries it.
+
+**What the pilot found (one seed; the deciding run is to test it).**
+- **The world stays open.** At about 5,000 generations (tick 1,000,000) it took GUT up within 20,000 ticks, faster than it
+  took BROTH up at the start (100,000 ticks). Nothing here looks like entrenchment: late novelty is adopted as readily as early.
+- **What is kept pays at once, where the organism stands, and to the organism alone.** Sequences (TANK: build, wait, tap),
+  sacrifices (HOARD: bury now, dig later), costly signals (SIGNAL) and modules that pay little (PIPE, SMELL) were purged or
+  drifted. GUT, the one private store with an immediate reach, is the strongest adoption.
+- **The one live composition was parasitic.** TENDRIL was built on BROTH and depends on it (its income is 0.00 without
+  BROTH on every draw); BROTH's digesting makes broth that seeps to the neighbours, TENDRIL let them drink it without
+  digesting, and BROTH, kept for 500,000 ticks, fell as TENDRIL rose and ended carried below its twin. A public good built
+  by one module was exploited by the next. GUT, the generator's answer (the same reach, nothing to share), replaced both.
+- **Composition depth stayed at 1.** Chains offered (TANK-PIPE on BROTH) were live but never in use.
+- **The generator responded to the world, and it showed:** GUT was designed from report 10's diagnosis of the collapse, and
+  it is the only module whose adoption the assay confirms. Whether responding mattered is what the all-at-once control tests.
 - **Z cannot exist here.** Every module after BROTH reads an earlier one, so the chain allows one order (recorded in
   PROTOCOL.md; S, the same schedule on another seed, replaces it).
 - **A metric bug, found and fixed during the pilot.** The loop that added module income to the income total sat inside a
