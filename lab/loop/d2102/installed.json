@@ -37,6 +37,13 @@
    "name": "LEAF",
    "op": 36,
    "tick": 500000
+  },
+  {
+   "k": 6,
+   "file": "6-stretch.js",
+   "name": "STRETCH",
+   "op": 37,
+   "tick": 600000
   }
  ]
 }
