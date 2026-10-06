@@ -25653,3 +25653,34 @@ formula size 6 or less. Then nothing new arrives for the remaining 700,000-1,000
 some functions early on two seeds, but no lasting turnover and no climb in difficulty. **Zaman et al.'s result does not
 reproduce in this world at this horizon.** This is the same shape as every world in #285-#290: a burst of real
 adaptation, then a plateau.
+
+### #292 — THE GENERATOR IN THE LOOP: one world that never restarts, whose physics keeps being extended while it runs.
+
+**Why.** Every closed world in #285-#291, and in the literature (Tierra, Avida, Geb, Polyworld, Echo, Lenia, POET), ends the
+same way: a burst of real adaptation, then a plateau. The one part of this project whose novelty has not plateaued is outside
+the worlds: 291 entries of new mechanisms, varied by agents and the user, selected by the retire-or-prove rules, carried
+forward in these notes.
+- **The open-ended system in plain sight is the designers.** They work between runs, outside selection, and the organisms only
+  ever recombine the menu they were given.
+- **Closest prior work:** Picbreeder (humans select), ELM (a language model as the mutation operator), OMNI-EPIC (a language
+  model writes new environments, judged by a model of interestingness). None lets a generator extend the physics of a running
+  ecology and leaves it to that ecology's own selection to decide what stays.
+
+**The machinery** (main, `b9e8fd9`):
+- **Modules (`installMod` in `lab/oee-core.js`).** A module is a piece of physics installed into a running world. It takes the
+  next free opcode and enters programs only through mutation.
+  - **The interface enforces conservation.** Energy only moves (or is lost as heat), never appears.
+  - **Modules can build on earlier modules' fields.**
+  - **No access to programs.** A module cannot see or edit organisms' code.
+  - **Disarmed modules** keep the opcode and do nothing (the inert twin).
+  - **Checks:** worlds without modules are byte-identical to before; save and resume with modules installed is exact.
+- **`lab/oee-loop.js`** runs the world G and its inert twin I in saved segments. Every `ADD_EVERY` ticks it pauses, writes
+  `report-<k>.md` (population, income by channel, module adoption, the commonest programs decoded, energy lying unused) and
+  waits for the generator's module.
+- **`lab/loop/PROTOCOL.md`:**
+  - the generator's rules: physics not reward, no favourites, one module per pause, never edit the past, say why;
+  - the controls fixed for a deciding run: A (all modules from tick 0), Z (scrambled order), and knockouts for composition.
+
+**The pilot (exploratory, seed 2001, a module every 100,000 ticks, about 600 generations).** The generator is the agent
+writing this (no API cost). It is a pilot: it is for finding out whether the loop works and what a fair deciding run needs.
+Nothing from it is a claim.
