@@ -48,7 +48,8 @@ function report(k){ const w=world('G'), wi=world('I'); const rows=fs.readFileSyn
   if(ASSAY&&w.mods&&w.mods.length){ if(!fs.existsSync(af)){ const t0=Date.now(), rows=fitness(fs.readFileSync(arm('G').save,'utf8'),{T:2000,REPS:4}); fs.writeFileSync(af,JSON.stringify({tick:w.tick,T:2000,REPS:4,rows},null,1)); log(`assay for report ${k}: ${((Date.now()-t0)/1000).toFixed(0)} s`); }
     const A=JSON.parse(fs.readFileSync(af,'utf8')); L.push('','## Selection now: each module armed against disarmed from this state (4 draws each, 2,000 ticks)',
       '- s is the carriers\' growth advantage per 1,000 ticks; effect is s armed minus s disarmed. SELECTED: every armed draw above every disarmed one; AGAINST: every one below.');
-    for(const r of A.rows) L.push(`- ${r.name}: carried ${(r.share*100).toFixed(1)}%, effect ${(r.effect*1000).toFixed(2)} (t ${r.t.toFixed(1)}), carriers' births ${r.births}: ${r.verdict==='-'?'not told from zero':r.verdict}`); }
+    const nf=(x,f,d)=>Number.isFinite(x)?(x*f).toFixed(d):'-';   // a module nobody carries has no carrier rate: its effect and t are NaN, saved as null
+    for(const r of A.rows) L.push(`- ${r.name}: carried ${nf(r.share,100,1)}%, effect ${nf(r.effect,1000,2)} (t ${nf(r.t,1,1)}), carriers' births ${r.births}: ${r.verdict==='-'?'not told from zero':r.verdict}`); }
   L.push('','## Modules so far'); if(!st.installed.length)L.push('- none'); for(const x of st.installed)L.push(`- ${x.k}: ${x.name} at tick ${x.tick} (${x.file})`);
   fs.writeFileSync(path.join(RUNDIR,`report-${k}.md`),L.join('\n')+'\n'); }
 
