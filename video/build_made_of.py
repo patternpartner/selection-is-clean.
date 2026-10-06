@@ -232,6 +232,12 @@ def render(clips, own, age, filled, t):
     img[ed] *= 0.12
     glow = cv2.GaussianBlur((ed * fresh).astype(np.float32), (0, 0), 3)
     img += glow[..., None] * AMBER * 1.6
+    # once it is home, its light runs out from the palm along the leading, a beat at a time, like veins
+    if t > 51.0:
+        dp = np.hypot(wx2 - PALM[0], wy2 - PALM[1])
+        front = (t - 51.0) * 230 + 90 * math.exp(-beat * BEAT / 0.15)
+        vein = (ed & (o > 0)).astype(np.float32) * (dp < front) * (0.9 + 1.6 * np.exp(-((dp - front) / 70) ** 2))
+        img += cv2.GaussianBlur(vein, (0, 0), 2.2)[..., None] * AMBER * 2.4
     # the edge where the outside is falling away burns for a moment
     if T_FALL < t < T_FALL + 6:
         front = np.exp(-((od - (t - T_FALL) * FALL_V) / 18) ** 2) * (od > 0.5) * (own[iy, ix] > 0)

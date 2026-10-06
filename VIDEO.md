@@ -1062,3 +1062,21 @@ in, a path that goes OUT THROUGH the cloud, the crowd circling, dark screens cap
 THE USER'S VERDICT: "Actually really liked that one. Felt new and familiar at the same time." What landed: no likeness,
 the archive itself as the material (their own clips and songs, re-seen), spatial sound, one clear arc (dark -> silence
 -> turn -> one small good thing). Familiar = their own footage and song; new = the form. Build on that, not away from it.
+
+### Made of Everything (`video/build_made_of.py` + `video/made_of_cache.py`, `out/made-of-everything.mp4`, 64.3 s, 720x1280)
+The user, after Where I Keep Everything: "Let's do something different." NO ONE'S LIKENESS, all code, no Modal. The
+same 247 archive clips, cached at 320 px / 4 s / 12 fps into out/archive/made/ (2.2 GB) by made_of_cache.py. The amber
+light paints in the dark; every stroke is a window onto one clip, anchored at the stroke's middle and sized to it
+(mirror-tiled past its edges), and it keeps playing from the moment it is painted. Dark leading between the panes like
+stained glass; a fresh edge glows amber; a liquid ripple round the light. Up close (view 520 world px of a 1440x2560
+world) one stroke a bar for the quiet build (Concrete Pressure 30.03-47.4, the whispered 'echo, pulse, drift'), then one
+a beat on the drop, shrinking, then a half-beat flurry. The strokes are planned greedily to cover a HAND silhouette (a
+blurred union of palm, forearm and five capsule fingers, make_hand()), but paint everywhere, so the shape cannot be
+read until 43.8 s, when everything outside the hand falls away from its edge outward (a burning front), the holes
+close (nearest-stroke fill), and the camera has pulled back to the whole hand. The light goes home to the palm and
+paints the first thing it painted (the white bird at sunset, u38) there; then its light runs out from the palm along
+the leading, a beat at a time, like veins, and the hand warms. End card 60.5-64.3. Song: Concrete Pressure 30.03-94.33.
+Iterations: strokes clipped to the hand gave the silhouette away in the first seconds (fixed by painting everywhere and
+the fall-away); the fall-away direction was inverted, then too fast (420 -> 170 world px/s); 50-60 s was ten seconds
+of one picture (fixed with the veins). HONEST: the drop section (17-44 s) is busy - forty-odd panes a minute, and
+the eye can't settle on any one clip; and the planner is greedy, so stroke order is a rule, not a choreography.
