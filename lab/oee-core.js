@@ -159,10 +159,12 @@ class World{
     if(T===0||T===255||T===0xF0||T===0xCC||T===0xAA)return; if(this.p.TASK_MAX&&this.tcount(c)>=this.p.TASK_MAX)return; const w=c*8+(T>>5), bit=1<<(T&31); if(this.tdone[w]&bit)return; this.tdone[w]|=bit;
     const g=this.tres[T]*this.p.TASK_F; this.tres[T]-=g; this.E[c]+=g; this.tE[T]+=g; this.tN[T]++; }
   tcount(c){ let n=0; for(let k=0;k<8;k++){ let x=this.tdone[c*8+k]; while(x){ x&=x-1; n++; } } return n; }
-  kill(c,why){ const P=this.p; this.alive[c]=0; this.tickDeaths++; this.corpse[c]+=Math.max(0,this.E[c])+P.BODY; this.E[c]=0; this.ev[why]++; }
+  kill(c,why){ const P=this.p; this.alive[c]=0; this.tickDeaths++; this.corpse[c]+=Math.max(0,this.E[c])+P.BODY; this.E[c]=0; this.ev[why]++;
+    const bf=this.bodyF; if(bf) for(const f of bf){ if(f.energy)this.corpse[c]+=f.A[c]; f.A[c]=0; } }   // a module's body fields die with the body: energy to the corpse, the rest cleared
   moveOrg(a,b){ const P=this.p, L=P.MAXLEN*2; this.alive[b]=1; this.alive[a]=0; this.E[b]=this.E[a]; this.age[b]=this.age[a]; this.pc[b]=this.pc[a]; this.face[b]=this.face[a];
     for(let k=0;k<4;k++)this.R[b*4+k]=this.R[a*4+k]; this.len[b]=this.len[a]; this.prog.copyWithin(b*L,a*L,a*L+L); this.sprog.copyWithin(b*L,a*L,a*L+L); this.slen[b]=this.slen[a];
     this.tag[b]=this.tag[a]; this.tmpl[b]=this.tmpl[a]; this.gen[b]=this.gen[a]; this.stamp[b]=this.stamp[a]; this.E[a]=0;
+    { const bf=this.bodyF; if(bf) for(const f of bf){ f.A[b]=f.A[a]; f.A[a]=0; } }   // and so do its module body fields
     if(this.p.TASKS){ for(let k=0;k<3;k++)this.tin[b*3+k]=this.tin[a*3+k]; this.tic[b]=this.tic[a]; for(let k=0;k<8;k++)this.tdone[b*8+k]=this.tdone[a*8+k]; } }
   mutateInto(src,r){ const P=this.p; for(const ins of src){ if(r()<P.MU_SUB){ if(r()<0.5)ins[0]=(r()*(this.nops||NOPS))|0; else ins[1]=(r()*256)|0; } }
     if(src.length<P.MAXLEN&&r()<P.MU_INS)src.splice((r()*(src.length+1))|0,0,[(r()*(this.nops||NOPS))|0,(r()*256)|0]);
@@ -296,16 +298,18 @@ class World{
     const op=this.nops; if(op>255)throw new Error('no opcodes left');
     const m={id:this.mods.length,name:spec.name,op,src,spec,disarmed:!!opt.disarmed,at:this.tick,fields:{},energyField:{},execs:0,inc:0,out:0,
       rnd:mulberry32((((this.p.MOD_SEED!==undefined?this.p.MOD_SEED:this.seed0)>>>0)||1)^(0x6d6f6400+op))};
-    for(const [k,f] of Object.entries(spec.fields||{})){ const A=new Float32Array(this.C); m.energyField[k]=!!(f&&f.energy); if(f&&f.init){ if(m.energyField[k])throw new Error('an energy field must start empty: '+k); A.fill(f.init); } m.fields[k]=A; }
+    for(const [k,f] of Object.entries(spec.fields||{})){ const A=new Float32Array(this.C); m.energyField[k]=!!(f&&f.energy); if(f&&f.init){ if(m.energyField[k])throw new Error('an energy field must start empty: '+k); if(f.body)throw new Error('a body field starts empty in every newborn: '+k); A.fill(f.init); } m.fields[k]=A;
+      if(f&&f.body){ m.bodyField=m.bodyField||{}; m.bodyField[k]=true; (this.bodyF=this.bodyF||[]).push({A,energy:m.energyField[k]}); } }   // body: belongs to the organism in the cell, not the cell
     m.api=this.modApi(m); this.mods.push(m); this.modByOp[op]=m; this.nops=op+1;
     if(!opt.noInit&&!m.disarmed&&spec.init)spec.init(m.api);
     return m; }
   modApi(m){ const w=this, C=w.C, P=w.p;
     // a field is named 'field' (this module's own) or 'NAME.field' (an earlier module's), so later physics can build on earlier physics
-    const owner=k=>{ const i=k.indexOf('.'); if(i<0)return [m,k]; const o=w.mods.find(x=>x.name===k.slice(0,i)); if(!o||o.id>=m.id)throw new Error(m.name+': no earlier module '+k.slice(0,i)); return [o,k.slice(i+1)]; };
+    const oc=new Map(), owner=k=>{ let r=oc.get(k); if(r)return r; const i=k.indexOf('.'); if(i<0)r=[m,k]; else { const o=w.mods.find(x=>x.name===k.slice(0,i)); if(!o||o.id>=m.id)throw new Error(m.name+': no earlier module '+k.slice(0,i)); r=[o,k.slice(i+1)]; } oc.set(k,r); return r; };   // a name always resolves the same way, so it is looked up once
     const store=k=>{ if(k==='E')return w.E; if(k==='light')return w.light; if(k==='corpse')return w.corpse; const [o,f]=owner(k); if(!o.fields[f]||!o.energyField[f])throw new Error(m.name+': not an energy store: '+k); return o.fields[f]; };
     const info=k=>{ const [o,f]=owner(k); if(!o.fields[f])throw new Error(m.name+': no field '+k); return o.fields[f]; };
     const isEnergy=k=>{ if(k==='E'||k==='light'||k==='corpse')return true; const [o,f]=owner(k); return !!o.energyField[f]; };
+    const isBody=k=>{ if(k==='E')return true; if(k==='light'||k==='corpse')return false; const [o,f]=owner(k); return !!(o.bodyField&&o.bodyField[f]); };
     return {
       C, W:P.W, H:P.H, get tick(){ return w.tick; },
       rand:()=>m.rnd(),
@@ -313,18 +317,20 @@ class World{
       E:c=>w.E[c], light:c=>w.light[c], corpse:c=>w.corpse[c],
       reg:(c,k)=>w.R[c*4+(k&3)], setReg:(c,k,v)=>{ w.R[c*4+(k&3)]=Number.isFinite(v)?v:0; },
       get:(k,c)=>isEnergy(k)?store(k)[c]:info(k)[c],
-      set:(k,c,v)=>{ if(isEnergy(k))throw new Error(m.name+': energy cannot be set, only moved: '+k); const [o]=owner(k); if(o!==m)throw new Error(m.name+': only its own information fields can be written: '+k); info(k)[c]=Number.isFinite(v)?v:0; },
+      set:(k,c,v)=>{ if(isEnergy(k))throw new Error(m.name+': energy cannot be set, only moved: '+k); const [o]=owner(k); if(o!==m)throw new Error(m.name+': only its own information fields can be written: '+k); if(isBody(k)&&!w.alive[c])return; info(k)[c]=Number.isFinite(v)?v:0; },
       move:(fk,fc,tk,tc,amt)=>{ if(!(amt>0))return 0; const F=store(fk), T=store(tk);
-        if(fk==='E'&&!w.alive[fc])return 0; if(tk==='E'&&!w.alive[tc])return 0;
+        if(isBody(fk)&&!w.alive[fc])return 0; if(isBody(tk)&&!w.alive[tc])return 0;   // a body store exists only while its organism lives
         const a=Math.min(amt,Math.max(0,F[fc])); if(!(a>0))return 0; F[fc]-=a; T[tc]+=a; if(tk==='E')m.inc+=a; if(fk==='E')m.out+=a; return a; },
       spend:(c,amt)=>{ if(!(amt>0)||!w.alive[c])return 0; w.E[c]-=amt; m.out+=amt; return amt; },
-      diffuse:(k,D)=>{ if(owner(k)[0]!==m)throw new Error(m.name+': only its own fields diffuse: '+k); const A=info(k), t=new Float32Array(C), W=P.W, H=P.H; for(let y=0;y<H;y++)for(let x=0;x<W;x++){ const c=y*W+x, v=A[c]; t[c]=v+D*((A[y*W+(x+W-1)%W]+A[y*W+(x+1)%W]+A[((y+H-1)%H)*W+x]+A[((y+1)%H)*W+x])/4-v); } A.set(t); },
+      diffuse:(k,D)=>{ if(owner(k)[0]!==m)throw new Error(m.name+': only its own fields diffuse: '+k); if(isBody(k))throw new Error(m.name+': a body field does not spread: '+k); const A=info(k), t=new Float32Array(C), W=P.W, H=P.H; for(let y=0;y<H;y++)for(let x=0;x<W;x++){ const c=y*W+x, v=A[c]; t[c]=v+D*((A[y*W+(x+W-1)%W]+A[y*W+(x+1)%W]+A[((y+H-1)%H)*W+x]+A[((y+1)%H)*W+x])/4-v); } A.set(t); },
       decay:(k,f)=>{ const [o]=owner(k); if(o!==m)throw new Error(m.name+': only its own fields decay: '+k); const A=info(k); for(let c=0;c<C;c++)A[c]*=1-f; } }; }
-  modSample(ev){ if(!this.mods)return null; let tot=(ev.eatLight||0)+(ev.eatCorpse||0)+(ev.attackTake||0)*this.p.ATT_EFF+(ev.metab||0);   // ev: this sample's counters (sample() has already reset the live ones) for(const m of this.mods)tot+=m.inc;
+  // ev: this sample's counters (sample() has already reset the live ones). Shares are over ALL income, modules included (den:'all');
+  // until this was fixed the module term sat inside the comment on this line, so older rows hold shares of base income only.
+  modSample(ev){ if(!this.mods)return null; let tot=(ev.eatLight||0)+(ev.eatCorpse||0)+(ev.attackTake||0)*this.p.ATT_EFF+(ev.metab||0); for(const m of this.mods)tot+=m.inc;
     const L=this.p.MAXLEN*2, carriers=new Map(); let n=0; for(let c=0;c<this.C;c++){ if(!this.alive[c])continue; n++; const o=c*L, seen=new Set(); for(let i=0;i<this.len[c];i++){ const op=this.prog[o+i*2]; if(op>=NOPS)seen.add(op); } for(const op of seen)carriers.set(op,(carriers.get(op)||0)+1); }
     const list=this.mods.map(m=>{ let fe=0; for(const [k,A] of Object.entries(m.fields)) if(m.energyField[k]) for(let c=0;c<this.C;c++)fe+=A[c];
       const r={id:m.id,name:m.name,op:m.op,disarmed:m.disarmed,at:m.at,execs:m.execs,inc:+m.inc.toFixed(2),out:+m.out.toFixed(2),carriers:n?+((carriers.get(m.op)||0)/n).toFixed(4):0,fieldEnergy:+fe.toFixed(2)}; m.execs=0; m.inc=0; m.out=0; return r; });
-    return {nops:this.nops,list,flux:list.filter(r=>r.inc>0).map(r=>[r.id,tot>0?+(r.inc/tot).toFixed(4):0])}; }
+    return {nops:this.nops,den:'all',list,flux:list.filter(r=>r.inc>0).map(r=>[r.id,tot>0?+(r.inc/tot).toFixed(4):0])}; }
   count(){ let n=0; for(let c=0;c<this.C;c++)n+=this.alive[c]; return n; }
   reseed(){ const anc=[[OP.EAT_LIGHT,0],[OP.DIVIDE,0],[OP.TURN,1]]; this.reseeds=(this.reseeds||0)+1;
     for(let k=0;k<this.C/16;k++){ const c=(this.rnd()*this.C)|0; if(!this.alive[c]){ this.place(c,anc,1.0,(this.rnd()*65536)|0,(this.rnd()*65536)|0,0); this.ns.push(0); this.fs.push(0); } } }
