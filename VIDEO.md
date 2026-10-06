@@ -1084,3 +1084,29 @@ THE USER'S VERDICT: "Could actually be one of my favourites you have done." Like
 likeness, all code, zero Modal cost, the archive re-used as material rather than as scenes, and one structural reveal
 (the patchwork was a hand) carrying the film instead of a narrated idea. Worth remembering as a direction: a single
 image the whole film is secretly building toward, made out of everything already made.
+
+### Played (`video/build_played.py`, `out/played.mp4`, 53 s, 720x1280) - the sound made from the clips
+After Made of Everything the user asked "Are you pushing yourself?" Claude said no (the next pitch was the hand again
+with a different picture) and named the stretch: make the sound itself, with no borrowed song, in the medium Claude
+cannot check by ear. "Keep pushing." NO ONE'S LIKENESS, all code, zero Modal cost, and NO REVEAL - it has to hold
+second by second.
+The screen is one stained-glass window of 18 panes (a weighted Voronoi of seeds), each an archive clip WITH audio. Each
+pane is one note: height = pitch, dark clips low, bright high (bass: copper origami u57, melting bronze u69, gold neon
+stars u105, bowling alley u160; melody D4..D6: gold web u12 ... the bird u38 = D5, the tonic ... the ink swirling into a
+seed u107 = D6). A note's sound is that clip's own audio (16 kHz cache, upsampled), the loudest-changing 0.35 s struck
+through a tuned modal resonator (10 slightly inharmonic partials, brighter clip = more upper partials), plus a breath
+of the raw clip sound. Pane brightness IS the note's measured loudness each frame (played-env.npy). Same note = same
+picture every time, so the tune can be followed by eye. Score (Claude's): D minor, 80 bpm, Dm-Bb-F-C; motif alone ->
+bass enters -> eighth-note arpeggio climax -> motif returns on the same pictures -> one low D rings out. 113 notes.
+HOW IT WAS CHECKED WITHOUT EARS, and what each check caught: (1) EBU R128 loudness: the first render was -0.7 LUFS
+(resonators unnormalised, the limiter crushing everything) - fixed; final -14.8 LUFS. (2) per-pane level: notes varied
+30 dB because how much a clip's sound overlaps a pitch is luck - every note levelled. (3) a spectrogram against the
+written score: the notes sit on the lines, but every strike had a broadband column down to 40 Hz; band energy showed
+-10.8 dB below 120 Hz in bars with no bass; single-note renders traced it to the clips' own rumble leaking through the
+resonator skirt (33 dB is not enough when the rumble starts 30 dB louder) - each note high-passed at 0.7 x f0, now
+-53 dB. (4) harmonic-sum pitch check: every isolated note at its written pitch (the 3 "misses" were notes struck with
+the low D, whose 9th harmonic is E5). (5) click scan: 0. (6) dynamics per bar follow the score. (7) a score check found
+two panes (E4, G4) never played - dead keys - written into the climax arpeggios.
+HONEST: none of those checks say whether it is BEAUTIFUL. The timbre is a guess - plucked/struck, somewhere between a
+kalimba and a prepared piano with grit - and the user is the only ear this piece has had. Picture: legible at full
+size, murky on a contact sheet; the window never fully lights at once.
