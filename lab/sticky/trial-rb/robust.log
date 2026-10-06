@@ -2,3 +2,5 @@
 05/10/2026, 23:28:02 BST phase A done
 06/10/2026, 00:10:41 BST phase B done
 06/10/2026, 01:13:18 BST search done; top3 a03 -0.138, h-c055pass -0.153, b04 -0.210
+06/10/2026, 02:07:11 BST confirm a03: centre 1/3 rel 0.741 FAIL
+06/10/2026, 02:37:52 BST confirm h-c055pass: centre 2/3 rel 1.145 PASS
