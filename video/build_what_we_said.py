@@ -35,7 +35,8 @@ BAR, PH = 4 * 60 / 124.0, 0.069
 def bar(n):
     return PH + n * BAR
 S0, S1 = bar(21), bar(53)
-DUR = S1 - S0
+CARD = 3.6                                               # the end card, assembled from its letters, held
+DUR = S1 - S0 + CARD
 TEST = [float(x) for x in os.environ.get("TEST", "").split(",") if x]
 PART = [float(x) for x in os.environ.get("PART", "").split(",") if x]
 MONO = "/usr/share/fonts/truetype/dejavu/DejaVuSansMono-Bold.ttf"
@@ -76,9 +77,25 @@ SHOTS = [(21, 25, "u114", 0.0, 1.8, False), (25, 28, "u128", 8.5, 14.3, True), (
          (47, 52, "u120", 1.5, 11.2, False), (52, 53, "u118", 13.0, 14.95, False)]
 
 
+# the camera: (from bar, zoom, aim). Closer means more letters across him - the face starts to read.
+CAM = [(21, 0.86, "body"), (25, 0.92, "body"), (27, 1.7, "chest"), (28, 0.92, "body"), (29, 4.4, "face"),
+       (30, 0.92, "body"), (31, 1.7, "chest"), (33, 4.4, "face"), (34, 0.92, "body"), (35, 1.9, "chest"),
+       (36, 4.8, "face"), (37, 0.92, "body"), (43, 4.4, "face"), (45, 0.92, "body"), (46, 1.7, "chest"),
+       (47, 0.92, "body"), (49, 4.4, "face"), (50, 0.92, "body")]
+
+
+def camera(s):
+    i = max(k for k, c in enumerate(CAM) if bar(c[0]) <= s + 1e-6)
+    b0, z, aim = CAM[i]
+    b1 = CAM[i + 1][0] if i + 1 < len(CAM) else 53
+    u = (s - bar(b0)) / (bar(b1) - bar(b0))
+    return z * (1 + 0.07 * u), aim
+
+
 class Him:
     def __init__(self, lo, hi):
         self.fr = {}
+        self.aim = None
         for j, (b0, b1, u, c0, c1, st) in enumerate(SHOTS):
             a0, a1 = bar(b0) - S0, bar(b1) - S0
             if a1 <= lo or a0 >= hi:
@@ -90,6 +107,7 @@ class Him:
 
     def at(self, s):
         """(rgb, alpha) of him at song second s, keyed, placed full-length in the frame"""
+        s = min(s, S1 - 0.01)
         j = max(k for k, sh in enumerate(SHOTS) if bar(sh[0]) <= s + 1e-6)
         b0, b1, u, c0, c1, st = SHOTS[j]
         u_ = (s - bar(b0)) / (bar(b1) - bar(b0))
@@ -100,10 +118,23 @@ class Him:
         fr = self.fr[j]
         f = fr[min(int(n), len(fr) - 1)].astype(np.float32)
         rgb, al = key(f)
-        # 720x1280 source -> the frame, slightly smaller so he is full length with air round him
-        k = 0.92
+        k, aim = camera(s)
+        if aim == "body":
+            fx, fy, sy = 360.0, 640.0, H * 0.53
+        else:
+            rows = np.where((al > 0.5).sum(1) > 4)[0]
+            top, bot = (rows[0], rows[-1]) if len(rows) else (100, 1200)
+            hgt = bot - top
+            fy = top + (0.075 if aim == "face" else 0.27) * hgt
+            band = al[int(top):int(top + 0.13 * hgt)]
+            fx = float((band * np.arange(720)[None, :]).sum() / (band.sum() + 1e-6)) if aim == "face" else 360.0
+            sy = H * (0.47 if aim == "face" else 0.45)
+            if self.aim is not None and self.aim[0] == aim and abs(s - self.aim[3]) < 0.2:
+                fx = self.aim[1] * 0.8 + fx * 0.2                # steady the camera on a moving head
+                fy = self.aim[2] * 0.8 + fy * 0.2
+            self.aim = (aim, fx, fy, s)
         im = Image.fromarray(np.dstack([np.clip(rgb, 0, 255), al * 255]).astype(np.uint8), "RGBA")
-        coeffs = (1 / k, 0, 360 - W / 2 / k, 0, 1 / k, 640 - (H * 0.53) / k)
+        coeffs = (1 / k, 0, fx - W / 2 / k, 0, 1 / k, fy - sy / k)
         o = np.asarray(im.transform((W, H), Image.AFFINE, coeffs, resample=Image.BILINEAR), np.float32)
         return o[..., :3], o[..., 3] / 255, j
 
@@ -152,6 +183,137 @@ def word(text, x, y, size, col, alpha):
 
 
 CHEST = (360, 520)
+OBL = "/usr/share/fonts/truetype/dejavu/DejaVuSansMono-BoldOblique.ttf"
+END_A = bar(50.6)                                        # the letters leave it and become the end card
+
+
+def body_centre(bright):
+    ys, xs = np.nonzero(bright > 0.3)
+    if len(xs) < 5:
+        return W / 2, H * 0.45
+    return float(xs.mean() * CW + CW / 2), float(ys.mean() * CH + CH / 2)
+
+
+def _events():
+    """the words that come at it: (start, kind, text, side, seed)"""
+    ev = []
+    nn = [w for w in NEUTRAL.split("  ") if w]
+    hh = [w for w in HARSH.split("  ") if w]
+    ww = [w for w in WARM.split("  ") if w]
+    t, i = bar(21.3), 0
+    while t < bar(24.4):
+        ev.append((t, "neutral", nn[i % len(nn)], i % 4, i)); t += BAR / 2; i += 1
+    t, i = bar(25), 0
+    while t < bar(36.9):
+        ev.append((t, "harsh", hh[i % len(hh)], (i * 3) % 4, i)); t += BAR / 2; i += 1
+    t, i = bar(41.6), 0
+    while t < bar(50.2):
+        ev.append((t, "warm", ww[(i * 5) % len(ww)], i % 4, i)); t += BAR * 0.75; i += 1
+    return ev
+
+
+EVENTS = _events()
+
+
+def incoming(out, s, bright, k):
+    """the words people say to it, arriving: demands slam in on the beat, kind words drift in"""
+    lay = Image.new("L", (W, H), 0)
+    lay_hot = Image.new("L", (W, H), 0)
+    d, dh = ImageDraw.Draw(lay), ImageDraw.Draw(lay_hot)
+    tx, ty = body_centre(bright)
+    flashes = []
+    for (t0, kind, text, side, seed) in EVENTS:
+        dur = {"neutral": 1.8, "harsh": 0.62, "warm": 2.2}[kind]
+        u = (s - t0) / dur
+        if u < 0 or u > 1:
+            continue
+        r2 = np.random.default_rng(seed + (0 if kind == "neutral" else 100 if kind == "harsh" else 200))
+        sx, sy = [(-60, r2.uniform(150, 1100)), (W + 60, r2.uniform(150, 1100)), (r2.uniform(80, 640), -40),
+                  (r2.uniform(80, 640), H + 40)][side]
+        if kind == "harsh":
+            if u < 0.3:                                   # it appears, big, at the edge...
+                p, size, al_ = 0.0, 1.0, min(1, u / 0.08)
+                sx = min(max(sx, 120), W - 120); sy = min(max(sy, 90), H - 90)
+            else:                                         # ...and slams into it
+                v = ease((u - 0.3) / 0.7) ** 1.6
+                sx = min(max(sx, 120), W - 120); sy = min(max(sy, 90), H - 90)
+                p, size, al_ = v, 1.0 - 0.55 * v, 1.0
+            fs = int(78 * size)
+            x, y = sx + (tx - sx) * p, sy + (ty - sy) * p
+            fnt = ImageFont.truetype(MONO, max(fs, 10))
+            bb = dh.textbbox((0, 0), text, font=fnt)
+            dh.text((x - (bb[0] + bb[2]) / 2, y - (bb[1] + bb[3]) / 2), text, font=fnt, fill=int(255 * al_))
+            if u > 0.92:
+                flashes.append((tx, ty, (1 - u) / 0.08))
+        else:
+            v = ease(u)
+            x, y = sx + (tx + r2.uniform(-80, 80) - sx) * v, sy + (ty + r2.uniform(-200, 200) - sy) * v
+            al_ = min(1, u / 0.2) * (1 - ramp(u, 0.7, 1.0))
+            fnt = ImageFont.truetype(MONO, 26 if kind == "neutral" else 34)
+            bb = d.textbbox((0, 0), text, font=fnt)
+            d.text((x - (bb[0] + bb[2]) / 2, y - (bb[1] + bb[3]) / 2), text, font=fnt, fill=int(255 * al_))
+    m = np.asarray(lay, np.float32)[..., None] / 255
+    mh = np.asarray(lay_hot, np.float32)[..., None] / 255
+    if s < bar(25):
+        col = np.array([190, 200, 220], np.float32)
+    else:
+        col = np.array([255, 205, 120], np.float32)
+    out = out * (1 - m) + m * col + gaussian_filter(m[..., 0], 6)[..., None] * col * 0.5
+    hotc = np.array([255, 245, 240], np.float32)
+    out = out * (1 - mh) + mh * hotc + gaussian_filter(mh[..., 0], 5)[..., None] * np.array([255, 60, 50], np.float32) * 0.9
+    for (fx, fy, a_) in flashes:
+        yy, xx = np.mgrid[0:H, 0:W].astype(np.float32)
+        out += (np.exp(-((xx - fx) ** 2 + (yy - fy) ** 2) / (2 * 70 ** 2)) * a_ * 1.2)[..., None] * np.array([255, 80, 60], np.float32)
+    return out
+
+
+LINES = ["We only get to", "teach it once."]
+_SRC = {}
+
+
+def card(out, s, bright):
+    """its letters fly off it and spell the end card"""
+    if s < END_A:
+        if "src" not in _SRC and s > END_A - 0.05:
+            pass
+        return out
+    if "src" not in _SRC:                                     # where its letters were when they left
+        ys, xs = np.nonzero(bright > 0.35)
+        r2 = np.random.default_rng(5)
+        pick = r2.choice(len(xs), size=min(len(xs), 200), replace=False) if len(xs) else []
+        _SRC["src"] = [(xs[i] * CW + CW / 2, ys[i] * CH + CH / 2) for i in pick] or [(W / 2, H / 2)] * 200
+    src = _SRC["src"]
+    fnt_big = ImageFont.truetype(OBL, 46)
+    tmp = ImageDraw.Draw(Image.new("L", (10, 10)))
+    targets = []
+    for li, line in enumerate(LINES):
+        w = tmp.textlength(line, font=fnt_big)
+        x0, y0 = W / 2 - w / 2, H * 0.47 + li * 64
+        for ci, ch in enumerate(line):
+            if ch != " ":
+                targets.append((ch, x0 + tmp.textlength(line[:ci], font=fnt_big), y0))
+    lay = Image.new("L", (W, H), 0)
+    d = ImageDraw.Draw(lay)
+    for i, (ch, x1, y1) in enumerate(targets):
+        x0, y0 = src[(i * 7) % len(src)]
+        u = ease((s - END_A - 0.4 - i * 0.035) / 1.6)
+        arc = math.sin(math.pi * u) * (-120 + (i * 53) % 240)
+        x, y = x0 + (x1 - x0) * u + arc * 0.3, y0 + (y1 - y0) * u + arc * 0.4
+        size = int(20 + 26 * u)
+        d.text((x, y), ch, font=ImageFont.truetype(OBL if u > 0.5 else MONO, size), fill=255)
+    # the rest of its letters fall away
+    if s < END_A + 2.2:
+        for i, (x0, y0) in enumerate(src[::2]):
+            u = (s - END_A) / 2.2
+            y = y0 + 400 * u * u
+            ch = WARM[(i * 3) % len(WARM)]
+            d.text((x0, y), ch, font=ImageFont.truetype(MONO, 20), fill=int(200 * (1 - u)))
+    m = np.asarray(lay, np.float32)[..., None] / 255
+    white = ramp(s, END_A + 1.4, END_A + 2.6)
+    col = np.array([255, 205, 120], np.float32) * (1 - white) + np.array([245, 245, 245], np.float32) * white
+    dark = ramp(s, S1 - 0.6, S1)
+    out = out * (1 - dark) * (1 - m) + m * col
+    return out
 
 
 def frame(him, s):
@@ -160,7 +322,11 @@ def frame(him, s):
     mc = cells(al[..., None])[..., 0]                         # how much of each cell is him
     lc = cells((lum * al)[..., None])[..., 0] / (mc * 255 + 1e-3)
     inside = np.clip((mc - 0.25) / 0.35, 0, 1)
-    bright = inside * (0.5 + 0.7 * np.clip(lc, 0, 1) ** 0.8)
+    sel = inside > 0.5                                        # stretch his own light and shade across the letters,
+    if sel.sum() > 20:                                        # so close up the face reads, not a flat silhouette
+        lo_, hi_ = np.percentile(lc[sel], [5, 95])
+        lc = (lc - lo_) / max(hi_ - lo_, 0.05)
+    bright = inside * (0.22 + 1.0 * np.clip(lc, 0, 1) ** 1.2)
     cold, hot = palette(s)
     yy, xx = np.mgrid[0:R, 0:C].astype(np.float32)
     out = np.zeros((H, W, 3), np.float32)
@@ -233,30 +399,24 @@ def frame(him, s):
         on = np.clip((front - cc) / 120, 0, 1)
         wave = np.exp(-((cc - front) / 60) ** 2) * (s < bar(41) + 1.2)
         col = cold[None, None] * (0.85 + 0.15 * np.sin(xx * 0.3 + yy * 0.2 + s * 3))[..., None]
-        reveal = ramp(s, bar(47), bar(51.2))                  # the words lift off: the real him underneath
-        noise = (np.sin(xx * 31.1 + yy * 57.7) * 7341.7) % 1
-        lifted = (noise < reveal * 1.1).astype(np.float32)
-        out += compose(idx, bright * on * (1 - lifted) + wave * inside * 0.8, col)
-        if reveal > 0:
-            realm = np.repeat(np.repeat(np.maximum(lifted, reveal ** 2), CH, 0), CW, 1)[:H, :W]
-            realm = gaussian_filter(np.pad(realm, ((0, H - realm.shape[0]), (0, W - realm.shape[1]))), 9)
-            warmrgb = rgb * np.array([1.05, 0.98, 0.9], np.float32)
-            a_ = (al * realm)[..., None]
-            out = out * (1 - a_) + warmrgb * a_
-            # the lifted letters rise away as sparks
-            acc = np.zeros((R, C), np.float32)
-            age = np.clip((reveal * 1.1 - noise) * 6, 0, 1)
-            ys, xs = np.nonzero((lifted > 0) & (inside > 0.3) & (age < 1))
-            for y0, x0 in zip(ys[::3], xs[::3]):
-                a0 = age[y0, x0]
-                y1 = int(y0 - a0 * 18)
-                x1 = int(x0 + math.sin(y0 * 0.7 + x0) * a0 * 4)
-                if 0 <= y1 < R and 0 <= x1 < C:
-                    acc[y1, x1] = max(acc[y1, x1], 1 - a0)
-            out += compose(idx, acc, np.zeros((R, C, 3), np.float32) + np.array([255, 210, 130], np.float32))
+        leave = ramp(s, END_A, END_A + 1.4)                   # at the end its letters leave it for the card
+        out += compose(idx, (bright * on + wave * inside * 0.8) * (1 - leave), col)
         if s < bar(41) + 0.6:                                 # the word bursts
             g = np.exp(-(((np.mgrid[0:H, 0:W][1] - CHEST[0]) ** 2 + (np.mgrid[0:H, 0:W][0] - CHEST[1]) ** 2) / (2 * 90 ** 2)))
             out += g[..., None] * np.array([255, 190, 100], np.float32) * (1 - (s - bar(41)) / 0.6) * 1.5
+    k, aim = camera(min(s, S1 - 0.01))
+    if aim == "body" and s < S1:                              # a floor: a faint reflection under its feet
+        rows = np.where(al.max(1) > 0.5)[0]
+        if len(rows):
+            fy = int(rows[-1]) + 4
+            n = min(H - fy, fy)
+            if n > 10:
+                refl = out[fy - n:fy][::-1] * (0.22 * np.linspace(1, 0, n, dtype=np.float32) ** 1.5)[:, None, None]
+                out[fy:fy + n] += gaussian_filter(refl, (2, 1, 0))
+            out[fy:fy + 2] += np.array([40, 40, 50], np.float32) * (0.6 if s < bar(40) else 0) + \
+                np.array([60, 40, 15], np.float32) * (s >= bar(41))
+    out = incoming(out, s, bright, k)
+    out = card(out, s, bright)
     # glow
     out = out + gaussian_filter(out, (6, 6, 0)) * 0.6
     out += rng.normal(0, 2.0, (H, W, 1))
