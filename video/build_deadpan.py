@@ -1,4 +1,4 @@
-"""'No Quarters Left' v2 - the user's own likeness WALKING, deadpan, through a world of 90s home-video weirdness. From the
+"""'Deadpan' (was 'No Quarters Left' v2; the user swapped the song for 'Same Time Tomorrow?') - the user's own likeness WALKING, deadpan, through a world of 90s home-video weirdness. From the
 6 Oct batches (u133-u171) and Claude's pitch, which the user liked: "you ... calmly walking through all that 90s weirdness
 as if it's perfectly normal". Song chosen by Claude: 'No Quarters Left' (144.43 bpm, bar 1.6617 s, beat phase 0.197; a
 chopped, scratched breakbeat). Song 13.49-68.33 = 33 bars (ending where the song drops away), then the end card.
@@ -14,7 +14,7 @@ essentially just the same video with me plopped into them." v2:
    figures side-on. His own deadpan tux clips (penguins, chickens, fridge, the orange can) are stops on the way, and in
    the laundrette with the puppets (u147) he finally dances.
 Square 960x960 with a VHS look; every cut a channel change (tracking tear, green CH number).
-    python3 video/build_no_quarters.py   (TEST=s1,s2 TESTDIR=dir in SONG seconds; PART=a,b VOUT=f in film seconds)
+    python3 video/build_deadpan.py   (TEST=s1,s2 TESTDIR=dir in SONG seconds; PART=a,b VOUT=f in film seconds)
 """
 import math
 import os
@@ -31,9 +31,9 @@ from bluekey import key  # noqa: E402
 
 F = imageio_ffmpeg.get_ffmpeg_exe()
 N, FPS = 960, 24
-BAR, PH = 1.6617, 0.197
-S0 = PH + 8 * BAR                                        # 13.49: one bar of VHS PLAY before the first shot
-DUR = 33 * BAR
+BAR, PH = 4 * 60 / 126.0, 0.124                       # 'Same Time Tomorrow?' (the user's pick), 126 bpm
+S0 = PH + 3 * BAR                                        # 5.84: one bar of VHS PLAY, the first shot on the drop
+DUR = 34 * BAR
 TEST = [float(x) for x in os.environ.get("TEST", "").split(",") if x]
 PART = [float(x) for x in os.environ.get("PART", "").split(",") if x]
 MONO = "/usr/share/fonts/truetype/dejavu/DejaVuSansMono-Bold.ttf"
@@ -48,37 +48,40 @@ CROP = {'u146': (152, 32, 416), 'u151': (150, 60, 420), 'u155': (120, 0, 480), '
 # one bar each unless said. (background clip, its start, him or None)
 # him = (clip, start, mode, a, b, c, flip): mode "walk": feet x, feet y, height (fractions of the frame), size normalised;
 #                                          mode "frame": his whole 720x1280 frame, centre x, centre y, scale
-W_ = "walk"
+W_, D_ = "walk", "dance"
 SHOTS = [
+    # ---- the instrumental: deadpan, walking through it
     ("u146", 2.0, None, 2),                                                   # penguins: deadpan, standing
     ("u167", 4.0, ("u117", 3.0, W_, 0.60, 0.93, 0.62, False), 1),             # the turkey crawls; he walks on
-    ("u160", 7.3, ("u117", 4.66, W_, 0.70, 0.95, 0.55, False), 1),            # the head rises behind him...
+    ("u160", 7.3, ("u117", 4.9, W_, 0.70, 0.95, 0.55, False), 1),             # the head rises behind him...
     ("u160", 8.4, ("u117", 8.5, W_, 0.70, 0.95, 0.55, False), 1),             # ...he turns to look at it
     ("u151", 1.0, None, 1),                                                   # chickens
-    ("u165", 3.0, ("u117", 6.32, W_, 0.24, 0.86, 0.30, False), 1),            # tiny, on the counter, past the jug's mouth
-    ("u171", 4.6, ("u117", 11.0, W_, 0.70, 0.97, 0.62, False), 1),            # the arcade hand snatches behind him
+    ("u165", 3.0, ("u117", 11.0, W_, 0.24, 0.86, 0.30, False), 1),            # tiny, on the counter, past the jug's mouth
+    ("u171", 4.6, ("u117", 12.9, W_, 0.70, 0.97, 0.62, False), 1),            # the arcade hand snatches behind him
     ("u155", 3.0, None, 1),                                                   # fridge
-    ("u158", 3.0, ("u114", 7.6, W_, 0.78, 0.97, 0.62, False), 1),             # he bows to the skeleton...
-    ("u158", 4.66, ("u114", 9.26, W_, 0.78, 0.97, 0.62, False), 1),           # ...and gives it a ta-da
-    ("u170", 5.5, ("u117", 12.66, W_, 0.14, 0.96, 0.28, False), 1),           # tiny on the desk; hands through the screen
-    ("u138", 2.5, None, 1),                                                   # the orange can
-    ("u163", 5.0, ("u114", 1.8, W_, 0.78, 0.93, 0.34, False), 1),             # a shrug at the hollow teddy
-    ("u169", 5.5, ("u114", 4.0, W_, 0.74, 0.93, 0.40, False), 2),             # he sits on air and floats up beside it
-    ("u153", 7.0, ("u113", 0.3, W_, 0.50, 0.96, 0.55, False), 1),             # through the middle of the dance troupe
-    ("u159", 5.0, ("u113", 9.3, "frame", 0.50, 0.62, 0.62, False), 1),        # palm to the glass of the sun's TV
     ("u164", 2.0, ("u114", 13.0, W_, 0.20, 0.88, 0.40, False), 1),            # side-on along the row of identical figures
-    ("u156", 4.0, ("u113", 1.96, W_, 0.50, 0.95, 0.50, False), 1),            # down the cubicle aisle; the ghoul flicks on
-    ("u162", 4.5, ("u117", 5.5, W_, 0.80, 0.98, 0.70, True), 1),             # past the doll as its eyes run black
-    ("u150", 3.0, ("u113", 4.0, W_, 0.45, 0.97, 0.66, False), 1),             # away down the hall as the wallpaper peels
-    ("u168", 3.0, ("u113", 7.6, W_, 0.27, 0.90, 0.40, False), 1),             # holds a hand out to the doughnut's eye
-    ("u148", 2.5, ("u117", 8.5, W_, 0.70, 0.80, 0.42, True), 1),              # turning in space as the glass whale passes
-    ("u154", 4.0, ("u113", 11.0, "frame", 0.50, 0.88, 0.55, False), 1),       # he looks up with the crowd
-    ("u161", 5.0, ("u117", 3.0, W_, 0.72, 0.66, 0.30, True), 1),              # lightning: it is him walking past the car
-    ("u149", 3.0, ("u117", 4.66, W_, 0.30, 0.86, 0.36, True), 1),             # across the forecourt as the car doors open
-    ("u157", 4.0, ("u115", 11.3, W_, 0.70, 0.95, 0.58, False), 1),            # drawers spill; and at last he smiles
-    ("u147", 2.0, None, 4),                                                   # the laundrette: he dances
+    ("u158", 3.0, ("u114", 7.6, W_, 0.78, 0.97, 0.62, False), 1),             # he bows to the skeleton
+    # ---- "So I took my hands out of my pockets slow"
+    ("u149", 3.0, ("u120", 0.0, D_, 0.40, 0.88, 0.40, False, 0.4), 2),        # on the forecourt as the car doors open
+    # ---- "and I gave them the only thing I know"
+    ("u149", 6.8, ("u120", 1.5, D_, 0.40, 0.88, 0.40, False), 1),
+    ("u158", 5.0, ("u120", 3.4, D_, 0.78, 0.97, 0.62, False), 1),             # dancing with the skeleton
+    ("u163", 5.0, ("u120", 5.3, D_, 0.80, 0.93, 0.34, False), 1),             # at the hollow teddy's party
+    ("u159", 5.0, ("u118", 1.0, D_, 0.50, 1.00, 0.55, False), 1),             # "no speech, no flag, no plan" under the sun
+    ("u156", 4.0, ("u118", 2.9, D_, 0.50, 0.95, 0.50, False), 1),             # "a left foot, a right foot" in the office
+    ("u168", 3.0, ("u118", 4.8, D_, 0.27, 0.90, 0.40, False), 1),             # "a clap of the hands" by the doughnut
+    ("u169", 5.5, ("u118", 8.5, D_, 0.74, 0.93, 0.40, False), 2),             # "Area 51, hey!" - jumping, floating up
+    ("u148", 2.5, ("u120", 7.2, D_, 0.70, 0.80, 0.42, False), 1),             # "we came out dancing" - spinning in space
+    ("u154", 4.0, ("u118", 6.4, D_, 0.50, 0.97, 0.50, False), 1),             # under the opening sky
+    ("u153", 7.0, ("u120", 9.1, D_, 0.50, 0.96, 0.52, False), 1),             # "they copy everything" - the troupe in step
+    ("u170", 5.5, ("u120", 12.9, D_, 0.16, 0.96, 0.30, False), 1),            # "arms up, round and round"
+    ("u161", 5.0, ("u120", 11.0, D_, 0.72, 0.70, 0.30, False), 1),            # past the car in the lightning
+    ("u150", 3.0, ("u118", 12.4, D_, 0.45, 0.97, 0.60, False), 1),            # "arms up" - waving both hands
+    ("u162", 4.5, ("u120", 9.1, D_, 0.80, 0.98, 0.66, True), 1),              # by the crying doll
+    ("u157", 4.0, ("u120", 5.3, D_, 0.70, 0.95, 0.58, True), 1),              # "first thing they ever saw us do"
+    ("u147", 1.0, None, 4),                                                   # the laundrette: "Area 51, hey!"
 ]
-assert sum(s[3] for s in SHOTS) == 32, sum(s[3] for s in SHOTS)
+assert sum(s[3] for s in SHOTS) == 33, sum(s[3] for s in SHOTS)
 
 
 def ease(u):
@@ -95,7 +98,7 @@ def load_bg(u, t0, dur):
     return np.frombuffer(raw, np.uint8).reshape(-1, N, N, 3)
 
 
-def load_him(u, t0, dur, flip):
+def load_him(u, t0, dur, flip, steady=False):
     """his blue-screen frames, keyed; plus a smoothed bounding box (top, bottom, centre x) per frame"""
     raw = subprocess.run([F, "-loglevel", "error", "-ss", f"{t0:.3f}", "-t", f"{dur:.3f}", "-i", f"out/user-clips/{u}.mp4",
                           "-map", "0:v:0", "-vf", f"fps={FPS}", "-f", "rawvideo", "-pix_fmt", "rgb24", "-"],
@@ -111,6 +114,12 @@ def load_him(u, t0, dur, flip):
         cols = np.where((al > 0.5).sum(0) > 3)[0]
         boxes.append((rows[0], rows[-1], (cols[0] + cols[-1]) / 2) if len(rows) else (0, 1279, 360))
     b = np.array(boxes, np.float32)
+    if steady:                                               # dancing: one size and one floor line for the whole shot,
+        h = np.median(b[:, 1] - b[:, 0])                     # so the jumps and arm swings move, not the scale
+        b[:, 1] = np.median(b[:, 1])
+        b[:, 0] = b[:, 1] - h
+        b[:, 2] = np.median(b[:, 2])
+        return out, b
     for j in range(3):
         b[:, j] = median_filter(b[:, j], 9, mode="nearest")
         b[:, j] = gaussian_filter(b[:, j], 2.0, mode="nearest")
@@ -122,7 +131,7 @@ def put_him(bg, rgb, al, box, mode, a, b, c, s):
     top, bot, cx = box
     rgba = np.dstack([rgb, al]).astype(np.uint8)
     im = Image.fromarray(rgba, "RGBA")
-    if mode == "walk":
+    if mode in ("walk", "dance"):
         k = c * N / max(bot - top, 50)
         fx, fy = a * N, b * N
         coeffs = (1 / k, 0, cx - fx / k, 0, 1 / k, bot - fy / k)
@@ -139,7 +148,7 @@ def put_him(bg, rgb, al, box, mode, a, b, c, s):
     gain = (sm / hm) ** 0.4
     gain = gain / gain.mean() * (sm.mean() / hm.mean()) ** 0.3
     col = np.clip(col * gain, 0, 255)
-    if mode == "walk":
+    if mode in ("walk", "dance"):
         hp = c * N
         yy, xx = np.mgrid[0:N, 0:N].astype(np.float32)
         sh = np.exp(-(((xx - fx) / (0.2 * hp)) ** 2 + ((yy - fy) / (0.03 * hp)) ** 2)) * 0.5
@@ -201,7 +210,7 @@ def main():
     if not TEST:
         out = subprocess.Popen([F, "-loglevel", "error", "-y", "-f", "rawvideo", "-pix_fmt", "rgb24", "-s", f"{N}x{N}", "-r",
                                 str(FPS), "-i", "-", "-c:v", "libx264", "-crf", "17", "-preset", "slow", "-pix_fmt", "yuv420p",
-                                os.environ.get("VOUT", "out/drawn/no-quarters.mp4")], stdin=subprocess.PIPE)
+                                os.environ.get("VOUT", "out/drawn/deadpan.mp4")], stdin=subprocess.PIPE)
     starts, b = [], 1
     for s in SHOTS:
         starts.append(S0 + b * BAR)
@@ -214,7 +223,8 @@ def main():
         if a1 > lo and a0 < hi and (not TEST or any(a0 <= q - S0 < a1 for q in TEST)):
             bgs[j] = load_bg(u, t0, nb * BAR + 0.2)
             if him:
-                hims[j] = load_him(him[0], him[1], nb * BAR + 0.2, him[6])
+                sp = him[7] if len(him) > 7 else 1.0
+                hims[j] = load_him(him[0], him[1], nb * BAR * sp + 0.2, him[6], him[2] == D_)
     for fr in range(int(round(DUR * FPS))):
         t = fr / FPS
         s = S0 + t
@@ -238,8 +248,9 @@ def main():
             if him is not None:
                 a = dolly(a, ls, nb, i)
                 frames, boxes = hims[i]
-                k = min(int(ls * FPS), len(frames) - 1)
-                hu, ht, mode, pa, pb, pc, flip = him
+                sp = him[7] if len(him) > 7 else 1.0
+                k = min(int(ls * sp * FPS), len(frames) - 1)
+                hu, ht, mode, pa, pb, pc, flip = him[:7]
                 if u_ == "u169":                             # he floats up with it, still sitting on nothing
                     pb = pb - 0.5 * ease((ls - 0.5) / 2.6)
                 a = put_him(a, frames[k][0], frames[k][1], boxes[k], mode, pa, pb, pc, s)
