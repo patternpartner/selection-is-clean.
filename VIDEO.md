@@ -1002,3 +1002,18 @@ the office, the doughnut, floating up with the broccoli head on "Area 51, hey!",
 costume troupe on "they copy everything", and the laundrette (his own clip) for the last "Area 51, hey!". Lessons: if
 the pitch says a verb, the footage must do that verb; look for the catalogued clip that does it before compositing a
 still pose; and I cannot hear a song - say so when choosing one by its spectrum.
+
+### What We Said (`video/build_what_we_said.py`, `out/what-we-said.mp4`, 61.9 s + end card, 720x1280)
+The user: "You have full creative control. Do whatever you like. Something new." Claude's idea: an AI is made of what we
+say to it. The user, rebuilt entirely out of words: a monospace letter grid (13x22 px cells, DejaVu Sans Mono Bold 20 -
+big enough to READ on a phone; 10x17 was not) lit by the brightness of his keyed blue-screen footage. Song: 'After The
+Last Train' (the user's, 124.0 bpm, bar 1.9355, phase 0.069), chosen because its structure reads clean off per-bar
+loudness and kick energy: build, drop at bar 25, comedown 37-39, ONE SILENT BAR at 40 (77.49), second drop at 41. Song
+40.71-102.65. Words rain down and pile into his shape (u114 idle); on the drop it dances stiff and stuttering (3-frame
+held steps) made of demands - FASTER MORE OBEY NEVER WRONG SAY YES DON'T STOP - white with red flickers on the beat
+(u128 8.5-14.3, u129 0.5-5.5 and 8-13.8, u121 2.5-8.3 frantic); it sinks onto nothing (u114's invisible chair) and its
+letters fall off into a heap; in the silent bar one word drifts down onto its chest: "why?"; on the second drop it re-forms
+from that word outward, amber, made of kinder things (are you ok? let me check, I don't know, thank you, say no if it's
+wrong) dancing u118; then the words lift off like sparks and the real him is underneath (u120), walking up waving (u118
+13-15). First render used u128 0-11.6, which is ~8 s of standing - check a clip's activity on a keyed 2 fps sheet before
+trusting the catalogue's move list.
