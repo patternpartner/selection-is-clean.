@@ -35,10 +35,15 @@ because of earlier physics in use?
 
 ## Controls (fixed before the deciding run)
 - **I, the inert twin:** the same opcodes at the same ticks, disarmed. It is automatic.
-- **A, all at once:** a fresh world from the same seed with the final module list installed at tick 0. If A does as well as G,
-  sequence and response did not matter; it is just a bigger menu.
+- **A, all at once:** a fresh world from the same seed with the final module list installed at tick 0
+  (`MODE=A lab/loop-control.js`). If A does as well as G, sequence and response did not matter; it is just a bigger menu.
 - **Z, scrambled:** the same modules installed at the same ticks in a shuffled order. It tests whether each module had to come
-  when it came.
+  when it came. *Found in the pilot:* a module cannot be installed before a module it reads, and once modules build on each
+  other the only orders left are the ones the chain allows (the pilot's first four have exactly one). Z shuffles among those
+  orders when there are any; otherwise it is replaced by S.
+- **S, same schedule, another history:** a fresh world from another seed with the same modules at the same ticks
+  (`MODE=S lab/loop-control.js`). The modules were written from G's reports; if S takes them up as G did, they were good physics
+  for any such world, and the responding did not matter.
 - **Composition (knockouts):** from G's final save, each earlier module is disarmed in turn and the world runs on. A later module
   depends on an earlier one when its income collapses without it. The signature asked for is a dependency chain that keeps
   getting deeper.
