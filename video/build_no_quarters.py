@@ -49,9 +49,11 @@ def ease(u):
     return u * u * (3 - 2 * u)
 
 
-def load(u, need_mask=False):
+def load(u, t0, dur):
+    """only the seconds a shot uses (fifteen whole clips at 960 px do not fit in memory)"""
     x, y, sz = CROP[u]
-    raw = subprocess.run([F, "-loglevel", "error", "-i", f"out/user-clips/{u}.mp4", "-map", "0:v:0", "-vf",
+    raw = subprocess.run([F, "-loglevel", "error", "-ss", f"{t0:.3f}", "-t", f"{dur:.3f}", "-i", f"out/user-clips/{u}.mp4",
+                          "-map", "0:v:0", "-vf",
                           f"fps={FPS},crop={sz}:{sz}:{x}:{y},scale={N}:{N}:flags=lanczos", "-f", "rawvideo", "-pix_fmt", "rgb24",
                           "-"], capture_output=True).stdout
     return np.frombuffer(raw, np.uint8).reshape(-1, N, N, 3)
@@ -159,7 +161,6 @@ def osd(a, text, alpha, big=False):
 
 
 def main():
-    clips = {u: load(u) for u in {s[0] for s in SHOTS}}
     him = Him()
     out = None
     if not TEST:
@@ -171,6 +172,12 @@ def main():
         starts.append(S0 + b * BAR)
         b += nb
     chans = [3, 7, 12, 4, 9, 21, 5, 33, 8, 11, 2, 16, 27, 6, 1]
+    lo, hi = (PART[0], PART[1]) if PART else (0.0, DUR)
+    clips = {}
+    for j, (u, t0, _, nb) in enumerate(SHOTS):
+        a0, a1 = starts[j] - S0, starts[j] - S0 + nb * BAR
+        if a1 > lo and a0 < hi and (not TEST or any(a0 <= q - S0 < a1 for q in TEST)):
+            clips[j] = load(u, t0, nb * BAR + 0.2)
     for fr in range(int(round(DUR * FPS))):
         t = fr / FPS
         s = S0 + t
@@ -189,8 +196,8 @@ def main():
             i = max(j for j in range(len(SHOTS)) if starts[j] <= s)
             u_, t0, place, nb = SHOTS[i]
             ls = s - starts[i]
-            fr_clip = clips[u_]
-            a = fr_clip[min(int((t0 + ls) * FPS), len(fr_clip) - 1)].astype(np.float32)
+            fr_clip = clips[i]
+            a = fr_clip[min(int(ls * FPS), len(fr_clip) - 1)].astype(np.float32)
             if place is not None:
                 fx, fy, h = place
                 if u_ == "u169":                             # he floats up with it, hands in pockets
