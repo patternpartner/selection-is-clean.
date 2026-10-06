@@ -1080,3 +1080,7 @@ Iterations: strokes clipped to the hand gave the silhouette away in the first se
 the fall-away); the fall-away direction was inverted, then too fast (420 -> 170 world px/s); 50-60 s was ten seconds
 of one picture (fixed with the veins). HONEST: the drop section (17-44 s) is busy - forty-odd panes a minute, and
 the eye can't settle on any one clip; and the planner is greedy, so stroke order is a rule, not a choreography.
+THE USER'S VERDICT: "Could actually be one of my favourites you have done." Like Where I Keep Everything before it: no
+likeness, all code, zero Modal cost, the archive re-used as material rather than as scenes, and one structural reveal
+(the patchwork was a hand) carrying the film instead of a narrated idea. Worth remembering as a direction: a single
+image the whole film is secretly building toward, made out of everything already made.
