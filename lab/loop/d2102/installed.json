@@ -51,6 +51,13 @@
    "name": "MAUL",
    "op": 38,
    "tick": 700000
+  },
+  {
+   "k": 8,
+   "file": "8-spines.js",
+   "name": "SPINES",
+   "op": 39,
+   "tick": 800000
   }
  ]
 }
