@@ -44,6 +44,13 @@
    "name": "STRETCH",
    "op": 37,
    "tick": 600000
+  },
+  {
+   "k": 7,
+   "file": "7-maul.js",
+   "name": "MAUL",
+   "op": 38,
+   "tick": 700000
   }
  ]
 }
