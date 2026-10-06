@@ -301,22 +301,25 @@ class World{
     if(!opt.noInit&&!m.disarmed&&spec.init)spec.init(m.api);
     return m; }
   modApi(m){ const w=this, C=w.C, P=w.p;
-    const store=k=>{ if(k==='E')return w.E; if(k==='light')return w.light; if(k==='corpse')return w.corpse; const f=m.fields[k]; if(!f||!m.energyField[k])throw new Error(m.name+': not an energy store: '+k); return f; };
-    const info=k=>{ const f=m.fields[k]; if(!f)throw new Error(m.name+': no field '+k); return f; };
+    // a field is named 'field' (this module's own) or 'NAME.field' (an earlier module's), so later physics can build on earlier physics
+    const owner=k=>{ const i=k.indexOf('.'); if(i<0)return [m,k]; const o=w.mods.find(x=>x.name===k.slice(0,i)); if(!o||o.id>=m.id)throw new Error(m.name+': no earlier module '+k.slice(0,i)); return [o,k.slice(i+1)]; };
+    const store=k=>{ if(k==='E')return w.E; if(k==='light')return w.light; if(k==='corpse')return w.corpse; const [o,f]=owner(k); if(!o.fields[f]||!o.energyField[f])throw new Error(m.name+': not an energy store: '+k); return o.fields[f]; };
+    const info=k=>{ const [o,f]=owner(k); if(!o.fields[f])throw new Error(m.name+': no field '+k); return o.fields[f]; };
+    const isEnergy=k=>{ if(k==='E'||k==='light'||k==='corpse')return true; const [o,f]=owner(k); return !!o.energyField[f]; };
     return {
       C, W:P.W, H:P.H, get tick(){ return w.tick; },
       rand:()=>m.rnd(),
       alive:c=>w.alive[c]===1, ahead:(c,turn)=>w.ahead(c,w.face[c]+(turn|0)), face:c=>w.face[c], age:c=>w.age[c], tag:c=>w.tag[c], gen:c=>w.gen[c],
       E:c=>w.E[c], light:c=>w.light[c], corpse:c=>w.corpse[c],
       reg:(c,k)=>w.R[c*4+(k&3)], setReg:(c,k,v)=>{ w.R[c*4+(k&3)]=Number.isFinite(v)?v:0; },
-      get:(k,c)=>{ if(k==='E'||k==='light'||k==='corpse')return store(k)[c]; return info(k)[c]; },
-      set:(k,c,v)=>{ if(m.energyField[k])throw new Error(m.name+': energy cannot be set, only moved: '+k); info(k)[c]=Number.isFinite(v)?v:0; },
+      get:(k,c)=>isEnergy(k)?store(k)[c]:info(k)[c],
+      set:(k,c,v)=>{ if(isEnergy(k))throw new Error(m.name+': energy cannot be set, only moved: '+k); const [o]=owner(k); if(o!==m)throw new Error(m.name+': only its own information fields can be written: '+k); info(k)[c]=Number.isFinite(v)?v:0; },
       move:(fk,fc,tk,tc,amt)=>{ if(!(amt>0))return 0; const F=store(fk), T=store(tk);
         if(fk==='E'&&!w.alive[fc])return 0; if(tk==='E'&&!w.alive[tc])return 0;
         const a=Math.min(amt,Math.max(0,F[fc])); if(!(a>0))return 0; F[fc]-=a; T[tc]+=a; if(tk==='E')m.inc+=a; if(fk==='E')m.out+=a; return a; },
       spend:(c,amt)=>{ if(!(amt>0)||!w.alive[c])return 0; w.E[c]-=amt; m.out+=amt; return amt; },
-      diffuse:(k,D)=>{ const A=info(k), t=new Float32Array(C), W=P.W, H=P.H; for(let y=0;y<H;y++)for(let x=0;x<W;x++){ const c=y*W+x, v=A[c]; t[c]=v+D*((A[y*W+(x+W-1)%W]+A[y*W+(x+1)%W]+A[((y+H-1)%H)*W+x]+A[((y+1)%H)*W+x])/4-v); } A.set(t); },
-      decay:(k,f)=>{ const A=info(k); for(let c=0;c<C;c++)A[c]*=1-f; } }; }
+      diffuse:(k,D)=>{ if(owner(k)[0]!==m)throw new Error(m.name+': only its own fields diffuse: '+k); const A=info(k), t=new Float32Array(C), W=P.W, H=P.H; for(let y=0;y<H;y++)for(let x=0;x<W;x++){ const c=y*W+x, v=A[c]; t[c]=v+D*((A[y*W+(x+W-1)%W]+A[y*W+(x+1)%W]+A[((y+H-1)%H)*W+x]+A[((y+1)%H)*W+x])/4-v); } A.set(t); },
+      decay:(k,f)=>{ const [o]=owner(k); if(o!==m)throw new Error(m.name+': only its own fields decay: '+k); const A=info(k); for(let c=0;c<C;c++)A[c]*=1-f; } }; }
   modSample(ev){ if(!this.mods)return null; let tot=(ev.eatLight||0)+(ev.eatCorpse||0)+(ev.attackTake||0)*this.p.ATT_EFF+(ev.metab||0);   // ev: this sample's counters (sample() has already reset the live ones) for(const m of this.mods)tot+=m.inc;
     const L=this.p.MAXLEN*2, carriers=new Map(); let n=0; for(let c=0;c<this.C;c++){ if(!this.alive[c])continue; n++; const o=c*L, seen=new Set(); for(let i=0;i<this.len[c];i++){ const op=this.prog[o+i*2]; if(op>=NOPS)seen.add(op); } for(const op of seen)carriers.set(op,(carriers.get(op)||0)+1); }
     const list=this.mods.map(m=>{ let fe=0; for(const [k,A] of Object.entries(m.fields)) if(m.energyField[k]) for(let c=0;c<this.C;c++)fe+=A[c];
