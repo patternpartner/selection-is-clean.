@@ -25813,3 +25813,71 @@ nothing to 98-99% of the living within about 40,000 ticks; at pause 7 it is SELE
 in d2102 it reads t 2.0 with 1.5% of the living left as non-carriers. A late module that sweeps to fixation before its first
 assay would be unmeasurable, so R1 is conservative against exactly the strongest adoptions. The rule is not changed. If it
 matters to the verdict it will be reported beside it, with the carriers and twins of each late module.
+
+### #292b — RESULT: R1 NOT MET (2 of 3 worlds), R2 NOT MET (0 of 3). The world took up new physics to the end; the measure could not confirm the last of it in one world; composition was real and then destroyed.
+
+**Verdict by the rules committed before the first run** (`node lab/loop-score.js`; knockouts in `lab/loop/d21*/ko-11.txt`):
+- **R1, keeps arriving: NOT MET, 2 of 3.** d2101 and d2102: FANG (module 9) adopted at pause 10 (+2.91, t 4.7; +1.96,
+  t 11.4). d2103: none of modules 8-10 adopted at pauses 9-11. FANG went from 0 to 100% of the living there within about
+  40,000 ticks, so at pauses 10 and 11 there was no non-carrier to compare (the limit recorded at pause 7, before modules 8-10
+  existed); SNARL (module 10) rose from 3% to 48% against its twin's 2-6% but read +0.07, t 1.8 at pause 11; FAT (module 8)
+  was never taken up. **Beside the verdict, not instead of it:** in d2103 both late modules spread far beyond their twins,
+  one of them to fixation, and the rule cannot see it. A measure built on comparing carriers with non-carriers cannot
+  confirm the strongest adoptions, and here that decided the verdict.
+- **R2, composes: NOT MET, 0 of 3.** The structure is absolute: without GUT, BITE's and SQUEEZE's income is 0.00 on every
+  draw in every world, and without LEAF, GRAZE's is 0.00 on every draw in d2101. But the rule needs the dependent module
+  adopted at pause 9 or later **and** earning at least 50 per 1,000 ticks at the end, and by tick 1,100,000 FANG had driven
+  BITE and SQUEEZE almost extinct (3-5 per 1,000 ticks). Composition held by selection was real from pause 3 to pause 9
+  (GUT and BITE both adopted at the same pause in all three worlds, GUT and SQUEEZE in two); it was over before the run ended.
+
+**The adoption matrices** (+ adopted, - selected against, . neither; columns are pauses 2-11, a pause every 100,000 ticks):
+```
+d2101                 2  3  4  5  6  7  8  9 10 11     d2103                 2  3  4  5  6  7  8  9 10 11
+ 1 GUT                +  .  +  +  +  +  +  +  +  .      1 GUT                +  +  +  .  +  +  +  .  .  +
+ 2 BITE (on GUT)         .  +  +  .  +  +  +  .  .      2 CARRION               .  .  .  .  .  .  .  .  .
+ 3 SQUEEZE (on GUT)         .  .  .  +  +  .  .  .      3 SQUEEZE (on GUT)         .  .  .  .  .  .  .  .
+ 4 LEAF                        .  .  .  +  +  +  +      4 LEAF                        -  -  -  -  -  -  -
+ 5 GRAZE (on LEAF)                .  .  .  .  -  .      5 BITE (on GUT)                  .  +  +  +  .  .
+ 6 STRETCH                           +  +  +  +  +      6 STRETCH                           +  +  +  +  .
+ 7 MAUL                                 +  .  .  .      7 MAUL                                 .  +  .  +
+ 8 FAT                                     .  .  -      8 FAT                                     .  .  .
+ 9 FANG                                       +  .      9 FANG                                       .  .
+10 SNARL                                         .     10 SNARL                                         .
+d2102: 1 FAT never; 2 GUT + at 3-8 and 11; 3 BITE (on GUT) + at 4, 6, 7; 4 SQUEEZE (on GUT) + at 5; 5 LEAF - throughout;
+       6 STRETCH + at 8, 9; 7 MAUL + at 8-10; 8 SPINES - throughout; 9 FANG + at 10; 10 SNARL swept to 98% (t 1.6 at 11).
+```
+
+**What the run showed (three seeds, one generator; the claims are at the rung measured).**
+- **The world kept taking up new physics to the last pause, late as readily as early.** Distinct modules adopted: 7, 6
+  and 4. Modules installed at 600,000-1,000,000 ticks spread as fast as any (STRETCH, MAUL, FANG, SNARL each went from
+  nothing to most of the living within 20,000-60,000 ticks). There is no sign of entrenchment in any world.
+- **What is adopted is a new way to take.** Every module adopted reaches energy the organism could not reach before: the
+  dead ahead (GUT), what is in another's gut (BITE), its own gut at once (SQUEEZE), the light ahead (STRETCH), the store of
+  whoever is ahead (MAUL, FANG). Every defence (FAT four times, counting the pilot; SPINES), every sense (CARRION, SMELL)
+  and every investment that pays back slowly (LEAF in two worlds of three) was refused or selected against.
+- **Each new store invites a taker, and that is where composition came from.** GUT made guts; BITE and SQUEEZE, built on
+  them, were adopted beside GUT. LEAF made leaves; GRAZE was built on them (live: 0.00 without LEAF) though never adopted.
+- **The generator escalated, and escalation destroyed the web it had built.** MAUL (tear at anyone ahead, half lost) was
+  adopted and burnt about 10k per 1,000 ticks in every world; FANG (the same, a tenth lost) then swept all three worlds in
+  about 40,000 ticks and displaced GUT, BITE and MAUL (each down to 0-18% of the living); the living fell 25-30% below their
+  twins and carried less than half what one needs to divide. A better weapon is selected and makes the world poorer: each
+  module was a responsive, local, physical step, and the sequence was an arms race the generator itself supplied.
+- **SNARL, the kin-sparing tear, was the generator's answer to that**, and it swept d2102 (98%) and was rising in d2103
+  (48%) when the run ended; in d2101 it was not taken up.
+
+**What this says about the question (#292).** The world inside the loop stays open: given physics, it takes up what pays
+at any age, and its own selection sorts takers from refusers. But what it takes up is what lets an organism take more,
+and a generator that answers "what pays" supplies escalation: depth came from new stores and new takers, and the next
+taker destroyed the depth. **The open-ended part is still the generator; what the world adds is the judging, and it judges
+by one criterion.** A run that wants depth to persist needs physics whose stores cannot simply be taken by the next
+module, or a generator constrained against strict dominance; neither was in this experiment.
+
+**What the measure needs next (not a rule change; a new experiment if used).** Assay each module at a fixed short time
+after it arrives (say 20,000 ticks), while it is still polymorphic, as well as at the pauses; or replace the carrier
+comparison by an invasion assay (the module armed in a disarmed population and its increase measured), which works at any
+frequency. And the floor in R2 should be read against the history, not only the final state.
+
+**Every session removes or proves something: what this one proved and what it removed.** Proved, by the assay on unseen
+seeds: GUT (adopted on all four worlds that had it, pilot included), BITE and STRETCH (all three), MAUL and FANG (two of
+three each). Removed nothing from the engine or the lab core (the lab core gained modules and body fields, both
+identity-checked off). The modules that failed are retired in the sense the protocol allows: never edited, recorded here.
