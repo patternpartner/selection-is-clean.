@@ -25718,6 +25718,20 @@ in G against the inert twin I over 20,000-tick windows, with income share beside
   Twin carrier shares swing from 3% to 29% by drift alone (PIPE's twin: 3.6%-29.3%), the #249b lesson exactly. A deciding run
   needs several inert replicates per arm (the same disarmed world on different draws) and calls a module adopted only when it
   is above every one of them.
+- **Knockouts and a same-population selection test from tick 800,000** (G's save just after FAT went in; each module
+  disarmed in turn, 20,000 ticks, 3 draws of the world's RNG; `lab/loop-analyse.js KO=1`):
+  - **Composition is live along the reads modules declare, and nowhere else.** TENDRIL's income goes to 0.00 on all three
+    draws without BROTH; PIPE's falls to 0.04-0.14 of baseline without TANK and TANK's to 0.03-0.31 without BROTH. Depth 1
+    in use (TENDRIL on BROTH, while both were carried above their twins at 721k-780k); the TANK-PIPE chain is live but not
+    in use.
+  - **The income rule alone gives false dependencies.** It said FAT depends on TANK and SMELL and HOARD on SMELL and SIGNAL;
+    they read none of them. Their incomes are churn held by a few lineages, and whether those lineages are present after
+    20,000 ticks is a draw (FAT's income ratios across draws: 0.00, 211.68, 0.00). DEPENDS now requires a declared read.
+  - **Selection could not be seen at all.** No module was SELECTED or PURGED: its carrier share after 20,000 ticks, starting
+    from the same population, ranged 4.9-30.8% armed and 7.8-26.1% disarmed for TENDRIL alone. Selection on these opcodes is
+    weak beside the lineage sweeps that carry them up and down, and three draws cannot separate the two. This is the same
+    finding as the single twin from the other side. **What the pilot cannot tell, then, is whether any module was selected.**
+    "Carried above the twin for 500,000 ticks" (BROTH) is suggestive, and nothing more until it is measured against a band.
 - **Z cannot exist here.** Every module after BROTH reads an earlier one, so the chain allows one order (recorded in
   PROTOCOL.md; S, the same schedule on another seed, replaces it).
 - **A metric bug, found and fixed during the pilot.** The loop that added module income to the income total sat inside a
