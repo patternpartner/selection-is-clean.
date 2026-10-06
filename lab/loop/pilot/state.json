@@ -1,0 +1,10 @@
+{
+ "seed": 2001,
+ "opts": {},
+ "tick": 100000,
+ "nextAdd": 100000,
+ "k": 1,
+ "installed": [],
+ "seg": 25000,
+ "addEvery": 100000
+}
