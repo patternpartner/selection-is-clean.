@@ -25806,3 +25806,10 @@ is tested is whether the world goes on taking it up, judged by its own selection
   control A per seed (all ten modules at tick 0, with its inert twin, assayed at 1,100,000), against G's adoptions at the
   same tick. A is descriptive because one assay at one tick cannot carry a rule.
 - **Not changed after the first decision run:** any change to these rules is a new experiment and is written up as one.
+
+**#292b, a limit of the adoption measure, recorded at pause 7 (tick 700,000), before modules 8-10 exist.** The assay compares
+carriers with non-carriers, so it loses its power as a module nears fixation. STRETCH (module 6, all three worlds) went from
+nothing to 98-99% of the living within about 40,000 ticks; at pause 7 it is SELECTED in d2101 (t 2.7) and d2103 (t 2.4), and
+in d2102 it reads t 2.0 with 1.5% of the living left as non-carriers. A late module that sweeps to fixation before its first
+assay would be unmeasurable, so R1 is conservative against exactly the strongest adoptions. The rule is not changed. If it
+matters to the verdict it will be reported beside it, with the carriers and twins of each late module.
