@@ -33,7 +33,7 @@ AMBER = np.array([255, 176, 88], np.float32)
 FOC = 820.0
 DARK = [0, 26, 28, 30, 33, 35, 108, 112, 116, 118, 119, 120, 121, 122]
 FINAL = 202
-T_IN, T_DARK, T_DEEP, T_STILL, T_TURN, T_OUT, T_FIND, T_OPEN, T_CARD = 4.0, 19.0, 27.0, 31.0, 34.5, 36.0, 47.0, 53.5, 58.4
+T_IN, T_DARK, T_DEEP, T_STILL, T_TURN, T_OUT, T_FIND, T_OPEN, T_CARD = 4.0, 17.0, 24.0, 28.5, 32.0, 33.5, 48.5, 53.5, 58.4
 rng = np.random.default_rng(7)
 
 
@@ -96,10 +96,12 @@ def catmull(pts, ts, t):
 
 
 # the path: where the camera is and what it looks at
-WT = [0.0, 4.0, 11.0, 19.0, 27.0, 31.0, 34.5, 41.0, 47.0, 53.5, 56.0, 62.0]
+WT = [0.0, 4.0, 11.0, 17.0, 24.0, 28.5, 32.0, 36.5, 40.5, 44.5, 48.5, 53.5, 56.0, 62.0]
 CAMP = [CEN + [0, 4, -70], CEN + [0, 2, -32], CEN + [-6, 3, -8], DC + [-6, 2, -14], DC + [0, 0, -3], DC + [0, 0, -2.5],
-        DC + [0, 0, -2.6], (DC + FP) / 2 + [0, 6, 0], FP + [0, 0, -9], FP + [0, 0, -1.4], FP + [0, 0, -0.8], FP + [0, 0, -0.8]]
-LOOK = [CEN, CEN, CEN + [4, 0, 6], DC, DC + [0, 0, 6], DC + [0, 0, 6], FP, FP, FP, FP, FP, FP]
+        DC + [0, 0, -2.6], DC + [-9, 3, -9], CEN + [4, 1, -1], CEN + [-7, 4, -7], FP + [0, 0, -8], FP + [0, 0, -1.4],
+        FP + [0, 0, -0.8], FP + [0, 0, -0.8]]
+LOOK = [CEN, CEN, CEN + [4, 0, 6], DC, DC + [0, 0, 6], DC + [0, 0, 6], FP, CEN + [4, 1, -1], CEN + [-7, 4, -7], FP, FP, FP,
+        FP, FP]
 CAMP = [np.asarray(c, np.float32) for c in CAMP]
 LOOK = [np.asarray(c, np.float32) for c in LOOK]
 
@@ -167,7 +169,7 @@ def render(th, t):
         v = shell - DC
         v = np.array([v[0] * ca - v[2] * sa, v[1], v[0] * sa + v[2] * ca])
         sh_ = DC + v
-        pos[si] = sh_ + (c + v * 0.45 - sh_) * 0.55 * dk0
+        pos[si] = sh_ + (c + v * 0.75 - sh_) * 0.5 * dk0
     sx, sy, sz = project(pos, c, f, r, u)
     img = np.zeros((H, W, 3), np.float32)
     dk = dark_level(t)
