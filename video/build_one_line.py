@@ -11,7 +11,7 @@ loud stretch to 102, a fade into near-silence 103-107, a soft rebuild from 107).
   86.0        a hit: the line catches - the knot
   86.0-102.0  he dances on with it; it grows (u121)
   103-107     near-silence: still; the line tries to pull the knot out; it snaps back, bigger
-  107-119     slower, careful, carrying it (u113 open hand, palm to the glass)
+  107-119     gentler, carrying it (u120's loose dance)
   119-131     the line unravels off him and writes "We only get to teach it once." - the knot lands as the o of once
     python3 video/build_one_line.py   (TEST=s1,s2 TESTDIR=dir in SONG seconds; PART=a,b VOUT=f in film seconds)
 """
@@ -45,7 +45,7 @@ rng = np.random.default_rng(1)
 
 # (song from, song to, clip, clip from, clip to)
 SHOTS = [(64.0, 72.5, "u114", 0.0, 1.8), (72.5, 86.0, "u118", 1.0, 13.0), (86.0, 103.0, "u121", 2.0, 14.5),
-         (103.0, 107.0, "u114", 11.0, 12.8), (107.0, 113.0, "u113", 7.4, 10.9), (113.0, 119.5, "u129", 2.6, 6.2)]
+         (103.0, 107.0, "u114", 11.0, 12.8), (107.0, 119.5, "u120", 1.5, 14.0)]
 # the camera: (song from, zoom, aim) - aim "body" or "knot"
 CAM = [(64.0, 0.9, "body"), (84.8, 0.9, "body"), (86.0, 2.0, "knot"), (88.4, 0.9, "body"), (96.0, 1.5, "knot"),
        (98.5, 0.9, "body"), (103.0, 2.4, "knot"), (107.0, 0.9, "body")]
@@ -265,6 +265,7 @@ def frame(him, song, s, prev):
         wv = song.wave(s, NPTS) * 10
         flat = np.stack([xs, H * 0.55 + wv], 1)
         if s < T_RISE:
+            line = None                                       # he is not there yet: only the trace
             n_on = int(NPTS * min(1, u * 1.3))
             if n_on > 2:
                 draw(out, flat[:n_on], GREEN, 2)
