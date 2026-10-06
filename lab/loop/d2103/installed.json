@@ -30,6 +30,13 @@
    "name": "LEAF",
    "op": 35,
    "tick": 400000
+  },
+  {
+   "k": 5,
+   "file": "5-bite.js",
+   "name": "BITE",
+   "op": 36,
+   "tick": 500000
   }
  ]
 }

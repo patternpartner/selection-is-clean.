@@ -30,6 +30,13 @@
    "name": "SQUEEZE",
    "op": 35,
    "tick": 400000
+  },
+  {
+   "k": 5,
+   "file": "5-leaf.js",
+   "name": "LEAF",
+   "op": 36,
+   "tick": 500000
   }
  ]
 }

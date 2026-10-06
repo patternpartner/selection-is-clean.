@@ -30,6 +30,13 @@
    "name": "LEAF",
    "op": 35,
    "tick": 400000
+  },
+  {
+   "k": 5,
+   "file": "5-graze.js",
+   "name": "GRAZE",
+   "op": 36,
+   "tick": 500000
   }
  ]
 }
